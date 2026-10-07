@@ -1592,8 +1592,19 @@ over a CDN with no typecheck at all.
   toolbars package, and `pie-context` — no consumer imports any of them
 - Attributes and props on the layout elements not listed above, including the
   additive `locale` attribute on `pie-item-player` and the section-player layouts,
-  and the additive opt-in `session-snapshot` property with its
-  `session-snapshot-available` event
+  the additive opt-in `session-snapshot` property with its
+  `session-snapshot-available` event, and the additive `session` property on the
+  section-player layouts and `pie-assessment-toolkit`, which no host sets. Without
+  it a section controller is still created through `hydrate()`, so Host A's
+  resume path is untouched
+- The optional `initialSession` argument on
+  `ToolkitCoordinatorApi.getOrCreateSectionController`. Host R imports the
+  interface without implementing it, and no host calls the method
+- `baseId` and `version` becoming optional on `AssessmentItemRef.item` and its
+  `passage`, and `name` on that passage. Host R assigns its own item type into
+  the field and reads neither back through the PIE types; Host A declares its own
+  item-ref type
+- `sectionFromItem` and the `./item-section` subpath of the section player
 - `PiePlayerLoadEvent`, its two detail strings and `window.pieFixedPlayerLoaded`
   from the preloaded entry — the one host on that build renders without waiting
   for them

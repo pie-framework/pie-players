@@ -4,6 +4,7 @@ import { SECTION_PLAYER_PUBLIC_EVENTS } from "./public-events.js";
 const RECOMMENDED_BASIC_PROPS = [
 	"assessmentId",
 	"section",
+	"session",
 	"sectionId",
 	"attemptId",
 	"debug",

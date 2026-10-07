@@ -43,10 +43,10 @@ pending or failed, and after disconnect. A waiter resolves to `null` when its
 active attempt fails or is retired, or its own timeout expires. A waiter's
 timeout does not cancel a still-active initialization.
 
-Connect the element and assign `assessmentId`, `attemptId`, `assessment`, and
-`hooks` in the same turn, or assign them before connecting. These assignments
-are batched; changing assessment, attempt, or hooks later retires the previous
-controller and starts a new one. Replace object properties to update them;
+Connect the element and assign `assessmentId`, `attemptId`, `assessment`,
+`hooks` and `session` in the same turn, or assign them before connecting. These
+assignments are batched; changing assessment, attempt, hooks or session later
+retires the previous controller and starts a new one. Replace object properties to update them;
 mutating a previously assigned object in place is not an update signal. Runtime
 props, locale, and navigation visibility do not reload the assessment.
 
@@ -82,10 +82,20 @@ shape the persistence strategy load/save methods exchange and the same
 shape per-section bridges roll up into via `updateSectionSession(sectionId,
 snapshot)`.
 
+The element's `session` property takes that shape too. The controller's first
+hydrate applies an assigned session in place of the strategy's `loadSession`;
+the strategy still receives every `persist()`. The value is consumed once: a
+rebuild for another reason, such as an `assessment` change, hydrates from the
+strategy. Assigning a session equal to the controller's, as writing
+`assessment-session-changed` back into the property does, is a no-op, and so is
+`null` once the controller is ready. Reading `session` returns the assigned value
+until the controller is ready and a copy of the controller's session after.
+
 The default element captures the outgoing section before navigation replaces it,
-including navigation through the controller. A returning section waits for its
-canonical `engine-ready` stage and restores its saved section snapshot before
-accepting input or session updates. The section region stays `aria-busy` during
+including navigation through the controller. A returning section receives its
+saved section snapshot as the section player's `session` property, which its
+controller applies before the canonical `engine-ready` stage; the section accepts
+input and session updates from `engine-ready` on. The section region stays `aria-busy` during
 this handoff. Failed restoration leaves the saved snapshot intact, reports
 `assessment-error` and `onError` with phase `navigation`, and offers Retry.
 Navigating away or disconnecting retires that handoff. This in-memory restoration
@@ -101,7 +111,8 @@ change only — section-level events flow through the embedded
 
 - `assessment-route-changed` — section-level navigation moved (index / id,
   `previousSectionId`, `canNext` / `canPrevious`).
-- `assessment-session-applied` — `hydrate()` loaded a persisted session.
+- `assessment-session-applied` — `hydrate()` applied a session, persisted or
+  assigned as `session`.
 - `assessment-session-changed` — assessment session mutated (navigation,
   per-section snapshot upsert). The active section's snapshot is upserted once
   for each `session-changed` it emits.

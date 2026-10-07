@@ -1,17 +1,31 @@
 import { describe, expect, test } from "bun:test";
 import { AssessmentController } from "../src/controller/AssessmentController";
-import type { AssessmentPlayerHooks } from "../src/types";
+import type { AssessmentPlayerHooks, AssessmentSession } from "../src/types";
 
-function makeController(hooks: AssessmentPlayerHooks = {}) {
+function makeController(
+	hooks: AssessmentPlayerHooks = {},
+	initialSession?: AssessmentSession | null,
+) {
 	return new AssessmentController({
 		assessmentId: "lifecycle-assessment",
 		attemptId: "lifecycle-attempt",
 		assessment: { sections: [{ identifier: "one", assessmentItemRefs: [] }, { identifier: "two", assessmentItemRefs: [] }] },
+		initialSession,
 		hooks: {
 			createAssessmentSessionPersistence: () => ({ loadSession: () => null, saveSession: () => {} }),
 			...hooks,
 		},
 	});
+}
+
+/** A session positioned on the second section, as a resumed attempt holds. */
+async function sessionOnSecondSection(): Promise<AssessmentSession> {
+	const source = makeController();
+	await source.initialize();
+	await source.navigateNext();
+	const session = structuredClone(source.getSession()) as AssessmentSession;
+	await source.dispose();
+	return session;
 }
 
 describe("assessment controller lifecycle", () => {
@@ -78,6 +92,46 @@ describe("assessment controller lifecycle", () => {
 		await controller.initialize();
 		expect(loads).toBe(1);
 		expect(controller.getRuntimeState().readiness).toBe("ready");
+	});
+
+	test("an initial session takes the place of the strategy's load", async () => {
+		const initialSession = await sessionOnSecondSection();
+		const calls: string[] = [];
+		const events: string[] = [];
+		const controller = makeController(
+			{
+				onBeforeAssessmentHydrate: () => { calls.push("before-hydrate"); },
+				createAssessmentSessionPersistence: () => ({
+					loadSession() { calls.push("load"); return null; },
+					saveSession() {},
+				}),
+			},
+			initialSession,
+		);
+		controller.subscribe((event) => events.push(event.type));
+		await controller.initialize();
+		expect(calls).toEqual(["before-hydrate"]);
+		expect(events).toContain("assessment-session-applied");
+		expect(controller.getSession()).toEqual(initialSession);
+		expect(controller.getSession()).not.toBe(initialSession);
+		expect(controller.getRuntimeState().currentSectionIndex).toBe(1);
+	});
+
+	test("a later hydrate loads from the strategy", async () => {
+		const initialSession = await sessionOnSecondSection();
+		let loads = 0;
+		const controller = makeController(
+			{
+				createAssessmentSessionPersistence: () => ({
+					loadSession() { loads += 1; return null; },
+					saveSession() {},
+				}),
+			},
+			initialSession,
+		);
+		await controller.initialize();
+		await controller.hydrate();
+		expect(loads).toBe(1);
 	});
 
 	test("retiring from a session-applied listener cannot recreate disposed state", async () => {

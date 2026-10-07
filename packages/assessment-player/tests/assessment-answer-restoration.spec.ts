@@ -49,15 +49,11 @@ async function prepareRestore(page: Page, fault: "delay" | "reject" | "readiness
 		const coordinator = host.coordinator as ToolkitCoordinator;
 		const acquire = coordinator.getOrCreateSectionController.bind(coordinator);
 		const wrapped = new WeakSet<SectionControllerHandle>();
-		coordinator.getOrCreateSectionController = async (args) => {
-			const controller = await acquire(args);
-			if (args.sectionId !== firstSection || wrapped.has(controller)) return controller;
+		// The section applies its saved session while the coordinator creates the
+		// controller, so the restore is held or rejected there.
+		const holdRestore = (controller: SectionControllerHandle) => {
+			if (fault === "readiness" || wrapped.has(controller)) return;
 			wrapped.add(controller);
-			if (fault === "readiness" && !state.started) {
-				state.started = true;
-				await held;
-				state.finished = true;
-			}
 			const apply = controller.applySession!.bind(controller);
 			controller.applySession = async (session, options) => {
 				if (state.started || !session) return apply(session, options);
@@ -70,6 +66,23 @@ async function prepareRestore(page: Page, fault: "delay" | "reject" | "readiness
 					state.finished = true;
 				}
 			};
+		};
+		coordinator.getOrCreateSectionController = async (args) => {
+			if (args.sectionId !== firstSection) return acquire(args);
+			const createDefaultController = args.createDefaultController;
+			const controller = await acquire({
+				...args,
+				createDefaultController: async () => {
+					const created = await createDefaultController();
+					holdRestore(created);
+					return created;
+				},
+			});
+			if (fault === "readiness" && !state.started) {
+				state.started = true;
+				await held;
+				state.finished = true;
+			}
 			return controller;
 		};
 	}, { fault, firstSection });
@@ -194,6 +207,9 @@ for (const fault of ["delay", "readiness"] as const) {
 			assessment.navigateNext();
 			assessment.navigatePrevious();
 		});
+		// A held restore holds its cohort until it settles, as a held hydrate does,
+		// so the remounted section can only become ready after it.
+		if (fault === "delay") await page.evaluate(() => window.assessmentRestore.release());
 		await expect(host.locator(sectionHost)).toHaveAttribute("aria-busy", "false");
 		await expect(host.locator(firstChoice).first()).toBeChecked();
 		const restored = await page.evaluate((firstSection) => window.assessmentRestore.host.getAssessmentController()!.getSectionSession(firstSection), firstSection);

@@ -100,6 +100,10 @@ live per-slice record is `Active`.
   can read it at teardown, which puts the guarantee in the players instead of a
   host-called flush; the legacy players are in scope because that is where hosts
   are losing responses today.
+- [`section-and-assessment-session-property.md`](./section-and-assessment-session-property.md) -
+  accepted contract for a `session` property on the section player layouts and the
+  default assessment player, applied inside controller creation before the first
+  composition, plus `sectionFromItem` for hosts that deliver one item at a time.
 
 Decisions that span PRDs — sequencing, rejected alternatives, trade-offs a reader
 would otherwise have to reconstruct — live in [`../adr/`](../adr/).

@@ -221,9 +221,11 @@ New knobs MUST go through these helpers; do not add ad-hoc fall-throughs.
 A small set of tier-1 attributes have *no* `runtime.<key>` mirror by
 design:
 
-- **Identity** (`section-id`, `attempt-id`, `section`): per-attempt host
-  state, not configuration. Re-using a section across attempts is the
-  reason `assessmentId` *does* mirror.
+- **Identity** (`section-id`, `attempt-id`, `section`, `session`):
+  per-attempt host state, not configuration. Re-using a section across
+  attempts is the reason `assessmentId` *does* mirror. `session` is the
+  section's session: the controller created for `section` applies it in
+  place of hydrating from the persistence strategy.
 - **Layout-only shell knobs** (`show-toolbar`, `toolbar-position`,
   `narrow-layout-breakpoint`, `split-pane-collapse-strategy`,
   `content-max-width-no-passage`, `content-max-width-with-passage`,

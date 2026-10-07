@@ -17,6 +17,8 @@
 			// from the authored content language, which travels on `env`.
 			locale: { attribute: "locale", type: "String" },
 			section: { type: "Object", reflect: false },
+			// Transport for the layouts' `session`; the toolkit applies it.
+			session: { type: "Object", reflect: false },
 			sectionId: { attribute: "section-id", type: "String" },
 			attemptId: { attribute: "attempt-id", type: "String" },
 			toolRegistry: { type: "Object", reflect: false },
@@ -62,7 +64,10 @@
 	import { onDestroy, untrack } from "svelte";
 	import { SectionController } from "../controllers/SectionController.js";
 	import { watchMissingToolProviders } from "./shared/missing-tool-providers.js";
-	import type { AssessmentSection } from "@pie-players/pie-players-shared/types";
+	import type {
+		AssessmentSection,
+		SectionControllerSessionState,
+	} from "@pie-players/pie-players-shared/types";
 	import { createToolSurfaceHost } from "@pie-players/pie-assessment-toolkit/tools/internal";
 	import {
 		DEFAULT_ASSESSMENT_ID,
@@ -81,6 +86,7 @@
 		ndsIcons = false,
 		locale = "",
 		section = null as AssessmentSection | null,
+		session = null as SectionControllerSessionState | null,
 		sectionId = "",
 		attemptId = "",
 		toolRegistry = null as ToolRegistry | null,
@@ -435,6 +441,7 @@
 	bind:this={toolkitElement}
 	assessment-id={effectiveAssessmentId}
 	section={section}
+	session={session}
 	section-id={sectionId}
 	attempt-id={attemptId}
 	player-type={effectivePlayerType}

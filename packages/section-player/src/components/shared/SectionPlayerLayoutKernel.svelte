@@ -25,7 +25,10 @@
 		makeCohort,
 		type EngineReadinessSignals,
 	} from "@pie-players/pie-assessment-toolkit/runtime/internal";
-	import type { AssessmentSection } from "@pie-players/pie-players-shared/types";
+	import type {
+		AssessmentSection,
+		SectionControllerSessionState,
+	} from "@pie-players/pie-players-shared/types";
 	import type { SectionControllerHandle } from "@pie-players/pie-assessment-toolkit";
 	import { createEventDispatcher, setContext, untrack } from "svelte";
 	import type {
@@ -84,6 +87,7 @@
 		assessmentId,
 		runtime = null as RuntimeConfig | null,
 		section = null as AssessmentSection | null,
+		session = null as SectionControllerSessionState | null,
 		sectionId = "",
 		attemptId = "",
 		iifeBundleHost,
@@ -708,6 +712,7 @@
 	bind:this={scaffoldRef}
 	runtime={effectiveRuntime}
 	{section}
+	{session}
 	sectionId={sectionId}
 	attemptId={attemptId}
 	onCompositionChanged={handleBaseCompositionChanged}

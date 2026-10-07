@@ -153,6 +153,7 @@ Key attributes/properties on `pie-assessment-player-default`:
 | `player-type` | `'iife' \| 'esm' \| 'preloaded'` | Item element loading strategy |
 | `assessment` | `object` | Assessment definition (sections, test parts) |
 | `hooks` | `object` | Assessment player hooks (see §7) |
+| `session` | `AssessmentSession` | Session the controller resumes from in place of the strategy's `loadSession` (see the [package README](../../packages/assessment-player/README.md#lifecycle)) |
 | `env` | `object` | `{ mode: 'gather'/'view'/'evaluate', role: 'student'/'instructor' }` |
 | `coordinator` | `ToolkitCoordinator` | Pass-through coordinator for tools/TTS/accessibility |
 | `sectionPlayerRuntime` | `object` | Optional pass-through runtime object applied to each mounted section-player |
@@ -667,14 +668,14 @@ controller.subscribe((event) => {
 The typical page-load sequence is:
 
 1. Mount `<pie-assessment-player-default>` with `assessment-id`, `attempt-id`, and `assessment`.
-2. Set object props (`hooks`, `env`, `coordinator`).
+2. Set object props (`hooks`, `env`, `coordinator`, and `session` when the host holds the attempt's session).
 3. Player reconciles its inputs and creates the `AssessmentController`.
 4. Controller creates the delivery plan (`createAssessmentDeliveryPlan` hook or default flattening).
 5. Controller calls `hydrate()` — resolves persistence strategy via `createAssessmentSessionPersistence`.
-6. `loadSession()` loads the assessment snapshot and applies it (emits `assessment-session-applied`).
-7. After initialization and hydration succeed, the player publishes the controller and mounts the current `pie-section-player-*` element.
+6. With a `session` property the controller applies it; otherwise `loadSession()` loads the assessment snapshot and applies it. Either emits `assessment-session-applied`.
+7. After initialization and hydration succeed, the player publishes the controller and mounts the current `pie-section-player-*` element, passing the section's saved session as its `session` property.
 8. The player invokes the ready hook and emits `assessment-controller-ready`. Failed hydration instead produces `assessment-error`, an unavailable controller getter, and a localized Retry action.
-9. Section player bootstraps; the assessment player awaits `waitForSectionController(...)` on the section CE to obtain the section controller handle.
+9. Section player bootstraps; its controller applies that section session in place of hydrating, and the assessment player waits for the section's `engine-ready` stage to obtain the section controller handle.
 10. Section items load and register; `section-loading-complete` fires.
 11. Session replay applies the restored section session to all loaded items.
 
@@ -683,7 +684,7 @@ On navigation (`navigateNext()`, `navigatePrevious()`, `navigateTo()`):
 12. The element dispatches `assessment-navigation-requested` (cancelable).
 13. If not canceled, the current section's session is synced into the assessment session.
 14. The controller updates navigation state and emits `assessment-route-changed`.
-15. The player unmounts the old section player and mounts the new one (steps 8–11 repeat).
+15. The player unmounts the old section player and mounts the new one with its saved section session (steps 9–11 repeat).
 16. `persist()` is called automatically.
 
 ### Backend storage patterns
@@ -789,7 +790,7 @@ The assessment player is an orchestrator, not a renderer. Understanding the boun
 - item element loading and readiness tracking
 
 **Cross-layer session sync:**
-When the active section player emits `session-changed`, the default element captures the section controller's `getSession()` output and writes it into the assessment session via `controller.updateSectionSession()`. When navigating to a previously visited section, the assessment player reads the stored section session from `controller.getSectionSession()` and applies it to the newly mounted section player via `applySession({ mode: 'replace' })`.
+When the active section player emits `session-changed`, the default element captures the section controller's `getSession()` output and writes it into the assessment session via `controller.updateSectionSession()`. When navigating to a previously visited section, the assessment player reads the stored section session from `controller.getSectionSession()` and sets it as the newly mounted section player's `session` property, which the section controller applies in replace mode while it is created.
 
 This means item-level persistence can be fully handled by the assessment controller — the section player's own `createSectionSessionPersistence` hook can return a no-op strategy when the assessment player is the sole persistence owner.
 

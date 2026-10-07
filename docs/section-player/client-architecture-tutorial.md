@@ -770,6 +770,17 @@ The default strategy (when the hook is not provided) uses `localStorage` keyed a
 
 If your host uses different session identifiers than `assessmentId`/`sectionId`/`attemptId`, close over your own IDs from the surrounding scope rather than relying solely on `context.key`. The hook is called with the coordinator's view of the key, but your persistence implementation can use whatever identifiers your backend expects — the two don't need to match. The session snapshot itself (`getSession()` output) is what you store; the key is just how you address the storage slot.
 
+### Supplying the session
+
+A host that already holds the section's session sets it as the layout's `session` property with `section`, and the strategy's `loadSession` is not called for that controller:
+
+```ts
+playerEl.section = section;
+playerEl.session = snapshotFromBackend; // a getSession() snapshot
+```
+
+The controller created for `section` applies the session in replace mode in place of `hydrate()`. The strategy is still resolved and still receives every `persist()`. A later assignment updates the published controller, and an echo of `session-changed` is a no-op; the [section player README](../../packages/section-player/README.md#session-lifecycle) gives the rules.
+
 ### Triggering persistence
 
 The preferred pattern is to trigger `controller.persist()` via the coordinator subscription API, with deduplication to avoid backend thrash:
@@ -803,18 +814,16 @@ You can also subscribe directly on the controller handle (see §9) and react to 
 
 The typical page-load sequence is:
 
-1. Mount the player element with `assessmentId`, `sectionId`, `attemptId`, and `coordinator`.
-2. Player bootstraps, registers the section controller with the coordinator.
-3. `toolkit-ready` event fires — by this point the coordinator is active.
-4. `pie-stage-change` reaches `detail.stage === "engine-ready"` — the section controller is now available via `waitForSectionController()` / `getSectionController()`.
-5. The coordinator calls `createSectionSessionPersistence` to resolve the strategy.
-6. On `controller.hydrate()`, the strategy's `loadSession` is called and the snapshot is applied via `applySession`.
-7. Item elements register and load, emitting `section-loading-complete` when done.
-8. After loading completes, the player **replays** `applySession` with `replay: true` to ensure all loaded items reflect the restored state.
+1. Mount the player element with `assessmentId`, `sectionId`, `attemptId`, `coordinator` and `section`, and `session` when the host holds it.
+2. The toolkit asks the coordinator for the section controller. The coordinator calls `createSectionSessionPersistence` to resolve the strategy, creates the controller and configures it with that strategy.
+3. With a `session` property, the controller applies it via `applySession(session, { mode: 'replace' })`. Without one, `controller.hydrate()` calls the strategy's `loadSession` and applies the snapshot.
+4. The coordinator publishes the controller: its `ready` lifecycle event and `onSectionControllerReady` fire, `pie-stage-change` reaches `detail.stage === "engine-ready"` and `toolkit-ready` fires. The controller is now available via `waitForSectionController()` / `getSectionController()`, already holding the restored session.
+5. Item elements register and load, emitting `section-loading-complete` when done.
+6. After loading completes, the controller **replays** the applied session with `replay: true` to ensure all loaded items reflect the restored state.
 
-Step 8 exists because of a timing gap: hydration (step 6) typically runs before item elements have registered — the bundles haven't loaded yet. `applySession` writes the snapshot into the controller's internal model, but an item element can only receive session data once it exists and is registered. The replay runs after `section-loading-complete`, when all elements are present, and re-applies the same snapshot against the now-complete item set. Without it, items that registered after hydration would render with no prior responses.
+Step 6 exists because of a timing gap: the session is applied (step 3) before item elements have registered — the bundles haven't loaded yet. `applySession` writes the snapshot into the controller's internal model, but an item element can only receive session data once it exists and is registered. The replay runs after `section-loading-complete`, when all elements are present, and re-applies the same snapshot against the now-complete item set. Without it, items that registered after hydration would render with no prior responses.
 
-**Empty session semantics.** When `loadSession` returns `null` or an empty `itemSessions` map, the player treats this as a clean-slate session — items render with no prior responses. However, some PIE item runtimes expect an explicit empty response shape (e.g., `{ id: 'item-id', data: [] }`) rather than the absence of a key to visibly clear their UI on hydration. If you observe items that fail to clear visually after a reset, supply an explicit empty session shape per item in your `loadSession` return value rather than deleting the row or returning `null`. The exact shape is item-runtime-specific; check the element's session schema.
+**Empty session semantics.** When `loadSession` returns `null` or an empty `itemSessions` map, the player treats this as a clean-slate session — items render with no prior responses. However, some PIE item runtimes expect an explicit empty response shape (e.g., `{ id: 'item-id', data: [] }`) rather than the absence of a key to visibly clear their UI on hydration. If you observe items that fail to clear visually after a reset, supply an explicit empty session shape per item in your `loadSession` return value or `session` property rather than deleting the row or returning `null`. The exact shape is item-runtime-specific; check the element's session schema.
 
 As a consequence, `section-session-applied` fires twice in a normal hydrated flow. Any host logic that reacts to this event (analytics, autosave triggers) must guard for idempotency:
 

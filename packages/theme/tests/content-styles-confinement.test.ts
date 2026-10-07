@@ -45,6 +45,12 @@ const LEGACY_CONTENT_CLASSES = new Set([
 /** KDS classes and MathJax output, which only authored content carries. */
 const AUTHORED_PREFIXES = ["kds-", "Kds", "mjx-", "TEX-"];
 
+/** The markers a sanitizer puts on an element with an authored colour. */
+const AUTHORED_ATTRIBUTE = /\[data-pie-authored-[\w-]+/;
+
+/** Rules that declare custom properties only, on the element that carries the theme. */
+const THEME_ROOTS = new Set([":root", "[data-color-scheme]"]);
+
 const withoutPseudoArguments = (selector: string): string => {
 	let current = selector;
 	let previous: string;
@@ -58,6 +64,7 @@ const withoutPseudoArguments = (selector: string): string => {
 /** Whether matching the selector requires a name only authored content carries. */
 const requiresAuthoredName = (selector: string): boolean => {
 	const bare = withoutPseudoArguments(selector);
+	if (AUTHORED_ATTRIBUTE.test(bare)) return true;
 	const names = [
 		...(bare.match(/(?<=\.)-?[_a-zA-Z][\w-]*/g) ?? []),
 		...(bare.match(/(?<=^|[\s>+~])mjx-[\w-]+/g) ?? []),
@@ -100,7 +107,7 @@ const selectors = (() => {
 			prelude += char;
 		}
 	}
-	return found.filter((selector) => selector && selector !== ":root");
+	return found.filter((selector) => selector && !THEME_ROOTS.has(selector));
 })();
 
 describe("components.css confinement", () => {
@@ -128,6 +135,9 @@ describe("components.css confinement", () => {
 		expect(selectors).toContain("table.kds-fraction");
 		expect(selectors).toContain(".TEX-I");
 		expect(selectors).toContain(".noprint");
+		expect(selectors).toContain(
+			'[data-color-scheme] [data-pie-authored-fill="shade"]',
+		);
 	});
 
 	test("lists only legacy classes the stylesheet styles", () => {

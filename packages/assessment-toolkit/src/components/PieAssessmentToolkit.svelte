@@ -325,7 +325,6 @@ const DEFAULT_ENV = {
 	let pendingCrossBoundaryEvents: Array<{ name: string; detail: unknown }> = [];
 	const runtimeRegistrationDetails = new Map<HTMLElement, RuntimeRegistrationDetail>();
 	const catalogRegistrationCleanups = new WeakMap<HTMLElement, Array<() => void>>();
-	const mathNameObservers = new Map<HTMLElement, () => void>();
 	const sessionEmitPolicyState = createSessionEmitPolicyState();
 
 	// M6 canonical stage tracker. Post-retro the toolkit applies the
@@ -1378,23 +1377,6 @@ const DEFAULT_ENV = {
 		}
 	}
 
-	function stopNamingMath(element?: HTMLElement | null): void {
-		if (!element) return;
-		mathNameObservers.get(element)?.();
-		mathNameObservers.delete(element);
-	}
-
-	function nameMathInControls(element: HTMLElement): void {
-		stopNamingMath(element);
-		mathNameObservers.set(
-			element,
-			observeMathControlNames(element, {
-				getMathSpeech: () =>
-					effectiveCoordinator?.getServiceBundle().ttsService.getMathSpeechOptions(),
-			}),
-		);
-	}
-
 	function emitNormalizedSessionChanged(args: {
 		itemId: string;
 		canonicalItemId?: string;
@@ -1837,7 +1819,6 @@ const DEFAULT_ENV = {
 					const changed = sectionEngine.register(detail);
 					runtimeRegistrationDetails.set(detail.element, detail);
 					registerCatalogsForDetail(detail);
-					nameMathInControls(detail.element);
 					sectionEngine.handleContentRegistered(detail);
 					if (changed) emitCompositionChanged();
 				},
@@ -1852,7 +1833,6 @@ const DEFAULT_ENV = {
 						? sectionEngine.unregister(detail.element)
 						: false;
 					unregisterCatalogsForElement(detail.element);
-					stopNamingMath(detail.element);
 					if (detail.element) {
 						runtimeRegistrationDetails.delete(detail.element);
 					}
@@ -1941,11 +1921,20 @@ const DEFAULT_ENV = {
 				},
 			},
 		];
-		const unregisterListeners = registerHostRuntimeListeners(localHost, bindings);
-		return () => {
-			unregisterListeners();
-			for (const element of [...mathNameObservers.keys()]) stopNamingMath(element);
-		};
+		return registerHostRuntimeListeners(localHost, bindings);
+	});
+
+	// Names the math in the toolkit's flattened tree: the items the section
+	// player's base slots in, or a plain item player the toolkit wraps.
+	$effect(() => {
+		if (!host) return;
+		const root = host;
+		return untrack(() =>
+			observeMathControlNames(root, {
+				getMathSpeech: () =>
+					effectiveCoordinator?.getServiceBundle().ttsService.getMathSpeechOptions(),
+			}),
+		);
 	});
 
 	export async function waitUntilReady(): Promise<void> {

@@ -93,6 +93,10 @@
 			"types": "./dist/ui/content-styles.d.ts",
 			"import": "./dist/ui/content-styles.js"
 		},
+		"./ui/flattened-tree": {
+			"types": "./dist/ui/flattened-tree.d.ts",
+			"import": "./dist/ui/flattened-tree.js"
+		},
 		"./tools/term-lookup": {
 			"types": "./dist/tools/term-lookup.d.ts",
 			"import": "./dist/tools/term-lookup.js"

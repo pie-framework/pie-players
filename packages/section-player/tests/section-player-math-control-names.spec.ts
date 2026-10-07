@@ -29,6 +29,26 @@ test.describe("section player math control names", () => {
 		});
 	}
 
+	test("names the math in a plain item player the toolkit wraps", async ({
+		page,
+	}) => {
+		await page.goto("/calculator-pnp", { waitUntil: "networkidle" });
+		const label = page.locator("pie-item-player label", { hasText: "(2, -3)" });
+		await expect(label).toBeAttached({ timeout: 30_000 });
+
+		// MathJax's output for 4 over 12, which this demo's item does not hold.
+		await label.evaluate((element) => {
+			element.insertAdjacentHTML(
+				"beforeend",
+				'<mjx-container class="MathJax"><mjx-math aria-hidden="true"></mjx-math><mjx-assistive-mml><math><mfrac><mn>4</mn><mn>12</mn></mfrac></math></mjx-assistive-mml></mjx-container>',
+			);
+		});
+
+		await expect(
+			page.getByRole("radio", { name: /\(2, -3\)\s*4 over 12$/ }),
+		).toBeAttached({ timeout: 30_000 });
+	});
+
 	test("names the math again when MathJax replaces it", async ({ page }) => {
 		await gotoDemo(page, "iife");
 		const choice = page.getByRole("radio", { name: CHOICE_NAME });

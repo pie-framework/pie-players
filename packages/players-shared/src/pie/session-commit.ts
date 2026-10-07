@@ -38,6 +38,7 @@
  * `src/utils/session-commit.ts` and `src/session-commit.ts` respectively.
  */
 
+import { openShadowRootOf, slottedElementsOf } from "../ui/flattened-tree.js";
 import { hasLearnerResponse } from "./item-session-contract.js";
 import type { PieLogger } from "./logger.js";
 
@@ -95,22 +96,6 @@ function isPieDeliveryElement(element: Element): boolean {
 	return "session" in element && "model" in element;
 }
 
-function shadowRootOf(node: unknown): ShadowRoot | null {
-	const candidate = (node as { shadowRoot?: ShadowRoot | null } | null)
-		?.shadowRoot;
-	return candidate ?? null;
-}
-
-function assignedElementsOf(element: Element): Element[] {
-	const slot = element as HTMLSlotElement;
-	if (typeof slot.assignedElements !== "function") return [];
-	try {
-		return slot.assignedElements({ flatten: true });
-	} catch {
-		return [];
-	}
-}
-
 /**
  * Walks the flattened tree: `children`, then open shadow roots, then the
  * elements assigned to each `<slot>`.
@@ -126,7 +111,7 @@ function collectCandidates(
 	seen: Set<Element>,
 	out: Element[],
 ): void {
-	const rootShadow = shadowRootOf(root);
+	const rootShadow = openShadowRootOf(root);
 	if (rootShadow) collectCandidates(rootShadow, seen, out);
 	const visit = (element: Element) => {
 		if (seen.has(element)) return;
@@ -134,7 +119,7 @@ function collectCandidates(
 		if (isPieDeliveryElement(element)) out.push(element);
 		collectCandidates(element, seen, out);
 	};
-	for (const assigned of assignedElementsOf(root as Element)) visit(assigned);
+	for (const assigned of slottedElementsOf(root as Element)) visit(assigned);
 	const children = root.children;
 	if (!children) return;
 	for (const element of Array.from(children)) visit(element);

@@ -332,20 +332,26 @@ Browsers leave MathML out of a name computed from content, so a choice labelled
 with 4/12 is named "4 12". The toolkit labels each `mjx-container` inside a
 control (a `label`, `button`, `summary` or link, or an element with a control
 role such as `radio` or `option`) with SRE's speech, and the browser puts that
-`aria-label` in the control's name. `PieAssessmentToolkit` observes each
-registered item and passage shell, so a container MathJax replaces, as a menu
-rerender does, is labelled again. The label replaces the elements' own English
-one and stays when SRE cannot speak the math. Math outside controls stays
-unlabelled, so screen readers keep navigating its MathML.
+`aria-label` in the control's name. `PieAssessmentToolkit` observes its
+flattened tree through `observeFlattenedTree` (`players-shared`), which holds
+the items the section player's base slots into it and a plain item player it
+wraps alike. A container MathJax replaces, as a menu rerender does, is labelled
+again, and so is the math under an element whose `lang` changes. The label
+replaces the elements' own English one and stays when SRE cannot speak the
+math. Math outside controls stays unlabelled, so screen readers keep navigating
+its MathML. An item player outside a toolkit keeps the elements' labels.
 
-Names read ClearSpeak in English and MathSpeak elsewhere, in the language of
-the nearest `lang` attribute, English without one. ClearSpeak reads fractions
-"over", so a name keeps the numerals as written: "4 over 4", where read-aloud
-says "four fourths". An expression holding a fraction with longer parts reads
-every fraction by numerator and denominator, which "over" would leave
-ambiguous. Of the host's `mathSpeech`, names take only `engineOptions`, which
-sets where SRE's locale tables load. The standalone item and print players have
-no toolkit and keep the elements' labels.
+Names speak the language of the nearest `lang` attribute, which multiple-choice
+and inline-dropdown set from the item's `model.language`, and English without
+one. English names read ClearSpeak and other languages MathSpeak, whatever
+domain the host sets for read-aloud: MathSpeak reads 4/12 "four twelfths" in
+English. ClearSpeak reads fractions "over", so a name keeps the numerals as
+written (WCAG 2.5.3): "4 over 4", where read-aloud says "four fourths". An
+expression holding a fraction with longer parts reads every fraction by
+numerator and denominator, which "over" would leave ambiguous. The host's
+`mathSpeech` style applies when it is for the name's domain, all but a
+ClearSpeak fraction preference, and its `engineOptions` set where SRE's locale
+tables load.
 
 ## Comparison Of The Three Scenarios
 

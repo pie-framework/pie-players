@@ -80,6 +80,14 @@ const defaultLoadSre = async (
 const domainForLocale = (locale: string): string =>
 	locale === "en" ? "clearspeak" : "mathspeak";
 
+/** The SRE domain math in `language` is spoken in: the host's, else by locale. */
+export const mathSpeechDomain = (
+	language: string | undefined,
+	mathSpeech?: SREMathSpeechOptions,
+): string =>
+	normalizeSREMathSpeechOptions(mathSpeech)?.domain ||
+	domainForLocale(normalizeLocale(language));
+
 const isPlainRecord = (value: unknown): value is Record<string, unknown> =>
 	!!value && typeof value === "object" && !Array.isArray(value);
 
@@ -116,7 +124,7 @@ const setupSre = async (
 		...sreLocaleSource(engineOptions),
 		...engineOptions,
 		locale,
-		domain: normalizedMathSpeech?.domain || domainForLocale(locale),
+		domain: mathSpeechDomain(language, normalizedMathSpeech),
 		// SRE keeps a style it was given until it is given another, so a call
 		// without one resets it: math control names set ClearSpeak preferences.
 		style: normalizedMathSpeech?.style || "default",

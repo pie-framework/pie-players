@@ -1,4 +1,6 @@
+import { observeFlattenedTree } from "@pie-players/pie-players-shared/ui/flattened-tree";
 import {
+	mathSpeechDomain,
 	type ResolveMathSpeechOptions,
 	resolveMathSpeechFromChunks,
 	type SREMathSpeechOptions,
@@ -54,6 +56,24 @@ const fractionStyle = (math: Element): string =>
 		? "Fraction_Over"
 		: "Fraction_General";
 
+/** The host's ClearSpeak preferences, with the name's fraction preference. */
+const clearSpeakStyle = (
+	hostStyle: string | undefined,
+	math: Element,
+): string =>
+	[
+		...(hostStyle ?? "")
+			.split(":")
+			.map((preference) => preference.trim())
+			.filter(
+				(preference) =>
+					preference &&
+					preference !== "default" &&
+					!preference.startsWith("Fraction_"),
+			),
+		fractionStyle(math),
+	].join(":");
+
 /** The language a container's content is in, read across shadow roots. */
 const contentLanguage = (element: Element): string | undefined => {
 	for (let node: Element | null = element; node; ) {
@@ -65,25 +85,23 @@ const contentLanguage = (element: Element): string | undefined => {
 	return undefined;
 };
 
-const isEnglish = (language: string | undefined): boolean =>
-	!language || language.toLowerCase().split("-")[0] === "en";
-
 export interface MathControlNamesOptions {
 	/**
-	 * The host's math speech options. Names take only `engineOptions`, where
-	 * SRE's locale tables load from: their domain and style are fixed.
+	 * The host's math speech options, read-aloud's. Names keep the locale's
+	 * domain, since MathSpeak reads 4 over 12 "four twelfths" in English, and
+	 * take the host's style for that domain, all but its fraction preference.
 	 */
 	getMathSpeech?: () => SREMathSpeechOptions | undefined;
 	loadSre?: ResolveMathSpeechOptions["loadSre"];
 }
 
 /**
- * Labels each typeset expression inside a control under `root` with SRE's
- * speech, as MathJax adds it and again whenever MathJax replaces it. An
- * `aria-label` on the role-less `mjx-container` puts that speech in the name
- * of the control around it, among the control's other text. English reads
- * ClearSpeak, other languages MathSpeak, in the language of the content. The
- * label replaces the elements' own; it stays when SRE cannot speak the math.
+ * Labels each typeset expression inside a control in `root`'s flattened tree
+ * with SRE's speech, as MathJax adds it and again whenever MathJax replaces it.
+ * An `aria-label` on the role-less `mjx-container` puts that speech in the name
+ * of the control around it, among the control's other text. The speech is in
+ * the language of the content, as read-aloud would speak it there. The label
+ * replaces the elements' own; it stays when SRE cannot speak the math.
  * Returns the function that stops observing.
  */
 export function observeMathControlNames(
@@ -96,19 +114,12 @@ export function observeMathControlNames(
 
 	const speak = async (
 		mathml: string,
-		math: Element,
+		mathSpeech: SREMathSpeechOptions,
 		language: string | undefined,
 	): Promise<string | null> => {
 		const result = await resolveMathSpeechFromChunks(
 			[{ type: "math", mathml, fallbackText: "" }],
-			{
-				language,
-				loadSre: options.loadSre,
-				mathSpeech: {
-					...(isEnglish(language) ? { style: fractionStyle(math) } : {}),
-					engineOptions: options.getMathSpeech?.()?.engineOptions,
-				},
-			},
+			{ language, loadSre: options.loadSre, mathSpeech },
 		);
 		return result.usedMathSpeech ? result.speechText : null;
 	};
@@ -119,10 +130,22 @@ export function observeMathControlNames(
 		const mathml = math && canonicalizeMathML(math.outerHTML);
 		if (!math || !mathml) return;
 		const language = contentLanguage(container);
-		const key = `${language ?? ""}\u0000${mathml}`;
+		const host = options.getMathSpeech?.();
+		const domain = mathSpeechDomain(language);
+		const hostStyle =
+			!host?.domain || host.domain === domain ? host?.style : undefined;
+		const mathSpeech: SREMathSpeechOptions = {
+			domain,
+			style:
+				domain === "clearspeak" ? clearSpeakStyle(hostStyle, math) : hostStyle,
+			engineOptions: host?.engineOptions,
+		};
+		const key = [language, mathSpeech.domain, mathSpeech.style, mathml].join(
+			"\u0000",
+		);
 		let pending = speech.get(key);
 		if (!pending) {
-			pending = speak(mathml, math, language);
+			pending = speak(mathml, mathSpeech, language);
 			speech.set(key, pending);
 		}
 		void pending.then((label) => {
@@ -133,29 +156,26 @@ export function observeMathControlNames(
 		});
 	};
 
-	const visit = (node: Node): void => {
-		if (node.nodeType !== Node.ELEMENT_NODE) return;
-		const element = node as Element;
-		const container = element.closest("mjx-container");
+	const visit = (node: Element | ShadowRoot): void => {
+		const container =
+			node.nodeType === Node.ELEMENT_NODE
+				? (node as Element).closest("mjx-container")
+				: null;
 		if (container) {
 			name(container);
 			return;
 		}
-		for (const found of element.querySelectorAll("mjx-container")) {
+		for (const found of node.querySelectorAll("mjx-container")) {
 			name(found);
 		}
 	};
 
-	const observer = new MutationObserver((records) => {
-		for (const record of records) {
-			for (const node of record.addedNodes) visit(node);
-		}
-	});
-	observer.observe(root, { childList: true, subtree: true });
-	visit(root);
+	// A `lang` change, as an element makes when its model's language changes,
+	// names the math under it again in the new language.
+	const stop = observeFlattenedTree(root, visit, { attributeFilter: ["lang"] });
 
 	return () => {
 		stopped = true;
-		observer.disconnect();
+		stop();
 	};
 }

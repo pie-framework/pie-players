@@ -74,6 +74,12 @@ updates:
       - dependency-name: "typescript"
         update-types:
           - "version-update:semver-major"
+      # Hold lefthook at 2.1.14. 2.1.16 and 2.1.17 fail a pre-commit from a linked
+      # worktree whenever a file is partially staged (evilmartians/lefthook#1580).
+      # scripts/tests/pre-commit-hook.test.mjs fails on any later release that still
+      # does, so the next one is proposed and tested.
+      - dependency-name: "lefthook"
+        versions: ["2.1.16", "2.1.17"]
 
   # Enable version updates for GitHub Actions
   - package-ecosystem: "github-actions"

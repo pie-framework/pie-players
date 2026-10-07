@@ -209,7 +209,7 @@
 		"prosemirror-view": "^1.42.6"
 	},
 	"dependencies": {
-		"@sveltejs/kit": "^2.70.3",
+		"@sveltejs/kit": "^3.0.0",
 		"svelte": "^5.57.1",
 		"svelte-check": "^4.7.6",
 		"vite": "8.3.2"

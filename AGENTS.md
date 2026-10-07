@@ -413,9 +413,12 @@ skipped for a push whose commits only deleted files or were empty.
 ### Git Worktrees
 
 A fresh worktree needs `bun install` **and** `bun run build` before the gates
-pass. Without build artifacts `bun run check` fails with `TS2307: Cannot find
-module '@pie-players/pie-players-shared'` from packages that resolve a workspace
-sibling through its published `exports`.
+pass. Without build artifacts `bun run check:cli` fails with `Cannot find module
+'@pie-players/pie-players-shared/loaders'`, because tests resolve a workspace
+sibling through its published `exports`. `bun run check` and `bun run typecheck`
+build the packages they resolve first (`dependsOn: ["^build"]` in `turbo.json`),
+and turbo caches both against those builds, so a commit or push that leaves a
+package and its dependencies unchanged replays that package's result.
 
 A worktree under `.claude/worktrees/` sits inside the main checkout, so whatever
 it does not install itself comes from the main checkout's install. Bun, Node and

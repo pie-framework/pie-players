@@ -2,8 +2,8 @@ name: Turbo Cache
 
 # Saves the Turbo cache that ci.yml's jobs restore. A cache saved on develop is
 # readable by every pull request into it, and ci.yml does not run on pushes to
-# develop. Each run builds from scratch, so the saved cache holds exactly one
-# build's entries and does not grow.
+# develop. Each run builds and checks from scratch, so the saved cache holds exactly
+# one build's, check's and typecheck's entries and does not grow.
 on:
   push:
     branches:
@@ -41,6 +41,11 @@ jobs:
 
       - name: Build All Packages
         run: bun run build
+
+      # Lint & Typecheck in ci.yml then replays check and typecheck for every package
+      # a pull request leaves unchanged along with its dependencies.
+      - name: Check And Typecheck All Packages
+        run: bun run check && bun run typecheck
 
       - name: Save Turbo Cache
         uses: actions/cache/save@v6

@@ -26,10 +26,12 @@
 			"cache": false
 		},
 		"typecheck": {
-			"cache": false
+			"dependsOn": ["^build"],
+			"outputs": []
 		},
 		"check": {
-			"cache": false
+			"dependsOn": ["^build"],
+			"outputs": []
 		},
 		"dev": {
 			"cache": false,

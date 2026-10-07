@@ -179,6 +179,23 @@ describe("TTS math speech generation", () => {
 		});
 	});
 
+	test("resets SRE's style when the host sets none", async () => {
+		const setupCalls: Record<string, unknown>[] = [];
+
+		await resolveMathSpeechFromChunks(chunks, {
+			language: "en-US",
+			loadSre: async () => ({
+				setupEngine: async (options: Record<string, unknown>) => {
+					setupCalls.push(options);
+				},
+				engineReady: async () => {},
+				toSpeech: () => "x squared",
+			}),
+		});
+
+		expect(setupCalls[0]).toMatchObject({ style: "default" });
+	});
+
 	test("serializes SRE setup and speech when math speech settings differ", async () => {
 		let activeStyle = "default";
 		const fakeSre = {

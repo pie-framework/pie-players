@@ -744,7 +744,8 @@ export class TTSService {
 		return { locale, boundarySpacingMode };
 	}
 
-	private getMathSpeechOptions(): SREMathSpeechOptions | undefined {
+	/** The host's SRE options for math speech, as configured on this service. */
+	getMathSpeechOptions(): SREMathSpeechOptions | undefined {
 		const providerOptions = (this.ttsConfig.providerOptions || {}) as Record<
 			string,
 			unknown

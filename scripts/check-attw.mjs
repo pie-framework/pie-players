@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { spawnSync } from "node:child_process";
+import { spawn } from "node:child_process";
 import {
 	closeSync,
 	existsSync,
@@ -12,12 +12,11 @@ import {
 import { tmpdir } from "node:os";
 import path from "node:path";
 
-import { getWorkspaceDirs } from "./lib/pack-inspection.mjs";
+import { getWorkspaceDirs, mapConcurrent } from "./lib/pack-inspection.mjs";
 
 const ROOT = process.cwd();
 const POLICY_PATH = path.join(ROOT, "scripts", "publish-policy.json");
 const ATTW_PARSE_RETRIES = 1;
-const ATTW_MAX_BUFFER = 16 * 1024 * 1024;
 const DIAGNOSTIC_TAIL_LENGTH = 4000;
 const ATTW_ARGS = [
 	"attw",
@@ -47,26 +46,43 @@ const textTail = (value, length = DIAGNOSTIC_TAIL_LENGTH) => {
 // largest packages (observed reproducibly at ~219KiB on @pie-players/pie-section-player
 // even with maxBuffer set to 16 MiB), which corrupts the JSON tail and trips
 // `parseAttwReport`. File-redirected output is read back in one shot afterwards.
-const runAttw = (dir) => {
+const spawnAttw = (dir, stdoutFd) =>
+	new Promise((resolve) => {
+		const child = spawn("bunx", ATTW_ARGS, {
+			cwd: dir,
+			stdio: ["ignore", stdoutFd, "pipe"],
+		});
+		const stderrChunks = [];
+		child.stderr.on("data", (chunk) => stderrChunks.push(chunk));
+		let error = null;
+		child.on("error", (spawnError) => {
+			error = spawnError;
+		});
+		child.on("close", (status, signal) => {
+			resolve({
+				error,
+				status,
+				signal,
+				stderr: Buffer.concat(stderrChunks).toString("utf8"),
+			});
+		});
+	});
+
+const runAttw = async (dir) => {
 	const tmpRoot = mkdtempSync(path.join(tmpdir(), "pie-attw-"));
 	const stdoutPath = path.join(tmpRoot, "stdout.json");
 	const stdoutFd = openSync(stdoutPath, "w");
 	let result;
 
 	try {
-		result = spawnSync("bunx", ATTW_ARGS, {
-			cwd: dir,
-			stdio: ["ignore", stdoutFd, "pipe"],
-			encoding: "utf8",
-			maxBuffer: ATTW_MAX_BUFFER,
-		});
+		result = await spawnAttw(dir, stdoutFd);
 	} finally {
 		closeSync(stdoutFd);
 	}
 
 	const stdout = existsSync(stdoutPath) ? readFileSync(stdoutPath, "utf8") : "";
 	rmSync(tmpRoot, { recursive: true, force: true });
-	const stderr = result.stderr?.toString?.() ?? "";
+	const stderr = result.stderr;
 
 	if (result.error) {
 		throw new Error(
@@ -163,66 +179,70 @@ const shouldSuppressProblem = (problem) => {
 	return false;
 };
 
-const run = () => {
-	const packageDirs = getWorkspaceDirs({ workspaceRoots: WORKSPACE_ROOTS });
-	const failures = [];
-	let checked = 0;
-	const suppressedCounts = new Map();
-
-	for (const dir of packageDirs) {
-		const pkg = readJson(path.join(dir, "package.json"));
-		if (pkg.private) continue;
-		if (typeof pkg.name !== "string" || !pkg.name.startsWith("@pie-players/")) {
-			continue;
-		}
-		checked += 1;
-		try {
-			let report;
-			for (let attempt = 0; attempt <= ATTW_PARSE_RETRIES; attempt += 1) {
-				const result = runAttw(dir);
-				try {
-					report = parseAttwReport({ pkg, dir, result, attempt });
-					break;
-				} catch (error) {
-					if (attempt >= ATTW_PARSE_RETRIES) {
-						throw error;
-					}
-					console.warn(
-						`[check-attw] ${pkg.name} returned unparsable JSON; retrying once. ${error.message.split("\n")[2] || ""}`,
-					);
+const checkPackage = async ({ dir, pkg }, suppressedCounts) => {
+	const failure = (error) => ({
+		name: pkg.name || path.basename(dir),
+		dir: path.relative(ROOT, dir),
+		error,
+	});
+	try {
+		let report;
+		for (let attempt = 0; attempt <= ATTW_PARSE_RETRIES; attempt += 1) {
+			const result = await runAttw(dir);
+			try {
+				report = parseAttwReport({ pkg, dir, result, attempt });
+				break;
+			} catch (error) {
+				if (attempt >= ATTW_PARSE_RETRIES) {
+					throw error;
 				}
+				console.warn(
+					`[check-attw] ${pkg.name} returned unparsable JSON; retrying once. ${error.message.split("\n")[2] || ""}`,
+				);
 			}
-			const problems = flattenProblems(report.problems);
-			const actionable = problems.filter(
-				(problem) => !shouldSuppressProblem(problem),
-			);
+		}
+		const problems = flattenProblems(report.problems);
+		const actionable = problems.filter(
+			(problem) => !shouldSuppressProblem(problem),
+		);
 
-			for (const problem of problems) {
-				if (!shouldSuppressProblem(problem)) continue;
-				const key = `${problem.kind}:${problem.entrypoint || problem.moduleSpecifier || "n/a"}:${problem.resolutionKind || problem.resolutionOption || "n/a"}`;
-				suppressedCounts.set(key, (suppressedCounts.get(key) || 0) + 1);
-			}
+		for (const problem of problems) {
+			if (!shouldSuppressProblem(problem)) continue;
+			const key = `${problem.kind}:${problem.entrypoint || problem.moduleSpecifier || "n/a"}:${problem.resolutionKind || problem.resolutionOption || "n/a"}`;
+			suppressedCounts.set(key, (suppressedCounts.get(key) || 0) + 1);
+		}
 
-			if (actionable.length > 0) {
-				failures.push({
-					name: pkg.name || path.basename(dir),
-					dir: path.relative(ROOT, dir),
-					error: actionable
+		return actionable.length > 0
+			? failure(
+					actionable
 						.map(
 							(problem) =>
 								`${problem.kind} entrypoint=${problem.entrypoint || "n/a"} resolution=${problem.resolutionKind || problem.resolutionOption || "n/a"} module=${problem.moduleSpecifier || "n/a"}`,
 						)
 						.join("\n"),
-				});
-			}
-		} catch (error) {
-			failures.push({
-				name: pkg.name || path.basename(dir),
-				dir: path.relative(ROOT, dir),
-				error: [error.message].filter(Boolean).join("\n"),
-			});
-		}
+				)
+			: null;
+	} catch (error) {
+		return failure([error.message].filter(Boolean).join("\n"));
 	}
+};
+
+const run = async () => {
+	const packages = getWorkspaceDirs({ workspaceRoots: WORKSPACE_ROOTS })
+		.map((dir) => ({ dir, pkg: readJson(path.join(dir, "package.json")) }))
+		.filter(
+			({ pkg }) =>
+				!pkg.private &&
+				typeof pkg.name === "string" &&
+				pkg.name.startsWith("@pie-players/"),
+		);
+	const checked = packages.length;
+	const suppressedCounts = new Map();
+	const failures = (
+		await mapConcurrent(packages, (entry) =>
+			checkPackage(entry, suppressedCounts),
+		)
+	).filter(Boolean);
 
 	if (failures.length > 0) {
 		console.error(
@@ -243,4 +263,4 @@ const run = () => {
 	}
 };
 
-run();
+await run();

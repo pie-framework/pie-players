@@ -5,6 +5,7 @@ import {
 	getImportTarget,
 	getNodeConsumerImportTargets,
 	isPackedMatch,
+	mapConcurrent,
 	parsePackJson,
 	packedFilesFromPackData,
 	splitPackageSpecifier,
@@ -150,5 +151,57 @@ describe("pack inspection helpers", () => {
 				},
 			}),
 		).toThrow(/nodeConsumerImportTargets\.browserOnly/);
+	});
+});
+
+describe("mapConcurrent", () => {
+	const tick = () => new Promise((resolve) => setTimeout(resolve, 5));
+
+	test("keeps input order and never runs more than the limit at once", async () => {
+		let active = 0;
+		let peak = 0;
+		const results = await mapConcurrent(
+			[5, 1, 4, 2, 3],
+			async (value) => {
+				active += 1;
+				peak = Math.max(peak, active);
+				await new Promise((resolve) => setTimeout(resolve, value * 3));
+				active -= 1;
+				return value * 10;
+			},
+			2,
+		);
+
+		expect(results).toEqual([50, 10, 40, 20, 30]);
+		expect(peak).toBe(2);
+	});
+
+	test("starts nothing after a rejection and rethrows once in-flight items finish", async () => {
+		const started = [];
+		const finished = [];
+		const run = mapConcurrent(
+			[0, 1, 2, 3, 4],
+			async (value) => {
+				started.push(value);
+				await tick();
+				if (value === 0) throw new Error("pack failed");
+				await tick();
+				finished.push(value);
+				return value;
+			},
+			2,
+		);
+
+		await expect(run).rejects.toThrow("pack failed");
+		expect(started).toEqual([0, 1]);
+		expect(finished).toEqual([1]);
+	});
+
+	test("resolves an empty list without calling fn", async () => {
+		expect(
+			await mapConcurrent([], () => {
+				throw new Error("called");
+			}),
+		).toEqual([]);
 	});
 });

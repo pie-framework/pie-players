@@ -1,6 +1,6 @@
 <script lang="ts">
-	import { browser } from '$app/environment';
-	import { afterNavigate, replaceState } from '$app/navigation';
+	import { browser } from '$app/env';
+	import { afterNavigate, goto } from '$app/navigation';
 	import {
 		CompositeInstrumentationProvider,
 		DebugPanelInstrumentationProvider,
@@ -18,7 +18,7 @@
 	} from '@pie-players/pie-default-tool-loaders';
 	import '@pie-players/pie-section-player/components/section-player-splitpane-element';
 	import '@pie-players/pie-section-player/components/section-player-vertical-element';
-	import DemoRuntimeChrome from '$lib/demo-runtime/components/DemoRuntimeChrome.svelte';
+	import DemoRuntimeChrome from '#lib/demo-runtime/components/DemoRuntimeChrome.svelte';
 	import {
 		applyDaisyTheme,
 		applyToolkitScheme,
@@ -35,11 +35,11 @@
 		MODE_OPTIONS,
 		onSectionSessionChanged,
 		PLAYER_OPTIONS
-	} from '$lib/demo-runtime/demo-page-helpers';
-	import { withDemoLoaderOptions } from '$lib/demo-runtime/demo-player-config';
-	import { SECTION_DEMOS_POLLY_TTS_TOOL_PROVIDER } from '$lib/demo-runtime/section-demos-default-tts';
-	import { createSectionDemoToolRegistry } from '$lib/demo-runtime/default-tool-registry';
-	import { preloadSectionElements } from '$lib/demo-runtime/preload-utils';
+	} from '#lib/demo-runtime/demo-page-helpers.js';
+	import { withDemoLoaderOptions } from '#lib/demo-runtime/demo-player-config.js';
+	import { SECTION_DEMOS_POLLY_TTS_TOOL_PROVIDER } from '#lib/demo-runtime/section-demos-default-tts.js';
+	import { createSectionDemoToolRegistry } from '#lib/demo-runtime/default-tool-registry.js';
+	import { preloadSectionElements } from '#lib/demo-runtime/preload-utils.js';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
@@ -120,7 +120,8 @@
 	let selectedDaisyTheme = $state<string>(DEFAULT_DAISY_THEME);
 	let attemptId = $state(getOrCreateAttemptId());
 	let routerReady = $state(false);
-	afterNavigate(() => {
+	afterNavigate(({ shallow, type }) => {
+		if (shallow && type === 'goto') return;
 		routerReady = true;
 	});
 	let playerInstanceKey = $state(0);
@@ -252,7 +253,7 @@ const sectionPlayerHooks = $derived.by(() =>
 		if (existingAttemptId === attemptId && existingLayout === layoutType) return;
 		url.searchParams.set(ATTEMPT_QUERY_PARAM, attemptId);
 		url.searchParams.set('layout', layoutType);
-		replaceState(url, {});
+		goto(url, { shallow: true, replace: true });
 	});
 
 	$effect(() => {

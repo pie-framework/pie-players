@@ -1,7 +1,7 @@
 <script lang="ts">
 	import SourcePanel from './SourcePanel.svelte';
 	import SessionDbPanel from './SessionDbPanel.svelte';
-	import { createSectionDemoTtsSettingsStorageKey } from '$lib/demo-runtime/tts-settings-persistence';
+	import { createSectionDemoTtsSettingsStorageKey } from '#lib/demo-runtime/tts-settings-persistence.js';
 
 	interface Props {
 		toolkitCoordinator: any;

@@ -1,3 +1,6 @@
+import adapter from "@sveltejs/adapter-node";
+import { vitePreprocess } from "@sveltejs/vite-plugin-svelte";
+
 /**
  * Resolves `@pie-players/*` via package `exports` → `dist/` (no Vite alias table).
  * Same dist-first contract as section-demos; see docs/development/demo-workspace-resolution.md
@@ -12,7 +15,10 @@ import { defineConfig } from "vite";
 const disableErrorOverlay = process.env.PLAYWRIGHT_DISABLE_VITE_OVERLAY === "1";
 
 export default defineConfig({
-	plugins: [sveltekit(), tailwindcss()],
+	plugins: [
+		sveltekit({ preprocess: vitePreprocess(), adapter: adapter() }),
+		tailwindcss(),
+	],
 	server: {
 		port: 5301, // Different from section-demos (5300)
 		open: true,

@@ -4,7 +4,7 @@
 		extractPackageInfo,
 		type ElementOverrides
 	} from '@pie-players/pie-players-shared/pie';
-	import ElementVersionSelector from '$lib/components/ElementVersionSelector.svelte';
+	import ElementVersionSelector from '#lib/components/ElementVersionSelector.svelte';
 
 	type ElementsMap = Record<string, string>;
 

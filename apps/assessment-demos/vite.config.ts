@@ -1,3 +1,6 @@
+import adapter from "@sveltejs/adapter-node";
+import { vitePreprocess } from "@sveltejs/vite-plugin-svelte";
+
 /**
  * Mix of explicit `dist/` aliases (where listed) and normal `exports` resolution.
  * See docs/development/demo-workspace-resolution.md
@@ -13,7 +16,10 @@ import { defineConfig } from "vite";
 const disableErrorOverlay = process.env.PLAYWRIGHT_DISABLE_VITE_OVERLAY === "1";
 
 export default defineConfig({
-	plugins: [sveltekit(), tailwindcss()],
+	plugins: [
+		sveltekit({ preprocess: vitePreprocess(), adapter: adapter() }),
+		tailwindcss(),
+	],
 	server: {
 		port: 5500,
 		open: true,

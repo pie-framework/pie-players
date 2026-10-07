@@ -1,5 +1,5 @@
-import { LTI_DEMO_ASSESSMENT_ID } from "$lib/content/lti-assessment";
-import type { VerifiedLtiLaunchContext } from "$lib/lti-demo/types";
+import { LTI_DEMO_ASSESSMENT_ID } from "#lib/content/lti-assessment.js";
+import type { VerifiedLtiLaunchContext } from "#lib/lti-demo/types.js";
 import { json } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";
 

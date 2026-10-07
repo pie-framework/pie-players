@@ -1,4 +1,4 @@
-import { loadDemoRouteDataById } from "$lib/content/demo-load";
+import { loadDemoRouteDataById } from "#lib/content/demo-load.js";
 import type { PageLoad } from "./$types";
 
 export const ssr = false;

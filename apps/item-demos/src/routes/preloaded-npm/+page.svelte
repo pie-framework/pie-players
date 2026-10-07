@@ -8,7 +8,7 @@
 	import { DEMO_PRELOADED_OPTIONS } from '@pie-players/demo-ui/preloaded';
 	import '@pie-players/pie-item-player';
 	import { registerPreloadedElements } from '@pie-players/pie-item-player/preloaded';
-	import SiteHeader from '$lib/components/SiteHeader.svelte';
+	import SiteHeader from '#lib/components/SiteHeader.svelte';
 
 	/**
 	 * The item player's preloaded strategy as a host runs it: item-demos

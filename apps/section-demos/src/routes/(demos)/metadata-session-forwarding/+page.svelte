@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { browser } from '$app/environment';
+	import { browser } from '$app/env';
 	import {
 		createToolsConfig,
 		ToolkitCoordinator,
@@ -21,9 +21,9 @@
 		getUrlEnumParam,
 		LAYOUT_OPTIONS,
 		MODE_OPTIONS
-	} from '$lib/demo-runtime/demo-page-helpers';
-	import { withDemoLoaderOptions } from '$lib/demo-runtime/demo-player-config';
-	import { createSectionDemoToolRegistry } from '$lib/demo-runtime/default-tool-registry';
+	} from '#lib/demo-runtime/demo-page-helpers.js';
+	import { withDemoLoaderOptions } from '#lib/demo-runtime/demo-player-config.js';
+	import { createSectionDemoToolRegistry } from '#lib/demo-runtime/default-tool-registry.js';
 	import type { PageData } from './$types';
 
 	const FIXTURE_TAG = 'metadata-session-fixture';

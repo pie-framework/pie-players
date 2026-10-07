@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { page } from '$app/stores';
+	import { page } from '$app/state';
 	import { untrack } from 'svelte';
 	import {
 		CompositeInstrumentationProvider,
@@ -8,8 +8,8 @@
 		NewRelicInstrumentationProvider
 	} from '@pie-players/pie-players-shared';
 	import { preloadDemoElements } from '@pie-players/demo-ui/preloaded';
-	import ScoringPanel from '$lib/components/ScoringPanel.svelte';
-	import { demoHeadingName } from '$lib/utils/demo-heading-name';
+	import ScoringPanel from '#lib/components/ScoringPanel.svelte';
+	import { demoHeadingName } from '#lib/utils/demo-heading-name.js';
 	import '@pie-players/pie-item-player';
 	import {
 		config as configStore,
@@ -18,7 +18,7 @@
 		session as sessionStore,
 		updateScore,
 		updateSession,
-	} from '$lib/stores/demo-state';
+	} from '#lib/stores/demo-state.js';
 
 	let { data } = $props();
 
@@ -52,7 +52,7 @@
 		.catch(() => {});
 
 	$effect(() => {
-		const queryPlayer = $page.url.searchParams.get('player');
+		const queryPlayer = page.url.searchParams.get('player');
 		if (queryPlayer === 'iife' || queryPlayer === 'esm' || queryPlayer === 'preloaded') {
 			selectedPlayerType = queryPlayer;
 		} else {

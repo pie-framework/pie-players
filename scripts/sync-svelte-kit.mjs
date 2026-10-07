@@ -2,13 +2,13 @@
 
 /**
  * `prepare` lifecycle entry point: run `svelte-kit sync` in every SvelteKit workspace app
- * so the `.svelte-kit/tsconfig.json` each one's `tsconfig.json` extends exists on disk.
+ * so the `node_modules/$app/tsconfig.json` each one's `tsconfig.json` extends exists on disk.
  *
- * Every SvelteKit app here extends `./.svelte-kit/tsconfig.json`, which is generated
+ * Every SvelteKit app here extends `$app/tsconfig`, which is generated
  * rather than committed. Vite 8.0 tolerated the dangling `extends` and only the app's own
  * tooling needed the file, which is why each app's `check` script already runs a sync of
  * its own. Vite 8.2 (rolldown) resolves tsconfigs across the workspace and throws
- * `Tsconfig not found <app>/.svelte-kit/tsconfig.json`, so on a fresh checkout an
+ * `Tsconfig not found <app>/node_modules/$app/tsconfig.json`, so on a fresh checkout an
  * unrelated package's build fails on a file none of its own sources reference.
  *
  * This runs at `prepare` rather than inside the build scripts because the build entry

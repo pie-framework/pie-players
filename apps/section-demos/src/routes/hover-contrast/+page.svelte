@@ -11,7 +11,7 @@
 		type ThemeVariables,
 	} from '@pie-players/pie-theme';
 	import { onMount } from 'svelte';
-	import SiteHeader from '$lib/components/SiteHeader.svelte';
+	import SiteHeader from '#lib/components/SiteHeader.svelte';
 
 	/*
 	 * The select-text hover state paints `--pie-blue-grey-300` behind a token and

@@ -1,10 +1,10 @@
 <script lang="ts">
 	import { onMount } from "svelte";
-	import { afterNavigate, replaceState } from "$app/navigation";
+	import { afterNavigate, goto } from "$app/navigation";
 	import "@pie-players/pie-assessment-player/components/assessment-player-default-element";
 	import type { AssessmentControllerHandle, AssessmentPlayerRuntimeHostContract, AssessmentPlayerHooks } from "@pie-players/pie-assessment-player";
-	import type { LabBehavior, readLab } from "$lib/server/persistence-lab";
-	import { getAssessmentDemoById } from "$lib/content/assessments";
+	import type { LabBehavior, readLab } from "#lib/server/persistence-lab.js";
+	import { getAssessmentDemoById } from "#lib/content/assessments.js";
 	import type { PageData } from "./$types";
 
 	let { data }: { data: PageData } = $props();
@@ -73,8 +73,9 @@
 		readController();
 	}
 
-	afterNavigate(() => {
-		replaceState(`/persistence-lab?attempt=${encodeURIComponent(data.attemptId)}`, {});
+	afterNavigate(({ shallow, type }) => {
+		if (shallow && type === 'goto') return;
+		goto(`/persistence-lab?attempt=${encodeURIComponent(data.attemptId)}`, { shallow: true, replace: true });
 	});
 
 	onMount(() => {

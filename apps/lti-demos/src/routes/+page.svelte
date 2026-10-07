@@ -9,17 +9,17 @@
 		type AssessmentPlayerRuntimeHostContract,
 	} from "@pie-players/pie-assessment-player";
 	import "@pie-players/pie-assessment-player/components/assessment-player-default-element";
-	import { ltiDemoAssessment } from "$lib/content/lti-assessment";
+	import { ltiDemoAssessment } from "#lib/content/lti-assessment.js";
 	import {
 		deleteAssessmentSessionSnapshot,
 		loadAssessmentSessionSnapshot,
 		loadVerifiedLaunchContext,
 		saveAssessmentSessionSnapshot,
-	} from "$lib/lti-demo/client";
+	} from "#lib/lti-demo/client.js";
 	import type {
 		AssessmentSessionSnapshot,
 		VerifiedLtiLaunchContext,
-	} from "$lib/lti-demo/types";
+	} from "#lib/lti-demo/types.js";
 
 	let launchContext = $state<VerifiedLtiLaunchContext | null>(null);
 	let playerRef = $state<HTMLElement | null>(null);

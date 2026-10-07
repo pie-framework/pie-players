@@ -3,14 +3,14 @@
 	import { strategyElementVersions } from '@pie-players/demo-ui/element-versions';
 	import { ToolkitCoordinator } from '@pie-players/pie-assessment-toolkit';
 	import '@pie-players/pie-section-player/components/section-player-splitpane-element';
-	import { applyOverridesToSection } from '$lib/content/apply-overrides';
-	import { createSectionDemoToolRegistry } from '$lib/demo-runtime/default-tool-registry';
+	import { applyOverridesToSection } from '#lib/content/apply-overrides.js';
+	import { createSectionDemoToolRegistry } from '#lib/demo-runtime/default-tool-registry.js';
 	import {
 		DEMO_ASSESSMENT_ID,
 		getUrlEnumParam,
 		PLAYER_OPTIONS
-	} from '$lib/demo-runtime/demo-page-helpers';
-	import { withDemoLoaderOptions } from '$lib/demo-runtime/demo-player-config';
+	} from '#lib/demo-runtime/demo-page-helpers.js';
+	import { withDemoLoaderOptions } from '#lib/demo-runtime/demo-player-config.js';
 	import type { PageData } from './$types';
 
 	/**

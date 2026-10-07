@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { LocaleSelect, ResponsiveDemoMenuBar } from "@pie-players/demo-ui";
 	import { DebugPanelToggles } from "@pie-players/pie-section-player-tools-shared";
-	import { DEMO_LOCALES, demoLocale, setDemoLocale } from '$lib/demo-locale.svelte';
+	import { DEMO_LOCALES, demoLocale, setDemoLocale } from '#lib/demo-locale.svelte.js';
 
 	interface Props {
 		roleType: 'candidate' | 'scorer';

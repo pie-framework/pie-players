@@ -1,5 +1,5 @@
 import { json } from "@sveltejs/kit";
-import type { AssessmentSessionSnapshot } from "$lib/lti-demo/types";
+import type { AssessmentSessionSnapshot } from "#lib/lti-demo/types.js";
 import {
 	deleteAssessmentSessionSnapshot,
 	getAssessmentSessionSnapshot,

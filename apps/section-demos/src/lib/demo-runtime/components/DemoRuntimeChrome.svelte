@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { browser } from '$app/environment';
+	import { browser } from '$app/env';
 	import { type Snippet, untrack } from 'svelte';
 	import '@pie-players/pie-section-player-tools-event-debugger';
 	import '@pie-players/pie-section-player-tools-instrumentation-debugger';
@@ -15,17 +15,17 @@
 		buildDemoHref,
 		buildSectionPageHref,
 		DAISY_DEFAULT_THEMES
-	} from '$lib/demo-runtime/demo-page-helpers';
+	} from '#lib/demo-runtime/demo-page-helpers.js';
 	import {
 		buildOverrideUrl,
 		removeOverrideParams
-	} from '$lib/demo-runtime/override-url-helpers';
+	} from '#lib/demo-runtime/override-url-helpers.js';
 	import type { ElementOverrides } from '@pie-players/pie-players-shared/pie';
 	import {
 		applyStoredSectionDemoTtsSettings,
 		createSectionDemoTtsSettingsStorageKey,
 		type SectionDemoTtsSettingsCoordinator
-	} from '$lib/demo-runtime/tts-settings-persistence';
+	} from '#lib/demo-runtime/tts-settings-persistence.js';
 
 	interface Props {
 		data: any;

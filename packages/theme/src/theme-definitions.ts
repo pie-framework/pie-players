@@ -1074,9 +1074,9 @@ function resolveColor(
  *
  * Decided by whether black or white contrasts better against the resolved
  * background, which is the same test that picks a legible foreground. `null` for
- * a background `parseOpaqueColor` rejects -- a translucent value, a `var()`
- * reference out to a host property, the transparent light base -- because
- * polarity then depends on the host's backdrop and is the host's to declare.
+ * a background `parseOpaqueColor` rejects -- a translucent value or a `var()`
+ * reference out to a host property -- because polarity then depends on the
+ * host's backdrop and is the host's to declare.
  */
 export function resolvePaletteColorScheme(
 	variables: Readonly<ThemeVariables>,

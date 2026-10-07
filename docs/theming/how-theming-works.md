@@ -127,9 +127,9 @@ is nothing to lose the cascade to. The same shape serves any vocabulary, which
 is what a non-DaisyUI design system needs regardless.
 
 Gate that block on `[data-color-scheme]` rather than applying it always.
-`<pie-theme>` stamps the attribute only for a scheme, and the default palette's
-`--pie-background` ships transparent, so aliasing a chrome background to it
-would strip that background on every ordinary page.
+`<pie-theme>` stamps the attribute only for a scheme, so the gate hands the
+chrome to PIE's palette while an accommodation is active and leaves it to the
+host's own theme on every ordinary page.
 
 ## Themes versus colour schemes
 

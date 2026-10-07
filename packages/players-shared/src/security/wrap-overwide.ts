@@ -45,6 +45,11 @@ export interface OverwideWrapSpec {
 	markupProbe: RegExp;
 	/** The wrapper's accessible name for one node. */
 	buildAriaLabel: (node: Element) => string;
+	/**
+	 * An extra wrapper class carrying the node's own layout, or `null` for none.
+	 * Absent when every wrapper lays out alike.
+	 */
+	layoutClass?: (node: Element) => string | null;
 }
 
 export interface WrapOverwideOptions {
@@ -84,21 +89,34 @@ export function wrapOverwideInElement(
 	const ownerDocument = root.ownerDocument;
 	if (!ownerDocument) return 0;
 
+	const targets = nodes.filter((node) => {
+		const parent = node.parentElement;
+		if (!parent) return false;
+
+		// Idempotency — already wrapped.
+		if (parent.classList?.contains(spec.wrapperClass)) return false;
+
+		// Authored-markup pass: leave PIE custom-element internals alone.
+		if (skipPieDescendants && isInsidePieCustomElement(node, root))
+			return false;
+
+		return !node.closest(EDITING_HOST_SELECTOR);
+	});
+
+	// Layout is read for every node before the first insertion: a read after a
+	// wrap forces a fresh style resolution, one per node.
+	const layoutClasses = targets.map((node) => spec.layoutClass?.(node) ?? null);
+
 	let wrapped = 0;
-	for (const node of nodes) {
+	for (const [index, node] of targets.entries()) {
 		const parent = node.parentElement;
 		if (!parent) continue;
 
-		// Idempotency — already wrapped.
-		if (parent.classList?.contains(spec.wrapperClass)) continue;
-
-		// Authored-markup pass: leave PIE custom-element internals alone.
-		if (skipPieDescendants && isInsidePieCustomElement(node, root)) continue;
-
-		if (node.closest(EDITING_HOST_SELECTOR)) continue;
-
 		const wrapper = ownerDocument.createElement(spec.wrapperTag);
-		wrapper.className = spec.wrapperClass;
+		const layoutClass = layoutClasses[index];
+		wrapper.className = layoutClass
+			? `${spec.wrapperClass} ${layoutClass}`
+			: spec.wrapperClass;
 		wrapper.setAttribute("tabindex", "0");
 		wrapper.setAttribute("role", "region");
 		wrapper.setAttribute("aria-label", spec.buildAriaLabel(node));

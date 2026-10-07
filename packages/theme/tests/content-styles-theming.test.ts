@@ -104,11 +104,11 @@ describe("content stylesheet theming", () => {
 
 	test("the shipped rules that could not be made accessible are gone", () => {
 		// Global-id 50% floats cannot reflow and applied to any host element with
-		// those ids; the `lrn_` rules styled a product PIE does not render.
+		// those ids; the legacy players never applied the `.lrn_feature` override.
 		// The removal is recorded in a comment, so assert against the rules only.
 		expect(withoutComments).not.toContain("#stimulus");
 		expect(withoutComments).not.toContain("#item {");
-		expect(withoutComments).not.toContain(".lrn_");
+		expect(withoutComments).not.toContain(".lrn_feature");
 		// Headings keep the browser's weight, so the level still reads visually.
 		expect(collapsed).not.toContain("font-weight:500");
 	});

@@ -8,24 +8,24 @@
 		type ElementOverrides,
 	} from '@pie-players/pie-players-shared/pie';
 	import { untrack } from 'svelte';
-	import { page } from '$app/stores';
-	import ElementVersionToolbar from '$lib/components/ElementVersionToolbar.svelte';
-	import { coerceMode, coerceRole } from '$lib/utils/coercion';
+	import { page } from '$app/state';
+	import ElementVersionToolbar from '#lib/components/ElementVersionToolbar.svelte';
+	import { coerceMode, coerceRole } from '#lib/utils/coercion.js';
 	import {
 		config as configStore,
 		env as envStore,
 		score as scoreStore,
 		session as sessionStore,
-	} from '$lib/stores/demo-state';
-	import { getDemoSessionSeed } from '$lib/demo-session-seeds';
-	import { demoElementOverrides } from '$lib/utils/demo-element-versions';
-	import { demoViewFromPath } from '$lib/utils/demo-view';
+	} from '#lib/stores/demo-state.js';
+	import { getDemoSessionSeed } from '#lib/demo-session-seeds.js';
+	import { demoElementOverrides } from '#lib/utils/demo-element-versions.js';
+	import { demoViewFromPath } from '#lib/utils/demo-view.js';
 	import {
 		initializeDemoState,
 		mode as modeStore,
 		role as roleStore,
-	} from '$lib/stores/demo-state';
-	import { demoHeadingName } from '$lib/utils/demo-heading-name';
+	} from '#lib/stores/demo-state.js';
+	import { demoHeadingName } from '#lib/utils/demo-heading-name.js';
 	import DemoMenuBar from './DemoMenuBar.svelte';
 	import DemoOverlays from './DemoOverlays.svelte';
 
@@ -77,7 +77,7 @@
 	$effect(() => {
 		const demoId = data?.demoId ?? null;
 		const baseConfig = data?.demo?.item?.config ?? null;
-		const overrides = demoElementOverrides($page.url.searchParams);
+		const overrides = demoElementOverrides(new URLSearchParams(page.url.search));
 		const overrideSignature = stableStringifyOverrides(overrides);
 		if (!demoId) return;
 		if (initializedDemoId !== demoId) {
@@ -108,7 +108,7 @@
 
 	// URL → State
 	$effect(() => {
-		const params = $page.url.searchParams;
+		const params = page.url.searchParams;
 		const nextRole = coerceRole(params.get('role'));
 		const nextMode = coerceMode(params.get('mode'), nextRole);
 
@@ -117,7 +117,7 @@
 	});
 
 	function tabHref(view: 'delivery' | 'author' | 'source' | 'controller') {
-		return `/demo/${data.demoId}/${view}?${$page.url.searchParams}`;
+		return `/demo/${data.demoId}/${view}?${page.url.searchParams}`;
 	}
 
 	function coerceLoaderStrategy(value: string | null): 'iife' | 'esm' | 'preloaded' {
@@ -125,11 +125,11 @@
 	}
 
 	const loaderStrategy = $derived(
-		coerceLoaderStrategy($page.url.searchParams.get('player')),
+		coerceLoaderStrategy(page.url.searchParams.get('player')),
 	);
 
 	function modeHref(viewMode: 'student' | 'scorer') {
-		const url = new URL($page.url);
+		const url = new URL(page.url.href);
 		if (viewMode === 'scorer') {
 			url.searchParams.set('mode', 'evaluate');
 			url.searchParams.set('role', 'instructor');
@@ -149,15 +149,15 @@
 	}
 
 	const activeView = $derived.by(() => {
-		return demoViewFromPath($page.url.pathname);
+		return demoViewFromPath(page.url.pathname);
 	});
 	const catalogElements = $derived(
 		(applyElementVersionOverridesPreserveTags(
 			data?.demo?.item?.config,
-			strategyElementVersions($page.url.searchParams.get('player')),
+			strategyElementVersions(page.url.searchParams.get('player')),
 		)?.elements ?? {}) as Record<string, string>,
 	);
-	const elementOverrides = $derived(parseElementOverridesFromUrl($page.url.searchParams));
+	const elementOverrides = $derived(parseElementOverridesFromUrl(new URLSearchParams(page.url.search)));
 
 	const viewMode = $derived.by(() => {
 		const role = $roleStore;
@@ -192,7 +192,7 @@
 	});
 
 	async function updateOverrideParam(packageName: string, version: string | null) {
-		const url = new URL($page.url);
+		const url = new URL(page.url.href);
 		const normalizedPackageName = packageName.startsWith('@') ? packageName.slice(1) : packageName;
 		const nextParams = new URLSearchParams(url.searchParams);
 		if (!version) {
@@ -215,12 +215,12 @@
 			window.location.assign(targetUrl);
 			return;
 		}
-		await goto(targetUrl, { replaceState: true, noScroll: true, keepFocus: true });
+		await goto(targetUrl, { replace: true, reset: false });
 	}
 
 	async function updateLoaderStrategy(nextStrategy: 'iife' | 'esm' | 'preloaded') {
 		if (loaderStrategy === nextStrategy) return;
-		const url = new URL($page.url);
+		const url = new URL(page.url.href);
 		const nextParams = new URLSearchParams(url.searchParams);
 		nextParams.set('player', nextStrategy);
 		const query = nextParams.toString();
@@ -275,9 +275,9 @@
 					void updateOverrideParam(event.detail.packageName, null);
 				}}
 				on:resetAll={() => {
-					const nextParams = removeOverrideParams($page.url.searchParams);
+					const nextParams = removeOverrideParams(new URLSearchParams(page.url.search));
 					const query = nextParams.toString();
-					const targetUrl = query ? `${$page.url.pathname}?${query}` : $page.url.pathname;
+					const targetUrl = query ? `${page.url.pathname}?${query}` : page.url.pathname;
 					void navigateWithRefresh(targetUrl);
 				}}
 			/>

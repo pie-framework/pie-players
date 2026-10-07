@@ -1,7 +1,7 @@
 <script lang="ts">
-	import { getAllDemos } from '$lib/content';
-	import { demoHeadingName } from '$lib/utils/demo-heading-name';
-	import SiteHeader from '$lib/components/SiteHeader.svelte';
+	import { getAllDemos } from '#lib/content/index.js';
+	import { demoHeadingName } from '#lib/utils/demo-heading-name.js';
+	import SiteHeader from '#lib/components/SiteHeader.svelte';
 
 	const demos = getAllDemos();
 	const groupedDemos = Array.from(

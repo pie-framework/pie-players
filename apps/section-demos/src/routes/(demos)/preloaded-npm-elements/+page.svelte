@@ -1,6 +1,6 @@
 <script lang="ts">
-	import { browser } from '$app/environment';
-	import { afterNavigate, replaceState } from '$app/navigation';
+	import { browser } from '$app/env';
+	import { afterNavigate, goto } from '$app/navigation';
 	import { onMount } from 'svelte';
 	import Categorize from '@pie-element/categorize/browser/delivery';
 	import * as categorizeController from '@pie-element/categorize/browser/controller';
@@ -28,11 +28,11 @@
 	import { registerPreloadedElements } from '@pie-players/pie-item-player/preloaded';
 	import '@pie-players/pie-section-player/components/section-player-splitpane-element';
 	import '@pie-players/pie-section-player/components/section-player-vertical-element';
-	import DemoRuntimeChrome from '$lib/demo-runtime/components/DemoRuntimeChrome.svelte';
+	import DemoRuntimeChrome from '#lib/demo-runtime/components/DemoRuntimeChrome.svelte';
 	import {
 		PRELOADED_NPM_PACKAGES,
 		PRELOADED_NPM_SECTIONS
-	} from '$lib/content/demo-preloaded-npm-elements';
+	} from '#lib/content/demo-preloaded-npm-elements.js';
 	import {
 		applyDaisyTheme,
 		applyToolkitScheme,
@@ -48,9 +48,9 @@
 		LAYOUT_OPTIONS,
 		MODE_OPTIONS,
 		onSectionSessionChanged
-	} from '$lib/demo-runtime/demo-page-helpers';
-	import { withDemoLoaderOptions } from '$lib/demo-runtime/demo-player-config';
-	import { createSectionDemoToolRegistry } from '$lib/demo-runtime/default-tool-registry';
+	} from '#lib/demo-runtime/demo-page-helpers.js';
+	import { withDemoLoaderOptions } from '#lib/demo-runtime/demo-player-config.js';
+	import { createSectionDemoToolRegistry } from '#lib/demo-runtime/default-tool-registry.js';
 	import type { PageData } from './$types';
 
 	/**
@@ -127,7 +127,8 @@
 	let selectedDaisyTheme = $state<string>(DEFAULT_DAISY_THEME);
 	let attemptId = $state(getOrCreateAttemptId());
 	let routerReady = $state(false);
-	afterNavigate(() => {
+	afterNavigate(({ shallow, type }) => {
+		if (shallow && type === 'goto') return;
 		routerReady = true;
 	});
 
@@ -207,7 +208,7 @@
 		const url = new URL(window.location.href);
 		if (next) url.searchParams.set('hosted', '1');
 		else url.searchParams.delete('hosted');
-		replaceState(url, {});
+		goto(url, { shallow: true, replace: true });
 	}
 
 	onMount(() => {
@@ -235,7 +236,7 @@
 		}
 		url.searchParams.set(ATTEMPT_QUERY_PARAM, attemptId);
 		url.searchParams.set('layout', layoutType);
-		replaceState(url, {});
+		goto(url, { shallow: true, replace: true });
 	});
 
 	$effect(() => {

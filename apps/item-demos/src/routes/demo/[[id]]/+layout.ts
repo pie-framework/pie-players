@@ -1,5 +1,5 @@
 import { error } from "@sveltejs/kit";
-import { getDemoById } from "$lib/content";
+import { getDemoById } from "#lib/content/index.js";
 import type { LayoutLoad } from "./$types";
 
 export const ssr = false;

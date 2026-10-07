@@ -1,10 +1,10 @@
 <script lang="ts">
-	import { browser } from '$app/environment';
+	import { browser } from '$app/env';
 	import {
 		applyDaisyTheme,
 		DAISY_THEME_STORAGE_KEY,
 		DEFAULT_DAISY_THEME,
-	} from '$lib/demo-runtime/demo-page-helpers';
+	} from '#lib/demo-runtime/demo-page-helpers.js';
 	import '../app.css';
 	import type { Snippet } from 'svelte';
 

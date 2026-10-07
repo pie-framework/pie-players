@@ -2,7 +2,7 @@
 	
 	import { onMount } from 'svelte';
 import { goto } from '$app/navigation';
-	import { page } from '$app/stores';
+	import { page } from '$app/state';
 
 	let { data } = $props();
 
@@ -10,8 +10,8 @@ import { goto } from '$app/navigation';
 
 	onMount(() => {
 		// Redirect to delivery view with current query params
-		goto(`/demo/${demoId}/delivery?${$page.url.searchParams}`, {
-			replaceState: true
+		goto(`/demo/${demoId}/delivery?${page.url.searchParams}`, {
+			replace: true
 		});
 	});
 </script>

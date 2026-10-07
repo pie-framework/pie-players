@@ -550,7 +550,7 @@ It lives in `tsconfig.json`, `tsconfig.base.json`, and the five package configs
 that extend neither — `calculator`, `calculator-desmos`, `tts`,
 `tts-client-server`, `tts-server-core`. A new tsconfig that extends neither root
 config needs it too; there is no single file that reaches everything. The demo
-apps need nothing: SvelteKit generates it into `.svelte-kit/tsconfig.json`.
+apps need nothing: SvelteKit generates it into `node_modules/$app/tsconfig.json`, which each app's `tsconfig.json` extends as `$app/tsconfig`.
 
 ## Technology Stack
 

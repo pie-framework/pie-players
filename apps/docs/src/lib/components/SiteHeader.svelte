@@ -1,13 +1,13 @@
 <script lang="ts">
-	import { base } from '$app/paths';
+	import { asset, resolve } from '$app/paths';
 </script>
 
 <header class="border-b border-base-200 bg-base-100/80 backdrop-blur">
 	<div class="navbar max-w-6xl mx-auto px-4">
 		<div class="navbar-start">
-			<a class="btn btn-ghost text-base gap-2" href={`${base}/`}>
+			<a class="btn btn-ghost text-base gap-2" href={resolve('/')}>
 				<img
-					src={`${base}/pie-logo-orange.svg`}
+					src={asset('pie-logo-orange.svg')}
 					alt="PIE Framework"
 					class="w-6 h-6"
 					aria-hidden="true"
@@ -18,7 +18,7 @@
 
 		<div class="navbar-center hidden md:flex">
 			<ul class="menu menu-horizontal px-1">
-				<li><a href={`${base}/`}>Overview</a></li>
+				<li><a href={resolve('/')}>Overview</a></li>
 			</ul>
 		</div>
 

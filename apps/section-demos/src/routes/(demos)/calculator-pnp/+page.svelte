@@ -11,8 +11,8 @@
 	import '@pie-players/pie-item-player';
 	import type { ToolContextResolverMap } from '@pie-players/pie-assessment-toolkit';
 	import type { AssessmentEntity, ItemEntity } from '@pie-players/pie-players-shared/types';
-	import { createSectionDemoToolRegistryForCalculator } from '$lib/demo-runtime/default-tool-registry';
-	import { withDemoLoaderOptions } from '$lib/demo-runtime/demo-player-config';
+	import { createSectionDemoToolRegistryForCalculator } from '#lib/demo-runtime/default-tool-registry.js';
+	import { withDemoLoaderOptions } from '#lib/demo-runtime/demo-player-config.js';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();

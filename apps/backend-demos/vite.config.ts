@@ -1,3 +1,5 @@
+import adapter from "@sveltejs/adapter-node";
+import { vitePreprocess } from "@sveltejs/vite-plugin-svelte";
 import { sveltekit } from "@sveltejs/kit/vite";
 import tailwindcss from "@tailwindcss/vite";
 import { defineConfig } from "vite";
@@ -8,7 +10,10 @@ import { defineConfig } from "vite";
 const disableErrorOverlay = process.env.PLAYWRIGHT_DISABLE_VITE_OVERLAY === "1";
 
 export default defineConfig({
-	plugins: [sveltekit(), tailwindcss()],
+	plugins: [
+		sveltekit({ preprocess: vitePreprocess(), adapter: adapter() }),
+		tailwindcss(),
+	],
 	server: {
 		port: 5600,
 		open: true,

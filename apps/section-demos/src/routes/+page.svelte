@@ -1,6 +1,6 @@
 <script lang="ts">
-	import { getAllSectionDemos } from '$lib/content/sections';
-	import SiteHeader from '$lib/components/SiteHeader.svelte';
+	import { getAllSectionDemos } from '#lib/content/sections.js';
+	import SiteHeader from '#lib/components/SiteHeader.svelte';
 
 	const demos = getAllSectionDemos().sort(
 		(a, b) =>

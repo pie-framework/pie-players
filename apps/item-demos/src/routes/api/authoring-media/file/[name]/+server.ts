@@ -1,6 +1,6 @@
 import { error } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";
-import { readStoredFile } from "$lib/server/authoring-media-store";
+import { readStoredFile } from "#lib/server/authoring-media-store.js";
 
 const CONTENT_TYPE_BY_EXTENSION: Record<string, string> = {
 	".jpg": "image/jpeg",

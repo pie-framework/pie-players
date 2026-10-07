@@ -113,6 +113,20 @@ function isIgnoredSpecifier(specifier, aliasPrefixes) {
 	);
 }
 
+/**
+ * A `#`-prefixed specifier resolves through the importing package's own `imports`
+ * field (Node subpath imports), so it names no dependency. An undeclared one is not
+ * exempt and surfaces as a missing dependency.
+ */
+export function isDeclaredSubpathImport(manifest, specifier) {
+	if (!specifier.startsWith("#")) return false;
+	return Object.keys(manifest.imports ?? {}).some((key) =>
+		key.endsWith("*")
+			? specifier.startsWith(key.slice(0, -1))
+			: specifier === key,
+	);
+}
+
 function toPackageName(specifier) {
 	if (specifier.startsWith("@")) {
 		const [scope, name] = specifier.split("/");
@@ -361,6 +375,7 @@ function main() {
 			for (const specifier of collectSpecifiers(content, filePath)) {
 				if (!isExternalSpecifier(specifier)) continue;
 				if (isIgnoredSpecifier(specifier, aliasPrefixes)) continue;
+				if (isDeclaredSubpathImport(manifest, specifier)) continue;
 
 				const packageName = toPackageName(specifier);
 				const isSelfImport =

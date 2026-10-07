@@ -1,4 +1,4 @@
-import { getSectionDemoById } from "$lib/content/sections";
+import { getSectionDemoById } from "#lib/content/sections.js";
 import { json } from "@sveltejs/kit";
 import { _defaultSeedSections } from "../../bootstrap/+server";
 import {

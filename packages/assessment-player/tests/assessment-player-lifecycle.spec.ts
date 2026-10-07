@@ -50,6 +50,7 @@ async function mountHost(
 ) {
 	await page.goto("/lifecycle-host");
 	await page.waitForFunction(() => customElements.get("pie-assessment-player-default"));
+	await page.waitForSelector("[data-pie-assessment-fixture]", { state: "attached" });
 	await page.evaluate((options) => {
 		const host = document.createElement("pie-assessment-player-default") as Host;
 		const target = document.querySelector("[data-pie-assessment-fixture]")!;

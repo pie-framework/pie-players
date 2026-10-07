@@ -30,7 +30,10 @@ export async function runDevServerBootstrap(
 	const logPrefix = `[dev:${devScriptName}]`;
 	const appDirAbs = resolve(process.cwd(), appDir);
 	const workspaceRootDir = process.cwd();
-	const svelteKitTsconfigPath = resolve(appDirAbs, ".svelte-kit/tsconfig.json");
+	const svelteKitTsconfigPath = resolve(
+		appDirAbs,
+		"node_modules/$app/tsconfig.json",
+	);
 
 	async function runCommand(cmd: string[], options: RunOptions = {}) {
 		const proc = Bun.spawn(cmd, {

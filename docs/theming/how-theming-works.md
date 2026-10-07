@@ -127,9 +127,9 @@ is nothing to lose the cascade to. The same shape serves any vocabulary, which
 is what a non-DaisyUI design system needs regardless.
 
 Gate that block on `[data-color-scheme]` rather than applying it always.
-`<pie-theme>` stamps the attribute only for a scheme, and the default palette's
-`--pie-background` ships transparent, so aliasing a chrome background to it
-would strip that background on every ordinary page.
+`<pie-theme>` stamps the attribute only for a scheme, so the gate hands the
+chrome to PIE's palette while an accommodation is active and leaves it to the
+host's own theme on every ordinary page.
 
 ## Themes versus colour schemes
 
@@ -149,6 +149,39 @@ conventional.
 - A requested id that is not registered resolves to `unavailable`: the base and
   provider result stands, the id is retained on the element, and a scheme
   registered later takes effect.
+
+## Authored colours
+
+A colour written into authored markup — an inline `color`, `background-color`
+or border colour, `<font color>`, `bgcolor` — outranks any stylesheet that
+applies a scheme, so it would survive the scheme: dark ink on a dark page, light
+text on a grey header row. PIE elements mark each such element in their model
+HTML (`markAuthoredColors` in `@pie-element/shared-utils`), and the content
+stylesheet overrides marked elements under `[data-color-scheme]`:
+
+- Ink and border colours take the scheme's `--pie-text` and `--pie-border`.
+- A near-white fill, usually the page the text was pasted from, becomes
+  transparent.
+- Any other fill — a header row, a highlight, a figure's shading — inverts. It
+  takes the scheme's ink and its content takes the scheme's page, the pair the
+  scheme certifies, so the fill still stands out and its text stays legible.
+
+The default theme stamps no `data-color-scheme`, so authored colours render as
+written. Gradients, background images and colours inside MathJax output carry no
+marker and stay as authored.
+
+Inside an inverted fill the neutral tokens swap: `--pie-text`, `--pie-black` and
+`--pie-border` take the scheme's page, `--pie-background` and `--pie-white` its
+ink, so a dropdown or blank an element renders in a shaded cell inverts with the
+cell. Accent and feedback tokens keep their values — a deliberate trade: no
+inverted palette to maintain per scheme, at the cost of those colours being
+certified against the page rather than the fill. The ink and page are captured on
+the element carrying `data-color-scheme`, which is where its tokens are
+declared, so a scoped `<pie-theme>` inverts to its own scheme.
+
+A host that installs its own copy of `components.css` under `@scope` gets the
+overrides only when the `data-color-scheme` element sits inside the scope root,
+because a scoped selector cannot match an ancestor of that root.
 
 ## The `color-scheme` collision
 

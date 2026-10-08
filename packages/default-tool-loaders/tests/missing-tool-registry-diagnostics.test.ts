@@ -88,7 +88,7 @@ const readyCoordinator = async (
 	const coordinator = new ToolkitCoordinator({
 		assessmentId: "missing-tool-registry-diagnostics",
 		toolConfigStrictness: "error",
-		lazyInit: true,
+		eagerInit: false,
 		toolRegistry,
 		tools: options.tools ?? tools,
 	});

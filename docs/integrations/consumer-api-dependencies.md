@@ -479,10 +479,13 @@ Packages consumed:
 - **Host A** — `pie-section-player`, `pie-assessment-toolkit`, `pie-theme`,
   `pie-calculator-desmos`, `pie-calculator-cortex` (aliased to a local stub in
   its build), `pie-calculator-geogebra`, `pie-tool-calculator-desmos`,
-  `pie-tool-text-to-speech`, `tts-client-server`, `tts-server-polly`, and the
-  event and session debuggers. Its source imports only the splitpane layout
-  element and `pie-theme`. The section player imports `pie-item-player`
-  by name to render items, so that package reaches Host A as its dependency.
+  `tts-client-server`, `tts-server-polly`, and the event and session debuggers.
+  Its source imports only the splitpane layout element and `pie-theme`. The
+  section player imports `pie-item-player` by name to render items, so that
+  package reaches Host A as its dependency. It also declares the deprecated
+  `pie-tool-text-to-speech` and imports nothing from it; that range stops at
+  `0.3.74`, the last published version, and an install prints npm's
+  deprecation notice.
 - **Host P** — `pie-preloaded-player` alone, and never imported: its `dist/` is
   copied into the host's static assets and loaded by path.
 - **Host M** — `pie-item-player` and its `preloaded` subpath, `pie-theme` and its
@@ -499,7 +502,8 @@ Packages consumed:
   Four declared packages are imported nowhere in its source —
   `pie-calculator-desmos`, `pie-tool-text-to-speech`,
   `pie-section-player-tools-shared`, `tts-client-server` — so their ranges
-  resolve without their surfaces being consumed. Two more tool packages, both
+  resolve without their surfaces being consumed. `pie-tool-text-to-speech` is
+  deprecated, so its range stops at `0.3.74`, the last published version. Two more tool packages, both
   dictionaries, reach it transitively as dependencies of
   `pie-default-tool-loaders`, whose packaged registry dynamically imports them.
   The Cortex and GeoGebra calculator engines reach it the same way, imported by
@@ -1655,11 +1659,13 @@ over a CDN with no typecheck at all.
 
 - The assessment player, the print player, the tabbed section layout, the
   toolbars package, and `pie-context` — no consumer imports any of them
-- `pie-tool-text-to-speech`, no longer published, and `hasSpokenAlternate` on
-  `TtsServiceApi`, which only that panel called. Hosts A and R declare the
-  package and import nothing from it, so their ranges keep resolving to its last
-  published version; Host R's own `HTMLElementTagNameMap` entry for the tag is a
-  local type. No checkout calls the method
+- `pie-tool-text-to-speech`, deprecated on npm and no longer published, and
+  `hasSpokenAlternate` on `TtsServiceApi`, which only that panel called. Hosts A
+  and R declare the package and import nothing from it, so their ranges keep
+  resolving to its last published version, `0.3.74`; Host R's own
+  `HTMLElementTagNameMap` entry for the tag is a local type. No checkout calls
+  the method. Checked against all five checkouts on 2026-10-08 as a targeted
+  lookup, so it does not advance the verification date
 - `pie-item-shell`, removed: section-player item cards render `pie-item-scope`,
   which takes the shell's attributes and keeps its `data-pie-shell-root="item"`
   marker and the card's classes. No checkout names the tag
@@ -1835,8 +1841,9 @@ repo.
   `pie-calculator-desmos`, `pie-tool-text-to-speech`,
   `pie-section-player-tools-shared`, `tts-client-server`. The packaged registry
   reaches `pie-calculator-desmos` without the declaration, and nothing reaches
-  `pie-tool-text-to-speech`: the registry's text-to-speech tool is
-  `pie-tool-tts-inline`. None of the four is load-bearing, and together they make
+  `pie-tool-text-to-speech`, which is deprecated and gone from this repository:
+  the registry's text-to-speech tool is `pie-tool-tts-inline`, and the host's
+  local tag type names an element nothing defines. None of the four is load-bearing, and together they make
   its dependency list overstate what it consumes, which is what made the previous
   entrypoint rows wrong in the other direction.
 - Host R sets `--pie-padding`, `--pie-spacing` and `--pie-gap` on a legacy

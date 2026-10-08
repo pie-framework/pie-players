@@ -94,7 +94,7 @@ describe("browser provider segmentation", () => {
 	});
 
 	test("chooses a local language-matched voice when no voice is configured", async () => {
-		let spokenVoiceName: string | null = null;
+		let spokenVoiceName = null as string | null;
 		const voices = [
 			{
 				default: true,
@@ -152,7 +152,7 @@ describe("browser provider segmentation", () => {
 	});
 
 	test("preserves an explicitly configured browser voice", async () => {
-		let spokenVoiceName: string | null = null;
+		let spokenVoiceName = null as string | null;
 		const voices = [
 			{
 				default: false,
@@ -302,8 +302,8 @@ describe("browser provider segmentation", () => {
 	});
 
 	test("resolves an explicitly configured voice URI", async () => {
-		let spokenVoiceName: string | null = null;
-		let spokenVoiceURI: string | null = null;
+		let spokenVoiceName = null as string | null;
+		let spokenVoiceURI = null as string | null;
 		const voices = [
 			{
 				default: false,
@@ -359,7 +359,7 @@ describe("browser provider segmentation", () => {
 
 	test("waits for voiceschanged before speaking with an explicit voice", async () => {
 		let voices: SpeechSynthesisVoice[] = [];
-		let spokenVoiceURI: string | null = null;
+		let spokenVoiceURI = null as string | null;
 		const listeners = new Set<EventListener>();
 		const synth = {
 			getVoices: () => voices,
@@ -731,7 +731,7 @@ describe("browser provider segmentation", () => {
 			const impl = await new BrowserTTSProvider().initialize({} as any);
 			const synth = (globalThis as any).speechSynthesis;
 			const speakNow = synth.speak;
-			let startLate: (() => void) | null = null;
+			let startLate = null as (() => void) | null;
 			synth.speak = (utterance: SpeechSynthesisUtterance) => {
 				startLate = () => speakNow(utterance);
 			};

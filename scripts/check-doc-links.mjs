@@ -3,58 +3,11 @@
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import path from "node:path";
 
-const ROOT = process.cwd();
-const SKIP_DIRS = new Set([
-	".git",
-	".svelte-kit",
-	".turbo",
-	"build",
-	"dist",
-	"node_modules",
-	"coverage",
-	"local-builds",
-]);
-const DOC_FILE_NAMES = new Set([
-	"README.md",
-	"readme.md",
-	"ARCHITECTURE.md",
-	"USAGE_EXAMPLE.md",
-	"AGENTS.md",
-	"GETTING-STARTED.md",
-	"INTEGRATION-GUIDE.md",
-]);
+import { markdownDocs } from "./lib/markdown-docs.mjs";
 
+const ROOT = process.cwd();
 const toPosix = (value) => value.replaceAll(path.sep, "/");
 const rel = (filePath) => toPosix(path.relative(ROOT, filePath));
-
-const isMarkdownDoc = (filePath) => {
-	const relative = rel(filePath);
-	const base = path.basename(filePath);
-	if (!filePath.endsWith(".md")) return false;
-	if (base === "CHANGELOG.md") return false;
-	if (relative.startsWith("docs/")) return true;
-	if (/^packages\/[^/]+\/docs\//.test(relative)) return true;
-	if (relative.startsWith("packages/")) return DOC_FILE_NAMES.has(base);
-	if (relative.startsWith("apps/")) return DOC_FILE_NAMES.has(base);
-	return DOC_FILE_NAMES.has(base);
-};
-
-const walk = (dir, files = []) => {
-	for (const entry of readdirSync(dir, { withFileTypes: true })) {
-		if (entry.isDirectory()) {
-			if (!SKIP_DIRS.has(entry.name)) {
-				walk(path.join(dir, entry.name), files);
-			}
-			continue;
-		}
-
-		const fullPath = path.join(dir, entry.name);
-		if (isMarkdownDoc(fullPath)) {
-			files.push(fullPath);
-		}
-	}
-	return files;
-};
 
 const hasExactPath = (targetPath) => {
 	const absolute = path.resolve(targetPath);
@@ -124,7 +77,7 @@ const isInsideRoot = (targetPath) => {
 
 const failures = [];
 
-for (const filePath of walk(ROOT).sort()) {
+for (const filePath of markdownDocs(ROOT)) {
 	const content = readFileSync(filePath, "utf8");
 	if (isDatedScanEvidence(content)) continue;
 

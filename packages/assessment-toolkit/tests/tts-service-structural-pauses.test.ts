@@ -824,7 +824,7 @@ describe("TTSService structural pauses", () => {
 	test("coalesces overlapping identical rate writes into one update and restart", async () => {
 		const impl = new MockTTSImpl(false);
 		(impl as any).speakSegments = undefined;
-		let releaseSettingsWrite: (() => void) | null = null;
+		let releaseSettingsWrite = null as (() => void) | null;
 		impl.updateSettings = (settings: Partial<TTSConfig>) => {
 			impl.settingsUpdates.push(settings);
 			return new Promise<void>((resolve) => {
@@ -895,7 +895,7 @@ describe("TTSService structural pauses", () => {
 	test("restarts the final target in a rapid A-B-A rate sequence without rewriting it", async () => {
 		const impl = new MockTTSImpl(false);
 		(impl as any).speakSegments = undefined;
-		let releaseFirstWrite: (() => void) | null = null;
+		let releaseFirstWrite = null as (() => void) | null;
 		impl.updateSettings = (settings: Partial<TTSConfig>) => {
 			impl.settingsUpdates.push(settings);
 			return new Promise<void>((resolve) => {
@@ -931,7 +931,7 @@ describe("TTSService structural pauses", () => {
 	test("does not restart a newer speak run when an older rate write completes", async () => {
 		const impl = new PlaybackStartAwareMockTTSImpl();
 		(impl as any).speakSegments = undefined;
-		let releaseSettingsWrite: (() => void) | null = null;
+		let releaseSettingsWrite = null as (() => void) | null;
 		impl.updateSettings = (settings: Partial<TTSConfig>) => {
 			impl.settingsUpdates.push(settings);
 			return new Promise<void>((resolve) => {
@@ -1221,7 +1221,7 @@ describe("TTSService structural pauses", () => {
 		const impl = new MockTTSImpl(true);
 		const service = new TTSService();
 		await service.initialize(new MockTTSProvider(impl, "server-tts", true));
-		let releaseFirstSpeak: (() => void) | null = null;
+		let releaseFirstSpeak = null as (() => void) | null;
 		let firstSpeakStarted: (() => void) | null = null;
 		const firstSpeakStartedPromise = new Promise<void>((resolve) => {
 			firstSpeakStarted = resolve;
@@ -1287,7 +1287,7 @@ describe("TTSService structural pauses", () => {
 		const impl = new MockTTSImpl(true);
 		const service = new TTSService();
 		await service.initialize(new MockTTSProvider(impl, "server-tts", true));
-		let releaseFirstSpeak: (() => void) | null = null;
+		let releaseFirstSpeak = null as (() => void) | null;
 		let firstSpeakStarted: (() => void) | null = null;
 		const firstSpeakStartedPromise = new Promise<void>((resolve) => {
 			firstSpeakStarted = resolve;
@@ -1354,7 +1354,7 @@ describe("TTSService structural pauses", () => {
 		const impl = new MockTTSImpl(true);
 		const service = new TTSService();
 		await service.initialize(new MockTTSProvider(impl, "server-tts", true));
-		let releaseFirstResolution: (() => void) | null = null;
+		let releaseFirstResolution = null as (() => void) | null;
 		let resolutionCalls = 0;
 		(service as any).resolveSpeechContent = async () => {
 			resolutionCalls += 1;

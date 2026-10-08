@@ -29,7 +29,7 @@
 		connectToolRuntimeContext,
 		createToolCoordinatorRegistration,
 		ZIndexLayer,
-	} from '@pie-players/pie-assessment-toolkit';
+	} from '@pie-players/pie-assessment-toolkit/tools/registration';
 	import {
 		applyPieColorScheme,
 		listPieColorSchemes,
@@ -39,7 +39,7 @@
 	import type {
 		AssessmentToolkitRuntimeContext,
 		ToolCoordinatorApi,
-	} from '@pie-players/pie-assessment-toolkit';
+	} from '@pie-players/pie-assessment-toolkit/tools/registration';
 	import { createFocusTrap, safeLocalStorageGet } from '@pie-players/pie-players-shared';
 	import { onMount } from 'svelte';
 	import { resolveInterfaceI18n } from '@pie-players/pie-players-shared/i18n/provider';

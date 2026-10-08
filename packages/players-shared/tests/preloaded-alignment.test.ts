@@ -121,7 +121,7 @@ describe("alignPreloadedElementVersions", () => {
 	});
 
 	test("passes a config without elements through", () => {
-		const config = { markup: "<p></p>" };
+		const config: { markup: string; elements?: unknown } = { markup: "<p></p>" };
 		expect(alignPreloadedElementVersions(config, {})).toBe(config);
 	});
 });

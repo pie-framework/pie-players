@@ -40,6 +40,7 @@ function makeSnapshot(): SectionControllerSessionState {
 		timedMedia: {
 			version: 1,
 			mediaCurrentTime: 42.5,
+			maxPositionSeconds: 42.5,
 			mediaCompleted: false,
 			visitedCueIdentifiers: ["cue-1"],
 			completedCueIdentifiers: [],

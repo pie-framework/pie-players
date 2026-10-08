@@ -9,11 +9,12 @@ import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { BUNDLED_LOCALES, loadBundledCatalog } from "../src/i18n/catalogs.js";
 import {
 	DEFAULT_LOCALE,
+	dynamicMessageKey,
 	getDefaultI18n,
 	localeDirection,
 	SimpleI18n,
 } from "../src/i18n/provider.js";
-import type { MessageCatalog } from "../src/i18n/types.js";
+import type { MessageCatalog, TextDirection } from "../src/i18n/types.js";
 
 // A DOM only so the "does not touch documentElement" assertion can be real.
 beforeAll(() => {
@@ -95,7 +96,7 @@ describe("fallback chain", () => {
 	test("an unknown key returns the key and reports once", async () => {
 		const missing: string[] = [];
 		const i18n = new SimpleI18n({ onMissingKey: (key) => missing.push(key) });
-		expect(i18n.t("nope.not.here")).toBe("nope.not.here");
+		expect(i18n.t(dynamicMessageKey("nope.not.here"))).toBe("nope.not.here");
 		expect(missing).toEqual(["nope.not.here"]);
 	});
 
@@ -159,7 +160,7 @@ describe("interpolation and plurals", () => {
 });
 
 describe("direction", () => {
-	test.each([
+	test.each<[string, TextDirection]>([
 		["en-US", "ltr"],
 		["nl-NL", "ltr"],
 		["ar-SA", "rtl"],

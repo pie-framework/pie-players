@@ -278,7 +278,7 @@ describe("section player view state", () => {
 	test("passes absent item session as undefined to resolveBackend", async () => {
 		const { getItemPlayerParams } = await loadViewStateModule();
 		const resolveBackend = mock(
-			(context: any, baseBackend: any) => baseBackend,
+			(_context: any, baseBackend: any) => baseBackend,
 		);
 
 		const params = getItemPlayerParams({

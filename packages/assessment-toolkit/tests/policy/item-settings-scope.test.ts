@@ -196,8 +196,8 @@ describe("a shared toolbar ignores item settings", () => {
 		coord.decideToolPolicy(ASSESSMENT_TOOLBAR);
 
 		const reported = warn.mock.calls
-			.map((call) => String(call[0]))
-			.filter((message) => message.includes("item settings do not reach"));
+			.map((call: unknown[]) => String(call[0]))
+			.filter((message: string) => message.includes("item settings do not reach"));
 		expect(reported).toHaveLength(2);
 		expect(reported[0]).toContain('Item "q1"');
 		expect(reported[1]).toContain('Item "q2"');

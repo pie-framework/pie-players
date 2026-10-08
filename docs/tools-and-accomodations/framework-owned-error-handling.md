@@ -53,10 +53,8 @@ Added a shared error model in assessment-toolkit:
 - `FrameworkErrorModel`
 - `FrameworkErrorKind`
 - `FrameworkErrorSeverity`
-- conversion helpers for unknown errors and tools diagnostics/validation:
-  - `frameworkErrorFromUnknown`
-  - `frameworkErrorFromToolConfigDiagnostics`
-  - `frameworkErrorFromToolConfigValidation`
+- `frameworkErrorFromUnknown`, which converts an unknown error. The conversions
+  of tools-config diagnostics and validation results are internal to the toolkit.
 
 Primary file:
 

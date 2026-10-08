@@ -3,6 +3,7 @@ import { ToolRegistry } from "../src/services/ToolRegistry";
 import type { ToolRegistration } from "../src/services/ToolRegistry";
 import type { ToolbarContext } from "../src/services/ToolRegistry";
 import type { ToolContext } from "../src/services/tool-context";
+import { resolveInterfaceI18n } from "@pie-players/pie-players-shared/i18n/provider";
 
 // Mock tool registration
 const mockCalculatorTool: ToolRegistration = {
@@ -533,6 +534,7 @@ describe("ToolRegistry", () => {
 			toggleTool: () => {},
 			isToolVisible: () => false,
 			subscribeVisibility: null,
+			i18n: resolveInterfaceI18n(null),
 		};
 
 		test("renders toolbar output for registered tool", () => {

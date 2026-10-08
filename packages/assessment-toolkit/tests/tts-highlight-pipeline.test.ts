@@ -918,9 +918,9 @@ describe("TTS highlight pipeline", () => {
 			type: "element",
 			quality: "semantic-token",
 		});
-		expect((decision.activeTarget as { element: Element }).element).toBe(
-			mathElements[1].querySelector("mo"),
-		);
+		expect(
+			(decision.activeTarget as { element: Element | null }).element,
+		).toBe(mathElements[1].querySelector("mo"));
 	});
 
 	test("holds the last token through a gap in a token-mode equation", () => {

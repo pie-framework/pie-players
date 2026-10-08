@@ -480,7 +480,11 @@ describe("projectSessionIntoHostContainer", () => {
 		expect(wrote).toBe(true);
 		// Identity holds: a host that kept a reference to data[0] sees the value.
 		expect(host.data[0]).toBe(entry);
-		expect(entry).toEqual({ id: "1", element: "pie-mc", value: ["A"] });
+		expect(entry as Record<string, unknown>).toEqual({
+			id: "1",
+			element: "pie-mc",
+			value: ["A"],
+		});
 	});
 
 	test("keeps the array identity when it adds an entry", () => {
@@ -554,7 +558,7 @@ describe("projectSessionIntoHostContainer", () => {
 		expect(frozenContainer.data).toEqual([]);
 		expect(ensureHostSessionEntries(frozenContainer, ["1"])).toBe(false);
 
-		const frozenEntries = { id: "s1", data: Object.freeze([]) as unknown[] };
+		const frozenEntries = { id: "s1", data: Object.freeze([] as unknown[]) as unknown[] };
 		expect(
 			projectSessionIntoHostContainer(frozenEntries, {
 				id: "s1",

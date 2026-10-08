@@ -40,7 +40,7 @@
 		"dev": "bun ./scripts/dev-theme.ts",
 		"generate:css": "bun ./scripts/generate-theme-css.ts --write",
 		"check:generated-css": "bun ./scripts/generate-theme-css.ts --check",
-		"typecheck": "tsc -p tsconfig.json --noEmit",
+		"typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.tests.json",
 		"lint": "biome lint .",
 		"check": "tsc -p tsconfig.json --noEmit",
 		"test": "bun test --dom tests"

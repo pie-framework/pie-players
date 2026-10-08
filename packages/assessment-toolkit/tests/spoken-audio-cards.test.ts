@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import type { CatalogCardPayload } from "@pie-players/pie-players-shared";
+import type { CatalogCardPayload } from "@pie-players/pie-players-shared/types";
 import { resolveSpokenAudioMedia } from "../src/services/spoken-audio-cards";
 
 const payload = (overrides: Record<string, unknown> = {}): CatalogCardPayload =>

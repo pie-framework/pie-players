@@ -445,9 +445,12 @@ const context: ItemToolContext = {
 const visibleTools = registry
   .filterVisibleInContext(allowedToolIds, context)
   .filter((tool) => registry.isApplicableToAnyContext(tool.toolId, [context]));
+```
 
-// 5. Render toolbar: it takes the coordinator from the enclosing toolkit and
-//    the item's identity from the enclosing item scope
+5. Render the toolbar. It takes the coordinator from the enclosing toolkit and
+   the item's identity from the enclosing item scope:
+
+```html
 <pie-assessment-toolkit .coordinator={coordinator}>
   <pie-item-scope item-id="item-1" .item={itemData} .settings={currentItem.settings}>
     <pie-item-toolbar .toolRegistry={registry}></pie-item-toolbar>

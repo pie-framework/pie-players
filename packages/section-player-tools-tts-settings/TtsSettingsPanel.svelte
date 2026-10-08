@@ -18,7 +18,7 @@
 		browserVoiceMatchesLanguage,
 		connectToolRuntimeContext,
 		findBrowserVoice,
-	} from "@pie-players/pie-assessment-toolkit";
+	} from "@pie-players/pie-assessment-toolkit/tools/registration";
 	import { createFocusTrap } from "@pie-players/pie-players-shared";
 	import {
 		createPieLogger,
@@ -32,7 +32,7 @@
 		resolveTTSRuntimeSettings,
 		type TTSSpeedOption,
 		type TTSLayoutMode,
-	} from "@pie-players/pie-assessment-toolkit";
+	} from "@pie-players/pie-assessment-toolkit/tools/registration";
 	import { createEventDispatcher, onDestroy, onMount, untrack } from "svelte";
 
 	type BuiltInBackendTab = "browser" | "polly" | "google";

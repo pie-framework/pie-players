@@ -18,7 +18,7 @@
 	"scripts": {
 		"build": "tsc",
 		"test": "bun test tests",
-		"typecheck": "tsc --noEmit"
+		"typecheck": "tsc --noEmit && tsc -p tsconfig.tests.json"
 	},
 	"keywords": [
 		"pie",

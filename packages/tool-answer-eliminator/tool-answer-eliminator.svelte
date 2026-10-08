@@ -51,12 +51,12 @@
 		connectToolShellContext,
 		createToolCoordinatorRegistration,
 		ZIndexLayer,
-	} from '@pie-players/pie-assessment-toolkit';
+	} from '@pie-players/pie-assessment-toolkit/tools/registration';
 	import type {
 		AssessmentToolkitShellContext,
 		AssessmentToolkitRuntimeContext,
 		ToolCoordinatorApi,
-	} from '@pie-players/pie-assessment-toolkit';
+	} from '@pie-players/pie-assessment-toolkit/tools/registration';
 	import { onMount } from 'svelte';
 	import { AnswerEliminatorCore } from './answer-eliminator-core.js';
 

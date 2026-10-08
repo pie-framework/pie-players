@@ -83,8 +83,8 @@ function defineLegacyElement(
 				if (options.noSession) return undefined;
 				return this._session;
 			}
-			set session(s: Record<string, unknown>) {
-				this._session = s;
+			set session(s: Record<string, unknown> | undefined) {
+				this._session = s ?? {};
 			}
 		},
 	);
@@ -200,7 +200,7 @@ describe("commitPendingSessions", () => {
 
 		const observed = observeDocument();
 		element.change("a longer answer");
-		element[SESSION_COMMIT_METHOD as unknown as keyof typeof element]();
+		(element as unknown as Record<string, () => void>)[SESSION_COMMIT_METHOD]();
 		observed.stop();
 
 		expect(observed.events).toHaveLength(1);

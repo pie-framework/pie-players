@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import type { ToolSelectionAction } from "@pie-players/pie-assessment-toolkit";
+import type { ToolSelectionAction } from "@pie-players/pie-assessment-toolkit/tools/registration";
 import {
 	isSelectionActionAvailable,
 	isSelectionActionShape,

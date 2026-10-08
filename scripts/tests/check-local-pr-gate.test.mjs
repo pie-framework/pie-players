@@ -19,9 +19,9 @@ function suiteScripts(suites) {
 const basePackageJson = {
 	scripts: {
 		"verify:pre-commit":
-			"bun run check:changeset-patch-only && bun run check:local-pr-gate && bun run check:resolution-boundary && bun run check:deps && bun run check:package-metadata && bun run check:docs:publishable-packages && bun run check:svelte-runtime-deps && bun run check:custom-elements && bun run check:ce-define-safety && bun run check:speech-composition-purity && bun run check:source-exports && bun run check:consumer-boundaries && bun run check:scripts && bun run lint:biome && bun run check",
+			"bun run check:changeset-patch-only && bun run check:local-pr-gate && bun run check:resolution-boundary && bun run check:deps && bun run check:package-metadata && bun run check:docs:publishable-packages && bun run check:svelte-runtime-deps && bun run check:custom-elements && bun run check:ce-define-safety && bun run check:speech-composition-purity && bun run check:source-exports && bun run check:api-report && bun run check:consumer-boundaries && bun run check:scripts && bun run lint:biome && bun run check",
 		"verify:ci-lint-typecheck":
-			"bun run check:local-pr-gate && bun run check:resolution-boundary && bun run check:deps && bun run check:package-metadata && bun run check:docs:publishable-packages && bun run check:svelte-runtime-deps && bun run check:custom-elements && bun run check:ce-define-safety && bun run check:speech-composition-purity && bun run check:scripts && bun run build && bun run check:custom-elements:dist && bun run check:player-tool-boundaries && bun run check:bundle-safety && bun run check:publint && bun run check:types-publish && bun run check:svelte-type-imports && bun run check:pack-integrity && bun run check:node-consumer-imports && bun run check:consumer-boundaries && bun run lint:all",
+			"bun run check:local-pr-gate && bun run check:resolution-boundary && bun run check:deps && bun run check:package-metadata && bun run check:docs:publishable-packages && bun run check:svelte-runtime-deps && bun run check:custom-elements && bun run check:ce-define-safety && bun run check:speech-composition-purity && bun run check:api-report && bun run check:scripts && bun run build && bun run check:custom-elements:dist && bun run check:player-tool-boundaries && bun run check:bundle-safety && bun run check:publint && bun run check:types-publish && bun run check:svelte-type-imports && bun run check:pack-integrity && bun run check:node-consumer-imports && bun run check:consumer-boundaries && bun run lint:all",
 		"verify:local-pr":
 			"bun run check:changeset-patch-only && bun run verify:ci-lint-typecheck && bun run test:e2e:local-gate",
 		"verify:pre-push": "bun run verify:local-pr",
@@ -262,6 +262,9 @@ describe("check-local-pr-gate policy", () => {
 		);
 		expect(failures).toContain(
 			'verify:pre-commit is missing "bun run check:source-exports".',
+		);
+		expect(failures).toContain(
+			'verify:pre-commit is missing "bun run check:api-report".',
 		);
 		expect(failures).toContain(
 			'verify:pre-commit is missing "bun run check:consumer-boundaries".',

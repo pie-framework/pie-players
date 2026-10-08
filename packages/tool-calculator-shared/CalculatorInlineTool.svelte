@@ -2,7 +2,6 @@
 	import {
 		connectToolRuntimeContext,
 		connectToolShellContext,
-		createScopedToolId,
 		type AssessmentToolkitRuntimeContext,
 		type AssessmentToolkitShellContext,
 		type ToolCoordinatorApi,
@@ -10,6 +9,12 @@
 	import { resolveInterfaceI18n } from '@pie-players/pie-players-shared/i18n/provider';
 	import type { MessageKey } from '@pie-players/pie-players-shared/i18n/types';
 	import { untrack } from 'svelte';
+	import {
+		canOpenInlineCalculator,
+		inlineCalculatorInstanceId,
+		resolveInlineCalculatorTarget,
+		toggleInlineCalculator,
+	} from './inline-calculator-target.js';
 
 	let {
 		targetToolId = '',
@@ -24,7 +29,6 @@
 	} = $props();
 
 	const isBrowser = typeof window !== 'undefined';
-	const CALCULATOR_TOOL_ID = 'calculator';
 	const UNRESOLVED_TARGET_WARNING_DELAY_MS = 1000;
 	const CALCULATOR_VARIANTS = ['basic', 'scientific', 'graphing'] as const;
 	type CalculatorVariant = (typeof CALCULATOR_VARIANTS)[number];
@@ -53,12 +57,14 @@
 	let runtimeContext = $state<AssessmentToolkitRuntimeContext | null>(null);
 	let shellContext = $state<AssessmentToolkitShellContext | null>(null);
 	let calculatorVisible = $state(false);
+	let requestable = $state(false);
 	let statusMessage = $state('');
 
 	const interfaceI18n = $derived(resolveInterfaceI18n(runtimeContext));
 	const coordinator = $derived(
 		runtimeContext?.toolCoordinator as ToolCoordinatorApi | undefined,
 	);
+	const toolkitCoordinator = $derived(runtimeContext?.toolkitCoordinator ?? null);
 	const supportedTypes = $derived(
 		new Set(
 			availableTypes
@@ -77,14 +83,10 @@
 	);
 	const variantKeys = $derived(CALCULATOR_KEYS[variant]);
 	const calculatorName = $derived(interfaceI18n.t(variantKeys.name));
-	// The item toolbar registers its calculator under the item's scoped id, the
-	// same scope ItemToolBar derives from the enclosing shell.
-	const effectiveTargetToolId = $derived.by((): string | null => {
-		if (targetToolId) return targetToolId;
-		if (shellContext?.kind !== 'item') return null;
-		const scopeId = shellContext.canonicalItemId || shellContext.itemId;
-		return scopeId ? createScopedToolId(CALCULATOR_TOOL_ID, 'item', scopeId) : null;
-	});
+	// Opening goes through the target toolbar's tool request, so the button offers
+	// only a calculator that toolbar renders under its policy.
+	const target = $derived(resolveInlineCalculatorTarget(targetToolId, shellContext));
+	const effectiveTargetToolId = $derived(target ? inlineCalculatorInstanceId(target) : null);
 	const sizeClass = $derived(
 		size === 'sm'
 			? 'pie-tool-calculator-inline__button--sm'
@@ -119,10 +121,38 @@
 		if (!isBrowser || !coordinator || effectiveTargetToolId) return;
 		const timer = setTimeout(() => {
 			console.warn(
-				'[pie-tool-calculator-inline] No calculator to toggle: place the button inside <pie-item-scope>, or set target-tool-id to the calculator tool id.',
+				targetToolId
+					? `[pie-tool-calculator-inline] target-tool-id "${targetToolId}" is not a scoped tool id of the form <toolId>:<section|item|passage>:<scopeId>.`
+					: '[pie-tool-calculator-inline] No calculator to toggle: place the button inside <pie-item-scope>, or set target-tool-id to the calculator tool id.',
 			);
 		}, UNRESOLVED_TARGET_WARNING_DELAY_MS);
 		return () => clearTimeout(timer);
+	});
+
+	// Whether the target toolbar hosts the calculator. Toolbars come and go, a
+	// policy change moves what they host, and a toolbar whose calculator failed to
+	// load re-announces the targets. The policy re-check waits a microtask, so it
+	// reads the toolbar's visible set after the toolbar has followed the change.
+	$effect(() => {
+		const nextCoordinator = toolkitCoordinator;
+		const nextTarget = target;
+		if (!isBrowser || !nextCoordinator || !nextTarget) {
+			requestable = false;
+			return;
+		}
+		let disposed = false;
+		const update = () => {
+			if (disposed) return;
+			requestable = canOpenInlineCalculator(nextCoordinator, nextTarget);
+		};
+		const unsubscribeTargets = nextCoordinator.onToolRequestTargetsChange?.(update);
+		const unsubscribePolicy = nextCoordinator.onPolicyChange?.(() => queueMicrotask(update));
+		untrack(update);
+		return () => {
+			disposed = true;
+			unsubscribeTargets?.();
+			unsubscribePolicy?.();
+		};
 	});
 
 	$effect(() => {
@@ -139,17 +169,13 @@
 	});
 
 	function handleToggle(): void {
-		if (!coordinator || !effectiveTargetToolId) return;
-		const wasVisible = coordinator.isToolVisible(effectiveTargetToolId);
-		// The item toolbar registers its calculator on first activation, without an
-		// element; registering the same way lets this button be the first to open it.
-		if (!coordinator.getToolState(effectiveTargetToolId)) {
-			coordinator.registerTool(effectiveTargetToolId, effectiveTargetToolId.split(':')[0]);
+		if (!coordinator || !toolkitCoordinator || !target) return;
+		const result = toggleInlineCalculator(coordinator, toolkitCoordinator, target);
+		if (result === 'unavailable') {
+			requestable = false;
+			return;
 		}
-		coordinator.toggleTool(effectiveTargetToolId);
-		statusMessage = interfaceI18n.t(
-			wasVisible ? variantKeys.closed : variantKeys.opened,
-		);
+		statusMessage = interfaceI18n.t(result === 'opened' ? variantKeys.opened : variantKeys.closed);
 	}
 </script>
 
@@ -164,7 +190,7 @@
 			aria-pressed={calculatorVisible}
 			title={calculatorName}
 			data-calculator-type={effectiveCalculatorType}
-			disabled={!coordinator || !effectiveTargetToolId}
+			disabled={!coordinator || !requestable}
 		>
 			<svg
 				xmlns="http://www.w3.org/2000/svg"

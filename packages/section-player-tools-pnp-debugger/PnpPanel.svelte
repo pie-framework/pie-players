@@ -26,6 +26,7 @@
 	import { createEmptyPersonalNeedsProfile } from '@pie-players/pie-assessment-toolkit';
 	import {
 		createPatchedPnpProfile,
+		createSimulatedAssessment,
 		derivePnpPanelData,
 		resolveSectionToolIds,
 		TOOL_PLACEMENT_LEVELS,
@@ -54,7 +55,6 @@
 	}: Props = $props();
 
 	let floatingTools = $state<string[]>([]);
-	let simulatedPnpProfile = $state<Record<string, unknown> | null>(null);
 	let pnpEnforcementSelection = $state<PnpEnforcementSelection>('auto');
 	// Bumped from `coordinator.onPolicyChange(...)` so the
 	// `pnpPanelData` derivation re-runs whenever the engine inputs
@@ -92,18 +92,10 @@
 	// debugger surface as of M8. The panel keeps its PNP-focused
 	// chrome (title, profile card) but also surfaces the broader
 	// per-tool feature trails the engine emits.
-	let effectiveSectionData = $derived.by(() => {
-		if (!simulatedPnpProfile) return sectionData;
-		return {
-			...(sectionData || {}),
-			personalNeedsProfile: simulatedPnpProfile
-		};
-	});
-
 	let pnpPanelData = $derived.by(() => {
 		void policyVersion;
 		return derivePnpPanelData({
-			sectionData: effectiveSectionData,
+			sectionData,
 			roleType,
 			floatingTools,
 			defaultPnpProfile: createEmptyPersonalNeedsProfile(),
@@ -146,13 +138,17 @@
 		policyVersion += 1;
 	}
 
+	// Edits the profile of the bound assessment and nothing else, so the host's
+	// district policy, test administration and tool configs stay bound.
 	function updateSimulatedAssessment(profile: Record<string, unknown>) {
-		simulatedPnpProfile = profile;
-		toolkitCoordinator?.updateAssessment?.({
-			...(sectionData || {}),
-			id: sectionData?.id || sectionData?.identifier || 'debug-section',
-			personalNeedsProfile: profile
-		});
+		const coordinator = toolkitCoordinator as PolicyPanelCoordinator | null;
+		coordinator?.updateAssessment?.(
+			createSimulatedAssessment(
+				coordinator.getPolicyInputs?.()?.assessment,
+				sectionData,
+				profile
+			)
+		);
 		policyVersion += 1;
 	}
 

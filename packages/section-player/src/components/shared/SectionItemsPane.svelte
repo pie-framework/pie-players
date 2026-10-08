@@ -66,6 +66,7 @@
 		getCanonicalItemId,
 		getFormativeItemView,
 		getItemPlayerParams,
+		getItemSettings,
 		getTimedMediaItemView,
 		type HeadingLevel,
 	} from "./section-player-view-state.js";
@@ -750,6 +751,7 @@
 			itemCount={items.length}
 			isCurrent={itemIndex === currentItemIndex}
 			{canonicalItemId}
+			itemSettings={getItemSettings({ compositionModel, item })}
 			{baseHeadingLevel}
 			playerParams={getItemPlayerParams({
 				item,

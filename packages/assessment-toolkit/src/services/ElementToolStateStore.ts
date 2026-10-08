@@ -21,6 +21,14 @@ export interface ElementIdComponents {
 	elementId: string;
 }
 
+function escapeIdPart(part: string): string {
+	return part.replace(/%/g, "%25").replace(/:/g, "%3A");
+}
+
+function unescapeIdPart(part: string): string {
+	return part.replace(/%(25|3A)/g, (_, code) => (code === "25" ? "%" : ":"));
+}
+
 export class ElementToolStateStore {
 	private elementStates = new Map<string, Map<string, any>>();
 	private listeners = new Set<(state: Map<string, Map<string, any>>) => void>();
@@ -30,7 +38,9 @@ export class ElementToolStateStore {
 
 	/**
 	 * Generates a globally unique element ID by combining assessment, section, item, and element IDs.
-	 * Format: `${assessmentId}:${sectionId}:${itemId}:${elementId}`
+	 * Format: `${assessmentId}:${sectionId}:${itemId}:${elementId}`, each part with
+	 * `%` written as `%25` and `:` as `%3A`, so an id containing `:` round-trips
+	 * and cannot collide with another split of the same characters.
 	 *
 	 * @example
 	 * getGlobalElementId('demo-assessment', 'section-1', 'q1', 'mc1')
@@ -42,7 +52,9 @@ export class ElementToolStateStore {
 		itemId: string,
 		elementId: string,
 	): string {
-		return `${assessmentId}:${sectionId}:${itemId}:${elementId}`;
+		return [assessmentId, sectionId, itemId, elementId]
+			.map(escapeIdPart)
+			.join(":");
 	}
 
 	/**
@@ -55,12 +67,9 @@ export class ElementToolStateStore {
 	parseGlobalElementId(globalElementId: string): ElementIdComponents | null {
 		const parts = globalElementId.split(":");
 		if (parts.length !== 4) return null;
-		return {
-			assessmentId: parts[0],
-			sectionId: parts[1],
-			itemId: parts[2],
-			elementId: parts[3],
-		};
+		const [assessmentId, sectionId, itemId, elementId] =
+			parts.map(unescapeIdPart);
+		return { assessmentId, sectionId, itemId, elementId };
 	}
 
 	/**
@@ -135,7 +144,11 @@ export class ElementToolStateStore {
 
 	private _notifyListeners(): void {
 		for (const listener of this.listeners) {
-			listener(this.elementStates);
+			try {
+				listener(this.elementStates);
+			} catch (error) {
+				console.warn("[ElementToolStateStore] listener failed:", error);
+			}
 		}
 	}
 
@@ -152,8 +165,11 @@ export class ElementToolStateStore {
 	}
 
 	private _notifyStateChange(): void {
-		if (this.onStateChange) {
+		if (!this.onStateChange) return;
+		try {
 			this.onStateChange(this.getAllState());
+		} catch (error) {
+			console.warn("[ElementToolStateStore] state-change callback failed:", error);
 		}
 	}
 
@@ -205,7 +221,7 @@ export class ElementToolStateStore {
 	 * @param sectionId Section identifier
 	 */
 	clearSection(assessmentId: string, sectionId: string): void {
-		const prefix = `${assessmentId}:${sectionId}:`;
+		const prefix = `${escapeIdPart(assessmentId)}:${escapeIdPart(sectionId)}:`;
 		const keysToDelete: string[] = [];
 		for (const key of this.elementStates.keys()) {
 			if (key.startsWith(prefix)) {

@@ -3,7 +3,8 @@
  * `docs/tools-and-accomodations/architecture.md`.
  *
  * Wraps `composeDecision(...)` with engine-instance state:
- *   - bound inputs (`tools`, `assessment`, `currentItemRef`, ...)
+ *   - bound inputs (`tools`, `assessment`, `pnpEnforcement`) and the
+ *     settings of the mounted items
  *   - registered custom `PolicySource`s
  *   - `onPolicyChange` subscriber bus
  *   - `dispose()` clean-up
@@ -16,7 +17,7 @@
 
 import type {
 	AssessmentEntity,
-	AssessmentItemRef,
+	ItemSettings,
 } from "@pie-players/pie-players-shared/types";
 
 import type {
@@ -32,6 +33,7 @@ import type { ToolRegistry } from "../../services/ToolRegistry.js";
 import type {
 	ToolPolicyDecision,
 	ToolPolicyDecisionRequest,
+	ToolScope,
 } from "./decision-types.js";
 import type { PolicySource } from "./PolicySource.js";
 import type { FeaturePolicyDecision } from "./feature-decision.js";
@@ -41,27 +43,30 @@ import {
 } from "./feature-decision.js";
 import { composeDecision } from "./compose-decision.js";
 import { resolveDefaultPnpEnforcement } from "./pnp-policy-inputs.js";
-import { PnpPolicySource } from "../sources/PnpPolicySource.js";
+import { structurallyEqual } from "../../utils/structural-equality.js";
+import {
+	type PnpPolicyItem,
+	PnpPolicySource,
+} from "../sources/PnpPolicySource.js";
 
 export type PnpEnforcementMode = "on" | "off";
 
 export interface ToolPolicyEngineInputs {
 	tools?: CanonicalToolsConfig | null;
 	assessment?: AssessmentEntity | null;
-	currentItemRef?: AssessmentItemRef | null;
 	/**
-	 * Explicit PNP/profile override. When omitted (or `undefined`), the engine
-	 * defaults to {@link resolveDefaultPnpEnforcement} over the bound
-	 * `assessment` and `currentItemRef`: `"on"` if they carry any
-	 * PNP/profile policy material (PNP, district policy, test
-	 * administration, item-level required/restricted/parameters),
+	 * Explicit PNP/profile override; `null` or omitted is auto-mode. Auto-mode
+	 * resolves per decision through {@link resolveDefaultPnpEnforcement}: `"on"`
+	 * when the bound `assessment` carries PNP/profile policy material (PNP,
+	 * district policy, test administration), and for a decision scoped to an item
+	 * also when that item's settings carry required/restricted/parameters;
 	 * `"off"` otherwise. `tests/policy/pnp-default-on.test.ts` locks the rule.
 	 *
 	 * Hosts that want to force a mode pass `"on"` or `"off"`
 	 * explicitly. Embedded under `<pie-section-player-*>` the preferred
 	 * override flows through `runtime.tools.pnpEnforcement`.
 	 */
-	pnpEnforcement?: PnpEnforcementMode;
+	pnpEnforcement?: PnpEnforcementMode | null;
 }
 
 export interface ToolPolicyEngineArgs {
@@ -73,9 +78,14 @@ export interface ToolPolicyEngineArgs {
 }
 
 export interface ToolPolicyChangeEvent {
-	/** What changed in this update. */
+	/**
+	 * What changed in this update. `"item-settings"` is a mounted item's
+	 * settings changing: it can change which tools that item's own toolbar
+	 * shows, and nothing else a toolbar renders.
+	 */
 	reason:
 		| "inputs"
+		| "item-settings"
 		| "policy-source-added"
 		| "policy-source-removed"
 		| "pnp-enforcement"
@@ -87,7 +97,10 @@ export interface ToolPolicyChangeEvent {
 export interface ResolvedEngineInputs {
 	tools: CanonicalToolsConfig;
 	assessment: AssessmentEntity | null;
-	currentItemRef: AssessmentItemRef | null;
+	/**
+	 * The mode a decision not scoped to an item applies. In auto-mode an
+	 * item-scoped decision also turns on for its item's settings.
+	 */
 	pnpEnforcement: PnpEnforcementMode;
 }
 
@@ -108,8 +121,15 @@ export class ToolPolicyEngine {
 
 	private tools: CanonicalToolsConfig;
 	private assessment: AssessmentEntity | null;
-	private currentItemRef: AssessmentItemRef | null;
-	private pnpEnforcement: PnpEnforcementMode;
+	private pnpEnforcementOverride: PnpEnforcementMode | null;
+	/**
+	 * Mounted items' settings by canonical item id, newest registration last;
+	 * see {@link registerItemSettings}.
+	 */
+	private readonly itemSettings = new Map<
+		string,
+		Array<{ settings: ItemSettings }>
+	>();
 	private disposed = false;
 
 	constructor(args: ToolPolicyEngineArgs) {
@@ -121,13 +141,7 @@ export class ToolPolicyEngine {
 		const inputs = args.inputs ?? {};
 		this.tools = inputs.tools ?? DEFAULT_TOOLS;
 		this.assessment = inputs.assessment ?? null;
-		this.currentItemRef = inputs.currentItemRef ?? null;
-		this.pnpEnforcement =
-			inputs.pnpEnforcement ??
-			resolveDefaultPnpEnforcement({
-				assessment: this.assessment,
-				currentItemRef: this.currentItemRef,
-			});
+		this.pnpEnforcementOverride = inputs.pnpEnforcement ?? null;
 	}
 
 	/**
@@ -144,24 +158,82 @@ export class ToolPolicyEngine {
 	 * values even though the policy decision itself is identical.
 	 * Hosts that want timestamp-stable provenance should reuse a
 	 * cached `ToolPolicyDecision` rather than re-call `decide(...)`.
+	 *
+	 * An item's registered settings apply to the item's own toolbar: a request
+	 * at item level whose scope is the item. A section- or assessment-level
+	 * request leaves every item's settings out, and reports each tool on its
+	 * toolbar that one restricts or requires as
+	 * `tool-policy.itemSettingNotApplied`.
 	 */
 	decide(request: ToolPolicyDecisionRequest): ToolPolicyDecision {
 		this.assertNotDisposed();
 		const requestContextId = request.scope.scopeId
 			? `${this.contextId}:${request.level}:${request.scope.scopeId}`
 			: `${this.contextId}:${request.level}`;
+		const item =
+			request.level === "item" ? this.itemForScope(request.scope) : undefined;
+		const shared =
+			request.level === "section" ||
+			request.scope.level === "section" ||
+			request.scope.level === "assessment";
 		return composeDecision({
 			request,
 			tools: this.tools,
 			pnpPolicy: {
 				source: this.pnpPolicySource,
 				assessment: this.assessment ?? undefined,
-				currentItemRef: this.currentItemRef ?? undefined,
-				enforcement: this.pnpEnforcement,
+				item,
+				enforcement: this.enforcementFor(item),
 			},
+			unappliedItems: shared ? this.enforcedItems() : undefined,
 			customSources: this.customSources,
 			contextId: requestContextId,
 		});
+	}
+
+	/**
+	 * Whether some surface is granted `featureId`: a decision with no item scope,
+	 * or one scoped to a registered item. A provider serves every surface, so its
+	 * failure denies the accommodation wherever one surface is granted it.
+	 */
+	grantsFeatureAnywhere(featureId: string): boolean {
+		if (this.decideFeature(featureId).granted) return true;
+		for (const id of this.itemSettings.keys()) {
+			if (this.decideFeature(featureId, { level: "item", scopeId: id }).granted) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	/**
+	 * File a mounted item's settings under its canonical id. They govern the
+	 * decisions scoped to that item: its own toolbar, and a feature its content
+	 * asks about with the item's scope. See {@link decide}.
+	 *
+	 * The same item mounted twice registers twice; the newest registration
+	 * applies, and its cleanup hands the item back to the one before. Emits an
+	 * `"item-settings"` change whenever the settings that apply to the item
+	 * change.
+	 */
+	registerItemSettings(itemId: string, settings: ItemSettings): () => void {
+		this.assertNotDisposed();
+		const entry = { settings };
+		const before = this.itemSettingsFor(itemId);
+		const entries = this.itemSettings.get(itemId) ?? [];
+		entries.push(entry);
+		this.itemSettings.set(itemId, entries);
+		this.emitIfItemSettingsChanged(itemId, before);
+		return () => {
+			if (this.disposed) return;
+			const current = this.itemSettings.get(itemId);
+			const index = current?.indexOf(entry) ?? -1;
+			if (!current || index < 0) return;
+			const previous = this.itemSettingsFor(itemId);
+			current.splice(index, 1);
+			if (current.length === 0) this.itemSettings.delete(itemId);
+			this.emitIfItemSettingsChanged(itemId, previous);
+		};
 	}
 
 	/**
@@ -186,8 +258,11 @@ export class ToolPolicyEngine {
 	 * The decision reports whether an assessment was bound, which is the engine's
 	 * to answer rather than the policy source's — see
 	 * {@link FeaturePolicyDecision.assessmentBound}.
+	 *
+	 * `scope` is the surface asking. An item's scope brings in the item's
+	 * registered settings, as {@link decide} does for the item's toolbar.
 	 */
-	decideFeature(featureId: string): FeaturePolicyDecision {
+	decideFeature(featureId: string, scope?: ToolScope): FeaturePolicyDecision {
 		this.assertNotDisposed();
 		const hostDenial = this.hostFeatureGate(featureId);
 		if (hostDenial) return hostDenial;
@@ -195,7 +270,7 @@ export class ToolPolicyEngine {
 			featureId,
 			this.pnpPolicySource.resolveFeature(featureId, {
 				assessment: this.assessment ?? undefined,
-				currentItemRef: this.currentItemRef ?? undefined,
+				item: this.itemForScope(scope),
 			}),
 			// `resolveFeature` takes the assessment as `undefined` either way, so the
 			// source cannot tell an unbound host from one whose profile is silent.
@@ -242,17 +317,14 @@ export class ToolPolicyEngine {
 	/**
 	 * Apply a partial input update.
 	 *
-	 * Each key is value-diffed via `Object.is` before storing, so callers
-	 * may safely re-push the same reference (e.g. on Svelte effect
-	 * re-runs caused by unrelated tracked reads): no-op patches do not
-	 * fire `onPolicyChange` listeners. This contract is relied on by
-	 * `PieAssessmentToolkit.svelte`'s prop-forwarding effect and by the
-	 * coordinator's `decideToolPolicy()` tests.
+	 * A key that did not change does not fire `onPolicyChange` listeners.
+	 * `tools` is diffed with `Object.is`. `assessment` is diffed structurally,
+	 * because hosts rebuild it from their own state on every render; the latest
+	 * reference is stored either way.
 	 *
-	 * `pnpEnforcement` is stored on its own field and always emits with
-	 * a distinct `"pnp-enforcement"` reason when no other key changed,
-	 * so PR 4's auto-on flip can target that reason without a separate
-	 * event channel.
+	 * `pnpEnforcement` sets the override, `null` or `undefined` returning to
+	 * auto-mode, and emits with a distinct `"pnp-enforcement"` reason when no
+	 * other key changed.
 	 */
 	updateInputs(patch: Partial<ToolPolicyEngineInputs>): void {
 		this.assertNotDisposed();
@@ -267,21 +339,13 @@ export class ToolPolicyEngine {
 		}
 		if ("assessment" in patch) {
 			const next = patch.assessment ?? null;
-			if (!Object.is(this.assessment, next)) {
-				this.assessment = next;
-				changed = true;
-			}
+			if (!structurallyEqual(this.assessment, next)) changed = true;
+			this.assessment = next;
 		}
-		if ("currentItemRef" in patch) {
-			const next = patch.currentItemRef ?? null;
-			if (!Object.is(this.currentItemRef, next)) {
-				this.currentItemRef = next;
-				changed = true;
-			}
-		}
-		if ("pnpEnforcement" in patch && patch.pnpEnforcement) {
-			if (this.pnpEnforcement !== patch.pnpEnforcement) {
-				this.pnpEnforcement = patch.pnpEnforcement;
+		if ("pnpEnforcement" in patch) {
+			const next = patch.pnpEnforcement ?? null;
+			if (this.pnpEnforcementOverride !== next) {
+				this.pnpEnforcementOverride = next;
 				pnpChanged = true;
 			}
 		}
@@ -349,6 +413,7 @@ export class ToolPolicyEngine {
 			inputs: this.snapshotInputs(),
 		});
 		this.listeners.clear();
+		this.itemSettings.clear();
 		this.customSources.length = 0;
 	}
 
@@ -356,9 +421,55 @@ export class ToolPolicyEngine {
 		return Object.freeze({
 			tools: this.tools,
 			assessment: this.assessment,
-			currentItemRef: this.currentItemRef,
-			pnpEnforcement: this.pnpEnforcement,
+			pnpEnforcement: this.enforcementFor(),
 		});
+	}
+
+	/** The override, else auto-mode over the assessment and `item`'s settings. */
+	private enforcementFor(item?: PnpPolicyItem): PnpEnforcementMode {
+		return (
+			this.pnpEnforcementOverride ??
+			resolveDefaultPnpEnforcement({
+				assessment: this.assessment,
+				itemSettings: item?.settings,
+			})
+		);
+	}
+
+	/** The settings that apply to `itemId`: its newest registration's. */
+	private itemSettingsFor(itemId: string): ItemSettings | undefined {
+		return this.itemSettings.get(itemId)?.at(-1)?.settings;
+	}
+
+	private emitIfItemSettingsChanged(
+		itemId: string,
+		before: ItemSettings | undefined,
+	): void {
+		if (structurallyEqual(before, this.itemSettingsFor(itemId))) return;
+		this.emit({ reason: "item-settings", inputs: this.snapshotInputs() });
+	}
+
+	/**
+	 * The registered item an item scope names, by its canonical id. A scope
+	 * of any other level names none.
+	 */
+	private itemForScope(scope: ToolScope | undefined): PnpPolicyItem | undefined {
+		if (scope?.level !== "item") return undefined;
+		const id = scope.canonicalItemId || scope.itemId || scope.scopeId;
+		const settings = id ? this.itemSettingsFor(id) : undefined;
+		return settings ? { id, settings } : undefined;
+	}
+
+	/** The registered items whose settings their own toolbar enforces. */
+	private enforcedItems(): PnpPolicyItem[] {
+		const items: PnpPolicyItem[] = [];
+		for (const id of this.itemSettings.keys()) {
+			const settings = this.itemSettingsFor(id);
+			if (!settings) continue;
+			const item = { id, settings };
+			if (this.enforcementFor(item) === "on") items.push(item);
+		}
+		return items;
 	}
 
 	private emit(event: ToolPolicyChangeEvent): void {

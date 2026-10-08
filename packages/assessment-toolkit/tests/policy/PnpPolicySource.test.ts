@@ -7,10 +7,7 @@
 
 import { describe, expect, test } from "bun:test";
 
-import type {
-	AssessmentEntity,
-	AssessmentItemRef,
-} from "@pie-players/pie-players-shared/types";
+import type { AssessmentEntity } from "@pie-players/pie-players-shared/types";
 
 import { PnpPolicySource } from "../../src/policy/sources/PnpPolicySource.js";
 import { ToolRegistry } from "../../src/services/ToolRegistry.js";
@@ -34,10 +31,10 @@ describe("PnpPolicySource — 6-level precedence", () => {
 				},
 				personalNeedsProfile: { supports: ["calculator"] },
 			} as AssessmentEntity,
-			currentItemRef: {
-				identifier: "i1",
+			item: {
+				id: "i1",
 				settings: { requiredTools: ["calculator"] },
-			} as AssessmentItemRef,
+			},
 		});
 		expect(result.blockedToolIds.has("calculator")).toBe(true);
 		expect(result.mandatedToolIds.has("calculator")).toBe(false);
@@ -64,16 +61,89 @@ describe("PnpPolicySource — 6-level precedence", () => {
 		).toBeDefined();
 	});
 
+	test("2. a test-admin override is evaluated when no other level names the id", () => {
+		const blocked = source().apply({
+			assessment: {
+				id: "a1",
+				settings: {
+					testAdministration: { toolOverrides: { calculator: false } },
+				},
+			} as AssessmentEntity,
+		});
+		expect(blocked.blockedToolIds.has("calculator")).toBe(true);
+
+		const enabled = source().apply({
+			assessment: {
+				id: "a1",
+				settings: {
+					testAdministration: { toolOverrides: { calculator: true } },
+				},
+			} as AssessmentEntity,
+		});
+		expect(enabled.decisions).toEqual([
+			expect.objectContaining({
+				featureId: "calculator",
+				rule: "test-admin-override",
+				action: "enable",
+				precedence: 2,
+			}),
+		]);
+		expect(enabled.perToolFlags.get("calculator")).toMatchObject({
+			required: false,
+			rule: "test-admin-override",
+		});
+	});
+
+	test("2. a test-admin enable outranks item restriction and PNP prohibition", () => {
+		const s = source();
+		const args = {
+			assessment: {
+				id: "a1",
+				personalNeedsProfile: {
+					supports: [],
+					prohibitedSupports: ["calculator"],
+				},
+				settings: {
+					testAdministration: { toolOverrides: { calculator: true } },
+				},
+			} as AssessmentEntity,
+			item: {
+				id: "i1",
+				settings: { restrictedTools: ["calculator"] },
+			},
+		};
+		const result = s.apply(args);
+		expect(result.blockedToolIds.has("calculator")).toBe(false);
+		expect(s.resolveFeature("calculator", args).decisions[0]).toMatchObject({
+			rule: "test-admin-override",
+			action: "enable",
+		});
+	});
+
+	test("1. a district block outranks a test-admin enable", () => {
+		const result = source().apply({
+			assessment: {
+				id: "a1",
+				settings: {
+					districtPolicy: { blockedTools: ["calculator"] },
+					testAdministration: { toolOverrides: { calculator: true } },
+				},
+			} as AssessmentEntity,
+		});
+		expect(result.blockedToolIds.has("calculator")).toBe(true);
+		expect(result.decisions[0]?.rule).toBe("district-block");
+	});
+
 	test("3. item-restriction beats item-requirement", () => {
 		const result = source().apply({
 			assessment: { id: "a1" } as AssessmentEntity,
-			currentItemRef: {
-				identifier: "i1",
+			item: {
+				id: "i1",
 				settings: {
 					requiredTools: ["calculator"],
 					restrictedTools: ["calculator"],
 				},
-			} as AssessmentItemRef,
+			},
 		});
 		expect(result.blockedToolIds.has("calculator")).toBe(true);
 		expect(result.mandatedToolIds.has("calculator")).toBe(false);
@@ -82,10 +152,10 @@ describe("PnpPolicySource — 6-level precedence", () => {
 	test("4. item-requirement marks the tool required + mandated", () => {
 		const result = source().apply({
 			assessment: { id: "a1" } as AssessmentEntity,
-			currentItemRef: {
-				identifier: "i1",
+			item: {
+				id: "i1",
 				settings: { requiredTools: ["calculator"] },
-			} as AssessmentItemRef,
+			},
 		});
 		expect(result.blockedToolIds.has("calculator")).toBe(false);
 		expect(result.mandatedToolIds.has("calculator")).toBe(true);

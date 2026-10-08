@@ -33,12 +33,12 @@ A draggable and rotatable protractor overlay tool for geometry and measurement q
 ```
 
 Inside a toolkit runtime context, the element takes the ToolCoordinator from
-that context and registers `toolId` on `ZIndexLayer.TOOL`. The coordinator then
-displays the element only while `toolId` is visible there, so the host shows the
-tool through the coordinator as well as through `visible`. The packaged
-`protractor` toolbar capability in `@pie-players/pie-default-tool-loaders` does
-both: its button toggles the tool in the coordinator and its sync sets
-`visible`.
+that context and registers `toolId` on `ZIndexLayer.TOOL`, where it stacks among
+the other non-modal tools. `visible` shows and hides the element; the
+coordinator holds the tool's on/off state, which the toolbar button reflects.
+The packaged `protractor` toolbar capability in
+`@pie-players/pie-default-tool-loaders` keeps the two in step: its button
+toggles the tool in the coordinator and its sync sets `visible`.
 
 ## Props
 

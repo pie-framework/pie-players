@@ -136,7 +136,8 @@ Preconditions for any mode beyond `mathml`:
 - `@pie-players/pie-context` exports the key and value type. An element may depend on
   `pie-context`, which has no dependencies, and never depends on the toolkit.
 - The toolkit provides the context from `PieAssessmentToolkit`, beside its runtime contexts, and
-  republishes it on `updateAssessment` and `updateCurrentItemRef`. With no assessment bound,
+  republishes it on a policy change. A provider in an item's shell decides with the item's
+  scope, so the item's settings apply to its content. With no assessment bound,
   `decideFeaturePolicy` declines every capability, so `supports` is empty and consumers use their
   defaults.
 - The math adapter requests the context from the element it renders.

@@ -16,6 +16,7 @@
  * name it reported errors under, which is now {@link ToolSurfaceHostOptions.hostLabel}.
  */
 
+import type { ToolScope } from "../policy/core/decision-types.js";
 import { isHostDeniedFeature } from "../policy/core/feature-decision.js";
 import type {
 	CatalogOwnerSnapshot,
@@ -43,6 +44,20 @@ export type ToolSurfaceScope =
 			assessmentId: string;
 			sectionId: string;
 	  };
+
+/**
+ * The scope an item's content asks feature policy with, which brings in the
+ * item's settings; other owners ask unscoped.
+ */
+function itemFeatureScope(owner: CatalogOwnerContext): ToolScope | undefined {
+	if (owner.ownerKind !== "itemModel") return undefined;
+	return {
+		level: "item",
+		scopeId: owner.canonicalItemId || owner.itemId,
+		itemId: owner.itemId,
+		canonicalItemId: owner.canonicalItemId,
+	};
+}
 
 export interface ToolSurfaceHostInput {
 	anchor: HTMLElement | null;
@@ -375,6 +390,7 @@ export function createToolSurfaceHost(
 	): EligibleCapability | null {
 		if (current.scope.kind !== "content") return null;
 		const coordinator = current.services.toolkitCoordinator;
+		const featureScope = itemFeatureScope(current.scope.ownerContext);
 		const [resolved] = resolveContentCapabilities({
 			registrations: [registration],
 			catalogs,
@@ -385,7 +401,10 @@ export function createToolSurfaceHost(
 			// own, because a host gate and an unconfigured feature are both
 			// `granted: false` and only one of them may be reopened by content.
 			policyFor: (supportId) => {
-				const decision = coordinator?.decideFeaturePolicy?.(supportId);
+				const decision = coordinator?.decideFeaturePolicy?.(
+					supportId,
+					featureScope,
+				);
 				if (isHostDeniedFeature(decision)) return { outcome: "denied" };
 				if (decision?.granted === true) {
 					return { outcome: "granted", parameters: decision.parameters };

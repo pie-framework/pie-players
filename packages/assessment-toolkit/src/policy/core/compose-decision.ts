@@ -12,16 +12,14 @@
  * `tests/policy/compose-decision.test.ts` lock the orchestration in.
  */
 
-import type {
-	AssessmentEntity,
-	AssessmentItemRef,
-} from "@pie-players/pie-players-shared/types";
+import type { AssessmentEntity } from "@pie-players/pie-players-shared/types";
 
 import {
 	type CanonicalToolsConfig,
 	normalizeToolList,
 } from "../../services/tools-config-normalizer.js";
 import type {
+	ItemSettingNotAppliedDetails,
 	RequiredToolBlockedDetails,
 	ToolPolicyDecision,
 	ToolPolicyDecisionRequest,
@@ -32,7 +30,10 @@ import type {
 import type { PolicySource } from "./PolicySource.js";
 import type { PolicySourceTag } from "./policy-source-tag.js";
 import { ToolPolicyProvenanceBuilder } from "./provenance.js";
-import type { PnpPolicySource } from "../sources/PnpPolicySource.js";
+import type {
+	PnpPolicyItem,
+	PnpPolicySource,
+} from "../sources/PnpPolicySource.js";
 
 export interface ComposeDecisionInputs {
 	request: ToolPolicyDecisionRequest;
@@ -40,7 +41,8 @@ export interface ComposeDecisionInputs {
 	pnpPolicy: {
 		source: PnpPolicySource | null;
 		assessment?: AssessmentEntity;
-		currentItemRef?: AssessmentItemRef;
+		/** The item an item-scoped decision is for; see {@link PnpPolicyItem}. */
+		item?: PnpPolicyItem;
 		/**
 		 * "on" applies the PNP/profile precedence rules; "off" skips step 5
 		 * entirely. Defaults to "on" when an assessment is present
@@ -48,6 +50,13 @@ export interface ComposeDecisionInputs {
 		 */
 		enforcement: "on" | "off";
 	};
+	/**
+	 * Mounted items whose settings this decision leaves out: set for a section-
+	 * or assessment-level toolbar. A tool on that toolbar that one of them
+	 * restricts or requires gets a `tool-policy.itemSettingNotApplied`
+	 * diagnostic.
+	 */
+	unappliedItems?: readonly PnpPolicyItem[];
 	customSources: readonly PolicySource[];
 	/** Stable identifier used as the provenance `contextId`. */
 	contextId: string;
@@ -165,11 +174,11 @@ export function composeDecision(
 	if (
 		pnpPolicy.enforcement === "on" &&
 		pnpPolicy.source &&
-		(pnpPolicy.assessment || pnpPolicy.currentItemRef)
+		(pnpPolicy.assessment || pnpPolicy.item)
 	) {
 		pnpPolicyResult = pnpPolicy.source.apply({
 			assessment: pnpPolicy.assessment,
-			currentItemRef: pnpPolicy.currentItemRef,
+			item: pnpPolicy.item,
 		});
 
 		if (pnpPolicyResult.sources.assessment) {
@@ -352,6 +361,30 @@ export function composeDecision(
 			if (!refinedSet.has(toolId)) {
 				sourcesByTool.delete(toolId);
 			}
+		}
+	}
+
+	// Step 7 — item settings a shared toolbar does not apply. Placement is the
+	// host's section-wide choice, so the tool stays; the diagnostic says where to
+	// place it for the item setting to hold.
+	for (const toolId of candidates) {
+		for (const item of inputs.unappliedItems ?? []) {
+			const settings = (["restrictedTools", "requiredTools"] as const).filter(
+				(key) => item.settings[key]?.includes(toolId) === true,
+			);
+			if (settings.length === 0) continue;
+			const details: ItemSettingNotAppliedDetails = {
+				itemId: item.id,
+				settings,
+				toolbarLevel: request.scope.level,
+			};
+			diagnostics.push({
+				code: "tool-policy.itemSettingNotApplied",
+				level: request.level,
+				toolId,
+				message: `Item "${item.id}" names "${toolId}" in ${settings.join(" and ")}, but "${toolId}" is on the ${request.scope.level}-level toolbar, which item settings do not reach. Place "${toolId}" at item level to enforce the setting per item.`,
+				details,
+			});
 		}
 	}
 

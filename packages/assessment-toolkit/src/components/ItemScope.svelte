@@ -10,6 +10,7 @@
 			scopeElement: { type: "Object", reflect: false },
 			ttsHighlightTargetResolver: { type: "Object", reflect: false },
 			item: { type: "Object", reflect: false },
+			settings: { type: "Object", reflect: false },
 		},
 	}}
 />
@@ -20,6 +21,12 @@
 	 * a host's own item player: the item's identity, the region its tools act on,
 	 * and its registration with the toolkit, which files the item's accessibility
 	 * catalogs.
+	 *
+	 * `settings` is the item's policy settings (`requiredTools`,
+	 * `restrictedTools`, `toolParameters`), registered with the item. They
+	 * govern only decisions scoped to this item: its own item-level toolbar, and
+	 * the feature decisions its content asks. A section player fills it from the
+	 * assessment's item reference; a host composing its own item player sets it.
 	 *
 	 * In a toolkit that holds a section the scope is also the item's channel to
 	 * it. Otherwise the host owns the item player and its events pass through
@@ -32,6 +39,7 @@
 	} from "../runtime/page-warnings.js";
 	import { createShellEventBridge } from "../runtime/shell-event-bridge.js";
 	import { createShellScope } from "../runtime/shell-scope.js";
+	import type { ItemSettings } from "@pie-players/pie-players-shared/types";
 	import type { TTSHighlightTargetResolver } from "../services/tts/highlight-target-resolver.js";
 
 	let {
@@ -42,6 +50,7 @@
 		scopeElement = null as HTMLElement | null,
 		ttsHighlightTargetResolver = null as TTSHighlightTargetResolver | null,
 		item = null as unknown,
+		settings = null as ItemSettings | null,
 	} = $props();
 
 	let anchor = $state<HTMLDivElement | null>(null);
@@ -110,6 +119,7 @@
 						scopeElement,
 						ttsHighlightTargetResolver,
 						item,
+						settings,
 					}
 				: null,
 		);

@@ -36,6 +36,8 @@
 	"nodeConsumerImportTargets": {
 		"nodeSafe": [
 			"@pie-players/pie-assessment-toolkit",
+			"@pie-players/pie-assessment-toolkit/runtime/engine",
+			"@pie-players/pie-assessment-toolkit/runtime/internal",
 			"@pie-players/pie-default-tool-loaders",
 			"@pie-players/pie-players-shared",
 			"@pie-players/pie-context",

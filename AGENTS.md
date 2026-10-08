@@ -107,7 +107,8 @@ registered under its own distinct tag.
   referenced `.svelte` files are available from publish/build output paths.
 - Consumer imports of package CE entrypoints resolve to built `dist` output.
   After changing package `src`, rebuild the changed package and direct `dist`
-  consumers before validating in a consumer app or tests.
+  consumers before validating in a consumer app or an e2e suite. Unit tests
+  resolve workspace siblings to source and need no rebuild (see Testing).
 - If a failure may be stale-artifact related, rebuild and rerun once before
   deeper debugging.
 - For split-panel scrolling behavior, mirror
@@ -356,10 +357,9 @@ default `testMatch` discovers both as well.
   `pathIgnorePatterns = ["**/*.spec.ts"]` keeps them out, where
   `@playwright/test`'s `test()` would otherwise throw on the missing worker
   fixtures. Bun reads that file from the current working directory only — no
-  walking up to the workspace root, and no `extends` — so the root has one and so
-  does every package holding Playwright specs. A new package that adds a spec
-  needs its own copy; the rationale stays in the root file, and the duplicated
-  content is the one glob.
+  walking up to the workspace root, and no `extends` — so the root has one, and
+  every package holding Playwright specs carries the glob in its own copy beside
+  the source preload below. The rationale stays in the root file.
 - **Playwright must not load bun tests.** Every `playwright.config.ts` sets
   `testMatch: /.*\.spec\.ts/`. This one is not cosmetic: a `*.test.ts` inside
   `testDir` imports `bun:test`, Playwright's Node loader rejects the `bun:`
@@ -372,6 +372,20 @@ Where two configs share one `testDir`, the narrower one owns its files by
 `testMatch` and the broader one excludes them by `testIgnore` —
 `packages/item-player`'s backend-demo specs need the `backend-demos` server and
 belong to `playwright.backend.config.ts`, so the main config ignores them.
+
+Unit tests resolve every `@pie-players/*` workspace sibling to its source, so a
+suite runs against the sibling's current code whether its `dist` is stale,
+missing or fresh. `test-support/workspace-sources.ts` maps each export to the
+file its build starts from. Bun loads the map through
+`test-support/bun-workspace-sources.ts`, which also compiles each `.svelte` file
+that source reaches with the options the package builds use; the root and every
+package running `bun test` preload it from their `bunfig.toml`. A Vitest package
+with tests and a workspace sibling sets `workspaceSourcesVitePlugin()` in its
+`vitest.config.ts`.
+`scripts/tests/workspace-sources.test.mjs` fails on a package missing either. A
+test of a built artifact builds its own package in its `test` script, as
+`tool-color-scheme` and `tool-calculator-shared` do, so `turbo test` and CI run
+no build before unit tests.
 
 The default `git push` pre-push hook runs `bun run verify:pre-push`, which is
 expected to run the full local PR gate and critical Playwright e2e suites.
@@ -412,13 +426,12 @@ skipped for a push whose commits only deleted files or were empty.
 
 ### Git Worktrees
 
-A fresh worktree needs `bun install` **and** `bun run build` before the gates
-pass. Without build artifacts `bun run check:cli` fails with `Cannot find module
-'@pie-players/pie-players-shared/loaders'`, because tests resolve a workspace
-sibling through its published `exports`. `bun run check` and `bun run typecheck`
-build the packages they resolve first (`dependsOn: ["^build"]` in `turbo.json`),
-and turbo caches both against those builds, so a commit or push that leaves a
-package and its dependencies unchanged replays that package's result.
+A fresh worktree needs `bun install` before the gates pass. Unit tests,
+`bun run check:cli` included, resolve workspace siblings to source and need no
+build. `bun run check` and `bun run typecheck` build the packages they resolve
+first (`dependsOn: ["^build"]` in `turbo.json`), and turbo caches both against
+those builds, so a commit or push that leaves a package and its dependencies
+unchanged replays that package's result.
 
 A worktree under `.claude/worktrees/` sits inside the main checkout, so whatever
 it does not install itself comes from the main checkout's install. Bun, Node and

@@ -238,10 +238,21 @@ export interface ToolCoordinatorApi {
 
 /** Options for {@link TtsServiceApi.speak}. */
 export interface SpeakOptions {
+	/**
+	 * The spoken card of the content root, read in place of its content when the
+	 * target holds the whole root.
+	 */
 	catalogId?: string;
+	/** The owner whose registered cards apply; without it only assessment-level cards do. */
 	catalogContext?: CatalogLookupContext;
+	/** BCP 47 language of the content read. */
 	language?: string;
-	contentElement?: Element;
+	/**
+	 * For a range target, the content root that scopes highlighting and the
+	 * offsets of the selection. Defaults to the range's nearest element. An
+	 * element target is its own root.
+	 */
+	contentRoot?: Element | null;
 }
 
 /**
@@ -260,23 +271,13 @@ export interface TtsServiceApi {
 	): Promise<void>;
 
 	/**
-	 * Speak text with optional catalog support
+	 * Read `target` aloud: a range reads the text it selects, an element its
+	 * content. A node with a spoken card that the target holds whole reads its
+	 * card, and math reads as math speech. Content marked not-to-be-spoken is
+	 * never read; when nothing speakable remains, nothing is spoken and playback
+	 * already running continues.
 	 */
-	speak(text: string, options?: SpeakOptions): Promise<void>;
-
-	/**
-	 * Speak a text range. A node with a spoken card that the range holds whole
-	 * reads its card; `catalogContext` names the owner whose registered cards
-	 * apply.
-	 */
-	speakRange(
-		range: Range,
-		options?: {
-			contentRoot?: Element | null;
-			language?: string;
-			catalogContext?: CatalogLookupContext;
-		},
-	): Promise<void>;
+	speak(target: Range | Element, options?: SpeakOptions): Promise<void>;
 
 	/**
 	 * Pause playback
@@ -292,6 +293,12 @@ export interface TtsServiceApi {
 	 * Stop playback
 	 */
 	stop(): void;
+
+	/**
+	 * Stop, release the provider and drop every listener and timer. A disposed
+	 * service cannot speak.
+	 */
+	dispose(): void;
 
 	/**
 	 * Request active TTS controls to hand off/deactivate their UI state.

@@ -145,6 +145,15 @@ export const ttsToolRegistration: ToolRegistration = {
 			toolbarContext.scope.level,
 			toolbarContext.scope.scopeId,
 		);
+		// Only a language the toolbar or its host named: unnamed, the control resolves
+		// markup `lang`, and the browser voice follows the browser's language.
+		const applyContentLanguage = (element: HTMLElement) => {
+			if (toolbarContext.language) {
+				element.setAttribute("language", toolbarContext.language);
+			} else {
+				element.removeAttribute("language");
+			}
+		};
 		const resolveControlSize = (): "sm" | "md" | "lg" => {
 			const raw = toolbarContext.ui?.size;
 			return raw === "sm" || raw === "lg" ? raw : "md";
@@ -177,7 +186,7 @@ export const ttsToolRegistration: ToolRegistration = {
 				"catalog-id",
 				toolbarContext.catalogId || toolbarContext.itemId,
 			);
-			element.setAttribute("language", toolbarContext.language || "en-US");
+			applyContentLanguage(element);
 			element.setAttribute("size", resolveControlSize());
 			element.setAttribute("layout-mode", resolveLayoutMode());
 			(
@@ -227,7 +236,7 @@ export const ttsToolRegistration: ToolRegistration = {
 					"catalog-id",
 					toolbarContext.catalogId || toolbarContext.itemId,
 				);
-				element.setAttribute("language", toolbarContext.language || "en-US");
+				applyContentLanguage(element);
 				element.setAttribute("size", resolveControlSize());
 				element.setAttribute("layout-mode", resolveLayoutMode());
 				(

@@ -467,8 +467,9 @@ locale.
    input, then `en-US`. Catalog lookups follow it. The browser voice follows it
    only when markup or the input names it, and otherwise `navigator.language` as
    before, so the voice changes nowhere until content or a host says what
-   language it is in. The server backends still send the language their
-   provider config names, and no host supplies a content language yet.
+   language it is in. The server backends send the language a read names, else
+   the one their provider config names; on the custom transport a host's
+   `lang_id` wins over both. No host supplies a content language yet.
 
 ## Open questions
 

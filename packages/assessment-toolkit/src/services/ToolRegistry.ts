@@ -94,9 +94,10 @@ export interface ToolbarContext {
 	 * Content-alternate language: which authored alternate the catalog resolver
 	 * should select. Not the interface locale — see {@link ToolbarContext.i18n}. The
 	 * two are independent by QTI 3's own statement, and conflating them is how a
-	 * Spanish passage ends up forcing Spanish widget chrome.
+	 * Spanish passage ends up forcing Spanish widget chrome. Absent when neither
+	 * the toolbar's `language` nor the host's `content-language` names one.
 	 */
-	language: string;
+	language?: string;
 	/**
 	 * Interface-locale provider for this capability's own UI strings.
 	 *

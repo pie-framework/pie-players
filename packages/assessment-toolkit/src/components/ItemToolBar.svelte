@@ -322,9 +322,10 @@
 	// bare harness still reads as English rather than as message keys.
 	const interfaceI18n = $derived(resolveInterfaceI18n(runtimeContext));
 	// Content language handed to the tools: the `language` attribute, else the
-	// host's `content-language`. Tools reading content resolve markup `lang` over it.
+	// host's `content-language`, else none. Tools reading content resolve markup
+	// `lang` over it.
 	const effectiveLanguage = $derived(
-		language || runtimeContext?.contentLanguage || 'en-US'
+		language || runtimeContext?.contentLanguage || undefined
 	);
 	let shellContext = $state<AssessmentToolkitShellContext | null>(null);
 	let moduleLoadVersion = $state(0);

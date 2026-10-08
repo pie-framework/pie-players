@@ -137,7 +137,7 @@ Semantics:
 
 1. **Services**: Reads `ttsService`, `highlightCoordinator` and `toolkitCoordinator` from the toolkit runtime context; the controls stay disabled until a `ttsService` arrives, and starting playback awaits `toolkitCoordinator.ensureTTSReady()`
 2. **Text Extraction**: Reads the text of the scope element's content region (the region scope, else the shell scope, when it is `[data-region='content']`, else its first `[data-region='content']` descendant, else the scope element itself), including text rendered into open shadow roots
-3. **TTS Trigger**: Calls `ttsService.speak(text, { catalogId, catalogContext, language, contentElement })`, where `contentElement` is that reading target, `catalogContext` names the owning item or passage, and `language` is resolved when reading starts: the nearest `lang` between the reading target and its shell, else the `language` attribute, else the toolkit's `content-language`, else `en-US`
+3. **TTS Trigger**: Calls `ttsService.speak(readingTarget, { catalogId, catalogContext, language })`, where `catalogContext` names the owning item or passage, and `language` is resolved when reading starts: the nearest `lang` between the reading target and its shell, else the `language` attribute, else the toolkit's `content-language`, else `en-US`
 4. **Catalog Resolution**: TTSService checks for SSML in accessibility catalogs (priority order):
    - **Extracted catalogs** (from embedded SSML) - generated before render by hosts that run `SSMLExtractor`
    - **Item-level catalogs** (manually authored)
@@ -183,7 +183,7 @@ when a host/import pipeline runs `SSMLExtractor` before render:
 **Tool uses extracted catalog:**
 
 - User clicks TTS button in header
-- Tool calls `ttsService.speak(text, { catalogId: 'auto-prompt-q1-0' })`
+- Tool calls `ttsService.speak(readingTarget, { catalogId: 'auto-prompt-q1-0' })`
 - TTSService finds SSML in extracted catalogs
 - Speaks with proper math pronunciation and pacing
 

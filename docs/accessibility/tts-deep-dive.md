@@ -49,8 +49,8 @@ classes are:
 
 `@pie-players/pie-tool-tts-inline` is the runtime UI. It renders the
 play/pause controls in item and passage toolbars, finds the readable content
-region, and calls `ttsService.speak(...)`. The annotation toolbar's read-aloud
-speaks a selection through `ttsService.speakRange(...)`.
+region, and passes it to `ttsService.speak(...)`. The annotation toolbar's
+read-aloud passes the selection's range to the same entry.
 
 `@pie-players/tts-client-server` provides `ServerTTSProvider`, the browser-side
 bridge to a host TTS API. It plays the returned audio in an `HTMLAudioElement`
@@ -105,23 +105,21 @@ generation. The system reads visible text with the active provider.
 3. `pie-tool-tts-inline` resolves the reading target. It prefers the nearest
    `[data-region='content']` inside the current shell scope and falls back to the
    shell element itself.
-4. The tool reads the target's `textContent`, sets the shared
-   `HighlightCoordinator` on `TTSService`, and calls:
+4. The tool sets the shared `HighlightCoordinator` on `TTSService` and calls:
 
    ```ts
-   ttsService.speak(text, {
+   ttsService.speak(readingTarget, {
      catalogId,
      catalogContext,
      language,
-     contentElement: readingTarget,
    });
    ```
 
 5. Before playback, `ToolkitCoordinator.ensureTTSReady()` makes sure a provider
    exists. The registry initializes `TTSToolProvider`, which chooses browser or
    server-backed TTS from host config.
-6. `TTSService.speak()` normalizes the input text and calls
-   `resolveSpeechContent(...)`.
+6. `TTSService.speak()` collects the target's visible text, math included,
+   normalizes it and calls `resolveSpeechContent(...)`.
 7. If no authored spoken catalog applies and no generated speech is needed,
    `TTSService` speaks normalized visible text.
 8. `BrowserTTSProvider` uses `SpeechSynthesisUtterance`. `ServerTTSProvider`
@@ -157,17 +155,21 @@ fetch URL-based audio and word mark assets with origin/SSRF protections.
 
 ## How TTS Chooses What To Speak
 
-The current `TTSService.resolveSpeechContent(...)` priority is:
+`TTSService.speak(target, options)` reads a DOM range or element. Content marked
+not-to-be-spoken (`data-tts-suppress`) is never read, from a named card
+included; a target inside such content, or holding nothing else, speaks nothing
+and leaves playback already running alone. For the rest, the
+`TTSService.resolveSpeechContent(...)` priority is:
 
-1. If an explicit `catalogId` resolves to a spoken catalog, use that catalog.
-2. If a `contentElement` contains `data-catalog-idref` regions, compose speech
-   chunks from those catalogs plus visible interstitial text. A selection read
-   through `speakRange` composes only the regions it holds whole, and its
-   interstitial text is the selected text.
-3. A selection with no such region speaks its selected text.
-4. If a `contentElement` contains Math or Math-like markup, generate speech from
-   the DOM with Speech Rule Engine.
-5. Otherwise, speak normalized input text.
+1. If an explicit `catalogId` resolves to a spoken catalog, use that catalog. A
+   range reads it only when it holds the whole content root.
+2. If the target contains `data-catalog-idref` regions, compose speech chunks
+   from those catalogs plus visible interstitial text. A range composes only the
+   regions it holds whole, and its interstitial text is the selected text.
+3. A range with no such region speaks its selected text.
+4. If the target contains Math or Math-like markup, generate speech from the DOM
+   with Speech Rule Engine.
+5. Otherwise, speak its normalized visible text.
 
 That priority is the backbone for the rest of this document.
 
@@ -237,11 +239,11 @@ turning every catalog id into a global key.
 5. The resolver walks entity-root, `config.extractedCatalogs`, and model catalogs
    and stores them under the scoped owner as one transaction.
 6. The student clicks play in `pie-tool-tts-inline`.
-7. The inline tool passes both `catalogContext` and `contentElement` to
+7. The inline tool passes its reading target and `catalogContext` to
    `TTSService.speak(...)`.
 8. `TTSService` first tries an explicit `catalogId`, if one was provided.
-9. If that does not resolve, `TTSService` walks the `contentElement` and looks
-   for `data-catalog-idref`.
+9. If that does not resolve, `TTSService` walks the target and looks for
+   `data-catalog-idref`.
 10. Each matching element becomes a speech chunk using the authored catalog
     content. Text between catalog-marked regions becomes plain speech chunks.
 11. Playback runs chunk by chunk through the active provider.
@@ -279,7 +281,7 @@ matching authored spoken catalog. It turns rendered Math into speech at runtime.
 ### Generated Math Walkthrough
 
 1. The student clicks play in `pie-tool-tts-inline`.
-2. The inline tool passes `contentElement` to `TTSService.speak(...)`.
+2. The inline tool passes its reading target to `TTSService.speak(...)`.
 3. No explicit spoken catalog resolves.
 4. No `data-catalog-idref` composition applies, or the uncovered content still
    needs generated speech.
@@ -317,6 +319,8 @@ on visible text plus MathML sources:
 
 Visible fallback text is still collected. If SRE fails or returns nothing, the
 system can speak the visible/fallback Math text rather than stopping playback.
+A failure to load SRE is logged once as a warning and holds for the life of the
+page.
 
 ### Plain Versus SSML Generated Math
 
@@ -355,7 +359,7 @@ no toolkit and keep the elements' labels.
 | --- | --- | --- | --- | --- |
 | Simple happy path | No matching catalog and no generated Math needed | normalized visible text | plain text | word boundaries against visible text |
 | Authored content-provided TTS | explicit catalog or `data-catalog-idref` regions | `spoken` catalog card content | SSML or plain catalog content | aligned to visible DOM, with region fallback for complex SSML |
-| On-the-fly Math TTS | `contentElement` contains Math and no authored speech wins | SRE generated Math speech plus visible prose | plain or SSML per provider capability | math-aware token mapping, with expression fallback |
+| On-the-fly Math TTS | the target contains Math and no authored speech wins | SRE generated Math speech plus visible prose | plain or SSML per provider capability | math-aware token mapping, with expression fallback |
 
 ## Current-State Notes
 
@@ -367,8 +371,8 @@ no toolkit and keep the elements' labels.
 - Browser TTS is the always-available fallback, but it is not SSML-capable.
 - Server-backed TTS is preferred when high-quality voices, SSML, and speech marks
   are required.
-- Generated Math speech requires a live `contentElement`; callers that only pass
-  a string cannot get the DOM-aware Math path.
+- Every speak reads a live DOM target, so the DOM-aware Math path applies to
+  every caller.
 - The highlight pipeline is intentionally conservative around Math. It prefers a
   stable expression-level highlight over a wrong token-level highlight.
 

@@ -1,10 +1,33 @@
-import { afterEach, beforeEach, describe, expect, spyOn, test } from "bun:test";
+import { GlobalRegistrator } from "@happy-dom/global-registrator";
+import {
+	afterAll,
+	afterEach,
+	beforeAll,
+	beforeEach,
+	describe,
+	expect,
+	spyOn,
+	test,
+} from "bun:test";
 import { ToolkitCoordinator } from "../src/services/ToolkitCoordinator.js";
 import { ToolRegistry } from "../src/services/ToolRegistry.js";
 import {
 	BrowserTTSProvider,
 	browserFallbackConfig,
 } from "../src/services/tts/browser-provider.js";
+import { contentWith } from "./fixtures/read-aloud-content.js";
+
+beforeAll(() => {
+	if (!GlobalRegistrator.isRegistered) {
+		GlobalRegistrator.register();
+	}
+});
+
+afterAll(() => {
+	if (GlobalRegistrator.isRegistered) {
+		GlobalRegistrator.unregister();
+	}
+});
 
 /**
  * Browser speech standing in for another provider, and browser speech of an
@@ -33,7 +56,6 @@ class FakeUtterance {
 
 const globals = globalThis as Record<string, unknown>;
 const saved = {
-	window: globals.window,
 	speechSynthesis: globals.speechSynthesis,
 	SpeechSynthesisUtterance: globals.SpeechSynthesisUtterance,
 };
@@ -68,8 +90,8 @@ beforeEach(() => {
 		pause: () => {},
 		resume: () => {},
 	};
+	// The registered window is `globalThis`, so this is `window.speechSynthesis`.
 	globals.speechSynthesis = synth;
-	globals.window = { setTimeout, clearTimeout, speechSynthesis: synth };
 	globals.SpeechSynthesisUtterance = FakeUtterance;
 	logSpy = spyOn(console, "log").mockImplementation(() => {});
 	warnSpy = spyOn(console, "warn").mockImplementation(() => {});
@@ -142,7 +164,7 @@ describe("browser speech replacing another provider", () => {
 		});
 		await coordinator.ensureTTSReady();
 
-		await coordinator.ttsService.speak("Hello there");
+		await coordinator.ttsService.speak(contentWith("Hello there"));
 
 		expect(spoken.map((utterance) => utterance.text)).toEqual(["Hello there"]);
 	});

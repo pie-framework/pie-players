@@ -50,28 +50,44 @@ export interface ResolvedMathSpeech {
 	ssml?: string;
 }
 
-let sreLoadPromise: Promise<SpeechRuleEngineApi> | null = null;
 let sreOperationQueue: Promise<unknown> = Promise.resolve();
 
 const normalizeLocale = (language?: string): string =>
 	(language || "en").split("-")[0].toLowerCase() || "en";
 
-const defaultLoadSre = async (
+/**
+ * Loads the speech-rule-engine once per page. A failed load stays failed, so
+ * math reads as its visible text from then on, and it warns once.
+ */
+export const createSreLoader = (
+	importEngine: () => Promise<SpeechRuleEngineApi>,
+): ((
 	engineOptions?: Record<string, unknown>,
-): Promise<SpeechRuleEngineApi> => {
-	if (!sreLoadPromise) {
-		setSreStartupLocaleSource(engineOptions);
-		sreLoadPromise = import("./sre-engine.js").then(
-			({ default: candidate }) => {
-				if (!candidate || typeof candidate.toSpeech !== "function") {
-					throw new Error("speech-rule-engine did not expose toSpeech");
-				}
-				return candidate;
-			},
-		);
-	}
-	return sreLoadPromise;
+) => Promise<SpeechRuleEngineApi>) => {
+	let load: Promise<SpeechRuleEngineApi> | null = null;
+	return (engineOptions) => {
+		if (!load) {
+			setSreStartupLocaleSource(engineOptions);
+			load = importEngine();
+			load.catch((error: unknown) => {
+				console.warn(
+					"[tts] speech-rule-engine failed to load; math reads as its visible text for the rest of this page.",
+					error,
+				);
+			});
+		}
+		return load;
+	};
 };
+
+const defaultLoadSre = createSreLoader(() =>
+	import("./sre-engine.js").then(({ default: candidate }) => {
+		if (!candidate || typeof candidate.toSpeech !== "function") {
+			throw new Error("speech-rule-engine did not expose toSpeech");
+		}
+		return candidate;
+	}),
+);
 
 // SRE's ClearSpeak rule set is English-only; MathSpeak is localized to many more
 // locales. Use ClearSpeak for English (highest-quality math prose) and MathSpeak

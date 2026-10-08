@@ -340,20 +340,60 @@ const adoptHighlightStylesFor = (node: Node | null | undefined): void => {
 	}
 };
 
+const TTS_WORD_HIGHLIGHT = "tts-word";
+const TTS_SENTENCE_HIGHLIGHT = "tts-sentence";
+const annotationHighlightName = (color: HighlightColor): string =>
+	`annotation-${color}`;
+
+/**
+ * The page's highlight registered under `name`. Every coordinator on a page
+ * paints into the same one, because the page-wide `::highlight()` rules select
+ * it by that name, and removes only the ranges it added.
+ */
+const sharedHighlight = (name: string): Highlight => {
+	const registered = CSS.highlights.get(name);
+	if (registered) return registered;
+	const highlight = new Highlight();
+	CSS.highlights.set(name, highlight);
+	return highlight;
+};
+
+const removeRanges = (name: string, ranges: Iterable<Range>): void => {
+	const highlight = CSS.highlights.get(name);
+	if (!highlight) return;
+	for (const range of ranges) highlight.delete(range);
+};
+
+/**
+ * What the TTS colors derive from. The colors are custom properties on the root
+ * element, which every coordinator on the page writes, so the coordinators share
+ * these inputs: any one's refresh writes the same values, and two theme
+ * observers cannot keep undoing each other's writes.
+ */
+const ttsStyleInputs: {
+	/** The element being read, while highlighted. */
+	source: Element | null;
+	/** A color set through `updateTTSHighlightStyle`, until its setter is destroyed. */
+	override: {
+		color: string;
+		opacity: number;
+		owner: HighlightCoordinator;
+	} | null;
+} = { source: null, override: null };
+
 export class HighlightCoordinator implements HighlightCoordinatorApi {
-	private ttsWordHighlight: Highlight | null = null;
-	private ttsSentenceHighlight: Highlight | null = null;
+	// The ranges this coordinator painted into the shared TTS highlights.
+	private ttsWordRanges = new Set<Range>();
+	private ttsSentenceRanges = new Set<Range>();
 	private ttsWordElementHighlights = new Set<Element>();
 	private ttsSentenceElementHighlights = new Set<Element>();
 	private annotations = new Map<string, Annotation>();
-	// Shared highlights per color (one Highlight object per color, contains all ranges)
-	private colorHighlights = new Map<HighlightColor, Highlight>();
+	// The element this coordinator last adapted the TTS colors to.
+	private ttsStyleSource: Element | null = null;
 	private nextAnnotationId = 1;
 	private supported = false;
 	private rangeSerializer: RangeSerializer;
 	private themeObserver: MutationObserver | null = null;
-	private explicitTTSColorOverride: { color: string; opacity: number } | null =
-		null;
 
 	constructor() {
 		this.rangeSerializer = new RangeSerializer();
@@ -522,13 +562,14 @@ export class HighlightCoordinator implements HighlightCoordinatorApi {
 			) || fallbackBackground;
 		const text =
 			this.parseColor(computed?.getPropertyValue("--pie-text")) || fallbackText;
-		const accent = this.explicitTTSColorOverride
-			? this.parseColor(this.explicitTTSColorOverride.color) || fallbackMissing
+		const override = ttsStyleInputs.override;
+		const accent = override
+			? this.parseColor(override.color) || fallbackMissing
 			: this.parseColor(computed?.getPropertyValue("--pie-missing")) ||
 				fallbackMissing;
 
-		const opacityCandidates = this.explicitTTSColorOverride
-			? [Math.max(0.3, Math.min(0.95, this.explicitTTSColorOverride.opacity))]
+		const opacityCandidates = override
+			? [Math.max(0.3, Math.min(0.95, override.opacity))]
 			: [0.8, 0.72, 0.68, 0.62, 0.56, 0.5];
 
 		let selectedOpacity = opacityCandidates[opacityCandidates.length - 1];
@@ -584,50 +625,44 @@ export class HighlightCoordinator implements HighlightCoordinatorApi {
 		};
 	}
 
+	/**
+	 * Adapt the TTS colors to `sourceEl`, the element being highlighted. Without
+	 * one, to the element highlighted last on the page while it stays connected,
+	 * else to the document.
+	 */
 	private applyAdaptiveTTSStyle(sourceEl?: Element | null): void {
 		if (typeof document === "undefined") return;
-		const vars = this.resolveAdaptiveTTSStyle(sourceEl);
-		document.documentElement.style.setProperty(
-			"--pie-tts-word-highlight",
-			vars.wordHighlight,
-		);
-		document.documentElement.style.setProperty(
-			"--pie-tts-sentence-highlight",
-			vars.sentenceHighlight,
-		);
-		document.documentElement.style.setProperty(
-			"--pie-tts-line-highlight",
-			vars.sentenceHighlight,
-		);
-		document.documentElement.style.setProperty(
-			"--pie-tts-word-underline",
-			vars.wordUnderline,
-		);
-		document.documentElement.style.setProperty(
-			"--pie-tts-word-shadow",
-			vars.wordShadow,
-		);
+		if (sourceEl) {
+			this.ttsStyleSource = sourceEl;
+			ttsStyleInputs.source = sourceEl;
+		}
+		const source =
+			sourceEl ??
+			(ttsStyleInputs.source?.isConnected ? ttsStyleInputs.source : null);
+		const vars = this.resolveAdaptiveTTSStyle(source);
+		const style = document.documentElement.style;
+		const properties: Array<[string, string]> = [
+			["--pie-tts-word-highlight", vars.wordHighlight],
+			["--pie-tts-sentence-highlight", vars.sentenceHighlight],
+			["--pie-tts-line-highlight", vars.sentenceHighlight],
+			["--pie-tts-word-underline", vars.wordUnderline],
+			["--pie-tts-word-shadow", vars.wordShadow],
+		];
+		for (const [name, value] of properties) {
+			// An unchanged value is not rewritten: the theme observer watches this
+			// element's style, and a write would notify it again.
+			if (style.getPropertyValue?.(name) === value) continue;
+			style.setProperty(name, value);
+		}
 	}
 
-	/**
-	 * Initialize CSS Custom Highlights
-	 */
+	/** Register the shared highlights, unless another coordinator already did. */
 	private initializeHighlights(): void {
 		if (!this.supported) return;
-
-		// Create highlight registries for TTS
-		this.ttsWordHighlight = new Highlight();
-		this.ttsSentenceHighlight = new Highlight();
-
-		// Register TTS highlights with CSS
-		CSS.highlights.set("tts-word", this.ttsWordHighlight);
-		CSS.highlights.set("tts-sentence", this.ttsSentenceHighlight);
-
-		// Create shared highlights for each annotation color
+		sharedHighlight(TTS_WORD_HIGHLIGHT);
+		sharedHighlight(TTS_SENTENCE_HIGHLIGHT);
 		for (const color of Object.values(HighlightColor)) {
-			const highlight = new Highlight();
-			this.colorHighlights.set(color, highlight);
-			CSS.highlights.set(`annotation-${color}`, highlight);
+			sharedHighlight(annotationHighlightName(color));
 		}
 	}
 
@@ -659,7 +694,7 @@ export class HighlightCoordinator implements HighlightCoordinatorApi {
 		startOffset: number,
 		endOffset: number,
 	): void {
-		if (!this.ttsWordHighlight) return;
+		if (!this.supported) return;
 		this.applyAdaptiveTTSStyle(composedParentElement(textNode));
 		adoptHighlightStylesFor(textNode);
 
@@ -671,8 +706,8 @@ export class HighlightCoordinator implements HighlightCoordinatorApi {
 		range.setStart(textNode, startOffset);
 		range.setEnd(textNode, endOffset);
 
-		// Add to highlight
-		this.ttsWordHighlight.add(range);
+		sharedHighlight(TTS_WORD_HIGHLIGHT).add(range);
+		this.ttsWordRanges.add(range);
 	}
 
 	/**
@@ -693,7 +728,7 @@ export class HighlightCoordinator implements HighlightCoordinatorApi {
 	 * should paint the whole expression.
 	 */
 	highlightTTSWordElement(element: Element): void {
-		if (!this.ttsWordHighlight) return;
+		if (!this.supported) return;
 		this.applyAdaptiveTTSStyle(element);
 		adoptHighlightStylesFor(element);
 
@@ -711,7 +746,7 @@ export class HighlightCoordinator implements HighlightCoordinatorApi {
 	 * @param ranges Line (or sentence) ranges to paint with `--pie-tts-line-highlight`
 	 */
 	highlightTTSSentence(ranges: Range[]): void {
-		if (!this.ttsSentenceHighlight) return;
+		if (!this.supported) return;
 		const source = ranges[0]?.startContainer;
 		const sourceElement = !source
 			? null
@@ -723,10 +758,11 @@ export class HighlightCoordinator implements HighlightCoordinatorApi {
 		// Clear previous sentence highlight
 		this.clearTTSSentence();
 
-		// Add all ranges
+		const highlight = sharedHighlight(TTS_SENTENCE_HIGHLIGHT);
 		for (const range of ranges) {
 			adoptHighlightStylesFor(range.startContainer);
-			this.ttsSentenceHighlight.add(range);
+			highlight.add(range);
+			this.ttsSentenceRanges.add(range);
 		}
 		this.highlightTTSElementFallbacks(ranges);
 	}
@@ -737,7 +773,7 @@ export class HighlightCoordinator implements HighlightCoordinatorApi {
 	 * @param elements Visible elements to paint with `--pie-tts-line-highlight`
 	 */
 	highlightTTSSentenceElements(elements: Element[]): void {
-		if (!this.ttsSentenceHighlight) return;
+		if (!this.supported) return;
 		this.applyAdaptiveTTSStyle(elements[0] || null);
 
 		this.clearTTSSentence();
@@ -837,8 +873,9 @@ export class HighlightCoordinator implements HighlightCoordinatorApi {
 	 * Clear TTS word highlight
 	 */
 	clearTTSWord(): void {
-		if (!this.ttsWordHighlight) return;
-		this.ttsWordHighlight.clear();
+		if (!this.supported) return;
+		removeRanges(TTS_WORD_HIGHLIGHT, this.ttsWordRanges);
+		this.ttsWordRanges.clear();
 		for (const element of this.ttsWordElementHighlights) {
 			element.removeAttribute("data-pie-tts-word-element");
 		}
@@ -849,8 +886,9 @@ export class HighlightCoordinator implements HighlightCoordinatorApi {
 	 * Clear TTS sentence highlight
 	 */
 	clearTTSSentence(): void {
-		if (!this.ttsSentenceHighlight) return;
-		this.ttsSentenceHighlight.clear();
+		if (!this.supported) return;
+		removeRanges(TTS_SENTENCE_HIGHLIGHT, this.ttsSentenceRanges);
+		this.ttsSentenceRanges.clear();
 		for (const element of this.ttsSentenceElementHighlights) {
 			element.removeAttribute("data-pie-tts-sentence-element");
 		}
@@ -863,6 +901,10 @@ export class HighlightCoordinator implements HighlightCoordinatorApi {
 	clearTTS(): void {
 		this.clearTTSWord();
 		this.clearTTSSentence();
+		if (ttsStyleInputs.source === this.ttsStyleSource) {
+			ttsStyleInputs.source = null;
+		}
+		this.ttsStyleSource = null;
 	}
 
 	/**
@@ -892,11 +934,9 @@ export class HighlightCoordinator implements HighlightCoordinatorApi {
 		};
 		this.annotations.set(id, annotation);
 
-		// Add the SAME range object to the shared color highlight
-		// This ensures we can later delete it by reference
-		const colorHighlight = this.colorHighlights.get(color);
-		if (colorHighlight) {
-			colorHighlight.add(clonedRange);
+		// The same range object, so it can later be deleted by reference.
+		if (this.supported) {
+			sharedHighlight(annotationHighlightName(color)).add(clonedRange);
 		}
 
 		return id;
@@ -918,14 +958,10 @@ export class HighlightCoordinator implements HighlightCoordinatorApi {
 			`[HighlightCoordinator] Removing annotation ${id} (color: ${annotation.color})`,
 		);
 
-		// Remove range from the shared color highlight
-		const colorHighlight = this.colorHighlights.get(annotation.color);
-		if (colorHighlight) {
-			const deleted = colorHighlight.delete(annotation.range);
-			console.log(
-				`[HighlightCoordinator] Highlight.delete() returned:`,
-				deleted,
-			);
+		if (this.supported) {
+			removeRanges(annotationHighlightName(annotation.color), [
+				annotation.range,
+			]);
 		}
 
 		// Clean up
@@ -940,12 +976,13 @@ export class HighlightCoordinator implements HighlightCoordinatorApi {
 	 * Remove all annotations
 	 */
 	clearAnnotations(): void {
-		// Clear all color highlights
-		for (const colorHighlight of this.colorHighlights.values()) {
-			colorHighlight.clear();
+		if (this.supported) {
+			for (const annotation of this.annotations.values()) {
+				removeRanges(annotationHighlightName(annotation.color), [
+					annotation.range,
+				]);
+			}
 		}
-
-		// Clear annotation data
 		this.annotations.clear();
 	}
 
@@ -976,19 +1013,10 @@ export class HighlightCoordinator implements HighlightCoordinatorApi {
 		const oldColor = annotation.color;
 		if (oldColor === newColor) return;
 
-		// Remove from old color highlight
-		const oldColorHighlight = this.colorHighlights.get(oldColor);
-		if (oldColorHighlight) {
-			oldColorHighlight.delete(annotation.range);
-		}
-
-		// Update color
 		annotation.color = newColor;
-
-		// Add to new color highlight
-		const newColorHighlight = this.colorHighlights.get(newColor);
-		if (newColorHighlight) {
-			newColorHighlight.add(annotation.range);
+		if (this.supported) {
+			removeRanges(annotationHighlightName(oldColor), [annotation.range]);
+			sharedHighlight(annotationHighlightName(newColor)).add(annotation.range);
 		}
 	}
 
@@ -1063,22 +1091,25 @@ export class HighlightCoordinator implements HighlightCoordinatorApi {
 		switch (type) {
 			case HighlightType.TTS_WORD:
 			case HighlightType.TTS_SENTENCE: {
-				// For TTS, add to appropriate highlight
-				const highlight =
+				const name =
 					type === HighlightType.TTS_WORD
-						? this.ttsWordHighlight
-						: this.ttsSentenceHighlight;
-				if (highlight) {
-					adoptHighlightStylesFor(range.startContainer);
-					highlight.clear();
-					highlight.add(range);
-					if (type === HighlightType.TTS_WORD) {
-						for (const element of this.ttsWordElementHighlights) {
-							element.removeAttribute("data-pie-tts-word-element");
-						}
-						this.ttsWordElementHighlights.clear();
-						this.highlightTTSWordElementFallbacks([range]);
+						? TTS_WORD_HIGHLIGHT
+						: TTS_SENTENCE_HIGHLIGHT;
+				const owned =
+					type === HighlightType.TTS_WORD
+						? this.ttsWordRanges
+						: this.ttsSentenceRanges;
+				adoptHighlightStylesFor(range.startContainer);
+				removeRanges(name, owned);
+				owned.clear();
+				sharedHighlight(name).add(range);
+				owned.add(range);
+				if (type === HighlightType.TTS_WORD) {
+					for (const element of this.ttsWordElementHighlights) {
+						element.removeAttribute("data-pie-tts-word-element");
 					}
+					this.ttsWordElementHighlights.clear();
+					this.highlightTTSWordElementFallbacks([range]);
 				}
 				break;
 			}
@@ -1152,25 +1183,28 @@ export class HighlightCoordinator implements HighlightCoordinatorApi {
 		const rgb = hexToRgb(color);
 		if (!rgb) return;
 
-		this.explicitTTSColorOverride = {
+		ttsStyleInputs.override = {
 			color: `rgb(${rgb.r}, ${rgb.g}, ${rgb.b})`,
 			opacity: Math.max(0.2, Math.min(0.95, opacity)),
+			owner: this,
 		};
 		this.applyAdaptiveTTSStyle();
 	}
 
 	/**
-	 * Cleanup this coordinator's highlights and observer.
+	 * Remove this coordinator's ranges and stop its observer.
 	 *
-	 * The stylesheet is process-global and shared by every live coordinator, so
-	 * removing it here would break a replacement or sibling coordinator. Keep the
-	 * single bounded style element installed for the lifetime of the document.
+	 * The stylesheet and the registered highlights are page-wide and shared by
+	 * every live coordinator, so they stay installed for the document's lifetime.
 	 */
 	destroy(): void {
 		if (!this.supported) return;
 
 		this.clearTTS();
 		this.clearAnnotations();
+		if (ttsStyleInputs.override?.owner === this) {
+			ttsStyleInputs.override = null;
+		}
 		this.themeObserver?.disconnect();
 		this.themeObserver = null;
 	}

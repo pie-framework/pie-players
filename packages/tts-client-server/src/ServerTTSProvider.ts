@@ -12,6 +12,7 @@ import type {
 	TTSConfig,
 	TTSFeature,
 	TTSProviderCapabilities,
+	TTSProviderOptions,
 } from "@pie-players/pie-tts";
 import {
 	createPieLogger,
@@ -27,9 +28,36 @@ const logger = createPieLogger("server-tts-provider", () =>
 );
 
 /**
+ * The provider options the server provider reads. `contentLanguage`, set per
+ * speak, names the language synthesized: it wins over `language`, and a
+ * `lang_id` the host sets wins over it.
+ */
+export interface ServerTTSProviderOptions extends TTSProviderOptions {
+	/** Polly engine, on the pie transport, when `engine` is not set. */
+	engine?: "standard" | "neural";
+	/** Output sample rate, on the pie transport. */
+	sampleRate?: number;
+	/** Audio format, on the pie transport. */
+	format?: "mp3" | "ogg" | "pcm";
+	/** Speech mark types requested, on the pie transport. */
+	speechMarkTypes?: Array<"word" | "sentence" | "ssml">;
+	/** Speed bucket, on the custom transport; derived from `rate` when unset. */
+	speedRate?: string;
+	/**
+	 * Language id, on the custom transport. Without it, the language a speak
+	 * names, then `language`, then en-US.
+	 */
+	lang_id?: string;
+	/** Server-side caching, on the custom transport. Defaults to true. */
+	cache?: boolean;
+}
+
+/**
  * Configuration for ServerTTSProvider
  */
 export interface ServerTTSProviderConfig extends TTSConfig {
+	providerOptions?: ServerTTSProviderOptions;
+
 	/** API endpoint base URL (e.g., '/api/tts' or 'https://api.example.com/tts') */
 	apiEndpoint: string;
 
@@ -246,14 +274,8 @@ function assetFetchHeaders(
 const getTelemetryReporter = (
 	config: ServerTTSProviderConfig,
 ): TelemetryReporter | undefined => {
-	const providerOptions =
-		config.providerOptions && typeof config.providerOptions === "object"
-			? (config.providerOptions as Record<string, unknown>)
-			: {};
-	const reporter = providerOptions.__pieTelemetry;
-	return typeof reporter === "function"
-		? (reporter as TelemetryReporter)
-		: undefined;
+	const reporter = config.providerOptions?.__pieTelemetry;
+	return typeof reporter === "function" ? reporter : undefined;
 };
 
 /**
@@ -401,16 +423,20 @@ const resolveValidationMode = (
 };
 
 const resolveSpeedRate = (config: ServerTTSProviderConfig): string => {
-	const providerOptions = (config.providerOptions || {}) as Record<
-		string,
-		unknown
-	>;
-	if (typeof providerOptions.speedRate === "string") {
-		return providerOptions.speedRate;
-	}
+	const speedRate = config.providerOptions?.speedRate;
+	if (typeof speedRate === "string") return speedRate;
 	return resolveSpeedRateBucket(config.rate);
 };
 
+/** The language a speak named for its content, if any. */
+const contentLanguageOf = (
+	config: ServerTTSProviderConfig,
+): string | undefined => {
+	const language = config.providerOptions?.contentLanguage;
+	return typeof language === "string" && language.trim()
+		? language.trim()
+		: undefined;
+};
 
 const parseInlineSpeechMarks = (
 	input: CustomTransportResponse["speechMarks"],
@@ -454,10 +480,7 @@ const pieAdapter: TransportAdapter = {
 		return endpointMode === "rootPost" ? base : `${base}/synthesize`;
 	},
 	buildRequestBody: (text, config) => {
-		const providerOptions = (config.providerOptions || {}) as Record<
-			string,
-			unknown
-		>;
+		const providerOptions = config.providerOptions || {};
 		const engine =
 			typeof config.engine === "string"
 				? config.engine
@@ -485,7 +508,7 @@ const pieAdapter: TransportAdapter = {
 			text,
 			provider: config.provider || "polly",
 			voice: config.voice,
-			language: config.language,
+			language: contentLanguageOf(config) ?? config.language,
 			rate: config.rate,
 			engine,
 			sampleRate,
@@ -515,14 +538,16 @@ const customAdapter: TransportAdapter = {
 		return endpointMode === "synthesizePath" ? `${base}/synthesize` : base;
 	},
 	buildRequestBody: (text, config) => {
-		const providerOptions = (config.providerOptions || {}) as Record<
-			string,
-			unknown
-		>;
-		const langId =
-			typeof providerOptions.lang_id === "string"
+		const providerOptions = config.providerOptions || {};
+		// A host's `lang_id` names a locale from the service's own roster, which a
+		// content tag such as `es` is not: SchoolCity reads one it lacks as en-US.
+		const pinned =
+			typeof providerOptions.lang_id === "string" &&
+			providerOptions.lang_id.trim()
 				? providerOptions.lang_id
-				: config.language || "en-US";
+				: undefined;
+		const langId =
+			pinned ?? contentLanguageOf(config) ?? (config.language || "en-US");
 		const cache =
 			typeof providerOptions.cache === "boolean" ? providerOptions.cache : true;
 		return {
@@ -638,11 +663,21 @@ class ServerTTSProviderImpl implements ITTSProviderImplementation {
 		this.activeSynthesisController = synthesisController;
 
 		// Call server API to synthesize speech
-		const { audioUrl, wordTimings } = await this.synthesizeSpeech(
-			text,
-			synthesisController.signal,
-			runId,
-		);
+		let synthesized: { audioUrl: string; wordTimings: WordTiming[] };
+		try {
+			synthesized = await this.synthesizeSpeech(
+				text,
+				synthesisController.signal,
+				runId,
+			);
+		} catch (error) {
+			// A stop or a newer speak aborted this synthesis: not a failure.
+			if (runId !== this.synthesisRunId || synthesisController.signal.aborted) {
+				return;
+			}
+			throw error;
+		}
+		const { audioUrl, wordTimings } = synthesized;
 		if (runId !== this.synthesisRunId) {
 			URL.revokeObjectURL(audioUrl);
 			return;
@@ -750,6 +785,7 @@ class ServerTTSProviderImpl implements ITTSProviderImplementation {
 					...fetchCredentials(this.config),
 				});
 			} catch (error) {
+				if (signal.aborted) throw error;
 				await this.emitTelemetry("pie-tool-backend-call-error", {
 					toolId: "tts",
 					backend: this.config.provider || "server",
@@ -872,6 +908,7 @@ class ServerTTSProviderImpl implements ITTSProviderImplementation {
 						redirect: "error",
 					});
 				} catch (error) {
+					if (signal.aborted) throw error;
 					await this.emitTelemetry("pie-tool-backend-call-error", {
 						toolId: "tts",
 						backend: this.config.provider || "server",
@@ -1130,6 +1167,17 @@ class ServerTTSProviderImpl implements ITTSProviderImplementation {
 		if (settings.voice !== undefined) {
 			// Voice change requires resynthesis, affects next speak()
 			this.config.voice = settings.voice;
+		}
+		// Only the per-speak language: the toolkit's other options would replace
+		// the speed bucket a rate change set above.
+		if (
+			settings.providerOptions &&
+			"contentLanguage" in settings.providerOptions
+		) {
+			this.config.providerOptions = {
+				...this.config.providerOptions,
+				contentLanguage: settings.providerOptions.contentLanguage,
+			};
 		}
 	}
 }

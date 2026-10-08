@@ -70,18 +70,38 @@ export interface TTSConfigExtensions {
 	region?: string;
 
 	/**
-	 * Arbitrary provider-specific options
+	 * Provider options. A provider's configuration type narrows this to the
+	 * options it reads.
 	 *
 	 * @extension Extensibility point
 	 * @example { engine: 'neural' } for AWS Polly
 	 */
-	providerOptions?: Record<string, unknown>;
+	providerOptions?: TTSProviderOptions;
 
 	/**
 	 * Internal read-along hint used by the assessment toolkit to choose between
 	 * per-token math highlighting and expression-level math highlighting.
 	 */
 	mathTokenHighlighting?: boolean;
+}
+
+/**
+ * The provider options every provider may receive. The assessment toolkit sets
+ * them; a provider reads the ones it acts on, and its own options extend these.
+ * Keys no provider declares pass through untouched.
+ */
+export interface TTSProviderOptions {
+	/** Telemetry callback the toolkit installs for a provider's backend calls. */
+	__pieTelemetry?: (
+		eventName: string,
+		payload?: Record<string, unknown>,
+	) => void | Promise<void>;
+	/**
+	 * BCP 47 language of the content being read, set per speak when the content
+	 * or the host names one.
+	 */
+	contentLanguage?: string;
+	[option: string]: unknown;
 }
 
 /**

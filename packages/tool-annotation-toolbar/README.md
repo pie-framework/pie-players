@@ -148,29 +148,25 @@ The annotation toolbar includes a "Read" button that uses the TTS service to rea
 
 ### Technical Implementation
 
-The toolbar uses `ttsService.speakRange()` instead of `ttsService.speak()` to ensure accurate word highlighting:
+The toolbar passes the selected range to `ttsService.speak()`, which highlights
+from the selection's offset within its content root:
 
 ```typescript
 ttsSpeaking = true;
 try {
-  // speakRange() calculates text offset for accurate highlighting.
   // contentRoot: the item or passage scope element, else the document element.
+  // language: the nearest `lang` in the content, else the toolkit's
+  // `content-language`, else en-US.
   // catalogContext: from the shell holding the selection.
-  await ttsService.speakRange(selectedRange, { contentRoot, catalogContext });
+  await ttsService.speak(selectedRange, { contentRoot, language, catalogContext });
 } finally {
   ttsSpeaking = false;
 }
 ```
 
-`speakRange` resolves when reading ends and rejects on a playback error. A
+`speak` resolves when reading ends and rejects on a playback error. A
 `data-catalog-idref` node the selection holds whole reads its spoken card, as
 under tts-inline; part of one reads as the selected text.
-
-**Why this matters:**
-
-- User selects text in the middle of a paragraph
-- `speak(text)` would highlight from the beginning of the container (wrong)
-- `speakRange(range)` highlights the exact selected text (correct)
 
 ### UX Details
 

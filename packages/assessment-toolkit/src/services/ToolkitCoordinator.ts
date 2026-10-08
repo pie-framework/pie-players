@@ -946,11 +946,9 @@ export class ToolkitCoordinator {
 		this.ttsService.setReadinessGate(() => this.ensureTTSReady());
 		this.ttsService.setMathSpeechSource(
 			() =>
-				(
-					buildRuntimeTTSConfig(
-						resolveTTSRuntimeSettings(this.resolveTTSToolConfig()),
-					).providerOptions as Record<string, unknown> | undefined
-				)?.mathSpeech,
+				buildRuntimeTTSConfig(
+					resolveTTSRuntimeSettings(this.resolveTTSToolConfig()),
+				).providerOptions?.mathSpeech,
 		);
 		this.setupStatePersistenceHooks();
 
@@ -2537,7 +2535,7 @@ export class ToolkitCoordinator {
 		this.activeCohortMapKey = null;
 		this.latestRequestedActiveCohortMapKey = null;
 
-		await cleanup(() => this.ttsService.releaseProvider());
+		await cleanup(() => this.ttsService.dispose());
 		await cleanup(() => this.toolProviderRegistry.destroy());
 		await cleanup(() => this.highlightCoordinator.destroy());
 		for (const toolId of this.toolCoordinator.getRegisteredTools()) {
@@ -2727,7 +2725,7 @@ export class ToolkitCoordinator {
 		config: Partial<TTSConfig>,
 	): Promise<void> {
 		const nextProviderOptions = {
-			...(((config.providerOptions || {}) as Record<string, unknown>) || {}),
+			...config.providerOptions,
 			__pieTelemetry: async (
 				eventName: string,
 				payload?: Record<string, unknown>,
@@ -2738,10 +2736,10 @@ export class ToolkitCoordinator {
 				});
 			},
 		};
-		const nextConfig = {
+		const nextConfig: Partial<TTSConfig> = {
 			...config,
 			providerOptions: nextProviderOptions,
-		} as Partial<TTSConfig>;
+		};
 		await this.ttsService.initialize(provider, nextConfig);
 		await this.ensureBrowserVoicesReady(provider);
 		this.assertNotDisposed();

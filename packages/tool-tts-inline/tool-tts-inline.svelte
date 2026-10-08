@@ -704,13 +704,20 @@
 			resolverDisposer = syncHighlightTargetResolverProvider(readingTarget);
 			playbackStartInFlight = true;
 			statusMessage = interfaceI18n.t('tools.textToSpeech.inline.starting');
-			void ttsService.speak(text, {
+			const service = ttsService;
+			void service.speak(readingTarget, {
 				catalogId: catalogId || undefined,
 				catalogContext: resolveCatalogContext(),
 				language: findContentLanguage(readingTarget, {
 					contentLanguage: language || runtimeContext?.contentLanguage
 				}),
-				contentElement: readingTarget,
+			}).then(() => {
+				// Nothing speakable, such as content marked not-to-be-spoken: the
+				// service never left idle, so no state change ends the start.
+				if (playbackStartInFlight && String(service.getState?.() || '') === 'idle') {
+					playbackStartInFlight = false;
+					statusMessage = '';
+				}
 			}).catch((error) => {
 				console.error('[TTS Inline] Error:', error);
 				handlePlaybackStartFailure(resolverDisposer);

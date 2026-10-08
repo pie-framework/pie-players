@@ -561,4 +561,3 @@ const unregister = coordinator.registerPolicySource({
 - [Tool Registry Architecture](TOOL_REGISTRY.md) - Tool registration and filtering
 - [QTI 3.0 PNP Specification](https://www.imsglobal.org/spec/qti/v3p0)
 - [IMS AfA 3.0 Specification](https://www.imsglobal.org/spec/afa/v3p0)
-- [QTI Standard Access Features](../src/services/pnp-standard-features.ts)

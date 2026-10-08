@@ -49,10 +49,6 @@
 			"types": "./dist/services/AccessibilityCatalogResolver.d.ts",
 			"import": "./dist/services/AccessibilityCatalogResolver.js"
 		},
-		"./services/pnp-standard-features": {
-			"types": "./dist/services/pnp-standard-features.d.ts",
-			"import": "./dist/services/pnp-standard-features.js"
-		},
 		"./runtime/engine": {
 			"types": "./dist/runtime/engine.d.ts",
 			"import": "./dist/runtime/engine.js"

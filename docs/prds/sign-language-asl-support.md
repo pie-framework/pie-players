@@ -53,7 +53,7 @@ Confluence counterparts, added 2026-08-26 — this PRD and these pages had no li
 Deaf and hard-of-hearing learners need item language delivered in sign language. PIE has the vocabulary for this and none of the behavior:
 
 - `CatalogType` in `AccessibilityCatalogResolver` already listed `"sign-language"`, but before this work nothing rendered it: the only consumer of `getAlternative()` was `TTSService`, for `spoken`. Section-player now calls it for `sign-language` too — see the implementation note above.
-- `QTI_STANDARD_ACCESS_FEATURES` already lists `signLanguage`, `signLanguageInterpretation`, and `visualLanguage`, and the `deafHardOfHearing` example profile lists `signLanguage` and `visualLanguage` (not `signLanguageInterpretation`) — but no tool declares those `pnpSupportIds`, so no PNP support activates anything.
+- The toolkit's reference vocabulary, since removed, listed `signLanguage`, `signLanguageInterpretation`, and `visualLanguage`, but no tool declared those `pnpSupportIds`, so no PNP support activated anything.
 - `CatalogCard.content` is a flat `string`. A signing video needs more than one URL.
 
 The gap is visible in real content. Learnosity items in the ETL playground carry ASL video and render it in the Learnosity view; the PIE view of the same item shows the multiple-choice question with no video, because nothing translates that content into a PIE-renderable alternate representation.
@@ -324,7 +324,7 @@ QTI 3 is **inspiration, not an interop target.** PIE's catalog model borrows the
 | Media Fragments URI on the source | `fragment` | QTI 3 replaced APIP's separate start/end cue elements with fragment notation, letting one recording serve several nodes. |
 | `data-catalog-idref` docking, conventionally on a hidden docking div | `data-catalog-idref` | Already the same attribute PIE uses for TTS. |
 | APIP `signFileASL` / `signFileSignedEnglish` | catalog card + language | APIP's two sign types collapse into card language. Signed English is scoped out for MVP; see Open Questions. |
-| PNP 3.0 / AfA `signLanguage` | `PersonalNeedsProfile.supports` | Vocabulary already present in `pnp-standard-features.ts`. |
+| PNP 3.0 / AfA `signLanguage` | `PersonalNeedsProfile.supports` | The sign-language tool's id. |
 
 The table covers signing. It is not a survey of the catalog model, and two places where PIE's shape and the standard's diverge are recorded as open questions below rather than as mappings: QTI's `spoken` card may carry a pre-recorded audio file rather than SSML, and `ext:`-prefixed vendor support tokens have nowhere to land in a closed `CatalogType`. Neither is a defect in this design — nothing here promised to represent them — but both would surface the day something actually reads QTI, so they are written down while the reasoning is fresh.
 

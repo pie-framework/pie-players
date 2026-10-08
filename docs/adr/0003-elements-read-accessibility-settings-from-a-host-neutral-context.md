@@ -78,8 +78,8 @@ required or blocked by the same rules as every other support.
 
 A deliberate trade: AfA PNP 3.0 parameterizes some preferences, and a flat id list carries no
 parameters. `braille.math-type` takes `nemeth` or `ueb`, and `spoken.reading-type` takes
-`screen-reader` or `computer-read-aloud`. A parameterized preference becomes one id per value, as
-the toolkit's vocabulary already has `nemeth` beside `braille` (`pnp-standard-features.ts`).
+`screen-reader` or `computer-read-aloud`. A parameterized preference becomes one id per value, such as
+`nemeth` beside `braille`.
 Language preferences are parameterized by language, which is why `language` is a field of its own.
 
 ## Math accessibility modes

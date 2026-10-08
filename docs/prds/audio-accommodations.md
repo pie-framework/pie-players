@@ -73,7 +73,7 @@ No new types. A transcript is a string alternate, so it is a `CatalogCard` with 
 }
 ```
 
-`transcript` is **already** in the toolkit's AfA vocabulary — `packages/assessment-toolkit/src/services/pnp-standard-features.ts:74`, under "visual alternatives for audio", beside `signLanguage`. It is a support id looking for a consumer, which is the same position `sign-language` was in before PIE-880.
+`transcript` is the AfA support term, and no tool registers under it yet, which is the same position `sign-language` was in before PIE-880.
 
 It must not be granted by default, for the reason the source page gives — a transcript shown to a student who did not need it can invalidate a listening-comprehension item, so inheriting it by default is worse than not having it at all.
 

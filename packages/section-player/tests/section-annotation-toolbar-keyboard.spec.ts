@@ -141,6 +141,9 @@ test.describe("annotation toolbar keyboard access", () => {
 	}) => {
 		await gotoDemo(page);
 		const selected = await selectPassageText(page);
+		// The selection's own `selectionchange` is dispatched as a task, which can run
+		// after both key presses and show the strip again; it has run once the strip shows.
+		await expect(strip(page)).toBeVisible();
 		await page.keyboard.press("Shift+F10");
 		await expect(stripButtons(page).first()).toBeFocused();
 

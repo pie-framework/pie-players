@@ -1,4 +1,10 @@
 /**
+ * How long a warning about a missing input waits when a host may still be
+ * supplying it, such as a toolkit or a registry loaded after mount.
+ */
+export const PENDING_INPUT_WARNING_DELAY_MS = 10_000;
+
+/**
  * Warns about a setup mistake once per document, across every copy of the
  * toolkit loaded into it: the latch is a `Symbol.for` slot on the document, so
  * the custom-element bundle and the modules a host imports share it. Not

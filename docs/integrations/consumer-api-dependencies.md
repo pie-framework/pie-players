@@ -1657,6 +1657,12 @@ over a CDN with no typecheck at all.
 - `<pie-item-scope>`, the `runtime-ready` event, `sectionBound` on the host
   runtime context, the coordinator's `getToolRegistry`, `onReadyChange` and
   `eagerInit`, and `isTTSStartFailure` — no checkout uses any of them
+- A `<pie-assessment-toolkit>` without a section starting its coordinator at the
+  first item scope that registers, and taking a `toolRegistry` set after that in
+  place; `adoptToolRegistry` taking a registry after `null`; the toolbar's
+  empty-registry warning waiting 10 s. Every recorded host runs the toolkit
+  inside a section player, which binds at the section and always passes a
+  registry, and none calls `adoptToolRegistry`
 - `theme="auto"` behavior, and `variables` on `pie-theme`
 - The additive `ToolRegistry.onRegistryChange` observer and recoverable
   `tool-surface` framework-warning kind; no recorded host calls or branches on

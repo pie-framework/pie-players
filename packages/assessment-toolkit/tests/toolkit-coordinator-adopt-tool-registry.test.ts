@@ -148,6 +148,23 @@ describe("ToolkitCoordinator.adoptToolRegistry", () => {
 		expect(() => coordinator.isToolEnabled("calculator")).not.toThrow();
 	});
 
+	test("adopts a registry that arrives after a toolkit reported none", () => {
+		const coordinator = new ToolkitCoordinator({
+			assessmentId: "adopt-after-none",
+			lazyInit: true,
+			tools,
+		});
+		expect(coordinator.adoptToolRegistry(null)).toBe(false);
+
+		expect(coordinator.adoptToolRegistry(toolkitRegistry())).toBe(true);
+		expect(coordinator.toolProviderRegistry.has("calculator-stub")).toBe(true);
+		expect(
+			coordinator.adoptToolRegistry(
+				createTestToolRegistry(["textToSpeech", "annotationToolbar"]),
+			),
+		).toBe(false);
+	});
+
 	test("does nothing once disposed", async () => {
 		const coordinator = new ToolkitCoordinator({
 			assessmentId: "adopt-disposed",

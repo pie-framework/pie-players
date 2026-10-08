@@ -57,8 +57,6 @@ export const signLanguageRegistration: ToolRegistration = {
 	// its shared content is a passage or a rubric block that answers for itself.
 	supportedLevels: ["item", "passage"],
 
-	pnpSupportIds: [SIGN_LANGUAGE_FEATURE_ID],
-
 	activation: "region",
 	surfaces: [CONTENT_MEDIA_SURFACE],
 

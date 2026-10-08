@@ -99,7 +99,6 @@ function regionTool(
 		supportedLevels: ["item"],
 		activation: "region",
 		surfaces: ["content-lead"],
-		pnpSupportIds: [toolId],
 		renderSurface: () => ({ element: document.createElement("div") }),
 		...overrides,
 	};
@@ -305,13 +304,12 @@ describe("Tool Surface Host", () => {
 		host.destroy();
 	});
 
-	test("blocks on the tool id even when the support ids differ", async () => {
+	test("blocks a host-denied capability that resolves without a grant", async () => {
 		const registry = new ToolRegistry();
 		const runtime = createCoordinator();
 		runtime.grants.set("transcript", { granted: false, rule: "host-blocked" });
 		registry.register(
 			regionTool("transcript", {
-				pnpSupportIds: ["audioTranscript"],
 				resolvesWithoutGrant: true,
 				requiresAuthoredContent: { resolve: () => ({ text: "always" }) },
 			}),
@@ -579,7 +577,7 @@ describe("Tool Surface Host", () => {
 	test("section scope uses feature policy for regions and placement policy for toolbar activations", async () => {
 		const registry = new ToolRegistry();
 		const runtime = createCoordinator();
-		runtime.grants.set("region-support", {
+		runtime.grants.set("region-surface", {
 			granted: true,
 			parameters: { region: true },
 		});
@@ -588,7 +586,6 @@ describe("Tool Surface Host", () => {
 			regionTool("region-surface", {
 				supportedLevels: ["section"],
 				surfaces: ["section-overlay"],
-				pnpSupportIds: ["region-support"],
 				renderSurface: (context) => {
 					const element = document.createElement("div");
 					element.dataset.parameters = JSON.stringify(context.parameters);
@@ -604,7 +601,6 @@ describe("Tool Surface Host", () => {
 			supportedLevels: ["section"],
 			activation: "toolbar-toggle",
 			surfaces: ["section-overlay"],
-			pnpSupportIds: ["toolbar-support"],
 			isVisibleInContext: () => true,
 			renderToolbar: () => null,
 			renderSurface: (context) => {

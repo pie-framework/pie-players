@@ -216,11 +216,11 @@ export function mountItemAlternates(args: {
 			// content alone. Mapped here even though a print job binds no tools config
 			// today, so the answer cannot drift from the section player's the moment
 			// one does.
-			policyFor: (featureId) => {
-				const decision = engine.decideFeature(featureId);
+			policyFor: (supportId) => {
+				const decision = engine.decideFeature(supportId);
 				if (isHostDeniedFeature(decision)) return { outcome: "denied" };
 				return decision.granted
-					? { outcome: "granted", featureId, parameters: decision.parameters }
+					? { outcome: "granted", parameters: decision.parameters }
 					: { outcome: "silent" };
 			},
 			onError: (registration, phase, error) => {
@@ -237,7 +237,7 @@ export function mountItemAlternates(args: {
 			try {
 				rendered = registry.renderForSurface(toolId, {
 					toolId,
-					featureId: entry.featureId,
+					granted: entry.granted,
 					surface: CONTENT_LEAD_SURFACE,
 					parameters: entry.parameters,
 					content: entry.content,

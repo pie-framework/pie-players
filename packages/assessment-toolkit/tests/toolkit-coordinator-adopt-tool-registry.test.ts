@@ -56,7 +56,6 @@ function toolkitRegistry(): ToolRegistry {
 		createTestToolRegistration({
 			toolId: "calculator",
 			supportedLevels: ["item", "section"],
-			pnpSupportIds: ["calculator"],
 			provider: calculatorProvider,
 		}),
 	);

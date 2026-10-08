@@ -1,7 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 
 // The toolkit composed around one item with no section player. The host's
-// resolver reads the profile, so each profile change below is a policy change
+// resolver reads the calculator's decision, so each option below is a policy change
 // the toolbar has to follow without a reload. Tall enough that the open graphing
 // shell, anchored bottom-left, leaves the profile controls clickable.
 test.use({ viewport: { width: 1280, height: 1100 } });
@@ -30,7 +30,7 @@ test("the calculator's visibility and flavor follow a profile change mid-session
 	await calculatorButton.click();
 	await expect(container).toHaveAttribute("data-calculator-type", "scientific");
 
-	await profile.getByLabel("calculator + graphingCalculator").check();
+	await profile.getByLabel("calculator, graphing type").check();
 	await expect(
 		toolbar.getByRole("button", { name: "Graphing Calculator" }),
 	).toBeVisible();

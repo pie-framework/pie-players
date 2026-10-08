@@ -192,8 +192,8 @@ describe("signLanguage feature eligibility", () => {
 
 describe("the core ships no populated default profile", () => {
 	test("grants nothing", () => {
-		// The core once derived a profile from every registered tool's
-		// `pnpSupportIds`, which read registry membership as eligibility tier and
+		// The core once derived a profile from every registered tool's support
+		// ids, which read registry membership as eligibility tier and
 		// granted an accommodation to every student whose host supplied no profile.
 		// Nothing is granted now, so no exclusion list is needed to keep signing
 		// out.

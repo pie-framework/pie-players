@@ -1068,18 +1068,12 @@ export class ToolkitCoordinator {
 
 	/**
 	 * Whether policy grants `toolId` as an accommodation: item or district
-	 * requirement, or profile support, for one of its PNP support ids, or for its
-	 * own id when it has none. Read without the unbound-assessment warning.
+	 * requirement, or profile support. Read without the unbound-assessment
+	 * warning.
 	 */
 	private isToolGranted(toolId: string): boolean {
-		const registration = this.toolRegistry.get(toolId);
-		const supportIds = registration?.pnpSupportIds?.length
-			? registration.pnpSupportIds
-			: [toolId];
 		try {
-			return supportIds.some(
-				(supportId) => this.policyEngine.decideFeature(supportId).granted === true,
-			);
+			return this.policyEngine.decideFeature(toolId).granted === true;
 		} catch {
 			return false;
 		}

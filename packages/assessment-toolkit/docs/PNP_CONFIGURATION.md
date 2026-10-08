@@ -52,18 +52,18 @@ const assessment: AssessmentEntity = {
 
   // QTI 3.0: Student's documented accessibility needs
   personalNeedsProfile: {
-    // Accessibility features this student is authorized to use
+    // Accessibility features this student is authorized to use, by tool id
     supports: [
-      "textToSpeech",      // QTI 3.0 standard
-      "magnification",     // QTI 3.0 standard
-      "calculator",        // QTI 3.0 standard
-      "highlighting",      // QTI 3.0 standard
-      "readingMask"        // QTI 3.0 standard
+      "textToSpeech",
+      "magnification",     // No packaged tool; reported as an unknown support id
+      "calculator",
+      "annotationToolbar",
+      "lineReader"
     ],
 
     // Features explicitly prohibited for this student
     prohibitedSupports: [
-      "answerMasking"      // Not allowed per IEP
+      "answerEliminator"   // Not allowed per IEP
     ],
 
     // Features to auto-activate at assessment start
@@ -137,7 +137,7 @@ const assessment: AssessmentEntity = {
   name: "Chapter 5 Quiz",
 
   personalNeedsProfile: {
-    supports: ["calculator", "textToSpeech", "highlighting"]
+    supports: ["calculator", "textToSpeech", "annotationToolbar"]
   },
 
   settings: {
@@ -264,8 +264,8 @@ const assessment: AssessmentEntity = {
     supports: [
       "textToSpeech",
       "magnification",
-      "highlighting",
-      "readingMask",
+      "annotationToolbar",
+      "lineReader",
       "calculator"
     ],
     activateAtInit: ["textToSpeech", "magnification"]
@@ -316,10 +316,10 @@ console.log('Allowed tools:', allowedToolIds);
 // Why?
 // - calculator: Blocked by district policy (#1)
 // - textToSpeech: Restricted for this item (#3), which outranks the district requirement (#5)
-// - annotationToolbar: Placed at item level; the "highlighting" support maps to it
-// - magnification: No registered tool claims it; the decision carries a
+// - annotationToolbar: Placed at item level and granted by the profile
+// - magnification: No tool is registered under it; the decision carries a
 //   `tool-policy.unknownSupportId` diagnostic
-// - readingMask: Maps to lineReader, which this configuration places at passage level only
+// - lineReader: Granted, but this configuration places it at passage level only
 ```
 
 `settings.toolConfigs` holds feature parameters keyed by support id, and an item's `toolParameters` override them. A feature granted by a PNP support or a requirement carries them as its policy parameters (`ToolPolicyEntry.settings`, `FeaturePolicyDecision.parameters`), which is where the sign-language capability reads `signLang`. Provider configuration, such as the TTS backend and voice in step 2, belongs in `tools.providers`. The server backends (`polly`, `google`, `server`) send requests to the host's TTS server at `apiEndpoint` (default `/api/tts`) through `@pie-players/tts-client-server`, which `@pie-players/pie-default-tool-loaders` installs.
@@ -476,7 +476,7 @@ Provide UI for:
 1. **District administrators** to configure `districtPolicy`:
    ```typescript
    interface DistrictPolicyEditor {
-     blockedTools: string[];     // Select from QTI_STANDARD_ACCESS_FEATURES
+     blockedTools: string[];     // Multi-select from registered tool ids
      requiredTools: string[];
      policies: Record<string, any>;
    }
@@ -501,7 +501,7 @@ Provide UI for:
 
 ## Best Practices
 
-1. **Use QTI 3.0 standard features** - Check `QTI_STANDARD_ACCESS_FEATURES` before custom IDs
+1. **Name support ids by tool id** - A support id is the `toolId` it grants; translate a profile held in AfA terms (`readingMask`, `answerMasking`) to the tools that serve it
 2. **Document governance rules** - Explain why certain tools are blocked/required
 3. **Audit trail** - Log who makes policy decisions and when
 4. **Test precedence** - Verify district blocks actually override PNP

@@ -34,7 +34,6 @@ const dependencyContext = (
 	const owner = { kind: "item" as const, itemId: "item-1" };
 	resolver.registerOwner({ owner, entity: itemWithCards(cards) });
 	return {
-		featureId: granted ? AUDIO_TRANSCRIPT_FEATURE_ID : "",
 		catalogs: resolver
 			.forOwner({ ownerKind: "itemModel", itemId: "item-1" })
 			.snapshot(),
@@ -117,9 +116,7 @@ describe("audio transcript packaging", () => {
 	});
 
 	it("is gated by its own support id and declares a content dependency", () => {
-		expect(audioTranscriptRegistration.pnpSupportIds).toEqual([
-			AUDIO_TRANSCRIPT_FEATURE_ID,
-		]);
+		expect(audioTranscriptRegistration.toolId).toBe(AUDIO_TRANSCRIPT_FEATURE_ID);
 		expect(audioTranscriptRegistration.requiresAuthoredContent).toBeTruthy();
 	});
 

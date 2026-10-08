@@ -217,7 +217,7 @@ function contextSignature(context: ToolSurfaceRenderContext): string | null {
 	try {
 		return stableSerializableJson({
 			toolId: context.toolId,
-			featureId: context.featureId,
+			granted: context.granted,
 			surface: context.surface,
 			parameters: context.parameters ?? null,
 			content: context.content ?? null,
@@ -378,22 +378,17 @@ export function createToolSurfaceHost(
 		const [resolved] = resolveContentCapabilities({
 			registrations: [registration],
 			catalogs,
-			// One decision per feature id, in the rule's three states. The scan across
-			// a capability's support ids, the gate-only probe of its tool id, and
-			// denial's precedence over both a grant and `resolvesWithoutGrant` live in
-			// the rule, so this host and print cannot answer differently. All this
-			// adapter owns is reading a `FeaturePolicyDecision`: `granted` is not
-			// enough on its own, because a host gate and an unconfigured feature are
-			// both `granted: false` and only one of them may be reopened by content.
-			policyFor: (featureId) => {
-				const decision = coordinator?.decideFeaturePolicy?.(featureId);
+			// One decision per support id, in the rule's three states. Denial's
+			// precedence over both a grant and `resolvesWithoutGrant` lives in the
+			// rule, so this host and print cannot answer differently. All this adapter
+			// owns is reading a `FeaturePolicyDecision`: `granted` is not enough on its
+			// own, because a host gate and an unconfigured feature are both
+			// `granted: false` and only one of them may be reopened by content.
+			policyFor: (supportId) => {
+				const decision = coordinator?.decideFeaturePolicy?.(supportId);
 				if (isHostDeniedFeature(decision)) return { outcome: "denied" };
 				if (decision?.granted === true) {
-					return {
-						outcome: "granted",
-						featureId,
-						parameters: decision.parameters,
-					};
+					return { outcome: "granted", parameters: decision.parameters };
 				}
 				return { outcome: "silent" };
 			},
@@ -430,7 +425,7 @@ export function createToolSurfaceHost(
 
 		const context: ToolSurfaceRenderContext = {
 			toolId: registration.toolId,
-			featureId: resolved.featureId,
+			granted: resolved.granted,
 			surface: current.surface,
 			parameters: resolved.parameters,
 			content: resolved.content,
@@ -459,22 +454,15 @@ export function createToolSurfaceHost(
 
 		const coordinator = current.services.toolkitCoordinator;
 		if (!coordinator) return null;
-		const supportIds = registration.pnpSupportIds?.length
-			? registration.pnpSupportIds
-			: [registration.toolId];
-		let featureId = "";
+		let granted = false;
 		let parameters: unknown;
 
 		try {
 			if (registration.activation === "region") {
-				for (const supportId of supportIds) {
-					const decision = coordinator.decideFeaturePolicy?.(supportId);
-					if (decision?.granted !== true) continue;
-					featureId = supportId;
-					parameters = decision.parameters;
-					break;
-				}
-				if (!featureId) return null;
+				const decision = coordinator.decideFeaturePolicy?.(registration.toolId);
+				if (decision?.granted !== true) return null;
+				granted = true;
+				parameters = decision.parameters;
 			} else {
 				const scopeId = current.scope.sectionId || "*";
 				for (const level of SECTION_POLICY_LEVELS) {
@@ -491,11 +479,11 @@ export function createToolSurfaceHost(
 						(candidate) => candidate.toolId === registration.toolId,
 					);
 					if (!entry) continue;
-					featureId = supportIds[0] ?? registration.toolId;
+					granted = true;
 					parameters = entry.settings;
 					break;
 				}
-				if (!featureId) return null;
+				if (!granted) return null;
 			}
 		} catch (error) {
 			report(
@@ -509,7 +497,7 @@ export function createToolSurfaceHost(
 
 		const context: ToolSurfaceRenderContext = {
 			toolId: registration.toolId,
-			featureId,
+			granted,
 			surface: current.surface,
 			parameters,
 			services: current.services,

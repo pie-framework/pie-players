@@ -216,7 +216,7 @@ Neither reference point draws the tool-versus-accommodation line, and how each d
 
 ### Consequence For PIE
 
-The shape here is already right and is closer to the standards than it looks: an AfA-shaped, eligibility-free `supports` vocabulary (`pnpSupportIds`, `PersonalNeedsProfile.supports`), plus a policy engine supplying the tiering AfA omits.
+The shape here is already right and is closer to the standards than it looks: an AfA-shaped, eligibility-free `supports` list (`PersonalNeedsProfile.supports`, naming capabilities by `toolId`), plus a policy engine supplying the tiering AfA omits.
 
 So **accommodations are not a separate kind of thing in this architecture.** They get a feature id like everything else, their eligibility comes from policy configuration, and their content dependency is checked by catalog resolution. Sign language is the worked example: it takes a feature id so it inherits the six-level precedence, declares a content dependency so it is absent when an item carries no card, and renders as its own section-player region rather than a toolbar surface — three independent answers, none of which follow from the other two. See [`../prds/sign-language-asl-support.md`](../prds/sign-language-asl-support.md).
 
@@ -224,7 +224,7 @@ Two mechanisms this needed, added 2026-08-08 when signing shipped:
 
 **Decisions without a placement.** `decide(...)` answers "should this tool appear in *this* toolbar," which is the wrong question for a capability that has no toolbar surface — the answer comes back absent because nothing placed it, not because policy refused. `ToolPolicyEngine.decideFeature(featureId)` (exposed as `ToolkitCoordinator.decideFeaturePolicy(featureId)`) resolves one feature id through the same six levels, independent of placement. It delegates to `PnpPolicySource.resolveFeature(...)`, which reuses the existing rule evaluation rather than restating the precedence, so the two paths cannot drift. Note it deliberately does not consult `pnpEnforcement`: that flag governs whether profile policy *refines* an otherwise-visible tool set, and a capability with no placement has no unrefined baseline to fall back to, so honouring the flag would make the accommodation permanently unavailable rather than merely unrefined.
 
-**Eligibility tier is configuration, not a derivation.** The core ships no populated default profile: `createEmptyPersonalNeedsProfile()` grants nothing. A default was briefly derived from every registered tool's `pnpSupportIds`, which read registry membership as eligibility tier — registration means "policy-addressable", not "universal, on by default" — so an accommodation-tier capability was granted to every student of every host that supplied no profile. The remedy was `ACCOMMODATION_ONLY_SUPPORT_IDS`, a compile-time list of ids to exclude that a host could not extend for its own accommodation; both the derivation and the list are gone.
+**Eligibility tier is configuration, not a derivation.** The core ships no populated default profile: `createEmptyPersonalNeedsProfile()` grants nothing. A default was briefly derived from every registered tool's support ids, which read registry membership as eligibility tier — registration means "policy-addressable", not "universal, on by default" — so an accommodation-tier capability was granted to every student of every host that supplied no profile. The remedy was `ACCOMMODATION_ONLY_SUPPORT_IDS`, a compile-time list of ids to exclude that a host could not extend for its own accommodation; both the derivation and the list are gone.
 
 Tiering belongs where the district and test-administration levels already live, because it is a property of the program rather than of the capability: TTS is a universal feature in one program and a documented accommodation in another. `@pie-players/pie-default-tool-loaders` ships today's universal set as `UNIVERSAL_SUPPORTS_PRESET` and `createUniversalPersonalNeedsProfile()` — data a host adopts, extends or replaces. What does belong on a registration is the content dependency, `requiresAuthoredContent`: signing needs an authored catalog card, braille a transcription. That is the resource half of AfA's PNP/DRD pair, it is intrinsic to the capability, and declaring it keeps a content-dependent accommodation out of a wholesale grant structurally rather than by name.
 
@@ -249,12 +249,12 @@ Within the composition layer, PIE's packaged set is authored through one
 **Packaged Capability Composition**. A capability entry binds its registration
 to its custom-element delivery and lazy-loader bootstrap sets, its membership
 and order in the shipped placement presets, its toolbar order, and an explicit
-list of support ids this program treats as universal. The familiar root exports
+flag for whether this program treats it as universal. The familiar root exports
 — `PACKAGED_TOOL_REGISTRATIONS`, tag and loader maps, placement/order constants,
 the universal preset, and `createPackagedToolRegistry()` — are projections of
 that module rather than independent catalogues. Universal policy remains
-explicit data: the composition validates a declared universal id against its
-registration but never infers eligibility from registry membership.
+explicit data: the composition rejects a universal content-dependent capability
+but never infers eligibility from registry membership.
 
 Composition invariants are strict in the package build because they are
 PIE-authored release data, not runtime host input. They are not repeated as a
@@ -473,10 +473,10 @@ The runtime can register additional levels if your product needs custom scopes.
 - Floating tools: one state for the section (graph points and lines)
 
 **5. Different PNP Mapping**
-- QTI 3.0 access features map to tools through each registration's `pnpSupportIds`; placement sets the level the tool shows at
-- Example: `answerMasking` → answerEliminator, placed at item level
-- Example: `graph` → graph, placed at section level
-- A support id that no registration claims produces a `tool-policy.unknownSupportId` diagnostic
+- A profile grants a tool by its `toolId`, which is its support id; placement sets the level the tool shows at
+- Example: `answerEliminator`, placed at item level
+- Example: `graph`, placed at section level
+- A support id no tool is registered under produces a `tool-policy.unknownSupportId` diagnostic
 
 ### Implementation Example
 

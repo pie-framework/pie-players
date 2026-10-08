@@ -71,7 +71,6 @@ export interface ToolRegistrationLike {
 	name?: string;
 	description?: string;
 	supportedLevels?: readonly string[];
-	pnpSupportIds?: readonly string[];
 	/**
 	 * How the capability reaches the learner. `"region"` capabilities are the
 	 * reason this panel cannot treat every row alike: they render into a host
@@ -155,8 +154,6 @@ export interface EditableToolRow {
 	name: string;
 	description: string;
 	supportedLevels: ToolPlacementLevel[];
-	pnpSupportIds: string[];
-	primaryPnpSupportId: string;
 	providerEnabled: boolean;
 	placement: Record<ToolPlacementLevel, boolean>;
 	visible: Record<ToolPlacementLevel, boolean>;
@@ -303,10 +300,6 @@ function getPnpStringArray(profile: unknown, key: string): string[] {
 	return asStringArray((profile as Record<string, unknown>)[key]);
 }
 
-function hasAnySupport(profileIds: string[], supportIds: string[]): boolean {
-	return supportIds.some((supportId) => profileIds.includes(supportId));
-}
-
 function normalizeSupportedLevels(
 	tool: ToolRegistrationLike,
 ): ToolPlacementLevel[] {
@@ -361,17 +354,12 @@ export function buildEditableToolRows(args: {
 	return tools
 		.map((tool) => {
 			const supportedLevels = normalizeSupportedLevels(tool);
-			const pnpSupportIds = [
-				...new Set([...(tool.pnpSupportIds ?? []), tool.toolId]),
-			];
 			const placeable = tool.activation !== "region";
 			return {
 				toolId: tool.toolId,
 				name: tool.name || tool.toolId,
 				description: tool.description || "",
 				supportedLevels,
-				pnpSupportIds,
-				primaryPnpSupportId: pnpSupportIds[0] || tool.toolId,
 				providerEnabled: providers[tool.toolId]?.enabled !== false,
 				placeable,
 				contentDependency: tool.requiresAuthoredContent
@@ -379,8 +367,8 @@ export function buildEditableToolRows(args: {
 					: null,
 				placement: buildPlacementState(placement, tool.toolId),
 				visible: buildVisibleState(args.decisions, tool.toolId),
-				pnpSupported: hasAnySupport(supports, pnpSupportIds),
-				pnpProhibited: hasAnySupport(prohibitedSupports, pnpSupportIds),
+				pnpSupported: supports.includes(tool.toolId),
+				pnpProhibited: prohibitedSupports.includes(tool.toolId),
 			};
 		})
 		.filter((row) => row.supportedLevels.length > 0)
@@ -414,7 +402,7 @@ export function deriveAllAvailablePlacement(
 export function createPatchedPnpProfile(
 	profile: unknown,
 	key: "supports" | "prohibitedSupports",
-	supportIds: string[],
+	supportId: string,
 	enabled: boolean,
 ): Record<string, unknown> {
 	const base =
@@ -422,12 +410,10 @@ export function createPatchedPnpProfile(
 			? { ...(profile as Record<string, unknown>) }
 			: {};
 	const next = new Set(getPnpStringArray(base, key));
-	for (const supportId of supportIds) {
-		if (enabled) {
-			next.add(supportId);
-		} else {
-			next.delete(supportId);
-		}
+	if (enabled) {
+		next.add(supportId);
+	} else {
+		next.delete(supportId);
 	}
 	base[key] = Array.from(next).sort();
 	return base;

@@ -189,8 +189,6 @@ export const audioTranscriptRegistration: ToolRegistration = {
 
 	supportedLevels: ["item", "passage"],
 
-	pnpSupportIds: [AUDIO_TRANSCRIPT_FEATURE_ID],
-
 	// No button to press: a transcript is either authored-visible, or granted and
 	// present, or absent. `region` is the activation for a capability with no
 	// toolbar presence, and tools-config validation reports a `tools.placement`

@@ -190,6 +190,76 @@ describe("ToolkitCoordinator TTS reconfigure sequencing", () => {
 		expect(internals.ttsInitialized).toBe(true);
 	});
 
+	test("a speak after a reconfigure starts the reconfigured provider", async () => {
+		// A default voice is left to the engine, so neither configured voice is one.
+		const voices = ["System Voice", "Voice A", "Voice B"].map((name) => ({
+			name,
+			voiceURI: name,
+			lang: "en-US",
+			default: name === "System Voice",
+			localService: true,
+		}));
+		const spokenWith: Array<string | undefined> = [];
+		const synth = {
+			getVoices: () => voices,
+			speak: (utterance: {
+				voice?: { name: string } | null;
+				onstart?: () => void;
+				onend?: () => void;
+			}) => {
+				spokenWith.push(utterance.voice?.name);
+				utterance.onstart?.();
+				utterance.onend?.();
+			},
+			cancel: () => {},
+			pause: () => {},
+			resume: () => {},
+		};
+		class FakeUtterance {
+			voice: unknown = null;
+			lang = "";
+			rate = 1;
+			pitch = 1;
+			constructor(readonly text: string) {}
+		}
+		const globals = globalThis as Record<string, unknown>;
+		const saved = {
+			window: globals.window,
+			speechSynthesis: globals.speechSynthesis,
+			SpeechSynthesisUtterance: globals.SpeechSynthesisUtterance,
+		};
+		globals.window = { setTimeout, clearTimeout, speechSynthesis: synth };
+		globals.speechSynthesis = synth;
+		globals.SpeechSynthesisUtterance = FakeUtterance;
+		try {
+			const coordinator = new ToolkitCoordinator({
+				assessmentId: "tts-speak-after-reconfigure",
+				lazyInit: true,
+				toolRegistry: createTestToolRegistry(),
+				tools: {
+					providers: {
+						textToSpeech: {
+							enabled: true,
+							backend: "browser",
+							defaultVoice: "Voice A",
+						},
+					},
+				},
+			});
+			await coordinator.ttsService.speak("Before");
+
+			coordinator.updateToolConfig("textToSpeech", { defaultVoice: "Voice B" });
+			await coordinator.ttsService.speak("After");
+
+			expect(spokenWith).toEqual(["Voice A", "Voice B"]);
+		} finally {
+			for (const [key, value] of Object.entries(saved)) {
+				if (value === undefined) delete globals[key];
+				else globals[key] = value;
+			}
+		}
+	});
+
 	test("rejects removed providers.tts in strict error mode", async () => {
 		expect(
 			() =>

@@ -2954,6 +2954,16 @@ export class TTSService {
 	}
 
 	/**
+	 * Stop playback and drop the provider, whose owner destroys it. A later speak
+	 * waits on the readiness gate, as before the first {@link initialize}.
+	 */
+	releaseProvider(): void {
+		this.stop();
+		this.provider = null;
+		this.currentProvider = null;
+	}
+
+	/**
 	 * Request UI-level TTS controls to hand off/deactivate.
 	 *
 	 * This is intentionally separate from playback controls so hosts can orchestrate

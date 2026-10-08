@@ -59,6 +59,8 @@
 	const calculatorConfigKey = $derived(createCalculatorConfigKey(calculatorConfig));
 
 	let activeMountKey: string | null = null;
+	// A tool-config update replaces the provider, and destroying it destroys the calculator.
+	let mountedProvider: { isReady(): boolean } | null = null;
 	let currentMountElement: HTMLDivElement | null = null;
 	let mountGeneration = 0;
 	let reconcileQueued = false;
@@ -96,6 +98,7 @@
 		}
 		mountElement?.remove();
 		activeMountKey = null;
+		mountedProvider = null;
 		isInitializing = false;
 		hasMountedSurface = false;
 	}
@@ -156,6 +159,7 @@
 
 			calculatorInstance = instance;
 			activeMountKey = mountKey;
+			mountedProvider = toolProvider;
 			hasMountedSurface = mountElement.childElementCount > 0;
 			startResizeTracking(instance, mountElement);
 			requestAnimationFrame(() => {
@@ -192,7 +196,8 @@
 		const mountKey = `${providerId}:${effectiveCalculatorType}:${calculatorConfigKey}`;
 		if (
 			calculatorInstance &&
-			activeMountKey === mountKey
+			activeMountKey === mountKey &&
+			mountedProvider?.isReady()
 		) {
 			focusCalculator();
 			return;

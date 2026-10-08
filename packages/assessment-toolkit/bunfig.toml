@@ -1,0 +1,4 @@
+# Loads speech-rule-engine before any test file registers happy-dom, so it reads
+# its locale tables from its package directory. Rationale in the preload.
+[test]
+preload = ["./tests/preload-sre.ts"]

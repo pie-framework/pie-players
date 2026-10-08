@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
-import type { ToolbarContext } from "@pie-players/pie-assessment-toolkit/tools/internal";
-import type { ToolContext } from "@pie-players/pie-assessment-toolkit/tools/internal";
+import type { ToolbarContext } from "@pie-players/pie-assessment-toolkit/tools/registration";
+import type { ToolContext } from "@pie-players/pie-assessment-toolkit/tools/registration";
 import {
 	TOOL_ELEMENT_UNMOUNT_CALLBACK_PROP,
 	ttsToolRegistration,

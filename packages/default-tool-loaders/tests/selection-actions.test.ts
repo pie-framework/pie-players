@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import type { ToolSurfaceServices } from "@pie-players/pie-assessment-toolkit/tools/internal";
+import type { ToolSurfaceServices } from "@pie-players/pie-assessment-toolkit/tools/registration";
 import { buildSelectionActions } from "../src/registrations/selection-actions.js";
 
 type Requested = { toolId: string; params?: Record<string, unknown> };

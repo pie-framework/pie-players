@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { resolve } from "node:path";
-import type { RuntimeConfig } from "@pie-players/pie-assessment-toolkit/runtime/internal";
+import type { RuntimeConfig } from "@pie-players/pie-assessment-toolkit/runtime/engine";
 
 /**
  * Runtime config boundary guardrail.

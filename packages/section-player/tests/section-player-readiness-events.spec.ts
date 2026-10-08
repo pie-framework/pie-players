@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { createReadinessDetail } from "@pie-players/pie-assessment-toolkit/runtime/internal";
+import { createReadinessDetail } from "@pie-players/pie-assessment-toolkit/runtime/engine";
 
 test.describe("section player readiness semantics", () => {
 	test("keeps interaction-safe and final-ready moments separate", async () => {

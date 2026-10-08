@@ -76,7 +76,7 @@
 		RuntimeConfig,
 		StageChangeHandler,
 		LoadingCompleteHandler,
-	} from "@pie-players/pie-assessment-toolkit/runtime/internal";
+	} from "@pie-players/pie-assessment-toolkit/runtime/engine";
 	import type { SectionPlayerPolicies } from "../policies/types.js";
 	import { isTelemetryEnabled } from "../policies/index.js";
 	import { getShellHostElement } from "./shared/section-player-shell-layout.svelte.js";

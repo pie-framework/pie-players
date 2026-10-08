@@ -112,14 +112,20 @@ Section-player owns two pieces of glue:
 
 ### Public toolkit entry points
 
-- `@pie-players/pie-assessment-toolkit/runtime/engine` — narrow stable
-  facade (`SectionRuntimeEngine`, `sectionRuntimeEngineHostContext`,
-  `connectSectionRuntimeEngineHostContext`).
-- `@pie-players/pie-assessment-toolkit/runtime/internal` — wider evolving
-  surface (core types, adapter bridges, cohort helpers, resolvers,
-  `FrameworkErrorBus`). Use this when you need to construct an engine
-  manually, inspect FSM state, or build alternate fan-out paths. Symbols
-  here may change between minor versions with a changeset note.
+- `@pie-players/pie-assessment-toolkit/runtime/engine` — the stable entry
+  the layout kernel drives the engine through: `SectionRuntimeEngine`, its
+  host context, `FrameworkErrorBus`, the runtime config and its resolution
+  (`RuntimeConfig`, `resolveSectionEngineRuntimeState`,
+  `resolveOnFrameworkError`, the `DEFAULT_*` values), the cohort helpers, and
+  the readiness signals and detail.
+- `@pie-players/pie-assessment-toolkit/tools/registration` — the tool
+  surface host and provider-id resolution the cards and overlays render
+  registrations with.
+- `@pie-players/pie-assessment-toolkit` — everything else, including
+  `createShellEventBridge` for the passage shell.
+
+The engine's core, adapter and bridges have no entry: the section player
+reaches them only through the facade.
 
 ### Lifecycle emit invariant
 
@@ -193,7 +199,8 @@ as duplicate top-level layout props.
 This is implemented centrally in `resolveRuntime` / `resolveToolsConfig`,
 which now live in the toolkit at
 [`packages/assessment-toolkit/src/runtime/core/engine-resolver.ts`](../assessment-toolkit/src/runtime/core/engine-resolver.ts)
-(re-exported via `@pie-players/pie-assessment-toolkit/runtime/internal`).
+(reached through `resolveSectionEngineRuntimeState` on
+`@pie-players/pie-assessment-toolkit/runtime/engine`).
 Both helpers use a single `pick(runtimeVal, attrVal)` helper applied per
 key — so adding a new knob means appending exactly one entry to
 `RuntimeConfig`, one prop on each layout CE, and one `pick(...)` slot in

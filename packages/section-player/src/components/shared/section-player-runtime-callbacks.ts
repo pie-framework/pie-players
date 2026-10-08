@@ -33,7 +33,7 @@ import type {
 import type {
 	LoadingCompleteHandler,
 	StageChangeHandler,
-} from "@pie-players/pie-assessment-toolkit/runtime/internal";
+} from "@pie-players/pie-assessment-toolkit/runtime/engine";
 
 export type RuntimeCallbackBridgeChannel =
 	| "onStageChange"

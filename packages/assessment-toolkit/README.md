@@ -1523,36 +1523,30 @@ and dispose. The engine is what `<pie-section-player-…>` and
 `<pie-assessment-toolkit>` use internally, and it is also the surface
 custom hosts (or alternate layout shells) consume directly.
 
-### Two import paths
+### Entry point
 
-The engine ships with two deliberately separate entry points so consumers
-pick the stability surface that matches their use case:
-
-- **Stable facade — `@pie-players/pie-assessment-toolkit/runtime/engine`.**
-  Narrow, semver-stable surface for hosts that want to mount, drive, and
-  dispose a section runtime. Re-exports `SectionRuntimeEngine`, the
-  cross-CE host context (`sectionRuntimeEngineHostContext`), and the consumer-side
-  helper for that bridge (`connectSectionRuntimeEngineHostContext`).
-  The cross-CE host context exposes only a lifecycle handle; controller
-  methods stay on `SectionRuntimeEngine`.
-- **Internal surface — `@pie-players/pie-assessment-toolkit/runtime/internal`.**
-  Wider, evolving surface for advanced hosts that need to construct an
-  engine manually, inspect FSM state, or build alternate fan-out paths.
-  Exposes `SectionEngineCore`, the adapter bridges
-  (`createDomEventBridge`, `createFrameworkErrorBridge`),
-  `FrameworkErrorBus`, cohort helpers,
-  and the `resolveRuntime` / `resolveToolsConfig` /
-  `resolveSectionEngineRuntimeState` helpers. Symbols here may change
-  between minor versions with a changeset note.
+`@pie-players/pie-assessment-toolkit/runtime/engine` is the stable entry for a
+host that mounts, drives and disposes a section runtime. It carries
+`SectionRuntimeEngine`, the cross-CE host context
+(`sectionRuntimeEngineHostContext`) and its consumer-side helper
+(`connectSectionRuntimeEngineHostContext`), and the vocabulary of the facade's
+own inputs: the `FrameworkErrorBus` `attachHost` takes, the cohort helpers
+(`makeCohort`, `cohortsEqual`), the runtime config types with
+`resolveSectionEngineRuntimeState`, and the readiness signals with
+`createReadinessDetail`. The cross-CE host context exposes only a lifecycle
+handle; controller methods stay on `SectionRuntimeEngine`. The engine core, its
+adapter and the event bridges have no entry: a host reaches them through the
+facade.
 
 ## Writing a capability package
 
-`@pie-players/pie-assessment-toolkit/tools/internal` is what a capability
-package imports: the `ToolRegistration` contract, the `ToolProviderApi` its
-provider descriptor creates, the surface and content dependency types,
-`resolveToolTag` and the toolbar registration helpers. Same
-stability contract as the other `*/internal` entry points — symbols may change
-between minor versions with a changeset note.
+`@pie-players/pie-assessment-toolkit/tools/registration` is the stable entry a
+capability package imports: the `ToolRegistration` contract, the
+`ToolProviderApi` its provider descriptor creates, the surface and content
+dependency types, the context predicates, `createToolElement`, `resolveToolTag`
+and the toolbar registration helpers. A renderer that puts registrations on
+screen uses the same entry for `createToolSurfaceHost` and
+`resolveContentCapabilities`.
 
 Import it rather than the package root: the root pulls in `ToolkitCoordinator`,
 `TTSService` and the components, none of which a registration needs, and a
@@ -1599,13 +1593,11 @@ shape mirrors what the section-player kernel does internally:
 ```ts
 import { ContextProvider } from "@pie-players/pie-context";
 import {
+  FrameworkErrorBus,
   SectionRuntimeEngine,
+  makeCohort,
   sectionRuntimeEngineHostContext,
 } from "@pie-players/pie-assessment-toolkit/runtime/engine";
-import {
-  FrameworkErrorBus,
-  makeCohort,
-} from "@pie-players/pie-assessment-toolkit/runtime/internal";
 
 const bus = new FrameworkErrorBus();
 const engine = new SectionRuntimeEngine();
@@ -1672,7 +1664,7 @@ engine.dispose();
 The DOM events `pie-stage-change`, `pie-loading-complete`, and
 `framework-error` are dispatched on `host` automatically by the
 adapter's `dom-event-bridge`. The canonical `onFrameworkError` callback
-prop and the package-internal `FrameworkErrorBus` deliver each error
+prop and the `FrameworkErrorBus` deliver each error
 exactly once regardless of wrapper depth. The `framework-error` DOM
 event on the layout CE host also delivers each error exactly once: the
 section-player kernel intercepts the toolkit's bubbled emit at

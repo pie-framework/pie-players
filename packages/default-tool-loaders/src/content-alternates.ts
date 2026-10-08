@@ -17,7 +17,7 @@
  * directions, so a capability added there cannot quietly fail to reach print.
  */
 
-import type { ToolRegistration } from "@pie-players/pie-assessment-toolkit/tools/internal";
+import type { ToolRegistration } from "@pie-players/pie-assessment-toolkit/tools/registration";
 import { audioTranscriptRegistration } from "./registrations/audio-transcript.js";
 
 export const CONTENT_ALTERNATE_REGISTRATIONS: readonly ToolRegistration[] = [

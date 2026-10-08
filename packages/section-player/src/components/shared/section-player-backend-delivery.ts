@@ -2,7 +2,7 @@ import type { BackendConfig } from "@pie-players/pie-item-player";
 import type {
 	PlayerOverrides,
 	RuntimeConfig,
-} from "@pie-players/pie-assessment-toolkit/runtime/internal";
+} from "@pie-players/pie-assessment-toolkit/runtime/engine";
 import type { ItemEntity } from "@pie-players/pie-players-shared/types";
 
 type DeliveryConfig = NonNullable<BackendConfig["delivery"]>;

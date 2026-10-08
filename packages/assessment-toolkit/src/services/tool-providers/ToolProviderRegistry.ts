@@ -10,9 +10,9 @@
 import type { ToolProviderApi, ToolCategory } from "./ToolProviderApi.js";
 
 /**
- * Configuration for registering a tool provider
+ * What `register` takes: the provider, its config, and how it starts.
  */
-export interface ToolProviderConfig<TConfig = any> {
+export interface ToolProviderRegistration<TConfig = any> {
 	/**
 	 * Provider instance to register
 	 */
@@ -87,12 +87,12 @@ export interface ToolProviderConfig<TConfig = any> {
  */
 export class ToolProviderRegistry {
 	private providers = new Map<string, ToolProviderApi>();
-	private configs = new Map<string, ToolProviderConfig>();
+	private configs = new Map<string, ToolProviderRegistration>();
 	private initialized = new Map<string, boolean>();
 	private initializationPromises = new Map<string, Promise<void>>();
 
 	private async emitTelemetry(
-		config: ToolProviderConfig,
+		config: ToolProviderRegistration,
 		eventName: string,
 		payload?: Record<string, unknown>,
 	): Promise<void> {
@@ -114,7 +114,7 @@ export class ToolProviderRegistry {
 	 * @param providerId Unique provider identifier
 	 * @param config Provider configuration
 	 */
-	register(providerId: string, config: ToolProviderConfig): void {
+	register(providerId: string, config: ToolProviderRegistration): void {
 		const replaced = this.providers.get(providerId);
 		const replacedStart = this.initializationPromises.get(providerId);
 

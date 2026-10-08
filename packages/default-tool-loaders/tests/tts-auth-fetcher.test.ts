@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { ToolkitCoordinator } from "@pie-players/pie-assessment-toolkit";
-import { ToolRegistry } from "@pie-players/pie-assessment-toolkit/tools/internal";
+import { ToolRegistry } from "@pie-players/pie-assessment-toolkit/tools/registration";
 import { ttsToolRegistration } from "../src/registrations/tts.js";
 
 const API_ENDPOINT = "https://tts.example.test/synthesize";

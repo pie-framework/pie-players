@@ -280,22 +280,22 @@ test.describe("timed media", () => {
 			),
 		).toBe(false);
 
-		// Read the projection the layouts are actually given — the one on the
-		// republished composition model — rather than calling the controller. That is
+		// Read the projection on the republished composition model, the one the
+		// layout's panes render from, rather than calling the controller. That is
 		// the surface a host consumes, and it is the one the degradation has to reach.
 		const projection = await page.evaluate(() => {
-			const pane = document.querySelector(
-				"pie-section-player-items-pane",
+			const host = document.querySelector(
+				"pie-section-player-splitpane",
 			) as unknown as {
-				compositionModel?: {
+				getCompositionModelSnapshot: () => {
 					timedMedia?: {
 						enforcement?: { pause?: string };
 						degradations?: Array<{ policy?: string }>;
 						mediaAttached?: boolean;
 					} | null;
-				};
+				} | null;
 			};
-			return pane?.compositionModel?.timedMedia ?? null;
+			return host.getCompositionModelSnapshot()?.timedMedia ?? null;
 		});
 		expect(projection?.enforcement?.pause).toBe("advisory");
 		expect(projection?.degradations?.[0]?.policy).toBe("pause-on-required-cue");

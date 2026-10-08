@@ -5,11 +5,7 @@
  * The helpers run against happy-dom directly, and `<pie-section-player-kernel-host>`
  * registers from source. The toolkit's `components/*-element` entries import
  * their build output, so this file stubs them and registers the toolkit's
- * elements from their `.svelte` sources. pie-context's event classes extend the
- * `Event` of the moment the module first loads, and a `dispatchEvent` accepts
- * only its own realm's events, so this file re-bases them onto happy-dom's
- * `Event` while it runs and puts back the base the rest of the run expects when
- * it ends.
+ * elements from their `.svelte` sources.
  */
 
 import { GlobalRegistrator } from "@happy-dom/global-registrator";
@@ -23,25 +19,8 @@ import {
 	test,
 } from "bun:test";
 
-const NativeEvent = globalThis.Event;
 const ownsDom = typeof window === "undefined";
 if (ownsDom) GlobalRegistrator.register();
-const { ContextProviderEvent, ContextRequestEvent } = await import(
-	"@pie-players/pie-context"
-);
-
-type EventClass = { prototype: Event };
-function rebase(eventClass: EventClass, base: EventClass): void {
-	Object.setPrototypeOf(eventClass, base);
-	Object.setPrototypeOf(eventClass.prototype, base.prototype);
-}
-const rebased = [ContextRequestEvent, ContextProviderEvent].map((eventClass) => {
-	const base = Object.getPrototypeOf(eventClass) as EventClass;
-	// Loaded by this file: the rest of the run expects the native base.
-	const restore = base === window.Event ? NativeEvent : base;
-	rebase(eventClass, window.Event);
-	return { eventClass, restore };
-});
 
 const { attachKernelHostDefaultBody } = await import(
 	"../src/components/shared/kernel-host-default-body.js"
@@ -79,7 +58,6 @@ type LayoutContext =
 	import("../src/components/shared/section-player-layout-context.js").SectionPlayerLayoutContext;
 
 afterAll(() => {
-	for (const { eventClass, restore } of rebased) rebase(eventClass, restore);
 	if (ownsDom && GlobalRegistrator.isRegistered) GlobalRegistrator.unregister();
 });
 

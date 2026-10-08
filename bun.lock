@@ -431,6 +431,7 @@
       "name": "@pie-players/pie-players-shared",
       "version": "0.3.74",
       "dependencies": {
+        "@pie-element/shared-utils": "0.1.3",
         "@pie-lib/math-rendering-module": "6.0.0",
         "dompurify": "^3.4.16",
         "semver": "^7.8.5",
@@ -1467,7 +1468,7 @@
 
     "@pie-element/shared-types": ["@pie-element/shared-types@0.2.1-next.20261002215153", "", {}, "sha512-dVdSdMQ0RE127CQbXBzQB9o1dNWD51mdEig2e4kfdHFy/QNl1jHot/QjrpP3MWICiq30CcwBBq0eiEX9MvLx1g=="],
 
-    "@pie-element/shared-utils": ["@pie-element/shared-utils@0.1.3-next.20261007184841", "", { "dependencies": { "@pie-element/shared-types": "0.2.1-next.20261002215153", "dompurify": "^3.4.16" } }, "sha512-AAQr61q88UZ27+GLQnV7RH9fOjCjaqCigtFp5lfCQhtlMVmGBl3LB3O0PgHokHCht8S4f7KUwAzL+qXjIGsXFg=="],
+    "@pie-element/shared-utils": ["@pie-element/shared-utils@0.1.3", "", { "dependencies": { "@pie-element/shared-types": "0.2.0", "dompurify": "^3.4.16" } }, "sha512-ZueWCj01D80+/dVrq9RH9VoIB00UJkReaxuZet7ZBiEQUNjxJXk4CyvYUKelPC5ZzU2RfmOOmSi91JR1eHgxyw=="],
 
     "@pie-framework/math-validation": ["@pie-framework/math-validation@1.4.2", "", { "dependencies": { "lodash": "^4.17.21", "mathjs": "^9.4.2" } }, "sha512-qQPvLb6fAhQOPyqkpiYTrw6nsaARlGZcAIqBA13a2WLNkeRYodqRGH/+31UdRWnDc/ibqGRG/I41wTCb50kl7Q=="],
 
@@ -3267,6 +3268,8 @@
 
     "@pie-element/categorize/@pie-element/shared-math-rendering-mathjax": ["@pie-element/shared-math-rendering-mathjax@0.1.4-next.20261007201108", "", {}, "sha512-eR7HJfjuJmR0OkCverjbHqSWL5Mfrjyf5DfuUUQ1haZMQmvoumqhhZlnKm4F95XA1wsIpCcOurpfH9Z2vcYLpg=="],
 
+    "@pie-element/categorize/@pie-element/shared-utils": ["@pie-element/shared-utils@0.1.3-next.20261007184841", "", { "dependencies": { "@pie-element/shared-types": "0.2.1-next.20261002215153", "dompurify": "^3.4.16" } }, "sha512-AAQr61q88UZ27+GLQnV7RH9fOjCjaqCigtFp5lfCQhtlMVmGBl3LB3O0PgHokHCht8S4f7KUwAzL+qXjIGsXFg=="],
+
     "@pie-element/charting/@pie-element/shared-math-rendering-mathjax": ["@pie-element/shared-math-rendering-mathjax@0.1.4-next.20261007201108", "", {}, "sha512-eR7HJfjuJmR0OkCverjbHqSWL5Mfrjyf5DfuUUQ1haZMQmvoumqhhZlnKm4F95XA1wsIpCcOurpfH9Z2vcYLpg=="],
 
     "@pie-element/drag-in-the-blank/@pie-element/shared-math-rendering-mathjax": ["@pie-element/shared-math-rendering-mathjax@0.1.4-next.20261007201108", "", {}, "sha512-eR7HJfjuJmR0OkCverjbHqSWL5Mfrjyf5DfuUUQ1haZMQmvoumqhhZlnKm4F95XA1wsIpCcOurpfH9Z2vcYLpg=="],
@@ -3275,7 +3278,11 @@
 
     "@pie-element/explicit-constructed-response/@pie-element/shared-math-rendering-mathjax": ["@pie-element/shared-math-rendering-mathjax@0.1.4-next.20261007201108", "", {}, "sha512-eR7HJfjuJmR0OkCverjbHqSWL5Mfrjyf5DfuUUQ1haZMQmvoumqhhZlnKm4F95XA1wsIpCcOurpfH9Z2vcYLpg=="],
 
+    "@pie-element/explicit-constructed-response/@pie-element/shared-utils": ["@pie-element/shared-utils@0.1.3-next.20261007184841", "", { "dependencies": { "@pie-element/shared-types": "0.2.1-next.20261002215153", "dompurify": "^3.4.16" } }, "sha512-AAQr61q88UZ27+GLQnV7RH9fOjCjaqCigtFp5lfCQhtlMVmGBl3LB3O0PgHokHCht8S4f7KUwAzL+qXjIGsXFg=="],
+
     "@pie-element/extended-text-entry/@pie-element/shared-math-rendering-mathjax": ["@pie-element/shared-math-rendering-mathjax@0.1.4-next.20261007201108", "", {}, "sha512-eR7HJfjuJmR0OkCverjbHqSWL5Mfrjyf5DfuUUQ1haZMQmvoumqhhZlnKm4F95XA1wsIpCcOurpfH9Z2vcYLpg=="],
+
+    "@pie-element/extended-text-entry/@pie-element/shared-utils": ["@pie-element/shared-utils@0.1.3-next.20261007184841", "", { "dependencies": { "@pie-element/shared-types": "0.2.1-next.20261002215153", "dompurify": "^3.4.16" } }, "sha512-AAQr61q88UZ27+GLQnV7RH9fOjCjaqCigtFp5lfCQhtlMVmGBl3LB3O0PgHokHCht8S4f7KUwAzL+qXjIGsXFg=="],
 
     "@pie-element/fraction-model/@pie-element/shared-math-rendering-mathjax": ["@pie-element/shared-math-rendering-mathjax@0.1.4-next.20261007201108", "", {}, "sha512-eR7HJfjuJmR0OkCverjbHqSWL5Mfrjyf5DfuUUQ1haZMQmvoumqhhZlnKm4F95XA1wsIpCcOurpfH9Z2vcYLpg=="],
 
@@ -3287,37 +3294,69 @@
 
     "@pie-element/image-cloze-association/@pie-element/shared-math-rendering-mathjax": ["@pie-element/shared-math-rendering-mathjax@0.1.4-next.20261007201108", "", {}, "sha512-eR7HJfjuJmR0OkCverjbHqSWL5Mfrjyf5DfuUUQ1haZMQmvoumqhhZlnKm4F95XA1wsIpCcOurpfH9Z2vcYLpg=="],
 
+    "@pie-element/image-cloze-association/@pie-element/shared-utils": ["@pie-element/shared-utils@0.1.3-next.20261007184841", "", { "dependencies": { "@pie-element/shared-types": "0.2.1-next.20261002215153", "dompurify": "^3.4.16" } }, "sha512-AAQr61q88UZ27+GLQnV7RH9fOjCjaqCigtFp5lfCQhtlMVmGBl3LB3O0PgHokHCht8S4f7KUwAzL+qXjIGsXFg=="],
+
     "@pie-element/inline-dropdown/@pie-element/shared-math-rendering-mathjax": ["@pie-element/shared-math-rendering-mathjax@0.1.4-next.20261007201108", "", {}, "sha512-eR7HJfjuJmR0OkCverjbHqSWL5Mfrjyf5DfuUUQ1haZMQmvoumqhhZlnKm4F95XA1wsIpCcOurpfH9Z2vcYLpg=="],
+
+    "@pie-element/inline-dropdown/@pie-element/shared-utils": ["@pie-element/shared-utils@0.1.3-next.20261007184841", "", { "dependencies": { "@pie-element/shared-types": "0.2.1-next.20261002215153", "dompurify": "^3.4.16" } }, "sha512-AAQr61q88UZ27+GLQnV7RH9fOjCjaqCigtFp5lfCQhtlMVmGBl3LB3O0PgHokHCht8S4f7KUwAzL+qXjIGsXFg=="],
 
     "@pie-element/likert/@pie-element/shared-math-rendering-mathjax": ["@pie-element/shared-math-rendering-mathjax@0.1.4-next.20261007201108", "", {}, "sha512-eR7HJfjuJmR0OkCverjbHqSWL5Mfrjyf5DfuUUQ1haZMQmvoumqhhZlnKm4F95XA1wsIpCcOurpfH9Z2vcYLpg=="],
 
+    "@pie-element/likert/@pie-element/shared-utils": ["@pie-element/shared-utils@0.1.3-next.20261007184841", "", { "dependencies": { "@pie-element/shared-types": "0.2.1-next.20261002215153", "dompurify": "^3.4.16" } }, "sha512-AAQr61q88UZ27+GLQnV7RH9fOjCjaqCigtFp5lfCQhtlMVmGBl3LB3O0PgHokHCht8S4f7KUwAzL+qXjIGsXFg=="],
+
     "@pie-element/match/@pie-element/shared-math-rendering-mathjax": ["@pie-element/shared-math-rendering-mathjax@0.1.4-next.20261007201108", "", {}, "sha512-eR7HJfjuJmR0OkCverjbHqSWL5Mfrjyf5DfuUUQ1haZMQmvoumqhhZlnKm4F95XA1wsIpCcOurpfH9Z2vcYLpg=="],
+
+    "@pie-element/match/@pie-element/shared-utils": ["@pie-element/shared-utils@0.1.3-next.20261007184841", "", { "dependencies": { "@pie-element/shared-types": "0.2.1-next.20261002215153", "dompurify": "^3.4.16" } }, "sha512-AAQr61q88UZ27+GLQnV7RH9fOjCjaqCigtFp5lfCQhtlMVmGBl3LB3O0PgHokHCht8S4f7KUwAzL+qXjIGsXFg=="],
 
     "@pie-element/match-list/@pie-element/shared-math-rendering-mathjax": ["@pie-element/shared-math-rendering-mathjax@0.1.4-next.20261007201108", "", {}, "sha512-eR7HJfjuJmR0OkCverjbHqSWL5Mfrjyf5DfuUUQ1haZMQmvoumqhhZlnKm4F95XA1wsIpCcOurpfH9Z2vcYLpg=="],
 
+    "@pie-element/match-list/@pie-element/shared-utils": ["@pie-element/shared-utils@0.1.3-next.20261007184841", "", { "dependencies": { "@pie-element/shared-types": "0.2.1-next.20261002215153", "dompurify": "^3.4.16" } }, "sha512-AAQr61q88UZ27+GLQnV7RH9fOjCjaqCigtFp5lfCQhtlMVmGBl3LB3O0PgHokHCht8S4f7KUwAzL+qXjIGsXFg=="],
+
     "@pie-element/math-inline/@pie-element/shared-math-rendering-mathjax": ["@pie-element/shared-math-rendering-mathjax@0.1.4-next.20261007201108", "", {}, "sha512-eR7HJfjuJmR0OkCverjbHqSWL5Mfrjyf5DfuUUQ1haZMQmvoumqhhZlnKm4F95XA1wsIpCcOurpfH9Z2vcYLpg=="],
+
+    "@pie-element/math-inline/@pie-element/shared-utils": ["@pie-element/shared-utils@0.1.3-next.20261007184841", "", { "dependencies": { "@pie-element/shared-types": "0.2.1-next.20261002215153", "dompurify": "^3.4.16" } }, "sha512-AAQr61q88UZ27+GLQnV7RH9fOjCjaqCigtFp5lfCQhtlMVmGBl3LB3O0PgHokHCht8S4f7KUwAzL+qXjIGsXFg=="],
 
     "@pie-element/math-templated/@pie-element/shared-math-rendering-mathjax": ["@pie-element/shared-math-rendering-mathjax@0.1.4-next.20261007201108", "", {}, "sha512-eR7HJfjuJmR0OkCverjbHqSWL5Mfrjyf5DfuUUQ1haZMQmvoumqhhZlnKm4F95XA1wsIpCcOurpfH9Z2vcYLpg=="],
 
+    "@pie-element/math-templated/@pie-element/shared-utils": ["@pie-element/shared-utils@0.1.3-next.20261007184841", "", { "dependencies": { "@pie-element/shared-types": "0.2.1-next.20261002215153", "dompurify": "^3.4.16" } }, "sha512-AAQr61q88UZ27+GLQnV7RH9fOjCjaqCigtFp5lfCQhtlMVmGBl3LB3O0PgHokHCht8S4f7KUwAzL+qXjIGsXFg=="],
+
     "@pie-element/matrix/@pie-element/shared-math-rendering-mathjax": ["@pie-element/shared-math-rendering-mathjax@0.1.4-next.20261007201108", "", {}, "sha512-eR7HJfjuJmR0OkCverjbHqSWL5Mfrjyf5DfuUUQ1haZMQmvoumqhhZlnKm4F95XA1wsIpCcOurpfH9Z2vcYLpg=="],
 
+    "@pie-element/mc-populated-blank/@pie-element/shared-utils": ["@pie-element/shared-utils@0.1.3-next.20261007184841", "", { "dependencies": { "@pie-element/shared-types": "0.2.1-next.20261002215153", "dompurify": "^3.4.16" } }, "sha512-AAQr61q88UZ27+GLQnV7RH9fOjCjaqCigtFp5lfCQhtlMVmGBl3LB3O0PgHokHCht8S4f7KUwAzL+qXjIGsXFg=="],
+
     "@pie-element/multi-trait-rubric/@pie-element/shared-math-rendering-mathjax": ["@pie-element/shared-math-rendering-mathjax@0.1.4-next.20261007201108", "", {}, "sha512-eR7HJfjuJmR0OkCverjbHqSWL5Mfrjyf5DfuUUQ1haZMQmvoumqhhZlnKm4F95XA1wsIpCcOurpfH9Z2vcYLpg=="],
+
+    "@pie-element/multi-trait-rubric/@pie-element/shared-utils": ["@pie-element/shared-utils@0.1.3-next.20261007184841", "", { "dependencies": { "@pie-element/shared-types": "0.2.1-next.20261002215153", "dompurify": "^3.4.16" } }, "sha512-AAQr61q88UZ27+GLQnV7RH9fOjCjaqCigtFp5lfCQhtlMVmGBl3LB3O0PgHokHCht8S4f7KUwAzL+qXjIGsXFg=="],
 
     "@pie-element/multiple-choice/@pie-element/shared-math-rendering-mathjax": ["@pie-element/shared-math-rendering-mathjax@0.1.4-next.20261007201108", "", {}, "sha512-eR7HJfjuJmR0OkCverjbHqSWL5Mfrjyf5DfuUUQ1haZMQmvoumqhhZlnKm4F95XA1wsIpCcOurpfH9Z2vcYLpg=="],
 
     "@pie-element/number-line/@pie-element/shared-math-rendering-mathjax": ["@pie-element/shared-math-rendering-mathjax@0.1.4-next.20261007201108", "", {}, "sha512-eR7HJfjuJmR0OkCverjbHqSWL5Mfrjyf5DfuUUQ1haZMQmvoumqhhZlnKm4F95XA1wsIpCcOurpfH9Z2vcYLpg=="],
 
+    "@pie-element/number-line/@pie-element/shared-utils": ["@pie-element/shared-utils@0.1.3-next.20261007184841", "", { "dependencies": { "@pie-element/shared-types": "0.2.1-next.20261002215153", "dompurify": "^3.4.16" } }, "sha512-AAQr61q88UZ27+GLQnV7RH9fOjCjaqCigtFp5lfCQhtlMVmGBl3LB3O0PgHokHCht8S4f7KUwAzL+qXjIGsXFg=="],
+
     "@pie-element/passage/@pie-element/shared-math-rendering-mathjax": ["@pie-element/shared-math-rendering-mathjax@0.1.4-next.20261007201108", "", {}, "sha512-eR7HJfjuJmR0OkCverjbHqSWL5Mfrjyf5DfuUUQ1haZMQmvoumqhhZlnKm4F95XA1wsIpCcOurpfH9Z2vcYLpg=="],
+
+    "@pie-element/passage/@pie-element/shared-utils": ["@pie-element/shared-utils@0.1.3-next.20261007184841", "", { "dependencies": { "@pie-element/shared-types": "0.2.1-next.20261002215153", "dompurify": "^3.4.16" } }, "sha512-AAQr61q88UZ27+GLQnV7RH9fOjCjaqCigtFp5lfCQhtlMVmGBl3LB3O0PgHokHCht8S4f7KUwAzL+qXjIGsXFg=="],
 
     "@pie-element/placement-ordering/@pie-element/shared-math-rendering-mathjax": ["@pie-element/shared-math-rendering-mathjax@0.1.4-next.20261007201108", "", {}, "sha512-eR7HJfjuJmR0OkCverjbHqSWL5Mfrjyf5DfuUUQ1haZMQmvoumqhhZlnKm4F95XA1wsIpCcOurpfH9Z2vcYLpg=="],
 
+    "@pie-element/placement-ordering/@pie-element/shared-utils": ["@pie-element/shared-utils@0.1.3-next.20261007184841", "", { "dependencies": { "@pie-element/shared-types": "0.2.1-next.20261002215153", "dompurify": "^3.4.16" } }, "sha512-AAQr61q88UZ27+GLQnV7RH9fOjCjaqCigtFp5lfCQhtlMVmGBl3LB3O0PgHokHCht8S4f7KUwAzL+qXjIGsXFg=="],
+
     "@pie-element/rubric/@pie-element/shared-math-rendering-mathjax": ["@pie-element/shared-math-rendering-mathjax@0.1.4-next.20261007201108", "", {}, "sha512-eR7HJfjuJmR0OkCverjbHqSWL5Mfrjyf5DfuUUQ1haZMQmvoumqhhZlnKm4F95XA1wsIpCcOurpfH9Z2vcYLpg=="],
 
+    "@pie-element/rubric/@pie-element/shared-utils": ["@pie-element/shared-utils@0.1.3-next.20261007184841", "", { "dependencies": { "@pie-element/shared-types": "0.2.1-next.20261002215153", "dompurify": "^3.4.16" } }, "sha512-AAQr61q88UZ27+GLQnV7RH9fOjCjaqCigtFp5lfCQhtlMVmGBl3LB3O0PgHokHCht8S4f7KUwAzL+qXjIGsXFg=="],
+
     "@pie-element/select-text/@pie-element/shared-math-rendering-mathjax": ["@pie-element/shared-math-rendering-mathjax@0.1.4-next.20261007201108", "", {}, "sha512-eR7HJfjuJmR0OkCverjbHqSWL5Mfrjyf5DfuUUQ1haZMQmvoumqhhZlnKm4F95XA1wsIpCcOurpfH9Z2vcYLpg=="],
+
+    "@pie-element/select-text/@pie-element/shared-utils": ["@pie-element/shared-utils@0.1.3-next.20261007184841", "", { "dependencies": { "@pie-element/shared-types": "0.2.1-next.20261002215153", "dompurify": "^3.4.16" } }, "sha512-AAQr61q88UZ27+GLQnV7RH9fOjCjaqCigtFp5lfCQhtlMVmGBl3LB3O0PgHokHCht8S4f7KUwAzL+qXjIGsXFg=="],
+
+    "@pie-element/shared-utils/@pie-element/shared-types": ["@pie-element/shared-types@0.2.0", "", {}, "sha512-xTsggdQ8jy4Xkm7Z8u6AQEVRnDyf+60jiH/BNHi+5gUXzb6GTcYGyMDcm1VH7hnPWmB/WFhrsS83N5gA+Gg/+g=="],
 
     "@pie-framework/math-validation/mathjs": ["mathjs@9.5.2", "", { "dependencies": { "@babel/runtime": "^7.15.4", "complex.js": "^2.0.15", "decimal.js": "^10.3.1", "escape-latex": "^1.2.0", "fraction.js": "^4.1.1", "javascript-natural-sort": "^0.7.1", "seedrandom": "^3.0.5", "tiny-emitter": "^2.1.0", "typed-function": "^2.0.0" }, "bin": { "mathjs": "bin/cli.js" } }, "sha512-c0erTq0GP503/Ch2OtDOAn50GIOsuxTMjmE00NI/vKJFSWrDaQHRjx6ai+16xYv70yBSnnpUgHZGNf9FR9IwmA=="],
 
     "@pie-lib/charting/@pie-element/shared-math-rendering-mathjax": ["@pie-element/shared-math-rendering-mathjax@0.1.4-next.20261007201108", "", {}, "sha512-eR7HJfjuJmR0OkCverjbHqSWL5Mfrjyf5DfuUUQ1haZMQmvoumqhhZlnKm4F95XA1wsIpCcOurpfH9Z2vcYLpg=="],
+
+    "@pie-lib/charting/@pie-element/shared-utils": ["@pie-element/shared-utils@0.1.3-next.20261007184841", "", { "dependencies": { "@pie-element/shared-types": "0.2.1-next.20261002215153", "dompurify": "^3.4.16" } }, "sha512-AAQr61q88UZ27+GLQnV7RH9fOjCjaqCigtFp5lfCQhtlMVmGBl3LB3O0PgHokHCht8S4f7KUwAzL+qXjIGsXFg=="],
 
     "@pie-lib/drag/@pie-element/shared-math-rendering-mathjax": ["@pie-element/shared-math-rendering-mathjax@0.1.4-next.20261007201108", "", {}, "sha512-eR7HJfjuJmR0OkCverjbHqSWL5Mfrjyf5DfuUUQ1haZMQmvoumqhhZlnKm4F95XA1wsIpCcOurpfH9Z2vcYLpg=="],
 
@@ -3325,9 +3364,21 @@
 
     "@pie-lib/editable-html-tip-tap/react-jss": ["react-jss@8.6.1", "", { "dependencies": { "hoist-non-react-statics": "^2.5.0", "jss": "^9.7.0", "jss-preset-default": "^4.3.0", "prop-types": "^15.6.0", "theming": "^1.3.0" }, "peerDependencies": { "react": ">=0.13" } }, "sha512-SH6XrJDJkAphp602J14JTy3puB2Zxz1FkM3bKVE8wON+va99jnUTKWnzGECb3NfIn9JPR5vHykge7K3/A747xQ=="],
 
+    "@pie-lib/graphing/@pie-element/shared-utils": ["@pie-element/shared-utils@0.1.3-next.20261007184841", "", { "dependencies": { "@pie-element/shared-types": "0.2.1-next.20261002215153", "dompurify": "^3.4.16" } }, "sha512-AAQr61q88UZ27+GLQnV7RH9fOjCjaqCigtFp5lfCQhtlMVmGBl3LB3O0PgHokHCht8S4f7KUwAzL+qXjIGsXFg=="],
+
+    "@pie-lib/graphing-solution-set/@pie-element/shared-utils": ["@pie-element/shared-utils@0.1.3-next.20261007184841", "", { "dependencies": { "@pie-element/shared-types": "0.2.1-next.20261002215153", "dompurify": "^3.4.16" } }, "sha512-AAQr61q88UZ27+GLQnV7RH9fOjCjaqCigtFp5lfCQhtlMVmGBl3LB3O0PgHokHCht8S4f7KUwAzL+qXjIGsXFg=="],
+
     "@pie-lib/mask-markup/@pie-element/shared-math-rendering-mathjax": ["@pie-element/shared-math-rendering-mathjax@0.1.4-next.20261007201108", "", {}, "sha512-eR7HJfjuJmR0OkCverjbHqSWL5Mfrjyf5DfuUUQ1haZMQmvoumqhhZlnKm4F95XA1wsIpCcOurpfH9Z2vcYLpg=="],
 
+    "@pie-lib/mask-markup/@pie-element/shared-utils": ["@pie-element/shared-utils@0.1.3-next.20261007184841", "", { "dependencies": { "@pie-element/shared-types": "0.2.1-next.20261002215153", "dompurify": "^3.4.16" } }, "sha512-AAQr61q88UZ27+GLQnV7RH9fOjCjaqCigtFp5lfCQhtlMVmGBl3LB3O0PgHokHCht8S4f7KUwAzL+qXjIGsXFg=="],
+
+    "@pie-lib/plot/@pie-element/shared-utils": ["@pie-element/shared-utils@0.1.3-next.20261007184841", "", { "dependencies": { "@pie-element/shared-types": "0.2.1-next.20261002215153", "dompurify": "^3.4.16" } }, "sha512-AAQr61q88UZ27+GLQnV7RH9fOjCjaqCigtFp5lfCQhtlMVmGBl3LB3O0PgHokHCht8S4f7KUwAzL+qXjIGsXFg=="],
+
     "@pie-lib/render-ui/@pie-element/shared-math-rendering-mathjax": ["@pie-element/shared-math-rendering-mathjax@0.1.4-next.20261007201108", "", {}, "sha512-eR7HJfjuJmR0OkCverjbHqSWL5Mfrjyf5DfuUUQ1haZMQmvoumqhhZlnKm4F95XA1wsIpCcOurpfH9Z2vcYLpg=="],
+
+    "@pie-lib/render-ui/@pie-element/shared-utils": ["@pie-element/shared-utils@0.1.3-next.20261007184841", "", { "dependencies": { "@pie-element/shared-types": "0.2.1-next.20261002215153", "dompurify": "^3.4.16" } }, "sha512-AAQr61q88UZ27+GLQnV7RH9fOjCjaqCigtFp5lfCQhtlMVmGBl3LB3O0PgHokHCht8S4f7KUwAzL+qXjIGsXFg=="],
+
+    "@pie-lib/text-select/@pie-element/shared-utils": ["@pie-element/shared-utils@0.1.3-next.20261007184841", "", { "dependencies": { "@pie-element/shared-types": "0.2.1-next.20261002215153", "dompurify": "^3.4.16" } }, "sha512-AAQr61q88UZ27+GLQnV7RH9fOjCjaqCigtFp5lfCQhtlMVmGBl3LB3O0PgHokHCht8S4f7KUwAzL+qXjIGsXFg=="],
 
     "@pie-players/assessment-demos/typescript": ["typescript@6.0.3", "", { "bin": { "tsc": "bin/tsc", "tsserver": "bin/tsserver" } }, "sha512-y2TvuxSZPDyQakkFRPZHKFm+KKVqIisdg9/CZwm9ftvKXLP8NRWj38/ODjNbr43SsoXqNuAisEf1GdCxqWcdBw=="],
 

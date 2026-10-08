@@ -1094,7 +1094,7 @@ export class ToolRegistry {
 	/**
 	 * Filter tools by visibility in a given context
 	 *
-	 * Pass 2 of the two-pass model: Given a list of allowed tool IDs (from Pass 1),
+	 * Pass 2 of the three-pass model: Given a list of allowed tool IDs (from Pass 1),
 	 * ask each tool if it's relevant in this context.
 	 *
 	 * @param allowedToolIds - Tool IDs that passed Pass 1 (orchestrator approval)

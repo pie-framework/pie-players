@@ -392,7 +392,6 @@
   resolveTTSHostToolbarLayout
   resolveTTSLayoutMode
   resolveTTSRuntimeSettings
-  resolveToolProviderId
   resolveToolRegistrationName
   resolveToolTag
   resolveTransportMode

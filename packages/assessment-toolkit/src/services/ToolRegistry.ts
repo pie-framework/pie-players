@@ -260,39 +260,21 @@ export interface HostedToolSize {
 	height: number;
 }
 
+/**
+ * How the coordinator builds a tool's provider from the tool's config. The
+ * provider registers under the tool's own id, so `ensureProviderReady(toolId)`
+ * finds it; `provider.id` in the config selects an implementation and never
+ * renames the registration.
+ */
 export interface ToolProviderDescriptor {
-	getProviderId?: (config: ToolRuntimeConfig | undefined) => string;
 	createProvider: (config: ToolRuntimeConfig | undefined) => ToolProviderApi;
 	getInitConfig?: (
 		config: ToolRuntimeConfig | undefined,
 	) => Record<string, unknown>;
-	sanitizeConfig?: (config: ToolRuntimeConfig) => ToolRuntimeConfig;
-	validateConfig?: (config: ToolRuntimeConfig) => ToolConfigDiagnostic[];
 	getAuthFetcher?: (
 		config: ToolRuntimeConfig | undefined,
 	) => (() => Promise<Record<string, unknown>>) | undefined;
 	lazy?: boolean;
-}
-
-/**
- * The id a registration's provider registers under for one tool config: the
- * descriptor's answer, then the config's `provider.id`, then the tool id. `null`
- * when the registration carries no provider.
- *
- * The coordinator registers providers under this id and the section player looks
- * for them in a host-supplied coordinator by it, so the two resolve it one way.
- */
-export function resolveToolProviderId(
-	registration: Pick<ToolRegistration, "toolId" | "provider">,
-	config: ToolRuntimeConfig | undefined,
-): string | null {
-	const descriptor = registration.provider;
-	if (!descriptor) return null;
-	return (
-		descriptor.getProviderId?.(config) ??
-		config?.provider?.id ??
-		registration.toolId
-	);
 }
 
 export interface ToolToolbarRenderResult {
@@ -590,6 +572,16 @@ export interface ToolRegistration {
 	 * without hardcoded tool-specific branches.
 	 */
 	provider?: ToolProviderDescriptor;
+	/**
+	 * Normalize this tool's `tools.providers.<toolId>` entry. Tools-config
+	 * validation runs it before {@link ToolRegistration.validateConfig}; a throw is
+	 * reported as a diagnostic and the entry passes through unchanged.
+	 */
+	sanitizeConfig?: (config: ToolRuntimeConfig) => ToolRuntimeConfig;
+	/**
+	 * Diagnostics for this tool's sanitized `tools.providers.<toolId>` entry.
+	 */
+	validateConfig?: (config: ToolRuntimeConfig) => ToolConfigDiagnostic[];
 	/**
 	 * Optional shell-host lifecycle hooks for hosted (floating) tools.
 	 */

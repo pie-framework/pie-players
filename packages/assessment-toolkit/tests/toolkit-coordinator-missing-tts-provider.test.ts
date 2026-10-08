@@ -145,7 +145,7 @@ describe("ToolkitCoordinator text-to-speech without a tts provider", () => {
 			createTestToolRegistration({
 				toolId: "textToSpeech",
 				supportedLevels: ["item", "passage"],
-				provider: createFailingAuthProviderDescriptor("tts"),
+				provider: createFailingAuthProviderDescriptor("textToSpeech"),
 			}),
 		);
 		const coordinator = new ToolkitCoordinator({

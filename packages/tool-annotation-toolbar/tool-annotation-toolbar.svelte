@@ -4,8 +4,6 @@
 		shadow: 'open',
 		props: {
 			enabled: { type: 'Boolean', attribute: 'enabled' },
-			highlightCoordinator: { type: 'Object' },
-			ttsService: { type: 'Object' },
 			selectionActions: { type: 'Object' }
 		},
 		extend: coerceBooleanAttributes,
@@ -19,9 +17,7 @@
 		AssessmentToolkitRegionScopeContext,
 		AssessmentToolkitRuntimeContext,
 		AssessmentToolkitShellContext,
-		HighlightCoordinator,
-		ToolSelectionAction,
-		TtsServiceApi
+		ToolSelectionAction
 	} from '@pie-players/pie-assessment-toolkit/tools/registration';
 	import {
 		connectAssessmentToolkitRegionScopeContext,
@@ -52,8 +48,6 @@
 
 	interface Props {
 		enabled?: boolean;
-		highlightCoordinator?: HighlightCoordinator | null;
-		ttsService?: TtsServiceApi | null;
 		/**
 		 * Actions on the current selection, supplied by whoever mounts this gateway.
 		 *
@@ -67,8 +61,6 @@
 
 	let {
 		enabled = true,
-		highlightCoordinator = null,
-		ttsService = null,
 		selectionActions = null
 	}: Props = $props();
 
@@ -95,6 +87,10 @@
 	let runtimeContext = $state<AssessmentToolkitRuntimeContext | null>(null);
 	// Interface locale, re-derived on every context republish.
 	const interfaceI18n = $derived(resolveInterfaceI18n(runtimeContext));
+	// Where annotations are recorded, and the read-aloud the strip offers when the
+	// toolkit has one.
+	const highlightCoordinator = $derived(runtimeContext?.highlightCoordinator ?? null);
+	const ttsService = $derived(runtimeContext?.ttsService ?? null);
 
 	// Available highlight colors (modern, accessible palette). `$derived` because
 	// the labels come from the catalog, so the list rebuilds when the locale moves —

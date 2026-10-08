@@ -98,16 +98,12 @@ export const signLanguageRegistration: ToolRegistration = {
 
 		const element = document.createElement(tagName) as HTMLElement & {
 			media?: ResolvedSignLanguageAlternate | null;
-			ttsService?: unknown;
 		};
 		// Reads the context it is handed, never the one captured above: on a re-sync
 		// the host's context carries the freshly resolved card, and a learner who
 		// switched signed language must not keep watching the previous recording.
 		const applyProps = (current: ToolSurfaceRenderContext) => {
 			element.media = current.content as ResolvedSignLanguageAlternate | null;
-			// Signing playback and read-aloud must not run at once; the region needs
-			// the service to pause the other one.
-			element.ttsService = current.services.ttsService;
 		};
 		applyProps(context);
 		return {

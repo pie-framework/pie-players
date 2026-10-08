@@ -10,8 +10,7 @@
 			buttonAlignment: { type: 'String', attribute: 'button-alignment' },
 			scopeElement: { type: 'Object', reflect: false },
 
-			// Store integration (JS properties only)
-			elementToolStateStore: { type: 'Object', reflect: false },
+			// Key into the toolkit's element tool state store (JS property only)
 			globalElementId: { type: 'String', reflect: false }
 		},
 		extend: coerceBooleanAttributes,
@@ -65,22 +64,18 @@
 	let {
 		visible = false,
 		toolId = 'answerEliminator',
-		strategy = 'strikethrough' as 'strikethrough' | 'mask' | 'gray',
+		strategy = 'strikethrough' as 'strikethrough' | 'mask',
 		alwaysOn = false, // Set true for profile-based accommodation
 		buttonAlignment = 'right' as 'left' | 'right' | 'inline', // Button placement: left, right, or inline with checkbox
 		scopeElement = null, // Container element to limit DOM queries (for multi-item pages)
-
-		// Store integration
-		elementToolStateStore = null, // ElementToolStateStore instance
 		globalElementId = '' // Composite key: "assessmentId:sectionId:itemId:elementId"
 	}: {
 		visible?: boolean;
 		toolId?: string;
-		strategy?: 'strikethrough' | 'mask' | 'gray';
+		strategy?: 'strikethrough' | 'mask';
 		alwaysOn?: boolean;
 		buttonAlignment?: 'left' | 'right' | 'inline';
 		scopeElement?: HTMLElement | null;
-		elementToolStateStore?: any;
 		globalElementId?: string;
 	} = $props();
 
@@ -91,6 +86,8 @@
 	const coordinator = $derived(
 		runtimeContext?.toolCoordinator as ToolCoordinatorApi | undefined,
 	);
+	// Where eliminations persist across question navigation.
+	const elementToolStateStore = $derived(runtimeContext?.elementToolStateStore ?? null);
 	let core = $state<AnswerEliminatorCore | null>(null);
 	let lastShellContextVersion = $state<number | null>(null);
 
@@ -140,7 +137,7 @@
 	// Re-registers when a republished context brings a new coordinator.
 	$effect(() => registration.sync(coordinator, toolId));
 
-	// Update store integration when store props change
+	// Update store integration when the store or the element key changes
 	$effect(() => {
 		if (core && elementToolStateStore && globalElementId) {
 			core.setStoreIntegration(elementToolStateStore, globalElementId);

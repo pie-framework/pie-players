@@ -10,7 +10,7 @@ import { expect, type Page, test } from "@playwright/test";
 const DEMO_PATH = "/three-questions?mode=candidate&layout=splitpane";
 const LAYOUT_TAG = "pie-section-player-splitpane";
 const PROVIDER_WARNING = "[pie-section-player] Placed tool";
-const CALCULATOR_WARNING = `${PROVIDER_WARNING} "calculator" uses provider "calculator-desmos"`;
+const CALCULATOR_WARNING = `${PROVIDER_WARNING} "calculator" has a provider`;
 const NEW_WARNINGS = [
 	PROVIDER_WARNING,
 	"falls back to browser speech",

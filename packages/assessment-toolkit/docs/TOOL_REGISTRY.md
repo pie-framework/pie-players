@@ -719,6 +719,34 @@ packagedRegistry.register(myToolRegistration);
 
 3. **Grant it**: a profile listing `myTool` in `supports` grants it. The tool id is the support id, so there is no mapping to declare.
 
+### Services, Providers and Config Hooks
+
+A tool element reads the toolkit's services from the runtime context it connects to with `connectToolRuntimeContext`: the toolkit coordinator, the tool coordinator, the TTS service, the highlight coordinator, the catalog resolver and the element tool state store. That context is the one channel. An element declares no prop carrying a service and a registration assigns none onto the element it creates, because a value set at render goes stale when a context republish brings another coordinator.
+
+A tool that needs a backend declares `provider` on its registration. The coordinator registers that provider under the tool's id, and the element starts it with `toolkitCoordinator.ensureProviderReady(baseToolId)`, where `baseToolId` is the tool id without its scope suffix (`parseScopedToolId(toolId)?.baseToolId`). `provider.id` in the tool's config selects an implementation and never renames the registration, so `updateToolConfig` selecting another implementation replaces the provider under the same id.
+
+Config hooks belong to the registration, since they govern the tool's `tools.providers.<toolId>` entry whether or not the tool has a provider. Tools-config validation runs `sanitizeConfig` first and passes its result to `validateConfig`:
+
+```typescript
+export const myToolRegistration: ToolRegistration = {
+  // ...the fields above
+  provider: {
+    createProvider: (config) => new MyToolProvider(config?.provider?.id),
+    getInitConfig: (config) => config?.provider?.init ?? {},
+  },
+  sanitizeConfig: (config) => ({ ...config, settings: { ...config.settings } }),
+  validateConfig: (config) =>
+    config.settings?.mode === "unknown"
+      ? [{
+          code: "tools.providerValidateFailed",
+          severity: "error",
+          path: "providers.myTool.settings.mode",
+          message: "Unknown mode.",
+        }]
+      : [],
+};
+```
+
 ## TypeScript Support
 
 Full TypeScript definitions:

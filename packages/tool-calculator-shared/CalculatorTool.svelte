@@ -1,6 +1,7 @@
 <script lang="ts">
 	import {
 		connectToolRuntimeContext,
+		parseScopedToolId,
 		type AssessmentToolkitRuntimeContext,
 	} from '@pie-players/pie-assessment-toolkit/tools/registration';
 	import type {
@@ -15,19 +16,15 @@
 	let {
 		visible = false,
 		toolId = 'calculator',
-		providerId = '',
 		calculatorType = 'basic' as CalculatorType,
 		availableTypes: availableTypesInput = ['basic', 'scientific', 'graphing'] as CalculatorType[],
 		calculatorConfig = {} as CalculatorProviderConfig,
-		toolkitCoordinator: explicitToolkitCoordinator = null,
 	}: {
 		visible?: boolean;
 		toolId?: string;
-		providerId?: string;
 		calculatorType?: CalculatorType;
 		availableTypes?: CalculatorType[] | string;
 		calculatorConfig?: CalculatorProviderConfig;
-		toolkitCoordinator?: AssessmentToolkitRuntimeContext['toolkitCoordinator'] | null;
 	} = $props();
 
 	let contextHostElement = $state<HTMLDivElement | null>(null);
@@ -39,9 +36,10 @@
 	let hasMountedSurface = $state(false);
 
 	const interfaceI18n = $derived(resolveInterfaceI18n(runtimeContext));
-	const toolkitCoordinator = $derived(
-		explicitToolkitCoordinator ?? runtimeContext?.toolkitCoordinator,
-	);
+	const toolkitCoordinator = $derived(runtimeContext?.toolkitCoordinator);
+	// The toolkit registers a tool's provider under the tool's own id; the instance id
+	// carries the scope on top of it.
+	const baseToolId = $derived(parseScopedToolId(toolId)?.baseToolId ?? toolId);
 	const availableTypes = $derived(
 		(typeof availableTypesInput === 'string'
 			? availableTypesInput.split(',').map((value) => value.trim())
@@ -139,9 +137,8 @@
 		isInitializing = true;
 		initializationError = null;
 		try {
-			if (!providerId) throw new Error('Calculator provider id is required');
 			if (!toolkitCoordinator) throw new Error('Calculator provider registry is unavailable');
-			const toolProvider = await toolkitCoordinator.ensureProviderReady(providerId);
+			const toolProvider = await toolkitCoordinator.ensureProviderReady(baseToolId);
 			const calculatorProvider = await toolProvider.createInstance();
 			if (generation !== mountGeneration || !visible || !mountElement.isConnected) {
 				mountElement.remove();
@@ -195,7 +192,7 @@
 			return;
 		}
 
-		const mountKey = `${providerId}:${effectiveCalculatorType}:${calculatorConfigKey}`;
+		const mountKey = `${baseToolId}:${effectiveCalculatorType}:${calculatorConfigKey}`;
 		if (
 			calculatorInstance &&
 			activeMountKey === mountKey &&
@@ -222,7 +219,7 @@
 
 	$effect(() => {
 		void visible;
-		void providerId;
+		void baseToolId;
 		void effectiveCalculatorType;
 		void calculatorConfig;
 		void calculatorConfigKey;
@@ -241,7 +238,6 @@
 			class:pie-tool-calculator--attributed={attribution !== null}
 			role="region"
 			data-tool-id={toolId}
-			data-provider-id={providerId}
 			tabindex="-1"
 			lang={interfaceI18n.getLocale()}
 			dir={interfaceI18n.getDirection?.() ?? 'ltr'}

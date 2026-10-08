@@ -110,10 +110,8 @@ describe("a coordinator's tool registry and the warnings about its absence", () 
 		});
 
 		expect(initProviders).toEqual(["registry"]);
-		expect(coordinator.toolProviderRegistry.has("tts")).toBe(true);
-		expect(coordinator.toolProviderRegistry.has("calculator-desmos")).toBe(
-			true,
-		);
+		expect(coordinator.toolProviderRegistry.has("textToSpeech")).toBe(true);
+		expect(coordinator.toolProviderRegistry.has("calculator")).toBe(true);
 		expect(countWarnings(FALLBACK_WARNING)).toBe(0);
 		expect(countWarnings(REGISTRY_UNAVAILABLE)).toBe(0);
 		expect(requests).toEqual([]);
@@ -175,7 +173,7 @@ describe("a coordinator's tool registry and the warnings about its absence", () 
 		);
 
 		expect(initProviders).toEqual(["registry"]);
-		expect(coordinator.toolProviderRegistry.has("tts")).toBe(true);
+		expect(coordinator.toolProviderRegistry.has("textToSpeech")).toBe(true);
 		expect(countWarnings(FALLBACK_WARNING)).toBe(0);
 		expect(countWarnings("No tool registry was supplied")).toBe(0);
 		expect(requests).toEqual([]);

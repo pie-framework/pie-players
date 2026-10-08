@@ -709,23 +709,8 @@ const packagedCapabilityComposition = new PackagedCapabilityComposition(
 	PACKAGED_CAPABILITY_DEFINITIONS,
 );
 
-export const PACKAGED_TOOL_REGISTRATIONS = [
+export const PACKAGED_TOOL_REGISTRATIONS: readonly ToolRegistration[] = [
 	...packagedCapabilityComposition.registrations,
-] as unknown as readonly [
-	ToolRegistration,
-	ToolRegistration,
-	ToolRegistration,
-	ToolRegistration,
-	ToolRegistration,
-	ToolRegistration,
-	ToolRegistration,
-	ToolRegistration,
-	ToolRegistration,
-	ToolRegistration,
-	ToolRegistration,
-	ToolRegistration,
-	ToolRegistration,
-	ToolRegistration,
 ];
 
 export const PACKAGED_TOOL_TAG_MAP: ToolTagMap = {
@@ -766,46 +751,15 @@ export function createSectionToolModuleLoaders(
 	};
 }
 
-export const PACKAGED_TOOL_PLACEMENT = {
+export const PACKAGED_TOOL_PLACEMENT: Readonly<
+	Record<PackagedPlacementLevel, readonly string[]>
+> = {
 	assessment: [...packagedCapabilityComposition.placement.assessment],
 	section: [...packagedCapabilityComposition.placement.section],
 	item: [...packagedCapabilityComposition.placement.item],
 	passage: [...packagedCapabilityComposition.placement.passage],
 	rubric: [...packagedCapabilityComposition.placement.rubric],
 	element: [...packagedCapabilityComposition.placement.element],
-} as unknown as {
-	readonly assessment: readonly ["theme"];
-	readonly section: readonly ["theme"];
-	readonly item: readonly [
-		"textToSpeech",
-		"annotationToolbar",
-		"graph",
-		"periodicTable",
-		"dictionary",
-		"pictureDictionary",
-		"dictionarySpanish",
-		"pictureDictionarySpanish",
-	];
-	readonly passage: readonly [
-		"textToSpeech",
-		"annotationToolbar",
-		"lineReader",
-	];
-	readonly rubric: readonly ["textToSpeech", "annotationToolbar", "lineReader"];
-	readonly element: readonly [
-		"calculator",
-		"answerEliminator",
-		"textToSpeech",
-		"ruler",
-		"protractor",
-		"annotationToolbar",
-		"graph",
-		"periodicTable",
-		"dictionary",
-		"pictureDictionary",
-		"dictionarySpanish",
-		"pictureDictionarySpanish",
-	];
 };
 
 export const SECTION_PLAYER_PREFERRED_TOOL_PLACEMENT = {
@@ -814,23 +768,8 @@ export const SECTION_PLAYER_PREFERRED_TOOL_PLACEMENT = {
 	passage: [...packagedCapabilityComposition.preferredPlacement.passage],
 };
 
-export const PACKAGED_TOOL_ORDER = [
+export const PACKAGED_TOOL_ORDER: readonly string[] = [
 	...packagedCapabilityComposition.toolbarOrder,
-] as unknown as readonly [
-	"theme",
-	"calculator",
-	"textToSpeech",
-	"lineReader",
-	"annotationToolbar",
-	"answerEliminator",
-	"ruler",
-	"protractor",
-	"graph",
-	"periodicTable",
-	"dictionary",
-	"pictureDictionary",
-	"dictionarySpanish",
-	"pictureDictionarySpanish",
 ];
 
 export const UNIVERSAL_SUPPORTS_PRESET: readonly string[] =

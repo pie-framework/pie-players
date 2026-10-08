@@ -53,7 +53,6 @@ export const lineReaderToolRegistration: ToolRegistration = {
 	): ToolToolbarRenderResult {
 		return renderOverlayToolbar(this, context, toolbarContext, {
 			surface: "frameless",
-			handsOverCoordinator: true,
 		});
 	},
 };
@@ -94,7 +93,6 @@ export const themeToolRegistration: ToolRegistration = {
 				minWidth: 420,
 				minHeight: 300,
 			},
-			handsOverCoordinator: true,
 		});
 	},
 };
@@ -153,20 +151,13 @@ export const annotationToolbarRegistration: ToolRegistration = {
 		}
 		const element = document.createElement(tagName) as HTMLElement & {
 			enabled?: boolean;
-			ttsService?: unknown;
-			highlightCoordinator?: unknown;
 			selectionActions?: unknown;
 		};
-		// Reads the context it is handed. These were reactive props before the
-		// gateway moved behind `renderSurface`, and a host calling
-		// `updateAssessment(...)` mid-session swaps the coordinator without
-		// remounting — closing over the render-time services would leave the gateway
-		// highlighting into the previous session's coordinator.
+		// The gateway reads its services from the toolkit runtime context. What it
+		// takes from here is the action list, rebuilt from the current services on
+		// every sync so a mid-session `updateAssessment(...)` reaches it.
 		const applyServices = (current: ToolSurfaceRenderContext) => {
 			element.enabled = true;
-			element.ttsService = current.services.ttsService;
-			element.highlightCoordinator =
-				current.services.toolkitCoordinator?.highlightCoordinator ?? null;
 			// The second door onto the dictionaries. The gateway renders these and
 			// knows nothing of what they open; the pairing is composition's, which is
 			// why the list is built in `selection-actions.ts` and not here.
@@ -180,8 +171,6 @@ export const annotationToolbarRegistration: ToolRegistration = {
 		context: ToolContext,
 		toolbarContext: ToolbarContext,
 	): ToolToolbarRenderResult {
-		return renderOverlayToolbar(this, context, toolbarContext, {
-			handsOverCoordinator: true,
-		});
+		return renderOverlayToolbar(this, context, toolbarContext);
 	},
 };

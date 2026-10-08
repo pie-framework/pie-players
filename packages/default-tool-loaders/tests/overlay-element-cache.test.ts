@@ -19,6 +19,7 @@ import {
 	graphToolRegistration,
 	protractorToolRegistration,
 	rulerToolRegistration,
+	ttsToolRegistration,
 } from "../src/index.js";
 
 type FakeElement = HTMLElement & {
@@ -98,6 +99,7 @@ const overlays = [
 	protractorToolRegistration,
 	graphToolRegistration,
 	answerEliminatorToolRegistration,
+	ttsToolRegistration,
 ];
 
 describe("an overlay's element across renders", () => {

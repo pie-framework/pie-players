@@ -359,7 +359,6 @@ describe("ToolkitCoordinator disposal", () => {
 		});
 		coordinator.toolProviderRegistry.register("owned-provider", {
 			provider: {
-				providerId: "owned-provider",
 				providerName: "Owned provider",
 				category: "other",
 				version: "1",
@@ -500,7 +499,6 @@ describe("ToolkitCoordinator disposal", () => {
 		});
 		coordinator.toolProviderRegistry.register("slow-provider", {
 			provider: {
-				providerId: "slow-provider",
 				providerName: "Slow provider",
 				category: "other",
 				version: "1",

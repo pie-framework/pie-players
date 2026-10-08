@@ -1581,7 +1581,7 @@ const coordinator = new ToolkitCoordinator({
 Notes:
 - `providers.textToSpeech` is the canonical TTS provider key.
 - `providers.tts` is rejected by the validation contract.
-- Custom tools can provide provider-level `sanitizeConfig` and `validateConfig` hooks.
+- A tool registration can declare `sanitizeConfig` and `validateConfig` hooks for its `providers.<toolId>` entry.
 - Hosts can react to framework errors via the `framework-error` DOM event,
   the `onFrameworkError(model)` callback prop, or by subscribing directly
   to the package-internal bus via

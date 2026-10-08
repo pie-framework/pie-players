@@ -30,10 +30,8 @@ const warnings = (): string[] =>
 	warnSpy.mock.calls.map((args: unknown[]) => args.map(String).join(" "));
 
 const calculatorProvider: ToolProviderDescriptor = {
-	getProviderId: () => "calculator-stub",
 	createProvider: () =>
 		({
-			providerId: "calculator-stub",
 			providerName: "Stub calculator provider",
 			category: "calculator",
 			version: "0.0.0",
@@ -71,11 +69,11 @@ describe("ToolkitCoordinator.adoptToolRegistry", () => {
 			lazyInit: true,
 			tools,
 		});
-		expect(coordinator.toolProviderRegistry.has("calculator-stub")).toBe(false);
+		expect(coordinator.toolProviderRegistry.has("calculator")).toBe(false);
 
 		expect(coordinator.adoptToolRegistry(toolkitRegistry())).toBe(true);
 
-		expect(coordinator.toolProviderRegistry.has("calculator-stub")).toBe(true);
+		expect(coordinator.toolProviderRegistry.has("calculator")).toBe(true);
 		expect(
 			warnings().filter((line) => line.includes("No tool registry")),
 		).toEqual([]);
@@ -127,7 +125,7 @@ describe("ToolkitCoordinator.adoptToolRegistry", () => {
 		});
 
 		expect(coordinator.adoptToolRegistry(toolkitRegistry())).toBe(false);
-		expect(coordinator.toolProviderRegistry.has("calculator-stub")).toBe(false);
+		expect(coordinator.toolProviderRegistry.has("calculator")).toBe(false);
 		expect(() => coordinator.isToolEnabled("calculator")).toThrow(
 			/Unknown tool id "calculator"/,
 		);
@@ -156,7 +154,7 @@ describe("ToolkitCoordinator.adoptToolRegistry", () => {
 		expect(coordinator.adoptToolRegistry(null)).toBe(false);
 
 		expect(coordinator.adoptToolRegistry(toolkitRegistry())).toBe(true);
-		expect(coordinator.toolProviderRegistry.has("calculator-stub")).toBe(true);
+		expect(coordinator.toolProviderRegistry.has("calculator")).toBe(true);
 		expect(
 			coordinator.adoptToolRegistry(
 				createTestToolRegistry(["textToSpeech", "annotationToolbar"]),
@@ -172,6 +170,6 @@ describe("ToolkitCoordinator.adoptToolRegistry", () => {
 		await coordinator.dispose();
 
 		expect(coordinator.adoptToolRegistry(toolkitRegistry())).toBe(false);
-		expect(coordinator.toolProviderRegistry.has("calculator-stub")).toBe(false);
+		expect(coordinator.toolProviderRegistry.has("calculator")).toBe(false);
 	});
 });

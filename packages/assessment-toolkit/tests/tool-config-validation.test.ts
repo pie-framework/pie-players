@@ -232,51 +232,40 @@ describe("tool-config-validation", () => {
 		).toBe(false);
 	});
 
-	test("runs provider sanitize and validate hooks", () => {
+	test("runs the registration's sanitize and validate hooks", () => {
+		// The hooks belong to the tool's config, so a tool with no provider has
+		// its config sanitized and validated too.
 		const registry = new ToolRegistry();
 		const registration: ToolRegistration = {
 			toolId: "customTool",
 			name: "Custom Tool",
-			description: "Testing custom provider hooks",
+			description: "Testing tool config hooks",
 			icon: "test",
 			supportedLevels: ["item"],
 			isVisibleInContext: () => true,
 			renderToolbar: () => null,
-			provider: {
-				createProvider: () =>
-					({
-						providerName: "custom",
-						providerVersion: "1.0.0",
-						category: "utility",
-						requiresAuth: false,
-						isReady: () => true,
-						initialize: async () => {},
-						createInstance: async () => ({}),
-						destroy: () => {},
-					}) as any,
-				sanitizeConfig: (config) => ({
-					...config,
-					settings: {
-						...(config.settings || {}),
-						sanitized: true,
-					},
-				}),
-				validateConfig: (config) => {
-					if (
-						(config.settings as Record<string, unknown> | undefined)
-							?.sanitized === true
-					) {
-						return [];
-					}
-					return [
-						{
-							code: "tools.providerValidateFailed",
-							severity: "error",
-							path: "providers.customTool.settings",
-							message: "sanitized flag missing",
-						},
-					];
+			sanitizeConfig: (config) => ({
+				...config,
+				settings: {
+					...(config.settings || {}),
+					sanitized: true,
 				},
+			}),
+			validateConfig: (config) => {
+				if (
+					(config.settings as Record<string, unknown> | undefined)
+						?.sanitized === true
+				) {
+					return [];
+				}
+				return [
+					{
+						code: "tools.providerValidateFailed",
+						severity: "error",
+						path: "providers.customTool.settings",
+						message: "sanitized flag missing",
+					},
+				];
 			},
 		};
 		registry.register(registration);

@@ -3,7 +3,8 @@
 Calculator custom element backed by the Desmos provider for PIE assessment
 player flows. It is a thin compatibility entry for
 `@pie-players/pie-tool-calculator-shared/calculator-element`, which holds the
-Desmos-specific layout rules and the default `calculator-desmos` provider id.
+Desmos-specific layout rules. The toolkit's calculator tool config selects the
+provider the element mounts.
 
 ## Usage
 
@@ -26,12 +27,10 @@ import "@pie-players/pie-tool-calculator-desmos";
 | Prop | Type | Default | Description |
 | --- | --- | --- | --- |
 | `visible` | `boolean` | `false` | Controls whether the calculator is visible. |
-| `toolId` | `string` | `calculator` | Tool identifier used by the assessment toolkit runtime context. |
-| `providerId` | `string` | `calculator-desmos` | Toolkit provider registry id. |
+| `toolId` | `string` | `calculator` | Tool instance id; its base tool id is the id the toolkit registers the calculator provider under. |
 | `calculatorType` | `string` | package default | Requested calculator mode. |
 | `availableTypes` | `string[]` | package default | Calculator modes the host allows. |
 | `calculatorConfig` | `CalculatorProviderConfig` | `{}` | Provider-neutral options plus implementation-owned `settings`. |
-| `toolkitCoordinator` | `ToolkitCoordinator` | unset | Optional coordinator reference for toolkit-managed flows. |
 
 ## Related Documentation
 

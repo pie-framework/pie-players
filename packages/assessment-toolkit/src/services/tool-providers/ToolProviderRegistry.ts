@@ -66,12 +66,14 @@ export interface ToolProviderRegistration<TConfig = any> {
  * - Auth credential fetching
  * - Provider lookup by ID or category
  *
+ * The toolkit coordinator registers each provider under its tool's id.
+ *
  * @example
  * ```typescript
  * const registry = new ToolProviderRegistry();
  *
  * // Register a provider with auth fetcher
- * registry.register('example-provider', {
+ * registry.register('calculator', {
  *   provider: new ExampleToolProvider(),
  *   config: {},
  *   lazy: true,
@@ -82,7 +84,7 @@ export interface ToolProviderRegistration<TConfig = any> {
  * });
  *
  * // Get provider (auto-initializes if lazy)
- * const provider = await registry.getProvider('example-provider');
+ * const provider = await registry.getProvider('calculator');
  * ```
  */
 export class ToolProviderRegistry {

@@ -63,7 +63,7 @@ import type { SREMathSpeechOptions } from "./tts/math-speech.js";
 import { ToolProviderRegistry } from "./tool-providers/index.js";
 import type { ToolProviderApi } from "./tool-providers/ToolProviderApi.js";
 
-import { resolveToolProviderId, ToolRegistry } from "./ToolRegistry.js";
+import { ToolRegistry } from "./ToolRegistry.js";
 import type {
 	ResolvedToolContext,
 	ToolContextResolver,
@@ -192,13 +192,6 @@ const mergeToolConfigUpdate = (
 	}
 	return next;
 };
-
-/**
- * Answer eliminator tool configuration
- */
-export interface AnswerEliminatorToolConfig extends ToolConfig {
-	strategy?: "strikethrough" | "hide";
-}
 
 export interface ToolkitToolsConfig extends CanonicalToolsConfig {
 	policy: ToolPolicyConfig;
@@ -598,7 +591,7 @@ export interface ToolkitServiceBundle {
  *   tools: {
  *     providers: {
  *       textToSpeech: { enabled: true, backend: 'browser' },
- *       answerEliminator: { enabled: true, strategy: 'strikethrough' }
+ *       answerEliminator: { enabled: true }
  *     },
  *     placement: {
  *       item: ['textToSpeech', 'answerEliminator']
@@ -650,8 +643,6 @@ export class ToolkitCoordinator {
 		string,
 		Promise<ToolProviderApi>
 	>();
-	/** The tools whose registrations name each provider. */
-	private readonly providerToolIds = new Map<string, Set<string>>();
 	/**
 	 * Recoverable failures, by tool. A policy change that grants one of these
 	 * tools reports its failure again as fatal.
@@ -783,7 +774,7 @@ export class ToolkitCoordinator {
 
 	/**
 	 * Whether {@link _initializeTTS} has already reported a non-browser backend
-	 * falling back to browser speech because no `tts` provider is registered.
+	 * falling back to browser speech because no text-to-speech provider is registered.
 	 * Once per coordinator: a text-to-speech config change re-runs
 	 * initialization, and the missing provider is the same gap each time.
 	 */
@@ -1297,7 +1288,7 @@ export class ToolkitCoordinator {
 		if (this.reportedMissingTTSProvider) return;
 		this.reportedMissingTTSProvider = true;
 		console.warn(
-			`[ToolkitCoordinator] Text-to-speech is configured for the "${backend}" backend but falls back to browser speech: no "tts" tool provider is registered. A coordinator registers tool providers only from its \`toolRegistry\`, or from its toolkit's when constructed without one, so supply one that carries the text-to-speech registration — for the packaged capability set, \`createPackagedToolRegistry()\` from "@pie-players/pie-default-tool-loaders". Reported once per coordinator.`,
+			`[ToolkitCoordinator] Text-to-speech is configured for the "${backend}" backend but falls back to browser speech: no "textToSpeech" tool provider is registered. A coordinator registers tool providers only from its \`toolRegistry\`, or from its toolkit's when constructed without one, so supply one that carries the text-to-speech registration — for the packaged capability set, \`createPackagedToolRegistry()\` from "@pie-players/pie-default-tool-loaders". Reported once per coordinator.`,
 		);
 	}
 
@@ -1381,9 +1372,9 @@ export class ToolkitCoordinator {
 
 	/**
 	 * Register the provider `tool`'s descriptor creates for the tool's current
-	 * config, unless the tool is disabled or, without `replace`, that provider id
-	 * is registered. A descriptor that throws is reported the way a failed
-	 * registration is.
+	 * config under the tool's id, unless the tool is disabled or, without
+	 * `replace`, a provider is registered under that id. A descriptor that throws
+	 * is reported the way a failed registration is.
 	 */
 	private async registerProviderFromTool(
 		tool: ToolRegistration,
@@ -1391,16 +1382,11 @@ export class ToolkitCoordinator {
 	): Promise<void> {
 		const descriptor = tool.provider;
 		if (!descriptor) return;
-		let providerId: string | null = null;
+		const providerId = tool.toolId;
 		let registration: Parameters<ToolProviderRegistry["register"]>[1];
 		try {
-			const toolConfig = this.getToolConfig(tool.toolId) || undefined;
+			const toolConfig = this.getToolConfig(providerId) || undefined;
 			if (toolConfig?.enabled === false) return;
-			providerId = resolveToolProviderId(tool, toolConfig);
-			if (!providerId) return;
-			const toolIds = this.providerToolIds.get(providerId) ?? new Set<string>();
-			toolIds.add(tool.toolId);
-			this.providerToolIds.set(providerId, toolIds);
 			if (!replace && this.toolProviderRegistry.has(providerId)) return;
 			const provider = descriptor.createProvider(toolConfig);
 			const initConfig =
@@ -1427,7 +1413,7 @@ export class ToolkitCoordinator {
 				onTelemetry: registryTelemetry,
 			};
 		} catch (err) {
-			this.reportProviderRegisterFailure(err, providerId, tool.toolId);
+			this.reportProviderRegisterFailure(err, providerId);
 			return;
 		}
 		await this.registerProvider(providerId, registration);
@@ -1498,31 +1484,17 @@ export class ToolkitCoordinator {
 		}
 	}
 
-	/**
-	 * A console warning and a `provider-register` framework error. `providerId`
-	 * is null when resolving it is what failed; the warning names the tool then.
-	 */
-	private reportProviderRegisterFailure(
-		err: unknown,
-		providerId: string | null,
-		toolId?: string,
-	): void {
+	/** A console warning and a `provider-register` framework error. */
+	private reportProviderRegisterFailure(err: unknown, providerId: string): void {
 		console.warn(
-			providerId
-				? `[ToolkitCoordinator] Failed to register provider "${providerId}":`
-				: `[ToolkitCoordinator] Failed to register the provider of tool "${toolId}":`,
+			`[ToolkitCoordinator] Failed to register the provider of tool "${providerId}":`,
 			err,
 		);
-		this.handleError(err, {
-			phase: "provider-register",
-			providerId: providerId ?? undefined,
-		});
+		this.handleError(err, { phase: "provider-register", providerId });
 	}
 
-	public async ensureProviderReady(
-		providerId: string,
-	): Promise<ToolProviderApi> {
-		return this.initializeProvider(providerId, false);
+	public async ensureProviderReady(toolId: string): Promise<ToolProviderApi> {
+		return this.initializeProvider(toolId, false);
 	}
 
 	/** `fallbackFollows`: the caller recovers from a failure on its own. */
@@ -1563,7 +1535,9 @@ export class ToolkitCoordinator {
 				this.reportToolFailure(
 					error,
 					{ phase: "provider-init", providerId },
-					this.providerToolIds.get(providerId) ?? [],
+					// Attributed when the id names a tool with a provider; any other id
+					// was never a tool's.
+					this.toolRegistry.get(providerId)?.provider ? [providerId] : [],
 					fallbackFollows,
 				);
 				throw error;
@@ -2636,10 +2610,10 @@ export class ToolkitCoordinator {
 		});
 
 		// Try to use TTS provider from registry if available
-		if (this.toolProviderRegistry.has("tts")) {
+		if (this.toolProviderRegistry.has("textToSpeech")) {
 			try {
 				// Browser speech follows a server provider that fails to start.
-				const ttsProvider = await this.initializeProvider("tts", true);
+				const ttsProvider = await this.initializeProvider("textToSpeech", true);
 				const providerInstance = await ttsProvider.createInstance();
 				await this.initializeTTSService(providerInstance, runtimeTTSConfig);
 				await this.emitTelemetry("pie-toolkit-tts-init-success", {
@@ -2661,7 +2635,7 @@ export class ToolkitCoordinator {
 					error instanceof Error ? error : new Error(String(error));
 				await this.emitTelemetry("pie-tool-init-error", {
 					toolId: "textToSpeech",
-					providerId: "tts",
+					providerId: "textToSpeech",
 					operation: "tts-init",
 					backend: resolvedBackend,
 					errorType: "TTSRegistryInitError",
@@ -2670,7 +2644,7 @@ export class ToolkitCoordinator {
 				});
 				await this.emitTelemetry("pie-tool-init-fallback", {
 					toolId: "textToSpeech",
-					providerId: "tts",
+					providerId: "textToSpeech",
 					operation: "tts-init",
 					backend: resolvedBackend,
 					fromProvider: "registry",
@@ -2831,16 +2805,6 @@ export class ToolkitCoordinator {
 			catalogResolver: this.catalogResolver,
 			toolProviderRegistry: this.toolProviderRegistry,
 		};
-	}
-
-	/**
-	 * Get a tool provider from the registry
-	 *
-	 * @param providerId Provider identifier
-	 * @returns Tool provider instance
-	 */
-	async getToolProvider(providerId: string) {
-		return this.ensureProviderReady(providerId);
 	}
 
 	async waitUntilReady(): Promise<void> {
@@ -3059,7 +3023,7 @@ export class ToolkitCoordinator {
 		void this.emitTelemetry("pie-toolkit-tool-config-updated", { toolId });
 
 		// Apply configuration changes to services
-		this._applyToolConfigChange(toolId, current);
+		this._applyToolConfigChange(toolId);
 	}
 
 	/**
@@ -3403,39 +3367,23 @@ export class ToolkitCoordinator {
 
 	/**
 	 * Apply tool configuration changes to underlying services.
-	 * Called after updateToolConfig() with the tool's config before the update.
+	 * Called after updateToolConfig().
 	 */
-	private _applyToolConfigChange(
-		toolId: string,
-		previousConfig: ToolProviderConfig,
-	): void {
+	private _applyToolConfigChange(toolId: string): void {
 		if (this.disposePromise !== null) return;
-		// Apply configuration changes based on tool
-		switch (toolId) {
-			case "textToSpeech":
-				this.scheduleTTSReconfigure();
-				break;
-
-			case "answerEliminator":
-				// Future: Could notify answer eliminator tools of strategy change
-				break;
-
-			default:
-				this._registerChangedToolProvider(toolId, previousConfig);
+		if (toolId === "textToSpeech") {
+			this.scheduleTTSReconfigure();
+			return;
 		}
+		this._registerChangedToolProvider(toolId);
 	}
 
 	/**
-	 * Register the provider a tool's updated config names, replacing the one
-	 * registered under that id, and unregister the one its previous config named
-	 * when the provider id changed, as {@link _reconfigureTTSProvider} does for
-	 * `tts`. Registration completes before this returns, so a check on the policy
-	 * change the update dispatched finds the new provider.
+	 * Register the provider a tool's updated config builds, replacing the one
+	 * registered under the tool's id. Registration completes before this returns,
+	 * so a check on the policy change the update dispatched finds the new provider.
 	 */
-	private _registerChangedToolProvider(
-		toolId: string,
-		previousConfig: ToolProviderConfig,
-	): void {
+	private _registerChangedToolProvider(toolId: string): void {
 		const registration = this.getProviderDescriptorTools().find(
 			(tool) => tool.toolId === toolId,
 		);
@@ -3443,32 +3391,10 @@ export class ToolkitCoordinator {
 		// A failure of the replaced provider no longer describes the tool.
 		this.degradedTools.delete(toolId);
 		void this.registerProviderFromTool(registration, true);
-		const resolveQuietly = (config: ToolProviderConfig | undefined) => {
-			try {
-				return resolveToolProviderId(registration, config);
-			} catch {
-				return null;
-			}
-		};
-		const previousId = resolveQuietly(previousConfig);
-		const nextId = resolveQuietly(this.getToolConfig(toolId) || undefined);
-		if (
-			!previousId ||
-			previousId === nextId ||
-			!this.toolProviderRegistry.has(previousId)
-		) {
-			return;
-		}
-		void this.toolProviderRegistry.unregister(previousId).catch((err) => {
-			console.warn(
-				`[ToolkitCoordinator] Failed to unregister provider "${previousId}":`,
-				err,
-			);
-		});
 	}
 
 	/**
-	 * Re-register the `tts` provider for the current config and registry, then
+	 * Re-register the text-to-speech provider for the current config and registry, then
 	 * re-initialize unless initialization is lazy. An initialization already
 	 * running finishes first: it would otherwise mark its provider ready after
 	 * the reset.
@@ -3506,8 +3432,8 @@ export class ToolkitCoordinator {
 			// noop: release best effort
 		}
 
-		if (this.toolProviderRegistry.has("tts")) {
-			await this.toolProviderRegistry.unregister("tts");
+		if (this.toolProviderRegistry.has("textToSpeech")) {
+			await this.toolProviderRegistry.unregister("textToSpeech");
 		}
 		if (this.disposePromise !== null) return;
 		const ttsRegistration = this.getProviderDescriptorTools().find(

@@ -64,7 +64,7 @@ describe("ToolkitCoordinator telemetry listeners", () => {
 					createTestToolRegistration({
 						toolId: "textToSpeech",
 						supportedLevels: ["item", "passage"],
-						provider: createFailingAuthProviderDescriptor("tts"),
+						provider: createFailingAuthProviderDescriptor("textToSpeech"),
 					}),
 				);
 				return registry;
@@ -79,7 +79,7 @@ describe("ToolkitCoordinator telemetry listeners", () => {
 			received.push(event);
 		});
 
-		await expect(coordinator.ensureProviderReady("tts")).rejects.toThrow(
+		await expect(coordinator.ensureProviderReady("textToSpeech")).rejects.toThrow(
 			"Failed to fetch auth credentials for provider",
 		);
 		unsubscribe();
@@ -92,7 +92,7 @@ describe("ToolkitCoordinator telemetry listeners", () => {
 				(entry) =>
 					entry.eventName === "pie-tool-backend-call-error" &&
 					entry.payload?.toolId === "textToSpeech" &&
-					entry.payload?.providerId === "tts",
+					entry.payload?.providerId === "textToSpeech",
 			),
 		).toBe(true);
 	});

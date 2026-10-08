@@ -114,7 +114,7 @@ Section-player owns two pieces of glue:
   `DEFAULT_*` values), the cohort helpers, and the readiness signals and
   detail.
 - `@pie-players/pie-assessment-toolkit/tools/registration` — the tool
-  surface host and provider-id resolution the cards and overlays render
+  surface host and the tool registry the cards and overlays render
   registrations with.
 - `@pie-players/pie-assessment-toolkit` — everything else, including
   `createShellEventBridge` for the passage shell.

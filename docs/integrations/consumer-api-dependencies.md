@@ -471,6 +471,36 @@ published with no call sites anywhere, which is what made replacing it rather
 than versioning it the right move. No host passes `locale` to a `pie-*` element
 either.
 
+On 2026-10-08 tools went to one channel and one provider namespace. Tool
+elements dropped the service and provider-id properties they took beside the
+runtime context: `toolkitCoordinator` and `providerId` / `provider-id` on the
+calculator elements, `highlightCoordinator` and `ttsService` on
+`pie-tool-annotation-toolbar`, `elementToolStateStore` on
+`pie-tool-answer-eliminator` (whose `strategy` also drops the unimplemented
+`gray`), and `ttsService` on the sign-language region. Providers register under
+their tool's id (`calculator`, `textToSpeech`): `ToolProviderApi.providerId`,
+`ToolProviderDescriptor.getProviderId`, `resolveToolProviderId` and
+`ToolkitCoordinator.getToolProvider` are gone, `ensureProviderReady` takes a tool
+id, and the provider lifecycle hooks and the toolkit's provider and playback
+telemetry carry the tool id as `providerId`: `"textToSpeech"` where they carried
+`"tts"`, `"calculator"` where they carried the vendor's selection id. `sanitizeConfig` and `validateConfig`
+moved from the provider descriptor to `ToolRegistration`. `AnswerEliminatorToolConfig`
+is deleted, and `PACKAGED_TOOL_REGISTRATIONS`, `PACKAGED_TOOL_PLACEMENT` and
+`PACKAGED_TOOL_ORDER` are typed as plain arrays where they were cast to literal
+tuples. Checked against all five checkouts the same day as a targeted lookup, so
+it does not advance the verification date: no checkout sets any of those
+properties on a tool element, reads a provider's `providerId`, subscribes to
+toolkit telemetry or provider lifecycle hooks, calls `getToolProvider` or
+`ensureProviderReady`, reads
+`toolProviderRegistry`, declares a provider descriptor or config hook, or names
+the deleted type or the composition constants. Host A takes the calculator,
+annotation toolbar and answer eliminator from the packaged loaders and sets
+none of their properties; the edits to `CortexToolProvider` and the composition
+module change no import, so its single-file build inlines the same modules.
+Host R's element type declarations still list a `highlightCoordinator` property
+it never sets, and its debugger panels keep the `toolkitCoordinator` property,
+which this change does not touch.
+
 ## Consumer profiles
 
 The control-sizing repair removes automatic zoom compensation from section

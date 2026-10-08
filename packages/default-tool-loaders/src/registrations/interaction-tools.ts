@@ -84,14 +84,11 @@ export const answerEliminatorToolRegistration: ToolRegistration = {
 				) as HTMLElement & {
 					visible?: boolean;
 					toolId?: string;
-					coordinator?: unknown;
-					elementToolStateStore?: unknown;
 					globalElementId?: string;
 					scopeElement?: HTMLElement | null;
 				},
 		);
 		overlay.setAttribute("tool-id", visibility.fullToolId);
-		overlay.setAttribute("strategy", "strikethrough");
 		overlay.setAttribute("button-alignment", "inline");
 
 		const button: ToolToolbarButtonDefinition = {
@@ -115,13 +112,7 @@ export const answerEliminatorToolRegistration: ToolRegistration = {
 					overlay,
 					isActive: visibility.isActive,
 				});
-				if (toolbarContext.toolCoordinator) {
-					overlay.coordinator = toolbarContext.toolCoordinator;
-				}
 				overlay.scopeElement = toolbarContext.getScopeElement?.() || null;
-				if (toolbarContext.elementToolStateStore) {
-					overlay.elementToolStateStore = toolbarContext.elementToolStateStore;
-				}
 				const globalElementId = toolbarContext.getGlobalElementId?.();
 				if (globalElementId) {
 					overlay.globalElementId = globalElementId;

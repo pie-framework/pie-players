@@ -14,7 +14,6 @@ export interface GeoGebraToolProviderConfig
 }
 
 export class GeoGebraToolProvider extends LazyCalculatorToolProvider<GeoGebraToolProviderConfig> {
-	readonly providerId = "geogebra-calculator";
 	readonly providerName = "GeoGebra Calculator";
 	readonly version = "6";
 	readonly requiresAuth = false;

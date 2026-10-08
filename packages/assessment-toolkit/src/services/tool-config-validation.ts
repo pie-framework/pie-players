@@ -97,8 +97,8 @@ function getRegistryToolMap(
 	);
 }
 
-function sanitizeProviderConfig(
-	providerId: string,
+function sanitizeToolConfig(
+	toolId: string,
 	providerConfig:
 		| ToolProviderConfig
 		| TextToSpeechToolProviderConfig
@@ -106,9 +106,9 @@ function sanitizeProviderConfig(
 	tool: ToolRegistration | undefined,
 	diagnostics: ToolConfigDiagnostic[],
 ): ToolProviderConfig | TextToSpeechToolProviderConfig | undefined {
-	if (!providerConfig || !tool?.provider?.sanitizeConfig) return providerConfig;
+	if (!providerConfig || !tool?.sanitizeConfig) return providerConfig;
 	try {
-		const sanitized = tool.provider.sanitizeConfig(
+		const sanitized = tool.sanitizeConfig(
 			providerConfig as ToolProviderConfig,
 		);
 		if (
@@ -120,10 +120,10 @@ function sanitizeProviderConfig(
 				createDiagnostic({
 					code: "tools.providerSanitizeFailed",
 					severity: "error",
-					path: `providers.${providerId}`,
-					message: `Provider sanitizer for "${providerId}" must return an object.`,
-					providerId,
-					toolId: providerId,
+					path: `providers.${toolId}`,
+					message: `Config sanitizer of tool "${toolId}" must return an object.`,
+					providerId: toolId,
+					toolId,
 				}),
 			);
 			return providerConfig;
@@ -134,20 +134,20 @@ function sanitizeProviderConfig(
 			createDiagnostic({
 				code: "tools.providerSanitizeFailed",
 				severity: "error",
-				path: `providers.${providerId}`,
-				message: `Provider sanitizer failed for "${providerId}": ${
+				path: `providers.${toolId}`,
+				message: `Config sanitizer of tool "${toolId}" failed: ${
 					error instanceof Error ? error.message : String(error)
 				}`,
-				providerId,
-				toolId: providerId,
+				providerId: toolId,
+				toolId,
 			}),
 		);
 		return providerConfig;
 	}
 }
 
-function validateProviderConfig(
-	providerId: string,
+function validateToolConfig(
+	toolId: string,
 	providerConfig:
 		| ToolProviderConfig
 		| TextToSpeechToolProviderConfig
@@ -155,30 +155,30 @@ function validateProviderConfig(
 	tool: ToolRegistration | undefined,
 	diagnostics: ToolConfigDiagnostic[],
 ): void {
-	if (!providerConfig || !tool?.provider?.validateConfig) return;
+	if (!providerConfig || !tool?.validateConfig) return;
 	try {
-		const providerDiagnostics = tool.provider.validateConfig(
+		const toolDiagnostics = tool.validateConfig(
 			providerConfig as ToolProviderConfig,
 		);
-		if (!Array.isArray(providerDiagnostics)) {
+		if (!Array.isArray(toolDiagnostics)) {
 			diagnostics.push(
 				createDiagnostic({
 					code: "tools.invalidProviderValidation",
 					severity: "error",
-					path: `providers.${providerId}`,
-					message: `Provider validator for "${providerId}" must return an array.`,
-					providerId,
-					toolId: providerId,
+					path: `providers.${toolId}`,
+					message: `Config validator of tool "${toolId}" must return an array.`,
+					providerId: toolId,
+					toolId,
 				}),
 			);
 			return;
 		}
-		for (const diagnostic of providerDiagnostics) {
+		for (const diagnostic of toolDiagnostics) {
 			diagnostics.push({
 				...diagnostic,
-				path: diagnostic.path || `providers.${providerId}`,
-				providerId: diagnostic.providerId || providerId,
-				toolId: diagnostic.toolId || providerId,
+				path: diagnostic.path || `providers.${toolId}`,
+				providerId: diagnostic.providerId || toolId,
+				toolId: diagnostic.toolId || toolId,
 			});
 		}
 	} catch (error) {
@@ -186,12 +186,12 @@ function validateProviderConfig(
 			createDiagnostic({
 				code: "tools.providerValidateFailed",
 				severity: "error",
-				path: `providers.${providerId}`,
-				message: `Provider validator failed for "${providerId}": ${
+				path: `providers.${toolId}`,
+				message: `Config validator of tool "${toolId}" failed: ${
 					error instanceof Error ? error.message : String(error)
 				}`,
-				providerId,
-				toolId: providerId,
+				providerId: toolId,
+				toolId,
 			}),
 		);
 	}
@@ -393,24 +393,19 @@ export function collectToolConfigDiagnostics(
 	const nextProviders: CanonicalToolsConfig["providers"] = {
 		...(normalized.providers || {}),
 	};
-	for (const providerId of Object.keys(nextProviders).sort()) {
-		if (providerId === "tts") {
+	for (const toolId of Object.keys(nextProviders).sort()) {
+		if (toolId === "tts") {
 			delete nextProviders.tts;
 			continue;
 		}
-		const tool = registryTools.get(providerId);
-		nextProviders[providerId] = sanitizeProviderConfig(
-			providerId,
-			nextProviders[providerId],
+		const tool = registryTools.get(toolId);
+		nextProviders[toolId] = sanitizeToolConfig(
+			toolId,
+			nextProviders[toolId],
 			tool,
 			diagnostics,
 		);
-		validateProviderConfig(
-			providerId,
-			nextProviders[providerId],
-			tool,
-			diagnostics,
-		);
+		validateToolConfig(toolId, nextProviders[toolId], tool, diagnostics);
 	}
 	const nextConfig: CanonicalToolsConfig = {
 		...normalized,

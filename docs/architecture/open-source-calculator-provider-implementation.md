@@ -71,11 +71,12 @@ pie-tool-calculator-cortex   pie-tool-calculator-inline-cortex
    - Bundles the three runtime dependencies and worker entry.
    - Exposes no internal library object in its public API.
 2. `@pie-players/pie-tool-calculator-cortex`
-   - Registers `<pie-tool-calculator-cortex>`.
-   - Supplies `providerId = "calculator-cortex"` to the shared shell.
+   - Registers the shared shell as `<pie-tool-calculator-cortex>`, the tag the
+     composition delivers for `provider.id = "calculator-cortex"`. The shell
+     finds its provider under the `calculator` tool id.
 3. `@pie-players/pie-tool-calculator-inline-cortex`
-   - Registers `<pie-tool-calculator-inline-cortex>`.
-   - Supplies the same provider ID to the shared inline shell.
+   - Registers the shared inline shell as
+     `<pie-tool-calculator-inline-cortex>`.
 
 All three packages join the fixed Changesets release block.
 

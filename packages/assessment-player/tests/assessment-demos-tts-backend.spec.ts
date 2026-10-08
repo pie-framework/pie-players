@@ -183,7 +183,7 @@ function readTtsState(page: Page) {
 				| null
 		)?.coordinator;
 		return {
-			registered: Boolean(coordinator?.toolProviderRegistry?.has("tts")),
+			registered: Boolean(coordinator?.toolProviderRegistry?.has("textToSpeech")),
 			providerId: coordinator?.ttsService?.currentProvider?.providerId ?? null,
 		};
 	});

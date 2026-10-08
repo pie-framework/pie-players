@@ -17,14 +17,14 @@ describe("ToolkitCoordinator framework-error contract", () => {
 
 		(coordinator as any).handleError(new Error("provider boom"), {
 			phase: "provider-init",
-			providerId: "tts",
+			providerId: "textToSpeech",
 		});
 		detach();
 
 		expect(received).toHaveLength(1);
 		expect(received[0]).toMatchObject({
 			kind: "provider-init",
-			source: "pie-toolkit-coordinator/tts",
+			source: "pie-toolkit-coordinator/textToSpeech",
 			message: "provider boom",
 			severity: "error",
 		});

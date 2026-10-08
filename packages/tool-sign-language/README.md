@@ -62,9 +62,9 @@ is never substituted.
 ## The element
 
 `<pie-tool-sign-language>` — open shadow root, mounted by the registration's
-`renderSurface`, never authored directly. Props are `media` (a resolved
-alternate) and `ttsService`; signing playback and read-aloud pause each other, and
-the action the learner just took wins.
+`renderSurface`, never authored directly. Its prop is `media` (a resolved
+alternate); read-aloud comes from the toolkit runtime context. Signing playback and
+read-aloud pause each other, and the action the learner just took wins.
 
 Sizing is driven by the recording's own frame shape, because signing needs height
 for hands and face. Host overrides:

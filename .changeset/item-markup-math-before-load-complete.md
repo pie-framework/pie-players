@@ -10,5 +10,6 @@ host that reveals the item on it could show the markup's TeX raw for a moment,
 then typeset at a different scale from the elements' math, shifting the layout.
 A renderer that is torn down while it waits no longer emits `load-complete`.
 
-Hosts P and M gate on `load-complete`: for an item whose markup holds math it
-now arrives once that math is typeset, and for every other item it is unchanged.
+Hosts P and M gate on `load-complete`, and the section player's `content-loaded`
+and `pie-loading-complete`, which Host A counts, follow it: for an item whose
+markup holds math they now arrive once that math is typeset.

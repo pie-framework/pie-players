@@ -8,8 +8,8 @@ import { expect, test, type Locator, type Page } from "@playwright/test";
  * climb over happy-dom. A browser settles what happy-dom cannot: that the
  * assembled read reaches shadow content in rendering order, that a highlight
  * range inside a shadow root is painted from a stylesheet adopted there, that a
- * real selection inside a shadow root reaches the toolbar, and that the content
- * language reaches the utterance.
+ * real selection inside a shadow root reaches the toolbar and the cards its shell
+ * registered, and that the content language reaches the utterance.
  */
 
 const DEMO_PATH = "/shadow-reading?mode=candidate&layout=splitpane";
@@ -187,6 +187,31 @@ async function selectText(
 			[start, end] as const,
 		);
 	return page.evaluate(() => window.getSelection()?.toString() ?? "");
+}
+
+/** Selects the paragraph holding `text`, from its first character to its last. */
+async function selectParagraph(page: Page, text: string): Promise<string> {
+	await page
+		.getByText(text)
+		.first()
+		.evaluate((element) => {
+			const paragraph = element.closest("p") ?? element;
+			const first = paragraph.firstChild;
+			const last = paragraph.lastChild;
+			if (!first || !last) throw new Error("Paragraph has no content.");
+			const selection = window.getSelection();
+			if (!selection) throw new Error("Selection API unavailable.");
+			selection.removeAllRanges();
+			selection.setBaseAndExtent(first, 0, last, last.textContent?.length ?? 0);
+		});
+	return page.evaluate(() => window.getSelection()?.toString() ?? "");
+}
+
+async function readSelectionAloud(page: Page): Promise<void> {
+	await expect(strip(page)).toBeVisible();
+	await strip(page)
+		.getByRole("button", { name: "Read selected text aloud" })
+		.click();
 }
 
 test.describe("read-aloud over open shadow roots", () => {
@@ -382,5 +407,65 @@ test.describe("annotation toolbar over open shadow roots", () => {
 				},
 			)
 			.toBe("en-US");
+	});
+
+	test("reads the card its shell registered for a node the selection holds whole", async ({
+		page,
+	}) => {
+		await gotoDemo(page);
+		expect(await selectParagraph(page, "The span carries")).toBe(
+			"The span carries a catalog.",
+		);
+		await readSelectionAloud(page);
+
+		await expect
+			.poll(() => spokenText(page), {
+				message: "expected the docked span's card to be read",
+				timeout: 20_000,
+			})
+			.toContain("the catalog alternate");
+		const read = await spokenText(page);
+		expect(read).toContain("The span");
+		expect(read).not.toContain("carries a catalog");
+	});
+
+	test("reads the selected text of a node the selection holds part of", async ({
+		page,
+	}) => {
+		await gotoDemo(page);
+		await page
+			.locator("[data-catalog-idref='shadow-reading-span']")
+			.evaluate((span) => {
+				const node = span.firstChild;
+				if (!node) throw new Error("Span has no text.");
+				const selection = window.getSelection();
+				selection?.removeAllRanges();
+				selection?.setBaseAndExtent(node, 0, node, "carries".length);
+			});
+		await readSelectionAloud(page);
+
+		await expect
+			.poll(() => spokenText(page), {
+				message: "expected the selected words to be read",
+				timeout: 20_000,
+			})
+			.toContain("carries");
+		expect(await spokenText(page)).not.toContain("the catalog alternate");
+	});
+
+	test("reads a selected node's card in the language the shadow host's lang names", async ({
+		page,
+	}) => {
+		await gotoDemo(page);
+		await selectParagraph(page, "El agua hierve");
+		await readSelectionAloud(page);
+
+		await expect
+			.poll(() => spokenText(page), {
+				message: "expected the es-MX card to be read",
+				timeout: 20_000,
+			})
+			.toContain("la alternativa en español");
+		expect(await spokenText(page)).not.toContain("the English alternate");
 	});
 });

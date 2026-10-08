@@ -151,13 +151,16 @@ ttsSpeaking = true;
 try {
   // speakRange() calculates text offset for accurate highlighting.
   // contentRoot: the item or passage scope element, else the document element.
-  await ttsService.speakRange(selectedRange, { contentRoot });
+  // catalogContext: from the shell holding the selection.
+  await ttsService.speakRange(selectedRange, { contentRoot, catalogContext });
 } finally {
   ttsSpeaking = false;
 }
 ```
 
-`speakRange` resolves when reading ends and rejects on a playback error.
+`speakRange` resolves when reading ends and rejects on a playback error. A
+`data-catalog-idref` node the selection holds whole reads its spoken card, as
+under tts-inline; part of one reads as the selected text.
 
 **Why this matters:**
 

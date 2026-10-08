@@ -265,11 +265,17 @@ export interface TtsServiceApi {
 	): Promise<void>;
 
 	/**
-	 * Speak a text range
+	 * Speak a text range. A node with a spoken card that the range holds whole
+	 * reads its card; `catalogContext` names the owner whose registered cards
+	 * apply.
 	 */
 	speakRange(
 		range: Range,
-		options?: { contentRoot?: Element | null; language?: string },
+		options?: {
+			contentRoot?: Element | null;
+			language?: string;
+			catalogContext?: CatalogLookupContext;
+		},
 	): Promise<void>;
 
 	/**

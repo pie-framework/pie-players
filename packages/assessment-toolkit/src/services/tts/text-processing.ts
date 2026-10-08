@@ -1,6 +1,7 @@
 import {
 	flatTreeParentElement,
 	flatTreeTextNodes,
+	rangeHoldsTextPosition,
 	rangeIntersectsComposedNode,
 } from "./flat-tree.js";
 
@@ -201,15 +202,47 @@ export const collectRangeTextForSpeech = (
 			if (isNodeExcludedFromSpeech(textNode, root)) {
 				filtered = true;
 			} else {
-				const raw = textNode.textContent || "";
-				const start = textNode === range.startContainer ? range.startOffset : 0;
-				const end =
-					textNode === range.endContainer ? range.endOffset : raw.length;
-				parts.push(raw.slice(start, end));
+				parts.push(textInRange(textNode, range));
 			}
 		}
 	}
 	return { text: parts.join(""), filtered };
+};
+
+/** The part of `textNode`'s text that `range` holds, for a node it intersects. */
+export const textInRange = (textNode: Text, range: Range): string => {
+	const raw = textNode.textContent || "";
+	const start = textNode === range.startContainer ? range.startOffset : 0;
+	const end = textNode === range.endContainer ? range.endOffset : raw.length;
+	return raw.slice(start, end);
+};
+
+/**
+ * Whether `range` holds all of `element`'s speakable text: its first and last
+ * speakable characters, which a contiguous range holding both holds everything
+ * between. An element with no speakable text, an image for one, is held when the
+ * range touches it, since no part of it can be selected alone.
+ */
+export const rangeHoldsSpeakableElement = (
+	range: Range,
+	element: Element,
+	root?: Element | null,
+): boolean => {
+	let first: { node: Text; offset: number } | null = null;
+	let last: { node: Text; offset: number } | null = null;
+	for (const textNode of flatTreeTextNodes(element)) {
+		if (isNodeExcludedFromSpeech(textNode, root)) continue;
+		const raw = textNode.textContent || "";
+		const firstOffset = raw.search(/\S/);
+		if (firstOffset === -1) continue;
+		first ??= { node: textNode, offset: firstOffset };
+		last = { node: textNode, offset: raw.trimEnd().length - 1 };
+	}
+	if (!first || !last) return rangeIntersectsComposedNode(range, element);
+	return (
+		rangeHoldsTextPosition(range, first.node, first.offset) &&
+		rangeHoldsTextPosition(range, last.node, last.offset)
+	);
 };
 
 export const shouldInsertWordBoundarySpace = (

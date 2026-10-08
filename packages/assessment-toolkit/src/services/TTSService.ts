@@ -51,6 +51,7 @@ import {
 	flatTreeParentElement,
 	flatTreeTextNodes,
 	rangeHoldsTextPosition,
+	rangeIntersectsComposedNode,
 } from "./tts/flat-tree.js";
 import type {
 	TTSHighlightContext,
@@ -67,6 +68,8 @@ import {
 	isNodeSuppressedForTTS,
 	type NormalizedTextMap,
 	normalizeTextForSpeech,
+	rangeHoldsSpeakableElement,
+	textInRange,
 } from "./tts/text-processing.js";
 import {
 	createCatalogSpanAlignment,
@@ -141,9 +144,10 @@ type HighlightMode = "word" | "sentence";
 interface SpeakOptions {
 	catalogId?: string;
 	catalogContext?: CatalogLookupContext;
-	ignoreCatalogs?: boolean;
 	language?: string;
 	contentElement?: Element;
+	/** The selection inside `contentElement` that is read; the text spoken is its text. */
+	contentRange?: Range;
 	wordBoundaryOffset?: number;
 	highlightModeOverride?: HighlightMode;
 }
@@ -1661,19 +1665,6 @@ export class TTSService {
 		options?: SpeakOptions,
 	): Promise<ResolvedSpeechContent> {
 		const normalizedInputText = normalizeTextForSpeech(text);
-		if (options?.ignoreCatalogs) {
-			return {
-				contentToSpeak: normalizedInputText,
-				speechText: normalizedInputText,
-				visibleText: normalizedInputText,
-				highlightText: normalizedInputText,
-				usedCatalogSpoken: false,
-				speechSource: "dom-or-input",
-				normalizedText: normalizedInputText,
-				containsMathMarkup: false,
-				speechMatchesVisibleText: true,
-			};
-		}
 		if (options?.catalogId && this.catalogResolver) {
 			const catalogContent = this.catalogResolver.getAlternative(
 				options.catalogId,
@@ -1724,6 +1715,22 @@ export class TTSService {
 				)
 			: null;
 		if (composed) return composed;
+		// A selection holding no card reads its own text. Generated speech composes
+		// the whole content element, which for a selection is only the frame its
+		// highlight offsets index.
+		if (options?.contentRange) {
+			return {
+				contentToSpeak: normalizedInputText,
+				speechText: normalizedInputText,
+				visibleText: normalizedInputText,
+				highlightText: normalizedInputText,
+				usedCatalogSpoken: false,
+				speechSource: "dom-or-input",
+				normalizedText: normalizedInputText,
+				containsMathMarkup: false,
+				speechMatchesVisibleText: true,
+			};
+		}
 
 		const generated = options?.contentElement
 			? await this.resolveGeneratedSpeechContent(
@@ -1758,11 +1765,14 @@ export class TTSService {
 		const speechText = normalizeTextForSpeech(
 			chunks.map((chunk) => chunk.speechText).join(" "),
 		);
-		const visibleText =
-			collectMathAwareTextAndMap(
-				contentElement,
-				this.getTextProcessingOptions(options.language),
-			).visibleText || normalizedInputText;
+		// A selection's visible text is the text it holds, which the caller passes:
+		// the highlight offsets index it from `wordBoundaryOffset`.
+		const visibleText = options.contentRange
+			? normalizedInputText
+			: collectMathAwareTextAndMap(
+					contentElement,
+					this.getTextProcessingOptions(options.language),
+				).visibleText || normalizedInputText;
 		return {
 			contentToSpeak: speechText,
 			speechText,
@@ -1800,9 +1810,16 @@ export class TTSService {
 		// both — the last being APIP's pattern, which QTI's migration guidance
 		// keeps because the script is the recording's fallback.
 		type SpokenAlternate = { script?: string; audio?: SpokenAudioMedia };
+		const range = options.contentRange;
 		const resolveCatalog = (element: Element): SpokenAlternate | null => {
 			const catalogIdRef = element.getAttribute("data-catalog-idref");
 			if (!catalogIdRef) return null;
+			// A card reads its whole node, so it stands in for a selection's part of
+			// the node only when the selection holds all of it. A part reads as the
+			// visible text selected.
+			if (range && !rangeHoldsSpeakableElement(range, element, root)) {
+				return null;
+			}
 			const lookup = {
 				type: "spoken",
 				// The node's own language first: a `lang` inside the read content
@@ -1863,7 +1880,11 @@ export class TTSService {
 			// suppression says it must not be spoken at all.
 			if (isNodeExcludedFromSpeech(node, root)) return;
 			if (node.nodeType === Node.TEXT_NODE) {
-				textBuffer += ` ${node.textContent || ""}`;
+				if (!range) {
+					textBuffer += ` ${node.textContent || ""}`;
+				} else if (rangeIntersectsComposedNode(range, node)) {
+					textBuffer += ` ${textInRange(node as Text, range)}`;
+				}
 				return;
 			}
 			if (node.nodeType !== Node.ELEMENT_NODE) return;
@@ -2598,14 +2619,6 @@ export class TTSService {
 	}
 
 	/**
-	 * Speak a text range with accurate word highlighting
-	 *
-	 * This calculates the offset of the range within its parent element
-	 * to ensure word highlighting aligns correctly with the selected text.
-	 *
-	 * @param range DOM Range to speak
-	 */
-	/**
 	 * The selected part of `root`'s normalized visible text and where it starts, or
 	 * null when the map is unavailable or holds no selected character.
 	 */
@@ -2634,9 +2647,21 @@ export class TTSService {
 		return text ? { text, offset: start + leading } : null;
 	}
 
+	/**
+	 * Speak the text `range` selects, highlighted within `contentRoot`.
+	 *
+	 * A node with a spoken card that the selection holds whole reads its card, as
+	 * it does when the whole region is read; `catalogContext` names the owner
+	 * whose registered cards apply, and without it only assessment-level cards
+	 * do. A node the selection holds part of reads the selected text.
+	 */
 	async speakRange(
 		range: Range,
-		options?: { contentRoot?: Element | null; language?: string },
+		options?: {
+			contentRoot?: Element | null;
+			language?: string;
+			catalogContext?: CatalogLookupContext;
+		},
 	): Promise<void> {
 		const pendingReadiness = this.pendingReadiness();
 		if (pendingReadiness) await pendingReadiness;
@@ -2711,10 +2736,10 @@ export class TTSService {
 			rootTag: root.tagName,
 		});
 
-		// Speak the text with the root element as context
 		await this.speak(text, {
 			contentElement: root,
-			ignoreCatalogs: true,
+			contentRange: range,
+			catalogContext: options?.catalogContext,
 			language: options?.language,
 			wordBoundaryOffset: offset,
 		});

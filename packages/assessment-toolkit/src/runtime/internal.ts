@@ -112,8 +112,13 @@ export {
 	type ShellEventBridgeOptions,
 } from "./shell-event-bridge.js";
 // Reading scope for tools that read or annotate a shell's content: its content
-// region, the language of the content at a point in it, and the flat-tree
-// helpers that reach content rendered into open shadow roots.
+// region, the language and catalog context of the content at a point in it, and
+// the flat-tree helpers that reach content rendered into open shadow roots.
+export {
+	catalogContextForShell,
+	catalogContextHolding,
+	type CatalogRuntimeScope,
+} from "./catalog-context.js";
 export {
 	CONTENT_REGION_SELECTOR,
 	findShellScopeHost,

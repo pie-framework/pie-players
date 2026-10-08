@@ -341,10 +341,12 @@ The extraction step:
 
 2. **Selection read-aloud (annotation toolbar):**
    - User selects "The quadratic formula" and presses read-aloud
-   - Toolbar calls `ttsService.speakRange(range, { contentRoot })`, which
-     bypasses catalogs
-   - Speaks the selected visible text as generated speech, without the
-     authored `<emphasis>`
+   - Toolbar calls `ttsService.speakRange(range, { contentRoot, catalogContext })`,
+     with the catalog context of the shell holding the selection
+   - The selection holds choice a's `data-catalog-idref` node whole, so its
+     card is spoken, with the authored `<emphasis>`
+   - Selecting only "quadratic" holds part of the node, and speaks the
+     selected visible text
 
 3. **Plain Text Fallback:**
    - Choice d ("Graphing") carries no SSML and no `data-catalog-idref`

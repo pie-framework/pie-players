@@ -157,10 +157,12 @@ fetch URL-based audio and word mark assets with origin/SSRF protections.
 
 The current `TTSService.resolveSpeechContent(...)` priority is:
 
-1. If `ignoreCatalogs` is set, speak normalized input text.
-2. If an explicit `catalogId` resolves to a spoken catalog, use that catalog.
-3. If a `contentElement` contains `data-catalog-idref` regions, compose speech
-   chunks from those catalogs plus visible interstitial text.
+1. If an explicit `catalogId` resolves to a spoken catalog, use that catalog.
+2. If a `contentElement` contains `data-catalog-idref` regions, compose speech
+   chunks from those catalogs plus visible interstitial text. A selection read
+   through `speakRange` composes only the regions it holds whole, and its
+   interstitial text is the selected text.
+3. A selection with no such region speaks its selected text.
 4. If a `contentElement` contains Math or Math-like markup, generate speech from
    the DOM with Speech Rule Engine.
 5. Otherwise, speak normalized input text.

@@ -263,6 +263,20 @@ describe("test runner wiring", () => {
 		expect(checked).toContain("@pie-players/pie-section-player");
 	});
 
+	test("a unit test imports its package's build only when the test script builds first", () => {
+		const offenders = [];
+		for (const { name, dir, manifest } of packages) {
+			const script = manifest.scripts?.test ?? "";
+			if (!script.includes("bun test") || script.includes("build")) continue;
+			for (const file of findFiles(dir, /\.test\.(ts|js|mjs)$/)) {
+				if (/["'`](\.\.\/)+dist\//.test(readFileSync(file, "utf8"))) {
+					offenders.push(`${name}: ${path.relative(dir, file)}`);
+				}
+			}
+		}
+		expect(offenders).toEqual([]);
+	});
+
 	test("every Vitest package with tests and a workspace sibling uses the Vite adapter", () => {
 		const checked = [];
 		for (const { name, dir, manifest } of packages) {

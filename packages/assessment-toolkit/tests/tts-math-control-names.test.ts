@@ -87,12 +87,32 @@ describe("math control names", () => {
 	});
 
 	test("speaks the content's language with MathSpeak", async () => {
-		document.body.innerHTML = `<div id="item" lang="es"><button>${typeset(FOUR_TWELFTHS)}</button></div>`;
+		document.body.innerHTML = `<div id="item" data-pie-shell-root="item"><div lang="es"><button>${typeset(FOUR_TWELFTHS)}</button></div></div>`;
 		observe(document.getElementById("item")!);
 
 		expect(await labelOf(document)).toBe(
 			"empezar fracción 4 entre 12 finalizar fracción",
 		);
+	});
+
+	test("takes the host's content language when the markup names none", async () => {
+		document.body.innerHTML = `<div id="item" data-pie-shell-root="item"><button>${typeset(FOUR_TWELFTHS)}</button></div>`;
+		stops.push(
+			observeMathControlNames(document.getElementById("item")!, {
+				getContentLanguage: () => "es",
+			}),
+		);
+
+		expect(await labelOf(document)).toBe(
+			"empezar fracción 4 entre 12 finalizar fracción",
+		);
+	});
+
+	test("ignores the page's language above the shell, which is the interface's", async () => {
+		document.body.innerHTML = `<div lang="es"><div id="item" data-pie-shell-root="item"><button>${typeset(FOUR_TWELFTHS)}</button></div></div>`;
+		observe(document.getElementById("item")!);
+
+		expect(await labelOf(document)).toBe("4 over 12");
 	});
 
 	test("leaves math outside controls, and math after it stops, unlabelled", async () => {

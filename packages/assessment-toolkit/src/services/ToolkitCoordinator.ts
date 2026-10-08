@@ -655,10 +655,15 @@ export class ToolkitCoordinator {
 	private readonly toolRegistrySupplied: boolean;
 	/**
 	 * Whether the registry is final: supplied at construction, or adopted from
-	 * the toolkit this coordinator is bound to. Until then the empty placeholder
-	 * reports no missing registry, since the toolkit will supply one.
+	 * the toolkit this coordinator is bound to.
 	 */
 	private toolRegistrySettled: boolean;
+	/**
+	 * Whether a bound toolkit reported having no registry. Until then, or until a
+	 * registry settles, the empty placeholder reports no missing registry, since
+	 * the toolkit may supply one.
+	 */
+	private toolRegistryAbsent = false;
 	private readonly toolContextResolvers = new Map<
 		string,
 		ToolContextResolver
@@ -862,7 +867,7 @@ export class ToolkitCoordinator {
 			options.toolRegistry,
 		);
 		const unreported =
-			this.reportedRegistryUnavailable || !this.toolRegistrySettled
+			this.reportedRegistryUnavailable || this.toolRegistryPending()
 				? diagnostics.filter(
 						(entry) => entry.code !== "tools.registryUnavailable",
 					)
@@ -1262,9 +1267,14 @@ export class ToolkitCoordinator {
 		return this.stateLoadPromise;
 	}
 
+	/** Whether the toolkit this coordinator binds to may still supply a registry. */
+	private toolRegistryPending(): boolean {
+		return !this.toolRegistrySettled && !this.toolRegistryAbsent;
+	}
+
 	private reportMissingTTSProvider(backend: string): void {
 		// The toolkit this coordinator binds to may still supply the provider.
-		if (!this.toolRegistrySettled) {
+		if (this.toolRegistryPending()) {
 			this.heldMissingTTSProviderBackend = backend;
 			return;
 		}
@@ -1279,20 +1289,22 @@ export class ToolkitCoordinator {
 	 * Take the registry of the toolkit this coordinator is bound to, when the host
 	 * constructed it without one: the config is validated against it, its
 	 * providers register, and text-to-speech re-initializes through it if it
-	 * already started. The toolkit elements call this on binding. A registry
-	 * passed at construction stands, and the first call wins; `null` records a
-	 * toolkit without one, which reports the registry as missing.
+	 * already started. The toolkit elements call this on binding, and again when
+	 * their registry changes. A registry passed at construction stands, and the
+	 * first registry adopted wins; `null` records a toolkit without one, which
+	 * reports the registry as missing and still adopts one that arrives later.
 	 *
 	 * @returns Whether `registry` was adopted.
 	 */
 	adoptToolRegistry(registry: ToolRegistry | null): boolean {
 		if (this.disposePromise !== null || this.toolRegistrySettled) return false;
-		this.toolRegistrySettled = true;
+		if (!registry && this.toolRegistryAbsent) return false;
 		const heldBackend = this.heldMissingTTSProviderBackend;
 		this.heldMissingTTSProviderBackend = null;
 		const strictness = this.config.toolConfigStrictness ?? "error";
 		const source = "ToolkitCoordinator.adoptToolRegistry";
 		if (!registry) {
+			this.toolRegistryAbsent = true;
 			this.validateToolsConfig(this.config.tools as CanonicalToolsConfig, {
 				strictness,
 				source,
@@ -1301,6 +1313,7 @@ export class ToolkitCoordinator {
 			if (heldBackend) this.reportMissingTTSProvider(heldBackend);
 			return false;
 		}
+		this.toolRegistrySettled = true;
 		this.toolRegistry = registry;
 		this.config.toolRegistry = registry;
 		try {
@@ -1508,6 +1521,8 @@ export class ToolkitCoordinator {
 				false,
 			);
 			this.assertNotDisposed();
+			// A tool asks each time it opens; the lifecycle hooks report the start once.
+			if (this.toolProviderRegistry.isInitialized(providerId)) return provider;
 			const meta: ProviderLifecycleContext = {
 				providerId,
 				providerName: provider.providerName,

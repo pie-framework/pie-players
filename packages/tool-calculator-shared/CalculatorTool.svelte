@@ -135,9 +135,8 @@
 		initializationError = null;
 		try {
 			if (!providerId) throw new Error('Calculator provider id is required');
-			const registry = toolkitCoordinator?.toolProviderRegistry;
-			if (!registry) throw new Error('Calculator provider registry is unavailable');
-			const toolProvider = await registry.getProvider(providerId);
+			if (!toolkitCoordinator) throw new Error('Calculator provider registry is unavailable');
+			const toolProvider = await toolkitCoordinator.ensureProviderReady(providerId);
 			const calculatorProvider = await toolProvider.createInstance();
 			if (generation !== mountGeneration || !visible || !mountElement.isConnected) {
 				mountElement.remove();

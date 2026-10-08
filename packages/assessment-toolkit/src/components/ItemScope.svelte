@@ -26,12 +26,13 @@
 	 * unchanged; the toolkit hears only that the item loaded or failed.
 	 */
 	import { connectAssessmentToolkitHostRuntimeContext } from "../context/runtime-context-consumer.js";
-	import { warnOncePerDocument } from "../runtime/page-warnings.js";
+	import {
+		PENDING_INPUT_WARNING_DELAY_MS,
+		warnOncePerDocument,
+	} from "../runtime/page-warnings.js";
 	import { createShellEventBridge } from "../runtime/shell-event-bridge.js";
 	import { createShellScope } from "../runtime/shell-scope.js";
 	import type { TTSHighlightTargetResolver } from "../services/tts/highlight-target-resolver.js";
-
-	const NO_TOOLKIT_WARNING_DELAY_MS = 10_000;
 
 	let {
 		itemId = "",
@@ -72,9 +73,9 @@
 			warnOncePerDocument(
 				scopeHost.ownerDocument,
 				"itemScopeWithoutToolkit",
-				`[pie-item-scope] No <pie-assessment-toolkit> has answered item "${itemId}" after ${NO_TOOLKIT_WARNING_DELAY_MS / 1000} s, so the item is not registered and the tools inside the scope have no runtime. Place the scope inside the toolkit element; it keeps waiting for one. Reported once per page.`,
+				`[pie-item-scope] No <pie-assessment-toolkit> has answered item "${itemId}" after ${PENDING_INPUT_WARNING_DELAY_MS / 1000} s, so the item is not registered and the tools inside the scope have no runtime. Place the scope inside the toolkit element; it keeps waiting for one. Reported once per page.`,
 			);
-		}, NO_TOOLKIT_WARNING_DELAY_MS);
+		}, PENDING_INPUT_WARNING_DELAY_MS);
 		const bridge = createShellEventBridge({
 			host: scopeHost,
 			kind: "item",

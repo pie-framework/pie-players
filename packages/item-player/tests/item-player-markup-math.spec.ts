@@ -22,7 +22,7 @@ async function openDemo(page: Page, strategy: string) {
 
 async function mountBeside(page: Page, strategy: string) {
 	await page.evaluate(
-		({ markup, strategy }) => {
+		({ markup, strategy, element }) => {
 			const source = document.querySelector("pie-item-player") as any;
 			const player = document.createElement("pie-item-player") as any;
 			player.id = "markup-math";
@@ -30,11 +30,58 @@ async function mountBeside(page: Page, strategy: string) {
 			player.env = { mode: "gather", role: "student" };
 			player.session = { id: "markup-math", data: [] };
 			player.config = { ...source.config, markup };
+			// The markup's math as a host revealing the item on `load-complete`
+			// would first show it.
+			const mountedAt = performance.now();
+			player.addEventListener(
+				"load-complete",
+				() => {
+					const outside = (node: Node) =>
+						!node.parentElement?.closest(`mjx-container, ${element}`);
+					const typeset = [...player.querySelectorAll("mjx-container")].filter(
+						outside,
+					);
+					const walker = document.createTreeWalker(
+						player,
+						NodeFilter.SHOW_TEXT,
+					);
+					let text = "";
+					for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+						if (outside(node)) text += node.textContent ?? "";
+					}
+					(window as any).__atLoadComplete = {
+						typeset: typeset.length,
+						text,
+						rendered: player.querySelectorAll("[data-rendered]").length,
+						elapsed: performance.now() - mountedAt,
+					};
+				},
+				{ once: true },
+			);
 			document.body.appendChild(player);
 		},
-		{ markup: MARKUP, strategy },
+		{ markup: MARKUP, strategy, element: ELEMENT },
 	);
 	return page.locator("#markup-math");
+}
+
+/** What `mountBeside` recorded when the player emitted `load-complete`. */
+async function atLoadComplete(page: Page) {
+	await expect
+		.poll(() => page.evaluate(() => (window as any).__atLoadComplete), {
+			message: "load-complete emitted",
+			timeout: 30_000,
+		})
+		.toBeTruthy();
+	return page.evaluate(
+		() =>
+			(window as any).__atLoadComplete as {
+				typeset: number;
+				text: string;
+				rendered: number;
+				elapsed: number;
+			},
+	);
 }
 
 /** The markup's own math in `block`: what was typeset, and what is left as text. */
@@ -165,5 +212,63 @@ for (const strategy of ["esm", "preloaded"] as const) {
 		]);
 		expect(roots.filter((root) => root.holdsElement)).toEqual([]);
 		expect(errors).toEqual([]);
+	});
+}
+
+// Hosts reveal the item on `load-complete`, so the markup's math is typeset by
+// then, as the elements' math is.
+for (const strategy of ["iife", "esm", "preloaded"] as const) {
+	test(`${strategy} emits load-complete once the item's own markup is typeset`, async ({
+		page,
+	}) => {
+		const errors: string[] = [];
+		page.on("pageerror", (error) => errors.push(error.message));
+		await openDemo(page, strategy);
+		await mountBeside(page, strategy);
+		const atLoad = await atLoadComplete(page);
+		expect(atLoad.typeset).toBe(6);
+		expect(atLoad.text).not.toMatch(/\\[([]|\\frac/);
+		expect(errors).toEqual([]);
+	});
+}
+
+// A host renderer that typesets asynchronously holds `load-complete` until it
+// is done; one that never finishes holds it for the bound only.
+for (const strategy of ["esm", "preloaded"] as const) {
+	test(`${strategy} emits load-complete after the host's math renderer finishes the markup`, async ({
+		page,
+	}) => {
+		await openDemo(page, strategy);
+		await page.evaluate((element) => {
+			(window as any)["@pie-lib/math-rendering"] = {
+				renderMath: (root: Element) =>
+					root.closest(element)
+						? undefined
+						: new Promise<void>((resolve) =>
+								setTimeout(() => {
+									root.setAttribute("data-rendered", "");
+									resolve();
+								}, 100),
+							),
+			};
+		}, ELEMENT);
+		await mountBeside(page, strategy);
+		expect((await atLoadComplete(page)).rendered).toBe(5);
+	});
+
+	test(`${strategy} emits load-complete when the host's math renderer never finishes the markup`, async ({
+		page,
+	}) => {
+		await openDemo(page, strategy);
+		await page.evaluate((element) => {
+			(window as any)["@pie-lib/math-rendering"] = {
+				renderMath: (root: Element) =>
+					root.closest(element) ? undefined : new Promise<void>(() => {}),
+			};
+		}, ELEMENT);
+		await mountBeside(page, strategy);
+		const atLoad = await atLoadComplete(page);
+		expect(atLoad.rendered).toBe(0);
+		expect(atLoad.elapsed).toBeGreaterThanOrEqual(2000);
 	});
 }

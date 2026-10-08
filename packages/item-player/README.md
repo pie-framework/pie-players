@@ -261,7 +261,9 @@ These are set via JavaScript, not HTML attributes.
 
 ## Events
 
-- `load-complete`: emitted when PIE elements finish loading.
+- `load-complete`: emitted when PIE elements finish loading and the math in the
+  item's own markup is typeset, which it waits for at most two seconds (see
+  [Item markup math](../../docs/item-player/loading-strategies.md#item-markup-math)).
 - `session-changed`: emitted when an element's session or completion changes.
   An element's own announcement is forwarded when its `complete` or its session
   differs from what that element last announced, so each element reaches the

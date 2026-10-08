@@ -422,6 +422,31 @@ describe("ToolRegistry", () => {
 		});
 	});
 
+	describe("ensureToolModulesLoaded", () => {
+		test("loads every module and resolves with the ones that failed", async () => {
+			const failure = new Error("chunk missing");
+			let ttsLoads = 0;
+			registry.setToolModuleLoaders({
+				calculator: async () => {
+					throw failure;
+				},
+				textToSpeech: async () => {
+					ttsLoads += 1;
+				},
+			});
+
+			const failures = await registry.ensureToolModulesLoaded([
+				"calculator",
+				"textToSpeech",
+			]);
+
+			expect([...failures]).toEqual([["calculator", failure]]);
+			expect(ttsLoads).toBe(1);
+			expect(registry.isToolModuleLoaded("textToSpeech")).toBe(true);
+			expect(registry.isToolModuleLoaded("calculator")).toBe(false);
+		});
+	});
+
 	describe("clear", () => {
 		test("removes all registrations", () => {
 			registry.register(mockCalculatorTool);

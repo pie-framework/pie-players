@@ -125,13 +125,16 @@ export class PnpPolicySource {
 
 	apply(args: PnpPolicyApplyArgs): PnpPolicyResult {
 		const { ctx, result } = this.prepare(args);
-		const { pnp, districtPolicy, itemSettings } = ctx;
+		const { pnp, districtPolicy, testAdmin, itemSettings } = ctx;
 
 		const allSupports = new Set<string>();
 		pnp?.supports?.forEach((s) => allSupports.add(s));
 		pnp?.prohibitedSupports?.forEach((s) => allSupports.add(s));
 		districtPolicy?.blockedTools?.forEach((s) => allSupports.add(s));
 		districtPolicy?.requiredTools?.forEach((s) => allSupports.add(s));
+		for (const s of Object.keys(testAdmin?.toolOverrides ?? {})) {
+			allSupports.add(s);
+		}
 		itemSettings?.requiredTools?.forEach((s) => allSupports.add(s));
 		itemSettings?.restrictedTools?.forEach((s) => allSupports.add(s));
 
@@ -238,8 +241,10 @@ export class PnpPolicySource {
 			return;
 		}
 
-		// 2. Test administration override
-		if (ctx.testAdmin?.toolOverrides?.[supportId] === false) {
+		// 2. Test administration override: `false` withdraws the support for the
+		// session, `true` grants it; either outranks every level below.
+		const override = ctx.testAdmin?.toolOverrides?.[supportId];
+		if (override === false) {
 			const toolId = this.mapSupportToToolId(supportId, out);
 			out.blockedToolIds.add(toolId);
 			out.decisions.push({
@@ -249,7 +254,27 @@ export class PnpPolicySource {
 				action: "block",
 				sourceType: "assessment",
 				reason: `Test administrator disabled "${supportId}" for this session`,
-				value: ctx.testAdmin.toolOverrides,
+				value: ctx.testAdmin?.toolOverrides,
+			});
+			return;
+		}
+		if (override === true) {
+			const toolId = this.mapSupportToToolId(supportId, out);
+			out.perToolFlags.set(toolId, {
+				required: false,
+				alwaysAvailable: false,
+				settings: this.resolveToolSettings(supportId, ctx),
+				rule: "test-admin-override",
+				sourceType: "assessment",
+			});
+			out.decisions.push({
+				precedence: 2,
+				rule: "test-admin-override",
+				featureId: toolId,
+				action: "enable",
+				sourceType: "assessment",
+				reason: `Test administrator enabled "${supportId}" for this session`,
+				value: ctx.testAdmin?.toolOverrides,
 			});
 			return;
 		}

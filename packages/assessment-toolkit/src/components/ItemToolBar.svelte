@@ -56,6 +56,7 @@
 	} from '../context/runtime-context-consumer.js';
 	import { ContextProvider } from '@pie-players/pie-context';
 	import type { I18nProvider, MessageKeyInput } from '@pie-players/pie-players-shared/i18n/types';
+	import { ZIndexLayer } from '../services/ToolCoordinator.js';
 	import { ToolRegistry } from '../services/ToolRegistry.js';
 	import type {
 		HostedToolContext,
@@ -746,23 +747,43 @@
 
 		return Array.from(visible);
 	});
-	const toolbarVisibleToolIds = $derived.by(() =>
-		effectiveToolRegistry.filterToolIdsByActivation(visibleToolIds, 'toolbar-toggle')
+	// Tools whose module failed to load from the current registry. Such a tool is
+	// unavailable here: its button is withheld, requests for it pass this toolbar
+	// by, and it is not retried until the registry changes.
+	let failedToolModules = $state<{ registry: ToolRegistry; toolIds: ReadonlySet<string> } | null>(
+		null
 	);
+	const toolbarVisibleToolIds = $derived.by(() => {
+		const failed = failedToolModules?.registry === effectiveToolRegistry ? failedToolModules.toolIds : null;
+		const toolIds = effectiveToolRegistry.filterToolIdsByActivation(visibleToolIds, 'toolbar-toggle');
+		return failed ? toolIds.filter((toolId) => !failed.has(toolId)) : toolIds;
+	});
+
+	function reportToolModuleFailure(toolId: string, error: unknown): void {
+		const coordinator = runtimeContext?.toolkitCoordinator;
+		if (typeof coordinator?.reportToolModuleFailure === 'function') {
+			coordinator.reportToolModuleFailure(toolId, error);
+			return;
+		}
+		console.error(`[ItemToolBar] Tool "${toolId}" failed to load:`, error);
+	}
 
 	// Dynamically load whatever tools are currently visible.
 	// The registry owns module loader configuration by toolId.
 	$effect(() => {
 		if (!isBrowser) return;
+		const registry = effectiveToolRegistry;
 		let cancelled = false;
-		void effectiveToolRegistry
-			.ensureToolModulesLoaded(toolbarVisibleToolIds)
-			.then(() => {
-				if (!cancelled) moduleLoadVersion += 1;
-			})
-			.catch((error: unknown) => {
-				console.error('[ItemToolBar] Failed to load one or more tool modules:', error);
-			});
+		void registry.ensureToolModulesLoaded(toolbarVisibleToolIds).then((failures) => {
+			if (failures.size > 0) {
+				const previous = failedToolModules?.registry === registry ? failedToolModules.toolIds : [];
+				// Recorded before reporting: the report re-announces request targets,
+				// and this toolbar must already answer that it no longer hosts the tool.
+				failedToolModules = { registry, toolIds: new Set([...previous, ...failures.keys()]) };
+				for (const [toolId, error] of failures) reportToolModuleFailure(toolId, error);
+			}
+			if (!cancelled) moduleLoadVersion += 1;
+		});
 		return () => {
 			cancelled = true;
 		};
@@ -1124,6 +1145,10 @@
 		const level = placementLevel;
 		return coord.registerToolRequestTarget({
 			level,
+			// Read live, as `hostsTool` is: a card that changes items keeps its registration.
+			get scopeId() {
+				return effectiveScopeId;
+			},
 			hostsTool: (toolId: string) => toolbarVisibleToolIds.includes(toolId),
 			open: (toolId: string, params?: Record<string, unknown>) => {
 				if (!effectiveToolCoordinator) return;
@@ -1716,6 +1741,20 @@
 			}
 		};
 
+		// The shell is what floats, so it is the element the tool stacks by: the
+		// coordinator gives it the z-index of the tool's layer and raises it when
+		// it is shown or pressed. Bound once the tool is shown, which is when its
+		// registration exists, and again if a re-registration dropped the binding.
+		const bindShellStacking = () => {
+			if (!shellEl || !effectiveToolCoordinator || !currentArgs.active) return;
+			const toolId = currentArgs.mounted.toolId;
+			const instanceToolId = parseScopedToolId(toolId)
+				? toolId
+				: createScopedToolId(toolId, effectiveLevel, effectiveScopeId);
+			if (effectiveToolCoordinator.getToolState(instanceToolId)?.element === shellEl) return;
+			effectiveToolCoordinator.updateToolElement(instanceToolId, shellEl);
+		};
+
 		const centerShell = () => {
 			const viewportW = window.innerWidth;
 			const viewportH = window.innerHeight;
@@ -2066,7 +2105,8 @@
 			shellEl.className = 'pie-tool-shell';
 			shellEl.setAttribute('data-pie-tool-shell', currentArgs.mounted.toolId);
 			shellEl.style.position = 'fixed';
-			shellEl.style.zIndex = '2000';
+			// Until the coordinator stacks it; a toolbar without one leaves it here.
+			shellEl.style.zIndex = String(ZIndexLayer.MODAL);
 			shellEl.style.background = 'var(--pie-background, #fff)';
 			shellEl.style.border = '1px solid var(--pie-border-light, #d1d5db)';
 			shellEl.style.borderRadius = '12px';
@@ -2481,6 +2521,7 @@
 
 			centerShell();
 			applyShellStyle();
+			bindShellStacking();
 			applyShellStrings();
 			mountContent();
 			notifyHostedResize();
@@ -2511,6 +2552,7 @@
 				closeButtonEl.style.display =
 					currentArgs.mounted.entry.shell?.closeable === false ? 'none' : closeButtonOpenDisplay;
 				applyShellStyle();
+				bindShellStacking();
 				mountContent();
 				notifyHostedResize();
 				if (!previousActive && currentArgs.active) {

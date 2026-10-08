@@ -146,6 +146,10 @@
 		type SectionRuntimeLifecycleHandle,
 	} from "../runtime/section-runtime-engine-host-context.js";
 	import { runStageEmitWithSuppression } from "../runtime/stage-emit-gate.js";
+	import {
+		type ForwardedPolicyInputs,
+		policyInputsToForward,
+	} from "../runtime/policy-input-forwarding.js";
 	import { watchForUnclaimedRegistrations } from "../runtime/unclaimed-registration-watch.js";
 	import { createCompositionEmitScheduler } from "../runtime/composition-emit-scheduler.js";
 	import {
@@ -1669,31 +1673,20 @@ const DEFAULT_ENV = {
 		});
 	});
 
-	// M8 — push Tool Policy Engine inputs (`assessment`,
-	// `currentItemRef`, `pnpEnforcement`) into the toolkit-owned
-	// coordinator whenever they change. The coordinator's
-	// `updateAssessment` / `updateCurrentItemRef` / `setPnpEnforcement`
-	// forwards land on `ToolPolicyEngine.updateInputs`, which value-
-	// diffs each key with `Object.is` and only emits an `inputs` event
-	// on real changes — so re-running this effect on coordinator swap
-	// is safe and self-idempotent. We touch the reactive props
-	// explicitly and then run the side effect inside `untrack(...)`
-	// per the Svelte subscription guidance in `AGENTS.md`.
+	// Forward the policy inputs (`assessment`, `currentItemRef`,
+	// `pnpEnforcement`) to the coordinator this toolkit owns, each only when
+	// its own value changes: `policyInputsToForward` keeps a re-run of this
+	// effect from resetting a binding the host made on the coordinator. The
+	// enforcement mode resolves through `resolvePnpEnforcementInput`, so the
+	// embedded path (`runtime.tools.pnpEnforcement`) and the standalone
+	// `pnp-enforcement` attribute converge on one call.
 	//
-	// `pnpEnforcement` resolves through {@link resolvePnpEnforcementInput}
-	// so the embedded path (`<pie-section-player-*>` setting
-	// `runtime.tools.pnpEnforcement`) and the standalone path (the
-	// explicit `pnp-enforcement` attribute on `<pie-assessment-toolkit>`)
-	// converge on a single coordinator call.
-	//
-	// CRITICAL: only push when the toolkit *owns* the coordinator
-	// (i.e. `effectiveCoordinator === ownedCoordinator`). When the
-	// host passes a coordinator via the `coordinator` prop or shares
-	// one through `assessmentToolkitHostRuntimeContext`, that
-	// coordinator's policy inputs are the host's contract — overwriting
-	// them with our prop defaults would silently null out a host's
-	// pre-bound `AssessmentEntity`, etc. Hosts that share a coordinator
-	// drive policy inputs directly via `coord.updateAssessment(...)`.
+	// A coordinator the host passes or shares is never written: its policy
+	// inputs are the host's to bind through `coord.updateAssessment(...)`.
+	let forwardedPolicyInputs: {
+		coordinator: ToolkitCoordinator;
+		inputs: ForwardedPolicyInputs;
+	} | null = null;
 	$effect(() => {
 		void assessment;
 		void currentItemRef;
@@ -1701,22 +1694,23 @@ const DEFAULT_ENV = {
 		void tools;
 		const coord = effectiveCoordinator;
 		if (!coord) return;
-		// Host-owned coordinators are off-limits for this effect.
 		if (coord !== ownedCoordinator) return;
 		untrack(() => {
-			// Apply order matters: `setPnpEnforcement` lands the override
-			// (or clears it) FIRST so `updateAssessment(...)`'s
-			// auto-promote path sees the final override and doesn't
-			// briefly resolve to "on" (when binding an assessment with
-			// `pnpEnforcement="off"`) or "off" (when clearing an
-			// assessment with `pnpEnforcement="on"`). Without this
-			// ordering we would emit a transient wrong-state policy
-			// event between the calls.
-			coord.setPnpEnforcement(
-				resolvePnpEnforcementInput(pnpEnforcement, tools),
-			);
-			coord.updateAssessment(assessment);
-			coord.updateCurrentItemRef(currentItemRef);
+			const next: ForwardedPolicyInputs = {
+				pnpEnforcement: resolvePnpEnforcementInput(pnpEnforcement, tools),
+				assessment: assessment ?? null,
+				currentItemRef: currentItemRef ?? null,
+			};
+			const previous =
+				forwardedPolicyInputs?.coordinator === coord
+					? forwardedPolicyInputs.inputs
+					: null;
+			forwardedPolicyInputs = { coordinator: coord, inputs: next };
+			for (const key of policyInputsToForward(previous, next)) {
+				if (key === "pnpEnforcement") coord.setPnpEnforcement(next.pnpEnforcement);
+				else if (key === "assessment") coord.updateAssessment(next.assessment);
+				else coord.updateCurrentItemRef(next.currentItemRef);
+			}
 		});
 	});
 

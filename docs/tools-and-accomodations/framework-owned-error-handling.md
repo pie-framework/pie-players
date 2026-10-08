@@ -111,6 +111,10 @@ panel or move section readiness to `error`. The default slot remains active when
 `severity: "warning"`, and `recoverable: true`: one optional capability may be
 omitted or keep its last working element while the assessment and other
 capabilities continue.
+A toolbar that cannot load a tool's module reports `kind: "tool-module-load"`
+once per tool and withholds the tool. It follows the tool start-failure policy:
+recoverable unless policy grants the tool, and reported again as fatal if a
+later policy change grants it.
 
 ### Optional host extension points
 

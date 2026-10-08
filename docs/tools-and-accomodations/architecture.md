@@ -533,14 +533,16 @@ This separation emerged from real-world assessment platform analysis and reflect
 
 ### ToolCoordinator
 
-**Purpose:** Central service managing tool visibility and z-index layering.
+**Purpose:** Central service holding tool visibility state and stacking tool elements.
 
 **Responsibilities:**
 - Register/unregister tools
-- Show/hide tools
-- Bring tool to front on interaction
+- Hold each tool's on/off state; whoever renders a tool shows or hides it from that state
+- Bring a tool to the front of its layer when it is shown or pressed
 - Maintain z-index layers
 - Notify subscribers of state changes
+
+A tool's own registration names its layer. A toolbar registers the tool when it activates it, before the tool's component mounts, and binds its floating window; the window then stacks in the tool's layer. The outermost bound element stacks, so a tool rendered inside a toolbar window stacks by the window.
 
 **Z-Index Layers:**
 ```

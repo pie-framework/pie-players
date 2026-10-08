@@ -492,6 +492,31 @@ describe("ToolkitCoordinator policy-engine integration", () => {
 		expect(events).toEqual([]);
 	});
 
+	test("a fresh but structurally equal input is a no-op", () => {
+		const build = (): AssessmentEntity =>
+			({
+				id: "a1",
+				personalNeedsProfile: { supports: ["graph"] },
+				settings: { districtPolicy: { blockedTools: ["calculator"] } },
+			}) as AssessmentEntity;
+		const coord = makeCoordinator();
+		coord.updateAssessment(build());
+		coord.updateCurrentItemRef({ identifier: "i1" });
+
+		const events: ToolPolicyChangeEvent[] = [];
+		coord.onPolicyChange((event) => events.push(event));
+
+		coord.updateAssessment(build());
+		coord.updateCurrentItemRef({ identifier: "i1" });
+		expect(events).toEqual([]);
+
+		coord.updateAssessment({
+			...build(),
+			personalNeedsProfile: { supports: ["graph", "calculator"] },
+		} as AssessmentEntity);
+		expect(events).toHaveLength(1);
+	});
+
 	test("setPnpEnforcement-before-updateAssessment ordering avoids a transient 'on' policy event", () => {
 		// `PieAssessmentToolkit.svelte` applies override → assessment →
 		// itemRef in that order. The contract this guards: when a host

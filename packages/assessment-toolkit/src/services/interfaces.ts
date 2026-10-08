@@ -778,6 +778,13 @@ export interface ToolkitCoordinatorApi {
 	 */
 	reportFrameworkError?(model: FrameworkErrorModel): void;
 
+	/**
+	 * Report that a toolbar could not load a tool's module. The tool degrades
+	 * unless policy grants it, in which case the failure is fatal. Optional so
+	 * structural host coordinators remain assignable; a toolbar without it logs.
+	 */
+	reportToolModuleFailure?(toolId: string, error: unknown): void;
+
 	// ----------------------------------------------------------------
 	// Tool Policy Engine — public surface (M8 PR 2 / PR 3).
 	//
@@ -950,7 +957,11 @@ export interface ToolkitCoordinatorApi {
 	 * Whether a request for this tool would reach a toolbar. A surface asks before
 	 * offering the affordance.
 	 */
-	canRequestTool?(toolId: string, level?: ToolOpenRequest["level"]): boolean;
+	canRequestTool?(
+		toolId: string,
+		level?: ToolOpenRequest["level"],
+		scopeId?: string,
+	): boolean;
 
 	/**
 	 * Subscribe to toolbar registration/removal, so a surface can re-evaluate the

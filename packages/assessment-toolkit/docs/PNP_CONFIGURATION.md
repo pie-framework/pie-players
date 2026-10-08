@@ -171,6 +171,8 @@ const assessment: AssessmentEntity = {
 - Practice mode (enable all tools for learning)
 - Test security (disable features for high-stakes tests)
 
+**Precedence**: `toolOverrides` is keyed by tool id. `false` withdraws the tool for the session and `true` grants it; either outranks item settings, district requirements and the PNP, and only a district block outranks it.
+
 ### 4. Item-Level Settings (Content Requirements)
 
 Content authors can require or restrict tools per item:

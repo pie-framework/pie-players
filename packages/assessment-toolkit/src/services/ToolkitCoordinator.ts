@@ -324,7 +324,8 @@ export interface ToolkitErrorContext {
 		| "provider-init"
 		| "tts-init"
 		| "section-controller-init"
-		| "section-controller-dispose";
+		| "section-controller-dispose"
+		| "tool-module-load";
 	providerId?: string;
 	details?: Record<string, unknown>;
 	recoverable?: boolean;
@@ -651,6 +652,8 @@ export class ToolkitCoordinator {
 		string,
 		{ error: unknown; context: ToolkitErrorContext }
 	>();
+	/** Tools a toolbar reported a module failure for, each reported once. */
+	private readonly toolModuleFailures = new Set<string>();
 	private readonly readyChangeListeners = new Set<() => void>();
 	private readonly eagerInit: boolean;
 	private toolRegistry: ToolRegistry;
@@ -1106,6 +1109,28 @@ export class ToolkitCoordinator {
 			for (const toolId of ids) this.degradedTools.set(toolId, { error, context });
 		}
 		this.handleError(error, { ...context, recoverable });
+	}
+
+	/**
+	 * Report that a toolbar could not load a tool's module. The failure follows
+	 * the start-failure policy: the tool degrades, so the toolbar withholds it,
+	 * unless policy grants it. Reported once per tool however many toolbars fail
+	 * to load it. Every report re-announces the request targets, since the
+	 * reporting toolbar no longer hosts the tool.
+	 */
+	reportToolModuleFailure(toolId: string, error: unknown): void {
+		this.toolRequests.notifyTargetsChange();
+		if (this.toolModuleFailures.has(toolId)) return;
+		this.toolModuleFailures.add(toolId);
+		const detail =
+			error instanceof Error && error.message.trim().length > 0
+				? error.message
+				: String(error);
+		this.reportToolFailure(
+			new Error(`Tool "${toolId}" failed to load: ${detail}`, { cause: error }),
+			{ phase: "tool-module-load", details: { toolId } },
+			[toolId],
+		);
 	}
 
 	private reportNewlyGrantedFailures(): void {
@@ -3311,13 +3336,17 @@ export class ToolkitCoordinator {
 	 * surface, and a host that swapped the registry for one without the tool would
 	 * otherwise lose the whole surface to an exception over an absent action.
 	 */
-	canRequestTool(toolId: string, level?: ToolOpenRequest["level"]): boolean {
+	canRequestTool(
+		toolId: string,
+		level?: ToolOpenRequest["level"],
+		scopeId?: string,
+	): boolean {
 		try {
 			this.assertCanonicalToolId(toolId);
 		} catch {
 			return false;
 		}
-		return this.toolRequests.canRequest(toolId, level);
+		return this.toolRequests.canRequest(toolId, level, scopeId);
 	}
 
 	onToolRequestTargetsChange(listener: () => void): () => void {

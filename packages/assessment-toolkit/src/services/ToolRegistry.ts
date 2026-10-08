@@ -1280,12 +1280,21 @@ export class ToolRegistry {
 	}
 
 	/**
-	 * Ensure a set of tool modules are loaded.
+	 * Load a set of tool modules, each to completion, and resolve with the error
+	 * of every tool whose module failed, by tool id. One failure leaves the other
+	 * tools loaded and usable. A failed tool is retried on the next call.
 	 */
-	async ensureToolModulesLoaded(toolIds: string[]): Promise<void> {
-		await Promise.all(
+	async ensureToolModulesLoaded(
+		toolIds: string[],
+	): Promise<Map<string, unknown>> {
+		const results = await Promise.allSettled(
 			toolIds.map((toolId) => this.ensureToolModuleLoaded(toolId)),
 		);
+		const failures = new Map<string, unknown>();
+		results.forEach((result, index) => {
+			if (result.status === "rejected") failures.set(toolIds[index], result.reason);
+		});
+		return failures;
 	}
 
 	/**

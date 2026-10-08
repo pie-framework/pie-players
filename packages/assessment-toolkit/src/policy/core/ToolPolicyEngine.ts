@@ -41,6 +41,7 @@ import {
 } from "./feature-decision.js";
 import { composeDecision } from "./compose-decision.js";
 import { resolveDefaultPnpEnforcement } from "./pnp-policy-inputs.js";
+import { structurallyEqual } from "../../utils/structural-equality.js";
 import { PnpPolicySource } from "../sources/PnpPolicySource.js";
 
 export type PnpEnforcementMode = "on" | "off";
@@ -242,12 +243,10 @@ export class ToolPolicyEngine {
 	/**
 	 * Apply a partial input update.
 	 *
-	 * Each key is value-diffed via `Object.is` before storing, so callers
-	 * may safely re-push the same reference (e.g. on Svelte effect
-	 * re-runs caused by unrelated tracked reads): no-op patches do not
-	 * fire `onPolicyChange` listeners. This contract is relied on by
-	 * `PieAssessmentToolkit.svelte`'s prop-forwarding effect and by the
-	 * coordinator's `decideToolPolicy()` tests.
+	 * A key that did not change does not fire `onPolicyChange` listeners.
+	 * `tools` is diffed with `Object.is`. `assessment` and `currentItemRef`
+	 * are diffed structurally, because hosts rebuild them from their own
+	 * state on every render; the latest reference is stored either way.
 	 *
 	 * `pnpEnforcement` is stored on its own field and always emits with
 	 * a distinct `"pnp-enforcement"` reason when no other key changed,
@@ -267,17 +266,13 @@ export class ToolPolicyEngine {
 		}
 		if ("assessment" in patch) {
 			const next = patch.assessment ?? null;
-			if (!Object.is(this.assessment, next)) {
-				this.assessment = next;
-				changed = true;
-			}
+			if (!structurallyEqual(this.assessment, next)) changed = true;
+			this.assessment = next;
 		}
 		if ("currentItemRef" in patch) {
 			const next = patch.currentItemRef ?? null;
-			if (!Object.is(this.currentItemRef, next)) {
-				this.currentItemRef = next;
-				changed = true;
-			}
+			if (!structurallyEqual(this.currentItemRef, next)) changed = true;
+			this.currentItemRef = next;
 		}
 		if ("pnpEnforcement" in patch && patch.pnpEnforcement) {
 			if (this.pnpEnforcement !== patch.pnpEnforcement) {

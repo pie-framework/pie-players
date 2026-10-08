@@ -340,9 +340,5 @@
 		font-size: 12px;
 		line-height: 1.4;
 	}
-
-	:global([data-pie-tool-id="ruler"]) {
-		z-index: 2002; /* ZIndexLayer.MODAL */
-	}
 </style>
 

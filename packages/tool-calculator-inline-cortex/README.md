@@ -13,6 +13,7 @@ as `<pie-tool-calculator-inline>` from
 attributes. It toggles the calculator the item toolbar renders for the
 enclosing item, `calculator:item:<itemId>`, so the toolkit's tool
 configuration must place `calculator` in the item toolbar with the
-`calculator-cortex` provider. `target-tool-id` overrides the resolved id. Without
-an item shell or a `target-tool-id` the button stays disabled and logs a
-console warning.
+`calculator-cortex` provider. The button is enabled while that toolbar renders
+the calculator under its policy. `target-tool-id` names another toolbar's
+calculator by its scoped id. Without an item shell or a valid `target-tool-id`
+the button stays disabled and logs a console warning.

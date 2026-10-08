@@ -14,6 +14,11 @@ export type FrameworkErrorKind =
 	| "section-controller-dispose"
 	| "tool-surface"
 	/**
+	 * A toolbar could not load a tool's module. Recoverable unless policy grants
+	 * the tool: the toolbar withholds the tool and the assessment goes on.
+	 */
+	| "tool-module-load"
+	/**
 	 * A timed-media section could not deliver a policy as authored: a media time
 	 * source missing `canPause` / `canRestrictSeeking` (recoverable — cues still
 	 * fire and state is still recorded, only enforcement is lost), or authored
@@ -106,7 +111,8 @@ export interface FrameworkErrorCoordinatorContext {
 		| "provider-init"
 		| "tts-init"
 		| "section-controller-init"
-		| "section-controller-dispose";
+		| "section-controller-dispose"
+		| "tool-module-load";
 	providerId?: string;
 	details?: Record<string, unknown>;
 }
@@ -123,6 +129,7 @@ const COORDINATOR_PHASE_TO_KIND: Record<
 	"tts-init": "tts-init",
 	"section-controller-init": "section-controller-init",
 	"section-controller-dispose": "section-controller-dispose",
+	"tool-module-load": "tool-module-load",
 };
 
 /**

@@ -175,13 +175,28 @@ export interface EditableToolRow {
 }
 
 /**
- * Resolve the active PNP profile and the source label that explains
- * where it came from.
+ * Resolve the PNP profile to show and the source label that explains where it
+ * came from.
+ *
+ * Policy reads the profile of the bound assessment, so that profile comes
+ * first. A section's own profile is shown only when no assessment is bound, and
+ * labelled as one policy does not read.
  */
 export function resolvePnpProfile(
 	sectionData: PnpPanelInputs["sectionData"],
 	defaultPnpProfile: unknown,
+	boundAssessment?: unknown,
 ): { profile: unknown; source: string; note: string } {
+	const boundProfile = isRecord(boundAssessment)
+		? boundAssessment.personalNeedsProfile
+		: undefined;
+	if (boundProfile) {
+		return {
+			profile: boundProfile,
+			source: "assessment.personalNeedsProfile",
+			note: "Profile of the bound assessment, which is the profile policy reads.",
+		};
+	}
 	const directProfile = sectionData?.personalNeedsProfile;
 	const settingsProfile = sectionData?.settings?.personalNeedsProfile;
 	const profile = directProfile ?? settingsProfile ?? defaultPnpProfile;
@@ -192,9 +207,30 @@ export function resolvePnpProfile(
 			: "panel fallback (no profile in section)";
 	const note =
 		directProfile || settingsProfile
-			? "Profile was taken directly from section payload."
+			? "Profile was taken from the section payload. Policy does not read it: it reads the bound assessment's profile, and the bound assessment carries none."
 			: "The section carries no PNP profile. Nothing derives one — a player grants no support the host did not configure, so placement alone decides which tools appear. This panel is showing its own fallback profile so the rows below have something to read.";
 	return { profile, source, note };
+}
+
+/**
+ * The assessment to bind when the panel edits the profile: the bound assessment
+ * with `profile` in place of its own, keeping its settings (district policy,
+ * test administration, tool configs). With nothing bound, a minimal assessment
+ * named after the section.
+ */
+export function createSimulatedAssessment(
+	boundAssessment: unknown,
+	sectionData: PnpPanelInputs["sectionData"],
+	profile: Record<string, unknown>,
+): Record<string, unknown> {
+	const base = isRecord(boundAssessment)
+		? boundAssessment
+		: { id: sectionData?.id || sectionData?.identifier || "debug-section" };
+	return { ...base, personalNeedsProfile: profile };
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return Boolean(value) && typeof value === "object";
 }
 
 /**
@@ -433,9 +469,13 @@ export function derivePnpPanelData(inputs: PnpPanelInputs): PnpPanelData {
 		coordinator,
 	} = inputs;
 
+	const policyInputs = coordinator?.getPolicyInputs?.() as
+		| { pnpEnforcement?: "on" | "off"; assessment?: unknown }
+		| undefined;
 	const { profile, source, note } = resolvePnpProfile(
 		sectionData,
 		defaultPnpProfile,
+		policyInputs?.assessment,
 	);
 
 	const scopeId = sectionData?.id || sectionData?.identifier || "section";
@@ -473,9 +513,6 @@ export function derivePnpPanelData(inputs: PnpPanelInputs): PnpPanelData {
 	const catalogStats = hasCatalogResolver
 		? (coordinator?.catalogResolver?.getStatistics?.() ?? null)
 		: null;
-	const policyInputs = coordinator?.getPolicyInputs?.() as
-		| { pnpEnforcement?: "on" | "off"; assessment?: unknown }
-		| undefined;
 	// Distinguished from a profile that grants nothing, which looks identical in
 	// every other field on this panel: with no assessment bound there is no
 	// profile, district policy or test administration for policy to read, so every
@@ -504,6 +541,7 @@ export function derivePnpPanelData(inputs: PnpPanelInputs): PnpPanelData {
 		determination: {
 			source,
 			checked: [
+				"assessment.personalNeedsProfile",
 				"section.personalNeedsProfile",
 				"section.settings.personalNeedsProfile",
 			],

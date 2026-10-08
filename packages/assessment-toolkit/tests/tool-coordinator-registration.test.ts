@@ -1,7 +1,7 @@
-import { describe, expect, test } from "bun:test";
+import { describe, expect, spyOn, test } from "bun:test";
 
 import { createToolCoordinatorRegistration } from "../src/runtime/tool-host-contract.js";
-import { ZIndexLayer } from "../src/services/ToolCoordinator.js";
+import { ToolCoordinator, ZIndexLayer } from "../src/services/ToolCoordinator.js";
 import type { ToolCoordinatorApi } from "../src/services/interfaces.js";
 
 function makeCoordinator() {
@@ -75,5 +75,25 @@ describe("createToolCoordinatorRegistration", () => {
 		// A later sync registers afresh, as a remount does.
 		registration.sync(first.coordinator, "ruler");
 		expect(first.calls).toHaveLength(3);
+	});
+});
+
+describe("ToolCoordinator listeners", () => {
+	test("a throwing listener does not stop later listeners", () => {
+		const warn = spyOn(console, "warn").mockImplementation(() => {});
+		try {
+			const coordinator = new ToolCoordinator();
+			const seen: string[] = [];
+			coordinator.subscribe(() => {
+				throw new Error("boom");
+			});
+			coordinator.subscribe(() => seen.push("second"));
+			coordinator.registerTool("ruler", "Ruler");
+			coordinator.showTool("ruler");
+			expect(seen).toEqual(["second"]);
+			expect(warn).toHaveBeenCalledTimes(1);
+		} finally {
+			warn.mockRestore();
+		}
 	});
 });

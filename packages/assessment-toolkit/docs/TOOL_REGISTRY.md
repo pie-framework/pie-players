@@ -565,11 +565,12 @@ The coordinator supplies the other half:
 ```ts
 coordinator.canRequestTool("dictionary"); // gate the affordance before offering it
 coordinator.requestTool({ toolId: "dictionary", params: { term } });
+coordinator.canRequestTool("calculator", "item", itemId); // one card's toolbar
 ```
 
 A toolbar claims requests for its placement level through `registerToolRequestTarget`, turns the unscoped id into a scoped instance, applies `params` and shows the tool. `params` layer over whatever a host's `ToolContextResolver` returned and arrive through `getToolRenderParams`, so a tool already reading that seam receives a request with no new code.
 
-Resolution is a claim, not a broadcast: exactly one target answers, the one at the requested level that hosts the tool. `level` defaults to `"section"`, the level at which a whole section shares one instance and the level a section-scoped gateway can address unambiguously. At `"item"` and `"passage"` a section holds one target per card and the first that hosts the tool claims the request, so a requester needing a particular card's instance cannot express that.
+Resolution is a claim, not a broadcast: exactly one target answers, the one at the requested level that hosts the tool. `level` defaults to `"section"`, the level at which a whole section shares one instance and the level a section-scoped gateway can address unambiguously. At `"item"` and `"passage"` a section holds one target per card and the first that hosts the tool claims the request, unless the request names the card's `scopeId`; a control inside one card, such as the inline calculator, names it. A toolbar whose module load for a tool failed stops hosting that tool, and the coordinator re-announces the targets through `onToolRequestTargetsChange`.
 
 An action is a shortcut and never a capability's only entry point. Chromium will not extend a selection with Shift+Arrow in non-editable content unless caret browsing is on — an OS toggle absent on mobile — so a sighted keyboard-only learner cannot originate one. A capability reachable only through a selection gateway is unreachable for them, which is why both dictionaries keep a toolbar button and their own term field.
 
@@ -835,7 +836,7 @@ The policy engine implements a **precedence hierarchy** based on common assessme
 2. **Test administration override**
    - **Purpose**: Proctor/administrator operational control
    - **Example**: Proctor disables TTS due to technical issues in testing lab
-   - **Effect**: Tool disabled for this test session
+   - **Effect**: `testAdministration.toolOverrides[toolId]` set to `false` disables the tool for this test session, and `true` grants it
 
 3. **Item restriction** (per-item block)
    - **Purpose**: Content author can disable for specific items

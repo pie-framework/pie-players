@@ -41,7 +41,7 @@ import type {
 	ToolRegistration,
 	ToolSurfaceRenderContext,
 	ToolSurfaceRenderResult,
-} from "@pie-players/pie-assessment-toolkit/tools/internal";
+} from "@pie-players/pie-assessment-toolkit/tools/registration";
 
 /** QTI 3.0 / AfA support id gating an audio transcript. */
 export const AUDIO_TRANSCRIPT_FEATURE_ID = "transcript";

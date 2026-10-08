@@ -9,9 +9,10 @@
  * Names are generic shapes ("book-open", "beaker"), never capability names. Core
  * naming a capability is what the composition layer exists to prevent.
  *
- * Exported through `tools/internal` as well: a registration composing a selection
- * gateway renders its own buttons and has to draw the same icon the toolbar button
- * draws, or the learner sees two unrelated affordances for one tool.
+ * `resolveFallbackToolIcon` is exported through `tools/registration` as well: a
+ * registration composing a selection gateway renders its own buttons and has to
+ * draw the same icon the toolbar button draws, or the learner sees two unrelated
+ * affordances for one tool.
  */
 
 export const TOOL_FALLBACK_ICONS: Readonly<Record<string, string>> = {

@@ -36,7 +36,7 @@
 		flatTextContent,
 		findContentLanguage,
 		resolveContentRegion
-	} from '@pie-players/pie-assessment-toolkit/runtime/internal';
+	} from '@pie-players/pie-assessment-toolkit';
 	// Side-effect import: registers <nds-icon-button>. Single vendored source of
 	// truth lives in players-shared (Lit inlined, self-contained); see
 	// players-shared/src/components/vendor/nds/README.md. players-shared is not

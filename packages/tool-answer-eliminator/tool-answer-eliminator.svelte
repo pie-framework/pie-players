@@ -34,7 +34,7 @@
   - Modern CSS Custom Highlight API (zero DOM mutation, 10-15x faster)
   - Generic adapter pattern (works with multiple-choice, EBSR, inline-dropdown)
   - Strikethrough visual (WCAG 2.2 AA compliant, best for accessibility)
-  - localStorage persistence across question navigation
+  - Eliminations persist across question navigation through the toolkit's element tool state store
   - Keyboard accessible with proper ARIA attributes
 
   **WCAG 2.2 Level AA Compliant:**

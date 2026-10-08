@@ -27,7 +27,7 @@ import {
 	ToolRegistry,
 	type ToolRegistration,
 	type ToolSurfaceRenderResult,
-} from "@pie-players/pie-assessment-toolkit/tools/internal";
+} from "@pie-players/pie-assessment-toolkit/tools/registration";
 import {
 	isHostDeniedFeature,
 	ToolPolicyEngine,

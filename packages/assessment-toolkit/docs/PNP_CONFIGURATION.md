@@ -17,16 +17,18 @@ AssessmentEntity
 ├── personalNeedsProfile           # QTI 3.0: Student's PNP profile
 │   ├── supports: string[]         # Enabled accessibility features
 │   ├── prohibitedSupports: string[]
-│   └── activateAtInit: string[]
+│   └── activateAtInit: string[]   # Accepted, not acted on
 │
 └── settings: AssessmentSettings   # PIE extension
     ├── districtPolicy             # Institutional governance
     │   ├── blockedTools: string[]
-    │   └── requiredTools: string[]
+    │   ├── requiredTools: string[]
+    │   └── policies: Record<string, any>   # Accepted, not acted on
     │
     ├── testAdministration         # Session control
-    │   ├── mode: "practice" | "test" | "benchmark"
-    │   └── toolOverrides: Record<string, boolean>
+    │   ├── mode: "practice" | "test" | "benchmark"   # Accepted, not acted on
+    │   ├── toolOverrides: Record<string, boolean>
+    │   └── startDate, endDate: string                # Accepted, not acted on
     │
     └── toolConfigs                # Feature parameters by support id
         ├── calculator: {...}
@@ -38,6 +40,8 @@ AssessmentItemRef
     ├── restrictedTools: string[]
     └── toolParameters: Record<string, any>
 ```
+
+The fields marked "accepted, not acted on" are typed so a host can carry them with the assessment, and their presence counts as policy material: in auto mode a non-empty one turns PNP enforcement on. Nothing reads their values. No tool activates from `activateAtInit`, and the policy engine applies no rule for `districtPolicy.policies`, `testAdministration.mode` or the testing window.
 
 ## Configuration Examples
 
@@ -66,7 +70,7 @@ const assessment: AssessmentEntity = {
       "answerEliminator"   // Not allowed per IEP
     ],
 
-    // Features to auto-activate at assessment start
+    // Accepted, not acted on: no tool activates from this list
     activateAtInit: [
       "textToSpeech",
       "magnification"
@@ -109,7 +113,7 @@ const assessment: AssessmentEntity = {
         "textToSpeech"     // District mandates TTS for all ELL students
       ],
 
-      // Additional policies (extensible)
+      // Accepted, not acted on: no policy rule reads these
       policies: {
         allowTranslation: false,
         proctorRequired: true
@@ -142,7 +146,7 @@ const assessment: AssessmentEntity = {
 
   settings: {
     testAdministration: {
-      // Testing mode
+      // Accepted, not acted on
       mode: "test",  // "practice" | "test" | "benchmark"
 
       // Session-specific overrides
@@ -152,7 +156,7 @@ const assessment: AssessmentEntity = {
         "calculator": true      // Calculator explicitly enabled
       },
 
-      // Testing window
+      // Testing window: accepted, not acted on
       startDate: "2024-03-15T08:00:00Z",
       endDate: "2024-03-15T10:00:00Z"
     }
@@ -168,7 +172,6 @@ const assessment: AssessmentEntity = {
 
 **Use Cases**:
 - Technical issues (TTS audio broken, disable for this session)
-- Practice mode (enable all tools for learning)
 - Test security (disable features for high-stakes tests)
 
 **Precedence**: `toolOverrides` is keyed by tool id. `false` withdraws the tool for the session and `true` grants it; either outranks item settings, district requirements and the PNP, and only a district block outranks it.
@@ -238,10 +241,15 @@ Here's a complete example showing how all levels interact:
 import {
   ToolkitCoordinator
 } from '@pie-players/pie-assessment-toolkit';
-import { createPackagedToolRegistry } from '@pie-players/pie-default-tool-loaders';
+import {
+  createPackagedToolRegistry,
+  DEFAULT_TOOL_MODULE_LOADERS,
+} from '@pie-players/pie-default-tool-loaders';
 
-// 1. Create tool registry
-const toolRegistry = createPackagedToolRegistry();
+// 1. Create tool registry; its loaders load each tool's element on first render
+const toolRegistry = createPackagedToolRegistry({
+  toolModuleLoaders: DEFAULT_TOOL_MODULE_LOADERS
+});
 
 // 2. Create coordinator with the registry, configured placements and tool providers
 const coordinator = new ToolkitCoordinator({
@@ -421,10 +429,16 @@ When integrating the PNP system, ensure you:
 ### API Integration
 
 ```typescript
-import { createPackagedToolRegistry } from '@pie-players/pie-default-tool-loaders';
+import {
+  createPackagedToolRegistry,
+  DEFAULT_TOOL_MODULE_LOADERS,
+} from '@pie-players/pie-default-tool-loaders';
 
-// 1. Create registry and coordinator
-const registry = createPackagedToolRegistry();
+// 1. Create registry and coordinator. The toolbar below renders from this
+//    registry, so it carries the loaders for each tool's element.
+const registry = createPackagedToolRegistry({
+  toolModuleLoaders: DEFAULT_TOOL_MODULE_LOADERS
+});
 const coordinator = new ToolkitCoordinator({
   assessmentId: assessment.id,
   toolRegistry: registry,
@@ -451,8 +465,11 @@ const context: ItemToolContext = {
   item: itemData
 };
 
-// 4. Filter by relevance (Pass 2)
-const visibleTools = registry.filterVisibleInContext(allowedToolIds, context);
+// 4. Filter by relevance (Pass 2) and applicability (Pass 3).
+//    <pie-item-toolbar> runs both passes itself; this is for a host-built toolbar.
+const visibleTools = registry
+  .filterVisibleInContext(allowedToolIds, context)
+  .filter((tool) => registry.isApplicableToAnyContext(tool.toolId, [context]));
 
 // 5. Render toolbar: it takes the coordinator from the enclosing toolkit and
 //    the item's identity from the enclosing item scope
@@ -490,14 +507,12 @@ Provide UI for:
    interface DistrictPolicyEditor {
      blockedTools: string[];     // Multi-select from registered tool ids
      requiredTools: string[];
-     policies: Record<string, any>;
    }
    ```
 
 2. **Proctors** to set `testAdministration` overrides:
    ```typescript
    interface TestAdminPanel {
-     mode: "practice" | "test" | "benchmark";
      toolOverrides: Record<string, boolean>;  // Per-tool toggles
    }
    ```
@@ -528,7 +543,9 @@ Check precedence hierarchy in order:
 1. Is it blocked by `districtPolicy.blockedTools`?
 2. Is it disabled in `testAdministration.toolOverrides`?
 3. Is it in `itemSettings.restrictedTools`, on the item's own toolbar?
-4. Does the tool's `isVisibleInContext()` return false?
+4. Is it placed at this level in `tools.placement`? A grant does not place a tool.
+5. Does the tool's `isVisibleInContext()` return false? A `required` or `alwaysAvailable` grant skips this check.
+6. Does the tool's `isApplicableToContent()` return false for this content? This check removes the tool even under a grant.
 
 ### "Tool showing up when it shouldn't"
 

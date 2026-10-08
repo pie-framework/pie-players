@@ -283,7 +283,7 @@ const typecheckToolkitWithoutOptionalPeers = (fixtureDir, optionalPeers) => {
 		`import type {
 	ToolProviderApi,
 	TTSToolProvider,
-} from "@pie-players/pie-assessment-toolkit/tools/internal";
+} from "@pie-players/pie-assessment-toolkit/tools/registration";
 
 export type ToolkitToolProviders = [ToolProviderApi, TTSToolProvider];
 `,
@@ -452,7 +452,7 @@ const run = async () => {
 		);
 		if (!typecheckResult.ok) {
 			failures.push(
-				`[node-consumer] ${toolkitPackageName}/tools/internal failed TypeScript consumption without optional peers: ${typecheckResult.message}`,
+				`[node-consumer] ${toolkitPackageName}/tools/registration failed TypeScript consumption without optional peers: ${typecheckResult.message}`,
 			);
 		}
 	} catch (error) {

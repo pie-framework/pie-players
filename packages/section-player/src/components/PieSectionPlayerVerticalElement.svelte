@@ -109,7 +109,7 @@
 		RuntimeConfig,
 		StageChangeHandler,
 		LoadingCompleteHandler,
-	} from "@pie-players/pie-assessment-toolkit/runtime/internal";
+	} from "@pie-players/pie-assessment-toolkit/runtime/engine";
 	import type {
 		SectionPlayerRuntimeHostContract,
 		SectionPlayerSnapshot,

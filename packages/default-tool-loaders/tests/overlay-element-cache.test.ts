@@ -10,7 +10,7 @@ import { describe, expect, test } from "bun:test";
 import type {
 	ToolContext,
 	ToolbarContext,
-} from "@pie-players/pie-assessment-toolkit/tools/internal";
+} from "@pie-players/pie-assessment-toolkit/tools/registration";
 import { resolveInterfaceI18n } from "@pie-players/pie-players-shared/i18n/provider";
 
 import { PACKAGED_TOOL_TAG_MAP } from "../src/packaged-capability-composition.js";

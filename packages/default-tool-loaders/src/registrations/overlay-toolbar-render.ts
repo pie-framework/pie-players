@@ -30,7 +30,7 @@ import {
 	type ToolToolbarButtonDefinition,
 	type ToolToolbarRenderResult,
 	type ToolbarContext,
-} from "@pie-players/pie-assessment-toolkit/tools/internal";
+} from "@pie-players/pie-assessment-toolkit/tools/registration";
 import { resolveOverlayElement } from "./overlay-element-cache.js";
 
 /** A window's geometry. Absent for overlays that paint their own chrome. */

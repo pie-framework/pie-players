@@ -13,7 +13,7 @@ import type {
 	ToolkitCoordinatorApi,
 	ToolRegistry,
 } from "@pie-players/pie-assessment-toolkit";
-import { resolveToolProviderId } from "@pie-players/pie-assessment-toolkit/tools/internal";
+import { resolveToolProviderId } from "@pie-players/pie-assessment-toolkit/tools/registration";
 
 /**
  * Tool ids already reported, per coordinator. Module-scoped so a host that

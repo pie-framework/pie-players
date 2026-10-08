@@ -144,8 +144,9 @@ Section-player runtime tools overlay resolution now preserves host-provided shap
 Primary files:
 
 - `packages/assessment-toolkit/src/runtime/core/engine-resolver.ts`
-  (canonical `resolveRuntime` / `resolveToolsConfig`, exported via
-  `@pie-players/pie-assessment-toolkit/runtime/internal`)
+  (canonical `resolveRuntime` / `resolveToolsConfig`, reached through
+  `resolveSectionEngineRuntimeState` on
+  `@pie-players/pie-assessment-toolkit/runtime/engine`)
 - `packages/section-player/src/components/shared/section-player-host-runtime.ts`
   (section-player-coupled wrapper that delegates to the toolkit
   resolver and adds player-side coupling such as

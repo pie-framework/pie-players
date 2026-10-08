@@ -4,8 +4,8 @@
  * Canonical home of `createReadinessDetail` and `resolveReadinessPhase`.
  * As of M7 PR 7 the previous duplicates in
  * `packages/section-player/src/components/shared/section-player-readiness.ts`
- * have been deleted; section-player now consumes these helpers via
- * `@pie-players/pie-assessment-toolkit/runtime/internal`.
+ * have been deleted; section-player now consumes `createReadinessDetail` via
+ * `@pie-players/pie-assessment-toolkit/runtime/engine`.
  *
  * Type duplication note: the public DOM-event detail aliases
  * (`SectionPlayerReadinessChangeDetail` /

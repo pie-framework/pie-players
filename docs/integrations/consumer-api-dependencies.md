@@ -387,7 +387,7 @@ verification date. Hosts V and P install neither the loaders nor the toolkit.
 The server TTS adapter `tts-client-server` has since moved the same way, from an
 optional peer of the toolkit to a dependency of `pie-default-tool-loaders`,
 whose TTS registration holds its only import and passes it to `TTSToolProvider`
-as a loader. `TTSToolProvider` stays on `./tools/internal` and takes that loader
+as a loader. `TTSToolProvider` stays on `./tools/registration` and takes that loader
 as an optional second constructor argument; without it, a server backend fails
 to initialize and speech falls back to the browser. Checked against all four
 checkouts on 2026-09-28 as a targeted lookup, so it does not advance the
@@ -1816,6 +1816,16 @@ over a CDN with no typecheck at all.
   beside the property the section-player layouts set, and a `coordinator` passed
   to a nested toolkit winning over the outer toolkit's. No host nests a toolkit
   or sets `isolation` itself
+- The toolkit's `./runtime/internal` and `./policy/internal` subpaths, deleted on
+  2026-10-08, and `./tools/internal`, renamed `./tools/registration` and cut to
+  what a package imports from it. The section player's engine vocabulary moved to
+  `./runtime/engine`, and the shell event bridge and the content-region,
+  content-language, catalog-context and flat-tree helpers the tools use moved to
+  the root. The provider registry's `ToolProviderConfig` was renamed
+  `ToolProviderRegistration`, leaving the name to the tools-config shape. Checked
+  against all five checkouts on 2026-10-08 as a targeted lookup, so it does not
+  advance the verification date: no checkout imports any toolkit subpath or names
+  either type
 
 ## Consumer-side defects worth reporting upstream
 

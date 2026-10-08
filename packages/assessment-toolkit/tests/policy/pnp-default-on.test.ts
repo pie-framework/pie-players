@@ -29,7 +29,7 @@ import {
 	assessmentHasPnpPolicyInputs,
 	itemSettingsHavePnpPolicyInputs,
 	resolveDefaultPnpEnforcement,
-} from "../../src/policy/internal.js";
+} from "../../src/policy/core/pnp-policy-inputs.js";
 import { ToolkitCoordinator } from "../../src/services/ToolkitCoordinator.js";
 import { ToolRegistry } from "../../src/services/ToolRegistry.js";
 import { normalizeToolsConfig } from "../../src/services/tools-config-normalizer.js";

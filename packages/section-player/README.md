@@ -33,8 +33,10 @@ opt-out.
 import "@pie-players/pie-section-player";
 ```
 
-If hosts need explicit registration control, keep using documented component
-entrypoints under `@pie-players/pie-section-player/components/*`.
+The entrypoints under `@pie-players/pie-section-player/components/*` load one
+element each, together with every element it renders: a layout entry also
+registers the cards, panes and shell. They choose which layouts a host loads; the
+tag names stay fixed.
 
 The entries are bundler-only: they import `@pie-players/pie-item-player`,
 `@pie-players/pie-default-tool-loaders` and `speech-rule-engine`, with the
@@ -373,9 +375,11 @@ The layout elements (`pie-section-player-splitpane`,
 - `iife-bundle-host` (string, optional): bundle host for the IIFE element pre-warm when `runtime.player.loaderOptions.bundleHost` is unset.
 - Host extension props (JS properties only): `toolRegistry`, `sectionHostButtons`, `itemHostButtons`, `passageHostButtons`, `hooks`
 
-When viewport width is within the collapsed range (~1100px and below), splitpane and
-vertical layout hosts normalize section toolbar placement to `top`. This includes
-`left`, `right`, `bottom`, and `none` values.
+When the viewport is no wider than `narrow-layout-breakpoint` (default 1100px),
+splitpane and vertical layout hosts normalize section toolbar placement to `top`.
+This includes `left`, `right`, `bottom`, and `none` values. Separately, the shell
+moves a `left` or `right` toolbar to `top` at a fixed 1100px, so with a smaller
+breakpoint side toolbars still move to the top from 1100px down.
 
 `hooks.cardTitleFormatter` remains active across responsive splitpane transitions (split -> stacked and stacked -> split), because title rendering is provided through shared card context rather than layout-specific state.
 
@@ -790,16 +794,16 @@ Runtime configuration is explicit:
 - Tool placement is configured through `runtime.tools.placement.section`, `runtime.tools.placement.item`, and `runtime.tools.placement.passage`.
 - Tool configuration validation is canonical in toolkit initialization (`pie-assessment-toolkit`), including toolbar overlays. Use `runtime.toolConfigStrictness` (`off` | `warn` | `error`) to control warning-only vs fail-fast behavior.
 - TTS provider config must use `tools.providers.textToSpeech` (canonical). `tools.providers.tts` is rejected by validation.
-- Host tool overrides are additive:
-  - `toolRegistry` overrides the default toolbar registry when provided
+- Host tool overrides:
+  - `toolRegistry` replaces the default toolbar registry when provided. Build it with `createPackagedToolRegistry({ toolModuleLoaders: DEFAULT_TOOL_MODULE_LOADERS })` and register custom tools on it, since toolbars load each tool's element through the registry's loaders. A player that builds its own coordinator gives it this registry; a coordinator passed as `runtime.coordinator` keeps its own, which decides policy, so build that coordinator with the same registry
   - host buttons are appended per toolbar scope via `sectionHostButtons`, `itemHostButtons`, `passageHostButtons`
 
-Debug logging can be controlled per section-player host:
+Debug logging is page-wide. A layout's `debug` attribute writes `window.PIE_DEBUG`, the flag every PIE logger on the page reads, so the last host to set it decides for all of them:
 
 - Enable: `<pie-section-player-splitpane debug="true">`
 - Disable: `<pie-section-player-splitpane debug="false">` (or `debug="0"`)
 
-You can also disable globally via `window.PIE_DEBUG = false`.
+Without a `debug` attribute a layout follows `window.PIE_DEBUG`, which a host can set directly.
 
 See the progressive demo routes in `apps/section-demos/src/routes/(demos)` (for example `single-question/+page.svelte` and `session-hydrate-db/+page.svelte`) for end-to-end host integrations.
 
@@ -1146,6 +1150,7 @@ produced by a trusted pipeline.
 Published exports are intentionally minimal:
 
 - `@pie-players/pie-section-player`
+- `@pie-players/pie-section-player/browser`, the self-contained browser build ([CDN usage](../../docs/setup/cdn_usage.md#section-player-browser-build))
 - `@pie-players/pie-section-player/components/section-player-splitpane-element`
 - `@pie-players/pie-section-player/components/section-player-vertical-element`
 - `@pie-players/pie-section-player/components/section-player-tabbed-element`

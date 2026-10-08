@@ -217,8 +217,8 @@ export interface ToolkitCoordinatorConfig {
 	assessmentId: string;
 
 	/**
-	 * Tool availability and configuration.
-	 * Defaults: all tools enabled with default settings.
+	 * Tool availability and configuration. The default placement is empty: a tool
+	 * shows only where placement puts it, and a grant does not place one.
 	 */
 	tools?: ToolsConfigInput;
 
@@ -586,8 +586,10 @@ export interface ToolkitServiceBundle {
  *
  * @example
  * ```typescript
- * // createPackagedToolRegistry is exported by @pie-players/pie-default-tool-loaders
- * const toolRegistry = createPackagedToolRegistry();
+ * // Both are exported by @pie-players/pie-default-tool-loaders
+ * const toolRegistry = createPackagedToolRegistry({
+ *   toolModuleLoaders: DEFAULT_TOOL_MODULE_LOADERS,
+ * });
  *
  * // Create coordinator with configuration
  * const coordinator = new ToolkitCoordinator({

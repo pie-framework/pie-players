@@ -33,7 +33,7 @@
 import type {
 	CatalogOwnerSnapshot,
 	ToolContentDependencyContext,
-} from "@pie-players/pie-assessment-toolkit/tools/internal";
+} from "@pie-players/pie-assessment-toolkit/tools/registration";
 import {
 	AMERICAN_SIGN_LANGUAGE,
 	isSignLanguageCard,

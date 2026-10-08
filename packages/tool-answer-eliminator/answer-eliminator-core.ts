@@ -569,14 +569,14 @@ export class AnswerEliminatorCore {
 	}
 
 	/**
-	 * Enable state restoration from localStorage
+	 * Enable state restoration from the element tool state store
 	 */
 	enableStateRestoration(): void {
 		this.shouldRestoreState = true;
 	}
 
 	/**
-	 * Disable state restoration from localStorage
+	 * Disable state restoration from the element tool state store
 	 */
 	disableStateRestoration(): void {
 		this.shouldRestoreState = false;

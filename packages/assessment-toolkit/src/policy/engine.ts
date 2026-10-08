@@ -1,23 +1,9 @@
 /**
- * Tool policy engine — facade entry point.
- *
- * Narrow, stable public surface for hosts that want to instantiate or
- * consume a `ToolPolicyEngine`. Re-exports the engine class, its
- * decision request/response types, and the minimal `PolicySource`
- * extension contract.
- *
- * **Pairing.** This module is the stable counterpart to
- * `./policy/internal`, which exposes the wider, evolving surface
- * (composition pipeline, provenance builder, PNP policy source). Consumers
- * that only need to drive an engine and read its decisions should
- * import from here. Consumers that need to reach past the facade
- * (e.g. test the composition pipeline directly, build a custom PNP policy
- * source variant, instrument provenance generation) should import
- * from `./policy/internal` and accept the documented stability
- * disclaimer there.
- *
- * Mirrors the `runtime/engine` / `runtime/internal` split — see the
- * same rationale in `src/runtime/engine.ts`.
+ * Tool policy engine — the stable entry for a host that instantiates or
+ * consumes a `ToolPolicyEngine`: the engine class, its decision request and
+ * response types, and the `PolicySource` extension contract. The composition
+ * pipeline, the PNP policy source and the provenance builder stay behind the
+ * engine, with no entry of their own.
  */
 
 export {

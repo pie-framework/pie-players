@@ -6,7 +6,7 @@ import type {
 	CalculatorProviderConfig,
 	CalculatorType,
 } from "@pie-players/pie-calculator";
-import type { ToolProviderCapabilities } from "@pie-players/pie-assessment-toolkit/tools/internal";
+import type { ToolProviderCapabilities } from "@pie-players/pie-assessment-toolkit/tools/registration";
 import {
 	type CalculatorToolProviderInitConfig,
 	LazyCalculatorToolProvider,

@@ -1,43 +1,35 @@
 /**
- * Registration-authoring surface.
+ * Tool registration — the stable entry for writing and rendering a
+ * `ToolRegistration`.
  *
- * What a package outside this one needs to write a `ToolRegistration`: the
- * registration types, the context predicates a tool answers `isVisibleInContext`
- * with, scoped-id and element-creation helpers, the toolbar button/overlay
- * helpers, the provider contract a registration's descriptor creates, and the
- * TTS provider.
+ * A capability package writes a registration with it: the registration contract,
+ * the context predicates a tool answers `isVisibleInContext` with, scoped ids,
+ * element creation, the toolbar button and overlay helpers, the provider contract
+ * a descriptor creates, and the TTS provider with its config resolution. A
+ * renderer puts registrations on screen with it: `createToolSurfaceHost` mounts
+ * and reconciles surfaces, and `resolveContentCapabilities` asks the
+ * grant-and-content question without a coordinator.
  *
- * A separate entry point rather than additions to `.` for the same reason
- * `runtime/internal` and `policy/internal` exist: this is a surface for sibling
- * packages in this repo, not a contract offered to hosts. Widening `.` with two
- * dozen registration-authoring helpers would make every one of them something a
- * host could reasonably expect us to keep.
- *
- * It exists because the packaged registrations moved out to the composition layer
- * (`@pie-players/pie-default-tool-loaders`) so core stops naming capabilities.
- * A host writing its own capability package imports from here too, which is the
- * point — the mechanism is the same one our own registrations use.
+ * The composition layer (`@pie-players/pie-default-tool-loaders`) and
+ * `@pie-players/pie-tool-sign-language` are written against it, so a host's own
+ * capability package uses the mechanism ours use. Its values are complete, so a
+ * capability package never imports the root entry. A name the root also carries
+ * appears here only where a package imports it from here.
  */
 
 // Registration contract.
 export type {
 	HostedToolContext,
 	HostedToolSize,
-	ResolvedToolContext,
-	ToolActivation,
-	ToolContentDependency,
 	ToolContentDependencyContext,
-	ToolModuleLoader,
 	ToolProviderDescriptor,
 	ToolRegistration,
 	ToolRenderElement,
-	ToolSingletonScope,
 	ToolSurfaceRenderContext,
 	ToolSurfaceRenderResult,
 	ToolSurfaceServices,
 	ToolToolbarButtonDefinition,
 	ToolToolbarRenderResult,
-	ToolWindowShellConfig,
 	ToolbarContext,
 } from "../services/ToolRegistry.js";
 export {
@@ -48,27 +40,16 @@ export {
 // title is the registration's name, so the shell needs the same `nameKey`-then-
 // `name` precedence the toolbar uses rather than the raw English field.
 export { resolveToolRegistrationName } from "../services/ToolRegistry.js";
-export type {
-	CatalogOwnerCard,
-	CatalogOwnerSnapshot,
-} from "../services/AccessibilityCatalogResolver.js";
+export type { CatalogOwnerSnapshot } from "../services/AccessibilityCatalogResolver.js";
 
-// Handing a selection to a tool the requesting surface does not mount. A
-// registration composing a selection gateway needs both halves: the action shape
-// the gateway renders, and the request the action makes.
+// Handing a selection to a tool the requesting surface does not mount: the action
+// shape a selection gateway renders.
 export type {
 	ToolSelectionAction,
 	ToolSelectionContext,
 } from "../services/selection-action.js";
-export type {
-	ToolOpenRequest,
-	ToolRequestTarget,
-} from "../services/tool-request.js";
 // So a gateway button and the toolbar button for the same tool draw one icon.
-export {
-	resolveFallbackToolIcon,
-	TOOL_FALLBACK_ICONS,
-} from "../services/tool-icons.js";
+export { resolveFallbackToolIcon } from "../services/tool-icons.js";
 
 // The grant-AND-content rule, for a package that renders content capabilities
 // into its own surfaces. Data-only, so a renderer with no coordinator — print —
@@ -82,9 +63,9 @@ export type {
 export { resolveContentCapabilities } from "./content-capability-resolution.js";
 
 // The mount/reconcile half of the same rule, for a renderer that opens a surface.
-// Section-player and the annotation toolbar both drive surfaces through this, so
+// Section-player drives its overlay, card and media surfaces through this, so
 // discovery, lazy loading, DOM reconciliation and registry observation have one
-// implementation rather than one per renderer.
+// implementation rather than one per surface.
 export type {
 	ToolSurfaceHost,
 	ToolSurfaceHostInput,
@@ -95,7 +76,7 @@ export type {
 export { createToolSurfaceHost } from "./tool-surface-host.js";
 
 // Context a registration reads to answer `isVisibleInContext`.
-export type { ToolContext, ToolLevel } from "../services/tool-context.js";
+export type { ToolContext } from "../services/tool-context.js";
 export {
 	hasChoiceInteraction,
 	hasMathContent,
@@ -114,11 +95,7 @@ export type {
 	ToolComponentOverrides,
 	ToolTagMap,
 } from "./tool-tag-map.js";
-export {
-	createToolElement,
-	resolveToolTag,
-	toToolIdFromTag,
-} from "./tool-tag-map.js";
+export { createToolElement, resolveToolTag } from "./tool-tag-map.js";
 
 // Toolbar button/overlay wiring shared by every toolbar-toggle registration.
 export {
@@ -127,21 +104,14 @@ export {
 	syncButtonAndOverlayVisibility,
 } from "./registrations/toolbar-registration-helpers.js";
 
-// Services a registration reaches through its render context.
-export type {
-	ElementToolStateStoreApi,
-	ToolCoordinatorApi,
-	ToolkitCoordinatorApi,
-	TtsServiceApi,
-} from "../services/interfaces.js";
+// The coordinator a registration reaches through its render context.
+export type { ToolCoordinatorApi } from "../services/interfaces.js";
 
 // Canonical tools config shapes a provider descriptor validates against.
 export type {
 	CalculatorToolProviderConfig,
-	ToolPlacementConfig,
 	ToolProviderConfig,
 } from "../services/tools-config-normalizer.js";
-export type { ToolConfigDiagnostic } from "../services/tool-config-validation.js";
 
 // The contract a descriptor's `createProvider` returns, for a package writing its
 // own provider. The calculator adapters are written against it in the composition

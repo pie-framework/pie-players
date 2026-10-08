@@ -82,6 +82,7 @@ class ScriptedImpl implements ITTSProviderImplementation {
 	isPaused(): boolean {
 		return false;
 	}
+	updateSettings(): void {}
 }
 
 class ScriptedProvider implements ITTSProvider {
@@ -283,6 +284,149 @@ describe("a pause between the parts of a run", () => {
 	});
 });
 
+describe("a pause or stop while the read loads", () => {
+	/** A service whose provider starts when the test opens its readiness gate. */
+	const gatedService = () => {
+		const impl = new ScriptedImpl();
+		const service = new TTSService();
+		let openGate: () => void = () => {};
+		const gate = new Promise<void>((resolve) => {
+			openGate = resolve;
+		});
+		service.setReadinessGate(async () => {
+			await gate;
+			await service.initialize(new ScriptedProvider(impl));
+		});
+		return { impl, service, openGate };
+	};
+
+	test("a pause while the provider starts holds the read until resume", async () => {
+		const { impl, service, openGate } = gatedService();
+
+		const playback = service.speak(contentWith("Held passage."));
+		expect(service.getState()).toBe(PlaybackState.LOADING);
+		service.pause();
+		openGate();
+		await elapse(10);
+
+		expect(impl.speakCalls).toEqual([]);
+		expect(service.getState()).toBe(PlaybackState.PAUSED);
+
+		service.resume();
+		await playback;
+		expect(impl.speakCalls).toEqual(["Held passage."]);
+	});
+
+	test("a stop while the provider starts ends the read unspoken", async () => {
+		const { impl, service, openGate } = gatedService();
+
+		const playback = service.speak(contentWith("Stopped passage."));
+		service.stop();
+		openGate();
+		await playback;
+
+		expect(impl.speakCalls).toEqual([]);
+		expect(service.getState()).toBe(PlaybackState.IDLE);
+	});
+
+	for (const path of ["one speak", "segmented speak"] as const) {
+		test(`a pause while the content resolves holds the read until resume (${path})`, async () => {
+			const { impl, service } = await newService();
+			if (path === "one speak") {
+				// No plan: the text goes to the provider in one speak.
+				usePlan(service, []);
+			} else {
+				usePlan(service, [
+					{ text: "Resolved passage.", startOffset: 0, pauseMsAfter: 0 },
+				]);
+				(impl as ITTSProviderImplementation).speakSegments = async (
+					segments,
+				) => {
+					impl.speakCalls.push(
+						segments.map((segment) => segment.text).join(" "),
+					);
+				};
+			}
+			let releaseContent: () => void = () => {};
+			const contentHeld = new Promise<void>((resolve) => {
+				releaseContent = resolve;
+			});
+			const resolveSpeechContent = (service as any).resolveSpeechContent.bind(
+				service,
+			);
+			(service as any).resolveSpeechContent = async (...args: unknown[]) => {
+				await contentHeld;
+				return resolveSpeechContent(...args);
+			};
+
+			const playback = service.speak(contentWith("Resolved passage."));
+			expect(service.getState()).toBe(PlaybackState.LOADING);
+			service.pause();
+			releaseContent();
+			await elapse(10);
+
+			expect(impl.speakCalls).toEqual([]);
+			expect(service.getState()).toBe(PlaybackState.PAUSED);
+
+			service.resume();
+			await playback;
+			expect(impl.speakCalls).toEqual(["Resolved passage."]);
+		});
+	}
+
+	test("media started while the audio loads pauses the read, and stays playing when the audio arrives", async () => {
+		const { impl, service } = await newService();
+		impl.deferStart = true;
+		impl.holdSpeech = true;
+		let mediaSilenced = 0;
+		const unbind = bindTtsAudioHandoff({
+			ttsService: service,
+			listenerId: "media-surface",
+			silence: () => {
+				mediaSilenced += 1;
+			},
+		});
+
+		const playback = service.speak(contentWith("Loading passage."));
+		await waitFor(() => impl.speakCalls.length === 1);
+		expect(service.getState()).toBe(PlaybackState.LOADING);
+		// The learner starts media before the read sounds.
+		pauseTtsForMediaAudio(service);
+		const silencedAtPause = mediaSilenced;
+		expect(service.getState()).toBe(PlaybackState.PAUSED);
+
+		// The provider's audio arrives regardless: the read keeps holding.
+		const pausesBeforeStart = impl.pauseCalls;
+		impl.startHeld?.();
+		expect(service.getState()).toBe(PlaybackState.PAUSED);
+		expect(impl.pauseCalls).toBe(pausesBeforeStart + 1);
+		expect(mediaSilenced).toBe(silencedAtPause);
+
+		service.resume();
+		expect(service.getState()).toBe(PlaybackState.PLAYING);
+		impl.finish();
+		await playback;
+		unbind();
+	});
+
+	test("a resume before the audio arrives returns to loading", async () => {
+		const { impl, service } = await newService();
+		impl.deferStart = true;
+		impl.holdSpeech = true;
+
+		const playback = service.speak(contentWith("Loading passage."));
+		await waitFor(() => impl.speakCalls.length === 1);
+		service.pause();
+		service.resume();
+		expect(service.getState()).toBe(PlaybackState.LOADING);
+
+		impl.startHeld?.();
+		expect(service.getState()).toBe(PlaybackState.PLAYING);
+		impl.finish();
+		await playback;
+	});
+});
+
 describe("a provider's maxTextLength", () => {
 	const text =
 		"Alpha beta gamma. Delta epsilon zeta eta theta iota kappa lambda.";
@@ -291,8 +435,8 @@ describe("a provider's maxTextLength", () => {
 		const { impl, service } = await newService(20);
 		const highlighted: string[] = [];
 		service.setHighlightCoordinator({
-			highlightTTSWord: (node: Text, start: number, end: number) => {
-				highlighted.push(node.textContent?.slice(start, end) || "");
+			highlightTTSWord: (ranges: Range[]) => {
+				highlighted.push(ranges.join(""));
 			},
 			highlightTTSSentence: () => {},
 			clearTTS: () => {},

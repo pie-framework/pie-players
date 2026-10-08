@@ -1275,7 +1275,7 @@ import { HighlightColor, HighlightCoordinator } from '@pie-players/pie-assessmen
 const highlightCoordinator = new HighlightCoordinator();
 
 // TTS highlights (temporary)
-highlightCoordinator.highlightTTSWord(textNode, start, end);
+highlightCoordinator.highlightTTSWord([wordRange]); // one range per tree the word spans
 highlightCoordinator.highlightTTSSentence([range1, range2]);
 highlightCoordinator.clearTTS();
 

@@ -58,7 +58,9 @@ export interface MathSpeechCacheOptions {
 /**
  * Build a memoized {@link MathSpeechResolver}.
  *
- * Caches only DOM-free spoken-text results keyed by
+ * Caches only DOM-free spoken-text results that SRE produced, so an equation
+ * read as its visible text after a failed engine load is resolved again on
+ * the next read. Keyed by
  * `(SRE version, locale, output mode, SRE mathSpeech options, MathML source)`.
  * Never caches DOM nodes or maps. Bounded by a simple LRU so long sessions do
  * not grow unbounded.
@@ -97,6 +99,7 @@ export const createMemoizedMathSpeechResolver = (
 			return cached;
 		}
 		const resolved = await resolve(chunk, { ...opts, mathSpeech });
+		if (resolved.usedFallback) return resolved;
 		if (produceSsml && resolved.ssml && maxEntries > 1) {
 			setCached(cacheKeyFor(opts.language, false, mathSpeech, chunk.mathml), {
 				speechText: resolved.speechText,

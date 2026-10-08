@@ -15,9 +15,15 @@
 <script lang="ts">
 	import {
 		type AssessmentToolkitRuntimeContext,
+		browserVoiceMatchesLanguage,
 		connectToolRuntimeContext,
+		findBrowserVoice,
 	} from "@pie-players/pie-assessment-toolkit/tools/registration";
 	import { createFocusTrap } from "@pie-players/pie-players-shared";
+	import {
+		createPieLogger,
+		isTtsDebugEnabled,
+	} from "@pie-players/pie-players-shared/pie";
 	import { resolveInterfaceI18n } from "@pie-players/pie-players-shared/i18n/provider";
 	import {
 		formatTTSSpeedOptionsAsText,
@@ -40,6 +46,9 @@
 		id?: string;
 		name?: string;
 		languageCode?: string;
+		/** A browser voice's `SpeechSynthesisVoice` identity and language. */
+		voiceURI?: string;
+		lang?: string;
 		gender?: string;
 		quality?: string;
 		localService?: boolean;
@@ -279,7 +288,6 @@ type PreviewSpeechMark = { time: number; start: number; end: number; value?: str
 			'<speak>This is a <prosody rate="95%">Google Cloud SSML sample</prosody>. <break time="250ms"/> The preview preserves authored SSML.</speak>'
 	};
 	const BUILT_IN_TABS: BuiltInBackendTab[] = ["browser", "polly", "google"];
-const PREVIEW_DEBUG_PREFIX = "[pie-tts-preview]";
 const BROWSER_PREVIEW_START_TIMEOUT_MS = 5_000;
 const TTS_LAYOUT_MODES: readonly TTSLayoutMode[] = [
 	"reserved-row",
@@ -288,84 +296,26 @@ const TTS_LAYOUT_MODES: readonly TTSLayoutMode[] = [
 	"left-aligned",
 ];
 
+const previewLogger = createPieLogger("pie-tts-preview", isTtsDebugEnabled);
+
 function debugPreview(event: string, payload?: Record<string, unknown>): void {
-	if (typeof console === "undefined") return;
-	if (payload) {
-		console.debug(`${PREVIEW_DEBUG_PREFIX} ${event}`, payload);
-		return;
-	}
-	console.debug(`${PREVIEW_DEBUG_PREFIX} ${event}`);
-}
-
-function logBrowserPreview(event: string, payload?: Record<string, unknown>): void {
-	if (typeof console === "undefined") return;
-	if (payload) {
-		console.info(`${PREVIEW_DEBUG_PREFIX} browser:${event}`, payload);
-		return;
-	}
-	console.info(`${PREVIEW_DEBUG_PREFIX} browser:${event}`);
-}
-
-function normalizeLanguageCode(value: unknown): string {
-	return String(value || "").trim().toLowerCase();
-}
-
-function browserLanguage(): string {
-	if (typeof navigator === "undefined") return "en-us";
-	return normalizeLanguageCode(navigator.language || navigator.languages?.[0] || "en-US");
-}
-
-function findBrowserVoice(
-	voices: SpeechSynthesisVoice[],
-	preferredVoice: string | undefined,
-): SpeechSynthesisVoice | null {
-	if (preferredVoice) {
-		return (
-			voices.find((voice) => voice.voiceURI === preferredVoice) ||
-			voices.find((voice) => voice.name === preferredVoice) ||
-			null
-		);
-	}
-	const language = browserLanguage();
-	const languagePrefix = language.split("-")[0] || "en";
-	const matchesLanguage = (voice: SpeechSynthesisVoice) => {
-		const voiceLanguage = normalizeLanguageCode(voice.lang);
-		return voiceLanguage === language || voiceLanguage.startsWith(`${languagePrefix}-`);
-	};
-	const ranked = [
-		(voice: SpeechSynthesisVoice) => voice.localService && matchesLanguage(voice),
-		(voice: SpeechSynthesisVoice) => voice.default && matchesLanguage(voice),
-		(voice: SpeechSynthesisVoice) => matchesLanguage(voice),
-		(voice: SpeechSynthesisVoice) => voice.localService,
-		(voice: SpeechSynthesisVoice) => voice.default,
-	];
-	for (const predicate of ranked) {
-		const voice = voices.find(predicate);
-		if (voice) return voice;
-	}
-	return voices[0] || null;
+	if (payload) previewLogger.debug(event, payload);
+	else previewLogger.debug(event);
 }
 
 function shouldAssignBrowserVoice(voice: Pick<SpeechSynthesisVoice, "default">): boolean {
 	return !voice.default;
 }
 
-function browserVoiceMatchesLanguage(voice: Pick<DemoVoice, "languageCode">): boolean {
-	const language = browserLanguage();
-	const languagePrefix = language.split("-")[0] || "en";
-	const voiceLanguage = normalizeLanguageCode(voice.languageCode);
-	return voiceLanguage === language || voiceLanguage.startsWith(`${languagePrefix}-`);
-}
-
-function isRecommendedBrowserVoice(voice: DemoVoice): boolean {
-	return Boolean(voice.localService && browserVoiceMatchesLanguage(voice));
+function isRecommendedBrowserVoice(voice: DemoVoice, contentLanguage?: string): boolean {
+	return Boolean(voice.localService && browserVoiceMatchesLanguage(voice, contentLanguage));
 }
 
 function browserVoiceLabel(voice: DemoVoice): string {
 	const name =
 		voice.name || voice.id || interfaceI18n.t("debug.tts.unnamedVoice");
 	const metadata = [
-		voice.languageCode || "n/a",
+		voice.lang || "n/a",
 		voice.localService ? "local" : "remote",
 		voice.default ? "browser default" : ""
 	].filter(Boolean);
@@ -374,38 +324,6 @@ function browserVoiceLabel(voice: DemoVoice): string {
 
 function browserVoiceIdentity(voice: DemoVoice): string {
 	return voice.id || voice.name || "";
-}
-
-function findConfiguredBrowserDemoVoice(
-	voices: DemoVoice[],
-	preferredVoice: string | undefined,
-): DemoVoice | null {
-	if (!preferredVoice) return null;
-	return (
-		voices.find((voice) => browserVoiceIdentity(voice) === preferredVoice) ||
-		voices.find((voice) => voice.name === preferredVoice) ||
-		null
-	);
-}
-
-function findBrowserDemoVoice(
-	voices: DemoVoice[],
-	preferredVoice: string | undefined,
-): DemoVoice | null {
-	const explicit = findConfiguredBrowserDemoVoice(voices, preferredVoice);
-	if (explicit) return explicit;
-	const ranked = [
-		(voice: DemoVoice) => voice.localService && browserVoiceMatchesLanguage(voice),
-		(voice: DemoVoice) => voice.default && browserVoiceMatchesLanguage(voice),
-		(voice: DemoVoice) => browserVoiceMatchesLanguage(voice),
-		(voice: DemoVoice) => voice.localService,
-		(voice: DemoVoice) => voice.default,
-	];
-	for (const predicate of ranked) {
-		const voice = voices.find(predicate);
-		if (voice) return voice;
-	}
-	return voices[0] || null;
 }
 
 	function normalizeLayoutMode(value: unknown): TTSLayoutMode {
@@ -492,12 +410,12 @@ function findBrowserDemoVoice(
 	);
 
 	const resolvedBrowserVoice = $derived.by(() =>
-		findBrowserDemoVoice(browserState.voices, browserVoice || undefined)
+		findBrowserVoice(browserState.voices, browserVoice || undefined, contentLanguage)
 	);
 	const recommendedBrowserVoices = $derived.by(() =>
 		browserState.voices.filter((voice) => {
 			const identity = browserVoiceIdentity(voice);
-			return identity.length > 0 && isRecommendedBrowserVoice(voice);
+			return identity.length > 0 && isRecommendedBrowserVoice(voice, contentLanguage);
 		})
 	);
 	const allBrowserVoices = $derived.by(() => {
@@ -896,15 +814,15 @@ function findBrowserDemoVoice(
 
 			const mappedVoices = voices.map((voice) => ({
 				id: voice.voiceURI || voice.name,
+				voiceURI: voice.voiceURI,
 				name: voice.name,
-				languageCode: voice.lang,
+				lang: voice.lang,
 				localService: voice.localService,
 				default: voice.default
 			}));
-			const configuredVoice = findConfiguredBrowserDemoVoice(
-				mappedVoices,
-				browserVoice || undefined
-			);
+			const configuredVoice = browserVoice
+				? findBrowserVoice(mappedVoices, browserVoice)
+				: null;
 			if (configuredVoice) {
 				browserVoice = browserVoiceIdentity(configuredVoice);
 			}
@@ -1303,7 +1221,7 @@ function findBrowserDemoVoice(
 			typeof window !== "undefined" &&
 			"speechSynthesis" in window
 		) {
-			logBrowserPreview("cancel");
+			debugPreview("browser:cancel");
 			window.speechSynthesis.cancel();
 		}
 		currentBrowserPreviewUtterance = null;
@@ -1556,7 +1474,7 @@ function normalizePreviewSpeechMarkOffsets(
 		// so it is not garbage-collected before onend fires.
 		const synth = window.speechSynthesis;
 		const voices = synth.getVoices();
-		const resolvedVoice = findBrowserVoice(voices, browserVoice || undefined);
+		const resolvedVoice = findBrowserVoice(voices, browserVoice || undefined, contentLanguage);
 		if (browserVoice && !resolvedVoice) {
 			throw new Error(
 				`Configured browser voice "${browserVoice}" is unavailable. Select a voice exposed by this browser.`
@@ -1576,7 +1494,7 @@ function normalizePreviewSpeechMarkOffsets(
 			utterance.voice = resolvedVoice;
 		}
 		const tokens = tokenizePreviewText(previewText);
-		logBrowserPreview("prepare", {
+		debugPreview("browser:prepare", {
 			textLength: utterance.text.length,
 			rate: utterance.rate,
 			pitch: utterance.pitch,
@@ -1617,7 +1535,7 @@ function normalizePreviewSpeechMarkOffsets(
 					window.clearTimeout(startTimeout);
 					startTimeout = null;
 				}
-				logBrowserPreview("start");
+				debugPreview("browser:start");
 				const firstToken = tokens[0];
 				if (!firstToken) return;
 				previewTrackIndex = firstToken.start;
@@ -1635,7 +1553,7 @@ function normalizePreviewSpeechMarkOffsets(
 				}
 			};
 			utterance.onend = () => {
-				logBrowserPreview("end");
+				debugPreview("browser:end");
 				if (!didStart) {
 					finish(() =>
 						reject(
@@ -1650,7 +1568,7 @@ function normalizePreviewSpeechMarkOffsets(
 			};
 			utterance.onerror = (event) => {
 				const errorName = String((event as any)?.error || "");
-				logBrowserPreview("error", { error: errorName || "unknown" });
+				debugPreview("browser:error", { error: errorName || "unknown" });
 				if (errorName === "interrupted" || errorName === "canceled") {
 					finish(resolve);
 					return;
@@ -1667,7 +1585,7 @@ function normalizePreviewSpeechMarkOffsets(
 				);
 				synth.cancel();
 			}, BROWSER_PREVIEW_START_TIMEOUT_MS);
-			logBrowserPreview("speak");
+			debugPreview("browser:speak");
 			try {
 				synth.speak(utterance);
 			} catch (error) {
@@ -1961,6 +1879,8 @@ function normalizePreviewSpeechMarkOffsets(
 	let chromeRuntimeContext = $state<AssessmentToolkitRuntimeContext | null>(null);
 	// Interface locale, re-derived on every context republish.
 	const interfaceI18n = $derived(resolveInterfaceI18n(chromeRuntimeContext));
+	// The language browser voices are picked for, as the toolkit's reader picks them.
+	const contentLanguage = $derived(chromeRuntimeContext?.contentLanguage);
 	$effect(() => {
 		if (!contextAnchor) return;
 		return connectToolRuntimeContext(contextAnchor, (value) => {

@@ -1,6 +1,13 @@
+import {
+	createPieLogger,
+	isTtsDebugEnabled,
+} from "@pie-players/pie-players-shared/pie";
 import type { MathAwareSpeechChunk } from "./math-aware-text-processing.js";
 import { setSreStartupLocaleSource, sreLocaleSource } from "./sre-locales.js";
 import { normalizeTextForSpeech } from "./text-processing.js";
+
+// Debug lines need PIE_TTS_DEBUG=1 or globalThis.__PIE_TTS_DEBUG__ = true.
+const logger = createPieLogger("tts-math-speech", isTtsDebugEnabled);
 
 interface SpeechRuleEngineApi {
 	setupEngine?: (options: Record<string, unknown>) => Promise<void> | void;
@@ -56,8 +63,9 @@ const normalizeLocale = (language?: string): string =>
 	(language || "en").split("-")[0].toLowerCase() || "en";
 
 /**
- * Loads the speech-rule-engine once per page. A failed load stays failed, so
- * math reads as its visible text from then on, and it warns once.
+ * Loads the speech-rule-engine once per page. A failed load is dropped, so the
+ * next call tries again; meanwhile math reads as its visible text. The first
+ * failure warns, later ones log at debug.
  */
 export const createSreLoader = (
 	importEngine: () => Promise<SpeechRuleEngineApi>,
@@ -65,13 +73,21 @@ export const createSreLoader = (
 	engineOptions?: Record<string, unknown>,
 ) => Promise<SpeechRuleEngineApi>) => {
 	let load: Promise<SpeechRuleEngineApi> | null = null;
+	let warned = false;
 	return (engineOptions) => {
 		if (!load) {
 			setSreStartupLocaleSource(engineOptions);
-			load = importEngine();
-			load.catch((error: unknown) => {
-				console.warn(
-					"[tts] speech-rule-engine failed to load; math reads as its visible text for the rest of this page.",
+			const attempt = importEngine();
+			load = attempt;
+			attempt.catch((error: unknown) => {
+				if (load === attempt) load = null;
+				if (warned) {
+					logger.debug("speech-rule-engine failed to load again", error);
+					return;
+				}
+				warned = true;
+				logger.warn(
+					"speech-rule-engine failed to load; math reads as its visible text until a later read loads it.",
 					error,
 				);
 			});
@@ -88,6 +104,22 @@ const defaultLoadSre = createSreLoader(() =>
 		return candidate;
 	}),
 );
+
+/**
+ * One speech-rule-engine load for a whole read: its equations share the
+ * attempt, so a failed load costs a read one attempt.
+ */
+export const createReadSreLoad = (
+	mathSpeech?: SREMathSpeechOptions,
+): (() => Promise<SpeechRuleEngineApi>) => {
+	let attempt: Promise<SpeechRuleEngineApi> | null = null;
+	return () => {
+		attempt ??= defaultLoadSre(
+			normalizeSREMathSpeechOptions(mathSpeech)?.engineOptions,
+		);
+		return attempt;
+	};
+};
 
 // SRE's ClearSpeak rule set is English-only; MathSpeak is localized to many more
 // locales. Use ClearSpeak for English (highest-quality math prose) and MathSpeak
@@ -189,7 +221,7 @@ const generateMathSsml = async (
 		);
 		return ssml.includes("<speak") ? ssml : null;
 	} catch (error) {
-		console.debug("[TTSService] Math SSML generation failed; using plain", {
+		logger.debug("math SSML generation failed; using plain", {
 			message: error instanceof Error ? error.message : String(error),
 		});
 		return null;
@@ -217,12 +249,7 @@ export const resolveMathSpeechFromChunks = async (
 	let sre: SpeechRuleEngineApi | null = null;
 	let usedMathSpeech = false;
 	let usedFallback = false;
-	const loadSre =
-		options.loadSre ||
-		(() =>
-			defaultLoadSre(
-				normalizeSREMathSpeechOptions(options.mathSpeech)?.engineOptions,
-			));
+	const loadSre = options.loadSre || createReadSreLoad(options.mathSpeech);
 	const speechParts: string[] = [];
 
 	for (const chunk of chunks) {
@@ -252,12 +279,9 @@ export const resolveMathSpeechFromChunks = async (
 			speechParts.push(chunk.fallbackText);
 		} catch (error) {
 			usedFallback = true;
-			console.debug(
-				"[TTSService] Math speech generation failed; using visible fallback",
-				{
-					message: error instanceof Error ? error.message : String(error),
-				},
-			);
+			logger.debug("math speech generation failed; using visible fallback", {
+				message: error instanceof Error ? error.message : String(error),
+			});
 			speechParts.push(chunk.fallbackText);
 		}
 	}

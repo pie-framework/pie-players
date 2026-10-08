@@ -102,6 +102,34 @@ describe("assembleGeneratedSpeech (pure core)", () => {
 		});
 		expect(assembled.plainSpeechText).toBe("y");
 	});
+
+	test("shares one engine load across a read's equations, and the next read gets its own", async () => {
+		const loads: unknown[] = [];
+		const resolveMathSpeech: MathSpeechResolver = async (_chunk, options) => {
+			loads.push(options.loadSre);
+			return { speechText: "x", usedMathSpeech: true, usedFallback: false };
+		};
+		const chunks: MathAwareSpeechChunk[] = [
+			{ type: "math", mathml: "<math><mi>x</mi></math>", fallbackText: "x" },
+			{ type: "math", mathml: "<math><mi>y</mi></math>", fallbackText: "y" },
+		];
+
+		await assembleGeneratedSpeech({
+			chunks,
+			visibleText: "x y",
+			resolveMathSpeech,
+		});
+		await assembleGeneratedSpeech({
+			chunks,
+			visibleText: "x y",
+			resolveMathSpeech,
+		});
+
+		expect(typeof loads[0]).toBe("function");
+		expect(loads[1]).toBe(loads[0]);
+		expect(loads[2]).not.toBe(loads[0]);
+		expect(loads[3]).toBe(loads[2]);
+	});
 });
 
 describe("buildGeneratedSpeechFromRoot + planToCompositionChunkInputs (DOM adapter)", () => {
@@ -466,6 +494,37 @@ describe("createMemoizedMathSpeechResolver", () => {
 			{ language: "en-US" },
 		);
 		expect(calls).toBe(3);
+	});
+
+	test("resolves an equation read as its visible text again on the next read", async () => {
+		let calls = 0;
+		const resolver = createMemoizedMathSpeechResolver({
+			// The first read finds no engine; the second loads it.
+			resolve: async () => {
+				calls += 1;
+				return calls === 1
+					? { speechText: "x", usedMathSpeech: false, usedFallback: true }
+					: {
+							speechText: "x squared",
+							usedMathSpeech: true,
+							usedFallback: false,
+						};
+			},
+		});
+		const chunk = {
+			type: "math" as const,
+			mathml: "<math><msup><mi>x</mi><mn>2</mn></msup></math>",
+			fallbackText: "x",
+		};
+
+		expect((await resolver(chunk, { language: "en-US" })).speechText).toBe("x");
+		expect((await resolver(chunk, { language: "en-US" })).speechText).toBe(
+			"x squared",
+		);
+		expect((await resolver(chunk, { language: "en-US" })).speechText).toBe(
+			"x squared",
+		);
+		expect(calls).toBe(2);
 	});
 
 	test("seeds the plain cache from an SSML resolution", async () => {

@@ -2616,9 +2616,6 @@ export class ToolkitCoordinator {
 					backend: resolvedBackend,
 					provider: "registry",
 				});
-				console.log(
-					"[ToolkitCoordinator] TTS initialized via ToolProviderRegistry",
-				);
 				return;
 			} catch (error) {
 				if (error instanceof ToolkitCoordinatorDisposedError) throw error;

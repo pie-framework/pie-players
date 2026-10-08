@@ -236,6 +236,7 @@
   isSessionSnapshotEnabled
   isSnapshotIdentitySpecific
   isTabbable
+  isTtsDebugEnabled
   loadBundleFromString
   loadPieModule
   loadPieModuleFromString
@@ -560,6 +561,7 @@
   isPieRegistryAvailable
   isSessionSnapshotEnabled
   isSnapshotIdentitySpecific
+  isTtsDebugEnabled
   loadBundleFromString
   loadPieModule
   loadPieModuleFromString

@@ -364,6 +364,15 @@ const removeRanges = (name: string, ranges: Iterable<Range>): void => {
 	for (const range of ranges) highlight.delete(range);
 };
 
+/** The element the first range starts in, which the TTS colors adapt to. */
+const startElementOf = (ranges: Range[]): Element | null => {
+	const source = ranges[0]?.startContainer;
+	if (!source) return null;
+	return source.nodeType === Node.ELEMENT_NODE
+		? (source as Element)
+		: composedParentElement(source);
+};
+
 /**
  * What the TTS colors derive from. The colors are custom properties on the root
  * element, which every coordinator on the page writes, so the coordinators share
@@ -683,38 +692,39 @@ export class HighlightCoordinator implements HighlightCoordinatorApi {
 	}
 
 	/**
-	 * Highlight a word for TTS (temporary)
+	 * Highlight the word being read (temporary), replacing the previous one.
+	 * Every range paints, so a word split across inline elements highlights
+	 * whole. A range that covers elements also marks the replaced elements in it
+	 * (svg, img, canvas), which a CSS range cannot paint.
 	 *
-	 * @param textNode Text node containing the word
-	 * @param startOffset Start position in text node
-	 * @param endOffset End position in text node
+	 * @param ranges The word's ranges: one per tree it spans
 	 */
-	highlightTTSWord(
-		textNode: Text,
-		startOffset: number,
-		endOffset: number,
-	): void {
+	highlightTTSWord(ranges: Range[]): void {
 		if (!this.supported) return;
-		this.applyAdaptiveTTSStyle(composedParentElement(textNode));
-		adoptHighlightStylesFor(textNode);
+		this.applyAdaptiveTTSStyle(startElementOf(ranges));
 
-		// Clear previous word highlight
 		this.clearTTSWord();
 
-		// Create range for word
-		const range = document.createRange();
-		range.setStart(textNode, startOffset);
-		range.setEnd(textNode, endOffset);
-
-		sharedHighlight(TTS_WORD_HIGHLIGHT).add(range);
-		this.ttsWordRanges.add(range);
+		const highlight = sharedHighlight(TTS_WORD_HIGHLIGHT);
+		for (const range of ranges) {
+			adoptHighlightStylesFor(range.startContainer);
+			highlight.add(range);
+			this.ttsWordRanges.add(range);
+		}
+		this.highlightTTSWordElementFallbacks(
+			ranges.filter(
+				(range) =>
+					range.startContainer !== range.endContainer ||
+					range.startContainer.nodeType !== Node.TEXT_NODE,
+			),
+		);
 	}
 
 	/**
 	 * Highlight a single element as the active TTS word (temporary).
 	 *
-	 * Unlike {@link highlightTTSWord} (which paints a CSS range over a text node)
-	 * this marks the element itself via `data-pie-tts-word-element`. It is used
+	 * Unlike {@link highlightTTSWord} (which paints CSS ranges over text) this
+	 * marks the element itself via `data-pie-tts-word-element`. It is used
 	 * for atomic targets that have no direct text node to range over — most
 	 * notably MathJax CHTML tokens (e.g. `<mjx-mi><mjx-c/></mjx-mi>`, whose glyph
 	 * lives in a font-driven pseudo-element a CSS range cannot paint) and
@@ -747,13 +757,7 @@ export class HighlightCoordinator implements HighlightCoordinatorApi {
 	 */
 	highlightTTSSentence(ranges: Range[]): void {
 		if (!this.supported) return;
-		const source = ranges[0]?.startContainer;
-		const sourceElement = !source
-			? null
-			: source.nodeType === Node.ELEMENT_NODE
-				? (source as Element)
-				: composedParentElement(source);
-		this.applyAdaptiveTTSStyle(sourceElement);
+		this.applyAdaptiveTTSStyle(startElementOf(ranges));
 
 		// Clear previous sentence highlight
 		this.clearTTSSentence();
@@ -954,22 +958,13 @@ export class HighlightCoordinator implements HighlightCoordinatorApi {
 			return;
 		}
 
-		console.log(
-			`[HighlightCoordinator] Removing annotation ${id} (color: ${annotation.color})`,
-		);
-
 		if (this.supported) {
 			removeRanges(annotationHighlightName(annotation.color), [
 				annotation.range,
 			]);
 		}
 
-		// Clean up
 		this.annotations.delete(id);
-		console.log(
-			`[HighlightCoordinator] Annotation ${id} removed from map. Remaining:`,
-			this.annotations.size,
-		);
 	}
 
 	/**
@@ -1076,10 +1071,8 @@ export class HighlightCoordinator implements HighlightCoordinatorApi {
 	// ============================================================================
 
 	/**
-	 * Highlight a text range (interface method)
-	 *
-	 * Generic method that adapts to the specific highlight type.
-	 * For more control, use the specific methods like highlightTTSWord().
+	 * Highlight a range as the given type: the TTS types paint as
+	 * {@link highlightTTSWord} and {@link highlightTTSSentence} do.
 	 */
 	highlightRange(
 		range: Range,
@@ -1090,29 +1083,11 @@ export class HighlightCoordinator implements HighlightCoordinatorApi {
 
 		switch (type) {
 			case HighlightType.TTS_WORD:
-			case HighlightType.TTS_SENTENCE: {
-				const name =
-					type === HighlightType.TTS_WORD
-						? TTS_WORD_HIGHLIGHT
-						: TTS_SENTENCE_HIGHLIGHT;
-				const owned =
-					type === HighlightType.TTS_WORD
-						? this.ttsWordRanges
-						: this.ttsSentenceRanges;
-				adoptHighlightStylesFor(range.startContainer);
-				removeRanges(name, owned);
-				owned.clear();
-				sharedHighlight(name).add(range);
-				owned.add(range);
-				if (type === HighlightType.TTS_WORD) {
-					for (const element of this.ttsWordElementHighlights) {
-						element.removeAttribute("data-pie-tts-word-element");
-					}
-					this.ttsWordElementHighlights.clear();
-					this.highlightTTSWordElementFallbacks([range]);
-				}
+				this.highlightTTSWord([range]);
 				break;
-			}
+			case HighlightType.TTS_SENTENCE:
+				this.highlightTTSSentence([range]);
+				break;
 			case HighlightType.ANNOTATION:
 				// For annotations, use the existing method
 				this.addAnnotation(range, color);

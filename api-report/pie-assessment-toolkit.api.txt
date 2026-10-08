@@ -296,6 +296,7 @@
   type AssessmentToolkitRegionScopeContext
   type AssessmentToolkitRuntimeContext
   type AssessmentToolkitShellContext
+  type BrowserVoiceTraits
   type CalculatorToolProviderConfig
   type CatalogLookupContext
   type CatalogOwnerSnapshot
@@ -351,6 +352,7 @@
   ZIndexLayer
   applyOverlaySurface
   bindTtsAudioHandoff
+  browserVoiceMatchesLanguage
   buildRuntimeTTSConfig
   catalogContextForShell
   catalogContextHolding
@@ -367,6 +369,7 @@
   createToolCoordinatorRegistration
   createToolElement
   createToolSurfaceHost
+  findBrowserVoice
   findContentLanguage
   findShellScopeHost
   flatTextContent

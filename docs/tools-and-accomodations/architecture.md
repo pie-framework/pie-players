@@ -579,7 +579,7 @@ A tool's own registration names its layer. A toolbar registers the tool when it 
 **Key Methods:**
 ```typescript
 // TTS Highlights (temporary)
-highlightTTSWord(textNode, startOffset, endOffset)
+highlightTTSWord(ranges)
 highlightTTSSentence(ranges)
 clearTTS()
 

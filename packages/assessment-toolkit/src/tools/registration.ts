@@ -217,10 +217,16 @@ export {
 
 // Read-aloud coordination for a tool that plays or controls speech: the control
 // handoff event between TTS surfaces, pausing speech while a media element plays,
-// and recognising a start failure the TTS service reports.
+// recognising a start failure the TTS service reports, and choosing a browser
+// voice for a language.
 export { PIE_TTS_CONTROL_HANDOFF_EVENT } from "../services/tts-control-events.js";
 export {
 	bindTtsAudioHandoff,
 	pauseTtsForMediaAudio,
 } from "../services/audio-handoff.js";
 export { isTTSStartFailure } from "../services/tts/start-failure.js";
+export {
+	type BrowserVoiceTraits,
+	browserVoiceMatchesLanguage,
+	findBrowserVoice,
+} from "../services/tts/browser-provider.js";

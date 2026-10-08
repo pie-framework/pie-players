@@ -37,6 +37,7 @@ const impl: ITTSProviderImplementation = {
 	stop() {},
 	isPlaying: () => false,
 	isPaused: () => false,
+	updateSettings: () => {},
 };
 
 const provider: ITTSProvider = {

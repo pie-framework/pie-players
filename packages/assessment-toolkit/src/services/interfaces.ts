@@ -97,13 +97,11 @@ export interface HighlightCoordinatorApi {
 	): void;
 
 	/**
-	 * Highlight a word for TTS (temporary)
+	 * Highlight the word being read (temporary): one range per tree the word
+	 * spans, all painted, so a word split across inline elements highlights
+	 * whole.
 	 */
-	highlightTTSWord(
-		textNode: Text,
-		startOffset: number,
-		endOffset: number,
-	): void;
+	highlightTTSWord(ranges: Range[]): void;
 
 	/**
 	 * Highlight a single element as the active TTS word (temporary).

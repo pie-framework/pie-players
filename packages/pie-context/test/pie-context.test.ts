@@ -1,3 +1,4 @@
+import "./setup-dom.js";
 import { describe, expect, test } from "bun:test";
 import {
 	connectContextWithRetry,
@@ -339,35 +340,29 @@ describe("pie-context", () => {
 		cleanup();
 	});
 
-	test("connectContextWithRetry polls for a silent provider and stops once it has a value", async () => {
+	test("connectContextWithRetry requests once and waits for an announcement", async () => {
 		const host = new EventTarget() as unknown as Element;
 		const runtimeContext = createContext<string>(Symbol("silent-provider"));
+		const provider = answerRequestsOnHost(host, runtimeContext);
+		const cleanup = connectContextWithRetry(host, runtimeContext, () => {});
+		await new Promise((resolve) => setTimeout(resolve, 120));
+		expect(provider.requests).toBe(1);
+		cleanup();
+	});
+
+	test("connectContextWithRetry stops listening for announcements on cleanup", () => {
+		const host = new EventTarget() as unknown as Element;
+		const runtimeContext = createContext<string>(Symbol("absent-provider"));
 		const provider = answerRequestsOnHost(host, runtimeContext);
 		const seen: string[] = [];
 		const cleanup = connectContextWithRetry(host, runtimeContext, (value) =>
 			seen.push(value),
 		);
-
-		provider.value = "polled";
-		await new Promise((resolve) => setTimeout(resolve, 120));
-		expect(seen).toEqual(["polled"]);
-		const requestsAfterValue = provider.requests;
-		await new Promise((resolve) => setTimeout(resolve, 120));
-		expect(provider.requests).toBe(requestsAfterValue);
 		cleanup();
-	});
 
-	test("connectContextWithRetry stops polling on cleanup", async () => {
-		const host = new EventTarget() as unknown as Element;
-		const runtimeContext = createContext<string>(Symbol("absent-provider"));
-		const provider = answerRequestsOnHost(host, runtimeContext);
-		const cleanup = connectContextWithRetry(host, runtimeContext, () => {});
-		await new Promise((resolve) => setTimeout(resolve, 120));
-		expect(provider.requests).toBeGreaterThan(1);
-
-		cleanup();
-		const requestsAtCleanup = provider.requests;
-		await new Promise((resolve) => setTimeout(resolve, 120));
-		expect(provider.requests).toBe(requestsAtCleanup);
+		provider.value = "late";
+		host.dispatchEvent(new ContextProviderEvent(runtimeContext, host));
+		expect(provider.requests).toBe(1);
+		expect(seen).toEqual([]);
 	});
 });

@@ -425,7 +425,7 @@ describe("ToolkitCoordinator disposal", () => {
 		const frameworkErrorKinds: string[] = [];
 		const coordinator = new ToolkitCoordinator({
 			assessmentId: "pending-readiness-disposal",
-			lazyInit: true,
+			eagerInit: false,
 			hooks: {
 				async onBeforeTTSInit() {
 					ttsInitStarted.resolve();

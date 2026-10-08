@@ -32,7 +32,7 @@ import type { ToolConfigStrictness } from "../../services/tool-config-validation
 
 export const DEFAULT_ASSESSMENT_ID = "section-demo-direct";
 export const DEFAULT_PLAYER_TYPE = "iife";
-export const DEFAULT_LAZY_INIT = true;
+export const DEFAULT_LAZY_INIT = false;
 export const DEFAULT_ISOLATION = "inherit";
 export const DEFAULT_ENV = { mode: "gather", role: "student" } as Record<
 	string,

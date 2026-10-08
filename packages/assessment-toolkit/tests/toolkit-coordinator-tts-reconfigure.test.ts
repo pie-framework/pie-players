@@ -248,7 +248,7 @@ describe("ToolkitCoordinator TTS reconfigure sequencing", () => {
 	test("waitUntilReady initializes TTS from textToSpeech-only config", async () => {
 		const coordinator = new ToolkitCoordinator({
 			assessmentId: "tts-alias-wait-until-ready-test",
-			lazyInit: true,
+			eagerInit: false,
 			tools: {
 				providers: {
 					textToSpeech: {

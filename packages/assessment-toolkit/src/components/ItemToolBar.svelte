@@ -81,6 +81,7 @@
 		isProgrammaticFocusTarget,
 	} from '@pie-players/pie-players-shared';
 	import { parseToolList } from '../services/tools-config-normalizer.js';
+	import { warnOncePerDocument } from '../runtime/page-warnings.js';
 	import { resolveFallbackToolIcon } from '../services/tool-icons.js';
 	import { createScopedToolId, parseScopedToolId } from '../services/tool-instance-id.js';
 	import type { AssessmentItemRef, AssessmentEntity, ItemEntity } from '@pie-players/pie-players-shared/types';
@@ -399,8 +400,15 @@
 	const effectiveCatalogId = $derived(catalogId || effectiveScopeId);
 	const effectiveItem = $derived((item as ItemEntity | null) || (shellContext?.item as ItemEntity | null) || null);
 
-	// Effective registry for visibility and metadata ownership.
-	const effectiveToolRegistry = $derived(toolRegistry || fallbackToolRegistry);
+	// Effective registry for visibility and metadata ownership: the prop, else the
+	// coordinator's. A host coordinator adopts its toolkit's registry after mount
+	// and announces it as a policy change, hence the version read.
+	const effectiveToolRegistry = $derived.by((): ToolRegistry => {
+		if (toolRegistry) return toolRegistry;
+		void policyChangeVersion;
+		const coordinatorRegistry = runtimeContext?.toolkitCoordinator?.getToolRegistry?.();
+		return coordinatorRegistry || fallbackToolRegistry;
+	});
 
 	const explicitTools = $derived(parseToolList(tools));
 	const normalizedExplicitTools = $derived(
@@ -464,6 +472,18 @@
 		// explicit `tools=` prop verbatim so demo fixtures keep
 		// working without a `<pie-assessment-toolkit>` ancestor.
 		return dedupe(normalizedExplicitTools);
+	});
+
+	// Policy that places tools on a toolbar with nothing registered renders an
+	// empty bar and no error, so it is said once.
+	$effect(() => {
+		if (!policyDecision || allowedToolIds.length === 0) return;
+		if (effectiveToolRegistry.getAllTools().length > 0) return;
+		warnOncePerDocument(
+			toolbarRootElement?.ownerDocument,
+			'toolbarWithoutRegistry',
+			`[pie-item-toolbar] Policy places ${allowedToolIds.join(', ')} on this toolbar, but its tool registry is empty, so it renders no buttons. Pass a toolRegistry to <pie-assessment-toolkit> or its coordinator; @pie-players/pie-default-tool-loaders builds the stock one. Reported once per page.`
+		);
 	});
 
 	// Tools a PNP/profile grant mandates (`requiredTools`, or a `supports` entry the

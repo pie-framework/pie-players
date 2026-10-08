@@ -27,7 +27,8 @@
 		connectAssessmentToolkitRegionScopeContext,
 		connectAssessmentToolkitShellContext,
 		connectToolRuntimeContext,
-		HighlightColor
+		HighlightColor,
+		isTTSStartFailure
 	} from '@pie-players/pie-assessment-toolkit';
 	import { resolveInterfaceI18n } from '@pie-players/pie-players-shared/i18n/provider';
 	import { sanitizeSvgIcon } from '@pie-players/pie-players-shared/security';
@@ -644,8 +645,8 @@
 		try {
 			console.log('[AnnotationToolbar] Speaking range:', toolbarState.selectedRange.toString().substring(0, 50));
 
-			// Use speakRange for accurate word highlighting
-			// Note: TTS service should already be initialized by ToolkitCoordinator
+			// Use speakRange for accurate word highlighting. A service not yet
+			// started starts here, through the coordinator's readiness gate.
 			await ttsService.speakRange(toolbarState.selectedRange, {
 				contentRoot: getEffectiveRoot()
 			});
@@ -653,7 +654,9 @@
 			console.log('[AnnotationToolbar] TTS completed successfully');
 		} catch (error) {
 			console.error('[AnnotationToolbar] TTS error:', error);
-			alert(`TTS failed: ${error instanceof Error ? error.message : String(error)}`);
+			if (isTTSStartFailure(error)) {
+				announce(interfaceI18n.t('tools.textToSpeech.inline.initFailed'), 5000);
+			}
 		} finally {
 			ttsSpeaking = false;
 		}

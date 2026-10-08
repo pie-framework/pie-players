@@ -151,7 +151,7 @@ element.dispatchEvent(
 #### Notes
 
 - If communication must cross CE boundaries or shadow/light DOM, do not use Svelte context alone.
-- For late-provider timing, prefer `ContextRoot` + subscribe/retry patterns from `@pie-players/pie-context` consumers.
+- For a provider that may connect after its consumer, subscribe (`subscribe: true`, or `connectContextWithRetry`). The consumer installs the document's `ContextRoot`, which replays the request when the provider announces itself; components do not attach roots of their own.
 - Keep context values typed and versioned when needed to avoid stale payload assumptions.
 
 ## Theming Contract (Shadow-Safe)

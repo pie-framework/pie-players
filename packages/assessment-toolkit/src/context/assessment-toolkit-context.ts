@@ -83,6 +83,11 @@ export const assessmentToolkitRuntimeContext =
 export interface AssessmentToolkitHostRuntimeContext {
 	runtimeId: string;
 	coordinator: ToolkitCoordinatorApi;
+	/**
+	 * The toolkit holds a section, so a shell under it is its content's channel
+	 * to the section. Without one the host owns its players and their events.
+	 */
+	sectionBound: boolean;
 }
 
 export const assessmentToolkitHostRuntimeContext =

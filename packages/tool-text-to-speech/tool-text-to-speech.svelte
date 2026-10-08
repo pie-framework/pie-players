@@ -15,7 +15,11 @@
 <script lang="ts">
 	import { coerceBooleanAttributes } from '@pie-players/pie-players-shared/ui/attribute-coercion';
 	import type { ToolCoordinatorApi, TtsServiceApi } from '@pie-players/pie-assessment-toolkit';
-	import { createToolCoordinatorRegistration, ZIndexLayer } from '@pie-players/pie-assessment-toolkit';
+	import {
+		createToolCoordinatorRegistration,
+		isTTSStartFailure,
+		ZIndexLayer
+	} from '@pie-players/pie-assessment-toolkit';
 	import {
 		createFocusTrap,
 		createPointerDragController,
@@ -212,7 +216,11 @@
 		} catch (error) {
 			console.error('[TTSTool] Failed to speak:', error);
 			if (run === speakRun) {
-				speakError = error instanceof Error ? error.message : String(error);
+				speakError = isTTSStartFailure(error)
+					? interfaceI18n.t('tools.textToSpeech.initFailed')
+					: error instanceof Error
+						? error.message
+						: String(error);
 			}
 		} finally {
 			if (run === speakRun) {

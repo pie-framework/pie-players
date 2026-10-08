@@ -1,12 +1,15 @@
 <script lang="ts">
 	/*
 	 * The toolkit without a section player: `<pie-assessment-toolkit>` wraps one
-	 * item toolbar and one item player, and owns its coordinator. The learner's
-	 * profile decides whether the calculator shows and which flavor it opens in;
+	 * item scope, which holds an item toolbar and an item player, and owns its
+	 * coordinator. The scope gives the toolbar's tools the item and the region
+	 * they act on, and registers the item's catalogs. The learner's profile
+	 * decides whether the calculator shows and which flavor it opens in;
 	 * changing the profile below rebinds `assessment`, and the toolbar follows
 	 * without a reload.
 	 */
 	import '@pie-players/pie-assessment-toolkit/components/pie-assessment-toolkit-element';
+	import '@pie-players/pie-assessment-toolkit/components/item-scope-element';
 	import '@pie-players/pie-assessment-toolkit/components/item-toolbar-element';
 	import '@pie-players/pie-item-player';
 	import type { ToolContextResolverMap } from '@pie-players/pie-assessment-toolkit';
@@ -31,7 +34,7 @@
 	const item = $derived((data.section as any)?.assessmentItemRefs?.[0]?.item as ItemEntity);
 	const toolRegistry = createSectionDemoToolRegistryForCalculator('cortex');
 	const tools = {
-		placement: { item: ['calculator'] },
+		placement: { item: ['textToSpeech', 'calculator'] },
 		providers: { calculator: { provider: { id: 'calculator-cortex' } } }
 	};
 
@@ -107,19 +110,22 @@
 		{toolRegistry}
 		{toolContextResolvers}
 	>
-		<article class="calculator-pnp-item" data-testid="calculator-pnp-item">
-			<header class="calculator-pnp-item-header">
-				<h2>{item.name}</h2>
-				<pie-item-toolbar item-id={item.id} catalog-id={item.id} {item} {toolRegistry}
-				></pie-item-toolbar>
-			</header>
-			<pie-item-player
-				config={item.config}
-				{env}
-				{session}
-				loaderOptions={playerConfig.loaderOptions}
-			></pie-item-player>
-		</article>
+		<pie-item-scope item-id={item.id} {item}>
+			<article class="calculator-pnp-item" data-testid="calculator-pnp-item">
+				<header class="calculator-pnp-item-header">
+					<h2>{item.name}</h2>
+					<pie-item-toolbar></pie-item-toolbar>
+				</header>
+				<div data-region="content">
+					<pie-item-player
+						config={item.config}
+						{env}
+						{session}
+						loaderOptions={playerConfig.loaderOptions}
+					></pie-item-player>
+				</div>
+			</article>
+		</pie-item-scope>
 	</pie-assessment-toolkit>
 </main>
 

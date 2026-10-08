@@ -31,10 +31,11 @@ bun add @pie-players/pie-tool-tts-inline
 
 ## Usage
 
-The element renders inside `<pie-item-shell>` or `<pie-passage-shell>` under
-`<pie-assessment-toolkit>`. The toolkit runtime context supplies the TTS
-service, the highlight coordinator and the toolkit coordinator, and the shell
-supplies the content to read; section players provide both. The packaged
+The element renders inside `<pie-item-shell>`, `<pie-passage-shell>` or
+`<pie-item-scope>` under `<pie-assessment-toolkit>`. The toolkit runtime context
+supplies the TTS service, the highlight coordinator and the toolkit coordinator,
+and the shell supplies the content to read. Section players provide both; around
+a plain item player, `<pie-item-scope>` is the shell. The packaged
 `textToSpeech` capability in `@pie-players/pie-default-tool-loaders` creates
 this element in item and passage toolbars, takes `catalog-id`, `language` and
 `size` from the toolbar, and takes `layout-mode`, `speedOptions` and

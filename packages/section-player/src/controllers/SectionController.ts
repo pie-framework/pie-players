@@ -167,7 +167,14 @@ export class SectionController implements SectionControllerHandle {
 	};
 	private readonly listeners = new Set<SectionControllerChangeListener>();
 	private readonly trackedRenderables = new Map<string, TrackedRenderable>();
+	// Only registered keys: a load for a key not yet registered waits in
+	// `heldContentLoads` until it is, so a foreign or early load cannot complete
+	// the section ahead of its own content.
 	private readonly loadedRenderableKeys = new Set<string>();
+	private readonly heldContentLoads = new Map<
+		string,
+		Parameters<SectionController["handleContentLoaded"]>[0]
+	>();
 	private readonly itemCompletionByCanonicalId = new Map<string, boolean>();
 	// Each element's own `complete`, by canonical item id and element id. An
 	// item is complete when every element that has reported is.
@@ -1452,6 +1459,11 @@ export class SectionController implements SectionControllerHandle {
 			contentKind,
 		});
 		this.evaluateSectionLoadingState(Date.now());
+		const heldLoad = this.heldContentLoads.get(key);
+		if (heldLoad) {
+			this.heldContentLoads.delete(key);
+			this.handleContentLoaded(heldLoad);
+		}
 	}
 
 	public handleContentUnregistered(args: {
@@ -1465,6 +1477,7 @@ export class SectionController implements SectionControllerHandle {
 		const key = this.getRenderableKey(canonicalItemId, args.contentKind);
 		this.trackedRenderables.delete(key);
 		this.loadedRenderableKeys.delete(key);
+		this.heldContentLoads.delete(key);
 		this.evaluateSectionLoadingState(Date.now());
 	}
 
@@ -1490,6 +1503,10 @@ export class SectionController implements SectionControllerHandle {
 		// same-cohort `updateInput` flips because the controller's
 		// `loadedRenderableKeys` is preserved.
 		if (this.loadedRenderableKeys.has(key)) {
+			return;
+		}
+		if (!this.trackedRenderables.has(key)) {
+			this.heldContentLoads.set(key, { ...args, timestamp });
 			return;
 		}
 		this.loadedRenderableKeys.add(key);
@@ -1564,6 +1581,7 @@ export class SectionController implements SectionControllerHandle {
 	private resetLifecycleTracking(): void {
 		this.trackedRenderables.clear();
 		this.loadedRenderableKeys.clear();
+		this.heldContentLoads.clear();
 		this.itemCompletionByCanonicalId.clear();
 		this.elementCompletionByCanonicalId.clear();
 		this.reportedCompletionIds.clear();
@@ -1734,7 +1752,11 @@ export class SectionController implements SectionControllerHandle {
 		const totalLoaded = this.loadedRenderableKeys.size;
 		this.totalRegistered = totalRegistered;
 		this.totalLoaded = totalLoaded;
-		const nextLoaded = totalRegistered > 0 && totalLoaded >= totalRegistered;
+		let nextLoaded = totalRegistered > 0;
+		for (const key of this.trackedRenderables.keys()) {
+			if (!nextLoaded) break;
+			nextLoaded = this.loadedRenderableKeys.has(key);
+		}
 		if (nextLoaded === this.sectionLoadingComplete) return;
 		this.sectionLoadingComplete = nextLoaded;
 		if (!nextLoaded) return;

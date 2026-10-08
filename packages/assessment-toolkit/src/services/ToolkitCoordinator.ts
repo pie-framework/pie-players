@@ -263,12 +263,22 @@ export interface ToolkitCoordinatorConfig {
 	hooks?: ToolkitCoordinatorHooks;
 
 	/**
-	 * Lazy initialization mode.
-	 * When true, async service/provider initialization is deferred until ensure methods are called.
+	 * Start text-to-speech at its first use rather than as part of readiness.
+	 * `waitUntilReady()` then settles without it, unless policy grants the tool,
+	 * so a granted read-aloud still fails before the learner starts.
 	 *
 	 * @default false
 	 */
 	lazyInit?: boolean;
+
+	/**
+	 * Start initializing at construction. `<pie-assessment-toolkit>` passes false
+	 * for the coordinator it builds, and starts initialization once its section
+	 * composes.
+	 *
+	 * @default !lazyInit
+	 */
+	eagerInit?: boolean;
 
 	/**
 	 * Internal bootstrap escape hatch used by framework-owned hosts.
@@ -315,6 +325,7 @@ export interface ToolkitErrorContext {
 		| "section-controller-dispose";
 	providerId?: string;
 	details?: Record<string, unknown>;
+	recoverable?: boolean;
 }
 
 export interface ProviderLifecycleContext {
@@ -616,6 +627,8 @@ export class ToolkitCoordinator {
 
 	/** Track TTS initialization state */
 	private ttsInitialized = false;
+	/** Text-to-speech failed to start and policy does not grant it. */
+	private ttsDegraded = false;
 	private ttsInitPromise?: Promise<void>;
 	private ttsReconfigurePromise?: Promise<void>;
 	private stateLoaded = false;
@@ -626,6 +639,18 @@ export class ToolkitCoordinator {
 		string,
 		Promise<ToolProviderApi>
 	>();
+	/** The tools whose registrations name each provider. */
+	private readonly providerToolIds = new Map<string, Set<string>>();
+	/**
+	 * Recoverable failures, by tool. A policy change that grants one of these
+	 * tools reports its failure again as fatal.
+	 */
+	private readonly degradedTools = new Map<
+		string,
+		{ error: unknown; context: ToolkitErrorContext }
+	>();
+	private readonly readyChangeListeners = new Set<() => void>();
+	private readonly eagerInit: boolean;
 	private toolRegistry: ToolRegistry;
 	/** Whether the host passed `toolRegistry`, which then always stands. */
 	private readonly toolRegistrySupplied: boolean;
@@ -868,6 +893,7 @@ export class ToolkitCoordinator {
 		this.installToolContextResolvers(resolvedConfig.toolContextResolvers);
 		this.hooks = resolvedConfig.hooks ?? {};
 		this.lazyInit = config.lazyInit === true;
+		this.eagerInit = config.eagerInit ?? !this.lazyInit;
 		this.pnpEnforcementOverride = this.resolveConfiguredPnpEnforcement();
 
 		// Use the host-provided framework-error bus if one was passed
@@ -897,6 +923,17 @@ export class ToolkitCoordinator {
 		// Selection read-aloud speaks through this service without the inline TTS
 		// tool ever having run, so it cannot rely on that tool to attach highlights.
 		this.ttsService.setHighlightCoordinator(this.highlightCoordinator);
+		// A caller that speaks without `ensureTTSReady()` first, such as selection
+		// read-aloud, starts the service instead of finding it uninitialized.
+		this.ttsService.setReadinessGate(() => this.ensureTTSReady());
+		this.ttsService.setMathSpeechSource(
+			() =>
+				(
+					buildRuntimeTTSConfig(
+						resolveTTSRuntimeSettings(this.resolveTTSToolConfig()),
+					).providerOptions as Record<string, unknown> | undefined
+				)?.mathSpeech,
+		);
 		this.setupStatePersistenceHooks();
 
 		// M8 PR 2 — construct the unified ToolPolicyEngine seeded with
@@ -918,7 +955,11 @@ export class ToolkitCoordinator {
 			},
 		});
 
-		if (!this.lazyInit) {
+		this.policyEngine.onPolicyChange((event) => {
+			if (event.reason !== "disposed") this.reportNewlyGrantedFailures();
+		});
+
+		if (this.eagerInit) {
 			void this.waitUntilReady().catch((err) => {
 				if (err instanceof ToolkitCoordinatorDisposedError) return;
 				console.error("[ToolkitCoordinator] Failed eager initialization:", err);
@@ -1021,8 +1062,78 @@ export class ToolkitCoordinator {
 		const model = frameworkErrorFromCoordinatorContext({
 			error,
 			context,
+			recoverable: context.recoverable,
 		});
 		this.frameworkErrorBus.reportFrameworkError(model);
+	}
+
+	/**
+	 * Whether policy grants `toolId` as an accommodation: item or district
+	 * requirement, or profile support, for one of its PNP support ids, or for its
+	 * own id when it has none. Read without the unbound-assessment warning.
+	 */
+	private isToolGranted(toolId: string): boolean {
+		const registration = this.toolRegistry.get(toolId);
+		const supportIds = registration?.pnpSupportIds?.length
+			? registration.pnpSupportIds
+			: [toolId];
+		try {
+			return supportIds.some(
+				(supportId) => this.policyEngine.decideFeature(supportId).granted === true,
+			);
+		} catch {
+			return false;
+		}
+	}
+
+	/**
+	 * Reports a tool's start failure: recoverable, so the tool reports itself
+	 * unavailable and the assessment goes on, unless policy grants the tool.
+	 * `fallbackFollows` marks a failure another path absorbs, which is recoverable
+	 * whatever the policy.
+	 */
+	private reportToolFailure(
+		error: unknown,
+		context: ToolkitErrorContext,
+		toolIds: Iterable<string>,
+		fallbackFollows = false,
+	): void {
+		const ids = Array.from(toolIds);
+		const recoverable =
+			fallbackFollows || !ids.some((toolId) => this.isToolGranted(toolId));
+		if (recoverable && !fallbackFollows) {
+			for (const toolId of ids) this.degradedTools.set(toolId, { error, context });
+		}
+		this.handleError(error, { ...context, recoverable });
+	}
+
+	private reportNewlyGrantedFailures(): void {
+		for (const [toolId, failure] of this.degradedTools) {
+			if (!this.isToolGranted(toolId)) continue;
+			this.degradedTools.delete(toolId);
+			this.handleError(failure.error, { ...failure.context, recoverable: false });
+		}
+	}
+
+	/**
+	 * Subscribe to changes of {@link isReady}: state loading, text-to-speech
+	 * starting, failing or reconfiguring. The listener reads the status itself.
+	 */
+	onReadyChange(listener: () => void): () => void {
+		this.readyChangeListeners.add(listener);
+		return () => {
+			this.readyChangeListeners.delete(listener);
+		};
+	}
+
+	private notifyReadyChange(): void {
+		for (const listener of this.readyChangeListeners) {
+			try {
+				listener();
+			} catch (error) {
+				console.warn("[ToolkitCoordinator] ready-change listener failed:", error);
+			}
+		}
 	}
 
 	/**
@@ -1147,6 +1258,7 @@ export class ToolkitCoordinator {
 			}
 		})().finally(() => {
 			this.stateLoadPromise = undefined;
+			this.notifyReadyChange();
 		});
 		return this.stateLoadPromise;
 	}
@@ -1255,7 +1367,11 @@ export class ToolkitCoordinator {
 			const toolConfig = this.getToolConfig(tool.toolId) || undefined;
 			if (toolConfig?.enabled === false) return;
 			providerId = resolveToolProviderId(tool, toolConfig);
-			if (!providerId || this.toolProviderRegistry.has(providerId)) return;
+			if (!providerId) return;
+			const toolIds = this.providerToolIds.get(providerId) ?? new Set<string>();
+			toolIds.add(tool.toolId);
+			this.providerToolIds.set(providerId, toolIds);
+			if (this.toolProviderRegistry.has(providerId)) return;
 			const provider = descriptor.createProvider(toolConfig);
 			const initConfig =
 				descriptor.getInitConfig?.(toolConfig) ??
@@ -1376,6 +1492,14 @@ export class ToolkitCoordinator {
 	public async ensureProviderReady(
 		providerId: string,
 	): Promise<ToolProviderApi> {
+		return this.initializeProvider(providerId, false);
+	}
+
+	/** `fallbackFollows`: the caller recovers from a failure on its own. */
+	private async initializeProvider(
+		providerId: string,
+		fallbackFollows: boolean,
+	): Promise<ToolProviderApi> {
 		this.assertNotDisposed();
 		const existing = this.providerInitPromises.get(providerId);
 		if (existing) return existing;
@@ -1402,7 +1526,12 @@ export class ToolkitCoordinator {
 			} catch (err) {
 				if (err instanceof ToolkitCoordinatorDisposedError) throw err;
 				const error = err instanceof Error ? err : new Error(String(err));
-				this.handleError(error, { phase: "provider-init", providerId });
+				this.reportToolFailure(
+					error,
+					{ phase: "provider-init", providerId },
+					this.providerToolIds.get(providerId) ?? [],
+					fallbackFollows,
+				);
 				throw error;
 			}
 		})().finally(() => {
@@ -2394,6 +2523,7 @@ export class ToolkitCoordinator {
 			.then(() => this.assertNotDisposed())
 			.finally(() => {
 				this.ttsInitPromise = undefined;
+				this.notifyReadyChange();
 			});
 		return this.ttsInitPromise;
 	}
@@ -2431,7 +2561,8 @@ export class ToolkitCoordinator {
 		// Try to use TTS provider from registry if available
 		if (this.toolProviderRegistry.has("tts")) {
 			try {
-				const ttsProvider = await this.ensureProviderReady("tts");
+				// Browser speech follows a server provider that fails to start.
+				const ttsProvider = await this.initializeProvider("tts", true);
 				const providerInstance = await ttsProvider.createInstance();
 				await this.initializeTTSService(providerInstance, runtimeTTSConfig);
 				await this.emitTelemetry("pie-toolkit-tts-init-success", {
@@ -2495,7 +2626,7 @@ export class ToolkitCoordinator {
 			if (error instanceof ToolkitCoordinatorDisposedError) throw error;
 			const normalized =
 				error instanceof Error ? error : new Error(String(error));
-			this.handleError(normalized, { phase: "tts-init" });
+			this.reportToolFailure(normalized, { phase: "tts-init" }, ["textToSpeech"]);
 			await this.emitTelemetry("pie-toolkit-tts-init-error", {
 				message: normalized.message,
 			});
@@ -2539,6 +2670,8 @@ export class ToolkitCoordinator {
 		this.assertNotDisposed();
 		this.ttsService.setCatalogResolver(this.catalogResolver);
 		this.ttsInitialized = true;
+		this.ttsDegraded = false;
+		this.degradedTools.delete("textToSpeech");
 		await this.hooks.onTTSReady?.();
 		this.assertNotDisposed();
 	}
@@ -2634,9 +2767,8 @@ export class ToolkitCoordinator {
 		this.coordinatorReadyPromise = (async () => {
 			await this.ensureStateLoaded();
 			this.assertNotDisposed();
-			const ttsConfig = this.getTTSConfigFromProviders();
-			if (ttsConfig?.enabled !== false) {
-				await this.ensureTTSReady(ttsConfig);
+			if (this.ttsRequiredForReadiness()) {
+				await this.startTTSForReadiness();
 			}
 			this.assertNotDisposed();
 			if (!this.coordinatorReadyNotified) {
@@ -2663,15 +2795,41 @@ export class ToolkitCoordinator {
 			providers[providerId] =
 				this.toolProviderRegistry.isInitialized(providerId);
 		}
-		const ttsConfig = this.getTTSConfigFromProviders();
 		return {
 			tts: this.ttsInitialized,
 			stateLoaded: this.stateLoaded || !this.hooks.loadToolState,
 			coordinator:
 				(this.stateLoaded || !this.hooks.loadToolState) &&
-				(this.ttsInitialized || ttsConfig?.enabled === false),
+				(this.ttsInitialized ||
+					this.ttsDegraded ||
+					!this.ttsRequiredForReadiness()),
 			providers,
 		};
+	}
+
+	/**
+	 * Readiness waits for text-to-speech when it is enabled and either starts
+	 * eagerly or is granted: a granted read-aloud fails before the learner starts.
+	 */
+	private ttsRequiredForReadiness(): boolean {
+		if (this.getTTSConfigFromProviders()?.enabled === false) return false;
+		return !this.lazyInit || this.isToolGranted("textToSpeech");
+	}
+
+	/**
+	 * Starts text-to-speech for readiness. A failure policy does not grant leaves
+	 * the tool degraded, reporting itself unavailable, and readiness settles; a
+	 * granted tool's failure rejects.
+	 */
+	private async startTTSForReadiness(): Promise<void> {
+		try {
+			await this.ensureTTSReady(this.getTTSConfigFromProviders());
+		} catch (error) {
+			if (error instanceof ToolkitCoordinatorDisposedError) throw error;
+			if (this.isToolGranted("textToSpeech")) throw error;
+			this.ttsDegraded = true;
+			this.notifyReadyChange();
+		}
 	}
 
 	private getTTSConfigFromProviders(): TTSToolConfig | undefined {
@@ -3110,6 +3268,10 @@ export class ToolkitCoordinator {
 		};
 	}
 
+	getToolRegistry(): ToolRegistry {
+		return this.toolRegistry;
+	}
+
 	/**
 	 * Claim requests for one placement level. Called by a toolbar on mount.
 	 */
@@ -3256,18 +3418,20 @@ export class ToolkitCoordinator {
 				this.ttsReconfigurePromise = undefined;
 			}
 		});
-		void reconfigurePromise.then(async () => {
-			if (this.disposePromise !== null) return;
-			const ttsConfig = this.getTTSConfigFromProviders();
-			if (!this.lazyInit && ttsConfig?.enabled !== false) {
-				await this.ensureTTSReady(ttsConfig);
-			}
-		});
+		void reconfigurePromise
+			.then(async () => {
+				if (this.disposePromise !== null) return;
+				if (this.ttsRequiredForReadiness()) await this.startTTSForReadiness();
+			})
+			// Reported where it failed; a granted failure has nowhere else to go.
+			.catch(() => {});
 	}
 
 	private async _reconfigureTTSProvider(): Promise<void> {
 		this.ttsInitialized = false;
+		this.ttsDegraded = false;
 		this.ttsInitPromise = undefined;
+		this.notifyReadyChange();
 		try {
 			this.ttsService.stop();
 		} catch {

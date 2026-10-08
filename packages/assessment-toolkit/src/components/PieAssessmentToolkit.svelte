@@ -72,11 +72,7 @@
 <script lang="ts">
 	import { coerceBooleanAttributes } from "@pie-players/pie-players-shared/ui/attribute-coercion";
 	import { untrack } from "svelte";
-	import {
-		ContextProvider,
-		ContextRoot,
-		requestContext,
-	} from "@pie-players/pie-context";
+	import { ContextProvider, requestContext } from "@pie-players/pie-context";
 	import {
 		attachInstrumentationEventBridge,
 		createStageTracker,
@@ -143,6 +139,7 @@
 		type RuntimeRegistrationDetail,
 	} from "../runtime/registration-events.js";
 	import { dispatchCrossBoundaryEvent } from "../runtime/tool-host-contract.js";
+	import { isRuntimeEventClaimed } from "../runtime/runtime-event-claim.js";
 	import type { CatalogSourceEntity } from "../services/catalog-owner.js";
 	import { observeMathControlNames } from "../services/tts/math-control-names.js";
 	import { SectionRuntimeEngine } from "../runtime/SectionRuntimeEngine.js";
@@ -151,6 +148,7 @@
 		type SectionRuntimeLifecycleHandle,
 	} from "../runtime/section-runtime-engine-host-context.js";
 	import { runStageEmitWithSuppression } from "../runtime/stage-emit-gate.js";
+	import { watchForUnclaimedRegistrations } from "../runtime/unclaimed-registration-watch.js";
 	import { createCompositionEmitScheduler } from "../runtime/composition-emit-scheduler.js";
 	import {
 		createRuntimeId,
@@ -238,7 +236,7 @@ const DEFAULT_ENV = {
 		env = {},
 		ndsIcons = false,
 		locale = "",
-		lazyInit = true,
+		lazyInit = false,
 		toolConfigStrictness = "error" as ToolConfigStrictness,
 		tools = {},
 		toolContextResolvers = null as Record<string, unknown> | null,
@@ -282,13 +280,19 @@ const DEFAULT_ENV = {
 	// consumer, so a plain `let` is safer and matches the canonical Svelte
 	// 5 latch pattern documented in `AGENTS.md`.
 	let lastOwnership: "owned" | "inherited" | null = null;
+	// The coordinator `runtime-ready` last announced. Plain `let` for the same
+	// reason as `lastOwnership`.
+	let announcedCoordinator: ToolkitCoordinator | null = null;
+	// Set when this toolkit builds its own coordinator after finding no outer
+	// runtime, which settles ownership: a runtime that connects above it later
+	// is not inherited. Cleared with the subscription to outer runtimes, when
+	// `host` or `isolation` changes. A latch like `lastOwnership`.
+	let ownsByDecision = false;
 	let lastAppliedToolContextResolvers: Record<string, unknown> | null = null;
 	let provider: ContextProvider<typeof assessmentToolkitRuntimeContext> | null = null;
-	let contextRoot: ContextRoot | null = null;
 	let hostRuntimeProvider: ContextProvider<
 		typeof assessmentToolkitHostRuntimeContext
 	> | null = null;
-	let hostRuntimeRoot: ContextRoot | null = null;
 	let compositionVersion = $state(0);
 	let compositionModel = $state<unknown>(null);
 	let frameworkErrorModel = $state<FrameworkErrorModel | null>(null);
@@ -392,6 +396,8 @@ const DEFAULT_ENV = {
 	);
 	let composedStageEntered = $state(false);
 	let engineReadyStageEntered = $state(false);
+	// A fatal readiness failure: `interactive` is then recorded as failed.
+	let engineReadyFailed = $state(false);
 	let interactiveStageEntered = $state(false);
 	// `sectionInitialized` is the second of two preconditions for the
 	// `interactive` stage emission. The toolkit's interactive entrance
@@ -1018,6 +1024,10 @@ const DEFAULT_ENV = {
 		return new ToolkitCoordinator({
 			assessmentId: fallbackAssessmentId,
 			lazyInit,
+			// Initialization starts from the engine-ready stage, once the section
+			// composes; a coordinator that started at construction would start
+			// text-to-speech, and report its failures, before there is a section.
+			eagerInit: false,
 			toolConfigStrictness,
 			deferToolConfigValidation: true,
 			// This toolkit binds only its `assessment` prop, which a section player
@@ -1184,6 +1194,18 @@ const DEFAULT_ENV = {
 				return;
 			}
 			if (!ownedCoordinator) {
+				// Ownership is decided before anything is built. An outer runtime
+				// already providing its context is inherited; the subscription
+				// below would find it a moment later, after an owned coordinator
+				// had been built only to be released.
+				if (isolation !== "force" && !ownsByDecision) {
+					const outer = requestContext(host, assessmentToolkitHostRuntimeContext);
+					if (outer?.coordinator && outer.runtimeId !== runtimeId) {
+						inheritedRuntime = outer;
+						lastAppliedToolContextResolvers = null;
+						return;
+					}
+				}
 				const failureKey = getOwnedBootstrapFailureKey();
 				if (lastOwnedBootstrapFailureKey === failureKey) {
 					return;
@@ -1191,6 +1213,7 @@ const DEFAULT_ENV = {
 				try {
 					const validatedTools = validateToolsConfigForBootstrap();
 					ownedCoordinator = buildOwnedCoordinator(validatedTools);
+					ownsByDecision = isolation !== "force";
 					ownedCoordinatorInputs = readOwnedCoordinatorInputs();
 					ownedCoordinatorBound = false;
 					lastAppliedToolContextResolvers = toolContextResolvers;
@@ -1307,11 +1330,14 @@ const DEFAULT_ENV = {
 			return {
 				runtimeId,
 				coordinator: effectiveCoordinator,
+				sectionBound: hasSection,
 			};
 		},
 	);
 
 	function flushCompositionChanged(nextModel: unknown) {
+		// A registration before any controller resolves has no composition to report.
+		if (nextModel == null) return;
 		const nextRevisionKey = getCompositionRevisionKey(nextModel);
 		if (nextRevisionKey === lastCompositionRevisionKey) {
 			return;
@@ -1452,17 +1478,31 @@ const DEFAULT_ENV = {
 		};
 	}
 
+	// Follows the outer runtime this toolkit inherits. The owned-coordinator
+	// bootstrap decides ownership first; once it has built an owned coordinator,
+	// an outer runtime answering later is ignored, so the coordinator is never
+	// swapped under a running section. An inherited runtime republishing its
+	// context is followed.
 	$effect(() => {
-		if (!host) return;
-		if (isolation === "force") {
-			inheritedRuntime = null;
-			return;
-		}
-		return connectAssessmentToolkitHostRuntimeContext(host, (value) => {
-			if (value.runtimeId === runtimeId) {
-				return;
+		const currentHost = host;
+		const currentIsolation = isolation;
+		return untrack(() => {
+			if (!currentHost) return;
+			if (currentIsolation === "force") {
+				inheritedRuntime = null;
+				return () => {
+					ownsByDecision = false;
+				};
 			}
-			inheritedRuntime = value;
+			const stop = connectAssessmentToolkitHostRuntimeContext(currentHost, (value) => {
+				if (value.runtimeId === runtimeId || ownsByDecision) return;
+				inheritedRuntime = value;
+			});
+			return () => {
+				stop();
+				inheritedRuntime = null;
+				ownsByDecision = false;
+			};
 		});
 	});
 
@@ -1471,9 +1511,9 @@ const DEFAULT_ENV = {
 	// `sectionRuntimeEngineHostContext` on the layout CE host. The consumer's
 	// `context-request` bubbles across the toolkit's shadow boundary, the
 	// kernel's provider answers, and we record that host lifecycle ownership is
-	// present. When standalone, no provider responds within the consumer's
-	// retry window and `hostLifecycleEngine` stays `null` — that is the
-	// standalone path's contract. `isolation === "force"` does not opt out of
+	// present. When standalone, no provider answers and
+	// `hostLifecycleEngine` stays `null` — that is the standalone path's
+	// contract. `isolation === "force"` does not opt out of
 	// this bridge: it is a lifecycle-emission seam, not a coordinator-isolation
 	// seam.
 	$effect(() => {
@@ -1522,43 +1562,32 @@ const DEFAULT_ENV = {
 	});
 
 	$effect(() => {
+		const currentHost = host;
+		if (!currentHost) return;
+		untrack(() => watchForUnclaimedRegistrations(currentHost.ownerDocument));
+	});
+
+	// Once per coordinator, owned, passed or inherited, with or without a section:
+	// the point from which a host can drive the coordinator. `toolkit-ready` stays
+	// the section's.
+	$effect(() => {
+		const coord = effectiveCoordinator;
+		if (!coord) return;
+		const ownership: "owned" | "inherited" =
+			isolation !== "force" && inheritedRuntime?.coordinator ? "inherited" : "owned";
+		untrack(() => {
+			if (coord === announcedCoordinator) return;
+			announcedCoordinator = coord;
+			emit("runtime-ready", { runtimeId, coordinator: coord, ownership });
+		});
+	});
+
+	$effect(() => {
 		const currentSectionId = effectiveSectionId;
 		const currentAttemptId = attemptId || "";
 		void currentSectionId;
 		void currentAttemptId;
 		resetSessionEmitPolicyState(sessionEmitPolicyState);
-	});
-
-	// Each context has one provider per host, and `setValue` republishes a
-	// changed value to its subscribers. A provider replaced on every change
-	// drops them: when the coordinator changes, both providers and both roots
-	// are replaced in one flush and no root is left to replay the requests.
-	const hasHostRuntimeContext = $derived(hostRuntimeContextValue !== null);
-	const hasRuntimeContext = $derived(runtimeContextValue !== null);
-
-	$effect(() => {
-		if (!host || !hasHostRuntimeContext) return;
-		const initialValue = untrack(() => hostRuntimeContextValue);
-		if (!initialValue) return;
-		hostRuntimeProvider = new ContextProvider(host, {
-			context: assessmentToolkitHostRuntimeContext,
-			initialValue,
-		});
-		hostRuntimeProvider.connect();
-		hostRuntimeRoot = new ContextRoot(host);
-		hostRuntimeRoot.attach();
-
-		return () => {
-			hostRuntimeRoot?.detach();
-			hostRuntimeRoot = null;
-			hostRuntimeProvider?.disconnect();
-			hostRuntimeProvider = null;
-		};
-	});
-
-	$effect(() => {
-		if (!hostRuntimeContextValue) return;
-		hostRuntimeProvider?.setValue(hostRuntimeContextValue);
 	});
 
 	$effect(() => {
@@ -1567,32 +1596,6 @@ const DEFAULT_ENV = {
 		host.setAttribute("data-item-player-tag", effectiveItemPlayer.tagName);
 		host.setAttribute("data-env-mode", String((effectiveEnv as any)?.mode || ""));
 		host.setAttribute("data-env-role", String((effectiveEnv as any)?.role || ""));
-	});
-
-	$effect(() => {
-		if (!host || !hasRuntimeContext) return;
-		const initialValue = untrack(() => runtimeContextValue);
-		if (!initialValue) return;
-		provider = new ContextProvider(host, {
-			context: assessmentToolkitRuntimeContext,
-			initialValue,
-		});
-		provider.connect();
-		contextRoot = new ContextRoot(host);
-		contextRoot.attach();
-
-		return () => {
-			contextRoot?.detach();
-			contextRoot = null;
-			provider?.disconnect();
-			provider = null;
-		};
-	});
-
-	$effect(() => {
-		if (runtimeContextValue) {
-			provider?.setValue(runtimeContextValue);
-		}
 	});
 
 	$effect(() => {
@@ -1818,9 +1821,12 @@ const DEFAULT_ENV = {
 		// further: nothing above the runtime that handles it has a use for it,
 		// and hosts would otherwise receive every registration and raw session
 		// change on `document`. An event from another runtime's shell keeps
-		// bubbling toward the toolkit that owns it.
+		// bubbling toward the toolkit that owns it, by the id it is addressed to
+		// or else by its target.
 		const claimLocalEvent = (event: Event): boolean => {
-			if (!isLocalToCurrentRuntime(event.target)) return false;
+			if (!isRuntimeEventClaimed(event, runtimeId, isLocalToCurrentRuntime)) {
+				return false;
+			}
 			event.stopPropagation();
 			return true;
 		};
@@ -1948,6 +1954,58 @@ const DEFAULT_ENV = {
 		};
 	});
 
+	// One provider per context for the host's lifetime: created with the first
+	// value, republished with `setValue` after that, and left on the last value
+	// while there is none. A consumer keeps the provider that answered it and
+	// nothing asks it to request again, so a replaced provider would leave its
+	// subscribers on a value that never updates. These effects come after the
+	// claim listeners above: connecting announces the provider, the document's
+	// context root replays the shells' requests, and their registrations
+	// arrive while the provider connects.
+	$effect(() => {
+		if (!host) return;
+		return () => {
+			hostRuntimeProvider?.disconnect();
+			hostRuntimeProvider = null;
+			provider?.disconnect();
+			provider = null;
+		};
+	});
+
+	$effect(() => {
+		const currentHost = host;
+		const value = hostRuntimeContextValue;
+		if (!currentHost || !value) return;
+		untrack(() => {
+			if (hostRuntimeProvider) {
+				hostRuntimeProvider.setValue(value);
+				return;
+			}
+			hostRuntimeProvider = new ContextProvider(currentHost, {
+				context: assessmentToolkitHostRuntimeContext,
+				initialValue: value,
+			});
+			hostRuntimeProvider.connect();
+		});
+	});
+
+	$effect(() => {
+		const currentHost = host;
+		const value = runtimeContextValue;
+		if (!currentHost || !value) return;
+		untrack(() => {
+			if (provider) {
+				provider.setValue(value);
+				return;
+			}
+			provider = new ContextProvider(currentHost, {
+				context: assessmentToolkitRuntimeContext,
+				initialValue: value,
+			});
+			provider.connect();
+		});
+	});
+
 	export async function waitUntilReady(): Promise<void> {
 		if (!effectiveCoordinator) {
 			throw new Error("Coordinator not initialized");
@@ -2022,6 +2080,7 @@ const DEFAULT_ENV = {
 			lastStageCohortKey = nextKey;
 			composedStageEntered = false;
 			engineReadyStageEntered = false;
+			engineReadyFailed = false;
 			interactiveStageEntered = false;
 			sectionInitialized = false;
 		});
@@ -2034,11 +2093,12 @@ const DEFAULT_ENV = {
 	// auto-skip `engine-ready` when the section initializer wins.
 	$effect(() => {
 		const ready = engineReadyStageEntered && sectionInitialized;
+		const failed = engineReadyFailed;
 		untrack(() => {
 			if (!ready) return;
 			if (interactiveStageEntered) return;
 			interactiveStageEntered = true;
-			stageTracker.enter("interactive");
+			stageTracker.enter("interactive", failed ? "failed" : "entered");
 		});
 	});
 
@@ -2065,29 +2125,37 @@ const DEFAULT_ENV = {
 	// emission cannot precede `composed` even if the coordinator
 	// resolves before composition lands (rare but possible during
 	// fast-hydration paths).
+	//
+	// A toolkit without a section has nothing to compose: `composed` is recorded
+	// as skipped and the chain ends at `engine-ready`. A section bound before the
+	// coordinator settles takes the usual path; one bound after continues the
+	// chain at `interactive`.
 	$effect(() => {
 		if (!effectiveCoordinator) return;
-		if (!composedStageEntered) return;
+		const sectionless = !hasSection;
+		if (!composedStageEntered && !sectionless) return;
 		if (engineReadyStageEntered) return;
 		const coord = effectiveCoordinator;
 		let cancelled = false;
+		const enterEngineReady = (status: "entered" | "failed") => {
+			if (engineReadyStageEntered) return;
+			if (!composedStageEntered) {
+				composedStageEntered = true;
+				stageTracker.enter("composed", "skipped");
+			}
+			engineReadyStageEntered = true;
+			engineReadyFailed = status === "failed";
+			stageTracker.enter("engine-ready", status);
+		};
 		void coord
 			.waitUntilReady()
 			.then(() => {
 				if (cancelled) return;
-				untrack(() => {
-					if (engineReadyStageEntered) return;
-					engineReadyStageEntered = true;
-					stageTracker.enter("engine-ready");
-				});
+				untrack(() => enterEngineReady("entered"));
 			})
 			.catch(() => {
 				if (cancelled) return;
-				untrack(() => {
-					if (engineReadyStageEntered) return;
-					engineReadyStageEntered = true;
-					stageTracker.enter("engine-ready", "failed");
-				});
+				untrack(() => enterEngineReady("failed"));
 			});
 		return () => {
 			cancelled = true;

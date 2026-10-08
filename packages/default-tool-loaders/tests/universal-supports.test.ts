@@ -6,30 +6,20 @@ import {
 } from "../src/packaged-capability-composition.js";
 
 describe("universal supports preset", () => {
-	test("carries the packaged set's universal feature ids", () => {
+	test("carries the packaged set's universal tool ids", () => {
 		// Pinned as data. This list was previously recomputed on every import from
 		// the registry, which is what let registry membership decide eligibility
 		// tier; a diff here should be a deliberate program decision, not a
 		// side-effect of registering something.
 		expect([...UNIVERSAL_SUPPORTS_PRESET]).toEqual([
-			"annotations",
+			"annotationToolbar",
 			"answerEliminator",
-			"answerMasking",
 			"calculator",
-			"colorContrast",
 			"graph",
-			"graphingCalculator",
-			"highContrastDisplay",
-			"highlighting",
-			"invertColors",
+			"lineReader",
 			"periodicTable",
 			"protractor",
-			"readAloud",
-			"readingGuide",
-			"readingMask",
-			"readingRuler",
 			"ruler",
-			"strikethrough",
 			"textToSpeech",
 			"theme",
 		]);
@@ -68,14 +58,9 @@ describe("universal supports preset", () => {
 		// signing does.
 		const registry = createPackagedToolRegistry();
 		const contentDependent = registry.getContentDependentSupportIds();
-		const withoutPresentationHalf = contentDependent.filter((id) => {
-			const tool = registry
-				.getAllTools()
-				.find((candidate) =>
-					(candidate.pnpSupportIds ?? [candidate.toolId]).includes(id),
-				);
-			return !tool?.resolvesWithoutGrant;
-		});
+		const withoutPresentationHalf = contentDependent.filter(
+			(id) => !registry.get(id)?.resolvesWithoutGrant,
+		);
 		expect(withoutPresentationHalf).toEqual([]);
 	});
 

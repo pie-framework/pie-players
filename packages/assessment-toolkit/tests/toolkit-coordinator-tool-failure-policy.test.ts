@@ -62,7 +62,6 @@ const registryWith = (
 		createTestToolRegistration({
 			toolId,
 			supportedLevels,
-			pnpSupportIds: [toolId],
 			provider: createFailingAuthProviderDescriptor(providerId),
 		}),
 	);

@@ -111,8 +111,11 @@ interface PackagedCapabilityDefinition {
 	preferredPlacementOrder?: OrderedLevels<PreferredPlacementLevel>;
 	/** Order among capabilities that can render a toolbar affordance. */
 	toolbarOrder?: number;
-	/** Explicit program policy; never inferred from registry membership. */
-	universalSupportIds: readonly string[];
+	/**
+	 * Whether the universal-support preset grants this capability. Explicit
+	 * program policy; never inferred from registry membership.
+	 */
+	universal: boolean;
 }
 
 const loadSideEffectModule = (load: () => Promise<unknown>): Promise<void> =>
@@ -206,7 +209,7 @@ const PACKAGED_CAPABILITY_DEFINITIONS = [
 		placementOrder: { element: 10 },
 		preferredPlacementOrder: { item: 10 },
 		toolbarOrder: 20,
-		universalSupportIds: ["calculator", "graphingCalculator"],
+		universal: true,
 	},
 	{
 		registration: ttsToolRegistration,
@@ -216,7 +219,7 @@ const PACKAGED_CAPABILITY_DEFINITIONS = [
 		placementOrder: { item: 10, passage: 10, rubric: 10, element: 30 },
 		preferredPlacementOrder: { item: 20, passage: 10 },
 		toolbarOrder: 30,
-		universalSupportIds: ["textToSpeech", "readAloud"],
+		universal: true,
 	},
 	{
 		registration: rulerToolRegistration,
@@ -226,7 +229,7 @@ const PACKAGED_CAPABILITY_DEFINITIONS = [
 		placementOrder: { element: 40 },
 		preferredPlacementOrder: { section: 50 },
 		toolbarOrder: 80,
-		universalSupportIds: ["ruler"],
+		universal: true,
 	},
 	{
 		registration: protractorToolRegistration,
@@ -236,7 +239,7 @@ const PACKAGED_CAPABILITY_DEFINITIONS = [
 		placementOrder: { element: 50 },
 		preferredPlacementOrder: { section: 60 },
 		toolbarOrder: 90,
-		universalSupportIds: ["protractor"],
+		universal: true,
 	},
 	{
 		registration: answerEliminatorToolRegistration,
@@ -246,7 +249,7 @@ const PACKAGED_CAPABILITY_DEFINITIONS = [
 		placementOrder: { element: 20 },
 		preferredPlacementOrder: { item: 30 },
 		toolbarOrder: 70,
-		universalSupportIds: ["answerMasking", "answerEliminator", "strikethrough"],
+		universal: true,
 	},
 	{
 		registration: lineReaderToolRegistration,
@@ -256,7 +259,7 @@ const PACKAGED_CAPABILITY_DEFINITIONS = [
 		placementOrder: { passage: 40, rubric: 40 },
 		preferredPlacementOrder: { section: 40 },
 		toolbarOrder: 40,
-		universalSupportIds: ["readingMask", "readingGuide", "readingRuler"],
+		universal: true,
 	},
 	{
 		registration: themeToolRegistration,
@@ -266,12 +269,7 @@ const PACKAGED_CAPABILITY_DEFINITIONS = [
 		placementOrder: { assessment: 10, section: 10 },
 		preferredPlacementOrder: { section: 10 },
 		toolbarOrder: 10,
-		universalSupportIds: [
-			"highContrastDisplay",
-			"colorContrast",
-			"invertColors",
-			"theme",
-		],
+		universal: true,
 	},
 	{
 		registration: annotationToolbarRegistration,
@@ -281,10 +279,7 @@ const PACKAGED_CAPABILITY_DEFINITIONS = [
 		placementOrder: { item: 30, passage: 30, rubric: 30, element: 70 },
 		preferredPlacementOrder: { item: 40, passage: 20 },
 		toolbarOrder: 50,
-		// The last three came from the `highlighter` capability, which mounted this
-		// same element behind a second identically-labelled button. Kept here so a
-		// profile granted one of the older ids still gets highlighting.
-		universalSupportIds: ["highlighting", "annotations"],
+		universal: true,
 	},
 	{
 		registration: graphToolRegistration,
@@ -294,7 +289,7 @@ const PACKAGED_CAPABILITY_DEFINITIONS = [
 		placementOrder: { item: 40, element: 80 },
 		preferredPlacementOrder: { section: 20 },
 		toolbarOrder: 100,
-		universalSupportIds: ["graph"],
+		universal: true,
 	},
 	{
 		registration: periodicTableToolRegistration,
@@ -304,7 +299,7 @@ const PACKAGED_CAPABILITY_DEFINITIONS = [
 		placementOrder: { item: 50, element: 90 },
 		preferredPlacementOrder: { section: 30 },
 		toolbarOrder: 110,
-		universalSupportIds: ["periodicTable"],
+		universal: true,
 	},
 	{
 		registration: dictionaryToolRegistration,
@@ -314,9 +309,9 @@ const PACKAGED_CAPABILITY_DEFINITIONS = [
 		placementOrder: { item: 60, element: 100 },
 		preferredPlacementOrder: { section: 70 },
 		toolbarOrder: 120,
-		// Deliberately empty: a dictionary is a granted accommodation, and on a
-		// vocabulary item it is construct-relevant, so it is never universal.
-		universalSupportIds: [],
+		// A dictionary is a granted accommodation, and on a vocabulary item it is
+		// construct-relevant, so it is never universal.
+		universal: false,
 	},
 	{
 		registration: pictureDictionaryToolRegistration,
@@ -326,7 +321,7 @@ const PACKAGED_CAPABILITY_DEFINITIONS = [
 		placementOrder: { item: 70, element: 110 },
 		preferredPlacementOrder: { section: 80 },
 		toolbarOrder: 130,
-		universalSupportIds: [],
+		universal: false,
 	},
 	// The Spanish variants render the same elements under their own capability ids, so a
 	// programme can grant a Spanish gloss beside the content-following dictionary or
@@ -339,7 +334,7 @@ const PACKAGED_CAPABILITY_DEFINITIONS = [
 		placementOrder: { item: 80, element: 120 },
 		preferredPlacementOrder: { section: 90 },
 		toolbarOrder: 140,
-		universalSupportIds: [],
+		universal: false,
 	},
 	{
 		registration: spanishPictureDictionaryToolRegistration,
@@ -349,11 +344,11 @@ const PACKAGED_CAPABILITY_DEFINITIONS = [
 		placementOrder: { item: 90, element: 130 },
 		preferredPlacementOrder: { section: 100 },
 		toolbarOrder: 150,
-		universalSupportIds: [],
+		universal: false,
 	},
 	{
 		registration: audioTranscriptRegistration,
-		universalSupportIds: [],
+		universal: false,
 	},
 ] as const satisfies readonly PackagedCapabilityDefinition[];
 
@@ -399,7 +394,6 @@ function assertComposition(
 	definitions: readonly PackagedCapabilityDefinition[],
 ): void {
 	const toolIds = new Set<string>();
-	const universalSupportIds = new Set<string>();
 	const toolbarOrders = new Set<number>();
 
 	for (const definition of definitions) {
@@ -476,34 +470,10 @@ function assertComposition(
 			toolbarOrders.add(definition.toolbarOrder);
 		}
 
-		const registrationSupportIds = new Set(
-			registration.pnpSupportIds ?? [registration.toolId],
-		);
-		if (
-			registration.requiresAuthoredContent &&
-			definition.universalSupportIds.length > 0
-		) {
+		if (registration.requiresAuthoredContent && definition.universal) {
 			throw new Error(
-				`Invalid packaged capability "${registration.toolId}": content-dependent support ids cannot be universally granted.`,
+				`Invalid packaged capability "${registration.toolId}": a content-dependent capability cannot be universally granted.`,
 			);
-		}
-		for (const supportId of definition.universalSupportIds) {
-			if (!supportId.trim()) {
-				throw new Error(
-					`Invalid packaged capability "${registration.toolId}": universal support ids must be non-empty.`,
-				);
-			}
-			if (!registrationSupportIds.has(supportId)) {
-				throw new Error(
-					`Invalid packaged capability "${registration.toolId}": universal support id "${supportId}" is not declared by its registration.`,
-				);
-			}
-			if (universalSupportIds.has(supportId)) {
-				throw new Error(
-					`Invalid packaged capability composition: universal support id "${supportId}" has more than one owner.`,
-				);
-			}
-			universalSupportIds.add(supportId);
 		}
 
 		for (const level of PREFERRED_PLACEMENT_LEVELS) {
@@ -624,7 +594,8 @@ class PackagedCapabilityComposition {
 		);
 		this.universalSupportIds = Object.freeze(
 			definitions
-				.flatMap(({ universalSupportIds }) => [...universalSupportIds])
+				.filter((definition) => definition.universal)
+				.map(({ registration }) => registration.toolId)
 				.sort(),
 		);
 	}

@@ -88,11 +88,11 @@ export interface PnpPolicyResult {
 	 */
 	decisions: PnpPolicyDecisionEvent[];
 	/**
-	 * Support ids named by a profile, district policy or item that no
-	 * registration claims. Nothing resolves them, so they are silently inert —
+	 * Support ids named by a profile, district policy or item that no tool is
+	 * registered under. Nothing resolves them, so they are silently inert —
 	 * the engine turns each into a `tool-policy.unknownSupportId` diagnostic so a
-	 * host sending its own label instead of an AfA/QTI feature id learns of it
-	 * rather than seeing a tool quietly fail to appear.
+	 * host sending its own label instead of a tool id learns of it rather than
+	 * seeing a tool quietly fail to appear.
 	 */
 	unmappedSupportIds: Set<string>;
 	/** Configuration sources the engine should attach to its provenance. */
@@ -149,11 +149,9 @@ export class PnpPolicySource {
 	 * This exists for **policy-addressable capabilities that are not toolbar
 	 * tools** — a signed alternate rendered as its own region, for example.
 	 * `apply(...)` only evaluates support ids that appear somewhere in the
-	 * bound policy inputs, and it keys its result maps by *mapped tool id*, so
-	 * a caller asking about one feature would have to re-derive that mapping
-	 * and could collide with another support id that maps to the same tool.
-	 * Evaluating one id in isolation avoids both problems: the returned result
-	 * carries exactly one decision, and `decisions[0].action` is the verdict.
+	 * bound policy inputs. Evaluating one id in isolation answers for any
+	 * feature: the returned result carries exactly one decision, and
+	 * `decisions[0].action` is the verdict.
 	 *
 	 * Reusing `resolveSupport(...)` rather than re-walking the precedence rules
 	 * is the point — a second copy of the six levels would drift.
@@ -373,47 +371,29 @@ export class PnpPolicySource {
 	}
 
 	/**
-	 * Map a QTI / PNP support id (e.g. `"calculator-basic"`) to the
-	 * registered tool id that owns it.
+	 * Map a PNP support id to its tool id. They are the same string: a tool's
+	 * support id is its tool id.
 	 *
-	 * Resolution rules:
-	 *
-	 *   1. **Multiple tools register the same support id:** the
-	 *      *first-registered* tool wins. `ToolRegistry.getToolsByPNPSupport`
-	 *      returns a `Set<string>` whose iteration order matches the
-	 *      `register(...)` insertion order, so the result is
-	 *      deterministic across runs but order-sensitive at registration
-	 *      time. This is an unusual configuration — the typical case is
-	 *      one tool per support id — but it is reachable when an
-	 *      integrator overrides a default tool with a replacement that
-	 *      claims the same `pnpSupportIds`. In that case the integrator
-	 *      should `unregister(...)` the default before registering the
-	 *      replacement.
-	 *
-	 *   2. **No tool registers the support id:** the support id is
-	 *      returned verbatim as the `featureId` for provenance trails
-	 *      and `ToolPolicyEntry.toolId`. This lets hosts use raw QTI
-	 *      strings for tools the registry does not (yet) carry without
-	 *      losing them in policy evaluation.
-	 *
-	 * `tests/policy/PnpPolicySource.test.ts` locks this mapping behavior.
+	 * An id no tool is registered under is returned verbatim as the
+	 * `featureId`, so provenance trails and `ToolPolicyEntry.toolId` keep it,
+	 * and is recorded in `unmappedSupportIds` for the
+	 * `tool-policy.unknownSupportId` diagnostic.
 	 */
 	private mapSupportToToolId(
 		supportId: string,
 		out: PnpPolicyResult,
 	): string {
-		const toolIds = this.toolRegistry.getToolsByPNPSupport(supportId);
-		if (toolIds.size === 0) {
-			// An empty registry means there is nothing to check the id against, not
-			// that the id is wrong — reporting it there would fire on every support
-			// id for a host that supplies no registry, which
-			// `tool-config-validation` already warns about once.
-			if (this.toolRegistry.getAllTools().length > 0) {
-				out.unmappedSupportIds.add(supportId);
-			}
-			return supportId;
+		// An empty registry means there is nothing to check the id against, not
+		// that the id is wrong — reporting it there would fire on every support
+		// id for a host that supplies no registry, which
+		// `tool-config-validation` already warns about once.
+		if (
+			!this.toolRegistry.has(supportId) &&
+			this.toolRegistry.getAllTools().length > 0
+		) {
+			out.unmappedSupportIds.add(supportId);
 		}
-		return Array.from(toolIds)[0];
+		return supportId;
 	}
 
 	/**

@@ -17,7 +17,7 @@ and how does the program tier them":
 | `PACKAGED_TOOL_REGISTRATIONS`, `createPackagedToolRegistry`, `registerPackagedTools` | Which capabilities exist, and their toolbar and surface contracts |
 | `PACKAGED_TOOL_TAG_MAP` | Which custom element each one renders as |
 | `PACKAGED_TOOL_PLACEMENT`, `SECTION_PLAYER_PREFERRED_TOOL_PLACEMENT`, `PACKAGED_TOOL_ORDER` | Where they appear and in what order |
-| `UNIVERSAL_SUPPORTS_PRESET`, `createUniversalPersonalNeedsProfile` | Which of their support ids the program grants to everyone |
+| `UNIVERSAL_SUPPORTS_PRESET`, `createUniversalPersonalNeedsProfile` | Which of them the program grants to everyone |
 | `DEFAULT_TOOL_MODULE_LOADERS`, `createDefaultToolModuleLoaders`, `registerSectionToolModuleLoaders` | When each one's bundle loads |
 
 The individual registrations are exported too, so a host can compose its own set
@@ -27,8 +27,8 @@ These exports are projections of one internal **Packaged Capability
 Composition**. Each packaged capability is authored once with its registration,
 element delivery, loader bootstrap sets, placement/order membership and explicit
 universal-support policy. The package build rejects contradictory PIE-owned data
-— for example, a region capability with a toolbar tag, or a universal support
-id its registration does not declare — so release tests find a missing facet
+— for example, a region capability with a toolbar tag, or a content-dependent
+capability marked universal — so release tests find a missing facet
 instead of a learner finding a dead affordance. The browser does not repeat that
 strict gate at import time: a PIE authoring defect must block publication, not an
 otherwise usable assessment.
@@ -138,8 +138,8 @@ registry.register(signLanguageRegistration);
 ## Universal supports preset
 
 `createUniversalPersonalNeedsProfile()` builds a `PersonalNeedsProfile` granting
-`UNIVERSAL_SUPPORTS_PRESET` — the support ids the packaged tool set treats as
-universal features.
+`UNIVERSAL_SUPPORTS_PRESET` — the tool ids of the capabilities the packaged set
+treats as universal features. A support id is the tool id it grants.
 
 ```ts
 import { createUniversalPersonalNeedsProfile } from "@pie-players/pie-default-tool-loaders";

@@ -157,11 +157,8 @@ export function composeDecision(
 		sourcesByTool.set(toolId, ["placement"]);
 	}
 
-	// Snapshot the post-host candidate set so step 5b can distinguish
-	// "host removed a required tool" (requiredToolBlocked fires)
-	// from "profile policy's own precedence removed a required tool" (fix
-	// per M8 PR 1 R1 S1 — multi-rule conflict on the same tool must
-	// not blame the host).
+	// Snapshot the post-host candidate set so step 5b reports
+	// requiredToolBlocked only for a mandated tool the host removed.
 	const postHostCandidates = new Set(candidates);
 
 	let pnpPolicyResult: ReturnType<PnpPolicySource["apply"]> | null = null;
@@ -197,17 +194,16 @@ export function composeDecision(
 			});
 		}
 
-		// A support id no registration claims resolves to itself and then matches
-		// nothing placed, so the capability is absent with no trace of why — the
-		// failure a host sending its own vocabulary instead of an AfA/QTI feature
-		// id actually hits. Reported per decision rather than at config time
+		// A support id no tool is registered under matches nothing placed, so the
+		// capability is absent with no trace of why — the failure a host sending
+		// its own vocabulary instead of a tool id actually hits. Reported per decision rather than at config time
 		// because the ids arrive with the profile, not with the tools config.
 		for (const supportId of pnpPolicyResult.unmappedSupportIds) {
 			diagnostics.push({
 				code: "tool-policy.unknownSupportId",
 				level: request.level,
 				toolId: supportId,
-				message: `No registered tool claims PNP support id "${supportId}"; it was carried through as a feature id and matched nothing. Expected an AfA 3.0 / QTI 3.0 access feature id.`,
+				message: `No tool is registered under PNP support id "${supportId}"; it was carried through as a feature id and matched nothing. A support id is the id of the tool it grants.`,
 				source: "pnp.pnp-support",
 			});
 		}

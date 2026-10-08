@@ -2,10 +2,6 @@
  * Measurement Tools Registrations
  *
  * Registers ruler and protractor tools for on-screen measurements.
- *
- * Maps to QTI 3.0 standard access features:
- * - ruler (assessment tool)
- * - protractor (assessment tool)
  */
 
 import type {
@@ -33,12 +29,6 @@ export const rulerToolRegistration: ToolRegistration = {
 
 	// Ruler typically appears at section/item/element level
 	supportedLevels: ["section", "item", "element"],
-
-	// PNP support IDs
-	// Maps to QTI 3.0 standard feature: ruler
-	pnpSupportIds: [
-		"ruler", // QTI 3.0 standard (assessment.ruler)
-	],
 
 	/**
 	 * Pass 2: Ruler is relevant when math content is present
@@ -74,12 +64,6 @@ export const protractorToolRegistration: ToolRegistration = {
 
 	// Protractor typically appears at section/item/element level
 	supportedLevels: ["section", "item", "element"],
-
-	// PNP support IDs
-	// Maps to QTI 3.0 standard feature: protractor
-	pnpSupportIds: [
-		"protractor", // QTI 3.0 standard (assessment.protractor)
-	],
 
 	/**
 	 * Pass 2: Protractor is relevant when math content is present

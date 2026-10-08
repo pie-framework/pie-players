@@ -5,10 +5,6 @@
  * - Line Reader (reading guide)
  * - Color Scheme (theme/contrast)
  * - Annotation Toolbar (text highlighting)
- *
- * Maps to QTI 3.0 standard access features from:
- * - visual category: highContrastDisplay, colorContrast
- * - reading category: readingMask, readingGuide, highlighting
  */
 
 import type {
@@ -44,14 +40,6 @@ export const lineReaderToolRegistration: ToolRegistration = {
 	// Line reader appears where there's text to read
 	supportedLevels: ["section", "passage", "rubric", "item"],
 
-	// PNP support IDs
-	// Maps to QTI 3.0 standard features: readingMask, readingGuide, readingRuler
-	pnpSupportIds: [
-		"readingMask", // QTI 3.0 standard (reading.readingMask)
-		"readingGuide", // QTI 3.0 standard (reading.readingGuide)
-		"readingRuler", // QTI 3.0 standard (reading.readingRuler)
-	],
-
 	/**
 	 * Pass 2: Line reader is relevant when readable text is present
 	 */
@@ -86,15 +74,6 @@ export const themeToolRegistration: ToolRegistration = {
 
 	// Color scheme is assessment-wide
 	supportedLevels: ["assessment", "section"],
-
-	// PNP support IDs
-	// Maps to QTI 3.0 standard features: highContrastDisplay, colorContrast, invertColors
-	pnpSupportIds: [
-		"highContrastDisplay", // QTI 3.0 standard (visual.highContrastDisplay)
-		"colorContrast", // QTI 3.0 standard (visual.colorContrast)
-		"invertColors", // QTI 3.0 standard (visual.invertColors)
-		"theme", // Canonical id, and this registration's toolId
-	],
 
 	/**
 	 * Pass 2: Color scheme is always relevant when allowed
@@ -148,13 +127,6 @@ export const annotationToolbarRegistration: ToolRegistration = {
 
 	// Annotation appears where there's text content
 	supportedLevels: ["passage", "rubric", "item", "element"],
-
-	// PNP support IDs
-	// Maps to QTI 3.0 standard features: highlighting, annotations
-	pnpSupportIds: [
-		"highlighting", // QTI 3.0 standard (cognitive.highlighting / reading.wordHighlighting)
-		"annotations", // QTI 3.0 standard (cognitive.annotations)
-	],
 
 	/**
 	 * Pass 2: Annotation is relevant when readable text is present

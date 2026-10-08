@@ -64,7 +64,6 @@ describe("ToolkitCoordinator telemetry listeners", () => {
 					createTestToolRegistration({
 						toolId: "textToSpeech",
 						supportedLevels: ["item", "passage"],
-						pnpSupportIds: ["textToSpeech"],
 						provider: createFailingAuthProviderDescriptor("tts"),
 					}),
 				);

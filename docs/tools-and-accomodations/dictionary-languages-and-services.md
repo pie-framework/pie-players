@@ -52,8 +52,7 @@ It is not enough on its own. The learner who needs a Spanish gloss is reading an
 passage: the language of a definition is a property of the learner, not of the content.
 SchoolCity exposes English Dictionary and Spanish Dictionary as two separate tools, tabbed
 in one modal, for exactly that reason. A single capability whose language follows the
-content cannot express it, and its four support ids — `dictionary`, `englishDictionary`,
-`glossary`, `definitions` — are four names for one grant.
+content cannot express it: its support id is one grant.
 
 ### Capability per language
 
@@ -62,9 +61,8 @@ how the accommodation is authorised: a programme grants a Spanish dictionary to 
 independently of whether an English one is granted, and a toolbar showing two buttons is
 showing two granted supports.
 
-`dictionarySpanish` and `pictureDictionarySpanish` are in the packaged set, claiming
-`spanishDictionary` / `spanishPictureDictionary` and their glossary variants — no support
-id is shared with the base capabilities, so neither grant implies the other. Each renders
+`dictionarySpanish` and `pictureDictionarySpanish` are in the packaged set. A support id is
+the tool id it grants, so neither grant implies the base capability's. Each renders
 the same element as the capability it varies; two capability ids, one panel
 implementation.
 
@@ -75,7 +73,7 @@ be indistinguishable from the base capability on exactly the content it exists f
 language the host names in the tool's render params still wins over both.
 
 Another language is `createDictionaryToolRegistration` or
-`createPictureDictionaryToolRegistration` with a `toolId`, its own `pnpSupportIds` and a
+`createPictureDictionaryToolRegistration` with a `toolId`, which is also its support id, and a
 `lookupLanguage`, registered on the tool registry the host passes to its coordinator.
 Catalogue keys derive from the capability id; a host with its own catalogue passes
 `messageKeyPrefix`, and a key that does not resolve falls back to the registration's

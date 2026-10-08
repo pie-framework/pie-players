@@ -305,8 +305,6 @@ export const speechToTextRegistration: ToolRegistration = {
   // Item level only. A section has no response surface, and dictation targets one.
   supportedLevels: ["item"],
 
-  pnpSupportIds: ["speechToText"],
-
   activation: "toolbar-toggle",
 
   // Pass 2: is there a dictation target in this scope. Not `requiresAuthoredContent` —

@@ -5,7 +5,7 @@ import type { PersonalNeedsProfile } from "@pie-players/pie-players-shared/types
  * activated at init.
  *
  * The core ships no populated default on purpose. It once derived one from every
- * registered tool's `pnpSupportIds`, which read *registry membership* as
+ * registered tool's support ids, which read *registry membership* as
  * *eligibility tier* — registration means "policy-addressable", not "universal,
  * on by default" — so an accommodation-tier capability was granted to every
  * student of every host that supplied no profile. The remedy at the time was a

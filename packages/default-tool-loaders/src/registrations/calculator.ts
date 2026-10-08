@@ -3,10 +3,6 @@
  *
  * Registers the calculator tool with support for multiple calculator types
  * (basic, scientific, graphing) through a host-selected provider.
- *
- * Maps to QTI 3.0 standard access features:
- * - calculator (cognitive support)
- * - graphingCalculator (assessment tool)
  */
 
 import type {
@@ -191,17 +187,6 @@ export const calculatorToolRegistration: ToolRegistration = {
 
 	// Calculator is item-level in this player architecture.
 	supportedLevels: ["item"],
-
-	// PNP support IDs that enable this tool
-	// Maps to QTI 3.0 standard features: calculator, graphingCalculator
-	// A type is not a feature id: `calculatorType` arrives through the host's
-	// render params, so `basicCalculator` / `scientificCalculator` granted the
-	// same untyped calculator these two do and only looked like they selected a
-	// variant.
-	pnpSupportIds: [
-		"calculator", // QTI 3.0 standard (cognitive.calculator)
-		"graphingCalculator", // QTI 3.0 standard (assessment.graphingCalculator)
-	],
 
 	/**
 	 * Pass 2: Determine if calculator is relevant in this context

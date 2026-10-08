@@ -806,7 +806,7 @@ export const sectionDemos: Record<string, SectionDemoInfo> = {
 		id: "calculator-pnp",
 		name: "Calculator by Profile",
 		description:
-			"The learner's profile decides whether the calculator shows and which flavor it opens in, with the toolkit composed around one item and no section player",
+			"The learner's profile decides whether the calculator shows and its config which flavor it opens in, with the toolkit composed around one item and no section player",
 		integrationLevel: 4,
 		integrationTheme: "Profile-driven tool selection",
 		focus:
@@ -814,8 +814,8 @@ export const sectionDemos: Record<string, SectionDemoInfo> = {
 		whatMakesItTick: [
 			"No section player and no section controller: the toolkit owns its coordinator, and `<pie-item-scope>` gives the toolbar's tools the item and the region they act on.",
 			"Read-aloud speaks the equation's spoken card in its place: the scope registered the item, and the toolkit filed its catalogs.",
-			"The host's calculator resolver reads the profile through `decideFeaturePolicy`: `graphingCalculator` opens graphing with scientific one switch away, `calculator` opens scientific, and neither hides the button.",
-			"Changing the profile rebinds `assessment`; the resolver re-runs on the policy change, so the button and an open calculator follow without a reload.",
+			"The host's calculator resolver reads `decideFeaturePolicy('calculator')`: a grant whose `toolConfigs.calculator.type` is `graphing` opens graphing with scientific one switch away, any other grant opens scientific, and no grant hides the button.",
+			"Changing the option rebinds `assessment`; the resolver re-runs on the policy change, so the button and an open calculator follow without a reload.",
 		],
 		section: demoCalculatorPnpSection,
 	},

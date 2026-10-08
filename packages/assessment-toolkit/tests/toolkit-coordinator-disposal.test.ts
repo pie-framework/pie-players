@@ -587,7 +587,6 @@ describe("ToolkitCoordinator disposal", () => {
 			icon: "host-tool",
 			supportedLevels: ["section"],
 			activation: "toolbar-toggle",
-			pnpSupportIds: [],
 			isVisibleInContext: () => true,
 			renderToolbar: () => null,
 		} as ToolRegistration);

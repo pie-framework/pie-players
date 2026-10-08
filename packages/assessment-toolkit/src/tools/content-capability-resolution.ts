@@ -3,7 +3,7 @@
  * profile.
  *
  * Two independent halves, and a capability is in play only when both answer yes:
- * policy granted one of its support ids, and its own `requiresAuthoredContent`
+ * policy granted its support id, and its own `requiresAuthoredContent`
  * found the resource in this entity's catalogs. Neither implies the other — a
  * learner with an accommodation still sees nothing on an item carrying no
  * resource, and an item carrying one shows nothing to a learner without the
@@ -35,12 +35,10 @@ import type {
 } from "../services/ToolRegistry.js";
 import type { CatalogOwnerSnapshot } from "../services/AccessibilityCatalogResolver.js";
 
-/** What policy answered about one feature id. */
+/** What policy answered about one capability's support id. */
 export type ContentCapabilityPolicy =
 	| {
 			outcome: "granted";
-			/** The support id that was granted — a capability may declare several. */
-			featureId: string;
 			/** Feature parameters carried by the decision, if any. */
 			parameters?: unknown;
 	  }
@@ -65,12 +63,12 @@ export type ContentCapabilityPhase = "policy" | "content";
 export interface ResolvedContentCapability {
 	registration: ToolRegistration;
 	/**
-	 * The granted support id, or `""` when the capability resolved without a
-	 * grant. Passed through to the render context unchanged, so a capability that
+	 * Whether policy granted the capability; `false` when it resolved from content
+	 * alone. Passed through to the render context unchanged, so a capability that
 	 * serves both an authored-presentation case and an accommodation can still
 	 * tell them apart at render time.
 	 */
-	featureId: string;
+	granted: boolean;
 	parameters?: unknown;
 	/** Whatever the capability's own `resolve` returned; never inspected here. */
 	content: unknown;
@@ -86,7 +84,7 @@ export interface ResolveContentCapabilitiesArgs {
 	/** The entity's cards, or `null` when no resolver is available. */
 	catalogs: CatalogOwnerSnapshot | null;
 	/**
-	 * Policy's answer about one feature id, in three states.
+	 * Policy's answer about one support id, which is a tool id, in three states.
 	 *
 	 * Granting requires a documented need, so an unconfigured feature is
 	 * `"silent"`, never granted. What the third state buys is the distinction
@@ -94,7 +92,7 @@ export interface ResolveContentCapabilitiesArgs {
 	 * something, and a capability allowed to answer from content alone must not
 	 * treat that as nobody having spoken.
 	 */
-	policyFor: (featureId: string) => ContentCapabilityPolicy;
+	policyFor: (supportId: string) => ContentCapabilityPolicy;
 	/**
 	 * Report a capability that threw. It is dropped either way; this is how a
 	 * caller surfaces it as its own recoverable warning rather than letting one
@@ -107,47 +105,7 @@ export interface ResolveContentCapabilitiesArgs {
 	) => void;
 }
 
-/** The support ids a capability answers to, defaulting to its own id. */
-const supportIdsOf = (registration: ToolRegistration): string[] =>
-	registration.pnpSupportIds?.length
-		? registration.pnpSupportIds
-		: [registration.toolId];
-
 type Grant = Extract<ContentCapabilityPolicy, { outcome: "granted" }>;
-
-/**
- * Everything policy has to say about one capability: a grant, an off switch, or
- * nothing.
- *
- * Denial is checked ahead of a grant on each id rather than after the scan,
- * because the two can only disagree when a host blocked one of a capability's ids
- * while a profile granted another, and there the off switch is the later, more
- * specific statement about this delivery.
- *
- * A host gate names *capabilities*, so the tool id is probed too when it is not
- * already a declared support id — otherwise a capability whose id differs from
- * its support ids would slip a host block. That probe is gate-only: a grant on
- * the tool id is ignored, or blocking would double as a second way to switch a
- * capability on.
- */
-function policyForCapability(
-	registration: ToolRegistration,
-	args: ResolveContentCapabilitiesArgs,
-): { grant: Grant | null; denied: boolean } {
-	const supportIds = supportIdsOf(registration);
-	for (const supportId of supportIds) {
-		const answer = args.policyFor(supportId);
-		if (answer.outcome === "denied") return { grant: null, denied: true };
-		if (answer.outcome === "granted") return { grant: answer, denied: false };
-	}
-	if (supportIds.includes(registration.toolId)) {
-		return { grant: null, denied: false };
-	}
-	return {
-		grant: null,
-		denied: args.policyFor(registration.toolId).outcome === "denied",
-	};
-}
 
 function resolveOne(
 	registration: ToolRegistration,
@@ -155,11 +113,10 @@ function resolveOne(
 ): ResolvedContentCapability | null {
 	let grant: Grant | null = null;
 	try {
-		const answer = policyForCapability(registration, args);
-		// Nothing reopens a host denial — not a grant it outranked, and not the
-		// content exception below.
-		if (answer.denied) return null;
-		grant = answer.grant;
+		const answer = args.policyFor(registration.toolId);
+		// Nothing reopens a host denial, not even the content exception below.
+		if (answer.outcome === "denied") return null;
+		if (answer.outcome === "granted") grant = answer;
 	} catch (error) {
 		args.onError?.(registration, "policy", error);
 		return null;
@@ -178,14 +135,13 @@ function resolveOne(
 		if (!grant) return null;
 		return {
 			registration,
-			featureId: grant.featureId,
+			granted: true,
 			parameters: grant.parameters,
 			content: null,
 		};
 	}
 
 	const context: ToolContentDependencyContext = {
-		featureId: grant?.featureId ?? "",
 		parameters: grant?.parameters,
 		catalogs: args.catalogs,
 		granted: Boolean(grant),
@@ -204,7 +160,7 @@ function resolveOne(
 
 	return {
 		registration,
-		featureId: context.featureId,
+		granted: context.granted,
 		parameters: context.parameters,
 		content,
 	};

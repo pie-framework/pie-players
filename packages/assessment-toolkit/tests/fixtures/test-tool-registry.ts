@@ -24,7 +24,6 @@ import type { ToolLevel } from "../../src/services/tool-context.js";
 export interface TestToolSpec {
 	toolId: string;
 	supportedLevels: ToolLevel[];
-	pnpSupportIds?: string[];
 	provider?: ToolRegistration["provider"];
 }
 
@@ -66,53 +65,43 @@ export const TEST_TOOL_SPECS: TestToolSpec[] = [
 	{
 		toolId: "calculator",
 		supportedLevels: ["item", "section", "element"],
-		pnpSupportIds: ["calculator"],
 	},
 	{
 		toolId: "textToSpeech",
 		supportedLevels: ["item", "passage"],
-		pnpSupportIds: ["textToSpeech"],
 	},
-	{ toolId: "graph", supportedLevels: ["section"], pnpSupportIds: ["graph"] },
+	{ toolId: "graph", supportedLevels: ["section"] },
 	{
 		toolId: "periodicTable",
 		supportedLevels: ["section"],
-		pnpSupportIds: ["periodicTable"],
 	},
 	{
 		toolId: "theme",
 		supportedLevels: ["assessment", "section"],
-		pnpSupportIds: ["theme"],
 	},
 	{
 		toolId: "lineReader",
 		supportedLevels: ["section", "passage", "item"],
-		pnpSupportIds: ["lineReader"],
 	},
 	{
 		toolId: "answerEliminator",
 		supportedLevels: ["item", "element"],
-		pnpSupportIds: ["answerEliminator"],
 	},
 	{
 		toolId: "annotationToolbar",
 		supportedLevels: ["passage", "rubric", "item", "element"],
-		pnpSupportIds: ["annotations", "highlighting"],
 	},
 	{
 		toolId: "highlighter",
 		supportedLevels: ["passage", "rubric", "item", "element"],
-		pnpSupportIds: ["highlighter"],
 	},
 	{
 		toolId: "ruler",
 		supportedLevels: ["element", "section"],
-		pnpSupportIds: ["ruler"],
 	},
 	{
 		toolId: "protractor",
 		supportedLevels: ["element", "section"],
-		pnpSupportIds: ["protractor"],
 	},
 ];
 
@@ -125,7 +114,6 @@ export function createTestToolRegistration(
 		description: `Test stub for ${spec.toolId}`,
 		icon: "stub",
 		supportedLevels: spec.supportedLevels,
-		pnpSupportIds: spec.pnpSupportIds,
 		provider: spec.provider,
 		isVisibleInContext: () => true,
 		renderToolbar: () => null,

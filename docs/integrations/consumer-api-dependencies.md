@@ -699,6 +699,9 @@ jsDelivr.
 Object properties: `runtime`, `section`, `hooks` (A), `toolRegistry` (R).
 
 Attributes both hosts pass: `section-id`, `attempt-id`, `show-toolbar`.
+Host A's `persist()` and `hydrate()` go through the default section
+persistence, which stores a section under its `attempt-id` and neither reads
+nor writes without one, so its resume depends on the attribute being non-empty.
 
 Host A additionally: `debug`, `narrow-layout-breakpoint`,
 `split-pane-initial-passage-width`, `nds-icons`. Host R passes none of those

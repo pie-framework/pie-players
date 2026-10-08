@@ -20,12 +20,24 @@ so orchestration/runtime dependencies can be shared without prop drilling.
 
 ## Design notes
 
-- Events are emitted with `bubbles: true` and `composed: true`.
+- Events are emitted with `bubbles: true` and `composed: true`, each on the
+  `Event` of its target's window, so a copy of this package evaluated before a
+  DOM emulator registered still dispatches on the emulator's elements. Without
+  a window the base is the `Event` global at construction.
+- `instanceof ContextRequestEvent` and `instanceof ContextProviderEvent` hold
+  for the events that copy of the package constructed. Providers match a request
+  by `event.context === key` and never by its class, so requests from any copy
+  match.
 - Provider matching uses strict key identity (`===`).
 - `ContextRequestEvent.subscribe` defaults to `false` (one-shot request).
 - Providers call `stopPropagation()` when they satisfy a matching request.
 - Providers re-dispatch existing subscriptions when a nested provider for the
   same context announces itself.
+- A provider that disconnects re-dispatches each subscription whose consumer is
+  in the document, which reaches the nearest provider left or the document root.
+  A subscription whose consumer is out of the document is held and re-dispatched
+  when the provider reconnects, so a subtree moved with its provider keeps its
+  subscriptions.
 - Subscriptions are opt-in (`subscribe: true`) and include unsubscribe callbacks.
 - `ContextRoot` only tracks subscribing requests to avoid unnecessary retention.
 - `ContextRoot` dedupes pending replay by `(requestor, callback)` pair.

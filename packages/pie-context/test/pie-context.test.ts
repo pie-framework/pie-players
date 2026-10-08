@@ -29,6 +29,37 @@ describe("pie-context", () => {
 		expect(request.subscribe).toBe(false);
 	});
 
+	test("an event is built on the Event of its target's window", () => {
+		// Stands for another window's `Event`, which its `dispatchEvent` requires.
+		class WindowEvent extends Event {}
+		const target = {
+			ownerDocument: { defaultView: { Event: WindowEvent } },
+		} as unknown as Element;
+		const context = createContext<string>(Symbol("window-realm"));
+
+		const request = new ContextRequestEvent(context, target, () => {}, true);
+		const announcement = new ContextProviderEvent(context, target);
+
+		expect(request).toBeInstanceOf(WindowEvent);
+		expect(request).toBeInstanceOf(ContextRequestEvent);
+		expect(request).not.toBeInstanceOf(ContextProviderEvent);
+		expect(request).toMatchObject({
+			type: "context-request",
+			bubbles: true,
+			composed: true,
+			context,
+			contextTarget: target,
+			subscribe: true,
+		});
+		expect(announcement).toBeInstanceOf(WindowEvent);
+		expect(announcement).toBeInstanceOf(ContextProviderEvent);
+		expect(announcement).toMatchObject({
+			type: "context-provider",
+			context,
+			contextTarget: target,
+		});
+	});
+
 	test("ContextProvider serves one-time requests", () => {
 		const host = new EventTarget() as unknown as Element;
 		const requester = new EventTarget() as unknown as Element;

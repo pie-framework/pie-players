@@ -156,8 +156,9 @@ A colour written into authored markup — an inline `color`, `background-color`
 or border colour, `<font color>`, `bgcolor` — outranks any stylesheet that
 applies a scheme, so it would survive the scheme: dark ink on a dark page, light
 text on a grey header row. PIE elements mark each such element in their model
-HTML (`markAuthoredColors` in `@pie-element/shared-utils`), and the content
-stylesheet overrides marked elements under `[data-color-scheme]`:
+HTML, and `sanitizeItemMarkup` marks item and passage markup, both through
+`markAuthoredColors` in `@pie-element/shared-utils`. The content stylesheet
+overrides marked elements under `[data-color-scheme]`:
 
 - Ink and border colours take the scheme's `--pie-text` and `--pie-border`.
 - A near-white fill, usually the page the text was pasted from, becomes

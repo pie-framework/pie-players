@@ -435,17 +435,23 @@ player.toolCoordinator = toolCoordinator;
 
 `<pie-assessment-toolkit>` needs no section. Bind none and it provides tools,
 policy and services to the item toolbars and item players inside it, which is
-how the toolkit accompanies a plain item player:
+how the toolkit accompanies a plain item player. `<pie-item-scope>` holds the
+item for its tools, as `<pie-item-shell>` does in a section player's card:
 
 ```html
 <pie-assessment-toolkit pnp-enforcement="on">
-  <pie-item-toolbar item-id="q1"></pie-item-toolbar>
-  <pie-item-player></pie-item-player>
+  <pie-item-scope item-id="q1">
+    <pie-item-toolbar></pie-item-toolbar>
+    <div data-region="content">
+      <pie-item-player></pie-item-player>
+    </div>
+  </pie-item-scope>
 </pie-assessment-toolkit>
 ```
 
 ```typescript
 import '@pie-players/pie-assessment-toolkit/components/pie-assessment-toolkit-element';
+import '@pie-players/pie-assessment-toolkit/components/item-scope-element';
 import '@pie-players/pie-assessment-toolkit/components/item-toolbar-element';
 import '@pie-players/pie-item-player';
 import {
@@ -458,20 +464,25 @@ const toolRegistry = createPackagedToolRegistry({
   toolModuleLoaders: DEFAULT_TOOL_MODULE_LOADERS,
 });
 
-toolkit.tools = { placement: { item: ['calculator'] } };
+toolkit.tools = { placement: { item: ['textToSpeech', 'calculator'] } };
 toolkit.toolRegistry = toolRegistry;
 toolkit.toolContextResolvers = toolContextResolvers;
 toolkit.assessment = { id: 'a1', personalNeedsProfile: { supports: ['calculator'] } };
 
-toolbar.item = item;
+scope.item = item;
 toolbar.toolRegistry = toolRegistry; // the toolbar does not read the toolkit's
-toolbar.scopeElement = player; // the content answerEliminator acts on
 ```
 
-A registry built without `toolModuleLoaders` renders toolbar buttons whose tool
-elements never load. `textToSpeech` reads the region an item shell publishes,
-which only the section player's cards provide, so it has no reading target in
-this composition.
+The toolbars and tools inside the scope take the item and its id from it, and
+act on the scope, or on the element its `scopeElement` property names;
+`textToSpeech` reads the scope's `[data-region="content"]` first. A toolbar's
+own `item`, `item-id` and `scopeElement` still override the scope. The scope
+registers the item with the toolkit once it finds one above it, so it may mount
+first, and the toolkit files the item's accessibility catalogs, which read-aloud
+speaks in place of the markup they name. Item player events pass through the
+scope unchanged, and the session stays the item player's. A registry built
+without `toolModuleLoaders` renders toolbar buttons whose tool elements never
+load.
 
 A profile change is a new `assessment` value; the toolbars re-derive on the
 policy change it emits. Readiness events are section events: `toolkit-ready`,

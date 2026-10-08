@@ -229,7 +229,8 @@ turning every catalog id into a global key.
    SSML.
 2. Visible markup includes elements whose `data-catalog-idref` matches catalog
    identifiers.
-3. When a passage or item shell mounts, it dispatches registration details.
+3. When a passage shell, item shell or item scope mounts and finds its
+   toolkit, it dispatches registration details.
 4. The toolkit calls `AccessibilityCatalogResolver.registerOwner(...)` once for
    the mounted entity.
 5. The resolver walks entity-root, `config.extractedCatalogs`, and model catalogs

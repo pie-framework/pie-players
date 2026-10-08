@@ -1738,6 +1738,10 @@ over a CDN with no typecheck at all.
   the item player. No checkout imports any of them. Host R declares its own
   types and math helpers under several of these names, none resolved from this
   repository
+- `<pie-item-scope>` and `createShellScope` on the toolkit, added on 2026-10-07,
+  and the item and passage shells publishing through `createShellScope`, which
+  republishes a changed scope to tools already subscribed. No host renders a
+  shell or imports the scope
 
 ## Consumer-side defects worth reporting upstream
 

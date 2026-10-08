@@ -18,11 +18,8 @@
 	import {
 		PIE_INTERNAL_ITEM_SESSION_CHANGED_EVENT,
 		PIE_ITEM_SESSION_CHANGED_EVENT,
-		assessmentToolkitRegionScopeContext,
-		assessmentToolkitShellContext,
+		createShellScope,
 		dispatchCrossBoundaryEvent,
-		type AssessmentToolkitRegionScopeContext,
-		type AssessmentToolkitShellContext,
 		type InternalItemSessionChangedDetail,
 		type ItemSessionChangedDetail,
 		type TTSHighlightTargetResolver,
@@ -32,11 +29,6 @@
 		createPieLogger,
 		normalizeItemSessionChange,
 	} from "@pie-players/pie-players-shared";
-	import { ContextProvider, ContextRoot } from "@pie-players/pie-context";
-	import {
-		createShellRegistrationDispatcher,
-		type ShellRegistrationIdentity,
-	} from "./shared/shell-registration.js";
 
 	const logger = createPieLogger("pie-item-shell", () => false);
 
@@ -66,15 +58,6 @@
 	} = $props();
 
 	let anchor = $state<HTMLDivElement | null>(null);
-	const shellContextVersion = Date.now();
-	let shellContextProvider: ContextProvider<
-		typeof assessmentToolkitShellContext
-	> | null = null;
-	let shellContextRoot: ContextRoot | null = null;
-	let regionScopeProvider: ContextProvider<
-		typeof assessmentToolkitRegionScopeContext
-	> | null = null;
-	let regionScopeRoot: ContextRoot | null = null;
 
 	function getHostElement(): HTMLElement | null {
 		if (!anchor) return null;
@@ -85,47 +68,10 @@
 		return anchor.parentElement as HTMLElement | null;
 	}
 	const host = $derived.by(() => getHostElement());
-	const effectiveScopeElement = $derived(scopeElement || host || null);
-	const regionScopeValue = $derived.by(
-		(): AssessmentToolkitRegionScopeContext | null => {
-			if (!effectiveScopeElement) return null;
-			return {
-				scopeElement: effectiveScopeElement,
-				ttsHighlightTargetResolver,
-			};
-		},
-	);
 
-	const shellContextValue = $derived.by(
-		(): AssessmentToolkitShellContext | null => {
-			if (!host) return null;
-			const canonical = canonicalItemId || itemId;
-			return {
-				kind: "item",
-				itemId,
-				canonicalItemId: canonical,
-				contentKind,
-				regionPolicy,
-				scopeElement: effectiveScopeElement,
-				item,
-				contextVersion: shellContextVersion,
-			};
-		},
-	);
-
-	const registration = createShellRegistrationDispatcher();
-
-	function currentRegistrationIdentity(): ShellRegistrationIdentity | null {
-		if (!host || !itemId) return null;
-		return {
-			kind: "item",
-			host,
-			itemId,
-			canonicalItemId: canonicalItemId || itemId,
-			contentKind,
-			item,
-		};
-	}
+	// The shell's identity, region and registration, published as every shell
+	// publishes them; the session channel below is the item shell's own.
+	const scope = createShellScope();
 
 	function normalizeAndDispatchSession(event: Event): void {
 		if (!host || !itemId) return;
@@ -251,70 +197,32 @@
 				host?.removeEventListener("session-changed", onSessionChanged);
 				host?.removeEventListener("load-complete", onLoadComplete);
 				host?.removeEventListener("player-error", onPlayerError);
-				registration.retire();
+				scope.retire();
+				scope.disconnect();
 			}
 		};
 	});
 
 	// Re-runs on every parent re-render, because Svelte re-applies
-	// custom-element properties whenever the parent template updates. The
-	// dispatcher is what decides whether that means anything — see
-	// `shell-registration.ts` for what an unconditional dispatch from here cost.
+	// custom-element properties whenever the parent template updates. The scope
+	// is what decides whether that means anything — see `shell-registration.ts`
+	// in the toolkit for what an unconditional registration cost.
 	$effect(() => {
-		registration.sync(currentRegistrationIdentity());
-	});
-
-	$effect(() => {
-		if (!host) return;
-		host.setAttribute("data-item-id", itemId);
-		host.setAttribute("data-canonical-item-id", canonicalItemId || itemId);
-		host.setAttribute("data-pie-shell-root", "item");
-		host.setAttribute("data-region-policy", regionPolicy);
-	});
-
-	$effect(() => {
-		if (!host || !shellContextValue) return;
-		shellContextProvider = new ContextProvider(host, {
-			context: assessmentToolkitShellContext,
-			initialValue: shellContextValue,
-		});
-		shellContextProvider.connect();
-		shellContextRoot = new ContextRoot(host);
-		shellContextRoot.attach();
-
-		return () => {
-			shellContextRoot?.detach();
-			shellContextRoot = null;
-			shellContextProvider?.disconnect();
-			shellContextProvider = null;
-		};
-	});
-
-	$effect(() => {
-		if (!shellContextValue) return;
-		shellContextProvider?.setValue(shellContextValue);
-	});
-
-	$effect(() => {
-		if (!host || !regionScopeValue) return;
-		regionScopeProvider = new ContextProvider(host, {
-			context: assessmentToolkitRegionScopeContext,
-			initialValue: regionScopeValue,
-		});
-		regionScopeProvider.connect();
-		regionScopeRoot = new ContextRoot(host);
-		regionScopeRoot.attach();
-		return () => {
-			regionScopeRoot?.detach();
-			regionScopeRoot = null;
-			regionScopeProvider?.disconnect();
-			regionScopeProvider = null;
-		};
-	});
-
-	$effect(() => {
-		if (!regionScopeValue) return;
-		regionScopeProvider?.setValue(regionScopeValue);
+		scope.publish(
+			host
+				? {
+						host,
+						kind: "item",
+						itemId,
+						canonicalItemId,
+						contentKind,
+						regionPolicy,
+						scopeElement,
+						ttsHighlightTargetResolver,
+						item,
+					}
+				: null,
+		);
 	});
 </script>
 

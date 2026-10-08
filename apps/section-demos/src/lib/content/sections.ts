@@ -809,9 +809,10 @@ export const sectionDemos: Record<string, SectionDemoInfo> = {
 		integrationLevel: 4,
 		integrationTheme: "Profile-driven tool selection",
 		focus:
-			"Composes `<pie-assessment-toolkit>` around an item toolbar and an item player, and changes the profile mid-session.",
+			"Composes `<pie-assessment-toolkit>` around an item scope holding an item toolbar and an item player, and changes the profile mid-session.",
 		whatMakesItTick: [
-			"No section player and no section controller: the toolkit owns its coordinator, and the toolbar and item player sit inside it.",
+			"No section player and no section controller: the toolkit owns its coordinator, and `<pie-item-scope>` gives the toolbar's tools the item and the region they act on.",
+			"Read-aloud speaks the equation's spoken card in its place: the scope registered the item, and the toolkit filed its catalogs.",
 			"The host's calculator resolver reads the profile through `decideFeaturePolicy`: `graphingCalculator` opens graphing with scientific one switch away, `calculator` opens scientific, and neither hides the button.",
 			"Changing the profile rebinds `assessment`; the resolver re-runs on the policy change, so the button and an open calculator follow without a reload.",
 		],

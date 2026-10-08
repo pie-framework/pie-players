@@ -50,6 +50,18 @@ Tools must tolerate delayed context arrival and context re-binding:
 - tool reconnects when provider becomes available
 - tool cleans up subscriptions on unmount
 
+## Shell Scope
+
+A shell publishes the content it holds: its identity as
+`assessmentToolkitShellContext`, the region its tools act on as
+`assessmentToolkitRegionScopeContext`, and a `pie-register` the toolkit files
+the content's accessibility catalogs under. `<pie-item-shell>` and
+`<pie-passage-shell>` publish it in section player cards, and
+`<pie-item-scope>` around a plain item player, all through `createShellScope`.
+A shell registers once `assessmentToolkitHostRuntimeContext` answers, the
+context the toolkit claims a registration by, so a shell may mount before its
+toolkit.
+
 ## Host / Overlay Root Contract
 
 Tools must not infer runtime scope from `parentElement` chains. Host/root

@@ -65,6 +65,11 @@ export {
 	type RuntimeRegistrationKind,
 } from "./runtime/registration-events.js";
 export {
+	createShellScope,
+	type ShellScope,
+	type ShellScopeState,
+} from "./runtime/shell-scope.js";
+export {
 	connectToolRegionScopeContext,
 	connectToolRuntimeContext,
 	connectToolShellContext,

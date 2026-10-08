@@ -29,6 +29,10 @@
 			"types": "./dist/tools/internal.d.ts",
 			"import": "./dist/tools/internal.js"
 		},
+		"./components/item-scope-element": {
+			"types": "./dist/components/item-scope-element.d.ts",
+			"import": "./dist/components/item-scope-element.js"
+		},
 		"./components/item-toolbar-element": {
 			"types": "./dist/components/item-toolbar-element.d.ts",
 			"import": "./dist/components/item-toolbar-element.js"

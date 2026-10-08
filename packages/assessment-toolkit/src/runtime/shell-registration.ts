@@ -1,14 +1,16 @@
 import {
+	type CatalogSourceEntity,
+	catalogSourceSignature,
+} from "../services/catalog-owner.js";
+import {
 	PIE_REGISTER_EVENT,
 	PIE_UNREGISTER_EVENT,
-	catalogSourceSignature,
-	dispatchCrossBoundaryEvent,
-	type CatalogSourceEntity,
 	type RuntimeRegistrationDetail,
-} from "@pie-players/pie-assessment-toolkit";
+} from "./registration-events.js";
+import { dispatchCrossBoundaryEvent } from "./tool-host-contract.js";
 
 /**
- * Registration dispatch for the item and passage shells.
+ * Registration dispatch for the shells, through their shell scope.
  *
  * Registration is a statement of fact to the runtime, and the runtime takes it
  * literally: a `pie-register` makes the toolkit unregister and re-register the

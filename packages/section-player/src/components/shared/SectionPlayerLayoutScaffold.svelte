@@ -16,7 +16,7 @@
 	} from "./section-player-card-context.js";
 	import type { SectionControllerHandle } from "@pie-players/pie-assessment-toolkit";
 	import { coerceBooleanLike } from "@pie-players/pie-players-shared";
-	import { onDestroy } from "svelte";
+	import { onDestroy, untrack } from "svelte";
 
 	let {
 		runtime = null as Record<string, unknown> | null,
@@ -103,10 +103,10 @@
 			currentItemId?: string;
 		};
 	} | null>(null);
-	let cardContextProvider = $state<{
+	let cardContextProvider: {
 		setValue: (value: SectionPlayerCardRenderContext) => void;
 		disconnect: () => void;
-	} | null>(null);
+	} | null = null;
 	const host = $derived.by(() => getHostElementFromAnchor(cardContextAnchor));
 	const normalizedShowToolbar = $derived(coerceBooleanLike(showToolbar, false));
 
@@ -171,12 +171,11 @@
 		return baseElement.waitForSectionController(timeoutMs);
 	}
 
+	// One provider for the host's lifetime, created with the first value and
+	// republished with `setValue` after that: a card keeps the provider that
+	// answered it, so a replaced one would leave it relying on the announce.
 	$effect(() => {
-		if (!host || !cardRenderContext) return;
-		cardContextProvider = createSectionPlayerCardRenderContextProvider(
-			host,
-			cardRenderContext,
-		);
+		if (!host) return;
 		return () => {
 			cardContextProvider?.disconnect();
 			cardContextProvider = null;
@@ -184,8 +183,19 @@
 	});
 
 	$effect(() => {
-		if (!cardRenderContext) return;
-		cardContextProvider?.setValue(cardRenderContext);
+		const currentHost = host;
+		const value = cardRenderContext;
+		if (!currentHost || !value) return;
+		untrack(() => {
+			if (cardContextProvider) {
+				cardContextProvider.setValue(value);
+				return;
+			}
+			cardContextProvider = createSectionPlayerCardRenderContextProvider(
+				currentHost,
+				value,
+			);
+		});
 	});
 </script>
 

@@ -323,6 +323,7 @@ const DEFAULT_ENV = {
 	let consumedSession: SectionControllerSessionState | null = null;
 	let sessionControllerResolved = false;
 	let reportedLateOwnedCoordinatorInputs = false;
+	let reportedLateOuterRuntime = false;
 	let lastCompositionRevisionKey = $state("");
 	let pendingCompositionModel: unknown = null;
 	// PIE-885: the emit latch and its frame/deadline handles live in the
@@ -1096,6 +1097,14 @@ const DEFAULT_ENV = {
 		);
 	}
 
+	function reportLateOuterRuntime(outerRuntimeId: string): void {
+		if (reportedLateOuterRuntime) return;
+		reportedLateOuterRuntime = true;
+		console.warn(
+			`[pie-assessment-toolkit] The toolkit above this one (runtime "${outerRuntimeId}") had no coordinator when this one connected, so this one built its own and keeps it: the two share no tool state, policy or read-aloud. Give the outer toolkit its coordinator before the inner one connects, or set isolation="force" on the inner one to keep them apart on purpose. Reported once per toolkit.`,
+		);
+	}
+
 	function releaseOwnedCoordinator(): Promise<void> {
 		const current = ownedCoordinator;
 		if (!current) return Promise.resolve();
@@ -1485,9 +1494,9 @@ const DEFAULT_ENV = {
 
 	// Follows the outer runtime this toolkit inherits. The owned-coordinator
 	// bootstrap decides ownership first; once it has built an owned coordinator,
-	// an outer runtime answering later is ignored, so the coordinator is never
-	// swapped under a running section. An inherited runtime republishing its
-	// context is followed.
+	// an outer runtime answering later is reported and ignored, so the
+	// coordinator is never swapped under a running section. An inherited runtime
+	// republishing its context is followed.
 	$effect(() => {
 		const currentHost = host;
 		const currentIsolation = isolation;
@@ -1500,7 +1509,11 @@ const DEFAULT_ENV = {
 				};
 			}
 			const stop = connectAssessmentToolkitHostRuntimeContext(currentHost, (value) => {
-				if (value.runtimeId === runtimeId || ownsByDecision) return;
+				if (value.runtimeId === runtimeId) return;
+				if (ownsByDecision) {
+					reportLateOuterRuntime(value.runtimeId);
+					return;
+				}
 				inheritedRuntime = value;
 			});
 			return () => {

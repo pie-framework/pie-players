@@ -507,6 +507,12 @@ coordinator reports feature policy asked with no assessment bound only while
 `pnp-enforcement` is `on`: a toolkit given no `assessment` and no enforcement
 has asked for no accommodation.
 
+A toolkit nested in another inherits the outer one's coordinator when the outer
+one has a coordinator by the time the inner one connects, which holds for both
+mounted together. Otherwise the inner one builds its own and keeps it, and
+reports an outer coordinator arriving later once in the console. `isolation`
+`"force"` keeps a nested toolkit on its own coordinator by design.
+
 Text-to-speech starts once the section composes, and `engine-ready` waits for
 it. With `lazy-init` it starts at the first read-aloud instead, unless policy
 grants it. A tool provider or text-to-speech that fails to start is a

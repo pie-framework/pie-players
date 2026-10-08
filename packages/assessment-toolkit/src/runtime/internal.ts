@@ -130,3 +130,27 @@ export {
 	type ShellEventBridgeMode,
 	type ShellEventBridgeOptions,
 } from "./shell-event-bridge.js";
+// Reading scope for tools that read or annotate a shell's content: its content
+// region, the language of the content at a point in it, and the flat-tree
+// helpers that reach content rendered into open shadow roots.
+export {
+	CONTENT_REGION_SELECTOR,
+	findShellScopeHost,
+	resolveContentRegion,
+	SHELL_SCOPE_HOST_SELECTOR,
+} from "./content-region.js";
+export {
+	type ContentLanguageOptions,
+	DEFAULT_CONTENT_LANGUAGE,
+	findContentLanguage,
+	findLangAttribute,
+	resolveContentLanguage,
+} from "./content-language.js";
+export {
+	composedClosest,
+	composedContains,
+	composedParentElement,
+	flatTextContent,
+	isShadowRootNode,
+	retargetToTree,
+} from "../services/tts/flat-tree.js";

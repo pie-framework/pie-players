@@ -38,9 +38,15 @@ const browserLanguage = (): string => {
 	return normalizeLanguageCode(navigatorLanguage || "en-US");
 };
 
+/**
+ * The voice to read with: the configured one, else one for `contentLanguage`
+ * (the language of the content being read), else one for the browser's own
+ * language.
+ */
 const findBrowserVoice = (
 	voices: SpeechSynthesisVoice[],
 	preferredVoice?: string,
+	contentLanguage?: string,
 ): SpeechSynthesisVoice | null => {
 	if (preferredVoice) {
 		return (
@@ -49,7 +55,7 @@ const findBrowserVoice = (
 			null
 		);
 	}
-	const language = browserLanguage();
+	const language = normalizeLanguageCode(contentLanguage) || browserLanguage();
 	const languagePrefix = language.split("-")[0] || "en";
 	const matchesLanguage = (voice: SpeechSynthesisVoice) => {
 		const voiceLanguage = normalizeLanguageCode(voice.lang);
@@ -242,7 +248,11 @@ class BrowserTTSProviderImpl implements ITTSProviderImplementation {
 			return { shouldContinue: false, voice: null };
 		}
 
-		const voice = findBrowserVoice(voices, configuredVoice || undefined);
+		const voice = findBrowserVoice(
+			voices,
+			configuredVoice || undefined,
+			this.getContentLocale(),
+		);
 		if (configuredVoice && !voice) {
 			throw new Error(
 				`Configured browser voice "${configuredVoice}" is unavailable. Select a voice exposed by this browser using its voiceURI or name.`,
@@ -354,6 +364,18 @@ class BrowserTTSProviderImpl implements ITTSProviderImplementation {
 		return chunks.length ? chunks : [{ text, offset: 0 }];
 	}
 
+	/**
+	 * The language of the content being read, which the toolkit sets per speak as
+	 * `providerOptions.contentLanguage` when the content or the host names one.
+	 */
+	private getContentLocale(): string | undefined {
+		const language = (this.config?.providerOptions as Record<string, unknown>)
+			?.contentLanguage;
+		return typeof language === "string" && language.trim()
+			? language.trim()
+			: undefined;
+	}
+
 	private getHighlightMode(): "word" | "sentence" {
 		const providerOptions = (this.config?.providerOptions || {}) as Record<
 			string,
@@ -425,7 +447,10 @@ class BrowserTTSProviderImpl implements ITTSProviderImplementation {
 			const utterance = new SpeechSynthesisUtterance(chunkText);
 			this.utterance = utterance;
 
-			// Apply config
+			// Apply config. The language tells the engine how to read the text, and
+			// lets it choose a voice when the default one is left in place.
+			const contentLocale = this.getContentLocale();
+			if (contentLocale) utterance.lang = contentLocale;
 			if (voice && shouldAssignBrowserVoice(voice)) utterance.voice = voice;
 
 			if (this.config?.rate) utterance.rate = this.config.rate;

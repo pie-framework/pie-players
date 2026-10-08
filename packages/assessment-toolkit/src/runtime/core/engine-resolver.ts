@@ -84,13 +84,22 @@ export type RuntimeConfig = {
 	 * UI in. Purely presentational — no engine effect.
 	 *
 	 * Distinct from content language, which describes the authored item and
-	 * travels on `env`. QTI 3's implementation guide states the independence
-	 * directly: a candidate may choose an interface language which may or may not
-	 * also be the language of the content.
+	 * travels on {@link contentLanguage}. QTI 3's implementation guide states the
+	 * independence directly: a candidate may choose an interface language which
+	 * may or may not also be the language of the content.
 	 *
 	 * Unset renders `en-US`. POSIX (`nl_NL`) and bare (`nl`) forms both resolve.
 	 */
 	locale?: string;
+	/**
+	 * Content language: a BCP-47 tag naming the language the authored content is
+	 * written in, which read-aloud speaks it in and catalog lookups select
+	 * alternates by. A `lang` in the content's markup wins over it. Purely
+	 * presentational — no engine effect.
+	 *
+	 * Unset reads as `en-US` wherever the markup names no language.
+	 */
+	contentLanguage?: string;
 	toolConfigStrictness?: ToolConfigStrictness;
 
 	// Canonical framework-error callback.

@@ -8,7 +8,13 @@ import {
 	type MathHighlightCapability,
 	type RenderedMathTargetResolver,
 } from "./rendered-math-target-resolver.js";
+import {
+	composedContains,
+	composedParentElement,
+	rangeIntersectsComposedNode,
+} from "../flat-tree.js";
 import { isNodeHiddenForTTS } from "../text-processing.js";
+import { createRangesFromVisibleMap } from "./visible-map-range.js";
 import type {
 	HighlightDecision,
 	RenderableHighlightTarget,
@@ -40,6 +46,15 @@ interface PlannedChunk {
 	heldTokenByElement: Map<Element, RenderableHighlightTarget>;
 }
 
+const regionRangesFor = (chunk: TTSHighlightChunk): Range[] | undefined => {
+	const ranges = createRangesFromVisibleMap(
+		chunk.visibleMap,
+		0,
+		chunk.visibleText.length,
+	);
+	return ranges.length > 1 ? ranges : undefined;
+};
+
 const regionTargetFor = (
 	chunk: TTSHighlightChunk,
 ): RenderableHighlightTarget | null =>
@@ -48,6 +63,7 @@ const regionTargetFor = (
 				type: "range",
 				quality: "region",
 				range: chunk.regionRange,
+				ranges: regionRangesFor(chunk),
 			}
 		: chunk.regionElement
 			? {
@@ -74,11 +90,15 @@ const mathCandidatesForTarget = (
 	if (!target) return chunk.mathAlignments;
 	return chunk.mathAlignments.filter(({ element }) => {
 		try {
-			if (target.type === "range") return target.range.intersectsNode(element);
-			if (target.type === "element") {
-				return target.element === element || target.element.contains(element);
+			if (target.type === "range") {
+				return (target.ranges ?? [target.range]).some((range) =>
+					rangeIntersectsComposedNode(range, element),
+				);
 			}
-			return target.node.parentElement?.contains(element) || false;
+			if (target.type === "element") {
+				return composedContains(target.element, element);
+			}
+			return composedContains(composedParentElement(target.node), element);
 		} catch {
 			return false;
 		}

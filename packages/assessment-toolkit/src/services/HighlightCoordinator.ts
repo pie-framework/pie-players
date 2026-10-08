@@ -23,6 +23,11 @@
 
 import type { HighlightCoordinatorApi } from "./interfaces.js";
 import { RangeSerializer, type SerializedRange } from "./RangeSerializer.js";
+import {
+	composedContains,
+	composedParentElement,
+	isShadowRootNode,
+} from "./tts/flat-tree.js";
 
 /**
  * Highlight types
@@ -55,6 +60,285 @@ export interface Annotation {
 	color: HighlightColor;
 	timestamp: number;
 }
+
+/**
+ * The highlight stylesheet: the document's copy in `<style id="pie-highlight-styles">`,
+ * and each shadow root's that holds a highlighted range. `::highlight()` rules
+ * paint text in the tree whose styles hold them, so text in a shadow root needs
+ * its own copy; Firefox paints none of it from the document's.
+ */
+const HIGHLIGHT_STYLES = `
+      /* TTS highlights - temporary */
+      ::highlight(tts-word) {
+        background-color: var(--pie-tts-word-highlight, color-mix(in srgb, var(--pie-missing, #ffeb3b) 68%, transparent));
+        text-decoration: underline 2px solid var(--pie-tts-word-underline, color-mix(in srgb, var(--pie-text, #111827) 70%, transparent));
+        text-underline-offset: 2px;
+        text-shadow: 0 0 1px var(--pie-tts-word-shadow, color-mix(in srgb, var(--pie-text, #111827) 35%, transparent));
+        color: inherit;
+      }
+
+      /* tts-sentence registry id: coarse read-along band (visual line boxes in layout) */
+      ::highlight(tts-sentence) {
+        background-color: var(--pie-tts-line-highlight, var(--pie-tts-sentence-highlight, color-mix(in srgb, var(--pie-missing, #ffeb3b) 38%, transparent)));
+        color: inherit;
+      }
+
+      [data-pie-tts-sentence-element="true"] {
+        background-color: var(--pie-tts-line-highlight, var(--pie-tts-sentence-highlight, color-mix(in srgb, var(--pie-missing, #ffeb3b) 38%, transparent)));
+        border-radius: 0.12em;
+        box-decoration-break: clone;
+        -webkit-box-decoration-break: clone;
+      }
+
+      [data-pie-tts-word-element="true"] {
+        background-color: var(--pie-tts-word-highlight, color-mix(in srgb, var(--pie-missing, #ffeb3b) 68%, transparent));
+        text-decoration: underline 2px solid var(--pie-tts-word-underline, color-mix(in srgb, var(--pie-text, #111827) 70%, transparent));
+        text-underline-offset: 2px;
+        text-shadow: 0 0 1px var(--pie-tts-word-shadow, color-mix(in srgb, var(--pie-text, #111827) 35%, transparent));
+        border-bottom: 2px solid var(--pie-tts-word-underline, color-mix(in srgb, var(--pie-text, #111827) 70%, transparent));
+        padding-bottom: 1px;
+        border-radius: 0.12em;
+        box-decoration-break: clone;
+        -webkit-box-decoration-break: clone;
+      }
+
+      /* Annotation highlights - persistent */
+      ::highlight(annotation-yellow) {
+        background-color: var(--pie-annotation-yellow-highlight, rgba(253, 233, 149, 0.5));
+        color: inherit;
+      }
+
+      ::highlight(annotation-green) {
+        background-color: var(--pie-annotation-green-highlight, rgba(166, 225, 197, 0.5));
+        color: inherit;
+      }
+
+      ::highlight(annotation-blue) {
+        background-color: var(--pie-annotation-blue-highlight, rgba(167, 224, 246, 0.5));
+        color: inherit;
+      }
+
+      ::highlight(annotation-pink) {
+        background-color: var(--pie-annotation-pink-highlight, rgba(255, 159, 174, 0.5));
+        color: inherit;
+      }
+
+      ::highlight(annotation-orange) {
+        background-color: var(--pie-annotation-orange-highlight, rgba(255, 165, 0, 0.5));
+        color: inherit;
+      }
+
+      /* The base light/dark pair is fixed: #4221d5 on light, #9c89ec on dark.
+         One value cannot serve both -- #4221d5 is 2.41:1 on black and #9c89ec is
+         2.85:1 on white -- so neither of those two consults the theme accent,
+         which is chosen against one background and illegible on the other.
+
+         Each state has its own token so overriding one never silently moves the
+         other, and so either can beat a host-set pie-primary: a var() fallback
+         can never override a value the host actually set. */
+      ::highlight(annotation-underline) {
+        background-color: transparent;
+        text-decoration: underline 2px solid var(--pie-annotation-underline, #4221d5);
+        text-underline-offset: 2px;
+        color: inherit;
+      }
+
+      /* The blocks below cover annotation swatches, print, and reduced motion.
+         They deliberately do NOT retune the TTS layers: applyAdaptiveTTSStyle()
+         writes the pie-tts custom properties inline on documentElement on every
+         paint and on theme change, so a media query that only varies a var()
+         fallback for those can never take effect. Annotation colours have no such
+         adaptive path -- they are fixed swatches a student chose -- so a media
+         query is the only way to adjust them, and each keeps its var() so a host
+         override still wins.
+
+         The names above are spelled without their leading dashes on purpose.
+         check-theme-tokens scans comments, and its token pattern stops at the
+         first non-alphanumeric character, so writing the wildcard form reads as
+         consumption of a shorter token that is not in the registry and fails the
+         check. Spell property names in full, or omit the dashes. */
+
+      @media (prefers-color-scheme: dark) {
+        ::highlight(annotation-yellow) {
+          background-color: var(--pie-annotation-yellow-highlight, rgba(139, 117, 0, 0.6));
+        }
+        ::highlight(annotation-green) {
+          background-color: var(--pie-annotation-green-highlight, rgba(45, 92, 63, 0.6));
+        }
+        ::highlight(annotation-blue) {
+          background-color: var(--pie-annotation-blue-highlight, rgba(0, 102, 170, 0.6));
+        }
+        ::highlight(annotation-pink) {
+          background-color: var(--pie-annotation-pink-highlight, rgba(139, 51, 74, 0.6));
+        }
+        ::highlight(annotation-orange) {
+          background-color: var(--pie-annotation-orange-highlight, rgba(154, 99, 0, 0.6));
+        }
+        ::highlight(annotation-underline) {
+          text-decoration-color: var(--pie-annotation-underline-dark, #9c89ec);
+        }
+      }
+
+      /* The media query above reports the OS preference, which is only a guess
+         at what the page is actually showing. An app that declares a theme has
+         the final say, so the rules below override it. pie-theme always stamps
+         data-theme on documentElement (scope="document") or on its own host, and
+         resolves to a dark palette only for the literal value "dark" -- every
+         other value, including DaisyUI theme ids, maps to a light base.
+
+         The three cases are mutually exclusive, so they never fight each other.
+         All carry attribute selectors, which outrank the bare ::highlight() rules
+         above -- including the one inside the media query, since a media query
+         adds no specificity -- whatever the source order. */
+      [data-theme="light"] ::highlight(annotation-underline) {
+        text-decoration-color: var(--pie-annotation-underline, #4221d5);
+      }
+
+      [data-theme="dark"] ::highlight(annotation-underline) {
+        text-decoration-color: var(--pie-annotation-underline-dark, #9c89ec);
+      }
+
+      /* A host or DaisyUI palette: follow its accent so the mark belongs to that
+         theme, falling back to the light default when it declares none. */
+      [data-theme]:not([data-theme="light"]):not([data-theme="dark"]) ::highlight(annotation-underline) {
+        text-decoration-color: var(--pie-annotation-underline, var(--pie-primary, #4221d5));
+      }
+
+      /* WCAG 2.2 SC 1.4.11 non-text contrast: a highlight is the only indication
+         that text is annotated, so the swatches saturate and the underline
+         thickens when the user asks for more contrast.
+
+         The value is "more", not "high". The stylesheet this was recovered from
+         used prefers-contrast: high, which is not a valid value for the feature
+         -- the keywords are no-preference, more, less, custom. An invalid query
+         evaluates to "not all", so that block could never have matched in any
+         browser even had the file been loaded. Verified with matchMedia under
+         emulation: "high" stays false where "more" flips true. */
+      @media (prefers-contrast: more) {
+        ::highlight(annotation-yellow) {
+          background-color: var(--pie-annotation-yellow-highlight, rgba(255, 255, 0, 0.7));
+        }
+        ::highlight(annotation-green) {
+          background-color: var(--pie-annotation-green-highlight, rgba(0, 255, 127, 0.7));
+        }
+        ::highlight(annotation-blue) {
+          background-color: var(--pie-annotation-blue-highlight, rgba(0, 191, 255, 0.7));
+        }
+        ::highlight(annotation-pink) {
+          background-color: var(--pie-annotation-pink-highlight, rgba(255, 105, 180, 0.7));
+        }
+        ::highlight(annotation-orange) {
+          background-color: var(--pie-annotation-orange-highlight, rgba(255, 165, 0, 0.85));
+        }
+        ::highlight(annotation-underline) {
+          text-decoration-thickness: 3px;
+        }
+      }
+
+      @media print {
+        /* TTS highlighting is a transient read-along cue, not content. */
+        ::highlight(tts-word),
+        ::highlight(tts-sentence),
+        [data-pie-tts-word-element="true"],
+        [data-pie-tts-sentence-element="true"] {
+          background-color: transparent;
+          text-decoration: none;
+          text-shadow: none;
+          border-bottom: none;
+        }
+
+        /* Annotations are student work and must survive printing, but a fill
+           that reads fine on screen can print as an illegible wash, so each
+           becomes an underline that keeps its colour coding. */
+        ::highlight(annotation-yellow),
+        ::highlight(annotation-green),
+        ::highlight(annotation-blue),
+        ::highlight(annotation-pink),
+        ::highlight(annotation-orange) {
+          background-color: transparent;
+          border-bottom: 2px solid currentColor;
+        }
+        ::highlight(annotation-yellow) { border-bottom-color: #ffeb3b; }
+        ::highlight(annotation-green) { border-bottom-color: #a6e1c5; }
+        ::highlight(annotation-blue) { border-bottom-color: #a7e0f6; }
+        ::highlight(annotation-pink) { border-bottom-color: #ff9fae; }
+        ::highlight(annotation-orange) { border-bottom-color: #ffa500; }
+        ::highlight(annotation-underline) {
+          text-decoration-color: #000;
+          border-bottom: none;
+        }
+      }
+
+      /* text-shadow is a direct property rather than a var(), so unlike the
+         other TTS rules this one is not overridden by the adaptive path. */
+      @media (prefers-reduced-motion: reduce) {
+        ::highlight(tts-word),
+        [data-pie-tts-word-element="true"] {
+          text-shadow: none;
+        }
+      }
+    `;
+
+/**
+ * Page-wide, so every copy of the toolkit on a page shares one constructed sheet
+ * and adopts it into a shadow root once. The first copy to build it supplies its
+ * rules, as the first to append the document's `<style>` does.
+ */
+const SHARED_SHEET_SLOT = Symbol.for(
+	"@pie-players/pie-assessment-toolkit/highlight-stylesheet",
+);
+const ADOPTED_SHEET_MARKER = Symbol.for(
+	"@pie-players/pie-assessment-toolkit/highlight-stylesheet-adopted",
+);
+
+type SheetLike = { replaceSync: (text: string) => void };
+type AdoptingRoot = { adoptedStyleSheets: unknown[] } & Record<symbol, unknown>;
+
+const isSheetLike = (value: unknown): value is SheetLike =>
+	!!value && typeof (value as SheetLike).replaceSync === "function";
+
+const sharedHighlightSheet = (): SheetLike | null => {
+	const slot = globalThis as unknown as Record<symbol, unknown>;
+	const existing = slot[SHARED_SHEET_SLOT];
+	if (isSheetLike(existing)) return existing;
+	const Sheet = (globalThis as { CSSStyleSheet?: new () => SheetLike })
+		.CSSStyleSheet;
+	if (typeof Sheet !== "function") return null;
+	try {
+		const sheet = new Sheet();
+		if (!isSheetLike(sheet)) return null;
+		sheet.replaceSync(HIGHLIGHT_STYLES);
+		slot[SHARED_SHEET_SLOT] = sheet;
+		return sheet;
+	} catch {
+		return null;
+	}
+};
+
+/**
+ * Adopts the highlight stylesheet into the shadow root holding `node`, once per
+ * root. Appended, so the root's own sheets stay in place; re-adopted if the
+ * root's owner replaced its sheets since.
+ */
+const adoptHighlightStylesFor = (node: Node | null | undefined): void => {
+	const found = node?.getRootNode?.();
+	if (!isShadowRootNode(found)) return;
+	const root = found as unknown as Partial<AdoptingRoot>;
+	const sheets = root.adoptedStyleSheets;
+	if (!sheets || typeof sheets !== "object") return;
+	const current = Array.from(sheets);
+	const adopted = root[ADOPTED_SHEET_MARKER];
+	if (adopted && current.includes(adopted)) return;
+	const sheet = sharedHighlightSheet();
+	if (!sheet) return;
+	try {
+		root.adoptedStyleSheets = [...current, sheet];
+		root[ADOPTED_SHEET_MARKER] = sheet;
+	} catch {
+		// A root that refuses the sheet paints from the document's rules where the
+		// browser allows it.
+	}
+};
 
 export class HighlightCoordinator implements HighlightCoordinatorApi {
 	private ttsWordHighlight: Highlight | null = null;
@@ -359,217 +643,7 @@ export class HighlightCoordinator implements HighlightCoordinatorApi {
 
 		const style = document.createElement("style");
 		style.id = "pie-highlight-styles";
-		style.textContent = `
-      /* TTS highlights - temporary */
-      ::highlight(tts-word) {
-        background-color: var(--pie-tts-word-highlight, color-mix(in srgb, var(--pie-missing, #ffeb3b) 68%, transparent));
-        text-decoration: underline 2px solid var(--pie-tts-word-underline, color-mix(in srgb, var(--pie-text, #111827) 70%, transparent));
-        text-underline-offset: 2px;
-        text-shadow: 0 0 1px var(--pie-tts-word-shadow, color-mix(in srgb, var(--pie-text, #111827) 35%, transparent));
-        color: inherit;
-      }
-
-      /* tts-sentence registry id: coarse read-along band (visual line boxes in layout) */
-      ::highlight(tts-sentence) {
-        background-color: var(--pie-tts-line-highlight, var(--pie-tts-sentence-highlight, color-mix(in srgb, var(--pie-missing, #ffeb3b) 38%, transparent)));
-        color: inherit;
-      }
-
-      [data-pie-tts-sentence-element="true"] {
-        background-color: var(--pie-tts-line-highlight, var(--pie-tts-sentence-highlight, color-mix(in srgb, var(--pie-missing, #ffeb3b) 38%, transparent)));
-        border-radius: 0.12em;
-        box-decoration-break: clone;
-        -webkit-box-decoration-break: clone;
-      }
-
-      [data-pie-tts-word-element="true"] {
-        background-color: var(--pie-tts-word-highlight, color-mix(in srgb, var(--pie-missing, #ffeb3b) 68%, transparent));
-        text-decoration: underline 2px solid var(--pie-tts-word-underline, color-mix(in srgb, var(--pie-text, #111827) 70%, transparent));
-        text-underline-offset: 2px;
-        text-shadow: 0 0 1px var(--pie-tts-word-shadow, color-mix(in srgb, var(--pie-text, #111827) 35%, transparent));
-        border-bottom: 2px solid var(--pie-tts-word-underline, color-mix(in srgb, var(--pie-text, #111827) 70%, transparent));
-        padding-bottom: 1px;
-        border-radius: 0.12em;
-        box-decoration-break: clone;
-        -webkit-box-decoration-break: clone;
-      }
-
-      /* Annotation highlights - persistent */
-      ::highlight(annotation-yellow) {
-        background-color: var(--pie-annotation-yellow-highlight, rgba(253, 233, 149, 0.5));
-        color: inherit;
-      }
-
-      ::highlight(annotation-green) {
-        background-color: var(--pie-annotation-green-highlight, rgba(166, 225, 197, 0.5));
-        color: inherit;
-      }
-
-      ::highlight(annotation-blue) {
-        background-color: var(--pie-annotation-blue-highlight, rgba(167, 224, 246, 0.5));
-        color: inherit;
-      }
-
-      ::highlight(annotation-pink) {
-        background-color: var(--pie-annotation-pink-highlight, rgba(255, 159, 174, 0.5));
-        color: inherit;
-      }
-
-      ::highlight(annotation-orange) {
-        background-color: var(--pie-annotation-orange-highlight, rgba(255, 165, 0, 0.5));
-        color: inherit;
-      }
-
-      /* The base light/dark pair is fixed: #4221d5 on light, #9c89ec on dark.
-         One value cannot serve both -- #4221d5 is 2.41:1 on black and #9c89ec is
-         2.85:1 on white -- so neither of those two consults the theme accent,
-         which is chosen against one background and illegible on the other.
-
-         Each state has its own token so overriding one never silently moves the
-         other, and so either can beat a host-set pie-primary: a var() fallback
-         can never override a value the host actually set. */
-      ::highlight(annotation-underline) {
-        background-color: transparent;
-        text-decoration: underline 2px solid var(--pie-annotation-underline, #4221d5);
-        text-underline-offset: 2px;
-        color: inherit;
-      }
-
-      /* The blocks below cover annotation swatches, print, and reduced motion.
-         They deliberately do NOT retune the TTS layers: applyAdaptiveTTSStyle()
-         writes the pie-tts custom properties inline on documentElement on every
-         paint and on theme change, so a media query that only varies a var()
-         fallback for those can never take effect. Annotation colours have no such
-         adaptive path -- they are fixed swatches a student chose -- so a media
-         query is the only way to adjust them, and each keeps its var() so a host
-         override still wins.
-
-         The names above are spelled without their leading dashes on purpose.
-         check-theme-tokens scans comments, and its token pattern stops at the
-         first non-alphanumeric character, so writing the wildcard form reads as
-         consumption of a shorter token that is not in the registry and fails the
-         check. Spell property names in full, or omit the dashes. */
-
-      @media (prefers-color-scheme: dark) {
-        ::highlight(annotation-yellow) {
-          background-color: var(--pie-annotation-yellow-highlight, rgba(139, 117, 0, 0.6));
-        }
-        ::highlight(annotation-green) {
-          background-color: var(--pie-annotation-green-highlight, rgba(45, 92, 63, 0.6));
-        }
-        ::highlight(annotation-blue) {
-          background-color: var(--pie-annotation-blue-highlight, rgba(0, 102, 170, 0.6));
-        }
-        ::highlight(annotation-pink) {
-          background-color: var(--pie-annotation-pink-highlight, rgba(139, 51, 74, 0.6));
-        }
-        ::highlight(annotation-orange) {
-          background-color: var(--pie-annotation-orange-highlight, rgba(154, 99, 0, 0.6));
-        }
-        ::highlight(annotation-underline) {
-          text-decoration-color: var(--pie-annotation-underline-dark, #9c89ec);
-        }
-      }
-
-      /* The media query above reports the OS preference, which is only a guess
-         at what the page is actually showing. An app that declares a theme has
-         the final say, so the rules below override it. pie-theme always stamps
-         data-theme on documentElement (scope="document") or on its own host, and
-         resolves to a dark palette only for the literal value "dark" -- every
-         other value, including DaisyUI theme ids, maps to a light base.
-
-         The three cases are mutually exclusive, so they never fight each other.
-         All carry attribute selectors, which outrank the bare ::highlight() rules
-         above -- including the one inside the media query, since a media query
-         adds no specificity -- whatever the source order. */
-      [data-theme="light"] ::highlight(annotation-underline) {
-        text-decoration-color: var(--pie-annotation-underline, #4221d5);
-      }
-
-      [data-theme="dark"] ::highlight(annotation-underline) {
-        text-decoration-color: var(--pie-annotation-underline-dark, #9c89ec);
-      }
-
-      /* A host or DaisyUI palette: follow its accent so the mark belongs to that
-         theme, falling back to the light default when it declares none. */
-      [data-theme]:not([data-theme="light"]):not([data-theme="dark"]) ::highlight(annotation-underline) {
-        text-decoration-color: var(--pie-annotation-underline, var(--pie-primary, #4221d5));
-      }
-
-      /* WCAG 2.2 SC 1.4.11 non-text contrast: a highlight is the only indication
-         that text is annotated, so the swatches saturate and the underline
-         thickens when the user asks for more contrast.
-
-         The value is "more", not "high". The stylesheet this was recovered from
-         used prefers-contrast: high, which is not a valid value for the feature
-         -- the keywords are no-preference, more, less, custom. An invalid query
-         evaluates to "not all", so that block could never have matched in any
-         browser even had the file been loaded. Verified with matchMedia under
-         emulation: "high" stays false where "more" flips true. */
-      @media (prefers-contrast: more) {
-        ::highlight(annotation-yellow) {
-          background-color: var(--pie-annotation-yellow-highlight, rgba(255, 255, 0, 0.7));
-        }
-        ::highlight(annotation-green) {
-          background-color: var(--pie-annotation-green-highlight, rgba(0, 255, 127, 0.7));
-        }
-        ::highlight(annotation-blue) {
-          background-color: var(--pie-annotation-blue-highlight, rgba(0, 191, 255, 0.7));
-        }
-        ::highlight(annotation-pink) {
-          background-color: var(--pie-annotation-pink-highlight, rgba(255, 105, 180, 0.7));
-        }
-        ::highlight(annotation-orange) {
-          background-color: var(--pie-annotation-orange-highlight, rgba(255, 165, 0, 0.85));
-        }
-        ::highlight(annotation-underline) {
-          text-decoration-thickness: 3px;
-        }
-      }
-
-      @media print {
-        /* TTS highlighting is a transient read-along cue, not content. */
-        ::highlight(tts-word),
-        ::highlight(tts-sentence),
-        [data-pie-tts-word-element="true"],
-        [data-pie-tts-sentence-element="true"] {
-          background-color: transparent;
-          text-decoration: none;
-          text-shadow: none;
-          border-bottom: none;
-        }
-
-        /* Annotations are student work and must survive printing, but a fill
-           that reads fine on screen can print as an illegible wash, so each
-           becomes an underline that keeps its colour coding. */
-        ::highlight(annotation-yellow),
-        ::highlight(annotation-green),
-        ::highlight(annotation-blue),
-        ::highlight(annotation-pink),
-        ::highlight(annotation-orange) {
-          background-color: transparent;
-          border-bottom: 2px solid currentColor;
-        }
-        ::highlight(annotation-yellow) { border-bottom-color: #ffeb3b; }
-        ::highlight(annotation-green) { border-bottom-color: #a6e1c5; }
-        ::highlight(annotation-blue) { border-bottom-color: #a7e0f6; }
-        ::highlight(annotation-pink) { border-bottom-color: #ff9fae; }
-        ::highlight(annotation-orange) { border-bottom-color: #ffa500; }
-        ::highlight(annotation-underline) {
-          text-decoration-color: #000;
-          border-bottom: none;
-        }
-      }
-
-      /* text-shadow is a direct property rather than a var(), so unlike the
-         other TTS rules this one is not overridden by the adaptive path. */
-      @media (prefers-reduced-motion: reduce) {
-        ::highlight(tts-word),
-        [data-pie-tts-word-element="true"] {
-          text-shadow: none;
-        }
-      }
-    `;
+		style.textContent = HIGHLIGHT_STYLES;
 		document.head.appendChild(style);
 	}
 
@@ -586,7 +660,8 @@ export class HighlightCoordinator implements HighlightCoordinatorApi {
 		endOffset: number,
 	): void {
 		if (!this.ttsWordHighlight) return;
-		this.applyAdaptiveTTSStyle(textNode.parentElement);
+		this.applyAdaptiveTTSStyle(composedParentElement(textNode));
+		adoptHighlightStylesFor(textNode);
 
 		// Clear previous word highlight
 		this.clearTTSWord();
@@ -620,6 +695,7 @@ export class HighlightCoordinator implements HighlightCoordinatorApi {
 	highlightTTSWordElement(element: Element): void {
 		if (!this.ttsWordHighlight) return;
 		this.applyAdaptiveTTSStyle(element);
+		adoptHighlightStylesFor(element);
 
 		// Clear previous word highlight (CSS range and any element attributes)
 		this.clearTTSWord();
@@ -637,10 +713,11 @@ export class HighlightCoordinator implements HighlightCoordinatorApi {
 	highlightTTSSentence(ranges: Range[]): void {
 		if (!this.ttsSentenceHighlight) return;
 		const source = ranges[0]?.startContainer;
-		const sourceElement =
-			source?.nodeType === Node.ELEMENT_NODE
+		const sourceElement = !source
+			? null
+			: source.nodeType === Node.ELEMENT_NODE
 				? (source as Element)
-				: source?.parentElement;
+				: composedParentElement(source);
 		this.applyAdaptiveTTSStyle(sourceElement);
 
 		// Clear previous sentence highlight
@@ -648,6 +725,7 @@ export class HighlightCoordinator implements HighlightCoordinatorApi {
 
 		// Add all ranges
 		for (const range of ranges) {
+			adoptHighlightStylesFor(range.startContainer);
 			this.ttsSentenceHighlight.add(range);
 		}
 		this.highlightTTSElementFallbacks(ranges);
@@ -665,6 +743,7 @@ export class HighlightCoordinator implements HighlightCoordinatorApi {
 		this.clearTTSSentence();
 
 		for (const element of elements) {
+			adoptHighlightStylesFor(element);
 			element.setAttribute("data-pie-tts-sentence-element", "true");
 			this.ttsSentenceElementHighlights.add(element);
 		}
@@ -710,29 +789,29 @@ export class HighlightCoordinator implements HighlightCoordinatorApi {
 		trackedElements: Set<Element>,
 		selector: string,
 	): void {
+		const elementAt = (node: Node): Element | null =>
+			node.nodeType === Node.ELEMENT_NODE
+				? (node as Element)
+				: composedParentElement(node);
 		for (const range of ranges) {
-			const root =
-				range.commonAncestorContainer.nodeType === Node.ELEMENT_NODE
-					? (range.commonAncestorContainer as Element)
-					: range.commonAncestorContainer.parentElement;
+			// A range over a shadow root's top-level children has the root as its
+			// common ancestor, and the root is what to search.
+			const common = range.commonAncestorContainer;
+			const root: Element | ShadowRoot | null = isShadowRootNode(common)
+				? common
+				: elementAt(common);
 			if (!root) continue;
 			const candidates: Element[] = [];
-			const rangeStartElement =
-				range.startContainer.nodeType === Node.ELEMENT_NODE
-					? (range.startContainer as Element)
-					: range.startContainer.parentElement;
-			const rangeEndElement =
-				range.endContainer.nodeType === Node.ELEMENT_NODE
-					? (range.endContainer as Element)
-					: range.endContainer.parentElement;
+			const rangeStartElement = elementAt(range.startContainer);
+			const rangeEndElement = elementAt(range.endContainer);
 			for (const element of [rangeStartElement, rangeEndElement]) {
 				let current: Element | null = element;
 				while (current) {
 					if (current.matches?.(selector)) candidates.push(current);
-					current = current.parentElement;
+					current = composedParentElement(current);
 				}
 			}
-			if (root.matches?.(selector)) {
+			if (!isShadowRootNode(root) && root.matches?.(selector)) {
 				candidates.push(root);
 			}
 			candidates.push(...Array.from(root.querySelectorAll(selector)));
@@ -740,8 +819,8 @@ export class HighlightCoordinator implements HighlightCoordinatorApi {
 				try {
 					if (
 						!range.intersectsNode(element) &&
-						!element.contains(rangeStartElement) &&
-						!element.contains(rangeEndElement)
+						!composedContains(element, rangeStartElement) &&
+						!composedContains(element, rangeEndElement)
 					) {
 						continue;
 					}
@@ -801,6 +880,7 @@ export class HighlightCoordinator implements HighlightCoordinatorApi {
 
 		// Clone the range to store
 		const clonedRange = range.cloneRange();
+		adoptHighlightStylesFor(clonedRange.startContainer);
 
 		// Store annotation data
 		const annotation: Annotation = {
@@ -989,6 +1069,7 @@ export class HighlightCoordinator implements HighlightCoordinatorApi {
 						? this.ttsWordHighlight
 						: this.ttsSentenceHighlight;
 				if (highlight) {
+					adoptHighlightStylesFor(range.startContainer);
 					highlight.clear();
 					highlight.add(range);
 					if (type === HighlightType.TTS_WORD) {

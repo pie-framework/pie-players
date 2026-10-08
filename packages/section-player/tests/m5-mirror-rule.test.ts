@@ -51,6 +51,7 @@ const RUNTIME_CONFIG_KEYS_SENTINEL: Record<keyof RuntimeConfig, true> = {
 	isolation: true,
 	env: true,
 	toolConfigStrictness: true,
+	contentLanguage: true,
 	onFrameworkError: true,
 	onStageChange: true,
 	onLoadingComplete: true,
@@ -246,6 +247,7 @@ const RUNTIME_ONLY_KEYS = new Set<keyof RuntimeConfig>([
 	"accessibility",
 	"coordinator",
 	"env",
+	"contentLanguage",
 ]);
 
 describe("RuntimeConfig boundary — top-level prop coverage", () => {

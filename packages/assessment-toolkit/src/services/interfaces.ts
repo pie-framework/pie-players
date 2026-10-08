@@ -297,7 +297,7 @@ export interface TtsServiceApi {
 	 */
 	speakRange(
 		range: Range,
-		options?: { contentRoot?: Element | null },
+		options?: { contentRoot?: Element | null; language?: string },
 	): Promise<void>;
 
 	/**

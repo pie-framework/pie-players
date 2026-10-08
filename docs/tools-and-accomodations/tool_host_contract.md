@@ -68,6 +68,23 @@ toolkit gets a `pie-unregister` addressed to its id. `send(type, detail)`
 addresses any other shell event the same way, holding up to 50 until a toolkit
 answers.
 
+Inside a shell, `data-region="content"` marks the content tools read and
+annotate; a shell that marks no content region is read whole. Read-aloud reads
+its shell's content region. The annotation toolbar is section-scoped, so it
+finds the shell from the selection, through the `data-pie-shell-root` attribute
+`createShellScope` sets on the shell host, and opens only for a selection
+inside that shell's content region. Tools resolve the region at use with
+`resolveContentRegion` (from `@pie-players/pie-assessment-toolkit/runtime/internal`),
+because a card renders its regions after its tools connect.
+
+Content in the region may render into open shadow roots, which read-aloud,
+highlighting and annotation reach. The language of any part of it is the
+nearest `lang` between that part and its shell host, else the toolkit's
+`content-language`, else `en-US` (`resolveContentLanguage`). The page's `lang`
+above the shell is the interface language and never counts. Catalog lookup reads
+that language; the browser voice takes it only when markup or `content-language`
+names one (`findContentLanguage`), and otherwise follows the browser's language.
+
 ## Host / Overlay Root Contract
 
 Tools must not infer runtime scope from `parentElement` chains. Host/root

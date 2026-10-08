@@ -163,12 +163,14 @@ The TTS settings panel picks its automatic, recommended and preview browser
 voices for the runtime context's content language, as the reader does, else the
 browser's language; Host R, the one host mounting the panel, names no content
 language, so its panel offers the voices it did. Read-aloud's providers, tool
-provider and settings panel log only under `PIE_TTS_DEBUG`. Checked against the
-checkouts of Hosts A, M, P, R and V: none implements a TTS provider, constructs
-`TTSToolProvider`, whose features are now its speech provider's, or calls
-`updateSettings`, `highlightTTSWord` or `pauseTtsForMediaAudio`, and Host A
-calls only `ttsService.stop()`, which still ends a loading read. Row
-verification dates are unchanged.
+provider and settings panel log only under `PIE_TTS_DEBUG`. The server backend's
+backend-call telemetry names the tool `textToSpeech`, as the toolkit's does,
+where it named it `tts`. Checked against the checkouts of Hosts A, M, P, R and
+V: none implements a TTS provider, constructs `TTSToolProvider`, whose features
+are now its speech provider's, calls `updateSettings`, `highlightTTSWord` or
+`pauseTtsForMediaAudio`, or reads backend-call telemetry, and Host A calls only
+`ttsService.stop()`, which still ends a loading read. Row verification dates are
+unchanged.
 
 The 2026-09-17 session-commit change (PIE-1058) was checked against the
 recorded rows rather than re-derived from the checkouts. It renames and removes

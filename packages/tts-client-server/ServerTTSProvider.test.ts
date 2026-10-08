@@ -560,6 +560,54 @@ describe("ServerTTSProvider", () => {
 		expect(events).not.toContain("pie-tool-backend-call-error");
 	});
 
+	test("telemetry names the tool textToSpeech on every backend call", async () => {
+		let fail = false;
+		globalThis.fetch = vi.fn(async () =>
+			fail
+				? createJSONResponse({ message: "unavailable" }, 500)
+				: createJSONResponse({
+						audio: btoa("audio-bytes"),
+						contentType: "audio/mpeg",
+						speechMarks: [],
+						metadata: {
+							providerId: "polly",
+							voice: "Joanna",
+							duration: 1,
+							charCount: 5,
+							cached: false,
+						},
+					}),
+		) as unknown as typeof fetch;
+		const events: Array<[string, unknown]> = [];
+		const provider = new ServerTTSProvider();
+		const impl = await provider.initialize({
+			apiEndpoint: "/api/tts",
+			validateEndpoint: true,
+			providerOptions: {
+				__pieTelemetry: (
+					eventName: string,
+					payload?: Record<string, unknown>,
+				) => {
+					events.push([eventName, payload?.toolId]);
+				},
+			},
+		} as any);
+		await impl.speak("hello");
+		fail = true;
+		await impl.speak("hello").catch(() => {});
+
+		expect(new Set(events.map(([name]) => name))).toEqual(
+			new Set([
+				"pie-tool-backend-call-start",
+				"pie-tool-backend-call-success",
+				"pie-tool-backend-call-error",
+			]),
+		);
+		expect(new Set(events.map(([, toolId]) => toolId))).toEqual(
+			new Set(["textToSpeech"]),
+		);
+	});
+
 	describe("a pause before the audio sounds", () => {
 		const synthesized = () =>
 			createJSONResponse({

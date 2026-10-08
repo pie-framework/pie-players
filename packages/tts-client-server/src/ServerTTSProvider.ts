@@ -26,6 +26,9 @@ import {
 // Debug lines need PIE_TTS_DEBUG=1 or globalThis.__PIE_TTS_DEBUG__ = true.
 const logger = createPieLogger("server-tts-provider", isTtsDebugEnabled);
 
+// Telemetry names the tool by its canonical id, as the toolkit does.
+const TOOL_ID = "textToSpeech";
+
 /**
  * The provider options the server provider reads. `contentLanguage`, set per
  * speak, names the language synthesized: it wins over `language`, and a
@@ -778,7 +781,7 @@ class ServerTTSProviderImpl implements ITTSProviderImplementation {
 	): Promise<{ audioUrl: string; wordTimings: WordTiming[] }> {
 		const synthStartedAt = Date.now();
 		await this.emitTelemetry("pie-tool-backend-call-start", {
-			toolId: "tts",
+			toolId: TOOL_ID,
 			backend: this.config.provider || "server",
 			operation: "synthesize-speech",
 		});
@@ -806,7 +809,7 @@ class ServerTTSProviderImpl implements ITTSProviderImplementation {
 			} catch (error) {
 				if (signal.aborted) throw error;
 				await this.emitTelemetry("pie-tool-backend-call-error", {
-					toolId: "tts",
+					toolId: TOOL_ID,
 					backend: this.config.provider || "server",
 					operation: "synthesize-speech",
 					duration: Date.now() - synthStartedAt,
@@ -848,7 +851,7 @@ class ServerTTSProviderImpl implements ITTSProviderImplementation {
 					: undefined) ||
 				`Server returned ${response.status}`;
 			await this.emitTelemetry("pie-tool-backend-call-error", {
-				toolId: "tts",
+				toolId: TOOL_ID,
 				backend: this.config.provider || "server",
 				operation: "synthesize-speech",
 				duration: Date.now() - synthStartedAt,
@@ -897,7 +900,7 @@ class ServerTTSProviderImpl implements ITTSProviderImplementation {
 			const audioAssetUrl = normalized.audio.url;
 			const assetFetchStartedAt = Date.now();
 			await this.emitTelemetry("pie-tool-backend-call-start", {
-				toolId: "tts",
+				toolId: TOOL_ID,
 				backend: this.config.provider || "server",
 				operation: "fetch-synthesized-audio-asset",
 			});
@@ -905,7 +908,7 @@ class ServerTTSProviderImpl implements ITTSProviderImplementation {
 			const parsedAssetUrl = parseAssetUrl(audioAssetUrl, this.config);
 			if (parsedAssetUrl === null) {
 				await this.emitTelemetry("pie-tool-backend-call-error", {
-					toolId: "tts",
+					toolId: TOOL_ID,
 					backend: this.config.provider || "server",
 					operation: "fetch-synthesized-audio-asset",
 					duration: Date.now() - assetFetchStartedAt,
@@ -929,7 +932,7 @@ class ServerTTSProviderImpl implements ITTSProviderImplementation {
 				} catch (error) {
 					if (signal.aborted) throw error;
 					await this.emitTelemetry("pie-tool-backend-call-error", {
-						toolId: "tts",
+						toolId: TOOL_ID,
 						backend: this.config.provider || "server",
 						operation: "fetch-synthesized-audio-asset",
 						duration: Date.now() - assetFetchStartedAt,
@@ -941,7 +944,7 @@ class ServerTTSProviderImpl implements ITTSProviderImplementation {
 			})();
 			if (!audioResponse.ok) {
 				await this.emitTelemetry("pie-tool-backend-call-error", {
-					toolId: "tts",
+					toolId: TOOL_ID,
 					backend: this.config.provider || "server",
 					operation: "fetch-synthesized-audio-asset",
 					duration: Date.now() - assetFetchStartedAt,
@@ -955,7 +958,7 @@ class ServerTTSProviderImpl implements ITTSProviderImplementation {
 			}
 			audioBlob = await audioResponse.blob();
 			await this.emitTelemetry("pie-tool-backend-call-success", {
-				toolId: "tts",
+				toolId: TOOL_ID,
 				backend: this.config.provider || "server",
 				operation: "fetch-synthesized-audio-asset",
 				duration: Date.now() - assetFetchStartedAt,
@@ -966,7 +969,7 @@ class ServerTTSProviderImpl implements ITTSProviderImplementation {
 		// Convert speech marks to word timings
 		const wordTimings = this.parseSpeechMarks(normalized.speechMarks);
 		await this.emitTelemetry("pie-tool-backend-call-success", {
-			toolId: "tts",
+			toolId: TOOL_ID,
 			backend: this.config.provider || "server",
 			operation: "synthesize-speech",
 			duration: Date.now() - synthStartedAt,
@@ -1254,14 +1257,14 @@ export class ServerTTSProvider implements ITTSProvider {
 		if (serverConfig.validateEndpoint) {
 			const validationStartedAt = Date.now();
 			await this.emitTelemetry("pie-tool-backend-call-start", {
-				toolId: "tts",
+				toolId: TOOL_ID,
 				backend: serverConfig.provider || "server",
 				operation: "validate-endpoint",
 			});
 			const available = await this.testAPIAvailability();
 			if (!available) {
 				await this.emitTelemetry("pie-tool-backend-call-error", {
-					toolId: "tts",
+					toolId: TOOL_ID,
 					backend: serverConfig.provider || "server",
 					operation: "validate-endpoint",
 					duration: Date.now() - validationStartedAt,
@@ -1273,7 +1276,7 @@ export class ServerTTSProvider implements ITTSProvider {
 				);
 			}
 			await this.emitTelemetry("pie-tool-backend-call-success", {
-				toolId: "tts",
+				toolId: TOOL_ID,
 				backend: serverConfig.provider || "server",
 				operation: "validate-endpoint",
 				duration: Date.now() - validationStartedAt,

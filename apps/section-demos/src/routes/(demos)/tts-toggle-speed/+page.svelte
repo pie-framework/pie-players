@@ -1,6 +1,6 @@
 <script lang="ts">
-	import { browser } from "$app/environment";
-	import { afterNavigate, replaceState } from "$app/navigation";
+	import { browser } from "$app/env";
+	import { afterNavigate, goto } from "$app/navigation";
 	import {
 		createToolsConfig,
 		ToolkitCoordinator,
@@ -9,8 +9,8 @@
 	import { createUniversalPersonalNeedsProfile } from '@pie-players/pie-default-tool-loaders';
 	import "@pie-players/pie-section-player/components/section-player-splitpane-element";
 	import "@pie-players/pie-section-player/components/section-player-vertical-element";
-	import DemoRuntimeChrome from "$lib/demo-runtime/components/DemoRuntimeChrome.svelte";
-	import { createToggleSpeedTtsToolRegistry } from "$lib/demo-runtime/custom-tools/tts-toggle-speed";
+	import DemoRuntimeChrome from "#lib/demo-runtime/components/DemoRuntimeChrome.svelte";
+	import { createToggleSpeedTtsToolRegistry } from "#lib/demo-runtime/custom-tools/tts-toggle-speed.js";
 	import {
 		applyDaisyTheme,
 		applyToolkitScheme,
@@ -26,10 +26,10 @@
 		LAYOUT_OPTIONS,
 		MODE_OPTIONS,
 		PLAYER_OPTIONS,
-	} from "$lib/demo-runtime/demo-page-helpers";
-	import { withDemoLoaderOptions } from "$lib/demo-runtime/demo-player-config";
-	import { preloadSectionElements } from "$lib/demo-runtime/preload-utils";
-	import { SECTION_DEMOS_DEFAULT_TTS_TOOL_PROVIDER } from "$lib/demo-runtime/section-demos-default-tts";
+	} from "#lib/demo-runtime/demo-page-helpers.js";
+	import { withDemoLoaderOptions } from "#lib/demo-runtime/demo-player-config.js";
+	import { preloadSectionElements } from "#lib/demo-runtime/preload-utils.js";
+	import { SECTION_DEMOS_DEFAULT_TTS_TOOL_PROVIDER } from "#lib/demo-runtime/section-demos-default-tts.js";
 	import type { PageData } from "./$types";
 
 	let { data }: { data: PageData } = $props();
@@ -82,7 +82,8 @@
 	let selectedDaisyTheme = $state<string>(DEFAULT_DAISY_THEME);
 	let attemptId = $state(getOrCreateAttemptId());
 	let routerReady = $state(false);
-	afterNavigate(() => {
+	afterNavigate(({ shallow, type }) => {
+		if (shallow && type === 'goto') return;
 		routerReady = true;
 	});
 
@@ -193,7 +194,7 @@
 		if (existingAttemptId === attemptId && existingLayout === layoutType) return;
 		url.searchParams.set(ATTEMPT_QUERY_PARAM, attemptId);
 		url.searchParams.set("layout", layoutType);
-		replaceState(url, {});
+		goto(url, { shallow: true, replace: true });
 	});
 
 	$effect(() => {

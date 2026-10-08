@@ -45,8 +45,9 @@ so a request from any copy matches.
 
 The toolkit shares its runtime with its own components this way. `assessment-toolkit-context.ts`
 defines four contexts keyed `Symbol.for("pie.assessmentToolkit.*")`, provided by
-`PieAssessmentToolkit` and the section player's item shells, each beside a `ContextRoot` that
-replays subscribing requests to a provider connecting after its consumer. `pie-context` follows the
+`PieAssessmentToolkit` and the section player's item shells. One `ContextRoot` per document, which
+the first subscribing consumer installs (`ensureDocumentContextRoot`), replays subscribing requests
+to a provider connecting after its consumer. `pie-context` follows the
 semantics of Lit's `@lit/context`, and its events are `bubbles` and `composed`, so requests cross
 the shadow roots elements render into.
 

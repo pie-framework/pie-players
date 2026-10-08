@@ -16,7 +16,9 @@
    document-wide, because elements portal menus and popovers holding authored
    markup to `<body>`, outside every `[data-pie-content]` root: an
    inline-dropdown's choices keep their KDS fractions and MathJax glyph fixes
-   there. The `:root` sentinel below stays unscoped too.
+   there. A rule that requires an authored-colour marker stays document-wide
+   for the same reason. The `:root` sentinel below and the `[data-color-scheme]`
+   rule that captures a scheme's ink and page stay unscoped too.
 
    Colour values resolve through the canonical --pie-* tokens with the original
    literal kept as the no-theme last resort. The literals came from content
@@ -636,13 +638,19 @@ table.KdsTable02 > tbody > tr > td {
    The exclusion sits in `:where()` so every selector keeps the specificity of
    its plain `.table` form.
 
-   The grid rules are mixed from the ink instead of taken from
-   --pie-border-light, which the DaisyUI mapping fills from base-200 — a surface,
-   so a border set from it disappears into the page. The 15% mix keeps the
-   near-invisible weight #dee2e6 had on white and inverts to a faint light rule
-   on a dark surface. Mixed inline, not hoisted to a custom property: a custom
-   property substitutes var(--pie-text) where it is declared, so a scoped
-   <pie-theme scope="self"> below :root would not reach it. */
+   The grid rules paint the ink, as every other authored grid in this file
+   does and as pie-lib's table grid falls back to: --pie-text is held to 4.5:1
+   against the page, so the rules clear SC 1.4.11's 3:1 wherever the text is
+   legible. They were a 15% mix, as faint as the fixed light grey (#dee2e6)
+   they first shipped with: 1.41:1 on white. A lighter fixed share cannot be
+   certified: the share that clears 3:1 depends on the palette, 62% on the
+   Grey on Light Grey scheme, and is unknown for a host's own.
+   --pie-border-light is no substitute either; the DaisyUI mapping fills it
+   from base-200, a surface. Each rule reads the ink itself, not through a
+   custom property, which would substitute var(--pie-text) where it is
+   declared: a scoped <pie-theme scope="self"> below :root would not reach it,
+   and neither would a shade fill's swapped ink (AUTHORED COLOURS below), which
+   keeps the rules around adjacent filled cells in the scheme's page colour. */
 :where([data-pie-content])
 .table:where(:not(.table-no-border, [role="presentation"])) {
 	width: 100%;
@@ -666,16 +674,14 @@ table.KdsTable02 > tbody > tr > td {
 	td {
 	padding: 0.75em;
 	vertical-align: top;
-	border-top: 1px solid
-		color-mix(in srgb, var(--pie-text, #000) 15%, transparent);
+	border-top: 1px solid var(--pie-text, black);
 }
 
 :where([data-pie-content])
 	.table:where(:not(.table-no-border, [role="presentation"]))
 	tbody
 	+ tbody {
-	border-top: 2px solid
-		color-mix(in srgb, var(--pie-text, #000) 15%, transparent);
+	border-top: 2px solid var(--pie-text, black);
 }
 
 :where([data-pie-content])
@@ -683,8 +689,7 @@ table.KdsTable02 > tbody > tr > td {
 	thead
 	th {
 	vertical-align: bottom;
-	border-bottom: 2px solid
-		color-mix(in srgb, var(--pie-text, #000) 15%, transparent);
+	border-bottom: 2px solid var(--pie-text, black);
 }
 
 :where([data-pie-content]) th {
@@ -699,7 +704,7 @@ table.KdsTable02 > tbody > tr > td {
 :where([data-pie-content])
 	.table-bordered:where(:not(.table-no-border, [role="presentation"]))
 	td {
-	border: 1px solid color-mix(in srgb, var(--pie-text, #000) 15%, transparent);
+	border: 1px solid var(--pie-text, black);
 }
 
 :where([data-pie-content])
@@ -984,4 +989,56 @@ mjx-c.mjx-c27 {
 	width: 1px;
 	height: 1px;
 	overflow: hidden;
+}
+
+/* AUTHORED COLOURS
+
+   Under a color scheme, colours written into authored markup give way to the
+   scheme. Sanitizers mark the elements that carry one (`markAuthoredColors` in
+   @pie-element/shared-utils): `data-pie-authored-ink` for a text colour,
+   `data-pie-authored-border` for a border colour and `data-pie-authored-fill`
+   for a background, `light` when it is near white and `shade` otherwise. Ink
+   and borders take the scheme's text and border colours. A light fill, usually
+   the page the text was pasted from, drops away. A shade fill (a header row, a highlight) inverts:
+   it takes the scheme's ink, and everything inside it reads the scheme's page
+   as its ink, so it keeps the contrast the scheme certifies and still stands
+   out. The default theme stamps no data-color-scheme and keeps the authored
+   colours. Gradients, background images and colours in MathJax output carry
+   no marker and render as authored.
+
+   The ink and page are captured on the element that declares the scheme's
+   tokens, so the swap inside a fill reads them without a cycle, and a fill
+   nested in a fill inverts once. Controls inside a fill read the swapped
+   neutral tokens; accent and feedback tokens keep their page values.
+
+   `!important` outranks the authored inline style, and the sanitizers drop
+   `!important` from a marked declaration. The rules stay document-wide: the
+   markers name authored content only, and elements portal authored markup to
+   <body>. */
+[data-color-scheme] {
+	--pie-scheme-ink: var(--pie-text);
+	--pie-scheme-page: var(--pie-background);
+}
+
+[data-color-scheme] [data-pie-authored-ink] {
+	color: var(--pie-text) !important;
+}
+
+[data-color-scheme] [data-pie-authored-border] {
+	border-color: var(--pie-border) !important;
+}
+
+[data-color-scheme] [data-pie-authored-fill="light"] {
+	background-color: transparent !important;
+	color: var(--pie-text) !important;
+}
+
+[data-color-scheme] [data-pie-authored-fill="shade"] {
+	--pie-text: var(--pie-scheme-page);
+	--pie-black: var(--pie-scheme-page);
+	--pie-border: var(--pie-scheme-page);
+	--pie-background: var(--pie-scheme-ink);
+	--pie-white: var(--pie-scheme-ink);
+	background-color: var(--pie-scheme-ink) !important;
+	color: var(--pie-scheme-page) !important;
 }

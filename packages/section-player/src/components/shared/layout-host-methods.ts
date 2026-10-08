@@ -8,8 +8,9 @@
  * every {@link SectionPlayerRuntimeHostContract} method itself. Once the
  * component is mounted each one delegates to it. Before that a read returns what
  * the element returns while its kernel is still binding, a navigation returns
- * `false`, and `waitForSectionController` polls until the controller exists or
- * the timeout passes.
+ * `false`, and `waitForSectionController` waits for the toolkit's
+ * `toolkit-ready` to bubble out of the element with the controller in place, or
+ * for the timeout.
  *
  * It also wraps the `session` property: a read returns the assigned value until
  * the section's controller is published, and the controller's current session
@@ -25,6 +26,7 @@ import type {
 	SectionPlayerRuntimeHostContract,
 	SectionPlayerSnapshot,
 } from "../../contracts/runtime-host-contract.js";
+import { waitForToolkitReady } from "./toolkit-ready-wait.js";
 
 export const BOOTSTRAP_READINESS = {
 	phase: "bootstrapping",
@@ -67,8 +69,6 @@ export const BOOTSTRAP_READS: UnmountedReads = {
 	navigation: BOOTSTRAP_SNAPSHOT.navigation,
 	readiness: BOOTSTRAP_READINESS,
 };
-
-const CONTROLLER_POLL_MS = 25;
 
 type HostMethodName = keyof SectionPlayerRuntimeHostContract;
 
@@ -160,14 +160,15 @@ export function withHostMethods(unmounted: UnmountedReads) {
 				// lookup waits a microtask: a host that calls this from a reactive
 				// effect would otherwise read and write the player's state inside it.
 				await Promise.resolve();
-				for (;;) {
-					const controller = this.getSectionController();
-					if (controller) return controller;
-					if (Date.now() >= deadline) return null;
-					await new Promise((resolve) =>
-						setTimeout(resolve, CONTROLLER_POLL_MS),
-					);
-				}
+				const controller = this.getSectionController();
+				if (controller) return controller;
+				const remaining = deadline - Date.now();
+				if (remaining <= 0) return null;
+				return waitForToolkitReady(
+					this,
+					() => this.getSectionController(),
+					remaining,
+				);
 			}
 		};
 	};

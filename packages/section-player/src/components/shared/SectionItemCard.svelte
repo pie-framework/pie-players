@@ -397,7 +397,6 @@
 				tools={itemToolbarTools}
 				content-kind="assessment-item"
 				size="md"
-				language="en-US"
 				{toolRegistry}
 				{hostButtons}
 			></pie-item-toolbar>

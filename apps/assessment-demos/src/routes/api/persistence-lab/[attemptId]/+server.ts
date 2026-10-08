@@ -1,7 +1,7 @@
-import { dev } from "$app/environment";
+import { dev } from "$app/env";
 import { error, json } from "@sveltejs/kit";
 import type { AssessmentSession } from "@pie-players/pie-players-shared/types";
-import type { LabBehavior } from "$lib/server/persistence-lab";
+import type { LabBehavior } from "#lib/server/persistence-lab.js";
 import type { RequestHandler } from "./$types";
 
 async function requireLab(attemptId: string) {
@@ -9,7 +9,7 @@ async function requireLab(attemptId: string) {
 	if (!dev) error(404, "Not found");
 	if (!/^[a-zA-Z0-9_-]{1,80}$/.test(attemptId)) error(400, "Invalid lab attempt");
 	// Load the Vite/Node SQLite adapter only when a development request uses it.
-	return import("$lib/server/persistence-lab");
+	return import("#lib/server/persistence-lab.js");
 }
 
 export const GET: RequestHandler = async ({ params }) => {

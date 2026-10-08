@@ -27,8 +27,15 @@
 		connectAssessmentToolkitRegionScopeContext,
 		connectAssessmentToolkitShellContext,
 		connectToolRuntimeContext,
-		HighlightColor
+		HighlightColor,
+		isTTSStartFailure
 	} from '@pie-players/pie-assessment-toolkit';
+	import {
+		composedClosest,
+		composedContains,
+		findContentLanguage,
+		isShadowRootNode
+	} from '@pie-players/pie-assessment-toolkit/runtime/internal';
 	import { resolveInterfaceI18n } from '@pie-players/pie-players-shared/i18n/provider';
 	import { sanitizeSvgIcon } from '@pie-players/pie-players-shared/security';
 	import {
@@ -40,6 +47,7 @@
 		toolbarAnchor
 	} from './selection-keyboard.js';
 	import { usableSelectionActions } from './selection-actions.js';
+	import { contentRegionHolding, readSelection } from './selection-range.js';
 
 	interface Props {
 		enabled?: boolean;
@@ -227,6 +235,11 @@
 
 		const annotations = highlightCoordinator.getAnnotations();
 		for (const annotation of annotations) {
+			// Ranges in different trees (one inside a shadow root) cannot overlap, and
+			// comparing them throws.
+			if (range.startContainer.getRootNode() !== annotation.range.startContainer.getRootNode()) {
+				continue;
+			}
 			// Check if ranges overlap
 			// Two ranges overlap if: startA < endB && startB < endA
 			const cmp1 = range.compareBoundaryPoints(Range.START_TO_START, annotation.range);
@@ -253,18 +266,17 @@
 	 * Check if selection is in an allowed area
 	 */
 	function isInAllowedArea(node: Node): boolean {
-		if (node.nodeType !== Node.ELEMENT_NODE && node.nodeType !== Node.TEXT_NODE) {
+		// A selection over a shadow root's top-level children has the root as its
+		// common ancestor; its host is where the climb starts.
+		const start = isShadowRootNode(node) ? node.host : node;
+		if (start.nodeType !== Node.ELEMENT_NODE && start.nodeType !== Node.TEXT_NODE) {
 			return false;
 		}
 
-		// For text nodes, check parent element
-		const element = node.nodeType === Node.TEXT_NODE ? node.parentElement : (node as Element);
-		if (!element) return false;
-
-		// Check if element or any ancestor matches disallowed selectors
+		// Check if the node or any ancestor, through shadow hosts, matches disallowed selectors
 		return !DISALLOWED_SELECTORS.some((sel) => {
 			try {
-				return element.closest(sel) !== null;
+				return composedClosest(start, sel) !== null;
 			} catch {
 				return false;
 			}
@@ -273,12 +285,7 @@
 
 	function isWithinScope(range: Range): boolean {
 		if (!effectiveScopeElement) return true;
-		const ancestor = range.commonAncestorContainer;
-		const element =
-			ancestor.nodeType === Node.TEXT_NODE
-				? ancestor.parentElement
-				: (ancestor as Element);
-		return !!element && effectiveScopeElement.contains(element);
+		return composedContains(effectiveScopeElement, range.commonAncestorContainer);
 	}
 
 	/**
@@ -353,13 +360,19 @@
 		if (isPointerGestureActive(pointerDownAt, Date.now())) return;
 
 		const sel = window.getSelection();
-		if (!sel || sel.rangeCount === 0) return hideToolbar();
+		const selection = sel ? readSelection(sel) : null;
+		if (!selection) return hideToolbar();
 
-		const range = sel.getRangeAt(0);
-		const text = sel.toString().trim();
+		const { range } = selection;
+		const text = selection.text.trim();
 
-		// Hide if empty or in disallowed area
-		if (!text || !isWithinScope(range) || !isInAllowedArea(range.commonAncestorContainer)) {
+		// Hide if empty, outside a shell's content region, or in a disallowed area
+		if (
+			!text ||
+			!isWithinScope(range) ||
+			!contentRegionHolding(range) ||
+			!isInAllowedArea(range.commonAncestorContainer)
+		) {
 			return hideToolbar();
 		}
 
@@ -644,16 +657,22 @@
 		try {
 			console.log('[AnnotationToolbar] Speaking range:', toolbarState.selectedRange.toString().substring(0, 50));
 
-			// Use speakRange for accurate word highlighting
-			// Note: TTS service should already be initialized by ToolkitCoordinator
-			await ttsService.speakRange(toolbarState.selectedRange, {
-				contentRoot: getEffectiveRoot()
+			// Use speakRange for accurate word highlighting. A service not yet
+			// started starts here, through the coordinator's readiness gate.
+			const selectedRange = toolbarState.selectedRange;
+			await ttsService.speakRange(selectedRange, {
+				contentRoot: contentRegionHolding(selectedRange) ?? getEffectiveRoot(),
+				language: findContentLanguage(selectedRange.startContainer, {
+					contentLanguage: runtimeContext?.contentLanguage
+				})
 			});
 
 			console.log('[AnnotationToolbar] TTS completed successfully');
 		} catch (error) {
 			console.error('[AnnotationToolbar] TTS error:', error);
-			alert(`TTS failed: ${error instanceof Error ? error.message : String(error)}`);
+			if (isTTSStartFailure(error)) {
+				announce(interfaceI18n.t('tools.textToSpeech.inline.initFailed'), 5000);
+			}
 		} finally {
 			ttsSpeaking = false;
 		}

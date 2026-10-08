@@ -1,5 +1,5 @@
-import { dev } from "$app/environment";
-import type { Handle } from "@sveltejs/kit";
+import type { Handle } from "@sveltejs/kit/hooks";
+import { dev } from "$app/env";
 
 // Reject before page rendering (the lab uses CSR) or endpoint execution. The
 // endpoint also loads its SQLite adapter lazily, only in development.

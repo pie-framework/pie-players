@@ -27,8 +27,9 @@ Use contract helpers exported from `@pie-players/pie-assessment-toolkit`:
 - `connectToolShellContext(host, onValue)`
 - `connectToolRegionScopeContext(host, onValue)`
 
-These helpers include provider-announcement handling and retry behavior so late
-provider registration is tolerated.
+These helpers subscribe, so a provider that registers late answers through the
+document's context root, which replays the request when the provider announces
+itself.
 
 ## Event Semantics
 
@@ -49,6 +50,40 @@ Tools must tolerate delayed context arrival and context re-binding:
 - tool can mount before provider exists
 - tool reconnects when provider becomes available
 - tool cleans up subscriptions on unmount
+
+## Shell Scope
+
+A shell publishes the content it holds: its identity as
+`assessmentToolkitShellContext`, the region its tools act on as
+`assessmentToolkitRegionScopeContext`, and a `pie-register` the toolkit files
+the content's accessibility catalogs under. `<pie-item-shell>` and
+`<pie-passage-shell>` publish it in section player cards, and
+`<pie-item-scope>` around a plain item player, all through `createShellScope`.
+A shell registers once `assessmentToolkitHostRuntimeContext` answers, so a
+shell may mount before its toolkit. The registration carries the answering
+toolkit's `runtimeId`, and a toolkit claims an event carrying a `runtimeId` only
+when the id is its own; one without falls back to the runtime its target
+resolves. A nearer toolkit answering later moves the registration: the old
+toolkit gets a `pie-unregister` addressed to its id. `send(type, detail)`
+addresses any other shell event the same way, holding up to 50 until a toolkit
+answers.
+
+Inside a shell, `data-region="content"` marks the content tools read and
+annotate; a shell that marks no content region is read whole. Read-aloud reads
+its shell's content region. The annotation toolbar is section-scoped, so it
+finds the shell from the selection, through the `data-pie-shell-root` attribute
+`createShellScope` sets on the shell host, and opens only for a selection
+inside that shell's content region. Tools resolve the region at use with
+`resolveContentRegion` (from `@pie-players/pie-assessment-toolkit/runtime/internal`),
+because a card renders its regions after its tools connect.
+
+Content in the region may render into open shadow roots, which read-aloud,
+highlighting and annotation reach. The language of any part of it is the
+nearest `lang` between that part and its shell host, else the toolkit's
+`content-language`, else `en-US` (`resolveContentLanguage`). The page's `lang`
+above the shell is the interface language and never counts. Catalog lookup reads
+that language; the browser voice takes it only when markup or `content-language`
+names one (`findContentLanguage`), and otherwise follows the browser's language.
 
 ## Host / Overlay Root Contract
 

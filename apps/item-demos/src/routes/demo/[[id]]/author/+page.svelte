@@ -1,12 +1,12 @@
 <script lang="ts">
-	import { page } from '$app/stores';
+	import { page } from '$app/state';
 	import { untrack } from 'svelte';
 	import '@pie-players/pie-item-player';
 	import { registerPreloadedElements } from '@pie-players/pie-item-player/preloaded';
 	import { DEFAULT_BUNDLE_HOST } from '@pie-players/pie-players-shared/loaders';
 	import { makeUniqueTags, parsePackageName } from '@pie-players/pie-players-shared/pie';
-	import { config as configStore, updateConfig } from '$lib/stores/demo-state';
-	import { demoHeadingName } from '$lib/utils/demo-heading-name';
+	import { config as configStore, updateConfig } from '#lib/stores/demo-state.js';
+	import { demoHeadingName } from '#lib/utils/demo-heading-name.js';
 
 	class AuthoringFixtureElement extends HTMLElement {
 		private _model: any = null;
@@ -88,13 +88,13 @@
 	$effect(() => {
 		authoringContractMode =
 			data.demo?.id === 'authoring-contract-fixture' ||
-			$page.url.searchParams.get('authoring-contract') === '1';
+			page.url.searchParams.get('authoring-contract') === '1';
 		selectedLoaderStrategy = authoringContractMode
 			? 'preloaded'
-			: $page.url.searchParams.get('player') === 'esm'
+			: page.url.searchParams.get('player') === 'esm'
 				? 'esm'
 				: 'iife';
-		missingAuthoringBackend = $page.url.searchParams.get('missingBackend') === '1';
+		missingAuthoringBackend = page.url.searchParams.get('missingBackend') === '1';
 	});
 
 	async function callAuthoringMediaJsonService<T>(

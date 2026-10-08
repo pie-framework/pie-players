@@ -1,6 +1,10 @@
 import { describe, expect, test } from "bun:test";
 
-import { collectSpecifiers, declaresBuildEdge } from "../check-deps.mjs";
+import {
+	collectSpecifiers,
+	declaresBuildEdge,
+	isDeclaredSubpathImport,
+} from "../check-deps.mjs";
 
 describe("check-deps import collection", () => {
 	test("ignores import statements embedded in TypeScript string fixtures", () => {
@@ -78,5 +82,25 @@ describe("check-deps build-graph edges", () => {
 	test("handles a manifest with no dependency sections", () => {
 		expect(declaresBuildEdge({}, target)).toBe(false);
 		expect(declaresBuildEdge(undefined, target)).toBe(false);
+	});
+});
+
+describe("check-deps subpath imports", () => {
+	const manifest = {
+		imports: { "#lib": "./src/lib/index.js", "#lib/*": "./src/lib/*" },
+	};
+
+	test("exempts specifiers the package declares in its imports field", () => {
+		expect(isDeclaredSubpathImport(manifest, "#lib")).toBe(true);
+		expect(isDeclaredSubpathImport(manifest, "#lib/content/x.js")).toBe(true);
+	});
+
+	test("does not exempt an undeclared # specifier", () => {
+		expect(isDeclaredSubpathImport(manifest, "#other/x.js")).toBe(false);
+		expect(isDeclaredSubpathImport({}, "#lib/x.js")).toBe(false);
+	});
+
+	test("ignores specifiers that are not subpath imports", () => {
+		expect(isDeclaredSubpathImport(manifest, "lib/x.js")).toBe(false);
 	});
 });

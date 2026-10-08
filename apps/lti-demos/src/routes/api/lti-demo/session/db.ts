@@ -5,7 +5,7 @@ import { DatabaseSync } from "node:sqlite";
 import type {
 	AssessmentSessionSnapshot,
 	SessionPersistenceKey,
-} from "$lib/lti-demo/types";
+} from "#lib/lti-demo/types.js";
 
 type SessionRow = {
 	snapshot: string;

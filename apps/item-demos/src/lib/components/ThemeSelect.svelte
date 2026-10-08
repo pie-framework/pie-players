@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { DAISY_THEMES, selectedTheme, setTheme } from '$lib/stores/theme';
+	import { DAISY_THEMES, selectedTheme, setTheme } from '#lib/stores/theme.js';
 </script>
 
 <label class="flex items-center gap-2">

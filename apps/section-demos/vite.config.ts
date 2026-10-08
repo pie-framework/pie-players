@@ -6,7 +6,9 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import adapter from "@sveltejs/adapter-node";
 import { sveltekit } from "@sveltejs/kit/vite";
+import { vitePreprocess } from "@sveltejs/vite-plugin-svelte";
 import tailwindcss from "@tailwindcss/vite";
 import { defineConfig } from "vite";
 import { resolve } from "path";
@@ -66,7 +68,14 @@ export default (async () => {
 	return defineConfig({
 		plugins: [
 			workspaceDistFullReload(packagesRoot),
-			sveltekit(),
+			sveltekit({
+				preprocess: vitePreprocess(),
+				adapter: adapter(),
+				inspector: {
+					toggleKeyCombo: "meta-shift",
+					holdMode: true,
+				},
+			}),
 			tailwindcss(),
 			localEsmCdn,
 		].filter(Boolean),

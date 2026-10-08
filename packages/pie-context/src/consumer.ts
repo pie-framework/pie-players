@@ -1,4 +1,5 @@
 import { type ContextProviderEvent, ContextRequestEvent } from "./events.js";
+import { ensureDocumentContextRoot } from "./root.js";
 import type { ContextType, UnknownContext } from "./types.js";
 
 export interface ContextConsumerOptions<T extends UnknownContext> {
@@ -13,6 +14,7 @@ export class ContextConsumer<T extends UnknownContext> {
 	private readonly subscribe: boolean;
 	private readonly onValue?: (value: ContextType<T>) => void;
 	private isConnected = false;
+	private isDisconnected = false;
 	private unsubscribe?: () => void;
 	private currentValue?: ContextType<T>;
 
@@ -26,12 +28,17 @@ export class ContextConsumer<T extends UnknownContext> {
 	public connect(): void {
 		if (this.isConnected) return;
 		this.isConnected = true;
+		this.isDisconnected = false;
+		// The document's root replays this request to a provider that connects
+		// later, so it has to be listening before the request is made.
+		if (this.subscribe) ensureDocumentContextRoot(this.host.ownerDocument);
 		this.requestValue();
 	}
 
 	public disconnect(): void {
 		if (!this.isConnected) return;
 		this.isConnected = false;
+		this.isDisconnected = true;
 		this.unsubscribe?.();
 		this.unsubscribe = undefined;
 	}
@@ -44,6 +51,12 @@ export class ContextConsumer<T extends UnknownContext> {
 		value: ContextType<T>,
 		unsubscribe?: () => void,
 	): void => {
+		// A request recorded before `disconnect` can still be replayed and
+		// answered; the subscription that answer made is released at once.
+		if (this.isDisconnected) {
+			unsubscribe?.();
+			return;
+		}
 		if (unsubscribe !== this.unsubscribe) {
 			this.unsubscribe?.();
 			this.unsubscribe = unsubscribe;
@@ -91,29 +104,23 @@ export const requestContext = <T extends UnknownContext>(
 	return value;
 };
 
-const PROVIDER_RETRY_INTERVAL_MS = 50;
-const PROVIDER_RETRY_MAX_ATTEMPTS = 200;
-
 /**
  * Subscribe `host` to `context` for a provider that may connect after it.
- * The consumer requests again when a matching `context-provider` event
- * reaches `host`, and every 50 ms until it has a value, for up to 200
- * attempts (about 10 s). Returns a cleanup that stops retrying and
- * disconnects.
+ * The document's context root replays the request when that provider
+ * announces itself, and the consumer requests again when a matching
+ * `context-provider` event reaches `host`. With no provider the consumer
+ * stays unanswered, and the caller keeps its defaults. Returns a cleanup
+ * that disconnects.
  */
 export const connectContextWithRetry = <T extends UnknownContext>(
 	host: Element,
 	context: T,
 	onValue: (value: ContextType<T>) => void,
 ): (() => void) => {
-	let hasValue = false;
 	const consumer = new ContextConsumer(host, {
 		context,
 		subscribe: true,
-		onValue: (value) => {
-			hasValue = true;
-			onValue(value);
-		},
+		onValue,
 	});
 	consumer.connect();
 
@@ -123,18 +130,7 @@ export const connectContextWithRetry = <T extends UnknownContext>(
 	};
 	host.addEventListener("context-provider", onContextProvider);
 
-	let attempts = 0;
-	const retryTimer = globalThis.setInterval(() => {
-		if (hasValue || attempts >= PROVIDER_RETRY_MAX_ATTEMPTS) {
-			globalThis.clearInterval(retryTimer);
-			return;
-		}
-		attempts += 1;
-		consumer.requestValue();
-	}, PROVIDER_RETRY_INTERVAL_MS);
-
 	return () => {
-		globalThis.clearInterval(retryTimer);
 		host.removeEventListener("context-provider", onContextProvider);
 		consumer.disconnect();
 	};

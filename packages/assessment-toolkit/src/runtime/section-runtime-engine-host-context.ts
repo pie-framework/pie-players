@@ -76,13 +76,12 @@ export type SectionRuntimeEngineHostContextListener = (
 
 /**
  * Connect a DOM host to the cross-CE engine context through
- * `connectContextWithRetry`, the provider-retry the toolkit's other
- * contexts use.
+ * `connectContextWithRetry`, as the toolkit's other contexts connect: a
+ * provider that connects later answers through the document's context root.
  *
- * Returns a cleanup function that disconnects the consumer and clears
- * the retry interval. Standalone toolkits naturally exhaust the retry
- * window without ever resolving and continue using their local
- * engine — that is by design and is not an error.
+ * Returns a cleanup function that disconnects the consumer. A standalone
+ * toolkit is never answered and keeps using its local engine — that is by
+ * design and is not an error.
  */
 export function connectSectionRuntimeEngineHostContext(
 	host: HTMLElement,

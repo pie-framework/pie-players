@@ -150,9 +150,9 @@
 		"@types/bun": "^1.4.2",
 		"esbuild": "^0.28.2",
 		"glob": "^13.0.6",
-		"lefthook": "2.1.14",
+		"lefthook": "2.1.15",
 		"playwright": "^1.63.0",
-		"publint": "^0.3.24",
+		"publint": "^0.3.25",
 		"turbo": "^2.11.7",
 		"typescript": "^5.9.3"
 	},
@@ -209,7 +209,7 @@
 		"prosemirror-view": "^1.42.6"
 	},
 	"dependencies": {
-		"@sveltejs/kit": "^2.70.3",
+		"@sveltejs/kit": "^3.0.0",
 		"svelte": "^5.57.1",
 		"svelte-check": "^4.7.6",
 		"vite": "8.3.2"

@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { ResponsiveDemoMenuBar } from '@pie-players/demo-ui';
-	import ThemeSelect from '$lib/components/ThemeSelect.svelte';
+	import ThemeSelect from '#lib/components/ThemeSelect.svelte';
 
 	interface Props {
 		demoName: string;

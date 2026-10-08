@@ -36,7 +36,21 @@ import {
 	type SpokenAudioMedia,
 } from "./spoken-audio-cards.js";
 import type { HighlightCoordinatorApi } from "./interfaces.js";
+import {
+	DEFAULT_CONTENT_LANGUAGE,
+	findLangAttribute,
+} from "../runtime/content-language.js";
 import { BrowserTTSProvider } from "./tts/browser-provider.js";
+import {
+	composedContains,
+	composedParentElement,
+	flatQuerySelectorAll,
+	flatTextContent,
+	flatTreeChildNodes,
+	flatTreeParentElement,
+	flatTreeTextNodes,
+	rangeHoldsTextPosition,
+} from "./tts/flat-tree.js";
 import type {
 	TTSHighlightContext,
 	TTSHighlightTargetResolver,
@@ -73,6 +87,7 @@ import {
 	normalizeSREMathSpeechOptions,
 	type SREMathSpeechOptions,
 } from "./tts/math-speech.js";
+import { toTTSStartFailure } from "./tts/start-failure.js";
 import {
 	segmentSentences as segmentTextToSentences,
 	type SentenceSegment as SharedSentenceSegment,
@@ -85,6 +100,7 @@ import {
 	type HighlightDecision,
 	type RenderableHighlightTarget,
 } from "./tts/highlight-pipeline/index.js";
+import { createRangesFromVisibleMap } from "./tts/highlight-pipeline/visible-map-range.js";
 import {
 	PIE_TTS_CONTROL_HANDOFF_EVENT,
 	type TTSControlHandoffDetail,
@@ -227,6 +243,8 @@ export class TTSService {
 	private catalogResolver: AccessibilityCatalogResolver | null = null;
 	private state: PlaybackState = PlaybackState.IDLE;
 	private ttsConfig: Partial<TTSConfig> = {};
+	private readinessGate: (() => Promise<void>) | null = null;
+	private mathSpeechSource: (() => unknown) | null = null;
 	private currentText: string | null = null;
 	private currentContentElement: Element | null = null;
 	private normalizedToDOM: Map<number, { node: Text; offset: number }> =
@@ -478,6 +496,31 @@ export class TTSService {
 	}
 
 	/**
+	 * Starts the service when a caller speaks before it is initialized; a gate
+	 * that rejects fails the speak with its error. The coordinator installs one
+	 * that runs its own text-to-speech start.
+	 */
+	setReadinessGate(gate: (() => Promise<void>) | null): void {
+		this.readinessGate = gate;
+	}
+
+	/**
+	 * Where the configured math speech options come from before, and apart from,
+	 * initialization, so math names do not depend on when speech started.
+	 */
+	setMathSpeechSource(source: (() => unknown) | null): void {
+		this.mathSpeechSource = source;
+	}
+
+	/** The start a speak must wait for, or null when it can speak now without yielding. */
+	private pendingReadiness(): Promise<void> | null {
+		if (this.provider || !this.readinessGate) return null;
+		return this.readinessGate().catch((error: unknown) => {
+			throw toTTSStartFailure(error);
+		});
+	}
+
+	/**
 	 * Set a late-bound provider for optional host TTS highlight target remapping.
 	 *
 	 * The returned disposer is the only thing that clears the registration: the
@@ -569,7 +612,7 @@ export class TTSService {
 		if (!node) return null;
 		return node.nodeType === Node.ELEMENT_NODE
 			? (node as Element)
-			: node.parentElement;
+			: composedParentElement(node);
 	}
 
 	private isElementWithinScope(
@@ -577,7 +620,7 @@ export class TTSService {
 		scope: Element | null | undefined,
 	): boolean {
 		if (!scope) return true;
-		return element === scope || scope.contains(element);
+		return composedContains(scope, element);
 	}
 
 	private isRangeWithinScope(
@@ -744,7 +787,14 @@ export class TTSService {
 		return { locale, boundarySpacingMode };
 	}
 
-	private getMathSpeechOptions(): SREMathSpeechOptions | undefined {
+	/**
+	 * The host's SRE options for math speech: from the installed source, else as
+	 * this service was initialized with.
+	 */
+	getMathSpeechOptions(): SREMathSpeechOptions | undefined {
+		if (this.mathSpeechSource) {
+			return normalizeSREMathSpeechOptions(this.mathSpeechSource());
+		}
 		const providerOptions = (this.ttsConfig.providerOptions || {}) as Record<
 			string,
 			unknown
@@ -917,7 +967,7 @@ export class TTSService {
 		textNode: Text,
 		root: Element,
 	): { anchor: Element; units: number } | null {
-		let current = textNode.parentElement;
+		let current = flatTreeParentElement(textNode);
 		let best: Element | null = null;
 		while (current && current !== root) {
 			if (this.isElementHidden(current)) return null;
@@ -953,7 +1003,7 @@ export class TTSService {
 					}
 				}
 			}
-			current = current.parentElement;
+			current = flatTreeParentElement(current);
 		}
 		if (!best) return null;
 		const strength = this.getBoundaryStrength(best);
@@ -972,10 +1022,12 @@ export class TTSService {
 		contentElement: Element,
 		normalizedText: string,
 		textOffset = 0,
+		language?: string,
 	): TTSSpeechSegment[] {
 		const boundaries = this.collectSpeechPlanBoundaries(
 			contentElement,
 			normalizedText,
+			language,
 		);
 		if (textOffset === 0) {
 			return this.createSpeechPlanSegments(normalizedText, boundaries);
@@ -990,23 +1042,20 @@ export class TTSService {
 	private collectSpeechPlanBoundaries(
 		contentElement: Element,
 		normalizedText: string,
+		language?: string,
 	): Map<number, number> {
 		const boundaries = new Map<number, number>();
+		// The same locale the position map used, so the boundary offsets index the
+		// text the map built.
 		const { map } = collectVisibleTextAndMap(
 			contentElement,
-			this.getTextProcessingOptions(),
+			this.getTextProcessingOptions(language),
 		);
 		const nodeStartOffsets = this.createNodeStartOffsets(map);
 
-		const walker = document.createTreeWalker(
-			contentElement,
-			NodeFilter.SHOW_TEXT,
-		);
-		let currentNode = walker.nextNode();
 		let previousBoundaryAnchor: Element | null = null;
-		while (currentNode) {
-			const textNode = currentNode as Text;
-			const parent = textNode.parentElement;
+		for (const textNode of flatTreeTextNodes(contentElement)) {
+			const parent = flatTreeParentElement(textNode);
 			if (
 				parent &&
 				!this.isElementHidden(parent) &&
@@ -1027,7 +1076,6 @@ export class TTSService {
 					previousBoundaryAnchor = boundary.anchor;
 				}
 			}
-			currentNode = walker.nextNode();
 		}
 		return boundaries;
 	}
@@ -1271,10 +1319,14 @@ export class TTSService {
 		const start = this.normalizedToDOM.get(mapStart);
 		const end = this.normalizedToDOM.get(mapStart + length - 1);
 		if (!start || !end) return;
-		const range = document.createRange();
-		range.setStart(start.node, start.offset);
-		range.setEnd(end.node, end.offset + 1);
-		this.paintTTSSentenceRanges([range]);
+		// One range per tree: a sentence running into a shadow root paints in both.
+		const ranges = createRangesFromVisibleMap(
+			this.normalizedToDOM,
+			mapStart,
+			mapStart + length,
+		);
+		if (ranges.length === 0) return;
+		this.paintTTSSentenceRanges(ranges);
 		this.activeSentenceStartOffset = startOffset;
 	}
 
@@ -1376,8 +1428,10 @@ export class TTSService {
 	 * @param options Optional catalog ID, language, and content element for highlighting
 	 */
 	async speak(text: string, options?: SpeakOptions): Promise<void> {
+		const pendingReadiness = this.pendingReadiness();
+		if (pendingReadiness) await pendingReadiness;
 		if (!this.provider) {
-			throw new Error("TTS service not initialized");
+			throw toTTSStartFailure(new Error("TTS service not initialized"));
 		}
 		const runId = ++this.speakRunId;
 		this.clearPlaybackStartBarrier();
@@ -1424,6 +1478,7 @@ export class TTSService {
 								this.currentContentElement,
 								normalizedText,
 								options?.wordBoundaryOffset || 0,
+								options?.language,
 							)
 						: this.createSeekSegmentsFromText(highlightText);
 			this.sentenceHighlightSegments = hasExplicitBreaks
@@ -1576,12 +1631,22 @@ export class TTSService {
 		);
 	}
 
+	/**
+	 * Text processing reads the language a speak names. The language reaches the
+	 * provider as `contentLanguage` only when named, so the browser voice
+	 * otherwise follows the browser's language. A speak naming none leaves the
+	 * configured settings alone, unless an earlier speak named one: then it
+	 * clears it and text processing reads en-US.
+	 */
 	private async applyLanguageSettings(options?: SpeakOptions): Promise<void> {
-		if (!options?.language || !this.provider) return;
+		if (!this.provider) return;
+		const named = options?.language?.trim() || undefined;
 		const providerOptions = (this.ttsConfig.providerOptions || {}) as Record<
 			string,
 			unknown
 		>;
+		if (!named && providerOptions.contentLanguage === undefined) return;
+		const language = named ?? DEFAULT_CONTENT_LANGUAGE;
 		const textNormalization = (providerOptions.textNormalization ||
 			{}) as Record<string, unknown>;
 		const segmenter = (providerOptions.segmenter || {}) as Record<
@@ -1590,15 +1655,17 @@ export class TTSService {
 		>;
 		const mergedProviderOptions = {
 			...providerOptions,
-			locale: options.language,
+			locale: language,
 			textNormalization: {
 				...textNormalization,
-				locale: options.language,
+				locale: language,
 			},
 			segmenter: {
 				...segmenter,
-				locale: options.language,
+				locale: language,
 			},
+			// Set even when undefined: providers merge options shallowly.
+			contentLanguage: named,
 		};
 		this.ttsConfig = {
 			...this.ttsConfig,
@@ -1768,7 +1835,10 @@ export class TTSService {
 			if (!catalogIdRef) return null;
 			const lookup = {
 				type: "spoken",
-				language: options.language || "en-US",
+				// The node's own language first: a `lang` inside the read content
+				// names the language of the part it marks.
+				language:
+					findLangAttribute(element, root) || options.language || "en-US",
 				useFallback: true,
 				context: options.catalogContext,
 			} as const;
@@ -1811,7 +1881,7 @@ export class TTSService {
 				: null;
 		};
 		const getMathElementsForAlignment = (element: Element): Element[] => {
-			const mathElements = Array.from(element.querySelectorAll("math"));
+			const mathElements = flatQuerySelectorAll(element, "math");
 			if (element.localName?.toLowerCase() === "math") {
 				return [element, ...mathElements];
 			}
@@ -1837,7 +1907,7 @@ export class TTSService {
 				);
 				const visibleText =
 					collectedVisible.visibleText ||
-					normalizeTextForSpeech(element.textContent || "");
+					normalizeTextForSpeech(flatTextContent(element));
 				const regionElement = resolveReadableRegion(element, root);
 				// The script chunk, when there is a script. Built exactly as before,
 				// and it doubles as the recording's fallback: word-level alignment is
@@ -1911,7 +1981,7 @@ export class TTSService {
 				if (scriptChunk) chunks.push(scriptChunk);
 				return;
 			}
-			for (const child of Array.from(element.childNodes)) {
+			for (const child of flatTreeChildNodes(element)) {
 				visit(child);
 			}
 		};
@@ -2135,8 +2205,15 @@ export class TTSService {
 		try {
 			this.lastRenderedRegionTarget = null;
 			if (chunk.regionRange) {
+				const ranges = createRangesFromVisibleMap(
+					chunk.visibleMap,
+					0,
+					chunk.visibleText.length,
+				);
 				this.highlightCoordinator.clearHighlights?.(HighlightType.TTS_WORD);
-				this.paintTTSSentenceRanges([chunk.regionRange]);
+				this.paintTTSSentenceRanges(
+					ranges.length > 1 ? ranges : [chunk.regionRange],
+				);
 				return;
 			}
 			if (!element) return;
@@ -2175,7 +2252,7 @@ export class TTSService {
 			if (target.type === "element") {
 				range.selectNodeContents(target.element);
 			} else if (target.type === "range") {
-				this.paintTTSSentenceRanges([target.range]);
+				this.paintTTSSentenceRanges(target.ranges ?? [target.range]);
 				this.lastRenderedRegionTarget = target;
 				return;
 			} else {
@@ -2565,25 +2642,18 @@ export class TTSService {
 	private selectMappedRangeText(
 		range: Range,
 		root: Element,
+		language?: string,
 	): { text: string; offset: number } | null {
 		if (typeof range.comparePoint !== "function") return null;
 		const { text: rootText, map } = collectVisibleTextAndMap(
 			root,
-			this.getTextProcessingOptions(),
+			this.getTextProcessingOptions(language),
 		);
 		let start = -1;
 		let end = -1;
 		for (const [index, { node, offset }] of map) {
 			if (index >= rootText.length) continue;
-			let inside = false;
-			try {
-				inside =
-					range.comparePoint(node, offset) === 0 &&
-					range.comparePoint(node, Math.min(offset + 1, node.length)) === 0;
-			} catch {
-				inside = false;
-			}
-			if (!inside) continue;
+			if (!rangeHoldsTextPosition(range, node, offset)) continue;
 			if (start === -1 || index < start) start = index;
 			if (index > end) end = index;
 		}
@@ -2596,10 +2666,12 @@ export class TTSService {
 
 	async speakRange(
 		range: Range,
-		options?: { contentRoot?: Element | null },
+		options?: { contentRoot?: Element | null; language?: string },
 	): Promise<void> {
+		const pendingReadiness = this.pendingReadiness();
+		if (pendingReadiness) await pendingReadiness;
 		if (!this.provider) {
-			throw new Error("TTS service not initialized");
+			throw toTTSStartFailure(new Error("TTS service not initialized"));
 		}
 
 		// Enforced from the live ancestors rather than from `root`, because the
@@ -2621,7 +2693,7 @@ export class TTSService {
 			root =
 				ancestor.nodeType === Node.ELEMENT_NODE
 					? (ancestor as Element)
-					: ancestor.parentElement;
+					: composedParentElement(ancestor);
 		}
 		if (!root) return;
 
@@ -2640,7 +2712,11 @@ export class TTSService {
 		// the highlight position map and the structural speech plan index too. Joined
 		// from raw text nodes instead, a selection loses the space the map inserts
 		// between blocks, and every offset after that boundary drifts.
-		const mapped = this.selectMappedRangeText(range, root);
+		const mapped = this.selectMappedRangeText(
+			range,
+			root,
+			options?.language || DEFAULT_CONTENT_LANGUAGE,
+		);
 		let text = selectedText;
 		let offset = mapped?.offset ?? 0;
 		if (mapped) {
@@ -2669,6 +2745,7 @@ export class TTSService {
 		await this.speak(text, {
 			contentElement: root,
 			ignoreCatalogs: true,
+			language: options?.language,
 			wordBoundaryOffset: offset,
 		});
 	}

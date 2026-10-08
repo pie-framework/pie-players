@@ -5,12 +5,12 @@
 		findPieController,
 		type ConfigEntity,
 	} from '@pie-players/pie-players-shared';
-	import { config as configStore } from '$lib/stores/demo-state';
+	import { config as configStore } from '#lib/stores/demo-state.js';
 	import {
 		loadControllerInspectionRows,
 		type ControllerInspectionRow,
-	} from '$lib/utils/controller-inspector';
-	import { demoHeadingName } from '$lib/utils/demo-heading-name';
+	} from '#lib/utils/controller-inspector.js';
+	import { demoHeadingName } from '#lib/utils/demo-heading-name.js';
 
 	let { data } = $props();
 

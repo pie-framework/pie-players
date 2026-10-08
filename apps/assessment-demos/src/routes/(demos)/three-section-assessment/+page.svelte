@@ -1,6 +1,6 @@
 <script lang="ts">
-	import { browser } from "$app/environment";
-	import { afterNavigate, replaceState } from "$app/navigation";
+	import { browser } from "$app/env";
+	import { afterNavigate, goto } from "$app/navigation";
 	import { onMount, untrack } from "svelte";
 import {
 	CompositeInstrumentationProvider,
@@ -12,12 +12,12 @@ import {
 		ToolkitCoordinator,
 	} from "@pie-players/pie-assessment-toolkit";
 	import { createPackagedToolRegistry } from "@pie-players/pie-default-tool-loaders";
-	import { assessmentDemoTextToSpeechConfig } from "$lib/demo-runtime/demo-tts";
+	import { assessmentDemoTextToSpeechConfig } from "#lib/demo-runtime/demo-tts.js";
 	import "@pie-players/pie-assessment-player/components/assessment-player-default-element";
 	import "@pie-players/pie-section-player-tools-event-debugger";
 import "@pie-players/pie-section-player-tools-instrumentation-debugger";
 	import "@pie-players/pie-section-player-tools-session-debugger";
-	import AssessmentDemoMenuBar from "$lib/demo-runtime/components/AssessmentDemoMenuBar.svelte";
+	import AssessmentDemoMenuBar from "#lib/demo-runtime/components/AssessmentDemoMenuBar.svelte";
 	import {
 		ASSESSMENT_PLAYER_PUBLIC_EVENTS,
 		type AssessmentRouteChangedDetail,
@@ -146,7 +146,8 @@ let instrumentationDebuggerElement = $state<any>(null);
 	}
 
 	let routerReady = $state(false);
-	afterNavigate(() => {
+	afterNavigate(({ shallow, type }) => {
+		if (shallow && type === 'goto') return;
 		routerReady = true;
 		syncUrl();
 	});
@@ -156,7 +157,7 @@ let instrumentationDebuggerElement = $state<any>(null);
 		const url = new URL(window.location.href);
 		url.searchParams.set(ATTEMPT_QUERY_PARAM, attemptId);
 		url.searchParams.set(SECTION_LAYOUT_QUERY_PARAM, sectionLayout);
-		replaceState(url, {});
+		goto(url, { shallow: true, replace: true });
 	}
 
 	function refreshSnapshot() {

@@ -64,6 +64,7 @@
 	import { onDestroy, untrack } from "svelte";
 	import { SectionController } from "../controllers/SectionController.js";
 	import { watchMissingToolProviders } from "./shared/missing-tool-providers.js";
+	import { waitForToolkitReady } from "./shared/toolkit-ready-wait.js";
 	import type {
 		AssessmentSection,
 		SectionControllerSessionState,
@@ -145,6 +146,11 @@
 	const effectiveLocale = $derived.by(
 		() => runtime?.locale || locale || undefined,
 	);
+	// Content language, for read-aloud and catalog lookups; runtime-only. A tag or
+	// `undefined`, never `""`, for the same reason as the locale above.
+	const effectiveContentLanguage = $derived.by(
+		() => runtime?.contentLanguage || undefined,
+	);
 	// Interface locale for the section-overlay surfaces this element mounts.
 	//
 	// Resolved from the toolkit's runtime context rather than from a second
@@ -193,11 +199,16 @@
 	// a re-dispatch reaches every listener on this element a second time,
 	// because a Svelte custom element's `addEventListener` also subscribes to
 	// its component events.
-	function handleToolkitReadyEvent(event: Event): void {
+	function toolkitReadyCoordinator(event: Event): ToolkitCoordinatorApi | null {
 		const coordinator = (event as CustomEvent<{ coordinator?: unknown }>).detail
 			?.coordinator;
+		return coordinator ? (coordinator as ToolkitCoordinatorApi) : null;
+	}
+
+	function handleToolkitReadyEvent(event: Event): void {
+		const coordinator = toolkitReadyCoordinator(event);
 		if (coordinator) {
-			activeToolkitCoordinator = coordinator as ToolkitCoordinatorApi;
+			activeToolkitCoordinator = coordinator;
 		}
 	}
 
@@ -291,29 +302,22 @@
 		const previousFactory = root.createSectionController;
 		root.createSectionController = installedFactory;
 
-		// The controller the toolkit has already built, if any. Tried
-		// synchronously first, then polled, since it appears asynchronously.
+		// The controller the toolkit has already built, if any, and otherwise
+		// the one it has once it emits `toolkit-ready`, which follows the
+		// section's controller resolving.
 		register(resolveSectionController());
-		let pollAbandoned = false;
-		void (async () => {
-			const deadline = Date.now() + 10_000;
-			while (!pollAbandoned && Date.now() < deadline) {
-				const controller = resolveSectionController();
-				if (controller) {
-					if (!pollAbandoned) register(controller);
-					return;
-				}
-				await new Promise((resolve) => setTimeout(resolve, 25));
-			}
-		})();
+		const onToolkitReady = (event: Event) => {
+			register(resolveSectionController(toolkitReadyCoordinator(event)));
+		};
+		root.addEventListener("toolkit-ready", onToolkitReady);
 
 		// This effect reads the section, attempt and coordinator, so it re-runs on
-		// a section swap or a cohort flip. A poll left running across that would
-		// register a commit closure over the previous root onto whichever
-		// controller is live when it resolves, and one outliving the component
-		// would sweep a detached subtree.
+		// a section swap or a cohort flip. A listener left attached across that
+		// would register a commit closure over the previous root onto the next
+		// controller, and one outliving the component would sweep a detached
+		// subtree.
 		return () => {
-			pollAbandoned = true;
+			root.removeEventListener("toolkit-ready", onToolkitReady);
 			if (root.createSectionController === installedFactory) {
 				root.createSectionController = previousFactory;
 			}
@@ -398,11 +402,14 @@
 		};
 	}
 
-	function resolveSectionController(): SectionControllerHandle | null {
+	function resolveSectionController(
+		readyCoordinator: ToolkitCoordinatorApi | null = null,
+	): SectionControllerHandle | null {
 		const targetSectionId = effectiveSectionId;
 		if (!targetSectionId) return null;
 		const resolvedAttemptId = attemptId || undefined;
 		const coordinator =
+			readyCoordinator ||
 			activeToolkitCoordinator ||
 			(effectiveCoordinator as {
 				getSectionController?: (args: {
@@ -426,13 +433,16 @@
 	export async function waitForSectionController(
 		timeoutMs = 5000,
 	): Promise<SectionControllerHandle | null> {
-		const start = Date.now();
-		while (Date.now() - start < timeoutMs) {
-			const controller = resolveSectionController();
-			if (controller) return controller;
-			await new Promise((resolve) => setTimeout(resolve, 25));
-		}
-		return null;
+		if (!(timeoutMs > 0)) return null;
+		return (
+			resolveSectionController() ??
+			waitForToolkitReady(
+				toolkitElement as EventTarget | null,
+				(event) =>
+					resolveSectionController(event ? toolkitReadyCoordinator(event) : null),
+				timeoutMs,
+			)
+		);
 	}
 
 </script>
@@ -449,6 +459,7 @@
 	env={effectiveEnv}
 	nds-icons={effectiveNdsIcons}
 	locale={effectiveLocale}
+	content-language={effectiveContentLanguage}
 	lazy-init={effectiveLazyInit}
 	tool-config-strictness={effectiveToolConfigStrictness}
 	tools={effectiveTools}

@@ -436,7 +436,9 @@ for (const tool of visibleTools) {
 
 ```html
 <pie-assessment-toolkit id="toolkit">
-  <pie-item-toolbar id="toolbar" item-id="question-1"></pie-item-toolbar>
+  <pie-item-scope id="scope" item-id="question-1">
+    <pie-item-toolbar id="toolbar"></pie-item-toolbar>
+  </pie-item-scope>
 </pie-assessment-toolkit>
 <script>
   const toolkit = document.getElementById("toolkit");
@@ -445,9 +447,8 @@ for (const tool of visibleTools) {
   toolkit.assessment = assessment;
   toolkit.currentItemRef = itemRef;
 
-  const toolbar = document.getElementById("toolbar");
-  toolbar.toolRegistry = toolRegistry;
-  toolbar.item = item;
+  document.getElementById("scope").item = item;
+  document.getElementById("toolbar").toolRegistry = toolRegistry;
 </script>
 ```
 

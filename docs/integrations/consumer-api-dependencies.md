@@ -98,6 +98,19 @@ choice, and gets them back in the line. An image an element lays out as a
 block gets a block wrapper, carrying `pie-image-scroll-block`, so no gap opens
 below it. Row verification dates are unchanged.
 
+On 2026-10-07 read-aloud, its highlighting and the annotation toolbar started
+reaching content rendered into open shadow roots, and read-aloud started speaking
+in the content language: the nearest `lang` inside the shell, else the new
+`content-language` input, else `en-US`. Checked against the recorded rows and
+the checkouts of Hosts A and R, the two that render the toolkit. The annotation
+toolbar now opens only for a selection inside a card's content region, so Host R,
+the one host placing `annotationToolbar`, no longer gets it for a selection in a
+card's header, lead surfaces or media region. Host A reads aloud through the
+server backend, whose request language stays the one its provider config names.
+The browser voice follows a content language only where content markup or a host
+names one, which only Host R's browser voice reaches; otherwise it follows the
+browser's language as before. Row verification dates are unchanged.
+
 The 2026-09-17 session-commit change (PIE-1058) was checked against the
 recorded rows rather than re-derived from the checkouts. It renames and removes
 nothing: `pie-item-player` gains one opt-in property, `session-snapshot`, one
@@ -433,7 +446,7 @@ The 2026-09-26 re-derivation found neither surface in any host.
 | **Host A** | Angular + webpack | Full fixed-form delivery: one layout CE, the toolkit coordinator via `toolkit-ready`, session persistence, TTS, calculator, PNP | Highest — external client-facing, drives live delivery |
 | **Host P** | Angular + webpack, packaged as a custom element that an outer page mounts | One item at a time in learner delivery, through the preloaded build of `pie-item-player`, which it serves from its own static assets; migrating off `@pie-framework/pie-fixed-player-static` behind a host-side player-type switch | High — external client-facing; the `@pie-players` path is live wherever that switch selects it |
 | **Host M** | Framework-free TypeScript custom element, built by Vite into one ES module and loaded as a micro-frontend remote by an Angular shell | One item at a time through `pie-item-player` on the `preloaded` strategy, with the element and its controller bundled and registered by the host so evaluation runs in the browser; themed through a provider adapter of its own | High once shipped — mounted on a development route only so far, and the base a client-facing product is building on |
-| **Host R** | SvelteKit reference/QA app | Nearly the whole suite, and the only consumer of the **programmatic** API: it constructs `ToolkitCoordinator` itself, drives the composition layer, reads the theme token registry, and runs the Node-side TTS providers | Low to fix, high to notice — internally controlled, but it is the first place a regression surfaces |
+| **Host R** | SvelteKit reference/QA app | Nearly the whole suite, and the only consumer of the **programmatic** API: it drives the coordinator the section player builds, the composition layer, reads the theme token registry, and runs the Node-side TTS providers | Low to fix, high to notice — internally controlled, but it is the first place a regression surfaces |
 
 Packages consumed:
 
@@ -650,7 +663,9 @@ three `*HostButtons` object props, or `policies`.
 
 Method: `waitForSectionController(timeoutMs)` (A, off a
 `document.querySelector` handle) and the zero-argument `getSectionController()`
-(R, off the event's `currentTarget`). Both overloads are live.
+(R, off the event's `currentTarget`). Both overloads are live. Since 0.3.75
+`waitForSectionController` resolves on `toolkit-ready` or when the controller
+resolves, where it polled before; the signature and the timeout are unchanged.
 
 Events: `toolkit-ready`, read as `event.detail.coordinator`. A listens with
 `addEventListener`; R uses the Svelte 5 `ontoolkit-ready` attribute form. R also
@@ -798,20 +813,10 @@ provider row and reports nothing.
 The deepest coupling in the set, and the one no client-facing host has. From
 `@pie-players/pie-assessment-toolkit`:
 
-- `new ToolkitCoordinator(config)` — constructed by the host in six places, not
-  obtained from `toolkit-ready`. Config keys used: `assessmentId`,
-  `toolConfigStrictness`, `tools`, `toolRegistry`, `toolContextResolvers`. Every
-  call site pins itself with `satisfies ConstructorParameters<…>[0]`, so a
-  constructor-signature change is a type error there rather than a silent
-  misconfiguration. `hooks` is no longer passed to the constructor. Only the
-  section-preview route passes `toolRegistry`; the four section demos and the
-  playground build a registry for `createToolsConfig` and omit it from the
-  constructor, so their coordinators adopt the registry of the section player
-  they are bound to, which validates their config and registers the providers
-  behind their TTS backend and calculator. A coordinator that stops adopting
-  puts them back on browser speech with a calculator that fails to open.
-- `coordinator.setHooks({ onFrameworkError })`, with the handler reading the
-  framework-error model as an opaque value
+- The coordinator the section player builds, taken off `toolkit-ready` at all
+  six call sites; the host constructs none (checked on its `develop`,
+  2026-10-07). The playground also hands the layout element the registry it
+  builds for `createToolsConfig`.
 - `coordinator.updateAssessment(entity)` — driven off a `$effect`, so it is
   called repeatedly with a fresh entity carrying the same id; the method has to
   stay idempotent under that
@@ -902,7 +907,7 @@ API**.
 
 | Name | Route | Consumers | Use |
 | --- | --- | --- | --- |
-| `toolkit-ready` | DOM event on the layout CE | A, R | Captures `detail.coordinator`. R compares it against the coordinator it constructed itself and warns on a mismatch, so identity is checked, not just presence |
+| `toolkit-ready` | DOM event on the layout CE | A, R | Captures `detail.coordinator`. R keeps it as the coordinator its session reset and lifecycle logging drive, replacing it on each event |
 | `pie-stage-change` | DOM event on the layout CE | R | Filtered on `detail.stage === "engine-ready"`, then calls the zero-arg `getSectionController()` off `currentTarget`. The stage vocabulary and this transition's timing are both API |
 | `item-session-data-changed` | `subscribeItemEvents` | A | Response capture → store dispatch → autosave. The handler also takes the event's item as the current item, marks it answered, submits the previously answered item when the item changes within the section, and in a preview mode requests a score, so an event naming an item other than the one on screen moves the host's current item |
 | `content-loaded` | `subscribeItemEvents` | A | Per-item and `contentKind === "rubric"` load tracking; cancels a load-timeout watchdog |
@@ -1050,6 +1055,15 @@ combination in particular (`transportMode: "custom"` +
 deliberately unvalidated path; treat it as a supported configuration, not as a
 loophole to tighten.
 
+Since 0.3.75 a tool whose provider fails to start leaves the section on screen
+and reports itself unavailable, unless policy grants it through an item
+requirement, a district requirement or a profile support; a granted tool's
+failure still ends in the section's error state. So a failing Desmos auth fetch
+leaves the calculator unavailable. A failing TTS endpoint is recoverable whatever
+the policy, because browser speech takes over; only browser speech failing too
+counts as the tool failing. Before, each of these ended in the error state. Host A
+passes no `lazyInit`, so text-to-speech still starts at the first composition.
+
 Host R sets the same eleven-key TTS provider config, the same three-part
 unvalidated transport combination among them, and adds a twelfth key —
 `providerOptions`, an untyped object. The toolkit merges it into the provider's
@@ -1067,33 +1081,31 @@ pad previously recorded:
 - `assessmentId`
 - `playerType` — `"iife"` / `"esm"` / `"preloaded"`, selected by a control, so
   all three branches are exercised there and nowhere else
-- `lazyInit: true`
+- `lazyInit: true`, in the playground and the four section demos: text-to-speech
+  starts at the first read-aloud instead of at composition, unless policy grants
+  it. Until 0.3.75 the flag was ignored
 - `tools` — a `createToolsConfig` output, not a literal
 - `toolContextResolvers` — a host resolver map for `calculator`, built from
   item metadata
 - `player.loaderConfig` — `trackPageActions` plus the constructed
   `instrumentationProvider`
 - `env` — `{ mode: "gather" | "evaluate", role: "student" | "instructor" }`
-- `coordinator` — the host-constructed `ToolkitCoordinator` instance, passed
-  **through the runtime object**, which is how a host-supplied coordinator
-  reaches the engine
+- `onFrameworkError`, in the playground and the four section demos
 
 `toolRegistry` stays a separate element property rather than a runtime key,
 because the layout shell rather than the engine consumes it.
 
-Two of these are single-consumer surfaces with no client-facing backstop.
-`env` on the section-player runtime is exercised only here — Host V passes `env`
-to the item player instead, and Host A passes none — and it is the only place the
-`gather` and `evaluate` modes appear in any checkout. `runtime.coordinator` is
-likewise Host R's alone; Host A takes its coordinator off `toolkit-ready` and
-supplies none.
+`env` on the section-player runtime is a single-consumer surface with no
+client-facing backstop: it is exercised only here — Host V passes `env` to the
+item player instead, and Host A passes none — and it is the only place the
+`gather` and `evaluate` modes appear in any checkout. No host passes
+`runtime.coordinator`.
 
 Host R is also the only host that feeds the player a `createToolsConfig` output
 rather than a hand-written literal, so it is the only one that would notice the
 canonical config type and the CE's expected `tools` shape drifting apart. It
-sets `toolConfigStrictness: 'error'` at every one of its six coordinator call
-sites and passes `strictness: 'error'` to `createToolsConfig` — no longer `'off'`
-— so a diagnostic this repository promotes to `error` severity now blocks that
+passes `strictness: 'error'` to `createToolsConfig` at all six call sites — no
+longer `'off'` — so a diagnostic this repository promotes to `error` severity now blocks that
 host's render behind an error panel instead of logging.
 
 ## Hooks
@@ -1105,13 +1117,9 @@ formatter is the only thing producing correct question numbers in that delivery.
 Changing the context shape, or calling the formatter for a new `kind` without a
 `defaultTitle`, produces wrong or blank card titles.
 
-Host R sets `onFrameworkError` through `coordinator.setHooks` instead of on the
-element. Its hook still receives each error once. Since 2026-09-26 an error its
-coordinator reports after the section player mounts also reaches the layout's
-`framework-error` event, the `onFrameworkError` prop and the console, as one
-from a toolkit-owned coordinator does. The toolkit's initialization banner stays
-off for these errors, so the section stays on screen when Host R's coordinator
-fails to initialize.
+Host R passes `onFrameworkError` in the runtime object, where it receives each
+error once. A tool's start failure arrives there with `recoverable: true` unless
+policy grants the tool, and the section stays on screen.
 
 ## Theme tokens set by hosts
 
@@ -1577,7 +1585,7 @@ re-derived rather than remembered.
 - Renaming a `TTSErrorCode` member
 - Changing `supportedLevels`, or the `ToolRegistry.getAllTools` and `register`
   signatures
-- `ToolkitCoordinator` constructor, `createToolsConfig`, `setHooks`,
+- `createToolsConfig`,
   `updateAssessment`, `onPolicyChange`, `decideFeaturePolicy`,
   `disposeSectionController`
 - The `granted` and `reason` fields on `FeaturePolicyDecision` — `reason` is
@@ -1597,7 +1605,7 @@ re-derived rather than remembered.
   host's ten properties no client-facing host sets
 - The `bundleHash`, `elements` and `loaderVersion` fields of a generated
   preloaded package's `pie` block, and the registry publish time beside them
-- `runtime.coordinator`, `runtime.playerType`, `runtime.lazyInit`,
+- `runtime.playerType`, `runtime.lazyInit`,
   `runtime.player.loaderConfig`, and `env` on the section-player runtime
 - The five debugger and settings panel CE prop sets, and the duck-typed
   `customProviders` entry shape
@@ -1608,10 +1616,9 @@ re-derived rather than remembered.
   `pie-tool-dictionary` as of the declaration-emit fix below, and their picture
   equivalents from `pie-tool-picture-dictionary`
 
-The coordinator constructor and `createToolsConfig` are pinned with `satisfies`
-in Host R, so signature changes there surface as type errors on its next
-typecheck rather than at runtime. The rest of this list does not: `env`,
-`runtime.coordinator`, the CE prop sets and `customProviders` are all untyped at
+`createToolsConfig` is typed in Host R, so a signature change there surfaces as a
+type error on its next typecheck rather than at runtime. The rest of this list
+does not: `env`, the CE prop sets and `customProviders` are all untyped at
 the boundary, the dictionary contract crosses an HTTP endpoint no typecheck can
 span even now that its shape ships, and the `pie-item-player` properties arrive
 over a CDN with no typecheck at all.
@@ -1642,6 +1649,9 @@ over a CDN with no typecheck at all.
   no call site in any checkout, so its replacement breaks nobody
 - Additive optional members on `ToolRegistration`, `ToolbarContext`,
   `ToolSurfaceServices` and the toolkit runtime context
+- `<pie-item-scope>`, the `runtime-ready` event, `sectionBound` on the host
+  runtime context, the coordinator's `getToolRegistry`, `onReadyChange` and
+  `eagerInit`, and `isTTSStartFailure` — no checkout uses any of them
 - `theme="auto"` behavior, and `variables` on `pie-theme`
 - The additive `ToolRegistry.onRegistryChange` observer and recoverable
   `tool-surface` framework-warning kind; no recorded host calls or branches on
@@ -1738,6 +1748,15 @@ over a CDN with no typecheck at all.
   the item player. No checkout imports any of them. Host R declares its own
   types and math helpers under several of these names, none resolved from this
   repository
+- `<pie-item-scope>` and `createShellScope` on the toolkit, added on 2026-10-07,
+  and the item and passage shells publishing through `createShellScope`, which
+  republishes a changed scope to tools already subscribed. No host renders a
+  shell or imports the scope
+- The `content-language` attribute on `pie-assessment-toolkit`,
+  `runtime.contentLanguage` on the section-player layouts and the
+  `contentLanguage` member of the toolkit runtime context, added on 2026-10-07.
+  No host sets either input, so content language stays `en-US` wherever markup
+  names none
 
 ## Consumer-side defects worth reporting upstream
 

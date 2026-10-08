@@ -25,16 +25,16 @@ export function demoLocale(): string {
 }
 
 /**
- * `goto` rather than shallow `replaceState`: shallow routing moves the address
+ * A plain `goto`, not a shallow one: shallow routing moves the address
  * bar without invalidating `page.url`, so nothing downstream would re-render.
- * `keepFocus` leaves the select focused, and `noScroll` keeps a long demo where
- * the reader left it.
+ * `reset: false` leaves the select focused and keeps a long demo where the
+ * reader left it.
  */
 export function setDemoLocale(locale: string): void {
-	const url = new URL(page.url);
+	const url = new URL(page.url.href);
 	if (locale) url.searchParams.set("locale", locale);
 	else url.searchParams.delete("locale");
-	void goto(url, { replaceState: true, keepFocus: true, noScroll: true });
+	void goto(url, { replace: true, reset: false });
 }
 
 /** The locales the players ship a catalog for. */

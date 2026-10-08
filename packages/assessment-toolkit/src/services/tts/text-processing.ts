@@ -1,3 +1,9 @@
+import {
+	flatTreeParentElement,
+	flatTreeTextNodes,
+	rangeIntersectsComposedNode,
+} from "./flat-tree.js";
+
 export type NormalizedTextMap = Map<number, { node: Text; offset: number }>;
 export type BoundarySpacingMode = "segmenterPreferred" | "alnum" | "none";
 
@@ -68,14 +74,14 @@ export const isNodeHiddenForTTS = (
 	node: Node,
 	root?: Element | null,
 ): boolean => {
+	// Up the flat tree, so a node in a shadow root inherits its host's
+	// visibility and a slotted node the visibility of the slot rendering it.
 	let current =
-		node.nodeType === 1
-			? (node as Element)
-			: (node.parentElement as Element | null);
+		node.nodeType === 1 ? (node as Element) : flatTreeParentElement(node);
 	while (current) {
 		if (isElementHiddenForTTS(current)) return true;
 		if (root && current === root) break;
-		current = current.parentElement;
+		current = flatTreeParentElement(current);
 	}
 	return false;
 };
@@ -139,14 +145,13 @@ export const isNodeSuppressedForTTS = (
 	node: Node,
 	root?: Element | null,
 ): boolean => {
+	// Through shadow hosts as well: suppression on a host covers its shadow tree.
 	let current =
-		node.nodeType === 1
-			? (node as Element)
-			: (node.parentElement as Element | null);
+		node.nodeType === 1 ? (node as Element) : flatTreeParentElement(node);
 	while (current) {
 		if (isElementSuppressedForTTS(current)) return true;
 		if (root && current === root) break;
-		current = current.parentElement;
+		current = flatTreeParentElement(current);
 	}
 	return false;
 };
@@ -181,10 +186,6 @@ export const collectRangeTextForSpeech = (
 	root: Element,
 ): { text: string; filtered: boolean } => {
 	if (
-		typeof document === "undefined" ||
-		typeof (document as { createTreeWalker?: unknown }).createTreeWalker !==
-			"function" ||
-		typeof NodeFilter === "undefined" ||
 		typeof (range as { intersectsNode?: unknown }).intersectsNode !== "function"
 	) {
 		// Degraded, and deliberately not silent about the difference: callers still
@@ -195,11 +196,8 @@ export const collectRangeTextForSpeech = (
 	}
 	const parts: string[] = [];
 	let filtered = false;
-	const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
-	let current = walker.nextNode();
-	while (current) {
-		const textNode = current as Text;
-		if (range.intersectsNode(textNode)) {
+	for (const textNode of flatTreeTextNodes(root)) {
+		if (rangeIntersectsComposedNode(range, textNode)) {
 			if (isNodeExcludedFromSpeech(textNode, root)) {
 				filtered = true;
 			} else {
@@ -210,7 +208,6 @@ export const collectRangeTextForSpeech = (
 				parts.push(raw.slice(start, end));
 			}
 		}
-		current = walker.nextNode();
 	}
 	return { text: parts.join(""), filtered };
 };
@@ -255,12 +252,7 @@ export const collectVisibleTextAndMap = (
 	options?: TextProcessingOptions,
 ): { text: string; map: NormalizedTextMap } => {
 	const map: NormalizedTextMap = new Map();
-	if (
-		typeof document === "undefined" ||
-		typeof (document as { createTreeWalker?: unknown }).createTreeWalker !==
-			"function" ||
-		typeof NodeFilter === "undefined"
-	) {
+	if (typeof document === "undefined") {
 		return { text: "", map };
 	}
 	const outChars: string[] = [];
@@ -270,11 +262,8 @@ export const collectVisibleTextAndMap = (
 	let lastMapped: { node: Text; offset: number } | null = null;
 	let previousVisibleChar: string | null = null;
 
-	const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT);
-	let current = walker.nextNode();
-	while (current) {
-		const textNode = current as Text;
-		const parent = textNode.parentElement;
+	for (const textNode of flatTreeTextNodes(element)) {
+		const parent = flatTreeParentElement(textNode);
 		if (parent && !isNodeExcludedFromSpeech(textNode, element)) {
 			const raw = textNode.textContent || "";
 			const firstVisibleMatch = raw.match(/\S/);
@@ -329,7 +318,6 @@ export const collectVisibleTextAndMap = (
 				}
 			}
 		}
-		current = walker.nextNode();
 	}
 
 	const text = outChars.join("").trimEnd();

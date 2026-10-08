@@ -32,6 +32,11 @@
 		type TTSSpeedOption,
 		type TtsServiceApi,
 	} from '@pie-players/pie-assessment-toolkit';
+	import {
+		flatTextContent,
+		findContentLanguage,
+		resolveContentRegion
+	} from '@pie-players/pie-assessment-toolkit/runtime/internal';
 	// Side-effect import: registers <nds-icon-button>. Single vendored source of
 	// truth lives in players-shared (Lit inlined, self-contained); see
 	// players-shared/src/components/vendor/nds/README.md. players-shared is not
@@ -41,7 +46,10 @@
 
 	let {
 		catalogId = '', // Explicit catalog ID
-		language = 'en-US',
+		// The host's content language for this reading, when it names one. Markup
+		// `lang` inside the shell wins over it, and the toolkit's `content-language`
+		// stands in for it; see findContentLanguage.
+		language = '',
 		size = 'md' as 'sm' | 'md' | 'lg',
 		speedOptions = undefined,
 		showSingleSpeedOption = false,
@@ -610,14 +618,7 @@
 	}
 
 	function resolveReadingTarget(): Element | null {
-		if (!targetContainer) return null;
-		const asElement = targetContainer as Element;
-		if (asElement.getAttribute?.('data-region') === 'content') {
-			return asElement;
-		}
-		const contentRegion = asElement.querySelector?.("[data-region='content']");
-		if (contentRegion instanceof Element) return contentRegion;
-		return asElement;
+		return targetContainer ? resolveContentRegion(targetContainer as Element) : null;
 	}
 
 	function resolveCatalogContext(): CatalogLookupContext | undefined {
@@ -694,7 +695,7 @@
 		}
 		try {
 			controlsVisible = true;
-			const text = (readingTarget as HTMLElement).textContent || '';
+			const text = flatTextContent(readingTarget);
 			if (!text) {
 				console.warn('[TTS Inline] No text content found');
 				return;
@@ -714,7 +715,9 @@
 			void ttsService.speak(text, {
 				catalogId: catalogId || undefined,
 				catalogContext: resolveCatalogContext(),
-				language,
+				language: findContentLanguage(readingTarget, {
+					contentLanguage: language || runtimeContext?.contentLanguage
+				}),
 				contentElement: readingTarget,
 			} as any).catch((error) => {
 				console.error('[TTS Inline] Error:', error);

@@ -58,6 +58,11 @@ export type RenderableHighlightTarget =
 			type: "range";
 			quality: "exact-word" | "semantic-token" | "expression" | "region";
 			range: Range;
+			/**
+			 * Every range to paint when the target crosses shadow boundaries, one per
+			 * tree, `range` among them; absent when `range` covers the target.
+			 */
+			ranges?: Range[];
 	  }
 	| {
 			type: "element";

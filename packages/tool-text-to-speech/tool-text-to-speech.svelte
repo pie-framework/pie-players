@@ -15,7 +15,11 @@
 <script lang="ts">
 	import { coerceBooleanAttributes } from '@pie-players/pie-players-shared/ui/attribute-coercion';
 	import type { ToolCoordinatorApi, TtsServiceApi } from '@pie-players/pie-assessment-toolkit';
-	import { createToolCoordinatorRegistration, ZIndexLayer } from '@pie-players/pie-assessment-toolkit';
+	import {
+		createToolCoordinatorRegistration,
+		isTTSStartFailure,
+		ZIndexLayer
+	} from '@pie-players/pie-assessment-toolkit';
 	import {
 		createFocusTrap,
 		createPointerDragController,
@@ -26,6 +30,13 @@
 		type AssessmentToolkitRuntimeContext,
 		connectToolRuntimeContext,
 	} from '@pie-players/pie-assessment-toolkit';
+	import {
+		composedClosest,
+		composedParentElement,
+		DEFAULT_CONTENT_LANGUAGE,
+		findContentLanguage,
+		isShadowRootNode
+	} from '@pie-players/pie-assessment-toolkit/runtime/internal';
 	import { onMount, untrack } from 'svelte';
 
 	// Props
@@ -166,20 +177,22 @@
 	 * docked ancestor may carry only signing or braille. Stopping there loses the
 	 * authored SSML on an outer node — silently, because generated speech reads
 	 * plausibly. Falls back to the nearest docked id when the service cannot
-	 * answer (no resolver yet), which is the previous behaviour.
+	 * answer (no resolver yet), which is the previous behaviour. Climbs through
+	 * shadow hosts, so content rendered into an open shadow root reaches the
+	 * catalogs docked around its host.
 	 */
-	function findSpokenCatalogId(from: Element): string | undefined {
+	function findSpokenCatalogId(from: Element, language: string): string | undefined {
 		let node: Element | null = from;
 		let nearest: string | undefined;
 		while (node) {
-			const docked: Element | null = node.closest('[data-catalog-idref]');
+			const docked: Element | null = composedClosest(node, '[data-catalog-idref]');
 			if (!docked) break;
 			const id = docked.getAttribute('data-catalog-idref') || undefined;
 			if (id) {
 				nearest ??= id;
-				if (ttsService?.hasSpokenAlternate?.(id)) return id;
+				if (ttsService?.hasSpokenAlternate?.(id, language)) return id;
 			}
-			node = docked.parentElement;
+			node = composedParentElement(docked);
 		}
 		return nearest;
 	}
@@ -192,8 +205,16 @@
 		const selection = window.getSelection();
 		if (!selection || selection.rangeCount === 0) return;
 		const ancestor = selection.getRangeAt(0).commonAncestorContainer;
-		const container = ancestor instanceof Element ? ancestor : ancestor.parentElement;
+		const container =
+			ancestor instanceof Element
+				? ancestor
+				: isShadowRootNode(ancestor)
+					? ancestor.host
+					: composedParentElement(ancestor);
 		if (!container) return;
+		const language = findContentLanguage(container, {
+			contentLanguage: runtimeContext?.contentLanguage
+		});
 
 		const run = ++speakRun;
 		speakError = null;
@@ -206,13 +227,18 @@
 			// would otherwise shadow the authored SSML on an outer one and the
 			// selection would be read as generated speech instead.
 			await service.speak(selectedText, {
-				catalogId: findSpokenCatalogId(container),
-				contentElement: container
+				catalogId: findSpokenCatalogId(container, language ?? DEFAULT_CONTENT_LANGUAGE),
+				contentElement: container,
+				language
 			});
 		} catch (error) {
 			console.error('[TTSTool] Failed to speak:', error);
 			if (run === speakRun) {
-				speakError = error instanceof Error ? error.message : String(error);
+				speakError = isTTSStartFailure(error)
+					? interfaceI18n.t('tools.textToSpeech.initFailed')
+					: error instanceof Error
+						? error.message
+						: String(error);
 			}
 		} finally {
 			if (run === speakRun) {

@@ -19,11 +19,11 @@
 	import {
 		type AssessmentToolkitRuntimeContext,
 		connectToolRuntimeContext,
-	} from "@pie-players/pie-assessment-toolkit";
+	} from "@pie-players/pie-assessment-toolkit/tools/registration";
 	import { resolveInterfaceI18n } from "@pie-players/pie-players-shared/i18n/provider";
 	import { SharedFloatingPanel } from "@pie-players/pie-section-player-tools-shared";
 	import { createEventDispatcher, untrack } from 'svelte';
-	import { createEmptyPersonalNeedsProfile } from '@pie-players/pie-assessment-toolkit';
+	import { createEmptyPersonalNeedsProfile } from '@pie-players/pie-assessment-toolkit/tools/registration';
 	import {
 		createPatchedPnpProfile,
 		createSimulatedAssessment,

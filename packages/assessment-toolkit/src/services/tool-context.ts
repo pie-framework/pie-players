@@ -144,24 +144,6 @@ export type ToolContext =
 	| ElementToolContext;
 
 /**
- * Type guard to check if context is at assessment level
- */
-export function isAssessmentContext(
-	context: ToolContext,
-): context is AssessmentToolContext {
-	return context.level === "assessment";
-}
-
-/**
- * Type guard to check if context is at section level
- */
-export function isSectionContext(
-	context: ToolContext,
-): context is SectionToolContext {
-	return context.level === "section";
-}
-
-/**
  * Type guard to check if context is at item level
  */
 export function isItemContext(

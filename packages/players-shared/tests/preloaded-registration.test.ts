@@ -113,7 +113,9 @@ describe("registerPreloadedElements", () => {
 			controller,
 			bundleType: BundleType.clientPlayer,
 		});
-		expect(findPieController(tag, BundleType.clientPlayer)).toBe(controller);
+		expect(findPieController(tag, BundleType.clientPlayer) as unknown).toBe(
+			controller,
+		);
 		expect(findPieController(tag, BundleType.player)).toBeUndefined();
 	});
 
@@ -132,7 +134,10 @@ describe("registerPreloadedElements", () => {
 		]);
 
 		expect(
-			findPieController("pie-default-controller--version-1-0-0", BundleType.clientPlayer),
+			findPieController(
+				"pie-default-controller--version-1-0-0",
+				BundleType.clientPlayer,
+			) as unknown,
 		).toBe(controller);
 	});
 

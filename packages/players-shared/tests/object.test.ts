@@ -15,7 +15,7 @@ describe("mergeObjectsIgnoringNullUndefined", () => {
 			overrideDefined,
 		);
 
-		expect(merged).toEqual({ a: 1, b: 9, c: 3, d: 4 });
+		expect(merged as Record<string, unknown>).toEqual({ a: 1, b: 9, c: 3, d: 4 });
 	});
 });
 

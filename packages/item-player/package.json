@@ -37,7 +37,7 @@
 		"build": "vite build",
 		"dev": "vite build --watch",
 		"test": "bun test",
-		"typecheck": "tsc --noEmit",
+		"typecheck": "tsc --noEmit && tsc -p tsconfig.tests.json",
 		"check": "svelte-check --tsconfig ./tsconfig.json",
 		"lint": "biome lint ."
 	},

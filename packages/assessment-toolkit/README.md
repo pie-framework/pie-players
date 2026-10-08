@@ -976,27 +976,34 @@ SchoolCity is used as a host-configured integration example for custom transport
 Toolkit defaults still remain browser/standard providers unless the host explicitly
 configures custom server-backed TTS.
 
-## Test Attempt Session Adapter (pie backend)
+## Test Attempt Session
 
-The toolkit exposes a canonical `TestAttemptSession` runtime and a deterministic adapter for pie backend activity payloads from `../../kds/pie-api-aws`.
+The toolkit exposes a canonical `TestAttemptSession` runtime. The host maps its
+backend's attempt payload into it and back out.
 
 ```typescript
 import {
-  mapActivityToTestAttemptSession,
+  createNewTestAttemptSession,
   toItemSessionsRecord,
-  buildActivitySessionPatchFromTestAttemptSession
+  upsertItemSessionFromPieSessionChange,
 } from "@pie-players/pie-assessment-toolkit";
 
-const testAttemptSession = mapActivityToTestAttemptSession({
-  activityDefinition,
-  activitySession
+let testAttemptSession = createNewTestAttemptSession({
+  testAttemptSessionIdentifier: attempt.id,
+  assessmentId: assessment.id,
+  seed: attempt.id,
+  itemIdentifiers: assessment.itemIdentifiers,
+});
+
+// Record a PIE session change against its item
+testAttemptSession = upsertItemSessionFromPieSessionChange(testAttemptSession, {
+  itemIdentifier: "q1",
+  pieSessionId: change.session.id,
+  session: change.session,
 });
 
 // Use in section-player handoff (same item session shape as item players expect)
 const itemSessions = toItemSessionsRecord(testAttemptSession);
-
-// Host-owned backend persistence payload
-const patch = buildActivitySessionPatchFromTestAttemptSession(testAttemptSession);
 ```
 
 ### Integration Boundary
@@ -1210,6 +1217,8 @@ unsubscribe();
 ### TTSService
 
 ```typescript
+import { BrowserTTSProvider, TTSService } from '@pie-players/pie-assessment-toolkit';
+
 const ttsService = new TTSService();
 
 // Initialize with provider
@@ -1218,8 +1227,8 @@ await ttsService.initialize(new BrowserTTSProvider());
 // Set catalog resolver for SSML support
 ttsService.setCatalogResolver(catalogResolver);
 
-// Playback
-await ttsService.speak('Read this text', {
+// Playback: reads an element or a range, or the named card in its place
+await ttsService.speak(promptElement, {
   catalogId: 'prompt-001',
   language: 'en-US'
 });
@@ -1239,6 +1248,8 @@ await ttsService.updateSettings({
 ### ToolCoordinator
 
 ```typescript
+import { ToolCoordinator } from '@pie-players/pie-assessment-toolkit';
+
 const toolCoordinator = new ToolCoordinator();
 
 // Register tools
@@ -1259,6 +1270,8 @@ const isVisible = toolCoordinator.isToolVisible('calculator');
 ### HighlightCoordinator
 
 ```typescript
+import { HighlightColor, HighlightCoordinator } from '@pie-players/pie-assessment-toolkit';
+
 const highlightCoordinator = new HighlightCoordinator();
 
 // TTS highlights (temporary)
@@ -1267,7 +1280,7 @@ highlightCoordinator.highlightTTSSentence([range1, range2]);
 highlightCoordinator.clearTTS();
 
 // Annotation highlights (persistent)
-const id = highlightCoordinator.addAnnotation(range, 'yellow');
+const id = highlightCoordinator.addAnnotation(range, HighlightColor.YELLOW);
 highlightCoordinator.removeAnnotation(id);
 ```
 
@@ -1292,6 +1305,8 @@ maintaining, across every scheme it ships.
 ### AccessibilityCatalogResolver
 
 ```typescript
+import { AccessibilityCatalogResolver } from '@pie-players/pie-assessment-toolkit';
+
 const resolver = new AccessibilityCatalogResolver(
   assessment.accessibilityCatalogs,
   'en-US'
@@ -1355,6 +1370,8 @@ such as TTS may still call `getAlternative(...)` with a context built by
 ### SSMLExtractor
 
 ```typescript
+import { SSMLExtractor } from '@pie-players/pie-assessment-toolkit';
+
 const extractor = new SSMLExtractor();
 
 // Extract from item config
@@ -1465,14 +1482,19 @@ The section player provides automatic ToolkitCoordinator integration:
 
 ### Runtime Context Contract
 
-The toolkit now exports a shared context key used by section-player and toolkit
-components:
+Section-player and toolkit components share one runtime context. An element
+inside the toolkit's tree connects to it:
 
 ```typescript
 import {
-  assessmentToolkitRuntimeContext,
+  connectAssessmentToolkitRuntimeContext,
   type AssessmentToolkitRuntimeContext
 } from "@pie-players/pie-assessment-toolkit";
+
+let runtime: AssessmentToolkitRuntimeContext | undefined;
+const disconnect = connectAssessmentToolkitRuntimeContext(hostElement, (value) => {
+  runtime = value;
+});
 ```
 
 `AssessmentToolkitRuntimeContext` carries ambient orchestration dependencies

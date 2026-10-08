@@ -1,4 +1,3 @@
-import type { UnknownContext } from "@pie-players/pie-context";
 import {
 	connectAssessmentToolkitRegionScopeContext,
 	connectAssessmentToolkitRuntimeContext,
@@ -125,13 +124,4 @@ export function createToolCoordinatorRegistration(
 		},
 		release,
 	};
-}
-
-/**
- * Guard utility: narrows unknown context payloads when needed by callers.
- */
-export function isContextValueDefined<T extends UnknownContext>(
-	value: unknown,
-): value is T["__context__"] {
-	return value !== null && value !== undefined;
 }

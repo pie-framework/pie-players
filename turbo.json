@@ -6,7 +6,8 @@
 		"bun.lock",
 		"turbo.json",
 		"tsconfig.json",
-		"tsconfig.base.json"
+		"tsconfig.base.json",
+		"tsconfig.tests.json"
 	],
 	"tasks": {
 		"build": {

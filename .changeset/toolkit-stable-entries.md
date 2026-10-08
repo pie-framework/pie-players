@@ -8,4 +8,4 @@
 "@pie-players/pie-tool-tts-inline": patch
 ---
 
-The toolkit's `./runtime/internal` and `./policy/internal` entries are removed, and `./tools/internal` is renamed `./tools/registration`, a stable entry for writing and rendering a `ToolRegistration`; `./runtime/engine` now carries the engine's input vocabulary, and the root carries the shell event bridge and the content-region, content-language, catalog-context and flat-tree helpers. The provider registry's `ToolProviderConfig` is renamed `ToolProviderRegistration`.
+The toolkit's `./runtime/internal` and `./policy/internal` entries are removed, and `./tools/internal` is renamed `./tools/registration`, a stable entry for writing and rendering a `ToolRegistration`; `./runtime/engine` now carries the engine's input vocabulary, and the root carries the shell event bridge. The provider registry's `ToolProviderConfig` is renamed `ToolProviderRegistration`.

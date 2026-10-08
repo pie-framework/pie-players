@@ -7,7 +7,7 @@ describe("SectionSessionService.applyItemSessionChanged", () => {
 		const { testAttemptSession, itemSessions } = service.resolve({
 			assessmentId: "a-1",
 			sectionId: "s-1",
-			view: ["candidate"],
+			view: "candidate",
 			section: null,
 			adapterItemRefs: [{ identifier: "item-1", item: { id: "item-1" } }],
 		});
@@ -42,7 +42,7 @@ describe("SectionSessionService.applyItemSessionChanged", () => {
 		const { testAttemptSession, itemSessions } = service.resolve({
 			assessmentId: "a-1",
 			sectionId: "s-1",
-			view: ["candidate"],
+			view: "candidate",
 			section: null,
 			adapterItemRefs: [{ identifier: "item-1", item: { id: "item-1" } }],
 		});
@@ -74,7 +74,7 @@ describe("SectionSessionService.applyItemSessionChanged", () => {
 		const { testAttemptSession, itemSessions } = service.resolve({
 			assessmentId: "a-1",
 			sectionId: "s-1",
-			view: ["candidate"],
+			view: "candidate",
 			section: null,
 			adapterItemRefs: [{ identifier: "item-1", item: { id: "item-1" } }],
 		});
@@ -122,7 +122,7 @@ describe("SectionSessionService.applyItemSessionChanged", () => {
 		const { testAttemptSession, itemSessions } = service.resolve({
 			assessmentId: "a-1",
 			sectionId: "s-1",
-			view: ["candidate"],
+			view: "candidate",
 			section: null,
 			adapterItemRefs: [{ identifier: "item-1", item: { id: "item-1" } }],
 		});

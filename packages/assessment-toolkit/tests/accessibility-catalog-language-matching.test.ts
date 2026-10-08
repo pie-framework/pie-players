@@ -13,7 +13,7 @@ import { describe, expect, test } from "bun:test";
 import type {
 	AccessibilityCatalog,
 	CatalogCard,
-} from "@pie-players/pie-players-shared";
+} from "@pie-players/pie-players-shared/types";
 import { AccessibilityCatalogResolver } from "../src/services/AccessibilityCatalogResolver";
 
 const spoken = (language: string, content: string): CatalogCard => ({

@@ -27,7 +27,8 @@ This contract defines the minimum runtime guarantees between host components
   region-aware tools `assessmentToolkitRegionScopeContext`. Both carry scope a
   tool cannot obtain another way, so for those the requirement is unconditional.
 
-Use contract helpers exported from `@pie-players/pie-assessment-toolkit`:
+Use contract helpers exported from
+`@pie-players/pie-assessment-toolkit/tools/registration`:
 
 - `connectToolRuntimeContext(host, onValue)`
 - `connectToolShellContext(host, onValue)`
@@ -44,10 +45,8 @@ Cross-boundary events (tool -> host, shell -> host, host -> tool) must be:
 - `bubbles: true`
 - `composed: true`
 
-Use helpers:
-
-- `createCrossBoundaryEvent(name, detail)`
-- `dispatchCrossBoundaryEvent(target, name, detail)`
+Use `dispatchCrossBoundaryEvent(target, name, detail)` from the
+`@pie-players/pie-assessment-toolkit` root.
 
 ## Initialization Guarantees
 
@@ -80,8 +79,9 @@ its shell's content region. The annotation toolbar is section-scoped, so it
 finds the shell from the selection, through the `data-pie-shell-root` attribute
 `createShellScope` sets on the shell host, and opens only for a selection
 inside that shell's content region. Tools resolve the region at use with
-`resolveContentRegion` (from the `@pie-players/pie-assessment-toolkit` root),
-because a card renders its regions after its tools connect.
+`resolveContentRegion`, from
+`@pie-players/pie-assessment-toolkit/tools/registration`, because a card
+renders its regions after its tools connect.
 
 Content in the region may render into open shadow roots, which read-aloud,
 highlighting and annotation reach. The language of any part of it is the

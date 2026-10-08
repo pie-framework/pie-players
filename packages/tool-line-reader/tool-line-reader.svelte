@@ -17,11 +17,11 @@
 		connectToolRuntimeContext,
 		createToolCoordinatorRegistration,
 		ZIndexLayer,
-	} from '@pie-players/pie-assessment-toolkit';
+	} from '@pie-players/pie-assessment-toolkit/tools/registration';
 	import type {
 		AssessmentToolkitRuntimeContext,
 		ToolCoordinatorApi,
-	} from '@pie-players/pie-assessment-toolkit';
+	} from '@pie-players/pie-assessment-toolkit/tools/registration';
 import {
 	clampPointWithinBlock,
 	createPointerDragController,

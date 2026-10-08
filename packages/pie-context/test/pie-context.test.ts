@@ -15,7 +15,7 @@ describe("pie-context", () => {
 	test("createContext preserves key identity", () => {
 		const key = Symbol("runtime");
 		const context = createContext<{ value: number }>(key);
-		expect(context).toBe(key);
+		expect(context as unknown).toBe(key);
 	});
 
 	test("ContextRequestEvent defaults subscribe to false", () => {

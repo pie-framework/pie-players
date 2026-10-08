@@ -35,9 +35,6 @@ import {
 	trimmedOrUndefined,
 } from "@pie-players/pie-players-shared/media";
 
-/** Catalog type token for spoken alternates. Matches QTI 3's `support` value. */
-export const SPOKEN_CATALOG_TYPE = "spoken";
-
 /** A validated recorded spoken alternate, flattened for playback. */
 export interface SpokenAudioMedia {
 	/**

@@ -49,10 +49,12 @@ Object.defineProperty(window, "speechSynthesis", {
 });
 
 // After happy-dom registers: pie-context's events extend the global Event.
-const { assessmentToolkitRuntimeContext } = await import(
-	"@pie-players/pie-assessment-toolkit"
-);
 await import("../TtsSettingsPanel.svelte");
+
+// The toolkit's runtime-context key; pie-context keys are the value passed in.
+const assessmentToolkitRuntimeContext = Symbol.for(
+	"pie.assessmentToolkit.runtimeContext",
+);
 
 const settle = async () => {
 	await Promise.resolve();

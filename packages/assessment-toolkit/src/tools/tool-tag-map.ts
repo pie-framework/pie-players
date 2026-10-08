@@ -68,12 +68,3 @@ export const createToolElement = (
 		? factory({ toolId, tagName, context, toolbarContext })
 		: createDefaultToolElement(tagName);
 };
-
-export const toToolIdFromTag = (
-	tagName: string,
-	overrides?: ToolComponentOverrides,
-): string | undefined => {
-	const validTag = validateCustomElementTag(tagName, "tool component tag");
-	const map = overrides?.toolTagMap ?? {};
-	return Object.entries(map).find(([, tag]) => tag === validTag)?.[0];
-};

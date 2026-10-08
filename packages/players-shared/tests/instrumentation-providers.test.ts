@@ -69,7 +69,7 @@ const originalWindow = mutableGlobal.window;
 
 function setupWindowMock(): void {
 	const eventTarget = new EventTarget();
-	mutableGlobal.window = eventTarget as unknown as Window;
+	mutableGlobal.window = eventTarget as unknown as MutableGlobal["window"];
 }
 
 afterEach(() => {

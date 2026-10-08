@@ -107,7 +107,7 @@ describe("ToolkitCoordinator initialSession", () => {
 			},
 		});
 		coordinator.onSectionControllerLifecycle((event) => {
-			if (event.type === "ready") seen.push(event.controller.getSession?.());
+			if (event.type === "ready") seen.push(event.controller?.getSession?.());
 		});
 		await coordinator.getOrCreateSectionController({
 			sectionId: "section-1",

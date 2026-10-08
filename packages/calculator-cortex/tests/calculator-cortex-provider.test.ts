@@ -92,7 +92,11 @@ describe("initialization", () => {
 		installBrowser();
 		const events: string[] = [];
 		const provider = new CortexCalculatorProvider();
-		await provider.initialize({ onTelemetry: (name) => events.push(name) });
+		await provider.initialize({
+			onTelemetry: (name) => {
+				events.push(name);
+			},
+		});
 		await provider.initialize();
 		expect(events).toEqual([]);
 	});

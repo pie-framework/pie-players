@@ -96,7 +96,7 @@
 	"scripts": {
 		"build": "vite build && vite build --config vite.config.browser.ts",
 		"dev": "vite build --watch",
-		"typecheck": "tsc --noEmit",
+		"typecheck": "tsc --noEmit && tsc -p tsconfig.tests.json",
 		"check": "svelte-check --tsconfig ./tsconfig.svelte-check.json --compiler-warnings options_missing_custom_element:ignore",
 		"lint": "biome lint .",
 		"test": "bun test"

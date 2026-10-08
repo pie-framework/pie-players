@@ -137,7 +137,9 @@ describe("PIE theme token registry contract", () => {
 			registry.map((entry) => [entry.name, entry.schemeParticipation]),
 		);
 
-		expect(PIE_THEME_SCHEME_PARTICIPATION).toEqual(registryParticipation);
+		expect<Record<string, unknown>>(PIE_THEME_SCHEME_PARTICIPATION).toEqual(
+			registryParticipation,
+		);
 	});
 
 	test("built-in definitions and generated CSS use exactly required scheme tokens", () => {
@@ -184,8 +186,10 @@ describe("PIE theme token registry contract", () => {
 				"component-public",
 				"legacy",
 				"unsupported",
-			]).toContain(entry?.scope);
-			expect(["active", "planned", "intentional-gap"]).toContain(entry?.status);
+			]).toContain(entry?.scope as string);
+			expect(["active", "planned", "intentional-gap"]).toContain(
+				entry?.status as string,
+			);
 		}
 	});
 

@@ -1,5 +1,6 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { GlobalRegistrator } from "@happy-dom/global-registrator";
+import { resolveInterfaceI18n } from "@pie-players/pie-players-shared/i18n/provider";
 import { AccessibilityCatalogResolver } from "../src/services/AccessibilityCatalogResolver.js";
 import type { FrameworkErrorModel } from "../src/services/framework-error.js";
 import type {
@@ -32,7 +33,7 @@ async function flush(): Promise<void> {
 }
 
 function deferred(): { promise: Promise<void>; resolve: () => void } {
-	let resolve = () => undefined;
+	let resolve: () => void = () => {};
 	const promise = new Promise<void>((next) => {
 		resolve = next;
 	});
@@ -118,6 +119,7 @@ function contentInput(
 			toolkitCoordinator: coordinator,
 			ttsService: null,
 			catalogResolver: coordinator.catalogResolver,
+			i18n: resolveInterfaceI18n(null),
 		},
 		scope: {
 			kind: "content",

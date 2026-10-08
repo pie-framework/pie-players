@@ -151,7 +151,7 @@ const section = {
 ```
 
 The core ships no populated default — `createEmptyPersonalNeedsProfile()` in
-`@pie-players/pie-assessment-toolkit` grants nothing. Which capabilities a
+`@pie-players/pie-assessment-toolkit/tools/registration` grants nothing. Which capabilities a
 deployment grants by default is a property of the program, not of a capability:
 TTS is a universal feature in one program and a documented accommodation in
 another. So the preset is data to adopt, extend or replace alongside the district

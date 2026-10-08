@@ -124,7 +124,7 @@ describe("DesmosCalculatorProvider loading contract", () => {
 			new Response(JSON.stringify({ apiKey: "runtime licensed key" }), {
 				status: 200,
 				headers: { "content-type": "application/json" },
-			})) as typeof fetch;
+			})) as unknown as typeof fetch;
 		try {
 			const provider = new DesmosCalculatorProvider();
 			await provider.initialize({ proxyEndpoint: "/runtime/desmos-key" });

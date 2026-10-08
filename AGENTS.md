@@ -546,6 +546,21 @@ bun run check:player-tool-boundaries
 For release work, follow `docs/setup/publishing.md` and the release alignment
 rule in this file.
 
+Three gates keep the published surface, the tests and the docs in step with the
+code:
+
+- `api-report/` lists the exported names of every entry of each published
+  package. `check:api-report` fails when an entry's exports change until
+  `bun run api-report` regenerates the report, so every surface change is a
+  reviewed diff in the report.
+- A package's bun tests typecheck through the `tsconfig.tests.json` beside its
+  `tsconfig.json`, which its `typecheck` script runs after the source
+  typecheck. A package that adds bun tests adds one.
+- `check:docs:examples` typechecks each TypeScript fence in the docs that
+  imports from `@pie-players/*` against the packages' sources. An example that
+  names a removed export or calls a changed signature fails it; fix the example
+  in the change that made it stale.
+
 Lint catches errors, not style. `biome.json` runs `preset: "none"` with only the
 `correctness` and `suspicious` presets on and no `style` group at all. Do not add
 `style`, `complexity`, `performance`, or naming and filename conventions, and do

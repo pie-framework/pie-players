@@ -130,7 +130,7 @@ describe("createSimulatedAssessment", () => {
 		};
 		const profile = { supports: ["calculator", "ruler"] };
 		expect(
-			createSimulatedAssessment(bound, { id: "s1", settings: {} }, profile),
+			createSimulatedAssessment(bound, { id: "s1" }, profile),
 		).toEqual({ ...bound, personalNeedsProfile: profile });
 	});
 

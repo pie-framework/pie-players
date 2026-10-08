@@ -57,6 +57,8 @@
 			: (availableTypes[0] ?? 'basic'),
 	);
 	const calculatorConfigKey = $derived(createCalculatorConfigKey(calculatorConfig));
+	// The credit the mounted provider's terms require, whichever element hosts it.
+	const attribution = $derived(calculatorInstance?.provider.attribution ?? null);
 
 	let activeMountKey: string | null = null;
 	// A tool-config update replaces the provider, and destroying it destroys the calculator.
@@ -236,6 +238,7 @@
 	{#if visible}
 		<div
 			class="pie-tool-calculator notranslate"
+			class:pie-tool-calculator--attributed={attribution !== null}
 			role="region"
 			data-tool-id={toolId}
 			data-provider-id={providerId}
@@ -250,6 +253,14 @@
 				class="pie-tool-calculator__container"
 				data-calculator-type={effectiveCalculatorType}
 			></div>
+			{#if attribution}
+				<a
+					class="pie-tool-calculator__attribution"
+					href={attribution.href}
+					target="_blank"
+					rel="noreferrer"
+				>{attribution.label}</a>
+			{/if}
 			{#if isInitializing || (!initializationError && !hasMountedSurface)}
 				<div class="pie-tool-calculator__loading">
 					{interfaceI18n.t('tools.calculator.loading')}
@@ -305,6 +316,26 @@
 		height: 100%;
 		min-width: 100%;
 		min-height: 100%;
+	}
+
+	/* The credit sits below the calculator rather than over it, where it would
+	   cover the vendor's own controls. */
+	.pie-tool-calculator--attributed {
+		flex-direction: column;
+	}
+
+	.pie-tool-calculator--attributed .pie-tool-calculator__container {
+		flex: 1 1 auto;
+		height: auto;
+		min-height: 0;
+	}
+
+	.pie-tool-calculator__attribution {
+		align-self: flex-end;
+		flex: 0 0 auto;
+		padding: 0.1rem 0.25rem;
+		color: var(--pie-text, #334155);
+		font-size: 0.65rem;
 	}
 
 	.pie-tool-calculator__loading {

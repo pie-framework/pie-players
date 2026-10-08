@@ -164,6 +164,30 @@ describe("mountItemAlternates", () => {
 		expect(anchor.children.length).toBe(0);
 	});
 
+	test("the item's settings govern its alternates: a restriction withdraws, a requirement grants", () => {
+		const printWith = (
+			itemSettings: Record<string, string[]>,
+			personalNeedsProfile?: PersonalNeedsProfile,
+		) => {
+			const anchor = document.createElement("div");
+			anchor.className = ALTERNATES_CLASS;
+			mountItemAlternates({
+				anchor,
+				item: itemWithTranscript() as never,
+				accessibility: { personalNeedsProfile, itemSettings },
+			});
+			return anchor;
+		};
+
+		expect(
+			printWith({ restrictedTools: ["transcript"] }, grants("transcript"))
+				.children.length,
+		).toBe(0);
+		expect(printWith({ requiredTools: ["transcript"] }).textContent).toContain(
+			TRANSCRIPT_TEXT,
+		);
+	});
+
 	test("destroy leaves the anchor as it found it", () => {
 		const { anchor, mounted } = printInto(
 			itemWithTranscript(),

@@ -245,9 +245,5 @@
 		z-index: 2;
 		display: block;
 	}
-
-	:global([data-pie-tool-id="protractor"]) {
-		z-index: 2002; /* ZIndexLayer.MODAL */
-	}
 </style>
 

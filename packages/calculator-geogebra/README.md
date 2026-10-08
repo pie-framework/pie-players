@@ -17,6 +17,10 @@ use with attribution; commercial use requires a License and Collaboration
 Agreement. Review the current [GeoGebra License](https://www.geogebra.org/license)
 and contact `office@geogebra.org` when the intended use is commercial.
 
+The provider declares the attribution as `attribution`, and PIE's calculator
+surfaces render it below every calculator the provider creates. A host that
+renders the calculator in its own surface shows it there.
+
 ## Usage
 
 ```ts

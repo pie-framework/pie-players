@@ -149,6 +149,58 @@ describe("tool start failures", () => {
 		expect(errors.map((model) => model.recoverable)).toEqual([true, false]);
 	});
 
+	test("a tool module failure degrades the tool, once however many toolbars report it", () => {
+		const coordinator = new ToolkitCoordinator({
+			assessmentId: "module-degrades",
+			eagerInit: false,
+			toolRegistry: registryWith("calculator", "calculator-stub"),
+			tools: { placement: { item: ["calculator"] } },
+		});
+		const errors = collectErrors(coordinator);
+		let targetChanges = 0;
+		coordinator.onToolRequestTargetsChange(() => {
+			targetChanges += 1;
+		});
+		const failure = new Error("chunk missing");
+
+		coordinator.reportToolModuleFailure("calculator", failure);
+		coordinator.reportToolModuleFailure("calculator", failure);
+
+		expect(errors).toHaveLength(1);
+		expect(errors[0]).toMatchObject({
+			kind: "tool-module-load",
+			recoverable: true,
+			message: 'Tool "calculator" failed to load: chunk missing',
+		});
+		expect((errors[0].cause as Error).cause).toBe(failure);
+		// Each reporting toolbar stopped hosting the tool.
+		expect(targetChanges).toBe(2);
+	});
+
+	test("a tool module failure is fatal for a granted tool, including one granted later", () => {
+		const granted = new ToolkitCoordinator({
+			assessmentId: "module-granted",
+			eagerInit: false,
+			toolRegistry: registryWith("calculator", "calculator-stub"),
+			tools: { placement: { item: ["calculator"] } },
+		});
+		granted.updateAssessment(granting("calculator"));
+		const grantedErrors = collectErrors(granted);
+		granted.reportToolModuleFailure("calculator", new Error("chunk missing"));
+		expect(grantedErrors.map((model) => model.recoverable)).toEqual([false]);
+
+		const later = new ToolkitCoordinator({
+			assessmentId: "module-granted-later",
+			eagerInit: false,
+			toolRegistry: registryWith("calculator", "calculator-stub"),
+			tools: { placement: { item: ["calculator"] } },
+		});
+		const laterErrors = collectErrors(later);
+		later.reportToolModuleFailure("calculator", new Error("chunk missing"));
+		later.updateAssessment(granting("calculator"));
+		expect(laterErrors.map((model) => model.recoverable)).toEqual([true, false]);
+	});
+
 	test("a server speech provider that fails is recoverable while browser speech starts", async () => {
 		const coordinator = new ToolkitCoordinator({
 			assessmentId: "tts-fallback",

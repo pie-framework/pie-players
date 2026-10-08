@@ -274,11 +274,12 @@ export interface AssessmentSection
 	rubricBlocks?: RubricBlock[];
 
 	/**
-	 * QTI 3.0: Personal Needs Profile (PNP 3.0) for section-scoped delivery.
+	 * QTI 3.0: Personal Needs Profile (PNP 3.0) carried with section content.
 	 *
-	 * Section players read this (falling back to `settings.personalNeedsProfile`,
-	 * then to the computed default profile) to drive PNP policy when a section is
-	 * delivered without an enclosing assessment.
+	 * Tool policy does not read it. Policy reads the profile of the assessment the
+	 * host binds with `ToolkitCoordinator.updateAssessment`, because a profile is
+	 * learner data and section content is shared by every learner. A host that
+	 * stores the learner's profile on the section binds it from there.
 	 */
 	personalNeedsProfile?: PersonalNeedsProfile;
 
@@ -668,7 +669,11 @@ export interface AssessmentSettings {
 	/** Test administration configuration */
 	testAdministration?: {
 		mode?: "practice" | "test" | "benchmark";
-		toolOverrides?: Record<string, boolean>; // Override specific PNP supports
+		/**
+		 * Per-session override by tool id: `true` grants the tool, `false`
+		 * withdraws it. Outranks every policy level except a district block.
+		 */
+		toolOverrides?: Record<string, boolean>;
 		startDate?: string;
 		endDate?: string;
 	};

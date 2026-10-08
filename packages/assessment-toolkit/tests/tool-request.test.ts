@@ -11,9 +11,11 @@ function target(
 	level: ToolRequestTarget["level"],
 	hosted: string[],
 	opened: Opened[] = [],
+	scopeId?: string,
 ): ToolRequestTarget & { opened: Opened[] } {
 	return {
 		level,
+		scopeId,
 		hostsTool: (toolId) => hosted.includes(toolId),
 		open: (toolId, params) => {
 			opened.push({ toolId, params });
@@ -213,5 +215,42 @@ describe("ToolRequestRegistry", () => {
 		registry.registerTarget(target("section", ["dictionary"]));
 
 		expect(reached).toBe(true);
+	});
+
+	it("a scoped request reaches only the card it names", () => {
+		const registry = new ToolRequestRegistry();
+		const first = target("item", ["calculator"], [], "item-1");
+		const second = target("item", ["calculator"], [], "item-2");
+		registry.registerTarget(first);
+		registry.registerTarget(second);
+
+		expect(
+			registry.request({ toolId: "calculator", level: "item", scopeId: "item-2" }),
+		).toBe(true);
+		expect(first.opened).toHaveLength(0);
+		expect(second.opened).toHaveLength(1);
+		expect(registry.canRequest("calculator", "item", "item-3")).toBe(false);
+		// An unscoped request still takes the first card that hosts the tool.
+		expect(registry.canRequest("calculator", "item")).toBe(true);
+	});
+
+	it("a scoped request is refused by a card that does not host the tool", () => {
+		const registry = new ToolRequestRegistry();
+		registry.registerTarget(target("item", ["calculator"], [], "item-1"));
+		registry.registerTarget(target("item", [], [], "item-2"));
+
+		expect(registry.canRequest("calculator", "item", "item-2")).toBe(false);
+	});
+
+	it("announces a target change on request", () => {
+		const registry = new ToolRequestRegistry();
+		let changes = 0;
+		registry.onTargetsChange(() => {
+			changes += 1;
+		});
+
+		registry.notifyTargetsChange();
+
+		expect(changes).toBe(1);
 	});
 });

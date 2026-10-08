@@ -10,6 +10,16 @@ test("shared calculator surfaces contain no vendor implementation names", async 
 	}
 });
 
+test("the calculator surface renders the provider's attribution", async () => {
+	const source = await Bun.file(
+		new URL("../CalculatorTool.svelte", import.meta.url),
+	).text();
+	// Every provider is rendered here, so a vendor credit declared on the
+	// provider reaches each tag the registry maps the calculator to.
+	expect(source).toContain("calculatorInstance?.provider.attribution");
+	expect(source).toContain("{attribution.label}");
+});
+
 const SVELTE_SPECIFIER = /^svelte(?:\/|$)/;
 const transpiler = new Bun.Transpiler({ loader: "js" });
 

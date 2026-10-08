@@ -1,14 +1,13 @@
 /**
  * ToolCoordinator
  *
- * Manages z-index layering and visibility for floating tools.
- * Prevents conflicts between calculator, ruler, protractor, etc.
+ * Holds the visibility state of floating tools and stacks their elements.
  *
- * Features:
- * - Centralized z-index management with defined layers
- * - Tool visibility state tracking
- * - Bring-to-front on interaction
- * - Framework-agnostic (works with any DOM element)
+ * Visibility is state: the coordinator records it and notifies subscribers, and
+ * whoever renders a tool shows or hides it from that state. Stacking is the
+ * coordinator's alone: an element bound to a tool (`registerTool` with an
+ * element, or `updateToolElement`) takes a z-index in the tool's layer and comes
+ * to the front of that layer when shown or pressed.
  *
  * Part of PIE Assessment Toolkit.
  */
@@ -37,6 +36,12 @@ interface ToolRegistration {
 	name: string;
 	element: HTMLElement | null;
 	layer: ZIndexLayer;
+	/**
+	 * Whether a registration named the layer. A toolbar registers a tool it
+	 * activates before the tool's own element registers, and names none; the
+	 * tool's layer replaces the default when it arrives.
+	 */
+	layerDeclared: boolean;
 	isVisible: boolean;
 	baseZIndex: number;
 	mouseDownHandler?: (e: MouseEvent) => void;
@@ -44,7 +49,6 @@ interface ToolRegistration {
 
 export class ToolCoordinator implements ToolCoordinatorApi {
 	private tools = new Map<string, ToolRegistration>();
-	private layerCounters = new Map<ZIndexLayer, number>();
 	private listeners = new Set<() => void>();
 	/**
 	 * Activation (on/off) state keyed by tool id, kept independent of the
@@ -55,15 +59,6 @@ export class ToolCoordinator implements ToolCoordinatorApi {
 	 * Cleared on genuine teardown via {@link releaseTool}.
 	 */
 	private visibilityState = new Map<string, boolean>();
-
-	constructor() {
-		// Initialize layer counters
-		this.layerCounters.set(ZIndexLayer.BASE, 0);
-		this.layerCounters.set(ZIndexLayer.TOOL, 0);
-		this.layerCounters.set(ZIndexLayer.MODAL, 0);
-		this.layerCounters.set(ZIndexLayer.CONTROL, 0);
-		this.layerCounters.set(ZIndexLayer.HIGHLIGHT, 0);
-	}
 
 	/**
 	 * Subscribe to tool state changes
@@ -80,7 +75,13 @@ export class ToolCoordinator implements ToolCoordinatorApi {
 	 * Notify all listeners of state change
 	 */
 	private notifyListeners(): void {
-		this.listeners.forEach((listener) => listener());
+		for (const listener of this.listeners) {
+			try {
+				listener();
+			} catch (error) {
+				console.warn("[ToolCoordinator] listener failed:", error);
+			}
+		}
 	}
 
 	/**
@@ -88,18 +89,25 @@ export class ToolCoordinator implements ToolCoordinatorApi {
 	 *
 	 * @param id Unique tool identifier
 	 * @param name Display name
-	 * @param element DOM element for the tool (optional)
-	 * @param layer Z-index layer (defaults to MODAL)
+	 * @param element DOM element to stack (optional)
+	 * @param layer Z-index layer. Without one the tool stacks on MODAL until a
+	 * registration names one.
 	 */
 	registerTool(
 		id: string,
 		name: string,
 		element?: HTMLElement,
-		layer: ZIndexLayer = ZIndexLayer.MODAL,
+		layer?: ZIndexLayer,
 	): void {
 		log("registerTool called:", { id, name, hasElement: !!element, layer });
 
-		if (this.tools.has(id)) {
+		const existing = this.tools.get(id);
+		if (existing) {
+			if (layer !== undefined && !existing.layerDeclared) {
+				existing.layer = layer;
+				existing.layerDeclared = true;
+				this.stackOnTop(existing);
+			}
 			log(`Tool ${id} is already registered`);
 			return;
 		}
@@ -108,50 +116,19 @@ export class ToolCoordinator implements ToolCoordinatorApi {
 		// re-render unmounts and re-mounts the tool element) must preserve the
 		// tool's activation state so only an explicit toggle can turn it off.
 		const isVisible = this.visibilityState.get(id) ?? false;
-
-		// If no element provided, create a placeholder registration
-		if (!element) {
-			this.tools.set(id, {
-				id,
-				name,
-				element: null,
-				layer,
-				isVisible,
-				baseZIndex: layer,
-			});
-			log("Tool registered without element:", id);
-			return;
-		}
-
-		// Calculate base z-index for this layer
-		const baseZIndex = layer + this.getNextLayerOffset(layer);
-
-		// Apply z-index
-		element.style.zIndex = String(baseZIndex);
-
-		// Reflect restored visibility onto the freshly registered element.
-		element.style.display = isVisible ? "" : "none";
-
-		// Create and store event handler to enable proper cleanup
-		const mouseDownHandler = () => this.bringToFront(element);
-		element.addEventListener("mousedown", mouseDownHandler);
-
-		// Register tool with handler reference
-		this.tools.set(id, {
+		const registration: ToolRegistration = {
 			id,
 			name,
-			element,
-			layer,
+			element: null,
+			layer: layer ?? ZIndexLayer.MODAL,
+			layerDeclared: layer !== undefined,
 			isVisible,
-			baseZIndex,
-			mouseDownHandler,
-		});
-
-		if (isVisible) {
-			this.bringToFront(element);
-		}
-
-		log("Tool registered with element:", id);
+			baseZIndex: 0,
+		};
+		this.tools.set(id, registration);
+		this.stackOnTop(registration);
+		if (element) this.updateToolElement(id, element);
+		log("Tool registered:", id);
 	}
 
 	/**
@@ -202,10 +179,7 @@ export class ToolCoordinator implements ToolCoordinatorApi {
 			return;
 		}
 
-		if (tool.element) {
-			tool.element.style.display = "";
-			this.bringToFront(tool.element);
-		}
+		if (tool.element) this.bringToFront(tool.element);
 		tool.isVisible = true;
 		this.visibilityState.set(id, true);
 		this.notifyListeners();
@@ -223,9 +197,6 @@ export class ToolCoordinator implements ToolCoordinatorApi {
 			return;
 		}
 
-		if (tool.element) {
-			tool.element.style.display = "none";
-		}
 		tool.isVisible = false;
 		this.visibilityState.set(id, false);
 		this.notifyListeners();
@@ -271,24 +242,18 @@ export class ToolCoordinator implements ToolCoordinatorApi {
 	}
 
 	/**
-	 * Bring element to front of its layer
+	 * Bring a bound element to the front of its tool's layer. An element no tool
+	 * is bound to is left alone.
 	 *
 	 * @param element DOM element to bring forward
 	 */
 	bringToFront(element: HTMLElement): void {
-		// Find tool registration
 		const tool = Array.from(this.tools.values()).find(
 			(t) => t.element === element,
 		);
 		if (!tool) return;
 
-		// Calculate new z-index (highest in layer + 1)
-		const maxZIndexInLayer = this.getMaxZIndexInLayer(tool.layer);
-		const newZIndex = Math.max(maxZIndexInLayer + 1, tool.layer + 1);
-
-		// Update z-index
-		element.style.zIndex = String(newZIndex);
-		tool.baseZIndex = newZIndex;
+		this.stackOnTop(tool);
 	}
 
 	/**
@@ -306,27 +271,24 @@ export class ToolCoordinator implements ToolCoordinatorApi {
 	}
 
 	/**
-	 * Get next offset within a layer
+	 * Put `tool` in front of its layer. The layer is renumbered from its base on
+	 * every move, so its z-indices stay within it however often tools are raised.
 	 */
-	private getNextLayerOffset(layer: ZIndexLayer): number {
-		const current = this.layerCounters.get(layer) ?? 0;
-		this.layerCounters.set(layer, current + 1);
-		return current;
-	}
-
-	/**
-	 * Get maximum z-index currently in use in a layer
-	 */
-	private getMaxZIndexInLayer(layer: ZIndexLayer): number {
-		let max = layer;
-
-		for (const tool of this.tools.values()) {
-			if (tool.layer === layer) {
-				max = Math.max(max, tool.baseZIndex);
-			}
+	private stackOnTop(tool: ToolRegistration): void {
+		const others = Array.from(this.tools.values())
+			.filter((other) => other.layer === tool.layer && other !== tool)
+			.sort((a, b) => a.baseZIndex - b.baseZIndex);
+		const top = tool.layer + others.length + 1;
+		if (
+			tool.baseZIndex === top &&
+			others.every((other) => other.baseZIndex < top)
+		) {
+			return;
 		}
-
-		return max;
+		[...others, tool].forEach((entry, index) => {
+			entry.baseZIndex = tool.layer + 1 + index;
+			if (entry.element) entry.element.style.zIndex = String(entry.baseZIndex);
+		});
 	}
 
 	/**
@@ -341,7 +303,12 @@ export class ToolCoordinator implements ToolCoordinatorApi {
 	}
 
 	/**
-	 * Update tool element reference
+	 * Bind the element a tool stacks by. It takes the tool's z-index and comes to
+	 * the front of the layer when pressed, and when bound while the tool is shown.
+	 *
+	 * The outermost element stacks: binding an element inside the bound one keeps
+	 * the binding, so a tool rendered inside a toolbar's floating window stacks
+	 * by that window whichever binds first.
 	 *
 	 * @param id Tool identifier
 	 * @param element New DOM element
@@ -352,27 +319,19 @@ export class ToolCoordinator implements ToolCoordinatorApi {
 			log(`Tool ${id} not found`);
 			return;
 		}
+		if (tool.element === element) return;
+		if (tool.element?.isConnected && tool.element.contains(element)) return;
 
-		// Remove old event listener using stored handler reference
 		if (tool.element && tool.mouseDownHandler) {
 			tool.element.removeEventListener("mousedown", tool.mouseDownHandler);
 		}
-
-		// Create new handler and add listener
 		const mouseDownHandler = () => this.bringToFront(element);
 		element.addEventListener("mousedown", mouseDownHandler);
-
-		// Update element and handler reference
 		tool.element = element;
 		tool.mouseDownHandler = mouseDownHandler;
 
-		// Apply z-index to new element
 		element.style.zIndex = String(tool.baseZIndex);
-		if (tool.isVisible) {
-			element.style.display = "";
-		} else {
-			element.style.display = "none";
-		}
+		if (tool.isVisible) this.bringToFront(element);
 	}
 
 	/**

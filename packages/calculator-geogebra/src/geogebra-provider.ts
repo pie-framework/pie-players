@@ -109,6 +109,11 @@ export class GeoGebraCalculatorProvider implements CalculatorProvider {
 		"graphing",
 	];
 	readonly version = "6";
+	/** GeoGebra's license requires attribution for free use. */
+	readonly attribution = {
+		label: "Made with GeoGebra®",
+		href: "https://www.geogebra.org/",
+	} as const;
 
 	private initialized = false;
 	private appletTimeoutMs = DEFAULT_APPLET_TIMEOUT_MS;

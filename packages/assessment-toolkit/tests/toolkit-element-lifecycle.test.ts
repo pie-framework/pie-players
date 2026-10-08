@@ -2,8 +2,7 @@
  * `<pie-assessment-toolkit>` mounted in happy-dom: the lifecycle edges that only
  * its effects reach.
  *
- * The element loads from its build, so rebuild the package before running this
- * file. pie-context's event classes extend the `Event` of the moment the module
+ * pie-context's event classes extend the `Event` of the moment the module
  * first loads, and a `dispatchEvent` accepts only its own realm's events, so this
  * file re-bases them onto happy-dom's `Event` while it runs and puts back the
  * base the rest of the run expects when it ends.
@@ -19,7 +18,7 @@ const { ContextProviderEvent, ContextRequestEvent } = await import(
 	"@pie-players/pie-context"
 );
 const { commitPendingSessions } = await import("@pie-players/pie-players-shared");
-await import("../dist/components/pie-assessment-toolkit-element.js");
+await import("../src/components/PieAssessmentToolkit.svelte");
 
 type EventClass = { prototype: Event };
 function rebase(eventClass: EventClass, base: EventClass): void {

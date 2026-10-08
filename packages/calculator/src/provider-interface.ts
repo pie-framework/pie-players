@@ -122,6 +122,14 @@ export interface CalculatorProvider {
 	readonly version: string;
 
 	/**
+	 * Credit the vendor's terms require beside every calculator the provider
+	 * renders; the calculator surface shows it as a link. A provider whose
+	 * library draws its own credit inside the calculator, as Desmos's does,
+	 * declares none.
+	 */
+	readonly attribution?: { readonly label: string; readonly href: string };
+
+	/**
 	 * Initialize the provider: load the vendor library and authenticate.
 	 */
 	initialize(config?: CalculatorProviderInit): Promise<void>;

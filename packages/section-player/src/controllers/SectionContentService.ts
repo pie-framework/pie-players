@@ -5,6 +5,7 @@ import type {
 	ReferencedPassageEntity,
 } from "@pie-players/pie-players-shared";
 import type { FormativeItemPolicy } from "@pie-players/pie-players-shared/formative";
+import type { ItemSettings } from "@pie-players/pie-players-shared/types";
 import type {
 	SectionContentModel,
 	SectionRenderable,
@@ -124,6 +125,7 @@ export class SectionContentService {
 			identifier: string;
 			item: { id: string; identifier: string };
 			formative?: FormativeItemPolicy;
+			settings?: ItemSettings;
 		}> = [];
 		for (const [itemIndex, itemRef] of (
 			section.assessmentItemRefs || []
@@ -171,6 +173,7 @@ export class SectionContentService {
 					identifier,
 				},
 				formative: itemRef.formative,
+				settings: itemRef.settings,
 			});
 			if (
 				normalizedPassage &&

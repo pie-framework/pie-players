@@ -320,7 +320,8 @@ const coordinator = new ToolkitCoordinator({
   tools: { placement: { item: ["calculator", "textToSpeech", "theme"] } }
 });
 coordinator.updateAssessment(assessment);
-coordinator.updateCurrentItemRef(itemRef);
+// An item's <pie-item-scope> registers its settings when it mounts.
+coordinator.registerItemSettings(itemRef.identifier, itemRef.settings);
 
 const allowedToolIds = coordinator
   .decideToolPolicy({ level: "item", scope: { level: "item", scopeId: itemRef.identifier } })
@@ -328,7 +329,7 @@ const allowedToolIds = coordinator
 // Returns: ["calculator", "textToSpeech", "theme", ...]
 ```
 
-The policy engine reads the assessment's `personalNeedsProfile`, `settings.districtPolicy` and `settings.testAdministration`, and the current item ref's `settings`. A support id in any of them is a tool id: `supports: ["calculator"]` grants the tool registered as `calculator`, and an id no tool is registered under produces a `tool-policy.unknownSupportId` diagnostic.
+The policy engine reads the assessment's `personalNeedsProfile`, `settings.districtPolicy` and `settings.testAdministration`, and, for a decision scoped to an item, that item's registered `settings`. A support id in any of them is a tool id: `supports: ["calculator"]` grants the tool registered as `calculator`, and an id no tool is registered under produces a `tool-policy.unknownSupportId` diagnostic.
 
 ### Filtering by Context
 
@@ -377,7 +378,7 @@ for (const tool of visibleTools) {
 
 ### ItemToolBar
 
-`<pie-item-toolbar>` renders tool buttons only from its own `toolRegistry`; without one it renders none. Inside `<pie-assessment-toolkit>` it shows the coordinator's policy decision for its level and scope. The toolkit forwards its `assessment` and `currentItemRef` properties to the coordinator it builds; a host that passes its own `coordinator` binds them with `updateAssessment` and `updateCurrentItemRef`.
+`<pie-item-toolbar>` renders tool buttons only from its own `toolRegistry`; without one it renders none. Inside `<pie-assessment-toolkit>` it shows the coordinator's policy decision for its level and scope. The toolkit forwards its `assessment` property to the coordinator it builds; a host that passes its own `coordinator` binds it with `updateAssessment`. An item's settings reach the decisions of its own item-level toolbar through the `settings` property of its `<pie-item-scope>`; section- and assessment-level toolbars ignore them ([PNP Configuration](./PNP_CONFIGURATION.md#scope-of-item-settings)).
 
 ```html
 <pie-assessment-toolkit id="toolkit">
@@ -390,9 +391,10 @@ for (const tool of visibleTools) {
   toolkit.tools = { placement: { item: ["calculator", "textToSpeech", "answerEliminator"] } };
   toolkit.toolRegistry = toolRegistry;
   toolkit.assessment = assessment;
-  toolkit.currentItemRef = itemRef;
 
-  document.getElementById("scope").item = item;
+  const scope = document.getElementById("scope");
+  scope.item = item;
+  scope.settings = itemRef.settings;
   document.getElementById("toolbar").toolRegistry = toolRegistry;
 </script>
 ```
@@ -517,11 +519,12 @@ The coordinator supplies the other half:
 ```ts
 coordinator.canRequestTool("dictionary"); // gate the affordance before offering it
 coordinator.requestTool({ toolId: "dictionary", params: { term } });
+coordinator.canRequestTool("calculator", "item", itemId); // one card's toolbar
 ```
 
 A toolbar claims requests for its placement level through `registerToolRequestTarget`, turns the unscoped id into a scoped instance, applies `params` and shows the tool. `params` layer over whatever a host's `ToolContextResolver` returned and arrive through `getToolRenderParams`, so a tool already reading that seam receives a request with no new code.
 
-Resolution is a claim, not a broadcast: exactly one target answers, the one at the requested level that hosts the tool. `level` defaults to `"section"`, the level at which a whole section shares one instance and the level a section-scoped gateway can address unambiguously. At `"item"` and `"passage"` a section holds one target per card and the first that hosts the tool claims the request, so a requester needing a particular card's instance cannot express that.
+Resolution is a claim, not a broadcast: exactly one target answers, the one at the requested level that hosts the tool. `level` defaults to `"section"`, the level at which a whole section shares one instance and the level a section-scoped gateway can address unambiguously. At `"item"` and `"passage"` a section holds one target per card and the first that hosts the tool claims the request, unless the request names the card's `scopeId`; a control inside one card, such as the inline calculator, names it. A toolbar whose module load for a tool failed stops hosting that tool, and the coordinator re-announces the targets through `onToolRequestTargetsChange`.
 
 An action is a shortcut and never a capability's only entry point. Chromium will not extend a selection with Shift+Arrow in non-editable content unless caret browsing is on — an OS toggle absent on mobile — so a sighted keyboard-only learner cannot originate one. A capability reachable only through a selection gateway is unreachable for them, which is why both dictionaries keep a toolbar button and their own term field.
 
@@ -750,7 +753,7 @@ const coordinator = new ToolkitCoordinator({
   tools: { placement: { item: ["calculator", "textToSpeech"] } }
 });
 coordinator.updateAssessment(assessment);
-coordinator.updateCurrentItemRef(itemRef);
+coordinator.registerItemSettings(itemRef.identifier, itemRef.settings);
 const allowedToolIds = coordinator
   .decideToolPolicy({ level: "item", scope: { level: "item", scopeId: itemRef.identifier } })
   .visibleTools.map((tool) => tool.toolId);
@@ -787,17 +790,19 @@ The policy engine implements a **precedence hierarchy** based on common assessme
 2. **Test administration override**
    - **Purpose**: Proctor/administrator operational control
    - **Example**: Proctor disables TTS due to technical issues in testing lab
-   - **Effect**: Tool disabled for this test session
+   - **Effect**: `testAdministration.toolOverrides[toolId]` set to `false` disables the tool for this test session, and `true` grants it
 
 3. **Item restriction** (per-item block)
    - **Purpose**: Content author can disable for specific items
    - **Example**: Calculator disabled on mental math questions
-   - **Effect**: Tool unavailable only for this item
+   - **Effect**: Tool unavailable on this item's own toolbar
 
 4. **Item requirement** (forces enable)
    - **Purpose**: Required by IEP/504 or content needs
    - **Example**: Calculator required for multi-step word problems
-   - **Effect**: Tool must be available for this item
+   - **Effect**: Tool must be available on this item's own toolbar
+
+Rungs 3 and 4 apply to decisions scoped to the item: its item-level toolbar and its content's feature decisions. A section- or assessment-level toolbar skips them and reports each tool on it that a mounted item restricts or requires with a `tool-policy.itemSettingNotApplied` diagnostic; place the tool at item level to enforce the setting per item.
 
 5. **District requirement**
    - **Purpose**: Institutional accessibility requirements

@@ -17,7 +17,7 @@
 import type {
 	AccessibilityCatalog,
 	AssessmentEntity,
-	AssessmentItemRef,
+	ItemSettings,
 } from "@pie-players/pie-players-shared/types";
 import {
 	type CanonicalToolsConfig,
@@ -76,14 +76,15 @@ import type { ToolOpenRequest, ToolRequestTarget } from "./tool-request.js";
 import {
 	ToolPolicyEngine,
 	type FeaturePolicyDecision,
+	type ItemSettingNotAppliedDetails,
 	type PnpEnforcementMode,
 	type PolicySource,
 	type ResolvedEngineInputs,
 	type ToolPolicyChangeListener,
 	type ToolPolicyDecision,
 	type ToolPolicyDecisionRequest,
+	type ToolScope,
 } from "../policy/engine.js";
-import { resolveDefaultPnpEnforcement } from "../policy/core/pnp-policy-inputs.js";
 import type {
 	SectionControllerContext,
 	SectionControllerEvent,
@@ -324,7 +325,8 @@ export interface ToolkitErrorContext {
 		| "provider-init"
 		| "tts-init"
 		| "section-controller-init"
-		| "section-controller-dispose";
+		| "section-controller-dispose"
+		| "tool-module-load";
 	providerId?: string;
 	details?: Record<string, unknown>;
 	recoverable?: boolean;
@@ -658,6 +660,8 @@ export class ToolkitCoordinator {
 		string,
 		{ error: unknown; context: ToolkitErrorContext }
 	>();
+	/** Tools a toolbar reported a module failure for, each reported once. */
+	private readonly toolModuleFailures = new Set<string>();
 	private readonly readyChangeListeners = new Set<() => void>();
 	private readonly eagerInit: boolean;
 	private toolRegistry: ToolRegistry;
@@ -750,34 +754,20 @@ export class ToolkitCoordinator {
 	private readonly policyEngine: ToolPolicyEngine;
 
 	/**
-	 * Host-set override for PNP/profile enforcement. `null` (the default) means
-	 * "auto" — the coordinator infers the effective mode from the
-	 * PNP/profile policy inputs the bound `AssessmentEntity` and `AssessmentItemRef`
-	 * actually carry (see {@link resolveEffectivePnpEnforcement}).
+	 * Host-set override for PNP/profile enforcement, passed to the engine.
+	 * `null` (the default) is auto-mode, which the engine resolves per decision
+	 * from the policy material the bound assessment and the decision's item carry.
 	 * `"on"` / `"off"` are explicit host opt-in / opt-out and stick
-	 * across subsequent assessment / item swaps until the host clears
+	 * across subsequent assessment swaps until the host clears
 	 * the override by calling `setPnpEnforcement(null)`.
 	 */
 	private pnpEnforcementOverride: PnpEnforcementMode | null = null;
 
 	/**
-	 * Last assessment passed to {@link updateAssessment}. Read by
-	 * {@link resolveEffectivePnpEnforcement} to compute auto-mode.
-	 * The engine's own copy is the canonical record for decisions;
-	 * this mirror exists only so the auto-mode helper does not need
-	 * to round-trip through {@link policyEngine}'s frozen snapshot.
+	 * Tool and item pairs already warned about as
+	 * `tool-policy.itemSettingNotApplied`; see {@link decideToolPolicy}.
 	 */
-	private boundAssessment: AssessmentEntity | null = null;
-
-	/**
-	 * Last item reference passed to {@link updateCurrentItemRef}.
-	 * Mirrored alongside {@link boundAssessment} so
-	 * {@link resolveEffectivePnpEnforcement} can detect item-level
-	 * profile policy inputs (`requiredTools` / `restrictedTools` /
-	 * `toolParameters`) without round-tripping through the engine's
-	 * frozen snapshot.
-	 */
-	private boundCurrentItemRef: AssessmentItemRef | null = null;
+	private readonly warnedItemSettingsNotApplied = new Set<string>();
 
 	/**
 	 * Whether {@link decideFeaturePolicy} has already reported serving a decision
@@ -952,22 +942,18 @@ export class ToolkitCoordinator {
 		);
 		this.setupStatePersistenceHooks();
 
-		// M8 PR 2 — construct the unified ToolPolicyEngine seeded with
-		// the validated tools config. PNP/profile inputs (`assessment`,
-		// `currentItemRef`) start `null`; `pnpEnforcement` is resolved
-		// through {@link resolveEffectivePnpEnforcement}, which flips
-		// to `"on"` only once the bound assessment or item carries
-		// actual profile material. Hosts that only consume the
-		// engine for placement/policy gating get the pre-PR-2 behavior
-		// bit-for-bit.
+		// The unified ToolPolicyEngine, seeded with the validated tools config.
+		// The assessment starts `null` and items register their settings as they
+		// mount; auto-mode enforcement turns on only once the policy material a
+		// decision reads is present, so a host that consumes the engine for
+		// placement/policy gating alone sees no PNP/profile gate.
 		this.policyEngine = new ToolPolicyEngine({
 			toolRegistry: this.toolRegistry,
 			contextId: `toolkit-coordinator:${this.assessmentId}`,
 			inputs: {
 				tools: this.config.tools as CanonicalToolsConfig,
 				assessment: null,
-				currentItemRef: null,
-				pnpEnforcement: this.resolveEffectivePnpEnforcement(),
+				pnpEnforcement: this.pnpEnforcementOverride,
 			},
 		});
 
@@ -1084,13 +1070,13 @@ export class ToolkitCoordinator {
 	}
 
 	/**
-	 * Whether policy grants `toolId` as an accommodation: item or district
-	 * requirement, or profile support. Read without the unbound-assessment
-	 * warning.
+	 * Whether policy grants `toolId` as an accommodation on some surface: a
+	 * mounted item's or a district requirement, or profile support. Read without
+	 * the unbound-assessment warning.
 	 */
 	private isToolGranted(toolId: string): boolean {
 		try {
-			return this.policyEngine.decideFeature(toolId).granted === true;
+			return this.policyEngine.grantsFeatureAnywhere(toolId);
 		} catch {
 			return false;
 		}
@@ -1115,6 +1101,28 @@ export class ToolkitCoordinator {
 			for (const toolId of ids) this.degradedTools.set(toolId, { error, context });
 		}
 		this.handleError(error, { ...context, recoverable });
+	}
+
+	/**
+	 * Report that a toolbar could not load a tool's module. The failure follows
+	 * the start-failure policy: the tool degrades, so the toolbar withholds it,
+	 * unless policy grants it. Reported once per tool however many toolbars fail
+	 * to load it. Every report re-announces the request targets, since the
+	 * reporting toolbar no longer hosts the tool.
+	 */
+	reportToolModuleFailure(toolId: string, error: unknown): void {
+		this.toolRequests.notifyTargetsChange();
+		if (this.toolModuleFailures.has(toolId)) return;
+		this.toolModuleFailures.add(toolId);
+		const detail =
+			error instanceof Error && error.message.trim().length > 0
+				? error.message
+				: String(error);
+		this.reportToolFailure(
+			new Error(`Tool "${toolId}" failed to load: ${detail}`, { cause: error }),
+			{ phase: "tool-module-load", details: { toolId } },
+			[toolId],
+		);
 	}
 
 	private reportNewlyGrantedFailures(): void {
@@ -3101,10 +3109,33 @@ export class ToolkitCoordinator {
 	/**
 	 * Resolve the visible tool set for a given placement level + scope.
 	 *
-	 * Thin shim over the owned tool-policy engine.
+	 * Delegates to the owned tool-policy engine, and warns once per tool and
+	 * item when a section- or assessment-level toolbar carries a tool an item's
+	 * settings restrict or require (`tool-policy.itemSettingNotApplied`): those
+	 * settings govern only the item's own toolbar.
 	 */
 	decideToolPolicy(request: ToolPolicyDecisionRequest): ToolPolicyDecision {
-		return this.policyEngine.decide(request);
+		const decision = this.policyEngine.decide(request);
+		for (const diagnostic of decision.diagnostics) {
+			if (diagnostic.code !== "tool-policy.itemSettingNotApplied") continue;
+			const { itemId } = diagnostic.details as ItemSettingNotAppliedDetails;
+			const key = `${diagnostic.toolId}\0${itemId}`;
+			if (this.warnedItemSettingsNotApplied.has(key)) continue;
+			this.warnedItemSettingsNotApplied.add(key);
+			console.warn(`[ToolkitCoordinator] ${diagnostic.message}`);
+		}
+		return decision;
+	}
+
+	/**
+	 * File a mounted item's policy settings (`requiredTools`, `restrictedTools`,
+	 * `toolParameters`) under its canonical id. They govern the decisions scoped
+	 * to that item: its own item-level toolbar, and the feature decisions its
+	 * content asks with the item's scope. `pie-item-scope` registers them from
+	 * its `settings` property; the returned function withdraws them.
+	 */
+	registerItemSettings(itemId: string, settings: ItemSettings): () => void {
+		return this.policyEngine.registerItemSettings(itemId, settings);
 	}
 
 	/**
@@ -3125,9 +3156,15 @@ export class ToolkitCoordinator {
 	 * enforcement is explicitly `"on"`. Its toolkit binds whatever assessment the
 	 * host gave, usually none, and a host that passes no profile and leaves
 	 * enforcement unset or `"off"` has asked for no accommodation.
+	 *
+	 * `scope` is the surface asking; an item's scope brings in that item's
+	 * registered settings ({@link registerItemSettings}).
 	 */
-	decideFeaturePolicy(featureId: string): FeaturePolicyDecision {
-		const decision = this.policyEngine.decideFeature(featureId);
+	decideFeaturePolicy(
+		featureId: string,
+		scope?: ToolScope,
+	): FeaturePolicyDecision {
+		const decision = this.policyEngine.decideFeature(featureId, scope);
 		const unboundIsMisconfigured =
 			this.config.assessmentOptional !== true ||
 			this.pnpEnforcementOverride === "on";
@@ -3147,9 +3184,10 @@ export class ToolkitCoordinator {
 	/**
 	 * Subscribe to policy-engine change events. Fires whenever the
 	 * coordinator's bound inputs change (`updateToolConfig`,
-	 * `updateToolsPlacement`, `updateAssessment`, `updateCurrentItemRef`,
-	 * `setPnpEnforcement`) or a custom `PolicySource` is registered /
-	 * removed via {@link registerPolicySource}.
+	 * `updateToolsPlacement`, `updateAssessment`, `setPnpEnforcement`), an
+	 * item's settings are registered or withdrawn ({@link registerItemSettings}),
+	 * or a custom `PolicySource` is registered / removed via
+	 * {@link registerPolicySource}.
 	 *
 	 * The listener receives a `ToolPolicyChangeEvent` with the event
 	 * `reason` and a frozen snapshot of the engine inputs. Listeners
@@ -3181,51 +3219,27 @@ export class ToolkitCoordinator {
 	/**
 	 * Bind (or clear) the active assessment for PNP/profile policy decisions.
 	 *
-	 * Under auto-mode (no host override via {@link setPnpEnforcement}),
-	 * the coordinator promotes the engine to `pnpEnforcement: "on"`
-	 * iff the assessment carries any profile precedence material
-	 * (`personalNeedsProfile`, `settings.districtPolicy`,
-	 * `settings.testAdministration`) or the currently-bound item ref
-	 * carries item-level profile policy inputs. A bare assessment record (just
+	 * Under auto-mode (no host override via {@link setPnpEnforcement}), a
+	 * decision enforces PNP/profile policy iff the assessment carries profile
+	 * precedence material (`personalNeedsProfile`, `settings.districtPolicy`,
+	 * `settings.testAdministration`), or the decision is scoped to an item whose
+	 * settings carry item-level policy inputs. A bare assessment record (just
 	 * `id` / `name`, no PNP, no settings) keeps `"off"`.
 	 *
 	 * The host override set via {@link setPnpEnforcement} is sticky
-	 * across assessment swaps; calling with `null` clears the binding
-	 * and re-runs the auto-mode helper.
+	 * across assessment swaps.
 	 */
 	updateAssessment(assessment: AssessmentEntity | null): void {
-		this.boundAssessment = assessment;
-		this.policyEngine.updateInputs({
-			assessment,
-			pnpEnforcement: this.resolveEffectivePnpEnforcement(),
-		});
+		this.policyEngine.updateInputs({ assessment });
 	}
 
 	/**
-	 * Bind (or clear) the current item reference for policy decisions.
-	 *
-	 * Used by item-level profile gates (item `requiredTools` /
-	 * `restrictedTools` / `toolParameters`). Item-level profile material
-	 * also feeds {@link resolveEffectivePnpEnforcement} — navigating
-	 * to an item with profile settings can flip auto-mode to `"on"` even
-	 * when the parent assessment carries no profile block of its own.
-	 */
-	updateCurrentItemRef(itemRef: AssessmentItemRef | null): void {
-		this.boundCurrentItemRef = itemRef;
-		this.policyEngine.updateInputs({
-			currentItemRef: itemRef,
-			pnpEnforcement: this.resolveEffectivePnpEnforcement(),
-		});
-	}
-
-	/**
-	 * Override the auto-mode PNP/profile enforcement decision.
+	 * Override the auto-mode PNP/profile enforcement decision; `null` returns
+	 * to auto-mode.
 	 */
 	setPnpEnforcement(mode: PnpEnforcementMode | null): void {
 		this.pnpEnforcementOverride = mode;
-		this.policyEngine.updateInputs({
-			pnpEnforcement: this.resolveEffectivePnpEnforcement(),
-		});
+		this.policyEngine.updateInputs({ pnpEnforcement: mode });
 	}
 
 	/**
@@ -3365,39 +3379,21 @@ export class ToolkitCoordinator {
 	 * surface, and a host that swapped the registry for one without the tool would
 	 * otherwise lose the whole surface to an exception over an absent action.
 	 */
-	canRequestTool(toolId: string, level?: ToolOpenRequest["level"]): boolean {
+	canRequestTool(
+		toolId: string,
+		level?: ToolOpenRequest["level"],
+		scopeId?: string,
+	): boolean {
 		try {
 			this.assertCanonicalToolId(toolId);
 		} catch {
 			return false;
 		}
-		return this.toolRequests.canRequest(toolId, level);
+		return this.toolRequests.canRequest(toolId, level, scopeId);
 	}
 
 	onToolRequestTargetsChange(listener: () => void): () => void {
 		return this.toolRequests.onTargetsChange(listener);
-	}
-
-	/**
-	 * Compute the effective PNP/profile enforcement mode given the explicit
-	 * host override and the auto-mode helper.
-	 *
-	 * Auto-mode (no override) defers to
-	 * {@link resolveDefaultPnpEnforcement}, which returns `"on"`
-	 * exactly when the bound assessment or current item ref carries
-	 * profile precedence material (PNP, district policy, test
-	 * administration, item-level required/restricted/parameters), and
-	 * `"off"` otherwise. Profile gates engage the moment profile material
-	 * is present.
-	 */
-	private resolveEffectivePnpEnforcement(): PnpEnforcementMode {
-		if (this.pnpEnforcementOverride !== null) {
-			return this.pnpEnforcementOverride;
-		}
-		return resolveDefaultPnpEnforcement({
-			assessment: this.boundAssessment,
-			currentItemRef: this.boundCurrentItemRef,
-		});
 	}
 
 	private resolveConfiguredPnpEnforcement(): PnpEnforcementMode | null {

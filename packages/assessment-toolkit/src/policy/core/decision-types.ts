@@ -66,11 +66,17 @@ export interface ToolPolicyDecisionRequest {
  * for the resolved level. The host-side `ToolConfigDiagnostic` channel
  * (already used by `tool-config-validation.ts`) covers config-time
  * misconfiguration; this channel covers per-decision conflicts.
+ *
+ * `tool-policy.itemSettingNotApplied` fires on a section- or assessment-level
+ * decision for each tool on that toolbar a mounted item's `restrictedTools` or
+ * `requiredTools` names, once per tool and item: item settings govern only the
+ * item's own toolbar. `details` is {@link ItemSettingNotAppliedDetails}.
  */
 export type ToolPolicyDiagnosticCode =
 	| "tool-policy.requiredToolBlocked"
 	| "tool-policy.placementMissing"
-	| "tool-policy.unknownSupportId";
+	| "tool-policy.unknownSupportId"
+	| "tool-policy.itemSettingNotApplied";
 
 /**
  * Which host gate removed a profile-mandated tool. Surfaced inside
@@ -106,6 +112,16 @@ export interface RequiredToolBlockedDetails extends Record<string, unknown> {
 	hostRule: ToolPolicyHostGate;
 	/** The host configuration value that triggered the gate (best-effort, may be omitted). */
 	hostValue?: unknown;
+}
+
+/** Payload of a `tool-policy.itemSettingNotApplied` diagnostic. */
+export interface ItemSettingNotAppliedDetails extends Record<string, unknown> {
+	/** Canonical id of the item whose setting names the tool. */
+	itemId: string;
+	/** The item settings that name it. */
+	settings: Array<"restrictedTools" | "requiredTools">;
+	/** The level of the toolbar the tool is on. */
+	toolbarLevel: ToolLevel;
 }
 
 export interface ToolPolicyDiagnostic {

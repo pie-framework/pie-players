@@ -121,10 +121,8 @@ export function buildSectionPageHref(args: {
  * own demos, and placeholders here would make every demo assert precedence it
  * does not exercise.
  *
- * Safe to call repeatedly with the same section: the engine diffs its inputs by
- * `Object.is`, so pass a stable section reference (a `$derived` value, not a
- * fresh literal per effect run) or a re-push emits a policy-change event that
- * every panel counting those events will re-render on.
+ * Safe to call repeatedly: the engine compares the assessment structurally, so
+ * re-binding the same profile emits no policy-change event.
  */
 export function bindDemoAssessment(
 	coordinator: {

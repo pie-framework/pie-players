@@ -263,10 +263,10 @@ describe("composeDecision — host-only pipeline", () => {
 		const assessment: AssessmentEntity = {
 			id: "asm-1",
 		} as AssessmentEntity;
-		const itemRef = {
-			identifier: "item-1",
+		const item = {
+			id: "item-1",
 			settings: { restrictedTools: ["calculator"] },
-		} as any;
+		};
 		const decision = composeDecision({
 			request: baseRequest,
 			tools: tools({
@@ -275,7 +275,7 @@ describe("composeDecision — host-only pipeline", () => {
 			pnpPolicy: {
 				source: new PnpPolicySource(registry),
 				assessment,
-				currentItemRef: itemRef,
+				item,
 				enforcement: "on",
 			},
 			customSources: [],
@@ -286,10 +286,10 @@ describe("composeDecision — host-only pipeline", () => {
 	});
 
 	test("step 5 — item-only profile material still applies when no assessment is bound", () => {
-		const itemRef = {
-			identifier: "item-1",
+		const item = {
+			id: "item-1",
 			settings: { restrictedTools: ["calculator"] },
-		} as any;
+		};
 		const decision = composeDecision({
 			request: baseRequest,
 			tools: tools({
@@ -297,7 +297,7 @@ describe("composeDecision — host-only pipeline", () => {
 			}),
 			pnpPolicy: {
 				source: new PnpPolicySource(registry),
-				currentItemRef: itemRef,
+				item,
 				enforcement: "on",
 			},
 			customSources: [],
@@ -305,6 +305,51 @@ describe("composeDecision — host-only pipeline", () => {
 		});
 		expect(decision.visibleTools.map((e) => e.toolId)).toEqual(["tts"]);
 		expect(decision.provenance.sources.item?.id).toBe("item-1");
+	});
+
+	test("step 7 — a shared toolbar keeps a tool an item names and reports it per item", () => {
+		const decision = composeDecision({
+			request: { level: "section", scope: { level: "section", scopeId: "s1" } },
+			tools: tools({
+				placement: { section: ["calculator", "tts"], item: [], passage: [] },
+			}),
+			pnpPolicy: {
+				source: new PnpPolicySource(registry),
+				enforcement: "off",
+			},
+			unappliedItems: [
+				{ id: "item-1", settings: { restrictedTools: ["calculator"] } },
+				{
+					id: "item-2",
+					settings: { requiredTools: ["calculator"], restrictedTools: ["calculator"] },
+				},
+				{ id: "item-3", settings: { toolParameters: { calculator: {} } } },
+			],
+			customSources: [],
+			contextId: "test",
+		});
+		expect(decision.visibleTools.map((e) => e.toolId)).toEqual([
+			"calculator",
+			"tts",
+		]);
+		expect(
+			decision.diagnostics.map((d) => [d.code, d.toolId, d.details]),
+		).toEqual([
+			[
+				"tool-policy.itemSettingNotApplied",
+				"calculator",
+				{ itemId: "item-1", settings: ["restrictedTools"], toolbarLevel: "section" },
+			],
+			[
+				"tool-policy.itemSettingNotApplied",
+				"calculator",
+				{
+					itemId: "item-2",
+					settings: ["restrictedTools", "requiredTools"],
+					toolbarLevel: "section",
+				},
+			],
+		]);
 	});
 
 	test("step 6 — custom source narrows the candidate set", () => {

@@ -1,4 +1,5 @@
-# Loads speech-rule-engine before any test file registers happy-dom, so it reads
-# its locale tables from its package directory. Rationale in the preload.
+# Resolves workspace siblings to source (rationale in the root bunfig.toml), then
+# loads speech-rule-engine before any test file registers happy-dom, so it reads
+# its locale tables from its package directory (rationale in the preload).
 [test]
-preload = ["./tests/preload-sre.ts"]
+preload = ["../../test-support/bun-workspace-sources.ts", "./tests/preload-sre.ts"]

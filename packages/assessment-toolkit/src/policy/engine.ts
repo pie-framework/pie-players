@@ -23,6 +23,7 @@ export {
 } from "./core/feature-decision.js";
 
 export type {
+	ItemSettingNotAppliedDetails,
 	RequiredToolBlockedDetails,
 	ToolPolicyDecision,
 	ToolPolicyDecisionRequest,

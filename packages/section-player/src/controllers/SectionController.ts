@@ -447,6 +447,9 @@ export class SectionController implements SectionControllerHandle {
 		return this.state.viewModel.items.map((item, index) => {
 			const itemId = item.id || "";
 			const canonicalItemId = this.getCanonicalItemId(itemId);
+			const settings = this.state.viewModel.adapterItemRefs.find(
+				(itemRef) => itemRef.item?.id === itemId,
+			)?.settings;
 			return {
 				item,
 				itemId,
@@ -455,6 +458,7 @@ export class SectionController implements SectionControllerHandle {
 				isCurrent: index === this.state.viewModel.currentItemIndex,
 				session:
 					itemSessionsByItemId[itemId] ?? itemSessionsByItemId[canonicalItemId],
+				...(settings ? { settings } : {}),
 			};
 		});
 	}

@@ -101,17 +101,20 @@ jobs:
           key: turbo-${{ runner.os }}-${{ github.sha }}
           restore-keys: turbo-${{ runner.os }}-
 
-      - name: Build All Packages
-        run: bun run build
-
       - name: Run Unit Tests
         # Tests gate at PR-into-develop/master time. The release path
         # (changeset PR titled `[skip-heavy-ci]` → push: master →
         # release.yml) inherits trust from the develop merges and stays
         # fast. release.yml's manual publish run still has its own
-        # `bun run test` step as a final safety net.
+        # `bun run test` step as a final safety net. They run before the
+        # build: unit tests resolve workspace siblings to source, and a
+        # suite that needs a sibling's dist fails here instead of passing
+        # on this job's build.
         if: github.event_name == 'pull_request'
         run: bun run test
+
+      - name: Build All Packages
+        run: bun run build
 
       - name: Upload Build Artifacts
         uses: actions/upload-artifact@v7

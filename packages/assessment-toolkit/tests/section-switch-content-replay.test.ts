@@ -71,6 +71,11 @@ interface SectionLikeController extends SectionControllerHandle {
 	readonly heardIds: string[];
 	readonly unregisteredIds: string[];
 	getRuntimeState(): SectionControllerRuntimeState;
+	/** The binding's controller signature; the stub leaves it unimplemented. */
+	updateItemSession?: (
+		itemId: string,
+		sessionDetail: unknown,
+	) => { eventDetail?: unknown } | null;
 }
 
 function createSectionLikeController(

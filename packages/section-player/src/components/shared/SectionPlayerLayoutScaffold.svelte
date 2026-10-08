@@ -14,7 +14,10 @@
 		getHostElementFromAnchor,
 		type SectionPlayerCardRenderContext,
 	} from "./section-player-card-context.js";
-	import type { SectionControllerHandle } from "@pie-players/pie-assessment-toolkit";
+	import type {
+		SectionControllerHandle,
+		ToolkitCoordinatorApi,
+	} from "@pie-players/pie-assessment-toolkit";
 	import { coerceBooleanLike } from "@pie-players/pie-players-shared";
 	import { onDestroy, untrack } from "svelte";
 
@@ -61,6 +64,7 @@
 	let cardContextAnchor = $state<HTMLDivElement | null>(null);
 	let navigationStatusMessage = $state("");
 	let unsubscribeNavigationStatus: (() => void) | null = null;
+	let navigationStatusCoordinator: ToolkitCoordinatorApi | null = null;
 
 	function buildStatusMessage(event: { itemIndex?: number; totalItems?: number; itemLabel?: string }): string {
 		const position = typeof event.itemIndex === "number" ? event.itemIndex + 1 : null;
@@ -74,13 +78,17 @@
 		return "";
 	}
 
-	function subscribeNavigationStatus(controller: SectionControllerHandle | null): void {
+	// One subscription per coordinator: it follows the active section across
+	// navigation, as a host's does.
+	function subscribeNavigationStatus(coordinator: ToolkitCoordinatorApi | null): void {
+		if (!coordinator || coordinator === navigationStatusCoordinator) return;
 		unsubscribeNavigationStatus?.();
-		unsubscribeNavigationStatus = null;
-		if (!controller?.subscribe) return;
-		unsubscribeNavigationStatus = controller.subscribe((event: any) => {
-			if (event?.type !== "item-selected") return;
-			navigationStatusMessage = buildStatusMessage(event);
+		navigationStatusCoordinator = coordinator;
+		unsubscribeNavigationStatus = coordinator.subscribeSectionEvents({
+			eventTypes: ["item-selected"],
+			listener: (event: any) => {
+				navigationStatusMessage = buildStatusMessage(event);
+			},
 		});
 	}
 
@@ -124,9 +132,13 @@
 
 	function handleToolkitReady(event: Event) {
 		onToolkitReady?.(event);
-		// Subscribe for navigation announcements as soon as the controller is available.
-		const controller = baseElement?.getSectionController?.() ?? null;
-		subscribeNavigationStatus(controller);
+		// The base's own toolkit is in its shadow root, so its event arrives
+		// retargeted to the base; a nested toolkit's keeps its own target.
+		if (event.target !== event.currentTarget) return;
+		subscribeNavigationStatus(
+			(event as CustomEvent<{ coordinator?: ToolkitCoordinatorApi }>).detail
+				?.coordinator ?? null,
+		);
 	}
 
 	export function navigateToItem(index: number): boolean {

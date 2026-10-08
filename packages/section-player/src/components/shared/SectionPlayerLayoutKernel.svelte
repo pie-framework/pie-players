@@ -16,6 +16,7 @@
 		SectionRuntimeEngine,
 		cohortsEqual,
 		makeCohort,
+		resolveSectionId,
 		type EngineReadinessSignals,
 	} from "@pie-players/pie-assessment-toolkit/runtime/engine";
 	import type {
@@ -228,6 +229,17 @@
 		}),
 	);
 	const effectiveRuntime = $derived(runtimeState.effectiveRuntime);
+	// The stage cohort runs under the id the toolkit keys the section's
+	// controller by, and only while there is a section to run.
+	const cohortSectionId = $derived(
+		section || sectionId
+			? resolveSectionId({
+					sectionId,
+					section,
+					assessmentId: effectiveRuntime.assessmentId,
+				})
+			: "",
+	);
 	const effectiveToolsConfig = $derived(runtimeState.effectiveToolsConfig);
 	const defaultToolRegistry = createPackagedToolRegistry({
 		toolModuleLoaders: DEFAULT_TOOL_MODULE_LOADERS,
@@ -452,24 +464,16 @@
 		return navigateTo(navigation.currentIndex - 1);
 	}
 
+	// Reads only: the stage chain advances on the toolkit's `toolkit-ready`, and a
+	// read during a section switch can return the outgoing section's controller.
 	export function getSectionController(): SectionControllerHandle | null {
-		const controller = scaffoldRef?.getSectionController?.() || null;
-		if (controller && !sectionControllerReadyDispatched) {
-			sectionControllerReadyDispatched = true;
-			notifySectionControllerResolved(controller);
-		}
-		return controller;
+		return scaffoldRef?.getSectionController?.() || null;
 	}
 
 	export async function waitForSectionController(
 		timeoutMs = 5000,
 	): Promise<SectionControllerHandle | null> {
-		const controller = await scaffoldRef?.waitForSectionController?.(timeoutMs);
-		if (controller && !sectionControllerReadyDispatched) {
-			sectionControllerReadyDispatched = true;
-			notifySectionControllerResolved(controller);
-		}
-		return controller || null;
+		return (await scaffoldRef?.waitForSectionController?.(timeoutMs)) || null;
 	}
 
 	$effect(() => {
@@ -502,10 +506,9 @@
 	//        - same cohort                  → `update-runtime` so the
 	//                                         engine records the
 	//                                         latest resolver output
-	//        - cohort cleared (non-empty
-	//          → empty, e.g. host clears
-	//          `sectionId` while still
-	//          mounted)                     → no-op. Earlier stage
+	//        - cohort cleared (host clears
+	//          `section` and `sectionId`
+	//          while still mounted)         → no-op. Earlier stage
 	//                                         tracking emitted
 	//                                         `disposed` here;
 	//                                         the engine path
@@ -531,7 +534,7 @@
 	// Each cohort's content starts clean. Declared ahead of the engine driver, so
 	// the driver reads the reset when the cohort rolls.
 	$effect(() => {
-		void sectionId;
+		void cohortSectionId;
 		void attemptId;
 		untrack(() => {
 			cohortErrorLatched = false;
@@ -540,7 +543,7 @@
 
 	$effect(() => {
 		void host;
-		void sectionId;
+		void cohortSectionId;
 		void attemptId;
 		void effectiveRuntime;
 		void effectiveToolsConfig;
@@ -553,7 +556,7 @@
 			if (!host) return;
 			engine.attachHost({ host, sourceCe });
 
-			const nextCohort = makeCohort({ sectionId, attemptId });
+			const nextCohort = makeCohort({ sectionId: cohortSectionId, attemptId });
 			const itemCount = items.length;
 
 			if (!cohortsEqual(lastCohort, nextCohort)) {

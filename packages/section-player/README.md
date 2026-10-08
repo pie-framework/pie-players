@@ -344,7 +344,7 @@ has initialized, a change to `runtime.tools`, `runtime.assessmentId`,
 `runtime.accessibility`, `runtime.lazyInit`, `runtime.toolConfigStrictness` or
 `toolRegistry` is reported once in the console and does not reach that
 coordinator; `runtime.tools.pnpEnforcement` still applies. Change a running
-coordinator through the one `toolkit-ready` delivers, with
+coordinator through the one `toolkit-ready` carries, with
 `updateToolConfig(...)` or `updateToolsPlacement(...)`, or pass your own as
 `runtime.coordinator`.
 
@@ -901,7 +901,7 @@ const unsubscribeSection = coordinator.subscribeSectionLifecycleEvents({
 });
 ```
 
-Subscribe **after** the first `getOrCreateSectionController(...)` resolves (or after `toolkit-ready` once the section player has fully wired its controller — typically the safest anchor in host code is `toolkit-ready` followed by the first controller-resolve). Calling subscribe before any cohort exists throws.
+Subscribe **after** the first `getOrCreateSectionController(...)` resolves (or after `toolkit-ready` once the section player has fully wired its controller — typically the safest anchor in host code is `toolkit-ready` followed by the first controller-resolve). Calling subscribe before the first `getOrCreateSectionController(...)` call throws; a listener added while a section is starting binds when that section becomes active.
 
 Use `subscribeSectionEvents(...)` only for advanced mixed filtering requirements.
 

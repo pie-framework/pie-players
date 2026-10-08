@@ -634,6 +634,11 @@ export class ToolkitCoordinator {
 	private ttsInitPromise?: Promise<void>;
 	private ttsReconfigurePromise?: Promise<void>;
 	private stateLoaded = false;
+	/**
+	 * The loader ran, whether or not it returned state. A failed load is
+	 * reported once and the coordinator runs without saved tool state.
+	 */
+	private stateLoadSettled = false;
 	private stateLoadPromise?: Promise<void>;
 	private coordinatorReadyPromise?: Promise<void>;
 	private coordinatorReadyNotified = false;
@@ -716,14 +721,16 @@ export class ToolkitCoordinator {
 	 * Phase D: map key of the section controller currently treated as
 	 * the *active cohort*. Set by `getOrCreateSectionController` (both
 	 * the create-new and resolve-existing paths) and cleared when the
-	 * matching controller is disposed. `null` while no cohort exists,
-	 * which is the only state where `subscribeSectionEvents` throws.
+	 * matching controller is disposed, and `null` while the next requested
+	 * cohort is still starting.
 	 */
 	private activeCohortMapKey: string | null = null;
 	/**
 	 * Latest requested active cohort. Async controller initialization can
 	 * resolve out of order; only the most recent request may migrate active
 	 * subscriptions. Older completions still populate the controller cache.
+	 * `null` until the first request, which is the only state where
+	 * `subscribeSectionEvents` throws.
 	 */
 	private latestRequestedActiveCohortMapKey: string | null = null;
 	private readonly telemetryListeners = new Set<ToolkitTelemetryListener>();
@@ -898,7 +905,9 @@ export class ToolkitCoordinator {
 		this.config = resolvedConfig;
 		this.toolRegistry = resolvedConfig.toolRegistry ?? new ToolRegistry();
 		this.installToolContextResolvers(resolvedConfig.toolContextResolvers);
-		this.hooks = resolvedConfig.hooks ?? {};
+		// The coordinator's own copy, so `setHooks` leaves the host's object as it
+		// passed it.
+		this.hooks = { ...resolvedConfig.hooks };
 		this.lazyInit = config.lazyInit === true;
 		this.eagerInit = config.eagerInit ?? !this.lazyInit;
 		this.pnpEnforcementOverride = this.resolveConfiguredPnpEnforcement();
@@ -1236,7 +1245,7 @@ export class ToolkitCoordinator {
 	}
 
 	private async ensureStateLoaded(): Promise<void> {
-		if (this.stateLoaded) return;
+		if (this.stateLoadSettled) return;
 		if (this.stateLoadPromise) return this.stateLoadPromise;
 		this.stateLoadPromise = (async () => {
 			const loader = this.hooks.loadToolState;
@@ -1250,11 +1259,13 @@ export class ToolkitCoordinator {
 					this.elementToolStateStore.loadState(state);
 				}
 				this.stateLoaded = true;
+				this.stateLoadSettled = true;
 				await this.emitTelemetry("pie-toolkit-tool-state-loaded", {
 					hasState: Boolean(state),
 				});
 			} catch (err) {
 				if (err instanceof ToolkitCoordinatorDisposedError) throw err;
+				this.stateLoadSettled = true;
 				this.handleError(err, { phase: "state-load" });
 			}
 		})().finally(() => {
@@ -1597,8 +1608,13 @@ export class ToolkitCoordinator {
 		// cohort* automatically. We bind the listener to whichever
 		// controller is currently active and re-bind it on every
 		// `getOrCreateSectionController` / `disposeSectionController`
-		// transition, with snapshot replay on each migration.
-		if (this.activeCohortMapKey === null) {
+		// transition, with snapshot replay on each migration. A listener
+		// added while the next section is still starting binds when it
+		// becomes active.
+		if (
+			this.activeCohortMapKey === null &&
+			this.latestRequestedActiveCohortMapKey === null
+		) {
 			throw new Error(
 				"[ToolkitCoordinator] subscribeSectionEvents requires an active section cohort; call getOrCreateSectionController first.",
 			);
@@ -1616,7 +1632,10 @@ export class ToolkitCoordinator {
 		};
 		this.activeSubscriptions.set(args.listener, sub);
 
-		const controller = this.sectionControllers.get(this.activeCohortMapKey);
+		const controller =
+			this.activeCohortMapKey === null
+				? undefined
+				: this.sectionControllers.get(this.activeCohortMapKey);
 		if (controller) {
 			this.bindSubscriptionToController(sub, controller);
 		}
@@ -1941,24 +1960,30 @@ export class ToolkitCoordinator {
 		const mapKey = this.getSectionControllerMapKey(key);
 		this.latestRequestedActiveCohortMapKey = mapKey;
 		this.suspendActiveCohortIfSuperseded(mapKey);
-		const existingController = await this.resolveExistingSectionController({
-			mapKey,
-			key,
-			input: args.input,
-			updateExisting: args.updateExisting,
-		});
-		if (existingController) {
-			if (this.disposePromise !== null) {
-				throw new ToolkitCoordinatorDisposedError();
+		let existingController: SectionControllerHandle | undefined;
+		try {
+			existingController = await this.resolveExistingSectionController({
+				mapKey,
+				key,
+				input: args.input,
+				updateExisting: args.updateExisting,
+			});
+			if (existingController) {
+				if (this.disposePromise !== null) {
+					throw new ToolkitCoordinatorDisposedError();
+				}
+				if (args.initialSession) {
+					await this.assignSessionToPublishedController(
+						existingController,
+						args.initialSession,
+					);
+				}
 			}
-			if (args.initialSession) {
-				await this.assignSessionToPublishedController(
-					existingController,
-					args.initialSession,
-				);
-			}
-			return existingController;
+		} catch (err) {
+			this.deliverSectionStartError(mapKey, err);
+			throw err;
 		}
+		if (existingController) return existingController;
 		const pendingDisposal = this.sectionControllerDisposePromises.get(mapKey);
 		if (pendingDisposal) {
 			// Persistence and hydration share the cohort's durable state. Keep the
@@ -1994,6 +2019,7 @@ export class ToolkitCoordinator {
 		})
 			.catch((err) => {
 				this.handleSectionControllerInitError(err, args);
+				this.deliverSectionStartError(mapKey, err);
 				throw err;
 			})
 			.finally(() => {
@@ -2248,6 +2274,34 @@ export class ToolkitCoordinator {
 				attemptId: args.attemptId,
 			},
 		});
+	}
+
+	/**
+	 * A section that fails to start has no controller of its own to emit its
+	 * `section-error`, and the host's subscriptions are already off the outgoing
+	 * section, so the coordinator delivers the error to them while that section
+	 * is still the one requested.
+	 */
+	private deliverSectionStartError(mapKey: string, error: unknown): void {
+		if (
+			error instanceof ToolkitCoordinatorDisposedError ||
+			error instanceof SectionControllerRetiredError ||
+			this.latestRequestedActiveCohortMapKey !== mapKey
+		) {
+			return;
+		}
+		const event: SectionControllerEvent = {
+			type: "section-error",
+			source: "section-runtime",
+			error,
+			currentItemIndex: 0,
+			timestamp: Date.now(),
+		};
+		for (const sub of Array.from(this.activeSubscriptions.values())) {
+			if (this.buildSectionEventPredicate(sub)(event)) {
+				this.deliverSectionEventSafely(sub.listener, event);
+			}
+		}
 	}
 
 	public disposeSectionController(args: {
@@ -2820,7 +2874,7 @@ export class ToolkitCoordinator {
 			tts: this.ttsInitialized,
 			stateLoaded: this.stateLoaded || !this.hooks.loadToolState,
 			coordinator:
-				(this.stateLoaded || !this.hooks.loadToolState) &&
+				(this.stateLoadSettled || !this.hooks.loadToolState) &&
 				(this.ttsInitialized ||
 					this.ttsDegraded ||
 					!this.ttsRequiredForReadiness()),

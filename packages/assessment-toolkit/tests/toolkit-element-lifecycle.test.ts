@@ -18,6 +18,7 @@ if (ownsDom) GlobalRegistrator.register();
 const { ContextProviderEvent, ContextRequestEvent } = await import(
 	"@pie-players/pie-context"
 );
+const { commitPendingSessions } = await import("@pie-players/pie-players-shared");
 await import("../dist/components/pie-assessment-toolkit-element.js");
 
 type EventClass = { prototype: Event };
@@ -69,6 +70,48 @@ function controller(initialize: () => Promise<void> = async () => {}) {
 		subscribe: () => () => {},
 		dispose: async () => {},
 	};
+}
+
+/** A controller stub that announces each item session it is handed. */
+function sessionController() {
+	const listeners = new Set<(event: unknown) => void>();
+	return {
+		...controller(),
+		subscribe: (listener: (event: unknown) => void) => {
+			listeners.add(listener);
+			return () => listeners.delete(listener);
+		},
+		updateItemSession: (itemId: string, session: unknown) => {
+			for (const listener of listeners) {
+				listener({ type: "item-session-data-changed", itemId, session });
+			}
+			return null;
+		},
+	};
+}
+
+/**
+ * An item shell holding a delivery element whose response it has not announced,
+ * forwarding the element's `session-changed` to the toolkit as a shell does.
+ */
+function shellWithPendingResponse(runtimeId: string, itemId: string) {
+	const shell = document.createElement("div");
+	const delivery = Object.assign(document.createElement("x-delivery"), {
+		model: {},
+		session: { id: itemId, data: [{ id: "choice", value: ["a"] }] },
+	});
+	shell.append(delivery);
+	shell.addEventListener("session-changed", (event) => {
+		event.stopPropagation();
+		shell.dispatchEvent(
+			new CustomEvent("pie-item-session-changed", {
+				bubbles: true,
+				composed: true,
+				detail: { itemId, session: (event as CustomEvent).detail, runtimeId },
+			}),
+		);
+	});
+	return shell;
 }
 
 const mounted: Mounted[] = [];
@@ -135,6 +178,96 @@ describe("<pie-assessment-toolkit> lifecycle", () => {
 		const [runtimeReady] = of("runtime-ready");
 		expect(runtimeReady?.detail.coordinator.isReady()).toBe(true);
 		expect(of("pie-stage-change")).toEqual([]);
+	});
+
+	test("leaving a section commits its pending response to the host's subscription", async () => {
+		const { element, of } = await mount({
+			sectionId: "s1",
+			section: section("s1"),
+			createSectionController: () => sessionController(),
+		});
+		const [{ detail: ready }] = of("toolkit-ready");
+		const received: Array<{ type: string; itemId: string }> = [];
+		ready.coordinator.subscribeItemEvents({
+			listener: ({ type, itemId }: { type: string; itemId: string }) =>
+				received.push({ type, itemId }),
+		});
+		element.append(shellWithPendingResponse(ready.runtimeId, "item-1"));
+
+		Object.assign(element, { sectionId: "s2", section: section("s2") });
+		await settle();
+
+		expect(of("toolkit-ready").map((event) => event.detail.sectionId)).toEqual([
+			"s1",
+			"s2",
+		]);
+		expect(received).toEqual([
+			{ type: "item-session-data-changed", itemId: "item-1" },
+		]);
+	});
+
+	test("a response the host committed before leaving the section reaches it once", async () => {
+		const { element, of } = await mount({
+			sectionId: "s1",
+			section: section("s1"),
+			createSectionController: () => sessionController(),
+		});
+		const [{ detail: ready }] = of("toolkit-ready");
+		const received: string[] = [];
+		ready.coordinator.subscribeItemEvents({
+			listener: ({ itemId }: { itemId: string }) => received.push(itemId),
+		});
+		element.append(shellWithPendingResponse(ready.runtimeId, "item-1"));
+
+		commitPendingSessions(element, { reason: "navigate" });
+		Object.assign(element, { sectionId: "s2", section: section("s2") });
+		await settle();
+
+		expect(received).toEqual(["item-1"]);
+	});
+
+	test("a section that starts takes down the banner the previous section's failure raised", async () => {
+		let created = 0;
+		const { element, of } = await mount({
+			sectionId: "s1",
+			section: section("s1"),
+			createSectionController: () => {
+				created += 1;
+				return created === 1
+					? controller(async () => {
+							throw new Error("s1 failed to start");
+						})
+					: controller();
+			},
+		});
+		const banner = () =>
+			element.shadowRoot?.querySelector(".pie-assessment-toolkit-error") ?? null;
+		expect(banner()).not.toBeNull();
+
+		Object.assign(element, { sectionId: "s2", section: section("s2") });
+		await settle();
+
+		expect(of("toolkit-ready").map((event) => event.detail.sectionId)).toEqual([
+			"s2",
+		]);
+		expect(banner()).toBeNull();
+	});
+
+	test("isolation=\"force\" as an attribute gives a nested toolkit its own coordinator", async () => {
+		const outer = await mount({});
+		const inner = document.createElement("pie-assessment-toolkit") as ToolkitElement;
+		const ready: Array<{ ownership: string; coordinator: unknown }> = [];
+		inner.addEventListener("runtime-ready", (event) => {
+			ready.push((event as CustomEvent).detail);
+		});
+		inner.setAttribute("isolation", "force");
+		inner.assessmentId = "assessment-1";
+		outer.element.append(inner);
+		await settle();
+
+		const [outerReady] = outer.of("runtime-ready");
+		expect(ready.map((detail) => detail.ownership)).toEqual(["owned"]);
+		expect(ready[0]?.coordinator).not.toBe(outerReady?.detail.coordinator);
 	});
 
 	test("one controller-init failure is one framework-error and one hook call", async () => {

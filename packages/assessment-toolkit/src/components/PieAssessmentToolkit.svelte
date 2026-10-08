@@ -71,7 +71,12 @@
 		resolveInstrumentationProvider,
 		TOOLKIT_INSTRUMENTATION_EVENT_MAP,
 	} from "@pie-players/pie-players-shared/pie";
-	import { isInstrumentationProvider } from "@pie-players/pie-players-shared";
+	import {
+		commitPendingSessions,
+		createPieLogger,
+		isGlobalDebugEnabled,
+		isInstrumentationProvider,
+	} from "@pie-players/pie-players-shared";
 	import {
 		createPieI18n,
 		DEFAULT_LOCALE,
@@ -134,6 +139,7 @@
 	import type { CatalogSourceEntity } from "../services/catalog-owner.js";
 	import { observeMathControlNames } from "../services/tts/math-control-names.js";
 	import { SectionControllerBinding } from "../runtime/SectionControllerBinding.js";
+	import { resolveSectionId } from "../runtime/core/engine-resolver.js";
 	import { watchForUnclaimedRegistrations } from "../runtime/unclaimed-registration-watch.js";
 	import { createCompositionEmitScheduler } from "../runtime/composition-emit-scheduler.js";
 	import {
@@ -144,6 +150,10 @@
 		resetSessionEmitPolicyState,
 		shouldEmitCanonicalSessionEvent,
 	} from "../runtime/session-event-emitter-policy.js";
+
+	const logger = createPieLogger("pie-assessment-toolkit", () =>
+		isGlobalDebugEnabled(),
+	);
 
 	type SessionChangedLike = {
 		eventDetail?: unknown;
@@ -302,6 +312,15 @@ const DEFAULT_ENV = {
 	// the same reason as the latches above.
 	let consumedSession: SectionControllerSessionState | null = null;
 	let sessionControllerResolved = false;
+	// The section and attempt the last initialize started, so a change of either
+	// commits the outgoing section first. Plain `let` for the same reason as the
+	// latches above.
+	let initializedCohort: { sectionId: string; attemptId: string | undefined } | null =
+		null;
+	// The key of the banner a section that failed to start raised, which the next
+	// section to start takes down. Plain `let` for the same reason as the latches
+	// above.
+	let sectionFailureBannerKey: string | null = null;
 	let reportedLateOwnedCoordinatorInputs = false;
 	// The coordinator the first-content effect started. Plain `let` for the same
 	// reason as the latches above.
@@ -517,11 +536,15 @@ const DEFAULT_ENV = {
 		);
 	}
 
+	function frameworkErrorKey(model: FrameworkErrorModel): string {
+		return `${model.kind}|${model.source}|${model.message}`;
+	}
+
 	function deliverFrameworkErrorHook(model: FrameworkErrorModel): void {
 		if (!onFrameworkError) return;
 		try {
 			onFrameworkError(model);
-			deliveredFrameworkErrorKey = `${model.kind}|${model.source}|${model.message}`;
+			deliveredFrameworkErrorKey = frameworkErrorKey(model);
 		} catch (hookError) {
 			console.error(
 				`[pie-framework:${model.kind}:${model.source}] framework error hook failed`,
@@ -548,6 +571,12 @@ const DEFAULT_ENV = {
 		frameworkErrorModel = model;
 		frameworkErrorTitle = rendered.title;
 		frameworkErrorDetails = rendered.details;
+	}
+
+	function clearFrameworkErrorBanner(): void {
+		frameworkErrorModel = null;
+		frameworkErrorTitle = "Unable to initialize assessment toolkit.";
+		frameworkErrorDetails = [];
 	}
 
 	$effect(() => {
@@ -609,8 +638,7 @@ const DEFAULT_ENV = {
 
 	$effect(() => {
 		if (!frameworkErrorModel) return;
-		const frameworkErrorKey = `${frameworkErrorModel.kind}|${frameworkErrorModel.source}|${frameworkErrorModel.message}`;
-		if (deliveredFrameworkErrorKey === frameworkErrorKey) return;
+		if (deliveredFrameworkErrorKey === frameworkErrorKey(frameworkErrorModel)) return;
 		// Hook prop became available after the framework-error model was
 		// already produced (e.g. host wired it asynchronously). Re-deliver
 		// once for the current model so late-binding hosts see the error.
@@ -1181,9 +1209,7 @@ const DEFAULT_ENV = {
 					ownedCoordinatorBinding = null;
 					lastAppliedToolContextResolvers = toolContextResolvers;
 					lastOwnedBootstrapFailureKey = "";
-					frameworkErrorModel = null;
-					frameworkErrorTitle = "Unable to initialize assessment toolkit.";
-					frameworkErrorDetails = [];
+					clearFrameworkErrorBanner();
 				} catch (error) {
 					ownedCoordinator = null;
 					lastOwnedBootstrapFailureKey = failureKey;
@@ -1245,7 +1271,7 @@ const DEFAULT_ENV = {
 		assessmentId || effectiveCoordinator?.assessmentId || "",
 	);
 	const effectiveSectionId = $derived(
-		sectionId || (section as any)?.identifier || `section-${effectiveAssessmentId || "default"}`,
+		resolveSectionId({ sectionId, section, assessmentId: effectiveAssessmentId }),
 	);
 	const effectiveEnv = $derived.by(() => normalizeEnv(env));
 	const effectiveSectionView = $derived.by(() => resolveSectionViewFromEnv(effectiveEnv));
@@ -1668,6 +1694,20 @@ const DEFAULT_ENV = {
 			ownedCoordinatorBinding ??= "a section initialized";
 		}
 
+		// Leaving a section commits its pending responses while its elements are
+		// mounted and its controller still holds the host's subscriptions: the
+		// coordinator detaches those as soon as it starts on the next section.
+		const cohort = { sectionId: effectiveSectionId, attemptId: attemptId || undefined };
+		const previousCohort = initializedCohort;
+		initializedCohort = cohort;
+		if (
+			previousCohort &&
+			(previousCohort.sectionId !== cohort.sectionId ||
+				previousCohort.attemptId !== cohort.attemptId)
+		) {
+			untrack(() => commitPendingSessions(host, { reason: "teardown", logger }));
+		}
+
 		sessionControllerResolved = false;
 		const initialSession = untrack(() => takeUnconsumedSession());
 
@@ -1694,6 +1734,11 @@ const DEFAULT_ENV = {
 			.then(() => {
 				if (cancelled) return;
 				sessionControllerResolved = true;
+				const banner = untrack(() => frameworkErrorModel);
+				if (banner && frameworkErrorKey(banner) === sectionFailureBannerKey) {
+					clearFrameworkErrorBanner();
+				}
+				sectionFailureBannerKey = null;
 				// A value assigned while the controller was being created.
 				untrack(() => assignSessionToController());
 				emit("toolkit-ready", {
@@ -1711,23 +1756,22 @@ const DEFAULT_ENV = {
 				// A rerun or unmount retires the previous controller acquisition.
 				// Its rejection is cancellation of obsolete work, not a runtime failure.
 				if (cancelled) return;
-				sectionBinding.reportSectionError({
-					source: "section-runtime",
-					error,
-					timestamp: Date.now(),
-				});
-				// The coordinator has already reported a controller it could not
-				// create, through this toolkit's bus. The failure is reported once,
+				// The coordinator has already delivered the failure to the host's
+				// section subscriptions, and reported a controller it could not
+				// create through this toolkit's bus. The failure is reported once,
 				// and the section it took down shows the banner either way.
 				const reported = untrack(() => reportedFrameworkErrorFor(error));
 				if (reported) {
 					untrack(() => showFrameworkErrorBanner(reported));
+					sectionFailureBannerKey = frameworkErrorKey(reported);
 				} else {
-					reportFrameworkError({
-						kind: "runtime-init",
-						source: "pie-assessment-toolkit",
-						error,
-					});
+					sectionFailureBannerKey = frameworkErrorKey(
+						reportFrameworkError({
+							kind: "runtime-init",
+							source: "pie-assessment-toolkit",
+							error,
+						}),
+					);
 				}
 			});
 

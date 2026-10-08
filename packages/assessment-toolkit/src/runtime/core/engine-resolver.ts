@@ -152,6 +152,25 @@ export function resolveOnFrameworkError(args: {
 	return args.onFrameworkError;
 }
 
+/**
+ * The id a section runs under: the host's `section-id`, else the section's own
+ * `identifier`, else one named after the assessment. The toolkit keys the
+ * section's controller by it, and the layout kernel its stage cohort.
+ */
+export function resolveSectionId(args: {
+	sectionId?: string | null;
+	section?: unknown;
+	assessmentId?: string | null;
+}): string {
+	const identifier = (args.section as { identifier?: unknown } | null)
+		?.identifier;
+	return (
+		args.sectionId ||
+		(typeof identifier === "string" ? identifier : "") ||
+		`section-${args.assessmentId || "default"}`
+	);
+}
+
 export function resolveToolsConfig(args: { runtime: RuntimeConfig | null }) {
 	const runtimeTools = (args.runtime?.tools || {}) as Record<string, unknown>;
 	const placement = (runtimeTools.placement || {}) as Record<string, unknown>;

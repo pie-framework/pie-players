@@ -70,6 +70,7 @@
 		DEFAULT_ENV,
 		DEFAULT_ISOLATION,
 		resolveOnFrameworkError,
+		resolveSectionId,
 		type RuntimeConfig,
 	} from "@pie-players/pie-assessment-toolkit/runtime/engine";
 
@@ -177,8 +178,8 @@
 			onFrameworkError,
 		}),
 	);
-	const effectiveSectionId = $derived.by(
-		() => sectionId || (section as any)?.identifier || "",
+	const effectiveSectionId = $derived(
+		resolveSectionId({ sectionId, section, assessmentId: effectiveAssessmentId }),
 	);
 
 	// The toolkit's events bubble out of this element on their own, which is
@@ -252,9 +253,10 @@
 	onDestroy(() => overlaySurfaceHost.destroy());
 
 	// Every controller this player drives commits pending element sessions at the
-	// boundaries it owns — item navigation, a section swap, a persist. The
-	// controller stays DOM-free, so the root comes from here, and a cohort flip
-	// commits before the outgoing controller is replaced.
+	// boundaries it owns — item navigation, a same-section input update, a
+	// persist. The controller stays DOM-free, so the root comes from here. A
+	// section swap is the toolkit's to commit: it does so before the coordinator
+	// moves the host's subscriptions off the outgoing controller.
 	//
 	// Overriding the factory alone reaches only controllers built after this
 	// effect runs, and the toolkit has usually built the first section's
@@ -271,18 +273,16 @@
 			typeof hostFactory === "function"
 				? (hostFactory as () => unknown)
 				: () => new SectionController();
-		const commit = (reason: "navigate" | "teardown") => {
-			commitPendingSessions(root, { reason, logger });
-		};
 		const register = (controller: unknown) => {
 			(
 				controller as {
 					setPendingSessionCommit?: (fn: (() => void) | null) => void;
 				} | null
-			)?.setPendingSessionCommit?.(() => commit("navigate"));
+			)?.setPendingSessionCommit?.(() =>
+				commitPendingSessions(root, { reason: "navigate", logger }),
+			);
 		};
 		const installedFactory = () => {
-			commit("teardown");
 			const controller = factory();
 			register(controller);
 			return controller;
@@ -381,8 +381,6 @@
 	function resolveSectionController(
 		readyCoordinator: ToolkitCoordinatorApi | null = null,
 	): SectionControllerHandle | null {
-		const targetSectionId = effectiveSectionId;
-		if (!targetSectionId) return null;
 		const resolvedAttemptId = attemptId || undefined;
 		const coordinator =
 			readyCoordinator ||
@@ -396,7 +394,7 @@
 		if (!coordinator?.getSectionController) return null;
 		return (
 			coordinator.getSectionController({
-				sectionId: targetSectionId,
+				sectionId: effectiveSectionId,
 				attemptId: resolvedAttemptId,
 			}) || null
 		);

@@ -25,10 +25,19 @@ const KERNEL_PATH = resolve(
 	"../src/components/shared/SectionPlayerLayoutKernel.svelte",
 );
 
-function handleFrameworkErrorSource(source: string): string {
-	const start = source.indexOf("function handleFrameworkError(");
+const SCAFFOLD_PATH = resolve(
+	__dirname,
+	"../src/components/shared/SectionPlayerLayoutScaffold.svelte",
+);
+
+function functionSource(source: string, signature: string): string {
+	const start = source.indexOf(signature);
 	const end = source.indexOf("\n\t}\n", start);
-	return source.slice(start, end);
+	return start < 0 ? "" : source.slice(start, end);
+}
+
+function handleFrameworkErrorSource(source: string): string {
+	return functionSource(source, "function handleFrameworkError(");
 }
 
 describe("section-player stage emitter — kernel invariants", () => {
@@ -46,6 +55,31 @@ describe("section-player stage emitter — kernel invariants", () => {
 		expect(handler).not.toContain("stopPropagation");
 		expect(handler).not.toContain("dispatchInput");
 		expect(handler).not.toContain("dispatchEvent");
+	});
+
+	test("keys its stage cohort on the id the toolkit runs the section under", () => {
+		const source = readFileSync(KERNEL_PATH, "utf8");
+		expect(source).toContain("resolveSectionId({");
+		expect(source).toContain("makeCohort({ sectionId: cohortSectionId, attemptId })");
+	});
+
+	test("reads the section controller without advancing the stage chain", () => {
+		const source = readFileSync(KERNEL_PATH, "utf8");
+		for (const signature of [
+			"export function getSectionController(",
+			"export async function waitForSectionController(",
+		]) {
+			const accessor = functionSource(source, signature);
+			expect(accessor.length).toBeGreaterThan(0);
+			expect(accessor).not.toContain("notifySectionControllerResolved");
+			expect(accessor).not.toContain("sectionControllerReadyDispatched");
+		}
+	});
+
+	test("the scaffold announces navigation through a subscription that follows the section", () => {
+		const source = readFileSync(SCAFFOLD_PATH, "utf8");
+		expect(source).toContain("coordinator.subscribeSectionEvents({");
+		expect(source).not.toContain("controller.subscribe(");
 	});
 
 	test("SectionRuntimeEngine exposes the stage-chain surface only", () => {

@@ -90,6 +90,7 @@ describe("PnpPolicySource — 6-level precedence", () => {
 		]);
 		expect(enabled.perToolFlags.get("calculator")).toMatchObject({
 			required: false,
+			alwaysAvailable: true,
 			rule: "test-admin-override",
 		});
 	});

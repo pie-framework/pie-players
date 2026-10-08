@@ -74,7 +74,6 @@ describe("universal supports preset", () => {
 		const profile = createUniversalPersonalNeedsProfile();
 		expect(profile.supports).toEqual([...UNIVERSAL_SUPPORTS_PRESET]);
 		expect(profile.prohibitedSupports).toEqual([]);
-		expect(profile.activateAtInit).toEqual([]);
 	});
 
 	test("returns a fresh profile per call", () => {

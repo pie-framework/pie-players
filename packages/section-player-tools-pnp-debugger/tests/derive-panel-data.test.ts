@@ -96,48 +96,25 @@ function makeDecision(
 }
 
 describe("resolvePnpProfile", () => {
-	test("uses section.personalNeedsProfile when present", () => {
-		const result = resolvePnpProfile(
-			{ personalNeedsProfile: { id: "explicit" } },
-			DEFAULT_PNP,
-		);
-		expect(result.profile).toEqual({ id: "explicit" });
-		expect(result.source).toBe("section.personalNeedsProfile");
-		expect(result.note).toContain("Policy does not read it");
-	});
-
-	test("prefers the bound assessment's profile, which is the one policy reads", () => {
-		const result = resolvePnpProfile(
-			{ personalNeedsProfile: { id: "section" } },
-			DEFAULT_PNP,
-			{ id: "a1", personalNeedsProfile: { id: "bound" } },
-		);
+	test("shows the bound assessment's profile, which is the one policy reads", () => {
+		const result = resolvePnpProfile(DEFAULT_PNP, {
+			id: "a1",
+			personalNeedsProfile: { id: "bound" },
+		});
 		expect(result.profile).toEqual({ id: "bound" });
 		expect(result.source).toBe("assessment.personalNeedsProfile");
 	});
 
-	test("falls back to section.settings.personalNeedsProfile", () => {
-		const result = resolvePnpProfile(
-			{ settings: { personalNeedsProfile: { id: "settings" } } },
-			DEFAULT_PNP,
-		);
-		expect(result.profile).toEqual({ id: "settings" });
-		expect(result.source).toBe("section.settings.personalNeedsProfile");
-	});
-
-	test("falls back to the panel's own profile when neither path is set", () => {
+	test("falls back to the panel's own profile when the bound assessment carries none", () => {
 		// Named as the panel's fallback, not as a derived default: nothing derives a
 		// profile any more, and labelling an empty `supports` array "derived" read as
-		// a broken derivation rather than as an unconfigured section.
-		const result = resolvePnpProfile({}, DEFAULT_PNP);
-		expect(result.profile).toBe(DEFAULT_PNP);
-		expect(result.source).toBe("panel fallback (no profile in section)");
-		expect(result.note).toContain("Nothing derives one");
-	});
-
-	test("handles null section data", () => {
-		const result = resolvePnpProfile(null, DEFAULT_PNP);
-		expect(result.profile).toBe(DEFAULT_PNP);
+		// a broken derivation rather than as an unconfigured assessment.
+		for (const bound of [undefined, null, { id: "a1" }]) {
+			const result = resolvePnpProfile(DEFAULT_PNP, bound);
+			expect(result.profile).toBe(DEFAULT_PNP);
+			expect(result.source).toBe("panel fallback (no profile bound)");
+			expect(result.note).toContain("Nothing derives one");
+		}
 	});
 });
 
@@ -160,11 +137,7 @@ describe("createSimulatedAssessment", () => {
 	test("binds a minimal assessment named after the section when nothing is bound", () => {
 		const profile = { supports: ["ruler"] };
 		expect(
-			createSimulatedAssessment(
-				null,
-				{ identifier: "s1", personalNeedsProfile: { supports: [] } },
-				profile,
-			),
+			createSimulatedAssessment(null, { identifier: "s1" }, profile),
 		).toEqual({ id: "s1", personalNeedsProfile: profile });
 	});
 });
@@ -474,12 +447,16 @@ describe("derivePnpPanelData", () => {
 			},
 		]);
 		const data = derivePnpPanelData({
-			sectionData: { id: "s1", personalNeedsProfile: { id: "p" } },
+			sectionData: { id: "s1" },
 			roleType: "scorer",
 			floatingTools: [],
 			defaultPnpProfile: DEFAULT_PNP,
 			coordinator: {
 				decideToolPolicy: () => makeDecision(["calculator"], provenance),
+				getPolicyInputs: () =>
+					({
+						assessment: { id: "a1", personalNeedsProfile: { id: "p" } },
+					}) as never,
 			},
 		});
 		expect(data.resolvedTools).toEqual(["calculator"]);
@@ -491,7 +468,29 @@ describe("derivePnpPanelData", () => {
 		expect(data.featureTrails[0].finalState).toBe("enabled");
 		expect(data.featureTrails[1].finalState).toBe("blocked");
 		expect(data.pnpProfile).toEqual({ id: "p" });
-		expect(data.determination.source).toBe("section.personalNeedsProfile");
+		expect(data.determination.source).toBe("assessment.personalNeedsProfile");
+	});
+
+	test("shows no profile a section carries, since policy reads none", () => {
+		const data = derivePnpPanelData({
+			sectionData: {
+				id: "s1",
+				personalNeedsProfile: { supports: ["calculator"] },
+				settings: { personalNeedsProfile: { supports: ["ruler"] } },
+			} as never,
+			roleType: "candidate",
+			floatingTools: [],
+			defaultPnpProfile: DEFAULT_PNP,
+			coordinator: {
+				decideToolPolicy: () => makeDecision([], makeProvenance([])),
+				getPolicyInputs: () => ({ assessment: { id: "a1" } }) as never,
+			},
+		});
+		expect(data.pnpProfile).toBe(DEFAULT_PNP);
+		expect(data.determination.source).toBe("panel fallback (no profile bound)");
+		expect(data.determination.checked).toEqual([
+			"assessment.personalNeedsProfile",
+		]);
 	});
 
 	test("uses sectionData.identifier as scopeId fallback", () => {

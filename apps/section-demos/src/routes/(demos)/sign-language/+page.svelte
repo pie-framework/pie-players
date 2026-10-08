@@ -9,12 +9,10 @@
 	 * does not.
 	 *
 	 * This is a bespoke page rather than the shared demo runtime because
-	 * eligibility is host-owned: a section's own `personalNeedsProfile` drives the
-	 * PNP debugger panel and the section engine, but the *policy engine* takes its
-	 * profile from a bound `AssessmentEntity`. So the host binds one here, reading
-	 * the profile off the active section — the same
-	 * `ToolkitCoordinator.updateAssessment(...)` wiring the pnp-default-on demo
-	 * uses.
+	 * eligibility is host-owned: policy takes the learner's profile from a bound
+	 * `AssessmentEntity`, so the host binds one here, with each page's profile —
+	 * the same `ToolkitCoordinator.updateAssessment(...)` wiring the
+	 * pnp-default-on demo uses.
 	 *
 	 * It is also where signing is *contributed*: `@pie-players/pie-tool-sign-language`
 	 * is not in the packaged capability set, because an accommodation with an
@@ -34,6 +32,7 @@
 		AssessmentEntity,
 		PersonalNeedsProfile
 	} from '@pie-players/pie-players-shared/types';
+	import { demoSignLanguageProfiles } from '#lib/content/demo-sign-language.js';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
@@ -57,17 +56,13 @@
 		String(activeSection?.identifier || 'sign-language-section')
 	);
 	const attemptId = $derived(`sign-language-attempt-${data.activeDemoPageId || 'default'}`);
-	const sectionProfile = $derived(
-		(activeSection?.personalNeedsProfile as PersonalNeedsProfile | undefined) ?? {
-			supports: []
-		}
+	const profile = $derived<PersonalNeedsProfile>(
+		demoSignLanguageProfiles[sectionId] ?? { supports: [] }
 	);
-	// The policy engine reads its profile from a bound assessment, so lift the
-	// fixture's section-level profile onto one rather than restating it here.
 	const assessmentEntity = $derived({
 		id: `section-demos.sign-language.${data.activeDemoPageId || 'default'}`,
 		name: 'Sign language demo assessment',
-		personalNeedsProfile: sectionProfile
+		personalNeedsProfile: profile
 	} as AssessmentEntity);
 
 	let toolkitCoordinator = $state<ToolkitCoordinatorApi | null>(null);

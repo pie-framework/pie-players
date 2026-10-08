@@ -111,11 +111,13 @@ export function buildSectionPageHref(args: {
  * Bind the demo's assessment so the policy engine has something to decide
  * against.
  *
- * A section's `personalNeedsProfile` reaches the player but not policy:
- * `decideFeaturePolicy` reads the *bound assessment*, so a demo that never
- * called this declined every capability gating on a feature decision rather
- * than on toolbar placement — with the same verdict a properly-declined student
- * gets. Toolbars were unaffected throughout, which is why it went unnoticed.
+ * The demo pages carry their learner's profile on the section object they
+ * build, and this lifts it onto the bound assessment. Neither the player nor
+ * policy reads a profile on a section: `decideFeaturePolicy` reads the *bound
+ * assessment*, so a demo that never called this declined every capability
+ * gating on a feature decision rather than on toolbar placement — with the same
+ * verdict a properly-declined student gets. Toolbars were unaffected
+ * throughout, which is why it went unnoticed.
  *
  * Only the profile is bound. District policy and test administration have their
  * own demos, and placeholders here would make every demo assert precedence it

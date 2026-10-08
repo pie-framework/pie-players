@@ -678,3 +678,54 @@ describe("ToolkitCoordinator policy-engine integration", () => {
 		expect(events.length).toBe(lengthAfterFirstDispose);
 	});
 });
+
+describe("a grant reaches the toolbar entry", () => {
+	// `<pie-item-toolbar>` protects an entry from its relevance gate only when it
+	// is `required` or `alwaysAvailable`, while `decideFeaturePolicy(...).granted`
+	// is what makes a start failure fatal. Every rule that grants must set one, or
+	// a granted tool can still be withdrawn from the toolbar.
+	const cases: Array<{ rule: string; assessment: AssessmentEntity }> = [
+		{
+			rule: "test-admin-override",
+			assessment: {
+				id: "a1",
+				settings: {
+					testAdministration: { toolOverrides: { textToSpeech: true } },
+				},
+			},
+		},
+		{
+			rule: "district-requirement",
+			assessment: {
+				id: "a1",
+				settings: { districtPolicy: { requiredTools: ["textToSpeech"] } },
+			},
+		},
+		{
+			rule: "pnp-support",
+			assessment: {
+				id: "a1",
+				personalNeedsProfile: { supports: ["textToSpeech"] },
+			},
+		},
+	];
+
+	for (const { rule, assessment } of cases) {
+		test(rule, () => {
+			const coord = makeCoordinator();
+			coord.updateAssessment(assessment);
+
+			const feature = coord.decideFeaturePolicy("textToSpeech");
+			expect(feature).toMatchObject({ granted: true, rule });
+
+			const entry = coord
+				.decideToolPolicy({
+					level: "item",
+					scope: { level: "item", scopeId: "i1" },
+				})
+				.visibleTools.find((candidate) => candidate.toolId === "textToSpeech");
+			expect(entry).toBeDefined();
+			expect(entry?.required || entry?.alwaysAvailable).toBe(true);
+		});
+	}
+});

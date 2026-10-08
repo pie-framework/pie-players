@@ -85,7 +85,7 @@ describe("assessmentHasPnpPolicyInputs — structural PNP/profile policy materia
 		).toBe(true);
 	});
 
-	test("returns true for PNP `prohibitedSupports` and `activateAtInit`", () => {
+	test("returns true for PNP `prohibitedSupports`", () => {
 		expect(
 			assessmentHasPnpPolicyInputs({
 				id: "a1",
@@ -95,15 +95,25 @@ describe("assessmentHasPnpPolicyInputs — structural PNP/profile policy materia
 				},
 			} as AssessmentEntity),
 		).toBe(true);
+	});
+
+	test("ignores fields policy does not read", () => {
+		// Removed from the types; a host still sending them must not switch
+		// enforcement on, since no precedence level reads them.
 		expect(
 			assessmentHasPnpPolicyInputs({
 				id: "a1",
-				personalNeedsProfile: {
-					supports: [],
-					activateAtInit: ["graph"],
+				personalNeedsProfile: { supports: [], activateAtInit: ["graph"] },
+				settings: {
+					districtPolicy: { policies: { calculator: { mode: "basic" } } },
+					testAdministration: {
+						mode: "test",
+						startDate: "2026-10-08T08:00:00Z",
+						endDate: "2026-10-08T10:00:00Z",
+					},
 				},
-			} as AssessmentEntity),
-		).toBe(true);
+			} as never),
+		).toBe(false);
 	});
 
 	test("ignores empty PNP arrays / empty objects", () => {
@@ -115,7 +125,6 @@ describe("assessmentHasPnpPolicyInputs — structural PNP/profile policy materia
 					districtPolicy: {
 						blockedTools: [],
 						requiredTools: [],
-						policies: {},
 					},
 					testAdministration: { toolOverrides: {} },
 				},
@@ -136,23 +145,9 @@ describe("assessmentHasPnpPolicyInputs — structural PNP/profile policy materia
 				settings: { districtPolicy: { requiredTools: ["graph"] } },
 			} as AssessmentEntity),
 		).toBe(true);
-		expect(
-			assessmentHasPnpPolicyInputs({
-				id: "a1",
-				settings: {
-					districtPolicy: { policies: { calculator: { mode: "basic" } } },
-				},
-			} as AssessmentEntity),
-		).toBe(true);
 	});
 
-	test("returns true when test administration carries any populated key", () => {
-		expect(
-			assessmentHasPnpPolicyInputs({
-				id: "a1",
-				settings: { testAdministration: { mode: "test" } },
-			} as AssessmentEntity),
-		).toBe(true);
+	test("returns true when test administration overrides a tool", () => {
 		expect(
 			assessmentHasPnpPolicyInputs({
 				id: "a1",

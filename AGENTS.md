@@ -146,8 +146,9 @@ Rules from those records bind new code directly. From ADR 0002:
 From ADR 0003, for every host and element:
 
 - An element learns the student's accessibility settings only from the
-  `Symbol.for("pie.accessibility")` context, whose key and type live in
-  `@pie-players/pie-context`, and never imports `@pie-players/pie-assessment-toolkit`.
+  `Symbol.for("pie.accessibility")` context, whose key and type
+  `@pie-players/pie-context` exports with the first consumer, and never imports
+  `@pie-players/pie-assessment-toolkit`.
   A setting that changes rendering travels through that context; `env` keeps the
   settings that change the model.
 - The mapping from a profile to support ids lives in the host, which resolves it

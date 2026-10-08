@@ -1071,8 +1071,8 @@ export class ToolkitCoordinator {
 
 	/**
 	 * Whether policy grants `toolId` as an accommodation on some surface: a
-	 * mounted item's or a district requirement, or profile support. Read without
-	 * the unbound-assessment warning.
+	 * test-administration override, a mounted item's or a district requirement,
+	 * or profile support. Read without the unbound-assessment warning.
 	 */
 	private isToolGranted(toolId: string): boolean {
 		try {

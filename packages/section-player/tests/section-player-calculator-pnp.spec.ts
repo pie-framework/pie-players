@@ -124,3 +124,42 @@ test("read-aloud reads the item through its scope, speaking the equation's card"
 	expect(await spoken()).toContain("y equals x squared, minus 4 x, plus 1");
 	expect(await spoken()).not.toContain("x^2");
 });
+
+test("a toolkit without a section announces its runtime and ends its stages at engine-ready", async ({
+	page,
+}) => {
+	await page.addInitScript(() => {
+		const log = { runtimeReady: [] as string[], stages: [] as string[], compositions: 0 };
+		(window as unknown as { __toolkitLog: typeof log }).__toolkitLog = log;
+		document.addEventListener("runtime-ready", (event) => {
+			log.runtimeReady.push(
+				String((event as CustomEvent<{ ownership?: string }>).detail?.ownership),
+			);
+		});
+		document.addEventListener("pie-stage-change", (event) => {
+			const detail = (event as CustomEvent<{ stage: string; status: string }>).detail;
+			log.stages.push(`${detail.stage}:${detail.status}`);
+		});
+		document.addEventListener("composition-changed", () => {
+			log.compositions += 1;
+		});
+	});
+	await page.goto("/calculator-pnp", { waitUntil: "networkidle" });
+
+	const readLog = () =>
+		page.evaluate(
+			() =>
+				(
+					window as unknown as {
+						__toolkitLog: { runtimeReady: string[]; stages: string[]; compositions: number };
+					}
+				).__toolkitLog,
+		);
+	await expect.poll(async () => (await readLog()).stages).toEqual([
+		"composed:skipped",
+		"engine-ready:entered",
+	]);
+	const log = await readLog();
+	expect(log.runtimeReady).toEqual(["owned"]);
+	expect(log.compositions).toBe(0);
+});

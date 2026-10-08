@@ -69,6 +69,7 @@ import type {
 	ToolContextResolver,
 	ToolContextResolverContext,
 	ToolContextResolverMap,
+	ToolRegistry,
 } from "./ToolRegistry.js";
 import type { ToolOpenRequest, ToolRequestTarget } from "./tool-request.js";
 
@@ -659,6 +660,12 @@ export interface ToolkitCoordinatorApi {
 	getInitStatus(): ToolkitInitStatus;
 
 	/**
+	 * Subscribe to changes of {@link isReady}. Optional: a host-supplied
+	 * coordinator may predate it.
+	 */
+	onReadyChange?(listener: () => void): () => void;
+
+	/**
 	 * Check if a tool is enabled
 	 */
 	isToolEnabled(toolId: string): boolean;
@@ -714,9 +721,10 @@ export interface ToolkitCoordinatorApi {
 	 *
 	 * Throws if no active section cohort exists; host code must call
 	 * `getOrCreateSectionController(...)` at least once before
-	 * subscribing. (`toolkit-ready` alone is not sufficient — it fires
-	 * once toolkit state has loaded but before any section controller
-	 * has been created.) The typical pattern is to subscribe once
+	 * subscribing. `runtime-ready` alone is not sufficient: it fires once
+	 * the coordinator is bound, before any section controller exists. A
+	 * `<pie-assessment-toolkit>` holding a section emits `toolkit-ready`
+	 * after its controller resolves. The typical pattern is to subscribe once
 	 * immediately after the first `getOrCreateSectionController(...)`
 	 * resolves; the subscription then follows the active cohort across
 	 * all subsequent navigation without further wiring.
@@ -940,6 +948,15 @@ export interface ToolkitCoordinatorApi {
 	 * Subscribe to resolver registration/removal changes.
 	 */
 	onToolContextResolverChange(listener: () => void): () => void;
+
+	/**
+	 * The registry this coordinator's providers and policy resolve against: the
+	 * one it was built with or adopted, else the empty one it started with. A
+	 * toolbar that is not handed a registry reads it here, again on each
+	 * {@link onPolicyChange}, which an adoption fires. Optional for the same reason
+	 * as the request seam below: a host-supplied coordinator may predate it.
+	 */
+	getToolRegistry?(): ToolRegistry;
 
 	/**
 	 * The tool-open request seam, optional as a group.

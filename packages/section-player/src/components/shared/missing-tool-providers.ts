@@ -21,10 +21,6 @@ import { resolveToolProviderId } from "@pie-players/pie-assessment-toolkit/tools
  */
 const reportedToolIds = new WeakMap<object, Set<string>>();
 
-/** A check polls readiness every 100 ms and gives up after 30 s. */
-const READINESS_POLL_INTERVAL_MS = 100;
-const READINESS_POLL_LIMIT = 300;
-
 /**
  * Warn once per placed tool whose registration carries a provider the coordinator
  * has not registered. Reads the coordinator's current placement and providers, so
@@ -73,47 +69,32 @@ export function reportMissingToolProviders(
 }
 
 /**
- * Check `coordinator` now and whenever its policy inputs change, since placement
- * can. A check runs once the coordinator reports ready: its providers have
- * registered by then, and a text-to-speech reconfiguration, which unregisters and
- * re-registers that provider, holds readiness until it is back. Readiness is
- * polled because `waitUntilReady()` would start initialization a lazy
- * coordinator defers, and retry one that failed. Returns the teardown.
+ * Check `coordinator` once it reports ready, and again whenever readiness or its
+ * policy inputs change, since placement can. Its providers have registered by
+ * then, and a text-to-speech reconfiguration, which unregisters and re-registers
+ * that provider, holds readiness until it is back. `waitUntilReady()` is not
+ * awaited: it would start text-to-speech a lazy coordinator defers, and retry
+ * one that failed. Returns the teardown.
  */
 export function watchMissingToolProviders(
 	coordinator: ToolkitCoordinatorApi,
 	toolRegistry: ToolRegistry,
 ): () => void {
 	let stopped = false;
-	let pollTimer: ReturnType<typeof setInterval> | undefined;
-	const stopPolling = () => {
-		clearInterval(pollTimer);
-		pollTimer = undefined;
-	};
-	const reportIfReady = (): boolean => {
+	const check = () => {
+		if (stopped) return;
 		let ready = false;
 		try {
 			ready = coordinator.isReady();
 		} catch {
-			stopPolling();
-			return true;
+			return;
 		}
-		if (!ready) return false;
-		stopPolling();
-		reportMissingToolProviders(coordinator, toolRegistry);
-		return true;
+		if (ready) reportMissingToolProviders(coordinator, toolRegistry);
 	};
-	const check = () => {
-		if (stopped || reportIfReady() || pollTimer !== undefined) return;
-		let polls = 0;
-		pollTimer = setInterval(() => {
-			polls += 1;
-			if (!reportIfReady() && polls >= READINESS_POLL_LIMIT) stopPolling();
-		}, READINESS_POLL_INTERVAL_MS);
-	};
-	const unsubscribe = coordinator.onPolicyChange((event) => {
+	const stopFollowingReadiness = coordinator.onReadyChange?.(check);
+	const stopFollowingPolicy = coordinator.onPolicyChange((event) => {
 		if (event.reason === "disposed") {
-			stopPolling();
+			stopped = true;
 			return;
 		}
 		// The change is dispatched mid-update; checking after it lets a
@@ -123,7 +104,7 @@ export function watchMissingToolProviders(
 	check();
 	return () => {
 		stopped = true;
-		stopPolling();
-		unsubscribe();
+		stopFollowingReadiness?.();
+		stopFollowingPolicy();
 	};
 }

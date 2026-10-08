@@ -114,7 +114,7 @@
 			<article class="calculator-pnp-item" data-testid="calculator-pnp-item">
 				<header class="calculator-pnp-item-header">
 					<h2>{item.name}</h2>
-					<pie-item-toolbar {toolRegistry}></pie-item-toolbar>
+					<pie-item-toolbar></pie-item-toolbar>
 				</header>
 				<div data-region="content">
 					<pie-item-player

@@ -73,6 +73,7 @@ import {
 	normalizeSREMathSpeechOptions,
 	type SREMathSpeechOptions,
 } from "./tts/math-speech.js";
+import { toTTSStartFailure } from "./tts/start-failure.js";
 import {
 	segmentSentences as segmentTextToSentences,
 	type SentenceSegment as SharedSentenceSegment,
@@ -227,6 +228,8 @@ export class TTSService {
 	private catalogResolver: AccessibilityCatalogResolver | null = null;
 	private state: PlaybackState = PlaybackState.IDLE;
 	private ttsConfig: Partial<TTSConfig> = {};
+	private readinessGate: (() => Promise<void>) | null = null;
+	private mathSpeechSource: (() => unknown) | null = null;
 	private currentText: string | null = null;
 	private currentContentElement: Element | null = null;
 	private normalizedToDOM: Map<number, { node: Text; offset: number }> =
@@ -475,6 +478,31 @@ export class TTSService {
 	 */
 	setHighlightCoordinator(coordinator: HighlightCoordinatorApi): void {
 		this.highlightCoordinator = coordinator;
+	}
+
+	/**
+	 * Starts the service when a caller speaks before it is initialized; a gate
+	 * that rejects fails the speak with its error. The coordinator installs one
+	 * that runs its own text-to-speech start.
+	 */
+	setReadinessGate(gate: (() => Promise<void>) | null): void {
+		this.readinessGate = gate;
+	}
+
+	/**
+	 * Where the configured math speech options come from before, and apart from,
+	 * initialization, so math names do not depend on when speech started.
+	 */
+	setMathSpeechSource(source: (() => unknown) | null): void {
+		this.mathSpeechSource = source;
+	}
+
+	/** The start a speak must wait for, or null when it can speak now without yielding. */
+	private pendingReadiness(): Promise<void> | null {
+		if (this.provider || !this.readinessGate) return null;
+		return this.readinessGate().catch((error: unknown) => {
+			throw toTTSStartFailure(error);
+		});
 	}
 
 	/**
@@ -744,8 +772,14 @@ export class TTSService {
 		return { locale, boundarySpacingMode };
 	}
 
-	/** The host's SRE options for math speech, as configured on this service. */
+	/**
+	 * The host's SRE options for math speech: from the installed source, else as
+	 * this service was initialized with.
+	 */
 	getMathSpeechOptions(): SREMathSpeechOptions | undefined {
+		if (this.mathSpeechSource) {
+			return normalizeSREMathSpeechOptions(this.mathSpeechSource());
+		}
 		const providerOptions = (this.ttsConfig.providerOptions || {}) as Record<
 			string,
 			unknown
@@ -1377,8 +1411,10 @@ export class TTSService {
 	 * @param options Optional catalog ID, language, and content element for highlighting
 	 */
 	async speak(text: string, options?: SpeakOptions): Promise<void> {
+		const pendingReadiness = this.pendingReadiness();
+		if (pendingReadiness) await pendingReadiness;
 		if (!this.provider) {
-			throw new Error("TTS service not initialized");
+			throw toTTSStartFailure(new Error("TTS service not initialized"));
 		}
 		const runId = ++this.speakRunId;
 		this.clearPlaybackStartBarrier();
@@ -2599,8 +2635,10 @@ export class TTSService {
 		range: Range,
 		options?: { contentRoot?: Element | null },
 	): Promise<void> {
+		const pendingReadiness = this.pendingReadiness();
+		if (pendingReadiness) await pendingReadiness;
 		if (!this.provider) {
-			throw new Error("TTS service not initialized");
+			throw toTTSStartFailure(new Error("TTS service not initialized"));
 		}
 
 		// Enforced from the live ancestors rather than from `root`, because the

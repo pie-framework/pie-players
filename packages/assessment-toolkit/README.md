@@ -116,6 +116,7 @@ provider path is the item-player loader config:
 - `pie-toolkit-stage-change`
 - `pie-toolkit-runtime-owned`
 - `pie-toolkit-runtime-inherited`
+- `pie-toolkit-runtime-ready`
 - `pie-toolkit-ready`
 - `pie-toolkit-section-ready`
 - `pie-toolkit-framework-error`
@@ -470,13 +471,13 @@ toolkit.toolContextResolvers = toolContextResolvers;
 toolkit.assessment = { id: 'a1', personalNeedsProfile: { supports: ['calculator'] } };
 
 scope.item = item;
-toolbar.toolRegistry = toolRegistry; // the toolbar does not read the toolkit's
 ```
 
 The toolbars and tools inside the scope take the item and its id from it, and
 act on the scope, or on the element its `scopeElement` property names;
 `textToSpeech` reads the scope's `[data-region="content"]` first. A toolbar's
-own `item`, `item-id` and `scopeElement` still override the scope. The scope
+own `item`, `item-id` and `scopeElement` still override the scope, and its
+`toolRegistry` the toolkit's. The scope
 registers the item with the toolkit once it finds one above it, so it may mount
 first, and the toolkit files the item's accessibility catalogs, which read-aloud
 speaks in place of the markup they name. Item player events pass through the
@@ -485,14 +486,15 @@ without `toolModuleLoaders` renders toolbar buttons whose tool elements never
 load.
 
 A profile change is a new `assessment` value; the toolbars re-derive on the
-policy change it emits. Readiness events are section events: `toolkit-ready`,
-`section-ready` and every stage, `composed` included, wait for a bound section,
-and the toolkit builds its own coordinator only after it mounts. A host that needs a
-readiness point constructs the `ToolkitCoordinator`, passes it as
-`coordinator`, awaits `coordinator.waitUntilReady()`, and changes the profile
-with `coordinator.updateAssessment(...)`, since the toolkit applies its
-`assessment` property to a coordinator it owns. The `calculator-pnp` section
-demo composes the owned-coordinator form.
+policy change it emits. The toolkit announces `runtime-ready`, with
+`{ runtimeId, coordinator, ownership }`, once per coordinator, with or without a
+section. Without one its stage chain records `composed` as skipped and ends at
+`engine-ready`, which waits for `coordinator.waitUntilReady()`; `toolkit-ready`,
+`section-ready` and `interactive` wait for a bound section. A host that holds
+the coordinator from `runtime-ready`, or passes its own as `coordinator`,
+changes the profile with `coordinator.updateAssessment(...)`; the toolkit
+applies its `assessment` property only to a coordinator it owns. The
+`calculator-pnp` section demo composes the owned-coordinator form.
 
 The toolkit builds its own coordinator at mount from `tools`, `enabled-tools`,
 `assessment-id`, `accessibility`, `lazy-init`, `tool-config-strictness` and
@@ -504,6 +506,14 @@ console and does not reach the coordinator; `pnp-enforcement`, `assessment`,
 coordinator reports feature policy asked with no assessment bound only while
 `pnp-enforcement` is `on`: a toolkit given no `assessment` and no enforcement
 has asked for no accommodation.
+
+Text-to-speech starts once the section composes, and `engine-ready` waits for
+it. With `lazy-init` it starts at the first read-aloud instead, unless policy
+grants it. A tool provider or text-to-speech that fails to start is a
+recoverable framework error: the tool reports itself unavailable and the
+assessment goes on. When policy grants the tool, through an item or district
+requirement or a profile support, the failure is fatal, including one that a
+later policy change grants.
 
 ## Tool Configuration Model
 

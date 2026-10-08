@@ -120,3 +120,13 @@ export {
 } from "./core/engine-readiness.js";
 export { transition } from "./core/engine-transition.js";
 export type { TransitionResult } from "./core/engine-transition.js";
+
+// The shells' translation of their player's events into the runtime's, shared
+// by the section player's shells and `<pie-item-scope>`.
+export {
+	createShellEventBridge,
+	type ShellEventBridge,
+	type ShellEventBridgeIdentity,
+	type ShellEventBridgeMode,
+	type ShellEventBridgeOptions,
+} from "./shell-event-bridge.js";

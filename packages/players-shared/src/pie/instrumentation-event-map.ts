@@ -25,6 +25,10 @@ export const TOOLKIT_INSTRUMENTATION_EVENT_MAP: InstrumentationEventMapping[] =
 			instrumentationEventName: "pie-toolkit-runtime-inherited",
 		},
 		{
+			sourceEventName: "runtime-ready",
+			instrumentationEventName: "pie-toolkit-runtime-ready",
+		},
+		{
 			sourceEventName: "toolkit-ready",
 			instrumentationEventName: "pie-toolkit-ready",
 		},

@@ -61,7 +61,7 @@ describe("ToolkitCoordinator text-to-speech without a tts provider", () => {
 	test("a server backend falls back to browser speech and says why", async () => {
 		const coordinator = new ToolkitCoordinator({
 			assessmentId: "missing-tts-provider",
-			lazyInit: true,
+			eagerInit: false,
 			toolRegistry: new ToolRegistry(),
 			tools: serverTTSTools,
 		});
@@ -94,7 +94,7 @@ describe("ToolkitCoordinator text-to-speech without a tts provider", () => {
 	test("reports the fallback once per coordinator across reconfiguration", async () => {
 		const coordinator = new ToolkitCoordinator({
 			assessmentId: "missing-tts-provider-reconfigure",
-			lazyInit: true,
+			eagerInit: false,
 			toolRegistry: new ToolRegistry(),
 			tools: serverTTSTools,
 		});
@@ -111,7 +111,7 @@ describe("ToolkitCoordinator text-to-speech without a tts provider", () => {
 	test("held until the bound toolkit turns out to have no registry", async () => {
 		const coordinator = new ToolkitCoordinator({
 			assessmentId: "missing-tts-provider-unbound",
-			lazyInit: true,
+			eagerInit: false,
 			tools: serverTTSTools,
 		});
 		await coordinator.waitUntilReady();
@@ -127,7 +127,7 @@ describe("ToolkitCoordinator text-to-speech without a tts provider", () => {
 	test("a browser backend stays silent", async () => {
 		const coordinator = new ToolkitCoordinator({
 			assessmentId: "missing-tts-provider-browser",
-			lazyInit: true,
+			eagerInit: false,
 			tools: {
 				providers: { textToSpeech: { enabled: true, backend: "browser" } },
 				placement: { item: ["textToSpeech"] },
@@ -151,7 +151,7 @@ describe("ToolkitCoordinator text-to-speech without a tts provider", () => {
 		);
 		const coordinator = new ToolkitCoordinator({
 			assessmentId: "failing-tts-provider",
-			lazyInit: true,
+			eagerInit: false,
 			toolRegistry,
 			tools: serverTTSTools,
 		});

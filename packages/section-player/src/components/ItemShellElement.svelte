@@ -16,36 +16,11 @@
 
 <script lang="ts">
 	import {
-		PIE_INTERNAL_ITEM_SESSION_CHANGED_EVENT,
-		PIE_ITEM_SESSION_CHANGED_EVENT,
 		createShellScope,
 		dispatchCrossBoundaryEvent,
-		type InternalItemSessionChangedDetail,
-		type ItemSessionChangedDetail,
 		type TTSHighlightTargetResolver,
 	} from "@pie-players/pie-assessment-toolkit";
-	import {
-		commitPendingSessions,
-		createPieLogger,
-		normalizeItemSessionChange,
-	} from "@pie-players/pie-players-shared";
-
-	const logger = createPieLogger("pie-item-shell", () => false);
-
-	const PIE_INTERNAL_CONTENT_LOADED_EVENT = "pie-content-loaded";
-	const PIE_INTERNAL_ITEM_PLAYER_ERROR_EVENT = "pie-item-player-error";
-	type InternalContentLoadedDetail = {
-		itemId: string;
-		canonicalItemId?: string;
-		contentKind?: string;
-		detail?: unknown;
-	};
-	type InternalItemPlayerErrorDetail = {
-		itemId: string;
-		canonicalItemId?: string;
-		contentKind?: string;
-		error: unknown;
-	};
+	import { createShellEventBridge } from "@pie-players/pie-assessment-toolkit/runtime/internal";
 
 	let {
 		itemId = "",
@@ -70,133 +45,31 @@
 	const host = $derived.by(() => getHostElement());
 
 	// The shell's identity, region and registration, published as every shell
-	// publishes them; the session channel below is the item shell's own.
+	// publishes them.
 	const scope = createShellScope();
 
-	function normalizeAndDispatchSession(event: Event): void {
-		if (!host || !itemId) return;
-		const detail = (event as CustomEvent).detail;
-		const internalPayload: InternalItemSessionChangedDetail = {
-			itemId,
-			session: detail,
-		};
-		// Internal runtime session wiring must always continue to keep item UI/state synchronized.
-		dispatchCrossBoundaryEvent(host, PIE_INTERNAL_ITEM_SESSION_CHANGED_EVENT, internalPayload);
-		// Keep public item stream response-focused; metadata-only belongs on canonical session-changed.
-		const normalized = normalizeItemSessionChange({
-			itemId,
-			sessionDetail: detail,
-		});
-		if (normalized.intent === "metadata-only" || !normalized.session) {
-			return;
-		}
-		const payload: ItemSessionChangedDetail = {
-			itemId,
-			canonicalItemId: canonicalItemId || itemId,
-			session: normalized.session,
-			...(normalized.sessionCommitReason
-				? { sessionCommitReason: normalized.sessionCommitReason }
-				: {}),
-		};
-		dispatchCrossBoundaryEvent(host, PIE_ITEM_SESSION_CHANGED_EVENT, payload);
-	}
-
-	function dispatchLoaded(detail: unknown): void {
-		if (!host || !itemId) return;
-		const payload: InternalContentLoadedDetail = {
-			itemId,
-			canonicalItemId: canonicalItemId || itemId,
-			contentKind,
-			detail,
-		};
-		dispatchCrossBoundaryEvent(host, PIE_INTERNAL_CONTENT_LOADED_EVENT, payload);
-	}
-
-	function dispatchPlayerError(error: unknown): void {
-		if (!host || !itemId) return;
-		const payload: InternalItemPlayerErrorDetail = {
-			itemId,
-			canonicalItemId: canonicalItemId || itemId,
-			contentKind,
-			error,
-		};
-		dispatchCrossBoundaryEvent(host, PIE_INTERNAL_ITEM_PLAYER_ERROR_EVENT, payload);
-	}
-
-	function createSessionEventFingerprint(detail: unknown): string {
-		const semanticDetail =
-			detail && typeof detail === "object"
-				? { ...(detail as Record<string, unknown>) }
-				: detail;
-		if (semanticDetail && typeof semanticDetail === "object") {
-			delete (semanticDetail as Record<string, unknown>).timestamp;
-			delete (semanticDetail as Record<string, unknown>).sourceRuntimeId;
-		}
-		try {
-			return JSON.stringify(semanticDetail);
-		} catch {
-			return String(semanticDetail);
-		}
-	}
-
 	/**
-	 * Listener attachment keyed on `host` alone, so it survives every prop change.
-	 * These handlers read `itemId` and friends when an event arrives, not while
-	 * the effect runs, so nothing else belongs in this dependency set — and the
-	 * per-run dedupe state below stays intact across prop changes instead of
-	 * being rebuilt (and forgetting what it had forwarded) on each one.
+	 * The session channel, keyed on `host` alone so it survives every prop
+	 * change: the bridge reads the identity when an event arrives, and its
+	 * dedupe state stays intact across prop changes.
 	 *
 	 * Its teardown is the shell's only real teardown, which is why `pie-unregister`
-	 * is dispatched from here.
+	 * is dispatched from here, after the bridge's last commit.
 	 */
 	$effect(() => {
 		if (!host) return;
-
-		// Elements repeat themselves, a `complete` echo most often, so a shell
-		// forwards a session event only when it differs from the last one it
-		// forwarded. A commit is the response's last chance to reach the
-		// controller and is always forwarded.
-		let lastForwardedFingerprint = "";
-		const onSessionChanged = (event: Event) => {
-			// Raw item-player session events stay inside the shell; outside it they
-			// travel as `item-session-changed` and the runtime's own events.
-			event.stopPropagation();
-			const detail = (event as CustomEvent).detail;
-			const fingerprint = createSessionEventFingerprint(detail);
-			const isCommit = Boolean(
-				detail &&
-					typeof detail === "object" &&
-					(detail as Record<string, unknown>).sessionCommitReason,
-			);
-			if (!isCommit && fingerprint === lastForwardedFingerprint) return;
-			lastForwardedFingerprint = fingerprint;
-			normalizeAndDispatchSession(event);
-		};
-		host.addEventListener("session-changed", onSessionChanged);
-		const onLoadComplete = (event: Event) => {
-			event.stopPropagation();
-			dispatchLoaded((event as CustomEvent).detail);
-		};
-		const onPlayerError = (event: Event) => {
-			event.stopPropagation();
-			dispatchPlayerError((event as CustomEvent).detail);
-		};
-		host.addEventListener("load-complete", onLoadComplete);
-		host.addEventListener("player-error", onPlayerError);
-
+		const bridgeHost = host;
+		const bridge = createShellEventBridge({
+			host: bridgeHost,
+			kind: "item",
+			identity: () => ({ itemId, canonicalItemId, contentKind }),
+			mode: () => "section",
+			send: (type, detail) => dispatchCrossBoundaryEvent(bridgeHost, type, detail),
+		});
 		return () => {
-			// The shell's only real teardown, so it is also where a pending element
-			// session gets one last chance to reach the controller. It runs while
-			// the subtree is still attached, so the commit's `session-changed`
-			// arrives at `onSessionChanged` below before it is unbound. An escape
-			// from the commit must not strand the listeners it needed, so the
-			// unbinding runs either way.
 			try {
-				commitPendingSessions(host, { reason: "teardown", logger });
+				bridge.disconnect();
 			} finally {
-				host?.removeEventListener("session-changed", onSessionChanged);
-				host?.removeEventListener("load-complete", onLoadComplete);
-				host?.removeEventListener("player-error", onPlayerError);
 				scope.retire();
 				scope.disconnect();
 			}

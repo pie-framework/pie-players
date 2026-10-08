@@ -151,6 +151,7 @@
 		type SectionRuntimeLifecycleHandle,
 	} from "../runtime/section-runtime-engine-host-context.js";
 	import { runStageEmitWithSuppression } from "../runtime/stage-emit-gate.js";
+	import { watchForUnclaimedRegistrations } from "../runtime/unclaimed-registration-watch.js";
 	import { createCompositionEmitScheduler } from "../runtime/composition-emit-scheduler.js";
 	import {
 		createRuntimeId,
@@ -238,7 +239,7 @@ const DEFAULT_ENV = {
 		env = {},
 		ndsIcons = false,
 		locale = "",
-		lazyInit = true,
+		lazyInit = false,
 		toolConfigStrictness = "error" as ToolConfigStrictness,
 		tools = {},
 		toolContextResolvers = null as Record<string, unknown> | null,
@@ -282,6 +283,9 @@ const DEFAULT_ENV = {
 	// consumer, so a plain `let` is safer and matches the canonical Svelte
 	// 5 latch pattern documented in `AGENTS.md`.
 	let lastOwnership: "owned" | "inherited" | null = null;
+	// The coordinator `runtime-ready` last announced. Plain `let` for the same
+	// reason as `lastOwnership`.
+	let announcedCoordinator: ToolkitCoordinator | null = null;
 	let lastAppliedToolContextResolvers: Record<string, unknown> | null = null;
 	let provider: ContextProvider<typeof assessmentToolkitRuntimeContext> | null = null;
 	let contextRoot: ContextRoot | null = null;
@@ -392,6 +396,8 @@ const DEFAULT_ENV = {
 	);
 	let composedStageEntered = $state(false);
 	let engineReadyStageEntered = $state(false);
+	// A fatal readiness failure: `interactive` is then recorded as failed.
+	let engineReadyFailed = $state(false);
 	let interactiveStageEntered = $state(false);
 	// `sectionInitialized` is the second of two preconditions for the
 	// `interactive` stage emission. The toolkit's interactive entrance
@@ -1018,6 +1024,10 @@ const DEFAULT_ENV = {
 		return new ToolkitCoordinator({
 			assessmentId: fallbackAssessmentId,
 			lazyInit,
+			// Initialization starts from the engine-ready stage, once the section
+			// composes; a coordinator that started at construction would start
+			// text-to-speech, and report its failures, before there is a section.
+			eagerInit: false,
 			toolConfigStrictness,
 			deferToolConfigValidation: true,
 			// This toolkit binds only its `assessment` prop, which a section player
@@ -1307,11 +1317,14 @@ const DEFAULT_ENV = {
 			return {
 				runtimeId,
 				coordinator: effectiveCoordinator,
+				sectionBound: hasSection,
 			};
 		},
 	);
 
 	function flushCompositionChanged(nextModel: unknown) {
+		// A registration before any controller resolves has no composition to report.
+		if (nextModel == null) return;
 		const nextRevisionKey = getCompositionRevisionKey(nextModel);
 		if (nextRevisionKey === lastCompositionRevisionKey) {
 			return;
@@ -1519,6 +1532,27 @@ const DEFAULT_ENV = {
 				parentRuntimeId,
 			});
 		}
+	});
+
+	$effect(() => {
+		const currentHost = host;
+		if (!currentHost) return;
+		untrack(() => watchForUnclaimedRegistrations(currentHost.ownerDocument));
+	});
+
+	// Once per coordinator, owned, passed or inherited, with or without a section:
+	// the point from which a host can drive the coordinator. `toolkit-ready` stays
+	// the section's.
+	$effect(() => {
+		const coord = effectiveCoordinator;
+		if (!coord) return;
+		const ownership: "owned" | "inherited" =
+			isolation !== "force" && inheritedRuntime?.coordinator ? "inherited" : "owned";
+		untrack(() => {
+			if (coord === announcedCoordinator) return;
+			announcedCoordinator = coord;
+			emit("runtime-ready", { runtimeId, coordinator: coord, ownership });
+		});
 	});
 
 	$effect(() => {
@@ -2022,6 +2056,7 @@ const DEFAULT_ENV = {
 			lastStageCohortKey = nextKey;
 			composedStageEntered = false;
 			engineReadyStageEntered = false;
+			engineReadyFailed = false;
 			interactiveStageEntered = false;
 			sectionInitialized = false;
 		});
@@ -2034,11 +2069,12 @@ const DEFAULT_ENV = {
 	// auto-skip `engine-ready` when the section initializer wins.
 	$effect(() => {
 		const ready = engineReadyStageEntered && sectionInitialized;
+		const failed = engineReadyFailed;
 		untrack(() => {
 			if (!ready) return;
 			if (interactiveStageEntered) return;
 			interactiveStageEntered = true;
-			stageTracker.enter("interactive");
+			stageTracker.enter("interactive", failed ? "failed" : "entered");
 		});
 	});
 
@@ -2065,29 +2101,37 @@ const DEFAULT_ENV = {
 	// emission cannot precede `composed` even if the coordinator
 	// resolves before composition lands (rare but possible during
 	// fast-hydration paths).
+	//
+	// A toolkit without a section has nothing to compose: `composed` is recorded
+	// as skipped and the chain ends at `engine-ready`. A section bound before the
+	// coordinator settles takes the usual path; one bound after continues the
+	// chain at `interactive`.
 	$effect(() => {
 		if (!effectiveCoordinator) return;
-		if (!composedStageEntered) return;
+		const sectionless = !hasSection;
+		if (!composedStageEntered && !sectionless) return;
 		if (engineReadyStageEntered) return;
 		const coord = effectiveCoordinator;
 		let cancelled = false;
+		const enterEngineReady = (status: "entered" | "failed") => {
+			if (engineReadyStageEntered) return;
+			if (!composedStageEntered) {
+				composedStageEntered = true;
+				stageTracker.enter("composed", "skipped");
+			}
+			engineReadyStageEntered = true;
+			engineReadyFailed = status === "failed";
+			stageTracker.enter("engine-ready", status);
+		};
 		void coord
 			.waitUntilReady()
 			.then(() => {
 				if (cancelled) return;
-				untrack(() => {
-					if (engineReadyStageEntered) return;
-					engineReadyStageEntered = true;
-					stageTracker.enter("engine-ready");
-				});
+				untrack(() => enterEngineReady("entered"));
 			})
 			.catch(() => {
 				if (cancelled) return;
-				untrack(() => {
-					if (engineReadyStageEntered) return;
-					engineReadyStageEntered = true;
-					stageTracker.enter("engine-ready", "failed");
-				});
+				untrack(() => enterEngineReady("failed"));
 			});
 		return () => {
 			cancelled = true;

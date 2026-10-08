@@ -367,6 +367,10 @@ export {
 	pauseTtsForMediaAudio,
 } from "./services/audio-handoff.js";
 export { BrowserTTSProvider } from "./services/tts/browser-provider.js";
+export {
+	isTTSStartFailure,
+	TTS_START_FAILED_CODE,
+} from "./services/tts/start-failure.js";
 export type { SREMathSpeechOptions } from "./services/tts/math-speech.js";
 export type {
 	NormalizedTTSSpeedOption,

@@ -62,6 +62,14 @@
 	import SectionPlayerLayoutScaffold from "./SectionPlayerLayoutScaffold.svelte";
 	import type { SectionPlayerHostHooks } from "../../contracts/host-hooks.js";
 
+	/** Fatal failures that belong to the section's content, not the runtime. */
+	const COHORT_SCOPED_ERROR_KINDS = new Set<FrameworkErrorModel["kind"]>([
+		"runtime-init",
+		"section-controller-init",
+		"timed-media",
+		"element-preload",
+	]);
+
 	type PlayerActionConfig = {
 		stateKey: string;
 		includeSessionRefInState?: boolean;
@@ -184,7 +192,12 @@
 		getNavigationStateSnapshot?: () => SectionPlayerNavigationSnapshot;
 	} | null>(null);
 	let sectionReady = $state(false);
-	let runtimeErrorState = $state(false);
+	// A fatal failure of the section's own content latches its cohort; one of the
+	// coordinator or its tools, a granted accommodation's included, latches the
+	// runtime, since the next section runs on the same coordinator.
+	let cohortErrorLatched = $state(false);
+	let runtimeErrorLatched = $state(false);
+	const runtimeErrorState = $derived(cohortErrorLatched || runtimeErrorLatched);
 	let sectionControllerReadyDispatched = $state(false);
 
 	// M7 PR 5: own a section runtime engine + framework-error bus per
@@ -387,7 +400,10 @@
 		const detail = (event as CustomEvent<FrameworkErrorModel>).detail;
 		// Recoverable framework warnings remain observable but do not block the
 		// assessment. Only a non-recoverable failure latches readiness to `error`.
-		if (detail?.recoverable !== true) runtimeErrorState = true;
+		if (detail && detail.recoverable !== true) {
+			if (COHORT_SCOPED_ERROR_KINDS.has(detail.kind)) cohortErrorLatched = true;
+			else runtimeErrorLatched = true;
+		}
 		// Route the framework-error model into the section runtime
 		// engine so the engine's framework-error / DOM-event bridges
 		// fan out a `framework-error` DOM event on the layout CE host.
@@ -589,6 +605,16 @@
 	//      so the engine can re-derive `EngineReadinessDetail`,
 	//      advance the phase to `interactive`, and emit
 	//      `loading-complete` exactly once per cohort.
+	// Each cohort's content starts clean. Declared ahead of the engine driver, so
+	// the driver reads the reset when the cohort rolls.
+	$effect(() => {
+		void sectionId;
+		void attemptId;
+		untrack(() => {
+			cohortErrorLatched = false;
+		});
+	});
+
 	$effect(() => {
 		void host;
 		void sectionId;

@@ -20,21 +20,7 @@
 		dispatchCrossBoundaryEvent,
 		type TTSHighlightTargetResolver,
 	} from "@pie-players/pie-assessment-toolkit";
-
-	const PIE_INTERNAL_CONTENT_LOADED_EVENT = "pie-content-loaded";
-	const PIE_INTERNAL_ITEM_PLAYER_ERROR_EVENT = "pie-item-player-error";
-	type InternalContentLoadedDetail = {
-		itemId: string;
-		canonicalItemId?: string;
-		contentKind?: string;
-		detail?: unknown;
-	};
-	type InternalItemPlayerErrorDetail = {
-		itemId: string;
-		canonicalItemId?: string;
-		contentKind?: string;
-		error: unknown;
-	};
+	import { createShellEventBridge } from "@pie-players/pie-assessment-toolkit/runtime/internal";
 
 	let {
 		itemId = "",
@@ -62,62 +48,30 @@
 	// publishes them.
 	const scope = createShellScope();
 
-	function dispatchLoaded(detail: unknown): void {
-		if (!host || !itemId) return;
-		const payload: InternalContentLoadedDetail = {
-			itemId,
-			canonicalItemId: canonicalItemId || itemId,
-			contentKind,
-			detail,
-		};
-		dispatchCrossBoundaryEvent(host, PIE_INTERNAL_CONTENT_LOADED_EVENT, payload);
-	}
-
-	function dispatchPlayerError(error: unknown): void {
-		if (!host || !itemId) return;
-		const payload: InternalItemPlayerErrorDetail = {
-			itemId,
-			canonicalItemId: canonicalItemId || itemId,
-			contentKind,
-			error,
-		};
-		dispatchCrossBoundaryEvent(host, PIE_INTERNAL_ITEM_PLAYER_ERROR_EVENT, payload);
-	}
-
 	/**
-	 * Listener attachment keyed on `host` alone, so it survives every prop change.
-	 * These handlers read the props when an event arrives rather than while the
-	 * effect runs, so nothing else belongs in this dependency set.
+	 * The passage's events, keyed on `host` alone so they survive every prop
+	 * change: the bridge reads the identity when an event arrives.
 	 *
 	 * Its teardown is the shell's only real teardown, which is why `pie-unregister`
 	 * is dispatched from here.
 	 */
 	$effect(() => {
 		if (!host) return;
-		// Raw item-player session events stay inside the shell, as they do in
-		// the item shell. A passage carries no response, so nothing is forwarded:
-		// a passage id on the section's session stream names no item a host has.
-		const onSessionChanged = (event: Event) => {
-			event.stopPropagation();
-		};
-		host.addEventListener("session-changed", onSessionChanged);
-		const onLoadComplete = (event: Event) => {
-			event.stopPropagation();
-			dispatchLoaded((event as CustomEvent).detail);
-		};
-		const onPlayerError = (event: Event) => {
-			event.stopPropagation();
-			dispatchPlayerError((event as CustomEvent).detail);
-		};
-		host.addEventListener("load-complete", onLoadComplete);
-		host.addEventListener("player-error", onPlayerError);
-
+		const bridgeHost = host;
+		const bridge = createShellEventBridge({
+			host: bridgeHost,
+			kind: "passage",
+			identity: () => ({ itemId, canonicalItemId, contentKind }),
+			mode: () => "section",
+			send: (type, detail) => dispatchCrossBoundaryEvent(bridgeHost, type, detail),
+		});
 		return () => {
-			host?.removeEventListener("session-changed", onSessionChanged);
-			host?.removeEventListener("load-complete", onLoadComplete);
-			host?.removeEventListener("player-error", onPlayerError);
-			scope.retire();
-			scope.disconnect();
+			try {
+				bridge.disconnect();
+			} finally {
+				scope.retire();
+				scope.disconnect();
+			}
 		};
 	});
 

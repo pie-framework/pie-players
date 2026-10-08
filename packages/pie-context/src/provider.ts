@@ -4,7 +4,7 @@ import type { ContextType, UnknownContext } from "./types.js";
 interface Subscription<ValueType> {
 	consumerHost: Element;
 	callback: (value: ValueType, unsubscribe?: () => void) => void;
-	unsubscribe: () => void;
+	readonly unsubscribe: () => void;
 }
 
 export interface ContextProviderOptions<T extends UnknownContext> {
@@ -89,19 +89,27 @@ export class ContextProvider<T extends UnknownContext> {
 			return;
 		}
 
-		const existing = this.subscriptions.get(event.callback);
-		existing?.unsubscribe();
-
-		const unsubscribe = () => {
-			this.subscriptions.delete(event.callback);
-		};
-
-		this.subscriptions.set(event.callback, {
-			consumerHost,
-			callback: event.callback,
-			unsubscribe,
-		});
-		event.callback(this.currentValue, unsubscribe);
+		// A callback answered again keeps its disposer. A consumer releases the
+		// disposer it held when it is handed a different one, so a new disposer
+		// here would have it release the subscription it was just given.
+		const callback = event.callback;
+		let subscription = this.subscriptions.get(callback);
+		if (subscription) {
+			subscription.consumerHost = consumerHost;
+		} else {
+			const entry: Subscription<ContextType<T>> = {
+				consumerHost,
+				callback,
+				unsubscribe: () => {
+					if (this.subscriptions.get(callback) === entry) {
+						this.subscriptions.delete(callback);
+					}
+				},
+			};
+			this.subscriptions.set(callback, entry);
+			subscription = entry;
+		}
+		callback(this.currentValue, subscription.unsubscribe);
 	};
 
 	private readonly handleContextProvider = (event: ContextProviderEvent) => {

@@ -77,6 +77,13 @@ const shadowText = (): { root: ShadowRoot; text: Text } => {
 	return { root, text: root.querySelector("p")?.firstChild as Text };
 };
 
+const wordRange = (text: Text, start: number, end: number): Range => {
+	const range = document.createRange();
+	range.setStart(text, start);
+	range.setEnd(text, end);
+	return range;
+};
+
 describe("highlight styles in shadow roots", () => {
 	test("appends the shared sheet to a shadow root once, after the root's own sheets", () => {
 		const { root, text } = shadowText();
@@ -84,8 +91,8 @@ describe("highlight styles in shadow roots", () => {
 		root.adoptedStyleSheets = [own];
 		const coordinator = new HighlightCoordinator();
 
-		coordinator.highlightTTSWord(text, 0, 6);
-		coordinator.highlightTTSWord(text, 7, 12);
+		coordinator.highlightTTSWord([wordRange(text, 0, 6)]);
+		coordinator.highlightTTSWord([wordRange(text, 7, 12)]);
 
 		expect(root.adoptedStyleSheets).toHaveLength(2);
 		expect(root.adoptedStyleSheets[0]).toBe(own);
@@ -101,7 +108,7 @@ describe("highlight styles in shadow roots", () => {
 		const one = new HighlightCoordinator();
 		const two = new HighlightCoordinator();
 
-		one.highlightTTSWord(first.text, 0, 6);
+		one.highlightTTSWord([wordRange(first.text, 0, 6)]);
 		const range = document.createRange();
 		range.selectNodeContents(second.text);
 		two.highlightTTSSentence([range]);
@@ -117,11 +124,11 @@ describe("highlight styles in shadow roots", () => {
 	test("adopts again when the root's owner replaced its sheets", () => {
 		const { root, text } = shadowText();
 		const coordinator = new HighlightCoordinator();
-		coordinator.highlightTTSWord(text, 0, 6);
+		coordinator.highlightTTSWord([wordRange(text, 0, 6)]);
 		const replacement = new CSSStyleSheet();
 		root.adoptedStyleSheets = [replacement];
 
-		coordinator.highlightTTSWord(text, 0, 6);
+		coordinator.highlightTTSWord([wordRange(text, 0, 6)]);
 
 		expect(root.adoptedStyleSheets).toHaveLength(2);
 		expect(root.adoptedStyleSheets[0]).toBe(replacement);
@@ -133,7 +140,7 @@ describe("highlight styles in shadow roots", () => {
 		const text = document.querySelector("p")?.firstChild as Text;
 		const coordinator = new HighlightCoordinator();
 
-		coordinator.highlightTTSWord(text, 0, 5);
+		coordinator.highlightTTSWord([wordRange(text, 0, 5)]);
 
 		expect(document.adoptedStyleSheets ?? []).toHaveLength(0);
 		expect(

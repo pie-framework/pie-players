@@ -62,6 +62,7 @@ class MockTTSImpl implements ITTSProviderImplementation {
 	isPaused(): boolean {
 		return false;
 	}
+	updateSettings(): void {}
 }
 
 class MockTTSProvider implements ITTSProvider {
@@ -249,8 +250,8 @@ describe("TTSService catalog speech composition", () => {
 		const words: string[] = [];
 		const sentences: string[] = [];
 		service.setHighlightCoordinator({
-			highlightTTSWord: (node: Text, start: number, end: number) => {
-				words.push(node.textContent?.slice(start, end) || "");
+			highlightTTSWord: (ranges: Range[]) => {
+				words.push(ranges.join(""));
 			},
 			highlightTTSSentence: (ranges: Range[]) => {
 				sentences.push(ranges.map((r) => r.toString()).join(""));
@@ -295,8 +296,8 @@ describe("TTSService catalog speech composition", () => {
 		range.setEnd(textNode, "Select only these".length);
 		const highlightedWords: string[] = [];
 		service.setHighlightCoordinator({
-			highlightTTSWord: (node: Text, start: number, end: number) => {
-				highlightedWords.push(node.textContent?.slice(start, end) || "");
+			highlightTTSWord: (ranges: Range[]) => {
+				highlightedWords.push(ranges.join(""));
 			},
 			highlightTTSSentence: () => {},
 			clearTTS: () => {},
@@ -464,8 +465,8 @@ describe("TTSService catalog speech composition", () => {
 		const highlightedWords: string[] = [];
 		const sentenceHighlights: string[] = [];
 		service.setHighlightCoordinator({
-			highlightTTSWord: (node: Text, start: number, end: number) => {
-				highlightedWords.push(node.textContent?.slice(start, end) || "");
+			highlightTTSWord: (ranges: Range[]) => {
+				highlightedWords.push(ranges.join(""));
 			},
 			highlightTTSSentence: (ranges: Range[]) => {
 				sentenceHighlights.push(
@@ -523,8 +524,8 @@ describe("TTSService catalog speech composition", () => {
 		root.innerHTML = `<span data-catalog-idref="prompt">Hello world</span>`;
 		const highlightedWords: string[] = [];
 		service.setHighlightCoordinator({
-			highlightTTSWord: (node: Text, start: number, end: number) => {
-				highlightedWords.push(node.textContent?.slice(start, end) || "");
+			highlightTTSWord: (ranges: Range[]) => {
+				highlightedWords.push(ranges.join(""));
 			},
 			highlightTTSSentence: () => {},
 			clearTTS: () => {},
@@ -562,8 +563,8 @@ describe("TTSService catalog speech composition", () => {
 		const highlightedWords: string[] = [];
 		const highlightedRanges: string[] = [];
 		service.setHighlightCoordinator({
-			highlightTTSWord: (node: Text, start: number, end: number) => {
-				highlightedWords.push(node.textContent?.slice(start, end) || "");
+			highlightTTSWord: (ranges: Range[]) => {
+				highlightedWords.push(ranges.join(""));
 			},
 			highlightRange: (range: Range) => {
 				highlightedRanges.push(range.toString());
@@ -615,8 +616,8 @@ describe("TTSService catalog speech composition", () => {
 		const highlightedWords: string[] = [];
 		const sentenceHighlights: string[] = [];
 		service.setHighlightCoordinator({
-			highlightTTSWord: (node: Text, start: number, end: number) => {
-				highlightedWords.push(node.textContent?.slice(start, end) || "");
+			highlightTTSWord: (ranges: Range[]) => {
+				highlightedWords.push(ranges.join(""));
 			},
 			highlightRange: (range: Range) => {
 				highlightedWords.push(range.toString());
@@ -667,8 +668,8 @@ describe("TTSService catalog speech composition", () => {
 		`;
 		const highlightedWords: string[] = [];
 		service.setHighlightCoordinator({
-			highlightTTSWord: (node: Text, start: number, end: number) => {
-				highlightedWords.push(node.textContent?.slice(start, end) || "");
+			highlightTTSWord: (ranges: Range[]) => {
+				highlightedWords.push(ranges.join(""));
 			},
 			highlightRange: (range: Range) => {
 				highlightedWords.push(range.toString());
@@ -729,8 +730,8 @@ describe("TTSService catalog speech composition", () => {
 		const highlightedWords: string[] = [];
 		const sentenceHighlights: string[] = [];
 		service.setHighlightCoordinator({
-			highlightTTSWord: (node: Text, start: number, end: number) => {
-				highlightedWords.push(node.textContent?.slice(start, end) || "");
+			highlightTTSWord: (ranges: Range[]) => {
+				highlightedWords.push(ranges.join(""));
 			},
 			highlightRange: (range: Range) => {
 				highlightedWords.push(range.toString());
@@ -796,8 +797,8 @@ describe("TTSService catalog speech composition", () => {
 		const highlightedWords: string[] = [];
 		const sentenceHighlights: string[] = [];
 		service.setHighlightCoordinator({
-			highlightTTSWord: (node: Text, start: number, end: number) => {
-				highlightedWords.push(node.textContent?.slice(start, end) || "");
+			highlightTTSWord: (ranges: Range[]) => {
+				highlightedWords.push(ranges.join(""));
 			},
 			highlightTTSSentence: (ranges: Range[]) => {
 				sentenceHighlights.push(

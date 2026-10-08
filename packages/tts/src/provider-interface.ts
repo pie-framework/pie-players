@@ -194,12 +194,13 @@ export interface ITTSProviderImplementation {
 	speakSegments?(segments: TTSSpeechSegment[]): Promise<void>;
 
 	/**
-	 * Pause playback
+	 * Pause playback. A pause issued while a speak is still preparing its audio
+	 * holds it: the audio does not start until {@link resume}.
 	 */
 	pause(): void;
 
 	/**
-	 * Resume playback
+	 * Resume playback, starting audio a pause held before it began.
 	 */
 	resume(): void;
 
@@ -217,6 +218,13 @@ export interface ITTSProviderImplementation {
 	 * Check if paused
 	 */
 	isPaused(): boolean;
+
+	/**
+	 * Apply changed settings from the next speak on. The toolkit sends rate,
+	 * pitch and voice changes, and the per-speak `providerOptions.contentLanguage`
+	 * merged over the provider options already configured.
+	 */
+	updateSettings(settings: Partial<TTSConfig>): void | Promise<void>;
 
 	/**
 	 * Playback-start callback (optional).

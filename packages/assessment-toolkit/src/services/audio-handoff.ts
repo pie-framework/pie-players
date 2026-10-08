@@ -20,16 +20,25 @@ type TtsHandoffSubscriber = Pick<
 	TtsServiceApi,
 	"onStateChange" | "offStateChange"
 >;
-type TtsHandoffPlayback = Pick<TtsServiceApi, "isPlaying" | "pause">;
+type TtsHandoffPlayback = Pick<TtsServiceApi, "getState" | "pause">;
 
 const NOOP = (): void => {};
 
 /**
+ * Read-aloud counts as speaking from the moment a read starts loading. A
+ * loading read sounds as soon as its audio arrives, so both halves treat it as
+ * a playing one.
+ */
+function isSpeaking(state: PlaybackState | undefined): boolean {
+	return state === PlaybackState.PLAYING || state === PlaybackState.LOADING;
+}
+
+/**
  * Silence a media surface whenever read-aloud starts speaking.
  *
- * `LOADING` as well as `PLAYING`, so the pause lands before the first word rather
- * than a provider round-trip after it. A `LOADING` that then fails leaves media
- * paused, which costs the learner one press of play.
+ * Silenced on loading, so the pause lands before the first word rather than a
+ * provider round-trip after it. A load that then fails leaves media paused,
+ * which costs the learner one press of play.
  *
  * Returns the teardown, including where there was nothing to bind.
  */
@@ -42,10 +51,7 @@ export function bindTtsAudioHandoff(args: {
 	const { ttsService, listenerId, silence } = args;
 	if (typeof ttsService?.onStateChange !== "function") return NOOP;
 	const onTtsState = (state: PlaybackState): void => {
-		if (state !== PlaybackState.PLAYING && state !== PlaybackState.LOADING) {
-			return;
-		}
-		silence();
+		if (isSpeaking(state)) silence();
 	};
 	ttsService.onStateChange(listenerId, onTtsState);
 	return () => {
@@ -61,12 +67,13 @@ export function bindTtsAudioHandoff(args: {
  * The other half: media audio has started, so read-aloud yields.
  *
  * Paused rather than stopped, so the learner keeps their place in the passage.
+ * A read still loading pauses too, and holds until the learner resumes it.
  */
 export function pauseTtsForMediaAudio(
 	ttsService: Partial<TtsHandoffPlayback> | null | undefined,
 ): void {
 	try {
-		if (ttsService?.isPlaying?.()) ttsService.pause?.();
+		if (isSpeaking(ttsService?.getState?.())) ttsService?.pause?.();
 	} catch {
 		// A torn-down or uninitialized TTS service must not break playback.
 	}

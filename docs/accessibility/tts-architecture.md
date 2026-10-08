@@ -300,13 +300,18 @@ With normalization:
 
 #### Implementation in TTSService
 
-The `TTSService.buildPositionMap()` method delegates to text core helpers:
+`TTSService.buildPositionMap()` walks the content's flat tree, open shadow roots
+included, with the text core's `collectVisibleTextAndMap`. It normalizes the
+visible text the way the spoken text is normalized and maps each normalized
+position to its `{text node, offset}`.
 
-1. Takes the spoken text (already normalized)
-2. Extracts DOM text with `range.toString()`
-3. Normalizes DOM text the same way
-4. Builds a character-by-character map: `normalized position → {text node, offset}`
-5. Handles whitespace collapsing during mapping
+A word boundary resolves through that map to one range over the word's
+characters, spanning every text node the word covers, or one range per tree when
+it crosses a shadow boundary. `HighlightCoordinator.highlightTTSWord(ranges)`
+paints them; it is the one word-highlight call. Adjacent alphanumeric text nodes
+gain a space in the visible text, so a word an author split across inline
+elements is read as two ("Mis sissippi"): a deliberate trade, keeping words in
+neighbouring elements from running together at the cost of that split.
 
 #### Implementation in TTS Tools
 
@@ -323,7 +328,8 @@ TTS tools pass the DOM they read, an element or a range, to `speak()`, so every 
 
 When implementing TTS highlighting:
 
-1. Check console: `[TTSService] Text comparison: { match: true }`
+1. With `PIE_TTS_DEBUG=1` or `globalThis.__PIE_TTS_DEBUG__ = true`, check the
+   console: `[tts-service] Text comparison: { match: true }`
 2. Verify: `mapLengthMatchesSpoken: true`
 3. Test with content containing lots of whitespace
 4. Verify words highlight at correct positions, not ahead/behind
@@ -369,6 +375,7 @@ class MyTTSImpl implements ITTSProviderImplementation {
   stop(): void { /* ... */ }
   isPlaying(): boolean { return false; }
   isPaused(): boolean { return false; }
+  updateSettings(settings: Partial<TTSConfig>): void { /* ... */ }
 }
 
 export class MyTTSProvider implements ITTSProvider {
@@ -390,6 +397,10 @@ export class MyTTSProvider implements ITTSProvider {
 the native or media playback-start event—not when speech is merely queued. The
 toolkit uses that signal to move into playing state and begin highlighting only
 when output has actually started.
+
+`updateSettings` is required: the toolkit sends rate, pitch and voice changes
+through it, and each read's content language. A `pause()` that lands before a
+speak's audio starts holds it until `resume()`.
 
 A provider declaring `maxTextLength` in its capabilities never receives longer
 text: the toolkit splits it at sentences, then words, then characters, and

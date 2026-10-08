@@ -16,16 +16,15 @@ import type {
 } from "@pie-players/pie-tts";
 import {
 	createPieLogger,
-	isGlobalDebugEnabled,
+	isTtsDebugEnabled,
 } from "@pie-players/pie-players-shared/pie";
 import {
 	normalizeSpeechMarks,
 	resolveSpeedRateBucket,
 } from "@pie-players/tts-server-core";
 
-const logger = createPieLogger("server-tts-provider", () =>
-	isGlobalDebugEnabled(),
-);
+// Debug lines need PIE_TTS_DEBUG=1 or globalThis.__PIE_TTS_DEBUG__ = true.
+const logger = createPieLogger("server-tts-provider", isTtsDebugEnabled);
 
 /**
  * The provider options the server provider reads. `contentLanguage`, set per
@@ -624,7 +623,11 @@ class ServerTTSProviderImpl implements ITTSProviderImplementation {
 	 */
 	private highlightCursor = -1;
 	private intentionallyStopped = false;
+	// Set while a synthesis request is in flight.
 	private activeSynthesisController: AbortController | null = null;
+	// Starts the current audio element; a pause before it sounds leaves the
+	// start to resume.
+	private startCurrentAudio: (() => void) | null = null;
 	private synthesisRunId = 0;
 	private readonly telemetryReporter: TelemetryReporter | undefined;
 
@@ -676,6 +679,10 @@ class ServerTTSProviderImpl implements ITTSProviderImplementation {
 				return;
 			}
 			throw error;
+		} finally {
+			if (this.activeSynthesisController === synthesisController) {
+				this.activeSynthesisController = null;
+			}
 		}
 		const { audioUrl, wordTimings } = synthesized;
 		if (runId !== this.synthesisRunId) {
@@ -744,8 +751,20 @@ class ServerTTSProviderImpl implements ITTSProviderImplementation {
 				this.pausedState = true;
 			};
 
-			// Start playback
-			audio.play().catch(reject);
+			const start = () => {
+				audio.play().catch((error: unknown) => {
+					// A pause before the audio sounds aborts its play; resume starts it.
+					const aborted =
+						(error as { name?: unknown } | null)?.name === "AbortError";
+					if (aborted && this.pausedState && this.currentAudio === audio) {
+						return;
+					}
+					reject(error);
+				});
+			};
+			this.startCurrentAudio = start;
+			// A pause during synthesis holds the audio until resume.
+			if (!this.pausedState) start();
 		});
 	}
 
@@ -1093,28 +1112,31 @@ class ServerTTSProviderImpl implements ITTSProviderImplementation {
 		}
 	}
 
+	/** Pause playback, or, while synthesis is in flight, hold its audio. */
 	pause(): void {
-		if (this.currentAudio && !this.pausedState) {
+		if (this.pausedState) return;
+		if (this.currentAudio) {
 			this.currentAudio.pause();
 			this.stopWordHighlighting();
-			this.pausedState = true;
+		} else if (!this.activeSynthesisController) {
+			return;
 		}
+		this.pausedState = true;
 	}
 
 	resume(): void {
-		if (this.currentAudio && this.pausedState) {
-			this.currentAudio.play();
-			this.pausedState = false;
-
-			// Resume word highlighting
-			if (this.onWordBoundary && this.wordTimings.length > 0) {
-				this.startWordHighlighting();
-			}
+		if (!this.pausedState) return;
+		this.pausedState = false;
+		if (!this.currentAudio) return;
+		this.startCurrentAudio?.();
+		if (this.onWordBoundary && this.wordTimings.length > 0) {
+			this.startWordHighlighting();
 		}
 	}
 
 	stop(): void {
 		this.synthesisRunId += 1;
+		this.startCurrentAudio = null;
 		if (this.activeSynthesisController) {
 			this.activeSynthesisController.abort();
 			this.activeSynthesisController = null;

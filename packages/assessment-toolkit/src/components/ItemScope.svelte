@@ -6,6 +6,7 @@
 			itemId: { attribute: "item-id", type: "String" },
 			canonicalItemId: { attribute: "canonical-item-id", type: "String" },
 			contentKind: { attribute: "content-kind", type: "String" },
+			regionPolicy: { attribute: "region-policy", type: "String" },
 			scopeElement: { type: "Object", reflect: false },
 			ttsHighlightTargetResolver: { type: "Object", reflect: false },
 			item: { type: "Object", reflect: false },
@@ -15,15 +16,14 @@
 
 <script lang="ts">
 	/**
-	 * An item's scope for the toolkit's tools where no section player holds the
-	 * item: the item's identity, the region its tools act on, and its
-	 * registration with the toolkit, which files the item's accessibility
-	 * catalogs. `<pie-item-shell>` publishes the same in a section card.
+	 * An item's scope for the toolkit's tools, in a section player's card or around
+	 * a host's own item player: the item's identity, the region its tools act on,
+	 * and its registration with the toolkit, which files the item's accessibility
+	 * catalogs.
 	 *
 	 * In a toolkit that holds a section the scope is also the item's channel to
-	 * it, as `<pie-item-shell>` is. Otherwise the host owns the item player and
-	 * its events pass through unchanged; the toolkit hears only that the item
-	 * loaded or failed.
+	 * it. Otherwise the host owns the item player and its events pass through
+	 * unchanged; the toolkit hears only that the item loaded or failed.
 	 */
 	import { connectAssessmentToolkitHostRuntimeContext } from "../context/runtime-context-consumer.js";
 	import { warnOncePerDocument } from "../runtime/page-warnings.js";
@@ -37,6 +37,7 @@
 		itemId = "",
 		canonicalItemId = "",
 		contentKind = "assessment-item",
+		regionPolicy = "default",
 		scopeElement = null as HTMLElement | null,
 		ttsHighlightTargetResolver = null as TTSHighlightTargetResolver | null,
 		item = null as unknown,
@@ -104,6 +105,7 @@
 						itemId,
 						canonicalItemId,
 						contentKind,
+						regionPolicy,
 						scopeElement,
 						ttsHighlightTargetResolver,
 						item,

@@ -44,13 +44,13 @@ const mountShell = (
 	media: Element;
 	content: Element;
 } => {
-	document.body.innerHTML = `<pie-item-shell data-pie-shell-root>
+	document.body.innerHTML = `<pie-item-scope data-pie-shell-root>
 		<div class="card">
 			<header><h2>Question 1</h2></header>
 			<div data-region="media"><p>media</p></div>
 			<div data-region="content">${contentMarkup}</div>
 		</div>
-	</pie-item-shell>`;
+	</pie-item-scope>`;
 	const shell = document.querySelector("[data-pie-shell-root]") as Element;
 	return {
 		shell,

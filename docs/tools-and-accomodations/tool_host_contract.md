@@ -56,9 +56,9 @@ Tools must tolerate delayed context arrival and context re-binding:
 A shell publishes the content it holds: its identity as
 `assessmentToolkitShellContext`, the region its tools act on as
 `assessmentToolkitRegionScopeContext`, and a `pie-register` the toolkit files
-the content's accessibility catalogs under. `<pie-item-shell>` and
-`<pie-passage-shell>` publish it in section player cards, and
-`<pie-item-scope>` around a plain item player, all through `createShellScope`.
+the content's accessibility catalogs under. `<pie-item-scope>` publishes it for
+an item, in a section player's card or around a plain item player, and
+`<pie-passage-shell>` for a passage, both through `createShellScope`.
 A shell registers once `assessmentToolkitHostRuntimeContext` answers, so a
 shell may mount before its toolkit. The registration carries the answering
 toolkit's `runtimeId`, and a toolkit claims an event carrying a `runtimeId` only

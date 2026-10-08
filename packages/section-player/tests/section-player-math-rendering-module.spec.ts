@@ -8,7 +8,7 @@ import { expect, type Page, test } from "@playwright/test";
  */
 const WORKSPACE_MATHJAX_CHUNK =
 	/\/packages\/[^/]+\/dist\/chunks\/module-[^/]+\.js$/;
-const ITEM_SHELLS = 'pie-item-shell[data-pie-shell-root="item"]';
+const ITEM_SHELLS = 'pie-item-scope[data-pie-shell-root="item"]';
 
 function collectMathJaxChunkRequests(page: Page): string[] {
 	const pathnames: string[] = [];

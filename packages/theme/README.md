@@ -301,7 +301,7 @@ from the stylesheet:
 ```
 
 The content path scales completely. The rules set `font-size` on the content
-hosts — `pie-item-shell`, `pie-passage-shell`, `pie-item-player` and the
+hosts — `pie-item-scope`, `pie-passage-shell`, `pie-item-player` and the
 externally loaded `pie-player` wrapper — and `font-size` inheritance crosses
 shadow boundaries, so text that inherits its size follows. Every font size in
 `components.css`, which styles item content, is relative (`em`, `%`,

@@ -385,7 +385,7 @@ test.describe("section player demo tts-ssml", () => {
 				const questions = page.getByRole("tab", { name: "Questions", exact: true });
 				await questions.press("Enter");
 				await expectUsableTarget(questions);
-				const tts = page.locator('pie-item-shell[data-pie-shell-root="item"] pie-tool-tts-inline:visible').first();
+				const tts = page.locator('pie-item-scope[data-pie-shell-root="item"] pie-tool-tts-inline:visible').first();
 				const trigger = tts.getByRole("button", { name: "Play reading", exact: true });
 				await trigger.focus();
 				await expectUsableTarget(trigger);
@@ -448,9 +448,9 @@ test.describe("section player demo tts-ssml", () => {
 			const questions = page.getByRole("tab", { name: "Questions", exact: true });
 			await questions.press("Enter");
 			await expectUsableTarget(questions);
-			const itemToolbar = page.locator('pie-item-shell .pie-section-player-content-card-header pie-item-toolbar:visible').first();
+			const itemToolbar = page.locator('pie-item-scope .pie-section-player-content-card-header pie-item-toolbar:visible').first();
 			for (const control of await itemToolbar.getByRole("button").all()) await expectUsableTarget(control);
-			const tts = page.locator('pie-item-shell[data-pie-shell-root="item"] pie-tool-tts-inline:visible').first();
+			const tts = page.locator('pie-item-scope[data-pie-shell-root="item"] pie-tool-tts-inline:visible').first();
 			const trigger = tts.getByRole("button", { name: "Play reading", exact: true });
 			await expectUsableTarget(trigger);
 			await trigger.press("Enter");
@@ -486,7 +486,7 @@ test.describe("section player demo tts-ssml", () => {
 		await forceBrowserTtsRuntime(page);
 
 		const firstItemShell = page
-			.locator('pie-item-shell[data-pie-shell-root="item"]')
+			.locator('pie-item-scope[data-pie-shell-root="item"]')
 			.first();
 		await expect(firstItemShell).toBeVisible();
 		await firstItemShell.evaluate((shell) => {
@@ -682,7 +682,7 @@ test.describe("section player demo tts-ssml", () => {
 
 		const firstInlineTts = page
 			.locator(
-				'pie-item-shell[data-pie-shell-root="item"] pie-tool-tts-inline:visible',
+				'pie-item-scope[data-pie-shell-root="item"] pie-tool-tts-inline:visible',
 			)
 			.first();
 		await expect(firstInlineTts).toBeVisible();
@@ -805,7 +805,7 @@ test.describe("section player demo tts-ssml", () => {
 		await forceBrowserTtsRuntime(page);
 		const tool = page
 			.locator(
-				'pie-item-shell[data-pie-shell-root="item"] pie-tool-tts-inline:visible',
+				'pie-item-scope[data-pie-shell-root="item"] pie-tool-tts-inline:visible',
 			)
 			.first();
 		await tool.getByRole("button", { name: "Play reading" }).click();
@@ -980,7 +980,7 @@ test.describe("section player demo tts-ssml", () => {
 
 		const firstInlineTts = page
 			.locator(
-				'pie-item-shell[data-pie-shell-root="item"] pie-tool-tts-inline:visible',
+				'pie-item-scope[data-pie-shell-root="item"] pie-tool-tts-inline:visible',
 			)
 			.first();
 		await expect(firstInlineTts).toBeVisible();
@@ -1144,7 +1144,7 @@ test.describe("section player demo tts-ssml", () => {
 
 		const inlineTts = page
 			.locator(
-				'pie-item-shell[data-pie-shell-root="item"] pie-tool-tts-inline:visible',
+				'pie-item-scope[data-pie-shell-root="item"] pie-tool-tts-inline:visible',
 			)
 			.first();
 		await expect(inlineTts).toBeVisible();
@@ -1205,7 +1205,7 @@ test.describe("section player demo tts-ssml", () => {
 
 		const firstInlineTts = page
 			.locator(
-				'pie-item-shell[data-pie-shell-root="item"] pie-tool-tts-inline:visible',
+				'pie-item-scope[data-pie-shell-root="item"] pie-tool-tts-inline:visible',
 			)
 			.first();
 		await expect(firstInlineTts).toBeVisible();
@@ -1368,7 +1368,7 @@ test.describe("section player demo tts-ssml", () => {
 		const passageRegion = page.getByRole("complementary", { name: "Passages" });
 		const itemsRegion = page.getByRole("main", { name: "Items" });
 		const itemShells = page.locator(
-			'pie-item-shell[data-pie-shell-root="item"]',
+			'pie-item-scope[data-pie-shell-root="item"]',
 		);
 		const q1 = itemShells.nth(0);
 		const q2 = itemShells.nth(1);

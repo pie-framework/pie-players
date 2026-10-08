@@ -7,7 +7,7 @@ for the bundled open-source calculator.
 import "@pie-players/pie-tool-calculator-inline-cortex";
 ```
 
-The element renders inside `<pie-item-shell>` under `<pie-assessment-toolkit>`,
+The element renders inside `<pie-item-scope>` under `<pie-assessment-toolkit>`,
 as `<pie-tool-calculator-inline>` from
 `@pie-players/pie-tool-calculator-inline-desmos` does, and takes the same
 attributes. It toggles the calculator the item toolbar renders for the

@@ -35,7 +35,7 @@
 <script lang="ts">
 	import { coerceBooleanAttributes } from "@pie-players/pie-players-shared/ui/attribute-coercion";
 	import { onMount, untrack } from "svelte";
-	import "../item-shell-element.js";
+	import "@pie-players/pie-assessment-toolkit/components/item-scope-element";
 	import "@pie-players/pie-assessment-toolkit/components/item-toolbar-element";
 	import type {
 		AssessmentToolkitRuntimeContext,
@@ -362,7 +362,7 @@
 </script>
 
 <div bind:this={contextAnchor} class="pie-section-player-item-card-anchor" aria-hidden="true"></div>
-<pie-item-shell
+<pie-item-scope
 	item-id={item.id}
 	canonical-item-id={canonicalItemId}
 	content-kind="assessment-item"
@@ -464,7 +464,7 @@
 			{/if}
 		</div>
 	</div>
-</pie-item-shell>
+</pie-item-scope>
 
 <style>
 	.pie-section-player-item-card-anchor {
@@ -553,7 +553,7 @@
 		overflow-wrap: anywhere;
 		z-index: 0;
 		margin: 0;
-		/* Reads the scale rather than inheriting it: the card wraps the item shell
+		/* Reads the scale rather than inheriting it: the card wraps the item scope
 		   that `font-sizes.css` scales, so nothing above this rule carries the
 		   scaled size. Root-relative, so it does not compound with the shell. */
 		font-size: calc(0.95rem * var(--pie-font-scale, 1));

@@ -714,7 +714,7 @@
     // `session-changed` from its own host below, which is the one that
     // reaches hosts; letting the raw event past this point published two
     // events per change with different contracts under one name.
-    // Section-player's ItemShellElement already dedupes what escapes,
+    // The toolkit's shell event bridge already dedupes what escapes,
     // which is the cost this avoids rather than a reason to keep it.
     // Stop before the re-entry check so the raw event never escapes on the
     // early-return paths either.

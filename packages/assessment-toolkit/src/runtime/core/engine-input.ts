@@ -19,7 +19,6 @@
 import type { CohortKey } from "./cohort.js";
 import type { EffectiveRuntime, RuntimeInputs } from "./engine-resolver.js";
 import type { EngineReadinessSignals } from "./engine-readiness.js";
-import type { FrameworkErrorModel } from "../../services/framework-error.js";
 
 /**
  * `initialize` is the first transition out of `idle`. It carries the
@@ -74,7 +73,8 @@ export type EngineInputSectionControllerResolved = {
 /**
  * `update-readiness-signals` carries the latest readiness snapshot
  * from the host. The transition uses it to gate the move into
- * `interactive` and to decide whether to emit `loading-complete`.
+ * `interactive`, to end the chain as `failed` when `runtimeError` is set
+ * before `interactive`, and to decide whether to emit `loading-complete`.
  *
  * The full signal set is sent every time so the transition does not
  * have to reason about partial overlays.
@@ -94,17 +94,6 @@ export type EngineInputUpdateReadinessSignals = {
 };
 
 /**
- * `framework-error` is sent for every framework-error report (M3
- * canonical channel). The transition records the latest error in
- * state and emits a `framework-error` output so the adapter can fan
- * out to subscribers and the DOM event.
- */
-export type EngineInputFrameworkError = {
-	kind: "framework-error";
-	error: FrameworkErrorModel;
-};
-
-/**
  * `dispose` tears the engine down. Emits `disposed` for the current
  * cohort (if any) and moves to the terminal `disposed` phase. After
  * dispose the engine accepts no further inputs (the transition logs
@@ -120,7 +109,6 @@ export type SectionEngineInput =
 	| EngineInputCohortChange
 	| EngineInputSectionControllerResolved
 	| EngineInputUpdateReadinessSignals
-	| EngineInputFrameworkError
 	| EngineInputDispose;
 
 /**

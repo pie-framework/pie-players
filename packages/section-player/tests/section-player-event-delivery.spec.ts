@@ -38,11 +38,13 @@ const INTERNAL_EVENTS = [
 	"pie-formative-action",
 	"pie-media-time-source",
 ] as const;
+// Dispatched by the section runtime engine on the layout element.
+const ENGINE_EVENTS = ["pie-stage-change", "pie-loading-complete"] as const;
 const OBSERVED_EVENTS = [
 	...TOOLKIT_EVENTS,
 	...INTERNAL_EVENTS,
+	...ENGINE_EVENTS,
 	"framework-error",
-	"pie-loading-complete",
 	"element-preload-error",
 ];
 
@@ -322,15 +324,18 @@ test.describe("section player event delivery", () => {
 				host: countsOf(log.host, TOOLKIT_EVENTS),
 				document: countsOf(log.document, TOOLKIT_EVENTS),
 			}).toEqual({ host: dispatched, document: dispatched });
-			// A framework error is published once on the layout element and does not
-			// bubble past it.
+			// A framework error is published once, and bubbles on to `document`.
 			const errors = log.source["framework-error"] || 0;
 			expect(errors).toBeGreaterThan(0);
 			expect({
 				host: log.host["framework-error"] || 0,
 				onFrameworkError: log.onFrameworkError,
 				document: log.document["framework-error"] || 0,
-			}).toEqual({ host: errors, onFrameworkError: errors, document: 0 });
+			}).toEqual({ host: errors, onFrameworkError: errors, document: errors });
+			// The engine's events bubble from the layout element as well.
+			const engineEvents = countsOf(log.host, ENGINE_EVENTS);
+			expect(engineEvents["pie-loading-complete"]).toBe(1);
+			expect(countsOf(log.document, ENGINE_EVENTS)).toEqual(engineEvents);
 			// The probe error is recoverable, so readiness does not latch to `error`.
 			const phase = await page.evaluate(
 				(layoutTag) =>
@@ -385,7 +390,7 @@ test.describe("section player event delivery", () => {
 		}).toEqual({
 			host: 1,
 			onFrameworkError: 1,
-			document: 0,
+			document: 1,
 			coordinatorHook: 1,
 		});
 	});

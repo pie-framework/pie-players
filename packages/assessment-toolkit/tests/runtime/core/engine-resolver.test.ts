@@ -381,3 +381,20 @@ describe("engine-resolver: resolveToolsConfig", () => {
 		);
 	});
 });
+
+describe("engine-resolver: resolveSectionId", () => {
+	test("takes the host's id, then the section's identifier, then one named after the assessment", async () => {
+		const { resolveSectionId } = await loadEngineResolver();
+		const section = { identifier: "from-section" };
+		expect(
+			resolveSectionId({ sectionId: "from-host", section, assessmentId: "a1" }),
+		).toBe("from-host");
+		expect(resolveSectionId({ sectionId: "", section, assessmentId: "a1" })).toBe(
+			"from-section",
+		);
+		expect(resolveSectionId({ sectionId: "", section: {}, assessmentId: "a1" })).toBe(
+			"section-a1",
+		);
+		expect(resolveSectionId({ section: null })).toBe("section-default");
+	});
+});

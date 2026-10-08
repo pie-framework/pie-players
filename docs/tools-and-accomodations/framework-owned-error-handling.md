@@ -79,11 +79,11 @@ Primary file:
 ### New default behavior
 
 - Log to `console.error(...)` with framework prefix.
-- Publish a single `FrameworkErrorModel` to the package-internal
-  `FrameworkErrorBus`. The bus has one subscriber on
-  `pie-assessment-toolkit` that fans out to every observable surface so
-  every host integration sees the same payload exactly once.
-- Emit `framework-error` (canonical event).
+- Publish a single `FrameworkErrorModel` to the coordinator's
+  `FrameworkErrorBus`. The toolkit subscribes once and delivers each error
+  as one `framework-error` DOM event and one `onFrameworkError` call; an
+  error the coordinator already published is not published again when it
+  rethrows into the toolkit.
 - Render built-in fallback UI when the error is a fatal bootstrap kind
   (`coordinator-init`, `runtime-init`, `tool-config`) and is not flagged
   recoverable. Non-bootstrap kinds (e.g. `provider-init`, `provider-register`,
@@ -161,7 +161,7 @@ tool IDs now typically fail when the toolkit builds/initializes its coordinator.
 
 ## 4) `framework-error` propagation across wrappers
 
-A section-player layout element dispatches one non-bubbling `framework-error` per error on its own host. The kernel stops the toolkit's bubbling event at the section-player base and routes it through the section runtime engine, so a listener belongs on the layout element; listeners on `document` or other ancestors receive nothing.
+The toolkit's `framework-error` is the only DOM emit. It bubbles and is composed, so it reaches the layout element and `document` once per error. The section-player kernel reads it on the way up to set readiness to `error` for a non-recoverable error, which ends the stage chain with the current stage `failed`.
 
 Updated files:
 
@@ -194,13 +194,11 @@ The e2e test verifies:
 
 ### Canonical event
 
-- `framework-error` — payload is a `FrameworkErrorModel`. Emitted by
-  `<pie-assessment-toolkit>` with `bubbles: true, composed: true`. Inside a
-  section player the kernel stops that event at the section-player base, and
-  the layout custom element dispatches one non-bubbling `framework-error` on
-  its own host. The toolkit is the single source of truth; the canonical
-  `onFrameworkError` callback is delivered exactly once per error,
-  regardless of wrapper depth.
+- `framework-error` — payload is a `FrameworkErrorModel`. Emitted once per
+  error by `<pie-assessment-toolkit>` with `bubbles: true, composed: true`,
+  so inside a section player it reaches the layout custom element and
+  `document`. The canonical `onFrameworkError` callback is delivered once
+  per error, regardless of wrapper depth.
 
 ### Telemetry mapping
 

@@ -17,6 +17,7 @@ import {
 	catalogSourceSignature,
 } from "../services/catalog-owner.js";
 import type { TTSHighlightTargetResolver } from "../services/tts/highlight-target-resolver.js";
+import { PIE_INTERNAL_CONTENT_LOADED_EVENT } from "./registration-events.js";
 import {
 	createShellRegistrationDispatcher,
 	type ShellRegistrationIdentity,
@@ -155,7 +156,8 @@ const setAttributeIfChanged = (
  * replays the request instead, once the toolkit's provider connects. A
  * different runtime answering later, a nearer toolkit taking over, moves the
  * registration: the old runtime is told to unregister by its id, and the new
- * one gets the registration.
+ * one gets the registration and the content's last load, which only the old
+ * one heard.
  */
 export function createShellScope(): ShellScope {
 	const registration = createShellRegistrationDispatcher();
@@ -168,12 +170,14 @@ export function createShellScope(): ShellScope {
 	let runtimeId: string | null = null;
 	let identity: ShellRegistrationIdentity | null = null;
 	let held: Array<{ type: string; detail: object }> = [];
+	let loaded: object | null = null;
 
 	const syncRegistration = () => {
 		if (runtimeId !== null) registration.sync(identity, runtimeId);
 	};
 
 	function send(type: string, detail: object): void {
+		if (type === PIE_INTERNAL_CONTENT_LOADED_EVENT) loaded = detail;
 		if (host && runtimeId !== null) {
 			dispatchCrossBoundaryEvent(host, type, { ...detail, runtimeId });
 			return;
@@ -186,11 +190,13 @@ export function createShellScope(): ShellScope {
 	// so only a different id means anything here.
 	function onRuntime(value: AssessmentToolkitHostRuntimeContext): void {
 		if (value.runtimeId === runtimeId) return;
+		const moved = runtimeId !== null;
 		runtimeId = value.runtimeId;
 		syncRegistration();
 		const pending = held;
 		held = [];
 		for (const event of pending) send(event.type, event.detail);
+		if (moved && loaded) send(PIE_INTERNAL_CONTENT_LOADED_EVENT, loaded);
 	}
 
 	function disconnect(): void {
@@ -199,6 +205,7 @@ export function createShellScope(): ShellScope {
 		stopFindingRuntime = null;
 		runtimeId = null;
 		held = [];
+		loaded = null;
 		identity = null;
 		shell = null;
 		region = null;
@@ -243,6 +250,7 @@ export function createShellScope(): ShellScope {
 		setAttributeIfChanged(host, "data-pie-shell-root", state.kind);
 		setAttributeIfChanged(host, "data-region-policy", regionPolicy);
 
+		const previousIdentity = identity;
 		identity = state.itemId
 			? {
 					kind: state.kind,
@@ -253,6 +261,13 @@ export function createShellScope(): ShellScope {
 					item: state.item ?? null,
 				}
 			: null;
+		if (
+			previousIdentity &&
+			(previousIdentity.itemId !== identity?.itemId ||
+				previousIdentity.canonicalItemId !== identity?.canonicalItemId)
+		) {
+			loaded = null;
+		}
 		// Answers at once when the runtime is already there.
 		stopFindingRuntime ??= connectAssessmentToolkitHostRuntimeContext(
 			host,

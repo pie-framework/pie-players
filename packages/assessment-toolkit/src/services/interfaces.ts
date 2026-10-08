@@ -687,9 +687,9 @@ export interface ToolkitCoordinatorApi {
 	 * aggregate `section-loading-complete`, in the canonical order a
 	 * fresh subscriber would have observed.
 	 *
-	 * Throws if no active section cohort exists; host code must call
-	 * `getOrCreateSectionController(...)` at least once before
-	 * subscribing. `runtime-ready` alone is not sufficient: it fires once
+	 * Throws until the first `getOrCreateSectionController(...)` call; a
+	 * listener added while a section is starting binds when that section
+	 * becomes active. `runtime-ready` alone is not sufficient: it fires once
 	 * the coordinator is bound, before any section controller exists. A
 	 * `<pie-assessment-toolkit>` holding a section emits `toolkit-ready`
 	 * after its controller resolves. The typical pattern is to subscribe once

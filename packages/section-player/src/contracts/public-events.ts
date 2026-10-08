@@ -1,35 +1,22 @@
 /**
  * Section-player layout-CE public DOM event vocabulary.
  *
- * **Engine routing (M7).** The *stage / loading-complete /
- * framework-error* family is dispatched on the layout CE host by the
- * section runtime engine
- * (`@pie-players/pie-assessment-toolkit/runtime/engine`) — not by an
- * in-CE `$effect` cluster. The kernel attaches the engine to the host
- * (`engine.attachHost({ host, sourceCe, frameworkErrorBus })`), and
- * the engine's DOM-event bridge dispatches `pie-stage-change`,
- * `pie-loading-complete`, and `framework-error`.
+ * **Engine routing (M7).** `pie-stage-change` and `pie-loading-complete`
+ * are dispatched on the layout CE host by the section runtime engine
+ * (`@pie-players/pie-assessment-toolkit/runtime/engine`), bubbling and
+ * composed. The kernel attaches the engine to the host
+ * (`engine.attachHost({ host, sourceCe })`); the engine is the only stage
+ * emitter.
  *
- * **Toolkit events (not engine-routed).** The composition / session /
- * runtime-tier family (`composition-changed`, `session-changed`,
- * `runtime-owned`, `runtime-inherited`) is dispatched by
- * `<pie-assessment-toolkit>` and bubbles through the layout CE host to
- * `document`; no section-player component re-dispatches it, so each
- * listener receives each dispatch once. It does not flow through the
- * engine: the engine owns lifecycle and error reporting, and has no
- * opinion on composition or session shape.
- *
- * **`framework-error` single-emit on the layout host.**
- * `<pie-assessment-toolkit>` nested inside a layout CE still
- * dispatches its own `framework-error` (with `bubbles: true,
- * composed: true`) so direct toolkit consumers keep working. The
- * kernel's `handleFrameworkError` listener intercepts that bubbled
- * emit at `<pie-section-player-base>` and calls
- * `event.stopPropagation()`, leaving the engine-bridge emit on the
- * layout host as the single canonical DOM surface for
- * section-player consumers. `tests/section-player-event-delivery.spec.ts`
- * pins one delivery per error on the layout host and none on
- * `document`.
+ * **Toolkit events (not engine-routed).** `framework-error` and the
+ * composition / session / runtime-tier family (`composition-changed`,
+ * `session-changed`, `runtime-owned`, `runtime-inherited`) are dispatched
+ * by `<pie-assessment-toolkit>` and bubble through the layout CE host to
+ * `document`; no section-player component re-dispatches them, so each
+ * listener receives each dispatch once. The kernel reads `framework-error`
+ * on the way up to set the readiness error signal.
+ * `tests/section-player-event-delivery.spec.ts` pins one delivery per error
+ * on the layout host and on `document`.
  *
  * Lifecycle should be consumed through canonical events:
  *   - `readiness-change` → `pie-stage-change` (the readiness phase
@@ -52,10 +39,8 @@ export const SECTION_PLAYER_PUBLIC_EVENTS = {
 	runtimeOwned: "runtime-owned",
 	runtimeInherited: "runtime-inherited",
 	/**
-	 * Engine-routed (M7). Dispatched by
-	 * `framework-error-bridge.ts` on the layout CE host whenever the
-	 * engine receives a `framework-error` input. See class doc on
-	 * `FrameworkErrorBus` for the back-pressure / fan-out semantics.
+	 * Dispatched once per error by `<pie-assessment-toolkit>`, bubbling and
+	 * composed; it reaches the layout CE host and `document`.
 	 */
 	frameworkError: "framework-error",
 	compositionChanged: "composition-changed",
@@ -65,7 +50,8 @@ export const SECTION_PLAYER_PUBLIC_EVENTS = {
 	 * transition (`composed` → `engine-ready` → `interactive` →
 	 * `disposed`) with the discriminator in `event.detail.stage`.
 	 * Dispatched by the engine's `dom-event-bridge.ts` on each
-	 * `SectionEngineOutput` of kind `stage-change`. See
+	 * `SectionEngineOutput` of kind `stage-change`; `status` is `entered`,
+	 * or `failed` / `skipped` when a framework error ends the chain. See
 	 * `packages/players-shared/src/pie/stages.ts`.
 	 */
 	stageChange: "pie-stage-change",

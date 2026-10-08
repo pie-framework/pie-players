@@ -18,9 +18,28 @@ export type AttachInstrumentationEventBridgeArgs = {
 	shouldTrackEvent?: (event: Event) => boolean;
 };
 
+/**
+ * Telemetry attributes are data. A detail's live objects (a coordinator on
+ * `toolkit-ready`, an `Error` cause, a function) stay on the event for its
+ * listeners and are left out of the attributes; primitives, arrays and plain
+ * objects pass.
+ */
+function isAttributeValue(value: unknown): boolean {
+	if (value === null) return true;
+	const type = typeof value;
+	if (type === "function" || type === "symbol") return false;
+	if (type !== "object" || Array.isArray(value)) return true;
+	const prototype = Object.getPrototypeOf(value);
+	return prototype === Object.prototype || prototype === null;
+}
+
 function normalizeEventDetail(detail: unknown): Record<string, unknown> {
 	if (detail && typeof detail === "object") {
-		return detail as Record<string, unknown>;
+		const attributes: Record<string, unknown> = {};
+		for (const [key, value] of Object.entries(detail)) {
+			if (isAttributeValue(value)) attributes[key] = value;
+		}
+		return attributes;
 	}
 	if (typeof detail === "undefined") {
 		return {};

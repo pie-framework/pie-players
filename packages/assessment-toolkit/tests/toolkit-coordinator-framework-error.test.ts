@@ -177,3 +177,42 @@ describe("ToolkitCoordinator framework-error contract", () => {
 		expect(canonical[0]).toBe(busHits[0]);
 	});
 });
+
+describe("ToolkitCoordinator hooks", () => {
+	test("setHooks leaves the hooks object the host constructed it with as it was", () => {
+		const hooks = { onTTSReady: () => {} };
+		const coordinator = new ToolkitCoordinator({
+			assessmentId: "set-hooks-copies",
+			lazyInit: true,
+			hooks,
+		});
+
+		coordinator.setHooks({ onFrameworkError: () => {} });
+
+		expect(Object.keys(hooks)).toEqual(["onTTSReady"]);
+	});
+
+	test("a failed tool-state load is reported once and the coordinator readies without it", async () => {
+		let loads = 0;
+		const calls: FrameworkErrorModel[] = [];
+		const coordinator = new ToolkitCoordinator({
+			assessmentId: "state-load-failure-settles",
+			lazyInit: true,
+			hooks: {
+				loadToolState: async () => {
+					loads += 1;
+					throw new Error("tool state unavailable");
+				},
+				onFrameworkError: (model) => calls.push(model),
+			},
+		});
+
+		await coordinator.waitUntilReady();
+		await coordinator.waitUntilReady();
+
+		expect(coordinator.isReady()).toBe(true);
+		expect(coordinator.getInitStatus().stateLoaded).toBe(false);
+		expect(loads).toBe(1);
+		expect(calls.map((model) => model.kind)).toEqual(["tool-state-load"]);
+	});
+});

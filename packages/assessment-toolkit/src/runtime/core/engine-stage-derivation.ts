@@ -2,9 +2,9 @@
  * Stage derivation for the section runtime engine (M7).
  *
  * Maps the FSM phase onto the canonical M6 stage vocabulary
- * (`composed`, `engine-ready`, `interactive`, `disposed`). The phase
- * `idle` is the engine's "no cohort yet" state and has no stage; it
- * returns `null`.
+ * (`composed`, `engine-ready`, `interactive`, `disposed`). `idle` (no
+ * cohort yet) and `failed` (the chain ended before `interactive`) have no
+ * stage of their own and return `null`.
  *
  * This module exists as a one-line indirection because:
  *   - The adapter uses it to guard `pie-stage-change` emit calls.
@@ -20,6 +20,7 @@ import type { SectionEnginePhase } from "./engine-state.js";
 export function phaseToStage(phase: SectionEnginePhase): Stage | null {
 	switch (phase) {
 		case "idle":
+		case "failed":
 			return null;
 		case "booting-section":
 			return "composed";

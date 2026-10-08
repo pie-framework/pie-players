@@ -1,6 +1,5 @@
 /**
- * The harness builds its tree from raw `EventTarget` nodes, as
- * `runtime/section-runtime-engine-host-context.test.ts` uses raw targets:
+ * The harness builds its tree from raw `EventTarget` nodes, because
  * happy-dom's `dispatchEvent` rejects pie-context's events whenever another
  * file loaded pie-context first, its classes extending the `Event` of that
  * moment. A node dispatches to itself and then to each ancestor until a
@@ -352,6 +351,27 @@ describe("createShellScope", () => {
 			PIE_UNREGISTER_EVENT,
 			"q1",
 			"runtime-inner",
+		]);
+	});
+
+	test("tells a nearer runtime that takes it over that its content already loaded", () => {
+		const page = new FakeNode(null);
+		const outer = new FakeNode(page);
+		const inner = new FakeNode(outer);
+		const shellNode = new FakeNode(inner);
+		const host = element(shellNode);
+		provideRuntime(outer, "runtime-outer");
+		const loaded = received(shellNode, "pie-content-loaded");
+		const scope = createShellScope();
+		scopes.push(scope);
+		scope.publish({ host, ...q1 });
+		scope.send("pie-content-loaded", { itemId: "q1" });
+
+		provideRuntime(inner, "runtime-inner");
+
+		expect(loaded).toEqual([
+			{ itemId: "q1", runtimeId: "runtime-outer" },
+			{ itemId: "q1", runtimeId: "runtime-inner" },
 		]);
 	});
 

@@ -28,7 +28,7 @@ The coordinator creates a section controller and runs `configureSessionPersisten
 `initialize` and `hydrate` before publishing it
 (`packages/assessment-toolkit/src/services/ToolkitCoordinator.ts:1894-1950`), and
 publishing schedules the first composition
-(`packages/assessment-toolkit/src/runtime/SectionRuntimeEngine.ts:376`). A host's
+(`initialize` in `packages/assessment-toolkit/src/runtime/SectionControllerBinding.ts`). A host's
 `applySession` at `toolkit-ready` or `engine-ready` races that schedule's flush
 (`composition-emit-scheduler.ts`). Both in-repo restorers guarded it by hand: the
 assessment player kept the section `inert` and `aria-busy` until its
@@ -227,9 +227,9 @@ session holds none, the nested section is created through `hydrate()` as today.
 A section that fails to become ready shows `player.assessment.restoreFailed` when
 the element supplied a saved section session and `player.assessment.loadFailed`
 otherwise. A section whose controller cannot be created, a failed creation-time
-apply among them, never reaches `engine-ready` and reports a non-recoverable
-`framework-error`; the element treats that error as the failure, ahead of its
-readiness timeout.
+apply among them, reports a non-recoverable `framework-error` and ends its
+stage chain with `engine-ready` failed; the element treats that error as the
+failure, ahead of its readiness timeout.
 
 ### `sectionFromItem`
 

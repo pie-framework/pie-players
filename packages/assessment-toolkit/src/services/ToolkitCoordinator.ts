@@ -1359,11 +1359,13 @@ export class ToolkitCoordinator {
 
 	/**
 	 * Register the provider `tool`'s descriptor creates for the tool's current
-	 * config, unless the tool is disabled or that provider id is registered. A
-	 * descriptor that throws is reported the way a failed registration is.
+	 * config, unless the tool is disabled or, without `replace`, that provider id
+	 * is registered. A descriptor that throws is reported the way a failed
+	 * registration is.
 	 */
 	private async registerProviderFromTool(
 		tool: ToolRegistration,
+		replace = false,
 	): Promise<void> {
 		const descriptor = tool.provider;
 		if (!descriptor) return;
@@ -1377,7 +1379,7 @@ export class ToolkitCoordinator {
 			const toolIds = this.providerToolIds.get(providerId) ?? new Set<string>();
 			toolIds.add(tool.toolId);
 			this.providerToolIds.set(providerId, toolIds);
-			if (this.toolProviderRegistry.has(providerId)) return;
+			if (!replace && this.toolProviderRegistry.has(providerId)) return;
 			const provider = descriptor.createProvider(toolConfig);
 			const initConfig =
 				descriptor.getInitConfig?.(toolConfig) ??
@@ -1510,7 +1512,7 @@ export class ToolkitCoordinator {
 		const existing = this.providerInitPromises.get(providerId);
 		if (existing) return existing;
 		const promise = (async () => {
-			const provider = await this.toolProviderRegistry.getProvider(
+			let provider = await this.toolProviderRegistry.getProvider(
 				providerId,
 				false,
 			);
@@ -1526,6 +1528,8 @@ export class ToolkitCoordinator {
 				this.assertNotDisposed();
 				await this.toolProviderRegistry.initialize(providerId);
 				this.assertNotDisposed();
+				// A config update may have replaced the provider during its start.
+				provider = await this.toolProviderRegistry.getProvider(providerId, false);
 				await this.hooks.onProviderReady?.(providerId, meta);
 				this.assertNotDisposed();
 				await this.emitTelemetry("pie-toolkit-provider-ready", { providerId });
@@ -2474,7 +2478,7 @@ export class ToolkitCoordinator {
 		this.activeCohortMapKey = null;
 		this.latestRequestedActiveCohortMapKey = null;
 
-		await cleanup(() => this.ttsService.stop());
+		await cleanup(() => this.ttsService.releaseProvider());
 		await cleanup(() => this.toolProviderRegistry.destroy());
 		await cleanup(() => this.highlightCoordinator.destroy());
 		for (const toolId of this.toolCoordinator.getRegisteredTools()) {
@@ -3363,11 +3367,11 @@ export class ToolkitCoordinator {
 	}
 
 	/**
-	 * Register the provider a tool's updated config names, and unregister the
-	 * one its previous config named when the provider id changed, as
-	 * {@link _reconfigureTTSProvider} does for `tts`. Registration completes
-	 * before this returns, so a check on the policy change the update dispatched
-	 * finds the new provider.
+	 * Register the provider a tool's updated config names, replacing the one
+	 * registered under that id, and unregister the one its previous config named
+	 * when the provider id changed, as {@link _reconfigureTTSProvider} does for
+	 * `tts`. Registration completes before this returns, so a check on the policy
+	 * change the update dispatched finds the new provider.
 	 */
 	private _registerChangedToolProvider(
 		toolId: string,
@@ -3377,7 +3381,9 @@ export class ToolkitCoordinator {
 			(tool) => tool.toolId === toolId,
 		);
 		if (!registration) return;
-		void this.registerProviderFromTool(registration);
+		// A failure of the replaced provider no longer describes the tool.
+		this.degradedTools.delete(toolId);
+		void this.registerProviderFromTool(registration, true);
 		const resolveQuietly = (config: ToolProviderConfig | undefined) => {
 			try {
 				return resolveToolProviderId(registration, config);
@@ -3431,12 +3437,14 @@ export class ToolkitCoordinator {
 	private async _reconfigureTTSProvider(): Promise<void> {
 		this.ttsInitialized = false;
 		this.ttsDegraded = false;
+		this.degradedTools.delete("textToSpeech");
 		this.ttsInitPromise = undefined;
 		this.notifyReadyChange();
 		try {
-			this.ttsService.stop();
+			// The next speak waits on readiness, which starts the new provider.
+			this.ttsService.releaseProvider();
 		} catch {
-			// noop: stop best effort
+			// noop: release best effort
 		}
 
 		if (this.toolProviderRegistry.has("tts")) {

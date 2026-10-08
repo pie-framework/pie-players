@@ -1054,7 +1054,7 @@ const services = coordinator.getServiceBundle();
 // Tool configuration
 coordinator.isToolEnabled('textToSpeech');  // Check if tool is enabled
 coordinator.getToolConfig('textToSpeech');  // Get tool-specific config
-coordinator.updateToolConfig('textToSpeech', { rate: 1.5 });  // Update tool config
+coordinator.updateToolConfig('textToSpeech', { rate: 1.5 });  // Update tool config; replaces the tool's provider, which starts again on next use
 
 // Final teardown by the owner that constructed the coordinator
 await coordinator.dispose();

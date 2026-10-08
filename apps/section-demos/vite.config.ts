@@ -145,10 +145,6 @@ export default (async () => {
 					__dirname,
 					"../../packages/tool-calculator-geogebra/dist/pie-tool-calculator-geogebra.js",
 				),
-				"@pie-players/pie-tool-text-to-speech": resolve(
-					__dirname,
-					"../../packages/tool-text-to-speech/dist/tool-text-to-speech.js",
-				),
 				"@pie-players/pie-section-player-tools-shared": resolve(
 					__dirname,
 					"../../packages/section-player-tools-shared/index.ts",

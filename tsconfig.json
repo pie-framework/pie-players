@@ -94,9 +94,6 @@
 			"path": "./packages/tool-ruler"
 		},
 		{
-			"path": "./packages/tool-text-to-speech"
-		},
-		{
 			"path": "./packages/tts"
 		},
 		{

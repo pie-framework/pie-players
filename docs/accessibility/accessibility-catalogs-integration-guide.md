@@ -339,20 +339,16 @@ The extraction step:
    - Resolver finds SSML in `extractedCatalogs`
    - Polly/Browser speaks with proper math pronunciation and pacing
 
-2. **Floating selection TTS tools that pass catalog IDs:**
-   - User selects "The quadratic formula" text
-   - Tool detects nearest `data-catalog-idref="auto-choice-q1-a-0"`
-   - Calls `ttsService.speak(selectedText, { catalogId: 'auto-choice-q1-a-0' })`
-   - Resolver finds SSML with `<emphasis>`
-   - Speaks with proper emphasis
-
-   The annotation toolbar read-aloud path intentionally speaks the selected
-   visible range and bypasses catalogs.
+2. **Selection read-aloud (annotation toolbar):**
+   - User selects "The quadratic formula" and presses read-aloud
+   - Toolbar calls `ttsService.speakRange(range, { contentRoot })`, which
+     bypasses catalogs
+   - Speaks the selected visible text as generated speech, without the
+     authored `<emphasis>`
 
 3. **Plain Text Fallback:**
-   - User selects "Graphing" (choice d - no SSML)
-   - No catalog ID present
-   - TTS uses plain text with browser TTS
+   - Choice d ("Graphing") carries no SSML and no `data-catalog-idref`
+   - TTS speaks its visible text
    - Still works, just without enhanced pronunciation
 
 #### Extraction Service

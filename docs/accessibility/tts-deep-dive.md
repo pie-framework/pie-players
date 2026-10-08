@@ -47,13 +47,10 @@ classes are:
   assessment, passage, item, and model catalogs.
 - `HighlightCoordinator`, which receives TTS highlight updates.
 
-`@pie-players/pie-tool-tts-inline` is the primary runtime UI. It renders the
+`@pie-players/pie-tool-tts-inline` is the runtime UI. It renders the
 play/pause controls in item and passage toolbars, finds the readable content
-region, and calls `ttsService.speak(...)`.
-
-`@pie-players/pie-tool-text-to-speech` is a floating text-selection TTS tool. It
-reads with the TTS service the host passes it, already initialized.
-Default section and item toolbars register `pie-tool-tts-inline`.
+region, and calls `ttsService.speak(...)`. The annotation toolbar's read-aloud
+speaks a selection through `ttsService.speakRange(...)`.
 
 `@pie-players/tts-client-server` provides `ServerTTSProvider`, the browser-side
 bridge to a host TTS API. It plays the returned audio in an `HTMLAudioElement`
@@ -358,9 +355,7 @@ no toolkit and keep the elements' labels.
 
 ## Current-State Notes
 
-- `pie-tool-tts-inline` is the primary toolbar UI path.
-- `pie-tool-text-to-speech` is a floating text-selection tool outside the
-  default inline toolbar path.
+- `pie-tool-tts-inline` is the toolbar UI path.
 - `data-catalog-idref` is the runtime catalog reference attribute.
 - `SSMLExtractor` is available, and `extractedCatalogs` are registered when
   present, but automatic extraction is not part of the shell registration path

@@ -257,7 +257,6 @@
         "@pie-players/pie-tool-dictionary": "workspace:*",
         "@pie-players/pie-tool-picture-dictionary": "workspace:*",
         "@pie-players/pie-tool-sign-language": "workspace:*",
-        "@pie-players/pie-tool-text-to-speech": "workspace:*",
         "@pie-players/pie-tool-tts-inline": "workspace:*",
         "@pie-players/tts-client-server": "workspace:*",
         "@pie-players/tts-server-core": "workspace:*",
@@ -898,23 +897,6 @@
     },
     "packages/tool-sign-language": {
       "name": "@pie-players/pie-tool-sign-language",
-      "version": "0.3.74",
-      "dependencies": {
-        "@pie-players/pie-assessment-toolkit": "workspace:*",
-        "@pie-players/pie-players-shared": "workspace:*",
-      },
-      "devDependencies": {
-        "@biomejs/biome": "^2.5.15",
-        "@sveltejs/vite-plugin-svelte": "^7.3.1",
-        "svelte": "^5.57.1",
-        "svelte-check": "^4.7.6",
-        "typescript": "^5.9.3",
-        "vite": "^8.3.2",
-        "vite-plugin-dts": "^5.1.2",
-      },
-    },
-    "packages/tool-text-to-speech": {
-      "name": "@pie-players/pie-tool-text-to-speech",
       "version": "0.3.74",
       "dependencies": {
         "@pie-players/pie-assessment-toolkit": "workspace:*",
@@ -1607,8 +1589,6 @@
     "@pie-players/pie-tool-ruler": ["@pie-players/pie-tool-ruler@workspace:packages/tool-ruler"],
 
     "@pie-players/pie-tool-sign-language": ["@pie-players/pie-tool-sign-language@workspace:packages/tool-sign-language"],
-
-    "@pie-players/pie-tool-text-to-speech": ["@pie-players/pie-tool-text-to-speech@workspace:packages/tool-text-to-speech"],
 
     "@pie-players/pie-tool-theme": ["@pie-players/pie-tool-theme@workspace:packages/tool-color-scheme"],
 

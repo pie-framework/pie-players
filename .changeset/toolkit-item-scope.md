@@ -2,7 +2,6 @@
 "@pie-players/pie-assessment-toolkit": patch
 "@pie-players/pie-section-player": patch
 "@pie-players/pie-players-shared": patch
-"@pie-players/pie-tool-text-to-speech": patch
 "@pie-players/pie-tool-annotation-toolbar": patch
 ---
 

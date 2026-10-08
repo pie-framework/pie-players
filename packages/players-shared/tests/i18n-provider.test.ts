@@ -140,16 +140,16 @@ describe("interpolation and plurals", () => {
 		// a translator hands back when they work from the English forms — must still
 		// render, not resolve to nothing.
 		const i18n = createPartialProvider("ar-SA", {
-			tools: {
-				textToSpeech: {
-					charactersSelected: { one: "حرف واحد", other: "{count} حرف" },
+			player: {
+				formative: {
+					triesLeft: { one: "محاولة واحدة", other: "{count} محاولات" },
 				},
 			},
 		});
 		await i18n.setLocale("ar-SA");
 		expect(
-			i18n.plural("tools.textToSpeech.charactersSelected", { count: 2 }),
-		).toBe("2 حرف");
+			i18n.plural("player.formative.triesLeft", { count: 2 }),
+		).toBe("2 محاولات");
 	});
 
 	test("plural falls back to t() for a key that is not a plural group", () => {

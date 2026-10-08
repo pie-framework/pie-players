@@ -648,7 +648,6 @@ Yellow highlight with underline (::highlight CSS)
 **Multi-Level TTS Entry Points:**
 
 - **Content-Level TTS** (`tool-tts-inline`): Speaker icons in passage/item headers pass catalog context and a live content element, allowing `TTSService` to resolve `data-catalog-idref` regions.
-- **Floating selection TTS** (`tool-text-to-speech`): Can detect the nearest `data-catalog-idref` and request a catalog-backed utterance.
 - **Annotation toolbar read-aloud**: Speaks the selected visible range and intentionally bypasses catalogs with `ignoreCatalogs`.
 
 **Read-aloud suppression:** `data-tts-suppress` on a content element marks it never-spoken, for items where reading is the construct (decoding, spelling). It is enforced in *every* entry point above — including the selection path, which filters the `Range` because it never walks the DOM — and it overrides both an authored `spoken` card and the learner's PNP entitlement. Speech-only by decision: braille preserves orthography where speech destroys it, and for signing the deciding fact lives in the recording rather than the markup. See [Accessibility Catalogs Integration Guide](../accessibility/accessibility-catalogs-integration-guide.md#suppressing-read-aloud).

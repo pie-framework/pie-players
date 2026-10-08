@@ -354,13 +354,6 @@ export interface TtsServiceApi {
 	getCurrentText(): string | null;
 
 	/**
-	 * Whether a catalog holds spoken content this service could speak.
-	 * Optional: a service without one resolves a selection to the nearest
-	 * docked catalog id.
-	 */
-	hasSpokenAlternate?(catalogId: string, language?: string): boolean;
-
-	/**
 	 * Subscribe to state changes
 	 */
 	onStateChange(id: string, callback: (state: PlaybackState) => void): void;

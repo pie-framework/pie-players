@@ -5,8 +5,8 @@ import {
 	resolveCalculatorProviderId,
 } from "../src/registrations/calculator.js";
 import { PACKAGED_TOOL_TAG_MAP } from "../src/packaged-capability-composition.js";
-import type { ToolContext } from "@pie-players/pie-assessment-toolkit/tools/internal";
-import type { ToolbarContext } from "@pie-players/pie-assessment-toolkit/tools/internal";
+import type { ToolContext } from "@pie-players/pie-assessment-toolkit/tools/registration";
+import type { ToolbarContext } from "@pie-players/pie-assessment-toolkit/tools/registration";
 import { resolveInterfaceI18n } from "@pie-players/pie-players-shared/i18n/provider";
 
 const createFakeElement = (tag: string) =>

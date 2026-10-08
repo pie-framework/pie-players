@@ -40,13 +40,13 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
 import { SectionRuntimeEngine } from "@pie-players/pie-assessment-toolkit/runtime/engine";
-import { FrameworkErrorBus } from "@pie-players/pie-assessment-toolkit/runtime/internal";
+import { FrameworkErrorBus } from "@pie-players/pie-assessment-toolkit/runtime/engine";
 
 import { attachRuntimeCallbackBridge } from "../src/components/shared/section-player-runtime-callbacks.js";
 import type {
 	LoadingCompleteHandler,
 	StageChangeHandler,
-} from "@pie-players/pie-assessment-toolkit/runtime/internal";
+} from "@pie-players/pie-assessment-toolkit/runtime/engine";
 
 beforeAll(() => {
 	if (

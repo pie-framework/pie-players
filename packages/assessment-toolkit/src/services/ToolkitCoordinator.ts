@@ -83,7 +83,7 @@ import {
 	type ToolPolicyDecision,
 	type ToolPolicyDecisionRequest,
 } from "../policy/engine.js";
-import { resolveDefaultPnpEnforcement } from "../policy/internal.js";
+import { resolveDefaultPnpEnforcement } from "../policy/core/pnp-policy-inputs.js";
 import type {
 	SectionControllerContext,
 	SectionControllerEvent,

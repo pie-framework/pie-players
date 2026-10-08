@@ -51,7 +51,7 @@ That is an accommodation, and PIE has the machinery for accommodations — the m
 ## Package And Export Ownership
 
 - Owning package: `@pie-players/pie-assessment-toolkit` for the support id, the decision API and the grant-AND-content rule; `@pie-players/pie-default-tool-loaders` for the capability itself; `@pie-players/pie-section-player` and `@pie-players/pie-print-player` for rendering it into their own surfaces.
-- Public export path: `resolveContentCapabilities` on the existing `tools/internal` entry, `AccessibilityCatalogResolver` on a narrow `services/` subpath so print can reach it without bundling the toolkit root, and `accessibility` on `<pie-print>`'s config. `ToolkitCoordinator.decideFeaturePolicy(featureId)` and `AccessibilityCatalogResolver.getAlternative(...)` need no additions.
+- Public export path: `resolveContentCapabilities` on the `tools/registration` entry, `AccessibilityCatalogResolver` on a narrow `services/` subpath so print can reach it without bundling the toolkit root, and `accessibility` on `<pie-print>`'s config. `ToolkitCoordinator.decideFeaturePolicy(featureId)` and `AccessibilityCatalogResolver.getAlternative(...)` need no additions.
 - Consuming packages or apps: section-player, print-player, PNP debugger. `pie-elements-ng` loses code rather than gaining any.
 - Runtime environment: browser.
 - Outside this repo: the content side lands in `pie-api-aws` — the Learnosity → PIE mappers in `packages/transform/src/ly-pie/` and a backfill command in `dev/cli`. That work is independently shippable and should go first; see [Where The Transform Actually Lives](#where-the-transform-actually-lives).

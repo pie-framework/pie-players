@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 // Host-facing TTS config helpers come from the public surface; the
-// registration-authoring resolvers come from `tools/internal`.
+// registration-authoring resolvers come from `tools/registration`.
 import {
 	DEFAULT_TTS_SPEED_OPTIONS,
 	formatTTSSpeedOptionsAsText,
@@ -17,7 +17,7 @@ import {
 	resolveTTSBackend,
 	resolveTTSRuntimeSettings,
 	resolveTransportMode,
-} from "@pie-players/pie-assessment-toolkit/tools/internal";
+} from "@pie-players/pie-assessment-toolkit/tools/registration";
 import { ttsToolRegistration } from "../src/registrations/tts.js";
 
 describe("tts-runtime-config defaults", () => {

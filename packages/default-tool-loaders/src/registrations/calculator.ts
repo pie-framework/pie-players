@@ -10,13 +10,13 @@ import type {
 	ToolToolbarButtonDefinition,
 	ToolToolbarRenderResult,
 	ToolbarContext,
-} from "@pie-players/pie-assessment-toolkit/tools/internal";
-import type { ToolProviderConfig } from "@pie-players/pie-assessment-toolkit/tools/internal";
-import type { ToolContext } from "@pie-players/pie-assessment-toolkit/tools/internal";
+} from "@pie-players/pie-assessment-toolkit/tools/registration";
+import type { ToolProviderConfig } from "@pie-players/pie-assessment-toolkit/tools/registration";
+import type { ToolContext } from "@pie-players/pie-assessment-toolkit/tools/registration";
 import type { MessageKey } from "@pie-players/pie-players-shared/i18n/types";
-import { hasMathContent } from "@pie-players/pie-assessment-toolkit/tools/internal";
-import { createScopedToolId } from "@pie-players/pie-assessment-toolkit/tools/internal";
-import { createToolElement } from "@pie-players/pie-assessment-toolkit/tools/internal";
+import { hasMathContent } from "@pie-players/pie-assessment-toolkit/tools/registration";
+import { createScopedToolId } from "@pie-players/pie-assessment-toolkit/tools/registration";
+import { createToolElement } from "@pie-players/pie-assessment-toolkit/tools/registration";
 import type { CalculatorProviderConfig } from "@pie-players/pie-assessment-toolkit/tools/client";
 import { CortexToolProvider } from "../calculator-providers/CortexToolProvider.js";
 import { DesmosToolProvider } from "../calculator-providers/DesmosToolProvider.js";

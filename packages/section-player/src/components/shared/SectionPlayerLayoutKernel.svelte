@@ -23,7 +23,7 @@
 		cohortsEqual,
 		makeCohort,
 		type EngineReadinessSignals,
-	} from "@pie-players/pie-assessment-toolkit/runtime/internal";
+	} from "@pie-players/pie-assessment-toolkit/runtime/engine";
 	import type {
 		AssessmentSection,
 		SectionControllerSessionState,
@@ -53,11 +53,11 @@
 		RuntimeConfig,
 		StageChangeHandler,
 		LoadingCompleteHandler,
-	} from "@pie-players/pie-assessment-toolkit/runtime/internal";
+	} from "@pie-players/pie-assessment-toolkit/runtime/engine";
 	import { attachRuntimeCallbackBridge } from "./section-player-runtime-callbacks.js";
 	import type { SectionPlayerCardRenderContext } from "./section-player-card-context.js";
 	import { coerceBooleanLike } from "@pie-players/pie-players-shared";
-	import { createReadinessDetail } from "@pie-players/pie-assessment-toolkit/runtime/internal";
+	import { createReadinessDetail } from "@pie-players/pie-assessment-toolkit/runtime/engine";
 	import SectionPlayerLayoutScaffold from "./SectionPlayerLayoutScaffold.svelte";
 	import type { SectionPlayerHostHooks } from "../../contracts/host-hooks.js";
 

@@ -8,10 +8,10 @@ import type {
 	ToolRegistration,
 	ToolToolbarRenderResult,
 	ToolbarContext,
-} from "@pie-players/pie-assessment-toolkit/tools/internal";
-import type { ToolContext } from "@pie-players/pie-assessment-toolkit/tools/internal";
-import { hasReadableText } from "@pie-players/pie-assessment-toolkit/tools/internal";
-import { createScopedToolId } from "@pie-players/pie-assessment-toolkit/tools/internal";
+} from "@pie-players/pie-assessment-toolkit/tools/registration";
+import type { ToolContext } from "@pie-players/pie-assessment-toolkit/tools/registration";
+import { hasReadableText } from "@pie-players/pie-assessment-toolkit/tools/registration";
+import { createScopedToolId } from "@pie-players/pie-assessment-toolkit/tools/registration";
 import {
 	buildRuntimeTTSConfig,
 	normalizeTTSLayoutMode,
@@ -23,8 +23,8 @@ import {
 	resolveTTSRuntimeSettings,
 	resolveRuntimeProvider,
 	resolveTransportMode,
-} from "@pie-players/pie-assessment-toolkit/tools/internal";
-import { TTSToolProvider } from "@pie-players/pie-assessment-toolkit/tools/internal";
+} from "@pie-players/pie-assessment-toolkit/tools/registration";
+import { TTSToolProvider } from "@pie-players/pie-assessment-toolkit/tools/registration";
 
 // This package owns the server adapter's import, so the toolkit never names it
 // and a bundler building the toolkit alone has nothing to resolve.

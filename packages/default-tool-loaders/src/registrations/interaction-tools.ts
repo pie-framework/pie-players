@@ -11,17 +11,17 @@ import type {
 	ToolToolbarButtonDefinition,
 	ToolToolbarRenderResult,
 	ToolbarContext,
-} from "@pie-players/pie-assessment-toolkit/tools/internal";
-import type { ToolContext } from "@pie-players/pie-assessment-toolkit/tools/internal";
-import { hasChoiceInteraction } from "@pie-players/pie-assessment-toolkit/tools/internal";
+} from "@pie-players/pie-assessment-toolkit/tools/registration";
+import type { ToolContext } from "@pie-players/pie-assessment-toolkit/tools/registration";
+import { hasChoiceInteraction } from "@pie-players/pie-assessment-toolkit/tools/registration";
 import {
 	createToolElement,
 	type ToolComponentOverrides,
-} from "@pie-players/pie-assessment-toolkit/tools/internal";
+} from "@pie-players/pie-assessment-toolkit/tools/registration";
 import {
 	createScopedVisibilityBinding,
 	syncButtonAndOverlayVisibility,
-} from "@pie-players/pie-assessment-toolkit/tools/internal";
+} from "@pie-players/pie-assessment-toolkit/tools/registration";
 import { resolveOverlayElement } from "./overlay-element-cache.js";
 
 /**

@@ -69,7 +69,7 @@
 		AssessmentSection,
 		SectionControllerSessionState,
 	} from "@pie-players/pie-players-shared/types";
-	import { createToolSurfaceHost } from "@pie-players/pie-assessment-toolkit/tools/internal";
+	import { createToolSurfaceHost } from "@pie-players/pie-assessment-toolkit/tools/registration";
 	import {
 		DEFAULT_ASSESSMENT_ID,
 		DEFAULT_ENV,
@@ -77,7 +77,7 @@
 		resolveOnFrameworkError,
 		type RuntimeConfig,
 		type StageChangeHandler,
-	} from "@pie-players/pie-assessment-toolkit/runtime/internal";
+	} from "@pie-players/pie-assessment-toolkit/runtime/engine";
 
 	const logger = createPieLogger("pie-section-player", () => false);
 

@@ -160,12 +160,12 @@ import type {
   ToolToolbarButtonDefinition,
   ToolToolbarRenderResult,
   ToolbarContext
-} from '@pie-players/pie-assessment-toolkit/tools/internal';
+} from '@pie-players/pie-assessment-toolkit/tools/registration';
 import {
   createScopedToolId,
   createToolElement,
   hasMathContent
-} from '@pie-players/pie-assessment-toolkit/tools/internal';
+} from '@pie-players/pie-assessment-toolkit/tools/registration';
 
 export const calculatorToolRegistration: ToolRegistration = {
   toolId: "calculator",
@@ -270,7 +270,7 @@ import {
   hasMathContent,
   hasScienceContent,
   hasChoiceInteraction
-} from '@pie-players/pie-assessment-toolkit/tools/internal';
+} from '@pie-players/pie-assessment-toolkit/tools/registration';
 
 // Check if context has readable text (10+ characters)
 isVisibleInContext(context: ToolContext): boolean {
@@ -619,7 +619,7 @@ Surface names belong to the host, not to this package. Core validates only that 
 | `content-media` | per item or passage card | `decideFeaturePolicy` | resolved and passed as `content` |
 | `section-overlay` | section singleton | `decideFeaturePolicy` for `region`, `decideToolPolicy` for a placed toolbar activation | not resolvable — see below |
 
-A renderer finds what it can mount by asking the registry, which is what keeps it from naming a capability. `section-player` centralizes that work in its internal Tool Surface Host: the geometry adapters provide only a surface name, anchor, scope, registry, and runtime services. The host owns discovery, policy/catalog invalidation, content resolution, structural comparison, lazy loading, mount/sync/teardown, and per-capability failure isolation.
+A renderer finds what it can mount by asking the registry, which is what keeps it from naming a capability. `section-player` centralizes that work in the toolkit's Tool Surface Host (`createToolSurfaceHost` on `tools/registration`): the geometry adapters provide only a surface name, anchor, scope, registry, and runtime services. The host owns discovery, policy/catalog invalidation, content resolution, structural comparison, lazy loading, mount/sync/teardown, and per-capability failure isolation.
 
 ```ts
 const unsubscribe = registry.onRegistryChange((event) => {
@@ -683,8 +683,8 @@ import type {
   ToolRegistration,
   ToolToolbarRenderResult,
   ToolbarContext
-} from '@pie-players/pie-assessment-toolkit/tools/internal';
-import { createToolElement } from '@pie-players/pie-assessment-toolkit/tools/internal';
+} from '@pie-players/pie-assessment-toolkit/tools/registration';
+import { createToolElement } from '@pie-players/pie-assessment-toolkit/tools/registration';
 
 export const myToolRegistration: ToolRegistration = {
   toolId: "myTool",

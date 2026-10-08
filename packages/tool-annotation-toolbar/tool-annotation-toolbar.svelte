@@ -36,7 +36,7 @@
 		composedContains,
 		isShadowRootNode,
 		resolveContentLanguage
-	} from '@pie-players/pie-assessment-toolkit/runtime/internal';
+	} from '@pie-players/pie-assessment-toolkit';
 	import { resolveInterfaceI18n } from '@pie-players/pie-players-shared/i18n/provider';
 	import { sanitizeSvgIcon } from '@pie-players/pie-players-shared/security';
 	import {

@@ -16,7 +16,7 @@
 import type {
 	ToolCoordinatorApi,
 	ToolbarContext,
-} from "@pie-players/pie-assessment-toolkit/tools/internal";
+} from "@pie-players/pie-assessment-toolkit/tools/registration";
 import { TOOL_ELEMENT_UNMOUNT_CALLBACK_PROP } from "./tts.js";
 
 const overlayElements = new WeakMap<

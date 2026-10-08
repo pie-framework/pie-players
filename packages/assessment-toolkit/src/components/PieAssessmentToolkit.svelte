@@ -1732,15 +1732,21 @@ const DEFAULT_ENV = {
 				// composition, never the previous section's, which it would otherwise
 				// hold until the next frame.
 				untrack(() => flushPendingComposition());
-				emit("toolkit-ready", {
-					runtimeId,
-					assessmentId: effectiveAssessmentId,
-					sectionId: effectiveSectionId,
-					itemPlayer: effectiveItemPlayer,
-					coordinator: effectiveCoordinator,
-				});
-				emit("section-ready", {
-					sectionId: effectiveSectionId,
+				// A microtask later, so the layout commits the composition before the
+				// ready handlers write: in the same task their writes joined its
+				// update, and a host-built layout's items pane never mounted its cards.
+				queueMicrotask(() => {
+					if (cancelled) return;
+					emit("toolkit-ready", {
+						runtimeId,
+						assessmentId: effectiveAssessmentId,
+						sectionId: effectiveSectionId,
+						itemPlayer: effectiveItemPlayer,
+						coordinator: effectiveCoordinator,
+					});
+					emit("section-ready", {
+						sectionId: effectiveSectionId,
+					});
 				});
 			})
 			.catch((error) => {

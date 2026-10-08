@@ -40,6 +40,7 @@ class MockTTSImpl implements ITTSProviderImplementation {
 	isPaused(): boolean {
 		return false;
 	}
+	updateSettings(): void {}
 }
 
 class MockTTSProvider implements ITTSProvider {
@@ -90,11 +91,8 @@ function createRecordingCoordinator() {
 		sentenceElementHighlights,
 		clearTypes,
 		coordinator: {
-			highlightTTSWord: (node: Text, start: number, end: number) => {
-				wordHighlights.push(node.textContent?.slice(start, end) || "");
-			},
-			highlightRange: (range: Range) => {
-				wordHighlights.push(range.toString());
+			highlightTTSWord: (ranges: Range[]) => {
+				wordHighlights.push(ranges.join(""));
 			},
 			highlightTTSWordElement: (element: Element) => {
 				wordHighlights.push(element.textContent || "");
@@ -172,6 +170,54 @@ describe("TTSService highlight target resolver", () => {
 		await service.speak(root);
 
 		expect(recording.wordHighlights).toContain("spoken");
+	});
+
+	test("highlights a word spanning several text nodes whole", async () => {
+		const impl = new MockTTSImpl();
+		impl.boundariesByText.set("café au lait", [
+			{ word: "café", position: 0, length: "café".length },
+		]);
+		const service = new TTSService();
+		await service.initialize(new MockTTSProvider(impl));
+		const root = document.createElement("p");
+		root.innerHTML = "caf<em>é</em> au lait";
+		const recording = createRecordingCoordinator();
+		service.setHighlightCoordinator(recording.coordinator as any);
+
+		await service.speak(root);
+
+		expect(impl.speakCalls).toEqual(["café au lait"]);
+		expect(recording.wordHighlights).toEqual(["café"]);
+	});
+
+	test("traces a read only while the read-aloud debug flag is set", async () => {
+		const impl = new MockTTSImpl();
+		impl.boundariesByText.set("spoken visible", [
+			{ word: "spoken", position: 0, length: "spoken".length },
+		]);
+		const service = new TTSService();
+		await service.initialize(new MockTTSProvider(impl));
+		const root = document.createElement("div");
+		root.textContent = "spoken visible";
+		service.setHighlightCoordinator(
+			createRecordingCoordinator().coordinator as any,
+		);
+		const traced: string[] = [];
+		const originalDebug = console.debug;
+		console.debug = (prefix: unknown) => {
+			traced.push(String(prefix));
+		};
+		try {
+			await service.speak(root);
+			expect(traced).toEqual([]);
+
+			(globalThis as any).__PIE_TTS_DEBUG__ = true;
+			await service.speak(root);
+			expect(traced).toContain("[tts-service]");
+		} finally {
+			console.debug = originalDebug;
+			(globalThis as any).__PIE_TTS_DEBUG__ = undefined;
+		}
 	});
 
 	test("lets a host resolver remap the active word range before painting", async () => {

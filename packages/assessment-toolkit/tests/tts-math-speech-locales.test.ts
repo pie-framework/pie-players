@@ -6,6 +6,7 @@ import path from "node:path";
 import type { MathAwareSpeechChunk } from "../src/services/tts/math-aware-text-processing";
 import { resolveMathSpeechFromChunks } from "../src/services/tts/math-speech";
 import { sreLocaleSource } from "../src/services/tts/sre-locales";
+import { workspaceSources } from "../../../test-support/workspace-sources";
 
 const mathmapsDir = path.dirname(
 	Bun.resolveSync("speech-rule-engine/lib/mathmaps/base.json", import.meta.dir),
@@ -198,6 +199,20 @@ describe("SRE start-up in a host bundle", () => {
 			target: "bun",
 			format: "esm",
 			splitting: true,
+			// Workspace siblings bundle from source, as the test preload resolves
+			// them, so the bundle needs no sibling build.
+			plugins: [
+				{
+					name: "pie-workspace-sources",
+					setup(bundler) {
+						const sources = workspaceSources();
+						bundler.onResolve({ filter: /^@pie-players\// }, ({ path: id }) => {
+							const source = sources.get(id);
+							return source ? { path: source } : undefined;
+						});
+					},
+				},
+			],
 		});
 		if (!build.success) {
 			throw new AggregateError(build.logs, "bundling math speech failed");

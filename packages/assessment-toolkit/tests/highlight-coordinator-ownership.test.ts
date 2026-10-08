@@ -82,8 +82,8 @@ describe("HighlightCoordinator highlight ownership", () => {
 		const first = new HighlightCoordinator();
 		const second = new HighlightCoordinator();
 
-		first.highlightTTSWord(textIn("first"), 0, "first".length);
-		second.highlightTTSWord(textIn("second"), 0, "second".length);
+		first.highlightTTSWord([rangeOver(textIn("first"))]);
+		second.highlightTTSWord([rangeOver(textIn("second"))]);
 
 		expect(painted("tts-word").sort()).toEqual(["first", "second"]);
 		first.destroy();
@@ -112,6 +112,23 @@ describe("HighlightCoordinator highlight ownership", () => {
 	});
 });
 
+describe("HighlightCoordinator word highlight", () => {
+	test("paints every range of the spoken word, replacing the previous word", () => {
+		installHighlights();
+		const coordinator = new HighlightCoordinator();
+
+		coordinator.highlightTTSWord([
+			rangeOver(textIn("Missis")),
+			rangeOver(textIn("sippi")),
+		]);
+		expect(painted("tts-word")).toEqual(["Missis", "sippi"]);
+
+		coordinator.highlightTTSWord([rangeOver(textIn("river"))]);
+		expect(painted("tts-word")).toEqual(["river"]);
+		coordinator.destroy();
+	});
+});
+
 describe("HighlightCoordinator theme refresh", () => {
 	test("keeps the colors adapted to the content being read", async () => {
 		installHighlights();
@@ -122,7 +139,7 @@ describe("HighlightCoordinator theme refresh", () => {
 			"rgb(0, 128, 0)",
 		);
 
-		coordinator.highlightTTSWord(word, 0, "green".length);
+		coordinator.highlightTTSWord([rangeOver(word)]);
 		const adapted = document.documentElement.style.getPropertyValue(
 			"--pie-tts-word-highlight",
 		);
@@ -158,7 +175,7 @@ describe("HighlightCoordinator theme refresh", () => {
 				"--pie-missing",
 				"rgb(0, 128, 0)",
 			);
-			reading.highlightTTSWord(word, 0, "green".length);
+			reading.highlightTTSWord([rangeOver(word)]);
 
 			document.documentElement.setAttribute("data-theme", "dark");
 			await new Promise((resolve) => setTimeout(resolve, 20));

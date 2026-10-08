@@ -48,6 +48,7 @@ class MockTTSImpl implements ITTSProviderImplementation {
 	isPaused(): boolean {
 		return false;
 	}
+	updateSettings(): void {}
 }
 
 class MockTTSProvider implements ITTSProvider {
@@ -209,6 +210,48 @@ describe("recorded audio as a spoken alternate", () => {
 		element.dispatchEvent(new Event("ended"));
 		await speaking;
 		expect(service.getState()).toBe(PlaybackState.IDLE);
+	});
+
+	test("a pause before the clip starts holds it, and resume plays the clip", async () => {
+		const { impl, service } = await newService([scriptCard(), audioCard()]);
+		const plays: Array<{
+			resolve: () => void;
+			reject: (error: Error) => void;
+		}> = [];
+		captureAudioElements(
+			() =>
+				new Promise<void>((resolve, reject) => {
+					plays.push({ resolve, reject });
+				}),
+		);
+		const speaking = speakItem(service, audioOnlyRoot());
+		const element = await nextAudioElement();
+		// A browser rejects a pending play with an AbortError when the element
+		// is paused before it starts.
+		element.pause = () => {
+			plays.at(-1)?.reject(
+				Object.assign(new Error("play() interrupted by pause()"), {
+					name: "AbortError",
+				}),
+			);
+		};
+		expect(service.getState()).toBe(PlaybackState.LOADING);
+
+		service.pause();
+		await new Promise((resolve) => setTimeout(resolve, 5));
+
+		expect(service.getState()).toBe(PlaybackState.PAUSED);
+		// The clip did not fail: the reading script stays unread.
+		expect(impl.speakCalls).toEqual([]);
+
+		service.resume();
+		expect(plays).toHaveLength(2);
+		plays[1].resolve();
+		await Promise.resolve();
+		expect(service.getState()).toBe(PlaybackState.PLAYING);
+		element.dispatchEvent(new Event("ended"));
+		await speaking;
+		expect(impl.speakCalls).toEqual([]);
 	});
 
 	test("keeps a recorded-audio replacement loading until replacement media starts", async () => {

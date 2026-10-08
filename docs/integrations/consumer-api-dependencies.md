@@ -153,6 +153,25 @@ except that a `lang_id` the host sets wins on the custom transport; Hosts A and
 R both read aloud over that transport with `lang_id` set, so their requests are
 unchanged. Row verification dates are unchanged.
 
+Also on 2026-10-08 a pause or stop issued while a read loads started holding:
+before, the read began once its audio arrived. Media started during loading now
+pauses the read, as it pauses one already sounding. A word spanning several
+text nodes highlights whole, through the one word-highlight path:
+`HighlightCoordinator.highlightTTSWord` takes the word's ranges, where it took a
+text node and offsets. `ITTSProviderImplementation.updateSettings` is required.
+The TTS settings panel picks its automatic, recommended and preview browser
+voices for the runtime context's content language, as the reader does, else the
+browser's language; Host R, the one host mounting the panel, names no content
+language, so its panel offers the voices it did. Read-aloud's providers, tool
+provider and settings panel log only under `PIE_TTS_DEBUG`. The server backend's
+backend-call telemetry names the tool `textToSpeech`, as the toolkit's does,
+where it named it `tts`. Checked against the checkouts of Hosts A, M, P, R and
+V: none implements a TTS provider, constructs `TTSToolProvider`, whose features
+are now its speech provider's, calls `updateSettings`, `highlightTTSWord` or
+`pauseTtsForMediaAudio`, or reads backend-call telemetry, and Host A calls only
+`ttsService.stop()`, which still ends a loading read. Row verification dates are
+unchanged.
+
 The 2026-09-17 session-commit change (PIE-1058) was checked against the
 recorded rows rather than re-derived from the checkouts. It renames and removes
 nothing: `pie-item-player` gains one opt-in property, `session-snapshot`, one

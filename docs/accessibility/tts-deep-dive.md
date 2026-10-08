@@ -140,6 +140,8 @@ TTSService -> BrowserTTSProvider -> Web Speech API -> boundary events
 
 It does not support SSML. When generated Math speech is used with the browser
 provider, the toolkit sends plain speech text rather than `<speak>...</speak>`.
+An authored `<speak>` document that reaches it is voiced as its spoken text, with
+word boundaries still reported as offsets into the document.
 
 ### Server Provider
 

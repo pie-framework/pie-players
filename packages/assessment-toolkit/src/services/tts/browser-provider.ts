@@ -15,10 +15,83 @@ import type {
 	TTSProviderCapabilities,
 	TTSSpeechSegment,
 } from "@pie-players/pie-tts";
+import { extractSpokenText } from "./ssml/spoken-text.js";
 import { segmentSentences as segmentTextToSentences } from "./text-segmentation.js";
 
 const NATIVE_START_TIMEOUT_MS = 5_000;
 const VOICE_INVENTORY_TIMEOUT_MS = 2_000;
+
+// The provider options the toolkit and this provider read. Every other option,
+// and `voice`, belongs to the provider it was configured for: a Polly voice such
+// as "Joanna" resolves to no browser voice, and an unresolved voice fails speak.
+const PORTABLE_PROVIDER_OPTIONS = [
+	"__pieTelemetry",
+	"contentLanguage",
+	"highlightMode",
+	"locale",
+	"mathSpeech",
+	"segmenter",
+	"structuralPauses",
+	"textNormalization",
+] as const;
+
+/**
+ * The part of another provider's configuration that keeps its meaning on
+ * browser speech. Every path that replaces a provider with browser speech
+ * starts it with this.
+ */
+export const browserFallbackConfig = (
+	config: Partial<TTSConfig>,
+): Partial<TTSConfig> => {
+	const fallback: Partial<TTSConfig> = {};
+	if (config.rate !== undefined) fallback.rate = config.rate;
+	if (config.pitch !== undefined) fallback.pitch = config.pitch;
+	if (config.mathTokenHighlighting !== undefined) {
+		fallback.mathTokenHighlighting = config.mathTokenHighlighting;
+	}
+	const options = config.providerOptions;
+	if (options && typeof options === "object") {
+		const portable: Record<string, unknown> = {};
+		for (const key of PORTABLE_PROVIDER_OPTIONS) {
+			if (options[key] !== undefined) portable[key] = options[key];
+		}
+		if (Object.keys(portable).length > 0) fallback.providerOptions = portable;
+	}
+	return fallback;
+};
+
+const SSML_DOCUMENT = /^\s*<speak[\s/>]/i;
+
+/**
+ * The Web Speech API reads SSML tags aloud, so a `<speak>` document is voiced
+ * as its spoken text. Boundary offsets still index the text as sent: that is
+ * the space the highlight pipeline resolves a raw-SSML chunk in.
+ */
+const toUtteranceText = (
+	text: string,
+): { text: string; sourceOffset: (offset: number) => number } => {
+	if (!SSML_DOCUMENT.test(text)) {
+		return { text, sourceOffset: (offset) => offset };
+	}
+	const { spokenText, rawToSpokenOffsetMap } = extractSpokenText(text);
+	const spokenToRaw: number[] = [];
+	for (const [raw, spoken] of rawToSpokenOffsetMap) {
+		const known = spokenToRaw[spoken];
+		if (known === undefined || raw < known) spokenToRaw[spoken] = raw;
+	}
+	return {
+		text: spokenText,
+		// Alias text (`<sub alias>`) has no raw offset; it takes the nearest
+		// preceding one.
+		sourceOffset: (offset) => {
+			for (let index = offset; index >= 0; index--) {
+				const raw = spokenToRaw[index];
+				if (raw !== undefined) return raw;
+			}
+			return 0;
+		},
+	};
+};
 
 const normalizeLanguageCode = (value: unknown): string =>
 	String(value || "")
@@ -266,7 +339,8 @@ class BrowserTTSProviderImpl implements ITTSProviderImplementation {
 		const voiceResolution = await this.resolveBrowserVoice(runId);
 		if (!voiceResolution.shouldContinue) return;
 
-		const chunks = this.splitIntoChunks(text);
+		const utterance = toUtteranceText(text);
+		const chunks = this.splitIntoChunks(utterance.text);
 		for (const chunk of chunks) {
 			if (runId !== this.speakRunId) {
 				break;
@@ -276,6 +350,7 @@ class BrowserTTSProviderImpl implements ITTSProviderImplementation {
 				chunk.offset,
 				runId,
 				voiceResolution.voice,
+				utterance.sourceOffset,
 			);
 			if (!shouldContinue) {
 				break;
@@ -293,14 +368,16 @@ class BrowserTTSProviderImpl implements ITTSProviderImplementation {
 		if (!voiceResolution.shouldContinue) return;
 		for (const segment of segments) {
 			if (runId !== this.speakRunId) break;
-			const chunks = this.splitIntoChunks(segment.text);
+			const utterance = toUtteranceText(segment.text);
+			const chunks = this.splitIntoChunks(utterance.text);
 			for (const chunk of chunks) {
 				if (runId !== this.speakRunId) break;
 				const shouldContinue = await this.speakChunk(
 					chunk.text,
-					segment.startOffset + chunk.offset,
+					chunk.offset,
 					runId,
 					voiceResolution.voice,
+					(offset) => segment.startOffset + utterance.sourceOffset(offset),
 				);
 				if (!shouldContinue) break;
 			}
@@ -428,11 +505,16 @@ class BrowserTTSProviderImpl implements ITTSProviderImplementation {
 		return match?.[1]?.length || 1;
 	}
 
+	/**
+	 * `chunkOffset` places the chunk in the utterance text; `sourceOffset` maps an
+	 * utterance offset to the boundary position reported for it.
+	 */
 	private async speakChunk(
 		chunkText: string,
 		chunkOffset: number,
 		runId: number,
 		voice: SpeechSynthesisVoice | null,
+		sourceOffset: (offset: number) => number,
 	): Promise<boolean> {
 		return new Promise((resolve, reject) => {
 			if (runId !== this.speakRunId) {
@@ -591,14 +673,19 @@ class BrowserTTSProviderImpl implements ITTSProviderImplementation {
 						Math.min(chunkText.length, charIndex + wordLength),
 					)
 					.trim();
-				const absoluteBoundaryStart = chunkOffset + charIndex;
+				const utteranceStart = chunkOffset + charIndex;
+				const absoluteBoundaryStart = sourceOffset(utteranceStart);
+				const boundaryLength =
+					sourceOffset(utteranceStart + wordLength - 1) +
+					1 -
+					absoluteBoundaryStart;
 				console.log(
 					"[BrowserProvider] Calling onWordBoundary with word:",
 					word,
 					"at position:",
 					absoluteBoundaryStart,
 				);
-				this.onWordBoundary(word, absoluteBoundaryStart, wordLength);
+				this.onWordBoundary(word, absoluteBoundaryStart, boundaryLength);
 			};
 
 			startTimeout = setTimeout(() => {

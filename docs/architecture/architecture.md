@@ -216,7 +216,7 @@ The **Assessment Toolkit** provides composable services for coordinating tools, 
 
 1. **Composable Services** - Import only what you need
 2. **No Framework Lock-in** - Works with any JavaScript framework
-3. **Product Control** - Products control navigation, layout and backend. Session persistence defaults to `localStorage` at the section layer and at the assessment layer, and a product replaces either through its persistence hook (`createSectionSessionPersistence` on the coordinator, `createAssessmentSessionPersistence` on the assessment player)
+3. **Product Control** - Products control navigation, layout and backend. Session persistence defaults to `localStorage` at the section layer and at the assessment layer, stored per attempt id and inactive without one, and a product replaces either through its persistence hook (`createSectionSessionPersistence` on the coordinator, `createAssessmentSessionPersistence` on the assessment player)
 4. **Standard Contracts** - Well-defined event types for component communication
 5. **QTI-Inspired Patterns** - Reuses QTI 3.0 Personal Needs Profile (PNP) concepts for accessibility accommodations
 6. **Section Player Integration** - Toolkit services integrate seamlessly with the section player

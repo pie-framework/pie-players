@@ -650,7 +650,7 @@ const hooks: AssessmentPlayerHooks = {
 };
 ```
 
-The hook receives `context` (containing `assessmentId` and `attemptId`) and `defaults`, which provides a `createDefaultPersistence()` factory. The default strategy uses `localStorage` keyed as `pie:assessment-controller:v1:{assessmentId}:{attemptId}`. For production, always supply your own strategy backed by a real backend.
+The hook receives `context` (containing `assessmentId` and `attemptId`) and `defaults`, which provides a `createDefaultPersistence()` factory. The default strategy uses `localStorage` keyed as `pie:assessment-controller:v1:{assessmentId}:{attemptId}`. Without an `attemptId` it neither loads nor saves: nothing then tells two learners on one device apart. For production, always supply your own strategy backed by a real backend.
 
 ### Triggering persistence
 
@@ -802,7 +802,7 @@ The assessment player is an orchestrator, not a renderer. Understanding the boun
 **Cross-layer session sync:**
 When the active section player emits `session-changed`, the default element captures the section controller's `getSession()` output and writes it into the assessment session via `controller.updateSectionSession()`. When navigating to a previously visited section, the assessment player reads the stored section session from `controller.getSectionSession()` and sets it as the newly mounted section player's `session` property, which the section controller applies in replace mode while it is created.
 
-Item-level persistence can therefore be handled entirely by the assessment controller, but the section layer runs too unless the host turns it off. A section mounted without a saved section session hydrates from the coordinator's section strategy, by default `localStorage` under `pie:section-controller:v1:{assessmentId}:{sectionId}:{attemptId}`, and a `persist()` on the section writes there. A host that makes the assessment player the sole persistence owner passes a coordinator whose `hooks.createSectionSessionPersistence` returns a strategy that loads nothing and saves nothing. A hook that returns no strategy gets the default.
+Item-level persistence can therefore be handled entirely by the assessment controller, but the section layer runs too unless the host turns it off. A section mounted without a saved section session hydrates from the coordinator's section strategy, by default `localStorage` under `pie:section-controller:v1:{assessmentId}:{sectionId}:{attemptId}`, and a `persist()` on the section writes there. Without an attempt id the default strategy does neither. A host that makes the assessment player the sole persistence owner passes a coordinator whose `hooks.createSectionSessionPersistence` returns a strategy that loads nothing and saves nothing. A hook that returns no strategy gets the default.
 
 For full section-player integration details, see the [Section Player Client Integration Guide](../section-player/client-architecture-tutorial.md).
 
@@ -822,7 +822,7 @@ For full section-player integration details, see the [Section Player Client Inte
 
 **Scope subscriptions.** When subscribing to controller events, always clean up the unsubscribe function on route teardown. Orphaned subscriptions leak memory and produce ghost event handlers.
 
-**Make the assessment controller the one persistence owner.** By default both layers persist: the assessment controller to `pie:assessment-controller:v1:{assessmentId}:{attemptId}`, and each section controller to its own `localStorage` entry, which it hydrates from whenever the assessment session holds no entry for that section. The assessment controller already aggregates section sessions into the assessment session, so the coordinator's `hooks.createSectionSessionPersistence` returns a strategy that loads and saves nothing (§13). Two layers writing independently race, and a section the assessment session has no entry for comes back with whatever the section strategy stored.
+**Make the assessment controller the one persistence owner.** By default both layers persist under the attempt id: the assessment controller to `pie:assessment-controller:v1:{assessmentId}:{attemptId}`, and each section controller to its own `localStorage` entry, which it hydrates from whenever the assessment session holds no entry for that section. The assessment controller already aggregates section sessions into the assessment session, so the coordinator's `hooks.createSectionSessionPersistence` returns a strategy that loads and saves nothing (§13). Two layers writing independently race, and a section the assessment session has no entry for comes back with whatever the section strategy stored.
 
 **`attemptId` is owned by the host.** In standalone deployments, reflect `attemptId` in the URL so page refresh and back-navigation restore the correct attempt context. In embedded integrations where an outer layer manages routing, the outer layer owns `attemptId` persistence — the assessment player should receive it as a prop.
 

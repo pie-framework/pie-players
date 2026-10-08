@@ -1,10 +1,9 @@
 /**
- * The tree is raw `EventTarget` nodes, as in `shell-scope.test.ts`: happy-dom's
- * `dispatchEvent` rejects pie-context's events whenever another file loaded
- * pie-context first. Reaching a shell through an open shadow root is covered in
- * the browser, by the annotation toolbar's read-aloud spec.
+ * Reaching a shell through an open shadow root is covered in the browser, by
+ * the annotation toolbar's read-aloud spec.
  */
-import { describe, expect, test } from "bun:test";
+import { GlobalRegistrator } from "@happy-dom/global-registrator";
+import { afterAll, describe, expect, test } from "bun:test";
 import { ContextProvider } from "@pie-players/pie-context";
 import {
 	type AssessmentToolkitShellContext,
@@ -15,46 +14,12 @@ import {
 	catalogContextHolding,
 } from "../src/runtime/catalog-context.js";
 
-const TEXT_NODE = 3;
-const ELEMENT_NODE = 1;
+const ownsDom = typeof window === "undefined";
+if (ownsDom) GlobalRegistrator.register();
 
-class FakeNode extends EventTarget {
-	readonly parentNode: FakeNode | null;
-	readonly nodeType: number;
-
-	constructor(parent: FakeNode | null, nodeType = ELEMENT_NODE) {
-		super();
-		this.parentNode = parent;
-		this.nodeType = nodeType;
-	}
-
-	get parentElement(): FakeNode | null {
-		return this.parentNode;
-	}
-
-	override dispatchEvent(event: Event): boolean {
-		// Each node is a separate native dispatch, which clears the stop flag when
-		// it returns, so the stop is recorded here.
-		let stopped = false;
-		const stopPropagation = Event.prototype.stopPropagation;
-		Object.defineProperty(event, "stopPropagation", {
-			configurable: true,
-			value: () => {
-				stopped = true;
-				stopPropagation.call(event);
-			},
-		});
-		let notCanceled = true;
-		for (
-			let node: FakeNode | null = this;
-			node && !stopped;
-			node = event.bubbles ? node.parentNode : null
-		) {
-			notCanceled = EventTarget.prototype.dispatchEvent.call(node, event);
-		}
-		return notCanceled;
-	}
-}
+afterAll(() => {
+	if (ownsDom && GlobalRegistrator.isRegistered) GlobalRegistrator.unregister();
+});
 
 const shellValue = (
 	overrides: Partial<AssessmentToolkitShellContext> = {},
@@ -70,22 +35,25 @@ const shellValue = (
 	...overrides,
 });
 
-/** A shell host providing `value`, with a paragraph and its text inside. */
+/**
+ * A shell host providing `value`, with a paragraph and its text inside. Without
+ * a `parent` it mounts in a new document.
+ */
 const mountShell = (
 	value: AssessmentToolkitShellContext,
-	parent: FakeNode | null = null,
-): { host: FakeNode; text: FakeNode } => {
-	const host = new FakeNode(parent);
-	new ContextProvider(host as unknown as Element, {
+	parent: HTMLElement = document.implementation.createHTMLDocument().body,
+): { host: HTMLElement; text: Text } => {
+	const doc = parent.ownerDocument;
+	const host = parent.appendChild(doc.createElement("div"));
+	new ContextProvider(host, {
 		context: assessmentToolkitShellContext,
 		initialValue: value,
 	}).connect();
-	const paragraph = new FakeNode(host);
-	return { host, text: new FakeNode(paragraph, TEXT_NODE) };
+	const paragraph = host.appendChild(doc.createElement("p"));
+	return { host, text: paragraph.appendChild(doc.createTextNode("Read")) };
 };
 
-const holding = (node: FakeNode) =>
-	catalogContextHolding(node as unknown as Node, runtime);
+const holding = (node: Node) => catalogContextHolding(node, runtime);
 
 const runtime = { assessmentId: "assessment-1", sectionId: "section-1" };
 
@@ -138,7 +106,9 @@ describe("catalogContextHolding", () => {
 	});
 
 	test("is undefined outside every shell", () => {
-		const loose = new FakeNode(new FakeNode(null), TEXT_NODE);
+		const loose = document
+			.createElement("p")
+			.appendChild(document.createTextNode("Loose"));
 
 		expect(holding(loose)).toBeUndefined();
 	});

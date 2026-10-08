@@ -6,7 +6,9 @@ Section rendering package with layout custom elements:
 - `pie-section-player-vertical`
 - `pie-section-player-tabbed`
 
-Use the layout custom elements listed above for section rendering.
+A host that arranges the section itself builds its layout from
+`pie-section-player-kernel-host` and the two panes; see
+[Custom layout authoring](#custom-layout-authoring).
 
 ## Install
 
@@ -199,9 +201,9 @@ projected over the section env — with `role: "instructor"` under
 `feedback: "solution"` — and the element draws the rest. Only that item's env
 changes; its neighbours stay editable. A retry withdraws the projection.
 
-Read the resolved state from `getFormativeProjection()`, or off
-`compositionModel.formative` in a custom layout. Drive it from a host through the
-same handle:
+Read the resolved state from `getFormativeProjection()`, or from
+`composition.formative` in a `composition-changed` event's detail. Drive it from a
+host through the same handle:
 
 ```ts
 const controller = await host.waitForSectionController(5000);
@@ -828,43 +830,135 @@ Structural composition changes (new/removed/reordered entities) may legitimately
 
 ## Custom layout authoring
 
-For section layout authors, `pie-section-player-shell` is the primary abstraction:
+A host builds its own section layout from `pie-section-player-kernel-host` and the
+two panes. The kernel host runs the section: toolkit, section controller,
+readiness, element pre-warm and the section toolbar. Its element children are the
+layout, and the panes inside them render the section's items and passages. The
+stock layouts are built from the same panes.
 
-- Use `pie-section-player-shell` to place the section toolbar around your layout body.
-- Keep your custom layout logic focused on passages/items and layout UI.
-- Treat `pie-section-player-base` as internal runtime plumbing that wraps the shell.
-- Use `pie-section-player-item-card` and `pie-section-player-passage-card` as reusable card primitives.
-- Prefer shared context for cross-cutting card render plumbing (resolved player tag/action) over repeated prop drilling.
+```html
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <style>
+      body { margin: 0; }
+      pie-section-player-kernel-host { display: block; height: 100vh; }
+      .columns { display: grid; grid-template-columns: 3fr 2fr; height: 100%; }
+      .column { min-height: 0; overflow: auto; }
+    </style>
+    <script type="module">
+      import "https://cdn.jsdelivr.net/npm/@pie-players/pie-section-player@x.y.z/dist/browser/pie-section-player.js";
 
-Minimal pattern for package layout components:
-
-```svelte
-<pie-section-player-base runtime={effectiveRuntime} {section} section-id={sectionId} attempt-id={attemptId}>
-  <pie-section-player-shell
-    show-toolbar={showToolbar}
-    toolbar-position={toolbarPosition}
-    toolRegistry={toolRegistry}
-    sectionHostButtons={sectionHostButtons}
-  >
-    <!-- layout-specific body -->
-    <pie-section-player-passage-card
-      passage={passage}
-      playerParams={passagePlayerParams}
-      passageToolbarTools={passageToolbarTools}
-      toolRegistry={toolRegistry}
-      hostButtons={passageHostButtons}
-    ></pie-section-player-passage-card>
-    <pie-section-player-item-card
-      item={item}
-      canonicalItemId={canonicalItemId}
-      playerParams={itemPlayerParams}
-      itemToolbarTools={itemToolbarTools}
-      toolRegistry={toolRegistry}
-      hostButtons={itemHostButtons}
-    ></pie-section-player-item-card>
-  </pie-section-player-shell>
-</pie-section-player-base>
+      const player = document.querySelector("pie-section-player-kernel-host");
+      player.addEventListener("pie-loading-complete", () => {
+        console.log("ready", player.selectNavigation());
+      });
+      player.runtime = { env: { mode: "gather", role: "student" } };
+      player.section = {
+        identifier: "water-cycle",
+        rubricBlocks: [
+          {
+            identifier: "passage-1",
+            class: "stimulus",
+            view: ["candidate"],
+            passage: {
+              id: "passage-1",
+              config: {
+                markup: "<p>Water evaporates, condenses into clouds and falls as rain.</p>",
+                elements: {},
+                models: [],
+              },
+            },
+          },
+        ],
+        assessmentItemRefs: [
+          {
+            identifier: "item-1",
+            item: {
+              id: "item-1",
+              config: {
+                markup: "<p>Name the stage in which water vapour forms clouds.</p>",
+                elements: {},
+                models: [],
+              },
+            },
+          },
+        ],
+      };
+    </script>
+  </head>
+  <body>
+    <pie-section-player-kernel-host section-id="water-cycle" attempt-id="attempt-1">
+      <div class="columns">
+        <div class="column"><pie-section-player-items-pane></pie-section-player-items-pane></div>
+        <div class="column"><pie-section-player-passages-pane></pie-section-player-passages-pane></div>
+      </div>
+    </pie-section-player-kernel-host>
+  </body>
+</html>
 ```
+
+The example loads the [browser build](../../docs/setup/cdn_usage.md#section-player-browser-build).
+A bundled host imports
+`@pie-players/pie-section-player/components/section-player-kernel-host-element`,
+which defines the panes too. An item with PIE elements names them in
+`config.elements` and carries their `config.models`, as in any section. The
+`/custom-layout` route of `apps/section-demos`
+([source](../../apps/section-demos/src/routes/%28demos%29/custom-layout/+page.svelte))
+builds the same two columns in Svelte.
+
+### Kernel host
+
+- **Inputs and host methods.** Those of the layout elements in
+  [Runtime Inputs](#runtime-inputs), without the layout dimensions
+  (`narrow-layout-breakpoint`, `content-max-width-*`, `split-pane-*`) and without
+  the `locale` and `nds-icons` mirrors, which it takes as `runtime.locale` and
+  `runtime.ndsIcons`.
+- **DOM.** The open shadow root holds the toolkit and the section toolbar around
+  one default slot; `show-toolbar` and `toolbar-position` place the toolbar around
+  the layout. The children, the panes and the content they render stay in light
+  DOM, where page styles and the content stylesheet reach them. The element has
+  no styles of its own, so the host gives it `display` and a height.
+- **Stock body.** With no element children it renders its own layout, the
+  passages pane above the items pane, and places the passages pane only for a
+  section with passages. The stock body leaves when the first element child
+  arrives and returns when the last one leaves. Text and comment children do not
+  count, so markup whitespace and a framework's placeholder comments leave it in
+  place.
+- **Navigation and state.** The host methods (`navigateNext`, `navigatePrevious`,
+  `navigateTo`, `selectNavigation`, `getSnapshot`, `waitForSectionController`)
+  and the events (`pie-stage-change`, `pie-loading-complete`,
+  `composition-changed`, `session-changed`, `framework-error`, `toolkit-ready`)
+  are those of the stock layouts. `detail.sourceCe` on its `pie-stage-change`
+  and `pie-loading-complete` events reads `pie-section-player-kernel-host`.
+
+### Panes
+
+`<pie-section-player-items-pane>` renders the item cards of the current
+composition, with their toolbars, and runs the element pre-warm;
+`<pie-section-player-passages-pane>` renders the passage cards. A pane takes no
+attributes or properties, and its pre-warm failures arrive as the section
+player's `framework-error` and `element-preload-error` events. It reads the
+section player it belongs to from a context the kernel publishes, so it renders
+at any depth below the kernel host, and outside a section player it renders
+nothing.
+
+- **One pane of each kind renders**: the first connected. A second pane of a
+  kind renders nothing and takes over when the first disconnects; the player
+  reports the duplicate once in the console.
+- **Readiness follows the rendering items pane.** `interactive` and
+  `pie-loading-complete` wait for its element pre-warm, and reports from any
+  other pane are ignored. A section with items and no items pane never reaches
+  either; the player reports it once in the console a task after
+  `section-ready`.
+- **The passages pane is optional.** A section without passages needs none, and
+  readiness does not wait for it.
+- **Scrolling belongs to the layout.** The items pane's scroll hint follows the
+  nearest ancestor with `overflow-y: auto` or `scroll`, so the layout gives each
+  pane's container that overflow and a bounded height. The stock layouts' pane backdrops and margins
+  stay with those layouts; the cards keep their tags and
+  [styling hooks](#card-header-styling-hooks).
 
 ### JS API example for advanced host policy
 

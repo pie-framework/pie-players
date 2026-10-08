@@ -297,9 +297,11 @@ test.describe("section player event delivery", () => {
 			// Nothing on this page makes a toolkit inherit a runtime, so the
 			// delivery path is driven with a dispatch from the toolkit itself.
 			await page.evaluate((layoutTag) => {
-				const base = document
-					.querySelector(layoutTag)
-					?.querySelector("pie-section-player-base");
+				// The kernel host renders its base in its shadow root.
+				const host = document.querySelector(layoutTag);
+				const base = (host?.shadowRoot ?? host)?.querySelector(
+					"pie-section-player-base",
+				);
 				const toolkit = base?.shadowRoot?.querySelector(
 					"pie-assessment-toolkit",
 				);

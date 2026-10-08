@@ -62,9 +62,9 @@
 	} from "./section-player-view-state.js";
 	import {
 		connectSectionPlayerCardRenderContext,
-		getHostElementFromAnchor,
 		type SectionPlayerCardRenderContext,
 	} from "./section-player-card-context.js";
+	import { getHostElementFromAnchor } from "./host-element.js";
 	import SectionCardMediaSplit from "./SectionCardMediaSplit.svelte";
 	import SectionCardSurfaceStack from "./SectionCardSurfaceStack.svelte";
 	import { CONTENT_LEAD_SURFACE } from "./card-media-region.js";

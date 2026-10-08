@@ -3,9 +3,9 @@
  *
  * The three shells — vertical, tabbed, split-pane — differ in how they arrange
  * panes and in nothing else at this level: each clamps the same host-configurable
- * pixel values, finds its own host element through the same root-node walk, and
- * watches the same narrow-layout media query. That was copied three times, so a
- * changed clamp bound reached whichever shells someone remembered.
+ * pixel values and watches the same narrow-layout media query. That was copied
+ * three times, so a changed clamp bound reached whichever shells someone
+ * remembered.
  *
  * What cannot be shared, and is not this module's failure: the `props` map inside
  * `<svelte:options customElement={{…}}>`. The Svelte compiler rejects anything but
@@ -79,24 +79,6 @@ export function resolveContentMaxWidths(
 				? withPassage
 				: Math.max(noPassagePx, withPassage),
 	};
-}
-
-/**
- * The custom element hosting this shell, reached from the shell's anchor node.
- *
- * Through `getRootNode` so it works whether the shell renders into a shadow root
- * or into light DOM, which these shells do (`shadow: "none"`, so item-player and
- * runtime styles can cascade into rendered item content).
- */
-export function getShellHostElement(
-	anchor: HTMLElement | null,
-): HTMLElement | null {
-	if (!anchor) return null;
-	const rootNode = anchor.getRootNode();
-	if (rootNode && "host" in rootNode) {
-		return (rootNode as ShadowRoot).host as HTMLElement;
-	}
-	return anchor.parentElement as HTMLElement | null;
 }
 
 /**

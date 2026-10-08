@@ -3,40 +3,13 @@
 		tag: "pie-section-player-items-pane",
 		// Keep light DOM so rendered item content can inherit assessment/runtime styles.
 		shadow: "none",
-		props: {
-			items: { type: "Object", reflect: false },
-			compositionModel: { attribute: "composition-model", type: "Object", reflect: false },
-			resolvedPlayerEnv: { attribute: "resolved-player-env", type: "Object", reflect: false },
-			resolvedPlayerAttributes: {
-				attribute: "resolved-player-attributes",
-				type: "Object",
-				reflect: false,
-			},
-			resolvedPlayerProps: { attribute: "resolved-player-props", type: "Object", reflect: false },
-			playerStrategy: { attribute: "player-strategy", type: "String" },
-			baseHeadingLevel: { attribute: "base-heading-level", type: "Number" },
-			itemToolbarTools: { attribute: "item-toolbar-tools", type: "String" },
-			toolRegistry: { type: "Object", reflect: false },
-			hostButtons: { type: "Object", reflect: false },
-			iifeBundleHost: { attribute: "iife-bundle-host", type: "String" },
-			preloadedRenderables: { attribute: "preloaded-renderables", type: "Object", reflect: false },
-			preloadedRenderablesSignature: {
-				attribute: "preloaded-renderables-signature",
-				type: "String",
-			},
-			preloadComponentTag: { attribute: "preload-component-tag", type: "String" },
-			preloadEnabled: { attribute: "preload-enabled", type: "Boolean" },
-		},
-		extend: coerceBooleanAttributes,
 	}}
 />
 
 <script lang="ts">
-	import { coerceBooleanAttributes } from "@pie-players/pie-players-shared/ui/attribute-coercion";
-	import { createEventDispatcher, onMount, untrack } from "svelte";
+	import { onMount, untrack } from "svelte";
 	import type {
 		AssessmentToolkitRuntimeContext,
-		ToolRegistry,
 		ToolbarItem,
 	} from "@pie-players/pie-assessment-toolkit";
 	import {
@@ -47,13 +20,11 @@
 	import "../section-player-item-card-element.js";
 	import type { ItemEntity } from "@pie-players/pie-players-shared/types";
 	import { usePromise } from "@pie-players/pie-players-shared/ui/use-promise";
-	import type { SectionCompositionModel } from "../../controllers/types.js";
+	import { EMPTY_COMPOSITION } from "./composition.js";
 	import {
 		buildBackendConfigFromProps,
 		describeBundleHost,
 		describeBundleType,
-		type ElementPreloadErrorDetail,
-		type ElementPreloadRetryDetail,
 		formatElementLoadError,
 		getPreloadLogger,
 		PreloadStageError,
@@ -67,56 +38,62 @@
 		getFormativeItemView,
 		getItemPlayerParams,
 		getTimedMediaItemView,
-		type HeadingLevel,
 	} from "./section-player-view-state.js";
+	import {
+		connectSectionPlayerLayoutContext,
+		type SectionPlayerLayoutContext,
+	} from "./section-player-layout-context.js";
 
-	let {
-		items = [] as ItemEntity[],
-		compositionModel,
-		resolvedPlayerEnv = {} as Record<string, unknown>,
-		resolvedPlayerAttributes = {} as Record<string, string>,
-		resolvedPlayerProps = {} as Record<string, unknown>,
-		playerStrategy = "preloaded",
-		baseHeadingLevel = DEFAULT_SECTION_BASE_HEADING_LEVEL as HeadingLevel,
-		itemToolbarTools = "",
-		toolRegistry = null as ToolRegistry | null,
-		hostButtons = [] as ToolbarItem[],
-		iifeBundleHost = "",
-		preloadedRenderables = [] as ItemEntity[],
-		// Echoed on `elements-loaded-change` so the kernel counts a report only
-		// for the composition it holds. The warmup is keyed on
-		// `renderablesFingerprint` below.
-		preloadedRenderablesSignature = "",
-		preloadComponentTag = "pie-section-player-items-pane",
-		preloadEnabled = true,
-	} = $props<{
-		items: ItemEntity[];
-		compositionModel: SectionCompositionModel;
-		resolvedPlayerEnv: Record<string, unknown>;
-		resolvedPlayerAttributes: Record<string, string>;
-		resolvedPlayerProps: Record<string, unknown>;
-		playerStrategy: string;
-		baseHeadingLevel?: HeadingLevel;
-		itemToolbarTools: string;
-		toolRegistry?: ToolRegistry | null;
-		hostButtons?: ToolbarItem[];
-		iifeBundleHost?: string | null;
-		preloadedRenderables: ItemEntity[];
-		preloadedRenderablesSignature: string;
-		preloadComponentTag?: string;
-		preloadEnabled?: boolean;
-	}>();
+	const NO_ITEMS: ItemEntity[] = [];
+	const NO_ENTRIES: Record<string, never> = {};
+	const NO_BUTTONS: ToolbarItem[] = [];
 
-	const dispatch = createEventDispatcher<{
-		"elements-loaded-change": {
-			elementsLoaded: boolean;
-			renderablesSignature: string;
-		};
-		"element-preload-retry": ElementPreloadRetryDetail;
-		"element-preload-error": ElementPreloadErrorDetail;
-	}>();
+	const paneHost = $host<HTMLElement>();
+	let layout = $state.raw<SectionPlayerLayoutContext | null>(null);
 
-	const logger = $derived(getPreloadLogger(preloadComponentTag));
+	$effect(() =>
+		connectSectionPlayerLayoutContext(paneHost, (value) => {
+			layout = value;
+		}),
+	);
+
+	// Through `$derived`, which keeps the function's identity across republishes,
+	// so the pane registers once rather than once per layout value.
+	const registerPane = $derived(layout?.registerPane ?? null);
+	$effect(() => registerPane?.("items", paneHost));
+
+	// The one items pane of this section player that renders; any other renders
+	// nothing and runs no pre-warm.
+	const active = $derived(layout?.activePanes.items === paneHost);
+	const items = $derived(layout?.items ?? NO_ITEMS);
+	const compositionModel = $derived(layout?.compositionModel ?? EMPTY_COMPOSITION);
+	const resolvedPlayerEnv = $derived(layout?.resolvedPlayerEnv ?? NO_ENTRIES);
+	const resolvedPlayerAttributes = $derived(
+		layout?.resolvedPlayerAttributes ?? NO_ENTRIES,
+	);
+	const resolvedPlayerProps = $derived(layout?.resolvedPlayerProps ?? NO_ENTRIES);
+	const playerStrategy = $derived(layout?.playerStrategy ?? "preloaded");
+	const baseHeadingLevel = $derived(
+		layout?.baseHeadingLevel ?? DEFAULT_SECTION_BASE_HEADING_LEVEL,
+	);
+	const itemToolbarTools = $derived(layout?.itemToolbarTools ?? "");
+	const toolRegistry = $derived(layout?.toolRegistry ?? null);
+	const hostButtons = $derived(layout?.itemHostButtons ?? NO_BUTTONS);
+	const iifeBundleHost = $derived(layout?.iifeBundleHost ?? "");
+	const preloadedRenderables = $derived(layout?.preloadedRenderables ?? NO_ITEMS);
+	// Echoed on each readiness report so the kernel counts it only for the
+	// composition it holds. The warmup is keyed on `renderablesFingerprint`
+	// below.
+	const preloadedRenderablesSignature = $derived(
+		layout?.preloadedRenderablesSignature ?? "",
+	);
+	const componentTag = $derived(
+		layout?.componentTag ?? "pie-section-player-items-pane",
+	);
+	const preloadEnabled = $derived(layout?.preloadEnabled ?? true);
+	const reportElementsLoaded = $derived(layout?.reportElementsLoaded ?? null);
+
+	const logger = $derived(getPreloadLogger(componentTag));
 
 	/*
 	 * The reactive key for the warmup call. Captures only the inputs that
@@ -177,6 +154,7 @@
 
 	const warmupInputsSignature = $derived(
 		JSON.stringify({
+			active,
 			preloadEnabled,
 			strategy: playerStrategy,
 			renderables: renderablesFingerprint,
@@ -216,6 +194,9 @@
 		// Establish the single reactive dep.
 		// biome-ignore lint/correctness/noUnusedExpressions: track signature
 		warmupInputsSignature;
+		// Idle, so an inactive pane neither reports loaded nor keeps its cards
+		// mountable for when it takes over.
+		if (!untrack(() => active)) return null;
 		// `policies.preload.enabled === false` short-circuits the warmup
 		// pipeline. Items still mount and item-players register their own
 		// elements on demand; we just skip the section-level pre-warm.
@@ -255,8 +236,8 @@
 						1,
 						Math.ceil(status.timeoutMs / retryDelayMs),
 					);
-					dispatch("element-preload-retry", {
-						componentTag: preloadComponentTag,
+					layout?.reportPreloadRetry(paneHost, {
+						componentTag,
 						stage: "iife-load",
 						attempt: status.attempt,
 						maxRetries,
@@ -299,8 +280,11 @@
 		elementsLoaded || resolvedRenderablesFingerprint === renderablesFingerprint,
 	);
 
+	// Re-reported on taking over, which the kernel accepts from the active pane
+	// only.
 	$effect(() => {
-		dispatch("elements-loaded-change", {
+		void active;
+		reportElementsLoaded?.(paneHost, {
 			elementsLoaded,
 			renderablesSignature: preloadedRenderablesSignature,
 		});
@@ -330,7 +314,7 @@
 		const { stage, cause } = describeWarmupFailure(error);
 		const model = toFrameworkErrorModel({
 			kind: "element-preload",
-			source: preloadComponentTag,
+			source: componentTag,
 			message: formatElementLoadError(stage, cause),
 			details: [
 				`stage=${stage}`,
@@ -383,8 +367,8 @@
 		} catch {
 			backendForTelemetry = null;
 		}
-		dispatch("element-preload-error", {
-			componentTag: preloadComponentTag,
+		layout?.reportPreloadError(paneHost, {
+			componentTag,
 			stage,
 			error: toErrorMessage(cause),
 			strategy: playerStrategy,
@@ -707,106 +691,108 @@
 
 <div bind:this={scrollHintSentinel} style="display:none" aria-hidden="true"></div>
 
-{#if timedMedia}
-	<!-- Present before it has content so the first cue announcement is not lost to
-	     a live region that did not yet exist (WCAG 4.1.3). Visible text as well as
-	     announced: a pause the learner did not ask for has to be perceivable
-	     without hearing it. -->
-	<p
-	class="pie-section-player-timed-media-status"
-	data-pie-timed-media-status
-	aria-live="polite"
-	>{timedMediaStatus}</p>
-{/if}
-
-{#if !cardsMountable}
-	<div class="pie-section-player-content-card">
-		<div
-			class="pie-section-player-content-card-body pie-section-player-item-content pie-section-player__item-content"
-		>
-			{interfaceI18n.t(
-				readiness.current.status === "rejected"
-					? "player.sectionLoadError"
-					: "player.loadingSection",
-			)}
-		</div>
-	</div>
-{:else}
-	{#each items as item, itemIndex (item.id || itemIndex)}
-		{@const canonicalItemId = getCanonicalItemId({ compositionModel, item })}
-		<!-- Resolved once and used twice: the card renders the control from it, and
-		     the player params project its env override. Two derivations of the same
-		     predicate could disagree about whether feedback is on screen. -->
-		{@const formativeView = getFormativeItemView({ compositionModel, canonicalItemId })}
-		<!-- Cue state for this item. A pending card stays mounted and hidden: its
-		     shell registration, its session and the section's loading accounting all
-		     survive, where mounting on the cue would tear the item player down again
-		     on every seek backwards. -->
-		{@const timedMediaView = getTimedMediaItemView({ compositionModel, canonicalItemId })}
-		<pie-section-player-item-card
-			hidden={timedMediaView?.pending === true}
-			{item}
-			itemIndex={itemIndex}
-			itemCount={items.length}
-			isCurrent={itemIndex === currentItemIndex}
-			{canonicalItemId}
-			{baseHeadingLevel}
-			playerParams={getItemPlayerParams({
-				item,
-				compositionModel,
-				resolvedPlayerEnv,
-				resolvedPlayerAttributes,
-				resolvedPlayerProps,
-				playerStrategy,
-				itemIndex,
-				baseHeadingLevel,
-				formativeView,
-			})}
-			{formativeView}
-			{timedMediaView}
-			itemToolbarTools={itemToolbarTools}
-			{toolRegistry}
-			{hostButtons}
-		></pie-section-player-item-card>
-	{/each}
-{/if}
-
-<div
-	class="pie-section-player-scroll-hint"
-	style:visibility={isScrollable ? "visible" : "hidden"}
->
-	{#if useNdsIcons}
-		<!-- The NDS custom element renders the actual labeled <button>; this host only receives its bubbled click. -->
-		<!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
-		<nds-icon-button
-			variant="tertiary"
-			size="small"
-			icon-name="chevron-down"
-			button-aria-label={interfaceI18n.t("player.scrollDownA11y")}
-			onclick={scrollDown}
-		></nds-icon-button>
-	{:else}
-		<!-- Non-NDS fallback: plain <button> with a self-contained inline SVG
-		     chevron (no FontAwesome dependency in this package). -->
-		<button
-			type="button"
-			class="pie-section-player-scroll-hint__button"
-			aria-label={interfaceI18n.t("player.scrollDownA11y")}
-			onclick={scrollDown}
-		>
-			<svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" focusable="false">
-				<path
-					d="M4 6l4 4 4-4"
-					fill="none"
-					stroke="currentColor"
-					stroke-width="2"
-					stroke-linecap="round"
-					stroke-linejoin="round"
-				/>
-			</svg>
-		</button>
+{#if active}
+	{#if timedMedia}
+		<!-- Present before it has content so the first cue announcement is not lost to
+		     a live region that did not yet exist (WCAG 4.1.3). Visible text as well as
+		     announced: a pause the learner did not ask for has to be perceivable
+		     without hearing it. -->
+		<p
+		class="pie-section-player-timed-media-status"
+		data-pie-timed-media-status
+		aria-live="polite"
+		>{timedMediaStatus}</p>
 	{/if}
-</div>
+
+	{#if !cardsMountable}
+		<div class="pie-section-player-content-card">
+			<div
+				class="pie-section-player-content-card-body pie-section-player-item-content pie-section-player__item-content"
+			>
+				{interfaceI18n.t(
+					readiness.current.status === "rejected"
+						? "player.sectionLoadError"
+						: "player.loadingSection",
+				)}
+			</div>
+		</div>
+	{:else}
+		{#each items as item, itemIndex (item.id || itemIndex)}
+			{@const canonicalItemId = getCanonicalItemId({ compositionModel, item })}
+			<!-- Resolved once and used twice: the card renders the control from it, and
+			     the player params project its env override. Two derivations of the same
+			     predicate could disagree about whether feedback is on screen. -->
+			{@const formativeView = getFormativeItemView({ compositionModel, canonicalItemId })}
+			<!-- Cue state for this item. A pending card stays mounted and hidden: its
+			     shell registration, its session and the section's loading accounting all
+			     survive, where mounting on the cue would tear the item player down again
+			     on every seek backwards. -->
+			{@const timedMediaView = getTimedMediaItemView({ compositionModel, canonicalItemId })}
+			<pie-section-player-item-card
+				hidden={timedMediaView?.pending === true}
+				{item}
+				itemIndex={itemIndex}
+				itemCount={items.length}
+				isCurrent={itemIndex === currentItemIndex}
+				{canonicalItemId}
+				{baseHeadingLevel}
+				playerParams={getItemPlayerParams({
+					item,
+					compositionModel,
+					resolvedPlayerEnv,
+					resolvedPlayerAttributes,
+					resolvedPlayerProps,
+					playerStrategy,
+					itemIndex,
+					baseHeadingLevel,
+					formativeView,
+				})}
+				{formativeView}
+				{timedMediaView}
+				itemToolbarTools={itemToolbarTools}
+				{toolRegistry}
+				{hostButtons}
+			></pie-section-player-item-card>
+		{/each}
+	{/if}
+
+	<div
+		class="pie-section-player-scroll-hint"
+		style:visibility={isScrollable ? "visible" : "hidden"}
+	>
+		{#if useNdsIcons}
+			<!-- The NDS custom element renders the actual labeled <button>; this host only receives its bubbled click. -->
+			<!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
+			<nds-icon-button
+				variant="tertiary"
+				size="small"
+				icon-name="chevron-down"
+				button-aria-label={interfaceI18n.t("player.scrollDownA11y")}
+				onclick={scrollDown}
+			></nds-icon-button>
+		{:else}
+			<!-- Non-NDS fallback: plain <button> with a self-contained inline SVG
+			     chevron (no FontAwesome dependency in this package). -->
+			<button
+				type="button"
+				class="pie-section-player-scroll-hint__button"
+				aria-label={interfaceI18n.t("player.scrollDownA11y")}
+				onclick={scrollDown}
+			>
+				<svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" focusable="false">
+					<path
+						d="M4 6l4 4 4-4"
+						fill="none"
+						stroke="currentColor"
+						stroke-width="2"
+						stroke-linecap="round"
+						stroke-linejoin="round"
+					/>
+				</svg>
+			</button>
+		{/if}
+	</div>
+{/if}
 
 <style>
 	:host {

@@ -920,6 +920,22 @@ export const sectionDemos: Record<string, SectionDemoInfo> = {
 		],
 		section: demo6Section,
 	},
+	"custom-layout": {
+		id: "custom-layout",
+		name: "Custom Layout",
+		description:
+			"A host-built layout: the kernel host with the items pane on the left and the passages pane on the right",
+		integrationLevel: 4,
+		integrationTheme: "Host-built section layout",
+		focus:
+			"Shows a section layout a host builds from `<pie-section-player-kernel-host>` and the two panes, with no stock layout element involved.",
+		whatMakesItTick: [
+			"The kernel host runs the section; its children are the layout, so the stock body steps aside.",
+			"`<pie-section-player-items-pane>` and `<pie-section-player-passages-pane>` take everything they render from the kernel host, so they carry no attributes.",
+			"The page's own CSS sizes the kernel host and arranges the panes in two scrolling columns.",
+		],
+		section: demo6Section,
+	},
 	"resource-observability": {
 		id: "resource-observability",
 		name: "Resource Observability",

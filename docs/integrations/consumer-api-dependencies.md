@@ -966,6 +966,11 @@ for the same item, whether a second player's or a re-mounted one's. Checked
 against all four checkouts on 2026-09-26 as a targeted lookup, so it does not
 advance the verification date.
 
+Since 2026-10-08 `framework-error`, `pie-stage-change` and `pie-loading-complete`
+continue past the layout element to `document`, once each; until then they
+stopped there. No checkout listens for any of the three above the layout element,
+checked against every checkout in this pad on 2026-10-08 as a targeted lookup.
+
 The `item-session-data-changed` payload is destructured as
 `event.session.data[0]`, with `event.complete` read through an
 `event.detail.complete` fallback. Reshaping the item event payload — nesting the

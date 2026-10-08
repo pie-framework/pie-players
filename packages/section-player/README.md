@@ -953,39 +953,32 @@ Section-player instrumentation is provider-agnostic and uses the shared
 - Toolkit telemetry forwarding uses the same provider path, so tool/backend
   operational events are visible alongside section events when toolkit is mounted.
 
-Canonical lifecycle stream (engine-routed, dispatched on the outer layout CE):
+Canonical lifecycle stream (engine-routed, dispatched on the outer layout CE,
+bubbling and composed):
 
 - `pie-stage-change` — single typed transition stream covering
   `composed` → `engine-ready` → `interactive` → `disposed`. Payload is a
-  `StageChangeDetail`.
+  `StageChangeDetail`. A non-recoverable framework error before
+  `interactive` emits the current stage `failed` and each stage it never
+  reached `skipped`.
 - `pie-loading-complete` — fires once per cohort, when the section's element
   pre-warm resolves for the current composition and the item cards can mount
   (kernel-routed).
 - `framework-error` — canonical error event for any failure crossing the
-  framework boundary. Payload is a `FrameworkErrorModel`. The toolkit's
-  package-internal `FrameworkErrorBus` and the `onFrameworkError`
-  callback prop deliver each error exactly once regardless of wrapper
-  depth, including errors from a coordinator the host passes as
-  `runtime.coordinator`. The `framework-error` *DOM event* on the outer
-  layout CE also delivers each error exactly once: the kernel listener at
-  `<pie-section-player-base>` stops the toolkit's bubbled emit, and the
-  engine dispatches the error on the layout host without bubbling, so it
-  does not reach `document`. `tests/section-player-event-delivery.spec.ts`
-  pins these counts. Direct listeners attached to `<pie-assessment-toolkit>`
-  itself still see the toolkit's own emit.
+  framework boundary. Payload is a `FrameworkErrorModel`. The toolkit
+  dispatches it once per error, bubbling and composed, so it reaches the
+  layout CE and `document`; errors from a coordinator the host passes as
+  `runtime.coordinator` arrive the same way.
+  `tests/section-player-event-delivery.spec.ts` pins these counts.
 
 Callback-prop mirrors with two-tier precedence (`runtime.<key>` wins over
 the top-level prop):
 
-- `onStageChange(detail)` — on every layout CE, `pie-section-player-base`,
-  and `pie-assessment-toolkit`.
-- `onLoadingComplete(detail)` — on the kernel-backed layout CEs only
-  (split-pane / vertical / tabbed / kernel-host).
+- `onStageChange(detail)` and `onLoadingComplete(detail)` — on the
+  kernel-backed layout CEs (split-pane / vertical / tabbed / kernel-host).
 - `onFrameworkError(model)` — on every layout CE and
-  `pie-section-player-base`. Fires exactly once per error regardless of
-  wrapper depth (delivered through the package-internal
-  `FrameworkErrorBus`). The `framework-error` DOM event on the layout
-  CE host is also single-fire; consume either.
+  `pie-section-player-base`. Fires once per error regardless of wrapper
+  depth, like the `framework-error` DOM event; consume either.
 
 Section-player owned instrumentation stream:
 

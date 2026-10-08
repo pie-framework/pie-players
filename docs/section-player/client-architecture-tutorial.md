@@ -226,7 +226,6 @@ Section-player owned canonical event stream:
 
 Toolkit-owned canonical stream (when present) is separate and intentionally non-overlapping:
 
-- `pie-toolkit-stage-change`
 - `pie-toolkit-runtime-owned`
 - `pie-toolkit-runtime-inherited`
 - `pie-toolkit-ready`
@@ -947,14 +946,14 @@ The player element does dispatch a small set of DOM `CustomEvent`s that are genu
 
 ### Canonical readiness and error events (recommended)
 
-These are the events to build host integrations against, with stable typed payloads. The section runtime engine dispatches `pie-stage-change`, `pie-loading-complete` and `framework-error` on the layout custom element (`pie-section-player-splitpane` / `-vertical` / `-tabbed` / `-kernel-host`); `toolkit-ready` comes from the wrapped `<pie-assessment-toolkit>` and reaches the layout element by bubbling.
+These are the events to build host integrations against, with stable typed payloads. The section runtime engine dispatches `pie-stage-change` and `pie-loading-complete` on the layout custom element (`pie-section-player-splitpane` / `-vertical` / `-tabbed` / `-kernel-host`); `framework-error` and `toolkit-ready` come from the wrapped `<pie-assessment-toolkit>`. All four bubble and are composed, so a listener on the layout element or on `document` receives them.
 
 | Event name | Detail | Callback-prop mirror | When |
 | --- | --- | --- | --- |
 | `toolkit-ready` | `{ runtimeId, assessmentId, sectionId, itemPlayer, coordinator }` | — | Coordinator initialized — **CE-first only**: this is how you obtain the coordinator reference when you haven't constructed one yourself |
-| `pie-stage-change` | `StageChangeDetail` (`{ stage, status, runtimeId, sectionId, attemptId, sourceCe, timestamp }`) | `onStageChange(detail)` | One typed transition stream covering the full lifecycle: `composed` → `engine-ready` → `interactive` → `disposed`, with a single subscription that correlates across wrapper depths. |
+| `pie-stage-change` | `StageChangeDetail` (`{ stage, status, runtimeId, sectionId, attemptId, sourceCe, timestamp }`) | `onStageChange(detail)` | One typed transition stream covering the full lifecycle: `composed` → `engine-ready` → `interactive` → `disposed`. `status` is `entered`; a non-recoverable framework error before `interactive` ends the chain with the current stage `failed` and the stages it never reached `skipped`. |
 | `pie-loading-complete` | `LoadingCompleteDetail` (`{ runtimeId, sectionId, attemptId, itemCount, loadedCount, sourceCe, timestamp }`) | `onLoadingComplete(detail)` | Fires once per cohort, when the section's element pre-warm resolves for the current composition and the item cards can mount. |
-| `framework-error` | `FrameworkErrorModel` | `onFrameworkError(model)` | Canonical error event for any failure crossing the framework boundary (coordinator init, runtime init, tool config, provider/TTS init, tool runtime/surface, the section's element pre-warm). The callback prop, the package-internal `FrameworkErrorBus`, and the layout-host DOM event each deliver one notification per error. Recoverable warnings remain observable without setting readiness to `error`. |
+| `framework-error` | `FrameworkErrorModel` | `onFrameworkError(model)` | Canonical error event for any failure crossing the framework boundary (coordinator init, runtime init, tool config, provider/TTS init, tool runtime/surface, the section's element pre-warm). Each error is one DOM event and one `onFrameworkError` call. Recoverable warnings remain observable without setting readiness to `error`. |
 
 Callback-prop precedence: `runtime.<key>` (set on the layout CE's `runtime` object) wins over the top-level CE prop. Both fire at the same emit point as the DOM event so callback and event stay in lockstep across cohort changes.
 
@@ -962,7 +961,7 @@ Recommended host wiring:
 
 - Gate "start test" UI on `pie-stage-change` with `detail.stage === "interactive"`, or subscribe to the engine via `engine.subscribe(outputs => { for (const output of outputs) { if (output.kind === "stage-change" && output.stage === "interactive") { /* … */ } } })` if you hold a programmatic engine reference. The listener receives each batch of outputs as an array.
 - Show item-loading affordances until `pie-loading-complete` fires for the active cohort.
-- Surface `framework-error` to your error UX via `onFrameworkError(model)` (single-fire) or via the layout-host DOM event — both deliver each error exactly once. Use `recoverable` to distinguish a warning that preserved assessment continuity (for example, one optional `tool-surface` capability failing) from an error that blocks readiness.
+- Surface `framework-error` to your error UX via `onFrameworkError(model)` or via the DOM event; each delivers an error once. Use `recoverable` to distinguish a warning that preserved assessment continuity (for example, one optional `tool-surface` capability failing) from an error that blocks readiness.
 
 ### Event Mapping
 
@@ -975,7 +974,7 @@ Build host integrations against the canonical events as follows:
 | `ready` | `pie-loading-complete` | Same single-shot, cohort-scoped semantics. |
 | `section-controller-ready` | `waitForSectionController(timeoutMs)` / `getSectionController()` on the layout CE, or `pie-stage-change` filtered on `detail.stage === "engine-ready"` | Removed alongside its `pie-section-controller-ready` instrumentation mapping. |
 
-Note on `framework-error`: while a `<pie-assessment-toolkit>` is nested inside a layout CE, the kernel listener at `<pie-section-player-base>` stops the bubbled toolkit emit, leaving the engine-bridge emit on the layout host as the single canonical DOM surface; it does not bubble to `document`. `packages/section-player/tests/section-player-event-delivery.spec.ts` pins these counts. Direct listeners attached to `<pie-assessment-toolkit>` itself are unaffected — the toolkit's own emit reaches them before the kernel listener runs.
+Note on `framework-error`: the toolkit publishes each error once, and the event bubbles through the layout CE to `document`. The kernel only reads it to set readiness to `error`. `packages/section-player/tests/section-player-event-delivery.spec.ts` pins these counts.
 
 ### Session and runtime events
 

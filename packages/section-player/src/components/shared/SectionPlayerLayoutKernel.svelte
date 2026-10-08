@@ -14,12 +14,6 @@
 	} from "@pie-players/pie-default-tool-loaders";
 	import {
 		SectionRuntimeEngine,
-		sectionRuntimeEngineHostContext,
-		type SectionRuntimeLifecycleHandle,
-	} from "@pie-players/pie-assessment-toolkit/runtime/engine";
-	import { ContextProvider } from "@pie-players/pie-context";
-	import {
-		FrameworkErrorBus,
 		cohortsEqual,
 		makeCohort,
 		type EngineReadinessSignals,
@@ -78,14 +72,12 @@
 		// The only Svelte events the kernel dispatches up to the hosting
 		// layout CE, which re-dispatches them on its host. The toolkit's own
 		// events (`session-changed`, `composition-changed`, `runtime-owned`,
-		// `runtime-inherited`, `toolkit-ready`, `section-ready`) reach the
-		// layout host by bubbling from the toolkit, and the canonical M6
-		// vocabulary (`pie-stage-change` / `pie-loading-complete`) and
-		// `framework-error` are fired on it by the section runtime engine.
+		// `runtime-inherited`, `toolkit-ready`, `section-ready`,
+		// `framework-error`) reach the layout host by bubbling from the
+		// toolkit, and the section runtime engine dispatches `pie-stage-change`
+		// and `pie-loading-complete` on it, bubbling and composed.
 		// Re-dispatching a bubbled event here delivered it to the host a
-		// second and third time. The readiness aliases (`readiness-change` /
-		// `interaction-ready` / `ready`) and their DOM-event bridge were
-		// removed in the broad architecture review compat sweep.
+		// second and third time.
 		"element-preload-retry": Record<string, unknown>;
 		"element-preload-error": Record<string, unknown>;
 	};
@@ -139,12 +131,12 @@
 		// canonical tag name; defaults to `pie-section-player` so kernel
 		// instantiations in tests/demos still produce well-formed events.
 		sourceCe = "pie-section-player" as string,
-		// Host element on which the section runtime engine should
-		// dispatch its DOM events (`pie-stage-change`,
-		// `pie-loading-complete`, `framework-error`). Each layout CE that mounts the kernel
-		// passes its own host element (`this`); defaults to `null` so
-		// the kernel keeps mounting before the layout CE has resolved
-		// its host. The engine attaches lazily once `host` is non-null.
+		// Host element the section runtime engine dispatches
+		// `pie-stage-change` and `pie-loading-complete` on. Each layout CE
+		// that mounts the kernel passes its own host element (`this`);
+		// defaults to `null` so the kernel keeps mounting before the layout
+		// CE has resolved its host. The engine attaches once `host` is
+		// non-null.
 		host = null as HTMLElement | null,
 	} = $props();
 
@@ -199,41 +191,18 @@
 	const runtimeErrorState = $derived(cohortErrorLatched || runtimeErrorLatched);
 	let sectionControllerReadyDispatched = $state(false);
 
-	// M7 PR 5: own a section runtime engine + framework-error bus per
-	// kernel mount. The engine drives stage progression, readiness
-	// emission, and `pie-loading-complete` directly via DOM events on
-	// the layout CE host (passed in as `host` once the layout CE has
-	// resolved its self-element). The kernel feeds the engine reactive
-	// inputs from a single tracked `$effect` wrapped in `untrack`.
-	//
-	// Construction is cheap and side-effect free; `attachHost` is the
-	// step that actually wires the adapter (DOM/framework-error
-	// bridges). We construct here so `getRuntimeId()` returns the
-	// canonical id used downstream (e.g. for the `runtimeId` field in
-	// event details).
-	const frameworkErrorBus = new FrameworkErrorBus();
+	// One section runtime engine per kernel mount: the section player's only
+	// stage emitter. It dispatches `pie-stage-change` and
+	// `pie-loading-complete` on the layout CE host. The kernel feeds it
+	// reactive inputs from a single tracked `$effect` wrapped in `untrack`.
+	// Construction is side-effect free; `attachHost` builds the adapter.
 	const engine = new SectionRuntimeEngine();
 
-	// Cross-CE lifecycle bridge to the wrapped toolkit. The toolkit CE renders
-	// inside its own shadow root and uses this context as a host lifecycle
-	// ownership signal. Controller/session registration stays toolkit-local.
-	let engineHostProvider: ContextProvider<
-		typeof sectionRuntimeEngineHostContext
-	> | null = null;
-	const engineHostLifecycleHandle: SectionRuntimeLifecycleHandle = {
-		getRuntimeId: () => engine.getRuntimeId(),
-	};
-
-	// Non-reactive bookkeeping for the engine-driver effect. `attached`
-	// gates the very first `attachHost` (per cohort the adapter handles
-	// host swaps idempotently via `setHost`); `lastCohort` is the
-	// previously-dispatched cohort we compare against with
-	// `cohortsEqual` so we differentiate first-time `initialize`,
-	// no-op (same cohort), `update-runtime` (same cohort, runtime
-	// changed), and `cohort-change` (rolled over). Mutated only inside
-	// `untrack(...)` so they never appear as tracked deps of the
-	// effect that maintains them.
-	let attached = false;
+	// Non-reactive bookkeeping for the engine-driver effect: `lastCohort`
+	// is the previously dispatched cohort, compared with `cohortsEqual` to
+	// tell a first `initialize`, a same-cohort `update-runtime` and a
+	// `cohort-change` apart. Mutated only inside `untrack(...)` so it never
+	// becomes a tracked dep of the effect that maintains it.
 	let lastCohort: ReturnType<typeof makeCohort> = null;
 
 	const compositionModel = $derived(compositionSnapshot.compositionModel);
@@ -391,38 +360,17 @@
 
 	function handleFrameworkError(event: Event) {
 		const detail = (event as CustomEvent<FrameworkErrorModel>).detail;
-		// Recoverable framework warnings remain observable but do not block the
-		// assessment. Only a non-recoverable failure latches readiness to `error`.
+		// The toolkit publishes each framework error once: one bubbling
+		// `framework-error` event, which continues to the layout host and the
+		// document, and one `onFrameworkError` call. The kernel only reads it.
+		// Recoverable warnings stay observable without blocking the
+		// assessment; a non-recoverable failure latches readiness to `error`,
+		// and before `interactive` that ends the cohort's stage chain as
+		// `failed`.
 		if (detail && detail.recoverable !== true) {
 			if (COHORT_SCOPED_ERROR_KINDS.has(detail.kind)) cohortErrorLatched = true;
 			else runtimeErrorLatched = true;
 		}
-		// Route the framework-error model into the section runtime
-		// engine so the engine's framework-error / DOM-event bridges
-		// fan out a `framework-error` DOM event on the layout CE host.
-		// The engine's bridge is the only kernel-side emit point.
-		//
-		// The wrapped `<pie-assessment-toolkit>` still dispatches its
-		// own `framework-error` (with `bubbles: true, composed: true`)
-		// for direct toolkit consumers — that emit is captured here
-		// mid-bubble at `<pie-section-player-base>`. Propagation stops
-		// after re-feeding the engine, so the layout CE host receives
-		// the engine's (non-bubbling) `framework-error` alone, once per
-		// error. Direct listeners on the toolkit host itself are
-		// unaffected because the event was already delivered to them
-		// before this listener runs.
-		//
-		// `onFrameworkError` is still delivered exactly once by the
-		// underlying `pie-assessment-toolkit` (two-tier precedence:
-		// `runtime.onFrameworkError` wins; resolution happens in
-		// `resolveRuntime`); the kernel intentionally does not invoke
-		// any handler here to avoid double-firing.
-		//
-		// Both counts are pinned by
-		// `tests/section-player-event-delivery.spec.ts`.
-		if (!detail) return;
-		event.stopPropagation();
-		engine.dispatchInput({ kind: "framework-error", error: detail });
 	}
 
 	function notifySectionControllerResolved(_controller: SectionControllerHandle) {
@@ -530,29 +478,11 @@
 		});
 	});
 
-	// Cross-CE lifecycle context provider. Connects when the layout CE host is
-	// available; disconnects on unmount. The provider value is intentionally a
-	// narrow lifecycle handle so the wrapped toolkit can suppress duplicate
-	// external lifecycle emits without gaining a controller API through this
-	// package seam.
-	$effect(() => {
-		if (!host) return;
-		engineHostProvider = new ContextProvider(host, {
-			context: sectionRuntimeEngineHostContext,
-			initialValue: { engine: engineHostLifecycleHandle },
-		});
-		engineHostProvider.connect();
-		return () => {
-			engineHostProvider?.disconnect();
-			engineHostProvider = null;
-		};
-	});
-
 	// Primary engine-driver effect. Reads every
 	// host-side input the engine cares about so Svelte tracks them as
 	// deps; performs the actual `attachHost` / `dispatchInput` calls
-	// inside `untrack` so the writes to the (non-reactive) `attached`
-	// and `lastCohort` flags do not feed back into this effect.
+	// inside `untrack` so the write to the non-reactive `lastCohort`
+	// does not feed back into this effect.
 	//
 	// Flow per run:
 	//   1. Bail until a host element is available; the layout CE
@@ -621,12 +551,7 @@
 		void effectivePolicies.readiness.mode;
 		untrack(() => {
 			if (!host) return;
-			engine.attachHost({
-				host,
-				sourceCe,
-				frameworkErrorBus,
-			});
-			attached = true;
+			engine.attachHost({ host, sourceCe });
 
 			const nextCohort = makeCohort({ sectionId, attemptId });
 			const itemCount = items.length;
@@ -707,21 +632,12 @@
 		});
 	});
 
-	// Tear down the engine + framework-error bus on unmount. Dispatch a
-				// `dispose` input first so the engine emits `disposed` for the
-				// active cohort through the same DOM bridges as every other
-	// stage transition; then run the async adapter teardown (the
-	// promise is fire-and-forget — Svelte cleanup paths cannot await).
+	// On unmount the engine emits `disposed` for the active cohort through
+	// the same DOM bridge as every other stage, then detaches.
 	$effect(() => {
 		return () => {
 			untrack(() => {
-				if (attached) {
-					engine.dispatchInput({ kind: "dispose" });
-				}
-				engine.dispose().catch((error: unknown) => {
-					logger.error("engine.dispose() failed", error);
-				});
-				frameworkErrorBus.dispose();
+				engine.dispose();
 			});
 		};
 	});

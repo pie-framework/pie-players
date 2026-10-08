@@ -174,6 +174,48 @@ describe("attachInstrumentationEventBridge", () => {
 		detach();
 	});
 
+	test("tracks a detail's data and leaves its live objects on the event", () => {
+		const provider = new FakeInstrumentationProvider();
+		const host = new EventTarget();
+		const detach = attachInstrumentationEventBridge({
+			host,
+			instrumentationProvider: provider,
+			component: "bridge-test",
+			eventMap: [
+				{
+					sourceEventName: "toolkit-ready",
+					instrumentationEventName: "pie-toolkit-ready",
+				},
+			],
+		});
+		class Coordinator {
+			readonly assessmentId = "a1";
+		}
+		const coordinator = new Coordinator();
+		const event = new CustomEvent("toolkit-ready", {
+			detail: {
+				coordinator,
+				sectionId: "s1",
+				cause: new Error("boom"),
+				onDone: () => {},
+				tools: ["calculator"],
+				details: { kind: "plain" },
+			},
+		});
+		host.dispatchEvent(event);
+		const attributes = provider.trackedEvents[0]?.attributes ?? {};
+		expect(attributes.sectionId).toBe("s1");
+		expect(attributes.tools).toEqual(["calculator"]);
+		expect(attributes.details).toEqual({ kind: "plain" });
+		expect("coordinator" in attributes).toBe(false);
+		expect("cause" in attributes).toBe(false);
+		expect("onDone" in attributes).toBe(false);
+		expect((event.detail as { coordinator: unknown }).coordinator).toBe(
+			coordinator,
+		);
+		detach();
+	});
+
 	test("deduplicates identical events in configured window", () => {
 		const provider = new FakeInstrumentationProvider();
 		const host = new EventTarget();

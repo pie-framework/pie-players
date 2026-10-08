@@ -113,7 +113,6 @@ provider path is the item-player loader config:
 
 ### Toolkit-Owned Canonical Event Stream
 
-- `pie-toolkit-stage-change`
 - `pie-toolkit-runtime-owned`
 - `pie-toolkit-runtime-inherited`
 - `pie-toolkit-runtime-ready`
@@ -486,10 +485,11 @@ load.
 A profile change is a new `assessment` value; the toolbars re-derive on the
 policy change it emits. The toolkit announces `runtime-ready`, with
 `{ runtimeId, coordinator, ownership }`, once per coordinator, with or without a
-section. Without one, from the first item that registers, its stage chain
-records `composed` as skipped and ends at `engine-ready`, which waits for
-`coordinator.waitUntilReady()`; `toolkit-ready`, `section-ready` and
-`interactive` wait for a bound section. A host that holds
+section. Without one, the coordinator starts at the first item that registers,
+and a host reads its readiness from `coordinator.waitUntilReady()` or
+`isReady()`; `toolkit-ready` and `section-ready` wait for a bound section. The
+toolkit emits no stage events: `pie-stage-change` is the section player's. A
+host that holds
 the coordinator from `runtime-ready`, or passes its own as `coordinator`,
 changes the profile with `coordinator.updateAssessment(...)`; the toolkit
 applies its `assessment` property only to a coordinator it owns. The
@@ -516,7 +516,7 @@ reports an outer coordinator arriving later once in the console. `isolation`
 `"force"` keeps a nested toolkit on its own coordinator by design.
 
 Text-to-speech starts at the toolkit's first content, once the section composes
-or the first item scope registers, and `engine-ready` waits for it. With `lazy-init` it starts at the first read-aloud instead, unless policy
+or the first item scope registers, and `coordinator.waitUntilReady()` waits for it. With `lazy-init` it starts at the first read-aloud instead, unless policy
 grants it. A tool provider or text-to-speech that fails to start is a
 recoverable framework error: the tool reports itself unavailable and the
 assessment goes on. When policy grants the tool, through an item or district
@@ -1516,27 +1516,99 @@ Notes:
 
 ## Section Runtime Engine (advanced)
 
-The toolkit exposes a layered **section runtime engine** that consolidates
-runtime resolution, FSM-driven stage progression, framework-error reporting,
-and DOM-event fan-out into a single object hosts can mount
-and dispose. The engine is what `<pie-section-player-…>` and
-`<pie-assessment-toolkit>` use internally, and it is also the surface
-custom hosts (or alternate layout shells) consume directly.
+The section runtime engine is the section player's stage chain: a pure FSM that
+turns the cohort a layout shows, the controller resolving and the readiness
+signals the layout derives into `pie-stage-change` and `pie-loading-complete`.
+The section player's layout kernel owns one per layout element, and it is the
+only stage emitter. `<pie-assessment-toolkit>` emits no stages: its
+`SectionControllerBinding` resolves the section's controller, which the toolkit
+announces with `toolkit-ready`, and the toolkit publishes framework errors.
 
 ### Entry point
 
 `@pie-players/pie-assessment-toolkit/runtime/engine` is the stable entry for a
-host that mounts, drives and disposes a section runtime. It carries
-`SectionRuntimeEngine`, the cross-CE host context
-(`sectionRuntimeEngineHostContext`) and its consumer-side helper
-(`connectSectionRuntimeEngineHostContext`), and the vocabulary of the facade's
-own inputs: the `FrameworkErrorBus` `attachHost` takes, the cohort helpers
-(`makeCohort`, `cohortsEqual`), the runtime config types with
+host that drives a section's stage chain. It carries `SectionRuntimeEngine` and
+the vocabulary of its surface: the `SectionEngineInput`s `dispatchInput` takes,
+the `SectionEngineOutput`s `subscribe` delivers, the `SectionEngineState` and
+`SectionEnginePhase` `getState` returns, the cohort helpers (`makeCohort`,
+`cohortsEqual`), the runtime config types with
 `resolveSectionEngineRuntimeState`, and the readiness signals with
-`createReadinessDetail`. The cross-CE host context exposes only a lifecycle
-handle; controller methods stay on `SectionRuntimeEngine`. The engine core, its
-adapter and the event bridges have no entry: a host reaches them through the
-facade.
+`createReadinessDetail`. The engine core, its adapter and its DOM bridge have no
+entry: a host reaches them through the facade.
+
+### Stage chain
+
+A cohort moves through `composed`, `engine-ready` and `interactive`, and ends at
+`disposed` on a cohort change or unmount. `engine-ready` follows the
+`section-controller-resolved` input, `interactive` the readiness signals that
+satisfy the readiness mode. A readiness update that reports `runtimeError`
+before `interactive` ends the chain: the first stage the cohort did not reach is
+`failed` and the rest up to `interactive` are `skipped`. The section player sets
+`runtimeError` from a non-recoverable `framework-error`, so a host waiting on
+`engine-ready` or `interactive` always hears an answer. `pie-loading-complete`
+fires once per cohort, when every item has loaded.
+
+### Common-host wiring example
+
+Most hosts never construct the engine: the section-player layout elements do.
+Use the facade only when building an alternate layout shell. The shape mirrors
+the section-player kernel:
+
+```ts
+import {
+  SectionRuntimeEngine,
+  makeCohort,
+} from "@pie-players/pie-assessment-toolkit/runtime/engine";
+
+const engine = new SectionRuntimeEngine();
+
+// 1. Attach to the layout host. `sourceCe` is stamped onto every event.
+engine.attachHost({ host: layoutHostElement, sourceCe: "my-custom-layout" });
+
+// 2. (Optional) Subscribe to the output batches the DOM bridge dispatches.
+engine.subscribe((outputs) => {
+  // `stage-change` and `loading-complete` outputs
+});
+
+// 3. Drive the engine with `SectionEngineInput`s.
+const cohort = makeCohort({ sectionId, attemptId });
+engine.dispatchInput({
+  kind: "initialize",
+  cohort,
+  effectiveRuntime,
+  effectiveToolsConfig,
+  itemCount,
+});
+
+// When the wrapped toolkit announces `toolkit-ready`:
+engine.dispatchInput({ kind: "section-controller-resolved" });
+
+// On readiness signal updates:
+engine.dispatchInput({
+  kind: "update-readiness-signals",
+  signals: {
+    sectionReady,
+    interactionReady,
+    allLoadingComplete,
+    runtimeError,
+  },
+  loadedCount,
+  itemCount,
+  mode: "progressive",
+});
+
+// On unmount; emits `disposed` for the active cohort.
+engine.dispose();
+```
+
+The adapter dispatches `pie-stage-change` and `pie-loading-complete` on `host`,
+bubbling and composed, as the toolkit dispatches its own events. Framework
+errors are not an engine output. The toolkit that owns the coordinator publishes
+each one once: one bubbling, composed `framework-error` event, which reaches the
+layout host and `document`, and one `onFrameworkError` call. A coordinator the
+host passes in reports through the same surfaces.
+`packages/section-player/tests/section-player-event-delivery.spec.ts` pins these
+counts.
 
 ## Writing a capability package
 
@@ -1559,126 +1631,6 @@ registration, a content resolver, its own custom element, and no edit to any
 generic package. `packages/default-tool-loaders/README.md` covers how a
 deployment then composes it in, and `docs/TOOL_REGISTRY.md` the registration and
 host-surface contracts.
-
-### Lifecycle emit coordination
-
-When `<pie-assessment-toolkit>` is nested inside a section-player layout,
-the layout kernel publishes a lifecycle handle via
-`sectionRuntimeEngineHostContext`. The toolkit detects that host
-lifecycle owner and **suppresses its own external lifecycle DOM emits
-and `onStageChange` callback** in favor of the layout CE host. From the
-outside, one cohort yields one `pie-stage-change` /
-`pie-loading-complete` chain on the layout CE host regardless of wrapper
-depth. Controller-side
-registration, content loading, session propagation, and persistence
-remain toolkit-local through its own `SectionRuntimeEngine` instance.
-A standalone `<pie-assessment-toolkit>` (no host context) emits from
-its own engine.
-
-**Detection.** If a custom layout shell emits two `pie-stage-change`
-events per stage transition (or two `pie-loading-complete` per cohort)
-on the same layout CE — typically with two distinct `detail.runtimeId`
-values — the shell has not published its engine via
-`sectionRuntimeEngineHostContext`, so the wrapped
-`<pie-assessment-toolkit>` falls back to its standalone lifecycle emit
-path. Wire the bridge as shown below.
-
-### Common-host wiring example
-
-Most hosts never construct the engine directly — the section-player
-layout CE and the toolkit CE handle it. Use the facade only when
-building an alternate layout shell (e.g. a custom kernel host). The
-shape mirrors what the section-player kernel does internally:
-
-```ts
-import { ContextProvider } from "@pie-players/pie-context";
-import {
-  FrameworkErrorBus,
-  SectionRuntimeEngine,
-  makeCohort,
-  sectionRuntimeEngineHostContext,
-} from "@pie-players/pie-assessment-toolkit/runtime/engine";
-
-const bus = new FrameworkErrorBus();
-const engine = new SectionRuntimeEngine();
-
-// 1. Attach to the layout CE host. `sourceCe` is stamped onto every
-//    DOM event the engine dispatches and is required.
-engine.attachHost({
-  host: layoutHostElement,
-  sourceCe: "my-custom-layout",
-  frameworkErrorBus: bus,
-  coordinator: toolkitCoordinator,
-});
-
-// 2. Publish a lifecycle handle on the layout CE host so any wrapped
-//    <pie-assessment-toolkit> suppresses duplicate external lifecycle
-//    emits. The toolkit still owns its controller registration/session
-//    plumbing locally.
-const engineProvider = new ContextProvider(layoutHostElement, {
-  context: sectionRuntimeEngineHostContext,
-  initialValue: {
-    engine: {
-      getRuntimeId: () => engine.getRuntimeId(),
-    },
-  },
-});
-engineProvider.connect();
-
-// 3. (Optional) Subscribe to the structured output stream — same set
-//    of outputs the DOM-event bridge fans out to the host element.
-engine.subscribe((output) => {
-  // tap stage transitions, readiness updates, framework errors,
-  // instrumentation events
-});
-
-// 4. Drive the engine. Use real `SectionEngineInput` shapes:
-const cohort = makeCohort({ sectionId, attemptId });
-engine.dispatchInput({
-  kind: "initialize",
-  cohort,
-  effectiveRuntime,
-  effectiveToolsConfig,
-  itemCount,
-});
-
-// On loading-progress / readiness signal updates:
-engine.dispatchInput({
-  kind: "update-readiness-signals",
-  signals: {
-    sectionReady,
-    interactionReady,
-    allLoadingComplete,
-    runtimeError,
-  },
-  loadedCount,
-  itemCount,
-  mode: "progressive",
-});
-
-// On unmount:
-engineProvider.disconnect();
-engine.dispose();
-```
-
-The DOM events `pie-stage-change`, `pie-loading-complete`, and
-`framework-error` are dispatched on `host` automatically by the
-adapter's `dom-event-bridge`. The canonical `onFrameworkError` callback
-prop and the `FrameworkErrorBus` deliver each error
-exactly once regardless of wrapper depth. The `framework-error` DOM
-event on the layout CE host also delivers each error exactly once: the
-section-player kernel intercepts the toolkit's bubbled emit at
-`<pie-section-player-base>` and calls `event.stopPropagation()`, so the
-layout host sees only the canonical engine-bridge emit. Direct
-listeners on `<pie-assessment-toolkit>` itself still see the toolkit's
-own emit (the toolkit dispatch reaches them before the kernel listener
-runs). A coordinator the host passes in reports through the same
-surfaces. `packages/section-player/tests/section-player-event-delivery.spec.ts`
-pins these counts.
-The layout host emits one `framework-error` DOM event per framework error.
-
-Hosts should listen to `pie-stage-change` (with the readiness detail also
-available via the kernel's `selectReadiness()`) and `pie-loading-complete`.
 
 ## State Separation: Tool State vs Session Data
 

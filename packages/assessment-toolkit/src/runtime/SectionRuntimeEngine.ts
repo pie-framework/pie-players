@@ -1,44 +1,22 @@
 /**
- * Section runtime engine — public facade.
+ * Section runtime engine — the section player's stage chain.
  *
- * The facade is the narrow, stable entry point hosts use to mount,
- * drive, and dispose a section runtime. It composes two layers:
+ * The section player's layout kernel owns one per layout element and drives it
+ * with `dispatchInput`: the cohort it shows (`initialize`, `cohort-change`,
+ * `update-runtime`), the controller resolving (`section-controller-resolved`),
+ * and the readiness signals it derives (`update-readiness-signals`). The pure
+ * FSM core turns those into `pie-stage-change` and `pie-loading-complete`,
+ * which the adapter dispatches on the layout element, bubbling and composed;
+ * `subscribe` receives the same outputs in batches.
  *
- *   - the **registry** (`RuntimeRegistry`) — registered item/passage
- *     shells in document order, used for canonical-id lookup;
- *   - the **adapter** (`SectionEngineAdapter`) — single I/O seam over
- *     the pure FSM core, fanning outputs to the DOM, framework-error
- *     bus, and host subscribers.
+ * The engine is the only stage emitter. It holds no controller and no
+ * registry: the toolkit's `SectionControllerBinding` owns those, and the kernel
+ * learns from `toolkit-ready` that the controller resolved.
  *
- * The facade exposes an engine-side surface for stage/lifecycle inputs and a
- * controller-facing surface for item registration, session updates, and host
- * controller commands:
- *
- *   1. The **engine-side** surface (`attachHost`, `dispatchInput`,
- *      `subscribe`, `getState`). The section-player layout kernel drives
- *      it. Construction is lazy: `attachHost(...)` builds the adapter on
- *      first call, with the supplied host element and framework-error
- *      bus. After construction, host re-attachments (e.g. cohort change
- *      with a new layout shell) update the adapter's host element via
- *      `setHost(...)`.
- *
- *   2. The **controller-side** surface (`initialize`,
- *      `register`, `unregister`, `handleContent*`, `updateItemSession`,
- *      `navigateToItem`, `persist`, `hydrate`, `dispose`). The
- *      `PieAssessmentToolkit.svelte` CE drives section-controller and
- *      item-shell events through this surface.
- *
- * The two surfaces share `RuntimeRegistry` and the resolved
- * `SectionControllerHandle`.
+ * `attachHost(...)` builds the adapter on first call; a later call moves it to
+ * a new host element.
  */
 
-import type { ToolkitCoordinator } from "../services/ToolkitCoordinator.js";
-import type { FrameworkErrorReporter } from "../services/framework-error-bus.js";
-import type {
-	SectionControllerEvent,
-	SectionControllerHandle,
-	SectionControllerSessionState,
-} from "../services/section-controller-types.js";
 import { SectionEngineAdapter } from "./adapter/SectionEngineAdapter.js";
 import type { EngineOutputListener } from "./adapter/subscriber-fanout.js";
 import type { SectionEngineInput } from "./core/engine-input.js";
@@ -47,176 +25,26 @@ import {
 	createInitialEngineState,
 	type SectionEngineState,
 } from "./core/engine-state.js";
-import {
-	createPieLogger,
-	isGlobalDebugEnabled,
-} from "@pie-players/pie-players-shared";
-import type { MediaTimeSource } from "@pie-players/pie-players-shared/timed-media";
-import type { RuntimeRegistrationDetail } from "./registration-events.js";
-import { RuntimeRegistry } from "./RuntimeRegistry.js";
 import { createRuntimeId } from "./runtime-id.js";
 
-/**
- * Structural view of the resolved section controller, widened with the
- * extra methods the toolkit's runtime CE calls directly. Optional so
- * stub controllers used in tests do not need every entry point.
- */
-interface RuntimeController extends SectionControllerHandle {
-	getCompositionModel?: () => unknown;
-	getCanonicalItemId?: (itemId: string) => string;
-	handleContentLoaded?: (args: {
-		itemId: string;
-		canonicalItemId?: string;
-		contentKind?: string;
-		detail?: unknown;
-		timestamp?: number;
-	}) => void;
-	handleContentRegistered?: (args: {
-		itemId: string;
-		canonicalItemId?: string;
-		contentKind?: string;
-	}) => void;
-	handleContentUnregistered?: (args: {
-		itemId: string;
-		canonicalItemId?: string;
-		contentKind?: string;
-	}) => void;
-	handleItemPlayerError?: (args: {
-		itemId: string;
-		canonicalItemId?: string;
-		contentKind?: string;
-		error: unknown;
-		timestamp?: number;
-	}) => void;
-	reportSectionError?: (args: {
-		source: "item-player" | "section-runtime" | "toolkit" | "controller";
-		error: unknown;
-		itemId?: string;
-		canonicalItemId?: string;
-		contentKind?: string;
-		timestamp?: number;
-	}) => void;
-	updateItemSession?: (
-		itemId: string,
-		sessionDetail: unknown,
-	) => { eventDetail?: unknown } | null;
-	subscribe?: (listener: (event: SectionControllerEvent) => void) => () => void;
-	navigateToItem?: (index: number) => unknown;
-	attachMediaTimeSource?: (
-		source: MediaTimeSource,
-		options?: {
-			origin?: "native-adapter" | "host";
-			renderableId?: string;
-		},
-	) => void;
-	detachMediaTimeSource?: (options?: {
-		origin?: "native-adapter" | "host";
-	}) => void;
-	pauseMediaForCompetingAudio?: () => boolean;
-}
-
-/** What a media-time-source registration reaching the engine has to say. */
-export interface SectionRuntimeMediaTimeSourceAction {
-	renderableId: string;
-	action: "attach" | "detach";
-	source?: MediaTimeSource;
-	origin?: "native-adapter" | "host";
-}
-
-/** What a formative action reaching the engine has to say. */
-export interface SectionRuntimeFormativeAction {
-	itemId: string;
-	action: "check" | "retry";
-	outcomes?: unknown[];
-}
-
-/**
- * Initialize args used by the toolkit CE to resolve the coordinator-backed
- * section controller.
- */
-interface EngineInitArgs {
-	coordinator: ToolkitCoordinator;
-	section: unknown;
-	sectionId: string;
-	assessmentId: string;
-	view: string;
-	attemptId?: string;
-	/**
-	 * A host-supplied session for this section, applied by the coordinator in
-	 * place of `hydrate()` when it creates the controller. Absent, creation
-	 * hydrates from the persistence strategy as before.
-	 */
-	initialSession?: SectionControllerSessionState | null;
-	createDefaultController: () => Promise<RuntimeController> | RuntimeController;
-	onCompositionChanged?: (composition: unknown) => void;
-	/**
-	 * The controller event that caused a republish, for the few events the toolkit
-	 * has to act on rather than merely propagate — a timed-media policy that cannot
-	 * be enforced becomes a framework warning, and malformed cue data becomes a
-	 * framework error. Every other event reaches hosts through the composition
-	 * republish and the coordinator's own subscriptions.
-	 */
-	onControllerEvent?: (event: SectionControllerEvent) => void;
-}
-
-/**
- * Engine-side `attachHost` args. The host element, framework-error bus,
- * and `sourceCe` together let the adapter dispatch DOM events and bus
- * fan-outs consistently with the kernel emit chain.
- */
+/** `attachHost` args: the element events are dispatched on, and its tag. */
 export interface SectionRuntimeEngineHostArgs {
 	host: EventTarget;
 	sourceCe: string;
-	frameworkErrorBus: FrameworkErrorReporter;
 	now?: () => string;
 }
 
-const logger = createPieLogger("section-runtime-engine", () =>
-	isGlobalDebugEnabled(),
-);
-
 export class SectionRuntimeEngine {
-	private readonly registry = new RuntimeRegistry();
 	private readonly runtimeId = createRuntimeId("section-engine");
-
-	// Engine-side state.
 	private adapter: SectionEngineAdapter | null = null;
 
-	// Controller-side state.
-	private controller: RuntimeController | null = null;
-	private coordinator: ToolkitCoordinator | null = null;
-	private sectionId = "";
-	private attemptId: string | undefined;
-	private unsubscribeController: (() => void) | null = null;
-	private activeInitToken = 0;
-
 	/**
-	 * Tracks which `(canonicalItemId, contentKind)` pairs have already
-	 * fired `handleContentLoaded` on this engine. Mirrored alongside
-	 * `RuntimeRegistry`'s registered set so a cohort handoff can
-	 * replay the persistent shells' loaded state into the new
-	 * controller — see `replayRegisteredShellsIntoController` and the
-	 * PIE-512 Phase B regression test.
+	 * Attach the host element and `sourceCe` the adapter dispatches DOM events
+	 * with. Required before `dispatchInput` / `subscribe` produce observable
+	 * effects.
 	 *
-	 * Cleared in lockstep with `handleContentUnregistered` and on
-	 * `dispose`. Not exposed publicly: the registry alone is the
-	 * external surface; the loaded set exists only to seed cohort B's
-	 * controller with the live state cohort A's shells produced.
-	 */
-	private readonly loadedRenderableKeys = new Set<string>();
-
-	// ============================================================
-	// Engine-side surface (driven by the section-player layout kernel).
-	// ============================================================
-
-	/**
-	 * Attach the host element + framework-error bus + sourceCe so the
-	 * adapter can dispatch DOM events and bus errors. Required before
-	 * `dispatchInput` / `subscribe` produce observable effects.
-	 *
-	 * Constructs the adapter on the first call. Subsequent calls keep
-	 * the adapter and update its host element (used by layout-shell
-	 * rollovers).
+	 * Constructs the adapter on the first call. Subsequent calls keep the
+	 * adapter and update its host element.
 	 */
 	attachHost(args: SectionRuntimeEngineHostArgs): void {
 		if (this.adapter) {
@@ -227,7 +55,6 @@ export class SectionRuntimeEngine {
 			host: args.host,
 			runtimeId: this.runtimeId,
 			sourceCe: args.sourceCe,
-			frameworkErrorBus: args.frameworkErrorBus,
 			now: args.now,
 		});
 	}
@@ -235,7 +62,7 @@ export class SectionRuntimeEngine {
 	/**
 	 * Forward a host-constructed input to the FSM core via the adapter.
 	 * Returns the outputs the transition produced (subscribers and the
-	 * DOM/framework-error bridges have already received them).
+	 * DOM bridge have already received them).
 	 *
 	 * No-op (returns `[]`) before `attachHost(...)` so callers that
 	 * dispatch optimistically during teardown do not throw.
@@ -264,336 +91,22 @@ export class SectionRuntimeEngine {
 	}
 
 	/**
-	 * Stable per-engine runtime id used to scope DOM-event details and
-	 * registry telemetry. Exposed so tests and instrumentation can pin
-	 * the value the bridges emit.
+	 * Stable per-engine runtime id, the `runtimeId` of every event detail the
+	 * engine dispatches.
 	 */
 	getRuntimeId(): string {
 		return this.runtimeId;
 	}
 
-	// ============================================================
-	// Controller-side surface.
-	// ============================================================
-
-	async initialize(args: EngineInitArgs): Promise<void> {
-		this.activeInitToken += 1;
-		const token = this.activeInitToken;
-		this.coordinator = args.coordinator;
-		this.sectionId = args.sectionId;
-		this.attemptId = args.attemptId;
-
-		const resolved = (await args.coordinator.getOrCreateSectionController({
-			sectionId: args.sectionId,
-			attemptId: args.attemptId,
-			input: {
-				section: args.section,
-				sectionId: args.sectionId,
-				assessmentId: args.assessmentId,
-				view: args.view,
-			},
-			updateExisting: true,
-			initialSession: args.initialSession,
-			createDefaultController: args.createDefaultController,
-		})) as RuntimeController;
-
-		if (token !== this.activeInitToken) return;
-		this.unsubscribeController?.();
-		this.controller = resolved;
-		// PIE-512 Phase C: always re-feed the registry's currently
-		// registered shells (and their loaded state) into the resolved
-		// controller. We do NOT gate on `resolved !== previousController`
-		// any more.
-		//
-		// Why the gate had to go:
-		//   - Cohort flip resolving to a fresh controller — replay seeds
-		//     the new controller, which is the original Phase B fix.
-		//   - Same-cohort `updateInput` resolving to the existing
-		//     controller — the coordinator's
-		//     `resolveExistingSectionController` calls
-		//     `existingController.updateInput(input)` (engine always
-		//     passes `updateExisting: true`), and pre-Phase-C
-		//     `SectionController.initialize` wiped lifecycle tracking
-		//     unconditionally. A subscriber attaching between the wipe
-		//     and the next live event saw an empty
-		//     `loadedRenderables` snapshot.
-		//
-		// Phase C makes this re-feed safe by combining (a) the
-		// section-identity gate around `resetLifecycleTracking()` in
-		// `SectionController.initialize` (so same-cohort `updateInput`
-		// preserves tracking) with (b) idempotent
-		// `handleContentRegistered` / `handleContentLoaded` on the
-		// controller (so re-feeding the same registry entries is a
-		// no-op if the controller already knows about them, but
-		// re-seeds the controller in the post-`updateInput`-wipe case
-		// that pre-Phase-C used to encounter).
-		this.replayRegisteredShellsIntoController(resolved);
-		args.onCompositionChanged?.(resolved.getCompositionModel?.());
-		this.unsubscribeController =
-			resolved.subscribe?.((event) => {
-				// Isolated deliberately: the controller's emit loop catches per
-				// listener, so a diagnostic handler that throws would take the
-				// composition republish down with it and every cue and Try would stop
-				// reaching the cards — a failure with no symptom except a warning.
-				try {
-					args.onControllerEvent?.(event);
-				} catch (error) {
-					logger.warn("onControllerEvent handler threw", error);
-				}
-				args.onCompositionChanged?.(resolved.getCompositionModel?.());
-			}) || null;
-	}
-
 	/**
-	 * Re-feed the engine's `RuntimeRegistry` and loaded-set into the
-	 * resolved controller. Call site: `initialize(...)` — runs on
-	 * EVERY initialize, both cohort-flip-resolves-fresh-controller
-	 * and same-cohort-resolves-existing-controller cases. Phase C
-	 * dropped the `resolved !== previousController` gate; see the
-	 * comment at the call site for why.
-	 *
-	 * Two-pass order — register every shell in document order, then
-	 * issue `handleContentLoaded` for each shell whose load already
-	 * fired on this engine. The two-pass shape prevents
-	 * `evaluateSectionLoadingState` from flapping
-	 * `section-loading-complete` `false→true→false→…` while replay is
-	 * mid-walk: any subscriber wired before the engine's own
-	 * `controller.subscribe` (no such caller today, but cheap defense
-	 * for future wiring) sees one clean `false→true` transition.
-	 *
-	 * Idempotent on the controller side — Phase C makes
-	 * `SectionController.handleContentRegistered` and
-	 * `handleContentLoaded` early-return on duplicates so re-feeding
-	 * the same shells into a controller that already tracks them is
-	 * a true no-op (no spurious re-emits, no re-evaluation of
-	 * `section-loading-complete`). At the call site no listener is
-	 * attached during the replay window, so `emitChange` side effects
-	 * fire into a void on this pass anyway, but the controller-side
-	 * idempotence is what makes the replay safe to run on every
-	 * initialize regardless of whether the controller is fresh.
+	 * Emit `disposed` for the active cohort and detach. Idempotent; inputs
+	 * after it are ignored.
 	 */
-	private replayRegisteredShellsIntoController(
-		controller: RuntimeController,
-	): void {
-		if (!controller.handleContentRegistered) return;
-		const shells = this.registry.getOrderedShells();
-		if (shells.length === 0) return;
-		for (const shell of shells) {
-			const canonicalItemId = shell.canonicalItemId || shell.itemId;
-			controller.handleContentRegistered({
-				itemId: shell.itemId,
-				canonicalItemId,
-				contentKind: shell.contentKind || shell.kind,
-			});
-		}
-		const now = Date.now();
-		for (const shell of shells) {
-			const canonicalItemId = shell.canonicalItemId || shell.itemId;
-			const key = this.getLoadedKey(canonicalItemId, shell.contentKind);
-			if (this.loadedRenderableKeys.has(key)) {
-				controller.handleContentLoaded?.({
-					itemId: shell.itemId,
-					canonicalItemId,
-					contentKind: shell.contentKind || shell.kind,
-					timestamp: now,
-				});
-			}
-		}
-	}
-
-	/**
-	 * Stable key for the engine's `loadedRenderableKeys` set. Mirrors
-	 * the `(canonicalItemId, contentKind)` shape `SectionController`
-	 * uses internally (see `getRenderableKey`); we only need
-	 * consistent add/check semantics on this side, not byte-identical
-	 * normalization with the controller.
-	 */
-	private getLoadedKey(
-		canonicalItemId: string,
-		contentKind: string | undefined,
-	): string {
-		return `${contentKind ?? ""}:${canonicalItemId}`;
-	}
-
-	register(detail: RuntimeRegistrationDetail): boolean {
-		return this.registry.register(detail);
-	}
-
-	unregister(element: HTMLElement): boolean {
-		return this.registry.unregister(element);
-	}
-
-	getCompositionModel(): unknown {
-		return this.controller?.getCompositionModel?.() ?? null;
-	}
-
-	getCanonicalItemId(itemId: string): string {
-		const map = this.registry.getCanonicalIdMap();
-		return (
-			map[itemId] || this.controller?.getCanonicalItemId?.(itemId) || itemId
-		);
-	}
-
-	handleContentRegistered(detail: RuntimeRegistrationDetail): void {
-		this.controller?.handleContentRegistered?.({
-			itemId: detail.itemId,
-			canonicalItemId: detail.canonicalItemId || detail.itemId,
-			contentKind: detail.contentKind || detail.kind,
-		});
-	}
-
-	handleContentUnregistered(detail: RuntimeRegistrationDetail): void {
-		const canonicalItemId = detail.canonicalItemId || detail.itemId;
-		// Key the load-set delete with the same `contentKind`-only
-		// shape that `handleContentLoaded` and
-		// `replayRegisteredShellsIntoController` use, so add/check/
-		// delete keys round-trip identically. The `|| detail.kind`
-		// fallback is preserved for the controller-forwarded payload
-		// because the controller normalizes via `toSectionContentKind`
-		// and the `kind` field remains meaningful there.
-		this.loadedRenderableKeys.delete(
-			this.getLoadedKey(canonicalItemId, detail.contentKind),
-		);
-		this.controller?.handleContentUnregistered?.({
-			itemId: detail.itemId,
-			canonicalItemId,
-			contentKind: detail.contentKind || detail.kind,
-		});
-	}
-
-	handleContentLoaded(args: {
-		itemId: string;
-		canonicalItemId?: string;
-		contentKind?: string;
-		detail?: unknown;
-		timestamp?: number;
-	}): void {
-		const canonicalItemId = args.canonicalItemId || args.itemId;
-		this.loadedRenderableKeys.add(
-			this.getLoadedKey(canonicalItemId, args.contentKind),
-		);
-		this.controller?.handleContentLoaded?.(args);
-	}
-
-	handleItemPlayerError(args: {
-		itemId: string;
-		canonicalItemId?: string;
-		contentKind?: string;
-		error: unknown;
-		timestamp?: number;
-	}): void {
-		this.controller?.handleItemPlayerError?.(args);
-	}
-
-	reportSectionError(args: {
-		source: "item-player" | "section-runtime" | "toolkit" | "controller";
-		error: unknown;
-		itemId?: string;
-		canonicalItemId?: string;
-		contentKind?: string;
-		timestamp?: number;
-	}): void {
-		this.controller?.reportSectionError?.(args);
-	}
-
-	updateItemSession(itemId: string, session: unknown): unknown {
-		const canonicalId = this.getCanonicalItemId(itemId);
-		return this.controller?.updateItemSession?.(canonicalId, session) ?? null;
-	}
-
-	navigateToItem(index: number): unknown {
-		return this.controller?.navigateToItem?.(index) ?? null;
-	}
-
-	/**
-	 * Route a learner's formative action to the controller.
-	 *
-	 * Canonicalized here for the same reason `updateItemSession` is: the runtime
-	 * id a card dispatches with is not necessarily the identifier the controller
-	 * keys state by.
-	 */
-	handleFormativeAction(action: SectionRuntimeFormativeAction): void {
-		if (!action?.itemId) return;
-		const canonicalId = this.getCanonicalItemId(action.itemId);
-		if (action.action === "retry") {
-			this.controller?.retryFormativeItem?.({ itemId: canonicalId });
-			return;
-		}
-		this.controller?.recordFormativeTry?.({
-			itemId: canonicalId,
-			outcomes: action.outcomes,
-		});
-	}
-
-	/**
-	 * Bind or release the section's Media Time Source.
-	 *
-	 * A pass-through, like `handleFormativeAction`: the engine routes, the
-	 * controller decides. `renderableId` travels with the attach because whether the
-	 * registering renderable is the one `stimulusRef` names is the controller's call
-	 * — it validated `stimulusRef` in the first place.
-	 */
-	handleMediaTimeSource(action: SectionRuntimeMediaTimeSourceAction): void {
-		if (action?.action === "detach") {
-			this.controller?.detachMediaTimeSource?.({
-				origin: action.origin ?? "host",
-			});
-			return;
-		}
-		if (!action?.source) return;
-		this.controller?.attachMediaTimeSource?.(action.source, {
-			origin: action.origin ?? "host",
-			renderableId: action.renderableId,
-		});
-	}
-
-	/**
-	 * Silence media audio because something else is about to speak.
-	 *
-	 * A pass-through like `handleMediaTimeSource`, and for the same reason: which
-	 * source is authoritative and whether it reports `canPause` are the controller's
-	 * to know. Returns whether media audio is now silent, or `true` where there is
-	 * no timed-media controller to ask — nothing is playing.
-	 */
-	requestMediaPauseForCompetingAudio(): boolean {
-		return this.controller?.pauseMediaForCompetingAudio?.() ?? true;
-	}
-
-	async persist(): Promise<void> {
-		await this.controller?.persist?.();
-	}
-
-	async hydrate(): Promise<void> {
-		await this.controller?.hydrate?.();
-	}
-
-	getRegistry(): RuntimeRegistry {
-		return this.registry;
-	}
-
-	async dispose(): Promise<void> {
-		this.activeInitToken += 1;
-		this.unsubscribeController?.();
-		this.unsubscribeController = null;
-		if (this.coordinator && this.sectionId) {
-			await this.coordinator.disposeSectionController({
-				sectionId: this.sectionId,
-				attemptId: this.attemptId,
-			});
-		}
-		this.registry.clear();
-		this.loadedRenderableKeys.clear();
-		this.controller = null;
-		this.coordinator = null;
-		// Tear down the engine-side adapter (if attached) last so any
-		// `dispose` FSM input flows through the bridges before they
-		// detach. Adapter disposal is idempotent and safe even when
-		// nothing is attached.
-		if (this.adapter) {
-			const adapter = this.adapter;
-			this.adapter = null;
-			await adapter.dispose();
-		}
+	dispose(): void {
+		const adapter = this.adapter;
+		if (!adapter) return;
+		this.adapter = null;
+		adapter.dispose();
 	}
 }
 

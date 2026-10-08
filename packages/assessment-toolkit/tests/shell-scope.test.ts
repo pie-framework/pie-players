@@ -1,6 +1,5 @@
 /**
- * The harness builds its tree from raw `EventTarget` nodes, as
- * `runtime/section-runtime-engine-host-context.test.ts` uses raw targets:
+ * The harness builds its tree from raw `EventTarget` nodes, because
  * happy-dom's `dispatchEvent` rejects pie-context's events whenever another
  * file loaded pie-context first, its classes extending the `Event` of that
  * moment. A node dispatches to itself and then to each ancestor until a

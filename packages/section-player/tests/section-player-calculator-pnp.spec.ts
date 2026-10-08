@@ -125,16 +125,23 @@ test("read-aloud reads the item through its scope, speaking the equation's card"
 	expect(await spoken()).not.toContain("x^2");
 });
 
-test("a toolkit without a section announces its runtime and ends its stages at engine-ready", async ({
+test("a toolkit without a section announces its runtime and readies its coordinator without stage events", async ({
 	page,
 }) => {
 	await page.addInitScript(() => {
-		const log = { runtimeReady: [] as string[], stages: [] as string[], compositions: 0 };
+		const log = {
+			runtimeReady: [] as string[],
+			coordinator: null as { isReady(): boolean } | null,
+			stages: [] as string[],
+			compositions: 0,
+		};
 		(window as unknown as { __toolkitLog: typeof log }).__toolkitLog = log;
 		document.addEventListener("runtime-ready", (event) => {
-			log.runtimeReady.push(
-				String((event as CustomEvent<{ ownership?: string }>).detail?.ownership),
-			);
+			const detail = (
+				event as CustomEvent<{ ownership?: string; coordinator?: { isReady(): boolean } }>
+			).detail;
+			log.runtimeReady.push(String(detail?.ownership));
+			log.coordinator = detail?.coordinator ?? null;
 		});
 		document.addEventListener("pie-stage-change", (event) => {
 			const detail = (event as CustomEvent<{ stage: string; status: string }>).detail;
@@ -147,19 +154,30 @@ test("a toolkit without a section announces its runtime and ends its stages at e
 	await page.goto("/calculator-pnp", { waitUntil: "networkidle" });
 
 	const readLog = () =>
-		page.evaluate(
-			() =>
-				(
-					window as unknown as {
-						__toolkitLog: { runtimeReady: string[]; stages: string[]; compositions: number };
-					}
-				).__toolkitLog,
-		);
-	await expect.poll(async () => (await readLog()).stages).toEqual([
-		"composed:skipped",
-		"engine-ready:entered",
-	]);
-	const log = await readLog();
-	expect(log.runtimeReady).toEqual(["owned"]);
-	expect(log.compositions).toBe(0);
+		page.evaluate(() => {
+			const log = (
+				window as unknown as {
+					__toolkitLog: {
+						runtimeReady: string[];
+						coordinator: { isReady(): boolean } | null;
+						stages: string[];
+						compositions: number;
+					};
+				}
+			).__toolkitLog;
+			return {
+				runtimeReady: log.runtimeReady,
+				coordinatorReady: log.coordinator?.isReady() ?? false,
+				stages: log.stages,
+				compositions: log.compositions,
+			};
+		});
+	await expect.poll(async () => (await readLog()).coordinatorReady).toBe(true);
+	// `pie-stage-change` is the section player's; a toolkit emits none.
+	expect(await readLog()).toEqual({
+		runtimeReady: ["owned"],
+		coordinatorReady: true,
+		stages: [],
+		compositions: 0,
+	});
 });

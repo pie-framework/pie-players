@@ -27,11 +27,6 @@
 				type: "String",
 			},
 			onFrameworkError: { type: "Object", reflect: false },
-			// M6 canonical stage-change callback. Mirrors
-			// `runtime.onStageChange`; resolver picks runtime over prop.
-			// Wired imperatively to the toolkit element so the resolved
-			// handler reaches the canonical stage emit point.
-			onStageChange: { type: "Object", reflect: false },
 		},
 		extend: coerceBooleanAttributes,
 	}}
@@ -76,7 +71,6 @@
 		DEFAULT_ISOLATION,
 		resolveOnFrameworkError,
 		type RuntimeConfig,
-		type StageChangeHandler,
 	} from "@pie-players/pie-assessment-toolkit/runtime/engine";
 
 	const logger = createPieLogger("pie-section-player", () => false);
@@ -95,7 +89,6 @@
 		onFrameworkError = undefined as
 			| undefined
 			| ((model: FrameworkErrorModel) => void),
-		onStageChange = undefined as StageChangeHandler | undefined,
 	} = $props();
 
 	let toolkitElement = $state<any>(null);
@@ -183,11 +176,6 @@
 			runtime,
 			onFrameworkError,
 		}),
-	);
-	// Two-tier resolution for `onStageChange` (M6). Strict mirror rule
-	// applies: `runtime.onStageChange` wins over the top-level prop.
-	const effectiveOnStageChange = $derived.by(
-		() => runtime?.onStageChange ?? onStageChange,
 	);
 	const effectiveSectionId = $derived.by(
 		() => sectionId || (section as any)?.identifier || "",
@@ -343,18 +331,6 @@
 		toolkitElement.onFrameworkError = effectiveOnFrameworkError;
 		return () => {
 			toolkitElement.onFrameworkError = undefined;
-		};
-	});
-
-	// Same Svelte-5 rationale for the M6 `onStageChange` callback. The
-	// toolkit's stage tracker invokes the resolved handler at the same
-	// emit point as the `pie-stage-change` DOM event so the callback
-	// and the event stay in lockstep for hosts using either surface.
-	$effect(() => {
-		if (!toolkitElement) return;
-		toolkitElement.onStageChange = effectiveOnStageChange;
-		return () => {
-			toolkitElement.onStageChange = undefined;
 		};
 	});
 

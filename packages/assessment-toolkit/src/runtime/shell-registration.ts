@@ -14,7 +14,7 @@ import { dispatchCrossBoundaryEvent } from "./tool-host-contract.js";
  *
  * Registration is a statement of fact to the runtime, and the runtime takes it
  * literally: a `pie-register` makes the toolkit unregister and re-register the
- * content's accessibility catalogs, re-run `sectionEngine.register`, and
+ * content's accessibility catalogs, re-run `sectionBinding.register`, and
  * re-notify the section controller. Both shells used to dispatch it from the
  * same effect that attached their listeners, with `pie-unregister` in that
  * effect's cleanup — so every re-run announced a teardown and a rebuild of state

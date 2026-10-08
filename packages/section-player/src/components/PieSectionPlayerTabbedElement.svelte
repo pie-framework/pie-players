@@ -87,6 +87,7 @@
 	import "./section-player-passage-card-element.js";
 	import "./section-player-items-pane-element.js";
 	import "./section-player-passages-pane-element.js";
+	import { isOwnSectionPlayerEvent } from "./shared/section-player-own-event.js";
 	import SectionPlayerLayoutKernel from "./shared/SectionPlayerLayoutKernel.svelte";
 	import { mergeLayoutAttrsIntoRuntime } from "./shared/section-player-host-runtime.js";
 	import {
@@ -263,7 +264,8 @@
 				sectionId,
 				attemptId: attemptId || undefined,
 			},
-			shouldTrackEvent: (event: Event) => event.target === localHost,
+			shouldTrackEvent: (event: Event) =>
+				isOwnSectionPlayerEvent(event, localHost),
 			dedupeWindowMs: 100,
 		});
 	});

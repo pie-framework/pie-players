@@ -10,20 +10,40 @@ class MockHighlight {
 	}
 }
 
-const originalCSS = (globalThis as any).CSS;
-const originalHighlight = (globalThis as any).Highlight;
-const originalDocument = (globalThis as any).document;
-const originalGetComputedStyle = (globalThis as any).getComputedStyle;
-const originalMutationObserver = (globalThis as any).MutationObserver;
+// Stubs are defined writable and restored from the descriptors captured at
+// load: a `defineProperty` that creates a missing global without `writable`
+// leaves it read-only, so restoring by assignment fails whenever such a test
+// runs before the others.
+const STUBBED_GLOBALS = [
+	"CSS",
+	"Highlight",
+	"document",
+	"getComputedStyle",
+	"MutationObserver",
+] as const;
+const originalDescriptors = new Map(
+	STUBBED_GLOBALS.map((name) => [
+		name,
+		Object.getOwnPropertyDescriptor(globalThis, name),
+	]),
+);
+
+function stubGlobal(name: (typeof STUBBED_GLOBALS)[number], value: unknown) {
+	Object.defineProperty(globalThis, name, {
+		value,
+		configurable: true,
+		writable: true,
+	});
+}
 
 function setupHighlightDom() {
 	const styleStore = new Map<string, any>();
 	const rootVars = new Map<string, string>();
 	const highlights = new Map<string, unknown>();
 
-	(globalThis as any).CSS = { highlights };
-	(globalThis as any).Highlight = MockHighlight;
-	(globalThis as any).MutationObserver = undefined;
+	stubGlobal("CSS", { highlights });
+	stubGlobal("Highlight", MockHighlight);
+	stubGlobal("MutationObserver", undefined);
 	const mockDocument = {
 		createElement: () => {
 			const styleEl = {
@@ -55,17 +75,16 @@ function setupHighlightDom() {
 			},
 		},
 	};
-	(globalThis as any).document = mockDocument;
+	stubGlobal("document", mockDocument);
 
 	return { styleStore, rootVars, highlights, mockDocument };
 }
 
 afterEach(() => {
-	(globalThis as any).CSS = originalCSS;
-	(globalThis as any).Highlight = originalHighlight;
-	(globalThis as any).document = originalDocument;
-	(globalThis as any).getComputedStyle = originalGetComputedStyle;
-	(globalThis as any).MutationObserver = originalMutationObserver;
+	for (const [name, descriptor] of originalDescriptors) {
+		if (descriptor) Object.defineProperty(globalThis, name, descriptor);
+		else delete (globalThis as any)[name];
+	}
 });
 
 describe("HighlightCoordinator TTS style contrast", () => {
@@ -211,15 +230,18 @@ describe("HighlightCoordinator TTS style contrast", () => {
 
 	test("falls back to high-contrast underline in low-contrast theme colors", () => {
 		const { rootVars } = setupHighlightDom();
-		(globalThis as any).getComputedStyle = () =>
-			({
-				getPropertyValue: (name: string) => {
-					if (name === "--pie-background") return "#fffaf0";
-					if (name === "--pie-text") return "#f5f5f5";
-					if (name === "--pie-missing") return "#fff7b3";
-					return "";
-				},
-			}) as CSSStyleDeclaration;
+		stubGlobal(
+			"getComputedStyle",
+			() =>
+				({
+					getPropertyValue: (name: string) => {
+						if (name === "--pie-background") return "#fffaf0";
+						if (name === "--pie-text") return "#f5f5f5";
+						if (name === "--pie-missing") return "#fff7b3";
+						return "";
+					},
+				}) as CSSStyleDeclaration,
+		);
 
 		new HighlightCoordinator();
 
@@ -231,7 +253,7 @@ describe("HighlightCoordinator TTS style contrast", () => {
 
 	test("does not recurse infinitely on unresolved computed color syntax", () => {
 		const { mockDocument } = setupHighlightDom();
-		(globalThis as any).getComputedStyle = (el: unknown) => {
+		stubGlobal("getComputedStyle", (el: unknown) => {
 			if (el !== mockDocument.documentElement) {
 				return { color: "oklch(0.72 0.13 95)" } as CSSStyleDeclaration;
 			}
@@ -243,7 +265,7 @@ describe("HighlightCoordinator TTS style contrast", () => {
 					return "";
 				},
 			} as CSSStyleDeclaration;
-		};
+		});
 
 		expect(() => new HighlightCoordinator()).not.toThrow();
 	});
@@ -253,18 +275,9 @@ describe("HighlightCoordinator TTS style contrast", () => {
 			GlobalRegistrator.register();
 		}
 		try {
-			Object.defineProperty(globalThis, "CSS", {
-				value: { highlights: new Map() },
-				configurable: true,
-			});
-			Object.defineProperty(globalThis, "Highlight", {
-				value: MockHighlight,
-				configurable: true,
-			});
-			Object.defineProperty(globalThis, "MutationObserver", {
-				value: undefined,
-				configurable: true,
-			});
+			stubGlobal("CSS", { highlights: new Map() });
+			stubGlobal("Highlight", MockHighlight);
+			stubGlobal("MutationObserver", undefined);
 			const coordinator = new HighlightCoordinator();
 			const root = document.createElement("div");
 			root.innerHTML = `
@@ -294,18 +307,9 @@ describe("HighlightCoordinator TTS style contrast", () => {
 			GlobalRegistrator.register();
 		}
 		try {
-			Object.defineProperty(globalThis, "CSS", {
-				value: { highlights: new Map() },
-				configurable: true,
-			});
-			Object.defineProperty(globalThis, "Highlight", {
-				value: MockHighlight,
-				configurable: true,
-			});
-			Object.defineProperty(globalThis, "MutationObserver", {
-				value: undefined,
-				configurable: true,
-			});
+			stubGlobal("CSS", { highlights: new Map() });
+			stubGlobal("Highlight", MockHighlight);
+			stubGlobal("MutationObserver", undefined);
 			const coordinator = new HighlightCoordinator();
 			const root = document.createElement("div");
 			root.innerHTML = `
@@ -336,18 +340,9 @@ describe("HighlightCoordinator TTS style contrast", () => {
 			GlobalRegistrator.register();
 		}
 		try {
-			Object.defineProperty(globalThis, "CSS", {
-				value: { highlights: new Map() },
-				configurable: true,
-			});
-			Object.defineProperty(globalThis, "Highlight", {
-				value: MockHighlight,
-				configurable: true,
-			});
-			Object.defineProperty(globalThis, "MutationObserver", {
-				value: undefined,
-				configurable: true,
-			});
+			stubGlobal("CSS", { highlights: new Map() });
+			stubGlobal("Highlight", MockHighlight);
+			stubGlobal("MutationObserver", undefined);
 			const coordinator = new HighlightCoordinator();
 			const root = document.createElement("div");
 			root.innerHTML = `
@@ -383,18 +378,9 @@ describe("HighlightCoordinator TTS style contrast", () => {
 			GlobalRegistrator.register();
 		}
 		try {
-			Object.defineProperty(globalThis, "CSS", {
-				value: { highlights: new Map() },
-				configurable: true,
-			});
-			Object.defineProperty(globalThis, "Highlight", {
-				value: MockHighlight,
-				configurable: true,
-			});
-			Object.defineProperty(globalThis, "MutationObserver", {
-				value: undefined,
-				configurable: true,
-			});
+			stubGlobal("CSS", { highlights: new Map() });
+			stubGlobal("Highlight", MockHighlight);
+			stubGlobal("MutationObserver", undefined);
 			const coordinator = new HighlightCoordinator();
 			const root = document.createElement("div");
 			// MathJax CHTML: tokens wrap a font-driven <mjx-c>, never a text node.

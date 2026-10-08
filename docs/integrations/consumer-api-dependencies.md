@@ -1488,11 +1488,21 @@ against a MathJax 4 global.
 The item player's own MathJax 4, the browser build of
 `@pie-element/shared-math-rendering-mathjax` it imports for markup math on a
 page with no math renderer, is a dynamic import as well, so in Host M it
-evaluates at startup with its font chunks, about 2.9 MB. Like the copies in the
-`browser/delivery` element builds Host M bundles (checked 2026-10-05), it neither
-reads nor writes `window.MathJax`, and the shell's MathJax 4 is left alone. From
-adapter 0.1.3 it takes its files' location from the registration, and the
-bundle URL gives it none (see the item-player section).
+evaluates at startup with its font chunks, about 2.9 MB. It neither reads nor
+writes `window.MathJax`, and the shell's MathJax 4 is left alone. From adapter
+0.1.3 it takes its files' location from the registration, and the bundle URL
+gives it none (see the item-player section).
+
+The element builds Host M bundles (`@pie-element/multiple-choice`
+13.4.0-next.15, adapter 0.1.1-next.2) do write `window.MathJax` (checked
+2026-10-08). Since 0.3.74 the `preloaded` strategy installs no page renderer, so
+on a shell page without its own MathJax the element adapter sets
+`window.MathJax` with `useSingleDollar: true` and loads `mathjax@4` from
+jsDelivr, whose default startup typesets the whole shell page: `$`-delimited
+text outside the remote renders as math. With the shell's MathJax on the page
+the element uses that copy and nothing else is typeset. Elements on adapter
+0.1.3 or later set `startup.typeset: false` and load only from an asset root,
+which Host M passes as `registerPreloadedElements(elements, { math: { assetRoot } })`.
 
 ## Content stylesheet delivery
 

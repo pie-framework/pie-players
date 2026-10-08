@@ -36,7 +36,7 @@ import {
 	resolveSpokenAudioMedia,
 	type SpokenAudioMedia,
 } from "./spoken-audio-cards.js";
-import type { HighlightCoordinatorApi } from "./interfaces.js";
+import type { HighlightCoordinatorApi, SpeakOptions } from "./interfaces.js";
 import {
 	DEFAULT_CONTENT_LANGUAGE,
 	findLangAttribute,
@@ -141,11 +141,7 @@ interface StructuralPauseProfile {
 
 type HighlightMode = "word" | "sentence";
 
-interface SpeakOptions {
-	catalogId?: string;
-	catalogContext?: CatalogLookupContext;
-	language?: string;
-	contentElement?: Element;
+interface ServiceSpeakOptions extends SpeakOptions {
 	/** The selection inside `contentElement` that is read; the text spoken is its text. */
 	contentRange?: Range;
 	wordBoundaryOffset?: number;
@@ -1401,7 +1397,7 @@ export class TTSService {
 	 * @param text Text to speak (will be normalized: trimmed and whitespace collapsed)
 	 * @param options Optional catalog ID, language, and content element for highlighting
 	 */
-	async speak(text: string, options?: SpeakOptions): Promise<void> {
+	async speak(text: string, options?: ServiceSpeakOptions): Promise<void> {
 		const pendingReadiness = this.pendingReadiness();
 		if (pendingReadiness) await pendingReadiness;
 		if (!this.provider) {
@@ -1612,7 +1608,7 @@ export class TTSService {
 	 * configured settings alone, unless an earlier speak named one: then it
 	 * clears it and text processing reads en-US.
 	 */
-	private async applyLanguageSettings(options?: SpeakOptions): Promise<void> {
+	private async applyLanguageSettings(options?: ServiceSpeakOptions): Promise<void> {
 		if (!this.provider) return;
 		const named = options?.language?.trim() || undefined;
 		const providerOptions = (this.ttsConfig.providerOptions || {}) as Record<
@@ -1662,7 +1658,7 @@ export class TTSService {
 
 	private async resolveSpeechContent(
 		text: string,
-		options?: SpeakOptions,
+		options?: ServiceSpeakOptions,
 	): Promise<ResolvedSpeechContent> {
 		const normalizedInputText = normalizeTextForSpeech(text);
 		if (options?.catalogId && this.catalogResolver) {
@@ -1757,7 +1753,7 @@ export class TTSService {
 	private resolveCatalogComposedSpeechContent(
 		contentElement: Element,
 		normalizedInputText: string,
-		options: SpeakOptions,
+		options: ServiceSpeakOptions,
 	): ResolvedSpeechContent | null {
 		if (!this.catalogResolver) return null;
 		const chunks = this.collectCatalogSpeechChunks(contentElement, options);
@@ -1791,7 +1787,7 @@ export class TTSService {
 
 	private collectCatalogSpeechChunks(
 		root: Element,
-		options: SpeakOptions,
+		options: ServiceSpeakOptions,
 	): SpeechCompositionChunk[] {
 		const chunks: SpeechCompositionChunk[] = [];
 		let textBuffer = "";
@@ -2080,7 +2076,7 @@ export class TTSService {
 
 	private initializeSpeakTracking(
 		contentToSpeak: string,
-		options?: SpeakOptions,
+		options?: ServiceSpeakOptions,
 	): void {
 		this.currentText = contentToSpeak;
 		this.currentContentElement = options?.contentElement || null;
@@ -2092,7 +2088,7 @@ export class TTSService {
 
 	private prepareHighlightsForSpeak(args: {
 		contentToSpeak: string;
-		options?: SpeakOptions;
+		options?: ServiceSpeakOptions;
 		highlightMode: HighlightMode;
 		shouldUsePlan: boolean;
 		runId: number;

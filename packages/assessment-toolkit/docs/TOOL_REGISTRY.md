@@ -310,10 +310,10 @@ import {
   DEFAULT_TOOL_MODULE_LOADERS,
 } from '@pie-players/pie-default-tool-loaders';
 
-// Create registry with the packaged PIE tools
+// Registrations only: the host defines the tool elements itself
 const toolRegistry = createPackagedToolRegistry();
 
-// Optional: wire lazy module loaders at bootstrap
+// Registrations plus module loaders: each tool's package loads on first render
 const lazyRegistry = createPackagedToolRegistry({
   toolModuleLoaders: DEFAULT_TOOL_MODULE_LOADERS
 });

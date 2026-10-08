@@ -9,7 +9,14 @@ import { dynamicMessageKey } from "@pie-players/pie-players-shared/i18n/provider
 import type { I18nProvider } from "@pie-players/pie-players-shared/i18n/types";
 import type { CatalogOwnerSnapshot } from "./AccessibilityCatalogResolver.js";
 import type { ToolContext, ToolLevel } from "./tool-context.js";
-import type { ToolComponentOverrides } from "../tools/tool-tag-map.js";
+import {
+	type ToolComponentOverrides,
+	resolveToolTag,
+} from "../tools/tool-tag-map.js";
+import {
+	PENDING_INPUT_WARNING_DELAY_MS,
+	warnOncePerDocument,
+} from "../runtime/page-warnings.js";
 import type {
 	AccessibilityCatalogResolverApi,
 	ElementToolStateStoreApi,
@@ -921,6 +928,7 @@ export class ToolRegistry {
 	private tools = new Map<string, ToolRegistration>();
 	private pnpIndex = new Map<string, Set<string>>(); // pnpSupportId → Set<toolId>
 	private componentOverrides: ToolComponentOverrides = {};
+	private watchedUndefinedToolElements = new Set<string>();
 	private moduleLoaders = new Map<string, ToolModuleLoader>();
 	private loadedToolModules = new Set<string>();
 	private moduleLoadPromises = new Map<string, Promise<void>>();
@@ -1363,7 +1371,10 @@ export class ToolRegistry {
 		}
 
 		const loader = this.moduleLoaders.get(toolId);
-		if (!loader) return;
+		if (!loader) {
+			this.watchUndefinedToolElement(toolId);
+			return;
+		}
 
 		const loadPromise = (async () => {
 			await loader();
@@ -1376,6 +1387,41 @@ export class ToolRegistry {
 		} finally {
 			this.moduleLoadPromises.delete(toolId);
 		}
+	}
+
+	/**
+	 * Warn when a tool with no module loader still has no element definition
+	 * after the pending-input delay. A registry built without loaders otherwise
+	 * renders the tool as an unknown element with no error.
+	 */
+	private watchUndefinedToolElement(toolId: string): void {
+		if (this.watchedUndefinedToolElements.has(toolId)) return;
+		if (typeof customElements === "undefined" || typeof document === "undefined") {
+			return;
+		}
+		const overrides = this.componentOverrides;
+		if (overrides.toolComponentFactories?.[toolId] || overrides.toolComponentFactory) {
+			return;
+		}
+		let tagName: string;
+		try {
+			tagName = resolveToolTag(toolId, overrides);
+		} catch {
+			// Element creation reports the missing tag mapping.
+			return;
+		}
+		if (customElements.get(tagName)) return;
+		this.watchedUndefinedToolElements.add(toolId);
+		const doc = document;
+		const timer = setTimeout(() => {
+			if (customElements.get(tagName)) return;
+			warnOncePerDocument(
+				doc,
+				`undefinedToolElement.${toolId}`,
+				`[ToolRegistry] Tool "${toolId}" renders <${tagName}>, which is still undefined after ${PENDING_INPUT_WARNING_DELAY_MS / 1000} s, and its registry has no module loader for it. Pass toolModuleLoaders to createPackagedToolRegistry (createDefaultToolModuleLoaders() from @pie-players/pie-default-tool-loaders loads the stock tools), register one with setToolModuleLoaders, or import the tool's package before it renders. Reported once per page.`,
+			);
+		}, PENDING_INPUT_WARNING_DELAY_MS);
+		void customElements.whenDefined(tagName).then(() => clearTimeout(timer));
 	}
 
 	/**

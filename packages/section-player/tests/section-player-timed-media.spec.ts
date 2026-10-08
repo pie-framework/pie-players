@@ -280,12 +280,12 @@ test.describe("timed media", () => {
 			),
 		).toBe(false);
 
-		// Read the projection on the republished composition model, the one the
-		// layout's panes render from, rather than calling the controller. That is
-		// the surface a host consumes, and it is the one the degradation has to reach.
+		// Read the projection on the base element's composition model, the one the
+		// layout republishes to its panes, rather than calling the controller. That
+		// is the surface a host consumes, and it is the one the degradation has to reach.
 		const projection = await page.evaluate(() => {
 			const host = document.querySelector(
-				"pie-section-player-splitpane",
+				"pie-section-player-splitpane pie-section-player-base",
 			) as unknown as {
 				getCompositionModelSnapshot: () => {
 					timedMedia?: {

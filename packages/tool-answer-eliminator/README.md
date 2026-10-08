@@ -28,9 +28,14 @@ The answer eliminator is automatically integrated when using the PIE Section Pla
 <script type="module">
   import '@pie-players/pie-section-player';
   import { ToolkitCoordinator } from '@pie-players/pie-assessment-toolkit';
-  import { createPackagedToolRegistry } from '@pie-players/pie-default-tool-loaders';
+  import {
+    createPackagedToolRegistry,
+    DEFAULT_TOOL_MODULE_LOADERS,
+  } from '@pie-players/pie-default-tool-loaders';
 
-  const toolRegistry = createPackagedToolRegistry();
+  const toolRegistry = createPackagedToolRegistry({
+    toolModuleLoaders: DEFAULT_TOOL_MODULE_LOADERS,
+  });
   const coordinator = new ToolkitCoordinator({
     assessmentId: 'my-assessment',
     toolRegistry,
@@ -74,6 +79,7 @@ For custom implementations outside the section player:
   tool.globalElementId = globalElementId;
   tool.elementToolStateStore = store;
   tool.scopeElement = document.querySelector('.question-content');
+  tool.visible = true; // or alwaysOn = true; the tool injects no buttons while neither is set
 </script>
 
 <pie-tool-answer-eliminator></pie-tool-answer-eliminator>
@@ -81,13 +87,18 @@ For custom implementations outside the section player:
 
 ## Props/Attributes
 
-The web component accepts the following properties (set via JavaScript, not HTML attributes):
+`globalElementId`, `elementToolStateStore` and `scopeElement` are JS properties only; the others also take the attribute shown.
 
-| Property | Type | Required | Description |
-|----------|------|----------|-------------|
-| `globalElementId` | `string` | Yes | Composite key: `assessmentId:sectionId:itemId:elementId` |
-| `elementToolStateStore` | `ElementToolStateStoreApi` | Yes | Store for element-level tool state |
-| `scopeElement` | `HTMLElement` | No | DOM element to scope choice detection (defaults to document) |
+| Property | Attribute | Type | Default | Description |
+|----------|-----------|------|---------|-------------|
+| `visible` | `visible` | `boolean` | `false` | Shows the elimination buttons; the toolbar toggle sets it |
+| `alwaysOn` | `always-on` | `boolean` | `false` | Shows the buttons regardless of `visible`, for a profile-based accommodation |
+| `strategy` | `strategy` | `'strikethrough' \| 'mask'` | `'strikethrough'` | Elimination styling; any other value uses `strikethrough` |
+| `buttonAlignment` | `button-alignment` | `'left' \| 'right' \| 'inline'` | `'right'` | Button placement relative to the choice |
+| `toolId` | `tool-id` | `string` | `'answerEliminator'` | Id the tool registers with the coordinator under |
+| `globalElementId` | | `string` | | Composite key `assessmentId:sectionId:itemId:elementId`; with `elementToolStateStore`, enables stored eliminations |
+| `elementToolStateStore` | | `ElementToolStateStoreApi` | | Store for element-level tool state |
+| `scopeElement` | | `HTMLElement` | | Root to detect choices in. Without it the tool uses the root its enclosing `pie-item-scope` provides, and with neither it warns and injects nothing |
 
 ## Global Element ID Format
 
@@ -160,9 +171,14 @@ The answer eliminator stores state in **ElementToolStateStore** (ephemeral, clie
 To persist tool state across page refreshes:
 
 ```typescript
-import { createPackagedToolRegistry } from '@pie-players/pie-default-tool-loaders';
+import {
+  createPackagedToolRegistry,
+  DEFAULT_TOOL_MODULE_LOADERS,
+} from '@pie-players/pie-default-tool-loaders';
 
-const toolRegistry = createPackagedToolRegistry();
+const toolRegistry = createPackagedToolRegistry({
+  toolModuleLoaders: DEFAULT_TOOL_MODULE_LOADERS,
+});
 const coordinator = new ToolkitCoordinator({
   assessmentId: 'my-assessment',
   toolRegistry,
@@ -194,14 +210,7 @@ The tool detects choices through an **adapter registry** (`AdapterRegistry`), no
 | `EBSRAdapter` | `ebsr` | delegates to the multiple-choice adapter for each `ebsr-multiple-choice` part (Part A/B), prefixing choice IDs with the part |
 | `InlineDropdownAdapter` | `inline-dropdown` | dropdown items with `role="option"` |
 
-Support more element types at runtime by registering your own adapter (any object implementing the `ChoiceAdapter` interface: `canHandle`, `findChoices`, `getChoiceId`, `getChoiceLabel`, `canEliminate`, `createChoiceRange`, `getButtonContainer`):
-
-```typescript
-import { AdapterRegistry } from '@pie-players/pie-tool-answer-eliminator/adapters/adapter-registry';
-
-const registry = new AdapterRegistry();
-registry.registerAdapter(myCustomChoiceAdapter);
-```
+The tool builds its registry internally with these three adapters and has no injection point. The `./adapters/adapter-registry` export provides `AdapterRegistry` and `registerAdapter(...)`, and a registry a host constructs is not the one the tool reads, so supporting another element type is a change to this package. A `ChoiceAdapter` declares `elementType`, `priority`, `canHandle`, `findChoices`, `getChoiceId`, `getChoiceLabel`, `canEliminate`, `createChoiceRange` and `getButtonContainer`.
 
 ### 2. State Storage
 

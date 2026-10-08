@@ -51,16 +51,11 @@
 				attribute: "pnp-enforcement",
 				type: "String",
 			},
-			// JS-only prop. Section-player layouts forward
-			// `runtime.isolation` through this property via
-			// `<pie-assessment-toolkit isolation={effectiveIsolation}>`
-			// in `PieSectionPlayerBaseElement.svelte`. Standalone
-			// hosts that want to override the toolkit's coordinator-
-			// inheritance behavior should pass an explicit
-			// `coordinator={...}` instead — the kebab-attribute
-			// surface (`<pie-assessment-toolkit isolation="force">`)
-			// is no longer observed.
-			isolation: { type: "Object", reflect: false },
+			// `"inherit"` (the default) or `"force"`, as an attribute or a property;
+			// section-player layouts set the property from `runtime.isolation`.
+			// `type: "String"` because an observed attribute of type `Object` is
+			// JSON-parsed, and `isolation="force"` would throw.
+			isolation: { attribute: "isolation", type: "String", reflect: false },
 			// JS-only prop. Section-player layouts forward their `session`
 			// through this property. The controller created for `section`
 			// applies it in place of hydrating from the persistence strategy;
@@ -1121,9 +1116,14 @@ const DEFAULT_ENV = {
 		});
 	}
 
+	// A coordinator the host passes wins over an outer runtime, which is followed
+	// meanwhile so that removing the prop inherits at once.
+	const inheritsOuterRuntime = $derived(
+		!coordinator && isolation !== "force" && inheritedRuntime?.coordinator != null,
+	);
 	const effectiveCoordinator = $derived.by(() => {
-		if (isolation !== "force" && inheritedRuntime?.coordinator) {
-			return inheritedRuntime.coordinator as ToolkitCoordinator;
+		if (inheritsOuterRuntime) {
+			return inheritedRuntime?.coordinator as ToolkitCoordinator;
 		}
 		return coordinator || ownedCoordinator;
 	});
@@ -1431,6 +1431,7 @@ const DEFAULT_ENV = {
 			observeMathControlNames(element, {
 				getMathSpeech: () =>
 					effectiveCoordinator?.getServiceBundle().ttsService.getMathSpeechOptions(),
+				getContentLanguage: () => contentLanguage,
 			}),
 		);
 	}
@@ -1567,8 +1568,9 @@ const DEFAULT_ENV = {
 	});
 
 	$effect(() => {
-		const parentRuntimeId =
-			isolation !== "force" && inheritedRuntime ? inheritedRuntime.runtimeId : null;
+		const parentRuntimeId = inheritsOuterRuntime
+			? (inheritedRuntime?.runtimeId ?? null)
+			: null;
 		const ownership: "owned" | "inherited" = parentRuntimeId ? "inherited" : "owned";
 		if (ownership !== lastOwnership) {
 			lastOwnership = ownership;
@@ -1591,8 +1593,9 @@ const DEFAULT_ENV = {
 	$effect(() => {
 		const coord = effectiveCoordinator;
 		if (!coord) return;
-		const ownership: "owned" | "inherited" =
-			isolation !== "force" && inheritedRuntime?.coordinator ? "inherited" : "owned";
+		const ownership: "owned" | "inherited" = inheritsOuterRuntime
+			? "inherited"
+			: "owned";
 		untrack(() => {
 			if (coord === announcedCoordinator) return;
 			announcedCoordinator = coord;

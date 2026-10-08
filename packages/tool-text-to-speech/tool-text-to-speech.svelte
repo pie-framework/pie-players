@@ -33,9 +33,8 @@
 	import {
 		composedClosest,
 		composedParentElement,
-		DEFAULT_CONTENT_LANGUAGE,
-		findContentLanguage,
-		isShadowRootNode
+		isShadowRootNode,
+		resolveContentLanguage
 	} from '@pie-players/pie-assessment-toolkit/runtime/internal';
 	import { onMount, untrack } from 'svelte';
 
@@ -212,7 +211,7 @@
 					? ancestor.host
 					: composedParentElement(ancestor);
 		if (!container) return;
-		const language = findContentLanguage(container, {
+		const language = resolveContentLanguage(container, {
 			contentLanguage: runtimeContext?.contentLanguage
 		});
 
@@ -227,7 +226,7 @@
 			// would otherwise shadow the authored SSML on an outer one and the
 			// selection would be read as generated speech instead.
 			await service.speak(selectedText, {
-				catalogId: findSpokenCatalogId(container, language ?? DEFAULT_CONTENT_LANGUAGE),
+				catalogId: findSpokenCatalogId(container, language),
 				contentElement: container,
 				language
 			});

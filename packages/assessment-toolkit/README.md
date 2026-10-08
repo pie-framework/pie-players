@@ -236,13 +236,11 @@ Documented exceptions to the mirror rule:
   `runtime.tools.placement.{item,passage}` directly.
 - Runtime-only keys on the section-player layout CEs
   (`createSectionController`, `isolation`): accepted only via
-  `runtime.<key>`. `<pie-assessment-toolkit>`
-  itself keeps `createSectionController` and `isolation` as JS-only
-  props (no kebab-attribute surface): section-player layouts forward
-  `runtime.isolation` and `runtime.createSectionController` to the
-  wrapped toolkit via property bindings; standalone hosts that need
-  to override coordinator inheritance should pass an explicit
-  `coordinator={...}` instead.
+  `runtime.<key>`. Section-player layouts forward both to the wrapped
+  toolkit as properties. `<pie-assessment-toolkit>` keeps
+  `createSectionController` JS-only and takes `isolation` as an
+  attribute or a property. A `coordinator` passed to it wins over an
+  outer toolkit's.
 
 ### When to add a tier-1 attribute
 

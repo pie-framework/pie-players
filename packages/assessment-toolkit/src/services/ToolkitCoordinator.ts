@@ -1509,6 +1509,8 @@ export class ToolkitCoordinator {
 				false,
 			);
 			this.assertNotDisposed();
+			// A tool asks each time it opens; the lifecycle hooks report the start once.
+			if (this.toolProviderRegistry.isInitialized(providerId)) return provider;
 			const meta: ProviderLifecycleContext = {
 				providerId,
 				providerName: provider.providerName,

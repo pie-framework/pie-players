@@ -3,8 +3,8 @@ import { expect, test, type Page } from "@playwright/test";
 /**
  * Toolkits a host nests, and item scopes a host mounts without a toolkit, built
  * on the calculator-pnp page, which defines the elements. A nested toolkit
- * decides at connect whether it inherits the runtime above it, and never swaps
- * its coordinator after that.
+ * decides at connect whether it inherits the runtime above it. One that built
+ * its coordinator, or was given one, never swaps it after that.
  */
 
 type RuntimeReady = { who: string; ownership: string; runtimeId: string };
@@ -159,6 +159,66 @@ test.describe("nested toolkits", () => {
 		const outerRuntimeId = (await readyLog(page))[1]?.runtimeId;
 		expect(warnings[0]).toContain(`runtime "${outerRuntimeId}"`);
 		expect(await sameCoordinator(page)).toBe(false);
+	});
+
+	test("an inner toolkit written with isolation=\"force\" keeps its own coordinator", async ({
+		page,
+	}) => {
+		await gotoPage(page);
+		await page.evaluate(() => {
+			const wrapper = document.createElement("div");
+			wrapper.innerHTML =
+				'<pie-assessment-toolkit data-nest="outer" assessment-id="nested-outer">' +
+				'<pie-assessment-toolkit data-nest="inner" assessment-id="nested-inner" isolation="force"></pie-assessment-toolkit>' +
+				"</pie-assessment-toolkit>";
+			document.body.append(wrapper);
+		});
+
+		await expect
+			.poll(async () => (await readyLog(page)).map(({ who }) => who).sort())
+			.toEqual(["inner", "outer"]);
+		const log = await readyLog(page);
+		expect(log.map(({ ownership }) => ownership)).toEqual(["owned", "owned"]);
+		expect(await sameCoordinator(page)).toBe(false);
+	});
+
+	test("an inner toolkit given a coordinator keeps it under an outer one", async ({
+		page,
+	}) => {
+		await gotoPage(page);
+		await createToolkit(page, "donor", null);
+		await createToolkit(page, "outer", null);
+		await expect
+			.poll(async () => (await readyLog(page)).map(({ who }) => who).sort())
+			.toEqual(["donor", "outer"]);
+
+		await page.evaluate(() => {
+			const { coordinators } = (
+				window as unknown as { __nest: { coordinators: Record<string, unknown> } }
+			).__nest;
+			const inner = document.createElement("pie-assessment-toolkit") as HTMLElement & {
+				coordinator: unknown;
+			};
+			inner.dataset.nest = "inner";
+			inner.setAttribute("assessment-id", "nested-inner");
+			inner.coordinator = coordinators.donor;
+			document.querySelector('[data-nest="outer"]')?.append(inner);
+		});
+
+		await expect
+			.poll(async () => (await readyLog(page)).map(({ who }) => who).sort())
+			.toEqual(["donor", "inner", "outer"]);
+		await page.evaluate(() => new Promise((resolve) => setTimeout(resolve, 100)));
+		const inner = (await readyLog(page)).filter(({ who }) => who === "inner");
+		expect(inner.map(({ ownership }) => ownership)).toEqual(["owned"]);
+		expect(
+			await page.evaluate(() => {
+				const { coordinators } = (
+					window as unknown as { __nest: { coordinators: Record<string, unknown> } }
+				).__nest;
+				return coordinators.inner === coordinators.donor;
+			}),
+		).toBe(true);
 	});
 });
 

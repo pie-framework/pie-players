@@ -46,6 +46,7 @@ import type {
 	ToolPlacementLevel,
 	ToolProviderConfig,
 } from "./tools-config-normalizer.js";
+import type { ToolProviderApi } from "./tool-providers/ToolProviderApi.js";
 import type { ToolProviderRegistry } from "./tool-providers/ToolProviderRegistry.js";
 import type {
 	FeaturePolicyDecision,
@@ -640,9 +641,11 @@ export interface ToolkitCoordinatorApi {
 	ensureTTSReady(config?: Record<string, unknown>): Promise<void>;
 
 	/**
-	 * Ensure a provider is initialized and ready.
+	 * Ensure a provider is initialized and ready. A tool starts its provider here,
+	 * so that a failure meets the toolkit's tool failure policy: recoverable
+	 * unless policy grants the tool.
 	 */
-	ensureProviderReady(providerId: string): Promise<unknown>;
+	ensureProviderReady(providerId: string): Promise<ToolProviderApi>;
 
 	/**
 	 * Wait until coordinator initialization is complete.

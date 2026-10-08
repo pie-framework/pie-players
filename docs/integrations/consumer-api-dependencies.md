@@ -107,9 +107,11 @@ toolbar now opens only for a selection inside a card's content region, so Host R
 the one host placing `annotationToolbar`, no longer gets it for a selection in a
 card's header, lead surfaces or media region. Host A reads aloud through the
 server backend, whose request language stays the one its provider config names.
-The browser voice follows a content language only where content markup or a host
-names one, which only Host R's browser voice reaches; otherwise it follows the
-browser's language as before. Row verification dates are unchanged.
+The browser voice, which only Host R reaches, speaks the content language: en-US
+unless content markup or a host names another, where before it followed the
+browser's language. Math control names take the same content language, where
+before they took the nearest `lang` up to the page's. Row verification dates are
+unchanged.
 
 The 2026-09-17 session-commit change (PIE-1058) was checked against the
 recorded rows rather than re-derived from the checkouts. It renames and removes
@@ -1058,11 +1060,14 @@ loophole to tighten.
 Since 0.3.75 a tool whose provider fails to start leaves the section on screen
 and reports itself unavailable, unless policy grants it through an item
 requirement, a district requirement or a profile support; a granted tool's
-failure still ends in the section's error state. So a failing Desmos auth fetch
-leaves the calculator unavailable. A failing TTS endpoint is recoverable whatever
-the policy, because browser speech takes over; only browser speech failing too
-counts as the tool failing. Before, each of these ended in the error state. Host A
-passes no `lazyInit`, so text-to-speech still starts at the first composition.
+failure ends in the section's error state. So a failing Desmos auth fetch leaves
+the calculator unavailable and reports a recoverable `provider-init` error, where
+before it showed only in the calculator panel; a calculator policy grants now
+ends in the error state. A failing TTS endpoint is recoverable whatever the
+policy, because browser speech takes over; only browser speech failing too counts
+as the tool failing, where before a failing endpoint ended in the error state.
+Host A passes no `lazyInit`, so text-to-speech still starts at the first
+composition.
 
 Host R sets the same eleven-key TTS provider config, the same three-part
 unvalidated transport combination among them, and adds a twelfth key —
@@ -1757,6 +1762,10 @@ over a CDN with no typecheck at all.
   `contentLanguage` member of the toolkit runtime context, added on 2026-10-07.
   No host sets either input, so content language stays `en-US` wherever markup
   names none
+- The `isolation` attribute on `pie-assessment-toolkit`, added on 2026-10-08
+  beside the property the section-player layouts set, and a `coordinator` passed
+  to a nested toolkit winning over the outer toolkit's. No host nests a toolkit
+  or sets `isolation` itself
 
 ## Consumer-side defects worth reporting upstream
 

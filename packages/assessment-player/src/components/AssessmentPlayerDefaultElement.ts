@@ -784,26 +784,19 @@ export class AssessmentPlayerDefaultElement
 				settled = true;
 				clearTimeout(timer);
 				sectionEl.removeEventListener(SECTION_PLAYER_PUBLIC_EVENTS.stageChange, onStageChange);
-				sectionEl.removeEventListener(SECTION_PLAYER_PUBLIC_EVENTS.frameworkError, onFrameworkError);
 				resolve(controller);
 			};
+			// A section whose controller cannot be created, including one whose saved
+			// session fails to apply, reports a non-recoverable framework error, and
+			// its stage chain ends with `engine-ready` failed.
 			const onStageChange = (event: Event) => {
 				if (event.target !== sectionEl) return;
 				const { stage, status } = (event as CustomEvent<StageChangeDetail>).detail;
 				if (status === "failed" || stage === "disposed") finish(null);
 				else if (stage === "engine-ready") finish(sectionEl.getSectionController?.() || null);
 			};
-			// A section whose controller cannot be created, including one whose saved
-			// session fails to apply, reports a non-recoverable framework error and
-			// never reaches `engine-ready`.
-			const onFrameworkError = (event: Event) => {
-				if (event.target !== sectionEl) return;
-				if ((event as CustomEvent<FrameworkErrorModel>).detail?.recoverable === true) return;
-				finish(null);
-			};
 			const timer = setTimeout(() => finish(null), 5000);
 			sectionEl.addEventListener(SECTION_PLAYER_PUBLIC_EVENTS.stageChange, onStageChange);
-			sectionEl.addEventListener(SECTION_PLAYER_PUBLIC_EVENTS.frameworkError, onFrameworkError);
 			cancelReadiness = () => finish(null);
 		});
 		void ready

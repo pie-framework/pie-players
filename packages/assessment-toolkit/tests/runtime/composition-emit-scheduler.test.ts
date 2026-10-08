@@ -10,7 +10,7 @@
  *
  * Every timing primitive is injected, so the frame/timer race is driven by hand
  * rather than by wall-clock or by whatever a DOM shim decides to do. No DOM and
- * no Svelte mount, same approach as `stage-emit-gate.test.ts`.
+ * no Svelte mount.
  *
  * The three acceptance criteria map onto the cases below:
  *

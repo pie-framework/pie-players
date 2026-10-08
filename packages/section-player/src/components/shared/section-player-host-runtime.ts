@@ -24,7 +24,7 @@
  *
  * Section-player imports for the relocated symbols (`DEFAULT_*`,
  * `resolveOnFrameworkError`, `RuntimeConfig`, the handler types,
- * `createReadinessDetail`, `createStageTracker`, etc.) point directly
+ * `createReadinessDetail`, the stage types, etc.) point directly
  * at `@pie-players/pie-assessment-toolkit/runtime/engine` /
  * `@pie-players/pie-players-shared/pie`. This module deliberately does
  * not re-export them: a single canonical import path per symbol keeps

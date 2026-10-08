@@ -193,7 +193,11 @@ currently satisfies:
   still receives the commit afterwards: such a handler should leave navigation
   state alone for an event carrying `sessionCommitReason`, or call `persist()`
   before dispatching its own navigation. `sectionId` names the section the item
-  belongs to.
+  belongs to. For a section switch Host A already does the latter: it persists
+  the outgoing section before it hands the player the next one, so the switch's
+  own commit finds nothing pending. Without that persist the outgoing item would
+  arrive after Host A has moved to the next section, where its handler does not
+  find it.
 
 A host **migrating off `<pie-player>`** keeps its session read. On
 `<pie-player>` the `session` property was live: `findOrAddSession` pushed each
@@ -702,6 +706,8 @@ Method: `waitForSectionController(timeoutMs)` (A, off a
 (R, off the event's `currentTarget`). Both overloads are live. Since 0.3.75
 `waitForSectionController` resolves on `toolkit-ready` or when the controller
 resolves, where it polled before; the signature and the timeout are unchanged.
+Since 2026-10-08 neither call advances the stage chain: only `toolkit-ready`
+does, so a read during a section switch can return the outgoing controller.
 
 Events: `toolkit-ready`, read as `event.detail.coordinator`. A listens with
 `addEventListener`; R uses the Svelte 5 `ontoolkit-ready` attribute form. R also
@@ -869,8 +875,10 @@ The deepest coupling in the set, and the one no client-facing host has. From
 - `coordinator.subscribeSectionLifecycleEvents({ eventTypes, listener })`, with
   `eventTypes` narrowed to `section-loading-complete`,
   `section-items-complete-changed`, `section-error`. Wrapped in a `try` because
-  the method throws before a section cohort exists — the host relies on that
-  documented throw rather than on a return value
+  the method throws before the first section is requested — the host relies on
+  that documented throw rather than on a return value. Since 2026-10-08 a call
+  during a section switch registers and binds to the incoming section, where it
+  threw before
 - `createToolsConfig({ source, strictness, toolRegistry, tools })` →
   `{ config, diagnostics }`
 - Diagnostic shape `{ code, severity, path, message }`. The host branches on
@@ -949,7 +957,7 @@ API**.
 | `content-loaded` | `subscribeItemEvents` | A | Per-item and `contentKind === "rubric"` load tracking; cancels a load-timeout watchdog |
 | `section-loading-complete` | `subscribeSectionLifecycleEvents` | A, R | A subscribes with an empty handler; R logs it |
 | `section-items-complete-changed` | `subscribeSectionLifecycleEvents` | A, R | A subscribes with no handler body; R logs it |
-| `section-error` | `subscribeSectionLifecycleEvents` | A, R | Fatal for A: exits the delivery session. R logs it |
+| `section-error` | `subscribeSectionLifecycleEvents` | A, R | Fatal for A: exits the delivery session. R logs it. Since 2026-10-08 a section that fails to start, or a revisited section that fails to update, delivers it to the subscriptions already registered. A subscribes on `toolkit-ready`, so from its second section on such a failure ends the session at once, where its load timeout ended it before |
 | `item-session-changed` | DOM, bubbling and composed | A, R | `document`-level listener → snapshot + persist. R adds two listeners per route in the **capture** phase, so it depends on the event reaching `document` during capture as well as bubble |
 | `session-changed` | DOM event out of the section player's toolkit, bubbling and composed | A, R | The same `document`-level handlers as `item-session-changed`, so each answer persists once per event. R listens in the capture phase here too |
 | `session-changed` | DOM event out of `pie-item-player`, bubbling | P | Response capture; the fields it reads are below |
@@ -986,6 +994,11 @@ a page-wide 500 ms window used to drop an identical response from a second shell
 for the same item, whether a second player's or a re-mounted one's. Checked
 against all four checkouts on 2026-09-26 as a targeted lookup, so it does not
 advance the verification date.
+
+Since 2026-10-08 `framework-error`, `pie-stage-change` and `pie-loading-complete`
+continue past the layout element to `document`, once each; until then they
+stopped there. No checkout listens for any of the three above the layout element,
+checked against every checkout in this pad on 2026-10-08 as a targeted lookup.
 
 The `item-session-data-changed` payload is destructured as
 `event.session.data[0]`, with `event.complete` read through an
@@ -1629,8 +1642,8 @@ re-derived rather than remembered.
   `disposeSectionController`
 - The `granted` and `reason` fields on `FeaturePolicyDecision` — `reason` is
   rendered to a person there, so its wording is user-visible in that host
-- `subscribeSectionLifecycleEvents` throwing before a section cohort exists;
-  Host R catches that throw rather than checking a precondition
+- `subscribeSectionLifecycleEvents` throwing before the first section is
+  requested; Host R catches that throw rather than checking a precondition
 - `pie-stage-change`'s stage vocabulary, and the `engine-ready` transition
   arriving before the zero-arg `getSectionController()` can answer
 - The theme token registry — six of its nine entry fields and four of its five

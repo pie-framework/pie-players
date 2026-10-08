@@ -60,6 +60,7 @@
 	} from "@pie-players/pie-players-shared/pie";
 	import "./section-player-items-pane-element.js";
 	import "./section-player-passages-pane-element.js";
+	import { isOwnSectionPlayerEvent } from "./shared/section-player-own-event.js";
 	import SectionPlayerLayoutKernel from "./shared/SectionPlayerLayoutKernel.svelte";
 	import {
 		BOOTSTRAP_READINESS,
@@ -183,17 +184,18 @@
 				sectionId,
 				attemptId: attemptId || undefined,
 			},
-			shouldTrackEvent: (event: Event) => event.target === localHost,
+			shouldTrackEvent: (event: Event) =>
+				isOwnSectionPlayerEvent(event, localHost),
 			dedupeWindowMs: 100,
 		});
 	});
 
-	// Engine-owned events (`pie-stage-change`, `pie-loading-complete`,
-	// `framework-error`) are dispatched by the kernel-owned section
-	// runtime engine directly onto this CE element via its DOM-event
-	// bridge, and the toolkit's own events (`session-changed`,
-	// `composition-changed`, `runtime-owned`, `runtime-inherited`,
-	// `toolkit-ready`, `section-ready`) bubble to it from the toolkit, so
+	// Engine-owned events (`pie-stage-change`, `pie-loading-complete`)
+	// are dispatched by the kernel-owned section runtime engine directly
+	// onto this CE element via its DOM-event bridge, and the toolkit's own
+	// events (`framework-error`, `session-changed`, `composition-changed`,
+	// `runtime-owned`, `runtime-inherited`, `toolkit-ready`,
+	// `section-ready`) bubble to it from the toolkit, so
 	// outside listeners on `<pie-section-player-kernel-host>` see each once
 	// without any CE-level re-emission. Snapshots are read on demand from
 	// the kernel, which owns the canonical composition, navigation and

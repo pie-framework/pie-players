@@ -54,9 +54,7 @@ export interface FrameworkErrorReporter {
  *
  * **Where it is constructed.** The toolkit CE (`PieAssessmentToolkit.svelte`)
  * builds one and passes it into `ToolkitCoordinator`; hosts subscribe via
- * `ToolkitCoordinatorApi.subscribeFrameworkErrors`. The class is exported from
- * the `runtime/engine` entry because `SectionRuntimeEngine.attachHost` takes
- * one, so the section player's layout kernel constructs its own.
+ * `ToolkitCoordinatorApi.subscribeFrameworkErrors`.
  */
 export class FrameworkErrorBus
 	implements FrameworkErrorPort, FrameworkErrorReporter

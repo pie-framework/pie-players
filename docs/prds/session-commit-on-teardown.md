@@ -569,9 +569,11 @@ callback through `setPendingSessionCommit()` — declared on
 runs it before item navigation, before `updateInput()` snapshots the session for
 a section swap, and before `persist()`. `PieSectionPlayerBaseElement` registers
 it with `<pie-assessment-toolkit>` as the root, on the controller the toolkit
-already holds as well as through the factory it wraps so a cohort flip commits
-before the outgoing controller is replaced. A host-built controller that never
-registers a commit keeps its current behaviour.
+already holds as well as through the factory it wraps. A section switch is the
+toolkit's boundary: it commits from its own root before it asks the coordinator
+for the next section, while the outgoing controller still holds the host's
+section subscriptions. A host-built controller that never registers a commit
+keeps its current behaviour.
 
 A raw `session-changed` does not leave a section: `<pie-item-shell>` stops it and
 re-dispatches the normalized `PIE_ITEM_SESSION_CHANGED_EVENT`. So inside a
@@ -644,6 +646,11 @@ Settled during implementation:
   signature and the second finds nothing pending. Module state would not do —
   the nested Stencil stack loads two copies of the sweep from different bundles,
   and each would announce the same commit.
+- The section-switch commit runs in `<pie-assessment-toolkit>`, before the
+  coordinator starts the next section. It ran in the controller factory until
+  2026-10-08, after the coordinator had moved the host's subscriptions off the
+  outgoing controller, so an item-event subscriber missed the outgoing section's
+  last response.
 - `SectionControllerHandle.setPendingSessionCommit` has to be registered on the
   controller the toolkit already holds, not only through the factory the player
   overrides. The factory reaches controllers built after the player's effect

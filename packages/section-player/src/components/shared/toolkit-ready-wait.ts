@@ -1,8 +1,10 @@
 /**
  * The section controller lookups behind `waitForSectionController`.
  *
- * The toolkit emits `toolkit-ready` once each section's controller has
- * resolved, and the event bubbles, composed, through every element around it.
+ * The toolkit emits `toolkit-ready` each time it initializes a section, once
+ * that section's controller has resolved: the first section, each switch and
+ * each update to the current one. The event bubbles, composed, through every
+ * element around it.
  * A wait listens for it on `target` and looks the controller up again each time
  * it arrives, then once more at the timeout.
  */

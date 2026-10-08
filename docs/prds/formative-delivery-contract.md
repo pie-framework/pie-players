@@ -356,7 +356,7 @@ can call `provideScore()`. It reports the result rather than interpreting it:
 ```
 card → pie-formative-action (cross-boundary DOM event)
      → PieAssessmentToolkit listener
-     → SectionRuntimeEngine
+     → SectionControllerBinding
      → SectionController.recordFormativeTry / retryFormativeItem
      → controller change event → composition republish → card re-renders
 ```

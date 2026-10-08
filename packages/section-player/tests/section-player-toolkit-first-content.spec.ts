@@ -6,7 +6,8 @@ import { expect, test, type Page } from "@playwright/test";
  * are fixed there: a change before is rebuilt into it, a change after is
  * reported, and a registry given to a toolkit that had none is adopted in place.
  * Toolkits without a section are built on the calculator-pnp page, which defines
- * the elements, with its toolkit's registry.
+ * the elements, with its toolkit's registry. Their readiness is the coordinator's:
+ * the toolkit emits no stage events.
  */
 
 const LATE_INPUTS_WARNING = "changed after an item registered";
@@ -113,6 +114,14 @@ const probeLog = (page: Page) =>
 		stages: window.__probe?.stages ?? [],
 	}));
 
+const coordinatorReady = (page: Page) =>
+	page.evaluate(() => {
+		const coordinator = window.__probe?.coordinators.at(-1) as
+			| { isReady(): boolean }
+			| undefined;
+		return coordinator?.isReady() ?? false;
+	});
+
 const ttsStarted = (page: Page) =>
 	page.evaluate(() => {
 		const coordinator = window.__probe?.coordinators.at(-1) as
@@ -132,16 +141,14 @@ test.describe("a toolkit without a section", () => {
 		await mountToolkit(page, { registry: true });
 		await expect.poll(async () => (await probeLog(page)).coordinators).toBe(1);
 		await page.waitForTimeout(500);
-		expect((await probeLog(page)).stages).toEqual([]);
+		expect(await coordinatorReady(page)).toBe(false);
 		expect(await ttsStarted(page)).toBe(false);
 
 		await page.evaluate(() => window.__appendProbeScope?.());
 
-		await expect
-			.poll(async () => (await probeLog(page)).stages)
-			.toEqual(["composed:skipped", "engine-ready:entered"]);
+		await expect.poll(() => coordinatorReady(page)).toBe(true);
 		expect(await ttsStarted(page)).toBe(true);
-		expect((await probeLog(page)).coordinators).toBe(1);
+		expect(await probeLog(page)).toEqual({ coordinators: 1, stages: [] });
 	});
 
 	test("binds its first item to a coordinator built from inputs changed before it", async ({
@@ -156,9 +163,7 @@ test.describe("a toolkit without a section", () => {
 		await page.evaluate(() => window.__appendProbeScope?.());
 
 		await expect(playReading(page)).toBeVisible({ timeout: 30_000 });
-		await expect
-			.poll(async () => (await probeLog(page)).stages)
-			.toContain("engine-ready:entered");
+		await expect.poll(() => coordinatorReady(page)).toBe(true);
 		expect(late).toEqual([]);
 	});
 
@@ -170,9 +175,7 @@ test.describe("a toolkit without a section", () => {
 			tools: { placement: { item: ["textToSpeech"] } },
 			scope: true,
 		});
-		await expect
-			.poll(async () => (await probeLog(page)).stages)
-			.toContain("engine-ready:entered");
+		await expect.poll(() => coordinatorReady(page)).toBe(true);
 		await expect(playReading(page)).toHaveCount(0);
 
 		await setProbeInput(page, "toolRegistry");
@@ -192,9 +195,7 @@ test.describe("a toolkit without a section", () => {
 			tools: { placement: { item: ["textToSpeech"] } },
 			scope: true,
 		});
-		await expect
-			.poll(async () => (await probeLog(page)).stages)
-			.toContain("engine-ready:entered");
+		await expect.poll(() => coordinatorReady(page)).toBe(true);
 
 		await page.clock.fastForward(8_000);
 		expect(empty).toEqual([]);

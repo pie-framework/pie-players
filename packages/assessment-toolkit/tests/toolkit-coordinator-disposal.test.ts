@@ -31,7 +31,7 @@ describe("ToolkitCoordinator disposal", () => {
 		let oldDisposeCount = 0;
 		let replacementDisposeCount = 0;
 		let durableState = "stale";
-		let replacementHydratedState: string | null = null;
+		let replacementHydratedState = null as string | null;
 		const oldController = controller({
 			async persist() {
 				persistStarted.resolve();

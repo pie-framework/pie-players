@@ -31,7 +31,7 @@
 		bindTtsAudioHandoff,
 		pauseTtsForMediaAudio,
 		type TtsServiceApi,
-	} from "@pie-players/pie-assessment-toolkit";
+	} from "@pie-players/pie-assessment-toolkit/tools/registration";
 	import {
 		applyMediaFragment,
 		enforceMediaFragment,

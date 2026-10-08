@@ -1,16 +1,12 @@
 import { describe, expect, test } from "bun:test";
-// Host-facing TTS config helpers come from the public surface; the
-// registration-authoring resolvers come from `tools/registration`.
-import {
-	DEFAULT_TTS_SPEED_OPTIONS,
-	formatTTSSpeedOptionsAsText,
-	normalizeTTSSpeedOptions,
-	parseTTSSpeedOptionsFromText,
-} from "@pie-players/pie-assessment-toolkit";
 import {
 	buildRuntimeTTSConfig,
+	DEFAULT_TTS_SPEED_OPTIONS,
+	formatTTSSpeedOptionsAsText,
 	normalizeTTSLayoutMode,
 	normalizeTTSSpeedControlOptions,
+	normalizeTTSSpeedOptions,
+	parseTTSSpeedOptionsFromText,
 	resolveTTSHostToolbarLayout,
 	resolveTTSLayoutMode,
 	resolveRuntimeProvider,

@@ -283,25 +283,27 @@ export const GET: RequestHandler = async (event) => {
 ### Basic Usage
 
 ```typescript
-import { ServerTTSProvider } from '@pie-players/tts-client-server';
+import {
+  ServerTTSProvider,
+  type ServerTTSProviderConfig,
+} from '@pie-players/tts-client-server';
 import { TTSService } from '@pie-players/pie-assessment-toolkit';
 
 // Initialize TTS service with server provider
 const provider = new ServerTTSProvider();
 const ttsService = new TTSService();
-
-await ttsService.initialize(provider, {
+const config: ServerTTSProviderConfig = {
   apiEndpoint: '/api/tts',
   provider: 'polly',
   voice: 'Joanna',
   language: 'en-US',
   rate: 1.0,
-});
+};
 
-// Speak with word highlighting
-await ttsService.speak('Hello world, this is a test.', {
-  contentElement: document.getElementById('content'),
-});
+await ttsService.initialize(provider, config);
+
+// Speak an element's content with word highlighting
+await ttsService.speak(document.getElementById('content'));
 ```
 
 ### With Svelte Component

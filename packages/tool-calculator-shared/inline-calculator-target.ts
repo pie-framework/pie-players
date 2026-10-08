@@ -5,7 +5,7 @@ import {
 	type ToolCoordinatorApi,
 	type ToolkitCoordinatorApi,
 	type ToolPlacementLevel,
-} from "@pie-players/pie-assessment-toolkit";
+} from "@pie-players/pie-assessment-toolkit/tools/registration";
 
 /**
  * The toolbar an inline calculator button opens the calculator through, as the

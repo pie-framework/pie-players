@@ -17,6 +17,7 @@ import {
 } from "../src/providers";
 
 const loadSecondCopy = () =>
+	// @ts-expect-error The query makes bun load a second instance of the module.
 	import("../src/providers.ts?second-copy") as Promise<
 		typeof import("../src/providers")
 	>;

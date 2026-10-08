@@ -2,7 +2,7 @@
 	import {
 		connectToolRuntimeContext,
 		type AssessmentToolkitRuntimeContext,
-	} from '@pie-players/pie-assessment-toolkit';
+	} from '@pie-players/pie-assessment-toolkit/tools/registration';
 	import type {
 		Calculator,
 		CalculatorProviderConfig,

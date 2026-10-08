@@ -16,7 +16,7 @@
 	import {
 		type AssessmentToolkitRuntimeContext,
 		connectToolRuntimeContext,
-	} from "@pie-players/pie-assessment-toolkit";
+	} from "@pie-players/pie-assessment-toolkit/tools/registration";
 	import { createFocusTrap } from "@pie-players/pie-players-shared";
 	import { resolveInterfaceI18n } from "@pie-players/pie-players-shared/i18n/provider";
 	import {
@@ -26,7 +26,7 @@
 		resolveTTSRuntimeSettings,
 		type TTSSpeedOption,
 		type TTSLayoutMode,
-	} from "@pie-players/pie-assessment-toolkit";
+	} from "@pie-players/pie-assessment-toolkit/tools/registration";
 	import { createEventDispatcher, onDestroy, onMount, untrack } from "svelte";
 
 	type BuiltInBackendTab = "browser" | "polly" | "google";

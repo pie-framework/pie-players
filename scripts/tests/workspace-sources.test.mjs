@@ -303,4 +303,44 @@ describe("test runner wiring", () => {
 			]),
 		);
 	});
+
+	test("every package running bun test typechecks its tests", () => {
+		// Packages whose tests do not typecheck yet. Coverage only grows: a package
+		// leaves this list in the change that gives it a `tsconfig.tests.json`.
+		const pending = [
+			"default-tool-loaders",
+			"tool-annotation-toolbar",
+			"tool-answer-eliminator",
+			"tool-calculator-cortex",
+			"tool-calculator-desmos",
+			"tool-calculator-geogebra",
+			"tool-calculator-inline-cortex",
+			"tool-calculator-inline-desmos",
+			"tool-calculator-inline-geogebra",
+			"tool-calculator-shared",
+			"tool-color-scheme",
+			"tool-dictionary",
+			"tool-graph",
+			"tool-line-reader",
+			"tool-periodic-table",
+			"tool-picture-dictionary",
+			"tool-protractor",
+			"tool-ruler",
+			"tool-sign-language",
+			"tool-tts-inline",
+		];
+		const untyped = [];
+		for (const { dir, manifest } of packages) {
+			if (path.relative(REPO_ROOT, path.dirname(dir)) !== "packages") continue;
+			if (!manifest.scripts?.test?.includes("bun test")) continue;
+			const typecheck = manifest.scripts?.typecheck ?? "";
+			if (
+				!existsSync(path.join(dir, "tsconfig.tests.json")) ||
+				!typecheck.includes("tsc -p tsconfig.tests.json")
+			) {
+				untyped.push(path.basename(dir));
+			}
+		}
+		expect(untyped.sort()).toEqual(pending);
+	});
 });

@@ -88,6 +88,8 @@ afterAll(() => {
 	}
 });
 
+type ContentArgs = { itemId: string; contentKind?: string };
+
 interface ControllerCall {
 	method:
 		| "handleContentRegistered"
@@ -97,7 +99,10 @@ interface ControllerCall {
 	contentKind: string | undefined;
 }
 
-interface TrackingController extends SectionControllerHandle {
+// The binding narrows `updateItemSession`'s result, and this controller never
+// implements it.
+interface TrackingController
+	extends Omit<SectionControllerHandle, "updateItemSession"> {
 	__sectionId: string;
 	__calls: ControllerCall[];
 }
@@ -129,21 +134,21 @@ function createTrackingController(sectionId: string): TrackingController {
 		dispose() {
 			calls.length = 0;
 		},
-		handleContentRegistered(args) {
+		handleContentRegistered(args: ContentArgs) {
 			calls.push({
 				method: "handleContentRegistered",
 				itemId: args.itemId,
 				contentKind: args.contentKind,
 			});
 		},
-		handleContentLoaded(args) {
+		handleContentLoaded(args: ContentArgs) {
 			calls.push({
 				method: "handleContentLoaded",
 				itemId: args.itemId,
 				contentKind: args.contentKind,
 			});
 		},
-		handleContentUnregistered(args) {
+		handleContentUnregistered(args: ContentArgs) {
 			calls.push({
 				method: "handleContentUnregistered",
 				itemId: args.itemId,

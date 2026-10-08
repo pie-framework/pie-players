@@ -25,6 +25,7 @@ const requiredPreCommitCommands = [
 	"check:ce-define-safety",
 	"check:speech-composition-purity",
 	"check:source-exports",
+	"check:api-report",
 	"check:consumer-boundaries",
 	"check:scripts",
 	"lint:biome",
@@ -43,6 +44,7 @@ const requiredCiLintTypecheckCommands = [
 	"check:custom-elements",
 	"check:ce-define-safety",
 	"check:speech-composition-purity",
+	"check:api-report",
 	"check:scripts",
 	"build",
 	// Reads build output, so it must follow the build: ahead of it, it reads a

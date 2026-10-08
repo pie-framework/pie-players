@@ -900,9 +900,10 @@ The deepest coupling in the set, and the one no client-facing host has. From
   constructs a diagnostic or reads any `code` value. Diagnostic **codes are no
   longer API to any consumer**; `severity`, `path` and `message` are
 - Types imported: `ToolRegistry`, `ToolConfigStrictness`,
-  `ToolkitCoordinatorApi`, `ToolkitCoordinatorHooks`, `ToolContextResolver`,
-  `ToolContextResolverMap`. `CanonicalToolsConfig`, `ToolConfigDiagnostic` and
-  `ToolkitCoordinatorConfig` are no longer imported — the config type is taken
+  `CreateToolsConfigArgs`, `ToolkitCoordinatorApi`, `ToolContextResolver`,
+  `ToolContextResolverMap`, `FrameworkErrorModel` (checked 2026-10-08).
+  `CanonicalToolsConfig`, `ToolConfigDiagnostic`, `ToolkitCoordinatorConfig` and
+  `ToolkitCoordinatorHooks` are no longer imported — the config type is taken
   structurally through `ReturnType<typeof createToolsConfig>['config']`, which
   couples the host to the function's return type instead of to the type name.
 
@@ -1847,7 +1848,8 @@ over a CDN with no typecheck at all.
   what a package imports from it. The section player's engine vocabulary moved to
   `./runtime/engine`, and the shell event bridge and the content-region,
   content-language, catalog-context and flat-tree helpers the tools use moved to
-  the root. The provider registry's `ToolProviderConfig` was renamed
+  the root, and later the same day back to `./tools/registration` (below). The
+  provider registry's `ToolProviderConfig` was renamed
   `ToolProviderRegistration`, leaving the name to the tools-config shape. Checked
   against all five checkouts on 2026-10-08 as a targeted lookup, so it does not
   advance the verification date: no checkout imports any toolkit subpath or names
@@ -1859,6 +1861,18 @@ over a CDN with no typecheck at all.
   `getFeaturesInCategory`). Nothing read it at runtime; support ids resolve
   against the registry. Checked against all five checkouts on 2026-10-08 as a
   targeted lookup: no checkout imports any of them
+- The toolkit root, cut on 2026-10-08 from 326 names to 185: the names Host R,
+  the players and the demo apps import, and the types their signatures carry.
+  The 32 names only tool packages import moved to `./tools/registration`, with
+  the 5 types their signatures carry, and 7 names that entry already exported
+  left the root. 96 names nothing imports were deleted, among them the backend
+  activity-session adapters, the item loader, the session-storage helpers and
+  the context keys the `connect…` functions wrap, and `isHostDeniedFeature`
+  stays only on `./policy/engine`. The section-player debugger and settings
+  panels import from `./tools/registration` and keep their props and `close`
+  event. Checked against all five checkouts on 2026-10-08 as a targeted lookup,
+  so it does not advance the verification date: Hosts V, A, P and M import
+  nothing from the toolkit, and Host R's eight root imports all stay
 
 ## Consumer-side defects worth reporting upstream
 

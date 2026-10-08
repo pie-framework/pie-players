@@ -55,6 +55,8 @@ const RUNTIME_CONFIG_KEYS_SENTINEL: Record<keyof RuntimeConfig, true> = {
 	onFrameworkError: true,
 	onStageChange: true,
 	onLoadingComplete: true,
+	ndsIcons: true,
+	locale: true,
 };
 
 const RUNTIME_CONFIG_KEYS = Object.keys(RUNTIME_CONFIG_KEYS_SENTINEL) as Array<

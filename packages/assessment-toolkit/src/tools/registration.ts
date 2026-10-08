@@ -1,6 +1,6 @@
 /**
- * Tool registration — the stable entry for writing and rendering a
- * `ToolRegistration`.
+ * Tool registration — the stable entry for tool authors: writing and rendering a
+ * `ToolRegistration`, and the runtime contract a tool element is written against.
  *
  * A capability package writes a registration with it: the registration contract,
  * the context predicates a tool answers `isVisibleInContext` with, scoped ids,
@@ -8,13 +8,17 @@
  * a descriptor creates, and the TTS provider with its config resolution. A
  * renderer puts registrations on screen with it: `createToolSurfaceHost` mounts
  * and reconciles surfaces, and `resolveContentCapabilities` asks the
- * grant-and-content question without a coordinator.
+ * grant-and-content question without a coordinator. A tool element connects to
+ * the runtime with it: the runtime, shell and region-scope contexts, the services
+ * they carry, coordinator registration, the reading scope of the content it reads
+ * or annotates, and read-aloud coordination.
  *
- * The composition layer (`@pie-players/pie-default-tool-loaders`) and
- * `@pie-players/pie-tool-sign-language` are written against it, so a host's own
- * capability package uses the mechanism ours use. Its values are complete, so a
- * capability package never imports the root entry. A name the root also carries
- * appears here only where a package imports it from here.
+ * The composition layer (`@pie-players/pie-default-tool-loaders`), the packaged
+ * tools and the section player's tool panels are written against it, so a host's
+ * own tool uses the mechanism ours use. Its values are complete, so a tool
+ * package never imports the root entry, which carries what hosts and players
+ * import. A name the root also carries appears here only where a package imports
+ * it from here.
  */
 
 // Registration contract.
@@ -85,7 +89,11 @@ export {
 } from "../services/tool-context.js";
 
 // Scoped tool instance ids, so two placements of one tool do not share state.
-export { createScopedToolId } from "../services/tool-instance-id.js";
+export type { ParsedToolInstanceId } from "../services/tool-instance-id.js";
+export {
+	createScopedToolId,
+	parseScopedToolId,
+} from "../services/tool-instance-id.js";
 
 // Element creation and tag resolution. `resolveToolTag` reads only the overrides
 // it is given — the packaged tag map lives in the composition layer.
@@ -104,8 +112,70 @@ export {
 	syncButtonAndOverlayVisibility,
 } from "./registrations/toolbar-registration-helpers.js";
 
-// The coordinator a registration reaches through its render context.
-export type { ToolCoordinatorApi } from "../services/interfaces.js";
+// The coordinator a registration reaches through its render context, and the
+// services a tool element reaches through the runtime context.
+export type {
+	HighlightCoordinatorApi,
+	ToolCoordinatorApi,
+	ToolkitCoordinatorApi,
+	TtsServiceApi,
+} from "../services/interfaces.js";
+
+// The runtime contexts a tool element connects to: the toolkit runtime, the shell
+// (item or passage) it is mounted in, and the content region it targets. A tool
+// that floats above the content registers with the coordinator for z-order.
+export type {
+	AssessmentToolkitRegionScopeContext,
+	AssessmentToolkitRuntimeContext,
+	AssessmentToolkitShellContext,
+} from "../context/assessment-toolkit-context.js";
+export {
+	connectAssessmentToolkitRegionScopeContext,
+	connectAssessmentToolkitShellContext,
+} from "../context/runtime-context-consumer.js";
+export {
+	connectToolRegionScopeContext,
+	connectToolRuntimeContext,
+	connectToolShellContext,
+	createToolCoordinatorRegistration,
+	type ToolCoordinatorRegistration,
+} from "../runtime/tool-host-contract.js";
+export { ZIndexLayer } from "../services/ToolCoordinator.js";
+export {
+	HighlightColor,
+	HighlightCoordinator,
+} from "../services/HighlightCoordinator.js";
+
+// Reading scope for a tool that reads or annotates a shell's content: its content
+// region, the language and catalog context of the content at a point in it, and
+// the composed-tree helpers that reach content rendered into open shadow roots.
+export type { CatalogLookupContext } from "../services/AccessibilityCatalogResolver.js";
+export {
+	catalogContextForShell,
+	catalogContextHolding,
+	type CatalogRuntimeScope,
+} from "../runtime/catalog-context.js";
+export {
+	findShellScopeHost,
+	resolveContentRegion,
+} from "../runtime/content-region.js";
+export {
+	type ContentLanguageOptions,
+	findContentLanguage,
+	resolveContentLanguage,
+} from "../runtime/content-language.js";
+export {
+	composedClosest,
+	composedContains,
+	flatTextContent,
+	isShadowRootNode,
+	retargetToTree,
+} from "../services/tts/flat-tree.js";
+
+// Placement levels a tool resolves its placement against, and the empty profile
+// a PNP surface starts from.
+export type { ToolPlacementLevel } from "../services/tools-config-normalizer.js";
+export { createEmptyPersonalNeedsProfile } from "../services/defaultPersonalNeedsProfile.js";
 
 // Canonical tools config shapes a provider descriptor validates against.
 export type {
@@ -125,12 +195,21 @@ export type {
 export { TTSToolProvider } from "../services/tool-providers/index.js";
 
 // TTS runtime config resolution, used by the TTS registration to turn host
-// config into element props.
-export type { NormalizedTTSSpeedOption } from "../services/tts-runtime-config.js";
+// config into element props, and by a TTS settings surface to read and write
+// speed options.
+export type {
+	NormalizedTTSSpeedOption,
+	TTSLayoutMode,
+	TTSSpeedOption,
+} from "../services/tts-runtime-config.js";
 export {
 	buildRuntimeTTSConfig,
+	DEFAULT_TTS_SPEED_OPTIONS,
+	formatTTSSpeedOptionsAsText,
 	normalizeTTSLayoutMode,
 	normalizeTTSSpeedControlOptions,
+	normalizeTTSSpeedOptions,
+	parseTTSSpeedOptionsFromText,
 	resolveRuntimeProvider,
 	resolveTTSBackend,
 	resolveTTSHostToolbarLayout,
@@ -138,3 +217,13 @@ export {
 	resolveTTSRuntimeSettings,
 	resolveTransportMode,
 } from "../services/tts-runtime-config.js";
+
+// Read-aloud coordination for a tool that plays or controls speech: the control
+// handoff event between TTS surfaces, pausing speech while a media element plays,
+// and recognising a start failure the TTS service reports.
+export { PIE_TTS_CONTROL_HANDOFF_EVENT } from "../services/tts-control-events.js";
+export {
+	bindTtsAudioHandoff,
+	pauseTtsForMediaAudio,
+} from "../services/audio-handoff.js";
+export { isTTSStartFailure } from "../services/tts/start-failure.js";

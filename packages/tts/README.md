@@ -51,6 +51,8 @@ import type {
 class MyTTSImplementation implements ITTSProviderImplementation {
   onPlaybackStart?: () => void;
 
+  constructor(private readonly config: TTSConfig) {}
+
   async speak(text: string): Promise<void> {
     await myEngine.speak(text, {
       onStart: () => this.onPlaybackStart?.(),

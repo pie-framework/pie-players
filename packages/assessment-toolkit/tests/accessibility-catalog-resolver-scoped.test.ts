@@ -387,8 +387,8 @@ describe("AccessibilityCatalogResolver scoped catalogs", () => {
 		expect(resolved?.content).toContain("<speak");
 		expect(resolved?.content).toContain("<break");
 		expect(resolved?.content).toContain("world");
-		expect(resolved?.content.toLowerCase()).not.toContain("onclick");
-		expect(resolved?.content.toLowerCase()).not.toContain("<script");
+		expect(resolved?.content?.toLowerCase()).not.toContain("onclick");
+		expect(resolved?.content?.toLowerCase()).not.toContain("<script");
 		expect(resolved?.content).not.toContain("alert");
 	});
 

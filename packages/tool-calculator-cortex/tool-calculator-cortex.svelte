@@ -17,7 +17,7 @@
 
 <script lang="ts">
 	import { coerceBooleanAttributes } from '@pie-players/pie-players-shared/ui/attribute-coercion';
-	import type { AssessmentToolkitRuntimeContext } from '@pie-players/pie-assessment-toolkit';
+	import type { AssessmentToolkitRuntimeContext } from '@pie-players/pie-assessment-toolkit/tools/registration';
 	import type {
 		CalculatorProviderConfig,
 		CalculatorType,

@@ -57,6 +57,7 @@ describe("NewRelicInstrumentationProvider readiness", () => {
 		provider.trackEvent("pie-resource-load", { component: "resource-monitor" });
 		provider.trackError(new Error("late agent"), {
 			component: "pie-item-player",
+			errorType: "RuntimeError",
 		});
 		expect(calls).toEqual([
 			"addPageAction pie-resource-load",
@@ -86,7 +87,7 @@ describe("NewRelicInstrumentationProvider readiness", () => {
 		const provider = new NewRelicInstrumentationProvider();
 		await provider.initialize();
 
-		provider.trackError(new Error("failed"), { component: "pie-item-player" });
+		provider.trackError(new Error("failed"), { component: "pie-item-player", errorType: "RuntimeError" });
 		expect(calls).toEqual(["noticeError failed"]);
 	});
 

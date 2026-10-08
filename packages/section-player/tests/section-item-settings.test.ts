@@ -86,7 +86,7 @@ describe("section item settings", () => {
 			["q1", RESTRICTS],
 			["q2", REQUIRES],
 			["q3", null],
-			[compositionModel.items[3]?.id, RESTRICTS],
+			[compositionModel.items[3]?.id as string, RESTRICTS],
 		]);
 	});
 

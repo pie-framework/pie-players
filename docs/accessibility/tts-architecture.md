@@ -175,24 +175,23 @@ The assessment toolkit **always includes** `BrowserTTSProvider` as a built-in fa
 ### Recommended Pattern
 
 ```typescript
-import { TTSService, BrowserTTSProvider } from '@pie-players/pie-assessment-toolkit';
-import { ServerTTSProvider } from '@pie-players/tts-client-server';
+import { TTSService } from '@pie-players/pie-assessment-toolkit';
+import {
+  ServerTTSProvider,
+  type ServerTTSProviderConfig,
+} from '@pie-players/tts-client-server';
 
 const ttsService = new TTSService();
 
-try {
-  // Try to initialize server-side TTS (preferred for production)
-  await ttsService.initialize(new ServerTTSProvider(), {
-    apiEndpoint: '/api/tts',
-    provider: 'polly',
-    voice: 'Joanna',
-  });
-  console.log('Using server-side TTS with speech marks');
-} catch (error) {
-  // Fallback to browser TTS
-  console.warn('Server TTS unavailable, falling back to browser TTS', error);
-  await ttsService.initialize(new BrowserTTSProvider());
-}
+// Server-side TTS (preferred for production). When it fails to initialize,
+// `initialize` switches to browser speech itself, and throws only when browser
+// speech is unavailable or fails as well.
+const serverConfig: ServerTTSProviderConfig = {
+  apiEndpoint: '/api/tts',
+  provider: 'polly',
+  voice: 'Joanna',
+};
+await ttsService.initialize(new ServerTTSProvider(), serverConfig);
 ```
 
 When using toolkit `tools.providers.textToSpeech` configuration (instead of initializing
@@ -359,6 +358,8 @@ import type {
 class MyTTSImpl implements ITTSProviderImplementation {
   onPlaybackStart?: () => void;
 
+  constructor(private readonly config: TTSConfig) {}
+
   async speak(text: string): Promise<void> {
     await myEngine.speak(text, {
       onStart: () => this.onPlaybackStart?.(),
@@ -380,8 +381,19 @@ export class MyTTSProvider implements ITTSProvider {
     return new MyTTSImpl(config);
   }
 
-  supportsFeature(feature: TTSFeature): boolean { /* ... */ }
-  getCapabilities(): TTSProviderCapabilities { /* ... */ }
+  supportsFeature(feature: TTSFeature): boolean {
+    return feature === 'pause' || feature === 'resume';
+  }
+  getCapabilities(): TTSProviderCapabilities {
+    return {
+      supportsPause: true,
+      supportsResume: true,
+      supportsWordBoundary: false,
+      supportsVoiceSelection: false,
+      supportsRateControl: false,
+      supportsPitchControl: false,
+    };
+  }
   destroy(): void { /* ... */ }
 }
 ```

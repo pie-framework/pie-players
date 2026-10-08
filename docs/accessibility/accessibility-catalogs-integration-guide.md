@@ -43,8 +43,9 @@ without comment. Anything else — including `"spokn"` — is registered but log
 on both the card side ("stored but no reader asks for that type") and the lookup
 side ("cannot match any card"), once per distinct token. The openness is
 deliberate; the previous silence was not, since a mistyped card was a valid
-`CatalogType` that simply never appeared. `isKnownCatalogType` is exported if a
-host wants to check before registering.
+`CatalogType` that simply never appeared. A host that wants to check before
+registering imports `isKnownCatalogType` from
+`@pie-players/pie-assessment-toolkit/services/AccessibilityCatalogResolver`.
 
 ### Card Content: String Or Payload
 

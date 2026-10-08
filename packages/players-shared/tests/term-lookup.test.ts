@@ -168,7 +168,7 @@ describe("the endpoint lookup", () => {
 	}
 
 	test("posts the request and reads the response", async () => {
-		let seen: { url: string; init: RequestInit } | null = null;
+		let seen = null as { url: string; init: RequestInit } | null;
 		const lookup = wordLookup({
 			fetchImpl: (async (url: string, init: RequestInit) => {
 				seen = { url, init };
@@ -208,7 +208,7 @@ describe("the endpoint lookup", () => {
 		// A host is expected to put its lookup route behind the same session boundary as
 		// the assessment. Omitting credentials would 401 every such route and make a
 		// working configuration depend on a step a host would reasonably not think of.
-		let init: RequestInit | null = null;
+		let init = null as RequestInit | null;
 		const lookup = wordLookup({
 			fetchImpl: (async (_url: string, got: RequestInit) => {
 				init = got;
@@ -222,7 +222,7 @@ describe("the endpoint lookup", () => {
 	});
 
 	test("a host that wants no ambient credentials can say so", async () => {
-		let init: RequestInit | null = null;
+		let init = null as RequestInit | null;
 		const lookup = wordLookup({
 			credentials: "omit",
 			fetchImpl: (async (_url: string, got: RequestInit) => {
@@ -376,7 +376,9 @@ describe("the lookup session", () => {
 		// The learner searched twice quickly. The first answer arriving late must not
 		// replace what the second one already put on screen.
 		const states: TermPanelState<string>[] = [];
-		let release: ((result: TermLookupResult<string>) => void) | null = null;
+		let release = null as
+			| ((result: TermLookupResult<string>) => void)
+			| null;
 		const session = new TermLookupSession<string>({
 			resolver: () => (request) =>
 				request.keyword === "slow"

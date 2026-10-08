@@ -110,7 +110,7 @@
 	"scripts": {
 		"build": "rm -rf dist tsconfig.tsbuildinfo && tsc -p tsconfig.json && node scripts/bundle-vendored-modules.mjs && mkdir -p dist/components && cp -R src/components/vendor dist/components/vendor",
 		"dev": "tsc -p tsconfig.json --watch",
-		"typecheck": "tsc -p tsconfig.json --noEmit",
+		"typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.tests.json",
 		"lint": "biome lint .",
 		"check": "tsc -p tsconfig.json --noEmit",
 		"test": "bun test",

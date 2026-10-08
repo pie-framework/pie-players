@@ -19,7 +19,7 @@ import {
 	test,
 } from "bun:test";
 
-import type { CatalogCard } from "@pie-players/pie-players-shared";
+import type { CatalogCard } from "@pie-players/pie-players-shared/types";
 import { AccessibilityCatalogResolver } from "../src/services/AccessibilityCatalogResolver";
 import { PlaybackState, TTSService } from "../src/services/TTSService";
 import type {
@@ -190,7 +190,7 @@ describe("recorded audio as a spoken alternate", () => {
 
 	test("keeps recorded-first playback loading until media actually starts", async () => {
 		const { service } = await newService([audioCard()]);
-		let resolvePlay: (() => void) | null = null;
+		let resolvePlay = null as (() => void) | null;
 		captureAudioElements(
 			() =>
 				new Promise<void>((resolve) => {
@@ -213,7 +213,7 @@ describe("recorded audio as a spoken alternate", () => {
 
 	test("keeps a recorded-audio replacement loading until replacement media starts", async () => {
 		const { service } = await newService([]);
-		let resolvePlay: (() => void) | null = null;
+		let resolvePlay = null as (() => void) | null;
 		captureAudioElements(
 			() =>
 				new Promise<void>((resolve) => {

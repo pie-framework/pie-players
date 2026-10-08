@@ -16,11 +16,11 @@
 		connectToolRuntimeContext,
 		createToolCoordinatorRegistration,
 		ZIndexLayer,
-	} from '@pie-players/pie-assessment-toolkit';
+	} from '@pie-players/pie-assessment-toolkit/tools/registration';
 	import type {
 		AssessmentToolkitRuntimeContext,
 		ToolCoordinatorApi,
-	} from '@pie-players/pie-assessment-toolkit';
+	} from '@pie-players/pie-assessment-toolkit/tools/registration';
 	import { resolveInterfaceI18n } from '@pie-players/pie-players-shared/i18n/provider';
 	import { createOverlayPlacement } from '@pie-players/pie-players-shared';
 	import {

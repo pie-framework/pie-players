@@ -208,28 +208,37 @@ import {
   hasReadableText,
   hasMathContent,
   hasScienceContent,
-  hasChoiceInteraction
+  hasChoiceInteraction,
+  type ToolContext
 } from '@pie-players/pie-assessment-toolkit/tools/registration';
 
-// Check if context has readable text (10+ characters)
-isVisibleInContext(context: ToolContext): boolean {
-  return hasReadableText(context);
-}
+// Context has readable text (10+ characters)
+const textToSpeech = {
+  isVisibleInContext(context: ToolContext): boolean {
+    return hasReadableText(context);
+  },
+};
 
-// Check if context has math content (MathML, LaTeX, symbols)
-isVisibleInContext(context: ToolContext): boolean {
-  return hasMathContent(context);
-}
+// Context has math content (MathML, LaTeX, symbols)
+const calculator = {
+  isVisibleInContext(context: ToolContext): boolean {
+    return hasMathContent(context);
+  },
+};
 
-// Check if context has science content (chemistry, biology, physics terms)
-isVisibleInContext(context: ToolContext): boolean {
-  return hasScienceContent(context);
-}
+// Context has science content (chemistry, biology, physics terms)
+const periodicTable = {
+  isVisibleInContext(context: ToolContext): boolean {
+    return hasScienceContent(context);
+  },
+};
 
-// Check if context has choice-based interaction
-isVisibleInContext(context: ToolContext): boolean {
-  return hasChoiceInteraction(context);
-}
+// Context has a choice-based interaction
+const answerEliminator = {
+  isVisibleInContext(context: ToolContext): boolean {
+    return hasChoiceInteraction(context);
+  },
+};
 ```
 
 ## Using the Tool Registry
@@ -444,7 +453,7 @@ Example:
 
 ## Default Tool Placement
 
-`DEFAULT_TOOL_PLACEMENT` in `@pie-players/pie-assessment-toolkit` is empty at every level, so a coordinator with no `tools.placement` places no tools. The recommended placements name packaged capabilities, so they live in `@pie-players/pie-default-tool-loaders`:
+The toolkit's default placement is empty at every level, so a coordinator with no `tools.placement` places no tools. The recommended placements name packaged capabilities, so they live in `@pie-players/pie-default-tool-loaders`:
 
 ```typescript
 import {

@@ -11,7 +11,7 @@ function backendWithSaveSpy(seen: unknown[]): BackendConfig {
 			sessionId: "session-1",
 			options: { overrides: { "student-grade": "5" } },
 			client: {
-				async saveSession(context) {
+				async saveSession(context: { requestOptions?: unknown }) {
 					seen.push(context.requestOptions);
 					return null;
 				},

@@ -110,7 +110,7 @@ describe("attachRuntimeCallbackBridge — lockstep with engine DOM events", () =
 	let engine: SectionRuntimeEngine;
 	let host: HTMLElement;
 	let dom: DomCapture;
-	let teardown: (() => void) | null = null;
+	let teardown = null as (() => void) | null;
 
 	beforeEach(() => {
 		engine = new SectionRuntimeEngine();

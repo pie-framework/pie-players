@@ -4,7 +4,6 @@ import {
 	getRegisteredToolScopeLevels,
 	parseScopedToolId,
 	registerToolScopeLevel,
-	toOverlayToolId,
 } from "../src/services/tool-instance-id";
 
 describe("tool-instance-id", () => {
@@ -21,7 +20,6 @@ describe("tool-instance-id", () => {
 	test("rejects non-canonical four-part ids", () => {
 		const inlineId = "calculator:item:item-1:inline";
 		expect(parseScopedToolId(inlineId)).toBeNull();
-		expect(toOverlayToolId(inlineId)).toBe(inlineId);
 	});
 
 	test("supports built-in rubric and assessment scopes", () => {

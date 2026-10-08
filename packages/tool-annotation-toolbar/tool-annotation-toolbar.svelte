@@ -22,21 +22,21 @@
 		HighlightCoordinator,
 		ToolSelectionAction,
 		TtsServiceApi
-	} from '@pie-players/pie-assessment-toolkit';
+	} from '@pie-players/pie-assessment-toolkit/tools/registration';
 	import {
 		connectAssessmentToolkitRegionScopeContext,
 		connectAssessmentToolkitShellContext,
 		connectToolRuntimeContext,
 		HighlightColor,
 		isTTSStartFailure
-	} from '@pie-players/pie-assessment-toolkit';
+	} from '@pie-players/pie-assessment-toolkit/tools/registration';
 	import {
 		catalogContextHolding,
 		composedClosest,
 		composedContains,
 		isShadowRootNode,
 		resolveContentLanguage
-	} from '@pie-players/pie-assessment-toolkit';
+	} from '@pie-players/pie-assessment-toolkit/tools/registration';
 	import { resolveInterfaceI18n } from '@pie-players/pie-players-shared/i18n/provider';
 	import { sanitizeSvgIcon } from '@pie-players/pie-players-shared/security';
 	import {

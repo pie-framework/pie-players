@@ -30,18 +30,22 @@ npm install @pie-players/tts-client-server
 ### Basic Setup
 
 ```typescript
-import { ServerTTSProvider } from '@pie-players/tts-client-server';
+import {
+  ServerTTSProvider,
+  type ServerTTSProviderConfig,
+} from '@pie-players/tts-client-server';
 import { TTSService } from '@pie-players/pie-assessment-toolkit';
 
 const provider = new ServerTTSProvider();
-
-const ttsService = new TTSService();
-await ttsService.initialize(provider, {
+const config: ServerTTSProviderConfig = {
   apiEndpoint: '/api/tts',  // Your SvelteKit API route
   provider: 'polly',         // Server-side provider to use
   voice: 'Joanna',
   language: 'en-US',
-});
+};
+
+const ttsService = new TTSService();
+await ttsService.initialize(provider, config);
 ```
 
 `apiEndpoint`, `provider`, `voice` and `language` are top-level fields; the

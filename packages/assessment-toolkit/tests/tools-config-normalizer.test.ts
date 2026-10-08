@@ -75,6 +75,7 @@ describe("tools-config-normalizer", () => {
 			normalizeToolsConfig({
 				providers: {
 					calculator: {
+						// @ts-expect-error A string selector is TTS-only.
 						provider: "polly",
 					},
 				},

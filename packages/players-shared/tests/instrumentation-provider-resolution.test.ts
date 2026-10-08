@@ -143,7 +143,7 @@ describe("resolveInstrumentationProvider default", () => {
 
 		resolveInstrumentationProvider({ player })?.trackError(
 			new Error("runtime error"),
-			{ component: "pie-item-player" },
+			{ component: "pie-item-player", errorType: "RuntimeError" },
 		);
 		expect(calls).toEqual(["noticeError runtime error"]);
 	});

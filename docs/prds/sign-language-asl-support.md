@@ -74,7 +74,7 @@ Four domain facts drive this contract. Getting them wrong produces the wrong arc
 
 This is why the accessibility catalog is the right rail: catalog cards attach to arbitrary content nodes through `data-catalog-idref`, they are additive to the English content rather than a substitute for it, and PIE already docks TTS this way. That parallel is the strongest evidence the model is right — authored `<speak>` SSML is item-level content that `SSMLExtractor` lifts into item catalogs and the toolkit plus policy decide whether to expose. Signing is the second instance of a shipped pattern, not a new one.
 
-`CatalogOwnerKind` is already `"global" | "passage" | "itemModel"`, so passage-scoped signing cards are structurally supported without new plumbing.
+A catalog owner's `ownerKind` is already `"global" | "passage" | "itemModel"`, so passage-scoped signing cards are structurally supported without new plumbing.
 
 ### The Import Invariant
 

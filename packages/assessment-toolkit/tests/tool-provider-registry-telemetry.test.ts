@@ -9,7 +9,6 @@ import type {
 class FakeProvider
 	implements ToolProviderApi<Record<string, unknown>, unknown>
 {
-	readonly providerId = "fake-provider";
 	readonly providerName = "Fake Provider";
 	readonly category: ToolCategory = "tts";
 	readonly version = "1.0.0";

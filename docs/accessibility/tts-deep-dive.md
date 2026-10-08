@@ -38,7 +38,7 @@ classes are:
 
 - `ToolkitCoordinator`, which creates shared services and registers tool
   providers.
-- `ToolProviderRegistry`, which stores provider factories by tool/provider id.
+- `ToolProviderRegistry`, which stores providers by tool id.
 - `TTSToolProvider`, which chooses browser, Polly, Google, or generic server
   backed TTS.
 - `TTSService`, which resolves speech content, owns playback state, calls the

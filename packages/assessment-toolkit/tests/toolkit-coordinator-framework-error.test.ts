@@ -17,7 +17,7 @@ describe("ToolkitCoordinator framework-error contract", () => {
 
 		(coordinator as any).handleError(new Error("provider boom"), {
 			phase: "provider-init",
-			providerId: "textToSpeech",
+			toolId: "textToSpeech",
 		});
 		detach();
 
@@ -169,7 +169,7 @@ describe("ToolkitCoordinator framework-error contract", () => {
 
 		(coordinator as any).handleError(new Error("once"), {
 			phase: "provider-init",
-			providerId: "calculator",
+			toolId: "calculator",
 		});
 
 		expect(canonical).toHaveLength(1);

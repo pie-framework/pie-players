@@ -36,6 +36,58 @@ describe("tool-config-validation", () => {
 		]);
 	});
 
+	test("a diagnostic names its tool once, as toolId", () => {
+		const registry = new ToolRegistry();
+		registry.register({
+			toolId: "customTool",
+			name: "Custom Tool",
+			description: "Testing diagnostic ids",
+			icon: "test",
+			supportedLevels: ["item"],
+			isVisibleInContext: () => true,
+			renderToolbar: () => null,
+			validateConfig: () => [
+				{
+					code: "tools.providerValidateFailed",
+					severity: "error",
+					path: "",
+					message: "always fails",
+				},
+			],
+		});
+		const result = normalizeAndValidateToolsConfig(
+			{
+				providers: {
+					customTool: { enabled: true },
+					unknownProvider: { enabled: true },
+				},
+			},
+			{ strictness: "off", source: "test", toolRegistry: registry },
+		);
+
+		expect(
+			result.diagnostics.map(({ code, path, toolId }) => ({
+				code,
+				path,
+				toolId,
+			})),
+		).toEqual([
+			{
+				code: "tools.providerValidateFailed",
+				path: "providers.customTool",
+				toolId: "customTool",
+			},
+			{
+				code: "tools.unknownProviderKey",
+				path: "providers.unknownProvider",
+				toolId: "unknownProvider",
+			},
+		]);
+		for (const diagnostic of result.diagnostics) {
+			expect(diagnostic).not.toHaveProperty("providerId");
+		}
+	});
+
 	test("supports strictness warn without throwing", () => {
 		const registry = createTestToolRegistry();
 		const result = normalizeAndValidateToolsConfig(

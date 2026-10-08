@@ -320,13 +320,13 @@ export interface ToolkitErrorContext {
 		| "section-controller-init"
 		| "section-controller-dispose"
 		| "tool-module-load";
-	providerId?: string;
+	/** The tool whose provider failed. */
+	toolId?: string;
 	details?: Record<string, unknown>;
 	recoverable?: boolean;
 }
 
 export interface ProviderLifecycleContext {
-	providerId: string;
 	providerName?: string;
 }
 
@@ -503,15 +503,15 @@ export interface ToolkitCoordinatorHooks {
 	) => void | Promise<void>;
 
 	onProviderRegistered?: (
-		providerId: string,
+		toolId: string,
 		meta: ProviderLifecycleContext,
 	) => void | Promise<void>;
 	onProviderInitStart?: (
-		providerId: string,
+		toolId: string,
 		meta: ProviderLifecycleContext,
 	) => void | Promise<void>;
 	onProviderReady?: (
-		providerId: string,
+		toolId: string,
 		meta: ProviderLifecycleContext,
 	) => void | Promise<void>;
 
@@ -1382,26 +1382,22 @@ export class ToolkitCoordinator {
 	): Promise<void> {
 		const descriptor = tool.provider;
 		if (!descriptor) return;
-		const providerId = tool.toolId;
+		const { toolId } = tool;
 		let registration: Parameters<ToolProviderRegistry["register"]>[1];
 		try {
-			const toolConfig = this.getToolConfig(providerId) || undefined;
+			const toolConfig = this.getToolConfig(toolId) || undefined;
 			if (toolConfig?.enabled === false) return;
-			if (!replace && this.toolProviderRegistry.has(providerId)) return;
+			if (!replace && this.toolProviderRegistry.has(toolId)) return;
 			const provider = descriptor.createProvider(toolConfig);
 			const initConfig =
 				descriptor.getInitConfig?.(toolConfig) ??
 				toolConfig?.provider?.init ??
 				{};
-			const initConfigWithTelemetry = this.addToolTelemetryReporter({
-				toolId: tool.toolId,
-				providerId,
+			const initConfigWithTelemetry = this.addToolTelemetryReporter(
+				toolId,
 				initConfig,
-			});
-			const registryTelemetry = this.createToolTelemetryForwarder({
-				toolId: tool.toolId,
-				providerId,
-			});
+			);
+			const registryTelemetry = this.createToolTelemetryForwarder(toolId);
 			const authFetcher =
 				descriptor.getAuthFetcher?.(toolConfig) ??
 				toolConfig?.provider?.runtime?.authFetcher;
@@ -1413,33 +1409,27 @@ export class ToolkitCoordinator {
 				onTelemetry: registryTelemetry,
 			};
 		} catch (err) {
-			this.reportProviderRegisterFailure(err, providerId);
+			this.reportProviderRegisterFailure(err, toolId);
 			return;
 		}
-		await this.registerProvider(providerId, registration);
+		await this.registerProvider(toolId, registration);
 	}
 
-	private createToolTelemetryForwarder(args: {
-		toolId: string;
-		providerId: string;
-	}): (eventName: string, payload?: Record<string, unknown>) => Promise<void> {
+	private createToolTelemetryForwarder(
+		toolId: string,
+	): (eventName: string, payload?: Record<string, unknown>) => Promise<void> {
 		return async (eventName: string, payload?: Record<string, unknown>) => {
-			await this.emitTelemetry(eventName, {
-				...(payload || {}),
-				toolId: args.toolId,
-				providerId: args.providerId,
-			});
+			await this.emitTelemetry(eventName, { ...(payload || {}), toolId });
 		};
 	}
 
-	private addToolTelemetryReporter(args: {
-		toolId: string;
-		providerId: string;
-		initConfig: unknown;
-	}): Record<string, unknown> {
+	private addToolTelemetryReporter(
+		toolId: string,
+		initConfig: unknown,
+	): Record<string, unknown> {
 		const configObject =
-			args.initConfig && typeof args.initConfig === "object"
-				? { ...(args.initConfig as Record<string, unknown>) }
+			initConfig && typeof initConfig === "object"
+				? { ...(initConfig as Record<string, unknown>) }
 				: {};
 		const existingReporter =
 			typeof configObject.onTelemetry === "function"
@@ -1448,10 +1438,7 @@ export class ToolkitCoordinator {
 						payload?: Record<string, unknown>,
 					) => void | Promise<void>)
 				: null;
-		const forwardTelemetry = this.createToolTelemetryForwarder({
-			toolId: args.toolId,
-			providerId: args.providerId,
-		});
+		const forwardTelemetry = this.createToolTelemetryForwarder(toolId);
 		configObject.onTelemetry = async (
 			eventName: string,
 			payload?: Record<string, unknown>,
@@ -1465,32 +1452,31 @@ export class ToolkitCoordinator {
 	}
 
 	private async registerProvider(
-		providerId: string,
+		toolId: string,
 		config: Parameters<ToolProviderRegistry["register"]>[1],
 	): Promise<void> {
 		try {
-			this.toolProviderRegistry.register(providerId, config);
+			this.toolProviderRegistry.register(toolId, config);
 			const meta: ProviderLifecycleContext = {
-				providerId,
 				providerName: config.provider.providerName,
 			};
-			await this.hooks.onProviderRegistered?.(providerId, meta);
+			await this.hooks.onProviderRegistered?.(toolId, meta);
 			await this.emitTelemetry("pie-toolkit-provider-registered", {
-				providerId,
+				toolId,
 				providerName: config.provider.providerName,
 			});
 		} catch (err) {
-			this.reportProviderRegisterFailure(err, providerId);
+			this.reportProviderRegisterFailure(err, toolId);
 		}
 	}
 
 	/** A console warning and a `provider-register` framework error. */
-	private reportProviderRegisterFailure(err: unknown, providerId: string): void {
+	private reportProviderRegisterFailure(err: unknown, toolId: string): void {
 		console.warn(
-			`[ToolkitCoordinator] Failed to register the provider of tool "${providerId}":`,
+			`[ToolkitCoordinator] Failed to register the provider of tool "${toolId}":`,
 			err,
 		);
-		this.handleError(err, { phase: "provider-register", providerId });
+		this.handleError(err, { phase: "provider-register", toolId });
 	}
 
 	public async ensureProviderReady(toolId: string): Promise<ToolProviderApi> {
@@ -1499,34 +1485,33 @@ export class ToolkitCoordinator {
 
 	/** `fallbackFollows`: the caller recovers from a failure on its own. */
 	private async initializeProvider(
-		providerId: string,
+		toolId: string,
 		fallbackFollows: boolean,
 	): Promise<ToolProviderApi> {
 		this.assertNotDisposed();
-		const existing = this.providerInitPromises.get(providerId);
+		const existing = this.providerInitPromises.get(toolId);
 		if (existing) return existing;
 		const promise = (async () => {
 			let provider = await this.toolProviderRegistry.getProvider(
-				providerId,
+				toolId,
 				false,
 			);
 			this.assertNotDisposed();
 			// A tool asks each time it opens; the lifecycle hooks report the start once.
-			if (this.toolProviderRegistry.isInitialized(providerId)) return provider;
+			if (this.toolProviderRegistry.isInitialized(toolId)) return provider;
 			const meta: ProviderLifecycleContext = {
-				providerId,
 				providerName: provider.providerName,
 			};
 			try {
-				await this.hooks.onProviderInitStart?.(providerId, meta);
+				await this.hooks.onProviderInitStart?.(toolId, meta);
 				this.assertNotDisposed();
-				await this.toolProviderRegistry.initialize(providerId);
+				await this.toolProviderRegistry.initialize(toolId);
 				this.assertNotDisposed();
 				// A config update may have replaced the provider during its start.
-				provider = await this.toolProviderRegistry.getProvider(providerId, false);
-				await this.hooks.onProviderReady?.(providerId, meta);
+				provider = await this.toolProviderRegistry.getProvider(toolId, false);
+				await this.hooks.onProviderReady?.(toolId, meta);
 				this.assertNotDisposed();
-				await this.emitTelemetry("pie-toolkit-provider-ready", { providerId });
+				await this.emitTelemetry("pie-toolkit-provider-ready", { toolId });
 				this.assertNotDisposed();
 				return provider;
 			} catch (err) {
@@ -1534,18 +1519,18 @@ export class ToolkitCoordinator {
 				const error = err instanceof Error ? err : new Error(String(err));
 				this.reportToolFailure(
 					error,
-					{ phase: "provider-init", providerId },
+					{ phase: "provider-init", toolId },
 					// Attributed when the id names a tool with a provider; any other id
 					// was never a tool's.
-					this.toolRegistry.get(providerId)?.provider ? [providerId] : [],
+					this.toolRegistry.get(toolId)?.provider ? [toolId] : [],
 					fallbackFollows,
 				);
 				throw error;
 			}
 		})().finally(() => {
-			this.providerInitPromises.delete(providerId);
+			this.providerInitPromises.delete(toolId);
 		});
-		this.providerInitPromises.set(providerId, promise);
+		this.providerInitPromises.set(toolId, promise);
 		return promise;
 	}
 
@@ -2635,7 +2620,6 @@ export class ToolkitCoordinator {
 					error instanceof Error ? error : new Error(String(error));
 				await this.emitTelemetry("pie-tool-init-error", {
 					toolId: "textToSpeech",
-					providerId: "textToSpeech",
 					operation: "tts-init",
 					backend: resolvedBackend,
 					errorType: "TTSRegistryInitError",
@@ -2644,7 +2628,6 @@ export class ToolkitCoordinator {
 				});
 				await this.emitTelemetry("pie-tool-init-fallback", {
 					toolId: "textToSpeech",
-					providerId: "textToSpeech",
 					operation: "tts-init",
 					backend: resolvedBackend,
 					fromProvider: "registry",
@@ -2838,9 +2821,8 @@ export class ToolkitCoordinator {
 
 	getInitStatus(): ToolkitInitStatus {
 		const providers: Record<string, boolean> = {};
-		for (const providerId of this.toolProviderRegistry.getProviderIds()) {
-			providers[providerId] =
-				this.toolProviderRegistry.isInitialized(providerId);
+		for (const toolId of this.toolProviderRegistry.getProviderIds()) {
+			providers[toolId] = this.toolProviderRegistry.isInitialized(toolId);
 		}
 		return {
 			tts: this.ttsInitialized,

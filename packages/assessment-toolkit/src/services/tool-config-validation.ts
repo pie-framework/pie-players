@@ -32,7 +32,6 @@ export interface ToolConfigDiagnostic {
 	path: string;
 	message: string;
 	toolId?: string;
-	providerId?: string;
 }
 
 export interface ToolConfigValidationOptions {
@@ -122,7 +121,6 @@ function sanitizeToolConfig(
 					severity: "error",
 					path: `providers.${toolId}`,
 					message: `Config sanitizer of tool "${toolId}" must return an object.`,
-					providerId: toolId,
 					toolId,
 				}),
 			);
@@ -138,7 +136,6 @@ function sanitizeToolConfig(
 				message: `Config sanitizer of tool "${toolId}" failed: ${
 					error instanceof Error ? error.message : String(error)
 				}`,
-				providerId: toolId,
 				toolId,
 			}),
 		);
@@ -167,7 +164,6 @@ function validateToolConfig(
 					severity: "error",
 					path: `providers.${toolId}`,
 					message: `Config validator of tool "${toolId}" must return an array.`,
-					providerId: toolId,
 					toolId,
 				}),
 			);
@@ -177,7 +173,6 @@ function validateToolConfig(
 			diagnostics.push({
 				...diagnostic,
 				path: diagnostic.path || `providers.${toolId}`,
-				providerId: diagnostic.providerId || toolId,
 				toolId: diagnostic.toolId || toolId,
 			});
 		}
@@ -190,7 +185,6 @@ function validateToolConfig(
 				message: `Config validator of tool "${toolId}" failed: ${
 					error instanceof Error ? error.message : String(error)
 				}`,
-				providerId: toolId,
 				toolId,
 			}),
 		);
@@ -301,21 +295,19 @@ function collectProviderKeyDiagnostics(
 				severity: "error",
 				path: "providers.tts",
 				message: `Provider key "tts" is no longer supported. Use "providers.textToSpeech".`,
-				providerId: "tts",
 				toolId: "textToSpeech",
 			}),
 		);
 	}
-	for (const providerId of Object.keys(config.providers).sort()) {
-		if (toolMap.size === 0 || toolMap.has(providerId)) continue;
+	for (const key of Object.keys(config.providers).sort()) {
+		if (toolMap.size === 0 || toolMap.has(key)) continue;
 		diagnostics.push(
 			createDiagnostic({
 				code: "tools.unknownProviderKey",
 				severity: "error",
-				path: `providers.${providerId}`,
-				message: `Unknown provider key "${providerId}".`,
-				providerId,
-				toolId: providerId,
+				path: `providers.${key}`,
+				message: `Unknown provider key "${key}".`,
+				toolId: key,
 			}),
 		);
 	}

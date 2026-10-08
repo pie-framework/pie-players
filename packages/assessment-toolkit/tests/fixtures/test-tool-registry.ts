@@ -43,7 +43,7 @@ export function createFailingAuthProviderDescriptor(
 	return {
 		createProvider: () => ({
 			providerName: `Stub ${toolId} provider`,
-			category: "service-dependent",
+			category: "other",
 			version: "0.0.0",
 			requiresAuth: true,
 			initialize: async () => undefined,

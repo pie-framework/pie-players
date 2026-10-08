@@ -480,11 +480,15 @@ calculator elements, `highlightCoordinator` and `ttsService` on
 `gray`), and `ttsService` on the sign-language region. Providers register under
 their tool's id (`calculator`, `textToSpeech`): `ToolProviderApi.providerId`,
 `ToolProviderDescriptor.getProviderId`, `resolveToolProviderId` and
-`ToolkitCoordinator.getToolProvider` are gone, `ensureProviderReady` takes a tool
-id, and the provider lifecycle hooks and the toolkit's provider and playback
-telemetry carry the tool id as `providerId`: `"textToSpeech"` where they carried
-`"tts"`, `"calculator"` where they carried the vendor's selection id. `sanitizeConfig` and `validateConfig`
-moved from the provider descriptor to `ToolRegistration`. `AnswerEliminatorToolConfig`
+`ToolkitCoordinator.getToolProvider` are gone, and `ensureProviderReady` takes a
+tool id. The toolkit names a tool by that id under `toolId` only: the provider
+lifecycle hooks pass it as their first argument, `ToolkitErrorContext` carries it
+as `toolId` (framework-error source `pie-toolkit-coordinator/<toolId>`), and
+`ProviderLifecycleContext.providerId`, `ToolConfigDiagnostic.providerId` and the
+`providerId` the provider and playback telemetry repeated beside `toolId` are
+deleted. Telemetry that carried `"tts"` or a vendor's selection id as `providerId`
+reads `"textToSpeech"` or `"calculator"` as `toolId`. `sanitizeConfig` and
+`validateConfig` moved from the provider descriptor to `ToolRegistration`. `AnswerEliminatorToolConfig`
 is deleted, and `PACKAGED_TOOL_REGISTRATIONS`, `PACKAGED_TOOL_PLACEMENT` and
 `PACKAGED_TOOL_ORDER` are typed as plain arrays where they were cast to literal
 tuples. Checked against all five checkouts the same day as a targeted lookup, so
@@ -493,7 +497,10 @@ properties on a tool element, reads a provider's `providerId`, subscribes to
 toolkit telemetry or provider lifecycle hooks, calls `getToolProvider` or
 `ensureProviderReady`, reads
 `toolProviderRegistry`, declares a provider descriptor or config hook, or names
-the deleted type or the composition constants. Host A takes the calculator,
+`ToolkitErrorContext`, `ProviderLifecycleContext`, `ToolConfigDiagnostic`, the
+deleted type or the composition constants. Host R alone hands the section player
+a New Relic instrumentation provider, so its toolkit events lose the `providerId`
+attribute and keep `toolId`. Host A takes the calculator,
 annotation toolbar and answer eliminator from the packaged loaders and sets
 none of their properties; the edits to `CortexToolProvider` and the composition
 module change no import, so its single-file build inlines the same modules.

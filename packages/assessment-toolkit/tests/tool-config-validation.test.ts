@@ -349,7 +349,6 @@ describe("tool-config-validation", () => {
 			supportedLevels: ["item"],
 			activation: "region",
 			surfaces: ["item-media"],
-			pnpSupportIds: ["hostAlternateMedia"],
 			isVisibleInContext: () => true,
 			renderSurface: () => ({ element: {} as HTMLElement }),
 		} as ToolRegistration);

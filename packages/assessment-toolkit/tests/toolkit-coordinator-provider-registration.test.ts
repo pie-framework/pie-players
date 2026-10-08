@@ -165,27 +165,94 @@ describe("ToolkitCoordinator provider id changes", () => {
 		expect(unhandled).toEqual([]);
 	});
 
-	test("a change that keeps the provider id leaves the provider registered", async () => {
-		const destroyed: string[] = [];
+	test("a change that keeps the provider id replaces the provider", async () => {
+		const created: Array<{ initialized: unknown[]; destroyed: boolean }> = [];
 		const coordinator = new ToolkitCoordinator({
 			assessmentId: "provider-id-kept",
 			lazyInit: true,
 			toolRegistry: registryWithCalculator({
 				...idFromConfig,
-				createProvider: (config) => ({
-					...stubProvider(config?.provider?.id ?? "calculator-alpha"),
-					destroy: () => {
-						destroyed.push(config?.provider?.id ?? "calculator-alpha");
+				createProvider: () => {
+					const record = { initialized: [] as unknown[], destroyed: false };
+					created.push(record);
+					return {
+						...stubProvider("calculator-alpha"),
+						requiresAuth: true,
+						initialize: async (config: unknown) => {
+							record.initialized.push(config);
+						},
+						destroy: () => {
+							record.destroyed = true;
+						},
+					} as unknown as ToolProviderApi;
+				},
+				getInitConfig: (config) => config?.provider?.init ?? {},
+				getAuthFetcher: (config) => config?.provider?.runtime?.authFetcher,
+			}),
+			tools: {
+				providers: {
+					calculator: {
+						provider: {
+							init: { apiKey: "old" },
+							runtime: { authFetcher: async () => ({ token: "old" }) },
+						},
 					},
-				}),
+				},
+			},
+		});
+		await coordinator.ensureProviderReady("calculator-alpha");
+
+		coordinator.updateToolConfig("calculator", {
+			provider: {
+				init: { apiKey: "new" },
+				runtime: { authFetcher: async () => ({ token: "new" }) },
+			},
+		});
+		await coordinator.ensureProviderReady("calculator-alpha");
+
+		expect(created).toHaveLength(2);
+		expect(created[0]?.destroyed).toBe(true);
+		expect(created[1]?.initialized).toEqual([
+			expect.objectContaining({ apiKey: "new", token: "new" }),
+		]);
+		expect(unhandled).toEqual([]);
+	});
+
+	test("a caller waiting on a start that a replacement interrupts gets the replacement", async () => {
+		let releaseFirstStart: () => void = () => {};
+		const providers: ToolProviderApi[] = [];
+		const coordinator = new ToolkitCoordinator({
+			assessmentId: "provider-replaced-during-start",
+			lazyInit: true,
+			toolRegistry: registryWithCalculator({
+				...idFromConfig,
+				createProvider: () => {
+					const first = providers.length === 0;
+					const provider = {
+						...stubProvider("calculator-alpha"),
+						initialize: () =>
+							first
+								? new Promise<void>((resolve) => {
+										releaseFirstStart = resolve;
+									})
+								: Promise.resolve(),
+					} as unknown as ToolProviderApi;
+					providers.push(provider);
+					return provider;
+				},
 			}),
 			tools: { providers: { calculator: { enabled: true } } },
 		});
 
-		coordinator.updateToolConfig("calculator", { settings: { mode: "basic" } });
+		const started = coordinator.ensureProviderReady("calculator-alpha");
 		await settle();
+		coordinator.updateToolConfig("calculator", { settings: { mode: "basic" } });
+		releaseFirstStart();
 
-		expect(coordinator.toolProviderRegistry.has("calculator-alpha")).toBe(true);
-		expect(destroyed).toEqual([]);
+		expect(await started).toBe(providers[1]);
+		expect(coordinator.toolProviderRegistry.isInitialized("calculator-alpha")).toBe(
+			true,
+		);
+		expect(unhandled).toEqual([]);
 	});
 });

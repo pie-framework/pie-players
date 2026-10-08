@@ -14,6 +14,7 @@ import type {
 
 import { PnpPolicySource } from "../../src/policy/sources/PnpPolicySource.js";
 import { ToolRegistry } from "../../src/services/ToolRegistry.js";
+import { createTestToolRegistry } from "../fixtures/test-tool-registry.js";
 
 function source() {
 	const registry = new ToolRegistry();
@@ -158,7 +159,7 @@ describe("PnpPolicySource — 6-level precedence", () => {
 		});
 	});
 
-	test("missing pnpSupport → toolId mapping uses supportId verbatim", () => {
+	test("an unregistered support id is carried through verbatim", () => {
 		const result = source().apply({
 			assessment: {
 				id: "a1",
@@ -168,48 +169,25 @@ describe("PnpPolicySource — 6-level precedence", () => {
 		expect(result.perToolFlags.has("customSupport")).toBe(true);
 	});
 
-	test("mapSupportToToolId — first-registered tool wins when multiple tools share a support id (R1 N6)", () => {
-		// Locks the documented "first-wins" semantics of
-		// `PnpPolicySource.mapSupportToToolId(...)`. A second tool that
-		// claims the same `pnpSupportIds` array must not silently steal
-		// the mapping; integrators who want to override should
-		// `unregister(...)` the default first.
-		const registry = new ToolRegistry();
-		const baseToolReg = {
-			name: "x",
-			description: "x",
-			icon: "x",
-			supportedLevels: ["item" as const],
-			isVisibleInContext: () => true,
-			renderToolbar: () => null,
-		};
-		registry.register({
-			...baseToolReg,
-			toolId: "calculator-default",
-			pnpSupportIds: ["calculator"],
-		});
-		registry.register({
-			...baseToolReg,
-			toolId: "calculator-replacement",
-			pnpSupportIds: ["calculator"],
-		});
+	test("an unregistered support id is reported only against a non-empty registry", () => {
+		const assessment = {
+			id: "a1",
+			personalNeedsProfile: { supports: ["calculator", "customSupport"] },
+		} as AssessmentEntity;
 
-		const result = new PnpPolicySource(registry).apply({
-			assessment: {
-				id: "a1",
-				personalNeedsProfile: { supports: ["calculator"] },
-			} as AssessmentEntity,
-		});
-
-		expect(result.perToolFlags.has("calculator-default")).toBe(true);
-		expect(result.perToolFlags.has("calculator-replacement")).toBe(false);
+		expect([
+			...new PnpPolicySource(createTestToolRegistry()).apply({ assessment })
+				.unmappedSupportIds,
+		]).toEqual(["customSupport"]);
+		expect(
+			new PnpPolicySource(new ToolRegistry()).apply({ assessment })
+				.unmappedSupportIds.size,
+		).toBe(0);
 	});
 
-	test("mapSupportToToolId — unmapped support id falls through verbatim across all rules (R1 N6)", () => {
-		// Sister case: when no tool registers `customSupport`, the
-		// support id itself becomes the `featureId` for every decision
-		// the source emits — including non-PNP rules. Hosts that rely
-		// on raw QTI strings for unmapped tools depend on this.
+	test("an unregistered support id is carried through verbatim across all rules", () => {
+		// The support id itself becomes the `featureId` for every decision the
+		// source emits, including non-PNP rules.
 		const registry = new ToolRegistry();
 		const result = new PnpPolicySource(registry).apply({
 			assessment: {

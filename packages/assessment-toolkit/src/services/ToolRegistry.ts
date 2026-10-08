@@ -373,8 +373,12 @@ export interface ToolSurfaceServices {
  */
 export interface ToolSurfaceRenderContext {
 	toolId: string;
-	/** The PNP/AfA support id policy granted for this render. */
-	featureId: string;
+	/**
+	 * Whether policy granted the capability for this render; `false` only for a
+	 * {@link ToolRegistration.resolvesWithoutGrant} capability answering from
+	 * content alone.
+	 */
+	granted: boolean;
 	/** Host slot being filled. */
 	surface: string;
 	/** Feature parameters from the policy decision, if any. */
@@ -390,8 +394,6 @@ export interface ToolSurfaceRenderContext {
  * present.
  */
 export interface ToolContentDependencyContext {
-	/** The PNP/AfA support id being resolved. */
-	featureId: string;
 	/** Feature parameters from the policy decision, if any. */
 	parameters?: unknown;
 	/**
@@ -403,7 +405,7 @@ export interface ToolContentDependencyContext {
 	 */
 	catalogs: CatalogOwnerSnapshot | null;
 	/**
-	 * Whether policy granted one of this capability's support ids.
+	 * Whether policy granted this capability's support id.
 	 *
 	 * `false` reaches `resolve` only for a capability that declares
 	 * {@link ToolRegistration.resolvesWithoutGrant}, and it is the signal that the
@@ -554,13 +556,6 @@ export interface ToolRegistration {
 	 * Optional singleton scope for activation models that mount exactly one instance.
 	 */
 	singletonScope?: ToolSingletonScope;
-
-	/**
-	 * PNP support IDs that enable this tool (optional)
-	 * Used by the tool policy engine to determine if a PNP support enables this tool.
-	 * Example: ['calculator', 'basic-calculator', 'scientific-calculator']
-	 */
-	pnpSupportIds?: string[];
 
 	/**
 	 * Authored content this capability needs before it has anything to show.
@@ -853,17 +848,6 @@ function assertToolRegistrationShape(registration: ToolRegistration): void {
 		);
 	}
 	if (
-		registration.pnpSupportIds !== undefined &&
-		(!Array.isArray(registration.pnpSupportIds) ||
-			registration.pnpSupportIds.some(
-				(pnpId) => typeof pnpId !== "string" || pnpId.trim().length === 0,
-			))
-	) {
-		throw new Error(
-			`Invalid tool registration "${registration.toolId}": "pnpSupportIds" must be an array of non-empty strings.`,
-		);
-	}
-	if (
 		registration.activation !== "region" &&
 		typeof registration.isVisibleInContext !== "function"
 	) {
@@ -897,14 +881,6 @@ function assertToolRegistrationShape(registration: ToolRegistration): void {
 				`Invalid tool registration "${registration.toolId}": "requiresAuthoredContent" must be an object with a "resolve" function.`,
 			);
 		}
-		if (!registration.pnpSupportIds?.length) {
-			// A content dependency's second job is keeping the capability out of a
-			// wholesale grant, and a host filters that by support id. Declaring one
-			// with no id to filter on would silently drop that guarantee.
-			throw new Error(
-				`Invalid tool registration "${registration.toolId}": "requiresAuthoredContent" requires at least one entry in "pnpSupportIds", which is what a host filters a default grant list on.`,
-			);
-		}
 	}
 	if (registration.renderToolbar !== undefined) {
 		if (typeof registration.renderToolbar !== "function") {
@@ -926,7 +902,6 @@ function assertToolRegistrationShape(registration: ToolRegistration): void {
  */
 export class ToolRegistry {
 	private tools = new Map<string, ToolRegistration>();
-	private pnpIndex = new Map<string, Set<string>>(); // pnpSupportId → Set<toolId>
 	private componentOverrides: ToolComponentOverrides = {};
 	private watchedUndefinedToolElements = new Set<string>();
 	private moduleLoaders = new Map<string, ToolModuleLoader>();
@@ -966,7 +941,7 @@ export class ToolRegistry {
 	}
 
 	/**
-	 * Normalize a list of tool aliases to canonical toolIds.
+	 * Normalize a list of tool ids (trims surrounding whitespace).
 	 */
 	normalizeToolIds(toolIds: string[]): string[] {
 		return toolIds.map((toolId) => this.normalizeToolId(toolId));
@@ -985,16 +960,6 @@ export class ToolRegistry {
 		}
 
 		this.tools.set(registration.toolId, registration);
-
-		// Index PNP support IDs
-		if (registration.pnpSupportIds) {
-			for (const pnpId of registration.pnpSupportIds) {
-				if (!this.pnpIndex.has(pnpId)) {
-					this.pnpIndex.set(pnpId, new Set());
-				}
-				this.pnpIndex.get(pnpId)!.add(registration.toolId);
-			}
-		}
 		this.emitChange({ kind: "register", toolIds: [registration.toolId] });
 	}
 
@@ -1011,26 +976,7 @@ export class ToolRegistry {
 			);
 		}
 
-		// Remove old PNP index entries
-		const oldReg = this.tools.get(registration.toolId)!;
-		if (oldReg.pnpSupportIds) {
-			for (const pnpId of oldReg.pnpSupportIds) {
-				this.pnpIndex.get(pnpId)?.delete(registration.toolId);
-			}
-		}
-
-		// Add new registration
 		this.tools.set(registration.toolId, registration);
-
-		// Re-index PNP support IDs
-		if (registration.pnpSupportIds) {
-			for (const pnpId of registration.pnpSupportIds) {
-				if (!this.pnpIndex.has(pnpId)) {
-					this.pnpIndex.set(pnpId, new Set());
-				}
-				this.pnpIndex.get(pnpId)!.add(registration.toolId);
-			}
-		}
 		this.emitChange({ kind: "override", toolIds: [registration.toolId] });
 	}
 
@@ -1040,16 +986,7 @@ export class ToolRegistry {
 	 * @param toolId - Tool ID to remove
 	 */
 	unregister(toolId: string): void {
-		const reg = this.tools.get(toolId);
-		if (!reg) return;
-
-		// Remove PNP index entries
-		if (reg.pnpSupportIds) {
-			for (const pnpId of reg.pnpSupportIds) {
-				this.pnpIndex.get(pnpId)?.delete(toolId);
-			}
-		}
-
+		if (!this.tools.has(toolId)) return;
 		this.tools.delete(toolId);
 		this.emitChange({ kind: "unregister", toolIds: [toolId] });
 	}
@@ -1090,16 +1027,6 @@ export class ToolRegistry {
 	 */
 	getAllTools(): ToolRegistration[] {
 		return Array.from(this.tools.values());
-	}
-
-	/**
-	 * Find tool IDs that support a given PNP support ID
-	 *
-	 * @param pnpSupportId - PNP support ID (e.g., 'calculator')
-	 * @returns Set of tool IDs that support this PNP ID
-	 */
-	getToolsByPNPSupport(pnpSupportId: string): Set<string> {
-		return this.pnpIndex.get(pnpSupportId) || new Set();
 	}
 
 	/**
@@ -1146,19 +1073,18 @@ export class ToolRegistry {
 	}
 
 	/**
-	 * Support ids belonging to capabilities that need authored content.
+	 * Support ids, which are tool ids, of the capabilities that need authored
+	 * content.
 	 *
-	 * What a host filters a default grant list on, in place of the compile-time
-	 * exclusion array this replaced: granting one of these wholesale grants an
-	 * accommodation to learners with no documented need for it.
+	 * What a host filters a default grant list on: granting one of these
+	 * wholesale grants an accommodation to learners with no documented need
+	 * for it.
 	 */
 	getContentDependentSupportIds(): string[] {
-		const ids = new Set<string>();
-		for (const tool of this.getAllTools()) {
-			if (!tool.requiresAuthoredContent) continue;
-			for (const supportId of tool.pnpSupportIds || []) ids.add(supportId);
-		}
-		return [...ids].sort();
+		return this.getAllTools()
+			.filter((tool) => tool.requiresAuthoredContent)
+			.map((tool) => tool.toolId)
+			.sort();
 	}
 
 	/**
@@ -1256,13 +1182,12 @@ export class ToolRegistry {
 	 * Get tool metadata for building UIs
 	 * Useful for building PNP configuration interfaces
 	 *
-	 * @returns Array of tool metadata (id, name, description, pnpSupportIds)
+	 * @returns Array of tool metadata (id, name, description, levels, activation)
 	 */
 	getToolMetadata(): Array<{
 		toolId: string;
 		name: string;
 		description: string;
-		pnpSupportIds: string[];
 		supportedLevels: ToolLevel[];
 		activation: ToolActivation;
 		singletonScope: ToolSingletonScope | null;
@@ -1274,7 +1199,6 @@ export class ToolRegistry {
 			toolId: tool.toolId,
 			name: tool.name,
 			description: tool.description,
-			pnpSupportIds: tool.pnpSupportIds || [],
 			supportedLevels: tool.supportedLevels,
 			activation: tool.activation || "toolbar-toggle",
 			singletonScope: tool.singletonScope || null,
@@ -1286,35 +1210,12 @@ export class ToolRegistry {
 	}
 
 	/**
-	 * Generate PNP support IDs from enabled tools
-	 * Useful for creating PNP profiles
-	 *
-	 * @param enabledToolIds - Tool IDs to enable
-	 * @returns Array of unique PNP support IDs
-	 */
-	generatePNPSupportsFromTools(enabledToolIds: string[]): string[] {
-		const pnpSupports = new Set<string>();
-
-		for (const toolId of enabledToolIds) {
-			const tool = this.get(toolId);
-			if (tool?.pnpSupportIds) {
-				for (const pnpId of tool.pnpSupportIds) {
-					pnpSupports.add(pnpId);
-				}
-			}
-		}
-
-		return Array.from(pnpSupports);
-	}
-
-	/**
 	 * Clear all registrations (useful for testing)
 	 */
 	clear(): void {
 		const toolIds = this.getAllToolIds();
 		if (toolIds.length === 0) return;
 		this.tools.clear();
-		this.pnpIndex.clear();
 		this.emitChange({ kind: "clear", toolIds });
 	}
 

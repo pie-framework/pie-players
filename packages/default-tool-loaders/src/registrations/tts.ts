@@ -2,10 +2,6 @@
  * Text-to-Speech (TTS) Tool Registration
  *
  * Registers the TTS tool for reading content aloud.
- *
- * Maps to QTI 3.0 standard access features:
- * - textToSpeech (auditory support)
- * - readAloud (auditory support)
  */
 
 import type {
@@ -116,13 +112,6 @@ export const ttsToolRegistration: ToolRegistration = {
 
 	// TTS is inline-only and scoped to item/passage contexts.
 	supportedLevels: ["item", "passage"],
-
-	// PNP support IDs that enable this tool
-	// Maps to QTI 3.0 standard features: textToSpeech, readAloud
-	pnpSupportIds: [
-		"textToSpeech", // QTI 3.0 standard (auditory.textToSpeech)
-		"readAloud", // QTI 3.0 standard (auditory.readAloud)
-	],
 
 	/**
 	 * Pass 2: Determine if TTS is relevant in this context

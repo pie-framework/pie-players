@@ -11,7 +11,6 @@ const mockCalculatorTool: ToolRegistration = {
 	description: "Basic calculator tool",
 	icon: "calculator-icon",
 	supportedLevels: ["item", "section", "element"],
-	pnpSupportIds: ["calculator", "basicCalculator", "scientificCalculator"],
 	isVisibleInContext: (context: ToolContext) => {
 		// Simple mock: always visible for testing
 		return true;
@@ -35,7 +34,6 @@ const mockTTSTool: ToolRegistration = {
 	description: "Read content aloud",
 	icon: "speaker-icon",
 	supportedLevels: ["item", "passage", "element"],
-	pnpSupportIds: ["textToSpeech", "tts"],
 	isVisibleInContext: (context: ToolContext) => {
 		return true;
 	},
@@ -60,7 +58,6 @@ const mockSelectionGatewayTool: ToolRegistration = {
 	supportedLevels: ["item", "passage", "element"],
 	activation: "selection-gateway",
 	singletonScope: "section",
-	pnpSupportIds: ["annotations", "highlighting"],
 	isVisibleInContext: () => true,
 	renderToolbar: () => null,
 };
@@ -72,7 +69,6 @@ const mockRegionTool: ToolRegistration = {
 	supportedLevels: ["item"],
 	activation: "region",
 	surfaces: ["item-media"],
-	pnpSupportIds: ["hostAlternateMedia"],
 	isVisibleInContext: () => true,
 	renderSurface: (context) => ({
 		element: { className: `region-${context.surface}` } as any,
@@ -99,25 +95,6 @@ describe("ToolRegistry", () => {
 				"Tool 'calculator' is already registered",
 			);
 		});
-
-		test("indexes PNP support IDs", () => {
-			registry.register(mockCalculatorTool);
-			const toolIds = registry.getToolsByPNPSupport("calculator");
-			expect(toolIds.has("calculator")).toBe(true);
-		});
-
-		test("indexes multiple PNP support IDs for same tool", () => {
-			registry.register(mockCalculatorTool);
-			expect(
-				registry.getToolsByPNPSupport("calculator").has("calculator"),
-			).toBe(true);
-			expect(
-				registry.getToolsByPNPSupport("basicCalculator").has("calculator"),
-			).toBe(true);
-			expect(
-				registry.getToolsByPNPSupport("scientificCalculator").has("calculator"),
-			).toBe(true);
-		});
 	});
 
 	describe("override", () => {
@@ -138,25 +115,6 @@ describe("ToolRegistry", () => {
 				"Cannot override non-existent tool 'calculator'",
 			);
 		});
-
-		test("updates PNP index when overriding", () => {
-			registry.register(mockCalculatorTool);
-
-			const updatedTool: ToolRegistration = {
-				...mockCalculatorTool,
-				pnpSupportIds: ["calculator", "graphingCalculator"], // Changed PNP IDs
-			};
-
-			registry.override(updatedTool);
-
-			// Old PNP ID should be removed
-			expect(registry.getToolsByPNPSupport("basicCalculator").size).toBe(0);
-
-			// New PNP ID should be added
-			expect(
-				registry.getToolsByPNPSupport("graphingCalculator").has("calculator"),
-			).toBe(true);
-		});
 	});
 
 	describe("unregister", () => {
@@ -164,12 +122,6 @@ describe("ToolRegistry", () => {
 			registry.register(mockCalculatorTool);
 			registry.unregister("calculator");
 			expect(registry.has("calculator")).toBe(false);
-		});
-
-		test("removes tool from PNP index", () => {
-			registry.register(mockCalculatorTool);
-			registry.unregister("calculator");
-			expect(registry.getToolsByPNPSupport("calculator").size).toBe(0);
 		});
 
 		test("does nothing when unregistering non-existent tool", () => {
@@ -211,39 +163,6 @@ describe("ToolRegistry", () => {
 			expect(tools.length).toBe(2);
 			expect(tools).toContainEqual(mockCalculatorTool);
 			expect(tools).toContainEqual(mockTTSTool);
-		});
-	});
-
-	describe("getToolsByPNPSupport", () => {
-		test("returns tools that support given PNP ID", () => {
-			registry.register(mockCalculatorTool);
-			registry.register(mockTTSTool);
-
-			const calcTools = registry.getToolsByPNPSupport("calculator");
-			expect(calcTools.has("calculator")).toBe(true);
-			expect(calcTools.has("textToSpeech")).toBe(false);
-		});
-
-		test("returns empty set for unknown PNP ID", () => {
-			registry.register(mockCalculatorTool);
-			const tools = registry.getToolsByPNPSupport("unknown");
-			expect(tools.size).toBe(0);
-		});
-
-		test("handles multiple tools supporting same PNP ID", () => {
-			const calculator2: ToolRegistration = {
-				...mockCalculatorTool,
-				toolId: "calculator2",
-				pnpSupportIds: ["calculator"], // Same PNP ID
-			};
-
-			registry.register(mockCalculatorTool);
-			registry.register(calculator2);
-
-			const tools = registry.getToolsByPNPSupport("calculator");
-			expect(tools.size).toBe(2);
-			expect(tools.has("calculator")).toBe(true);
-			expect(tools.has("calculator2")).toBe(true);
 		});
 	});
 
@@ -466,11 +385,6 @@ describe("ToolRegistry", () => {
 				toolId: "calculator",
 				name: "Calculator",
 				description: "Basic calculator tool",
-				pnpSupportIds: [
-					"calculator",
-					"basicCalculator",
-					"scientificCalculator",
-				],
 				supportedLevels: ["item", "section", "element"],
 				activation: "toolbar-toggle",
 				singletonScope: null,
@@ -508,40 +422,6 @@ describe("ToolRegistry", () => {
 		});
 	});
 
-	describe("generatePNPSupportsFromTools", () => {
-		test("generates unique PNP support IDs", () => {
-			registry.register(mockCalculatorTool);
-			registry.register(mockTTSTool);
-
-			const pnpSupports = registry.generatePNPSupportsFromTools([
-				"calculator",
-				"textToSpeech",
-			]);
-
-			expect(pnpSupports).toContain("calculator");
-			expect(pnpSupports).toContain("basicCalculator");
-			expect(pnpSupports).toContain("scientificCalculator");
-			expect(pnpSupports).toContain("textToSpeech");
-			expect(pnpSupports).toContain("tts");
-
-			// Should be unique
-			expect(new Set(pnpSupports).size).toBe(pnpSupports.length);
-		});
-
-		test("ignores tools without PNP support IDs", () => {
-			const toolWithoutPNP: ToolRegistration = {
-				...mockCalculatorTool,
-				toolId: "custom",
-				pnpSupportIds: undefined,
-			};
-
-			registry.register(toolWithoutPNP);
-
-			const pnpSupports = registry.generatePNPSupportsFromTools(["custom"]);
-			expect(pnpSupports.length).toBe(0);
-		});
-	});
-
 	describe("clear", () => {
 		test("removes all registrations", () => {
 			registry.register(mockCalculatorTool);
@@ -550,7 +430,6 @@ describe("ToolRegistry", () => {
 			registry.clear();
 
 			expect(registry.getAllToolIds().length).toBe(0);
-			expect(registry.getToolsByPNPSupport("calculator").size).toBe(0);
 		});
 	});
 
@@ -772,6 +651,7 @@ describe("ToolRegistry", () => {
 			).toThrow(/renders into a host surface, not a toolbar/);
 		});
 	});
+
 	describe("content dependency", () => {
 		const contentDependentTool: ToolRegistration = {
 			toolId: "hostSignedAlternate",
@@ -780,7 +660,6 @@ describe("ToolRegistry", () => {
 			supportedLevels: ["item"],
 			activation: "region",
 			surfaces: ["item-media"],
-			pnpSupportIds: ["hostSignLanguage", "hostSigning"],
 			requiresAuthoredContent: {
 				description: "a signing card on the item",
 				resolve: (context) => context.catalogs?.cards[0]?.card.content ?? null,
@@ -798,7 +677,6 @@ describe("ToolRegistry", () => {
 			// it is resolving.
 			expect(
 				tool?.requiresAuthoredContent?.resolve({
-					featureId: "hostSignLanguage",
 					catalogs: {
 						cards: [
 							{
@@ -813,7 +691,6 @@ describe("ToolRegistry", () => {
 
 			expect(
 				tool?.requiresAuthoredContent?.resolve({
-					featureId: "hostSignLanguage",
 					catalogs: { cards: [] },
 					granted: true,
 				}),
@@ -827,8 +704,7 @@ describe("ToolRegistry", () => {
 			registry.register(mockCalculatorTool);
 
 			expect(registry.getContentDependentSupportIds()).toEqual([
-				"hostSignLanguage",
-				"hostSigning",
+				"hostSignedAlternate",
 			]);
 		});
 
@@ -860,16 +736,6 @@ describe("ToolRegistry", () => {
 					requiresAuthoredContent: { description: "x" } as any,
 				}),
 			).toThrow('must be an object with a "resolve" function');
-		});
-
-		test("rejects a dependency with no support id to filter on", () => {
-			// Declaring a content dependency with no support id would silently drop
-			// the keep-it-out-of-a-wholesale-grant guarantee.
-			const { pnpSupportIds: _omitted, ...withoutSupportIds } =
-				contentDependentTool;
-			expect(() =>
-				registry.register(withoutSupportIds as ToolRegistration),
-			).toThrow('requires at least one entry in "pnpSupportIds"');
 		});
 	});
 });

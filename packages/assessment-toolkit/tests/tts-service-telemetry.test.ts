@@ -266,6 +266,7 @@ describe("TTSService telemetry", () => {
 			rate: 1.25,
 			pitch: 0.8,
 			mathTokenHighlighting: true,
+			providerOptions: { __pieTelemetry: expect.any(Function) },
 		});
 
 		await expect(

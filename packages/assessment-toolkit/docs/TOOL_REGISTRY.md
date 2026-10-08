@@ -7,7 +7,7 @@ The Tool Registry provides a **registry-based system** for managing assessment t
 The Tool Registry replaces hardcoded tool lists with a flexible, extensible system that:
 
 1. **Enforces two-pass visibility model**: Orchestrator determines allowed tools (Pass 1), tools decide relevance (Pass 2)
-2. **Maps PNP features to tools**: Automatic tool enablement based on QTI 3.0 accessibility profiles
+2. **Grants tools from PNP profiles**: a profile's support id is the `toolId` it grants
 3. **Context-aware filtering**: Tools show/hide based on content analysis
 4. **Type-safe registrations**: Full TypeScript support with standardized interfaces
 
@@ -78,7 +78,7 @@ This keeps visibility deterministic and context-driven for every refresh cycle.
 
 ## QTI 3.0 Standard Access Features
 
-The toolkit includes comprehensive QTI 3.0 / IMS Access for All (AfA) 3.0 standard features in `pnp-standard-features.ts`:
+The toolkit includes comprehensive QTI 3.0 / IMS Access for All (AfA) 3.0 standard features in `pnp-standard-features.ts`. They are reference vocabulary: a profile grants a tool by its `toolId`, so a feature id grants a packaged tool only where the names coincide (`calculator`, `textToSpeech`, `ruler`, `protractor`, `graph`, `periodicTable`, `answerEliminator`, `signLanguage`, `transcript`). A host holding a profile in AfA terms translates the rest, for example `readingMask` to `lineReader` or `highlighting` to `annotationToolbar`.
 
 ### Standard Feature Categories
 
@@ -175,13 +175,6 @@ export const calculatorToolRegistration: ToolRegistration = {
 
   // Which context levels support this tool
   supportedLevels: ["item"],
-
-  // QTI 3.0 PNP support IDs that enable this tool
-  // Maps to standard features from pnp-standard-features.ts
-  pnpSupportIds: [
-    "calculator",           // QTI 3.0 standard (cognitive.calculator)
-    "graphingCalculator"    // QTI 3.0 standard (assessment.graphingCalculator)
-  ],
 
   // Pass 2: Is this tool relevant in the current context?
   isVisibleInContext(context: ToolContext): boolean {
@@ -390,7 +383,7 @@ const allowedToolIds = coordinator
 // Returns: ["calculator", "textToSpeech", "theme", ...]
 ```
 
-The policy engine reads the assessment's `personalNeedsProfile`, `settings.districtPolicy` and `settings.testAdministration`, and the current item ref's `settings`. It maps support ids to tool IDs using the tool registry's PNP index, which each registration's `pnpSupportIds` populates.
+The policy engine reads the assessment's `personalNeedsProfile`, `settings.districtPolicy` and `settings.testAdministration`, and the current item ref's `settings`. A support id in any of them is a tool id: `supports: ["calculator"]` grants the tool registered as `calculator`, and an id no tool is registered under produces a `tool-policy.unknownSupportId` diagnostic.
 
 ### Filtering by Context
 
@@ -594,7 +587,6 @@ export const alternateMediaRegistration: ToolRegistration = {
   supportedLevels: ['item'],
   activation: 'region',
   surfaces: ['content-media'],
-  pnpSupportIds: ['hostAlternateMedia'],
   requiresAuthoredContent: {
     description: 'an alternate-media catalog card on the item',
     resolve: ({ catalogs }) => findAlternateMediaCard(catalogs),
@@ -679,8 +671,6 @@ Two independent things follow, and both were previously done by naming ids in co
 - **Availability is grant AND content.** A host renders only when policy granted the feature *and* `resolve` returned something. Neither half implies the other and neither is a default, so a learner who has the accommodation still sees nothing on an item carrying no resource — no dead affordance. `resolve`'s return value is handed straight back through `ToolSurfaceRenderContext.content`; the host never inspects it, which is what keeps the host from knowing which accommodation it is resolving.
 - **It is never granted wholesale.** `registry.getContentDependentSupportIds()` is what a host filters a default grant list on, in place of a compile-time array of ids it cannot extend. A host adding its own accommodation gets the same guarantee by declaring the dependency.
 
-A registration declaring a content dependency must carry at least one `pnpSupportIds` entry — that is what a host filters on, so declaring the dependency with nothing to filter would silently drop the second guarantee. Registration rejects it.
-
 ## Creating Custom Tools
 
 To create a new tool:
@@ -702,7 +692,6 @@ export const myToolRegistration: ToolRegistration = {
   description: "Custom tool description",
   icon: "custom-icon",
   supportedLevels: ["item", "element"],
-  pnpSupportIds: ["myToolFeature", "customFeature"],
 
   isVisibleInContext(context: ToolContext): boolean {
     // Custom visibility logic
@@ -757,12 +746,7 @@ const packagedRegistry = createPackagedToolRegistry({ toolTagMap: { myTool: "my-
 packagedRegistry.register(myToolRegistration);
 ```
 
-3. **Add PNP mapping**:
-
-```typescript
-// The pnpSupportIds in your registration automatically create the mapping
-// No additional configuration needed
-```
+3. **Grant it**: a profile listing `myTool` in `supports` grants it. The tool id is the support id, so there is no mapping to declare.
 
 ## TypeScript Support
 
@@ -892,13 +876,11 @@ This hierarchy aligns with typical **IEP/504 accommodation hierarchies** in US K
 
 ## Best Practices
 
-1. **Use standard QTI 3.0 features first** - Check `QTI_STANDARD_ACCESS_FEATURES` before adding custom features
-2. **Include standard + variants** - List standard features first, then common variants in `pnpSupportIds`
-3. **Make tools context-aware** - Use helper functions like `hasMathContent()`, `hasReadableText()`
-4. **Document PNP mappings** - Add comments showing which QTI 3.0 features each tool maps to
-5. **Test both passes** - Verify tools respect orchestrator allowance AND context relevance
-6. **Keep visibility logic simple** - Complex logic should be in helper functions, not in `isVisibleInContext()`
-7. **Understand precedence** - Know which governance rules take priority in your platform
+1. **Name tools after standard QTI 3.0 features where one fits** - A tool id is its support id, so check `QTI_STANDARD_ACCESS_FEATURES` before inventing a name
+2. **Make tools context-aware** - Use helper functions like `hasMathContent()`, `hasReadableText()`
+3. **Test both passes** - Verify tools respect orchestrator allowance AND context relevance
+4. **Keep visibility logic simple** - Complex logic should be in helper functions, not in `isVisibleInContext()`
+5. **Understand precedence** - Know which governance rules take priority in your platform
 
 ## References
 

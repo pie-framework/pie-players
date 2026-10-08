@@ -394,9 +394,9 @@ Not all TTS providers support SSML equally:
 | **AWS Polly** | ✅ Full | Supports all common tags |
 | **Google Cloud TTS** | ✅ Full | Supports all common tags |
 | **Azure Speech** | ✅ Full | Supports all common tags |
-| **Browser TTS** | ⚠️ Limited | Most browsers ignore SSML |
+| **Browser TTS** | ⚠️ Limited | Tags are stripped; the text is read plainly |
 
-**Recommendation:** Author with SSML for cloud TTS. The browser fallback will ignore tags and read plain text, which is acceptable for basic functionality.
+**Recommendation:** Author with SSML for cloud TTS. Browser speech strips the tags and reads the text, which is acceptable for basic functionality.
 
 ---
 

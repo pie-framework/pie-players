@@ -41,7 +41,10 @@ import {
 	DEFAULT_CONTENT_LANGUAGE,
 	findLangAttribute,
 } from "../runtime/content-language.js";
-import { BrowserTTSProvider } from "./tts/browser-provider.js";
+import {
+	BrowserTTSProvider,
+	browserFallbackConfig,
+} from "./tts/browser-provider.js";
 import {
 	composedContains,
 	composedParentElement,
@@ -1516,21 +1519,7 @@ export class TTSService {
 		if (!this.currentProvider) return false;
 		const fallbackProvider = new BrowserTTSProvider();
 		const previousProviderId = this.currentProvider.providerId;
-		// Voice identifiers and provider extensions belong to the provider that
-		// rejected initialization. Carry only settings whose meaning is portable
-		// when crossing the provider boundary; otherwise a Polly/Google/SC voice
-		// such as "Joanna" can incorrectly become an explicit Browser voice.
-		const browserConfig: Partial<TTSConfig> = {};
-		if (this.ttsConfig.rate !== undefined) {
-			browserConfig.rate = this.ttsConfig.rate;
-		}
-		if (this.ttsConfig.pitch !== undefined) {
-			browserConfig.pitch = this.ttsConfig.pitch;
-		}
-		if (this.ttsConfig.mathTokenHighlighting !== undefined) {
-			browserConfig.mathTokenHighlighting =
-				this.ttsConfig.mathTokenHighlighting;
-		}
+		const browserConfig = browserFallbackConfig(this.ttsConfig);
 		const operation = context?.operation || "tts-initialize";
 		const offendingText = context?.contentToSpeak ?? "";
 		const offendingPreview = offendingText
@@ -1990,8 +1979,6 @@ export class TTSService {
 	private resolveGeneratedPlaybackFormat(): "plain" | "ssml" {
 		const provider = this.currentProvider;
 		if (!provider) return "plain";
-		// Belt-and-suspenders: the browser provider can never voice SSML.
-		if (provider.providerId?.toLowerCase() === "browser") return "plain";
 		return provider.getCapabilities?.().supportsSSML ? "ssml" : "plain";
 	}
 
@@ -2972,6 +2959,16 @@ export class TTSService {
 		this.sentenceHighlightSegments = [];
 		this.activeSentenceStartOffset = null;
 		this.activePlaybackRate = null;
+	}
+
+	/**
+	 * Stop playback and drop the provider, whose owner destroys it. A later speak
+	 * waits on the readiness gate, as before the first {@link initialize}.
+	 */
+	releaseProvider(): void {
+		this.stop();
+		this.provider = null;
+		this.currentProvider = null;
 	}
 
 	/**

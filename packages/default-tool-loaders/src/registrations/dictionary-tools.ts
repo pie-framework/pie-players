@@ -208,14 +208,15 @@ function renderDictionaryPanel(args: {
  * so a host catalog that lacks one is a plain label rather than a broken button.
  */
 export interface DictionaryVariantOptions {
-	/** Capability id, unique per language. Defaults to the base tool's id. */
+	/**
+	 * Capability id, unique per language, and the PNP support id that grants it.
+	 * Defaults to the base tool's id.
+	 */
 	toolId?: string;
 	name?: string;
 	description?: string;
 	/** Catalog prefix for this variant's strings. Defaults to `tools.<toolId>`. */
 	messageKeyPrefix?: string;
-	/** PNP ids that grant this variant. A language variant needs its own. */
-	pnpSupportIds?: string[];
 	/**
 	 * The corpus language this capability looks words up in, as a BCP-47 tag.
 	 *
@@ -230,7 +231,7 @@ export interface DictionaryVariantOptions {
  * Dictionary tool registration
  *
  * Word lookup from a host-supplied service, in one language. Call this again with another
- * `toolId`, `pnpSupportIds` and `lookupLanguage` to offer a second language beside it.
+ * `toolId` and `lookupLanguage` to offer a second language beside it.
  */
 export function createDictionaryToolRegistration(
 	options: DictionaryVariantOptions = {},
@@ -247,16 +248,6 @@ export function createDictionaryToolRegistration(
 
 		// Text can appear at any of these; the panel itself floats at section scope.
 		supportedLevels: ["section", "item", "passage", "rubric"],
-
-		// PNP support IDs
-		// Maps to AfA PNP 3.0 / QTI 3.0 dictionary support, plus the common variants a
-		// host profile is likely to carry.
-		pnpSupportIds: options.pnpSupportIds ?? [
-			"dictionary", // Canonical id
-			"englishDictionary", // Common variant
-			"glossary", // Common variant
-			"definitions", // Common variant
-		],
 
 		/** Pass 2: a dictionary is relevant wherever there is text to look words up from. */
 		isVisibleInContext(context: ToolContext): boolean {
@@ -309,16 +300,6 @@ export function createPictureDictionaryToolRegistration(
 
 		supportedLevels: ["section", "item", "passage", "rubric"],
 
-		// PNP support IDs
-		// AfA PNP 3.0 names an illustrated equivalent of a glossary; the variants cover
-		// what host profiles call it in practice.
-		pnpSupportIds: options.pnpSupportIds ?? [
-			"pictureDictionary", // Canonical id
-			"illustratedGlossary", // Common variant
-			"symbolDictionary", // Common variant
-			"pictureSupport", // Common variant
-		],
-
 		isVisibleInContext(context: ToolContext): boolean {
 			return hasReadableText(context);
 		},
@@ -357,7 +338,6 @@ export const spanishDictionaryToolRegistration: ToolRegistration =
 		toolId: "dictionarySpanish",
 		name: "Spanish Dictionary",
 		description: "Look up word definitions in Spanish",
-		pnpSupportIds: ["spanishDictionary"],
 		lookupLanguage: "es",
 	});
 
@@ -366,6 +346,5 @@ export const spanishPictureDictionaryToolRegistration: ToolRegistration =
 		toolId: "pictureDictionarySpanish",
 		name: "Spanish Picture Dictionary",
 		description: "Look up pictures for words in Spanish",
-		pnpSupportIds: ["spanishPictureDictionary"],
 		lookupLanguage: "es",
 	});

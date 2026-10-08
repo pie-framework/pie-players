@@ -162,7 +162,7 @@
 			createPatchedPnpProfile(
 				pnpPanelData.pnpProfile,
 				key,
-				row.pnpSupportIds,
+				row.toolId,
 				enabled
 			)
 		);
@@ -336,7 +336,6 @@
 								class:active={row.pnpSupported}
 								onclick={() => togglePnp(row, 'supports')}
 								data-testid={`pnp-support-toggle-${row.toolId}`}
-								title={row.pnpSupportIds.join(', ')}
 							>
 								support
 							</button>
@@ -345,7 +344,6 @@
 								class:danger={row.pnpProhibited}
 								onclick={() => togglePnp(row, 'prohibitedSupports')}
 								data-testid={`pnp-prohibit-toggle-${row.toolId}`}
-								title={row.pnpSupportIds.join(', ')}
 							>
 								prohibit
 							</button>

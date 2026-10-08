@@ -4,11 +4,6 @@
  * Registers tools for interacting with question content:
  * - Answer Eliminator (strike through answer choices)
  * - Highlighter (highlight text passages)
- *
- * Maps to QTI 3.0 standard access features:
- * - answerMasking (assessment tool)
- * - strikethrough (visual transformation)
- * - highlighting (cognitive/reading support)
  */
 
 import type {
@@ -45,14 +40,6 @@ export const answerEliminatorToolRegistration: ToolRegistration = {
 
 	// Answer eliminator appears at item level only
 	supportedLevels: ["item"],
-
-	// PNP support IDs
-	// Maps to QTI 3.0 standard feature: answerMasking
-	pnpSupportIds: [
-		"answerMasking", // QTI 3.0 standard (assessment.answerMasking)
-		"answerEliminator", // QTI 3.0 standard (assessment.answerEliminator)
-		"strikethrough", // QTI 3.0 standard (assessment.strikethrough)
-	],
 
 	/**
 	 * Pass 2: Answer eliminator is relevant only for choice-based questions

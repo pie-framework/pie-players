@@ -15,7 +15,10 @@ import type {
 } from "@pie-players/pie-assessment-toolkit/tools/internal";
 import { resolveInterfaceI18n } from "@pie-players/pie-players-shared/i18n/provider";
 
-import { PACKAGED_TOOL_TAG_MAP } from "../src/packaged-capability-composition.js";
+import {
+	PACKAGED_TOOL_TAG_MAP,
+	UNIVERSAL_SUPPORTS_PRESET,
+} from "../src/packaged-capability-composition.js";
 import {
 	createDictionaryToolRegistration,
 	createPictureDictionaryToolRegistration,
@@ -35,26 +38,14 @@ describe("the packaged Spanish variants", () => {
 		expect(pictureDictionaryToolRegistration.toolId).toBe("pictureDictionary");
 	});
 
-	// The whole point of the split: a programme grants Spanish without granting English, or
-	// the other way round. Sharing a support id would collapse that back into one grant.
-	test("share no PNP support id with the base capabilities", () => {
-		const base = new Set([
-			...(dictionaryToolRegistration.pnpSupportIds ?? []),
-			...(pictureDictionaryToolRegistration.pnpSupportIds ?? []),
-		]);
-		const variant = [
-			...(spanishDictionaryToolRegistration.pnpSupportIds ?? []),
-			...(spanishPictureDictionaryToolRegistration.pnpSupportIds ?? []),
-		];
-		expect(variant.length).toBeGreaterThan(0);
-		expect(variant.filter((id) => base.has(id))).toEqual([]);
-	});
-
-	test("claim no universal support, because a dictionary is always granted", () => {
-		// Guarded here as well as in the composition: a variant that declared one would hand
-		// every learner a Spanish gloss on a vocabulary item, changing what it measures.
-		expect(spanishDictionaryToolRegistration.pnpSupportIds).not.toContain(
-			"dictionary",
+	test("stay out of the universal preset, because a dictionary is always granted", () => {
+		// A universal variant would hand every learner a Spanish gloss on a vocabulary item,
+		// changing what it measures.
+		expect(UNIVERSAL_SUPPORTS_PRESET).not.toContain(
+			spanishDictionaryToolRegistration.toolId,
+		);
+		expect(UNIVERSAL_SUPPORTS_PRESET).not.toContain(
+			spanishPictureDictionaryToolRegistration.toolId,
 		);
 	});
 
@@ -73,13 +64,11 @@ describe("composing a variant for another language", () => {
 		const french = createDictionaryToolRegistration({
 			toolId: "dictionaryFrench",
 			name: "French Dictionary",
-			pnpSupportIds: ["frenchDictionary"],
 			lookupLanguage: "fr",
 		});
 
 		expect(french.toolId).toBe("dictionaryFrench");
 		expect(french.name).toBe("French Dictionary");
-		expect(french.pnpSupportIds).toEqual(["frenchDictionary"]);
 		expect(french.nameKey).toBe("tools.dictionaryFrench.name");
 	});
 
@@ -100,9 +89,6 @@ describe("composing a variant for another language", () => {
 		const base = createDictionaryToolRegistration();
 		expect(base.toolId).toBe("dictionary");
 		expect(base.nameKey).toBe("tools.dictionary.name");
-		expect(base.pnpSupportIds).toEqual(
-			dictionaryToolRegistration.pnpSupportIds ?? [],
-		);
 	});
 
 	test("keeps the base capabilities' own levels and icons", () => {

@@ -107,25 +107,34 @@ export class ToolProviderRegistry {
 	 * Register a tool provider
 	 *
 	 * Adds a provider to the registry. If lazy is false, initializes immediately.
+	 * A registration under an id already registered replaces it: the replaced
+	 * provider is destroyed once a start in progress settles, and a caller
+	 * waiting on that start gets the replacement.
 	 *
 	 * @param providerId Unique provider identifier
 	 * @param config Provider configuration
-	 * @throws Error if provider with same ID already registered
 	 */
 	register(providerId: string, config: ToolProviderConfig): void {
-		if (this.providers.has(providerId)) {
-			console.warn(
-				`[ToolProviderRegistry] Provider "${providerId}" already registered, skipping`,
-			);
-			return;
-		}
+		const replaced = this.providers.get(providerId);
+		const replacedStart = this.initializationPromises.get(providerId);
 
 		this.providers.set(providerId, config.provider);
 		this.configs.set(providerId, config);
 		this.initialized.set(providerId, false);
+		this.initializationPromises.delete(providerId);
+
+		if (replaced) {
+			if (replacedStart) {
+				void replacedStart
+					.catch(() => {})
+					.then(() => this.destroyProvider(providerId, replaced));
+			} else {
+				this.destroyProvider(providerId, replaced);
+			}
+		}
 
 		console.log(
-			`[ToolProviderRegistry] Registered provider "${providerId}" (${config.provider.providerName})`,
+			`[ToolProviderRegistry] ${replaced ? "Replaced" : "Registered"} provider "${providerId}" (${config.provider.providerName})`,
 		);
 
 		// Initialize immediately if not lazy
@@ -162,13 +171,41 @@ export class ToolProviderRegistry {
 		}
 
 		// Start new initialization
+		const provider = this.providers.get(providerId);
 		const initPromise = this._doInitialize(providerId);
 		this.initializationPromises.set(providerId, initPromise);
 
 		try {
 			await initPromise;
+		} catch (error) {
+			if (!this.isReplaced(providerId, provider)) throw error;
 		} finally {
-			this.initializationPromises.delete(providerId);
+			if (this.initializationPromises.get(providerId) === initPromise) {
+				this.initializationPromises.delete(providerId);
+			}
+		}
+		if (this.isReplaced(providerId, provider)) {
+			return this.initialize(providerId);
+		}
+	}
+
+	/** Whether a registration replaced `provider` under `providerId`. */
+	private isReplaced(
+		providerId: string,
+		provider: ToolProviderApi | undefined,
+	): boolean {
+		const current = this.providers.get(providerId);
+		return current !== undefined && current !== provider;
+	}
+
+	private destroyProvider(providerId: string, provider: ToolProviderApi): void {
+		try {
+			provider.destroy();
+		} catch (error) {
+			console.warn(
+				`[ToolProviderRegistry] Failed to destroy provider "${providerId}":`,
+				error,
+			);
 		}
 	}
 
@@ -255,7 +292,9 @@ export class ToolProviderRegistry {
 		// Initialize provider
 		try {
 			await provider.initialize(providerConfig);
-			this.initialized.set(providerId, true);
+			if (this.providers.get(providerId) === provider) {
+				this.initialized.set(providerId, true);
+			}
 			await this.emitTelemetry(config, "pie-tool-init-success", {
 				toolId: providerId,
 				providerId,

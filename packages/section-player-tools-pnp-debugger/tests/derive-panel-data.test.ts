@@ -313,13 +313,11 @@ describe("editable tool helpers", () => {
 						name: "Line Reader",
 						description: "Reading guide",
 						supportedLevels: ["section", "item", "passage"],
-						pnpSupportIds: ["readingMask"],
 					},
 					{
 						toolId: "answerEliminator",
 						name: "Answer Eliminator",
 						supportedLevels: ["item"],
-						pnpSupportIds: ["answerMasking"],
 					},
 				],
 			},
@@ -339,8 +337,8 @@ describe("editable tool helpers", () => {
 		const rows = buildEditableToolRows({
 			coordinator,
 			pnpProfile: {
-				supports: ["readingMask"],
-				prohibitedSupports: ["answerMasking"],
+				supports: ["lineReader"],
+				prohibitedSupports: ["answerEliminator"],
 			},
 			decisions: {
 				section: makeDecision(["lineReader"], makeProvenance([])),
@@ -383,11 +381,11 @@ describe("editable tool helpers", () => {
 
 	test("createPatchedPnpProfile toggles support ids without mutating the source", () => {
 		const source = { supports: ["a"], prohibitedSupports: ["z"] };
-		const added = createPatchedPnpProfile(source, "supports", ["b", "a"], true);
+		const added = createPatchedPnpProfile(source, "supports", "b", true);
 		expect(added.supports).toEqual(["a", "b"]);
 		expect(source.supports).toEqual(["a"]);
 
-		const removed = createPatchedPnpProfile(added, "supports", ["a"], false);
+		const removed = createPatchedPnpProfile(added, "supports", "a", false);
 		expect(removed.supports).toEqual(["b"]);
 	});
 });

@@ -20,7 +20,6 @@ import {
 	resolveRequestedSignLanguage,
 	resolveSignLanguageAlternate,
 	resolveSignLanguageContent,
-	SIGN_LANGUAGE_FEATURE_ID,
 } from "../src/sign-language-content.js";
 
 function signPayload(signLang: string, src: string): SignLanguageCardPayload {
@@ -221,7 +220,6 @@ describe("resolveSignLanguageContent", () => {
 		parameters?: unknown;
 	}): ReturnType<typeof resolveSignLanguageContent> {
 		const context: ToolContentDependencyContext = {
-			featureId: SIGN_LANGUAGE_FEATURE_ID,
 			parameters: args.parameters,
 			catalogs: args.catalogs,
 			granted: true,

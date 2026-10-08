@@ -605,71 +605,14 @@ describe("composeDecision — provenance reconciliation (M8 PR 1 R2 M1 fix)", ()
 		expect(trail?.finalState).toBe("enabled");
 		expect(trail?.featureId).toBe("pencil");
 	});
-
-	test("R1 S1 — profile policy's own block of a required tool does NOT fire requiredToolBlocked", () => {
-		// Repro of R1 S1: when two PNP supports map to the same toolId
-		// (legitimate case — e.g. "calculator-basic" and
-		// "calculator-scientific" both map to "calculator"), profile policy can
-		// land the same toolId in BOTH `mandatedToolIds` (one support
-		// fired item/district `requiredTools` at p=4/5) AND
-		// `blockedToolIds` (the other support fired pnp-prohibited at
-		// p=6). The host did nothing wrong — profile policy's own internal
-		// precedence resolved the conflict — so step 5b must not blame
-		// the host with a `requiredToolBlocked` diagnostic.
-		registry.register({
-			toolId: "calculator",
-			name: "Calculator",
-			description: "A calculator",
-			icon: "calc",
-			supportedLevels: ["item"],
-			pnpSupportIds: ["calculator-basic", "calculator-scientific"],
-			isVisibleInContext: () => true,
-			renderToolbar: () => null,
-		});
-
-		const assessment: AssessmentEntity = {
-			id: "asm-1",
-			personalNeedsProfile: {
-				supports: ["calculator-basic"],
-				prohibitedSupports: ["calculator-basic"],
-			},
-			settings: {
-				districtPolicy: { requiredTools: ["calculator-scientific"] },
-			},
-		} as AssessmentEntity;
-
-		const decision = composeDecision({
-			request: baseRequest,
-			tools: tools({
-				placement: { section: [], item: ["calculator", "tts"], passage: [] },
-			}),
-			pnpPolicy: {
-				source: new PnpPolicySource(registry),
-				assessment,
-				enforcement: "on",
-			},
-			customSources: [],
-			contextId: "test",
-		});
-
-		expect(decision.visibleTools.map((e) => e.toolId)).toEqual(["tts"]);
-		const requiredToolBlocked = decision.diagnostics.filter(
-			(d) => d.code === "tool-policy.requiredToolBlocked",
-		);
-		expect(requiredToolBlocked).toEqual([]);
-		// The provenance trail still tells the full story.
-		const trail = decision.provenance.features.get("calculator");
-		expect(trail?.finalState).toBe("blocked");
-	});
 });
 
 describe("composeDecision — unknown PNP support id", () => {
-	// A host naming a capability in its own vocabulary rather than with an AfA
-	// 3.0 / QTI 3.0 feature id used to get silence: `mapSupportToToolId` returns
-	// an unclaimed id verbatim, it matches nothing in placement, and the
+	// A host naming a capability in its own vocabulary rather than by its tool id
+	// used to get silence: the id matches nothing in placement, and the
 	// capability is simply absent. Reported so the host learns the id was the
 	// problem instead of concluding the toolkit is unwired.
-	test("a support id no registration claims produces a diagnostic", () => {
+	test("a support id no tool is registered under produces a diagnostic", () => {
 		const assessment: AssessmentEntity = {
 			id: "asm-1",
 			personalNeedsProfile: { supports: ["responseMasking"] },
@@ -697,7 +640,7 @@ describe("composeDecision — unknown PNP support id", () => {
 		expect(unknown[0].message).toContain("responseMasking");
 	});
 
-	test("the standard id for the same capability produces none", () => {
+	test("the tool id for the same capability produces none", () => {
 		const assessment: AssessmentEntity = {
 			id: "asm-1",
 			personalNeedsProfile: { supports: ["answerEliminator"] },

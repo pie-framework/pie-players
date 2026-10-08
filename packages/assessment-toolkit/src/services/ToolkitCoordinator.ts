@@ -49,7 +49,10 @@ import {
 import { HighlightCoordinator } from "./HighlightCoordinator.js";
 import { ToolCoordinator } from "./ToolCoordinator.js";
 import { TTSService, type ITTSProvider, type TTSConfig } from "./TTSService.js";
-import { BrowserTTSProvider } from "./tts/browser-provider.js";
+import {
+	BrowserTTSProvider,
+	browserFallbackConfig,
+} from "./tts/browser-provider.js";
 import {
 	buildRuntimeTTSConfig,
 	resolveTTSBackend,
@@ -2621,10 +2624,16 @@ export class ToolkitCoordinator {
 			this.reportMissingTTSProvider(resolvedBackend);
 		}
 
-		// Fallback to browser provider
+		// Browser speech, configured or standing in for a backend that has no
+		// provider or failed to start.
 		const provider = new BrowserTTSProvider();
 		try {
-			await this.initializeTTSService(provider, runtimeTTSConfig);
+			await this.initializeTTSService(
+				provider,
+				resolvedBackend === "browser"
+					? runtimeTTSConfig
+					: browserFallbackConfig(runtimeTTSConfig),
+			);
 			await this.emitTelemetry("pie-toolkit-tts-init-success", {
 				provider: "browser-fallback",
 			});

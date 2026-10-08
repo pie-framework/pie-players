@@ -54,10 +54,11 @@ import type {
 	ToolPolicyChangeListener,
 	ToolPolicyDecision,
 	ToolPolicyDecisionRequest,
+	ToolScope,
 } from "../policy/engine.js";
 import type {
 	AssessmentEntity,
-	AssessmentItemRef,
+	ItemSettings,
 } from "@pie-players/pie-players-shared/types";
 import type {
 	ITTSProvider,
@@ -236,6 +237,25 @@ export interface ToolCoordinatorApi {
 	subscribe(listener: () => void): () => void;
 }
 
+/** Options for {@link TtsServiceApi.speak}. */
+export interface SpeakOptions {
+	/**
+	 * The spoken card of the content root, read in place of its content when the
+	 * target holds the whole root.
+	 */
+	catalogId?: string;
+	/** The owner whose registered cards apply; without it only assessment-level cards do. */
+	catalogContext?: CatalogLookupContext;
+	/** BCP 47 language of the content read. */
+	language?: string;
+	/**
+	 * For a range target, the content root that scopes highlighting and the
+	 * offsets of the selection. Defaults to the range's nearest element. An
+	 * element target is its own root.
+	 */
+	contentRoot?: Element | null;
+}
+
 /**
  * TTS service interface
  *
@@ -252,31 +272,13 @@ export interface TtsServiceApi {
 	): Promise<void>;
 
 	/**
-	 * Speak text with optional catalog support
+	 * Read `target` aloud: a range reads the text it selects, an element its
+	 * content. A node with a spoken card that the target holds whole reads its
+	 * card, and math reads as math speech. Content marked not-to-be-spoken is
+	 * never read; when nothing speakable remains, nothing is spoken and playback
+	 * already running continues.
 	 */
-	speak(
-		text: string,
-		options?: {
-			catalogId?: string;
-			catalogContext?: CatalogLookupContext;
-			language?: string;
-			contentElement?: Element;
-		},
-	): Promise<void>;
-
-	/**
-	 * Speak a text range. A node with a spoken card that the range holds whole
-	 * reads its card; `catalogContext` names the owner whose registered cards
-	 * apply.
-	 */
-	speakRange(
-		range: Range,
-		options?: {
-			contentRoot?: Element | null;
-			language?: string;
-			catalogContext?: CatalogLookupContext;
-		},
-	): Promise<void>;
+	speak(target: Range | Element, options?: SpeakOptions): Promise<void>;
 
 	/**
 	 * Pause playback
@@ -292,6 +294,12 @@ export interface TtsServiceApi {
 	 * Stop playback
 	 */
 	stop(): void;
+
+	/**
+	 * Stop, release the provider and drop every listener and timer. A disposed
+	 * service cannot speak.
+	 */
+	dispose(): void;
 
 	/**
 	 * Request active TTS controls to hand off/deactivate their UI state.
@@ -778,6 +786,13 @@ export interface ToolkitCoordinatorApi {
 	 */
 	reportFrameworkError?(model: FrameworkErrorModel): void;
 
+	/**
+	 * Report that a toolbar could not load a tool's module. The tool degrades
+	 * unless policy grants it, in which case the failure is fatal. Optional so
+	 * structural host coordinators remain assignable; a toolbar without it logs.
+	 */
+	reportToolModuleFailure?(toolId: string, error: unknown): void;
+
 	// ----------------------------------------------------------------
 	// Tool Policy Engine — public surface (M8 PR 2 / PR 3).
 	//
@@ -787,8 +802,8 @@ export interface ToolkitCoordinatorApi {
 	// `pie-section-toolbar`), the base section player, and bespoke
 	// host instrumentation (PNP debugger, etc.) all flow through the
 	// same engine. Hosts that want to drive PNP/profile inputs imperatively
-	// (instead of binding props on `<pie-assessment-toolkit>`) call
-	// `updateAssessment` / `updateCurrentItemRef` /
+	// (instead of binding props on `<pie-assessment-toolkit>` and
+	// `<pie-item-scope>`) call `updateAssessment` / `registerItemSettings` /
 	// `setPnpEnforcement` directly.
 	// ----------------------------------------------------------------
 
@@ -806,18 +821,24 @@ export interface ToolkitCoordinatorApi {
 	 * render as their own surface rather than a toolbar button (a signed
 	 * alternate's region, for example).
 	 *
+	 * `scope` is the surface asking; an item's scope brings in that item's
+	 * registered settings ({@link registerItemSettings}).
+	 *
 	 * Optional so host-supplied coordinator stubs predating this method stay
 	 * assignable; call sites must feature-detect.
 	 */
-	decideFeaturePolicy?(featureId: string): FeaturePolicyDecision;
+	decideFeaturePolicy?(
+		featureId: string,
+		scope?: ToolScope,
+	): FeaturePolicyDecision;
 
 	/**
 	 * Subscribe to policy-engine change events. Fires whenever the
 	 * coordinator's bound policy inputs change (`updateToolConfig`,
-	 * `updateToolsPlacement`, `updateAssessment`, `updateCurrentItemRef`,
-	 * `setPnpEnforcement`) or a custom `PolicySource` is registered /
-	 * removed. Listeners that need the new visible tool set should
-	 * call `decideToolPolicy(...)` with their level / scope.
+	 * `updateToolsPlacement`, `updateAssessment`, `setPnpEnforcement`), an
+	 * item's settings are registered or withdrawn, or a custom `PolicySource`
+	 * is registered / removed. Listeners that need the new visible tool set
+	 * should call `decideToolPolicy(...)` with their level / scope.
 	 */
 	onPolicyChange(listener: ToolPolicyChangeListener): () => void;
 
@@ -842,12 +863,12 @@ export interface ToolkitCoordinatorApi {
 	/**
 	 * Bind (or clear) the active assessment for PNP/profile policy decisions.
 	 *
-	 * Under auto-mode (no host override via {@link setPnpEnforcement}),
-	 * the engine flips to `pnpEnforcement: "on"` iff the assessment
-	 * carries profile precedence material (`personalNeedsProfile`,
-	 * `settings.districtPolicy`, `settings.testAdministration`) or the
-	 * currently-bound item ref carries item-level profile inputs. A bare
-	 * assessment record (just `id` / `name`) keeps `"off"`.
+	 * Under auto-mode (no host override via {@link setPnpEnforcement}), a
+	 * decision enforces PNP/profile policy iff the assessment carries profile
+	 * precedence material (`personalNeedsProfile`, `settings.districtPolicy`,
+	 * `settings.testAdministration`), or the decision is scoped to an item whose
+	 * registered settings carry item-level policy inputs. A bare assessment
+	 * record (just `id` / `name`) keeps `"off"`.
 	 *
 	 * The host override set via {@link setPnpEnforcement} is sticky
 	 * across assessment swaps.
@@ -855,19 +876,20 @@ export interface ToolkitCoordinatorApi {
 	updateAssessment(assessment: AssessmentEntity | null): void;
 
 	/**
-	 * Bind (or clear) the current item reference for policy decisions.
-	 * Used by item-level profile gates (item `requiredTools` /
-	 * `restrictedTools` / `toolParameters`). Item-level profile material
-	 * also feeds the auto-mode helper — navigating to an item with
-	 * profile settings can flip auto-mode to `"on"` even when the parent
-	 * assessment carries no profile block of its own.
+	 * File a mounted item's policy settings (`requiredTools`, `restrictedTools`,
+	 * `toolParameters`) under its canonical id; the returned function withdraws
+	 * them. They govern only decisions scoped to that item: its own item-level
+	 * toolbar, and feature decisions asked with the item's scope. A section- or
+	 * assessment-level toolbar ignores them, and reports each tool on it that
+	 * they restrict or require as `tool-policy.itemSettingNotApplied`.
+	 * `<pie-item-scope>` registers its `settings` property through this.
 	 */
-	updateCurrentItemRef(itemRef: AssessmentItemRef | null): void;
+	registerItemSettings(itemId: string, settings: ItemSettings): () => void;
 
 	/**
 	 * Override the auto-mode PNP/profile enforcement decision. Pass `"on"` /
 	 * `"off"` to pin the mode, or `null` to clear the override and
-	 * return to auto-mode (`"on"` iff the bound assessment / item ref
+	 * return to auto-mode (`"on"` for a decision whose assessment or item
 	 * carries profile material, otherwise `"off"`).
 	 */
 	setPnpEnforcement(mode: PnpEnforcementMode | null): void;
@@ -950,7 +972,11 @@ export interface ToolkitCoordinatorApi {
 	 * Whether a request for this tool would reach a toolbar. A surface asks before
 	 * offering the affordance.
 	 */
-	canRequestTool?(toolId: string, level?: ToolOpenRequest["level"]): boolean;
+	canRequestTool?(
+		toolId: string,
+		level?: ToolOpenRequest["level"],
+		scopeId?: string,
+	): boolean;
 
 	/**
 	 * Subscribe to toolbar registration/removal, so a surface can re-evaluate the

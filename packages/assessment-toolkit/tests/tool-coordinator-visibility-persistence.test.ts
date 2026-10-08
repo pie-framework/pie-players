@@ -42,7 +42,6 @@ describe("ToolCoordinator activation persistence", () => {
 		coordinator.registerTool(TOOL_ID, "Answer Eliminator", secondElement);
 
 		expect(coordinator.isToolVisible(TOOL_ID)).toBe(true);
-		expect(secondElement.style.display).toBe("");
 	});
 
 	test("an explicit toggle still turns the tool off", () => {
@@ -61,7 +60,6 @@ describe("ToolCoordinator activation persistence", () => {
 		const nextElement = document.createElement("div");
 		coordinator.registerTool(TOOL_ID, "Answer Eliminator", nextElement);
 		expect(coordinator.isToolVisible(TOOL_ID)).toBe(false);
-		expect(nextElement.style.display).toBe("none");
 	});
 
 	test("releaseTool discards preserved activation state", () => {

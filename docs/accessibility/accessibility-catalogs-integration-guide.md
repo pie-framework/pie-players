@@ -27,8 +27,8 @@ QTI 3.0 Accessibility Catalogs provide standardized alternative representations 
 | Type | Description | Use Case | Rendered by PIE |
 |------|-------------|----------|-----------------|
 | `spoken` | A TTS script (SSML), or a recording of one as a media payload | Screen readers, TTS | Yes — `TTSService` |
-| `sign-language` | Signed video, as a structured media payload | Deaf/hard-of-hearing | Yes — section-player item media region, gated on the `signLanguage` PNP support |
-| `transcript` | Text transcript of an audio stimulus | Deaf/hard-of-hearing | No — resolvable, host-consumed |
+| `sign-language` | Signed video, as a structured media payload | Deaf/hard-of-hearing | Yes — once a host registers `@pie-players/pie-tool-sign-language`: the section player's media region, gated on the `signLanguage` PNP support |
+| `transcript` | Text transcript of an audio stimulus | Deaf/hard-of-hearing | Yes — the packaged `transcript` capability, above the item or passage in the section and print players; gated on the `transcript` PNP support unless the card sets `visibility: "always"` |
 | `braille` | Braille-ready transcriptions | Blind users with refreshable displays | No — resolvable, host-consumed |
 | `tactile` | Descriptions for tactile graphics | Tactile diagram readers | No — resolvable, host-consumed |
 | `simplified-language` | Plain language alternatives | Cognitive accessibility, ELL | No — resolvable, host-consumed |
@@ -112,8 +112,9 @@ rather than half-rendered.
    passages, items, models, and `config.extractedCatalogs`.
 4. **Content Request**: `TTSService` resolves `data-catalog-idref` references
    for spoken catalogs before falling back to generated speech or visible text.
-   Section-player's item card resolves `sign-language` cards for the same item in
-   parallel, through the same resolver.
+   Capabilities on the cards' content surfaces resolve their own catalog types
+   for the same item or passage in parallel, through the same resolver:
+   `transcript` from the packaged set, `sign-language` once a host registers it.
 5. **Navigation/Unmount**: Shell lifecycle unregisters scoped item and passage
    catalog registrations.
 
@@ -197,19 +198,16 @@ The extraction step:
           choices: [
             {
               value: 'a',
-              label: `<speak>The <emphasis>quadratic formula</emphasis></speak>
-                      <span>The quadratic formula</span>`
+              label: `<span><speak>The <emphasis>quadratic formula</emphasis></speak>The quadratic formula</span>`
             },
             {
               value: 'b',
-              label: `<speak><emphasis level="strong">Factoring</emphasis>,
-                      because it's easiest</speak>
-                      <span>Factoring, because it's easiest</span>`
+              label: `<span><speak><emphasis level="strong">Factoring</emphasis>,
+                      because it's easiest</speak>Factoring, because it's easiest</span>`
             },
             {
               value: 'c',
-              label: `<speak>Completing the square</speak>
-                      <span>Completing the square</span>`
+              label: `<span><speak>Completing the square</speak>Completing the square</span>`
             },
             {
               value: 'd',
@@ -251,15 +249,15 @@ The extraction step:
           choices: [
             {
               value: 'a',
-              label: `<span data-catalog-idref="auto-choice-q1-a-0">The quadratic formula</span>`
+              label: `<span data-catalog-idref="auto-choice-q1-a-1">The quadratic formula</span>`
             },
             {
               value: 'b',
-              label: `<span data-catalog-idref="auto-choice-q1-b-0">Factoring, because it's easiest</span>`
+              label: `<span data-catalog-idref="auto-choice-q1-b-2">Factoring, because it's easiest</span>`
             },
             {
               value: 'c',
-              label: `<span data-catalog-idref="auto-choice-q1-c-0">Completing the square</span>`
+              label: `<span data-catalog-idref="auto-choice-q1-c-3">Completing the square</span>`
             },
             {
               value: 'd',
@@ -286,7 +284,7 @@ The extraction step:
           ]
         },
         {
-          identifier: 'auto-choice-q1-a-0',
+          identifier: 'auto-choice-q1-a-1',
           cards: [
             {
               catalog: 'spoken',
@@ -296,7 +294,7 @@ The extraction step:
           ]
         },
         {
-          identifier: 'auto-choice-q1-b-0',
+          identifier: 'auto-choice-q1-b-2',
           cards: [
             {
               catalog: 'spoken',
@@ -307,7 +305,7 @@ The extraction step:
           ]
         },
         {
-          identifier: 'auto-choice-q1-c-0',
+          identifier: 'auto-choice-q1-c-3',
           cards: [
             {
               catalog: 'spoken',
@@ -322,6 +320,12 @@ The extraction step:
 }
 ```
 
+The extractor docks each catalog to the element directly around its `<speak>`, which is why each
+choice label wraps its SSML and its visible text in one `<span>`. A `<speak>` with no enclosing
+element still yields a catalog, with no `data-catalog-idref` to reach it from the content, and the
+extractor warns. The trailing number comes from a counter on the extractor instance that runs
+until `reset()`, so the choices number on from the prompt.
+
 #### Key Transformations
 
 | Aspect | Before | After |
@@ -335,13 +339,13 @@ The extraction step:
 
 1. **Content-Level TTS (tool-tts-inline):**
    - User clicks speaker icon in header
-   - Tool calls `ttsService.speak(text, { catalogId: 'auto-prompt-q1-0' })`
+   - Tool calls `ttsService.speak(readingTarget, { catalogId: 'auto-prompt-q1-0' })`
    - Resolver finds SSML in `extractedCatalogs`
    - Polly/Browser speaks with proper math pronunciation and pacing
 
 2. **Selection read-aloud (annotation toolbar):**
    - User selects "The quadratic formula" and presses read-aloud
-   - Toolbar calls `ttsService.speakRange(range, { contentRoot, catalogContext })`,
+   - Toolbar calls `ttsService.speak(range, { contentRoot, catalogContext })`,
      with the catalog context of the shell holding the selection
    - The selection holds choice a's `data-catalog-idref` node whole, so its
      card is spoken, with the authored `<emphasis>`
@@ -527,19 +531,18 @@ be enforceable in the selection read-aloud path, which consults no catalog.
 **Enforced in every path that produces speech**, since a filter on one of them is
 a filter a candidate can walk around:
 
-- the composed catalog path, checked before card resolution;
+- the composed catalog path, checked before card resolution, and the card a
+  `catalogId` names;
 - the generated-speech and visible-text collectors, via
   `isNodeExcludedFromSpeech`;
 - structural pause boundaries, so a suppressed node leaves no audible seam;
-- `speakRange`, the annotation-toolbar selection path. It passes
-  `range.toString()` straight through and `Range.toString()` honours no DOM
-  filter, so it filters the range itself. A selection wholly inside suppressed
-  content speaks nothing; one that spans it speaks the rest, with highlight
-  offsets from the same filtered text.
+- a range target, the annotation-toolbar selection path. `Range.toString()`
+  honours no DOM filter, so the range itself is filtered. A selection wholly
+  inside suppressed content speaks nothing; one that spans it speaks the rest,
+  with highlight offsets from the same filtered text.
 
-A host passing its own string to `ttsService.speak(text, { ignoreCatalogs: true })`
-bypasses this — there is no DOM to filter. Pass a `contentElement`, or a `Range`
-via `speakRange`.
+`ttsService.speak` takes only a DOM target, an element or a range, so no caller
+can hand it text the filter has not seen.
 
 **Speech-only, with no braille or signing equivalent.** The test is whether a
 modality preserves the information the item measures. Speech destroys spelling;
@@ -619,11 +622,10 @@ const ttsService = new TTSService();
 
 ttsService.setCatalogResolver(resolver);
 
-await ttsService.speak('Visible fallback text', {
-  catalogId: 'prompt-001',
-  language: 'en-US',
-  contentElement: document.querySelector('[data-catalog-idref="prompt-001"]') ?? undefined
-});
+const prompt = document.querySelector('[data-catalog-idref="prompt-001"]');
+if (prompt) {
+  await ttsService.speak(prompt, { catalogId: 'prompt-001', language: 'en-US' });
+}
 ```
 
 For normal section-player delivery, prefer `ToolkitCoordinator`; it creates and
@@ -635,9 +637,15 @@ experiments.
 
 ```typescript
 import { ToolkitCoordinator } from '@pie-players/pie-assessment-toolkit';
-import { createPackagedToolRegistry } from '@pie-players/pie-default-tool-loaders';
+import type { PersonalNeedsProfile } from '@pie-players/pie-players-shared/types';
+import {
+  createPackagedToolRegistry,
+  DEFAULT_TOOL_MODULE_LOADERS,
+} from '@pie-players/pie-default-tool-loaders';
 
-const toolRegistry = createPackagedToolRegistry();
+const toolRegistry = createPackagedToolRegistry({
+  toolModuleLoaders: DEFAULT_TOOL_MODULE_LOADERS,
+});
 
 function createCoordinatorForProfile(profile: PersonalNeedsProfile) {
   const supportsTts = profile.supports.includes('textToSpeech');
@@ -676,10 +684,15 @@ import '@pie-players/pie-section-player/components/section-player-splitpane-elem
 import {
   ToolkitCoordinator
 } from '@pie-players/pie-assessment-toolkit';
-import { createPackagedToolRegistry } from '@pie-players/pie-default-tool-loaders';
+import {
+  createPackagedToolRegistry,
+  DEFAULT_TOOL_MODULE_LOADERS,
+} from '@pie-players/pie-default-tool-loaders';
 
 // Create a single runtime coordinator for the assessment surface.
-const toolRegistry = createPackagedToolRegistry();
+const toolRegistry = createPackagedToolRegistry({
+  toolModuleLoaders: DEFAULT_TOOL_MODULE_LOADERS,
+});
 const coordinator = new ToolkitCoordinator({
   assessmentId: assessment.id,
   toolRegistry,
@@ -852,9 +865,14 @@ const item = {
 
 ```typescript
 import { ToolkitCoordinator } from '@pie-players/pie-assessment-toolkit';
-import { createPackagedToolRegistry } from '@pie-players/pie-default-tool-loaders';
+import {
+  createPackagedToolRegistry,
+  DEFAULT_TOOL_MODULE_LOADERS,
+} from '@pie-players/pie-default-tool-loaders';
 
-const toolRegistry = createPackagedToolRegistry();
+const toolRegistry = createPackagedToolRegistry({
+  toolModuleLoaders: DEFAULT_TOOL_MODULE_LOADERS,
+});
 const coordinator = new ToolkitCoordinator({
   assessmentId: 'demo-assessment',
   toolRegistry,
@@ -912,11 +930,18 @@ const spanish = resolver.getAlternative('welcome-message', {
   language: 'es-ES'
 });
 
-// Fallback to default if language not available
+// A missing language falls back to the resolver's default language ('en-US'
+// unless it was constructed with another), then to a card in any language
 const german = resolver.getAlternative('welcome-message', {
   type: 'spoken',
-  language: 'de-DE', // Not available
-  useFallback: true  // Falls back to 'en-US'
+  language: 'de-DE' // Not available
+});
+
+// useFallback defaults to true; false returns a de-DE card or null
+const germanOnly = resolver.getAlternative('welcome-message', {
+  type: 'spoken',
+  language: 'de-DE',
+  useFallback: false
 });
 ```
 
@@ -970,7 +995,7 @@ const german = resolver.getAlternative('welcome-message', {
 
 3. **Fallback Strategy:**
    - Always have a fallback to default content
-   - Use `useFallback: true` for critical content
+   - `useFallback` defaults to `true`; pass `false` where a card in another language is worse than none
    - Log when catalogs are missing (for content QA)
 
 ### Accessibility

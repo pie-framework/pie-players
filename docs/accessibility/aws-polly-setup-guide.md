@@ -147,14 +147,15 @@ exact log text depends on the host API route.
 
 ### Reduce Costs
 
-1. **Enable Redis caching** (see `.env.example`)
-   - 24-hour TTL
+1. **Cache synthesis results on the server**
+   - The demo synthesis routes call Polly on every request and do not read `REDIS_URL`
+   - `@pie-players/tts-server-core` exports the `ITTSCache` interface, a `MemoryCache`
+     and `generateHashedCacheKey`; a production route checks its cache before calling Polly
    - 70-90% cost reduction for repeated content
 
 2. **Use standard voices in development**
-   ```bash
-   POLLY_ENGINE=standard
-   ```
+   - The demo routes take the engine from the request's `engine` field
+     (`"standard"` or `"neural"`, default `"neural"`); they do not read `POLLY_ENGINE`
 
 3. **Monitor usage in AWS Console**
    - CloudWatch metrics for `polly:SynthesizeSpeech` calls
@@ -218,7 +219,7 @@ AWS_REGION=us-east-1
 
 **Investigate**:
 1. Check CloudTrail logs for `SynthesizeSpeech` calls
-2. Enable Redis caching to reduce duplicate requests
+2. Cache synthesis results to reduce duplicate requests
 3. Check for infinite loops or automated testing hitting the API
 
 ## Additional Resources

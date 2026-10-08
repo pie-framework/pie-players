@@ -98,10 +98,7 @@ describe("TTSService automatic math speech", () => {
 			</p>
 		`;
 
-		await service.speak(content.textContent || "", {
-			contentElement: content,
-			language: "en-US",
-		});
+		await service.speak(content, { language: "en-US" });
 
 		expect(impl.speakCalls.length).toBeGreaterThan(1);
 		const spoken = impl.speakCalls.join(" ").toLowerCase();
@@ -110,6 +107,28 @@ describe("TTSService automatic math speech", () => {
 		expect(spoken).toContain("now");
 		expect(spoken).not.toContain("<math");
 		expect(spoken).not.toBe("solve x 2 now.");
+	});
+
+	test("reads math as math speech in a selection that holds the equation", async () => {
+		const impl = new CapturingTTSImpl();
+		const service = new TTSService();
+		await service.initialize(new CapturingTTSProvider(impl), {});
+		const content = document.createElement("div");
+		content.innerHTML = `<p>Intro text. Solve <math><msup><mi>x</mi><mn>2</mn></msup></math> now.</p>`;
+		document.body.append(content);
+		const paragraph = content.querySelector("p") as Element;
+		const range = document.createRange();
+		range.setStart(paragraph.firstChild as Text, "Intro text. ".length);
+		range.setEnd(paragraph.lastChild as Text, " now.".length);
+
+		await service.speak(range, { contentRoot: content, language: "en-US" });
+
+		const spoken = impl.speakCalls.join(" ").toLowerCase();
+		expect(spoken).toContain("solve");
+		expect(spoken).toContain("squared");
+		expect(spoken).toContain("now");
+		expect(spoken).not.toContain("intro");
+		content.remove();
 	});
 
 	test("keeps prose word highlighting around generated MathML speech", async () => {
@@ -140,10 +159,7 @@ describe("TTSService automatic math speech", () => {
 			{ word: "Solve", position: 0, length: "Solve".length },
 		]);
 
-		await service.speak(content.textContent || "", {
-			contentElement: content,
-			language: "en-US",
-		});
+		await service.speak(content, { language: "en-US" });
 
 		expect(highlightedWords).toContain("Solve");
 	});
@@ -155,10 +171,7 @@ describe("TTSService automatic math speech", () => {
 		const content = document.createElement("div");
 		content.innerHTML = `<p>Solve <math><msup><mi>x</mi><mn>2</mn></msup></math> now.</p>`;
 
-		await service.speak(content.textContent || "", {
-			contentElement: content,
-			language: "en-US",
-		});
+		await service.speak(content, { language: "en-US" });
 
 		// The math chunk is voiced as SSML; prose chunks remain plain text.
 		expect(impl.speakCalls.some((text) => text.includes("<speak"))).toBe(true);
@@ -198,10 +211,7 @@ describe("TTSService automatic math speech", () => {
 		const content = document.createElement("div");
 		content.innerHTML = `<p>Solve <math><msup><mi>x</mi><mn>2</mn></msup></math> now.</p>`;
 
-		await service.speak(content.textContent || "", {
-			contentElement: content,
-			language: "en-US",
-		});
+		await service.speak(content, { language: "en-US" });
 
 		// It attempted SSML, was rejected, then retried the plain math variant.
 		expect(impl.speakCalls.some((text) => text.includes("<speak"))).toBe(true);

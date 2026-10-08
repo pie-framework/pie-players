@@ -36,7 +36,7 @@ import {
 	resolveSpokenAudioMedia,
 	type SpokenAudioMedia,
 } from "./spoken-audio-cards.js";
-import type { HighlightCoordinatorApi } from "./interfaces.js";
+import type { HighlightCoordinatorApi, SpeakOptions } from "./interfaces.js";
 import {
 	DEFAULT_CONTENT_LANGUAGE,
 	findLangAttribute,
@@ -94,10 +94,15 @@ import {
 	normalizeSREMathSpeechOptions,
 	type SREMathSpeechOptions,
 } from "./tts/math-speech.js";
+import type {
+	ToolkitTTSConfig,
+	ToolkitTTSProviderOptions,
+} from "./tts/provider-options.js";
 import { toTTSStartFailure } from "./tts/start-failure.js";
 import {
 	segmentSentences as segmentTextToSentences,
 	type SentenceSegment as SharedSentenceSegment,
+	splitTextToLength,
 } from "./tts/text-segmentation.js";
 import {
 	createTTSHighlightPlan,
@@ -144,16 +149,22 @@ interface StructuralPauseProfile {
 
 type HighlightMode = "word" | "sentence";
 
-interface SpeakOptions {
+/** What a speak reads, once {@link TTSService.speak} has resolved its target. */
+interface SpeakContentOptions {
 	catalogId?: string;
 	catalogContext?: CatalogLookupContext;
 	language?: string;
-	contentElement?: Element;
+	/** The content read, and the frame the highlight offsets index. */
+	contentElement: Element;
 	/** The selection inside `contentElement` that is read; the text spoken is its text. */
 	contentRange?: Range;
 	wordBoundaryOffset?: number;
-	highlightModeOverride?: HighlightMode;
 }
+
+const SSML_DOCUMENT = /^\s*<speak[\s/>]/i;
+
+const isRange = (target: Range | Element): target is Range =>
+	"commonAncestorContainer" in target;
 
 interface SpeechCompositionChunk {
 	speechText: string;
@@ -244,7 +255,8 @@ export class TTSService {
 		null;
 	private catalogResolver: AccessibilityCatalogResolver | null = null;
 	private state: PlaybackState = PlaybackState.IDLE;
-	private ttsConfig: Partial<TTSConfig> = {};
+	private ttsConfig: Partial<ToolkitTTSConfig> = {};
+	private disposed = false;
 	private readinessGate: (() => Promise<void>) | null = null;
 	private mathSpeechSource: (() => unknown) | null = null;
 	private currentText: string | null = null;
@@ -270,6 +282,14 @@ export class TTSService {
 	private playbackStartDeferredRunId: number | null = null;
 	private pendingPlaybackStartHighlights: Array<() => void> = [];
 	private playbackStartBarrierCleanup: (() => void) | null = null;
+	// A pause between two parts of a run, in a structural gap or while the next
+	// part loads, holds the run here until resume.
+	private pauseHold: { promise: Promise<void>; release: () => void } | null =
+		null;
+	private structuralPause: {
+		timer: ReturnType<typeof setTimeout>;
+		finish: () => void;
+	} | null = null;
 	private playbackRateWriteQueue: Promise<void> = Promise.resolve();
 	private playbackRateRequestId = 0;
 	private pendingPlaybackRateRequest: {
@@ -338,7 +358,13 @@ export class TTSService {
 		) {
 			return;
 		}
-		this.setState(PlaybackState.PLAYING);
+		if (this.state === PlaybackState.PAUSED) {
+			// The learner paused before this part began: it holds where it started.
+			this.activeRecordedAudio?.element.pause();
+			this.provider?.pause();
+		} else {
+			this.setState(PlaybackState.PLAYING);
+		}
 		const pendingHighlights = this.pendingPlaybackStartHighlights.splice(0);
 		for (const applyHighlight of pendingHighlights) {
 			applyHighlight();
@@ -389,6 +415,62 @@ export class TTSService {
 		callback();
 	}
 
+	/** Resolves when run `runId` may start its next part: at once unless paused. */
+	private async waitWhilePaused(runId: number): Promise<void> {
+		while (this.state === PlaybackState.PAUSED && runId === this.speakRunId) {
+			if (!this.pauseHold) {
+				let release: () => void = () => {};
+				const promise = new Promise<void>((resolve) => {
+					release = resolve;
+				});
+				this.pauseHold = { promise, release };
+			}
+			await this.pauseHold.promise;
+		}
+	}
+
+	private releasePauseHold(): void {
+		const hold = this.pauseHold;
+		this.pauseHold = null;
+		hold?.release();
+	}
+
+	private waitStructuralPause(pauseMs: number): Promise<void> {
+		this.cancelStructuralPause();
+		return new Promise<void>((resolve) => {
+			const finish = () => {
+				if (this.structuralPause?.finish === finish) {
+					clearTimeout(this.structuralPause.timer);
+					this.structuralPause = null;
+				}
+				resolve();
+			};
+			this.structuralPause = { timer: setTimeout(finish, pauseMs), finish };
+		});
+	}
+
+	private cancelStructuralPause(): void {
+		this.structuralPause?.finish();
+	}
+
+	/**
+	 * Release what a superseded run still holds: its start barrier, a recorded
+	 * clip still playing, a structural gap and a pause hold. Its loops then see
+	 * the new run id and return.
+	 */
+	private abandonRun(): void {
+		this.clearPlaybackStartBarrier();
+		this.cancelRecordedAudio();
+		this.cancelStructuralPause();
+		this.releasePauseHold();
+	}
+
+	private assertNotDisposed(): void {
+		if (this.disposed) {
+			throw toTTSStartFailure(new Error("TTS service disposed"));
+		}
+	}
+
 	private async emitTelemetry(
 		eventName: string,
 		payload?: Record<string, unknown>,
@@ -410,19 +492,11 @@ export class TTSService {
 		provider: ITTSProvider,
 		config: Partial<TTSConfig> = {},
 	): Promise<void> {
+		if (this.disposed) throw new Error("TTS service disposed");
 		this.currentProvider = provider;
 		this.ttsConfig = { ...config };
-		const providerOptions =
-			config.providerOptions && typeof config.providerOptions === "object"
-				? (config.providerOptions as Record<string, unknown>)
-				: {};
-		this.telemetryReporter =
-			typeof providerOptions.__pieTelemetry === "function"
-				? (providerOptions.__pieTelemetry as (
-						eventName: string,
-						payload?: Record<string, unknown>,
-					) => void | Promise<void>)
-				: null;
+		const telemetry = this.providerOptions().__pieTelemetry;
+		this.telemetryReporter = typeof telemetry === "function" ? telemetry : null;
 
 		// Initialize provider and get implementation. Browser fallback is only
 		// allowed here, before the configured provider has successfully become
@@ -469,11 +543,8 @@ export class TTSService {
 				...(settings.providerOptions
 					? {
 							providerOptions: {
-								...((this.ttsConfig.providerOptions || {}) as Record<
-									string,
-									unknown
-								>),
-								...(settings.providerOptions as Record<string, unknown>),
+								...this.providerOptions(),
+								...settings.providerOptions,
 							},
 						}
 					: {}),
@@ -737,6 +808,75 @@ export class TTSService {
 		return this.currentProvider?.getCapabilities() || null;
 	}
 
+	private providerOptions(): ToolkitTTSProviderOptions {
+		const options = this.ttsConfig.providerOptions;
+		return options && typeof options === "object" ? options : {};
+	}
+
+	/** The longest text the provider accepts in one speak, when it declares one. */
+	private maxTextLength(): number | undefined {
+		const limit = this.currentProvider?.getCapabilities?.().maxTextLength;
+		return typeof limit === "number" && limit > 0 ? limit : undefined;
+	}
+
+	/**
+	 * Speak `text`, in pieces when it exceeds the provider's `maxTextLength`. Word
+	 * boundaries keep indexing the whole text. An SSML document cannot be cut, so
+	 * one over the limit fails and the chunk's plain fallback reads instead.
+	 */
+	private async speakWithinLimit(text: string, runId: number): Promise<void> {
+		const provider = this.provider;
+		if (!provider) return;
+		const limit = this.maxTextLength();
+		if (!limit || text.length <= limit) {
+			await provider.speak(text);
+			return;
+		}
+		if (SSML_DOCUMENT.test(text)) {
+			throw new Error(
+				`[tts] SSML of ${text.length} characters exceeds the provider's limit of ${limit}`,
+			);
+		}
+		const onWordBoundary = provider.onWordBoundary;
+		try {
+			for (const piece of splitTextToLength(text, limit, {
+				locale: this.providerOptions().locale,
+			})) {
+				await this.waitWhilePaused(runId);
+				if (runId !== this.speakRunId || this.provider !== provider) return;
+				provider.onWordBoundary = onWordBoundary
+					? (word, position, length) =>
+							onWordBoundary(word, position + piece.offset, length)
+					: undefined;
+				await provider.speak(piece.text);
+			}
+		} finally {
+			if (this.provider === provider && runId === this.speakRunId) {
+				provider.onWordBoundary = onWordBoundary;
+			}
+		}
+	}
+
+	/** Segments no longer than the provider's `maxTextLength`, offsets kept. */
+	private segmentsWithinLimit(
+		segments: TTSSpeechSegment[],
+	): TTSSpeechSegment[] {
+		const limit = this.maxTextLength();
+		if (!limit) return segments;
+		return segments.flatMap((segment) => {
+			if (segment.text.length <= limit) return [segment];
+			const pieces = splitTextToLength(segment.text, limit, {
+				locale: this.providerOptions().locale,
+			});
+			return pieces.map((piece, index) => ({
+				text: piece.text,
+				startOffset: segment.startOffset + piece.offset,
+				pauseMsAfter:
+					index === pieces.length - 1 ? segment.pauseMsAfter : undefined,
+			}));
+		});
+	}
+
 	/**
 	 * Build a character-by-character map from normalized text positions to DOM positions
 	 * This handles the complexity of whitespace normalization
@@ -745,12 +885,7 @@ export class TTSService {
 		locale?: string;
 		boundarySpacingMode?: BoundarySpacingMode;
 	} {
-		const providerOptions = (this.ttsConfig.providerOptions || {}) as Record<
-			string,
-			unknown
-		>;
-		const textNormalization = (providerOptions.textNormalization ||
-			{}) as Record<string, unknown>;
+		const textNormalization = this.providerOptions().textNormalization || {};
 		const mode = textNormalization.boundarySpacingMode;
 		const boundarySpacingMode: BoundarySpacingMode | undefined =
 			mode === "none" || mode === "alnum" || mode === "segmenterPreferred"
@@ -772,12 +907,7 @@ export class TTSService {
 		if (this.mathSpeechSource) {
 			return normalizeSREMathSpeechOptions(this.mathSpeechSource());
 		}
-		const providerOptions = (this.ttsConfig.providerOptions || {}) as Record<
-			string,
-			unknown
-		>;
-		const mathSpeech = providerOptions.mathSpeech;
-		return normalizeSREMathSpeechOptions(mathSpeech);
+		return normalizeSREMathSpeechOptions(this.providerOptions().mathSpeech);
 	}
 
 	private buildPositionMap(
@@ -846,15 +976,8 @@ export class TTSService {
 	}
 
 	private getStructuralPauseProfile(): StructuralPauseProfile {
-		const providerOptions = (this.ttsConfig.providerOptions || {}) as Record<
-			string,
-			unknown
-		>;
-		const custom = (providerOptions.structuralPauses || {}) as Record<
-			string,
-			unknown
-		>;
-		const customUnits = (custom.units || {}) as Record<string, unknown>;
+		const custom = this.providerOptions().structuralPauses || {};
+		const customUnits = custom.units || {};
 		const toNumber = (value: unknown, fallback: number): number => {
 			if (typeof value === "number" && Number.isFinite(value)) return value;
 			if (typeof value === "string" && value.trim()) {
@@ -883,17 +1006,9 @@ export class TTSService {
 	}
 
 	private resolveHighlightMode(): HighlightMode {
-		const providerOptions = (this.ttsConfig.providerOptions || {}) as Record<
-			string,
-			unknown
-		>;
-		const configuredMode = providerOptions.highlightMode;
+		const configuredMode = this.providerOptions().highlightMode;
 		if (configuredMode === "word" || configuredMode === "sentence") {
 			return configuredMode;
-		}
-		const providerId = (this.currentProvider?.providerId || "").toLowerCase();
-		if (providerId === "browser") {
-			return "sentence";
 		}
 		const supportsWordBoundary =
 			this.currentProvider?.getCapabilities().supportsWordBoundary ?? false;
@@ -1110,9 +1225,7 @@ export class TTSService {
 	}
 
 	private segmentSentences(text: string): SharedSentenceSegment[] {
-		const locale =
-			((this.ttsConfig.providerOptions as Record<string, unknown> | undefined)
-				?.locale as string | undefined) || undefined;
+		const locale = this.providerOptions().locale || undefined;
 		return segmentTextToSentences(text, { locale });
 	}
 
@@ -1255,7 +1368,9 @@ export class TTSService {
 				}
 			};
 			try {
-				await providerWithPlan.speakSegments(segments);
+				await providerWithPlan.speakSegments(
+					this.segmentsWithinLimit(segments),
+				);
 			} finally {
 				if (runId === this.speakRunId && this.provider === providerWithPlan) {
 					this.provider.onWordBoundary = originalOnWordBoundary;
@@ -1268,6 +1383,7 @@ export class TTSService {
 			wordBoundaryOffset: this.activeWordBoundaryOffset,
 		});
 		for (const segment of segments) {
+			await this.waitWhilePaused(runId);
 			if (runId !== this.speakRunId) return;
 			this.currentBoundaryOffset = segment.startOffset;
 			if (shouldTrackSentenceProgress) {
@@ -1275,10 +1391,10 @@ export class TTSService {
 					this.highlightSentenceSegment(segment.startOffset, segment.text);
 				});
 			}
-			await this.provider.speak(segment.text);
+			await this.speakWithinLimit(segment.text, runId);
 			const pauseMs = segment.pauseMsAfter ?? 0;
-			if (pauseMs > 0) {
-				await new Promise((resolve) => setTimeout(resolve, pauseMs));
+			if (pauseMs > 0 && runId === this.speakRunId) {
+				await this.waitStructuralPause(pauseMs);
 			}
 		}
 	}
@@ -1399,19 +1515,161 @@ export class TTSService {
 	}
 
 	/**
-	 * Speak text with optional catalog support
+	 * Read `target` aloud: a range reads the text it selects, an element its
+	 * content. A node with a spoken card that the target holds whole reads its
+	 * card, `catalogId` names the card of the content root, and math reads as
+	 * math speech.
 	 *
-	 * @param text Text to speak (will be normalized: trimmed and whitespace collapsed)
-	 * @param options Optional catalog ID, language, and content element for highlighting
+	 * Content marked not-to-be-spoken is never read, a named card included. When
+	 * the target holds nothing speakable, nothing is spoken and playback already
+	 * running continues.
 	 */
-	async speak(text: string, options?: SpeakOptions): Promise<void> {
+	async speak(
+		target: Range | Element,
+		options: SpeakOptions = {},
+	): Promise<void> {
+		this.assertNotDisposed();
 		const pendingReadiness = this.pendingReadiness();
 		if (pendingReadiness) await pendingReadiness;
+		this.assertNotDisposed();
 		if (!this.provider) {
 			throw toTTSStartFailure(new Error("TTS service not initialized"));
 		}
+		const content = isRange(target)
+			? this.resolveRangeTarget(target, options)
+			: this.resolveElementTarget(target, options);
+		if (!content) return;
+		await this.speakContent(content.text, content.options);
+	}
+
+	/**
+	 * Suppression is read from the live ancestors of what is read, because the
+	 * element carrying it may sit above the content root.
+	 */
+	private isSuppressedTarget(node: Node): boolean {
+		if (!isNodeSuppressedForTTS(node)) return false;
+		console.warn(
+			"[tts] the content to read lies inside content marked not-to-be-spoken; nothing was spoken.",
+		);
+		return true;
+	}
+
+	private resolveElementTarget(
+		root: Element,
+		options: SpeakOptions,
+	): { text: string; options: SpeakContentOptions } | null {
+		if (this.isSuppressedTarget(root)) return null;
+		// Math-aware, so an element holding only an equation still reads.
+		const text = collectMathAwareTextAndMap(
+			root,
+			this.getTextProcessingOptions(options.language),
+		).visibleText.trim();
+		if (!text) {
+			console.warn(
+				"[tts] the content to read holds no speakable text; nothing was spoken.",
+			);
+			return null;
+		}
+		return {
+			text,
+			options: {
+				catalogId: options.catalogId,
+				catalogContext: options.catalogContext,
+				language: options.language,
+				contentElement: root,
+			},
+		};
+	}
+
+	private resolveRangeTarget(
+		range: Range,
+		options: SpeakOptions,
+	): { text: string; options: SpeakContentOptions } | null {
+		if (this.isSuppressedTarget(range.commonAncestorContainer)) return null;
+		// Highlighting stays scoped to the content root when one is named, else to
+		// the selection's nearest element.
+		const ancestor = range.commonAncestorContainer;
+		const root =
+			options.contentRoot ||
+			(ancestor.nodeType === Node.ELEMENT_NODE
+				? (ancestor as Element)
+				: composedParentElement(ancestor));
+		if (!root) return null;
+
+		const selected = collectRangeTextForSpeech(range, root);
+		const selectedText = selected.text.trim();
+		if (!selectedText) {
+			if (selected.filtered) {
+				console.warn(
+					"[tts] every part of the selection is either hidden or marked not-to-be-spoken; nothing was spoken.",
+				);
+			}
+			return null;
+		}
+
+		// The spoken text and its offset come from the root's visible-text map, which
+		// the highlight position map and the structural speech plan index too. Joined
+		// from raw text nodes instead, a selection loses the space the map inserts
+		// between blocks, and every offset after that boundary drifts.
+		const mapped = this.selectMappedRangeText(
+			range,
+			root,
+			options.language || DEFAULT_CONTENT_LANGUAGE,
+		);
+		let text = selectedText;
+		let offset = mapped?.offset ?? 0;
+		if (mapped) {
+			text = mapped.text;
+		} else {
+			// Filtered the same way as the speech itself: the offset indexes into the
+			// highlight text, which comes from the exclusion-aware collectors.
+			const beforeRange = document.createRange();
+			beforeRange.selectNodeContents(root);
+			beforeRange.setEnd(range.startContainer, range.startOffset);
+			const textBeforeRange = collectRangeTextForSpeech(beforeRange, root).text;
+			const normalizedTextBeforeRange = normalizeTextForSpeech(textBeforeRange);
+			offset =
+				normalizedTextBeforeRange.length +
+				(/\s$/.test(textBeforeRange) && normalizedTextBeforeRange ? 1 : 0);
+		}
+
+		this.debugLog("[TTSService] selection offset calculation:", {
+			selectedText: text,
+			mapped: !!mapped,
+			offset,
+			rootTag: root.tagName,
+		});
+
+		return {
+			text,
+			options: {
+				// The root's card reads only when the selection holds all of the root.
+				catalogId:
+					options.catalogId && rangeHoldsSpeakableElement(range, root, root)
+						? options.catalogId
+						: undefined,
+				catalogContext: options.catalogContext,
+				language: options.language,
+				contentElement: root,
+				contentRange: range,
+				wordBoundaryOffset: offset,
+			},
+		};
+	}
+
+	private async speakContent(
+		text: string,
+		options: SpeakContentOptions,
+	): Promise<void> {
+		if (!this.provider) return;
+		const supersedesPlayback =
+			this.state === PlaybackState.PLAYING ||
+			this.state === PlaybackState.PAUSED;
 		const runId = ++this.speakRunId;
-		this.clearPlaybackStartBarrier();
+		this.abandonRun();
+		// A recorded clip that starts the new run would otherwise play over the
+		// previous run's synthesis, which only the provider's next speak stops.
+		if (supersedesPlayback) this.provider.stop();
 		let playbackStartBarrier: (() => void) | null = null;
 		try {
 			await this.applyLanguageSettings(options);
@@ -1434,9 +1692,9 @@ export class TTSService {
 				catalogId: options?.catalogId,
 			});
 			this.initializeSpeakTracking(highlightText, options);
-			const highlightMode =
-				options?.highlightModeOverride ||
-				(speechMatchesVisibleText ? this.resolveHighlightMode() : "sentence");
+			const highlightMode = speechMatchesVisibleText
+				? this.resolveHighlightMode()
+				: "sentence";
 			this.activeHighlightMode = highlightMode;
 			this.activeWordBoundaryOffset = options?.wordBoundaryOffset || 0;
 			const hasExplicitBreaks = this.hasExplicitBreakSemantics(contentToSpeak);
@@ -1503,14 +1761,13 @@ export class TTSService {
 			this.setState(PlaybackState.IDLE);
 			this.clearHighlightsAndTracking();
 		} catch (error) {
-			let finalError = error;
-			console.error("TTS error:", finalError);
-			this.lastError =
-				finalError instanceof Error ? finalError.message : String(finalError);
+			// A superseded run's failure is the abort that superseded it.
 			if (runId !== this.speakRunId) return;
+			console.error("TTS error:", error);
+			this.lastError = error instanceof Error ? error.message : String(error);
 			this.setState(PlaybackState.ERROR);
 			this.clearHighlightsAndTracking();
-			throw finalError;
+			throw error;
 		} finally {
 			this.clearPlaybackStartBarrier(playbackStartBarrier);
 		}
@@ -1601,22 +1858,17 @@ export class TTSService {
 	 * configured settings alone, unless an earlier speak named one: then it
 	 * clears it and text processing reads en-US.
 	 */
-	private async applyLanguageSettings(options?: SpeakOptions): Promise<void> {
+	private async applyLanguageSettings(
+		options: SpeakContentOptions,
+	): Promise<void> {
 		if (!this.provider) return;
-		const named = options?.language?.trim() || undefined;
-		const providerOptions = (this.ttsConfig.providerOptions || {}) as Record<
-			string,
-			unknown
-		>;
+		const named = options.language?.trim() || undefined;
+		const providerOptions = this.providerOptions();
 		if (!named && providerOptions.contentLanguage === undefined) return;
 		const language = named ?? DEFAULT_CONTENT_LANGUAGE;
-		const textNormalization = (providerOptions.textNormalization ||
-			{}) as Record<string, unknown>;
-		const segmenter = (providerOptions.segmenter || {}) as Record<
-			string,
-			unknown
-		>;
-		const mergedProviderOptions = {
+		const textNormalization = providerOptions.textNormalization || {};
+		const segmenter = providerOptions.segmenter || {};
+		const mergedProviderOptions: ToolkitTTSProviderOptions = {
 			...providerOptions,
 			locale: language,
 			textNormalization: {
@@ -1651,10 +1903,10 @@ export class TTSService {
 
 	private async resolveSpeechContent(
 		text: string,
-		options?: SpeakOptions,
+		options: SpeakContentOptions,
 	): Promise<ResolvedSpeechContent> {
 		const normalizedInputText = normalizeTextForSpeech(text);
-		if (options?.catalogId && this.catalogResolver) {
+		if (options.catalogId && this.catalogResolver) {
 			const catalogContent = this.catalogResolver.getAlternative(
 				options.catalogId,
 				{
@@ -1669,12 +1921,11 @@ export class TTSService {
 			// instance. Fall through to generated TTS rather than speaking "".
 			const spokenText = catalogContent?.content;
 			if (catalogContent && spokenText !== undefined) {
-				const visibleText = options?.contentElement
-					? collectMathAwareTextAndMap(
-							options.contentElement,
-							this.getTextProcessingOptions(options.language),
-						).visibleText || normalizedInputText
-					: normalizedInputText;
+				const visibleText =
+					collectMathAwareTextAndMap(
+						options.contentElement,
+						this.getTextProcessingOptions(options.language),
+					).visibleText || normalizedInputText;
 				const normalizedCatalogText = normalizeTextForSpeech(spokenText);
 				this.debugLog(
 					`[TTSService] Using catalog content for "${options.catalogId}" (${catalogContent.language})`,
@@ -1696,46 +1947,18 @@ export class TTSService {
 			);
 		}
 
-		const composed = options?.contentElement
-			? this.resolveCatalogComposedSpeechContent(
-					options.contentElement,
-					normalizedInputText,
-					options,
-				)
-			: null;
+		const composed = this.resolveCatalogComposedSpeechContent(
+			options.contentElement,
+			normalizedInputText,
+			options,
+		);
 		if (composed) return composed;
-		// A selection holding no card reads its own text. Generated speech composes
-		// the whole content element, which for a selection is only the frame its
-		// highlight offsets index.
-		if (options?.contentRange) {
-			return {
-				contentToSpeak: normalizedInputText,
-				speechText: normalizedInputText,
-				visibleText: normalizedInputText,
-				highlightText: normalizedInputText,
-				usedCatalogSpoken: false,
-				speechSource: "dom-or-input",
-				normalizedText: normalizedInputText,
-				containsMathMarkup: false,
-				speechMatchesVisibleText: true,
-			};
-		}
-
-		const generated = options?.contentElement
-			? await this.resolveGeneratedSpeechContent(
-					options.contentElement,
-					normalizedInputText,
-					options.language,
-				)
-			: {
-					contentToSpeak: normalizedInputText,
-					speechText: normalizedInputText,
-					visibleText: normalizedInputText,
-					highlightText: normalizedInputText,
-					normalizedText: normalizedInputText,
-					containsMathMarkup: false,
-					speechMatchesVisibleText: true,
-				};
+		const generated = await this.resolveGeneratedSpeechContent(
+			options.contentElement,
+			normalizedInputText,
+			options.language,
+			options.contentRange,
+		);
 		return {
 			...generated,
 			usedCatalogSpoken: false,
@@ -1746,7 +1969,7 @@ export class TTSService {
 	private resolveCatalogComposedSpeechContent(
 		contentElement: Element,
 		normalizedInputText: string,
-		options: SpeakOptions,
+		options: SpeakContentOptions,
 	): ResolvedSpeechContent | null {
 		if (!this.catalogResolver) return null;
 		const chunks = this.collectCatalogSpeechChunks(contentElement, options);
@@ -1780,7 +2003,7 @@ export class TTSService {
 
 	private collectCatalogSpeechChunks(
 		root: Element,
-		options: SpeakOptions,
+		options: SpeakContentOptions,
 	): SpeechCompositionChunk[] {
 		const chunks: SpeechCompositionChunk[] = [];
 		let textBuffer = "";
@@ -1986,10 +2209,15 @@ export class TTSService {
 		return provider.getCapabilities?.().supportsSSML ? "ssml" : "plain";
 	}
 
+	/**
+	 * With `range`, the selection only: an equation it holds whole reads as math
+	 * speech, and a selection without one reads the selected text, `normalizedInputText`.
+	 */
 	private async resolveGeneratedSpeechContent(
 		contentElement: Element,
 		normalizedInputText: string,
 		language?: string,
+		range?: Range,
 	): Promise<
 		Pick<
 			ResolvedSpeechContent,
@@ -2014,14 +2242,19 @@ export class TTSService {
 			visibleText: collectedVisibleText,
 		} = await buildGeneratedSpeechFromRoot({
 			contentRoot: contentElement,
+			range,
 			language,
 			mathSpeech: this.getMathSpeechOptions(),
 			textProcessingOptions: this.getTextProcessingOptions(language),
 			produceSsml: playbackFormat === "ssml",
 			resolveMathSpeech: this.generatedMathSpeechResolver,
 		});
-		const visibleText = collectedVisibleText || normalizedInputText;
 		if (!containsMathMarkup) {
+			// The input text is the selection's text in the root's visible-text map,
+			// which its highlight offsets index.
+			const visibleText = range
+				? normalizedInputText
+				: collectedVisibleText || normalizedInputText;
 			return {
 				contentToSpeak: visibleText,
 				speechText: visibleText,
@@ -2032,6 +2265,7 @@ export class TTSService {
 				speechMatchesVisibleText: true,
 			};
 		}
+		const visibleText = collectedVisibleText || normalizedInputText;
 		const speechChunks = planToCompositionChunkInputs(plan, {
 			format: playbackFormat,
 		});
@@ -2067,10 +2301,10 @@ export class TTSService {
 
 	private initializeSpeakTracking(
 		contentToSpeak: string,
-		options?: SpeakOptions,
+		options: SpeakContentOptions,
 	): void {
 		this.currentText = contentToSpeak;
-		this.currentContentElement = options?.contentElement || null;
+		this.currentContentElement = options.contentElement;
 		this.lastError = null;
 		this.currentBoundaryOffset = 0;
 		this.playbackChunks = [];
@@ -2079,7 +2313,7 @@ export class TTSService {
 
 	private prepareHighlightsForSpeak(args: {
 		contentToSpeak: string;
-		options?: SpeakOptions;
+		options: SpeakContentOptions;
 		highlightMode: HighlightMode;
 		shouldUsePlan: boolean;
 		runId: number;
@@ -2088,7 +2322,7 @@ export class TTSService {
 		this.buildPositionMap(
 			this.currentContentElement,
 			args.contentToSpeak,
-			args.options?.language,
+			args.options.language,
 		);
 		if (args.highlightMode === "sentence" && args.shouldUsePlan) {
 			return;
@@ -2500,7 +2734,7 @@ export class TTSService {
 			const previousOnWordBoundary = provider.onWordBoundary;
 			provider.onWordBoundary = undefined;
 			try {
-				await provider.speak(chunk.speechText);
+				await this.speakWithinLimit(chunk.speechText, runId);
 			} finally {
 				if (
 					this.provider === provider &&
@@ -2541,7 +2775,7 @@ export class TTSService {
 		};
 		provider.onWordBoundary = installedHandler;
 		try {
-			await provider.speak(chunk.speechText);
+			await this.speakWithinLimit(chunk.speechText, runId);
 		} finally {
 			if (
 				this.provider === provider &&
@@ -2562,6 +2796,7 @@ export class TTSService {
 	}): Promise<void> {
 		if (args.speechChunks?.length && this.provider) {
 			for (let index = 0; index < args.speechChunks.length; index++) {
+				await this.waitWhilePaused(args.runId);
 				if (args.runId !== this.speakRunId) return;
 				const segment = this.seekSegments[index];
 				if (segment) {
@@ -2578,14 +2813,12 @@ export class TTSService {
 				await this.speakWithPlan(segments, args.runId, {
 					highlightMode: args.highlightMode,
 				});
-			} else if (this.provider) {
-				await this.provider.speak(args.contentToSpeak);
+			} else {
+				await this.speakWithinLimit(args.contentToSpeak, args.runId);
 			}
 			return;
 		}
-		if (this.provider) {
-			await this.provider.speak(args.contentToSpeak);
-		}
+		await this.speakWithinLimit(args.contentToSpeak, args.runId);
 	}
 
 	private clearHighlightsAndTracking(): void {
@@ -2635,104 +2868,6 @@ export class TTSService {
 	}
 
 	/**
-	 * Speak the text `range` selects, highlighted within `contentRoot`.
-	 *
-	 * A node with a spoken card that the selection holds whole reads its card, as
-	 * it does when the whole region is read; `catalogContext` names the owner
-	 * whose registered cards apply, and without it only assessment-level cards
-	 * do. A node the selection holds part of reads the selected text.
-	 */
-	async speakRange(
-		range: Range,
-		options?: {
-			contentRoot?: Element | null;
-			language?: string;
-			catalogContext?: CatalogLookupContext;
-		},
-	): Promise<void> {
-		const pendingReadiness = this.pendingReadiness();
-		if (pendingReadiness) await pendingReadiness;
-		if (!this.provider) {
-			throw toTTSStartFailure(new Error("TTS service not initialized"));
-		}
-
-		// Enforced from the live ancestors rather than from `root`, because the
-		// element carrying the suppression may sit above whatever root the caller
-		// passed or the range happens to resolve to.
-		if (isNodeSuppressedForTTS(range.commonAncestorContainer)) {
-			console.warn(
-				"[tts] selection lies inside content marked not-to-be-spoken; nothing was spoken. Selecting a node and pressing read-aloud must not become a way around suppression.",
-			);
-			return;
-		}
-
-		// Use explicit content root when provided; otherwise keep highlighting scoped
-		// to the selected range's nearest element ancestor.
-		const fromOptions = options?.contentRoot || null;
-		let root: Element | null = fromOptions;
-		if (!root) {
-			const ancestor = range.commonAncestorContainer;
-			root =
-				ancestor.nodeType === Node.ELEMENT_NODE
-					? (ancestor as Element)
-					: composedParentElement(ancestor);
-		}
-		if (!root) return;
-
-		const selected = collectRangeTextForSpeech(range, root);
-		const selectedText = selected.text.trim();
-		if (!selectedText) {
-			if (selected.filtered) {
-				console.warn(
-					"[tts] every part of the selection is either hidden or marked not-to-be-spoken; nothing was spoken.",
-				);
-			}
-			return;
-		}
-
-		// The spoken text and its offset come from the root's visible-text map, which
-		// the highlight position map and the structural speech plan index too. Joined
-		// from raw text nodes instead, a selection loses the space the map inserts
-		// between blocks, and every offset after that boundary drifts.
-		const mapped = this.selectMappedRangeText(
-			range,
-			root,
-			options?.language || DEFAULT_CONTENT_LANGUAGE,
-		);
-		let text = selectedText;
-		let offset = mapped?.offset ?? 0;
-		if (mapped) {
-			text = mapped.text;
-		} else {
-			// Filtered the same way as the speech itself: the offset indexes into the
-			// highlight text, which comes from the exclusion-aware collectors.
-			const beforeRange = document.createRange();
-			beforeRange.selectNodeContents(root);
-			beforeRange.setEnd(range.startContainer, range.startOffset);
-			const textBeforeRange = collectRangeTextForSpeech(beforeRange, root).text;
-			const normalizedTextBeforeRange = normalizeTextForSpeech(textBeforeRange);
-			offset =
-				normalizedTextBeforeRange.length +
-				(/\s$/.test(textBeforeRange) && normalizedTextBeforeRange ? 1 : 0);
-		}
-
-		this.debugLog("[TTSService] speakRange offset calculation:", {
-			selectedText: text,
-			mapped: !!mapped,
-			offset,
-			rootTag: root.tagName,
-		});
-
-		await this.speak(text, {
-			contentElement: root,
-			contentRange: range,
-			catalogContext: options?.catalogContext,
-			language: options?.language,
-			wordBoundaryOffset: offset,
-		});
-	}
-
-	/**
 	 * Pause playback
 	 */
 	pause(): void {
@@ -2741,6 +2876,8 @@ export class TTSService {
 		if (this.state === PlaybackState.PLAYING) {
 			this.activeRecordedAudio?.element.pause();
 			this.provider.pause();
+			// Between two parts, nothing is playing to pause: the run holds before
+			// its next part instead.
 			this.setState(PlaybackState.PAUSED);
 		}
 	}
@@ -2756,6 +2893,7 @@ export class TTSService {
 			if (recorded) void Promise.resolve(recorded.play()).catch(() => {});
 			this.provider.resume();
 			this.setState(PlaybackState.PLAYING);
+			this.releasePauseHold();
 		}
 	}
 
@@ -2775,8 +2913,7 @@ export class TTSService {
 			: null;
 
 		this.speakRunId += 1;
-		this.clearPlaybackStartBarrier();
-		this.cancelRecordedAudio();
+		this.abandonRun();
 		this.provider.onWordBoundary = undefined;
 		this.provider.stop();
 		const runId = ++this.speakRunId;
@@ -2802,6 +2939,7 @@ export class TTSService {
 			});
 			if (restartChunks) {
 				for (let index = 0; index < restartChunks.length; index++) {
+					await this.waitWhilePaused(runId);
 					if (runId !== this.speakRunId) return;
 					const absoluteIndex = safeTargetIndex + index;
 					const segment = this.seekSegments[absoluteIndex];
@@ -2940,8 +3078,7 @@ export class TTSService {
 	stop(): void {
 		if (!this.provider) return;
 		this.speakRunId += 1;
-		this.clearPlaybackStartBarrier();
-		this.cancelRecordedAudio();
+		this.abandonRun();
 		this.provider.onWordBoundary = undefined;
 		this.provider.stop();
 		this.setState(PlaybackState.IDLE);
@@ -2973,6 +3110,27 @@ export class TTSService {
 		this.stop();
 		this.provider = null;
 		this.currentProvider = null;
+	}
+
+	/**
+	 * Stop, release the provider and drop every listener, hook and pending timer.
+	 * A disposed service cannot speak or be initialized again.
+	 */
+	dispose(): void {
+		if (this.disposed) return;
+		this.releaseProvider();
+		this.disposed = true;
+		this.speakRunId += 1;
+		this.abandonRun();
+		this.playbackRateRequestId += 1;
+		this.pendingPlaybackRateRequest = null;
+		this.listeners.clear();
+		this.readinessGate = null;
+		this.mathSpeechSource = null;
+		this.highlightTargetResolverProvider = null;
+		this.highlightCoordinator = null;
+		this.catalogResolver = null;
+		this.telemetryReporter = null;
 	}
 
 	/**

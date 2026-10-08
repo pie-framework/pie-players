@@ -19,6 +19,7 @@ import {
 	hasResponseValue,
 } from "@pie-players/pie-players-shared/pie";
 import type { SectionControllerSessionState } from "@pie-players/pie-players-shared/types";
+import { structurallyEqual } from "../utils/structural-equality.js";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
 	return Boolean(value) && typeof value === "object" && !Array.isArray(value);
@@ -27,22 +28,6 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 /** An entry is canonical (`{ itemIdentifier, session, ... }`) or the raw item session. */
 function itemSessionOf(entry: unknown): unknown {
 	return isRecord(entry) && isRecord(entry.session) ? entry.session : entry;
-}
-
-function contentEquals(a: unknown, b: unknown): boolean {
-	if (Object.is(a, b)) return true;
-	if (Array.isArray(a) || Array.isArray(b)) {
-		if (!Array.isArray(a) || !Array.isArray(b) || a.length !== b.length) {
-			return false;
-		}
-		return a.every((entry, index) => contentEquals(entry, b[index]));
-	}
-	if (!isRecord(a) || !isRecord(b)) return false;
-	const keys = new Set([...Object.keys(a), ...Object.keys(b)]);
-	for (const key of keys) {
-		if (!contentEquals(a[key], b[key])) return false;
-	}
-	return true;
 }
 
 function sameItemSessions(next: unknown, current: unknown): boolean {
@@ -54,7 +39,7 @@ function sameItemSessions(next: unknown, current: unknown): boolean {
 	]);
 	for (const itemId of itemIds) {
 		if (
-			!contentEquals(
+			!structurallyEqual(
 				itemSessionOf(nextSessions[itemId]),
 				itemSessionOf(currentSessions[itemId]),
 			)
@@ -80,7 +65,7 @@ function sameSessionContent(
 			if (!sameItemSessions(value, current.itemSessions)) return false;
 			continue;
 		}
-		if (!contentEquals(value, (current as unknown as Record<string, unknown>)[key])) {
+		if (!structurallyEqual(value, (current as unknown as Record<string, unknown>)[key])) {
 			return false;
 		}
 	}

@@ -145,16 +145,18 @@ function installPage(): void {
 			return true;
 		},
 	};
-	g.__generatedEntry = { page, elementClasses };
+	g.__generatedEntry = { page, elementClasses, registerPreloadedElements };
 }
 
 /** The generated entry beside stand-ins for the files the build writes next to it. */
 async function writeBuild(math: { mathjaxFiles?: string[]; speechLocales?: string[] } = {}): Promise<string> {
 	const dir = await mkdtemp(join(os.tmpdir(), "pie-preloaded-index-"));
-	const loaders = import.meta.resolve("@pie-players/pie-players-shared/loaders");
+	// The stand-in hands over the function this file imported: a bare specifier
+	// does not resolve from a temporary directory, and `import.meta.resolve` needs
+	// the sibling built.
 	await writeFile(
 		join(dir, "preloaded.js"),
-		`export { registerPreloadedElements } from ${JSON.stringify(loaders)};
+		`export const { registerPreloadedElements } = globalThis.__generatedEntry;
 `,
 	);
 	await mkdir(join(dir, "elements"));

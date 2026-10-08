@@ -226,6 +226,20 @@ describe("HighlightCoordinator TTS style contrast", () => {
 		expect(rootVars.get("--pie-tts-word-shadow")).toBe(
 			"rgba(17, 24, 39, 0.22)",
 		);
+		coordinator.destroy();
+	});
+
+	test("a custom color ends with the coordinator that set it", () => {
+		const { rootVars } = setupHighlightDom();
+		const coordinator = new HighlightCoordinator();
+		coordinator.updateTTSHighlightStyle("#ffcc00", 0.3);
+
+		coordinator.destroy();
+		new HighlightCoordinator();
+
+		expect(rootVars.get("--pie-tts-word-highlight")).not.toStartWith(
+			"rgba(255, 204, 0,",
+		);
 	});
 
 	test("falls back to high-contrast underline in low-contrast theme colors", () => {

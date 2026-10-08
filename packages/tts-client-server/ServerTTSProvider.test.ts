@@ -251,6 +251,94 @@ describe("ServerTTSProvider", () => {
 		expect(synthBody.langId).toBe("es-MX");
 	});
 
+	test("sends the language a speak names on the custom transport, then the configured one again", async () => {
+		const fetchMock = vi.fn(async (input: RequestInfo | URL) =>
+			String(input) === "https://tts.custom.example/v1"
+				? createJSONResponse({
+						audioContent: "https://tts.custom.example/audio.mp3",
+						speechMarks: [],
+					})
+				: new Response(new Blob(["mp3-bytes"]), { status: 200 }),
+		);
+		globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+		const provider = new ServerTTSProvider();
+		const impl = await provider.initialize({
+			apiEndpoint: "https://tts.custom.example/v1",
+			transportMode: "custom",
+			endpointMode: "rootPost",
+			language: "en-US",
+		} as any);
+		const updateSettings = (impl as any).updateSettings.bind(impl);
+		const sentLanguage = (call: number) => {
+			const options = fetchMock.mock.calls[call]?.[1] as
+				| RequestInit
+				| undefined;
+			return JSON.parse(String(options?.body)).lang_id;
+		};
+
+		updateSettings({ providerOptions: { contentLanguage: "es-MX" } });
+		await impl.speak("Leer");
+		expect(sentLanguage(0)).toBe("es-MX");
+
+		updateSettings({ providerOptions: { contentLanguage: undefined } });
+		await impl.speak("Read");
+		expect(sentLanguage(2)).toBe("en-US");
+	});
+
+	test("keeps a host's lang_id over the language a speak names", async () => {
+		const fetchMock = vi.fn(async (input: RequestInfo | URL) =>
+			String(input) === "https://tts.custom.example/v1"
+				? createJSONResponse({
+						audioContent: "https://tts.custom.example/audio.mp3",
+						speechMarks: [],
+					})
+				: new Response(new Blob(["mp3-bytes"]), { status: 200 }),
+		);
+		globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+		const provider = new ServerTTSProvider();
+		const impl = await provider.initialize({
+			apiEndpoint: "https://tts.custom.example/v1",
+			transportMode: "custom",
+			endpointMode: "rootPost",
+			language: "en-US",
+			providerOptions: { lang_id: "es-MX" },
+		} as any);
+		(impl as any).updateSettings({
+			providerOptions: { contentLanguage: "en-US" },
+		});
+		await impl.speak("Leer");
+
+		const options = fetchMock.mock.calls[0]?.[1] as RequestInit | undefined;
+		expect(JSON.parse(String(options?.body)).lang_id).toBe("es-MX");
+	});
+
+	test("sends the language a speak names on the pie transport", async () => {
+		const fetchMock = vi.fn(async () =>
+			createJSONResponse({
+				audio: btoa("audio-bytes"),
+				contentType: "audio/mpeg",
+				speechMarks: [],
+			}),
+		);
+		globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+		const provider = new ServerTTSProvider();
+		const impl = await provider.initialize({
+			apiEndpoint: "/api/tts",
+			provider: "polly",
+			language: "en-US",
+		} as any);
+		(impl as any).updateSettings({
+			providerOptions: { contentLanguage: "es-MX" },
+		});
+		await impl.speak("hola");
+
+		const options = fetchMock.mock.calls[0]?.[1] as RequestInit | undefined;
+		expect(JSON.parse(String(options?.body)).language).toBe("es-MX");
+	});
+
 	describe("custom transport asset auth", () => {
 		const credentialsSeen: Record<string, RequestCredentials | undefined> = {};
 		const speakAndCaptureHeaders = async (
@@ -433,7 +521,7 @@ describe("ServerTTSProvider", () => {
 		]);
 	});
 
-	test("aborts in-flight synthesis when stopped", async () => {
+	test("a stopped synthesis aborts its request and resolves without reporting an error", async () => {
 		let aborted = false;
 		const fetchMock = vi.fn(
 			async (
@@ -454,14 +542,22 @@ describe("ServerTTSProvider", () => {
 		);
 		globalThis.fetch = fetchMock as unknown as typeof fetch;
 
+		const events: string[] = [];
 		const provider = new ServerTTSProvider();
 		const impl = await provider.initialize({
 			apiEndpoint: "/api/tts",
+			providerOptions: {
+				__pieTelemetry: (eventName: string) => {
+					events.push(eventName);
+				},
+			},
 		} as any);
 		const speakPromise = impl.speak("long running synthesis");
 		impl.stop();
-		await expect(speakPromise).rejects.toThrow();
+		await expect(speakPromise).resolves.toBeUndefined();
 		expect(aborted).toBe(true);
+		expect(events).toContain("pie-tool-backend-call-start");
+		expect(events).not.toContain("pie-tool-backend-call-error");
 	});
 
 	test("validates provider-specific voices endpoint for Polly", async () => {

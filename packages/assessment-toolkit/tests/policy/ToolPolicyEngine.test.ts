@@ -193,33 +193,74 @@ describe("ToolPolicyEngine", () => {
 		expect(after.visibleTools[0].sources).toContain("pnp.pnp-support");
 	});
 
-	test("updateInputs({ currentItemRef }) re-runs item-restriction on subsequent decide() calls", () => {
-		// R3 S3 follow-up: per-item navigation will swap currentItemRef.
-		const registry = new ToolRegistry();
-		const assessment: AssessmentEntity = {
-			id: "a1",
-		} as AssessmentEntity;
+	test("an item's registered settings govern its own toolbar and no other", () => {
 		const engine = new ToolPolicyEngine({
-			toolRegistry: registry,
+			toolRegistry: new ToolRegistry(),
 			inputs: {
 				tools: ITEM_PLACEMENT,
-				assessment,
+				assessment: { id: "a1" } as AssessmentEntity,
 				pnpEnforcement: "on",
 			},
 		});
+		const events: ToolPolicyChangeEvent[] = [];
+		engine.onPolicyChange((event) => events.push(event));
 
-		expect(engine.getVisibleToolIds("item", "i1").includes("calculator")).toBe(
-			true,
-		);
-
-		engine.updateInputs({
-			currentItemRef: {
-				identifier: "item-2",
-				settings: { restrictedTools: ["calculator"] },
-			} as any,
+		const withdraw = engine.registerItemSettings("i2", {
+			restrictedTools: ["calculator"],
 		});
 
+		expect(events.map((event) => event.reason)).toEqual(["item-settings"]);
 		expect(engine.getVisibleToolIds("item", "i2")).toEqual(["tts"]);
+		expect(engine.getVisibleToolIds("item", "i1")).toEqual(["calculator", "tts"]);
+
+		withdraw();
+		expect(events).toHaveLength(2);
+		expect(engine.getVisibleToolIds("item", "i2")).toEqual(["calculator", "tts"]);
+	});
+
+	test("re-registering equal settings emits nothing, and the newest registration applies", () => {
+		// Auto-mode: the item's settings turn enforcement on for its own toolbar.
+		const engine = new ToolPolicyEngine({
+			toolRegistry: new ToolRegistry(),
+			inputs: { tools: ITEM_PLACEMENT },
+		});
+		const events: ToolPolicyChangeEvent[] = [];
+		engine.onPolicyChange((event) => events.push(event));
+
+		const first = engine.registerItemSettings("i1", { restrictedTools: ["calculator"] });
+		const second = engine.registerItemSettings("i1", { restrictedTools: ["calculator"] });
+		expect(events).toHaveLength(1);
+
+		const third = engine.registerItemSettings("i1", { restrictedTools: ["tts"] });
+		expect(events).toHaveLength(2);
+		expect(engine.getVisibleToolIds("item", "i1")).toEqual(["calculator"]);
+
+		third();
+		expect(events).toHaveLength(3);
+		expect(engine.getVisibleToolIds("item", "i1")).toEqual(["tts"]);
+		first();
+		expect(events).toHaveLength(3);
+		expect(engine.getVisibleToolIds("item", "i1")).toEqual(["tts"]);
+		second();
+		expect(engine.getVisibleToolIds("item", "i1")).toEqual(["calculator", "tts"]);
+	});
+
+	test("updateInputs({ pnpEnforcement: null }) returns to auto-mode", () => {
+		const engine = new ToolPolicyEngine({
+			toolRegistry: new ToolRegistry(),
+			inputs: {
+				tools: ITEM_PLACEMENT,
+				assessment: { id: "a1" } as AssessmentEntity,
+				pnpEnforcement: "off",
+			},
+		});
+		engine.registerItemSettings("i1", { restrictedTools: ["calculator"] });
+		expect(engine.getVisibleToolIds("item", "i1")).toEqual(["calculator", "tts"]);
+
+		engine.updateInputs({ pnpEnforcement: null });
+
+		expect(engine.getVisibleToolIds("item", "i1")).toEqual(["tts"]);
+		expect(engine.getInputs().pnpEnforcement).toBe("off");
 	});
 
 	test("updateInputs({ pnpEnforcement: 'off' }) stops applying PNP/profile gates from the next decide()", () => {

@@ -369,16 +369,21 @@ Tools that float above the entire assessment and persist across navigation:
 
 **State Management:**
 
-A section-level tool keeps its state in its own element; the graph's points and lines are component state. That state lasts while the section toolbar keeps the element mounted. Any policy change, including a host binding the next item with `updateCurrentItemRef`, re-renders the toolbar and swaps in a fresh element, whose state starts over.
+A section-level tool keeps its state in its own element; the graph's points and lines are component state. That state lasts while the section toolbar keeps the element mounted. A policy change re-renders the toolbar and swaps in a fresh element, whose state starts over, with one exception: an item's settings registering or withdrawing, as items mount and unmount, re-decides every toolbar but re-renders only a toolbar whose tools it changed, which is that item's own.
 
 ### Configuration in ToolkitCoordinator
 
 The configuration structure reflects this scope distinction via `tools.placement` and `tools.providers`:
 
 ```typescript
-import { createPackagedToolRegistry } from '@pie-players/pie-default-tool-loaders';
+import {
+  createPackagedToolRegistry,
+  DEFAULT_TOOL_MODULE_LOADERS,
+} from '@pie-players/pie-default-tool-loaders';
 
-const toolRegistry = createPackagedToolRegistry();
+const toolRegistry = createPackagedToolRegistry({
+  toolModuleLoaders: DEFAULT_TOOL_MODULE_LOADERS,
+});
 const coordinator = new ToolkitCoordinator({
   assessmentId: 'math-exam',
   toolRegistry,
@@ -533,14 +538,16 @@ This separation emerged from real-world assessment platform analysis and reflect
 
 ### ToolCoordinator
 
-**Purpose:** Central service managing tool visibility and z-index layering.
+**Purpose:** Central service holding tool visibility state and stacking tool elements.
 
 **Responsibilities:**
 - Register/unregister tools
-- Show/hide tools
-- Bring tool to front on interaction
+- Hold each tool's on/off state; whoever renders a tool shows or hides it from that state
+- Bring a tool to the front of its layer when it is shown or pressed
 - Maintain z-index layers
 - Notify subscribers of state changes
+
+A tool's own registration names its layer. A toolbar registers the tool when it activates it, before the tool's component mounts, and binds its floating window; the window then stacks in the tool's layer. The outermost bound element stacks, so a tool rendered inside a toolbar window stacks by the window.
 
 **Z-Index Layers:**
 ```
@@ -648,7 +655,7 @@ Yellow highlight with underline (::highlight CSS)
 **Multi-Level TTS Entry Points:**
 
 - **Content-Level TTS** (`tool-tts-inline`): Speaker icons in passage/item headers pass catalog context and a live content element, allowing `TTSService` to resolve `data-catalog-idref` regions.
-- **Annotation toolbar read-aloud**: Speaks the selection through `speakRange`, with the catalog context of the shell holding it. A `data-catalog-idref` region the selection holds whole reads its spoken card; part of one reads as the selected visible text.
+- **Annotation toolbar read-aloud**: Passes the selection's range to `speak`, with the catalog context of the shell holding it. A `data-catalog-idref` region the selection holds whole reads its spoken card; part of one reads as the selected visible text.
 
 **Read-aloud suppression:** `data-tts-suppress` on a content element marks it never-spoken, for items where reading is the construct (decoding, spelling). It is enforced in *every* entry point above — including the selection path, which filters the `Range` because it never walks the DOM — and it overrides both an authored `spoken` card and the learner's PNP entitlement. Speech-only by decision: braille preserves orthography where speech destroys it, and for signing the deciding fact lives in the recording rather than the markup. See [Accessibility Catalogs Integration Guide](../accessibility/accessibility-catalogs-integration-guide.md#suppressing-read-aloud).
 

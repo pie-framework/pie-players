@@ -37,6 +37,7 @@
 		getCanonicalItemId,
 		getFormativeItemView,
 		getItemPlayerParams,
+		getItemSettings,
 		getTimedMediaItemView,
 	} from "./section-player-view-state.js";
 	import {
@@ -735,6 +736,7 @@
 				itemCount={items.length}
 				isCurrent={itemIndex === currentItemIndex}
 				{canonicalItemId}
+				itemSettings={getItemSettings({ compositionModel, item })}
 				{baseHeadingLevel}
 				playerParams={getItemPlayerParams({
 					item,

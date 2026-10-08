@@ -10,7 +10,7 @@ import { describe, expect, test } from "bun:test";
 
 import type {
 	AssessmentEntity,
-	AssessmentItemRef,
+	ItemSettings,
 } from "@pie-players/pie-players-shared/types";
 
 import { ToolPolicyEngine } from "../../src/policy/core/ToolPolicyEngine.js";
@@ -20,15 +20,14 @@ const FEATURE = "signLanguage";
 
 function engine(inputs: {
 	assessment?: AssessmentEntity | null;
-	currentItemRef?: AssessmentItemRef;
+	itemSettings?: ItemSettings;
 }) {
-	return new ToolPolicyEngine({
+	const created = new ToolPolicyEngine({
 		toolRegistry: new ToolRegistry(),
-		inputs: {
-			assessment: inputs.assessment ?? null,
-			currentItemRef: inputs.currentItemRef ?? null,
-		},
+		inputs: { assessment: inputs.assessment ?? null },
 	});
+	if (inputs.itemSettings) created.registerItemSettings("i1", inputs.itemSettings);
+	return created;
 }
 
 describe("a denial says whether an assessment was bound", () => {
@@ -87,15 +86,12 @@ describe("granting is unchanged", () => {
 	});
 
 	test("unbound is not a synonym for denied", () => {
-		// An item ref carries its own mandate, so precedence 4 grants with no
-		// assessment in sight — and the source's reason survives, because the
-		// feature was in fact decided.
+		// An item's settings carry their own mandate, so precedence 4 grants within
+		// the item's scope with no assessment in sight — and the source's reason
+		// survives, because the feature was in fact decided.
 		const decision = engine({
-			currentItemRef: {
-				identifier: "i1",
-				settings: { requiredTools: [FEATURE] },
-			} as AssessmentItemRef,
-		}).decideFeature(FEATURE);
+			itemSettings: { requiredTools: [FEATURE] },
+		}).decideFeature(FEATURE, { level: "item", scopeId: "i1" });
 		expect(decision).toMatchObject({
 			granted: true,
 			assessmentBound: false,

@@ -1,4 +1,12 @@
-import { afterEach, describe, expect, test } from "bun:test";
+import { GlobalRegistrator } from "@happy-dom/global-registrator";
+import {
+	afterAll,
+	afterEach,
+	beforeAll,
+	describe,
+	expect,
+	test,
+} from "bun:test";
 import { PlaybackState, TTSService } from "../src/services/TTSService";
 import type {
 	ITTSProvider,
@@ -6,6 +14,19 @@ import type {
 	TTSConfig,
 	TTSProviderCapabilities,
 } from "@pie-players/pie-tts";
+import { contentWith } from "./fixtures/read-aloud-content";
+
+beforeAll(() => {
+	if (!GlobalRegistrator.isRegistered) {
+		GlobalRegistrator.register();
+	}
+});
+
+afterAll(() => {
+	if (GlobalRegistrator.isRegistered) {
+		GlobalRegistrator.unregister();
+	}
+});
 
 class TelemetryMockProvider implements ITTSProvider {
 	readonly providerId = "mock";
@@ -63,7 +84,6 @@ class FailingInitializeProvider implements ITTSProvider {
 	destroy(): void {}
 }
 
-const originalWindow = (globalThis as any).window;
 const originalSpeechSynthesis = (globalThis as any).speechSynthesis;
 const originalUtterance = (globalThis as any).SpeechSynthesisUtterance;
 
@@ -103,13 +123,12 @@ const installBrowserSpeechMocks = () => {
 	};
 
 	(globalThis as any).SpeechSynthesisUtterance = MockSpeechSynthesisUtterance;
+	// The registered window is `globalThis`, so this is `window.speechSynthesis`.
 	(globalThis as any).speechSynthesis = synth;
-	(globalThis as any).window = { speechSynthesis: synth };
 };
 
 describe("TTSService telemetry", () => {
 	afterEach(() => {
-		(globalThis as any).window = originalWindow;
 		(globalThis as any).speechSynthesis = originalSpeechSynthesis;
 		(globalThis as any).SpeechSynthesisUtterance = originalUtterance;
 	});
@@ -139,7 +158,7 @@ describe("TTSService telemetry", () => {
 			},
 		});
 
-		await service.speak("hello world");
+		await service.speak(contentWith("hello world"));
 
 		expect(emitted.map((entry) => entry.eventName)).toEqual(
 			expect.arrayContaining([
@@ -184,7 +203,7 @@ describe("TTSService telemetry", () => {
 			},
 		});
 
-		await expect(service.speak("hello world")).rejects.toThrow(
+		await expect(service.speak(contentWith("hello world"))).rejects.toThrow(
 			"synthesize failed",
 		);
 		expect(emitted.map((entry) => entry.eventName)).toContain(
@@ -221,7 +240,7 @@ describe("TTSService telemetry", () => {
 		});
 
 		await expect(
-			service.speak("fallback should not mask errors"),
+			service.speak(contentWith("fallback should not mask errors")),
 		).rejects.toThrow("Server returned 503");
 		expect(service.getState()).toBe(PlaybackState.ERROR);
 		expect(emitted.map((entry) => entry.eventName)).not.toContain(
@@ -270,7 +289,7 @@ describe("TTSService telemetry", () => {
 		});
 
 		await expect(
-			service.speak("fallback should succeed"),
+			service.speak(contentWith("fallback should succeed")),
 		).resolves.toBeUndefined();
 		expect(service.getState()).toBe(PlaybackState.IDLE);
 		expect(emitted.map((entry) => entry.eventName)).toContain(
@@ -315,7 +334,7 @@ describe("TTSService telemetry", () => {
 		});
 
 		await expect(
-			service.speak("fallback should not mask errors"),
+			service.speak(contentWith("fallback should not mask errors")),
 		).rejects.toThrow("Missing required SC TTS env vars: TTS_SCHOOLCITY_ISS");
 		expect(service.getState()).toBe(PlaybackState.ERROR);
 		expect(emitted.map((entry) => entry.eventName)).not.toContain(
@@ -352,7 +371,7 @@ describe("TTSService telemetry", () => {
 		});
 
 		await expect(
-			service.speak("fallback should not mask errors"),
+			service.speak(contentWith("fallback should not mask errors")),
 		).rejects.toThrow("Unexpected backend runtime failure");
 		expect(service.getState()).toBe(PlaybackState.ERROR);
 		expect(emitted.map((entry) => entry.eventName)).not.toContain(

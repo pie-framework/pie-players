@@ -18,9 +18,13 @@ QTI 3.0 accessibility catalogs provide alternative representations of content fo
 - **Simplified Language** - Plain language alternatives for cognitive accessibility
 - **Tactile/Extended Descriptions** - For complex diagrams/images
 
-**Spoken** and **sign language** have runtime consumers: `TTSService` for spoken,
-and section-player's per-item media region for signed alternates (gated on the
-`signLanguage` PNP support). The remaining types are declared and resolvable but
+Three types have runtime consumers. `TTSService` reads `spoken` cards. The
+packaged `transcript` capability renders a `transcript` card above the item or
+passage it belongs to, in the section player and the print player: always for a
+card marked `visibility: "always"`, otherwise when policy grants the `transcript`
+support. `@pie-players/pie-tool-sign-language`, which a host registers itself,
+docks a `sign-language` card beside the content when policy grants the
+`signLanguage` support. The remaining types are declared and resolvable, and
 nothing renders them yet. See
 [Sign Language (ASL) Support](../prds/sign-language-asl-support.md) for the
 signing contract.
@@ -213,11 +217,18 @@ const spanish = resolver.getAlternative('greeting', {
   language: 'es-ES'
 });
 
-// Fallback to default if language not available
+// A missing language falls back to the resolver's default language ('en-US'
+// unless it was constructed with another), then to a card in any language
 const german = resolver.getAlternative('greeting', {
   type: 'spoken',
-  language: 'de-DE',     // Not available
-  useFallback: true       // Falls back to en-US
+  language: 'de-DE' // Not available
+});
+
+// useFallback defaults to true; false returns a de-DE card or null
+const germanOnly = resolver.getAlternative('greeting', {
+  type: 'spoken',
+  language: 'de-DE',
+  useFallback: false
 });
 ```
 
@@ -235,21 +246,18 @@ const ttsService = new TTSService();
 // Set catalog resolver
 ttsService.setCatalogResolver(catalogResolver);
 
-// Speak with catalog support
-await ttsService.speak('Hello world', {
+// Speak an element with catalog support
+const welcome = document.querySelector('#welcome');
+await ttsService.speak(welcome, {
   catalogId: 'welcome-message',
   language: 'en-US'
 });
 // If catalog found: Uses pre-authored SSML
 // If catalog not found: Falls back to generated TTS
 
-// Auto-detect from DOM element
-// Note: the actual method signature is ttsService.speak(text, { catalogId, contentElement }),
-// not ttsService.speakElement(). Example:
-const element = document.querySelector('[data-catalog-idref]');
-const catalogId = element.getAttribute('data-catalog-idref');
-await ttsService.speak(element.textContent, { catalogId, contentElement: element });
-// Automatically uses catalog if catalogId resolves
+// Read a range, such as a selection: a docked node it holds whole reads its card
+const range = window.getSelection().getRangeAt(0);
+await ttsService.speak(range, { contentRoot: welcome });
 ```
 
 ---
@@ -488,7 +496,7 @@ See the examples in this guide and in [accessibility-catalogs-integration-guide.
 
 ### Q: Can I use custom catalog types?
 
-**A:** Yes! The `CatalogType` is `string`, so you can use any type identifier. Just document your custom types.
+**A:** Yes. `CatalogType` is open, so the resolver stores and resolves any type. Prefix a custom type with QTI's `ext:` (`ext:glossary`): an unprefixed type PIE does not name is logged as a likely typo.
 
 ### Q: How do I handle video URLs for sign language?
 
@@ -534,9 +542,12 @@ default-language rung. Resolution selects on `language` alone; `signLang` is rea
 afterwards, for the region's accessible label and to refuse a card in a sign
 language the learner did not ask for.
 
-Section-player renders these in a per-item `data-region="media"` region when the
-item carries a matching card **and** policy grants the `signLanguage` PNP
-support. There is no cross-sign-language fallback: if ASL is requested and only
+With `signLanguageRegistration` from `@pie-players/pie-tool-sign-language`
+registered on the registry the section player renders from, the player docks
+these in a `data-region="media"` region beside the item or passage when the
+content carries a matching card **and** policy grants the `signLanguage` PNP
+support. The packaged registry leaves signing out, so without that registration
+nothing renders. There is no cross-sign-language fallback: if ASL is requested and only
 BSL exists, nothing renders rather than a language the learner may not follow.
 `signLanguage` is deliberately excluded from the computed default profile, so it
 has to be granted. See

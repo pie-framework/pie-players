@@ -417,6 +417,20 @@ describe("ToolkitCoordinator disposal", () => {
 		).rejects.toThrow(/disposed/i);
 	});
 
+	test("dispose disposes the read-aloud service, which then refuses to speak", async () => {
+		const coordinator = new ToolkitCoordinator({
+			assessmentId: "tts-disposal",
+			lazyInit: true,
+		});
+		const { ttsService } = coordinator.getServiceBundle();
+
+		await coordinator.dispose();
+
+		await expect(ttsService.speak({} as Element)).rejects.toThrow(
+			"TTS service disposed",
+		);
+	});
+
 	test("dispose waits for admitted readiness and suppresses late ready callbacks", async () => {
 		const ttsInitStarted = deferred();
 		const ttsInitGate = deferred();

@@ -704,14 +704,21 @@
 			resolverDisposer = syncHighlightTargetResolverProvider(readingTarget);
 			playbackStartInFlight = true;
 			statusMessage = interfaceI18n.t('tools.textToSpeech.inline.starting');
-			void ttsService.speak(text, {
+			const service = ttsService;
+			void service.speak(readingTarget, {
 				catalogId: catalogId || undefined,
 				catalogContext: resolveCatalogContext(),
 				language: findContentLanguage(readingTarget, {
 					contentLanguage: language || runtimeContext?.contentLanguage
 				}),
-				contentElement: readingTarget,
-			} as any).catch((error) => {
+			}).then(() => {
+				// Nothing speakable, such as content marked not-to-be-spoken: the
+				// service never left idle, so no state change ends the start.
+				if (playbackStartInFlight && String(service.getState?.() || '') === 'idle') {
+					playbackStartInFlight = false;
+					statusMessage = '';
+				}
+			}).catch((error) => {
 				console.error('[TTS Inline] Error:', error);
 				handlePlaybackStartFailure(resolverDisposer);
 			}).finally(() => {
@@ -794,7 +801,7 @@
 	async function handleSeekForward() {
 		if (!ttsService || !speaking) return;
 		try {
-			await (ttsService as any).seekForward?.(1);
+			await ttsService.seekForward(1);
 			statusMessage = interfaceI18n.t('tools.textToSpeech.inline.skippedForward');
 		} catch (error) {
 			console.error('[TTS Inline] Seek forward failed:', error);
@@ -805,7 +812,7 @@
 	async function handleSeekBackward() {
 		if (!ttsService || !speaking) return;
 		try {
-			await (ttsService as any).seekBackward?.(1);
+			await ttsService.seekBackward(1);
 			statusMessage = interfaceI18n.t('tools.textToSpeech.inline.skippedBackward');
 		} catch (error) {
 			console.error('[TTS Inline] Seek backward failed:', error);

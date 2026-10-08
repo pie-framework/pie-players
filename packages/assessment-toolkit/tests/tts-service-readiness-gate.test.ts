@@ -1,4 +1,5 @@
-import { describe, expect, test } from "bun:test";
+import { GlobalRegistrator } from "@happy-dom/global-registrator";
+import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import type {
 	ITTSProvider,
 	ITTSProviderImplementation,
@@ -6,6 +7,19 @@ import type {
 } from "@pie-players/pie-tts";
 import { TTSService } from "../src/services/TTSService";
 import { isTTSStartFailure } from "../src/services/tts/start-failure";
+import { contentWith } from "./fixtures/read-aloud-content";
+
+beforeAll(() => {
+	if (!GlobalRegistrator.isRegistered) {
+		GlobalRegistrator.register();
+	}
+});
+
+afterAll(() => {
+	if (GlobalRegistrator.isRegistered) {
+		GlobalRegistrator.unregister();
+	}
+});
 
 /**
  * A speak before the service has a provider waits for the readiness gate, so a
@@ -53,12 +67,12 @@ describe("TTSService readiness gate", () => {
 			await service.initialize(provider);
 		});
 
-		await service.speak("hello");
+		await service.speak(contentWith("hello"));
 
 		expect(gateCalls).toBe(1);
 		expect(spoken).toEqual(["hello"]);
 
-		await service.speak("again");
+		await service.speak(contentWith("again"));
 		expect(gateCalls).toBe(1);
 	});
 
@@ -68,7 +82,9 @@ describe("TTSService readiness gate", () => {
 			throw new Error("speech unavailable");
 		});
 
-		const failure = await service.speak("hello").catch((error) => error);
+		const failure = await service
+			.speak(contentWith("hello"))
+			.catch((error) => error);
 		expect((failure as Error).message).toBe("speech unavailable");
 		expect(isTTSStartFailure(failure)).toBe(true);
 	});
@@ -76,7 +92,9 @@ describe("TTSService readiness gate", () => {
 	test("without a gate an uninitialized service still refuses to speak", async () => {
 		const service = new TTSService();
 
-		const failure = await service.speak("hello").catch((error) => error);
+		const failure = await service
+			.speak(contentWith("hello"))
+			.catch((error) => error);
 		expect((failure as Error).message).toBe("TTS service not initialized");
 		expect(isTTSStartFailure(failure)).toBe(true);
 	});
@@ -93,7 +111,9 @@ describe("TTSService readiness gate", () => {
 			}),
 		});
 
-		const failure = await service.speak("hello").catch((error) => error);
+		const failure = await service
+			.speak(contentWith("hello"))
+			.catch((error) => error);
 		expect(isTTSStartFailure(failure)).toBe(false);
 	});
 });

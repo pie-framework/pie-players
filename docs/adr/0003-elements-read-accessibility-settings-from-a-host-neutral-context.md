@@ -78,8 +78,8 @@ required or blocked by the same rules as every other support.
 
 A deliberate trade: AfA PNP 3.0 parameterizes some preferences, and a flat id list carries no
 parameters. `braille.math-type` takes `nemeth` or `ueb`, and `spoken.reading-type` takes
-`screen-reader` or `computer-read-aloud`. A parameterized preference becomes one id per value, as
-the toolkit's vocabulary already has `nemeth` beside `braille` (`pnp-standard-features.ts`).
+`screen-reader` or `computer-read-aloud`. A parameterized preference becomes one id per value, such as
+`nemeth` beside `braille`.
 Language preferences are parameterized by language, which is why `language` is a field of its own.
 
 ## Math accessibility modes
@@ -136,7 +136,8 @@ Preconditions for any mode beyond `mathml`:
 - `@pie-players/pie-context` exports the key and value type. An element may depend on
   `pie-context`, which has no dependencies, and never depends on the toolkit.
 - The toolkit provides the context from `PieAssessmentToolkit`, beside its runtime contexts, and
-  republishes it on `updateAssessment` and `updateCurrentItemRef`. With no assessment bound,
+  republishes it on a policy change. A provider in an item's shell decides with the item's
+  scope, so the item's settings apply to its content. With no assessment bound,
   `decideFeaturePolicy` declines every capability, so `supports` is empty and consumers use their
   defaults.
 - The math adapter requests the context from the element it renders.

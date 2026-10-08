@@ -122,6 +122,7 @@ export type {
 	I18nServiceApi,
 	ToolCoordinatorApi,
 	ToolkitCoordinatorApi,
+	SpeakOptions,
 	TtsServiceApi,
 	ToolState,
 } from "./services/interfaces.js";
@@ -255,15 +256,6 @@ export {
 	resolveToolTag,
 	toToolIdFromTag,
 } from "./tools/tool-tag-map.js";
-// QTI 3.0 Standard Access Features
-export {
-	ALL_STANDARD_ACCESS_FEATURES,
-	EXAMPLE_PNP_CONFIGURATIONS,
-	getFeatureCategory,
-	getFeaturesInCategory,
-	isStandardAccessFeature,
-	QTI_STANDARD_ACCESS_FEATURES,
-} from "./services/pnp-standard-features.js";
 // Media-bearing catalog cards: the generic half, shared by every card form that
 // references a recording rather than carrying text. Owned by
 // `@pie-players/pie-players-shared/media`, which an element can import without
@@ -398,6 +390,10 @@ export {
 	TTS_START_FAILED_CODE,
 } from "./services/tts/start-failure.js";
 export type { SREMathSpeechOptions } from "./services/tts/math-speech.js";
+export type {
+	ToolkitTTSConfig,
+	ToolkitTTSProviderOptions,
+} from "./services/tts/provider-options.js";
 export type {
 	NormalizedTTSSpeedOption,
 	TTSHostToolbarLayout,

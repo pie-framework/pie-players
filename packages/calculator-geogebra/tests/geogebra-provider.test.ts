@@ -47,6 +47,13 @@ function fakeContainer() {
 }
 
 describe("GeoGebraCalculatorProvider", () => {
+	test("declares the attribution GeoGebra's license requires", () => {
+		expect(new GeoGebraCalculatorProvider().attribution).toEqual({
+			label: "Made with GeoGebra®",
+			href: "https://www.geogebra.org/",
+		});
+	});
+
 	test("loads the documented GeoGebra deployment script by default", async () => {
 		let loadedSrc = "";
 		const browserWindow: { GGBApplet?: unknown } = {};

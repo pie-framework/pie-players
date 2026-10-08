@@ -12,7 +12,7 @@ import { describe, expect, test } from "bun:test";
 
 import type {
 	AssessmentEntity,
-	AssessmentItemRef,
+	ItemSettings,
 } from "@pie-players/pie-players-shared/types";
 
 import { ToolPolicyEngine } from "../../src/policy/core/ToolPolicyEngine.js";
@@ -21,17 +21,19 @@ import { ToolRegistry } from "../../src/services/ToolRegistry.js";
 
 const FEATURE = "signLanguage";
 
+/** The scope item `i1`'s content asks feature policy with. */
+const ITEM_SCOPE = { level: "item", scopeId: "i1" } as const;
+
 function engine(inputs: {
 	assessment?: AssessmentEntity;
-	currentItemRef?: AssessmentItemRef;
+	itemSettings?: ItemSettings;
 }) {
-	return new ToolPolicyEngine({
+	const created = new ToolPolicyEngine({
 		toolRegistry: new ToolRegistry(),
-		inputs: {
-			assessment: inputs.assessment ?? null,
-			currentItemRef: inputs.currentItemRef ?? null,
-		},
+		inputs: { assessment: inputs.assessment ?? null },
 	});
+	if (inputs.itemSettings) created.registerItemSettings("i1", inputs.itemSettings);
+	return created;
 }
 
 describe("signLanguage feature eligibility", () => {
@@ -116,23 +118,28 @@ describe("signLanguage feature eligibility", () => {
 				id: "a1",
 				personalNeedsProfile: { supports: [FEATURE] },
 			} as AssessmentEntity,
-			currentItemRef: {
-				identifier: "i1",
-				settings: { restrictedTools: [FEATURE] },
-			} as AssessmentItemRef,
-		}).decideFeature(FEATURE);
+			itemSettings: { restrictedTools: [FEATURE] },
+		}).decideFeature(FEATURE, ITEM_SCOPE);
 		expect(decision.granted).toBe(false);
 		expect(decision).toMatchObject({ rule: "item-restriction", precedence: 3 });
+	});
+
+	test("an item restriction does not reach a decision outside the item's scope", () => {
+		const decision = engine({
+			assessment: {
+				id: "a1",
+				personalNeedsProfile: { supports: [FEATURE] },
+			} as AssessmentEntity,
+			itemSettings: { restrictedTools: [FEATURE] },
+		}).decideFeature(FEATURE);
+		expect(decision).toMatchObject({ granted: true, rule: "pnp-support" });
 	});
 
 	test("an item requirement mandates it", () => {
 		const decision = engine({
 			assessment: { id: "a1" } as AssessmentEntity,
-			currentItemRef: {
-				identifier: "i1",
-				settings: { requiredTools: [FEATURE] },
-			} as AssessmentItemRef,
-		}).decideFeature(FEATURE);
+			itemSettings: { requiredTools: [FEATURE] },
+		}).decideFeature(FEATURE, ITEM_SCOPE);
 		expect(decision).toMatchObject({
 			granted: true,
 			rule: "item-requirement",
@@ -163,11 +170,8 @@ describe("signLanguage feature eligibility", () => {
 				settings: { toolConfigs: { [FEATURE]: { signLang: "bfi" } } },
 				personalNeedsProfile: { supports: [FEATURE] },
 			} as AssessmentEntity,
-			currentItemRef: {
-				identifier: "i1",
-				settings: { toolParameters: { [FEATURE]: { signLang: "ase" } } },
-			} as AssessmentItemRef,
-		}).decideFeature(FEATURE);
+			itemSettings: { toolParameters: { [FEATURE]: { signLang: "ase" } } },
+		}).decideFeature(FEATURE, ITEM_SCOPE);
 		expect(decision.parameters).toEqual({ signLang: "ase" });
 	});
 

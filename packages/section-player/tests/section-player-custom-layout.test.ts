@@ -2,12 +2,14 @@
  * Custom section layouts: the kernel host's default body, the layout context
  * the panes read, and the rule that one pane of each kind renders.
  *
- * The helpers run against happy-dom directly. `<pie-section-player-kernel-host>`
- * loads from the package build, so rebuild the package before running this
- * file. pie-context's event classes extend the `Event` of the moment the module
- * first loads, and a `dispatchEvent` accepts only its own realm's events, so
- * this file re-bases them onto happy-dom's `Event` while it runs and puts back
- * the base the rest of the run expects when it ends.
+ * The helpers run against happy-dom directly, and `<pie-section-player-kernel-host>`
+ * registers from source. The toolkit's `components/*-element` entries import
+ * their build output, so this file stubs them and registers the toolkit's
+ * elements from their `.svelte` sources. pie-context's event classes extend the
+ * `Event` of the moment the module first loads, and a `dispatchEvent` accepts
+ * only its own realm's events, so this file re-bases them onto happy-dom's
+ * `Event` while it runs and puts back the base the rest of the run expects when
+ * it ends.
  */
 
 import { GlobalRegistrator } from "@happy-dom/global-registrator";
@@ -17,6 +19,7 @@ import {
 	beforeAll,
 	describe,
 	expect,
+	mock,
 	test,
 } from "bun:test";
 
@@ -54,7 +57,23 @@ const { getHostElementFromAnchor } = await import(
 const { isOwnSectionPlayerEvent } = await import(
 	"../src/components/shared/section-player-own-event.js"
 );
-await import("../dist/pie-section-player.js");
+const toolkitComponents = new URL(
+	"../../assessment-toolkit/src/components/",
+	import.meta.url,
+);
+const TOOLKIT_ELEMENTS = {
+	"item-scope-element": "ItemScope",
+	"item-toolbar-element": "ItemToolBar",
+	"pie-assessment-toolkit-element": "PieAssessmentToolkit",
+	"section-toolbar-element": "SectionToolBar",
+};
+for (const entry of Object.keys(TOOLKIT_ELEMENTS)) {
+	mock.module(new URL(`${entry}.ts`, toolkitComponents).pathname, () => ({}));
+}
+for (const component of Object.values(TOOLKIT_ELEMENTS)) {
+	await import(new URL(`${component}.svelte`, toolkitComponents).pathname);
+}
+await import("../src/components/PieSectionPlayerKernelHostElement.svelte");
 
 type LayoutContext =
 	import("../src/components/shared/section-player-layout-context.js").SectionPlayerLayoutContext;

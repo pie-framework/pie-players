@@ -6,7 +6,7 @@ The Tool Registry provides a **registry-based system** for managing assessment t
 
 The Tool Registry replaces hardcoded tool lists with a flexible, extensible system that:
 
-1. **Enforces two-pass visibility model**: Orchestrator determines allowed tools (Pass 1), tools decide relevance (Pass 2)
+1. **Enforces a three-pass visibility model**: the orchestrator determines allowed tools (Pass 1), tools decide relevance (Pass 2), and a tool that declares an applicability gate removes itself from content it cannot act on (Pass 3)
 2. **Grants tools from PNP profiles**: a profile's support id is the `toolId` it grants
 3. **Context-aware filtering**: Tools show/hide based on content analysis
 4. **Type-safe registrations**: Full TypeScript support with standardized interfaces
@@ -20,7 +20,7 @@ The Tool Registry replaces hardcoded tool lists with a flexible, extensible syst
 
 ## Architecture
 
-### Two-Pass Visibility Model
+### Three-Pass Visibility Model
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
@@ -30,7 +30,7 @@ The Tool Registry replaces hardcoded tool lists with a flexible, extensible syst
 │  Pass 1: Determines allowedToolIds[]                        │
 │  - Reads QTI 3.0 PNP profile                                │
 │  - Applies institutional policies                           │
-│  - Maps accessFeature → toolIds via ToolRegistry            │
+│  - Grants by tool id: a support id is the toolId            │
 └──────────────────────┬──────────────────────────────────────┘
                        │ allowedToolIds: ["calculator", "textToSpeech", ...]
                        ▼
@@ -41,7 +41,12 @@ The Tool Registry replaces hardcoded tool lists with a flexible, extensible syst
 │  Pass 2: Filters by tool relevance                          │
 │  - Checks supportedLevels (item/passage/element)            │
 │  - Calls isVisibleInContext(context)                        │
+│  - Skipped for required/alwaysAvailable grants              │
 │  - Returns visible tools                                    │
+│                                                             │
+│  Pass 3: Vetoes inapplicable tools                          │
+│  - Calls isApplicableToContent(context) where declared      │
+│  - Removes the tool even under a grant                      │
 └──────────────────────┬──────────────────────────────────────┘
                        │ visibleTools: [ToolRegistration, ...]
                        ▼
@@ -62,7 +67,7 @@ Tools can **hide themselves** but cannot **override orchestrator's NO**:
 
 This is enforced architecturally: `filterVisibleInContext()` only filters the `allowedToolIds` array.
 
-`<pie-item-toolbar>` skips Pass 2 at section level, where relevance would depend on item content, and for a tool whose policy entry is `required` or `alwaysAvailable`, so a relevance heuristic cannot withdraw a granted accommodation. A registration can also declare `isApplicableToContent(context)`; below section level a `false` answer removes the tool from the toolbar even under a grant, unless a host resolver decided that tool's visibility. The answer eliminator declares it, answering `false` for content with no choice interaction.
+`<pie-item-toolbar>` skips Pass 2 at section level, where relevance would depend on item content, and for a tool whose policy entry is `required` or `alwaysAvailable`, so a relevance heuristic cannot withdraw a granted accommodation. Pass 3 runs below section level once content has resolved: a registration that declares `isApplicableToContent(context)` and answers `false` for every context at its placement is removed even under a grant, because a control that provably does nothing serves no learner. A tool whose visibility a host resolver decided keeps that answer. The answer eliminator declares the gate, answering `false` for content with no choice interaction.
 
 ### Refresh / Init Contract
 
@@ -72,82 +77,16 @@ init/render refresh:
 1. Resolve `allowedToolIds` (Pass 1).
 2. Rebuild the current `ToolContext`.
 3. Call `filterVisibleInContext(allowedToolIds, context)` (Pass 2).
-4. Render only the resulting buttons.
+4. Drop each tool for which `isApplicableToAnyContext(toolId, contexts)` is `false` (Pass 3).
+5. Render only the resulting buttons.
 
 This keeps visibility deterministic and context-driven for every refresh cycle.
 
-## QTI 3.0 Standard Access Features
+## Support ids
 
-The toolkit includes comprehensive QTI 3.0 / IMS Access for All (AfA) 3.0 standard features in `pnp-standard-features.ts`. They are reference vocabulary: a profile grants a tool by its `toolId`, so a feature id grants a packaged tool only where the names coincide (`calculator`, `textToSpeech`, `ruler`, `protractor`, `graph`, `periodicTable`, `answerEliminator`, `signLanguage`, `transcript`). A host holding a profile in AfA terms translates the rest, for example `readingMask` to `lineReader` or `highlighting` to `annotationToolbar`.
+A tool's `toolId` is its PNP support id: a profile, district policy or item grants a tool by listing its id, and the registry a host composes is the only list of ids a deployment recognizes. Which supports a deployment offers is therefore known only at runtime, from the tools registered and the policy applied to them. An id no registered tool carries raises `tool-policy.unknownSupportId`.
 
-### Standard Feature Categories
-
-```typescript
-import { QTI_STANDARD_ACCESS_FEATURES } from '@pie-players/pie-assessment-toolkit';
-
-// 8 categories with 96 standardized features:
-QTI_STANDARD_ACCESS_FEATURES.visual          // magnification, contrast, display
-QTI_STANDARD_ACCESS_FEATURES.auditory        // TTS, captions, audio controls
-QTI_STANDARD_ACCESS_FEATURES.motor           // keyboard, timing, input
-QTI_STANDARD_ACCESS_FEATURES.cognitive       // simplification, focus, tools
-QTI_STANDARD_ACCESS_FEATURES.reading         // spacing, masking, highlighting
-QTI_STANDARD_ACCESS_FEATURES.navigation      // structure, search, skip
-QTI_STANDARD_ACCESS_FEATURES.linguistic      // translation, glossary
-QTI_STANDARD_ACCESS_FEATURES.assessment      // calculator, ruler, answer masking
-```
-
-### Example Access Features
-
-```typescript
-// Visual accessibility
-"magnification"           // QTI 3.0 visual.magnification
-"screenMagnifier"         // QTI 3.0 visual.screenMagnifier
-"highContrastDisplay"     // QTI 3.0 visual.highContrastDisplay
-"colorContrast"           // QTI 3.0 visual.colorContrast
-"invertColors"            // QTI 3.0 visual.invertColors
-
-// Auditory accessibility
-"textToSpeech"            // QTI 3.0 auditory.textToSpeech
-"readAloud"               // QTI 3.0 auditory.readAloud
-"captions"                // QTI 3.0 auditory.captions
-"signLanguage"            // QTI 3.0 auditory.signLanguage
-
-// Cognitive/reading support
-"calculator"              // QTI 3.0 cognitive.calculator
-"highlighting"            // QTI 3.0 cognitive.highlighting
-"annotations"             // QTI 3.0 cognitive.annotations
-"readingMask"             // QTI 3.0 reading.readingMask
-"readingGuide"            // QTI 3.0 reading.readingGuide
-
-// Assessment tools
-"graphingCalculator"      // QTI 3.0 assessment.graphingCalculator
-"ruler"                   // QTI 3.0 assessment.ruler
-"protractor"              // QTI 3.0 assessment.protractor
-"periodicTable"           // QTI 3.0 assessment.periodicTable
-"answerMasking"           // QTI 3.0 assessment.answerMasking
-```
-
-### Example PNP Configurations
-
-The toolkit provides example configurations showing how standard features combine for different accessibility needs:
-
-```typescript
-import { EXAMPLE_PNP_CONFIGURATIONS } from '@pie-players/pie-assessment-toolkit';
-
-// Example: Student with low vision
-EXAMPLE_PNP_CONFIGURATIONS.lowVision.features
-// → ["magnification", "screenMagnifier", "highContrastDisplay", "textToSpeech", ...]
-
-// Example: Student with dyslexia
-EXAMPLE_PNP_CONFIGURATIONS.dyslexia.features
-// → ["textToSpeech", "readAloud", "highlighting", "readingMask", ...]
-
-// Example: Student with ADHD
-EXAMPLE_PNP_CONFIGURATIONS.adhd.features
-// → ["reducedDistraction", "highlighting", "annotations", "timingControl", ...]
-```
-
-**Note**: These are illustrative examples, not official QTI profiles. Real student profiles are institution-specific combinations of standard features.
+A new tool whose capability AfA PNP 3.0 names takes that term as its id. The packaged ids that coincide with AfA terms are `calculator`, `textToSpeech`, `ruler`, `protractor`, `graph`, `periodicTable`, `answerEliminator` and `signLanguage`. A host holding a profile in AfA terms translates the rest, for example `readingMask` to `lineReader` or `highlighting` to `annotationToolbar`.
 
 ## Tool Registration
 
@@ -303,10 +242,10 @@ import {
   DEFAULT_TOOL_MODULE_LOADERS,
 } from '@pie-players/pie-default-tool-loaders';
 
-// Create registry with the packaged PIE tools
+// Registrations only: the host defines the tool elements itself
 const toolRegistry = createPackagedToolRegistry();
 
-// Optional: wire lazy module loaders at bootstrap
+// Registrations plus module loaders: each tool's package loads on first render
 const lazyRegistry = createPackagedToolRegistry({
   toolModuleLoaders: DEFAULT_TOOL_MODULE_LOADERS
 });
@@ -366,16 +305,23 @@ const selectiveRegistry = createPackagedToolRegistry({
 
 ```typescript
 import { ToolkitCoordinator } from '@pie-players/pie-assessment-toolkit';
-import { createPackagedToolRegistry } from '@pie-players/pie-default-tool-loaders';
+import {
+  createPackagedToolRegistry,
+  DEFAULT_TOOL_MODULE_LOADERS,
+} from '@pie-players/pie-default-tool-loaders';
 
-const toolRegistry = createPackagedToolRegistry();
+// The toolbar rendering below mounts tool elements, so the registry carries loaders
+const toolRegistry = createPackagedToolRegistry({
+  toolModuleLoaders: DEFAULT_TOOL_MODULE_LOADERS
+});
 const coordinator = new ToolkitCoordinator({
   assessmentId: assessment.id,
   toolRegistry,
   tools: { placement: { item: ["calculator", "textToSpeech", "theme"] } }
 });
 coordinator.updateAssessment(assessment);
-coordinator.updateCurrentItemRef(itemRef);
+// An item's <pie-item-scope> registers its settings when it mounts.
+coordinator.registerItemSettings(itemRef.identifier, itemRef.settings);
 
 const allowedToolIds = coordinator
   .decideToolPolicy({ level: "item", scope: { level: "item", scopeId: itemRef.identifier } })
@@ -383,7 +329,7 @@ const allowedToolIds = coordinator
 // Returns: ["calculator", "textToSpeech", "theme", ...]
 ```
 
-The policy engine reads the assessment's `personalNeedsProfile`, `settings.districtPolicy` and `settings.testAdministration`, and the current item ref's `settings`. A support id in any of them is a tool id: `supports: ["calculator"]` grants the tool registered as `calculator`, and an id no tool is registered under produces a `tool-policy.unknownSupportId` diagnostic.
+The policy engine reads the assessment's `personalNeedsProfile`, `settings.districtPolicy` and `settings.testAdministration`, and, for a decision scoped to an item, that item's registered `settings`. A support id in any of them is a tool id: `supports: ["calculator"]` grants the tool registered as `calculator`, and an id no tool is registered under produces a `tool-policy.unknownSupportId` diagnostic.
 
 ### Filtering by Context
 
@@ -402,14 +348,21 @@ const context: ItemToolContext = {
   item
 };
 
-const visibleTools = toolRegistry.filterVisibleInContext(allowedToolIds, context);
-// Returns: ToolRegistration[] (only tools that passed both gates)
+const relevantTools = toolRegistry.filterVisibleInContext(allowedToolIds, context);
+
+// Pass 3: Drop tools that declare they cannot act on this content
+const visibleTools = relevantTools.filter((tool) =>
+  toolRegistry.isApplicableToAnyContext(tool.toolId, [context])
+);
+// Returns: ToolRegistration[] (only tools that passed all three gates)
 ```
 
 ### Toolbar Rendering
 
 ```typescript
-// Render through the registry, which attaches its component overrides
+// Load the tools' element modules, then render through the registry,
+// which attaches its component overrides
+await toolRegistry.ensureToolModulesLoaded(visibleTools.map((tool) => tool.toolId));
 for (const tool of visibleTools) {
   const result = toolRegistry.renderForToolbar(tool.toolId, context, toolbarContext);
   if (!result) continue;
@@ -425,7 +378,7 @@ for (const tool of visibleTools) {
 
 ### ItemToolBar
 
-`<pie-item-toolbar>` renders tool buttons only from its own `toolRegistry`; without one it renders none. Inside `<pie-assessment-toolkit>` it shows the coordinator's policy decision for its level and scope. The toolkit forwards its `assessment` and `currentItemRef` properties to the coordinator it builds; a host that passes its own `coordinator` binds them with `updateAssessment` and `updateCurrentItemRef`.
+`<pie-item-toolbar>` renders tool buttons only from its own `toolRegistry`; without one it renders none. Inside `<pie-assessment-toolkit>` it shows the coordinator's policy decision for its level and scope. The toolkit forwards its `assessment` property to the coordinator it builds; a host that passes its own `coordinator` binds it with `updateAssessment`. An item's settings reach the decisions of its own item-level toolbar through the `settings` property of its `<pie-item-scope>`; section- and assessment-level toolbars ignore them ([PNP Configuration](./PNP_CONFIGURATION.md#scope-of-item-settings)).
 
 ```html
 <pie-assessment-toolkit id="toolkit">
@@ -438,9 +391,10 @@ for (const tool of visibleTools) {
   toolkit.tools = { placement: { item: ["calculator", "textToSpeech", "answerEliminator"] } };
   toolkit.toolRegistry = toolRegistry;
   toolkit.assessment = assessment;
-  toolkit.currentItemRef = itemRef;
 
-  document.getElementById("scope").item = item;
+  const scope = document.getElementById("scope");
+  scope.item = item;
+  scope.settings = itemRef.settings;
   document.getElementById("toolbar").toolRegistry = toolRegistry;
 </script>
 ```
@@ -565,11 +519,12 @@ The coordinator supplies the other half:
 ```ts
 coordinator.canRequestTool("dictionary"); // gate the affordance before offering it
 coordinator.requestTool({ toolId: "dictionary", params: { term } });
+coordinator.canRequestTool("calculator", "item", itemId); // one card's toolbar
 ```
 
 A toolbar claims requests for its placement level through `registerToolRequestTarget`, turns the unscoped id into a scoped instance, applies `params` and shows the tool. `params` layer over whatever a host's `ToolContextResolver` returned and arrive through `getToolRenderParams`, so a tool already reading that seam receives a request with no new code.
 
-Resolution is a claim, not a broadcast: exactly one target answers, the one at the requested level that hosts the tool. `level` defaults to `"section"`, the level at which a whole section shares one instance and the level a section-scoped gateway can address unambiguously. At `"item"` and `"passage"` a section holds one target per card and the first that hosts the tool claims the request, so a requester needing a particular card's instance cannot express that.
+Resolution is a claim, not a broadcast: exactly one target answers, the one at the requested level that hosts the tool. `level` defaults to `"section"`, the level at which a whole section shares one instance and the level a section-scoped gateway can address unambiguously. At `"item"` and `"passage"` a section holds one target per card and the first that hosts the tool claims the request, unless the request names the card's `scopeId`; a control inside one card, such as the inline calculator, names it. A toolbar whose module load for a tool failed stops hosting that tool, and the coordinator re-announces the targets through `onToolRequestTargetsChange`.
 
 An action is a shortcut and never a capability's only entry point. Chromium will not extend a selection with Shift+Arrow in non-editable content unless caret browsing is on — an OS toggle absent on mobile — so a sighted keyboard-only learner cannot originate one. A capability reachable only through a selection gateway is unreachable for them, which is why both dictionaries keep a toolbar button and their own term field.
 
@@ -735,14 +690,21 @@ export const myToolRegistration: ToolRegistration = {
 
 ```typescript
 import { ToolRegistry } from '@pie-players/pie-assessment-toolkit';
-import { createPackagedToolRegistry } from '@pie-players/pie-default-tool-loaders';
+import {
+  createPackagedToolRegistry,
+  DEFAULT_TOOL_MODULE_LOADERS,
+} from '@pie-players/pie-default-tool-loaders';
 
 const registry = new ToolRegistry();
 registry.register(myToolRegistration);
 registry.setComponentOverrides({ toolTagMap: { myTool: "my-tool" } });
 
-// Beside the packaged tools; setComponentOverrides would replace their tag map
-const packagedRegistry = createPackagedToolRegistry({ toolTagMap: { myTool: "my-tool" } });
+// Beside the packaged tools; setComponentOverrides would replace their tag map.
+// The loaders load each packaged tool's element on first render.
+const packagedRegistry = createPackagedToolRegistry({
+  toolModuleLoaders: DEFAULT_TOOL_MODULE_LOADERS,
+  toolTagMap: { myTool: "my-tool" }
+});
 packagedRegistry.register(myToolRegistration);
 ```
 
@@ -767,13 +729,6 @@ import type {
   RubricToolContext
 } from '@pie-players/pie-assessment-toolkit';
 
-import {
-  QTI_STANDARD_ACCESS_FEATURES,
-  EXAMPLE_PNP_CONFIGURATIONS,
-  isStandardAccessFeature,
-  getFeatureCategory,
-  getFeaturesInCategory
-} from '@pie-players/pie-assessment-toolkit';
 ```
 
 ## Registry-Based Configuration
@@ -798,7 +753,7 @@ const coordinator = new ToolkitCoordinator({
   tools: { placement: { item: ["calculator", "textToSpeech"] } }
 });
 coordinator.updateAssessment(assessment);
-coordinator.updateCurrentItemRef(itemRef);
+coordinator.registerItemSettings(itemRef.identifier, itemRef.settings);
 const allowedToolIds = coordinator
   .decideToolPolicy({ level: "item", scope: { level: "item", scopeId: itemRef.identifier } })
   .visibleTools.map((tool) => tool.toolId);
@@ -835,17 +790,19 @@ The policy engine implements a **precedence hierarchy** based on common assessme
 2. **Test administration override**
    - **Purpose**: Proctor/administrator operational control
    - **Example**: Proctor disables TTS due to technical issues in testing lab
-   - **Effect**: Tool disabled for this test session
+   - **Effect**: `testAdministration.toolOverrides[toolId]` set to `false` disables the tool for this test session, and `true` grants it
 
 3. **Item restriction** (per-item block)
    - **Purpose**: Content author can disable for specific items
    - **Example**: Calculator disabled on mental math questions
-   - **Effect**: Tool unavailable only for this item
+   - **Effect**: Tool unavailable on this item's own toolbar
 
 4. **Item requirement** (forces enable)
    - **Purpose**: Required by IEP/504 or content needs
    - **Example**: Calculator required for multi-step word problems
-   - **Effect**: Tool must be available for this item
+   - **Effect**: Tool must be available on this item's own toolbar
+
+Rungs 3 and 4 apply to decisions scoped to the item: its item-level toolbar and its content's feature decisions. A section- or assessment-level toolbar skips them and reports each tool on it that a mounted item restricts or requires with a `tool-policy.itemSettingNotApplied` diagnostic; place the tool at item level to enforce the setting per item.
 
 5. **District requirement**
    - **Purpose**: Institutional accessibility requirements
@@ -876,9 +833,9 @@ This hierarchy aligns with typical **IEP/504 accommodation hierarchies** in US K
 
 ## Best Practices
 
-1. **Name tools after standard QTI 3.0 features where one fits** - A tool id is its support id, so check `QTI_STANDARD_ACCESS_FEATURES` before inventing a name
+1. **Keep a tool id stable once profiles use it** - A profile grants the tool by its id, so renaming it drops the grant from every profile that lists the old id. An existing id keeps its name where the AfA term differs: the packaged `lineReader` serves the AfA `readingMask` feature
 2. **Make tools context-aware** - Use helper functions like `hasMathContent()`, `hasReadableText()`
-3. **Test both passes** - Verify tools respect orchestrator allowance AND context relevance
+3. **Test all three passes** - Verify tools respect orchestrator allowance, context relevance and, where declared, the applicability veto
 4. **Keep visibility logic simple** - Complex logic should be in helper functions, not in `isVisibleInContext()`
 5. **Understand precedence** - Know which governance rules take priority in your platform
 

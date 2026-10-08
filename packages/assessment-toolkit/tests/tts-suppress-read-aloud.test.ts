@@ -104,10 +104,7 @@ describe("read-aloud suppression across every speech path", () => {
 		const root = document.createElement("div");
 		root.innerHTML = `<p>Which word begins with the same sound as <span data-tts-suppress="all">cake</span>?</p>`;
 
-		await service.speak(root.textContent || "", {
-			contentElement: root,
-			language: "en-US",
-		} as any);
+		await service.speak(root, { language: "en-US" });
 
 		expect(impl.speakCalls).toHaveLength(1);
 		expect(impl.speakCalls[0]).not.toContain("cake");
@@ -132,10 +129,7 @@ describe("read-aloud suppression across every speech path", () => {
 		const root = document.createElement("div");
 		root.innerHTML = `<p>Pick one: <span data-catalog-idref="choice-a" data-tts-suppress="all">cake</span> or not.</p>`;
 
-		await service.speak(root.textContent || "", {
-			contentElement: root,
-			language: "en-US",
-		} as any);
+		await service.speak(root, { language: "en-US" });
 
 		// The card says *how* to speak the node; suppression says it is not spoken
 		// at all. A card that won an authored-SSML race here would be a leak with
@@ -161,10 +155,7 @@ describe("read-aloud suppression across every speech path", () => {
 		const root = document.createElement("div");
 		root.innerHTML = `<p><span data-catalog-idref="prompt">Prompt</span> <span data-tts-suppress="computer-read-aloud">cake</span> tail.</p>`;
 
-		await service.speak(root.textContent || "", {
-			contentElement: root,
-			language: "en-US",
-		} as any);
+		await service.speak(root, { language: "en-US" });
 
 		expect(impl.speakCalls).toEqual(["authored prompt", "tail."]);
 	});
@@ -205,10 +196,7 @@ describe("read-aloud suppression across every speech path", () => {
 		const root = document.createElement("div");
 		root.innerHTML = `<p>Rhymes with <span data-catalog-idref="choice-a" data-tts-suppress="all">cake</span>?</p>`;
 
-		await service.speak(root.textContent || "", {
-			contentElement: root,
-			language: "en-US",
-		} as never);
+		await service.speak(root, { language: "en-US" });
 
 		expect(impl.speakCalls.join(" | ")).not.toContain("cake");
 		// Still resolvable for the region that renders it: a deaf candidate does not
@@ -221,6 +209,48 @@ describe("read-aloud suppression across every speech path", () => {
 		).toBeDefined();
 	});
 
+	test("a named card does not read content marked not-to-be-spoken", async () => {
+		const { impl, service } = await newService();
+		service.setCatalogResolver(
+			new AccessibilityCatalogResolver([
+				{
+					identifier: "prompt",
+					cards: [
+						{ catalog: "spoken", language: "en-US", content: "the word cake" },
+					],
+				},
+			]),
+		);
+		const section = document.createElement("section");
+		section.setAttribute("data-tts-suppress", "all");
+		section.innerHTML = "<p>cake</p>";
+		document.body.append(section);
+
+		await silenceWarnings(async () => {
+			await service.speak(section.querySelector("p") as Element, {
+				catalogId: "prompt",
+				language: "en-US",
+			});
+		});
+
+		// Naming the card is how a tool reads a region; it is not a route around
+		// the suppression an ancestor declares.
+		expect(impl.speakCalls).toEqual([]);
+		section.remove();
+	});
+
+	test("an element holding only suppressed content reads nothing", async () => {
+		const { impl, service } = await newService();
+		const root = document.createElement("div");
+		root.innerHTML = `<p><span data-tts-suppress="all">cake</span></p>`;
+
+		await silenceWarnings(async () => {
+			await service.speak(root, { language: "en-US" });
+		});
+
+		expect(impl.speakCalls).toEqual([]);
+	});
+
 	test("selection read-aloud refuses a selection inside suppressed content", async () => {
 		const { impl, service } = await newService();
 		const root = document.createElement("div");
@@ -231,7 +261,7 @@ describe("read-aloud suppression across every speech path", () => {
 		range.setEnd(suppressedText, "cake".length);
 
 		await silenceWarnings(async () => {
-			await service.speakRange(range, { contentRoot: root });
+			await service.speak(range, { contentRoot: root });
 		});
 
 		// Selecting the word and pressing read-aloud is the obvious way around a
@@ -249,7 +279,7 @@ describe("read-aloud suppression across every speech path", () => {
 		range.setStart(paragraph.firstChild as Text, 0);
 		range.setEnd(paragraph.lastChild as Text, " now.".length);
 
-		await service.speakRange(range, { contentRoot: root });
+		await service.speak(range, { contentRoot: root });
 
 		expect(impl.speakCalls).toEqual(["Read now."]);
 	});
@@ -273,7 +303,7 @@ describe("read-aloud suppression across every speech path", () => {
 			updateTTSHighlightStyle: () => {},
 		} as any);
 
-		await service.speakRange(range, { contentRoot: root });
+		await service.speak(range, { contentRoot: root });
 
 		expect(impl.speakCalls).toEqual(["these"]);
 		// The offset the highlighter uses indexes into the highlight text, which

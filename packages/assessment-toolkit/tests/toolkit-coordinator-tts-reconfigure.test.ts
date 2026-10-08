@@ -1,7 +1,21 @@
-import { describe, expect, test } from "bun:test";
+import { GlobalRegistrator } from "@happy-dom/global-registrator";
+import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { ToolkitCoordinator } from "../src/services/ToolkitCoordinator.js";
 import { createTestToolRegistry } from "./fixtures/test-tool-registry.js";
 import type { ToolRegistration } from "../src/services/ToolRegistry.js";
+import { contentWith } from "./fixtures/read-aloud-content.js";
+
+beforeAll(() => {
+	if (!GlobalRegistrator.isRegistered) {
+		GlobalRegistrator.register();
+	}
+});
+
+afterAll(() => {
+	if (GlobalRegistrator.isRegistered) {
+		GlobalRegistrator.unregister();
+	}
+});
 
 describe("ToolkitCoordinator TTS reconfigure sequencing", () => {
 	test("the TTS service highlights through the coordinator's highlighter from construction", () => {
@@ -224,11 +238,10 @@ describe("ToolkitCoordinator TTS reconfigure sequencing", () => {
 		}
 		const globals = globalThis as Record<string, unknown>;
 		const saved = {
-			window: globals.window,
 			speechSynthesis: globals.speechSynthesis,
 			SpeechSynthesisUtterance: globals.SpeechSynthesisUtterance,
 		};
-		globals.window = { setTimeout, clearTimeout, speechSynthesis: synth };
+		// The registered window is `globalThis`, so this is `window.speechSynthesis`.
 		globals.speechSynthesis = synth;
 		globals.SpeechSynthesisUtterance = FakeUtterance;
 		try {
@@ -246,10 +259,10 @@ describe("ToolkitCoordinator TTS reconfigure sequencing", () => {
 					},
 				},
 			});
-			await coordinator.ttsService.speak("Before");
+			await coordinator.ttsService.speak(contentWith("Before"));
 
 			coordinator.updateToolConfig("textToSpeech", { defaultVoice: "Voice B" });
-			await coordinator.ttsService.speak("After");
+			await coordinator.ttsService.speak(contentWith("After"));
 
 			expect(spokenWith).toEqual(["Voice A", "Voice B"]);
 		} finally {

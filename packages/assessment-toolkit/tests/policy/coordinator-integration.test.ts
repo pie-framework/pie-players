@@ -7,25 +7,22 @@
  *   - `decideToolPolicy(...)` round-trips through the engine for the
  *     section level under the no-assessment default.
  *   - `onPolicyChange(...)` fires for `updateAssessment`,
- *     `updateCurrentItemRef`, `updateToolConfig`, `updateToolsPlacement`,
+ *     `registerItemSettings`, `updateToolConfig`, `updateToolsPlacement`,
  *     and `setPnpEnforcement`.
  *   - `pnpEnforcement: "off"` short-circuits the PNP/profile source so a
  *     PNP-supported tool does NOT auto-promote to `alwaysAvailable`.
  *   - The auto-mode heuristic — `pnpEnforcement` defaults to `"off"`
  *     until profile material is bound (PNP / district policy / test
- *     administration on the assessment, or
- *     `requiredTools` / `restrictedTools` / `toolParameters` on the
- *     item ref). A bare assessment record (just `id` / `name`) keeps
+ *     administration on the assessment, or, for a decision scoped to an
+ *     item, `requiredTools` / `restrictedTools` / `toolParameters` in the
+ *     item's settings). A bare assessment record (just `id` / `name`) keeps
  *     `"off"`. Host overrides via {@link setPnpEnforcement} are
  *     sticky across assessment swaps.
  */
 
 import { describe, expect, test } from "bun:test";
 
-import type {
-	AssessmentEntity,
-	AssessmentItemRef,
-} from "@pie-players/pie-players-shared/types";
+import type { AssessmentEntity } from "@pie-players/pie-players-shared/types";
 
 import { ToolkitCoordinator } from "../../src/services/ToolkitCoordinator.js";
 import type {
@@ -429,7 +426,7 @@ describe("ToolkitCoordinator policy-engine integration", () => {
 		expect(coord.getPolicyInputs().pnpEnforcement).toBe("on");
 	});
 
-	test("updateCurrentItemRef pushes the ref into the engine and emits a change event", () => {
+	test("registerItemSettings files an item's settings with the engine and emits a change event", () => {
 		const coord = makeCoordinator({
 			tools: { placement: { item: ["textToSpeech"] } },
 		});
@@ -438,14 +435,12 @@ describe("ToolkitCoordinator policy-engine integration", () => {
 		const events: ToolPolicyChangeEvent[] = [];
 		coord.onPolicyChange((event) => events.push(event));
 
-		const itemRef: AssessmentItemRef = {
-			identifier: "item-1",
-			settings: { restrictedTools: ["textToSpeech"] },
-		};
-		coord.updateCurrentItemRef(itemRef);
+		coord.registerItemSettings("item-1", {
+			restrictedTools: ["textToSpeech"],
+		});
 
 		expect(events.length).toBeGreaterThanOrEqual(1);
-		expect(events.at(-1)?.reason).toBe("inputs");
+		expect(events.at(-1)?.reason).toBe("item-settings");
 
 		const decision = coord.decideToolPolicy({
 			level: "item",
@@ -476,25 +471,48 @@ describe("ToolkitCoordinator policy-engine integration", () => {
 		// changed. PR 3 toolbars subscribe via `onPolicyChange`;
 		// they rely on this contract to avoid render thrash.
 		const assessment = { id: "a1" } as AssessmentEntity;
-		const itemRef: AssessmentItemRef = { identifier: "i1" };
 
 		const coord = makeCoordinator();
 		coord.updateAssessment(assessment);
-		coord.updateCurrentItemRef(itemRef);
 
 		const events: ToolPolicyChangeEvent[] = [];
 		coord.onPolicyChange((event) => events.push(event));
 
 		coord.updateAssessment(assessment); // same reference
-		coord.updateCurrentItemRef(itemRef); // same reference
 		coord.setPnpEnforcement(null); // override unchanged
 
 		expect(events).toEqual([]);
 	});
 
+	test("a fresh but structurally equal input is a no-op", () => {
+		const build = (): AssessmentEntity =>
+			({
+				id: "a1",
+				personalNeedsProfile: { supports: ["graph"] },
+				settings: { districtPolicy: { blockedTools: ["calculator"] } },
+			}) as AssessmentEntity;
+		const coord = makeCoordinator();
+		coord.updateAssessment(build());
+		coord.registerItemSettings("i1", { restrictedTools: ["graph"] });
+
+		const events: ToolPolicyChangeEvent[] = [];
+		coord.onPolicyChange((event) => events.push(event));
+
+		coord.updateAssessment(build());
+		// A second mount of the same item, with equal settings.
+		coord.registerItemSettings("i1", { restrictedTools: ["graph"] });
+		expect(events).toEqual([]);
+
+		coord.updateAssessment({
+			...build(),
+			personalNeedsProfile: { supports: ["graph", "calculator"] },
+		} as AssessmentEntity);
+		expect(events).toHaveLength(1);
+	});
+
 	test("setPnpEnforcement-before-updateAssessment ordering avoids a transient 'on' policy event", () => {
-		// `PieAssessmentToolkit.svelte` applies override → assessment →
-		// itemRef in that order. The contract this guards: when a host
+		// `PieAssessmentToolkit.svelte` applies override → assessment in
+		// that order. The contract this guards: when a host
 		// configures `assessment={x}` (carrying profile material) and
 		// `pnp-enforcement="off"` in one render, no intermediate
 		// `onPolicyChange` snapshot should ever expose
@@ -514,7 +532,6 @@ describe("ToolkitCoordinator policy-engine integration", () => {
 			id: "a1",
 			personalNeedsProfile: { supports: ["graph"] },
 		} as AssessmentEntity);
-		coord.updateCurrentItemRef(null);
 
 		expect(coord.getPolicyInputs().pnpEnforcement).toBe("off");
 		expect(seenModes).not.toContain("on");

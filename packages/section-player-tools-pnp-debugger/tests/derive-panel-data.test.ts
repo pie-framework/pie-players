@@ -7,6 +7,7 @@ import type {
 import {
 	buildEditableToolRows,
 	createPatchedPnpProfile,
+	createSimulatedAssessment,
 	derivePnpPanelData,
 	deriveAllAvailablePlacement,
 	fetchSectionPolicyDecision,
@@ -102,7 +103,17 @@ describe("resolvePnpProfile", () => {
 		);
 		expect(result.profile).toEqual({ id: "explicit" });
 		expect(result.source).toBe("section.personalNeedsProfile");
-		expect(result.note).toContain("directly from section payload");
+		expect(result.note).toContain("Policy does not read it");
+	});
+
+	test("prefers the bound assessment's profile, which is the one policy reads", () => {
+		const result = resolvePnpProfile(
+			{ personalNeedsProfile: { id: "section" } },
+			DEFAULT_PNP,
+			{ id: "a1", personalNeedsProfile: { id: "bound" } },
+		);
+		expect(result.profile).toEqual({ id: "bound" });
+		expect(result.source).toBe("assessment.personalNeedsProfile");
 	});
 
 	test("falls back to section.settings.personalNeedsProfile", () => {
@@ -127,6 +138,34 @@ describe("resolvePnpProfile", () => {
 	test("handles null section data", () => {
 		const result = resolvePnpProfile(null, DEFAULT_PNP);
 		expect(result.profile).toBe(DEFAULT_PNP);
+	});
+});
+
+describe("createSimulatedAssessment", () => {
+	test("replaces only the profile of the bound assessment", () => {
+		const bound = {
+			id: "a1",
+			personalNeedsProfile: { supports: ["calculator"] },
+			settings: {
+				districtPolicy: { blockedTools: ["graph"] },
+				testAdministration: { toolOverrides: { textToSpeech: false } },
+			},
+		};
+		const profile = { supports: ["calculator", "ruler"] };
+		expect(
+			createSimulatedAssessment(bound, { id: "s1", settings: {} }, profile),
+		).toEqual({ ...bound, personalNeedsProfile: profile });
+	});
+
+	test("binds a minimal assessment named after the section when nothing is bound", () => {
+		const profile = { supports: ["ruler"] };
+		expect(
+			createSimulatedAssessment(
+				null,
+				{ identifier: "s1", personalNeedsProfile: { supports: [] } },
+				profile,
+			),
+		).toEqual({ id: "s1", personalNeedsProfile: profile });
 	});
 });
 

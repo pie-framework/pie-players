@@ -31,7 +31,7 @@
 		position = "bottom",
 		sectionId = "",
 		size = "md" as "sm" | "md" | "lg",
-		language = "en-US",
+		language = "",
 		toolRegistry = null as ToolRegistry | null,
 		item = null as ItemEntity | null,
 		hostButtons = [] as ToolbarItem[],

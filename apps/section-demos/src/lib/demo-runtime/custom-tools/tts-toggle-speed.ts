@@ -122,17 +122,15 @@ const createToggleSpeedElement = (
 		await toolbarContext.toolkitCoordinator?.ensureTTSReady?.();
 		await setPlaybackRate(toolbarContext, playbackRate);
 		const target = resolveReadingTarget(toolbarContext);
-		const text = target?.textContent || "";
-		if (!target || !text.trim()) return;
+		if (!target?.textContent?.trim()) return;
 		setControlsVisible(true);
 		speaking = true;
 		paused = false;
 		updateTriggerState();
-		await ttsService.speak(text, {
+		await ttsService.speak(target, {
 			catalogId: toolbarContext.catalogId || undefined,
 			language: toolbarContext.language || "en-US",
-			contentElement: target,
-		} as any);
+		});
 	};
 
 	const pauseReading = () => {

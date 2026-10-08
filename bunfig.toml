@@ -7,12 +7,18 @@
 # each filtered them out in their own `test` script, which held only while the
 # author remembered the argument.
 #
+# The preload resolves `@pie-players/*` workspace siblings to their source, so a
+# unit test runs against the sibling's current code whether or not it has been
+# built. Rationale in `test-support/workspace-sources.ts`.
+#
 # Bun reads bunfig.toml from the current working directory only: no walking up to
 # the workspace root, and `extends` is not supported. Turbo runs each package's
-# `test` script with that package as the cwd, so every package holding Playwright
-# specs carries its own copy of this `[test]` block, pointing back here. Keep the
-# duplicated content to the one glob.
+# `test` script with that package as the cwd, so every package running `bun test`
+# carries its own copy of this `[test]` block, pointing back here: the preload in
+# all of them, the glob in the ones holding Playwright specs. Keep the duplicated
+# content to those two lines.
 #
 # Playwright is unaffected: it reads the `playwright.config.ts` files, not this.
 [test]
 pathIgnorePatterns = ["**/*.spec.ts"]
+preload = ["./test-support/bun-workspace-sources.ts"]

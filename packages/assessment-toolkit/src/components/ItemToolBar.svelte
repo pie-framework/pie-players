@@ -30,9 +30,10 @@
   - Pass 1: ToolkitCoordinator.decideToolPolicy(...) — placement,
     policy.allowed/blocked, provider veto, PNP/profile gates, and registered
     custom PolicySources are all applied inside the ToolPolicyEngine.
-    Hosts that need to drive PNP/profile inputs should
-    bind `assessment` / `currentItemRef` on the parent
-    `pie-assessment-toolkit` element instead.
+    Hosts drive PNP/profile inputs through the parent
+    `pie-assessment-toolkit` (`assessment`) and the item's
+    `pie-item-scope` (`settings`); an item's settings govern only its own
+    item-level toolbar.
   - Pass 2: tool-owned isVisibleInContext(context) — relevance gate,
     e.g. "show calculator only when math content is present". Lives
     at the toolbar boundary by design (engine doesn't import tool
@@ -56,6 +57,7 @@
 	} from '../context/runtime-context-consumer.js';
 	import { ContextProvider } from '@pie-players/pie-context';
 	import type { I18nProvider, MessageKeyInput } from '@pie-players/pie-players-shared/i18n/types';
+	import { ZIndexLayer } from '../services/ToolCoordinator.js';
 	import { ToolRegistry } from '../services/ToolRegistry.js';
 	import type {
 		HostedToolContext,
@@ -87,6 +89,7 @@
 	import type { AssessmentItemRef, AssessmentEntity, ItemEntity } from '@pie-players/pie-players-shared/types';
 	import type { ElementToolContext, ItemToolContext, ToolLevel, ToolContext } from '../services/tool-context.js';
 	import type { ToolPolicyDecision } from '../policy/engine.js';
+	import { createDecidedToolsTracker } from '../services/toolbar-decided-tools.js';
 	// Side-effect import: registers <nds-icon-button>. Single vendored source of
 	// truth lives in players-shared (Lit inlined, self-contained); see
 	// players-shared/src/components/vendor/nds/README.md. The CE build externalizes
@@ -322,9 +325,10 @@
 	// bare harness still reads as English rather than as message keys.
 	const interfaceI18n = $derived(resolveInterfaceI18n(runtimeContext));
 	// Content language handed to the tools: the `language` attribute, else the
-	// host's `content-language`. Tools reading content resolve markup `lang` over it.
+	// host's `content-language`, else none. Tools reading content resolve markup
+	// `lang` over it.
 	const effectiveLanguage = $derived(
-		language || runtimeContext?.contentLanguage || 'en-US'
+		language || runtimeContext?.contentLanguage || undefined
 	);
 	let shellContext = $state<AssessmentToolkitShellContext | null>(null);
 	let moduleLoadVersion = $state(0);
@@ -335,6 +339,11 @@
 	// coordinator's policy engine — this counter is just the reactive
 	// fanout that lets Svelte know the engine answer may have changed.
 	let policyChangeVersion = $state(0);
+	// Bumped on every policy change except an item's settings changing, which
+	// can change only which tools that item's own toolbar shows. Re-rendering
+	// for it would swap in fresh elements on every toolbar, so a section tool
+	// would lose its state whenever an item with settings mounts.
+	let toolRenderVersion = $state(0);
 	let toolContextResolverChangeVersion = $state(0);
 
 	$effect(() => {
@@ -354,8 +363,9 @@
 	$effect(() => {
 		const coord = runtimeContext?.toolkitCoordinator;
 		if (!coord || typeof coord.onPolicyChange !== 'function') return;
-		const unsubscribe = coord.onPolicyChange(() => {
+		const unsubscribe = coord.onPolicyChange((event) => {
 			policyChangeVersion += 1;
+			if (event?.reason !== 'item-settings') toolRenderVersion += 1;
 		});
 		return () => {
 			try {
@@ -462,14 +472,14 @@
 			},
 		});
 	});
+	const trackDecidedTools = createDecidedToolsTracker();
+	const decidedTools = $derived(trackDecidedTools(policyDecision, toolRenderVersion));
 	const allowedToolIds = $derived.by((): string[] => {
 		const dedupe = (toolIds: string[]): string[] => Array.from(new Set(toolIds));
-		if (policyDecision) {
+		if (decidedTools) {
 			return dedupe(
 				effectiveToolRegistry
-					.normalizeToolIds(
-						policyDecision.visibleTools.map((entry) => entry.toolId),
-					)
+					.normalizeToolIds(decidedTools.map((entry) => entry.toolId))
 					.filter(Boolean),
 			);
 		}
@@ -505,8 +515,8 @@
 	// removed, because these ids come from the decision's own surviving entries.
 	const grantProtectedToolIds = $derived.by((): Set<string> => {
 		const protectedIds = new Set<string>();
-		if (!policyDecision) return protectedIds;
-		for (const entry of policyDecision.visibleTools) {
+		if (!decidedTools) return protectedIds;
+		for (const entry of decidedTools) {
 			if (!entry.required && !entry.alwaysAvailable) continue;
 			for (const toolId of effectiveToolRegistry
 				.normalizeToolIds([entry.toolId])
@@ -523,12 +533,12 @@
 		return !!(effectiveItem && config && typeof config === 'object');
 	});
 
-	// PNP/profile inputs (`assessment`, `currentItemRef`) live on the
-	// coordinator after M8 PR 2; the toolbar reads them through
-	// `getPolicyInputs()` so it can build the correct Pass-2 context
-	// without re-binding props. Standalone (no-coordinator) usage
-	// falls back to the empty / canonical-id-derived contexts that
-	// satisfy the `ToolContext` shape for `isVisibleInContext` calls.
+	// The bound assessment lives on the coordinator; the toolbar reads it
+	// through `getPolicyInputs()` to build the Pass-2 context without
+	// re-binding props. The context's item ref is derived from the canonical
+	// id, and standalone (no-coordinator) usage falls back to an empty
+	// assessment; both satisfy the `ToolContext` shape for
+	// `isVisibleInContext` calls.
 	const policyInputs = $derived.by(() => {
 		void policyChangeVersion;
 		const coord = runtimeContext?.toolkitCoordinator;
@@ -538,7 +548,7 @@
 		return coord.getPolicyInputs();
 	});
 	const effectiveAssessment = $derived(policyInputs?.assessment ?? null);
-	const effectiveItemRef = $derived(policyInputs?.currentItemRef ?? null);
+	const contextItemRef = $derived({ id: effectiveCanonicalItemId } as AssessmentItemRef);
 
 	const toolContext = $derived.by((): ItemToolContext | null => {
 		if (effectiveLevel === 'section') {
@@ -561,14 +571,14 @@
 			return {
 				level: 'passage',
 				assessment: (effectiveAssessment || {}) as AssessmentEntity,
-				itemRef: (effectiveItemRef || ({ id: effectiveCanonicalItemId } as AssessmentItemRef)) as AssessmentItemRef,
+				itemRef: contextItemRef,
 				passage: effectiveItem as any
 			} as ToolContext as ItemToolContext;
 		}
 		return {
 			level: 'item',
 			assessment: (effectiveAssessment || {}) as AssessmentEntity,
-			itemRef: (effectiveItemRef || ({ id: effectiveCanonicalItemId } as AssessmentItemRef)) as AssessmentItemRef,
+			itemRef: contextItemRef,
 			item: effectiveItem as ItemEntity
 		} as ToolContext as ItemToolContext;
 	});
@@ -578,7 +588,7 @@
 		return {
 			level: 'item',
 			assessment: (effectiveAssessment || {}) as AssessmentEntity,
-			itemRef: (effectiveItemRef || ({ id: effectiveCanonicalItemId } as AssessmentItemRef)) as AssessmentItemRef,
+			itemRef: contextItemRef,
 			item: ((effectiveItem as ItemEntity | null) || ({ id: effectiveCanonicalItemId, config: {} } as ItemEntity)) as ItemEntity
 		} as ToolContext;
 	});
@@ -597,7 +607,7 @@
 			.map((model: any) => ({
 				level: 'element' as const,
 				assessment: (effectiveAssessment || {}) as AssessmentEntity,
-				itemRef: (effectiveItemRef || ({ id: effectiveCanonicalItemId } as AssessmentItemRef)) as AssessmentItemRef,
+				itemRef: contextItemRef,
 				item: effectiveItem as ItemEntity,
 				elementId: model.id as string
 			}));
@@ -746,23 +756,43 @@
 
 		return Array.from(visible);
 	});
-	const toolbarVisibleToolIds = $derived.by(() =>
-		effectiveToolRegistry.filterToolIdsByActivation(visibleToolIds, 'toolbar-toggle')
+	// Tools whose module failed to load from the current registry. Such a tool is
+	// unavailable here: its button is withheld, requests for it pass this toolbar
+	// by, and it is not retried until the registry changes.
+	let failedToolModules = $state<{ registry: ToolRegistry; toolIds: ReadonlySet<string> } | null>(
+		null
 	);
+	const toolbarVisibleToolIds = $derived.by(() => {
+		const failed = failedToolModules?.registry === effectiveToolRegistry ? failedToolModules.toolIds : null;
+		const toolIds = effectiveToolRegistry.filterToolIdsByActivation(visibleToolIds, 'toolbar-toggle');
+		return failed ? toolIds.filter((toolId) => !failed.has(toolId)) : toolIds;
+	});
+
+	function reportToolModuleFailure(toolId: string, error: unknown): void {
+		const coordinator = runtimeContext?.toolkitCoordinator;
+		if (typeof coordinator?.reportToolModuleFailure === 'function') {
+			coordinator.reportToolModuleFailure(toolId, error);
+			return;
+		}
+		console.error(`[ItemToolBar] Tool "${toolId}" failed to load:`, error);
+	}
 
 	// Dynamically load whatever tools are currently visible.
 	// The registry owns module loader configuration by toolId.
 	$effect(() => {
 		if (!isBrowser) return;
+		const registry = effectiveToolRegistry;
 		let cancelled = false;
-		void effectiveToolRegistry
-			.ensureToolModulesLoaded(toolbarVisibleToolIds)
-			.then(() => {
-				if (!cancelled) moduleLoadVersion += 1;
-			})
-			.catch((error: unknown) => {
-				console.error('[ItemToolBar] Failed to load one or more tool modules:', error);
-			});
+		void registry.ensureToolModulesLoaded(toolbarVisibleToolIds).then((failures) => {
+			if (failures.size > 0) {
+				const previous = failedToolModules?.registry === registry ? failedToolModules.toolIds : [];
+				// Recorded before reporting: the report re-announces request targets,
+				// and this toolbar must already answer that it no longer hosts the tool.
+				failedToolModules = { registry, toolIds: new Set([...previous, ...failures.keys()]) };
+				for (const [toolId, error] of failures) reportToolModuleFailure(toolId, error);
+			}
+			if (!cancelled) moduleLoadVersion += 1;
+		});
 		return () => {
 			cancelled = true;
 		};
@@ -1124,6 +1154,10 @@
 		const level = placementLevel;
 		return coord.registerToolRequestTarget({
 			level,
+			// Read live, as `hostsTool` is: a card that changes items keeps its registration.
+			get scopeId() {
+				return effectiveScopeId;
+			},
 			hostsTool: (toolId: string) => toolbarVisibleToolIds.includes(toolId),
 			open: (toolId: string, params?: Record<string, unknown>) => {
 				if (!effectiveToolCoordinator) return;
@@ -1716,6 +1750,20 @@
 			}
 		};
 
+		// The shell is what floats, so it is the element the tool stacks by: the
+		// coordinator gives it the z-index of the tool's layer and raises it when
+		// it is shown or pressed. Bound once the tool is shown, which is when its
+		// registration exists, and again if a re-registration dropped the binding.
+		const bindShellStacking = () => {
+			if (!shellEl || !effectiveToolCoordinator || !currentArgs.active) return;
+			const toolId = currentArgs.mounted.toolId;
+			const instanceToolId = parseScopedToolId(toolId)
+				? toolId
+				: createScopedToolId(toolId, effectiveLevel, effectiveScopeId);
+			if (effectiveToolCoordinator.getToolState(instanceToolId)?.element === shellEl) return;
+			effectiveToolCoordinator.updateToolElement(instanceToolId, shellEl);
+		};
+
 		const centerShell = () => {
 			const viewportW = window.innerWidth;
 			const viewportH = window.innerHeight;
@@ -2066,7 +2114,8 @@
 			shellEl.className = 'pie-tool-shell';
 			shellEl.setAttribute('data-pie-tool-shell', currentArgs.mounted.toolId);
 			shellEl.style.position = 'fixed';
-			shellEl.style.zIndex = '2000';
+			// Until the coordinator stacks it; a toolbar without one leaves it here.
+			shellEl.style.zIndex = String(ZIndexLayer.MODAL);
 			shellEl.style.background = 'var(--pie-background, #fff)';
 			shellEl.style.border = '1px solid var(--pie-border-light, #d1d5db)';
 			shellEl.style.borderRadius = '12px';
@@ -2481,6 +2530,7 @@
 
 			centerShell();
 			applyShellStyle();
+			bindShellStacking();
 			applyShellStrings();
 			mountContent();
 			notifyHostedResize();
@@ -2511,6 +2561,7 @@
 				closeButtonEl.style.display =
 					currentArgs.mounted.entry.shell?.closeable === false ? 'none' : closeButtonOpenDisplay;
 				applyShellStyle();
+				bindShellStacking();
 				mountContent();
 				notifyHostedResize();
 				if (!previousActive && currentArgs.active) {

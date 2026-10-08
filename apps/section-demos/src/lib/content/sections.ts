@@ -692,7 +692,7 @@ export const sectionDemos: Record<string, SectionDemoInfo> = {
 			"Proves the M8 PR 4 narrow auto-on rule end-to-end: bind an `AssessmentEntity` with PNP / district policy through `coord.updateAssessment(...)` and the coordinator flips PNP/profile gates on by itself.",
 		whatMakesItTick: [
 			"Listens for `toolkit-ready` and binds an assessment with `personalNeedsProfile.supports = ['graph']` and `districtPolicy.requiredTools = ['graph']`.",
-			"Never sets the `pnp-enforcement` attribute, so the auto-default rule (`assessmentHasPnpPolicyInputs` / `itemRefHasPnpPolicyInputs`) decides.",
+			"Never sets the `pnp-enforcement` attribute, so the auto-default rule (`assessmentHasPnpPolicyInputs` / `itemSettingsHavePnpPolicyInputs`) decides.",
 			"Reads back `coord.getPolicyInputs().pnpEnforcement` and the engine's `decideToolPolicy(...)` so the resolved mode is visible in the page.",
 		],
 		section: demo1Section,

@@ -310,8 +310,7 @@ The `TTSService.buildPositionMap()` method delegates to text core helpers:
 
 #### Implementation in TTS Tools
 
-TTS tools should pass `contentElement` and let `TTSService` apply one shared normalization path.
-This keeps `speak()`, `speakRange()`, and toolbar-triggered flows aligned and avoids duplicate normalization logic.
+TTS tools pass the DOM they read, an element or a range, to `speak()`, so every read takes one normalization path.
 
 #### Common Pitfalls
 
@@ -392,6 +391,10 @@ the native or media playback-start event—not when speech is merely queued. The
 toolkit uses that signal to move into playing state and begin highlighting only
 when output has actually started.
 
+A provider declaring `maxTextLength` in its capabilities never receives longer
+text: the toolkit splits it at sentences, then words, then characters, and
+keeps word highlights on the visible text.
+
 ## QTI-Inspired Integration with Section Player
 
 The TTS system integrates seamlessly with QTI 3.0 accessibility catalogs through the **PIE Section Player**:
@@ -399,9 +402,14 @@ The TTS system integrates seamlessly with QTI 3.0 accessibility catalogs through
 ```javascript
 import '@pie-players/pie-section-player/components/section-player-splitpane-element';
 import { ToolkitCoordinator } from '@pie-players/pie-assessment-toolkit';
-import { createPackagedToolRegistry } from '@pie-players/pie-default-tool-loaders';
+import {
+  createPackagedToolRegistry,
+  DEFAULT_TOOL_MODULE_LOADERS,
+} from '@pie-players/pie-default-tool-loaders';
 
-const toolRegistry = createPackagedToolRegistry();
+const toolRegistry = createPackagedToolRegistry({
+  toolModuleLoaders: DEFAULT_TOOL_MODULE_LOADERS,
+});
 const coordinator = new ToolkitCoordinator({
   assessmentId: assessment.id,
   toolRegistry,

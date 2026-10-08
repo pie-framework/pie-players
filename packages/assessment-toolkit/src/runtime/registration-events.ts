@@ -1,4 +1,5 @@
 import type { SessionCommitReason } from "@pie-players/pie-players-shared/pie";
+import type { ItemSettings } from "@pie-players/pie-players-shared/types";
 import type { MediaTimeSource } from "@pie-players/pie-players-shared/timed-media";
 
 export const PIE_REGISTER_EVENT = "pie-register";
@@ -19,6 +20,11 @@ export interface RuntimeRegistrationDetail {
 	canonicalItemId?: string;
 	contentKind?: string;
 	item?: unknown;
+	/**
+	 * An item's policy settings, which govern decisions scoped to the item; see
+	 * `ToolkitCoordinatorApi.registerItemSettings`.
+	 */
+	settings?: ItemSettings;
 	element: HTMLElement;
 	/**
 	 * The runtime the shell found through `assessmentToolkitHostRuntimeContext`.

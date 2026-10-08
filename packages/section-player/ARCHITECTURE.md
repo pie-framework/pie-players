@@ -231,8 +231,9 @@ design:
   accepted only via `runtime.<key>` on every section-player layout CE.
   The top-level prop aliases were removed in the broad architecture
   review compat sweep; the runtime tier is the sole supported entry
-  point on the layout CEs. `<pie-assessment-toolkit>` keeps both keys
-  as JS-only props (no kebab-attribute surface): section-player
+  point on the layout CEs. `<pie-assessment-toolkit>` takes
+  `createSectionController` as a JS-only prop and `isolation` as a
+  property or an `isolation` attribute (`inherit` | `force`): section-player
   layouts forward `runtime.createSectionController` and
   `runtime.isolation` to the wrapped toolkit via Svelte property
   bindings, and standalone hosts that need to override coordinator
@@ -245,8 +246,9 @@ The tier-1 attribute set is the same shape across the
 `pie-assessment-toolkit`. Common members include:
 
 - Identity: `assessment-id`, `section-id`, `attempt-id`
-- Runtime config: `runtime`
-- Diagnostics: `tool-config-strictness`, `debug`. Framework-error
+- Runtime config: `runtime` on the layouts and `pie-section-player-base`;
+  `<pie-assessment-toolkit>` takes the runtime fields as its own properties
+- Diagnostics: `tool-config-strictness`, and `debug` on the layouts only. Framework-error
   delivery is via the canonical `onFrameworkError` callback prop and the
   `framework-error` DOM event, which bubbles from `<pie-assessment-toolkit>`
   and is dispatched without bubbling on a layout element (see "Framework

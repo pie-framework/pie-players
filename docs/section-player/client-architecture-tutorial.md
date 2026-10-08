@@ -69,7 +69,7 @@ In CE-first mode, you pass tool and section configuration directly as element at
 ></pie-section-player-splitpane>
 ```
 
-Key props you'll set via attributes:
+Key inputs; `section` and `runtime` are JS properties, the rest are attributes:
 
 | Attribute | Type | Purpose |
 | --- | --- | --- |
@@ -98,9 +98,14 @@ When your host application needs to own the coordinator lifecycle — because it
 
 ```ts
 import { ToolkitCoordinator } from '@pie-players/pie-assessment-toolkit';
-import { createPackagedToolRegistry } from '@pie-players/pie-default-tool-loaders';
+import {
+  createPackagedToolRegistry,
+  DEFAULT_TOOL_MODULE_LOADERS,
+} from '@pie-players/pie-default-tool-loaders';
 
-const toolRegistry = createPackagedToolRegistry();
+const toolRegistry = createPackagedToolRegistry({
+  toolModuleLoaders: DEFAULT_TOOL_MODULE_LOADERS,
+});
 const coordinator = new ToolkitCoordinator({
   assessmentId: 'my-assessment-001',
   toolRegistry,
@@ -248,7 +253,7 @@ Tools are placed at three levels — section, item, and passage — each with it
 
 ![Tool placement levels — section toolbar, per-item toolbars, and per-passage toolbars driven by the ToolkitCoordinator](../img/sp-tool-placement-levels-1-1773512461444.jpg)
 
-Tool configuration flows through the `tools` property on `ToolkitCoordinator` (or directly on the element in CE-first mode). The structure normalizes to a `CanonicalToolsConfig` with three top-level keys:
+Tool configuration flows through the `tools` property on `ToolkitCoordinator`, or through `runtime.tools` on the element in CE-first mode; the layout elements have no `tools` property. The structure normalizes to a `CanonicalToolsConfig` with three top-level keys:
 
 ```ts
 tools: {
@@ -342,12 +347,15 @@ Custom transport is a host-owned integration pattern. Toolkit defaults still rem
 The following is a full client-side example showing:
 
 - host `ToolkitCoordinator` custom TTS provider config
-- section-player wiring with `tools` and `coordinator`
+- section-player wiring with `runtime.tools` and `runtime.coordinator`
 - optional TTS settings dialog custom tab (`customProviders`) with apply + preview hooks
 
 ```ts
 import { ToolkitCoordinator } from "@pie-players/pie-assessment-toolkit";
-import { createPackagedToolRegistry } from "@pie-players/pie-default-tool-loaders";
+import {
+  createPackagedToolRegistry,
+  DEFAULT_TOOL_MODULE_LOADERS,
+} from "@pie-players/pie-default-tool-loaders";
 
 const customTtsProvider = {
   enabled: true,
@@ -386,7 +394,9 @@ const tools = {
   },
 };
 
-const toolRegistry = createPackagedToolRegistry();
+const toolRegistry = createPackagedToolRegistry({
+  toolModuleLoaders: DEFAULT_TOOL_MODULE_LOADERS,
+});
 
 export const coordinator = new ToolkitCoordinator({
   assessmentId: "my-assessment-id",
@@ -765,7 +775,7 @@ const coordinator = new ToolkitCoordinator({
 
 The hook receives two arguments: `context` (containing the `(assessmentId, sectionId, attemptId)` key) and `defaults`, which provides a `createDefaultPersistence()` factory. You can use this to wrap or fall back to the built-in localStorage strategy rather than replacing it entirely — useful for offline-first integrations that want localStorage as a local cache with a remote backend as the source of truth.
 
-The default strategy (when the hook is not provided) uses `localStorage` keyed as `pie:section-controller:v1:{assessmentId}:{sectionId}:{attemptId}`. For production, always supply your own strategy backed by a real backend.
+The default strategy (when the hook is not provided, or returns no strategy) uses `localStorage` keyed as `pie:section-controller:v1:{assessmentId}:{sectionId}:{attemptId}`. For production, always supply your own strategy backed by a real backend.
 
 If your host uses different session identifiers than `assessmentId`/`sectionId`/`attemptId`, close over your own IDs from the surrounding scope rather than relying solely on `context.key`. The hook is called with the coordinator's view of the key, but your persistence implementation can use whatever identifiers your backend expects — the two don't need to match. The session snapshot itself (`getSession()` output) is what you store; the key is just how you address the storage slot.
 

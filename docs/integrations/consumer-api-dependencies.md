@@ -113,6 +113,23 @@ browser's language. Math control names take the same content language, where
 before they took the nearest `lang` up to the page's. Row verification dates are
 unchanged.
 
+On 2026-10-08 an item's policy settings (`requiredTools`, `restrictedTools`,
+`toolParameters`) started reaching section delivery. They arrive on
+`<pie-item-scope>` `settings`, which the section player fills from each item ref,
+and govern only that item's own toolbar; a tool placed on a section or assessment
+toolbar ignores them, and the toolkit raises `tool-policy.itemSettingNotApplied`
+for it. Before, nothing set the toolkit's `currentItemRef`, so Host A, which
+delivers through the section player, applied no item settings; it now applies any
+its items carry. `currentItemRef` and `updateCurrentItemRef` are removed. The same
+change applies `toolOverrides` as documented, withholds a tool whose module fails
+to load and reports `tool-module-load`, and has the PNP debugger edit only the
+bound assessment's profile. Checked against the checkouts of Hosts A, M, P, R and
+V: none names `currentItemRef`, `updateCurrentItemRef` or `toolOverrides`, and
+Host R's `decideFeaturePolicy(id)` and `onPolicyChange` calls keep working under
+the optional scope and the new `"item-settings"` change reason. A section's own
+`personalNeedsProfile` stays unread by policy, now as documented. Row
+verification dates are unchanged.
+
 On 2026-10-08 the annotation toolbar's read-aloud started reading spoken cards: a
 `data-catalog-idref` node the selection holds whole reads its card, from the
 cards the selection's shell registered and then the assessment's, as tts-inline
@@ -125,6 +142,16 @@ started, so Host R's annotation read-aloud is heard in full again. Checked
 against the recorded rows and the checkouts of Hosts A and R; neither calls
 `speakRange` or passes the internal `ignoreCatalogs` speak option, which is
 removed. Row verification dates are unchanged.
+
+Also on 2026-10-08 the toolkit's TTS service took one read-aloud entry,
+`speak(target, options)`, which reads a DOM range or element; `speak(text)` and
+`speakRange` are removed, and `dispose()` is added, which the coordinator's own
+dispose calls. Checked against the checkouts of Hosts A, M, P, R and V: Host A
+calls only `ttsService.stop()`, and no host calls `speak` or `speakRange` or
+imports `SpeakOptions`. The server backend now sends the language a read names,
+except that a `lang_id` the host sets wins on the custom transport; Hosts A and
+R both read aloud over that transport with `lang_id` set, so their requests are
+unchanged. Row verification dates are unchanged.
 
 The 2026-09-17 session-commit change (PIE-1058) was checked against the
 recorded rows rather than re-derived from the checkouts. It renames and removes
@@ -473,10 +500,13 @@ Packages consumed:
 - **Host A** — `pie-section-player`, `pie-assessment-toolkit`, `pie-theme`,
   `pie-calculator-desmos`, `pie-calculator-cortex` (aliased to a local stub in
   its build), `pie-calculator-geogebra`, `pie-tool-calculator-desmos`,
-  `pie-tool-text-to-speech`, `tts-client-server`, `tts-server-polly`, and the
-  event and session debuggers. Its source imports only the splitpane layout
-  element and `pie-theme`. The section player imports `pie-item-player`
-  by name to render items, so that package reaches Host A as its dependency.
+  `tts-client-server`, `tts-server-polly`, and the event and session debuggers.
+  Its source imports only the splitpane layout element and `pie-theme`. The
+  section player imports `pie-item-player` by name to render items, so that
+  package reaches Host A as its dependency. It also declares the deprecated
+  `pie-tool-text-to-speech` and imports nothing from it; that range stops at
+  `0.3.74`, the last published version, and an install prints npm's
+  deprecation notice.
 - **Host P** — `pie-preloaded-player` alone, and never imported: its `dist/` is
   copied into the host's static assets and loaded by path.
 - **Host M** — `pie-item-player` and its `preloaded` subpath, `pie-theme` and its
@@ -493,7 +523,8 @@ Packages consumed:
   Four declared packages are imported nowhere in its source —
   `pie-calculator-desmos`, `pie-tool-text-to-speech`,
   `pie-section-player-tools-shared`, `tts-client-server` — so their ranges
-  resolve without their surfaces being consumed. Two more tool packages, both
+  resolve without their surfaces being consumed. `pie-tool-text-to-speech` is
+  deprecated, so its range stops at `0.3.74`, the last published version. Two more tool packages, both
   dictionaries, reach it transitively as dependencies of
   `pie-default-tool-loaders`, whose packaged registry dynamically imports them.
   The Cortex and GeoGebra calculator engines reach it the same way, imported by
@@ -1658,11 +1689,13 @@ over a CDN with no typecheck at all.
 
 - The assessment player, the print player, the tabbed section layout, the
   toolbars package, and `pie-context` — no consumer imports any of them
-- `pie-tool-text-to-speech`, no longer published, and `hasSpokenAlternate` on
-  `TtsServiceApi`, which only that panel called. Hosts A and R declare the
-  package and import nothing from it, so their ranges keep resolving to its last
-  published version; Host R's own `HTMLElementTagNameMap` entry for the tag is a
-  local type. No checkout calls the method
+- `pie-tool-text-to-speech`, deprecated on npm and no longer published, and
+  `hasSpokenAlternate` on `TtsServiceApi`, which only that panel called. Hosts A
+  and R declare the package and import nothing from it, so their ranges keep
+  resolving to its last published version, `0.3.74`; Host R's own
+  `HTMLElementTagNameMap` entry for the tag is a local type. No checkout calls
+  the method. Checked against all five checkouts on 2026-10-08 as a targeted
+  lookup, so it does not advance the verification date
 - `pie-item-shell`, removed: section-player item cards render `pie-item-scope`,
   which takes the shell's attributes and keeps its `data-pie-shell-root="item"`
   marker and the card's classes. No checkout names the tag
@@ -1816,6 +1849,13 @@ over a CDN with no typecheck at all.
   against all five checkouts on 2026-10-08 as a targeted lookup, so it does not
   advance the verification date: no checkout imports any toolkit subpath or names
   either type
+- The toolkit's `pnp-standard-features` module, deleted on 2026-10-08 with its
+  `./services/pnp-standard-features` subpath and the six root exports
+  (`QTI_STANDARD_ACCESS_FEATURES`, `ALL_STANDARD_ACCESS_FEATURES`,
+  `EXAMPLE_PNP_CONFIGURATIONS`, `isStandardAccessFeature`, `getFeatureCategory`,
+  `getFeaturesInCategory`). Nothing read it at runtime; support ids resolve
+  against the registry. Checked against all five checkouts on 2026-10-08 as a
+  targeted lookup: no checkout imports any of them
 
 ## Consumer-side defects worth reporting upstream
 
@@ -1848,8 +1888,9 @@ repo.
   `pie-calculator-desmos`, `pie-tool-text-to-speech`,
   `pie-section-player-tools-shared`, `tts-client-server`. The packaged registry
   reaches `pie-calculator-desmos` without the declaration, and nothing reaches
-  `pie-tool-text-to-speech`: the registry's text-to-speech tool is
-  `pie-tool-tts-inline`. None of the four is load-bearing, and together they make
+  `pie-tool-text-to-speech`, which is deprecated and gone from this repository:
+  the registry's text-to-speech tool is `pie-tool-tts-inline`, and the host's
+  local tag type names an element nothing defines. None of the four is load-bearing, and together they make
   its dependency list overstate what it consumes, which is what made the previous
   entrypoint rows wrong in the other direction.
 - Host R sets `--pie-padding`, `--pie-spacing` and `--pie-gap` on a legacy

@@ -7,7 +7,7 @@
  *   - `decideToolPolicy(...)` round-trips through the engine for the
  *     section level under the no-assessment default.
  *   - `onPolicyChange(...)` fires for `updateAssessment`,
- *     `updateCurrentItemRef`, `updateToolConfig`, `updateToolPlacement`,
+ *     `updateCurrentItemRef`, `updateToolConfig`, `updateToolsPlacement`,
  *     and `setPnpEnforcement`.
  *   - `pnpEnforcement: "off"` short-circuits the PNP/profile source so a
  *     PNP-supported tool does NOT auto-promote to `alwaysAvailable`.
@@ -228,24 +228,24 @@ describe("ToolkitCoordinator policy-engine integration", () => {
 		expect(readVisibleToolIds(coord)).toEqual(["theme"]);
 	});
 
-	test("updateToolPlacement rewrites section placement and emits a change event", () => {
+	test("updateToolsPlacement rewrites section placement and emits a change event", () => {
 		const coord = makeCoordinator();
 		const events: ToolPolicyChangeEvent[] = [];
 		coord.onPolicyChange((event) => events.push(event));
 
-		coord.updateToolPlacement("section", ["theme"]);
+		coord.updateToolsPlacement({ section: ["theme"] });
 
 		expect(events.length).toBeGreaterThanOrEqual(1);
 		expect(events.at(-1)?.reason).toBe("inputs");
 		expect(readVisibleToolIds(coord)).toEqual(["theme"]);
 	});
 
-	test("updateToolPlacement rewrites non-section placement without changing floating tools", () => {
+	test("updateToolsPlacement rewrites non-section placement without changing floating tools", () => {
 		const coord = makeCoordinator();
 		const events: ToolPolicyChangeEvent[] = [];
 		coord.onPolicyChange((event) => events.push(event));
 
-		coord.updateToolPlacement("item", ["answerEliminator", "textToSpeech"]);
+		coord.updateToolsPlacement({ item: ["answerEliminator", "textToSpeech"] });
 
 		expect(events.length).toBeGreaterThanOrEqual(1);
 		expect(events.at(-1)?.reason).toBe("inputs");
@@ -459,12 +459,12 @@ describe("ToolkitCoordinator policy-engine integration", () => {
 		const events: ToolPolicyChangeEvent[] = [];
 		const off = coord.onPolicyChange((event) => events.push(event));
 
-		coord.updateToolPlacement("section", ["theme"]);
+		coord.updateToolsPlacement({ section: ["theme"] });
 		const beforeUnsub = events.length;
 		expect(beforeUnsub).toBeGreaterThan(0);
 
 		off();
-		coord.updateToolPlacement("section", ["graph"]);
+		coord.updateToolsPlacement({ section: ["graph"] });
 		expect(events.length).toBe(beforeUnsub);
 	});
 

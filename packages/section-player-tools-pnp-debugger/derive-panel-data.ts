@@ -44,7 +44,9 @@ export interface PolicyPanelCoordinator {
 		scope: { level: ToolPlacementLevel; scopeId: string };
 	}) => ToolPolicyDecision;
 	getPolicyInputs?: () => Readonly<ResolvedEngineInputs>;
-	updateToolPlacement?: (level: ToolPlacementLevel, toolIds: string[]) => void;
+	updateToolsPlacement?: (
+		partial: Partial<Record<ToolPlacementLevel, string[]>>,
+	) => void;
 	updateToolConfig?: (toolId: string, updates: Record<string, unknown>) => void;
 	updateAssessment?: (assessment: unknown) => void;
 	setPnpEnforcement?: (mode: "on" | "off" | null) => void;

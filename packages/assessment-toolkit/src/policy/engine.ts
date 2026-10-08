@@ -1,10 +1,10 @@
 /**
- * Tool policy engine — facade entry point (M8 PR 1).
+ * Tool policy engine — facade entry point.
  *
  * Narrow, stable public surface for hosts that want to instantiate or
  * consume a `ToolPolicyEngine`. Re-exports the engine class, its
- * decision request/response types, the Svelte context key, and the
- * minimal `PolicySource` extension contract.
+ * decision request/response types, and the minimal `PolicySource`
+ * extension contract.
  *
  * **Pairing.** This module is the stable counterpart to
  * `./policy/internal`, which exposes the wider, evolving surface
@@ -16,8 +16,8 @@
  * from `./policy/internal` and accept the documented stability
  * disclaimer there.
  *
- * Mirrors the M7 `runtime/engine` / `runtime/internal` split — see
- * the same rationale in `src/runtime/engine.ts`.
+ * Mirrors the `runtime/engine` / `runtime/internal` split — see the
+ * same rationale in `src/runtime/engine.ts`.
  */
 
 export {
@@ -29,11 +29,6 @@ export {
 	type ToolPolicyEngineArgs,
 	type ToolPolicyEngineInputs,
 } from "./core/ToolPolicyEngine.js";
-
-export {
-	TOOL_POLICY_ENGINE_KEY,
-	type ToolPolicyEngineContext,
-} from "./core/engine-context.js";
 
 export {
 	isHostDeniedFeature,

@@ -8,7 +8,6 @@ Pre-v1 policy applies: **no compatibility aliases** and **no transitional re-exp
 | Old symbol | New symbol | Canonical location |
 | --- | --- | --- |
 | `II18nService` | `I18nServiceApi` | `packages/players-shared/src/i18n/types.ts` |
-| `IThemeProvider` | `ThemeProviderApi` | `packages/assessment-toolkit/src/services/interfaces.ts` |
 | `IHighlightCoordinator` | `HighlightCoordinatorApi` | `packages/assessment-toolkit/src/services/interfaces.ts` |
 | `IToolCoordinator` | `ToolCoordinatorApi` | `packages/assessment-toolkit/src/services/interfaces.ts` |
 | `ITTSService` | `TtsServiceApi` | `packages/assessment-toolkit/src/services/interfaces.ts` |

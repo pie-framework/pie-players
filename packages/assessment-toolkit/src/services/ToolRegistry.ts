@@ -20,7 +20,6 @@ import type {
 import type { ToolProviderApi } from "./tool-providers/ToolProviderApi.js";
 import type { ToolProviderConfig as ToolRuntimeConfig } from "./tools-config-normalizer.js";
 import type { ToolConfigDiagnostic } from "./tool-config-validation.js";
-import { normalizeToolAlias } from "./tools-config-normalizer.js";
 
 export type ToolModuleLoader = () => Promise<unknown>;
 
@@ -952,10 +951,10 @@ export class ToolRegistry {
 	}
 
 	/**
-	 * Normalize a single tool alias to canonical toolId.
+	 * Normalize a single tool id (trims surrounding whitespace).
 	 */
 	normalizeToolId(toolId: string): string {
-		return normalizeToolAlias(toolId);
+		return toolId.trim();
 	}
 
 	/**

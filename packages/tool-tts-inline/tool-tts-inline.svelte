@@ -709,7 +709,6 @@
 				choicesKey: speedChoicesKey,
 			};
 			resolverDisposer = syncHighlightTargetResolverProvider(readingTarget);
-			(ttsService as any).setRootElement?.(readingTarget as HTMLElement);
 			playbackStartInFlight = true;
 			statusMessage = interfaceI18n.t('tools.textToSpeech.inline.starting');
 			void ttsService.speak(text, {

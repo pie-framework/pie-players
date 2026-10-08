@@ -37,13 +37,11 @@ import type {
 	ToolkitInitStatus,
 	TTSToolConfig,
 } from "./ToolkitCoordinator.js";
-import type { ThemeConfig } from "./ThemeProvider.js";
 import type { ZIndexLayer } from "./ToolCoordinator.js";
 import type { PlaybackState, TTSConfig } from "./TTSService.js";
 import type { TTSHighlightTargetResolverProvider } from "./tts/highlight-target-resolver.js";
 import type {
 	ToolPlacementConfig,
-	ToolPlacementLevel,
 	ToolProviderConfig,
 } from "./tools-config-normalizer.js";
 import type { ToolProviderRegistry } from "./tool-providers/ToolProviderRegistry.js";
@@ -75,33 +73,6 @@ import type { ToolOpenRequest, ToolRequestTarget } from "./tool-request.js";
 
 // Re-export I18nServiceApi from players-shared
 export type { I18nServiceApi };
-
-/**
- * Theme provider interface
- *
- * Applies consistent accessibility theming across items and tools.
- */
-export interface ThemeProviderApi {
-	/**
-	 * Apply theme configuration
-	 */
-	applyTheme(config: ThemeConfig): void;
-
-	/**
-	 * Get current theme configuration
-	 */
-	getCurrentTheme(): Required<ThemeConfig>;
-
-	/**
-	 * Reset to default theme
-	 */
-	reset(): void;
-
-	/**
-	 * Clean up and remove theme styles
-	 */
-	destroy(): void;
-}
 
 /**
  * Highlight coordinator interface
@@ -686,11 +657,6 @@ export interface ToolkitCoordinatorApi {
 	updateToolConfig(toolId: string, updates: Partial<ToolProviderConfig>): void;
 
 	/**
-	 * Update the enabled tool list for one placement level.
-	 */
-	updateToolPlacement(level: ToolPlacementLevel, toolIds: string[]): void;
-
-	/**
 	 * Patch one or more placement levels in the canonical tools config.
 	 */
 	updateToolsPlacement(partial: ToolPlacementConfig): void;
@@ -846,7 +812,7 @@ export interface ToolkitCoordinatorApi {
 	/**
 	 * Subscribe to policy-engine change events. Fires whenever the
 	 * coordinator's bound policy inputs change (`updateToolConfig`,
-	 * `updateToolPlacement`, `updateAssessment`, `updateCurrentItemRef`,
+	 * `updateToolsPlacement`, `updateAssessment`, `updateCurrentItemRef`,
 	 * `setPnpEnforcement`) or a custom `PolicySource` is registered /
 	 * removed. Listeners that need the new visible tool set should
 	 * call `decideToolPolicy(...)` with their level / scope.

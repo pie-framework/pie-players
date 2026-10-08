@@ -89,7 +89,6 @@ export type {
 	ElementToolStateStoreApi,
 	HighlightCoordinatorApi,
 	I18nServiceApi,
-	ThemeProviderApi,
 	ToolCoordinatorApi,
 	ToolkitCoordinatorApi,
 	TtsServiceApi,
@@ -136,8 +135,9 @@ export {
 // Range Serializer (for annotation persistence)
 export type { SerializedRange } from "./services/RangeSerializer.js";
 export { RangeSerializer } from "./services/RangeSerializer.js";
-// I18n Service. `I18nProvider` is the contract a component depends on; the rest
-// is for a host constructing or replacing the provider.
+// I18n types, re-exported from players-shared. `I18nProvider` is the contract a
+// component depends on; the rest is for a host constructing or replacing the
+// provider.
 export type {
 	I18nConfig,
 	I18nProvider,
@@ -147,8 +147,7 @@ export type {
 	MessageKeyInput,
 	PluralOptions,
 	TextDirection,
-} from "./services/I18nService.js";
-export { I18nService } from "./services/I18nService.js";
+} from "@pie-players/pie-players-shared/i18n";
 // Tool Registry (Registry-based tool system)
 export type {
 	ResolvedToolContext,
@@ -257,9 +256,6 @@ export {
 // SSML Extractor (Auto-generates catalogs from embedded SSML)
 export type { ExtractionResult } from "./services/SSMLExtractor.js";
 export { SSMLExtractor } from "./services/SSMLExtractor.js";
-// Theme Provider
-export type { FontSize, ThemeConfig } from "./services/ThemeProvider.js";
-export { ThemeProvider } from "./services/ThemeProvider.js";
 // Tool Coordinator
 export { ToolCoordinator, ZIndexLayer } from "./services/ToolCoordinator.js";
 // Toolkit Coordinator (Centralized service management)
@@ -337,7 +333,6 @@ export {
 } from "./services/toolbar-items.js";
 export {
 	normalizeToolsConfig,
-	normalizeToolAlias,
 	normalizeToolList,
 	parseToolList,
 } from "./services/tools-config-normalizer.js";

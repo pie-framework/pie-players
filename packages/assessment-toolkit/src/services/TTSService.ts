@@ -21,6 +21,7 @@ import type {
 	ITTSProviderImplementation,
 	TTSConfig,
 	TTSProviderCapabilities,
+	TTSSpeechSegment,
 } from "@pie-players/pie-tts";
 import {
 	applyMediaFragment,
@@ -105,12 +106,6 @@ import {
 	PIE_TTS_CONTROL_HANDOFF_EVENT,
 	type TTSControlHandoffDetail,
 } from "./tts-control-events.js";
-
-interface TTSSpeechSegment {
-	text: string;
-	startOffset: number;
-	pauseMsAfter?: number;
-}
 
 // Re-export core TTS types for convenience
 export type {

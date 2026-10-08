@@ -201,9 +201,14 @@ When the host constructs a `ToolkitCoordinator` for tool and TTS configuration, 
 
 ```ts
 import { ToolkitCoordinator } from '@pie-players/pie-assessment-toolkit';
-import { createPackagedToolRegistry } from '@pie-players/pie-default-tool-loaders';
+import {
+  createPackagedToolRegistry,
+  DEFAULT_TOOL_MODULE_LOADERS,
+} from '@pie-players/pie-default-tool-loaders';
 
-const toolRegistry = createPackagedToolRegistry();
+const toolRegistry = createPackagedToolRegistry({
+  toolModuleLoaders: DEFAULT_TOOL_MODULE_LOADERS,
+});
 const coordinator = new ToolkitCoordinator({
   assessmentId: 'assessment-001',
   toolRegistry,
@@ -315,9 +320,14 @@ Each section is passed to a `pie-section-player-splitpane` or `pie-section-playe
 Tools, TTS, accessibility, and theming are configured at the `ToolkitCoordinator` level — not the assessment player. The assessment player's role is to pass the coordinator through to each section player it mounts.
 
 ```ts
-import { createPackagedToolRegistry } from '@pie-players/pie-default-tool-loaders';
+import {
+  createPackagedToolRegistry,
+  DEFAULT_TOOL_MODULE_LOADERS,
+} from '@pie-players/pie-default-tool-loaders';
 
-const toolRegistry = createPackagedToolRegistry();
+const toolRegistry = createPackagedToolRegistry({
+  toolModuleLoaders: DEFAULT_TOOL_MODULE_LOADERS,
+});
 const coordinator = new ToolkitCoordinator({
   assessmentId: 'assessment-001',
   toolRegistry,
@@ -792,7 +802,7 @@ The assessment player is an orchestrator, not a renderer. Understanding the boun
 **Cross-layer session sync:**
 When the active section player emits `session-changed`, the default element captures the section controller's `getSession()` output and writes it into the assessment session via `controller.updateSectionSession()`. When navigating to a previously visited section, the assessment player reads the stored section session from `controller.getSectionSession()` and sets it as the newly mounted section player's `session` property, which the section controller applies in replace mode while it is created.
 
-This means item-level persistence can be fully handled by the assessment controller — the section player's own `createSectionSessionPersistence` hook can return a no-op strategy when the assessment player is the sole persistence owner.
+Item-level persistence can therefore be handled entirely by the assessment controller, but the section layer runs too unless the host turns it off. A section mounted without a saved section session hydrates from the coordinator's section strategy, by default `localStorage` under `pie:section-controller:v1:{assessmentId}:{sectionId}:{attemptId}`, and a `persist()` on the section writes there. A host that makes the assessment player the sole persistence owner passes a coordinator whose `hooks.createSectionSessionPersistence` returns a strategy that loads nothing and saves nothing. A hook that returns no strategy gets the default.
 
 For full section-player integration details, see the [Section Player Client Integration Guide](../section-player/client-architecture-tutorial.md).
 
@@ -812,7 +822,7 @@ For full section-player integration details, see the [Section Player Client Inte
 
 **Scope subscriptions.** When subscribing to controller events, always clean up the unsubscribe function on route teardown. Orphaned subscriptions leak memory and produce ghost event handlers.
 
-**Let the assessment controller own persistence when present.** When using the assessment player, the section player's `createSectionSessionPersistence` hook should typically return a no-op. The assessment controller aggregates section sessions and persists them as part of the assessment session. Dual persistence (both section and assessment writing to backends independently) creates race conditions and inconsistencies.
+**Make the assessment controller the one persistence owner.** By default both layers persist: the assessment controller to `pie:assessment-controller:v1:{assessmentId}:{attemptId}`, and each section controller to its own `localStorage` entry, which it hydrates from whenever the assessment session holds no entry for that section. The assessment controller already aggregates section sessions into the assessment session, so the coordinator's `hooks.createSectionSessionPersistence` returns a strategy that loads and saves nothing (§13). Two layers writing independently race, and a section the assessment session has no entry for comes back with whatever the section strategy stored.
 
 **`attemptId` is owned by the host.** In standalone deployments, reflect `attemptId` in the URL so page refresh and back-navigation restore the correct attempt context. In embedded integrations where an outer layer manages routing, the outer layer owns `attemptId` persistence — the assessment player should receive it as a prop.
 

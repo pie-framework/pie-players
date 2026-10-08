@@ -52,10 +52,15 @@ player.toolCoordinator = toolCoordinator;
 
 **After** (coordinator orchestrates):
 ```typescript
-import { createPackagedToolRegistry } from '@pie-players/pie-default-tool-loaders';
+import {
+  createPackagedToolRegistry,
+  DEFAULT_TOOL_MODULE_LOADERS,
+} from '@pie-players/pie-default-tool-loaders';
 
 // Create one coordinator with configuration
-const toolRegistry = createPackagedToolRegistry();
+const toolRegistry = createPackagedToolRegistry({
+  toolModuleLoaders: DEFAULT_TOOL_MODULE_LOADERS,
+});
 const toolkitCoordinator = new ToolkitCoordinator({
   assessmentId: 'my-assessment',
   toolRegistry,
@@ -140,7 +145,7 @@ See the [ToolkitCoordinator section in the architecture overview](../../docs/arc
 1. **Centralized Coordination**: ToolkitCoordinator orchestrates all services
 2. **Composable Services**: Import only what you need (or use coordinator for convenience)
 3. **No Framework Lock-in**: Works with any JavaScript framework
-4. **Product Control**: Products control navigation, persistence, layout, backend
+4. **Product Control**: Products control navigation, layout and backend. Session persistence defaults to `localStorage` at the section and assessment layers, and a product replaces either through its persistence hook (`createSectionSessionPersistence` on the coordinator, `createAssessmentSessionPersistence` on the assessment player)
 5. **Standard Contracts**: Well-defined event types for component communication
 6. **Element-Level Granularity**: Tool state tracked per PIE element, not per item
 7. **State Separation**: Tool state (ephemeral) separate from PIE session data (persistent)
@@ -172,9 +177,14 @@ tier; the choice is about ergonomics, not capability.
   object passed by reference. Example:
 
   ```ts
-  import { createPackagedToolRegistry } from "@pie-players/pie-default-tool-loaders";
+  import {
+    createPackagedToolRegistry,
+    DEFAULT_TOOL_MODULE_LOADERS,
+  } from "@pie-players/pie-default-tool-loaders";
 
-  const toolRegistry = createPackagedToolRegistry();
+  const toolRegistry = createPackagedToolRegistry({
+    toolModuleLoaders: DEFAULT_TOOL_MODULE_LOADERS,
+  });
   const coordinator = new ToolkitCoordinator({
     assessmentId: "my-assessment",
     toolRegistry,
@@ -262,10 +272,15 @@ Otherwise expose it through the configuration object only.
 
 ```typescript
 import { ToolkitCoordinator } from '@pie-players/pie-assessment-toolkit';
-import { createPackagedToolRegistry } from '@pie-players/pie-default-tool-loaders';
+import {
+  createPackagedToolRegistry,
+  DEFAULT_TOOL_MODULE_LOADERS,
+} from '@pie-players/pie-default-tool-loaders';
 
 // Create coordinator with configuration
-const toolRegistry = createPackagedToolRegistry();
+const toolRegistry = createPackagedToolRegistry({
+  toolModuleLoaders: DEFAULT_TOOL_MODULE_LOADERS,
+});
 const coordinator = new ToolkitCoordinator({
   assessmentId: 'demo-assessment',
   toolRegistry,
@@ -424,18 +439,21 @@ const catalogResolver = new AccessibilityCatalogResolver([], 'en-US');
 await ttsService.initialize(new BrowserTTSProvider());
 ttsService.setCatalogResolver(catalogResolver);
 
-// Pass services individually
-player.ttsService = ttsService;
-player.toolCoordinator = toolCoordinator;
-// ...
+// Use them from host-built UI
 ```
+
+No player element takes services one by one. The section and assessment
+players reach services only through a coordinator, `runtime.coordinator` on a
+section player and `coordinator` on an assessment player; manually created
+services serve host code that drives them directly.
 
 ### Without a Section Player
 
 `<pie-assessment-toolkit>` needs no section. Bind none and it provides tools,
 policy and services to the item toolbars and item players inside it, which is
 how the toolkit accompanies a plain item player. `<pie-item-scope>` holds the
-item for its tools, as it does in a section player's card:
+item for its tools, as it does in a section player's card. The tree this
+builds:
 
 ```html
 <pie-assessment-toolkit pnp-enforcement="on">
@@ -447,6 +465,11 @@ item for its tools, as it does in a section player's card:
   </pie-item-scope>
 </pie-assessment-toolkit>
 ```
+
+The host sets the toolkit's properties before the tree enters the document. A
+scope registers as soon as it mounts, and that first registration starts the
+coordinator from the toolkit's inputs at that moment; see the binding rules
+below.
 
 ```typescript
 import '@pie-players/pie-assessment-toolkit/components/pie-assessment-toolkit-element';
@@ -463,12 +486,23 @@ const toolRegistry = createPackagedToolRegistry({
   toolModuleLoaders: DEFAULT_TOOL_MODULE_LOADERS,
 });
 
+const toolkit = document.createElement('pie-assessment-toolkit');
+toolkit.setAttribute('pnp-enforcement', 'on');
 toolkit.tools = { placement: { item: ['textToSpeech', 'calculator'] } };
 toolkit.toolRegistry = toolRegistry;
 toolkit.toolContextResolvers = toolContextResolvers;
 toolkit.assessment = { id: 'a1', personalNeedsProfile: { supports: ['calculator'] } };
 
+const scope = document.createElement('pie-item-scope');
+scope.setAttribute('item-id', 'q1');
 scope.item = item;
+scope.innerHTML = `
+  <pie-item-toolbar></pie-item-toolbar>
+  <div data-region="content"><pie-item-player></pie-item-player></div>
+`;
+
+toolkit.append(scope);
+container.append(toolkit);
 ```
 
 The toolbars and tools inside the scope take the item and its id from it, and
@@ -654,9 +688,14 @@ Use **floating tools** when:
 Complete example showing both types:
 
 ```typescript
-import { createPackagedToolRegistry } from '@pie-players/pie-default-tool-loaders';
+import {
+  createPackagedToolRegistry,
+  DEFAULT_TOOL_MODULE_LOADERS,
+} from '@pie-players/pie-default-tool-loaders';
 
-const toolRegistry = createPackagedToolRegistry();
+const toolRegistry = createPackagedToolRegistry({
+  toolModuleLoaders: DEFAULT_TOOL_MODULE_LOADERS,
+});
 const coordinator = new ToolkitCoordinator({
   assessmentId: 'math-exam',
   toolRegistry,
@@ -690,14 +729,22 @@ const coordinator = new ToolkitCoordinator({
 });
 ```
 
-**Simple Default (All Tools Enabled):**
+**A common placement:**
 
-For most use cases, simply enable all available tools:
+A coordinator shows a tool only where `tools.placement` lists it. Its default
+placement is empty, so a coordinator configured without one shows no tools, and
+a profile grant does not place a tool either. This placement covers the
+commonly used tools:
 
 ```typescript
-import { createPackagedToolRegistry } from '@pie-players/pie-default-tool-loaders';
+import {
+  createPackagedToolRegistry,
+  DEFAULT_TOOL_MODULE_LOADERS,
+} from '@pie-players/pie-default-tool-loaders';
 
-const toolRegistry = createPackagedToolRegistry();
+const toolRegistry = createPackagedToolRegistry({
+  toolModuleLoaders: DEFAULT_TOOL_MODULE_LOADERS,
+});
 const coordinator = new ToolkitCoordinator({
   assessmentId: 'my-assessment',
   toolRegistry,
@@ -1380,10 +1427,15 @@ The section player provides automatic ToolkitCoordinator integration:
 
 <script type="module">
   import { ToolkitCoordinator } from '@pie-players/pie-assessment-toolkit';
-  import { createPackagedToolRegistry } from '@pie-players/pie-default-tool-loaders';
+  import {
+    createPackagedToolRegistry,
+    DEFAULT_TOOL_MODULE_LOADERS,
+  } from '@pie-players/pie-default-tool-loaders';
 
   // Create coordinator
-  const toolRegistry = createPackagedToolRegistry();
+  const toolRegistry = createPackagedToolRegistry({
+    toolModuleLoaders: DEFAULT_TOOL_MODULE_LOADERS,
+  });
   const coordinator = new ToolkitCoordinator({
     assessmentId: 'my-assessment',
     toolRegistry,
@@ -1406,7 +1458,8 @@ The section player provides automatic ToolkitCoordinator integration:
   // - Extracts services from coordinator
   // - Scopes its runtime engine to `section-id`
   // - Provides runtime context to child components
-  // - Manages SSML extraction
+  // - Registers item catalogs, including SSML catalogs a host extracted
+  //   into `config.extractedCatalogs` with `SSMLExtractor`
   // - Handles catalog lifecycle
 </script>
 ```
@@ -1472,9 +1525,14 @@ import {
   createToolsConfig,
   ToolkitCoordinator
 } from "@pie-players/pie-assessment-toolkit";
-import { createPackagedToolRegistry } from "@pie-players/pie-default-tool-loaders";
+import {
+  createPackagedToolRegistry,
+  DEFAULT_TOOL_MODULE_LOADERS,
+} from "@pie-players/pie-default-tool-loaders";
 
-const toolRegistry = createPackagedToolRegistry();
+const toolRegistry = createPackagedToolRegistry({
+  toolModuleLoaders: DEFAULT_TOOL_MODULE_LOADERS,
+});
 const { config, diagnostics } = createToolsConfig({
   source: "host.bootstrap",
   strictness: "error",

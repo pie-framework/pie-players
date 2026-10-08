@@ -11,17 +11,13 @@
  * receives only the inputs that are set.
  */
 
-import type {
-	AssessmentEntity,
-	AssessmentItemRef,
-} from "@pie-players/pie-players-shared/types";
+import type { AssessmentEntity } from "@pie-players/pie-players-shared/types";
 
 import type { PnpEnforcementMode } from "../policy/core/ToolPolicyEngine.js";
 
 export interface ForwardedPolicyInputs {
 	pnpEnforcement: PnpEnforcementMode | null;
 	assessment: AssessmentEntity | null;
-	currentItemRef: AssessmentItemRef | null;
 }
 
 /**
@@ -37,7 +33,6 @@ export function policyInputsToForward(
 	const order: Array<keyof ForwardedPolicyInputs> = [
 		"pnpEnforcement",
 		"assessment",
-		"currentItemRef",
 	];
 	return order.filter((key) =>
 		previous ? !Object.is(previous[key], next[key]) : next[key] !== null,

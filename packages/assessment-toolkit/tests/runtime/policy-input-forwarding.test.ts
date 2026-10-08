@@ -10,7 +10,6 @@ import {
 const unset: ForwardedPolicyInputs = {
 	pnpEnforcement: null,
 	assessment: null,
-	currentItemRef: null,
 };
 
 describe("policyInputsToForward", () => {
@@ -33,9 +32,9 @@ describe("policyInputsToForward", () => {
 		const assessment = { id: "a1" } as AssessmentEntity;
 		expect(
 			policyInputsToForward(
-				{ ...unset, currentItemRef: { identifier: "i1" } },
-				{ pnpEnforcement: "off", assessment, currentItemRef: null },
+				{ ...unset, assessment: { id: "a0" } as AssessmentEntity },
+				{ pnpEnforcement: "off", assessment },
 			),
-		).toEqual(["pnpEnforcement", "assessment", "currentItemRef"]);
+		).toEqual(["pnpEnforcement", "assessment"]);
 	});
 });

@@ -8,7 +8,7 @@ Tool availability is determined by combining:
 1. **Student PNP profile** (QTI 3.0 standard) - Student's documented accessibility needs
 2. **District policy** (implementation-specific) - Institutional governance rules
 3. **Test administration** (implementation-specific) - Session-level operational control
-4. **Item settings** (QTI 3.0 standard) - Per-item requirements/restrictions
+4. **Item settings** (QTI 3.0 standard) - Per-item requirements/restrictions, applied on the item's own toolbar
 
 ## Data Structure Hierarchy
 
@@ -33,7 +33,7 @@ AssessmentEntity
         └── textToSpeech: {...}
 
 AssessmentItemRef
-└── settings: ItemSettings         # Per-item rules
+└── settings: ItemSettings         # Per-item rules, registered by the item's <pie-item-scope>
     ├── requiredTools: string[]
     ├── restrictedTools: string[]
     └── toolParameters: Record<string, any>
@@ -210,6 +210,14 @@ const itemRef: AssessmentItemRef = {
 };
 ```
 
+#### Scope of item settings
+
+An item's settings govern the decisions scoped to that item: its own item-level toolbar, and the feature decisions its content asks with the item's scope. They reach the coordinator through the item's `<pie-item-scope>`, whose `settings` property carries them. The section player fills it from each item's `AssessmentItemRef.settings`; a host composing its own item player sets it on the scope it wraps the player in. A host driving a coordinator without the elements files them with `coordinator.registerItemSettings(itemId, settings)`, under the item's canonical id, which is the id its item toolbar scopes decisions by. The call returns the function that withdraws them.
+
+Section- and assessment-level toolbars ignore item settings. Placement there is the host's section-wide choice, and the items on the page are not aggregated into it. When a mounted item's `restrictedTools` or `requiredTools` names a tool the placement puts on such a toolbar, the decision carries a `tool-policy.itemSettingNotApplied` diagnostic, whose details name the `itemId`, the `settings` keys and the `toolbarLevel`, and the coordinator logs a warning once per tool and item. Place the tool at item level to enforce the setting per item. An item whose decisions PNP enforcement leaves off raises no diagnostic.
+
+In auto-mode (no `pnpEnforcement` set), an item's settings turn enforcement on for the decisions scoped to that item, and for no others.
+
 **Source**: Typically configured by:
 - Assessment item authors
 - Content development teams
@@ -294,7 +302,7 @@ const assessment: AssessmentEntity = {
   }
 };
 
-// 4. Resolve tools for an item
+// 4. Resolve tools for an item's own toolbar
 const currentItem: AssessmentItemRef = {
   identifier: "item-1",
 
@@ -306,7 +314,8 @@ const currentItem: AssessmentItemRef = {
   }
 };
 coordinator.updateAssessment(assessment);
-coordinator.updateCurrentItemRef(currentItem);
+// The item's <pie-item-scope> does this when it mounts with `settings`.
+coordinator.registerItemSettings(currentItem.identifier, currentItem.settings!);
 
 const allowedToolIds = coordinator
   .decideToolPolicy({ level: "item", scope: { level: "item", scopeId: currentItem.identifier } })
@@ -359,8 +368,9 @@ console.log('Allowed tools:', allowedToolIds);
     restrictedTools: ["calculator"]  // Mental math question
   }
 }
-// Result: calculator BLOCKED for this item only
-// Item restriction (#3) overrides PNP supports (#6)
+// Result: calculator BLOCKED on this item's own toolbar only
+// Item restriction (#3) overrides PNP supports (#6). A section-level
+// calculator stays and reports `tool-policy.itemSettingNotApplied`.
 ```
 
 ### Example 3: Item Requirement Forces Enable
@@ -374,8 +384,8 @@ console.log('Allowed tools:', allowedToolIds);
     requiredTools: ["calculator"]  // Complex computation problem
   }
 }
-// Result: calculator ENABLED for this item
-// Item requirement (#4) forces enablement
+// Result: calculator ENABLED on this item's own toolbar
+// Item requirement (#4) forces enablement there
 ```
 
 ### Example 4: Test Admin Override
@@ -425,7 +435,7 @@ const coordinator = new ToolkitCoordinator({
   }
 });
 coordinator.updateAssessment(assessment);
-coordinator.updateCurrentItemRef(currentItem);
+coordinator.registerItemSettings(currentItem.identifier, currentItem.settings!);
 
 // 2. Resolve tools for current context
 const allowedToolIds = coordinator
@@ -444,16 +454,16 @@ const context: ItemToolContext = {
 // 4. Filter by relevance (Pass 2)
 const visibleTools = registry.filterVisibleInContext(allowedToolIds, context);
 
-// 5. Render toolbar: it takes the coordinator from the enclosing toolkit
+// 5. Render toolbar: it takes the coordinator from the enclosing toolkit and
+//    the item's identity from the enclosing item scope
 <pie-assessment-toolkit .coordinator={coordinator}>
-  <pie-item-toolbar
-    .toolRegistry={registry}
-    .item={itemData}
-  ></pie-item-toolbar>
+  <pie-item-scope item-id="item-1" .item={itemData} .settings={currentItem.settings}>
+    <pie-item-toolbar .toolRegistry={registry}></pie-item-toolbar>
+  </pie-item-scope>
 </pie-assessment-toolkit>
 ```
 
-Policy inputs reach the toolbar through the coordinator. A toolkit that builds its own coordinator forwards its `assessment` and `currentItemRef` properties to it; a host that passes `coordinator`, as here, binds them with `updateAssessment` and `updateCurrentItemRef`.
+Policy inputs reach the toolbar through the coordinator. A toolkit that builds its own coordinator forwards its `assessment` property to it, and a host that passes `coordinator`, as here, binds the assessment with `updateAssessment`. Item settings arrive either way through each item's `<pie-item-scope>` registration; the explicit `registerItemSettings` in step 1 is for a host that decides without the elements.
 
 ### Data Sources
 
@@ -517,15 +527,16 @@ Provide UI for:
 Check precedence hierarchy in order:
 1. Is it blocked by `districtPolicy.blockedTools`?
 2. Is it disabled in `testAdministration.toolOverrides`?
-3. Is it in `itemSettings.restrictedTools`?
+3. Is it in `itemSettings.restrictedTools`, on the item's own toolbar?
 4. Does the tool's `isVisibleInContext()` return false?
 
 ### "Tool showing up when it shouldn't"
 
 Check:
 1. Is it in `districtPolicy.requiredTools`?
-2. Is it in `itemSettings.requiredTools`?
+2. Is it in `itemSettings.requiredTools`, on the item's own toolbar?
 3. Is `toolOverrides` explicitly enabling it?
+4. Is an item's restriction meant to withdraw it from a section- or assessment-level toolbar? Item settings do not reach those toolbars; the decision's `tool-policy.itemSettingNotApplied` diagnostic names the item. Place the tool at item level instead.
 
 ### "Need custom policy rules"
 

@@ -29,6 +29,7 @@ export {
 	PnpPolicySource,
 	type PnpPolicyApplyArgs,
 	type PnpPolicyDecisionEvent,
+	type PnpPolicyItem,
 	type PnpPolicyResult,
 	type PnpPolicyToolFlags,
 } from "./sources/PnpPolicySource.js";
@@ -37,6 +38,6 @@ export { ToolPolicyProvenanceBuilder } from "./core/provenance.js";
 
 export {
 	assessmentHasPnpPolicyInputs,
-	itemRefHasPnpPolicyInputs,
+	itemSettingsHavePnpPolicyInputs,
 	resolveDefaultPnpEnforcement,
 } from "./core/pnp-policy-inputs.js";

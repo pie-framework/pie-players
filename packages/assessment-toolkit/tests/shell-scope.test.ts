@@ -264,6 +264,28 @@ describe("createShellScope", () => {
 		});
 	});
 
+	test("carries the item's settings, re-registering when they change and not for an equal copy", () => {
+		const { runtimeNode, host, scope } = setup();
+		const details = received(runtimeNode, PIE_REGISTER_EVENT);
+		const content = item("Read me");
+		const state = { host, ...q1, item: content };
+
+		scope.publish({ ...state, settings: { restrictedTools: ["calculator"] } });
+		scope.publish({ ...state, settings: { restrictedTools: ["calculator"] } });
+		expect(details.map((detail) => detail.settings)).toEqual([
+			{ restrictedTools: ["calculator"] },
+		]);
+
+		scope.publish({ ...state, settings: { requiredTools: ["calculator"] } });
+		scope.publish({ ...state, settings: null });
+		expect(details.map((detail) => detail.settings)).toEqual([
+			{ restrictedTools: ["calculator"] },
+			{ requiredTools: ["calculator"] },
+			undefined,
+		]);
+		expect(details.every((detail) => detail.item === content)).toBe(true);
+	});
+
 	test("registers nothing without an item id, and retires under the identity it registered", () => {
 		const { host, registrations, scope } = setup();
 		const state = { host, kind: "item" as const, contentKind: "assessment-item" };

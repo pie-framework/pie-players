@@ -30,9 +30,10 @@
   - Pass 1: ToolkitCoordinator.decideToolPolicy(...) — placement,
     policy.allowed/blocked, provider veto, PNP/profile gates, and registered
     custom PolicySources are all applied inside the ToolPolicyEngine.
-    Hosts that need to drive PNP/profile inputs should
-    bind `assessment` / `currentItemRef` on the parent
-    `pie-assessment-toolkit` element instead.
+    Hosts drive PNP/profile inputs through the parent
+    `pie-assessment-toolkit` (`assessment`) and the item's
+    `pie-item-scope` (`settings`); an item's settings govern only its own
+    item-level toolbar.
   - Pass 2: tool-owned isVisibleInContext(context) — relevance gate,
     e.g. "show calculator only when math content is present". Lives
     at the toolbar boundary by design (engine doesn't import tool
@@ -88,6 +89,7 @@
 	import type { AssessmentItemRef, AssessmentEntity, ItemEntity } from '@pie-players/pie-players-shared/types';
 	import type { ElementToolContext, ItemToolContext, ToolLevel, ToolContext } from '../services/tool-context.js';
 	import type { ToolPolicyDecision } from '../policy/engine.js';
+	import { createDecidedToolsTracker } from '../services/toolbar-decided-tools.js';
 	// Side-effect import: registers <nds-icon-button>. Single vendored source of
 	// truth lives in players-shared (Lit inlined, self-contained); see
 	// players-shared/src/components/vendor/nds/README.md. The CE build externalizes
@@ -336,6 +338,11 @@
 	// coordinator's policy engine — this counter is just the reactive
 	// fanout that lets Svelte know the engine answer may have changed.
 	let policyChangeVersion = $state(0);
+	// Bumped on every policy change except an item's settings changing, which
+	// can change only which tools that item's own toolbar shows. Re-rendering
+	// for it would swap in fresh elements on every toolbar, so a section tool
+	// would lose its state whenever an item with settings mounts.
+	let toolRenderVersion = $state(0);
 	let toolContextResolverChangeVersion = $state(0);
 
 	$effect(() => {
@@ -355,8 +362,9 @@
 	$effect(() => {
 		const coord = runtimeContext?.toolkitCoordinator;
 		if (!coord || typeof coord.onPolicyChange !== 'function') return;
-		const unsubscribe = coord.onPolicyChange(() => {
+		const unsubscribe = coord.onPolicyChange((event) => {
 			policyChangeVersion += 1;
+			if (event?.reason !== 'item-settings') toolRenderVersion += 1;
 		});
 		return () => {
 			try {
@@ -463,14 +471,14 @@
 			},
 		});
 	});
+	const trackDecidedTools = createDecidedToolsTracker();
+	const decidedTools = $derived(trackDecidedTools(policyDecision, toolRenderVersion));
 	const allowedToolIds = $derived.by((): string[] => {
 		const dedupe = (toolIds: string[]): string[] => Array.from(new Set(toolIds));
-		if (policyDecision) {
+		if (decidedTools) {
 			return dedupe(
 				effectiveToolRegistry
-					.normalizeToolIds(
-						policyDecision.visibleTools.map((entry) => entry.toolId),
-					)
+					.normalizeToolIds(decidedTools.map((entry) => entry.toolId))
 					.filter(Boolean),
 			);
 		}
@@ -506,8 +514,8 @@
 	// removed, because these ids come from the decision's own surviving entries.
 	const grantProtectedToolIds = $derived.by((): Set<string> => {
 		const protectedIds = new Set<string>();
-		if (!policyDecision) return protectedIds;
-		for (const entry of policyDecision.visibleTools) {
+		if (!decidedTools) return protectedIds;
+		for (const entry of decidedTools) {
 			if (!entry.required && !entry.alwaysAvailable) continue;
 			for (const toolId of effectiveToolRegistry
 				.normalizeToolIds([entry.toolId])
@@ -524,12 +532,12 @@
 		return !!(effectiveItem && config && typeof config === 'object');
 	});
 
-	// PNP/profile inputs (`assessment`, `currentItemRef`) live on the
-	// coordinator after M8 PR 2; the toolbar reads them through
-	// `getPolicyInputs()` so it can build the correct Pass-2 context
-	// without re-binding props. Standalone (no-coordinator) usage
-	// falls back to the empty / canonical-id-derived contexts that
-	// satisfy the `ToolContext` shape for `isVisibleInContext` calls.
+	// The bound assessment lives on the coordinator; the toolbar reads it
+	// through `getPolicyInputs()` to build the Pass-2 context without
+	// re-binding props. The context's item ref is derived from the canonical
+	// id, and standalone (no-coordinator) usage falls back to an empty
+	// assessment; both satisfy the `ToolContext` shape for
+	// `isVisibleInContext` calls.
 	const policyInputs = $derived.by(() => {
 		void policyChangeVersion;
 		const coord = runtimeContext?.toolkitCoordinator;
@@ -539,7 +547,7 @@
 		return coord.getPolicyInputs();
 	});
 	const effectiveAssessment = $derived(policyInputs?.assessment ?? null);
-	const effectiveItemRef = $derived(policyInputs?.currentItemRef ?? null);
+	const contextItemRef = $derived({ id: effectiveCanonicalItemId } as AssessmentItemRef);
 
 	const toolContext = $derived.by((): ItemToolContext | null => {
 		if (effectiveLevel === 'section') {
@@ -562,14 +570,14 @@
 			return {
 				level: 'passage',
 				assessment: (effectiveAssessment || {}) as AssessmentEntity,
-				itemRef: (effectiveItemRef || ({ id: effectiveCanonicalItemId } as AssessmentItemRef)) as AssessmentItemRef,
+				itemRef: contextItemRef,
 				passage: effectiveItem as any
 			} as ToolContext as ItemToolContext;
 		}
 		return {
 			level: 'item',
 			assessment: (effectiveAssessment || {}) as AssessmentEntity,
-			itemRef: (effectiveItemRef || ({ id: effectiveCanonicalItemId } as AssessmentItemRef)) as AssessmentItemRef,
+			itemRef: contextItemRef,
 			item: effectiveItem as ItemEntity
 		} as ToolContext as ItemToolContext;
 	});
@@ -579,7 +587,7 @@
 		return {
 			level: 'item',
 			assessment: (effectiveAssessment || {}) as AssessmentEntity,
-			itemRef: (effectiveItemRef || ({ id: effectiveCanonicalItemId } as AssessmentItemRef)) as AssessmentItemRef,
+			itemRef: contextItemRef,
 			item: ((effectiveItem as ItemEntity | null) || ({ id: effectiveCanonicalItemId, config: {} } as ItemEntity)) as ItemEntity
 		} as ToolContext;
 	});
@@ -598,7 +606,7 @@
 			.map((model: any) => ({
 				level: 'element' as const,
 				assessment: (effectiveAssessment || {}) as AssessmentEntity,
-				itemRef: (effectiveItemRef || ({ id: effectiveCanonicalItemId } as AssessmentItemRef)) as AssessmentItemRef,
+				itemRef: contextItemRef,
 				item: effectiveItem as ItemEntity,
 				elementId: model.id as string
 			}));

@@ -11,6 +11,7 @@ import {
 	assessmentToolkitShellContext,
 	type ShellContextKind,
 } from "../context/assessment-toolkit-context.js";
+import type { ItemSettings } from "@pie-players/pie-players-shared/types";
 import { connectAssessmentToolkitHostRuntimeContext } from "../context/runtime-context-consumer.js";
 import {
 	type CatalogSourceEntity,
@@ -36,6 +37,8 @@ export interface ShellScopeState {
 	scopeElement?: HTMLElement | null;
 	ttsHighlightTargetResolver?: TTSHighlightTargetResolver | null;
 	item?: unknown;
+	/** An item's policy settings, registered with the runtime alongside it. */
+	settings?: ItemSettings | null;
 }
 
 export interface ShellScope {
@@ -251,6 +254,7 @@ export function createShellScope(): ShellScope {
 					canonicalItemId,
 					contentKind: state.contentKind,
 					item: state.item ?? null,
+					settings: state.settings ?? null,
 				}
 			: null;
 		// Answers at once when the runtime is already there.

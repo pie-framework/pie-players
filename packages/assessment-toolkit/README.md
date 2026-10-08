@@ -503,7 +503,7 @@ changed binds a coordinator rebuilt from the current values, and the toolbars
 move to it. After that, a change to them is reported once in the console and
 does not reach the coordinator, except a `toolRegistry` given to a toolkit that
 had none, which the coordinator adopts in place; `pnp-enforcement`,
-`assessment`, `currentItemRef` and `toolContextResolvers` apply to it at any
+`assessment` and `toolContextResolvers` apply to it at any
 time. That
 coordinator reports feature policy asked with no assessment bound only while
 `pnp-enforcement` is `on`: a toolkit given no `assessment` and no enforcement
@@ -1341,12 +1341,14 @@ needs them — signing's card validators and its resolution rules live in
 
 ### Feature policy without a placement
 
-`ToolPolicyEngine.decideFeature(featureId)` (and
-`ToolkitCoordinator.decideFeaturePolicy(featureId)`) resolve one feature id
+`ToolPolicyEngine.decideFeature(featureId, scope?)` (and
+`ToolkitCoordinator.decideFeaturePolicy(featureId, scope?)`) resolve one feature id
 through `PnpPolicySource`'s six-level precedence, independent of any toolbar
 placement. Use it for capabilities that are not toolbar surfaces — signing is the
 first — where a placement-scoped `decide(...)` would answer the wrong question:
 absent because it was never placed, rather than absent because policy said no.
+An item scope applies that item's registered settings, the item restriction and
+requirement rungs; a decision without one applies no item's.
 
 `createEmptyPersonalNeedsProfile()` is the only profile this package ships, and it
 grants nothing. Which capabilities a deployment grants by default is a property

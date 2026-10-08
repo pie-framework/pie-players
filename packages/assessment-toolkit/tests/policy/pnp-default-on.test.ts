@@ -13,25 +13,21 @@
  * Covers four surfaces that share the rule:
  *
  *   1. The pure helpers (`assessmentHasPnpPolicyInputs`,
- *      `itemRefHasPnpPolicyInputs`, `resolveDefaultPnpEnforcement`).
- *   2. `ToolPolicyEngine`'s constructor default for
- *      `pnpEnforcement`.
- *   3. `ToolkitCoordinator.resolveEffectivePnpEnforcement` via
- *      `updateAssessment` / `updateCurrentItemRef`.
+ *      `itemSettingsHavePnpPolicyInputs`, `resolveDefaultPnpEnforcement`).
+ *   2. `ToolPolicyEngine`'s auto-mode, resolved per decision: an item's
+ *      settings count only for decisions scoped to that item.
+ *   3. `ToolkitCoordinator` via `updateAssessment` / `registerItemSettings`.
  *   4. The interaction with explicit `setPnpEnforcement` overrides.
  */
 
 import { describe, expect, test } from "bun:test";
 
-import type {
-	AssessmentEntity,
-	AssessmentItemRef,
-} from "@pie-players/pie-players-shared/types";
+import type { AssessmentEntity } from "@pie-players/pie-players-shared/types";
 
 import { ToolPolicyEngine } from "../../src/policy/core/ToolPolicyEngine.js";
 import {
 	assessmentHasPnpPolicyInputs,
-	itemRefHasPnpPolicyInputs,
+	itemSettingsHavePnpPolicyInputs,
 	resolveDefaultPnpEnforcement,
 } from "../../src/policy/internal.js";
 import { ToolkitCoordinator } from "../../src/services/ToolkitCoordinator.js";
@@ -168,43 +164,31 @@ describe("assessmentHasPnpPolicyInputs — structural PNP/profile policy materia
 	});
 });
 
-describe("itemRefHasPnpPolicyInputs — structural PNP/profile policy material on the bound item ref", () => {
-	test("returns false for null / undefined / bare item ref", () => {
-		expect(itemRefHasPnpPolicyInputs(null)).toBe(false);
-		expect(itemRefHasPnpPolicyInputs(undefined)).toBe(false);
+describe("itemSettingsHavePnpPolicyInputs — structural PNP/profile policy material in an item's settings", () => {
+	test("returns false for null / undefined / empty settings", () => {
+		expect(itemSettingsHavePnpPolicyInputs(null)).toBe(false);
+		expect(itemSettingsHavePnpPolicyInputs(undefined)).toBe(false);
+		expect(itemSettingsHavePnpPolicyInputs({})).toBe(false);
 		expect(
-			itemRefHasPnpPolicyInputs({ identifier: "i1" } as AssessmentItemRef),
-		).toBe(false);
-		expect(
-			itemRefHasPnpPolicyInputs({
-				identifier: "i1",
-				settings: {
-					requiredTools: [],
-					restrictedTools: [],
-					toolParameters: {},
-				},
-			} as AssessmentItemRef),
+			itemSettingsHavePnpPolicyInputs({
+				requiredTools: [],
+				restrictedTools: [],
+				toolParameters: {},
+			}),
 		).toBe(false);
 	});
 
 	test("returns true for non-empty `requiredTools` / `restrictedTools` / `toolParameters`", () => {
+		expect(itemSettingsHavePnpPolicyInputs({ requiredTools: ["graph"] })).toBe(
+			true,
+		);
 		expect(
-			itemRefHasPnpPolicyInputs({
-				identifier: "i1",
-				settings: { requiredTools: ["graph"] },
-			} as AssessmentItemRef),
+			itemSettingsHavePnpPolicyInputs({ restrictedTools: ["calculator"] }),
 		).toBe(true);
 		expect(
-			itemRefHasPnpPolicyInputs({
-				identifier: "i1",
-				settings: { restrictedTools: ["calculator"] },
-			} as AssessmentItemRef),
-		).toBe(true);
-		expect(
-			itemRefHasPnpPolicyInputs({
-				identifier: "i1",
-				settings: { toolParameters: { calculator: { mode: "basic" } } },
-			} as AssessmentItemRef),
+			itemSettingsHavePnpPolicyInputs({
+				toolParameters: { calculator: { mode: "basic" } },
+			}),
 		).toBe(true);
 	});
 });
@@ -215,7 +199,7 @@ describe("resolveDefaultPnpEnforcement — precedence", () => {
 		expect(
 			resolveDefaultPnpEnforcement({
 				assessment: { id: "a1" } as AssessmentEntity,
-				currentItemRef: { identifier: "i1" } as AssessmentItemRef,
+				itemSettings: {},
 			}),
 		).toBe("off");
 	});
@@ -231,20 +215,27 @@ describe("resolveDefaultPnpEnforcement — precedence", () => {
 		).toBe("on");
 	});
 
-	test("returns 'on' when only the item ref carries profile policy material", () => {
+	test("returns 'on' when only the item's settings carry profile policy material", () => {
 		expect(
 			resolveDefaultPnpEnforcement({
 				assessment: { id: "a1" } as AssessmentEntity,
-				currentItemRef: {
-					identifier: "i1",
-					settings: { restrictedTools: ["calculator"] },
-				} as AssessmentItemRef,
+				itemSettings: { restrictedTools: ["calculator"] },
 			}),
 		).toBe("on");
 	});
 });
 
-describe("ToolPolicyEngine — pnpEnforcement constructor default", () => {
+const ITEM_TOOLS = normalizeToolsConfig({
+	placement: { item: ["graph", "calculator"] },
+});
+
+const itemRequest = (scopeId: string) =>
+	({ level: "item", scope: { level: "item", scopeId } }) as const;
+
+const visibleIds = (decision: { visibleTools: Array<{ toolId: string }> }) =>
+	decision.visibleTools.map((entry) => entry.toolId);
+
+describe("ToolPolicyEngine — pnpEnforcement auto-mode", () => {
 	test("defaults to 'off' with no inputs", () => {
 		const engine = makeEngine();
 		expect(engine.getInputs().pnpEnforcement).toBe("off");
@@ -265,14 +256,16 @@ describe("ToolPolicyEngine — pnpEnforcement constructor default", () => {
 		expect(engine.getInputs().pnpEnforcement).toBe("on");
 	});
 
-	test("defaults to 'on' when only the bound item ref carries profile policy material", () => {
-		const engine = makeEngine({
-			currentItemRef: {
-				identifier: "i1",
-				settings: { restrictedTools: ["calculator"] },
-			} as AssessmentItemRef,
-		});
-		expect(engine.getInputs().pnpEnforcement).toBe("on");
+	test("an item's settings turn enforcement on for decisions scoped to that item only", () => {
+		const engine = makeEngine({ tools: ITEM_TOOLS });
+		engine.registerItemSettings("i1", { restrictedTools: ["calculator"] });
+
+		expect(visibleIds(engine.decide(itemRequest("i1")))).toEqual(["graph"]);
+		expect(visibleIds(engine.decide(itemRequest("i2")))).toEqual([
+			"graph",
+			"calculator",
+		]);
+		expect(engine.getInputs().pnpEnforcement).toBe("off");
 	});
 
 	test("explicit pnpEnforcement override wins over the auto-detected default", () => {
@@ -287,8 +280,8 @@ describe("ToolPolicyEngine — pnpEnforcement constructor default", () => {
 	});
 });
 
-describe("ToolkitCoordinator — auto-mode flips on bound profile policy material", () => {
-	test("starts at 'off' before any assessment / item ref is bound", () => {
+describe("ToolkitCoordinator — auto-mode follows bound profile policy material", () => {
+	test("starts at 'off' before any assessment is bound", () => {
 		const coord = makeCoordinator();
 		expect(coord.getPolicyInputs().pnpEnforcement).toBe("off");
 	});
@@ -302,20 +295,25 @@ describe("ToolkitCoordinator — auto-mode flips on bound profile policy materia
 		expect(coord.getPolicyInputs().pnpEnforcement).toBe("on");
 	});
 
-	test("flips to 'on' when only the current item ref carries profile policy material", () => {
+	test("a registered item's settings enforce on that item's toolbar", () => {
 		const coord = makeCoordinator({
 			placement: { item: ["graph", "calculator"] },
 		});
-		expect(coord.getPolicyInputs().pnpEnforcement).toBe("off");
-		coord.updateCurrentItemRef({
-			identifier: "i1",
-			settings: { restrictedTools: ["calculator"] },
-		} as AssessmentItemRef);
-		expect(coord.getPolicyInputs().pnpEnforcement).toBe("on");
+		coord.registerItemSettings("i1", { restrictedTools: ["calculator"] });
+
+		expect(visibleIds(coord.decideToolPolicy(itemRequest("i1")))).toEqual([
+			"graph",
+		]);
+		expect(visibleIds(coord.decideToolPolicy(itemRequest("i2")))).toEqual([
+			"graph",
+			"calculator",
+		]);
 	});
 
 	test("stays at 'off' when the host explicitly sets pnpEnforcement: 'off' even with profile material bound", () => {
-		const coord = makeCoordinator();
+		const coord = makeCoordinator({
+			placement: { item: ["graph", "calculator"] },
+		});
 		coord.setPnpEnforcement("off");
 		coord.updateAssessment({
 			id: "a1",
@@ -323,15 +321,15 @@ describe("ToolkitCoordinator — auto-mode flips on bound profile policy materia
 		} as AssessmentEntity);
 		expect(coord.getPolicyInputs().pnpEnforcement).toBe("off");
 
-		// Item-level profile policy material does not break the override either.
-		coord.updateCurrentItemRef({
-			identifier: "i1",
-			settings: { restrictedTools: ["calculator"] },
-		} as AssessmentItemRef);
-		expect(coord.getPolicyInputs().pnpEnforcement).toBe("off");
+		// An item's settings do not break the override either.
+		coord.registerItemSettings("i1", { restrictedTools: ["calculator"] });
+		expect(visibleIds(coord.decideToolPolicy(itemRequest("i1")))).toEqual([
+			"graph",
+			"calculator",
+		]);
 	});
 
-	test("auto-mode reverts to 'off' when the profile-bearing assessment is unbound and the item ref has no profile policy material", () => {
+	test("auto-mode reverts to 'off' when the profile-bearing assessment is unbound", () => {
 		const coord = makeCoordinator();
 		coord.updateAssessment({
 			id: "a1",
@@ -341,21 +339,5 @@ describe("ToolkitCoordinator — auto-mode flips on bound profile policy materia
 
 		coord.updateAssessment(null);
 		expect(coord.getPolicyInputs().pnpEnforcement).toBe("off");
-
-		coord.updateCurrentItemRef({ identifier: "i1" } as AssessmentItemRef);
-		expect(coord.getPolicyInputs().pnpEnforcement).toBe("off");
-	});
-
-	test("auto-mode survives item ref churn when the assessment carries profile policy material", () => {
-		const coord = makeCoordinator();
-		coord.updateAssessment({
-			id: "a1",
-			personalNeedsProfile: { supports: ["graph"] },
-		} as AssessmentEntity);
-		coord.updateCurrentItemRef({ identifier: "i1" } as AssessmentItemRef);
-		expect(coord.getPolicyInputs().pnpEnforcement).toBe("on");
-
-		coord.updateCurrentItemRef(null);
-		expect(coord.getPolicyInputs().pnpEnforcement).toBe("on");
 	});
 });

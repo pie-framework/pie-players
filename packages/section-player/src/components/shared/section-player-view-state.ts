@@ -1,4 +1,7 @@
-import type { ItemEntity } from "@pie-players/pie-players-shared/types";
+import type {
+	ItemEntity,
+	ItemSettings,
+} from "@pie-players/pie-players-shared/types";
 import {
 	resolveFormativeItemView,
 	type FormativeItemView,
@@ -6,6 +9,7 @@ import {
 import type { SectionCompositionModel } from "../../controllers/types.js";
 import {
 	getCanonicalItemIdForItem,
+	getItemSettingsForItem,
 	getSessionForItem,
 	getSessionForItemOrEmpty,
 	EMPTY_COMPOSITION,
@@ -317,4 +321,12 @@ export function getCanonicalItemId(args: {
 	item: ItemEntity;
 }): string {
 	return getCanonicalItemIdForItem(args.compositionModel, args.item);
+}
+
+/** The policy settings the item's card registers through its item scope. */
+export function getItemSettings(args: {
+	compositionModel: SectionCompositionModel;
+	item: ItemEntity;
+}): ItemSettings | null {
+	return getItemSettingsForItem(args.compositionModel, args.item);
 }

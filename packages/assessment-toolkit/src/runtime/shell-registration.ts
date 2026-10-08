@@ -1,7 +1,9 @@
+import type { ItemSettings } from "@pie-players/pie-players-shared/types";
 import {
 	type CatalogSourceEntity,
 	catalogSourceSignature,
 } from "../services/catalog-owner.js";
+import { structurallyEqual } from "../utils/structural-equality.js";
 import {
 	PIE_REGISTER_EVENT,
 	PIE_UNREGISTER_EVENT,
@@ -39,6 +41,8 @@ export type ShellRegistrationIdentity = {
 	canonicalItemId: string;
 	contentKind: string;
 	item: unknown;
+	/** The item's policy settings, compared structurally like its catalogs. */
+	settings: ItemSettings | null;
 };
 
 /**
@@ -53,7 +57,8 @@ function sameOwner(
 		a.host === b.host &&
 		a.itemId === b.itemId &&
 		a.canonicalItemId === b.canonicalItemId &&
-		a.contentKind === b.contentKind
+		a.contentKind === b.contentKind &&
+		structurallyEqual(a.settings, b.settings)
 	);
 }
 
@@ -81,6 +86,7 @@ function dispatch(
 		canonicalItemId: identity.canonicalItemId,
 		contentKind: identity.contentKind,
 		item: identity.item,
+		...(identity.settings ? { settings: identity.settings } : {}),
 		element: identity.host,
 		...(runtimeId ? { runtimeId } : {}),
 	};

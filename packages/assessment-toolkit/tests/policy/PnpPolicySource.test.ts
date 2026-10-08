@@ -7,10 +7,7 @@
 
 import { describe, expect, test } from "bun:test";
 
-import type {
-	AssessmentEntity,
-	AssessmentItemRef,
-} from "@pie-players/pie-players-shared/types";
+import type { AssessmentEntity } from "@pie-players/pie-players-shared/types";
 
 import { PnpPolicySource } from "../../src/policy/sources/PnpPolicySource.js";
 import { ToolRegistry } from "../../src/services/ToolRegistry.js";
@@ -34,10 +31,10 @@ describe("PnpPolicySource — 6-level precedence", () => {
 				},
 				personalNeedsProfile: { supports: ["calculator"] },
 			} as AssessmentEntity,
-			currentItemRef: {
-				identifier: "i1",
+			item: {
+				id: "i1",
 				settings: { requiredTools: ["calculator"] },
-			} as AssessmentItemRef,
+			},
 		});
 		expect(result.blockedToolIds.has("calculator")).toBe(true);
 		expect(result.mandatedToolIds.has("calculator")).toBe(false);
@@ -110,10 +107,10 @@ describe("PnpPolicySource — 6-level precedence", () => {
 					testAdministration: { toolOverrides: { calculator: true } },
 				},
 			} as AssessmentEntity,
-			currentItemRef: {
-				identifier: "i1",
+			item: {
+				id: "i1",
 				settings: { restrictedTools: ["calculator"] },
-			} as AssessmentItemRef,
+			},
 		};
 		const result = s.apply(args);
 		expect(result.blockedToolIds.has("calculator")).toBe(false);
@@ -140,13 +137,13 @@ describe("PnpPolicySource — 6-level precedence", () => {
 	test("3. item-restriction beats item-requirement", () => {
 		const result = source().apply({
 			assessment: { id: "a1" } as AssessmentEntity,
-			currentItemRef: {
-				identifier: "i1",
+			item: {
+				id: "i1",
 				settings: {
 					requiredTools: ["calculator"],
 					restrictedTools: ["calculator"],
 				},
-			} as AssessmentItemRef,
+			},
 		});
 		expect(result.blockedToolIds.has("calculator")).toBe(true);
 		expect(result.mandatedToolIds.has("calculator")).toBe(false);
@@ -155,10 +152,10 @@ describe("PnpPolicySource — 6-level precedence", () => {
 	test("4. item-requirement marks the tool required + mandated", () => {
 		const result = source().apply({
 			assessment: { id: "a1" } as AssessmentEntity,
-			currentItemRef: {
-				identifier: "i1",
+			item: {
+				id: "i1",
 				settings: { requiredTools: ["calculator"] },
-			} as AssessmentItemRef,
+			},
 		});
 		expect(result.blockedToolIds.has("calculator")).toBe(false);
 		expect(result.mandatedToolIds.has("calculator")).toBe(true);

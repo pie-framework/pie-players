@@ -46,7 +46,6 @@
 			// internal toolbars; PR 3 switches the toolbars onto the
 			// engine and these props become the canonical input path.
 			assessment: { type: "Object", reflect: false },
-			currentItemRef: { type: "Object", reflect: false },
 			pnpEnforcement: {
 				attribute: "pnp-enforcement",
 				type: "String",
@@ -101,7 +100,6 @@
 	import type { PnpEnforcementMode } from "../policy/engine.js";
 	import type {
 		AssessmentEntity,
-		AssessmentItemRef,
 		SectionControllerSessionState,
 	} from "@pie-players/pie-players-shared/types";
 	import {
@@ -138,7 +136,7 @@
 	} from "../runtime/registration-events.js";
 	import { dispatchCrossBoundaryEvent } from "../runtime/tool-host-contract.js";
 	import { isRuntimeEventClaimed } from "../runtime/runtime-event-claim.js";
-	import type { CatalogSourceEntity } from "../services/catalog-owner.js";
+	import { registerContentWithCoordinator } from "../runtime/content-registration.js";
 	import { observeMathControlNames } from "../services/tts/math-control-names.js";
 	import { SectionRuntimeEngine } from "../runtime/SectionRuntimeEngine.js";
 	import {
@@ -261,13 +259,12 @@ const DEFAULT_ENV = {
 		// M8 PR 2 — additive Tool Policy Engine inputs. See the
 		// `<svelte:options>` props block above for the rationale.
 		// `pnpEnforcement` accepts `"on"`, `"off"`, or `null` (auto —
-		// the coordinator infers the effective mode from PNP/profile material
-		// on the bound `assessment` / `currentItemRef`). Embedded
+		// each decision enforces when the bound `assessment`, or the item it
+		// is scoped to, carries PNP/profile material). Embedded
 		// under `<pie-section-player-*>` the same override flows via
 		// `runtime.tools.pnpEnforcement`; both entry points converge on
 		// the same coordinator call.
 		assessment = null as AssessmentEntity | null,
-		currentItemRef = null as AssessmentItemRef | null,
 		pnpEnforcement = null as PnpEnforcementMode | null,
 		isolation = "inherit",
 		session = null as SectionControllerSessionState | null,
@@ -1421,21 +1418,12 @@ const DEFAULT_ENV = {
 	function registerCatalogsForDetail(detail: RuntimeRegistrationDetail): void {
 		unregisterCatalogsForElement(detail.element);
 		if (!effectiveCoordinator) return;
-		const resolver = effectiveCoordinator.getServiceBundle().catalogResolver;
 		catalogRegistrationCleanups.set(
 			detail.element,
-			[
-				resolver.registerOwner({
-					owner: {
-						kind: detail.kind,
-						itemId: detail.itemId,
-						canonicalItemId: detail.canonicalItemId,
-						assessmentId: effectiveAssessmentId,
-						sectionId: effectiveSectionId,
-					},
-					entity: detail.item as CatalogSourceEntity | null | undefined,
-				}),
-			],
+			registerContentWithCoordinator(effectiveCoordinator, detail, {
+				assessmentId: effectiveAssessmentId,
+				sectionId: effectiveSectionId,
+			}),
 		);
 	}
 
@@ -1673,10 +1661,10 @@ const DEFAULT_ENV = {
 		});
 	});
 
-	// Forward the policy inputs (`assessment`, `currentItemRef`,
-	// `pnpEnforcement`) to the coordinator this toolkit owns, each only when
-	// its own value changes: `policyInputsToForward` keeps a re-run of this
-	// effect from resetting a binding the host made on the coordinator. The
+	// Forward the policy inputs (`assessment`, `pnpEnforcement`) to the
+	// coordinator this toolkit owns, each only when its own value changes:
+	// `policyInputsToForward` keeps a re-run of this effect from resetting a
+	// binding the host made on the coordinator. The
 	// enforcement mode resolves through `resolvePnpEnforcementInput`, so the
 	// embedded path (`runtime.tools.pnpEnforcement`) and the standalone
 	// `pnp-enforcement` attribute converge on one call.
@@ -1689,7 +1677,6 @@ const DEFAULT_ENV = {
 	} | null = null;
 	$effect(() => {
 		void assessment;
-		void currentItemRef;
 		void pnpEnforcement;
 		void tools;
 		const coord = effectiveCoordinator;
@@ -1699,7 +1686,6 @@ const DEFAULT_ENV = {
 			const next: ForwardedPolicyInputs = {
 				pnpEnforcement: resolvePnpEnforcementInput(pnpEnforcement, tools),
 				assessment: assessment ?? null,
-				currentItemRef: currentItemRef ?? null,
 			};
 			const previous =
 				forwardedPolicyInputs?.coordinator === coord
@@ -1708,8 +1694,7 @@ const DEFAULT_ENV = {
 			forwardedPolicyInputs = { coordinator: coord, inputs: next };
 			for (const key of policyInputsToForward(previous, next)) {
 				if (key === "pnpEnforcement") coord.setPnpEnforcement(next.pnpEnforcement);
-				else if (key === "assessment") coord.updateAssessment(next.assessment);
-				else coord.updateCurrentItemRef(next.currentItemRef);
+				else coord.updateAssessment(next.assessment);
 			}
 		});
 	});

@@ -193,14 +193,14 @@ export function mountItemAlternates(args: {
 						settings: accessibility?.settings,
 					}
 				: null,
-			currentItemRef: accessibility?.itemSettings
-				? {
-						identifier: PRINT_POLICY_SCOPE_ID,
-						settings: accessibility.itemSettings,
-					}
-				: null,
 		},
 	});
+	// The item's settings govern decisions scoped to the item, as they govern a
+	// section item's own toolbar and content.
+	if (accessibility?.itemSettings) {
+		engine.registerItemSettings(PRINT_POLICY_SCOPE_ID, accessibility.itemSettings);
+	}
+	const itemScope = { level: "item", scopeId: PRINT_POLICY_SCOPE_ID } as const;
 
 	const mounted: ToolSurfaceRenderResult[] = [];
 	const appended: HTMLElement[] = [];
@@ -217,7 +217,7 @@ export function mountItemAlternates(args: {
 			// today, so the answer cannot drift from the section player's the moment
 			// one does.
 			policyFor: (supportId) => {
-				const decision = engine.decideFeature(supportId);
+				const decision = engine.decideFeature(supportId, itemScope);
 				if (isHostDeniedFeature(decision)) return { outcome: "denied" };
 				return decision.granted
 					? { outcome: "granted", parameters: decision.parameters }

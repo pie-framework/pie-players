@@ -10,7 +10,10 @@ import type {
 	PassageEntity,
 	RubricBlock,
 } from "@pie-players/pie-players-shared";
-import type { ConfigContainerEntity } from "@pie-players/pie-players-shared/types";
+import type {
+	ConfigContainerEntity,
+	ItemSettings,
+} from "@pie-players/pie-players-shared/types";
 import type {
 	FormativeFeedbackReveal,
 	FormativeItemPolicy,
@@ -53,6 +56,8 @@ export interface SectionContentModel {
 		 * that identifier, and two implementations of one mapping.
 		 */
 		formative?: FormativeItemPolicy;
+		/** The item ref's policy settings, carried for the same reason. */
+		settings?: ItemSettings;
 	}>;
 	/**
 	 * How an authored `timedMedia.stimulusRef` resolves to a renderable.
@@ -156,6 +161,11 @@ export interface SectionCanonicalItemViewModel {
 	index: number;
 	isCurrent: boolean;
 	session: unknown;
+	/**
+	 * The item ref's policy settings, which the item's scope registers; they
+	 * govern the item's own toolbar.
+	 */
+	settings?: ItemSettings;
 }
 
 export interface SectionAttemptSessionSliceLoadedRenderable {

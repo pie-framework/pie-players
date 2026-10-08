@@ -369,7 +369,7 @@ Tools that float above the entire assessment and persist across navigation:
 
 **State Management:**
 
-A section-level tool keeps its state in its own element; the graph's points and lines are component state. That state lasts while the section toolbar keeps the element mounted. Any policy change, including a host binding the next item with `updateCurrentItemRef`, re-renders the toolbar and swaps in a fresh element, whose state starts over.
+A section-level tool keeps its state in its own element; the graph's points and lines are component state. That state lasts while the section toolbar keeps the element mounted. A policy change re-renders the toolbar and swaps in a fresh element, whose state starts over, with one exception: an item's settings registering or withdrawing, as items mount and unmount, re-decides every toolbar but re-renders only a toolbar whose tools it changed, which is that item's own.
 
 ### Configuration in ToolkitCoordinator
 

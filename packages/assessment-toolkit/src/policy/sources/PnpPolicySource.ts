@@ -11,7 +11,6 @@
 
 import type {
 	AssessmentEntity,
-	AssessmentItemRef,
 	AssessmentSettings,
 	ItemSettings,
 	PersonalNeedsProfile,
@@ -38,9 +37,20 @@ export interface PnpPolicyToolFlags {
 	sourceType: ToolPolicySourceType;
 }
 
+/** An item a decision is scoped to, by its canonical id, with its settings. */
+export interface PnpPolicyItem {
+	id: string;
+	settings: ItemSettings;
+}
+
 export interface PnpPolicyApplyArgs {
 	assessment?: AssessmentEntity | null;
-	currentItemRef?: AssessmentItemRef;
+	/**
+	 * The item the decision is scoped to. Only a decision for the item's own
+	 * toolbar or content carries one: an item's settings do not reach a section-
+	 * or assessment-level decision.
+	 */
+	item?: PnpPolicyItem;
 }
 
 /**
@@ -173,10 +183,10 @@ export class PnpPolicySource {
 		ctx: PnpResolutionContext;
 		result: PnpPolicyResult;
 	} {
-		const { assessment, currentItemRef } = args;
+		const { assessment, item } = args;
 		const pnp = assessment?.personalNeedsProfile;
 		const settings = assessment?.settings as AssessmentSettings | undefined;
-		const itemSettings = currentItemRef?.settings as ItemSettings | undefined;
+		const itemSettings = item?.settings;
 
 		const result: PnpPolicyResult = {
 			blockedToolIds: new Set(),
@@ -201,11 +211,11 @@ export class PnpPolicySource {
 				config: pnp,
 			};
 		}
-		if (currentItemRef && itemSettings) {
+		if (item) {
 			result.sources.item = {
-				id: currentItemRef.identifier,
-				name: currentItemRef.identifier,
-				config: itemSettings,
+				id: item.id,
+				name: item.id,
+				config: item.settings,
 			};
 		}
 

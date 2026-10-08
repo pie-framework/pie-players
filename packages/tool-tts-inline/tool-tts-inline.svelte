@@ -17,7 +17,6 @@
 <script lang="ts">
 	import { coerceBooleanAttributes } from '@pie-players/pie-players-shared/ui/attribute-coercion';
 	import {
-		catalogOwnerContextFor,
 		connectToolRegionScopeContext,
 		connectToolRuntimeContext,
 		connectToolShellContext,
@@ -33,6 +32,7 @@
 		type TtsServiceApi,
 	} from '@pie-players/pie-assessment-toolkit';
 	import {
+		catalogContextForShell,
 		flatTextContent,
 		findContentLanguage,
 		resolveContentRegion
@@ -622,14 +622,7 @@
 	}
 
 	function resolveCatalogContext(): CatalogLookupContext | undefined {
-		if (!shellContext) return undefined;
-		return catalogOwnerContextFor({
-			kind: shellContext.kind,
-			assessmentId: runtimeContext?.assessmentId,
-			sectionId: runtimeContext?.sectionId,
-			itemId: shellContext.itemId,
-			canonicalItemId: shellContext.canonicalItemId || shellContext.itemId,
-		});
+		return shellContext ? catalogContextForShell(shellContext, runtimeContext) : undefined;
 	}
 
 	function syncHighlightTargetResolverProvider(readingTarget: Element): (() => void) | null {

@@ -271,7 +271,7 @@ describe("TTSService catalog speech composition", () => {
 		root.remove();
 	});
 
-	test("selection speech keeps word highlighting while ignoring catalogs", async () => {
+	test("selection speech keeps word highlighting inside part of a cataloged node", async () => {
 		const impl = new MockTTSImpl();
 		const service = new TTSService();
 		await service.initialize(new MockTTSProvider(impl));
@@ -309,6 +309,93 @@ describe("TTSService catalog speech composition", () => {
 
 		expect(impl.speakCalls).toEqual(["these"]);
 		expect(highlightedWords).toEqual(["these"]);
+	});
+
+	test("selection speech reads the spoken card of a node it holds whole", async () => {
+		const impl = new MockTTSImpl();
+		const service = new TTSService();
+		await service.initialize(new MockTTSProvider(impl));
+		service.setCatalogResolver(
+			new AccessibilityCatalogResolver([
+				{
+					identifier: "term",
+					cards: [
+						{ catalog: "spoken", language: "en-US", content: "authored term" },
+					],
+				},
+			]),
+		);
+		const root = document.createElement("div");
+		root.innerHTML = `<p>Before <span data-catalog-idref="term">x</span> after.</p>`;
+		const [before, , after] = Array.from(
+			root.querySelector("p")?.childNodes ?? [],
+		) as Text[];
+		const range = document.createRange();
+		range.setStart(before, "Be".length);
+		range.setEnd(after, " af".length);
+
+		await service.speakRange(range, { contentRoot: root });
+
+		expect(impl.speakCalls).toEqual(["fore", "authored term", "af"]);
+	});
+
+	test("selection speech reads the card when its ends lie at the node's text ends", async () => {
+		const impl = new MockTTSImpl();
+		const service = new TTSService();
+		await service.initialize(new MockTTSProvider(impl));
+		service.setCatalogResolver(
+			new AccessibilityCatalogResolver([
+				{
+					identifier: "term",
+					cards: [
+						{ catalog: "spoken", language: "en-US", content: "authored term" },
+					],
+				},
+			]),
+		);
+		const root = document.createElement("div");
+		root.innerHTML = `<p>Before <span data-catalog-idref="term"> xy </span> after.</p>`;
+		const text = root.querySelector("span")?.firstChild as Text;
+		const range = document.createRange();
+		range.setStart(text, " ".length);
+		range.setEnd(text, " xy".length);
+
+		await service.speakRange(range, { contentRoot: root });
+
+		expect(impl.speakCalls).toEqual(["authored term"]);
+	});
+
+	test("selection speech reads a registered card for the owner it names", async () => {
+		const owner = {
+			ownerKind: "itemModel",
+			itemId: "item-1",
+			canonicalItemId: "item-1",
+		} as const;
+		const resolver = new AccessibilityCatalogResolver();
+		resolver.registerCatalogs(owner, [
+			{
+				identifier: "term",
+				cards: [
+					{ catalog: "spoken", language: "en-US", content: "registered term" },
+				],
+			},
+		]);
+		const root = document.createElement("div");
+		root.innerHTML = `<p>Read <span data-catalog-idref="term">x</span> now.</p>`;
+		const range = document.createRange();
+		range.selectNodeContents(root.querySelector("p") as Element);
+
+		const speakWith = async (catalogContext?: typeof owner) => {
+			const impl = new MockTTSImpl();
+			const service = new TTSService();
+			await service.initialize(new MockTTSProvider(impl));
+			service.setCatalogResolver(resolver);
+			await service.speakRange(range, { contentRoot: root, catalogContext });
+			return impl.speakCalls;
+		};
+
+		expect(await speakWith(owner)).toEqual(["Read", "registered term", "now."]);
+		expect(await speakWith()).toEqual(["Read x now."]);
 	});
 
 	test("uses exact words and anchor spans for mixed catalog chunks", async () => {

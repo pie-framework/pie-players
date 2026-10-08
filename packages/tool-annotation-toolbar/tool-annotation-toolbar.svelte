@@ -31,6 +31,7 @@
 		isTTSStartFailure
 	} from '@pie-players/pie-assessment-toolkit';
 	import {
+		catalogContextHolding,
 		composedClosest,
 		composedContains,
 		isShadowRootNode,
@@ -651,20 +652,26 @@
 	 * Read aloud with TTS
 	 */
 	async function handleTTSClick() {
-		if (!toolbarState.selectedRange || !ttsService) return;
+		// `aria-disabled` rather than `disabled` while reading: disabling the focused
+		// button moves focus out of the strip, and the focusout that follows dismisses
+		// it and stops the read a frame after it starts.
+		if (ttsSpeaking || !toolbarState.selectedRange || !ttsService) return;
 
 		ttsSpeaking = true;
 		try {
 			console.log('[AnnotationToolbar] Speaking range:', toolbarState.selectedRange.toString().substring(0, 50));
 
 			// Use speakRange for accurate word highlighting. A service not yet
-			// started starts here, through the coordinator's readiness gate.
+			// started starts here, through the coordinator's readiness gate. The
+			// catalog context is the selection's shell, since this strip serves the
+			// whole section.
 			const selectedRange = toolbarState.selectedRange;
 			await ttsService.speakRange(selectedRange, {
 				contentRoot: contentRegionHolding(selectedRange) ?? getEffectiveRoot(),
 				language: resolveContentLanguage(selectedRange.startContainer, {
 					contentLanguage: runtimeContext?.contentLanguage
-				})
+				}),
+				catalogContext: catalogContextHolding(selectedRange.startContainer, runtimeContext)
 			});
 
 			console.log('[AnnotationToolbar] TTS completed successfully');
@@ -954,7 +961,7 @@
 			<button
 				class="pie-tool-annotation-toolbar__button pie-tool-annotation-toolbar__button--icon"
 				onclick={handleTTSClick}
-				disabled={ttsSpeaking}
+				aria-disabled={ttsSpeaking}
 				aria-label={interfaceI18n.t('tools.annotationToolbar.readAloudA11y')}
 				title={interfaceI18n.t('tools.annotationToolbar.readAloud')}
 			>
@@ -1162,7 +1169,8 @@
 		outline-offset: 2px;
 	}
 
-	.pie-tool-annotation-toolbar__button:disabled {
+	.pie-tool-annotation-toolbar__button:disabled,
+	.pie-tool-annotation-toolbar__button[aria-disabled='true'] {
 		opacity: 0.6;
 		cursor: not-allowed;
 	}

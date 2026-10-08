@@ -113,6 +113,19 @@ browser's language. Math control names take the same content language, where
 before they took the nearest `lang` up to the page's. Row verification dates are
 unchanged.
 
+On 2026-10-08 the annotation toolbar's read-aloud started reading spoken cards: a
+`data-catalog-idref` node the selection holds whole reads its card, from the
+cards the selection's shell registered and then the assessment's, as tts-inline
+reads it. A selection holding part of a node still reads the selected text.
+Host R, the one host placing `annotationToolbar`, hears authored cards for such
+selections where it heard their visible text. The same change keeps the read
+button focused while it reads: since v0.3.68 it disabled itself, which moved
+focus out of the strip and dismissed it, stopping the read a frame after it
+started, so Host R's annotation read-aloud is heard in full again. Checked
+against the recorded rows and the checkouts of Hosts A and R; neither calls
+`speakRange` or passes the internal `ignoreCatalogs` speak option, which is
+removed. Row verification dates are unchanged.
+
 The 2026-09-17 session-commit change (PIE-1058) was checked against the
 recorded rows rather than re-derived from the checkouts. It renames and removes
 nothing: `pie-item-player` gains one opt-in property, `session-snapshot`, one

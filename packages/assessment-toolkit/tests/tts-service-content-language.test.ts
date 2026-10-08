@@ -1,4 +1,5 @@
-import { describe, expect, test } from "bun:test";
+import { GlobalRegistrator } from "@happy-dom/global-registrator";
+import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import type {
 	ITTSProvider,
 	ITTSProviderImplementation,
@@ -6,6 +7,19 @@ import type {
 	TTSProviderCapabilities,
 } from "@pie-players/pie-tts";
 import { TTSService } from "../src/services/TTSService";
+import { contentWith } from "./fixtures/read-aloud-content";
+
+beforeAll(() => {
+	if (!GlobalRegistrator.isRegistered) {
+		GlobalRegistrator.register();
+	}
+});
+
+afterAll(() => {
+	if (GlobalRegistrator.isRegistered) {
+		GlobalRegistrator.unregister();
+	}
+});
 
 /**
  * A speak's content language reaches the provider as `contentLanguage` only when
@@ -54,7 +68,7 @@ describe("TTSService content language", () => {
 	test("a named language reaches the provider as its content language", async () => {
 		const { service, settings } = await startService();
 
-		await service.speak("hola", { language: "es-MX" });
+		await service.speak(contentWith("hola"), { language: "es-MX" });
 
 		expect(settings.at(-1)).toMatchObject({
 			contentLanguage: "es-MX",
@@ -65,8 +79,8 @@ describe("TTSService content language", () => {
 	test("an unnamed language leaves the voice to the browser and reads en-US", async () => {
 		const { service, settings } = await startService();
 
-		await service.speak("hello", { language: "es-MX" });
-		await service.speak("hello");
+		await service.speak(contentWith("hello"), { language: "es-MX" });
+		await service.speak(contentWith("hello"));
 
 		const last = settings.at(-1);
 		expect(last?.contentLanguage).toBeUndefined();

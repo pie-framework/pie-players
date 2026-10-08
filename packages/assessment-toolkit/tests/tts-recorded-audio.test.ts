@@ -15,6 +15,7 @@ import {
 	beforeAll,
 	describe,
 	expect,
+	spyOn,
 	test,
 } from "bun:test";
 
@@ -151,10 +152,7 @@ const audioOnlyRoot = () => {
 };
 
 const speakItem = (service: TTSService, root: Element) =>
-	service.speak(root.textContent || "", {
-		contentElement: root,
-		language: "en-US",
-	} as never);
+	service.speak(root, { language: "en-US" });
 
 beforeAll(() => {
 	if (typeof (globalThis as { window?: unknown }).window === "undefined") {
@@ -377,5 +375,23 @@ describe("recorded audio as a spoken alternate", () => {
 		// would hang forever and every later stop would leak a live clip.
 		await speaking;
 		expect(element.paused).toBe(true);
+	});
+
+	test("a new speak ends a recording still playing", async () => {
+		const { impl, service } = await newService([audioCard()]);
+		captureAudioElements();
+		const speaking = speakItem(service, audioOnlyRoot());
+		const element = await nextAudioElement();
+		const pauses = spyOn(element, "pause");
+
+		const next = document.createElement("p");
+		next.textContent = "Next question.";
+		await service.speak(next, { language: "en-US" });
+
+		// The superseded run settles: its clip was cancelled, not left to end.
+		await speaking;
+		expect(pauses).toHaveBeenCalled();
+		expect(impl.speakCalls).toEqual(["Next question."]);
+		expect(service.getState()).toBe(PlaybackState.IDLE);
 	});
 });

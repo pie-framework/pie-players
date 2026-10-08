@@ -1,5 +1,7 @@
-import { describe, expect, test } from "bun:test";
+import { GlobalRegistrator } from "@happy-dom/global-registrator";
+import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { PlaybackState, TTSService } from "../src/services/TTSService";
+import { contentWith as contentOf } from "./fixtures/read-aloud-content";
 import type {
 	ITTSProvider,
 	ITTSProviderImplementation,
@@ -7,6 +9,24 @@ import type {
 	TTSConfig,
 	TTSProviderCapabilities,
 } from "@pie-players/pie-tts";
+
+let realDocument: Document;
+
+beforeAll(() => {
+	if (!GlobalRegistrator.isRegistered) {
+		GlobalRegistrator.register();
+	}
+	realDocument = document;
+});
+
+afterAll(() => {
+	if (GlobalRegistrator.isRegistered) {
+		GlobalRegistrator.unregister();
+	}
+});
+
+// Several tests swap `globalThis.document` for a stub before they speak.
+const contentWith = (text: string): Element => contentOf(text, realDocument);
 
 class MockTTSImpl implements ITTSProviderImplementation {
 	public speakCalls: string[] = [];
@@ -253,9 +273,7 @@ describe("TTSService structural pauses", () => {
 				{ text: "Body", startOffset: 6, pauseMsAfter: 0 },
 			] as TTSSpeechSegment[];
 
-		await service.speak("Title Body", {
-			contentElement: {} as Element,
-		});
+		await service.speak(contentWith("Title Body"));
 
 		expect(impl.segmentCalls).toHaveLength(1);
 		expect(impl.segmentCalls[0]).toEqual([
@@ -285,10 +303,9 @@ describe("TTSService structural pauses", () => {
 			);
 		};
 
-		await service.speak("Hello world", {
+		await service.speak(contentWith("Hello world"), {
 			catalogId: "demo",
 			language: "en-US",
-			contentElement: {} as Element,
 		});
 
 		expect(impl.speakCalls).toEqual([
@@ -332,9 +349,7 @@ describe("TTSService structural pauses", () => {
 		} as any);
 
 		try {
-			await service.speak("Prompt Option B", {
-				contentElement: {} as Element,
-			});
+			await service.speak(contentWith("Prompt Option B"));
 		} finally {
 			(globalThis as any).document = originalDocument;
 		}
@@ -343,10 +358,10 @@ describe("TTSService structural pauses", () => {
 		expect(capturedHighlightIndex).toBe(12);
 	});
 
-	test("defaults browser provider to sentence highlight mode", async () => {
+	test("defaults to sentence highlight mode when the provider reports no word boundaries", async () => {
 		const impl = new MockTTSImpl(true);
 		const service = new TTSService();
-		await service.initialize(new MockTTSProvider(impl, "browser"));
+		await service.initialize(new MockTTSProvider(impl, "browser", false));
 		expect((service as any).resolveHighlightMode()).toBe("sentence");
 	});
 
@@ -354,7 +369,7 @@ describe("TTSService structural pauses", () => {
 		const impl = new PlaybackStartAwareMockTTSImpl();
 		(impl as any).speakSegments = undefined;
 		const service = new TTSService();
-		await service.initialize(new MockTTSProvider(impl, "browser"));
+		await service.initialize(new MockTTSProvider(impl, "browser", false));
 		let initialHighlightCalls = 0;
 		(service as any).prepareHighlightsForSpeak = ({
 			runId,
@@ -368,7 +383,7 @@ describe("TTSService structural pauses", () => {
 
 		const states: PlaybackState[] = [];
 		service.onStateChange("native-start", (state) => states.push(state));
-		const playback = service.speak("Hello world");
+		const playback = service.speak(contentWith("Hello world"));
 		await waitForSpeakCall(impl);
 
 		expect(service.getState()).toBe(PlaybackState.LOADING);
@@ -388,7 +403,7 @@ describe("TTSService structural pauses", () => {
 		const impl = new PlaybackStartAwareMockTTSImpl();
 		(impl as any).speakSegments = undefined;
 		const service = new TTSService();
-		await service.initialize(new MockTTSProvider(impl, "browser"));
+		await service.initialize(new MockTTSProvider(impl, "browser", false));
 		stubGeneratedVisibleText(service, "First sentence.");
 		(service as any).buildPositionMap = () => {
 			const textNode = { textContent: "First sentence." } as Text;
@@ -431,9 +446,7 @@ describe("TTSService structural pauses", () => {
 		} as any);
 
 		try {
-			const playback = service.speak("First sentence.", {
-				contentElement: {} as Element,
-			});
+			const playback = service.speak(contentWith("First sentence."));
 			await waitForSpeakCall(impl);
 
 			expect(service.getState()).toBe(PlaybackState.LOADING);
@@ -461,7 +474,7 @@ describe("TTSService structural pauses", () => {
 	test("tracks sentence highlight progressively for browser plan segments", async () => {
 		const impl = new MockTTSImpl(true);
 		const service = new TTSService();
-		await service.initialize(new MockTTSProvider(impl, "browser"));
+		await service.initialize(new MockTTSProvider(impl, "browser", false));
 		stubGeneratedVisibleText(service, "First segment Second segment");
 		(service as any).buildPositionMap = () => {
 			const textA = { textContent: "First segment" } as Text;
@@ -509,9 +522,7 @@ describe("TTSService structural pauses", () => {
 		} as any);
 
 		try {
-			await service.speak("First segment Second segment", {
-				contentElement: {} as Element,
-			});
+			await service.speak(contentWith("First segment Second segment"));
 		} finally {
 			(globalThis as any).document = originalDocument;
 		}
@@ -550,7 +561,7 @@ describe("TTSService structural pauses", () => {
 		const impl = new PlaybackStartAwareMockTTSImpl();
 		(impl as any).speakSegments = undefined;
 		const service = new TTSService();
-		await service.initialize(new MockTTSProvider(impl, "browser"));
+		await service.initialize(new MockTTSProvider(impl, "browser", false));
 		(service as any).state = PlaybackState.PLAYING;
 		(service as any).currentText = "First sentence. Second sentence.";
 		(service as any).seekSegments = [
@@ -590,7 +601,7 @@ describe("TTSService structural pauses", () => {
 		const impl = new PlaybackStartAwareMockTTSImpl();
 		(impl as any).speakSegments = undefined;
 		const service = new TTSService();
-		await service.initialize(new MockTTSProvider(impl, "browser"));
+		await service.initialize(new MockTTSProvider(impl, "browser", false));
 		(service as any).state = PlaybackState.PLAYING;
 		(service as any).currentText = "First sentence. Second sentence.";
 		(service as any).seekSegments = [
@@ -951,13 +962,15 @@ describe("TTSService structural pauses", () => {
 
 		const rateWrite = service.setPlaybackRate(1.25);
 		await waitForSettingsUpdateCount(impl, 1);
-		const newerSpeak = service.speak("Newer sentence.");
+		const newerSpeak = service.speak(contentWith("Newer sentence."));
 		await waitForSpeakCall(impl);
 		expect(service.getState()).toBe(PlaybackState.LOADING);
+		// The newer speak stopped the older playback; the rate write stops nothing.
+		const stopsBeforeRateWrite = impl.stopCalls;
 
 		releaseSettingsWrite?.();
 		await rateWrite;
-		expect(impl.stopCalls).toBe(0);
+		expect(impl.stopCalls).toBe(stopsBeforeRateWrite);
 		expect(impl.speakCalls).toEqual(["Newer sentence."]);
 		expect(service.getState()).toBe(PlaybackState.LOADING);
 
@@ -1085,9 +1098,7 @@ describe("TTSService structural pauses", () => {
 		} as any);
 
 		try {
-			await service.speak("First segment. Second segment.", {
-				contentElement: {} as Element,
-			});
+			await service.speak(contentWith("First segment. Second segment."));
 		} finally {
 			(globalThis as any).document = originalDocument;
 		}
@@ -1155,10 +1166,7 @@ describe("TTSService structural pauses", () => {
 
 		try {
 			await service.speak(
-				"Photosynthesis The process converts light to energy",
-				{
-					contentElement: {} as Element,
-				},
+				contentWith("Photosynthesis The process converts light to energy"),
 			);
 		} finally {
 			(globalThis as any).document = originalDocument;
@@ -1187,8 +1195,7 @@ describe("TTSService structural pauses", () => {
 		} as any);
 
 		// With no DOM to walk, the catalog path takes the visible text from the input.
-		await service.speak("A. Chlorophyll B. Oxygen", {
-			contentElement: {} as Element,
+		await service.speak(contentWith("A. Chlorophyll B. Oxygen"), {
 			catalogId: "choices",
 		});
 
@@ -1218,9 +1225,7 @@ describe("TTSService structural pauses", () => {
 			] as TTSSpeechSegment[];
 		(service as any).buildPositionMap = () => {};
 
-		await service.speak("Solve 1 2 now.", {
-			contentElement: {} as Element,
-		});
+		await service.speak(contentWith("Solve 1 2 now."));
 
 		expect(impl.speakCalls).toEqual(["Solve one half now."]);
 		expect(impl.segmentCalls).toHaveLength(0);
@@ -1281,9 +1286,7 @@ describe("TTSService structural pauses", () => {
 		});
 		(service as any).buildPositionMap = () => {};
 
-		const speakPromise = service.speak("Solve 1 2 now.", {
-			contentElement: {} as Element,
-		});
+		const speakPromise = service.speak(contentWith("Solve 1 2 now."));
 		await firstSpeakStartedPromise;
 
 		await service.seekForward();
@@ -1349,9 +1352,7 @@ describe("TTSService structural pauses", () => {
 		});
 		(service as any).buildPositionMap = () => {};
 
-		const speakPromise = service.speak("Solve 1 2 now.", {
-			contentElement: {} as Element,
-		});
+		const speakPromise = service.speak(contentWith("Solve 1 2 now."));
 		await firstSpeakStartedPromise;
 
 		await service.setPlaybackRate(1.5);
@@ -1401,13 +1402,17 @@ describe("TTSService structural pauses", () => {
 		};
 		(service as any).buildPositionMap = () => {};
 
-		const firstSpeak = service.speak("stale");
+		const firstSpeak = service.speak(contentWith("stale math"));
 		await Promise.resolve();
-		await service.speak("new");
+		await service.speak(contentWith("new speech"));
 		releaseFirstResolution?.();
 		await firstSpeak;
 
-		expect(impl.speakCalls).toEqual(["new speech"]);
+		const spoken = [
+			...impl.speakCalls,
+			...impl.segmentCalls.flat().map((segment) => segment.text),
+		];
+		expect(spoken).toEqual(["new speech"]);
 	});
 
 	test("clears stale word-boundary handlers before divergent math speech", async () => {
@@ -1431,9 +1436,7 @@ describe("TTSService structural pauses", () => {
 		});
 		(service as any).buildPositionMap = () => {};
 
-		await service.speak("x 2", {
-			contentElement: {} as Element,
-		});
+		await service.speak(contentWith("x 2"));
 
 		expect(staleBoundaryCalled).toBe(false);
 	});
@@ -1451,10 +1454,9 @@ describe("TTSService structural pauses", () => {
 			}),
 		} as any);
 
-		await service.speak("x 2", {
+		await service.speak(contentWith("x 2"), {
 			catalogId: "math",
 			language: "en-US",
-			contentElement: {} as Element,
 		});
 
 		expect(impl.speakCalls).toEqual([

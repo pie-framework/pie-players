@@ -310,8 +310,7 @@ The `TTSService.buildPositionMap()` method delegates to text core helpers:
 
 #### Implementation in TTS Tools
 
-TTS tools should pass `contentElement` and let `TTSService` apply one shared normalization path.
-This keeps `speak()`, `speakRange()`, and toolbar-triggered flows aligned and avoids duplicate normalization logic.
+TTS tools pass the DOM they read, an element or a range, to `speak()`, so every read takes one normalization path.
 
 #### Common Pitfalls
 
@@ -391,6 +390,10 @@ export class MyTTSProvider implements ITTSProvider {
 the native or media playback-start event—not when speech is merely queued. The
 toolkit uses that signal to move into playing state and begin highlighting only
 when output has actually started.
+
+A provider declaring `maxTextLength` in its capabilities never receives longer
+text: the toolkit splits it at sentences, then words, then characters, and
+keeps word highlights on the visible text.
 
 ## QTI-Inspired Integration with Section Player
 

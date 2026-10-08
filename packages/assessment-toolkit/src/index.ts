@@ -369,6 +369,10 @@ export {
 } from "./services/tts/start-failure.js";
 export type { SREMathSpeechOptions } from "./services/tts/math-speech.js";
 export type {
+	ToolkitTTSConfig,
+	ToolkitTTSProviderOptions,
+} from "./services/tts/provider-options.js";
+export type {
 	NormalizedTTSSpeedOption,
 	TTSHostToolbarLayout,
 	TTSLayoutMode,

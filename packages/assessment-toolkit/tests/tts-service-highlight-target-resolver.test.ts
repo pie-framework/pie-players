@@ -169,9 +169,7 @@ describe("TTSService highlight target resolver", () => {
 			context: { scopeElement: root },
 		}));
 
-		await service.speak(root.textContent || "", {
-			contentElement: root,
-		} as any);
+		await service.speak(root);
 
 		expect(recording.wordHighlights).toContain("spoken");
 	});
@@ -195,9 +193,7 @@ describe("TTSService highlight target resolver", () => {
 			},
 		}));
 
-		await service.speak(root.textContent || "", {
-			contentElement: root,
-		} as any);
+		await service.speak(root);
 
 		expect(recording.wordHighlights).toContain("visible");
 		expect(recording.wordHighlights).not.toContain("spoken");
@@ -219,10 +215,7 @@ describe("TTSService highlight target resolver", () => {
 			},
 		}));
 
-		await service.speak("native sentence.", {
-			contentElement: root.querySelector("p")!,
-			highlightModeOverride: "sentence",
-		} as any);
+		await service.speak(root.querySelector("p")!);
 
 		expect(recording.sentenceElementHighlights).toContain("visible-block");
 		expect(recording.sentenceHighlights).not.toContain("native sentence.");
@@ -247,9 +240,7 @@ describe("TTSService highlight target resolver", () => {
 			},
 		}));
 
-		await service.speak("native sentence.", {
-			contentElement: root.querySelector("p")!,
-		} as any);
+		await service.speak(root.querySelector("p")!);
 
 		expect(recording.wordHighlights).toContain("native");
 		expect(recording.sentenceElementHighlights).toContain("visible-block");
@@ -275,9 +266,7 @@ describe("TTSService highlight target resolver", () => {
 			},
 		}));
 
-		await service.speak(root.textContent || "", {
-			contentElement: root,
-		} as any);
+		await service.speak(root);
 
 		expect(recording.wordHighlights).toContain("spoken");
 	});
@@ -301,9 +290,7 @@ describe("TTSService highlight target resolver", () => {
 			},
 		}));
 
-		await service.speak(root.textContent || "", {
-			contentElement: root,
-		} as any);
+		await service.speak(root);
 
 		expect(recording.wordHighlights).toContain("spoken");
 		expect(recording.wordHighlights).not.toContain("detached");
@@ -337,13 +324,9 @@ describe("TTSService highlight target resolver", () => {
 			},
 		}));
 
-		await service.speak(firstRoot.textContent || "", {
-			contentElement: firstRoot,
-		} as any);
+		await service.speak(firstRoot);
 		currentRoot = secondRoot;
-		await service.speak(secondRoot.textContent || "", {
-			contentElement: secondRoot,
-		} as any);
+		await service.speak(secondRoot);
 
 		expect(recording.wordHighlights).toContain("one");
 		expect(recording.wordHighlights).toContain("two");
@@ -377,9 +360,7 @@ describe("TTSService highlight target resolver", () => {
 		}));
 
 		disposeOld();
-		await service.speak(root.textContent || "", {
-			contentElement: root,
-		} as any);
+		await service.speak(root);
 		disposeCurrent();
 
 		expect(recording.wordHighlights).toContain("first");
@@ -409,9 +390,7 @@ describe("TTSService highlight target resolver", () => {
 		// provider exists for — got remapping for exactly one playback and then
 		// silently fell back to identity for the service's remaining life.
 		service.stop();
-		await service.speak(root.textContent || "", {
-			contentElement: root,
-		} as any);
+		await service.speak(root);
 
 		expect(recording.wordHighlights).toContain("first");
 		expect(recording.wordHighlights).not.toContain("spoken");

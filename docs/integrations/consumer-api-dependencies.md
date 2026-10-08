@@ -126,6 +126,16 @@ against the recorded rows and the checkouts of Hosts A and R; neither calls
 `speakRange` or passes the internal `ignoreCatalogs` speak option, which is
 removed. Row verification dates are unchanged.
 
+Also on 2026-10-08 the toolkit's TTS service took one read-aloud entry,
+`speak(target, options)`, which reads a DOM range or element; `speak(text)` and
+`speakRange` are removed, and `dispose()` is added, which the coordinator's own
+dispose calls. Checked against the checkouts of Hosts A, M, P, R and V: Host A
+calls only `ttsService.stop()`, and no host calls `speak` or `speakRange` or
+imports `SpeakOptions`. The server backend now sends the language a read names,
+except that a `lang_id` the host sets wins on the custom transport; Hosts A and
+R both read aloud over that transport with `lang_id` set, so their requests are
+unchanged. Row verification dates are unchanged.
+
 The 2026-09-17 session-commit change (PIE-1058) was checked against the
 recorded rows rather than re-derived from the checkouts. It renames and removes
 nothing: `pie-item-player` gains one opt-in property, `session-snapshot`, one

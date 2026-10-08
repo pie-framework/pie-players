@@ -170,7 +170,7 @@ The TTSService follows this resolution flow:
 
 ```
 ┌─────────────────────────────────────────────┐
-│ ttsService.speak(text, { catalogId })       │
+│ ttsService.speak(target, { catalogId })     │
 └─────────────────┬───────────────────────────┘
                   │
                   ▼

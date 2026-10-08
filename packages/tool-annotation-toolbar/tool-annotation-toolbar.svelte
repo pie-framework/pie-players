@@ -661,12 +661,11 @@
 		try {
 			console.log('[AnnotationToolbar] Speaking range:', toolbarState.selectedRange.toString().substring(0, 50));
 
-			// Use speakRange for accurate word highlighting. A service not yet
-			// started starts here, through the coordinator's readiness gate. The
-			// catalog context is the selection's shell, since this strip serves the
-			// whole section.
+			// A service not yet started starts here, through the coordinator's
+			// readiness gate. The catalog context is the selection's shell, since
+			// this strip serves the whole section.
 			const selectedRange = toolbarState.selectedRange;
-			await ttsService.speakRange(selectedRange, {
+			await ttsService.speak(selectedRange, {
 				contentRoot: contentRegionHolding(selectedRange) ?? getEffectiveRoot(),
 				language: resolveContentLanguage(selectedRange.startContainer, {
 					contentLanguage: runtimeContext?.contentLanguage

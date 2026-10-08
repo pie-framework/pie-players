@@ -41,6 +41,8 @@ export interface BuildGeneratedSpeechResult {
  */
 export const buildGeneratedSpeechFromRoot = async (args: {
 	contentRoot: Element;
+	/** Limit the plan to the part of `contentRoot` this range selects. */
+	range?: Range;
 	language?: string;
 	mathSpeech?: SREMathSpeechOptions;
 	textProcessingOptions?: TextProcessingOptions;
@@ -51,6 +53,7 @@ export const buildGeneratedSpeechFromRoot = async (args: {
 	const extracted = collectMathAwareTextAndMap(
 		args.contentRoot,
 		args.textProcessingOptions,
+		args.range,
 	);
 	const assembled = await assembleGeneratedSpeech({
 		chunks: extracted.chunks,

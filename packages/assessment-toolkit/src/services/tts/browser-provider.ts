@@ -15,6 +15,7 @@ import type {
 	TTSProviderCapabilities,
 	TTSSpeechSegment,
 } from "@pie-players/pie-tts";
+import type { ToolkitTTSConfig } from "./provider-options.js";
 import { extractSpokenText } from "./ssml/spoken-text.js";
 import { segmentSentences as segmentTextToSentences } from "./text-segmentation.js";
 
@@ -175,15 +176,31 @@ export class BrowserTTSProvider implements ITTSProvider {
 	}
 
 	supportsFeature(feature: TTSFeature): boolean {
-		// Browser supports all TTS features
-		return true;
+		const capabilities = this.getCapabilities();
+		switch (feature) {
+			case "pause":
+				return capabilities.supportsPause;
+			case "resume":
+				return capabilities.supportsResume;
+			case "wordBoundary":
+				return capabilities.supportsWordBoundary;
+			case "voiceSelection":
+				return capabilities.supportsVoiceSelection;
+			case "rateControl":
+				return capabilities.supportsRateControl;
+			case "pitchControl":
+				return capabilities.supportsPitchControl;
+			default:
+				return false;
+		}
 	}
 
 	getCapabilities(): TTSProviderCapabilities {
 		return {
 			supportsPause: true,
 			supportsResume: true,
-			supportsWordBoundary: true,
+			// Boundary events depend on the voice: several network voices send none.
+			supportsWordBoundary: false,
 			supportsVoiceSelection: true,
 			supportsRateControl: true,
 			supportsPitchControl: true,
@@ -204,16 +221,38 @@ export class BrowserTTSProvider implements ITTSProvider {
  */
 class BrowserTTSProviderImpl implements ITTSProviderImplementation {
 	private utterance: SpeechSynthesisUtterance | null = null;
-	private config: TTSConfig | null = null;
+	private config: ToolkitTTSConfig | null = null;
 	private _isPlaying = false;
+	// The run's pause, which outlasts the utterance it paused: a pause between
+	// utterances holds the next one until resume.
 	private _isPaused = false;
 	private speakRunId = 0;
+	// The run speaking now, between its utterances as well as during them.
+	private activeRunId: number | null = null;
+	private releasePauseHold: (() => void) | null = null;
 	private settlePendingVoiceWait: (() => void) | null = null;
 	private settlePendingChunk: (() => void) | null = null;
+	private settlePendingGap: (() => void) | null = null;
 	onPlaybackStart: (() => void) | undefined = undefined;
 
 	constructor(config: TTSConfig) {
 		this.config = config;
+	}
+
+	/** Whether run `runId` is still current once any pause between utterances ends. */
+	private async waitWhilePaused(runId: number): Promise<boolean> {
+		while (this._isPaused && runId === this.speakRunId) {
+			await new Promise<void>((resolve) => {
+				this.releasePauseHold = resolve;
+			});
+		}
+		return runId === this.speakRunId;
+	}
+
+	private releaseHold(): void {
+		const release = this.releasePauseHold;
+		this.releasePauseHold = null;
+		release?.();
 	}
 
 	private waitForBrowserVoices(
@@ -336,25 +375,28 @@ class BrowserTTSProviderImpl implements ITTSProviderImplementation {
 		// Invalidate any in-flight run and cancel current utterance.
 		this.stop();
 		const runId = this.speakRunId;
-		const voiceResolution = await this.resolveBrowserVoice(runId);
-		if (!voiceResolution.shouldContinue) return;
+		this.activeRunId = runId;
+		try {
+			const voiceResolution = await this.resolveBrowserVoice(runId);
+			if (!voiceResolution.shouldContinue) return;
 
-		const utterance = toUtteranceText(text);
-		const chunks = this.splitIntoChunks(utterance.text);
-		for (const chunk of chunks) {
-			if (runId !== this.speakRunId) {
-				break;
+			const utterance = toUtteranceText(text);
+			const chunks = this.splitIntoChunks(utterance.text);
+			for (const chunk of chunks) {
+				if (this._isPaused && !(await this.waitWhilePaused(runId))) break;
+				const shouldContinue = await this.speakChunk(
+					chunk.text,
+					chunk.offset,
+					runId,
+					voiceResolution.voice,
+					utterance.sourceOffset,
+				);
+				if (!shouldContinue) {
+					break;
+				}
 			}
-			const shouldContinue = await this.speakChunk(
-				chunk.text,
-				chunk.offset,
-				runId,
-				voiceResolution.voice,
-				utterance.sourceOffset,
-			);
-			if (!shouldContinue) {
-				break;
-			}
+		} finally {
+			if (this.activeRunId === runId) this.activeRunId = null;
 		}
 	}
 
@@ -364,33 +406,46 @@ class BrowserTTSProviderImpl implements ITTSProviderImplementation {
 		}
 		this.stop();
 		const runId = this.speakRunId;
-		const voiceResolution = await this.resolveBrowserVoice(runId);
-		if (!voiceResolution.shouldContinue) return;
-		for (const segment of segments) {
-			if (runId !== this.speakRunId) break;
-			const utterance = toUtteranceText(segment.text);
-			const chunks = this.splitIntoChunks(utterance.text);
-			for (const chunk of chunks) {
+		this.activeRunId = runId;
+		try {
+			const voiceResolution = await this.resolveBrowserVoice(runId);
+			if (!voiceResolution.shouldContinue) return;
+			for (const segment of segments) {
 				if (runId !== this.speakRunId) break;
-				const shouldContinue = await this.speakChunk(
-					chunk.text,
-					chunk.offset,
-					runId,
-					voiceResolution.voice,
-					(offset) => segment.startOffset + utterance.sourceOffset(offset),
-				);
-				if (!shouldContinue) break;
+				const utterance = toUtteranceText(segment.text);
+				const chunks = this.splitIntoChunks(utterance.text);
+				for (const chunk of chunks) {
+					if (this._isPaused && !(await this.waitWhilePaused(runId))) break;
+					const shouldContinue = await this.speakChunk(
+						chunk.text,
+						chunk.offset,
+						runId,
+						voiceResolution.voice,
+						(offset) => segment.startOffset + utterance.sourceOffset(offset),
+					);
+					if (!shouldContinue) break;
+				}
+				const pauseMsAfter = Math.max(0, Number(segment.pauseMsAfter || 0));
+				if (pauseMsAfter > 0 && runId === this.speakRunId) {
+					const shouldContinue = await this.waitForPause(pauseMsAfter, runId);
+					if (!shouldContinue) break;
+				}
 			}
-			const pauseMsAfter = Math.max(0, Number(segment.pauseMsAfter || 0));
-			if (pauseMsAfter > 0 && runId === this.speakRunId) {
-				const shouldContinue = await this.waitForPause(pauseMsAfter, runId);
-				if (!shouldContinue) break;
-			}
+		} finally {
+			if (this.activeRunId === runId) this.activeRunId = null;
 		}
 	}
 
 	private async waitForPause(pauseMs: number, runId: number): Promise<boolean> {
-		await new Promise((resolve) => setTimeout(resolve, pauseMs));
+		await new Promise<void>((resolve) => {
+			const settle = () => {
+				clearTimeout(timer);
+				if (this.settlePendingGap === settle) this.settlePendingGap = null;
+				resolve();
+			};
+			const timer = setTimeout(settle, pauseMs);
+			this.settlePendingGap = settle;
+		});
 		return runId === this.speakRunId;
 	}
 
@@ -441,19 +496,16 @@ class BrowserTTSProviderImpl implements ITTSProviderImplementation {
 	 * `providerOptions.contentLanguage` when the content or the host names one.
 	 */
 	private getContentLocale(): string | undefined {
-		const language = (this.config?.providerOptions as Record<string, unknown>)
-			?.contentLanguage;
+		const language = this.config?.providerOptions?.contentLanguage;
 		return typeof language === "string" && language.trim()
 			? language.trim()
 			: undefined;
 	}
 
 	private getHighlightMode(): "word" | "sentence" {
-		const providerOptions = (this.config?.providerOptions || {}) as Record<
-			string,
-			unknown
-		>;
-		return providerOptions.highlightMode === "word" ? "word" : "sentence";
+		return this.config?.providerOptions?.highlightMode === "word"
+			? "word"
+			: "sentence";
 	}
 
 	private getSegmentationPolicy(): {
@@ -461,14 +513,8 @@ class BrowserTTSProviderImpl implements ITTSProviderImplementation {
 		useWordSegmenter: boolean;
 		locale?: string;
 	} {
-		const providerOptions = (this.config?.providerOptions || {}) as Record<
-			string,
-			unknown
-		>;
-		const segmenter = (providerOptions.segmenter || {}) as Record<
-			string,
-			unknown
-		>;
+		const providerOptions = this.config?.providerOptions || {};
+		const segmenter = providerOptions.segmenter || {};
 		const mode = segmenter.mode;
 		const useSegmenter = mode !== "regexOnly";
 		const locale =
@@ -571,7 +617,6 @@ class BrowserTTSProviderImpl implements ITTSProviderImplementation {
 				}
 				if (runId === this.speakRunId) {
 					this._isPlaying = false;
-					this._isPaused = false;
 				}
 				if (error) {
 					reject(error);
@@ -597,7 +642,8 @@ class BrowserTTSProviderImpl implements ITTSProviderImplementation {
 				didStart = true;
 				clearStartTimeout();
 				this._isPlaying = true;
-				this._isPaused = false;
+				// A pause that landed while the engine was starting holds this utterance.
+				if (this._isPaused) speechSynthesis.pause();
 				try {
 					this.onPlaybackStart?.();
 				} catch (error) {
@@ -708,29 +754,38 @@ class BrowserTTSProviderImpl implements ITTSProviderImplementation {
 	}
 
 	pause(): void {
-		if (this._isPlaying && !this._isPaused) {
+		if (this._isPaused) return;
+		if (this._isPlaying) {
 			speechSynthesis.pause();
+			this._isPaused = true;
+		} else if (this.activeRunId === this.speakRunId) {
+			// Between utterances, or in a structural gap: the next one holds.
+			this._isPaused = true;
 		}
 	}
 
 	resume(): void {
-		if (this._isPlaying && this._isPaused) {
-			speechSynthesis.resume();
-		}
+		if (!this._isPaused) return;
+		this._isPaused = false;
+		if (this._isPlaying) speechSynthesis.resume();
+		this.releaseHold();
 	}
 
 	stop(): void {
 		const utterance = this.utterance;
 		const shouldCancel = this._isPlaying || utterance !== null;
 		this.speakRunId += 1;
+		this.activeRunId = null;
 		this.settlePendingVoiceWait?.();
 		this.settlePendingChunk?.();
+		this.settlePendingGap?.();
 		if (shouldCancel) {
 			speechSynthesis.cancel();
 		}
 		this.utterance = null;
 		this._isPlaying = false;
 		this._isPaused = false;
+		this.releaseHold();
 	}
 
 	isPlaying(): boolean {
@@ -745,9 +800,9 @@ class BrowserTTSProviderImpl implements ITTSProviderImplementation {
 	 * Update settings dynamically (rate, pitch, voice)
 	 * Changes take effect on the next speak() call
 	 */
-	updateSettings(settings: Partial<TTSConfig>): void {
+	updateSettings(settings: Partial<ToolkitTTSConfig>): void {
 		if (!this.config) {
-			this.config = {} as TTSConfig;
+			this.config = {};
 		}
 
 		// Update config with new settings

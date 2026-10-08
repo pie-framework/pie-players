@@ -335,13 +335,13 @@ The extraction step:
 
 1. **Content-Level TTS (tool-tts-inline):**
    - User clicks speaker icon in header
-   - Tool calls `ttsService.speak(text, { catalogId: 'auto-prompt-q1-0' })`
+   - Tool calls `ttsService.speak(readingTarget, { catalogId: 'auto-prompt-q1-0' })`
    - Resolver finds SSML in `extractedCatalogs`
    - Polly/Browser speaks with proper math pronunciation and pacing
 
 2. **Selection read-aloud (annotation toolbar):**
    - User selects "The quadratic formula" and presses read-aloud
-   - Toolbar calls `ttsService.speakRange(range, { contentRoot, catalogContext })`,
+   - Toolbar calls `ttsService.speak(range, { contentRoot, catalogContext })`,
      with the catalog context of the shell holding the selection
    - The selection holds choice a's `data-catalog-idref` node whole, so its
      card is spoken, with the authored `<emphasis>`
@@ -527,19 +527,18 @@ be enforceable in the selection read-aloud path, which consults no catalog.
 **Enforced in every path that produces speech**, since a filter on one of them is
 a filter a candidate can walk around:
 
-- the composed catalog path, checked before card resolution;
+- the composed catalog path, checked before card resolution, and the card a
+  `catalogId` names;
 - the generated-speech and visible-text collectors, via
   `isNodeExcludedFromSpeech`;
 - structural pause boundaries, so a suppressed node leaves no audible seam;
-- `speakRange`, the annotation-toolbar selection path. It passes
-  `range.toString()` straight through and `Range.toString()` honours no DOM
-  filter, so it filters the range itself. A selection wholly inside suppressed
-  content speaks nothing; one that spans it speaks the rest, with highlight
-  offsets from the same filtered text.
+- a range target, the annotation-toolbar selection path. `Range.toString()`
+  honours no DOM filter, so the range itself is filtered. A selection wholly
+  inside suppressed content speaks nothing; one that spans it speaks the rest,
+  with highlight offsets from the same filtered text.
 
-A host passing its own string to `ttsService.speak(text, { ignoreCatalogs: true })`
-bypasses this — there is no DOM to filter. Pass a `contentElement`, or a `Range`
-via `speakRange`.
+`ttsService.speak` takes only a DOM target, an element or a range, so no caller
+can hand it text the filter has not seen.
 
 **Speech-only, with no braille or signing equivalent.** The test is whether a
 modality preserves the information the item measures. Speech destroys spelling;
@@ -619,11 +618,10 @@ const ttsService = new TTSService();
 
 ttsService.setCatalogResolver(resolver);
 
-await ttsService.speak('Visible fallback text', {
-  catalogId: 'prompt-001',
-  language: 'en-US',
-  contentElement: document.querySelector('[data-catalog-idref="prompt-001"]') ?? undefined
-});
+const prompt = document.querySelector('[data-catalog-idref="prompt-001"]');
+if (prompt) {
+  await ttsService.speak(prompt, { catalogId: 'prompt-001', language: 'en-US' });
+}
 ```
 
 For normal section-player delivery, prefer `ToolkitCoordinator`; it creates and

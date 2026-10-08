@@ -68,9 +68,7 @@ await ttsService.initialize(provider, {
 
 ```typescript
 // The provider automatically coordinates word highlighting
-await ttsService.speak('Hello world, this is a test.', {
-  contentElement: document.getElementById('content'),
-});
+await ttsService.speak(document.getElementById('content'));
 ```
 
 ## Transport Modes
@@ -138,7 +136,10 @@ await ttsService.speak('Hello world, this is a test.', {
 ```
 
 The language travels under both `lang_id` and `langId`, so a server that binds
-JSON in camelCase reads it without a mapping of its own.
+JSON in camelCase reads it without a mapping of its own. It is the host's
+`providerOptions.lang_id`, else the language a speak names, else `language`,
+else `en-US`. In PIE mode, `language` is the language a speak names, else the
+configured one.
 
 ### Custom mode response
 

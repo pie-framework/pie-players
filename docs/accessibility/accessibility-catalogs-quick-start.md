@@ -235,21 +235,18 @@ const ttsService = new TTSService();
 // Set catalog resolver
 ttsService.setCatalogResolver(catalogResolver);
 
-// Speak with catalog support
-await ttsService.speak('Hello world', {
+// Speak an element with catalog support
+const welcome = document.querySelector('#welcome');
+await ttsService.speak(welcome, {
   catalogId: 'welcome-message',
   language: 'en-US'
 });
 // If catalog found: Uses pre-authored SSML
 // If catalog not found: Falls back to generated TTS
 
-// Auto-detect from DOM element
-// Note: the actual method signature is ttsService.speak(text, { catalogId, contentElement }),
-// not ttsService.speakElement(). Example:
-const element = document.querySelector('[data-catalog-idref]');
-const catalogId = element.getAttribute('data-catalog-idref');
-await ttsService.speak(element.textContent, { catalogId, contentElement: element });
-// Automatically uses catalog if catalogId resolves
+// Read a range, such as a selection: a docked node it holds whole reads its card
+const range = window.getSelection().getRangeAt(0);
+await ttsService.speak(range, { contentRoot: welcome });
 ```
 
 ---

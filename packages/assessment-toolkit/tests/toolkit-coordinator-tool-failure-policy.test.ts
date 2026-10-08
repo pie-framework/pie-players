@@ -1,4 +1,14 @@
-import { afterEach, beforeEach, describe, expect, spyOn, test } from "bun:test";
+import { GlobalRegistrator } from "@happy-dom/global-registrator";
+import {
+	afterAll,
+	afterEach,
+	beforeAll,
+	beforeEach,
+	describe,
+	expect,
+	spyOn,
+	test,
+} from "bun:test";
 import type { AssessmentEntity } from "@pie-players/pie-players-shared/types";
 import type { FrameworkErrorModel } from "../src/services/framework-error.js";
 import { ToolkitCoordinator } from "../src/services/ToolkitCoordinator.js";
@@ -7,6 +17,19 @@ import {
 	createFailingAuthProviderDescriptor,
 	createTestToolRegistration,
 } from "./fixtures/test-tool-registry.js";
+import { contentWith } from "./fixtures/read-aloud-content.js";
+
+beforeAll(() => {
+	if (!GlobalRegistrator.isRegistered) {
+		GlobalRegistrator.register();
+	}
+});
+
+afterAll(() => {
+	if (GlobalRegistrator.isRegistered) {
+		GlobalRegistrator.unregister();
+	}
+});
 
 /**
  * A tool that fails to start degrades, reporting itself unavailable, unless
@@ -241,7 +264,7 @@ describe("text-to-speech start", () => {
 
 		await coordinator
 			.getServiceBundle()
-			.ttsService.speak("hello")
+			.ttsService.speak(contentWith("hello"))
 			.catch(() => {});
 		expect(coordinator.getInitStatus().tts).toBe(true);
 	});

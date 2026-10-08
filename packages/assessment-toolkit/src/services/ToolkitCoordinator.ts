@@ -1191,14 +1191,18 @@ export class ToolkitCoordinator {
 				return null;
 			}
 		})();
-		const getStorageKey = (context: SectionControllerContext): string => {
+		// Stored per attempt. Without an attempt id nothing tells two learners on
+		// one device apart, so the section is neither read nor written.
+		const getStorageKey = (context: SectionControllerContext): string | null => {
 			const { assessmentId, sectionId, attemptId } = context.key;
-			return `pie:section-controller:v1:${assessmentId}:${sectionId}:${attemptId || "default"}`;
+			if (!attemptId) return null;
+			return `pie:section-controller:v1:${assessmentId}:${sectionId}:${attemptId}`;
 		};
 		return {
 			async loadSession(context) {
-				if (!storage) return null;
-				const value = storage.getItem(getStorageKey(context));
+				const key = getStorageKey(context);
+				if (!storage || !key) return null;
+				const value = storage.getItem(key);
 				if (!value) return null;
 				try {
 					return JSON.parse(value);
@@ -1207,12 +1211,14 @@ export class ToolkitCoordinator {
 				}
 			},
 			async saveSession(context, session) {
-				if (!storage) return;
-				storage.setItem(getStorageKey(context), JSON.stringify(session));
+				const key = getStorageKey(context);
+				if (!storage || !key) return;
+				storage.setItem(key, JSON.stringify(session));
 			},
 			async clearSession(context) {
-				if (!storage) return;
-				storage.removeItem(getStorageKey(context));
+				const key = getStorageKey(context);
+				if (!storage || !key) return;
+				storage.removeItem(key);
 			},
 		};
 	}

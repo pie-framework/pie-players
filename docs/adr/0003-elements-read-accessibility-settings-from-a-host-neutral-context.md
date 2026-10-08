@@ -38,7 +38,7 @@ grows.
 
 Every element bundles its own copy of shared modules, so the key must be equal across copies.
 `Symbol.for` returns the registered symbol for its name, and `ContextProvider` matches a request by
-`event.context === key` without checking the event's class (`packages/pie-context/src/provider.ts:80`),
+`event.context === key` without checking the event's class (`packages/pie-context/src/provider.ts:100`),
 so a request from any copy matches.
 
 ## Supporting reasons
@@ -78,8 +78,8 @@ required or blocked by the same rules as every other support.
 
 A deliberate trade: AfA PNP 3.0 parameterizes some preferences, and a flat id list carries no
 parameters. `braille.math-type` takes `nemeth` or `ueb`, and `spoken.reading-type` takes
-`screen-reader` or `computer-read-aloud`. A parameterized preference becomes one id per value, as
-the toolkit's vocabulary already has `nemeth` beside `braille` (`pnp-standard-features.ts`).
+`screen-reader` or `computer-read-aloud`. A parameterized preference becomes one id per value, such as
+`nemeth` beside `braille`.
 Language preferences are parameterized by language, which is why `language` is a field of its own.
 
 ## Math accessibility modes

@@ -1,13 +1,10 @@
 /**
- * The harness builds its tree from raw `EventTarget` nodes, because
- * happy-dom's `dispatchEvent` rejects pie-context's events whenever another
- * file loaded pie-context first, its classes extending the `Event` of that
- * moment. A node dispatches to itself and then to each ancestor until a
- * listener stops propagation, which is what the context protocol relies on, and
- * `ownerDocument` names the tree's top node as its document element, where
- * pie-context installs the document's context root.
+ * `createShellScope` over happy-dom elements. Each test builds its page in a
+ * document of its own, so a document's context root holds only that test's
+ * requests.
  */
-import { afterEach, describe, expect, test } from "bun:test";
+import { GlobalRegistrator } from "@happy-dom/global-registrator";
+import { afterAll, afterEach, describe, expect, test } from "bun:test";
 import {
 	ContextProvider,
 	ContextRequestEvent,
@@ -25,53 +22,21 @@ import {
 } from "../src/runtime/registration-events.js";
 import { createShellScope } from "../src/runtime/shell-scope.js";
 
-type FakeDocument = { documentElement: FakeNode };
+const ownsDom = typeof window === "undefined";
+if (ownsDom) GlobalRegistrator.register();
 
-class FakeNode extends EventTarget {
-	readonly #attributes = new Map<string, string>();
-	readonly parent: FakeNode | null;
-	readonly ownerDocument: FakeDocument;
+afterAll(() => {
+	if (ownsDom && GlobalRegistrator.isRegistered) GlobalRegistrator.unregister();
+});
 
-	constructor(parent: FakeNode | null) {
-		super();
-		this.parent = parent;
-		this.ownerDocument = parent?.ownerDocument ?? { documentElement: this };
-	}
+/** A page in a new document. */
+const newPage = (): HTMLElement => {
+	const doc = document.implementation.createHTMLDocument();
+	return doc.body.appendChild(doc.createElement("div"));
+};
 
-	getAttribute(name: string): string | null {
-		return this.#attributes.get(name) ?? null;
-	}
-
-	setAttribute(name: string, value: string): void {
-		this.#attributes.set(name, String(value));
-	}
-
-	override dispatchEvent(event: Event): boolean {
-		// Each node is a separate native dispatch, which clears the stop flag
-		// when it returns, so the stop is recorded here. Calling the native one
-		// as well keeps `cancelBubble` true for the node's later listeners.
-		let stopped = false;
-		const stopPropagation = Event.prototype.stopPropagation;
-		Object.defineProperty(event, "stopPropagation", {
-			configurable: true,
-			value: () => {
-				stopped = true;
-				stopPropagation.call(event);
-			},
-		});
-		let notCanceled = true;
-		for (
-			let node: FakeNode | null = this;
-			node && !stopped;
-			node = event.bubbles ? node.parent : null
-		) {
-			notCanceled = EventTarget.prototype.dispatchEvent.call(node, event);
-		}
-		return notCanceled;
-	}
-}
-
-const element = (node: FakeNode) => node as unknown as HTMLElement;
+const child = (parent: HTMLElement): HTMLElement =>
+	parent.appendChild(parent.ownerDocument.createElement("div"));
 
 const spokenCatalog = (
 	identifier: string,
@@ -102,8 +67,8 @@ const runtimeValue = (runtimeId: string, coordinator: unknown = {}) =>
 	({ runtimeId, coordinator }) as unknown as AssessmentToolkitHostRuntimeContext;
 
 /** A toolkit on `node`, providing its host runtime context as the toolkit does. */
-const provideRuntime = (node: FakeNode, runtimeId = "runtime-1") => {
-	const provider = new ContextProvider(element(node), {
+const provideRuntime = (node: HTMLElement, runtimeId = "runtime-1") => {
+	const provider = new ContextProvider(node, {
 		context: assessmentToolkitHostRuntimeContext,
 		initialValue: runtimeValue(runtimeId),
 	});
@@ -124,12 +89,11 @@ type Dispatched = {
  * region inside the host, and the registrations that reach the runtime node.
  */
 const setup = ({ runtime = true } = {}) => {
-	const page = new FakeNode(null);
-	const runtimeNode = new FakeNode(page);
-	const shellNode = new FakeNode(runtimeNode);
-	const host = element(shellNode);
-	const tool = element(new FakeNode(shellNode));
-	const content = element(new FakeNode(shellNode));
+	const page = newPage();
+	const runtimeNode = child(page);
+	const host = child(runtimeNode);
+	const tool = child(host);
+	const content = child(host);
 	if (runtime) provideRuntime(runtimeNode);
 	const registrations: Dispatched[] = [];
 	for (const type of [PIE_REGISTER_EVENT, PIE_UNREGISTER_EVENT]) {
@@ -145,7 +109,7 @@ const setup = ({ runtime = true } = {}) => {
 	}
 	const scope = createShellScope();
 	scopes.push(scope);
-	return { page, runtimeNode, shellNode, host, tool, content, registrations, scope };
+	return { page, runtimeNode, host, tool, content, registrations, scope };
 };
 
 /** Every value `tool` is given for `context`, as a subscribed tool sees them. */
@@ -166,7 +130,7 @@ const steps = (registrations: Dispatched[]) =>
 	registrations.map(({ type, itemId, runtimeId }) => [type, itemId, runtimeId]);
 
 /** The `type` events reaching `node`, as their details. */
-const received = (node: FakeNode, type: string) => {
+const received = (node: HTMLElement, type: string) => {
 	const details: Array<Record<string, unknown>> = [];
 	node.addEventListener(type, (event) =>
 		details.push((event as CustomEvent).detail),
@@ -332,16 +296,14 @@ describe("createShellScope", () => {
 	});
 
 	test("moves its registration to a nearer runtime that connects later", () => {
-		const page = new FakeNode(null);
-		const outer = new FakeNode(page);
-		const inner = new FakeNode(outer);
-		const shellNode = new FakeNode(inner);
-		const host = element(shellNode);
+		const outer = child(newPage());
+		const inner = child(outer);
+		const host = child(inner);
 		provideRuntime(outer, "runtime-outer");
 		const reachingOuter = received(outer, PIE_UNREGISTER_EVENT);
 		const registrations: Dispatched[] = [];
 		for (const type of [PIE_REGISTER_EVENT, PIE_UNREGISTER_EVENT]) {
-			shellNode.addEventListener(type, (event) => {
+			host.addEventListener(type, (event) => {
 				const detail = (event as CustomEvent).detail;
 				registrations.push({
 					type,
@@ -377,13 +339,11 @@ describe("createShellScope", () => {
 	});
 
 	test("tells a nearer runtime that takes it over that its content already loaded", () => {
-		const page = new FakeNode(null);
-		const outer = new FakeNode(page);
-		const inner = new FakeNode(outer);
-		const shellNode = new FakeNode(inner);
-		const host = element(shellNode);
+		const outer = child(newPage());
+		const inner = child(outer);
+		const host = child(inner);
 		provideRuntime(outer, "runtime-outer");
-		const loaded = received(shellNode, "pie-content-loaded");
+		const loaded = received(host, "pie-content-loaded");
 		const scope = createShellScope();
 		scopes.push(scope);
 		scope.publish({ host, ...q1 });

@@ -736,6 +736,9 @@ jsDelivr.
 Object properties: `runtime`, `section`, `hooks` (A), `toolRegistry` (R).
 
 Attributes both hosts pass: `section-id`, `attempt-id`, `show-toolbar`.
+Host A's `persist()` and `hydrate()` go through the default section
+persistence, which stores a section under its `attempt-id` and neither reads
+nor writes without one, so its resume depends on the attribute being non-empty.
 
 Host A additionally: `debug`, `narrow-layout-breakpoint`,
 `split-pane-initial-passage-width`, `nds-icons`. Host R passes none of those
@@ -1886,6 +1889,13 @@ over a CDN with no typecheck at all.
   against all five checkouts on 2026-10-08 as a targeted lookup, so it does not
   advance the verification date: no checkout imports any toolkit subpath or names
   either type
+- The toolkit's `pnp-standard-features` module, deleted on 2026-10-08 with its
+  `./services/pnp-standard-features` subpath and the six root exports
+  (`QTI_STANDARD_ACCESS_FEATURES`, `ALL_STANDARD_ACCESS_FEATURES`,
+  `EXAMPLE_PNP_CONFIGURATIONS`, `isStandardAccessFeature`, `getFeatureCategory`,
+  `getFeaturesInCategory`). Nothing read it at runtime; support ids resolve
+  against the registry. Checked against all five checkouts on 2026-10-08 as a
+  targeted lookup: no checkout imports any of them
 
 ## Consumer-side defects worth reporting upstream
 

@@ -82,78 +82,11 @@ init/render refresh:
 
 This keeps visibility deterministic and context-driven for every refresh cycle.
 
-## QTI 3.0 Standard Access Features
+## Support ids
 
-The toolkit includes comprehensive QTI 3.0 / IMS Access for All (AfA) 3.0 standard features in `pnp-standard-features.ts`. They are reference vocabulary: a profile grants a tool by its `toolId`, so a feature id grants a packaged tool only where the names coincide (`calculator`, `textToSpeech`, `ruler`, `protractor`, `graph`, `periodicTable`, `answerEliminator`, `signLanguage`, `transcript`). A host holding a profile in AfA terms translates the rest, for example `readingMask` to `lineReader` or `highlighting` to `annotationToolbar`.
+A tool's `toolId` is its PNP support id: a profile, district policy or item grants a tool by listing its id, and the registry a host composes is the only list of ids a deployment recognizes. Which supports a deployment offers is therefore known only at runtime, from the tools registered and the policy applied to them. An id no registered tool carries raises `tool-policy.unknownSupportId`.
 
-### Standard Feature Categories
-
-```typescript
-import { QTI_STANDARD_ACCESS_FEATURES } from '@pie-players/pie-assessment-toolkit';
-
-// 8 categories with 96 standardized features:
-QTI_STANDARD_ACCESS_FEATURES.visual          // magnification, contrast, display
-QTI_STANDARD_ACCESS_FEATURES.auditory        // TTS, captions, audio controls
-QTI_STANDARD_ACCESS_FEATURES.motor           // keyboard, timing, input
-QTI_STANDARD_ACCESS_FEATURES.cognitive       // simplification, focus, tools
-QTI_STANDARD_ACCESS_FEATURES.reading         // spacing, masking, highlighting
-QTI_STANDARD_ACCESS_FEATURES.navigation      // structure, search, skip
-QTI_STANDARD_ACCESS_FEATURES.linguistic      // translation, glossary
-QTI_STANDARD_ACCESS_FEATURES.assessment      // calculator, ruler, answer masking
-```
-
-### Example Access Features
-
-```typescript
-// Visual accessibility
-"magnification"           // QTI 3.0 visual.magnification
-"screenMagnifier"         // QTI 3.0 visual.screenMagnifier
-"highContrastDisplay"     // QTI 3.0 visual.highContrastDisplay
-"colorContrast"           // QTI 3.0 visual.colorContrast
-"invertColors"            // QTI 3.0 visual.invertColors
-
-// Auditory accessibility
-"textToSpeech"            // QTI 3.0 auditory.textToSpeech
-"readAloud"               // QTI 3.0 auditory.readAloud
-"captions"                // QTI 3.0 auditory.captions
-"signLanguage"            // QTI 3.0 auditory.signLanguage
-
-// Cognitive/reading support
-"calculator"              // QTI 3.0 cognitive.calculator
-"highlighting"            // QTI 3.0 cognitive.highlighting
-"annotations"             // QTI 3.0 cognitive.annotations
-"readingMask"             // QTI 3.0 reading.readingMask
-"readingGuide"            // QTI 3.0 reading.readingGuide
-
-// Assessment tools
-"graphingCalculator"      // QTI 3.0 assessment.graphingCalculator
-"ruler"                   // QTI 3.0 assessment.ruler
-"protractor"              // QTI 3.0 assessment.protractor
-"periodicTable"           // QTI 3.0 assessment.periodicTable
-"answerMasking"           // QTI 3.0 assessment.answerMasking
-```
-
-### Example PNP Configurations
-
-The toolkit provides example configurations showing how standard features combine for different accessibility needs:
-
-```typescript
-import { EXAMPLE_PNP_CONFIGURATIONS } from '@pie-players/pie-assessment-toolkit';
-
-// Example: Student with low vision
-EXAMPLE_PNP_CONFIGURATIONS.lowVision.features
-// → ["magnification", "screenMagnifier", "highContrastDisplay", "textToSpeech", ...]
-
-// Example: Student with dyslexia
-EXAMPLE_PNP_CONFIGURATIONS.dyslexia.features
-// → ["textToSpeech", "readAloud", "highlighting", "readingMask", ...]
-
-// Example: Student with ADHD
-EXAMPLE_PNP_CONFIGURATIONS.adhd.features
-// → ["reducedDistraction", "highlighting", "annotations", "timingControl", ...]
-```
-
-**Note**: These are illustrative examples, not official QTI profiles. Real student profiles are institution-specific combinations of standard features.
+A new tool whose capability AfA PNP 3.0 names takes that term as its id. The packaged ids that coincide with AfA terms are `calculator`, `textToSpeech`, `ruler`, `protractor`, `graph`, `periodicTable`, `answerEliminator` and `signLanguage`. A host holding a profile in AfA terms translates the rest, for example `readingMask` to `lineReader` or `highlighting` to `annotationToolbar`.
 
 ## Tool Registration
 
@@ -824,13 +757,6 @@ import type {
   RubricToolContext
 } from '@pie-players/pie-assessment-toolkit';
 
-import {
-  QTI_STANDARD_ACCESS_FEATURES,
-  EXAMPLE_PNP_CONFIGURATIONS,
-  isStandardAccessFeature,
-  getFeatureCategory,
-  getFeaturesInCategory
-} from '@pie-players/pie-assessment-toolkit';
 ```
 
 ## Registry-Based Configuration
@@ -935,7 +861,7 @@ This hierarchy aligns with typical **IEP/504 accommodation hierarchies** in US K
 
 ## Best Practices
 
-1. **Keep a tool id stable once profiles use it** - A profile grants the tool by its id, so renaming it drops the grant from every profile that lists the old id. `QTI_STANDARD_ACCESS_FEATURES` is reference vocabulary and does not fix tool ids: the packaged `lineReader` serves the AfA `readingMask` feature
+1. **Keep a tool id stable once profiles use it** - A profile grants the tool by its id, so renaming it drops the grant from every profile that lists the old id. An existing id keeps its name where the AfA term differs: the packaged `lineReader` serves the AfA `readingMask` feature
 2. **Make tools context-aware** - Use helper functions like `hasMathContent()`, `hasReadableText()`
 3. **Test all three passes** - Verify tools respect orchestrator allowance, context relevance and, where declared, the applicability veto
 4. **Keep visibility logic simple** - Complex logic should be in helper functions, not in `isVisibleInContext()`

@@ -6,7 +6,7 @@ The Tool Registry provides a **registry-based system** for managing assessment t
 
 The Tool Registry replaces hardcoded tool lists with a flexible, extensible system that:
 
-1. **Enforces two-pass visibility model**: Orchestrator determines allowed tools (Pass 1), tools decide relevance (Pass 2)
+1. **Enforces a three-pass visibility model**: the orchestrator determines allowed tools (Pass 1), tools decide relevance (Pass 2), and a tool that declares an applicability gate removes itself from content it cannot act on (Pass 3)
 2. **Grants tools from PNP profiles**: a profile's support id is the `toolId` it grants
 3. **Context-aware filtering**: Tools show/hide based on content analysis
 4. **Type-safe registrations**: Full TypeScript support with standardized interfaces
@@ -20,7 +20,7 @@ The Tool Registry replaces hardcoded tool lists with a flexible, extensible syst
 
 ## Architecture
 
-### Two-Pass Visibility Model
+### Three-Pass Visibility Model
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
@@ -30,7 +30,7 @@ The Tool Registry replaces hardcoded tool lists with a flexible, extensible syst
 │  Pass 1: Determines allowedToolIds[]                        │
 │  - Reads QTI 3.0 PNP profile                                │
 │  - Applies institutional policies                           │
-│  - Maps accessFeature → toolIds via ToolRegistry            │
+│  - Grants by tool id: a support id is the toolId            │
 └──────────────────────┬──────────────────────────────────────┘
                        │ allowedToolIds: ["calculator", "textToSpeech", ...]
                        ▼
@@ -41,7 +41,12 @@ The Tool Registry replaces hardcoded tool lists with a flexible, extensible syst
 │  Pass 2: Filters by tool relevance                          │
 │  - Checks supportedLevels (item/passage/element)            │
 │  - Calls isVisibleInContext(context)                        │
+│  - Skipped for required/alwaysAvailable grants              │
 │  - Returns visible tools                                    │
+│                                                             │
+│  Pass 3: Vetoes inapplicable tools                          │
+│  - Calls isApplicableToContent(context) where declared      │
+│  - Removes the tool even under a grant                      │
 └──────────────────────┬──────────────────────────────────────┘
                        │ visibleTools: [ToolRegistration, ...]
                        ▼
@@ -62,7 +67,7 @@ Tools can **hide themselves** but cannot **override orchestrator's NO**:
 
 This is enforced architecturally: `filterVisibleInContext()` only filters the `allowedToolIds` array.
 
-`<pie-item-toolbar>` skips Pass 2 at section level, where relevance would depend on item content, and for a tool whose policy entry is `required` or `alwaysAvailable`, so a relevance heuristic cannot withdraw a granted accommodation. A registration can also declare `isApplicableToContent(context)`; below section level a `false` answer removes the tool from the toolbar even under a grant, unless a host resolver decided that tool's visibility. The answer eliminator declares it, answering `false` for content with no choice interaction.
+`<pie-item-toolbar>` skips Pass 2 at section level, where relevance would depend on item content, and for a tool whose policy entry is `required` or `alwaysAvailable`, so a relevance heuristic cannot withdraw a granted accommodation. Pass 3 runs below section level once content has resolved: a registration that declares `isApplicableToContent(context)` and answers `false` for every context at its placement is removed even under a grant, because a control that provably does nothing serves no learner. A tool whose visibility a host resolver decided keeps that answer. The answer eliminator declares the gate, answering `false` for content with no choice interaction.
 
 ### Refresh / Init Contract
 
@@ -72,7 +77,8 @@ init/render refresh:
 1. Resolve `allowedToolIds` (Pass 1).
 2. Rebuild the current `ToolContext`.
 3. Call `filterVisibleInContext(allowedToolIds, context)` (Pass 2).
-4. Render only the resulting buttons.
+4. Drop each tool for which `isApplicableToAnyContext(toolId, contexts)` is `false` (Pass 3).
+5. Render only the resulting buttons.
 
 This keeps visibility deterministic and context-driven for every refresh cycle.
 
@@ -160,12 +166,12 @@ import type {
   ToolToolbarButtonDefinition,
   ToolToolbarRenderResult,
   ToolbarContext
-} from '@pie-players/pie-assessment-toolkit/tools/internal';
+} from '@pie-players/pie-assessment-toolkit/tools/registration';
 import {
   createScopedToolId,
   createToolElement,
   hasMathContent
-} from '@pie-players/pie-assessment-toolkit/tools/internal';
+} from '@pie-players/pie-assessment-toolkit/tools/registration';
 
 export const calculatorToolRegistration: ToolRegistration = {
   toolId: "calculator",
@@ -270,7 +276,7 @@ import {
   hasMathContent,
   hasScienceContent,
   hasChoiceInteraction
-} from '@pie-players/pie-assessment-toolkit/tools/internal';
+} from '@pie-players/pie-assessment-toolkit/tools/registration';
 
 // Check if context has readable text (10+ characters)
 isVisibleInContext(context: ToolContext): boolean {
@@ -303,10 +309,10 @@ import {
   DEFAULT_TOOL_MODULE_LOADERS,
 } from '@pie-players/pie-default-tool-loaders';
 
-// Create registry with the packaged PIE tools
+// Registrations only: the host defines the tool elements itself
 const toolRegistry = createPackagedToolRegistry();
 
-// Optional: wire lazy module loaders at bootstrap
+// Registrations plus module loaders: each tool's package loads on first render
 const lazyRegistry = createPackagedToolRegistry({
   toolModuleLoaders: DEFAULT_TOOL_MODULE_LOADERS
 });
@@ -366,9 +372,15 @@ const selectiveRegistry = createPackagedToolRegistry({
 
 ```typescript
 import { ToolkitCoordinator } from '@pie-players/pie-assessment-toolkit';
-import { createPackagedToolRegistry } from '@pie-players/pie-default-tool-loaders';
+import {
+  createPackagedToolRegistry,
+  DEFAULT_TOOL_MODULE_LOADERS,
+} from '@pie-players/pie-default-tool-loaders';
 
-const toolRegistry = createPackagedToolRegistry();
+// The toolbar rendering below mounts tool elements, so the registry carries loaders
+const toolRegistry = createPackagedToolRegistry({
+  toolModuleLoaders: DEFAULT_TOOL_MODULE_LOADERS
+});
 const coordinator = new ToolkitCoordinator({
   assessmentId: assessment.id,
   toolRegistry,
@@ -402,14 +414,21 @@ const context: ItemToolContext = {
   item
 };
 
-const visibleTools = toolRegistry.filterVisibleInContext(allowedToolIds, context);
-// Returns: ToolRegistration[] (only tools that passed both gates)
+const relevantTools = toolRegistry.filterVisibleInContext(allowedToolIds, context);
+
+// Pass 3: Drop tools that declare they cannot act on this content
+const visibleTools = relevantTools.filter((tool) =>
+  toolRegistry.isApplicableToAnyContext(tool.toolId, [context])
+);
+// Returns: ToolRegistration[] (only tools that passed all three gates)
 ```
 
 ### Toolbar Rendering
 
 ```typescript
-// Render through the registry, which attaches its component overrides
+// Load the tools' element modules, then render through the registry,
+// which attaches its component overrides
+await toolRegistry.ensureToolModulesLoaded(visibleTools.map((tool) => tool.toolId));
 for (const tool of visibleTools) {
   const result = toolRegistry.renderForToolbar(tool.toolId, context, toolbarContext);
   if (!result) continue;
@@ -619,7 +638,7 @@ Surface names belong to the host, not to this package. Core validates only that 
 | `content-media` | per item or passage card | `decideFeaturePolicy` | resolved and passed as `content` |
 | `section-overlay` | section singleton | `decideFeaturePolicy` for `region`, `decideToolPolicy` for a placed toolbar activation | not resolvable — see below |
 
-A renderer finds what it can mount by asking the registry, which is what keeps it from naming a capability. `section-player` centralizes that work in its internal Tool Surface Host: the geometry adapters provide only a surface name, anchor, scope, registry, and runtime services. The host owns discovery, policy/catalog invalidation, content resolution, structural comparison, lazy loading, mount/sync/teardown, and per-capability failure isolation.
+A renderer finds what it can mount by asking the registry, which is what keeps it from naming a capability. `section-player` centralizes that work in the toolkit's Tool Surface Host (`createToolSurfaceHost` on `tools/registration`): the geometry adapters provide only a surface name, anchor, scope, registry, and runtime services. The host owns discovery, policy/catalog invalidation, content resolution, structural comparison, lazy loading, mount/sync/teardown, and per-capability failure isolation.
 
 ```ts
 const unsubscribe = registry.onRegistryChange((event) => {
@@ -683,8 +702,8 @@ import type {
   ToolRegistration,
   ToolToolbarRenderResult,
   ToolbarContext
-} from '@pie-players/pie-assessment-toolkit/tools/internal';
-import { createToolElement } from '@pie-players/pie-assessment-toolkit/tools/internal';
+} from '@pie-players/pie-assessment-toolkit/tools/registration';
+import { createToolElement } from '@pie-players/pie-assessment-toolkit/tools/registration';
 
 export const myToolRegistration: ToolRegistration = {
   toolId: "myTool",
@@ -735,14 +754,21 @@ export const myToolRegistration: ToolRegistration = {
 
 ```typescript
 import { ToolRegistry } from '@pie-players/pie-assessment-toolkit';
-import { createPackagedToolRegistry } from '@pie-players/pie-default-tool-loaders';
+import {
+  createPackagedToolRegistry,
+  DEFAULT_TOOL_MODULE_LOADERS,
+} from '@pie-players/pie-default-tool-loaders';
 
 const registry = new ToolRegistry();
 registry.register(myToolRegistration);
 registry.setComponentOverrides({ toolTagMap: { myTool: "my-tool" } });
 
-// Beside the packaged tools; setComponentOverrides would replace their tag map
-const packagedRegistry = createPackagedToolRegistry({ toolTagMap: { myTool: "my-tool" } });
+// Beside the packaged tools; setComponentOverrides would replace their tag map.
+// The loaders load each packaged tool's element on first render.
+const packagedRegistry = createPackagedToolRegistry({
+  toolModuleLoaders: DEFAULT_TOOL_MODULE_LOADERS,
+  toolTagMap: { myTool: "my-tool" }
+});
 packagedRegistry.register(myToolRegistration);
 ```
 
@@ -876,9 +902,9 @@ This hierarchy aligns with typical **IEP/504 accommodation hierarchies** in US K
 
 ## Best Practices
 
-1. **Name tools after standard QTI 3.0 features where one fits** - A tool id is its support id, so check `QTI_STANDARD_ACCESS_FEATURES` before inventing a name
+1. **Keep a tool id stable once profiles use it** - A profile grants the tool by its id, so renaming it drops the grant from every profile that lists the old id. `QTI_STANDARD_ACCESS_FEATURES` is reference vocabulary and does not fix tool ids: the packaged `lineReader` serves the AfA `readingMask` feature
 2. **Make tools context-aware** - Use helper functions like `hasMathContent()`, `hasReadableText()`
-3. **Test both passes** - Verify tools respect orchestrator allowance AND context relevance
+3. **Test all three passes** - Verify tools respect orchestrator allowance, context relevance and, where declared, the applicability veto
 4. **Keep visibility logic simple** - Complex logic should be in helper functions, not in `isVisibleInContext()`
 5. **Understand precedence** - Know which governance rules take priority in your platform
 

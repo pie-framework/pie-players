@@ -34,11 +34,6 @@
 			createSectionController: { type: "Object", reflect: false },
 			onFrameworkError: { type: "Object", reflect: false },
 			errorRenderer: { type: "Object", reflect: false },
-			// M6 canonical stage-change callback. Invoked at the same
-			// emit point as `pie-stage-change` so the callback and DOM
-			// event stay in lockstep. Hosts using `<pie-section-player-*>`
-			// receive this through the base CE's runtime-tier resolver.
-			onStageChange: { type: "Object", reflect: false },
 			// M8 PR 2 — additive Tool Policy Engine inputs. The toolkit
 			// CE forwards these into the owned `ToolkitCoordinator` so
 			// the engine has the PNP/profile inputs needed for accessibility-
@@ -73,12 +68,15 @@
 	import { ContextProvider, requestContext } from "@pie-players/pie-context";
 	import {
 		attachInstrumentationEventBridge,
-		createStageTracker,
 		resolveInstrumentationProvider,
 		TOOLKIT_INSTRUMENTATION_EVENT_MAP,
-		type StageChangeDetail,
 	} from "@pie-players/pie-players-shared/pie";
-	import { isInstrumentationProvider } from "@pie-players/pie-players-shared";
+	import {
+		commitPendingSessions,
+		createPieLogger,
+		isGlobalDebugEnabled,
+		isInstrumentationProvider,
+	} from "@pie-players/pie-players-shared";
 	import {
 		createPieI18n,
 		DEFAULT_LOCALE,
@@ -140,12 +138,8 @@
 	import { isRuntimeEventClaimed } from "../runtime/runtime-event-claim.js";
 	import type { CatalogSourceEntity } from "../services/catalog-owner.js";
 	import { observeMathControlNames } from "../services/tts/math-control-names.js";
-	import { SectionRuntimeEngine } from "../runtime/SectionRuntimeEngine.js";
-	import {
-		connectSectionRuntimeEngineHostContext,
-		type SectionRuntimeLifecycleHandle,
-	} from "../runtime/section-runtime-engine-host-context.js";
-	import { runStageEmitWithSuppression } from "../runtime/stage-emit-gate.js";
+	import { SectionControllerBinding } from "../runtime/SectionControllerBinding.js";
+	import { resolveSectionId } from "../runtime/core/engine-resolver.js";
 	import { watchForUnclaimedRegistrations } from "../runtime/unclaimed-registration-watch.js";
 	import { createCompositionEmitScheduler } from "../runtime/composition-emit-scheduler.js";
 	import {
@@ -156,6 +150,10 @@
 		resetSessionEmitPolicyState,
 		shouldEmitCanonicalSessionEvent,
 	} from "../runtime/session-event-emitter-policy.js";
+
+	const logger = createPieLogger("pie-assessment-toolkit", () =>
+		isGlobalDebugEnabled(),
+	);
 
 	type SessionChangedLike = {
 		eventDetail?: unknown;
@@ -199,14 +197,10 @@
 	> | null;
 
 	const runtimeId = createRuntimeId("toolkit");
-	const sectionEngine = new SectionRuntimeEngine();
-	// When wrapped by a section-player layout, the kernel publishes a
-	// lifecycle engine handle via `sectionRuntimeEngineHostContext`. The
-	// toolkit uses that host lifecycle presence only to suppress duplicate
-	// external lifecycle emits on the toolkit CE. Controller registration,
-	// content loading, session propagation, and persistence still flow through
-	// the toolkit-local `sectionEngine` below.
-	let hostLifecycleEngine = $state<SectionRuntimeLifecycleHandle | null>(null);
+	// Resolves the section's controller and carries shell registration, content
+	// loading, sessions and host commands to it. The stage chain is not the
+	// toolkit's: a section player's layout kernel emits it.
+	const sectionBinding = new SectionControllerBinding();
 	// Per-CE-instance framework-error bus. Shared with the owned
 	// `ToolkitCoordinator` so coordinator-side failures (provider-init,
 	// tts-init, ...) flow through the same fan-out as CE-side failures
@@ -253,7 +247,6 @@ const DEFAULT_ENV = {
 					title?: string;
 					details?: string[];
 			  }),
-		onStageChange = null as null | ((detail: StageChangeDetail) => void),
 		// M8 PR 2 — additive Tool Policy Engine inputs. See the
 		// `<svelte:options>` props block above for the rationale.
 		// `pnpEnforcement` accepts `"on"`, `"off"`, or `null` (auto —
@@ -319,7 +312,19 @@ const DEFAULT_ENV = {
 	// the same reason as the latches above.
 	let consumedSession: SectionControllerSessionState | null = null;
 	let sessionControllerResolved = false;
+	// The section and attempt the last initialize started, so a change of either
+	// commits the outgoing section first. Plain `let` for the same reason as the
+	// latches above.
+	let initializedCohort: { sectionId: string; attemptId: string | undefined } | null =
+		null;
+	// The key of the banner a section that failed to start raised, which the next
+	// section to start takes down. Plain `let` for the same reason as the latches
+	// above.
+	let sectionFailureBannerKey: string | null = null;
 	let reportedLateOwnedCoordinatorInputs = false;
+	// The coordinator the first-content effect started. Plain `let` for the same
+	// reason as the latches above.
+	let startedCoordinator: ToolkitCoordinator | null = null;
 	let reportedLateOuterRuntime = false;
 	let lastCompositionRevisionKey = $state("");
 	let pendingCompositionModel: unknown = null;
@@ -334,80 +339,6 @@ const DEFAULT_ENV = {
 	const mathNameObservers = new Map<HTMLElement, () => void>();
 	const sessionEmitPolicyState = createSessionEmitPolicyState();
 
-	// M6 canonical stage tracker. Post-retro the toolkit applies the
-	// same four-stage canonical list (`composed`, `engine-ready`,
-	// `interactive`, `disposed`) as every layout CE; subscriber
-	// iteration order stays stable across `<pie-section-player-*>` and
-	// `<pie-assessment-toolkit>` CE shapes. Cohort changes
-	// (`(sectionId, attemptId)`) reset the tracker so the new cohort
-	// begins emitting from `composed`. Initial seed values are captured
-	// via `untrack` because the tracker explicitly absorbs subsequent
-	// cohort changes through `reset()`, not through prop reactivity at
-	// construction time.
-	const stageTracker = createStageTracker({
-		sourceCe: "pie-assessment-toolkit",
-		sourceCeShape: "toolkit",
-		runtimeId,
-		sectionId: untrack(() => sectionId || undefined),
-		attemptId: untrack(() => attemptId || undefined),
-		emit: (detail: StageChangeDetail) => {
-			// M7 PR 6: route the toolkit's stage-emit through the
-			// extracted `runStageEmitWithSuppression` helper so the
-			// wrapped/standalone gating logic is testable in isolation
-			// (see `tests/runtime/stage-emit-gate.test.ts`). The
-			// thunks below preserve pre-PR-6 semantics:
-			//
-			//   - `isSuppressed`: when wrapped by a section-player
-			//     layout the kernel's engine emits the canonical
-			//     `pie-stage-change` chain on the layout CE host and
-			//     invokes the runtime-tier `onStageChange` callback
-			//     itself. Suppressing here prevents the toolkit CE
-			//     from also emitting (which would bubble through
-			//     `composed: true` to the layout CE host and produce a
-			//     duplicate emission for outside listeners). The
-			//     internal stage-tracker latch state advances before
-			//     `opts.emit` runs, so suppression only short-circuits
-			//     externally-visible side effects — the toolkit's own
-			//     readiness path (`waitUntilReady` / `engine-ready` /
-			//     `interactive`) stays correct in standalone mode and
-			//     degenerates into a series of suppressed emits in
-			//     wrapped mode without losing any latch transitions.
-			//
-			//     The reactive `hostLifecycleEngine` is read inside the
-			//     thunk (i.e. at emit time, not at construction time)
-			//     and all callers of `stageTracker.enter(...)` are
-			//     themselves wrapped in `untrack(...)` (see effects
-			//     below), so the read does not feed back into any
-			//     tracked dependency graph.
-			//
-			//   - `getOnStageChange`: the prop is read on every emit
-			//     so reassignments (cohort change, host swap) always
-			//     reach the latest handler.
-			runStageEmitWithSuppression(
-				{
-					isSuppressed: () => hostLifecycleEngine !== null,
-					dispatchDomEvent: (d) => emit("pie-stage-change", d),
-					getOnStageChange: () => onStageChange,
-				},
-				detail,
-			);
-		},
-	});
-	let lastStageCohortKey = $state(
-		untrack(() => `${sectionId}|${attemptId}`),
-	);
-	let composedStageEntered = $state(false);
-	let engineReadyStageEntered = $state(false);
-	// A fatal readiness failure: `interactive` is then recorded as failed.
-	let engineReadyFailed = $state(false);
-	let interactiveStageEntered = $state(false);
-	// `sectionInitialized` is the second of two preconditions for the
-	// `interactive` stage emission. The toolkit's interactive entrance
-	// requires *both* `engine-ready` (coordinator bring-up settled) and
-	// `sectionInitialized` (section composition + controller hydrated)
-	// before it fires. A reactive effect below joins them so neither
-	// race ordering silently drops a stage.
-	let sectionInitialized = $state(false);
 	// Whether a shell has registered with this toolkit. A toolkit's first content
 	// is its section, or without one its first registered item: the coordinator
 	// starts from it, and the inputs it was built from are fixed by it.
@@ -605,11 +536,15 @@ const DEFAULT_ENV = {
 		);
 	}
 
+	function frameworkErrorKey(model: FrameworkErrorModel): string {
+		return `${model.kind}|${model.source}|${model.message}`;
+	}
+
 	function deliverFrameworkErrorHook(model: FrameworkErrorModel): void {
 		if (!onFrameworkError) return;
 		try {
 			onFrameworkError(model);
-			deliveredFrameworkErrorKey = `${model.kind}|${model.source}|${model.message}`;
+			deliveredFrameworkErrorKey = frameworkErrorKey(model);
 		} catch (hookError) {
 			console.error(
 				`[pie-framework:${model.kind}:${model.source}] framework error hook failed`,
@@ -621,16 +556,38 @@ const DEFAULT_ENV = {
 	// Errors republished from a coordinator the host constructed. See the forward
 	// below.
 	const hostCoordinatorErrors = new WeakSet<FrameworkErrorModel>();
+	// The model each error object was published as, so a failure the coordinator
+	// reported is not reported a second time by the section initialization it
+	// failed.
+	const publishedFrameworkErrors = new WeakMap<object, FrameworkErrorModel>();
+
+	function reportedFrameworkErrorFor(error: unknown): FrameworkErrorModel | null {
+		if (typeof error !== "object" || error === null) return null;
+		return publishedFrameworkErrors.get(error) ?? null;
+	}
+
+	function showFrameworkErrorBanner(model: FrameworkErrorModel): void {
+		const rendered = applyErrorRenderer(model);
+		frameworkErrorModel = model;
+		frameworkErrorTitle = rendered.title;
+		frameworkErrorDetails = rendered.details;
+	}
+
+	function clearFrameworkErrorBanner(): void {
+		frameworkErrorModel = null;
+		frameworkErrorTitle = "Unable to initialize assessment toolkit.";
+		frameworkErrorDetails = [];
+	}
 
 	$effect(() => {
 		const detach = frameworkErrorBus.subscribeFrameworkErrors((model) => {
 			console.error(formatFrameworkErrorForConsole(model), model.cause);
+			if (typeof model.cause === "object" && model.cause !== null) {
+				publishedFrameworkErrors.set(model.cause, model);
+			}
 
 			if (isBootstrapKind(model.kind) && !hostCoordinatorErrors.has(model)) {
-				const rendered = applyErrorRenderer(model);
-				frameworkErrorModel = model;
-				frameworkErrorTitle = rendered.title;
-				frameworkErrorDetails = rendered.details;
+				showFrameworkErrorBanner(model);
 			}
 
 			emit("framework-error", model);
@@ -681,8 +638,7 @@ const DEFAULT_ENV = {
 
 	$effect(() => {
 		if (!frameworkErrorModel) return;
-		const frameworkErrorKey = `${frameworkErrorModel.kind}|${frameworkErrorModel.source}|${frameworkErrorModel.message}`;
-		if (deliveredFrameworkErrorKey === frameworkErrorKey) return;
+		if (deliveredFrameworkErrorKey === frameworkErrorKey(frameworkErrorModel)) return;
 		// Hook prop became available after the framework-error model was
 		// already produced (e.g. host wired it asynchronously). Re-deliver
 		// once for the current model so late-binding hosts see the error.
@@ -1038,9 +994,9 @@ const DEFAULT_ENV = {
 		return new ToolkitCoordinator({
 			assessmentId: fallbackAssessmentId,
 			lazyInit,
-			// Initialization starts from the engine-ready stage, once the section
-			// composes; a coordinator that started at construction would start
-			// text-to-speech, and report its failures, before there is a section.
+			// Initialization starts at first content, once the section composes; a
+			// coordinator that started at construction would start text-to-speech,
+			// and report its failures, before there is a section.
 			eagerInit: false,
 			toolConfigStrictness,
 			deferToolConfigValidation: true,
@@ -1253,9 +1209,7 @@ const DEFAULT_ENV = {
 					ownedCoordinatorBinding = null;
 					lastAppliedToolContextResolvers = toolContextResolvers;
 					lastOwnedBootstrapFailureKey = "";
-					frameworkErrorModel = null;
-					frameworkErrorTitle = "Unable to initialize assessment toolkit.";
-					frameworkErrorDetails = [];
+					clearFrameworkErrorBanner();
 				} catch (error) {
 					ownedCoordinator = null;
 					lastOwnedBootstrapFailureKey = failureKey;
@@ -1307,6 +1261,7 @@ const DEFAULT_ENV = {
 					kind: "i18n-locale-load",
 					source: "pie-assessment-toolkit",
 					error: error instanceof Error ? error : new Error(String(error)),
+					recoverable: true,
 				});
 			});
 		});
@@ -1316,7 +1271,7 @@ const DEFAULT_ENV = {
 		assessmentId || effectiveCoordinator?.assessmentId || "",
 	);
 	const effectiveSectionId = $derived(
-		sectionId || (section as any)?.identifier || `section-${effectiveAssessmentId || "default"}`,
+		resolveSectionId({ sectionId, section, assessmentId: effectiveAssessmentId }),
 	);
 	const effectiveEnv = $derived.by(() => normalizeEnv(env));
 	const effectiveSectionView = $derived.by(() => resolveSectionViewFromEnv(effectiveEnv));
@@ -1354,7 +1309,7 @@ const DEFAULT_ENV = {
 			i18n: interfaceI18n,
 			contentLanguage: contentLanguage?.trim() || undefined,
 			reportSectionError: (error: unknown) => {
-				sectionEngine.reportSectionError({
+				sectionBinding.reportSectionError({
 					source: "section-runtime",
 					error,
 					timestamp: Date.now(),
@@ -1390,7 +1345,7 @@ const DEFAULT_ENV = {
 	}
 
 	function emitCompositionChanged(nextModel?: unknown) {
-		pendingCompositionModel = nextModel ?? sectionEngine.getCompositionModel();
+		pendingCompositionModel = nextModel ?? sectionBinding.getCompositionModel();
 		// Coalescing lives in the scheduler: repeated calls before the cycle
 		// resolves only replace the model, and the flush reads the latest one.
 		compositionEmitScheduler.schedule(() => {
@@ -1549,36 +1504,8 @@ const DEFAULT_ENV = {
 		});
 	});
 
-	// Cross-CE lifecycle bridge consumer. When the toolkit CE renders inside a
-	// section-player layout, the kernel publishes a lifecycle handle via
-	// `sectionRuntimeEngineHostContext` on the layout CE host. The consumer's
-	// `context-request` bubbles across the toolkit's shadow boundary, the
-	// kernel's provider answers, and we record that host lifecycle ownership is
-	// present. When standalone, no provider answers and
-	// `hostLifecycleEngine` stays `null` — that is the standalone path's
-	// contract. `isolation === "force"` does not opt out of
-	// this bridge: it is a lifecycle-emission seam, not a coordinator-isolation
-	// seam.
-	$effect(() => {
-		const currentHost = host;
-		return untrack(() => {
-			if (!currentHost) {
-				hostLifecycleEngine = null;
-				return;
-			}
-			const detach = connectSectionRuntimeEngineHostContext(currentHost, (value) => {
-				if (value.engine === hostLifecycleEngine) return;
-				hostLifecycleEngine = value.engine;
-			});
-			return () => {
-				detach();
-				hostLifecycleEngine = null;
-			};
-		});
-	});
-
 	// Wiring only: the coordinator is the dependency, and the subscription's callback
-	// writes no reactive state — it asks the engine to pause a media port.
+	// writes no reactive state — it asks the section binding to pause a media port.
 	$effect(() => {
 		const coordinator = effectiveCoordinator;
 		if (!coordinator) return;
@@ -1586,7 +1513,7 @@ const DEFAULT_ENV = {
 			bindTtsAudioHandoff({
 				ttsService: coordinator.getServiceBundle().ttsService,
 				listenerId: `timed-media-audio-handoff:${runtimeId}`,
-				silence: () => sectionEngine.requestMediaPauseForCompetingAudio(),
+				silence: () => sectionBinding.requestMediaPauseForCompetingAudio(),
 			}),
 		);
 	});
@@ -1767,10 +1694,24 @@ const DEFAULT_ENV = {
 			ownedCoordinatorBinding ??= "a section initialized";
 		}
 
+		// Leaving a section commits its pending responses while its elements are
+		// mounted and its controller still holds the host's subscriptions: the
+		// coordinator detaches those as soon as it starts on the next section.
+		const cohort = { sectionId: effectiveSectionId, attemptId: attemptId || undefined };
+		const previousCohort = initializedCohort;
+		initializedCohort = cohort;
+		if (
+			previousCohort &&
+			(previousCohort.sectionId !== cohort.sectionId ||
+				previousCohort.attemptId !== cohort.attemptId)
+		) {
+			untrack(() => commitPendingSessions(host, { reason: "teardown", logger }));
+		}
+
 		sessionControllerResolved = false;
 		const initialSession = untrack(() => takeUnconsumedSession());
 
-		void sectionEngine
+		void sectionBinding
 			.initialize({
 				coordinator: effectiveCoordinator,
 				section,
@@ -1793,6 +1734,11 @@ const DEFAULT_ENV = {
 			.then(() => {
 				if (cancelled) return;
 				sessionControllerResolved = true;
+				const banner = untrack(() => frameworkErrorModel);
+				if (banner && frameworkErrorKey(banner) === sectionFailureBannerKey) {
+					clearFrameworkErrorBanner();
+				}
+				sectionFailureBannerKey = null;
 				// A value assigned while the controller was being created.
 				untrack(() => assignSessionToController());
 				emit("toolkit-ready", {
@@ -1805,46 +1751,28 @@ const DEFAULT_ENV = {
 				emit("section-ready", {
 					sectionId: effectiveSectionId,
 				});
-				// Mark section initialization complete. The reactive
-				// effect below joins this with `engineReadyStageEntered`
-				// so `interactive` only fires once the canonical
-				// predecessor is in. Direct emit here would race with
-				// `waitUntilReady()` and silently auto-skip
-				// `engine-ready` on fast hydration paths.
-				untrack(() => {
-					sectionInitialized = true;
-				});
 			})
 			.catch((error) => {
 				// A rerun or unmount retires the previous controller acquisition.
 				// Its rejection is cancellation of obsolete work, not a runtime failure.
 				if (cancelled) return;
-				untrack(() => {
-					// If `engine-ready` has not latched yet, mark it
-					// explicitly skipped so subscribers see a monotonic
-					// chain (`composed → engine-ready:skipped →
-					// interactive:failed`) instead of `engine-ready`
-					// silently disappearing from the canonical stream.
-					// `waitUntilReady()` is still in flight at this
-					// point; `engineReadyStageEntered` guards its
-					// resolver so a late success cannot regress past
-					// the recorded skip.
-					if (!engineReadyStageEntered) {
-						engineReadyStageEntered = true;
-						stageTracker.enter("engine-ready", "skipped");
-					}
-					stageTracker.enter("interactive", "failed");
-				});
-				sectionEngine.reportSectionError({
-					source: "section-runtime",
-					error,
-					timestamp: Date.now(),
-				});
-				reportFrameworkError({
-					kind: "runtime-init",
-					source: "pie-assessment-toolkit",
-					error,
-				});
+				// The coordinator has already delivered the failure to the host's
+				// section subscriptions, and reported a controller it could not
+				// create through this toolkit's bus. The failure is reported once,
+				// and the section it took down shows the banner either way.
+				const reported = untrack(() => reportedFrameworkErrorFor(error));
+				if (reported) {
+					untrack(() => showFrameworkErrorBanner(reported));
+					sectionFailureBannerKey = frameworkErrorKey(reported);
+				} else {
+					sectionFailureBannerKey = frameworkErrorKey(
+						reportFrameworkError({
+							kind: "runtime-init",
+							source: "pie-assessment-toolkit",
+							error,
+						}),
+					);
+				}
 			});
 
 		return () => {
@@ -1885,12 +1813,12 @@ const DEFAULT_ENV = {
 					if (!claimLocalEvent(event)) return;
 					const detail = getEventDetail<RuntimeRegistrationDetail>(event);
 					if (!detail?.element || !detail?.itemId) return;
-					const changed = sectionEngine.register(detail);
+					const changed = sectionBinding.register(detail);
 					runtimeRegistrationDetails.set(detail.element, detail);
 					contentRegistered = true;
 					registerCatalogsForDetail(detail);
 					nameMathInControls(detail.element);
-					sectionEngine.handleContentRegistered(detail);
+					sectionBinding.handleContentRegistered(detail);
 					if (changed) emitCompositionChanged();
 				},
 			},
@@ -1901,14 +1829,14 @@ const DEFAULT_ENV = {
 					const detail = getEventDetail<RuntimeRegistrationDetail>(event);
 					if (!detail?.itemId) return;
 					const changed = detail?.element
-						? sectionEngine.unregister(detail.element)
+						? sectionBinding.unregister(detail.element)
 						: false;
 					unregisterCatalogsForElement(detail.element);
 					stopNamingMath(detail.element);
 					if (detail.element) {
 						runtimeRegistrationDetails.delete(detail.element);
 					}
-					sectionEngine.handleContentUnregistered(detail);
+					sectionBinding.handleContentUnregistered(detail);
 					if (changed) emitCompositionChanged();
 				},
 			},
@@ -1918,10 +1846,10 @@ const DEFAULT_ENV = {
 					if (!claimLocalEvent(event)) return;
 					const detail = getEventDetail<InternalItemSessionChangedDetail>(event);
 					if (!detail?.itemId) return;
-					const result = sectionEngine.updateItemSession(detail.itemId, detail.session);
+					const result = sectionBinding.updateItemSession(detail.itemId, detail.session);
 					emitNormalizedSessionChanged({
 						itemId: detail.itemId,
-						canonicalItemId: sectionEngine.getCanonicalItemId(detail.itemId),
+						canonicalItemId: sectionBinding.getCanonicalItemId(detail.itemId),
 						result,
 						fallbackSession: detail.session,
 					});
@@ -1933,7 +1861,7 @@ const DEFAULT_ENV = {
 					if (!claimLocalEvent(event)) return;
 					const detail = getEventDetail<InternalContentLoadedDetail>(event);
 					if (!detail?.itemId) return;
-					sectionEngine.handleContentLoaded({
+					sectionBinding.handleContentLoaded({
 						itemId: detail.itemId,
 						canonicalItemId: detail.canonicalItemId,
 						contentKind: detail.contentKind,
@@ -1948,7 +1876,7 @@ const DEFAULT_ENV = {
 					if (!claimLocalEvent(event)) return;
 					const detail = getEventDetail<InternalItemPlayerErrorDetail>(event);
 					if (!detail?.itemId) return;
-					sectionEngine.handleItemPlayerError({
+					sectionBinding.handleItemPlayerError({
 						itemId: detail.itemId,
 						canonicalItemId: detail.canonicalItemId,
 						contentKind: detail.contentKind,
@@ -1967,7 +1895,7 @@ const DEFAULT_ENV = {
 					const detail = getEventDetail<InternalFormativeActionDetail>(event);
 					if (!detail?.itemId) return;
 					if (detail.action !== "check" && detail.action !== "retry") return;
-					sectionEngine.handleFormativeAction({
+					sectionBinding.handleFormativeAction({
 						itemId: detail.canonicalItemId || detail.itemId,
 						action: detail.action,
 						outcomes: detail.outcomes,
@@ -1984,7 +1912,7 @@ const DEFAULT_ENV = {
 					const detail = getEventDetail<InternalMediaTimeSourceDetail>(event);
 					if (!detail?.renderableId) return;
 					if (detail.action !== "attach" && detail.action !== "detach") return;
-					sectionEngine.handleMediaTimeSource({
+					sectionBinding.handleMediaTimeSource({
 						renderableId: detail.renderableId,
 						action: detail.action,
 						source: detail.source,
@@ -2074,11 +2002,11 @@ const DEFAULT_ENV = {
 	}
 
 	export function navigateToItem(index: number): unknown {
-		return sectionEngine.navigateToItem(index);
+		return sectionBinding.navigateToItem(index);
 	}
 
 	export function getCompositionModel(): unknown {
-		return sectionEngine.getCompositionModel();
+		return sectionBinding.getCompositionModel();
 	}
 
 	export function getItemPlayerConfig(): ItemPlayerConfig {
@@ -2086,134 +2014,35 @@ const DEFAULT_ENV = {
 	}
 
 	export async function persist(): Promise<void> {
-		await sectionEngine.persist();
+		await sectionBinding.persist();
 	}
 
 	export async function hydrate(): Promise<void> {
-		await sectionEngine.hydrate();
+		await sectionBinding.hydrate();
 	}
 
-	// Stage: `disposed` — wired on CE unmount. The four-stage retro
-	// dropped `attached` (it had no consumers); the toolkit no longer
-	// emits anything on mount and starts the canonical chain at
-	// `composed` once the section composition lands. `disposed` still
-	// fires on CE teardown so subscribers see a monotonic close-out.
+	// The coordinator starts at the toolkit's first content: its section's first
+	// composition, or without a section the first item that registers. One that
+	// started at construction would start text-to-speech, and report its
+	// failures, before there is anything to read. Readiness failures reach hosts
+	// as framework errors.
 	$effect(() => {
-		return () => {
-			untrack(() => {
-				if (stageTracker.getCurrent() !== null) {
-					stageTracker.enter("disposed");
-				}
-			});
-		};
-	});
-
-	// Cohort change handler: when `(sectionId, attemptId)` changes, emit
-	// `disposed` for the outgoing cohort and reset the tracker so the
-	// new cohort begins emitting from `composed` against the same DOM
-	// element. The boolean stage flags must reset in lockstep.
-	$effect(() => {
-		const nextKey = `${sectionId}|${attemptId}`;
-		untrack(() => {
-			if (nextKey === lastStageCohortKey) return;
-			if (stageTracker.getCurrent() !== null) {
-				stageTracker.enter("disposed");
-			}
-			stageTracker.reset({
-				sectionId: sectionId || undefined,
-				attemptId: attemptId || undefined,
-			});
-			lastStageCohortKey = nextKey;
-			composedStageEntered = false;
-			engineReadyStageEntered = false;
-			engineReadyFailed = false;
-			interactiveStageEntered = false;
-			sectionInitialized = false;
-		});
-	});
-
-	// `interactive` fires once both canonical predecessors land:
-	// `engine-ready` (coordinator bring-up settled) and
-	// `sectionInitialized` (section composition + controller hydrated).
-	// Joining here prevents the race that would otherwise silently
-	// auto-skip `engine-ready` when the section initializer wins.
-	$effect(() => {
-		const ready = engineReadyStageEntered && sectionInitialized;
-		const failed = engineReadyFailed;
-		untrack(() => {
-			if (!ready) return;
-			if (interactiveStageEntered) return;
-			interactiveStageEntered = true;
-			stageTracker.enter("interactive", failed ? "failed" : "entered");
-		});
-	});
-
-	// Canonical M6 stage progression for the toolkit CE (post-retro:
-	// 4 stages). The tracker is idempotent and rejects backward
-	// transitions; gating with `composedStageEntered` keeps the emit
-	// order monotonic across asynchronous sources.
-	$effect(() => {
-		const composed = compositionVersion > 0 || compositionModel !== null;
-		untrack(() => {
-			if (!composedStageEntered && composed) {
-				composedStageEntered = true;
-				stageTracker.enter("composed");
-			}
-		});
-	});
-
-	// `engine-ready` resolves once `effectiveCoordinator.waitUntilReady()`
-	// settles — that promise covers state load, TTS bring-up, and provider
-	// initialization. Failures still flow through the framework-error bus;
-	// here we record the position with `failed` so subscribers see a
-	// monotonic stage chain even when the coordinator throws during
-	// readiness. Gated on `composedStageEntered` so the engine-ready
-	// emission cannot precede `composed` even if the coordinator
-	// resolves before composition lands (rare but possible during
-	// fast-hydration paths).
-	//
-	// A toolkit without a section has nothing to compose: from its first
-	// registered item, `composed` is recorded as skipped and the chain ends at
-	// `engine-ready`. A section bound before the coordinator settles takes the
-	// usual path; one bound after continues the chain at `interactive`. Either way
-	// the coordinator starts at the toolkit's first content, so a section player
-	// mounted before its section starts it at the first composition.
-	$effect(() => {
-		if (!effectiveCoordinator) return;
-		const sectionlessContent = !hasSection && contentRegistered;
-		if (!composedStageEntered && !sectionlessContent) return;
-		if (engineReadyStageEntered) return;
 		const coord = effectiveCoordinator;
-		let cancelled = false;
-		const enterEngineReady = (status: "entered" | "failed") => {
-			if (engineReadyStageEntered) return;
-			if (!composedStageEntered) {
-				composedStageEntered = true;
-				stageTracker.enter("composed", "skipped");
-			}
-			engineReadyStageEntered = true;
-			engineReadyFailed = status === "failed";
-			stageTracker.enter("engine-ready", status);
-		};
-		void coord
-			.waitUntilReady()
-			.then(() => {
-				if (cancelled) return;
-				untrack(() => enterEngineReady("entered"));
-			})
-			.catch(() => {
-				if (cancelled) return;
-				untrack(() => enterEngineReady("failed"));
-			});
-		return () => {
-			cancelled = true;
-		};
+		if (!coord) return;
+		const composed = compositionVersion > 0 || compositionModel !== null;
+		const sectionlessContent = !hasSection && contentRegistered;
+		if (!composed && !sectionlessContent) return;
+		untrack(() => {
+			if (coord === startedCoordinator) return;
+			startedCoordinator = coord;
+			void coord.waitUntilReady().catch(() => {});
+		});
 	});
 
 	$effect(() => {
 		return () => {
 			compositionEmitScheduler.cancel();
-			void sectionEngine
+			void sectionBinding
 				.dispose()
 				.catch((error) => {
 					reportFrameworkError({

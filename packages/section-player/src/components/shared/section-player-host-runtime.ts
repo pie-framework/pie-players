@@ -2,7 +2,7 @@
  * Section-player host runtime helpers (M7 PR 7).
  *
  * The Variant C engine resolver in
- * `@pie-players/pie-assessment-toolkit/runtime/internal` owns runtime
+ * `@pie-players/pie-assessment-toolkit/runtime/engine` owns runtime
  * config resolution. The **player-coupled** parts stay here:
  *
  *   - `resolvePlayerRuntime` reads from
@@ -24,8 +24,8 @@
  *
  * Section-player imports for the relocated symbols (`DEFAULT_*`,
  * `resolveOnFrameworkError`, `RuntimeConfig`, the handler types,
- * `createReadinessDetail`, `createStageTracker`, etc.) point directly
- * at `@pie-players/pie-assessment-toolkit/runtime/internal` /
+ * `createReadinessDetail`, the stage types, etc.) point directly
+ * at `@pie-players/pie-assessment-toolkit/runtime/engine` /
  * `@pie-players/pie-players-shared/pie`. This module deliberately does
  * not re-export them: a single canonical import path per symbol keeps
  * the dist-export contract honest and prevents future drift.
@@ -37,7 +37,7 @@ import {
 	type PlayerOverrides,
 	type RuntimeConfig,
 	type RuntimeInputs,
-} from "@pie-players/pie-assessment-toolkit/runtime/internal";
+} from "@pie-players/pie-assessment-toolkit/runtime/engine";
 import {
 	normalizeItemPlayerStrategy,
 	type ItemEntity,

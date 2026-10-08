@@ -5,7 +5,7 @@ import type {
 import type {
 	ToolProviderApi,
 	ToolProviderCapabilities,
-} from "@pie-players/pie-assessment-toolkit/tools/internal";
+} from "@pie-players/pie-assessment-toolkit/tools/registration";
 
 export type CalculatorToolProviderInitConfig = Pick<
 	CalculatorProviderInit,

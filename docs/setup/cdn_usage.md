@@ -56,7 +56,7 @@ The following load from third-party origins in every install, npm or CDN, and ar
 
 ## Tools
 
-Outside the section player's browser build, tools load through a bundler or an import map, for the reason above. `pie-item-toolbar` and `pie-section-toolbar` take their coordinator from the runtime context that an enclosing `<pie-assessment-toolkit>` or section player provides, and render buttons only for tools in the tool registry they receive, typically `createPackagedToolRegistry()` from `@pie-players/pie-default-tool-loaders`. The [assessment toolkit README](../../packages/assessment-toolkit/README.md) covers the setup.
+Outside the section player's browser build, tools load through a bundler or an import map, for the reason above. `pie-item-toolbar` and `pie-section-toolbar` take their coordinator from the runtime context that an enclosing `<pie-assessment-toolkit>` or section player provides, and render buttons only for tools in the tool registry they receive, typically `createPackagedToolRegistry({ toolModuleLoaders: DEFAULT_TOOL_MODULE_LOADERS })` from `@pie-players/pie-default-tool-loaders`; a registry built without loaders loads no tool elements, so the host imports them itself. The [assessment toolkit README](../../packages/assessment-toolkit/README.md) covers the setup.
 
 ## Notes
 

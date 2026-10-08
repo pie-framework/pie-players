@@ -23,13 +23,13 @@ import type {
 	ToolToolbarRenderResult,
 	ToolbarContext,
 	ToolComponentOverrides,
-} from "@pie-players/pie-assessment-toolkit/tools/internal";
+} from "@pie-players/pie-assessment-toolkit/tools/registration";
 import {
 	createScopedVisibilityBinding,
 	createToolElement,
 	hasReadableText,
 	syncButtonAndOverlayVisibility,
-} from "@pie-players/pie-assessment-toolkit/tools/internal";
+} from "@pie-players/pie-assessment-toolkit/tools/registration";
 import type { MessageKey } from "@pie-players/pie-players-shared/i18n/types";
 import { resolveOverlayElement } from "./overlay-element-cache.js";
 

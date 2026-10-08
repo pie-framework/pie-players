@@ -16,7 +16,7 @@ import {
 	type ToolRegistration,
 	type ToolTagMap,
 	type ToolProviderConfig,
-} from "@pie-players/pie-assessment-toolkit/tools/internal";
+} from "@pie-players/pie-assessment-toolkit/tools/registration";
 import type { PersonalNeedsProfile } from "@pie-players/pie-players-shared/types";
 import {
 	annotationToolbarRegistration,

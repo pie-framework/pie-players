@@ -1,5 +1,5 @@
 /**
- * Lockstep runtime-callback bridge — unit test (M7 PR 5).
+ * Lockstep runtime-callback bridge — unit test.
  *
  * Locks the contract enforced at
  * `packages/section-player/src/components/shared/SectionPlayerLayoutKernel.svelte`
@@ -40,13 +40,13 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
 import { SectionRuntimeEngine } from "@pie-players/pie-assessment-toolkit/runtime/engine";
-import { FrameworkErrorBus } from "@pie-players/pie-assessment-toolkit/runtime/internal";
 
+import { isOwnSectionPlayerEvent } from "../src/components/shared/section-player-own-event.js";
 import { attachRuntimeCallbackBridge } from "../src/components/shared/section-player-runtime-callbacks.js";
 import type {
 	LoadingCompleteHandler,
 	StageChangeHandler,
-} from "@pie-players/pie-assessment-toolkit/runtime/internal";
+} from "@pie-players/pie-assessment-toolkit/runtime/engine";
 
 beforeAll(() => {
 	if (
@@ -109,20 +109,14 @@ function bindCallbackCapture(): {
 describe("attachRuntimeCallbackBridge — lockstep with engine DOM events", () => {
 	let engine: SectionRuntimeEngine;
 	let host: HTMLElement;
-	let bus: FrameworkErrorBus;
 	let dom: DomCapture;
 	let teardown: (() => void) | null = null;
 
 	beforeEach(() => {
 		engine = new SectionRuntimeEngine();
 		host = document.createElement("div");
-		bus = new FrameworkErrorBus();
 		dom = bindDomCapture(host);
-		engine.attachHost({
-			host,
-			sourceCe: "pie-section-player",
-			frameworkErrorBus: bus,
-		});
+		engine.attachHost({ host, sourceCe: "pie-section-player" });
 		teardown = null;
 	});
 
@@ -346,9 +340,54 @@ describe("attachRuntimeCallbackBridge — lockstep with engine DOM events", () =
 		teardown = null;
 	});
 
+	test("ignores a nested player's events bubbling through the host", () => {
+		const { captured: cb, stage, loading } = bindCallbackCapture();
+		teardown = attachRuntimeCallbackBridge({
+			host,
+			getOnStageChange: () => stage,
+			getOnLoadingComplete: () => loading,
+		});
+		const nestedHost = document.createElement("div");
+		host.appendChild(nestedHost);
+		const nested = new SectionRuntimeEngine();
+		nested.attachHost({ host: nestedHost, sourceCe: "pie-section-player" });
+		nested.dispatchInput({
+			kind: "initialize",
+			cohort: COHORT,
+			effectiveRuntime: STUB_RUNTIME,
+			effectiveToolsConfig: STUB_TOOLS,
+			itemCount: 1,
+		});
+
+		expect(dom.stageEvents.length).toBe(1);
+		expect(cb.stageCalls).toEqual([]);
+		teardown();
+		teardown = null;
+	});
+
 	if (teardown) {
 		teardown();
 	}
+});
+
+describe("isOwnSectionPlayerEvent", () => {
+	test("owns events on the host and from its own base, not a nested player's", () => {
+		const host = document.createElement("div");
+		const base = document.createElement("pie-section-player-base");
+		const nestedBase = document.createElement("pie-section-player-base");
+		host.appendChild(base);
+		base.appendChild(nestedBase);
+		const seen: boolean[] = [];
+		host.addEventListener("framework-error", (event) => {
+			seen.push(isOwnSectionPlayerEvent(event, host));
+		});
+		for (const target of [host, base, nestedBase]) {
+			target.dispatchEvent(
+				new CustomEvent("framework-error", { bubbles: true, composed: true }),
+			);
+		}
+		expect(seen).toEqual([true, true, false]);
+	});
 });
 
 describe("kernel uses attachRuntimeCallbackBridge", () => {

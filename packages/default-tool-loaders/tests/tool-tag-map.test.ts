@@ -4,7 +4,7 @@ import {
 	resolveToolTag,
 	type ToolbarContext,
 	type ToolContext,
-} from "@pie-players/pie-assessment-toolkit/tools/internal";
+} from "@pie-players/pie-assessment-toolkit/tools/registration";
 import { resolveInterfaceI18n } from "@pie-players/pie-players-shared/i18n/provider";
 import { createPackagedToolRegistry } from "../src/packaged-capability-composition.js";
 import { PACKAGED_TOOL_TAG_MAP } from "../src/packaged-capability-composition.js";

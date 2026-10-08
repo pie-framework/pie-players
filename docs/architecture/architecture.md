@@ -216,23 +216,23 @@ The **Assessment Toolkit** provides composable services for coordinating tools, 
 
 1. **Composable Services** - Import only what you need
 2. **No Framework Lock-in** - Works with any JavaScript framework
-3. **Product Control** - Products control navigation, persistence, layout, backend
+3. **Product Control** - Products control navigation, layout and backend. Session persistence defaults to `localStorage` at the section layer and at the assessment layer, and a product replaces either through its persistence hook (`createSectionSessionPersistence` on the coordinator, `createAssessmentSessionPersistence` on the assessment player)
 4. **Standard Contracts** - Well-defined event types for component communication
 5. **QTI-Inspired Patterns** - Reuses QTI 3.0 Personal Needs Profile (PNP) concepts for accessibility accommodations
 6. **Section Player Integration** - Toolkit services integrate seamlessly with the section player
 
 ### Primary Interface: Section Splitpane Player
 
-The splitpane custom element from `@pie-players/pie-section-player` is the primary container/interface for integrating assessment toolkit services. When services are passed to the splitpane player, it automatically:
+The splitpane custom element from `@pie-players/pie-section-player` is the primary container/interface for integrating assessment toolkit services. It takes them through one `ToolkitCoordinator`, set as `runtime.coordinator`, and builds a default coordinator when none is given; no layout element accepts services one by one. Through that coordinator it:
 
-- Extracts SSML from embedded `<speak>` tags in passages and items
 - Manages accessibility catalog lifecycle (add on load, clear on navigation)
+- Registers the SSML catalogs a preprocessing step extracted from embedded `<speak>` tags into `config.extractedCatalogs`; the player runs no extraction itself
 - Renders TTS tools inline in passage/item headers
-- Resolves catalogs with priority: extracted → item → assessment
+- Resolves item-level catalogs ahead of assessment-level ones; within an item, a catalog id authored on the item wins over the same id in `config.extractedCatalogs`
 - Coordinates z-index layering for tools
 - Synchronizes text highlighting with TTS playback
 
-**Integration Pattern**: Products initialize toolkit services and pass them as JavaScript properties to `pie-section-player-splitpane`. The player handles the rest automatically.
+**Integration Pattern**: Products construct one `ToolkitCoordinator` and set it as `runtime.coordinator` on `pie-section-player-splitpane`. The player handles the rest automatically.
 
 See: [TOOL_PROVIDER_SYSTEM](../tools-and-accomodations/tool_provider_system.md) for integration details.
 
@@ -251,7 +251,7 @@ This approach is intentional:
 
 **1. Personal Needs Profile (PNP)** - Student accommodations and IEP/504 support
 
-Maps QTI 3.0 PNP support IDs to PIE tools with precedence hierarchy:
+Grants PIE tools from QTI 3.0 PNP support ids, where a support id is the tool id it grants, with precedence hierarchy:
 1. District block (absolute veto) - highest priority
 2. Test administration override
 3. Item restriction (per-item block)
@@ -293,7 +293,7 @@ The **ToolkitCoordinator** is a centralized orchestrator for all PIE Assessment 
 - Tool state management included
 - Sensible defaults (section player creates default coordinator if not provided)
 
-**Architecture**: The coordinator manages five core services and provides convenience methods for tool configuration and state management.
+**Architecture**: The coordinator owns the services below and provides convenience methods for tool configuration and state management. Six are public properties, the set `getServiceBundle()` returns: `toolCoordinator`, `highlightCoordinator`, `ttsService`, `catalogResolver`, `elementToolStateStore` and `toolProviderRegistry`. The `ToolPolicyEngine` is private; hosts reach it through `decideToolPolicy(...)` and `decideFeaturePolicy(...)`.
 
 See: [packages/assessment-toolkit/README.md](../../packages/assessment-toolkit/README.md) for API details.
 
@@ -301,7 +301,7 @@ See: [packages/assessment-toolkit/README.md](../../packages/assessment-toolkit/R
 
 ### Toolkit Services
 
-The toolkit provides six core services that work together:
+The coordinator's services work together:
 
 #### 1. ToolCoordinator
 
@@ -374,28 +374,37 @@ The toolkit provides six core services that work together:
 
 ---
 
-#### 6. ToolPolicyEngine
+#### 6. ToolProviderRegistry
+
+**Purpose**: Registers, initializes and authenticates the providers behind tools such as the calculator and TTS backends, lazily by default.
+
+**Architecture**: The coordinator registers providers from its `toolRegistry`'s registrations, so a tool's provider exists only when the registry that built the coordinator carries the tool.
+
+---
+
+#### 7. ToolPolicyEngine
 
 **Purpose**: QTI 3.0 Personal Needs Profile (PNP), host policy, provider, and placement decisions with precedence hierarchy.
 
-**Architecture**: Resolves tool availability through policy sources, mapping QTI support IDs to PIE tool IDs and returning canonical `ToolPolicyDecision` results.
+**Architecture**: Resolves tool availability through policy sources, granting each tool by its tool id and returning canonical `ToolPolicyDecision` results. The coordinator holds it privately and answers through `decideToolPolicy(...)` and `decideFeaturePolicy(...)`.
 
 ---
 
 ## Tools & Accommodations
 
-The toolkit includes 15+ **accessibility accommodations** and **assessment tools** implemented as Web Components and coordinated via shared services.
+`createPackagedToolRegistry()` from `@pie-players/pie-default-tool-loaders` registers 15 **accessibility accommodations** and **assessment tools**, implemented as Web Components and coordinated via shared services. Further capabilities, such as sign language, ship as separate packages a deployment registers.
 
-**Tools Include**:
+**Packaged Tools**:
 - Text-to-Speech (TTS)
-- Calculator (Desmos, TI)
+- Calculator (Desmos, GeoGebra, or the bundled open-source Cortex)
 - Ruler & Protractor
 - Line Reader
 - Answer Eliminator
-- Magnifier
-- Highlighter
-- Color Contrast
-- And more...
+- Highlighter and annotations
+- Theme (color schemes and contrast)
+- Graph and Periodic Table
+- Dictionaries and picture dictionaries, English and Spanish
+- Audio transcript (a content region, no toolbar button)
 
 **Coordination**: Tools register with ToolCoordinator for z-index management, use HighlightCoordinator for text highlighting, and integrate with TTSService for read-aloud functionality.
 
@@ -425,7 +434,7 @@ The toolkit includes 15+ **accessibility accommodations** and **assessment tools
 
 ### Supporting Libraries
 
-- **Desmos API** - Graphing and scientific calculator integration
+- **Desmos API** and **GeoGebra** - Hosted calculator integrations; the Cortex calculator is bundled and needs no key
 
 ### Browser Support
 
@@ -462,8 +471,8 @@ Add individual assessment tools to item player without full toolkit integration.
 Use section player with full assessment toolkit for complete section delivery using QTI-inspired structures. This is the recommended pattern for production assessments.
 
 **Architecture**:
-1. Initialize toolkit services (TTSService, catalogResolver, coordinators)
-2. Pass services to section player as JavaScript properties
+1. Construct one `ToolkitCoordinator`, which owns the toolkit services
+2. Set it as the section player's `runtime.coordinator`
 3. Section player handles catalog lifecycle, TTS tools, and service coordination;
    embedded SSML extraction must happen before render if that authoring style is used
 
@@ -551,7 +560,7 @@ The **PIE Players** architecture provides a comprehensive, modern foundation for
 
 1. **Item Players** - Multiple player strategies (IIFE, ESM, Preloaded, Print) for different deployment scenarios
 2. **Assessment Toolkit** - Composable services for full test delivery with tools and accommodations
-3. **Tools & Accommodations** - 15+ assessment tools with WCAG 2.2 AA compliance
+3. **Tools & Accommodations** - 15 packaged capabilities, plus separately packaged ones such as sign language, with WCAG 2.2 AA compliance
 
 By leveraging modern web standards (Web Components, CSS Custom Highlight API) and maintaining framework independence, the architecture ensures long-term maintainability, excellent performance, and broad compatibility.
 

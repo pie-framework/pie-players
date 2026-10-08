@@ -36,7 +36,7 @@
 		flatTextContent,
 		findContentLanguage,
 		resolveContentRegion
-	} from '@pie-players/pie-assessment-toolkit/runtime/internal';
+	} from '@pie-players/pie-assessment-toolkit';
 	// Side-effect import: registers <nds-icon-button>. Single vendored source of
 	// truth lives in players-shared (Lit inlined, self-contained); see
 	// players-shared/src/components/vendor/nds/README.md. players-shared is not
@@ -711,7 +711,7 @@
 					contentLanguage: language || runtimeContext?.contentLanguage
 				}),
 				contentElement: readingTarget,
-			} as any).catch((error) => {
+			}).catch((error) => {
 				console.error('[TTS Inline] Error:', error);
 				handlePlaybackStartFailure(resolverDisposer);
 			}).finally(() => {
@@ -794,7 +794,7 @@
 	async function handleSeekForward() {
 		if (!ttsService || !speaking) return;
 		try {
-			await (ttsService as any).seekForward?.(1);
+			await ttsService.seekForward(1);
 			statusMessage = interfaceI18n.t('tools.textToSpeech.inline.skippedForward');
 		} catch (error) {
 			console.error('[TTS Inline] Seek forward failed:', error);
@@ -805,7 +805,7 @@
 	async function handleSeekBackward() {
 		if (!ttsService || !speaking) return;
 		try {
-			await (ttsService as any).seekBackward?.(1);
+			await ttsService.seekBackward(1);
 			statusMessage = interfaceI18n.t('tools.textToSpeech.inline.skippedBackward');
 		} catch (error) {
 			console.error('[TTS Inline] Seek backward failed:', error);

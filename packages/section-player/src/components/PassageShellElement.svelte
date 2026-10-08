@@ -19,7 +19,7 @@
 		createShellScope,
 		type TTSHighlightTargetResolver,
 	} from "@pie-players/pie-assessment-toolkit";
-	import { createShellEventBridge } from "@pie-players/pie-assessment-toolkit/runtime/internal";
+	import { createShellEventBridge } from "@pie-players/pie-assessment-toolkit";
 
 	let {
 		itemId = "",

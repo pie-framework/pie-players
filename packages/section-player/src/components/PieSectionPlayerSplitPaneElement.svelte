@@ -87,6 +87,7 @@
 	import "./section-player-passage-card-element.js";
 	import "./section-player-items-pane-element.js";
 	import "./section-player-passages-pane-element.js";
+	import { isOwnSectionPlayerEvent } from "./shared/section-player-own-event.js";
 	import SectionPlayerLayoutKernel from "./shared/SectionPlayerLayoutKernel.svelte";
 	import { mergeLayoutAttrsIntoRuntime } from "./shared/section-player-host-runtime.js";
 	import {
@@ -114,7 +115,7 @@
 		RuntimeConfig,
 		StageChangeHandler,
 		LoadingCompleteHandler,
-	} from "@pie-players/pie-assessment-toolkit/runtime/internal";
+	} from "@pie-players/pie-assessment-toolkit/runtime/engine";
 	import type {
 		SectionPlayerRuntimeHostContract,
 		SectionPlayerSnapshot,
@@ -429,7 +430,8 @@
 				sectionId,
 				attemptId: attemptId || undefined,
 			},
-			shouldTrackEvent: (event: Event) => event.target === localHost,
+			shouldTrackEvent: (event: Event) =>
+				isOwnSectionPlayerEvent(event, localHost),
 			dedupeWindowMs: 100,
 		});
 	});

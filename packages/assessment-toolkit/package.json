@@ -25,9 +25,9 @@
 			"types": "./dist/tools/client.d.ts",
 			"import": "./dist/tools/client.js"
 		},
-		"./tools/internal": {
-			"types": "./dist/tools/internal.d.ts",
-			"import": "./dist/tools/internal.js"
+		"./tools/registration": {
+			"types": "./dist/tools/registration.d.ts",
+			"import": "./dist/tools/registration.js"
 		},
 		"./components/item-scope-element": {
 			"types": "./dist/components/item-scope-element.d.ts",
@@ -57,17 +57,9 @@
 			"types": "./dist/runtime/engine.d.ts",
 			"import": "./dist/runtime/engine.js"
 		},
-		"./runtime/internal": {
-			"types": "./dist/runtime/internal.d.ts",
-			"import": "./dist/runtime/internal.js"
-		},
 		"./policy/engine": {
 			"types": "./dist/policy/engine.d.ts",
 			"import": "./dist/policy/engine.js"
-		},
-		"./policy/internal": {
-			"types": "./dist/policy/internal.d.ts",
-			"import": "./dist/policy/internal.js"
 		}
 	},
 	"files": [

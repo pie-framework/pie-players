@@ -13,13 +13,13 @@ import type {
 	ToolSurfaceRenderResult,
 	ToolToolbarRenderResult,
 	ToolbarContext,
-} from "@pie-players/pie-assessment-toolkit/tools/internal";
-import type { ToolContext } from "@pie-players/pie-assessment-toolkit/tools/internal";
-import { hasReadableText } from "@pie-players/pie-assessment-toolkit/tools/internal";
+} from "@pie-players/pie-assessment-toolkit/tools/registration";
+import type { ToolContext } from "@pie-players/pie-assessment-toolkit/tools/registration";
+import { hasReadableText } from "@pie-players/pie-assessment-toolkit/tools/registration";
 import {
 	resolveToolTag,
 	type ToolComponentOverrides,
-} from "@pie-players/pie-assessment-toolkit/tools/internal";
+} from "@pie-players/pie-assessment-toolkit/tools/registration";
 import { buildSelectionActions } from "./selection-actions.js";
 import { renderOverlayToolbar } from "./overlay-toolbar-render.js";
 

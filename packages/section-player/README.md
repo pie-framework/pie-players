@@ -33,8 +33,10 @@ opt-out.
 import "@pie-players/pie-section-player";
 ```
 
-If hosts need explicit registration control, keep using documented component
-entrypoints under `@pie-players/pie-section-player/components/*`.
+The entrypoints under `@pie-players/pie-section-player/components/*` load one
+element each, together with every element it renders: a layout entry also
+registers the cards, panes and shell. They choose which layouts a host loads; the
+tag names stay fixed.
 
 The entries are bundler-only: they import `@pie-players/pie-item-player`,
 `@pie-players/pie-default-tool-loaders` and `speech-rule-engine`, with the
@@ -344,7 +346,7 @@ has initialized, a change to `runtime.tools`, `runtime.assessmentId`,
 `runtime.accessibility`, `runtime.lazyInit`, `runtime.toolConfigStrictness` or
 `toolRegistry` is reported once in the console and does not reach that
 coordinator; `runtime.tools.pnpEnforcement` still applies. Change a running
-coordinator through the one `toolkit-ready` delivers, with
+coordinator through the one `toolkit-ready` carries, with
 `updateToolConfig(...)` or `updateToolsPlacement(...)`, or pass your own as
 `runtime.coordinator`.
 
@@ -373,9 +375,11 @@ The layout elements (`pie-section-player-splitpane`,
 - `iife-bundle-host` (string, optional): bundle host for the IIFE element pre-warm when `runtime.player.loaderOptions.bundleHost` is unset.
 - Host extension props (JS properties only): `toolRegistry`, `sectionHostButtons`, `itemHostButtons`, `passageHostButtons`, `hooks`
 
-When viewport width is within the collapsed range (~1100px and below), splitpane and
-vertical layout hosts normalize section toolbar placement to `top`. This includes
-`left`, `right`, `bottom`, and `none` values.
+When the viewport is no wider than `narrow-layout-breakpoint` (default 1100px),
+splitpane and vertical layout hosts normalize section toolbar placement to `top`.
+This includes `left`, `right`, `bottom`, and `none` values. Separately, the shell
+moves a `left` or `right` toolbar to `top` at a fixed 1100px, so with a smaller
+breakpoint side toolbars still move to the top from 1100px down.
 
 `hooks.cardTitleFormatter` remains active across responsive splitpane transitions (split -> stacked and stacked -> split), because title rendering is provided through shared card context rather than layout-specific state.
 
@@ -790,16 +794,16 @@ Runtime configuration is explicit:
 - Tool placement is configured through `runtime.tools.placement.section`, `runtime.tools.placement.item`, and `runtime.tools.placement.passage`.
 - Tool configuration validation is canonical in toolkit initialization (`pie-assessment-toolkit`), including toolbar overlays. Use `runtime.toolConfigStrictness` (`off` | `warn` | `error`) to control warning-only vs fail-fast behavior.
 - TTS provider config must use `tools.providers.textToSpeech` (canonical). `tools.providers.tts` is rejected by validation.
-- Host tool overrides are additive:
-  - `toolRegistry` overrides the default toolbar registry when provided
+- Host tool overrides:
+  - `toolRegistry` replaces the default toolbar registry when provided. Build it with `createPackagedToolRegistry({ toolModuleLoaders: DEFAULT_TOOL_MODULE_LOADERS })` and register custom tools on it, since toolbars load each tool's element through the registry's loaders. A player that builds its own coordinator gives it this registry; a coordinator passed as `runtime.coordinator` keeps its own, which decides policy, so build that coordinator with the same registry
   - host buttons are appended per toolbar scope via `sectionHostButtons`, `itemHostButtons`, `passageHostButtons`
 
-Debug logging can be controlled per section-player host:
+Debug logging is page-wide. A layout's `debug` attribute writes `window.PIE_DEBUG`, the flag every PIE logger on the page reads, so the last host to set it decides for all of them:
 
 - Enable: `<pie-section-player-splitpane debug="true">`
 - Disable: `<pie-section-player-splitpane debug="false">` (or `debug="0"`)
 
-You can also disable globally via `window.PIE_DEBUG = false`.
+Without a `debug` attribute a layout follows `window.PIE_DEBUG`, which a host can set directly.
 
 See the progressive demo routes in `apps/section-demos/src/routes/(demos)` (for example `single-question/+page.svelte` and `session-hydrate-db/+page.svelte`) for end-to-end host integrations.
 
@@ -901,7 +905,7 @@ const unsubscribeSection = coordinator.subscribeSectionLifecycleEvents({
 });
 ```
 
-Subscribe **after** the first `getOrCreateSectionController(...)` resolves (or after `toolkit-ready` once the section player has fully wired its controller — typically the safest anchor in host code is `toolkit-ready` followed by the first controller-resolve). Calling subscribe before any cohort exists throws.
+Subscribe **after** the first `getOrCreateSectionController(...)` resolves (or after `toolkit-ready` once the section player has fully wired its controller — typically the safest anchor in host code is `toolkit-ready` followed by the first controller-resolve). Calling subscribe before the first `getOrCreateSectionController(...)` call throws; a listener added while a section is starting binds when that section becomes active.
 
 Use `subscribeSectionEvents(...)` only for advanced mixed filtering requirements.
 
@@ -953,39 +957,32 @@ Section-player instrumentation is provider-agnostic and uses the shared
 - Toolkit telemetry forwarding uses the same provider path, so tool/backend
   operational events are visible alongside section events when toolkit is mounted.
 
-Canonical lifecycle stream (engine-routed, dispatched on the outer layout CE):
+Canonical lifecycle stream (engine-routed, dispatched on the outer layout CE,
+bubbling and composed):
 
 - `pie-stage-change` — single typed transition stream covering
   `composed` → `engine-ready` → `interactive` → `disposed`. Payload is a
-  `StageChangeDetail`.
+  `StageChangeDetail`. A non-recoverable framework error before
+  `interactive` emits the current stage `failed` and each stage it never
+  reached `skipped`.
 - `pie-loading-complete` — fires once per cohort, when the section's element
   pre-warm resolves for the current composition and the item cards can mount
   (kernel-routed).
 - `framework-error` — canonical error event for any failure crossing the
-  framework boundary. Payload is a `FrameworkErrorModel`. The toolkit's
-  package-internal `FrameworkErrorBus` and the `onFrameworkError`
-  callback prop deliver each error exactly once regardless of wrapper
-  depth, including errors from a coordinator the host passes as
-  `runtime.coordinator`. The `framework-error` *DOM event* on the outer
-  layout CE also delivers each error exactly once: the kernel listener at
-  `<pie-section-player-base>` stops the toolkit's bubbled emit, and the
-  engine dispatches the error on the layout host without bubbling, so it
-  does not reach `document`. `tests/section-player-event-delivery.spec.ts`
-  pins these counts. Direct listeners attached to `<pie-assessment-toolkit>`
-  itself still see the toolkit's own emit.
+  framework boundary. Payload is a `FrameworkErrorModel`. The toolkit
+  dispatches it once per error, bubbling and composed, so it reaches the
+  layout CE and `document`; errors from a coordinator the host passes as
+  `runtime.coordinator` arrive the same way.
+  `tests/section-player-event-delivery.spec.ts` pins these counts.
 
 Callback-prop mirrors with two-tier precedence (`runtime.<key>` wins over
 the top-level prop):
 
-- `onStageChange(detail)` — on every layout CE, `pie-section-player-base`,
-  and `pie-assessment-toolkit`.
-- `onLoadingComplete(detail)` — on the kernel-backed layout CEs only
-  (split-pane / vertical / tabbed / kernel-host).
+- `onStageChange(detail)` and `onLoadingComplete(detail)` — on the
+  kernel-backed layout CEs (split-pane / vertical / tabbed / kernel-host).
 - `onFrameworkError(model)` — on every layout CE and
-  `pie-section-player-base`. Fires exactly once per error regardless of
-  wrapper depth (delivered through the package-internal
-  `FrameworkErrorBus`). The `framework-error` DOM event on the layout
-  CE host is also single-fire; consume either.
+  `pie-section-player-base`. Fires once per error regardless of wrapper
+  depth, like the `framework-error` DOM event; consume either.
 
 Section-player owned instrumentation stream:
 
@@ -1146,6 +1143,7 @@ produced by a trusted pipeline.
 Published exports are intentionally minimal:
 
 - `@pie-players/pie-section-player`
+- `@pie-players/pie-section-player/browser`, the self-contained browser build ([CDN usage](../../docs/setup/cdn_usage.md#section-player-browser-build))
 - `@pie-players/pie-section-player/components/section-player-splitpane-element`
 - `@pie-players/pie-section-player/components/section-player-vertical-element`
 - `@pie-players/pie-section-player/components/section-player-tabbed-element`

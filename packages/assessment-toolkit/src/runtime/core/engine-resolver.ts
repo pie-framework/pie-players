@@ -5,7 +5,7 @@
  * supporting helpers/types. As of M7 PR 7 the previous duplicates in
  * `packages/section-player/src/components/shared/section-player-runtime.ts`
  * have been deleted; section-player now consumes these helpers via
- * `@pie-players/pie-assessment-toolkit/runtime/internal`.
+ * `@pie-players/pie-assessment-toolkit/runtime/engine`.
  *
  * What is NOT absorbed in this module:
  * - `resolvePlayerRuntime` stays in section-player because it depends on
@@ -150,6 +150,25 @@ export function resolveOnFrameworkError(args: {
 	const r = args.runtime ?? {};
 	if (r.onFrameworkError !== undefined) return r.onFrameworkError;
 	return args.onFrameworkError;
+}
+
+/**
+ * The id a section runs under: the host's `section-id`, else the section's own
+ * `identifier`, else one named after the assessment. The toolkit keys the
+ * section's controller by it, and the layout kernel its stage cohort.
+ */
+export function resolveSectionId(args: {
+	sectionId?: string | null;
+	section?: unknown;
+	assessmentId?: string | null;
+}): string {
+	const identifier = (args.section as { identifier?: unknown } | null)
+		?.identifier;
+	return (
+		args.sectionId ||
+		(typeof identifier === "string" ? identifier : "") ||
+		`section-${args.assessmentId || "default"}`
+	);
 }
 
 export function resolveToolsConfig(args: { runtime: RuntimeConfig | null }) {

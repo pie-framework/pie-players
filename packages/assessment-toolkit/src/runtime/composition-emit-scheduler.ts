@@ -34,8 +34,7 @@
  *
  * NOT a public surface: internal to the toolkit and not exported from
  * `runtime/engine.ts`. It exists as its own module so the race can be pinned in
- * a unit test without mounting the toolkit CE — same rationale as
- * `runtime/stage-emit-gate.ts`.
+ * a unit test without mounting the toolkit CE.
  */
 
 /**

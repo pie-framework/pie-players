@@ -58,7 +58,7 @@ type CanonicalToolsConfig = {
 
 ### Canonical tool IDs
 
-Use the current semantic tool IDs in docs and examples:
+`createPackagedToolRegistry()` registers these toolbar tool IDs:
 
 - `textToSpeech`
 - `calculator`
@@ -70,14 +70,25 @@ Use the current semantic tool IDs in docs and examples:
 - `periodicTable`
 - `protractor`
 - `theme`
+- `dictionary`, `dictionarySpanish`
+- `pictureDictionary`, `pictureDictionarySpanish`
+
+It also registers `transcript`, a region capability with no toolbar button, which
+`tools.placement` cannot place. Sign language is a separate package
+(`@pie-players/pie-tool-sign-language`) that a host registers itself.
 
 ## Basic Integration
 
 ```ts
 import { ToolkitCoordinator } from "@pie-players/pie-assessment-toolkit";
-import { createPackagedToolRegistry } from "@pie-players/pie-default-tool-loaders";
+import {
+  createPackagedToolRegistry,
+  DEFAULT_TOOL_MODULE_LOADERS,
+} from "@pie-players/pie-default-tool-loaders";
 
-const toolRegistry = createPackagedToolRegistry();
+const toolRegistry = createPackagedToolRegistry({
+  toolModuleLoaders: DEFAULT_TOOL_MODULE_LOADERS,
+});
 const coordinator = new ToolkitCoordinator({
   assessmentId: "demo-assessment",
   toolRegistry,
@@ -172,8 +183,12 @@ Resolver order is deliberately narrow:
 2. A host resolver, when registered for a surviving tool, may hide that tool
    for the current scope or attach render params.
 3. If no host resolver is registered, the tool registration uses its built-in
-   `isVisibleInContext` relevance check.
-4. The tool's `renderToolbar` receives params through
+   `isVisibleInContext` relevance check. Section toolbars skip it, and so does a
+   tool a PNP grant marks required or always available.
+4. Below section level, once content has resolved, a tool whose registration
+   reports it inapplicable to every content context (`isApplicableToContent`) is
+   dropped, granted or not. A host-resolved tool keeps the resolver's answer.
+5. The tool's `renderToolbar` receives params through
    `toolbarContext.getToolRenderParams(toolId)`.
 
 This means host item metadata can decide calculator type without overriding

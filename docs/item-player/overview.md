@@ -157,6 +157,8 @@ There is no snapshot without a delivery `sessionId`. The item id alone is the sa
 
 The snapshot is offered, never applied: on load, a matching snapshot raises `session-snapshot-available` with `{ key, session, timestamp }` and the host decides. School devices are shared, and the player cannot tell a legitimate recovery from a previous student's draft. The record stays available from `getPendingSessionSnapshot()` after the event fires, for a host that binds its listener late. A host that wants recovery across a full browser restart supplies a `localStorage`-backed `store` and owns the retention consequences. The snapshot is cleared on a successful backend save.
 
+The section player's default session persistence makes the opposite choice. A section controller created without a `session` hydrates from `localStorage` under `pie:section-controller:v1:{assessmentId}:{sectionId}:{attemptId}` and applies what it finds, with `default` standing in for a missing attempt id. On a shared device, two learners given the same assessment and section ids and no attempt id therefore share one stored session. A host delivering through the section player passes a per-learner `attempt-id`, or replaces the strategy through the coordinator's `hooks.createSectionSessionPersistence` ([section player tutorial](../section-player/client-architecture-tutorial.md#8-session-persistence)).
+
 ## External styles
 
 The player supports two external style mechanisms:

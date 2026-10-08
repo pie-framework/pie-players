@@ -23,7 +23,7 @@
 	import {
 		createToolSurfaceHost,
 		type ToolSurfaceHostSnapshot,
-	} from "@pie-players/pie-assessment-toolkit/tools/internal";
+	} from "@pie-players/pie-assessment-toolkit/tools/registration";
 
 	let {
 		regionId,

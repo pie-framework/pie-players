@@ -176,7 +176,11 @@ currently satisfies:
   still receives the commit afterwards: such a handler should leave navigation
   state alone for an event carrying `sessionCommitReason`, or call `persist()`
   before dispatching its own navigation. `sectionId` names the section the item
-  belongs to.
+  belongs to. For a section switch Host A already does the latter: it persists
+  the outgoing section before it hands the player the next one, so the switch's
+  own commit finds nothing pending. Without that persist the outgoing item would
+  arrive after Host A has moved to the next section, where its handler does not
+  find it.
 
 A host **migrating off `<pie-player>`** keeps its session read. On
 `<pie-player>` the `session` property was live: `findOrAddSession` pushed each
@@ -370,7 +374,7 @@ verification date. Hosts V and P install neither the loaders nor the toolkit.
 The server TTS adapter `tts-client-server` has since moved the same way, from an
 optional peer of the toolkit to a dependency of `pie-default-tool-loaders`,
 whose TTS registration holds its only import and passes it to `TTSToolProvider`
-as a loader. `TTSToolProvider` stays on `./tools/internal` and takes that loader
+as a loader. `TTSToolProvider` stays on `./tools/registration` and takes that loader
 as an optional second constructor argument; without it, a server backend fails
 to initialize and speech falls back to the browser. Checked against all four
 checkouts on 2026-09-28 as a targeted lookup, so it does not advance the
@@ -469,10 +473,13 @@ Packages consumed:
 - **Host A** — `pie-section-player`, `pie-assessment-toolkit`, `pie-theme`,
   `pie-calculator-desmos`, `pie-calculator-cortex` (aliased to a local stub in
   its build), `pie-calculator-geogebra`, `pie-tool-calculator-desmos`,
-  `pie-tool-text-to-speech`, `tts-client-server`, `tts-server-polly`, and the
-  event and session debuggers. Its source imports only the splitpane layout
-  element and `pie-theme`. The section player imports `pie-item-player`
-  by name to render items, so that package reaches Host A as its dependency.
+  `tts-client-server`, `tts-server-polly`, and the event and session debuggers.
+  Its source imports only the splitpane layout element and `pie-theme`. The
+  section player imports `pie-item-player` by name to render items, so that
+  package reaches Host A as its dependency. It also declares the deprecated
+  `pie-tool-text-to-speech` and imports nothing from it; that range stops at
+  `0.3.74`, the last published version, and an install prints npm's
+  deprecation notice.
 - **Host P** — `pie-preloaded-player` alone, and never imported: its `dist/` is
   copied into the host's static assets and loaded by path.
 - **Host M** — `pie-item-player` and its `preloaded` subpath, `pie-theme` and its
@@ -489,7 +496,8 @@ Packages consumed:
   Four declared packages are imported nowhere in its source —
   `pie-calculator-desmos`, `pie-tool-text-to-speech`,
   `pie-section-player-tools-shared`, `tts-client-server` — so their ranges
-  resolve without their surfaces being consumed. Two more tool packages, both
+  resolve without their surfaces being consumed. `pie-tool-text-to-speech` is
+  deprecated, so its range stops at `0.3.74`, the last published version. Two more tool packages, both
   dictionaries, reach it transitively as dependencies of
   `pie-default-tool-loaders`, whose packaged registry dynamically imports them.
   The Cortex and GeoGebra calculator engines reach it the same way, imported by
@@ -681,6 +689,8 @@ Method: `waitForSectionController(timeoutMs)` (A, off a
 (R, off the event's `currentTarget`). Both overloads are live. Since 0.3.75
 `waitForSectionController` resolves on `toolkit-ready` or when the controller
 resolves, where it polled before; the signature and the timeout are unchanged.
+Since 2026-10-08 neither call advances the stage chain: only `toolkit-ready`
+does, so a read during a section switch can return the outgoing controller.
 
 Events: `toolkit-ready`, read as `event.detail.coordinator`. A listens with
 `addEventListener`; R uses the Svelte 5 `ontoolkit-ready` attribute form. R also
@@ -848,8 +858,10 @@ The deepest coupling in the set, and the one no client-facing host has. From
 - `coordinator.subscribeSectionLifecycleEvents({ eventTypes, listener })`, with
   `eventTypes` narrowed to `section-loading-complete`,
   `section-items-complete-changed`, `section-error`. Wrapped in a `try` because
-  the method throws before a section cohort exists — the host relies on that
-  documented throw rather than on a return value
+  the method throws before the first section is requested — the host relies on
+  that documented throw rather than on a return value. Since 2026-10-08 a call
+  during a section switch registers and binds to the incoming section, where it
+  threw before
 - `createToolsConfig({ source, strictness, toolRegistry, tools })` →
   `{ config, diagnostics }`
 - Diagnostic shape `{ code, severity, path, message }`. The host branches on
@@ -928,7 +940,7 @@ API**.
 | `content-loaded` | `subscribeItemEvents` | A | Per-item and `contentKind === "rubric"` load tracking; cancels a load-timeout watchdog |
 | `section-loading-complete` | `subscribeSectionLifecycleEvents` | A, R | A subscribes with an empty handler; R logs it |
 | `section-items-complete-changed` | `subscribeSectionLifecycleEvents` | A, R | A subscribes with no handler body; R logs it |
-| `section-error` | `subscribeSectionLifecycleEvents` | A, R | Fatal for A: exits the delivery session. R logs it |
+| `section-error` | `subscribeSectionLifecycleEvents` | A, R | Fatal for A: exits the delivery session. R logs it. Since 2026-10-08 a section that fails to start, or a revisited section that fails to update, delivers it to the subscriptions already registered. A subscribes on `toolkit-ready`, so from its second section on such a failure ends the session at once, where its load timeout ended it before |
 | `item-session-changed` | DOM, bubbling and composed | A, R | `document`-level listener → snapshot + persist. R adds two listeners per route in the **capture** phase, so it depends on the event reaching `document` during capture as well as bubble |
 | `session-changed` | DOM event out of the section player's toolkit, bubbling and composed | A, R | The same `document`-level handlers as `item-session-changed`, so each answer persists once per event. R listens in the capture phase here too |
 | `session-changed` | DOM event out of `pie-item-player`, bubbling | P | Response capture; the fields it reads are below |
@@ -965,6 +977,11 @@ a page-wide 500 ms window used to drop an identical response from a second shell
 for the same item, whether a second player's or a re-mounted one's. Checked
 against all four checkouts on 2026-09-26 as a targeted lookup, so it does not
 advance the verification date.
+
+Since 2026-10-08 `framework-error`, `pie-stage-change` and `pie-loading-complete`
+continue past the layout element to `document`, once each; until then they
+stopped there. No checkout listens for any of the three above the layout element,
+checked against every checkout in this pad on 2026-10-08 as a targeted lookup.
 
 The `item-session-data-changed` payload is destructured as
 `event.session.data[0]`, with `event.complete` read through an
@@ -1608,8 +1625,8 @@ re-derived rather than remembered.
   `disposeSectionController`
 - The `granted` and `reason` fields on `FeaturePolicyDecision` — `reason` is
   rendered to a person there, so its wording is user-visible in that host
-- `subscribeSectionLifecycleEvents` throwing before a section cohort exists;
-  Host R catches that throw rather than checking a precondition
+- `subscribeSectionLifecycleEvents` throwing before the first section is
+  requested; Host R catches that throw rather than checking a precondition
 - `pie-stage-change`'s stage vocabulary, and the `engine-ready` transition
   arriving before the zero-arg `getSectionController()` can answer
 - The theme token registry — six of its nine entry fields and four of its five
@@ -1645,11 +1662,13 @@ over a CDN with no typecheck at all.
 
 - The assessment player, the print player, the tabbed section layout, the
   toolbars package, and `pie-context` — no consumer imports any of them
-- `pie-tool-text-to-speech`, no longer published, and `hasSpokenAlternate` on
-  `TtsServiceApi`, which only that panel called. Hosts A and R declare the
-  package and import nothing from it, so their ranges keep resolving to its last
-  published version; Host R's own `HTMLElementTagNameMap` entry for the tag is a
-  local type. No checkout calls the method
+- `pie-tool-text-to-speech`, deprecated on npm and no longer published, and
+  `hasSpokenAlternate` on `TtsServiceApi`, which only that panel called. Hosts A
+  and R declare the package and import nothing from it, so their ranges keep
+  resolving to its last published version, `0.3.74`; Host R's own
+  `HTMLElementTagNameMap` entry for the tag is a local type. No checkout calls
+  the method. Checked against all five checkouts on 2026-10-08 as a targeted
+  lookup, so it does not advance the verification date
 - `pie-item-shell`, removed: section-player item cards render `pie-item-scope`,
   which takes the shell's attributes and keeps its `data-pie-shell-root="item"`
   marker and the card's classes. No checkout names the tag
@@ -1793,6 +1812,16 @@ over a CDN with no typecheck at all.
   beside the property the section-player layouts set, and a `coordinator` passed
   to a nested toolkit winning over the outer toolkit's. No host nests a toolkit
   or sets `isolation` itself
+- The toolkit's `./runtime/internal` and `./policy/internal` subpaths, deleted on
+  2026-10-08, and `./tools/internal`, renamed `./tools/registration` and cut to
+  what a package imports from it. The section player's engine vocabulary moved to
+  `./runtime/engine`, and the shell event bridge and the content-region,
+  content-language, catalog-context and flat-tree helpers the tools use moved to
+  the root. The provider registry's `ToolProviderConfig` was renamed
+  `ToolProviderRegistration`, leaving the name to the tools-config shape. Checked
+  against all five checkouts on 2026-10-08 as a targeted lookup, so it does not
+  advance the verification date: no checkout imports any toolkit subpath or names
+  either type
 
 ## Consumer-side defects worth reporting upstream
 
@@ -1825,8 +1854,9 @@ repo.
   `pie-calculator-desmos`, `pie-tool-text-to-speech`,
   `pie-section-player-tools-shared`, `tts-client-server`. The packaged registry
   reaches `pie-calculator-desmos` without the declaration, and nothing reaches
-  `pie-tool-text-to-speech`: the registry's text-to-speech tool is
-  `pie-tool-tts-inline`. None of the four is load-bearing, and together they make
+  `pie-tool-text-to-speech`, which is deprecated and gone from this repository:
+  the registry's text-to-speech tool is `pie-tool-tts-inline`, and the host's
+  local tag type names an element nothing defines. None of the four is load-bearing, and together they make
   its dependency list overstate what it consumes, which is what made the previous
   entrypoint rows wrong in the other direction.
 - Host R sets `--pie-padding`, `--pie-spacing` and `--pie-gap` on a legacy

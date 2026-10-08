@@ -69,6 +69,13 @@ export {
 	type ShellScope,
 	type ShellScopeState,
 } from "./runtime/shell-scope.js";
+// A shell's translation of its player's events into the runtime's, shared by the
+// section player's passage shell and `<pie-item-scope>`.
+export {
+	createShellEventBridge,
+	type ShellEventBridge,
+	type ShellEventBridgeOptions,
+} from "./runtime/shell-event-bridge.js";
 export {
 	connectToolRegionScopeContext,
 	connectToolRuntimeContext,
@@ -79,6 +86,30 @@ export {
 	isContextValueDefined,
 	type ToolCoordinatorRegistration,
 } from "./runtime/tool-host-contract.js";
+// Reading scope for a tool that reads or annotates a shell's content: its content
+// region, the language and catalog context of the content at a point in it, and
+// the composed-tree helpers that reach content rendered into open shadow roots.
+export {
+	catalogContextForShell,
+	catalogContextHolding,
+	type CatalogRuntimeScope,
+} from "./runtime/catalog-context.js";
+export {
+	findShellScopeHost,
+	resolveContentRegion,
+} from "./runtime/content-region.js";
+export {
+	type ContentLanguageOptions,
+	findContentLanguage,
+	resolveContentLanguage,
+} from "./runtime/content-language.js";
+export {
+	composedClosest,
+	composedContains,
+	flatTextContent,
+	isShadowRootNode,
+	retargetToTree,
+} from "./services/tts/flat-tree.js";
 
 // ============================================================================
 // Service Interfaces
@@ -91,6 +122,7 @@ export type {
 	I18nServiceApi,
 	ToolCoordinatorApi,
 	ToolkitCoordinatorApi,
+	SpeakOptions,
 	TtsServiceApi,
 	ToolState,
 } from "./services/interfaces.js";

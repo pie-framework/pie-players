@@ -10,12 +10,12 @@ import type {
 	ToolRegistration,
 	ToolToolbarRenderResult,
 	ToolbarContext,
-} from "@pie-players/pie-assessment-toolkit/tools/internal";
-import type { ToolContext } from "@pie-players/pie-assessment-toolkit/tools/internal";
+} from "@pie-players/pie-assessment-toolkit/tools/registration";
+import type { ToolContext } from "@pie-players/pie-assessment-toolkit/tools/registration";
 import {
 	hasMathContent,
 	hasScienceContent,
-} from "@pie-players/pie-assessment-toolkit/tools/internal";
+} from "@pie-players/pie-assessment-toolkit/tools/registration";
 import { renderOverlayToolbar } from "./overlay-toolbar-render.js";
 
 /**

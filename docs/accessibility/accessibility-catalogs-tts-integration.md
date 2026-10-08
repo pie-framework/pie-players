@@ -27,9 +27,14 @@ placement, and provider setup.
 ```javascript
 import '@pie-players/pie-section-player/components/section-player-splitpane-element';
 import { ToolkitCoordinator } from '@pie-players/pie-assessment-toolkit';
-import { createPackagedToolRegistry } from '@pie-players/pie-default-tool-loaders';
+import {
+  createPackagedToolRegistry,
+  DEFAULT_TOOL_MODULE_LOADERS,
+} from '@pie-players/pie-default-tool-loaders';
 
-const toolRegistry = createPackagedToolRegistry();
+const toolRegistry = createPackagedToolRegistry({
+  toolModuleLoaders: DEFAULT_TOOL_MODULE_LOADERS,
+});
 const coordinator = new ToolkitCoordinator({
   assessmentId: assessment.id,
   toolRegistry,
@@ -242,18 +247,20 @@ const assessment: AssessmentEntity = {
   testParts: [
     {
       identifier: 'part1',
+      navigationMode: 'linear',
+      submissionMode: 'individual',
       sections: [
         {
           identifier: 'section1',
           rubricBlocks: [
             {
-              view: 'candidate',
-              use: 'instructions',
+              view: ['candidate'],
+              class: 'instructions',
               // Reference catalog in HTML
               content: '<div data-catalog-idref="welcome-message"><h3>Welcome</h3><p>Welcome to your assessment.</p></div>'
             }
           ],
-          questionRefs: [...]
+          assessmentItemRefs: [...]
         }
       ]
     }
@@ -266,6 +273,8 @@ const assessment: AssessmentEntity = {
 ```typescript
 const item: ItemEntity = {
   id: 'item-1',
+  baseId: 'item-1',
+  version: { major: 1, minor: 0, patch: 0 },
 
   // Item-level catalogs (override assessment-level)
   accessibilityCatalogs: [
@@ -500,9 +509,9 @@ const item = {
 **Cause:** Duplicate auto-generated catalog IDs
 
 **Fix:**
-1. SSMLExtractor uses counter to ensure uniqueness
-2. Format: `auto-{context}-{identifier}-{counter}`
-3. Counter resets per extraction session
+1. SSMLExtractor appends a counter to each id
+2. Format: `auto-prompt-{modelId}-{n}`, `auto-choice-{modelId}-{value}-{n}`, `auto-markup-{n}`
+3. The counter belongs to the extractor instance and runs until `reset()`, so one instance never repeats an id; separate instances, or a `reset()` between items, repeat ids for models that share an `id`
 4. Shell-scoped catalog registrations are replaced on navigation
 
 ## Current Runtime Behavior
@@ -513,7 +522,7 @@ const item = {
 - **Catalog Management**: Shell-scoped catalogs are registered and unregistered as section content changes
 - **HTML Content Detection**: Catalog IDs are discovered from rendered DOM content
 - **Server-Side TTS Support**: Server-backed providers such as AWS Polly can supply precise highlighting data
-- **Two readers, one attribute**: `data-catalog-idref` is also read by section-player's item media region for `sign-language` cards. It stays one canonical attribute name; each reader selects by catalog type, so a node can dock both a spoken and a signed alternate without either disturbing the other. `SSMLExtractor` never overwrites an existing `data-catalog-idref` for this reason: the reference names a whole card array, so replacing it to win one type would take that node's other cards down with it. When an inline `<speak>` lands inside a node that is already docked, `SSMLExtractor` keeps the existing reference, still emits the extracted catalog, and warns — the extracted SSML is then unreachable by DOM walk, and the fix is to give the `<speak>` its own wrapper or author it as a `spoken` card on the existing catalog
+- **One attribute, typed cards**: `data-catalog-idref` names a whole catalog, whose cards can carry several types. TTS is the attribute's only reader and selects `spoken` cards; the sign-language capability finds `sign-language` cards among the item's catalogs without consulting it. `SSMLExtractor` never overwrites an existing `data-catalog-idref`, because the reference names a whole card array, so replacing it to win one type would take that node's other cards down with it. When an inline `<speak>` lands inside a node that is already docked, `SSMLExtractor` keeps the existing reference, still emits the extracted catalog, and warns — the extracted SSML is then unreachable by DOM walk, and the fix is to give the `<speak>` its own wrapper or author it as a `spoken` card on the existing catalog
 
 ## References
 

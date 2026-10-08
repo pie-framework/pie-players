@@ -4,7 +4,7 @@
  *
  * This is the first registration to live outside the composition package, and it
  * exists to prove the shape works from outside: it is authored against
- * `@pie-players/pie-assessment-toolkit/tools/internal`, the same entry point our
+ * `@pie-players/pie-assessment-toolkit/tools/registration`, the same entry point our
  * own registrations use, and section-player reaches it only through
  * `getToolsBySurface("content-media")`. Nothing in the player names signing, the
  * `signLanguage` support id, the `sign-language` catalog type or this package.
@@ -28,7 +28,7 @@ import {
 	type ToolRegistration,
 	type ToolSurfaceRenderContext,
 	type ToolSurfaceRenderResult,
-} from "@pie-players/pie-assessment-toolkit/tools/internal";
+} from "@pie-players/pie-assessment-toolkit/tools/registration";
 import {
 	resolveSignLanguageContent,
 	SIGN_LANGUAGE_FEATURE_ID,

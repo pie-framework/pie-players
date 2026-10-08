@@ -25,9 +25,8 @@ import { SectionController } from "../src/controllers/SectionController";
  *     `content-loaded` and does not re-evaluate
  *     `section-loading-complete`.
  *
- * Together these enable the engine to safely re-feed its registry into
- * the controller on every `initialize(...)` call (the gate-drop change
- * in `SectionRuntimeEngine`) — both fresh-controller cohort flips and
+ * Together these enable the toolkit's `SectionControllerBinding` to re-feed
+ * its registry into the controller on every `initialize(...)` call — both fresh-controller cohort flips and
  * same-cohort `updateInput` resolves are handled by a single replay
  * code path with no duplicate emits.
  */

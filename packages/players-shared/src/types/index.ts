@@ -750,15 +750,6 @@ export interface AssessmentSettings {
 		[toolId: string]: any; // Other tool configs
 	};
 
-	/** Theme configuration (not in PNP) */
-	themeConfig?: {
-		scheme?: "default" | "high-contrast" | "dark";
-		fontSize?: number;
-		fontFamily?: string;
-		lineHeight?: number;
-		reducedMotion?: boolean;
-	};
-
 	/** Product-specific extensions */
 	[key: string]: any;
 }

@@ -1,18 +1,14 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
-import { resolve } from "node:path";
 import { expectDemoChromeReady } from "../../../test-support/demo-menu";
 
 /**
  * Touch drags of the tool panels that move by pointer besides the ruler and
- * protractor: the line reader, the floating tool shell and the text-to-speech
- * panel. A drag follows the finger that started it, ignores a second finger,
- * and ends when the browser cancels the touch, as iPadOS does when it takes a
- * touch over for a system gesture. Touch input is dispatched through CDP, so
- * this runs in the Chromium project only.
+ * protractor: the line reader and the floating tool shell. A drag follows the
+ * finger that started it, ignores a second finger, and ends when the browser
+ * cancels the touch, as iPadOS does when it takes a touch over for a system
+ * gesture. Touch input is dispatched through CDP, so this runs in the Chromium
+ * project only.
  */
-
-const repoRoot = resolve(import.meta.dirname, "../../..");
-const ttsPanelModule = `/@fs${repoRoot}/packages/tool-text-to-speech/dist/tool-text-to-speech.js`;
 
 type Point = { x: number; y: number };
 type Box = { x: number; y: number; width: number; height: number };
@@ -92,33 +88,6 @@ const PANELS: Panel[] = [
 			const header = await boxOf(panel.locator(".pie-tool-shell__header"));
 			const headerMiddle = header.y - (await boxOf(panel)).y + header.height / 2;
 			return { panel, grabIn: (box) => ({ x: box.x + 90, y: box.y + headerMiddle }) };
-		},
-	},
-	{
-		name: "the text-to-speech panel",
-		open: async (page) => {
-			await page.goto("/", { waitUntil: "networkidle" });
-			await page.evaluate(async (moduleUrl) => {
-				await import(/* @vite-ignore */ moduleUrl);
-				const panel = document.createElement("pie-tool-text-to-speech") as HTMLElement & {
-					ttsService: unknown;
-				};
-				const idle = () => Promise.resolve();
-				panel.ttsService = {
-					initialize: idle,
-					speak: idle,
-					stop: () => {},
-					pause: () => {},
-					resume: () => {},
-					setPlaybackRate: idle,
-				};
-				panel.setAttribute("visible", "");
-				document.body.appendChild(panel);
-			}, ttsPanelModule);
-			const panel = page.locator(".pie-tool-text-to-speech");
-			await expect(panel).toBeVisible();
-			// The header's leading edge, beside the title and clear of the close button.
-			return { panel, grabIn: (box) => ({ x: box.x + 60, y: box.y + 20 }) };
 		},
 	},
 ];

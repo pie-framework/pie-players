@@ -1,17 +1,13 @@
 /**
- * Section runtime engine — facade smoke test (M7 PR 3).
+ * Section runtime engine — facade smoke test.
  *
  * Drives the layered facade through the canonical four-stage sequence
  * (`composed` → `engine-ready` → `interactive` → `disposed`) and asserts
  * that the same outputs are observable both via the public
  * `subscribe(...)` channel and as DOM `CustomEvent`s on a jsdom-style
- * host. Mirrors the kernel's existing emit chain so PR 5 (kernel
- * switch) is a structural delete, not a behavior change.
+ * host, matching the kernel's emit chain.
  *
  * Also asserts:
- *   - `getEffectiveRuntime(...)` returns the same value as a direct
- *     `resolveSectionEngineRuntimeState(...).effectiveRuntime` call —
- *     proves the facade is a pure pass-through over the resolver.
  *   - Strict and progressive readiness modes gate the
  *     `engine-ready` → `interactive` transition correctly.
  *   - Pre-`attachHost` calls (`subscribe`, `dispatchInput`) are safe
@@ -34,11 +30,7 @@ import {
 import { SectionRuntimeEngine } from "../../src/runtime/SectionRuntimeEngine.js";
 import type { CohortKey } from "../../src/runtime/core/cohort.js";
 import type { SectionEngineOutput } from "../../src/runtime/core/engine-output.js";
-import {
-	resolveSectionEngineRuntimeState,
-	type EffectiveRuntime,
-	type RuntimeInputs,
-} from "../../src/runtime/core/engine-resolver.js";
+import type { EffectiveRuntime } from "../../src/runtime/core/engine-resolver.js";
 import { FrameworkErrorBus } from "../../src/services/framework-error-bus.js";
 
 beforeAll(() => {
@@ -62,25 +54,6 @@ const STUB_RUNTIME = {
 	onLoadingComplete: undefined,
 } as unknown as EffectiveRuntime;
 const STUB_TOOLS = { placement: {} };
-
-function makeRuntimeInputs(
-	overrides: Partial<RuntimeInputs> = {},
-): RuntimeInputs {
-	return {
-		assessmentId: "assess-1",
-		playerType: "iife",
-		player: null,
-		lazyInit: true,
-		tools: null,
-		accessibility: null,
-		coordinator: null,
-		env: null,
-		toolConfigStrictness: "error",
-		runtime: null,
-		enabledTools: "",
-		...overrides,
-	};
-}
 
 interface CapturedDom {
 	stageEvents: string[];
@@ -291,29 +264,7 @@ describe("SectionRuntimeEngine facade — common-host smoke", () => {
 	});
 });
 
-describe("SectionRuntimeEngine facade — getEffectiveRuntime parity", () => {
-	test("returns the same value as a direct resolveSectionEngineRuntimeState call", () => {
-		const engine = new SectionRuntimeEngine();
-		const inputs = makeRuntimeInputs({
-			env: { mode: "review" },
-			runtime: { onFrameworkError: () => {} },
-		});
-		const stub = (resolverArgs: {
-			effectiveRuntime: Record<string, unknown>;
-			playerType: string;
-			env: Record<string, unknown> | null;
-		}) => ({ tag: resolverArgs.playerType });
-
-		const fromFacade = engine.getEffectiveRuntime(inputs, {
-			resolvePlayerRuntime: stub,
-		});
-		const fromResolver = resolveSectionEngineRuntimeState(inputs, {
-			resolvePlayerRuntime: stub,
-		}).effectiveRuntime;
-
-		expect(fromFacade).toEqual(fromResolver);
-	});
-
+describe("SectionRuntimeEngine facade — pre-attach", () => {
 	test("pre-attach callers are safe no-ops", () => {
 		const engine = new SectionRuntimeEngine();
 		const subscribed: SectionEngineOutput[][] = [];

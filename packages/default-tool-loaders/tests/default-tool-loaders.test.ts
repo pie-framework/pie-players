@@ -60,7 +60,6 @@ describe("default tool module loaders", () => {
 		const loaderSource = ITEM_TOOL_MODULE_LOADERS.textToSpeech.toString();
 
 		expect(loaderSource).toContain("@pie-players/pie-tool-tts-inline");
-		expect(loaderSource).not.toContain("@pie-players/pie-tool-text-to-speech");
 	});
 
 	test("selects packaged calculator loaders while keeping Desmos as default", () => {

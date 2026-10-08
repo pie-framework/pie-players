@@ -10,11 +10,8 @@
  *
  * The class has no DOM dependency and no Svelte runes. It is safe to
  * instantiate inside a worker, in a Node test, or inside a CE
- * connectedCallback. The Svelte context glue (`TOOL_POLICY_ENGINE_KEY`)
- * lives in `engine-context.ts`.
- *
- * PR 1 ships the engine *without callers*. PR 2 wires it into
- * `ToolkitCoordinator`. PR 3 switches `<pie-item-toolbar>` over.
+ * connectedCallback. `ToolkitCoordinator` owns the instance, and
+ * `<pie-item-toolbar>` reads its decisions through the coordinator.
  */
 
 import type {

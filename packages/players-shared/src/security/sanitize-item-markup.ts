@@ -8,6 +8,7 @@
  * allow-list.
  */
 
+import { markAuthoredColors } from "@pie-element/shared-utils";
 import DOMPurify from "dompurify";
 
 import {
@@ -141,6 +142,12 @@ function resolvePurifier(): DOMPurifyInstance | null {
 	// `style` is URI-safe to DOMPurify, so nothing inside it is inspected
 	// without this. See sanitize-style-attribute.ts.
 	installStyleAttributeHook(purifierInstance);
+	// After the style filter, so only declarations that survive it are marked.
+	// The markers are the contract a color scheme's CSS overrides authored
+	// colors through, shared with element model HTML. (PIE-1119)
+	purifierInstance.addHook?.("afterSanitizeAttributes", (node) =>
+		markAuthoredColors(node as Element),
+	);
 	return purifierInstance;
 }
 
@@ -152,6 +159,10 @@ function resolvePurifier(): DOMPurifyInstance | null {
  *   `form`, `meta`, `link`).
  * - Preserves PIE custom elements (`pie-*`) and any extra tags listed in
  *   `allowedCustomElements`.
+ * - Marks elements that carry an authored color, as `markAuthoredColors`
+ *   in `@pie-element/shared-utils` describes, so a color scheme can override
+ *   it. A host that opts out with `trust-markup` or supplies its own
+ *   sanitizer gets no markers.
  * - During SSR (no `window`) returns an empty string so untrusted markup
  *   never reaches the prerender output; the live renderer will re-run the
  *   sanitizer on hydrate.

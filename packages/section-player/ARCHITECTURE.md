@@ -65,22 +65,16 @@ kernel through a narrow host context.
 
 - **`SectionEngineCore`** — pure, framework-free finite-state machine.
   Inputs: composition / coordinator / lifecycle events. Outputs: stage
-  transitions, readiness signals, framework errors, instrumentation
-  events. Lives in
+  transitions, loading completion, framework errors. Lives in
   [`assessment-toolkit/src/runtime/core/`](../assessment-toolkit/src/runtime/core/).
 - **`SectionEngineAdapter`** — single I/O seam over the core. Fans
-  outputs to the four bridges below.
+  outputs to the two bridges below and to `subscribe(...)` listeners.
   ([`assessment-toolkit/src/runtime/adapter/SectionEngineAdapter.ts`](../assessment-toolkit/src/runtime/adapter/SectionEngineAdapter.ts))
 - **Adapter bridges:**
   - `dom-event-bridge` — emits `pie-stage-change`, `pie-loading-complete`,
     `framework-error` on the layout host element.
   - `framework-error-bridge` — reports framework errors onto the
     package-internal `FrameworkErrorBus`.
-  - `coordinator-bridge` — resolves the `SectionControllerHandle` from a
-    `ToolkitCoordinator`.
-  - `instrumentation-bridge` — invokes the host-supplied
-    `InstrumentationHook` on each `SectionEngineOutput`, with
-    `runtimeId`, `sourceCe`, and `timestamp` stamped from the adapter.
 
   Note: hosts should build against `pie-stage-change`,
   `pie-loading-complete`, and `waitForSectionController(...)`; see the
@@ -102,9 +96,8 @@ Section-player owns two pieces of glue:
 - **`SectionPlayerLayoutKernel.svelte`** — constructs (or reuses) one
   `SectionRuntimeEngine` per cohort, calls `attachHost(layoutHost, …)`,
   drives `dispatchInput(...)` from a single tracked `$effect` wrapped in
-  `untrack(...)`, and publishes the engine via a Svelte context
-  (`SECTION_RUNTIME_ENGINE_KEY`) and a cross-CE host context
-  (`sectionRuntimeEngineHostContext`). The cross-CE context is deliberately
+  `untrack(...)`, and publishes a cross-CE host context
+  (`sectionRuntimeEngineHostContext`). That context is deliberately
   narrow: nested `pie-assessment-toolkit` instances use it as a lifecycle
   ownership signal so external lifecycle emits stay on the layout CE host,
   while toolkit controller registration/session plumbing remains local to
@@ -121,8 +114,7 @@ Section-player owns two pieces of glue:
 ### Public toolkit entry points
 
 - `@pie-players/pie-assessment-toolkit/runtime/engine` — narrow stable
-  facade (`SectionRuntimeEngine`, `SECTION_RUNTIME_ENGINE_KEY`,
-  `sectionRuntimeEngineHostContext`,
+  facade (`SectionRuntimeEngine`, `sectionRuntimeEngineHostContext`,
   `connectSectionRuntimeEngineHostContext`).
 - `@pie-players/pie-assessment-toolkit/runtime/internal` — wider evolving
   surface (core types, adapter bridges, cohort helpers, resolvers,

@@ -15,7 +15,7 @@ All packages in this inventory participate in the fixed lockstep release set.
 While the project remains on the pre-1.0 `0.x.y` line, releases are patch-only;
 see [`publishing.md`](./publishing.md) for the full policy.
 
-Publishable packages (45):
+Publishable packages (44):
 
 - `@pie-players/pie-assessment-player`
 - `@pie-players/pie-assessment-toolkit`
@@ -54,7 +54,6 @@ Publishable packages (45):
 - `@pie-players/pie-tool-protractor`
 - `@pie-players/pie-tool-ruler`
 - `@pie-players/pie-tool-sign-language`
-- `@pie-players/pie-tool-text-to-speech`
 - `@pie-players/pie-tool-tts-inline`
 - `@pie-players/pie-tts`
 - `@pie-players/tts-client-server`

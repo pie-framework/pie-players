@@ -117,8 +117,8 @@
 	}
 
 	function setPlacement(level: 'section' | 'item' | 'passage', toolIds: string[]) {
-		if (typeof toolkitCoordinator?.updateToolPlacement === 'function') {
-			toolkitCoordinator.updateToolPlacement(level, toolIds);
+		if (typeof toolkitCoordinator?.updateToolsPlacement === 'function') {
+			toolkitCoordinator.updateToolsPlacement({ [level]: toolIds });
 		}
 		policyVersion += 1;
 	}

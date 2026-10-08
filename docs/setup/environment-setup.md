@@ -112,8 +112,8 @@ These are all in `.gitignore`.
 ### Missing `dist/*.js` import errors
 
 If you see errors for packages like `pie-tool-graph`, `pie-tool-line-reader`, or
-`pie-tool-text-to-speech` mentioning missing `dist/*.js`, local package artifacts
-have not been built yet.
+`pie-tool-ruler` mentioning missing `dist/*.js`, local package artifacts have
+not been built yet.
 
 ```bash
 # Build package artifacts and start section demos in one command

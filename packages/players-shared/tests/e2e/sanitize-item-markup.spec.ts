@@ -511,6 +511,106 @@ test.describe("sanitizeItemMarkup (real browser)", () => {
 		});
 	});
 
+	test.describe("authored color markers", () => {
+		// The classification itself is tested where it lives, in
+		// @pie-element/shared-utils. These assert the wiring: item markup gets
+		// the same markers element model HTML does. (PIE-1119)
+
+		/** The markers on each marked element of the sanitized markup, in order. */
+		function markersInPage(page: Page, markup: string) {
+			return page.evaluate((markup) => {
+				const api = (
+					window as unknown as {
+						PieSanitizerUnderTest: {
+							sanitizeItemMarkup: (m: string) => string;
+						};
+					}
+				).PieSanitizerUnderTest;
+				const template = document.createElement("template");
+				template.innerHTML = api.sanitizeItemMarkup(markup);
+				return [
+					...template.content.querySelectorAll(
+						"[data-pie-authored-ink], [data-pie-authored-fill], [data-pie-authored-border]",
+					),
+				].map((el) => ({
+					tag: el.localName,
+					ink: el.hasAttribute("data-pie-authored-ink"),
+					fill: el.getAttribute("data-pie-authored-fill"),
+					border: el.hasAttribute("data-pie-authored-border"),
+				}));
+			}, markup);
+		}
+
+		test("marks authored ink, fills and borders", async ({ page }) => {
+			const marked = await markersInPage(
+				page,
+				'<p style="color: rgb(81, 82, 84); background-color: rgb(255, 255, 255)">x</p>' +
+					'<table><tbody><tr bgcolor="lightgrey"><td style="border: 1px solid black">x</td></tr></tbody></table>' +
+					'<span style="color: var(--pie-text); background-color: transparent">x</span>',
+			);
+			expect(marked).toEqual([
+				{ tag: "p", ink: true, fill: "light", border: false },
+				{ tag: "tr", ink: false, fill: "shade", border: false },
+				{ tag: "td", ink: false, fill: null, border: true },
+			]);
+		});
+
+		test("marks a fill the style filter keeps from a shorthand it filters", async ({
+			page,
+		}) => {
+			const marked = await markersInPage(
+				page,
+				'<div style="background: #ddd url(https://evil.test/a.png)">x</div>',
+			);
+			expect(marked).toEqual([
+				{ tag: "div", ink: false, fill: "shade", border: false },
+			]);
+		});
+
+		test("drops !important from a marked declaration only", async ({ page }) => {
+			// An inline !important outranks the scheme stylesheet's own.
+			const priorities = await page.evaluate(() => {
+				const api = (
+					window as unknown as {
+						PieSanitizerUnderTest: {
+							sanitizeItemMarkup: (m: string) => string;
+						};
+					}
+				).PieSanitizerUnderTest;
+				const template = document.createElement("template");
+				template.innerHTML = api.sanitizeItemMarkup(
+					'<span style="color: red !important; font-weight: bold !important">x</span>',
+				);
+				const span = template.content.querySelector("span") as HTMLElement;
+				return {
+					color: span.style.getPropertyPriority("color"),
+					fontWeight: span.style.getPropertyPriority("font-weight"),
+				};
+			});
+			expect(priorities).toEqual({ color: "", fontWeight: "important" });
+		});
+
+		test("recomputes markers the author wrote", async ({ page }) => {
+			const marked = await markersInPage(
+				page,
+				'<p data-pie-authored-fill="light" data-pie-authored-border style="background-color: navy">x</p>' +
+					'<p data-pie-authored-ink>x</p>',
+			);
+			expect(marked).toEqual([
+				{ tag: "p", ink: false, fill: "shade", border: false },
+			]);
+		});
+
+		test("keeps the markers inside the overwide wrappers", async ({ page }) => {
+			const out = await sanitizeInPage(
+				page,
+				'<table><tbody><tr><th style="background-color: rgb(221, 221, 221)">h</th></tr></tbody></table>',
+			);
+			expect(out).toContain("pie-table-scroll");
+			expect(out).toContain('data-pie-authored-fill="shade"');
+		});
+	});
+
 	test.describe("wrapOverwideContent", () => {
 		const markup =
 			'<img src="wide.png" alt="chart" width="1792" height="592"><table><tr><td>x</td></tr></table>';

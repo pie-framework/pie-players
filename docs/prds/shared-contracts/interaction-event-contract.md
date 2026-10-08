@@ -24,8 +24,7 @@ What exists:
   `sampleRate`, error/event filters and an attribute transformer.
 - `players-shared/src/pie/instrumentation-event-map.ts` — declarative
   source-event → telemetry-event **name** mappings for the toolkit, section and
-  assessment surfaces, consumed by `instrumentation-event-bridge.ts` and the
-  toolkit's `runtime/adapter/instrumentation-bridge.ts`.
+  assessment surfaces, consumed by `instrumentation-event-bridge.ts`.
 
 What does not exist, and is what this PRD still owns: the projection envelope —
 schema version, event id, discriminated type, `InteractionSourceRef`,

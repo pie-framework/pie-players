@@ -1603,7 +1603,7 @@ export class SectionController implements SectionControllerHandle {
 		if (value === "item" || value.includes("assessment-item")) return "item";
 		if (value === "passage") return "passage";
 		if (value === "rubric" || value.includes("rubric")) return "rubric";
-		return value ? "unknown" : "unknown";
+		return "unknown";
 	}
 
 	private getRenderableKey(

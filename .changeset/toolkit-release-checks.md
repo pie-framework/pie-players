@@ -1,7 +1,6 @@
 ---
 "@pie-players/pie-assessment-toolkit": patch
 "@pie-players/pie-tool-calculator-shared": patch
-"@pie-players/pie-tool-text-to-speech": patch
 "@pie-players/pie-tool-annotation-toolbar": patch
 ---
 

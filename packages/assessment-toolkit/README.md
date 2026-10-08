@@ -980,7 +980,6 @@ The persistence strategy works with the same `SectionControllerSessionState` sha
 - **TTSService**: Text-to-speech with QTI 3.0 catalog support
 - **AccessibilityCatalogResolver**: QTI 3.0 accessibility catalog management
 - **SSMLExtractor**: Automatic extraction of embedded `<speak>` tags
-- **ThemeProvider**: Consistent accessibility theming
 
 ### ✅ QTI 3.0 Standard Access Features
 
@@ -1519,7 +1518,7 @@ Notes:
 
 The toolkit exposes a layered **section runtime engine** that consolidates
 runtime resolution, FSM-driven stage progression, framework-error reporting,
-DOM-event fan-out, and instrumentation into a single object hosts can mount
+and DOM-event fan-out into a single object hosts can mount
 and dispose. The engine is what `<pie-section-player-…>` and
 `<pie-assessment-toolkit>` use internally, and it is also the surface
 custom hosts (or alternate layout shells) consume directly.
@@ -1531,18 +1530,16 @@ pick the stability surface that matches their use case:
 
 - **Stable facade — `@pie-players/pie-assessment-toolkit/runtime/engine`.**
   Narrow, semver-stable surface for hosts that want to mount, drive, and
-  dispose a section runtime. Re-exports `SectionRuntimeEngine`,
-  `SECTION_RUNTIME_ENGINE_KEY` (Svelte context), the cross-CE host
-  context (`sectionRuntimeEngineHostContext`), and the consumer-side
+  dispose a section runtime. Re-exports `SectionRuntimeEngine`, the
+  cross-CE host context (`sectionRuntimeEngineHostContext`), and the consumer-side
   helper for that bridge (`connectSectionRuntimeEngineHostContext`).
   The cross-CE host context exposes only a lifecycle handle; controller
   methods stay on `SectionRuntimeEngine`.
 - **Internal surface — `@pie-players/pie-assessment-toolkit/runtime/internal`.**
   Wider, evolving surface for advanced hosts that need to construct an
   engine manually, inspect FSM state, or build alternate fan-out paths.
-  Exposes `SectionEngineCore`, the four adapter bridges
-  (`createDomEventBridge`, `createFrameworkErrorBridge`,
-  `createCoordinatorBridge`, `createInstrumentationBridge`),
+  Exposes `SectionEngineCore`, the adapter bridges
+  (`createDomEventBridge`, `createFrameworkErrorBridge`),
   `FrameworkErrorBus`, cohort helpers,
   and the `resolveRuntime` / `resolveToolsConfig` /
   `resolveSectionEngineRuntimeState` helpers. Symbols here may change

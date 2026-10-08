@@ -1353,14 +1353,6 @@ const DEFAULT_ENV = {
 			locale: (void interfaceI18nVersion, interfaceI18n.getLocale()),
 			i18n: interfaceI18n,
 			contentLanguage: contentLanguage?.trim() || undefined,
-			reportSessionChanged: (itemId: string, detail: unknown) => {
-				const result = sectionEngine.updateItemSession(itemId, detail);
-				emitNormalizedSessionChanged({
-					itemId,
-					result,
-					fallbackSession: detail,
-				});
-			},
 			reportSectionError: (error: unknown) => {
 				sectionEngine.reportSectionError({
 					source: "section-runtime",

@@ -447,9 +447,9 @@ locale.
    `resolveInterfaceI18n` is the only resolver, the context republish is the change
    signal, and the English-only default covers no publisher.
    `composition-context.md` carries the locale row.
-4. **Consolidate the i18n layer.** Done. `I18nService` is a delegating wrapper
-   over `SimpleI18n` rather than a second copy of it, the catalog is re-harvested
-   from call sites, and `check:i18n-coverage` runs in the pre-commit and CI gates.
+4. **Consolidate the i18n layer.** Done. `SimpleI18n` is the only implementation
+   (the toolkit's `I18nService` wrapper, constructed nowhere, was removed), the
+   catalog is re-harvested from call sites, and `check:i18n-coverage` runs in the pre-commit and CI gates.
    `scan-hardcoded` stays advisory: it cannot separate a rendered label from a
    diagnostic, so gating on it would need a baseline nobody would maintain.
 5. **Parameterized PNP and language catalog cards.** `keyword-translation` and

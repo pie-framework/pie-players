@@ -1632,6 +1632,11 @@ over a CDN with no typecheck at all.
 
 - The assessment player, the print player, the tabbed section layout, the
   toolbars package, and `pie-context` — no consumer imports any of them
+- `pie-tool-text-to-speech`, no longer published, and `hasSpokenAlternate` on
+  `TtsServiceApi`, which only that panel called. Hosts A and R declare the
+  package and import nothing from it, so their ranges keep resolving to its last
+  published version; Host R's own `HTMLElementTagNameMap` entry for the tag is a
+  local type. No checkout calls the method
 - Attributes and props on the layout elements not listed above, including the
   additive `locale` attribute on `pie-item-player` and the section-player layouts,
   the additive opt-in `session-snapshot` property with its

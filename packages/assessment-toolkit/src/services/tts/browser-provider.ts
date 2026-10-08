@@ -366,13 +366,13 @@ class BrowserTTSProviderImpl implements ITTSProviderImplementation {
 
 	/**
 	 * The language of the content being read, which the toolkit sets per speak as
-	 * `providerOptions.locale`.
+	 * `providerOptions.contentLanguage` when the content or the host names one.
 	 */
 	private getContentLocale(): string | undefined {
-		const locale = (this.config?.providerOptions as Record<string, unknown>)
-			?.locale;
-		return typeof locale === "string" && locale.trim()
-			? locale.trim()
+		const language = (this.config?.providerOptions as Record<string, unknown>)
+			?.contentLanguage;
+		return typeof language === "string" && language.trim()
+			? language.trim()
 			: undefined;
 	}
 

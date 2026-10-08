@@ -107,8 +107,9 @@ toolbar now opens only for a selection inside a card's content region, so Host R
 the one host placing `annotationToolbar`, no longer gets it for a selection in a
 card's header, lead surfaces or media region. Host A reads aloud through the
 server backend, whose request language stays the one its provider config names.
-The browser voice now follows the content language in place of the browser's own,
-which only Host R reaches. Row verification dates are unchanged.
+The browser voice follows a content language only where content markup or a host
+names one, which only Host R's browser voice reaches; otherwise it follows the
+browser's language as before. Row verification dates are unchanged.
 
 The 2026-09-17 session-commit change (PIE-1058) was checked against the
 recorded rows rather than re-derived from the checkouts. It renames and removes

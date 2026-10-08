@@ -111,13 +111,13 @@ test("text-to-speech panel speaks the selection through the host's service", asy
 			language: options?.language ?? null,
 		};
 	});
-	// No markup `lang` and no host input: the content language default.
+	// No markup `lang` and no host input: nothing names the language.
 	expect(speakCall).toEqual({
 		argCount: 2,
 		text: "The quick brown fox jumps over the lazy dog.",
 		optionKeys: ["catalogId", "contentElement", "language"],
 		contentElementId: "tts-panel-passage",
-		language: "en-US",
+		language: null,
 	});
 	await expect(play).toBeDisabled();
 

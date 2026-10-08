@@ -34,7 +34,7 @@
 	} from '@pie-players/pie-assessment-toolkit';
 	import {
 		flatTextContent,
-		resolveContentLanguage,
+		findContentLanguage,
 		resolveContentRegion
 	} from '@pie-players/pie-assessment-toolkit/runtime/internal';
 	// Side-effect import: registers <nds-icon-button>. Single vendored source of
@@ -48,7 +48,7 @@
 		catalogId = '', // Explicit catalog ID
 		// The host's content language for this reading, when it names one. Markup
 		// `lang` inside the shell wins over it, and the toolkit's `content-language`
-		// stands in for it; see resolveContentLanguage.
+		// stands in for it; see findContentLanguage.
 		language = '',
 		size = 'md' as 'sm' | 'md' | 'lg',
 		speedOptions = undefined,
@@ -715,7 +715,7 @@
 			void ttsService.speak(text, {
 				catalogId: catalogId || undefined,
 				catalogContext: resolveCatalogContext(),
-				language: resolveContentLanguage(readingTarget, {
+				language: findContentLanguage(readingTarget, {
 					contentLanguage: language || runtimeContext?.contentLanguage
 				}),
 				contentElement: readingTarget,

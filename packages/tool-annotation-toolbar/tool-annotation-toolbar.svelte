@@ -33,8 +33,8 @@
 	import {
 		composedClosest,
 		composedContains,
-		isShadowRootNode,
-		resolveContentLanguage
+		findContentLanguage,
+		isShadowRootNode
 	} from '@pie-players/pie-assessment-toolkit/runtime/internal';
 	import { resolveInterfaceI18n } from '@pie-players/pie-players-shared/i18n/provider';
 	import { sanitizeSvgIcon } from '@pie-players/pie-players-shared/security';
@@ -662,7 +662,7 @@
 			const selectedRange = toolbarState.selectedRange;
 			await ttsService.speakRange(selectedRange, {
 				contentRoot: contentRegionHolding(selectedRange) ?? getEffectiveRoot(),
-				language: resolveContentLanguage(selectedRange.startContainer, {
+				language: findContentLanguage(selectedRange.startContainer, {
 					contentLanguage: runtimeContext?.contentLanguage
 				})
 			});

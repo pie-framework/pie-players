@@ -36,7 +36,10 @@ import {
 	type SpokenAudioMedia,
 } from "./spoken-audio-cards.js";
 import type { HighlightCoordinatorApi } from "./interfaces.js";
-import { findLangAttribute } from "../runtime/content-language.js";
+import {
+	DEFAULT_CONTENT_LANGUAGE,
+	findLangAttribute,
+} from "../runtime/content-language.js";
 import { BrowserTTSProvider } from "./tts/browser-provider.js";
 import {
 	composedContains,
@@ -1628,12 +1631,22 @@ export class TTSService {
 		);
 	}
 
+	/**
+	 * Text processing reads the language a speak names. The language reaches the
+	 * provider as `contentLanguage` only when named, so the browser voice
+	 * otherwise follows the browser's language. A speak naming none leaves the
+	 * configured settings alone, unless an earlier speak named one: then it
+	 * clears it and text processing reads en-US.
+	 */
 	private async applyLanguageSettings(options?: SpeakOptions): Promise<void> {
-		if (!options?.language || !this.provider) return;
+		if (!this.provider) return;
+		const named = options?.language?.trim() || undefined;
 		const providerOptions = (this.ttsConfig.providerOptions || {}) as Record<
 			string,
 			unknown
 		>;
+		if (!named && providerOptions.contentLanguage === undefined) return;
+		const language = named ?? DEFAULT_CONTENT_LANGUAGE;
 		const textNormalization = (providerOptions.textNormalization ||
 			{}) as Record<string, unknown>;
 		const segmenter = (providerOptions.segmenter || {}) as Record<
@@ -1642,15 +1655,17 @@ export class TTSService {
 		>;
 		const mergedProviderOptions = {
 			...providerOptions,
-			locale: options.language,
+			locale: language,
 			textNormalization: {
 				...textNormalization,
-				locale: options.language,
+				locale: language,
 			},
 			segmenter: {
 				...segmenter,
-				locale: options.language,
+				locale: language,
 			},
+			// Set even when undefined: providers merge options shallowly.
+			contentLanguage: named,
 		};
 		this.ttsConfig = {
 			...this.ttsConfig,
@@ -2697,7 +2712,11 @@ export class TTSService {
 		// the highlight position map and the structural speech plan index too. Joined
 		// from raw text nodes instead, a selection loses the space the map inserts
 		// between blocks, and every offset after that boundary drifts.
-		const mapped = this.selectMappedRangeText(range, root, options?.language);
+		const mapped = this.selectMappedRangeText(
+			range,
+			root,
+			options?.language || DEFAULT_CONTENT_LANGUAGE,
+		);
 		let text = selectedText;
 		let offset = mapped?.offset ?? 0;
 		if (mapped) {

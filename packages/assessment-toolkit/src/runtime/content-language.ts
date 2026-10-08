@@ -37,24 +37,32 @@ export interface ContentLanguageOptions {
 }
 
 /**
- * The language of the content at `target`: the nearest `lang` between it and
- * its shell scope host, else the host's `content-language` input, else `en-US`.
+ * The language the content at `target` is named as being in: the nearest `lang`
+ * between it and its shell scope host, else the host's `content-language` input.
+ * Undefined when neither names one.
  *
  * The climb stops at the shell because the page's own `lang` above it is the
  * interface language, which the toolkit's `locale` carries; content language is
  * the content's. Resolved at speak time, since a reading target's markup can
  * change between reads.
  */
-export const resolveContentLanguage = (
+export const findContentLanguage = (
 	target: Node | null | undefined,
 	options: ContentLanguageOptions = {},
-): string => {
+): string | undefined => {
 	const boundary =
 		options.boundary !== undefined
 			? options.boundary
 			: findShellScopeHost(target);
 	const fromMarkup = boundary ? findLangAttribute(target, boundary) : undefined;
-	return (
-		fromMarkup || options.contentLanguage?.trim() || DEFAULT_CONTENT_LANGUAGE
-	);
+	return fromMarkup || options.contentLanguage?.trim() || undefined;
 };
+
+/**
+ * {@link findContentLanguage}, else `en-US`: the language text processing and
+ * catalog lookup read.
+ */
+export const resolveContentLanguage = (
+	target: Node | null | undefined,
+	options: ContentLanguageOptions = {},
+): string => findContentLanguage(target, options) ?? DEFAULT_CONTENT_LANGUAGE;

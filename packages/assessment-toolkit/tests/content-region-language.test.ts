@@ -9,6 +9,7 @@ import {
 } from "bun:test";
 import {
 	DEFAULT_CONTENT_LANGUAGE,
+	findContentLanguage,
 	findLangAttribute,
 	resolveContentLanguage,
 } from "../src/runtime/content-language";
@@ -150,6 +151,16 @@ describe("resolveContentLanguage", () => {
 			"en-US",
 		);
 		expect(resolveContentLanguage(null, { contentLanguage: "es-ES" })).toBe(
+			"es-ES",
+		);
+	});
+
+	test("is undefined from findContentLanguage when nothing names it", () => {
+		const { content } = mountShell();
+
+		expect(findContentLanguage(content)).toBeUndefined();
+		expect(findContentLanguage(content, { contentLanguage: " " })).toBeUndefined();
+		expect(findContentLanguage(content, { contentLanguage: "es-ES" })).toBe(
 			"es-ES",
 		);
 	});

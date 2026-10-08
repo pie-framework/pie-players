@@ -461,12 +461,13 @@ locale.
    region faithfully enough to select a Castilian voice; STT recognizer
    language, where the STT PRD's proposed `PieDictationInsertDetail.lang` would
    be the first typed runtime locale reaching an element — designed, not
-   implemented; the `SIGN_LANGUAGE_NAMES` map. The browser voice shipped on
-   2026-10-07: the toolkit resolves content language at speak time from the
-   nearest `lang` between the content and its shell, then the toolkit's
-   `content-language` input, then `en-US`, and the browser voice and catalog
-   lookups follow it, so English content gets an English voice in a browser set
-   to another language. The server backends still send the language their
+   implemented; the `SIGN_LANGUAGE_NAMES` map. Content language shipped on
+   2026-10-07: the toolkit resolves it at speak time from the nearest `lang`
+   between the content and its shell, then the toolkit's `content-language`
+   input, then `en-US`. Catalog lookups follow it. The browser voice follows it
+   only when markup or the input names it, and otherwise `navigator.language` as
+   before, so the voice changes nowhere until content or a host says what
+   language it is in. The server backends still send the language their
    provider config names, and no host supplies a content language yet.
 
 ## Open questions

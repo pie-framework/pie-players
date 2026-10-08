@@ -142,6 +142,7 @@ export {
 export {
 	type ContentLanguageOptions,
 	DEFAULT_CONTENT_LANGUAGE,
+	findContentLanguage,
 	findLangAttribute,
 	resolveContentLanguage,
 } from "./content-language.js";

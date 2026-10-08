@@ -1048,7 +1048,11 @@ the section's own elements load, or cancels the watchdog outright when it is a
 passage's, so a hung element bundle leaves the learner on an empty section with
 no watchdog to end it. Since 2026-10-08 a section switch carries none of the
 previous section's loads into the next section; until then every section after
-the first received them, and A's watchdog could not fire there.
+the first received them, and A's watchdog could not fire there. A host that
+resubscribes on `toolkit-ready` receives a revisited section's loads twice: on
+the rebind of its existing subscription, and replayed to the new one. A's
+section-render telemetry then fires once per replayed load unless it counts only
+items it has not seen.
 
 `item-session-changed` reaches `document` because it is dispatched through
 `dispatchCrossBoundaryEvent` in

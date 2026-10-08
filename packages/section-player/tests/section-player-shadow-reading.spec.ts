@@ -261,13 +261,14 @@ test.describe("read-aloud over open shadow roots", () => {
 		await gotoDemo(page);
 		await readAloud(page, MATH_ITEM);
 
+		// The math is its own utterance, spoken after the text before it, once its
+		// speech is generated.
 		await expect
 			.poll(() => spokenText(page), {
 				message: "expected the shadow root's math to be spoken",
 				timeout: 20_000,
 			})
-			.toContain("The total is");
-		// Generated speech for the math, after the text before it.
+			.toContain("y minus 2");
 		const read = await spokenText(page);
 		expect(read.indexOf("y minus 2")).toBeGreaterThan(
 			read.indexOf("The total is"),

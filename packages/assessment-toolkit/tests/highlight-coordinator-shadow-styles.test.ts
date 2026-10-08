@@ -26,21 +26,39 @@ const SHEET_SLOT = Symbol.for(
 	"@pie-players/pie-assessment-toolkit/highlight-stylesheet",
 );
 
+// Restored after the file: test files share one process, and later ones assign
+// these globals.
+const STUBBED_GLOBALS = ["CSS", "Highlight"] as const;
+const originalDescriptors = new Map<string, PropertyDescriptor | undefined>();
+
 beforeAll(() => {
 	if (!GlobalRegistrator.isRegistered) {
 		GlobalRegistrator.register();
 	}
+	for (const name of STUBBED_GLOBALS) {
+		originalDescriptors.set(
+			name,
+			Object.getOwnPropertyDescriptor(globalThis, name),
+		);
+	}
 	Object.defineProperty(globalThis, "CSS", {
 		value: { highlights: new Map() },
 		configurable: true,
+		writable: true,
 	});
 	Object.defineProperty(globalThis, "Highlight", {
 		value: MockHighlight,
 		configurable: true,
+		writable: true,
 	});
 });
 
 afterAll(() => {
+	for (const name of STUBBED_GLOBALS) {
+		const descriptor = originalDescriptors.get(name);
+		if (descriptor) Object.defineProperty(globalThis, name, descriptor);
+		else delete (globalThis as Record<string, unknown>)[name];
+	}
 	if (GlobalRegistrator.isRegistered) {
 		GlobalRegistrator.unregister();
 	}

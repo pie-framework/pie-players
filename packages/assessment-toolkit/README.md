@@ -437,7 +437,7 @@ player.toolCoordinator = toolCoordinator;
 `<pie-assessment-toolkit>` needs no section. Bind none and it provides tools,
 policy and services to the item toolbars and item players inside it, which is
 how the toolkit accompanies a plain item player. `<pie-item-scope>` holds the
-item for its tools, as `<pie-item-shell>` does in a section player's card:
+item for its tools, as it does in a section player's card:
 
 ```html
 <pie-assessment-toolkit pnp-enforcement="on">

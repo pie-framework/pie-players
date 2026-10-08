@@ -6,7 +6,7 @@
  * the player, so a host listening on `<pie-item-player>` received two events per
  * change under one name: the player's canonical one with `detail.session`, then the
  * element's with `detail.session` undefined. A host taking the last value got
- * nothing, and section-player's `ItemShellElement` carries dedupe machinery to
+ * nothing, and the toolkit's shell event bridge carries dedupe machinery to
  * absorb the extra.
  *
  * The player now stops the element's event at its own boundary. What escapes is

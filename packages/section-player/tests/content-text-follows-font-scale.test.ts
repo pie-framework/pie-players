@@ -3,7 +3,7 @@ import { resolve } from "node:path";
 import { describe, expect, test } from "bun:test";
 
 /**
- * `font-sizes.css` scales the content hosts — `pie-item-shell`,
+ * `font-sizes.css` scales the content hosts — `pie-item-scope`,
  * `pie-passage-shell`, `pie-item-player` — and text inside them that inherits
  * its size follows. These three components style text that does *not* inherit
  * it: the cards wrap the shells rather than sitting inside them, so nothing

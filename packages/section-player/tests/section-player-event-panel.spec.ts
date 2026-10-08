@@ -259,7 +259,7 @@ async function assertChoiceSelectionKeepsPaneScroll(args: {
 async function getItemShellIdentityTokens(
 	page: import("@playwright/test").Page,
 ) {
-	const itemShells = page.locator('pie-item-shell[data-pie-shell-root="item"]');
+	const itemShells = page.locator('pie-item-scope[data-pie-shell-root="item"]');
 	await expect(itemShells).toHaveCount(2);
 	return itemShells.evaluateAll((nodes) => {
 		const globalState = window as unknown as {
@@ -689,7 +689,7 @@ test.describe("section player controller event panel", () => {
 
 		const passageRegion = page.getByRole("complementary", { name: "Passages" });
 		const firstItemShell = page
-			.locator('pie-item-shell[data-pie-shell-root="item"]')
+			.locator('pie-item-scope[data-pie-shell-root="item"]')
 			.first();
 		const passageTtsControls = passageRegion.getByRole("button", {
 			name: /Read aloud|Play reading|Pause reading|Resume reading|Open reading controls/i,

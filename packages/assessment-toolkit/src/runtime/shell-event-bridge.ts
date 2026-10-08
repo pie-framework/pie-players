@@ -85,7 +85,7 @@ const isCommit = (detail: unknown): boolean =>
 
 /**
  * A shell's translation of its player's events into the runtime's, shared by
- * `<pie-item-shell>`, `<pie-passage-shell>` and `<pie-item-scope>`. The dedupe
+ * `<pie-item-scope>` and `<pie-passage-shell>`. The dedupe
  * state lives as long as the bridge, so a prop change does not forget what was
  * forwarded.
  */

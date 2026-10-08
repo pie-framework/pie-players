@@ -20,14 +20,14 @@ packages share.
 
 ## Usage
 
-The element renders inside `<pie-item-shell>` under `<pie-assessment-toolkit>`.
+The element renders inside `<pie-item-scope>` under `<pie-assessment-toolkit>`.
 The toolkit runtime context supplies the ToolCoordinator and the shell supplies
 the item; section players provide both.
 
 ```javascript
 import '@pie-players/pie-tool-calculator-inline-desmos';
 
-// itemHeader: an element inside <pie-item-shell>
+// itemHeader: an element inside <pie-item-scope>
 const calculatorButton = document.createElement('pie-tool-calculator-inline');
 calculatorButton.setAttribute('calculator-type', 'scientific');
 itemHeader.append(calculatorButton);

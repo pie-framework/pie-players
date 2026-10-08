@@ -322,9 +322,9 @@ describe("findUnguardedCustomElementDefines", () => {
 	test("flags the single-quoted form", () => {
 		expect(
 			findUnguardedCustomElementDefines(
-				"customElements.define('pie-item-shell', $.create_custom_element(S, {}, [], []));",
+				"customElements.define('pie-item-scope', $.create_custom_element(S, {}, [], []));",
 			),
-		).toEqual(["pie-item-shell"]);
+		).toEqual(["pie-item-scope"]);
 	});
 
 	test("passes a define the same tag's customElements.get guards", () => {

@@ -5,7 +5,7 @@ import {
 } from "@pie-players/pie-assessment-toolkit";
 import { normalizeItemSessionChange } from "@pie-players/pie-players-shared";
 
-function routeItemShellSession(detail: unknown) {
+function routeItemScopeSession(detail: unknown) {
 	const itemId = "item-1";
 	const internalEvents = [
 		{
@@ -38,9 +38,9 @@ function routeItemShellSession(detail: unknown) {
 	return { internalEvents, normalized, publicEvents };
 }
 
-describe("ItemShellElement session routing contract", () => {
+describe("pie-item-scope session routing contract", () => {
 	test("keeps identity-only element echoes internal and metadata-only", () => {
-		const routed = routeItemShellSession({
+		const routed = routeItemScopeSession({
 			session: {
 				id: "choice",
 				element: "multiple-choice--version-1-0-0",
@@ -65,7 +65,7 @@ describe("ItemShellElement session routing contract", () => {
 	});
 
 	test("keeps explicit clears on the public response-focused stream", () => {
-		const routed = routeItemShellSession({
+		const routed = routeItemScopeSession({
 			session: {
 				id: "choice",
 				element: "multiple-choice--version-1-0-0",

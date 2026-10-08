@@ -116,7 +116,7 @@ function assignedElementsOf(element: Element): Element[] {
  * elements assigned to each `<slot>`.
  *
  * `querySelectorAll("*")` sees none of the last two, and both are load-bearing
- * here. The section player mounts each item inside `<pie-item-shell>`'s shadow
+ * here. The section player mounts each item inside `<pie-item-scope>`'s shadow
  * root, and projects its item pane through a slot on the assessment toolkit -
  * a walk that stops at `<slot>` finds every delivery element in a section
  * unreachable.

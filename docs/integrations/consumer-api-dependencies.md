@@ -1632,6 +1632,9 @@ over a CDN with no typecheck at all.
   package and import nothing from it, so their ranges keep resolving to its last
   published version; Host R's own `HTMLElementTagNameMap` entry for the tag is a
   local type. No checkout calls the method
+- `pie-item-shell`, removed: section-player item cards render `pie-item-scope`,
+  which takes the shell's attributes and keeps its `data-pie-shell-root="item"`
+  marker and the card's classes. No checkout names the tag
 - Attributes and props on the layout elements not listed above, including the
   additive `locale` attribute on `pie-item-player` and the section-player layouts,
   the additive opt-in `session-snapshot` property with its

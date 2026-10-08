@@ -1,7 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 
 /**
- * E2E guards on registration dispatch from `<pie-item-shell>` and
+ * E2E guards on registration dispatch from `<pie-item-scope>` and
  * `<pie-passage-shell>`.
  *
  * Registration is a statement of fact to the runtime, and the runtime answers a
@@ -79,7 +79,7 @@ function tallyKind(
 /** The ids the mounted shells of one kind claim, in DOM order. */
 async function mountedShellIds(
 	page: Page,
-	tag: "pie-item-shell" | "pie-passage-shell",
+	tag: "pie-item-scope" | "pie-passage-shell",
 ): Promise<string[]> {
 	return page
 		.locator(tag)
@@ -97,7 +97,7 @@ async function mountedShellIds(
  */
 async function replaceShellItem(
 	page: Page,
-	tag: "pie-item-shell" | "pie-passage-shell",
+	tag: "pie-item-scope" | "pie-passage-shell",
 	change: "same-catalogs" | "new-catalogs",
 ): Promise<string> {
 	return page.evaluate(
@@ -132,7 +132,7 @@ async function replaceShellItem(
 	);
 }
 
-test.describe("item shell registration", () => {
+test.describe("item scope registration", () => {
 	test("registers each mounted item exactly once and unregisters none", async ({
 		page,
 	}) => {
@@ -151,7 +151,7 @@ test.describe("item shell registration", () => {
 		// for anything still arriving afterwards.
 		await page.waitForTimeout(3_000);
 
-		const shellIds = await mountedShellIds(page, "pie-item-shell");
+		const shellIds = await mountedShellIds(page, "pie-item-scope");
 		expect(shellIds.length).toBeGreaterThan(1);
 
 		const log = await readRegistrations(page);
@@ -189,7 +189,7 @@ test.describe("item shell registration", () => {
 
 			const shellItemId = await replaceShellItem(
 				page,
-				"pie-item-shell",
+				"pie-item-scope",
 				change,
 			);
 			expect(shellItemId).not.toBe("");
@@ -210,7 +210,7 @@ test.describe("item shell registration", () => {
 
 		// The signing demo, because its divider is the one in-card control that
 		// re-renders a card on demand: the whole card body sits inside
-		// `<pie-item-shell>`, so each keystroke re-applies the shell's `item` prop
+		// `<pie-item-scope>`, so each keystroke re-applies the shell's `item` prop
 		// with the same object — the exact churn the dispatch has to absorb.
 		await page.goto(
 			"/sign-language?page=signing-granted&mode=candidate&layout=splitpane",

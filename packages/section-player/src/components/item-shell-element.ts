@@ -1,3 +1,0 @@
-import "./ItemShellElement.svelte";
-
-export {};

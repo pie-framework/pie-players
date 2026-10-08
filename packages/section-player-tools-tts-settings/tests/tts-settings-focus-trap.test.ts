@@ -1,8 +1,9 @@
 import { GlobalRegistrator } from "@happy-dom/global-registrator";
-import { afterAll, afterEach, expect, test } from "bun:test";
+import { afterEach, expect, test } from "bun:test";
 
-const ownsDom = typeof window === "undefined";
-if (ownsDom) GlobalRegistrator.register();
+// The panel's custom element is defined once per test process, in the window
+// registered first, so this file leaves happy-dom registered for the next one.
+if (typeof window === "undefined") GlobalRegistrator.register();
 
 await import("../TtsSettingsPanel.svelte");
 
@@ -60,10 +61,6 @@ const mountPanel = async (): Promise<HTMLElement> => {
 afterEach(async () => {
 	document.body.replaceChildren();
 	await settle();
-});
-
-afterAll(() => {
-	if (ownsDom && GlobalRegistrator.isRegistered) GlobalRegistrator.unregister();
 });
 
 test("Shift+Tab between a component provider's shadow controls stays with the browser", async () => {

@@ -12,7 +12,7 @@ export const workspace = resolve(import.meta.dirname, "../../..");
  * preloaded build takes elements on `@pie-element/shared-math-rendering-mathjax`
  * 0.1.3 or later.
  */
-export const MULTIPLE_CHOICE_VERSION = "14.0.2";
+export const MULTIPLE_CHOICE_VERSION = "14.0.3";
 
 export interface ServedPackage {
   origin: string;

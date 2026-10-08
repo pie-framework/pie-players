@@ -38,7 +38,7 @@ classes are:
 
 - `ToolkitCoordinator`, which creates shared services and registers tool
   providers.
-- `ToolProviderRegistry`, which stores provider factories by tool/provider id.
+- `ToolProviderRegistry`, which stores providers by tool id.
 - `TTSToolProvider`, which chooses browser, Polly, Google, or generic server
   backed TTS.
 - `TTSService`, which resolves speech content, owns playback state, calls the
@@ -125,8 +125,10 @@ generation. The system reads visible text with the active provider.
 8. `BrowserTTSProvider` uses `SpeechSynthesisUtterance`. `ServerTTSProvider`
    posts to the host API, receives audio and speech marks, then plays audio with
    an `HTMLAudioElement`.
-9. Boundary events flow back to `TTSService`, which asks `HighlightCoordinator`
-   to update the visible word highlight.
+9. Boundary events flow back to `TTSService`, which maps each word through the
+   position map to the ranges covering it, one per tree the word spans, and
+   `HighlightCoordinator.highlightTTSWord` paints them. Every word target, from
+   boundaries, catalog spans or math tokens, takes that one call.
 
 ### Browser Provider
 
@@ -152,6 +154,27 @@ TTSService -> ServerTTSProvider -> /api/tts/synthesize -> server provider
 For the standard PIE transport, the host route returns audio plus speech marks.
 For custom transports such as SchoolCity-style integrations, the provider can
 fetch URL-based audio and word mark assets with origin/SSRF protections.
+
+### Pause, Stop And Media
+
+A pause or stop holds from the moment a read starts loading. `pause()` while the
+read resolves its content or waits for audio holds it: the audio starts paused
+when it arrives, and a `resume()` before then returns the read to loading. `stop()`
+ends a read in any state. Each provider holds a pause that lands before its audio
+starts, which `ITTSProviderImplementation.pause` requires.
+
+The media handoff counts a loading read as speaking: `pauseTtsForMediaAudio`
+pauses a read that is loading or playing when the learner starts media, and
+`bindTtsAudioHandoff` pauses the media when the service enters either state. One
+predicate serves both halves.
+
+### Debug Logging
+
+Read-aloud's debug lines, from the service, the providers, `TTSToolProvider`,
+math speech and the settings panel's preview, log only while `PIE_TTS_DEBUG=1`
+is set in the environment or `globalThis.__PIE_TTS_DEBUG__ = true` in the page.
+The flag is read on each line, so a page turns tracing on after load. Warnings
+and errors always log.
 
 ## How TTS Chooses What To Speak
 
@@ -319,8 +342,9 @@ on visible text plus MathML sources:
 
 Visible fallback text is still collected. If SRE fails or returns nothing, the
 system can speak the visible/fallback Math text rather than stopping playback.
-A failure to load SRE is logged once as a warning and holds for the life of the
-page.
+A read's equations share one SRE load. A failed load is logged once as a
+warning, and the next read loads SRE again; an equation that fell back to its
+visible text is not cached, so the next read resolves it again.
 
 ### Plain Versus SSML Generated Math
 

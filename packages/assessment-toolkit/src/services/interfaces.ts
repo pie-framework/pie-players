@@ -27,7 +27,12 @@ import type {
 import type { CatalogOwnerContext } from "./catalog-owner.js";
 import type { FrameworkErrorListener } from "./framework-error-bus.js";
 import type { FrameworkErrorModel } from "./framework-error.js";
-import type { HighlightColor, HighlightType } from "./HighlightCoordinator.js";
+import type {
+	Annotation,
+	HighlightColor,
+	HighlightType,
+} from "./HighlightCoordinator.js";
+import type { SerializedRange } from "./RangeSerializer.js";
 import type {
 	SectionControllerHandle,
 	SectionItemEventSubscriptionArgs,
@@ -92,13 +97,11 @@ export interface HighlightCoordinatorApi {
 	): void;
 
 	/**
-	 * Highlight a word for TTS (temporary)
+	 * Highlight the word being read (temporary): one range per tree the word
+	 * spans, all painted, so a word split across inline elements highlights
+	 * whole.
 	 */
-	highlightTTSWord(
-		textNode: Text,
-		startOffset: number,
-		endOffset: number,
-	): void;
+	highlightTTSWord(ranges: Range[]): void;
 
 	/**
 	 * Highlight a single element as the active TTS word (temporary).
@@ -150,6 +153,58 @@ export interface HighlightCoordinatorApi {
 	 * Update TTS highlight style dynamically
 	 */
 	updateTTSHighlightStyle(color: string, opacity: number): void;
+
+	/**
+	 * Record a learner annotation over a range.
+	 *
+	 * @returns Annotation id for later lookup or removal
+	 */
+	addAnnotation(range: Range, color?: HighlightColor): string;
+
+	/**
+	 * Remove one annotation
+	 */
+	removeAnnotation(id: string): void;
+
+	/**
+	 * Remove all annotations
+	 */
+	clearAnnotations(): void;
+
+	/**
+	 * All recorded annotations
+	 */
+	getAnnotations(): Annotation[];
+
+	/**
+	 * One annotation by id
+	 */
+	getAnnotation(id: string): Annotation | null;
+
+	/**
+	 * Serialize annotations relative to `root` for persistence
+	 */
+	exportAnnotations(
+		root?: Element,
+	): Array<
+		SerializedRange & { id: string; color: HighlightColor; timestamp: number }
+	>;
+
+	/**
+	 * Restore annotations serialized by `exportAnnotations` against the same root
+	 *
+	 * @returns Number of annotations restored
+	 */
+	importAnnotations(
+		data: Array<
+			SerializedRange & {
+				id?: string;
+				color: HighlightColor;
+				timestamp?: number;
+			}
+		>,
+		root?: Element,
+	): number;
 }
 
 /**
@@ -619,11 +674,12 @@ export interface ToolkitCoordinatorApi {
 	ensureTTSReady(config?: Record<string, unknown>): Promise<void>;
 
 	/**
-	 * Ensure a provider is initialized and ready. A tool starts its provider here,
-	 * so that a failure meets the toolkit's tool failure policy: recoverable
-	 * unless policy grants the tool.
+	 * Ensure a tool's provider is initialized and ready. Providers register under
+	 * their tool's id, so a tool passes its own base tool id. A tool starts its
+	 * provider here, so that a failure meets the toolkit's tool failure policy:
+	 * recoverable unless policy grants the tool.
 	 */
-	ensureProviderReady(providerId: string): Promise<ToolProviderApi>;
+	ensureProviderReady(toolId: string): Promise<ToolProviderApi>;
 
 	/**
 	 * Wait until coordinator initialization is complete.

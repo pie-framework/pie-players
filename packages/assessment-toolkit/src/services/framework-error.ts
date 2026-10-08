@@ -113,7 +113,7 @@ export interface FrameworkErrorCoordinatorContext {
 		| "section-controller-init"
 		| "section-controller-dispose"
 		| "tool-module-load";
-	providerId?: string;
+	toolId?: string;
 	details?: Record<string, unknown>;
 }
 
@@ -137,8 +137,8 @@ const COORDINATOR_PHASE_TO_KIND: Record<
  * context pair.
  *
  * Maps `context.phase` to the canonical {@link FrameworkErrorKind} and
- * synthesizes a `source` from `context.providerId` when present
- * (`pie-toolkit-coordinator/<providerId>`); falls back to a phase-tagged
+ * synthesizes a `source` from `context.toolId` when present
+ * (`pie-toolkit-coordinator/<toolId>`); falls back to a phase-tagged
  * source (`pie-toolkit-coordinator:<phase>`) otherwise. Forwards the
  * original `error` as `cause` so hosts that care about the underlying
  * `Error` keep getting it.
@@ -153,8 +153,8 @@ export function frameworkErrorFromCoordinatorContext(args: {
 	recoverable?: boolean;
 }): FrameworkErrorModel {
 	const kind = COORDINATOR_PHASE_TO_KIND[args.context.phase];
-	const source = args.context.providerId
-		? `pie-toolkit-coordinator/${args.context.providerId}`
+	const source = args.context.toolId
+		? `pie-toolkit-coordinator/${args.context.toolId}`
 		: `pie-toolkit-coordinator:${args.context.phase}`;
 	return frameworkErrorFromUnknown({
 		kind,

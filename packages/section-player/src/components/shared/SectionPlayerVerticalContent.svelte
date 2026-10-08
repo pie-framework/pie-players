@@ -1,49 +1,17 @@
 <script lang="ts">
-	import type {
-		ToolRegistry,
-		ToolbarItem,
-	} from "@pie-players/pie-assessment-toolkit";
 	import { useInterfaceI18n } from "./use-interface-i18n.svelte.js";
 
 	type LayoutModel = {
 		passages: unknown[];
-		items: unknown[];
-		compositionModel: unknown;
 		paneElementsLoaded: boolean;
-		resolvedPlayerEnv: unknown;
-		resolvedPlayerAttributes: unknown;
-		resolvedPlayerProps: unknown;
-		playerStrategy: unknown;
-		preloadedRenderables: unknown;
-		preloadedRenderablesSignature: string;
-		toolRegistry: ToolRegistry | null;
-		itemHostButtons: ToolbarItem[];
-		passageHostButtons: ToolbarItem[];
-		onItemsPaneElementsLoaded: (event: Event) => void;
-		onItemsPanePreloadRetry: (event: Event) => void;
-		onItemsPanePreloadError: (event: Event) => void;
 	};
 
 	let {
 		layoutModel,
-		itemToolbarTools = "",
-		passageToolbarTools = "",
-		toolRegistry = null as ToolRegistry | null,
-		itemHostButtons = [] as ToolbarItem[],
-		passageHostButtons = [] as ToolbarItem[],
-		iifeBundleHost,
-		preloadComponentTag = "pie-section-player-vertical",
 		contentMaxWidthNoPassagePx = undefined as number | undefined,
 		contentMaxWidthWithPassagePx = undefined as number | undefined,
 	} = $props<{
 		layoutModel: LayoutModel;
-		itemToolbarTools?: string;
-		passageToolbarTools?: string;
-		toolRegistry?: ToolRegistry | null;
-		itemHostButtons?: ToolbarItem[];
-		passageHostButtons?: ToolbarItem[];
-		iifeBundleHost?: string;
-		preloadComponentTag?: string;
 		contentMaxWidthNoPassagePx?: number;
 		contentMaxWidthWithPassagePx?: number;
 	}>();
@@ -68,49 +36,12 @@
 	<div class="pie-section-player-vertical-content">
 		{#if layoutModel.passages.length > 0 && layoutModel.paneElementsLoaded}
 			<section class="pie-section-player-passages-section" aria-label={interfaceI18n.t("player.passagesRegionA11y")}>
-				<pie-section-player-passages-pane
-					compositionModel={layoutModel.compositionModel}
-					passages={layoutModel.passages}
-					elementsLoaded={layoutModel.paneElementsLoaded}
-					resolvedPlayerEnv={layoutModel.resolvedPlayerEnv}
-					resolvedPlayerAttributes={layoutModel.resolvedPlayerAttributes}
-					resolvedPlayerProps={layoutModel.resolvedPlayerProps}
-					baseHeadingLevel={layoutModel.baseHeadingLevel}
-					playerStrategy={layoutModel.playerStrategy}
-					passageToolbarTools={passageToolbarTools}
-					toolRegistry={toolRegistry || layoutModel.toolRegistry}
-					hostButtons={
-						passageHostButtons.length > 0
-							? passageHostButtons
-							: layoutModel.passageHostButtons
-					}
-				></pie-section-player-passages-pane>
+				<pie-section-player-passages-pane></pie-section-player-passages-pane>
 			</section>
 		{/if}
 
 		<section class="pie-section-player-items-section" aria-label={interfaceI18n.t("player.itemsRegionA11y")}>
-			<pie-section-player-items-pane
-				items={layoutModel.items}
-				compositionModel={layoutModel.compositionModel}
-				resolvedPlayerEnv={layoutModel.resolvedPlayerEnv}
-				resolvedPlayerAttributes={layoutModel.resolvedPlayerAttributes}
-				resolvedPlayerProps={layoutModel.resolvedPlayerProps}
-				baseHeadingLevel={layoutModel.baseHeadingLevel}
-				playerStrategy={layoutModel.playerStrategy}
-				itemToolbarTools={itemToolbarTools}
-				toolRegistry={toolRegistry || layoutModel.toolRegistry}
-				hostButtons={
-					itemHostButtons.length > 0 ? itemHostButtons : layoutModel.itemHostButtons
-				}
-				iifeBundleHost={iifeBundleHost}
-				preloadedRenderables={layoutModel.preloadedRenderables}
-				preloadedRenderablesSignature={layoutModel.preloadedRenderablesSignature}
-				{preloadComponentTag}
-				preloadEnabled={layoutModel.preloadEnabled}
-				onelements-loaded-change={layoutModel.onItemsPaneElementsLoaded}
-				onelement-preload-retry={layoutModel.onItemsPanePreloadRetry}
-				onelement-preload-error={layoutModel.onItemsPanePreloadError}
-			></pie-section-player-items-pane>
+			<pie-section-player-items-pane></pie-section-player-items-pane>
 		</section>
 	</div>
 </div>

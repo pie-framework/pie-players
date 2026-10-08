@@ -79,7 +79,6 @@ const itemWithoutCatalogs = () => ({
 const grants = (...supports: string[]): PersonalNeedsProfile => ({
 	supports,
 	prohibitedSupports: [],
-	activateAtInit: [],
 });
 
 const printInto = (

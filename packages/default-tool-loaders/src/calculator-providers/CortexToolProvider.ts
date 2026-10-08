@@ -10,7 +10,6 @@ import type { ToolProviderCapabilities } from "@pie-players/pie-assessment-toolk
 export type CortexToolProviderConfig = CalculatorToolProviderInitConfig;
 
 export class CortexToolProvider extends LazyCalculatorToolProvider<CortexToolProviderConfig> {
-	readonly providerId = "cortex-calculator";
 	readonly providerName = "PIE Open-Source Calculator";
 	readonly version = "1";
 	readonly requiresAuth = false;

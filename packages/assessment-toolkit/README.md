@@ -1029,12 +1029,9 @@ The persistence strategy works with the same `SectionControllerSessionState` sha
 - **AccessibilityCatalogResolver**: QTI 3.0 accessibility catalog management
 - **SSMLExtractor**: Automatic extraction of embedded `<speak>` tags
 
-### ✅ QTI 3.0 Standard Access Features
+### ✅ PNP Support Ids
 
-- **95+ Standardized Features**: Complete QTI 3.0 / IMS AfA 3.0 accessibility features
-- **8 Feature Categories**: Visual, auditory, motor, cognitive, reading, navigation, linguistic, assessment
-- **Example Configurations**: Illustrative PNP profile examples (low vision, dyslexia, ADHD, etc.)
-- **Tool Mappings**: Every packaged tool registration maps to standard QTI 3.0 features
+- **Support ids are tool ids**: A profile, district policy or item setting names a tool by its `toolId`, and an id no registered tool carries raises `tool-policy.unknownSupportId`. [Support ids](docs/TOOL_REGISTRY.md#support-ids) lists the AfA PNP 3.0 terms the packaged ids serve.
 
 ### ✅ Section Player Integration
 
@@ -1266,7 +1263,7 @@ const isVisible = toolCoordinator.isToolVisible('calculator');
 const highlightCoordinator = new HighlightCoordinator();
 
 // TTS highlights (temporary)
-highlightCoordinator.highlightTTSWord(textNode, start, end);
+highlightCoordinator.highlightTTSWord([wordRange]); // one range per tree the word spans
 highlightCoordinator.highlightTTSSentence([range1, range2]);
 highlightCoordinator.clearTTS();
 
@@ -1563,7 +1560,7 @@ const coordinator = new ToolkitCoordinator({
 Notes:
 - `providers.textToSpeech` is the canonical TTS provider key.
 - `providers.tts` is rejected by the validation contract.
-- Custom tools can provide provider-level `sanitizeConfig` and `validateConfig` hooks.
+- A tool registration can declare `sanitizeConfig` and `validateConfig` hooks for its `providers.<toolId>` entry.
 - Hosts can react to framework errors via the `framework-error` DOM event,
   the `onFrameworkError(model)` callback prop, or by subscribing directly
   to the package-internal bus via
@@ -1611,9 +1608,12 @@ fires once per cohort, when every item has loaded.
 
 ### Common-host wiring example
 
-Most hosts never construct the engine: the section-player layout elements do.
-Use the facade only when building an alternate layout shell. The shape mirrors
-the section-player kernel:
+Most hosts never construct the engine: the section-player layout elements do,
+and a host-built section layout takes its engine from
+`pie-section-player-kernel-host` (see the section player's
+[Custom layout authoring](../section-player/README.md#custom-layout-authoring)).
+Use the facade for a section renderer outside the section player. The shape
+mirrors the section-player kernel:
 
 ```ts
 import {

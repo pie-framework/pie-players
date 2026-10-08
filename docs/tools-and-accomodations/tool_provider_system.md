@@ -77,6 +77,13 @@ It also registers `transcript`, a region capability with no toolbar button, whic
 `tools.placement` cannot place. Sign language is a separate package
 (`@pie-players/pie-tool-sign-language`) that a host registers itself.
 
+The tool id is the one key for a tool: its `tools.providers` entry, its
+placement and policy, failure attribution, and its provider's entry in the
+coordinator's provider registry. `provider.id` inside the entry selects an
+implementation (for the calculator `calculator-desmos`, `calculator-geogebra`
+or `calculator-cortex`) and never names a registry entry, so selecting another
+through `updateToolConfig` replaces the provider under the same id.
+
 ## Basic Integration
 
 ```ts

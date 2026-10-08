@@ -153,6 +153,25 @@ except that a `lang_id` the host sets wins on the custom transport; Hosts A and
 R both read aloud over that transport with `lang_id` set, so their requests are
 unchanged. Row verification dates are unchanged.
 
+Also on 2026-10-08 a pause or stop issued while a read loads started holding:
+before, the read began once its audio arrived. Media started during loading now
+pauses the read, as it pauses one already sounding. A word spanning several
+text nodes highlights whole, through the one word-highlight path:
+`HighlightCoordinator.highlightTTSWord` takes the word's ranges, where it took a
+text node and offsets. `ITTSProviderImplementation.updateSettings` is required.
+The TTS settings panel picks its automatic, recommended and preview browser
+voices for the runtime context's content language, as the reader does, else the
+browser's language; Host R, the one host mounting the panel, names no content
+language, so its panel offers the voices it did. Read-aloud's providers, tool
+provider and settings panel log only under `PIE_TTS_DEBUG`. The server backend's
+backend-call telemetry names the tool `textToSpeech`, as the toolkit's does,
+where it named it `tts`. Checked against the checkouts of Hosts A, M, P, R and
+V: none implements a TTS provider, constructs `TTSToolProvider`, whose features
+are now its speech provider's, calls `updateSettings`, `highlightTTSWord` or
+`pauseTtsForMediaAudio`, or reads backend-call telemetry, and Host A calls only
+`ttsService.stop()`, which still ends a loading read. Row verification dates are
+unchanged.
+
 The 2026-09-17 session-commit change (PIE-1058) was checked against the
 recorded rows rather than re-derived from the checkouts. It renames and removes
 nothing: `pie-item-player` gains one opt-in property, `session-snapshot`, one
@@ -470,6 +489,43 @@ build caches and a vendored third-party calculator bundle: the layer was
 published with no call sites anywhere, which is what made replacing it rather
 than versioning it the right move. No host passes `locale` to a `pie-*` element
 either.
+
+On 2026-10-08 tools went to one channel and one provider namespace. Tool
+elements dropped the service and provider-id properties they took beside the
+runtime context: `toolkitCoordinator` and `providerId` / `provider-id` on the
+calculator elements, `highlightCoordinator` and `ttsService` on
+`pie-tool-annotation-toolbar`, `elementToolStateStore` on
+`pie-tool-answer-eliminator` (whose `strategy` also drops the unimplemented
+`gray`), and `ttsService` on the sign-language region. Providers register under
+their tool's id (`calculator`, `textToSpeech`): `ToolProviderApi.providerId`,
+`ToolProviderDescriptor.getProviderId`, `resolveToolProviderId` and
+`ToolkitCoordinator.getToolProvider` are gone, and `ensureProviderReady` takes a
+tool id. The toolkit names a tool by that id under `toolId` only: the provider
+lifecycle hooks pass it as their first argument, `ToolkitErrorContext` carries it
+as `toolId` (framework-error source `pie-toolkit-coordinator/<toolId>`), and
+`ProviderLifecycleContext.providerId`, `ToolConfigDiagnostic.providerId` and the
+`providerId` the provider and playback telemetry repeated beside `toolId` are
+deleted. Telemetry that carried `"tts"` or a vendor's selection id as `providerId`
+reads `"textToSpeech"` or `"calculator"` as `toolId`. `sanitizeConfig` and
+`validateConfig` moved from the provider descriptor to `ToolRegistration`. `AnswerEliminatorToolConfig`
+is deleted, and `PACKAGED_TOOL_REGISTRATIONS`, `PACKAGED_TOOL_PLACEMENT` and
+`PACKAGED_TOOL_ORDER` are typed as plain arrays where they were cast to literal
+tuples. Checked against all five checkouts the same day as a targeted lookup, so
+it does not advance the verification date: no checkout sets any of those
+properties on a tool element, reads a provider's `providerId`, subscribes to
+toolkit telemetry or provider lifecycle hooks, calls `getToolProvider` or
+`ensureProviderReady`, reads
+`toolProviderRegistry`, declares a provider descriptor or config hook, or names
+`ToolkitErrorContext`, `ProviderLifecycleContext`, `ToolConfigDiagnostic`, the
+deleted type or the composition constants. Host R alone hands the section player
+a New Relic instrumentation provider, so its toolkit events lose the `providerId`
+attribute and keep `toolId`. Host A takes the calculator,
+annotation toolbar and answer eliminator from the packaged loaders and sets
+none of their properties; the edits to `CortexToolProvider` and the composition
+module change no import, so its single-file build inlines the same modules.
+Host R's element type declarations still list a `highlightCoordinator` property
+it never sets, and its debugger panels keep the `toolkitCoordinator` property,
+which this change does not touch.
 
 ## Consumer profiles
 
@@ -1458,11 +1514,21 @@ against a MathJax 4 global.
 The item player's own MathJax 4, the browser build of
 `@pie-element/shared-math-rendering-mathjax` it imports for markup math on a
 page with no math renderer, is a dynamic import as well, so in Host M it
-evaluates at startup with its font chunks, about 2.9 MB. Like the copies in the
-`browser/delivery` element builds Host M bundles (checked 2026-10-05), it neither
-reads nor writes `window.MathJax`, and the shell's MathJax 4 is left alone. From
-adapter 0.1.3 it takes its files' location from the registration, and the
-bundle URL gives it none (see the item-player section).
+evaluates at startup with its font chunks, about 2.9 MB. It neither reads nor
+writes `window.MathJax`, and the shell's MathJax 4 is left alone. From adapter
+0.1.3 it takes its files' location from the registration, and the bundle URL
+gives it none (see the item-player section).
+
+The element builds Host M bundles (`@pie-element/multiple-choice`
+13.4.0-next.15, adapter 0.1.1-next.2) do write `window.MathJax` (checked
+2026-10-08). Since 0.3.74 the `preloaded` strategy installs no page renderer, so
+on a shell page without its own MathJax the element adapter sets
+`window.MathJax` with `useSingleDollar: true` and loads `mathjax@4` from
+jsDelivr, whose default startup typesets the whole shell page: `$`-delimited
+text outside the remote renders as math. With the shell's MathJax on the page
+the element uses that copy and nothing else is typeset. Elements on adapter
+0.1.3 or later set `startup.typeset: false` and load only from an asset root,
+which Host M passes as `registerPreloadedElements(elements, { math: { assetRoot } })`.
 
 ## Content stylesheet delivery
 
@@ -1866,6 +1932,14 @@ over a CDN with no typecheck at all.
   `getFeaturesInCategory`). Nothing read it at runtime; support ids resolve
   against the registry. Checked against all five checkouts on 2026-10-08 as a
   targeted lookup: no checkout imports any of them
+- `AssessmentSection.personalNeedsProfile` and the `PersonalNeedsProfile` fields
+  `activateAtInit`, `districtPolicy.policies` and `testAdministration.mode`,
+  `startDate` and `endDate`, deleted on 2026-10-08. Policy read none of them, and
+  a `testAdministration` without a `toolOverrides` entry no longer turns automatic
+  PNP enforcement on. Checked against all five checkouts on 2026-10-08 as a
+  targeted lookup: only Host R sets one, a profile on the section objects of its
+  section demos, cast `as any`. It now reaches nothing, the PNP debugger
+  included; binding it as the assessment's with `updateAssessment` keeps it
 
 ## Consumer-side defects worth reporting upstream
 

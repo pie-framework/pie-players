@@ -77,7 +77,6 @@ const granting = (...supports: string[]) =>
 
 const registryWith = (
 	toolId: string,
-	providerId: string,
 	supportedLevels: ("item" | "passage" | "section")[] = ["item"],
 ) => {
 	const registry = new ToolRegistry();
@@ -85,7 +84,7 @@ const registryWith = (
 		createTestToolRegistration({
 			toolId,
 			supportedLevels,
-			provider: createFailingAuthProviderDescriptor(providerId),
+			provider: createFailingAuthProviderDescriptor(toolId),
 		}),
 	);
 	return registry;
@@ -102,13 +101,13 @@ describe("tool start failures", () => {
 		const coordinator = new ToolkitCoordinator({
 			assessmentId: "provider-degrades",
 			eagerInit: false,
-			toolRegistry: registryWith("calculator", "calculator-stub"),
+			toolRegistry: registryWith("calculator"),
 			tools: { placement: { item: ["calculator"] } },
 		});
 		const errors = collectErrors(coordinator);
 
 		await expect(
-			coordinator.ensureProviderReady("calculator-stub"),
+			coordinator.ensureProviderReady("calculator"),
 		).rejects.toThrow();
 
 		expect(errors).toHaveLength(1);
@@ -119,14 +118,14 @@ describe("tool start failures", () => {
 		const coordinator = new ToolkitCoordinator({
 			assessmentId: "provider-granted",
 			eagerInit: false,
-			toolRegistry: registryWith("calculator", "calculator-stub"),
+			toolRegistry: registryWith("calculator"),
 			tools: { placement: { item: ["calculator"] } },
 		});
 		coordinator.updateAssessment(granting("calculator"));
 		const errors = collectErrors(coordinator);
 
 		await expect(
-			coordinator.ensureProviderReady("calculator-stub"),
+			coordinator.ensureProviderReady("calculator"),
 		).rejects.toThrow();
 
 		expect(errors).toHaveLength(1);
@@ -137,11 +136,11 @@ describe("tool start failures", () => {
 		const coordinator = new ToolkitCoordinator({
 			assessmentId: "provider-granted-later",
 			eagerInit: false,
-			toolRegistry: registryWith("calculator", "calculator-stub"),
+			toolRegistry: registryWith("calculator"),
 			tools: { placement: { item: ["calculator"] } },
 		});
 		const errors = collectErrors(coordinator);
-		await coordinator.ensureProviderReady("calculator-stub").catch(() => {});
+		await coordinator.ensureProviderReady("calculator").catch(() => {});
 
 		coordinator.updateAssessment(granting("calculator"));
 		coordinator.updateAssessment(granting("calculator"));
@@ -153,7 +152,7 @@ describe("tool start failures", () => {
 		const coordinator = new ToolkitCoordinator({
 			assessmentId: "module-degrades",
 			eagerInit: false,
-			toolRegistry: registryWith("calculator", "calculator-stub"),
+			toolRegistry: registryWith("calculator"),
 			tools: { placement: { item: ["calculator"] } },
 		});
 		const errors = collectErrors(coordinator);
@@ -181,7 +180,7 @@ describe("tool start failures", () => {
 		const granted = new ToolkitCoordinator({
 			assessmentId: "module-granted",
 			eagerInit: false,
-			toolRegistry: registryWith("calculator", "calculator-stub"),
+			toolRegistry: registryWith("calculator"),
 			tools: { placement: { item: ["calculator"] } },
 		});
 		granted.updateAssessment(granting("calculator"));
@@ -192,7 +191,7 @@ describe("tool start failures", () => {
 		const later = new ToolkitCoordinator({
 			assessmentId: "module-granted-later",
 			eagerInit: false,
-			toolRegistry: registryWith("calculator", "calculator-stub"),
+			toolRegistry: registryWith("calculator"),
 			tools: { placement: { item: ["calculator"] } },
 		});
 		const laterErrors = collectErrors(later);
@@ -205,7 +204,7 @@ describe("tool start failures", () => {
 		const coordinator = new ToolkitCoordinator({
 			assessmentId: "tts-fallback",
 			eagerInit: false,
-			toolRegistry: registryWith("textToSpeech", "tts", ["item", "passage"]),
+			toolRegistry: registryWith("textToSpeech", ["item", "passage"]),
 			tools: {
 				providers: {
 					textToSpeech: { enabled: true, backend: "server", apiEndpoint: "/api/tts" },

@@ -94,3 +94,20 @@ declare global {
 export function isGlobalDebugEnabled(): boolean {
 	return typeof window !== "undefined" && window.PIE_DEBUG === true;
 }
+
+/**
+ * Read-aloud's debug flag: `PIE_TTS_DEBUG=1` in the environment, or
+ * `globalThis.__PIE_TTS_DEBUG__ = true` in a page. Every read-aloud logger is
+ * created with it, and reads it on each debug line.
+ */
+export function isTtsDebugEnabled(): boolean {
+	const scope = globalThis as {
+		__PIE_TTS_DEBUG__?: unknown;
+		// Read off the global: browser builds of this module carry no Node types.
+		process?: { env?: Record<string, string | undefined> };
+	};
+	return (
+		scope.process?.env?.PIE_TTS_DEBUG === "1" ||
+		scope.__PIE_TTS_DEBUG__ === true
+	);
+}

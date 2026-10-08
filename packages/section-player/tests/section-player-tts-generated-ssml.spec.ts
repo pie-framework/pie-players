@@ -489,15 +489,16 @@ async function installHighlightRecorder(page: Page): Promise<void> {
 				return original.apply(hc, args);
 			};
 		};
-		wrap("highlightTTSWord", (node: any, start: number, end: number) => {
-			const text = String(node?.textContent || "")
-				.slice(start, end)
-				.trim();
-			if (!text) return;
-			const parent = node?.parentElement;
-			const record = { text, visible: isVisible(parent) };
-			if (insideMath(parent)) store.mathTokens.push(record);
-			else store.proseWords.push(record);
+		wrap("highlightTTSWord", (ranges: any[]) => {
+			for (const range of ranges || []) {
+				const text = String(range?.toString?.() || "").trim();
+				if (!text) continue;
+				const node = range.startContainer;
+				const parent = node?.nodeType === 1 ? node : node?.parentElement;
+				const record = { text, visible: isVisible(parent) };
+				if (insideMath(parent)) store.mathTokens.push(record);
+				else store.proseWords.push(record);
+			}
 		});
 		wrap("highlightTTSWordElement", (el: any) => {
 			// A whole-expression fallback paints the equation itself, not a token.

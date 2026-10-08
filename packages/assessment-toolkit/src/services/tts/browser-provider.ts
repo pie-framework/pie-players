@@ -7,6 +7,10 @@
  * Part of PIE Assessment Toolkit.
  */
 
+import {
+	createPieLogger,
+	isTtsDebugEnabled,
+} from "@pie-players/pie-players-shared/pie";
 import type {
 	ITTSProvider,
 	ITTSProviderImplementation,
@@ -18,6 +22,8 @@ import type {
 import type { ToolkitTTSConfig } from "./provider-options.js";
 import { extractSpokenText } from "./ssml/spoken-text.js";
 import { segmentSentences as segmentTextToSentences } from "./text-segmentation.js";
+
+const logger = createPieLogger("browser-tts-provider", isTtsDebugEnabled);
 
 const NATIVE_START_TIMEOUT_MS = 5_000;
 const VOICE_INVENTORY_TIMEOUT_MS = 2_000;
@@ -108,15 +114,43 @@ const browserLanguage = (): string => {
 };
 
 /**
+ * The voice traits browser voice selection reads. A `SpeechSynthesisVoice` has
+ * them all; a host's own voice list may carry a subset.
+ */
+export interface BrowserVoiceTraits {
+	voiceURI?: string;
+	name?: string;
+	lang?: string;
+	localService?: boolean;
+	default?: boolean;
+}
+
+/**
+ * Whether a voice speaks `contentLanguage`, or the browser's own language when
+ * the content names none: the same language, or the same primary subtag.
+ */
+export const browserVoiceMatchesLanguage = (
+	voice: Pick<BrowserVoiceTraits, "lang">,
+	contentLanguage?: string,
+): boolean => {
+	const language = normalizeLanguageCode(contentLanguage) || browserLanguage();
+	const languagePrefix = language.split("-")[0] || "en";
+	const voiceLanguage = normalizeLanguageCode(voice.lang);
+	return (
+		voiceLanguage === language || voiceLanguage.startsWith(`${languagePrefix}-`)
+	);
+};
+
+/**
  * The voice to read with: the configured one, else one for `contentLanguage`
  * (the language of the content being read), else one for the browser's own
  * language.
  */
-const findBrowserVoice = (
-	voices: SpeechSynthesisVoice[],
+export const findBrowserVoice = <Voice extends BrowserVoiceTraits>(
+	voices: readonly Voice[],
 	preferredVoice?: string,
 	contentLanguage?: string,
-): SpeechSynthesisVoice | null => {
+): Voice | null => {
 	if (preferredVoice) {
 		return (
 			voices.find((voice) => voice.voiceURI === preferredVoice) ||
@@ -124,22 +158,14 @@ const findBrowserVoice = (
 			null
 		);
 	}
-	const language = normalizeLanguageCode(contentLanguage) || browserLanguage();
-	const languagePrefix = language.split("-")[0] || "en";
-	const matchesLanguage = (voice: SpeechSynthesisVoice) => {
-		const voiceLanguage = normalizeLanguageCode(voice.lang);
-		return (
-			voiceLanguage === language ||
-			voiceLanguage.startsWith(`${languagePrefix}-`)
-		);
-	};
+	const matchesLanguage = (voice: Voice) =>
+		browserVoiceMatchesLanguage(voice, contentLanguage);
 	const ranked = [
-		(voice: SpeechSynthesisVoice) =>
-			voice.localService && matchesLanguage(voice),
-		(voice: SpeechSynthesisVoice) => voice.default && matchesLanguage(voice),
-		(voice: SpeechSynthesisVoice) => matchesLanguage(voice),
-		(voice: SpeechSynthesisVoice) => voice.localService,
-		(voice: SpeechSynthesisVoice) => voice.default,
+		(voice: Voice) => voice.localService && matchesLanguage(voice),
+		(voice: Voice) => voice.default && matchesLanguage(voice),
+		(voice: Voice) => matchesLanguage(voice),
+		(voice: Voice) => voice.localService,
+		(voice: Voice) => voice.default,
 	];
 	for (const predicate of ranked) {
 		const voice = voices.find(predicate);
@@ -687,13 +713,8 @@ class BrowserTTSProviderImpl implements ITTSProviderImplementation {
 
 			utterance.onboundary = (event) => {
 				if (runId !== this.speakRunId) return;
-				console.log(
-					"[BrowserProvider] Boundary event:",
-					event.name,
-					"charIndex:",
-					event.charIndex,
-					"charLength:",
-					event.charLength,
+				logger.debug(
+					`boundary event: ${event.name}, charIndex ${event.charIndex}, charLength ${event.charLength}`,
 				);
 				if (event.name !== "word" || !this.onWordBoundary) return;
 				if (this.getHighlightMode() === "sentence") {
@@ -725,12 +746,7 @@ class BrowserTTSProviderImpl implements ITTSProviderImplementation {
 					sourceOffset(utteranceStart + wordLength - 1) +
 					1 -
 					absoluteBoundaryStart;
-				console.log(
-					"[BrowserProvider] Calling onWordBoundary with word:",
-					word,
-					"at position:",
-					absoluteBoundaryStart,
-				);
+				logger.debug(`word boundary "${word}" at ${absoluteBoundaryStart}`);
 				this.onWordBoundary(word, absoluteBoundaryStart, boundaryLength);
 			};
 

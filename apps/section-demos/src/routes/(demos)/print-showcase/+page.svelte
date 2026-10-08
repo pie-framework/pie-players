@@ -14,8 +14,7 @@
 	const accessibility = $derived({
 		personalNeedsProfile: {
 			supports: transcriptGranted ? ['transcript'] : [],
-			prohibitedSupports: [],
-			activateAtInit: []
+			prohibitedSupports: []
 		}
 	});
 

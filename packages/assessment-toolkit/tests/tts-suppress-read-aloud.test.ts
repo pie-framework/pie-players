@@ -41,6 +41,7 @@ class MockTTSImpl implements ITTSProviderImplementation {
 	isPaused(): boolean {
 		return false;
 	}
+	updateSettings(): void {}
 }
 
 class MockTTSProvider implements ITTSProvider {
@@ -294,8 +295,8 @@ describe("read-aloud suppression across every speech path", () => {
 		range.setEnd(tail, " then these".length);
 		const highlighted: string[] = [];
 		service.setHighlightCoordinator({
-			highlightTTSWord: (node: Text, start: number, end: number) => {
-				highlighted.push(node.textContent?.slice(start, end) || "");
+			highlightTTSWord: (ranges: Range[]) => {
+				highlighted.push(ranges.join(""));
 			},
 			highlightTTSSentence: () => {},
 			clearTTS: () => {},

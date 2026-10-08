@@ -48,8 +48,9 @@ describe("calculator tool registration", () => {
 			DEFAULT_CALCULATOR_PROVIDER_ID,
 		);
 		expect(
-			calculatorToolRegistration.provider?.createProvider(undefined).providerId,
-		).toBe("desmos-calculator");
+			calculatorToolRegistration.provider?.createProvider(undefined)
+				.providerName,
+		).toBe("Desmos Calculator");
 
 		const geogebraConfig = {
 			provider: { id: "calculator-geogebra" },
@@ -59,14 +60,15 @@ describe("calculator tool registration", () => {
 		);
 		expect(
 			calculatorToolRegistration.provider?.createProvider(geogebraConfig)
-				.providerId,
-		).toBe("geogebra-calculator");
+				.providerName,
+		).toBe("GeoGebra Calculator");
 
 		const cortexConfig = { provider: { id: "calculator-cortex" } };
 		expect(resolveCalculatorProviderId(cortexConfig)).toBe("calculator-cortex");
 		expect(
-			calculatorToolRegistration.provider?.createProvider(cortexConfig).providerId,
-		).toBe("cortex-calculator");
+			calculatorToolRegistration.provider?.createProvider(cortexConfig)
+				.providerName,
+		).toBe("PIE Open-Source Calculator");
 	});
 
 	test("rejects unknown calculator implementations", () => {
@@ -200,8 +202,11 @@ describe("calculator tool registration", () => {
 		expect(element?.calculatorType).toBe("basic");
 		expect(element?.availableTypes).toEqual(["basic"]);
 		expect(element?.getAttribute("calculator-type")).toBe("basic");
-		expect((element as any)?.providerId).toBe("calculator-desmos");
-		expect(element?.getAttribute("provider-id")).toBe("calculator-desmos");
+		// The element finds its provider under its own tool id, through the runtime
+		// context; the registration hands it neither.
+		expect((element as any)?.providerId).toBeUndefined();
+		expect(element?.getAttribute("provider-id")).toBeNull();
+		expect((element as any)?.toolkitCoordinator).toBeUndefined();
 	});
 
 	test("declares a panel size per calculator type, and one before the type resolves", () => {
@@ -299,7 +304,6 @@ describe("calculator tool registration", () => {
 		);
 		const element = result.elements?.[0]?.element as any;
 		expect(result.button?.label).toBe("Graphing Calculator");
-		expect(element.providerId).toBe("calculator-geogebra");
 		expect(element.calculatorType).toBe("graphing");
 		expect(element.calculatorConfig).toEqual({
 			settings: { showResetIcon: true },

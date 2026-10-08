@@ -48,6 +48,7 @@ describe("TTS contract compatibility", () => {
 			isPaused() {
 				return false;
 			},
+			updateSettings() {},
 		};
 
 		const withoutSegments: ITTSProviderImplementation = {
@@ -61,6 +62,7 @@ describe("TTS contract compatibility", () => {
 			isPaused() {
 				return false;
 			},
+			updateSettings() {},
 		};
 
 		await withSegments.speak("one");

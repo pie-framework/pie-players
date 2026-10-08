@@ -11,12 +11,9 @@
  * record (only `id` / `name`, no PNP and no settings) do not engage
  * PNP/profile gates. The flip happens the moment the assessment carries any of:
  *
- *   - `personalNeedsProfile` (any `supports`, `prohibitedSupports`, or
- *     `activateAtInit`),
- *   - `settings.districtPolicy` (any `blockedTools`, `requiredTools`,
- *     or `policies`),
- *   - `settings.testAdministration` (any populated key — `mode`,
- *     `toolOverrides`, etc.),
+ *   - `personalNeedsProfile` (any `supports` or `prohibitedSupports`),
+ *   - `settings.districtPolicy` (any `blockedTools` or `requiredTools`),
+ *   - `settings.testAdministration` (any `toolOverrides` entry),
  *   - or, for an item-scoped decision, the item's settings carry
  *     `requiredTools` / `restrictedTools` / `toolParameters`.
  *
@@ -34,9 +31,8 @@ import type {
  * Return `true` when the assessment carries any PNP/profile policy
  * material that the engine's `PnpPolicySource` would consume.
  *
- * The check is structural — the presence of a non-empty PNP, district
- * policy, or test administration block is enough; the content does not
- * have to validate against any specific rule.
+ * The check is structural — a non-empty field the source reads is enough;
+ * the content does not have to validate against any specific rule.
  */
 export function assessmentHasPnpPolicyInputs(
 	assessment: AssessmentEntity | null | undefined,
@@ -49,9 +45,6 @@ export function assessmentHasPnpPolicyInputs(
 			Array.isArray(pnp.prohibitedSupports) &&
 			pnp.prohibitedSupports.length > 0
 		) {
-			return true;
-		}
-		if (Array.isArray(pnp.activateAtInit) && pnp.activateAtInit.length > 0) {
 			return true;
 		}
 	}
@@ -71,29 +64,14 @@ export function assessmentHasPnpPolicyInputs(
 			) {
 				return true;
 			}
-			if (
-				district.policies &&
-				typeof district.policies === "object" &&
-				Object.keys(district.policies).length > 0
-			) {
-				return true;
-			}
 		}
-		const admin = settings.testAdministration;
-		if (admin && typeof admin === "object") {
-			for (const key of Object.keys(admin)) {
-				const value = (admin as Record<string, unknown>)[key];
-				if (value === undefined || value === null) continue;
-				if (Array.isArray(value) && value.length === 0) continue;
-				if (
-					typeof value === "object" &&
-					!Array.isArray(value) &&
-					Object.keys(value as Record<string, unknown>).length === 0
-				) {
-					continue;
-				}
-				return true;
-			}
+		const overrides = settings.testAdministration?.toolOverrides;
+		if (
+			overrides &&
+			typeof overrides === "object" &&
+			Object.keys(overrides).length > 0
+		) {
+			return true;
 		}
 	}
 	return false;

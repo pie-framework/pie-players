@@ -283,7 +283,6 @@ export { SSMLExtractor } from "./services/SSMLExtractor.js";
 export { ToolCoordinator, ZIndexLayer } from "./services/ToolCoordinator.js";
 // Toolkit Coordinator (Centralized service management)
 export type {
-	AnswerEliminatorToolConfig,
 	ProviderLifecycleContext,
 	SectionControllerContext,
 	SectionControllerEvent,
@@ -384,7 +383,12 @@ export {
 	bindTtsAudioHandoff,
 	pauseTtsForMediaAudio,
 } from "./services/audio-handoff.js";
-export { BrowserTTSProvider } from "./services/tts/browser-provider.js";
+export {
+	BrowserTTSProvider,
+	type BrowserVoiceTraits,
+	browserVoiceMatchesLanguage,
+	findBrowserVoice,
+} from "./services/tts/browser-provider.js";
 export {
 	isTTSStartFailure,
 	TTS_START_FAILED_CODE,

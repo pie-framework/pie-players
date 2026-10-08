@@ -3,70 +3,60 @@
 		tag: "pie-section-player-passages-pane",
 		// Keep light DOM so rendered passage content can inherit assessment/runtime styles.
 		shadow: "none",
-		props: {
-			passages: { type: "Object", reflect: false },
-			elementsLoaded: { attribute: "elements-loaded", type: "Boolean" },
-			resolvedPlayerEnv: { attribute: "resolved-player-env", type: "Object", reflect: false },
-			resolvedPlayerAttributes: {
-				attribute: "resolved-player-attributes",
-				type: "Object",
-				reflect: false,
-			},
-			resolvedPlayerProps: { attribute: "resolved-player-props", type: "Object", reflect: false },
-			playerStrategy: { attribute: "player-strategy", type: "String" },
-			baseHeadingLevel: { attribute: "base-heading-level", type: "Number" },
-			passageToolbarTools: { attribute: "passage-toolbar-tools", type: "String" },
-			// Read for one thing only: which passage, if any, is a timed-media
-			// section's stimulus. Absent or non-timed-media renders exactly as before.
-			compositionModel: { attribute: "composition-model", type: "Object", reflect: false },
-			toolRegistry: { type: "Object", reflect: false },
-			hostButtons: { type: "Object", reflect: false },
-		},
-		extend: coerceBooleanAttributes,
 	}}
 />
 
 <script lang="ts">
-	import { coerceBooleanAttributes } from "@pie-players/pie-players-shared/ui/attribute-coercion";
 	import "../section-player-passage-card-element.js";
-	import type {
-		ToolRegistry,
-		ToolbarItem,
-	} from "@pie-players/pie-assessment-toolkit";
+	import type { ToolbarItem } from "@pie-players/pie-assessment-toolkit";
 	import type { PassageEntity } from "@pie-players/pie-players-shared/types";
-	import type { SectionCompositionModel } from "../../controllers/types.js";
 	import {
 		DEFAULT_SECTION_BASE_HEADING_LEVEL,
 		getPassagePlayerParams,
-		type HeadingLevel,
 	} from "./section-player-view-state.js";
+	import {
+		connectSectionPlayerLayoutContext,
+		type SectionPlayerLayoutContext,
+	} from "./section-player-layout-context.js";
 	import { useInterfaceI18n } from "./use-interface-i18n.svelte.js";
 
-	let {
-		passages = [] as PassageEntity[],
-		elementsLoaded = false,
-		resolvedPlayerEnv = {} as Record<string, unknown>,
-		resolvedPlayerAttributes = {} as Record<string, string>,
-		resolvedPlayerProps = {} as Record<string, unknown>,
-		playerStrategy = "preloaded",
-		baseHeadingLevel = DEFAULT_SECTION_BASE_HEADING_LEVEL as HeadingLevel,
-		passageToolbarTools = "",
-		toolRegistry = null as ToolRegistry | null,
-		hostButtons = [] as ToolbarItem[],
-		compositionModel = null as SectionCompositionModel | null,
-	} = $props<{
-		passages: PassageEntity[];
-		elementsLoaded: boolean;
-		resolvedPlayerEnv: Record<string, unknown>;
-		resolvedPlayerAttributes: Record<string, string>;
-		resolvedPlayerProps: Record<string, unknown>;
-		playerStrategy: string;
-		baseHeadingLevel?: HeadingLevel;
-		passageToolbarTools: string;
-		toolRegistry?: ToolRegistry | null;
-		hostButtons?: ToolbarItem[];
-		compositionModel?: SectionCompositionModel | null;
-	}>();
+	const NO_PASSAGES: PassageEntity[] = [];
+	const NO_ENTRIES: Record<string, never> = {};
+	const NO_BUTTONS: ToolbarItem[] = [];
+
+	const paneHost = $host<HTMLElement>();
+	let layout = $state.raw<SectionPlayerLayoutContext | null>(null);
+
+	$effect(() =>
+		connectSectionPlayerLayoutContext(paneHost, (value) => {
+			layout = value;
+		}),
+	);
+
+	// Through `$derived`, which keeps the function's identity across republishes,
+	// so the pane registers once rather than once per layout value.
+	const registerPane = $derived(layout?.registerPane ?? null);
+	$effect(() => registerPane?.("passages", paneHost));
+
+	// The one passages pane of this section player that renders.
+	const active = $derived(layout?.activePanes.passages === paneHost);
+	const passages = $derived(layout?.passages ?? NO_PASSAGES);
+	const elementsLoaded = $derived(layout?.elementsLoaded === true);
+	const resolvedPlayerEnv = $derived(layout?.resolvedPlayerEnv ?? NO_ENTRIES);
+	const resolvedPlayerAttributes = $derived(
+		layout?.resolvedPlayerAttributes ?? NO_ENTRIES,
+	);
+	const resolvedPlayerProps = $derived(layout?.resolvedPlayerProps ?? NO_ENTRIES);
+	const playerStrategy = $derived(layout?.playerStrategy ?? "preloaded");
+	const baseHeadingLevel = $derived(
+		layout?.baseHeadingLevel ?? DEFAULT_SECTION_BASE_HEADING_LEVEL,
+	);
+	const passageToolbarTools = $derived(layout?.passageToolbarTools ?? "");
+	const toolRegistry = $derived(layout?.toolRegistry ?? null);
+	const hostButtons = $derived(layout?.passageHostButtons ?? NO_BUTTONS);
+	// Read for one thing only: which passage, if any, is a timed-media section's
+	// stimulus.
+	const compositionModel = $derived(layout?.compositionModel ?? null);
 
 	let loadingCard = $state<HTMLDivElement | null>(null);
 	const interfaceI18n = useInterfaceI18n(() => loadingCard);
@@ -95,33 +85,37 @@
 	});
 </script>
 
-{#if !elementsLoaded}
-	<div class="pie-section-player-content-card" bind:this={loadingCard}>
-		<div
-			class="pie-section-player-content-card-body pie-section-player-passage-content pie-section-player__passage-content"
-		>
-			{interfaceI18n.t("player.loadingPassage")}
+<!-- Empty for a section without passages, so a layout can keep the pane mounted
+     for every section. -->
+{#if active && passages.length > 0}
+	{#if !elementsLoaded}
+		<div class="pie-section-player-content-card" bind:this={loadingCard}>
+			<div
+				class="pie-section-player-content-card-body pie-section-player-passage-content pie-section-player__passage-content"
+			>
+				{interfaceI18n.t("player.loadingPassage")}
+			</div>
 		</div>
-	</div>
-{:else}
-	{#each orderedPassages as passage, passageIndex (passage.id || passageIndex)}
-		<pie-section-player-passage-card
-			{passage}
-			{baseHeadingLevel}
-			timedMediaStimulus={!!stimulusPassageId && passage.id === stimulusPassageId}
-			playerParams={getPassagePlayerParams({
-				passage,
-				resolvedPlayerEnv,
-				resolvedPlayerAttributes,
-				resolvedPlayerProps,
-				playerStrategy,
-				baseHeadingLevel,
-			})}
-			passageToolbarTools={passageToolbarTools}
-			{toolRegistry}
-			{hostButtons}
-		></pie-section-player-passage-card>
-	{/each}
+	{:else}
+		{#each orderedPassages as passage, passageIndex (passage.id || passageIndex)}
+			<pie-section-player-passage-card
+				{passage}
+				{baseHeadingLevel}
+				timedMediaStimulus={!!stimulusPassageId && passage.id === stimulusPassageId}
+				playerParams={getPassagePlayerParams({
+					passage,
+					resolvedPlayerEnv,
+					resolvedPlayerAttributes,
+					resolvedPlayerProps,
+					playerStrategy,
+					baseHeadingLevel,
+				})}
+				passageToolbarTools={passageToolbarTools}
+				{toolRegistry}
+				{hostButtons}
+			></pie-section-player-passage-card>
+		{/each}
+	{/if}
 {/if}
 
 <style>

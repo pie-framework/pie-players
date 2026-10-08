@@ -62,6 +62,7 @@ class MyTTSImplementation implements ITTSProviderImplementation {
   stop(): void { /* ... */ }
   isPlaying(): boolean { return false; }
   isPaused(): boolean { return false; }
+  updateSettings(settings: Partial<TTSConfig>): void { /* ... */ }
 }
 
 export class MyTTSProvider implements ITTSProvider {

@@ -543,7 +543,7 @@ export const sectionDemos: Record<string, SectionDemoInfo> = {
 		whatMakesItTick: [
 			"A signed alternate arrives only as a catalog card. The first item authors one by hand on `accessibilityCatalogs` with a typed media payload; nothing lifts a signing video out of item markup at render time.",
 			"The second item carries no signing content and shows no region, because an affordance where no content exists is a dead affordance.",
-			"`?page=` switches between a PNP that grants `signLanguage` and one that does not; signing is excluded from the computed default profile, so it is never on by accident.",
+			"`?page=` switches between a profile that grants `signLanguage` and one that does not, bound as the assessment's; no default profile grants signing, so it is never on by accident.",
 			"The third item is not authored at all: it is the verbatim output of the Learnosity import in `pie-api-aws`, so the demo shows what an importer writes rather than what we believe it writes.",
 			"A third page authors the alternate on a shared passage instead of an item; it renders on the passage card, from the same card model and the same host surface.",
 			"The bundled clip is a real public-domain ASL recording that does not sign these prompts — a stand-in, since ASL video production and hosting are host-owned. See `static/demo-assets/sign-language/README.md`.",
@@ -917,6 +917,22 @@ export const sectionDemos: Record<string, SectionDemoInfo> = {
 			"Includes one passage and at least three items to validate tab navigation end-to-end.",
 			"Uses dedicated bookmarkable subroutes: `/tabbed-layout/tabbed` and `/tabbed-layout/splitpane-tabbed-collapse`.",
 			"Provides both direct `pie-section-player-tabbed` and splitpane tabbed-collapse behavior without query-param toggling.",
+		],
+		section: demo6Section,
+	},
+	"custom-layout": {
+		id: "custom-layout",
+		name: "Custom Layout",
+		description:
+			"A host-built layout: the kernel host with the items pane on the left and the passages pane on the right",
+		integrationLevel: 4,
+		integrationTheme: "Host-built section layout",
+		focus:
+			"Shows a section layout a host builds from `<pie-section-player-kernel-host>` and the two panes, with no stock layout element involved.",
+		whatMakesItTick: [
+			"The kernel host runs the section; its children are the layout, so the stock body steps aside.",
+			"`<pie-section-player-items-pane>` and `<pie-section-player-passages-pane>` take everything they render from the kernel host, so they carry no attributes.",
+			"The page's own CSS sizes the kernel host and arranges the panes in two scrolling columns.",
 		],
 		section: demo6Section,
 	},

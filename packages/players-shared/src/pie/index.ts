@@ -132,7 +132,11 @@ export type {
 } from "./session-snapshot.js";
 // Logging
 export type { PieLogger } from "./logger.js";
-export { createPieLogger, isGlobalDebugEnabled } from "./logger.js";
+export {
+	createPieLogger,
+	isGlobalDebugEnabled,
+	isTtsDebugEnabled,
+} from "./logger.js";
 // Registry
 export { pieRegistry } from "./registry.js";
 // Scoring

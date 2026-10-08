@@ -17,6 +17,12 @@ This contract defines the minimum runtime guarantees between host components
   nothing the toolkit counts. A tool that connects and discards the value buys a
   retry timer and nothing else, so a tool taking everything it needs through the
   params seam does not connect.
+- The runtime context is the one channel to the toolkit's services. A tool
+  element declares no prop carrying a coordinator, the TTS service, the
+  highlight coordinator, the catalog resolver or the element tool state store,
+  and a registration assigns none onto the element it creates. A tool starts its
+  provider with `toolkitCoordinator.ensureProviderReady(baseToolId)`: providers
+  register under their tool's id.
 - Shell-aware tools must consume `assessmentToolkitShellContext`, and
   region-aware tools `assessmentToolkitRegionScopeContext`. Both carry scope a
   tool cannot obtain another way, so for those the requirement is unconditional.

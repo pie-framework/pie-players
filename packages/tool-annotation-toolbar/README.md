@@ -39,16 +39,14 @@ A text selection toolbar for highlighting and annotating text in PIE assessment 
 
 ## Props
 
-The strip shows itself when text is selected and hides when the selection is cleared or Escape is pressed. What it needs from its host is the services it annotates and reads with, and the actions it should offer on a selection.
+The strip shows itself when text is selected and hides when the selection is cleared or Escape is pressed. It records annotations through the toolkit runtime context's `highlightCoordinator` and offers read-aloud when that context carries a `ttsService`; without a highlight coordinator the highlight controls no-op.
 
-| Name                  | Attribute | Type                    | Notes                                                                     |
-| --------------------- | --------- | ----------------------- | ------------------------------------------------------------------------- |
-| `enabled`             | `enabled` | boolean                 | Defaults to `true`; `false` stops it reacting to selections.              |
-| `highlightCoordinator`| —         | object                  | Where annotations are recorded. Without one the highlight controls no-op. |
-| `ttsService`          | —         | object                  | Read-aloud is offered only when present.                                  |
-| `selectionActions`    | —         | `ToolSelectionAction[]` | Host-supplied actions on the current selection. See below.               |
+| Name               | Attribute | Type                    | Notes                                                        |
+| ------------------ | --------- | ----------------------- | ------------------------------------------------------------ |
+| `enabled`          | `enabled` | boolean                 | Defaults to `true`; `false` stops it reacting to selections. |
+| `selectionActions` | —         | `ToolSelectionAction[]` | Host-supplied actions on the current selection. See below.   |
 
-Under `<pie-assessment-toolkit>` all four are supplied by the capability's registration, so a host mounting the strip through the toolkit passes nothing.
+Under `<pie-assessment-toolkit>` both are supplied by the capability's registration, so a host mounting the strip through the toolkit passes nothing.
 
 ### Selection actions
 

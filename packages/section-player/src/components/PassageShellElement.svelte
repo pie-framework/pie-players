@@ -17,7 +17,6 @@
 <script lang="ts">
 	import {
 		createShellScope,
-		dispatchCrossBoundaryEvent,
 		type TTSHighlightTargetResolver,
 	} from "@pie-players/pie-assessment-toolkit";
 	import { createShellEventBridge } from "@pie-players/pie-assessment-toolkit/runtime/internal";
@@ -57,13 +56,12 @@
 	 */
 	$effect(() => {
 		if (!host) return;
-		const bridgeHost = host;
 		const bridge = createShellEventBridge({
-			host: bridgeHost,
+			host,
 			kind: "passage",
 			identity: () => ({ itemId, canonicalItemId, contentKind }),
 			mode: () => "section",
-			send: (type, detail) => dispatchCrossBoundaryEvent(bridgeHost, type, detail),
+			send: scope.send,
 		});
 		return () => {
 			try {

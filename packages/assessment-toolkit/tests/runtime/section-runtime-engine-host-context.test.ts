@@ -10,17 +10,15 @@
  *     `context-request` with an engine value, the helper's
  *     `onValue` listener fires synchronously on connect.
  *   - **Standalone path.** When no provider answers, the helper
- *     stays unresolved (the retry interval bounds the wait at ~10 s;
- *     this test asserts no synchronous fire and tears down well
- *     before that bound).
+ *     stays unresolved; this test asserts no synchronous fire.
  *   - **Late provider attach.** A consumer that connects before any
  *     provider attaches still resolves once a `context-provider`
  *     announcement is dispatched on the host, exercising the
  *     `context-provider` re-request path.
  *   - **Resubscribe.** A subscriber that is re-fed a new value via
  *     the existing subscription callback receives every emission.
- *   - **Cleanup.** The disconnect callback removes the listener and
- *     clears the retry interval (no late callbacks after teardown).
+ *   - **Cleanup.** The disconnect callback removes the listener (no
+ *     late callbacks after teardown).
  *
  * The cross-CE bubbling path itself (consumer host → ancestor
  * provider host) is owned by `@pie-players/pie-context`'s own test

@@ -73,6 +73,7 @@ function catalogsOf(identity: ShellRegistrationIdentity): string | null {
 function dispatch(
 	eventName: string,
 	identity: ShellRegistrationIdentity,
+	runtimeId: string | undefined,
 ): void {
 	const detail: RuntimeRegistrationDetail = {
 		kind: identity.kind,
@@ -81,6 +82,7 @@ function dispatch(
 		contentKind: identity.contentKind,
 		item: identity.item,
 		element: identity.host,
+		...(runtimeId ? { runtimeId } : {}),
 	};
 	dispatchCrossBoundaryEvent(identity.host, eventName, detail);
 }
@@ -92,16 +94,18 @@ export type ShellRegistrationDispatcher = {
 	 * or an id no longer stands for content, and leaving its registration behind
 	 * would strand it in the runtime.
 	 *
-	 * Never dispatches `pie-unregister` before a re-register: both registration
-	 * paths in the toolkit are keyed by element and replace what is there, so the
-	 * unregister only ever created the gap.
+	 * Never dispatches `pie-unregister` before a re-register to the same
+	 * runtime: both registration paths in the toolkit are keyed by element and
+	 * replace what is there, so the unregister only ever created the gap. A
+	 * registration moving to a different `runtimeId` is retired first, addressed
+	 * to the runtime that holds it.
 	 */
-	sync: (identity: ShellRegistrationIdentity | null) => void;
+	sync: (identity: ShellRegistrationIdentity | null, runtimeId?: string) => void;
 	/**
-	 * Retire the live registration, replaying the identity it was made under
-	 * rather than whatever the props say now — by the time a registration is
-	 * retired the props may already describe its replacement, and unregistering
-	 * under the new identity would leave the old one live.
+	 * Retire the live registration, replaying the identity and runtime it was
+	 * made under rather than whatever the props say now — by the time a
+	 * registration is retired the props may already describe its replacement,
+	 * and unregistering under the new identity would leave the old one live.
 	 *
 	 * Belongs in a teardown that runs on teardown only. Attaching it to an effect
 	 * that re-runs on prop changes is what made the churn.
@@ -118,20 +122,27 @@ export function createShellRegistrationDispatcher(): ShellRegistrationDispatcher
 	 */
 	let dispatched: ShellRegistrationIdentity | null = null;
 	let dispatchedCatalogs: string | null = null;
+	let dispatchedRuntimeId: string | undefined;
 
 	function retire(): void {
 		const previous = dispatched;
 		if (!previous) return;
+		const previousRuntimeId = dispatchedRuntimeId;
 		dispatched = null;
 		dispatchedCatalogs = null;
-		dispatch(PIE_UNREGISTER_EVENT, previous);
+		dispatchedRuntimeId = undefined;
+		dispatch(PIE_UNREGISTER_EVENT, previous, previousRuntimeId);
 	}
 
-	function sync(identity: ShellRegistrationIdentity | null): void {
+	function sync(
+		identity: ShellRegistrationIdentity | null,
+		runtimeId?: string,
+	): void {
 		if (!identity) {
 			retire();
 			return;
 		}
+		if (dispatched && dispatchedRuntimeId !== runtimeId) retire();
 		if (dispatched && sameOwner(dispatched, identity)) {
 			// A re-render re-applies the object last seen, so identity settles most
 			// runs without serializing anything.
@@ -143,12 +154,13 @@ export function createShellRegistrationDispatcher(): ShellRegistrationDispatcher
 			}
 			dispatched = identity;
 			dispatchedCatalogs = catalogs;
-			dispatch(PIE_REGISTER_EVENT, identity);
+			dispatch(PIE_REGISTER_EVENT, identity, runtimeId);
 			return;
 		}
 		dispatched = identity;
 		dispatchedCatalogs = catalogsOf(identity);
-		dispatch(PIE_REGISTER_EVENT, identity);
+		dispatchedRuntimeId = runtimeId;
+		dispatch(PIE_REGISTER_EVENT, identity, runtimeId);
 	}
 
 	return { sync, retire };

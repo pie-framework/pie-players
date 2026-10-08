@@ -1,10 +1,10 @@
 import {
 	ContextProvider,
-	ContextRoot,
 	type ContextType,
 	type UnknownContext,
 } from "@pie-players/pie-context";
 import {
+	type AssessmentToolkitHostRuntimeContext,
 	type AssessmentToolkitRegionScopeContext,
 	type AssessmentToolkitShellContext,
 	assessmentToolkitRegionScopeContext,
@@ -21,6 +21,7 @@ import {
 	createShellRegistrationDispatcher,
 	type ShellRegistrationIdentity,
 } from "./shell-registration.js";
+import { dispatchCrossBoundaryEvent } from "./tool-host-contract.js";
 
 /** What a shell says about the content it holds. */
 export interface ShellScopeState {
@@ -48,13 +49,23 @@ export interface ShellScope {
 	 * Teardown only, after anything that still has to reach the runtime.
 	 */
 	retire: () => void;
-	/** Stops providing the contexts. */
+	/** Stops providing the contexts, and drops the events `send` holds. */
 	disconnect: () => void;
+	/**
+	 * Dispatches `type` from the shell host with the id of the runtime that
+	 * answered the scope in its detail, so that runtime claims it by id. Events
+	 * sent before a runtime has answered are held, the newest
+	 * {@link MAX_HELD_SHELL_EVENTS}, and delivered in order once one does.
+	 * `disconnect` and `publish(null)` drop them.
+	 */
+	send: (type: string, detail: object) => void;
 }
+
+/** Only load and error events are sent before a runtime answers. */
+const MAX_HELD_SHELL_EVENTS = 50;
 
 type Provided<C extends UnknownContext> = {
 	provider: ContextProvider<C>;
-	root: ContextRoot;
 	value: ContextType<C>;
 };
 
@@ -65,9 +76,7 @@ function provide<C extends UnknownContext>(
 ): Provided<C> {
 	const provider = new ContextProvider(host, { context, initialValue: value });
 	provider.connect();
-	const root = new ContextRoot(host);
-	root.attach();
-	return { provider, root, value };
+	return { provider, value };
 }
 
 function republish<C extends UnknownContext>(
@@ -135,10 +144,14 @@ const setAttributeIfChanged = (
  * registration applies.
  *
  * The registration waits for the runtime the shell sits in to answer through
- * `assessmentToolkitHostRuntimeContext`, the context the runtime claims a
- * registration by. A shell mounted before its toolkit, which a host composing
- * the elements itself can do, would otherwise register with no one listening,
- * and nothing replays a registration.
+ * `assessmentToolkitHostRuntimeContext`, and carries that runtime's id, which
+ * the runtime claims it by. A shell mounted before its toolkit, which a host
+ * composing the elements itself can do, would otherwise register with no one
+ * listening, and nothing replays a registration. The document's context root
+ * replays the request instead, once the toolkit's provider connects. A
+ * different runtime answering later, a nearer toolkit taking over, moves the
+ * registration: the old runtime is told to unregister by its id, and the new
+ * one gets the registration.
  */
 export function createShellScope(): ShellScope {
 	const registration = createShellRegistrationDispatcher();
@@ -148,21 +161,40 @@ export function createShellScope(): ShellScope {
 	let region: Provided<typeof assessmentToolkitRegionScopeContext> | null =
 		null;
 	let stopFindingRuntime: (() => void) | null = null;
-	let runtimeFound = false;
+	let runtimeId: string | null = null;
 	let identity: ShellRegistrationIdentity | null = null;
+	let held: Array<{ type: string; detail: object }> = [];
 
 	const syncRegistration = () => {
-		if (runtimeFound) registration.sync(identity);
+		if (runtimeId !== null) registration.sync(identity, runtimeId);
 	};
 
-	function disconnect(): void {
-		for (const provided of [shell, region]) {
-			provided?.root.detach();
-			provided?.provider.disconnect();
+	function send(type: string, detail: object): void {
+		if (host && runtimeId !== null) {
+			dispatchCrossBoundaryEvent(host, type, { ...detail, runtimeId });
+			return;
 		}
+		held.push({ type, detail });
+		if (held.length > MAX_HELD_SHELL_EVENTS) held.shift();
+	}
+
+	// The subscription re-answers whenever the runtime republishes its context,
+	// so only a different id means anything here.
+	function onRuntime(value: AssessmentToolkitHostRuntimeContext): void {
+		if (value.runtimeId === runtimeId) return;
+		runtimeId = value.runtimeId;
+		syncRegistration();
+		const pending = held;
+		held = [];
+		for (const event of pending) send(event.type, event.detail);
+	}
+
+	function disconnect(): void {
+		for (const provided of [shell, region]) provided?.provider.disconnect();
 		stopFindingRuntime?.();
 		stopFindingRuntime = null;
-		runtimeFound = false;
+		runtimeId = null;
+		held = [];
 		identity = null;
 		shell = null;
 		region = null;
@@ -220,14 +252,10 @@ export function createShellScope(): ShellScope {
 		// Answers at once when the runtime is already there.
 		stopFindingRuntime ??= connectAssessmentToolkitHostRuntimeContext(
 			host,
-			() => {
-				if (runtimeFound) return;
-				runtimeFound = true;
-				syncRegistration();
-			},
+			onRuntime,
 		);
 		syncRegistration();
 	}
 
-	return { publish, retire: registration.retire, disconnect };
+	return { publish, retire: registration.retire, disconnect, send };
 }

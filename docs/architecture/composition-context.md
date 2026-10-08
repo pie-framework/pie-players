@@ -239,12 +239,16 @@ When you find a fact that only the container knows:
 5. Keep the authored side structural. Authors express what a thing is; containers
    decide where it sits.
 
-Within our own packages, `@pie-players/pie-context` is the mechanism — a typed
-context protocol with real subscription. See
-[`developer_patterns.md`](./developer_patterns.md) under CE Communication
-Patterns. PIE elements cannot use it, being framework-agnostic third-party
-bundles, so for them the mechanism is a property with a reflected attribute and a
-`MutationObserver`. The mechanism differs; the pattern and the invariants do not.
+`@pie-players/pie-context` is the mechanism — a typed context protocol with real
+subscription. See [`developer_patterns.md`](./developer_patterns.md) under CE
+Communication Patterns. PIE elements use the same protocol
+([ADR 0003](../adr/0003-elements-read-accessibility-settings-from-a-host-neutral-context.md)):
+an element requests a `Symbol.for` key with `subscribe: true`, needs no context
+root of its own, and reads an unanswered request as the host providing nothing,
+so it keeps its defaults and does not wait. Facts that reach elements through
+the player, such as the heading level above, use a property with a reflected
+attribute and a `MutationObserver`. The mechanism differs; the pattern and the
+invariants do not.
 
 ## References
 

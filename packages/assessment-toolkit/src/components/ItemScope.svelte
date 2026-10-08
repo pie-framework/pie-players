@@ -29,7 +29,6 @@
 	import { warnOncePerDocument } from "../runtime/page-warnings.js";
 	import { createShellEventBridge } from "../runtime/shell-event-bridge.js";
 	import { createShellScope } from "../runtime/shell-scope.js";
-	import { dispatchCrossBoundaryEvent } from "../runtime/tool-host-contract.js";
 	import type { TTSHighlightTargetResolver } from "../services/tts/highlight-target-resolver.js";
 
 	const NO_TOOLKIT_WARNING_DELAY_MS = 10_000;
@@ -80,8 +79,7 @@
 			kind: "item",
 			identity: () => ({ itemId, canonicalItemId, contentKind }),
 			mode: () => (sectionBound ? "section" : "plain"),
-			send: (type, detail) =>
-				dispatchCrossBoundaryEvent(scopeHost, type, detail),
+			send: scope.send,
 		});
 		return () => {
 			clearTimeout(noToolkitTimer);

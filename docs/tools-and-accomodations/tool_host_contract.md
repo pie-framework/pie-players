@@ -27,8 +27,9 @@ Use contract helpers exported from `@pie-players/pie-assessment-toolkit`:
 - `connectToolShellContext(host, onValue)`
 - `connectToolRegionScopeContext(host, onValue)`
 
-These helpers include provider-announcement handling and retry behavior so late
-provider registration is tolerated.
+These helpers subscribe, so a provider that registers late answers through the
+document's context root, which replays the request when the provider announces
+itself.
 
 ## Event Semantics
 
@@ -58,9 +59,14 @@ A shell publishes the content it holds: its identity as
 the content's accessibility catalogs under. `<pie-item-shell>` and
 `<pie-passage-shell>` publish it in section player cards, and
 `<pie-item-scope>` around a plain item player, all through `createShellScope`.
-A shell registers once `assessmentToolkitHostRuntimeContext` answers, the
-context the toolkit claims a registration by, so a shell may mount before its
-toolkit.
+A shell registers once `assessmentToolkitHostRuntimeContext` answers, so a
+shell may mount before its toolkit. The registration carries the answering
+toolkit's `runtimeId`, and a toolkit claims an event carrying a `runtimeId` only
+when the id is its own; one without falls back to the runtime its target
+resolves. A nearer toolkit answering later moves the registration: the old
+toolkit gets a `pie-unregister` addressed to its id. `send(type, detail)`
+addresses any other shell event the same way, holding up to 50 until a toolkit
+answers.
 
 ## Host / Overlay Root Contract
 

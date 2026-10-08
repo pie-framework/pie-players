@@ -126,10 +126,10 @@
 	import {
 		clampNarrowBreakpoint,
 		createNarrowLayoutWatch,
-		getShellHostElement,
 		resolveConfiguredPx,
 		resolveContentMaxWidths,
 	} from "./shared/section-player-shell-layout.svelte.js";
+	import { getHostElementFromAnchor } from "./shared/host-element.js";
 
 	const SPLIT_PANE_MIN_REGION_MIN_PX = 160;
 	const SPLIT_PANE_MIN_REGION_MAX_PX = 1200;
@@ -318,7 +318,7 @@
 	// top-level prop and `runtime` verbatim and the resolver picks
 	// `runtime.onFrameworkError` over `onFrameworkError`.
 
-	const hostElement = $derived.by(() => getShellHostElement(anchor));
+	const hostElement = $derived.by(() => getHostElementFromAnchor(anchor));
 
 
 	$effect(() => {
@@ -476,29 +476,15 @@
 		{#if normalizedCollapseStrategy === "tabbed"}
 			<SectionPlayerTabbedContent
 				{layoutModel}
-				itemToolbarTools={layoutModel.itemToolbarTools}
-				passageToolbarTools={layoutModel.passageToolbarTools}
 				contentMaxWidthNoPassagePx={configuredContentMaxWidthNoPassagePx}
 				contentMaxWidthWithPassagePx={configuredContentMaxWidthWithPassagePx}
-				toolRegistry={layoutModel.toolRegistry}
-				itemHostButtons={layoutModel.itemHostButtons}
-				passageHostButtons={layoutModel.passageHostButtons}
-				{iifeBundleHost}
-				preloadComponentTag="pie-section-player-splitpane"
 				idBase={`${paneIdBase}-tabbed`}
 			/>
 		{:else}
 			<SectionPlayerVerticalContent
 				{layoutModel}
-				itemToolbarTools={layoutModel.itemToolbarTools}
-				passageToolbarTools={layoutModel.passageToolbarTools}
 				contentMaxWidthNoPassagePx={configuredContentMaxWidthNoPassagePx}
 				contentMaxWidthWithPassagePx={configuredContentMaxWidthWithPassagePx}
-				toolRegistry={layoutModel.toolRegistry}
-				itemHostButtons={layoutModel.itemHostButtons}
-				passageHostButtons={layoutModel.passageHostButtons}
-				{iifeBundleHost}
-				preloadComponentTag="pie-section-player-vertical"
 			/>
 		{/if}
 	{:else}
@@ -527,19 +513,7 @@
 						class="pie-section-player-passages-pane"
 						aria-label={interfaceI18n.t("player.passagesRegionA11y")}
 					>
-						<pie-section-player-passages-pane
-							compositionModel={layoutModel.compositionModel}
-							passages={layoutModel.passages}
-							elementsLoaded={layoutModel.paneElementsLoaded}
-							resolvedPlayerEnv={layoutModel.resolvedPlayerEnv}
-							resolvedPlayerAttributes={layoutModel.resolvedPlayerAttributes}
-							resolvedPlayerProps={layoutModel.resolvedPlayerProps}
-							baseHeadingLevel={layoutModel.baseHeadingLevel}
-							playerStrategy={layoutModel.playerStrategy}
-							passageToolbarTools={layoutModel.passageToolbarTools}
-							toolRegistry={layoutModel.toolRegistry}
-							hostButtons={layoutModel.passageHostButtons}
-						></pie-section-player-passages-pane>
+						<pie-section-player-passages-pane></pie-section-player-passages-pane>
 					</aside>
 
 					<SectionSplitDivider
@@ -559,26 +533,7 @@
 					class="pie-section-player-items-pane"
 					aria-label={interfaceI18n.t("player.itemsRegionA11y")}
 				>
-					<pie-section-player-items-pane
-						items={layoutModel.items}
-						compositionModel={layoutModel.compositionModel}
-						resolvedPlayerEnv={layoutModel.resolvedPlayerEnv}
-						resolvedPlayerAttributes={layoutModel.resolvedPlayerAttributes}
-						resolvedPlayerProps={layoutModel.resolvedPlayerProps}
-						baseHeadingLevel={layoutModel.baseHeadingLevel}
-						playerStrategy={layoutModel.playerStrategy}
-						itemToolbarTools={layoutModel.itemToolbarTools}
-						toolRegistry={layoutModel.toolRegistry}
-						hostButtons={layoutModel.itemHostButtons}
-						iifeBundleHost={iifeBundleHost}
-						preloadedRenderables={layoutModel.preloadedRenderables}
-						preloadedRenderablesSignature={layoutModel.preloadedRenderablesSignature}
-						preloadComponentTag="pie-section-player-splitpane"
-						preloadEnabled={layoutModel.preloadEnabled}
-						onelements-loaded-change={layoutModel.onItemsPaneElementsLoaded}
-						onelement-preload-retry={layoutModel.onItemsPanePreloadRetry}
-						onelement-preload-error={layoutModel.onItemsPanePreloadError}
-					></pie-section-player-items-pane>
+					<pie-section-player-items-pane></pie-section-player-items-pane>
 				</main>
 			</div>
 		</div>

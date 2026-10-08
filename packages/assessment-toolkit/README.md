@@ -1607,9 +1607,12 @@ fires once per cohort, when every item has loaded.
 
 ### Common-host wiring example
 
-Most hosts never construct the engine: the section-player layout elements do.
-Use the facade only when building an alternate layout shell. The shape mirrors
-the section-player kernel:
+Most hosts never construct the engine: the section-player layout elements do,
+and a host-built section layout takes its engine from
+`pie-section-player-kernel-host` (see the section player's
+[Custom layout authoring](../section-player/README.md#custom-layout-authoring)).
+Use the facade for a section renderer outside the section player. The shape
+mirrors the section-player kernel:
 
 ```ts
 import {

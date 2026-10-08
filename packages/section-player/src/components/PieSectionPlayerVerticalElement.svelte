@@ -121,9 +121,9 @@
 	import {
 		clampNarrowBreakpoint,
 		createNarrowLayoutWatch,
-		getShellHostElement,
 		resolveContentMaxWidths,
 	} from "./shared/section-player-shell-layout.svelte.js";
+	import { getHostElementFromAnchor } from "./shared/host-element.js";
 
 
 	let {
@@ -187,7 +187,7 @@
 	// top-level prop and `runtime` verbatim and the resolver picks
 	// `runtime.onFrameworkError` over `onFrameworkError`.
 
-	const hostElement = $derived.by(() => getShellHostElement(anchor));
+	const hostElement = $derived.by(() => getHostElementFromAnchor(anchor));
 
 	const clampedBreakpoint = $derived(
 		clampNarrowBreakpoint(narrowLayoutBreakpoint),
@@ -304,15 +304,8 @@
 >
 	<SectionPlayerVerticalContent
 		{layoutModel}
-		itemToolbarTools={layoutModel.itemToolbarTools}
-		passageToolbarTools={layoutModel.passageToolbarTools}
 		contentMaxWidthNoPassagePx={configuredContentMaxWidthNoPassagePx}
 		contentMaxWidthWithPassagePx={configuredContentMaxWidthWithPassagePx}
-		toolRegistry={layoutModel.toolRegistry}
-		itemHostButtons={layoutModel.itemHostButtons}
-		passageHostButtons={layoutModel.passageHostButtons}
-		{iifeBundleHost}
-		preloadComponentTag="pie-section-player-vertical"
 	/>
 </SectionPlayerLayoutKernel>
 

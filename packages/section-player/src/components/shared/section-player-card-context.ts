@@ -17,17 +17,6 @@ export const sectionPlayerCardRenderContext =
 		Symbol.for("@pie-players/pie-section-player/card-render-context"),
 	);
 
-export function getHostElementFromAnchor(
-	anchor: HTMLElement | null,
-): HTMLElement | null {
-	if (!anchor) return null;
-	const rootNode = anchor.getRootNode();
-	if (rootNode && "host" in rootNode) {
-		return (rootNode as ShadowRoot).host as HTMLElement;
-	}
-	return anchor.parentElement as HTMLElement | null;
-}
-
 export function connectSectionPlayerCardRenderContext(
 	host: HTMLElement,
 	onValue: (value: SectionPlayerCardRenderContext) => void,

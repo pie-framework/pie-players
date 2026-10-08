@@ -51,6 +51,16 @@
 	} from "@pie-players/pie-assessment-toolkit/runtime/engine";
 	import { attachRuntimeCallbackBridge } from "./section-player-runtime-callbacks.js";
 	import type { SectionPlayerCardRenderContext } from "./section-player-card-context.js";
+	import {
+		createSectionPlayerPaneRegistry,
+		type SectionPlayerLayoutContext,
+		type SectionPlayerPaneKind,
+		type SectionPlayerPaneReport,
+	} from "./section-player-layout-context.js";
+	import type {
+		ElementPreloadErrorDetail,
+		ElementPreloadRetryDetail,
+	} from "./player-preload.js";
 	import { coerceBooleanLike } from "@pie-players/pie-players-shared";
 	import { createReadinessDetail } from "@pie-players/pie-assessment-toolkit/runtime/engine";
 	import SectionPlayerLayoutScaffold from "./SectionPlayerLayoutScaffold.svelte";
@@ -128,7 +138,8 @@
 		onLoadingComplete = undefined as LoadingCompleteHandler | undefined,
 		// `sourceCe` is the host layout CE's tag name (without the
 		// `--version-<encoded>` suffix) used to label `pie-stage-change`
-		// emissions. Each layout CE that mounts the kernel passes its own
+		// emissions and the items pane's preload reports. Each layout CE that
+		// mounts the kernel passes its own
 		// canonical tag name; defaults to `pie-section-player` so kernel
 		// instantiations in tests/demos still produce well-formed events.
 		sourceCe = "pie-section-player" as string,
@@ -164,15 +175,23 @@
 	let compositionSnapshot = $state<LayoutCompositionSnapshot>(
 		deriveLayoutCompositionSnapshot(EMPTY_COMPOSITION),
 	);
-	// The items pane reports whether its element pre-warm has resolved, with the
-	// renderables signature the report was made for. It counts only for the
-	// composition the kernel holds, and only once the toolkit has published one:
-	// before that the pane renders no items and reports its empty pre-warm as
+	// The active items pane reports whether its element pre-warm has resolved,
+	// with the renderables signature the report was made for. It counts only for
+	// the composition the kernel holds, and only once the toolkit has published
+	// one: before that the pane renders no items and reports its empty pre-warm as
 	// resolved.
-	let paneReport = $state<{
-		elementsLoaded: boolean;
-		renderablesSignature: string;
-	} | null>(null);
+	let paneReport = $state<SectionPlayerPaneReport | null>(null);
+	// The panes under this player's layout element, which register through the
+	// layout context. One of each kind renders.
+	let activePanes = $state.raw<Record<SectionPlayerPaneKind, Element | null>>({
+		items: null,
+		passages: null,
+	});
+	const paneRegistry = createSectionPlayerPaneRegistry({
+		onChange: (active) => {
+			activePanes = active;
+		},
+	});
 	let compositionReceived = $state(false);
 	let scaffoldRef = $state<{
 		navigateToItem?: (index: number) => boolean;
@@ -251,7 +270,8 @@
 	// custom elements still consume these as comma-separated strings
 	// (the `<pie-item-toolbar tools="...">` attribute), so the kernel
 	// joins the canonical placement arrays back into strings and
-	// exposes them via the slot. Hosts populate `runtime.tools.placement`.
+	// publishes them in the layout context. Hosts populate
+	// `runtime.tools.placement`.
 	const effectiveSectionToolbarTools = $derived.by(() => {
 		const tools = effectiveToolsConfig as
 			| { placement?: { section?: unknown } }
@@ -318,30 +338,62 @@
 			reason: `policy:${effectivePolicies.readiness.mode}`,
 		}),
 	);
+	const layoutContextValue = $derived.by(
+		(): SectionPlayerLayoutContext => ({
+			componentTag: sourceCe,
+			items,
+			passages,
+			compositionModel,
+			preloadedRenderables,
+			preloadedRenderablesSignature,
+			preloadEnabled,
+			resolvedPlayerEnv,
+			resolvedPlayerAttributes,
+			resolvedPlayerProps: effectiveResolvedPlayerProps,
+			playerStrategy,
+			baseHeadingLevel: resolvedBaseHeadingLevel,
+			iifeBundleHost: iifeBundleHost ?? null,
+			toolRegistry: effectiveToolRegistry,
+			itemToolbarTools: effectiveItemToolbarTools,
+			passageToolbarTools: effectivePassageToolbarTools,
+			itemHostButtons,
+			passageHostButtons,
+			elementsLoaded: paneElementsLoaded,
+			activePanes,
+			registerPane: paneRegistry.register,
+			reportElementsLoaded: handleItemsPaneElementsLoaded,
+			reportPreloadRetry: handleItemsPanePreloadRetry,
+			reportPreloadError: handleItemsPanePreloadError,
+		}),
+	);
 
 	function handleBaseCompositionChanged(event: Event) {
 		compositionSnapshot = getCompositionSnapshotFromEvent(event);
 		compositionReceived = true;
 	}
 
-	function handleItemsPaneElementsLoaded(event: Event) {
-		const detail = (
-			event as CustomEvent<{
-				elementsLoaded?: unknown;
-				renderablesSignature?: unknown;
-			}>
-		).detail;
+	// Read from the registry, which a registration updates synchronously, so a
+	// pane's first report after it takes over is not dropped.
+	function isActiveItemsPane(pane: Element): boolean {
+		return paneRegistry.active().items === pane;
+	}
+
+	function handleItemsPaneElementsLoaded(
+		pane: Element,
+		report: SectionPlayerPaneReport,
+	) {
+		if (!isActiveItemsPane(pane)) return;
 		paneReport = {
-			elementsLoaded: detail?.elementsLoaded === true,
-			renderablesSignature:
-				typeof detail?.renderablesSignature === "string"
-					? detail.renderablesSignature
-					: "",
+			elementsLoaded: report.elementsLoaded === true,
+			renderablesSignature: report.renderablesSignature,
 		};
 	}
 
-	function handleItemsPanePreloadRetry(event: Event) {
-		const detail = (event as CustomEvent<Record<string, unknown>>).detail || {};
+	function handleItemsPanePreloadRetry(
+		pane: Element,
+		detail: ElementPreloadRetryDetail,
+	) {
+		if (!isActiveItemsPane(pane)) return;
 		dispatch(
 			"element-preload-retry",
 			{
@@ -353,8 +405,11 @@
 		);
 	}
 
-	function handleItemsPanePreloadError(event: Event) {
-		const detail = (event as CustomEvent<Record<string, unknown>>).detail || {};
+	function handleItemsPanePreloadError(
+		pane: Element,
+		detail: ElementPreloadErrorDetail,
+	) {
+		if (!isActiveItemsPane(pane)) return;
 		dispatch(
 			"element-preload-error",
 			{
@@ -531,6 +586,25 @@
 	//      so the engine can re-derive `EngineReadinessDetail`,
 	//      advance the phase to `interactive`, and emit
 	//      `loading-complete` exactly once per cohort.
+	// A layout with no items pane leaves the items unrendered and readiness short
+	// of `interactive`. Checked a task after the section is ready with items, so a
+	// layout that mounts or swaps its pane after the composition arrives is not
+	// reported.
+	let missingItemsPaneReported = false;
+	$effect(() => {
+		if (!sectionReady || !compositionReceived) return;
+		if (items.length === 0 || activePanes.items) return;
+		const itemCount = items.length;
+		const handle = setTimeout(() => {
+			if (missingItemsPaneReported || paneRegistry.active().items) return;
+			missingItemsPaneReported = true;
+			console.warn(
+				`[pie-section-player] The section has ${itemCount} item(s) and no <pie-section-player-items-pane> inside <${sourceCe}>, so no item renders and pie-loading-complete does not fire. Reported once per section player.`,
+			);
+		}, 0);
+		return () => clearTimeout(handle);
+	});
+
 	// Each cohort's content starts clean. Declared ahead of the engine driver, so
 	// the driver reads the reset when the cohort rolls.
 	$effect(() => {
@@ -641,6 +715,7 @@
 		return () => {
 			untrack(() => {
 				engine.dispose();
+				paneRegistry.dispose();
 			});
 		};
 	});
@@ -663,53 +738,7 @@
 	toolRegistry={effectiveToolRegistry}
 	{sectionHostButtons}
 	cardRenderContext={cardRenderContextValue}
+	layoutContext={layoutContextValue}
 >
-	<slot
-		layoutModel={{
-			compositionModel,
-			passages,
-			items,
-			preloadedRenderables,
-			preloadedRenderablesSignature,
-			resolvedPlayerEnv,
-			resolvedPlayerAttributes,
-			resolvedPlayerProps: effectiveResolvedPlayerProps,
-			playerStrategy,
-			baseHeadingLevel: resolvedBaseHeadingLevel,
-			iifeBundleHost,
-			paneElementsLoaded,
-			toolRegistry: effectiveToolRegistry,
-			itemHostButtons,
-			passageHostButtons,
-			readinessDetail,
-			preloadEnabled,
-			itemToolbarTools: effectiveItemToolbarTools,
-			passageToolbarTools: effectivePassageToolbarTools,
-			onItemsPaneElementsLoaded: handleItemsPaneElementsLoaded,
-			onItemsPanePreloadRetry: handleItemsPanePreloadRetry,
-			onItemsPanePreloadError: handleItemsPanePreloadError,
-		}}
-		{compositionModel}
-		{passages}
-		{items}
-		{preloadedRenderables}
-		{preloadedRenderablesSignature}
-		{resolvedPlayerEnv}
-		{resolvedPlayerAttributes}
-		resolvedPlayerProps={effectiveResolvedPlayerProps}
-		{playerStrategy}
-		baseHeadingLevel={resolvedBaseHeadingLevel}
-		{iifeBundleHost}
-		{paneElementsLoaded}
-		toolRegistry={effectiveToolRegistry}
-		{itemHostButtons}
-		{passageHostButtons}
-		{readinessDetail}
-		{preloadEnabled}
-		itemToolbarTools={effectiveItemToolbarTools}
-		passageToolbarTools={effectivePassageToolbarTools}
-		onItemsPaneElementsLoaded={handleItemsPaneElementsLoaded}
-		onItemsPanePreloadRetry={handleItemsPanePreloadRetry}
-		onItemsPanePreloadError={handleItemsPanePreloadError}
-	></slot>
+	<slot layoutModel={{ passages, paneElementsLoaded }}></slot>
 </SectionPlayerLayoutScaffold>

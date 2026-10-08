@@ -145,6 +145,7 @@ describe("TTSService telemetry", () => {
 			stop: () => {},
 			isPlaying: () => false,
 			isPaused: () => false,
+			updateSettings: () => {},
 		};
 		const service = new TTSService();
 		await service.initialize(new TelemetryMockProvider(impl), {
@@ -190,6 +191,7 @@ describe("TTSService telemetry", () => {
 			stop: () => {},
 			isPlaying: () => false,
 			isPaused: () => false,
+			updateSettings: () => {},
 		};
 		const service = new TTSService();
 		await service.initialize(new TelemetryMockProvider(impl), {
@@ -226,6 +228,7 @@ describe("TTSService telemetry", () => {
 			stop: () => {},
 			isPlaying: () => false,
 			isPaused: () => false,
+			updateSettings: () => {},
 		};
 		const service = new TTSService();
 		await service.initialize(new TelemetryMockProvider(failingServerImpl), {
@@ -320,6 +323,7 @@ describe("TTSService telemetry", () => {
 			stop: () => {},
 			isPlaying: () => false,
 			isPaused: () => false,
+			updateSettings: () => {},
 		};
 		const service = new TTSService();
 		await service.initialize(new TelemetryMockProvider(failingServerImpl), {
@@ -357,6 +361,7 @@ describe("TTSService telemetry", () => {
 			stop: () => {},
 			isPlaying: () => false,
 			isPaused: () => false,
+			updateSettings: () => {},
 		};
 		const service = new TTSService();
 		await service.initialize(new TelemetryMockProvider(failingServerImpl), {

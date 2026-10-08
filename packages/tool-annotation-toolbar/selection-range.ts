@@ -4,7 +4,7 @@ import {
 	isShadowRootNode,
 	resolveContentRegion,
 	retargetToTree,
-} from "@pie-players/pie-assessment-toolkit";
+} from "@pie-players/pie-assessment-toolkit/tools/registration";
 
 type ComposedRangesSelection = Selection & {
 	getComposedRanges?: (...args: unknown[]) => StaticRange[];

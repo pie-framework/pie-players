@@ -9,6 +9,10 @@
  * Part of PIE Assessment Toolkit.
  */
 
+import {
+	createPieLogger,
+	isTtsDebugEnabled,
+} from "@pie-players/pie-players-shared/pie";
 import type { ITTSProvider } from "@pie-players/pie-tts";
 import { BrowserTTSProvider } from "../../services/tts/browser-provider.js";
 import type {
@@ -19,6 +23,8 @@ import type {
 	ToolProviderApi,
 	ToolProviderCapabilities,
 } from "./ToolProviderApi.js";
+
+const logger = createPieLogger("tts-tool-provider", isTtsDebugEnabled);
 
 export type TTSBackend = NonNullable<TTSRuntimeSettings["backend"]>;
 
@@ -185,9 +191,7 @@ export class TTSToolProvider
 				throw new Error(`[TTSToolProvider] Unknown backend: ${config.backend}`);
 		}
 
-		console.log(
-			`[TTSToolProvider] Initialized successfully (backend: ${config.backend})`,
-		);
+		logger.debug(`initialized (backend: ${config.backend})`);
 	}
 
 	/**
@@ -204,7 +208,7 @@ export class TTSToolProvider
 		}
 
 		this.ttsProvider = new BrowserTTSProvider();
-		console.log("[TTSToolProvider] Browser TTS initialized (Web Speech API)");
+		logger.debug("browser TTS initialized (Web Speech API)");
 	}
 
 	/**
@@ -268,8 +272,8 @@ export class TTSToolProvider
 			>,
 		);
 
-		console.log(
-			`[TTSToolProvider] Server TTS initialized (provider: ${config.serverProvider || config.backend})`,
+		logger.debug(
+			`server TTS initialized (provider: ${config.serverProvider || config.backend})`,
 		);
 	}
 
@@ -295,24 +299,24 @@ export class TTSToolProvider
 	}
 
 	/**
-	 * Get provider capabilities
-	 *
-	 * @returns TTS capabilities based on backend
+	 * The backend's capabilities. Its features are the speech provider's own,
+	 * and all false before {@link initialize} creates it.
 	 */
 	getCapabilities(): ToolProviderCapabilities {
 		const isBrowser = this.config?.backend === "browser";
+		const speech = this.ttsProvider?.getCapabilities();
 
 		return {
 			supportsOffline: isBrowser,
 			requiresAuth: !isBrowser,
 			maxInstances: 1, // Single TTS instance (playback is sequential)
 			features: {
-				wordBoundary: true, // All backends support word highlighting
-				pause: true,
-				resume: true,
-				rateControl: true,
-				pitchControl: isBrowser, // Only browser supports pitch
-				voiceSelection: true,
+				wordBoundary: speech?.supportsWordBoundary ?? false,
+				pause: speech?.supportsPause ?? false,
+				resume: speech?.supportsResume ?? false,
+				rateControl: speech?.supportsRateControl ?? false,
+				pitchControl: speech?.supportsPitchControl ?? false,
+				voiceSelection: speech?.supportsVoiceSelection ?? false,
 			},
 		};
 	}
@@ -337,6 +341,6 @@ export class TTSToolProvider
 			this.ttsProvider = null;
 		}
 		this.config = null;
-		console.log("[TTSToolProvider] Destroyed");
+		logger.debug("destroyed");
 	}
 }

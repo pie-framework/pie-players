@@ -1,8 +1,10 @@
 <svelte:options
 	customElement={{
 		tag: "pie-section-player-kernel-host",
-		// Keep light DOM so item/passage runtime content can inherit host/page styles.
-		shadow: "none",
+		// The shadow root holds the player's chrome and one slot. The panes, and
+		// the item and passage content in them, stay in light DOM, where host and
+		// page styles reach them.
+		shadow: "open",
 		props: {
 			assessmentId: { attribute: "assessment-id", type: "String" },
 			runtime: { type: "Object", reflect: false },
@@ -46,7 +48,7 @@
 />
 
 <script lang="ts">
-	import { createEventDispatcher } from "svelte";
+	import { createEventDispatcher, mount, unmount } from "svelte";
 	import type {
 		FrameworkErrorModel,
 		ToolConfigStrictness,
@@ -62,6 +64,8 @@
 	import "./section-player-passages-pane-element.js";
 	import { isOwnSectionPlayerEvent } from "./shared/section-player-own-event.js";
 	import SectionPlayerLayoutKernel from "./shared/SectionPlayerLayoutKernel.svelte";
+	import SectionPlayerKernelHostBody from "./shared/SectionPlayerKernelHostBody.svelte";
+	import { attachKernelHostDefaultBody } from "./shared/kernel-host-default-body.js";
 	import {
 		BOOTSTRAP_READINESS,
 		BOOTSTRAP_READS,
@@ -80,7 +84,7 @@
 	} from "@pie-players/pie-assessment-toolkit/runtime/engine";
 	import type { SectionPlayerPolicies } from "../policies/types.js";
 	import { isTelemetryEnabled } from "../policies/index.js";
-	import { getShellHostElement } from "./shared/section-player-shell-layout.svelte.js";
+	import { getHostElementFromAnchor } from "./shared/host-element.js";
 
 	let {
 		assessmentId,
@@ -123,7 +127,7 @@
 		}),
 	);
 
-	const hostElement = $derived.by(() => getShellHostElement(anchor));
+	const hostElement = $derived.by(() => getHostElementFromAnchor(anchor));
 
 	export function getSnapshot(): SectionPlayerSnapshot {
 		return {
@@ -165,6 +169,18 @@
 		const customEvent = event as CustomEvent;
 		dispatch(customEvent.type, customEvent.detail);
 	}
+
+	// A host that places its own panes as children gets its layout; one that
+	// gives the element none gets the stock one.
+	$effect(() => {
+		if (!hostElement) return;
+		return attachKernelHostDefaultBody(hostElement, (target) => {
+			const body = mount(SectionPlayerKernelHostBody, { target });
+			return () => {
+				void unmount(body);
+			};
+		});
+	});
 
 	$effect(() => {
 		if (!hostElement) return;
@@ -226,91 +242,15 @@
 	{onFrameworkError}
 	{onStageChange}
 	{onLoadingComplete}
-	sourceCe="pie-section-player"
+	sourceCe="pie-section-player-kernel-host"
 	host={hostElement}
 	on:element-preload-retry={reemit}
 	on:element-preload-error={reemit}
-	let:items
-	let:passages
-	let:compositionModel
-	let:resolvedPlayerEnv
-	let:resolvedPlayerAttributes
-	let:resolvedPlayerProps
-	let:playerStrategy
-	let:baseHeadingLevel
-	let:preloadedRenderables
-	let:preloadedRenderablesSignature
-	let:preloadEnabled
-	let:itemToolbarTools
-	let:passageToolbarTools
-	let:toolRegistry={layoutToolRegistry}
-	let:readinessDetail
-	let:onItemsPaneElementsLoaded
-	let:onItemsPanePreloadRetry
-	let:onItemsPanePreloadError
 >
-	<div class="pie-section-player-kernel-host-content">
-		{#if passages.length > 0}
-			<pie-section-player-passages-pane
-				compositionModel={compositionModel}
-				{passages}
-				elementsLoaded={readinessDetail.allLoadingComplete}
-				{resolvedPlayerEnv}
-				{resolvedPlayerAttributes}
-				{resolvedPlayerProps}
-				{baseHeadingLevel}
-				{playerStrategy}
-				passageToolbarTools={passageToolbarTools}
-				toolRegistry={layoutToolRegistry}
-				hostButtons={passageHostButtons}
-			></pie-section-player-passages-pane>
-		{/if}
-		<pie-section-player-items-pane
-			{items}
-			{compositionModel}
-			{resolvedPlayerEnv}
-			{resolvedPlayerAttributes}
-			{resolvedPlayerProps}
-			{baseHeadingLevel}
-			{playerStrategy}
-			itemToolbarTools={itemToolbarTools}
-			toolRegistry={layoutToolRegistry}
-			hostButtons={itemHostButtons}
-			iifeBundleHost={iifeBundleHost}
-			preloadedRenderables={preloadedRenderables}
-			preloadedRenderablesSignature={preloadedRenderablesSignature}
-			preloadComponentTag="pie-section-player-kernel-host"
-			preloadEnabled={preloadEnabled}
-			onelements-loaded-change={onItemsPaneElementsLoaded}
-			onelement-preload-retry={onItemsPanePreloadRetry}
-			onelement-preload-error={onItemsPanePreloadError}
-		></pie-section-player-items-pane>
-	</div>
+	<slot></slot>
 </SectionPlayerLayoutKernel>
 
 <style>
-	:host {
-		display: block;
-		width: 100%;
-		height: 100%;
-		min-height: 0;
-		overflow: hidden;
-	}
-
-	.pie-section-player-kernel-host-content {
-		display: flex;
-		flex-direction: column;
-		gap: 1rem;
-		min-height: 0;
-		height: 100%;
-		padding: 0.5rem;
-		box-sizing: border-box;
-	}
-
-	pie-section-player-items-pane :global(.pie-section-player-scroll-hint) {
-	    bottom: -0.5rem;
-	}
-
 	.pie-section-player-observability-anchor {
 		display: none;
 	}

@@ -20,7 +20,7 @@ describe("correct-response env compatibility", () => {
 			custom: "x",
 		} as any;
 		const out = getCorrectResponseEnv(env);
-		expect(out).toEqual({
+		expect(out as unknown).toEqual({
 			mode: "gather",
 			role: "instructor",
 			partialScoring: true,

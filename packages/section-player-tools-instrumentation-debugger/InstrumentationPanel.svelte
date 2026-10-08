@@ -18,7 +18,7 @@
 	import {
 		type AssessmentToolkitRuntimeContext,
 		connectToolRuntimeContext,
-	} from "@pie-players/pie-assessment-toolkit";
+	} from "@pie-players/pie-assessment-toolkit/tools/registration";
 	import { resolveInterfaceI18n } from "@pie-players/pie-players-shared/i18n/provider";
 	import {
 		clearBufferedInstrumentationDebugRecords,

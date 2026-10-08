@@ -19,7 +19,7 @@ import {
 	test,
 } from "bun:test";
 
-import type { CatalogCard } from "@pie-players/pie-players-shared";
+import type { CatalogCard } from "@pie-players/pie-players-shared/types";
 import { AccessibilityCatalogResolver } from "../src/services/AccessibilityCatalogResolver";
 import { PlaybackState, TTSService } from "../src/services/TTSService";
 import type {
@@ -48,6 +48,7 @@ class MockTTSImpl implements ITTSProviderImplementation {
 	isPaused(): boolean {
 		return false;
 	}
+	updateSettings(): void {}
 }
 
 class MockTTSProvider implements ITTSProvider {
@@ -190,7 +191,7 @@ describe("recorded audio as a spoken alternate", () => {
 
 	test("keeps recorded-first playback loading until media actually starts", async () => {
 		const { service } = await newService([audioCard()]);
-		let resolvePlay: (() => void) | null = null;
+		let resolvePlay = null as (() => void) | null;
 		captureAudioElements(
 			() =>
 				new Promise<void>((resolve) => {
@@ -211,9 +212,51 @@ describe("recorded audio as a spoken alternate", () => {
 		expect(service.getState()).toBe(PlaybackState.IDLE);
 	});
 
+	test("a pause before the clip starts holds it, and resume plays the clip", async () => {
+		const { impl, service } = await newService([scriptCard(), audioCard()]);
+		const plays: Array<{
+			resolve: () => void;
+			reject: (error: Error) => void;
+		}> = [];
+		captureAudioElements(
+			() =>
+				new Promise<void>((resolve, reject) => {
+					plays.push({ resolve, reject });
+				}),
+		);
+		const speaking = speakItem(service, audioOnlyRoot());
+		const element = await nextAudioElement();
+		// A browser rejects a pending play with an AbortError when the element
+		// is paused before it starts.
+		element.pause = () => {
+			plays.at(-1)?.reject(
+				Object.assign(new Error("play() interrupted by pause()"), {
+					name: "AbortError",
+				}),
+			);
+		};
+		expect(service.getState()).toBe(PlaybackState.LOADING);
+
+		service.pause();
+		await new Promise((resolve) => setTimeout(resolve, 5));
+
+		expect(service.getState()).toBe(PlaybackState.PAUSED);
+		// The clip did not fail: the reading script stays unread.
+		expect(impl.speakCalls).toEqual([]);
+
+		service.resume();
+		expect(plays).toHaveLength(2);
+		plays[1].resolve();
+		await Promise.resolve();
+		expect(service.getState()).toBe(PlaybackState.PLAYING);
+		element.dispatchEvent(new Event("ended"));
+		await speaking;
+		expect(impl.speakCalls).toEqual([]);
+	});
+
 	test("keeps a recorded-audio replacement loading until replacement media starts", async () => {
 		const { service } = await newService([]);
-		let resolvePlay: (() => void) | null = null;
+		let resolvePlay = null as (() => void) | null;
 		captureAudioElements(
 			() =>
 				new Promise<void>((resolve) => {

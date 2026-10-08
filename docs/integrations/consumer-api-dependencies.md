@@ -153,6 +153,25 @@ except that a `lang_id` the host sets wins on the custom transport; Hosts A and
 R both read aloud over that transport with `lang_id` set, so their requests are
 unchanged. Row verification dates are unchanged.
 
+Also on 2026-10-08 a pause or stop issued while a read loads started holding:
+before, the read began once its audio arrived. Media started during loading now
+pauses the read, as it pauses one already sounding. A word spanning several
+text nodes highlights whole, through the one word-highlight path:
+`HighlightCoordinator.highlightTTSWord` takes the word's ranges, where it took a
+text node and offsets. `ITTSProviderImplementation.updateSettings` is required.
+The TTS settings panel picks its automatic, recommended and preview browser
+voices for the runtime context's content language, as the reader does, else the
+browser's language; Host R, the one host mounting the panel, names no content
+language, so its panel offers the voices it did. Read-aloud's providers, tool
+provider and settings panel log only under `PIE_TTS_DEBUG`. The server backend's
+backend-call telemetry names the tool `textToSpeech`, as the toolkit's does,
+where it named it `tts`. Checked against the checkouts of Hosts A, M, P, R and
+V: none implements a TTS provider, constructs `TTSToolProvider`, whose features
+are now its speech provider's, calls `updateSettings`, `highlightTTSWord` or
+`pauseTtsForMediaAudio`, or reads backend-call telemetry, and Host A calls only
+`ttsService.stop()`, which still ends a loading read. Row verification dates are
+unchanged.
+
 The 2026-09-17 session-commit change (PIE-1058) was checked against the
 recorded rows rather than re-derived from the checkouts. It renames and removes
 nothing: `pie-item-player` gains one opt-in property, `session-snapshot`, one
@@ -937,9 +956,10 @@ The deepest coupling in the set, and the one no client-facing host has. From
   constructs a diagnostic or reads any `code` value. Diagnostic **codes are no
   longer API to any consumer**; `severity`, `path` and `message` are
 - Types imported: `ToolRegistry`, `ToolConfigStrictness`,
-  `ToolkitCoordinatorApi`, `ToolkitCoordinatorHooks`, `ToolContextResolver`,
-  `ToolContextResolverMap`. `CanonicalToolsConfig`, `ToolConfigDiagnostic` and
-  `ToolkitCoordinatorConfig` are no longer imported — the config type is taken
+  `CreateToolsConfigArgs`, `ToolkitCoordinatorApi`, `ToolContextResolver`,
+  `ToolContextResolverMap`, `FrameworkErrorModel` (checked 2026-10-08).
+  `CanonicalToolsConfig`, `ToolConfigDiagnostic`, `ToolkitCoordinatorConfig` and
+  `ToolkitCoordinatorHooks` are no longer imported — the config type is taken
   structurally through `ReturnType<typeof createToolsConfig>['config']`, which
   couples the host to the function's return type instead of to the type name.
 
@@ -1894,7 +1914,8 @@ over a CDN with no typecheck at all.
   what a package imports from it. The section player's engine vocabulary moved to
   `./runtime/engine`, and the shell event bridge and the content-region,
   content-language, catalog-context and flat-tree helpers the tools use moved to
-  the root. The provider registry's `ToolProviderConfig` was renamed
+  the root, and later the same day back to `./tools/registration` (below). The
+  provider registry's `ToolProviderConfig` was renamed
   `ToolProviderRegistration`, leaving the name to the tools-config shape. Checked
   against all five checkouts on 2026-10-08 as a targeted lookup, so it does not
   advance the verification date: no checkout imports any toolkit subpath or names
@@ -1914,6 +1935,18 @@ over a CDN with no typecheck at all.
   targeted lookup: only Host R sets one, a profile on the section objects of its
   section demos, cast `as any`. It now reaches nothing, the PNP debugger
   included; binding it as the assessment's with `updateAssessment` keeps it
+- The toolkit root, cut on 2026-10-08 from 326 names to 185: the names Host R,
+  the players and the demo apps import, and the types their signatures carry.
+  The 32 names only tool packages import moved to `./tools/registration`, with
+  the 5 types their signatures carry, and 7 names that entry already exported
+  left the root. 96 names nothing imports were deleted, among them the backend
+  activity-session adapters, the item loader, the session-storage helpers and
+  the context keys the `connect…` functions wrap, and `isHostDeniedFeature`
+  stays only on `./policy/engine`. The section-player debugger and settings
+  panels import from `./tools/registration` and keep their props and `close`
+  event. Checked against all five checkouts on 2026-10-08 as a targeted lookup,
+  so it does not advance the verification date: Hosts V, A, P and M import
+  nothing from the toolkit, and Host R's eight root imports all stay
 
 ## Consumer-side defects worth reporting upstream
 

@@ -1,0 +1,20 @@
+{
+	// A package's bun tests typecheck with `tsconfig.tests.json` beside its
+	// `tsconfig.json`, extending both: `"extends": ["./tsconfig.json",
+	// "../../tsconfig.tests.json"]`. These options override the package's own,
+	// because the tests run under bun, which resolves extensionless and `.ts`
+	// specifiers the way a bundler does, supports the current language, and
+	// nothing is emitted.
+	"compilerOptions": {
+		"lib": ["ESNext", "DOM", "DOM.Iterable"],
+		"composite": false,
+		"declaration": false,
+		"noEmit": true,
+		"rootDir": ".",
+		"module": "Preserve",
+		"moduleResolution": "Bundler",
+		"allowImportingTsExtensions": true,
+		"resolveJsonModule": true,
+		"types": ["bun"]
+	}
+}

@@ -136,13 +136,10 @@ describe("TTSService automatic math speech", () => {
 		const service = new TTSService();
 		const highlightedWords: string[] = [];
 		service.setHighlightCoordinator({
-			highlightTTSWord(node: Text, start: number, end: number) {
-				highlightedWords.push(node.textContent?.slice(start, end) || "");
+			highlightTTSWord(ranges: Range[]) {
+				highlightedWords.push(ranges.join(""));
 			},
 			highlightTTSSentence() {},
-			highlightRange(range: Range) {
-				highlightedWords.push(range.toString());
-			},
 			clearTTS() {},
 			clearHighlights() {},
 		} as any);

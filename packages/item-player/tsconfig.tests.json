@@ -1,0 +1,10 @@
+{
+	"extends": ["./tsconfig.json", "../../tsconfig.tests.json"],
+	"compilerOptions": {
+		// A test imports the backend demo's controllers, whose `?raw` import is
+		// declared by Vite's client types.
+		"types": ["bun", "vite/client"]
+	},
+	"include": ["tests/**/*.ts", "src/**/*.d.ts"],
+	"exclude": ["node_modules", "dist", "**/*.spec.ts"]
+}

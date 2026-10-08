@@ -10,7 +10,7 @@
  * composer's mistake costs its own action and nothing else.
  */
 
-import type { ToolSelectionAction } from '@pie-players/pie-assessment-toolkit';
+import type { ToolSelectionAction } from '@pie-players/pie-assessment-toolkit/tools/registration';
 
 /** Longest label the strip renders; past this the button crowds out the swatches. */
 export const MAX_SELECTION_ACTION_LABEL = 40;

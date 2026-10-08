@@ -39,7 +39,7 @@
 		"build": "vite build",
 		"dev": "vite build --watch",
 		"test": "bun test tests",
-		"typecheck": "tsc --noEmit",
+		"typecheck": "tsc --noEmit && tsc -p tsconfig.tests.json",
 		"check": "svelte-check --tsconfig ./tsconfig.json --compiler-warnings options_missing_custom_element:ignore",
 		"lint": "biome lint TtsSettingsPanel.svelte index.ts vite.config.ts package.json"
 	},

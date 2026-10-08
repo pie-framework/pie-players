@@ -31,7 +31,7 @@
 		connectToolRuntimeContext,
 		pauseTtsForMediaAudio,
 		type AssessmentToolkitRuntimeContext,
-	} from "@pie-players/pie-assessment-toolkit";
+	} from "@pie-players/pie-assessment-toolkit/tools/registration";
 	import {
 		applyMediaFragment,
 		enforceMediaFragment,

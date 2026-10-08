@@ -11,7 +11,7 @@ import {
 import { ItemController } from "../src/pie/item-controller.js";
 import { updatePieElement } from "../src/pie/updates.js";
 import { BundleType, Status } from "../src/pie/types.js";
-import type { ConfigEntity, PieController } from "../src/types/index.js";
+import type { ConfigEntity, Env, PieController } from "../src/types/index.js";
 
 const TAG = "pie-ebsr--version-1-0-0";
 
@@ -176,8 +176,9 @@ describe("updatePieElement shuffle round-trip (PIE-631)", () => {
 				mode: "gather",
 				role: "student",
 				partialScoring: false,
+				// An element-level env key the player passes through untyped.
 				"@pie-element": { lockChoiceOrder: true },
-			},
+			} as Env,
 			container: player,
 			onElementSessionUpdate,
 		});

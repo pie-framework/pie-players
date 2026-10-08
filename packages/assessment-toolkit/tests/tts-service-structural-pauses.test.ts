@@ -28,6 +28,15 @@ afterAll(() => {
 // Several tests swap `globalThis.document` for a stub before they speak.
 const contentWith = (text: string): Element => contentOf(text, realDocument);
 
+// A position map over one text node, so visible index i is the node's offset i.
+const visibleMapOver = (text: string) => {
+	const node = realDocument.createTextNode(text);
+	realDocument.body.append(node);
+	return new Map(
+		Array.from(text, (_, offset) => [offset, { node, offset }] as const),
+	);
+};
+
 class MockTTSImpl implements ITTSProviderImplementation {
 	public speakCalls: string[] = [];
 	public segmentCalls: TTSSpeechSegment[][] = [];
@@ -320,26 +329,19 @@ describe("TTSService structural pauses", () => {
 		const service = new TTSService();
 		await service.initialize(new MockTTSProvider(impl));
 
-		let capturedHighlightIndex = -1;
 		(service as any).buildPositionMap = () => {};
-		(service as any).findHighlightRange = (charIndex: number) => {
-			capturedHighlightIndex = charIndex;
-			return null;
-		};
+		// "Option B" starts at visible index 12.
+		(service as any).normalizedToDOM = visibleMapOver("Choose from Option B");
 		(service as any).createSpeechPlan = () =>
 			[
 				{ text: "Option B", startOffset: 12, pauseMsAfter: 0 },
 			] as TTSSpeechSegment[];
-		const originalDocument = (globalThis as any).document;
-		(globalThis as any).document = {
-			createRange: () => ({
-				selectNodeContents: () => {},
-			}),
-		};
-
+		const highlightedWords: string[] = [];
 		service.setHighlightCoordinator({
 			highlightRange: () => {},
-			highlightTTSWord: () => {},
+			highlightTTSWord: (ranges: Range[]) => {
+				highlightedWords.push(ranges.join(""));
+			},
 			highlightTTSSentence: () => {},
 			clearTTS: () => {},
 			clearHighlights: () => {},
@@ -348,14 +350,10 @@ describe("TTSService structural pauses", () => {
 			updateTTSHighlightStyle: () => {},
 		} as any);
 
-		try {
-			await service.speak(contentWith("Prompt Option B"));
-		} finally {
-			(globalThis as any).document = originalDocument;
-		}
+		await service.speak(contentWith("Prompt Option B"));
 
 		expect(impl.speakCalls).toEqual(["Option B"]);
-		expect(capturedHighlightIndex).toBe(12);
+		expect(highlightedWords).toEqual(["Opti"]);
 	});
 
 	test("defaults to sentence highlight mode when the provider reports no word boundaries", async () => {
@@ -642,9 +640,11 @@ describe("TTSService structural pauses", () => {
 			{ text: "Third sentence.", startOffset: 33, pauseMsAfter: 0 },
 		] as TTSSpeechSegment[];
 
-		await (service as any).speakWithPlan((service as any).seekSegments, 1, {
-			highlightMode: "word",
-		});
+		await (service as any).speakWithPlan(
+			(service as any).seekSegments,
+			(service as any).speakRunId,
+			{ highlightMode: "word" },
+		);
 
 		expect((service as any).currentBoundaryOffset).toBe(16);
 		expect((service as any).getCurrentSeekSegmentIndex()).toBe(1);
@@ -670,9 +670,11 @@ describe("TTSService structural pauses", () => {
 			{ text: "Third sentence.", startOffset: 33, pauseMsAfter: 0 },
 		] as TTSSpeechSegment[];
 
-		await (service as any).speakWithPlan((service as any).seekSegments, 1, {
-			highlightMode: "word",
-		});
+		await (service as any).speakWithPlan(
+			(service as any).seekSegments,
+			(service as any).speakRunId,
+			{ highlightMode: "word" },
+		);
 
 		let restartedSegments: TTSSpeechSegment[] = [];
 		(service as any).speakWithPlan = async (segments: TTSSpeechSegment[]) => {
@@ -701,22 +703,14 @@ describe("TTSService structural pauses", () => {
 			{ text: "Next sentence.", startOffset: 16, pauseMsAfter: 0 },
 		] as TTSSpeechSegment[];
 		(service as any).currentBoundaryOffset = 0;
-		(service as any).findHighlightRange = (
-			charIndex: number,
-			length: number,
-		) =>
-			charIndex === 16 && length === 4
-				? {
-						node: { textContent: "Next sentence." } as Text,
-						start: 0,
-						end: 4,
-					}
-				: null;
+		(service as any).normalizedToDOM = visibleMapOver(
+			"First sentence. Next sentence.",
+		);
 		const highlightedWords: string[] = [];
 		service.setHighlightCoordinator({
 			highlightRange: () => {},
-			highlightTTSWord: (node: Text, start: number, end: number) => {
-				highlightedWords.push(node.textContent?.slice(start, end) || "");
+			highlightTTSWord: (ranges: Range[]) => {
+				highlightedWords.push(ranges.join(""));
 			},
 			highlightTTSSentence: () => {},
 			clearTTS: () => {},
@@ -750,22 +744,14 @@ describe("TTSService structural pauses", () => {
 			{ text: "Next sentence.", startOffset: 16, pauseMsAfter: 0 },
 		] as TTSSpeechSegment[];
 		(service as any).currentBoundaryOffset = 0;
-		(service as any).findHighlightRange = (
-			charIndex: number,
-			length: number,
-		) =>
-			charIndex === 16 && length === 4
-				? {
-						node: { textContent: "Next sentence." } as Text,
-						start: 0,
-						end: 4,
-					}
-				: null;
+		(service as any).normalizedToDOM = visibleMapOver(
+			"First sentence. Next sentence.",
+		);
 		const highlightedWords: string[] = [];
 		service.setHighlightCoordinator({
 			highlightRange: () => {},
-			highlightTTSWord: (node: Text, start: number, end: number) => {
-				highlightedWords.push(node.textContent?.slice(start, end) || "");
+			highlightTTSWord: (ranges: Range[]) => {
+				highlightedWords.push(ranges.join(""));
 			},
 			highlightTTSSentence: () => {},
 			clearTTS: () => {},
@@ -838,7 +824,7 @@ describe("TTSService structural pauses", () => {
 	test("coalesces overlapping identical rate writes into one update and restart", async () => {
 		const impl = new MockTTSImpl(false);
 		(impl as any).speakSegments = undefined;
-		let releaseSettingsWrite: (() => void) | null = null;
+		let releaseSettingsWrite = null as (() => void) | null;
 		impl.updateSettings = (settings: Partial<TTSConfig>) => {
 			impl.settingsUpdates.push(settings);
 			return new Promise<void>((resolve) => {
@@ -909,7 +895,7 @@ describe("TTSService structural pauses", () => {
 	test("restarts the final target in a rapid A-B-A rate sequence without rewriting it", async () => {
 		const impl = new MockTTSImpl(false);
 		(impl as any).speakSegments = undefined;
-		let releaseFirstWrite: (() => void) | null = null;
+		let releaseFirstWrite = null as (() => void) | null;
 		impl.updateSettings = (settings: Partial<TTSConfig>) => {
 			impl.settingsUpdates.push(settings);
 			return new Promise<void>((resolve) => {
@@ -945,7 +931,7 @@ describe("TTSService structural pauses", () => {
 	test("does not restart a newer speak run when an older rate write completes", async () => {
 		const impl = new PlaybackStartAwareMockTTSImpl();
 		(impl as any).speakSegments = undefined;
-		let releaseSettingsWrite: (() => void) | null = null;
+		let releaseSettingsWrite = null as (() => void) | null;
 		impl.updateSettings = (settings: Partial<TTSConfig>) => {
 			impl.settingsUpdates.push(settings);
 			return new Promise<void>((resolve) => {
@@ -1235,7 +1221,7 @@ describe("TTSService structural pauses", () => {
 		const impl = new MockTTSImpl(true);
 		const service = new TTSService();
 		await service.initialize(new MockTTSProvider(impl, "server-tts", true));
-		let releaseFirstSpeak: (() => void) | null = null;
+		let releaseFirstSpeak = null as (() => void) | null;
 		let firstSpeakStarted: (() => void) | null = null;
 		const firstSpeakStartedPromise = new Promise<void>((resolve) => {
 			firstSpeakStarted = resolve;
@@ -1301,7 +1287,7 @@ describe("TTSService structural pauses", () => {
 		const impl = new MockTTSImpl(true);
 		const service = new TTSService();
 		await service.initialize(new MockTTSProvider(impl, "server-tts", true));
-		let releaseFirstSpeak: (() => void) | null = null;
+		let releaseFirstSpeak = null as (() => void) | null;
 		let firstSpeakStarted: (() => void) | null = null;
 		const firstSpeakStartedPromise = new Promise<void>((resolve) => {
 			firstSpeakStarted = resolve;
@@ -1368,7 +1354,7 @@ describe("TTSService structural pauses", () => {
 		const impl = new MockTTSImpl(true);
 		const service = new TTSService();
 		await service.initialize(new MockTTSProvider(impl, "server-tts", true));
-		let releaseFirstResolution: (() => void) | null = null;
+		let releaseFirstResolution = null as (() => void) | null;
 		let resolutionCalls = 0;
 		(service as any).resolveSpeechContent = async () => {
 			resolutionCalls += 1;

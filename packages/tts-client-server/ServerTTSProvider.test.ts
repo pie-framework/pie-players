@@ -560,6 +560,131 @@ describe("ServerTTSProvider", () => {
 		expect(events).not.toContain("pie-tool-backend-call-error");
 	});
 
+	test("telemetry names the tool textToSpeech on every backend call", async () => {
+		let fail = false;
+		globalThis.fetch = vi.fn(async () =>
+			fail
+				? createJSONResponse({ message: "unavailable" }, 500)
+				: createJSONResponse({
+						audio: btoa("audio-bytes"),
+						contentType: "audio/mpeg",
+						speechMarks: [],
+						metadata: {
+							providerId: "polly",
+							voice: "Joanna",
+							duration: 1,
+							charCount: 5,
+							cached: false,
+						},
+					}),
+		) as unknown as typeof fetch;
+		const events: Array<[string, unknown]> = [];
+		const provider = new ServerTTSProvider();
+		const impl = await provider.initialize({
+			apiEndpoint: "/api/tts",
+			validateEndpoint: true,
+			providerOptions: {
+				__pieTelemetry: (
+					eventName: string,
+					payload?: Record<string, unknown>,
+				) => {
+					events.push([eventName, payload?.toolId]);
+				},
+			},
+		} as any);
+		await impl.speak("hello");
+		fail = true;
+		await impl.speak("hello").catch(() => {});
+
+		expect(new Set(events.map(([name]) => name))).toEqual(
+			new Set([
+				"pie-tool-backend-call-start",
+				"pie-tool-backend-call-success",
+				"pie-tool-backend-call-error",
+			]),
+		);
+		expect(new Set(events.map(([, toolId]) => toolId))).toEqual(
+			new Set(["textToSpeech"]),
+		);
+	});
+
+	describe("a pause before the audio sounds", () => {
+		const synthesized = () =>
+			createJSONResponse({
+				audio: btoa("audio-bytes"),
+				contentType: "audio/mpeg",
+				speechMarks: [],
+				metadata: {
+					providerId: "polly",
+					voice: "Joanna",
+					duration: 1,
+					charCount: 5,
+					cached: false,
+				},
+			});
+
+		test("during synthesis holds the audio until resume", async () => {
+			let respond: (() => void) | null = null;
+			globalThis.fetch = vi.fn(
+				() =>
+					new Promise<Response>((resolve) => {
+						respond = () => resolve(synthesized());
+					}),
+			) as unknown as typeof fetch;
+			const provider = new ServerTTSProvider();
+			const impl = await provider.initialize({ apiEndpoint: "/api/tts" } as any);
+			const starts: string[] = [];
+			impl.onPlaybackStart = () => starts.push("start");
+
+			const speaking = impl.speak("hello");
+			await vi.waitFor(() => expect(respond).not.toBeNull());
+			impl.pause();
+			respond?.();
+			await vi.waitFor(() => expect(MockAudio.instances).toHaveLength(1));
+			await new Promise((resolve) => setTimeout(resolve, 5));
+
+			expect(MockAudio.instances[0]?.paused).toBe(true);
+			expect(starts).toEqual([]);
+			expect(impl.isPaused()).toBe(true);
+
+			impl.resume();
+			await speaking;
+			expect(starts).toEqual(["start"]);
+		});
+
+		test("while the audio buffers does not fail the speak", async () => {
+			globalThis.fetch = vi.fn(async () =>
+				synthesized(),
+			) as unknown as typeof fetch;
+			// A browser rejects a pending play with an AbortError when the element
+			// is paused before it starts.
+			class BufferingAudio extends MockAudio {
+				private pendingPlay: ((error?: Error) => void) | null = null;
+				play(): Promise<void> {
+					if (this.pendingPlay) return super.play();
+					return new Promise((resolve, reject) => {
+						this.pendingPlay = (error) => (error ? reject(error) : resolve());
+					});
+				}
+				pause(): void {
+					super.pause();
+					this.pendingPlay?.(new DOMException("interrupted", "AbortError"));
+				}
+			}
+			(globalThis as Record<string, unknown>).Audio = BufferingAudio;
+			const provider = new ServerTTSProvider();
+			const impl = await provider.initialize({ apiEndpoint: "/api/tts" } as any);
+
+			const speaking = impl.speak("hello");
+			await vi.waitFor(() => expect(MockAudio.instances).toHaveLength(1));
+			impl.pause();
+			await new Promise((resolve) => setTimeout(resolve, 5));
+			impl.resume();
+
+			await expect(speaking).resolves.toBeUndefined();
+		});
+	});
+
 	test("validates provider-specific voices endpoint for Polly", async () => {
 		const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
 			const url = String(input);

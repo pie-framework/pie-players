@@ -283,7 +283,7 @@ describe("player-preload: backend config", () => {
 			isReady: () => true,
 			destroy: () => {},
 		};
-		const iifeBundleRetry = { enabled: false };
+		const iifeBundleRetry = { retryDelayMs: 25 };
 		const resolvedPlayerProps = {
 			loaderOptions: { bundleHost: "https://proxy.pie-api.com/bundles" },
 			loaderConfig: {
@@ -401,8 +401,9 @@ describe("warmupSectionElements", () => {
 		}
 
 		expect(caught).toBeInstanceOf(PreloadStageError);
-		expect((caught as PreloadStageError).stage).toBe("preloaded-assert");
-		expect(((caught as PreloadStageError).cause as Error).name).toBe(
+		const stageError = caught as InstanceType<typeof PreloadStageError>;
+		expect(stageError.stage).toBe("preloaded-assert");
+		expect((stageError.cause as Error).name).toBe(
 			"ElementPackagePolicyError",
 		);
 	});

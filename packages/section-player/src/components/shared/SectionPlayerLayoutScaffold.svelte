@@ -11,9 +11,13 @@
 	} from "@pie-players/pie-players-shared/types";
 	import {
 		createSectionPlayerCardRenderContextProvider,
-		getHostElementFromAnchor,
 		type SectionPlayerCardRenderContext,
 	} from "./section-player-card-context.js";
+	import { getHostElementFromAnchor } from "./host-element.js";
+	import {
+		createSectionPlayerLayoutContextProvider,
+		type SectionPlayerLayoutContext,
+	} from "./section-player-layout-context.js";
 	import type {
 		SectionControllerHandle,
 		ToolkitCoordinatorApi,
@@ -33,6 +37,7 @@
 		toolRegistry = null as ToolRegistry | null,
 		sectionHostButtons = [] as ToolbarItem[],
 		cardRenderContext = null as SectionPlayerCardRenderContext | null,
+		layoutContext = null as SectionPlayerLayoutContext | null,
 		onCompositionChanged,
 		onSectionReady,
 		onFrameworkErrorEvent,
@@ -49,6 +54,7 @@
 		toolRegistry?: ToolRegistry | null;
 		sectionHostButtons?: ToolbarItem[];
 		cardRenderContext?: SectionPlayerCardRenderContext | null;
+		layoutContext?: SectionPlayerLayoutContext | null;
 		onCompositionChanged?: (event: Event) => void;
 		onSectionReady?: (event: Event) => void;
 		/**
@@ -113,6 +119,10 @@
 	} | null>(null);
 	let cardContextProvider: {
 		setValue: (value: SectionPlayerCardRenderContext) => void;
+		disconnect: () => void;
+	} | null = null;
+	let layoutContextProvider: {
+		setValue: (value: SectionPlayerLayoutContext) => void;
 		disconnect: () => void;
 	} | null = null;
 	const host = $derived.by(() => getHostElementFromAnchor(cardContextAnchor));
@@ -183,14 +193,17 @@
 		return baseElement.waitForSectionController(timeoutMs);
 	}
 
-	// One provider for the host's lifetime, created with the first value and
-	// republished with `setValue` after that: a card keeps the provider that
-	// answered it, so a replaced one would leave it relying on the announce.
+	// One provider of each context for the host's lifetime, created with the
+	// first value and republished with `setValue` after that: a card or pane
+	// keeps the provider that answered it, so a replaced one would leave it
+	// relying on the announce.
 	$effect(() => {
 		if (!host) return;
 		return () => {
 			cardContextProvider?.disconnect();
 			cardContextProvider = null;
+			layoutContextProvider?.disconnect();
+			layoutContextProvider = null;
 		};
 	});
 
@@ -204,6 +217,22 @@
 				return;
 			}
 			cardContextProvider = createSectionPlayerCardRenderContextProvider(
+				currentHost,
+				value,
+			);
+		});
+	});
+
+	$effect(() => {
+		const currentHost = host;
+		const value = layoutContext;
+		if (!currentHost || !value) return;
+		untrack(() => {
+			if (layoutContextProvider) {
+				layoutContextProvider.setValue(value);
+				return;
+			}
+			layoutContextProvider = createSectionPlayerLayoutContextProvider(
 				currentHost,
 				value,
 			);

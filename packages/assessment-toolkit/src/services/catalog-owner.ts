@@ -8,8 +8,6 @@
 
 import type { AccessibilityCatalog } from "@pie-players/pie-players-shared/types";
 
-export type CatalogOwnerKind = "global" | "passage" | "itemModel";
-
 interface CatalogOwnerScopeContext {
 	assessmentId?: string;
 	sectionId?: string;

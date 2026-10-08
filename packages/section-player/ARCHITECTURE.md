@@ -11,14 +11,15 @@ This package exposes layout-specific section-player custom elements:
 
 1. Host app imports a layout entrypoint from package exports.
 2. Host sets `runtime` and `section` on the layout custom element; `env` travels as `runtime.env`.
-3. Layout element composes passages/items and delegates runtime wiring to:
-   - `pie-section-player-base`
-   - `SectionPlayerShell`
-   - `pie-section-player-item-card`
-   - `pie-section-player-passage-card`
-   - `pie-item-scope`, from the toolkit
-   - `pie-passage-shell`
-4. Item rendering is resolved from `DEFAULT_PLAYER_DEFINITIONS` in `component-definitions.ts`.
+3. The layout element runs `SectionPlayerLayoutKernel`, which wraps the layout in
+   `pie-section-player-base` (toolkit, controller, session) and `SectionPlayerShell`
+   (section toolbar), and publishes the layout context.
+4. The layout's markup, or a host's children of `pie-section-player-kernel-host`,
+   places `pie-section-player-items-pane` and `pie-section-player-passages-pane`.
+   Each pane reads the layout context and renders the cards:
+   - `pie-section-player-item-card`, inside `pie-item-scope` from the toolkit
+   - `pie-section-player-passage-card`, inside `pie-passage-shell`
+5. Item rendering is resolved from `DEFAULT_PLAYER_DEFINITIONS` in `component-definitions.ts`.
 
 ## Core files
 
@@ -30,6 +31,11 @@ This package exposes layout-specific section-player custom elements:
 - `src/components/SectionPlayerShell.svelte`
 - `src/components/shared/SectionPlayerLayoutKernel.svelte`
 - `src/components/shared/SectionPlayerLayoutScaffold.svelte`
+- `src/components/shared/section-player-layout-context.ts`
+- `src/components/shared/SectionItemsPane.svelte`
+- `src/components/shared/SectionPassagesPane.svelte`
+- `src/components/shared/SectionPlayerKernelHostBody.svelte`
+- `src/components/shared/kernel-host-default-body.ts`
 - `src/components/shared/SectionItemCard.svelte`
 - `src/components/shared/SectionPassageCard.svelte`
 - `src/components/shared/section-player-card-context.ts`
@@ -39,17 +45,17 @@ This package exposes layout-specific section-player custom elements:
 
 ## Public vs internal contracts
 
-- Public author-facing contract: `pie-section-player-shell`.
-  - Use this to place the section toolbar (`top|right|bottom|left|none`) around your layout body.
-  - Layout authors should focus on rendering passages/items and layout-specific UI inside the shell slot.
-- Public card primitives: `pie-section-player-item-card` and `pie-section-player-passage-card`.
-  - Layouts pass per-entity values (`item`/`passage`, `playerParams`, toolbar tools).
-  - Layouts should prefer context for shared render plumbing (resolved player tag + player action).
+- Host layout contract: `pie-section-player-kernel-host` and the two panes. See
+  [Custom layouts](#custom-layouts).
+- Card primitives: `pie-section-player-item-card` and `pie-section-player-passage-card`.
+  - The panes pass the per-entity values (`item`/`passage`, `playerParams`, toolbar tools).
+  - The card render context carries the shared render plumbing (resolved player tag and action).
+- `pie-section-player-shell`: places the section toolbar (`top|right|bottom|left|none`)
+  around the layout body. The kernel renders it; hosts set it through `show-toolbar`
+  and `toolbar-position` on the layout element.
 - Internal runtime contract: `pie-section-player-base`.
-  - Handles runtime/toolkit/session wiring and emits composition events used by layout elements.
-  - Consider this package-internal plumbing rather than the primary abstraction for layout authoring.
-
-This keeps runtime contracts stable while giving layout authors one clear composition primitive.
+  - Handles runtime/toolkit/session wiring and emits the composition events the kernel reads.
+  - The kernel renders it; no layout or host composes it directly.
 
 ## Layered runtime engine (post-M7)
 
@@ -101,8 +107,8 @@ Section-player owns two pieces of glue:
   `resolvePlayerRuntime`, `mapRenderablesToItems`, and
   `resolveSectionPlayerRuntimeState` (the only resolver pieces that
   depend on section-player–specific defaults like
-  `DEFAULT_PLAYER_DEFINITIONS`). Custom layouts compose this helper
-  rather than reaching into toolkit core.
+  `DEFAULT_PLAYER_DEFINITIONS`). The layout kernel is its one caller, so
+  no layout reaches into toolkit core.
 
 ### Public toolkit entry points
 
@@ -441,37 +447,92 @@ Two-tier precedence
   - `packages/section-player/tests/section-player-event-panel.spec.ts`
 - Item shell identity stability on session-only updates:
   - `packages/section-player/tests/section-player-event-panel.spec.ts`
+- Kernel host stock body, layout context resolution, pane registry and readiness rule:
+  - `packages/section-player/tests/section-player-custom-layout.test.ts`
+- Host-built layout rendering and reaching `pie-loading-complete`:
+  - `packages/section-player/tests/section-player-custom-layout.spec.ts`
 
-## Creating a custom layout
+## Custom layouts
 
-1. Create a new layout custom element in `src/components/`.
-2. Reuse `resolveSectionPlayerRuntimeState` from `src/components/shared/section-player-host-runtime.ts`.
-3. Treat `pie-section-player-shell` as the main authoring primitive, and render your layout body in its slot.
-4. Keep runtime plumbing in `pie-section-player-base` around the shell.
-5. Render passages/items via card custom elements (`pie-section-player-passage-card`, `pie-section-player-item-card`) or your own content components.
+A layout is an arrangement of two panes under a section player. The kernel runs
+the section, the panes render it, and the layout element owns only placement:
+pane containers, dividers, tabs and backdrops. The stock layouts and a host's own
+layout are built the same way. The README's
+[Custom layout authoring](README.md#custom-layout-authoring) is the host-facing
+contract.
 
-Minimal shape:
+### Kernel host composition
 
-```svelte
-<pie-section-player-base runtime={effectiveRuntime} {section} section-id={sectionId} attempt-id={attemptId}>
-  <pie-section-player-shell
-    show-toolbar={showToolbar}
-    toolbar-position={toolbarPosition}
-  >
-    <pie-section-player-passage-card
-      passage={passage}
-      playerParams={passagePlayerParams}
-      passageToolbarTools={passageToolbarTools}
-    ></pie-section-player-passage-card>
-    <pie-section-player-item-card
-      item={item}
-      canonicalItemId={canonicalItemId}
-      playerParams={itemPlayerParams}
-      itemToolbarTools={itemToolbarTools}
-    ></pie-section-player-item-card>
-  </pie-section-player-shell>
-</pie-section-player-base>
-```
+`pie-section-player-kernel-host` is a layout element without a layout of its
+own. `SectionPlayerLayoutKernel` and the scaffold (base and shell) render in its
+open shadow root, with one default slot as the shell's body. The host's light-DOM
+children fill the slot. The panes, cards and item content stay in light DOM,
+because document styles (`components.css`, the item players' injected styles,
+MathJax) reach item content only there; the stock layout elements are
+`shadow: "none"` for the same reason. Events from the shadow tree retarget to the
+kernel host, so `pie-stage-change`, `pie-loading-complete` and the toolkit's
+events reach a host listener once, with `sourceCe:
+"pie-section-player-kernel-host"`.
+
+### Default body
+
+`attachKernelHostDefaultBody` mounts `SectionPlayerKernelHostBody` into the kernel
+host's light DOM while the host has no element children, and follows the child
+list through a `MutationObserver`. Text and comment children do not count. Slot
+fallback content was the alternative and loses on placement: fallback content
+lives in the shadow tree, out of reach of document styles, and stays mounted,
+hidden, beside a host's own panes, which would register a second pane of each
+kind.
+
+### Layout context
+
+`section-player-layout-context.ts` follows the card render context: a
+`createContext` from `@pie-players/pie-context` keyed by
+`Symbol.for("@pie-players/pie-section-player/layout-context")`, one
+`ContextProvider` per kernel republished through `setValue`, and panes
+subscribing with `connectContextWithRetry`. The global symbol lets a pane from one
+copy of the package resolve a provider from another. The provider sits in the
+kernel's tree, so a pane's request travels through the slot to the closest
+section player and nested players resolve their own. A pane that connects before
+its provider is answered when the provider announces itself. Hosts never import
+the context.
+
+The context carries the composition, the pre-warm inputs (renderables, their
+signature, `preloadEnabled`), the resolved player env, attributes, props and
+strategy, the heading level, the tool registry, toolbar tools and host buttons,
+`elementsLoaded`, the active pane of each kind, and the panes' `register` and
+`report*` callbacks. The panes take no props: no value a pane renders differs by
+placement.
+
+### Pane registry and readiness
+
+`createSectionPlayerPaneRegistry` keeps each kind's panes in connection order,
+and the first is active. The kernel accepts `reportElementsLoaded` and the
+pre-warm retry and error reports from the active items pane only, so readiness
+follows exactly one pane and a pane that renders nothing cannot hold or release
+`interactive`. A duplicate idles and takes over when the active pane disconnects.
+The passages pane takes no part in readiness; it shows its loading card until
+`elementsLoaded`.
+
+Misplaced panes are reported through `console.warn`, once per section player: the
+channel the toolkit, `pie-item-scope` and the item toolbar use for an element
+placed where it cannot work, with the same "Reported once per ..." form.
+`framework-error` was the alternative; it latches the cohort's error state, and a
+layout mistake is the host's to fix in development. The duplicate check runs a
+task after a second registration, so a layout that swaps a pane is not reported.
+The missing-pane check runs a task after `section-ready` for a composition with
+items; such a section never reaches `interactive`, because no pane runs the
+pre-warm. A section with no items and no items pane does not complete either, and is
+not reported.
+
+### Stock layouts
+
+Split-pane, vertical, tabbed (through `SectionPlayerTabbedContent` and
+`SectionPlayerVerticalContent`) and the kernel host's default body all place the
+same two panes. A new stock layout element is a `shadow: "none"` custom element
+that renders `SectionPlayerLayoutKernel` with its own `sourceCe` and places the
+panes in its markup, plus its registration in `src/pie-section-player.ts`, its
+`package.json` export and its entry in `src/contracts/layout-parity-metadata.ts`.
 
 ## Removed architecture
 

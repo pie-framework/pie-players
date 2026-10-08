@@ -3,29 +3,12 @@
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 
+import { markdownDocs } from "./lib/markdown-docs.mjs";
+
 const ROOT = process.cwd();
 const PACKAGES_DIR = path.join(ROOT, "packages");
 const APPS_DIR = path.join(ROOT, "apps");
 const TOOLS_DIR = path.join(ROOT, "tools");
-const SKIP_DIRS = new Set([
-	".git",
-	".svelte-kit",
-	".turbo",
-	"build",
-	"dist",
-	"node_modules",
-	"coverage",
-	"local-builds",
-]);
-const DOC_FILE_NAMES = new Set([
-	"README.md",
-	"readme.md",
-	"ARCHITECTURE.md",
-	"USAGE_EXAMPLE.md",
-	"AGENTS.md",
-	"GETTING-STARTED.md",
-	"INTEGRATION-GUIDE.md",
-]);
 const ALLOWED_EXTERNAL_PACKAGES = new Set([
 	"@pie-players/pie-preloaded-player",
 ]);
@@ -33,30 +16,6 @@ const ALLOWED_EXTERNAL_PACKAGES = new Set([
 const toPosix = (value) => value.replaceAll(path.sep, "/");
 const rel = (filePath) => toPosix(path.relative(ROOT, filePath));
 const readJson = (filePath) => JSON.parse(readFileSync(filePath, "utf8"));
-
-const isMarkdownDoc = (filePath) => {
-	const relative = rel(filePath);
-	const base = path.basename(filePath);
-	if (!filePath.endsWith(".md")) return false;
-	if (base === "CHANGELOG.md") return false;
-	if (relative.startsWith("docs/")) return true;
-	if (/^packages\/[^/]+\/docs\//.test(relative)) return true;
-	if (relative.startsWith("packages/")) return DOC_FILE_NAMES.has(base);
-	if (relative.startsWith("apps/")) return DOC_FILE_NAMES.has(base);
-	return DOC_FILE_NAMES.has(base);
-};
-
-const walk = (dir, visitor) => {
-	for (const entry of readdirSync(dir, { withFileTypes: true })) {
-		if (entry.isDirectory()) {
-			if (!SKIP_DIRS.has(entry.name)) {
-				walk(path.join(dir, entry.name), visitor);
-			}
-			continue;
-		}
-		visitor(path.join(dir, entry.name));
-	}
-};
 
 const collectPackageExports = () => {
 	const packages = new Map();
@@ -159,9 +118,7 @@ const extractPackageReferences = (content) => {
 const packages = collectPackageExports();
 const failures = [];
 
-walk(ROOT, (filePath) => {
-	if (!isMarkdownDoc(filePath)) return;
-
+for (const filePath of markdownDocs(ROOT)) {
 	const content = readFileSync(filePath, "utf8");
 	for (const { specifier, rawSpecifier, line } of extractPackageReferences(
 		content,
@@ -194,7 +151,7 @@ walk(ROOT, (filePath) => {
 			);
 		}
 	}
-});
+}
 
 if (failures.length > 0) {
 	console.error("Documentation package import check failed:");

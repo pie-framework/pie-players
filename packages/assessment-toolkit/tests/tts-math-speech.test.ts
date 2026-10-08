@@ -375,19 +375,23 @@ describe("TTS math speech generation", () => {
 });
 
 describe("speech-rule-engine loading", () => {
-	test("keeps a failed load and warns about it once", async () => {
+	test("tries a failed load again on the next call, warning once", async () => {
 		const warnings = spyOn(console, "warn").mockImplementation(() => {});
 		try {
 			let imports = 0;
+			const engine = { toSpeech: () => "x" };
 			const loadSre = createSreLoader(async () => {
 				imports += 1;
-				throw new Error("chunk failed to load");
+				if (imports < 3) throw new Error("chunk failed to load");
+				return engine;
 			});
 
 			await expect(loadSre()).rejects.toThrow("chunk failed to load");
 			await expect(loadSre()).rejects.toThrow("chunk failed to load");
+			await expect(loadSre()).resolves.toBe(engine);
+			await expect(loadSre()).resolves.toBe(engine);
 
-			expect(imports).toBe(1);
+			expect(imports).toBe(3);
 			expect(warnings).toHaveBeenCalledTimes(1);
 		} finally {
 			warnings.mockRestore();

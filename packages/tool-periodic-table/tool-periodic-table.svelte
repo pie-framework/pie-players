@@ -21,7 +21,7 @@
 	import {
 		type AssessmentToolkitRuntimeContext,
 		connectToolRuntimeContext,
-	} from '@pie-players/pie-assessment-toolkit';
+	} from '@pie-players/pie-assessment-toolkit/tools/registration';
 	import {
 		dynamicMessageKey,
 		resolveInterfaceI18n,

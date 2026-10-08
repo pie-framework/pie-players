@@ -94,13 +94,6 @@ const SCOPED_TARGETS = [
 ];
 
 /**
- * `pnp-standard-features.ts` is deliberately not scoped: it enumerates the
- * AfA/QTI vocabulary and is exported rather than imported by any core module. A
- * published list of standard support ids is legitimate — it is a vocabulary, not
- * a dependency on a capability.
- */
-
-/**
  * Known exceptions, each with the reason it is one.
  *
  * An allowlist rather than dropping the file from scope: an exemption should be

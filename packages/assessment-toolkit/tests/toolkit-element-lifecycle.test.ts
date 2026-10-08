@@ -1,37 +1,15 @@
 /**
  * `<pie-assessment-toolkit>` mounted in happy-dom: the lifecycle edges that only
  * its effects reach.
- *
- * pie-context's event classes extend the `Event` of the moment the module
- * first loads, and a `dispatchEvent` accepts only its own realm's events, so this
- * file re-bases them onto happy-dom's `Event` while it runs and puts back the
- * base the rest of the run expects when it ends.
  */
 
 import { GlobalRegistrator } from "@happy-dom/global-registrator";
 import { afterAll, afterEach, describe, expect, test } from "bun:test";
 
-const NativeEvent = globalThis.Event;
 const ownsDom = typeof window === "undefined";
 if (ownsDom) GlobalRegistrator.register();
-const { ContextProviderEvent, ContextRequestEvent } = await import(
-	"@pie-players/pie-context"
-);
 const { commitPendingSessions } = await import("@pie-players/pie-players-shared");
 await import("../src/components/PieAssessmentToolkit.svelte");
-
-type EventClass = { prototype: Event };
-function rebase(eventClass: EventClass, base: EventClass): void {
-	Object.setPrototypeOf(eventClass, base);
-	Object.setPrototypeOf(eventClass.prototype, base.prototype);
-}
-const rebased = [ContextRequestEvent, ContextProviderEvent].map((eventClass) => {
-	const base = Object.getPrototypeOf(eventClass) as EventClass;
-	// Loaded by this file: the rest of the run expects the native base.
-	const restore = base === window.Event ? NativeEvent : base;
-	rebase(eventClass, window.Event);
-	return { eventClass, restore };
-});
 
 const OBSERVED_EVENTS = [
 	"runtime-ready",
@@ -113,6 +91,19 @@ function shellWithPendingResponse(runtimeId: string, itemId: string) {
 	return shell;
 }
 
+/** An item scope inside `toolkit`, registering as an item shell does. */
+function registerItem(toolkit: HTMLElement, itemId: string): void {
+	const item = document.createElement("div");
+	toolkit.append(item);
+	item.dispatchEvent(
+		new CustomEvent("pie-register", {
+			bubbles: true,
+			composed: true,
+			detail: { kind: "item", itemId, element: item },
+		}),
+	);
+}
+
 const mounted: Mounted[] = [];
 
 async function mount(props: Record<string, unknown>): Promise<Mounted> {
@@ -147,7 +138,6 @@ afterEach(async () => {
 });
 
 afterAll(() => {
-	for (const { eventClass, restore } of rebased) rebase(eventClass, restore);
 	if (ownsDom && GlobalRegistrator.isRegistered) GlobalRegistrator.unregister();
 });
 
@@ -164,19 +154,50 @@ describe("<pie-assessment-toolkit> lifecycle", () => {
 
 	test("a toolkit without a section emits no stage events when its first item registers", async () => {
 		const { element, of } = await mount({});
-		const item = document.createElement("div");
-		element.append(item);
-		item.dispatchEvent(
-			new CustomEvent("pie-register", {
-				bubbles: true,
-				composed: true,
-				detail: { kind: "item", itemId: "item-1", element: item },
-			}),
-		);
+		registerItem(element, "item-1");
 		await settle();
 		const [runtimeReady] = of("runtime-ready");
 		expect(runtimeReady?.detail.coordinator.isReady()).toBe(true);
 		expect(of("pie-stage-change")).toEqual([]);
+	});
+
+	test("a toolkit without a section binds its first item to a coordinator built from inputs changed before it", async () => {
+		const { element, of } = await mount({});
+		element.assessmentId = "assessment-2";
+		await settle();
+		registerItem(element, "item-1");
+		await settle();
+
+		const coordinator = of("runtime-ready").at(-1)?.detail.coordinator;
+		expect(coordinator.assessmentId).toBe("assessment-2");
+		expect(coordinator.isReady()).toBe(true);
+	});
+
+	test("a toolkit without a section keeps the coordinator its first item bound, and reports a later change once", async () => {
+		const warnings: string[] = [];
+		const warn = console.warn;
+		console.warn = (...args: unknown[]) => warnings.push(args.map(String).join(" "));
+		try {
+			const { element, of } = await mount({});
+			registerItem(element, "item-1");
+			await settle();
+			const bound = of("runtime-ready").at(-1)?.detail.coordinator;
+
+			element.assessmentId = "assessment-2";
+			await settle();
+			element.assessmentId = "assessment-3";
+			await settle();
+
+			expect(of("runtime-ready").at(-1)?.detail.coordinator).toBe(bound);
+			expect(bound.assessmentId).toBe("assessment-1");
+			const late = warnings.filter((message) =>
+				message.includes("changed after an item registered"),
+			);
+			expect(late).toHaveLength(1);
+			expect(late[0]).toContain("assessmentId");
+		} finally {
+			console.warn = warn;
+		}
 	});
 
 	test("leaving a section commits its pending response to the host's subscription", async () => {

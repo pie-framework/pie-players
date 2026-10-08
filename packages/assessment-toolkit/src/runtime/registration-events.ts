@@ -20,6 +20,11 @@ export interface RuntimeRegistrationDetail {
 	contentKind?: string;
 	item?: unknown;
 	element: HTMLElement;
+	/**
+	 * The runtime the shell found through `assessmentToolkitHostRuntimeContext`.
+	 * A toolkit claims an event carrying it only when the id is its own.
+	 */
+	runtimeId?: string;
 }
 
 export interface ItemSessionChangedDetail {

@@ -47,7 +47,8 @@ export function dispatchCrossBoundaryEvent<T>(
 
 /**
  * Shared runtime-context connection contract for tools and shells.
- * Uses retry + provider announcements so late providers are tolerated.
+ * A provider that connects after the tool answers it through the document's
+ * context root.
  */
 export function connectToolRuntimeContext(
 	host: HTMLElement,

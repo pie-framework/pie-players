@@ -81,7 +81,7 @@
 		isProgrammaticFocusTarget,
 	} from '@pie-players/pie-players-shared';
 	import { parseToolList } from '../services/tools-config-normalizer.js';
-	import { warnOncePerDocument } from '../runtime/page-warnings.js';
+	import { PENDING_INPUT_WARNING_DELAY_MS, warnOncePerDocument } from '../runtime/page-warnings.js';
 	import { resolveFallbackToolIcon } from '../services/tool-icons.js';
 	import { createScopedToolId, parseScopedToolId } from '../services/tool-instance-id.js';
 	import type { AssessmentItemRef, AssessmentEntity, ItemEntity } from '@pie-players/pie-players-shared/types';
@@ -480,15 +480,21 @@
 	});
 
 	// Policy that places tools on a toolbar with nothing registered renders an
-	// empty bar and no error, so it is said once.
+	// empty bar and no error, so it is said once, after the time a host loading
+	// its registry lazily has to supply it.
 	$effect(() => {
 		if (!policyDecision || allowedToolIds.length === 0) return;
 		if (effectiveToolRegistry.getAllTools().length > 0) return;
-		warnOncePerDocument(
-			toolbarRootElement?.ownerDocument,
-			'toolbarWithoutRegistry',
-			`[pie-item-toolbar] Policy places ${allowedToolIds.join(', ')} on this toolbar, but its tool registry is empty, so it renders no buttons. Pass a toolRegistry to <pie-assessment-toolkit> or its coordinator; @pie-players/pie-default-tool-loaders builds the stock one. Reported once per page.`
-		);
+		const doc = toolbarRootElement?.ownerDocument;
+		const placed = allowedToolIds.join(', ');
+		const timer = setTimeout(() => {
+			warnOncePerDocument(
+				doc,
+				'toolbarWithoutRegistry',
+				`[pie-item-toolbar] Policy places ${placed} on this toolbar, but its tool registry is still empty after ${PENDING_INPUT_WARNING_DELAY_MS / 1000} s, so it renders no buttons. Pass a toolRegistry to <pie-assessment-toolkit> or its coordinator; @pie-players/pie-default-tool-loaders builds the stock one. Reported once per page.`
+			);
+		}, PENDING_INPUT_WARNING_DELAY_MS);
+		return () => clearTimeout(timer);
 	});
 
 	// Tools a PNP/profile grant mandates (`requiredTools`, or a `supports` entry the

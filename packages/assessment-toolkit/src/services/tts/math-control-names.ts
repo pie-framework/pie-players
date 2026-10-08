@@ -1,7 +1,7 @@
+import { resolveContentLanguage } from "../../runtime/content-language.js";
 import {
 	flatQuerySelector,
 	flatTreeClosest,
-	isShadowRootNode,
 	walkFlatTree,
 } from "./flat-tree.js";
 import {
@@ -60,17 +60,6 @@ const fractionStyle = (math: Element): string =>
 		? "Fraction_Over"
 		: "Fraction_General";
 
-/** The language a container's content is in, read across shadow roots. */
-const contentLanguage = (element: Element): string | undefined => {
-	for (let node: Element | null = element; node; ) {
-		const lang = node.closest("[lang]")?.getAttribute("lang")?.trim();
-		if (lang) return lang;
-		const root = node.getRootNode();
-		node = isShadowRootNode(root) ? root.host : null;
-	}
-	return undefined;
-};
-
 const isEnglish = (language: string | undefined): boolean =>
 	!language || language.toLowerCase().split("-")[0] === "en";
 
@@ -80,6 +69,8 @@ export interface MathControlNamesOptions {
 	 * SRE's locale tables load from: their domain and style are fixed.
 	 */
 	getMathSpeech?: () => SREMathSpeechOptions | undefined;
+	/** The host's `content-language`, read when an expression is named. */
+	getContentLanguage?: () => string | null | undefined;
 	loadSre?: ResolveMathSpeechOptions["loadSre"];
 }
 
@@ -124,7 +115,9 @@ export function observeMathControlNames(
 		const math = flatQuerySelector(container, "math");
 		const mathml = math && canonicalizeMathML(math.outerHTML);
 		if (!math || !mathml) return;
-		const language = contentLanguage(container);
+		const language = resolveContentLanguage(container, {
+			contentLanguage: options.getContentLanguage?.(),
+		});
 		const key = `${language ?? ""}\u0000${mathml}`;
 		let pending = speech.get(key);
 		if (!pending) {

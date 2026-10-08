@@ -51,16 +51,11 @@
 				attribute: "pnp-enforcement",
 				type: "String",
 			},
-			// JS-only prop. Section-player layouts forward
-			// `runtime.isolation` through this property via
-			// `<pie-assessment-toolkit isolation={effectiveIsolation}>`
-			// in `PieSectionPlayerBaseElement.svelte`. Standalone
-			// hosts that want to override the toolkit's coordinator-
-			// inheritance behavior should pass an explicit
-			// `coordinator={...}` instead — the kebab-attribute
-			// surface (`<pie-assessment-toolkit isolation="force">`)
-			// is no longer observed.
-			isolation: { type: "Object", reflect: false },
+			// `"inherit"` (the default) or `"force"`, as an attribute or a property;
+			// section-player layouts set the property from `runtime.isolation`.
+			// `type: "String"` because an observed attribute of type `Object` is
+			// JSON-parsed, and `isolation="force"` would throw.
+			isolation: { attribute: "isolation", type: "String", reflect: false },
 			// JS-only prop. Section-player layouts forward their `session`
 			// through this property. The controller created for `section`
 			// applies it in place of hydrating from the persistence strategy;
@@ -311,10 +306,12 @@ const DEFAULT_ENV = {
 	// any subscriber.
 	let deliveredFrameworkErrorKey = "";
 	let lastOwnedBootstrapFailureKey = "";
-	// The inputs the owned coordinator was built from, and whether a section has
-	// initialized with it. Plain `let` for the same reason as the latches above.
+	// The inputs the owned coordinator was built from, and what bound it: the
+	// section that initialized with it, or the item that registered with it first.
+	// Plain `let` for the same reason as the latches above.
 	let ownedCoordinatorInputs: OwnedCoordinatorInputs | null = null;
-	let ownedCoordinatorBound = false;
+	let ownedCoordinatorBinding: "a section initialized" | "an item registered" | null =
+		null;
 	// The last `session` value handed to a controller, by identity, and whether
 	// the current section's controller has resolved. A creation takes a value it
 	// has not seen; a later value goes to the resolved controller. A section
@@ -411,6 +408,10 @@ const DEFAULT_ENV = {
 	// before it fires. A reactive effect below joins them so neither
 	// race ordering silently drops a stage.
 	let sectionInitialized = $state(false);
+	// Whether a shell has registered with this toolkit. A toolkit's first content
+	// is its section, or without one its first registered item: the coordinator
+	// starts from it, and the inputs it was built from are fixed by it.
+	let contentRegistered = $state(false);
 
 	function getHostElement(): HTMLElement | null {
 		if (!anchor) return null;
@@ -660,14 +661,22 @@ const DEFAULT_ENV = {
 		);
 	});
 
-	// A host coordinator constructed without a registry takes this toolkit's, so
-	// its providers are the ones behind the toolbar's buttons.
+	// A coordinator without a registry, whether the host constructed it or this
+	// toolkit built it, takes this toolkit's, so its providers are the ones behind
+	// the toolbar's buttons. A registry set after mount is adopted in place. A host
+	// coordinator also hears that there is none, which reports it missing.
 	$effect(() => {
-		const hostCoordinator = coordinator;
+		const coord = effectiveCoordinator;
 		const registry = toolRegistry;
-		if (!hostCoordinator || effectiveCoordinator !== hostCoordinator) return;
-		if (typeof hostCoordinator.adoptToolRegistry !== "function") return;
-		untrack(() => hostCoordinator.adoptToolRegistry(registry));
+		if (!coord || inheritsOuterRuntime) return;
+		if (typeof coord.adoptToolRegistry !== "function") return;
+		untrack(() => {
+			const owned = coord === ownedCoordinator;
+			if (owned && !registry) return;
+			if (coord.adoptToolRegistry(registry) && owned && ownedCoordinatorInputs) {
+				ownedCoordinatorInputs = { ...ownedCoordinatorInputs, toolRegistry: registry };
+			}
+		});
 	});
 
 	$effect(() => {
@@ -1085,15 +1094,21 @@ const DEFAULT_ENV = {
 		const changed = Object.keys(current.signatures).filter(
 			(name) => current.signatures[name] !== built.signatures[name],
 		);
-		if (current.toolRegistry !== built.toolRegistry) changed.push("toolRegistry");
+		// A coordinator built without a registry adopts the first one in place.
+		if (built.toolRegistry && current.toolRegistry !== built.toolRegistry) {
+			changed.push("toolRegistry");
+		}
 		return changed;
 	}
 
-	function reportLateOwnedCoordinatorInputs(changed: string[]): void {
+	function reportLateOwnedCoordinatorInputs(
+		changed: string[],
+		binding: NonNullable<typeof ownedCoordinatorBinding>,
+	): void {
 		if (reportedLateOwnedCoordinatorInputs) return;
 		reportedLateOwnedCoordinatorInputs = true;
 		console.warn(
-			`[pie-assessment-toolkit] ${changed.join(", ")} changed after a section initialized with the coordinator this toolkit built, and that coordinator keeps the values it was built with. Set these inputs no later than the section, pass a coordinator of your own, or update this one from toolkit-ready with updateToolConfig(...) or updateToolsPlacement(...). Reported once per toolkit.`,
+			`[pie-assessment-toolkit] ${changed.join(", ")} changed after ${binding} with the coordinator this toolkit built, and that coordinator keeps the values it was built with. Set these inputs no later than the section or the first item scope, pass a coordinator of your own, or update this one from runtime-ready with updateToolConfig(...) or updateToolsPlacement(...). Reported once per toolkit.`,
 		);
 	}
 
@@ -1121,9 +1136,14 @@ const DEFAULT_ENV = {
 		});
 	}
 
+	// A coordinator the host passes wins over an outer runtime, which is followed
+	// meanwhile so that removing the prop inherits at once.
+	const inheritsOuterRuntime = $derived(
+		!coordinator && isolation !== "force" && inheritedRuntime?.coordinator != null,
+	);
 	const effectiveCoordinator = $derived.by(() => {
-		if (isolation !== "force" && inheritedRuntime?.coordinator) {
-			return inheritedRuntime.coordinator as ToolkitCoordinator;
+		if (inheritsOuterRuntime) {
+			return inheritedRuntime?.coordinator as ToolkitCoordinator;
 		}
 		return coordinator || ownedCoordinator;
 	});
@@ -1140,12 +1160,13 @@ const DEFAULT_ENV = {
 	// only the ownership inputs and run the bootstrap body inside
 	// `untrack`, matching the Svelte subscription guidance in `AGENTS.md`.
 	//
-	// It also tracks what the owned coordinator is built from, and whether a
-	// section is present. A section that arrives after one of those inputs
-	// changed initializes with a coordinator rebuilt from the current values,
-	// so a host that sets `runtime` and `section` a tick after mount gets the
-	// coordinator it would have had setting them first. Once a section has
-	// initialized with the coordinator, a change is reported instead.
+	// It also tracks what the owned coordinator is built from, and the toolkit's
+	// first content. Content that arrives after one of those inputs changed binds
+	// a coordinator rebuilt from the current values, so a host that sets `runtime`
+	// and `section` a tick after mount gets the coordinator it would have had
+	// setting them first. Once content has bound the coordinator, which has then
+	// started, a change is reported instead. A registry is the exception: the
+	// registry effect above hands it to a coordinator built without one.
 	$effect(() => {
 		void host;
 		void coordinator;
@@ -1153,6 +1174,7 @@ const DEFAULT_ENV = {
 		void inheritedRuntime;
 		void toolContextResolvers;
 		void hasSection;
+		void contentRegistered;
 		void tools;
 		void enabledTools;
 		void assessmentId;
@@ -1182,9 +1204,9 @@ const DEFAULT_ENV = {
 			}
 			if (ownedCoordinator) {
 				const changed = changedOwnedCoordinatorInputs();
-				if (changed.length > 0 && ownedCoordinatorBound) {
-					reportLateOwnedCoordinatorInputs(changed);
-				} else if (changed.length > 0 && section) {
+				if (changed.length > 0 && ownedCoordinatorBinding) {
+					reportLateOwnedCoordinatorInputs(changed, ownedCoordinatorBinding);
+				} else if (changed.length > 0 && (section || contentRegistered)) {
 					void releaseOwnedCoordinator().catch(
 						reportOwnedCoordinatorDisposeError,
 					);
@@ -1228,7 +1250,7 @@ const DEFAULT_ENV = {
 					ownedCoordinator = buildOwnedCoordinator(validatedTools);
 					ownsByDecision = isolation !== "force";
 					ownedCoordinatorInputs = readOwnedCoordinatorInputs();
-					ownedCoordinatorBound = false;
+					ownedCoordinatorBinding = null;
 					lastAppliedToolContextResolvers = toolContextResolvers;
 					lastOwnedBootstrapFailureKey = "";
 					frameworkErrorModel = null;
@@ -1244,6 +1266,16 @@ const DEFAULT_ENV = {
 					});
 				}
 			}
+		});
+	});
+
+	// An item registering binds a coordinator no section has bound. After the
+	// bootstrap effect above, which rebuilds it first from inputs that changed.
+	$effect(() => {
+		if (!contentRegistered || !effectiveCoordinator) return;
+		const coord = effectiveCoordinator;
+		untrack(() => {
+			if (coord === ownedCoordinator) ownedCoordinatorBinding ??= "an item registered";
 		});
 	});
 
@@ -1423,6 +1455,7 @@ const DEFAULT_ENV = {
 			observeMathControlNames(element, {
 				getMathSpeech: () =>
 					effectiveCoordinator?.getServiceBundle().ttsService.getMathSpeechOptions(),
+				getContentLanguage: () => contentLanguage,
 			}),
 		);
 	}
@@ -1559,8 +1592,9 @@ const DEFAULT_ENV = {
 	});
 
 	$effect(() => {
-		const parentRuntimeId =
-			isolation !== "force" && inheritedRuntime ? inheritedRuntime.runtimeId : null;
+		const parentRuntimeId = inheritsOuterRuntime
+			? (inheritedRuntime?.runtimeId ?? null)
+			: null;
 		const ownership: "owned" | "inherited" = parentRuntimeId ? "inherited" : "owned";
 		if (ownership !== lastOwnership) {
 			lastOwnership = ownership;
@@ -1583,8 +1617,9 @@ const DEFAULT_ENV = {
 	$effect(() => {
 		const coord = effectiveCoordinator;
 		if (!coord) return;
-		const ownership: "owned" | "inherited" =
-			isolation !== "force" && inheritedRuntime?.coordinator ? "inherited" : "owned";
+		const ownership: "owned" | "inherited" = inheritsOuterRuntime
+			? "inherited"
+			: "owned";
 		untrack(() => {
 			if (coord === announcedCoordinator) return;
 			announcedCoordinator = coord;
@@ -1729,7 +1764,7 @@ const DEFAULT_ENV = {
 		// The section's controller now lives on the coordinator, and the host
 		// receives it from `toolkit-ready`, so an owned one is no longer rebuilt.
 		if (effectiveCoordinator === untrack(() => ownedCoordinator)) {
-			ownedCoordinatorBound = true;
+			ownedCoordinatorBinding ??= "a section initialized";
 		}
 
 		sessionControllerResolved = false;
@@ -1852,6 +1887,7 @@ const DEFAULT_ENV = {
 					if (!detail?.element || !detail?.itemId) return;
 					const changed = sectionEngine.register(detail);
 					runtimeRegistrationDetails.set(detail.element, detail);
+					contentRegistered = true;
 					registerCatalogsForDetail(detail);
 					nameMathInControls(detail.element);
 					sectionEngine.handleContentRegistered(detail);
@@ -2136,14 +2172,16 @@ const DEFAULT_ENV = {
 	// resolves before composition lands (rare but possible during
 	// fast-hydration paths).
 	//
-	// A toolkit without a section has nothing to compose: `composed` is recorded
-	// as skipped and the chain ends at `engine-ready`. A section bound before the
-	// coordinator settles takes the usual path; one bound after continues the
-	// chain at `interactive`.
+	// A toolkit without a section has nothing to compose: from its first
+	// registered item, `composed` is recorded as skipped and the chain ends at
+	// `engine-ready`. A section bound before the coordinator settles takes the
+	// usual path; one bound after continues the chain at `interactive`. Either way
+	// the coordinator starts at the toolkit's first content, so a section player
+	// mounted before its section starts it at the first composition.
 	$effect(() => {
 		if (!effectiveCoordinator) return;
-		const sectionless = !hasSection;
-		if (!composedStageEntered && !sectionless) return;
+		const sectionlessContent = !hasSection && contentRegistered;
+		if (!composedStageEntered && !sectionlessContent) return;
 		if (engineReadyStageEntered) return;
 		const coord = effectiveCoordinator;
 		let cancelled = false;

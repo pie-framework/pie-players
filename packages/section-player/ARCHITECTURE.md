@@ -16,7 +16,7 @@ This package exposes layout-specific section-player custom elements:
    - `SectionPlayerShell`
    - `pie-section-player-item-card`
    - `pie-section-player-passage-card`
-   - `pie-item-shell`
+   - `pie-item-scope`, from the toolkit
    - `pie-passage-shell`
 4. Item rendering is resolved from `DEFAULT_PLAYER_DEFINITIONS` in `component-definitions.ts`.
 
@@ -33,7 +33,6 @@ This package exposes layout-specific section-player custom elements:
 - `src/components/shared/SectionItemCard.svelte`
 - `src/components/shared/SectionPassageCard.svelte`
 - `src/components/shared/section-player-card-context.ts`
-- `src/components/ItemShellElement.svelte`
 - `src/components/PassageShellElement.svelte`
 - `src/component-definitions.ts`
 - `src/controllers/*`
@@ -327,7 +326,7 @@ The shells' events for their runtime (`pie-register`,
 `pie-unregister`, `pie-item-session-changed`, `pie-content-loaded`,
 `pie-item-player-error`, `pie-formative-action`,
 `pie-media-time-source`) stop at the toolkit that handles them. A raw
-item-player `session-changed` stops at its `<pie-item-shell>`, which
+item-player `session-changed` stops at its `<pie-item-scope>`, which
 drops it when it repeats the last event that shell forwarded, and
 otherwise forwards it to the runtime and, unless it carries only
 metadata, as `item-session-changed`.

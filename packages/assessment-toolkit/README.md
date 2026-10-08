@@ -236,13 +236,11 @@ Documented exceptions to the mirror rule:
   `runtime.tools.placement.{item,passage}` directly.
 - Runtime-only keys on the section-player layout CEs
   (`createSectionController`, `isolation`): accepted only via
-  `runtime.<key>`. `<pie-assessment-toolkit>`
-  itself keeps `createSectionController` and `isolation` as JS-only
-  props (no kebab-attribute surface): section-player layouts forward
-  `runtime.isolation` and `runtime.createSectionController` to the
-  wrapped toolkit via property bindings; standalone hosts that need
-  to override coordinator inheritance should pass an explicit
-  `coordinator={...}` instead.
+  `runtime.<key>`. Section-player layouts forward both to the wrapped
+  toolkit as properties. `<pie-assessment-toolkit>` keeps
+  `createSectionController` JS-only and takes `isolation` as an
+  attribute or a property. A `coordinator` passed to it wins over an
+  outer toolkit's.
 
 ### When to add a tier-1 attribute
 
@@ -437,7 +435,7 @@ player.toolCoordinator = toolCoordinator;
 `<pie-assessment-toolkit>` needs no section. Bind none and it provides tools,
 policy and services to the item toolbars and item players inside it, which is
 how the toolkit accompanies a plain item player. `<pie-item-scope>` holds the
-item for its tools, as `<pie-item-shell>` does in a section player's card:
+item for its tools, as it does in a section player's card:
 
 ```html
 <pie-assessment-toolkit pnp-enforcement="on">
@@ -488,9 +486,10 @@ load.
 A profile change is a new `assessment` value; the toolbars re-derive on the
 policy change it emits. The toolkit announces `runtime-ready`, with
 `{ runtimeId, coordinator, ownership }`, once per coordinator, with or without a
-section. Without one its stage chain records `composed` as skipped and ends at
-`engine-ready`, which waits for `coordinator.waitUntilReady()`; `toolkit-ready`,
-`section-ready` and `interactive` wait for a bound section. A host that holds
+section. Without one, from the first item that registers, its stage chain
+records `composed` as skipped and ends at `engine-ready`, which waits for
+`coordinator.waitUntilReady()`; `toolkit-ready`, `section-ready` and
+`interactive` wait for a bound section. A host that holds
 the coordinator from `runtime-ready`, or passes its own as `coordinator`,
 changes the profile with `coordinator.updateAssessment(...)`; the toolkit
 applies its `assessment` property only to a coordinator it owns. The
@@ -498,11 +497,14 @@ applies its `assessment` property only to a coordinator it owns. The
 
 The toolkit builds its own coordinator at mount from `tools`, `enabled-tools`,
 `assessment-id`, `accessibility`, `lazy-init`, `tool-config-strictness` and
-`toolRegistry`. A section that arrives after one of those changed initializes
-with a coordinator rebuilt from the current values, and the toolbars move to
-it. After a section has initialized, a change to them is reported once in the
-console and does not reach the coordinator; `pnp-enforcement`, `assessment`,
-`currentItemRef` and `toolContextResolvers` apply to it at any time. That
+`toolRegistry`. Its first content binds it: the section, or without one the
+first item scope that registers. Content that arrives after one of those inputs
+changed binds a coordinator rebuilt from the current values, and the toolbars
+move to it. After that, a change to them is reported once in the console and
+does not reach the coordinator, except a `toolRegistry` given to a toolkit that
+had none, which the coordinator adopts in place; `pnp-enforcement`,
+`assessment`, `currentItemRef` and `toolContextResolvers` apply to it at any
+time. That
 coordinator reports feature policy asked with no assessment bound only while
 `pnp-enforcement` is `on`: a toolkit given no `assessment` and no enforcement
 has asked for no accommodation.
@@ -513,8 +515,8 @@ mounted together. Otherwise the inner one builds its own and keeps it, and
 reports an outer coordinator arriving later once in the console. `isolation`
 `"force"` keeps a nested toolkit on its own coordinator by design.
 
-Text-to-speech starts once the section composes, and `engine-ready` waits for
-it. With `lazy-init` it starts at the first read-aloud instead, unless policy
+Text-to-speech starts at the toolkit's first content, once the section composes
+or the first item scope registers, and `engine-ready` waits for it. With `lazy-init` it starts at the first read-aloud instead, unless policy
 grants it. A tool provider or text-to-speech that fails to start is a
 recoverable framework error: the tool reports itself unavailable and the
 assessment goes on. When policy grants the tool, through an item or district

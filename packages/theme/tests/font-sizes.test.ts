@@ -22,15 +22,15 @@ const PRESETS: ReadonlyArray<readonly [string, string]> = [
 ];
 
 /**
- * Both delivery paths. `pie-item-shell` / `pie-passage-shell` /
- * `pie-item-player` render PIE elements directly into their own shadow trees;
+ * Both delivery paths. `pie-item-scope` / `pie-passage-shell` /
+ * `pie-item-player` hold the PIE elements this repo renders;
  * `pie-player` is the externally loaded wrapper other hosts render items
  * through. Targeting only the wrapper — which this file did — scaled nothing
  * this repo renders itself, and the miss was invisible because the token still
  * resolved and no rule consumed it.
  */
 const CONTENT_HOSTS = [
-	"pie-item-shell",
+	"pie-item-scope",
 	"pie-passage-shell",
 	"pie-item-player",
 	"pie-player",

@@ -358,4 +358,29 @@ test.describe("annotation toolbar over open shadow roots", () => {
 			)
 			.toBe("es-MX");
 	});
+
+	test("reads a selection with no named language aloud as en-US, as tts-inline does", async ({
+		page,
+	}) => {
+		await gotoDemo(page);
+		await selectText(page, "Words inside a shadow root.", 0, 12);
+		await expect(strip(page)).toBeVisible();
+
+		await strip(page)
+			.getByRole("button", { name: "Read selected text aloud" })
+			.click();
+
+		await expect
+			.poll(
+				async () =>
+					(await spoken(page)).find((utterance) =>
+						utterance.text.includes("Words inside"),
+					)?.lang ?? null,
+				{
+					message: "expected the selection to be spoken as en-US",
+					timeout: 20_000,
+				},
+			)
+			.toBe("en-US");
+	});
 });

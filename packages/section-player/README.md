@@ -1087,7 +1087,7 @@ The player also commits when an item shell tears down and when the page goes
 hidden.
 
 A committed response travels like any other. A raw element `session-changed`
-does not leave its `<pie-item-shell>`, which re-dispatches it as the normalized
+does not leave its `<pie-item-scope>`, which re-dispatches it as the normalized
 `item-session-changed` (`PIE_ITEM_SESSION_CHANGED_EVENT`); the toolkit then
 publishes the section's canonical `session-changed`. Both bubble through the
 layout element to `document`, and a listener on either receives each dispatch

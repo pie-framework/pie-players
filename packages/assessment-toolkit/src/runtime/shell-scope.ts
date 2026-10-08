@@ -61,7 +61,11 @@ export interface ShellScope {
 	send: (type: string, detail: object) => void;
 }
 
-/** Only load and error events are sent before a runtime answers. */
+/**
+ * The newest events kept until a runtime answers; an older one is dropped. A
+ * scope in plain mode sends only load and error events, a section shell its
+ * session events too.
+ */
 const MAX_HELD_SHELL_EVENTS = 50;
 
 type Provided<C extends UnknownContext> = {

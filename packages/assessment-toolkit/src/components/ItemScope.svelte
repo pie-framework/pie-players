@@ -6,6 +6,7 @@
 			itemId: { attribute: "item-id", type: "String" },
 			canonicalItemId: { attribute: "canonical-item-id", type: "String" },
 			contentKind: { attribute: "content-kind", type: "String" },
+			regionPolicy: { attribute: "region-policy", type: "String" },
 			scopeElement: { type: "Object", reflect: false },
 			ttsHighlightTargetResolver: { type: "Object", reflect: false },
 			item: { type: "Object", reflect: false },
@@ -15,28 +16,29 @@
 
 <script lang="ts">
 	/**
-	 * An item's scope for the toolkit's tools where no section player holds the
-	 * item: the item's identity, the region its tools act on, and its
-	 * registration with the toolkit, which files the item's accessibility
-	 * catalogs. `<pie-item-shell>` publishes the same in a section card.
+	 * An item's scope for the toolkit's tools, in a section player's card or around
+	 * a host's own item player: the item's identity, the region its tools act on,
+	 * and its registration with the toolkit, which files the item's accessibility
+	 * catalogs.
 	 *
 	 * In a toolkit that holds a section the scope is also the item's channel to
-	 * it, as `<pie-item-shell>` is. Otherwise the host owns the item player and
-	 * its events pass through unchanged; the toolkit hears only that the item
-	 * loaded or failed.
+	 * it. Otherwise the host owns the item player and its events pass through
+	 * unchanged; the toolkit hears only that the item loaded or failed.
 	 */
 	import { connectAssessmentToolkitHostRuntimeContext } from "../context/runtime-context-consumer.js";
-	import { warnOncePerDocument } from "../runtime/page-warnings.js";
+	import {
+		PENDING_INPUT_WARNING_DELAY_MS,
+		warnOncePerDocument,
+	} from "../runtime/page-warnings.js";
 	import { createShellEventBridge } from "../runtime/shell-event-bridge.js";
 	import { createShellScope } from "../runtime/shell-scope.js";
 	import type { TTSHighlightTargetResolver } from "../services/tts/highlight-target-resolver.js";
-
-	const NO_TOOLKIT_WARNING_DELAY_MS = 10_000;
 
 	let {
 		itemId = "",
 		canonicalItemId = "",
 		contentKind = "assessment-item",
+		regionPolicy = "default",
 		scopeElement = null as HTMLElement | null,
 		ttsHighlightTargetResolver = null as TTSHighlightTargetResolver | null,
 		item = null as unknown,
@@ -71,9 +73,9 @@
 			warnOncePerDocument(
 				scopeHost.ownerDocument,
 				"itemScopeWithoutToolkit",
-				`[pie-item-scope] No <pie-assessment-toolkit> has answered item "${itemId}" after ${NO_TOOLKIT_WARNING_DELAY_MS / 1000} s, so the item is not registered and the tools inside the scope have no runtime. Place the scope inside the toolkit element; it keeps waiting for one. Reported once per page.`,
+				`[pie-item-scope] No <pie-assessment-toolkit> has answered item "${itemId}" after ${PENDING_INPUT_WARNING_DELAY_MS / 1000} s, so the item is not registered and the tools inside the scope have no runtime. Place the scope inside the toolkit element; it keeps waiting for one. Reported once per page.`,
 			);
-		}, NO_TOOLKIT_WARNING_DELAY_MS);
+		}, PENDING_INPUT_WARNING_DELAY_MS);
 		const bridge = createShellEventBridge({
 			host: scopeHost,
 			kind: "item",
@@ -104,6 +106,7 @@
 						itemId,
 						canonicalItemId,
 						contentKind,
+						regionPolicy,
 						scopeElement,
 						ttsHighlightTargetResolver,
 						item,

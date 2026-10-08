@@ -7,7 +7,7 @@ import { expect, type Page, test } from "@playwright/test";
  */
 const CHOICE_NAME =
 	/factors easily into open paren x minus 2 close paren times open paren x minus 3 close paren$/;
-const CHOICE_MATH = "pie-item-shell label mjx-container";
+const CHOICE_MATH = "pie-item-scope label mjx-container";
 
 async function gotoDemo(page: Page, player: "iife" | "esm"): Promise<void> {
 	await page.goto(

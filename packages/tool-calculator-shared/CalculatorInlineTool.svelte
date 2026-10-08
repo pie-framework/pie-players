@@ -119,7 +119,7 @@
 		if (!isBrowser || !coordinator || effectiveTargetToolId) return;
 		const timer = setTimeout(() => {
 			console.warn(
-				'[pie-tool-calculator-inline] No calculator to toggle: place the button inside <pie-item-shell>, or set target-tool-id to the calculator tool id.',
+				'[pie-tool-calculator-inline] No calculator to toggle: place the button inside <pie-item-scope>, or set target-tool-id to the calculator tool id.',
 			);
 		}, UNRESOLVED_TARGET_WARNING_DELAY_MS);
 		return () => clearTimeout(timer);

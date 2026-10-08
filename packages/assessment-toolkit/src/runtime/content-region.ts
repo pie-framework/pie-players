@@ -6,7 +6,7 @@ import {
 /** Marks the part of a shell scope that holds the content tools read and annotate. */
 export const CONTENT_REGION_SELECTOR = "[data-region='content']";
 
-/** Marks the host of a shell scope (`<pie-item-shell>`, `<pie-passage-shell>`, `<pie-item-scope>`). */
+/** Marks the host of a shell scope (`<pie-item-scope>`, `<pie-passage-shell>`). */
 export const SHELL_SCOPE_HOST_SELECTOR = "[data-pie-shell-root]";
 
 /**

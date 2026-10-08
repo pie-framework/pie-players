@@ -63,6 +63,23 @@ describe("section-player stage emitter — kernel invariants", () => {
 		expect(source).toContain("makeCohort({ sectionId: cohortSectionId, attemptId })");
 	});
 
+	test("a cohort roll clears the section-ready latch before the engine driver reads it", () => {
+		// Left set, the driver hands the new cohort the previous section's
+		// readiness, and `pie-loading-complete` fires for it at the switch.
+		const source = readFileSync(KERNEL_PATH, "utf8");
+		const reset = source.indexOf("cohortErrorLatched = false;");
+		const resetEffect = source.slice(
+			source.lastIndexOf("$effect(() => {", reset),
+			source.indexOf("});", reset),
+		);
+		expect(resetEffect).toContain("void cohortSectionId;");
+		expect(resetEffect).toContain("void attemptId;");
+		expect(resetEffect).toContain("sectionReady = false;");
+		expect(reset).toBeLessThan(
+			source.indexOf("engine.attachHost({ host, sourceCe });"),
+		);
+	});
+
 	test("reads the section controller without advancing the stage chain", () => {
 		const source = readFileSync(KERNEL_PATH, "utf8");
 		for (const signature of [

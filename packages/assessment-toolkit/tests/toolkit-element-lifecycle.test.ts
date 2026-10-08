@@ -18,6 +18,7 @@ const OBSERVED_EVENTS = [
 	"pie-loading-complete",
 	"toolkit-ready",
 	"section-ready",
+	"composition-changed",
 ] as const;
 
 type ToolkitElement = HTMLElement & Record<string, unknown>;
@@ -223,6 +224,38 @@ describe("<pie-assessment-toolkit> lifecycle", () => {
 		]);
 		expect(received).toEqual([
 			{ type: "item-session-data-changed", itemId: "item-1" },
+		]);
+	});
+
+	test("each section's composition is published before its section-ready", async () => {
+		const composing = (sectionId: string) => ({
+			...controller(),
+			getCompositionModel: () => ({
+				section: section(sectionId),
+				renderables: [{ flavor: "item", entity: { id: `${sectionId}-q1` } }],
+			}),
+		});
+		const sectionIds = ["s1", "s2"];
+		const { element, events } = await mount({
+			sectionId: "s1",
+			section: section("s1"),
+			createSectionController: () => composing(sectionIds.shift() as string),
+		});
+		Object.assign(element, { sectionId: "s2", section: section("s2") });
+		await settle();
+
+		const order = events.flatMap(({ type, detail }) => {
+			if (type === "section-ready") return [`ready:${detail.sectionId}`];
+			if (type === "composition-changed") {
+				return [`composition:${detail.composition.section.identifier}`];
+			}
+			return [];
+		});
+		expect(order).toEqual([
+			"composition:s1",
+			"ready:s1",
+			"composition:s2",
+			"ready:s2",
 		]);
 	});
 

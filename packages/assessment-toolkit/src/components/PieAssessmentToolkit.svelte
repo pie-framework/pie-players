@@ -1354,6 +1354,13 @@ const DEFAULT_ENV = {
 		});
 	}
 
+	/** Publish a scheduled composition now rather than on the next frame. */
+	function flushPendingComposition() {
+		if (!compositionEmitScheduler.isPending()) return;
+		compositionEmitScheduler.cancel();
+		flushCompositionChanged(pendingCompositionModel);
+	}
+
 	function unregisterCatalogsForElement(element?: HTMLElement | null): void {
 		if (!element) return;
 		const cleanups = catalogRegistrationCleanups.get(element);
@@ -1720,6 +1727,11 @@ const DEFAULT_ENV = {
 				sectionFailureBannerKey = null;
 				// A value assigned while the controller was being created.
 				untrack(() => assignSessionToController());
+				// The section's composition goes out ahead of `section-ready`. A layout
+				// that counts readiness from `section-ready` then holds this section's
+				// composition, never the previous section's, which it would otherwise
+				// hold until the next frame.
+				untrack(() => flushPendingComposition());
 				emit("toolkit-ready", {
 					runtimeId,
 					assessmentId: effectiveAssessmentId,

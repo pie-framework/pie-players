@@ -7,6 +7,12 @@
  * both into each controller it resolves, and forwards shell events, session
  * updates and host commands to that controller.
  *
+ * The registry outlives a section switch: the shells of the section being left
+ * stay registered until they unmount, and a removed shell's `pie-unregister`
+ * does not reach the toolkit. A controller therefore hears about a shell, in
+ * replay or live, only when the shell renders one of its section's
+ * renderables; see `isSectionRenderable`.
+ *
  * The section's stage chain is a separate object: the section player's layout
  * kernel drives a `SectionRuntimeEngine` from the readiness signals it derives.
  * The two share no state.
@@ -133,6 +139,24 @@ const logger = createPieLogger("section-controller-binding", () =>
 	isGlobalDebugEnabled(),
 );
 
+/**
+ * The `entity.id` of each of a composition model's `renderables`: the ids its
+ * item and passage shells register with. `null` when the model has no
+ * `renderables` array.
+ */
+function readRenderableIds(model: unknown): ReadonlySet<string> | null {
+	const renderables = (model as { renderables?: unknown } | null | undefined)
+		?.renderables;
+	if (!Array.isArray(renderables)) return null;
+	const ids = new Set<string>();
+	for (const renderable of renderables) {
+		const id = (renderable as { entity?: { id?: unknown } } | null)?.entity
+			?.id;
+		if (typeof id === "string" && id) ids.add(id);
+	}
+	return ids;
+}
+
 export class SectionControllerBinding {
 	private readonly registry = new RuntimeRegistry();
 	private controller: RuntimeController | null = null;
@@ -143,6 +167,14 @@ export class SectionControllerBinding {
 	private activeInitToken = 0;
 
 	/**
+	 * Ids of the renderables in the current controller's composition model, read
+	 * when `initialize` resolves it. `null` while no controller is resolved, and
+	 * for a controller that publishes no `renderables`: its section cannot be
+	 * told apart, so every shell reaches it.
+	 */
+	private sectionRenderableIds: ReadonlySet<string> | null = null;
+
+	/**
 	 * Tracks which `(canonicalItemId, contentKind)` pairs have already
 	 * fired `handleContentLoaded` on this binding. Mirrored alongside
 	 * `RuntimeRegistry`'s registered set so a cohort handoff can
@@ -150,8 +182,10 @@ export class SectionControllerBinding {
 	 * controller — see `replayRegisteredShellsIntoController` and the
 	 * PIE-512 Phase B regression test.
 	 *
-	 * Cleared in lockstep with `handleContentUnregistered` and on
-	 * `dispose`.
+	 * Records loads of every registered shell, in or out of the current
+	 * section, so a shell registered ahead of its section's controller is
+	 * replayed as loaded. A key is dropped when its last shell unregisters,
+	 * and on `dispose`.
 	 */
 	private readonly loadedRenderableKeys = new Set<string>();
 
@@ -179,6 +213,9 @@ export class SectionControllerBinding {
 		if (token !== this.activeInitToken) return;
 		this.unsubscribeController?.();
 		this.controller = resolved;
+		this.sectionRenderableIds = readRenderableIds(
+			resolved.getCompositionModel?.(),
+		);
 		// PIE-512 Phase C: always re-feed the registry's currently
 		// registered shells (and their loaded state) into the resolved
 		// controller. We do NOT gate on `resolved !== previousController`
@@ -206,6 +243,11 @@ export class SectionControllerBinding {
 		// no-op if the controller already knows about them, but
 		// re-seeds the controller in the post-`updateInput`-wipe case
 		// that pre-Phase-C used to encounter).
+		//
+		// The replay carries only the shells of the resolved controller's
+		// section. On a switch the registry still holds the previous section's
+		// shells, and replaying them reported that section's items as loaded
+		// in the new one.
 		this.replayRegisteredShellsIntoController(resolved);
 		args.onCompositionChanged?.(resolved.getCompositionModel?.());
 		this.unsubscribeController =
@@ -225,7 +267,8 @@ export class SectionControllerBinding {
 
 	/**
 	 * Re-feed the binding's `RuntimeRegistry` and loaded-set into the
-	 * resolved controller. Call site: `initialize(...)` — runs on
+	 * resolved controller, limited to the shells of its section (see
+	 * `isSectionRenderable`). Call site: `initialize(...)` — runs on
 	 * EVERY initialize, both cohort-flip-resolves-fresh-controller
 	 * and same-cohort-resolves-existing-controller cases. Phase C
 	 * dropped the `resolved !== previousController` gate; see the
@@ -255,7 +298,9 @@ export class SectionControllerBinding {
 		controller: RuntimeController,
 	): void {
 		if (!controller.handleContentRegistered) return;
-		const shells = this.registry.getOrderedShells();
+		const shells = this.registry
+			.getOrderedShells()
+			.filter((shell) => this.isSectionRenderable(shell));
 		if (shells.length === 0) return;
 		for (const shell of shells) {
 			const canonicalItemId = shell.canonicalItemId || shell.itemId;
@@ -294,6 +339,24 @@ export class SectionControllerBinding {
 		return `${contentKind ?? ""}:${canonicalItemId}`;
 	}
 
+	/**
+	 * Whether a shell renders one of the current section's renderables: its
+	 * runtime or canonical id is among the composition model's renderable ids.
+	 * An item in two sections belongs to both, so its shell carries over a
+	 * switch the way a persistent passage shell does.
+	 */
+	private isSectionRenderable(args: {
+		itemId: string;
+		canonicalItemId?: string;
+	}): boolean {
+		const ids = this.sectionRenderableIds;
+		if (!ids) return true;
+		return (
+			ids.has(args.itemId) ||
+			(!!args.canonicalItemId && ids.has(args.canonicalItemId))
+		);
+	}
+
 	register(detail: RuntimeRegistrationDetail): boolean {
 		return this.registry.register(detail);
 	}
@@ -314,6 +377,7 @@ export class SectionControllerBinding {
 	}
 
 	handleContentRegistered(detail: RuntimeRegistrationDetail): void {
+		if (!this.isSectionRenderable(detail)) return;
 		this.controller?.handleContentRegistered?.({
 			itemId: detail.itemId,
 			canonicalItemId: detail.canonicalItemId || detail.itemId,
@@ -321,6 +385,12 @@ export class SectionControllerBinding {
 		});
 	}
 
+	/**
+	 * Called after `unregister` removed the shell from the registry. While
+	 * another registered shell renders the same renderable — the next
+	 * section's shell for an item both sections hold — the renderable stays
+	 * registered and loaded.
+	 */
 	handleContentUnregistered(detail: RuntimeRegistrationDetail): void {
 		const canonicalItemId = detail.canonicalItemId || detail.itemId;
 		// Key the load-set delete with the same `contentKind`-only
@@ -330,9 +400,19 @@ export class SectionControllerBinding {
 		// fallback is preserved for the controller-forwarded payload
 		// because the controller normalizes via `toSectionContentKind`
 		// and the `kind` field remains meaningful there.
-		this.loadedRenderableKeys.delete(
-			this.getLoadedKey(canonicalItemId, detail.contentKind),
-		);
+		const key = this.getLoadedKey(canonicalItemId, detail.contentKind);
+		const stillRendered = this.registry
+			.getOrderedShells()
+			.some(
+				(shell) =>
+					this.getLoadedKey(
+						shell.canonicalItemId || shell.itemId,
+						shell.contentKind,
+					) === key,
+			);
+		if (stillRendered) return;
+		this.loadedRenderableKeys.delete(key);
+		if (!this.isSectionRenderable(detail)) return;
 		this.controller?.handleContentUnregistered?.({
 			itemId: detail.itemId,
 			canonicalItemId,
@@ -351,6 +431,7 @@ export class SectionControllerBinding {
 		this.loadedRenderableKeys.add(
 			this.getLoadedKey(canonicalItemId, args.contentKind),
 		);
+		if (!this.isSectionRenderable(args)) return;
 		this.controller?.handleContentLoaded?.(args);
 	}
 
@@ -463,6 +544,7 @@ export class SectionControllerBinding {
 		this.registry.clear();
 		this.loadedRenderableKeys.clear();
 		this.controller = null;
+		this.sectionRenderableIds = null;
 		this.coordinator = null;
 	}
 }

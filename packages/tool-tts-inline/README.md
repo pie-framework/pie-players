@@ -74,7 +74,9 @@ passageHeader.append(ttsButton);
 ### HTML Attributes
 
 - `catalog-id` - QTI 3.0 accessibility catalog ID for SSML lookup (default: `''`)
-- `language` - Language code for TTS (default: `'en-US'`)
+- `language` - The content language when the markup names none (default: `''`,
+  which falls back to the toolkit's `content-language`, then `en-US`). A `lang`
+  attribute between the reading target and its shell wins over it.
 - `size` - Icon size: `'sm'` (1.5rem), `'md'` (2rem), or `'lg'` (2.5rem) (default: `'md'`)
 - `layout-mode` - Panel placement (default: `'expanding-row'`). `'reserved-row'`
   and `'expanding-row'` drop the panel below the trigger; in the packaged toolbar
@@ -134,8 +136,8 @@ Semantics:
 ## Behavior
 
 1. **Services**: Reads `ttsService`, `highlightCoordinator` and `toolkitCoordinator` from the toolkit runtime context; the controls stay disabled until a `ttsService` arrives, and starting playback awaits `toolkitCoordinator.ensureTTSReady()`
-2. **Text Extraction**: Reads the `textContent` of the scope element (the region scope, else the shell scope) when it is `[data-region='content']`, else of its first `[data-region='content']` descendant, else of the scope element itself
-3. **TTS Trigger**: Calls `ttsService.speak(text, { catalogId, catalogContext, language, contentElement })`, where `contentElement` is that reading target and `catalogContext` names the owning item or passage
+2. **Text Extraction**: Reads the text of the scope element's content region (the region scope, else the shell scope, when it is `[data-region='content']`, else its first `[data-region='content']` descendant, else the scope element itself), including text rendered into open shadow roots
+3. **TTS Trigger**: Calls `ttsService.speak(text, { catalogId, catalogContext, language, contentElement })`, where `contentElement` is that reading target, `catalogContext` names the owning item or passage, and `language` is resolved when reading starts: the nearest `lang` between the reading target and its shell, else the `language` attribute, else the toolkit's `content-language`, else `en-US`
 4. **Catalog Resolution**: TTSService checks for SSML in accessibility catalogs (priority order):
    - **Extracted catalogs** (from embedded SSML) - generated before render by hosts that run `SSMLExtractor`
    - **Item-level catalogs** (manually authored)

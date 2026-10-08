@@ -12,6 +12,7 @@
 		"index.ts",
 		"selection-actions.ts",
 		"selection-keyboard.ts",
+		"selection-range.ts",
 		"tool-annotation-toolbar.svelte"
 	],
 	"exclude": ["node_modules", "dist"]

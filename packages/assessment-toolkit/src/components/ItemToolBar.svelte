@@ -289,7 +289,7 @@
 		hostButtons = [] as ToolbarItem[],
 		class: className = '',
 		size = 'md' as 'sm' | 'md' | 'lg',
-		language = 'en-US'
+		language = ''
 	}: {
 		level?: ToolLevel;
 		scopeId?: string;
@@ -321,6 +321,11 @@
 	// default provider when no toolkit published one — a toolbar rendered in a
 	// bare harness still reads as English rather than as message keys.
 	const interfaceI18n = $derived(resolveInterfaceI18n(runtimeContext));
+	// Content language handed to the tools: the `language` attribute, else the
+	// host's `content-language`. Tools reading content resolve markup `lang` over it.
+	const effectiveLanguage = $derived(
+		language || runtimeContext?.contentLanguage || 'en-US'
+	);
 	let shellContext = $state<AssessmentToolkitShellContext | null>(null);
 	let moduleLoadVersion = $state(0);
 	// Bumped from `coordinator.onPolicyChange(...)` so the engine-driven
@@ -608,7 +613,7 @@
 			},
 			itemId: effectiveScopeId,
 			catalogId: effectiveCatalogId,
-			language,
+			language: effectiveLanguage,
 			i18n: interfaceI18n,
 			ui: {
 				size
@@ -794,7 +799,7 @@
 			},
 			itemId: effectiveScopeId,
 			catalogId: effectiveCatalogId,
-			language,
+			language: effectiveLanguage,
 			i18n: interfaceI18n,
 			ui: {
 				size

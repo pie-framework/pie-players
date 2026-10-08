@@ -18,6 +18,9 @@
 			// attribute values as strings and a BCP-47 tag is one; POSIX
 			// (`nl_NL`) and bare (`nl`) forms both resolve.
 			locale: { attribute: "locale", type: "String" },
+			// Content language, published onto the runtime context for read-aloud
+			// and catalog lookups. Markup `lang` inside a shell wins over it.
+			contentLanguage: { attribute: "content-language", type: "String" },
 			lazyInit: { attribute: "lazy-init", type: "Boolean" },
 			toolConfigStrictness: { attribute: "tool-config-strictness", type: "String" },
 			tools: { attribute: "tools", type: "Object" },
@@ -236,6 +239,7 @@ const DEFAULT_ENV = {
 		env = {},
 		ndsIcons = false,
 		locale = "",
+		contentLanguage = "",
 		lazyInit = false,
 		toolConfigStrictness = "error" as ToolConfigStrictness,
 		tools = {},
@@ -1307,6 +1311,7 @@ const DEFAULT_ENV = {
 			// load re-publish this object; see `interfaceI18nVersion`.
 			locale: (void interfaceI18nVersion, interfaceI18n.getLocale()),
 			i18n: interfaceI18n,
+			contentLanguage: contentLanguage?.trim() || undefined,
 			reportSessionChanged: (itemId: string, detail: unknown) => {
 				const result = sectionEngine.updateItemSession(itemId, detail);
 				emitNormalizedSessionChanged({

@@ -366,6 +366,7 @@ The layout elements (`pie-section-player-splitpane`,
 - `base-heading-level` (number, optional): the heading level this player's card headings occupy, and the level every descendant's outline derives from. Clamped to 1–6; default 2. See [Heading structure](#heading-structure).
 - `show-toolbar` (boolean-like): accepts `true/false` and common string forms (`"true"`, `"false"`, `"1"`, `"0"`, `"yes"`, `"no"`); default `false`, so tools placed at `section` level render only when it is `true`
 - `locale` (string, optional): BCP-47 locale for the player's own interface text. Mirrored onto `runtime.locale`, which wins when both are set. Unset renders `en-US`.
+- `runtime.contentLanguage` (string, optional, `runtime` only): BCP-47 language of the content where its markup names none, which read-aloud speaks in and picks catalog cards by. A `lang` between the content and its card wins; unset reads `en-US`. `locale` never sets it.
 - `nds-icons` (boolean): opt in to NDS icon buttons. Mirrored onto `runtime.ndsIcons`, which wins when both are set.
 - `tool-config-strictness` (string, optional): `off|warn|error` for tool-config validation; default `error`. `runtime.toolConfigStrictness` wins when both are set.
 - `split-pane-initial-passage-width` (number, optional): splitpane passage pane width in percent at mount. Clamped to 20–80; default 50.

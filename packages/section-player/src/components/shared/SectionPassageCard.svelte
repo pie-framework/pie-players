@@ -310,7 +310,6 @@
 				tools={passageToolbarTools}
 				content-kind="rubric-block-stimulus"
 				size="md"
-				language="en-US"
 				{toolRegistry}
 				{hostButtons}
 			></pie-item-toolbar>

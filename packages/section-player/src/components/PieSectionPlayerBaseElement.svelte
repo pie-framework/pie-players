@@ -146,6 +146,11 @@
 	const effectiveLocale = $derived.by(
 		() => runtime?.locale || locale || undefined,
 	);
+	// Content language, for read-aloud and catalog lookups; runtime-only. A tag or
+	// `undefined`, never `""`, for the same reason as the locale above.
+	const effectiveContentLanguage = $derived.by(
+		() => runtime?.contentLanguage || undefined,
+	);
 	// Interface locale for the section-overlay surfaces this element mounts.
 	//
 	// Resolved from the toolkit's runtime context rather than from a second
@@ -454,6 +459,7 @@
 	env={effectiveEnv}
 	nds-icons={effectiveNdsIcons}
 	locale={effectiveLocale}
+	content-language={effectiveContentLanguage}
 	lazy-init={effectiveLazyInit}
 	tool-config-strictness={effectiveToolConfigStrictness}
 	tools={effectiveTools}

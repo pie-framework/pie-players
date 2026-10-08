@@ -5,8 +5,15 @@
  * Used by both TTS (for timing data) and annotations (for persistence).
  *
  * Uses CSS selector paths and node indices for robust serialization that
- * survives content changes when possible.
+ * survives content changes when possible. A path into an open shadow root names
+ * its host, then ` >>> `, then the path inside the root, so ranges in content
+ * that renders into shadow roots round-trip; paths without one read as before.
  */
+
+import { isShadowRootNode } from "./tts/flat-tree.js";
+
+/** Separates a shadow host's path from the path inside its shadow root. */
+const SHADOW_STEP = " >>> ";
 
 /**
  * Serialized form of a Range suitable for storage.
@@ -133,7 +140,7 @@ export class RangeSerializer {
 
 		// Handle text nodes
 		if (node.nodeType === Node.TEXT_NODE) {
-			const parent = node.parentElement;
+			const parent = node.parentNode;
 			if (!parent) {
 				throw new Error("Text node has no parent");
 			}
@@ -144,13 +151,19 @@ export class RangeSerializer {
 			);
 			const index = textNodes.indexOf(node as Text);
 
-			const parentPath = this.getElementPath(parent, root);
+			const parentPath = isShadowRootNode(parent)
+				? this.getShadowRootPath(parent, root)
+				: this.getElementPath(parent as Element, root);
 			return `${parentPath}::text[${index}]`;
 		}
 
 		// Handle element nodes
 		if (node.nodeType === Node.ELEMENT_NODE) {
 			return this.getElementPath(node as Element, root);
+		}
+
+		if (isShadowRootNode(node)) {
+			return this.getShadowRootPath(node, root);
 		}
 
 		throw new Error(`Unsupported node type: ${node.nodeType}`);
@@ -168,34 +181,90 @@ export class RangeSerializer {
 			return "";
 		}
 
-		const path: string[] = [];
+		const rootTree = root.getRootNode?.();
+		// One path per tree, outermost first.
+		const trees: string[] = [];
+		let path: string[] = [];
 		let current: Element | null = element;
 
+		// Ends `current`'s tree at the shadow root holding it, continuing at the host.
+		const leaveShadowRoot = (shadowRoot: ShadowRoot) => {
+			trees.unshift(path.join(" > "));
+			path = [];
+			current = shadowRoot.host;
+		};
+
 		while (current && current !== root) {
-			// Use ID if available (more stable)
+			// Use ID if available (more stable). An id is unique within its tree, so
+			// the path still names the shadow host above it.
 			if (current.id) {
 				path.unshift(`#${current.id}`);
+				const tree = current.getRootNode?.();
+				if (isShadowRootNode(tree) && tree !== rootTree) {
+					leaveShadowRoot(tree);
+					continue;
+				}
 				break;
 			}
 
 			// Otherwise use tag + nth-of-type
 			const parent: Element | null = current.parentElement;
-			if (!parent) break;
-
-			const siblings = Array.from(parent.children).filter(
-				(el: Element) => el.tagName === current!.tagName,
+			const parentNode = current.parentNode;
+			const siblingsParent: ParentNode | null =
+				parent ?? (isShadowRootNode(parentNode) ? parentNode : null);
+			if (!siblingsParent) break;
+			const tagName = current.tagName;
+			const siblings = Array.from(siblingsParent.children).filter(
+				(el: Element) => el.tagName === tagName,
 			);
 			const index = siblings.indexOf(current);
 			const selector =
 				siblings.length > 1
-					? `${current.tagName.toLowerCase()}:nth-of-type(${index + 1})`
-					: current.tagName.toLowerCase();
+					? `${tagName.toLowerCase()}:nth-of-type(${index + 1})`
+					: tagName.toLowerCase();
 
 			path.unshift(selector);
-			current = parent;
+			if (parent) {
+				current = parent;
+			} else {
+				leaveShadowRoot(siblingsParent as ShadowRoot);
+			}
 		}
 
-		return path.join(" > ");
+		trees.unshift(path.join(" > "));
+		return trees.join(SHADOW_STEP);
+	}
+
+	/** The path to `shadowRoot` itself: its host's path and an empty step into it. */
+	private getShadowRootPath(shadowRoot: ShadowRoot, root: Element): string {
+		return `${this.getElementPath(shadowRoot.host, root)}${SHADOW_STEP}`;
+	}
+
+	/**
+	 * The element, or shadow root, an element path names: each step after a
+	 * {@link SHADOW_STEP} continues in the shadow root of what the step before named.
+	 */
+	private resolveElementPath(
+		path: string,
+		root: Element,
+	): Element | ShadowRoot | null {
+		let scope: Element | ShadowRoot = root;
+		const steps = path.split(SHADOW_STEP);
+		for (let index = 0; index < steps.length; index++) {
+			if (index > 0) {
+				const shadowRoot: ShadowRoot | null = isShadowRootNode(scope)
+					? null
+					: scope.shadowRoot;
+				if (!shadowRoot) return null;
+				scope = shadowRoot;
+			}
+			const selector = steps[index].trim();
+			if (!selector) continue;
+			const found: Element | null = scope.querySelector(selector);
+			if (!found) return null;
+			scope = found;
+		}
+		return scope;
 	}
 
 	/**
@@ -212,11 +281,19 @@ export class RangeSerializer {
 
 		// Handle text node paths
 		if (path.includes("::text[")) {
-			const [elementPath, textPart] = path.split("::text[");
+			const marker = path.lastIndexOf("::text[");
+			const elementPath = path.slice(0, marker);
+			const textPart = path.slice(marker + "::text[".length);
 			const textIndex = Number.parseInt(textPart.replace("]", ""), 10);
 
 			// Find parent element
-			const parent = elementPath ? root.querySelector(elementPath) : root;
+			let parent: Element | ShadowRoot | null;
+			try {
+				parent = this.resolveElementPath(elementPath, root);
+			} catch (error) {
+				console.warn("Invalid selector path:", path, error);
+				return null;
+			}
 			if (!parent) return null;
 
 			// Find text node by index
@@ -229,7 +306,7 @@ export class RangeSerializer {
 
 		// Handle element paths
 		try {
-			return root.querySelector(path);
+			return this.resolveElementPath(path, root);
 		} catch (error) {
 			console.warn("Invalid selector path:", path, error);
 			return null;

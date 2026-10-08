@@ -177,35 +177,41 @@ describe("TTSService structural pauses", () => {
 		const originalNodeFilter = (globalThis as any).NodeFilter;
 		const originalWindow = (globalThis as any).window;
 
-		const makeElement = (tag: string, parent: any = null) =>
-			({
+		// Shaped as far as the flat-tree walk reads it.
+		const makeElement = (tag: string, parent: any = null) => {
+			const element: any = {
+				nodeType: 1,
 				tagName: tag,
+				localName: tag.toLowerCase(),
+				parentNode: parent,
 				parentElement: parent,
+				childNodes: [],
 				hidden: false,
 				getAttribute: () => null,
 				hasAttribute: () => false,
 				classList: { contains: () => false },
-			}) as unknown as Element;
-		const root = makeElement("DIV");
-		const li1 = makeElement("LI", root);
-		const li2 = makeElement("LI", root);
-		const li3 = makeElement("LI", root);
-		const li4 = makeElement("LI", root);
-		const nodes = [
-			{ textContent: "A. Chlorophyll and carbon dioxide ", parentElement: li1 },
-			{ textContent: "B. Oxygen and glucose ", parentElement: li2 },
-			{ textContent: "C. Carbon dioxide and energy ", parentElement: li3 },
-			{ textContent: "D. Oxygen and starch", parentElement: li4 },
-		];
-		(globalThis as any).NodeFilter = { SHOW_TEXT: 4 };
-		(globalThis as any).document = {
-			createTreeWalker: () => {
-				let idx = 0;
-				return {
-					nextNode: () => (idx < nodes.length ? (nodes[idx++] as any) : null),
-				};
-			},
+			};
+			parent?.childNodes.push(element);
+			return element as Element;
 		};
+		const root = makeElement("DIV");
+		const items = [
+			"A. Chlorophyll and carbon dioxide ",
+			"B. Oxygen and glucose ",
+			"C. Carbon dioxide and energy ",
+			"D. Oxygen and starch",
+		];
+		for (const textContent of items) {
+			const li: any = makeElement("LI", root);
+			li.childNodes.push({
+				nodeType: 3,
+				textContent,
+				data: textContent,
+				parentNode: li,
+				parentElement: li,
+			});
+		}
+		(globalThis as any).document = {};
 		(globalThis as any).window = undefined;
 
 		try {

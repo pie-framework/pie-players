@@ -1,4 +1,10 @@
 import {
+	flatQuerySelector,
+	flatTreeClosest,
+	isShadowRootNode,
+	walkFlatTree,
+} from "./flat-tree.js";
+import {
 	type ResolveMathSpeechOptions,
 	resolveMathSpeechFromChunks,
 	type SREMathSpeechOptions,
@@ -60,7 +66,7 @@ const contentLanguage = (element: Element): string | undefined => {
 		const lang = node.closest("[lang]")?.getAttribute("lang")?.trim();
 		if (lang) return lang;
 		const root = node.getRootNode();
-		node = root instanceof ShadowRoot ? root.host : null;
+		node = isShadowRootNode(root) ? root.host : null;
 	}
 	return undefined;
 };
@@ -78,13 +84,13 @@ export interface MathControlNamesOptions {
 }
 
 /**
- * Labels each typeset expression inside a control under `root` with SRE's
- * speech, as MathJax adds it and again whenever MathJax replaces it. An
- * `aria-label` on the role-less `mjx-container` puts that speech in the name
- * of the control around it, among the control's other text. English reads
- * ClearSpeak, other languages MathSpeak, in the language of the content. The
- * label replaces the elements' own; it stays when SRE cannot speak the math.
- * Returns the function that stops observing.
+ * Labels each typeset expression inside a control under `root`, open shadow
+ * roots included, with SRE's speech, as MathJax adds it and again whenever
+ * MathJax replaces it. An `aria-label` on the role-less `mjx-container` puts
+ * that speech in the name of the control around it, among the control's other
+ * text. English reads ClearSpeak, other languages MathSpeak, in the language of
+ * the content. The label replaces the elements' own; it stays when SRE cannot
+ * speak the math. Returns the function that stops observing.
  */
 export function observeMathControlNames(
 	root: Element,
@@ -114,8 +120,8 @@ export function observeMathControlNames(
 	};
 
 	const name = (container: Element): void => {
-		if (!container.closest(CONTROLS)) return;
-		const math = container.querySelector("math");
+		if (!flatTreeClosest(container, CONTROLS)) return;
+		const math = flatQuerySelector(container, "math");
 		const mathml = math && canonicalizeMathML(math.outerHTML);
 		if (!math || !mathml) return;
 		const language = contentLanguage(container);
@@ -133,17 +139,35 @@ export function observeMathControlNames(
 		});
 	};
 
+	// A shadow root is a tree of its own, which an observer on `root` does not
+	// see into, so each one found is observed as well. One attached after its
+	// host was visited is not found until something is added around the host.
+	const observed = new WeakSet<Node>();
+	const observeTree = (tree: Node): void => {
+		if (observed.has(tree)) return;
+		observed.add(tree);
+		observer.observe(tree, { childList: true, subtree: true });
+	};
+
 	const visit = (node: Node): void => {
-		if (node.nodeType !== Node.ELEMENT_NODE) return;
+		if (node.nodeType !== 1) return;
 		const element = node as Element;
-		const container = element.closest("mjx-container");
+		const container = flatTreeClosest(element, "mjx-container");
 		if (container) {
 			name(container);
 			return;
 		}
-		for (const found of element.querySelectorAll("mjx-container")) {
-			name(found);
-		}
+		if (element.shadowRoot) observeTree(element.shadowRoot);
+		walkFlatTree(element, (descendant) => {
+			if (descendant.nodeType !== 1) return "skip";
+			const found = descendant as Element;
+			if (found.localName === "mjx-container") {
+				name(found);
+				return "skip";
+			}
+			if (found.shadowRoot) observeTree(found.shadowRoot);
+			return undefined;
+		});
 	};
 
 	const observer = new MutationObserver((records) => {
@@ -151,7 +175,7 @@ export function observeMathControlNames(
 			for (const node of record.addedNodes) visit(node);
 		}
 	});
-	observer.observe(root, { childList: true, subtree: true });
+	observeTree(root);
 	visit(root);
 
 	return () => {

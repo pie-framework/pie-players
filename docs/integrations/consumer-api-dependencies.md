@@ -98,6 +98,18 @@ choice, and gets them back in the line. An image an element lays out as a
 block gets a block wrapper, carrying `pie-image-scroll-block`, so no gap opens
 below it. Row verification dates are unchanged.
 
+On 2026-10-07 read-aloud, its highlighting and the annotation toolbar started
+reaching content rendered into open shadow roots, and read-aloud started speaking
+in the content language: the nearest `lang` inside the shell, else the new
+`content-language` input, else `en-US`. Checked against the recorded rows and
+the checkouts of Hosts A and R, the two that render the toolkit. The annotation
+toolbar now opens only for a selection inside a card's content region, so Host R,
+the one host placing `annotationToolbar`, no longer gets it for a selection in a
+card's header, lead surfaces or media region. Host A reads aloud through the
+server backend, whose request language stays the one its provider config names.
+The browser voice now follows the content language in place of the browser's own,
+which only Host R reaches. Row verification dates are unchanged.
+
 The 2026-09-17 session-commit change (PIE-1058) was checked against the
 recorded rows rather than re-derived from the checkouts. It renames and removes
 nothing: `pie-item-player` gains one opt-in property, `session-snapshot`, one
@@ -1739,6 +1751,11 @@ over a CDN with no typecheck at all.
   and the item and passage shells publishing through `createShellScope`, which
   republishes a changed scope to tools already subscribed. No host renders a
   shell or imports the scope
+- The `content-language` attribute on `pie-assessment-toolkit`,
+  `runtime.contentLanguage` on the section-player layouts and the
+  `contentLanguage` member of the toolkit runtime context, added on 2026-10-07.
+  No host sets either input, so content language stays `en-US` wherever markup
+  names none
 
 ## Consumer-side defects worth reporting upstream
 

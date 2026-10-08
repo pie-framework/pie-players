@@ -27,6 +27,7 @@ import {
 	demoSignLanguagePassageSection,
 } from "./demo-sign-language";
 import { demoReadAloudAccommodationsSection } from "./demo-read-aloud-accommodations";
+import { demoShadowReadingSection } from "./demo-shadow-reading";
 import { demoTwoPassagesSection } from "./demo-two-passages";
 import { demoPrintShowcaseSection } from "./demo-print-showcase";
 import { demoFormativeDeliverySection } from "./demo-formative-delivery";
@@ -852,6 +853,23 @@ export const sectionDemos: Record<string, SectionDemoInfo> = {
 			"The narration is macOS `say` output, not human recording — it proves the file-playback path, not the fidelity of anyone's narration. See `static/demo-assets/read-aloud/README.md`.",
 		],
 		section: demoReadAloudAccommodationsSection,
+	},
+	"shadow-reading": {
+		id: "shadow-reading",
+		name: "Read-Aloud: content in shadow roots",
+		description:
+			"Read-aloud, highlighting and the annotation toolbar reaching content an element renders into an open shadow root",
+		integrationLevel: 4,
+		integrationTheme: "Accessibility catalogs",
+		focus:
+			"Shows the reading tools walking the flat tree, the tree the page renders: shadow content in place of a host's light children, slotted children where their slot sits.",
+		whatMakesItTick: [
+			"Item 1's `data-demo-shadow-reading` host renders text, a span docked to a `spoken` card, native MathML and a slot into an open shadow root. Read-aloud speaks it between the light text around the host, in rendering order, and highlights it through a stylesheet adopted into that shadow root.",
+			'The host in item 2 carries `lang="es-MX"`. Its docked span resolves to the `es-MX` card of the two it has, and a selection read through the annotation toolbar is spoken as `es-MX`: the nearest `lang` between the text and its shell names the content language.',
+			"Item 3 holds native MathML alone in a shadow root, so read-aloud generates its speech. Item 1's math is read as its text: an item with a docked span is composed from its text and its cards.",
+			"The annotation toolbar opens for a selection inside a card's content region, shadow text included, and stays closed for one in the card header.",
+		],
+		section: demoShadowReadingSection,
 	},
 	"tts-generated-ssml": {
 		id: "tts-generated-ssml",

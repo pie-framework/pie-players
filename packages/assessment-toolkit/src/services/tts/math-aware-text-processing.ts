@@ -1,3 +1,8 @@
+import {
+	flatQuerySelector,
+	flatTreeChildNodes,
+	flatTreeParentElement,
+} from "./flat-tree.js";
 import { canonicalizeMathML } from "./mathml-sanitization.js";
 import {
 	collectVisibleTextAndMap,
@@ -68,7 +73,7 @@ const getDataMathML = (element: Element): string | null => {
 };
 
 const findAssistiveMathML = (element: Element): string | null => {
-	const assistive = element.querySelector("mjx-assistive-mml math");
+	const assistive = flatQuerySelector(element, "mjx-assistive-mml math");
 	return assistive?.outerHTML || null;
 };
 
@@ -124,7 +129,7 @@ const resolveTextChunkSourceElement = (
 	textNode: Text,
 	root: Element,
 ): Element => {
-	let current = textNode.parentElement;
+	let current = flatTreeParentElement(textNode);
 	let best: Element | null = null;
 	while (current && current !== root) {
 		const role = (current.getAttribute("role") || "").toLowerCase();
@@ -136,7 +141,7 @@ const resolveTextChunkSourceElement = (
 			best = current;
 			break;
 		}
-		current = current.parentElement;
+		current = flatTreeParentElement(current);
 	}
 	return best || root;
 };
@@ -144,7 +149,8 @@ const resolveTextChunkSourceElement = (
 const hasMathCandidate = (element: Element): boolean =>
 	Boolean(
 		typeof element.querySelector === "function" &&
-			element.querySelector(
+			flatQuerySelector(
+				element,
 				"math, [data-mathml], .MathJax, mjx-container, mjx-assistive-mml",
 			),
 	) ||
@@ -307,7 +313,7 @@ const mapFallbackToAssistiveMath = (
 ): NormalizedTextMap => {
 	const map: NormalizedTextMap = new Map();
 	const sourceMath = isMathJaxElement(element)
-		? element.querySelector("mjx-assistive-mml math")
+		? flatQuerySelector(element, "mjx-assistive-mml math")
 		: null;
 	if (!sourceMath) return map;
 	const characters: Array<{ node: Text; offset: number }> = [];
@@ -322,7 +328,7 @@ const mapFallbackToAssistiveMath = (
 			return;
 		}
 		if (node.nodeType !== 1 || isAnnotationElement(node as Element)) return;
-		for (const child of Array.from(node.childNodes)) {
+		for (const child of flatTreeChildNodes(node)) {
 			visit(child);
 		}
 	};
@@ -360,7 +366,7 @@ const collectVisibleMathFallback = (
 		) {
 			return;
 		}
-		for (const child of Array.from(childElement.childNodes)) {
+		for (const child of flatTreeChildNodes(childElement)) {
 			visit(child);
 		}
 	};
@@ -415,7 +421,7 @@ const collectMathAware = (
 
 	const processNode = (node: Node): void => {
 		if (isNodeExcludedFromSpeech(node, root)) return;
-		if (node.nodeType === Node.TEXT_NODE) {
+		if (node.nodeType === 3) {
 			const sourceElement = resolveTextChunkSourceElement(node as Text, root);
 			if (textChunkSourceElement && sourceElement !== textChunkSourceElement) {
 				flushTextChunk();
@@ -424,7 +430,7 @@ const collectMathAware = (
 			appendTextNode(acc, node as Text);
 			return;
 		}
-		if (node.nodeType !== Node.ELEMENT_NODE) return;
+		if (node.nodeType !== 1) return;
 		const element = node as Element;
 		if (isAssistiveMathElement(element)) return;
 		const canonicalMathML = findCanonicalMathML(element);
@@ -447,12 +453,12 @@ const collectMathAware = (
 			containsMathMarkup = true;
 			return;
 		}
-		for (const child of Array.from(element.childNodes)) {
+		for (const child of flatTreeChildNodes(element)) {
 			processNode(child);
 		}
 	};
 
-	for (const child of Array.from(root.childNodes)) {
+	for (const child of flatTreeChildNodes(root)) {
 		processNode(child);
 	}
 

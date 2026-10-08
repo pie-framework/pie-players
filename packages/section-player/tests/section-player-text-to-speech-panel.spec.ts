@@ -100,19 +100,24 @@ test("text-to-speech panel speaks the selection through the host's service", asy
 	const speakCall = await page.evaluate(() => {
 		const call = window.__ttsCalls.find((entry) => entry.method === "speak");
 		if (!call) return null;
-		const options = call.args[1] as { contentElement?: Element } | undefined;
+		const options = call.args[1] as
+			| { contentElement?: Element; language?: string }
+			| undefined;
 		return {
 			argCount: call.args.length,
 			text: call.args[0],
 			optionKeys: Object.keys(options ?? {}).sort(),
 			contentElementId: options?.contentElement?.id ?? null,
+			language: options?.language ?? null,
 		};
 	});
+	// No markup `lang` and no host input: the content language default.
 	expect(speakCall).toEqual({
 		argCount: 2,
 		text: "The quick brown fox jumps over the lazy dog.",
-		optionKeys: ["catalogId", "contentElement"],
+		optionKeys: ["catalogId", "contentElement", "language"],
 		contentElementId: "tts-panel-passage",
+		language: "en-US",
 	});
 	await expect(play).toBeDisabled();
 

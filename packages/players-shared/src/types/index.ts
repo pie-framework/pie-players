@@ -274,16 +274,6 @@ export interface AssessmentSection
 	rubricBlocks?: RubricBlock[];
 
 	/**
-	 * QTI 3.0: Personal Needs Profile (PNP 3.0) carried with section content.
-	 *
-	 * Tool policy does not read it. Policy reads the profile of the assessment the
-	 * host binds with `ToolkitCoordinator.updateAssessment`, because a profile is
-	 * learner data and section content is shared by every learner. A host that
-	 * stores the learner's profile on the section binds it from there.
-	 */
-	personalNeedsProfile?: PersonalNeedsProfile;
-
-	/**
 	 * Formative delivery policy for this section: how many Tries a learner gets
 	 * on each item, when feedback is revealed, and whether the behavior is on at
 	 * all. Absent or `enabled: false` delivers exactly as a section without this
@@ -606,7 +596,6 @@ export interface AccessibilityCatalog {
 export interface PersonalNeedsProfile {
 	supports: string[];
 	prohibitedSupports?: string[];
-	activateAtInit?: string[];
 }
 
 /**
@@ -663,19 +652,15 @@ export interface AssessmentSettings {
 	districtPolicy?: {
 		blockedTools?: string[]; // PNP support IDs that are blocked
 		requiredTools?: string[]; // PNP support IDs that are required
-		policies?: Record<string, any>;
 	};
 
 	/** Test administration configuration */
 	testAdministration?: {
-		mode?: "practice" | "test" | "benchmark";
 		/**
 		 * Per-session override by tool id: `true` grants the tool, `false`
 		 * withdraws it. Outranks every policy level except a district block.
 		 */
 		toolOverrides?: Record<string, boolean>;
-		startDate?: string;
-		endDate?: string;
 	};
 
 	/** Tool-specific provider configurations */

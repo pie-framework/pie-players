@@ -1,8 +1,7 @@
 import type { PersonalNeedsProfile } from "@pie-players/pie-players-shared/types";
 
 /**
- * An empty personal-needs profile: nothing granted, nothing prohibited, nothing
- * activated at init.
+ * An empty personal-needs profile: nothing granted and nothing prohibited.
  *
  * The core ships no populated default on purpose. It once derived one from every
  * registered tool's support ids, which read *registry membership* as
@@ -23,6 +22,5 @@ export function createEmptyPersonalNeedsProfile(): PersonalNeedsProfile {
 	return {
 		supports: [],
 		prohibitedSupports: [],
-		activateAtInit: [],
 	};
 }

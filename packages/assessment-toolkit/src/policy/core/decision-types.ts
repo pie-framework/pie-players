@@ -137,17 +137,17 @@ export interface ToolPolicyEntry {
 	toolId: string;
 	/**
 	 * `true` when PNP/profile policy mandates this tool (item or district
-	 * `requiredTools`, or PNP support without prohibition). Advisory
-	 * mandates that the host blocked do *not* surface here — they
-	 * appear in `diagnostics` instead. Hosts that need to know about
-	 * those should listen on the diagnostic channel.
+	 * `requiredTools`). Advisory mandates that the host blocked do *not*
+	 * surface here — they appear in `diagnostics` instead. Hosts that need
+	 * to know about those should listen on the diagnostic channel.
 	 */
 	required: boolean;
 	/**
-	 * `true` for PNP `supports` — UI-level signal that the host
-	 * cannot toggle this tool off in user preferences. Does NOT
-	 * override host blocks (they would have removed the entry
-	 * before this flag is read).
+	 * `true` for a tool the student's PNP `supports` or a
+	 * `testAdministration.toolOverrides` entry grants — UI-level signal that
+	 * the host cannot toggle this tool off in user preferences. Does NOT
+	 * override host blocks (they would have removed the entry before this
+	 * flag is read).
 	 */
 	alwaysAvailable: boolean;
 	/**

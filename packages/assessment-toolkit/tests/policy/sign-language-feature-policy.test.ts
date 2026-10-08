@@ -204,7 +204,6 @@ describe("the core ships no populated default profile", () => {
 		const profile = createEmptyPersonalNeedsProfile();
 		expect(profile.supports).toEqual([]);
 		expect(profile.prohibitedSupports).toEqual([]);
-		expect(profile.activateAtInit).toEqual([]);
 	});
 
 	test("returns a fresh profile per call", () => {

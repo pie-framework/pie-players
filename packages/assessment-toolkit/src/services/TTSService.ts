@@ -3229,7 +3229,6 @@ export class TTSService {
 
 		void this.emitTelemetry("pie-tool-playback-state-changed", {
 			toolId: "textToSpeech",
-			providerId: "tts",
 			previousState,
 			state: newState,
 		});
@@ -3241,7 +3240,6 @@ export class TTSService {
 					: "pie-tool-playback-start";
 			void this.emitTelemetry(eventName, {
 				toolId: "textToSpeech",
-				providerId: "tts",
 				previousState,
 				state: newState,
 			});
@@ -3251,7 +3249,6 @@ export class TTSService {
 		if (newState === PlaybackState.PAUSED) {
 			void this.emitTelemetry("pie-tool-playback-pause", {
 				toolId: "textToSpeech",
-				providerId: "tts",
 				previousState,
 				state: newState,
 			});
@@ -3261,7 +3258,6 @@ export class TTSService {
 		if (newState === PlaybackState.ERROR) {
 			void this.emitTelemetry("pie-tool-playback-error", {
 				toolId: "textToSpeech",
-				providerId: "tts",
 				previousState,
 				state: newState,
 				message: this.lastError || undefined,
@@ -3277,7 +3273,6 @@ export class TTSService {
 		) {
 			void this.emitTelemetry("pie-tool-playback-stop", {
 				toolId: "textToSpeech",
-				providerId: "tts",
 				previousState,
 				state: newState,
 			});

@@ -7,6 +7,6 @@ PIE's bundled MathLive, Cortex Compute Engine, and JSXGraph calculator.
 import "@pie-players/pie-tool-calculator-cortex";
 ```
 
-The element defaults to provider registration id `calculator-cortex`. Toolkit
-hosts should normally select that id through `@pie-players/pie-default-tool-loaders`.
+Toolkit hosts select Cortex with `provider: { id: "calculator-cortex" }` in the
+calculator tool config, through `@pie-players/pie-default-tool-loaders`.
 The calculator requires no key, CDN, or network connection at runtime.

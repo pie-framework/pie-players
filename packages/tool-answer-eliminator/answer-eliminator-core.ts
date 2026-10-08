@@ -43,7 +43,7 @@ export class AnswerEliminatorCore {
 	} | null = null;
 
 	constructor(
-		strategyType: "strikethrough" | "mask" | "gray" = "strikethrough",
+		strategyType: "strikethrough" | "mask" = "strikethrough",
 		buttonAlignment: "left" | "right" | "inline" = "right",
 	) {
 		this.registry = new AdapterRegistry();

@@ -654,7 +654,7 @@ test.describe("assessment player smoke", () => {
 			await assessmentHost.coordinator.emitTelemetry(
 				"pie-tool-backend-call-success",
 				{
-					toolId: "tts",
+					toolId: "textToSpeech",
 					operation: "synthesize-speech",
 					backend: "polly",
 					duration: 123,

@@ -3,9 +3,8 @@
  * overlay behind one toolbar button.
  *
  * Seven registrations had this inline. What actually varies between them is the
- * three options below and nothing else: whether the overlay paints its own chrome
- * or takes a draggable window, that window's size, and whether the overlay needs
- * the coordinator re-handed on each sync. Everything else — the visibility
+ * two options below and nothing else: whether the overlay paints its own chrome
+ * or takes a draggable window, and that window's size. Everything else — the visibility
  * binding, the button, the component-override lookup, the `tool-id` attribute, the
  * sync — was identical, which is why one rule landing in three spellings was
  * possible: the shell title was `resolveToolRegistrationName` in two files,
@@ -50,18 +49,11 @@ export interface RenderOverlayToolbarOptions {
 	surface?: "frameless";
 	/** Present when the capability opens in a draggable, closeable window. */
 	shell?: OverlayToolShell;
-	/**
-	 * Re-hand the toolkit coordinator on every sync. Overlays that take part in
-	 * stacking or visibility restore need it; the two that only render their own
-	 * model do not, and giving them a property they ignore is not free to assume.
-	 */
-	handsOverCoordinator?: boolean;
 }
 
 type OverlayElement = HTMLElement & {
 	visible?: boolean;
 	toolId?: string;
-	toolkitCoordinator?: unknown;
 };
 
 export function renderOverlayToolbar(
@@ -145,9 +137,6 @@ export function renderOverlayToolbar(
 				overlay,
 				isActive: visibility.isActive,
 			});
-			if (options.handsOverCoordinator && toolbarContext.toolkitCoordinator) {
-				overlay.toolkitCoordinator = toolbarContext.toolkitCoordinator;
-			}
 		},
 		subscribeActive: visibility.subscribeActive,
 	};

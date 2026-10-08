@@ -55,39 +55,34 @@ The answer eliminator is automatically integrated when using the PIE Section Pla
 The section player automatically:
 - Renders answer eliminator buttons in question toolbars
 - Generates global element IDs
-- Passes ElementToolStateStore to the tool
 - Manages state lifecycle
+
+The tool reads its coordinator and the `ElementToolStateStore` from the toolkit
+runtime context, so it has to sit inside `<pie-assessment-toolkit>`.
 
 ### Manual Integration (Advanced)
 
-For custom implementations outside the section player:
+For a custom layout inside the toolkit:
 
 ```html
 <script type="module">
   import '@pie-players/pie-tool-answer-eliminator';
-  import { ElementToolStateStore } from '@pie-players/pie-assessment-toolkit';
-
-  const store = new ElementToolStateStore();
-  const globalElementId = store.getGlobalElementId(
-    'my-assessment',
-    'section-1',
-    'question-1',
-    'mc1'
-  );
 
   const tool = document.querySelector('pie-tool-answer-eliminator');
-  tool.globalElementId = globalElementId;
-  tool.elementToolStateStore = store;
+  // Composite key into the toolkit's element tool state store
+  tool.globalElementId = 'my-assessment:section-1:question-1:mc1';
   tool.scopeElement = document.querySelector('.question-content');
   tool.visible = true; // or alwaysOn = true; the tool injects no buttons while neither is set
 </script>
 
-<pie-tool-answer-eliminator></pie-tool-answer-eliminator>
+<pie-assessment-toolkit>
+  <pie-tool-answer-eliminator></pie-tool-answer-eliminator>
+</pie-assessment-toolkit>
 ```
 
 ## Props/Attributes
 
-`globalElementId`, `elementToolStateStore` and `scopeElement` are JS properties only; the others also take the attribute shown.
+`globalElementId` and `scopeElement` are JS properties only; the others also take the attribute shown.
 
 | Property | Attribute | Type | Default | Description |
 |----------|-----------|------|---------|-------------|
@@ -96,8 +91,7 @@ For custom implementations outside the section player:
 | `strategy` | `strategy` | `'strikethrough' \| 'mask'` | `'strikethrough'` | Elimination styling; any other value uses `strikethrough` |
 | `buttonAlignment` | `button-alignment` | `'left' \| 'right' \| 'inline'` | `'right'` | Button placement relative to the choice |
 | `toolId` | `tool-id` | `string` | `'answerEliminator'` | Id the tool registers with the coordinator under |
-| `globalElementId` | | `string` | | Composite key `assessmentId:sectionId:itemId:elementId`; with `elementToolStateStore`, enables stored eliminations |
-| `elementToolStateStore` | | `ElementToolStateStoreApi` | | Store for element-level tool state |
+| `globalElementId` | | `string` | | Composite key `assessmentId:sectionId:itemId:elementId` into the runtime context's element tool state store; enables stored eliminations |
 | `scopeElement` | | `HTMLElement` | | Root to detect choices in. Without it the tool uses the root its enclosing `pie-item-scope` provides, and with neither it warns and injects nothing |
 
 ## Global Element ID Format

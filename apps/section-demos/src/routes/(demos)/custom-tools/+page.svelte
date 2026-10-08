@@ -37,7 +37,7 @@
 
 	// Safe host config pattern:
 	// 1) Build tools config via createToolsConfig so runtime + diagnostics contract is shared.
-	// 2) Provide the same registry used by custom tools so placement/provider IDs validate correctly.
+	// 2) Provide the same registry used by custom tools so placement and `providers` keys validate against its tool ids.
 	const toolsConfigResult = createToolsConfig({
 		source: "section-demos.custom-tools",
 		strictness: "error",

@@ -245,12 +245,6 @@ function assertProvidersConfig(value: unknown): ToolProvidersConfig {
 	return normalized;
 }
 
-export function normalizeToolAlias(toolId: string): string {
-	const trimmed = toolId.trim();
-	if (!trimmed) return "";
-	return trimmed;
-}
-
 export function normalizeToolList(
 	toolIds: string[] | undefined | null,
 ): string[] {
@@ -262,7 +256,7 @@ export function normalizeToolList(
 				"Invalid tools config: tool list entries must be strings.",
 			);
 		}
-		const normalized = normalizeToolAlias(rawToolId);
+		const normalized = rawToolId.trim();
 		if (!normalized) continue;
 		deduped.add(normalized);
 	}

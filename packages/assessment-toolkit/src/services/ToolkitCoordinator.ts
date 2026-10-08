@@ -22,7 +22,6 @@ import type {
 import {
 	type CanonicalToolsConfig,
 	type ToolPlacementConfig,
-	type ToolPlacementLevel,
 	type ToolPolicyConfig,
 	type TextToSpeechToolProviderConfig,
 	type ToolProviderConfig,
@@ -2980,19 +2979,12 @@ export class ToolkitCoordinator {
 	}
 
 	/**
-	 * Update the enabled tool list for one placement level.
+	 * Patch one or more placement levels in the canonical tools config.
 	 *
 	 * This is the generic placement companion to {@link updateToolConfig}:
 	 * it validates the next canonical tools config, keeps the policy
 	 * engine in lockstep, and emits the same policy-change event used by
 	 * live toolbars/debug panels.
-	 */
-	updateToolPlacement(level: ToolPlacementLevel, toolIds: string[]): void {
-		this.updateToolsPlacement({ [level]: [...toolIds] });
-	}
-
-	/**
-	 * Patch one or more placement levels in the canonical tools config.
 	 */
 	updateToolsPlacement(partial: ToolPlacementConfig): void {
 		if (!this.config.tools) {
@@ -3079,7 +3071,7 @@ export class ToolkitCoordinator {
 	/**
 	 * Subscribe to policy-engine change events. Fires whenever the
 	 * coordinator's bound inputs change (`updateToolConfig`,
-	 * `updateToolPlacement`, `updateAssessment`, `updateCurrentItemRef`,
+	 * `updateToolsPlacement`, `updateAssessment`, `updateCurrentItemRef`,
 	 * `setPnpEnforcement`) or a custom `PolicySource` is registered /
 	 * removed via {@link registerPolicySource}.
 	 *

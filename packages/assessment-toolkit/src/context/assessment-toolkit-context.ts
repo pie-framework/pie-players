@@ -78,7 +78,6 @@ export interface AssessmentToolkitRuntimeContext {
 	 * can read content in one language through an interface in another.
 	 */
 	contentLanguage?: string;
-	reportSessionChanged?: (itemId: string, detail: unknown) => void;
 	/**
 	 * Reports a failure that keeps the section's content from loading as the
 	 * section controller's `section-error`, with source `section-runtime`.

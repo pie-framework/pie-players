@@ -428,9 +428,6 @@ export const resolveRuntimeProvider = (
 	backend: NonNullable<TTSRuntimeSettings["backend"]>,
 ): TTSRuntimeSettings["serverProvider"] => {
 	if (backend === "polly" || backend === "google") return backend;
-	if (backend === "server") {
-		return config.serverProvider || config.provider;
-	}
 	return config.serverProvider || config.provider;
 };
 

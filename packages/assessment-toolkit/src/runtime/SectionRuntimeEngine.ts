@@ -1,32 +1,25 @@
 /**
- * Section runtime engine — public facade (M7 — Variant C, layered).
+ * Section runtime engine — public facade.
  *
  * The facade is the narrow, stable entry point hosts use to mount,
- * drive, and dispose a section runtime. It composes three layers
- * introduced in earlier M7 PRs:
+ * drive, and dispose a section runtime. It composes two layers:
  *
  *   - the **registry** (`RuntimeRegistry`) — registered item/passage
  *     shells in document order, used for canonical-id lookup;
  *   - the **adapter** (`SectionEngineAdapter`) — single I/O seam over
  *     the pure FSM core, fanning outputs to the DOM, framework-error
- *     bus, instrumentation hook, and host subscribers;
- *   - the **resolver** (`resolveSectionEngineRuntimeState`) — the
- *     toolkit-side resolution helper that produces the effective
- *     runtime + tools snapshot a host feeds to the FSM core.
+ *     bus, and host subscribers.
  *
  * The facade exposes an engine-side surface for stage/lifecycle inputs and a
  * controller-facing surface for item registration, session updates, and host
  * controller commands:
  *
  *   1. The **engine-side** surface (`attachHost`, `dispatchInput`,
- *      `subscribe`, `getState`, `getEffectiveRuntime`,
- *      `setInstrumentationHook`). This is what the kernel and the
- *      `pie-assessment-toolkit` CE will switch onto in M7 PR 5 and
- *      PR 6. Construction is lazy: `attachHost(...)` builds the
- *      adapter on first call, with the supplied host element,
- *      framework-error bus, and (optional) coordinator. After
- *      construction, host re-attachments (e.g. cohort change with a
- *      new layout shell) update the adapter's host element via
+ *      `subscribe`, `getState`). The section-player layout kernel drives
+ *      it. Construction is lazy: `attachHost(...)` builds the adapter on
+ *      first call, with the supplied host element and framework-error
+ *      bus. After construction, host re-attachments (e.g. cohort change
+ *      with a new layout shell) update the adapter's host element via
  *      `setHost(...)`.
  *
  *   2. The **controller-side** surface (`initialize`,
@@ -46,19 +39,10 @@ import type {
 	SectionControllerHandle,
 	SectionControllerSessionState,
 } from "../services/section-controller-types.js";
-import {
-	SectionEngineAdapter,
-	type SectionEngineAdapterOptions,
-} from "./adapter/SectionEngineAdapter.js";
-import type { InstrumentationHook } from "./adapter/instrumentation-bridge.js";
+import { SectionEngineAdapter } from "./adapter/SectionEngineAdapter.js";
 import type { EngineOutputListener } from "./adapter/subscriber-fanout.js";
 import type { SectionEngineInput } from "./core/engine-input.js";
 import type { SectionEngineOutput } from "./core/engine-output.js";
-import {
-	resolveSectionEngineRuntimeState,
-	type EffectiveRuntime,
-	type RuntimeInputs,
-} from "./core/engine-resolver.js";
 import {
 	createInitialEngineState,
 	type SectionEngineState,
@@ -184,8 +168,6 @@ export interface SectionRuntimeEngineHostArgs {
 	host: EventTarget;
 	sourceCe: string;
 	frameworkErrorBus: FrameworkErrorReporter;
-	coordinator?: SectionEngineAdapterOptions["coordinator"];
-	instrumentationHook?: InstrumentationHook;
 	now?: () => string;
 }
 
@@ -197,7 +179,7 @@ export class SectionRuntimeEngine {
 	private readonly registry = new RuntimeRegistry();
 	private readonly runtimeId = createRuntimeId("section-engine");
 
-	// Engine-side state (PR 3+).
+	// Engine-side state.
 	private adapter: SectionEngineAdapter | null = null;
 
 	// Controller-side state.
@@ -224,8 +206,7 @@ export class SectionRuntimeEngine {
 	private readonly loadedRenderableKeys = new Set<string>();
 
 	// ============================================================
-	// Engine-side surface (PR 3+; driven by the kernel from PR 5,
-	// by the toolkit CE from PR 6, and by the facade smoke test today).
+	// Engine-side surface (driven by the section-player layout kernel).
 	// ============================================================
 
 	/**
@@ -234,15 +215,12 @@ export class SectionRuntimeEngine {
 	 * `dispatchInput` / `subscribe` produce observable effects.
 	 *
 	 * Constructs the adapter on the first call. Subsequent calls keep
-	 * the adapter and update its host element / instrumentation hook
-	 * (used by layout-shell rollovers and instrumentation reconfig).
+	 * the adapter and update its host element (used by layout-shell
+	 * rollovers).
 	 */
 	attachHost(args: SectionRuntimeEngineHostArgs): void {
 		if (this.adapter) {
 			this.adapter.setHost(args.host);
-			if (args.instrumentationHook !== undefined) {
-				this.adapter.setInstrumentationHook(args.instrumentationHook);
-			}
 			return;
 		}
 		this.adapter = new SectionEngineAdapter({
@@ -250,8 +228,6 @@ export class SectionRuntimeEngine {
 			runtimeId: this.runtimeId,
 			sourceCe: args.sourceCe,
 			frameworkErrorBus: args.frameworkErrorBus,
-			coordinator: args.coordinator,
-			instrumentationHook: args.instrumentationHook,
 			now: args.now,
 		});
 	}
@@ -259,8 +235,7 @@ export class SectionRuntimeEngine {
 	/**
 	 * Forward a host-constructed input to the FSM core via the adapter.
 	 * Returns the outputs the transition produced (subscribers and the
-	 * DOM/framework-error/instrumentation bridges have already
-	 * received them).
+	 * DOM/framework-error bridges have already received them).
 	 *
 	 * No-op (returns `[]`) before `attachHost(...)` so callers that
 	 * dispatch optimistically during teardown do not throw.
@@ -286,34 +261,6 @@ export class SectionRuntimeEngine {
 	 */
 	getState(): Readonly<SectionEngineState> {
 		return this.adapter?.getState() ?? createInitialEngineState();
-	}
-
-	/**
-	 * Resolve the effective runtime + tools snapshot for the given
-	 * two-tier inputs. This is a pure function over the resolver — it
-	 * does not depend on adapter state — so callers can use it both
-	 * pre- and post-`attachHost`. The kernel uses it to seed
-	 * `dispatchInput({ kind: "initialize", effectiveRuntime, ... })`.
-	 */
-	getEffectiveRuntime<P>(
-		args: RuntimeInputs,
-		deps: {
-			resolvePlayerRuntime: (resolverArgs: {
-				effectiveRuntime: Record<string, unknown>;
-				playerType: string;
-				env: Record<string, unknown> | null;
-			}) => P;
-		},
-	): EffectiveRuntime {
-		return resolveSectionEngineRuntimeState(args, deps).effectiveRuntime;
-	}
-
-	/**
-	 * Update the adapter's instrumentation hook. No-op pre-attach.
-	 * Hosts that always want a hook should pass it via `attachHost`.
-	 */
-	setInstrumentationHook(hook: InstrumentationHook | undefined): void {
-		this.adapter?.setInstrumentationHook(hook);
 	}
 
 	/**

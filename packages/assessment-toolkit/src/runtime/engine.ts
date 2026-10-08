@@ -1,5 +1,5 @@
 /**
- * Section runtime engine — facade entry point (M7 — Variant C).
+ * Section runtime engine — facade entry point.
  *
  * Narrow, stable public surface for hosts that want to mount, drive,
  * or dispose a section runtime via the layered engine. Re-exports the
@@ -14,20 +14,12 @@
  * manually, inspect FSM state types, build alternate fan-out paths)
  * should import from `./runtime/internal` and accept the documented
  * stability disclaimer there.
- *
- * The package's `exports` map adds `./runtime/engine` in M7 PR 3
- * alongside the facade refactor.
  */
 
 export {
 	SectionRuntimeEngine,
 	type SectionRuntimeEngineHostArgs,
 } from "./SectionRuntimeEngine.js";
-
-export {
-	SECTION_RUNTIME_ENGINE_KEY,
-	type SectionRuntimeEngineContext,
-} from "./engine-context.js";
 
 export {
 	sectionRuntimeEngineHostContext,

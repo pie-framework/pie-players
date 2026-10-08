@@ -13,14 +13,9 @@ import type {
 	TTSConfig,
 	TTSFeature,
 	TTSProviderCapabilities,
+	TTSSpeechSegment,
 } from "@pie-players/pie-tts";
 import { segmentSentences as segmentTextToSentences } from "./text-segmentation.js";
-
-interface TTSSpeechSegment {
-	text: string;
-	startOffset: number;
-	pauseMsAfter?: number;
-}
 
 const NATIVE_START_TIMEOUT_MS = 5_000;
 const VOICE_INVENTORY_TIMEOUT_MS = 2_000;

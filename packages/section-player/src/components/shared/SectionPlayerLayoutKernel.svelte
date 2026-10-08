@@ -13,7 +13,6 @@
 		DEFAULT_TOOL_MODULE_LOADERS,
 	} from "@pie-players/pie-default-tool-loaders";
 	import {
-		SECTION_RUNTIME_ENGINE_KEY,
 		SectionRuntimeEngine,
 		sectionRuntimeEngineHostContext,
 		type SectionRuntimeLifecycleHandle,
@@ -30,7 +29,7 @@
 		SectionControllerSessionState,
 	} from "@pie-players/pie-players-shared/types";
 	import type { SectionControllerHandle } from "@pie-players/pie-assessment-toolkit";
-	import { createEventDispatcher, setContext, untrack } from "svelte";
+	import { createEventDispatcher, untrack } from "svelte";
 	import type {
 		SectionPlayerNavigationSnapshot,
 		SectionPlayerSnapshot,
@@ -209,17 +208,11 @@
 	//
 	// Construction is cheap and side-effect free; `attachHost` is the
 	// step that actually wires the adapter (DOM/framework-error
-	// bridges). We construct here so the engine reference is stable for
-	// `setContext` and so `getRuntimeId()` returns the canonical id used
-	// downstream (e.g. for the `runtimeId` field in event details).
+	// bridges). We construct here so `getRuntimeId()` returns the
+	// canonical id used downstream (e.g. for the `runtimeId` field in
+	// event details).
 	const frameworkErrorBus = new FrameworkErrorBus();
 	const engine = new SectionRuntimeEngine();
-
-	// Provide the engine to descendant Svelte components via the
-	// canonical Svelte context key. This reaches in-tree consumers
-	// (descendants in the same shadow root) but does not cross the
-	// custom-element boundary into the toolkit CE.
-	setContext(SECTION_RUNTIME_ENGINE_KEY, engine);
 
 	// Cross-CE lifecycle bridge to the wrapped toolkit. The toolkit CE renders
 	// inside its own shadow root and uses this context as a host lifecycle

@@ -1,11 +1,10 @@
 /**
- * Cross-Custom-Element context for the section runtime engine (M7 PR 6).
+ * Cross-Custom-Element context for the section runtime engine.
  *
  * The toolkit CE renders inside its own Shadow DOM, so Svelte's native
- * `setContext`/`getContext` (used by `engine-context.ts`) cannot bridge
- * the kernel-provided engine reference to the toolkit's component tree.
- * This module exposes a `@pie-players/pie-context` based context that
- * does cross the CE boundary via DOM events:
+ * `setContext`/`getContext` cannot carry the kernel's engine to the
+ * toolkit's component tree. This module exposes a `@pie-players/pie-context`
+ * based context that crosses the CE boundary via DOM events:
  *
  *   - The kernel (`SectionPlayerLayoutKernel.svelte`) installs a
  *     `ContextProvider` for `sectionRuntimeEngineHostContext` on its
@@ -20,14 +19,8 @@
  *     standalone, no host provider responds and the toolkit keeps using
  *     its standalone lifecycle path.
  *
- * The two engine-context surfaces (`SECTION_RUNTIME_ENGINE_KEY` and
- * this one) are deliberately distinct:
- *   - `SECTION_RUNTIME_ENGINE_KEY` (Svelte context) stays scoped to a
- *     single component tree (kernel + descendants in the same shadow
- *     root) and is the right hook for in-tree consumers.
- *   - `sectionRuntimeEngineHostContext` (DOM-event context) is the
- *     bridge for cross-CE consumers and only carries data that is safe
- *     to share across CE boundaries (a stable lifecycle handle).
+ * The value carries only data that is safe to share across CE boundaries
+ * (a stable lifecycle handle), never the engine itself.
  *
  * **Stability.** This export is part of the stable runtime/engine
  * surface; the symbol identity and value shape are part of the

@@ -92,8 +92,6 @@ export interface PnpPanelInputs {
 	sectionData: {
 		id?: string;
 		identifier?: string;
-		personalNeedsProfile?: unknown;
-		settings?: { personalNeedsProfile?: unknown };
 	} | null;
 	roleType: "candidate" | "scorer";
 	floatingTools: string[];
@@ -176,14 +174,10 @@ export interface EditableToolRow {
 
 /**
  * Resolve the PNP profile to show and the source label that explains where it
- * came from.
- *
- * Policy reads the profile of the bound assessment, so that profile comes
- * first. A section's own profile is shown only when no assessment is bound, and
- * labelled as one policy does not read.
+ * came from: the bound assessment's, which is the one policy reads, or the
+ * panel's own fallback.
  */
 export function resolvePnpProfile(
-	sectionData: PnpPanelInputs["sectionData"],
 	defaultPnpProfile: unknown,
 	boundAssessment?: unknown,
 ): { profile: unknown; source: string; note: string } {
@@ -197,19 +191,11 @@ export function resolvePnpProfile(
 			note: "Profile of the bound assessment, which is the profile policy reads.",
 		};
 	}
-	const directProfile = sectionData?.personalNeedsProfile;
-	const settingsProfile = sectionData?.settings?.personalNeedsProfile;
-	const profile = directProfile ?? settingsProfile ?? defaultPnpProfile;
-	const source = directProfile
-		? "section.personalNeedsProfile"
-		: settingsProfile
-			? "section.settings.personalNeedsProfile"
-			: "panel fallback (no profile in section)";
-	const note =
-		directProfile || settingsProfile
-			? "Profile was taken from the section payload. Policy does not read it: it reads the bound assessment's profile, and the bound assessment carries none."
-			: "The section carries no PNP profile. Nothing derives one — a player grants no support the host did not configure, so placement alone decides which tools appear. This panel is showing its own fallback profile so the rows below have something to read.";
-	return { profile, source, note };
+	return {
+		profile: defaultPnpProfile,
+		source: "panel fallback (no profile bound)",
+		note: "The bound assessment carries no PNP profile. Nothing derives one — a player grants no support the host did not configure, so placement alone decides which tools appear. This panel is showing its own fallback profile so the rows below have something to read.",
+	};
 }
 
 /**
@@ -473,7 +459,6 @@ export function derivePnpPanelData(inputs: PnpPanelInputs): PnpPanelData {
 		| { pnpEnforcement?: "on" | "off"; assessment?: unknown }
 		| undefined;
 	const { profile, source, note } = resolvePnpProfile(
-		sectionData,
 		defaultPnpProfile,
 		policyInputs?.assessment,
 	);
@@ -540,11 +525,7 @@ export function derivePnpPanelData(inputs: PnpPanelInputs): PnpPanelData {
 		},
 		determination: {
 			source,
-			checked: [
-				"assessment.personalNeedsProfile",
-				"section.personalNeedsProfile",
-				"section.settings.personalNeedsProfile",
-			],
+			checked: ["assessment.personalNeedsProfile"],
 			note,
 			runtimeContext: {
 				role: roleType,

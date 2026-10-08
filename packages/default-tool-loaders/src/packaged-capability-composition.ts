@@ -689,7 +689,6 @@ class PackagedCapabilityComposition {
 		return {
 			supports: [...this.universalSupportIds],
 			prohibitedSupports: [],
-			activateAtInit: [],
 		};
 	}
 }

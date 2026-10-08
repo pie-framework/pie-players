@@ -1,4 +1,7 @@
-import type { AssessmentSection } from "@pie-players/pie-players-shared/types";
+import type {
+	AssessmentSection,
+	PersonalNeedsProfile,
+} from "@pie-players/pie-players-shared/types";
 
 /**
  * Sign Language (ASL) Region
@@ -256,13 +259,6 @@ export const demoSignLanguageGrantedSection: AssessmentSection = {
 	identifier: "demo-sign-language-granted",
 	title: "Sign Language: signing granted",
 	keepTogether: true,
-	// Signing is an accommodation, so it is excluded from the computed default
-	// profile and has to be granted deliberately — as here.
-	personalNeedsProfile: {
-		supports: ["signLanguage"],
-		prohibitedSupports: [],
-		activateAtInit: [],
-	},
 	assessmentItemRefs: [
 		authoredCardItem,
 		noSigningItem,
@@ -275,11 +271,6 @@ export const demoSignLanguageNotGrantedSection: AssessmentSection = {
 	identifier: "demo-sign-language-not-granted",
 	title: "Sign Language: signing not granted",
 	keepTogether: true,
-	personalNeedsProfile: {
-		supports: [],
-		prohibitedSupports: [],
-		activateAtInit: [],
-	},
 	assessmentItemRefs: [
 		authoredCardItem,
 		noSigningItem,
@@ -292,13 +283,19 @@ export const demoSignLanguagePassageSection: AssessmentSection = {
 	identifier: "demo-sign-language-passage",
 	title: "Sign Language: signed passage",
 	keepTogether: true,
-	personalNeedsProfile: {
-		supports: ["signLanguage"],
-		prohibitedSupports: [],
-		activateAtInit: [],
-	},
 	rubricBlocks: [signedPassageBlock],
 	// One item, carrying no signing of its own: what shows is the passage's own
 	// signed reading, on the passage card.
 	assessmentItemRefs: [noSigningItem],
+};
+
+/**
+ * The learner's profile on each page, by section identifier, which the page
+ * binds as the assessment's. Signing is an accommodation, so no default profile
+ * grants it: the granted pages grant it deliberately.
+ */
+export const demoSignLanguageProfiles: Record<string, PersonalNeedsProfile> = {
+	"demo-sign-language-granted": { supports: ["signLanguage"] },
+	"demo-sign-language-not-granted": { supports: [] },
+	"demo-sign-language-passage": { supports: ["signLanguage"] },
 };

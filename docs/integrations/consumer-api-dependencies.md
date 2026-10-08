@@ -1859,6 +1859,14 @@ over a CDN with no typecheck at all.
   `getFeaturesInCategory`). Nothing read it at runtime; support ids resolve
   against the registry. Checked against all five checkouts on 2026-10-08 as a
   targeted lookup: no checkout imports any of them
+- `AssessmentSection.personalNeedsProfile` and the `PersonalNeedsProfile` fields
+  `activateAtInit`, `districtPolicy.policies` and `testAdministration.mode`,
+  `startDate` and `endDate`, deleted on 2026-10-08. Policy read none of them, and
+  a `testAdministration` without a `toolOverrides` entry no longer turns automatic
+  PNP enforcement on. Checked against all five checkouts on 2026-10-08 as a
+  targeted lookup: only Host R sets one, a profile on the section objects of its
+  section demos, cast `as any`. It now reaches nothing, the PNP debugger
+  included; binding it as the assessment's with `updateAssessment` keeps it
 
 ## Consumer-side defects worth reporting upstream
 

@@ -91,6 +91,7 @@ export type {
 	I18nServiceApi,
 	ToolCoordinatorApi,
 	ToolkitCoordinatorApi,
+	SpeakOptions,
 	TtsServiceApi,
 	ToolState,
 } from "./services/interfaces.js";

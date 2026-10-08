@@ -237,6 +237,14 @@ export interface ToolCoordinatorApi {
 	subscribe(listener: () => void): () => void;
 }
 
+/** Options for {@link TtsServiceApi.speak}. */
+export interface SpeakOptions {
+	catalogId?: string;
+	catalogContext?: CatalogLookupContext;
+	language?: string;
+	contentElement?: Element;
+}
+
 /**
  * TTS service interface
  *
@@ -255,15 +263,7 @@ export interface TtsServiceApi {
 	/**
 	 * Speak text with optional catalog support
 	 */
-	speak(
-		text: string,
-		options?: {
-			catalogId?: string;
-			catalogContext?: CatalogLookupContext;
-			language?: string;
-			contentElement?: Element;
-		},
-	): Promise<void>;
+	speak(text: string, options?: SpeakOptions): Promise<void>;
 
 	/**
 	 * Speak a text range. A node with a spoken card that the range holds whole

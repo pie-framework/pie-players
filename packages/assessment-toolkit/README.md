@@ -144,7 +144,7 @@ See the [ToolkitCoordinator section in the architecture overview](../../docs/arc
 1. **Centralized Coordination**: ToolkitCoordinator orchestrates all services
 2. **Composable Services**: Import only what you need (or use coordinator for convenience)
 3. **No Framework Lock-in**: Works with any JavaScript framework
-4. **Product Control**: Products control navigation, layout and backend. Session persistence defaults to `localStorage` at the section and assessment layers, and a product replaces either through its persistence hook (`createSectionSessionPersistence` on the coordinator, `createAssessmentSessionPersistence` on the assessment player)
+4. **Product Control**: Products control navigation, layout and backend. Session persistence defaults to `localStorage` at the section and assessment layers, stored per attempt id and inactive without one, and a product replaces either through its persistence hook (`createSectionSessionPersistence` on the coordinator, `createAssessmentSessionPersistence` on the assessment player)
 5. **Standard Contracts**: Well-defined event types for component communication
 6. **Element-Level Granularity**: Tool state tracked per PIE element, not per item
 7. **State Separation**: Tool state (ephemeral) separate from PIE session data (persistent)

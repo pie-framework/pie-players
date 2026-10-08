@@ -38,7 +38,7 @@ grows.
 
 Every element bundles its own copy of shared modules, so the key must be equal across copies.
 `Symbol.for` returns the registered symbol for its name, and `ContextProvider` matches a request by
-`event.context === key` without checking the event's class (`packages/pie-context/src/provider.ts:80`),
+`event.context === key` without checking the event's class (`packages/pie-context/src/provider.ts:100`),
 so a request from any copy matches.
 
 ## Supporting reasons

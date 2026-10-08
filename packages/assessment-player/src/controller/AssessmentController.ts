@@ -334,10 +334,16 @@ export class AssessmentController implements AssessmentControllerHandle {
 		const defaults = {
 			createDefaultPersistence: (): AssessmentSessionPersistenceStrategy => {
 				const storage = getBrowserLocalStorage();
-				const key = `pie:assessment-controller:v1:${this.storageContext.assessmentId}:${this.storageContext.attemptId || "default"}`;
+				// Stored per attempt. Without an attempt id nothing tells two
+				// learners on one device apart, so the session is neither read nor
+				// written.
+				const { assessmentId, attemptId } = this.storageContext;
+				const key = attemptId
+					? `pie:assessment-controller:v1:${assessmentId}:${attemptId}`
+					: null;
 				return {
 					async loadSession() {
-						if (!storage) return null;
+						if (!storage || !key) return null;
 						const raw = storage.getItem(key);
 						if (!raw) return null;
 						try {
@@ -347,11 +353,11 @@ export class AssessmentController implements AssessmentControllerHandle {
 						}
 					},
 					async saveSession(_context, session) {
-						if (!storage) return;
+						if (!storage || !key) return;
 						storage.setItem(key, JSON.stringify(session));
 					},
 					async clearSession() {
-						if (!storage) return;
+						if (!storage || !key) return;
 						storage.removeItem(key);
 					},
 				};

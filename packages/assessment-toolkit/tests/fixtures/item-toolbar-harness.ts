@@ -9,18 +9,12 @@
  * with no placed entries publishes nothing, and the toolbar takes its standalone
  * path, where the `tools` attribute is pass 1.
  *
- * Import this before registering a DOM, as a static import. pie-context then
- * loads under Bun's `Event`, as in every file that dispatches its events on raw
- * `EventTarget`s. Call `loadItemToolbar()` at the top level once the DOM is
- * registered: the component's imports define custom elements, and compiling it
- * takes long enough to belong outside any test's timeout.
+ * Call `loadItemToolbar()` at the top level once a DOM is registered: the
+ * component's imports define custom elements, and compiling it takes long enough
+ * to belong outside any test's timeout.
  */
 
-import {
-	ContextProvider,
-	ContextProviderEvent,
-	ContextRequestEvent,
-} from "@pie-players/pie-context";
+import { ContextProvider } from "@pie-players/pie-context";
 import type { ItemEntity } from "@pie-players/pie-players-shared/types";
 import {
 	type AssessmentToolkitRuntimeContext,
@@ -113,34 +107,6 @@ export function toolbarTool(spec: ToolbarToolSpec): ToolRegistration {
 	};
 }
 
-/**
- * Re-bases pie-context's event classes on the current window's `Event` until the
- * returned restore runs.
- *
- * The classes extend the `Event` of the moment pie-context first loaded, Bun's,
- * and happy-dom's `dispatchEvent` rejects an event that is not an instance of
- * its own window's `Event`, while the toolbar and the provider dispatch these
- * events on real elements. The restore returns them to Bun's `Event` for the
- * files that dispatch them on raw `EventTarget`s, as `shell-scope.test.ts` does.
- */
-function adoptContextEvents(): () => void {
-	const restores = [ContextRequestEvent, ContextProviderEvent].map(
-		(EventClass) => {
-			const base = Object.getPrototypeOf(EventClass);
-			const baseProto = Object.getPrototypeOf(EventClass.prototype);
-			Object.setPrototypeOf(EventClass, window.Event);
-			Object.setPrototypeOf(EventClass.prototype, window.Event.prototype);
-			return () => {
-				Object.setPrototypeOf(EventClass, base);
-				Object.setPrototypeOf(EventClass.prototype, baseProto);
-			};
-		},
-	);
-	return () => {
-		for (const restore of restores) restore();
-	};
-}
-
 function publishCoordinator(
 	host: HTMLElement,
 	registry: ToolRegistry,
@@ -176,7 +142,6 @@ export async function mountItemToolbar(
 	options: ItemToolbarMountOptions,
 ): Promise<MountedItemToolbar> {
 	await loadItemToolbar();
-	const restoreContextEvents = adoptContextEvents();
 	const host = document.createElement("div");
 	document.body.append(host);
 	const provider = options.placed
@@ -205,7 +170,6 @@ export async function mountItemToolbar(
 			host.remove();
 			// The component tears down a microtask after it disconnects.
 			await settle(1);
-			restoreContextEvents();
 		},
 	};
 }

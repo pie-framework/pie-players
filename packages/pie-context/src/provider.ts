@@ -20,6 +20,9 @@ export class ContextProvider<T extends UnknownContext> {
 		(value: ContextType<T>, unsubscribe?: () => void) => void,
 		Subscription<ContextType<T>>
 	>();
+	// Subscribers that were out of the document when this provider disconnected,
+	// which is where a host's subtree is while it moves.
+	private detachedSubscribers: Array<Subscription<ContextType<T>>> = [];
 	private isConnected = false;
 
 	public constructor(host: Element, options: ContextProviderOptions<T>) {
@@ -39,6 +42,11 @@ export class ContextProvider<T extends UnknownContext> {
 			"context-provider",
 			this.handleContextProvider as EventListener,
 		);
+		const detached = this.detachedSubscribers;
+		this.detachedSubscribers = [];
+		for (const subscription of detached) {
+			if (subscription.consumerHost.isConnected) this.requestAgain(subscription);
+		}
 		this.host.dispatchEvent(new ContextProviderEvent(this.context, this.host));
 	}
 
@@ -53,7 +61,19 @@ export class ContextProvider<T extends UnknownContext> {
 			"context-provider",
 			this.handleContextProvider as EventListener,
 		);
+		// Each subscriber requests again: one in the document reaches the nearest
+		// provider left, or the document's root, which replays it when a provider
+		// connects. One out of the document is requested again when this provider
+		// reconnects, so a provider moved together with its consumers keeps them.
+		const released = [...this.subscriptions.values()];
 		this.subscriptions.clear();
+		for (const subscription of released) {
+			if (subscription.consumerHost.isConnected) {
+				this.requestAgain(subscription);
+			} else {
+				this.detachedSubscribers.push(subscription);
+			}
+		}
 	}
 
 	public setValue(value: ContextType<T>, force = false): void {
@@ -118,16 +138,20 @@ export class ContextProvider<T extends UnknownContext> {
 		if (providerHost === this.host) return;
 
 		// A newly connected nested provider should take over matching consumers.
-		const seen = new Set<unknown>();
-		for (const [callback, { consumerHost }] of this.subscriptions) {
-			if (seen.has(callback)) continue;
-			seen.add(callback);
-			consumerHost.dispatchEvent(
-				new ContextRequestEvent(this.context, consumerHost, callback, true),
-			);
+		for (const subscription of [...this.subscriptions.values()]) {
+			this.requestAgain(subscription);
 		}
 		event.stopPropagation();
 	};
+
+	private requestAgain({
+		consumerHost,
+		callback,
+	}: Subscription<ContextType<T>>): void {
+		consumerHost.dispatchEvent(
+			new ContextRequestEvent(this.context, consumerHost, callback, true),
+		);
+	}
 
 	private notifySubscribers(): void {
 		for (const subscription of this.subscriptions.values()) {

@@ -113,6 +113,23 @@ browser's language. Math control names take the same content language, where
 before they took the nearest `lang` up to the page's. Row verification dates are
 unchanged.
 
+On 2026-10-08 an item's policy settings (`requiredTools`, `restrictedTools`,
+`toolParameters`) started reaching section delivery. They arrive on
+`<pie-item-scope>` `settings`, which the section player fills from each item ref,
+and govern only that item's own toolbar; a tool placed on a section or assessment
+toolbar ignores them, and the toolkit raises `tool-policy.itemSettingNotApplied`
+for it. Before, nothing set the toolkit's `currentItemRef`, so Host A, which
+delivers through the section player, applied no item settings; it now applies any
+its items carry. `currentItemRef` and `updateCurrentItemRef` are removed. The same
+change applies `toolOverrides` as documented, withholds a tool whose module fails
+to load and reports `tool-module-load`, and has the PNP debugger edit only the
+bound assessment's profile. Checked against the checkouts of Hosts A, M, P, R and
+V: none names `currentItemRef`, `updateCurrentItemRef` or `toolOverrides`, and
+Host R's `decideFeaturePolicy(id)` and `onPolicyChange` calls keep working under
+the optional scope and the new `"item-settings"` change reason. A section's own
+`personalNeedsProfile` stays unread by policy, now as documented. Row
+verification dates are unchanged.
+
 On 2026-10-08 the annotation toolbar's read-aloud started reading spoken cards: a
 `data-catalog-idref` node the selection holds whole reads its card, from the
 cards the selection's shell registered and then the assessment's, as tts-inline

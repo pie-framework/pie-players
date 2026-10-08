@@ -16,19 +16,15 @@ Tool availability is determined by combining:
 AssessmentEntity
 ├── personalNeedsProfile           # QTI 3.0: Student's PNP profile
 │   ├── supports: string[]         # Enabled accessibility features
-│   ├── prohibitedSupports: string[]
-│   └── activateAtInit: string[]   # Accepted, not acted on
+│   └── prohibitedSupports: string[]
 │
 └── settings: AssessmentSettings   # PIE extension
     ├── districtPolicy             # Institutional governance
     │   ├── blockedTools: string[]
-    │   ├── requiredTools: string[]
-    │   └── policies: Record<string, any>   # Accepted, not acted on
+    │   └── requiredTools: string[]
     │
     ├── testAdministration         # Session control
-    │   ├── mode: "practice" | "test" | "benchmark"   # Accepted, not acted on
-    │   ├── toolOverrides: Record<string, boolean>
-    │   └── startDate, endDate: string                # Accepted, not acted on
+    │   └── toolOverrides: Record<string, boolean>
     │
     └── toolConfigs                # Feature parameters by support id
         ├── calculator: {...}
@@ -41,7 +37,7 @@ AssessmentItemRef
     └── toolParameters: Record<string, any>
 ```
 
-The fields marked "accepted, not acted on" are typed so a host can carry them with the assessment, and their presence counts as policy material: in auto mode a non-empty one turns PNP enforcement on. Nothing reads their values. No tool activates from `activateAtInit`, and the policy engine applies no rule for `districtPolicy.policies`, `testAdministration.mode` or the testing window.
+Policy reads the profile of the assessment the host binds with `coordinator.updateAssessment`. A section carries no profile: a profile is learner data, and section content is shared by every learner.
 
 ## Configuration Examples
 
@@ -68,12 +64,6 @@ const assessment: AssessmentEntity = {
     // Features explicitly prohibited for this student
     prohibitedSupports: [
       "answerEliminator"   // Not allowed per IEP
-    ],
-
-    // Accepted, not acted on: no tool activates from this list
-    activateAtInit: [
-      "textToSpeech",
-      "magnification"
     ]
   },
 
@@ -111,13 +101,7 @@ const assessment: AssessmentEntity = {
       // Required for all students in this district
       requiredTools: [
         "textToSpeech"     // District mandates TTS for all ELL students
-      ],
-
-      // Accepted, not acted on: no policy rule reads these
-      policies: {
-        allowTranslation: false,
-        proctorRequired: true
-      }
+      ]
     }
   }
 };
@@ -146,19 +130,12 @@ const assessment: AssessmentEntity = {
 
   settings: {
     testAdministration: {
-      // Accepted, not acted on
-      mode: "test",  // "practice" | "test" | "benchmark"
-
       // Session-specific overrides
       // Proctor can disable tools due to operational issues
       toolOverrides: {
         "textToSpeech": false,  // TTS disabled - audio equipment broken
         "calculator": true      // Calculator explicitly enabled
-      },
-
-      // Testing window: accepted, not acted on
-      startDate: "2024-03-15T08:00:00Z",
-      endDate: "2024-03-15T10:00:00Z"
+      }
     }
   }
 };
@@ -167,14 +144,14 @@ const assessment: AssessmentEntity = {
 **Source**: Typically set by:
 - Test proctors/administrators
 - Testing center staff
-- Automated testing platform (practice vs. live)
+- Automated testing platform
 - Session management systems
 
 **Use Cases**:
 - Technical issues (TTS audio broken, disable for this session)
 - Test security (disable features for high-stakes tests)
 
-**Precedence**: `toolOverrides` is keyed by tool id. `false` withdraws the tool for the session and `true` grants it; either outranks item settings, district requirements and the PNP, and only a district block outranks it.
+**Precedence**: `toolOverrides` is keyed by tool id. `false` withdraws the tool for the session and `true` grants it; either outranks item settings, district requirements and the PNP, and only a district block outranks it. A `true` override is a grant like a PNP support: the entry carries `alwaysAvailable`, so the item toolbar's relevance check does not withdraw it.
 
 ### 4. Item-Level Settings (Content Requirements)
 
@@ -285,8 +262,7 @@ const assessment: AssessmentEntity = {
       "annotationToolbar",
       "lineReader",
       "calculator"
-    ],
-    activateAtInit: ["textToSpeech", "magnification"]
+    ]
   },
 
   // District/institutional governance
@@ -302,7 +278,6 @@ const assessment: AssessmentEntity = {
 
     // Test administration session control
     testAdministration: {
-      mode: "test",
       toolOverrides: {
         // Proctor can make session-specific adjustments
       }
@@ -341,7 +316,7 @@ console.log('Allowed tools:', allowedToolIds);
 // - lineReader: Granted, but this configuration places it at passage level only
 ```
 
-`settings.toolConfigs` holds feature parameters keyed by support id, and an item's `toolParameters` override them. A feature granted by a PNP support or a requirement carries them as its policy parameters (`ToolPolicyEntry.settings`, `FeaturePolicyDecision.parameters`), which is where the sign-language capability reads `signLang`. Provider configuration, such as the TTS backend and voice in step 2, belongs in `tools.providers`. The server backends (`polly`, `google`, `server`) send requests to the host's TTS server at `apiEndpoint` (default `/api/tts`) through `@pie-players/tts-client-server`, which `@pie-players/pie-default-tool-loaders` installs.
+`settings.toolConfigs` holds feature parameters keyed by support id, and an item's `toolParameters` override them. A feature granted by a PNP support, a requirement or a test-administration override carries them as its policy parameters (`ToolPolicyEntry.settings`, `FeaturePolicyDecision.parameters`), which is where the sign-language capability reads `signLang`. Provider configuration, such as the TTS backend and voice in step 2, belongs in `tools.providers`. The server backends (`polly`, `google`, `server`) send requests to the host's TTS server at `apiEndpoint` (default `/api/tts`) through `@pie-players/tts-client-server`, which `@pie-players/pie-default-tool-loaders` installs.
 
 ## Precedence Resolution Examples
 
@@ -531,7 +506,7 @@ Provide UI for:
 
 ## Best Practices
 
-1. **Name support ids by tool id** - A support id is the `toolId` it grants; translate a profile held in AfA terms (`readingMask`, `answerMasking`) to the tools that serve it
+1. **Name support ids by tool id** - A support id is the `toolId` it grants; translate a profile held in AfA PNP 3.0 terms (`line-reader`, `answer-masking`) to the tools that serve them (`lineReader`, `answerEliminator`), as [Support ids](TOOL_REGISTRY.md#support-ids) lists
 2. **Document governance rules** - Explain why certain tools are blocked/required
 3. **Audit trail** - Log who makes policy decisions and when
 4. **Test precedence** - Verify district blocks actually override PNP
@@ -576,4 +551,4 @@ const unregister = coordinator.registerPolicySource({
 
 - [Tool Registry Architecture](TOOL_REGISTRY.md) - Tool registration and filtering
 - [QTI 3.0 PNP Specification](https://www.imsglobal.org/spec/qti/v3p0)
-- [IMS AfA 3.0 Specification](https://www.imsglobal.org/spec/afa/v3p0)
+- [IMS AfA PNP 3.0 Information Model](https://www.imsglobal.org/spec/afa/v3p0/info)

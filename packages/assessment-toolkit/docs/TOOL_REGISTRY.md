@@ -86,7 +86,7 @@ This keeps visibility deterministic and context-driven for every refresh cycle.
 
 A tool's `toolId` is its PNP support id: a profile, district policy or item grants a tool by listing its id, and the registry a host composes is the only list of ids a deployment recognizes. Which supports a deployment offers is therefore known only at runtime, from the tools registered and the policy applied to them. An id no registered tool carries raises `tool-policy.unknownSupportId`.
 
-A new tool whose capability AfA PNP 3.0 names takes that term as its id. The packaged ids that coincide with AfA terms are `calculator`, `textToSpeech`, `ruler`, `protractor`, `graph`, `periodicTable`, `answerEliminator` and `signLanguage`. A host holding a profile in AfA terms translates the rest, for example `readingMask` to `lineReader` or `highlighting` to `annotationToolbar`.
+A new tool whose capability [AfA PNP 3.0](https://www.imsglobal.org/spec/afa/v3p0/info) names takes that term as its id, camelCased, since AfA terms are kebab-case. Among the packaged ids, `transcript` is an AfA term and `lineReader` is `line-reader`; `signLanguage`, from `@pie-players/pie-tool-sign-language`, is `sign-language`. Other ids name an AfA capability in other words, so a host holding a profile in AfA terms translates them: `calculator-on-screen` to `calculator`, `spoken` to `textToSpeech`, `answer-masking` to `answerEliminator` and `dictionary-on-screen` to `dictionary`. AfA has no term for `ruler`, `protractor`, `graph`, `periodicTable` or `annotationToolbar`.
 
 ## Tool Registration
 
@@ -851,7 +851,7 @@ This hierarchy aligns with typical **IEP/504 accommodation hierarchies** in US K
 ## References
 
 - **[PNP Configuration Guide](PNP_CONFIGURATION.md)** - How integrators configure governance rules
-- [IMS Global Access for All (AfA) 3.0](https://www.imsglobal.org/spec/afa/v3p0)
+- [IMS AfA PNP 3.0 Information Model](https://www.imsglobal.org/spec/afa/v3p0/info)
 - [QTI 3.0 Specification](https://www.imsglobal.org/spec/qti/v3p0)
 - [Schema.org Accessibility Features](https://schema.org/accessibilityFeature)
 - [WCAG 2.2 Guidelines](https://www.w3.org/WAI/WCAG22/quickref/)

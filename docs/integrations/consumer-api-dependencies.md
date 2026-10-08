@@ -1861,6 +1861,14 @@ over a CDN with no typecheck at all.
   `getFeaturesInCategory`). Nothing read it at runtime; support ids resolve
   against the registry. Checked against all five checkouts on 2026-10-08 as a
   targeted lookup: no checkout imports any of them
+- `AssessmentSection.personalNeedsProfile` and the `PersonalNeedsProfile` fields
+  `activateAtInit`, `districtPolicy.policies` and `testAdministration.mode`,
+  `startDate` and `endDate`, deleted on 2026-10-08. Policy read none of them, and
+  a `testAdministration` without a `toolOverrides` entry no longer turns automatic
+  PNP enforcement on. Checked against all five checkouts on 2026-10-08 as a
+  targeted lookup: only Host R sets one, a profile on the section objects of its
+  section demos, cast `as any`. It now reaches nothing, the PNP debugger
+  included; binding it as the assessment's with `updateAssessment` keeps it
 - The toolkit root, cut on 2026-10-08 from 326 names to 185: the names Host R,
   the players and the demo apps import, and the types their signatures carry.
   The 32 names only tool packages import moved to `./tools/registration`, with

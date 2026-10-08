@@ -60,9 +60,10 @@ export interface FeaturePolicyDecision {
 	 *
 	 * `false` makes a *denial* a wiring gap rather than a verdict: no profile,
 	 * district policy or test administration could be consulted, because there was
-	 * no assessment to read them from. It is not itself a denial — an item ref
-	 * carrying `requiredTools` mandates a feature at precedence 4 with no
-	 * assessment bound — so read it alongside `granted` rather than instead of it.
+	 * no assessment to read them from. It is not itself a denial — an item's
+	 * registered settings carrying `requiredTools` mandate a feature at precedence
+	 * 4 with no assessment bound — so read it alongside `granted` rather than
+	 * instead of it.
 	 *
 	 * Granting is unaffected either way: an unbound host with no item mandate still
 	 * gets `granted: false`, since an accommodation requires a documented need and
@@ -75,7 +76,7 @@ export interface FeaturePolicyDecision {
 	assessmentBound: boolean;
 	/**
 	 * `true` when the grant is a mandate (item or district `requiredTools`)
-	 * rather than a student-profile support.
+	 * rather than a student-profile support or a test-administration override.
 	 */
 	required: boolean;
 	/**
@@ -174,9 +175,9 @@ export function interpretFeatureResult(
 		precedence: decision?.precedence ?? 6,
 		sourceType: decision?.sourceType ?? "system",
 		// Only a denial is re-worded. An unbound host can still be granted the
-		// feature — an item ref carrying `requiredTools` mandates it at precedence 4
-		// with no assessment in sight — and there the source's reason is the true
-		// one.
+		// feature — an item's registered settings carrying `requiredTools` mandate
+		// it at precedence 4 with no assessment in sight — and there the source's
+		// reason is the true one.
 		reason:
 			context.assessmentBound || granted
 				? reason

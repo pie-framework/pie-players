@@ -324,7 +324,7 @@ QTI 3 is **inspiration, not an interop target.** PIE's catalog model borrows the
 | Media Fragments URI on the source | `fragment` | QTI 3 replaced APIP's separate start/end cue elements with fragment notation, letting one recording serve several nodes. |
 | `data-catalog-idref` docking, conventionally on a hidden docking div | `data-catalog-idref` | Already the same attribute PIE uses for TTS. |
 | APIP `signFileASL` / `signFileSignedEnglish` | catalog card + language | APIP's two sign types collapse into card language. Signed English is scoped out for MVP; see Open Questions. |
-| PNP 3.0 / AfA `signLanguage` | `PersonalNeedsProfile.supports` | The sign-language tool's id. |
+| PNP 3.0 / AfA `sign-language` | `PersonalNeedsProfile.supports` | `signLanguage`, the sign-language tool's id: the AfA term, camelCased. |
 
 The table covers signing. It is not a survey of the catalog model, and two places where PIE's shape and the standard's diverge are recorded as open questions below rather than as mappings: QTI's `spoken` card may carry a pre-recorded audio file rather than SSML, and `ext:`-prefixed vendor support tokens have nowhere to land in a closed `CatalogType`. Neither is a defect in this design — nothing here promised to represent them — but both would surface the day something actually reads QTI, so they are written down while the reasoning is fresh.
 

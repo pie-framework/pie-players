@@ -1035,12 +1035,9 @@ The persistence strategy works with the same `SectionControllerSessionState` sha
 - **AccessibilityCatalogResolver**: QTI 3.0 accessibility catalog management
 - **SSMLExtractor**: Automatic extraction of embedded `<speak>` tags
 
-### ✅ QTI 3.0 Standard Access Features
+### ✅ PNP Support Ids
 
-- **95+ Standardized Features**: Complete QTI 3.0 / IMS AfA 3.0 accessibility features
-- **8 Feature Categories**: Visual, auditory, motor, cognitive, reading, navigation, linguistic, assessment
-- **Example Configurations**: Illustrative PNP profile examples (low vision, dyslexia, ADHD, etc.)
-- **Tool Mappings**: Every packaged tool registration maps to standard QTI 3.0 features
+- **Support ids are tool ids**: A profile, district policy or item setting names a tool by its `toolId`, and an id no registered tool carries raises `tool-policy.unknownSupportId`. [Support ids](docs/TOOL_REGISTRY.md#support-ids) lists the AfA PNP 3.0 terms the packaged ids serve.
 
 ### ✅ Section Player Integration
 

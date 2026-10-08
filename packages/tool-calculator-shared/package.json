@@ -37,7 +37,7 @@
 	],
 	"scripts": {
 		"build": "vite build",
-		"test": "bun test tests",
+		"test": "bun run build && bun test tests",
 		"typecheck": "tsc --noEmit",
 		"check": "svelte-check --tsconfig ./tsconfig.json --compiler-warnings options_missing_custom_element:ignore",
 		"lint": "biome lint ."

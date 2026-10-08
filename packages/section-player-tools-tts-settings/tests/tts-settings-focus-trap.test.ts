@@ -4,7 +4,7 @@ import { afterAll, afterEach, expect, test } from "bun:test";
 const ownsDom = typeof window === "undefined";
 if (ownsDom) GlobalRegistrator.register();
 
-await import("../dist/section-player-tools-tts-settings.js");
+await import("../TtsSettingsPanel.svelte");
 
 const settle = async () => {
 	await Promise.resolve();

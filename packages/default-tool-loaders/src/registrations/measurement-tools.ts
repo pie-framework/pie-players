@@ -43,7 +43,6 @@ export const rulerToolRegistration: ToolRegistration = {
 	): ToolToolbarRenderResult {
 		return renderOverlayToolbar(this, context, toolbarContext, {
 			surface: "frameless",
-			handsOverCoordinator: true,
 		});
 	},
 };
@@ -78,7 +77,6 @@ export const protractorToolRegistration: ToolRegistration = {
 	): ToolToolbarRenderResult {
 		return renderOverlayToolbar(this, context, toolbarContext, {
 			surface: "frameless",
-			handsOverCoordinator: true,
 		});
 	},
 };

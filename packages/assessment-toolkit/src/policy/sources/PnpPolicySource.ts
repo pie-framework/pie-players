@@ -27,7 +27,10 @@ import type { PnpPolicySourceRule } from "../core/policy-source-tag.js";
 export interface PnpPolicyToolFlags {
 	/** PNP/profile policy mandates this tool (item or district `requiredTools`). */
 	required: boolean;
-	/** Student PNP marks this tool as a support (host UI cannot toggle off). */
+	/**
+	 * The student's profile supports this tool, or a test-administration
+	 * override grants it (host UI cannot toggle off).
+	 */
 	alwaysAvailable: boolean;
 	/** Tool-specific settings derived from item / assessment settings. */
 	settings?: unknown;
@@ -272,7 +275,7 @@ export class PnpPolicySource {
 			const toolId = this.mapSupportToToolId(supportId, out);
 			out.perToolFlags.set(toolId, {
 				required: false,
-				alwaysAvailable: false,
+				alwaysAvailable: true,
 				settings: this.resolveToolSettings(supportId, ctx),
 				rule: "test-admin-override",
 				sourceType: "assessment",

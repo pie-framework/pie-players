@@ -96,10 +96,8 @@ describe("placed tools a host-supplied coordinator has no provider for", () => {
 		await settle();
 		const warnings = providerWarnings();
 		expect(warnings).toHaveLength(2);
-		expect(warnings[0]).toContain(
-			'Placed tool "calculator" uses provider "calculator-desmos"',
-		);
-		expect(warnings[1]).toContain('Placed tool "textToSpeech" uses provider "tts"');
+		expect(warnings[0]).toContain('Placed tool "calculator" has a provider');
+		expect(warnings[1]).toContain('Placed tool "textToSpeech" has a provider');
 		expect(warnings[0]).toContain("createPackagedToolRegistry()");
 
 		coordinator.updateToolsPlacement({
@@ -143,7 +141,7 @@ describe("placed tools a host-supplied coordinator has no provider for", () => {
 		await coordinator.waitUntilReady();
 		await settle();
 
-		expect(coordinator.toolProviderRegistry.has("tts")).toBe(true);
+		expect(coordinator.toolProviderRegistry.has("textToSpeech")).toBe(true);
 		expect(providerWarnings()).toEqual([]);
 	});
 
@@ -159,12 +157,15 @@ describe("placed tools a host-supplied coordinator has no provider for", () => {
 		});
 		await settle();
 
-		expect(coordinator.toolProviderRegistry.has("calculator-geogebra")).toBe(
-			true,
-		);
-		expect(coordinator.toolProviderRegistry.has("calculator-desmos")).toBe(
-			false,
-		);
+		// The vendor switch replaces the provider under the tool's own id.
+		expect(coordinator.toolProviderRegistry.getProviderIds().sort()).toEqual([
+			"calculator",
+			"textToSpeech",
+		]);
+		expect(
+			(await coordinator.toolProviderRegistry.getProvider("calculator", false))
+				.providerName,
+		).toBe("GeoGebra Calculator");
 		expect(providerWarnings()).toEqual([]);
 	});
 });

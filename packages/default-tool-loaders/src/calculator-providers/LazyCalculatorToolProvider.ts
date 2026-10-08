@@ -33,7 +33,6 @@ export abstract class LazyCalculatorToolProvider<
 	TConfig extends CalculatorToolProviderInitConfig,
 > implements ToolProviderApi<TConfig, CalculatorProvider>
 {
-	abstract readonly providerId: string;
 	abstract readonly providerName: string;
 	readonly category = "calculator" as const;
 	abstract readonly version: string;

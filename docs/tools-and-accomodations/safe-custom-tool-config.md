@@ -76,9 +76,10 @@ layout.runtime = { ...(layout.runtime ?? {}), coordinator };
 layout.toolRegistry = registry;
 ```
 
-## Custom provider hooks
+## Custom config hooks
 
-Custom tool registrations can add provider hooks to enforce tool-specific schema:
+A tool registration can declare hooks that enforce its own schema on its
+`providers.<toolId>` entry, with or without a provider:
 
 - `sanitizeConfig(config)` to normalize input.
 - `validateConfig(config)` to return diagnostics.

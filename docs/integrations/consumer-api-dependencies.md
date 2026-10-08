@@ -471,6 +471,43 @@ published with no call sites anywhere, which is what made replacing it rather
 than versioning it the right move. No host passes `locale` to a `pie-*` element
 either.
 
+On 2026-10-08 tools went to one channel and one provider namespace. Tool
+elements dropped the service and provider-id properties they took beside the
+runtime context: `toolkitCoordinator` and `providerId` / `provider-id` on the
+calculator elements, `highlightCoordinator` and `ttsService` on
+`pie-tool-annotation-toolbar`, `elementToolStateStore` on
+`pie-tool-answer-eliminator` (whose `strategy` also drops the unimplemented
+`gray`), and `ttsService` on the sign-language region. Providers register under
+their tool's id (`calculator`, `textToSpeech`): `ToolProviderApi.providerId`,
+`ToolProviderDescriptor.getProviderId`, `resolveToolProviderId` and
+`ToolkitCoordinator.getToolProvider` are gone, and `ensureProviderReady` takes a
+tool id. The toolkit names a tool by that id under `toolId` only: the provider
+lifecycle hooks pass it as their first argument, `ToolkitErrorContext` carries it
+as `toolId` (framework-error source `pie-toolkit-coordinator/<toolId>`), and
+`ProviderLifecycleContext.providerId`, `ToolConfigDiagnostic.providerId` and the
+`providerId` the provider and playback telemetry repeated beside `toolId` are
+deleted. Telemetry that carried `"tts"` or a vendor's selection id as `providerId`
+reads `"textToSpeech"` or `"calculator"` as `toolId`. `sanitizeConfig` and
+`validateConfig` moved from the provider descriptor to `ToolRegistration`. `AnswerEliminatorToolConfig`
+is deleted, and `PACKAGED_TOOL_REGISTRATIONS`, `PACKAGED_TOOL_PLACEMENT` and
+`PACKAGED_TOOL_ORDER` are typed as plain arrays where they were cast to literal
+tuples. Checked against all five checkouts the same day as a targeted lookup, so
+it does not advance the verification date: no checkout sets any of those
+properties on a tool element, reads a provider's `providerId`, subscribes to
+toolkit telemetry or provider lifecycle hooks, calls `getToolProvider` or
+`ensureProviderReady`, reads
+`toolProviderRegistry`, declares a provider descriptor or config hook, or names
+`ToolkitErrorContext`, `ProviderLifecycleContext`, `ToolConfigDiagnostic`, the
+deleted type or the composition constants. Host R alone hands the section player
+a New Relic instrumentation provider, so its toolkit events lose the `providerId`
+attribute and keep `toolId`. Host A takes the calculator,
+annotation toolbar and answer eliminator from the packaged loaders and sets
+none of their properties; the edits to `CortexToolProvider` and the composition
+module change no import, so its single-file build inlines the same modules.
+Host R's element type declarations still list a `highlightCoordinator` property
+it never sets, and its debugger panels keep the `toolkitCoordinator` property,
+which this change does not touch.
+
 ## Consumer profiles
 
 The control-sizing repair removes automatic zoom compensation from section
@@ -1859,6 +1896,14 @@ over a CDN with no typecheck at all.
   `getFeaturesInCategory`). Nothing read it at runtime; support ids resolve
   against the registry. Checked against all five checkouts on 2026-10-08 as a
   targeted lookup: no checkout imports any of them
+- `AssessmentSection.personalNeedsProfile` and the `PersonalNeedsProfile` fields
+  `activateAtInit`, `districtPolicy.policies` and `testAdministration.mode`,
+  `startDate` and `endDate`, deleted on 2026-10-08. Policy read none of them, and
+  a `testAdministration` without a `toolOverrides` entry no longer turns automatic
+  PNP enforcement on. Checked against all five checkouts on 2026-10-08 as a
+  targeted lookup: only Host R sets one, a profile on the section objects of its
+  section demos, cast `as any`. It now reaches nothing, the PNP debugger
+  included; binding it as the assessment's with `updateAssessment` keeps it
 
 ## Consumer-side defects worth reporting upstream
 

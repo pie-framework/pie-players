@@ -13,7 +13,6 @@ import type {
 	ToolkitCoordinatorApi,
 	ToolRegistry,
 } from "@pie-players/pie-assessment-toolkit";
-import { resolveToolProviderId } from "@pie-players/pie-assessment-toolkit/tools/registration";
 
 /**
  * Tool ids already reported, per coordinator. Module-scoped so a host that
@@ -23,8 +22,8 @@ const reportedToolIds = new WeakMap<object, Set<string>>();
 
 /**
  * Warn once per placed tool whose registration carries a provider the coordinator
- * has not registered. Reads the coordinator's current placement and providers, so
- * call it only once the coordinator reports ready.
+ * has not registered under the tool's id. Reads the coordinator's current
+ * placement and providers, so call it only once the coordinator reports ready.
  */
 export function reportMissingToolProviders(
 	coordinator: ToolkitCoordinatorApi,
@@ -44,26 +43,16 @@ export function reportMissingToolProviders(
 	let reported = reportedToolIds.get(coordinator);
 	for (const toolId of placed) {
 		if (reported?.has(toolId)) continue;
-		const registration = toolRegistry.get(toolId);
-		if (!registration?.provider) continue;
-		let providerId: string | null;
-		try {
-			const config = coordinator.getToolConfig(toolId) ?? undefined;
-			if (config?.enabled === false) continue;
-			providerId = resolveToolProviderId(registration, config);
-		} catch {
-			// An id or provider config the coordinator rejects is its validator's to
-			// report.
-			continue;
-		}
-		if (!providerId || coordinator.toolProviderRegistry.has(providerId)) continue;
+		if (!toolRegistry.get(toolId)?.provider) continue;
+		if (coordinator.getToolConfig(toolId)?.enabled === false) continue;
+		if (coordinator.toolProviderRegistry.has(toolId)) continue;
 		if (!reported) {
 			reported = new Set();
 			reportedToolIds.set(coordinator, reported);
 		}
 		reported.add(toolId);
 		console.warn(
-			`[pie-section-player] Placed tool "${toolId}" uses provider "${providerId}", which the host-supplied coordinator (runtime.coordinator) has not registered. That coordinator registers tool providers only from the \`toolRegistry\` it was constructed with: include this tool's registration there — for the packaged capability set, \`createPackagedToolRegistry()\` from "@pie-players/pie-default-tool-loaders" — or construct it without one to use the section player's. Reported once per tool and coordinator.`,
+			`[pie-section-player] Placed tool "${toolId}" has a provider the host-supplied coordinator (runtime.coordinator) has not registered. That coordinator registers tool providers only from the \`toolRegistry\` it was constructed with: include this tool's registration there — for the packaged capability set, \`createPackagedToolRegistry()\` from "@pie-players/pie-default-tool-loaders" — or construct it without one to use the section player's. Reported once per tool and coordinator.`,
 		);
 	}
 }

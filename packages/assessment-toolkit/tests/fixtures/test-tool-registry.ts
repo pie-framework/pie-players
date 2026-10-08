@@ -37,15 +37,13 @@ export interface TestToolSpec {
  * than borrowing a capability to reach it.
  */
 export function createFailingAuthProviderDescriptor(
-	providerId: string,
+	toolId: string,
 	message = "stub auth failure",
 ): NonNullable<ToolRegistration["provider"]> {
 	return {
-		getProviderId: () => providerId,
 		createProvider: () => ({
-			providerId,
-			providerName: `Stub ${providerId} provider`,
-			category: "service-dependent",
+			providerName: `Stub ${toolId} provider`,
+			category: "other",
 			version: "0.0.0",
 			requiresAuth: true,
 			initialize: async () => undefined,

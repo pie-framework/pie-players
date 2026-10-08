@@ -86,7 +86,7 @@ This keeps visibility deterministic and context-driven for every refresh cycle.
 
 A tool's `toolId` is its PNP support id: a profile, district policy or item grants a tool by listing its id, and the registry a host composes is the only list of ids a deployment recognizes. Which supports a deployment offers is therefore known only at runtime, from the tools registered and the policy applied to them. An id no registered tool carries raises `tool-policy.unknownSupportId`.
 
-A new tool whose capability AfA PNP 3.0 names takes that term as its id. The packaged ids that coincide with AfA terms are `calculator`, `textToSpeech`, `ruler`, `protractor`, `graph`, `periodicTable`, `answerEliminator` and `signLanguage`. A host holding a profile in AfA terms translates the rest, for example `readingMask` to `lineReader` or `highlighting` to `annotationToolbar`.
+A new tool whose capability [AfA PNP 3.0](https://www.imsglobal.org/spec/afa/v3p0/info) names takes that term as its id, camelCased, since AfA terms are kebab-case. Among the packaged ids, `transcript` is an AfA term and `lineReader` is `line-reader`; `signLanguage`, from `@pie-players/pie-tool-sign-language`, is `sign-language`. Other ids name an AfA capability in other words, so a host holding a profile in AfA terms translates them: `calculator-on-screen` to `calculator`, `spoken` to `textToSpeech`, `answer-masking` to `answerEliminator` and `dictionary-on-screen` to `dictionary`. AfA has no term for `ruler`, `protractor`, `graph`, `periodicTable` or `annotationToolbar`.
 
 ## Tool Registration
 
@@ -710,6 +710,34 @@ packagedRegistry.register(myToolRegistration);
 
 3. **Grant it**: a profile listing `myTool` in `supports` grants it. The tool id is the support id, so there is no mapping to declare.
 
+### Services, Providers and Config Hooks
+
+A tool element reads the toolkit's services from the runtime context it connects to with `connectToolRuntimeContext`: the toolkit coordinator, the tool coordinator, the TTS service, the highlight coordinator, the catalog resolver and the element tool state store. That context is the one channel. An element declares no prop carrying a service and a registration assigns none onto the element it creates, because a value set at render goes stale when a context republish brings another coordinator.
+
+A tool that needs a backend declares `provider` on its registration. The coordinator registers that provider under the tool's id, and the element starts it with `toolkitCoordinator.ensureProviderReady(baseToolId)`, where `baseToolId` is the tool id without its scope suffix (`parseScopedToolId(toolId)?.baseToolId`). `provider.id` in the tool's config selects an implementation and never renames the registration, so `updateToolConfig` selecting another implementation replaces the provider under the same id.
+
+Config hooks belong to the registration, since they govern the tool's `tools.providers.<toolId>` entry whether or not the tool has a provider. Tools-config validation runs `sanitizeConfig` first and passes its result to `validateConfig`:
+
+```typescript
+export const myToolRegistration: ToolRegistration = {
+  // ...the fields above
+  provider: {
+    createProvider: (config) => new MyToolProvider(config?.provider?.id),
+    getInitConfig: (config) => config?.provider?.init ?? {},
+  },
+  sanitizeConfig: (config) => ({ ...config, settings: { ...config.settings } }),
+  validateConfig: (config) =>
+    config.settings?.mode === "unknown"
+      ? [{
+          code: "tools.providerValidateFailed",
+          severity: "error",
+          path: "providers.myTool.settings.mode",
+          message: "Unknown mode.",
+        }]
+      : [],
+};
+```
+
 ## TypeScript Support
 
 Full TypeScript definitions:
@@ -842,7 +870,7 @@ This hierarchy aligns with typical **IEP/504 accommodation hierarchies** in US K
 ## References
 
 - **[PNP Configuration Guide](PNP_CONFIGURATION.md)** - How integrators configure governance rules
-- [IMS Global Access for All (AfA) 3.0](https://www.imsglobal.org/spec/afa/v3p0)
+- [IMS AfA PNP 3.0 Information Model](https://www.imsglobal.org/spec/afa/v3p0/info)
 - [QTI 3.0 Specification](https://www.imsglobal.org/spec/qti/v3p0)
 - [Schema.org Accessibility Features](https://schema.org/accessibilityFeature)
 - [WCAG 2.2 Guidelines](https://www.w3.org/WAI/WCAG22/quickref/)

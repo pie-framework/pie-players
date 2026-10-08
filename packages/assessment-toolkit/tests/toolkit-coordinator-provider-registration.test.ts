@@ -13,7 +13,8 @@ import {
 
 /**
  * Provider registration from registry descriptors: a descriptor that throws, and a
- * config change that names a different provider.
+ * config change that selects a different implementation. A provider registers
+ * under its tool's id, so a vendor switch replaces it in place.
  */
 
 let warnSpy: ReturnType<typeof spyOn>;
@@ -38,10 +39,9 @@ const warnings = (): string[] =>
 
 const settle = () => new Promise((resolve) => setTimeout(resolve, 0));
 
-function stubProvider(providerId: string): ToolProviderApi {
+function stubProvider(implementation: string): ToolProviderApi {
 	return {
-		providerId,
-		providerName: `Stub ${providerId} provider`,
+		providerName: `Stub ${implementation} provider`,
 		category: "calculator",
 		version: "0.0.0",
 		requiresAuth: false,
@@ -71,9 +71,8 @@ function registryWithCalculator(
 	return registry;
 }
 
-/** Resolves its provider id from config the way the packaged calculator does. */
+/** Selects its implementation from config the way the packaged calculator does. */
 const idFromConfig: ToolProviderDescriptor = {
-	getProviderId: (config) => config?.provider?.id ?? "calculator-alpha",
 	createProvider: (config) =>
 		stubProvider(config?.provider?.id ?? "calculator-alpha"),
 };
@@ -83,25 +82,14 @@ describe("ToolkitCoordinator provider descriptors that throw", () => {
 		[
 			"createProvider",
 			{
-				getProviderId: () => "calculator-broken",
 				createProvider: () => {
 					throw new Error("createProvider exploded");
 				},
 			},
 		],
 		[
-			"getProviderId",
-			{
-				getProviderId: () => {
-					throw new Error("getProviderId exploded");
-				},
-				createProvider: () => stubProvider("calculator-broken"),
-			},
-		],
-		[
 			"getInitConfig",
 			{
-				getProviderId: () => "calculator-broken",
 				createProvider: () => stubProvider("calculator-broken"),
 				getInitConfig: () => {
 					throw new Error("getInitConfig exploded");
@@ -129,15 +117,13 @@ describe("ToolkitCoordinator provider descriptors that throw", () => {
 			expect(failures[0]).toContain(`${method} exploded`);
 			expect(errors.map((model) => model.kind)).toEqual(["provider-register"]);
 			expect(errors[0].message).toBe(`${method} exploded`);
-			expect(coordinator.toolProviderRegistry.has("calculator-broken")).toBe(
-				false,
-			);
+			expect(coordinator.toolProviderRegistry.has("calculator")).toBe(false);
 		});
 	}
 });
 
-describe("ToolkitCoordinator provider id changes", () => {
-	test("a config change that names another provider registers it", async () => {
+describe("ToolkitCoordinator provider replacement", () => {
+	test("a config change that selects another implementation replaces the provider under the tool id", async () => {
 		const coordinator = new ToolkitCoordinator({
 			assessmentId: "provider-id-change",
 			lazyInit: true,
@@ -147,25 +133,29 @@ describe("ToolkitCoordinator provider id changes", () => {
 				placement: { item: ["calculator"] },
 			},
 		});
-		expect(coordinator.toolProviderRegistry.has("calculator-alpha")).toBe(true);
+		expect(coordinator.toolProviderRegistry.getProviderIds()).toEqual([
+			"calculator",
+		]);
+		const before = await coordinator.ensureProviderReady("calculator");
+		expect(before.providerName).toBe("Stub calculator-alpha provider");
 
 		coordinator.updateToolConfig("calculator", {
 			provider: { id: "calculator-beta" },
 		});
 
-		// Registered before `updateToolConfig` returns, so a check that runs on the
-		// policy change it dispatches finds it.
-		expect(coordinator.toolProviderRegistry.has("calculator-beta")).toBe(true);
-		const provider = await coordinator.ensureProviderReady("calculator-beta");
-		expect(provider.providerId).toBe("calculator-beta");
+		// Replaced before `updateToolConfig` returns, so a check that runs on the
+		// policy change it dispatches finds the new implementation.
+		expect(coordinator.toolProviderRegistry.getProviderIds()).toEqual([
+			"calculator",
+		]);
+		const after = await coordinator.ensureProviderReady("calculator");
+		expect(after.providerName).toBe("Stub calculator-beta provider");
+		expect(after).not.toBe(before);
 		await settle();
-		expect(coordinator.toolProviderRegistry.has("calculator-alpha")).toBe(
-			false,
-		);
 		expect(unhandled).toEqual([]);
 	});
 
-	test("a change that keeps the provider id replaces the provider", async () => {
+	test("a change that keeps the implementation replaces the provider", async () => {
 		const created: Array<{ initialized: unknown[]; destroyed: boolean }> = [];
 		const coordinator = new ToolkitCoordinator({
 			assessmentId: "provider-id-kept",
@@ -200,7 +190,7 @@ describe("ToolkitCoordinator provider id changes", () => {
 				},
 			},
 		});
-		await coordinator.ensureProviderReady("calculator-alpha");
+		await coordinator.ensureProviderReady("calculator");
 
 		coordinator.updateToolConfig("calculator", {
 			provider: {
@@ -208,7 +198,7 @@ describe("ToolkitCoordinator provider id changes", () => {
 				runtime: { authFetcher: async () => ({ token: "new" }) },
 			},
 		});
-		await coordinator.ensureProviderReady("calculator-alpha");
+		await coordinator.ensureProviderReady("calculator");
 
 		expect(created).toHaveLength(2);
 		expect(created[0]?.destroyed).toBe(true);
@@ -244,13 +234,13 @@ describe("ToolkitCoordinator provider id changes", () => {
 			tools: { providers: { calculator: { enabled: true } } },
 		});
 
-		const started = coordinator.ensureProviderReady("calculator-alpha");
+		const started = coordinator.ensureProviderReady("calculator");
 		await settle();
 		coordinator.updateToolConfig("calculator", { settings: { mode: "basic" } });
 		releaseFirstStart();
 
 		expect(await started).toBe(providers[1]);
-		expect(coordinator.toolProviderRegistry.isInitialized("calculator-alpha")).toBe(
+		expect(coordinator.toolProviderRegistry.isInitialized("calculator")).toBe(
 			true,
 		);
 		expect(unhandled).toEqual([]);

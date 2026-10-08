@@ -128,18 +128,14 @@ function applyCalculatorParamsToElement(
 	element: HTMLElement,
 	calculatorType: CalculatorType | null,
 	availableTypes: CalculatorType[] | null,
-	providerId: CalculatorProviderId,
 	calculatorConfig: CalculatorProviderConfig,
 ): void {
 	const calculatorElement = element as HTMLElement & {
 		calculatorType?: CalculatorType;
 		availableTypes?: CalculatorType[];
-		providerId?: CalculatorProviderId;
 		calculatorConfig?: CalculatorProviderConfig;
 	};
-	calculatorElement.providerId = providerId;
 	calculatorElement.calculatorConfig = calculatorConfig;
-	element.setAttribute("provider-id", providerId);
 
 	if (calculatorType) {
 		calculatorElement.calculatorType = calculatorType;
@@ -172,7 +168,6 @@ export const calculatorToolRegistration: ToolRegistration = {
 	descriptionKey: "tools.calculator.description",
 	icon: "calculator",
 	provider: {
-		getProviderId: resolveCalculatorProviderId,
 		createProvider: createCalculatorToolProvider,
 		getInitConfig: (config: ToolProviderConfig | undefined) =>
 			config?.provider?.init ?? {},
@@ -208,7 +203,6 @@ export const calculatorToolRegistration: ToolRegistration = {
 		const calculatorToolConfig =
 			toolbarContext.toolkitCoordinator?.getToolConfig(this.toolId) ||
 			undefined;
-		const providerId = resolveCalculatorProviderId(calculatorToolConfig);
 		const calculatorConfig = getCalculatorInstanceConfig(calculatorToolConfig);
 		const fullToolId = createScopedToolId(
 			this.toolId,
@@ -230,16 +224,13 @@ export const calculatorToolRegistration: ToolRegistration = {
 				) as HTMLElement & {
 					visible?: boolean;
 					toolId?: string;
-					toolkitCoordinator?: unknown;
 				},
 		);
 		overlay.setAttribute("tool-id", fullToolId);
-		overlay.toolkitCoordinator = toolbarContext.toolkitCoordinator;
 		applyCalculatorParamsToElement(
 			overlay,
 			calculatorType,
 			availableTypes,
-			providerId,
 			calculatorConfig,
 		);
 
@@ -353,14 +344,10 @@ export const calculatorToolRegistration: ToolRegistration = {
 					overlay.visible = active;
 					lastVisibleState = active;
 				}
-				if (overlay.toolkitCoordinator !== toolbarContext.toolkitCoordinator) {
-					overlay.toolkitCoordinator = toolbarContext.toolkitCoordinator;
-				}
 				applyCalculatorParamsToElement(
 					overlay,
 					calculatorType,
 					availableTypes,
-					providerId,
 					calculatorConfig,
 				);
 			},

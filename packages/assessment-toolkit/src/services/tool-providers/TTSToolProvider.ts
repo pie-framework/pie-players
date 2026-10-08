@@ -118,7 +118,6 @@ function bindServerBackendConfig(
 export class TTSToolProvider
 	implements ToolProviderApi<TTSToolProviderConfig, ITTSProvider>
 {
-	readonly providerId = "tts-service";
 	readonly providerName = "Text-to-Speech";
 	readonly category = "tts" as const;
 	readonly version = "1.0";

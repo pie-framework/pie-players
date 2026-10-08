@@ -16,6 +16,9 @@ const createFakeElement = (tag: string) =>
 		getAttribute(name: string) {
 			return this.attrs.get(name) || null;
 		},
+		removeAttribute(name: string) {
+			this.attrs.delete(name);
+		},
 	}) as any;
 
 const withFakeDocument = <T>(fn: () => T): T => {
@@ -590,5 +593,37 @@ describe("ttsToolRegistration sanitizeConfig", () => {
 			{ rate: 1, label: "Normal", ariaLabel: "Normal speed", isDefault: true },
 			{ rate: 1.5, label: "Fast", ariaLabel: "Fast speed", isDefault: false },
 		]);
+	});
+});
+
+describe("ttsToolRegistration content language", () => {
+	const renderWithLanguage = (language: string | undefined) => {
+		const toolbarContext: ToolbarContext = {
+			scope: { level: "item", scopeId: "item-lang", itemId: "item-lang" },
+			itemId: "item-lang",
+			catalogId: "item-lang",
+			language,
+			toolCoordinator: null,
+			toolkitCoordinator: { getToolConfig: () => ({}) } as any,
+			ttsService: null,
+			elementToolStateStore: null,
+			toggleTool: () => {},
+			isToolVisible: () => false,
+			subscribeVisibility: null,
+		};
+		const renderResult = withFakeDocument(() =>
+			ttsToolRegistration.renderToolbar(itemContext, toolbarContext),
+		);
+		return renderResult?.elements?.[0]?.element as {
+			getAttribute(name: string): string | null;
+		};
+	};
+
+	test("passes a language the toolbar names", () => {
+		expect(renderWithLanguage("es-MX").getAttribute("language")).toBe("es-MX");
+	});
+
+	test("names no language when the toolbar names none", () => {
+		expect(renderWithLanguage(undefined).getAttribute("language")).toBeNull();
 	});
 });

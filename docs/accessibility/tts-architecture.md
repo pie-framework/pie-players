@@ -54,8 +54,8 @@ READMEs document package-specific APIs, configuration, and provider setup.
 - `@pie-players/pie-players-shared` (for UI components, i18n)
 
 **TTS Features:**
-- Re-exports all types from `tts` for convenience
-- Includes `BrowserTTSProvider` as the default, always-available fallback
+- Re-exports the provider types from `tts`: `ITTSProvider`, `ITTSProviderImplementation`, `TTSSpeechSegment`, `TTSFeature` and `TTSProviderCapabilities`
+- Includes `BrowserTTSProvider` as the default fallback, available wherever the browser implements the Speech Synthesis API
 - Integrates with QTI 3.0 accessibility catalogs
 - **Authored SSML/catalog support** through accessibility catalogs and
   `data-catalog-idref`
@@ -170,7 +170,7 @@ See [Server-Side TTS Integration Guide](../../packages/tts-server-polly/examples
 
 ## Fallback Strategy
 
-The assessment toolkit **always includes** `BrowserTTSProvider` as a built-in fallback. This ensures TTS functionality is always available, even if optional providers fail.
+The assessment toolkit **always includes** `BrowserTTSProvider` as a built-in fallback. It needs no server and no configuration. It fails to initialize where the browser has no Speech Synthesis API, and it speaks only in the voices the device has installed.
 
 ### Recommended Pattern
 
@@ -215,10 +215,9 @@ All TTS providers implement the same interfaces, allowing:
 - Custom provider implementations
 - A/B testing different providers
 
-### 3. **Always-Available Fallback**
-Browser TTS is built into the toolkit, ensuring:
-- TTS always works (no network required)
-- Offline capability
+### 3. **Built-in Fallback**
+Browser TTS is built into the toolkit, giving:
+- Offline capability, with no server
 - Zero additional configuration
 - Immediate availability during development
 
@@ -411,7 +410,8 @@ toolkit uses that signal to move into playing state and begin highlighting only
 when output has actually started.
 
 `updateSettings` is required: the toolkit sends rate, pitch and voice changes
-through it, and each read's content language. A `pause()` that lands before a
+through it, and each read's content language
+([TTS language](../architecture/internationalization.md#tts-language)). A `pause()` that lands before a
 speak's audio starts holds it until `resume()`.
 
 A provider declaring `maxTextLength` in its capabilities never receives longer
@@ -596,4 +596,4 @@ All server providers follow the same pattern:
   - **tts-server-sc**: SchoolCity-backed reference implementation
   - **tts-client-server**: Browser client
 - **Pattern**: Try server-side TTS, fallback to browser TTS
-- **Benefit**: Always-working TTS with optional high-quality upgrades and precise word highlighting
+- **Benefit**: Browser speech when the server path fails, with optional high-quality voices and precise word highlighting

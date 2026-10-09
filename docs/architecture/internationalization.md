@@ -164,6 +164,11 @@ The **content language** is the first of:
    toolkit's `content-language` input;
 3. `providerOptions.lang_id`, which a host pins for the custom transport.
 
+A host names the language of content whose markup carries none through the
+toolkit's `content-language`; a section-player host sets
+`runtime.contentLanguage`, which the player passes to its toolkit. The UI
+`locale` never sets it.
+
 The **read locale** drives text normalization, sentence segmentation, math
 speech and catalog lookups. It is the content language, else the tool config's
 `language` (published as `providerOptions.locale`), else

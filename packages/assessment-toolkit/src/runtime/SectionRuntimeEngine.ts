@@ -10,8 +10,9 @@
  * `subscribe` receives the same outputs in batches.
  *
  * The engine is the only stage emitter. It holds no controller and no
- * registry: the toolkit's `SectionControllerBinding` owns those, and the kernel
- * learns from `toolkit-ready` that the controller resolved.
+ * registry: the toolkit's `SectionControllerBinding` owns those. The kernel
+ * learns that the controller resolved from the toolkit's `section-ready`, whose
+ * detail carries the controller and its cohort.
  *
  * `attachHost(...)` builds the adapter on first call; a later call moves it to
  * a new host element.

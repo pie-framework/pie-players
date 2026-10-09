@@ -236,7 +236,7 @@ for the host-wide contract this provider fits into.
 
 ## How It Works
 
-1. **Client calls** `speak(text)`
+1. **Client calls** `speak(element)`
 2. **Adapter builds** backend-specific request payload
 3. **Provider POSTs** to resolved synthesis endpoint (`/synthesize` or root POST)
 4. **Adapter normalizes** response into audio + speech marks
@@ -277,7 +277,7 @@ The provider automatically manages Blob URLs:
 
 ```typescript
 try {
-  await ttsService.speak('Hello world');
+  await ttsService.speak(document.getElementById('content'));
 } catch (error) {
   console.error('TTS failed:', error.message);
   // Fallback to browser TTS or show error

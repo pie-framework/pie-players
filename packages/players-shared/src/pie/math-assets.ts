@@ -1,9 +1,9 @@
 /**
  * Where the MathJax adapter's copies load MathJax's fonts, speech worker and,
- * on its npm build, MathJax itself from. Every copy of
- * `@pie-element/shared-math-rendering-mathjax` reads these from the legacy
- * renderer's page options as it starts MathJax, on its first render, so they
- * are set before any element renders. See
+ * on its npm build, MathJax itself from, and whether math is in the tab order.
+ * Every copy of `@pie-element/shared-math-rendering-mathjax` reads these from
+ * the legacy renderer's page options as it starts MathJax, on its first render,
+ * so they are set before any element renders. See
  * https://github.com/pie-framework/pie-elements-ng/blob/develop/docs/MATH-RENDERING.md#assets
  */
 
@@ -35,6 +35,11 @@ export interface MathAssetOptions {
 	 * with the label it shows. Unset, it lists every locale SRE ships.
 	 */
 	speechLocales?: readonly string[] | Readonly<Record<string, string>>;
+	/**
+	 * Puts typeset math in the keyboard tab order, for the MathJax menu and its
+	 * explorer. Off by default.
+	 */
+	inTabOrder?: boolean;
 }
 
 const isUrl = (value: unknown): value is string | URL =>
@@ -45,7 +50,8 @@ export function mathAssetOptionsError(options: unknown): string | undefined {
 	if (!options || typeof options !== "object" || Array.isArray(options)) {
 		return "must be an object";
 	}
-	const { assetRoot, speechPath, assetUrls, speechLocales } = options as MathAssetOptions;
+	const { assetRoot, speechPath, assetUrls, speechLocales, inTabOrder } =
+		options as MathAssetOptions;
 	if (assetRoot !== undefined && !isUrl(assetRoot)) {
 		return `assetRoot must be a URL, got ${JSON.stringify(assetRoot)}`;
 	}
@@ -70,6 +76,9 @@ export function mathAssetOptionsError(options: unknown): string | undefined {
 		if (!listed || listed.some((entry) => typeof entry !== "string" || !entry)) {
 			return "speechLocales must be locale ids, or locale ids mapped to their labels";
 		}
+	}
+	if (inTabOrder !== undefined && typeof inTabOrder !== "boolean") {
+		return `inTabOrder must be a boolean, got ${JSON.stringify(inTabOrder)}`;
 	}
 	return undefined;
 }
@@ -102,6 +111,7 @@ export function setMathAssetOptions(options: MathAssetOptions): void {
 			? [...options.speechLocales]
 			: { ...options.speechLocales };
 	}
+	if (options.inTabOrder !== undefined) opts.inTabOrder = options.inTabOrder;
 }
 
 /** The asset root the page options set, if any. */

@@ -296,6 +296,24 @@ describe("registerPreloadedElements options.math", () => {
 		});
 	});
 
+	test.each([true, false])("writes inTabOrder %s to the page options", (inTabOrder) => {
+		host()[MATH_OPTIONS] = { opts: { assetRoot: "https://assets.test/npm" } };
+
+		registerPreloadedElements([entry()], { math: { inTabOrder } });
+
+		expect(host()[MATH_OPTIONS]).toEqual({
+			opts: { assetRoot: "https://assets.test/npm", inTabOrder },
+		});
+	});
+
+	test("keeps the page's inTabOrder when the options leave it unset", () => {
+		host()[MATH_OPTIONS] = { opts: { inTabOrder: true } };
+
+		registerPreloadedElements([entry()], { math: { assetRoot: "https://assets.test/npm" } });
+
+		expect(host()[MATH_OPTIONS]?.opts?.inTabOrder).toBe(true);
+	});
+
 	test("leaves the page options alone without it", () => {
 		registerPreloadedElements([entry()]);
 
@@ -309,6 +327,7 @@ describe("registerPreloadedElements options.math", () => {
 		["file URLs in a list", { assetUrls: ["https://assets.test/y"] }, "assetUrls must map"],
 		["a locale that is no string", { speechLocales: ["en", 1] }, "speechLocales must be"],
 		["a label that is no string", { speechLocales: { en: true } }, "speechLocales must be"],
+		["an inTabOrder that is no boolean", { inTabOrder: "true" }, "inTabOrder must be a boolean"],
 		["no object", "https://assets.test/npm", "must be an object"],
 	])("rejects %s before registering anything", (_label, math, message) => {
 		const valid = entry();

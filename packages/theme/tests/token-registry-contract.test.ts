@@ -183,9 +183,8 @@ describe("PIE theme token registry contract", () => {
 				"canonical-semantic",
 				"component-public",
 				"legacy",
-				"unsupported",
 			]).toContain(entry?.scope as string);
-			expect(["active", "planned", "intentional-gap"]).toContain(
+			expect(["active", "planned"]).toContain(
 				entry?.status as string,
 			);
 		}

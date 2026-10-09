@@ -40,8 +40,8 @@ assessment-taking UI in surprising ways.
 ## Goals
 
 - Define a machine-checkable `--pie-*` token contract for canonical semantic
-  tokens, component-scoped public hooks, package-private fallbacks, legacy
-  tokens, and intentionally unsupported gaps.
+  tokens, component-scoped public hooks, package-private fallbacks and legacy
+  tokens.
 - Make one side-effect-free TypeScript definition the source of truth for base
   themes and complete built-in color schemes.
 - Publish a small operational interface for resolving themes and observing or
@@ -210,10 +210,9 @@ interface PieThemeTokenRegistryEntry {
     | "canonical-semantic"
     | "component-public"
     | "package-private"
-    | "legacy"
-    | "unsupported";
+    | "legacy";
   category: string;
-  status: "active" | "deprecated" | "planned" | "intentional-gap";
+  status: "active" | "deprecated" | "planned";
   schemeParticipation: "required" | "optional" | "excluded";
   definedIn: string[];
   documentedIn: string[];
@@ -222,7 +221,7 @@ interface PieThemeTokenRegistryEntry {
 ```
 
 Every active canonical color token participates in a built-in scheme and is
-`required`; typography, private, legacy, unsupported, and inactive tokens are
+`required`; typography, private, legacy and inactive tokens are
 `excluded`. Component-public tokens are `optional` unless their ordinary
 fallback cannot satisfy accessibility. The annotation toolbar outline and both
 annotation underline tokens are therefore `required`.

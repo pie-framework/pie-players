@@ -161,8 +161,8 @@ would.
   changeset. One that fails it requires an allowlist line and nothing else.
 - Preserve existing names when the consumer pad records a client-facing
   dependency. Do not add compatibility paths for unobserved legacy interfaces.
-- Ambiguous tokens should be classified as `legacy`, `unsupported`, or
-  `package-private` before any source-changing use.
+- Ambiguous tokens should be classified as `legacy` or `package-private`
+  before any source-changing use.
 - Component-scoped hooks should be added only when existing semantic tokens and
   `--pie-button-*` chains are not sufficient for a safe host integration point.
 - Update the TypeScript definition, run

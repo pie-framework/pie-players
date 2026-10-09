@@ -62,7 +62,6 @@ describe("the published types describe the published data", () => {
 			"canonical-semantic",
 			"component-public",
 			"package-private",
-			"unsupported",
 			"legacy",
 		]);
 		const unknown = [...new Set(registry.map((entry) => entry.scope))].filter(
@@ -75,7 +74,6 @@ describe("the published types describe the published data", () => {
 		const allowed = new Set<PieThemeTokenStatus>([
 			"active",
 			"deprecated",
-			"intentional-gap",
 			"planned",
 		]);
 		const unknown = [...new Set(registry.map((entry) => entry.status))].filter(

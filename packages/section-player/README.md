@@ -789,7 +789,7 @@ Runtime configuration is explicit:
 - Tool configuration validation is canonical in toolkit initialization (`pie-assessment-toolkit`), including toolbar overlays. Use the `tool-config-strictness` attribute (`off` | `warn` | `error`) to control warning-only vs fail-fast behavior.
 - TTS provider config must use `tools.providers.textToSpeech` (canonical). `tools.providers.tts` is rejected by validation.
 - Host tool overrides:
-  - `toolRegistry` replaces the default toolbar registry when provided. Build it with `createPackagedToolRegistry({ toolModuleLoaders: DEFAULT_TOOL_MODULE_LOADERS })` and register custom tools on it, since toolbars load each tool's element through the registry's loaders. A player that builds its own coordinator gives it this registry; a coordinator passed as `runtime.coordinator` keeps its own, which decides policy, so build that coordinator with the same registry
+  - `toolRegistry` replaces the default toolbar registry when provided. Build it with `createPackagedToolRegistry()` and register custom tools on it, since toolbars load each tool's element through the registry's loaders. A player that builds its own coordinator gives it this registry; a coordinator passed as `runtime.coordinator` keeps its own, which decides policy, so build that coordinator with the same registry
   - host buttons are appended per toolbar scope via `sectionHostButtons`, `itemHostButtons`, `passageHostButtons`
 
 Debug logging is page-wide. A layout's `debug` attribute writes `window.PIE_DEBUG`, the flag every PIE logger on the page reads, so the last host to set it decides for all of them:

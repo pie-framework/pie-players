@@ -52,15 +52,10 @@ player.toolCoordinator = toolCoordinator;
 
 **After** (coordinator orchestrates):
 ```typescript
-import {
-  createPackagedToolRegistry,
-  DEFAULT_TOOL_MODULE_LOADERS,
-} from '@pie-players/pie-default-tool-loaders';
+import { createPackagedToolRegistry } from '@pie-players/pie-default-tool-loaders';
 
 // Create one coordinator with configuration
-const toolRegistry = createPackagedToolRegistry({
-  toolModuleLoaders: DEFAULT_TOOL_MODULE_LOADERS,
-});
+const toolRegistry = createPackagedToolRegistry();
 const toolkitCoordinator = new ToolkitCoordinator({
   assessmentId: 'my-assessment',
   toolRegistry,
@@ -176,14 +171,9 @@ than the element inputs builds the coordinator itself.
   object passed by reference. Example:
 
   ```ts
-  import {
-    createPackagedToolRegistry,
-    DEFAULT_TOOL_MODULE_LOADERS,
-  } from "@pie-players/pie-default-tool-loaders";
+  import { createPackagedToolRegistry } from "@pie-players/pie-default-tool-loaders";
 
-  const toolRegistry = createPackagedToolRegistry({
-    toolModuleLoaders: DEFAULT_TOOL_MODULE_LOADERS,
-  });
+  const toolRegistry = createPackagedToolRegistry();
   const coordinator = new ToolkitCoordinator({
     assessmentId: "my-assessment",
     toolRegistry,
@@ -265,15 +255,10 @@ Otherwise expose it through the configuration object only.
 
 ```typescript
 import { ToolkitCoordinator } from '@pie-players/pie-assessment-toolkit';
-import {
-  createPackagedToolRegistry,
-  DEFAULT_TOOL_MODULE_LOADERS,
-} from '@pie-players/pie-default-tool-loaders';
+import { createPackagedToolRegistry } from '@pie-players/pie-default-tool-loaders';
 
 // Create coordinator with configuration
-const toolRegistry = createPackagedToolRegistry({
-  toolModuleLoaders: DEFAULT_TOOL_MODULE_LOADERS,
-});
+const toolRegistry = createPackagedToolRegistry();
 const coordinator = new ToolkitCoordinator({
   assessmentId: 'demo-assessment',
   toolRegistry,
@@ -470,15 +455,10 @@ import '@pie-players/pie-assessment-toolkit/components/pie-assessment-toolkit-el
 import '@pie-players/pie-assessment-toolkit/components/item-scope-element';
 import '@pie-players/pie-assessment-toolkit/components/item-toolbar-element';
 import '@pie-players/pie-item-player';
-import {
-  createPackagedToolRegistry,
-  DEFAULT_TOOL_MODULE_LOADERS,
-} from '@pie-players/pie-default-tool-loaders';
+import { createPackagedToolRegistry } from '@pie-players/pie-default-tool-loaders';
 
 // With no section player, the registry's loaders are what define the tool elements.
-const toolRegistry = createPackagedToolRegistry({
-  toolModuleLoaders: DEFAULT_TOOL_MODULE_LOADERS,
-});
+const toolRegistry = createPackagedToolRegistry();
 
 const toolkit = document.createElement('pie-assessment-toolkit');
 toolkit.tools = {
@@ -509,9 +489,9 @@ own `item`, `item-id` and `scopeElement` still override the scope, and its
 registers the item with the toolkit once it finds one above it, so it may mount
 first, and the toolkit files the item's accessibility catalogs, which read-aloud
 speaks in place of the markup they name. Item player events pass through the
-scope unchanged, and the session stays the item player's. A registry built
-without `toolModuleLoaders` renders toolbar buttons whose tool elements never
-load.
+scope unchanged, and the session stays the item player's. A registry whose
+`toolModuleLoaders` leave a tool out renders a button for it whose element never
+loads unless the host defines it.
 
 A profile change is a new `assessment` value; the toolbars re-derive on the
 policy change it emits. The toolkit announces `runtime-ready`, with
@@ -685,14 +665,9 @@ Use **floating tools** when:
 Complete example showing both types:
 
 ```typescript
-import {
-  createPackagedToolRegistry,
-  DEFAULT_TOOL_MODULE_LOADERS,
-} from '@pie-players/pie-default-tool-loaders';
+import { createPackagedToolRegistry } from '@pie-players/pie-default-tool-loaders';
 
-const toolRegistry = createPackagedToolRegistry({
-  toolModuleLoaders: DEFAULT_TOOL_MODULE_LOADERS,
-});
+const toolRegistry = createPackagedToolRegistry();
 const coordinator = new ToolkitCoordinator({
   assessmentId: 'math-exam',
   toolRegistry,
@@ -734,14 +709,9 @@ a profile grant does not place a tool either. This placement covers the
 commonly used tools:
 
 ```typescript
-import {
-  createPackagedToolRegistry,
-  DEFAULT_TOOL_MODULE_LOADERS,
-} from '@pie-players/pie-default-tool-loaders';
+import { createPackagedToolRegistry } from '@pie-players/pie-default-tool-loaders';
 
-const toolRegistry = createPackagedToolRegistry({
-  toolModuleLoaders: DEFAULT_TOOL_MODULE_LOADERS,
-});
+const toolRegistry = createPackagedToolRegistry();
 const coordinator = new ToolkitCoordinator({
   assessmentId: 'my-assessment',
   toolRegistry,
@@ -1432,15 +1402,10 @@ The section player provides automatic ToolkitCoordinator integration:
 
 <script type="module">
   import { ToolkitCoordinator } from '@pie-players/pie-assessment-toolkit';
-  import {
-    createPackagedToolRegistry,
-    DEFAULT_TOOL_MODULE_LOADERS,
-  } from '@pie-players/pie-default-tool-loaders';
+  import { createPackagedToolRegistry } from '@pie-players/pie-default-tool-loaders';
 
   // Create coordinator
-  const toolRegistry = createPackagedToolRegistry({
-    toolModuleLoaders: DEFAULT_TOOL_MODULE_LOADERS,
-  });
+  const toolRegistry = createPackagedToolRegistry();
   const coordinator = new ToolkitCoordinator({
     assessmentId: 'my-assessment',
     toolRegistry,
@@ -1535,14 +1500,9 @@ import {
   createToolsConfig,
   ToolkitCoordinator
 } from "@pie-players/pie-assessment-toolkit";
-import {
-  createPackagedToolRegistry,
-  DEFAULT_TOOL_MODULE_LOADERS,
-} from "@pie-players/pie-default-tool-loaders";
+import { createPackagedToolRegistry } from "@pie-players/pie-default-tool-loaders";
 
-const toolRegistry = createPackagedToolRegistry({
-  toolModuleLoaders: DEFAULT_TOOL_MODULE_LOADERS,
-});
+const toolRegistry = createPackagedToolRegistry();
 const { config, diagnostics } = createToolsConfig({
   source: "host.bootstrap",
   strictness: "error",

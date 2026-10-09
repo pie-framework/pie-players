@@ -533,10 +533,8 @@ export type ToolkitTelemetryListener = (args: {
  *
  * @example
  * ```typescript
- * // Both are exported by @pie-players/pie-default-tool-loaders
- * const toolRegistry = createPackagedToolRegistry({
- *   toolModuleLoaders: DEFAULT_TOOL_MODULE_LOADERS,
- * });
+ * // Exported by @pie-players/pie-default-tool-loaders
+ * const toolRegistry = createPackagedToolRegistry();
  *
  * // Create coordinator with configuration
  * const coordinator = new ToolkitCoordinator({

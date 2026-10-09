@@ -299,9 +299,7 @@ test("a host adds its own tool to the packaged set from the build's exports, and
   await page.evaluate(
     async ({ url, runtime, section }) => {
       const build = await import(/* @vite-ignore */ url);
-      const toolRegistry = build.createPackagedToolRegistry({
-        toolModuleLoaders: build.DEFAULT_TOOL_MODULE_LOADERS,
-      });
+      const toolRegistry = build.createPackagedToolRegistry();
       const icon = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="6"/></svg>';
       toolRegistry.register({
         toolId: "hostTool",

@@ -96,14 +96,9 @@ When your host application needs to own the coordinator lifecycle — because it
 
 ```ts
 import { ToolkitCoordinator } from '@pie-players/pie-assessment-toolkit';
-import {
-  createPackagedToolRegistry,
-  DEFAULT_TOOL_MODULE_LOADERS,
-} from '@pie-players/pie-default-tool-loaders';
+import { createPackagedToolRegistry } from '@pie-players/pie-default-tool-loaders';
 
-const toolRegistry = createPackagedToolRegistry({
-  toolModuleLoaders: DEFAULT_TOOL_MODULE_LOADERS,
-});
+const toolRegistry = createPackagedToolRegistry();
 const coordinator = new ToolkitCoordinator({
   assessmentId: 'my-assessment-001',
   toolRegistry,
@@ -348,10 +343,7 @@ The following is a full client-side example showing:
 
 ```ts
 import { ToolkitCoordinator } from "@pie-players/pie-assessment-toolkit";
-import {
-  createPackagedToolRegistry,
-  DEFAULT_TOOL_MODULE_LOADERS,
-} from "@pie-players/pie-default-tool-loaders";
+import { createPackagedToolRegistry } from "@pie-players/pie-default-tool-loaders";
 
 const customTtsProvider = {
   enabled: true,
@@ -390,9 +382,7 @@ const tools = {
   },
 };
 
-const toolRegistry = createPackagedToolRegistry({
-  toolModuleLoaders: DEFAULT_TOOL_MODULE_LOADERS,
-});
+const toolRegistry = createPackagedToolRegistry();
 
 export const coordinator = new ToolkitCoordinator({
   assessmentId: "my-assessment-id",

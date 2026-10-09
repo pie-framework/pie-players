@@ -41,21 +41,20 @@ ignored while known ids register.
 ## Usage
 
 ```ts
-import {
-	createPackagedToolRegistry,
-	DEFAULT_TOOL_MODULE_LOADERS,
-} from "@pie-players/pie-default-tool-loaders";
+import { createPackagedToolRegistry } from "@pie-players/pie-default-tool-loaders";
 
 // The packaged capability set, lazily loaded.
-const registry = createPackagedToolRegistry({
-	toolModuleLoaders: DEFAULT_TOOL_MODULE_LOADERS,
-});
+const registry = createPackagedToolRegistry();
+
+// The same registrations for a host that defines the tool elements itself.
+const preloaded = createPackagedToolRegistry({ toolModuleLoaders: {} });
 ```
 
 One loader set serves every host shape. `DEFAULT_TOOL_MODULE_LOADERS` holds a
-loader per packaged capability, and a registry loads a module only when a tool
-first renders, so an item player, a section player and an assessment player
-pass the same set and load only the tools they place.
+loader per packaged capability and is what `createPackagedToolRegistry`
+installs unless `toolModuleLoaders` replaces it. A registry loads a module only
+when a tool first renders, so an item player, a section player and an
+assessment player share the set and load only the tools they place.
 
 The calculator is one element, `<pie-tool-calculator>`, for every provider.
 Desmos is the provider when none is configured; the toolkit picks another from

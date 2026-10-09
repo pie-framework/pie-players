@@ -28,14 +28,9 @@ The answer eliminator is automatically integrated when using the PIE Section Pla
 <script type="module">
   import '@pie-players/pie-section-player';
   import { ToolkitCoordinator } from '@pie-players/pie-assessment-toolkit';
-  import {
-    createPackagedToolRegistry,
-    DEFAULT_TOOL_MODULE_LOADERS,
-  } from '@pie-players/pie-default-tool-loaders';
+  import { createPackagedToolRegistry } from '@pie-players/pie-default-tool-loaders';
 
-  const toolRegistry = createPackagedToolRegistry({
-    toolModuleLoaders: DEFAULT_TOOL_MODULE_LOADERS,
-  });
+  const toolRegistry = createPackagedToolRegistry();
   const coordinator = new ToolkitCoordinator({
     assessmentId: 'my-assessment',
     toolRegistry,
@@ -168,14 +163,9 @@ The answer eliminator stores state in **ElementToolStateStore** (ephemeral, clie
 To persist tool state across page refreshes:
 
 ```typescript
-import {
-  createPackagedToolRegistry,
-  DEFAULT_TOOL_MODULE_LOADERS,
-} from '@pie-players/pie-default-tool-loaders';
+import { createPackagedToolRegistry } from '@pie-players/pie-default-tool-loaders';
 
-const toolRegistry = createPackagedToolRegistry({
-  toolModuleLoaders: DEFAULT_TOOL_MODULE_LOADERS,
-});
+const toolRegistry = createPackagedToolRegistry();
 const coordinator = new ToolkitCoordinator({
   assessmentId: 'my-assessment',
   toolRegistry,

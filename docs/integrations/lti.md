@@ -61,10 +61,7 @@ resolved the attempt context:
 
 ```ts
 import { ToolkitCoordinator } from "@pie-players/pie-assessment-toolkit";
-import {
-  createPackagedToolRegistry,
-  DEFAULT_TOOL_MODULE_LOADERS,
-} from "@pie-players/pie-default-tool-loaders";
+import { createPackagedToolRegistry } from "@pie-players/pie-default-tool-loaders";
 import "@pie-players/pie-assessment-player/components/assessment-player-default-element";
 
 const launch = await fetch("/api/lti/launch-context").then((r) => r.json());
@@ -74,9 +71,7 @@ const assessment = await fetch(`/api/assessments/${launch.assessmentId}`).then((
 
 const coordinator = new ToolkitCoordinator({
   assessmentId: launch.assessmentId,
-  toolRegistry: createPackagedToolRegistry({
-    toolModuleLoaders: DEFAULT_TOOL_MODULE_LOADERS,
-  }),
+  toolRegistry: createPackagedToolRegistry(),
   hooks: {
     async createSectionSessionPersistence() {
       // Assessment-player owns the aggregate snapshot in this integration.

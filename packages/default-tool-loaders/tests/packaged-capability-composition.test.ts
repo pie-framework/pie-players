@@ -1,4 +1,5 @@
-import { describe, expect, test } from "bun:test";
+import { describe, expect, spyOn, test } from "bun:test";
+import { ToolRegistry } from "@pie-players/pie-assessment-toolkit";
 import {
 	createPackagedToolRegistry,
 	createUniversalPersonalNeedsProfile,
@@ -90,5 +91,22 @@ describe("packaged capability composition", () => {
 				({ toolId }) => toolId === "textToSpeech",
 			),
 		);
+	});
+
+	test("installs the packaged loaders unless toolModuleLoaders replaces them", () => {
+		const install = spyOn(ToolRegistry.prototype, "setToolModuleLoaders");
+		try {
+			createPackagedToolRegistry();
+			createPackagedToolRegistry({ toolModuleLoaders: {} });
+			const ruler = async () => {};
+			createPackagedToolRegistry({ toolModuleLoaders: { ruler } });
+			expect(install.mock.calls.map(([loaders]) => loaders)).toEqual([
+				{ ...DEFAULT_TOOL_MODULE_LOADERS },
+				{},
+				{ ruler },
+			]);
+		} finally {
+			install.mockRestore();
+		}
 	});
 });

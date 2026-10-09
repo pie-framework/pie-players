@@ -37,10 +37,7 @@
 		type ToolkitCoordinatorApi,
 		type ToolRegistry,
 	} from "@pie-players/pie-assessment-toolkit";
-	import {
-		createPackagedToolRegistry,
-		DEFAULT_TOOL_MODULE_LOADERS,
-	} from "@pie-players/pie-default-tool-loaders";
+	import { createPackagedToolRegistry } from "@pie-players/pie-default-tool-loaders";
 	import type { SectionControllerHandle } from "@pie-players/pie-assessment-toolkit";
 	import {
 		type AssessmentToolkitRuntimeContext,
@@ -153,9 +150,7 @@
 			surfaceRuntimeContext = value;
 		});
 	});
-	const defaultToolRegistry = createPackagedToolRegistry({
-		toolModuleLoaders: DEFAULT_TOOL_MODULE_LOADERS,
-	});
+	const defaultToolRegistry = createPackagedToolRegistry();
 	const effectiveToolRegistry = $derived(toolRegistry ?? defaultToolRegistry);
 	const effectiveOnFrameworkError = $derived.by(() => runtime?.onFrameworkError);
 	const effectiveSectionId = $derived(

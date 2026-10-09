@@ -40,7 +40,7 @@
 - **One version per page.** Tags are page-global and the first registration wins. A second copy, another version or a CDN `pie-item-player` loaded first, leaves the registered definitions in place and throws nothing, so the page runs the first version that loaded. Switching versions takes a reload; side-by-side comparison needs separate iframes.
 - **One directory per version when self-hosting.** Chunk names hash source paths, not contents, so two versions in one directory overwrite each other's chunks.
 - **Toolkit.** The toolkit has no build of its own. The section player's `toolkit-ready` event carries the `ToolkitCoordinator` it creates. A host that builds its own coordinator imports the toolkit from `https://cdn.jsdelivr.net/npm/@pie-players/pie-assessment-toolkit@x.y.z/+esm`, at the same version as the section player; the section player does not re-export the class, which would give npm hosts a second copy.
-- **Custom tools.** The build alone also exports `createPackagedToolRegistry` and `DEFAULT_TOOL_MODULE_LOADERS`. A host that adds its own registration builds the packaged set with them, registers on it and passes the result as `toolRegistry`; the packaged tools still load from the build's chunks.
+- **Custom tools.** The build alone also exports `createPackagedToolRegistry` and `DEFAULT_TOOL_MODULE_LOADERS`. A host that adds its own registration builds the packaged set with `createPackagedToolRegistry()`, registers on it and passes the result as `toolRegistry`; the packaged tools still load from the build's chunks.
 
 ### Content Security Policy
 
@@ -56,7 +56,7 @@ The following load from third-party origins in every install, npm or CDN, and ar
 
 ## Tools
 
-Outside the section player's browser build, tools load through a bundler or an import map, for the reason above. `pie-item-toolbar` and `pie-section-toolbar` take their coordinator from the runtime context that an enclosing `<pie-assessment-toolkit>` or section player provides, and render buttons only for tools in the tool registry they receive, typically `createPackagedToolRegistry({ toolModuleLoaders: DEFAULT_TOOL_MODULE_LOADERS })` from `@pie-players/pie-default-tool-loaders`; a registry built without loaders loads no tool elements, so the host imports them itself. The [assessment toolkit README](../../packages/assessment-toolkit/README.md) covers the setup.
+Outside the section player's browser build, tools load through a bundler or an import map, for the reason above. `pie-item-toolbar` and `pie-section-toolbar` take their coordinator from the runtime context that an enclosing `<pie-assessment-toolkit>` or section player provides, and render buttons only for tools in the tool registry they receive, typically `createPackagedToolRegistry()` from `@pie-players/pie-default-tool-loaders`, whose loaders define each tool's element on first render; a host that passes `toolModuleLoaders: {}` imports the elements itself. The [assessment toolkit README](../../packages/assessment-toolkit/README.md) covers the setup.
 
 ## Notes
 

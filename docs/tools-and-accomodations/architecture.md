@@ -376,14 +376,9 @@ A section-level tool keeps its state in its own element; the graph's points and 
 The configuration structure reflects this scope distinction via `tools.placement` and `tools.providers`:
 
 ```typescript
-import {
-  createPackagedToolRegistry,
-  DEFAULT_TOOL_MODULE_LOADERS,
-} from '@pie-players/pie-default-tool-loaders';
+import { createPackagedToolRegistry } from '@pie-players/pie-default-tool-loaders';
 
-const toolRegistry = createPackagedToolRegistry({
-  toolModuleLoaders: DEFAULT_TOOL_MODULE_LOADERS,
-});
+const toolRegistry = createPackagedToolRegistry();
 const coordinator = new ToolkitCoordinator({
   assessmentId: 'math-exam',
   toolRegistry,

@@ -10,10 +10,7 @@
 		type ToolConfigStrictness,
 		type ToolkitCoordinatorApi,
 	} from "@pie-players/pie-assessment-toolkit";
-	import {
-		createPackagedToolRegistry,
-		DEFAULT_TOOL_MODULE_LOADERS,
-	} from "@pie-players/pie-default-tool-loaders";
+	import { createPackagedToolRegistry } from "@pie-players/pie-default-tool-loaders";
 	import {
 		SectionRuntimeEngine,
 		cohortsEqual,
@@ -242,9 +239,7 @@
 			: "",
 	);
 	const effectiveToolsConfig = $derived(runtimeState.effectiveToolsConfig);
-	const defaultToolRegistry = createPackagedToolRegistry({
-		toolModuleLoaders: DEFAULT_TOOL_MODULE_LOADERS,
-	});
+	const defaultToolRegistry = createPackagedToolRegistry();
 	const effectiveToolRegistry = $derived(toolRegistry ?? defaultToolRegistry);
 	const playerRuntime = $derived(runtimeState.playerRuntime);
 	// Per-region toolbar-tools strings derived from the canonical

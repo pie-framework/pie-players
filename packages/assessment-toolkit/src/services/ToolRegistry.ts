@@ -1390,7 +1390,7 @@ export class ToolRegistry {
 			warnOncePerDocument(
 				doc,
 				`undefinedToolElement.${toolId}`,
-				`[ToolRegistry] Tool "${toolId}" renders <${tagName}>, which is still undefined after ${PENDING_INPUT_WARNING_DELAY_MS / 1000} s, and its registry has no module loader for it. Pass toolModuleLoaders to createPackagedToolRegistry (DEFAULT_TOOL_MODULE_LOADERS from @pie-players/pie-default-tool-loaders loads the stock tools), register one with setToolModuleLoaders, or import the tool's package before it renders. Reported once per page.`,
+				`[ToolRegistry] Tool "${toolId}" renders <${tagName}>, which is still undefined after ${PENDING_INPUT_WARNING_DELAY_MS / 1000} s, and its registry has no module loader for it. Register one with setToolModuleLoaders or import the tool's package before it renders; a registry from createPackagedToolRegistry has the packaged loaders unless its toolModuleLoaders replaced them. Reported once per page.`,
 			);
 		}, PENDING_INPUT_WARNING_DELAY_MS);
 		void customElements.whenDefined(tagName).then(() => clearTimeout(timer));

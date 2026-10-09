@@ -227,6 +227,39 @@ describe("<pie-assessment-toolkit> lifecycle", () => {
 		]);
 	});
 
+	test("removing the toolkit commits its pending response before the section persists", async () => {
+		const log: string[] = [];
+		const { element, of } = await mount({
+			sectionId: "s1",
+			section: section("s1"),
+			createSectionController: () => {
+				const base = sessionController();
+				return {
+					...base,
+					updateItemSession: (itemId: string, session: unknown) => {
+						log.push(`update:${itemId}`);
+						return base.updateItemSession(itemId, session);
+					},
+					persist: async () => {
+						log.push("persist");
+					},
+				};
+			},
+		});
+		const [{ detail: ready }] = of("toolkit-ready");
+		const received: string[] = [];
+		ready.coordinator.subscribeItemEvents({
+			listener: ({ itemId }: { itemId: string }) => received.push(itemId),
+		});
+		element.append(shellWithPendingResponse(ready.runtimeId, "item-1"));
+
+		element.remove();
+		await settle();
+
+		expect(received).toEqual(["item-1"]);
+		expect(log).toEqual(["update:item-1", "persist"]);
+	});
+
 	test("a session set for a section still starting never reaches the next section", async () => {
 		const applied: Array<{ sectionId: string; session: unknown }> = [];
 		let releaseFirst: () => void = () => {};

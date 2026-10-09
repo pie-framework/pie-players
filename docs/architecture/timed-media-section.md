@@ -1,6 +1,6 @@
 # Timed Media Section Architecture
 
-Status: Architecture proposal / pre-PRD direction. This note captures the intended shape of timed-media assessment in PIE. It is not an accepted implementation contract; later PRDs own the ratified model, session, event, and authoring surfaces.
+Status: Implemented 2026-08-17. This note is the design direction behind [`../prds/timed-media-section-contract.md`](../prds/timed-media-section-contract.md), which owns the ratified model, session and event surfaces; where the two differ, the PRD's Implementation Record governs.
 
 Tracking: this workstream is deliberately not tracked in an issue tracker. This note and the PRDs under [`../prds/`](../prds/) are the record. The `Status:` line here and in each PRD, plus the review sequence in [`../prds/shared-contracts/README.md`](../prds/shared-contracts/README.md), carry the current state. Nothing is stalled waiting on a ticket.
 
@@ -10,7 +10,7 @@ The contract this note handed off is built; [`../prds/timed-media-section-contra
 carries the record, including every implementation-time decision and the reasons.
 Three things in this note are now settled rather than open, and one is corrected:
 
-- **Item 3 of [Current State](#current-state) is answered, and not in the way it
+- **Item 3 of [Pre-implementation State](#pre-implementation-state) is answered, and not in the way it
   leaned.** Cue and playback policy live in a pure `timed-media` module in
   `players-shared` with live state in `SectionController` — not in `ToolPolicyEngine`,
   whose decision domain is tool eligibility, and not in a layout. The layer-ownership
@@ -42,11 +42,11 @@ Three things in this note are now settled rather than open, and one is corrected
   carries separately from score, and `weighted-child-outcomes` is out until weights
   have an authorable home — the score contract's question, not this one's.
 
-## Current State
+## Pre-implementation State
 
-Last written 2026-06-27. Revalidated against `develop` on 2026-08-05: no code has been written, and the core assumptions still hold — `sectionType` does not exist anywhere in `packages/`, so the additive section sketch below still lands cleanly; the four layout custom elements still exist; and the proposed owning packages (`@pie-players/pie-players-shared`, `@pie-players/pie-assessment-toolkit`) are still the right homes by name. Re-checked 2026-08-09 after the sign-language work and again 2026-08-15: all four of those still hold, `sectionType` still has no occurrence in `packages/`, and no timed-media code exists. What changed is underneath, in shared media vocabulary, shipped media-rendering precedent and now theming — see [Revalidation, 2026-08-09](#revalidation-2026-08-09) and [Revalidation, 2026-08-15](#revalidation-2026-08-15).
+Written 2026-06-27 and revalidated against `develop` on 2026-08-05, 2026-08-09 and 2026-08-15, before any timed-media code existed. Each pass found the core assumptions holding: `sectionType` had no occurrence in `packages/`, so the additive section sketch below landed cleanly; the four layout custom elements existed; and the proposed owning packages (`@pie-players/pie-players-shared`, `@pie-players/pie-assessment-toolkit`) were the right homes by name. What changed was underneath, in shared media vocabulary, shipped media-rendering precedent and theming — see [Revalidation, 2026-08-09](#revalidation-2026-08-09) and [Revalidation, 2026-08-15](#revalidation-2026-08-15). [Implemented, 2026-08-17](#implemented-2026-08-17) records what was built.
 
-Four things changed underneath this note as of 2026-08-05. They are open decisions, not corrections to the direction.
+Four things changed underneath this note as of 2026-08-05. Items 1 and 2 were decided on 2026-08-15, item 3 at implementation, and item 4 stands.
 
 **1. Assessment-player has no data-driven renderer selection.** The worked example below assumes assessment-player reads the section and chooses `pie-section-player-timed-media`. That seam does not exist. `AssessmentPlayerDefaultElement` takes a hardcoded `sectionPlayerLayout: "splitpane" | "vertical"` attribute and imports only those two layouts; tabbed and kernel-host are not reachable through assessment-player at all, and nothing dispatches on section data. **Resolved 2026-08-15:** timed media targets the standalone section-player path where the host picks the tag, and assessment-player gains no `sectionType` dispatch. The worked example below keeps its dispatch step as the assessment-player-mediated variant, which stays possible and is not what this workstream builds; see [Delivery Attachment](../prds/timed-media-section-contract.md#delivery-attachment).
 
@@ -85,8 +85,8 @@ Nothing reversed; three things moved, and the note's central prerequisite is now
 the only thing standing between this workstream and implementation.
 
 **1. `sectionType` still has no occurrence in `packages/`,** so the additive
-section sketch below still lands cleanly and item 1 of [Current
-State](#current-state) is still the open decision: renderer dispatch in
+section sketch below still lands cleanly and item 1 of [Pre-implementation
+State](#pre-implementation-state) is still the open decision: renderer dispatch in
 assessment-player, or the standalone section-player path the host already drives
 by tag. Everything the note lists as a prerequisite — the media vocabulary, the
 shared validation layer, a shipped media-rendering precedent — is satisfied. This
@@ -113,7 +113,7 @@ transcript inherit both geometries rather than inventing a third.
 ### Decisions, 2026-08-15
 
 Three decisions were taken in design review. They constrain what a PRD may
-choose; they do not close item 1 of [Current State](#current-state), which stays
+choose; they do not close item 1 of [Pre-implementation State](#pre-implementation-state), which stays
 the blocking decision.
 
 **1. Formative delivery ships first.** Recorded as
@@ -239,9 +239,9 @@ flowchart TD
 | --- | --- | --- |
 | Host application | Media hosting/CDN, CSP, item lookup/storage, durable attempt persistence, authorization, telemetry sinks, product workflow, backend policy. | Internal section runtime mechanics or child element behavior. |
 | `assessment-player` | Active section selection, assessment-level navigation, assessment session abstraction over section sessions. Optional: a host supplying its own assessment shell reaches the section directly. | Timed cue orchestration or media playback internals. |
-| Timed-media section-player variant | Media layout, item reveal/selection, section-level completion view, bridge between media state and child item sessions. Cue activation and pause/resume policy sit here only if the engine does not take them — the open call in [Current State](#current-state), item 3. | Child element internals, backend storage, assessment-level routing. |
+| Timed-media section-player variant | Media layout, item reveal/selection, section-level completion view, bridge between media state and child item sessions. Shipped as the existing layouts reading `resolveTimedMediaProjection`; cue activation and pause/resume policy live in the `timed-media` module and `SectionController`. | Child element internals, backend storage, assessment-level routing. |
 | `assessment-toolkit` engine layer | Runtime registration through `SectionControllerBinding`, stage derivation through `SectionRuntimeEngine`/`SectionEngineCore`, composed policy decisions with provenance through `ToolPolicyEngine`, tool/TTS/accessibility service coordination, composition republish to the layout. Reached on both entry paths, so policy placed here needs no assessment-player. | Media playback internals, per-item controller instantiation, durable storage, product policy. |
-| `SectionController`, in `section-player` | Aggregate section state, the item-session map, per-item completion and formative Try/mastery rollups, the persistence snapshot shape. | Cue timing, media state, assessment-level routing, durable storage. |
+| `SectionController`, in `section-player` | Aggregate section state, the item-session map, per-item completion and formative Try/mastery rollups, timed-media live state and the Media Time Source port, the persistence snapshot shape. | Media playback internals, assessment-level routing, durable storage. |
 | `video-stimulus` | Media rendering and stable playback API: sources, captions, transcript, time, play/pause/seek, media events. | Cue-to-item bindings, scoring, child item sessions. |
 | `item-player` | Rendering normal item content and propagating item sessions/outcomes. | Media timeline policy or section-level aggregation policy. |
 | Child PIE elements | Their own model/session/environment, authoring surface, session-changed events, controller outcomes. | Section composition, media state, persistence. |
@@ -264,7 +264,7 @@ Existing section-player custom elements are layout-specific:
 
 The current package architecture already distinguishes layout custom elements from runtime/controller plumbing. `SectionController` owns aggregate section state; custom elements are transport/layout adapters. A timed-media variant fits that pattern: it is a specialized layout/orchestration adapter around the same section-level runtime concepts.
 
-Two caveats added 2026-08-05. First, the `sectionType` discriminator has no consumer today — assessment-player selects a layout from an attribute, not from section data, so the discriminator only pays off if that dispatch is built (see [Current State](#current-state), item 1). Second, "specialized layout/orchestration adapter" bundles two responsibilities that the codebase now separates: layout belongs in the custom element, but cue and playback *policy* may belong in the toolkit's policy engine (item 3). The variant may end up thinner than this section implies.
+Both caveats added 2026-08-05 were settled at implementation. `sectionType: "timed-media"` shipped and is read by `SectionController` and the toolkit; assessment-player does not dispatch on it, and timed media renders in the existing layouts with no new custom element (see [Pre-implementation State](#pre-implementation-state), item 1). Cue and playback policy went to the `timed-media` module and `SectionController`, leaving the layouts rendering only.
 
 ## Normal Passage Section vs Timed-Media Section
 
@@ -398,7 +398,7 @@ framework warning.
 ## Worked Example
 
 1. The host loads an assessment whose active section has `sectionType: "timed-media"`.
-2. Assessment-player chooses `pie-section-player-timed-media` for this section. (No such dispatch exists today; see [Current State](#current-state), item 1.)
+2. Assessment-player chooses `pie-section-player-timed-media` for this section. (No such dispatch exists today; see [Pre-implementation State](#pre-implementation-state), item 1.)
 3. The timed-media section player renders `video-stimulus` and preloads normal child item refs through item-player.
 4. The learner starts the video.
 5. At `42.5s`, `cue-eye-protection` fires.

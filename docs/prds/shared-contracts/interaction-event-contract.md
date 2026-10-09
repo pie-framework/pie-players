@@ -12,7 +12,7 @@ Related architecture:
 
 An instrumentation path shipped ahead of this contract and occupies part of its
 ground. Read this PRD against it rather than as a greenfield design; the
-[timed-media note](../../architecture/timed-media-section.md#current-state)
+[timed-media note](../../architecture/timed-media-section.md#pre-implementation-state)
 overstates the overlap as "typed events", corrected here 2026-08-15.
 
 What exists:

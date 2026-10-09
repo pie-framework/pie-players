@@ -88,34 +88,27 @@ Item players are Web Components that render individual PIE assessment items. The
 **Architecture**:
 - Imports fully-qualified CDN URLs by default (`moduleResolution: "url"`); `moduleResolution: "import-map"` generates an import map instead
 - Uses native dynamic import() for package loading
-- Supports view-based loading (delivery, author, print, custom variants)
-- Automatic fallback to standard view if custom view unavailable
+- Loads one view per element: `delivery`, `author` or `print`
+- A view that fails to import falls back to the view its config names; `author` and `print` fall back to `delivery`
 
 **Use Cases**:
 - Modern browsers with native ESM support
 - Smaller bundle sizes (~85% reduction vs IIFE)
-- UI variant selection (mobile, accessibility, branding)
 
 **View System**:
 
-The ESM player supports loading different views/variants of elements through ESM subpath exports.
+The ESM loader maps each view to an ESM subpath export of the element package.
 
-**Built-in views**:
+**Built-in views** (`BUILT_IN_VIEWS` in `packages/players-shared/src/loaders/esm-adapter.ts`):
 - `delivery` - Standard student/teacher interaction (root export)
 - `author` - Configuration UI (`/author` export)
 - `print` - Print views (`/print` export)
 
-**Custom views** (enabled by package.json subpath exports):
-- `delivery-mobile` - Touch-optimized UI for tablets/phones
-- `delivery-a11y` - Accessibility-optimized (screen readers, high contrast)
-- `delivery-simple` - Simplified UI for younger students
-- `delivery-branded` - Custom district branding
+**Custom views**: the ESM adapter accepts any view name with a `viewConfig` naming its subpath, tag suffix and fallback. No element package publishes a custom view, and `<pie-item-player>` forwards only `loaderOptions.view`, so a custom view is reachable only through the adapter directly.
 
 **Benefits**:
-- Shared controller logic across all UI variants
-- Consistent assessment results regardless of view
-- Easy maintenance with single business logic codebase
-- Graceful degradation with automatic fallback
+- Every view of an element shares one controller
+- Scoring is the same whichever view renders the item
 
 ---
 
@@ -263,13 +256,9 @@ Applies AfA PNP 3.0 support ids to placed PIE tools, where a support id is the t
 
 A restriction or prohibition that withdraws a tool a `true` override grants raises `tool-policy.overrideBlocked`. Rungs 3 and 6 apply to the decisions scoped to an item, its own item-level toolbar and its content's features, with the settings its `<pie-item-scope>` registers. A section-, assessment- or passage-level toolbar skips them and raises `tool-policy.itemSettingNotApplied` for each tool on it that a mounted item restricts or requires.
 
-**2. Context Declarations** - Global variables shared across items
+#### Typed Only
 
-Enables:
-- Cross-item randomization (shared random seeds)
-- Adaptive testing (difficulty adjustment based on performance)
-- Shared configuration (currency symbols, measurement units)
-- Item dependencies
+**Context Declarations** - The assessment type carries QTI 3.0 `contextDeclarations` and the assessment session a `contextVariables` slot. No player or toolkit service reads either, so neither reaches an item.
 
 #### Benefits
 

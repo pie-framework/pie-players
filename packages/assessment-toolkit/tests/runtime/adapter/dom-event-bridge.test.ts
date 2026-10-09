@@ -107,7 +107,7 @@ describe("dom-event-bridge", () => {
 		).toBeUndefined();
 	});
 
-	test("dispatches `pie-loading-complete` with loadedCount equal to itemCount", () => {
+	test("dispatches `pie-loading-complete` with the item count", () => {
 		const bridge = makeBridge(host);
 		bridge.dispatch({
 			kind: "loading-complete",
@@ -122,7 +122,6 @@ describe("dom-event-bridge", () => {
 				sectionId: "section-A",
 				attemptId: "attempt-1",
 				itemCount: 3,
-				loadedCount: 3,
 				timestamp: FROZEN_TS,
 				sourceCe: "pie-section-player",
 			},

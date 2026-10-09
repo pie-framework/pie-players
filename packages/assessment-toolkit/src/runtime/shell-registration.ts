@@ -17,19 +17,17 @@ import { dispatchCrossBoundaryEvent } from "./tool-host-contract.js";
  * Registration is a statement of fact to the runtime, and the runtime takes it
  * literally: a `pie-register` makes the toolkit unregister and re-register the
  * content's accessibility catalogs, re-run `sectionBinding.register`, and
- * re-notify the section controller. Both shells used to dispatch it from the
- * same effect that attached their listeners, with `pie-unregister` in that
- * effect's cleanup — so every re-run announced a teardown and a rebuild of state
- * that had not moved, and between the two the content had no catalogs at all.
+ * re-notify the section controller.
  *
- * Those effects re-run on prop changes, and a shell's props are re-applied
- * whenever its parent card's template updates. That made the dispatch the far
- * half of a cycle: a reader that re-renders in response to a catalog change
- * re-applies a shell's props, which re-registers, which changes catalogs again.
- * It shipped once at roughly a thousand rounds per item, ending in Svelte
- * abandoning the update at its depth limit with the DOM half-applied — and every
- * assertion about the rendered output passed while it was happening, because the
- * elements were all present.
+ * A shell's effects re-run whenever its props are re-applied, which happens on
+ * every update of its parent card's template. Dispatching from such an effect
+ * (with `pie-unregister` in its cleanup) announces a teardown and rebuild of
+ * state that has not moved, leaves the content without catalogs between the
+ * two, and closes a feedback loop: a reader that re-renders on a catalog change
+ * re-applies the shell's props, which re-registers, which changes catalogs
+ * again, until Svelte abandons the update at its depth limit with the DOM
+ * half-applied — while the elements are all present, so assertions about the
+ * rendered output still pass.
  *
  * So the dispatcher keeps the last identity it announced and says nothing when
  * the next one matches.

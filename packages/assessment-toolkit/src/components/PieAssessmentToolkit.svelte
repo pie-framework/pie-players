@@ -321,10 +321,9 @@ const DEFAULT_ENV = {
 	let reportedLateOuterRuntime = false;
 	let lastCompositionRevisionKey = $state("");
 	let pendingCompositionModel: unknown = null;
-	// PIE-885: the emit latch and its frame/deadline handles live in the
-	// scheduler, so a cancelled or superseded frame can never leave the latch
-	// set — which is what stranded `composition-changed` forever in a document
-	// that never paints. See `runtime/composition-emit-scheduler.ts`.
+	// The emit latch and its frame/deadline handles live in the scheduler, so a
+	// cancelled or superseded frame can never leave the latch set and strand
+	// `composition-changed`. See `runtime/composition-emit-scheduler.ts`.
 	const compositionEmitScheduler = createCompositionEmitScheduler();
 	let pendingCrossBoundaryEvents: Array<{ name: string; detail: unknown }> = [];
 	const runtimeRegistrationDetails = new Map<HTMLElement, RuntimeRegistrationDetail>();

@@ -118,7 +118,7 @@ function bindServerBackendConfig(
  * ```
  */
 export class TTSToolProvider
-	implements ToolProviderApi<TTSToolProviderConfig, ITTSProvider>
+	implements ToolProviderApi<ITTSProvider>
 {
 	readonly providerName = "Text-to-Speech";
 	readonly category = "tts" as const;

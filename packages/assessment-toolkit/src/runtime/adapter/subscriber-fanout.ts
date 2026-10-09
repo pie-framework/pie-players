@@ -1,6 +1,5 @@
 /**
- * Subscriber fan-out for the section runtime engine adapter (M7 — Variant
- * C, layered).
+ * Subscriber fan-out for the section runtime engine adapter.
  *
  * The adapter exposes a single `subscribe(listener)` channel for hosts
  * that want a synchronous stream of `SectionEngineOutput[]` batches —

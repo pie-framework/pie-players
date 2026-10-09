@@ -107,10 +107,10 @@ export interface FeatureDecisionContext {
 /**
  * Reason text for a denial that had no assessment to decide against.
  *
- * Replaces the `pnp-support` skip's "not configured at any level", which is
- * true but reads as a completed evaluation. `rule` and `precedence` stay as the
- * source reported them: nothing fired, so naming a ninth rule would describe
- * a precedence level that does not exist.
+ * Used in place of the `pnp-support` skip's "not configured at any level",
+ * which is true but reads as a completed evaluation. `rule` and `precedence`
+ * stay as the source reported them: nothing fired, so naming a ninth rule
+ * would describe a precedence level that does not exist.
  */
 const unboundAssessmentReason = (featureId: string) =>
 	`No assessment is bound, so no policy source could grant "${featureId}"`;

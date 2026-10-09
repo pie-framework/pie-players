@@ -267,8 +267,9 @@ export class BrowserTTSProvider implements ITTSProvider {
 		return {
 			supportsPause: true,
 			supportsResume: true,
+			supportsWordBoundary: true,
 			// Boundary events depend on the voice: several network voices send none.
-			supportsWordBoundary: false,
+			defaultHighlightMode: "sentence",
 			supportsVoiceSelection: true,
 			supportsRateControl: true,
 			supportsPitchControl: true,

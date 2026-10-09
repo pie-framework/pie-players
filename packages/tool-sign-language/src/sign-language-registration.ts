@@ -33,6 +33,7 @@ import {
 	SIGN_LANGUAGE_FEATURE_ID,
 	type ResolvedSignLanguageAlternate,
 } from "./sign-language-content.js";
+import { warnSignLanguageOnce } from "./sign-language-warnings.js";
 
 /**
  * Host surface this capability docks into: media beside a card's content.
@@ -54,8 +55,6 @@ export const SIGN_LANGUAGE_ELEMENT_TAG = "pie-tool-sign-language";
 export const SIGN_LANGUAGE_TOOL_TAG_MAP: Readonly<Record<string, string>> = {
 	[SIGN_LANGUAGE_FEATURE_ID]: SIGN_LANGUAGE_ELEMENT_TAG,
 };
-
-const warnedUndefinedTags = new Set<string>();
 
 export const signLanguageRegistration: ToolRegistration = {
 	toolId: SIGN_LANGUAGE_FEATURE_ID,
@@ -86,7 +85,13 @@ export const signLanguageRegistration: ToolRegistration = {
 		const media = context.content as ResolvedSignLanguageAlternate | null;
 		// No content means the host asked before resolving, or resolved to nothing.
 		// Declining is the honest answer; an empty player is not.
-		if (!media) return null;
+		if (!media) {
+			warnSignLanguageOnce(
+				`render-without-content.${context.surface}`,
+				`Tool "${context.toolId}" rendered nothing into the "${context.surface}" surface: its render context carries no resolved signed alternate. Resolve requiresAuthoredContent first and render only when it returns content.`,
+			);
+			return null;
+		}
 
 		const componentOverrides = context.componentOverrides ?? {};
 		// A host override wins, which is how a deployment substitutes its own
@@ -101,12 +106,10 @@ export const signLanguageRegistration: ToolRegistration = {
 		if (typeof customElements !== "undefined" && !customElements.get(tagName)) {
 			// Importing this package registers the element, so reaching here means a
 			// host mapped the id to an element it never defined.
-			if (!warnedUndefinedTags.has(tagName)) {
-				warnedUndefinedTags.add(tagName);
-				console.warn(
-					`[pie-tool-sign-language] Tool "${context.toolId}" renders <${tagName}>, which is undefined, so the "${context.surface}" surface stays empty. Define the element before the surface renders, or map the tool to a defined tag.`,
-				);
-			}
+			warnSignLanguageOnce(
+				`undefined-tag.${tagName}`,
+				`Tool "${context.toolId}" renders <${tagName}>, which is undefined, so the "${context.surface}" surface stays empty. Define the element before the surface renders, or map the tool to a defined tag.`,
+			);
 			return null;
 		}
 

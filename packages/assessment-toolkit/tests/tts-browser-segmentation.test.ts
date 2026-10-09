@@ -652,10 +652,11 @@ describe("browser provider segmentation", () => {
 		}
 	});
 
-	test("reports no word boundaries", () => {
-		const provider = new BrowserTTSProvider();
+	test("reports word boundaries and defaults to sentence highlighting", () => {
+		const capabilities = new BrowserTTSProvider().getCapabilities();
 
-		expect(provider.getCapabilities().supportsWordBoundary).toBeFalse();
+		expect(capabilities.supportsWordBoundary).toBeTrue();
+		expect(capabilities.defaultHighlightMode).toBe("sentence");
 	});
 
 	describe("waitForBrowserVoices", () => {

@@ -1,23 +1,18 @@
 /**
- * Composition emit scheduler (PIE-885).
+ * Composition emit scheduler.
  *
  * `PieAssessmentToolkit.svelte` publishes the section composition to the
  * players through exactly one path — the `composition-changed` event — and
  * coalesces bursts of updates behind a one-shot latch so several changes
  * within one frame produce a single emit.
  *
- * That latch used to be cleared only by a `requestAnimationFrame` callback,
- * and the frame branch was chosen whenever `window.requestAnimationFrame`
- * merely *existed* rather than when it was known to fire. In a document that
- * never paints the callback never ran, the latch never cleared, and no
- * `composition-changed` was ever dispatched: the section controller held a
- * correct view model while the player kept its initial empty composition, so
- * every `pie-section-player` route rendered no content at all. The permanent
- * failure was in contexts with no compositor — headless browsers, hidden or
- * offscreen tabs, agent and CI automation harnesses. A background tab only
- * rendered late, because its pending frame becomes due on refocus.
- *
- * So the frame is raced against a deadline timer instead of trusted. Whichever
+ * The latch is released by a `requestAnimationFrame` callback raced against a
+ * deadline timer, because the existence of `window.requestAnimationFrame` does
+ * not mean it fires: in a document with no compositor (headless browsers,
+ * hidden or offscreen tabs, CI and agent harnesses) the callback never runs, so
+ * a frame-only latch would never clear and the player would keep its initial
+ * empty composition while the section controller held a correct view model. A
+ * background tab's pending frame only becomes due on refocus. Whichever
  * arrives first releases the latch and flushes, and a non-painting document
  * degrades to a slower render rather than a permanent blank. Svelte's own
  * `tick()` races the same two primitives for the same reason.

@@ -7,7 +7,7 @@ import type {
 } from "../src/services/tool-providers/ToolProviderApi.js";
 
 class FakeProvider
-	implements ToolProviderApi<Record<string, unknown>, unknown>
+	implements ToolProviderApi<unknown>
 {
 	readonly providerName = "Fake Provider";
 	readonly category: ToolCategory = "tts";

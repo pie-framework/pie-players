@@ -74,7 +74,11 @@ describe("a tool with no module loader", () => {
 	test("is not watched when a loader or a component factory supplies it", async () => {
 		captureTimers();
 		const withLoader = registryMapping("graph", "pie-test-loaded-graph");
-		withLoader.setToolModuleLoaders({ graph: async () => {} });
+		withLoader.setToolModuleLoaders({
+			graph: async () => {
+				customElements.define("pie-test-loaded-graph", class extends HTMLElement {});
+			},
+		});
 		await withLoader.ensureToolModuleLoaded("graph");
 
 		const withFactory = new ToolRegistry();
@@ -87,5 +91,66 @@ describe("a tool with no module loader", () => {
 		await withFactory.ensureToolModuleLoaded("lineReader");
 
 		expect(pendingTimers).toHaveLength(0);
+	});
+});
+
+describe("a tool whose loader does not define its mapped tag", () => {
+	test("warns once when a remapped calculator tag is left undefined by its loader", async () => {
+		const warn = spyOn(console, "warn").mockImplementation(() => {});
+		try {
+			const registry = registryMapping("calculator", "pie-test-host-calculator");
+			registry.setToolModuleLoaders({
+				calculator: async () => {
+					customElements.define(
+						"pie-test-packaged-calculator",
+						class extends HTMLElement {},
+					);
+				},
+			});
+			await registry.ensureToolModuleLoaded("calculator");
+			await registry.ensureToolModuleLoaded("calculator");
+
+			const second = registryMapping("calculator", "pie-test-host-calculator");
+			second.setToolModuleLoaders({ calculator: async () => {} });
+			await second.ensureToolModuleLoaded("calculator");
+
+			const messages = warn.mock.calls.map((call) => String(call[0]));
+			expect(messages).toHaveLength(1);
+			expect(messages[0]).toContain(
+				'Tool "calculator" renders <pie-test-host-calculator>, but its module loader finished without defining it',
+			);
+		} finally {
+			warn.mockRestore();
+		}
+	});
+
+	test("stays quiet when the loader defines the mapped tag or a factory builds the tool", async () => {
+		const warn = spyOn(console, "warn").mockImplementation(() => {});
+		try {
+			const matching = registryMapping("calculator", "pie-test-matching-calculator");
+			matching.setToolModuleLoaders({
+				calculator: async () => {
+					customElements.define(
+						"pie-test-matching-calculator",
+						class extends HTMLElement {},
+					);
+				},
+			});
+			await matching.ensureToolModuleLoaded("calculator");
+
+			const withFactory = new ToolRegistry();
+			withFactory.setComponentOverrides({
+				toolTagMap: { calculator: "pie-test-factory-calculator" },
+				toolComponentFactories: {
+					calculator: () => document.createElement("div"),
+				},
+			});
+			withFactory.setToolModuleLoaders({ calculator: async () => {} });
+			await withFactory.ensureToolModuleLoaded("calculator");
+
+			expect(warn).not.toHaveBeenCalled();
+		} finally {
+			warn.mockRestore();
+		}
 	});
 });

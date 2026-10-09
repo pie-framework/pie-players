@@ -80,8 +80,8 @@ export interface FeaturePolicyDecision<P = Record<string, unknown>> {
 	 */
 	assessmentBound: boolean;
 	/**
-	 * `true` when the grant is a mandate (item or district `requiredTools`)
-	 * rather than a student-profile support or a test-administration override.
+	 * `true` when item or district `requiredTools` mandates the feature, including
+	 * under a `true` test-administration override.
 	 */
 	required: boolean;
 	/**

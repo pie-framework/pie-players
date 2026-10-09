@@ -1041,11 +1041,15 @@ export class ToolkitCoordinator {
 	/**
 	 * Whether policy grants `toolId` as an accommodation on some surface: a
 	 * test-administration override, a mounted item's or a district requirement,
-	 * or profile support. Read without the unbound-assessment warning.
+	 * or profile support. A toolbar tool counts only surfaces where PNP
+	 * enforcement is on; a region feature ignores enforcement, as its decisions
+	 * do. Read without the unbound-assessment warning.
 	 */
 	private isToolGranted(toolId: string): boolean {
 		try {
-			return this.policyEngine.grantsFeatureAnywhere(toolId);
+			return this.policyEngine.grantsFeatureAnywhere(toolId, {
+				enforced: this.toolRegistry.getToolActivation(toolId) !== "region",
+			});
 		} catch {
 			return false;
 		}

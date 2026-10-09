@@ -7,7 +7,6 @@
   DEFAULT_SECTION_PLAYER_POLICIES
   type ItemSection
   type ItemSectionOptions
-  type ReadinessPolicyAdapter
   SECTION_PLAYER_PUBLIC_EVENTS
   SPLITPANE_LAYOUT_CONTRACT
   type SectionPlayerAdvancedPropName
@@ -47,7 +46,6 @@
   DEFAULT_TOOL_MODULE_LOADERS
   type ItemSection
   type ItemSectionOptions
-  type ReadinessPolicyAdapter
   SECTION_PLAYER_PUBLIC_EVENTS
   SPLITPANE_LAYOUT_CONTRACT
   type SectionPlayerAdvancedPropName
@@ -87,7 +85,6 @@
   DEFAULT_SECTION_PLAYER_POLICIES
   type ItemSection
   type ItemSectionOptions
-  type ReadinessPolicyAdapter
   SECTION_PLAYER_PUBLIC_EVENTS
   SPLITPANE_LAYOUT_CONTRACT
   type SectionPlayerAdvancedPropName
@@ -126,7 +123,6 @@
   DEFAULT_SECTION_PLAYER_POLICIES
   type ItemSection
   type ItemSectionOptions
-  type ReadinessPolicyAdapter
   SECTION_PLAYER_PUBLIC_EVENTS
   SPLITPANE_LAYOUT_CONTRACT
   type SectionPlayerAdvancedPropName
@@ -165,7 +161,6 @@
   DEFAULT_SECTION_PLAYER_POLICIES
   type ItemSection
   type ItemSectionOptions
-  type ReadinessPolicyAdapter
   SECTION_PLAYER_PUBLIC_EVENTS
   SPLITPANE_LAYOUT_CONTRACT
   type SectionPlayerAdvancedPropName
@@ -204,7 +199,6 @@
   DEFAULT_SECTION_PLAYER_POLICIES
   type ItemSection
   type ItemSectionOptions
-  type ReadinessPolicyAdapter
   SECTION_PLAYER_PUBLIC_EVENTS
   SPLITPANE_LAYOUT_CONTRACT
   type SectionPlayerAdvancedPropName
@@ -243,7 +237,6 @@
   DEFAULT_SECTION_PLAYER_POLICIES
   type ItemSection
   type ItemSectionOptions
-  type ReadinessPolicyAdapter
   SECTION_PLAYER_PUBLIC_EVENTS
   SPLITPANE_LAYOUT_CONTRACT
   type SectionPlayerAdvancedPropName
@@ -282,7 +275,6 @@
   DEFAULT_SECTION_PLAYER_POLICIES
   type ItemSection
   type ItemSectionOptions
-  type ReadinessPolicyAdapter
   SECTION_PLAYER_PUBLIC_EVENTS
   SPLITPANE_LAYOUT_CONTRACT
   type SectionPlayerAdvancedPropName
@@ -321,7 +313,6 @@
   DEFAULT_SECTION_PLAYER_POLICIES
   type ItemSection
   type ItemSectionOptions
-  type ReadinessPolicyAdapter
   SECTION_PLAYER_PUBLIC_EVENTS
   SPLITPANE_LAYOUT_CONTRACT
   type SectionPlayerAdvancedPropName
@@ -360,7 +351,6 @@
   DEFAULT_SECTION_PLAYER_POLICIES
   type ItemSection
   type ItemSectionOptions
-  type ReadinessPolicyAdapter
   SECTION_PLAYER_PUBLIC_EVENTS
   SPLITPANE_LAYOUT_CONTRACT
   type SectionPlayerAdvancedPropName
@@ -399,7 +389,6 @@
   DEFAULT_SECTION_PLAYER_POLICIES
   type ItemSection
   type ItemSectionOptions
-  type ReadinessPolicyAdapter
   SECTION_PLAYER_PUBLIC_EVENTS
   SPLITPANE_LAYOUT_CONTRACT
   type SectionPlayerAdvancedPropName
@@ -469,7 +458,6 @@
 
 ./policies
   DEFAULT_SECTION_PLAYER_POLICIES
-  type ReadinessPolicyAdapter
   type SectionPlayerPolicies
   type SectionPlayerPreloadPolicy
   type SectionPlayerReadinessPolicy

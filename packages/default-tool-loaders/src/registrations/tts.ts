@@ -175,7 +175,6 @@ export const ttsToolRegistration: ToolRegistration = {
 				},
 		);
 		const applyAttributes = () => {
-			element.setAttribute("tool-id", fullToolId);
 			element.setAttribute(
 				"catalog-id",
 				toolbarContext.catalogId || toolbarContext.itemId,

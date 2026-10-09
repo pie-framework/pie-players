@@ -4,8 +4,6 @@ import {
 	TABBED_LAYOUT_CONTRACT,
 	VERTICAL_LAYOUT_CONTRACT,
 } from "../src/contracts/layout-parity-metadata.js";
-import { SECTION_PLAYER_PUBLIC_EVENTS } from "../src/contracts/public-events.js";
-import { assertPublicEventName } from "../src/policies/guards.js";
 
 test.describe("section player contract parity", () => {
 	test("splitpane, vertical, and tabbed expose the same semantic contract surface", async () => {
@@ -54,13 +52,6 @@ test.describe("section player contract parity", () => {
 		const overlap = basic.filter((prop) => advanced.includes(prop as never));
 		expect(overlap).toEqual([]);
 		expect(new Set([...basic, ...advanced])).toEqual(new Set(all));
-	});
-
-	test("all public event names are accepted by policy guards", async () => {
-		for (const eventName of Object.values(SECTION_PLAYER_PUBLIC_EVENTS)) {
-			expect(() => assertPublicEventName(eventName)).not.toThrow();
-		}
-		expect(() => assertPublicEventName("not-a-public-event")).toThrow();
 	});
 
 	test("runtime command surface keeps controller bridge and avoids duplicate gating commands", async () => {

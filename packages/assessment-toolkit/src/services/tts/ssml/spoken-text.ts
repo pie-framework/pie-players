@@ -26,6 +26,11 @@ import { normalizeTextForSpeech } from "../text-processing.js";
  *   - Any other unknown element marks the content unsupported (degrade to
  *     coarse region highlighting rather than mis-track).
  */
+const SSML_DOCUMENT = /^\s*<speak[\s/>]/i;
+
+/** Whether `text` is an SSML document: it opens with a `<speak>` element. */
+export const isSsmlDocument = (text: string): boolean => SSML_DOCUMENT.test(text);
+
 export interface ExtractedSpokenText {
 	spokenText: string;
 	rawToSpokenOffsetMap: Map<number, number>;

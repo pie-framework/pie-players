@@ -389,3 +389,4 @@
   resolveTransportMode
   retargetToTree
   syncButtonAndOverlayVisibility
+  waitForBrowserVoices

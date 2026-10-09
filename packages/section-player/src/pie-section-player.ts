@@ -34,7 +34,6 @@ export {
 	VERTICAL_LAYOUT_CONTRACT,
 } from "./contracts/layout-parity-metadata.js";
 export type {
-	ReadinessPolicyAdapter,
 	SectionPlayerPolicies,
 	SectionPlayerReadinessPolicy,
 	SectionPlayerPreloadPolicy,

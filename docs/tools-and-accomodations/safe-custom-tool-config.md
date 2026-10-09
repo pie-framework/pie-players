@@ -28,14 +28,9 @@ import {
 } from "@pie-players/pie-assessment-toolkit";
 // The packaged capability set is composition, not core: the toolkit knows
 // placement levels and precedence and no capability ids.
-import {
-  createPackagedToolRegistry,
-  DEFAULT_TOOL_MODULE_LOADERS,
-} from "@pie-players/pie-default-tool-loaders";
+import { createPackagedToolRegistry } from "@pie-players/pie-default-tool-loaders";
 
-const registry = createPackagedToolRegistry({
-  toolModuleLoaders: DEFAULT_TOOL_MODULE_LOADERS,
-});
+const registry = createPackagedToolRegistry();
 registry.register(wordCounterToolRegistration);
 registry.register(sectionMetaInfoToolRegistration);
 

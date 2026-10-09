@@ -47,7 +47,11 @@ export interface PackagedToolRegistryOptions {
 	toolTagMap?: Partial<ToolTagMap>;
 	/** Override the component factory per tool. */
 	toolComponentFactories?: Partial<ToolComponentFactoryMap>;
-	/** Lazy module loaders keyed by toolId. */
+	/**
+	 * Module loaders keyed by toolId, each loading its tool's element on first
+	 * render. Defaults to `DEFAULT_TOOL_MODULE_LOADERS`; a map replaces it, so a
+	 * host that defines its tool elements itself passes `{}`.
+	 */
 	toolModuleLoaders?: Partial<Record<string, ToolModuleLoader>>;
 	/** Restrict registration to specific packaged tool ids. */
 	toolIds?: string[];
@@ -404,15 +408,9 @@ class PackagedCapabilityComposition {
 			registry.register(options.overrides?.[registration.toolId] ?? registration);
 		}
 
-		// Loader installation remains opt-in. Some hosts preload tool elements or
-		// provide their own tags; silently adding package loads here would change
-		// their bundle/runtime behavior.
-		if (
-			options.toolModuleLoaders &&
-			Object.keys(options.toolModuleLoaders).length > 0
-		) {
-			registry.setToolModuleLoaders({ ...options.toolModuleLoaders });
-		}
+		registry.setToolModuleLoaders({
+			...(options.toolModuleLoaders ?? this.moduleLoaders),
+		});
 
 		registry.setComponentOverrides({
 			toolTagMap: {

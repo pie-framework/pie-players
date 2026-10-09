@@ -23,10 +23,7 @@
 	 */
 	import '@pie-players/pie-section-player/components/section-player-splitpane-element';
 	import type { ToolkitCoordinatorApi } from '@pie-players/pie-assessment-toolkit';
-	import {
-		createPackagedToolRegistry,
-		DEFAULT_TOOL_MODULE_LOADERS
-	} from '@pie-players/pie-default-tool-loaders';
+	import { createPackagedToolRegistry } from '@pie-players/pie-default-tool-loaders';
 	import { signLanguageRegistration } from '@pie-players/pie-tool-sign-language';
 	import type {
 		AssessmentEntity,
@@ -38,9 +35,7 @@
 	let { data }: { data: PageData } = $props();
 
 	// The deployment's capability set, plus the one this host chose to add.
-	const toolRegistry = createPackagedToolRegistry({
-		toolModuleLoaders: DEFAULT_TOOL_MODULE_LOADERS
-	});
+	const toolRegistry = createPackagedToolRegistry();
 	toolRegistry.register(signLanguageRegistration);
 
 	const toolkitToolsConfig = {

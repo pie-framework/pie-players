@@ -247,21 +247,15 @@ const answerEliminator = {
 
 ```typescript
 import { createPackagedToolRegistry } from '@pie-players/pie-default-tool-loaders';
-import {
-  DEFAULT_TOOL_MODULE_LOADERS,
-} from '@pie-players/pie-default-tool-loaders';
-
-// Registrations only: the host defines the tool elements itself
-const toolRegistry = createPackagedToolRegistry();
 
 // Registrations plus module loaders: each tool's package loads on first render
-const lazyRegistry = createPackagedToolRegistry({
-  toolModuleLoaders: DEFAULT_TOOL_MODULE_LOADERS
-});
+const toolRegistry = createPackagedToolRegistry();
+
+// Registrations only: the host defines the tool elements itself
+const preloadedRegistry = createPackagedToolRegistry({ toolModuleLoaders: {} });
 
 // Optional: replace default tag mapping/factories for selected tools
 const customRegistry = createPackagedToolRegistry({
-  toolModuleLoaders: DEFAULT_TOOL_MODULE_LOADERS,
   toolTagMap: {
     calculator: 'my-calculator-tool'
   },
@@ -310,15 +304,10 @@ A registration reaches the learner in this order: the toolbar keeps the tools po
 
 ```typescript
 import { ToolkitCoordinator } from '@pie-players/pie-assessment-toolkit';
-import {
-  createPackagedToolRegistry,
-  DEFAULT_TOOL_MODULE_LOADERS,
-} from '@pie-players/pie-default-tool-loaders';
+import { createPackagedToolRegistry } from '@pie-players/pie-default-tool-loaders';
 
 // The toolbar rendering below mounts tool elements, so the registry carries loaders
-const toolRegistry = createPackagedToolRegistry({
-  toolModuleLoaders: DEFAULT_TOOL_MODULE_LOADERS
-});
+const toolRegistry = createPackagedToolRegistry();
 const coordinator = new ToolkitCoordinator({
   assessmentId: assessment.id,
   toolRegistry,
@@ -685,10 +674,7 @@ export const myToolRegistration: ToolRegistration = {
 
 ```typescript
 import { ToolRegistry } from '@pie-players/pie-assessment-toolkit';
-import {
-  createPackagedToolRegistry,
-  DEFAULT_TOOL_MODULE_LOADERS,
-} from '@pie-players/pie-default-tool-loaders';
+import { createPackagedToolRegistry } from '@pie-players/pie-default-tool-loaders';
 
 const registry = new ToolRegistry();
 registry.register(myToolRegistration);
@@ -697,7 +683,6 @@ registry.setComponentOverrides({ toolTagMap: { myTool: "my-tool" } });
 // Beside the packaged tools; setComponentOverrides would replace their tag map.
 // The loaders load each packaged tool's element on first render.
 const packagedRegistry = createPackagedToolRegistry({
-  toolModuleLoaders: DEFAULT_TOOL_MODULE_LOADERS,
   toolTagMap: { myTool: "my-tool" }
 });
 packagedRegistry.register(myToolRegistration);

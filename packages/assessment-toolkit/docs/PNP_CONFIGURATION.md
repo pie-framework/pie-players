@@ -220,15 +220,10 @@ Here's a complete example showing how all levels interact:
 import {
   ToolkitCoordinator
 } from '@pie-players/pie-assessment-toolkit';
-import {
-  createPackagedToolRegistry,
-  DEFAULT_TOOL_MODULE_LOADERS,
-} from '@pie-players/pie-default-tool-loaders';
+import { createPackagedToolRegistry } from '@pie-players/pie-default-tool-loaders';
 
 // 1. Create tool registry; its loaders load each tool's element on first render
-const toolRegistry = createPackagedToolRegistry({
-  toolModuleLoaders: DEFAULT_TOOL_MODULE_LOADERS
-});
+const toolRegistry = createPackagedToolRegistry();
 
 // 2. Create coordinator with the registry, configured placements and tool providers
 const coordinator = new ToolkitCoordinator({
@@ -409,16 +404,11 @@ When integrating the PNP system, ensure you:
 ### API Integration
 
 ```typescript
-import {
-  createPackagedToolRegistry,
-  DEFAULT_TOOL_MODULE_LOADERS,
-} from '@pie-players/pie-default-tool-loaders';
+import { createPackagedToolRegistry } from '@pie-players/pie-default-tool-loaders';
 
 // 1. Create registry and coordinator. The toolbar below renders from this
 //    registry, so it carries the loaders for each tool's element.
-const registry = createPackagedToolRegistry({
-  toolModuleLoaders: DEFAULT_TOOL_MODULE_LOADERS
-});
+const registry = createPackagedToolRegistry();
 const coordinator = new ToolkitCoordinator({
   assessmentId: assessment.id,
   toolRegistry: registry,

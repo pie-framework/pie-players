@@ -500,6 +500,59 @@ describe("TTSService catalog speech composition", () => {
 		).toBe(true);
 	});
 
+	test("paints a catalog word crossing a shadow boundary in each tree", async () => {
+		const impl = new MockTTSImpl();
+		// "ü" and "r" are not ASCII alphanumerics, so the shadow boundary inside
+		// the word adds no space to the visible text.
+		impl.boundariesByText.set("Leaving Zürich.", [
+			{ word: "Zürich", position: 8, length: "Zürich".length },
+		]);
+		const service = new TTSService();
+		await service.initialize(new MockTTSProvider(impl));
+		service.setCatalogResolver(
+			new AccessibilityCatalogResolver([
+				{
+					identifier: "river",
+					cards: [
+						{
+							catalog: "spoken",
+							language: "en-US",
+							content: "Leaving Zürich.",
+						},
+					],
+				},
+			]),
+		);
+		const root = document.createElement("div");
+		root.innerHTML =
+			'<span data-catalog-idref="river">Leaving Zü<span data-part></span>.</span>';
+		root
+			.querySelector("[data-part]")
+			?.attachShadow({ mode: "open" })
+			.append(document.createTextNode("rich"));
+		document.body.append(root);
+		const highlightedWords: string[][] = [];
+		service.setHighlightCoordinator({
+			highlightTTSWord: (ranges: Range[]) => {
+				highlightedWords.push(ranges.map(String));
+			},
+			highlightTTSSentence: () => {},
+			clearTTS: () => {},
+			clearHighlights: () => {},
+			isSupported: () => true,
+			updateTTSHighlightStyle: () => {},
+		} as any);
+
+		try {
+			await service.speak(root, { language: "en-US" });
+		} finally {
+			root.remove();
+		}
+
+		expect(impl.speakCalls).toEqual(["Leaving Zürich."]);
+		expect(highlightedWords).toContainEqual(["Zü", "rich"]);
+	});
+
 	test("maps raw SSML provider offsets for exact catalog chunks", async () => {
 		const impl = new MockTTSImpl();
 		const ssml = '<speak><break time="250ms"/>Hello world</speak>';

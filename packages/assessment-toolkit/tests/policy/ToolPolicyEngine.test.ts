@@ -307,3 +307,55 @@ describe("ToolPolicyEngine", () => {
 		).not.toContain("pnp-support");
 	});
 });
+
+describe("tool parameters", () => {
+	const assessment = {
+		id: "a1",
+		settings: { toolConfigs: { calculator: { type: "graphing" } } },
+	} as AssessmentEntity;
+
+	function parametersEngine() {
+		const engine = new ToolPolicyEngine({
+			toolRegistry: new ToolRegistry(),
+			inputs: {
+				tools: normalizeToolsConfig({
+					placement: { item: ["calculator"], section: ["calculator"] },
+				}),
+				assessment,
+				pnpEnforcement: "off",
+			},
+		});
+		engine.registerItemSettings("i1", {
+			toolParameters: { calculator: { type: "basic" } },
+		});
+		return engine;
+	}
+
+	test("reach a placed tool no grant admits, with enforcement off", () => {
+		const decision = parametersEngine().decide({
+			level: "section",
+			scope: { level: "section", scopeId: "s1" },
+		});
+		expect(decision.visibleTools[0]).toMatchObject({
+			toolId: "calculator",
+			parameters: { type: "graphing" },
+		});
+	});
+
+	test("take the item's entry on the item's own toolbar", () => {
+		const engine = parametersEngine();
+		const scope = { level: "item", scopeId: "i1" } as const;
+		expect(
+			engine.decide({ level: "item", scope }).visibleTools[0].parameters,
+		).toEqual({ type: "basic" });
+		expect(engine.decideFeature("calculator", scope).parameters).toEqual({
+			type: "basic",
+		});
+	});
+
+	test("reach an ungranted feature decision", () => {
+		const decision = parametersEngine().decideFeature("calculator");
+		expect(decision.granted).toBe(false);
+		expect(decision.parameters).toEqual({ type: "graphing" });
+	});
+});

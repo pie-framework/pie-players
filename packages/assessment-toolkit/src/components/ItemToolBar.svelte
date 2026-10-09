@@ -88,7 +88,12 @@
 	import { resolveFallbackToolIcon } from '../services/tool-icons.js';
 	import { createScopedToolId } from '../services/tool-instance-id.js';
 	import type { ToolCoordinatorApi } from '../services/interfaces.js';
-	import type { AssessmentItemRef, AssessmentEntity, ItemEntity } from '@pie-players/pie-players-shared/types';
+	import type {
+		AssessmentItemRef,
+		AssessmentEntity,
+		ItemEntity,
+		ToolParametersFor
+	} from '@pie-players/pie-players-shared/types';
 	import type { ElementToolContext, ItemToolContext, ToolLevel, ToolContext } from '../services/tool-context.js';
 	import type { ToolPolicyDecision } from '../policy/engine.js';
 	import { createDecidedToolsTracker } from '../services/toolbar-decided-tools.js';
@@ -836,10 +841,26 @@
 		};
 	});
 
+	// Policy parameters by registered tool id, from the decision's own entries.
+	const toolParametersById = $derived.by((): Map<string, Record<string, unknown>> => {
+		const parameters = new Map<string, Record<string, unknown>>();
+		for (const entry of decidedTools ?? []) {
+			if (!entry.parameters) continue;
+			const [toolId] = effectiveToolRegistry.normalizeToolIds([entry.toolId]);
+			if (toolId) parameters.set(toolId, entry.parameters);
+		}
+		return parameters;
+	});
+
 	const toolbarContext = $derived.by((): ToolbarContext => {
+		const parametersById = toolParametersById;
 		return {
 			...createToolbarContext(),
 			getResolvedToolContext: (toolId: string) => hostResolvedToolContextById[toolId] ?? null,
+			getToolParameters: <K extends string>(toolId: K) =>
+				(parametersById.get(effectiveToolRegistry.normalizeToolId(toolId)) as
+					| ToolParametersFor<K>
+					| undefined) ?? null,
 			getToolRenderParams: (toolId: string) => {
 				const resolved = hostResolvedToolContextById[toolId]?.params ?? null;
 				const requested = requestedToolParams.get(toolId);

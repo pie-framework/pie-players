@@ -182,12 +182,11 @@ export interface ToolPolicyEntry {
 	 */
 	alwaysAvailable: boolean;
 	/**
-	 * Tool-specific settings resolved from the assessment / item
-	 * settings via the PNP policy source. Hosts that want to read these
-	 * directly should use `entry.settings` rather than peeking into
-	 * the assessment entity from above the engine.
+	 * The tool's parameters: the item's `toolParameters` entry on the item's own
+	 * toolbar, else the assessment's `toolConfigs` entry. Set whether or not a
+	 * grant admitted the tool.
 	 */
-	settings?: unknown;
+	parameters?: Record<string, unknown>;
 }
 
 export interface ToolPolicyDecision {

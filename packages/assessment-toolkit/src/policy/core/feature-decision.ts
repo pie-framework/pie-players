@@ -44,7 +44,7 @@ export type FeaturePolicyRule =
 	| "host-allowlist"
 	| "host-blocked";
 
-export interface FeaturePolicyDecision {
+export interface FeaturePolicyDecision<P = Record<string, unknown>> {
 	/** The PNP/AfA support id that was evaluated (e.g. `"signLanguage"`). */
 	featureId: string;
 	/**
@@ -85,11 +85,11 @@ export interface FeaturePolicyDecision {
 	 */
 	required: boolean;
 	/**
-	 * Feature parameters resolved from item `toolParameters` then assessment
-	 * `toolConfigs`, keyed by the feature id. The seam a later configurable
-	 * presentation would hang on; no vocabulary is defined yet.
+	 * The feature's parameters: the item's `toolParameters` entry for an item's
+	 * scope, else the assessment's `toolConfigs` entry, keyed by the feature id.
+	 * Set on a denial too; a host denial leaves it out.
 	 */
-	parameters?: unknown;
+	parameters?: P;
 	/**
 	 * Conflicts found while deciding: a `tool-policy.unknownSupportId` for each
 	 * id the bound inputs name that no tool is registered under. Empty on a host
@@ -129,7 +129,7 @@ export function hostFeatureDenial(
 	rule: "host-allowlist" | "host-blocked",
 	hostValue: readonly string[],
 	context: FeatureDecisionContext,
-): FeaturePolicyDecision {
+): FeaturePolicyDecision<never> {
 	return {
 		featureId,
 		granted: false,
@@ -170,11 +170,12 @@ export function isHostDeniedFeature(
  * exactly one decision and at most one flags entry — no mapped-tool-id
  * bookkeeping is needed to read it back out.
  */
-export function interpretFeatureResult(
+export function interpretFeatureResult<P>(
 	featureId: string,
 	result: PnpPolicyResult,
 	context: FeatureDecisionContext,
-): FeaturePolicyDecision {
+	parameters: P | undefined,
+): FeaturePolicyDecision<P> {
 	const decision = result.decisions[0];
 	const flags = Array.from(result.perToolFlags.values())[0];
 	const granted = decision?.action === "enable";
@@ -195,7 +196,7 @@ export function interpretFeatureResult(
 				? reason
 				: unboundAssessmentReason(featureId),
 		required: Boolean(flags?.required),
-		parameters: flags?.settings,
+		parameters,
 		assessmentBound: context.assessmentBound,
 		diagnostics: [
 			...Array.from(result.unmappedSupportIds, ([supportId, origins]) =>

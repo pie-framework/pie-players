@@ -648,20 +648,34 @@ export interface AssessmentSettings {
 	};
 
 	/**
-	 * Parameters by tool id, handed to a tool a grant or requirement admits;
-	 * an item's `toolParameters` entry wins. Provider configuration belongs in
-	 * the toolkit's `tools.providers`.
+	 * Parameters by tool id, handed to the tool wherever policy shows it; an
+	 * item's `toolParameters` entry wins on that item's own toolbar. Provider
+	 * configuration belongs in the toolkit's `tools.providers`.
 	 */
-	toolConfigs?: {
-		calculator?: AssessmentCalculatorConfig;
-		[toolId: string]: Record<string, unknown> | undefined;
-	};
+	toolConfigs?: ToolParameters;
 }
 
-/** Calculator parameters in assessment settings. */
-export type AssessmentCalculatorConfig = {
-	type?: "basic" | "scientific" | "graphing";
-};
+/**
+ * Parameter shapes by tool id. A tool outside the stock set may add its own by
+ * declaration merging, with a type literal as the value.
+ *
+ * The values come from authored content, so a tool still checks what it reads.
+ */
+export interface ToolParameterMap {
+	calculator: { type?: "basic" | "scientific" | "graphing" };
+	answerEliminator: { strategy?: "strikethrough" | "mask" };
+	signLanguage: { signLang?: string };
+}
+
+/** The parameter shape of tool `K`: its {@link ToolParameterMap} entry, else open. */
+export type ToolParametersFor<K extends string> = K extends keyof ToolParameterMap
+	? ToolParameterMap[K]
+	: Record<string, unknown>;
+
+/** Parameters by tool id: typed for the ids {@link ToolParameterMap} names. */
+export type ToolParameters = {
+	[K in keyof ToolParameterMap]?: ToolParameterMap[K];
+} & { [toolId: string]: Record<string, unknown> | undefined };
 
 /**
  * Item-level settings for tool requirements.
@@ -671,7 +685,7 @@ export interface ItemSettings {
 	requiredTools?: string[]; // Tool ids required for this item
 	restrictedTools?: string[]; // Tool ids blocked for this item
 	/** Parameters by tool id; outranks the assessment's `toolConfigs` entry. */
-	toolParameters?: Record<string, Record<string, unknown>>;
+	toolParameters?: ToolParameters;
 }
 
 export type PlayerMode = "gather" | "view" | "evaluate" | "author";

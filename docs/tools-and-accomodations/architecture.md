@@ -433,8 +433,8 @@ The canonical order is:
 4. If no host resolver is registered, the tool registration applies its
    default `isVisibleInContext` relevance check.
 5. `renderToolbar` receives a resolved `ToolbarContext`, including
-   `getToolRenderParams(toolId)`, and renders the final button and tool
-   element.
+   `getToolRenderParams(toolId)` and `getToolParameters(toolId)`, and renders
+   the final button and tool element.
 
 The host resolver intentionally cannot re-enable a tool removed by placement,
 provider config, district/test policy, or PNP/profile rules. It is the right

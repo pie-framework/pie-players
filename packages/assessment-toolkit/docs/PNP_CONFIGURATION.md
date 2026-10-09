@@ -10,7 +10,7 @@ Placement decides which tools a toolbar can show. Policy then reads four inputs,
 3. **Test administration** (PIE extension) - Session-level operational control
 4. **Item settings** (PIE extension) - Per-item requirements and restrictions, applied on the item's own toolbar
 
-A grant (a profile support, a requirement or a test-administration override set to `true`) protects a placed tool from the registry's relevance filter and carries its `toolConfigs` parameters. Among the policy inputs, only a block removes a placed tool: a district block, an item restriction, a prohibited support, or an override set to `false`. A grant puts no unplaced tool on a toolbar.
+A grant (a profile support, a requirement or a test-administration override set to `true`) protects a placed tool from the registry's relevance filter. Among the policy inputs, only a block removes a placed tool: a district block, an item restriction, a prohibited support, or an override set to `false`. A grant puts no unplaced tool on a toolbar.
 
 ## Data Structure Hierarchy
 
@@ -319,7 +319,7 @@ console.log('Allowed tools:', allowedToolIds);
 // - lineReader: Granted, but this configuration places it at passage level only
 ```
 
-`settings.toolConfigs` holds feature parameters keyed by support id, and an item's `toolParameters` override them. A feature granted by a PNP support, a requirement or a test-administration override carries them as its policy parameters (`ToolPolicyEntry.settings`, `FeaturePolicyDecision.parameters`), which is where the sign-language capability reads `signLang`. Provider configuration, such as the TTS backend and voice in step 2, belongs in `tools.providers`. The `server` backend sends requests to the host's TTS server at `apiEndpoint` (default `/api/tts`) through `@pie-players/tts-client-server`, which `@pie-players/pie-default-tool-loaders` installs.
+`settings.toolConfigs` holds feature parameters keyed by support id, and an item's `toolParameters` override them. Every tool policy shows carries them as its policy parameters (`ToolPolicyEntry.parameters`, `FeaturePolicyDecision.parameters`), whether or not a grant admits it and whatever `pnpEnforcement` is; the item's entry applies on the item's own toolbar and scope. The calculator reads `type` as its default flavor, the answer eliminator `strategy` (`strikethrough` or `mask`), and the sign-language capability `signLang`; `ToolParameterMap` in `@pie-players/pie-players-shared/types` types them. Provider configuration, such as the TTS backend and voice in step 2, belongs in `tools.providers`. The `server` backend sends requests to the host's TTS server at `apiEndpoint` (default `/api/tts`) through `@pie-players/tts-client-server`, which `@pie-players/pie-default-tool-loaders` installs.
 
 ## Precedence Resolution Examples
 
@@ -371,7 +371,7 @@ console.log('Allowed tools:', allowedToolIds);
   }
 }
 // Result: a calculator placed at item level stays on this item's own
-// toolbar through relevance filtering and carries the item's toolParameters.
+// toolbar through relevance filtering.
 // The requirement (#6) places nothing: without an item-level placement,
 // no calculator renders.
 ```

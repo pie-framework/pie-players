@@ -64,6 +64,7 @@ import type {
 import type {
 	AssessmentEntity,
 	ItemSettings,
+	ToolParametersFor,
 } from "@pie-players/pie-players-shared/types";
 import type {
 	ITTSProvider,
@@ -874,10 +875,10 @@ export interface ToolkitCoordinatorApi {
 	 * Optional so host-supplied coordinator stubs predating this method stay
 	 * assignable; call sites must feature-detect.
 	 */
-	decideFeaturePolicy?(
-		featureId: string,
+	decideFeaturePolicy?<K extends string>(
+		featureId: K,
 		scope?: ToolScope,
-	): FeaturePolicyDecision;
+	): FeaturePolicyDecision<ToolParametersFor<K>>;
 
 	/**
 	 * Subscribe to policy-engine change events. Fires whenever the

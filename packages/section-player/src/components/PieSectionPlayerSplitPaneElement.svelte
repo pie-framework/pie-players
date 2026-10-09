@@ -98,7 +98,10 @@
 		AssessmentSection,
 		SectionControllerSessionState,
 	} from "@pie-players/pie-players-shared/types";
-	import type { RuntimeConfig } from "@pie-players/pie-assessment-toolkit/runtime/engine";
+	import {
+		resolveSectionId,
+		type RuntimeConfig,
+	} from "@pie-players/pie-assessment-toolkit/runtime/engine";
 	import type {
 		SectionPlayerRuntimeHostContract,
 		SectionPlayerSnapshot,
@@ -380,7 +383,11 @@
 			staticAttributes: {
 				instrumentationLayer: "section",
 				assessmentId: runtime?.assessmentId,
-				sectionId,
+				sectionId: resolveSectionId({
+					sectionId,
+					section,
+					assessmentId: runtime?.assessmentId,
+				}),
 				attemptId: attemptId || undefined,
 			},
 			shouldTrackEvent: (event: Event) =>

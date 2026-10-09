@@ -31,8 +31,11 @@ import type { HeadingLevel } from "./section-player-view-state.js";
 
 export type SectionPlayerPaneKind = "items" | "passages";
 
+/** Where the items pane's element pre-warm stands. */
+export type SectionPlayerPaneWarmup = "pending" | "loaded" | "failed";
+
 export type SectionPlayerPaneReport = {
-	elementsLoaded: boolean;
+	warmup: SectionPlayerPaneWarmup;
 	/** The renderables signature the report was made for. */
 	renderablesSignature: string;
 };
@@ -67,7 +70,7 @@ export type SectionPlayerLayoutContext = {
 	/** Returns the unregister. */
 	registerPane: (kind: SectionPlayerPaneKind, pane: Element) => () => void;
 	/** Reports from any pane but the active items pane are ignored. */
-	reportElementsLoaded: (pane: Element, report: SectionPlayerPaneReport) => void;
+	reportWarmup: (pane: Element, report: SectionPlayerPaneReport) => void;
 	reportPreloadRetry: (pane: Element, detail: ElementPreloadRetryDetail) => void;
 	reportPreloadError: (pane: Element, detail: ElementPreloadErrorDetail) => void;
 };

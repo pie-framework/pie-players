@@ -101,7 +101,12 @@ Section-player owns two pieces of glue:
   single tracked `$effect` wrapped in `untrack(...)`. It learns from
   `section-ready`, which carries the controller and its cohort, that the
   controller resolved, and latches the readiness error signal from the
-  toolkit's bubbling `framework-error` by the error's `scope`.
+  toolkit's bubbling `framework-error` by the error's `scope`. A toolkit
+  bootstrap failure is held against the coordinator announced when it was
+  reported and clears when `toolkit-ready` announces another. Element warmup
+  fails a section through the items pane's `reportWarmup`, which carries the
+  renderables signature it ran for and counts only from the cohort's
+  `section-ready`, so one section's warmup outcome never reaches the next.
 - **`section-player-host-runtime.ts`**
   ([source](src/components/shared/section-player-host-runtime.ts)) — the
   player-coupled wrapper around the toolkit resolver. Holds
@@ -475,7 +480,7 @@ placement.
 ### Pane registry and readiness
 
 `createSectionPlayerPaneRegistry` keeps each kind's panes in connection order,
-and the first is active. The kernel accepts `reportElementsLoaded` and the
+and the first is active. The kernel accepts `reportWarmup` and the
 pre-warm retry and error reports from the active items pane only, so readiness
 follows exactly one pane and a pane that renders nothing cannot hold or release
 `interactive`. A duplicate idles and takes over when the active pane disconnects.

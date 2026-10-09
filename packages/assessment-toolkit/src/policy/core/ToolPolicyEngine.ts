@@ -102,6 +102,8 @@ export interface ResolvedEngineInputs {
 	 * item-scoped decision also turns on for its item's settings.
 	 */
 	pnpEnforcement: PnpEnforcementMode;
+	/** The host's override of auto-mode, or `null` in auto-mode. */
+	pnpEnforcementOverride: PnpEnforcementMode | null;
 }
 
 export type ToolPolicyChangeListener = (event: ToolPolicyChangeEvent) => void;
@@ -160,10 +162,10 @@ export class ToolPolicyEngine {
 	 * cached `ToolPolicyDecision` rather than re-call `decide(...)`.
 	 *
 	 * An item's registered settings apply to the item's own toolbar: a request
-	 * at item level whose scope is the item. A section- or assessment-level
-	 * request leaves every item's settings out, and reports each tool on its
-	 * toolbar that one restricts or requires as
-	 * `tool-policy.itemSettingNotApplied`.
+	 * at item level whose scope is the item. Every other request — a section,
+	 * assessment or passage toolbar — is shared by the items it sits beside, so
+	 * it leaves every item's settings out and reports each tool on its toolbar
+	 * that one restricts or requires as `tool-policy.itemSettingNotApplied`.
 	 */
 	decide(request: ToolPolicyDecisionRequest): ToolPolicyDecision {
 		this.assertNotDisposed();
@@ -173,7 +175,7 @@ export class ToolPolicyEngine {
 		const item =
 			request.level === "item" ? this.itemForScope(request.scope) : undefined;
 		const shared =
-			request.level === "section" ||
+			request.level !== "item" ||
 			request.scope.level === "section" ||
 			request.scope.level === "assessment";
 		return composeDecision({
@@ -422,6 +424,7 @@ export class ToolPolicyEngine {
 			tools: this.tools,
 			assessment: this.assessment,
 			pnpEnforcement: this.enforcementFor(),
+			pnpEnforcementOverride: this.pnpEnforcementOverride,
 		});
 	}
 

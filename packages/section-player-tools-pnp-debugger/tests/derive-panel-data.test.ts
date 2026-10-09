@@ -353,8 +353,11 @@ describe("editable tool helpers", () => {
 				prohibitedSupports: ["answerEliminator"],
 			},
 			decisions: {
-				section: makeDecision(["lineReader"], makeProvenance([])),
-				item: makeDecision([], makeProvenance([])),
+				section: [makeDecision(["lineReader"], makeProvenance([]))],
+				item: [
+					makeDecision([], makeProvenance([])),
+					makeDecision([], makeProvenance([])),
+				],
 			},
 		});
 
@@ -488,9 +491,123 @@ describe("derivePnpPanelData", () => {
 		});
 		expect(data.pnpProfile).toBe(DEFAULT_PNP);
 		expect(data.determination.source).toBe("panel fallback (no profile bound)");
+		expect(data.determination.checked).toEqual([]);
+	});
+
+	test("lists the policy inputs present on the assessment and items as checked", () => {
+		const data = derivePnpPanelData({
+			sectionData: {
+				id: "s1",
+				assessmentItemRefs: [
+					{ identifier: "i1", settings: { requiredTools: ["calculator"] } },
+					{ identifier: "i2" },
+				],
+			},
+			roleType: "candidate",
+			floatingTools: [],
+			defaultPnpProfile: DEFAULT_PNP,
+			coordinator: {
+				decideToolPolicy: () => makeDecision([], makeProvenance([])),
+				getPolicyInputs: () =>
+					({
+						assessment: {
+							id: "a1",
+							personalNeedsProfile: { supports: [] },
+							settings: { districtPolicy: { blockedTools: [] } },
+						},
+					}) as never,
+			},
+		});
 		expect(data.determination.checked).toEqual([
 			"assessment.personalNeedsProfile",
+			"assessment.settings.districtPolicy",
+			"item i1 settings",
 		]);
+	});
+
+	test("decides item and passage levels under the section's real item and passage ids", () => {
+		const calls: Array<{ level: string; scopeId: string }> = [];
+		const data = derivePnpPanelData({
+			sectionData: {
+				id: "s1",
+				assessmentItemRefs: [
+					{ identifier: "ref-1", item: { id: "item-1" } },
+					{ item: { id: "item-2" } },
+				],
+				rubricBlocks: [
+					{ class: "stimulus", passage: { id: "passage-1" } },
+					{ class: "rubric", passage: { id: "not-a-passage" } },
+				],
+			},
+			roleType: "candidate",
+			floatingTools: [],
+			defaultPnpProfile: DEFAULT_PNP,
+			coordinator: {
+				decideToolPolicy: (req) => {
+					calls.push({ level: req.level, scopeId: req.scope.scopeId });
+					return makeDecision(
+						req.scope.scopeId === "item-2" ? ["calculator"] : [],
+						makeProvenance([]),
+					);
+				},
+				config: {
+					toolRegistry: {
+						getAllTools: () => [
+							{
+								toolId: "calculator",
+								name: "Calculator",
+								supportedLevels: ["item"],
+							},
+						],
+					},
+				} as never,
+			},
+		});
+		expect(calls.filter((call) => call.level !== "section")).toEqual([
+			{ level: "item", scopeId: "ref-1" },
+			{ level: "item", scopeId: "item-2" },
+			{ level: "passage", scopeId: "passage-1" },
+		]);
+		expect(
+			data.toolRows.find((row) => row.toolId === "calculator")?.visible,
+		).toEqual({ section: false, item: true, passage: false });
+	});
+
+	test("surfaces each decision diagnostic once", () => {
+		const diagnostic = {
+			code: "tool-policy.unknownSupportId" as const,
+			toolId: "textToSpeach",
+			message: "No tool is registered under \"textToSpeach\".",
+			source: "pnp.pnp-support" as const,
+		};
+		const data = derivePnpPanelData({
+			sectionData: { id: "s1", assessmentItemRefs: [{ identifier: "i1" }] },
+			roleType: "candidate",
+			floatingTools: [],
+			defaultPnpProfile: DEFAULT_PNP,
+			coordinator: {
+				decideToolPolicy: () => ({
+					...makeDecision([], makeProvenance([])),
+					diagnostics: [diagnostic],
+				}),
+			},
+		});
+		expect(data.diagnostics).toEqual([diagnostic]);
+	});
+
+	test("shows the coordinator's enforcement override as the selection", () => {
+		const data = derivePnpPanelData({
+			sectionData: { id: "s1" },
+			roleType: "candidate",
+			floatingTools: [],
+			defaultPnpProfile: DEFAULT_PNP,
+			coordinator: {
+				decideToolPolicy: () => makeDecision([], makeProvenance([])),
+				getPolicyInputs: () =>
+					({ pnpEnforcement: "off", pnpEnforcementOverride: "off" }) as never,
+			},
+		});
+		expect(data.pnpEnforcement).toEqual({ effective: "off", selection: "off" });
 	});
 
 	test("uses sectionData.identifier as scopeId fallback", () => {

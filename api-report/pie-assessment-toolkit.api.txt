@@ -234,6 +234,7 @@
   type ToolPolicyResolutionDecision
   type ToolPolicySourceType
   type ToolScope
+  type UnknownSupportIdDetails
   isHostDeniedFeature
 
 ./runtime/engine

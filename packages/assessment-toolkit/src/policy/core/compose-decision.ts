@@ -17,6 +17,7 @@ import type { AssessmentEntity } from "@pie-players/pie-players-shared/types";
 import {
 	type CanonicalToolsConfig,
 	normalizeToolList,
+	type ToolPlacementLevel,
 } from "../../services/tools-config-normalizer.js";
 import type {
 	ItemSettingNotAppliedDetails,
@@ -26,9 +27,13 @@ import type {
 	ToolPolicyDiagnostic,
 	ToolPolicyEntry,
 	ToolPolicyHostGate,
+	UnknownSupportIdDetails,
 } from "./decision-types.js";
 import type { PolicySource } from "./PolicySource.js";
-import type { PolicySourceTag } from "./policy-source-tag.js";
+import type {
+	PnpPolicySourceRule,
+	PolicySourceTag,
+} from "./policy-source-tag.js";
 import { ToolPolicyProvenanceBuilder } from "./provenance.js";
 import type {
 	PnpPolicyItem,
@@ -45,8 +50,8 @@ export interface ComposeDecisionInputs {
 		item?: PnpPolicyItem;
 		/**
 		 * "on" applies the PNP/profile precedence rules; "off" skips step 5
-		 * entirely. Defaults to "on" when an assessment is present
-		 * and the source is non-null (see M8 design Q5).
+		 * entirely. The engine resolves it from the enforcement override, or
+		 * from whether the assessment or item carries PNP/profile material.
 		 */
 		enforcement: "on" | "off";
 	};
@@ -203,18 +208,11 @@ export function composeDecision(
 			});
 		}
 
-		// A support id no tool is registered under matches nothing placed, so the
-		// capability is absent with no trace of why — the failure a host sending
-		// its own vocabulary instead of a tool id actually hits. Reported per decision rather than at config time
-		// because the ids arrive with the profile, not with the tools config.
-		for (const supportId of pnpPolicyResult.unmappedSupportIds) {
-			diagnostics.push({
-				code: "tool-policy.unknownSupportId",
-				level: request.level,
-				toolId: supportId,
-				message: `No tool is registered under PNP support id "${supportId}"; it was carried through as a feature id and matched nothing. A support id is the id of the tool it grants.`,
-				source: "pnp.pnp-support",
-			});
+		// An id no tool is registered under matches nothing placed, so whatever it
+		// names is absent with no trace of why. Reported per decision because the
+		// ids arrive with the profile and settings, after the tools config.
+		for (const [supportId, origins] of pnpPolicyResult.unmappedSupportIds) {
+			diagnostics.push(unknownSupportIdDiagnostic(supportId, origins, request.level));
 		}
 
 		// 5a — remove PNP/profile-blocked tools from the candidate set.
@@ -315,7 +313,7 @@ export function composeDecision(
 		// this auto-log, the provenance trail for a silently-removed
 		// tool would show only the prior `enable` decisions and the
 		// final-state reconciliation would have no evidence to mark it
-		// `blocked` (M8 PR 1 R2 S1 / M1 case B).
+		// `blocked`.
 		const explicitBlocks = new Set<string>();
 		if (result.decisions) {
 			for (const event of result.decisions) {
@@ -446,4 +444,36 @@ function detectHostRemovalGate(
 	// the four gates above MUST have fired. If none did, the host
 	// pipeline has a bug; surface a best-effort rather than throwing.
 	return { hostRule: "placement-missing", hostValue: args.placement };
+}
+
+/** Where each PNP/profile rule's ids are authored. */
+const PNP_RULE_FIELDS: Record<PnpPolicySourceRule, string> = {
+	"district-block": "settings.districtPolicy.blockedTools",
+	"test-admin-override": "settings.testAdministration.toolOverrides",
+	"item-restriction": "item settings.restrictedTools",
+	"item-requirement": "item settings.requiredTools",
+	"district-requirement": "settings.districtPolicy.requiredTools",
+	"pnp-prohibited": "personalNeedsProfile.prohibitedSupports",
+	"pnp-support": "personalNeedsProfile.supports",
+};
+
+/**
+ * A `tool-policy.unknownSupportId` diagnostic for an id the registry lacks,
+ * attributed to the highest-precedence rule naming it. `level` is absent on a
+ * feature decision, which has no toolbar level.
+ */
+export function unknownSupportIdDiagnostic(
+	supportId: string,
+	origins: readonly PnpPolicySourceRule[],
+	level?: ToolPlacementLevel,
+): ToolPolicyDiagnostic {
+	const fields = origins.map((rule) => PNP_RULE_FIELDS[rule]).join(", ");
+	return {
+		code: "tool-policy.unknownSupportId",
+		...(level ? { level } : {}),
+		toolId: supportId,
+		message: `No tool is registered under "${supportId}", named in ${fields}, so it matches nothing. These lists name tools by tool id.`,
+		source: `pnp.${origins[0]}` satisfies PolicySourceTag,
+		details: { origins: [...origins] } satisfies UnknownSupportIdDetails,
+	};
 }

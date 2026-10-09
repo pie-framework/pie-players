@@ -463,6 +463,7 @@ const nlNL = {
 			resolvedTools: "Toegekende hulpmiddelen (toolkit)",
 			provenanceSummary: "Overzicht van herkomst van het hulpmiddelenbeleid",
 			perToolDecisions: "Beslissingen per hulpmiddel",
+			policyDiagnostics: "Diagnose van het hulpmiddelenbeleid",
 			profileReadOnly: "PNP-profiel (alleen lezen)",
 		},
 

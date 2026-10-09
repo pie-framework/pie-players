@@ -3,8 +3,8 @@
  *
  * They reach the coordinator through the item's registration, as
  * `<pie-item-scope>` dispatches it, and apply to the item's own item-level
- * toolbar. A section- or assessment-level toolbar is the host's section-wide
- * choice: it ignores item settings and reports each tool on it that an item
+ * toolbar. A section-, assessment- or passage-level toolbar shows content every
+ * item shares: it ignores item settings and reports each tool on it that an item
  * restricts or requires.
  */
 
@@ -30,6 +30,7 @@ function makeCoordinator() {
 			placement: {
 				section: ["calculator"],
 				item: ["calculator", "lineReader"],
+				passage: ["lineReader"],
 			},
 		},
 	});
@@ -182,6 +183,30 @@ describe("a shared toolbar ignores item settings", () => {
 			[
 				"calculator",
 				{ itemId: "q1", settings: ["restrictedTools"], toolbarLevel: "assessment" },
+			],
+		]);
+	});
+
+	test("a passage toolbar reports at its own level", () => {
+		const coord = makeCoordinator();
+		register(coord, itemRegistration("q1", { restrictedTools: ["lineReader"] }));
+
+		const decision = coord.decideToolPolicy({
+			level: "passage",
+			scope: {
+				level: "passage",
+				scopeId: "p1",
+				itemId: "rendered-p1",
+				canonicalItemId: "p1",
+				contentKind: "passage",
+			},
+		});
+
+		expect(visibleIds(decision)).toEqual(["lineReader"]);
+		expect(notApplied(decision)).toEqual([
+			[
+				"lineReader",
+				{ itemId: "q1", settings: ["restrictedTools"], toolbarLevel: "passage" },
 			],
 		]);
 	});

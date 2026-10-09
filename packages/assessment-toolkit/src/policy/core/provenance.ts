@@ -240,7 +240,7 @@ export class ToolPolicyProvenanceBuilder {
 	 * walks every feature trail and rewrites `finalState` from the
 	 * final candidate set so callers can rely on
 	 * `provenance.features.get(toolId)?.finalState` as the canonical
-	 * "is this tool visible right now?" answer (M8 design § 4 + § 12).
+	 * "is this tool visible right now?" answer.
 	 *
 	 * Semantics applied per feature:
 	 *   - In `survivingIds`                                 → "enabled"

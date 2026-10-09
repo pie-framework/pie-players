@@ -55,7 +55,6 @@
 	}: Props = $props();
 
 	let floatingTools = $state<string[]>([]);
-	let pnpEnforcementSelection = $state<PnpEnforcementSelection>('auto');
 	// Bumped from `coordinator.onPolicyChange(...)` so the
 	// `pnpPanelData` derivation re-runs whenever the engine inputs
 	// change (assessment binding, PNP override, custom source). The
@@ -85,13 +84,9 @@
 		};
 	});
 
-	// M8 PR 3 — read the coordinator's owned ToolPolicyEngine via the
-	// pure `derivePnpPanelData` helper. Decisions reflect every
-	// Pass-1 contributor (placement, host policy, provider veto,
-	// PNP/profile gates, custom sources) — not just PNP — which is the correct
-	// debugger surface as of M8. The panel keeps its PNP-focused
-	// chrome (title, profile card) but also surfaces the broader
-	// per-tool feature trails the engine emits.
+	// Decisions come from the coordinator's ToolPolicyEngine through
+	// `derivePnpPanelData` and carry every policy contributor: placement, host
+	// policy, provider veto, PNP/profile gates and custom sources.
 	let pnpPanelData = $derived.by(() => {
 		void policyVersion;
 		return derivePnpPanelData({
@@ -164,8 +159,10 @@
 		);
 	}
 
-	function applyPnpEnforcement() {
-		const mode = pnpEnforcementSelection === 'auto' ? null : pnpEnforcementSelection;
+	// The select shows the coordinator's override, so a host's own
+	// `setPnpEnforcement(...)` call is what the panel displays.
+	function applyPnpEnforcement(selection: PnpEnforcementSelection) {
+		const mode = selection === 'auto' ? null : selection;
 		if (typeof toolkitCoordinator?.setPnpEnforcement === 'function') {
 			toolkitCoordinator.setPnpEnforcement(mode);
 		}
@@ -254,8 +251,9 @@
 					<label class="pie-section-player-tools-pnp-debugger__field">
 						<span>{interfaceI18n.t("debug.pnp.enforcement")}</span>
 						<select
-							bind:value={pnpEnforcementSelection}
-							onchange={applyPnpEnforcement}
+							value={pnpPanelData.pnpEnforcement.selection}
+							onchange={(event) =>
+								applyPnpEnforcement(event.currentTarget.value as PnpEnforcementSelection)}
 							data-testid="pnp-enforcement-select"
 						>
 							<option value="auto">{interfaceI18n.t("common.auto")}</option>
@@ -356,6 +354,12 @@
 			<div class="pie-section-player-tools-pnp-debugger__card-title">{interfaceI18n.t("debug.pnp.provenanceSummary")}</div>
 			<pre class="pie-section-player-tools-pnp-debugger__card-pre">{JSON.stringify(pnpPanelData.provenance, null, 2)}</pre>
 		</div>
+		{#if pnpPanelData.diagnostics.length > 0}
+			<div class="pie-section-player-tools-pnp-debugger__card" data-testid="pnp-policy-diagnostics">
+				<div class="pie-section-player-tools-pnp-debugger__card-title">{interfaceI18n.t("debug.pnp.policyDiagnostics")}</div>
+				<pre class="pie-section-player-tools-pnp-debugger__card-pre">{JSON.stringify(pnpPanelData.diagnostics, null, 2)}</pre>
+			</div>
+		{/if}
 		<div class="pie-section-player-tools-pnp-debugger__card">
 			<div class="pie-section-player-tools-pnp-debugger__card-title">{interfaceI18n.t("debug.pnp.perToolDecisions")}</div>
 			<pre class="pie-section-player-tools-pnp-debugger__card-pre">{JSON.stringify(pnpPanelData.featureTrails, null, 2)}</pre>

@@ -259,7 +259,7 @@ Grants PIE tools from QTI 3.0 PNP support ids, where a support id is the tool id
 5. District requirement
 6. PNP supports (student needs)
 
-Rungs 3 and 4 apply to the decisions scoped to an item, its own item-level toolbar and its content's features, with the settings its `<pie-item-scope>` registers. A section- or assessment-level toolbar skips them and raises `tool-policy.itemSettingNotApplied` for each tool on it that a mounted item restricts or requires.
+Rungs 3 and 4 apply to the decisions scoped to an item, its own item-level toolbar and its content's features, with the settings its `<pie-item-scope>` registers. A section-, assessment- or passage-level toolbar skips them and raises `tool-policy.itemSettingNotApplied` for each tool on it that a mounted item restricts or requires.
 
 **2. Context Declarations** - Global variables shared across items
 

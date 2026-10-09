@@ -28,7 +28,7 @@ The Tool Registry replaces hardcoded tool lists with a flexible, extensible syst
 │  (ToolkitCoordinator policy engine: PNP, policies)          │
 │                                                              │
 │  Pass 1: Determines allowedToolIds[]                        │
-│  - Reads QTI 3.0 PNP profile                                │
+│  - Reads the AfA PNP 3.0 profile                            │
 │  - Applies institutional policies                           │
 │  - Grants by tool id: a support id is the toolId            │
 └──────────────────────┬──────────────────────────────────────┘
@@ -84,7 +84,7 @@ This keeps visibility deterministic and context-driven for every refresh cycle.
 
 ## Support ids
 
-A tool's `toolId` is its PNP support id: a profile, district policy or item grants a tool by listing its id, and the registry a host composes is the only list of ids a deployment recognizes. Which supports a deployment offers is therefore known only at runtime, from the tools registered and the policy applied to them. An id no registered tool carries raises `tool-policy.unknownSupportId`.
+A tool's `toolId` is its PNP support id: a profile, district policy or item grants a tool by listing its id, and the registry a host composes is the only list of ids a deployment recognizes. Which supports a deployment offers is therefore known only at runtime, from the tools registered and the policy applied to them. An id no registered tool carries raises `tool-policy.unknownSupportId`, which the toolkit coordinator logs once per id and the PNP debugger lists.
 
 A new tool whose capability [AfA PNP 3.0](https://www.imsglobal.org/spec/afa/v3p0/info) names takes that term as its id, camelCased, since AfA terms are kebab-case. Among the packaged ids, `transcript` is an AfA term and `lineReader` is `line-reader`; `signLanguage`, from `@pie-players/pie-tool-sign-language`, is `sign-language`. Other ids name an AfA capability in other words, so a host holding a profile in AfA terms translates them: `calculator-on-screen` to `calculator`, `spoken` to `textToSpeech`, `answer-masking` to `answerEliminator` and `dictionary-on-screen` to `dictionary`. AfA has no term for `ruler`, `protractor`, `graph`, `periodicTable` or `annotationToolbar`.
 
@@ -338,7 +338,7 @@ const allowedToolIds = coordinator
 // Returns: ["calculator", "textToSpeech", "theme", ...]
 ```
 
-The policy engine reads the assessment's `personalNeedsProfile`, `settings.districtPolicy` and `settings.testAdministration`, and, for a decision scoped to an item, that item's registered `settings`. A support id in any of them is a tool id: `supports: ["calculator"]` grants the tool registered as `calculator`, and an id no tool is registered under produces a `tool-policy.unknownSupportId` diagnostic.
+The policy engine reads the assessment's `personalNeedsProfile`, `settings.districtPolicy` and `settings.testAdministration`, and, for a decision scoped to an item, that item's registered `settings`. A support id in any of them is a tool id: `supports: ["calculator"]` grants the tool registered as `calculator`, and an id no tool is registered under produces a `tool-policy.unknownSupportId` diagnostic naming the fields that list it. A requirement that a block or a restriction outranks produces `tool-policy.requiredToolBlocked`. Both ride on the toolbar decision and the feature decision; the toolkit coordinator logs each once per code and tool.
 
 ### Filtering by Context
 
@@ -839,7 +839,7 @@ The policy engine implements a **precedence hierarchy** based on common assessme
    - **Example**: Calculator required for multi-step word problems
    - **Effect**: Tool must be available on this item's own toolbar
 
-Rungs 3 and 4 apply to decisions scoped to the item: its item-level toolbar and its content's feature decisions. A section- or assessment-level toolbar skips them and reports each tool on it that a mounted item restricts or requires with a `tool-policy.itemSettingNotApplied` diagnostic; place the tool at item level to enforce the setting per item.
+Rungs 3 and 4 apply to decisions scoped to the item: its item-level toolbar and its content's feature decisions. A section-, assessment- or passage-level toolbar skips them and reports each tool on it that a mounted item restricts or requires with a `tool-policy.itemSettingNotApplied` diagnostic; place the tool at item level to enforce the setting per item.
 
 5. **District requirement**
    - **Purpose**: Institutional accessibility requirements

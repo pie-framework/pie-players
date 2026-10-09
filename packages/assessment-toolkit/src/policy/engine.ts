@@ -32,6 +32,7 @@ export type {
 	ToolPolicyEntry,
 	ToolPolicyHostGate,
 	ToolScope,
+	UnknownSupportIdDetails,
 } from "./core/decision-types.js";
 
 export type {

@@ -850,7 +850,7 @@ export interface ToolkitCoordinatorApi {
 	reportToolModuleFailure?(toolId: string, error: unknown): void;
 
 	// ----------------------------------------------------------------
-	// Tool Policy Engine — public surface (M8 PR 2 / PR 3).
+	// Tool Policy Engine — public surface.
 	//
 	// The coordinator owns a single `ToolPolicyEngine` instance and
 	// exposes its decision and subscription surface through the API

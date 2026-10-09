@@ -83,6 +83,7 @@ import {
 	type ToolPolicyChangeListener,
 	type ToolPolicyDecision,
 	type ToolPolicyDecisionRequest,
+	type ToolPolicyDiagnostic,
 	type ToolScope,
 } from "../policy/engine.js";
 import type {
@@ -755,10 +756,11 @@ export class ToolkitCoordinator {
 	private pnpEnforcementOverride: PnpEnforcementMode | null = null;
 
 	/**
-	 * Tool and item pairs already warned about as
-	 * `tool-policy.itemSettingNotApplied`; see {@link decideToolPolicy}.
+	 * Policy diagnostics already logged, keyed by code, tool id and, for
+	 * `tool-policy.itemSettingNotApplied`, item id; see
+	 * {@link warnPolicyDiagnostics}.
 	 */
-	private readonly warnedItemSettingsNotApplied = new Set<string>();
+	private readonly warnedPolicyDiagnostics = new Set<string>();
 
 	/**
 	 * Whether {@link decideFeaturePolicy} has already reported serving a decision
@@ -2998,10 +3000,8 @@ export class ToolkitCoordinator {
 				toolRegistry: this.toolRegistry,
 			},
 		);
-		// M8 PR 2 — keep the policy engine's tools input in lockstep
-		// with the validated coordinator config. The engine emits an
-		// `inputs` change event so subscribers (e.g. PR 3 toolbars) can
-		// re-decide without us managing a parallel pub/sub.
+		// The engine's tools input follows the validated config; its `inputs`
+		// change event is what makes toolbars re-decide.
 		this.policyEngine.updateInputs({
 			tools: this.config.tools as CanonicalToolsConfig,
 		});
@@ -3058,22 +3058,33 @@ export class ToolkitCoordinator {
 	/**
 	 * Resolve the visible tool set for a given placement level + scope.
 	 *
-	 * Delegates to the owned tool-policy engine, and warns once per tool and
-	 * item when a section- or assessment-level toolbar carries a tool an item's
-	 * settings restrict or require (`tool-policy.itemSettingNotApplied`): those
-	 * settings govern only the item's own toolbar.
+	 * Delegates to the owned tool-policy engine and logs the decision's
+	 * diagnostics through {@link warnPolicyDiagnostics}.
 	 */
 	decideToolPolicy(request: ToolPolicyDecisionRequest): ToolPolicyDecision {
 		const decision = this.policyEngine.decide(request);
-		for (const diagnostic of decision.diagnostics) {
-			if (diagnostic.code !== "tool-policy.itemSettingNotApplied") continue;
-			const { itemId } = diagnostic.details as ItemSettingNotAppliedDetails;
-			const key = `${diagnostic.toolId}\0${itemId}`;
-			if (this.warnedItemSettingsNotApplied.has(key)) continue;
-			this.warnedItemSettingsNotApplied.add(key);
+		this.warnPolicyDiagnostics(decision.diagnostics);
+		return decision;
+	}
+
+	/**
+	 * Log each policy diagnostic as a console warning, once per code and tool
+	 * id, and per item for `tool-policy.itemSettingNotApplied`. Decisions re-run
+	 * on every input change, so a conflict would otherwise repeat on each.
+	 */
+	private warnPolicyDiagnostics(
+		diagnostics: readonly ToolPolicyDiagnostic[],
+	): void {
+		for (const diagnostic of diagnostics) {
+			const itemId =
+				diagnostic.code === "tool-policy.itemSettingNotApplied"
+					? (diagnostic.details as ItemSettingNotAppliedDetails).itemId
+					: "";
+			const key = `${diagnostic.code}\0${diagnostic.toolId}\0${itemId}`;
+			if (this.warnedPolicyDiagnostics.has(key)) continue;
+			this.warnedPolicyDiagnostics.add(key);
 			console.warn(`[ToolkitCoordinator] ${diagnostic.message}`);
 		}
-		return decision;
 	}
 
 	/**
@@ -3114,6 +3125,7 @@ export class ToolkitCoordinator {
 		scope?: ToolScope,
 	): FeaturePolicyDecision {
 		const decision = this.policyEngine.decideFeature(featureId, scope);
+		this.warnPolicyDiagnostics(decision.diagnostics);
 		const unboundIsMisconfigured =
 			this.config.assessmentOptional !== true ||
 			this.pnpEnforcementOverride === "on";

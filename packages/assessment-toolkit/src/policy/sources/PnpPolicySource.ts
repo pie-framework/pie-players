@@ -1,6 +1,5 @@
 /**
- * PNP Policy Source for the M8 engine
- * (see
+ * PNP Policy Source: step 5 of `composeDecision` (see
  * `docs/tools-and-accomodations/architecture.md`).
  *
  * This source applies the PNP/profile precedence rules as a `(candidates, pnpPolicyInputs) →
@@ -63,14 +62,7 @@ export interface PnpPolicyApplyArgs {
  */
 export interface PnpPolicyDecisionEvent {
 	precedence: 1 | 2 | 3 | 4 | 5 | 6;
-	rule:
-		| "district-block"
-		| "test-admin-override"
-		| "item-restriction"
-		| "item-requirement"
-		| "district-requirement"
-		| "pnp-support"
-		| "pnp-prohibited";
+	rule: PnpPolicySourceRule;
 	featureId: string;
 	action: ToolPolicyResolutionDecision["action"];
 	sourceType: ToolPolicySourceType;
@@ -101,13 +93,14 @@ export interface PnpPolicyResult {
 	 */
 	decisions: PnpPolicyDecisionEvent[];
 	/**
-	 * Support ids named by a profile, district policy or item that no tool is
-	 * registered under. Nothing resolves them, so they are silently inert —
-	 * the engine turns each into a `tool-policy.unknownSupportId` diagnostic so a
-	 * host sending its own label instead of a tool id learns of it rather than
-	 * seeing a tool quietly fail to appear.
+	 * Ids named by a profile, district policy, test administration or item that
+	 * no tool is registered under, each with the rules whose lists name it, in
+	 * precedence order. Nothing resolves them; the engine turns each into a
+	 * `tool-policy.unknownSupportId` diagnostic. Empty when the registry is: an
+	 * empty registry has nothing to check an id against, and
+	 * `tool-config-validation` already reports it once.
 	 */
-	unmappedSupportIds: Set<string>;
+	unmappedSupportIds: Map<string, PnpPolicySourceRule[]>;
 	/** Configuration sources the engine should attach to its provenance. */
 	sources: {
 		assessment?: { id: string; name: string; config?: unknown };
@@ -196,7 +189,11 @@ export class PnpPolicySource {
 			mandatedToolIds: new Set(),
 			perToolFlags: new Map(),
 			decisions: [],
-			unmappedSupportIds: new Set(),
+			unmappedSupportIds: this.unmappedIds(
+				pnp,
+				settings,
+				itemSettings,
+			),
 			sources: {},
 		};
 
@@ -240,12 +237,11 @@ export class PnpPolicySource {
 	): void {
 		// 1. District block (absolute veto)
 		if (ctx.districtPolicy?.blockedTools?.includes(supportId)) {
-			const toolId = this.mapSupportToToolId(supportId, out);
-			out.blockedToolIds.add(toolId);
+			out.blockedToolIds.add(supportId);
 			out.decisions.push({
 				precedence: 1,
 				rule: "district-block",
-				featureId: toolId,
+				featureId: supportId,
 				action: "block",
 				sourceType: "assessment",
 				reason: `District policy blocks "${supportId}" for all assessments`,
@@ -258,12 +254,11 @@ export class PnpPolicySource {
 		// session, `true` grants it; either outranks every level below.
 		const override = ctx.testAdmin?.toolOverrides?.[supportId];
 		if (override === false) {
-			const toolId = this.mapSupportToToolId(supportId, out);
-			out.blockedToolIds.add(toolId);
+			out.blockedToolIds.add(supportId);
 			out.decisions.push({
 				precedence: 2,
 				rule: "test-admin-override",
-				featureId: toolId,
+				featureId: supportId,
 				action: "block",
 				sourceType: "assessment",
 				reason: `Test administrator disabled "${supportId}" for this session`,
@@ -272,8 +267,7 @@ export class PnpPolicySource {
 			return;
 		}
 		if (override === true) {
-			const toolId = this.mapSupportToToolId(supportId, out);
-			out.perToolFlags.set(toolId, {
+			out.perToolFlags.set(supportId, {
 				required: false,
 				alwaysAvailable: true,
 				settings: this.resolveToolSettings(supportId, ctx),
@@ -283,7 +277,7 @@ export class PnpPolicySource {
 			out.decisions.push({
 				precedence: 2,
 				rule: "test-admin-override",
-				featureId: toolId,
+				featureId: supportId,
 				action: "enable",
 				sourceType: "assessment",
 				reason: `Test administrator enabled "${supportId}" for this session`,
@@ -294,12 +288,11 @@ export class PnpPolicySource {
 
 		// 3. Item restriction (per-item block)
 		if (ctx.itemSettings?.restrictedTools?.includes(supportId)) {
-			const toolId = this.mapSupportToToolId(supportId, out);
-			out.blockedToolIds.add(toolId);
+			out.blockedToolIds.add(supportId);
 			out.decisions.push({
 				precedence: 3,
 				rule: "item-restriction",
-				featureId: toolId,
+				featureId: supportId,
 				action: "block",
 				sourceType: "item",
 				reason: `Item restricts "${supportId}" (e.g., mental math question blocks calculator)`,
@@ -310,9 +303,8 @@ export class PnpPolicySource {
 
 		// 4. Item requirement (forces enable)
 		if (ctx.itemSettings?.requiredTools?.includes(supportId)) {
-			const toolId = this.mapSupportToToolId(supportId, out);
-			out.mandatedToolIds.add(toolId);
-			out.perToolFlags.set(toolId, {
+			out.mandatedToolIds.add(supportId);
+			out.perToolFlags.set(supportId, {
 				required: true,
 				alwaysAvailable: false,
 				settings: this.resolveToolSettings(supportId, ctx),
@@ -322,7 +314,7 @@ export class PnpPolicySource {
 			out.decisions.push({
 				precedence: 4,
 				rule: "item-requirement",
-				featureId: toolId,
+				featureId: supportId,
 				action: "enable",
 				sourceType: "item",
 				reason: `Item requires "${supportId}" for this question`,
@@ -333,9 +325,8 @@ export class PnpPolicySource {
 
 		// 5. District requirement
 		if (ctx.districtPolicy?.requiredTools?.includes(supportId)) {
-			const toolId = this.mapSupportToToolId(supportId, out);
-			out.mandatedToolIds.add(toolId);
-			out.perToolFlags.set(toolId, {
+			out.mandatedToolIds.add(supportId);
+			out.perToolFlags.set(supportId, {
 				required: true,
 				alwaysAvailable: false,
 				settings: this.resolveToolSettings(supportId, ctx),
@@ -345,7 +336,7 @@ export class PnpPolicySource {
 			out.decisions.push({
 				precedence: 5,
 				rule: "district-requirement",
-				featureId: toolId,
+				featureId: supportId,
 				action: "enable",
 				sourceType: "assessment",
 				reason: `District policy requires "${supportId}" for all assessments`,
@@ -356,12 +347,11 @@ export class PnpPolicySource {
 
 		// 6. PNP prohibitions and supports (student needs)
 		if (ctx.pnp?.prohibitedSupports?.includes(supportId)) {
-			const toolId = this.mapSupportToToolId(supportId, out);
-			out.blockedToolIds.add(toolId);
+			out.blockedToolIds.add(supportId);
 			out.decisions.push({
 				precedence: 6,
 				rule: "pnp-prohibited",
-				featureId: toolId,
+				featureId: supportId,
 				action: "block",
 				sourceType: "student",
 				reason: `Student PNP profile prohibits "${supportId}"`,
@@ -371,8 +361,7 @@ export class PnpPolicySource {
 		}
 
 		if (ctx.pnp?.supports?.includes(supportId)) {
-			const toolId = this.mapSupportToToolId(supportId, out);
-			out.perToolFlags.set(toolId, {
+			out.perToolFlags.set(supportId, {
 				required: false,
 				alwaysAvailable: true,
 				settings: this.resolveToolSettings(supportId, ctx),
@@ -382,7 +371,7 @@ export class PnpPolicySource {
 			out.decisions.push({
 				precedence: 6,
 				rule: "pnp-support",
-				featureId: toolId,
+				featureId: supportId,
 				action: "enable",
 				sourceType: "student",
 				reason: `Student PNP profile requests "${supportId}"`,
@@ -391,16 +380,12 @@ export class PnpPolicySource {
 			return;
 		}
 
-		// 6 (skip): support-id mentioned somewhere but no rule fired.
-		// Use the mapped tool id as `featureId` so the trail is keyed
-		// the same way as every other branch — PR 5's debugger surfaces
-		// index provenance trails by tool id and would otherwise show
-		// orphaned support-id entries here (M8 PR 1 R3 S1).
-		const toolId = this.mapSupportToToolId(supportId, out);
+		// 6 (skip): no rule fired. The trail is keyed by tool id, as in every
+		// other branch.
 		out.decisions.push({
 			precedence: 6,
 			rule: "pnp-support",
-			featureId: toolId,
+			featureId: supportId,
 			action: "skip",
 			sourceType: "system",
 			reason: `Feature "${supportId}" not configured at any level`,
@@ -409,29 +394,38 @@ export class PnpPolicySource {
 	}
 
 	/**
-	 * Map a PNP support id to its tool id. They are the same string: a tool's
-	 * support id is its tool id.
-	 *
-	 * An id no tool is registered under is returned verbatim as the
-	 * `featureId`, so provenance trails and `ToolPolicyEntry.toolId` keep it,
-	 * and is recorded in `unmappedSupportIds` for the
-	 * `tool-policy.unknownSupportId` diagnostic.
+	 * The named ids no tool is registered under, with the rules naming each in
+	 * precedence order. A support id is the id of the tool it grants, so an id
+	 * missing from the registry matches nothing placed.
 	 */
-	private mapSupportToToolId(
-		supportId: string,
-		out: PnpPolicyResult,
-	): string {
-		// An empty registry means there is nothing to check the id against, not
-		// that the id is wrong — reporting it there would fire on every support
-		// id for a host that supplies no registry, which
-		// `tool-config-validation` already warns about once.
-		if (
-			!this.toolRegistry.has(supportId) &&
-			this.toolRegistry.getAllTools().length > 0
-		) {
-			out.unmappedSupportIds.add(supportId);
+	private unmappedIds(
+		pnp: PersonalNeedsProfile | undefined,
+		settings: AssessmentSettings | undefined,
+		itemSettings: ItemSettings | undefined,
+	): Map<string, PnpPolicySourceRule[]> {
+		const unmapped = new Map<string, PnpPolicySourceRule[]>();
+		if (this.toolRegistry.getAllTools().length === 0) return unmapped;
+		const named: Array<[PnpPolicySourceRule, readonly string[] | undefined]> = [
+			["district-block", settings?.districtPolicy?.blockedTools],
+			[
+				"test-admin-override",
+				Object.keys(settings?.testAdministration?.toolOverrides ?? {}),
+			],
+			["item-restriction", itemSettings?.restrictedTools],
+			["item-requirement", itemSettings?.requiredTools],
+			["district-requirement", settings?.districtPolicy?.requiredTools],
+			["pnp-prohibited", pnp?.prohibitedSupports],
+			["pnp-support", pnp?.supports],
+		];
+		for (const [rule, ids] of named) {
+			for (const id of ids ?? []) {
+				if (this.toolRegistry.has(id)) continue;
+				const rules = unmapped.get(id) ?? [];
+				if (!rules.includes(rule)) rules.push(rule);
+				unmapped.set(id, rules);
+			}
 		}
-		return supportId;
+		return unmapped;
 	}
 
 	/**

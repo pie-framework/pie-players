@@ -249,11 +249,34 @@ describe("PnpPolicySource — 6-level precedence", () => {
 		expect([
 			...new PnpPolicySource(createTestToolRegistry()).apply({ assessment })
 				.unmappedSupportIds,
-		]).toEqual(["customSupport"]);
+		]).toEqual([["customSupport", ["pnp-support"]]]);
 		expect(
 			new PnpPolicySource(new ToolRegistry()).apply({ assessment })
 				.unmappedSupportIds.size,
 		).toBe(0);
+	});
+
+	test("an unregistered id is reported with every list that names it, in precedence order", () => {
+		const result = new PnpPolicySource(createTestToolRegistry()).apply({
+			assessment: {
+				id: "a1",
+				personalNeedsProfile: { supports: ["typoTool"], prohibitedSupports: [] },
+				settings: {
+					districtPolicy: { blockedTools: ["typoTool"], requiredTools: ["otherTypo"] },
+					testAdministration: { toolOverrides: { overrideTypo: true } },
+				},
+			} as AssessmentEntity,
+			item: {
+				id: "q1",
+				settings: { restrictedTools: ["itemTypo"] },
+			} as never,
+		});
+		expect([...result.unmappedSupportIds]).toEqual([
+			["typoTool", ["district-block", "pnp-support"]],
+			["overrideTypo", ["test-admin-override"]],
+			["itemTypo", ["item-restriction"]],
+			["otherTypo", ["district-requirement"]],
+		]);
 	});
 
 	test("an unregistered support id is carried through verbatim across all rules", () => {

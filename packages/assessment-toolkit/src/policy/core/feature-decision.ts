@@ -22,6 +22,8 @@
  */
 
 import type { PnpPolicyResult } from "../sources/PnpPolicySource.js";
+import { unknownSupportIdDiagnostic } from "./compose-decision.js";
+import type { ToolPolicyDiagnostic } from "./decision-types.js";
 import type { PnpPolicySourceRule } from "./policy-source-tag.js";
 import type {
 	ToolPolicyResolutionDecision,
@@ -85,6 +87,12 @@ export interface FeaturePolicyDecision {
 	 * presentation would hang on; no vocabulary is defined yet.
 	 */
 	parameters?: unknown;
+	/**
+	 * Conflicts found while deciding: a `tool-policy.unknownSupportId` for each
+	 * id the bound inputs name that no tool is registered under. Empty on a host
+	 * denial, which consults no policy source.
+	 */
+	diagnostics: ToolPolicyDiagnostic[];
 }
 
 /** What the engine knows that a single support-id resolution does not. */
@@ -132,6 +140,7 @@ export function hostFeatureDenial(
 				: `Not listed in tools.policy.allowed (${hostValue.join(", ")})`,
 		required: false,
 		assessmentBound: context.assessmentBound,
+		diagnostics: [],
 	};
 }
 
@@ -185,5 +194,8 @@ export function interpretFeatureResult(
 		required: Boolean(flags?.required),
 		parameters: flags?.settings,
 		assessmentBound: context.assessmentBound,
+		diagnostics: Array.from(result.unmappedSupportIds, ([supportId, origins]) =>
+			unknownSupportIdDiagnostic(supportId, origins),
+		),
 	};
 }

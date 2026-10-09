@@ -1918,6 +1918,10 @@ const DEFAULT_ENV = {
 		];
 		const unregisterListeners = registerHostRuntimeListeners(localHost, bindings);
 		return () => {
+			// The toolkit is torn down before its shells, whose own teardown commit
+			// would find this channel closed. Its pending responses reach the section
+			// here, before the section binding persists and disposes.
+			untrack(() => commitPendingSessions(localHost, { reason: "teardown", logger }));
 			unregisterListeners();
 			for (const element of [...mathNameObservers.keys()]) stopNamingMath(element);
 		};

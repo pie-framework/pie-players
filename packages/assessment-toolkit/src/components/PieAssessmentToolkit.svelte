@@ -81,7 +81,6 @@
 		type ItemPlayerConfig,
 		type ItemPlayerType,
 	} from "../context/assessment-toolkit-context.js";
-	import { connectAssessmentToolkitHostRuntimeContext } from "../context/runtime-context-consumer.js";
 	import { ToolkitCoordinator } from "../services/ToolkitCoordinator.js";
 	import { resolveSectionSessionAssignment } from "../services/section-session-assignment.js";
 	import {
@@ -125,7 +124,10 @@
 		type InternalMediaTimeSourceDetail,
 		type RuntimeRegistrationDetail,
 	} from "../runtime/registration-events.js";
-	import { dispatchCrossBoundaryEvent } from "../runtime/tool-host-contract.js";
+	import {
+		connectHostRuntimeContext,
+		dispatchCrossBoundaryEvent,
+	} from "../runtime/tool-host-contract.js";
 	import { isRuntimeEventClaimed } from "../runtime/runtime-event-claim.js";
 	import { registerContentWithCoordinator } from "../runtime/content-registration.js";
 	import { observeMathControlNames } from "../services/tts/math-control-names.js";
@@ -1483,7 +1485,7 @@ const DEFAULT_ENV = {
 					ownsByDecision = false;
 				};
 			}
-			const stop = connectAssessmentToolkitHostRuntimeContext(currentHost, (value) => {
+			const stop = connectHostRuntimeContext(currentHost, (value) => {
 				if (value.runtimeId === runtimeId) return;
 				if (ownsByDecision) {
 					reportLateOuterRuntime(value.runtimeId);

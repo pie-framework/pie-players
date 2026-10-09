@@ -12,7 +12,6 @@ import {
 	type ShellContextKind,
 } from "../context/assessment-toolkit-context.js";
 import type { ItemSettings } from "@pie-players/pie-players-shared/types";
-import { connectAssessmentToolkitHostRuntimeContext } from "../context/runtime-context-consumer.js";
 import {
 	type CatalogSourceEntity,
 	catalogSourceSignature,
@@ -25,7 +24,10 @@ import {
 	type ShellRuntimeAddress,
 	shellEventTarget,
 } from "./shell-registration.js";
-import { dispatchCrossBoundaryEvent } from "./tool-host-contract.js";
+import {
+	connectHostRuntimeContext,
+	dispatchCrossBoundaryEvent,
+} from "./tool-host-contract.js";
 
 /** What a shell says about the content it holds. */
 export interface ShellScopeState {
@@ -281,7 +283,7 @@ export function createShellScope(): ShellScope {
 			loaded = null;
 		}
 		// Answers at once when the runtime is already there.
-		stopFindingRuntime ??= connectAssessmentToolkitHostRuntimeContext(
+		stopFindingRuntime ??= connectHostRuntimeContext(
 			host,
 			onRuntime,
 		);

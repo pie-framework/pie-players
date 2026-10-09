@@ -52,9 +52,9 @@
 		type AssessmentToolkitRuntimeContext
 	} from '../context/assessment-toolkit-context.js';
 	import {
-		connectAssessmentToolkitRuntimeContext,
-		connectAssessmentToolkitShellContext,
-	} from '../context/runtime-context-consumer.js';
+		connectToolRuntimeContext,
+		connectToolShellContext,
+	} from '../runtime/tool-host-contract.js';
 	import { ContextProvider } from '@pie-players/pie-context';
 	import type { I18nProvider, MessageKeyInput } from '@pie-players/pie-players-shared/i18n/types';
 	import { ZIndexLayer } from '../services/ToolCoordinator.js';
@@ -349,14 +349,14 @@
 
 	$effect(() => {
 		if (!toolbarRootElement) return;
-		return connectAssessmentToolkitRuntimeContext(toolbarRootElement, (value) => {
+		return connectToolRuntimeContext(toolbarRootElement, (value) => {
 			runtimeContext = value;
 		});
 	});
 
 	$effect(() => {
 		if (!toolbarRootElement) return;
-		return connectAssessmentToolkitShellContext(toolbarRootElement, (value) => {
+		return connectToolShellContext(toolbarRootElement, (value) => {
 			shellContext = value;
 		});
 	});

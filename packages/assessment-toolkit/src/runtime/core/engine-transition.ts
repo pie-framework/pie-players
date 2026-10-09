@@ -91,6 +91,7 @@ function startCohort(args: {
 		...createInitialEngineState(),
 		phase: "booting-section",
 		cohort: args.cohort,
+		readinessMode: args.state.readinessMode,
 		effectiveRuntime: args.effectiveRuntime,
 		effectiveToolsConfig: args.effectiveToolsConfig,
 		itemCount: args.itemCount,
@@ -174,6 +175,7 @@ function applyReadinessUpdate(
 		...state,
 		phase,
 		readinessSignals: args.signals,
+		readinessMode: args.mode,
 		itemCount: args.itemCount,
 		loadingCompleteEmitted,
 	};
@@ -284,10 +286,24 @@ export function transition(
 			}
 			const outputs: SectionEngineOutput[] = [];
 			emitStageChange(outputs, "engine-ready", state.cohort);
+			// Readiness can be satisfied before the controller resolves: with
+			// preloaded elements the items load in the same flush as the
+			// composition. No later signal change would move the cohort on, so
+			// the stored snapshot gates `interactive` here.
+			let phase: SectionEnginePhase = "engine-ready";
+			if (
+				createReadinessDetail({
+					mode: state.readinessMode,
+					signals: state.readinessSignals,
+				}).interactionReady
+			) {
+				phase = "interactive";
+				emitStageChange(outputs, phase, state.cohort);
+			}
 			return {
 				state: {
 					...state,
-					phase: "engine-ready",
+					phase,
 					controllerResolved: true,
 				},
 				outputs,

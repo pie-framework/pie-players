@@ -37,7 +37,7 @@ describe("PnpPolicySource — 8-level precedence", () => {
 			},
 		});
 		expect(result.blockedToolIds.has("calculator")).toBe(true);
-		expect(result.mandatedToolIds.has("calculator")).toBe(false);
+		expect(result.mandates.has("calculator")).toBe(false);
 		expect(result.decisions[0]).toMatchObject({
 			rule: "district-block",
 			action: "block",
@@ -154,7 +154,7 @@ describe("PnpPolicySource — 8-level precedence", () => {
 			} as AssessmentEntity,
 		});
 		expect(result.blockedToolIds.has("calculator")).toBe(true);
-		expect(result.mandatedToolIds.has("calculator")).toBe(false);
+		expect(result.mandates.has("calculator")).toBe(false);
 		expect(result.blockedOverrides.size).toBe(0);
 		expect(result.decisions).toEqual([
 			expect.objectContaining({
@@ -174,11 +174,11 @@ describe("PnpPolicySource — 8-level precedence", () => {
 			item: { id: "i1", settings: { requiredTools: ["calculator"] } },
 		});
 		expect(result.blockedToolIds.has("calculator")).toBe(true);
-		expect(result.mandatedToolIds.has("calculator")).toBe(false);
+		expect(result.mandates.has("calculator")).toBe(false);
 		expect(result.decisions[0]?.rule).toBe("pnp-prohibited");
 	});
 
-	test("5. a test-admin enable outranks a district requirement", () => {
+	test("5. a test-admin enable outranks a district requirement, which keeps its mandate", () => {
 		const result = source().apply({
 			assessment: {
 				id: "a1",
@@ -188,7 +188,12 @@ describe("PnpPolicySource — 8-level precedence", () => {
 				},
 			} as AssessmentEntity,
 		});
-		expect(result.mandatedToolIds.has("calculator")).toBe(false);
+		expect(result.mandates.get("calculator")).toBe("district-requirement");
+		expect(result.perToolFlags.get("calculator")).toMatchObject({
+			required: true,
+			alwaysAvailable: true,
+			rule: "test-admin-override",
+		});
 		expect(result.blockedOverrides.size).toBe(0);
 		expect(result.decisions[0]).toMatchObject({
 			rule: "test-admin-override",
@@ -244,7 +249,7 @@ describe("PnpPolicySource — 8-level precedence", () => {
 			},
 		});
 		expect(result.blockedToolIds.has("calculator")).toBe(true);
-		expect(result.mandatedToolIds.has("calculator")).toBe(false);
+		expect(result.mandates.has("calculator")).toBe(false);
 	});
 
 	test("6. item-requirement marks the tool required + mandated", () => {
@@ -256,7 +261,7 @@ describe("PnpPolicySource — 8-level precedence", () => {
 			},
 		});
 		expect(result.blockedToolIds.has("calculator")).toBe(false);
-		expect(result.mandatedToolIds.has("calculator")).toBe(true);
+		expect(result.mandates.has("calculator")).toBe(true);
 		expect(result.perToolFlags.get("calculator")).toMatchObject({
 			required: true,
 			alwaysAvailable: false,
@@ -271,10 +276,58 @@ describe("PnpPolicySource — 8-level precedence", () => {
 				settings: { districtPolicy: { requiredTools: ["calculator"] } },
 			} as AssessmentEntity,
 		});
-		expect(result.mandatedToolIds.has("calculator")).toBe(true);
+		expect(result.mandates.has("calculator")).toBe(true);
 		expect(result.perToolFlags.get("calculator")?.rule).toBe(
 			"district-requirement",
 		);
+	});
+
+	test("5. a test-admin enable outranks an item requirement, which keeps its mandate", () => {
+		const result = source().apply({
+			assessment: {
+				id: "a1",
+				settings: {
+					testAdministration: { toolOverrides: { calculator: true } },
+				},
+			} as AssessmentEntity,
+			item: { id: "i1", settings: { requiredTools: ["calculator"] } },
+		});
+		expect(result.mandates.get("calculator")).toBe("item-requirement");
+		expect(result.perToolFlags.get("calculator")).toMatchObject({
+			required: true,
+			rule: "test-admin-override",
+		});
+		expect(result.decisions[0]?.precedence).toBe(5);
+	});
+
+	test("2. a test-admin withdrawal outranks an item requirement", () => {
+		const result = source().apply({
+			assessment: {
+				id: "a1",
+				settings: {
+					testAdministration: { toolOverrides: { calculator: false } },
+				},
+			} as AssessmentEntity,
+			item: { id: "i1", settings: { requiredTools: ["calculator"] } },
+		});
+		expect(result.blockedToolIds.has("calculator")).toBe(true);
+		expect(result.mandates.has("calculator")).toBe(false);
+		expect(result.decisions[0]?.precedence).toBe(2);
+	});
+
+	test("6. an item requirement outranks a district requirement on the same id", () => {
+		const result = source().apply({
+			assessment: {
+				id: "a1",
+				settings: { districtPolicy: { requiredTools: ["calculator"] } },
+			} as AssessmentEntity,
+			item: { id: "i1", settings: { requiredTools: ["calculator"] } },
+		});
+		expect(result.mandates.get("calculator")).toBe("item-requirement");
+		expect(result.decisions[0]).toMatchObject({
+			rule: "item-requirement",
+			precedence: 6,
+		});
 	});
 
 	test("8. pnp-support marks the tool alwaysAvailable but NOT required", () => {
@@ -289,7 +342,7 @@ describe("PnpPolicySource — 8-level precedence", () => {
 			alwaysAvailable: true,
 			rule: "pnp-support",
 		});
-		expect(result.mandatedToolIds.has("calculator")).toBe(false);
+		expect(result.mandates.has("calculator")).toBe(false);
 	});
 
 	test("4. pnp-prohibited blocks even when supports lists the tool", () => {

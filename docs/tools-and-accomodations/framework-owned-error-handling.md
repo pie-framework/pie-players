@@ -114,7 +114,9 @@ capabilities continue.
 A toolbar that cannot load a tool's module reports `kind: "tool-module-load"`
 once per tool and withholds the tool. It follows the tool start-failure policy:
 recoverable unless policy grants the tool, and reported again as fatal if a
-later policy change grants it. A provider that fails to register
+later policy change grants it. A toolbar tool counts a grant only where PNP
+enforcement is on, so `pnpEnforcement: "off"` keeps its failures recoverable; a
+region feature's grant counts whatever the enforcement, as its decisions do. A provider that fails to register
 (`provider-register`) follows the same policy. A failed tool-state load or save
 (`tool-state-load`, `tool-state-save`) and a section controller that fails to
 dispose (`section-controller-dispose`) are recoverable: the coordinator carries on

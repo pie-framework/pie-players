@@ -18,6 +18,7 @@ import {
 	isTtsDebugEnabled,
 } from "@pie-players/pie-players-shared/pie";
 import {
+	anchorSpeechMarks,
 	normalizeSpeechMarks,
 	resolveSpeedRateBucket,
 } from "@pie-players/tts-server-core";
@@ -518,7 +519,7 @@ const pieAdapter: TransportAdapter = {
 			includeSpeechMarks: true,
 		};
 	},
-	parseResponse: async (response, _config, _headers, _signal, _text) => {
+	parseResponse: async (response, _config, _headers, _signal, text) => {
 		const data: SynthesizeAPIResponse = await response.json();
 		return {
 			audio: {
@@ -526,7 +527,9 @@ const pieAdapter: TransportAdapter = {
 				data: data.audio,
 				contentType: data.contentType,
 			},
-			speechMarks: Array.isArray(data.speechMarks) ? data.speechMarks : [],
+			speechMarks: Array.isArray(data.speechMarks)
+				? anchorSpeechMarks(data.speechMarks, text)
+				: [],
 		};
 	},
 };

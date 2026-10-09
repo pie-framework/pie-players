@@ -620,34 +620,36 @@
 	}
 
 	/**
-	 * Coordinator entries this toolbar seeded. A tool element registers itself
-	 * only once it renders, so the toolbar seeds the entry its button toggles;
-	 * the entry is scoped to this toolbar's item, so it is released when the
-	 * scope or coordinator changes and when the toolbar unmounts.
+	 * The coordinator entries of this toolbar's scope: one per tool it rendered
+	 * or toggled there, whether the toolbar seeded the entry or the tool's element
+	 * registered it. The entries belong to the toolbar's item, so all of them are
+	 * released when the scope or coordinator changes and when the toolbar
+	 * unmounts; one a tool element registered would otherwise keep its visibility
+	 * and come back on when the learner returns to the item.
 	 */
-	let seededToolEntries: { coordinator: ToolCoordinatorApi; ids: Set<string> } | null = null;
+	let scopeToolEntries: { coordinator: ToolCoordinatorApi; ids: Set<string> } | null = null;
+
+	function noteScopeToolEntry(coordinator: ToolCoordinatorApi, instanceToolId: string): void {
+		if (scopeToolEntries?.coordinator === coordinator) scopeToolEntries.ids.add(instanceToolId);
+	}
 
 	function seedToolEntry(coordinator: ToolCoordinatorApi, toolId: string): string {
 		const instanceToolId = toInstanceToolId(toolId);
-		if (!coordinator.getToolState(instanceToolId)) {
-			coordinator.registerTool(instanceToolId, toolId);
-			if (seededToolEntries?.coordinator !== coordinator) {
-				seededToolEntries = { coordinator, ids: new Set() };
-			}
-			seededToolEntries.ids.add(instanceToolId);
-		}
+		if (!coordinator.getToolState(instanceToolId)) coordinator.registerTool(instanceToolId, toolId);
+		noteScopeToolEntry(coordinator, instanceToolId);
 		return instanceToolId;
 	}
 
 	$effect(() => {
-		void effectiveToolCoordinator;
+		const coordinator = effectiveToolCoordinator;
 		void effectiveLevel;
 		void effectiveScopeId;
+		if (!coordinator) return;
+		const entries = { coordinator, ids: new Set<string>() };
+		scopeToolEntries = entries;
 		return () => {
-			const seeded = seededToolEntries;
-			seededToolEntries = null;
-			if (!seeded) return;
-			for (const instanceToolId of seeded.ids) seeded.coordinator.releaseTool(instanceToolId);
+			if (scopeToolEntries === entries) scopeToolEntries = null;
+			for (const instanceToolId of entries.ids) coordinator.releaseTool(instanceToolId);
 		};
 	});
 
@@ -880,6 +882,16 @@
 			}
 		}
 		return rendered;
+	});
+
+	// Declared after the scope's entry record, so a scope change has opened the
+	// new record by the time the new item's tools are noted.
+	$effect(() => {
+		const coordinator = effectiveToolCoordinator;
+		if (!coordinator) return;
+		for (const renderedTool of renderedTools) {
+			noteScopeToolEntry(coordinator, toInstanceToolId(renderedTool.toolId));
+		}
 	});
 	const normalizedHostButtons = $derived.by((): ToolbarItem[] => {
 		if (!Array.isArray(hostButtons)) return [];

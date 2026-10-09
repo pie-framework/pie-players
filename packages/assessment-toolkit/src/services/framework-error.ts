@@ -67,6 +67,15 @@ export type FrameworkErrorSeverity = "warning" | "error";
  */
 export type FrameworkErrorScope = "cohort" | "runtime";
 
+/**
+ * The section a `cohort`-scoped error was reported for. A section can fail after
+ * the learner has left it, so a reader holding another section ignores the error.
+ */
+export interface FrameworkErrorCohort {
+	sectionId: string;
+	attemptId?: string;
+}
+
 export interface FrameworkErrorModel {
 	kind: FrameworkErrorKind;
 	severity: FrameworkErrorSeverity;
@@ -75,6 +84,8 @@ export interface FrameworkErrorModel {
 	details: string[];
 	recoverable: boolean;
 	scope: FrameworkErrorScope;
+	/** Set on a `cohort`-scoped error whose report site knows its section. */
+	cohort?: FrameworkErrorCohort;
 	cause?: unknown;
 }
 
@@ -87,6 +98,7 @@ export function toFrameworkErrorModel(args: {
 	recoverable?: boolean;
 	/** Defaults to `runtime`. */
 	scope?: FrameworkErrorScope;
+	cohort?: FrameworkErrorCohort;
 	cause?: unknown;
 }): FrameworkErrorModel {
 	return {
@@ -97,6 +109,7 @@ export function toFrameworkErrorModel(args: {
 		details: [...(args.details || [])],
 		recoverable: args.recoverable === true,
 		scope: args.scope ?? "runtime",
+		...(args.cohort ? { cohort: { ...args.cohort } } : {}),
 		cause: args.cause,
 	};
 }
@@ -107,6 +120,7 @@ export function frameworkErrorFromUnknown(args: {
 	error: unknown;
 	recoverable?: boolean;
 	scope?: FrameworkErrorScope;
+	cohort?: FrameworkErrorCohort;
 }): FrameworkErrorModel {
 	const message =
 		args.error instanceof Error && args.error.message.trim().length > 0
@@ -118,6 +132,7 @@ export function frameworkErrorFromUnknown(args: {
 		message,
 		recoverable: args.recoverable,
 		scope: args.scope,
+		cohort: args.cohort,
 		cause: args.error,
 	});
 }
@@ -187,6 +202,7 @@ export function frameworkErrorFromCoordinatorContext(args: {
 	context: FrameworkErrorCoordinatorContext;
 	recoverable?: boolean;
 	scope?: FrameworkErrorScope;
+	cohort?: FrameworkErrorCohort;
 }): FrameworkErrorModel {
 	const kind = COORDINATOR_PHASE_TO_KIND[args.context.phase];
 	const source = args.context.toolId
@@ -198,6 +214,7 @@ export function frameworkErrorFromCoordinatorContext(args: {
 		error: args.error,
 		recoverable: args.recoverable,
 		scope: args.scope,
+		cohort: args.cohort,
 	});
 }
 

@@ -667,7 +667,7 @@
 		} catch (error) {
 			if (isTTSStartFailure(error)) {
 				console.error('[AnnotationToolbar] Speech could not start:', error);
-				announce(interfaceI18n.t('tools.textToSpeech.inline.initFailed'), 5000);
+				announce(interfaceI18n.t('tools.textToSpeech.initFailed'), 5000);
 			} else {
 				reportToolFailure(runtimeContext?.toolkitCoordinator, 'textToSpeech', 'tool-playback', error);
 			}

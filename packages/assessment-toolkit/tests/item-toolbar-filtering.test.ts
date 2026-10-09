@@ -1,6 +1,7 @@
 import { GlobalRegistrator } from "@happy-dom/global-registrator";
 import { afterAll, afterEach, describe, expect, test } from "bun:test";
 import { ToolCoordinator, ZIndexLayer } from "../src/services/ToolCoordinator.js";
+import { createScopedToolId } from "../src/services/tool-instance-id.js";
 import {
 	type ToolbarContext,
 	ToolRegistry,
@@ -148,8 +149,12 @@ describe("<pie-item-toolbar> three-pass filtering", () => {
 	});
 });
 
-/** A registry with one toolbar tool that hands out its toolbar context. */
-function probeRegistry() {
+/**
+ * A registry with one toolbar tool that hands out its toolbar context. With
+ * `selfRegister`, the tool registers its scoped entry when it renders, as a tool
+ * element mounted with its button does.
+ */
+function probeRegistry(options: { selfRegister?: boolean } = {}) {
 	const registry = new ToolRegistry();
 	let toolbarContext: ToolbarContext | null = null;
 	const tool = toolbarTool({ toolId: "probe" });
@@ -157,6 +162,12 @@ function probeRegistry() {
 		...tool,
 		renderToolbar: (context, current) => {
 			toolbarContext = current;
+			if (options.selfRegister) {
+				current.toolCoordinator?.registerTool(
+					createScopedToolId("probe", current.scope.level, current.scope.scopeId),
+					"Probe",
+				);
+			}
 			return tool.renderToolbar?.(context, current) ?? null;
 		},
 	});
@@ -202,5 +213,32 @@ describe("<pie-item-toolbar> coordinator entries", () => {
 
 		await mounted.splice(0)[0]?.remove();
 		expect(coordinator.getVisibleTools({ baseId: "probe" })).toEqual([]);
+	});
+
+	test("releases an entry its tool registered itself with its scope", async () => {
+		const coordinator = new ToolCoordinator();
+		const { registry, rendered, context } = probeRegistry({ selfRegister: true });
+		const toolbar = await mountItemToolbar({
+			registry,
+			placed: [{ toolId: "probe" }],
+			toolCoordinator: coordinator,
+			item: resolvedItem("item-1"),
+		});
+		mounted.push(toolbar);
+		for (let round = 0; round < 20 && !rendered(); round += 1) await settle();
+		expect(coordinator.getToolState("probe:item:item-1")).toBeDefined();
+
+		context().toggleTool("probe");
+		expect(coordinator.isToolVisible("probe:item:item-1")).toBe(true);
+
+		toolbar.toolbar.setAttribute("item-id", "item-2");
+		(toolbar.toolbar as HTMLElement & { item: unknown }).item =
+			resolvedItem("item-2");
+		await settle();
+		expect(coordinator.getToolState("probe:item:item-1")).toBeUndefined();
+		expect(coordinator.getToolState("probe:item:item-2")?.isVisible).toBe(false);
+
+		await mounted.splice(0)[0]?.remove();
+		expect(coordinator.getToolState("probe:item:item-2")).toBeUndefined();
 	});
 });

@@ -22,29 +22,22 @@ describe("tool-tts-inline runtime dependency contract", () => {
 		// The upgrade is gated on the in-flight flag, never on comparing
 		// `statusMessage` against the rendered "starting" text: that comparison
 		// drops the announcement whenever the locale changes between the two reads.
-		expect(source).toContain("if (playbackStartInFlight) {");
+		expect(source).toContain("if (playbackStartInFlight && ownsRun()) {");
 		expect(source).not.toMatch(/statusMessage\s*===/);
 		expect(source).toContain("let playbackStartInFlight = $state(false);");
-		expect(source).toContain(
-			"const startupInFlight = $derived(playActionInFlight || playbackStartInFlight);",
-		);
 		expect(source).toContain("playbackStartInFlight = true;");
 		expect(source).toContain("playbackStartInFlight = false;");
-		expect(source).toContain("startupInFlight ||");
-		expect(source).toContain("'aria-busy': startupInFlight ? 'true' : null");
+		expect(source).toContain("'aria-busy': playbackStartInFlight ? 'true' : null");
 		expect(source).toContain(
-			"aria-busy={startupInFlight ? 'true' : undefined}",
+			"aria-busy={playbackStartInFlight ? 'true' : undefined}",
 		);
 	});
 
-	test("failed playback start releases ownership and restores toolbar focus", () => {
-		expect(source).toContain(
-			"resetLocalPlaybackUi(interfaceI18n.t('tools.textToSpeech.inline.startFailed'));",
-		);
+	test("failed playback start restores toolbar focus", () => {
+		expect(source).toContain("'tools.textToSpeech.inline.startFailed'");
 		expect(source).toContain("const hadPanelFocus = panelHasFocus();");
-		expect(source).toContain("releaseActiveOwner();");
 		expect(source).toContain("focusTriggerIfPanelHadFocus(true);");
-		expect(source).toContain("handlePlaybackStartFailure(resolverDisposer);");
+		expect(source).toContain("handlePlaybackStartFailure(error, resolverDisposer);");
 	});
 
 	test("reports playback failures to the toolkit, leaving start failures to its start", () => {
@@ -53,7 +46,7 @@ describe("tool-tts-inline runtime dependency contract", () => {
 		);
 		expect(source).toContain("if (isTTSStartFailure(error)) {");
 		// Every playback catch goes through the one reporter.
-		expect(source.match(/reportPlaybackFailure\(error\);/g)).toHaveLength(6);
+		expect(source.match(/reportPlaybackFailure\(error\);/g)).toHaveLength(5);
 		expect(source).not.toContain("console.error('[TTS Inline] Error:'");
 	});
 });

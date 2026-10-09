@@ -34,7 +34,6 @@
 	} from '@pie-players/pie-assessment-toolkit/tools/registration';
 	import {
 		catalogContextForShell,
-		flatTextContent,
 		isTTSStartFailure,
 		reportToolFailure,
 		resolveContentRegion
@@ -66,8 +65,6 @@
 	} = $props();
 
 	const isBrowser = typeof window !== 'undefined';
-	const ACTIVE_OWNER_KEY = '__pie_tts_inline_active_owner__';
-	const OWNER_EVENT = 'pie-tts-inline-owner-change';
 
 	// ── FontAwesome + Roboto wiring for <nds-icon-button> ─────────────────────
 	// The vendored NDS button renders `<i class="fa-light fa-…">` and expects
@@ -249,11 +246,15 @@
 	let statusMessage = $state('');
 	let requestedPlaybackRate = $state<number | null>(null);
 	let requestedPlaybackChoicesKey = $state<string | null>(null);
-	let playActionInFlight = $state(false);
 	let playbackStartInFlight = $state(false);
 	let handoffInProgress = $state(false);
+	// Between a Play press and the read it starts, another tool's run may still
+	// change state; that change is not a handoff.
+	let claimingRun = false;
+	// Bumped when this tool ends a start itself, so the start's settle leaves
+	// the panel as that ending left it.
+	let startAttempt = 0;
 	let highlightTargetResolverProviderDisposer: (() => void) | null = null;
-	const startupInFlight = $derived(playActionInFlight || playbackStartInFlight);
 	let lastSyncedPlaybackRateTarget: {
 		service: TtsServiceApi;
 		choicesKey: string;
@@ -284,39 +285,9 @@
 	const instanceId = `pie-tts-inline-instance-${Math.random().toString(36).slice(2)}`;
 	const panelId = `${instanceId}-controls`;
 
-	function getActiveOwnerId(): string | null {
-		if (!isBrowser) return null;
-		const value = (window as Window & { [ACTIVE_OWNER_KEY]?: unknown })[ACTIVE_OWNER_KEY];
-		return typeof value === 'string' ? value : null;
-	}
-
-	function isActiveOwner(): boolean {
-		return getActiveOwnerId() === instanceId;
-	}
-
-	function emitOwnerChange(ownerId: string | null, previousOwnerId: string | null): void {
-		if (!isBrowser) return;
-		window.dispatchEvent(
-			new CustomEvent(OWNER_EVENT, {
-				detail: { ownerId, previousOwnerId },
-			}),
-		);
-	}
-
-	function claimActiveOwner(): void {
-		if (!isBrowser) return;
-		const previousOwnerId = getActiveOwnerId();
-		if (previousOwnerId === instanceId) return;
-		(window as Window & { [ACTIVE_OWNER_KEY]?: unknown })[ACTIVE_OWNER_KEY] = instanceId;
-		emitOwnerChange(instanceId, previousOwnerId);
-	}
-
-	function releaseActiveOwner(): void {
-		if (!isBrowser) return;
-		const previousOwnerId = getActiveOwnerId();
-		if (previousOwnerId !== instanceId) return;
-		delete (window as Window & { [ACTIVE_OWNER_KEY]?: unknown })[ACTIVE_OWNER_KEY];
-		emitOwnerChange(null, instanceId);
+	// The service's current run decides ownership: one service, one owner.
+	function ownsRun(): boolean {
+		return ttsService?.getRunOwner() === instanceId;
 	}
 
 	function resetLocalPlaybackUi(status = '', keepControlsVisible = false): void {
@@ -343,14 +314,6 @@
 			choices[0]?.rate ??
 			1
 		);
-	}
-
-	async function syncTTSPlaybackRate(service: TtsServiceApi, rate: number): Promise<void> {
-		if (typeof service.setPlaybackRate === 'function') {
-			await service.setPlaybackRate(rate);
-			return;
-		}
-		await service.updateSettings({ rate });
 	}
 
 	function panelHasFocus(): boolean {
@@ -400,14 +363,11 @@
 		status = interfaceI18n.t('tools.textToSpeech.inline.switchedSection'),
 		restoreFocus = false,
 	): void {
-		if (handoffInProgress) return;
-		if (!controlsVisible && !isActiveOwner()) return;
+		if (handoffInProgress || !controlsVisible) return;
 		handoffInProgress = true;
 		try {
 			const hadPanelFocus = panelHasFocus();
-			if (isActiveOwner()) {
-				releaseActiveOwner();
-			}
+			startAttempt += 1;
 			resetLocalPlaybackUi(status);
 			clearHighlightTargetResolverProvider();
 			if (restoreFocus) {
@@ -450,9 +410,8 @@
 	$effect(() => {
 		if (!ttsService) return;
 		const syncFromState = (state: string) => {
-			// Keep trigger state instance-scoped: only the instance with visible controls
-			// reflects the shared TTS service playback state.
-			if (!controlsVisible || !isActiveOwner()) {
+			// Only the tool whose run it is, with its panel open, reflects the state.
+			if (!controlsVisible || !ownsRun()) {
 				speaking = false;
 				paused = false;
 				return;
@@ -467,13 +426,20 @@
 			// rewind / fast-forward disabled and the browser blurs whichever one held
 			// focus — so this is the last point at which it can be identified.
 			const wasSeekControlFocused = isSeekControlFocused();
+			const runActive =
+				playbackState === 'loading' ||
+				playbackState === 'playing' ||
+				playbackState === 'paused';
+			if (runActive && !claimingRun && !ownsRun()) {
+				handleProgrammaticControlHandoff();
+			}
 			syncFromState(playbackState);
 			if (playbackState === 'playing') {
 				// Upgraded off the in-flight flag rather than off `statusMessage`:
 				// the announcement is rendered prose, so comparing it against the
 				// "starting" lookup drops the announcement whenever the locale
 				// changes between the two reads.
-				if (playbackStartInFlight) {
+				if (playbackStartInFlight && ownsRun()) {
 					statusMessage = interfaceI18n.t(
 						'tools.textToSpeech.inline.started',
 					);
@@ -494,24 +460,6 @@
 
 	$effect(() => {
 		if (!isBrowser) return;
-		const ownerListener = (event: Event) => {
-			const ownerChange = event as CustomEvent<{
-				ownerId?: string | null;
-				previousOwnerId?: string | null;
-			}>;
-			const { ownerId = null, previousOwnerId = null } = ownerChange.detail || {};
-			if (previousOwnerId === instanceId && ownerId !== instanceId) {
-				handleProgrammaticControlHandoff(interfaceI18n.t('tools.textToSpeech.inline.switchedSection'));
-			}
-		};
-		window.addEventListener(OWNER_EVENT, ownerListener);
-		return () => {
-			window.removeEventListener(OWNER_EVENT, ownerListener);
-		};
-	});
-
-	$effect(() => {
-		if (!isBrowser) return;
 		const controlHandoffListener = () => {
 			handleProgrammaticControlHandoff(
 				interfaceI18n.t('tools.textToSpeech.inline.switchedSection'),
@@ -526,21 +474,9 @@
 
 	$effect(() => {
 		return () => {
-			releaseActiveOwner();
 			clearHighlightTargetResolverProvider();
 		};
 	});
-
-	async function ensureTTSReady(): Promise<boolean> {
-		if (!ttsService) return false;
-		try {
-			await runtimeContext?.toolkitCoordinator?.ensureTTSReady?.();
-			return true;
-		} catch (error) {
-			console.error('[TTS Inline] Failed to initialize TTS:', error);
-			return false;
-		}
-	}
 
 	// Arrow keys stay inside the cluster they started in — the speed radiogroup,
 	// or the media buttons (rewind / fast-forward / stop). Tab is what crosses
@@ -635,7 +571,7 @@
 			resolver: regionScopeContext?.ttsHighlightTargetResolver || null,
 		});
 		highlightTargetResolverProviderDisposer =
-			ttsService?.setHighlightTargetResolverProvider?.(provider) || null;
+			ttsService?.setHighlightTargetResolverProvider(provider) ?? null;
 		return highlightTargetResolverProviderDisposer;
 	}
 
@@ -649,19 +585,23 @@
 	}
 
 	function shouldRetainHighlightTargetResolverProvider(): boolean {
-		if (!isActiveOwner()) return false;
-		const state = String(ttsService?.getState?.() || '');
+		if (!ownsRun()) return false;
+		const state = String(ttsService?.getState() || '');
 		return state === 'playing' || state === 'paused' || state === 'loading';
 	}
 
 	function handlePlaybackStartFailure(
+		error: unknown,
 		resolverDisposer: (() => void) | null,
 	): void {
 		const hadPanelFocus = panelHasFocus();
-		resetLocalPlaybackUi(interfaceI18n.t('tools.textToSpeech.inline.startFailed'));
-		if (isActiveOwner()) {
-			releaseActiveOwner();
-		}
+		resetLocalPlaybackUi(
+			interfaceI18n.t(
+				isTTSStartFailure(error)
+					? 'tools.textToSpeech.initFailed'
+					: 'tools.textToSpeech.inline.startFailed',
+			),
+		);
 		if (highlightCoordinator) {
 			highlightCoordinator.clearTTS();
 		}
@@ -682,101 +622,87 @@
 		reportToolFailure(runtimeContext?.toolkitCoordinator, 'textToSpeech', 'tool-playback', error);
 	}
 
-	async function startSpeaking(): Promise<void> {
-		if (!ttsService) return;
-		let resolverDisposer: (() => void) | null = null;
+	// The service decides what is read and whether anything is: a start that
+	// settles idle without playing read nothing, and closes the panel.
+	function startSpeaking(): void {
+		const service = ttsService;
+		if (!service) return;
 		const readingTarget = resolveReadingTarget();
 		if (!readingTarget) {
 			console.warn('[TTS Inline] No target container found from shell scope context');
 			return;
 		}
+		const attempt = ++startAttempt;
+		let played = false;
+		const unsubscribe = service.onStateChange((state) => {
+			if (String(state) === 'playing') played = true;
+		});
+		controlsVisible = true;
+		playbackStartInFlight = true;
+		statusMessage = interfaceI18n.t('tools.textToSpeech.inline.starting');
+		const resolverDisposer = syncHighlightTargetResolverProvider(readingTarget);
+		let read: Promise<void>;
 		try {
-			controlsVisible = true;
-			const text = flatTextContent(readingTarget);
-			if (!text) {
-				console.warn('[TTS Inline] No text content found');
-				return;
-			}
-			if (highlightCoordinator && ttsService.setHighlightCoordinator) {
-				ttsService.setHighlightCoordinator(highlightCoordinator);
-			}
-			await syncTTSPlaybackRate(ttsService, playbackRate);
-			lastSyncedPlaybackRateTarget = {
-				service: ttsService,
-				choicesKey: speedChoicesKey,
-			};
-			resolverDisposer = syncHighlightTargetResolverProvider(readingTarget);
-			playbackStartInFlight = true;
-			statusMessage = interfaceI18n.t('tools.textToSpeech.inline.starting');
-			const service = ttsService;
-			void service.speak(readingTarget, {
+			read = service.speak(readingTarget, {
+				ownerId: instanceId,
+				rate: playbackRate,
 				catalogId: catalogId || undefined,
 				catalogContext: resolveCatalogContext(),
 				language: language || runtimeContext?.contentLanguage || undefined,
-			}).then(() => {
-				// Nothing speakable, such as content marked not-to-be-spoken: the
-				// service never left idle, so no state change ends the start.
-				if (playbackStartInFlight && String(service.getState?.() || '') === 'idle') {
-					playbackStartInFlight = false;
-					statusMessage = '';
-				}
-			}).catch((error) => {
+			});
+		} catch (error) {
+			read = Promise.reject(error);
+		}
+		lastSyncedPlaybackRateTarget = { service, choicesKey: speedChoicesKey };
+		void read
+			.then(() => {
+				// A read that supersedes this one bumps the attempt through the
+				// handoff; one that read nothing starts no run, so owns none.
+				if (attempt !== startAttempt || played) return;
+				if (String(service.getState()) !== 'idle') return;
+				resetLocalPlaybackUi(
+					interfaceI18n.t('tools.textToSpeech.inline.nothingToRead'),
+				);
+			})
+			.catch((error) => {
+				if (attempt !== startAttempt) return;
 				reportPlaybackFailure(error);
-				handlePlaybackStartFailure(resolverDisposer);
-			}).finally(() => {
+				handlePlaybackStartFailure(error, resolverDisposer);
+			})
+			.finally(() => {
+				unsubscribe();
 				if (!shouldRetainHighlightTargetResolverProvider()) {
 					clearHighlightTargetResolverProvider(resolverDisposer);
 				}
 			});
-		} catch (error) {
-			reportPlaybackFailure(error);
-			handlePlaybackStartFailure(resolverDisposer);
-		}
 	}
 
-	async function handlePlayPause() {
-		if (!ttsService) return;
-		if (
-			startupInFlight ||
-			(isActiveOwner() && String(ttsService.getState?.() || '') === 'loading')
-		) {
+	function handlePlayPause() {
+		const service = ttsService;
+		if (!service) return;
+		const owned = ownsRun();
+		// This guard, rather than a `disabled` trigger, stops a second activation
+		// while the first is starting: a disabled trigger would blur, so a keyboard
+		// user would lose their place on every Play press. aria-busy carries the
+		// pending state instead.
+		if (playbackStartInFlight || (owned && String(service.getState()) === 'loading')) {
 			return;
 		}
-		if (isActiveOwner() && paused) {
-			ttsService.resume();
+		if (owned && paused) {
+			service.resume();
 			statusMessage = interfaceI18n.t('tools.textToSpeech.inline.resumed');
 			return;
 		}
-		if (isActiveOwner() && speaking && !paused) {
-			ttsService.pause();
+		if (owned && speaking && !paused) {
+			service.pause();
 			statusMessage = interfaceI18n.t('tools.textToSpeech.inline.pausedAnnouncement');
 			return;
 		}
-		// This guard — NOT a `disabled` attribute on the trigger — is what prevents
-		// a second activation while the first is still starting. Disabling the
-		// trigger here would blur it (a disabled element cannot hold focus), so a
-		// keyboard user would lose their place on every Play press; the pending
-		// state is surfaced with aria-busy instead.
-		if (playActionInFlight) return;
-		playActionInFlight = true;
+		claimingRun = true;
 		try {
-			statusMessage = interfaceI18n.t('tools.textToSpeech.inline.initializing');
-			if (!(await ensureTTSReady())) {
-				statusMessage = interfaceI18n.t('tools.textToSpeech.inline.initFailed');
-				return;
-			}
-			const currentState = String(ttsService.getState?.() || '');
-			const hasActivePlayback =
-				currentState === 'playing' ||
-				currentState === 'paused' ||
-				currentState === 'loading';
-			if (hasActivePlayback && !isActiveOwner()) {
-				ttsService.stop();
-			}
-			claimActiveOwner();
-			await startSpeaking();
+			startSpeaking();
 		} finally {
-			playActionInFlight = false;
+			claimingRun = false;
 		}
 	}
 
@@ -786,8 +712,8 @@
 		// activated. Hand focus back to the play/pause trigger so a keyboard user
 		// keeps their place instead of being dropped to the top of the document.
 		const hadPanelFocus = panelHasFocus();
+		startAttempt += 1;
 		ttsService.stop();
-		releaseActiveOwner();
 		resetLocalPlaybackUi(interfaceI18n.t('tools.textToSpeech.inline.stopped'));
 		if (highlightCoordinator) {
 			highlightCoordinator.clearTTS();
@@ -840,7 +766,7 @@
 		};
 		lastSyncedPlaybackRateTarget = syncTarget;
 		try {
-			await syncTTSPlaybackRate(service, option.rate);
+			await service.setPlaybackRate(option.rate);
 		} catch (error) {
 			if (lastSyncedPlaybackRateTarget === syncTarget) {
 				lastSyncedPlaybackRateTarget = null;
@@ -889,7 +815,7 @@
 		const service = ttsService;
 		const choicesKey = speedChoicesKey;
 		const active = speaking || paused;
-		if (!service || !active || !isActiveOwner()) return;
+		if (!service || !active || !ownsRun()) return;
 		if (
 			lastSyncedPlaybackRateTarget?.service === service &&
 			lastSyncedPlaybackRateTarget.choicesKey === choicesKey
@@ -905,7 +831,7 @@
 			// speed selections on the explicit handler path. This effect owns only
 			// external speed-options/service changes while playback is active.
 			const rate = playbackRate;
-			void syncTTSPlaybackRate(service, rate).catch((error) => {
+			void service.setPlaybackRate(rate).catch((error) => {
 				if (lastSyncedPlaybackRateTarget === syncTarget) {
 					lastSyncedPlaybackRateTarget = null;
 				}
@@ -1125,7 +1051,7 @@
 							'aria-expanded': controlsVisible ? 'true' : 'false',
 							'aria-controls': controlsVisible ? panelId : null,
 							'aria-pressed': controlsVisible ? 'true' : 'false',
-							'aria-busy': startupInFlight ? 'true' : null,
+							'aria-busy': playbackStartInFlight ? 'true' : null,
 						}}
 						class="pie-tool-tts-inline__trigger {sizeClass}"
 						type="circle"
@@ -1161,7 +1087,7 @@
 								? 'tools.textToSpeech.inline.resumeA11y'
 								: 'tools.textToSpeech.inline.playA11y',
 					)}
-					aria-busy={startupInFlight ? 'true' : undefined}
+					aria-busy={playbackStartInFlight ? 'true' : undefined}
 					disabled={!ttsService}
 					onclick={handlePlayPause}
 				>

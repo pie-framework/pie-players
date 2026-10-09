@@ -76,7 +76,10 @@
 		SectionPlayerSnapshot,
 	} from "../contracts/runtime-host-contract.js";
 	import type { SectionPlayerHostHooks } from "../contracts/host-hooks.js";
-	import type { RuntimeConfig } from "@pie-players/pie-assessment-toolkit/runtime/engine";
+	import {
+		resolveSectionId,
+		type RuntimeConfig,
+	} from "@pie-players/pie-assessment-toolkit/runtime/engine";
 	import type { SectionPlayerPolicies } from "../policies/types.js";
 	import { resolveSectionPlayerPolicies } from "../policies/index.js";
 	import { getHostElementFromAnchor } from "./shared/host-element.js";
@@ -168,7 +171,11 @@
 			staticAttributes: {
 				instrumentationLayer: "section",
 				assessmentId: runtime?.assessmentId,
-				sectionId,
+				sectionId: resolveSectionId({
+					sectionId,
+					section,
+					assessmentId: runtime?.assessmentId,
+				}),
 				attemptId: attemptId || undefined,
 			},
 			shouldTrackEvent: (event: Event) =>

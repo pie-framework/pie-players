@@ -43,6 +43,7 @@
 	import {
 		connectSectionPlayerLayoutContext,
 		type SectionPlayerLayoutContext,
+		type SectionPlayerPaneWarmup,
 	} from "./section-player-layout-context.js";
 
 	const NO_ITEMS: ItemEntity[] = [];
@@ -92,7 +93,7 @@
 		layout?.componentTag ?? "pie-section-player-items-pane",
 	);
 	const preloadEnabled = $derived(layout?.preloadEnabled ?? true);
-	const reportElementsLoaded = $derived(layout?.reportElementsLoaded ?? null);
+	const reportWarmup = $derived(layout?.reportWarmup ?? null);
 
 	const logger = $derived(getPreloadLogger(componentTag));
 
@@ -254,6 +255,13 @@
 	});
 
 	const elementsLoaded = $derived(readiness.current.status === "resolved");
+	const warmup = $derived<SectionPlayerPaneWarmup>(
+		elementsLoaded
+			? "loaded"
+			: readiness.current.status === "rejected"
+				? "failed"
+				: "pending",
+	);
 
 	/*
 	 * Whether the cards may stay in the DOM, which is not the same question as
@@ -282,11 +290,12 @@
 	);
 
 	// Re-reported on taking over, which the kernel accepts from the active pane
-	// only.
+	// only. The signature ties the outcome to the composition it was for: the
+	// kernel fails a section on the pane's report, never on the error event.
 	$effect(() => {
 		void active;
-		reportElementsLoaded?.(paneHost, {
-			elementsLoaded,
+		reportWarmup?.(paneHost, {
+			warmup,
 			renderablesSignature: preloadedRenderablesSignature,
 		});
 	});

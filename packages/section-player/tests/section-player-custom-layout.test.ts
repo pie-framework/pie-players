@@ -581,8 +581,8 @@ describe("<pie-section-player-kernel-host>", () => {
 		const loaded = layout as unknown as LayoutContext;
 		expect(loaded.activePanes.items).toBe(itemsPane);
 
-		loaded.reportElementsLoaded(probe, {
-			elementsLoaded: false,
+		loaded.reportWarmup(probe, {
+			warmup: "failed",
 			renderablesSignature: loaded.preloadedRenderablesSignature,
 		});
 		await settle(5);

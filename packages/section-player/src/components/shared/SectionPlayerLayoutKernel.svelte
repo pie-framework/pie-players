@@ -67,6 +67,7 @@
 	import { coerceBooleanLike } from "@pie-players/pie-players-shared";
 	import SectionPlayerLayoutScaffold from "./SectionPlayerLayoutScaffold.svelte";
 	import {
+		announceToolkitCoordinator,
 		CLEAR_FRAMEWORK_ERROR_LATCH,
 		isFrameworkErrorLatched,
 		latchFrameworkError,
@@ -153,11 +154,11 @@
 	let compositionSnapshot = $state<LayoutCompositionSnapshot>(
 		deriveLayoutCompositionSnapshot(EMPTY_COMPOSITION),
 	);
-	// The active items pane reports whether its element pre-warm has resolved,
-	// with the renderables signature the report was made for. It counts only for
-	// the composition the kernel holds, and only once the toolkit has published
-	// one: before that the pane renders no items and reports its empty pre-warm as
-	// resolved.
+	// The active items pane reports where its element pre-warm stands, with the
+	// renderables signature the report was made for. It counts only for the
+	// composition the kernel holds, and only once the toolkit has published one:
+	// before that the pane renders no items and reports its empty pre-warm as
+	// loaded.
 	let paneReport = $state<SectionPlayerPaneReport | null>(null);
 	// The panes under this player's layout element, which register through the
 	// layout context. One of each kind renders.
@@ -213,11 +214,18 @@
 	const preloadedRenderablesSignature = $derived(
 		compositionSnapshot.renderablesSignature,
 	);
-	const paneElementsLoaded = $derived(
+	const paneWarmup = $derived(
 		compositionReceived &&
-			paneReport?.elementsLoaded === true &&
-			paneReport.renderablesSignature === preloadedRenderablesSignature,
+			paneReport?.renderablesSignature === preloadedRenderablesSignature
+			? paneReport.warmup
+			: "pending",
 	);
+	const paneElementsLoaded = $derived(paneWarmup === "loaded");
+	// Until the cohort's `section-ready`, the composition the kernel holds can be
+	// the previous section's, so the section's readiness reads the pane only from
+	// then on.
+	const sectionElementsLoaded = $derived(sectionReady && paneElementsLoaded);
+	const sectionWarmupFailed = $derived(sectionReady && paneWarmup === "failed");
 	const runtimeState = $derived.by(() =>
 		resolveSectionPlayerRuntimeState({ runtime, toolConfigStrictness }),
 	);
@@ -321,7 +329,7 @@
 			elementsLoaded: paneElementsLoaded,
 			activePanes,
 			registerPane: paneRegistry.register,
-			reportElementsLoaded: handleItemsPaneElementsLoaded,
+			reportWarmup: handleItemsPaneWarmup,
 			reportPreloadRetry: handleItemsPanePreloadRetry,
 			reportPreloadError: handleItemsPanePreloadError,
 		}),
@@ -338,13 +346,13 @@
 		return paneRegistry.active().items === pane;
 	}
 
-	function handleItemsPaneElementsLoaded(
+	function handleItemsPaneWarmup(
 		pane: Element,
 		report: SectionPlayerPaneReport,
 	) {
 		if (!isActiveItemsPane(pane)) return;
 		paneReport = {
-			elementsLoaded: report.elementsLoaded === true,
+			warmup: report.warmup,
 			renderablesSignature: report.renderablesSignature,
 		};
 	}
@@ -357,7 +365,7 @@
 		onElementPreloadRetry?.({
 			...detail,
 			assessmentId: effectiveRuntime.assessmentId,
-			sectionId,
+			sectionId: cohortSectionId,
 			attemptId: attemptId || undefined,
 		});
 	}
@@ -370,7 +378,7 @@
 		onElementPreloadError?.({
 			...detail,
 			assessmentId: effectiveRuntime.assessmentId,
-			sectionId,
+			sectionId: cohortSectionId,
 			attemptId: attemptId || undefined,
 		});
 	}
@@ -432,6 +440,10 @@
 		toolkitCoordinator =
 			(event as CustomEvent<{ coordinator?: ToolkitCoordinatorApi }>).detail
 				?.coordinator ?? null;
+		frameworkErrorLatch = announceToolkitCoordinator(
+			frameworkErrorLatch,
+			toolkitCoordinator,
+		);
 	}
 
 	function handleFrameworkError(event: Event) {
@@ -443,7 +455,11 @@
 		// assessment; a non-recoverable failure latches readiness to `error`,
 		// and before `interactive` that ends the cohort's stage chain as
 		// `failed`.
-		frameworkErrorLatch = latchFrameworkError(frameworkErrorLatch, detail);
+		frameworkErrorLatch = latchFrameworkError(
+			frameworkErrorLatch,
+			detail,
+			toolkitCoordinator,
+		);
 	}
 
 
@@ -590,7 +606,8 @@
 		void effectiveToolsConfig;
 		void items.length;
 		void sectionReady;
-		void paneElementsLoaded;
+		void sectionElementsLoaded;
+		void sectionWarmupFailed;
 		void runtimeErrorState;
 		void effectivePolicies.readiness.mode;
 		untrack(() => {
@@ -633,9 +650,9 @@
 			if (lastCohort !== null) {
 				const signals: EngineReadinessSignals = {
 					sectionReady,
-					interactionReady: sectionReady && paneElementsLoaded,
-					allLoadingComplete: paneElementsLoaded,
-					runtimeError: runtimeErrorState,
+					interactionReady: sectionElementsLoaded,
+					allLoadingComplete: sectionElementsLoaded,
+					runtimeError: runtimeErrorState || sectionWarmupFailed,
 				};
 				engine.dispatchInput({
 					kind: "update-readiness-signals",

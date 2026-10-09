@@ -37,6 +37,7 @@
   ElementToolStateStore
   type ElementToolStateStoreApi
   type ExtractionResult
+  type FrameworkErrorCohort
   type FrameworkErrorKind
   type FrameworkErrorListener
   type FrameworkErrorModel

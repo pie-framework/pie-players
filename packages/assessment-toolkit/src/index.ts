@@ -204,6 +204,7 @@ export type {
 	TextToSpeechToolProviderConfig,
 } from "./services/tools-config-normalizer.js";
 export type {
+	FrameworkErrorCohort,
 	FrameworkErrorKind,
 	FrameworkErrorModel,
 	FrameworkErrorScope,

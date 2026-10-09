@@ -69,7 +69,7 @@ const readWithBrowserProvider = async () => {
 
 const startAndStopToolProvider = async () => {
 	const provider = new TTSToolProvider("browser");
-	await provider.initialize({ backend: "browser" });
+	await provider.initialize({});
 	provider.destroy();
 	const server = new TTSToolProvider("server", {
 		loadServerProvider: async () =>
@@ -82,7 +82,7 @@ const startAndStopToolProvider = async () => {
 				destroy = () => {};
 			} as unknown as new () => ITTSProvider,
 	});
-	await server.initialize({ backend: "server", apiEndpoint: "/api/tts" });
+	await server.initialize({ apiEndpoint: "/api/tts" });
 	server.destroy();
 };
 

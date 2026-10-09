@@ -8,8 +8,9 @@
  * them as it hears `toolkit-ready` or `framework-error`.
  *
  * **Detail-shape contract.** The core emits structurally minimal outputs
- * (`{ stage, status, cohort }`, `{ cohort, itemCount, loadedCount }`). The
- * bridge enriches them with `runtimeId`, `sourceCe` and `timestamp` so the
+ * (`{ stage, status, cohort }`, `{ cohort, itemCount }`). The bridge enriches
+ * them with `runtimeId`, `sourceCe`, `timestamp` and, on loading-complete,
+ * `loadedCount` (equal to `itemCount`) so the
  * dispatched detail matches `StageChangeDetail` and `LoadingCompleteDetail` in
  * `packages/players-shared/src/pie/stages.ts`. `runtimeId` and `sourceCe` are
  * fixed per engine; `timestamp` comes from the injected `now()` clock.
@@ -83,7 +84,7 @@ export function createDomEventBridge(
 			sectionId: output.cohort.sectionId,
 			attemptId: output.cohort.attemptId ? output.cohort.attemptId : undefined,
 			itemCount: output.itemCount,
-			loadedCount: output.loadedCount,
+			loadedCount: output.itemCount,
 			timestamp: now(),
 			sourceCe,
 		};

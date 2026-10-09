@@ -67,7 +67,7 @@ describe("section-player stage emitter — kernel invariants", () => {
 		// Left set, the driver hands the new cohort the previous section's
 		// readiness, and `pie-loading-complete` fires for it at the switch.
 		const source = readFileSync(KERNEL_PATH, "utf8");
-		const reset = source.indexOf("cohortErrorLatched = false;");
+		const reset = source.indexOf("rollFrameworkErrorLatch(frameworkErrorLatch)");
 		const resetEffect = source.slice(
 			source.lastIndexOf("$effect(() => {", reset),
 			source.indexOf("});", reset),
@@ -80,6 +80,21 @@ describe("section-player stage emitter — kernel invariants", () => {
 		);
 	});
 
+	test("a section-ready ahead of its cohort's roll still advances that cohort", () => {
+		// The toolkit's section-ready can land before the driver rolls to the
+		// cohort it names; resolving only in the handler stalls at booting-section.
+		const source = readFileSync(KERNEL_PATH, "utf8");
+		const resolver = functionSource(source, "function resolveReadyController(");
+		expect(resolver).toContain("cohortsEqual(readyController.cohort, lastCohort)");
+		expect(resolver).toContain("cohortsEqual(controllerResolvedFor, lastCohort)");
+		expect(functionSource(source, "function handleSectionReady(")).toContain(
+			"resolveReadyController();",
+		);
+		expect(source).toContain(
+			"lastCohort = nextCohort;\n\t\t\t\tresolveReadyController();",
+		);
+	});
+
 	test("reads the section controller without advancing the stage chain", () => {
 		const source = readFileSync(KERNEL_PATH, "utf8");
 		for (const signature of [
@@ -88,8 +103,8 @@ describe("section-player stage emitter — kernel invariants", () => {
 		]) {
 			const accessor = functionSource(source, signature);
 			expect(accessor.length).toBeGreaterThan(0);
-			expect(accessor).not.toContain("notifySectionControllerResolved");
-			expect(accessor).not.toContain("sectionControllerReadyDispatched");
+			expect(accessor).not.toContain("section-controller-resolved");
+			expect(accessor).not.toContain("resolveReadyController");
 		}
 	});
 

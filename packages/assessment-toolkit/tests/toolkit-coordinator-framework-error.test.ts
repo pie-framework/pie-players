@@ -44,6 +44,7 @@ describe("ToolkitCoordinator framework-error contract", () => {
 
 		(coordinator as any).handleError(new Error("state load failed"), {
 			phase: "state-load",
+			recoverable: true,
 		});
 
 		expect(calls).toHaveLength(1);
@@ -119,6 +120,7 @@ describe("ToolkitCoordinator framework-error contract", () => {
 			message: "host pre-coordinator error",
 			details: ["context detail"],
 			recoverable: false,
+			scope: "cohort",
 		});
 
 		expect(calls).toHaveLength(1);
@@ -214,5 +216,26 @@ describe("ToolkitCoordinator hooks", () => {
 		expect(coordinator.getInitStatus().stateLoaded).toBe(false);
 		expect(loads).toBe(1);
 		expect(calls.map((model) => model.kind)).toEqual(["tool-state-load"]);
+		expect(calls[0]).toMatchObject({ recoverable: true, scope: "runtime" });
+	});
+
+	test("a section that fails to start reports a cohort-scoped error", () => {
+		const calls: FrameworkErrorModel[] = [];
+		const coordinator = new ToolkitCoordinator({
+			assessmentId: "section-init-failure-scope",
+			lazyInit: true,
+			hooks: { onFrameworkError: (model) => calls.push(model) },
+		});
+
+		(coordinator as any).handleSectionControllerInitError(new Error("no section"), {
+			sectionId: "s1",
+		});
+
+		expect(calls).toHaveLength(1);
+		expect(calls[0]).toMatchObject({
+			kind: "section-controller-init",
+			recoverable: false,
+			scope: "cohort",
+		});
 	});
 });

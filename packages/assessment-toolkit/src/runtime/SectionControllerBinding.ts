@@ -8,10 +8,14 @@
  * updates and host commands to that controller.
  *
  * The registry outlives a section switch: the shells of the section being left
- * stay registered until they unmount, and a removed shell's `pie-unregister`
- * does not reach the toolkit. A controller therefore hears about a shell, in
- * replay or live, only when the shell renders one of its section's
- * renderables; see `isSectionRenderable`.
+ * stay registered until they unmount. One membership rule routes every shell
+ * event, in replay or live: an event goes to the controller of the section
+ * whose composition renders the shell, which is the current controller or a
+ * cached controller of a section this binding bound earlier, and is dropped
+ * with a warning when no bound section renders it; see `controllerFor`. A
+ * cached controller re-bound on a revisit first forgets the loads of shells
+ * that are no longer registered, so its `section-loading-complete` waits for
+ * the new shells.
  *
  * The section's stage chain is a separate object: the section player's layout
  * kernel drives a `SectionRuntimeEngine` from the readiness signals it derives.
@@ -175,12 +179,24 @@ export class SectionControllerBinding {
 	private sectionRenderableIds: ReadonlySet<string> | null = null;
 
 	/**
+	 * The renderable ids of every section this binding has bound, keyed by
+	 * section and attempt, least recently bound first. `controllerFor` reads it
+	 * to find the section that owns a shell outside the current one.
+	 */
+	private readonly boundSections = new Map<
+		string,
+		{
+			sectionId: string;
+			attemptId: string | undefined;
+			renderableIds: ReadonlySet<string> | null;
+		}
+	>();
+
+	/**
 	 * Tracks which `(canonicalItemId, contentKind)` pairs have already
-	 * fired `handleContentLoaded` on this binding. Mirrored alongside
-	 * `RuntimeRegistry`'s registered set so a cohort handoff can
-	 * replay the persistent shells' loaded state into the new
-	 * controller — see `replayRegisteredShellsIntoController` and the
-	 * PIE-512 Phase B regression test.
+	 * fired `handleContentLoaded` on this binding, so a section handoff can
+	 * replay the persistent shells' loaded state into the new controller; see
+	 * `replayRegisteredShellsIntoController`.
 	 *
 	 * Records loads of every registered shell, in or out of the current
 	 * section, so a shell registered ahead of its section's controller is
@@ -195,6 +211,14 @@ export class SectionControllerBinding {
 		this.coordinator = args.coordinator;
 		this.sectionId = args.sectionId;
 		this.attemptId = args.attemptId;
+		// Before the coordinator re-activates a cached controller and replays its
+		// loaded state to subscribers.
+		this.forgetUnregisteredLoads(
+			args.coordinator.getSectionController({
+				sectionId: args.sectionId,
+				attemptId: args.attemptId,
+			}) as RuntimeController | undefined,
+		);
 
 		const resolved = (await args.coordinator.getOrCreateSectionController({
 			sectionId: args.sectionId,
@@ -216,38 +240,17 @@ export class SectionControllerBinding {
 		this.sectionRenderableIds = readRenderableIds(
 			resolved.getCompositionModel?.(),
 		);
-		// PIE-512 Phase C: always re-feed the registry's currently
-		// registered shells (and their loaded state) into the resolved
-		// controller. We do NOT gate on `resolved !== previousController`
-		// any more.
-		//
-		// Why the gate had to go:
-		//   - Cohort flip resolving to a fresh controller — replay seeds
-		//     the new controller, which is the original Phase B fix.
-		//   - Same-cohort `updateInput` resolving to the existing
-		//     controller — the coordinator's
-		//     `resolveExistingSectionController` calls
-		//     `existingController.updateInput(input)` (the binding always
-		//     passes `updateExisting: true`), and pre-Phase-C
-		//     `SectionController.initialize` wiped lifecycle tracking
-		//     unconditionally. A subscriber attaching between the wipe
-		//     and the next live event saw an empty
-		//     `loadedRenderables` snapshot.
-		//
-		// Phase C makes this re-feed safe by combining (a) the
-		// section-identity gate around `resetLifecycleTracking()` in
-		// `SectionController.initialize` (so same-cohort `updateInput`
-		// preserves tracking) with (b) idempotent
-		// `handleContentRegistered` / `handleContentLoaded` on the
-		// controller (so re-feeding the same registry entries is a
-		// no-op if the controller already knows about them, but
-		// re-seeds the controller in the post-`updateInput`-wipe case
-		// that pre-Phase-C used to encounter).
-		//
-		// The replay carries only the shells of the resolved controller's
-		// section. On a switch the registry still holds the previous section's
-		// shells, and replaying them reported that section's items as loaded
-		// in the new one.
+		const sectionKey = this.getSectionKey(args.sectionId, args.attemptId);
+		this.boundSections.delete(sectionKey);
+		this.boundSections.set(sectionKey, {
+			sectionId: args.sectionId,
+			attemptId: args.attemptId,
+			renderableIds: this.sectionRenderableIds,
+		});
+		// Every initialize re-feeds the registered shells of the resolved
+		// controller's section, a same-section `updateInput` included: the
+		// controller's register and load are idempotent, so a re-feed of shells
+		// it already tracks changes nothing.
 		this.replayRegisteredShellsIntoController(resolved);
 		args.onCompositionChanged?.(resolved.getCompositionModel?.());
 		this.unsubscribeController =
@@ -268,11 +271,7 @@ export class SectionControllerBinding {
 	/**
 	 * Re-feed the binding's `RuntimeRegistry` and loaded-set into the
 	 * resolved controller, limited to the shells of its section (see
-	 * `isSectionRenderable`). Call site: `initialize(...)` — runs on
-	 * EVERY initialize, both cohort-flip-resolves-fresh-controller
-	 * and same-cohort-resolves-existing-controller cases. Phase C
-	 * dropped the `resolved !== previousController` gate; see the
-	 * comment at the call site for why.
+	 * `isSectionRenderable`). Runs on every `initialize`.
 	 *
 	 * Two-pass order — register every shell in document order, then
 	 * issue `handleContentLoaded` for each shell whose load already
@@ -283,16 +282,9 @@ export class SectionControllerBinding {
 	 * `controller.subscribe` (no such caller today, but cheap defense
 	 * for future wiring) sees one clean `false→true` transition.
 	 *
-	 * Idempotent on the controller side — Phase C makes
-	 * `SectionController.handleContentRegistered` and
-	 * `handleContentLoaded` early-return on duplicates so re-feeding
-	 * the same shells into a controller that already tracks them is
-	 * a true no-op (no spurious re-emits, no re-evaluation of
-	 * `section-loading-complete`). At the call site no listener is
-	 * attached during the replay window, so `emitChange` side effects
-	 * fire into a void on this pass anyway, but the controller-side
-	 * idempotence is what makes the replay safe to run on every
-	 * initialize regardless of whether the controller is fresh.
+	 * Idempotent on the controller side: `handleContentRegistered` and
+	 * `handleContentLoaded` return early on duplicates, so re-feeding shells
+	 * the controller already tracks emits nothing.
 	 */
 	private replayRegisteredShellsIntoController(
 		controller: RuntimeController,
@@ -357,6 +349,82 @@ export class SectionControllerBinding {
 		);
 	}
 
+	private getSectionKey(sectionId: string, attemptId: string | undefined) {
+		return `${sectionId}\u0000${attemptId ?? ""}`;
+	}
+
+	/**
+	 * The controller a shell event belongs to: the current controller when the
+	 * shell renders one of its section's renderables, otherwise the cached
+	 * controller of the most recently bound section that renders it — the
+	 * section being left, for an outgoing shell's teardown. `null` when no bound
+	 * section renders the shell or its controller is gone.
+	 */
+	private controllerFor(args: {
+		itemId: string;
+		canonicalItemId?: string;
+	}): RuntimeController | null {
+		if (this.isSectionRenderable(args)) return this.controller;
+		const current = this.getSectionKey(this.sectionId, this.attemptId);
+		const sections = [...this.boundSections.entries()].reverse();
+		for (const [key, section] of sections) {
+			if (key === current || !section.renderableIds) continue;
+			if (
+				!section.renderableIds.has(args.itemId) &&
+				!(args.canonicalItemId && section.renderableIds.has(args.canonicalItemId))
+			) {
+				continue;
+			}
+			const owner = this.coordinator?.getSectionController({
+				sectionId: section.sectionId,
+				attemptId: section.attemptId,
+			}) as RuntimeController | undefined;
+			if (owner) return owner;
+		}
+		return null;
+	}
+
+	/** `controllerFor`, warning when the event has nowhere to go. */
+	private requireControllerFor(
+		args: { itemId: string; canonicalItemId?: string },
+		what: string,
+	): RuntimeController | null {
+		const controller = this.controllerFor(args);
+		if (!controller) {
+			logger.warn(
+				`Dropped ${what} for "${args.itemId}": no section this toolkit bound renders it.`,
+			);
+		}
+		return controller;
+	}
+
+	/**
+	 * Forget, on a cached controller about to be re-bound, every load whose
+	 * shell is no longer registered. A shell that unmounted while its section
+	 * was not current told that section's controller through `controllerFor`;
+	 * this covers one whose unregister never arrived.
+	 */
+	private forgetUnregisteredLoads(cached: RuntimeController | undefined): void {
+		if (!cached || cached === this.controller) return;
+		const loaded = cached.getRuntimeState?.()?.loadedRenderables ?? [];
+		if (loaded.length === 0) return;
+		const live = new Set<string>();
+		for (const shell of this.registry.getOrderedShells()) {
+			live.add(shell.itemId);
+			if (shell.canonicalItemId) live.add(shell.canonicalItemId);
+		}
+		for (const renderable of loaded) {
+			if (live.has(renderable.canonicalItemId) || live.has(renderable.itemId)) {
+				continue;
+			}
+			cached.handleContentUnregistered?.({
+				itemId: renderable.itemId,
+				canonicalItemId: renderable.canonicalItemId,
+				contentKind: renderable.contentKind,
+			});
+		}
+	}
+
 	register(detail: RuntimeRegistrationDetail): boolean {
 		return this.registry.register(detail);
 	}
@@ -412,8 +480,7 @@ export class SectionControllerBinding {
 			);
 		if (stillRendered) return;
 		this.loadedRenderableKeys.delete(key);
-		if (!this.isSectionRenderable(detail)) return;
-		this.controller?.handleContentUnregistered?.({
+		this.controllerFor(detail)?.handleContentUnregistered?.({
 			itemId: detail.itemId,
 			canonicalItemId,
 			contentKind: detail.contentKind || detail.kind,
@@ -442,7 +509,9 @@ export class SectionControllerBinding {
 		error: unknown;
 		timestamp?: number;
 	}): void {
-		this.controller?.handleItemPlayerError?.(args);
+		this.requireControllerFor(args, "an item player error")?.handleItemPlayerError?.(
+			args,
+		);
 	}
 
 	reportSectionError(args: {
@@ -453,12 +522,22 @@ export class SectionControllerBinding {
 		contentKind?: string;
 		timestamp?: number;
 	}): void {
-		this.controller?.reportSectionError?.(args);
+		const controller = args.itemId
+			? this.requireControllerFor(
+					{ itemId: args.itemId, canonicalItemId: args.canonicalItemId },
+					"a section error",
+				)
+			: this.controller;
+		controller?.reportSectionError?.(args);
 	}
 
 	updateItemSession(itemId: string, session: unknown): unknown {
 		const canonicalId = this.getCanonicalItemId(itemId);
-		return this.controller?.updateItemSession?.(canonicalId, session) ?? null;
+		const controller = this.requireControllerFor(
+			{ itemId, canonicalItemId: canonicalId },
+			"a session update",
+		);
+		return controller?.updateItemSession?.(canonicalId, session) ?? null;
 	}
 
 	navigateToItem(index: number): unknown {
@@ -475,11 +554,15 @@ export class SectionControllerBinding {
 	handleFormativeAction(action: SectionRuntimeFormativeAction): void {
 		if (!action?.itemId) return;
 		const canonicalId = this.getCanonicalItemId(action.itemId);
+		const controller = this.requireControllerFor(
+			{ itemId: action.itemId, canonicalItemId: canonicalId },
+			"a formative action",
+		);
 		if (action.action === "retry") {
-			this.controller?.retryFormativeItem?.({ itemId: canonicalId });
+			controller?.retryFormativeItem?.({ itemId: canonicalId });
 			return;
 		}
-		this.controller?.recordFormativeTry?.({
+		controller?.recordFormativeTry?.({
 			itemId: canonicalId,
 			outcomes: action.outcomes,
 		});
@@ -494,14 +577,22 @@ export class SectionControllerBinding {
 	 * — it validated `stimulusRef` in the first place.
 	 */
 	handleMediaTimeSource(action: SectionRuntimeMediaTimeSourceAction): void {
-		if (action?.action === "detach") {
-			this.controller?.detachMediaTimeSource?.({
+		if (!action?.renderableId) return;
+		const controller = this.requireControllerFor(
+			{
+				itemId: action.renderableId,
+				canonicalItemId: this.getCanonicalItemId(action.renderableId),
+			},
+			"a media time source",
+		);
+		if (action.action === "detach") {
+			controller?.detachMediaTimeSource?.({
 				origin: action.origin ?? "host",
 			});
 			return;
 		}
-		if (!action?.source) return;
-		this.controller?.attachMediaTimeSource?.(action.source, {
+		if (!action.source) return;
+		controller?.attachMediaTimeSource?.(action.source, {
 			origin: action.origin ?? "host",
 			renderableId: action.renderableId,
 		});
@@ -543,6 +634,7 @@ export class SectionControllerBinding {
 		}
 		this.registry.clear();
 		this.loadedRenderableKeys.clear();
+		this.boundSections.clear();
 		this.controller = null;
 		this.sectionRenderableIds = null;
 		this.coordinator = null;

@@ -302,13 +302,21 @@ const DEFAULT_ENV = {
 	let ownedCoordinatorInputs: OwnedCoordinatorInputs | null = null;
 	let ownedCoordinatorBinding: "a section initialized" | "an item registered" | null =
 		null;
-	// The last `session` value handed to a controller, by identity, and whether
-	// the current section's controller has resolved. A creation takes a value it
-	// has not seen; a later value goes to the resolved controller. A section
-	// change that comes without a new value hydrates as before. Plain `let` for
-	// the same reason as the latches above.
-	let consumedSession: SectionControllerSessionState | null = null;
-	let sessionControllerResolved = false;
+	// A `session` value belongs to the section and attempt current when it was
+	// set. It waits in `sessionAssignment` until that section's controller takes
+	// it: at creation, or once resolved. A section change discards a value set
+	// for the outgoing section, so it never reaches another section's controller.
+	// `notedSession` is the last value seen, by identity, so a section change that
+	// comes without a new value hydrates as before. `resolvedCohort` is the
+	// section whose controller has resolved. Plain `let` for the same reason as
+	// the latches above.
+	type SessionCohort = { sectionId: string; attemptId: string | undefined };
+	let sessionAssignment: {
+		value: SectionControllerSessionState;
+		cohort: SessionCohort;
+	} | null = null;
+	let notedSession: SectionControllerSessionState | null = null;
+	let resolvedCohort: SessionCohort | null = null;
 	// The section and attempt the last initialize started, so a change of either
 	// commits the outgoing section first. Plain `let` for the same reason as the
 	// latches above.
@@ -434,12 +442,14 @@ const DEFAULT_ENV = {
 		source: string;
 		error: unknown;
 		recoverable?: boolean;
+		scope?: FrameworkErrorModel["scope"];
 	}): FrameworkErrorModel {
 		const model = frameworkErrorFromUnknown({
 			kind: args.kind,
 			source: args.source,
 			error: args.error,
 			recoverable: args.recoverable,
+			scope: args.scope,
 		});
 		frameworkErrorBus.reportFrameworkError(model);
 		return model;
@@ -472,6 +482,7 @@ const DEFAULT_ENV = {
 						.map((entry) => entry?.message)
 						.filter((message): message is string => typeof message === "string"),
 					recoverable: true,
+					scope: "cohort",
 				}),
 			);
 			return;
@@ -489,6 +500,7 @@ const DEFAULT_ENV = {
 					.map((entry) => entry?.message)
 					.filter((message): message is string => typeof message === "string"),
 				recoverable: false,
+				scope: "cohort",
 			}),
 		);
 	}
@@ -831,20 +843,46 @@ const DEFAULT_ENV = {
 		return "candidate";
 	}
 
-	function takeUnconsumedSession(): SectionControllerSessionState | null {
-		if (!session || session === consumedSession) return null;
-		consumedSession = session;
-		return session;
+	function sameSessionCohort(a: SessionCohort, b: SessionCohort): boolean {
+		return a.sectionId === b.sectionId && a.attemptId === b.attemptId;
+	}
+
+	function noteSession(): void {
+		if (!session || session === notedSession) return;
+		notedSession = session;
+		sessionAssignment = {
+			value: session,
+			cohort: { sectionId: effectiveSectionId, attemptId: attemptId || undefined },
+		};
+	}
+
+	/**
+	 * The value set for `cohort`, once. Initializing a section discards a value
+	 * set for any other, which can only be an outgoing one; a resolved controller
+	 * leaves it, since it may be the next section's.
+	 */
+	function takeSessionFor(
+		cohort: SessionCohort,
+		initializing: boolean,
+	): SectionControllerSessionState | null {
+		noteSession();
+		const assignment = sessionAssignment;
+		if (!assignment) return null;
+		if (!sameSessionCohort(assignment.cohort, cohort)) {
+			if (initializing) sessionAssignment = null;
+			return null;
+		}
+		sessionAssignment = null;
+		return assignment.value;
 	}
 
 	function assignSessionToController(): void {
-		const next = takeUnconsumedSession();
+		const cohort = resolvedCohort;
 		const coordinator = effectiveCoordinator;
-		if (!next || !coordinator) return;
-		const controller = coordinator.getSectionController({
-			sectionId: effectiveSectionId,
-			attemptId: attemptId || undefined,
-		});
+		if (!cohort || !coordinator) return;
+		const next = takeSessionFor(cohort, false);
+		if (!next) return;
+		const controller = coordinator.getSectionController(cohort);
 		if (!controller) return;
 		const resolved = resolveSectionSessionAssignment(
 			controller.getSession?.() ?? null,
@@ -1316,11 +1354,12 @@ const DEFAULT_ENV = {
 	});
 	const hostRuntimeContextValue = $derived.by(
 		(): AssessmentToolkitHostRuntimeContext | null => {
-			if (!effectiveCoordinator) return null;
+			if (!effectiveCoordinator || !host) return null;
 			return {
 				runtimeId,
 				coordinator: effectiveCoordinator,
 				sectionBound: hasSection,
+				eventTarget: host,
 			};
 		},
 	);
@@ -1690,8 +1729,8 @@ const DEFAULT_ENV = {
 			untrack(() => commitPendingSessions(host, { reason: "teardown", logger }));
 		}
 
-		sessionControllerResolved = false;
-		const initialSession = untrack(() => takeUnconsumedSession());
+		resolvedCohort = null;
+		const initialSession = untrack(() => takeSessionFor(cohort, true));
 
 		void sectionBinding
 			.initialize({
@@ -1715,7 +1754,7 @@ const DEFAULT_ENV = {
 			})
 			.then(() => {
 				if (cancelled) return;
-				sessionControllerResolved = true;
+				resolvedCohort = cohort;
 				const banner = untrack(() => frameworkErrorModel);
 				if (banner && frameworkErrorKey(banner) === sectionFailureBannerKey) {
 					clearFrameworkErrorBanner();
@@ -1741,7 +1780,9 @@ const DEFAULT_ENV = {
 						coordinator: effectiveCoordinator,
 					});
 					emit("section-ready", {
-						sectionId: effectiveSectionId,
+						sectionId: cohort.sectionId,
+						attemptId: cohort.attemptId,
+						controller: effectiveCoordinator.getSectionController(cohort) ?? null,
 					});
 				});
 			})
@@ -1763,6 +1804,7 @@ const DEFAULT_ENV = {
 							kind: "runtime-init",
 							source: "pie-assessment-toolkit",
 							error,
+							scope: "cohort",
 						}),
 					);
 				}
@@ -1776,7 +1818,8 @@ const DEFAULT_ENV = {
 	$effect(() => {
 		void session;
 		untrack(() => {
-			if (sessionControllerResolved) assignSessionToController();
+			noteSession();
+			assignSessionToController();
 		});
 	});
 

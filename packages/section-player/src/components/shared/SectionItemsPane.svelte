@@ -323,6 +323,7 @@
 				`renderablesCount=${preloadedRenderables.length}`,
 			],
 			recoverable: false,
+			scope: "cohort",
 			cause,
 		});
 		try {

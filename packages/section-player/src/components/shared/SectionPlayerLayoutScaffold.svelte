@@ -135,7 +135,17 @@
 		onCompositionChanged?.(event);
 	}
 
+	// The base's own toolkit renders in the base's shadow root. A ready event
+	// from any other toolkit, such as one nested in the layout's content, is not
+	// this section's.
+	function isOwnToolkitEvent(event: Event): boolean {
+		const origin = event.composedPath()[0] as Node | undefined;
+		const base = event.currentTarget as Element | null;
+		return Boolean(base?.shadowRoot) && origin?.getRootNode?.() === base?.shadowRoot;
+	}
+
 	function handleSectionReady(event: Event) {
+		if (!isOwnToolkitEvent(event)) return;
 		onSectionReady?.(event);
 	}
 
@@ -144,10 +154,8 @@
 	}
 
 	function handleToolkitReady(event: Event) {
+		if (!isOwnToolkitEvent(event)) return;
 		onToolkitReady?.(event);
-		// The base's own toolkit is in its shadow root, so its event arrives
-		// retargeted to the base; a nested toolkit's keeps its own target.
-		if (event.target !== event.currentTarget) return;
 		subscribeNavigationStatus(
 			(event as CustomEvent<{ coordinator?: ToolkitCoordinatorApi }>).detail
 				?.coordinator ?? null,

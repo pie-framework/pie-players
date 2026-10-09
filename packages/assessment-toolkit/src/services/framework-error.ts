@@ -43,6 +43,14 @@ export type FrameworkErrorKind =
 
 export type FrameworkErrorSeverity = "warning" | "error";
 
+/**
+ * What a non-recoverable error takes down. `cohort`: the section it was reported
+ * for, so the section player's readiness recovers when the learner moves to
+ * another section. `runtime`: the coordinator or one of its tools, which every
+ * later section runs on, so readiness stays failed. Set by the report site.
+ */
+export type FrameworkErrorScope = "cohort" | "runtime";
+
 export interface FrameworkErrorModel {
 	kind: FrameworkErrorKind;
 	severity: FrameworkErrorSeverity;
@@ -50,6 +58,7 @@ export interface FrameworkErrorModel {
 	message: string;
 	details: string[];
 	recoverable: boolean;
+	scope: FrameworkErrorScope;
 	cause?: unknown;
 }
 
@@ -60,6 +69,8 @@ export function toFrameworkErrorModel(args: {
 	message: string;
 	details?: string[];
 	recoverable?: boolean;
+	/** Defaults to `runtime`. */
+	scope?: FrameworkErrorScope;
 	cause?: unknown;
 }): FrameworkErrorModel {
 	return {
@@ -69,6 +80,7 @@ export function toFrameworkErrorModel(args: {
 		message: args.message,
 		details: [...(args.details || [])],
 		recoverable: args.recoverable === true,
+		scope: args.scope ?? "runtime",
 		cause: args.cause,
 	};
 }
@@ -78,6 +90,7 @@ export function frameworkErrorFromUnknown(args: {
 	source: string;
 	error: unknown;
 	recoverable?: boolean;
+	scope?: FrameworkErrorScope;
 }): FrameworkErrorModel {
 	const message =
 		args.error instanceof Error && args.error.message.trim().length > 0
@@ -88,6 +101,7 @@ export function frameworkErrorFromUnknown(args: {
 		source: args.source,
 		message,
 		recoverable: args.recoverable,
+		scope: args.scope,
 		cause: args.error,
 	});
 }
@@ -143,14 +157,13 @@ const COORDINATOR_PHASE_TO_KIND: Record<
  * original `error` as `cause` so hosts that care about the underlying
  * `Error` keep getting it.
  *
- * Recoverable defaults to `false` (most coordinator-phase failures are
- * not auto-recovered today). Override with `recoverable: true` for the
- * phases where the coordinator continues operating after the failure.
+ * `recoverable` defaults to `false` and `scope` to `runtime`.
  */
 export function frameworkErrorFromCoordinatorContext(args: {
 	error: unknown;
 	context: FrameworkErrorCoordinatorContext;
 	recoverable?: boolean;
+	scope?: FrameworkErrorScope;
 }): FrameworkErrorModel {
 	const kind = COORDINATOR_PHASE_TO_KIND[args.context.phase];
 	const source = args.context.toolId
@@ -161,6 +174,7 @@ export function frameworkErrorFromCoordinatorContext(args: {
 		source,
 		error: args.error,
 		recoverable: args.recoverable,
+		scope: args.scope,
 	});
 }
 

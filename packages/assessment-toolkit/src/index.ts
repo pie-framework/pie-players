@@ -209,6 +209,7 @@ export type {
 export type {
 	FrameworkErrorKind,
 	FrameworkErrorModel,
+	FrameworkErrorScope,
 	FrameworkErrorSeverity,
 } from "./services/framework-error.js";
 export {

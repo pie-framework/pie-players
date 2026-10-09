@@ -36,13 +36,10 @@
 				type: "String",
 			},
 			onFrameworkError: { type: "Object", reflect: false },
-			// M6 canonical stage-change callback. Mirrors
-			// `runtime.onStageChange`; resolver picks runtime over prop.
+			// Callback form of `pie-stage-change`; `runtime.onStageChange` wins.
 			onStageChange: { type: "Object", reflect: false },
-			// M6 canonical loading-complete callback. Mirrors
-			// `runtime.onLoadingComplete`; the kernel invokes it at the
-			// same emit point as `pie-loading-complete` so callback and
-			// event stay in lockstep per cohort.
+			// Callback form of `pie-loading-complete`, invoked at the same emit
+			// point; `runtime.onLoadingComplete` wins.
 			onLoadingComplete: { type: "Object", reflect: false },
 		},
 		// The host methods, callable before the component mounts.

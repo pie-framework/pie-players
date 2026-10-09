@@ -98,6 +98,12 @@ export interface AssessmentToolkitHostRuntimeContext {
 	 * to the section. Without one the host owns its players and their events.
 	 */
 	sectionBound: boolean;
+	/**
+	 * The element the runtime hears its shells' events on. A shell whose host
+	 * has left the document, as on teardown, dispatches here: an event bubbling
+	 * from a detached host reaches nothing.
+	 */
+	eventTarget: EventTarget;
 }
 
 export const assessmentToolkitHostRuntimeContext =

@@ -38,7 +38,7 @@
 	} from "@pie-players/pie-assessment-toolkit";
 	import {
 		catalogOwnerContextFor,
-		connectAssessmentToolkitRuntimeContext,
+		connectToolRuntimeContext,
 		dispatchCrossBoundaryEvent,
 		PIE_INTERNAL_MEDIA_TIME_SOURCE_EVENT,
 		type InternalMediaTimeSourceDetail,
@@ -165,7 +165,7 @@
 
 	$effect(() => {
 		if (!contextAnchor) return;
-		return connectAssessmentToolkitRuntimeContext(contextAnchor, (value) => {
+		return connectToolRuntimeContext(contextAnchor, (value) => {
 			runtimeContext = value;
 		});
 	});

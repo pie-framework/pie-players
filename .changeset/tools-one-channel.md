@@ -4,9 +4,7 @@
 "@pie-players/pie-section-player": patch
 "@pie-players/pie-tool-annotation-toolbar": patch
 "@pie-players/pie-tool-answer-eliminator": patch
-"@pie-players/pie-tool-calculator-cortex": patch
 "@pie-players/pie-tool-calculator-desmos": patch
-"@pie-players/pie-tool-calculator-geogebra": patch
 "@pie-players/pie-tool-calculator-shared": patch
 "@pie-players/pie-tool-sign-language": patch
 ---

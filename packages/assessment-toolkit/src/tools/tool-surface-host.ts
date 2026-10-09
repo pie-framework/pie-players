@@ -1,19 +1,15 @@
 /**
  * Headless host for capabilities that render into a renderer's surfaces.
  *
- * The interface deliberately exposes only current input, a two-boolean snapshot,
- * and teardown. Discovery, policy/catalog invalidation, content resolution, lazy
+ * The interface exposes only current input, a two-boolean snapshot, and
+ * teardown. Discovery, policy/catalog invalidation, content resolution, lazy
  * loading, DOM reconciliation, error isolation, and registry observation stay
  * inside this module. Svelte callers are geometry adapters over this seam.
  *
- * It lives here rather than in `section-player`, where it was written, because a
- * second renderer now opens a surface: the annotation toolbar hosts the
- * capabilities that act on a text selection. Two copies of mount/reconcile/
- * registry-observation would drift, and the drift would be invisible until one
- * renderer stopped honouring the grant-AND-content rule. Nothing about the module
- * was section-shaped — it already imported only from this package — so the move
- * is a relocation, not a rewrite. The one thing that *was* section-shaped is the
- * name it reported errors under, which is now {@link ToolSurfaceHostOptions.hostLabel}.
+ * Every renderer that opens a surface shares this one host, so each honours the
+ * grant-AND-content rule the same way: the section player's cards and the
+ * annotation toolbar's selection surface. Errors are reported under
+ * {@link ToolSurfaceHostOptions.hostLabel}.
  */
 
 import type { ToolScope } from "../policy/core/decision-types.js";

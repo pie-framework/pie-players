@@ -113,12 +113,19 @@ export interface ToolbarContext {
 		size?: string;
 	};
 	getScopeElement?: () => HTMLElement | null;
-	getGlobalElementId?: () => string | null;
+	/**
+	 * State key of one PIE element in this toolbar's item, by its model id, for
+	 * `elementToolStateStore`. `null` until the store and the ids it needs are
+	 * known.
+	 */
+	getGlobalElementId?: (elementId: string) => string | null;
 	toolCoordinator: ToolCoordinatorApi | null;
 	toolkitCoordinator: ToolkitCoordinatorApi | null;
 	ttsService: TtsServiceApi | null;
 	elementToolStateStore: ElementToolStateStoreApi | null;
+	/** Toggles this toolbar's instance of a base tool id. */
 	toggleTool: (toolId: string) => void;
+	/** Whether this toolbar's instance of a base tool id is shown. */
 	isToolVisible: (toolId: string) => boolean;
 	subscribeVisibility: ((listener: () => void) => () => void) | null;
 	componentOverrides?: ToolComponentOverrides;
@@ -901,6 +908,8 @@ export class ToolRegistry {
 	private watchedUndefinedToolElements = new Set<string>();
 	private moduleLoaders = new Map<string, ToolModuleLoader>();
 	private loadedToolModules = new Set<string>();
+	private warnedLoaderReplacements = new Set<string>();
+	private warnedUnregisteredAllowedTools = new Set<string>();
 	private moduleLoadPromises = new Map<string, Promise<void>>();
 	private changeListeners = new Set<ToolRegistryChangeListener>();
 
@@ -1113,7 +1122,11 @@ export class ToolRegistry {
 		for (const toolId of allowedToolIds) {
 			const tool = this.get(toolId);
 			if (!tool) {
-				console.warn(`Tool '${toolId}' is allowed but not registered`);
+				// Toolbars filter on every render; one warning per id carries it.
+				if (!this.warnedUnregisteredAllowedTools.has(toolId)) {
+					this.warnedUnregisteredAllowedTools.add(toolId);
+					console.warn(`Tool '${toolId}' is allowed but not registered`);
+				}
 				continue;
 			}
 
@@ -1226,6 +1239,8 @@ export class ToolRegistry {
 	/**
 	 * Register lazy module loaders by toolId.
 	 * Toolbars call ensureToolModuleLoaded(toolId) before instance creation.
+	 * A tool whose module has loaded, or is loading, keeps its loader: its
+	 * elements are already defined, so a replacement could never take effect.
 	 */
 	setToolModuleLoaders(
 		loaders: Partial<Record<string, ToolModuleLoader>>,
@@ -1245,12 +1260,27 @@ export class ToolRegistry {
 		const changedToolIds: string[] = [];
 		for (const [toolId, loader] of entries) {
 			if (this.moduleLoaders.get(toolId) === loader) continue;
+			if (
+				this.loadedToolModules.has(toolId) ||
+				this.moduleLoadPromises.has(toolId)
+			) {
+				this.warnLoaderReplacedAfterLoad(toolId);
+				continue;
+			}
 			this.moduleLoaders.set(toolId, loader);
 			changedToolIds.push(toolId);
 		}
 		if (changedToolIds.length > 0) {
 			this.emitChange({ kind: "module-loaders", toolIds: changedToolIds });
 		}
+	}
+
+	private warnLoaderReplacedAfterLoad(toolId: string): void {
+		if (this.warnedLoaderReplacements.has(toolId)) return;
+		this.warnedLoaderReplacements.add(toolId);
+		console.warn(
+			`[ToolRegistry] Ignored a new module loader for "${toolId}": its module already loaded, so the elements it defines stay in place. Register loaders before the tool first renders.`,
+		);
 	}
 
 	/**
@@ -1296,9 +1326,7 @@ export class ToolRegistry {
 			return;
 		}
 		const overrides = this.componentOverrides;
-		if (overrides.toolComponentFactories?.[toolId] || overrides.toolComponentFactory) {
-			return;
-		}
+		if (overrides.toolComponentFactories?.[toolId]) return;
 		let tagName: string;
 		try {
 			tagName = resolveToolTag(toolId, overrides);
@@ -1314,7 +1342,7 @@ export class ToolRegistry {
 			warnOncePerDocument(
 				doc,
 				`undefinedToolElement.${toolId}`,
-				`[ToolRegistry] Tool "${toolId}" renders <${tagName}>, which is still undefined after ${PENDING_INPUT_WARNING_DELAY_MS / 1000} s, and its registry has no module loader for it. Pass toolModuleLoaders to createPackagedToolRegistry (createDefaultToolModuleLoaders() from @pie-players/pie-default-tool-loaders loads the stock tools), register one with setToolModuleLoaders, or import the tool's package before it renders. Reported once per page.`,
+				`[ToolRegistry] Tool "${toolId}" renders <${tagName}>, which is still undefined after ${PENDING_INPUT_WARNING_DELAY_MS / 1000} s, and its registry has no module loader for it. Pass toolModuleLoaders to createPackagedToolRegistry (DEFAULT_TOOL_MODULE_LOADERS from @pie-players/pie-default-tool-loaders loads the stock tools), register one with setToolModuleLoaders, or import the tool's package before it renders. Reported once per page.`,
 			);
 		}, PENDING_INPUT_WARNING_DELAY_MS);
 		void customElements.whenDefined(tagName).then(() => clearTimeout(timer));
@@ -1388,9 +1416,7 @@ export class ToolRegistry {
 	 */
 	renderForSurface(
 		toolId: string,
-		context: Omit<ToolSurfaceRenderContext, "componentOverrides"> & {
-			componentOverrides?: ToolComponentOverrides;
-		},
+		context: ToolSurfaceRenderContext,
 	): ToolSurfaceRenderResult | null {
 		const tool = this.get(toolId);
 		if (!tool) {

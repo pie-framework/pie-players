@@ -270,12 +270,6 @@ const customRegistry = createPackagedToolRegistry({
   }
 });
 
-// Optional: provide only section-level default loaders
-import {
-  registerSectionToolModuleLoaders
-} from '@pie-players/pie-default-tool-loaders';
-registerSectionToolModuleLoaders(customRegistry);
-
 // Or register only the packaged tools you need
 const selectiveRegistry = createPackagedToolRegistry({
   toolIds: ["calculator", "textToSpeech"]

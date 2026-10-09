@@ -20,8 +20,8 @@
 		ToolSelectionAction
 	} from '@pie-players/pie-assessment-toolkit/tools/registration';
 	import {
-		connectAssessmentToolkitRegionScopeContext,
-		connectAssessmentToolkitShellContext,
+		connectToolRegionScopeContext,
+		connectToolShellContext,
 		connectToolRuntimeContext,
 		HighlightColor,
 		isTTSStartFailure
@@ -860,13 +860,13 @@
 
 	$effect(() => {
 		if (!contextHostElement) return;
-		const cleanupShell = connectAssessmentToolkitShellContext(
+		const cleanupShell = connectToolShellContext(
 			contextHostElement,
 			(value: AssessmentToolkitShellContext) => {
 				shellContext = value;
 			}
 		);
-		const cleanupRegion = connectAssessmentToolkitRegionScopeContext(
+		const cleanupRegion = connectToolRegionScopeContext(
 			contextHostElement,
 			(value: AssessmentToolkitRegionScopeContext) => {
 				regionScopeContext = value;

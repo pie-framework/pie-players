@@ -28,6 +28,7 @@ import type {
 	ToolRegistration,
 	ToolRegistry,
 } from "../../src/services/ToolRegistry.js";
+import type { ToolCoordinatorApi } from "../../src/services/interfaces.js";
 import type { ToolContext } from "../../src/services/tool-context.js";
 
 /** A pass-1 entry: a placed tool, granted when `required` or `alwaysAvailable`. */
@@ -41,6 +42,8 @@ export interface ItemToolbarMountOptions {
 	/** The `tools` attribute, which is pass 1 only on the standalone path. */
 	tools?: string;
 	item?: ItemEntity | null;
+	/** Published beside the coordinator; needs `placed`. */
+	toolCoordinator?: ToolCoordinatorApi;
 }
 
 export interface MountedItemToolbar {
@@ -111,6 +114,7 @@ function publishCoordinator(
 	host: HTMLElement,
 	registry: ToolRegistry,
 	placed: PlacedTool[],
+	toolCoordinator?: ToolCoordinatorApi,
 ): ContextProvider<typeof assessmentToolkitRuntimeContext> {
 	const decision: ToolPolicyDecision = {
 		visibleTools: placed.map((entry) => ({
@@ -132,6 +136,7 @@ function publishCoordinator(
 		context: assessmentToolkitRuntimeContext,
 		initialValue: {
 			toolkitCoordinator,
+			...(toolCoordinator ? { toolCoordinator } : {}),
 		} as unknown as AssessmentToolkitRuntimeContext,
 	});
 	provider.connect();
@@ -145,7 +150,12 @@ export async function mountItemToolbar(
 	const host = document.createElement("div");
 	document.body.append(host);
 	const provider = options.placed
-		? publishCoordinator(host, options.registry, options.placed)
+		? publishCoordinator(
+				host,
+				options.registry,
+				options.placed,
+				options.toolCoordinator,
+			)
 		: null;
 
 	const toolbar = document.createElement("pie-item-toolbar") as HTMLElement &

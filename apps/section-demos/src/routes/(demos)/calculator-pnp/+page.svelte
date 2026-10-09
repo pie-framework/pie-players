@@ -14,7 +14,7 @@
 	import '@pie-players/pie-item-player';
 	import type { ToolContextResolverMap } from '@pie-players/pie-assessment-toolkit';
 	import type { AssessmentEntity, ItemEntity } from '@pie-players/pie-players-shared/types';
-	import { createSectionDemoToolRegistryForCalculator } from '#lib/demo-runtime/default-tool-registry.js';
+	import { createSectionDemoToolRegistry } from '#lib/demo-runtime/default-tool-registry.js';
 	import { withDemoLoaderOptions } from '#lib/demo-runtime/demo-player-config.js';
 	import type { PageData } from './$types';
 
@@ -38,7 +38,7 @@
 	];
 
 	const item = $derived((data.section as any)?.assessmentItemRefs?.[0]?.item as ItemEntity);
-	const toolRegistry = createSectionDemoToolRegistryForCalculator('cortex');
+	const toolRegistry = createSectionDemoToolRegistry();
 	const tools = {
 		placement: { item: ['textToSpeech', 'calculator'] },
 		providers: { calculator: { provider: { id: 'calculator-cortex' } } }

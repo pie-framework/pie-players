@@ -17,7 +17,7 @@ import type { MessageKey } from "@pie-players/pie-players-shared/i18n/types";
 import { hasMathContent } from "@pie-players/pie-assessment-toolkit/tools/registration";
 import { createScopedToolId } from "@pie-players/pie-assessment-toolkit/tools/registration";
 import { createToolElement } from "@pie-players/pie-assessment-toolkit/tools/registration";
-import type { CalculatorProviderConfig } from "@pie-players/pie-assessment-toolkit/tools/client";
+import type { CalculatorProviderConfig } from "@pie-players/pie-calculator";
 import { CortexToolProvider } from "../calculator-providers/CortexToolProvider.js";
 import { DesmosToolProvider } from "../calculator-providers/DesmosToolProvider.js";
 import { GeoGebraToolProvider } from "../calculator-providers/GeoGebraToolProvider.js";
@@ -250,7 +250,7 @@ export const calculatorToolRegistration: ToolRegistration = {
 			ariaLabel: displayName,
 			tooltip: displayName,
 			onClick: () => toolbarContext.toggleTool(this.toolId),
-			active: toolbarContext.isToolVisible(fullToolId),
+			active: toolbarContext.isToolVisible(this.toolId),
 		};
 		let lastVisibleState: boolean | undefined = button.active;
 		if (overlay.visible !== button.active) {
@@ -331,7 +331,7 @@ export const calculatorToolRegistration: ToolRegistration = {
 			],
 			button,
 			sync: () => {
-				const active = toolbarContext.isToolVisible(fullToolId);
+				const active = toolbarContext.isToolVisible(this.toolId);
 				button.active = active;
 				button.label = displayName;
 				// Static across the toggle. The previous `Close ${name.toLowerCase()}`
@@ -354,7 +354,7 @@ export const calculatorToolRegistration: ToolRegistration = {
 			subscribeActive: (callback: (active: boolean) => void) => {
 				if (!toolbarContext.subscribeVisibility) return () => {};
 				return toolbarContext.subscribeVisibility(() => {
-					callback(toolbarContext.isToolVisible(fullToolId));
+					callback(toolbarContext.isToolVisible(this.toolId));
 				});
 			},
 		};

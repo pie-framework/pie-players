@@ -23,7 +23,6 @@ export type {
 	TTSHighlightTargetResolverProvider,
 	TTSHighlightTargetResolverRuntime,
 } from "./services/tts/highlight-target-resolver.js";
-export { connectAssessmentToolkitRuntimeContext } from "./context/runtime-context-consumer.js";
 export {
 	catalogOwnerContextFor,
 	type CatalogOwnerContext,
@@ -68,6 +67,7 @@ export type {
 	SpeakOptions,
 	TtsServiceApi,
 	ToolState,
+	ToolStateFilter,
 } from "./services/interfaces.js";
 
 // ============================================================================

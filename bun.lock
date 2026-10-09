@@ -251,9 +251,7 @@
         "@pie-players/pie-theme": "workspace:*",
         "@pie-players/pie-tool-annotation-toolbar": "workspace:*",
         "@pie-players/pie-tool-answer-eliminator": "workspace:*",
-        "@pie-players/pie-tool-calculator-cortex": "workspace:*",
         "@pie-players/pie-tool-calculator-desmos": "workspace:*",
-        "@pie-players/pie-tool-calculator-geogebra": "workspace:*",
         "@pie-players/pie-tool-dictionary": "workspace:*",
         "@pie-players/pie-tool-picture-dictionary": "workspace:*",
         "@pie-players/pie-tool-sign-language": "workspace:*",
@@ -377,8 +375,6 @@
         "@pie-players/pie-players-shared": "workspace:*",
         "@pie-players/pie-tool-annotation-toolbar": "workspace:*",
         "@pie-players/pie-tool-answer-eliminator": "workspace:*",
-        "@pie-players/pie-tool-calculator-cortex": "workspace:*",
-        "@pie-players/pie-tool-calculator-geogebra": "workspace:*",
         "@pie-players/pie-tool-calculator-shared": "workspace:*",
         "@pie-players/pie-tool-dictionary": "workspace:*",
         "@pie-players/pie-tool-graph": "workspace:*",
@@ -640,24 +636,6 @@
         "vite-plugin-dts": "^5.1.2",
       },
     },
-    "packages/tool-calculator-cortex": {
-      "name": "@pie-players/pie-tool-calculator-cortex",
-      "version": "0.3.74",
-      "dependencies": {
-        "@pie-players/pie-assessment-toolkit": "workspace:*",
-        "@pie-players/pie-players-shared": "workspace:*",
-      },
-      "devDependencies": {
-        "@biomejs/biome": "^2.5.15",
-        "@pie-players/pie-tool-calculator-shared": "workspace:*",
-        "@sveltejs/vite-plugin-svelte": "^7.3.1",
-        "svelte": "^5.57.1",
-        "svelte-check": "^4.7.6",
-        "typescript": "^5.9.3",
-        "vite": "^8.3.2",
-        "vite-plugin-dts": "^5.1.2",
-      },
-    },
     "packages/tool-calculator-desmos": {
       "name": "@pie-players/pie-tool-calculator-desmos",
       "version": "0.3.74",
@@ -668,42 +646,6 @@
       "devDependencies": {
         "@biomejs/biome": "^2.5.15",
         "@pie-players/pie-calculator-desmos": "workspace:*",
-        "@sveltejs/vite-plugin-svelte": "^7.3.1",
-        "svelte": "^5.57.1",
-        "svelte-check": "^4.7.6",
-        "typescript": "^5.9.3",
-        "vite": "^8.3.2",
-        "vite-plugin-dts": "^5.1.2",
-      },
-    },
-    "packages/tool-calculator-geogebra": {
-      "name": "@pie-players/pie-tool-calculator-geogebra",
-      "version": "0.3.74",
-      "dependencies": {
-        "@pie-players/pie-assessment-toolkit": "workspace:*",
-        "@pie-players/pie-players-shared": "workspace:*",
-      },
-      "devDependencies": {
-        "@biomejs/biome": "^2.5.15",
-        "@pie-players/pie-tool-calculator-shared": "workspace:*",
-        "@sveltejs/vite-plugin-svelte": "^7.3.1",
-        "svelte": "^5.57.1",
-        "svelte-check": "^4.7.6",
-        "typescript": "^5.9.3",
-        "vite": "^8.3.2",
-        "vite-plugin-dts": "^5.1.2",
-      },
-    },
-    "packages/tool-calculator-inline-cortex": {
-      "name": "@pie-players/pie-tool-calculator-inline-cortex",
-      "version": "0.3.74",
-      "dependencies": {
-        "@pie-players/pie-assessment-toolkit": "workspace:*",
-        "@pie-players/pie-players-shared": "workspace:*",
-      },
-      "devDependencies": {
-        "@biomejs/biome": "^2.5.15",
-        "@pie-players/pie-tool-calculator-shared": "workspace:*",
         "@sveltejs/vite-plugin-svelte": "^7.3.1",
         "svelte": "^5.57.1",
         "svelte-check": "^4.7.6",
@@ -730,33 +672,18 @@
         "vite-plugin-dts": "^5.1.2",
       },
     },
-    "packages/tool-calculator-inline-geogebra": {
-      "name": "@pie-players/pie-tool-calculator-inline-geogebra",
-      "version": "0.3.74",
-      "dependencies": {
-        "@pie-players/pie-assessment-toolkit": "workspace:*",
-        "@pie-players/pie-players-shared": "workspace:*",
-      },
-      "devDependencies": {
-        "@biomejs/biome": "^2.5.15",
-        "@pie-players/pie-tool-calculator-shared": "workspace:*",
-        "@sveltejs/vite-plugin-svelte": "^7.3.1",
-        "svelte": "^5.57.1",
-        "svelte-check": "^4.7.6",
-        "typescript": "^5.9.3",
-        "vite": "^8.3.2",
-        "vite-plugin-dts": "^5.1.2",
-      },
-    },
     "packages/tool-calculator-shared": {
       "name": "@pie-players/pie-tool-calculator-shared",
       "version": "0.3.74",
       "dependencies": {
         "@pie-players/pie-assessment-toolkit": "workspace:*",
+        "@pie-players/pie-calculator": "workspace:*",
         "@pie-players/pie-players-shared": "workspace:*",
       },
       "devDependencies": {
         "@biomejs/biome": "^2.5.15",
+        "@happy-dom/global-registrator": "^20.14.5",
+        "@pie-players/pie-context": "workspace:*",
         "@sveltejs/vite-plugin-svelte": "^7.3.1",
         "svelte": "^5.57.1",
         "svelte-check": "^4.7.6",
@@ -1564,17 +1491,13 @@
 
     "@pie-players/pie-tool-answer-eliminator": ["@pie-players/pie-tool-answer-eliminator@workspace:packages/tool-answer-eliminator"],
 
-    "@pie-players/pie-tool-calculator-cortex": ["@pie-players/pie-tool-calculator-cortex@workspace:packages/tool-calculator-cortex"],
 
     "@pie-players/pie-tool-calculator-desmos": ["@pie-players/pie-tool-calculator-desmos@workspace:packages/tool-calculator-desmos"],
 
-    "@pie-players/pie-tool-calculator-geogebra": ["@pie-players/pie-tool-calculator-geogebra@workspace:packages/tool-calculator-geogebra"],
 
-    "@pie-players/pie-tool-calculator-inline-cortex": ["@pie-players/pie-tool-calculator-inline-cortex@workspace:packages/tool-calculator-inline-cortex"],
 
     "@pie-players/pie-tool-calculator-inline-desmos": ["@pie-players/pie-tool-calculator-inline-desmos@workspace:packages/tool-calculator-inline-desmos"],
 
-    "@pie-players/pie-tool-calculator-inline-geogebra": ["@pie-players/pie-tool-calculator-inline-geogebra@workspace:packages/tool-calculator-inline-geogebra"],
 
     "@pie-players/pie-tool-calculator-shared": ["@pie-players/pie-tool-calculator-shared@workspace:packages/tool-calculator-shared"],
 

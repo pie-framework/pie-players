@@ -83,4 +83,68 @@ describe("ToolCoordinator activation persistence", () => {
 		);
 		expect(coordinator.isToolVisible(TOOL_ID)).toBe(false);
 	});
+
+	test("hiding during the unregister gap holds through re-registration", () => {
+		const coordinator = new ToolCoordinator();
+		coordinator.registerTool(TOOL_ID, "Answer Eliminator");
+		coordinator.showTool(TOOL_ID);
+		coordinator.unregisterTool(TOOL_ID);
+
+		coordinator.hideTool(TOOL_ID);
+		coordinator.registerTool(
+			TOOL_ID,
+			"Answer Eliminator",
+			document.createElement("div"),
+		);
+		expect(coordinator.isToolVisible(TOOL_ID)).toBe(false);
+	});
+
+	test("getVisibleTools agrees with isToolVisible, gap included", () => {
+		const coordinator = new ToolCoordinator();
+		coordinator.registerTool("calculator:item:i1", "Calculator");
+		coordinator.showTool("calculator:item:i1");
+		coordinator.unregisterTool("calculator:item:i1");
+
+		expect(coordinator.isToolVisible("calculator:item:i1")).toBe(true);
+		expect(coordinator.getVisibleTools().map((tool) => tool.id)).toEqual([
+			"calculator:item:i1",
+		]);
+	});
+
+	test("a known id takes the name and element of a later registration", () => {
+		const coordinator = new ToolCoordinator();
+		coordinator.registerTool("ruler:item:i1", "ruler");
+		const element = document.createElement("div");
+		coordinator.registerTool("ruler:item:i1", "Ruler", element);
+
+		expect(coordinator.getToolState("ruler:item:i1")).toMatchObject({
+			name: "Ruler",
+			element,
+		});
+	});
+
+	test("filters by base id, and hides all instances in one notification", () => {
+		const coordinator = new ToolCoordinator();
+		for (const id of ["calculator:item:i1", "calculator:item:i2", "ruler:item:i1"]) {
+			coordinator.registerTool(id, id);
+			coordinator.showTool(id);
+		}
+		expect(
+			coordinator.getVisibleTools({ baseId: "calculator" }).map((tool) => tool.id),
+		).toEqual(["calculator:item:i1", "calculator:item:i2"]);
+
+		let notifications = 0;
+		coordinator.subscribe(() => {
+			notifications += 1;
+		});
+		coordinator.hideAllTools({ baseId: "calculator" });
+		expect(notifications).toBe(1);
+		expect(coordinator.getVisibleTools().map((tool) => tool.id)).toEqual([
+			"ruler:item:i1",
+		]);
+
+		coordinator.hideAllTools();
+		expect(notifications).toBe(2);
+		expect(coordinator.getVisibleTools()).toEqual([]);
+	});
 });

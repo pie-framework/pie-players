@@ -37,15 +37,15 @@ describe("ToolCoordinator stacking", () => {
 		const coordinator = new ToolCoordinator();
 		const shell = openToolbarTool(
 			coordinator,
-			"ruler:section:s1",
-			ZIndexLayer.TOOL,
+			"theme:item:i1",
+			ZIndexLayer.MODAL,
 		);
 
-		expect(coordinator.getToolState("ruler:section:s1")?.layer).toBe(
-			ZIndexLayer.TOOL,
+		expect(coordinator.getToolState("theme:item:i1")?.layer).toBe(
+			ZIndexLayer.MODAL,
 		);
-		expect(zIndexOf(shell)).toBeGreaterThan(ZIndexLayer.TOOL);
-		expect(zIndexOf(shell)).toBeLessThan(ZIndexLayer.MODAL);
+		expect(zIndexOf(shell)).toBeGreaterThan(ZIndexLayer.MODAL);
+		expect(zIndexOf(shell)).toBeLessThan(ZIndexLayer.CONTROL);
 	});
 
 	test("a window bound while its tool is shown comes to the front of its layer", () => {
@@ -68,8 +68,8 @@ describe("ToolCoordinator stacking", () => {
 			coordinator.bringToFront(i % 2 === 0 ? first : second);
 		}
 
-		expect(zIndexOf(second)).toBe(ZIndexLayer.MODAL + 2);
-		expect(zIndexOf(first)).toBe(ZIndexLayer.MODAL + 1);
+		expect(zIndexOf(second)).toBe(ZIndexLayer.TOOL + 2);
+		expect(zIndexOf(first)).toBe(ZIndexLayer.TOOL + 1);
 	});
 
 	test("the outermost element stacks: binding an element inside the bound window keeps the window", () => {

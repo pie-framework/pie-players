@@ -190,7 +190,11 @@ describe("ToolPolicyEngine", () => {
 			scope: { level: "item", scopeId: "i1" },
 		});
 		expect(after.visibleTools[0].alwaysAvailable).toBe(true);
-		expect(after.visibleTools[0].sources).toContain("pnp.pnp-support");
+		expect(
+			after.provenance.features
+				.get("calculator")
+				?.allDecisions.map(({ rule }) => rule),
+		).toContain("pnp-support");
 	});
 
 	test("an item's registered settings govern its own toolbar and no other", () => {
@@ -296,6 +300,10 @@ describe("ToolPolicyEngine", () => {
 			scope: { level: "item", scopeId: "i1" },
 		});
 		expect(after.visibleTools[0].alwaysAvailable).toBe(false);
-		expect(after.visibleTools[0].sources).not.toContain("pnp.pnp-support");
+		expect(
+			after.provenance.features
+				.get("calculator")
+				?.allDecisions.map(({ rule }) => rule),
+		).not.toContain("pnp-support");
 	});
 });

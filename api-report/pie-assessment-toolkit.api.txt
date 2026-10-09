@@ -98,7 +98,6 @@
   type ShellScopeState
   type SpeakOptions
   type TTSConfig
-  type TTSFeature
   type TTSHighlightContext
   type TTSHighlightTargetResolver
   type TTSHighlightTargetResolverProvider
@@ -110,17 +109,16 @@
   type TTSSpeechSegment
   type TTSSpeedOption
   type TTSSpeedOptionConfig
-  type TTSToolConfig
   type TestAttemptItemSession
   type TestAttemptSession
   type TestAttemptSessionNavigationState
   type TestAttemptSessionRealization
   type TextDirection
+  type TextToSpeechToolProviderConfig
   type ToolActivation
   type ToolComponentFactory
   type ToolComponentFactoryMap
   type ToolComponentOverrides
-  type ToolConfig
   type ToolConfigDiagnostic
   type ToolConfigDiagnosticSeverity
   type ToolConfigStrictness
@@ -167,8 +165,6 @@
   type ToolkitCoordinatorConfig
   type ToolkitCoordinatorHooks
   type ToolkitErrorContext
-  type ToolkitInitStatus
-  type ToolkitServiceBundle
   type ToolsConfigInput
   type TtsServiceApi
   ZIndexLayer
@@ -204,19 +200,17 @@
   (no named exports)
 
 ./policy/engine
-  type CustomPolicySourceTag
   type FeaturePolicyDecision
   type FeaturePolicyRule
   type ItemSettingNotAppliedDetails
   type OverrideBlockedDetails
+  type PlacementMissingDetails
   type PnpEnforcementMode
   type PnpPolicySourceRule
-  type PnpPolicySourceTag
   type PolicySource
   type PolicySourceDecisionContext
   type PolicySourceProvenanceEntry
   type PolicySourceResult
-  type PolicySourceTag
   type RequiredToolBlockedDetails
   type ResolvedEngineInputs
   type ToolPolicyChangeEvent
@@ -241,12 +235,9 @@
 
 ./runtime/engine
   type CohortKey
-  DEFAULT_ASSESSMENT_ID
   DEFAULT_ENV
   DEFAULT_ISOLATION
   DEFAULT_PLAYER_TYPE
-  type EffectiveRuntime
-  type EngineReadinessDetail
   type EngineReadinessSignals
   type FrameworkErrorHandler
   type LoadingCompleteHandler
@@ -261,9 +252,7 @@
   type SectionRuntimeEngineHostArgs
   type StageChangeHandler
   cohortsEqual
-  createReadinessDetail
   makeCohort
-  resolveOnFrameworkError
   resolveSectionEngineRuntimeState
   resolveSectionId
 
@@ -290,14 +279,12 @@
   type AssessmentToolkitRegionScopeContext
   type AssessmentToolkitRuntimeContext
   type AssessmentToolkitShellContext
-  type BrowserVoiceTraits
   type CalculatorToolProviderConfig
   type CatalogLookupContext
   type CatalogOwnerSnapshot
   type CatalogRuntimeScope
   type ContentCapabilityPhase
   type ContentCapabilityPolicy
-  DEFAULT_TTS_SPEED_OPTIONS
   HighlightColor
   HighlightCoordinator
   type HighlightCoordinatorApi
@@ -311,6 +298,7 @@
   type TTSLayoutMode
   type TTSSpeedOption
   TTSToolProvider
+  type TextToSpeechToolProviderConfig
   type ToolComponentFactory
   type ToolComponentFactoryMap
   type ToolComponentOverrides
@@ -318,6 +306,7 @@
   type ToolContext
   type ToolCoordinatorApi
   type ToolCoordinatorRegistration
+  type ToolModuleLoader
   type ToolPlacementLevel
   type ToolProviderApi
   type ToolProviderCapabilities
@@ -354,7 +343,6 @@
   connectToolRegionScopeContext
   connectToolRuntimeContext
   connectToolShellContext
-  createEmptyPersonalNeedsProfile
   createScopedToolId
   createScopedVisibilityBinding
   createToolCoordinatorRegistration
@@ -372,21 +360,17 @@
   isTTSStartFailure
   normalizeTTSLayoutMode
   normalizeTTSSpeedControlOptions
-  normalizeTTSSpeedOptions
   parseScopedToolId
   parseTTSSpeedOptionsFromText
   pauseTtsForMediaAudio
   resolveContentCapabilities
   resolveContentRegion
   resolveFallbackToolIcon
-  resolveRuntimeProvider
-  resolveTTSBackend
   resolveTTSHostToolbarLayout
   resolveTTSLayoutMode
   resolveTTSRuntimeSettings
   resolveToolRegistrationName
   resolveToolTag
-  resolveTransportMode
   retargetToTree
   syncButtonAndOverlayVisibility
   waitForBrowserVoices

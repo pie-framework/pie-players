@@ -598,20 +598,6 @@ export interface PersonalNeedsProfile {
 	prohibitedSupports?: string[];
 }
 
-/**
- * QTI 3.0: Reference to a shared stimulus (passage).
- * Maps to qti-assessment-stimulus-ref element.
- *
- * NOTE: Not currently used. We embed PassageEntity directly in RubricBlock instead.
- * Kept for potential future use if we need to support external stimulus references.
- */
-/*
-export interface StimulusRef {
-	identifier: string;
-	href: string;
-}
-*/
-
 export interface AssessmentEntity extends BaseEntity, SearchMetaDataEntity {
 	name?: string;
 	title?: string;
@@ -637,9 +623,6 @@ export interface AssessmentEntity extends BaseEntity, SearchMetaDataEntity {
 	 * QTI 3.0: testParts structure (authoritative for QTI format).
 	 */
 	testParts?: TestPart[];
-
-	/** QTI 3.0: Stimulus material references (Phase 3 - placeholder) */
-	stimulusRefs?: any[];
 }
 
 /**
@@ -670,20 +653,15 @@ export interface AssessmentSettings {
 	 * the toolkit's `tools.providers`.
 	 */
 	toolConfigs?: {
-		// Calculator-specific options are owned by the calculator tool package.
 		calculator?: AssessmentCalculatorConfig;
-		[toolId: string]: any;
+		[toolId: string]: Record<string, unknown> | undefined;
 	};
 }
 
-/**
- * Calculator options exposed through assessment settings.
- * The engine is implicit (Desmos).
- */
-export interface AssessmentCalculatorConfig {
+/** Calculator parameters in assessment settings. */
+export type AssessmentCalculatorConfig = {
 	type?: "basic" | "scientific" | "graphing";
-	[key: string]: any;
-}
+};
 
 /**
  * Item-level settings for tool requirements.
@@ -692,7 +670,8 @@ export interface AssessmentCalculatorConfig {
 export interface ItemSettings {
 	requiredTools?: string[]; // Tool ids required for this item
 	restrictedTools?: string[]; // Tool ids blocked for this item
-	toolParameters?: Record<string, any>; // Tool-specific config per item
+	/** Parameters by tool id; outranks the assessment's `toolConfigs` entry. */
+	toolParameters?: Record<string, Record<string, unknown>>;
 }
 
 export type PlayerMode = "gather" | "view" | "evaluate" | "author";

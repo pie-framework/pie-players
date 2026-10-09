@@ -4,6 +4,7 @@ import {
 	isSelectionActionAvailable,
 	isSelectionActionShape,
 	MAX_SELECTION_ACTION_LABEL,
+	offersReadAloud,
 	usableSelectionActions,
 } from "../selection-actions.js";
 
@@ -153,5 +154,41 @@ describe("usableSelectionActions", () => {
 
 	it("returns nothing for an empty array", () => {
 		expect(usableSelectionActions([])).toEqual([]);
+	});
+});
+
+describe("offersReadAloud", () => {
+	const tts = { speak: async () => {} };
+
+	it("offers read-aloud while a toolbar hosts textToSpeech", () => {
+		const asked: string[] = [];
+		const coordinator = {
+			canRequestTool: (toolId: string) => {
+				asked.push(toolId);
+				return true;
+			},
+		};
+		expect(offersReadAloud(tts, coordinator)).toBe(true);
+		expect(asked).toEqual(["textToSpeech"]);
+	});
+
+	it("withholds read-aloud when policy blocks or no toolbar places textToSpeech", () => {
+		expect(offersReadAloud(tts, { canRequestTool: () => false })).toBe(false);
+	});
+
+	it("withholds read-aloud without a TTS service", () => {
+		expect(offersReadAloud(null, { canRequestTool: () => true })).toBe(false);
+	});
+
+	it("withholds read-aloud when the coordinator cannot answer", () => {
+		expect(offersReadAloud(tts, null)).toBe(false);
+		expect(offersReadAloud(tts, {})).toBe(false);
+		expect(
+			offersReadAloud(tts, {
+				canRequestTool: () => {
+					throw new Error("policy unavailable");
+				},
+			}),
+		).toBe(false);
 	});
 });

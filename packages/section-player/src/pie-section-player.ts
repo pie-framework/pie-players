@@ -9,41 +9,17 @@ import "./components/section-player-shell-element";
 import "./components/section-player-kernel-host-element";
 
 export type {
-	SectionPlayerLayoutContract,
-	SectionPlayerLayoutName,
-	SectionPlayerLayoutCapability,
-	SectionPlayerBasicPropName,
-	SectionPlayerAdvancedPropName,
-	SectionPlayerLayoutPropName,
-	SectionPlayerLayoutCommandName,
-} from "./contracts/layout-contract.js";
-export type {
-	SectionPlayerPublicEventName,
-	SectionPlayerReadinessPhase,
-	SectionPlayerReadinessChangeDetail,
-} from "./contracts/public-events.js";
-export { SECTION_PLAYER_PUBLIC_EVENTS } from "./contracts/public-events.js";
-export type {
 	SectionPlayerRuntimeHostContract,
 	SectionPlayerNavigationSnapshot,
 	SectionPlayerSnapshot,
 } from "./contracts/runtime-host-contract.js";
-export {
-	SPLITPANE_LAYOUT_CONTRACT,
-	TABBED_LAYOUT_CONTRACT,
-	VERTICAL_LAYOUT_CONTRACT,
-} from "./contracts/layout-parity-metadata.js";
 export type {
 	SectionPlayerPolicies,
 	SectionPlayerReadinessPolicy,
 	SectionPlayerPreloadPolicy,
 	SectionPlayerTelemetryPolicy,
 } from "./policies/types.js";
-export {
-	DEFAULT_SECTION_PLAYER_POLICIES,
-	isPreloadEnabled,
-	isTelemetryEnabled,
-} from "./policies/index.js";
+export { DEFAULT_SECTION_PLAYER_POLICIES } from "./policies/index.js";
 export { sectionFromItem } from "./item-section/index.js";
 export type { ItemSection, ItemSectionOptions } from "./item-section/index.js";
 export type {

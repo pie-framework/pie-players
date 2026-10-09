@@ -12,7 +12,7 @@
 	} from '@pie-players/pie-assessment-toolkit';
 	import { SECTION_PLAYER_PREFERRED_TOOL_PLACEMENT } from '@pie-players/pie-default-tool-loaders';
 	import '@pie-players/pie-section-player/components/section-player-splitpane-element';
-	import '@pie-players/pie-section-player/components/section-player-vertical-element';
+	import '@pie-players/pie-section-player';
 	import DemoRuntimeChrome from '#lib/demo-runtime/components/DemoRuntimeChrome.svelte';
 	import {
 		deleteSnapshotFromSessionDb,
@@ -512,10 +512,10 @@
 			{:else if layoutType === 'vertical'}
 				<pie-section-player-vertical
 					bind:this={playerHostElement}
-					assessment-id={DEMO_ASSESSMENT_ID}
 					section-id={sessionPanelSectionId}
 					attempt-id={attemptId}
 					runtime={ {
+						assessmentId: DEMO_ASSESSMENT_ID,
 						playerType: selectedPlayerType,
 						lazyInit: true,
 						tools: toolkitToolsConfig,
@@ -531,10 +531,10 @@
 			{:else}
 				<pie-section-player-splitpane
 					bind:this={playerHostElement}
-					assessment-id={DEMO_ASSESSMENT_ID}
 					section-id={sessionPanelSectionId}
 					attempt-id={attemptId}
 					runtime={ {
+						assessmentId: DEMO_ASSESSMENT_ID,
 						playerType: selectedPlayerType,
 						lazyInit: true,
 						tools: toolkitToolsConfig,

@@ -8,6 +8,7 @@ type BackendConfig = NonNullable<PlayerConfig["backend"]>;
 export type ResolveAssessmentSectionPlayerRuntimeArgs = {
 	sectionPlayerRuntime?: AssessmentPlayerRuntimeConfig["sectionPlayerRuntime"];
 	playerType: "iife" | "esm" | "preloaded";
+	assessmentId?: string;
 	attemptId?: string;
 	env?: Record<string, unknown> | null;
 	coordinator?: unknown;
@@ -35,8 +36,14 @@ function withDefaultAssignmentId(
 export function resolveAssessmentSectionPlayerRuntime(
 	args: ResolveAssessmentSectionPlayerRuntimeArgs,
 ): SectionPlayerRuntimeConfig {
-	const { sectionPlayerRuntime, playerType, attemptId, env, coordinator } =
-		args;
+	const {
+		sectionPlayerRuntime,
+		playerType,
+		assessmentId,
+		attemptId,
+		env,
+		coordinator,
+	} = args;
 	const player =
 		sectionPlayerRuntime?.player &&
 		typeof sectionPlayerRuntime.player === "object"
@@ -55,6 +62,7 @@ export function resolveAssessmentSectionPlayerRuntime(
 			: sectionPlayerRuntime?.player;
 	return {
 		playerType,
+		...(assessmentId ? { assessmentId } : {}),
 		...(env ? { env } : {}),
 		...(coordinator ? { coordinator } : {}),
 		...(sectionPlayerRuntime || {}),

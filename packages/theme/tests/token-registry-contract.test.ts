@@ -59,7 +59,6 @@ const requiredComponentPublicTokens = [
 const requiredDecisionGateTokens = [
 	"--pie-background-light",
 	"--pie-button-background-color",
-	"--pie-button-border-color",
 	"--pie-button-hover-background-color",
 	"--pie-focus-ring-color",
 	"--pie-focus-outline",

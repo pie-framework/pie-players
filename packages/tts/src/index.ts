@@ -12,7 +12,6 @@ export type {
 	TTSSpeechSegment,
 	TTSConfig,
 	TTSConfigExtensions,
-	TTSFeature,
 	TTSProviderCapabilities,
 	TTSProviderOptions,
 } from "./provider-interface.js";

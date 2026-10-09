@@ -339,7 +339,7 @@ const coordinator = new ToolkitCoordinator({
     },
     providers: {
       textToSpeech: {
-        backend: 'polly',
+        backend: 'server',
         serverProvider: 'polly',
       },
       calculator: {

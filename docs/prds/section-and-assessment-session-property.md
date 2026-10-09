@@ -389,7 +389,7 @@ them.
   `section-player-session-property.spec.ts` runs the creation-time cases on all
   four layouts and the rest on splitpane.
 - Parity and mirror rules: `section-player-contract-parity.spec.ts` with
-  `session` among the basic props of all three layouts; `m5-mirror-rule.test.ts`
+  `session` among the basic props of all three layouts; `runtime-config-boundary.test.ts`
   passes unchanged.
 - Assessment controller: `initialSession` skips `loadSession`, runs
   `onBeforeAssessmentHydrate` and emits `assessment-session-applied`.

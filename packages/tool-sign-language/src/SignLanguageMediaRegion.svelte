@@ -8,12 +8,6 @@
 	}}
 />
 
-<script lang="ts" module>
-	// One page can hold several item cards, each with its own region, so the TTS
-	// listener id has to be unique per instance. Module scope, not instance scope.
-	let instanceCounter = 0;
-</script>
-
 <script lang="ts">
 	/**
 	 * Renders one resolved sign-language catalog card in a host-provided region.
@@ -60,7 +54,6 @@
 	// Signing playback and read-aloud must not run at once; the service is what
 	// pauses the other one.
 	const ttsService = $derived(runtimeContext?.ttsService ?? null);
-	const listenerId = `pie-tool-sign-language-${(instanceCounter += 1)}`;
 
 	const languageName = $derived(describeSignLanguage(media?.signLang, i18n));
 	// The label names the language rather than saying "video": "American Sign
@@ -102,7 +95,7 @@
 	});
 
 	$effect(() =>
-		bindTtsAudioHandoff({ ttsService, listenerId, silence: pauseSigning }),
+		bindTtsAudioHandoff({ ttsService, silence: pauseSigning }),
 	);
 </script>
 

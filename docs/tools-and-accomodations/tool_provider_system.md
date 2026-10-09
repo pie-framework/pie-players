@@ -107,7 +107,7 @@ const coordinator = new ToolkitCoordinator({
     },
     providers: {
       textToSpeech: {
-        settings: { backend: "browser" },
+        backend: "browser",
       },
       calculator: {
         enabled: true,
@@ -217,18 +217,16 @@ const coordinator = new ToolkitCoordinator({
     },
     providers: {
       textToSpeech: {
-        settings: {
-          backend: "browser",
-          // Optional: an exact voiceURI or name from speechSynthesis.getVoices().
-          layoutMode: "expanding-row",
-        },
+        backend: "browser",
+        // Optional: an exact voiceURI or name from speechSynthesis.getVoices().
+        layoutMode: "expanding-row",
       },
     },
   },
 });
 ```
 
-`layoutMode` can be configured directly on `tools.providers.textToSpeech` (either top-level or inside `settings`). When omitted, the toolkit uses **`left-aligned`**; a standalone `<pie-tool-tts-inline>` without a `layoutMode` uses `expanding-row`. Supported values are:
+`layoutMode` is configured directly on `tools.providers.textToSpeech`. When omitted, the toolkit and a standalone `<pie-tool-tts-inline>` both use **`left-aligned`**. Supported values are:
 
 - `reserved-row`
 - `expanding-row`

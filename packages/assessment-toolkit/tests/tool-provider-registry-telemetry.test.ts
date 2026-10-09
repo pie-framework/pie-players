@@ -58,7 +58,7 @@ describe("ToolProviderRegistry telemetry", () => {
 
 		registry.register("tts-provider", {
 			provider: new FakeProvider({ requiresAuth: true }),
-			config: { backend: "polly" },
+			config: { backend: "server", serverProvider: "polly" },
 			authFetcher: async () => ({ authToken: "demo-token" }),
 			onTelemetry: (name, payload) => {
 				events.push({ name, payload });
@@ -124,7 +124,7 @@ describe("ToolProviderRegistry logging", () => {
 		const registry = new ToolProviderRegistry();
 		registry.register("tts-provider", {
 			provider: new FakeProvider(),
-			config: { backend: "polly" },
+			config: { backend: "server", serverProvider: "polly" },
 		});
 		await registry.initialize("tts-provider");
 

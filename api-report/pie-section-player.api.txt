@@ -7,38 +7,22 @@
   DEFAULT_SECTION_PLAYER_POLICIES
   type ItemSection
   type ItemSectionOptions
-  SECTION_PLAYER_PUBLIC_EVENTS
-  SPLITPANE_LAYOUT_CONTRACT
-  type SectionPlayerAdvancedPropName
   type SectionPlayerBackendResolver
   type SectionPlayerBackendResolverContext
-  type SectionPlayerBasicPropName
   type SectionPlayerCardTitleContext
   type SectionPlayerCardTitleFormatter
   type SectionPlayerHostHooks
   type SectionPlayerItemTitleContext
-  type SectionPlayerLayoutCapability
-  type SectionPlayerLayoutCommandName
-  type SectionPlayerLayoutContract
-  type SectionPlayerLayoutName
-  type SectionPlayerLayoutPropName
   type SectionPlayerNavigationSnapshot
   type SectionPlayerPassageTitleContext
   type SectionPlayerPolicies
   type SectionPlayerPreloadPolicy
-  type SectionPlayerPublicEventName
-  type SectionPlayerReadinessChangeDetail
-  type SectionPlayerReadinessPhase
   type SectionPlayerReadinessPolicy
   type SectionPlayerRuntimeConfig
   type SectionPlayerRuntimeHostContract
   type SectionPlayerRuntimePlayerConfig
   type SectionPlayerSnapshot
   type SectionPlayerTelemetryPolicy
-  TABBED_LAYOUT_CONTRACT
-  VERTICAL_LAYOUT_CONTRACT
-  isPreloadEnabled
-  isTelemetryEnabled
   sectionFromItem
 
 ./browser
@@ -46,405 +30,49 @@
   DEFAULT_TOOL_MODULE_LOADERS
   type ItemSection
   type ItemSectionOptions
-  SECTION_PLAYER_PUBLIC_EVENTS
-  SPLITPANE_LAYOUT_CONTRACT
-  type SectionPlayerAdvancedPropName
   type SectionPlayerBackendResolver
   type SectionPlayerBackendResolverContext
-  type SectionPlayerBasicPropName
   type SectionPlayerCardTitleContext
   type SectionPlayerCardTitleFormatter
   type SectionPlayerHostHooks
   type SectionPlayerItemTitleContext
-  type SectionPlayerLayoutCapability
-  type SectionPlayerLayoutCommandName
-  type SectionPlayerLayoutContract
-  type SectionPlayerLayoutName
-  type SectionPlayerLayoutPropName
   type SectionPlayerNavigationSnapshot
   type SectionPlayerPassageTitleContext
   type SectionPlayerPolicies
   type SectionPlayerPreloadPolicy
-  type SectionPlayerPublicEventName
-  type SectionPlayerReadinessChangeDetail
-  type SectionPlayerReadinessPhase
   type SectionPlayerReadinessPolicy
   type SectionPlayerRuntimeConfig
   type SectionPlayerRuntimeHostContract
   type SectionPlayerRuntimePlayerConfig
   type SectionPlayerSnapshot
   type SectionPlayerTelemetryPolicy
-  TABBED_LAYOUT_CONTRACT
-  VERTICAL_LAYOUT_CONTRACT
   createPackagedToolRegistry
-  isPreloadEnabled
-  isTelemetryEnabled
-  sectionFromItem
-
-./components/section-player-item-card-element
-  DEFAULT_SECTION_PLAYER_POLICIES
-  type ItemSection
-  type ItemSectionOptions
-  SECTION_PLAYER_PUBLIC_EVENTS
-  SPLITPANE_LAYOUT_CONTRACT
-  type SectionPlayerAdvancedPropName
-  type SectionPlayerBackendResolver
-  type SectionPlayerBackendResolverContext
-  type SectionPlayerBasicPropName
-  type SectionPlayerCardTitleContext
-  type SectionPlayerCardTitleFormatter
-  type SectionPlayerHostHooks
-  type SectionPlayerItemTitleContext
-  type SectionPlayerLayoutCapability
-  type SectionPlayerLayoutCommandName
-  type SectionPlayerLayoutContract
-  type SectionPlayerLayoutName
-  type SectionPlayerLayoutPropName
-  type SectionPlayerNavigationSnapshot
-  type SectionPlayerPassageTitleContext
-  type SectionPlayerPolicies
-  type SectionPlayerPreloadPolicy
-  type SectionPlayerPublicEventName
-  type SectionPlayerReadinessChangeDetail
-  type SectionPlayerReadinessPhase
-  type SectionPlayerReadinessPolicy
-  type SectionPlayerRuntimeConfig
-  type SectionPlayerRuntimeHostContract
-  type SectionPlayerRuntimePlayerConfig
-  type SectionPlayerSnapshot
-  type SectionPlayerTelemetryPolicy
-  TABBED_LAYOUT_CONTRACT
-  VERTICAL_LAYOUT_CONTRACT
-  isPreloadEnabled
-  isTelemetryEnabled
-  sectionFromItem
-
-./components/section-player-items-pane-element
-  DEFAULT_SECTION_PLAYER_POLICIES
-  type ItemSection
-  type ItemSectionOptions
-  SECTION_PLAYER_PUBLIC_EVENTS
-  SPLITPANE_LAYOUT_CONTRACT
-  type SectionPlayerAdvancedPropName
-  type SectionPlayerBackendResolver
-  type SectionPlayerBackendResolverContext
-  type SectionPlayerBasicPropName
-  type SectionPlayerCardTitleContext
-  type SectionPlayerCardTitleFormatter
-  type SectionPlayerHostHooks
-  type SectionPlayerItemTitleContext
-  type SectionPlayerLayoutCapability
-  type SectionPlayerLayoutCommandName
-  type SectionPlayerLayoutContract
-  type SectionPlayerLayoutName
-  type SectionPlayerLayoutPropName
-  type SectionPlayerNavigationSnapshot
-  type SectionPlayerPassageTitleContext
-  type SectionPlayerPolicies
-  type SectionPlayerPreloadPolicy
-  type SectionPlayerPublicEventName
-  type SectionPlayerReadinessChangeDetail
-  type SectionPlayerReadinessPhase
-  type SectionPlayerReadinessPolicy
-  type SectionPlayerRuntimeConfig
-  type SectionPlayerRuntimeHostContract
-  type SectionPlayerRuntimePlayerConfig
-  type SectionPlayerSnapshot
-  type SectionPlayerTelemetryPolicy
-  TABBED_LAYOUT_CONTRACT
-  VERTICAL_LAYOUT_CONTRACT
-  isPreloadEnabled
-  isTelemetryEnabled
-  sectionFromItem
-
-./components/section-player-kernel-host-element
-  DEFAULT_SECTION_PLAYER_POLICIES
-  type ItemSection
-  type ItemSectionOptions
-  SECTION_PLAYER_PUBLIC_EVENTS
-  SPLITPANE_LAYOUT_CONTRACT
-  type SectionPlayerAdvancedPropName
-  type SectionPlayerBackendResolver
-  type SectionPlayerBackendResolverContext
-  type SectionPlayerBasicPropName
-  type SectionPlayerCardTitleContext
-  type SectionPlayerCardTitleFormatter
-  type SectionPlayerHostHooks
-  type SectionPlayerItemTitleContext
-  type SectionPlayerLayoutCapability
-  type SectionPlayerLayoutCommandName
-  type SectionPlayerLayoutContract
-  type SectionPlayerLayoutName
-  type SectionPlayerLayoutPropName
-  type SectionPlayerNavigationSnapshot
-  type SectionPlayerPassageTitleContext
-  type SectionPlayerPolicies
-  type SectionPlayerPreloadPolicy
-  type SectionPlayerPublicEventName
-  type SectionPlayerReadinessChangeDetail
-  type SectionPlayerReadinessPhase
-  type SectionPlayerReadinessPolicy
-  type SectionPlayerRuntimeConfig
-  type SectionPlayerRuntimeHostContract
-  type SectionPlayerRuntimePlayerConfig
-  type SectionPlayerSnapshot
-  type SectionPlayerTelemetryPolicy
-  TABBED_LAYOUT_CONTRACT
-  VERTICAL_LAYOUT_CONTRACT
-  isPreloadEnabled
-  isTelemetryEnabled
-  sectionFromItem
-
-./components/section-player-passage-card-element
-  DEFAULT_SECTION_PLAYER_POLICIES
-  type ItemSection
-  type ItemSectionOptions
-  SECTION_PLAYER_PUBLIC_EVENTS
-  SPLITPANE_LAYOUT_CONTRACT
-  type SectionPlayerAdvancedPropName
-  type SectionPlayerBackendResolver
-  type SectionPlayerBackendResolverContext
-  type SectionPlayerBasicPropName
-  type SectionPlayerCardTitleContext
-  type SectionPlayerCardTitleFormatter
-  type SectionPlayerHostHooks
-  type SectionPlayerItemTitleContext
-  type SectionPlayerLayoutCapability
-  type SectionPlayerLayoutCommandName
-  type SectionPlayerLayoutContract
-  type SectionPlayerLayoutName
-  type SectionPlayerLayoutPropName
-  type SectionPlayerNavigationSnapshot
-  type SectionPlayerPassageTitleContext
-  type SectionPlayerPolicies
-  type SectionPlayerPreloadPolicy
-  type SectionPlayerPublicEventName
-  type SectionPlayerReadinessChangeDetail
-  type SectionPlayerReadinessPhase
-  type SectionPlayerReadinessPolicy
-  type SectionPlayerRuntimeConfig
-  type SectionPlayerRuntimeHostContract
-  type SectionPlayerRuntimePlayerConfig
-  type SectionPlayerSnapshot
-  type SectionPlayerTelemetryPolicy
-  TABBED_LAYOUT_CONTRACT
-  VERTICAL_LAYOUT_CONTRACT
-  isPreloadEnabled
-  isTelemetryEnabled
-  sectionFromItem
-
-./components/section-player-passages-pane-element
-  DEFAULT_SECTION_PLAYER_POLICIES
-  type ItemSection
-  type ItemSectionOptions
-  SECTION_PLAYER_PUBLIC_EVENTS
-  SPLITPANE_LAYOUT_CONTRACT
-  type SectionPlayerAdvancedPropName
-  type SectionPlayerBackendResolver
-  type SectionPlayerBackendResolverContext
-  type SectionPlayerBasicPropName
-  type SectionPlayerCardTitleContext
-  type SectionPlayerCardTitleFormatter
-  type SectionPlayerHostHooks
-  type SectionPlayerItemTitleContext
-  type SectionPlayerLayoutCapability
-  type SectionPlayerLayoutCommandName
-  type SectionPlayerLayoutContract
-  type SectionPlayerLayoutName
-  type SectionPlayerLayoutPropName
-  type SectionPlayerNavigationSnapshot
-  type SectionPlayerPassageTitleContext
-  type SectionPlayerPolicies
-  type SectionPlayerPreloadPolicy
-  type SectionPlayerPublicEventName
-  type SectionPlayerReadinessChangeDetail
-  type SectionPlayerReadinessPhase
-  type SectionPlayerReadinessPolicy
-  type SectionPlayerRuntimeConfig
-  type SectionPlayerRuntimeHostContract
-  type SectionPlayerRuntimePlayerConfig
-  type SectionPlayerSnapshot
-  type SectionPlayerTelemetryPolicy
-  TABBED_LAYOUT_CONTRACT
-  VERTICAL_LAYOUT_CONTRACT
-  isPreloadEnabled
-  isTelemetryEnabled
-  sectionFromItem
-
-./components/section-player-shell-element
-  DEFAULT_SECTION_PLAYER_POLICIES
-  type ItemSection
-  type ItemSectionOptions
-  SECTION_PLAYER_PUBLIC_EVENTS
-  SPLITPANE_LAYOUT_CONTRACT
-  type SectionPlayerAdvancedPropName
-  type SectionPlayerBackendResolver
-  type SectionPlayerBackendResolverContext
-  type SectionPlayerBasicPropName
-  type SectionPlayerCardTitleContext
-  type SectionPlayerCardTitleFormatter
-  type SectionPlayerHostHooks
-  type SectionPlayerItemTitleContext
-  type SectionPlayerLayoutCapability
-  type SectionPlayerLayoutCommandName
-  type SectionPlayerLayoutContract
-  type SectionPlayerLayoutName
-  type SectionPlayerLayoutPropName
-  type SectionPlayerNavigationSnapshot
-  type SectionPlayerPassageTitleContext
-  type SectionPlayerPolicies
-  type SectionPlayerPreloadPolicy
-  type SectionPlayerPublicEventName
-  type SectionPlayerReadinessChangeDetail
-  type SectionPlayerReadinessPhase
-  type SectionPlayerReadinessPolicy
-  type SectionPlayerRuntimeConfig
-  type SectionPlayerRuntimeHostContract
-  type SectionPlayerRuntimePlayerConfig
-  type SectionPlayerSnapshot
-  type SectionPlayerTelemetryPolicy
-  TABBED_LAYOUT_CONTRACT
-  VERTICAL_LAYOUT_CONTRACT
-  isPreloadEnabled
-  isTelemetryEnabled
   sectionFromItem
 
 ./components/section-player-splitpane-element
   DEFAULT_SECTION_PLAYER_POLICIES
   type ItemSection
   type ItemSectionOptions
-  SECTION_PLAYER_PUBLIC_EVENTS
-  SPLITPANE_LAYOUT_CONTRACT
-  type SectionPlayerAdvancedPropName
   type SectionPlayerBackendResolver
   type SectionPlayerBackendResolverContext
-  type SectionPlayerBasicPropName
   type SectionPlayerCardTitleContext
   type SectionPlayerCardTitleFormatter
   type SectionPlayerHostHooks
   type SectionPlayerItemTitleContext
-  type SectionPlayerLayoutCapability
-  type SectionPlayerLayoutCommandName
-  type SectionPlayerLayoutContract
-  type SectionPlayerLayoutName
-  type SectionPlayerLayoutPropName
   type SectionPlayerNavigationSnapshot
   type SectionPlayerPassageTitleContext
   type SectionPlayerPolicies
   type SectionPlayerPreloadPolicy
-  type SectionPlayerPublicEventName
-  type SectionPlayerReadinessChangeDetail
-  type SectionPlayerReadinessPhase
   type SectionPlayerReadinessPolicy
   type SectionPlayerRuntimeConfig
   type SectionPlayerRuntimeHostContract
   type SectionPlayerRuntimePlayerConfig
   type SectionPlayerSnapshot
   type SectionPlayerTelemetryPolicy
-  TABBED_LAYOUT_CONTRACT
-  VERTICAL_LAYOUT_CONTRACT
-  isPreloadEnabled
-  isTelemetryEnabled
-  sectionFromItem
-
-./components/section-player-tabbed-element
-  DEFAULT_SECTION_PLAYER_POLICIES
-  type ItemSection
-  type ItemSectionOptions
-  SECTION_PLAYER_PUBLIC_EVENTS
-  SPLITPANE_LAYOUT_CONTRACT
-  type SectionPlayerAdvancedPropName
-  type SectionPlayerBackendResolver
-  type SectionPlayerBackendResolverContext
-  type SectionPlayerBasicPropName
-  type SectionPlayerCardTitleContext
-  type SectionPlayerCardTitleFormatter
-  type SectionPlayerHostHooks
-  type SectionPlayerItemTitleContext
-  type SectionPlayerLayoutCapability
-  type SectionPlayerLayoutCommandName
-  type SectionPlayerLayoutContract
-  type SectionPlayerLayoutName
-  type SectionPlayerLayoutPropName
-  type SectionPlayerNavigationSnapshot
-  type SectionPlayerPassageTitleContext
-  type SectionPlayerPolicies
-  type SectionPlayerPreloadPolicy
-  type SectionPlayerPublicEventName
-  type SectionPlayerReadinessChangeDetail
-  type SectionPlayerReadinessPhase
-  type SectionPlayerReadinessPolicy
-  type SectionPlayerRuntimeConfig
-  type SectionPlayerRuntimeHostContract
-  type SectionPlayerRuntimePlayerConfig
-  type SectionPlayerSnapshot
-  type SectionPlayerTelemetryPolicy
-  TABBED_LAYOUT_CONTRACT
-  VERTICAL_LAYOUT_CONTRACT
-  isPreloadEnabled
-  isTelemetryEnabled
-  sectionFromItem
-
-./components/section-player-vertical-element
-  DEFAULT_SECTION_PLAYER_POLICIES
-  type ItemSection
-  type ItemSectionOptions
-  SECTION_PLAYER_PUBLIC_EVENTS
-  SPLITPANE_LAYOUT_CONTRACT
-  type SectionPlayerAdvancedPropName
-  type SectionPlayerBackendResolver
-  type SectionPlayerBackendResolverContext
-  type SectionPlayerBasicPropName
-  type SectionPlayerCardTitleContext
-  type SectionPlayerCardTitleFormatter
-  type SectionPlayerHostHooks
-  type SectionPlayerItemTitleContext
-  type SectionPlayerLayoutCapability
-  type SectionPlayerLayoutCommandName
-  type SectionPlayerLayoutContract
-  type SectionPlayerLayoutName
-  type SectionPlayerLayoutPropName
-  type SectionPlayerNavigationSnapshot
-  type SectionPlayerPassageTitleContext
-  type SectionPlayerPolicies
-  type SectionPlayerPreloadPolicy
-  type SectionPlayerPublicEventName
-  type SectionPlayerReadinessChangeDetail
-  type SectionPlayerReadinessPhase
-  type SectionPlayerReadinessPolicy
-  type SectionPlayerRuntimeConfig
-  type SectionPlayerRuntimeHostContract
-  type SectionPlayerRuntimePlayerConfig
-  type SectionPlayerSnapshot
-  type SectionPlayerTelemetryPolicy
-  TABBED_LAYOUT_CONTRACT
-  VERTICAL_LAYOUT_CONTRACT
-  isPreloadEnabled
-  isTelemetryEnabled
   sectionFromItem
 
 ./contracts/host-hooks
   type SectionPlayerHostHooks
-
-./contracts/layout-contract
-  type SectionPlayerAdvancedPropName
-  type SectionPlayerBasicPropName
-  type SectionPlayerLayoutCapability
-  type SectionPlayerLayoutCommandName
-  type SectionPlayerLayoutContract
-  type SectionPlayerLayoutName
-  type SectionPlayerLayoutPropName
-
-./contracts/layout-parity-metadata
-  SPLITPANE_LAYOUT_CONTRACT
-  TABBED_LAYOUT_CONTRACT
-  VERTICAL_LAYOUT_CONTRACT
-
-./contracts/public-events
-  SECTION_PLAYER_PUBLIC_EVENTS
-  type SectionPlayerPublicEventName
-  type SectionPlayerReadinessChangeDetail
-  type SectionPlayerReadinessPhase
 
 ./contracts/runtime-host-contract
   type SectionPlayerNavigationSnapshot
@@ -462,6 +90,4 @@
   type SectionPlayerPreloadPolicy
   type SectionPlayerReadinessPolicy
   type SectionPlayerTelemetryPolicy
-  isPreloadEnabled
-  isTelemetryEnabled
   resolveSectionPlayerPolicies

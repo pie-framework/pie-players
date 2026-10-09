@@ -3,18 +3,13 @@
 		tag: "pie-section-player-base",
 		shadow: "open",
 		props: {
-			assessmentId: { attribute: "assessment-id", type: "String" },
 			runtime: { type: "Object", reflect: false },
-			// Presentation flag mirrored onto the toolkit runtime context.
-			// Controls render <nds-icon-button> only when this is explicitly
-			// true; otherwise they use plain <button>s. Two-tier:
-			// `runtime.ndsIcons` wins over this top-level prop; defaults to
-			// false (opt-in).
+			// Presentation flag: controls render <nds-icon-button> only when this
+			// is explicitly true; otherwise they use plain <button>s.
 			ndsIcons: { attribute: "nds-icons", type: "Boolean" },
 			// Interface locale: the language the player renders its own UI in, as a
-			// BCP-47 tag. Convenience attribute mirrored onto `runtime.locale`
-			// (runtime wins if both are set). Unset renders `en-US`. Distinct
-			// from the authored content language, which travels on `env`.
+			// BCP-47 tag. Unset renders `en-US`. Distinct from the authored content
+			// language, which travels on `runtime.contentLanguage`.
 			locale: { attribute: "locale", type: "String" },
 			section: { type: "Object", reflect: false },
 			// Transport for the layouts' `session`; the toolkit applies it.
@@ -29,7 +24,6 @@
 				attribute: "tool-config-strictness",
 				type: "String",
 			},
-			onFrameworkError: { type: "Object", reflect: false },
 		},
 		extend: coerceBooleanAttributes,
 	}}
@@ -39,7 +33,6 @@
 	import { coerceBooleanAttributes } from "@pie-players/pie-players-shared/ui/attribute-coercion";
 	import "@pie-players/pie-assessment-toolkit/components/pie-assessment-toolkit-element";
 	import {
-		type FrameworkErrorModel,
 		type ToolConfigStrictness,
 		type ToolkitCoordinatorApi,
 		type ToolRegistry,
@@ -70,10 +63,8 @@
 	} from "@pie-players/pie-players-shared/types";
 	import { createToolSurfaceHost } from "@pie-players/pie-assessment-toolkit/tools/registration";
 	import {
-		DEFAULT_ASSESSMENT_ID,
 		DEFAULT_ENV,
 		DEFAULT_ISOLATION,
-		resolveOnFrameworkError,
 		resolveSectionId,
 		type RuntimeConfig,
 	} from "@pie-players/pie-assessment-toolkit/runtime/engine";
@@ -81,7 +72,6 @@
 	const logger = createPieLogger("pie-section-player", () => false);
 
 	let {
-		assessmentId = DEFAULT_ASSESSMENT_ID,
 		runtime = null as RuntimeConfig | null,
 		ndsIcons = false,
 		locale = "",
@@ -92,14 +82,11 @@
 		attemptId = "",
 		toolRegistry = null as ToolRegistry | null,
 		toolConfigStrictness = undefined as ToolConfigStrictness | undefined,
-		onFrameworkError = undefined as
-			| undefined
-			| ((model: FrameworkErrorModel) => void),
 	} = $props();
 
 	let toolkitElement = $state<any>(null);
 	let activeToolkitCoordinator = $state<ToolkitCoordinatorApi | null>(null);
-	const effectiveAssessmentId = $derived.by(() => runtime?.assessmentId ?? assessmentId);
+	const effectiveAssessmentId = $derived.by(() => runtime?.assessmentId);
 	const effectivePlayerType = $derived.by(() => runtime?.playerType);
 	const effectivePlayer = $derived.by(() => runtime?.player ?? null);
 	const effectiveLazyInit = $derived.by(() => runtime?.lazyInit);
@@ -108,7 +95,7 @@
 		() => runtime?.toolContextResolvers ?? null,
 	);
 	const effectiveToolConfigStrictness = $derived.by(() => {
-		const value = runtime?.toolConfigStrictness ?? toolConfigStrictness;
+		const value = toolConfigStrictness;
 		return value === "off" || value === "warn" || value === "error"
 			? value
 			: "error";
@@ -124,7 +111,6 @@
 		() => runtime?.isolation ?? DEFAULT_ISOLATION,
 	);
 	const effectiveEnv = $derived.by(() => runtime?.env ?? DEFAULT_ENV);
-	// Two-tier resolution: `runtime.ndsIcons` wins over the top-level prop.
 	// Opt-in — NDS icon buttons render only when explicitly enabled.
 	//
 	// Resolve to `true` or `undefined` (never `false`): a Svelte custom
@@ -134,17 +120,13 @@
 	// removes the attribute so the toolkit falls back to its own `false`
 	// default. See PieAssessmentToolkit `ndsIcons`.
 	const effectiveNdsIcons = $derived.by(() =>
-		(runtime?.ndsIcons ?? ndsIcons) === true ? true : undefined,
+		ndsIcons === true ? true : undefined,
 	);
-	// Two-tier resolution: `runtime.locale` wins over the top-level prop.
-	//
 	// Resolves to a tag or `undefined`, never `""`. A Svelte custom element
 	// serializes an unset string prop to an empty attribute, and forwarding that
 	// would have the toolkit resolve the empty locale rather than fall back to
 	// its `en-US` default.
-	const effectiveLocale = $derived.by(
-		() => runtime?.locale || locale || undefined,
-	);
+	const effectiveLocale = $derived.by(() => locale || undefined);
 	// Content language, for read-aloud and catalog lookups; runtime-only. A tag or
 	// `undefined`, never `""`, for the same reason as the locale above.
 	const effectiveContentLanguage = $derived.by(
@@ -175,14 +157,7 @@
 		toolModuleLoaders: DEFAULT_TOOL_MODULE_LOADERS,
 	});
 	const effectiveToolRegistry = $derived(toolRegistry ?? defaultToolRegistry);
-	// Two-tier resolution. The base CE talks to the toolkit directly (no
-	// kernel layer), so it owns the resolver boundary in this path.
-	const effectiveOnFrameworkError = $derived.by(() =>
-		resolveOnFrameworkError({
-			runtime,
-			onFrameworkError,
-		}),
-	);
+	const effectiveOnFrameworkError = $derived.by(() => runtime?.onFrameworkError);
 	const effectiveSectionId = $derived(
 		resolveSectionId({ sectionId, section, assessmentId: effectiveAssessmentId }),
 	);
@@ -262,7 +237,7 @@
 			},
 			scope: {
 				kind: "section",
-				assessmentId: effectiveAssessmentId,
+				assessmentId: effectiveAssessmentId || coordinator?.assessmentId || "",
 				sectionId: effectiveSectionId,
 			},
 		});
@@ -343,8 +318,8 @@
 	// `addEventListener('camelcase', fn)` rather than a property
 	// assignment, so the canonical model-shape `onFrameworkError`
 	// callback prop on the toolkit cannot be wired through template
-	// binding. Imperatively assign it here so the base CE's resolved
-	// callback (runtime > prop) reaches the toolkit's bus subscriber.
+	// binding. Imperatively assign it here so `runtime.onFrameworkError`
+	// reaches the toolkit's bus subscriber.
 	$effect(() => {
 		if (!toolkitElement) return;
 		toolkitElement.onFrameworkError = effectiveOnFrameworkError;

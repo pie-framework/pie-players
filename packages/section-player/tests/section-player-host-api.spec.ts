@@ -16,9 +16,6 @@ const LAYOUT_TAGS = [
 ] as const;
 const HOST_METHODS = [
 	["getSnapshot", []],
-	["selectComposition", []],
-	["selectNavigation", []],
-	["selectReadiness", []],
 	["navigateTo", [0]],
 	["navigateNext", []],
 	["navigatePrevious", []],
@@ -228,11 +225,6 @@ test.describe("section player host API", () => {
 
 			const kernelHost = tag === "pie-section-player-kernel-host";
 			const bootstrapSnapshot = {
-				readiness: {
-					phase: "bootstrapping",
-					interactionReady: false,
-					allLoadingComplete: false,
-				},
 				composition: { itemsCount: 0, passagesCount: 0 },
 				navigation: {
 					currentIndex: 0,
@@ -243,9 +235,6 @@ test.describe("section player host API", () => {
 			};
 			const unmounted = {
 				getSnapshot: kernelHost ? bootstrapSnapshot : null,
-				selectComposition: kernelHost ? bootstrapSnapshot.composition : null,
-				selectNavigation: kernelHost ? bootstrapSnapshot.navigation : null,
-				selectReadiness: kernelHost ? bootstrapSnapshot.readiness : null,
 				navigateTo: false,
 				navigateNext: false,
 				navigatePrevious: false,

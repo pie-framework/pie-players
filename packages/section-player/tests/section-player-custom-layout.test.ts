@@ -399,7 +399,7 @@ function sectionFixture(options: { passage: boolean }) {
 	};
 }
 
-type KernelHost = HTMLElement & { section?: unknown };
+type KernelHost = HTMLElement & { section?: unknown; runtime?: unknown };
 
 interface Mounted {
 	host: KernelHost;
@@ -440,7 +440,7 @@ async function mountKernelHost(
 	const host = document.createElement(
 		"pie-section-player-kernel-host",
 	) as KernelHost;
-	host.setAttribute("assessment-id", "custom-layout-assessment");
+	host.runtime = { assessmentId: "custom-layout-assessment" };
 	host.setAttribute("section-id", "custom-layout-section");
 	host.setAttribute("attempt-id", `custom-layout-${Date.now()}`);
 	for (const type of ["pie-stage-change", "pie-loading-complete"]) {

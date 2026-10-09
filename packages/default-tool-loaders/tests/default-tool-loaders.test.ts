@@ -1,20 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import {
-	DEFAULT_TOOL_MODULE_LOADERS,
-	registerDefaultToolModuleLoaders,
-	type ToolModuleLoader,
-	type ToolRegistryLike,
-} from "../src/index";
-
-class CapturingRegistry implements ToolRegistryLike {
-	loaders: Partial<Record<string, ToolModuleLoader>> | null = null;
-
-	setToolModuleLoaders(
-		loaders: Partial<Record<string, ToolModuleLoader>>,
-	): void {
-		this.loaders = loaders;
-	}
-}
+import { DEFAULT_TOOL_MODULE_LOADERS } from "../src/index";
 
 describe("default tool module loaders", () => {
 	test("uses theme as the only color-scheme tool id", () => {
@@ -53,20 +38,5 @@ describe("default tool module loaders", () => {
 		expect(DEFAULT_TOOL_MODULE_LOADERS.calculator.toString()).toContain(
 			"pie-tool-calculator-shared/calculator-element",
 		);
-	});
-
-	test("registers default loaders with host overrides", () => {
-		const registry = new CapturingRegistry();
-		const overrideLoader = () => Promise.resolve();
-
-		registerDefaultToolModuleLoaders(registry, {
-			loaders: { calculator: overrideLoader },
-		});
-
-		expect(registry.loaders?.calculator).toBe(overrideLoader);
-		expect(registry.loaders?.textToSpeech).toBe(
-			DEFAULT_TOOL_MODULE_LOADERS.textToSpeech,
-		);
-		expect(registry.loaders?.ruler).toBe(DEFAULT_TOOL_MODULE_LOADERS.ruler);
 	});
 });

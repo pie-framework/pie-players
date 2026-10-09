@@ -21,7 +21,6 @@ export const PIE_THEME_SCHEME_PARTICIPATION = {
 	"--pie-button-background-color": "excluded",
 	"--pie-button-bg": "required",
 	"--pie-button-border": "required",
-	"--pie-button-border-color": "excluded",
 	"--pie-button-color": "required",
 	"--pie-button-focus-outline": "required",
 	"--pie-button-hover-background-color": "excluded",

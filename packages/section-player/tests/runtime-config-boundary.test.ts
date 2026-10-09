@@ -4,15 +4,14 @@ import { resolve } from "node:path";
 import type { RuntimeConfig } from "@pie-players/pie-assessment-toolkit/runtime/engine";
 
 /**
- * Runtime config boundary guardrail.
+ * Runtime config boundary guardrail: one tier per input.
  *
- * Locks the contract whose canonical resolver lives in
- * `packages/assessment-toolkit/src/runtime/core/engine-resolver.ts`
- * owns the `RuntimeConfig` type and runtime config resolution. Host layout
- * elements expose a narrow top-level surface for identity, layout knobs,
- * callbacks, and host shell data. Runtime configuration such as player,
- * tools, accessibility, coordinator, env, and runtime factories flows through
- * the `runtime` object only.
+ * `RuntimeConfig` (owned by
+ * `packages/assessment-toolkit/src/runtime/core/engine-resolver.ts`) carries
+ * `assessmentId`, the object config and the `on*` callbacks, and no layout
+ * element declares any of its keys as a prop. The primitive inputs
+ * (`nds-icons`, `locale`, `tool-config-strictness`) are element attributes on
+ * every layout element and are not `RuntimeConfig` keys.
  */
 
 const PACKAGE_ROOT = resolve(__dirname, "..");
@@ -36,7 +35,7 @@ const LAYOUT_CE_FILES = [
  *   - Add the key to `RuntimeConfig`.
  *   - Add the same key to `RUNTIME_CONFIG_KEYS_SENTINEL` below.
  *   - Wire a `runtime?.<key>` or `effectiveRuntime?.<key>` read at the
- *     consumer (or extend the documented-exceptions list above).
+ *     consumer.
  */
 const RUNTIME_CONFIG_KEYS_SENTINEL: Record<keyof RuntimeConfig, true> = {
 	assessmentId: true,
@@ -50,14 +49,18 @@ const RUNTIME_CONFIG_KEYS_SENTINEL: Record<keyof RuntimeConfig, true> = {
 	createSectionController: true,
 	isolation: true,
 	env: true,
-	toolConfigStrictness: true,
 	contentLanguage: true,
 	onFrameworkError: true,
 	onStageChange: true,
 	onLoadingComplete: true,
-	ndsIcons: true,
-	locale: true,
 };
+
+/** Primitive inputs: element attributes only, never `RuntimeConfig` keys. */
+const ATTRIBUTE_ONLY_INPUTS = {
+	ndsIcons: "nds-icons",
+	locale: "locale",
+	toolConfigStrictness: "tool-config-strictness",
+} as const;
 
 const RUNTIME_CONFIG_KEYS = Object.keys(RUNTIME_CONFIG_KEYS_SENTINEL) as Array<
 	keyof RuntimeConfig
@@ -155,16 +158,9 @@ function camelToKebab(name: string): string {
 
 /**
  * Strip `/* … *\/` block comments and `// …` line comments from a
- * source buffer. Used by `readAllPackageSource` so the
- * `CONSUMER_HELPER_MARKERS` substring scan cannot be satisfied by
- * comment text (which would let stale prose silently mask a real
- * regression in the consumer-leg leg of the M5 mirror).
- *
- * The strip is intentionally simple: it does not attempt to track
- * string literals or template literals. That is fine for this scan
- * because the markers are call-shaped (`resolveOnFrameworkError({`,
- * `resolveSectionEngineRuntimeState(args,`) and would not appear
- * inside a runtime-relevant string literal.
+ * source buffer, so the consumer-read scan cannot be satisfied by comment
+ * text. It does not track string or template literals; the scanned reads
+ * (`runtime?.<key>`) do not appear inside them.
  */
 function stripComments(source: string): string {
 	const withoutBlocks = source.replace(/\/\*[\s\S]*?\*\//g, "");
@@ -182,10 +178,7 @@ function stripComments(source: string): string {
 /**
  * Walk `src/` and return concatenated, comment-stripped source text
  * for every `.ts` / `.svelte` file. Used by the consumer-leg test to
- * scan for `runtime?.<key>` / `effectiveRuntime?.<key>` reads (and the
- * dedicated-helper markers). Stripping comments closes a footgun
- * where a stale prose mention of a helper call could falsely satisfy
- * the marker after the actual call site moved or was inlined.
+ * scan for `runtime?.<key>` / `effectiveRuntime?.<key>` reads.
  */
 function readAllPackageSource(): string {
 	const root = resolve(PACKAGE_ROOT, "src");
@@ -210,17 +203,6 @@ function readAllPackageSource(): string {
 
 const allPackageSource = readAllPackageSource();
 
-/**
- * Keys whose runtime-tier consumption is not a literal `runtime?.<key>`
- * read but is wired through a dedicated resolver helper. Each entry maps
- * the `RuntimeConfig` key to a unique source-text marker that proves the
- * runtime tier is honored at the consumer.
- *
- */
-const CONSUMER_HELPER_MARKERS: Partial<Record<keyof RuntimeConfig, string>> = {
-	onFrameworkError: "resolveOnFrameworkError({",
-};
-
 const layoutsByFile = LAYOUT_CE_FILES.map((rel) => ({
 	file: rel,
 	props: parseLayoutProps(resolve(PACKAGE_ROOT, rel)),
@@ -233,36 +215,19 @@ for (const layout of layoutsByFile) {
 	}
 }
 
-/**
- * Runtime-only keys: `RuntimeConfig` keys that are intentionally not
- * declared as a top-level prop on any layout CE. The runtime tier is the
- * sole entry point — hosts must set them via `runtime.<key>`.
- */
-const RUNTIME_ONLY_KEYS = new Set<keyof RuntimeConfig>([
-	"playerType",
-	"player",
-	"lazyInit",
-	"tools",
-	"createSectionController",
-	"isolation",
-	"toolContextResolvers",
-	"accessibility",
-	"coordinator",
-	"env",
-	"contentLanguage",
-]);
-
-describe("RuntimeConfig boundary — top-level prop coverage", () => {
+describe("RuntimeConfig boundary — one tier per input", () => {
 	for (const key of RUNTIME_CONFIG_KEYS) {
-		if (RUNTIME_ONLY_KEYS.has(key)) {
-			test(`RuntimeConfig key \`${key}\` is not declared as a top-level layout prop`, () => {
-				expect(allDeclaredPropNames.has(key)).toBe(false);
-			});
-			continue;
-		}
-		test(`RuntimeConfig key \`${key}\` is declared as a prop on at least one layout CE`, () => {
-			expect(allDeclaredPropNames.has(key)).toBe(true);
+		test(`RuntimeConfig key \`${key}\` is not declared as a top-level layout prop`, () => {
+			expect(allDeclaredPropNames.has(key)).toBe(false);
 		});
+	}
+	for (const layout of layoutsByFile) {
+		for (const [name, attribute] of Object.entries(ATTRIBUTE_ONLY_INPUTS)) {
+			test(`${layout.file} declares \`${name}\` as attribute \`${attribute}\``, () => {
+				const prop = layout.props.find((p) => p.name === name);
+				expect(prop?.attribute).toBe(attribute);
+			});
+		}
 	}
 });
 
@@ -289,12 +254,7 @@ describe("RuntimeConfig boundary — runtime field is canonical", () => {
 
 describe("RuntimeConfig boundary — runtime tier is read by the consumer", () => {
 	for (const key of RUNTIME_CONFIG_KEYS) {
-		test(`RuntimeConfig key \`${key}\` is consumed via \`runtime?.${key}\` / \`effectiveRuntime?.${key}\` (or a dedicated resolver helper)`, () => {
-			const helperMarker = CONSUMER_HELPER_MARKERS[key];
-			if (helperMarker) {
-				expect(allPackageSource.includes(helperMarker)).toBe(true);
-				return;
-			}
+		test(`RuntimeConfig key \`${key}\` is consumed via \`runtime?.${key}\` / \`effectiveRuntime?.${key}\``, () => {
 			const directRead = `runtime?.${key}`;
 			const effectiveRead = `effectiveRuntime?.${key}`;
 			const dotEffectiveRead = `effectiveRuntime.${key}`;
@@ -308,16 +268,9 @@ describe("RuntimeConfig boundary — runtime tier is read by the consumer", () =
 });
 
 /**
- * Nested mirror chain for `runtime.tools.pnpEnforcement`.
- *
- * `pnpEnforcement` is not a top-level `RuntimeConfig` key — it lives
- * under `runtime.tools`. The kebab/camelCase/runtime contract still
- * applies, but the surfaces are owned by `<pie-assessment-toolkit>`
- * (assessment-toolkit package), not by the section-player layout
- * shells. This block locks each leg of that nested chain so the
- * embedded path (`<pie-section-player-* runtime={{ tools: { ... } }}>`
- * → forwarded `tools` prop → toolkit reads `tools.pnpEnforcement`)
- * stays in sync with the standalone `pnp-enforcement` attribute.
+ * `pnpEnforcement` has one tier too: `tools.pnpEnforcement`, which a section
+ * player receives as `runtime.tools.pnpEnforcement` and forwards to
+ * `<pie-assessment-toolkit>` as its `tools` prop.
  */
 const TOOLKIT_FILE = resolve(
 	PACKAGE_ROOT,
@@ -348,11 +301,9 @@ const sectionPlayerBaseSource = readFileSync(
 	"utf8",
 );
 
-describe("RuntimeConfig boundary — runtime.tools.pnpEnforcement nested chain", () => {
-	test('`<pie-assessment-toolkit>` declares the `pnpEnforcement` prop with `attribute: "pnp-enforcement"`', () => {
-		const prop = toolkitProps.find((p) => p.name === "pnpEnforcement");
-		expect(prop).toBeDefined();
-		expect(prop?.attribute).toBe("pnp-enforcement");
+describe("RuntimeConfig boundary — tools.pnpEnforcement", () => {
+	test("`<pie-assessment-toolkit>` declares no `pnpEnforcement` prop", () => {
+		expect(toolkitProps.find((p) => p.name === "pnpEnforcement")).toBeUndefined();
 	});
 
 	test("`CanonicalToolsConfig` declares `pnpEnforcement` so `runtime.tools.pnpEnforcement` is preserved through `normalizeToolsConfig`", () => {
@@ -364,13 +315,10 @@ describe("RuntimeConfig boundary — runtime.tools.pnpEnforcement nested chain",
 		).toBe(true);
 	});
 
-	test("`<pie-assessment-toolkit>` falls back to `tools.pnpEnforcement` when the explicit prop is null (embedded `runtime.tools.pnpEnforcement` path)", () => {
-		expect(
-			toolkitSource.includes(
-				"resolvePnpEnforcementInput(pnpEnforcement, tools)",
-			),
-		).toBe(true);
-		expect(toolkitSource.includes("pnpEnforcement?: unknown")).toBe(true);
+	test("`<pie-assessment-toolkit>` reads `tools.pnpEnforcement`", () => {
+		expect(toolkitSource.includes("resolvePnpEnforcementInput(tools)")).toBe(
+			true,
+		);
 	});
 
 	test("`<pie-section-player-base>` forwards `runtime?.tools` through `effectiveTools` to `<pie-assessment-toolkit>`", () => {

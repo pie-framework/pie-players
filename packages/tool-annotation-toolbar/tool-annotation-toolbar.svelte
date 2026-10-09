@@ -42,7 +42,7 @@
 		requestsSelectionToolbar,
 		toolbarAnchor
 	} from './selection-keyboard.js';
-	import { usableSelectionActions } from './selection-actions.js';
+	import { offersReadAloud, usableSelectionActions } from './selection-actions.js';
 	import { contentRegionHolding, readSelection } from './selection-range.js';
 
 	interface Props {
@@ -204,6 +204,12 @@
 	let availableActions = $derived.by((): ToolSelectionAction[] => {
 		void toolbarState.isVisible;
 		return usableSelectionActions(selectionActions);
+	});
+
+	/** Re-asked per selection, as {@link availableActions} is. */
+	let readAloudAvailable = $derived.by((): boolean => {
+		void toolbarState.isVisible;
+		return offersReadAloud(ttsService, runtimeContext?.toolkitCoordinator);
 	});
 
 	// Derived state
@@ -644,7 +650,7 @@
 		// `aria-disabled` rather than `disabled` while reading: disabling the focused
 		// button moves focus out of the strip, and the focusout that follows dismisses
 		// it and stops the read a frame after it starts.
-		if (ttsSpeaking || !toolbarState.selectedRange || !ttsService) return;
+		if (ttsSpeaking || !toolbarState.selectedRange || !ttsService || !readAloudAvailable) return;
 
 		ttsSpeaking = true;
 		try {
@@ -825,7 +831,7 @@
 		void availableActions;
 		void hasOverlappingAnnotation;
 		void hasAnnotations;
-		void ttsService;
+		void readAloudAvailable;
 		untrack(() => {
 			if (!toolbarState.isVisible || !toolbarElement) return;
 			repositionToSelection();
@@ -836,7 +842,7 @@
 	 * Apply the roving tabindex to whatever controls are currently rendered.
 	 *
 	 * Done here rather than as a `tabindex` binding per button because the control
-	 * set is conditional — read-aloud only with a TTS service, remove only over an
+	 * set is conditional — read-aloud only while a toolbar hosts TTS, remove only over an
 	 * existing annotation — so a static index per button drifts out of step with the
 	 * rendered order as soon as one of them is absent.
 	 */
@@ -937,8 +943,8 @@
 			</svg>
 		</button>
 
-		<!-- Text-to-Speech (only if ttsService available) -->
-		{#if ttsService}
+		<!-- Read-aloud, while a toolbar hosts textToSpeech -->
+		{#if readAloudAvailable}
 			<div class="divider divider-horizontal mx-0 w-px"></div>
 			<button
 				class="pie-tool-annotation-toolbar__button pie-tool-annotation-toolbar__button--icon"

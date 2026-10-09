@@ -1,6 +1,6 @@
 <script lang="ts">
 	import '@pie-players/pie-section-player/components/section-player-splitpane-element';
-	import '@pie-players/pie-section-player/components/section-player-tabbed-element';
+	import '@pie-players/pie-section-player';
 
 	type DemoData = {
 		demo?: {
@@ -63,9 +63,9 @@
 			{#if isSplitpaneVariant}
 				<pie-section-player-splitpane
 					runtime={ {
+						assessmentId: "section-demos.tabbed-layout",
 						env: pieEnv
 					} }
-					assessment-id="section-demos.tabbed-layout"
 					{sectionId}
 					{attemptId}
 					section={data.section}
@@ -76,9 +76,9 @@
 			{:else}
 				<pie-section-player-tabbed
 					runtime={ {
+						assessmentId: "section-demos.tabbed-layout",
 						env: pieEnv
 					} }
-					assessment-id="section-demos.tabbed-layout"
 					{sectionId}
 					{attemptId}
 					section={data.section}

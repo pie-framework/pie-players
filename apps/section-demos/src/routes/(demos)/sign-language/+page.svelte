@@ -131,9 +131,8 @@
 		</div>
 
 		<pie-section-player-splitpane
-			runtime={{ tools: toolkitToolsConfig }}
+			runtime={{ assessmentId: assessmentEntity.id, tools: toolkitToolsConfig }}
 			{toolRegistry}
-			assessment-id={assessmentEntity.id}
 			{sectionId}
 			{attemptId}
 			section={data.section}

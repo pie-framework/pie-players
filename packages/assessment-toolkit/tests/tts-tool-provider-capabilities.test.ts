@@ -25,7 +25,6 @@ class StubServerProvider {
 	readonly providerName = "Stub";
 	readonly version = "0";
 	initialize = async () => ({}) as never;
-	supportsFeature = () => false;
 	getCapabilities = () => serverCapabilities;
 	destroy = () => {};
 }
@@ -34,12 +33,12 @@ describe("TTSToolProvider capabilities", () => {
 	test("report the speech provider's own features", async () => {
 		(globalThis as any).window = { speechSynthesis: {} };
 		const browser = new TTSToolProvider("browser");
-		await browser.initialize({ backend: "browser" });
+		await browser.initialize({});
 		const server = new TTSToolProvider("server", {
 			loadServerProvider: async () =>
 				StubServerProvider as unknown as new () => ITTSProvider,
 		});
-		await server.initialize({ backend: "server", apiEndpoint: "/api/tts" });
+		await server.initialize({ apiEndpoint: "/api/tts" });
 
 		expect(browser.getCapabilities().features).toMatchObject({
 			wordBoundary: false,

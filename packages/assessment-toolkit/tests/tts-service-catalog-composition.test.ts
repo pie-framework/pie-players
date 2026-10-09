@@ -75,9 +75,6 @@ class MockTTSProvider implements ITTSProvider {
 	async initialize(_config: TTSConfig): Promise<ITTSProviderImplementation> {
 		return this.impl;
 	}
-	supportsFeature(): boolean {
-		return true;
-	}
 	getCapabilities(): TTSProviderCapabilities {
 		return {
 			supportsPause: true,
@@ -1047,5 +1044,93 @@ describe("TTSService catalog speech composition", () => {
 		await speakPromise;
 
 		expect(impl.onWordBoundary).toBeUndefined();
+	});
+});
+
+class HandlerRecordingImpl extends MockTTSImpl {
+	/** Whether a word-boundary handler was installed at each speak call. */
+	public handlerAtSpeak: boolean[] = [];
+
+	async speak(text: string): Promise<void> {
+		this.handlerAtSpeak.push(typeof this.onWordBoundary === "function");
+		return super.speak(text);
+	}
+}
+
+function noopHighlightCoordinator() {
+	return {
+		highlightTTSWord: () => {},
+		highlightTTSSentence: () => {},
+		clearTTS: () => {},
+		isSupported: () => true,
+		updateTTSHighlightStyle: () => {},
+	} as any;
+}
+
+function alignedCatalogRoot(service: TTSService): HTMLElement {
+	service.setCatalogResolver(
+		new AccessibilityCatalogResolver([
+			{
+				identifier: "intro",
+				cards: [
+					{ catalog: "spoken", language: "en-US", content: "Start here." },
+				],
+			},
+		]),
+	);
+	const root = document.createElement("div");
+	root.innerHTML = `<span data-catalog-idref="intro">Start here.</span>`;
+	return root;
+}
+
+describe("TTSService word boundaries follow the highlight mode", () => {
+	test("a sentence-mode speak after a word-mode run installs no boundary handler", async () => {
+		const impl = new HandlerRecordingImpl();
+		const service = new TTSService();
+		await service.initialize(new MockTTSProvider(impl), {
+			providerOptions: { highlightMode: "word" },
+		});
+		service.setHighlightCoordinator(noopHighlightCoordinator());
+		const root = document.createElement("div");
+		root.textContent = "Read these words aloud.";
+
+		await service.speak(root, { language: "en-US" });
+		expect(impl.handlerAtSpeak).toEqual([true]);
+		expect(impl.onWordBoundary).toBeUndefined();
+
+		await service.updateSettings({
+			providerOptions: { highlightMode: "sentence" },
+		});
+		impl.handlerAtSpeak = [];
+		await service.speak(root, { language: "en-US" });
+
+		expect(impl.handlerAtSpeak.length).toBeGreaterThan(0);
+		expect(impl.handlerAtSpeak.every((installed) => !installed)).toBe(true);
+	});
+
+	test("an aligned catalog chunk takes boundaries in word mode only", async () => {
+		const wordImpl = new HandlerRecordingImpl();
+		const wordService = new TTSService();
+		await wordService.initialize(new MockTTSProvider(wordImpl), {
+			providerOptions: { highlightMode: "word" },
+		});
+		wordService.setHighlightCoordinator(noopHighlightCoordinator());
+		await wordService.speak(alignedCatalogRoot(wordService), {
+			language: "en-US",
+		});
+		expect(wordImpl.speakCalls).toEqual(["Start here."]);
+		expect(wordImpl.handlerAtSpeak).toEqual([true]);
+
+		const sentenceImpl = new HandlerRecordingImpl();
+		const sentenceService = new TTSService();
+		await sentenceService.initialize(new MockTTSProvider(sentenceImpl), {
+			providerOptions: { highlightMode: "sentence" },
+		});
+		sentenceService.setHighlightCoordinator(noopHighlightCoordinator());
+		await sentenceService.speak(alignedCatalogRoot(sentenceService), {
+			language: "en-US",
+		});
+		expect(sentenceImpl.speakCalls).toEqual(["Start here."]);
+		expect(sentenceImpl.handlerAtSpeak).toEqual([false]);
 	});
 });

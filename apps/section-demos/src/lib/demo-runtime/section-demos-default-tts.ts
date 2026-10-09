@@ -4,7 +4,7 @@
  */
 export const SECTION_DEMOS_POLLY_TTS_TOOL_PROVIDER = {
 	enabled: true,
-	backend: "polly" as const,
+	backend: "server" as const,
 	serverProvider: "polly" as const,
 	apiEndpoint: "/api/tts",
 	transportMode: "pie" as const,

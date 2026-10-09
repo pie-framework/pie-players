@@ -19,6 +19,9 @@ import {
 } from "./fixtures/test-tool-registry.js";
 import { contentWith } from "./fixtures/read-aloud-content.js";
 
+const ttsStarted = (coordinator: ToolkitCoordinator): boolean =>
+	(coordinator as unknown as { ttsInitialized: boolean }).ttsInitialized;
+
 beforeAll(() => {
 	if (!GlobalRegistrator.isRegistered) {
 		GlobalRegistrator.register();
@@ -243,7 +246,7 @@ describe("tool start failures", () => {
 
 		await coordinator.waitUntilReady();
 
-		expect(coordinator.getInitStatus().tts).toBe(true);
+		expect(ttsStarted(coordinator)).toBe(true);
 		expect(errors).toHaveLength(1);
 		expect(errors[0]).toMatchObject({ kind: "provider-init", recoverable: true });
 	});
@@ -263,7 +266,7 @@ describe("tool start failures", () => {
 		await coordinator.waitUntilReady();
 
 		expect(coordinator.isReady()).toBe(true);
-		expect(coordinator.getInitStatus().tts).toBe(false);
+		expect(ttsStarted(coordinator)).toBe(false);
 		expect(errors.map((model) => [model.kind, model.recoverable])).toEqual([
 			["tts-init", true],
 		]);
@@ -310,7 +313,7 @@ describe("text-to-speech start", () => {
 
 		await ready;
 
-		expect(coordinator.getInitStatus().tts).toBe(true);
+		expect(ttsStarted(coordinator)).toBe(true);
 	});
 
 	test("eagerInit false leaves the start to waitUntilReady", async () => {
@@ -322,10 +325,10 @@ describe("text-to-speech start", () => {
 		await new Promise((resolve) => setTimeout(resolve, 0));
 
 		expect(coordinator.isReady()).toBe(false);
-		expect(coordinator.getInitStatus().tts).toBe(false);
+		expect(ttsStarted(coordinator)).toBe(false);
 
 		await coordinator.waitUntilReady();
-		expect(coordinator.getInitStatus().tts).toBe(true);
+		expect(ttsStarted(coordinator)).toBe(true);
 	});
 
 	test("lazyInit defers it past readiness to the first speak", async () => {
@@ -337,13 +340,12 @@ describe("text-to-speech start", () => {
 
 		await coordinator.waitUntilReady();
 		expect(coordinator.isReady()).toBe(true);
-		expect(coordinator.getInitStatus().tts).toBe(false);
+		expect(ttsStarted(coordinator)).toBe(false);
 
-		await coordinator
-			.getServiceBundle()
-			.ttsService.speak(contentWith("hello"))
+		await coordinator.ttsService
+			.speak(contentWith("hello"))
 			.catch(() => {});
-		expect(coordinator.getInitStatus().tts).toBe(true);
+		expect(ttsStarted(coordinator)).toBe(true);
 	});
 
 	test("lazyInit does not defer speech policy grants", async () => {
@@ -356,6 +358,6 @@ describe("text-to-speech start", () => {
 
 		await coordinator.waitUntilReady();
 
-		expect(coordinator.getInitStatus().tts).toBe(true);
+		expect(ttsStarted(coordinator)).toBe(true);
 	});
 });

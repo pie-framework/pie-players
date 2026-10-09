@@ -634,16 +634,10 @@ describe("browser provider segmentation", () => {
 		}
 	});
 
-	test("reports no word boundaries, and answers each feature from its capabilities", () => {
+	test("reports no word boundaries", () => {
 		const provider = new BrowserTTSProvider();
-		const capabilities = provider.getCapabilities();
 
-		expect(capabilities.supportsWordBoundary).toBeFalse();
-		expect(provider.supportsFeature("wordBoundary")).toBeFalse();
-		expect(provider.supportsFeature("pause")).toBe(capabilities.supportsPause);
-		expect(provider.supportsFeature("pitchControl")).toBe(
-			capabilities.supportsPitchControl,
-		);
+		expect(provider.getCapabilities().supportsWordBoundary).toBeFalse();
 	});
 
 	describe("waitForBrowserVoices", () => {

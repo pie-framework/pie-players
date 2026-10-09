@@ -89,13 +89,11 @@ test.describe("section player custom layout", () => {
 				(
 					element as HTMLElement & {
 						getSnapshot(): {
-							readiness: { allLoadingComplete: boolean };
 							composition: { itemsCount: number; passagesCount: number };
 						};
 					}
 				).getSnapshot(),
 		);
-		expect(snapshot.readiness.allLoadingComplete).toBe(true);
 		expect(snapshot.composition).toMatchObject({
 			itemsCount: 3,
 			passagesCount: 1,

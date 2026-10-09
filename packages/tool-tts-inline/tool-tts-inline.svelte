@@ -28,6 +28,7 @@
 		type CatalogLookupContext,
 		type HighlightCoordinatorApi,
 		type NormalizedTTSSpeedOption,
+		type TTSLayoutMode,
 		type TTSSpeedOption,
 		type TtsServiceApi,
 	} from '@pie-players/pie-assessment-toolkit/tools/registration';
@@ -52,18 +53,14 @@
 		size = 'md' as 'sm' | 'md' | 'lg',
 		speedOptions = undefined,
 		showSingleSpeedOption = false,
-		layoutMode = 'expanding-row' as
-			| 'reserved-row'
-			| 'expanding-row'
-			| 'floating-overlay'
-			| 'left-aligned'
+		layoutMode = 'left-aligned' as TTSLayoutMode
 	}: {
 		catalogId?: string;
 		language?: string;
 		size?: 'sm' | 'md' | 'lg';
 		speedOptions?: TTSSpeedOption[];
 		showSingleSpeedOption?: boolean;
-		layoutMode?: 'reserved-row' | 'expanding-row' | 'floating-overlay' | 'left-aligned';
+		layoutMode?: TTSLayoutMode;
 	} = $props();
 
 	const isBrowser = typeof window !== 'undefined';
@@ -283,7 +280,6 @@
 	// no separate roving index is needed.
 
 	const instanceId = `pie-tts-inline-instance-${Math.random().toString(36).slice(2)}`;
-	const listenerId = `pie-tts-inline-${Math.random().toString(36).slice(2)}`;
 	const panelId = `${instanceId}-controls`;
 
 	function getActiveOwnerId(): string | null {
@@ -489,11 +485,9 @@
 				queueMicrotask(moveFocusOffDisabledSeekControl);
 			}
 		};
-		ttsService.onStateChange(listenerId, stateListener as (state: any) => void);
+		const unsubscribe = ttsService.onStateChange(stateListener);
 		syncFromState(ttsService.getState() as unknown as string);
-		return () => {
-			ttsService.offStateChange(listenerId, stateListener as (state: any) => void);
-		};
+		return unsubscribe;
 	});
 
 	$effect(() => {
@@ -1381,7 +1375,7 @@
 		);
 		border-color: var(
 			--pie-tool-trigger-active-border-color,
-			var(--pie-button-border-color, var(--pie-button-border, var(--pie-border, #c6c6c6)))
+			var(--pie-button-border, var(--pie-border, #c6c6c6))
 		);
 	}
 
@@ -1398,7 +1392,7 @@
 	}
 
 	.pie-tool-tts-inline__control:hover:not(:disabled) {
-		background-color: var(--pie-button-hover-background-color, var(--pie-button-hover-bg, var(--pie-secondary-background, #f2f4f8)));
+		background-color: var(--pie-button-hover-bg, var(--pie-secondary-background, #f2f4f8));
 		transform: translateY(-1px);
 		box-shadow: 0 2px 6px color-mix(in srgb, var(--pie-shadow, #000) 14%, transparent);
 	}
@@ -1473,7 +1467,7 @@
 		justify-content: center;
 		width: 2rem;
 		height: 2rem;
-		border: 1px solid var(--pie-button-border-color, var(--pie-button-border, var(--pie-border, #c6c6c6)));
+		border: 1px solid var(--pie-button-border, var(--pie-border, #c6c6c6));
 		border-radius: 0.25rem;
 		background: var(--pie-button-background-color, var(--pie-button-bg, var(--pie-background, #fff)));
 		color: var(--pie-button-color, var(--pie-text, #222));

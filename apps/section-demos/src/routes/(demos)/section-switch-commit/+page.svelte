@@ -51,6 +51,7 @@
 	const toolRegistry = createSectionDemoToolRegistry();
 	const coordinator = new ToolkitCoordinator({ assessmentId: DEMO_ASSESSMENT_ID, toolRegistry });
 	const runtime = {
+		assessmentId: DEMO_ASSESSMENT_ID,
 		playerType,
 		lazyInit: true,
 		player: withDemoLoaderOptions({}),
@@ -164,7 +165,6 @@
 <div class="host">
 	<pie-section-player-splitpane
 		bind:this={playerElement}
-		assessment-id={DEMO_ASSESSMENT_ID}
 		section-id={sectionIdAt(0)}
 		{runtime}
 		section={sections[0]}

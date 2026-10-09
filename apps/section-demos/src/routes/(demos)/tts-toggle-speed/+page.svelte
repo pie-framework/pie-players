@@ -7,7 +7,7 @@
 		type ToolkitCoordinatorHooks,
 	} from "@pie-players/pie-assessment-toolkit";
 	import "@pie-players/pie-section-player/components/section-player-splitpane-element";
-	import "@pie-players/pie-section-player/components/section-player-vertical-element";
+	import "@pie-players/pie-section-player";
 	import DemoRuntimeChrome from "#lib/demo-runtime/components/DemoRuntimeChrome.svelte";
 	import { createToggleSpeedTtsToolRegistry } from "#lib/demo-runtime/custom-tools/tts-toggle-speed.js";
 	import {
@@ -245,10 +245,10 @@
 		<div class="preload-status">Preloading section item bundles...</div>
 	{:else if layoutType === "vertical"}
 		<pie-section-player-vertical
-			assessment-id={DEMO_ASSESSMENT_ID}
 			section-id={sessionPanelSectionId}
 			attempt-id={attemptId}
 			runtime={ {
+				assessmentId: DEMO_ASSESSMENT_ID,
 				playerType: selectedPlayerType,
 				lazyInit: true,
 				tools: toolkitToolsConfig,
@@ -263,10 +263,10 @@
 		></pie-section-player-vertical>
 	{:else}
 		<pie-section-player-splitpane
-			assessment-id={DEMO_ASSESSMENT_ID}
 			section-id={sessionPanelSectionId}
 			attempt-id={attemptId}
 			runtime={ {
+				assessmentId: DEMO_ASSESSMENT_ID,
 				playerType: selectedPlayerType,
 				lazyInit: true,
 				tools: toolkitToolsConfig,

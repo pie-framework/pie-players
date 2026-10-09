@@ -22,8 +22,7 @@
 	} from "@pie-players/pie-assessment-toolkit/tools/registration";
 	import { resolveInterfaceI18n } from "@pie-players/pie-players-shared/i18n/provider";
 	import { SharedFloatingPanel } from "@pie-players/pie-section-player-tools-shared";
-	import { createEventDispatcher, untrack } from 'svelte';
-	import { createEmptyPersonalNeedsProfile } from '@pie-players/pie-assessment-toolkit/tools/registration';
+	import { untrack } from 'svelte';
 	import {
 		createPatchedPnpProfile,
 		createSimulatedAssessment,
@@ -34,7 +33,6 @@
 		type PnpEnforcementSelection,
 		type PolicyPanelCoordinator
 	} from './derive-panel-data.js';
-	const dispatch = createEventDispatcher<{ close: undefined }>();
 
 	interface Props {
 		sectionData: any;
@@ -93,7 +91,7 @@
 			sectionData,
 			roleType,
 			floatingTools,
-			defaultPnpProfile: createEmptyPersonalNeedsProfile(),
+			defaultPnpProfile: { supports: [], prohibitedSupports: [] },
 			coordinator: toolkitCoordinator as PolicyPanelCoordinator | null
 		});
 	});
@@ -208,7 +206,7 @@
 	}}
 	className="pie-section-player-tools-pnp-debugger"
 	bodyClass="pie-section-player-tools-pnp-debugger__content-shell"
-	onClose={() => dispatch('close')}
+	onClose={() => $host().dispatchEvent(new CustomEvent('close'))}
 >
 	<svelte:fragment slot="icon">
 			<svg

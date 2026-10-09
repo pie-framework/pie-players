@@ -109,14 +109,16 @@ describe("tool-tts-inline trigger styling contract", () => {
 		).replace(/\s+/g, "");
 
 		expect(controlBody).toContain(
-			"--pie-button-border-color,var(--pie-button-border,",
+			"border:1pxsolidvar(--pie-button-border,var(--pie-border,",
 		);
 		expect(controlBody).toContain(
 			"--pie-button-background-color,var(--pie-button-bg,",
 		);
 		expect(hoverBody).toContain(
-			"--pie-button-hover-background-color,var(--pie-button-hover-bg,",
+			"background-color:var(--pie-button-hover-bg,var(--pie-secondary-background,",
 		);
+		expect(styleSource).not.toContain("--pie-button-border-color");
+		expect(styleSource).not.toContain("--pie-button-hover-background-color");
 	});
 
 	test("icon-only secondary controls are circular", () => {
@@ -266,9 +268,6 @@ describe("tool-tts-inline speed control accessibility contract", () => {
 	});
 
 	test("lets omitted speedOptions use semantic Slow Normal Fast defaults", () => {
-		expect(source).not.toContain(
-			"speedOptions = [...DEFAULT_TTS_SPEED_OPTIONS] as TTSSpeedOption[]",
-		);
 		expect(source).toContain("speedOptions = undefined");
 	});
 
@@ -338,10 +337,10 @@ describe("tool-tts-inline speed control accessibility contract", () => {
 			"var(--pie-button-background-color,var(--pie-button-bg,var(--pie-background,#fff)))",
 		);
 		expect(control).toContain(
-			"var(--pie-button-border-color,var(--pie-button-border,var(--pie-border,#c6c6c6)))",
+			"var(--pie-button-border,var(--pie-border,#c6c6c6))",
 		);
 		expect(active).toContain(
-			"var(--pie-button-border-color,var(--pie-button-border,var(--pie-border,#c6c6c6)))",
+			"var(--pie-button-border,var(--pie-border,#c6c6c6))",
 		);
 
 		// Foreground fallback matches __control, NOT --plain. Both declare `color`

@@ -51,9 +51,6 @@ export default defineConfig({
 				"@pie-players/pie-players-shared",
 				"@pie-players/pie-players-shared/types",
 				"@pie-players/pie-section-player",
-				"@pie-players/pie-section-player/contracts/public-events",
-				"@pie-players/pie-section-player/components/section-player-splitpane-element",
-				"@pie-players/pie-section-player/components/section-player-vertical-element",
 			],
 			output: {
 				format: "es",

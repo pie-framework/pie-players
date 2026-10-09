@@ -1,41 +1,15 @@
 /**
- * Section-player host runtime helpers (M7 PR 7).
- *
- * The Variant C engine resolver in
- * `@pie-players/pie-assessment-toolkit/runtime/engine` owns runtime
- * config resolution. The **player-coupled** parts stay here:
- *
- *   - `resolvePlayerRuntime` reads from
- *     `DEFAULT_PLAYER_DEFINITIONS` in
- *     `../../component-definitions.js`, which side-effect-imports
- *     `@pie-players/pie-item-player`. Pulling that import into the
- *     toolkit runtime core would break the package's
- *     "core stays player-package-free" invariant
- *     (`engine-resolver.ts` doc-comment, "What is NOT absorbed").
- *
- *   - `mapRenderablesToItems` is a tiny helper consumed by
- *     `section-player-view-state.ts`. It belongs alongside the
- *     other host-runtime helpers, not in the toolkit core.
- *
- *   - `resolveSectionPlayerRuntimeState` is a thin wrapper over the
- *     toolkit's `resolveSectionEngineRuntimeState` so runtime config
- *     resolution is owned by the toolkit and player coupling stays in
- *     section-player.
- *
- * Section-player imports for the relocated symbols (`DEFAULT_*`,
- * `resolveOnFrameworkError`, `RuntimeConfig`, the handler types,
- * `createReadinessDetail`, the stage types, etc.) point directly
- * at `@pie-players/pie-assessment-toolkit/runtime/engine` /
- * `@pie-players/pie-players-shared/pie`. This module deliberately does
- * not re-export them: a single canonical import path per symbol keeps
- * the dist-export contract honest and prevents future drift.
+ * The player-coupled half of section-player runtime resolution. The toolkit's
+ * `resolveSectionEngineRuntimeState` (`@pie-players/pie-assessment-toolkit/runtime/engine`)
+ * resolves the runtime config; `resolvePlayerRuntime` lives here because it reads
+ * `DEFAULT_PLAYER_DEFINITIONS`, which side-effect-imports
+ * `@pie-players/pie-item-player`, and the toolkit core imports no player package.
  */
 
 import {
 	DEFAULT_PLAYER_TYPE,
 	resolveSectionEngineRuntimeState,
 	type PlayerOverrides,
-	type RuntimeConfig,
 	type RuntimeInputs,
 } from "@pie-players/pie-assessment-toolkit/runtime/engine";
 import {
@@ -45,7 +19,7 @@ import {
 import { DEFAULT_PLAYER_DEFINITIONS } from "../../component-definitions.js";
 
 function hasExplicitHostedOverride(playerOverrides: PlayerOverrides): boolean {
-	return (playerOverrides as { hosted?: unknown }).hosted !== undefined;
+	return playerOverrides.hosted !== undefined;
 }
 
 function hasEnabledDeliveryBackend(playerOverrides: PlayerOverrides): boolean {
@@ -151,27 +125,4 @@ export function resolveSectionPlayerRuntimeState(args: RuntimeInputs) {
 	return resolveSectionEngineRuntimeState(args, {
 		resolvePlayerRuntime,
 	});
-}
-
-/**
- * Fold a layout element's presentation convenience attributes — `nds-icons` and
- * `locale` — into the `runtime` config handed to the kernel.
- *
- * Only injects an attribute that is explicitly set, so an unset one never
- * clobbers a value the host put on `runtime`; when both are present, `runtime`
- * wins (spread last). Returns the input unchanged when neither is set, which
- * keeps `kernelRuntime` referentially stable for a host that supplies neither.
- */
-export function mergeLayoutAttrsIntoRuntime(
-	runtime: RuntimeConfig | null,
-	attrs: { ndsIcons?: boolean; locale?: string },
-): RuntimeConfig | null {
-	const overlay: Partial<RuntimeConfig> = {};
-	if (attrs.ndsIcons !== undefined) overlay.ndsIcons = attrs.ndsIcons;
-	// An empty attribute is "unset", not "render the empty locale": Svelte
-	// serializes an absent string attribute to `""`, and treating that as a
-	// request would override a host's `runtime.locale` with nothing.
-	if (attrs.locale) overlay.locale = attrs.locale;
-	if (Object.keys(overlay).length === 0) return runtime;
-	return { ...overlay, ...(runtime ?? {}) };
 }

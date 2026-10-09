@@ -255,12 +255,13 @@ Grants PIE tools from QTI 3.0 PNP support ids, where a support id is the tool id
 1. District block (absolute veto) - highest priority
 2. Test administration withdrawal (`toolOverrides` set to `false`)
 3. Item restriction (per-item block)
-4. Test administration grant (`toolOverrides` set to `true`), unless the PNP prohibits the tool
-5. Item requirement (forces enable)
-6. District requirement
-7. PNP prohibitions and supports (student needs)
+4. PNP prohibition (`prohibitedSupports`)
+5. Test administration grant (`toolOverrides` set to `true`)
+6. Item requirement (forces enable)
+7. District requirement
+8. PNP supports (student needs)
 
-A restriction or prohibition that withdraws a tool a `true` override grants raises `tool-policy.overrideBlocked`. Rungs 3 and 5 apply to the decisions scoped to an item, its own item-level toolbar and its content's features, with the settings its `<pie-item-scope>` registers. A section-, assessment- or passage-level toolbar skips them and raises `tool-policy.itemSettingNotApplied` for each tool on it that a mounted item restricts or requires.
+A restriction or prohibition that withdraws a tool a `true` override grants raises `tool-policy.overrideBlocked`. Rungs 3 and 6 apply to the decisions scoped to an item, its own item-level toolbar and its content's features, with the settings its `<pie-item-scope>` registers. A section-, assessment- or passage-level toolbar skips them and raises `tool-policy.itemSettingNotApplied` for each tool on it that a mounted item restricts or requires.
 
 **2. Context Declarations** - Global variables shared across items
 
@@ -296,7 +297,7 @@ The **ToolkitCoordinator** is a centralized orchestrator for all PIE Assessment 
 - Tool state management included
 - Sensible defaults (section player creates default coordinator if not provided)
 
-**Architecture**: The coordinator owns the services below and provides convenience methods for tool configuration and state management. Six are public properties, the set `getServiceBundle()` returns: `toolCoordinator`, `highlightCoordinator`, `ttsService`, `catalogResolver`, `elementToolStateStore` and `toolProviderRegistry`. The `ToolPolicyEngine` is private; hosts reach it through `decideToolPolicy(...)` and `decideFeaturePolicy(...)`.
+**Architecture**: The coordinator owns the services below and provides convenience methods for tool configuration and state management. Six are public properties: `toolCoordinator`, `highlightCoordinator`, `ttsService`, `catalogResolver`, `elementToolStateStore` and `toolProviderRegistry`. The `ToolPolicyEngine` is private; hosts reach it through `decideToolPolicy(...)` and `decideFeaturePolicy(...)`.
 
 See: [packages/assessment-toolkit/README.md](../../packages/assessment-toolkit/README.md) for API details.
 

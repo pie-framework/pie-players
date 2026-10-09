@@ -79,14 +79,15 @@ the registry creates a `TTSToolProvider`, and that provider creates one concrete
 TTS provider:
 
 - `BrowserTTSProvider` for `backend: "browser"`
-- `ServerTTSProvider` for `backend: "server"`, `"polly"`, or `"google"`
+- `ServerTTSProvider` for `backend: "server"`, with `serverProvider` naming the
+  service: `"polly"`, `"google"` or `"custom"`
 
 The server path loads `@pie-players/tts-client-server` through a dynamic import
 in the TTS registration of `@pie-players/pie-default-tool-loaders`, which passes
 it to `TTSToolProvider` as its `loadServerProvider` option. Browser-only
 deployments never load that package, and the toolkit never names it.
 
-If server-backed initialization fails, the toolkit can fall back to browser TTS.
+If server-backed initialization fails, the toolkit coordinator falls back to browser TTS.
 Browser TTS is the resilience path because it uses the platform Web Speech API
 and does not require a network service.
 

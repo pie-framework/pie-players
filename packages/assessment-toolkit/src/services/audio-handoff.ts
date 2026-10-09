@@ -16,10 +16,7 @@ import type { TtsServiceApi } from "./interfaces.js";
 import { PlaybackState } from "./TTSService.js";
 
 /** Only what a handoff needs, so a host passing a partial service still works. */
-type TtsHandoffSubscriber = Pick<
-	TtsServiceApi,
-	"onStateChange" | "offStateChange"
->;
+type TtsHandoffSubscriber = Pick<TtsServiceApi, "onStateChange">;
 type TtsHandoffPlayback = Pick<TtsServiceApi, "getState" | "pause">;
 
 const NOOP = (): void => {};
@@ -44,19 +41,16 @@ function isSpeaking(state: PlaybackState | undefined): boolean {
  */
 export function bindTtsAudioHandoff(args: {
 	ttsService: Partial<TtsHandoffSubscriber> | null | undefined;
-	/** Unique per surface: the service keys its listener sets by this. */
-	listenerId: string;
 	silence: () => void;
 }): () => void {
-	const { ttsService, listenerId, silence } = args;
+	const { ttsService, silence } = args;
 	if (typeof ttsService?.onStateChange !== "function") return NOOP;
-	const onTtsState = (state: PlaybackState): void => {
+	const unsubscribe = ttsService.onStateChange((state: PlaybackState) => {
 		if (isSpeaking(state)) silence();
-	};
-	ttsService.onStateChange(listenerId, onTtsState);
+	});
 	return () => {
 		try {
-			ttsService.offStateChange?.(listenerId, onTtsState);
+			unsubscribe();
 		} catch {
 			// A torn-down service is not a failure to detach from.
 		}

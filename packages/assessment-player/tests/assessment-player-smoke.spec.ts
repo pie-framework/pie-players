@@ -656,7 +656,7 @@ test.describe("assessment player smoke", () => {
 				{
 					toolId: "textToSpeech",
 					operation: "synthesize-speech",
-					backend: "polly",
+					backend: "server",
 					duration: 123,
 				},
 			);

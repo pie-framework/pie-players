@@ -13,7 +13,7 @@
 		type ToolkitCoordinatorHooks
 	} from '@pie-players/pie-assessment-toolkit';
 	import '@pie-players/pie-section-player/components/section-player-splitpane-element';
-	import '@pie-players/pie-section-player/components/section-player-vertical-element';
+	import '@pie-players/pie-section-player';
 	import DemoRuntimeChrome from '#lib/demo-runtime/components/DemoRuntimeChrome.svelte';
 	import { demoLocale } from '#lib/demo-locale.svelte.js';
 	import {
@@ -56,8 +56,7 @@
 		localeSwitcher = false,
 		/**
 		 * Select the calculator implementation for provider-composition demos.
-		 * Leaving this unset deliberately exercises the backwards-compatible
-		 * Desmos default.
+		 * Unset, the page uses Desmos, the default calculator.
 		 */
 		calculatorProvider = 'desmos',
 		/**
@@ -420,10 +419,10 @@
 		{:else if layoutType === 'vertical'}
 			<pie-section-player-vertical
 				bind:this={playerHostElement}
-				assessment-id={DEMO_ASSESSMENT_ID}
 				section-id={sessionPanelSectionId}
 				attempt-id={attemptId}
 				runtime={ {
+					assessmentId: DEMO_ASSESSMENT_ID,
 					playerType: selectedPlayerType,
 					lazyInit: true,
 					tools: toolkitToolsConfig,
@@ -440,10 +439,10 @@
 		{:else}
 			<pie-section-player-splitpane
 				bind:this={playerHostElement}
-				assessment-id={DEMO_ASSESSMENT_ID}
 				section-id={sessionPanelSectionId}
 				attempt-id={attemptId}
 				runtime={ {
+					assessmentId: DEMO_ASSESSMENT_ID,
 					playerType: selectedPlayerType,
 					lazyInit: true,
 					tools: toolkitToolsConfig,

@@ -26,6 +26,7 @@ export type {
 	HostedToolContext,
 	HostedToolSize,
 	ToolContentDependencyContext,
+	ToolModuleLoader,
 	ToolProviderDescriptor,
 	ToolRegistration,
 	ToolRenderElement,
@@ -160,14 +161,13 @@ export {
 	retargetToTree,
 } from "../services/tts/flat-tree.js";
 
-// Placement levels a tool resolves its placement against, and the empty profile
-// a PNP surface starts from.
+// Placement levels a tool resolves its placement against.
 export type { ToolPlacementLevel } from "../services/tools-config-normalizer.js";
-export { createEmptyPersonalNeedsProfile } from "../services/defaultPersonalNeedsProfile.js";
 
 // Canonical tools config shapes a provider descriptor validates against.
 export type {
 	CalculatorToolProviderConfig,
+	TextToSpeechToolProviderConfig,
 	ToolProviderConfig,
 } from "../services/tools-config-normalizer.js";
 
@@ -192,18 +192,13 @@ export type {
 } from "../services/tts-runtime-config.js";
 export {
 	buildRuntimeTTSConfig,
-	DEFAULT_TTS_SPEED_OPTIONS,
 	formatTTSSpeedOptionsAsText,
 	normalizeTTSLayoutMode,
 	normalizeTTSSpeedControlOptions,
-	normalizeTTSSpeedOptions,
 	parseTTSSpeedOptionsFromText,
-	resolveRuntimeProvider,
-	resolveTTSBackend,
 	resolveTTSHostToolbarLayout,
 	resolveTTSLayoutMode,
 	resolveTTSRuntimeSettings,
-	resolveTransportMode,
 } from "../services/tts-runtime-config.js";
 
 // Read-aloud coordination for a tool that plays or controls speech: the control
@@ -217,7 +212,6 @@ export {
 } from "../services/audio-handoff.js";
 export { isTTSStartFailure } from "../services/tts/start-failure.js";
 export {
-	type BrowserVoiceTraits,
 	browserVoiceMatchesLanguage,
 	findBrowserVoice,
 	waitForBrowserVoices,

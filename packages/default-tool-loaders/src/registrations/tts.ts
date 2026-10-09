@@ -22,10 +22,7 @@ import {
 	type NormalizedTTSSpeedOption,
 	resolveTTSHostToolbarLayout,
 	resolveTTSLayoutMode,
-	resolveTTSBackend,
 	resolveTTSRuntimeSettings,
-	resolveRuntimeProvider,
-	resolveTransportMode,
 } from "@pie-players/pie-assessment-toolkit/tools/registration";
 import { TTSToolProvider } from "@pie-players/pie-assessment-toolkit/tools/registration";
 import { resolveOverlayElement } from "./overlay-element-cache.js";
@@ -54,23 +51,12 @@ export const ttsToolRegistration: ToolRegistration = {
 	icon: "volume-up",
 	provider: {
 		createProvider: (config) => {
-			const settings = resolveTTSRuntimeSettings(config);
-			return new TTSToolProvider(resolveTTSBackend(settings), {
+			return new TTSToolProvider(resolveTTSRuntimeSettings(config).backend, {
 				loadServerProvider: loadServerTTSProvider,
 			});
 		},
-		getInitConfig: (config) => {
-			const settings = resolveTTSRuntimeSettings(config);
-			const backend = resolveTTSBackend(settings);
-			const serverProvider = resolveRuntimeProvider(settings, backend);
-			const transportMode = resolveTransportMode(settings, serverProvider);
-			return {
-				backend,
-				serverProvider,
-				transportMode,
-				...buildRuntimeTTSConfig(settings),
-			};
-		},
+		getInitConfig: (config) =>
+			buildRuntimeTTSConfig(resolveTTSRuntimeSettings(config)),
 		getAuthFetcher: (config) => {
 			const runtimeAuthFetcher = config?.provider?.runtime?.authFetcher;
 			return typeof runtimeAuthFetcher === "function"
@@ -81,18 +67,6 @@ export const ttsToolRegistration: ToolRegistration = {
 	},
 
 	sanitizeConfig: (config) => {
-		const settings =
-			config.settings && typeof config.settings === "object"
-				? { ...(config.settings as Record<string, unknown>) }
-				: undefined;
-		if (settings && "layoutMode" in settings) {
-			settings.layoutMode = normalizeTTSLayoutMode(settings.layoutMode);
-		}
-		if (settings && "speedOptions" in settings) {
-			settings.speedOptions = normalizeTTSSpeedControlOptions(
-				settings.speedOptions,
-			);
-		}
 		const normalizedConfig: Record<string, unknown> = {
 			...(config as Record<string, unknown>),
 		};
@@ -105,9 +79,6 @@ export const ttsToolRegistration: ToolRegistration = {
 			normalizedConfig.speedOptions = normalizeTTSSpeedControlOptions(
 				normalizedConfig.speedOptions,
 			);
-		}
-		if (settings) {
-			normalizedConfig.settings = settings;
 		}
 		return normalizedConfig as typeof config;
 	},

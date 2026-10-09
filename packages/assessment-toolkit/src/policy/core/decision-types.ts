@@ -14,9 +14,8 @@ import type { ToolPlacementLevel } from "../../services/tools-config-normalizer.
 import type { ToolContext, ToolLevel } from "../../services/tool-context.js";
 import type {
 	PnpPolicySourceRule,
-	PolicySourceTag,
-} from "./policy-source-tag.js";
-import type { ToolPolicyProvenance } from "./provenance.js";
+	ToolPolicyProvenance,
+} from "./provenance.js";
 
 /**
  * Scope identifier for a `decide(...)` request. The engine uses
@@ -63,7 +62,8 @@ export interface ToolPolicyDecisionRequest {
  *
  * `tool-policy.placementMissing` fires when a custom `PolicySource`
  * references a tool ID that is not present in `tools.placement[level]`
- * for the resolved level. The host-side `ToolConfigDiagnostic` channel
+ * for the resolved level. `details` is {@link PlacementMissingDetails}.
+ * The host-side `ToolConfigDiagnostic` channel
  * (already used by `tool-config-validation.ts`) covers config-time
  * misconfiguration; this channel covers per-decision conflicts.
  *
@@ -133,6 +133,12 @@ export interface UnknownSupportIdDetails extends Record<string, unknown> {
 	origins: PnpPolicySourceRule[];
 }
 
+/** Payload of a `tool-policy.placementMissing` diagnostic. */
+export interface PlacementMissingDetails extends Record<string, unknown> {
+	/** The custom `PolicySource` that named the tool. */
+	customSourceId: string;
+}
+
 /** Payload of a `tool-policy.overrideBlocked` diagnostic. */
 export interface OverrideBlockedDetails extends Record<string, unknown> {
 	/** The rule that withdrew the granted tool. */
@@ -155,7 +161,6 @@ export interface ToolPolicyDiagnostic {
 	level?: ToolPlacementLevel;
 	toolId: string;
 	message: string;
-	source?: PolicySourceTag;
 	details?: Record<string, unknown>;
 }
 
@@ -183,13 +188,6 @@ export interface ToolPolicyEntry {
 	 * the assessment entity from above the engine.
 	 */
 	settings?: unknown;
-	/**
-	 * Every contributor that helped this entry survive the
-	 * composition pipeline. Always non-empty — at minimum
-	 * `["placement"]` for any entry that came from
-	 * `tools.placement[level]`.
-	 */
-	sources: PolicySourceTag[];
 }
 
 export interface ToolPolicyDecision {

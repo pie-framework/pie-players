@@ -27,15 +27,15 @@ import type {
 	ToolPolicyDecisionRequest,
 	ToolPolicyDiagnostic,
 	ToolPolicyEntry,
+	PlacementMissingDetails,
 	ToolPolicyHostGate,
 	UnknownSupportIdDetails,
 } from "./decision-types.js";
 import type { PolicySource } from "./PolicySource.js";
-import type {
-	PnpPolicySourceRule,
-	PolicySourceTag,
-} from "./policy-source-tag.js";
-import { ToolPolicyProvenanceBuilder } from "./provenance.js";
+import {
+	type PnpPolicySourceRule,
+	ToolPolicyProvenanceBuilder,
+} from "./provenance.js";
 import type {
 	PnpPolicyItem,
 	PnpPolicySource,
@@ -167,10 +167,6 @@ export function composeDecision(
 
 	// Step 5 — PNP/profile policy gates.
 	const diagnostics: ToolPolicyDiagnostic[] = [];
-	const sourcesByTool = new Map<string, PolicySourceTag[]>();
-	for (const toolId of candidates) {
-		sourcesByTool.set(toolId, ["placement"]);
-	}
 
 	// Snapshot the post-host candidate set so step 5b reports
 	// requiredToolBlocked only for a mandated tool the host removed.
@@ -223,11 +219,6 @@ export function composeDecision(
 		candidates = candidates.filter((toolId) => {
 			return !pnpPolicyResult!.blockedToolIds.has(toolId);
 		});
-		for (const toolId of Array.from(sourcesByTool.keys())) {
-			if (pnpPolicyResult.blockedToolIds.has(toolId)) {
-				sourcesByTool.delete(toolId);
-			}
-		}
 
 		// 5b — surface requiredToolBlocked diagnostics ONLY for
 		// PNP/profile-mandated tools that the host removed (i.e., the tool was
@@ -275,16 +266,6 @@ export function composeDecision(
 				value: details,
 			});
 		}
-
-		// 5c — attach PNP policy source tags to surviving entries.
-		for (const toolId of candidates) {
-			const flag = pnpPolicyResult.perToolFlags.get(toolId);
-			if (flag) {
-				const tags = sourcesByTool.get(toolId) ?? [];
-				tags.push(`pnp.${flag.rule}` satisfies PolicySourceTag);
-				sourcesByTool.set(toolId, tags);
-			}
-		}
 	}
 
 	// Step 6 — Custom PolicySources.
@@ -304,7 +285,7 @@ export function composeDecision(
 					level: request.level,
 					toolId,
 					message: `Custom source "${source.id}" tried to add tool "${toolId}" that was not in candidates; ignored.`,
-					source: `custom.${source.id}` satisfies PolicySourceTag,
+					details: { customSourceId: source.id } satisfies PlacementMissingDetails,
 				});
 				refinedSet.delete(toolId);
 			}
@@ -350,20 +331,6 @@ export function composeDecision(
 				value: { customSourceId: source.id },
 			});
 		}
-
-		// Annotate surviving entries with `custom.<id>` so hosts can see
-		// which custom source kept them in.
-		for (const toolId of candidates) {
-			const tags = sourcesByTool.get(toolId) ?? ["placement"];
-			tags.push(`custom.${source.id}` satisfies PolicySourceTag);
-			sourcesByTool.set(toolId, tags);
-		}
-		// And drop attribution for IDs the source removed.
-		for (const toolId of before) {
-			if (!refinedSet.has(toolId)) {
-				sourcesByTool.delete(toolId);
-			}
-		}
 	}
 
 	// Step 7 — item settings a shared toolbar does not apply. Placement is the
@@ -398,7 +365,6 @@ export function composeDecision(
 			required: flag?.required ?? false,
 			alwaysAvailable: flag?.alwaysAvailable ?? false,
 			settings: flag?.settings,
-			sources: sourcesByTool.get(toolId) ?? ["placement"],
 		};
 	});
 
@@ -455,9 +421,9 @@ const PNP_RULE_FIELDS: Record<PnpPolicySourceRule, string> = {
 	"district-block": "settings.districtPolicy.blockedTools",
 	"test-admin-override": "settings.testAdministration.toolOverrides",
 	"item-restriction": "item settings.restrictedTools",
+	"pnp-prohibited": "personalNeedsProfile.prohibitedSupports",
 	"item-requirement": "item settings.requiredTools",
 	"district-requirement": "settings.districtPolicy.requiredTools",
-	"pnp-prohibited": "personalNeedsProfile.prohibitedSupports",
 	"pnp-support": "personalNeedsProfile.supports",
 };
 
@@ -476,7 +442,6 @@ export function overrideBlockedDiagnostic(
 		...(level ? { level } : {}),
 		toolId,
 		message: `settings.testAdministration.toolOverrides grants "${toolId}", but ${PNP_RULE_FIELDS[rule]} withdraws it and outranks a granting override.`,
-		source: `pnp.${rule}` satisfies PolicySourceTag,
 		details: { rule } satisfies OverrideBlockedDetails,
 	};
 }
@@ -497,7 +462,6 @@ export function unknownSupportIdDiagnostic(
 		...(level ? { level } : {}),
 		toolId: supportId,
 		message: `No tool is registered under "${supportId}", named in ${fields}, so it matches nothing. These lists name tools by tool id.`,
-		source: `pnp.${origins[0]}` satisfies PolicySourceTag,
 		details: { origins: [...origins] } satisfies UnknownSupportIdDetails,
 	};
 }

@@ -172,7 +172,6 @@ async function mountFreshLayout(
 				runtime?: unknown;
 				section?: unknown;
 			};
-			fresh.setAttribute("assessment-id", "delivery-assessment");
 			fresh.setAttribute(
 				"section-id",
 				existing.getAttribute("section-id") || "delivery-section",
@@ -202,8 +201,9 @@ async function mountFreshLayout(
 				log.onFrameworkError += 1;
 			};
 			fresh.runtime = hostCoordinator
-				? { ...existingRuntime, onFrameworkError }
+				? { ...existingRuntime, assessmentId: "delivery-assessment", onFrameworkError }
 				: {
+						assessmentId: "delivery-assessment",
 						playerType: "preloaded",
 						env: { mode: "gather", role: "student" },
 						onFrameworkError,
@@ -336,19 +336,9 @@ test.describe("section player event delivery", () => {
 			}).toEqual({ host: errors, onFrameworkError: errors, document: errors });
 			// The engine's events bubble from the layout element as well.
 			const engineEvents = countsOf(log.host, ENGINE_EVENTS);
+			// The probe error is recoverable, so loading still completes.
 			expect(engineEvents["pie-loading-complete"]).toBe(1);
 			expect(countsOf(log.document, ENGINE_EVENTS)).toEqual(engineEvents);
-			// The probe error is recoverable, so readiness does not latch to `error`.
-			const phase = await page.evaluate(
-				(layoutTag) =>
-					(
-						document.querySelector(layoutTag) as
-							| (HTMLElement & { selectReadiness?: () => { phase?: string } })
-							| null
-					)?.selectReadiness?.()?.phase,
-				tag,
-			);
-			expect(phase).toBe("ready");
 		});
 	}
 
@@ -541,10 +531,10 @@ test.describe("section player event delivery", () => {
 					"pie-section-player-splitpane",
 				) as HTMLElement & { runtime?: unknown; section?: unknown };
 				player.id = `delivery-${name}`;
-				player.setAttribute("assessment-id", `delivery-${name}`);
 				player.setAttribute("section-id", "delivery-section");
 				player.setAttribute("attempt-id", `delivery-${name}-${Date.now()}`);
 				player.runtime = {
+					assessmentId: `delivery-${name}`,
 					playerType: "preloaded",
 					env: { mode: "gather", role: "student" },
 				};

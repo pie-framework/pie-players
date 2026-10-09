@@ -23,13 +23,13 @@ describe("ToolkitCoordinator telemetry listeners", () => {
 
 		await (coordinator as any).emitTelemetry("pie-tool-init-start", {
 			toolId: "textToSpeech",
-			backend: "polly",
+			backend: "server",
 		});
 		unsubscribe();
 
 		expect(received).toContainEqual({
 			eventName: "pie-tool-init-start",
-			payload: { toolId: "textToSpeech", backend: "polly" },
+			payload: { toolId: "textToSpeech", backend: "server" },
 		});
 	});
 
@@ -41,7 +41,8 @@ describe("ToolkitCoordinator telemetry listeners", () => {
 				providers: {
 					textToSpeech: {
 						enabled: true,
-						backend: "polly",
+						backend: "server",
+						serverProvider: "polly",
 						apiEndpoint: "/api/tts",
 						provider: {
 							runtime: {

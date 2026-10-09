@@ -7,22 +7,22 @@ import { PlaybackState } from "../src/services/TTSService";
 
 /** A TTS service reduced to what a handoff touches. */
 function fakeTts(initial: PlaybackState = PlaybackState.IDLE) {
-	const listeners = new Map<string, (state: PlaybackState) => void>();
+	const listeners = new Set<(state: PlaybackState) => void>();
 	const calls: string[] = [];
 	let state = initial;
 	return {
 		calls,
 		emit(next: PlaybackState) {
 			state = next;
-			for (const listener of Array.from(listeners.values())) listener(next);
+			for (const listener of Array.from(listeners)) listener(next);
 		},
 		listenerCount: () => listeners.size,
 		service: {
-			onStateChange(id: string, callback: (state: PlaybackState) => void) {
-				listeners.set(id, callback);
-			},
-			offStateChange(id: string) {
-				listeners.delete(id);
+			onStateChange(callback: (state: PlaybackState) => void) {
+				listeners.add(callback);
+				return () => {
+					listeners.delete(callback);
+				};
 			},
 			getState: () => state,
 			pause() {
@@ -38,7 +38,6 @@ describe("bindTtsAudioHandoff", () => {
 		let silenced = 0;
 		const teardown = bindTtsAudioHandoff({
 			ttsService: tts.service,
-			listenerId: "surface-1",
 			silence: () => {
 				silenced += 1;
 			},
@@ -67,7 +66,6 @@ describe("bindTtsAudioHandoff", () => {
 		expect(() =>
 			bindTtsAudioHandoff({
 				ttsService: null,
-				listenerId: "surface-1",
 				silence: () => {},
 			})(),
 		).not.toThrow();
@@ -75,7 +73,6 @@ describe("bindTtsAudioHandoff", () => {
 		expect(() =>
 			bindTtsAudioHandoff({
 				ttsService: { isPlaying: () => true } as never,
-				listenerId: "surface-1",
 				silence: () => {},
 			})(),
 		).not.toThrow();

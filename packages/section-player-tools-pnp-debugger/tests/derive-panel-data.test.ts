@@ -88,7 +88,6 @@ function makeDecision(
 			toolId,
 			required: false,
 			alwaysAvailable: false,
-			sources: [],
 		})),
 		diagnostics: [],
 		provenance,
@@ -578,7 +577,7 @@ describe("derivePnpPanelData", () => {
 			code: "tool-policy.unknownSupportId" as const,
 			toolId: "textToSpeach",
 			message: "No tool is registered under \"textToSpeach\".",
-			source: "pnp.pnp-support" as const,
+			details: { origins: ["pnp-support"] },
 		};
 		const data = derivePnpPanelData({
 			sectionData: { id: "s1", assessmentItemRefs: [{ identifier: "i1" }] },

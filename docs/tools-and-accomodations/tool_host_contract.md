@@ -275,12 +275,11 @@ Any `/api/...` route referenced by a toolkit provider must be:
 The routes in `apps/section-demos/src/routes/api/` are intentionally
 unauthenticated and exist for local development and e2e specs. In
 particular, `GET /api/tools/desmos/auth` returns the configured
-`DESMOS_API_KEY` with no session check. When it is absent, the demo returns an
-empty compatibility response and the adapter falls back to the historical
-unkeyed load, which Desmos's CDN rejects with HTTP 403; the fallback does not
-grant or imply a Desmos license. Do not copy this route verbatim into a production
-deployment — use it only as a shape reference, require the host's auth
-middleware, and use a key/tier licensed for the deployed application.
+`DESMOS_API_KEY` with no session check. When it is absent, the route returns
+`{ apiKey: null }` and the calculator cannot load. Do not copy this route
+verbatim into a production deployment — use it only as a shape reference,
+require the host's auth middleware, and use a key/tier licensed for the deployed
+application.
 
 ### Related documentation
 

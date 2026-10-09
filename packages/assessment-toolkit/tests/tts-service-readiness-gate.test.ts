@@ -45,7 +45,6 @@ const provider: ITTSProvider = {
 	providerName: "Mock Provider",
 	version: "1.0.0",
 	initialize: async () => impl,
-	supportsFeature: () => true,
 	getCapabilities: () =>
 		({
 			supportsPause: true,

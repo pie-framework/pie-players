@@ -78,7 +78,6 @@ const startAndStopToolProvider = async () => {
 				readonly providerName = "Stub";
 				readonly version = "0";
 				initialize = async () => ({}) as never;
-				supportsFeature = () => false;
 				getCapabilities = () => ({}) as never;
 				destroy = () => {};
 			} as unknown as new () => ITTSProvider,

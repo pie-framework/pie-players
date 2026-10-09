@@ -1,18 +1,17 @@
 import type {
+	TextToSpeechToolProviderConfig,
 	ToolkitCoordinatorApi,
-	TTSToolConfig,
 } from "@pie-players/pie-assessment-toolkit";
 
 const TTS_SETTINGS_STORAGE_PREFIX = "pie:debug-panels:v1";
 const TTS_SETTINGS_PANEL_ID = "tts-settings";
-const TTS_BACKENDS = new Set<TTSToolConfig["backend"]>([
+const TTS_BACKENDS = new Set<TextToSpeechToolProviderConfig["backend"]>([
 	"browser",
-	"polly",
-	"google",
 	"server",
 ]);
 
-type StoredTTSSettings = Partial<TTSToolConfig> & Record<string, unknown>;
+/** The panel's stored settings: the tool config plus the panel's own `tab`. */
+type StoredTTSSettings = TextToSpeechToolProviderConfig & { tab?: string };
 
 export type SectionDemoTtsSettingsCoordinator = Pick<
 	ToolkitCoordinatorApi,
@@ -44,9 +43,10 @@ function readStoredTTSSettings(
 	}
 }
 
-function buildCoordinatorUpdate(
-	stored: StoredTTSSettings,
-): Partial<TTSToolConfig> {
+function buildCoordinatorUpdate({
+	tab: _tab,
+	...stored
+}: StoredTTSSettings): TextToSpeechToolProviderConfig {
 	if (stored.backend !== "browser") {
 		return { enabled: true, ...stored };
 	}
@@ -58,7 +58,6 @@ function buildCoordinatorUpdate(
 		enabled: true,
 		...stored,
 		backend: "browser",
-		provider: undefined,
 		serverProvider: undefined,
 		apiEndpoint: undefined,
 		endpointMode: undefined,

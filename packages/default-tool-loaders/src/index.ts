@@ -1,25 +1,15 @@
-// The packaged capability composition. These stable exports are all projections
-// of one internal definition set; hosts keep the existing API while additions
-// cannot drift between registration, tag, loader, placement and policy lists.
-export type {
-	PackagedToolRegistryOptions,
-	RegisterDefaultToolModuleLoadersOptions,
-	RegisterPackagedToolsOptions,
-	ToolModuleLoader,
-	ToolRegistryLike,
-} from "./packaged-capability-composition.js";
+// The packaged capability composition. Every export is a projection of one
+// internal definition set, so registration, tag, loader, placement and policy
+// cannot drift apart.
+export type { PackagedToolRegistryOptions } from "./packaged-capability-composition.js";
 export {
+	createEmptyPersonalNeedsProfile,
 	createPackagedToolRegistry,
 	createUniversalPersonalNeedsProfile,
 	DEFAULT_TOOL_MODULE_LOADERS,
-	PACKAGED_TOOL_ORDER,
-	PACKAGED_TOOL_PLACEMENT,
 	PACKAGED_TOOL_REGISTRATIONS,
 	PACKAGED_TOOL_TAG_MAP,
-	registerDefaultToolModuleLoaders,
-	registerPackagedTools,
 	SECTION_PLAYER_PREFERRED_TOOL_PLACEMENT,
-	UNIVERSAL_SUPPORTS_PRESET,
 } from "./packaged-capability-composition.js";
 
 // The authored-alternate subset, for a renderer that shows alternates and no

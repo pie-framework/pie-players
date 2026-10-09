@@ -123,14 +123,12 @@ without the state, and the next section gets a fresh controller.
 ### Optional host extension points
 
 - `onFrameworkError?: (errorModel: FrameworkErrorModel) => void` — canonical
-  prop. Mirrors the `framework-error` DOM event payload exactly, fires
+  toolkit property. Mirrors the `framework-error` DOM event payload exactly, fires
   exactly once per error.
 - `errorRenderer?: (errorModel) => { title?: string; details?: string[] }`
 
-The `<pie-section-player-…>` layout custom elements (and
-`SectionPlayerLayoutKernel`) accept the same `onFrameworkError` prop. The
-two-tier configuration model applies: `runtime.onFrameworkError` wins
-over the top-level `onFrameworkError` prop. The merged callback flows
+On the `<pie-section-player-…>` layout custom elements the callback is
+`runtime.onFrameworkError`. It flows
 down through `effectiveRuntime → pie-section-player-base →
 pie-assessment-toolkit`, which is the single delivery point — there is
 no double-firing across wrapper layers.

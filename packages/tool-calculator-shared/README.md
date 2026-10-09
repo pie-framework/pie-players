@@ -14,11 +14,10 @@ import "@pie-players/pie-tool-calculator-shared/calculator-element";
 It registers `<pie-tool-calculator>`, which carries the Desmos layout rules. The
 Desmos-named package remains a compatibility entry for the same guarded
 registration. The entry bundles its own Svelte runtime and never resolves the
-host's.
+host's. It is the package's only entry.
 
-The package root resolves to the same entry. Provider packages wrap the
-calculator and inline shells in their own custom-element tags. The shell finds
-its provider under its base tool id through the toolkit runtime context, so the
+Provider packages wrap the calculator and inline shells in their own
+custom-element tags. The shell finds its provider under its base tool id through the toolkit runtime context, so the
 calculator tool config selects the vendor; the shells are unpublished, and each wrapper compiles them
 from source onto the one Svelte runtime it bundles. Applications normally
 install a provider package, not this package directly, unless they

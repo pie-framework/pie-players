@@ -61,7 +61,6 @@ In CE-first mode, you pass tool and section configuration directly as element at
 
 ```html
 <pie-section-player-splitpane
-  assessment-id="my-assessment-001"
   section-id="section-a"
   attempt-id="attempt-xyz"
   show-toolbar="true"
@@ -73,11 +72,10 @@ Key inputs; `section` and `runtime` are JS properties, the rest are attributes:
 
 | Attribute | Type | Purpose |
 | --- | --- | --- |
-| `assessment-id` | `string` | Scopes tool state across sections |
 | `section-id` | `string` | Identifies this section |
 | `attempt-id` | `string` | Identifies the attempt (host-owned) |
 | `section` | `object` | Section content/composition model |
-| `runtime` | `object` | Player, tool, environment, accessibility, and coordinator config |
+| `runtime` | `object` | `assessmentId` (scopes tool state across sections), player, tool, environment, accessibility and coordinator config, and the `on*` callbacks |
 | `debug` | `boolean` | Verbose logging control (`true` to enable, `false`/`0` to disable) |
 | `show-toolbar` | `boolean` | Whether to render the section toolbar |
 
@@ -298,7 +296,7 @@ const tools = {
   },
   providers: {
     textToSpeech: {
-      backend: 'browser',        // 'browser' | 'polly' | 'google' | 'server'
+      backend: 'browser',        // 'browser' | 'server'; a server backend names its serverProvider
       // Omit defaultVoice for automatic selection. To pin a Browser voice,
       // use an exact voiceURI or name returned by speechSynthesis.getVoices().
     },
@@ -416,11 +414,11 @@ export const coordinator = new ToolkitCoordinator({
 </script>
 
 <pie-section-player-splitpane
-  assessment-id="my-assessment-id"
   section-id={sectionId}
   attempt-id={attemptId}
   section={section}
   runtime={{
+    assessmentId: "my-assessment-id",
     coordinator,
     tools: coordinator.config.tools
   }}
@@ -958,14 +956,14 @@ The player element does dispatch a small set of DOM `CustomEvent`s that are genu
 
 These are the events to build host integrations against, with stable typed payloads. The section runtime engine dispatches `pie-stage-change` and `pie-loading-complete` on the layout custom element (`pie-section-player-splitpane` / `-vertical` / `-tabbed` / `-kernel-host`); `framework-error` and `toolkit-ready` come from the wrapped `<pie-assessment-toolkit>`. All four bubble and are composed, so a listener on the layout element or on `document` receives them.
 
-| Event name | Detail | Callback-prop mirror | When |
+| Event name | Detail | `runtime` callback | When |
 | --- | --- | --- | --- |
 | `toolkit-ready` | `{ runtimeId, assessmentId, sectionId, itemPlayer, coordinator }` | — | The section's controller resolved. Fires on every section initialization: the first section, each section switch, and each update to the current section. **CE-first only**: this is how you obtain the coordinator reference when you haven't constructed one yourself |
 | `pie-stage-change` | `StageChangeDetail` (`{ stage, status, runtimeId, sectionId, attemptId, sourceCe, timestamp }`) | `onStageChange(detail)` | One typed transition stream covering the full lifecycle: `composed` → `engine-ready` → `interactive` → `disposed`. `status` is `entered`; a non-recoverable framework error before `interactive` ends the chain with the current stage `failed` and the stages it never reached `skipped`. |
 | `pie-loading-complete` | `LoadingCompleteDetail` (`{ runtimeId, sectionId, attemptId, itemCount, loadedCount, sourceCe, timestamp }`) | `onLoadingComplete(detail)` | Fires once per cohort, when the section's element pre-warm resolves for the current composition and the item cards can mount. |
 | `framework-error` | `FrameworkErrorModel` | `onFrameworkError(model)` | Canonical error event for any failure crossing the framework boundary (coordinator init, runtime init, tool config, provider/TTS init, tool runtime/surface, the section's element pre-warm). Each error is one DOM event and one `onFrameworkError` call. Recoverable warnings remain observable without setting readiness to `error`. |
 
-Callback-prop precedence: `runtime.<key>` (set on the layout CE's `runtime` object) wins over the top-level CE prop. Both fire at the same emit point as the DOM event so callback and event stay in lockstep across cohort changes.
+The `runtime` callbacks fire at the same emit point as the DOM event so callback and event stay in lockstep across cohort changes.
 
 Recommended host wiring:
 
@@ -979,7 +977,7 @@ Build host integrations against the canonical events as follows:
 
 | Removed event name | Replacement | Notes |
 | --- | --- | --- |
-| `readiness-change` | `pie-stage-change` (full phase sequence; `stage` + `status` discriminator) | The readiness payload is also reachable via `selectReadiness()` / `getSnapshot().readiness` on the layout CE. |
+| `readiness-change` | `pie-stage-change` (full phase sequence; `stage` + `status` discriminator) | |
 | `interaction-ready` | `pie-stage-change` filtered on `detail.stage === "interactive"` | |
 | `ready` | `pie-loading-complete` | Same single-shot, cohort-scoped semantics. |
 | `section-controller-ready` | `waitForSectionController(timeoutMs)` / `getSectionController()` on the layout CE, or `pie-stage-change` filtered on `detail.stage === "engine-ready"` | Removed alongside its `pie-section-controller-ready` instrumentation mapping. |
@@ -988,7 +986,7 @@ Note on `framework-error`: the toolkit publishes each error once, and the event 
 
 ### Session and runtime events
 
-The player also dispatches `session-changed`, `composition-changed`, `runtime-owned`, and `runtime-inherited`. They are public events (`SECTION_PLAYER_PUBLIC_EVENTS` in `packages/section-player/src/contracts/public-events.ts`), dispatched by the toolkit and bubbling once through the layout element to `document`. `session-changed` publishes the section's canonical session on each change; the coordinator subscription API (§9) remains the typed, scoped surface for session state.
+The player also dispatches `session-changed`, `composition-changed`, `runtime-owned`, and `runtime-inherited`. They are public events, dispatched by the toolkit and bubbling once through the layout element to `document`. `session-changed` publishes the section's canonical session on each change; the coordinator subscription API (§9) remains the typed, scoped surface for session state.
 
 ---
 

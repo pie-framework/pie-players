@@ -1,6 +1,6 @@
 import type { CalculatorProviderConfig } from "@pie-players/pie-calculator";
 import { DEFAULT_TOOL_PLACEMENT } from "./tool-config-defaults.js";
-import type { SREMathSpeechOptions } from "./tts/math-speech.js";
+import type { TTSRuntimeSettings } from "./tts-runtime-config.js";
 
 export type ToolPlacementLevel = "section" | "item" | "passage";
 
@@ -57,8 +57,6 @@ export interface ToolRuntimeProviderConfig {
 	runtime?: ToolRuntimeProviderBridge;
 }
 
-export type TextToSpeechRuntimeProviderId = "polly" | "google" | "custom";
-
 export interface ToolProviderConfig {
 	enabled?: boolean;
 	provider?: ToolRuntimeProviderConfig;
@@ -66,18 +64,19 @@ export interface ToolProviderConfig {
 	[key: string]: unknown;
 }
 
-export interface TextToSpeechToolProviderSettings
-	extends Record<string, unknown> {
-	mathSpeech?: SREMathSpeechOptions;
-}
-
-export interface TextToSpeechToolProviderConfig
-	extends Omit<ToolProviderConfig, "provider" | "settings"> {
-	provider?: ToolRuntimeProviderConfig | TextToSpeechRuntimeProviderId;
-	serverProvider?: TextToSpeechRuntimeProviderId;
-	mathSpeech?: SREMathSpeechOptions;
-	settings?: TextToSpeechToolProviderSettings;
-}
+/**
+ * `tools.providers.textToSpeech`, closed to the runtime settings the TTS tool
+ * reads plus the registration's `enabled` and runtime `provider`. `Pick` keeps
+ * it assignable to the providers index signature, which an interface would not
+ * be.
+ */
+export type TextToSpeechToolProviderConfig = Pick<
+	TTSRuntimeSettings,
+	keyof TTSRuntimeSettings
+> & {
+	enabled?: boolean;
+	provider?: ToolRuntimeProviderConfig;
+};
 
 /**
  * `tools.providers.calculator`, closed to the keys the calculator reads, so a
@@ -96,17 +95,12 @@ export type CalculatorToolProviderConfig = Pick<
 export interface ToolProvidersConfig {
 	textToSpeech?: TextToSpeechToolProviderConfig;
 	calculator?: CalculatorToolProviderConfig;
-	[key: string]:
-		| ToolProviderConfig
-		| TextToSpeechToolProviderConfig
-		| undefined;
+	[key: string]: ToolProviderConfig | undefined;
 }
 
 /**
- * PNP/profile enforcement mode mirrored on `runtime.tools.pnpEnforcement`
- * (M5 mirror rule). Carried alongside `policy` / `placement` /
- * `providers` so hosts can pin or opt out of PNP/profile precedence via
- * the runtime config without reaching for the toolkit prop directly.
+ * PNP/profile enforcement mode, set as `tools.pnpEnforcement` (on a section
+ * player, `runtime.tools.pnpEnforcement`).
  *
  * - `"on"` — force enforcement (engine applies PNP/profile gates).
  * - `"off"` — opt out (engine ignores PNP/profile inputs).
@@ -122,11 +116,9 @@ export interface CanonicalToolsConfig {
 	placement: Required<ToolPlacementConfig>;
 	providers: ToolProvidersConfig;
 	/**
-	 * Optional PNP/profile enforcement override. Mirrored on
-	 * `runtime.tools.pnpEnforcement`; consumed by
-	 * `<pie-assessment-toolkit>` and `ToolkitCoordinator` as the
-	 * embedded path's equivalent of the standalone `pnp-enforcement`
-	 * attribute. See {@link ToolsPnpEnforcement} for semantics.
+	 * Optional PNP/profile enforcement override, read by
+	 * `<pie-assessment-toolkit>` and `ToolkitCoordinator`. See
+	 * {@link ToolsPnpEnforcement} for semantics.
 	 */
 	pnpEnforcement?: ToolsPnpEnforcement;
 }
@@ -190,7 +182,7 @@ function assertPolicyConfig(value: unknown): ToolPolicyConfig | undefined {
 function assertProviderConfig(
 	providerId: string,
 	value: unknown,
-): ToolProviderConfig | TextToSpeechToolProviderConfig | undefined {
+): ToolProviderConfig | undefined {
 	if (value == null) return undefined;
 	if (!isPlainObject(value)) {
 		throw new Error(
@@ -198,8 +190,6 @@ function assertProviderConfig(
 		);
 	}
 	const config = value as ToolProviderConfig;
-	const isTTSRuntimeProviderId = (provider: unknown): boolean =>
-		provider === "polly" || provider === "google" || provider === "custom";
 	if (
 		"enabled" in config &&
 		config.enabled !== undefined &&
@@ -221,8 +211,7 @@ function assertProviderConfig(
 	if (
 		"provider" in config &&
 		config.provider !== undefined &&
-		!isPlainObject(config.provider) &&
-		!(providerId === "textToSpeech" && isTTSRuntimeProviderId(config.provider))
+		!isPlainObject(config.provider)
 	) {
 		throw new Error(
 			`Invalid tools config at "providers.${providerId}.provider": expected an object.`,

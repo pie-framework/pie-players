@@ -8,7 +8,9 @@ import {
 } from "@pie-players/pie-assessment-toolkit";
 
 type SectionPlayerLike = HTMLElement & {
-	selectComposition?: () => { itemsCount?: number; passagesCount?: number };
+	getSnapshot?: () => {
+		composition?: { itemsCount?: number; passagesCount?: number };
+	} | null;
 };
 
 const SECTION_META_ICON = `
@@ -72,7 +74,7 @@ function readPlayerMeta(player: SectionPlayerLike | null): {
 			totalPassages: "n/a",
 		};
 	}
-	const composition = player.selectComposition?.() || {};
+	const composition = player.getSnapshot?.()?.composition || {};
 	const mode =
 		player.getAttribute("mode") ||
 		player.getAttribute("data-pie-mode") ||

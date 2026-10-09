@@ -54,34 +54,30 @@ describe("tools-config-normalizer", () => {
 		);
 	});
 
-	test("allows string runtime provider selectors for textToSpeech", () => {
-		const config = normalizeToolsConfig({
-			providers: {
-				textToSpeech: {
-					enabled: true,
-					provider: "polly",
-				},
-			},
-		});
-
-		expect(config.providers.textToSpeech).toMatchObject({
-			enabled: true,
-			provider: "polly",
-		});
-	});
-
-	test("rejects string provider selectors for non-TTS tools", () => {
+	test("rejects string provider selectors", () => {
 		expect(() =>
 			normalizeToolsConfig({
 				providers: {
 					calculator: {
-						// @ts-expect-error A string selector is TTS-only.
+						// @ts-expect-error `provider` is the runtime object only.
 						provider: "polly",
 					},
 				},
 			}),
 		).toThrow(
 			'Invalid tools config at "providers.calculator.provider": expected an object.',
+		);
+		expect(() =>
+			normalizeToolsConfig({
+				providers: {
+					textToSpeech: {
+						// @ts-expect-error `provider` is the runtime object only.
+						provider: "polly",
+					},
+				},
+			}),
+		).toThrow(
+			'Invalid tools config at "providers.textToSpeech.provider": expected an object.',
 		);
 	});
 });

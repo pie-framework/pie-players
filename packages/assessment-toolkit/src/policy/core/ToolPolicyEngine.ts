@@ -239,7 +239,7 @@ export class ToolPolicyEngine {
 	}
 
 	/**
-	 * Resolve eligibility for one PNP/AfA feature id through the seven-level
+	 * Resolve eligibility for one PNP/AfA feature id through the eight-level
 	 * precedence, independent of toolbar placement.
 	 *
 	 * For capabilities that render as their own surface rather than a toolbar

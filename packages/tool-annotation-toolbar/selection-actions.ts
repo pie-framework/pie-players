@@ -93,3 +93,31 @@ export function usableSelectionActions(
 	});
 	return usable;
 }
+
+/**
+ * Whether the strip offers read-aloud on the selection.
+ *
+ * Read-aloud follows the same rule as a composed action: offered only while a
+ * toolbar hosts `textToSpeech` under its own policy pass, so a deployment that
+ * blocks or does not place TTS gets no read-aloud control. A coordinator without
+ * `canRequestTool` cannot answer that, and a throwing one answers no.
+ */
+export function offersReadAloud(
+	ttsService: unknown,
+	coordinator: unknown,
+): boolean {
+	if (!ttsService) return false;
+	const canRequestTool = (
+		coordinator as { canRequestTool?: (toolId: string) => boolean } | null
+	)?.canRequestTool;
+	if (typeof canRequestTool !== 'function') return false;
+	try {
+		return canRequestTool.call(coordinator, 'textToSpeech') === true;
+	} catch (error) {
+		console.warn(
+			'[AnnotationToolbar] Read-aloud failed its availability check:',
+			error,
+		);
+		return false;
+	}
+}

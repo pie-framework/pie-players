@@ -100,7 +100,7 @@
 					id={passageTabId}
 					type="button"
 					role="tab"
-					class={`pie-section-player-tab ${selectedTab === "passage" ? "pie-section-player-tab--active" : ""} passage-label`}
+					class={`pie-section-player-tab ${selectedTab === "passage" ? "pie-section-player-tab--active" : ""}`}
 					data-pie-purpose="passage-label"
 					aria-controls={passagePanelId}
 					aria-selected={selectedTab === "passage"}
@@ -115,7 +115,7 @@
 					id={itemsTabId}
 					type="button"
 					role="tab"
-					class={`pie-section-player-tab ${selectedTab === "items" ? "pie-section-player-tab--active" : ""} item-label`}
+					class={`pie-section-player-tab ${selectedTab === "items" ? "pie-section-player-tab--active" : ""}`}
 					data-pie-purpose="item-label"
 					aria-controls={itemsPanelId}
 					aria-selected={selectedTab === "items"}

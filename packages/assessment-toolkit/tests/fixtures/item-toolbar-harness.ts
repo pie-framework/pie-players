@@ -121,7 +121,6 @@ function publishCoordinator(
 			toolId: entry.toolId,
 			required: entry.required ?? false,
 			alwaysAvailable: entry.alwaysAvailable ?? false,
-			sources: ["placement"],
 		})),
 		diagnostics: [],
 		provenance: {} as ToolPolicyDecision["provenance"],

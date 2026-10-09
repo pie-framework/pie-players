@@ -663,7 +663,7 @@ function createCoordinatorForProfile(profile: PersonalNeedsProfile) {
       providers: supportsTts
         ? {
             textToSpeech: {
-              settings: { backend: 'browser' },
+              backend: 'browser',
             },
           }
         : {},
@@ -709,7 +709,7 @@ const coordinator = new ToolkitCoordinator({
     },
     providers: {
       textToSpeech: {
-        settings: { backend: 'browser' },
+        backend: 'browser',
       },
     },
   },
@@ -719,12 +719,12 @@ const coordinator = new ToolkitCoordinator({
 const sectionPlayer = document.querySelector('pie-section-player-splitpane');
 sectionPlayer.runtime = {
   ...(sectionPlayer.runtime ?? {}),
+  assessmentId: assessment.id,
   coordinator,
   tools: coordinator.config.tools,
 };
 
 // Set section data
-sectionPlayer.assessmentId = assessment.id;
 sectionPlayer.sectionId = section.identifier;
 sectionPlayer.attemptId = attempt.id;
 sectionPlayer.section = section;
@@ -779,7 +779,7 @@ player.config = {
 
 Four properties of that:
 
-- **Eligibility runs the same six-level precedence delivery runs**, so a district
+- **Eligibility runs the same eight-level precedence delivery runs**, so a district
   block outranks the learner's profile on paper as it does on screen.
 - **An alternate in play prints inline and unconditionally**, above the item
   content. There is nothing to reveal on paper and no control to press.
@@ -885,7 +885,7 @@ const coordinator = new ToolkitCoordinator({
     },
     providers: {
       textToSpeech: {
-        settings: { backend: 'browser' },
+        backend: 'browser',
       },
     },
   },

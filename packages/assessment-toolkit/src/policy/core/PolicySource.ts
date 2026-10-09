@@ -66,7 +66,7 @@ export interface PolicySourceResult {
 }
 
 export interface PolicySource {
-	/** Stable identifier — used for `custom.${id}` source tags. */
+	/** Stable identifier, recorded as `customSourceId` on the decisions and diagnostics it causes. */
 	readonly id: string;
 
 	refine(context: PolicySourceDecisionContext): PolicySourceResult;

@@ -3,7 +3,7 @@
 	import { page } from "$app/state";
 	import { tick, untrack } from "svelte";
 	import "@pie-players/pie-section-player/components/section-player-splitpane-element";
-	import "@pie-players/pie-section-player/components/section-player-vertical-element";
+	import "@pie-players/pie-section-player";
 	import BackendToolBar from "#lib/components/BackendToolBar.svelte";
 	import BackendToolWindow from "#lib/components/BackendToolWindow.svelte";
 	import BackendTrafficPanel from "#lib/components/BackendTrafficPanel.svelte";
@@ -79,6 +79,7 @@
 	const sectionSeedJson = $derived(JSON.stringify(demoSection, null, 2));
 	const safeModelsById = $derived(createSafeModelsById(demoSection));
 	const runtime = $derived({
+		assessmentId,
 		playerType: "iife",
 		env,
 		player: {
@@ -730,7 +731,6 @@
 					{#if layout === "splitpane"}
 						<pie-section-player-splitpane
 							bind:this={sectionPlayerEl}
-							assessment-id={assessmentId}
 							section-id={sectionId}
 							attempt-id={attemptId}
 							section={demoSection}
@@ -740,7 +740,6 @@
 					{:else}
 						<pie-section-player-vertical
 							bind:this={sectionPlayerEl}
-							assessment-id={assessmentId}
 							section-id={sectionId}
 							attempt-id={attemptId}
 							section={demoSection}

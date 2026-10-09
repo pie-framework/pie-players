@@ -35,7 +35,7 @@ export function assessmentDemoTextToSpeechConfig(
 	}
 	return {
 		enabled: true,
-		backend: "polly" as const,
+		backend: "server" as const,
 		serverProvider: "polly" as const,
 		apiEndpoint: "/api/tts",
 		transportMode: "pie" as const,

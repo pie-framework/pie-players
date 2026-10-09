@@ -134,7 +134,6 @@ describe("a granting tool override below a restriction or prohibition", () => {
 		).toEqual([
 			expect.objectContaining({
 				toolId: "calculator",
-				source: "pnp.item-restriction",
 				details: { rule: "item-restriction" },
 			}),
 		]);
@@ -179,7 +178,7 @@ describe("a granting tool override below a restriction or prohibition", () => {
 		expect(coord.decideFeaturePolicy("calculator")).toMatchObject({
 			granted: true,
 			rule: "test-admin-override",
-			precedence: 4,
+			precedence: 5,
 		});
 		expect(warnings("toolOverrides grants")).toHaveLength(0);
 	});

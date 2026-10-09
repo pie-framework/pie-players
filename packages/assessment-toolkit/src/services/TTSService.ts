@@ -46,10 +46,7 @@ import {
 	findContentLanguage,
 	findLangAttribute,
 } from "../runtime/content-language.js";
-import {
-	BrowserTTSProvider,
-	browserFallbackConfig,
-} from "./tts/browser-provider.js";
+import { isSsmlDocument } from "./tts/ssml/spoken-text.js";
 import {
 	composedContains,
 	composedParentElement,
@@ -131,7 +128,6 @@ export type {
 	ITTSProvider,
 	ITTSProviderImplementation,
 	TTSConfig,
-	TTSFeature,
 	TTSProviderCapabilities,
 } from "@pie-players/pie-tts";
 
@@ -198,8 +194,6 @@ const hostLocalesOf = (
 				: previous.segmenter,
 	};
 };
-
-const SSML_DOCUMENT = /^\s*<speak[\s/>]/i;
 
 const isRange = (target: Range | Element): target is Range =>
 	"commonAncestorContainer" in target;
@@ -303,9 +297,6 @@ export class TTSService {
 	private hostLocales: HostLocales = {};
 	// The locale of the read in progress, which segmentation reads.
 	private readLocale: string = DEFAULT_CONTENT_LANGUAGE;
-	// The browser fallback this service created and so destroys. The configured
-	// provider's owner destroys that one.
-	private fallbackProvider: ITTSProvider | null = null;
 	private disposed = false;
 	private readinessGate: (() => Promise<void>) | null = null;
 	private mathSpeechSource: (() => unknown) | null = null;
@@ -313,7 +304,7 @@ export class TTSService {
 	private currentContentElement: Element | null = null;
 	private normalizedToDOM: Map<number, { node: Text; offset: number }> =
 		new Map();
-	private listeners = new Map<string, Set<(state: PlaybackState) => void>>();
+	private listeners = new Set<(state: PlaybackState) => void>();
 	private lastError: string | null = null;
 	private speakRunId = 0;
 	private currentBoundaryOffset = 0;
@@ -544,7 +535,6 @@ export class TTSService {
 		config: Partial<TTSConfig> = {},
 	): Promise<void> {
 		if (this.disposed) throw new Error("TTS service disposed");
-		this.destroyFallbackProvider();
 		this.currentProvider = provider;
 		this.ttsConfig = { ...config };
 		this.hostLocales = hostLocalesOf(
@@ -553,26 +543,9 @@ export class TTSService {
 		const telemetry = this.providerOptions().__pieTelemetry;
 		this.telemetryReporter = typeof telemetry === "function" ? telemetry : null;
 
-		// Initialize provider and get implementation. Browser fallback is only
-		// allowed here, before the configured provider has successfully become
-		// the active runtime. Per-call playback/synthesis errors must surface
-		// instead of silently replacing a user-selected provider and voice.
-		try {
-			this.provider = await provider.initialize(config as TTSConfig);
-		} catch (error) {
-			if (provider.providerId.toLowerCase() === "browser") {
-				throw error;
-			}
-			if (!this.isBrowserSpeechFallbackAvailable()) {
-				throw error;
-			}
-			const switched = await this.switchProviderToBrowser(error, {
-				operation: "tts-initialize",
-			});
-			if (!switched) {
-				throw error;
-			}
-		}
+		// A provider that fails to start throws to the caller, which owns any
+		// fallback. Playback and synthesis errors surface the same way.
+		this.provider = await provider.initialize(config as TTSConfig);
 	}
 
 	/**
@@ -813,11 +786,7 @@ export class TTSService {
 		if (!this.highlightCoordinator) return;
 		const { ranges, elements } =
 			this.resolveSentenceHighlightTargets(nativeRanges);
-		if (
-			elements.length > 0 &&
-			ranges.length === 0 &&
-			this.highlightCoordinator.highlightTTSSentenceElements
-		) {
+		if (elements.length > 0 && ranges.length === 0) {
 			this.highlightCoordinator.highlightTTSSentenceElements(elements);
 			return;
 		}
@@ -863,7 +832,7 @@ export class TTSService {
 			await provider.speak(text);
 			return;
 		}
-		if (SSML_DOCUMENT.test(text)) {
+		if (isSsmlDocument(text)) {
 			throw new Error(
 				`[tts] SSML of ${text.length} characters exceeds the provider's limit of ${limit}`,
 			);
@@ -1773,84 +1742,6 @@ export class TTSService {
 		}
 	}
 
-	private async switchProviderToBrowser(
-		reason: unknown,
-		context?: { operation?: string; contentToSpeak?: string },
-	): Promise<boolean> {
-		if (!this.currentProvider) return false;
-		const fallbackProvider = new BrowserTTSProvider();
-		const previousProviderId = this.currentProvider.providerId;
-		const browserConfig = browserFallbackConfig(this.ttsConfig);
-		const operation = context?.operation || "tts-initialize";
-		const offendingText = context?.contentToSpeak ?? "";
-		const offendingPreview = offendingText
-			.replace(/\s+/g, " ")
-			.trim()
-			.slice(0, 120);
-		const offendingDiagnostic =
-			offendingText.length > 0
-				? {
-						textLength: offendingText.length,
-						textPreview:
-							offendingPreview.length < offendingText.length
-								? `${offendingPreview}…`
-								: offendingPreview,
-					}
-				: {};
-		try {
-			this.provider?.stop();
-			this.currentProvider = fallbackProvider;
-			this.fallbackProvider = fallbackProvider;
-			this.provider = await fallbackProvider.initialize(
-				browserConfig as TTSConfig,
-			);
-			this.ttsConfig = browserConfig;
-			await this.emitTelemetry("pie-tool-runtime-fallback", {
-				toolId: "textToSpeech",
-				operation,
-				fromProvider: previousProviderId,
-				toProvider: fallbackProvider.providerId,
-				reason: reason instanceof Error ? reason.message : String(reason),
-				...offendingDiagnostic,
-			});
-			console.warn(
-				"[TTSService] TTS provider initialization failed; switched to browser fallback",
-				{
-					fromProvider: previousProviderId,
-					reason,
-					...offendingDiagnostic,
-				},
-			);
-			return true;
-		} catch (fallbackError) {
-			await this.emitTelemetry("pie-tool-runtime-fallback-error", {
-				toolId: "textToSpeech",
-				operation,
-				fromProvider: previousProviderId,
-				toProvider: "browser",
-				errorType: "TTSRuntimeFallbackError",
-				message:
-					fallbackError instanceof Error
-						? fallbackError.message
-						: String(fallbackError),
-			});
-			console.error(
-				"[TTSService] Failed to switch to browser fallback provider",
-				fallbackError,
-			);
-			return false;
-		}
-	}
-
-	private isBrowserSpeechFallbackAvailable(): boolean {
-		if (typeof window === "undefined") return false;
-		if (!("speechSynthesis" in window)) return false;
-		return (
-			typeof (globalThis as Record<string, unknown>)
-				.SpeechSynthesisUtterance === "function"
-		);
-	}
-
 	/**
 	 * Hand the read's language to the provider. A read in a named content language
 	 * sets the provider's locales and `contentLanguage` to it, so a browser voice
@@ -2348,14 +2239,13 @@ export class TTSService {
 		highlightMode: HighlightMode;
 		wordBoundaryOffset: number;
 	}): void {
-		if (
-			!this.provider ||
-			args.highlightMode !== "word" ||
-			!this.highlightCoordinator ||
-			!this.currentContentElement
-		) {
+		if (!this.provider) return;
+		// A sentence-mode read paints no words, so it takes no word boundaries.
+		if (args.highlightMode === "sentence") {
+			this.provider.onWordBoundary = undefined;
 			return;
 		}
+		if (!this.highlightCoordinator || !this.currentContentElement) return;
 		// Browser boundaries and the server provider's time-scaled boundaries index
 		// the same spoken text.
 		this.provider.onWordBoundary = (
@@ -2402,7 +2292,7 @@ export class TTSService {
 					0,
 					chunk.visibleText.length,
 				);
-				this.highlightCoordinator.clearHighlights?.(HighlightType.TTS_WORD);
+				this.highlightCoordinator.clearHighlights(HighlightType.TTS_WORD);
 				this.paintTTSSentenceRanges(
 					ranges.length > 1 ? ranges : [chunk.regionRange],
 				);
@@ -2411,7 +2301,7 @@ export class TTSService {
 			if (!element) return;
 			const range = document.createRange();
 			range.selectNodeContents(element);
-			this.highlightCoordinator.clearHighlights?.(HighlightType.TTS_WORD);
+			this.highlightCoordinator.clearHighlights(HighlightType.TTS_WORD);
 			this.paintTTSSentenceRanges([range]);
 		} catch {
 			// Continue playback even when a detached node cannot be highlighted.
@@ -2509,7 +2399,7 @@ export class TTSService {
 			this.highlightCoordinator.highlightTTSWord([tokenRange]);
 			return;
 		}
-		this.highlightCoordinator.highlightTTSWordElement?.(target.element);
+		this.highlightCoordinator.highlightTTSWordElement(target.element);
 	}
 
 	private renderHighlightDecision(decision: HighlightDecision): void {
@@ -2696,7 +2586,9 @@ export class TTSService {
 				this.highlightCatalogRegion(chunk);
 			}
 		});
+		// A sentence-mode read takes no word boundaries, aligned chunk or not.
 		const canUseChunkBoundaries =
+			this.resolveHighlightMode() === "word" &&
 			chunk.sourceElement &&
 			((chunk.mathAlignment && chunk.mathAlignment.speech.tokens.length > 0) ||
 				(chunk.mathAlignments && chunk.mathAlignments.length > 0) ||
@@ -2797,6 +2689,8 @@ export class TTSService {
 	}
 
 	private clearHighlightsAndTracking(): void {
+		// A finished run leaves no handler for the next read to inherit.
+		this.clearWordBoundaryHighlighting();
 		this.pendingPlaybackStartHighlights = [];
 		this.activePlaybackRate = null;
 		if (this.highlightCoordinator) {
@@ -3096,13 +2990,6 @@ export class TTSService {
 		this.stop();
 		this.provider = null;
 		this.currentProvider = null;
-		this.destroyFallbackProvider();
-	}
-
-	private destroyFallbackProvider(): void {
-		const fallback = this.fallbackProvider;
-		this.fallbackProvider = null;
-		fallback?.destroy();
 	}
 
 	/**
@@ -3179,29 +3066,15 @@ export class TTSService {
 	}
 
 	/**
-	 * Subscribe to state changes
-	 *
-	 * @param id Unique listener ID
-	 * @param callback Function to call on state change
+	 * Subscribe to playback state changes. The returned function unsubscribes;
+	 * each subscription is its own, so the same callback can be subscribed twice.
 	 */
-	onStateChange(id: string, callback: (state: PlaybackState) => void): void {
-		if (!this.listeners.has(id)) {
-			this.listeners.set(id, new Set());
-		}
-		this.listeners.get(id)!.add(callback);
-	}
-
-	/**
-	 * Unsubscribe from state changes
-	 */
-	offStateChange(id: string, callback: (state: PlaybackState) => void): void {
-		const callbacks = this.listeners.get(id);
-		if (callbacks) {
-			callbacks.delete(callback);
-			if (callbacks.size === 0) {
-				this.listeners.delete(id);
-			}
-		}
+	onStateChange(callback: (state: PlaybackState) => void): () => void {
+		const listener = (state: PlaybackState) => callback(state);
+		this.listeners.add(listener);
+		return () => {
+			this.listeners.delete(listener);
+		};
 	}
 
 	/**
@@ -3214,10 +3087,8 @@ export class TTSService {
 		this.state = newState;
 
 		// Notify all listeners
-		for (const callbacks of this.listeners.values()) {
-			for (const callback of callbacks) {
-				callback(newState);
-			}
+		for (const listener of [...this.listeners]) {
+			listener(newState);
 		}
 
 		void this.emitTelemetry("pie-tool-playback-state-changed", {

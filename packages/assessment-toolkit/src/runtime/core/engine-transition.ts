@@ -32,7 +32,7 @@ import { cohortsEqual, type CohortKey } from "./cohort.js";
 import type { SectionEngineInput } from "./engine-input.js";
 import type { SectionEngineOutput } from "./engine-output.js";
 import {
-	createReadinessDetail,
+	resolveReadinessGates,
 	type EngineReadinessSignals,
 } from "./engine-readiness.js";
 import type { Stage } from "@pie-players/pie-players-shared/pie";
@@ -137,10 +137,7 @@ function applyReadinessUpdate(
 		return { state, outputs: [] };
 	}
 
-	const detail = createReadinessDetail({
-		mode: args.mode,
-		signals: args.signals,
-	});
+	const detail = resolveReadinessGates(args.mode, args.signals);
 	const outputs: SectionEngineOutput[] = [];
 
 	let phase: SectionEnginePhase = state.phase;
@@ -153,7 +150,7 @@ function applyReadinessUpdate(
 		phase = failChain(outputs, phase, state.cohort);
 	} else if (phase === "engine-ready" && detail.interactionReady) {
 		// engine-ready → interactive when readiness satisfies
-		// `interactionReady` (mode-aware via `createReadinessDetail`).
+		// `interactionReady` (mode-aware via `resolveReadinessGates`).
 		phase = "interactive";
 		emitStageChange(outputs, phase, state.cohort);
 	}

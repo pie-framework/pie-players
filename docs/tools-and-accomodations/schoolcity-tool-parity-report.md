@@ -105,7 +105,7 @@ PIE Players registers these packaged tool IDs through the assessment toolkit (te
 - `dictionary`
 - `pictureDictionary`
 
-Verified against `packages/default-tool-loaders/src/packaged-capability-composition.ts:146-307`, which is the composition table the registry is built from. With `calculator` and `textToSpeech` that is thirteen toolbar capabilities, and the list is complete: `PACKAGED_TOOL_ORDER` names exactly those thirteen.
+Verified against `packages/default-tool-loaders/src/packaged-capability-composition.ts:146-307`, which is the composition table the registry is built from. With `calculator` and `textToSpeech` that is thirteen toolbar capabilities, and the list is complete: the composition's element-backed entries are exactly those thirteen.
 
 Two capabilities landed after the June pass that are not toolbar tools, and the distinction is structural rather than cosmetic. A capability now declares `activation: "region"` and a set of host `surfaces`, so it renders into a slot the host opens instead of behind a button:
 

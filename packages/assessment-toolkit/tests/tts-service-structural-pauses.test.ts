@@ -172,9 +172,6 @@ class MockTTSProvider implements ITTSProvider {
 	async initialize(_config: TTSConfig): Promise<ITTSProviderImplementation> {
 		return this.impl;
 	}
-	supportsFeature(): boolean {
-		return true;
-	}
 	getCapabilities(): TTSProviderCapabilities {
 		return {
 			supportsPause: true,
@@ -345,7 +342,6 @@ describe("TTSService structural pauses", () => {
 			highlightTTSSentence: () => {},
 			clearTTS: () => {},
 			clearHighlights: () => {},
-			clearAll: () => {},
 			isSupported: () => true,
 			updateTTSHighlightStyle: () => {},
 		} as any);
@@ -380,7 +376,7 @@ describe("TTSService structural pauses", () => {
 		};
 
 		const states: PlaybackState[] = [];
-		service.onStateChange("native-start", (state) => states.push(state));
+		service.onStateChange((state) => states.push(state));
 		const playback = service.speak(contentWith("Hello world"));
 		await waitForSpeakCall(impl);
 
@@ -438,7 +434,6 @@ describe("TTSService structural pauses", () => {
 				clearCalls += 1;
 			},
 			clearHighlights: () => {},
-			clearAll: () => {},
 			isSupported: () => true,
 			updateTTSHighlightStyle: () => {},
 		} as any);
@@ -514,7 +509,6 @@ describe("TTSService structural pauses", () => {
 			},
 			clearTTS: () => {},
 			clearHighlights: () => {},
-			clearAll: () => {},
 			isSupported: () => true,
 			updateTTSHighlightStyle: () => {},
 		} as any);
@@ -744,7 +738,6 @@ describe("TTSService structural pauses", () => {
 			highlightTTSSentence: () => {},
 			clearTTS: () => {},
 			clearHighlights: () => {},
-			clearAll: () => {},
 			isSupported: () => true,
 			updateTTSHighlightStyle: () => {},
 		} as any);
@@ -785,7 +778,6 @@ describe("TTSService structural pauses", () => {
 			highlightTTSSentence: () => {},
 			clearTTS: () => {},
 			clearHighlights: () => {},
-			clearAll: () => {},
 			isSupported: () => true,
 			updateTTSHighlightStyle: () => {},
 		} as any);
@@ -1107,7 +1099,6 @@ describe("TTSService structural pauses", () => {
 			highlightTTSSentence: (ranges: Range[]) => sentenceCalls.push(ranges),
 			clearTTS: () => {},
 			clearHighlights: () => {},
-			clearAll: () => {},
 			isSupported: () => true,
 			updateTTSHighlightStyle: () => {},
 		} as any);
@@ -1174,7 +1165,6 @@ describe("TTSService structural pauses", () => {
 			highlightTTSSentence: (ranges: Range[]) => sentenceCalls.push(ranges),
 			clearTTS: () => {},
 			clearHighlights: () => {},
-			clearAll: () => {},
 			isSupported: () => true,
 			updateTTSHighlightStyle: () => {},
 		} as any);

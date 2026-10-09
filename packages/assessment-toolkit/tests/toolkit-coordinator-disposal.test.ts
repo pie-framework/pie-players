@@ -421,7 +421,7 @@ describe("ToolkitCoordinator disposal", () => {
 			assessmentId: "tts-disposal",
 			lazyInit: true,
 		});
-		const { ttsService } = coordinator.getServiceBundle();
+		const { ttsService } = coordinator;
 
 		await coordinator.dispose();
 

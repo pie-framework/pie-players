@@ -106,6 +106,7 @@ export interface SectionRuntimeMediaTimeSourceAction {
 /** What a formative action reaching the binding has to say. */
 export interface SectionRuntimeFormativeAction {
 	itemId: string;
+	canonicalItemId?: string;
 	action: "check" | "retry";
 	outcomes?: unknown[];
 }
@@ -549,11 +550,13 @@ export class SectionControllerBinding {
 	 *
 	 * Canonicalized here for the same reason `updateItemSession` is: the runtime
 	 * id a card dispatches with is not necessarily the identifier the controller
-	 * keys state by.
+	 * keys state by. Both ids are kept, since the composition's renderables are
+	 * keyed by the runtime one.
 	 */
 	handleFormativeAction(action: SectionRuntimeFormativeAction): void {
 		if (!action?.itemId) return;
-		const canonicalId = this.getCanonicalItemId(action.itemId);
+		const canonicalId =
+			action.canonicalItemId || this.getCanonicalItemId(action.itemId);
 		const controller = this.requireControllerFor(
 			{ itemId: action.itemId, canonicalItemId: canonicalId },
 			"a formative action",

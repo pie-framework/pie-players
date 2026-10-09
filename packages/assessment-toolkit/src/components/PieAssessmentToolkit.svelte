@@ -1936,7 +1936,8 @@ const DEFAULT_ENV = {
 					if (!detail?.itemId) return;
 					if (detail.action !== "check" && detail.action !== "retry") return;
 					sectionBinding.handleFormativeAction({
-						itemId: detail.canonicalItemId || detail.itemId,
+						itemId: detail.itemId,
+						canonicalItemId: detail.canonicalItemId,
 						action: detail.action,
 						outcomes: detail.outcomes,
 					});

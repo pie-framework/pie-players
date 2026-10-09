@@ -6,15 +6,26 @@
 
 ## Executive Summary
 
-The **PIE Players** project provides a comprehensive, modern architecture for rendering and delivering Platform for Interactive Education (PIE) assessment content. The system consists of multiple **item players** (for rendering individual questions) and an **assessment toolkit** (for coordinating full test experiences with tools, accommodations, and navigation).
+The **PIE Players** project provides the building blocks for rendering and delivering Platform for Interactive Education (PIE) assessment content: an **item player** for individual questions, a **section player** that composes items and passages into a section screen, and an **assessment toolkit** that coordinates tools, accommodations, TTS and assessment-session state.
 
 Built with Bun, TypeScript, and Svelte 5, the architecture leverages modern web standards (Web Components, CSS Custom Highlight API) while maintaining framework independence and support for deployed PIE content.
+
+### Product Scope
+
+PIE Players ships building blocks, and production assessment players are assembled from them by the host. The building blocks are the item player, the section player and its layouts, the assessment toolkit (coordinator, tools, catalogs, TTS, assessment-session helpers), theme, tools, the print player and the default tool loaders, each with its persistence and delivery seams. PIE ships no backend, CMS, identity or durable attempt store, and navigation, timing, persistence and submission policy differ per product, so the multi-section shell is [product-completing](./framework-completing-work.md) work that each host builds.
+
+`@pie-players/pie-assessment-player` and `apps/assessment-demos` are a reference assembly of those blocks: a basic multi-section player and the demos around it, for reference and examples. They are assembled only from the building blocks' public exports, so a custom player can reproduce anything they do; `AssessmentController` is not exported and serves as a pattern to read. They change without a compatibility period and wait for no host evidence.
+
+The building blocks carry the production bar: compatibility, the [consumer dependency pad](../integrations/consumer-api-dependencies.md), and host evidence for contract choices. Two consequences for priority:
+
+- A gap a custom player hits in a building block outranks the same gap in the reference player.
+- Behavior the reference player needs that a custom player would also need lands in a building block, where every host gets it.
 
 ### Key Capabilities
 
 - **Multiple Player Strategies**: IIFE, ESM, and preloaded (host-bundled ESM) delivery
 - **Unified Authoring & Delivery**: Single players support both student/teacher delivery views and authoring/configuration modes
-- **Assessment Toolkit**: Composable services for full test delivery with navigation, tools, and accommodations
+- **Assessment Toolkit**: Composable services for tools, accommodations and assessment-session state, from which hosts assemble full test delivery
 - **Accessibility First**: WCAG 2.2 AA compliance, IEP/504 accommodation support
 - **Framework Agnostic**: Web Components work with any JavaScript framework
 
@@ -478,11 +489,16 @@ Use section player with full assessment toolkit for complete section delivery us
 
 ### Pattern 4: Custom Assessment Player
 
-Build your own assessment player using toolkit services for complete control over navigation, layout, and persistence.
+This is how production multi-section players are built (see [Product Scope](#product-scope)). The host owns routing between sections, attempt identity, persistence and submission; PIE supplies everything below that.
 
-**Architecture**: Use toolkit services directly with custom player logic
+**Architecture**:
+1. Mount a section player per section, with one `ToolkitCoordinator` per attempt as its `runtime.coordinator`
+2. Keep the attempt in an `AssessmentSession`, maintained with the toolkit's `createNewAssessmentSession`, `upsertSectionSession` and `setCurrentSectionPosition`
+3. Persist through the coordinator's `createSectionSessionPersistence` hook or the host's own aggregate snapshot, against the host backend
+
 **Complexity**: High
-**Use Case**: Custom assessment experiences with specific requirements
+**Use Case**: Production multi-section delivery
+**Reference**: `@pie-players/pie-assessment-player` assembles this pattern; its [client architecture guide](../assessment-player/client-architecture-tutorial.md) walks through it
 
 ---
 

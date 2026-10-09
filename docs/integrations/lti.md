@@ -56,8 +56,12 @@ Typical claim mapping:
 
 ## Assessment Player Wiring
 
-The LTI host should mount the assessment player after it has loaded content and
-resolved the attempt context:
+The example mounts the reference assessment player
+([product scope](../architecture/architecture.md#product-scope)) to keep the
+wiring short. A production tool host typically mounts its own player built on the
+section player; the claim mapping, attempt ID, and server-backed persistence
+apply unchanged. Mount the player after the host has loaded content and resolved
+the attempt context:
 
 ```ts
 import { ToolkitCoordinator } from "@pie-players/pie-assessment-toolkit";

@@ -2,6 +2,11 @@
 
 PIE players and assessment toolkit with Bun + TypeScript + Svelte 5.
 
+PIE Players ships building blocks: the item and section players, the assessment
+toolkit, tools and theme. Hosts assemble their own production assessment
+players from them; `packages/assessment-player` is a basic reference player for
+examples ([product scope](docs/architecture/architecture.md#product-scope)).
+
 **Docs app**: `apps/docs`
 **Examples app**: `apps/section-demos`
 

@@ -19,8 +19,7 @@ carries a Jira issue under
 | R1 | [PIE-1001](https://illuminate.atlassian.net/browse/PIE-1001) | Returning to an assessment section loses saved answers |
 | R2 reproduction | [PIE-1002](https://illuminate.atlassian.net/browse/PIE-1002) | Reproduce the assessment save race and false successful submission |
 
-The R2 repair itself has no Jira issue while it stays blocked on host
-persistence evidence.
+The R2 repair has no Jira issue.
 
 Review baseline: `develop` at `0dc255865176322c08247b3a2b568df4b7b4833b`.
 
@@ -46,7 +45,7 @@ R5 is an independent dependency-audit blocker and can proceed while R4 is in rev
 | 1 | [R4 — Accommodation controls shrink in constrained viewports](#r4--accommodation-controls-shrink-in-constrained-viewports) | `codex/fix-zoom-compensation` | Done | [PR #375](https://github.com/pie-framework/pie-players/pull/375), merged into `develop` on 2026-09-05 as `8acbbd40`. GitHub checks pass; see integration evidence below. |
 | 2 | [R3 — Assessment mounting and readiness are inconsistent](#r3--assessment-mounting-and-readiness-are-inconsistent) | `codex/fix-assessment-lifecycle` | Done | [PR #377](https://github.com/pie-framework/pie-players/pull/377), merged into `develop` on 2026-09-05 as `c45e3bb0`. GitHub checks pass; see integration evidence below. |
 | 3 | [R1 — Returning to a section loses answers](#r1--returning-to-a-section-loses-answers) | `codex/fix-assessment-answer-restoration` | Done | [PR #378](https://github.com/pie-framework/pie-players/pull/378), merged into `develop` on 2026-09-05 as `973db4df`. GitHub checks pass; see integration evidence below. |
-| 4 | [R2 — Saves race and submission can falsely succeed](#r2--saves-race-and-submission-can-falsely-succeed) | `codex/fix-assessment-persistence` | Blocked | A representative host's persistence boundary is unavailable. Need its checkout/read-write workflow, acknowledgement, reload, and failure behavior before selecting the repair. |
+| 4 | [R2 — Saves race and submission can falsely succeed](#r2--saves-race-and-submission-can-falsely-succeed) | `fix/assessment-persistence-r2` | Done | Repaired on 2026-10-08 without host evidence: no host mounts the assessment player. See [R2](#r2--saves-race-and-submission-can-falsely-succeed). |
 
 R4 is independent of the assessment fixes. R1 builds on R3's lifecycle ownership.
 R2's final navigation, active-answer, and reload verification uses R3 and R1;
@@ -75,8 +74,7 @@ All four repair branches were deleted locally and remotely after their merges.
 
 Host V/A/R checkouts remain unavailable. The maintainer requested integration
 with that limitation recorded; no downstream verification or refreshed consumer
-pad dates are claimed. R2 remains blocked on representative host persistence
-evidence and is not part of these merges.
+pad dates are claimed. R2 was not part of these merges; it was repaired on 2026-10-08.
 
 ### Remaining open PR integration — 2026-09-05
 
@@ -533,34 +531,15 @@ the evidence described below.
 [assessment controller](../../packages/assessment-player/src/controller/AssessmentController.ts),
 with the host's existing `AssessmentSessionPersistenceStrategy` implementation.
 
-Work and acceptance:
-
-- [ ] Establish a representative host's read/write boundary first: who owns
-  durable state, which actions save, when a write is acknowledged, how a reload
-  selects state, and what rejection or an uncertain network outcome means.
-  Record a redacted integration reference and the selected behavior in the PR,
-  following the [decision plan's evidence gate](./assessment-player-lifecycle-persistence-implementation-plan.md#decisions-that-need-host-evidence).
-  If no representative host is available, mark this issue `Blocked` with that
-  missing input; an in-memory demo alone cannot close this gate.
-- [ ] Select the smallest repair through the existing strategy: define the
-  stable snapshot boundary, ordering or coalescing behavior, and observable
-  failure result. Ensure an older write cannot overwrite newer acknowledged
-  state within the same assessment attempt. Keep attempts and retired
-  controllers isolated.
-- [ ] Make submission await the current active answer and its required final
-  save. Publish successful submission only after that save succeeds. A rejected
-  save must be observable to the caller and leave the assessment recoverable;
-  define repeated/concurrent submission calls and edits during a pending save
-  against the recorded host contract.
-- [ ] Add deterministic controller tests with deferred saves and immutable
-  snapshots. Cover reverse completion, state changes while hooks await,
-  rejected hooks/writes, recovery after failure, duplicate submission calls,
-  and late completion from a retired attempt. Assert stored values and public
-  outcomes, not a particular queue implementation.
-- [ ] Re-run R1's real-content answer/navigation/reload journey at the host's
-  actual storage boundary with delay and failure injection. Verify the last
-  accepted answer survives, errors reach the host, and save failure never
-  yields a successful submission signal. Record remaining host limitations.
+**Repair, 2026-10-08.** Saves run one at a time in call order, so an older
+write never lands after a newer one, and a failed save rejects only its own
+call. `submit()` saves first and marks the assessment submitted and emits the
+submission event only after that save succeeds; a rejected save goes to
+`onError`, rejects the caller, and leaves the assessment unsubmitted and
+retryable. The host-evidence gate was lifted because no host mounts the
+assessment player. Controller tests cover reverse completion, a failed save
+followed by a good one, and a rejected then retried submission; the lab's two R2
+specs now assert the invariants without expected-failure markers.
 
 This issue repairs snapshot-save ordering and truthful local submission
 behavior. The [authoritative submission PRD](../prds/assessment-authoritative-submission.md)

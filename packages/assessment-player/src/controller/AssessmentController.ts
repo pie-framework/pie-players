@@ -105,8 +105,8 @@ export interface AssessmentControllerHandle {
 	 * persistence strategy.
 	 *
 	 * Hosts call this on whatever cadence they choose (debounced on
-	 * change, on visibility change, on submit). `submit()` always
-	 * `persist()`s as its final step.
+	 * change, on visibility change, on submit). Saves run in call order.
+	 * A failed save goes to `onError` and the returned promise resolves.
 	 */
 	persist(): Promise<void>;
 	/**
@@ -145,9 +145,9 @@ export interface AssessmentControllerHandle {
 	 */
 	navigatePrevious(): boolean;
 	/**
-	 * Mark the assessment as submitted, emit
-	 * `assessment-submission-state-changed`, and `persist()` the final
-	 * snapshot.
+	 * Save the final snapshot, then mark the assessment as submitted and
+	 * emit `assessment-submission-state-changed`. A failed save goes to
+	 * `onError` and rejects, and the assessment stays unsubmitted.
 	 */
 	submit(): Promise<void>;
 	/**
@@ -271,6 +271,7 @@ export class AssessmentController implements AssessmentControllerHandle {
 	private readiness: AssessmentControllerRuntimeState["readiness"] =
 		"bootstrapping";
 	private submitted = false;
+	private saveQueue: Promise<void> = Promise.resolve();
 	private persistenceStrategy?: AssessmentSessionPersistenceStrategy;
 	private initializationPromise?: Promise<void>;
 	private disposalPromise?: Promise<void>;
@@ -494,6 +495,18 @@ export class AssessmentController implements AssessmentControllerHandle {
 	async persist(): Promise<void> {
 		this.assertActive();
 		try {
+			await this.save();
+		} catch (error) {
+			if (!this.disposed) this.handleError(error, "session-save");
+		}
+	}
+
+	/**
+	 * Saves run one at a time, in call order, so a slow older write can never
+	 * land after a newer one. A failed save rejects only its own caller.
+	 */
+	private save(): Promise<void> {
+		const run = this.saveQueue.then(async () => {
 			const strategy = await this.getPersistenceStrategy();
 			if (this.disposed) return;
 			await this.args.hooks?.onBeforeAssessmentPersist?.(
@@ -502,9 +515,9 @@ export class AssessmentController implements AssessmentControllerHandle {
 			);
 			if (this.disposed) return;
 			await strategy.saveSession(this.storageContext, this.session);
-		} catch (error) {
-			if (!this.disposed) this.handleError(error, "session-save");
-		}
+		});
+		this.saveQueue = run.catch(() => {});
+		return run;
 	}
 
 	getSession(): AssessmentSession | null {
@@ -603,13 +616,19 @@ export class AssessmentController implements AssessmentControllerHandle {
 
 	async submit(): Promise<void> {
 		this.assertActive();
+		try {
+			await this.save();
+		} catch (error) {
+			if (!this.disposed) this.handleError(error, "session-save");
+			throw error;
+		}
+		if (this.disposed) return;
 		this.submitted = true;
 		this.emit({
 			type: "assessment-submission-state-changed",
 			timestamp: now(),
 			submitted: true,
 		});
-		await this.persist();
 	}
 
 	subscribe(listener: (event: AssessmentControllerEvent) => void): () => void {

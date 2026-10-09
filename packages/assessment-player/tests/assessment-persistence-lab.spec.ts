@@ -117,10 +117,9 @@ test("R2: the newer save survives an older held write completing last", async ({
 	await ready(page);
 	await answer(page, "b");
 	await page.getByRole("button", { name: "Save snapshot", exact: true }).click();
-	// Observe concurrent admission when the implementation permits it. A future
-	// serialized writer instead keeps the second call pending until release.
-	// This bounded observation window controls the injected schedule; correctness
-	// below is asserted only after both calls and database writes have settled.
+	// The controller serializes saves, so the second call stays pending until
+	// release; a concurrent writer would commit it inside this bounded window.
+	// Correctness is asserted only after both calls and writes have settled.
 	await page.waitForFunction(() => {
 		const state = JSON.parse(document.querySelector('[data-testid="lab-state"]')!.textContent!);
 		return state.server.writes.length === 2 && state.server.writes[1].phase === "committed";
@@ -137,10 +136,6 @@ test("R2: the newer save survives an older held write completing last", async ({
 	await page.reload();
 	await ready(page);
 	const reloaded = await observation(page);
-	// Only the known invariant is expected to fail. Setup, real HTTP/SQLite,
-	// fault controls and reload failures above still fail CI normally. When R2
-	// is fixed this becomes an unexpected pass until this annotation is removed.
-	test.fail(process.env.PIE_R2_STRICT !== "1", "R2 open: older snapshot overwrites the newer acknowledged save");
 	expect({ storedSection: stored.snapshot?.navigationState.currentSectionIndex, reloadedSection: reloaded.server.snapshot?.navigationState.currentSectionIndex, newerAnswerVisible: await choice(page, "b").isChecked() }).toEqual({ storedSection: 1, reloadedSection: 1, newerAnswerVisible: true });
 });
 
@@ -158,6 +153,5 @@ test("R2: rejected submission rejects its caller and never announces success", a
 	await expect(choice(page, "a")).toBeChecked();
 	const result = await observation(page);
 	await testInfo.attach("submission-observation.json", { body: JSON.stringify(result, null, 2), contentType: "application/json" });
-	test.fail(process.env.PIE_R2_STRICT !== "1", "R2 open: save rejection is swallowed and successful submission is published early");
 	expect({ caller: result.operations[0].result, submitted: result.submitted, submissionEvents: result.submissionEvents }).toEqual({ caller: "rejected", submitted: false, submissionEvents: 0 });
 });

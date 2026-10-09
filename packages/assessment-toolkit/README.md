@@ -528,8 +528,9 @@ or the first item scope registers, and `coordinator.waitUntilReady()` waits for 
 grants it. A tool provider or text-to-speech that fails to start is a
 recoverable framework error: the tool reports itself unavailable and the
 assessment goes on. When policy grants the tool, through an item or district
-requirement or a profile support, the failure is fatal, including one that a
-later policy change grants.
+requirement, a profile support or a test-administration override set to `true`,
+the failure is fatal, including one that a later policy change grants. A toolbar
+tool counts only the grants of decisions PNP enforcement applies to.
 
 ## Tool Configuration Model
 

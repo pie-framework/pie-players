@@ -1071,63 +1071,12 @@ export class HighlightCoordinator implements HighlightCoordinatorApi {
 	// ============================================================================
 
 	/**
-	 * Highlight a range as the given type: the TTS types paint as
-	 * {@link highlightTTSWord} and {@link highlightTTSSentence} do.
-	 */
-	highlightRange(
-		range: Range,
-		type: HighlightType,
-		color: HighlightColor = HighlightColor.YELLOW,
-	): void {
-		if (!this.supported) return;
-
-		switch (type) {
-			case HighlightType.TTS_WORD:
-				this.highlightTTSWord([range]);
-				break;
-			case HighlightType.TTS_SENTENCE:
-				this.highlightTTSSentence([range]);
-				break;
-			case HighlightType.ANNOTATION:
-				// For annotations, use the existing method
-				this.addAnnotation(range, color);
-				break;
-		}
-	}
-
-	/**
-	 * Clear highlights of a specific type (interface method)
-	 */
-	clearHighlights(type: HighlightType): void {
-		if (!this.supported) return;
-
-		switch (type) {
-			case HighlightType.TTS_WORD:
-				this.clearTTSWord();
-				break;
-			case HighlightType.TTS_SENTENCE:
-				this.clearTTSSentence();
-				break;
-			case HighlightType.ANNOTATION:
-				this.clearAnnotations();
-				break;
-		}
-	}
-
-	/**
 	 * Clear all highlights (interface method)
 	 */
 	clearAll(): void {
 		if (!this.supported) return;
 		this.clearTTS();
 		this.clearAnnotations();
-	}
-
-	/**
-	 * Check if CSS Highlight API is supported (interface method)
-	 */
-	isSupported(): boolean {
-		return this.supported;
 	}
 
 	/**

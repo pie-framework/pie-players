@@ -48,8 +48,7 @@ interface SectionPlayerHostElement extends HTMLElement {
 }
 
 interface TtsServiceHandle {
-	stop?: () => void;
-	requestControlHandoff?: () => void;
+	stop(): void;
 }
 
 interface CoordinatorWithTtsService {
@@ -721,7 +720,10 @@ export class AssessmentPlayerDefaultElement
 		const coordinator = this.coordinator as CoordinatorWithTtsService | null;
 		const ttsService = coordinator?.ttsService;
 		if (!ttsService) return;
-		const reportTtsError = (error: unknown) => {
+		try {
+			// A stop also closes the inline TTS panels.
+			ttsService.stop();
+		} catch (error) {
 			coordinator?.reportFrameworkError?.(
 				frameworkErrorFromUnknown({
 					kind: "tts-init",
@@ -730,16 +732,6 @@ export class AssessmentPlayerDefaultElement
 					recoverable: true,
 				}),
 			);
-		};
-		try {
-			ttsService.stop?.();
-		} catch (error) {
-			reportTtsError(error);
-		}
-		try {
-			ttsService.requestControlHandoff?.();
-		} catch (error) {
-			reportTtsError(error);
 		}
 	}
 

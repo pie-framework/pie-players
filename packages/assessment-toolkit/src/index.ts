@@ -238,7 +238,6 @@ export type {
 export type { ToolScopeLevel } from "./services/tool-instance-id.js";
 export { createScopedToolId } from "./services/tool-instance-id.js";
 // Text-to-Speech Service
-export type { TTSConfig } from "./services/TTSService.js";
 export { PlaybackState, TTSService } from "./services/TTSService.js";
 export { BrowserTTSProvider } from "./services/tts/browser-provider.js";
 export type { SREMathSpeechOptions } from "./services/tts/math-speech.js";
@@ -252,6 +251,7 @@ export type {
 export type {
 	ITTSProvider,
 	ITTSProviderImplementation,
+	TTSConfig,
 	TTSSpeechSegment,
 	TTSProviderCapabilities,
 } from "@pie-players/pie-tts";

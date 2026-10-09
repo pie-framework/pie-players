@@ -21,10 +21,7 @@ import type {
 	RuntimeTTSConfig,
 	TTSRuntimeSettings,
 } from "../tts-runtime-config.js";
-import type {
-	ToolProviderApi,
-	ToolProviderCapabilities,
-} from "./ToolProviderApi.js";
+import type { ToolProviderApi } from "./ToolProviderApi.js";
 
 const logger = createPieLogger("tts-tool-provider", isTtsDebugEnabled);
 
@@ -72,8 +69,6 @@ function bindServerBackendConfig(
 ): ITTSProvider {
 	return {
 		providerId: provider.providerId,
-		providerName: provider.providerName,
-		version: provider.version,
 		initialize: (config) => {
 			const runtime = config as ServerBackendConfig;
 			const merged: ServerBackendConfig = {
@@ -255,17 +250,21 @@ export class TTSToolProvider
 				throw error;
 			}
 		})();
-		// The server adapter owns these fields. Picking them from its config type
-		// fails the build when one is renamed there or typed differently. The
-		// adapter is only a dev dependency here, so it is named only in this body,
-		// which declaration emit leaves out (ADR 0002).
+		// The server adapter owns these fields, `mathTokenHighlighting` aside, which
+		// is the toolkit's. Picking them from its config type fails the build when
+		// one is renamed there or typed differently. The adapter is only a dev
+		// dependency here, so it is named only in this body, which declaration
+		// emit leaves out (ADR 0002).
 		type ServerTTSProviderConfig =
 			import("@pie-players/tts-client-server").ServerTTSProviderConfig;
 		const { onTelemetry: _onTelemetry, ...backendConfig } = config;
 		this.ttsProvider = bindServerBackendConfig(
 			new ServerProvider(),
 			backendConfig satisfies Partial<
-				Pick<ServerTTSProviderConfig, keyof ServerBackendConfig>
+				Pick<
+					ServerTTSProviderConfig,
+					Exclude<keyof ServerBackendConfig, "mathTokenHighlighting">
+				>
 			>,
 		);
 
@@ -293,29 +292,6 @@ export class TTSToolProvider
 		}
 
 		return this.ttsProvider;
-	}
-
-	/**
-	 * The backend's capabilities. Its features are the speech provider's own,
-	 * and all false before {@link initialize} creates it.
-	 */
-	getCapabilities(): ToolProviderCapabilities {
-		const isBrowser = this.backend === "browser";
-		const speech = this.ttsProvider?.getCapabilities();
-
-		return {
-			supportsOffline: isBrowser,
-			requiresAuth: !isBrowser,
-			maxInstances: 1, // Single TTS instance (playback is sequential)
-			features: {
-				wordBoundary: speech?.supportsWordBoundary ?? false,
-				pause: speech?.supportsPause ?? false,
-				resume: speech?.supportsResume ?? false,
-				rateControl: speech?.supportsRateControl ?? false,
-				pitchControl: speech?.supportsPitchControl ?? false,
-				voiceSelection: speech?.supportsVoiceSelection ?? false,
-			},
-		};
 	}
 
 	/**

@@ -29,12 +29,6 @@ class HeldTTSImpl implements ITTSProviderImplementation {
 	stop(): void {
 		this.finish();
 	}
-	isPlaying(): boolean {
-		return this.release !== null;
-	}
-	isPaused(): boolean {
-		return false;
-	}
 	public events: string[] = [];
 	updateSettings(settings: { rate?: number }): void {
 		if (settings.rate !== undefined) this.events.push(`rate ${settings.rate}`);
@@ -43,20 +37,13 @@ class HeldTTSImpl implements ITTSProviderImplementation {
 
 class MockTTSProvider implements ITTSProvider {
 	readonly providerId = "mock";
-	readonly providerName = "Mock Provider";
-	readonly version = "1.0.0";
 	constructor(private impl: ITTSProviderImplementation) {}
 	async initialize(_config: TTSConfig): Promise<ITTSProviderImplementation> {
 		return this.impl;
 	}
 	getCapabilities(): TTSProviderCapabilities {
 		return {
-			supportsPause: true,
-			supportsResume: true,
 			supportsWordBoundary: false,
-			supportsVoiceSelection: false,
-			supportsRateControl: true,
-			supportsPitchControl: false,
 		};
 	}
 	destroy(): void {}

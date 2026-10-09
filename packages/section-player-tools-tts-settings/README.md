@@ -37,7 +37,7 @@ and applies settings via toolkit coordinator:
 
 - `getToolConfig("textToSpeech")`
 - `updateToolConfig("textToSpeech", ...)`
-- optional `ensureTTSReady(...)`
+- optional `ensureTTSReady()`
 
 ## Custom element API
 

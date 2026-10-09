@@ -40,4 +40,11 @@ export interface ToolkitTTSProviderOptions extends TTSProviderOptions {
 /** A provider configuration as the toolkit reads it. */
 export interface ToolkitTTSConfig extends TTSConfig {
 	providerOptions?: ToolkitTTSProviderOptions;
+	/**
+	 * Highlight math token by token; `false` highlights each formula as one
+	 * block. The highlight pipeline reads it, and providers ignore it.
+	 *
+	 * @default true
+	 */
+	mathTokenHighlighting?: boolean;
 }

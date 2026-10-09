@@ -20,7 +20,6 @@ import type {
 	ITTSProvider,
 	ITTSProviderImplementation,
 	TTSConfig,
-	TTSProviderCapabilities,
 	TTSSpeechSegment,
 } from "@pie-players/pie-tts";
 import {
@@ -35,7 +34,6 @@ import type {
 	AccessibilityCatalogResolver,
 	CatalogLookupContext,
 } from "./AccessibilityCatalogResolver.js";
-import { HighlightType } from "./HighlightCoordinator.js";
 import {
 	resolveSpokenAudioMedia,
 	type SpokenAudioMedia,
@@ -115,21 +113,9 @@ import {
 	type RenderableHighlightTarget,
 } from "./tts/highlight-pipeline/index.js";
 import { createRangesFromVisibleMap } from "./tts/highlight-pipeline/visible-map-range.js";
-import {
-	PIE_TTS_CONTROL_HANDOFF_EVENT,
-	type TTSControlHandoffDetail,
-} from "./tts-control-events.js";
 
 // Debug lines need `PIE_TTS_DEBUG=1` or `globalThis.__PIE_TTS_DEBUG__ = true`.
 const logger = createPieLogger("tts-service", isTtsDebugEnabled);
-
-// Re-export core TTS types for convenience
-export type {
-	ITTSProvider,
-	ITTSProviderImplementation,
-	TTSConfig,
-	TTSProviderCapabilities,
-} from "@pie-players/pie-tts";
 
 /**
  * Playback state
@@ -535,7 +521,7 @@ export class TTSService {
 	 */
 	async initialize(
 		provider: ITTSProvider,
-		config: Partial<TTSConfig> = {},
+		config: Partial<ToolkitTTSConfig> = {},
 	): Promise<void> {
 		if (this.disposed) throw new Error("TTS service disposed");
 		this.currentProvider = provider;
@@ -800,13 +786,6 @@ export class TTSService {
 			paintedRanges.push(elementRange);
 		}
 		this.highlightCoordinator.highlightTTSSentence(paintedRanges);
-	}
-
-	/**
-	 * Get provider capabilities
-	 */
-	getCapabilities(): TTSProviderCapabilities | null {
-		return this.currentProvider?.getCapabilities() || null;
 	}
 
 	private providerOptions(): ToolkitTTSProviderOptions {
@@ -1370,9 +1349,7 @@ export class TTSService {
 	): Promise<void> {
 		if (!this.provider || segments.length === 0) return;
 		const shouldTrackSentenceProgress = options?.highlightMode === "sentence";
-		const providerWithPlan = this.provider as ITTSProviderImplementation & {
-			speakSegments?: (segments: TTSSpeechSegment[]) => Promise<void>;
-		};
+		const providerWithPlan = this.provider;
 		if (
 			!shouldTrackSentenceProgress &&
 			typeof providerWithPlan.speakSegments === "function"
@@ -2330,7 +2307,7 @@ export class TTSService {
 					0,
 					chunk.visibleText.length,
 				);
-				this.highlightCoordinator.clearHighlights(HighlightType.TTS_WORD);
+				this.highlightCoordinator.clearTTSWord();
 				this.paintTTSSentenceRanges(
 					ranges.length > 1 ? ranges : [chunk.regionRange],
 				);
@@ -2339,7 +2316,7 @@ export class TTSService {
 			if (!element) return;
 			const range = document.createRange();
 			range.selectNodeContents(element);
-			this.highlightCoordinator.clearHighlights(HighlightType.TTS_WORD);
+			this.highlightCoordinator.clearTTSWord();
 			this.paintTTSSentenceRanges([range]);
 		} catch {
 			// Continue playback even when a detached node cannot be highlighted.
@@ -2393,7 +2370,7 @@ export class TTSService {
 			// Clear the word layer so the previously spoken word does not stay
 			// highlighted. (The "hold last token" behavior returns a non-null
 			// target, so it does not reach here.)
-			this.highlightCoordinator.clearHighlights(HighlightType.TTS_WORD);
+			this.highlightCoordinator.clearTTSWord();
 			return;
 		}
 		if (target.type === "text-range") {
@@ -2874,7 +2851,11 @@ export class TTSService {
 			this.setState(PlaybackState.IDLE);
 			this.clearHighlightsAndTracking();
 		} catch (error) {
-			if (runId !== this.speakRunId) return;
+			// A superseded run's failure is the abort that superseded it.
+			if (runId !== this.speakRunId) {
+				logger.debug("Superseded seek restart failed:", error);
+				return;
+			}
 			this.lastError = error instanceof Error ? error.message : String(error);
 			this.setState(PlaybackState.ERROR);
 			this.clearHighlightsAndTracking();
@@ -2990,34 +2971,19 @@ export class TTSService {
 	}
 
 	/**
-	 * Stop playback
+	 * Stop playback and release the run owner. A run that ends on its own keeps
+	 * its owner, so the owning control can replay it.
 	 */
 	stop(): void {
 		this.speakRunId += 1;
 		this.abandonRun();
-		if (this.provider) {
-			this.provider.onWordBoundary = undefined;
-			this.provider.stop();
-		}
-		this.setState(PlaybackState.IDLE);
+		this.provider?.stop();
+		this.clearHighlightsAndTracking();
 		this.currentText = null;
-
-		// Clear highlights
-		if (this.highlightCoordinator) {
-			this.highlightCoordinator.clearTTS();
-		}
-
-		// Clear tracking
-		this.lastRenderedRegionTarget = null;
-		this.currentContentElement = null;
-		this.normalizedToDOM.clear();
-		this.currentBoundaryOffset = 0;
-		this.activeWordBoundaryOffset = 0;
-		this.seekSegments = [];
-		this.playbackChunks = [];
-		this.sentenceHighlightSegments = [];
-		this.activeSentenceStartOffset = null;
-		this.activePlaybackRate = null;
+		// Announced even from idle, so a listener sees the owner released.
+		const releasedOwner = this.runOwner !== null;
+		this.runOwner = null;
+		this.setState(PlaybackState.IDLE, releasedOwner);
 	}
 
 	/**
@@ -3052,36 +3018,6 @@ export class TTSService {
 	}
 
 	/**
-	 * Request UI-level TTS controls to hand off/deactivate.
-	 *
-	 * This is intentionally separate from playback controls so hosts can orchestrate
-	 * control handoff explicitly (for example: stop playback, then dismiss controls).
-	 */
-	requestControlHandoff(): void {
-		if (typeof window === "undefined") return;
-		const detail: TTSControlHandoffDetail = { source: "host" };
-		window.dispatchEvent(
-			new CustomEvent(PIE_TTS_CONTROL_HANDOFF_EVENT, {
-				detail,
-			}),
-		);
-	}
-
-	/**
-	 * Check if currently playing
-	 */
-	isPlaying(): boolean {
-		return this.state === PlaybackState.PLAYING;
-	}
-
-	/**
-	 * Check if paused
-	 */
-	isPaused(): boolean {
-		return this.state === PlaybackState.PAUSED;
-	}
-
-	/**
 	 * Get current state
 	 */
 	getState(): PlaybackState {
@@ -3090,21 +3026,6 @@ export class TTSService {
 
 	getRunOwner(): string | null {
 		return this.runOwner;
-	}
-
-	/**
-	 * Get current text being spoken
-	 */
-	getCurrentText(): string | null {
-		return this.currentText;
-	}
-
-	/**
-	 * Get the last error message
-	 * Returns null if no error has occurred
-	 */
-	getLastError(): string | null {
-		return this.lastError;
 	}
 
 	/**

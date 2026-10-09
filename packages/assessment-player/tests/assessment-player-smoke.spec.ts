@@ -6,7 +6,7 @@ const DEMO_PATH = "/three-section-assessment";
 const KNOWN_A11Y_BASELINE_DEBT = new Set<string>(["aria-allowed-attr"]);
 
 test.describe("assessment player smoke", () => {
-	test("stops and hands off TTS on successful section navigation", async ({
+	test("stops TTS on successful section navigation", async ({
 		page,
 	}) => {
 		await page.goto(DEMO_PATH, { waitUntil: "networkidle" });
@@ -28,21 +28,13 @@ test.describe("assessment player smoke", () => {
 				ttsService?: Record<string, unknown>;
 			};
 			const ttsService = coordinator.ttsService as
-				| {
-						stop?: (...args: unknown[]) => unknown;
-						requestControlHandoff?: (...args: unknown[]) => unknown;
-				  }
+				| { stop: (...args: unknown[]) => unknown }
 				| undefined;
 			if (!ttsService) {
 				throw new Error("assessment tts service not available");
 			}
-			const originalStop = ttsService.stop?.bind(ttsService);
-			const originalHandoff =
-				ttsService.requestControlHandoff?.bind(ttsService);
-			(window as any).__ttsNavCleanup = {
-				stopCount: 0,
-				handoffCount: 0,
-			};
+			const originalStop = ttsService.stop.bind(ttsService);
+			(window as any).__ttsNavCleanup = { stopCount: 0 };
 			(window as any).__blockNextTtsCleanupNavigation = true;
 			assessmentHost.addEventListener(
 				"assessment-navigation-requested",
@@ -54,44 +46,28 @@ test.describe("assessment player smoke", () => {
 			);
 			ttsService.stop = (...args: unknown[]) => {
 				(window as any).__ttsNavCleanup.stopCount += 1;
-				return originalStop?.(...args);
-			};
-			ttsService.requestControlHandoff = (...args: unknown[]) => {
-				(window as any).__ttsNavCleanup.handoffCount += 1;
-				return originalHandoff?.(...args);
+				return originalStop(...args);
 			};
 		});
 
 		const getCleanupCounts = () =>
 			page.evaluate(() => {
 				const counts = (window as any).__ttsNavCleanup;
-				return {
-					stopCount: Number(counts?.stopCount || 0),
-					handoffCount: Number(counts?.handoffCount || 0),
-				};
+				return { stopCount: Number(counts?.stopCount || 0) };
 			});
 
-		await expect.poll(getCleanupCounts).toEqual({
-			stopCount: 0,
-			handoffCount: 0,
-		});
+		await expect.poll(getCleanupCounts).toEqual({ stopCount: 0 });
 		await host.getByRole("button", { name: "Next" }).click();
 		await expect(
 			host.locator(".pie-assessment-player-current-position"),
 		).toHaveText("Section 1 of 3");
-		await expect.poll(getCleanupCounts).toEqual({
-			stopCount: 0,
-			handoffCount: 0,
-		});
+		await expect.poll(getCleanupCounts).toEqual({ stopCount: 0 });
 
 		await host.getByRole("button", { name: "Next" }).click();
 		await expect(
 			host.locator(".pie-assessment-player-current-position"),
 		).toHaveText("Section 2 of 3");
-		await expect.poll(getCleanupCounts).toEqual({
-			stopCount: 1,
-			handoffCount: 1,
-		});
+		await expect.poll(getCleanupCounts).toEqual({ stopCount: 1 });
 	});
 
 	test("renders default layout and supports back/next section navigation", async ({

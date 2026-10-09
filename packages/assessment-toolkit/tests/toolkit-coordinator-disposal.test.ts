@@ -365,11 +365,6 @@ describe("ToolkitCoordinator disposal", () => {
 				requiresAuth: false,
 				initialize: async () => {},
 				createInstance: async () => ({}),
-				getCapabilities: () => ({
-					supportsOffline: true,
-					requiresAuth: false,
-					features: {},
-				}),
 				isReady: () => true,
 				destroy() {
 					providerDestroyCount += 1;
@@ -519,11 +514,6 @@ describe("ToolkitCoordinator disposal", () => {
 					await providerInitGate.promise;
 				},
 				createInstance: async () => ({}),
-				getCapabilities: () => ({
-					supportsOffline: true,
-					requiresAuth: false,
-					features: {},
-				}),
 				isReady: () => false,
 				destroy() {
 					providerDestroyCount += 1;

@@ -296,7 +296,6 @@
   type HostedToolContext
   type HostedToolSize
   type NormalizedTTSSpeedOption
-  PIE_TTS_CONTROL_HANDOFF_EVENT
   type ParsedToolInstanceId
   type ResolveContentCapabilitiesArgs
   type ResolvedContentCapability
@@ -315,7 +314,6 @@
   type ToolModuleLoader
   type ToolPlacementLevel
   type ToolProviderApi
-  type ToolProviderCapabilities
   type ToolProviderConfig
   type ToolProviderDescriptor
   type ToolRegistration

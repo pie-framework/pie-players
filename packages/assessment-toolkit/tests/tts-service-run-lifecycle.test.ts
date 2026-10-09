@@ -76,19 +76,11 @@ class ScriptedImpl implements ITTSProviderImplementation {
 		this.stopCalls += 1;
 		this.failHeld("aborted");
 	}
-	isPlaying(): boolean {
-		return false;
-	}
-	isPaused(): boolean {
-		return false;
-	}
 	updateSettings(): void {}
 }
 
 class ScriptedProvider implements ITTSProvider {
 	readonly providerId = "scripted";
-	readonly providerName = "Scripted";
-	readonly version = "1.0.0";
 	constructor(
 		private impl: ITTSProviderImplementation,
 		private maxTextLength?: number,
@@ -98,12 +90,7 @@ class ScriptedProvider implements ITTSProvider {
 	}
 	getCapabilities(): TTSProviderCapabilities {
 		return {
-			supportsPause: true,
-			supportsResume: true,
 			supportsWordBoundary: true,
-			supportsVoiceSelection: true,
-			supportsRateControl: true,
-			supportsPitchControl: true,
 			maxTextLength: this.maxTextLength,
 		};
 	}
@@ -434,8 +421,6 @@ describe("a provider's maxTextLength", () => {
 			},
 			highlightTTSSentence: () => {},
 			clearTTS: () => {},
-			isSupported: () => true,
-			updateTTSHighlightStyle: () => {},
 		} as any);
 
 		await service.speak(contentWith(text));

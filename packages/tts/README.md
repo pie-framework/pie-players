@@ -60,15 +60,11 @@ class MyTTSImplementation implements ITTSProviderImplementation {
   pause(): void { /* ... */ }
   resume(): void { /* ... */ }
   stop(): void { /* ... */ }
-  isPlaying(): boolean { return false; }
-  isPaused(): boolean { return false; }
   updateSettings(settings: Partial<TTSConfig>): void { /* ... */ }
 }
 
 export class MyTTSProvider implements ITTSProvider {
   readonly providerId = 'my-tts';
-  readonly providerName = 'My TTS Provider';
-  readonly version = '1.0.0';
 
   async initialize(config: TTSConfig): Promise<ITTSProviderImplementation> {
     return new MyTTSImplementation(config);
@@ -76,12 +72,7 @@ export class MyTTSProvider implements ITTSProvider {
 
   getCapabilities(): TTSProviderCapabilities {
     return {
-      supportsPause: true,
-      supportsResume: true,
       supportsWordBoundary: false,
-      supportsVoiceSelection: true,
-      supportsRateControl: true,
-      supportsPitchControl: false,
     };
   }
 

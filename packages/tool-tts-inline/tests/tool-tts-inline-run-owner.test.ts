@@ -32,6 +32,9 @@ class HeldImpl {
 			this.release = resolve;
 		});
 	}
+	get speaking(): boolean {
+		return this.release !== null;
+	}
 	finish(): void {
 		this.release?.();
 		this.release = null;
@@ -41,28 +44,15 @@ class HeldImpl {
 	stop(): void {
 		this.finish();
 	}
-	isPlaying(): boolean {
-		return this.release !== null;
-	}
-	isPaused(): boolean {
-		return false;
-	}
 	updateSettings(): void {}
 }
 
 function providerFor(impl: HeldImpl) {
 	return {
 		providerId: "held",
-		providerName: "Held",
-		version: "1.0.0",
 		initialize: async () => impl,
 		getCapabilities: () => ({
-			supportsPause: true,
-			supportsResume: true,
 			supportsWordBoundary: false,
-			supportsVoiceSelection: false,
-			supportsRateControl: true,
-			supportsPitchControl: false,
 		}),
 		destroy() {},
 	};
@@ -277,7 +267,7 @@ test("stop during a read closes the panel and keeps the stop announcement", asyn
 	expect(panelOpen(element)).toBe(false);
 	expect(status(element)).toBe("Reading stopped");
 	expect(service.getState()).toBe("idle");
-	expect(impl.isPlaying()).toBe(false);
+	expect(impl.speaking).toBe(false);
 });
 
 test("a provider failure announces that reading could not start", async () => {
@@ -291,4 +281,33 @@ test("a provider failure announces that reading could not start", async () => {
 
 	expect(panelOpen(element)).toBe(false);
 	expect(status(element)).toBe("Unable to start reading");
+});
+
+test("a host stop closes the open panel and announces the stop", async () => {
+	const { service, impl } = await readyService();
+	const element = mount(service, "<p>Read this passage aloud.</p>");
+	await play(element);
+	expect(panelOpen(element)).toBe(true);
+
+	service.stop();
+	await settle();
+
+	expect(panelOpen(element)).toBe(false);
+	expect(status(element)).toBe("Reading stopped");
+	expect(service.getRunOwner()).toBeNull();
+	expect(impl.speaking).toBe(false);
+});
+
+test("a read that ends on its own keeps the panel open for a replay", async () => {
+	const { service, impl } = await readyService();
+	const element = mount(service, "<p>Read this passage aloud.</p>");
+	await play(element);
+	const owner = service.getRunOwner();
+
+	impl.finish();
+	await settle();
+
+	expect(service.getState()).toBe("idle");
+	expect(service.getRunOwner()).toBe(owner);
+	expect(panelOpen(element)).toBe(true);
 });

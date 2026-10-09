@@ -53,7 +53,7 @@ READMEs document package-specific APIs, configuration, and provider setup.
 - `@pie-players/pie-players-shared` (for UI components, i18n)
 
 **TTS Features:**
-- Re-exports the provider types from `tts`: `ITTSProvider`, `ITTSProviderImplementation`, `TTSSpeechSegment`, `TTSFeature` and `TTSProviderCapabilities`
+- Re-exports the provider types from `tts`: `ITTSProvider`, `ITTSProviderImplementation`, `TTSConfig`, `TTSSpeechSegment` and `TTSProviderCapabilities`
 - Includes `BrowserTTSProvider` as the default fallback, available wherever the browser implements the Speech Synthesis API
 - Integrates with QTI 3.0 accessibility catalogs
 - **Authored SSML/catalog support** through accessibility catalogs and
@@ -371,15 +371,11 @@ class MyTTSImpl implements ITTSProviderImplementation {
   pause(): void { /* ... */ }
   resume(): void { /* ... */ }
   stop(): void { /* ... */ }
-  isPlaying(): boolean { return false; }
-  isPaused(): boolean { return false; }
   updateSettings(settings: Partial<TTSConfig>): void { /* ... */ }
 }
 
 export class MyTTSProvider implements ITTSProvider {
   readonly providerId = 'my-custom-tts';
-  readonly providerName = 'My Custom TTS';
-  readonly version = '1.0.0';
 
   async initialize(config: TTSConfig): Promise<ITTSProviderImplementation> {
     return new MyTTSImpl(config);
@@ -387,12 +383,7 @@ export class MyTTSProvider implements ITTSProvider {
 
   getCapabilities(): TTSProviderCapabilities {
     return {
-      supportsPause: true,
-      supportsResume: true,
       supportsWordBoundary: false,
-      supportsVoiceSelection: false,
-      supportsRateControl: false,
-      supportsPitchControl: false,
     };
   }
   destroy(): void { /* ... */ }

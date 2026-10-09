@@ -42,12 +42,6 @@ describe("TTS contract compatibility", () => {
 			pause() {},
 			resume() {},
 			stop() {},
-			isPlaying() {
-				return false;
-			},
-			isPaused() {
-				return false;
-			},
 			updateSettings() {},
 		};
 
@@ -56,12 +50,6 @@ describe("TTS contract compatibility", () => {
 			pause() {},
 			resume() {},
 			stop() {},
-			isPlaying() {
-				return false;
-			},
-			isPaused() {
-				return false;
-			},
 			updateSettings() {},
 		};
 
@@ -78,6 +66,5 @@ describe("TTS contract compatibility", () => {
 		const service: TtsServiceApi = new TTSService();
 		expect(typeof service.seekForward).toBe("function");
 		expect(typeof service.seekBackward).toBe("function");
-		expect(typeof service.requestControlHandoff).toBe("function");
 	});
 });

@@ -1,4 +1,3 @@
-import type { TTSConfig } from "./TTSService.js";
 import type {
 	TextToSpeechToolProviderConfig,
 	ToolProviderConfig,
@@ -7,6 +6,7 @@ import {
 	normalizeSREMathSpeechOptions,
 	type SREMathSpeechOptions,
 } from "./tts/math-speech.js";
+import type { ToolkitTTSConfig } from "./tts/provider-options.js";
 
 export type TTSLayoutMode =
 	| "reserved-row"
@@ -374,7 +374,7 @@ export const resolveTTSBackend = (
  * fields plus the server adapter's, under the adapter's names.
  */
 export type RuntimeTTSConfig = Pick<
-	TTSConfig,
+	ToolkitTTSConfig,
 	"voice" | "rate" | "pitch" | "providerOptions" | "mathTokenHighlighting"
 > &
 	Pick<
@@ -456,14 +456,18 @@ export const buildRuntimeTTSConfig = (
 			? { mathTokenHighlighting: config.mathTokenHighlighting }
 			: {}),
 	};
-	// The server adapter owns these fields. Picking them from its config type
-	// fails the build when a forwarded field is renamed there or typed
-	// differently. The adapter is only a dev dependency here, so it is named only
-	// in this body, which declaration emit leaves out (ADR 0002).
+	// The server adapter owns these fields, `mathTokenHighlighting` aside, which
+	// is the toolkit's. Picking them from its config type fails the build when a
+	// forwarded field is renamed there or typed differently. The adapter is only
+	// a dev dependency here, so it is named only in this body, which declaration
+	// emit leaves out (ADR 0002).
 	type ServerTTSProviderConfig =
 		import("@pie-players/tts-client-server").ServerTTSProviderConfig;
 	return runtimeConfig satisfies Partial<
-		Pick<ServerTTSProviderConfig, keyof RuntimeTTSConfig>
+		Pick<
+			ServerTTSProviderConfig,
+			Exclude<keyof RuntimeTTSConfig, "mathTokenHighlighting">
+		>
 	>;
 };
 

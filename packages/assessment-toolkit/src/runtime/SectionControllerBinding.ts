@@ -221,19 +221,31 @@ export class SectionControllerBinding {
 			}) as RuntimeController | undefined,
 		);
 
-		const resolved = (await args.coordinator.getOrCreateSectionController({
-			sectionId: args.sectionId,
-			attemptId: args.attemptId,
-			input: {
-				section: args.section,
+		let resolved: RuntimeController;
+		try {
+			resolved = (await args.coordinator.getOrCreateSectionController({
 				sectionId: args.sectionId,
-				assessmentId: args.assessmentId,
-				view: args.view,
-			},
-			updateExisting: true,
-			initialSession: args.initialSession,
-			createDefaultController: args.createDefaultController,
-		})) as RuntimeController;
+				attemptId: args.attemptId,
+				input: {
+					section: args.section,
+					sectionId: args.sectionId,
+					assessmentId: args.assessmentId,
+					view: args.view,
+				},
+				updateExisting: true,
+				initialSession: args.initialSession,
+				createDefaultController: args.createDefaultController,
+			})) as RuntimeController;
+		} catch (error) {
+			// The previous section's controller must not keep serving the
+			// section that failed to start.
+			if (token === this.activeInitToken) {
+				this.unsubscribeController?.();
+				this.unsubscribeController = null;
+				this.controller = null;
+			}
+			throw error;
+		}
 
 		if (token !== this.activeInitToken) return;
 		this.unsubscribeController?.();

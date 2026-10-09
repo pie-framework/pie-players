@@ -422,6 +422,9 @@ export class ToolProviderRegistry {
 				} catch {
 					// Ignore initialization errors during unregister
 				}
+				// A provider registered meanwhile owns the slot, and register()
+				// already destroys this one once its start settles.
+				if (this.providers.get(toolId) !== provider) return;
 			}
 
 			this.destroyProvider(toolId, provider);

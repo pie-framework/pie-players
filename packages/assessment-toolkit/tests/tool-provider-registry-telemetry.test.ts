@@ -143,4 +143,37 @@ describe("ToolProviderRegistry logging", () => {
 
 		expect(logged).toEqual([]);
 	});
+
+	test("a provider registered while an unregister waits on a pending start keeps its slot", async () => {
+		let release!: () => void;
+		const gate = new Promise<void>((resolve) => {
+			release = resolve;
+		});
+		class GatedProvider extends FakeProvider {
+			destroyed = 0;
+			override async initialize(config: Record<string, unknown>): Promise<void> {
+				await gate;
+				await super.initialize(config);
+			}
+			override destroy(): void {
+				this.destroyed += 1;
+				super.destroy();
+			}
+		}
+		const registry = new ToolProviderRegistry();
+		const disabled = new GatedProvider();
+		registry.register("calculator", { provider: disabled, config: {} });
+		const start = registry.initialize("calculator").catch(() => {});
+		const unregister = registry.unregister("calculator");
+		const enabled = new GatedProvider();
+		registry.register("calculator", { provider: enabled, config: {} });
+		release();
+		await start;
+		await unregister;
+		await new Promise((resolve) => setTimeout(resolve, 0));
+
+		expect(registry.has("calculator")).toBe(true);
+		expect(disabled.destroyed).toBe(1);
+		expect(enabled.destroyed).toBe(0);
+	});
 });

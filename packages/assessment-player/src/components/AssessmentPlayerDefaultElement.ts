@@ -888,7 +888,7 @@ export class AssessmentPlayerDefaultElement
 				padding: 0.5rem;
 				border: 1px solid var(--pie-border-light, #e5e7eb);
 				border-radius: 0.375rem;
-				background: var(--pie-background-light, var(--pie-background, #fff));
+				background: var(--pie-background, #fff);
 			}
 			.pie-assessment-player-navigation[hidden] { display: none; }
 			.pie-assessment-player-current-position {
@@ -903,7 +903,7 @@ export class AssessmentPlayerDefaultElement
 				padding: 0.35rem 0.75rem;
 				border: 1px solid var(--pie-border-light, #e5e7eb);
 				border-radius: 0.375rem;
-				background: var(--pie-background-light, var(--pie-background, #fff));
+				background: var(--pie-background, #fff);
 				cursor: pointer;
 			}
 			.pie-assessment-player-nav-btn:disabled {

@@ -46,21 +46,6 @@
 		"fallbackPolicy": "Canonical darker surface token for layered or recessed UI."
 	},
 	{
-		"name": "--pie-background-light",
-		"owner": "@pie-players/pie-theme",
-		"scope": "unsupported",
-		"category": "surface",
-		"status": "intentional-gap",
-		"schemeParticipation": "excluded",
-		"definedIn": [
-			"docs/prds/pie-727-broad-theming-contract.md"
-		],
-		"documentedIn": [
-			"docs/prds/pie-727-broad-theming-contract.md"
-		],
-		"fallbackPolicy": "Known undefined token discovered during PIE-727 audit; implementation slices must replace usage or promote it through a decision record before treating it as public."
-	},
-	{
 		"name": "--pie-black",
 		"owner": "@pie-players/pie-theme",
 		"scope": "canonical-semantic",

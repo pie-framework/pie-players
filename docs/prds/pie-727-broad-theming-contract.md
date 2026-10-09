@@ -284,7 +284,7 @@ Examples:
   semantic colors. New component-scoped hooks should follow this established
   pattern: precise component/state naming, broad-token fallbacks, README
   documentation, registry entry, and focused style-contract tests.
-- `--pie-focus-outline`, `--pie-background-light`, and similar recurring or
+- `--pie-focus-outline` and similar recurring or
   undefined tokens must be classified before source-changing work starts.
 
 The source-of-truth, participation, provider, generated-CSS, requested/resolved,
@@ -304,8 +304,8 @@ Previously classified naming and fallback paths:
   the other historical names do not justify additional compatibility paths.
 - `packages/assessment-player/src/components/AssessmentPlayerDefaultElement.ts`
   used undefined `--pie-background-light`. The earlier slice classified it as
-  unsupported and added the `--pie-background` fallback. No observed external
-  dependency makes the unsupported name a compatibility requirement.
+  unsupported and added the `--pie-background` fallback. No host sets it, so it
+  is removed and its readers use `--pie-background`.
 - `packages/theme/src/components.css` used
   `--pie-focus-ring-color`. Align it through `--pie-focus-outline` and
   `--pie-button-focus-outline` instead of adding another unrelated focus token.

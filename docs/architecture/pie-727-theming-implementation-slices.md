@@ -31,7 +31,7 @@ Related:
 | --- | --- | --- | --- |
 | Token registry and parity | `@pie-players/pie-theme` | Added registry entries for canonical defaults, inline trigger hooks, section tab hooks, legacy aliases, and decision-gate tokens. Added parity checks for `theme-definitions.ts`, generated CSS, Scheme Participation, and focus alias fallback. | `bun test packages/theme/tests/token-registry-contract.test.ts` |
 | Theme shared focus wrappers | `@pie-players/pie-theme` | Routed `--pie-focus-ring-color` through `--pie-focus-outline` and `--pie-button-focus-outline`. | `bun test packages/theme/tests/token-registry-contract.test.ts` |
-| Assessment navigation backgrounds | `@pie-players/pie-assessment-player` | Preserved `--pie-background-light` but added `--pie-background` fallback. | `bun test packages/assessment-player/tests/assessment-player-theme-contract.test.ts` |
+| Assessment navigation backgrounds | `@pie-players/pie-assessment-player` | Replaced the unregistered `--pie-background-light` with `--pie-background`. | `bun test packages/assessment-player/tests/assessment-player-theme-contract.test.ts` |
 | Section tabs docs/registry | `@pie-players/pie-section-player` | Documented actual tab CSS variables and registered them as component-public hooks. | `bun test packages/section-player/tests/section-player-theme-token-docs.test.ts` |
 | TTS inline button aliases | `@pie-players/pie-tool-tts-inline` | Preserved `--pie-button-*-color` style aliases while routing through canonical `--pie-button-*` fallbacks. | `bun test packages/tool-tts-inline/tests/tool-tts-inline-style-contract.test.ts` |
 | Canonical theme and colour schemes (1f29de7f, 2026-08-13) | `@pie-players/pie-theme`, `@pie-players/pie-tool-theme` | The coordinated slice below, as enumerated. | `bun run check:theme-tokens`; `bun test --dom packages/theme/tests` |
@@ -91,8 +91,6 @@ reason to retain the old raw scheme interface.
    fill resolves through `--pie-white` (2bcd9faf); no assertion covers the
    gradient yet, so its matrix row stays `Planned`.
 3. Assessment-player navigation — open:
-   - Keep `--pie-background-light` classified as unsupported unless promoted by
-     decision record; it is not an external compatibility requirement.
    - Add browser computed-style coverage before changing nav button colors,
      focus outlines, or target sizing.
 4. Assessment-toolkit item toolbar — landed (2bcd9faf, 2a741c6b). Ordinary

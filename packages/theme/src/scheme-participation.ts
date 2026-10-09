@@ -7,7 +7,6 @@ export const PIE_THEME_SCHEME_PARTICIPATION = {
 	"--pie-answer-eliminator-strike-color": "optional",
 	"--pie-background": "required",
 	"--pie-background-dark": "required",
-	"--pie-background-light": "excluded",
 	"--pie-black": "required",
 	"--pie-blue-grey-100": "required",
 	"--pie-blue-grey-300": "required",

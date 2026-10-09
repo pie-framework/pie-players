@@ -1,5 +1,35 @@
 # @pie-players/pie-players-cli
 
+## 0.3.8
+
+### Patch Changes
+
+- Updated dependencies [7cf309e]
+- Updated dependencies [7400511]
+- Updated dependencies [14e53c9]
+- Updated dependencies [53940c9]
+- Updated dependencies [6b26e88]
+- Updated dependencies [f5465e5]
+- Updated dependencies [8edca42]
+- Updated dependencies [c6b509c]
+- Updated dependencies [1025fba]
+- Updated dependencies [296055c]
+- Updated dependencies [6f57b31]
+- Updated dependencies [ad05203]
+- Updated dependencies [4e9913f]
+- Updated dependencies [cdc3dd7]
+- Updated dependencies [dcc7375]
+- Updated dependencies [78491f2]
+- Updated dependencies [7aeddb9]
+- Updated dependencies [3ac0028]
+- Updated dependencies [d7c46ac]
+- Updated dependencies [1ec8e34]
+- Updated dependencies [8122e1e]
+- Updated dependencies [bcba901]
+- Updated dependencies [d9f56e8]
+- Updated dependencies [55d97fd]
+  - @pie-players/pie-players-shared@0.3.75
+
 ## 0.3.7
 
 ### Patch Changes

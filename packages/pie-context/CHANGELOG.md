@@ -1,5 +1,17 @@
 # @pie-players/pie-context
 
+## 0.3.75
+
+### Patch Changes
+
+- bb9c165: A subscribing `ContextConsumer` installs one `ContextRoot` per document, on `documentElement` and shared by every copy of the package on the page, so a provider that connects late answers requests made before it. `ensureDocumentContextRoot` is exported. `connectContextWithRetry` relies on that replay and no longer polls. A provider answering a consumer again keeps its subscription, so updates keep reaching it after a re-request.
+  
+  The toolkit and the shells no longer attach context roots of their own. A shell's registration carries the `runtimeId` of the toolkit that answered it, a toolkit claims an event carrying a `runtimeId` only when the id is its own, and a shell that a nearer toolkit takes over moves its registration to it. `ShellScope.send` dispatches an event addressed the same way, holding up to 50 until a toolkit answers, and the shells and `<pie-item-scope>` send their internal events through it. A nested toolkit inherits an outer one that is already providing when it connects; one that finds none keeps the coordinator it builds.
+  
+  `waitForSectionController` resolves on `toolkit-ready` instead of polling, with the same timeout and result.
+- 9464e2b: Default section and assessment persistence store a session only under an attempt id, and without one neither read nor write, so a later learner on a shared device no longer resumes the previous learner's session. A context provider that disconnects hands its subscribers to the nearest provider left, or back to itself when it reconnects, and the context events are built on the `Event` of their target's window, so a copy of pie-context loaded before a DOM emulator registered dispatches on it.
+- d9f56e8: The toolkit root exports 185 names instead of 326: the names only tool packages use moved to `./tools/registration`, and the names nothing imports are removed, among them the backend activity-session adapters, the item loader and the session-storage helpers. The TypeScript examples in the READMEs match the current API.
+
 ## 0.3.74
 
 ### Patch Changes

@@ -1,5 +1,64 @@
 # @pie-players/pie-section-player-tools-pnp-debugger
 
+## 0.3.75
+
+### Patch Changes
+
+- c6b509c: Each section-player input has one tier: `nds-icons`, `locale` and `tool-config-strictness` are layout attributes only, and `assessmentId`, `onFrameworkError`, `onStageChange`, `onLoadingComplete` and tool config are `runtime` keys only, so a host that sets `assessment-id` or a callback property on a layout element moves it into `runtime`. The toolkit's `pnp-enforcement` attribute is gone; set `tools.pnpEnforcement`. Layout elements drop `selectComposition`, `selectNavigation`, `selectReadiness` and the readiness-phase types; read `getSnapshot()` and listen for `pie-stage-change`. The section player's entries are the root, `./browser`, the splitpane component subpath, `./contracts/runtime-host-contract`, `./contracts/host-hooks`, `./policies` and `./item-section`; a host importing another component subpath imports the root. The layout-contract constants, `SECTION_PLAYER_PUBLIC_EVENTS`, `isPreloadEnabled` and `isTelemetryEnabled` are removed; read `resolveSectionPlayerPolicies(policies)`. The toolkit's `./runtime/engine` no longer exports `createReadinessDetail`, `resolveOnFrameworkError`, `DEFAULT_ASSESSMENT_ID` or `EffectiveRuntime`.
+  
+  `ToolkitCoordinatorApi` drops `getServiceBundle`, `getInitStatus`, `isToolEnabled`, `registerToolContextResolver` and `setToolContextResolvers`, and the toolkit element drops `getServiceBundle()`; read the coordinator's service properties, `isReady()` and `getToolConfig()`, and pass resolvers as `runtime.toolContextResolvers`. A host-supplied coordinator must implement `onReadyChange`. `ToolkitInitStatus` and `ToolkitServiceBundle` are removed. `createEmptyPersonalNeedsProfile` moves to `@pie-players/pie-default-tool-loaders`, which drops `registerPackagedTools`, `registerDefaultToolModuleLoaders`, `PACKAGED_TOOL_ORDER`, `PACKAGED_TOOL_PLACEMENT`, `UNIVERSAL_SUPPORTS_PRESET` and the re-exported `ToolModuleLoader`. The policy source-tag types, `ToolPolicyEntry.sources` and `ToolPolicyDiagnostic.source` are removed; a decision's `rule` and a diagnostic's `details` carry attribution, and `"tts"` is no longer special-cased as a tool id. A profile's `prohibitedSupports` now outranks item and district requirements, so PNP precedence is one order: district block, `false` override, item restriction, prohibition, `true` override, item requirement, district requirement, profile support. `stimulusRefs` is removed from the shared types, and `toolConfigs` and `toolParameters` are object-valued records. `@pie-players/pie-tool-calculator-shared` drops its root entry; import `/calculator-element`. The PNP debugger and TTS settings panels dispatch `close` from the host element, without bubbling.
+  
+  Text-to-speech names a server provider one way: `backend: "server"` with `serverProvider: "polly" | "google" | "custom"`, so a host setting `backend: "polly"` or `"google"` moves the name to `serverProvider`, and a string `provider` is rejected. Keys nested under `settings` are no longer read; move them, `mathSpeech` included, to the top level. `TextToSpeechToolProviderConfig` is closed and exported in place of `ToolConfig` and `TTSToolConfig`. `TTSFeature` and `ITTSProvider.supportsFeature` are removed; a custom provider deletes the method. `DEFAULT_TTS_SPEED_OPTIONS`, `normalizeTTSSpeedOptions`, `resolveRuntimeProvider`, `resolveTTSBackend`, `resolveTransportMode` and `BrowserVoiceTraits` leave `./tools/registration`. `TtsServiceApi.onStateChange(callback)` returns its unsubscribe function and `offStateChange` is removed, and `bindTtsAudioHandoff` drops `listenerId`. A custom highlight coordinator implements `highlightTTSWordElement` and `highlightTTSSentenceElements`; `clearAll` leaves the interface. `TTSService.initialize` rejects when its provider fails to start, and the coordinator owns the browser fallback, reported as `pie-tool-init-fallback`. `<pie-tool-tts-inline>` defaults `layoutMode` to `left-aligned`, and reads `--pie-button-border` and `--pie-button-hover-bg` in place of `--pie-button-border-color` and `--pie-button-hover-background-color`. The annotation toolbar offers read-aloud only when a toolbar hosts `textToSpeech`. `--pie-background-light` leaves the theme token registry, the assessment player's navigation reads `--pie-background` in its place, and the dictionary and picture-dictionary panels read `--pie-secondary-background`. `PieThemeTokenScope` drops `"unsupported"` and `PieThemeTokenStatus` drops `"intentional-gap"`, which no entry uses.
+- 6f57b31: The section-player layout elements take an `assessment` property, forwarded to the coordinator their toolkit builds; a section carrying `personalNeedsProfile` logs a warning, since policy reads the profile from the assessment. The toolkit coordinator logs `tool-policy.unknownSupportId` and `tool-policy.requiredToolBlocked` once per code and tool. `unknownSupportId` covers every policy list and names the fields that list the id, and `FeaturePolicyDecision.diagnostics` carries it on feature decisions. Passage-level decisions skip item settings and raise `tool-policy.itemSettingNotApplied`, as section and assessment toolbars do. A `true` `toolOverrides` entry now ranks below an item's `restrictedTools` and the profile's `prohibitedSupports`, which withdraw the tool and raise `tool-policy.overrideBlocked`; a `false` entry keeps its rank. `ToolSurfaceRenderContext.granted` is `false` for a section-placed capability with no grant. `AssessmentSettings` and `ItemSettings` drop their `[key: string]: any` index signatures, and `toolConfigs.textToSpeech` its typed shape. The PNP debugger decides item and passage levels under the section's real ids, shows the decisions' diagnostics and the coordinator's enforcement override, and lists only the policy inputs present.
+- d36dbae: A tool's PNP support id is its tool id. `ToolRegistration.pnpSupportIds`, `ToolRegistry.getToolsByPNPSupport` and `generatePNPSupportsFromTools`, and the dictionary factories' `pnpSupportIds` option are gone, so a profile, district policy or item setting names a tool by `toolId`: `lineReader` for `readingMask`, `annotationToolbar` for `highlighting`, `answerEliminator` for `answerMasking`, `theme` for `colorContrast`, `dictionarySpanish` for `spanishDictionary`. Any other id still produces `tool-policy.unknownSupportId`. `createUniversalPersonalNeedsProfile()` grants tool ids. The render context, the content-dependency context and `resolveContentCapabilities` results drop `featureId`; `granted` tells an accommodation from authored presentation.
+- d7c46ac: The toolkit drops surface that nothing constructs or calls: `ThemeProvider` with `ThemeConfig`, `FontSize` and `ThemeProviderApi`; `I18nService` and its `./services/I18nService` subpath; the Svelte context keys `TOOL_POLICY_ENGINE_KEY` and `SECTION_RUNTIME_ENGINE_KEY` with their context types; `normalizeToolAlias`; `ToolkitCoordinator.updateToolPlacement`; and the runtime context's `reportSessionChanged`. `AssessmentSettings.themeConfig` leaves the shared types. On the runtime engine, `SectionRuntimeEngine` loses `getEffectiveRuntime`, `setInstrumentationHook` and the `coordinator` and `instrumentationHook` attach options, and `runtime/internal` loses the coordinator and instrumentation bridges.
+  
+  In their place: `createPieI18n` from `@pie-players/pie-players-shared/i18n` for `I18nService`, `updateToolsPlacement({ [level]: ids })` for `updateToolPlacement`, and `engine.subscribe(...)` for an instrumentation hook. The i18n types stay exported from the toolkit root.
+- 8122e1e: A `testAdministration.toolOverrides` grant now holds on the item toolbar as a profile support does, and the PNP debugger shows only the bound assessment's profile. `PersonalNeedsProfile.activateAtInit`, `districtPolicy.policies`, `testAdministration.mode`, `startDate` and `endDate`, and `AssessmentSection.personalNeedsProfile` are removed because policy read none of them, and a `testAdministration` without a `toolOverrides` entry no longer turns automatic PNP enforcement on; a host that puts a profile on a section binds it as the assessment's with `updateAssessment`.
+- bcba901: `toolOverrides` applies as documented, the policy engine compares its inputs structurally, an embedded toolkit keeps the assessment its host bound, and the PNP debugger no longer overwrites settings. A toolbar that cannot load a tool's module withholds the tool and reports `tool-module-load`, fatal only when policy grants it; the inline calculator opens through its item's toolbar and only where that toolbar offers the calculator; GeoGebra calculators show their attribution; tool windows stack within their tool's z-index layer while the ToolCoordinator leaves display to the renderer; and element tool state ids containing `:` round-trip.
+- d9f56e8: The toolkit root exports 185 names instead of 326: the names only tool packages use moved to `./tools/registration`, and the names nothing imports are removed, among them the backend activity-session adapters, the item loader and the session-storage helpers. The TypeScript examples in the READMEs match the current API.
+- Updated dependencies [d58f703]
+- Updated dependencies [3f3eb08]
+- Updated dependencies [c6b509c]
+- Updated dependencies [6ee4cb8]
+- Updated dependencies [db280dd]
+- Updated dependencies [6f57b31]
+- Updated dependencies [ad05203]
+- Updated dependencies [240f300]
+- Updated dependencies [4e9913f]
+- Updated dependencies [cdc3dd7]
+- Updated dependencies [dcc7375]
+- Updated dependencies [7c162ea]
+- Updated dependencies [78491f2]
+- Updated dependencies [0e00095]
+- Updated dependencies [d36dbae]
+- Updated dependencies [57a8d50]
+- Updated dependencies [3ac0028]
+- Updated dependencies [3ac0028]
+- Updated dependencies [d7c46ac]
+- Updated dependencies [bb9c165]
+- Updated dependencies [699f1c6]
+- Updated dependencies [d2de576]
+- Updated dependencies [1ec8e34]
+- Updated dependencies [d89f462]
+- Updated dependencies [cb93fdd]
+- Updated dependencies [cf199c9]
+- Updated dependencies [8122e1e]
+- Updated dependencies [bcba901]
+- Updated dependencies [c5634aa]
+- Updated dependencies [f80f159]
+- Updated dependencies [36e2770]
+- Updated dependencies [9464e2b]
+- Updated dependencies [8d94ae3]
+- Updated dependencies [d9f56e8]
+- Updated dependencies [5b15d5c]
+- Updated dependencies [4e9f832]
+- Updated dependencies [ccc2765]
+- Updated dependencies [fbd4570]
+- Updated dependencies [55d97fd]
+- Updated dependencies [4d94e9c]
+  - @pie-players/pie-assessment-toolkit@0.3.75
+
 ## 0.3.74
 
 ### Patch Changes

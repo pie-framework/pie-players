@@ -1,5 +1,14 @@
 # @pie-players/pie-calculator-geogebra
 
+## 0.3.75
+
+### Patch Changes
+
+- bcba901: `toolOverrides` applies as documented, the policy engine compares its inputs structurally, an embedded toolkit keeps the assessment its host bound, and the PNP debugger no longer overwrites settings. A toolbar that cannot load a tool's module withholds the tool and reports `tool-module-load`, fatal only when policy grants it; the inline calculator opens through its item's toolbar and only where that toolbar offers the calculator; GeoGebra calculators show their attribution; tool windows stack within their tool's z-index layer while the ToolCoordinator leaves display to the renderer; and element tool state ids containing `:` round-trip.
+- d9f56e8: The toolkit root exports 185 names instead of 326: the names only tool packages use moved to `./tools/registration`, and the names nothing imports are removed, among them the backend activity-session adapters, the item loader and the session-storage helpers. The TypeScript examples in the READMEs match the current API.
+- Updated dependencies [bcba901]
+  - @pie-players/pie-calculator@0.3.75
+
 ## 0.3.74
 
 ### Patch Changes

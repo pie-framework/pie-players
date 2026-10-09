@@ -60,6 +60,13 @@ export type SectionEngineState = {
 	 */
 	readinessSignals: EngineReadinessSignals;
 
+	/**
+	 * Readiness mode of the last `update-readiness-signals` input. Kept with
+	 * the signals so `section-controller-resolved` can apply a snapshot that
+	 * arrived while the controller was pending.
+	 */
+	readinessMode: "progressive" | "strict";
+
 	/** Last resolved effective runtime (output of `resolveRuntime`). */
 	effectiveRuntime: EffectiveRuntime | null;
 
@@ -96,6 +103,7 @@ export function createInitialEngineState(): SectionEngineState {
 			allLoadingComplete: false,
 			runtimeError: false,
 		},
+		readinessMode: "progressive",
 		effectiveRuntime: null,
 		effectiveToolsConfig: null,
 		loadingCompleteEmitted: false,

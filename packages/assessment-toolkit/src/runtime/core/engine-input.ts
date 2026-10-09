@@ -64,7 +64,8 @@ export type EngineInputCohortChange = {
  * the controller for the current cohort. Advances the phase from
  * `booting-section` → `engine-ready` (assuming `composed` is already
  * implied by `phase >= booting-section`, which the FSM treats as
- * monotonic).
+ * monotonic), and on to `interactive` when the last readiness snapshot
+ * already satisfies it.
  */
 export type EngineInputSectionControllerResolved = {
 	kind: "section-controller-resolved";

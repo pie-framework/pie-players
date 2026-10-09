@@ -4,11 +4,9 @@
 		shadow: 'open',
 		props: {
 			visible: { type: 'Boolean', attribute: 'visible' },
-			toolId: { type: 'String', attribute: 'tool-id' },
 			strategy: { type: 'String', attribute: 'strategy' },
 			alwaysOn: { type: 'Boolean', attribute: 'always-on' },
 			buttonAlignment: { type: 'String', attribute: 'button-alignment' },
-			scopeElement: { type: 'Object', reflect: false },
 
 			// Store key per PIE element, by model id (JS property only)
 			elementStateKeys: { type: 'Object', reflect: false }
@@ -49,33 +47,26 @@
 	import {
 		connectToolRuntimeContext,
 		connectToolShellContext,
-		createToolCoordinatorRegistration,
-		ZIndexLayer,
 	} from '@pie-players/pie-assessment-toolkit/tools/registration';
 	import type {
 		AssessmentToolkitShellContext,
 		AssessmentToolkitRuntimeContext,
-		ToolCoordinatorApi,
 	} from '@pie-players/pie-assessment-toolkit/tools/registration';
-	import { onMount } from 'svelte';
+	import { untrack } from 'svelte';
 	import { AnswerEliminatorCore, type ElementStateKeys } from './answer-eliminator-core.js';
 
 	// Props
 	let {
 		visible = false,
-		toolId = 'answerEliminator',
 		strategy = 'strikethrough' as 'strikethrough' | 'mask',
 		alwaysOn = false, // Set true for profile-based accommodation
 		buttonAlignment = 'right' as 'left' | 'right' | 'inline', // Button placement: left, right, or inline with checkbox
-		scopeElement = null, // Container element to limit DOM queries (for multi-item pages)
 		elementStateKeys = {} as ElementStateKeys // Store key per PIE element, by model id
 	}: {
 		visible?: boolean;
-		toolId?: string;
 		strategy?: 'strikethrough' | 'mask';
 		alwaysOn?: boolean;
 		buttonAlignment?: 'left' | 'right' | 'inline';
-		scopeElement?: HTMLElement | null;
 		elementStateKeys?: ElementStateKeys;
 	} = $props();
 
@@ -83,15 +74,10 @@
 	let contextHostElement = $state<HTMLElement | null>(null);
 	let runtimeContext = $state<AssessmentToolkitRuntimeContext | null>(null);
 	let shellContext = $state<AssessmentToolkitShellContext | null>(null);
-	const coordinator = $derived(
-		runtimeContext?.toolCoordinator as ToolCoordinatorApi | undefined,
-	);
 	// Where eliminations persist across question navigation.
 	const elementToolStateStore = $derived(runtimeContext?.elementToolStateStore ?? null);
 	let core = $state<AnswerEliminatorCore | null>(null);
 	let lastShellContextVersion = $state<number | null>(null);
-
-	const registration = createToolCoordinatorRegistration('Answer Eliminator', ZIndexLayer.MODAL);
 
 	// Determine if tool should be active (either toggled on OR always-on mode)
 	let isActive = $derived(alwaysOn || visible);
@@ -111,7 +97,7 @@
 	});
 
 	function resolveQuestionRoot(): HTMLElement | null {
-		return scopeElement || shellContext?.scopeElement || null;
+		return shellContext?.scopeElement || null;
 	}
 
 	function initializeForCurrentQuestion() {
@@ -134,32 +120,28 @@
 		});
 	}
 
-	// Re-registers when a republished context brings a new coordinator.
-	$effect(() => registration.sync(coordinator, toolId));
-
 	// Update store integration when the store or the element keys change
 	$effect(() => {
 		core?.setStoreIntegration(elementToolStateStore, elementStateKeys ?? {});
 	});
 
-	onMount(() => {
-		// Initialize core engine with configuration
-		core = new AnswerEliminatorCore(strategy, buttonAlignment);
-
-		core.setStoreIntegration(elementToolStateStore, elementStateKeys ?? {});
-
-		// Initialize for current question if active, otherwise ensure clean state
-		if (isActive) {
-			initializeForCurrentQuestion();
-		} else {
-			// If not active on mount, clear any leftover visual eliminations
-			core.cleanup();
-		}
-
+	// The toolbar owns this tool's coordinator entry and passes its visibility in
+	// `visible`. A strategy or alignment change rebuilds the core, which restores
+	// the question's eliminations from the store.
+	$effect(() => {
+		const next = new AnswerEliminatorCore(strategy, buttonAlignment);
+		untrack(() => {
+			next.setStoreIntegration(elementToolStateStore, elementStateKeys ?? {});
+			core = next;
+			if (isActive) {
+				initializeForCurrentQuestion();
+			} else {
+				next.cleanup();
+			}
+		});
 		return () => {
-			core?.destroy();
-			core = null;
-			registration.release();
+			next.destroy();
+			if (core === next) core = null;
 		};
 	});
 

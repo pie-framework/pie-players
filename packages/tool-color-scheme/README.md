@@ -21,8 +21,8 @@ Tag: `pie-tool-theme`
 - Reads the shared `@pie-players/pie-theme` scheme catalog and updates immediately when a custom scheme is registered or unregistered
 - Uses centrally derived catalog previews instead of carrying a duplicate palette; custom previews use PIE's canonical light-base resolution on a stable opaque swatch
 - Retains a requested custom scheme when it is temporarily unavailable, clearly labels it as unavailable, and restores it automatically if it is registered again
-- Persists selection to `localStorage` (key: `pie-color-scheme`)
-- Applies scheme by setting the `scheme` attribute on the nearest `<pie-theme>` element
+- Applies scheme by setting the `scheme` attribute on the nearest `<pie-theme>` element, and shows that host's scheme until a learner chooses one
+- Records a learner's choice per section and attempt in the toolkit's `elementToolStateStore` (tool id `theme`), and reapplies it when the tool mounts in that attempt again; nothing is kept for the device, so one learner's choice never overrides the scheme a host sets for the next
 - Focus trap when visible; keyboard navigation with arrow keys and Escape
 - Connects to `AssessmentToolkitRuntimeContext` for ToolCoordinator integration
 

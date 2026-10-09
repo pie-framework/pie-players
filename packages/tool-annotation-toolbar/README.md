@@ -6,7 +6,7 @@ A text selection toolbar for highlighting and annotating text in PIE assessment 
 
 - **4-Color Highlighting**: Yellow, pink, blue, and green highlight swatches
 - **Underline Annotation**: Underline selected text
-- **Persistent Annotations**: Saved to sessionStorage and restored on page load
+- **Persistent Annotations**: Kept per section and attempt in the toolkit's tool-state store
 - **Clear Annotations**: Remove annotations from selected text or clear all
 - **Text-to-Speech (Read Aloud)**: Read selected text aloud with word-level highlighting
 - **Selection Actions**: Host-supplied actions on the current selection; see below
@@ -106,9 +106,9 @@ For unsupported browsers, the component gracefully degrades (no highlights shown
 
 ## Annotation Persistence
 
-Annotations are saved to `sessionStorage` after each change and restored two seconds after the toolbar mounts. The key is `pie-annotations:<id>`, where `<id>` is the enclosing item's canonical item id, else its item id, else `global`, so each item keeps its own annotations across navigation within the browser session.
+Annotations are recorded in the toolkit's `elementToolStateStore` after each change, under tool id `annotationToolbar` and a key naming the assessment, section and attempt (`attempt-id` on the toolkit), plus the item when the toolbar sits in an item's shell. Two seconds after the toolbar mounts, and whenever that key changes, the shown annotations are replaced by the key's record, so a new attempt starts without the previous one's. They last as long as the toolkit coordinator; a host keeps them across reloads with the coordinator's `loadToolState` and `saveToolState` hooks.
 
-Storage format, an array with one record per annotation:
+Recorded format, an array with one record per annotation:
 
 ```typescript
 [
@@ -127,10 +127,7 @@ Storage format, an array with one record per annotation:
 
 `startContainer` and `endContainer` are selector paths relative to the scope root, with ` >>> ` marking a step into a shadow root.
 
-Stored annotations are removed when:
-
-- The user presses "Clear all", which removes that item's key
-- `sessionStorage` is cleared, for example when the tab closes
+"Clear all" records an empty list under the key.
 
 ## Text-to-Speech Integration
 

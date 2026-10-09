@@ -33,6 +33,7 @@
   type CatalogStatistics
   type CatalogType
   type CreateToolsConfigArgs
+  type ElementIdComponents
   type ElementToolContext
   ElementToolStateStore
   type ElementToolStateStoreApi

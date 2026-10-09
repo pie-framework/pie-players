@@ -92,7 +92,10 @@ export type {
 } from "./services/AccessibilityCatalogResolver.js";
 export { AccessibilityCatalogResolver } from "./services/AccessibilityCatalogResolver.js";
 // Element Tool State Store (Element-level ephemeral tool state)
-export { ElementToolStateStore } from "./services/ElementToolStateStore.js";
+export {
+	type ElementIdComponents,
+	ElementToolStateStore,
+} from "./services/ElementToolStateStore.js";
 // Highlight Coordinator
 export type { Annotation } from "./services/HighlightCoordinator.js";
 export {

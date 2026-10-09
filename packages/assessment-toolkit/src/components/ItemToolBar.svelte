@@ -653,19 +653,20 @@
 	});
 
 	/**
-	 * The state key of one PIE element in this toolbar's item. Element-grain
-	 * tools key by the element's model id, so two elements in one item keep
-	 * separate state.
+	 * The state key of one PIE element in this toolbar's item and attempt.
+	 * Element-grain tools key by the element's model id, so two elements in one
+	 * item keep separate state, and so do two attempts at one item.
 	 */
 	function resolveGlobalElementId(elementId: string): string | null {
 		if (!effectiveElementToolStateStore || !effectiveAssessmentId || !effectiveSectionId || !effectiveCanonicalItemId)
 			return null;
-		return effectiveElementToolStateStore.getGlobalElementId(
-			effectiveAssessmentId,
-			effectiveSectionId,
-			effectiveCanonicalItemId,
+		return effectiveElementToolStateStore.getGlobalElementId({
+			assessmentId: effectiveAssessmentId,
+			sectionId: effectiveSectionId,
+			attemptId: runtimeContext?.attemptId ?? '',
+			itemId: effectiveCanonicalItemId,
 			elementId
-		);
+		});
 	}
 
 	function resolveScopeElement(): HTMLElement | null {

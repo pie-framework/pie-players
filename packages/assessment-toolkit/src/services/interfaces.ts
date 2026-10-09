@@ -40,6 +40,7 @@ import type {
 	SectionEventSubscriptionArgs,
 	ToolkitCoordinatorHooks,
 } from "./ToolkitCoordinator.js";
+import type { ElementIdComponents } from "./ElementToolStateStore.js";
 import type { ZIndexLayer } from "./ToolCoordinator.js";
 import type { PlaybackState, TTSConfig } from "./TTSService.js";
 import type { TTSHighlightTargetResolverProvider } from "./tts/highlight-target-resolver.js";
@@ -544,24 +545,16 @@ export interface AccessibilityCatalogResolverApi {
  */
 export interface ElementToolStateStoreApi {
 	/**
-	 * Generate a globally unique element ID from components
+	 * Generate a globally unique element ID from its parts. `attemptId` is `""`
+	 * when the host names no attempt; a tool keyed by item or section leaves
+	 * `elementId`, and for a section `itemId`, as `""`.
 	 */
-	getGlobalElementId(
-		assessmentId: string,
-		sectionId: string,
-		itemId: string,
-		elementId: string,
-	): string;
+	getGlobalElementId(parts: ElementIdComponents): string;
 
 	/**
 	 * Parse a global element ID into its components
 	 */
-	parseGlobalElementId(globalElementId: string): {
-		assessmentId: string;
-		sectionId: string;
-		itemId: string;
-		elementId: string;
-	} | null;
+	parseGlobalElementId(globalElementId: string): ElementIdComponents | null;
 
 	/**
 	 * Set state for a specific tool on an element
@@ -613,7 +606,7 @@ export interface ElementToolStateStoreApi {
 	clearTool(toolId: string): void;
 
 	/**
-	 * Clear all elements in a specific section
+	 * Clear all elements in a specific section, across its attempts
 	 */
 	clearSection(assessmentId: string, sectionId: string): void;
 

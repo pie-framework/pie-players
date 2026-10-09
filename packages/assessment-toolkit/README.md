@@ -1110,8 +1110,9 @@ The `ElementToolStateStore` manages ephemeral tool state at the element level us
 
 ### Key Concepts
 
-- **Global Element ID**: Composite key format: `${assessmentId}:${sectionId}:${itemId}:${elementId}`
-- **Element-Level Granularity**: State tracked per PIE element (not per item)
+- **Global Element ID**: Composite key format: `${assessmentId}:${sectionId}:${attemptId}:${itemId}:${elementId}`, with `attemptId` `""` when the host names no attempt
+- **Element-Level Granularity**: State tracked per PIE element; a tool keyed by item or section leaves `elementId`, and for a section `itemId`, as `""`
+- **Per-Attempt State**: two attempts at one section never share a key
 - **Ephemeral State**: Tool state is client-only, separate from PIE session data
 - **Cross-Section Persistence**: State persists when navigating between sections
 
@@ -1119,17 +1120,18 @@ The `ElementToolStateStore` manages ephemeral tool state at the element level us
 
 ```typescript
 // Generate global element ID
-const globalElementId = store.getGlobalElementId(
-  'demo-assessment',
-  'section-1',
-  'question-1',
-  'mc1'
-);
-// Returns: "demo-assessment:section-1:question-1:mc1"
+const globalElementId = store.getGlobalElementId({
+  assessmentId: 'demo-assessment',
+  sectionId: 'section-1',
+  attemptId: 'attempt-1',
+  itemId: 'question-1',
+  elementId: 'mc1'
+});
+// Returns: "demo-assessment:section-1:attempt-1:question-1:mc1"
 
 // Parse global element ID
 const components = store.parseGlobalElementId(globalElementId);
-// Returns: { assessmentId, sectionId, itemId, elementId }
+// Returns: { assessmentId, sectionId, attemptId, itemId, elementId }
 ```
 
 ### CRUD Operations
@@ -1159,7 +1161,7 @@ store.clearElement(globalElementId);
 // Clear state for a specific tool across all elements
 store.clearTool('answerEliminator');
 
-// Clear all elements in a specific section
+// Clear all elements in a specific section, across its attempts
 store.clearSection('demo-assessment', 'section-1');
 
 // Clear all state
@@ -1709,7 +1711,7 @@ The toolkit enforces a clear separation between ephemeral tool state and persist
 
 ```typescript
 {
-  "demo-assessment:section-1:question-1:mc1": {
+  "demo-assessment:section-1:attempt-1:question-1:mc1": {
     "answerEliminator": {
       "eliminatedChoices": ["choice-b", "choice-d"]
     },

@@ -1303,6 +1303,7 @@ const DEFAULT_ENV = {
 			elementToolStateStore: effectiveCoordinator.elementToolStateStore,
 			assessmentId: effectiveAssessmentId,
 			sectionId: effectiveSectionId,
+			attemptId: attemptId || undefined,
 			itemPlayer: effectiveItemPlayer,
 			// Opt-in: NDS icons only when explicitly enabled. Normalize to a
 			// strict boolean so `undefined`/`false` both read as off.

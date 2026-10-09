@@ -96,4 +96,26 @@ describe("ToolCoordinator listeners", () => {
 			warn.mockRestore();
 		}
 	});
+
+	test("debug lines stay quiet unless PIE_DEBUG is set", () => {
+		const debug = spyOn(console, "debug").mockImplementation(() => {});
+		const scope = globalThis as { window?: { PIE_DEBUG?: boolean } };
+		const hadWindow = "window" in globalThis;
+		const originalWindow = scope.window;
+		try {
+			scope.window = {};
+			const coordinator = new ToolCoordinator();
+			coordinator.registerTool("ruler", "Ruler");
+			coordinator.showTool("missing");
+			expect(debug).not.toHaveBeenCalled();
+
+			scope.window = { PIE_DEBUG: true };
+			coordinator.showTool("missing");
+			expect(debug).toHaveBeenCalledTimes(1);
+		} finally {
+			if (hadWindow) scope.window = originalWindow;
+			else delete scope.window;
+			debug.mockRestore();
+		}
+	});
 });

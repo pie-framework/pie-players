@@ -36,7 +36,6 @@ validation, and warns once (`tools.registryUnavailable`).
 ```typescript
 // Create 5+ services independently
 const ttsService = new TTSService();
-const toolCoordinator = new ToolCoordinator();
 const highlightCoordinator = new HighlightCoordinator();
 const catalogResolver = new AccessibilityCatalogResolver([...]);
 // Missing: ElementToolStateStore
@@ -46,7 +45,6 @@ ttsService.setCatalogResolver(catalogResolver);
 
 // Pass all services separately
 player.ttsService = ttsService;
-player.toolCoordinator = toolCoordinator;
 // ...
 ```
 
@@ -417,7 +415,6 @@ public handleToolkitReady(event: Event): void {
 import {
   TTSService,
   BrowserTTSProvider,
-  ToolCoordinator,
   HighlightCoordinator,
   AccessibilityCatalogResolver,
   ElementToolStateStore
@@ -425,7 +422,6 @@ import {
 
 // Initialize each service independently
 const ttsService = new TTSService();
-const toolCoordinator = new ToolCoordinator();
 const highlightCoordinator = new HighlightCoordinator();
 const elementToolStateStore = new ElementToolStateStore();
 const catalogResolver = new AccessibilityCatalogResolver([], 'en-US');
@@ -439,7 +435,8 @@ ttsService.setCatalogResolver(catalogResolver);
 No player element takes services one by one. The section and assessment
 players reach services only through a coordinator, `runtime.coordinator` on a
 section player and `coordinator` on an assessment player; manually created
-services serve host code that drives them directly.
+services serve host code that drives them directly. The tool coordinator is
+not among them: it is created and disposed by its `ToolkitCoordinator`.
 
 ### Without a Section Player
 
@@ -1098,7 +1095,7 @@ All services are public properties for direct access:
 
 ```typescript
 coordinator.ttsService              // TTSService instance
-coordinator.toolCoordinator         // ToolCoordinator instance
+coordinator.toolCoordinator         // ToolCoordinatorApi, owned by the coordinator
 coordinator.highlightCoordinator    // HighlightCoordinator instance
 coordinator.elementToolStateStore   // ElementToolStateStore instance
 coordinator.catalogResolver         // AccessibilityCatalogResolver instance
@@ -1254,7 +1251,8 @@ onDestroy(() => registration.release());
 Visibility and stacking then go through the coordinator by scoped tool id:
 `showTool`, `hideTool`, `toggleTool`, `isToolVisible`, `bringToFront(element)`,
 and `getVisibleTools({ baseId })` / `hideAllTools({ baseId })` for one tool
-across scopes.
+across scopes. Disposing the toolkit coordinator releases every entry. Its
+debug lines print only under `window.PIE_DEBUG = true`.
 
 ### HighlightCoordinator
 

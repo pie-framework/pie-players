@@ -378,7 +378,16 @@ describe("ToolkitCoordinator disposal", () => {
 			config: {},
 			lazy: true,
 		});
-		coordinator.toolCoordinator.registerTool("floating", "Floating");
+		const tools = coordinator.toolCoordinator;
+		tools.registerTool("floating", "Floating");
+		// Unregistered but kept: its on/off state outlives the element binding.
+		tools.registerTool("detached", "Detached");
+		tools.showTool("detached");
+		tools.unregisterTool("detached");
+		let toolNotifications = 0;
+		tools.subscribe(() => {
+			toolNotifications += 1;
+		});
 		coordinator.registerToolRequestTarget({
 			level: "section",
 			hostsTool: () => true,
@@ -405,7 +414,9 @@ describe("ToolkitCoordinator disposal", () => {
 		expect(providerDestroyCount).toBe(1);
 		expect(highlightDestroyCount).toBe(1);
 		expect(coordinator.toolProviderRegistry.has("owned-provider")).toBe(false);
-		expect(coordinator.toolCoordinator.getRegisteredTools()).toEqual([]);
+		expect(tools.getToolState("floating")).toBeUndefined();
+		expect(tools.getToolState("detached")).toBeUndefined();
+		expect(toolNotifications).toBe(1);
 		expect(coordinator.canRequestTool("anything")).toBe(false);
 		expect(policyReasons).toEqual(["disposed"]);
 		await expect(

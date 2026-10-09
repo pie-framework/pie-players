@@ -12,7 +12,10 @@
  * Part of PIE Assessment Toolkit.
  */
 
-import { createLogger } from "../utils/logger.js";
+import {
+	createPieLogger,
+	isGlobalDebugEnabled,
+} from "@pie-players/pie-players-shared/pie";
 import type {
 	ToolCoordinatorApi,
 	ToolState,
@@ -20,7 +23,7 @@ import type {
 } from "./interfaces.js";
 import { parseScopedToolId } from "./tool-instance-id.js";
 
-const log = createLogger("ToolCoordinator");
+const logger = createPieLogger("ToolCoordinator", isGlobalDebugEnabled);
 
 /**
  * Z-index layers for assessment components
@@ -114,7 +117,12 @@ export class ToolCoordinator implements ToolCoordinatorApi {
 		element?: HTMLElement,
 		layer?: ZIndexLayer,
 	): void {
-		log("registerTool called:", { id, name, hasElement: !!element, layer });
+		logger.debug("registerTool called:", {
+			id,
+			name,
+			hasElement: !!element,
+			layer,
+		});
 
 		let entry = this.tools.get(id);
 		if (entry) {
@@ -182,7 +190,7 @@ export class ToolCoordinator implements ToolCoordinatorApi {
 	showTool(id: string): void {
 		const entry = this.tools.get(id);
 		if (!entry) {
-			log(`Tool ${id} not found`);
+			logger.debug(`Tool ${id} not found`);
 			return;
 		}
 		if (entry.element) this.bringToFront(entry.element);
@@ -197,7 +205,7 @@ export class ToolCoordinator implements ToolCoordinatorApi {
 	hideTool(id: string): void {
 		const entry = this.tools.get(id);
 		if (!entry) {
-			log(`Tool ${id} not found`);
+			logger.debug(`Tool ${id} not found`);
 			return;
 		}
 		this.setVisible(entry, false);
@@ -211,7 +219,7 @@ export class ToolCoordinator implements ToolCoordinatorApi {
 	toggleTool(id: string): void {
 		const entry = this.tools.get(id);
 		if (!entry) {
-			log(`Tool ${id} not found`);
+			logger.debug(`Tool ${id} not found`);
 			return;
 		}
 		if (entry.isVisible) {
@@ -246,19 +254,17 @@ export class ToolCoordinator implements ToolCoordinatorApi {
 	}
 
 	/**
-	 * Ids of the tools an element registration currently holds.
+	 * Release every tool, registered or not, and drop the subscribers. The
+	 * owning toolkit coordinator calls this when it is disposed.
 	 */
-	getRegisteredTools(): string[] {
-		return Array.from(this.tools.values())
-			.filter((entry) => entry.registered)
-			.map((entry) => entry.id);
-	}
-
-	/**
-	 * Get tool element by ID
-	 */
-	getToolElement(id: string): HTMLElement | null {
-		return this.tools.get(id)?.element ?? null;
+	destroy(): void {
+		const anyVisible = Array.from(this.tools.values()).some(
+			(entry) => entry.isVisible,
+		);
+		for (const entry of this.tools.values()) this.detachElement(entry);
+		this.tools.clear();
+		if (anyVisible) this.notifyListeners();
+		this.listeners.clear();
 	}
 
 	private setVisible(entry: ToolEntry, visible: boolean): void {
@@ -315,7 +321,7 @@ export class ToolCoordinator implements ToolCoordinatorApi {
 	updateToolElement(id: string, element: HTMLElement): void {
 		const entry = this.tools.get(id);
 		if (!entry?.registered) {
-			log(`Tool ${id} not found`);
+			logger.debug(`Tool ${id} not found`);
 			return;
 		}
 		if (entry.element === element) return;

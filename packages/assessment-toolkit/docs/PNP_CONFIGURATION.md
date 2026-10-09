@@ -427,9 +427,10 @@ coordinator.updateAssessment(assessment);
 coordinator.registerItemSettings(currentItem.identifier, currentItem.settings!);
 
 // 2. Resolve tools for current context
-const allowedToolIds = coordinator
-  .decideToolPolicy({ level: "item", scope: { level: "item", scopeId: currentItem.identifier } })
-  .visibleTools.map((tool) => tool.toolId);
+const decision = coordinator.decideToolPolicy({
+  level: "item",
+  scope: { level: "item", scopeId: currentItem.identifier }
+});
 
 // 3. Create tool context
 const context: ItemToolContext = {
@@ -440,11 +441,10 @@ const context: ItemToolContext = {
   item: itemData
 };
 
-// 4. Filter by relevance (Pass 2) and applicability (Pass 3).
-//    <pie-item-toolbar> runs both passes itself; this is for a host-built toolbar.
-const visibleTools = registry
-  .filterVisibleInContext(allowedToolIds, context)
-  .filter((tool) => registry.isApplicableToAnyContext(tool.toolId, [context]));
+// 4. Filter by relevance (Pass 2) and applicability (Pass 3); a granted
+//    entry skips relevance. <pie-item-toolbar> does this itself; this is for a
+//    host-built toolbar.
+const visibleToolIds = registry.filterDecidedToolIds(decision.visibleTools, "item", [context]);
 ```
 
 5. Render the toolbar. It takes the coordinator from the enclosing toolkit and

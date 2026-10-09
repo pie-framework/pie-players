@@ -99,8 +99,9 @@ Section-player owns two pieces of glue:
   `SectionRuntimeEngine` per layout element, calls
   `attachHost({ host, sourceCe })`, and drives `dispatchInput(...)` from a
   single tracked `$effect` wrapped in `untrack(...)`. It learns from
-  `toolkit-ready` that the controller resolved, and reads the toolkit's
-  bubbling `framework-error` to set the readiness error signal.
+  `section-ready`, which carries the controller and its cohort, that the
+  controller resolved, and latches the readiness error signal from the
+  toolkit's bubbling `framework-error` by the error's `scope`.
 - **`section-player-host-runtime.ts`**
   ([source](src/components/shared/section-player-host-runtime.ts)) — the
   player-coupled wrapper around the toolkit resolver. Holds

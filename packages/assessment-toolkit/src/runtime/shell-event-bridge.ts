@@ -49,8 +49,10 @@ export interface ShellEventBridgeOptions {
 export interface ShellEventBridge {
 	/**
 	 * Gives an item's pending session one last chance to reach the section, then
-	 * stops listening. The commit runs while the subtree is still attached, so its
-	 * `session-changed` arrives at the bridge before it is unbound.
+	 * stops listening. The commit runs while the player is still inside the
+	 * shell, so its `session-changed` arrives at the bridge before it is unbound.
+	 * The shell has usually left the document by then; `send` delivers the
+	 * forwarded session on the runtime's element.
 	 */
 	disconnect: () => void;
 }

@@ -1,10 +1,8 @@
 /**
- * Section runtime engine resolver (M7).
+ * Section runtime engine resolver.
  *
  * Canonical home of `resolveRuntime`, `resolveToolsConfig`, and their
- * supporting helpers/types. As of M7 PR 7 the previous duplicates in
- * `packages/section-player/src/components/shared/section-player-runtime.ts`
- * have been deleted; section-player now consumes these helpers via
+ * supporting helpers/types; section-player consumes them through
  * `@pie-players/pie-assessment-toolkit/runtime/engine`.
  *
  * What is NOT absorbed in this module:

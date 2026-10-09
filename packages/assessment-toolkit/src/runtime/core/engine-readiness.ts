@@ -1,10 +1,8 @@
 /**
- * Readiness derivation for the section runtime engine (M7).
+ * Readiness derivation for the section runtime engine.
  *
- * Canonical home of `createReadinessDetail` and `resolveReadinessPhase`.
- * As of M7 PR 7 the previous duplicates in
- * `packages/section-player/src/components/shared/section-player-readiness.ts`
- * have been deleted; section-player now consumes `createReadinessDetail` via
+ * Canonical home of `createReadinessDetail` and `resolveReadinessPhase`;
+ * section-player consumes them through
  * `@pie-players/pie-assessment-toolkit/runtime/engine`.
  *
  * Type duplication note: the public DOM-event detail aliases
@@ -21,12 +19,8 @@
 /**
  * Coarse readiness phase label, derived from the four readiness
  * signals. Surfaced via the kernel's `selectReadiness()` /
- * `getSnapshot().readiness` selectors; M6 stages own the stage-level
- * transitions on `pie-stage-change` and use this phase as a
- * convenience label only. The `readiness-change` DOM
- * event that used to surface this directly was removed in the broad
- * architecture review compat sweep alongside its
- * event bridge.
+ * `getSnapshot().readiness` selectors. Stage transitions are carried by
+ * `pie-stage-change`; this phase is a convenience label only.
  */
 export type EngineReadinessPhase =
 	| "bootstrapping"

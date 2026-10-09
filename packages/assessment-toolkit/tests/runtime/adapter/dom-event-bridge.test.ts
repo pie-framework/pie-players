@@ -107,13 +107,12 @@ describe("dom-event-bridge", () => {
 		).toBeUndefined();
 	});
 
-	test("dispatches `pie-loading-complete` with itemCount / loadedCount carried through", () => {
+	test("dispatches `pie-loading-complete` with loadedCount equal to itemCount", () => {
 		const bridge = makeBridge(host);
 		bridge.dispatch({
 			kind: "loading-complete",
 			cohort: COHORT,
 			itemCount: 3,
-			loadedCount: 3,
 		});
 		expect(events).toHaveLength(1);
 		expect(events[0]).toEqual({
@@ -149,7 +148,6 @@ describe("dom-event-bridge", () => {
 			kind: "loading-complete",
 			cohort: COHORT,
 			itemCount: 1,
-			loadedCount: 1,
 		});
 		expect(outside).toEqual(["pie-stage-change", "pie-loading-complete"]);
 	});

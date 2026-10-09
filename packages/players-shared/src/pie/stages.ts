@@ -42,6 +42,7 @@ export type LoadingCompleteDetail = {
 	sectionId: string;
 	attemptId?: string;
 	itemCount: number;
+	/** Equals `itemCount`: the event fires once every item has loaded. */
 	loadedCount: number;
 	timestamp: string;
 	sourceCe: string;

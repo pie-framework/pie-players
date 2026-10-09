@@ -29,13 +29,13 @@ export type EngineOutputStageChange = {
 
 /**
  * Canonical `pie-loading-complete`. One-shot per cohort, emitted when the
- * readiness signals satisfy `allLoadingComplete`.
+ * readiness signals satisfy `allLoadingComplete`, so every one of `itemCount`
+ * items has loaded.
  */
 export type EngineOutputLoadingComplete = {
 	kind: "loading-complete";
 	cohort: CohortKey;
 	itemCount: number;
-	loadedCount: number;
 };
 
 export type SectionEngineOutput =

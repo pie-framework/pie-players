@@ -114,7 +114,6 @@ describe("SectionRuntimeEngine facade — common-host smoke", () => {
 				allLoadingComplete: true,
 				runtimeError: false,
 			},
-			loadedCount: 1,
 			itemCount: 1,
 			mode: "strict",
 		});
@@ -161,7 +160,6 @@ describe("SectionRuntimeEngine facade — common-host smoke", () => {
 				allLoadingComplete: false,
 				runtimeError: false,
 			},
-			loadedCount: 0,
 			itemCount: 1,
 			mode: "strict",
 		});
@@ -176,7 +174,6 @@ describe("SectionRuntimeEngine facade — common-host smoke", () => {
 				allLoadingComplete: true,
 				runtimeError: false,
 			},
-			loadedCount: 1,
 			itemCount: 1,
 			mode: "strict",
 		});
@@ -205,7 +202,6 @@ describe("SectionRuntimeEngine facade — common-host smoke", () => {
 				allLoadingComplete: false,
 				runtimeError: false,
 			},
-			loadedCount: 0,
 			itemCount: 1,
 			mode: "progressive",
 		});
@@ -248,7 +244,6 @@ describe("SectionRuntimeEngine facade — common-host smoke", () => {
 				allLoadingComplete: false,
 				runtimeError: true,
 			},
-			loadedCount: 0,
 			itemCount: 1,
 			mode: "strict",
 		});

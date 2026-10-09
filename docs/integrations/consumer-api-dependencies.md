@@ -1038,11 +1038,22 @@ API**.
 | `pie-resource-load-failed`, `pie-resource-retry-failed` | Resource monitor, bubbling out of `pie-item-player` | P | Logged with the serialized `detail` |
 | `PiePlayerLoadEvent` | `document` event from the preloaded build's `index.js`, alongside `window.pieFixedPlayerLoaded` | none | P waits on the same signal only on its predecessor-player path |
 
-The `content-loaded` payload fields Host A reads are `itemId` and `contentKind`.
-It counts distinct `itemId`s against the section's expected item list and treats
-equality as "section loaded". Emitting `content-loaded` more than once per item,
-or for an item outside the section, would leave the count short or overshoot;
-either way the host's watchdog fires and ends the session.
+The `content-loaded` payload fields Host A reads are `itemId`, `contentKind` and,
+for a passage, `canonicalItemId`. It counts distinct `itemId`s and treats a count
+equal to the section's expected item count as "section loaded", which cancels its
+load-timeout watchdog; a `contentKind: "rubric"` event, which every passage load
+is, cancels the watchdog on its own. Within a section, `content-loaded` reaches a
+subscription only for that section's renderables, live or replayed on a rebind.
+An event for a renderable outside the section brings the count to equality before
+the section's own elements load, or cancels the watchdog outright when it is a
+passage's, so a hung element bundle leaves the learner on an empty section with
+no watchdog to end it. Since 2026-10-08 a section switch carries none of the
+previous section's loads into the next section; until then every section after
+the first received them, and A's watchdog could not fire there. A host that
+resubscribes on `toolkit-ready` receives a revisited section's loads twice: on
+the rebind of its existing subscription, and replayed to the new one. A's
+section-render telemetry then fires once per replayed load unless it counts only
+items it has not seen.
 
 `item-session-changed` reaches `document` because it is dispatched through
 `dispatchCrossBoundaryEvent` in

@@ -888,7 +888,7 @@ const unsub = coordinator.subscribeItemEvents({
 unsub();
 ```
 
-The subscription follows the toolkit's *active section cohort* automatically — across navigation between sections, the listener is migrated to the new controller and receives a snapshot replay (per-item `content-loaded` then `section-loading-complete`) in the canonical order a fresh subscriber would have observed. You can also narrow by event type or specific item IDs:
+The subscription follows the toolkit's *active section cohort* automatically — across navigation between sections, the listener is migrated to the new controller and receives a snapshot replay (per-item `content-loaded` for the new section's renderables, then `section-loading-complete`) in the canonical order a fresh subscriber would have observed. You can also narrow by event type or specific item IDs:
 
 ```ts
 coordinator.subscribeItemEvents({

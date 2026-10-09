@@ -337,6 +337,7 @@ Behavior pins (PIE-512 Phase D):
 
 - Subscribe **after** the first `getOrCreateSectionController(...)` resolves; calling subscribe before any cohort exists throws.
 - On every cohort transition (navigation, fresh `getOrCreateSectionController` for a new section), the listener is automatically migrated to the new controller and receives a snapshot replay (`content-loaded` × N then `section-loading-complete`) in the same order a fresh subscriber would have seen.
+- A section's subscriptions receive `content-loaded` only for that section's renderables, live or replayed; the previous section's loads stay with it. A renderable in both sections, such as a passage that stays mounted across the switch, counts as loaded in each.
 - Subscribing the **same listener function** twice replaces the first subscription (filter args from the second call win).
 - A listener that throws is caught and `console.warn`-logged; the throw does not interrupt fan-out to other listeners.
 

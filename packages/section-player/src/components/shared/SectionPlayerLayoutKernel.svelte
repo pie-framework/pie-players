@@ -606,12 +606,16 @@
 	});
 
 	// Each cohort's content starts clean. Declared ahead of the engine driver, so
-	// the driver reads the reset when the cohort rolls.
+	// the driver reads the reset when the cohort rolls. The section is ready again
+	// on the toolkit's `section-ready` for it, which follows that section's
+	// composition: until then the composition and pane report the kernel holds are
+	// the previous section's.
 	$effect(() => {
 		void cohortSectionId;
 		void attemptId;
 		untrack(() => {
 			cohortErrorLatched = false;
+			sectionReady = false;
 		});
 	});
 

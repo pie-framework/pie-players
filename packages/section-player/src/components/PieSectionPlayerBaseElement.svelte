@@ -287,7 +287,8 @@
 			register(controller);
 			return controller;
 		};
-		const previousFactory = root.createSectionController;
+		// Untracked: an effect that reads the prop it writes invalidates itself.
+		const previousFactory = untrack(() => root.createSectionController);
 		root.createSectionController = installedFactory;
 
 		// The controller the toolkit has already built, if any, and otherwise
@@ -306,7 +307,7 @@
 		// subtree.
 		return () => {
 			root.removeEventListener("toolkit-ready", onToolkitReady);
-			if (root.createSectionController === installedFactory) {
+			if (untrack(() => root.createSectionController) === installedFactory) {
 				root.createSectionController = previousFactory;
 			}
 		};

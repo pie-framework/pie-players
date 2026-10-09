@@ -94,9 +94,10 @@ whose content carries none of these classes sees no difference. The same day the
 `.pie-image-scroll` wrapper went from `display: block` to `inline-block`: every
 host rendering content through a player had each image on a line of its own,
 which stacked rows of images into columns and added a line to every image
-choice, and gets them back in the line. An image an element lays out as a
-block gets a block wrapper, carrying `pie-image-scroll-block`, so no gap opens
-below it. Row verification dates are unchanged.
+choice, and gets them back in the line. An image laid out as a block, by an
+element or by a host stylesheet resetting `img` to `display: block`, gets a
+block wrapper, carrying `pie-image-scroll-block`, so no gap opens below it.
+Row verification dates are unchanged.
 
 On 2026-10-07 read-aloud, its highlighting and the annotation toolbar started
 reaching content rendered into open shadow roots, and read-aloud started speaking

@@ -43,7 +43,7 @@ export interface PolicySourceProvenanceEntry {
 	 * Custom precedence value used for the decision log. Defaults to
 	 * `100 + sourceIndex` (engine-assigned) when `undefined`. Sources
 	 * MAY override only if they know what they are doing — overriding
-	 * to a value `<= 6` lets the source masquerade as a PNP/profile rule and
+	 * to a value `<= 8` lets the source masquerade as a PNP/profile rule and
 	 * is generally a bug.
 	 */
 	precedence?: number;

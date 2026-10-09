@@ -546,6 +546,8 @@ const enUS = {
 		pnp: {
 			title: "PNP Profile",
 			noAssessmentBound: "No assessment bound",
+			noAssessmentBoundBody:
+				"Profile, district and test-administration policy have nothing to read, so only an item's requiredTools can grant an accommodation. Pass the assessment to the toolkit's assessment property, or call updateAssessment(...) on the toolkit coordinator.",
 			determinationReadOnly: "Determination (read-only)",
 			toolsEditor: "Tools Editor",
 			enforcement: "PNP enforcement",

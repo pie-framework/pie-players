@@ -37,12 +37,13 @@ import type {
  * A feature verdict comes from one of the eight PNP precedence levels, or from a
  * host gate that never reaches them: `tools.policy.blocked` and a non-empty
  * `tools.policy.allowed` are absolute for the id they name, exactly as they are
- * on the placement-scoped path.
+ * on the placement-scoped path. `"none"` is a feature no rule names.
  */
 export type FeaturePolicyRule =
 	| PnpPolicySourceRule
 	| "host-allowlist"
-	| "host-blocked";
+	| "host-blocked"
+	| "none";
 
 export interface FeaturePolicyDecision<P = Record<string, unknown>> {
 	/** The PNP/AfA support id that was evaluated (e.g. `"signLanguage"`). */
@@ -56,7 +57,8 @@ export interface FeaturePolicyDecision<P = Record<string, unknown>> {
 	action: ToolPolicyResolutionDecision["action"];
 	/** Which precedence rule produced the verdict. */
 	rule: FeaturePolicyRule;
-	precedence: 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8;
+	/** The rule's precedence level; `null` for `rule: "none"`. */
+	precedence: 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | null;
 	sourceType: ToolPolicySourceType;
 	/** Human-readable explanation, suitable for a policy debugger. */
 	reason: string;
@@ -107,10 +109,8 @@ export interface FeatureDecisionContext {
 /**
  * Reason text for a denial that had no assessment to decide against.
  *
- * Used in place of the `pnp-support` skip's "not configured at any level",
- * which is true but reads as a completed evaluation. `rule` and `precedence`
- * stay as the source reported them: nothing fired, so naming a ninth rule
- * would describe a precedence level that does not exist.
+ * Used in place of "not configured", which is true but reads as a completed
+ * evaluation.
  */
 const unboundAssessmentReason = (featureId: string) =>
 	`No assessment is bound, so no policy source could grant "${featureId}"`;
@@ -180,12 +180,15 @@ export function interpretFeatureResult<P>(
 	const flags = Array.from(result.perToolFlags.values())[0];
 	const granted = decision?.action === "enable";
 	const reason = decision?.reason ?? `Feature "${featureId}" not configured`;
+	// The source logs "no rule fired" as a skip at the last level so the trail
+	// stays ordered; the verdict names no rule for it.
+	const fired = decision !== undefined && decision.action !== "skip";
 	return {
 		featureId,
 		granted,
 		action: decision?.action ?? "skip",
-		rule: decision?.rule ?? "pnp-support",
-		precedence: decision?.precedence ?? 8,
+		rule: fired ? decision.rule : "none",
+		precedence: fired ? decision.precedence : null,
 		sourceType: decision?.sourceType ?? "system",
 		// Only a denial is re-worded. An unbound host can still be granted the
 		// feature — an item's registered settings carrying `requiredTools` mandate

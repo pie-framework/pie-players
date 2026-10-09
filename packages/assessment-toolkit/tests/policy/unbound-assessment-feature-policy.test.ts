@@ -50,6 +50,7 @@ describe("a denial says whether an assessment was bound", () => {
 		expect(decision.assessmentBound).toBe(true);
 		expect(decision.granted).toBe(false);
 		expect(decision.reason).toContain("not configured at any level");
+		expect(decision).toMatchObject({ rule: "none", precedence: null });
 	});
 
 	test("a bare assessment record counts as bound", () => {
@@ -64,13 +65,11 @@ describe("a denial says whether an assessment was bound", () => {
 		expect(decision.reason).toContain("not configured at any level");
 	});
 
-	test("the verdict and its precedence are untouched", () => {
-		// Nothing fired, so the rule stays what the source reported rather than
-		// naming a ninth precedence level that does not exist.
+	test("a verdict no rule produced names no rule", () => {
 		const decision = engine({}).decideFeature(FEATURE);
 		expect(decision.action).toBe("skip");
-		expect(decision.rule).toBe("pnp-support");
-		expect(decision.precedence).toBe(8);
+		expect(decision.rule).toBe("none");
+		expect(decision.precedence).toBeNull();
 	});
 });
 

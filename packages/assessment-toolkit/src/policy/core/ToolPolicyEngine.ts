@@ -23,6 +23,7 @@ import type {
 
 import type {
 	CanonicalToolsConfig,
+	PnpEnforcementMode,
 	ToolPlacementLevel,
 } from "../../services/tools-config-normalizer.js";
 import {
@@ -51,7 +52,7 @@ import {
 	PnpPolicySource,
 } from "../sources/PnpPolicySource.js";
 
-export type PnpEnforcementMode = "on" | "off";
+export type { PnpEnforcementMode };
 
 export interface ToolPolicyEngineInputs {
 	tools?: CanonicalToolsConfig | null;
@@ -61,7 +62,7 @@ export interface ToolPolicyEngineInputs {
 	 * resolves per decision through {@link resolveDefaultPnpEnforcement}: `"on"`
 	 * when the bound `assessment` carries PNP/profile policy material (PNP,
 	 * district policy, test administration), and for a decision scoped to an item
-	 * also when that item's settings carry required/restricted/parameters;
+	 * also when that item's settings require or restrict a tool;
 	 * `"off"` otherwise. `tests/policy/pnp-default-on.test.ts` locks the rule.
 	 *
 	 * Hosts that want to force a mode pass `"on"` or `"off"`

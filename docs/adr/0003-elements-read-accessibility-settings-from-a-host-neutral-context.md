@@ -164,3 +164,17 @@ Preconditions for any mode beyond `mathml`:
   whose answers differ share one copy.
 - `AGENTS.md` in pie-players and pie-elements-ng states the element-side rules: no toolkit import,
   host settings through this context, unknown ids ignored, and no answer means defaults.
+
+## Update, 2026-10-09
+
+The precedence `decideFeaturePolicy` applies has eight levels, which **Supporting reasons** and
+**Rejected alternatives** call six: district block, test-administration override set to `false`,
+item restriction, profile prohibition, override set to `true`, item requirement, district
+requirement, profile support. A prohibition outranks both requirements.
+
+With no assessment bound, `decideFeaturePolicy` still grants a capability the item's registered
+settings require, where **Consequences** says it declines every capability. A provider in an
+item's scope answers `supports` with that item's required ids.
+
+`language` in the value has no source: `PersonalNeedsProfile` carries no language field. The
+first consumer ships `{ supports }`, and **Evolution** admits `language` once a source exists.

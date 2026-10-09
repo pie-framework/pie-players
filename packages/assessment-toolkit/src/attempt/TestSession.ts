@@ -60,7 +60,6 @@ export interface TestAttemptSession {
 
 	/**
 	 * QTI 3.0 context variables (global assessment-level variables).
-	 * Managed by ContextVariableStore.
 	 */
 	contextVariables?: Record<string, any>;
 }

@@ -108,3 +108,11 @@ peers. `@pie-players/tts-client-server` is a dev dependency, which
 `TTSToolProvider` and `tts-runtime-config.ts` name only inside function bodies;
 `TTSToolProvider` takes the server provider class from its caller through
 `loadServerProvider`, and `@pie-players/pie-default-tool-loaders` supplies it.
+
+## Update, 2026-10-08
+
+`ToolProviderApi` dropped `TConfig` and is now `ToolProviderApi<TInstance>`, with
+`initialize` and `createInstance` taking `unknown`. `TTSToolProvider` implements
+`ToolProviderApi<ITTSProvider>` and `LazyCalculatorToolProvider`
+`ToolProviderApi<CalculatorProvider>`; each narrows its config in its own method
+signatures.

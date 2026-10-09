@@ -243,9 +243,15 @@ export interface TTSProviderCapabilities {
 	supportsResume: boolean;
 
 	/**
-	 * Supports word boundary events for highlighting
+	 * Sends word boundary events for highlighting
 	 */
 	supportsWordBoundary: boolean;
+
+	/**
+	 * Highlight mode used when the host configures none. Omitted, it is `"word"`
+	 * when `supportsWordBoundary` is true and `"sentence"` otherwise.
+	 */
+	defaultHighlightMode?: "word" | "sentence";
 
 	/**
 	 * Supports voice selection

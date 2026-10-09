@@ -1305,6 +1305,7 @@ export class ToolRegistry {
 		const loadPromise = (async () => {
 			await loader();
 			this.loadedToolModules.add(toolId);
+			this.warnIfLoadedToolElementUndefined(toolId);
 		})();
 
 		this.moduleLoadPromises.set(toolId, loadPromise);
@@ -1316,25 +1317,49 @@ export class ToolRegistry {
 	}
 
 	/**
+	 * The undefined element tag a tool would render, or `null` when the tool is
+	 * built by a component factory, its element is defined, or there is no DOM.
+	 */
+	private undefinedToolElementTag(toolId: string): string | null {
+		if (typeof customElements === "undefined" || typeof document === "undefined") {
+			return null;
+		}
+		const overrides = this.componentOverrides;
+		if (overrides.toolComponentFactories?.[toolId]) return null;
+		let tagName: string;
+		try {
+			tagName = resolveToolTag(toolId, overrides);
+		} catch {
+			// Element creation reports the missing tag mapping.
+			return null;
+		}
+		return customElements.get(tagName) ? null : tagName;
+	}
+
+	/**
+	 * Warn when a tool's module loader finished without defining the element the
+	 * tag map points the tool at, as when a host remaps the tag but keeps a
+	 * loader that defines the packaged element. The tool otherwise renders blank.
+	 */
+	private warnIfLoadedToolElementUndefined(toolId: string): void {
+		const tagName = this.undefinedToolElementTag(toolId);
+		if (!tagName) return;
+		warnOncePerDocument(
+			document,
+			`loadedToolElementUndefined.${toolId}.${tagName}`,
+			`[ToolRegistry] Tool "${toolId}" renders <${tagName}>, but its module loader finished without defining it, so the tool renders blank. The tag map and the loader disagree: map "${toolId}" to the tag its loader defines, or register a loader that defines <${tagName}>. Reported once per page.`,
+		);
+	}
+
+	/**
 	 * Warn when a tool with no module loader still has no element definition
 	 * after the pending-input delay. A registry built without loaders otherwise
 	 * renders the tool as an unknown element with no error.
 	 */
 	private watchUndefinedToolElement(toolId: string): void {
 		if (this.watchedUndefinedToolElements.has(toolId)) return;
-		if (typeof customElements === "undefined" || typeof document === "undefined") {
-			return;
-		}
-		const overrides = this.componentOverrides;
-		if (overrides.toolComponentFactories?.[toolId]) return;
-		let tagName: string;
-		try {
-			tagName = resolveToolTag(toolId, overrides);
-		} catch {
-			// Element creation reports the missing tag mapping.
-			return;
-		}
-		if (customElements.get(tagName)) return;
+		const tagName = this.undefinedToolElementTag(toolId);
+		if (!tagName) return;
 		this.watchedUndefinedToolElements.add(toolId);
 		const doc = document;
 		const timer = setTimeout(() => {

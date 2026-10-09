@@ -41,7 +41,7 @@ describe("TTSToolProvider capabilities", () => {
 		await server.initialize({ apiEndpoint: "/api/tts" });
 
 		expect(browser.getCapabilities().features).toMatchObject({
-			wordBoundary: false,
+			wordBoundary: true,
 			pitchControl: true,
 		});
 		expect(server.getCapabilities().features).toMatchObject({

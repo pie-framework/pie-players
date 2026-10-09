@@ -23,7 +23,7 @@ export interface ToolProviderRegistration<TConfig = any> {
 	/**
 	 * Provider instance to register
 	 */
-	provider: ToolProviderApi<TConfig>;
+	provider: ToolProviderApi;
 
 	/**
 	 * Configuration for this provider

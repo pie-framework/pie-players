@@ -31,7 +31,7 @@ export interface LazyCalculatorProviderDefinition<TConfig> {
  */
 export abstract class LazyCalculatorToolProvider<
 	TConfig extends CalculatorToolProviderInitConfig,
-> implements ToolProviderApi<TConfig, CalculatorProvider>
+> implements ToolProviderApi<CalculatorProvider>
 {
 	abstract readonly providerName: string;
 	readonly category = "calculator" as const;

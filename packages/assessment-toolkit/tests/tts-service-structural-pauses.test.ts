@@ -359,6 +359,18 @@ describe("TTSService structural pauses", () => {
 		expect((service as any).resolveHighlightMode()).toBe("sentence");
 	});
 
+	test("takes the provider's default highlight mode over its word-boundary support", async () => {
+		const provider = new MockTTSProvider(new MockTTSImpl(true), "browser", true);
+		const capabilities = provider.getCapabilities();
+		provider.getCapabilities = () => ({
+			...capabilities,
+			defaultHighlightMode: "sentence",
+		});
+		const service = new TTSService();
+		await service.initialize(provider);
+		expect((service as any).resolveHighlightMode()).toBe("sentence");
+	});
+
 	test("keeps start-aware browser playback loading until native speech starts", async () => {
 		const impl = new PlaybackStartAwareMockTTSImpl();
 		(impl as any).speakSegments = undefined;

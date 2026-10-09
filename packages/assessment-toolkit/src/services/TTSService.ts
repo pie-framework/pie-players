@@ -1028,9 +1028,11 @@ export class TTSService {
 		if (configuredMode === "word" || configuredMode === "sentence") {
 			return configuredMode;
 		}
-		const supportsWordBoundary =
-			this.currentProvider?.getCapabilities().supportsWordBoundary ?? false;
-		return supportsWordBoundary ? "word" : "sentence";
+		const capabilities = this.currentProvider?.getCapabilities();
+		if (capabilities?.defaultHighlightMode) {
+			return capabilities.defaultHighlightMode;
+		}
+		return capabilities?.supportsWordBoundary ? "word" : "sentence";
 	}
 
 	private hasExplicitBreakSemantics(text: string): boolean {

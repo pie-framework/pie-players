@@ -79,8 +79,8 @@ browser scaling and the existing responsive layout.
    hover alias remains on the calculator inline tool alone.
 2. `packages/assessment-player/src/components/AssessmentPlayerDefaultElement.ts`
    used undefined `--pie-background-light`. No host sets it, so it is removed
-   from the registry and the player and both dictionary tools read
-   `--pie-background`.
+   from the registry; the player reads `--pie-background` and the two dictionary
+   panels read `--pie-secondary-background`.
 3. `packages/theme/src/components.css` used `--pie-focus-ring-color` as an
    isolated focus token. An earlier slice classified it as a legacy alias and
    routed it through `--pie-focus-outline` and

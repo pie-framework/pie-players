@@ -224,3 +224,44 @@ _Avoid_: Default tool list, loader catalogue
 - Universal support membership is explicit program policy inside the
   **Packaged Capability Composition**; it is validated against registrations but
   never derived from registration membership.
+
+## Tool Policy Language
+
+**Support Id**:
+The id a policy input names a capability by. It is the `toolId` of the registered tool it governs, camelCased from the AfA PNP 3.0 term where AfA names the capability.
+_Avoid_: Feature name, AfA term
+
+**Placement**:
+The host's `tools.placement` list of the tools a toolbar level may show. Only placement puts a tool on a toolbar.
+_Avoid_: Enablement, grant
+
+**Grant**:
+A policy input admitting a capability for the learner: a profile support, a **Requirement**, or a test-administration override set to `true`. On a toolbar it protects a placed tool from the registry's relevance filter.
+_Avoid_: Enable, placement
+
+**Requirement**:
+A **Grant** that is a mandate, from an item's or the district's `requiredTools`. The entry carries `required`, and a host gate that keeps it off every toolbar raises `tool-policy.requiredToolBlocked`.
+_Avoid_: Default tool, always-on
+
+**Block**:
+A policy input withdrawing a capability: a district block, a test-administration override set to `false`, an item restriction, or a profile prohibition. Among the policy inputs, only a block removes a placed tool.
+_Avoid_: Hide, restriction (for the whole set)
+
+**Tool Parameters**:
+`toolParameters`, keyed by **Support Id**: the assessment's entry, overridden by the item's on the item's own scope. They reach a capability whatever the PNP verdict; a host denial drops them.
+_Avoid_: Tool config, provider config
+
+**PNP Enforcement**:
+Whether a toolbar decision applies the policy inputs: `"on"`, `"off"`, or auto-mode, which turns it on where the bound assessment or the decision's item carries policy material. Feature decisions apply the inputs whatever the mode.
+_Avoid_: PNP mode, strict mode
+
+**Feature Decision**:
+`decideFeaturePolicy`'s verdict on one **Support Id** for a capability that renders as its own surface. It reads no **Placement**; host `tools.policy` gates still apply.
+_Avoid_: Tool decision, toolbar decision
+
+## Tool Policy Relationships
+
+- **Placement** decides which tools a toolbar can show; policy then removes **Blocks** and marks **Grants**. A **Grant** never adds an unplaced tool.
+- Precedence, highest first: district block, `false` override, item restriction, profile prohibition, `true` override, item **Requirement**, district **Requirement**, profile support.
+- Item settings reach only decisions scoped to that item: its own toolbar and the **Feature Decisions** its content asks with the item's scope.
+- **Tool Parameters** reach every entry policy shows, whatever the PNP verdict and the **PNP Enforcement** mode.

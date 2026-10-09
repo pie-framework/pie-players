@@ -170,12 +170,12 @@ const itemRef: AssessmentItemRef = {
     // Tools REQUIRED for this specific item
     requiredTools: [
       "calculator",      // Multi-step computation problem
-      "graph"           // Graph interpretation required
+      "graph"            // Graph interpretation required
     ],
 
     // Tools BLOCKED for this specific item
     restrictedTools: [
-      "calculator"      // Mental math question - calculator would invalidate
+      "textToSpeech"     // Reading-fluency item - read-aloud would invalidate it
     ],
 
     // Feature parameters by support id; these override the assessment's `toolParameters`
@@ -190,9 +190,7 @@ const itemRef: AssessmentItemRef = {
 
 An item's settings govern the decisions scoped to that item: its own item-level toolbar, and the feature decisions its content asks with the item's scope. They reach the coordinator through the item's `<pie-item-scope>`, whose `settings` property carries them. The section player fills it from each item's `AssessmentItemRef.settings`; a host composing its own item player sets it on the scope it wraps the player in. A host driving a coordinator without the elements files them with `coordinator.registerItemSettings(itemId, settings)`, under the item's canonical id, which is the id its item toolbar scopes decisions by. The call returns the function that withdraws them.
 
-Section-, assessment- and passage-level toolbars ignore item settings. Placement there is the host's choice for content every item shares, and the items on the page are not aggregated into it. When a mounted item's `restrictedTools` or `requiredTools` names a tool the placement puts on such a toolbar, the decision carries a `tool-policy.itemSettingNotApplied` diagnostic, whose details name the `itemId`, the `settings` keys and the `toolbarLevel`, and the coordinator logs a warning once per tool and item. Place the tool at item level to enforce the setting per item. An item whose decisions PNP enforcement leaves off raises no diagnostic.
-
-In auto-mode (no `pnpEnforcement` set), an item's settings turn enforcement on for the decisions scoped to that item, and for no others.
+Section-, assessment- and passage-level toolbars ignore item settings. Placement there is the host's choice for content every item shares, and the items on the page are not aggregated into it. When a mounted item's `restrictedTools` or `requiredTools` names a tool the placement puts on such a toolbar, the decision carries a `tool-policy.itemSettingNotApplied` diagnostic, whose details name the `itemId`, the `settings` keys and the `toolbarLevel`, and the coordinator logs a warning once per tool and item. Place the tool at item level to enforce the setting per item. An item whose decisions [PNP enforcement](#pnp-enforcement) leaves off raises no diagnostic.
 
 **Source**: Typically configured by:
 - Assessment item authors
@@ -205,6 +203,18 @@ In auto-mode (no `pnpEnforcement` set), an item's settings turn enforcement on f
 - Graphing problems (require graph tool)
 - Formula-heavy items (require calculator)
 - Reading comprehension (no TTS to test reading ability)
+
+## PNP enforcement
+
+`tools.pnpEnforcement` decides whether toolbar decisions apply the policy inputs above:
+
+- `"on"`: every toolbar decision applies them.
+- `"off"`: toolbar decisions read placement and host policy (`tools.policy`, providers) only.
+- omitted (auto-mode): a decision applies them when the bound assessment carries policy material — profile `supports` or `prohibitedSupports`, district `blockedTools` or `requiredTools`, or a test-administration override. A decision scoped to an item also applies them when that item's settings require or restrict a tool, and that turns enforcement on for the item's decisions only.
+
+`coordinator.setPnpEnforcement(mode)` overrides the configured mode at runtime; `"on"` and `"off"` stick across assessment swaps, and `null` returns to the configured mode. A toolkit that builds its own coordinator forwards `tools.pnpEnforcement` to it.
+
+Feature decisions (`decideFeaturePolicy`, for a capability that renders as its own surface) apply the policy inputs whatever the mode. Tool parameters reach every entry whatever the mode. A provider failure denies a toolbar tool only where an enforced decision grants it.
 
 ## Complete Configuration Example
 
@@ -318,7 +328,7 @@ console.log('Allowed tools:', allowedToolIds);
 ### Example 1: District Block Wins
 
 ```typescript
-{
+const assessment = {
   personalNeedsProfile: {
     supports: ["calculator"]  // Student has calculator in IEP
   },
@@ -327,7 +337,7 @@ console.log('Allowed tools:', allowedToolIds);
       blockedTools: ["calculator"]  // District blocks it anyway
     }
   }
-}
+};
 // Result: calculator BLOCKED
 // District policy (#1) overrides PNP supports (#8)
 ```
@@ -335,17 +345,15 @@ console.log('Allowed tools:', allowedToolIds);
 ### Example 2: Item Restriction Wins
 
 ```typescript
-{
+const assessment = {
   personalNeedsProfile: {
     supports: ["calculator"]  // Student has calculator in IEP
-  },
-  settings: {
-    // No district block
-  },
-  itemSettings: {
-    restrictedTools: ["calculator"]  // Mental math question
   }
-}
+};
+// The item's settings, registered by its <pie-item-scope>
+const itemSettings: ItemSettings = {
+  restrictedTools: ["calculator"]  // Mental math question
+};
 // Result: calculator BLOCKED on this item's own toolbar only
 // Item restriction (#3) overrides PNP supports (#8). A section-level
 // calculator stays and reports `tool-policy.itemSettingNotApplied`.
@@ -354,14 +362,14 @@ console.log('Allowed tools:', allowedToolIds);
 ### Example 3: Item Requirement on an Item-Placed Tool
 
 ```typescript
-{
+const assessment = {
   personalNeedsProfile: {
     supports: []  // Student doesn't have calculator in PNP
-  },
-  itemSettings: {
-    requiredTools: ["calculator"]  // Complex computation problem
   }
-}
+};
+const itemSettings: ItemSettings = {
+  requiredTools: ["calculator"]  // Complex computation problem
+};
 // Result: a calculator placed at item level stays on this item's own
 // toolbar through relevance filtering.
 // The requirement (#6) places nothing: without an item-level placement,
@@ -371,7 +379,7 @@ console.log('Allowed tools:', allowedToolIds);
 ### Example 4: Test Admin Override
 
 ```typescript
-{
+const assessment = {
   personalNeedsProfile: {
     supports: ["textToSpeech"]  // Student has TTS in IEP
   },
@@ -382,7 +390,7 @@ console.log('Allowed tools:', allowedToolIds);
       }
     }
   }
-}
+};
 // Result: textToSpeech BLOCKED for this session
 // Test admin override (#2) blocks for operational reasons
 ```
@@ -487,7 +495,7 @@ Provide UI for:
    }
    ```
 
-3. **Item authors** to configure `itemSettings`:
+3. **Item authors** to configure item settings:
    ```typescript
    interface ItemSettingsEditor {
      requiredTools: string[];    // Multi-select from available tools
@@ -514,18 +522,20 @@ The coordinator logs each policy diagnostic as a console warning once per code, 
 Check precedence hierarchy in order:
 1. Is it blocked by `districtPolicy.blockedTools`?
 2. Is it disabled in `testAdministration.toolOverrides`?
-3. Is it in `itemSettings.restrictedTools`, on the item's own toolbar, or in `personalNeedsProfile.prohibitedSupports`? Either withdraws a tool a `true` override grants, and the decision carries a `tool-policy.overrideBlocked` diagnostic.
+3. Is it in the item's `restrictedTools`, on the item's own toolbar, or in `personalNeedsProfile.prohibitedSupports`? Either withdraws a tool a `true` override grants, and the decision carries a `tool-policy.overrideBlocked` diagnostic.
 4. Is it placed at this level in `tools.placement`? A grant does not place a tool.
-5. Does the tool's `isVisibleInContext()` return false? A `required` or `alwaysAvailable` grant skips this check.
-6. Does the tool's `isApplicableToContent()` return false for this content? This check removes the tool even under a grant.
+5. Is [PNP enforcement](#pnp-enforcement) off for this decision? Then the profile grants nothing and the next check applies.
+6. Does the tool's `isVisibleInContext()` return false? A `required` or `alwaysAvailable` grant skips this check.
+7. Does the tool's `isApplicableToContent()` return false for this content? This check removes the tool even under a grant.
 
 ### "Tool showing up when it shouldn't"
 
 Check:
 1. Is it in `districtPolicy.requiredTools`?
-2. Is it in `itemSettings.requiredTools`, on the item's own toolbar?
+2. Is it in the item's `requiredTools`, on the item's own toolbar?
 3. Is `toolOverrides` explicitly enabling it?
-4. Is an item's restriction meant to withdraw it from a section-, assessment- or passage-level toolbar? Item settings do not reach those toolbars; the decision's `tool-policy.itemSettingNotApplied` diagnostic names the item. Place the tool at item level instead.
+4. Is [PNP enforcement](#pnp-enforcement) off for this decision? Then no block applies.
+5. Is an item's restriction meant to withdraw it from a section-, assessment- or passage-level toolbar? Item settings do not reach those toolbars; the decision's `tool-policy.itemSettingNotApplied` diagnostic names the item. Place the tool at item level instead.
 
 ### "Need custom policy rules"
 

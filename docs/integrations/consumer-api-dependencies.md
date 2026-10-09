@@ -1229,7 +1229,8 @@ loophole to tighten.
 
 Since 0.3.75 a tool whose provider fails to start leaves the section on screen
 and reports itself unavailable, unless policy grants it through an item
-requirement, a district requirement or a profile support; a granted tool's
+requirement, a district requirement, a profile support or a test-administration
+override set to `true`; a granted tool's
 failure ends in the section's error state. So a failing Desmos auth fetch leaves
 the calculator unavailable and reports a recoverable `provider-init` error, where
 before it showed only in the calculator panel; a calculator policy grants now

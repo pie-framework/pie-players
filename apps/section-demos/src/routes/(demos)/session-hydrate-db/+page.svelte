@@ -10,10 +10,7 @@
 		createToolsConfig,
 		ToolkitCoordinator
 	} from '@pie-players/pie-assessment-toolkit';
-	import {
-		createUniversalPersonalNeedsProfile,
-		SECTION_PLAYER_PREFERRED_TOOL_PLACEMENT
-	} from '@pie-players/pie-default-tool-loaders';
+	import { SECTION_PLAYER_PREFERRED_TOOL_PLACEMENT } from '@pie-players/pie-default-tool-loaders';
 	import '@pie-players/pie-section-player/components/section-player-splitpane-element';
 	import '@pie-players/pie-section-player/components/section-player-vertical-element';
 	import DemoRuntimeChrome from '#lib/demo-runtime/components/DemoRuntimeChrome.svelte';
@@ -190,19 +187,11 @@
 		const canUseServerSection =
 			Boolean(serverLoadedSection) && Boolean(routeSectionId) && serverSectionId === routeSectionId;
 		const section = (canUseServerSection ? serverLoadedSection : routeSection) || routeSection;
-		if (!section) return section;
-		const hasExplicitPnp = Boolean(
-			section?.personalNeedsProfile || section?.settings?.personalNeedsProfile
-		);
-		if (hasExplicitPnp) return section;
-		return {
-			...section,
-			personalNeedsProfile: createUniversalPersonalNeedsProfile()
-		};
+		return section;
 	});
 
-	// Bind the profile so policy has an input to decide against; the section
-	// payload alone is invisible to `decideFeaturePolicy`.
+	// The player forwards `assessment` only to a coordinator it owns, so a
+	// demo-built coordinator gets the assessment directly.
 	$effect(() => {
 		bindDemoAssessment(coordinator, resolvedSectionForPlayer as any);
 	});

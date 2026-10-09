@@ -10,7 +10,6 @@
 		createToolsConfig,
 		type ToolkitCoordinatorHooks
 	} from '@pie-players/pie-assessment-toolkit';
-	import { createUniversalPersonalNeedsProfile } from '@pie-players/pie-default-tool-loaders';
 	import '@pie-players/pie-section-player/components/section-player-splitpane-element';
 	import '@pie-players/pie-section-player/components/section-player-vertical-element';
 	import DemoRuntimeChrome from '#lib/demo-runtime/components/DemoRuntimeChrome.svelte';
@@ -19,7 +18,7 @@
 		applyToolkitScheme,
 		ATTEMPT_QUERY_PARAM,
 		ATTEMPT_STORAGE_KEY,
-		bindDemoAssessment,
+		demoAssessmentFor,
 		createAttemptId,
 		DAISY_THEME_STORAGE_KEY,
 		DEFAULT_DAISY_THEME,
@@ -119,18 +118,8 @@
 	let pnpDebuggerElement: any = $state(null);
 
 	const demoPersistenceStoragePrefix = `pie:section-controller:v1:${DEMO_ASSESSMENT_ID}:`;
-	let resolvedSectionForPlayer = $derived.by(() => {
-		const section = data.section as any;
-		if (!section) return section;
-		const hasExplicitPnp = Boolean(
-			section?.personalNeedsProfile || section?.settings?.personalNeedsProfile
-		);
-		if (hasExplicitPnp) return section;
-		return {
-			...section,
-			personalNeedsProfile: createUniversalPersonalNeedsProfile()
-		};
-	});
+	let resolvedSectionForPlayer = $derived(data.section as any);
+	const demoAssessment = $derived(demoAssessmentFor(resolvedSectionForPlayer));
 	let sessionPanelSectionId = $derived(
 		String(
 			(resolvedSectionForPlayer as any)?.identifier ||
@@ -154,9 +143,6 @@
 	function handleToolkitReady(event: Event) {
 		const detail = (event as CustomEvent<{ coordinator?: any }>).detail;
 		toolkitCoordinator = detail?.coordinator || null;
-		// Bind the profile so policy has an input to decide against; the section
-		// payload alone is invisible to `decideFeaturePolicy`.
-		bindDemoAssessment(toolkitCoordinator, resolvedSectionForPlayer as any);
 		toolkitCoordinator?.setHooks?.({
 			onFrameworkError: (model) => {
 				console.error('[tts-generated-ssml demo] Toolkit framework error:', model);
@@ -322,6 +308,7 @@
 					env: pieEnv
 				} }
 				section={resolvedSectionForPlayer}
+				assessment={demoAssessment}
 				{toolRegistry}
 				toolbar-position="right"
 				show-toolbar={true}
@@ -340,6 +327,7 @@
 					env: pieEnv
 				} }
 				section={resolvedSectionForPlayer}
+				assessment={demoAssessment}
 				{toolRegistry}
 				toolbar-position="right"
 				show-toolbar={true}

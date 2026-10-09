@@ -183,7 +183,7 @@ export interface ToolPolicyEntry {
 	alwaysAvailable: boolean;
 	/**
 	 * The tool's parameters: the item's `toolParameters` entry on the item's own
-	 * toolbar, else the assessment's `toolConfigs` entry. Set whether or not a
+	 * toolbar, else the assessment's `toolParameters` entry. Set whether or not a
 	 * grant admitted the tool.
 	 */
 	parameters?: Record<string, unknown>;

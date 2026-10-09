@@ -8,7 +8,7 @@ import type { PnpPolicyItem } from "../sources/PnpPolicySource.js";
 
 /**
  * A tool's parameters for one decision: the item's `toolParameters` entry, else
- * the assessment's `toolConfigs` entry.
+ * the assessment's `toolParameters` entry.
  *
  * Parameters say how a tool behaves wherever policy shows it, so they reach a
  * tool placed without a grant, and PNP enforcement does not gate them. `item` is
@@ -21,7 +21,7 @@ export function resolveToolParameters<K extends string>(
 ): ToolParametersFor<K> | undefined {
 	const settings = assessment?.settings as AssessmentSettings | undefined;
 	const value =
-		item?.settings.toolParameters?.[toolId] ?? settings?.toolConfigs?.[toolId];
+		item?.settings.toolParameters?.[toolId] ?? settings?.toolParameters?.[toolId];
 	return value && typeof value === "object" && !Array.isArray(value)
 		? (value as ToolParametersFor<K>)
 		: undefined;

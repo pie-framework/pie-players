@@ -166,7 +166,7 @@ describe("signLanguage feature eligibility", () => {
 		const decision = engine({
 			assessment: {
 				id: "a1",
-				settings: { toolConfigs: { [FEATURE]: { signLang: "bfi" } } },
+				settings: { toolParameters: { [FEATURE]: { signLang: "bfi" } } },
 				personalNeedsProfile: { supports: [FEATURE] },
 			} as AssessmentEntity,
 			itemSettings: { toolParameters: { [FEATURE]: { signLang: "ase" } } },

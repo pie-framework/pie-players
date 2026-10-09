@@ -127,7 +127,7 @@ The packaged calculator reads these values through
 `toolbarContext.getToolRenderParams("calculator")` and applies them to the
 toolbar button plus calculator element. Beneath them sits the calculator's
 policy parameter `type`, read through `toolbarContext.getToolParameters("calculator")`
-from item `toolParameters` then assessment `settings.toolConfigs.calculator`,
+from item `toolParameters` then assessment `settings.toolParameters.calculator`,
 whether or not a grant admits the tool. With neither it opens basic, offers all
 three types and names itself "Calculator". Content metadata therefore stays in
 host code, while PNP/profile restrictions remain framework-owned and higher

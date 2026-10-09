@@ -311,7 +311,7 @@ describe("ToolPolicyEngine", () => {
 describe("tool parameters", () => {
 	const assessment = {
 		id: "a1",
-		settings: { toolConfigs: { calculator: { type: "graphing" } } },
+		settings: { toolParameters: { calculator: { type: "graphing" } } },
 	} as AssessmentEntity;
 
 	function parametersEngine() {

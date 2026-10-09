@@ -814,7 +814,7 @@ export const sectionDemos: Record<string, SectionDemoInfo> = {
 		whatMakesItTick: [
 			"No section player and no section controller: the toolkit owns its coordinator, and `<pie-item-scope>` gives the toolbar's tools the item and the region they act on.",
 			"Read-aloud speaks the equation's spoken card in its place: the scope registered the item, and the toolkit filed its catalogs.",
-			"The host's calculator resolver reads `decideFeaturePolicy('calculator')`: a grant whose `toolConfigs.calculator.type` is `graphing` opens graphing with scientific one switch away, any other grant opens scientific, and no grant hides the button.",
+			"The host's calculator resolver reads `decideFeaturePolicy('calculator')`: a grant whose `toolParameters.calculator.type` is `graphing` opens graphing with scientific one switch away, any other grant opens scientific, and no grant hides the button.",
 			"Changing the option rebinds `assessment`; the resolver re-runs on the policy change, so the button and an open calculator follow without a reload.",
 		],
 		section: demoCalculatorPnpSection,

@@ -148,7 +148,7 @@ export interface ToolbarContext {
 	getToolRenderParams?: (toolId: string) => Record<string, unknown> | null;
 	/**
 	 * The tool's policy parameters on this toolbar: the item's `toolParameters`
-	 * entry on an item's own toolbar, else the assessment's `toolConfigs` entry.
+	 * entry on an item's own toolbar, else the assessment's `toolParameters` entry.
 	 * Authored content, so a registration checks what it reads.
 	 */
 	getToolParameters?: <K extends string>(
@@ -397,7 +397,7 @@ export interface ToolSurfaceRenderContext {
 	/** Host slot being filled. */
 	surface: string;
 	/** Feature parameters from the policy decision, if any. */
-	parameters?: unknown;
+	parameters?: Record<string, unknown>;
 	/** Resolved content dependency, when the capability declares one. */
 	content?: unknown;
 	services: ToolSurfaceServices;
@@ -410,7 +410,7 @@ export interface ToolSurfaceRenderContext {
  */
 export interface ToolContentDependencyContext {
 	/** Feature parameters from the policy decision, if any. */
-	parameters?: unknown;
+	parameters?: Record<string, unknown>;
 	/**
 	 * Owner-scoped catalog cards, or `null` when no resolver is available.
 	 *

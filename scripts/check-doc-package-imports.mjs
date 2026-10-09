@@ -103,10 +103,13 @@ const extractPackageReferences = (content) => {
 		const isWildcardReference =
 			suffix.startsWith("*") || suffix.startsWith("/*");
 		const isContextSymbol = /Symbol\.for\(\s*["']$/.test(prefix);
+		const isImportSpecifier =
+			/(?:\bimport\s*\(?|\bfrom\s*|\brequire\s*\()\s*["']$/.test(prefix);
 		if (!isWildcardReference && !isContextSymbol) {
 			references.push({
 				specifier,
 				rawSpecifier,
+				isImportSpecifier,
 				line: lineNumberForIndex(content, match.index),
 			});
 		}
@@ -120,7 +123,12 @@ const failures = [];
 
 for (const filePath of markdownDocs(ROOT)) {
 	const content = readFileSync(filePath, "utf8");
-	for (const { specifier, rawSpecifier, line } of extractPackageReferences(
+	for (const {
+		specifier,
+		rawSpecifier,
+		isImportSpecifier,
+		line,
+	} of extractPackageReferences(
 		content,
 	)) {
 		const { packageName, subpath } = getPackageImport(specifier);
@@ -143,6 +151,9 @@ for (const filePath of markdownDocs(ROOT)) {
 			}
 			continue;
 		}
+		// A bare package name in prose names the package; only an import of it
+		// needs a root export.
+		if (subpath === "." && !isImportSpecifier) continue;
 		if (!packageInfo.exportKeys.has(subpath)) {
 			failures.push(
 				`${rel(filePath)}:${line} references ${rawSpecifier}, but ${rel(

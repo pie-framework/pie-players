@@ -160,7 +160,7 @@ export const POST: RequestHandler = async (event) => {
 		// Synthesize speech
 		const result = await polly.synthesize({
 			text,
-			voice: voice || "Joanna",
+			voice,
 			language: language || "en-US",
 			rate,
 			includeSpeechMarks,

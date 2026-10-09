@@ -2,9 +2,12 @@
  * TTS Tool Provider
  *
  * Unified provider for all TTS backends:
- * - Browser Web Speech API (no auth)
- * - AWS Polly (requires auth via server proxy)
- * - Google Cloud TTS (requires auth via server proxy)
+ * - `browser`: the Web Speech API (no auth)
+ * - `polly`, `google`: AWS Polly or Google Cloud TTS behind a PIE TTS server,
+ *   on the `pie` transport (requires auth via the server)
+ * - `server`: a server backend named by `serverProvider`; with `custom`, the
+ *   `custom` transport to a host's own service such as SchoolCity, which takes
+ *   `lang_id`, `speedRate` and `cache`
  *
  * Part of PIE Assessment Toolkit.
  */

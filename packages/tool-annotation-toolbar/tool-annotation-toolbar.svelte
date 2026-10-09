@@ -30,8 +30,7 @@
 		catalogContextHolding,
 		composedClosest,
 		composedContains,
-		isShadowRootNode,
-		resolveContentLanguage
+		isShadowRootNode
 	} from '@pie-players/pie-assessment-toolkit/tools/registration';
 	import { resolveInterfaceI18n } from '@pie-players/pie-players-shared/i18n/provider';
 	import { sanitizeSvgIcon } from '@pie-players/pie-players-shared/security';
@@ -314,9 +313,7 @@
 
 			const data = JSON.parse(json);
 			const root = getEffectiveRoot();
-			const restored = highlightCoordinator.importAnnotations(data, root);
-
-			console.log(`[AnnotationToolbar] Restored ${restored} annotations`);
+			highlightCoordinator.importAnnotations(data, root);
 			annotationCount = highlightCoordinator.getAnnotations().length;
 		} catch (error) {
 			console.error('[AnnotationToolbar] Failed to load annotations:', error);
@@ -568,8 +565,6 @@
 			return;
 		}
 
-		console.log('[AnnotationToolbar] Removing annotation:', overlappingAnnotationId);
-
 		const annotation = highlightCoordinator.getAnnotation(overlappingAnnotationId);
 		if (!annotation) {
 			console.warn('[AnnotationToolbar] Annotation not found:', overlappingAnnotationId);
@@ -578,9 +573,7 @@
 
 		const text = annotation.range.toString();
 		highlightCoordinator.removeAnnotation(overlappingAnnotationId);
-		const newCount = highlightCoordinator.getAnnotations().length;
-		annotationCount = newCount;
-		console.log('[AnnotationToolbar] Annotations remaining:', newCount);
+		annotationCount = highlightCoordinator.getAnnotations().length;
 		saveAnnotations();
 
 		// Announce to screen readers
@@ -655,21 +648,15 @@
 
 		ttsSpeaking = true;
 		try {
-			console.log('[AnnotationToolbar] Speaking range:', toolbarState.selectedRange.toString().substring(0, 50));
-
 			// A service not yet started starts here, through the coordinator's
 			// readiness gate. The catalog context is the selection's shell, since
 			// this strip serves the whole section.
 			const selectedRange = toolbarState.selectedRange;
 			await ttsService.speak(selectedRange, {
 				contentRoot: contentRegionHolding(selectedRange) ?? getEffectiveRoot(),
-				language: resolveContentLanguage(selectedRange.startContainer, {
-					contentLanguage: runtimeContext?.contentLanguage
-				}),
+				language: runtimeContext?.contentLanguage,
 				catalogContext: catalogContextHolding(selectedRange.startContainer, runtimeContext)
 			});
-
-			console.log('[AnnotationToolbar] TTS completed successfully');
 		} catch (error) {
 			console.error('[AnnotationToolbar] TTS error:', error);
 			if (isTTSStartFailure(error)) {

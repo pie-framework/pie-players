@@ -40,6 +40,7 @@
   type FrameworkErrorKind
   type FrameworkErrorListener
   type FrameworkErrorModel
+  type FrameworkErrorScope
   type FrameworkErrorSeverity
   HighlightColor
   HighlightCoordinator
@@ -207,6 +208,7 @@
   type FeaturePolicyDecision
   type FeaturePolicyRule
   type ItemSettingNotAppliedDetails
+  type OverrideBlockedDetails
   type PnpEnforcementMode
   type PnpPolicySourceRule
   type PnpPolicySourceTag
@@ -234,6 +236,7 @@
   type ToolPolicyResolutionDecision
   type ToolPolicySourceType
   type ToolScope
+  type UnknownSupportIdDetails
   isHostDeniedFeature
 
 ./runtime/engine
@@ -303,7 +306,6 @@
   type CatalogRuntimeScope
   type ContentCapabilityPhase
   type ContentCapabilityPolicy
-  type ContentLanguageOptions
   DEFAULT_TTS_SPEED_OPTIONS
   HighlightColor
   HighlightCoordinator
@@ -370,7 +372,6 @@
   createToolElement
   createToolSurfaceHost
   findBrowserVoice
-  findContentLanguage
   findShellScopeHost
   flatTextContent
   formatTTSSpeedOptionsAsText
@@ -387,7 +388,6 @@
   parseTTSSpeedOptionsFromText
   pauseTtsForMediaAudio
   resolveContentCapabilities
-  resolveContentLanguage
   resolveContentRegion
   resolveFallbackToolIcon
   resolveRuntimeProvider

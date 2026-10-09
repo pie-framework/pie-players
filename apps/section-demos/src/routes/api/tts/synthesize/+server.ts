@@ -222,7 +222,7 @@ export const POST: RequestHandler = async ({ request }) => {
 			const google = await getGoogleProvider();
 			result = await google.synthesize({
 				text,
-				voice: voice || "en-US-Wavenet-A",
+				voice,
 				language: language || "en-US",
 				rate,
 				includeSpeechMarks,
@@ -243,7 +243,7 @@ export const POST: RequestHandler = async ({ request }) => {
 			const polly = await getPollyProvider(requestedEngine);
 			result = await polly.synthesize({
 				text,
-				voice: voice || "Joanna",
+				voice,
 				language: language || "en-US",
 				rate,
 				sampleRate:

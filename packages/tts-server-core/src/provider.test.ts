@@ -104,3 +104,70 @@ describe("BaseTTSProvider prosody helpers", () => {
 		expect(result).toEqual({ text: "<speak>hi</speak>", isSsml: true });
 	});
 });
+
+const voice = (id: string, languageCode: string): Voice => ({
+	id,
+	name: id,
+	language: languageCode,
+	languageCode,
+	quality: "neural",
+	supportedFeatures: { ssml: true, emotions: false, styles: false },
+});
+
+class ListingProvider extends TestProvider {
+	listings = 0;
+	failNext = false;
+	voices = [
+		voice("Joanna", "en-US"),
+		voice("Lupe", "es-US"),
+		voice("Lucia", "es-ES"),
+		voice("Lea", "fr-FR"),
+		voice("Remi", "fr-FR"),
+	];
+
+	override async getVoices(): Promise<Voice[]> {
+		this.listings += 1;
+		if (this.failNext) {
+			this.failNext = false;
+			throw new Error("listing failed");
+		}
+		return this.voices;
+	}
+
+	resolve(request: Omit<SynthesizeRequest, "text">, prefer?: (v: Voice) => boolean) {
+		return this.resolveRequestVoice({ text: "hi", ...request }, "Joanna", prefer);
+	}
+}
+
+describe("BaseTTSProvider voice resolution", () => {
+	it("reads a named voice whatever the language", async () => {
+		const provider = new ListingProvider();
+		expect(await provider.resolve({ voice: "Lea", language: "es-ES" })).toBe("Lea");
+		expect(provider.listings).toBe(0);
+	});
+
+	it("picks a voice for a language the request names without a voice", async () => {
+		const provider = new ListingProvider();
+		expect(await provider.resolve({ language: "es-ES" })).toBe("Lucia");
+		expect(await provider.resolve({ language: "es" })).toBe("Lupe");
+		expect(
+			await provider.resolve({ language: "fr-FR" }, (v) => v.id === "Remi"),
+		).toBe("Remi");
+		expect(provider.listings).toBe(1);
+	});
+
+	it("keeps the default voice when it speaks the language, or when none does", async () => {
+		const provider = new ListingProvider();
+		expect(await provider.resolve({ language: "en-US" })).toBe("Joanna");
+		expect(await provider.resolve({ language: "nl-NL" })).toBe("Joanna");
+		expect(await provider.resolve({})).toBe("Joanna");
+	});
+
+	it("reads in the default voice when the listing fails, and lists again next time", async () => {
+		const provider = new ListingProvider();
+		provider.failNext = true;
+		expect(await provider.resolve({ language: "es-ES" })).toBe("Joanna");
+		expect(await provider.resolve({ language: "es-ES" })).toBe("Lucia");
+		expect(provider.listings).toBe(2);
+	});
+});

@@ -6,8 +6,8 @@
  * to the entry being kept (or, in the case of `required-tool-blocked`,
  * the step that surfaced the conflict).
  *
- * Tag vocabulary maps onto the six composition steps in
- * `m8-design.md` § 3:
+ * Tag vocabulary maps onto the composition steps of `composeDecision`
+ * (`docs/tools-and-accomodations/architecture.md`):
  *
  *   1. Membership filter   → `"placement"`
  *   2. Provider veto       → `"provider"` (negative; only present when

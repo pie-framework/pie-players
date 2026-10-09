@@ -148,6 +148,32 @@ describe("tool start failures", () => {
 		expect(errors.map((model) => model.recoverable)).toEqual([true, false]);
 	});
 
+	test("a provider registration failure degrades the tool until policy grants it", async () => {
+		const register = async (assessmentId: string, grant: boolean) => {
+			const errors: FrameworkErrorModel[] = [];
+			const coordinator = new ToolkitCoordinator({
+				assessmentId,
+				eagerInit: false,
+				toolRegistry: registryWith("calculator"),
+				tools: { placement: { item: ["calculator"] } },
+				hooks: {
+					onProviderRegistered: () => {
+						throw new Error("register hook failed");
+					},
+					onFrameworkError: (model) => errors.push(model),
+				},
+			});
+			await coordinator.waitUntilReady().catch(() => {});
+			if (grant) coordinator.updateAssessment(granting("calculator"));
+			return errors.filter((model) => model.kind === "provider-register");
+		};
+
+		const recoverable = async (assessmentId: string, grant: boolean) =>
+			(await register(assessmentId, grant)).map((model) => model.recoverable);
+		expect(await recoverable("register-degrades", false)).toEqual([true]);
+		expect(await recoverable("register-granted-later", true)).toEqual([true, false]);
+	});
+
 	test("a tool module failure degrades the tool, once however many toolbars report it", () => {
 		const coordinator = new ToolkitCoordinator({
 			assessmentId: "module-degrades",

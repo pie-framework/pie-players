@@ -10,6 +10,7 @@ class MockAudio {
 	paused = true;
 	ended = false;
 	onplay: (() => void) | null = null;
+	onplaying: (() => void) | null = null;
 	onended: (() => void) | null = null;
 	onerror: ((event: Event) => void) | null = null;
 	onpause: (() => void) | null = null;
@@ -22,6 +23,7 @@ class MockAudio {
 	play(): Promise<void> {
 		this.paused = false;
 		this.onplay?.();
+		this.onplaying?.();
 		setTimeout(() => {
 			if (!this.paused) {
 				this.ended = true;
@@ -137,6 +139,68 @@ describe("ServerTTSProvider", () => {
 		await impl.speak("hello");
 
 		expect(starts).toEqual(["start"]);
+	});
+
+	test("reports playback start when the audio sounds, not when play is requested", async () => {
+		globalThis.fetch = vi.fn(async () =>
+			createJSONResponse({ audio: btoa("audio-bytes"), speechMarks: [] }),
+		) as unknown as typeof fetch;
+		class BufferingAudio extends MockAudio {
+			play(): Promise<void> {
+				this.paused = false;
+				this.onplay?.();
+				return Promise.resolve();
+			}
+		}
+		(globalThis as Record<string, unknown>).Audio = BufferingAudio;
+		const provider = new ServerTTSProvider();
+		const impl = await provider.initialize({ apiEndpoint: "/api/tts" } as any);
+		const starts: string[] = [];
+		impl.onPlaybackStart = () => starts.push("start");
+
+		const speaking = impl.speak("hello");
+		await vi.waitFor(() => expect(MockAudio.instances).toHaveLength(1));
+		await new Promise((resolve) => setTimeout(resolve, 5));
+		expect(starts).toEqual([]);
+
+		const audio = MockAudio.instances[0];
+		audio?.onplaying?.();
+		expect(starts).toEqual(["start"]);
+		audio?.onended?.();
+		await speaking;
+	});
+
+	test("a superseded audio's error neither fails its speak nor clears the next one", async () => {
+		globalThis.fetch = vi.fn(async () =>
+			createJSONResponse({ audio: btoa("audio-bytes"), speechMarks: [] }),
+		) as unknown as typeof fetch;
+		class HeldAudio extends MockAudio {
+			play(): Promise<void> {
+				this.paused = false;
+				this.onplay?.();
+				this.onplaying?.();
+				return Promise.resolve();
+			}
+		}
+		(globalThis as Record<string, unknown>).Audio = HeldAudio;
+		const provider = new ServerTTSProvider();
+		const impl = await provider.initialize({ apiEndpoint: "/api/tts" } as any);
+
+		const first = impl.speak("first");
+		await vi.waitFor(() => expect(MockAudio.instances).toHaveLength(1));
+		const firstAudio = MockAudio.instances[0];
+		const second = impl.speak("second");
+		await vi.waitFor(() => expect(MockAudio.instances).toHaveLength(2));
+		const secondAudio = MockAudio.instances[1];
+
+		// The first element reports its error after the second speak took over.
+		firstAudio?.onerror?.(new Event("error"));
+		await expect(first).resolves.toBeUndefined();
+		expect(impl.isPlaying()).toBe(true);
+		expect((impl as any).currentAudio).toBe(secondAudio);
+
+		secondAudio?.onended?.();
+		await expect(second).resolves.toBeUndefined();
 	});
 
 	test("does not media-rescale initially synthesized server audio", async () => {

@@ -85,11 +85,12 @@ renders its regions after its tools connect.
 
 Content in the region may render into open shadow roots, which read-aloud,
 highlighting and annotation reach. The language of any part of it is the
-nearest `lang` between that part and its shell host, else the toolkit's
-`content-language`, else `en-US` (`resolveContentLanguage`). The page's `lang`
-above the shell is the interface language and never counts. Catalog lookup reads
-that language; the browser voice takes it only when markup or `content-language`
-names one (`findContentLanguage`), and otherwise follows the browser's language.
+nearest `lang` between that part and its shell host, else the language the
+read names. The page's `lang` above the shell is the interface language and
+never counts. `TTSService.speak` resolves it once per read, so a tool passes the
+language it knows and nothing more;
+[TTS language](../architecture/internationalization.md#tts-language) sets out
+the precedence and what each transport does with it.
 
 ## Host / Overlay Root Contract
 

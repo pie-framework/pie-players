@@ -1663,7 +1663,7 @@ engine.dispatchInput({
   itemCount,
 });
 
-// When the wrapped toolkit announces `toolkit-ready`:
+// When the toolkit's `section-ready` delivers the cohort's section controller:
 engine.dispatchInput({ kind: "section-controller-resolved" });
 
 // On readiness signal updates:
@@ -1675,7 +1675,6 @@ engine.dispatchInput({
     allLoadingComplete,
     runtimeError,
   },
-  loadedCount,
   itemCount,
   mode: "progressive",
 });

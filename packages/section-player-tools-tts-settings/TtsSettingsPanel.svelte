@@ -19,6 +19,11 @@
 		connectToolRuntimeContext,
 		findBrowserVoice,
 	} from "@pie-players/pie-assessment-toolkit/tools/registration";
+	import {
+		BrowserTTSProvider,
+		PlaybackState,
+		TTSService,
+	} from "@pie-players/pie-assessment-toolkit";
 	import { createFocusTrap } from "@pie-players/pie-players-shared";
 	import {
 		createPieLogger,
@@ -264,8 +269,8 @@ type PreviewSpeechMark = { time: number; start: number; end: number; value?: str
 		voices: []
 	});
 	let currentPreviewAudio: HTMLAudioElement | null = null;
-	let currentBrowserPreviewUtterance: SpeechSynthesisUtterance | null = null;
-	let cleanupBrowserPreviewPlayback: (() => void) | null = null;
+	let browserPreviewService: TTSService | null = null;
+	let browserPreviewHost: HTMLElement | null = null;
 	let previewPollingTimer: number | null = null;
 	let previewRunId = 0;
 	let activeCustomProviderElement = $state<Element | null>(null);
@@ -288,7 +293,6 @@ type PreviewSpeechMark = { time: number; start: number; end: number; value?: str
 			'<speak>This is a <prosody rate="95%">Google Cloud SSML sample</prosody>. <break time="250ms"/> The preview preserves authored SSML.</speak>'
 	};
 	const BUILT_IN_TABS: BuiltInBackendTab[] = ["browser", "polly", "google"];
-const BROWSER_PREVIEW_START_TIMEOUT_MS = 5_000;
 const TTS_LAYOUT_MODES: readonly TTSLayoutMode[] = [
 	"reserved-row",
 	"expanding-row",
@@ -301,10 +305,6 @@ const previewLogger = createPieLogger("pie-tts-preview", isTtsDebugEnabled);
 function debugPreview(event: string, payload?: Record<string, unknown>): void {
 	if (payload) previewLogger.debug(event, payload);
 	else previewLogger.debug(event);
-}
-
-function shouldAssignBrowserVoice(voice: Pick<SpeechSynthesisVoice, "default">): boolean {
-	return !voice.default;
 }
 
 function isRecommendedBrowserVoice(voice: DemoVoice, contentLanguage?: string): boolean {
@@ -1095,19 +1095,6 @@ function browserVoiceIdentity(voice: DemoVoice): string {
 		previewTrackLength = 0;
 	}
 
-	function tokenizePreviewText(text: string): Array<{ start: number; end: number }> {
-		const tokens: Array<{ start: number; end: number }> = [];
-		const matcher = /\S+/g;
-		let match: RegExpExecArray | null;
-		while ((match = matcher.exec(text)) !== null) {
-			tokens.push({
-				start: match.index,
-				end: match.index + match[0].length
-			});
-		}
-		return tokens;
-	}
-
 	function getTrackingSegments(text: string): Array<{ text: string; active: boolean }> {
 		const safeText = typeof text === "string" ? text : "";
 		if (!safeText.length) return [{ text: "", active: false }];
@@ -1213,18 +1200,8 @@ function browserVoiceIdentity(voice: DemoVoice): string {
 		clearPreviewTracking();
 		previewError = null;
 		previewNote = null;
-		const browserPreviewUtterance = currentBrowserPreviewUtterance;
-		cleanupBrowserPreviewPlayback?.();
-		cleanupBrowserPreviewPlayback = null;
-		if (
-			browserPreviewUtterance &&
-			typeof window !== "undefined" &&
-			"speechSynthesis" in window
-		) {
-			debugPreview("browser:cancel");
-			window.speechSynthesis.cancel();
-		}
-		currentBrowserPreviewUtterance = null;
+		browserPreviewService?.stop();
+		releaseBrowserPreview();
 		if (currentPreviewAudio) {
 			currentPreviewAudio.pause();
 			currentPreviewAudio.src = "";
@@ -1459,6 +1436,37 @@ function normalizePreviewSpeechMarkOffsets(
 		currentPreviewAudio = null;
 	}
 
+	function releaseBrowserPreview() {
+		browserPreviewService?.dispose();
+		browserPreviewService = null;
+		browserPreviewHost?.remove();
+		browserPreviewHost = null;
+	}
+
+	// The preview's word highlight is the tracked span of the preview text.
+	function trackPreviewWords(): Parameters<TTSService["setHighlightCoordinator"]>[0] {
+		const ignore = () => {};
+		return {
+			highlightTTSWord: (ranges: Range[]) => {
+				const range = ranges[0];
+				if (!range) return;
+				previewTrackIndex = range.startOffset;
+				previewTrackLength = Math.max(1, range.endOffset - range.startOffset);
+			},
+			highlightTTSWordElement: ignore,
+			highlightTTSSentence: ignore,
+			highlightTTSSentenceElements: ignore,
+			highlightRange: ignore,
+			clearTTS: ignore,
+			clearHighlights: ignore,
+		} as unknown as Parameters<TTSService["setHighlightCoordinator"]>[0];
+	}
+
+	/**
+	 * Reads the preview text with the draft browser voice through a TTS service
+	 * of its own. The browser has one speech queue, so the toolkit's read stops
+	 * first through its own service.
+	 */
 	async function previewBrowserVoice() {
 		if (typeof window === "undefined" || !("speechSynthesis" in window)) {
 			throw new Error(interfaceI18n.t("debug.tts.browserSynthesisUnavailable"));
@@ -1466,138 +1474,36 @@ function normalizePreviewSpeechMarkOffsets(
 		if (previewMode === "ssml") {
 			throw new Error("SSML preview is not supported in the Browser backend.");
 		}
-		// Keep the speak path minimal. Calling speechSynthesis.cancel()/resume()
-		// around speak() wedges Chrome's engine (speaking=true, no events, no
-		// audio) until the browser is restarted; see the Chromium speech-synthesis
-		// bug reports. The reliable pattern is a plain speak() driven purely by the
-		// utterance lifecycle events, with a persistent reference to the utterance
-		// so it is not garbage-collected before onend fires.
-		const synth = window.speechSynthesis;
-		const voices = synth.getVoices();
-		const resolvedVoice = findBrowserVoice(voices, browserVoice || undefined, contentLanguage);
-		if (browserVoice && !resolvedVoice) {
-			throw new Error(
-				`Configured browser voice "${browserVoice}" is unavailable. Select a voice exposed by this browser.`
-			);
-		}
-		// Do not publish an owned utterance until all pre-queue validation succeeds.
-		// That keeps Stop/error cleanup from canceling an utterance that was never
-		// handed to the native engine.
-		const utterance = new SpeechSynthesisUtterance(previewText.trim() || getSampleText("browser"));
-		currentBrowserPreviewUtterance = utterance;
-		cleanupBrowserPreviewPlayback = null;
-		utterance.rate = normalizeRate(browserRate);
-		utterance.pitch = normalizePitch(browserPitch);
-		// Chrome already selects its browser-default voice when this stays null.
-		// Assign the resolved voice only when it is not that native default.
-		if (resolvedVoice && shouldAssignBrowserVoice(resolvedVoice)) {
-			utterance.voice = resolvedVoice;
-		}
-		const tokens = tokenizePreviewText(previewText);
-		debugPreview("browser:prepare", {
-			textLength: utterance.text.length,
-			rate: utterance.rate,
-			pitch: utterance.pitch,
-			voice: browserVoice || "(default)",
-			selectedVoice: resolvedVoice?.name || "(none)",
-			selectedVoiceAssigned: utterance.voice !== null,
-			availableVoices: voices.length
+		toolkitCoordinator?.ttsService?.stop?.();
+		const service = new TTSService();
+		const host = document.createElement("div");
+		host.setAttribute("style", "position:fixed;left:-10000px;top:0;width:20em;");
+		host.textContent = previewText.trim() ? previewText : getSampleText("browser");
+		document.body.append(host);
+		browserPreviewService = service;
+		browserPreviewHost = host;
+		service.setHighlightCoordinator(trackPreviewWords());
+		// Playback start highlights the first word, ahead of its first boundary.
+		service.onStateChange("tts-settings-preview", (state) => {
+			if (state !== PlaybackState.PLAYING || previewTrackIndex >= 0) return;
+			const firstWord = /\S+/.exec(host.textContent || "");
+			if (!firstWord) return;
+			previewTrackIndex = firstWord.index;
+			previewTrackLength = firstWord[0].length;
 		});
-		await new Promise<void>((resolve, reject) => {
-			let didStart = false;
-			let settled = false;
-			let startTimeout: number | null = null;
-			let cleanup: (() => void) | null = null;
-			const finish = (callback: () => void) => {
-				if (settled) return;
-				settled = true;
-				if (startTimeout !== null) {
-					window.clearTimeout(startTimeout);
-					startTimeout = null;
-				}
-				utterance.onstart = null;
-				utterance.onboundary = null;
-				utterance.onend = null;
-				utterance.onerror = null;
-				if (cleanupBrowserPreviewPlayback === cleanup) {
-					cleanupBrowserPreviewPlayback = null;
-				}
-				if (currentBrowserPreviewUtterance === utterance) {
-					currentBrowserPreviewUtterance = null;
-				}
-				callback();
-			};
-			cleanup = () => finish(resolve);
-			cleanupBrowserPreviewPlayback = cleanup;
-			utterance.onstart = () => {
-				didStart = true;
-				if (startTimeout !== null) {
-					window.clearTimeout(startTimeout);
-					startTimeout = null;
-				}
-				debugPreview("browser:start");
-				const firstToken = tokens[0];
-				if (!firstToken) return;
-				previewTrackIndex = firstToken.start;
-				previewTrackLength = Math.max(1, firstToken.end - firstToken.start);
-			};
-			utterance.onboundary = (event) => {
-				if ((event as any).name !== "word") return;
-				const charIndex = Number((event as any).charIndex || 0);
-				const token = tokens.find(
-					(entry) => charIndex >= entry.start && charIndex < entry.end
-				);
-				if (token) {
-					previewTrackIndex = token.start;
-					previewTrackLength = Math.max(1, token.end - token.start);
-				}
-			};
-			utterance.onend = () => {
-				debugPreview("browser:end");
-				if (!didStart) {
-					finish(() =>
-						reject(
-							new Error(
-								interfaceI18n.t("debug.tts.browserSynthesisEndedEarly")
-							)
-						)
-					);
-					return;
-				}
-				finish(resolve);
-			};
-			utterance.onerror = (event) => {
-				const errorName = String((event as any)?.error || "");
-				debugPreview("browser:error", { error: errorName || "unknown" });
-				if (errorName === "interrupted" || errorName === "canceled") {
-					finish(resolve);
-					return;
-				}
-				finish(() => reject(new Error(interfaceI18n.t("debug.tts.browserPreviewFailed"))));
-			};
-			startTimeout = window.setTimeout(() => {
-				finish(() =>
-					reject(
-						new Error(
-							`Browser speech synthesis did not start within ${BROWSER_PREVIEW_START_TIMEOUT_MS / 1_000} seconds. Restart the browser and try again.`
-						)
-					)
-				);
-				synth.cancel();
-			}, BROWSER_PREVIEW_START_TIMEOUT_MS);
-			debugPreview("browser:speak");
-			try {
-				synth.speak(utterance);
-			} catch (error) {
-				finish(() =>
-					reject(
-						error instanceof Error
-							? error
-							: new Error(interfaceI18n.t("debug.tts.browserSynthesisQueueFailed"))
-					)
-				);
-			}
-		});
+		try {
+			await service.initialize(new BrowserTTSProvider(), {
+				voice: browserVoice || undefined,
+				rate: normalizeRate(browserRate),
+				pitch: normalizePitch(browserPitch),
+				// The browser provider reports word boundaries only in word mode.
+				providerOptions: { highlightMode: "word" },
+			});
+			debugPreview("browser:speak", { voice: browserVoice || "(default)" });
+			await service.speak(host, { language: contentLanguage });
+		} finally {
+			if (browserPreviewService === service) releaseBrowserPreview();
+		}
 	}
 
 	async function previewSelectedVoice() {
@@ -1624,7 +1530,7 @@ function normalizePreviewSpeechMarkOffsets(
 			previewError = interfaceI18n.t("debug.tts.ssmlPreviewUnsupported");
 			return;
 		}
-		if (isPreviewing || previewBackend || currentPreviewAudio || currentBrowserPreviewUtterance) {
+		if (isPreviewing || previewBackend || currentPreviewAudio || browserPreviewService) {
 			stopPreview();
 		} else {
 			clearPreviewTracking();
@@ -1685,6 +1591,54 @@ function normalizePreviewSpeechMarkOffsets(
 		}
 	}
 
+	// An apply replaces every backend field, because the coordinator merges a
+	// config update shallowly over the one in place.
+	const BACKEND_CONFIG_FIELDS = {
+		serverProvider: undefined,
+		provider: undefined,
+		apiEndpoint: undefined,
+		transportMode: undefined,
+		endpointMode: undefined,
+		endpointValidationMode: undefined,
+		includeAuthOnAssetFetch: undefined,
+		validateEndpoint: undefined,
+		cache: undefined,
+		speedRate: undefined,
+		lang_id: undefined,
+		language: undefined,
+		defaultVoice: undefined,
+		rate: undefined,
+		pitch: undefined,
+		engine: undefined,
+		sampleRate: undefined,
+		format: undefined,
+		speechMarksMode: undefined,
+		googleVoiceType: undefined,
+		googleGender: undefined,
+	};
+	const BACKEND_PROVIDER_OPTIONS = [
+		"engine",
+		"sampleRate",
+		"format",
+		"speechMarkTypes",
+		"cache",
+		"speedRate",
+		"lang_id",
+	];
+
+	/** The applied provider options a backend does not own, plus `own`. */
+	function backendProviderOptions(
+		own: Record<string, unknown> = {}
+	): Record<string, unknown> {
+		const current = toolkitCoordinator?.getToolConfig?.("textToSpeech")?.providerOptions;
+		const shared = Object.fromEntries(
+			Object.entries(current && typeof current === "object" ? current : {}).filter(
+				([key]) => !BACKEND_PROVIDER_OPTIONS.includes(key)
+			)
+		);
+		return { ...shared, ...own };
+	}
+
 	async function applySettings() {
 		applyMessage = null;
 		applyError = null;
@@ -1715,9 +1669,14 @@ function normalizePreviewSpeechMarkOffsets(
 						`Custom provider '${provider.id}' did not return apply config.`
 					);
 				}
+				const customConfig = next.config as Record<string, unknown>;
 				toolkitCoordinator.updateToolConfig("textToSpeech", {
 					enabled: true,
-					...next.config,
+					...BACKEND_CONFIG_FIELDS,
+					...customConfig,
+					providerOptions: backendProviderOptions(
+						customConfig.providerOptions as Record<string, unknown> | undefined
+					),
 					layoutMode,
 					speedOptions: appliedSpeedOptions,
 					mathTokenHighlighting,
@@ -1732,17 +1691,9 @@ function normalizePreviewSpeechMarkOffsets(
 				applyMessage = next.message || `Applied ${provider.label} TTS settings.`;
 			} else if (activeTab === "browser") {
 				const next = {
+					...BACKEND_CONFIG_FIELDS,
 					backend: "browser" as const,
-					serverProvider: undefined,
-					provider: undefined,
-					apiEndpoint: undefined,
-					endpointMode: undefined,
-					endpointValidationMode: undefined,
-					includeAuthOnAssetFetch: undefined,
-					validateEndpoint: undefined,
-					cache: undefined,
-					speedRate: undefined,
-					lang_id: undefined,
+					providerOptions: backendProviderOptions(),
 					defaultVoice: resolveVoiceForBackend("browser"),
 					rate: normalizeRate(browserRate),
 					pitch: normalizePitch(browserPitch),
@@ -1755,9 +1706,16 @@ function normalizePreviewSpeechMarkOffsets(
 					enabled: true,
 					...next
 				});
-				persistSettings(next);
+				persistSettings({ ...next, providerOptions: undefined });
 			} else if (activeTab === "polly") {
+				const pollyProviderOptions = {
+					engine: pollyEngine,
+					sampleRate: normalizePollySampleRate(pollySampleRate),
+					format: pollyFormat,
+					speechMarkTypes: getPollySpeechMarkTypes()
+				};
 				const next = {
+					...BACKEND_CONFIG_FIELDS,
 					backend: "polly" as const,
 					serverProvider: "polly" as const,
 					apiEndpoint: normalizeApiEndpoint(pollyApiEndpoint, getDefaultApiEndpoint()),
@@ -1771,12 +1729,7 @@ function normalizePreviewSpeechMarkOffsets(
 					sampleRate: normalizePollySampleRate(pollySampleRate),
 					format: pollyFormat,
 					speechMarksMode: pollySpeechMarksMode,
-					providerOptions: {
-						engine: pollyEngine,
-						sampleRate: normalizePollySampleRate(pollySampleRate),
-						format: pollyFormat,
-						speechMarkTypes: getPollySpeechMarkTypes()
-					},
+					providerOptions: backendProviderOptions(pollyProviderOptions),
 					layoutMode,
 					speedOptions: appliedSpeedOptions,
 					mathTokenHighlighting,
@@ -1785,10 +1738,12 @@ function normalizePreviewSpeechMarkOffsets(
 					enabled: true,
 					...next
 				});
-				persistSettings(next);
+				persistSettings({ ...next, providerOptions: pollyProviderOptions });
 			} else {
 				const next = {
+					...BACKEND_CONFIG_FIELDS,
 					backend: "google" as const,
+					providerOptions: backendProviderOptions(),
 					serverProvider: "google" as const,
 					apiEndpoint: normalizeApiEndpoint(googleApiEndpoint, getDefaultApiEndpoint()),
 					transportMode: "pie" as const,
@@ -1807,7 +1762,7 @@ function normalizePreviewSpeechMarkOffsets(
 					enabled: true,
 					...next
 				});
-				persistSettings(next);
+				persistSettings({ ...next, providerOptions: undefined });
 			}
 			await toolkitCoordinator?.ensureTTSReady?.(
 				toolkitCoordinator?.getToolConfig?.("textToSpeech"),

@@ -226,7 +226,7 @@ export class PollyServerProvider extends BaseTTSProvider {
 		const capabilities = this.getCapabilities();
 		this.validateRequest(request, capabilities);
 
-		const voice = request.voice || this.defaultVoice;
+		const voice = await this.resolveRequestVoice(request, this.defaultVoice);
 		const startTime = Date.now();
 
 		try {

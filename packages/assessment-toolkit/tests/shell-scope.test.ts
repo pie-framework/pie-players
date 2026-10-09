@@ -63,14 +63,22 @@ afterEach(() => {
 	for (const stop of runtimes.splice(0)) stop();
 });
 
-const runtimeValue = (runtimeId: string, coordinator: unknown = {}) =>
-	({ runtimeId, coordinator }) as unknown as AssessmentToolkitHostRuntimeContext;
+const runtimeValue = (
+	runtimeId: string,
+	coordinator: unknown = {},
+	eventTarget: EventTarget = document.body,
+) =>
+	({
+		runtimeId,
+		coordinator,
+		eventTarget,
+	}) as unknown as AssessmentToolkitHostRuntimeContext;
 
 /** A toolkit on `node`, providing its host runtime context as the toolkit does. */
 const provideRuntime = (node: HTMLElement, runtimeId = "runtime-1") => {
 	const provider = new ContextProvider(node, {
 		context: assessmentToolkitHostRuntimeContext,
-		initialValue: runtimeValue(runtimeId),
+		initialValue: runtimeValue(runtimeId, {}, node),
 	});
 	provider.connect();
 	runtimes.push(() => provider.disconnect());
@@ -385,6 +393,23 @@ describe("createShellScope", () => {
 			step: 3,
 			runtimeId: "runtime-1",
 		});
+	});
+
+	test("reaches its runtime on the runtime's element once its host has left the document", () => {
+		const { runtimeNode, host, registrations, scope } = setup();
+		const sessions = received(runtimeNode, "pie-item-session-changed");
+		scope.publish({ host, ...q1 });
+		host.remove();
+
+		scope.send("pie-item-session-changed", { itemId: "q1", final: true });
+		scope.retire();
+		expect(sessions).toEqual([
+			{ itemId: "q1", final: true, runtimeId: "runtime-1" },
+		]);
+		expect(steps(registrations)).toEqual([
+			[PIE_REGISTER_EVENT, "q1", "runtime-1"],
+			[PIE_UNREGISTER_EVENT, "q1", "runtime-1"],
+		]);
 	});
 
 	test("holds the newest fifty events it sends before a runtime answers", () => {

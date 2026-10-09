@@ -189,6 +189,7 @@ async function installSilentAudio(page: Page): Promise<void> {
 			playbackRate = 1;
 			paused = true;
 			onplay: ((event: Event) => void) | null = null;
+			onplaying: ((event: Event) => void) | null = null;
 			onended: ((event: Event) => void) | null = null;
 			onerror: ((event: Event) => void) | null = null;
 			onpause: ((event: Event) => void) | null = null;
@@ -199,6 +200,7 @@ async function installSilentAudio(page: Page): Promise<void> {
 				this.paused = false;
 				try {
 					this.onplay?.(new Event("play"));
+					this.onplaying?.(new Event("playing"));
 				} catch {
 					/* ignore */
 				}
@@ -302,6 +304,7 @@ async function installAdvancingAudio(page: Page): Promise<void> {
 			private frozen = 0;
 			private endTimer: number | null = null;
 			onplay: ((event: Event) => void) | null = null;
+			onplaying: ((event: Event) => void) | null = null;
 			onended: ((event: Event) => void) | null = null;
 			onerror: ((event: Event) => void) | null = null;
 			onpause: ((event: Event) => void) | null = null;
@@ -320,6 +323,7 @@ async function installAdvancingAudio(page: Page): Promise<void> {
 				this.startedAt = performance.now();
 				try {
 					this.onplay?.(new Event("play"));
+					this.onplaying?.(new Event("playing"));
 				} catch {
 					/* ignore */
 				}

@@ -41,6 +41,7 @@ import { ElementToolStateStore } from "./ElementToolStateStore.js";
 import {
 	frameworkErrorFromCoordinatorContext,
 	type FrameworkErrorModel,
+	type FrameworkErrorScope,
 } from "./framework-error.js";
 import {
 	FrameworkErrorBus,
@@ -83,6 +84,7 @@ import {
 	type ToolPolicyChangeListener,
 	type ToolPolicyDecision,
 	type ToolPolicyDecisionRequest,
+	type ToolPolicyDiagnostic,
 	type ToolScope,
 } from "../policy/engine.js";
 import type {
@@ -755,10 +757,11 @@ export class ToolkitCoordinator {
 	private pnpEnforcementOverride: PnpEnforcementMode | null = null;
 
 	/**
-	 * Tool and item pairs already warned about as
-	 * `tool-policy.itemSettingNotApplied`; see {@link decideToolPolicy}.
+	 * Policy diagnostics already logged, keyed by code, tool id and, for
+	 * `tool-policy.itemSettingNotApplied`, item id; see
+	 * {@link warnPolicyDiagnostics}.
 	 */
-	private readonly warnedItemSettingsNotApplied = new Set<string>();
+	private readonly warnedPolicyDiagnostics = new Set<string>();
 
 	/**
 	 * Whether {@link decideFeaturePolicy} has already reported serving a decision
@@ -956,7 +959,7 @@ export class ToolkitCoordinator {
 			void this.waitUntilReady().catch((err) => {
 				if (err instanceof ToolkitCoordinatorDisposedError) return;
 				console.error("[ToolkitCoordinator] Failed eager initialization:", err);
-				this.handleError(err, { phase: "coordinator-ready" });
+				this.handleError(err, { phase: "coordinator-ready", recoverable: false });
 			});
 		}
 	}
@@ -1051,11 +1054,20 @@ export class ToolkitCoordinator {
 		}
 	}
 
-	private handleError(error: unknown, context: ToolkitErrorContext): void {
+	/**
+	 * Every report site states whether the coordinator carries on after the
+	 * failure; one that takes down only its section passes `scope: "cohort"`.
+	 */
+	private handleError(
+		error: unknown,
+		context: ToolkitErrorContext & { recoverable: boolean },
+		scope: FrameworkErrorScope = "runtime",
+	): void {
 		const model = frameworkErrorFromCoordinatorContext({
 			error,
 			context,
 			recoverable: context.recoverable,
+			scope,
 		});
 		this.frameworkErrorBus.reportFrameworkError(model);
 	}
@@ -1244,7 +1256,7 @@ export class ToolkitCoordinator {
 		this.elementToolStateStore.setOnStateChange((state) => {
 			if (!this.hooks.saveToolState) return;
 			void Promise.resolve(this.hooks.saveToolState(state)).catch((err) => {
-				this.handleError(err, { phase: "state-save" });
+				this.handleError(err, { phase: "state-save", recoverable: true });
 			});
 		});
 	}
@@ -1271,7 +1283,7 @@ export class ToolkitCoordinator {
 			} catch (err) {
 				if (err instanceof ToolkitCoordinatorDisposedError) throw err;
 				this.stateLoadSettled = true;
-				this.handleError(err, { phase: "state-load" });
+				this.handleError(err, { phase: "state-load", recoverable: true });
 			}
 		})().finally(() => {
 			this.stateLoadPromise = undefined;
@@ -1476,13 +1488,16 @@ export class ToolkitCoordinator {
 		}
 	}
 
-	/** A console warning and a `provider-register` framework error. */
+	/**
+	 * A console warning and a `provider-register` framework error, under the
+	 * start-failure policy every other tool failure follows.
+	 */
 	private reportProviderRegisterFailure(err: unknown, toolId: string): void {
 		console.warn(
 			`[ToolkitCoordinator] Failed to register the provider of tool "${toolId}":`,
 			err,
 		);
-		this.handleError(err, { phase: "provider-register", toolId });
+		this.reportToolFailure(err, { phase: "provider-register", toolId }, [toolId]);
 	}
 
 	public async ensureProviderReady(toolId: string): Promise<ToolProviderApi> {
@@ -1550,7 +1565,7 @@ export class ToolkitCoordinator {
 			this.isReady()
 		) {
 			void Promise.resolve(hooks.onCoordinatorReady(this)).catch((err) => {
-				this.handleError(err, { phase: "coordinator-ready" });
+				this.handleError(err, { phase: "coordinator-ready", recoverable: false });
 			});
 		}
 	}
@@ -2175,6 +2190,7 @@ export class ToolkitCoordinator {
 					sectionId: args.key.sectionId,
 					attemptId: args.key.attemptId,
 				},
+				recoverable: true,
 			});
 		} finally {
 			if (
@@ -2240,13 +2256,18 @@ export class ToolkitCoordinator {
 		) {
 			return;
 		}
-		this.handleError(err, {
-			phase: "section-controller-init",
-			details: {
-				sectionId: args.sectionId,
-				attemptId: args.attemptId,
+		this.handleError(
+			err,
+			{
+				phase: "section-controller-init",
+				details: {
+					sectionId: args.sectionId,
+					attemptId: args.attemptId,
+				},
+				recoverable: false,
 			},
-		});
+			"cohort",
+		);
 	}
 
 	/**
@@ -2388,6 +2409,7 @@ export class ToolkitCoordinator {
 					sectionId: args.args.sectionId,
 					attemptId: args.args.attemptId,
 				},
+				recoverable: true,
 			});
 		} finally {
 			await this.finalizeSectionControllerDispose({
@@ -2998,10 +3020,8 @@ export class ToolkitCoordinator {
 				toolRegistry: this.toolRegistry,
 			},
 		);
-		// M8 PR 2 — keep the policy engine's tools input in lockstep
-		// with the validated coordinator config. The engine emits an
-		// `inputs` change event so subscribers (e.g. PR 3 toolbars) can
-		// re-decide without us managing a parallel pub/sub.
+		// The engine's tools input follows the validated config; its `inputs`
+		// change event is what makes toolbars re-decide.
 		this.policyEngine.updateInputs({
 			tools: this.config.tools as CanonicalToolsConfig,
 		});
@@ -3058,22 +3078,33 @@ export class ToolkitCoordinator {
 	/**
 	 * Resolve the visible tool set for a given placement level + scope.
 	 *
-	 * Delegates to the owned tool-policy engine, and warns once per tool and
-	 * item when a section- or assessment-level toolbar carries a tool an item's
-	 * settings restrict or require (`tool-policy.itemSettingNotApplied`): those
-	 * settings govern only the item's own toolbar.
+	 * Delegates to the owned tool-policy engine and logs the decision's
+	 * diagnostics through {@link warnPolicyDiagnostics}.
 	 */
 	decideToolPolicy(request: ToolPolicyDecisionRequest): ToolPolicyDecision {
 		const decision = this.policyEngine.decide(request);
-		for (const diagnostic of decision.diagnostics) {
-			if (diagnostic.code !== "tool-policy.itemSettingNotApplied") continue;
-			const { itemId } = diagnostic.details as ItemSettingNotAppliedDetails;
-			const key = `${diagnostic.toolId}\0${itemId}`;
-			if (this.warnedItemSettingsNotApplied.has(key)) continue;
-			this.warnedItemSettingsNotApplied.add(key);
+		this.warnPolicyDiagnostics(decision.diagnostics);
+		return decision;
+	}
+
+	/**
+	 * Log each policy diagnostic as a console warning, once per code and tool
+	 * id, and per item for `tool-policy.itemSettingNotApplied`. Decisions re-run
+	 * on every input change, so a conflict would otherwise repeat on each.
+	 */
+	private warnPolicyDiagnostics(
+		diagnostics: readonly ToolPolicyDiagnostic[],
+	): void {
+		for (const diagnostic of diagnostics) {
+			const itemId =
+				diagnostic.code === "tool-policy.itemSettingNotApplied"
+					? (diagnostic.details as ItemSettingNotAppliedDetails).itemId
+					: "";
+			const key = `${diagnostic.code}\0${diagnostic.toolId}\0${itemId}`;
+			if (this.warnedPolicyDiagnostics.has(key)) continue;
+			this.warnedPolicyDiagnostics.add(key);
 			console.warn(`[ToolkitCoordinator] ${diagnostic.message}`);
 		}
-		return decision;
 	}
 
 	/**
@@ -3114,6 +3145,7 @@ export class ToolkitCoordinator {
 		scope?: ToolScope,
 	): FeaturePolicyDecision {
 		const decision = this.policyEngine.decideFeature(featureId, scope);
+		this.warnPolicyDiagnostics(decision.diagnostics);
 		const unboundIsMisconfigured =
 			this.config.assessmentOptional !== true ||
 			this.pnpEnforcementOverride === "on";

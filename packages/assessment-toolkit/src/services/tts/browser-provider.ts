@@ -20,7 +20,7 @@ import type {
 	TTSSpeechSegment,
 } from "@pie-players/pie-tts";
 import type { ToolkitTTSConfig } from "./provider-options.js";
-import { extractSpokenText } from "./ssml/spoken-text.js";
+import { extractSpokenText, isSsmlDocument } from "./ssml/spoken-text.js";
 import { segmentSentences as segmentTextToSentences } from "./text-segmentation.js";
 
 const logger = createPieLogger("browser-tts-provider", isTtsDebugEnabled);
@@ -67,8 +67,6 @@ export const browserFallbackConfig = (
 	return fallback;
 };
 
-const SSML_DOCUMENT = /^\s*<speak[\s/>]/i;
-
 /**
  * The Web Speech API reads SSML tags aloud, so a `<speak>` document is voiced
  * as its spoken text. Boundary offsets still index the text as sent: that is
@@ -77,7 +75,7 @@ const SSML_DOCUMENT = /^\s*<speak[\s/>]/i;
 const toUtteranceText = (
 	text: string,
 ): { text: string; sourceOffset: (offset: number) => number } => {
-	if (!SSML_DOCUMENT.test(text)) {
+	if (!isSsmlDocument(text)) {
 		return { text, sourceOffset: (offset) => offset };
 	}
 	const { spokenText, rawToSpokenOffsetMap } = extractSpokenText(text);
@@ -174,6 +172,63 @@ export const findBrowserVoice = <Voice extends BrowserVoiceTraits>(
 	return voices[0] || null;
 };
 
+/**
+ * Waits for `synth` to publish its voice inventory, which browsers fill
+ * asynchronously after page load. Resolves `true` once `getVoices()` is
+ * non-empty, at once when it already is; `false` after `timeoutMs`, once
+ * `isCurrent` reports the wait superseded, or when `synth` offers no
+ * `voiceschanged` channel to wait on. A previous `onvoiceschanged` handler
+ * keeps running and is restored afterwards.
+ */
+export const waitForBrowserVoices = (
+	synth: SpeechSynthesis,
+	timeoutMs: number,
+	isCurrent: () => boolean = () => true,
+): Promise<boolean> => {
+	if (synth.getVoices().length > 0) return Promise.resolve(true);
+	const canUseEventTarget =
+		typeof synth.addEventListener === "function" &&
+		typeof synth.removeEventListener === "function";
+	if (!canUseEventTarget && !("onvoiceschanged" in synth)) {
+		return Promise.resolve(false);
+	}
+	return new Promise((resolve) => {
+		const previousHandler = canUseEventTarget ? null : synth.onvoiceschanged;
+		let settled = false;
+		const finish = (voicesAvailable: boolean) => {
+			if (settled) return;
+			settled = true;
+			clearTimeout(timeout);
+			if (canUseEventTarget) {
+				synth.removeEventListener("voiceschanged", onVoicesChanged);
+			} else if (synth.onvoiceschanged === propertyHandler) {
+				synth.onvoiceschanged = previousHandler;
+			}
+			resolve(voicesAvailable);
+		};
+		const inspectVoiceInventory = () => {
+			if (!isCurrent()) finish(false);
+			else if (synth.getVoices().length > 0) finish(true);
+		};
+		const onVoicesChanged = () => inspectVoiceInventory();
+		const propertyHandler = (event: Event) => {
+			try {
+				previousHandler?.call(synth, event);
+			} finally {
+				inspectVoiceInventory();
+			}
+		};
+		const timeout = setTimeout(() => finish(false), timeoutMs);
+		if (canUseEventTarget) {
+			synth.addEventListener("voiceschanged", onVoicesChanged);
+		} else {
+			synth.onvoiceschanged = propertyHandler;
+		}
+		// Close the getVoices()/listener-registration race without polling.
+		inspectVoiceInventory();
+	});
+};
+
 const shouldAssignBrowserVoice = (voice: SpeechSynthesisVoice): boolean =>
 	!voice.default;
 
@@ -198,6 +253,10 @@ export class BrowserTTSProvider implements ITTSProvider {
 			throw new Error("Browser does not support Speech Synthesis API");
 		}
 
+		await waitForBrowserVoices(
+			window.speechSynthesis,
+			VOICE_INVENTORY_TIMEOUT_MS,
+		);
 		return new BrowserTTSProviderImpl(config);
 	}
 
@@ -256,7 +315,6 @@ class BrowserTTSProviderImpl implements ITTSProviderImplementation {
 	// The run speaking now, between its utterances as well as during them.
 	private activeRunId: number | null = null;
 	private releasePauseHold: (() => void) | null = null;
-	private settlePendingVoiceWait: (() => void) | null = null;
 	private settlePendingChunk: (() => void) | null = null;
 	private settlePendingGap: (() => void) | null = null;
 	onPlaybackStart: (() => void) | undefined = undefined;
@@ -281,106 +339,16 @@ class BrowserTTSProviderImpl implements ITTSProviderImplementation {
 		release?.();
 	}
 
-	private waitForBrowserVoices(
-		runId: number,
-		configuredVoice: string,
-	): Promise<boolean> {
-		return new Promise((resolve, reject) => {
-			const synth = speechSynthesis;
-			const canUseEventTarget =
-				typeof synth.addEventListener === "function" &&
-				typeof synth.removeEventListener === "function";
-			const previousHandler = canUseEventTarget ? null : synth.onvoiceschanged;
-			let settled = false;
-			let timeout: ReturnType<typeof setTimeout> | null = null;
-			let pendingSettlement: (() => void) | null = null;
-
-			const cleanup = () => {
-				if (timeout !== null) {
-					clearTimeout(timeout);
-					timeout = null;
-				}
-				if (canUseEventTarget) {
-					synth.removeEventListener("voiceschanged", onVoicesChanged);
-				} else if (synth.onvoiceschanged === propertyHandler) {
-					synth.onvoiceschanged = previousHandler;
-				}
-				if (
-					pendingSettlement &&
-					this.settlePendingVoiceWait === pendingSettlement
-				) {
-					this.settlePendingVoiceWait = null;
-				}
-			};
-			const finish = (voicesAvailable: boolean, error?: Error) => {
-				if (settled) return;
-				settled = true;
-				cleanup();
-				if (error) {
-					reject(error);
-				} else {
-					resolve(voicesAvailable);
-				}
-			};
-			const inspectVoiceInventory = () => {
-				if (runId !== this.speakRunId) {
-					finish(false);
-					return;
-				}
-				if (synth.getVoices().length > 0) finish(true);
-			};
-			const onVoicesChanged = () => inspectVoiceInventory();
-			const propertyHandler = (event: Event) => {
-				try {
-					previousHandler?.call(synth, event);
-				} finally {
-					inspectVoiceInventory();
-				}
-			};
-
-			pendingSettlement = () => finish(false);
-			this.settlePendingVoiceWait = pendingSettlement;
-			timeout = setTimeout(
-				() =>
-					finish(
-						false,
-						new Error(
-							`Configured browser voice "${configuredVoice}" could not be resolved because the browser did not publish its voice inventory within ${VOICE_INVENTORY_TIMEOUT_MS / 1_000} seconds.`,
-						),
-					),
-				VOICE_INVENTORY_TIMEOUT_MS,
-			);
-			if (canUseEventTarget) {
-				synth.addEventListener("voiceschanged", onVoicesChanged);
-			} else {
-				synth.onvoiceschanged = propertyHandler;
-			}
-			// Close the getVoices()/listener-registration race without polling.
-			inspectVoiceInventory();
-		});
-	}
-
-	private async resolveBrowserVoice(runId: number): Promise<{
-		shouldContinue: boolean;
-		voice: SpeechSynthesisVoice | null;
-	}> {
+	/** The voice to read with; `initialize()` already waited for the inventory. */
+	private resolveBrowserVoice(): SpeechSynthesisVoice | null {
 		const configuredVoice =
 			typeof this.config?.voice === "string" ? this.config.voice.trim() : "";
-		let voices = speechSynthesis.getVoices();
+		const voices = speechSynthesis.getVoices();
 		if (configuredVoice && voices.length === 0) {
-			const voicesAvailable = await this.waitForBrowserVoices(
-				runId,
-				configuredVoice,
+			throw new Error(
+				`Configured browser voice "${configuredVoice}" could not be resolved because the browser did not publish its voice inventory within ${VOICE_INVENTORY_TIMEOUT_MS / 1_000} seconds.`,
 			);
-			if (!voicesAvailable || runId !== this.speakRunId) {
-				return { shouldContinue: false, voice: null };
-			}
-			voices = speechSynthesis.getVoices();
 		}
-		if (runId !== this.speakRunId) {
-			return { shouldContinue: false, voice: null };
-		}
-
 		const voice = findBrowserVoice(
 			voices,
 			configuredVoice || undefined,
@@ -391,7 +359,7 @@ class BrowserTTSProviderImpl implements ITTSProviderImplementation {
 				`Configured browser voice "${configuredVoice}" is unavailable. Select a voice exposed by this browser using its voiceURI or name.`,
 			);
 		}
-		return { shouldContinue: true, voice };
+		return voice;
 	}
 
 	async speak(text: string): Promise<void> {
@@ -403,8 +371,7 @@ class BrowserTTSProviderImpl implements ITTSProviderImplementation {
 		const runId = this.speakRunId;
 		this.activeRunId = runId;
 		try {
-			const voiceResolution = await this.resolveBrowserVoice(runId);
-			if (!voiceResolution.shouldContinue) return;
+			const voice = this.resolveBrowserVoice();
 
 			const utterance = toUtteranceText(text);
 			const chunks = this.splitIntoChunks(utterance.text);
@@ -414,7 +381,7 @@ class BrowserTTSProviderImpl implements ITTSProviderImplementation {
 					chunk.text,
 					chunk.offset,
 					runId,
-					voiceResolution.voice,
+					voice,
 					utterance.sourceOffset,
 				);
 				if (!shouldContinue) {
@@ -434,8 +401,7 @@ class BrowserTTSProviderImpl implements ITTSProviderImplementation {
 		const runId = this.speakRunId;
 		this.activeRunId = runId;
 		try {
-			const voiceResolution = await this.resolveBrowserVoice(runId);
-			if (!voiceResolution.shouldContinue) return;
+			const voice = this.resolveBrowserVoice();
 			for (const segment of segments) {
 				if (runId !== this.speakRunId) break;
 				const utterance = toUtteranceText(segment.text);
@@ -446,7 +412,7 @@ class BrowserTTSProviderImpl implements ITTSProviderImplementation {
 						chunk.text,
 						chunk.offset,
 						runId,
-						voiceResolution.voice,
+						voice,
 						(offset) => segment.startOffset + utterance.sourceOffset(offset),
 					);
 					if (!shouldContinue) break;
@@ -792,7 +758,6 @@ class BrowserTTSProviderImpl implements ITTSProviderImplementation {
 		const shouldCancel = this._isPlaying || utterance !== null;
 		this.speakRunId += 1;
 		this.activeRunId = null;
-		this.settlePendingVoiceWait?.();
 		this.settlePendingChunk?.();
 		this.settlePendingGap?.();
 		if (shouldCancel) {

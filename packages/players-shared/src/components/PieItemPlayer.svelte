@@ -961,6 +961,12 @@
 
         // Note: Resource monitor starts automatically via useResourceMonitor when rootElement is set
 
+        // Hosts reveal the item on `load-complete`, so it waits for the
+        // markup's math, which the flush below starts typesetting.
+        await tick();
+        await markupMathSettled();
+        if (destroyed) return;
+
         logger.debug(
           "[PieItemPlayer] Initialization complete, dispatching load-complete event"
         );
@@ -978,6 +984,8 @@
     });
   });
 
+  let destroyed = false;
+
   // No session commit here. This component is the one a `{#key}` swap replaces
   // on a config change, and a commit routes through `handleSessionChanged` into
   // the owning player's session state - a write landing in the middle of the swap,
@@ -985,6 +993,7 @@
   // owning player commits before it changes the config instead, while these
   // elements are still mounted and connected.
   onDestroy(() => {
+    destroyed = true;
     try {
       assetEventManager?.detach();
     } catch {}
@@ -1238,12 +1247,22 @@
   // for the markup (see private-math-renderer.ts).
   //
   // Runs once the elements are initialized and again when a markup block is
-  // replaced, and never holds `load-complete` back. Passes are chained, so none
-  // walks a root another is still typesetting.
+  // replaced. Passes are chained, so none walks a root another is still
+  // typesetting. `load-complete` waits for the first pass, for at most
+  // MARKUP_MATH_SETTLE_MS: a typeset that hangs leaves the math raw but still
+  // lets the host reveal the item well inside its own load timeout.
   const markupMathTags = $derived(
     [...new Set([...itemAllowList, ...passageAllowList])].join(" ")
   );
   let markupMathPass: Promise<void> = Promise.resolve();
+  const MARKUP_MATH_SETTLE_MS = 2000;
+  function markupMathSettled(): Promise<void> {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const bound = new Promise<void>((resolve) => {
+      timer = setTimeout(resolve, MARKUP_MATH_SETTLE_MS);
+    });
+    return Promise.race([markupMathPass, bound]).finally(() => clearTimeout(timer));
+  }
   $effect(() => {
     if (!initialized || mode === "author") return;
     const containers = [passageContainer, itemContainer].filter(

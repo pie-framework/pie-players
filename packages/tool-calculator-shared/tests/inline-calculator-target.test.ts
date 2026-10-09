@@ -1,6 +1,5 @@
 import { afterEach, describe, expect, spyOn, test } from "bun:test";
 import {
-	ToolCoordinator,
 	ToolkitCoordinator,
 	ToolRegistry,
 } from "@pie-players/pie-assessment-toolkit";
@@ -54,7 +53,7 @@ describe("inline calculator request path", () => {
 			eagerInit: false,
 			toolRegistry: new ToolRegistry(),
 		});
-		const toolCoordinator = new ToolCoordinator();
+		const { toolCoordinator } = toolkitCoordinator;
 		const opened: string[] = [];
 		const requested: unknown[] = [];
 		for (const [scopeId, hosted] of [

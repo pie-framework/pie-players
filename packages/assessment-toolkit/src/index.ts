@@ -172,7 +172,7 @@ export type {
 export type { ExtractionResult } from "./services/SSMLExtractor.js";
 export { SSMLExtractor } from "./services/SSMLExtractor.js";
 // Tool Coordinator
-export { ToolCoordinator, ZIndexLayer } from "./services/ToolCoordinator.js";
+export { ZIndexLayer } from "./services/ToolCoordinator.js";
 // Toolkit Coordinator (Centralized service management)
 export type {
 	ProviderLifecycleContext,

@@ -50,6 +50,7 @@ import {
 } from "./framework-error-bus.js";
 import { HighlightCoordinator } from "./HighlightCoordinator.js";
 import { ToolCoordinator } from "./ToolCoordinator.js";
+import type { ToolCoordinatorApi } from "./interfaces.js";
 import { TTSService, type ITTSProvider, type TTSConfig } from "./TTSService.js";
 import {
 	BrowserTTSProvider,
@@ -570,7 +571,7 @@ export class ToolkitCoordinator {
 
 	/** Managed services (public for direct access) */
 	readonly ttsService: TTSService;
-	readonly toolCoordinator: ToolCoordinator;
+	readonly toolCoordinator: ToolCoordinatorApi;
 	readonly highlightCoordinator: HighlightCoordinator;
 	readonly elementToolStateStore: ElementToolStateStore;
 	readonly catalogResolver: AccessibilityCatalogResolver;
@@ -689,6 +690,8 @@ export class ToolkitCoordinator {
 	private readonly telemetryListeners = new Set<ToolkitTelemetryListener>();
 	private readonly frameworkErrorBus: FrameworkErrorBus;
 	private readonly ownsFrameworkErrorBus: boolean;
+	/** The instance behind {@link toolCoordinator}, kept for disposal. */
+	private readonly ownedToolCoordinator: ToolCoordinator;
 	private frameworkErrorHookUnsubscribe: (() => void) | null = null;
 	private disposePromise: Promise<void> | null = null;
 
@@ -862,7 +865,8 @@ export class ToolkitCoordinator {
 		this.subscribeFrameworkErrorHookAdapters();
 
 		// Initialize all services
-		this.toolCoordinator = new ToolCoordinator();
+		this.ownedToolCoordinator = new ToolCoordinator();
+		this.toolCoordinator = this.ownedToolCoordinator;
 		this.highlightCoordinator = new HighlightCoordinator();
 		this.elementToolStateStore = new ElementToolStateStore();
 		this.catalogResolver = new AccessibilityCatalogResolver(
@@ -2506,9 +2510,7 @@ export class ToolkitCoordinator {
 		await cleanup(() => this.ttsService.dispose());
 		await cleanup(() => this.toolProviderRegistry.destroy());
 		await cleanup(() => this.highlightCoordinator.destroy());
-		for (const toolId of this.toolCoordinator.getRegisteredTools()) {
-			await cleanup(() => this.toolCoordinator.releaseTool(toolId));
-		}
+		await cleanup(() => this.ownedToolCoordinator.destroy());
 		await cleanup(() => this.catalogResolver.destroy());
 		await cleanup(() => this.toolRequests.dispose());
 		await cleanup(() => this.policyEngine.dispose());

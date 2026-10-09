@@ -133,7 +133,6 @@
   type ToolContextResolverContext
   type ToolContextResolverMap
   type ToolContextResolverResult
-  ToolCoordinator
   type ToolCoordinatorApi
   type ToolFailurePhase
   type ToolLevel

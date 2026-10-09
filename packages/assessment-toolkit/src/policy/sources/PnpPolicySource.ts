@@ -74,11 +74,12 @@ export interface PnpPolicyResult {
 	 */
 	blockedToolIds: Set<string>;
 	/**
-	 * Tool IDs PNP/profile policy mandates (item or district `requiredTools`). Used
-	 * by the engine to detect `tool-policy.requiredToolBlocked`
+	 * Tools PNP/profile policy mandates (item or district `requiredTools`), each
+	 * with the requirement that names it, including a tool a `true` override
+	 * decides. Used by the engine to detect `tool-policy.requiredToolBlocked`
 	 * diagnostics for tools removed by host policy.
 	 */
-	mandatedToolIds: Set<string>;
+	mandates: Map<string, "item-requirement" | "district-requirement">;
 	/**
 	 * Per-tool flags merged into surviving `ToolPolicyEntry`s.
 	 */
@@ -188,7 +189,7 @@ export class PnpPolicySource {
 
 		const result: PnpPolicyResult = {
 			blockedToolIds: new Set(),
-			mandatedToolIds: new Set(),
+			mandates: new Map(),
 			perToolFlags: new Map(),
 			decisions: [],
 			unmappedSupportIds: this.unmappedIds(
@@ -306,11 +307,18 @@ export class PnpPolicySource {
 			return;
 		}
 
+		const mandate = ctx.itemSettings?.requiredTools?.includes(supportId)
+			? "item-requirement"
+			: ctx.districtPolicy?.requiredTools?.includes(supportId)
+				? "district-requirement"
+				: undefined;
+
 		// 5. Test administration override `true`: grants the support for the
-		// session.
+		// session. A requirement naming it keeps its mandate.
 		if (override === true) {
+			if (mandate) out.mandates.set(supportId, mandate);
 			out.perToolFlags.set(supportId, {
-				required: false,
+				required: mandate !== undefined,
 				alwaysAvailable: true,
 				rule: "test-admin-override",
 			});
@@ -327,8 +335,8 @@ export class PnpPolicySource {
 		}
 
 		// 6. Item requirement (forces enable)
-		if (ctx.itemSettings?.requiredTools?.includes(supportId)) {
-			out.mandatedToolIds.add(supportId);
+		if (mandate === "item-requirement") {
+			out.mandates.set(supportId, mandate);
 			out.perToolFlags.set(supportId, {
 				required: true,
 				alwaysAvailable: false,
@@ -341,14 +349,14 @@ export class PnpPolicySource {
 				action: "enable",
 				sourceType: "item",
 				reason: `Item requires "${supportId}" for this question`,
-				value: ctx.itemSettings.requiredTools,
+				value: ctx.itemSettings?.requiredTools,
 			});
 			return;
 		}
 
 		// 7. District requirement
-		if (ctx.districtPolicy?.requiredTools?.includes(supportId)) {
-			out.mandatedToolIds.add(supportId);
+		if (mandate === "district-requirement") {
+			out.mandates.set(supportId, mandate);
 			out.perToolFlags.set(supportId, {
 				required: true,
 				alwaysAvailable: false,
@@ -361,7 +369,7 @@ export class PnpPolicySource {
 				action: "enable",
 				sourceType: "assessment",
 				reason: `District policy requires "${supportId}" for all assessments`,
-				value: ctx.districtPolicy.requiredTools,
+				value: ctx.districtPolicy?.requiredTools,
 			});
 			return;
 		}

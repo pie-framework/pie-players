@@ -21,6 +21,7 @@ import {
 } from "../../services/tools-config-normalizer.js";
 import type {
 	ItemSettingNotAppliedDetails,
+	OverrideBlockedDetails,
 	RequiredToolBlockedDetails,
 	ToolPolicyDecision,
 	ToolPolicyDecisionRequest,
@@ -213,6 +214,9 @@ export function composeDecision(
 		// ids arrive with the profile and settings, after the tools config.
 		for (const [supportId, origins] of pnpPolicyResult.unmappedSupportIds) {
 			diagnostics.push(unknownSupportIdDiagnostic(supportId, origins, request.level));
+		}
+		for (const [toolId, rule] of pnpPolicyResult.blockedOverrides) {
+			diagnostics.push(overrideBlockedDiagnostic(toolId, rule, request.level));
 		}
 
 		// 5a — remove PNP/profile-blocked tools from the candidate set.
@@ -456,6 +460,26 @@ const PNP_RULE_FIELDS: Record<PnpPolicySourceRule, string> = {
 	"pnp-prohibited": "personalNeedsProfile.prohibitedSupports",
 	"pnp-support": "personalNeedsProfile.supports",
 };
+
+/**
+ * A `tool-policy.overrideBlocked` diagnostic for a tool a `true` test
+ * administration override grants and `rule` withdraws. `level` is absent on a
+ * feature decision, which has no toolbar level.
+ */
+export function overrideBlockedDiagnostic(
+	toolId: string,
+	rule: OverrideBlockedDetails["rule"],
+	level?: ToolPlacementLevel,
+): ToolPolicyDiagnostic {
+	return {
+		code: "tool-policy.overrideBlocked",
+		...(level ? { level } : {}),
+		toolId,
+		message: `settings.testAdministration.toolOverrides grants "${toolId}", but ${PNP_RULE_FIELDS[rule]} withdraws it and outranks a granting override.`,
+		source: `pnp.${rule}` satisfies PolicySourceTag,
+		details: { rule } satisfies OverrideBlockedDetails,
+	};
+}
 
 /**
  * A `tool-policy.unknownSupportId` diagnostic for an id the registry lacks,

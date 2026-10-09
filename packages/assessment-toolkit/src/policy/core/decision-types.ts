@@ -77,13 +77,19 @@ export interface ToolPolicyDecisionRequest {
  * settings govern only the item's own toolbar. `details` is
  * {@link ItemSettingNotAppliedDetails}.
  *
+ * `tool-policy.overrideBlocked` fires for each tool a `true`
+ * `settings.testAdministration.toolOverrides` entry grants that an item's
+ * `restrictedTools` or the profile's `prohibitedSupports` withdraws instead.
+ * `details` is {@link OverrideBlockedDetails}.
+ *
  * The toolkit coordinator logs each diagnostic once per code, tool and item.
  */
 export type ToolPolicyDiagnosticCode =
 	| "tool-policy.requiredToolBlocked"
 	| "tool-policy.placementMissing"
 	| "tool-policy.unknownSupportId"
-	| "tool-policy.itemSettingNotApplied";
+	| "tool-policy.itemSettingNotApplied"
+	| "tool-policy.overrideBlocked";
 
 /**
  * Which host gate removed a profile-mandated tool. Surfaced inside
@@ -125,6 +131,12 @@ export interface RequiredToolBlockedDetails extends Record<string, unknown> {
 export interface UnknownSupportIdDetails extends Record<string, unknown> {
 	/** The rules whose lists name the id, in precedence order. */
 	origins: PnpPolicySourceRule[];
+}
+
+/** Payload of a `tool-policy.overrideBlocked` diagnostic. */
+export interface OverrideBlockedDetails extends Record<string, unknown> {
+	/** The rule that withdrew the granted tool. */
+	rule: "item-restriction" | "pnp-prohibited";
 }
 
 /** Payload of a `tool-policy.itemSettingNotApplied` diagnostic. */

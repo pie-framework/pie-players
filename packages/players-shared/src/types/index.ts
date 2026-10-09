@@ -656,8 +656,10 @@ export interface AssessmentSettings {
 	/** Test administration configuration */
 	testAdministration?: {
 		/**
-		 * Per-session override by tool id: `true` grants the tool, `false`
-		 * withdraws it. Outranks every policy level except a district block.
+		 * Per-session override by tool id. `false` withdraws the tool and
+		 * outranks every policy level except a district block. `true` grants it
+		 * below a district block, an item's `restrictedTools` and the profile's
+		 * `prohibitedSupports`, and above requirements and profile supports.
 		 */
 		toolOverrides?: Record<string, boolean>;
 	};

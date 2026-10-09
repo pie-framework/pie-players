@@ -20,6 +20,7 @@ import type {
 	ToolPolicyResolutionDecision,
 	ToolPolicySourceType,
 } from "../core/provenance.js";
+import type { OverrideBlockedDetails } from "../core/decision-types.js";
 import type { PnpPolicySourceRule } from "../core/policy-source-tag.js";
 
 /** Per-tool flags PNP/profile policy may attach to a surviving entry. */
@@ -61,7 +62,7 @@ export interface PnpPolicyApplyArgs {
  * keeps a uniform `addDecision(...)` shape.
  */
 export interface PnpPolicyDecisionEvent {
-	precedence: 1 | 2 | 3 | 4 | 5 | 6;
+	precedence: 1 | 2 | 3 | 4 | 5 | 6 | 7;
 	rule: PnpPolicySourceRule;
 	featureId: string;
 	action: ToolPolicyResolutionDecision["action"];
@@ -101,6 +102,12 @@ export interface PnpPolicyResult {
 	 * `tool-config-validation` already reports it once.
 	 */
 	unmappedSupportIds: Map<string, PnpPolicySourceRule[]>;
+	/**
+	 * Ids a `true` test-administration override names that an item restriction
+	 * or a PNP prohibition withdrew instead, each with the rule that did. The
+	 * engine turns each into a `tool-policy.overrideBlocked` diagnostic.
+	 */
+	blockedOverrides: Map<string, OverrideBlockedDetails["rule"]>;
 	/** Configuration sources the engine should attach to its provenance. */
 	sources: {
 		assessment?: { id: string; name: string; config?: unknown };
@@ -152,7 +159,7 @@ export class PnpPolicySource {
 	}
 
 	/**
-	 * Evaluate exactly one PNP support id through the same six-level
+	 * Evaluate exactly one PNP support id through the same seven-level
 	 * precedence `apply(...)` uses.
 	 *
 	 * This exists for **policy-addressable capabilities that are not toolbar
@@ -163,7 +170,7 @@ export class PnpPolicySource {
 	 * `decisions[0].action` is the verdict.
 	 *
 	 * Reusing `resolveSupport(...)` rather than re-walking the precedence rules
-	 * is the point — a second copy of the six levels would drift.
+	 * is the point — a second copy of the seven levels would drift.
 	 */
 	resolveFeature(featureId: string, args: PnpPolicyApplyArgs): PnpPolicyResult {
 		const { ctx, result } = this.prepare(args);
@@ -194,6 +201,7 @@ export class PnpPolicySource {
 				settings,
 				itemSettings,
 			),
+			blockedOverrides: new Map(),
 			sources: {},
 		};
 
@@ -250,8 +258,8 @@ export class PnpPolicySource {
 			return;
 		}
 
-		// 2. Test administration override: `false` withdraws the support for the
-		// session, `true` grants it; either outranks every level below.
+		// 2. Test administration override `false`: withdraws the support for the
+		// session, outranking every level below.
 		const override = ctx.testAdmin?.toolOverrides?.[supportId];
 		if (override === false) {
 			out.blockedToolIds.add(supportId);
@@ -266,29 +274,13 @@ export class PnpPolicySource {
 			});
 			return;
 		}
-		if (override === true) {
-			out.perToolFlags.set(supportId, {
-				required: false,
-				alwaysAvailable: true,
-				settings: this.resolveToolSettings(supportId, ctx),
-				rule: "test-admin-override",
-				sourceType: "assessment",
-			});
-			out.decisions.push({
-				precedence: 2,
-				rule: "test-admin-override",
-				featureId: supportId,
-				action: "enable",
-				sourceType: "assessment",
-				reason: `Test administrator enabled "${supportId}" for this session`,
-				value: ctx.testAdmin?.toolOverrides,
-			});
-			return;
-		}
 
 		// 3. Item restriction (per-item block)
 		if (ctx.itemSettings?.restrictedTools?.includes(supportId)) {
 			out.blockedToolIds.add(supportId);
+			if (override === true) {
+				out.blockedOverrides.set(supportId, "item-restriction");
+			}
 			out.decisions.push({
 				precedence: 3,
 				rule: "item-restriction",
@@ -301,7 +293,35 @@ export class PnpPolicySource {
 			return;
 		}
 
-		// 4. Item requirement (forces enable)
+		// 4. Test administration override `true`: grants the support for the
+		// session, unless the student's profile prohibits it. The prohibition
+		// ranks below the requirements at 5 and 6, so it is checked here.
+		if (override === true) {
+			if (ctx.pnp?.prohibitedSupports?.includes(supportId)) {
+				out.blockedOverrides.set(supportId, "pnp-prohibited");
+				this.prohibit(supportId, ctx.pnp.prohibitedSupports, out);
+				return;
+			}
+			out.perToolFlags.set(supportId, {
+				required: false,
+				alwaysAvailable: true,
+				settings: this.resolveToolSettings(supportId, ctx),
+				rule: "test-admin-override",
+				sourceType: "assessment",
+			});
+			out.decisions.push({
+				precedence: 4,
+				rule: "test-admin-override",
+				featureId: supportId,
+				action: "enable",
+				sourceType: "assessment",
+				reason: `Test administrator enabled "${supportId}" for this session`,
+				value: ctx.testAdmin?.toolOverrides,
+			});
+			return;
+		}
+
+		// 5. Item requirement (forces enable)
 		if (ctx.itemSettings?.requiredTools?.includes(supportId)) {
 			out.mandatedToolIds.add(supportId);
 			out.perToolFlags.set(supportId, {
@@ -312,7 +332,7 @@ export class PnpPolicySource {
 				sourceType: "item",
 			});
 			out.decisions.push({
-				precedence: 4,
+				precedence: 5,
 				rule: "item-requirement",
 				featureId: supportId,
 				action: "enable",
@@ -323,7 +343,7 @@ export class PnpPolicySource {
 			return;
 		}
 
-		// 5. District requirement
+		// 6. District requirement
 		if (ctx.districtPolicy?.requiredTools?.includes(supportId)) {
 			out.mandatedToolIds.add(supportId);
 			out.perToolFlags.set(supportId, {
@@ -334,7 +354,7 @@ export class PnpPolicySource {
 				sourceType: "assessment",
 			});
 			out.decisions.push({
-				precedence: 5,
+				precedence: 6,
 				rule: "district-requirement",
 				featureId: supportId,
 				action: "enable",
@@ -345,18 +365,9 @@ export class PnpPolicySource {
 			return;
 		}
 
-		// 6. PNP prohibitions and supports (student needs)
+		// 7. PNP prohibitions and supports (student needs)
 		if (ctx.pnp?.prohibitedSupports?.includes(supportId)) {
-			out.blockedToolIds.add(supportId);
-			out.decisions.push({
-				precedence: 6,
-				rule: "pnp-prohibited",
-				featureId: supportId,
-				action: "block",
-				sourceType: "student",
-				reason: `Student PNP profile prohibits "${supportId}"`,
-				value: ctx.pnp.prohibitedSupports,
-			});
+			this.prohibit(supportId, ctx.pnp.prohibitedSupports, out);
 			return;
 		}
 
@@ -369,7 +380,7 @@ export class PnpPolicySource {
 				sourceType: "student",
 			});
 			out.decisions.push({
-				precedence: 6,
+				precedence: 7,
 				rule: "pnp-support",
 				featureId: supportId,
 				action: "enable",
@@ -380,16 +391,34 @@ export class PnpPolicySource {
 			return;
 		}
 
-		// 6 (skip): no rule fired. The trail is keyed by tool id, as in every
+		// 7 (skip): no rule fired. The trail is keyed by tool id, as in every
 		// other branch.
 		out.decisions.push({
-			precedence: 6,
+			precedence: 7,
 			rule: "pnp-support",
 			featureId: supportId,
 			action: "skip",
 			sourceType: "system",
 			reason: `Feature "${supportId}" not configured at any level`,
 			value: { supportId },
+		});
+	}
+
+	/** Record the student's profile withdrawing a support. */
+	private prohibit(
+		supportId: string,
+		prohibitedSupports: readonly string[],
+		out: PnpPolicyResult,
+	): void {
+		out.blockedToolIds.add(supportId);
+		out.decisions.push({
+			precedence: 7,
+			rule: "pnp-prohibited",
+			featureId: supportId,
+			action: "block",
+			sourceType: "student",
+			reason: `Student PNP profile prohibits "${supportId}"`,
+			value: prohibitedSupports,
 		});
 	}
 

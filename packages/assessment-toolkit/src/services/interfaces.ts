@@ -872,7 +872,7 @@ export interface ToolkitCoordinatorApi {
 	decideToolPolicy(request: ToolPolicyDecisionRequest): ToolPolicyDecision;
 
 	/**
-	 * Resolve eligibility for one PNP/AfA feature id through the six-level
+	 * Resolve eligibility for one PNP/AfA feature id through the seven-level
 	 * precedence, independent of toolbar placement — for capabilities that
 	 * render as their own surface rather than a toolbar button (a signed
 	 * alternate's region, for example).

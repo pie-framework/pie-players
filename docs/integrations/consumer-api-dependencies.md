@@ -144,8 +144,11 @@ A, M, P, R and V, each scan reaching `@pie-players` imports: none names
 render context's `granted`. Host R alone puts a profile on the section, on its
 section preview, playground and demo routes; those profiles granted nothing before
 and now log the warning, and its playground keeps binding the assessment through
-`updateAssessment`. Host R's PNP debugger mount keeps its props. Row verification
-dates are unchanged.
+`updateAssessment`. Host R's PNP debugger mount keeps its props. A `true`
+`toolOverrides` entry now ranks below an item's `restrictedTools` and the
+profile's `prohibitedSupports`, which raise `tool-policy.overrideBlocked` when
+they withdraw it; no checkout names `toolOverrides` or `prohibitedSupports`. Row
+verification dates are unchanged.
 
 On 2026-10-08 the annotation toolbar's read-aloud started reading spoken cards: a
 `data-catalog-idref` node the selection holds whole reads its card, from the

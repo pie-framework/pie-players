@@ -807,13 +807,13 @@ The policy engine implements a **precedence hierarchy** based on common assessme
 
 **Standards-Based (from QTI 3.0):**
 
-- **PNP supports** (#6) - Student's documented accessibility needs (`personalNeedsProfile.supports`)
-- **Item-level settings** (#3, #4) - Per-item accessibility requirements/restrictions
+- **PNP supports** (#7) - Student's documented accessibility needs (`personalNeedsProfile.supports`)
+- **Item-level settings** (#3, #5) - Per-item accessibility requirements/restrictions
 
 **Implementation-Specific (common practice):**
 
-- **District policy** (#1, #5) - Institutional governance and legal compliance
-- **Test administration** (#2) - Session-level operational control
+- **District policy** (#1, #6) - Institutional governance and legal compliance
+- **Test administration** (#2, #4) - Session-level operational control
 
 ### Precedence Order
 
@@ -824,32 +824,37 @@ The policy engine implements a **precedence hierarchy** based on common assessme
    - **Example**: District blocks calculator on state standardized math test
    - **Effect**: Tool completely unavailable, cannot be overridden
 
-2. **Test administration override**
+2. **Test administration withdrawal**
    - **Purpose**: Proctor/administrator operational control
    - **Example**: Proctor disables TTS due to technical issues in testing lab
-   - **Effect**: `testAdministration.toolOverrides[toolId]` set to `false` disables the tool for this test session, and `true` grants it
+   - **Effect**: `testAdministration.toolOverrides[toolId]` set to `false` disables the tool for this test session
 
 3. **Item restriction** (per-item block)
    - **Purpose**: Content author can disable for specific items
    - **Example**: Calculator disabled on mental math questions
    - **Effect**: Tool unavailable on this item's own toolbar
 
-4. **Item requirement** (forces enable)
+4. **Test administration grant**
+   - **Purpose**: Proctor/administrator enables a tool for the session
+   - **Example**: Proctor enables the calculator for a retake
+   - **Effect**: `testAdministration.toolOverrides[toolId]` set to `true` grants the tool, unless `personalNeedsProfile.prohibitedSupports` lists it. An item restriction or a prohibition that withdraws it raises a `tool-policy.overrideBlocked` diagnostic
+
+5. **Item requirement** (forces enable)
    - **Purpose**: Required by IEP/504 or content needs
    - **Example**: Calculator required for multi-step word problems
    - **Effect**: Tool must be available on this item's own toolbar
 
-Rungs 3 and 4 apply to decisions scoped to the item: its item-level toolbar and its content's feature decisions. A section-, assessment- or passage-level toolbar skips them and reports each tool on it that a mounted item restricts or requires with a `tool-policy.itemSettingNotApplied` diagnostic; place the tool at item level to enforce the setting per item.
+Rungs 3 and 5 apply to decisions scoped to the item: its item-level toolbar and its content's feature decisions. A section-, assessment- or passage-level toolbar skips them and reports each tool on it that a mounted item restricts or requires with a `tool-policy.itemSettingNotApplied` diagnostic; place the tool at item level to enforce the setting per item.
 
-5. **District requirement**
+6. **District requirement**
    - **Purpose**: Institutional accessibility requirements
    - **Example**: District mandates TTS for all ELL students
    - **Effect**: Tool enabled by institutional policy
 
-6. **PNP supports** (student needs)
+7. **PNP prohibitions and supports** (student needs)
    - **Purpose**: QTI 3.0 standard student preferences
    - **Example**: Student's IEP document specifies a reading mask
-   - **Effect**: Tool enabled based on student's accessibility profile
+   - **Effect**: Tool withdrawn by `prohibitedSupports`, or enabled by `supports`
 
 ### Governance Rationale
 

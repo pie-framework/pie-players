@@ -153,7 +153,7 @@ const assessment: AssessmentEntity = {
 - Technical issues (TTS audio broken, disable for this session)
 - Test security (disable features for high-stakes tests)
 
-**Precedence**: `toolOverrides` is keyed by tool id. `false` withdraws the tool for the session and `true` grants it; either outranks item settings, district requirements and the PNP, and only a district block outranks it. A `true` override is a grant like a PNP support: the entry carries `alwaysAvailable`, so the item toolbar's relevance check does not withdraw it.
+**Precedence**: `toolOverrides` is keyed by tool id. `false` withdraws the tool for the session, and only a district block outranks it. `true` grants it, below a district block, the item's `restrictedTools` and the profile's `prohibitedSupports`, and above item and district requirements and profile supports. When a restriction or prohibition withdraws a tool an override grants, the decision carries a `tool-policy.overrideBlocked` diagnostic naming the rule. With no override, a district requirement still outranks a prohibition. A `true` override is a grant like a PNP support: the entry carries `alwaysAvailable`, so the item toolbar's relevance check does not withdraw it.
 
 ### 4. Item-Level Settings (Content Requirements)
 
@@ -311,7 +311,7 @@ console.log('Allowed tools:', allowedToolIds);
 //
 // Why?
 // - calculator: Blocked by district policy (#1)
-// - textToSpeech: Restricted for this item (#3), which outranks the district requirement (#5)
+// - textToSpeech: Restricted for this item (#3), which outranks the district requirement (#6)
 // - annotationToolbar: Placed at item level and granted by the profile
 // - magnification: No tool is registered under it; the decision carries a
 //   `tool-policy.unknownSupportId` diagnostic
@@ -336,7 +336,7 @@ console.log('Allowed tools:', allowedToolIds);
   }
 }
 // Result: calculator BLOCKED
-// District policy (#1) overrides PNP supports (#6)
+// District policy (#1) overrides PNP supports (#7)
 ```
 
 ### Example 2: Item Restriction Wins
@@ -354,7 +354,7 @@ console.log('Allowed tools:', allowedToolIds);
   }
 }
 // Result: calculator BLOCKED on this item's own toolbar only
-// Item restriction (#3) overrides PNP supports (#6). A section-level
+// Item restriction (#3) overrides PNP supports (#7). A section-level
 // calculator stays and reports `tool-policy.itemSettingNotApplied`.
 ```
 
@@ -370,7 +370,7 @@ console.log('Allowed tools:', allowedToolIds);
   }
 }
 // Result: calculator ENABLED on this item's own toolbar
-// Item requirement (#4) forces enablement there
+// Item requirement (#5) forces enablement there
 ```
 
 ### Example 4: Test Admin Override
@@ -522,7 +522,7 @@ Provide UI for:
 Check precedence hierarchy in order:
 1. Is it blocked by `districtPolicy.blockedTools`?
 2. Is it disabled in `testAdministration.toolOverrides`?
-3. Is it in `itemSettings.restrictedTools`, on the item's own toolbar?
+3. Is it in `itemSettings.restrictedTools`, on the item's own toolbar, or in `personalNeedsProfile.prohibitedSupports`? Either withdraws a tool a `true` override grants, and the decision carries a `tool-policy.overrideBlocked` diagnostic.
 4. Is it placed at this level in `tools.placement`? A grant does not place a tool.
 5. Does the tool's `isVisibleInContext()` return false? A `required` or `alwaysAvailable` grant skips this check.
 6. Does the tool's `isApplicableToContent()` return false for this content? This check removes the tool even under a grant.

@@ -18,7 +18,7 @@ function source() {
 	return new PnpPolicySource(registry);
 }
 
-describe("PnpPolicySource — 6-level precedence", () => {
+describe("PnpPolicySource — 7-level precedence", () => {
 	test("1. district-block overrides everything else", () => {
 		const result = source().apply({
 			assessment: {
@@ -85,7 +85,7 @@ describe("PnpPolicySource — 6-level precedence", () => {
 				featureId: "calculator",
 				rule: "test-admin-override",
 				action: "enable",
-				precedence: 2,
+				precedence: 4,
 			}),
 		]);
 		expect(enabled.perToolFlags.get("calculator")).toMatchObject({
@@ -95,7 +95,7 @@ describe("PnpPolicySource — 6-level precedence", () => {
 		});
 	});
 
-	test("2. a test-admin enable outranks item restriction and PNP prohibition", () => {
+	test("3. an item restriction outranks a test-admin enable, and records it", () => {
 		const s = source();
 		const args = {
 			assessment: {
@@ -114,10 +114,73 @@ describe("PnpPolicySource — 6-level precedence", () => {
 			},
 		};
 		const result = s.apply(args);
-		expect(result.blockedToolIds.has("calculator")).toBe(false);
+		expect(result.blockedToolIds.has("calculator")).toBe(true);
+		expect(result.blockedOverrides.get("calculator")).toBe("item-restriction");
 		expect(s.resolveFeature("calculator", args).decisions[0]).toMatchObject({
+			rule: "item-restriction",
+			action: "block",
+			precedence: 3,
+		});
+	});
+
+	test("4. a PNP prohibition outranks a test-admin enable, and records it", () => {
+		const result = source().apply({
+			assessment: {
+				id: "a1",
+				personalNeedsProfile: {
+					supports: [],
+					prohibitedSupports: ["calculator"],
+				},
+				settings: {
+					testAdministration: { toolOverrides: { calculator: true } },
+				},
+			} as AssessmentEntity,
+		});
+		expect(result.blockedToolIds.has("calculator")).toBe(true);
+		expect(result.blockedOverrides.get("calculator")).toBe("pnp-prohibited");
+		expect(result.decisions[0]).toMatchObject({
+			rule: "pnp-prohibited",
+			action: "block",
+		});
+	});
+
+	test("4. a test-admin enable outranks a district requirement", () => {
+		const result = source().apply({
+			assessment: {
+				id: "a1",
+				settings: {
+					districtPolicy: { requiredTools: ["calculator"] },
+					testAdministration: { toolOverrides: { calculator: true } },
+				},
+			} as AssessmentEntity,
+		});
+		expect(result.mandatedToolIds.has("calculator")).toBe(false);
+		expect(result.blockedOverrides.size).toBe(0);
+		expect(result.decisions[0]).toMatchObject({
 			rule: "test-admin-override",
 			action: "enable",
+			precedence: 4,
+		});
+	});
+
+	test("2. a test-admin withdrawal records no blocked override", () => {
+		const result = source().apply({
+			assessment: {
+				id: "a1",
+				personalNeedsProfile: {
+					supports: [],
+					prohibitedSupports: ["calculator"],
+				},
+				settings: {
+					testAdministration: { toolOverrides: { calculator: false } },
+				},
+			} as AssessmentEntity,
+		});
+		expect(result.blockedToolIds.has("calculator")).toBe(true);
+		expect(result.blockedOverrides.size).toBe(0);
+		expect(result.decisions[0]).toMatchObject({
+			rule: "test-admin-override",
+			precedence: 2,
 		});
 	});
 
@@ -150,7 +213,7 @@ describe("PnpPolicySource — 6-level precedence", () => {
 		expect(result.mandatedToolIds.has("calculator")).toBe(false);
 	});
 
-	test("4. item-requirement marks the tool required + mandated", () => {
+	test("5. item-requirement marks the tool required + mandated", () => {
 		const result = source().apply({
 			assessment: { id: "a1" } as AssessmentEntity,
 			item: {
@@ -167,7 +230,7 @@ describe("PnpPolicySource — 6-level precedence", () => {
 		});
 	});
 
-	test("5. district-requirement marks the tool required + mandated", () => {
+	test("6. district-requirement marks the tool required + mandated", () => {
 		const result = source().apply({
 			assessment: {
 				id: "a1",
@@ -180,7 +243,7 @@ describe("PnpPolicySource — 6-level precedence", () => {
 		);
 	});
 
-	test("6. pnp-support marks the tool alwaysAvailable but NOT required", () => {
+	test("7. pnp-support marks the tool alwaysAvailable but NOT required", () => {
 		const result = source().apply({
 			assessment: {
 				id: "a1",
@@ -195,7 +258,7 @@ describe("PnpPolicySource — 6-level precedence", () => {
 		expect(result.mandatedToolIds.has("calculator")).toBe(false);
 	});
 
-	test("6. pnp-prohibited blocks even when supports lists the tool", () => {
+	test("7. pnp-prohibited blocks even when supports lists the tool", () => {
 		const result = source().apply({
 			assessment: {
 				id: "a1",
@@ -211,7 +274,7 @@ describe("PnpPolicySource — 6-level precedence", () => {
 		).toBeDefined();
 	});
 
-	test("6. pnp-prohibited blocks even when supports omits the tool", () => {
+	test("7. pnp-prohibited blocks even when supports omits the tool", () => {
 		const result = source().apply({
 			assessment: {
 				id: "a1",

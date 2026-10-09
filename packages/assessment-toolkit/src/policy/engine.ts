@@ -24,6 +24,7 @@ export {
 
 export type {
 	ItemSettingNotAppliedDetails,
+	OverrideBlockedDetails,
 	RequiredToolBlockedDetails,
 	ToolPolicyDecision,
 	ToolPolicyDecisionRequest,

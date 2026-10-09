@@ -150,6 +150,7 @@ export class SectionController implements SectionControllerHandle {
 	// boundary it decides — item navigation, a section swap, a persist — gets a
 	// pending element session committed before the state moves under it.
 	private pendingSessionCommit: (() => void) | null = null;
+	private saveQueue: Promise<void> = Promise.resolve();
 	private state: SectionControllerState = {
 		input: null,
 		viewModel: {
@@ -343,13 +344,22 @@ export class SectionController implements SectionControllerHandle {
 		await this.applySession(snapshot, { mode: "replace" });
 	}
 
+	/**
+	 * Saves run one at a time, in call order, so a slow older write can never
+	 * land after a newer one. The snapshot is copied at the call, since
+	 * `getSession()` shares the live session objects, and a failed save
+	 * rejects only its own caller.
+	 */
 	public async persist(): Promise<void> {
 		if (!this.sessionPersistence) return;
 		this.commitPendingItemSessions();
-		await this.sessionPersistence.strategy.saveSession(
-			this.sessionPersistence.context,
-			this.getSession(),
+		const { strategy, context } = this.sessionPersistence;
+		const session = this.cloneForRead(this.getSession());
+		const run = this.saveQueue.then(() =>
+			strategy.saveSession(context, session),
 		);
+		this.saveQueue = run.catch(() => {});
+		return run;
 	}
 
 	public dispose(): void {

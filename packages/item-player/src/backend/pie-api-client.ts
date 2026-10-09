@@ -56,24 +56,10 @@ function normalizeEndpoint(
 	};
 }
 
-/**
- * `<pie-api-player>` split the same URL differently: its `host` carried the
- * `/api` segment (`https://api.pie-api.com/api`) and its paths did not
- * (`/player/load`), where `baseUrl` here is the origin and the paths carry
- * `/api`. A host moving over pastes its old `host` into `baseUrl` and would
- * otherwise request `/api/api/player/load`, so one `/api` wins.
- *
- * A backend that really serves `/api/api` keeps `baseUrl` at the origin and puts
- * the whole path in `endpoints`, which nothing here rewrites.
- */
 function resolveUrl(baseUrl: string | undefined, path: string): string {
 	if (/^https?:\/\//i.test(path)) return path;
 	const base = normalizeBaseUrl(baseUrl);
-	const absolutePath = path.startsWith("/") ? path : `/${path}`;
-	if (base.endsWith("/api") && absolutePath.startsWith("/api/")) {
-		return `${base}${absolutePath.slice("/api".length)}`;
-	}
-	return `${base}${absolutePath}`;
+	return `${base}${path.startsWith("/") ? path : `/${path}`}`;
 }
 
 async function resolveToken(

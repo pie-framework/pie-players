@@ -236,11 +236,8 @@ These are set via JavaScript, not HTML attributes.
 ## Methods
 
 - `provideScore(): Promise<false | Array<Record<string, unknown> | undefined>>`
-  returns one result slot per scored model for legacy-compatible local browser
-  scoring. A hosted player, including one with `backend.delivery` enabled and
+  returns one result slot per scored model from local browser scoring. A hosted player, including one with `backend.delivery` enabled and
   `hosted` unset, runs no controllers and leaves every slot `undefined`.
-- `updateElementModel(update): Promise<void>` applies a legacy-compatible
-  preview update for a single loaded PIE model.
 - `validateModels(): Promise<AuthoringValidationResult>` runs authoring-mode
   validation for rendered configure elements and returns
   `{ hasErrors, validatedModels }`.
@@ -345,7 +342,7 @@ These are set via JavaScript, not HTML attributes.
 
 Backend support is a JS-only namespace for networking and persistence. It does
 not duplicate existing delivery inputs such as `env`, `strategy`,
-`loaderOptions`, `bundleEndpoints`, or styling props.
+`loaderOptions`, or styling props.
 
 ```ts
 const el = document.querySelector("pie-item-player");

@@ -124,7 +124,7 @@
 								packageName={pkg.name}
 								label={pkg.displayName}
 								value={resolvedVersion(pkg.name, pkg.defaultVersion)}
-								on:change={(event) => onChange(event.detail)}
+								{onChange}
 							/>
 						</div>
 						{#if overrides?.[pkg.name]}

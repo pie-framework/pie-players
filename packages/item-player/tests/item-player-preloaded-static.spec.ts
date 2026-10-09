@@ -552,11 +552,18 @@ test.describe("item-player strategy regressions", () => {
 			return results.map((result) => result === undefined);
 		});
 		expect(hostedScore).toEqual([true]);
-		await page.evaluate(() =>
-			(
-				document.querySelector("#hosted-gate-hosted pie-item-player") as any
-			).updateElementModel({ id: "gate-model", prompt: "updated server model" }),
-		);
+		await page.evaluate(() => {
+			const player = document.querySelector(
+				"#hosted-gate-hosted pie-item-player",
+			) as any;
+			const next = structuredClone(player.config);
+			next.models = next.models.map((model: any) =>
+				model.id === "gate-model"
+					? { ...model, prompt: "updated server model" }
+					: model,
+			);
+			player.config = next;
+		});
 		await expect(page.locator(`#hosted-gate-hosted ${tag}`)).toHaveText(
 			"updated server model",
 			{ timeout: 20_000 },
@@ -1789,121 +1796,6 @@ test.describe("item-player strategy regressions", () => {
 			page.getByText("Error loading elements (preloaded-readiness):"),
 		).toBeVisible({ timeout: 20_000 });
 	});
-
-	test("legacy disableBundler maps to preloaded readiness without runtime loading", async ({
-		page,
-	}) => {
-		const bundleRequests: string[] = [];
-		page.on("request", (request) => {
-			const url = request.url();
-			if (url.includes("/bundles/")) bundleRequests.push(url);
-		});
-
-		await page.goto(PRELOADED_DELIVERY_PATH, { waitUntil: "networkidle" });
-		await expect(page.getByText(DELIVERY_PROMPT)).toBeVisible({
-			timeout: 20_000,
-		});
-		const baselineCount = bundleRequests.length;
-
-		await page.evaluate(() => {
-			const fixture = document.createElement("div");
-			fixture.id = "pie-disable-bundler-fixture";
-			document.body.appendChild(fixture);
-			const player = document.createElement("pie-item-player") as any;
-			player.disableBundler = true;
-			player.env = { mode: "gather", role: "student" };
-			player.session = { id: "disable-bundler", data: [] };
-			player.config = {
-				// A package the page did not register, so its tag stays undefined.
-				elements: {
-					"pie-disable-bundler-missing": "@pie-element/unregistered@1.0.0",
-				},
-				models: [
-					{
-						id: "disable-bundler-model",
-						element: "pie-disable-bundler-missing",
-						prompt: "Disable bundler prompt",
-						choiceMode: "radio",
-						choices: [
-							{ value: "a", label: "A", correct: false },
-							{ value: "b", label: "B", correct: true },
-						],
-					},
-				],
-				markup:
-					'<pie-disable-bundler-missing id="disable-bundler-model"></pie-disable-bundler-missing>',
-			};
-			fixture.appendChild(player);
-		});
-
-		await expect(
-			page.getByText("Error loading elements (preloaded-readiness):"),
-		).toBeVisible({ timeout: 20_000 });
-		expect(bundleRequests.length).toBe(baselineCount);
-	});
-
-	test("legacy top-level bundleHost feeds iife loading when loaderOptions omits bundleHost", async ({
-		page,
-	}) => {
-		const requestedUrls: string[] = [];
-		await page.route("https://legacy-bundles.example/**", async (route) => {
-			requestedUrls.push(route.request().url());
-			await route.fulfill({
-				status: 404,
-				contentType: "application/javascript",
-				body: "throw new Error('legacy host test');",
-			});
-		});
-
-		await page.goto(IIFE_DELIVERY_PATH, { waitUntil: "networkidle" });
-		await expect(page.getByText(DELIVERY_PROMPT)).toBeVisible({
-			timeout: 20_000,
-		});
-
-		await page.evaluate(() => {
-			const fixture = document.createElement("div");
-			fixture.id = "pie-legacy-bundle-host-fixture";
-			document.body.appendChild(fixture);
-			const player = document.createElement("pie-item-player") as any;
-			player.strategy = "iife";
-			player.bundleHost = "https://legacy-bundles.example/bundles/";
-			player.env = { mode: "gather", role: "student" };
-			player.session = { id: "legacy-bundle-host", data: [] };
-			player.config = {
-				elements: {
-					"pie-legacy-host": "@pie-element/multiple-choice@11.4.3",
-				},
-				models: [
-					{
-						id: "legacy-host-model",
-						element: "pie-legacy-host",
-						prompt: "Legacy bundle host prompt",
-						choiceMode: "radio",
-						choices: [
-							{ value: "a", label: "A", correct: false },
-							{ value: "b", label: "B", correct: true },
-						],
-					},
-				],
-				markup: '<pie-legacy-host id="legacy-host-model"></pie-legacy-host>',
-			};
-			fixture.appendChild(player);
-		});
-
-		await expect
-			.poll(() => requestedUrls.length, { timeout: 20_000 })
-			.toBeGreaterThan(0);
-		expect(requestedUrls[0]).toContain(
-			"https://legacy-bundles.example/bundles/",
-		);
-	});
-
-	// NOTE: the previous "preloaded fallback can be explicitly opted in" test
-	// was deleted together with the `allowPreloadedFallbackLoad` escape hatch.
-	// `preloaded` now means "host pre-registered these elements; assert
-	// loudly or throw" — there is no autonomous runtime fallback to load.
-	// Hosts that want runtime loading should use `strategy="iife"` or
-	// `strategy="esm"` instead.
 
 	test("surfaces validate-config contract errors for invalid PIE references", async ({
 		page,

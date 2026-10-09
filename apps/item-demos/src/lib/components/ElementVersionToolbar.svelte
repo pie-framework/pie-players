@@ -3,7 +3,6 @@
 		extractPackageInfo,
 		type ElementOverrides,
 	} from "@pie-players/pie-players-shared/pie";
-	import { createEventDispatcher } from "svelte";
 	import ElementVersionSelector from "./ElementVersionSelector.svelte";
 
 	type ElementsMap = Record<string, string>;
@@ -11,15 +10,18 @@
 	interface Props {
 		elements: ElementsMap;
 		overrides: ElementOverrides;
+		onChange?: (detail: { packageName: string; version: string }) => void;
+		onResetOne?: (detail: { packageName: string }) => void;
+		onResetAll?: () => void;
 	}
 
-	let { elements = {}, overrides = {} }: Props = $props();
-
-	const dispatch = createEventDispatcher<{
-		change: { packageName: string; version: string };
-		resetOne: { packageName: string };
-		resetAll: undefined;
-	}>();
+	let {
+		elements = {},
+		overrides = {},
+		onChange,
+		onResetOne,
+		onResetAll,
+	}: Props = $props();
 
 	const packageInfos = $derived.by(() => {
 		const result: Array<{
@@ -57,7 +59,7 @@
 				<div class="flex items-center justify-end mb-2">
 					<button
 						class="btn btn-xs btn-outline"
-						onclick={() => dispatch("resetAll")}
+						onclick={() => onResetAll?.()}
 					>
 						Reset all
 					</button>
@@ -70,14 +72,12 @@
 							packageName={pkg.name}
 							label={pkg.displayName}
 							value={resolvedVersion(pkg.name, pkg.defaultVersion)}
-							on:change={(event) => {
-								dispatch("change", event.detail);
-							}}
+							{onChange}
 						/>
 						{#if overrides?.[pkg.name]}
 							<button
 								class="btn btn-xs btn-outline"
-								onclick={() => dispatch("resetOne", { packageName: pkg.name })}
+								onclick={() => onResetOne?.({ packageName: pkg.name })}
 								title="Use catalog default version"
 							>
 								Default

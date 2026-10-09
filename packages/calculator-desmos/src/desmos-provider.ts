@@ -118,13 +118,13 @@ export class DesmosCalculatorProvider implements CalculatorProvider {
 	 * Dynamically load the Desmos calculator library
 	 * @private
 	 */
-	private async loadDesmosScript(apiKey?: string): Promise<void> {
+	private async loadDesmosScript(apiKey: string): Promise<void> {
 		return new Promise((resolve, reject) => {
 			const script = document.createElement("script");
 			const scriptUrl = new URL(
 				"https://www.desmos.com/api/v1.12/calculator.js",
 			);
-			if (apiKey) scriptUrl.searchParams.set("apiKey", apiKey);
+			scriptUrl.searchParams.set("apiKey", apiKey);
 			script.src = scriptUrl.toString();
 			script.async = true;
 			script.onload = () => {
@@ -196,9 +196,10 @@ export class DesmosCalculatorProvider implements CalculatorProvider {
 
 		// Load Desmos API if not already loaded
 		if (!window.Desmos) {
-			if (!this.apiKey) {
-				console.warn(
-					"[DesmosProvider] Loading the legacy unkeyed Desmos URL for compatibility. Configure an application API key for licensed deployments.",
+			const apiKey = this.apiKey;
+			if (!apiKey) {
+				throw new Error(
+					"[DesmosProvider] An apiKey or proxyEndpoint is required to load Desmos.",
 				);
 			}
 			const libraryLoadStartedAt = Date.now();
@@ -208,7 +209,7 @@ export class DesmosCalculatorProvider implements CalculatorProvider {
 				operation: "desmos-script-load",
 			});
 			try {
-				await this.loadDesmosScript(this.apiKey);
+				await this.loadDesmosScript(apiKey);
 				await this.emitTelemetry("pie-tool-library-load-success", {
 					toolId: "calculator",
 					backend: "desmos",

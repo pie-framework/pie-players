@@ -24,7 +24,6 @@ export interface ToolConfigDiagnostic {
 		| "tools.unplaceableActivation"
 		| "tools.registryUnavailable"
 		| "tools.unknownProviderKey"
-		| "tools.removedProviderKey"
 		| "tools.providerSanitizeFailed"
 		| "tools.providerValidateFailed"
 		| "tools.invalidProviderValidation";
@@ -285,20 +284,8 @@ function collectPolicyDiagnostics(
 function collectProviderKeyDiagnostics(
 	config: CanonicalToolsConfig,
 	toolMap: Map<string, ToolRegistration>,
-	hasRemovedTtsKey: boolean,
 	diagnostics: ToolConfigDiagnostic[],
 ): void {
-	if (hasRemovedTtsKey) {
-		diagnostics.push(
-			createDiagnostic({
-				code: "tools.removedProviderKey",
-				severity: "error",
-				path: "providers.tts",
-				message: `Provider key "tts" is no longer supported. Use "providers.textToSpeech".`,
-				toolId: "textToSpeech",
-			}),
-		);
-	}
 	for (const key of Object.keys(config.providers).sort()) {
 		if (toolMap.size === 0 || toolMap.has(key)) continue;
 		diagnostics.push(
@@ -380,16 +367,10 @@ export function collectToolConfigDiagnostics(
 		);
 	}
 
-	const hasRemovedTtsKey = Object.hasOwn(normalized.providers, "tts");
-
 	const nextProviders: CanonicalToolsConfig["providers"] = {
 		...(normalized.providers || {}),
 	};
 	for (const toolId of Object.keys(nextProviders).sort()) {
-		if (toolId === "tts") {
-			delete nextProviders.tts;
-			continue;
-		}
 		const tool = registryTools.get(toolId);
 		nextProviders[toolId] = sanitizeToolConfig(
 			toolId,
@@ -409,7 +390,6 @@ export function collectToolConfigDiagnostics(
 	collectProviderKeyDiagnostics(
 		nextConfig,
 		registryTools,
-		hasRemovedTtsKey,
 		diagnostics,
 	);
 
@@ -420,9 +400,9 @@ export function collectToolConfigDiagnostics(
 }
 
 /**
- * Report diagnostics as {@link normalizeAndValidateToolsConfig} does: a removed
- * provider key throws at every strictness, `"warn"` prints every diagnostic, and
- * `"error"` throws the blocking ones or, when there are none, prints the rest.
+ * Report diagnostics as {@link normalizeAndValidateToolsConfig} does: `"warn"`
+ * prints every diagnostic, and `"error"` throws the blocking ones or, when there
+ * are none, prints the rest.
  */
 export function reportToolConfigDiagnostics(
 	diagnostics: ToolConfigDiagnostic[],
@@ -430,13 +410,6 @@ export function reportToolConfigDiagnostics(
 ): void {
 	const strictness = normalizeToolConfigStrictness(options.strictness);
 	const source = options.source ?? "tools";
-	const removedKeys = diagnostics.filter(
-		(entry) => entry.code === "tools.removedProviderKey",
-	);
-	if (removedKeys.length > 0) {
-		throwValidationError(removedKeys, source);
-	}
-
 	if (strictness === "warn") {
 		emitWarnings(diagnostics, source);
 	}

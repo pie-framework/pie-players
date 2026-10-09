@@ -273,43 +273,6 @@ describe("ToolkitCoordinator TTS reconfigure sequencing", () => {
 		}
 	});
 
-	test("rejects removed providers.tts in strict error mode", async () => {
-		expect(
-			() =>
-				new ToolkitCoordinator({
-					assessmentId: "tts-removed-provider-key-test",
-					lazyInit: true,
-					toolConfigStrictness: "error",
-					tools: {
-						providers: {
-							tts: {
-								enabled: true,
-								backend: "browser",
-							},
-						},
-					},
-				} as any),
-		).toThrow(`Provider key "tts" is no longer supported`);
-	});
-
-	test("rejects removed providers.tts by default strictness", () => {
-		expect(
-			() =>
-				new ToolkitCoordinator({
-					assessmentId: "tts-removed-default-strictness-test",
-					lazyInit: true,
-					tools: {
-						providers: {
-							tts: {
-								enabled: true,
-								backend: "browser",
-							},
-						},
-					},
-				} as any),
-		).toThrow(`Provider key "tts" is no longer supported`);
-	});
-
 	test("accepts textToSpeech string runtime provider selectors", () => {
 		expect(
 			() =>

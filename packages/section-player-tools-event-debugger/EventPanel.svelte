@@ -28,7 +28,7 @@
 		createSectionControllerSubscriptionManager,
 		getSectionControllerFromCoordinator,
 	} from "@pie-players/pie-section-player-tools-shared";
-	import { createEventDispatcher, onDestroy, untrack } from "svelte";
+	import { onDestroy, untrack } from "svelte";
 
 	type ControllerEvent = {
 		type?: string;
@@ -97,7 +97,6 @@
 		semanticFingerprint: string;
 	};
 
-	const dispatch = createEventDispatcher<{ close: undefined }>();
 
 	let {
 		maxEvents = 200,
@@ -454,7 +453,7 @@
 	}}
 	className="pie-section-player-tools-event-debugger"
 	bodyClass="pie-section-player-tools-event-debugger__content-shell"
-	onClose={() => dispatch("close")}
+	onClose={() => $host().dispatchEvent(new CustomEvent("close"))}
 >
 	<svelte:fragment slot="icon">
 			<svg

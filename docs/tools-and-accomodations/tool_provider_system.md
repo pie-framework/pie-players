@@ -354,9 +354,8 @@ tier licensed for the application, and proxy or self-host Desmos only when a
 partner agreement grants that right.
 
 The calculator capability defaults to `calculator-desmos` when no provider id
-is configured. The adapter still sends the historical unkeyed request in that
-case; Desmos's CDN rejects it with HTTP 403, and it does not grant or imply a
-Desmos license. Select the separate GeoGebra suite explicitly:
+is configured. The adapter needs an application key and refuses to initialize
+without one. Select the separate GeoGebra suite explicitly:
 
 ```ts
 calculator: {

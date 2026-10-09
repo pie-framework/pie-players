@@ -413,6 +413,24 @@ describe("browser provider segmentation", () => {
 		expect(listeners.size).toBe(0);
 	});
 
+	test("initialize does not wait for the inventory without a configured voice", async () => {
+		const listeners = new Set<EventListener>();
+		const synth = {
+			getVoices: () => [] as SpeechSynthesisVoice[],
+			addEventListener: (_type: string, listener: EventListener) => {
+				listeners.add(listener);
+			},
+			removeEventListener: (_type: string, listener: EventListener) => {
+				listeners.delete(listener);
+			},
+		};
+		(globalThis as any).speechSynthesis = synth;
+		(globalThis as any).window = { speechSynthesis: synth };
+
+		await new BrowserTTSProvider().initialize({} as any);
+		expect(listeners.size).toBe(0);
+	});
+
 	test("rejects an explicit voice that the browser does not expose", async () => {
 		let speakCalls = 0;
 		const voices = [

@@ -1,11 +1,12 @@
 <script lang="ts">
-	import { createEventDispatcher, onMount } from "svelte";
+	import { onMount } from "svelte";
 
 	interface Props {
 		value: string;
 		packageName: string;
 		label?: string;
 		compact?: boolean;
+		onChange?: (detail: { packageName: string; version: string }) => void;
 	}
 
 	let {
@@ -13,11 +14,8 @@
 		packageName,
 		label = "",
 		compact = true,
+		onChange,
 	}: Props = $props();
-
-	const dispatch = createEventDispatcher<{
-		change: { packageName: string; version: string };
-	}>();
 
 	let versions = $state<string[]>([]);
 	let loading = $state(false);
@@ -128,7 +126,7 @@
 		if (!normalized) return;
 		searchInput = normalized;
 		dropdownVisible = false;
-		dispatch("change", { packageName, version: normalized });
+		onChange?.({ packageName, version: normalized });
 	}
 
 	function handleClickOutside(event: MouseEvent) {

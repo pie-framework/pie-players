@@ -38,7 +38,13 @@ export default defineConfig({
 		timeout: 120_000,
 		// Suppress vite's dev-only crash overlay so it can't intercept clicks
 		// when a backing service (e.g. Polly auth) throws unhandled in CI.
-		env: { PLAYWRIGHT_DISABLE_VITE_OVERLAY: "1", BROWSER: "none" },
+		// Desmos loads only with a key; the specs that open a calculator serve a
+		// stub calculator.js, so any key reaches it.
+		env: {
+			PLAYWRIGHT_DISABLE_VITE_OVERLAY: "1",
+			BROWSER: "none",
+			DESMOS_API_KEY: process.env.DESMOS_API_KEY || "e2e-desmos-key",
+		},
 	},
 	projects: [
 		{

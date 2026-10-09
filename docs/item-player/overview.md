@@ -25,7 +25,7 @@ For the full attribute/property/event reference, see the [package README](../../
 
 All loader, controller, and type code lives in `@pie-players/pie-players-shared` (`packages/players-shared`); the item-player package composes them.
 
-**PieItemPlayer.svelte** -- The outer custom element. Parses the `config` prop, then drives a linear pipeline over the `ElementLoader` primitive (selecting the IIFE, ESM, or preloaded path based on `strategy`) to register PIE element bundles, and delegates rendering to `PieItemRenderer`. Manages the config-load lifecycle (loading spinner, error display, loaded state) and exposes host methods such as `provideScore()`, `updateElementModel()`, and authoring `validateModels()`.
+**PieItemPlayer.svelte** -- The outer custom element. Parses the `config` prop, then drives a linear pipeline over the `ElementLoader` primitive (selecting the IIFE, ESM, or preloaded path based on `strategy`) to register PIE element bundles, and delegates rendering to `PieItemRenderer`. Manages the config-load lifecycle (loading spinner, error display, loaded state) and exposes host methods such as `provideScore()` and authoring `validateModels()`.
 
 **ItemController** (`players-shared/src/pie/item-controller.ts`) -- Manages the session container (`{ id, data }`) in memory. The player creates one controller per item and uses it to deduplicate and normalize `session-changed` events from PIE elements, preventing metadata-only events from overwriting real responses.
 
@@ -106,7 +106,7 @@ player.backend = {
 
 Delivery backend support owns networking concerns: item/session load, autosave,
 explicit `saveSession()`, and server-backed `score()`. Existing inputs such as
-`env`, `strategy`, `loaderOptions`, `bundleEndpoints`, `renderStimulus`, and
+`env`, `strategy`, `loaderOptions`, `renderStimulus`, and
 styling props stay on the player itself. Local browser scoring remains
 `provideScore()` and is intentionally separate from server scoring.
 

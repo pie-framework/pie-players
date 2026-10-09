@@ -89,7 +89,6 @@ This keeps core validation generic while allowing custom tools to define their o
 ## Canonical keys
 
 - TTS provider key: `providers.textToSpeech`.
-- `providers.tts` is invalid and rejected by validation.
 
 ## Overlay safety in section-player
 

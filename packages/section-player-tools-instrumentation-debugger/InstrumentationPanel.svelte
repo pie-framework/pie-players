@@ -26,7 +26,7 @@
 		type InstrumentationDebugRecord,
 	} from "@pie-players/pie-players-shared";
 	import { SharedFloatingPanel } from "@pie-players/pie-section-player-tools-shared";
-	import { createEventDispatcher, onDestroy, untrack } from "svelte";
+	import { onDestroy, untrack } from "svelte";
 	import {
 		createPanelRecordIngest,
 		DEFAULT_MAX_RECORDS,
@@ -37,7 +37,6 @@
 		type RecordLimits,
 	} from "./panel-records.js";
 
-	const dispatch = createEventDispatcher<{ close: undefined }>();
 	const allowedKinds = new Set([
 		"event",
 		"error",
@@ -166,7 +165,7 @@
 	}}
 	className="pie-section-player-tools-instrumentation-debugger"
 	bodyClass="pie-section-player-tools-instrumentation-debugger__content-shell"
-	onClose={() => dispatch("close")}
+	onClose={() => $host().dispatchEvent(new CustomEvent("close"))}
 >
 	<svelte:fragment slot="icon">
 		<svg

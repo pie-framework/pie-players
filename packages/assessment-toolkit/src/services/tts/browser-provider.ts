@@ -252,10 +252,14 @@ export class BrowserTTSProvider implements ITTSProvider {
 			throw new Error("Browser does not support Speech Synthesis API");
 		}
 
-		await waitForBrowserVoices(
-			window.speechSynthesis,
-			VOICE_INVENTORY_TIMEOUT_MS,
-		);
+		// Only a configured voice needs the inventory; waiting otherwise would
+		// hold readiness on a browser that publishes no voices.
+		if (typeof config.voice === "string" && config.voice.trim()) {
+			await waitForBrowserVoices(
+				window.speechSynthesis,
+				VOICE_INVENTORY_TIMEOUT_MS,
+			);
+		}
 		return new BrowserTTSProviderImpl(config);
 	}
 

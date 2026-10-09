@@ -290,18 +290,6 @@ for (const entry of entries) {
 	);
 }
 
-// Remove stale copied Svelte sources from older build strategy.
-for (const staleFile of [
-	"ItemToolBar.svelte",
-	"PieAssessmentToolkit.svelte",
-	"SectionToolBar.svelte",
-]) {
-	const stalePath = path.join(distComponents, staleFile);
-	if (existsSync(stalePath)) {
-		rmSync(stalePath);
-	}
-}
-
 console.log(
 	"[build-ce-components] built toolkit custom elements to dist/components",
 );

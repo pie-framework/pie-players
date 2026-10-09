@@ -44,9 +44,8 @@ is intentionally not a toolkit built-in default option.
 
 Returns the demo application's Desmos API key for the browser's documented
 `calculator.js` request. Responses are `private, no-store`. When
-`DESMOS_API_KEY` is absent, the route returns an empty compatibility response and
-the demo falls back to the legacy unkeyed Desmos URL, which Desmos's CDN rejects
-with HTTP 403; that fallback does not grant or imply a Desmos license.
+`DESMOS_API_KEY` is absent, the route returns `{ apiKey: null }` and the
+calculator cannot load.
 
 > **Demo only — intentionally unauthenticated.** This route returns the
 > configured `DESMOS_API_KEY` with no session check. Do not deploy as-is; a real

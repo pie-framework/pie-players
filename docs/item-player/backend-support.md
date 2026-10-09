@@ -38,7 +38,7 @@ player.backend = {
 ```
 
 Existing delivery inputs stay where they are: `env`, `strategy`,
-`loaderOptions`, `bundleEndpoints`, `renderStimulus`, styling props, `config`,
+`loaderOptions`, `renderStimulus`, styling props, `config`,
 and `session` are not duplicated under `backend.delivery`.
 
 `backend` is intentionally namespaced. Legacy flat `pie-api-player` and
@@ -354,18 +354,11 @@ interfaces.
 
 The built-in `pie-api` client sends JSON requests with these shapes.
 
-They are the requests `<pie-api-player>` sends, against the same routes: its
-`host` carries the `/api` segment (`https://api.pie-api.com/api`) and its paths
-are `/player/load|save|model|score`, while `baseUrl` here is the origin and the
-paths carry `/api`. Same URL, and load takes `{ itemId, sessionId, assignmentId,
-env, overrides? }` in both; save adds `itemId`, `assignmentId`, `models` and
-`passageModels` to the legacy `{ sessionId, data, env }`, which the API ignores.
-A host moving off `<pie-api-player>` therefore keeps its endpoints by putting
-its old `host` in `baseUrl`, with or without the trailing `/api`: a base ending
-in `/api` and a path starting with `/api/` resolve to one `/api`. Overriding
-`endpoints` with the legacy paths resolves to the same URL as well. A backend
-that really serves `/api/api` leaves `baseUrl` at the origin and puts the whole
-path in `endpoints`, which nothing rewrites.
+They target the `<pie-api-player>` routes. `baseUrl` is the origin and each
+path carries `/api` (`/api/player/load|save|model|score`); a path in
+`endpoints` is appended to `baseUrl` as given. Load takes `{ itemId, sessionId,
+assignmentId, env, overrides? }`; save sends `{ itemId, sessionId,
+assignmentId, data, env, models, passageModels }`.
 
 Load:
 

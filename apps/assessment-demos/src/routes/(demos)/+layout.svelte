@@ -1,5 +1,11 @@
+<script lang="ts">
+	import type { Snippet } from "svelte";
+
+	let { children }: { children: Snippet } = $props();
+</script>
+
 <div class="demo-route-shell">
-	<slot />
+	{@render children()}
 </div>
 
 <style>

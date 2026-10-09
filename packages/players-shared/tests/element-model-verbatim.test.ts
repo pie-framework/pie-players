@@ -162,7 +162,6 @@ describe("element model assignment", () => {
 		]);
 		const { results } = await scorePieItem(config, session, {
 			container,
-			outcomeArguments: "model-session-env",
 			bundleType: BundleType.clientPlayer,
 		});
 		expect(results[0]?.score).toBe(1);

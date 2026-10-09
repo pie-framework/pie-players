@@ -26,7 +26,7 @@
 		makeUniqueTags,
 	} from "@pie-players/pie-players-shared";
 	import type { ConfigEntity, Env, PieModel } from "@pie-players/pie-players-shared";
-	import { createEventDispatcher, onMount, untrack } from "svelte";
+	import { onMount, untrack } from "svelte";
 	import {
 		createPieI18n,
 		DEFAULT_LOCALE,
@@ -58,7 +58,6 @@
 		height: number;
 	};
 
-	const dispatch = createEventDispatcher<{ close: undefined }>();
 
 	let {
 		itemId = "",
@@ -510,7 +509,7 @@
 			</button>
 			<button
 				class="pie-item-player-session-debugger__window-button"
-				onclick={() => dispatch("close")}
+				onclick={() => $host().dispatchEvent(new CustomEvent("close"))}
 				title={t.close}
 				aria-label={t.closePanel}
 			>

@@ -183,42 +183,6 @@ describe("tool-config-validation", () => {
 		).toThrow(`Unknown provider key "unknownProvider"`);
 	});
 
-	test("removed providers.tts always throws regardless of strictness", () => {
-		const registry = createTestToolRegistry();
-		expect(() =>
-			normalizeAndValidateToolsConfig(
-				{
-					providers: {
-						tts: {
-							enabled: true,
-						},
-					},
-				},
-				{
-					strictness: "off",
-					source: "test",
-					toolRegistry: registry,
-				},
-			),
-		).toThrow(`Provider key "tts" is no longer supported`);
-		expect(() =>
-			normalizeAndValidateToolsConfig(
-				{
-					providers: {
-						tts: {
-							enabled: true,
-						},
-					},
-				},
-				{
-					strictness: "warn",
-					source: "test",
-					toolRegistry: registry,
-				},
-			),
-		).toThrow(`Provider key "tts" is no longer supported`);
-	});
-
 	test("flags unsupported placement level for known tool id", () => {
 		const registry = createTestToolRegistry();
 		const result = normalizeAndValidateToolsConfig(

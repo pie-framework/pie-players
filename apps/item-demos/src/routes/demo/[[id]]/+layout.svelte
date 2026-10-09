@@ -268,13 +268,13 @@
 			<ElementVersionToolbar
 				elements={catalogElements}
 				overrides={elementOverrides}
-				on:change={(event) => {
-					void updateOverrideParam(event.detail.packageName, event.detail.version);
+				onChange={(detail) => {
+					void updateOverrideParam(detail.packageName, detail.version);
 				}}
-				on:resetOne={(event) => {
-					void updateOverrideParam(event.detail.packageName, null);
+				onResetOne={(detail) => {
+					void updateOverrideParam(detail.packageName, null);
 				}}
-				on:resetAll={() => {
+				onResetAll={() => {
 					const nextParams = removeOverrideParams(new URLSearchParams(page.url.search));
 					const query = nextParams.toString();
 					const targetUrl = query ? `${page.url.pathname}?${query}` : page.url.pathname;

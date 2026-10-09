@@ -5,10 +5,7 @@
 "@pie-players/pie-calculator": patch
 "@pie-players/pie-calculator-geogebra": patch
 "@pie-players/pie-tool-calculator-shared": patch
-"@pie-players/pie-tool-calculator-geogebra": patch
 "@pie-players/pie-tool-calculator-inline-desmos": patch
-"@pie-players/pie-tool-calculator-inline-geogebra": patch
-"@pie-players/pie-tool-calculator-inline-cortex": patch
 "@pie-players/pie-tool-ruler": patch
 "@pie-players/pie-tool-protractor": patch
 ---

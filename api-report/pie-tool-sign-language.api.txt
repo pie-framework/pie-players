@@ -10,6 +10,7 @@
   SIGN_LANGUAGE_CATALOG_TYPE
   SIGN_LANGUAGE_ELEMENT_TAG
   SIGN_LANGUAGE_FEATURE_ID
+  SIGN_LANGUAGE_TOOL_TAG_MAP
   type SignLanguageLookupArgs
   type SignLanguageMedia
   describeSignLanguage

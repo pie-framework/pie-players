@@ -18,14 +18,14 @@ and how does the program tier them":
 | `PACKAGED_TOOL_TAG_MAP` | Which custom element each one renders as |
 | `PACKAGED_TOOL_PLACEMENT`, `SECTION_PLAYER_PREFERRED_TOOL_PLACEMENT`, `PACKAGED_TOOL_ORDER` | Where they appear and in what order |
 | `UNIVERSAL_SUPPORTS_PRESET`, `createUniversalPersonalNeedsProfile` | Which of them the program grants to everyone |
-| `DEFAULT_TOOL_MODULE_LOADERS`, `createDefaultToolModuleLoaders`, `registerSectionToolModuleLoaders` | When each one's bundle loads |
+| `DEFAULT_TOOL_MODULE_LOADERS`, `registerDefaultToolModuleLoaders` | When each one's bundle loads |
 
 The individual registrations are exported too, so a host can compose its own set
 rather than take the packaged one whole.
 
 These exports are projections of one internal **Packaged Capability
 Composition**. Each packaged capability is authored once with its registration,
-element delivery, loader bootstrap sets, placement/order membership and explicit
+element delivery, module loader, placement/order membership and explicit
 universal-support policy. The package build rejects contradictory PIE-owned data
 — for example, a region capability with a toolbar tag, or a content-dependent
 capability marked universal — so release tests find a missing facet
@@ -33,11 +33,10 @@ instead of a learner finding a dead affordance. The browser does not repeat that
 strict gate at import time: a PIE authoring defect must block publication, not an
 otherwise usable assessment.
 
-That invariant boundary does not make host input stricter. The existing public
-factory and constants are unchanged: lazy module loading remains opt-in,
-registration/tag/factory overrides retain precedence, an empty `toolIds` array
-still selects the full packaged set, and unknown selected ids are ignored while
-known ids continue to register.
+That invariant boundary does not make host input stricter: lazy module loading
+is opt-in, registration/tag/factory overrides take precedence, an empty
+`toolIds` array selects the full packaged set, and unknown selected ids are
+ignored while known ids register.
 
 ## Usage
 
@@ -53,35 +52,27 @@ const registry = createPackagedToolRegistry({
 });
 ```
 
-Desmos remains the calculator delivery when no provider is configured. To use
-GeoGebra or the fully bundled open-source Cortex implementation, pass the same
-calculator configuration to both the toolkit and the
-packaged composition. The composition then owns the matching element tag and
-module loader; hosts do not hand-maintain a second vendor map.
+One loader set serves every host shape. `DEFAULT_TOOL_MODULE_LOADERS` holds a
+loader per packaged capability, and a registry loads a module only when a tool
+first renders, so an item player, a section player and an assessment player
+pass the same set and load only the tools they place.
+
+The calculator is one element, `<pie-tool-calculator>`, for every provider.
+Desmos is the provider when none is configured; the toolkit picks another from
+`tools.providers.calculator` when the element mounts, and an open calculator
+remounts on the new provider when a tool-config update replaces it.
 
 ```ts
-import {
-	createDefaultToolModuleLoaders,
-	createPackagedToolRegistry,
-} from "@pie-players/pie-default-tool-loaders";
-
-const calculatorProviderConfig = {
-	provider: {
-		id: "calculator-geogebra",
-		init: { appletTimeoutMs: 20_000 },
-	},
-	settings: { showResetIcon: true },
-};
-
-const registry = createPackagedToolRegistry({
-	calculatorProviderConfig,
-	toolModuleLoaders: createDefaultToolModuleLoaders({
-		calculatorProviderConfig,
-	}),
-});
-
 const tools = {
-	providers: { calculator: calculatorProviderConfig },
+	providers: {
+		calculator: {
+			provider: {
+				id: "calculator-geogebra",
+				init: { appletTimeoutMs: 20_000 },
+			},
+			settings: { showResetIcon: true },
+		},
+	},
 };
 ```
 
@@ -90,9 +81,9 @@ For an offline-capable calculator with no API key or runtime CDN, use
 history, evaluation limit, allowed functions, clipboard policy, and graph
 viewport options documented by `@pie-players/pie-calculator-cortex`.
 
-The toolkit's `ToolRegistry` is the other end of that choice: it starts empty,
-and a host composing its own set registers into it and installs the tag map its
-registrations create elements from.
+A host composing its own set starts from the toolkit's empty `ToolRegistry`,
+registers into it, and installs the tag map its registrations create elements
+from.
 
 ```ts
 import { ToolRegistry } from "@pie-players/pie-assessment-toolkit";
@@ -110,10 +101,10 @@ registry.setComponentOverrides({ toolTagMap: PACKAGED_TOOL_TAG_MAP });
 registerDefaultToolModuleLoaders(registry);
 ```
 
-`registerDefaultToolModuleLoaders` installs a loader for every packaged tool.
-`registerSectionToolModuleLoaders` installs only the section-bootstrap subset,
-which has no text-to-speech loader, so a registry that places item-level text to
-speech needs the full set.
+`registerDefaultToolModuleLoaders` installs a loader for every packaged tool;
+its `loaders` option adds or replaces entries. A replacement registered after a
+tool's module has loaded is ignored with a warning, since the elements it
+defines are already in place.
 
 ## Content-dependent capabilities require an explicit packaging decision
 

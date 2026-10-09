@@ -55,4 +55,23 @@ describe("ElementToolStateStore", () => {
 			warn.mockRestore();
 		}
 	});
+
+	test("subscribers get a copy, and a restore notifies them without persisting", () => {
+		const store = new ElementToolStateStore();
+		const snapshots: Map<string, Map<string, unknown>>[] = [];
+		let persisted = 0;
+		store.subscribe((state) => snapshots.push(state));
+		store.setOnStateChange(() => {
+			persisted += 1;
+		});
+		store.setState("a:s:i:e", "flag", true);
+		snapshots[0]?.get("a:s:i:e")?.set("flag", false);
+		snapshots[0]?.delete("a:s:i:e");
+		expect(store.getState("a:s:i:e", "flag")).toBe(true);
+
+		store.loadState({ "a:s:i:f": { flag: "restored" } });
+		expect(snapshots).toHaveLength(2);
+		expect(snapshots[1]?.get("a:s:i:f")?.get("flag")).toBe("restored");
+		expect(persisted).toBe(1);
+	});
 });

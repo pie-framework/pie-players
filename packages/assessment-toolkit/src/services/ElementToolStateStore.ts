@@ -30,10 +30,10 @@ function unescapeIdPart(part: string): string {
 }
 
 export class ElementToolStateStore {
-	private elementStates = new Map<string, Map<string, any>>();
-	private listeners = new Set<(state: Map<string, Map<string, any>>) => void>();
+	private elementStates = new Map<string, Map<string, unknown>>();
+	private listeners = new Set<(state: Map<string, Map<string, unknown>>) => void>();
 	private onStateChange:
-		| ((state: Record<string, Record<string, any>>) => void)
+		| ((state: Record<string, Record<string, unknown>>) => void)
 		| null = null;
 
 	/**
@@ -80,7 +80,7 @@ export class ElementToolStateStore {
 	 * @param toolId Tool identifier (e.g., 'answerEliminator', 'flagging')
 	 * @param state Tool-specific state object
 	 */
-	setState(globalElementId: string, toolId: string, state: any): void {
+	setState(globalElementId: string, toolId: string, state: unknown): void {
 		let elementState = this.elementStates.get(globalElementId);
 		if (!elementState) {
 			elementState = new Map();
@@ -98,7 +98,7 @@ export class ElementToolStateStore {
 	 * @param toolId Tool identifier
 	 * @returns Tool state or undefined if not found
 	 */
-	getState(globalElementId: string, toolId: string): any | undefined {
+	getState(globalElementId: string, toolId: string): unknown {
 		return this.elementStates.get(globalElementId)?.get(toolId);
 	}
 
@@ -108,7 +108,7 @@ export class ElementToolStateStore {
 	 * @param globalElementId Composite key identifying the element
 	 * @returns Object with tool states keyed by toolId
 	 */
-	getElementState(globalElementId: string): Record<string, any> {
+	getElementState(globalElementId: string): Record<string, unknown> {
 		const elementState = this.elementStates.get(globalElementId);
 		if (!elementState) return {};
 		return Object.fromEntries(elementState.entries());
@@ -120,8 +120,8 @@ export class ElementToolStateStore {
 	 *
 	 * @returns Nested object: { globalElementId: { toolId: state } }
 	 */
-	getAllState(): Record<string, Record<string, any>> {
-		const result: Record<string, Record<string, any>> = {};
+	getAllState(): Record<string, Record<string, unknown>> {
+		const result: Record<string, Record<string, unknown>> = {};
 		for (const [globalElementId, toolStates] of this.elementStates.entries()) {
 			result[globalElementId] = Object.fromEntries(toolStates.entries());
 		}
@@ -130,22 +130,30 @@ export class ElementToolStateStore {
 
 	/**
 	 * Subscribes to state changes.
-	 * Callback is invoked whenever any element's tool state changes.
+	 * Callback is invoked whenever any element's tool state changes, including
+	 * a `loadState` restore, with a copy of the state that it may keep.
 	 *
 	 * @param callback Function to call on state changes
 	 * @returns Unsubscribe function
 	 */
 	subscribe(
-		callback: (state: Map<string, Map<string, any>>) => void,
+		callback: (state: Map<string, Map<string, unknown>>) => void,
 	): () => void {
 		this.listeners.add(callback);
 		return () => this.listeners.delete(callback);
 	}
 
 	private _notifyListeners(): void {
+		if (this.listeners.size === 0) return;
+		const snapshot = new Map(
+			[...this.elementStates].map(([key, toolStates]) => [
+				key,
+				new Map(toolStates),
+			]),
+		);
 		for (const listener of this.listeners) {
 			try {
-				listener(this.elementStates);
+				listener(snapshot);
 			} catch (error) {
 				console.warn("[ElementToolStateStore] listener failed:", error);
 			}
@@ -159,7 +167,7 @@ export class ElementToolStateStore {
 	 * @param callback Function to call with serialized state on changes
 	 */
 	setOnStateChange(
-		callback: (state: Record<string, Record<string, any>>) => void,
+		callback: (state: Record<string, Record<string, unknown>>) => void,
 	): void {
 		this.onStateChange = callback;
 	}
@@ -175,11 +183,12 @@ export class ElementToolStateStore {
 
 	/**
 	 * Loads tool state from serialized format.
-	 * Used to restore state from localStorage or server.
+	 * Used to restore state from localStorage or server. Subscribers are
+	 * notified; the persistence callback is not, so a restore never writes back.
 	 *
 	 * @param state Serialized state object
 	 */
-	loadState(state: Record<string, Record<string, any>>): void {
+	loadState(state: Record<string, Record<string, unknown>>): void {
 		this.elementStates.clear();
 		for (const [globalElementId, toolStates] of Object.entries(state)) {
 			const elementState = new Map(Object.entries(toolStates));

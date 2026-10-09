@@ -234,19 +234,11 @@ export class ToolProviderRegistry {
 		// Start with base config
 		let providerConfig = { ...config.config };
 		const deriveBackend = (value: unknown): string => {
-			if (!value || typeof value !== "object") return "unknown";
-			const typed = value as Record<string, unknown>;
-			const direct =
-				typeof typed.backend === "string"
-					? typed.backend
-					: typeof typed.provider === "string"
-						? typed.provider
-						: typeof typed.serverProvider === "string"
-							? typed.serverProvider
-							: typeof typed.providerId === "string"
-								? typed.providerId
-								: "";
-			return direct || "unknown";
+			const backend =
+				value && typeof value === "object"
+					? (value as { backend?: unknown }).backend
+					: undefined;
+			return typeof backend === "string" && backend ? backend : "unknown";
 		};
 		const providerInitStartedAt = Date.now();
 		await this.emitTelemetry(config, "pie-tool-init-start", {
@@ -432,8 +424,7 @@ export class ToolProviderRegistry {
 				}
 			}
 
-			// Destroy provider
-			provider.destroy();
+			this.destroyProvider(toolId, provider);
 
 			// Remove from registry
 			this.providers.delete(toolId);

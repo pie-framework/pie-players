@@ -10,18 +10,15 @@
   CONTENT_ALTERNATE_REGISTRATIONS
   DEFAULT_TOOL_MODULE_LOADERS
   type DictionaryVariantOptions
-  ITEM_TOOL_MODULE_LOADERS
   PACKAGED_TOOL_ORDER
   PACKAGED_TOOL_PLACEMENT
   PACKAGED_TOOL_REGISTRATIONS
   PACKAGED_TOOL_TAG_MAP
-  type PackagedCalculatorCompositionOptions
   type PackagedToolRegistryOptions
   type RegisterDefaultToolModuleLoadersOptions
   type RegisterPackagedToolsOptions
   type ResolvedAudioTranscript
   SECTION_PLAYER_PREFERRED_TOOL_PLACEMENT
-  SECTION_TOOL_MODULE_LOADERS
   type ToolModuleLoader
   type ToolRegistryLike
   UNIVERSAL_SUPPORTS_PRESET
@@ -29,11 +26,9 @@
   answerEliminatorToolRegistration
   audioTranscriptRegistration
   calculatorToolRegistration
-  createDefaultToolModuleLoaders
   createDictionaryToolRegistration
   createPackagedToolRegistry
   createPictureDictionaryToolRegistration
-  createSectionToolModuleLoaders
   createUniversalPersonalNeedsProfile
   dictionaryToolRegistration
   graphToolRegistration
@@ -43,7 +38,6 @@
   protractorToolRegistration
   registerDefaultToolModuleLoaders
   registerPackagedTools
-  registerSectionToolModuleLoaders
   resolveAudioTranscript
   rulerToolRegistration
   spanishDictionaryToolRegistration

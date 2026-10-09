@@ -127,10 +127,6 @@ export type {
 	AssessmentToolkitShellContext,
 } from "../context/assessment-toolkit-context.js";
 export {
-	connectAssessmentToolkitRegionScopeContext,
-	connectAssessmentToolkitShellContext,
-} from "../context/runtime-context-consumer.js";
-export {
 	connectToolRegionScopeContext,
 	connectToolRuntimeContext,
 	connectToolShellContext,

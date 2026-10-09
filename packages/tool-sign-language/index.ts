@@ -26,6 +26,7 @@ import "./src/SignLanguageMediaRegion.svelte";
 export {
 	CONTENT_MEDIA_SURFACE,
 	SIGN_LANGUAGE_ELEMENT_TAG,
+	SIGN_LANGUAGE_TOOL_TAG_MAP,
 	signLanguageRegistration,
 } from "./src/sign-language-registration.js";
 

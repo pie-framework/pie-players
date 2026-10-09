@@ -104,7 +104,7 @@ describe("tools reach the toolkit through the runtime context only", () => {
 		);
 		const spans = declaredPropSpans(answerEliminator);
 		expect(spans.length).toBe(2);
-		expect(spans.every((span) => span.includes("globalElementId"))).toBe(true);
+		expect(spans.every((span) => span.includes("elementStateKeys"))).toBe(true);
 	});
 
 	test("the detectors flag a service prop and a service assignment", () => {

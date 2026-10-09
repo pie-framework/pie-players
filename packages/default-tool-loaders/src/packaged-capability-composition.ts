@@ -10,12 +10,9 @@
 
 import {
 	ToolRegistry,
-	type CalculatorToolProviderConfig,
-	type ToolComponentFactory,
 	type ToolComponentFactoryMap,
 	type ToolRegistration,
 	type ToolTagMap,
-	type ToolProviderConfig,
 } from "@pie-players/pie-assessment-toolkit/tools/registration";
 import type { PersonalNeedsProfile } from "@pie-players/pie-players-shared/types";
 import {
@@ -24,11 +21,7 @@ import {
 	themeToolRegistration,
 } from "./registrations/accessibility-tools.js";
 import { audioTranscriptRegistration } from "./registrations/audio-transcript.js";
-import {
-	calculatorToolRegistration,
-	type CalculatorProviderId,
-	resolveCalculatorProviderId,
-} from "./registrations/calculator.js";
+import { calculatorToolRegistration } from "./registrations/calculator.js";
 import {
 	dictionaryToolRegistration,
 	pictureDictionaryToolRegistration,
@@ -54,23 +47,12 @@ export interface ToolRegistryLike {
 	): void;
 }
 
-export interface PackagedCalculatorCompositionOptions {
-	/**
-	 * The same calculator config supplied at `tools.providers.calculator`.
-	 * Selects the matching packaged element and default loader. Omit it to retain
-	 * the existing Desmos delivery.
-	 */
-	calculatorProviderConfig?: CalculatorToolProviderConfig;
-}
-
-export interface PackagedToolRegistryOptions
-	extends PackagedCalculatorCompositionOptions {
+export interface PackagedToolRegistryOptions {
 	/** Override packaged registrations by toolId. */
 	overrides?: Partial<Record<string, ToolRegistration>>;
 	/** Override or extend the packaged element tag mapping. */
 	toolTagMap?: Partial<ToolTagMap>;
-	/** Override the component factory globally or per tool. */
-	toolComponentFactory?: ToolComponentFactory;
+	/** Override the component factory per tool. */
 	toolComponentFactories?: Partial<ToolComponentFactoryMap>;
 	/** Lazy module loaders keyed by toolId. */
 	toolModuleLoaders?: Partial<Record<string, ToolModuleLoader>>;
@@ -83,12 +65,10 @@ export interface RegisterPackagedToolsOptions {
 	applyOverrides?: (registration: ToolRegistration) => ToolRegistration;
 }
 
-export interface RegisterDefaultToolModuleLoadersOptions
-	extends PackagedCalculatorCompositionOptions {
+export interface RegisterDefaultToolModuleLoadersOptions {
 	loaders?: Partial<Record<string, ToolModuleLoader>>;
 }
 
-type LoaderTarget = "item" | "section";
 type PackagedPlacementLevel =
 	| "assessment"
 	| "section"
@@ -101,10 +81,9 @@ type OrderedLevels<Level extends string> = Partial<Record<Level, number>>;
 
 interface PackagedCapabilityDefinition {
 	registration: ToolRegistration;
-	/** Element delivery. Region capabilities deliberately omit all three fields. */
+	/** Element delivery. Region capabilities omit both fields. */
 	tagName?: string;
 	loadModule?: ToolModuleLoader;
-	loaderTargets?: readonly LoaderTarget[];
 	/** Existing exhaustive placement preset, including its extended level names. */
 	placementOrder?: OrderedLevels<PackagedPlacementLevel>;
 	/** Recommended section-player toolbar placement. */
@@ -121,57 +100,14 @@ interface PackagedCapabilityDefinition {
 const loadSideEffectModule = (load: () => Promise<unknown>): Promise<void> =>
 	load().then(() => undefined);
 
-function loadCalculatorElement(
-	tagName: string,
-	load: () => Promise<unknown>,
-): Promise<unknown> {
-	if (
-		typeof globalThis !== "undefined" &&
-		"customElements" in globalThis &&
-		globalThis.customElements?.get(tagName)
-	) {
-		return Promise.resolve();
-	}
-	return loadSideEffectModule(load);
-}
-
-const loadDesmosCalculatorModule = () =>
-	loadCalculatorElement(
-		"pie-tool-calculator",
-		() => import("@pie-players/pie-tool-calculator-shared/calculator-element"),
-	);
-const loadGeoGebraCalculatorModule = () =>
-	loadCalculatorElement(
-		"pie-tool-calculator-geogebra",
-		() => import("@pie-players/pie-tool-calculator-geogebra"),
-	);
-const loadCortexCalculatorModule = () =>
-	loadCalculatorElement(
-		"pie-tool-calculator-cortex",
-		() => import("@pie-players/pie-tool-calculator-cortex"),
-	);
-
-const CALCULATOR_DELIVERY: Record<
-	CalculatorProviderId,
-	{ tagName: string; loadModule: ToolModuleLoader }
-> = {
-	"calculator-desmos": {
-		tagName: "pie-tool-calculator",
-		loadModule: loadDesmosCalculatorModule,
-	},
-	"calculator-geogebra": {
-		tagName: "pie-tool-calculator-geogebra",
-		loadModule: loadGeoGebraCalculatorModule,
-	},
-	"calculator-cortex": {
-		tagName: "pie-tool-calculator-cortex",
-		loadModule: loadCortexCalculatorModule,
-	},
-};
-
-function resolveCalculatorDelivery(config?: ToolProviderConfig) {
-	return CALCULATOR_DELIVERY[resolveCalculatorProviderId(config)];
-}
+// One element serves every calculator provider; the toolkit picks the provider
+// from `tools.providers.calculator` when the element mounts.
+const loadCalculatorModule = (): Promise<void> =>
+	globalThis.customElements?.get("pie-tool-calculator")
+		? Promise.resolve()
+		: loadSideEffectModule(
+				() => import("@pie-players/pie-tool-calculator-shared/calculator-element"),
+			);
 
 const loadTtsModule = () =>
 	loadSideEffectModule(() => import("@pie-players/pie-tool-tts-inline"));
@@ -203,9 +139,8 @@ const loadPictureDictionaryModule = () =>
 const PACKAGED_CAPABILITY_DEFINITIONS = [
 	{
 		registration: calculatorToolRegistration,
-		tagName: CALCULATOR_DELIVERY["calculator-desmos"].tagName,
-		loadModule: CALCULATOR_DELIVERY["calculator-desmos"].loadModule,
-		loaderTargets: ["item", "section"],
+		tagName: "pie-tool-calculator",
+		loadModule: loadCalculatorModule,
 		placementOrder: { element: 10 },
 		preferredPlacementOrder: { item: 10 },
 		toolbarOrder: 20,
@@ -215,7 +150,6 @@ const PACKAGED_CAPABILITY_DEFINITIONS = [
 		registration: ttsToolRegistration,
 		tagName: "pie-tool-tts-inline",
 		loadModule: loadTtsModule,
-		loaderTargets: ["item"],
 		placementOrder: { item: 10, passage: 10, rubric: 10, element: 30 },
 		preferredPlacementOrder: { item: 20, passage: 10 },
 		toolbarOrder: 30,
@@ -225,7 +159,6 @@ const PACKAGED_CAPABILITY_DEFINITIONS = [
 		registration: rulerToolRegistration,
 		tagName: "pie-tool-ruler",
 		loadModule: loadRulerModule,
-		loaderTargets: ["section"],
 		placementOrder: { element: 40 },
 		preferredPlacementOrder: { section: 50 },
 		toolbarOrder: 80,
@@ -235,7 +168,6 @@ const PACKAGED_CAPABILITY_DEFINITIONS = [
 		registration: protractorToolRegistration,
 		tagName: "pie-tool-protractor",
 		loadModule: loadProtractorModule,
-		loaderTargets: ["section"],
 		placementOrder: { element: 50 },
 		preferredPlacementOrder: { section: 60 },
 		toolbarOrder: 90,
@@ -245,7 +177,6 @@ const PACKAGED_CAPABILITY_DEFINITIONS = [
 		registration: answerEliminatorToolRegistration,
 		tagName: "pie-tool-answer-eliminator",
 		loadModule: loadAnswerEliminatorModule,
-		loaderTargets: ["item"],
 		placementOrder: { element: 20 },
 		preferredPlacementOrder: { item: 30 },
 		toolbarOrder: 70,
@@ -255,7 +186,6 @@ const PACKAGED_CAPABILITY_DEFINITIONS = [
 		registration: lineReaderToolRegistration,
 		tagName: "pie-tool-line-reader",
 		loadModule: loadLineReaderModule,
-		loaderTargets: ["section"],
 		placementOrder: { passage: 40, rubric: 40 },
 		preferredPlacementOrder: { section: 40 },
 		toolbarOrder: 40,
@@ -265,7 +195,6 @@ const PACKAGED_CAPABILITY_DEFINITIONS = [
 		registration: themeToolRegistration,
 		tagName: "pie-tool-theme",
 		loadModule: loadThemeModule,
-		loaderTargets: ["item"],
 		placementOrder: { assessment: 10, section: 10 },
 		preferredPlacementOrder: { section: 10 },
 		toolbarOrder: 10,
@@ -275,7 +204,6 @@ const PACKAGED_CAPABILITY_DEFINITIONS = [
 		registration: annotationToolbarRegistration,
 		tagName: "pie-tool-annotation-toolbar",
 		loadModule: loadAnnotationToolbarModule,
-		loaderTargets: ["item"],
 		placementOrder: { item: 30, passage: 30, rubric: 30, element: 70 },
 		preferredPlacementOrder: { item: 40, passage: 20 },
 		toolbarOrder: 50,
@@ -285,7 +213,6 @@ const PACKAGED_CAPABILITY_DEFINITIONS = [
 		registration: graphToolRegistration,
 		tagName: "pie-tool-graph",
 		loadModule: loadGraphModule,
-		loaderTargets: ["section"],
 		placementOrder: { item: 40, element: 80 },
 		preferredPlacementOrder: { section: 20 },
 		toolbarOrder: 100,
@@ -295,7 +222,6 @@ const PACKAGED_CAPABILITY_DEFINITIONS = [
 		registration: periodicTableToolRegistration,
 		tagName: "pie-tool-periodic-table",
 		loadModule: loadPeriodicTableModule,
-		loaderTargets: ["section"],
 		placementOrder: { item: 50, element: 90 },
 		preferredPlacementOrder: { section: 30 },
 		toolbarOrder: 110,
@@ -305,7 +231,6 @@ const PACKAGED_CAPABILITY_DEFINITIONS = [
 		registration: dictionaryToolRegistration,
 		tagName: "pie-tool-dictionary",
 		loadModule: loadDictionaryModule,
-		loaderTargets: ["section"],
 		placementOrder: { item: 60, element: 100 },
 		preferredPlacementOrder: { section: 70 },
 		toolbarOrder: 120,
@@ -317,7 +242,6 @@ const PACKAGED_CAPABILITY_DEFINITIONS = [
 		registration: pictureDictionaryToolRegistration,
 		tagName: "pie-tool-picture-dictionary",
 		loadModule: loadPictureDictionaryModule,
-		loaderTargets: ["section"],
 		placementOrder: { item: 70, element: 110 },
 		preferredPlacementOrder: { section: 80 },
 		toolbarOrder: 130,
@@ -330,7 +254,6 @@ const PACKAGED_CAPABILITY_DEFINITIONS = [
 		registration: spanishDictionaryToolRegistration,
 		tagName: "pie-tool-dictionary",
 		loadModule: loadDictionaryModule,
-		loaderTargets: ["section"],
 		placementOrder: { item: 80, element: 120 },
 		preferredPlacementOrder: { section: 90 },
 		toolbarOrder: 140,
@@ -340,7 +263,6 @@ const PACKAGED_CAPABILITY_DEFINITIONS = [
 		registration: spanishPictureDictionaryToolRegistration,
 		tagName: "pie-tool-picture-dictionary",
 		loadModule: loadPictureDictionaryModule,
-		loaderTargets: ["section"],
 		placementOrder: { item: 90, element: 130 },
 		preferredPlacementOrder: { section: 100 },
 		toolbarOrder: 150,
@@ -415,7 +337,6 @@ function assertComposition(
 			if (
 				definition.tagName !== undefined ||
 				definition.loadModule !== undefined ||
-				definition.loaderTargets !== undefined ||
 				definition.toolbarOrder !== undefined ||
 				Object.keys(definition.placementOrder ?? {}).length > 0 ||
 				Object.keys(definition.preferredPlacementOrder ?? {}).length > 0
@@ -430,20 +351,9 @@ function assertComposition(
 					`Invalid packaged capability "${registration.toolId}": element-backed capabilities need a custom-element tag.`,
 				);
 			}
-			if (
-				typeof definition.loadModule !== "function" ||
-				!definition.loaderTargets?.length
-			) {
+			if (typeof definition.loadModule !== "function") {
 				throw new Error(
-					`Invalid packaged capability "${registration.toolId}": element-backed capabilities need a lazy loader and at least one bootstrap target.`,
-				);
-			}
-			if (
-				new Set(definition.loaderTargets).size !==
-				definition.loaderTargets.length
-			) {
-				throw new Error(
-					`Invalid packaged capability "${registration.toolId}": loader bootstrap targets must be unique.`,
+					`Invalid packaged capability "${registration.toolId}": element-backed capabilities need a lazy loader.`,
 				);
 			}
 			if (definition.toolbarOrder === undefined) {
@@ -521,9 +431,7 @@ function orderedToolIds<Level extends string>(
 class PackagedCapabilityComposition {
 	readonly registrations: readonly ToolRegistration[];
 	readonly toolTagMap: Readonly<ToolTagMap>;
-	readonly itemModuleLoaders: Readonly<Record<string, ToolModuleLoader>>;
-	readonly sectionModuleLoaders: Readonly<Record<string, ToolModuleLoader>>;
-	readonly defaultModuleLoaders: Readonly<Record<string, ToolModuleLoader>>;
+	readonly moduleLoaders: Readonly<Record<string, ToolModuleLoader>>;
 	readonly placement: Readonly<
 		Record<PackagedPlacementLevel, readonly string[]>
 	>;
@@ -548,12 +456,15 @@ class PackagedCapabilityComposition {
 				),
 			),
 		);
-		this.itemModuleLoaders = this.projectModuleLoaders("item");
-		this.sectionModuleLoaders = this.projectModuleLoaders("section");
-		this.defaultModuleLoaders = Object.freeze({
-			...this.itemModuleLoaders,
-			...this.sectionModuleLoaders,
-		});
+		this.moduleLoaders = Object.freeze(
+			Object.fromEntries(
+				definitions.flatMap((definition) =>
+					definition.loadModule
+						? [[definition.registration.toolId, definition.loadModule]]
+						: [],
+				),
+			),
+		);
 		const placementIds = (level: PackagedPlacementLevel) =>
 			Object.freeze(
 				orderedToolIds(definitions, level, ({ placementOrder }) => placementOrder),
@@ -595,20 +506,6 @@ class PackagedCapabilityComposition {
 		);
 	}
 
-	private projectModuleLoaders(
-		target: LoaderTarget,
-	): Readonly<Record<string, ToolModuleLoader>> {
-		return Object.freeze(
-			Object.fromEntries(
-				this.definitions.flatMap((definition) =>
-					definition.loadModule && definition.loaderTargets?.includes(target)
-						? [[definition.registration.toolId, definition.loadModule]]
-						: [],
-				),
-			),
-		);
-	}
-
 	private selectRegistrations(
 		toolIds?: readonly string[],
 	): readonly ToolRegistration[] {
@@ -646,35 +543,14 @@ class PackagedCapabilityComposition {
 			options.toolModuleLoaders &&
 			Object.keys(options.toolModuleLoaders).length > 0
 		) {
-			const toolModuleLoaders = { ...options.toolModuleLoaders };
-			const calculatorDelivery = resolveCalculatorDelivery(
-				options.calculatorProviderConfig,
-			);
-			// A host using the packaged default map gets a coherent provider-specific
-			// loader. A genuinely custom calculator loader remains the host's override.
-			if (
-				options.calculatorProviderConfig &&
-				toolModuleLoaders.calculator === this.defaultModuleLoaders.calculator
-			) {
-				toolModuleLoaders.calculator = calculatorDelivery.loadModule;
-			}
-			registry.setToolModuleLoaders(toolModuleLoaders);
+			registry.setToolModuleLoaders({ ...options.toolModuleLoaders });
 		}
 
-		const calculatorTagMap = options.calculatorProviderConfig
-			? {
-					calculator: resolveCalculatorDelivery(
-						options.calculatorProviderConfig,
-					).tagName,
-				}
-			: {};
 		registry.setComponentOverrides({
 			toolTagMap: {
 				...this.toolTagMap,
-				...calculatorTagMap,
 				...(options.toolTagMap ?? {}),
 			},
-			toolComponentFactory: options.toolComponentFactory,
 			toolComponentFactories: options.toolComponentFactories,
 		});
 		return registry;
@@ -712,39 +588,9 @@ export const PACKAGED_TOOL_TAG_MAP: ToolTagMap = {
 	...packagedCapabilityComposition.toolTagMap,
 };
 
-export const ITEM_TOOL_MODULE_LOADERS: Record<string, ToolModuleLoader> = {
-	...packagedCapabilityComposition.itemModuleLoaders,
-};
-
-export const SECTION_TOOL_MODULE_LOADERS: Record<string, ToolModuleLoader> = {
-	...packagedCapabilityComposition.sectionModuleLoaders,
-};
-
 export const DEFAULT_TOOL_MODULE_LOADERS: Record<string, ToolModuleLoader> = {
-	...packagedCapabilityComposition.defaultModuleLoaders,
+	...packagedCapabilityComposition.moduleLoaders,
 };
-
-/** Build the packaged loader map for a selected calculator provider. */
-export function createDefaultToolModuleLoaders(
-	options: PackagedCalculatorCompositionOptions = {},
-): Record<string, ToolModuleLoader> {
-	return {
-		...DEFAULT_TOOL_MODULE_LOADERS,
-		calculator: resolveCalculatorDelivery(options.calculatorProviderConfig)
-			.loadModule,
-	};
-}
-
-/** Build the section-bootstrap loader subset for a selected calculator provider. */
-export function createSectionToolModuleLoaders(
-	options: PackagedCalculatorCompositionOptions = {},
-): Record<string, ToolModuleLoader> {
-	return {
-		...SECTION_TOOL_MODULE_LOADERS,
-		calculator: resolveCalculatorDelivery(options.calculatorProviderConfig)
-			.loadModule,
-	};
-}
 
 export const PACKAGED_TOOL_PLACEMENT: Readonly<
 	Record<PackagedPlacementLevel, readonly string[]>
@@ -796,18 +642,7 @@ export function registerDefaultToolModuleLoaders(
 	options: RegisterDefaultToolModuleLoadersOptions = {},
 ): void {
 	registry.setToolModuleLoaders({
-		...createDefaultToolModuleLoaders(options),
-		...(options.loaders ?? {}),
-	});
-}
-
-/** Register only the section-bootstrap loader subset, then host overrides. */
-export function registerSectionToolModuleLoaders(
-	registry: ToolRegistryLike,
-	options: RegisterDefaultToolModuleLoadersOptions = {},
-): void {
-	registry.setToolModuleLoaders({
-		...createSectionToolModuleLoaders(options),
+		...DEFAULT_TOOL_MODULE_LOADERS,
 		...(options.loaders ?? {}),
 	});
 }

@@ -22,7 +22,7 @@
 	import type {
 		CalculatorProviderConfig,
 		CalculatorType,
-	} from '@pie-players/pie-assessment-toolkit/tools/client';
+	} from '@pie-players/pie-calculator';
 	import CalculatorTool from './CalculatorTool.svelte';
 
 	let {

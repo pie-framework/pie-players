@@ -1,19 +1,18 @@
 /**
- * Section runtime engine inputs (M7 — Variant C, layered core).
+ * Section runtime engine inputs.
  *
- * Inputs are the discriminated union of events the adapter (PR 2) feeds
- * into the pure transition function (`engine-transition.ts`). The shape
- * is closed: every field is plain data so the transition can be tested
- * without any DOM, Svelte, or coordinator wiring.
+ * Inputs are the closed union of events the adapter feeds into the pure
+ * transition function (`engine-transition.ts`). Every field is plain data, so
+ * the transition is testable without DOM, Svelte, or coordinator wiring.
  *
  * Adapter→core boundary contract:
- *   - The adapter never mutates engine state directly. It always
- *     constructs an input and calls `core.dispatch(input)`.
- *   - Inputs are total: an unhandled `kind` is a programming error
- *     (the transition uses `assertNever` exhaustiveness).
- *   - Inputs carry only data, never live host references that would
- *     pin lifetime. Coordinator and controller handles live in the
- *     adapter; the core only sees readiness signals derived from them.
+ *   - The adapter never mutates engine state directly. It constructs an input
+ *     and calls `core.dispatch(input)`.
+ *   - The transition switch is exhaustive over `kind`: a new input kind that
+ *     it does not handle fails to type-check.
+ *   - Inputs carry no live host references. Coordinator and controller handles
+ *     live in the adapter; the core sees only readiness signals derived from
+ *     them.
  */
 
 import type { CohortKey } from "./cohort.js";
@@ -83,7 +82,6 @@ export type EngineInputSectionControllerResolved = {
 export type EngineInputUpdateReadinessSignals = {
 	kind: "update-readiness-signals";
 	signals: EngineReadinessSignals;
-	loadedCount: number;
 	itemCount: number;
 	/**
 	 * Strict-mode gate. When `"strict"`, `interactive` only fires
@@ -96,9 +94,8 @@ export type EngineInputUpdateReadinessSignals = {
 
 /**
  * `dispose` tears the engine down. Emits `disposed` for the current
- * cohort (if any) and moves to the terminal `disposed` phase. After
- * dispose the engine accepts no further inputs (the transition logs
- * a warning and is a no-op).
+ * cohort (if any) and moves to the terminal `disposed` phase. Every input
+ * after dispose is a no-op.
  */
 export type EngineInputDispose = {
 	kind: "dispose";

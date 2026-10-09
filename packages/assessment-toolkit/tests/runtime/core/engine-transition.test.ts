@@ -156,7 +156,6 @@ describe("transition: section-controller-resolved", () => {
 					allLoadingComplete: true,
 					runtimeError: false,
 				},
-				loadedCount: 1,
 				itemCount: 1,
 			},
 		]);
@@ -193,7 +192,6 @@ describe("transition: section-controller-resolved", () => {
 					allLoadingComplete: false,
 					runtimeError: false,
 				},
-				loadedCount: 1,
 				itemCount: 2,
 			},
 		]);
@@ -229,7 +227,6 @@ describe("transition: update-readiness-signals (progressive)", () => {
 				allLoadingComplete: false,
 				runtimeError: false,
 			},
-			loadedCount: 0,
 			itemCount: 1,
 		});
 		expect(next.state.phase).toBe("interactive");
@@ -257,7 +254,6 @@ describe("transition: update-readiness-signals (progressive)", () => {
 				allLoadingComplete: true,
 				runtimeError: false,
 			},
-			loadedCount: 2,
 			itemCount: 2,
 		});
 		expect(next.state.phase).toBe("interactive");
@@ -271,7 +267,6 @@ describe("transition: update-readiness-signals (progressive)", () => {
 		expect(loadingComplete).toMatchObject({
 			cohort: COHORT_A,
 			itemCount: 2,
-			loadedCount: 2,
 		});
 	});
 
@@ -288,7 +283,6 @@ describe("transition: update-readiness-signals (progressive)", () => {
 					allLoadingComplete: true,
 					runtimeError: false,
 				},
-				loadedCount: 1,
 				itemCount: 1,
 			},
 		]);
@@ -301,7 +295,6 @@ describe("transition: update-readiness-signals (progressive)", () => {
 				allLoadingComplete: true,
 				runtimeError: false,
 			},
-			loadedCount: 1,
 			itemCount: 1,
 		});
 		expect(next.outputs).toEqual([]);
@@ -323,7 +316,6 @@ describe("transition: update-readiness-signals (progressive)", () => {
 				allLoadingComplete: true,
 				runtimeError: false,
 			},
-			loadedCount: 1,
 			itemCount: 1,
 		});
 		expect(next.state.phase).toBe("engine-ready");
@@ -341,7 +333,6 @@ describe("transition: update-readiness-signals (progressive)", () => {
 				allLoadingComplete: true,
 				runtimeError: false,
 			},
-			loadedCount: 0,
 			itemCount: 0,
 		});
 		expect(next.outputs).toEqual([]);
@@ -363,7 +354,6 @@ describe("transition: update-readiness-signals (strict mode)", () => {
 				allLoadingComplete: false,
 				runtimeError: false,
 			},
-			loadedCount: 1,
 			itemCount: 2,
 		});
 		// Strict mode collapses interactionReady to false until loading
@@ -382,7 +372,6 @@ describe("transition: update-readiness-signals (strict mode)", () => {
 				allLoadingComplete: true,
 				runtimeError: false,
 			},
-			loadedCount: 2,
 			itemCount: 2,
 		});
 		expect(complete.state.phase).toBe("interactive");
@@ -403,7 +392,6 @@ describe("transition: cohort-change", () => {
 					allLoadingComplete: true,
 					runtimeError: false,
 				},
-				loadedCount: 1,
 				itemCount: 1,
 			},
 		]);
@@ -482,7 +470,6 @@ function readiness(
 			runtimeError: false,
 			...signals,
 		},
-		loadedCount: 0,
 		itemCount: 1,
 		mode: "progressive",
 	};
@@ -622,7 +609,6 @@ describe("transition: dispose", () => {
 				allLoadingComplete: true,
 				runtimeError: false,
 			},
-			loadedCount: 1,
 			itemCount: 1,
 		});
 		expect(afterReadiness.outputs).toEqual([]);

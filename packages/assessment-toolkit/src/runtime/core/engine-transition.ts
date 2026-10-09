@@ -35,7 +35,7 @@ import {
 	createReadinessDetail,
 	type EngineReadinessSignals,
 } from "./engine-readiness.js";
-import { phaseToStage } from "./engine-stage-derivation.js";
+import type { Stage } from "@pie-players/pie-players-shared/pie";
 import {
 	createInitialEngineState,
 	type SectionEnginePhase,
@@ -45,6 +45,23 @@ import {
 export interface TransitionResult {
 	state: SectionEngineState;
 	outputs: SectionEngineOutput[];
+}
+
+/** `idle` and `failed` have no stage of their own. */
+function phaseToStage(phase: SectionEnginePhase): Stage | null {
+	switch (phase) {
+		case "idle":
+		case "failed":
+			return null;
+		case "booting-section":
+			return "composed";
+		case "engine-ready":
+			return "engine-ready";
+		case "interactive":
+			return "interactive";
+		case "disposed":
+			return "disposed";
+	}
 }
 
 function emitStageChange(
@@ -113,7 +130,6 @@ function applyReadinessUpdate(
 	args: {
 		signals: EngineReadinessSignals;
 		mode: "progressive" | "strict";
-		loadedCount: number;
 		itemCount: number;
 	},
 ): TransitionResult {
@@ -152,7 +168,6 @@ function applyReadinessUpdate(
 			kind: "loading-complete",
 			cohort: state.cohort,
 			itemCount: args.itemCount,
-			loadedCount: args.loadedCount,
 		});
 	}
 
@@ -161,7 +176,6 @@ function applyReadinessUpdate(
 		phase,
 		readinessSignals: args.signals,
 		readinessMode: args.mode,
-		loadedCount: args.loadedCount,
 		itemCount: args.itemCount,
 		loadingCompleteEmitted,
 	};
@@ -300,7 +314,6 @@ export function transition(
 			return applyReadinessUpdate(state, {
 				signals: input.signals,
 				mode: input.mode,
-				loadedCount: input.loadedCount,
 				itemCount: input.itemCount,
 			});
 		}

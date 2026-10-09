@@ -146,7 +146,6 @@ describe("attachRuntimeCallbackBridge — lockstep with engine DOM events", () =
 				allLoadingComplete: true,
 				runtimeError: false,
 			},
-			loadedCount: 1,
 			itemCount: 1,
 			mode: "strict",
 		});
@@ -199,7 +198,6 @@ describe("attachRuntimeCallbackBridge — lockstep with engine DOM events", () =
 				allLoadingComplete: true,
 				runtimeError: false,
 			},
-			loadedCount: 1,
 			itemCount: 1,
 			mode: "strict",
 		});
@@ -283,7 +281,6 @@ describe("attachRuntimeCallbackBridge — lockstep with engine DOM events", () =
 				allLoadingComplete: true,
 				runtimeError: false,
 			},
-			loadedCount: 1,
 			itemCount: 1,
 			mode: "strict",
 		});

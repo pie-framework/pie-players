@@ -81,11 +81,8 @@ export type SectionEngineState = {
 	 */
 	loadingCompleteEmitted: boolean;
 
-	/** Number of items the host has registered for the current cohort. */
+	/** Number of items in the current cohort's composition. */
 	itemCount: number;
-
-	/** Number of items reported as loaded. */
-	loadedCount: number;
 };
 
 /**
@@ -108,6 +105,5 @@ export function createInitialEngineState(): SectionEngineState {
 		effectiveToolsConfig: null,
 		loadingCompleteEmitted: false,
 		itemCount: 0,
-		loadedCount: 0,
 	};
 }

@@ -1,5 +1,5 @@
 /**
- * Cohort identity for the section runtime engine (M7).
+ * Cohort identity for the section runtime engine.
  *
  * One cohort is the tuple `(sectionId, attemptId)` for the section the
  * host is currently rendering. Stage progression, readiness latches, and

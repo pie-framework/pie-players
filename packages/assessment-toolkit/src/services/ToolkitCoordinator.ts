@@ -41,6 +41,7 @@ import { ElementToolStateStore } from "./ElementToolStateStore.js";
 import {
 	frameworkErrorFromCoordinatorContext,
 	type FrameworkErrorModel,
+	type FrameworkErrorScope,
 } from "./framework-error.js";
 import {
 	FrameworkErrorBus,
@@ -956,7 +957,7 @@ export class ToolkitCoordinator {
 			void this.waitUntilReady().catch((err) => {
 				if (err instanceof ToolkitCoordinatorDisposedError) return;
 				console.error("[ToolkitCoordinator] Failed eager initialization:", err);
-				this.handleError(err, { phase: "coordinator-ready" });
+				this.handleError(err, { phase: "coordinator-ready", recoverable: false });
 			});
 		}
 	}
@@ -1051,11 +1052,20 @@ export class ToolkitCoordinator {
 		}
 	}
 
-	private handleError(error: unknown, context: ToolkitErrorContext): void {
+	/**
+	 * Every report site states whether the coordinator carries on after the
+	 * failure; one that takes down only its section passes `scope: "cohort"`.
+	 */
+	private handleError(
+		error: unknown,
+		context: ToolkitErrorContext & { recoverable: boolean },
+		scope: FrameworkErrorScope = "runtime",
+	): void {
 		const model = frameworkErrorFromCoordinatorContext({
 			error,
 			context,
 			recoverable: context.recoverable,
+			scope,
 		});
 		this.frameworkErrorBus.reportFrameworkError(model);
 	}
@@ -1244,7 +1254,7 @@ export class ToolkitCoordinator {
 		this.elementToolStateStore.setOnStateChange((state) => {
 			if (!this.hooks.saveToolState) return;
 			void Promise.resolve(this.hooks.saveToolState(state)).catch((err) => {
-				this.handleError(err, { phase: "state-save" });
+				this.handleError(err, { phase: "state-save", recoverable: true });
 			});
 		});
 	}
@@ -1271,7 +1281,7 @@ export class ToolkitCoordinator {
 			} catch (err) {
 				if (err instanceof ToolkitCoordinatorDisposedError) throw err;
 				this.stateLoadSettled = true;
-				this.handleError(err, { phase: "state-load" });
+				this.handleError(err, { phase: "state-load", recoverable: true });
 			}
 		})().finally(() => {
 			this.stateLoadPromise = undefined;
@@ -1476,13 +1486,16 @@ export class ToolkitCoordinator {
 		}
 	}
 
-	/** A console warning and a `provider-register` framework error. */
+	/**
+	 * A console warning and a `provider-register` framework error, under the
+	 * start-failure policy every other tool failure follows.
+	 */
 	private reportProviderRegisterFailure(err: unknown, toolId: string): void {
 		console.warn(
 			`[ToolkitCoordinator] Failed to register the provider of tool "${toolId}":`,
 			err,
 		);
-		this.handleError(err, { phase: "provider-register", toolId });
+		this.reportToolFailure(err, { phase: "provider-register", toolId }, [toolId]);
 	}
 
 	public async ensureProviderReady(toolId: string): Promise<ToolProviderApi> {
@@ -1550,7 +1563,7 @@ export class ToolkitCoordinator {
 			this.isReady()
 		) {
 			void Promise.resolve(hooks.onCoordinatorReady(this)).catch((err) => {
-				this.handleError(err, { phase: "coordinator-ready" });
+				this.handleError(err, { phase: "coordinator-ready", recoverable: false });
 			});
 		}
 	}
@@ -2175,6 +2188,7 @@ export class ToolkitCoordinator {
 					sectionId: args.key.sectionId,
 					attemptId: args.key.attemptId,
 				},
+				recoverable: true,
 			});
 		} finally {
 			if (
@@ -2240,13 +2254,18 @@ export class ToolkitCoordinator {
 		) {
 			return;
 		}
-		this.handleError(err, {
-			phase: "section-controller-init",
-			details: {
-				sectionId: args.sectionId,
-				attemptId: args.attemptId,
+		this.handleError(
+			err,
+			{
+				phase: "section-controller-init",
+				details: {
+					sectionId: args.sectionId,
+					attemptId: args.attemptId,
+				},
+				recoverable: false,
 			},
-		});
+			"cohort",
+		);
 	}
 
 	/**
@@ -2388,6 +2407,7 @@ export class ToolkitCoordinator {
 					sectionId: args.args.sectionId,
 					attemptId: args.args.attemptId,
 				},
+				recoverable: true,
 			});
 		} finally {
 			await this.finalizeSectionControllerDispose({

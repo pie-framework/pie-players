@@ -53,6 +53,8 @@ Added a shared error model in assessment-toolkit:
 - `FrameworkErrorModel`
 - `FrameworkErrorKind`
 - `FrameworkErrorSeverity`
+- `FrameworkErrorScope`: `cohort` or `runtime`, set by the report site. See
+  [Readiness latching](#readiness-latching).
 - `frameworkErrorFromUnknown`, which converts an unknown error. The conversions
   of tools-config diagnostics and validation results are internal to the toolkit.
 
@@ -112,7 +114,11 @@ capabilities continue.
 A toolbar that cannot load a tool's module reports `kind: "tool-module-load"`
 once per tool and withholds the tool. It follows the tool start-failure policy:
 recoverable unless policy grants the tool, and reported again as fatal if a
-later policy change grants it.
+later policy change grants it. A provider that fails to register
+(`provider-register`) follows the same policy. A failed tool-state load or save
+(`tool-state-load`, `tool-state-save`) and a section controller that fails to
+dispose (`section-controller-dispose`) are recoverable: the coordinator carries on
+without the state, and the next section gets a fresh controller.
 
 ### Optional host extension points
 
@@ -164,6 +170,21 @@ tool IDs now typically fail when the toolkit builds/initializes its coordinator.
 ## 4) `framework-error` propagation across wrappers
 
 The toolkit's `framework-error` is the only DOM emit. It bubbles and is composed, so it reaches the layout element and `document` once per error. The section-player kernel reads it on the way up to set readiness to `error` for a non-recoverable error, which ends the stage chain with the current stage `failed`.
+
+### Readiness latching
+
+A non-recoverable error latches readiness for the scope its report site set:
+
+| Scope | Kinds | Clears |
+| --- | --- | --- |
+| `cohort` | `runtime-init` and `section-controller-init` (the section's controller could not start), `element-preload`, `timed-media` | when the learner moves to another section or attempt |
+| `runtime` | every other kind, `coordinator-init`, `provider-init`, `provider-register`, `tts-init`, `tool-module-load` and `tool-config` among them | never: every later section runs on the same coordinator |
+
+A kind that is recoverable at one report site and fatal at another, such as
+`provider-init` for a tool policy does or does not grant, latches only when fatal.
+A host that publishes its own `FrameworkErrorModel` through the coordinator sets
+`scope` the same way; one built with `toFrameworkErrorModel` or
+`frameworkErrorFromUnknown` defaults to `runtime`.
 
 Updated files:
 

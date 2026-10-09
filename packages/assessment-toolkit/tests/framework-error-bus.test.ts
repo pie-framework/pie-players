@@ -12,6 +12,7 @@ function model(
 		message: "boom",
 		details: [],
 		recoverable: false,
+		scope: "runtime",
 		...overrides,
 	};
 }

@@ -785,17 +785,17 @@ const visibleTools = toolRegistry.filterVisibleInContext(allowedToolIds, context
 
 ## PNP Precedence Hierarchy
 
-The policy engine implements a **precedence hierarchy** based on common assessment platform governance patterns. This hierarchy is **not defined by QTI 3.0 standards** but follows common practices in K-12 assessment platforms.
+The policy engine implements a **precedence hierarchy** based on common assessment platform governance patterns. This hierarchy is **not defined by AfA PNP 3.0 or QTI 3.0** but follows common practices in K-12 assessment platforms.
 
 ### Standards-Based vs Implementation-Specific
 
-**Standards-Based (from QTI 3.0):**
+**Standards-Based (from AfA PNP 3.0):**
 
 - **PNP prohibitions and supports** (#4, #8) - Student's documented accessibility needs (`personalNeedsProfile.prohibitedSupports`, `personalNeedsProfile.supports`)
-- **Item-level settings** (#3, #6) - Per-item accessibility requirements/restrictions
 
-**Implementation-Specific (common practice):**
+**Implementation-Specific (PIE extensions and common practice):**
 
+- **Item-level settings** (#3, #6) - Per-item requirements and restrictions, a PIE extension registered by the item's `<pie-item-scope>`
 - **District policy** (#1, #7) - Institutional governance and legal compliance
 - **Test administration** (#2, #5) - Session-level operational control
 
@@ -828,22 +828,22 @@ The policy engine implements a **precedence hierarchy** based on common assessme
    - **Example**: Proctor enables the calculator for a retake
    - **Effect**: `testAdministration.toolOverrides[toolId]` set to `true` grants the tool. An item restriction or a profile prohibition that withdraws it raises a `tool-policy.overrideBlocked` diagnostic
 
-6. **Item requirement** (forces enable)
+6. **Item requirement** (per-item grant)
    - **Purpose**: Required by IEP/504 or content needs
    - **Example**: Calculator required for multi-step word problems
-   - **Effect**: Tool must be available on this item's own toolbar
+   - **Effect**: A tool placed on this item's own toolbar stays there through relevance filtering and carries the item's `toolParameters`; a requirement places no tool
 
 Rungs 3 and 6 apply to decisions scoped to the item: its item-level toolbar and its content's feature decisions. A section-, assessment- or passage-level toolbar skips them and reports each tool on it that a mounted item restricts or requires with a `tool-policy.itemSettingNotApplied` diagnostic; place the tool at item level to enforce the setting per item.
 
 7. **District requirement**
    - **Purpose**: Institutional accessibility requirements
    - **Example**: District mandates TTS for all ELL students
-   - **Effect**: Tool enabled by institutional policy
+   - **Effect**: Grants a placed tool by institutional policy
 
 8. **PNP supports** (student needs)
-   - **Purpose**: QTI 3.0 standard student preferences
+   - **Purpose**: AfA PNP 3.0 student supports
    - **Example**: Student's IEP document specifies a reading mask
-   - **Effect**: Tool enabled by `supports`
+   - **Effect**: `supports` grants a placed tool
 
 ### Governance Rationale
 

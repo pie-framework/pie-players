@@ -359,7 +359,7 @@ console.log('Allowed tools:', allowedToolIds);
 // calculator stays and reports `tool-policy.itemSettingNotApplied`.
 ```
 
-### Example 3: Item Requirement Forces Enable
+### Example 3: Item Requirement on an Item-Placed Tool
 
 ```typescript
 {
@@ -370,8 +370,10 @@ console.log('Allowed tools:', allowedToolIds);
     requiredTools: ["calculator"]  // Complex computation problem
   }
 }
-// Result: calculator ENABLED on this item's own toolbar
-// Item requirement (#6) forces enablement there
+// Result: a calculator placed at item level stays on this item's own
+// toolbar through relevance filtering and carries the item's toolParameters.
+// The requirement (#6) places nothing: without an item-level placement,
+// no calculator renders.
 ```
 
 ### Example 4: Test Admin Override

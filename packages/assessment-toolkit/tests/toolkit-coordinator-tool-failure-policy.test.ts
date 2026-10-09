@@ -191,8 +191,8 @@ describe("tool start failures", () => {
 		});
 		const failure = new Error("chunk missing");
 
-		coordinator.reportToolModuleFailure("calculator", failure);
-		coordinator.reportToolModuleFailure("calculator", failure);
+		coordinator.reportToolFailure("calculator", "tool-module-load", failure);
+		coordinator.reportToolFailure("calculator", "tool-module-load", failure);
 
 		expect(errors).toHaveLength(1);
 		expect(errors[0]).toMatchObject({
@@ -214,7 +214,7 @@ describe("tool start failures", () => {
 		});
 		granted.updateAssessment(granting("calculator"));
 		const grantedErrors = collectErrors(granted);
-		granted.reportToolModuleFailure("calculator", new Error("chunk missing"));
+		granted.reportToolFailure("calculator", "tool-module-load", new Error("chunk missing"));
 		expect(grantedErrors.map((model) => model.recoverable)).toEqual([false]);
 
 		const later = new ToolkitCoordinator({
@@ -224,9 +224,106 @@ describe("tool start failures", () => {
 			tools: { placement: { item: ["calculator"] } },
 		});
 		const laterErrors = collectErrors(later);
-		later.reportToolModuleFailure("calculator", new Error("chunk missing"));
+		later.reportToolFailure("calculator", "tool-module-load", new Error("chunk missing"));
 		later.updateAssessment(granting("calculator"));
 		expect(laterErrors.map((model) => model.recoverable)).toEqual([true, false]);
+	});
+
+	test("a tool callback failure is recoverable for a granted tool, once per phase, after the caller returns", async () => {
+		const coordinator = new ToolkitCoordinator({
+			assessmentId: "callback-granted",
+			eagerInit: false,
+			toolRegistry: registryWith("calculator"),
+			tools: { placement: { item: ["calculator"] } },
+		});
+		coordinator.updateAssessment(granting("calculator"));
+		const errors = collectErrors(coordinator);
+		const failure = new Error("predicate threw");
+
+		coordinator.reportToolFailure("calculator", "tool-visibility", failure);
+		coordinator.reportToolFailure("calculator", "tool-visibility", failure);
+		coordinator.reportToolFailure("calculator", "tool-applicability", failure);
+		// Reported from inside a toolbar's derived state, so delivered later.
+		expect(errors).toEqual([]);
+		await Promise.resolve();
+
+		expect(errors.map(({ kind, recoverable }) => ({ kind, recoverable }))).toEqual([
+			{ kind: "tool-registration", recoverable: true },
+			{ kind: "tool-registration", recoverable: true },
+		]);
+		expect(errors[0].message).toBe(
+			'Tool "calculator" failed its relevance check: predicate threw',
+		);
+		expect((errors[0].cause as Error).cause).toBe(failure);
+
+		// A recoverable callback failure leaves the tool undegraded, so a later
+		// grant has nothing to escalate.
+		coordinator.updateAssessment(granting("calculator", "textToSpeech"));
+		await Promise.resolve();
+		expect(errors).toHaveLength(2);
+	});
+
+	test("a toolbar that throws answering or opening a request is reported and passed by", async () => {
+		const coordinator = new ToolkitCoordinator({
+			assessmentId: "request-throws",
+			eagerInit: false,
+			toolRegistry: registryWith("calculator"),
+			tools: { placement: { item: ["calculator"] } },
+		});
+		const errors = collectErrors(coordinator);
+		const release = coordinator.registerToolRequestTarget({
+			level: "section",
+			hostsTool: () => {
+				throw new Error("host check threw");
+			},
+			open: () => {},
+		});
+		expect(coordinator.canRequestTool("calculator")).toBe(false);
+		release();
+		coordinator.registerToolRequestTarget({
+			level: "section",
+			hostsTool: () => true,
+			open: () => {
+				throw new Error("open threw");
+			},
+		});
+		expect(coordinator.requestTool({ toolId: "calculator" })).toBe(false);
+		await Promise.resolve();
+
+		expect(errors.map(({ kind, recoverable, message }) => ({ kind, recoverable, message }))).toEqual([
+			{
+				kind: "tool-request",
+				recoverable: true,
+				message: `Tool "calculator" failed its toolbar's host check: host check threw`,
+			},
+			{
+				kind: "tool-request",
+				recoverable: true,
+				message: 'Tool "calculator" failed to open on request: open threw',
+			},
+		]);
+	});
+
+	test("a tool's state and playback failures are recoverable", async () => {
+		const coordinator = new ToolkitCoordinator({
+			assessmentId: "tool-runtime-failures",
+			eagerInit: false,
+			toolRegistry: registryWith("annotationToolbar"),
+			tools: { placement: { item: ["annotationToolbar"] } },
+		});
+		coordinator.updateAssessment(granting("annotationToolbar", "textToSpeech"));
+		const errors = collectErrors(coordinator);
+
+		coordinator.reportToolFailure("annotationToolbar", "tool-state-load", new Error("corrupt"));
+		coordinator.reportToolFailure("annotationToolbar", "tool-state-save", new Error("quota"));
+		coordinator.reportToolFailure("textToSpeech", "tool-playback", new Error("audio fetch failed"));
+		await Promise.resolve();
+
+		expect(errors.map(({ kind, recoverable }) => ({ kind, recoverable }))).toEqual([
+			{ kind: "tool-state-load", recoverable: true },
+			{ kind: "tool-state-save", recoverable: true },
+			{ kind: "tool-playback", recoverable: true },
+		]);
 	});
 
 	test("a server speech provider that fails is recoverable while browser speech starts", async () => {

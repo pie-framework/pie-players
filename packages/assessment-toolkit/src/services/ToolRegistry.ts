@@ -7,6 +7,7 @@
 
 import { dynamicMessageKey } from "@pie-players/pie-players-shared/i18n/provider";
 import type { I18nProvider } from "@pie-players/pie-players-shared/i18n/types";
+import type { ToolParametersFor } from "@pie-players/pie-players-shared/types";
 import type { CatalogOwnerSnapshot } from "./AccessibilityCatalogResolver.js";
 import type { ToolContext, ToolLevel } from "./tool-context.js";
 import {
@@ -25,10 +26,24 @@ import type {
 	TtsServiceApi,
 } from "./interfaces.js";
 import type { ToolProviderApi } from "./tool-providers/ToolProviderApi.js";
-import type { ToolProviderConfig as ToolRuntimeConfig } from "./tools-config-normalizer.js";
+import type { ToolProviderConfig } from "./tools-config-normalizer.js";
 import type { ToolConfigDiagnostic } from "./tool-config-validation.js";
+import type { ToolFailurePhase } from "./tool-failure.js";
 
 export type ToolModuleLoader = () => Promise<unknown>;
+
+/** Receives a registration callback's throw, from which the registry recovers. */
+export type ToolCallbackFailureHandler = (
+	toolId: string,
+	phase: Extract<ToolFailurePhase, "tool-visibility" | "tool-applicability">,
+	error: unknown,
+) => void;
+
+const logToolCallbackFailure: ToolCallbackFailureHandler = (
+	toolId,
+	phase,
+	error,
+) => console.error(`[ToolRegistry] Tool '${toolId}' ${phase} check threw:`, error);
 
 export type ToolRegistryChangeKind =
 	| "register"
@@ -131,6 +146,14 @@ export interface ToolbarContext {
 	componentOverrides?: ToolComponentOverrides;
 	getResolvedToolContext?: (toolId: string) => ResolvedToolContext | null;
 	getToolRenderParams?: (toolId: string) => Record<string, unknown> | null;
+	/**
+	 * The tool's policy parameters on this toolbar: the item's `toolParameters`
+	 * entry on an item's own toolbar, else the assessment's `toolConfigs` entry.
+	 * Authored content, so a registration checks what it reads.
+	 */
+	getToolParameters?: <K extends string>(
+		toolId: K,
+	) => ToolParametersFor<K> | null;
 }
 
 export interface ToolContextResolverContext {
@@ -274,12 +297,12 @@ export interface HostedToolSize {
  * renames the registration.
  */
 export interface ToolProviderDescriptor {
-	createProvider: (config: ToolRuntimeConfig | undefined) => ToolProviderApi;
+	createProvider: (config: ToolProviderConfig | undefined) => ToolProviderApi;
 	getInitConfig?: (
-		config: ToolRuntimeConfig | undefined,
+		config: ToolProviderConfig | undefined,
 	) => Record<string, unknown>;
 	getAuthFetcher?: (
-		config: ToolRuntimeConfig | undefined,
+		config: ToolProviderConfig | undefined,
 	) => (() => Promise<Record<string, unknown>>) | undefined;
 	lazy?: boolean;
 }
@@ -586,11 +609,11 @@ export interface ToolRegistration {
 	 * validation runs it before {@link ToolRegistration.validateConfig}; a throw is
 	 * reported as a diagnostic and the entry passes through unchanged.
 	 */
-	sanitizeConfig?: (config: ToolRuntimeConfig) => ToolRuntimeConfig;
+	sanitizeConfig?: (config: ToolProviderConfig) => ToolProviderConfig;
 	/**
 	 * Diagnostics for this tool's sanitized `tools.providers.<toolId>` entry.
 	 */
-	validateConfig?: (config: ToolRuntimeConfig) => ToolConfigDiagnostic[];
+	validateConfig?: (config: ToolProviderConfig) => ToolConfigDiagnostic[];
 	/**
 	 * Optional shell-host lifecycle hooks for hosted (floating) tools.
 	 */
@@ -1111,11 +1134,14 @@ export class ToolRegistry {
 	 *
 	 * @param allowedToolIds - Tool IDs that passed Pass 1 (orchestrator approval)
 	 * @param context - Context to evaluate
+	 * @param onFailure - Receives a relevance check's throw; the tool is then not
+	 *   visible. Logs when omitted.
 	 * @returns Array of visible tool registrations
 	 */
 	filterVisibleInContext(
 		allowedToolIds: string[],
 		context: ToolContext,
+		onFailure: ToolCallbackFailureHandler = logToolCallbackFailure,
 	): ToolRegistration[] {
 		const visible: ToolRegistration[] = [];
 
@@ -1142,10 +1168,7 @@ export class ToolRegistry {
 					visible.push(tool);
 				}
 			} catch (error) {
-				console.error(
-					`Error evaluating visibility for tool '${toolId}':`,
-					error,
-				);
+				onFailure(toolId, "tool-visibility", error);
 			}
 		}
 
@@ -1164,10 +1187,13 @@ export class ToolRegistry {
 	 *
 	 * @param toolId - Tool to ask
 	 * @param contexts - Every context the tool could act on at this placement
+	 * @param onFailure - Receives the gate's throw; the tool then counts as
+	 *   applicable. Logs when omitted.
 	 */
 	isApplicableToAnyContext(
 		toolId: string,
 		contexts: readonly ToolContext[],
+		onFailure: ToolCallbackFailureHandler = logToolCallbackFailure,
 	): boolean {
 		const tool = this.get(toolId);
 		if (!tool?.isApplicableToContent) return true;
@@ -1176,10 +1202,7 @@ export class ToolRegistry {
 			try {
 				return tool.isApplicableToContent?.(context) ?? true;
 			} catch (error) {
-				console.error(
-					`Error evaluating applicability for tool '${toolId}':`,
-					error,
-				);
+				onFailure(toolId, "tool-applicability", error);
 				// A gate that throws has not established that the tool is useless.
 				return true;
 			}

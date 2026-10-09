@@ -833,7 +833,7 @@ The policy engine implements a **precedence hierarchy** based on common assessme
 6. **Item requirement** (per-item grant)
    - **Purpose**: Required by IEP/504 or content needs
    - **Example**: Calculator required for multi-step word problems
-   - **Effect**: A tool placed on this item's own toolbar stays there through relevance filtering and carries the item's `toolParameters`; a requirement places no tool
+   - **Effect**: A tool placed on this item's own toolbar stays there through relevance filtering; a requirement places no tool
 
 Rungs 3 and 6 apply to decisions scoped to the item: its item-level toolbar and its content's feature decisions. A section-, assessment- or passage-level toolbar skips them and reports each tool on it that a mounted item restricts or requires with a `tool-policy.itemSettingNotApplied` diagnostic; place the tool at item level to enforce the setting per item.
 

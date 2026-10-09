@@ -683,7 +683,6 @@
 ./types
   type AccessibilityCatalog
   type AdvancedItemConfig
-  type AssessmentCalculatorConfig
   type AssessmentEntity
   type AssessmentItemRef
   type AssessmentSection
@@ -752,6 +751,9 @@
   type TestPart
   type TextTrackRef
   type TimedMediaSectionData
+  type ToolParameterMap
+  type ToolParameters
+  type ToolParametersFor
   type TranscriptRef
   type VersionEntity
   editorPostFix

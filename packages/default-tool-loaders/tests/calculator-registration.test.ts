@@ -209,6 +209,59 @@ describe("calculator tool registration", () => {
 		expect((element as any)?.toolkitCoordinator).toBeUndefined();
 	});
 
+	test("defaults the type to the policy parameters' type, under the render params", () => {
+		const context: ToolContext = {
+			level: "item",
+			assessment: {} as any,
+			itemRef: { id: "i1" } as any,
+			item: { id: "i1", config: {} } as any,
+		};
+		const render = (
+			parameters: Record<string, unknown> | null,
+			renderParams: Record<string, unknown> | null,
+		) => {
+			const toolbarContext = {
+				scope: { level: "item", scopeId: "i1" },
+				itemId: "i1",
+				catalogId: "i1",
+				i18n: resolveInterfaceI18n(null),
+				toolCoordinator: null,
+				toolkitCoordinator: null,
+				ttsService: null,
+				elementToolStateStore: null,
+				toggleTool: () => {},
+				isToolVisible: () => false,
+				subscribeVisibility: null,
+				getToolRenderParams: () => renderParams,
+				getToolParameters: (toolId: string) =>
+					toolId === "calculator" ? parameters : null,
+				componentOverrides: { toolTagMap: PACKAGED_TOOL_TAG_MAP },
+			} as unknown as ToolbarContext;
+			const result = withFakeDocument(() =>
+				calculatorToolRegistration.renderToolbar(context, toolbarContext),
+			);
+			const element = result.elements?.[0]?.element as HTMLElement & {
+				calculatorType?: string;
+				availableTypes?: string[];
+			};
+			return {
+				label: result.button?.label,
+				calculatorType: element.calculatorType,
+				availableTypes: element.availableTypes,
+			};
+		};
+
+		expect(render({ type: "graphing" }, null)).toEqual({
+			label: "Graphing Calculator",
+			calculatorType: "graphing",
+			availableTypes: ["graphing"],
+		});
+		expect(
+			render({ type: "graphing" }, { calculatorType: "basic" }).calculatorType,
+		).toBe("basic");
+		expect(render({ type: "abacus" }, null).calculatorType).toBeUndefined();
+	});
+
 	test("declares a panel size per calculator type, and one before the type resolves", () => {
 		/*
 		 * The sizes, and the fact that they differ, because the toolbar builds a shell

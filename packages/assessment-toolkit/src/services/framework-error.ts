@@ -1,4 +1,5 @@
 import type { ToolConfigDiagnostic } from "./tool-config-validation.js";
+import type { ToolFailurePhase } from "./tool-failure.js";
 
 export type FrameworkErrorKind =
 	| "tool-config"
@@ -18,6 +19,21 @@ export type FrameworkErrorKind =
 	 * the tool: the toolbar withholds the tool and the assessment goes on.
 	 */
 	| "tool-module-load"
+	/**
+	 * A toolbar threw opening a requested tool or answering whether it hosts one.
+	 * Recoverable: the request goes unclaimed or passes the toolbar by.
+	 */
+	| "tool-request"
+	/**
+	 * A tool registration's relevance check or applicability gate threw.
+	 * Recoverable: the toolbar applies the answer a missing check would give.
+	 */
+	| "tool-registration"
+	/**
+	 * A tool could not play, seek or change the rate of speech after it started.
+	 * Recoverable: the tool stays available and the learner can retry.
+	 */
+	| "tool-playback"
 	/**
 	 * A timed-media section could not deliver a policy as authored: a media time
 	 * source missing `canPause` / `canRestrictSeeking` (recoverable — cues still
@@ -141,7 +157,7 @@ export interface FrameworkErrorCoordinatorContext {
 		| "tts-init"
 		| "section-controller-init"
 		| "section-controller-dispose"
-		| "tool-module-load";
+		| ToolFailurePhase;
 	toolId?: string;
 	details?: Record<string, unknown>;
 }
@@ -159,6 +175,13 @@ const COORDINATOR_PHASE_TO_KIND: Record<
 	"section-controller-init": "section-controller-init",
 	"section-controller-dispose": "section-controller-dispose",
 	"tool-module-load": "tool-module-load",
+	"tool-request-open": "tool-request",
+	"tool-request-host-check": "tool-request",
+	"tool-visibility": "tool-registration",
+	"tool-applicability": "tool-registration",
+	"tool-state-load": "tool-state-load",
+	"tool-state-save": "tool-state-save",
+	"tool-playback": "tool-playback",
 };
 
 /**

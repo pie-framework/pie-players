@@ -27,6 +27,7 @@ import type {
 import type { CatalogOwnerContext } from "./catalog-owner.js";
 import type { FrameworkErrorListener } from "./framework-error-bus.js";
 import type { FrameworkErrorModel } from "./framework-error.js";
+import type { ToolFailurePhase } from "./tool-failure.js";
 import type {
 	Annotation,
 	HighlightColor,
@@ -64,6 +65,7 @@ import type {
 import type {
 	AssessmentEntity,
 	ItemSettings,
+	ToolParametersFor,
 } from "@pie-players/pie-players-shared/types";
 import type {
 	ITTSProvider,
@@ -822,11 +824,15 @@ export interface ToolkitCoordinatorApi {
 	reportFrameworkError?(model: FrameworkErrorModel): void;
 
 	/**
-	 * Report that a toolbar could not load a tool's module. The tool degrades
-	 * unless policy grants it, in which case the failure is fatal. Optional so
-	 * structural host coordinators remain assignable; a toolbar without it logs.
+	 * Report that a tool failed in `phase`, under the tool failure policy
+	 * {@link ToolFailurePhase} describes. Optional so structural host
+	 * coordinators remain assignable; a reporter without it logs.
 	 */
-	reportToolModuleFailure?(toolId: string, error: unknown): void;
+	reportToolFailure?(
+		toolId: string,
+		phase: ToolFailurePhase,
+		error: unknown,
+	): void;
 
 	// ----------------------------------------------------------------
 	// Tool Policy Engine — public surface.
@@ -862,10 +868,10 @@ export interface ToolkitCoordinatorApi {
 	 * Optional so host-supplied coordinator stubs predating this method stay
 	 * assignable; call sites must feature-detect.
 	 */
-	decideFeaturePolicy?(
-		featureId: string,
+	decideFeaturePolicy?<K extends string>(
+		featureId: K,
 		scope?: ToolScope,
-	): FeaturePolicyDecision;
+	): FeaturePolicyDecision<ToolParametersFor<K>>;
 
 	/**
 	 * Subscribe to policy-engine change events. Fires whenever the

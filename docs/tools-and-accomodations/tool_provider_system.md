@@ -196,7 +196,8 @@ Resolver order is deliberately narrow:
    reports it inapplicable to every content context (`isApplicableToContent`) is
    dropped, granted or not. A host-resolved tool keeps the resolver's answer.
 5. The tool's `renderToolbar` receives params through
-   `toolbarContext.getToolRenderParams(toolId)`.
+   `toolbarContext.getToolRenderParams(toolId)`, and its policy parameters through
+   `toolbarContext.getToolParameters(toolId)`.
 
 This means host item metadata can decide calculator type without overriding
 the packaged tool registry, while district/test/PNP blocks still win earlier

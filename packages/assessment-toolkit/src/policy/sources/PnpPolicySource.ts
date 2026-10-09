@@ -32,8 +32,6 @@ export interface PnpPolicyToolFlags {
 	 * override grants it (host UI cannot toggle off).
 	 */
 	alwaysAvailable: boolean;
-	/** Tool-specific settings derived from item / assessment settings. */
-	settings?: unknown;
 	/** Which PNP/profile rule contributed the surviving verdict. */
 	rule: PnpPolicySourceRule;
 }
@@ -123,7 +121,6 @@ interface PnpResolutionContext {
 	districtPolicy?: AssessmentSettings["districtPolicy"];
 	testAdmin?: AssessmentSettings["testAdministration"];
 	itemSettings?: ItemSettings;
-	toolConfigs?: AssessmentSettings["toolConfigs"];
 }
 
 export class PnpPolicySource {
@@ -230,7 +227,6 @@ export class PnpPolicySource {
 			districtPolicy: settings?.districtPolicy,
 			testAdmin: settings?.testAdministration,
 			itemSettings,
-			toolConfigs: settings?.toolConfigs,
 		};
 
 		return { ctx, result };
@@ -316,7 +312,6 @@ export class PnpPolicySource {
 			out.perToolFlags.set(supportId, {
 				required: false,
 				alwaysAvailable: true,
-				settings: this.resolveToolSettings(supportId, ctx),
 				rule: "test-admin-override",
 			});
 			out.decisions.push({
@@ -337,7 +332,6 @@ export class PnpPolicySource {
 			out.perToolFlags.set(supportId, {
 				required: true,
 				alwaysAvailable: false,
-				settings: this.resolveToolSettings(supportId, ctx),
 				rule: "item-requirement",
 			});
 			out.decisions.push({
@@ -358,7 +352,6 @@ export class PnpPolicySource {
 			out.perToolFlags.set(supportId, {
 				required: true,
 				alwaysAvailable: false,
-				settings: this.resolveToolSettings(supportId, ctx),
 				rule: "district-requirement",
 			});
 			out.decisions.push({
@@ -378,7 +371,6 @@ export class PnpPolicySource {
 			out.perToolFlags.set(supportId, {
 				required: false,
 				alwaysAvailable: true,
-				settings: this.resolveToolSettings(supportId, ctx),
 				rule: "pnp-support",
 			});
 			out.decisions.push({
@@ -439,16 +431,5 @@ export class PnpPolicySource {
 			}
 		}
 		return unmapped;
-	}
-
-	/** Tool parameters: the item's entry, else the assessment's. */
-	private resolveToolSettings(
-		supportId: string,
-		ctx: PnpResolutionContext,
-	): Record<string, unknown> | undefined {
-		return (
-			ctx.itemSettings?.toolParameters?.[supportId] ??
-			ctx.toolConfigs?.[supportId]
-		);
 	}
 }

@@ -42,6 +42,9 @@ export { ToolRegistry } from "../services/ToolRegistry.js";
 // title is the registration's name, so the shell needs the same `nameKey`-then-
 // `name` precedence the toolbar uses rather than the raw English field.
 export { resolveToolRegistrationName } from "../services/ToolRegistry.js";
+// A tool's own failures, reported to the toolkit's tool failure policy.
+export type { ToolFailurePhase } from "../services/tool-failure.js";
+export { reportToolFailure } from "../services/tool-failure.js";
 export type { CatalogOwnerSnapshot } from "../services/AccessibilityCatalogResolver.js";
 
 // Handing a selection to a tool the requesting surface does not mount: the action

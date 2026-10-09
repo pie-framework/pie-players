@@ -32,6 +32,7 @@ import type {
 	UnknownSupportIdDetails,
 } from "./decision-types.js";
 import type { PolicySource } from "./PolicySource.js";
+import { resolveToolParameters } from "./tool-parameters.js";
 import {
 	type PnpPolicySourceRule,
 	ToolPolicyProvenanceBuilder,
@@ -364,7 +365,11 @@ export function composeDecision(
 			toolId,
 			required: flag?.required ?? false,
 			alwaysAvailable: flag?.alwaysAvailable ?? false,
-			settings: flag?.settings,
+			parameters: resolveToolParameters(
+				toolId,
+				pnpPolicy.assessment,
+				pnpPolicy.item,
+			),
 		};
 	});
 

@@ -125,15 +125,17 @@ For calculators, the resolver params are:
 
 The packaged calculator reads these values through
 `toolbarContext.getToolRenderParams("calculator")` and applies them to the
-toolbar button plus calculator element. With no resolver it opens basic,
-offers all three types and names itself "Calculator". Content metadata therefore stays in host
-code, while PNP/profile restrictions remain framework-owned and higher
+toolbar button plus calculator element. Beneath them sits the calculator's
+policy parameter `type`, read through `toolbarContext.getToolParameters("calculator")`
+from item `toolParameters` then assessment `settings.toolConfigs.calculator`,
+whether or not a grant admits the tool. With neither it opens basic, offers all
+three types and names itself "Calculator". Content metadata therefore stays in
+host code, while PNP/profile restrictions remain framework-owned and higher
 precedence.
 
-Which flavor a grant opens is the host's rule, read through
-`decideFeaturePolicy("calculator")`. The decision carries the calculator's
-feature parameters, from item `toolParameters` then assessment
-`settings.toolConfigs.calculator`, and the flavor is a render param:
+A host rule beyond the parameter reads the same parameters through
+`decideFeaturePolicy("calculator")`. This one hides the button without a grant
+and keeps scientific one switch away from graphing:
 
 ```ts
 const toolContextResolvers = {

@@ -580,6 +580,9 @@
     "packages/section-player-tools-tts-settings": {
       "name": "@pie-players/pie-section-player-tools-tts-settings",
       "version": "0.3.74",
+      "dependencies": {
+        "speech-rule-engine": "5.0.0-rc.4",
+      },
       "devDependencies": {
         "@biomejs/biome": "^2.5.15",
         "@happy-dom/global-registrator": "^20.14.5",

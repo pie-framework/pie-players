@@ -460,10 +460,10 @@
 	}
 
 	// Advances the engine to `engine-ready` once per cohort, when the driver's
-	// cohort is the one the ready controller belongs to. The kernel's former
-	// `section-controller-ready` event is gone: hosts call
-	// `waitForSectionController(timeoutMs)` or `getSectionController()` on the
-	// layout element, or filter `pie-stage-change` for `engine-ready`.
+	// cohort is the one the ready controller belongs to. Hosts read the
+	// controller with `waitForSectionController(timeoutMs)` or
+	// `getSectionController()` on the layout element, or filter
+	// `pie-stage-change` for `engine-ready`.
 	function resolveReadyController() {
 		if (!readyController || !cohortsEqual(readyController.cohort, lastCohort)) return;
 		if (cohortsEqual(controllerResolvedFor, lastCohort)) return;

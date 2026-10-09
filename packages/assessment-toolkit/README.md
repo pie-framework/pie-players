@@ -1028,8 +1028,8 @@ The persistence strategy works with the same `SectionControllerSessionState` sha
 
 - **ToolkitCoordinator**: ⭐ NEW - Centralized service orchestration
 - **ElementToolStateStore**: ⭐ NEW - Element-level ephemeral tool state management
-- **ToolRegistry**: ⭐ NEW - Registry-based tool management with QTI 3.0 PNP support
-- **ToolPolicyEngine**: QTI 3.0 Personal Needs Profile and host policy decisions via registry-backed policy sources
+- **ToolRegistry**: ⭐ NEW - Registry-based tool management with AfA PNP 3.0 profile support
+- **ToolPolicyEngine**: AfA PNP 3.0 Personal Needs Profile and host policy decisions via registry-backed policy sources
 - **ToolCoordinator**: Manages z-index layering and visibility for floating tools
 - **HighlightCoordinator**: Separate highlight layers for TTS (temporary) and annotations (persistent)
 - **TTSService**: Text-to-speech with QTI 3.0 catalog support
@@ -1818,7 +1818,7 @@ from tool configuration. Two sanitization layers apply:
 
 ## Related Documentation
 
-- **[Tool Registry Architecture](docs/TOOL_REGISTRY.md)** - ⭐ NEW - Registry-based tool management and QTI 3.0 PNP support
+- **[Tool Registry Architecture](docs/TOOL_REGISTRY.md)** - ⭐ NEW - Registry-based tool management and AfA PNP 3.0 profile support
 - **[PNP Configuration Guide](docs/PNP_CONFIGURATION.md)** - ⭐ NEW - How to configure student profiles, district policies, and governance rules
 - [ToolkitCoordinator Architecture](../../docs/architecture/architecture.md#toolkitcoordinator-centralized-service-management) - Design decisions and patterns
 - [Section Player README](../section-player/README.md) - Section player integration

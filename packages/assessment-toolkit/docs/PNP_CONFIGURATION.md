@@ -17,7 +17,7 @@ A grant (a profile support, a requirement or a test-administration override set 
 ```
 AssessmentEntity
 ├── personalNeedsProfile           # AfA PNP 3.0: Student's PNP profile
-│   ├── supports: string[]         # Enabled accessibility features
+│   ├── supports: string[]         # Granted support ids
 │   └── prohibitedSupports: string[]
 │
 └── settings: AssessmentSettings   # PIE extension
@@ -358,7 +358,7 @@ console.log('Allowed tools:', allowedToolIds);
 // calculator stays and reports `tool-policy.itemSettingNotApplied`.
 ```
 
-### Example 3: Item Requirement Forces Enable
+### Example 3: Item Requirement on an Item-Placed Tool
 
 ```typescript
 {

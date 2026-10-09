@@ -1,13 +1,13 @@
 # Tool Registry Architecture
 
-The Tool Registry provides a **registry-based system** for managing assessment tools with support for QTI 3.0 Personal Needs and Preferences (PNP) profiles and context-aware tool visibility.
+The Tool Registry provides a **registry-based system** for managing assessment tools with support for AfA PNP 3.0 Personal Needs and Preferences (PNP) profiles and context-aware tool visibility.
 
 ## Overview
 
 The Tool Registry replaces hardcoded tool lists with a flexible, extensible system that:
 
 1. **Enforces a three-pass visibility model**: the orchestrator determines allowed tools (Pass 1), tools decide relevance (Pass 2), and a tool that declares an applicability gate removes itself from content it cannot act on (Pass 3)
-2. **Grants tools from PNP profiles**: a profile's support id is the `toolId` it grants
+2. **Grants from PNP profiles**: a profile's support id is the `toolId` it grants. A grant protects a placed tool from relevance filtering and carries its settings; it never places a tool that `tools.placement` leaves out
 3. **Context-aware filtering**: Tools show/hide based on content analysis
 4. **Type-safe registrations**: Full TypeScript support with standardized interfaces
 
@@ -275,6 +275,8 @@ const selectiveRegistry = createPackagedToolRegistry({
   toolIds: ["calculator", "textToSpeech"]
 });
 ```
+
+A registration reaches the learner in this order: the toolbar keeps the tools policy places at its level (Pass 1), drops those `isVisibleInContext` rejects (Pass 2) and those `isApplicableToContent` rejects (Pass 3), and renders a button for each tool left. The tool's module loads when its element first renders, through the registry's loader for that tool id. A tag in `toolTagMap` must be the tag that module defines: the packaged calculator loader defines `pie-tool-calculator`, so `customRegistry` above renders a blank calculator unless the host defines `my-calculator-tool` itself. The registry warns about an undefined tag only for a tool with no loader. A calculator's provider reads `tools.providers.calculator`: `provider.id` selects Desmos or GeoGebra, `provider.init` configures loading, `provider.runtime.authFetcher` supplies the key, and `settings` goes to the vendor adapter ([Tool Provider System](../../../docs/tools-and-accomodations/tool_provider_system.md)).
 
 ### Default Tools
 
@@ -711,7 +713,7 @@ const packagedRegistry = createPackagedToolRegistry({
 packagedRegistry.register(myToolRegistration);
 ```
 
-3. **Grant it**: a profile listing `myTool` in `supports` grants it. The tool id is the support id, so there is no mapping to declare.
+3. **Place it, then grant it**: list `myTool` in `tools.placement` at each level where it renders. A profile listing `myTool` in `supports` then grants it, which keeps it on the toolbar through Pass 2; a grant alone renders nothing. The tool id is the support id, so there is no mapping to declare.
 
 ### Services, Providers and Config Hooks
 
@@ -795,11 +797,11 @@ const visibleTools = toolRegistry.filterVisibleInContext(allowedToolIds, context
 
 ## PNP Precedence Hierarchy
 
-The policy engine implements a **precedence hierarchy** based on common assessment platform governance patterns. This hierarchy is **not defined by QTI 3.0 standards** but follows common practices in K-12 assessment platforms.
+The policy engine implements a **precedence hierarchy** based on common assessment platform governance patterns. This hierarchy is **not defined by AfA PNP 3.0 or QTI 3.0** but follows common practices in K-12 assessment platforms.
 
 ### Standards-Based vs Implementation-Specific
 
-**Standards-Based (from QTI 3.0):**
+**Standards-Based (from AfA PNP 3.0):**
 
 - **PNP supports** (#7) - Student's documented accessibility needs (`personalNeedsProfile.supports`)
 - **Item-level settings** (#3, #5) - Per-item accessibility requirements/restrictions
@@ -862,7 +864,7 @@ This hierarchy aligns with typical **IEP/504 accommodation hierarchies** in US K
 
 ### Important Notes
 
-- This is a **common pattern**, not a QTI 3.0 standard
+- The precedence order is a **common pattern** that no standard defines
 - Different assessment platforms may implement different precedence rules
 - The precedence logic is implemented by `PnpPolicySource` inside the tool policy engine.
 - Integrators can extend policy decisions with custom `PolicySource` implementations.

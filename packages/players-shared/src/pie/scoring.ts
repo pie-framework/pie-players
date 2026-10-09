@@ -95,13 +95,8 @@ export type ScorePieItemOptions = {
 	env?: Partial<Env>;
 	models?: PieModel[];
 	/**
-	 * Existing callers keep the historical scorePieItem controller call shape.
-	 * provideScore() opts into the item-player score result shape explicitly.
-	 */
-	outcomeArguments?: "session-env" | "model-session-env";
-	/**
 	 * Preserve one result slot per model, including undefined for missing element/controller.
-	 * Existing scorePieItem callers keep the filtered result shape by default.
+	 * Missing slots are filtered out by default.
 	 */
 	includeMissingResults?: boolean;
 	/** The scoring player's bundle type; `player.js` scores nothing locally. */
@@ -129,21 +124,13 @@ const invokeOutcome = async (
 	model: PieModel,
 	session: any,
 	env: Partial<Env>,
-	argumentShape: "session-env" | "model-session-env",
 ): Promise<OutcomeResponse> => {
-	if (argumentShape === "model-session-env") {
-		const outcome = controller.outcome as unknown as (
-			model: PieModel,
-			session: any,
-			env: Partial<Env>,
-		) => Promise<OutcomeResponse>;
-		return outcome.call(controller, model, session, env);
-	}
 	const outcome = controller.outcome as unknown as (
+		model: PieModel,
 		session: any,
 		env: Partial<Env>,
 	) => Promise<OutcomeResponse>;
-	return outcome.call(controller, session, env);
+	return outcome.call(controller, model, session, env);
 };
 
 export function scorePieItem(
@@ -166,7 +153,6 @@ export async function scorePieItem(
 ): Promise<{ results: Array<OutcomeResponse | undefined> }> {
 	const root = options.container ?? document;
 	const models = options.models ?? config.models ?? [];
-	const outcomeArguments = options.outcomeArguments ?? "session-env";
 	const scoringEnv: Partial<Env> = {
 		...options.env,
 		mode: "evaluate",
@@ -190,7 +176,6 @@ export async function scorePieItem(
 							model,
 							session,
 							scoringEnv,
-							outcomeArguments,
 						)),
 					};
 				} else {

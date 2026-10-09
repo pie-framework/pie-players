@@ -222,13 +222,11 @@ test.describe("item-player demo multiple-choice", () => {
 			const player = document.querySelector("pie-item-player") as any;
 			return {
 				provideScore: typeof player?.provideScore,
-				updateElementModel: typeof player?.updateElementModel,
 				loaderOptionsBundleHost: player?.loaderOptions?.bundleHost,
 			};
 		});
 		expect(apiSnapshot).toEqual({
 			provideScore: "function",
-			updateElementModel: "function",
 			loaderOptionsBundleHost: "https://proxy.pie-api.com/bundles/",
 		});
 
@@ -357,21 +355,11 @@ test.describe("item-player demo multiple-choice", () => {
 		expect(selectedAfterSwitchBackValue).toBe(selectedBeforeEvaluate);
 	});
 
-	test("supports additive legacy host APIs without changing canonical prop precedence", async ({
+	test("renders a stimulus config with resize, class props and provideScore", async ({
 		page,
 	}) => {
 		await gotoRoute(page, DELIVERY_PATH);
 		await expect(page.getByText(DELIVERY_PROMPT)).toBeVisible();
-
-		const updatedPrompt = "Updated through updateElementModel";
-		await page.evaluate(
-			async ({ prompt, modelId }) => {
-				const player = document.querySelector("pie-item-player") as any;
-				await player.updateElementModel({ id: modelId, prompt });
-			},
-			{ prompt: updatedPrompt, modelId: SESSION_ENTRY_ID },
-		);
-		await expect(page.getByText(updatedPrompt)).toBeVisible();
 
 		await page.evaluate(async () => {
 			const player = document.querySelector("pie-item-player") as any;
@@ -380,17 +368,16 @@ test.describe("item-player demo multiple-choice", () => {
 				player.addEventListener("load-complete", resolve, { once: true });
 			});
 			player.customClassName = "canonical-current-class";
-			player.customClassname = "legacy-class-should-not-win";
 			player.renderStimulus = true;
 			player.allowedResize = true;
-			player.passageContainerClass = "legacy-passage-class";
+			player.passageContainerClass = "stimulus-passage-class";
 			player.baseHeadingLevel = 3;
 			player.config = {
 				id: "advanced-item",
 				pie: currentConfig,
 				passage: {
 					id: "passage",
-					markup: '<p data-test-passage="true">Legacy stimulus passage</p>',
+					markup: '<p data-test-passage="true">Stimulus passage</p>',
 					elements: {},
 					models: [],
 				},
@@ -398,8 +385,8 @@ test.describe("item-player demo multiple-choice", () => {
 			await loaded;
 		});
 
-		await expect(page.locator(".legacy-passage-class")).toContainText(
-			"Legacy stimulus passage",
+		await expect(page.locator(".stimulus-passage-class")).toContainText(
+			"Stimulus passage",
 		);
 		await expect(
 			page.locator("pie-item-player .pie-item-player--resize-allowed"),
@@ -423,7 +410,6 @@ test.describe("item-player demo multiple-choice", () => {
 			.first()
 			.evaluate((element) => element.className);
 		expect(scopedClassName).toContain("canonical-current-class");
-		expect(scopedClassName).not.toContain("legacy-class-should-not-win");
 	});
 
 	test("isolates different same-origin stylesheets between default player instances", async ({

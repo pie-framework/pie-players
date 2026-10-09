@@ -402,12 +402,6 @@ const outcome =
   await player
     .provideScore();
 
-// Preview an updated element model
-await player.updateElementModel({'{'}
-  id: modelId
-  // model fields to update
-{'}'});
-
 // Authoring validation
 const validation =
   await player

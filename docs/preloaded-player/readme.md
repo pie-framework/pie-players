@@ -279,7 +279,7 @@ package and served the same purpose. `<pie-fixed-player>` took the same
 (`addCorrectResponse`, `renderStimulus`, `allowedResize`, `showBottomBorder`,
 `customClassname`, `containerClass`, `passageContainerClass`,
 `externalStyleUrls`, `loaderConfig`, `debug`) that `<pie-item-player>` still
-exposes today, and both assume
+exposes today (`customClassname` as `customClassName`), and both assume
 server-side scoring via an elements-only `player.js` bundle — migrating an
 existing integration is mostly a rename, with two behavior changes to expect:
 

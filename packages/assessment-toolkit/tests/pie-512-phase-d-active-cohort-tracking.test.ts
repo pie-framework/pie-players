@@ -22,10 +22,9 @@ import {
  *
  * These tests pin Phase D's coordinator-side behavior precisely, using
  * the synthetic-controller harness pattern from
- * `toolkit-coordinator-section-events.test.ts`. They assume the runtime
- * call signature ignores any `sectionId` / `attemptId` arg (back-compat
- * tolerance for hosts that still pass them) and binds purely against the
- * coordinator's active cohort.
+ * `toolkit-coordinator-section-events.test.ts`. Subscriptions take no
+ * `sectionId` / `attemptId` and bind purely against the coordinator's
+ * active cohort.
  */
 
 type ControllerHarness = {

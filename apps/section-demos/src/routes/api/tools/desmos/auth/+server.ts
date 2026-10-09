@@ -22,9 +22,9 @@ export const GET: RequestHandler = async () => {
 	const apiKey = process.env.DESMOS_API_KEY?.trim();
 	if (!apiKey) {
 		console.warn(
-			"[Desmos Auth API] DESMOS_API_KEY is not configured; preserving the legacy unkeyed demo path. This does not grant a Desmos license.",
+			"[Desmos Auth API] DESMOS_API_KEY is not configured; the calculator cannot load.",
 		);
-		return json({ apiKey: null, compatibilityMode: true }, { headers });
+		return json({ apiKey: null }, { headers });
 	}
 
 	return json({ apiKey }, { headers });

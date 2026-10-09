@@ -17,7 +17,6 @@
 			hosted: { attribute: "hosted", type: "Boolean" },
 			debug: { attribute: "debug", type: "String" },
 			customClassName: { attribute: "custom-class-name", type: "String" },
-			customClassname: { attribute: "custom-classname", type: "String" },
 			containerClass: { attribute: "container-class", type: "String" },
 			passageContainerClass: { attribute: "passage-container-class", type: "String" },
 			externalStyleUrls: { attribute: "external-style-urls", type: "String" },
@@ -45,10 +44,6 @@
 			// nothing keeps exactly the chrome it has today. Distinct from the
 			// authored content's language, which the item declares.
 			locale: { attribute: "locale", type: "String" },
-			bundleHost: { attribute: "bundle-host", type: "String" },
-			bundleEndpoints: { attribute: "bundle-endpoints", type: "Object" },
-			disableBundler: { attribute: "disable-bundler", type: "Boolean" },
-			reFetchBundle: { attribute: "re-fetch-bundle", type: "Boolean" },
 			loaderConfig: { attribute: "loader-config", type: "Object" },
 			strategy: { attribute: "strategy", type: "String" },
 			mode: { attribute: "mode", type: "String" },
@@ -211,7 +206,6 @@
 		hosted = undefined as boolean | undefined,
 		debug = "" as string | boolean,
 		customClassName = "",
-		customClassname = "",
 		containerClass = "",
 		passageContainerClass = "",
 		externalStyleUrls = "",
@@ -221,10 +215,6 @@
 		baseHeadingLevel = undefined as 1 | 2 | 3 | 4 | 5 | 6 | undefined,
 		locale = "",
 		includeSrHeading = true,
-		bundleHost = "",
-		bundleEndpoints = null as Record<string, unknown> | null,
-		disableBundler = false,
-		reFetchBundle = false,
 		loaderConfig = DEFAULT_LOADER_CONFIG as LoaderConfig,
 		strategy = undefined as "iife" | "esm" | "preloaded" | undefined,
 		mode = "view" as "view" | "author",
@@ -246,29 +236,10 @@
 	} = $props();
 
 	const isBrowser = typeof window !== "undefined" && typeof document !== "undefined";
-	const requestedStrategy = $derived(
-		strategy ??
-			// pie-item contract compatibility: legacy <pie-player> used
-			// `disableBundler` for host-preloaded elements; current `strategy` remains canonical.
-			(disableBundler
-				? "preloaded"
-				: "iife"),
-	);
-	const normalizedStrategy = $derived(normalizeItemPlayerStrategy(requestedStrategy, "iife"));
+	const normalizedStrategy = $derived(normalizeItemPlayerStrategy(strategy));
 	const resolvedMode = $derived(mode === "author" ? "author" : "view");
-	const resolvedCustomClassName = $derived(
-		customClassName ||
-			// pie-item contract compatibility: legacy <pie-player> exposed `customClassname`;
-			// the current `customClassName` API remains canonical when both are provided.
-			customClassname ||
-			"",
-	);
 	const resolvedIifeBundleHost = $derived(
-		loaderOptions?.bundleHost ||
-			// pie-item contract compatibility: legacy <pie-player> exposed `bundleHost`
-			// as a top-level property; `loaderOptions.bundleHost` remains canonical.
-			bundleHost ||
-			DEFAULT_BUNDLE_HOST,
+		loaderOptions?.bundleHost || DEFAULT_BUNDLE_HOST,
 	);
 	const resolvedEsmCdnUrl = $derived(
 		loaderOptions?.esmCdnUrl || DEFAULT_ESM_CDN_URL,
@@ -723,10 +694,10 @@
 		].join("|"),
 	);
 
-	const scopeClass = $derived(resolvedCustomClassName.trim());
+	const scopeClass = $derived(customClassName.trim());
 	const instanceStyleScopeClass = createExternalStyleScopeClass();
 	const stylesheetScopeClass = $derived(
-		resolvedCustomClassName ? scopeClass : instanceStyleScopeClass,
+		customClassName ? scopeClass : instanceStyleScopeClass,
 	);
 	const additionalStylesheetScopeClass = $derived(
 		stylesheetScopeClass === scopeClass ? "" : stylesheetScopeClass,
@@ -778,8 +749,8 @@
 		}
 
 		if (isRecord(input) && isConfigEntityLike(input.pie)) {
-			// pie-item contract compatibility: legacy <pie-player> accepted advanced
-			// stimulus configs shaped as `{ pie, passage }`; root ConfigEntity remains canonical.
+			// A stimulus item arrives as `{ pie, passage }`: the item config plus the
+			// passage config rendered beside it.
 			return {
 				item: input.pie,
 				passage: isConfigEntityLike(input.passage) ? input.passage : null,
@@ -818,9 +789,6 @@
 		}
 		return (input || { mode: "gather", role: "student" }) as Env;
 	}
-
-	// pie-item contract compatibility: legacy <pie-player> exposed `allowedResize`
-	// for opt-in passage resizing; the default current layout remains unchanged.
 
 	/**
 	 * `baseHeadingLevel` / `includeSrHeading` are host surface, not a transform
@@ -995,9 +963,6 @@
 			runtimeSupportCheck: loaderOptions?.runtimeSupportCheck ?? "off",
 			view: loaderOptions?.view ?? null,
 			elementPackagePolicy: loaderOptions?.elementPackagePolicy ?? null,
-			disableBundler,
-			bundleEndpoints,
-			reFetchBundle,
 		});
 		if (
 			configSignature === lastProcessedConfigSignature &&
@@ -1079,13 +1044,6 @@
 			}
 
 			stage = "normalize-config";
-			if (bundleEndpoints || reFetchBundle) {
-				// pie-item contract compatibility: these legacy loader knobs are accepted at
-				// the boundary, but the current loader has no equivalent mutable endpoint cache.
-				logger.warn(
-					"[pie-item-player] bundleEndpoints/reFetchBundle are accepted for legacy host compatibility but are not used by the current loader boundary.",
-				);
-			}
 			const transformedConfig = prepareConfigEntity(normalizedInput.item);
 			const transformedPassageConfig = normalizedInput.passage
 				? prepareConfigEntity(normalizedInput.passage)
@@ -1215,11 +1173,8 @@
 		void resolvedEsmCdnUrl;
 		void loaderRetrySignature;
 		void loaderOptions;
-		void disableBundler;
 		void allowedResize;
 		void autoplayAudioEnabled;
-		void bundleEndpoints;
-		void reFetchBundle;
 		queueMicrotask(() => {
 			untrack(() => {
 				loadConfig(currentConfig);
@@ -1625,9 +1580,7 @@
 		return backendOrchestrator.releaseContent(options);
 	}
 
-	// pie-item contract compatibility: legacy <pie-player> exposed local
-	// browser scoring through provideScore(); current item-player behavior is
-	// unchanged unless a host opts into this new imperative method.
+	// Local browser scoring: one result slot per scored model.
 	export async function provideScore(): Promise<false | any[]> {
 		const cfg = itemConfig;
 		if (!cfg?.models?.length) {
@@ -1641,7 +1594,6 @@
 				mode: "evaluate",
 				partialScoring: currentEnv.partialScoring,
 			},
-			outcomeArguments: "model-session-env",
 			includeMissingResults: true,
 			bundleType: resolveBundleType(),
 		});
@@ -1657,7 +1609,7 @@
 		}
 		const updateId = typeof update?.id === "string" ? update.id : "";
 		if (!updateId) {
-			throw new Error("updateElementModel(update) requires update.id.");
+			throw new Error("A model update requires update.id.");
 		}
 		const modelIndex = itemConfig.models?.findIndex((model) => model.id === updateId) ?? -1;
 		if (modelIndex < 0) {
@@ -1684,21 +1636,6 @@
 		};
 		itemConfig = nextConfig;
 		return nextConfig;
-	}
-
-	// pie-item contract compatibility: legacy <pie-player> preview hosts update a
-	// rendered element model imperatively; keep the existing strict id/tag binding.
-	export async function updateElementModel(update: Record<string, any>): Promise<void> {
-		const nextConfig = applyItemConfigModelUpdate(update);
-		await tick();
-		void updatePieElements(
-			nextConfig,
-			rendererSession,
-			parseEnvValue(env),
-			hostElement ?? undefined,
-			handleElementSessionUpdate,
-			resolveBundleType(),
-		);
 	}
 
 	function handleModelUpdated(detail: unknown) {

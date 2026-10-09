@@ -15,26 +15,17 @@ export type ToolComponentFactoryMap = Record<string, ToolComponentFactory>;
 
 export interface ToolComponentOverrides {
 	toolTagMap?: Partial<ToolTagMap>;
-	toolComponentFactory?: ToolComponentFactory;
 	toolComponentFactories?: Partial<ToolComponentFactoryMap>;
 }
 
 /**
- * Resolve the element tag for a tool from the overrides in play.
- *
- * There is no built-in map to fall back to. One lived here, naming eleven
- * capabilities, and a core module holding that catalogue is why a host could not
- * add a twelfth without editing this package — the map was overridable, but the
- * default was core-resident. The packaged map is `PACKAGED_TOOL_TAG_MAP` in
- * `@pie-players/pie-default-tool-loaders`, installed onto a registry through
+ * Resolve the element tag for a tool from the overrides in play. Core holds no
+ * tag map; the packaged one is `PACKAGED_TOOL_TAG_MAP` in
+ * `@pie-players/pie-default-tool-loaders`, installed through
  * `ToolRegistry.setComponentOverrides`.
  *
- * An unmapped toolId falls through to itself, which is only a valid tag if the
- * host's tool id already looks like one. Every packaged id is a single camelCase
- * word, so in practice an unmapped packaged tool throws here rather than
- * rendering a bogus element — the failure names the missing mapping, because
- * "custom element names must include a hyphen" is a true statement about the
- * wrong thing.
+ * An unmapped toolId is its own tag when it contains a hyphen. Otherwise this
+ * throws an error naming the missing mapping.
  */
 export const resolveToolTag = (
 	toolId: string,
@@ -62,8 +53,7 @@ export const createToolElement = (
 	overrides?: ToolComponentOverrides,
 ): HTMLElement => {
 	const tagName = resolveToolTag(toolId, overrides);
-	const factoryForTool = overrides?.toolComponentFactories?.[toolId];
-	const factory = factoryForTool ?? overrides?.toolComponentFactory;
+	const factory = overrides?.toolComponentFactories?.[toolId];
 	return factory
 		? factory({ toolId, tagName, context, toolbarContext })
 		: createDefaultToolElement(tagName);

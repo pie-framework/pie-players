@@ -141,10 +141,6 @@ export default (async () => {
 					__dirname,
 					"../../packages/tool-calculator-desmos/dist/pie-tool-calculator.js",
 				),
-				"@pie-players/pie-tool-calculator-geogebra": resolve(
-					__dirname,
-					"../../packages/tool-calculator-geogebra/dist/pie-tool-calculator-geogebra.js",
-				),
 				"@pie-players/pie-section-player-tools-shared": resolve(
 					__dirname,
 					"../../packages/section-player-tools-shared/index.ts",

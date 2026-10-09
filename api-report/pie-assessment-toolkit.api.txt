@@ -149,6 +149,7 @@
   type ToolScopeLevel
   type ToolSingletonScope
   type ToolState
+  type ToolStateFilter
   type ToolSurfaceRenderContext
   type ToolSurfaceRenderResult
   type ToolSurfaceServices
@@ -171,7 +172,6 @@
   type TtsServiceApi
   ZIndexLayer
   catalogOwnerContextFor
-  connectAssessmentToolkitRuntimeContext
   connectToolRuntimeContext
   createNewAssessmentSession
   createNewTestAttemptSession
@@ -283,15 +283,6 @@
   catalogCardForm
   isKnownCatalogType
 
-./tools/client
-  type CalculationHistoryEntry
-  type Calculator
-  type CalculatorProvider
-  type CalculatorProviderCapabilities
-  type CalculatorProviderConfig
-  type CalculatorState
-  type CalculatorType
-
 ./tools/registration
   type AssessmentToolkitRegionScopeContext
   type AssessmentToolkitRuntimeContext
@@ -358,8 +349,6 @@
   catalogContextHolding
   composedClosest
   composedContains
-  connectAssessmentToolkitRegionScopeContext
-  connectAssessmentToolkitShellContext
   connectToolRegionScopeContext
   connectToolRuntimeContext
   connectToolShellContext

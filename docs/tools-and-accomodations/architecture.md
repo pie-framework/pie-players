@@ -669,19 +669,30 @@ Yellow highlight with underline (::highlight CSS)
 
 ### Tool Registration Pattern
 
-Tools register with ToolCoordinator on mount:
+A tool element registers with the ToolCoordinator in its runtime context through
+`createToolCoordinatorRegistration`, then hands the coordinator its element once
+it renders:
 
 ```typescript
-onMount(() => {
-  coordinator.registerTool(toolId, toolName, element, ZIndexLayer.MODAL);
-  return () => coordinator.unregisterTool(toolId);
+import {
+  createToolCoordinatorRegistration,
+  ZIndexLayer,
+} from "@pie-players/pie-assessment-toolkit/tools/registration";
+
+const registration = createToolCoordinatorRegistration("Line Reader", ZIndexLayer.TOOL);
+
+// Re-registers when a republished context brings a new coordinator.
+$effect(() => registration.sync(coordinator, toolId));
+$effect(() => {
+  if (coordinator && containerEl && toolId) {
+    coordinator.updateToolElement(toolId, containerEl);
+  }
 });
+onDestroy(() => registration.release());
 ```
 
-**Benefits:**
-- Declarative lifecycle management
-- Automatic cleanup on unmount
-- Type-safe layer assignment
+`release` unregisters from the coordinator the registration was made against,
+which is not necessarily the one currently in context.
 
 ### Text Selection Pattern
 

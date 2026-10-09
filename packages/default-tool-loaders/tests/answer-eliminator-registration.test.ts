@@ -45,7 +45,7 @@ const renderStrategy = (toolConfig: Record<string, unknown> | null) => {
 		subscribeVisibility: null,
 		componentOverrides: {
 			toolTagMap: PACKAGED_TOOL_TAG_MAP,
-			toolComponentFactory: () => createFakeElement(),
+			toolComponentFactories: { answerEliminator: () => createFakeElement() },
 		},
 	} as unknown as ToolbarContext;
 	const element = answerEliminatorToolRegistration.renderToolbar?.(

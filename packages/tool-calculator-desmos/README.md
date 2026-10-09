@@ -34,5 +34,5 @@ import "@pie-players/pie-tool-calculator-desmos";
 
 ## Related Documentation
 
-- [Calculator tools README](../assessment-toolkit/src/tools/calculators/README.md)
+- [Calculator providers](../default-tool-loaders/src/calculator-providers/README.md)
 - [Tools and accommodations architecture](../../docs/tools-and-accomodations/architecture.md)

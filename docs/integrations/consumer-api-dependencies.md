@@ -1900,7 +1900,8 @@ over a CDN with no typecheck at all.
   names are API there, the values reach nobody
 - Exports deleted as unused on 2026-09-28: the legacy tool types, the
   `ToolCategory` enum and `responseDiscovery` on the toolkit's `./tools/client`
-  subpath, which keeps its calculator types; the `ToolCoordinator` and
+  subpath, which kept its calculator types until it was deleted on 2026-10-08
+  (below); the `ToolCoordinator` and
   `HighlightCoordinator` constructor argument; `isPassageEntity`, `isPrerelease`,
   `formatVersion`, `SessionChangedEvent`, `LoadResponse`, the `Tracker` types,
   `BUILDER_ORIGIN_URL`, `renderMath` and `initializeMathRendering`'s renderer
@@ -1959,6 +1960,25 @@ over a CDN with no typecheck at all.
   event. Checked against all five checkouts on 2026-10-08 as a targeted lookup,
   so it does not advance the verification date: Hosts V, A, P and M import
   nothing from the toolkit, and Host R's eight root imports all stay
+- Tool surfaces deleted on 2026-10-08. On the toolkit: the `./tools/client`
+  subpath; `connectAssessmentToolkitRuntimeContext` on the root and
+  `connectAssessmentToolkitShellContext` / `…RegionScopeContext` on
+  `./tools/registration`, which duplicated the `connectTool…` functions; the
+  singular `toolComponentFactory` override; and `ToolCoordinator.resetZIndices`.
+  `ToolbarContext.getGlobalElementId` now takes the element id, and the
+  coordinator's `getVisibleTools` and `hideAllTools` take an optional
+  `{ baseId }` filter. On `pie-default-tool-loaders`: `calculatorProviderConfig`,
+  `createDefaultToolModuleLoaders`, `createSectionToolModuleLoaders`,
+  `ITEM_TOOL_MODULE_LOADERS`, `SECTION_TOOL_MODULE_LOADERS` and
+  `registerSectionToolModuleLoaders`. The packages `pie-tool-calculator-geogebra`,
+  `-cortex`, `-inline-geogebra` and `-inline-cortex` were removed, since
+  `<pie-tool-calculator>` and `<pie-tool-calculator-inline>` mount every provider
+  `tools.providers.calculator` selects, and the answer eliminator's
+  `globalElementId` prop became `elementStateKeys`. Checked against all five
+  checkouts on 2026-10-08 as a targeted lookup, so it does not advance the
+  verification date: no checkout names any of them. Host A's
+  `getVisibleTools()` prefix filter feeding `hideTool` and Host R's
+  `pie-tool-calculator-desmos` import keep working
 
 ## Consumer-side defects worth reporting upstream
 

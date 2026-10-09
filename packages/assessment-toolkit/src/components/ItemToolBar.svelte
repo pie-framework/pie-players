@@ -85,7 +85,8 @@
 	import { parseToolList } from '../services/tools-config-normalizer.js';
 	import { PENDING_INPUT_WARNING_DELAY_MS, warnOncePerDocument } from '../runtime/page-warnings.js';
 	import { resolveFallbackToolIcon } from '../services/tool-icons.js';
-	import { createScopedToolId, parseScopedToolId } from '../services/tool-instance-id.js';
+	import { createScopedToolId } from '../services/tool-instance-id.js';
+	import type { ToolCoordinatorApi } from '../services/interfaces.js';
 	import type { AssessmentItemRef, AssessmentEntity, ItemEntity } from '@pie-players/pie-players-shared/types';
 	import type { ElementToolContext, ItemToolContext, ToolLevel, ToolContext } from '../services/tool-context.js';
 	import type { ToolPolicyDecision } from '../policy/engine.js';
@@ -613,10 +614,67 @@
 			}));
 	});
 
-	const resolutionToolbarContext = $derived.by((): ToolbarContext => {
-		const toolkitCoordinator = runtimeContext?.toolkitCoordinator || null;
-		const toInstanceToolId = (toolId: string): string =>
-			parseScopedToolId(toolId) ? toolId : createScopedToolId(toolId, effectiveLevel, effectiveScopeId);
+	/** This toolbar's coordinator id for a base tool id. */
+	function toInstanceToolId(toolId: string): string {
+		return createScopedToolId(toolId, effectiveLevel, effectiveScopeId);
+	}
+
+	/**
+	 * Coordinator entries this toolbar seeded. A tool element registers itself
+	 * only once it renders, so the toolbar seeds the entry its button toggles;
+	 * the entry is scoped to this toolbar's item, so it is released when the
+	 * scope or coordinator changes and when the toolbar unmounts.
+	 */
+	let seededToolEntries: { coordinator: ToolCoordinatorApi; ids: Set<string> } | null = null;
+
+	function seedToolEntry(coordinator: ToolCoordinatorApi, toolId: string): string {
+		const instanceToolId = toInstanceToolId(toolId);
+		if (!coordinator.getToolState(instanceToolId)) {
+			coordinator.registerTool(instanceToolId, toolId);
+			if (seededToolEntries?.coordinator !== coordinator) {
+				seededToolEntries = { coordinator, ids: new Set() };
+			}
+			seededToolEntries.ids.add(instanceToolId);
+		}
+		return instanceToolId;
+	}
+
+	$effect(() => {
+		void effectiveToolCoordinator;
+		void effectiveLevel;
+		void effectiveScopeId;
+		return () => {
+			const seeded = seededToolEntries;
+			seededToolEntries = null;
+			if (!seeded) return;
+			for (const instanceToolId of seeded.ids) seeded.coordinator.releaseTool(instanceToolId);
+		};
+	});
+
+	/**
+	 * The state key of one PIE element in this toolbar's item. Element-grain
+	 * tools key by the element's model id, so two elements in one item keep
+	 * separate state.
+	 */
+	function resolveGlobalElementId(elementId: string): string | null {
+		if (!effectiveElementToolStateStore || !effectiveAssessmentId || !effectiveSectionId || !effectiveCanonicalItemId)
+			return null;
+		return effectiveElementToolStateStore.getGlobalElementId(
+			effectiveAssessmentId,
+			effectiveSectionId,
+			effectiveCanonicalItemId,
+			elementId
+		);
+	}
+
+	function resolveScopeElement(): HTMLElement | null {
+		if (scopeElement) return scopeElement;
+		return shellContext?.scopeElement || null;
+	}
+
+	/** The context every registration renders with; tool ids crossing it are base ids. */
+	function createToolbarContext(): ToolbarContext {
+		const coordinator = effectiveToolCoordinator || null;
 		return {
 			scope: {
 				level: effectiveLevel,
@@ -634,38 +692,22 @@
 			ui: {
 				size
 			},
-			getScopeElement: () => scopeElement || shellContext?.scopeElement || null,
-			getGlobalElementId: () => {
-				if (!effectiveElementToolStateStore || !effectiveAssessmentId || !effectiveSectionId || !effectiveCanonicalItemId)
-					return null;
-				return effectiveElementToolStateStore.getGlobalElementId(
-					effectiveAssessmentId,
-					effectiveSectionId,
-					effectiveCanonicalItemId,
-					effectiveCanonicalItemId
-				);
-			},
-			toolCoordinator: effectiveToolCoordinator || null,
-			toolkitCoordinator,
+			getScopeElement: resolveScopeElement,
+			getGlobalElementId: resolveGlobalElementId,
+			toolCoordinator: coordinator,
+			toolkitCoordinator: runtimeContext?.toolkitCoordinator || null,
 			ttsService: effectiveTTSService || null,
 			elementToolStateStore: effectiveElementToolStateStore || null,
 			toggleTool: (toolId: string) => {
-				if (!effectiveToolCoordinator) return;
-				const instanceToolId = toInstanceToolId(toolId);
-				if (!effectiveToolCoordinator.getToolState(instanceToolId)) {
-					effectiveToolCoordinator.registerTool(instanceToolId, toolId);
-				}
-				effectiveToolCoordinator.toggleTool(instanceToolId);
+				if (!coordinator) return;
+				coordinator.toggleTool(seedToolEntry(coordinator, toolId));
 			},
-			isToolVisible: (toolId: string) => {
-				if (!effectiveToolCoordinator) return false;
-				return effectiveToolCoordinator.isToolVisible(toInstanceToolId(toolId));
-			},
-			subscribeVisibility: effectiveToolCoordinator
-				? (listener: () => void) => effectiveToolCoordinator.subscribe(listener)
-				: null
+			isToolVisible: (toolId: string) => coordinator?.isToolVisible(toInstanceToolId(toolId)) ?? false,
+			subscribeVisibility: coordinator ? (listener: () => void) => coordinator.subscribe(listener) : null
 		};
-	});
+	}
+
+	const resolutionToolbarContext = $derived.by(createToolbarContext);
 
 	const hostResolvedToolContextById = $derived.by((): Record<string, ResolvedToolContext> => {
 		void toolContextResolverChangeVersion;
@@ -798,71 +840,9 @@
 		};
 	});
 
-	function resolveScopeElement(): HTMLElement | null {
-		if (scopeElement) return scopeElement;
-		return shellContext?.scopeElement || null;
-	}
-
-	function resolveGlobalElementId(): string | null {
-		if (!effectiveElementToolStateStore || !effectiveAssessmentId || !effectiveSectionId || !effectiveCanonicalItemId)
-			return null;
-		return effectiveElementToolStateStore.getGlobalElementId(
-			effectiveAssessmentId,
-			effectiveSectionId,
-			effectiveCanonicalItemId,
-			effectiveCanonicalItemId
-		);
-	}
-
 	const toolbarContext = $derived.by((): ToolbarContext => {
-		const toolkitCoordinator = runtimeContext?.toolkitCoordinator || null;
-		const toInstanceToolId = (toolId: string): string => {
-			// Accept either base tool IDs (e.g. "calculator") or already-scoped IDs.
-			// This keeps toolbar contracts stable across mixed registration implementations.
-			return parseScopedToolId(toolId)
-				? toolId
-				: createScopedToolId(toolId, effectiveLevel, effectiveScopeId);
-		};
 		return {
-			scope: {
-				level: effectiveLevel,
-				scopeId: effectiveScopeId,
-				assessmentId: runtimeContext?.assessmentId,
-				sectionId: effectiveSectionId,
-				itemId: effectiveItemId,
-				canonicalItemId: effectiveCanonicalItemId,
-				contentKind: effectiveContentKind
-			},
-			itemId: effectiveScopeId,
-			catalogId: effectiveCatalogId,
-			language: effectiveLanguage,
-			i18n: interfaceI18n,
-			ui: {
-				size
-			},
-			getScopeElement: resolveScopeElement,
-			getGlobalElementId: resolveGlobalElementId,
-			toolCoordinator: effectiveToolCoordinator || null,
-			toolkitCoordinator,
-			ttsService: effectiveTTSService || null,
-			elementToolStateStore: effectiveElementToolStateStore || null,
-			toggleTool: (toolId: string) => {
-				if (!effectiveToolCoordinator) return;
-				const instanceToolId = toInstanceToolId(toolId);
-				// Some tools only self-register after first visibility sync.
-				// Seed a placeholder registration so first toggle always works.
-				if (!effectiveToolCoordinator.getToolState(instanceToolId)) {
-					effectiveToolCoordinator.registerTool(instanceToolId, toolId);
-				}
-				effectiveToolCoordinator.toggleTool(instanceToolId);
-			},
-			isToolVisible: (toolId: string) => {
-				if (!effectiveToolCoordinator) return false;
-				return effectiveToolCoordinator.isToolVisible(toInstanceToolId(toolId));
-			},
-			subscribeVisibility: effectiveToolCoordinator
-				? (listener: () => void) => effectiveToolCoordinator.subscribe(listener)
-				: null,
+			...createToolbarContext(),
 			getResolvedToolContext: (toolId: string) => hostResolvedToolContextById[toolId] ?? null,
 			getToolRenderParams: (toolId: string) => {
 				const resolved = hostResolvedToolContextById[toolId]?.params ?? null;
@@ -1169,10 +1149,7 @@
 						toolRequestId: toolRequestSequence
 					});
 				}
-				const instanceToolId = createScopedToolId(toolId, effectiveLevel, effectiveScopeId);
-				if (!effectiveToolCoordinator.getToolState(instanceToolId)) {
-					effectiveToolCoordinator.registerTool(instanceToolId, toolId);
-				}
+				const instanceToolId = seedToolEntry(effectiveToolCoordinator, toolId);
 				// Show, never toggle: a learner selecting a second word and asking again
 				// is asking for the tool, and a toggle would close it on them.
 				effectiveToolCoordinator.showTool(instanceToolId);
@@ -1756,10 +1733,7 @@
 		// registration exists, and again if a re-registration dropped the binding.
 		const bindShellStacking = () => {
 			if (!shellEl || !effectiveToolCoordinator || !currentArgs.active) return;
-			const toolId = currentArgs.mounted.toolId;
-			const instanceToolId = parseScopedToolId(toolId)
-				? toolId
-				: createScopedToolId(toolId, effectiveLevel, effectiveScopeId);
+			const instanceToolId = toInstanceToolId(currentArgs.mounted.toolId);
 			if (effectiveToolCoordinator.getToolState(instanceToolId)?.element === shellEl) return;
 			effectiveToolCoordinator.updateToolElement(instanceToolId, shellEl);
 		};
@@ -2115,7 +2089,7 @@
 			shellEl.setAttribute('data-pie-tool-shell', currentArgs.mounted.toolId);
 			shellEl.style.position = 'fixed';
 			// Until the coordinator stacks it; a toolbar without one leaves it here.
-			shellEl.style.zIndex = String(ZIndexLayer.MODAL);
+			shellEl.style.zIndex = String(ZIndexLayer.TOOL);
 			shellEl.style.background = 'var(--pie-background, #fff)';
 			shellEl.style.border = '1px solid var(--pie-border-light, #d1d5db)';
 			shellEl.style.borderRadius = '12px';

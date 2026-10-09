@@ -8,7 +8,7 @@
 		Calculator,
 		CalculatorProviderConfig,
 		CalculatorType,
-	} from '@pie-players/pie-assessment-toolkit/tools/client';
+	} from '@pie-players/pie-calculator';
 	import { resolveInterfaceI18n } from '@pie-players/pie-players-shared/i18n/provider';
 	import { onMount, untrack } from 'svelte';
 	import { createCalculatorConfigKey } from './calculator-config-key.js';
@@ -59,7 +59,7 @@
 	const attribution = $derived(calculatorInstance?.provider.attribution ?? null);
 
 	let activeMountKey: string | null = null;
-	// A tool-config update replaces the provider, and destroying it destroys the calculator.
+	// The provider the calculator was created from; a tool-config update replaces it.
 	let mountedProvider: { isReady(): boolean } | null = null;
 	let currentMountElement: HTMLDivElement | null = null;
 	let mountGeneration = 0;
@@ -216,6 +216,31 @@
 		reconcileQueued = true;
 		queueMicrotask(reconcileCalculator);
 	}
+
+	// Replacing the provider leaves this element's props alone, so the policy
+	// change a tool-config update dispatches is the cue to remount on the new one.
+	async function remountIfProviderReplaced(): Promise<void> {
+		const provider = mountedProvider;
+		const generation = mountGeneration;
+		const coordinator = toolkitCoordinator;
+		if (!provider || !coordinator) return;
+		const current = await coordinator
+			.ensureProviderReady(baseToolId)
+			.catch(() => null);
+		if (generation !== mountGeneration || provider !== mountedProvider) return;
+		if (current === provider) return;
+		destroyCalculator();
+		queueReconcile();
+	}
+
+	$effect(() => {
+		const coordinator = toolkitCoordinator;
+		if (!coordinator) return;
+		// The update registers the new provider after dispatching the change.
+		return coordinator.onPolicyChange(() => {
+			queueMicrotask(() => void remountIfProviderReplaced());
+		});
+	});
 
 	$effect(() => {
 		void visible;

@@ -29,6 +29,22 @@ type EliminationStrategy = "strikethrough" | "mask";
 const normalizeEliminationStrategy = (value: unknown): EliminationStrategy =>
 	value === "mask" ? "mask" : "strikethrough";
 
+/** The state-store key of each PIE element in the item, by model id. */
+function resolveElementStateKeys(
+	context: ToolContext,
+	toolbarContext: ToolbarContext,
+): Record<string, string> {
+	const keys: Record<string, string> = {};
+	if (!("item" in context) || !toolbarContext.getGlobalElementId) return keys;
+	for (const model of context.item?.config?.models ?? []) {
+		const elementId = model?.id;
+		if (typeof elementId !== "string" || !elementId) continue;
+		const key = toolbarContext.getGlobalElementId(elementId);
+		if (key) keys[elementId] = key;
+	}
+	return keys;
+}
+
 /**
  * Answer Eliminator tool registration
  *
@@ -89,7 +105,7 @@ export const answerEliminatorToolRegistration: ToolRegistration = {
 				) as HTMLElement & {
 					visible?: boolean;
 					toolId?: string;
-					globalElementId?: string;
+					elementStateKeys?: Record<string, string>;
 					scopeElement?: HTMLElement | null;
 				},
 		);
@@ -124,10 +140,10 @@ export const answerEliminatorToolRegistration: ToolRegistration = {
 					isActive: visibility.isActive,
 				});
 				overlay.scopeElement = toolbarContext.getScopeElement?.() || null;
-				const globalElementId = toolbarContext.getGlobalElementId?.();
-				if (globalElementId) {
-					overlay.globalElementId = globalElementId;
-				}
+				overlay.elementStateKeys = resolveElementStateKeys(
+					context,
+					toolbarContext,
+				);
 			},
 			subscribeActive: visibility.subscribeActive,
 		};

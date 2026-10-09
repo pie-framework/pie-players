@@ -1392,7 +1392,11 @@ export class ToolkitCoordinator {
 		let registration: Parameters<ToolProviderRegistry["register"]>[1];
 		try {
 			const toolConfig = this.getToolConfig(toolId) || undefined;
-			if (toolConfig?.enabled === false) return;
+			if (toolConfig?.enabled === false) {
+				// A disabled tool keeps no provider, including the one it replaces.
+				if (replace) void this.toolProviderRegistry.unregister(toolId);
+				return;
+			}
 			if (!replace && this.toolProviderRegistry.has(toolId)) return;
 			const provider = descriptor.createProvider(toolConfig);
 			const initConfig =
@@ -1498,17 +1502,17 @@ export class ToolkitCoordinator {
 		const existing = this.providerInitPromises.get(toolId);
 		if (existing) return existing;
 		const promise = (async () => {
-			let provider = await this.toolProviderRegistry.getProvider(
-				toolId,
-				false,
-			);
-			this.assertNotDisposed();
-			// A tool asks each time it opens; the lifecycle hooks report the start once.
-			if (this.toolProviderRegistry.isInitialized(toolId)) return provider;
-			const meta: ProviderLifecycleContext = {
-				providerName: provider.providerName,
-			};
 			try {
+				let provider = await this.toolProviderRegistry.getProvider(
+					toolId,
+					false,
+				);
+				this.assertNotDisposed();
+				// A tool asks each time it opens; the lifecycle hooks report the start once.
+				if (this.toolProviderRegistry.isInitialized(toolId)) return provider;
+				const meta: ProviderLifecycleContext = {
+					providerName: provider.providerName,
+				};
 				await this.hooks.onProviderInitStart?.(toolId, meta);
 				this.assertNotDisposed();
 				await this.toolProviderRegistry.initialize(toolId);

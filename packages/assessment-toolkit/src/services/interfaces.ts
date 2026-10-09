@@ -218,6 +218,12 @@ export interface ToolState {
 	layer: ZIndexLayer;
 }
 
+/** Narrows tool-state queries to the instances of one tool. */
+export interface ToolStateFilter {
+	/** Base tool id, such as `calculator`, matching every scoped instance of it. */
+	baseId?: string;
+}
+
 /**
  * Tool coordinator interface
  *
@@ -282,9 +288,15 @@ export interface ToolCoordinatorApi {
 	getToolState(id: string): ToolState | undefined;
 
 	/**
-	 * Get all visible tools
+	 * Every visible tool, or with `{ baseId }` every visible instance of one
+	 * tool, so a host need not parse scoped ids.
 	 */
-	getVisibleTools(): ToolState[];
+	getVisibleTools(filter?: ToolStateFilter): ToolState[];
+
+	/**
+	 * Hide every visible tool, or every instance of one tool with `{ baseId }`.
+	 */
+	hideAllTools(filter?: ToolStateFilter): void;
 
 	/**
 	 * Subscribe to tool state changes

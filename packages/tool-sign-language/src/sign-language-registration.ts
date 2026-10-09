@@ -23,7 +23,6 @@
 
 import {
 	resolveToolTag,
-	type ToolComponentOverrides,
 	type ToolContentDependencyContext,
 	type ToolRegistration,
 	type ToolSurfaceRenderContext,
@@ -46,6 +45,17 @@ export const CONTENT_MEDIA_SURFACE = "content-media";
 
 /** Element tag this package registers. A host may substitute its own. */
 export const SIGN_LANGUAGE_ELEMENT_TAG = "pie-tool-sign-language";
+
+/**
+ * The tag mapping for this capability, in the shape `setComponentOverrides`
+ * takes. The registration falls back to it, so installing it is optional; a
+ * host `toolTagMap` entry for the same id wins.
+ */
+export const SIGN_LANGUAGE_TOOL_TAG_MAP: Readonly<Record<string, string>> = {
+	[SIGN_LANGUAGE_FEATURE_ID]: SIGN_LANGUAGE_ELEMENT_TAG,
+};
+
+const warnedUndefinedTags = new Set<string>();
 
 export const signLanguageRegistration: ToolRegistration = {
 	toolId: SIGN_LANGUAGE_FEATURE_ID,
@@ -78,21 +88,25 @@ export const signLanguageRegistration: ToolRegistration = {
 		// Declining is the honest answer; an empty player is not.
 		if (!media) return null;
 
-		const componentOverrides =
-			(context.componentOverrides as ToolComponentOverrides | undefined) ?? {};
-		// This package registers its own element, so it supplies its own mapping
-		// rather than requiring the host to install one — but a host override still
-		// wins, which is how a deployment substitutes its own region component.
+		const componentOverrides = context.componentOverrides ?? {};
+		// A host override wins, which is how a deployment substitutes its own
+		// region component.
 		const tagName = resolveToolTag(context.toolId, {
 			...componentOverrides,
 			toolTagMap: {
-				[SIGN_LANGUAGE_FEATURE_ID]: SIGN_LANGUAGE_ELEMENT_TAG,
+				...SIGN_LANGUAGE_TOOL_TAG_MAP,
 				...componentOverrides.toolTagMap,
 			},
 		});
 		if (typeof customElements !== "undefined" && !customElements.get(tagName)) {
 			// Importing this package registers the element, so reaching here means a
 			// host mapped the id to an element it never defined.
+			if (!warnedUndefinedTags.has(tagName)) {
+				warnedUndefinedTags.add(tagName);
+				console.warn(
+					`[pie-tool-sign-language] Tool "${context.toolId}" renders <${tagName}>, which is undefined, so the "${context.surface}" surface stays empty. Define the element before the surface renders, or map the tool to a defined tag.`,
+				);
+			}
 			return null;
 		}
 

@@ -1248,25 +1248,31 @@ await ttsService.updateSettings({
 
 ### ToolCoordinator
 
+The toolkit owns the coordinator. A tool element registers with the one in its
+runtime context and hands it the element once it renders:
+
 ```typescript
-import { ToolCoordinator } from '@pie-players/pie-assessment-toolkit';
+import {
+  createToolCoordinatorRegistration,
+  ZIndexLayer,
+} from '@pie-players/pie-assessment-toolkit/tools/registration';
 
-const toolCoordinator = new ToolCoordinator();
+const registration = createToolCoordinatorRegistration('Calculator', ZIndexLayer.TOOL);
 
-// Register tools
-toolCoordinator.registerTool('calculator', 'Calculator', element);
-
-// Manage visibility
-toolCoordinator.showTool('calculator');
-toolCoordinator.hideTool('calculator');
-toolCoordinator.toggleTool('calculator');
-
-// Z-index management
-toolCoordinator.bringToFront(element);
-
-// Check state
-const isVisible = toolCoordinator.isToolVisible('calculator');
+// Re-registers when a republished context brings a new coordinator.
+$effect(() => registration.sync(coordinator, toolId));
+$effect(() => {
+  if (coordinator && containerEl && toolId) {
+    coordinator.updateToolElement(toolId, containerEl);
+  }
+});
+onDestroy(() => registration.release());
 ```
+
+Visibility and stacking then go through the coordinator by scoped tool id:
+`showTool`, `hideTool`, `toggleTool`, `isToolVisible`, `bringToFront(element)`,
+and `getVisibleTools({ baseId })` / `hideAllTools({ baseId })` for one tool
+across scopes.
 
 ### HighlightCoordinator
 
@@ -1488,12 +1494,12 @@ inside the toolkit's tree connects to it:
 
 ```typescript
 import {
-  connectAssessmentToolkitRuntimeContext,
+  connectToolRuntimeContext,
   type AssessmentToolkitRuntimeContext
 } from "@pie-players/pie-assessment-toolkit";
 
 let runtime: AssessmentToolkitRuntimeContext | undefined;
-const disconnect = connectAssessmentToolkitRuntimeContext(hostElement, (value) => {
+const disconnect = connectToolRuntimeContext(hostElement, (value) => {
   runtime = value;
 });
 ```

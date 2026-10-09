@@ -2,13 +2,11 @@ import { describe, expect, test } from "bun:test";
 import {
 	createPackagedToolRegistry,
 	DEFAULT_TOOL_MODULE_LOADERS,
-	ITEM_TOOL_MODULE_LOADERS,
 	PACKAGED_TOOL_ORDER,
 	PACKAGED_TOOL_PLACEMENT,
 	PACKAGED_TOOL_REGISTRATIONS,
 	PACKAGED_TOOL_TAG_MAP,
 	SECTION_PLAYER_PREFERRED_TOOL_PLACEMENT,
-	SECTION_TOOL_MODULE_LOADERS,
 	UNIVERSAL_SUPPORTS_PRESET,
 } from "../src/index";
 import { assertPackagedCapabilityComposition } from "../src/packaged-capability-composition";
@@ -40,12 +38,8 @@ describe("packaged capability composition", () => {
 		}
 	});
 
-	test("keeps loader subsets as projections of the default loader map", () => {
-		for (const [toolId, loader] of Object.entries({
-			...ITEM_TOOL_MODULE_LOADERS,
-			...SECTION_TOOL_MODULE_LOADERS,
-		})) {
-			expect(DEFAULT_TOOL_MODULE_LOADERS[toolId]).toBe(loader);
+	test("gives every loaded capability an element tag", () => {
+		for (const toolId of Object.keys(DEFAULT_TOOL_MODULE_LOADERS)) {
 			expect(PACKAGED_TOOL_TAG_MAP[toolId]).toBeDefined();
 		}
 	});

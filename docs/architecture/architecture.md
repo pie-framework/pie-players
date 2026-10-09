@@ -413,7 +413,7 @@ The coordinator's services work together:
 **Canonical Documentation**:
 - [Tools & Accommodations Architecture](../tools-and-accomodations/architecture.md)
 - [Tool Development & Integration](../../packages/assessment-toolkit/docs/TOOL_REGISTRY.md)
-- [Calculator Providers](../../packages/assessment-toolkit/src/tools/calculators/README.md)
+- [Calculator Providers](../../packages/default-tool-loaders/src/calculator-providers/README.md)
 
 ---
 

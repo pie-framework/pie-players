@@ -349,10 +349,11 @@ methods and events.
   `calculator:<scope>` runtime prefix.
 - Preserve the generic `<pie-tool-calculator>` element and inline calculator
   behavior.
-- Add `<pie-tool-calculator-cortex>` and
-  `<pie-tool-calculator-inline-cortex>` as provider-specific, additive tags.
-- Keep existing Desmos and GeoGebra registration IDs, packages, tags, settings,
-  and state behavior unchanged.
+- Select Cortex through `tools.providers.calculator` in the generic
+  `<pie-tool-calculator>` and `<pie-tool-calculator-inline>` elements, with no
+  provider-specific tag.
+- Keep existing Desmos and GeoGebra registration IDs, settings, and state
+  behavior unchanged.
 - Do not strip or normalize versioned PIE tag names.
 - Do not synthesize, prefix, slug, or otherwise mutate contract identifiers.
 - Do not add a compatibility shim or a cross-provider state bridge.

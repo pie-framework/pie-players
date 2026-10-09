@@ -21,10 +21,6 @@
 			"types": "./dist/index.d.ts",
 			"import": "./dist/index.js"
 		},
-		"./tools/client": {
-			"types": "./dist/tools/client.d.ts",
-			"import": "./dist/tools/client.js"
-		},
 		"./tools/registration": {
 			"types": "./dist/tools/registration.d.ts",
 			"import": "./dist/tools/registration.js"

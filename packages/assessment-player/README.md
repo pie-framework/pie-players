@@ -71,7 +71,8 @@ controller.navigateTo("section-2");
 controller.navigateNext();
 controller.navigatePrevious();
 
-// persist on whatever cadence the host wants; submit() always persists.
+// persist on whatever cadence the host wants; saves run in call order.
+// submit() saves first and rejects, unsubmitted, if that save fails.
 await controller.persist();
 await controller.submit();
 unsubscribe();

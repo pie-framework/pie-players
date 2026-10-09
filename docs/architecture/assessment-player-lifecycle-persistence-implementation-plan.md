@@ -113,16 +113,13 @@ Do not choose the following designs from repository demos alone:
 - whether assessment-player, section-player, or a host is the durable owner of
   embedded section state;
 - whether any new section-controller acquisition mode is needed;
-- save ordering, coalescing, snapshot, retry, or failure-state semantics;
 - assessment-session schema additions;
 - authoritative-submission idempotency and receipt recovery; or
 - backend retry, reload, and indeterminate-outcome behavior.
 
-R2 begins with a representative host's actual read and write boundaries,
-navigation and reload behavior, failure modes, network contract, and authority.
-Before choosing and implementing persistence behavior, compare the smallest
-options against that workload, including retaining the existing public seams.
-Assigning the issue a branch does not satisfy this evidence gate.
+R2 was repaired on 2026-10-08 without host evidence, since no host mounts the
+assessment player: saves are serialized in call order and `submit()` succeeds
+only after its save does.
 
 Authoritative submission remains owned by the existing Draft
 [Assessment Authoritative Submission PRD](../prds/assessment-authoritative-submission.md).
@@ -165,8 +162,7 @@ submission requires its own accepted PRD before implementation.
 3. Verify the already-landed generic coordinator prerequisite with its regression
    evidence.
 4. Implement and review lifecycle/readiness as its own assessment-player change.
-5. Implement the planned persistence repair only after host ownership and network
-   boundaries are explicit and an option has been selected from evidence.
+5. The persistence repair (R2) landed on 2026-10-08.
 6. Schedule authoritative submission only after its existing PRD is accepted.
 
 Keeping these gates separate is intentional. A confirmed custom-element

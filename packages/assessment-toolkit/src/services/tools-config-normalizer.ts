@@ -100,16 +100,16 @@ export interface ToolProvidersConfig {
 
 /**
  * PNP/profile enforcement mode, set as `tools.pnpEnforcement` (on a section
- * player, `runtime.tools.pnpEnforcement`).
+ * player, `runtime.tools.pnpEnforcement`) or through `setPnpEnforcement`.
  *
- * - `"on"` — force enforcement (engine applies PNP/profile gates).
- * - `"off"` — opt out (engine ignores PNP/profile inputs).
- * - omitted / `undefined` — auto-mode (the default). The toolkit
- *   coordinator computes the effective mode from PNP/profile policy material on the
- *   bound `AssessmentEntity` / `AssessmentItemRef`. See
+ * - `"on"` — toolbar decisions apply PNP/profile policy.
+ * - `"off"` — toolbar decisions skip it. Feature decisions read it either way.
+ * - omitted — auto-mode (the default): on when the bound assessment carries
+ *   PNP/profile policy material, or, for a decision scoped to an item, when
+ *   that item's settings require or restrict a tool. See
  *   `resolveDefaultPnpEnforcement` in `policy/core/pnp-policy-inputs.ts`.
  */
-export type ToolsPnpEnforcement = "on" | "off";
+export type PnpEnforcementMode = "on" | "off";
 
 export interface CanonicalToolsConfig {
 	policy: ToolPolicyConfig;
@@ -118,9 +118,9 @@ export interface CanonicalToolsConfig {
 	/**
 	 * Optional PNP/profile enforcement override, read by
 	 * `<pie-assessment-toolkit>` and `ToolkitCoordinator`. See
-	 * {@link ToolsPnpEnforcement} for semantics.
+	 * {@link PnpEnforcementMode} for semantics.
 	 */
-	pnpEnforcement?: ToolsPnpEnforcement;
+	pnpEnforcement?: PnpEnforcementMode;
 }
 
 /**
@@ -265,7 +265,7 @@ export function parseToolList(input: string | undefined | null): string[] {
 function assertPnpEnforcement(
 	value: unknown,
 	fieldPath: "pnpEnforcement",
-): ToolsPnpEnforcement | undefined {
+): PnpEnforcementMode | undefined {
 	if (value == null) return undefined;
 	if (value === "on" || value === "off") return value;
 	throw new Error(

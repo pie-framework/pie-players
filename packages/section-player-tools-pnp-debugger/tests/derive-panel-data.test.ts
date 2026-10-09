@@ -293,17 +293,19 @@ describe("resolveSectionToolIds", () => {
 		const result = resolveSectionToolIds(
 			{
 				decideToolPolicy: () => makeDecision([], makeProvenance([])),
-				config: { tools: { placement: { section: ["calculator"] } } },
+				getPolicyInputs: () =>
+					({ tools: { placement: { section: ["calculator"] } } }) as never,
 			},
 			[],
 		);
 		expect(result).toEqual([]);
 	});
 
-	test("falls back to tools.placement.section config", () => {
+	test("falls back to the bound tools.placement.section", () => {
 		const result = resolveSectionToolIds(
 			{
-				config: { tools: { placement: { section: ["calculator"] } } },
+				getPolicyInputs: () =>
+					({ tools: { placement: { section: ["calculator"] } } }) as never,
 			},
 			[],
 		);
@@ -317,32 +319,33 @@ describe("resolveSectionToolIds", () => {
 
 describe("editable tool helpers", () => {
 	const coordinator: PolicyPanelCoordinator = {
-		config: {
-			toolRegistry: {
-				getAllTools: () => [
-					{
-						toolId: "lineReader",
-						name: "Line Reader",
-						description: "Reading guide",
-						supportedLevels: ["section", "item", "passage"],
-					},
-					{
-						toolId: "answerEliminator",
-						name: "Answer Eliminator",
-						supportedLevels: ["item"],
-					},
-				],
-			},
-			tools: {
-				placement: {
-					section: ["lineReader"],
-					item: ["answerEliminator"],
+		getToolRegistry: () => ({
+			getAllTools: () => [
+				{
+					toolId: "lineReader",
+					name: "Line Reader",
+					description: "Reading guide",
+					supportedLevels: ["section", "item", "passage"],
 				},
-				providers: {
-					answerEliminator: { enabled: false },
+				{
+					toolId: "answerEliminator",
+					name: "Answer Eliminator",
+					supportedLevels: ["item"],
 				},
-			},
-		},
+			],
+		}),
+		getPolicyInputs: () =>
+			({
+				tools: {
+					placement: {
+						section: ["lineReader"],
+						item: ["answerEliminator"],
+					},
+					providers: {
+						answerEliminator: { enabled: false },
+					},
+				},
+			}) as never,
 	};
 
 	test("buildEditableToolRows merges registry, placement, provider, visibility, and PNP state", () => {
@@ -550,17 +553,15 @@ describe("derivePnpPanelData", () => {
 						makeProvenance([]),
 					);
 				},
-				config: {
-					toolRegistry: {
-						getAllTools: () => [
-							{
-								toolId: "calculator",
-								name: "Calculator",
-								supportedLevels: ["item"],
-							},
-						],
-					},
-				} as never,
+				getToolRegistry: () => ({
+					getAllTools: () => [
+						{
+							toolId: "calculator",
+							name: "Calculator",
+							supportedLevels: ["item"],
+						},
+					],
+				}),
 			},
 		});
 		expect(calls.filter((call) => call.level !== "section")).toEqual([
@@ -689,6 +690,28 @@ describe("derivePnpPanelData", () => {
 			},
 		});
 		expect(withOne.determination.runtimeContext.assessmentBound).toBe(true);
+	});
+
+	test("expects an assessment unless the toolkit's own coordinator leaves enforcement unset", () => {
+		const expected = (
+			config: { assessmentOptional?: boolean },
+			pnpEnforcementOverride: "on" | "off" | null,
+		) =>
+			derivePnpPanelData({
+				sectionData: { id: "s1" },
+				roleType: "candidate",
+				floatingTools: [],
+				defaultPnpProfile: DEFAULT_PNP,
+				coordinator: {
+					config,
+					getPolicyInputs: () =>
+						({ assessment: null, pnpEnforcementOverride }) as never,
+				},
+			}).determination.runtimeContext.assessmentExpected;
+		expect(expected({}, null)).toBe(true);
+		expect(expected({ assessmentOptional: true }, null)).toBe(false);
+		expect(expected({ assessmentOptional: true }, "off")).toBe(false);
+		expect(expected({ assessmentOptional: true }, "on")).toBe(true);
 	});
 
 	test("leaves the binding unstated when the coordinator exposes no inputs", () => {

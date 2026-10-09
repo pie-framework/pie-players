@@ -224,18 +224,14 @@
 		class="pie-section-player-tools-pnp-debugger__content"
 		style="height: 100%; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch;"
 	>
-		{#if pnpPanelData.determination.runtimeContext.assessmentBound === false}
+		{#if pnpPanelData.determination.runtimeContext.assessmentBound === false && pnpPanelData.determination.runtimeContext.assessmentExpected}
 			<div
 				class="pie-section-player-tools-pnp-debugger__card pie-section-player-tools-pnp-debugger__card--warning"
 				data-testid="pnp-no-assessment-bound"
 				role="status"
 			>
 				<div class="pie-section-player-tools-pnp-debugger__card-title">{interfaceI18n.t("debug.pnp.noAssessmentBound")}</div>
-				<p class="pie-section-player-tools-pnp-debugger__card-text">
-					Every accommodation below is declined because nothing supplied a profile, not
-					because policy denied it. Call <code>updateAssessment(...)</code> on the toolkit
-					coordinator.
-				</p>
+				<p class="pie-section-player-tools-pnp-debugger__card-text">{interfaceI18n.t("debug.pnp.noAssessmentBoundBody")}</p>
 			</div>
 		{/if}
 		<div class="pie-section-player-tools-pnp-debugger__card">

@@ -701,16 +701,6 @@ export class ToolkitCoordinator {
 	private readonly policyEngine: ToolPolicyEngine;
 
 	/**
-	 * Host-set override for PNP/profile enforcement, passed to the engine.
-	 * `null` (the default) is auto-mode, which the engine resolves per decision
-	 * from the policy material the bound assessment and the decision's item carry.
-	 * `"on"` / `"off"` are explicit host opt-in / opt-out and stick
-	 * across subsequent assessment swaps until the host clears
-	 * the override by calling `setPnpEnforcement(null)`.
-	 */
-	private pnpEnforcementOverride: PnpEnforcementMode | null = null;
-
-	/**
 	 * Policy diagnostics reported since the last input change, keyed by code,
 	 * tool id and, for `tool-policy.itemSettingNotApplied`, item id; see
 	 * {@link warnPolicyDiagnostics}.
@@ -856,7 +846,6 @@ export class ToolkitCoordinator {
 		this.hooks = { ...resolvedConfig.hooks };
 		this.lazyInit = config.lazyInit === true;
 		this.eagerInit = config.eagerInit ?? !this.lazyInit;
-		this.pnpEnforcementOverride = this.resolveConfiguredPnpEnforcement();
 
 		// Use the host-provided framework-error bus if one was passed
 		// (typical when embedded inside <pie-assessment-toolkit>, so
@@ -908,7 +897,7 @@ export class ToolkitCoordinator {
 			inputs: {
 				tools: this.config.tools as CanonicalToolsConfig,
 				assessment: null,
-				pnpEnforcement: this.pnpEnforcementOverride,
+				pnpEnforcement: this.resolveConfiguredPnpEnforcement(),
 			},
 		});
 
@@ -3031,8 +3020,8 @@ export class ToolkitCoordinator {
 	 * `pnpEnforcement` is not consulted.
 	 *
 	 * Reports once per coordinator when it is asked about a feature with no
-	 * assessment bound. A host in that state gets a correct denial for every
-	 * capability it asks about, which is indistinguishable from a student who was
+	 * assessment bound. A host in that state gets a denial for every capability
+	 * no item requires, which is indistinguishable from a student who was
 	 * properly declined — so without this, forgetting {@link updateAssessment}
 	 * presents as an accommodation that silently never appears.
 	 *
@@ -3052,7 +3041,7 @@ export class ToolkitCoordinator {
 		this.warnPolicyDiagnostics(decision.diagnostics);
 		const unboundIsMisconfigured =
 			this.config.assessmentOptional !== true ||
-			this.pnpEnforcementOverride === "on";
+			this.policyEngine.getInputs().pnpEnforcementOverride === "on";
 		if (
 			!decision.assessmentBound &&
 			unboundIsMisconfigured &&
@@ -3060,7 +3049,7 @@ export class ToolkitCoordinator {
 		) {
 			this.reportedUnboundFeaturePolicy = true;
 			console.warn(
-				`[ToolkitCoordinator] Feature policy was asked about "${featureId}" with no assessment bound, so every capability will be declined for want of a profile to read. Call updateAssessment(...) with the assessment (its personalNeedsProfile, settings.districtPolicy and settings.testAdministration are what policy reads) before relying on any accommodation. Reported once per coordinator.`,
+				`[ToolkitCoordinator] Feature policy was asked about "${featureId}" with no assessment bound, so profile, district and test-administration policy have nothing to read and only an item's requiredTools can grant. Pass the assessment to the toolkit's assessment property, or call updateAssessment(...), before relying on any accommodation. Reported once per coordinator.`,
 			);
 		}
 		return decision;
@@ -3132,10 +3121,10 @@ export class ToolkitCoordinator {
 
 	/**
 	 * Override the auto-mode PNP/profile enforcement decision; `null` returns
-	 * to auto-mode.
+	 * to auto-mode. `"on"` and `"off"` stick across assessment swaps until
+	 * cleared.
 	 */
 	setPnpEnforcement(mode: PnpEnforcementMode | null): void {
-		this.pnpEnforcementOverride = mode;
 		this.policyEngine.updateInputs({ pnpEnforcement: mode });
 	}
 

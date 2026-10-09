@@ -451,6 +451,8 @@ const nlNL = {
 		pnp: {
 			title: "PNP-profiel",
 			noAssessmentBound: "Geen toets gekoppeld",
+			noAssessmentBoundBody:
+				"Profiel-, district- en afnamebeleid hebben niets om te lezen, dus alleen de requiredTools van een item kunnen een voorziening toekennen. Geef de toets door aan de assessment-eigenschap van de toolkit, of roep updateAssessment(...) aan op de toolkit-coordinator.",
 			determinationReadOnly: "Vaststelling (alleen lezen)",
 			toolsEditor: "Hulpmiddelen bewerken",
 			enforcement: "PNP-handhaving",

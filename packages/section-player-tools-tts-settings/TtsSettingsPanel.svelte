@@ -1487,6 +1487,8 @@ function normalizePreviewSpeechMarkOffsets(
 				voice: browserVoice || undefined,
 				rate: normalizeRate(browserRate),
 				pitch: normalizePitch(browserPitch),
+				// The browser provider reports word boundaries only in word mode.
+				providerOptions: { highlightMode: "word" },
 			});
 			debugPreview("browser:speak", { voice: browserVoice || "(default)" });
 			await service.speak(host, { language: contentLanguage });

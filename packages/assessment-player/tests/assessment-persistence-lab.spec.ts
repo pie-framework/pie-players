@@ -11,7 +11,10 @@ type Observation = {
 	submissionEvents: number;
 	errors: string[];
 };
-const choice = (page: Page, value: string) => page.locator(`pie-assessment-player-default input[type="radio"][value="${value}"]`).first();
+// Scope to the section's first item card: item players render independently,
+// so a page-wide first radio can belong to a later item.
+const choice = (page: Page, value: string) =>
+	page.locator("pie-assessment-player-default [data-section-item-card]").first().locator(`input[type="radio"][value="${value}"]`);
 const observation = async (page: Page): Promise<Observation> => JSON.parse((await page.getByTestId("lab-state").textContent())!);
 const ready = async (page: Page) => {
 	await expect(page.getByRole("status").filter({ hasText: "Ready." })).toBeVisible();

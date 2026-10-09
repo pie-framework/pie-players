@@ -21,6 +21,7 @@ describe("tts-runtime-config defaults", () => {
 		});
 		const runtimeConfig = buildRuntimeTTSConfig(settings);
 
+		expect(runtimeConfig.voice).toBeUndefined();
 		expect(runtimeConfig).toMatchObject({
 			rate: 1,
 			apiEndpoint: "/api/tts",
@@ -132,6 +133,7 @@ describe("tts-runtime-config defaults", () => {
 
 		expect(settings.apiEndpoint).toBe("/api/tts");
 
+		expect(runtimeConfig.voice).toBeUndefined();
 		expect(runtimeConfig).toMatchObject({
 			rate: 1,
 			apiEndpoint: "/api/tts",

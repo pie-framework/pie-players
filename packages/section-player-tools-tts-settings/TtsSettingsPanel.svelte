@@ -22,6 +22,7 @@
 	} from "@pie-players/pie-assessment-toolkit/tools/registration";
 	import {
 		BrowserTTSProvider,
+		PlaybackState,
 		TTSService,
 	} from "@pie-players/pie-assessment-toolkit";
 	import { createFocusTrap } from "@pie-players/pie-players-shared";
@@ -1459,6 +1460,14 @@ function normalizePreviewSpeechMarkOffsets(
 		browserPreviewService = service;
 		browserPreviewHost = host;
 		service.setHighlightCoordinator(trackPreviewWords());
+		// Playback start highlights the first word, ahead of its first boundary.
+		service.onStateChange((state) => {
+			if (state !== PlaybackState.PLAYING || previewTrackIndex >= 0) return;
+			const firstWord = /\S+/.exec(host.textContent || "");
+			if (!firstWord) return;
+			previewTrackIndex = firstWord.index;
+			previewTrackLength = firstWord[0].length;
+		});
 		try {
 			await service.initialize(new BrowserTTSProvider(), {
 				voice: browserVoice || undefined,

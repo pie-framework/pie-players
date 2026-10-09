@@ -70,6 +70,13 @@ export interface PollyProviderConfig extends TTSServerConfig {
 	 * @see https://docs.aws.amazon.com/polly/latest/dg/voicelist.html
 	 */
 	defaultVoice?: string;
+
+	/**
+	 * Enable detailed logging for debugging
+	 *
+	 * @default false
+	 */
+	enableLogging?: boolean;
 }
 
 /**
@@ -124,6 +131,7 @@ export class PollyServerProvider extends BaseTTSProvider {
 	private client!: PollyClient;
 	private engine: "neural" | "standard" = "neural";
 	private defaultVoice = "Joanna";
+	private enableLogging = false;
 
 	private resolveOutputFormat(
 		request: SynthesizeRequest,
@@ -188,6 +196,7 @@ export class PollyServerProvider extends BaseTTSProvider {
 		this.config = config;
 		this.engine = config.engine || "neural";
 		this.defaultVoice = config.defaultVoice || "Joanna";
+		this.enableLogging = config.enableLogging || false;
 
 		try {
 			// Create Polly client (fast - no API calls)
@@ -256,7 +265,7 @@ export class PollyServerProvider extends BaseTTSProvider {
 		request: SynthesizeRequest,
 		voice: string,
 	): Promise<{ audio: Buffer; contentType: string }> {
-		if (this.detectSSML(request.text, POLLY_SSML_TAGS)) {
+		if (this.enableLogging && this.detectSSML(request.text, POLLY_SSML_TAGS)) {
 			console.log(
 				"[PollyServerProvider] Detected SSML content, using TextType: ssml",
 			);

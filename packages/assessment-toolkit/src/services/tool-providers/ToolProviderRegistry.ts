@@ -7,7 +7,14 @@
  * Part of PIE Assessment Toolkit.
  */
 
+import {
+	createPieLogger,
+	isGlobalDebugEnabled,
+} from "@pie-players/pie-players-shared/pie";
 import type { ToolProviderApi, ToolCategory } from "./ToolProviderApi.js";
+
+// Lifecycle lines need `window.PIE_DEBUG = true`, read on each line.
+const logger = createPieLogger("ToolProviderRegistry", isGlobalDebugEnabled);
 
 /**
  * What `register` takes: the provider, its config, and how it starts.
@@ -135,8 +142,8 @@ export class ToolProviderRegistry {
 			}
 		}
 
-		console.log(
-			`[ToolProviderRegistry] ${replaced ? "Replaced" : "Registered"} provider "${toolId}" (${config.provider.providerName})`,
+		logger.debug(
+			`${replaced ? "Replaced" : "Registered"} provider "${toolId}" (${config.provider.providerName})`,
 		);
 
 		// Initialize immediately if not lazy
@@ -256,8 +263,8 @@ export class ToolProviderRegistry {
 				backend: deriveBackend(providerConfig),
 				operation: "auth-fetch",
 			});
-			console.log(
-				`[ToolProviderRegistry] Fetching auth for "${toolId}"...`,
+			logger.debug(
+				`Fetching auth for "${toolId}"...`,
 			);
 			try {
 				const authData = await config.authFetcher();
@@ -299,8 +306,8 @@ export class ToolProviderRegistry {
 				operation: "provider-initialize",
 				duration: Date.now() - providerInitStartedAt,
 			});
-			console.log(
-				`[ToolProviderRegistry] Provider "${toolId}" initialized`,
+			logger.debug(
+				`Provider "${toolId}" initialized`,
 			);
 		} catch (error) {
 			await this.emitTelemetry(config, "pie-tool-init-error", {
@@ -347,8 +354,8 @@ export class ToolProviderRegistry {
 
 		// Auto-initialize if needed
 		if (autoInitialize && !this.initialized.get(toolId)) {
-			console.log(
-				"[ToolProviderRegistry] Auto-initializing provider:",
+			logger.debug(
+				"Auto-initializing provider:",
 				toolId,
 			);
 			await this.initialize(toolId);
@@ -434,8 +441,8 @@ export class ToolProviderRegistry {
 			this.initialized.delete(toolId);
 			this.initializationPromises.delete(toolId);
 
-			console.log(
-				`[ToolProviderRegistry] Unregistered provider "${toolId}"`,
+			logger.debug(
+				`Unregistered provider "${toolId}"`,
 			);
 		}
 	}
@@ -448,6 +455,6 @@ export class ToolProviderRegistry {
 	async destroy(): Promise<void> {
 		const toolIds = Array.from(this.providers.keys());
 		await Promise.all(toolIds.map((id) => this.unregister(id)));
-		console.log("[ToolProviderRegistry] Registry destroyed");
+		logger.debug("Registry destroyed");
 	}
 }

@@ -157,11 +157,6 @@ export {
 	resolveContentRegion,
 } from "../runtime/content-region.js";
 export {
-	type ContentLanguageOptions,
-	findContentLanguage,
-	resolveContentLanguage,
-} from "../runtime/content-language.js";
-export {
 	composedClosest,
 	composedContains,
 	flatTextContent,

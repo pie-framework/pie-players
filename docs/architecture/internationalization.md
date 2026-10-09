@@ -104,10 +104,10 @@ accident. `pie-elements-ng` carries the same POSIX/BCP-47 split as a hand-writte
 mapping table, and `pie-qti` needed the same workaround. Three independent
 codebases have hand-patched the absence of one function.
 
-**TTS never uses the assessment's language.** Browser voice selection reads
-`navigator.language`; `TTSService.applyLanguageSettings()` takes `language` from
-the speak call and drives text normalization and segmentation, not voice choice.
-`"en-US"` is hardcoded as the fallback in five places.
+**Read-aloud resolves a content language per read**, as
+[TTS language](#tts-language) sets out. No host supplies the
+`content-language` input yet, so a read whose markup carries no `lang` stays in
+the host's locale or `en-US`.
 
 **`pie-qti` is the reference for the split.** Chrome goes through a hand-rolled
 zero-dependency provider; content alternates go through a separate APIP-style
@@ -151,6 +151,45 @@ independently in a hardcoded JSP dropdown, the `E`/`S` rule and SQL `CASE`
 statements, while PIE's own `k12_locales_ENUM` already accepts the full CLDR list
 including `es_419`, `es_MX` and `es_US`. Designing pie-players for two languages
 would import a limit only Studio has.
+
+## TTS language
+
+`TTSService.speak` resolves the language of each read once, for every entry
+point: the inline tool, the annotation toolbar and any host call.
+
+The **content language** is the first of:
+
+1. the nearest `lang` attribute between the content and its player shell;
+2. the language the read names: the tool's `language` attribute, else the
+   toolkit's `content-language` input;
+3. `providerOptions.lang_id`, which a host pins for the custom transport.
+
+The **read locale** drives text normalization, sentence segmentation, math
+speech and catalog lookups. It is the content language, else the tool config's
+`language` (published as `providerOptions.locale`), else
+`providerOptions.textNormalization.locale`, else `en-US`. A read with a content
+language sets the provider's locales for that read; the next read without one
+restores the host's.
+
+Each transport sends the language as follows:
+
+| Transport | Sent | Voice |
+| --- | --- | --- |
+| Browser | no request | the configured `defaultVoice`, else a voice for the content language, else one for `navigator.language` |
+| `pie` (Polly, Google) | `language`: the content language, else the tool config's `language` | the configured `defaultVoice` when one is set; otherwise the server picks one for `language` |
+| `custom` (SchoolCity) | `lang_id`: the pinned `lang_id`, else the content language, else the tool config's `language`, else `en-US` | the service's own, from `lang_id` |
+
+A Polly or Google server given no voice keeps its configured default voice when
+that voice speaks `language`, and otherwise takes the first voice it lists for
+the exact tag, then for the primary subtag (`es` matches `es-US`); Google
+prefers a voice of its configured voice type. A server given neither a voice nor
+a language reads with its default voice. A named voice always wins, so a host
+that names one keeps it whatever language the content is in.
+
+A pinned `lang_id` therefore fixes the custom transport's language for every
+read and seeds the content language wherever markup and the tool name none. A
+browser fallback drops `lang_id`, along with the rest of the custom transport's
+fields.
 
 ## What the standards do
 
@@ -461,15 +500,8 @@ locale.
    region faithfully enough to select a Castilian voice; STT recognizer
    language, where the STT PRD's proposed `PieDictationInsertDetail.lang` would
    be the first typed runtime locale reaching an element — designed, not
-   implemented; the `SIGN_LANGUAGE_NAMES` map. Content language shipped on
-   2026-10-07: the toolkit resolves it at speak time from the nearest `lang`
-   between the content and its shell, then the toolkit's `content-language`
-   input, then `en-US`. Catalog lookups follow it. The browser voice follows it
-   only when markup or the input names it, and otherwise `navigator.language` as
-   before, so the voice changes nowhere until content or a host says what
-   language it is in. The server backends send the language a read names, else
-   the one their provider config names; on the custom transport a host's
-   `lang_id` wins over both. No host supplies a content language yet.
+   implemented; the `SIGN_LANGUAGE_NAMES` map. Read-aloud's content language
+   shipped on 2026-10-07; [TTS language](#tts-language) is its contract.
 
 ## Open questions
 

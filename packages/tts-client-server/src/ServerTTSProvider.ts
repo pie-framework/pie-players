@@ -706,11 +706,15 @@ class ServerTTSProviderImpl implements ITTSProviderImplementation {
 				audio.volume = Math.max(0, Math.min(1, this.config.volume));
 			}
 
-			// Setup event handlers
-			audio.onplay = () => {
-				if (runId !== this.synthesisRunId || this.currentAudio !== audio) {
-					return;
-				}
+			// A stop or a newer speak supersedes this audio: its late events must
+			// neither clear the current audio's state nor fail the current speak.
+			const superseded = () =>
+				runId !== this.synthesisRunId || this.currentAudio !== audio;
+
+			// `playing`, not `play`: `play` fires when playback is requested, before
+			// the audio has buffered and sounds.
+			audio.onplaying = () => {
+				if (superseded()) return;
 				this.pausedState = false;
 				try {
 					this.onPlaybackStart?.();
@@ -725,31 +729,23 @@ class ServerTTSProviderImpl implements ITTSProviderImplementation {
 			};
 
 			audio.onended = () => {
-				this.stopWordHighlighting();
 				URL.revokeObjectURL(audioUrl);
-				this.currentAudio = null;
-				this.wordTimings = [];
-				this.highlightCursor = -1;
+				if (!superseded()) this.clearCurrentAudio();
 				resolve();
 			};
 
-			audio.onerror = (event) => {
-				this.stopWordHighlighting();
+			audio.onerror = () => {
 				URL.revokeObjectURL(audioUrl);
-				this.currentAudio = null;
-				this.wordTimings = [];
-				this.highlightCursor = -1;
-				void event;
-				// Only reject if this wasn't an intentional stop
-				if (!this.intentionallyStopped) {
-					reject(new Error("Failed to play audio from server"));
-				} else {
-					// Intentional stop, resolve normally
+				if (superseded() || this.intentionallyStopped) {
 					resolve();
+					return;
 				}
+				this.clearCurrentAudio();
+				reject(new Error("Failed to play audio from server"));
 			};
 
 			audio.onpause = () => {
+				if (superseded()) return;
 				this.stopWordHighlighting();
 				this.pausedState = true;
 			};
@@ -1135,6 +1131,13 @@ class ServerTTSProviderImpl implements ITTSProviderImplementation {
 		if (this.onWordBoundary && this.wordTimings.length > 0) {
 			this.startWordHighlighting();
 		}
+	}
+
+	private clearCurrentAudio(): void {
+		this.stopWordHighlighting();
+		this.currentAudio = null;
+		this.wordTimings = [];
+		this.highlightCursor = -1;
 	}
 
 	stop(): void {

@@ -18,6 +18,7 @@ type RecordedRequest = {
 
 class PlayingAudio {
 	onplay: (() => void) | null = null;
+	onplaying: (() => void) | null = null;
 	onended: (() => void) | null = null;
 	onerror: ((event: unknown) => void) | null = null;
 	onpause: (() => void) | null = null;
@@ -26,6 +27,7 @@ class PlayingAudio {
 	play(): Promise<void> {
 		queueMicrotask(() => {
 			this.onplay?.();
+			this.onplaying?.();
 			this.onended?.();
 		});
 		return Promise.resolve();

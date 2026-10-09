@@ -384,7 +384,7 @@ test.describe("annotation toolbar over open shadow roots", () => {
 			.toBe("es-MX");
 	});
 
-	test("reads a selection with no named language aloud as en-US, as tts-inline does", async ({
+	test("leaves a selection with no named language to the browser voice, as tts-inline does", async ({
 		page,
 	}) => {
 		await gotoDemo(page);
@@ -402,11 +402,11 @@ test.describe("annotation toolbar over open shadow roots", () => {
 						utterance.text.includes("Words inside"),
 					)?.lang ?? null,
 				{
-					message: "expected the selection to be spoken as en-US",
+					message: "expected the selection to be spoken with no lang set",
 					timeout: 20_000,
 				},
 			)
-			.toBe("en-US");
+			.toBe("");
 	});
 
 	test("reads the card its shell registered for a node the selection holds whole", async ({

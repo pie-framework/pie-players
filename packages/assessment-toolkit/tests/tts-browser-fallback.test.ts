@@ -1,4 +1,5 @@
 import { GlobalRegistrator } from "@happy-dom/global-registrator";
+import type { ITTSProvider, TTSProviderCapabilities } from "@pie-players/pie-tts";
 import {
 	afterAll,
 	afterEach,
@@ -11,6 +12,7 @@ import {
 } from "bun:test";
 import { ToolkitCoordinator } from "../src/services/ToolkitCoordinator.js";
 import { ToolRegistry } from "../src/services/ToolRegistry.js";
+import { TTSService } from "../src/services/TTSService.js";
 import {
 	BrowserTTSProvider,
 	browserFallbackConfig,
@@ -167,6 +169,41 @@ describe("browser speech replacing another provider", () => {
 		await coordinator.ttsService.speak(contentWith("Hello there"));
 
 		expect(spoken.map((utterance) => utterance.text)).toEqual(["Hello there"]);
+	});
+});
+
+describe("browser fallback ownership", () => {
+	test("leaves the configured provider to its owner and destroys its own fallback", async () => {
+		let configuredDestroyed = 0;
+		const configured: ITTSProvider = {
+			providerId: "polly",
+			providerName: "Failing",
+			version: "1.0.0",
+			initialize: async () => {
+				throw new Error("init failed");
+			},
+			supportsFeature: () => false,
+			getCapabilities: () => ({}) as TTSProviderCapabilities,
+			destroy() {
+				configuredDestroyed += 1;
+			},
+		};
+		const fallbackDestroy = spyOn(BrowserTTSProvider.prototype, "destroy");
+		try {
+			const service = new TTSService();
+			await service.initialize(configured);
+			await service.speak(contentWith("Hello there"));
+			expect(spoken.map((utterance) => utterance.text)).toEqual([
+				"Hello there",
+			]);
+			expect(configuredDestroyed).toBe(0);
+
+			service.releaseProvider();
+			expect(configuredDestroyed).toBe(0);
+			expect(fallbackDestroy).toHaveBeenCalledTimes(1);
+		} finally {
+			fallbackDestroy.mockRestore();
+		}
 	});
 });
 

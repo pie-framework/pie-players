@@ -114,3 +114,39 @@ test("the browser preview speaks with the voice for the content language", async
 
 	expect(previewVoices).toEqual(["Spanish"]);
 });
+
+test("a browser apply replaces the fields a server backend set", async () => {
+	const config: Record<string, unknown> = {
+		backend: "browser",
+		language: "es-ES",
+		engine: "neural",
+		providerOptions: { engine: "neural", lang_id: "es-ES", locale: "en-GB" },
+	};
+	const updates: Record<string, unknown>[] = [];
+	const panel = document.createElement(
+		"pie-section-player-tools-tts-settings",
+	) as HTMLElement & { toolkitCoordinator: unknown };
+	panel.toolkitCoordinator = {
+		getToolConfig: () => config,
+		updateToolConfig: (_toolId: string, update: Record<string, unknown>) => {
+			updates.push(update);
+		},
+	};
+	document.body.append(panel);
+	await settle();
+	await settle();
+
+	panel
+		.querySelectorAll<HTMLButtonElement>(".pie-tts-actions button")[2]
+		?.click();
+	await settle();
+
+	expect(updates).toHaveLength(1);
+	expect(updates[0]).toMatchObject({
+		backend: "browser",
+		language: undefined,
+		engine: undefined,
+		providerOptions: { locale: "en-GB" },
+	});
+	expect(updates[0].providerOptions).toEqual({ locale: "en-GB" });
+});

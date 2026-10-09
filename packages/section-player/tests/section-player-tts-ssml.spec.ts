@@ -236,6 +236,7 @@ async function installHoldingServerAudio(page: Page): Promise<void> {
 			playbackRate = 1;
 			paused = true;
 			onplay: ((event: Event) => void) | null = null;
+			onplaying: ((event: Event) => void) | null = null;
 			onended: ((event: Event) => void) | null = null;
 			onerror: ((event: Event) => void) | null = null;
 			onpause: ((event: Event) => void) | null = null;
@@ -248,6 +249,7 @@ async function installHoldingServerAudio(page: Page): Promise<void> {
 			play(): Promise<void> {
 				this.paused = false;
 				this.onplay?.(new Event("play"));
+				this.onplaying?.(new Event("playing"));
 				this.endTimer = window.setTimeout(() => {
 					this.onended?.(new Event("ended"));
 				}, 1000);

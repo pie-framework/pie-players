@@ -3,7 +3,6 @@
  *
  * Registers tools for interacting with question content:
  * - Answer Eliminator (strike through answer choices)
- * - Highlighter (highlight text passages)
  */
 
 import type {
@@ -23,6 +22,12 @@ import {
 	syncButtonAndOverlayVisibility,
 } from "@pie-players/pie-assessment-toolkit/tools/registration";
 import { resolveOverlayElement } from "./overlay-element-cache.js";
+
+type EliminationStrategy = "strikethrough" | "mask";
+
+/** `tools.providers.answerEliminator.strategy`, defaulting to strikethrough. */
+const normalizeEliminationStrategy = (value: unknown): EliminationStrategy =>
+	value === "mask" ? "mask" : "strikethrough";
 
 /**
  * Answer Eliminator tool registration
@@ -90,6 +95,12 @@ export const answerEliminatorToolRegistration: ToolRegistration = {
 		);
 		overlay.setAttribute("tool-id", visibility.fullToolId);
 		overlay.setAttribute("button-alignment", "inline");
+		overlay.setAttribute(
+			"strategy",
+			normalizeEliminationStrategy(
+				toolbarContext.toolkitCoordinator?.getToolConfig(this.toolId)?.strategy,
+			),
+		);
 
 		const button: ToolToolbarButtonDefinition = {
 			toolId: this.toolId,

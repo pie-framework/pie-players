@@ -224,6 +224,7 @@
   type ToolPolicyDecisionRule
   type ToolPolicyDiagnostic
   type ToolPolicyDiagnosticCode
+  type ToolPolicyDiagnosticDetails
   ToolPolicyEngine
   type ToolPolicyEngineArgs
   type ToolPolicyEngineInputs

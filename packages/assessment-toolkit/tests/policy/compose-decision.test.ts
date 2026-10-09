@@ -490,7 +490,7 @@ describe("composeDecision — provenance reconciliation (M8 PR 1 R2 M1 fix)", ()
 			details: {
 				rule: "district-requirement",
 				hostRule: "placement-missing",
-				hostValue: [],
+				hostValue: { section: [], item: [], passage: [] },
 			},
 		});
 	});

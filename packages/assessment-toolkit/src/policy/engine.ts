@@ -31,6 +31,7 @@ export type {
 	ToolPolicyDecisionRequest,
 	ToolPolicyDiagnostic,
 	ToolPolicyDiagnosticCode,
+	ToolPolicyDiagnosticDetails,
 	ToolPolicyEntry,
 	ToolPolicyHostGate,
 	ToolScope,

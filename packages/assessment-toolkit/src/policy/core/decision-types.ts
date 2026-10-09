@@ -57,8 +57,10 @@ export interface ToolPolicyDecisionRequest {
 /**
  * Diagnostic codes the engine may emit alongside a decision.
  * `tool-policy.requiredToolBlocked` fires when a host policy gate
- * (`policy.blocked`, missing-from-`placement`, provider veto) removed a tool
- * that item or district `requiredTools` mandates.
+ * (`policy.blocked`, the allowlist, a provider veto, or placement at no level)
+ * removed a tool that item or district `requiredTools` mandates. A tool placed
+ * at another level is served there, so its absence from this level's placement
+ * is no conflict. `details` is {@link RequiredToolBlockedDetails}.
  *
  * `tool-policy.placementMissing` fires when a custom `PolicySource`
  * references a tool ID that is not present in `tools.placement[level]`
@@ -82,14 +84,10 @@ export interface ToolPolicyDecisionRequest {
  * `restrictedTools` or the profile's `prohibitedSupports` withdraws instead.
  * `details` is {@link OverrideBlockedDetails}.
  *
- * The toolkit coordinator logs each diagnostic once per code, tool and item.
+ * The toolkit coordinator logs each diagnostic once per code, tool and item,
+ * and hands the same ones to its `onPolicyDiagnostic` listeners.
  */
-export type ToolPolicyDiagnosticCode =
-	| "tool-policy.requiredToolBlocked"
-	| "tool-policy.placementMissing"
-	| "tool-policy.unknownSupportId"
-	| "tool-policy.itemSettingNotApplied"
-	| "tool-policy.overrideBlocked";
+export type ToolPolicyDiagnosticCode = keyof ToolPolicyDiagnosticDetails;
 
 /**
  * Which host gate removed a profile-mandated tool. Surfaced inside
@@ -100,7 +98,7 @@ export type ToolPolicyDiagnosticCode =
  * `provenance.features[toolId].allDecisions`.
  *
  * The four values mirror steps 1–4 of `composeDecision`:
- *   - `placement-missing` — tool is not in `tools.placement[level]`
+ *   - `placement-missing` — no level of `tools.placement` lists the tool
  *   - `provider-disabled` — `tools.providers[id].enabled === false`
  *   - `host-allowlist`    — non-empty `tools.policy.allowed` excludes the id
  *   - `host-blocked`      — `tools.policy.blocked` lists the id
@@ -111,14 +109,8 @@ export type ToolPolicyHostGate =
 	| "host-allowlist"
 	| "host-blocked";
 
-/**
- * Strongly-typed payload for `tool-policy.requiredToolBlocked`
- * diagnostics. The diagnostic's `details` field still types as
- * `Record<string, unknown>` for forward compatibility, but engines
- * always populate this exact shape today and consumers can safely
- * cast.
- */
-export interface RequiredToolBlockedDetails extends Record<string, unknown> {
+/** Payload of a `tool-policy.requiredToolBlocked` diagnostic. */
+export interface RequiredToolBlockedDetails {
 	/** The profile policy rule that mandated the tool (e.g. `district-requirement`). */
 	rule: string;
 	/** Which host gate removed the tool. */
@@ -128,25 +120,25 @@ export interface RequiredToolBlockedDetails extends Record<string, unknown> {
 }
 
 /** Payload of a `tool-policy.unknownSupportId` diagnostic. */
-export interface UnknownSupportIdDetails extends Record<string, unknown> {
+export interface UnknownSupportIdDetails {
 	/** The rules whose lists name the id, in precedence order. */
 	origins: PnpPolicySourceRule[];
 }
 
 /** Payload of a `tool-policy.placementMissing` diagnostic. */
-export interface PlacementMissingDetails extends Record<string, unknown> {
+export interface PlacementMissingDetails {
 	/** The custom `PolicySource` that named the tool. */
 	customSourceId: string;
 }
 
 /** Payload of a `tool-policy.overrideBlocked` diagnostic. */
-export interface OverrideBlockedDetails extends Record<string, unknown> {
+export interface OverrideBlockedDetails {
 	/** The rule that withdrew the granted tool. */
 	rule: "item-restriction" | "pnp-prohibited";
 }
 
 /** Payload of a `tool-policy.itemSettingNotApplied` diagnostic. */
-export interface ItemSettingNotAppliedDetails extends Record<string, unknown> {
+export interface ItemSettingNotAppliedDetails {
 	/** Canonical id of the item whose setting names the tool. */
 	itemId: string;
 	/** The item settings that name it. */
@@ -155,14 +147,26 @@ export interface ItemSettingNotAppliedDetails extends Record<string, unknown> {
 	toolbarLevel: ToolLevel;
 }
 
-export interface ToolPolicyDiagnostic {
-	code: ToolPolicyDiagnosticCode;
-	/** The toolbar level decided; absent on a feature decision. */
-	level?: ToolPlacementLevel;
-	toolId: string;
-	message: string;
-	details?: Record<string, unknown>;
+/** The payload each diagnostic code carries. */
+export interface ToolPolicyDiagnosticDetails {
+	"tool-policy.requiredToolBlocked": RequiredToolBlockedDetails;
+	"tool-policy.placementMissing": PlacementMissingDetails;
+	"tool-policy.unknownSupportId": UnknownSupportIdDetails;
+	"tool-policy.itemSettingNotApplied": ItemSettingNotAppliedDetails;
+	"tool-policy.overrideBlocked": OverrideBlockedDetails;
 }
+
+/** A policy diagnostic, its `details` typed by its `code`. */
+export type ToolPolicyDiagnostic = {
+	[C in ToolPolicyDiagnosticCode]: {
+		code: C;
+		/** The toolbar level decided; absent on a feature decision. */
+		level?: ToolPlacementLevel;
+		toolId: string;
+		message: string;
+		details: ToolPolicyDiagnosticDetails[C];
+	};
+}[ToolPolicyDiagnosticCode];
 
 export interface ToolPolicyEntry {
 	toolId: string;

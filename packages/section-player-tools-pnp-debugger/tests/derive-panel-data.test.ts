@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import type {
 	ToolPolicyDecision,
+	ToolPolicyDiagnostic,
 	ToolPolicyProvenance,
 	ToolPolicyResolutionDecision,
 } from "@pie-players/pie-assessment-toolkit/policy/engine";
@@ -573,8 +574,8 @@ describe("derivePnpPanelData", () => {
 	});
 
 	test("surfaces each decision diagnostic once", () => {
-		const diagnostic = {
-			code: "tool-policy.unknownSupportId" as const,
+		const diagnostic: ToolPolicyDiagnostic = {
+			code: "tool-policy.unknownSupportId",
 			toolId: "textToSpeach",
 			message: "No tool is registered under \"textToSpeach\".",
 			details: { origins: ["pnp-support"] },

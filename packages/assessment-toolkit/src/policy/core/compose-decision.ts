@@ -27,9 +27,7 @@ import type {
 	ToolPolicyDecisionRequest,
 	ToolPolicyDiagnostic,
 	ToolPolicyEntry,
-	PlacementMissingDetails,
 	ToolPolicyHostGate,
-	UnknownSupportIdDetails,
 } from "./decision-types.js";
 import type { PolicySource } from "./PolicySource.js";
 import { resolveToolParameters } from "./tool-parameters.js";
@@ -228,19 +226,29 @@ export function composeDecision(
 		// blocking a `requiredTools` mandate) are an internal policy
 		// resolution and must not be reported as a host conflict — the
 		// loser's `block` decision is already in the trail with full
-		// provenance.
+		// provenance. A mandate names no level, so a tool placed at another
+		// level is served there: only placement at no level is a removal.
 		//
 		// `details` carries `{ rule, hostRule, hostValue }` so consumers
 		// can render the conflict as a single sentence without
 		// re-deriving the host gate from `provenance.features`. See
 		// `RequiredToolBlockedDetails` for the typed shape.
+		const placedAtAnyLevel = new Set(
+			Object.values(tools.placement).flatMap(normalizeToolList),
+		);
 		for (const mandatedToolId of pnpPolicyResult.mandatedToolIds) {
-			const removedByHost = !postHostCandidates.has(mandatedToolId);
-			if (!removedByHost) continue;
+			if (postHostCandidates.has(mandatedToolId)) continue;
+			if (
+				!placement.includes(mandatedToolId) &&
+				placedAtAnyLevel.has(mandatedToolId)
+			) {
+				continue;
+			}
 			const flag = pnpPolicyResult.perToolFlags.get(mandatedToolId);
 			const ruleName = flag?.rule ?? "required-tool";
 			const hostGate = detectHostRemovalGate(mandatedToolId, {
-				placement,
+				placedAtAnyLevel,
+				allTools: tools.placement,
 				allowed,
 				blocked,
 				providers: tools.providers,
@@ -254,7 +262,10 @@ export function composeDecision(
 				code: "tool-policy.requiredToolBlocked",
 				level: request.level,
 				toolId: mandatedToolId,
-				message: `Profile policy mandates "${mandatedToolId}" (${ruleName}) but host policy removed it from level "${request.level}" via ${hostGate.hostRule}.`,
+				message:
+					hostGate.hostRule === "placement-missing"
+						? `Profile policy mandates "${mandatedToolId}" (${ruleName}), but no level of tools.placement lists it.`
+						: `Profile policy mandates "${mandatedToolId}" (${ruleName}), but host policy removes it via ${hostGate.hostRule}.`,
 				details,
 			});
 			builder.addDecision({
@@ -286,7 +297,7 @@ export function composeDecision(
 					level: request.level,
 					toolId,
 					message: `Custom source "${source.id}" tried to add tool "${toolId}" that was not in candidates; ignored.`,
-					details: { customSourceId: source.id } satisfies PlacementMissingDetails,
+					details: { customSourceId: source.id },
 				});
 				refinedSet.delete(toolId);
 			}
@@ -389,18 +400,20 @@ export function composeDecision(
  * (blocklist) last — so the FIRST gate that would have matched wins,
  * which is the gate the pipeline actually invoked. Subsequent gates
  * never get to evaluate a tool that an earlier step already removed.
+ * Step 5b passes only a tool this level places or no level places.
  */
 function detectHostRemovalGate(
 	toolId: string,
 	args: {
-		placement: string[];
+		placedAtAnyLevel: Set<string>;
+		allTools: CanonicalToolsConfig["placement"];
 		allowed: string[];
 		blocked: Set<string>;
 		providers: CanonicalToolsConfig["providers"];
 	},
 ): { hostRule: ToolPolicyHostGate; hostValue: unknown } {
-	if (!args.placement.includes(toolId)) {
-		return { hostRule: "placement-missing", hostValue: args.placement };
+	if (!args.placedAtAnyLevel.has(toolId)) {
+		return { hostRule: "placement-missing", hostValue: args.allTools };
 	}
 	if (args.providers?.[toolId]?.enabled === false) {
 		return { hostRule: "provider-disabled", hostValue: false };
@@ -418,7 +431,7 @@ function detectHostRemovalGate(
 	// in `mandatedToolIds` but not in `postHostCandidates`), so one of
 	// the four gates above MUST have fired. If none did, the host
 	// pipeline has a bug; surface a best-effort rather than throwing.
-	return { hostRule: "placement-missing", hostValue: args.placement };
+	return { hostRule: "placement-missing", hostValue: args.allTools };
 }
 
 /** Where each PNP/profile rule's ids are authored. */
@@ -447,7 +460,7 @@ export function overrideBlockedDiagnostic(
 		...(level ? { level } : {}),
 		toolId,
 		message: `settings.testAdministration.toolOverrides grants "${toolId}", but ${PNP_RULE_FIELDS[rule]} withdraws it and outranks a granting override.`,
-		details: { rule } satisfies OverrideBlockedDetails,
+		details: { rule },
 	};
 }
 
@@ -467,6 +480,6 @@ export function unknownSupportIdDiagnostic(
 		...(level ? { level } : {}),
 		toolId: supportId,
 		message: `No tool is registered under "${supportId}", named in ${fields}, so it matches nothing. These lists name tools by tool id.`,
-		details: { origins: [...origins] } satisfies UnknownSupportIdDetails,
+		details: { origins: [...origins] },
 	};
 }

@@ -117,6 +117,8 @@ const assessment: AssessmentEntity = {
 
 **Precedence**: District blocks override everything, including IEP accommodations (legal requirement trumps individual preference).
 
+A required tool still needs a placement and the host's permission. When `tools.policy.blocked`, a non-empty `tools.policy.allowed`, a disabled provider or the absence of the tool from every level of `tools.placement` keeps it off the toolbars, the decision carries a `tool-policy.requiredToolBlocked` diagnostic whose `details.hostRule` and `details.hostValue` name the host gate. A tool placed at another level is served there and raises nothing at this one.
+
 ### 3. Test Administration (Session Control)
 
 Test administrators can make session-level adjustments:
@@ -312,6 +314,9 @@ console.log('Allowed tools:', allowedToolIds);
 // - magnification: No tool is registered under it; the decision carries a
 //   `tool-policy.unknownSupportId` diagnostic
 // - lineReader: Granted, but this configuration places it at passage level only
+// - The passage toolbar still shows textToSpeech: item settings reach only the
+//   item's own toolbar, and the decision carries a
+//   `tool-policy.itemSettingNotApplied` diagnostic
 ```
 
 `settings.toolConfigs` holds feature parameters keyed by support id, and an item's `toolParameters` override them. Every tool policy shows carries them as its policy parameters (`ToolPolicyEntry.parameters`, `FeaturePolicyDecision.parameters`), whether or not a grant admits it and whatever `pnpEnforcement` is; the item's entry applies on the item's own toolbar and scope. The calculator reads `type` as its default flavor, the answer eliminator `strategy` (`strikethrough` or `mask`), and the sign-language capability `signLang`; `ToolParameterMap` in `@pie-players/pie-players-shared/types` types them. Provider configuration, such as the TTS backend and voice in step 2, belongs in `tools.providers`. The `server` backend sends requests to the host's TTS server at `apiEndpoint` (default `/api/tts`) through `@pie-players/tts-client-server`, which `@pie-players/pie-default-tool-loaders` installs.
@@ -509,6 +514,8 @@ Provide UI for:
 6. **User feedback** - Explain to students why a tool isn't available
 
 ## Troubleshooting
+
+The coordinator logs each policy diagnostic as a console warning once per code, tool and item. `coordinator.onPolicyDiagnostic(listener)` hands the host the same diagnostics, starting with those already reported, and returns an unsubscribe function. A change to the policy inputs or to PNP enforcement reports a conflict that survives it once more.
 
 ### "Tool not showing up even though it's in PNP"
 

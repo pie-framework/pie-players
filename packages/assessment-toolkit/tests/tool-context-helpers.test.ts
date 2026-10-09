@@ -4,6 +4,7 @@ import {
 	hasMathContent,
 	hasReadableText,
 	hasScienceContent,
+	hasSpokenContent,
 } from "../src/services/tool-context";
 import type { ToolContext } from "../src/services/tool-context";
 
@@ -134,6 +135,29 @@ describe("tool-context helpers", () => {
 		};
 
 		expect(hasReadableText(context)).toBe(true);
+	});
+
+	test("counts a catalog idref as spoken content when there is no text", () => {
+		const withMarkup = (markup: string): ToolContext => ({
+			level: "item",
+			assessment: {} as any,
+			itemRef: {} as any,
+			item: { config: { markup } } as any,
+		});
+
+		expect(
+			hasSpokenContent(
+				withMarkup(`<img data-catalog-idref="diagram" src="cycle.png" alt="">`),
+			),
+		).toBe(true);
+		expect(hasSpokenContent(withMarkup(`<img src="cycle.png" alt="">`))).toBe(
+			false,
+		);
+		expect(
+			hasSpokenContent(
+				withMarkup("<p>This sentence is long enough for reading tools.</p>"),
+			),
+		).toBe(true);
 	});
 
 	test("detects choice interactions from item models", () => {

@@ -307,6 +307,7 @@ export class TTSService {
 	private listeners = new Set<(state: PlaybackState) => void>();
 	private lastError: string | null = null;
 	private speakRunId = 0;
+	private runOwner: string | null = null;
 	private currentBoundaryOffset = 0;
 	private activeWordBoundaryOffset = 0;
 	private seekSegments: TTSSpeechSegment[] = [];
@@ -484,7 +485,7 @@ export class TTSService {
 	 * run, whatever it is still waiting for: the provider, its content or the
 	 * provider's audio.
 	 */
-	private beginRun(): number {
+	private beginRun(owner: string | null): number {
 		// A recorded clip that starts the new run would otherwise play over the
 		// previous run's synthesis, which only the provider's next speak stops.
 		const supersedesPlayback =
@@ -492,9 +493,11 @@ export class TTSService {
 			this.state === PlaybackState.PLAYING ||
 			this.state === PlaybackState.PAUSED;
 		const runId = ++this.speakRunId;
+		this.runOwner = owner;
 		this.abandonRun();
 		if (supersedesPlayback) this.provider?.stop();
-		this.setState(PlaybackState.LOADING);
+		// Announced even from loading, so a listener sees the owner change.
+		this.setState(PlaybackState.LOADING, true);
 		return runId;
 	}
 
@@ -1491,7 +1494,8 @@ export class TTSService {
 		const pendingReadiness = this.pendingReadiness();
 		// A speak waiting on its provider is already the current run, so a pause
 		// or stop issued meanwhile applies to it.
-		const waitingRunId = pendingReadiness ? this.beginRun() : null;
+		const owner = options.ownerId ?? null;
+		const waitingRunId = pendingReadiness ? this.beginRun(owner) : null;
 		if (pendingReadiness) {
 			try {
 				await pendingReadiness;
@@ -1517,11 +1521,26 @@ export class TTSService {
 			if (waitingRunId !== null) this.setState(PlaybackState.IDLE);
 			return;
 		}
-		await this.speakContent(
-			content.text,
-			content.options,
-			waitingRunId ?? this.beginRun(),
+		const runId = waitingRunId ?? this.beginRun(owner);
+		if (options.rate !== undefined) {
+			await this.applyRunRate(options.rate);
+			if (runId !== this.speakRunId) return;
+		}
+		await this.speakContent(content.text, content.options, runId);
+	}
+
+	/**
+	 * Sets the rate a run starts at, after any rate write in flight. The run has
+	 * no playback yet, so nothing restarts.
+	 */
+	private async applyRunRate(rate: number): Promise<void> {
+		await this.playbackRateWriteQueue;
+		const nextRate = this.normalizePlaybackRate(rate);
+		const currentRate = this.normalizePlaybackRate(
+			Number(this.ttsConfig.rate ?? 1),
 		);
+		if (nextRate === currentRate) return;
+		await this.updateSettings({ rate: nextRate });
 	}
 
 	/**
@@ -1542,27 +1561,44 @@ export class TTSService {
 		language: { contentLanguage?: string; locale: string },
 	): { text: string; options: SpeakContentOptions } | null {
 		if (this.isSuppressedTarget(root)) return null;
-		// Math-aware, so an element holding only an equation still reads.
+		const contentOptions: SpeakContentOptions = {
+			catalogId: options.catalogId,
+			catalogContext: options.catalogContext,
+			language: language.locale,
+			contentLanguage: language.contentLanguage,
+			contentElement: root,
+		};
+		// Math-aware, so an element holding only an equation still reads; a spoken
+		// card reads for content with no text, an image among them.
 		const text = collectMathAwareTextAndMap(
 			root,
 			this.getTextProcessingOptions(language.locale),
 		).visibleText.trim();
-		if (!text) {
+		if (!text && !this.holdsSpokenCard(root, contentOptions)) {
 			console.warn(
 				"[tts] the content to read holds no speakable text; nothing was spoken.",
 			);
 			return null;
 		}
-		return {
-			text,
-			options: {
-				catalogId: options.catalogId,
-				catalogContext: options.catalogContext,
-				language: language.locale,
-				contentLanguage: language.contentLanguage,
-				contentElement: root,
-			},
-		};
+		return { text, options: contentOptions };
+	}
+
+	/** Whether the root's card, or a card of a node inside it, would be read. */
+	private holdsSpokenCard(root: Element, options: SpeakContentOptions): boolean {
+		if (!this.catalogResolver) return false;
+		if (options.catalogId) {
+			const card = this.catalogResolver.getAlternative(options.catalogId, {
+				type: "spoken",
+				language: options.language,
+				useFallback: true,
+				context: options.catalogContext,
+				form: "content",
+			});
+			if (card?.content !== undefined) return true;
+		}
+		return this.collectCatalogSpeechChunks(root, options).some(
+			(chunk) => chunk.sourceElement,
+		);
 	}
 
 	private resolveRangeTarget(
@@ -3052,6 +3088,10 @@ export class TTSService {
 		return this.state;
 	}
 
+	getRunOwner(): string | null {
+		return this.runOwner;
+	}
+
 	/**
 	 * Get current text being spoken
 	 */
@@ -3082,16 +3122,16 @@ export class TTSService {
 	/**
 	 * Set state and notify listeners
 	 */
-	private setState(newState: PlaybackState): void {
-		if (this.state === newState) return;
-
+	private setState(newState: PlaybackState, announceUnchanged = false): void {
 		const previousState = this.state;
+		if (previousState === newState && !announceUnchanged) return;
 		this.state = newState;
 
 		// Notify all listeners
 		for (const listener of [...this.listeners]) {
 			listener(newState);
 		}
+		if (previousState === newState) return;
 
 		void this.emitTelemetry("pie-tool-playback-state-changed", {
 			toolId: "textToSpeech",

@@ -309,6 +309,13 @@ export interface SpeakOptions {
 	 * element target is its own root.
 	 */
 	contentRoot?: Element | null;
+	/**
+	 * Who starts the read. The run carries it until the next read starts, a
+	 * seek's restart included, and {@link TtsServiceApi.getRunOwner} reports it.
+	 */
+	ownerId?: string;
+	/** The rate the read starts at; it stays the service's rate afterwards. */
+	rate?: number;
 }
 
 /**
@@ -390,6 +397,13 @@ export interface TtsServiceApi {
 	getState(): PlaybackState;
 
 	/**
+	 * The `ownerId` the latest read started with, or null when it named none or
+	 * nothing has been read. A new read announces itself through
+	 * {@link onStateChange} with `loading`, so a listener sees the owner change.
+	 */
+	getRunOwner(): string | null;
+
+	/**
 	 * Get currently speaking text
 	 */
 	getCurrentText(): string | null;
@@ -422,7 +436,7 @@ export interface TtsServiceApi {
 	/**
 	 * Set a late-bound provider for optional host TTS highlight target remapping.
 	 */
-	setHighlightTargetResolverProvider?(
+	setHighlightTargetResolverProvider(
 		provider: TTSHighlightTargetResolverProvider | null,
 	): () => void;
 

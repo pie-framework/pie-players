@@ -432,6 +432,7 @@ const enUS = {
 		textToSpeech: {
 			name: "Text to Speech",
 			description: "Read content aloud",
+			initFailed: "Unable to initialize text-to-speech. Try again.",
 			/** Inline reading controls and their live-region announcements. */
 			inline: {
 				controlsA11y: "Reading controls",
@@ -439,14 +440,13 @@ const enUS = {
 				rewindA11y: "Rewind",
 				fastForwardA11y: "Fast-forward",
 				stopA11y: "Stop reading",
-				initializing: "Initializing text-to-speech",
-				initFailed: "Unable to initialize text-to-speech. Try again.",
 				starting: "Starting reading",
 				started: "Reading started",
 				resumed: "Reading resumed",
 				pausedAnnouncement: "Reading paused",
 				stopped: "Reading stopped",
 				switchedSection: "Reading switched to another section",
+				nothingToRead: "Nothing to read aloud here",
 				startFailed: "Unable to start reading",
 				skippedForward: "Skipped forward",
 				skipForwardFailed: "Unable to skip forward",

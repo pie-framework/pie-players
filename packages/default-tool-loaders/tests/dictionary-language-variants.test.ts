@@ -204,3 +204,67 @@ describe("which language reaches the panel", () => {
 		expect(element?.language).toBe("es");
 	});
 });
+
+describe("lookup params across syncs", () => {
+	const renderMutable = (params: Record<string, unknown>) => {
+		const context: ToolContext = {
+			level: "section",
+			assessment: {} as any,
+			itemRef: { id: "i1" } as any,
+			item: {
+				id: "i1",
+				config: { elements: { "el-1": "<p>a word</p>" } },
+			} as any,
+		};
+		const toolbarContext = {
+			scope: { level: "section", scopeId: "s1" },
+			itemId: "i1",
+			catalogId: "i1",
+			i18n: resolveInterfaceI18n(null),
+			toolCoordinator: null,
+			toolkitCoordinator: null,
+			ttsService: null,
+			elementToolStateStore: null,
+			toggleTool: () => {},
+			isToolVisible: () => false,
+			subscribeVisibility: null,
+			getToolRenderParams: () => params,
+			componentOverrides: { toolTagMap: PACKAGED_TOOL_TAG_MAP },
+		} as ToolbarContext;
+		const result = withFakeDocument(() =>
+			dictionaryToolRegistration.renderToolbar(context, toolbarContext),
+		);
+		return {
+			element: result.elements?.[0]?.element as HTMLElement & {
+				endpoint?: string;
+				lookup?: unknown;
+				headers?: unknown;
+			},
+			sync: () => result.sync?.(),
+		};
+	};
+
+	test("a lookup the host drops stops outranking the endpoint that replaced it", () => {
+		const params: Record<string, unknown> = { lookup: async () => ({}) };
+		const { element, sync } = renderMutable(params);
+		expect(typeof element.lookup).toBe("function");
+
+		delete params.lookup;
+		params.endpoint = "/api/dictionary";
+		sync();
+
+		expect(element.lookup).toBeUndefined();
+		expect(element.endpoint).toBe("/api/dictionary");
+	});
+
+	test("a field the params never supplied is left alone", () => {
+		const params: Record<string, unknown> = { endpoint: "/api/dictionary" };
+		const { element, sync } = renderMutable(params);
+		const headers = () => ({ "x-host": "1" });
+		element.headers = headers;
+
+		sync();
+
+		expect(element.headers).toBe(headers);
+	});
+});

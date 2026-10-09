@@ -4,7 +4,7 @@
  * Signing is policy-addressable but is not a toolbar tool, so eligibility comes
  * from `ToolPolicyEngine.decideFeature(...)` rather than a placement-scoped
  * `decide(...)`. These tests pin the two things the accommodation depends on:
- * the six-level precedence applies unchanged, and it is never granted by
+ * the eight-level precedence applies unchanged, and it is never granted by
  * default.
  */
 
@@ -16,7 +16,6 @@ import type {
 } from "@pie-players/pie-players-shared/types";
 
 import { ToolPolicyEngine } from "../../src/policy/core/ToolPolicyEngine.js";
-import { createEmptyPersonalNeedsProfile } from "../../src/services/defaultPersonalNeedsProfile.js";
 import { ToolRegistry } from "../../src/services/ToolRegistry.js";
 
 const FEATURE = "signLanguage";
@@ -63,7 +62,7 @@ describe("signLanguage feature eligibility", () => {
 			granted: true,
 			action: "enable",
 			rule: "pnp-support",
-			precedence: 7,
+			precedence: 8,
 			sourceType: "student",
 			required: false,
 		});
@@ -143,7 +142,7 @@ describe("signLanguage feature eligibility", () => {
 		expect(decision).toMatchObject({
 			granted: true,
 			rule: "item-requirement",
-			precedence: 5,
+			precedence: 6,
 			required: true,
 		});
 	});
@@ -158,7 +157,7 @@ describe("signLanguage feature eligibility", () => {
 		expect(decision).toMatchObject({
 			granted: true,
 			rule: "district-requirement",
-			precedence: 6,
+			precedence: 7,
 			required: true,
 		});
 	});
@@ -194,31 +193,12 @@ describe("signLanguage feature eligibility", () => {
 	});
 });
 
-describe("the core ships no populated default profile", () => {
-	test("grants nothing", () => {
-		// The core once derived a profile from every registered tool's support
-		// ids, which read registry membership as eligibility tier and
-		// granted an accommodation to every student whose host supplied no profile.
-		// Nothing is granted now, so no exclusion list is needed to keep signing
-		// out.
-		const profile = createEmptyPersonalNeedsProfile();
-		expect(profile.supports).toEqual([]);
-		expect(profile.prohibitedSupports).toEqual([]);
-	});
-
-	test("returns a fresh profile per call", () => {
-		// Profiles flow into policy inputs hosts mutate; a shared reference would
-		// let one host's edit reach another's.
-		const first = createEmptyPersonalNeedsProfile();
-		first.supports.push(FEATURE);
-		expect(createEmptyPersonalNeedsProfile().supports).toEqual([]);
-	});
-
-	test("an empty profile does not grant the accommodation", () => {
+describe("an empty profile", () => {
+	test("does not grant the accommodation", () => {
 		const decision = engine({
 			assessment: {
 				id: "a1",
-				personalNeedsProfile: createEmptyPersonalNeedsProfile(),
+				personalNeedsProfile: { supports: [], prohibitedSupports: [] },
 			} as AssessmentEntity,
 		}).decideFeature(FEATURE);
 		expect(decision.granted).toBe(false);

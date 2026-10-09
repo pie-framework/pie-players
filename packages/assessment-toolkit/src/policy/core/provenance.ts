@@ -8,17 +8,23 @@
  * provider veto, PNP/profile gates, and custom policy sources.
  */
 
-/**
- * Rule vocabulary for tool policy decisions.
- */
-export type ToolPolicyDecisionRule =
+/** The PNP/profile precedence rules, highest first. */
+export type PnpPolicySourceRule =
 	| "district-block"
 	| "test-admin-override"
 	| "item-restriction"
+	| "pnp-prohibited"
 	| "item-requirement"
 	| "district-requirement"
-	| "pnp-support"
-	| "pnp-prohibited"
+	| "pnp-support";
+
+/**
+ * Rule vocabulary for tool policy decisions. A decision's `rule` is the one
+ * attribution channel: it names the step that enabled, blocked or advised on a
+ * tool.
+ */
+export type ToolPolicyDecisionRule =
+	| PnpPolicySourceRule
 	| "placement-membership"
 	| "provider-disabled"
 	| "host-allowlist"

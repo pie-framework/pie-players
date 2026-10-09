@@ -39,12 +39,14 @@ async function validateNavigationContract(args: {
 							}) => void,
 						) => () => void;
 					} | null>;
-					selectNavigation?: () => {
-						currentIndex: number;
-						totalItems: number;
-						canNext: boolean;
-						canPrevious: boolean;
-						currentItemId?: string;
+					getSnapshot?: () => {
+						navigation: {
+							currentIndex: number;
+							totalItems: number;
+							canNext: boolean;
+							canPrevious: boolean;
+							currentItemId?: string;
+						};
 					};
 			  })
 			| null;
@@ -72,11 +74,11 @@ async function validateNavigationContract(args: {
 			});
 		});
 
-		const before = host.selectNavigation?.();
+		const before = host.getSnapshot?.()?.navigation;
 		const nextResult = host.navigateNext?.() === true;
-		const afterNext = host.selectNavigation?.();
+		const afterNext = host.getSnapshot?.()?.navigation;
 		const prevResult = host.navigatePrevious?.() === true;
-		const afterPrev = host.selectNavigation?.();
+		const afterPrev = host.getSnapshot?.()?.navigation;
 		await new Promise<void>((resolve) => setTimeout(resolve, 50));
 		unsubscribe?.();
 

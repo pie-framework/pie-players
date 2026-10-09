@@ -137,13 +137,13 @@ A tool that reads a provider off the runtime context pulls in the interface (a
 type), and the English fallback (5.4 KB). It never sees `catalogs.ts`, so no
 locale chunk is emitted into its `dist`.
 
-**Interface locale is a composition context, resolved property-first.** The
+**Interface locale is a composition context, set by one element attribute.** The
 deployment picks the interface language; no tool and no element can know it.
 [`composition-context.md`](./composition-context.md) gives the mechanism, and
 `ndsIcons` is the working precedent for a scalar travelling this exact path:
 
 ```
-runtime.locale ?? locale prop ?? locale attribute ?? "en-US"
+locale attribute ?? "en-US"
       → AssessmentToolkitRuntimeContext.locale + .i18n
             → connectToolRuntimeContext(host, …) in every tool
 ```

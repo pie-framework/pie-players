@@ -40,9 +40,10 @@
 	const item = $derived((data.section as any)?.assessmentItemRefs?.[0]?.item as ItemEntity);
 	const toolRegistry = createSectionDemoToolRegistry();
 	const tools = {
+		pnpEnforcement: 'on',
 		placement: { item: ['textToSpeech', 'calculator'] },
 		providers: { calculator: { provider: { id: 'calculator-cortex' } } }
-	};
+	} as const;
 
 	/*
 	 * The host's rule, read from the calculator's policy decision at render time:
@@ -112,7 +113,6 @@
 
 	<pie-assessment-toolkit
 		assessment-id={assessment.id}
-		pnp-enforcement="on"
 		{assessment}
 		{tools}
 		{toolRegistry}

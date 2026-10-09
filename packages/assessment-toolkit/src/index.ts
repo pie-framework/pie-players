@@ -188,13 +188,9 @@ export type {
 	SectionControllerRuntimeState,
 	SectionControllerSessionState,
 	SectionPersistenceFactoryDefaults,
-	ToolConfig,
 	ToolkitCoordinatorConfig,
 	ToolkitCoordinatorHooks,
 	ToolkitErrorContext,
-	ToolkitInitStatus,
-	ToolkitServiceBundle,
-	TTSToolConfig,
 } from "./services/ToolkitCoordinator.js";
 export { ToolkitCoordinator } from "./services/ToolkitCoordinator.js";
 export type {
@@ -205,6 +201,7 @@ export type {
 	ToolPolicyConfig,
 	ToolProvidersConfig,
 	ToolsConfigInput,
+	TextToSpeechToolProviderConfig,
 } from "./services/tools-config-normalizer.js";
 export type {
 	FrameworkErrorKind,
@@ -247,7 +244,6 @@ export type {
 	ITTSProvider,
 	ITTSProviderImplementation,
 	TTSSpeechSegment,
-	TTSFeature,
 	TTSProviderCapabilities,
 } from "@pie-players/pie-tts";
 

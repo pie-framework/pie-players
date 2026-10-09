@@ -9,8 +9,10 @@ import {
 	audioTranscriptRegistration,
 	resolveAudioTranscript,
 } from "../src/registrations/audio-transcript.js";
-import { PACKAGED_TOOL_REGISTRATIONS } from "../src/packaged-capability-composition.js";
-import { UNIVERSAL_SUPPORTS_PRESET } from "../src/packaged-capability-composition.js";
+import {
+	createUniversalPersonalNeedsProfile,
+	PACKAGED_TOOL_REGISTRATIONS,
+} from "../src/packaged-capability-composition.js";
 
 const itemWithCards = (cards: CatalogCard[]) =>
 	({
@@ -120,8 +122,8 @@ describe("audio transcript packaging", () => {
 		expect(audioTranscriptRegistration.requiresAuthoredContent).toBeTruthy();
 	});
 
-	it("stays out of the universal preset, being content-dependent", () => {
-		expect(UNIVERSAL_SUPPORTS_PRESET).not.toContain(
+	it("stays out of the universal profile, being content-dependent", () => {
+		expect(createUniversalPersonalNeedsProfile().supports).not.toContain(
 			AUDIO_TRANSCRIPT_FEATURE_ID,
 		);
 	});

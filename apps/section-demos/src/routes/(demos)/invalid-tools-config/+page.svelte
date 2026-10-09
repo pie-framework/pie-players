@@ -40,18 +40,6 @@
 		lastFrameworkErrorSource = source;
 	}
 
-	let playerEl = $state<HTMLElement | null>(null);
-	$effect(() => {
-		if (!playerEl) return;
-		// Svelte 5 treats `onCamelCase={fn}` template syntax on custom elements
-		// as a DOM event listener for `camelcase`, not a property assignment.
-		// The canonical `onFrameworkError` prop on `pie-section-player-*` is a
-		// declared CE property (not an event), so wire it imperatively here.
-		(playerEl as any).onFrameworkError = handleFrameworkError;
-		return () => {
-			(playerEl as any).onFrameworkError = undefined;
-		};
-	});
 </script>
 
 <svelte:head>
@@ -77,10 +65,10 @@
 
 		<pie-section-player-splitpane
 			runtime={ {
-				tools: rawToolsConfig as any
+				assessmentId: "section-demos.invalid-tools-config",
+				tools: rawToolsConfig as any,
+				onFrameworkError: handleFrameworkError
 			} }
-			bind:this={playerEl}
-			assessment-id="section-demos.invalid-tools-config"
 			{sectionId}
 			{attemptId}
 			section={data.section}

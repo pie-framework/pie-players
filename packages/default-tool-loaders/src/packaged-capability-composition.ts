@@ -2,8 +2,8 @@
  * The one authored description of PIE's packaged capability composition.
  *
  * Registrations describe what a capability can do. This module owns the
- * deployment decisions around them: element tags, lazy module bootstrap sets,
- * placement presets, toolbar order and the explicit universal-support policy.
+ * deployment decisions around them: element tags, lazy module loaders, the
+ * section-player placement preset and the explicit universal-support policy.
  * Public constants are projections of this composition so adding a capability
  * cannot leave a second hand-maintained catalogue silently behind.
  */
@@ -11,6 +11,7 @@
 import {
 	ToolRegistry,
 	type ToolComponentFactoryMap,
+	type ToolModuleLoader,
 	type ToolRegistration,
 	type ToolTagMap,
 } from "@pie-players/pie-assessment-toolkit/tools/registration";
@@ -39,14 +40,6 @@ import {
 } from "./registrations/subject-specific-tools.js";
 import { ttsToolRegistration } from "./registrations/tts.js";
 
-export type ToolModuleLoader = () => Promise<unknown>;
-
-export interface ToolRegistryLike {
-	setToolModuleLoaders(
-		loaders: Partial<Record<string, ToolModuleLoader>>,
-	): void;
-}
-
 export interface PackagedToolRegistryOptions {
 	/** Override packaged registrations by toolId. */
 	overrides?: Partial<Record<string, ToolRegistration>>;
@@ -60,22 +53,6 @@ export interface PackagedToolRegistryOptions {
 	toolIds?: string[];
 }
 
-export interface RegisterPackagedToolsOptions {
-	toolIds?: string[];
-	applyOverrides?: (registration: ToolRegistration) => ToolRegistration;
-}
-
-export interface RegisterDefaultToolModuleLoadersOptions {
-	loaders?: Partial<Record<string, ToolModuleLoader>>;
-}
-
-type PackagedPlacementLevel =
-	| "assessment"
-	| "section"
-	| "item"
-	| "passage"
-	| "rubric"
-	| "element";
 type PreferredPlacementLevel = "section" | "item" | "passage";
 type OrderedLevels<Level extends string> = Partial<Record<Level, number>>;
 
@@ -84,12 +61,8 @@ interface PackagedCapabilityDefinition {
 	/** Element delivery. Region capabilities omit both fields. */
 	tagName?: string;
 	loadModule?: ToolModuleLoader;
-	/** Existing exhaustive placement preset, including its extended level names. */
-	placementOrder?: OrderedLevels<PackagedPlacementLevel>;
 	/** Recommended section-player toolbar placement. */
 	preferredPlacementOrder?: OrderedLevels<PreferredPlacementLevel>;
-	/** Order among capabilities that can render a toolbar affordance. */
-	toolbarOrder?: number;
 	/**
 	 * Whether the universal-support preset grants this capability. Explicit
 	 * program policy; never inferred from registry membership.
@@ -141,99 +114,77 @@ const PACKAGED_CAPABILITY_DEFINITIONS = [
 		registration: calculatorToolRegistration,
 		tagName: "pie-tool-calculator",
 		loadModule: loadCalculatorModule,
-		placementOrder: { element: 10 },
 		preferredPlacementOrder: { item: 10 },
-		toolbarOrder: 20,
 		universal: true,
 	},
 	{
 		registration: ttsToolRegistration,
 		tagName: "pie-tool-tts-inline",
 		loadModule: loadTtsModule,
-		placementOrder: { item: 10, passage: 10, rubric: 10, element: 30 },
 		preferredPlacementOrder: { item: 20, passage: 10 },
-		toolbarOrder: 30,
 		universal: true,
 	},
 	{
 		registration: rulerToolRegistration,
 		tagName: "pie-tool-ruler",
 		loadModule: loadRulerModule,
-		placementOrder: { element: 40 },
 		preferredPlacementOrder: { section: 50 },
-		toolbarOrder: 80,
 		universal: true,
 	},
 	{
 		registration: protractorToolRegistration,
 		tagName: "pie-tool-protractor",
 		loadModule: loadProtractorModule,
-		placementOrder: { element: 50 },
 		preferredPlacementOrder: { section: 60 },
-		toolbarOrder: 90,
 		universal: true,
 	},
 	{
 		registration: answerEliminatorToolRegistration,
 		tagName: "pie-tool-answer-eliminator",
 		loadModule: loadAnswerEliminatorModule,
-		placementOrder: { element: 20 },
 		preferredPlacementOrder: { item: 30 },
-		toolbarOrder: 70,
 		universal: true,
 	},
 	{
 		registration: lineReaderToolRegistration,
 		tagName: "pie-tool-line-reader",
 		loadModule: loadLineReaderModule,
-		placementOrder: { passage: 40, rubric: 40 },
 		preferredPlacementOrder: { section: 40 },
-		toolbarOrder: 40,
 		universal: true,
 	},
 	{
 		registration: themeToolRegistration,
 		tagName: "pie-tool-theme",
 		loadModule: loadThemeModule,
-		placementOrder: { assessment: 10, section: 10 },
 		preferredPlacementOrder: { section: 10 },
-		toolbarOrder: 10,
 		universal: true,
 	},
 	{
 		registration: annotationToolbarRegistration,
 		tagName: "pie-tool-annotation-toolbar",
 		loadModule: loadAnnotationToolbarModule,
-		placementOrder: { item: 30, passage: 30, rubric: 30, element: 70 },
 		preferredPlacementOrder: { item: 40, passage: 20 },
-		toolbarOrder: 50,
 		universal: true,
 	},
 	{
 		registration: graphToolRegistration,
 		tagName: "pie-tool-graph",
 		loadModule: loadGraphModule,
-		placementOrder: { item: 40, element: 80 },
 		preferredPlacementOrder: { section: 20 },
-		toolbarOrder: 100,
 		universal: true,
 	},
 	{
 		registration: periodicTableToolRegistration,
 		tagName: "pie-tool-periodic-table",
 		loadModule: loadPeriodicTableModule,
-		placementOrder: { item: 50, element: 90 },
 		preferredPlacementOrder: { section: 30 },
-		toolbarOrder: 110,
 		universal: true,
 	},
 	{
 		registration: dictionaryToolRegistration,
 		tagName: "pie-tool-dictionary",
 		loadModule: loadDictionaryModule,
-		placementOrder: { item: 60, element: 100 },
 		preferredPlacementOrder: { section: 70 },
-		toolbarOrder: 120,
 		// A dictionary is a granted accommodation, and on a vocabulary item it is
 		// construct-relevant, so it is never universal.
 		universal: false,
@@ -242,9 +193,7 @@ const PACKAGED_CAPABILITY_DEFINITIONS = [
 		registration: pictureDictionaryToolRegistration,
 		tagName: "pie-tool-picture-dictionary",
 		loadModule: loadPictureDictionaryModule,
-		placementOrder: { item: 70, element: 110 },
 		preferredPlacementOrder: { section: 80 },
-		toolbarOrder: 130,
 		universal: false,
 	},
 	// The Spanish variants render the same elements under their own capability ids, so a
@@ -254,18 +203,14 @@ const PACKAGED_CAPABILITY_DEFINITIONS = [
 		registration: spanishDictionaryToolRegistration,
 		tagName: "pie-tool-dictionary",
 		loadModule: loadDictionaryModule,
-		placementOrder: { item: 80, element: 120 },
 		preferredPlacementOrder: { section: 90 },
-		toolbarOrder: 140,
 		universal: false,
 	},
 	{
 		registration: spanishPictureDictionaryToolRegistration,
 		tagName: "pie-tool-picture-dictionary",
 		loadModule: loadPictureDictionaryModule,
-		placementOrder: { item: 90, element: 130 },
 		preferredPlacementOrder: { section: 100 },
-		toolbarOrder: 150,
 		universal: false,
 	},
 	{
@@ -274,14 +219,6 @@ const PACKAGED_CAPABILITY_DEFINITIONS = [
 	},
 ] as const satisfies readonly PackagedCapabilityDefinition[];
 
-const PACKAGED_PLACEMENT_LEVELS = [
-	"assessment",
-	"section",
-	"item",
-	"passage",
-	"rubric",
-	"element",
-] as const;
 const PREFERRED_PLACEMENT_LEVELS = ["section", "item", "passage"] as const;
 
 function assertUniqueWeights(
@@ -316,7 +253,6 @@ function assertComposition(
 	definitions: readonly PackagedCapabilityDefinition[],
 ): void {
 	const toolIds = new Set<string>();
-	const toolbarOrders = new Set<number>();
 
 	for (const definition of definitions) {
 		const { registration } = definition;
@@ -337,8 +273,6 @@ function assertComposition(
 			if (
 				definition.tagName !== undefined ||
 				definition.loadModule !== undefined ||
-				definition.toolbarOrder !== undefined ||
-				Object.keys(definition.placementOrder ?? {}).length > 0 ||
 				Object.keys(definition.preferredPlacementOrder ?? {}).length > 0
 			) {
 				throw new Error(
@@ -356,28 +290,6 @@ function assertComposition(
 					`Invalid packaged capability "${registration.toolId}": element-backed capabilities need a lazy loader.`,
 				);
 			}
-			if (definition.toolbarOrder === undefined) {
-				throw new Error(
-					`Invalid packaged capability "${registration.toolId}": toolbar capabilities need an order.`,
-				);
-			}
-		}
-
-		if (definition.toolbarOrder !== undefined) {
-			if (
-				!Number.isSafeInteger(definition.toolbarOrder) ||
-				definition.toolbarOrder < 0
-			) {
-				throw new Error(
-					`Invalid packaged capability "${registration.toolId}": toolbar order must be a non-negative integer.`,
-				);
-			}
-			if (toolbarOrders.has(definition.toolbarOrder)) {
-				throw new Error(
-					`Invalid packaged capability composition: duplicate toolbar order ${definition.toolbarOrder}.`,
-				);
-			}
-			toolbarOrders.add(definition.toolbarOrder);
 		}
 
 		if (registration.requiresAuthoredContent && definition.universal) {
@@ -398,12 +310,6 @@ function assertComposition(
 		}
 	}
 
-	assertUniqueWeights(
-		definitions,
-		PACKAGED_PLACEMENT_LEVELS,
-		(definition) => definition.placementOrder,
-		"placementOrder",
-	);
 	assertUniqueWeights(
 		definitions,
 		PREFERRED_PLACEMENT_LEVELS,
@@ -432,13 +338,9 @@ class PackagedCapabilityComposition {
 	readonly registrations: readonly ToolRegistration[];
 	readonly toolTagMap: Readonly<ToolTagMap>;
 	readonly moduleLoaders: Readonly<Record<string, ToolModuleLoader>>;
-	readonly placement: Readonly<
-		Record<PackagedPlacementLevel, readonly string[]>
-	>;
 	readonly preferredPlacement: Readonly<
 		Record<PreferredPlacementLevel, readonly string[]>
 	>;
-	readonly toolbarOrder: readonly string[];
 	readonly universalSupportIds: readonly string[];
 
 	constructor(
@@ -465,18 +367,6 @@ class PackagedCapabilityComposition {
 				),
 			),
 		);
-		const placementIds = (level: PackagedPlacementLevel) =>
-			Object.freeze(
-				orderedToolIds(definitions, level, ({ placementOrder }) => placementOrder),
-			);
-		this.placement = Object.freeze({
-			assessment: placementIds("assessment"),
-			section: placementIds("section"),
-			item: placementIds("item"),
-			passage: placementIds("passage"),
-			rubric: placementIds("rubric"),
-			element: placementIds("element"),
-		});
 		const preferredIds = (level: PreferredPlacementLevel) =>
 			Object.freeze(
 				orderedToolIds(
@@ -490,14 +380,6 @@ class PackagedCapabilityComposition {
 			item: preferredIds("item"),
 			passage: preferredIds("passage"),
 		});
-		this.toolbarOrder = Object.freeze(
-			definitions
-				.flatMap(({ registration, toolbarOrder }) =>
-					toolbarOrder === undefined ? [] : [{ registration, toolbarOrder }],
-				)
-				.sort((left, right) => left.toolbarOrder - right.toolbarOrder)
-				.map(({ registration }) => registration.toolId),
-		);
 		this.universalSupportIds = Object.freeze(
 			definitions
 				.filter((definition) => definition.universal)
@@ -516,25 +398,11 @@ class PackagedCapabilityComposition {
 		return this.registrations.filter(({ toolId }) => selected.has(toolId));
 	}
 
-	registerTools(
-		registry: ToolRegistry,
-		options: RegisterPackagedToolsOptions = {},
-	): void {
-		const applyOverrides =
-			options.applyOverrides ??
-			((registration: ToolRegistration) => registration);
-		for (const registration of this.selectRegistrations(options.toolIds)) {
-			registry.register(applyOverrides(registration));
-		}
-	}
-
 	createRegistry(options: PackagedToolRegistryOptions = {}): ToolRegistry {
 		const registry = new ToolRegistry();
-		this.registerTools(registry, {
-			toolIds: options.toolIds,
-			applyOverrides: (registration) =>
-				options.overrides?.[registration.toolId] ?? registration,
-		});
+		for (const registration of this.selectRegistrations(options.toolIds)) {
+			registry.register(options.overrides?.[registration.toolId] ?? registration);
+		}
 
 		// Loader installation remains opt-in. Some hosts preload tool elements or
 		// provide their own tags; silently adding package loads here would change
@@ -592,37 +460,11 @@ export const DEFAULT_TOOL_MODULE_LOADERS: Record<string, ToolModuleLoader> = {
 	...packagedCapabilityComposition.moduleLoaders,
 };
 
-export const PACKAGED_TOOL_PLACEMENT: Readonly<
-	Record<PackagedPlacementLevel, readonly string[]>
-> = {
-	assessment: [...packagedCapabilityComposition.placement.assessment],
-	section: [...packagedCapabilityComposition.placement.section],
-	item: [...packagedCapabilityComposition.placement.item],
-	passage: [...packagedCapabilityComposition.placement.passage],
-	rubric: [...packagedCapabilityComposition.placement.rubric],
-	element: [...packagedCapabilityComposition.placement.element],
-};
-
 export const SECTION_PLAYER_PREFERRED_TOOL_PLACEMENT = {
 	section: [...packagedCapabilityComposition.preferredPlacement.section],
 	item: [...packagedCapabilityComposition.preferredPlacement.item],
 	passage: [...packagedCapabilityComposition.preferredPlacement.passage],
 };
-
-export const PACKAGED_TOOL_ORDER: readonly string[] = [
-	...packagedCapabilityComposition.toolbarOrder,
-];
-
-export const UNIVERSAL_SUPPORTS_PRESET: readonly string[] =
-	packagedCapabilityComposition.universalSupportIds;
-
-/** Register packaged PIE capabilities onto an existing registry. */
-export function registerPackagedTools(
-	registry: ToolRegistry,
-	options: RegisterPackagedToolsOptions = {},
-): void {
-	packagedCapabilityComposition.registerTools(registry, options);
-}
 
 /** Create a registry holding the packaged PIE capabilities. */
 export function createPackagedToolRegistry(
@@ -631,18 +473,21 @@ export function createPackagedToolRegistry(
 	return packagedCapabilityComposition.createRegistry(options);
 }
 
-/** Build a fresh profile granting the explicit universal-support preset. */
+/**
+ * A fresh profile granting the packaged set's universal capabilities, sorted by
+ * tool id. Which capabilities are universal is program policy declared on each
+ * definition; registry membership never implies it.
+ */
 export function createUniversalPersonalNeedsProfile(): PersonalNeedsProfile {
 	return packagedCapabilityComposition.createUniversalPersonalNeedsProfile();
 }
 
-/** Register packaged lazy module loaders, followed by host overrides. */
-export function registerDefaultToolModuleLoaders(
-	registry: ToolRegistryLike,
-	options: RegisterDefaultToolModuleLoadersOptions = {},
-): void {
-	registry.setToolModuleLoaders({
-		...DEFAULT_TOOL_MODULE_LOADERS,
-		...(options.loaders ?? {}),
-	});
+/**
+ * A fresh profile granting and prohibiting nothing. The toolkit ships no
+ * populated default: a deployment's universal set is program policy, which
+ * `createUniversalPersonalNeedsProfile` carries as data for hosts that adopt it.
+ */
+export function createEmptyPersonalNeedsProfile(): PersonalNeedsProfile {
+	return { supports: [], prohibitedSupports: [] };
 }
+

@@ -84,7 +84,11 @@ describe("composeDecision — host-only pipeline", () => {
 			"calculator",
 			"tts",
 		]);
-		expect(decision.visibleTools[0].sources).toEqual(["placement"]);
+		expect(
+			decision.provenance.features
+				.get("calculator")
+				?.allDecisions.map(({ rule }) => rule),
+		).toEqual(["placement-membership"]);
 		expect(decision.visibleTools[0].required).toBe(false);
 		expect(decision.visibleTools[0].alwaysAvailable).toBe(false);
 	});
@@ -218,10 +222,11 @@ describe("composeDecision — host-only pipeline", () => {
 		});
 		expect(decision.visibleTools[0].toolId).toBe("calculator");
 		expect(decision.visibleTools[0].alwaysAvailable).toBe(true);
-		expect(decision.visibleTools[0].sources).toEqual([
-			"placement",
-			"pnp.pnp-support",
-		]);
+		expect(
+			decision.provenance.features
+				.get("calculator")
+				?.allDecisions.map(({ rule }) => rule),
+		).toEqual(["placement-membership", "pnp-support"]);
 	});
 
 	test("step 5 — host blocklist wins over district requirement (requiredToolBlocked diagnostic)", () => {
@@ -378,10 +383,9 @@ describe("composeDecision — host-only pipeline", () => {
 			contextId: "test",
 		});
 		expect(decision.visibleTools.map((e) => e.toolId)).toEqual(["calculator"]);
-		expect(decision.visibleTools[0].sources).toEqual([
-			"placement",
-			"custom.even-only",
-		]);
+		expect(decision.provenance.features.get("tts")?.winningDecision).toMatchObject(
+			{ rule: "custom-source", action: "block" },
+		);
 	});
 
 	test("step 6 — custom source attempting to add IDs is rejected with placementMissing", () => {
@@ -405,7 +409,7 @@ describe("composeDecision — host-only pipeline", () => {
 		expect(decision.diagnostics[0]).toMatchObject({
 			code: "tool-policy.placementMissing",
 			toolId: "ghost-tool",
-			source: "custom.sneaky",
+			details: { customSourceId: "sneaky" },
 		});
 	});
 
@@ -684,7 +688,7 @@ describe("composeDecision — unknown PNP support id", () => {
 		expect(unknown[0].toolId).toBe("responseMasking");
 		expect(unknown[0].message).toContain("responseMasking");
 		expect(unknown[0].message).toContain("personalNeedsProfile.supports");
-		expect(unknown[0].source).toBe("pnp.pnp-support");
+		expect(unknown[0].details).toEqual({ origins: ["pnp-support"] });
 	});
 
 	test("an id in a district list is labelled by that list", () => {
@@ -709,7 +713,6 @@ describe("composeDecision — unknown PNP support id", () => {
 			(d) => d.code === "tool-policy.unknownSupportId",
 		);
 		expect(unknown).toHaveLength(1);
-		expect(unknown[0].source).toBe("pnp.district-block");
 		expect(unknown[0].message).toContain("settings.districtPolicy.blockedTools");
 		expect(unknown[0].details).toEqual({ origins: ["district-block"] });
 	});

@@ -322,14 +322,10 @@ for the contract and the decision record.
 
 ## Usage
 
-Import the custom-element registration entrypoint in consumers:
+Import the package root, which registers every section-player element:
 
 ```ts
-import '@pie-players/pie-section-player/components/section-player-splitpane-element';
-import '@pie-players/pie-section-player/components/section-player-vertical-element';
-import '@pie-players/pie-section-player/components/section-player-tabbed-element';
-import '@pie-players/pie-section-player/components/section-player-item-card-element';
-import '@pie-players/pie-section-player/components/section-player-passage-card-element';
+import '@pie-players/pie-section-player';
 ```
 
 Render in HTML/Svelte/JSX:
@@ -345,7 +341,7 @@ Set `runtime` no later than `section`. When the player builds its own
 coordinator, the section's arrival rebuilds that coordinator from the current
 `runtime`, so both can be set a tick after the element mounts. Once the section
 has initialized, a change to `runtime.tools`, `runtime.assessmentId`,
-`runtime.accessibility`, `runtime.lazyInit`, `runtime.toolConfigStrictness` or
+`runtime.accessibility`, `runtime.lazyInit`, `tool-config-strictness` or
 `toolRegistry` is reported once in the console and does not reach that
 coordinator; `runtime.tools.pnpEnforcement` still applies. Change a running
 coordinator through the one `toolkit-ready` carries, with
@@ -366,15 +362,15 @@ The layout elements (`pie-section-player-splitpane`,
 - `narrow-layout-breakpoint` (number, optional): viewport width in px below which the layout collapses (split pane: single column; vertical: toolbar moves to top). Clamped to 400–2000; default 1100.
 - `content-max-width-no-passage` (number, optional): max width in px when no passages exist. Clamped to 320–2200. Unset by default (layout uses available width).
 - `content-max-width-with-passage` (number, optional): max width in px when passages are present. Clamped to 320–2200. Unset by default (layout uses available width).
-- `split-pane-min-region-width` (number, optional): splitpane minimum pane width in px. Clamped to 160–1200. Unset by default (split bounds stay at 20–80). (Ignored by vertical layout; supported for API parity.)
-- `split-pane-collapse-strategy` (string, optional): splitpane stacked-mode strategy. Supported values: `tabbed` (default) and `vertical`. (Ignored by vertical/tabbed layouts; supported for API parity.)
+- `split-pane-min-region-width` (number, optional): splitpane minimum pane width in px. Clamped to 160–1200. Unset by default (split bounds stay at 20–80). Splitpane only.
+- `split-pane-collapse-strategy` (string, optional): splitpane stacked-mode strategy. Supported values: `tabbed` (default) and `vertical`. Splitpane only.
 - `base-heading-level` (number, optional): the heading level this player's card headings occupy, and the level every descendant's outline derives from. Clamped to 1–6; default 2. See [Heading structure](#heading-structure).
 - `show-toolbar` (boolean-like): accepts `true/false` and common string forms (`"true"`, `"false"`, `"1"`, `"0"`, `"yes"`, `"no"`); default `false`, so tools placed at `section` level render only when it is `true`
-- `locale` (string, optional): BCP-47 locale for the player's own interface text. Mirrored onto `runtime.locale`, which wins when both are set. Unset renders `en-US`.
+- `locale` (string, optional): BCP-47 locale for the player's own interface text. Unset renders `en-US`.
 - `runtime.contentLanguage` (string, optional, `runtime` only): BCP-47 language of the content where its markup names none, which read-aloud speaks in and picks catalog cards by. A `lang` between the content and its card wins; unset reads `en-US`. `locale` never sets it.
-- `nds-icons` (boolean): opt in to NDS icon buttons. Mirrored onto `runtime.ndsIcons`, which wins when both are set.
-- `tool-config-strictness` (string, optional): `off|warn|error` for tool-config validation; default `error`. `runtime.toolConfigStrictness` wins when both are set.
-- `split-pane-initial-passage-width` (number, optional): splitpane passage pane width in percent at mount. Clamped to 20–80; default 50.
+- `nds-icons` (boolean): opt in to NDS icon buttons.
+- `tool-config-strictness` (string, optional): `off|warn|error` for tool-config validation; default `error`.
+- `split-pane-initial-passage-width` (number, optional): splitpane passage pane width in percent at mount. Clamped to 20–80; default 50. Splitpane only.
 - `iife-bundle-host` (string, optional): bundle host for the IIFE element pre-warm when `runtime.player.loaderOptions.bundleHost` is unset.
 - Host extension props (JS properties only): `toolRegistry`, `sectionHostButtons`, `itemHostButtons`, `passageHostButtons`, `hooks`
 
@@ -464,10 +460,7 @@ hooks for theming:
 - `pie-section-player-tab--active`
 - `pie-section-player-tab-panel`
 
-For theme compatibility with existing passage-label patterns, tabs also expose:
-
-- `data-pie-purpose="passage-label"` and alias class `passage-label`
-- `data-pie-purpose="item-label"` and alias class `item-label`
+Tabs also carry `data-pie-purpose="passage-label"` and `data-pie-purpose="item-label"`.
 
 Tab colors, spacing, and track geometry can be themed via CSS variables:
 `--pie-section-player-tab-color`, `--pie-section-player-tab-background`,
@@ -583,14 +576,14 @@ mountable-but-unoccupied result, not an error.
 The intended usage model is:
 
 - **CE props for default/standard flows (roughly 90% use cases)**:
-  - `assessment-id`, `section`, `section-id`, `attempt-id`, `debug`
+  - `section`, `section-id`, `attempt-id`, `debug`, `locale`, `nds-icons`, `tool-config-strictness`
   - `show-toolbar`, `toolbar-position`, `narrow-layout-breakpoint`
-  - `content-max-width-no-passage`, `content-max-width-with-passage`, `split-pane-min-region-width`, `split-pane-collapse-strategy`
+  - `content-max-width-no-passage`, `content-max-width-with-passage`, and on splitpane `split-pane-min-region-width`, `split-pane-collapse-strategy`
 - **JS API for advanced customization**:
   - Get the controller handle via `getSectionController()` or `waitForSectionController()` (preferred)
   - Listen for `pie-stage-change` and filter on `detail.stage === "engine-ready"` for an event-driven entry point
   - Apply custom policy/gating in host code (for example, domain-specific `canNext` based on controller events like `section-items-complete-changed`)
-  - Compose forward/backward eligibility in host code using `selectNavigation()` + host state; there is intentionally no separate parallel CE gating API for this
+  - Compose forward/backward eligibility in host code using `getSnapshot().navigation` + host state; there is intentionally no separate parallel CE gating API for this
   - Inject custom toolbar tooling with `toolRegistry` and optional host button arrays (`sectionHostButtons`, `itemHostButtons`, `passageHostButtons`)
   - Register host callbacks via `hooks` (for example `hooks.cardTitleFormatter`)
 
@@ -764,8 +757,8 @@ sequential keyboard navigation.
 unset field, a missing section included, takes its value from
 `DEFAULT_SECTION_PLAYER_POLICIES`.
 
-- `readiness.mode` (`"progressive"` | `"strict"`) — the mode
-  `SectionPlayerLayoutKernel` passes to `createReadinessDetail`. Both modes
+- `readiness.mode` (`"progressive"` | `"strict"`) — the mode the layout
+  kernel gates readiness by. Both modes
   hold the `interactive` stage and `pie-loading-complete` until the section's
   element pre-warm resolves and the item cards can mount. The kernel has no
   later loading signal, so the two modes currently emit the same sequence.
@@ -781,10 +774,8 @@ unset field, a missing section included, takes its value from
   shape of opt-out can still override `runtime.player.loaderConfig.instrumentationProvider`.
   Default: `true`.
 
-The exported `isPreloadEnabled(policies)` and `isTelemetryEnabled(policies)`
-helpers read these toggles with the documented default-true semantics, so
-host code that needs to mirror the same gate (e.g. when composing a custom
-layout host) can call them directly.
+`resolveSectionPlayerPolicies(policies)` returns the filled-in object, for
+host code that needs the same gates.
 
 ### Navigation signals
 
@@ -793,9 +784,9 @@ layout host) can call them directly.
 
 Runtime configuration is explicit:
 
-- `runtime` owns runtime fields (`assessmentId`, `playerType`, `player`, `lazyInit`, `tools`, `accessibility`, `coordinator`, `isolation`, `env`, `createSectionController`).
+- `runtime` owns runtime fields (`assessmentId`, `playerType`, `player`, `lazyInit`, `tools`, `toolContextResolvers`, `accessibility`, `coordinator`, `createSectionController`, `isolation`, `env`, `contentLanguage` and the `on*` callbacks). `locale`, `nds-icons` and `tool-config-strictness` are attributes only.
 - Tool placement is configured through `runtime.tools.placement.section`, `runtime.tools.placement.item`, and `runtime.tools.placement.passage`.
-- Tool configuration validation is canonical in toolkit initialization (`pie-assessment-toolkit`), including toolbar overlays. Use `runtime.toolConfigStrictness` (`off` | `warn` | `error`) to control warning-only vs fail-fast behavior.
+- Tool configuration validation is canonical in toolkit initialization (`pie-assessment-toolkit`), including toolbar overlays. Use the `tool-config-strictness` attribute (`off` | `warn` | `error`) to control warning-only vs fail-fast behavior.
 - TTS provider config must use `tools.providers.textToSpeech` (canonical). `tools.providers.tts` is rejected by validation.
 - Host tool overrides:
   - `toolRegistry` replaces the default toolbar registry when provided. Build it with `createPackagedToolRegistry({ toolModuleLoaders: DEFAULT_TOOL_MODULE_LOADERS })` and register custom tools on it, since toolbars load each tool's element through the registry's loaders. A player that builds its own coordinator gives it this registry; a coordinator passed as `runtime.coordinator` keeps its own, which decides policy, so build that coordinator with the same registry
@@ -857,7 +848,7 @@ stock layouts are built from the same panes.
 
       const player = document.querySelector("pie-section-player-kernel-host");
       player.addEventListener("pie-loading-complete", () => {
-        console.log("ready", player.selectNavigation());
+        console.log("ready", player.getSnapshot().navigation);
       });
       player.runtime = { env: { mode: "gather", role: "student" } };
       player.section = {
@@ -905,9 +896,8 @@ stock layouts are built from the same panes.
 ```
 
 The example loads the [browser build](../../docs/setup/cdn_usage.md#section-player-browser-build).
-A bundled host imports
-`@pie-players/pie-section-player/components/section-player-kernel-host-element`,
-which defines the panes too. An item with PIE elements names them in
+A bundled host imports `@pie-players/pie-section-player`, which defines the
+kernel host and the panes too. An item with PIE elements names them in
 `config.elements` and carries their `config.models`, as in any section. The
 `/custom-layout` route of `apps/section-demos`
 ([source](../../apps/section-demos/src/routes/%28demos%29/custom-layout/+page.svelte))
@@ -917,9 +907,7 @@ builds the same two columns in Svelte.
 
 - **Inputs and host methods.** Those of the layout elements in
   [Runtime Inputs](#runtime-inputs), without the layout dimensions
-  (`narrow-layout-breakpoint`, `content-max-width-*`, `split-pane-*`) and without
-  the `locale` and `nds-icons` mirrors, which it takes as `runtime.locale` and
-  `runtime.ndsIcons`.
+  (`narrow-layout-breakpoint`, `content-max-width-*`, `split-pane-*`).
 - **DOM.** The open shadow root holds the toolkit and the section toolbar around
   one default slot; `show-toolbar` and `toolbar-position` place the toolbar around
   the layout. The children, the panes and the content they render stay in light
@@ -932,7 +920,7 @@ builds the same two columns in Svelte.
   count, so markup whitespace and a framework's placeholder comments leave it in
   place.
 - **Navigation and state.** The host methods (`navigateNext`, `navigatePrevious`,
-  `navigateTo`, `selectNavigation`, `getSnapshot`, `waitForSectionController`)
+  `navigateTo`, `getSnapshot`, `getSectionController`, `waitForSectionController`)
   and the events (`pie-stage-change`, `pie-loading-complete`,
   `composition-changed`, `session-changed`, `framework-error`, `toolkit-ready`)
   are those of the stock layouts. `detail.sourceCe` on its `pie-stage-change`
@@ -979,7 +967,7 @@ const unsubscribe = controller?.subscribe?.((event: any) => {
 });
 
 function canAdvance() {
-  const nav = host.selectNavigation?.();
+  const nav = host.getSnapshot?.()?.navigation;
   return Boolean(nav?.canNext && sectionComplete);
 }
 ```
@@ -1070,14 +1058,11 @@ bubbling and composed):
   `runtime.coordinator` arrive the same way.
   `tests/section-player-event-delivery.spec.ts` pins these counts.
 
-Callback-prop mirrors with two-tier precedence (`runtime.<key>` wins over
-the top-level prop):
+Callbacks on `runtime`:
 
-- `onStageChange(detail)` and `onLoadingComplete(detail)` — on the
-  kernel-backed layout CEs (split-pane / vertical / tabbed / kernel-host).
-- `onFrameworkError(model)` — on every layout CE and
-  `pie-section-player-base`. Fires once per error regardless of wrapper
-  depth, like the `framework-error` DOM event; consume either.
+- `runtime.onStageChange(detail)` and `runtime.onLoadingComplete(detail)`.
+- `runtime.onFrameworkError(model)` fires once per error regardless of
+  wrapper depth, like the `framework-error` DOM event; consume either.
 
 Section-player owned instrumentation stream:
 
@@ -1089,9 +1074,7 @@ Section-player owned instrumentation stream:
 
 Build consumers against these canonical lifecycle events:
 
-- `readiness-change` → listen for `pie-stage-change`. The readiness
-  payload is also available via `selectReadiness()` /
-  `getSnapshot().readiness` on the layout CE.
+- `readiness-change` → listen for `pie-stage-change`.
 - `interaction-ready` → `pie-stage-change` filtered on
   `detail.stage === "interactive"`.
 - `ready` → `pie-loading-complete`.
@@ -1239,19 +1222,8 @@ Published exports are intentionally minimal:
 
 - `@pie-players/pie-section-player`
 - `@pie-players/pie-section-player/browser`, the self-contained browser build ([CDN usage](../../docs/setup/cdn_usage.md#section-player-browser-build))
-- `@pie-players/pie-section-player/components/section-player-splitpane-element`
-- `@pie-players/pie-section-player/components/section-player-vertical-element`
-- `@pie-players/pie-section-player/components/section-player-tabbed-element`
-- `@pie-players/pie-section-player/components/section-player-kernel-host-element`
-- `@pie-players/pie-section-player/components/section-player-shell-element`
-- `@pie-players/pie-section-player/components/section-player-item-card-element`
-- `@pie-players/pie-section-player/components/section-player-passage-card-element`
-- `@pie-players/pie-section-player/components/section-player-items-pane-element`
-- `@pie-players/pie-section-player/components/section-player-passages-pane-element`
-- `@pie-players/pie-section-player/contracts/layout-contract`
-- `@pie-players/pie-section-player/contracts/public-events`
+- `@pie-players/pie-section-player/components/section-player-splitpane-element`, which resolves to the package root
 - `@pie-players/pie-section-player/contracts/runtime-host-contract`
-- `@pie-players/pie-section-player/contracts/layout-parity-metadata`
 - `@pie-players/pie-section-player/contracts/host-hooks`
 - `@pie-players/pie-section-player/policies`
 - `@pie-players/pie-section-player/item-section`

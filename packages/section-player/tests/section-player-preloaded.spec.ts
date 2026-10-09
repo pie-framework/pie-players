@@ -190,7 +190,6 @@ test.describe("section player preloaded strategy", () => {
 				const fresh = document.createElement(
 					"pie-section-player-splitpane",
 				) as HTMLElement & { runtime?: unknown; section?: unknown };
-				fresh.setAttribute("assessment-id", "eliminator-assessment");
 				fresh.setAttribute("section-id", "eliminator-section");
 				fresh.setAttribute("attempt-id", `eliminator-${Date.now()}`);
 				fresh.addEventListener("toolkit-ready", (event) => {
@@ -204,6 +203,7 @@ test.describe("section player preloaded strategy", () => {
 					});
 				});
 				fresh.runtime = {
+					assessmentId: "eliminator-assessment",
 					playerType: "preloaded",
 					env: { mode: "gather", role: "student" },
 					tools: {

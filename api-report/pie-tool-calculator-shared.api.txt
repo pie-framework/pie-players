@@ -3,8 +3,5 @@
 
 @pie-players/pie-tool-calculator-shared
 
-.
-  type CalculatorType
-
 ./calculator-element
   type CalculatorType

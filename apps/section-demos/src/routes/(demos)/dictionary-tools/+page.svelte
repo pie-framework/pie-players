@@ -110,8 +110,7 @@
 		</div>
 
 		<pie-section-player-splitpane
-			{runtime}
-			assessment-id={assessmentEntity.id}
+			runtime={ { ...runtime, assessmentId: assessmentEntity.id } }
 			{sectionId}
 			{attemptId}
 			section={data.section}

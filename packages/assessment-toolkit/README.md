@@ -15,7 +15,7 @@ The examples build their tool registry with `createPackagedToolRegistry()` from
 in its own dependencies. The section player depends on it too, but strict
 installers such as pnpm expose only the packages a host declares.
 
-Server-backed TTS (`backend: "polly"`, `"google"` or `"server"`) loads
+Server-backed TTS (`backend: "server"`) loads
 `@pie-players/tts-client-server`, a dependency of
 `@pie-players/pie-default-tool-loaders` whose TTS registration imports it on
 first use. If it fails to load, TTS initialization reports a `provider-init`
@@ -149,15 +149,15 @@ See the [ToolkitCoordinator section in the architecture overview](../../docs/arc
 6. **Element-Level Granularity**: Tool state tracked per PIE element, not per item
 7. **State Separation**: Tool state (ephemeral) separate from PIE session data (persistent)
 
-## Configuration tiers: easy attribute + sophisticated `runtime`
+## Configuration: attributes and a constructed coordinator
 
-This package and `@pie-players/pie-section-player` follow a deliberate
-two-tier configuration model. The same knob can usually be set in either
-tier; the choice is about ergonomics, not capability.
+This package and `@pie-players/pie-section-player` give each input one entry
+point (see [One tier per input](#one-tier-per-input)). A host that needs more
+than the element inputs builds the coordinator itself.
 
-### When to use each tier
+### Element inputs and a constructed coordinator
 
-- **Easy tier — top-level CE attributes / properties.** Use these for the
+- **Element attributes / properties.** Use these for the
   common cases that are static for the lifetime of the player or that hosts
   want to set declaratively in HTML / templating frameworks. Example:
 
@@ -169,10 +169,10 @@ tier; the choice is about ergonomics, not capability.
   ></pie-assessment-toolkit>
   ```
 
-- **Sophisticated tier — passing a constructed `ToolkitCoordinator` (or a
+- **A constructed `ToolkitCoordinator` (or a
   `runtime` object on consumer CEs).** Use this for advanced cases: composed
-  configuration, dynamic overrides, runtime mutation, fields without a
-  tier-1 attribute, or anything that benefits from being a single typed
+  configuration, dynamic overrides, runtime mutation, fields without an
+  attribute, or anything that benefits from being a single typed
   object passed by reference. Example:
 
   ```ts
@@ -202,38 +202,32 @@ Top-level attributes use kebab-case (`assessment-id`,
 `tool-config-strictness`). Section-player runtime configuration is grouped
 under the `runtime` object instead of duplicated as top-level props.
 
-### Precedence rule
+### One tier per input
 
-The configuration object owns runtime fields. Section-player layout attributes
-cover identity, layout, diagnostics, and callback/event convenience:
+Each input has one entry point. On the section-player layout elements,
+`runtime` carries `assessmentId`, the player, tool, accessibility,
+coordinator, env and isolation fields, runtime factories and the `on*`
+callbacks; attributes carry section identity, layout controls, `nds-icons`,
+`locale` and `tool-config-strictness`. Unset inputs take their documented
+defaults.
 
-1. Use `runtime.<key>` for player, tool, accessibility, coordinator, env,
-   isolation, and runtime factories.
-2. Use top-level layout attributes for section identity and layout controls.
-3. Use documented defaults when neither is provided.
+`<pie-assessment-toolkit>` takes the same fields as its own properties,
+with `assessment-id`, `nds-icons`, `locale` and `tool-config-strictness` as
+attributes, and reads `pnpEnforcement` from `tools.pnpEnforcement`.
 
-### Canonical tier-1 attribute set
+### Canonical attribute set
 
-The tier-1 attribute set is the same shape across
-`pie-assessment-toolkit`, `pie-section-player-base`, and the
-`pie-section-player-*` layout elements (locked in M5). Every tier-1
-surface obeys the strict mirror rule:
-
-```
-kebab-attribute  ↔  camelCaseProp  ↔  runtime.<sameCamelCaseKey>
-```
-
-Common members include:
-
-- Identity: `assessment-id`, `section-id`, `attempt-id`
+- Identity: `assessment-id` on the toolkit, `section-id`, `attempt-id`
 - Runtime config on section-player CEs: `runtime`
 - Toolkit-only object properties: `tools`, `tool-registry`, `coordinator`,
   `accessibility`
+- Interface: `nds-icons`, `locale`
 - Diagnostics: `tool-config-strictness`, `debug`. Framework-error
-  delivery is via the canonical `onFrameworkError` callback prop and the
+  delivery is via the `onFrameworkError` callback (a toolkit property,
+  `runtime.onFrameworkError` on a section player) and the
   `framework-error` DOM event dispatched on the layout CE host.
 
-Documented exceptions to the mirror rule:
+Inputs outside the runtime config:
 
 - Identity (`section-id`, `attempt-id`, `section`): per-attempt host
   state, not configuration.
@@ -251,9 +245,9 @@ Documented exceptions to the mirror rule:
   attribute or a property. A `coordinator` passed to it wins over an
   outer toolkit's.
 
-### When to add a tier-1 attribute
+### When to add an attribute
 
-Add a tier-1 attribute only if all of the following hold:
+Add an attribute only if all of the following hold:
 
 - It is a common case that hosts set without composing a `ToolkitCoordinator`
   / `runtime` object.
@@ -456,7 +450,7 @@ item for its tools, as it does in a section player's card. The tree this
 builds:
 
 ```html
-<pie-assessment-toolkit pnp-enforcement="on">
+<pie-assessment-toolkit>
   <pie-item-scope item-id="q1">
     <pie-item-toolbar></pie-item-toolbar>
     <div data-region="content">
@@ -487,8 +481,10 @@ const toolRegistry = createPackagedToolRegistry({
 });
 
 const toolkit = document.createElement('pie-assessment-toolkit');
-toolkit.setAttribute('pnp-enforcement', 'on');
-toolkit.tools = { placement: { item: ['textToSpeech', 'calculator'] } };
+toolkit.tools = {
+  pnpEnforcement: 'on',
+  placement: { item: ['textToSpeech', 'calculator'] },
+};
 toolkit.toolRegistry = toolRegistry;
 toolkit.toolContextResolvers = toolContextResolvers;
 toolkit.assessment = { id: 'a1', personalNeedsProfile: { supports: ['calculator'] } };
@@ -537,11 +533,11 @@ first item scope that registers. Content that arrives after one of those inputs
 changed binds a coordinator rebuilt from the current values, and the toolbars
 move to it. After that, a change to them is reported once in the console and
 does not reach the coordinator, except a `toolRegistry` given to a toolkit that
-had none, which the coordinator adopts in place; `pnp-enforcement`,
+had none, which the coordinator adopts in place; `tools.pnpEnforcement`,
 `assessment` and `toolContextResolvers` apply to it at any
 time. That
 coordinator reports feature policy asked with no assessment bound only while
-`pnp-enforcement` is `on`: a toolkit given no `assessment` and no enforcement
+`tools.pnpEnforcement` is `on`: a toolkit given no `assessment` and no enforcement
 has asked for no accommodation.
 
 A toolkit nested in another inherits the outer one's coordinator when the outer
@@ -813,7 +809,8 @@ tools: {
   providers: {
     textToSpeech: {
       enabled: true,
-      backend: 'polly'
+      backend: 'server',
+      serverProvider: 'polly'
     }
   }
 }
@@ -829,7 +826,7 @@ You can still set `apiEndpoint` explicitly when your host route is not `/api/tts
 
 ### Inline TTS Speed Options
 
-Inline TTS speed buttons are configurable via `speedOptions` in provider settings.
+Inline TTS speed buttons are configurable via `speedOptions` on the provider config.
 
 ```typescript
 tools: {
@@ -837,9 +834,7 @@ tools: {
     textToSpeech: {
       enabled: true,
       backend: "browser",
-      settings: {
-        speedOptions: [2, 1.25, 1.5] // host options keep this order; Normal is added if omitted
-      }
+      speedOptions: [2, 1.25, 1.5] // host options keep this order; Normal is added if omitted
     }
   }
 }
@@ -856,13 +851,11 @@ tools: {
       enabled: true,
       backend: "server",
       serverProvider: "custom",
-      settings: {
-        speedOptions: [
-          { rate: 0.8, label: "Slow", ariaLabel: "Slow speed" },
-          { rate: 1, label: "Normal", ariaLabel: "Normal speed", default: true },
-          { rate: 1.5, label: "Fast", ariaLabel: "Fast speed" }
-        ]
-      }
+      speedOptions: [
+        { rate: 0.8, label: "Slow", ariaLabel: "Slow speed" },
+        { rate: 1, label: "Normal", ariaLabel: "Normal speed", default: true },
+        { rate: 1.5, label: "Fast", ariaLabel: "Fast speed" }
+      ]
     }
   }
 }
@@ -887,25 +880,15 @@ tools: {
 - Speed choices are exposed as a `Playback speed` radio group: one option is
   always selected, and choosing the already-selected speed is a no-op.
 - If only one speed option remains, the speed group is hidden by default. Set
-  `showSingleSpeedOption: true` in TTS settings to surface that one-option state.
+  `showSingleSpeedOption: true` on the provider config to surface that one-option state.
 
-### Runtime Fallback: Server TTS -> Browser TTS
+### Browser Fallback
 
-When server-backed playback fails at runtime (for example `503`, network outage,
-or synthesized asset fetch failure), `TTSService` now performs a one-time
-runtime fallback for that session:
-
-1. Switches provider from server-backed implementation to browser speech synthesis.
-2. Rebinds highlight callbacks to the browser provider.
-3. Retries the same `speak()` request once.
-
-This keeps the inline/passage TTS controls usable during transient backend
-incidents without requiring host-side reconfiguration.
-
-Telemetry emitted for observability:
-
-- `pie-tool-runtime-fallback` (fallback switch succeeded)
-- `pie-tool-runtime-fallback-error` (fallback switch failed)
+The coordinator owns fallback to browser speech. When a server-backed provider
+fails to initialize, the coordinator re-initializes TTS on the browser backend
+and reports `pie-tool-init-fallback`. `TTSService.initialize` itself rejects
+when its provider fails to start, and a playback failure after initialization
+rejects that read without switching provider.
 
 `provider.runtime.authFetcher` is optional. Add it only when your host environment
 requires runtime auth material for TTS requests:
@@ -915,7 +898,8 @@ tools: {
   providers: {
     textToSpeech: {
       enabled: true,
-      backend: 'polly',
+      backend: 'server',
+      serverProvider: 'polly',
       apiEndpoint: '/api/tts',
       provider: {
         runtime: {
@@ -935,10 +919,10 @@ provider config: a returned `authToken` is sent as `Authorization: Bearer <token
 and returned `headers` with every synthesis request, and under
 `includeAuthOnAssetFetch` the `Authorization` header also reaches the custom
 transport's speech-mark and audio fetches. A failed fetch falls back to browser
-speech and reports `pie-tool-init-error`.
+speech and reports `pie-tool-init-fallback`.
 
 For a server that authenticates by cookie on another origin, set `credentials:
-"include"` in the `textToSpeech` provider settings, beside
+"include"` on the `textToSpeech` provider config, beside
 `includeAuthOnAssetFetch`. The cookie reaches speech-mark and audio fetches only
 for origins in `assetOrigins`; unset, every TTS fetch keeps the browser default.
 
@@ -1070,7 +1054,8 @@ export interface ToolkitCoordinatorConfig {
     providers?: {
       textToSpeech?: {
         enabled?: boolean;
-        backend?: 'browser' | 'polly' | 'google' | 'server';
+        backend?: 'browser' | 'server';
+        serverProvider?: 'polly' | 'google' | 'custom';
         defaultVoice?: string;
         rate?: number;
       };
@@ -1099,12 +1084,7 @@ export interface ToolkitCoordinatorConfig {
 ### Methods
 
 ```typescript
-// Get all services as a bundle
-const services = coordinator.getServiceBundle();
-// Returns: { ttsService, toolCoordinator, highlightCoordinator, elementToolStateStore, catalogResolver }
-
 // Tool configuration
-coordinator.isToolEnabled('textToSpeech');  // Check if tool is enabled
 coordinator.getToolConfig('textToSpeech');  // Get tool-specific config
 coordinator.updateToolConfig('textToSpeech', { rate: 1.5 });  // Update tool config; replaces the tool's provider, which starts again on next use
 
@@ -1418,13 +1398,13 @@ absent because it was never placed, rather than absent because policy said no.
 An item scope applies that item's registered settings, the item restriction and
 requirement rungs; a decision without one applies no item's.
 
-`createEmptyPersonalNeedsProfile()` is the only profile this package ships, and it
-grants nothing. Which capabilities a deployment grants by default is a property
+This package ships no profile. Which capabilities a deployment grants by default is a property
 of the program rather than of a capability — TTS is a universal feature in one
 program and a documented accommodation in another — so it belongs in policy
 configuration alongside the district and test-administration levels. Hosts that
 want today's universal set take `createUniversalPersonalNeedsProfile()` from
-`@pie-players/pie-default-tool-loaders`, which ships it as data.
+`@pie-players/pie-default-tool-loaders`, which ships it as data beside
+`createEmptyPersonalNeedsProfile()`.
 
 Nothing derives a profile from the registry any more. Doing so read registry
 membership as eligibility tier — registration means "policy-addressable", not
@@ -1531,7 +1511,7 @@ player.section = mySection;
 
 // Internally creates:
 // new ToolkitCoordinator({
-//   assessmentId: 'section-demo-direct', // or the assessment-id attribute
+//   assessmentId: 'section-demo-direct', // or runtime.assessmentId
 //   toolRegistry,                        // the player's toolRegistry, else the packaged registry
 //   tools: player.runtime?.tools         // no tools are placed when this is unset
 // })
@@ -1618,8 +1598,7 @@ the vocabulary of its surface: the `SectionEngineInput`s `dispatchInput` takes,
 the `SectionEngineOutput`s `subscribe` delivers, the `SectionEngineState` and
 `SectionEnginePhase` `getState` returns, the cohort helpers (`makeCohort`,
 `cohortsEqual`), the runtime config types with
-`resolveSectionEngineRuntimeState`, and the readiness signals with
-`createReadinessDetail`. The engine core, its adapter and its DOM bridge have no
+`resolveSectionEngineRuntimeState`, and the readiness signals. The engine core, its adapter and its DOM bridge have no
 entry: a host reaches them through the facade.
 
 ### Stage chain
@@ -1783,8 +1762,7 @@ Full TypeScript definitions included:
 import type {
   ToolkitCoordinatorApi,
   ElementToolStateStoreApi,
-  ToolkitCoordinatorConfig,
-  ToolkitServiceBundle
+  ToolkitCoordinatorConfig
 } from '@pie-players/pie-assessment-toolkit';
 ```
 

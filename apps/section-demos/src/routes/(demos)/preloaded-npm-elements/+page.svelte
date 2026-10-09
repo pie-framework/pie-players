@@ -26,7 +26,7 @@
 	import { DEMO_PRELOADED_OPTIONS } from '@pie-players/demo-ui/preloaded';
 	import { registerPreloadedElements } from '@pie-players/pie-item-player/preloaded';
 	import '@pie-players/pie-section-player/components/section-player-splitpane-element';
-	import '@pie-players/pie-section-player/components/section-player-vertical-element';
+	import '@pie-players/pie-section-player';
 	import DemoRuntimeChrome from '#lib/demo-runtime/components/DemoRuntimeChrome.svelte';
 	import {
 		PRELOADED_NPM_PACKAGES,
@@ -142,6 +142,7 @@
 		role: roleType === 'candidate' ? 'student' : 'instructor'
 	} as const;
 	let runtime = $derived({
+		assessmentId: DEMO_ASSESSMENT_ID,
 		playerType: 'preloaded',
 		lazyInit: true,
 		tools: toolkitToolsConfig,
@@ -375,7 +376,6 @@
 		{:else if layoutType === 'vertical'}
 			<pie-section-player-vertical
 				bind:this={playerHostElement}
-				assessment-id={DEMO_ASSESSMENT_ID}
 				section-id={sectionId}
 				attempt-id={attemptId}
 				{runtime}
@@ -386,7 +386,6 @@
 		{:else}
 			<pie-section-player-splitpane
 				bind:this={playerHostElement}
-				assessment-id={DEMO_ASSESSMENT_ID}
 				section-id={sectionId}
 				attempt-id={attemptId}
 				{runtime}

@@ -39,13 +39,12 @@ import type {
 	SectionScopedEventSubscriptionArgs,
 	SectionEventSubscriptionArgs,
 	ToolkitCoordinatorHooks,
-	ToolkitInitStatus,
-	TTSToolConfig,
 } from "./ToolkitCoordinator.js";
 import type { ZIndexLayer } from "./ToolCoordinator.js";
 import type { PlaybackState, TTSConfig } from "./TTSService.js";
 import type { TTSHighlightTargetResolverProvider } from "./tts/highlight-target-resolver.js";
 import type {
+	TextToSpeechToolProviderConfig,
 	ToolPlacementConfig,
 	ToolProviderConfig,
 } from "./tools-config-normalizer.js";
@@ -71,9 +70,7 @@ import type {
 } from "@pie-players/pie-tts";
 import type {
 	ResolvedToolContext,
-	ToolContextResolver,
 	ToolContextResolverContext,
-	ToolContextResolverMap,
 	ToolRegistry,
 } from "./ToolRegistry.js";
 import type { ToolOpenRequest, ToolRequestTarget } from "./tool-request.js";
@@ -112,10 +109,8 @@ export interface HighlightCoordinatorApi {
 	 * (e.g. `<mjx-mi><mjx-c/></mjx-mi>`) and whole-expression fallbacks. Painting
 	 * the element itself is what lets a resolved math token highlight as a token
 	 * rather than escalating to the full `<math>` / `<mjx-container>`.
-	 *
-	 * Optional so lightweight coordinator mocks can omit it.
 	 */
-	highlightTTSWordElement?(element: Element): void;
+	highlightTTSWordElement(element: Element): void;
 
 	/**
 	 * Highlight sentence(s) for TTS (background layer)
@@ -124,10 +119,8 @@ export interface HighlightCoordinatorApi {
 
 	/**
 	 * Highlight sentence/block element targets for TTS (background layer).
-	 *
-	 * Optional so lightweight coordinator mocks can omit it.
 	 */
-	highlightTTSSentenceElements?(elements: Element[]): void;
+	highlightTTSSentenceElements(elements: Element[]): void;
 
 	/**
 	 * Clear all TTS highlights (word and sentence)
@@ -138,11 +131,6 @@ export interface HighlightCoordinatorApi {
 	 * Clear highlights of a specific type
 	 */
 	clearHighlights(type: HighlightType): void;
-
-	/**
-	 * Clear all highlights
-	 */
-	clearAll(): void;
 
 	/**
 	 * Check if highlighting is supported in current environment
@@ -407,14 +395,9 @@ export interface TtsServiceApi {
 	getCurrentText(): string | null;
 
 	/**
-	 * Subscribe to state changes
+	 * Subscribe to state changes. Returns the function that unsubscribes.
 	 */
-	onStateChange(id: string, callback: (state: PlaybackState) => void): void;
-
-	/**
-	 * Unsubscribe from state changes
-	 */
-	offStateChange(id: string, callback: (state: PlaybackState) => void): void;
+	onStateChange(callback: (state: PlaybackState) => void): () => void;
 
 	/**
 	 * Get capabilities of current provider
@@ -669,18 +652,6 @@ export interface ToolkitCoordinatorApi {
 	readonly toolProviderRegistry: ToolProviderRegistry;
 
 	/**
-	 * Get all services as a bundle
-	 */
-	getServiceBundle(): {
-		ttsService: TtsServiceApi;
-		toolCoordinator: ToolCoordinatorApi;
-		highlightCoordinator: HighlightCoordinatorApi;
-		elementToolStateStore: ElementToolStateStoreApi;
-		catalogResolver: AccessibilityCatalogResolverApi;
-		toolProviderRegistry: ToolProviderRegistry;
-	};
-
-	/**
 	 * Ensure TTS service is initialized and ready.
 	 */
 	ensureTTSReady(config?: Record<string, unknown>): Promise<void>;
@@ -704,25 +675,14 @@ export interface ToolkitCoordinatorApi {
 	isReady(): boolean;
 
 	/**
-	 * Read current initialization status.
+	 * Subscribe to changes of {@link isReady}.
 	 */
-	getInitStatus(): ToolkitInitStatus;
-
-	/**
-	 * Subscribe to changes of {@link isReady}. Optional: a host-supplied
-	 * coordinator may predate it.
-	 */
-	onReadyChange?(listener: () => void): () => void;
-
-	/**
-	 * Check if a tool is enabled
-	 */
-	isToolEnabled(toolId: string): boolean;
+	onReadyChange(listener: () => void): () => void;
 
 	/**
 	 * Get tool configuration
 	 */
-	getToolConfig(toolId: "textToSpeech"): TTSToolConfig | null;
+	getToolConfig(toolId: "textToSpeech"): TextToSpeechToolProviderConfig | null;
 	getToolConfig(toolId: string): ToolProviderConfig | null;
 
 	/**
@@ -730,7 +690,7 @@ export interface ToolkitCoordinatorApi {
 	 */
 	updateToolConfig(
 		toolId: "textToSpeech",
-		updates: Partial<TTSToolConfig>,
+		updates: Partial<TextToSpeechToolProviderConfig>,
 	): void;
 	updateToolConfig(toolId: string, updates: Partial<ToolProviderConfig>): void;
 
@@ -884,7 +844,7 @@ export interface ToolkitCoordinatorApi {
 	decideToolPolicy(request: ToolPolicyDecisionRequest): ToolPolicyDecision;
 
 	/**
-	 * Resolve eligibility for one PNP/AfA feature id through the seven-level
+	 * Resolve eligibility for one PNP/AfA feature id through the eight-level
 	 * precedence, independent of toolbar placement — for capabilities that
 	 * render as their own surface rather than a toolbar button (a signed
 	 * alternate's region, for example).
@@ -974,21 +934,6 @@ export interface ToolkitCoordinatorApi {
 	 * (the returned function detaches).
 	 */
 	registerPolicySource(source: PolicySource): () => void;
-
-	/**
-	 * Register a host-owned resolver for scoped tool render context.
-	 */
-	registerToolContextResolver(
-		toolId: string,
-		resolver: ToolContextResolver,
-	): () => void;
-
-	/**
-	 * Replace all host-owned render-context resolvers.
-	 */
-	setToolContextResolvers(
-		resolvers: ToolContextResolverMap | null | undefined,
-	): void;
 
 	/**
 	 * Whether a host resolver is registered for this tool.

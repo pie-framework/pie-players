@@ -21,6 +21,7 @@
 	} from "./section-player-layout-context.js";
 	import type {
 		SectionControllerHandle,
+		ToolConfigStrictness,
 		ToolkitCoordinatorApi,
 	} from "@pie-players/pie-assessment-toolkit";
 	import { coerceBooleanLike } from "@pie-players/pie-players-shared";
@@ -28,6 +29,9 @@
 
 	let {
 		runtime = null as Record<string, unknown> | null,
+		ndsIcons = undefined as boolean | undefined,
+		locale = "",
+		toolConfigStrictness = undefined as ToolConfigStrictness | undefined,
 		section = null as AssessmentSection | null,
 		session = null as SectionControllerSessionState | null,
 		assessment = null as AssessmentEntity | null,
@@ -46,6 +50,9 @@
 		onToolkitReady,
 	} = $props<{
 		runtime?: Record<string, unknown> | null;
+		ndsIcons?: boolean;
+		locale?: string;
+		toolConfigStrictness?: ToolConfigStrictness;
 		section?: AssessmentSection | null;
 		session?: SectionControllerSessionState | null;
 		assessment?: AssessmentEntity | null;
@@ -62,10 +69,8 @@
 		onSectionReady?: (event: Event) => void;
 		/**
 		 * Internal scaffold-level event-listener for `framework-error` DOM
-		 * events. Distinct from the canonical, model-shape
-		 * `onFrameworkError` prop on `SectionPlayerLayoutKernel` and the
-		 * layout custom elements: the scaffold does not own the canonical
-		 * model contract — it only re-emits raw events to its consumer.
+		 * events. The model-shape callback is `runtime.onFrameworkError`; the
+		 * scaffold only hands the raw event to its consumer.
 		 */
 		onFrameworkErrorEvent?: (event: Event) => void;
 		onToolkitReady?: (event: Event) => void;
@@ -261,6 +266,9 @@
 <pie-section-player-base
 	bind:this={baseElement}
 	{runtime}
+	{ndsIcons}
+	{locale}
+	{toolConfigStrictness}
 	{section}
 	{session}
 	{assessment}

@@ -20,12 +20,7 @@
 		"wcag"
 	],
 	"main": "./dist/calculator-element.js",
-	"types": "./dist/calculator-element.d.ts",
 	"exports": {
-		".": {
-			"types": "./dist/calculator-element.d.ts",
-			"import": "./dist/calculator-element.js"
-		},
 		"./calculator-element": {
 			"types": "./dist/calculator-element.d.ts",
 			"import": "./dist/calculator-element.js"

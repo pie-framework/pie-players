@@ -3,7 +3,6 @@ import {
 	type CanonicalToolsConfig,
 	type ToolPlacementLevel,
 	type ToolProviderConfig,
-	type TextToSpeechToolProviderConfig,
 	type ToolsConfigInput,
 } from "./tools-config-normalizer.js";
 import {
@@ -97,18 +96,13 @@ function getRegistryToolMap(
 
 function sanitizeToolConfig(
 	toolId: string,
-	providerConfig:
-		| ToolProviderConfig
-		| TextToSpeechToolProviderConfig
-		| undefined,
+	providerConfig: ToolProviderConfig | undefined,
 	tool: ToolRegistration | undefined,
 	diagnostics: ToolConfigDiagnostic[],
-): ToolProviderConfig | TextToSpeechToolProviderConfig | undefined {
+): ToolProviderConfig | undefined {
 	if (!providerConfig || !tool?.sanitizeConfig) return providerConfig;
 	try {
-		const sanitized = tool.sanitizeConfig(
-			providerConfig as ToolProviderConfig,
-		);
+		const sanitized = tool.sanitizeConfig(providerConfig);
 		if (
 			!sanitized ||
 			typeof sanitized !== "object" ||
@@ -125,7 +119,7 @@ function sanitizeToolConfig(
 			);
 			return providerConfig;
 		}
-		return sanitized as ToolProviderConfig | TextToSpeechToolProviderConfig;
+		return sanitized;
 	} catch (error) {
 		diagnostics.push(
 			createDiagnostic({
@@ -144,18 +138,13 @@ function sanitizeToolConfig(
 
 function validateToolConfig(
 	toolId: string,
-	providerConfig:
-		| ToolProviderConfig
-		| TextToSpeechToolProviderConfig
-		| undefined,
+	providerConfig: ToolProviderConfig | undefined,
 	tool: ToolRegistration | undefined,
 	diagnostics: ToolConfigDiagnostic[],
 ): void {
 	if (!providerConfig || !tool?.validateConfig) return;
 	try {
-		const toolDiagnostics = tool.validateConfig(
-			providerConfig as ToolProviderConfig,
-		);
+		const toolDiagnostics = tool.validateConfig(providerConfig);
 		if (!Array.isArray(toolDiagnostics)) {
 			diagnostics.push(
 				createDiagnostic({

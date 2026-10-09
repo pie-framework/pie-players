@@ -6,8 +6,14 @@
 		// page styles reach them.
 		shadow: "open",
 		props: {
-			assessmentId: { attribute: "assessment-id", type: "String" },
 			runtime: { type: "Object", reflect: false },
+			// Presentation flag: opt in to NDS icon buttons. Unset renders plain
+			// <button>s.
+			ndsIcons: { attribute: "nds-icons", type: "Boolean" },
+			// Interface locale: the language the player renders its own UI in, as a
+			// BCP-47 tag. Unset renders `en-US`. Distinct from the authored content
+			// language, which travels on `runtime.contentLanguage`.
+			locale: { attribute: "locale", type: "String" },
 			section: { type: "Object", reflect: false },
 			// The section's session, applied by the controller created for
 			// `section` in place of hydrating from the persistence strategy.
@@ -35,22 +41,17 @@
 				attribute: "tool-config-strictness",
 				type: "String",
 			},
-			onFrameworkError: { type: "Object", reflect: false },
-			// Callback form of `pie-stage-change`; `runtime.onStageChange` wins.
-			onStageChange: { type: "Object", reflect: false },
-			// Callback form of `pie-loading-complete`, invoked at the same emit
-			// point; `runtime.onLoadingComplete` wins.
-			onLoadingComplete: { type: "Object", reflect: false },
 		},
 		// The host methods, callable before the component mounts.
-		extend: withHostMethods(BOOTSTRAP_READS),
+		extend: (ElementClass) =>
+			coerceBooleanAttributes(withHostMethods(BOOTSTRAP_SNAPSHOT)(ElementClass)),
 	}}
 />
 
 <script lang="ts">
-	import { createEventDispatcher, mount, unmount } from "svelte";
+	import { mount, unmount } from "svelte";
+	import { coerceBooleanAttributes } from "@pie-players/pie-players-shared/ui/attribute-coercion";
 	import type {
-		FrameworkErrorModel,
 		ToolConfigStrictness,
 		ToolRegistry,
 		ToolbarItem,
@@ -67,8 +68,6 @@
 	import SectionPlayerKernelHostBody from "./shared/SectionPlayerKernelHostBody.svelte";
 	import { attachKernelHostDefaultBody } from "./shared/kernel-host-default-body.js";
 	import {
-		BOOTSTRAP_READINESS,
-		BOOTSTRAP_READS,
 		BOOTSTRAP_SNAPSHOT,
 		withHostMethods,
 	} from "./shared/layout-host-methods.js";
@@ -77,18 +76,15 @@
 		SectionPlayerSnapshot,
 	} from "../contracts/runtime-host-contract.js";
 	import type { SectionPlayerHostHooks } from "../contracts/host-hooks.js";
-	import type {
-		RuntimeConfig,
-		StageChangeHandler,
-		LoadingCompleteHandler,
-	} from "@pie-players/pie-assessment-toolkit/runtime/engine";
+	import type { RuntimeConfig } from "@pie-players/pie-assessment-toolkit/runtime/engine";
 	import type { SectionPlayerPolicies } from "../policies/types.js";
-	import { isTelemetryEnabled } from "../policies/index.js";
+	import { resolveSectionPlayerPolicies } from "../policies/index.js";
 	import { getHostElementFromAnchor } from "./shared/host-element.js";
 
 	let {
-		assessmentId,
 		runtime = null as RuntimeConfig | null,
+		ndsIcons = undefined as boolean | undefined,
+		locale = "",
 		section = null,
 		session = null,
 		assessment = null,
@@ -106,19 +102,8 @@
 		policies = undefined as Partial<SectionPlayerPolicies> | undefined,
 		hooks = undefined as SectionPlayerHostHooks | undefined,
 		toolConfigStrictness = undefined as ToolConfigStrictness | undefined,
-		onFrameworkError = undefined as
-			| undefined
-			| ((model: FrameworkErrorModel) => void),
-		onStageChange = undefined as StageChangeHandler | undefined,
-		onLoadingComplete = undefined as LoadingCompleteHandler | undefined,
 	} = $props();
-	// Two-tier resolution for `onFrameworkError` is handled by the
-	// kernel's resolver (`resolveSectionPlayerRuntimeState` →
-	// `effectiveRuntime.onFrameworkError`); the CE forwards the
-	// top-level prop and `runtime` verbatim and the resolver picks
-	// `runtime.onFrameworkError` over `onFrameworkError`.
 
-	const dispatch = createEventDispatcher();
 	let anchor = $state<HTMLDivElement | null>(null);
 	let kernelRef = $state<SectionPlayerRuntimeHostContract | null>(null);
 	const instrumentationProvider = $derived.by(() =>
@@ -131,23 +116,7 @@
 	const hostElement = $derived.by(() => getHostElementFromAnchor(anchor));
 
 	export function getSnapshot(): SectionPlayerSnapshot {
-		return {
-			readiness: selectReadiness(),
-			composition: selectComposition(),
-			navigation: selectNavigation(),
-		};
-	}
-
-	export function selectComposition(): SectionPlayerSnapshot["composition"] {
-		return kernelRef?.selectComposition?.() || BOOTSTRAP_SNAPSHOT.composition;
-	}
-
-	export function selectNavigation(): SectionPlayerSnapshot["navigation"] {
-		return kernelRef?.selectNavigation?.() || BOOTSTRAP_SNAPSHOT.navigation;
-	}
-
-	export function selectReadiness(): SectionPlayerSnapshot["readiness"] {
-		return kernelRef?.selectReadiness?.() || BOOTSTRAP_READINESS;
+		return kernelRef?.getSnapshot?.() || BOOTSTRAP_SNAPSHOT;
 	}
 
 	export function navigateTo(_index: number): boolean {
@@ -166,10 +135,11 @@
 		return kernelRef?.getSectionController?.() || null;
 	}
 
-	function reemit(event: Event) {
-		const customEvent = event as CustomEvent;
-		dispatch(customEvent.type, customEvent.detail);
-	}
+	const layoutElement = $host();
+	const forwardPreloadRetry = (detail: Record<string, unknown>) =>
+		layoutElement.dispatchEvent(new CustomEvent("element-preload-retry", { detail }));
+	const forwardPreloadError = (detail: Record<string, unknown>) =>
+		layoutElement.dispatchEvent(new CustomEvent("element-preload-error", { detail }));
 
 	// A host that places its own panes as children gets its layout; one that
 	// gives the element none gets the stock one.
@@ -188,7 +158,7 @@
 		// `policies.telemetry.enabled === false` skips instrumentation bridge
 		// setup entirely so hosts that opt out emit no `pie-section-*`
 		// telemetry events through the bridge.
-		if (!isTelemetryEnabled(policies)) return;
+		if (!resolveSectionPlayerPolicies(policies).telemetry.enabled) return;
 		const localHost = hostElement;
 		return attachInstrumentationEventBridge({
 			host: localHost,
@@ -197,7 +167,7 @@
 			eventMap: SECTION_INSTRUMENTATION_EVENT_MAP,
 			staticAttributes: {
 				instrumentationLayer: "section",
-				assessmentId,
+				assessmentId: runtime?.assessmentId,
 				sectionId,
 				attemptId: attemptId || undefined,
 			},
@@ -215,15 +185,15 @@
 	// `section-ready`) bubble to it from the toolkit, so
 	// outside listeners on `<pie-section-player-kernel-host>` see each once
 	// without any CE-level re-emission. Snapshots are read on demand from
-	// the kernel, which owns the canonical composition, navigation and
-	// readiness state.
+	// the kernel, which owns the composition and navigation state.
 </script>
 
 <div bind:this={anchor} class="pie-section-player-observability-anchor" aria-hidden="true"></div>
 <SectionPlayerLayoutKernel
 	bind:this={kernelRef}
-	{assessmentId}
 	{runtime}
+	{ndsIcons}
+	{locale}
 	{section}
 	{session}
 	{assessment}
@@ -241,13 +211,10 @@
 	{policies}
 	{hooks}
 	{toolConfigStrictness}
-	{onFrameworkError}
-	{onStageChange}
-	{onLoadingComplete}
 	sourceCe="pie-section-player-kernel-host"
 	host={hostElement}
-	on:element-preload-retry={reemit}
-	on:element-preload-error={reemit}
+	onElementPreloadRetry={forwardPreloadRetry}
+	onElementPreloadError={forwardPreloadError}
 >
 	<slot></slot>
 </SectionPlayerLayoutKernel>

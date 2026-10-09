@@ -18,6 +18,7 @@
 		browserVoiceMatchesLanguage,
 		connectToolRuntimeContext,
 		findBrowserVoice,
+		waitForBrowserVoices,
 	} from "@pie-players/pie-assessment-toolkit/tools/registration";
 	import {
 		BrowserTTSProvider,
@@ -38,7 +39,7 @@
 		type TTSSpeedOption,
 		type TTSLayoutMode,
 	} from "@pie-players/pie-assessment-toolkit/tools/registration";
-	import { createEventDispatcher, onDestroy, onMount, untrack } from "svelte";
+	import { onDestroy, onMount, untrack } from "svelte";
 
 	type BuiltInBackendTab = "browser" | "polly" | "google";
 	type BackendTab = BuiltInBackendTab | string;
@@ -158,7 +159,6 @@ type PreviewSpeechMark = { time: number; start: number; end: number; value?: str
 
 	type CustomProviderDescriptor = CustomProviderAdapter | CustomProviderComponent;
 
-	const dispatch = createEventDispatcher<{ close: undefined }>();
 	const DEFAULT_API_ENDPOINT = "/api/tts";
 	const DEFAULT_STORAGE_KEY = "pie:section-player-tools:tts-settings";
 	const TTS_MODAL_Z_INDEX = 200000;
@@ -178,7 +178,10 @@ type PreviewSpeechMark = { time: number; start: number; end: number; value?: str
 	} = $props();
 
 	type PersistedTTSSettings = {
-		backend?: string;
+		backend?: "browser" | "server";
+		serverProvider?: "polly" | "google" | "custom";
+		/** The panel tab that applied these settings; never sent to the coordinator. */
+		tab?: BackendTab;
 		apiEndpoint?: string;
 		defaultVoice?: string;
 		rate?: number;
@@ -427,7 +430,7 @@ function browserVoiceIdentity(voice: DemoVoice): string {
 	});
 
 	function requestClose(): void {
-		dispatch("close");
+		$host().dispatchEvent(new CustomEvent("close"));
 	}
 
 	function createProviderContext(
@@ -447,6 +450,19 @@ function browserVoiceIdentity(voice: DemoVoice): string {
 		return tab === "browser" || tab === "polly" || tab === "google";
 	}
 
+	/** The tab that owns `source`: its stored `tab`, else the built-in tab its backend names. */
+	function resolveSourceTab(source: Record<string, unknown>): BackendTab | null {
+		if (typeof source.tab === "string" && source.tab.trim().length > 0) return source.tab;
+		if (source.backend === "browser") return "browser";
+		if (
+			source.backend === "server" &&
+			(source.serverProvider === "polly" || source.serverProvider === "google")
+		) {
+			return source.serverProvider;
+		}
+		return null;
+	}
+
 	function buildAvailabilityState(result?: ProviderAvailabilityResult | null): AvailabilityState {
 		const available = result?.available === true;
 		return {
@@ -457,45 +473,6 @@ function browserVoiceIdentity(voice: DemoVoice): string {
 			detail: result?.detail || null,
 			voices: []
 		};
-	}
-
-	function waitForBrowserVoices(synth: SpeechSynthesis, timeoutMs = 1200): Promise<void> {
-		return new Promise<void>((resolve) => {
-			let settled = false;
-			const canUseEventTarget =
-				typeof synth.addEventListener === "function" &&
-				typeof synth.removeEventListener === "function";
-			const canUseHandler = !canUseEventTarget && "onvoiceschanged" in synth;
-			const previousHandler = canUseHandler ? synth.onvoiceschanged : null;
-			let assignedHandler = false;
-			let timeout: number;
-
-			const finish = () => {
-				if (settled) return;
-				settled = true;
-				window.clearTimeout(timeout);
-				if (canUseEventTarget) {
-					synth.removeEventListener("voiceschanged", onVoicesChanged);
-				} else if (assignedHandler && synth.onvoiceschanged === onVoicesChanged) {
-					synth.onvoiceschanged = previousHandler;
-				}
-				resolve();
-			};
-			const onVoicesChanged = (event?: Event) => {
-				if (!canUseEventTarget && typeof previousHandler === "function" && event) {
-					previousHandler.call(synth, event);
-				}
-				finish();
-			};
-
-			timeout = window.setTimeout(finish, timeoutMs);
-			if (canUseEventTarget) {
-				synth.addEventListener("voiceschanged", onVoicesChanged, { once: true });
-			} else if (canUseHandler) {
-				synth.onvoiceschanged = onVoicesChanged;
-				assignedHandler = true;
-			}
-		});
 	}
 
 	function getCustomProviderOrThrow(providerId: string): CustomProviderDescriptor {
@@ -619,9 +596,9 @@ function browserVoiceIdentity(voice: DemoVoice): string {
 		const stored = readStoredSettings();
 		const source = mergeStoredSettings(existing, stored);
 		const resolvedDefaultApiEndpoint = getDefaultApiEndpoint();
-		const backend = source?.backend;
-		if (typeof backend === "string" && backend.trim().length > 0) {
-			activeTab = backend;
+		const sourceTab = resolveSourceTab(source);
+		if (sourceTab) {
+			activeTab = sourceTab;
 		}
 
 		const defaultVoice = typeof source?.defaultVoice === "string" ? source.defaultVoice : "";
@@ -632,9 +609,9 @@ function browserVoiceIdentity(voice: DemoVoice): string {
 				? source.apiEndpoint
 				: resolvedDefaultApiEndpoint;
 		const defaultPollyEndpoint =
-			backend === "polly" ? defaultEndpoint : resolvedDefaultApiEndpoint;
+			sourceTab === "polly" ? defaultEndpoint : resolvedDefaultApiEndpoint;
 		const defaultGoogleEndpoint =
-			backend === "google" ? defaultEndpoint : resolvedDefaultApiEndpoint;
+			sourceTab === "google" ? defaultEndpoint : resolvedDefaultApiEndpoint;
 		const defaultLanguage =
 			typeof source?.language === "string" && source.language.trim().length > 0
 				? source.language
@@ -695,7 +672,7 @@ function browserVoiceIdentity(voice: DemoVoice): string {
 				? "word+sentence"
 				: "word";
 
-		browserVoice = backend === "browser" ? defaultVoice : "";
+		browserVoice = sourceTab === "browser" ? defaultVoice : "";
 		browserRate = defaultRate;
 		browserPitch = defaultPitch;
 
@@ -705,7 +682,7 @@ function browserVoiceIdentity(voice: DemoVoice): string {
 		pollySampleRate = defaultSampleRate;
 		pollyFormat = defaultFormat;
 		pollySpeechMarksMode = defaultSpeechMarksMode;
-		pollyVoice = backend === "polly" ? defaultVoice : "";
+		pollyVoice = sourceTab === "polly" ? defaultVoice : "";
 		pollyRate = defaultRate;
 
 		googleApiEndpoint = defaultGoogleEndpoint;
@@ -717,7 +694,7 @@ function browserVoiceIdentity(voice: DemoVoice): string {
 			source?.googleVoiceType === "wavenet"
 				? source.googleVoiceType
 				: "wavenet";
-		googleVoice = backend === "google" ? defaultVoice : "";
+		googleVoice = sourceTab === "google" ? defaultVoice : "";
 		googleRate = defaultRate;
 		if (!isBuiltInTab(activeTab)) {
 			const persistedCustomState =
@@ -808,7 +785,7 @@ function browserVoiceIdentity(voice: DemoVoice): string {
 			const synth = window.speechSynthesis;
 			let voices = synth.getVoices();
 			if (!voices.length) {
-				await waitForBrowserVoices(synth);
+				await waitForBrowserVoices(synth, 1200);
 				voices = synth.getVoices();
 			}
 
@@ -1484,7 +1461,7 @@ function normalizePreviewSpeechMarkOffsets(
 		browserPreviewHost = host;
 		service.setHighlightCoordinator(trackPreviewWords());
 		// Playback start highlights the first word, ahead of its first boundary.
-		service.onStateChange("tts-settings-preview", (state) => {
+		service.onStateChange((state) => {
 			if (state !== PlaybackState.PLAYING || previewTrackIndex >= 0) return;
 			const firstWord = /\S+/.exec(host.textContent || "");
 			if (!firstWord) return;
@@ -1595,7 +1572,6 @@ function normalizePreviewSpeechMarkOffsets(
 	// config update shallowly over the one in place.
 	const BACKEND_CONFIG_FIELDS = {
 		serverProvider: undefined,
-		provider: undefined,
 		apiEndpoint: undefined,
 		transportMode: undefined,
 		endpointMode: undefined,
@@ -1682,8 +1658,8 @@ function normalizePreviewSpeechMarkOffsets(
 					mathTokenHighlighting,
 				});
 				persistSettings({
-					backend: provider.id,
 					...(next.config || {}),
+					tab: provider.id,
 					layoutMode,
 					speedOptions: appliedSpeedOptions,
 					mathTokenHighlighting,
@@ -1716,7 +1692,7 @@ function normalizePreviewSpeechMarkOffsets(
 				};
 				const next = {
 					...BACKEND_CONFIG_FIELDS,
-					backend: "polly" as const,
+					backend: "server" as const,
 					serverProvider: "polly" as const,
 					apiEndpoint: normalizeApiEndpoint(pollyApiEndpoint, getDefaultApiEndpoint()),
 					transportMode: "pie" as const,
@@ -1742,9 +1718,9 @@ function normalizePreviewSpeechMarkOffsets(
 			} else {
 				const next = {
 					...BACKEND_CONFIG_FIELDS,
-					backend: "google" as const,
-					providerOptions: backendProviderOptions(),
+					backend: "server" as const,
 					serverProvider: "google" as const,
+					providerOptions: backendProviderOptions(),
 					apiEndpoint: normalizeApiEndpoint(googleApiEndpoint, getDefaultApiEndpoint()),
 					transportMode: "pie" as const,
 					endpointMode: "synthesizePath" as const,

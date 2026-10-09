@@ -80,7 +80,7 @@ export function watchMissingToolProviders(
 		}
 		if (ready) reportMissingToolProviders(coordinator, toolRegistry);
 	};
-	const stopFollowingReadiness = coordinator.onReadyChange?.(check);
+	const stopFollowingReadiness = coordinator.onReadyChange(check);
 	const stopFollowingPolicy = coordinator.onPolicyChange((event) => {
 		if (event.reason === "disposed") {
 			stopped = true;

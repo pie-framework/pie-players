@@ -162,31 +162,6 @@ describe("ToolkitCoordinator policy-engine integration", () => {
 		).toEqual([]);
 	});
 
-	test("tool context resolver registration emits changes and removes cleanly", () => {
-		const coord = makeCoordinator({
-			tools: {
-				placement: {
-					item: ["calculator"],
-				},
-			},
-		});
-		let changes = 0;
-		coord.onToolContextResolverChange(() => {
-			changes += 1;
-		});
-
-		const dispose = coord.registerToolContextResolver("calculator", () => ({
-			visible: false,
-			reason: "item did not request calculator",
-		}));
-
-		expect(changes).toBe(1);
-		expect(coord.hasToolContextResolver("calculator")).toBe(true);
-		dispose();
-		expect(changes).toBe(2);
-		expect(coord.hasToolContextResolver("calculator")).toBe(false);
-	});
-
 	test("setToolContextResolvers replaces the resolver map and emits one change", () => {
 		const coord = makeCoordinator({
 			tools: {
@@ -514,7 +489,7 @@ describe("ToolkitCoordinator policy-engine integration", () => {
 		// `PieAssessmentToolkit.svelte` applies override → assessment in
 		// that order. The contract this guards: when a host
 		// configures `assessment={x}` (carrying profile material) and
-		// `pnp-enforcement="off"` in one render, no intermediate
+		// `tools.pnpEnforcement: "off"` in one render, no intermediate
 		// `onPolicyChange` snapshot should ever expose
 		// `pnpEnforcement === "on"`. Attach the listener BEFORE the two
 		// calls so we capture every emission (including the

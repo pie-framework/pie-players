@@ -96,9 +96,6 @@ class ScriptedProvider implements ITTSProvider {
 	async initialize(_config: TTSConfig): Promise<ITTSProviderImplementation> {
 		return this.impl;
 	}
-	supportsFeature(): boolean {
-		return true;
-	}
 	getCapabilities(): TTSProviderCapabilities {
 		return {
 			supportsPause: true,
@@ -203,13 +200,12 @@ describe("a pause between the parts of a run", () => {
 		let mediaSilenced = 0;
 		const unbind = bindTtsAudioHandoff({
 			ttsService: service,
-			listenerId: "media-surface",
 			silence: () => {
 				mediaSilenced += 1;
 			},
 		});
 		const states: PlaybackState[] = [];
-		service.onStateChange("probe", (state) => states.push(state));
+		service.onStateChange((state) => states.push(state));
 
 		const playback = service.speak(contentWith("First. Second."));
 		await waitFor(() => impl.speakCalls.length === 1);
@@ -239,7 +235,6 @@ describe("a pause between the parts of a run", () => {
 		let mediaSilenced = 0;
 		const unbind = bindTtsAudioHandoff({
 			ttsService: service,
-			listenerId: "media-surface",
 			silence: () => {
 				mediaSilenced += 1;
 			},
@@ -381,7 +376,6 @@ describe("a pause or stop while the read loads", () => {
 		let mediaSilenced = 0;
 		const unbind = bindTtsAudioHandoff({
 			ttsService: service,
-			listenerId: "media-surface",
 			silence: () => {
 				mediaSilenced += 1;
 			},
@@ -483,7 +477,7 @@ describe("TTSService dispose", () => {
 		impl.holdSpeech = true;
 		const playback = service.speak(contentWith("Read this."));
 		await waitFor(() => impl.speakCalls.length === 1);
-		service.onStateChange("probe", () => {
+		service.onStateChange(() => {
 			notified += 1;
 		});
 

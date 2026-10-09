@@ -150,3 +150,26 @@ test("a browser apply replaces the fields a server backend set", async () => {
 	});
 	expect(updates[0].providerOptions).toEqual({ locale: "en-GB" });
 });
+
+test("a server backend opens the tab of its server provider", async () => {
+	// Settings an earlier apply persisted would win over the coordinator's.
+	window.localStorage.clear();
+	const panel = document.createElement(
+		"pie-section-player-tools-tts-settings",
+	) as HTMLElement & { toolkitCoordinator: unknown; adapters: unknown };
+	panel.adapters = { fetchGoogleVoices: async () => [] };
+	panel.toolkitCoordinator = {
+		getToolConfig: () => ({ backend: "server", serverProvider: "google" }),
+		updateToolConfig: () => {},
+	};
+	document.body.append(panel);
+	await settle();
+	await settle();
+
+	const pressed = Array.from(
+		panel.querySelectorAll<HTMLButtonElement>(".pie-tts-tabs button"),
+	)
+		.filter((button) => button.getAttribute("aria-pressed") === "true")
+		.map((button) => button.textContent?.trim());
+	expect(pressed).toEqual(["Google"]);
+});

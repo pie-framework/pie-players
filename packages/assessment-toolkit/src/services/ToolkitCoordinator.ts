@@ -58,9 +58,7 @@ import {
 	buildRuntimeTTSConfig,
 	resolveTTSBackend,
 	resolveTTSRuntimeSettings,
-	type TTSRuntimeSettings,
 } from "./tts-runtime-config.js";
-import type { SREMathSpeechOptions } from "./tts/math-speech.js";
 import { ToolProviderRegistry } from "./tool-providers/index.js";
 import type { ToolProviderApi } from "./tool-providers/ToolProviderApi.js";
 
@@ -136,61 +134,21 @@ class SectionControllerRetiredError extends Error {
 	}
 }
 
-/**
- * Generic tool configuration
- */
-export interface ToolConfig {
-	enabled?: boolean;
-	provider?: unknown;
-	settings?: Record<string, unknown>;
-	[key: string]: unknown;
-}
-
-/**
- * TTS configuration as a host writes it.
- *
- * The field set is `TTSRuntimeSettings`, which the runtime resolver owns: the two
- * were declared separately and had already drifted in both directions, so a field
- * the runtime honoured could not be named here. What this adds is the one thing
- * only a host-facing config has — a place to stash unrecognised keys, which the
- * resolved runtime settings do not carry.
- *
- * `provider` is typed from the `textToSpeech` tools-config entry instead: a host
- * gives either a server provider id or a runtime provider object, whose
- * `runtime.authFetcher` the TTS registration reads, and `TTSRuntimeSettings`
- * names only the id. The entry is therefore assignable to this type, which is
- * what `getToolConfig("textToSpeech")` returns.
- */
-export type TTSToolConfig = ToolConfig &
-	Omit<TTSRuntimeSettings, "provider"> & {
-		provider?: TextToSpeechToolProviderConfig["provider"];
-		settings?: Record<string, unknown> & { mathSpeech?: SREMathSpeechOptions };
-	};
-
 const isPlainRecord = (value: unknown): value is Record<string, unknown> =>
 	!!value && typeof value === "object" && !Array.isArray(value);
 
 const mergeToolConfigUpdate = (
 	toolId: string,
-	current: ToolConfig,
-	updates: Partial<ToolProviderConfig> | Partial<TTSToolConfig>,
-): ToolConfig => {
+	current: ToolProviderConfig,
+	updates: Partial<ToolProviderConfig>,
+): ToolProviderConfig => {
 	const next = { ...current, ...updates };
 	if (
 		toolId === "textToSpeech" &&
-		isPlainRecord(current.settings) &&
-		isPlainRecord(updates.settings)
+		isPlainRecord(current.mathSpeech) &&
+		isPlainRecord(updates.mathSpeech)
 	) {
-		next.settings = { ...current.settings, ...updates.settings };
-		if (
-			isPlainRecord(current.settings.mathSpeech) &&
-			isPlainRecord(updates.settings.mathSpeech)
-		) {
-			next.settings.mathSpeech = {
-				...current.settings.mathSpeech,
-				...updates.settings.mathSpeech,
-			};
-		}
+		next.mathSpeech = { ...current.mathSpeech, ...updates.mathSpeech };
 	}
 	return next;
 };
@@ -330,13 +288,6 @@ export interface ToolkitErrorContext {
 
 export interface ProviderLifecycleContext {
 	providerName?: string;
-}
-
-export interface ToolkitInitStatus {
-	tts: boolean;
-	stateLoaded: boolean;
-	coordinator: boolean;
-	providers: Record<string, boolean>;
 }
 
 export interface SectionControllerLifecycleEvent {
@@ -563,18 +514,6 @@ export type ToolkitTelemetryListener = (args: {
 	eventName: string;
 	payload?: Record<string, unknown>;
 }) => void;
-
-/**
- * Service bundle returned by getServiceBundle()
- */
-export interface ToolkitServiceBundle {
-	ttsService: TTSService;
-	toolCoordinator: ToolCoordinator;
-	highlightCoordinator: HighlightCoordinator;
-	elementToolStateStore: ElementToolStateStore;
-	catalogResolver: AccessibilityCatalogResolver;
-	toolProviderRegistry: ToolProviderRegistry;
-}
 
 /**
  * ToolkitCoordinator - Orchestrates all assessment toolkit services
@@ -2581,7 +2520,9 @@ export class ToolkitCoordinator {
 	/**
 	 * Initialize TTS service with provider
 	 */
-	public async ensureTTSReady(config?: TTSToolConfig): Promise<void> {
+	public async ensureTTSReady(
+		config?: TextToSpeechToolProviderConfig,
+	): Promise<void> {
 		this.assertNotDisposed();
 		await this.waitForPendingTTSReconfigure();
 		this.assertNotDisposed();
@@ -2604,7 +2545,9 @@ export class ToolkitCoordinator {
 		}
 	}
 
-	private async _initializeTTS(config?: TTSToolConfig): Promise<void> {
+	private async _initializeTTS(
+		config?: TextToSpeechToolProviderConfig,
+	): Promise<void> {
 		if (this.ttsInitialized) return;
 		const resolvedToolConfig = this.resolveTTSToolConfig(config);
 		const runtimeSettings = resolveTTSRuntimeSettings(resolvedToolConfig);
@@ -2647,14 +2590,6 @@ export class ToolkitCoordinator {
 				if (error instanceof ToolkitCoordinatorDisposedError) throw error;
 				const normalized =
 					error instanceof Error ? error : new Error(String(error));
-				await this.emitTelemetry("pie-tool-init-error", {
-					toolId: "textToSpeech",
-					operation: "tts-init",
-					backend: resolvedBackend,
-					errorType: "TTSRegistryInitError",
-					message: normalized.message,
-					recovered: true,
-				});
 				await this.emitTelemetry("pie-tool-init-fallback", {
 					toolId: "textToSpeech",
 					operation: "tts-init",
@@ -2710,7 +2645,9 @@ export class ToolkitCoordinator {
 		}
 	}
 
-	private resolveTTSToolConfig(config?: TTSToolConfig): TTSToolConfig {
+	private resolveTTSToolConfig(
+		config?: TextToSpeechToolProviderConfig,
+	): TextToSpeechToolProviderConfig {
 		return config || this.getTTSConfigFromProviders() || {};
 	}
 
@@ -2735,7 +2672,6 @@ export class ToolkitCoordinator {
 			providerOptions: nextProviderOptions,
 		};
 		await this.ttsService.initialize(provider, nextConfig);
-		await this.ensureBrowserVoicesReady(provider);
 		this.assertNotDisposed();
 		this.ttsService.setCatalogResolver(this.catalogResolver);
 		this.ttsInitialized = true;
@@ -2743,80 +2679,6 @@ export class ToolkitCoordinator {
 		this.degradedTools.delete("textToSpeech");
 		await this.hooks.onTTSReady?.();
 		this.assertNotDisposed();
-	}
-
-	private async ensureBrowserVoicesReady(
-		provider: ITTSProvider,
-		timeoutMs = 1200,
-	): Promise<void> {
-		if (provider.providerId !== "browser") return;
-		if (typeof window === "undefined") return;
-		if (!("speechSynthesis" in window)) return;
-		const synth = window.speechSynthesis;
-		const voices = synth.getVoices();
-		if (voices.length > 0) return;
-		await new Promise<void>((resolve) => {
-			let settled = false;
-			const canUseEventTarget =
-				typeof synth.addEventListener === "function" &&
-				typeof synth.removeEventListener === "function";
-			const canUseHandler = !canUseEventTarget && "onvoiceschanged" in synth;
-			const previousHandler = canUseHandler ? synth.onvoiceschanged : null;
-			let assignedHandler = false;
-			const finish = () => {
-				if (settled) return;
-				settled = true;
-				window.clearTimeout(timeoutId);
-				if (canUseEventTarget) {
-					synth.removeEventListener("voiceschanged", onVoicesChanged);
-				} else if (
-					assignedHandler &&
-					synth.onvoiceschanged === onVoicesChanged
-				) {
-					synth.onvoiceschanged = previousHandler;
-				}
-				resolve();
-			};
-			const onVoicesChanged = (event?: Event) => {
-				if (
-					!canUseEventTarget &&
-					typeof previousHandler === "function" &&
-					event
-				) {
-					previousHandler.call(synth, event);
-				}
-				finish();
-			};
-			const timeoutId = window.setTimeout(finish, timeoutMs);
-			if (canUseEventTarget) {
-				synth.addEventListener("voiceschanged", onVoicesChanged, {
-					once: true,
-				});
-			} else if (canUseHandler) {
-				synth.onvoiceschanged = onVoicesChanged;
-				assignedHandler = true;
-			}
-		});
-		const voicesAfterWait = synth.getVoices();
-		await this.emitTelemetry("pie-toolkit-tts-browser-voices-ready", {
-			voiceCount: voicesAfterWait.length,
-			timedOut: voicesAfterWait.length === 0,
-		});
-	}
-
-	/**
-	 * Get all services as a bundle for section player convenience.
-	 * Section player can extract and pass services to child components.
-	 */
-	getServiceBundle(): ToolkitServiceBundle {
-		return {
-			ttsService: this.ttsService,
-			toolCoordinator: this.toolCoordinator,
-			highlightCoordinator: this.highlightCoordinator,
-			elementToolStateStore: this.elementToolStateStore,
-			catalogResolver: this.catalogResolver,
-			toolProviderRegistry: this.toolProviderRegistry,
-		};
 	}
 
 	async waitUntilReady(): Promise<void> {
@@ -2845,24 +2707,12 @@ export class ToolkitCoordinator {
 	}
 
 	isReady(): boolean {
-		return this.getInitStatus().coordinator;
-	}
-
-	getInitStatus(): ToolkitInitStatus {
-		const providers: Record<string, boolean> = {};
-		for (const toolId of this.toolProviderRegistry.getProviderIds()) {
-			providers[toolId] = this.toolProviderRegistry.isInitialized(toolId);
-		}
-		return {
-			tts: this.ttsInitialized,
-			stateLoaded: this.stateLoaded || !this.hooks.loadToolState,
-			coordinator:
-				(this.stateLoadSettled || !this.hooks.loadToolState) &&
-				(this.ttsInitialized ||
-					this.ttsDegraded ||
-					!this.ttsRequiredForReadiness()),
-			providers,
-		};
+		return (
+			(this.stateLoadSettled || !this.hooks.loadToolState) &&
+			(this.ttsInitialized ||
+				this.ttsDegraded ||
+				!this.ttsRequiredForReadiness())
+		);
 	}
 
 	/**
@@ -2890,18 +2740,15 @@ export class ToolkitCoordinator {
 		}
 	}
 
-	private getTTSConfigFromProviders(): TTSToolConfig | undefined {
+	private getTTSConfigFromProviders():
+		| TextToSpeechToolProviderConfig
+		| undefined {
 		return this.config.tools?.providers?.textToSpeech;
 	}
 
 	private assertCanonicalToolId(toolId: string): void {
 		if (typeof toolId !== "string" || toolId.trim().length === 0) {
 			throw new Error("Tool id must be a non-empty string.");
-		}
-		if (toolId === "tts") {
-			throw new Error(
-				`Tool id "tts" is no longer supported. Use "textToSpeech".`,
-			);
 		}
 		// An empty registry means the host supplied none, not that every id is
 		// wrong. There is nothing to check an id against, and throwing turns a
@@ -2932,6 +2779,11 @@ export class ToolkitCoordinator {
 		}
 	}
 
+	/**
+	 * Replace all host-owned render-context resolvers. The toolkit element
+	 * calls this from `runtime.toolContextResolvers`; it is not on
+	 * `ToolkitCoordinatorApi`.
+	 */
 	setToolContextResolvers(
 		resolvers: ToolContextResolverMap | null | undefined,
 	): void {
@@ -2954,28 +2806,16 @@ export class ToolkitCoordinator {
 	}
 
 	/**
-	 * Check if a tool is enabled.
-	 * Tools are enabled by default unless explicitly disabled.
-	 *
-	 * @param toolId Tool identifier (e.g., 'textToSpeech', 'answerEliminator')
-	 * @returns True if tool is enabled
-	 */
-	isToolEnabled(toolId: string): boolean {
-		this.assertCanonicalToolId(toolId);
-		const toolConfig = this.config.tools?.providers?.[toolId];
-		// Enabled by default unless explicitly set to false
-		return toolConfig?.enabled !== false;
-	}
-
-	/**
 	 * Get tool configuration.
 	 *
 	 * @param toolId Tool identifier
 	 * @returns Tool configuration or null if not configured
 	 */
-	getToolConfig(toolId: "textToSpeech"): TTSToolConfig | null;
+	getToolConfig(toolId: "textToSpeech"): TextToSpeechToolProviderConfig | null;
 	getToolConfig(toolId: string): ToolProviderConfig | null;
-	getToolConfig(toolId: string): ToolProviderConfig | TTSToolConfig | null {
+	getToolConfig(
+		toolId: string,
+	): ToolProviderConfig | TextToSpeechToolProviderConfig | null {
 		this.assertCanonicalToolId(toolId);
 		return this.config.tools?.providers?.[toolId] || null;
 	}
@@ -2989,12 +2829,14 @@ export class ToolkitCoordinator {
 	 */
 	updateToolConfig(
 		toolId: "textToSpeech",
-		updates: Partial<TTSToolConfig>,
+		updates: Partial<TextToSpeechToolProviderConfig>,
 	): void;
 	updateToolConfig(toolId: string, updates: Partial<ToolProviderConfig>): void;
 	updateToolConfig(
 		toolId: string,
-		updates: Partial<ToolProviderConfig> | Partial<TTSToolConfig>,
+		updates:
+			| Partial<ToolProviderConfig>
+			| Partial<TextToSpeechToolProviderConfig>,
 	): void {
 		// Update config
 		this.assertCanonicalToolId(toolId);
@@ -3249,34 +3091,6 @@ export class ToolkitCoordinator {
 	 */
 	registerPolicySource(source: PolicySource): () => void {
 		return this.policyEngine.registerPolicySource(source);
-	}
-
-	/**
-	 * Register a host-owned resolver for one tool's render context.
-	 *
-	 * Resolvers are evaluated only for tools that already survived the
-	 * framework policy pipeline. They can hide the tool for the current
-	 * scope or attach render params consumed by the packaged registration;
-	 * they cannot re-enable tools blocked by placement, provider config,
-	 * host policy, or PNP/profile rules.
-	 */
-	registerToolContextResolver(
-		toolId: string,
-		resolver: ToolContextResolver,
-	): () => void {
-		this.assertCanonicalToolId(toolId);
-		if (typeof resolver !== "function") {
-			throw new Error(
-				`Invalid tool context resolver for "${toolId}": expected a function.`,
-			);
-		}
-		this.toolContextResolvers.set(toolId, resolver);
-		this.notifyToolContextResolverChange();
-		return () => {
-			if (this.toolContextResolvers.get(toolId) !== resolver) return;
-			this.toolContextResolvers.delete(toolId);
-			this.notifyToolContextResolverChange();
-		};
 	}
 
 	hasToolContextResolver(toolId: string): boolean {

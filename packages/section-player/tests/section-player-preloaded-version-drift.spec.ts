@@ -106,7 +106,6 @@ async function mountFreshSplitpane(
 			const fresh = document.createElement(
 				"pie-section-player-splitpane",
 			) as HTMLElement & { runtime?: unknown; section?: unknown };
-			fresh.setAttribute("assessment-id", "drift-assessment");
 			fresh.setAttribute("section-id", "drift-section");
 			fresh.setAttribute("attempt-id", `drift-${Date.now()}`);
 			fresh.addEventListener("pie-stage-change", (event) => {
@@ -132,6 +131,7 @@ async function mountFreshSplitpane(
 				});
 			});
 			fresh.runtime = {
+				assessmentId: "drift-assessment",
 				playerType: "preloaded",
 				env: { mode: "gather", role: "student" },
 				onFrameworkError: (model: { kind?: string }) => {

@@ -449,27 +449,17 @@ Example:
 
 ## Default Tool Placement
 
-The toolkit's default placement is empty at every level, so a coordinator with no `tools.placement` places no tools. The recommended placements name packaged capabilities, so they live in `@pie-players/pie-default-tool-loaders`:
+The toolkit's default placement is empty at every level, so a coordinator with no `tools.placement` places no tools. The recommended placement names packaged capabilities, so it lives in `@pie-players/pie-default-tool-loaders`:
 
 ```typescript
-import {
-  PACKAGED_TOOL_PLACEMENT,
-  SECTION_PLAYER_PREFERRED_TOOL_PLACEMENT
-} from '@pie-players/pie-default-tool-loaders';
-
-PACKAGED_TOOL_PLACEMENT.assessment  // ["theme"]
-PACKAGED_TOOL_PLACEMENT.section     // ["theme"]
-PACKAGED_TOOL_PLACEMENT.item        // ["textToSpeech", "annotationToolbar", "graph", "periodicTable", ...]
-PACKAGED_TOOL_PLACEMENT.passage     // ["textToSpeech", "annotationToolbar", "lineReader"]
-PACKAGED_TOOL_PLACEMENT.rubric      // ["textToSpeech", "annotationToolbar", "lineReader"]
-PACKAGED_TOOL_PLACEMENT.element     // ["calculator", "answerEliminator", "textToSpeech", "ruler", "protractor", ...]
+import { SECTION_PLAYER_PREFERRED_TOOL_PLACEMENT } from '@pie-players/pie-default-tool-loaders';
 
 SECTION_PLAYER_PREFERRED_TOOL_PLACEMENT.section  // ["theme", "graph", "periodicTable", "lineReader", "ruler", "protractor", ...]
 SECTION_PLAYER_PREFERRED_TOOL_PLACEMENT.item     // ["calculator", "textToSpeech", "answerEliminator", "annotationToolbar"]
 SECTION_PLAYER_PREFERRED_TOOL_PLACEMENT.passage  // ["textToSpeech", "annotationToolbar"]
 ```
 
-`SECTION_PLAYER_PREFERRED_TOOL_PLACEMENT` has exactly the levels `tools.placement` takes (`section`, `item`, `passage`). These are **recommendations**, not requirements. Integrators can customize placement based on their needs.
+`SECTION_PLAYER_PREFERRED_TOOL_PLACEMENT` has exactly the levels `tools.placement` takes (`section`, `item`, `passage`). It is a recommendation; a host sets its own `tools.placement`.
 
 ## Tool Categories
 
@@ -803,13 +793,13 @@ The policy engine implements a **precedence hierarchy** based on common assessme
 
 **Standards-Based (from AfA PNP 3.0):**
 
-- **PNP supports** (#7) - Student's documented accessibility needs (`personalNeedsProfile.supports`)
-- **Item-level settings** (#3, #5) - Per-item accessibility requirements/restrictions
+- **PNP prohibitions and supports** (#4, #8) - Student's documented accessibility needs (`personalNeedsProfile.prohibitedSupports`, `personalNeedsProfile.supports`)
 
-**Implementation-Specific (common practice):**
+**Implementation-Specific (PIE extensions and common practice):**
 
-- **District policy** (#1, #6) - Institutional governance and legal compliance
-- **Test administration** (#2, #4) - Session-level operational control
+- **Item-level settings** (#3, #6) - Per-item requirements and restrictions, a PIE extension registered by the item's `<pie-item-scope>`
+- **District policy** (#1, #7) - Institutional governance and legal compliance
+- **Test administration** (#2, #5) - Session-level operational control
 
 ### Precedence Order
 
@@ -830,27 +820,32 @@ The policy engine implements a **precedence hierarchy** based on common assessme
    - **Example**: Calculator disabled on mental math questions
    - **Effect**: Tool unavailable on this item's own toolbar
 
-4. **Test administration grant**
+4. **Profile prohibition** (student declines)
+   - **Purpose**: The student's documented refusal of a support
+   - **Example**: Student's profile declines text-to-speech
+   - **Effect**: `personalNeedsProfile.prohibitedSupports` withdraws the tool, over a test-administration grant and every requirement
+
+5. **Test administration grant**
    - **Purpose**: Proctor/administrator enables a tool for the session
    - **Example**: Proctor enables the calculator for a retake
-   - **Effect**: `testAdministration.toolOverrides[toolId]` set to `true` grants the tool, unless `personalNeedsProfile.prohibitedSupports` lists it. An item restriction or a prohibition that withdraws it raises a `tool-policy.overrideBlocked` diagnostic
+   - **Effect**: `testAdministration.toolOverrides[toolId]` set to `true` grants the tool. An item restriction or a profile prohibition that withdraws it raises a `tool-policy.overrideBlocked` diagnostic
 
-5. **Item requirement** (forces enable)
+6. **Item requirement** (per-item grant)
    - **Purpose**: Required by IEP/504 or content needs
    - **Example**: Calculator required for multi-step word problems
-   - **Effect**: Tool must be available on this item's own toolbar
+   - **Effect**: A tool placed on this item's own toolbar stays there through relevance filtering and carries the item's `toolParameters`; a requirement places no tool
 
-Rungs 3 and 5 apply to decisions scoped to the item: its item-level toolbar and its content's feature decisions. A section-, assessment- or passage-level toolbar skips them and reports each tool on it that a mounted item restricts or requires with a `tool-policy.itemSettingNotApplied` diagnostic; place the tool at item level to enforce the setting per item.
+Rungs 3 and 6 apply to decisions scoped to the item: its item-level toolbar and its content's feature decisions. A section-, assessment- or passage-level toolbar skips them and reports each tool on it that a mounted item restricts or requires with a `tool-policy.itemSettingNotApplied` diagnostic; place the tool at item level to enforce the setting per item.
 
-6. **District requirement**
+7. **District requirement**
    - **Purpose**: Institutional accessibility requirements
    - **Example**: District mandates TTS for all ELL students
-   - **Effect**: Tool enabled by institutional policy
+   - **Effect**: Grants a placed tool by institutional policy
 
-7. **PNP prohibitions and supports** (student needs)
-   - **Purpose**: QTI 3.0 standard student preferences
+8. **PNP supports** (student needs)
+   - **Purpose**: AfA PNP 3.0 student supports
    - **Example**: Student's IEP document specifies a reading mask
-   - **Effect**: Tool withdrawn by `prohibitedSupports`, or enabled by `supports`
+   - **Effect**: `supports` grants a placed tool
 
 ### Governance Rationale
 

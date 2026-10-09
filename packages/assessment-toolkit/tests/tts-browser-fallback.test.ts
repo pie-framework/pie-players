@@ -148,7 +148,7 @@ describe("browserFallbackConfig", () => {
 });
 
 describe("browser speech replacing another provider", () => {
-	test("a Polly backend with no tts provider speaks without the Polly voice", async () => {
+	test("a Polly server backend with no tts provider speaks without the Polly voice", async () => {
 		const coordinator = new ToolkitCoordinator({
 			assessmentId: "polly-browser-fallback",
 			eagerInit: false,
@@ -157,7 +157,8 @@ describe("browser speech replacing another provider", () => {
 				providers: {
 					textToSpeech: {
 						enabled: true,
-						backend: "polly",
+						backend: "server",
+						serverProvider: "polly",
 						apiEndpoint: "/api/tts",
 					},
 				},
@@ -172,8 +173,8 @@ describe("browser speech replacing another provider", () => {
 	});
 });
 
-describe("browser fallback ownership", () => {
-	test("leaves the configured provider to its owner and destroys its own fallback", async () => {
+describe("a provider that fails to start", () => {
+	test("rejects initialize and stays with its owner", async () => {
 		let configuredDestroyed = 0;
 		const configured: ITTSProvider = {
 			providerId: "polly",
@@ -182,28 +183,20 @@ describe("browser fallback ownership", () => {
 			initialize: async () => {
 				throw new Error("init failed");
 			},
-			supportsFeature: () => false,
 			getCapabilities: () => ({}) as TTSProviderCapabilities,
 			destroy() {
 				configuredDestroyed += 1;
 			},
 		};
-		const fallbackDestroy = spyOn(BrowserTTSProvider.prototype, "destroy");
-		try {
-			const service = new TTSService();
-			await service.initialize(configured);
-			await service.speak(contentWith("Hello there"));
-			expect(spoken.map((utterance) => utterance.text)).toEqual([
-				"Hello there",
-			]);
-			expect(configuredDestroyed).toBe(0);
+		const service = new TTSService();
+		await expect(service.initialize(configured)).rejects.toThrow(
+			"init failed",
+		);
+		await expect(service.speak(contentWith("Hello there"))).rejects.toThrow();
+		expect(spoken).toEqual([]);
 
-			service.releaseProvider();
-			expect(configuredDestroyed).toBe(0);
-			expect(fallbackDestroy).toHaveBeenCalledTimes(1);
-		} finally {
-			fallbackDestroy.mockRestore();
-		}
+		service.releaseProvider();
+		expect(configuredDestroyed).toBe(0);
 	});
 });
 

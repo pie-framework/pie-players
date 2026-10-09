@@ -22,20 +22,12 @@ import type {
 	SectionControllerSessionState,
 } from "@pie-players/pie-assessment-toolkit";
 import type {
-	SectionPlayerNavigationSnapshot,
 	SectionPlayerRuntimeHostContract,
 	SectionPlayerSnapshot,
 } from "../../contracts/runtime-host-contract.js";
 import { waitForToolkitReady } from "./toolkit-ready-wait.js";
 
-export const BOOTSTRAP_READINESS = {
-	phase: "bootstrapping",
-	interactionReady: false,
-	allLoadingComplete: false,
-} as const satisfies SectionPlayerSnapshot["readiness"];
-
 export const BOOTSTRAP_SNAPSHOT = {
-	readiness: BOOTSTRAP_READINESS,
 	composition: {
 		itemsCount: 0,
 		passagesCount: 0,
@@ -48,35 +40,13 @@ export const BOOTSTRAP_SNAPSHOT = {
 	},
 } as const satisfies SectionPlayerSnapshot;
 
-/** What each read returns before the component mounts. */
-export type UnmountedReads = {
-	snapshot: SectionPlayerSnapshot | null;
-	composition: SectionPlayerSnapshot["composition"] | null;
-	navigation: SectionPlayerNavigationSnapshot | null;
-	readiness: SectionPlayerSnapshot["readiness"] | null;
-};
-
-export const NULL_READS: UnmountedReads = {
-	snapshot: null,
-	composition: null,
-	navigation: null,
-	readiness: null,
-};
-
-export const BOOTSTRAP_READS: UnmountedReads = {
-	snapshot: BOOTSTRAP_SNAPSHOT,
-	composition: BOOTSTRAP_SNAPSHOT.composition,
-	navigation: BOOTSTRAP_SNAPSHOT.navigation,
-	readiness: BOOTSTRAP_READINESS,
-};
-
 type HostMethodName = keyof SectionPlayerRuntimeHostContract;
 
 /**
- * For a layout element's `customElement.extend`. `unmounted` is what that
- * element's reads return while its kernel is not bound.
+ * For a layout element's `customElement.extend`. `unmountedSnapshot` is what
+ * that element's `getSnapshot` returns while its kernel is not bound.
  */
-export function withHostMethods(unmounted: UnmountedReads) {
+export function withHostMethods(unmountedSnapshot: SectionPlayerSnapshot | null) {
 	return <Base extends CustomElementConstructor>(ElementClass: Base) => {
 		const mountedMethod = (
 			element: HTMLElement,
@@ -91,28 +61,7 @@ export function withHostMethods(unmounted: UnmountedReads) {
 				const method = mountedMethod(this, "getSnapshot");
 				return method
 					? (method() as SectionPlayerSnapshot | null)
-					: unmounted.snapshot;
-			}
-
-			selectComposition(): SectionPlayerSnapshot["composition"] | null {
-				const method = mountedMethod(this, "selectComposition");
-				return method
-					? (method() as SectionPlayerSnapshot["composition"] | null)
-					: unmounted.composition;
-			}
-
-			selectNavigation(): SectionPlayerNavigationSnapshot | null {
-				const method = mountedMethod(this, "selectNavigation");
-				return method
-					? (method() as SectionPlayerNavigationSnapshot | null)
-					: unmounted.navigation;
-			}
-
-			selectReadiness(): SectionPlayerSnapshot["readiness"] | null {
-				const method = mountedMethod(this, "selectReadiness");
-				return method
-					? (method() as SectionPlayerSnapshot["readiness"] | null)
-					: unmounted.readiness;
+					: unmountedSnapshot;
 			}
 
 			navigateTo(index: number): boolean {

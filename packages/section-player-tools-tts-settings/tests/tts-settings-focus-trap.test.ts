@@ -103,3 +103,30 @@ test("closing the panel returns focus to an opener inside a shadow root", async 
 
 	expect(deepActiveElement()).toBe(opener);
 });
+
+test("Escape dispatches a non-bubbling close event on the panel element", async () => {
+	const panel = await mountPanel();
+	const closes: Event[] = [];
+	panel.addEventListener("close", (event) => closes.push(event));
+	let bubbledToBody = false;
+	document.body.addEventListener("close", () => {
+		bubbledToBody = true;
+	});
+
+	panel
+		.querySelector("[role='dialog'] button")
+		?.dispatchEvent(
+			new KeyboardEvent("keydown", {
+				key: "Escape",
+				bubbles: true,
+				composed: true,
+				cancelable: true,
+			}),
+		);
+
+	expect(closes).toHaveLength(1);
+	expect(closes[0]).toBeInstanceOf(CustomEvent);
+	expect(closes[0].bubbles).toBe(false);
+	expect(closes[0].composed).toBe(false);
+	expect(bubbledToBody).toBe(false);
+});

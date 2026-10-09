@@ -59,9 +59,6 @@ class MockTTSProvider implements ITTSProvider {
 	async initialize(_config: TTSConfig): Promise<ITTSProviderImplementation> {
 		return this.impl;
 	}
-	supportsFeature(): boolean {
-		return true;
-	}
 	getCapabilities(): TTSProviderCapabilities {
 		return {
 			supportsPause: true,
@@ -321,7 +318,7 @@ describe("recorded audio as a spoken alternate", () => {
 		const { impl, service } = await newService([scriptCard(), audioCard()]);
 		captureAudioElements(() => new Promise<void>(() => {}));
 		const states: PlaybackState[] = [];
-		service.onStateChange("recorded-fallback", (state) => states.push(state));
+		service.onStateChange((state) => states.push(state));
 		const speaking = speakItem(service, audioOnlyRoot());
 
 		const element = await nextAudioElement();

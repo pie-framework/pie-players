@@ -10,7 +10,6 @@ import type {
 	ITTSProvider,
 	ITTSProviderImplementation,
 	TTSConfig,
-	TTSFeature,
 	TTSProviderCapabilities,
 	TTSProviderOptions,
 } from "@pie-players/pie-tts";
@@ -1339,22 +1338,6 @@ export class ServerTTSProvider implements ITTSProvider {
 			}
 		} catch {
 			return false;
-		}
-	}
-
-	supportsFeature(feature: TTSFeature): boolean {
-		switch (feature) {
-			case "pause":
-			case "resume":
-			case "wordBoundary":
-			case "voiceSelection":
-			case "rateControl":
-				return true;
-			case "pitchControl":
-				// Depends on server provider, assume no for safety
-				return false;
-			default:
-				return false;
 		}
 	}
 

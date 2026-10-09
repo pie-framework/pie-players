@@ -55,7 +55,7 @@ describe("ttsToolRegistration speed options", () => {
 			componentOverrides: packagedOverrides,
 			toolkitCoordinator: {
 				getToolConfig: () => ({
-					settings: { speedOptions: [2, 1.25, 1.5, 2, 1] },
+					speedOptions: [2, 1.25, 1.5, 2, 1],
 				}),
 			} as any,
 			ttsService: null,
@@ -98,12 +98,10 @@ describe("ttsToolRegistration speed options", () => {
 			componentOverrides: packagedOverrides,
 			toolkitCoordinator: {
 				getToolConfig: () => ({
-					settings: {
-						speedOptions: [
-							{ rate: 0.8, label: "Slow", ariaLabel: "Slow speed" },
-							{ rate: 1.5, label: "Fast" },
-						],
-					},
+					speedOptions: [
+						{ rate: 0.8, label: "Slow", ariaLabel: "Slow speed" },
+						{ rate: 1.5, label: "Fast" },
+					],
 				}),
 			} as any,
 			ttsService: null,
@@ -145,7 +143,7 @@ describe("ttsToolRegistration speed options", () => {
 			componentOverrides: packagedOverrides,
 			toolkitCoordinator: {
 				getToolConfig: () => ({
-					settings: { speedOptions: ["fast", null, -2] },
+					speedOptions: ["fast", null, -2],
 				}),
 			} as any,
 			ttsService: null,
@@ -186,7 +184,7 @@ describe("ttsToolRegistration speed options", () => {
 			toolCoordinator: null,
 			componentOverrides: packagedOverrides,
 			toolkitCoordinator: {
-				getToolConfig: () => ({ settings: { speedOptions: [] } }),
+				getToolConfig: () => ({ speedOptions: [] }),
 			} as any,
 			ttsService: null,
 			elementToolStateStore: null,
@@ -276,7 +274,7 @@ describe("ttsToolRegistration speed options", () => {
 			componentOverrides: packagedOverrides,
 			toolkitCoordinator: {
 				getToolConfig: () => ({
-					settings: { speedOptions: [1.5, 2] },
+					speedOptions: [1.5, 2],
 				}),
 				ensureTTSReady: async () => {
 					ensureCalls += 1;
@@ -311,10 +309,8 @@ describe("ttsToolRegistration speed options", () => {
 			componentOverrides: packagedOverrides,
 			toolkitCoordinator: {
 				getToolConfig: () => ({
-					settings: {
-						speedOptions: [{ rate: 1, label: "Normal" }],
-						showSingleSpeedOption: true,
-					},
+					speedOptions: [{ rate: 1, label: "Normal" }],
+					showSingleSpeedOption: true,
 				}),
 			} as any,
 			ttsService: null,
@@ -346,7 +342,7 @@ describe("ttsToolRegistration speed options", () => {
 			toolCoordinator: null,
 			componentOverrides: packagedOverrides,
 			toolkitCoordinator: {
-				getToolConfig: () => ({ settings: {} }),
+				getToolConfig: () => ({}),
 			} as any,
 			ttsService: null,
 			elementToolStateStore: null,
@@ -382,7 +378,7 @@ describe("ttsToolRegistration speed options", () => {
 			toolCoordinator: null,
 			componentOverrides: packagedOverrides,
 			toolkitCoordinator: {
-				getToolConfig: () => ({ settings: { layoutMode: "floating-overlay" } }),
+				getToolConfig: () => ({ layoutMode: "floating-overlay" }),
 			} as any,
 			ttsService: null,
 			elementToolStateStore: null,
@@ -418,7 +414,7 @@ describe("ttsToolRegistration speed options", () => {
 			toolCoordinator: null,
 			componentOverrides: packagedOverrides,
 			toolkitCoordinator: {
-				getToolConfig: () => ({ settings: { layoutMode: "expanding-row" } }),
+				getToolConfig: () => ({ layoutMode: "expanding-row" }),
 			} as any,
 			ttsService: null,
 			elementToolStateStore: null,
@@ -454,7 +450,7 @@ describe("ttsToolRegistration speed options", () => {
 			toolCoordinator: null,
 			componentOverrides: packagedOverrides,
 			toolkitCoordinator: {
-				getToolConfig: () => ({ settings: { layoutMode: "left-aligned" } }),
+				getToolConfig: () => ({ layoutMode: "left-aligned" }),
 			} as any,
 			ttsService: null,
 			elementToolStateStore: null,
@@ -490,7 +486,7 @@ describe("ttsToolRegistration speed options", () => {
 			toolCoordinator: null,
 			componentOverrides: packagedOverrides,
 			toolkitCoordinator: {
-				getToolConfig: () => ({ settings: { layoutMode: "bad-mode" } }),
+				getToolConfig: () => ({ layoutMode: "bad-mode" }),
 			} as any,
 			ttsService: null,
 			elementToolStateStore: null,
@@ -514,81 +510,57 @@ describe("ttsToolRegistration speed options", () => {
 });
 
 describe("ttsToolRegistration sanitizeConfig", () => {
-	test("normalizes speedOptions in settings and top-level", () => {
-		const sanitize = ttsToolRegistration.sanitizeConfig as (
-			cfg: Record<string, unknown>,
-		) => Record<string, unknown>;
+	const sanitize = ttsToolRegistration.sanitizeConfig as (
+		cfg: Record<string, unknown>,
+	) => Record<string, unknown>;
+
+	test("normalizes speedOptions", () => {
 		const out = sanitize({
 			enabled: true,
 			speedOptions: [2, 1, "x", 1.5],
-			settings: { speedOptions: [0.8, 1, 1.25] },
 		});
 		expect(out.speedOptions).toEqual([
 			{ rate: 2, label: "2x", ariaLabel: "Speed 2x", isDefault: false },
 			{ rate: 1, label: "Normal", ariaLabel: "Normal speed", isDefault: true },
 			{ rate: 1.5, label: "1.5x", ariaLabel: "Speed 1.5x", isDefault: false },
 		]);
-		expect((out.settings as { speedOptions: unknown[] }).speedOptions).toEqual([
-			{ rate: 0.8, label: "0.8x", ariaLabel: "Speed 0.8x", isDefault: false },
-			{ rate: 1, label: "Normal", ariaLabel: "Normal speed", isDefault: true },
-			{
-				rate: 1.25,
-				label: "1.25x",
-				ariaLabel: "Speed 1.25x",
-				isDefault: false,
-			},
-		]);
 	});
 
 	test("preserves one-option visibility setting in sanitizeConfig", () => {
-		const sanitize = ttsToolRegistration.sanitizeConfig as (
-			cfg: Record<string, unknown>,
-		) => Record<string, unknown>;
-		const out = sanitize({
-			settings: { showSingleSpeedOption: true },
-		});
-		expect(
-			(out.settings as { showSingleSpeedOption?: boolean })
-				.showSingleSpeedOption,
-		).toBe(true);
+		const out = sanitize({ showSingleSpeedOption: true });
+		expect(out.showSingleSpeedOption).toBe(true);
 	});
 
-	test("preserves explicit empty speedOptions in settings", () => {
-		const sanitize = ttsToolRegistration.sanitizeConfig as (
-			cfg: Record<string, unknown>,
-		) => Record<string, unknown>;
-		const out = sanitize({
-			settings: { speedOptions: [] },
-		});
-		expect((out.settings as { speedOptions: number[] }).speedOptions).toEqual(
-			[],
-		);
+	test("preserves explicit empty speedOptions", () => {
+		const out = sanitize({ speedOptions: [] });
+		expect(out.speedOptions).toEqual([]);
 	});
 
 	test("preserves labeled speedOptions in sanitizeConfig", () => {
-		const sanitize = ttsToolRegistration.sanitizeConfig as (
-			cfg: Record<string, unknown>,
-		) => Record<string, unknown>;
 		const out = sanitize({
-			settings: {
-				speedOptions: [
-					{ rate: 0.8, label: "Slow", ariaLabel: "Slow speed" },
-					{
-						rate: 1,
-						label: "Normal",
-						ariaLabel: "Normal speed",
-						default: true,
-					},
-					{ rate: 1.5, label: "Fast" },
-					{ rate: 1.5, label: "Duplicate" },
-				],
-			},
+			speedOptions: [
+				{ rate: 0.8, label: "Slow", ariaLabel: "Slow speed" },
+				{
+					rate: 1,
+					label: "Normal",
+					ariaLabel: "Normal speed",
+					default: true,
+				},
+				{ rate: 1.5, label: "Fast" },
+				{ rate: 1.5, label: "Duplicate" },
+			],
 		});
-		expect((out.settings as { speedOptions: unknown[] }).speedOptions).toEqual([
+		expect(out.speedOptions).toEqual([
 			{ rate: 0.8, label: "Slow", ariaLabel: "Slow speed", isDefault: false },
 			{ rate: 1, label: "Normal", ariaLabel: "Normal speed", isDefault: true },
 			{ rate: 1.5, label: "Fast", ariaLabel: "Fast speed", isDefault: false },
 		]);
+	});
+
+	test("normalizes layoutMode", () => {
+		expect(sanitize({ layoutMode: "bad-mode" }).layoutMode).toBe(
+			"left-aligned",
+		);
 	});
 });
 

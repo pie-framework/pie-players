@@ -1988,14 +1988,16 @@ test.describe("section player demo tts-ssml", () => {
 			.locator("pie-section-player-tools-session-debugger")
 			.evaluate((element) => {
 				const coordinator = (element as any).toolkitCoordinator;
+				const config = coordinator?.getToolConfig?.("textToSpeech");
 				return {
-					backend:
-						coordinator?.getToolConfig?.("textToSpeech")?.backend || null,
+					backend: config?.backend || null,
+					serverProvider: config?.serverProvider || null,
 					providerId:
 						coordinator?.ttsService?.currentProvider?.providerId || null,
 				};
 			});
-		expect(providerSnapshot.backend).toBe("polly");
+		expect(providerSnapshot.backend).toBe("server");
+		expect(providerSnapshot.serverProvider).toBe("polly");
 		expect(providerSnapshot.providerId).toBe("server-tts");
 
 		const passageInlineTts = page

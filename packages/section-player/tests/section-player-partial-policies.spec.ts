@@ -38,7 +38,6 @@ async function mountWithPolicies(
 			runtime?: unknown;
 			section?: unknown;
 		};
-		fresh.setAttribute("assessment-id", "policies-assessment");
 		fresh.setAttribute("section-id", "policies-section");
 		fresh.setAttribute("attempt-id", `policies-${Date.now()}`);
 		fresh.addEventListener("pie-stage-change", (event) => {
@@ -49,6 +48,7 @@ async function mountWithPolicies(
 		});
 		fresh.policies = hostPolicies;
 		fresh.runtime = {
+			assessmentId: "policies-assessment",
 			playerType: "preloaded",
 			env: { mode: "gather", role: "student" },
 		};

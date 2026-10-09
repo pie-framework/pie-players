@@ -15,7 +15,6 @@ import type {
 	ITTSProvider,
 	ITTSProviderImplementation,
 	TTSConfig,
-	TTSFeature,
 	TTSProviderCapabilities,
 	TTSSpeechSegment,
 } from "@pie-players/pie-tts";
@@ -264,26 +263,6 @@ export class BrowserTTSProvider implements ITTSProvider {
 		return new BrowserTTSProviderImpl(config);
 	}
 
-	supportsFeature(feature: TTSFeature): boolean {
-		const capabilities = this.getCapabilities();
-		switch (feature) {
-			case "pause":
-				return capabilities.supportsPause;
-			case "resume":
-				return capabilities.supportsResume;
-			case "wordBoundary":
-				return capabilities.supportsWordBoundary;
-			case "voiceSelection":
-				return capabilities.supportsVoiceSelection;
-			case "rateControl":
-				return capabilities.supportsRateControl;
-			case "pitchControl":
-				return capabilities.supportsPitchControl;
-			default:
-				return false;
-		}
-	}
-
 	getCapabilities(): TTSProviderCapabilities {
 		return {
 			supportsPause: true,
@@ -498,12 +477,6 @@ class BrowserTTSProviderImpl implements ITTSProviderImplementation {
 			: undefined;
 	}
 
-	private getHighlightMode(): "word" | "sentence" {
-		return this.config?.providerOptions?.highlightMode === "word"
-			? "word"
-			: "sentence";
-	}
-
 	private getSegmentationPolicy(): {
 		useSentenceSegmenter: boolean;
 		useWordSegmenter: boolean;
@@ -687,9 +660,6 @@ class BrowserTTSProviderImpl implements ITTSProviderImplementation {
 					`boundary event: ${event.name}, charIndex ${event.charIndex}, charLength ${event.charLength}`,
 				);
 				if (event.name !== "word" || !this.onWordBoundary) return;
-				if (this.getHighlightMode() === "sentence") {
-					return;
-				}
 
 				const charIndex = Math.max(
 					0,

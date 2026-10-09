@@ -184,7 +184,6 @@ async function mountRecordingLayout(
 				runtime?: unknown;
 				section?: unknown;
 			};
-			fresh.setAttribute("assessment-id", "cardinality-assessment");
 			fresh.setAttribute("section-id", "cardinality-section");
 			fresh.setAttribute("attempt-id", `cardinality-${Date.now()}`);
 			for (const type of ["session-changed", "item-session-changed"]) {
@@ -229,6 +228,7 @@ async function mountRecordingLayout(
 				});
 			});
 			fresh.runtime = {
+				assessmentId: "cardinality-assessment",
 				playerType,
 				env: { mode: "gather", role: "student" },
 			};

@@ -1,4 +1,3 @@
-import type { SectionPlayerReadinessChangeDetail } from "./public-events.js";
 import type { SectionControllerHandle } from "@pie-players/pie-assessment-toolkit";
 
 export type SectionPlayerNavigationSnapshot = {
@@ -10,7 +9,6 @@ export type SectionPlayerNavigationSnapshot = {
 };
 
 export type SectionPlayerSnapshot = {
-	readiness: SectionPlayerReadinessChangeDetail;
 	composition: {
 		itemsCount: number;
 		passagesCount: number;
@@ -20,9 +18,6 @@ export type SectionPlayerSnapshot = {
 
 export interface SectionPlayerRuntimeHostContract {
 	getSnapshot(): SectionPlayerSnapshot;
-	selectComposition(): SectionPlayerSnapshot["composition"];
-	selectNavigation(): SectionPlayerNavigationSnapshot;
-	selectReadiness(): SectionPlayerReadinessChangeDetail;
 	navigateTo(index: number): boolean;
 	navigateNext(): boolean;
 	navigatePrevious(): boolean;

@@ -27,7 +27,7 @@
 		SectionControllerSessionState,
 	} from "@pie-players/pie-players-shared/types";
 	import type { SectionControllerHandle } from "@pie-players/pie-assessment-toolkit";
-	import { createEventDispatcher, untrack } from "svelte";
+	import { untrack } from "svelte";
 	import type {
 		SectionPlayerNavigationSnapshot,
 		SectionPlayerSnapshot,
@@ -65,7 +65,6 @@
 		ElementPreloadRetryDetail,
 	} from "./player-preload.js";
 	import { coerceBooleanLike } from "@pie-players/pie-players-shared";
-	import { createReadinessDetail } from "@pie-players/pie-assessment-toolkit/runtime/engine";
 	import SectionPlayerLayoutScaffold from "./SectionPlayerLayoutScaffold.svelte";
 	import {
 		CLEAR_FRAMEWORK_ERROR_LATCH,
@@ -80,23 +79,10 @@
 		includeSessionRefInState?: boolean;
 	};
 
-	type KernelEvents = {
-		// The only Svelte events the kernel dispatches up to the hosting
-		// layout CE, which re-dispatches them on its host. The toolkit's own
-		// events (`session-changed`, `composition-changed`, `runtime-owned`,
-		// `runtime-inherited`, `toolkit-ready`, `section-ready`,
-		// `framework-error`) reach the layout host by bubbling from the
-		// toolkit, and the section runtime engine dispatches `pie-stage-change`
-		// and `pie-loading-complete` on it, bubbling and composed.
-		// Re-dispatching a bubbled event here delivered it to the host a
-		// second and third time.
-		"element-preload-retry": Record<string, unknown>;
-		"element-preload-error": Record<string, unknown>;
-	};
-
 	let {
-		assessmentId,
 		runtime = null as RuntimeConfig | null,
+		ndsIcons = undefined as boolean | undefined,
+		locale = "",
 		section = null as AssessmentSection | null,
 		session = null as SectionControllerSessionState | null,
 		assessment = null as AssessmentEntity | null,
@@ -121,16 +107,14 @@
 		} satisfies PlayerActionConfig,
 		policies = DEFAULT_SECTION_PLAYER_POLICIES as Partial<SectionPlayerPolicies>,
 		hooks = undefined as SectionPlayerHostHooks | undefined,
-		onFrameworkError = undefined as
-			| undefined
-			| ((model: FrameworkErrorModel) => void),
-		// Callback form of `pie-stage-change`, invoked at the same emit point.
-		// `runtime.onStageChange` wins over this prop; the resolved handler
-		// arrives via `runtimeState.effectiveRuntime`.
-		onStageChange = undefined as StageChangeHandler | undefined,
-		// Callback form of `pie-loading-complete`, invoked at the same emit
-		// point. `runtime.onLoadingComplete` wins over this prop.
-		onLoadingComplete = undefined as LoadingCompleteHandler | undefined,
+		// The active items pane's preload retries and failures, with the
+		// section's identity added. The layout element dispatches them on its host.
+		onElementPreloadRetry = undefined as
+			| ((detail: Record<string, unknown>) => void)
+			| undefined,
+		onElementPreloadError = undefined as
+			| ((detail: Record<string, unknown>) => void)
+			| undefined,
 		// `sourceCe` is the host layout CE's tag name (without the
 		// `--version-<encoded>` suffix) used to label `pie-stage-change`
 		// emissions and the items pane's preload reports. Each layout CE that
@@ -147,7 +131,6 @@
 		host = null as HTMLElement | null,
 	} = $props();
 
-	const dispatch = createEventDispatcher<KernelEvents>();
 	const isBrowser = typeof window !== "undefined" && typeof document !== "undefined";
 	const debugEnabled = $derived.by(() => {
 		if (debug !== undefined && debug !== null) {
@@ -236,14 +219,7 @@
 			paneReport.renderablesSignature === preloadedRenderablesSignature,
 	);
 	const runtimeState = $derived.by(() =>
-		resolveSectionPlayerRuntimeState({
-			assessmentId,
-			runtime,
-			toolConfigStrictness,
-			onFrameworkError,
-			onStageChange,
-			onLoadingComplete,
-		}),
+		resolveSectionPlayerRuntimeState({ runtime, toolConfigStrictness }),
 	);
 	const effectiveRuntime = $derived(runtimeState.effectiveRuntime);
 	// The stage cohort runs under the id the toolkit keys the section's
@@ -322,20 +298,6 @@
 	const normalizedShowToolbar = $derived(coerceBooleanLike(showToolbar, false));
 	const effectivePolicies = $derived(resolveSectionPlayerPolicies(policies));
 	const preloadEnabled = $derived(effectivePolicies.preload.enabled);
-	// Interaction waits for the items to mount, so the progressive and strict
-	// modes coincide on these signals.
-	const readinessDetail = $derived.by(() =>
-		createReadinessDetail({
-			mode: effectivePolicies.readiness.mode,
-			signals: {
-				sectionReady,
-				interactionReady: sectionReady && paneElementsLoaded,
-				allLoadingComplete: paneElementsLoaded,
-				runtimeError: runtimeErrorState,
-			},
-			reason: `policy:${effectivePolicies.readiness.mode}`,
-		}),
-	);
 	const layoutContextValue = $derived.by(
 		(): SectionPlayerLayoutContext => ({
 			componentTag: sourceCe,
@@ -392,15 +354,12 @@
 		detail: ElementPreloadRetryDetail,
 	) {
 		if (!isActiveItemsPane(pane)) return;
-		dispatch(
-			"element-preload-retry",
-			{
-				...detail,
-				assessmentId,
-				sectionId,
-				attemptId: attemptId || undefined,
-			},
-		);
+		onElementPreloadRetry?.({
+			...detail,
+			assessmentId: effectiveRuntime.assessmentId,
+			sectionId,
+			attemptId: attemptId || undefined,
+		});
 	}
 
 	function handleItemsPanePreloadError(
@@ -408,15 +367,12 @@
 		detail: ElementPreloadErrorDetail,
 	) {
 		if (!isActiveItemsPane(pane)) return;
-		dispatch(
-			"element-preload-error",
-			{
-				...detail,
-				assessmentId,
-				sectionId,
-				attemptId: attemptId || undefined,
-			},
-		);
+		onElementPreloadError?.({
+			...detail,
+			assessmentId: effectiveRuntime.assessmentId,
+			sectionId,
+			attemptId: attemptId || undefined,
+		});
 	}
 
 	// The coordinator of the toolkit this layout renders, from its `toolkit-ready`.
@@ -505,28 +461,12 @@
 
 	export function getSnapshot(): SectionPlayerSnapshot {
 		return {
-			readiness: readinessDetail,
 			composition: {
 				itemsCount: items.length,
 				passagesCount: passages.length,
 			},
 			navigation: getNavigationState(),
 		};
-	}
-
-	export function selectComposition(): SectionPlayerSnapshot["composition"] {
-		return {
-			itemsCount: items.length,
-			passagesCount: passages.length,
-		};
-	}
-
-	export function selectNavigation(): SectionPlayerNavigationSnapshot {
-		return getNavigationState();
-	}
-
-	export function selectReadiness() {
-		return readinessDetail;
 	}
 
 	export function navigateTo(index: number): boolean {
@@ -607,8 +547,7 @@
 	//      After the rollover, a `section-ready` that already arrived for
 	//      the new cohort dispatches `section-controller-resolved`.
 	//   4. While a cohort is active, push the latest readiness signals
-	//      so the engine can re-derive `EngineReadinessDetail`,
-	//      advance the phase to `interactive`, and emit
+	//      so the engine can advance to `interactive` and emit
 	//      `loading-complete` exactly once per cohort.
 	// A layout with no items pane leaves the items unrendered and readiness short
 	// of `interactive`. Checked a task after the section is ready with items, so a
@@ -751,6 +690,9 @@
 <SectionPlayerLayoutScaffold
 	bind:this={scaffoldRef}
 	runtime={effectiveRuntime}
+	{ndsIcons}
+	{locale}
+	{toolConfigStrictness}
 	{section}
 	{session}
 	{assessment}

@@ -50,7 +50,7 @@ const coordinator = new ToolkitCoordinator({
     },
     providers: {
       textToSpeech: {
-        settings: { backend: 'browser' },
+        backend: 'browser',
       },
     },
   },
@@ -59,10 +59,10 @@ const coordinator = new ToolkitCoordinator({
 const sectionPlayer = document.querySelector('pie-section-player-splitpane');
 sectionPlayer.runtime = {
   ...(sectionPlayer.runtime ?? {}),
+  assessmentId: assessment.id,
   coordinator,
   tools: coordinator.config.tools,
 };
-sectionPlayer.assessmentId = assessment.id;
 sectionPlayer.sectionId = section.identifier;
 sectionPlayer.attemptId = attempt.id;
 sectionPlayer.section = section;
@@ -103,13 +103,11 @@ const coordinator = new ToolkitCoordinator({
     placement: { item: ['textToSpeech'], passage: ['textToSpeech'], section: [] },
     providers: {
       textToSpeech: {
-        settings: {
-          backend: 'server',
-          serverProvider: 'polly',
-          apiEndpoint: '/api/tts',
-          defaultVoice: 'Joanna',
-          language: 'en-US',
-        },
+        backend: 'server',
+        serverProvider: 'polly',
+        apiEndpoint: '/api/tts',
+        defaultVoice: 'Joanna',
+        language: 'en-US',
       },
     },
   },

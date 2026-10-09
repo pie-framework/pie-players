@@ -28,7 +28,6 @@ READMEs document package-specific APIs, configuration, and provider setup.
 - `ITTSProviderImplementation` - Playback implementation interface
 - `TTSProviderCapabilities` - Feature support descriptor
 - `TTSConfig` - Configuration types
-- `TTSFeature` - Feature union types
 
 **Dependencies:** None
 
@@ -183,9 +182,9 @@ import {
 
 const ttsService = new TTSService();
 
-// Server-side TTS (preferred for production). When it fails to initialize,
-// `initialize` switches to browser speech itself, and throws only when browser
-// speech is unavailable or fails as well.
+// Server-side TTS (preferred for production). `initialize` rejects when the
+// provider fails to start; falling back to browser speech is the toolkit
+// coordinator's job.
 const serverConfig: ServerTTSProviderConfig = {
   apiEndpoint: '/api/tts',
   provider: 'polly',
@@ -357,7 +356,6 @@ import type {
   ITTSProviderImplementation,
   TTSConfig,
   TTSProviderCapabilities,
-  TTSFeature
 } from '@pie-players/pie-tts';
 
 class MyTTSImpl implements ITTSProviderImplementation {
@@ -387,9 +385,6 @@ export class MyTTSProvider implements ITTSProvider {
     return new MyTTSImpl(config);
   }
 
-  supportsFeature(feature: TTSFeature): boolean {
-    return feature === 'pause' || feature === 'resume';
-  }
   getCapabilities(): TTSProviderCapabilities {
     return {
       supportsPause: true,
@@ -444,7 +439,7 @@ const coordinator = new ToolkitCoordinator({
     placement: { item: ['textToSpeech'], passage: ['textToSpeech'], section: [] },
     providers: {
       textToSpeech: {
-        settings: { backend: 'browser' },
+        backend: 'browser',
       },
     },
   },

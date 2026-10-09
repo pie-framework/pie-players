@@ -78,7 +78,7 @@ passageHeader.append(ttsButton);
   which falls back to the toolkit's `content-language`). A `lang` attribute
   between the reading target and its shell wins over it.
 - `size` - Icon size: `'sm'` (1.5rem), `'md'` (2rem), or `'lg'` (2.5rem) (default: `'md'`)
-- `layout-mode` - Panel placement (default: `'expanding-row'`). `'reserved-row'`
+- `layout-mode` - Panel placement (default: `'left-aligned'`). `'reserved-row'`
   and `'expanding-row'` drop the panel below the trigger; in the packaged toolbar
   the first keeps the controls row reserved and the second expands it while the
   panel is open. `'floating-overlay'` and `'left-aligned'` open the panel as an
@@ -211,7 +211,7 @@ component-scoped variables instead of overriding broad semantic tokens such as
 If unset, the trigger looks the same open as closed: each hook falls back to the
 value the control already resolves to — background through
 `--pie-button-background-color` / `--pie-button-bg` / `--pie-background`, border
-through `--pie-button-border-color` / `--pie-button-border` / `--pie-border`, and
+through `--pie-button-border` / `--pie-border`, and
 foreground through `--pie-button-color` / `--pie-text`. Setting a hook is how a
 host opts into a distinct active/open appearance.
 
@@ -260,12 +260,10 @@ Selection reads from the chip fill and the bolder weight instead of from hue. A
 host that wants a branded accent sets `--pie-tts-button-color` and owns the
 contrast, as with the active-trigger hooks above.
 
-Ordinary trigger and control button styling also preserves these legacy aliases:
-`--pie-button-background-color`, `--pie-button-border-color`, and
-`--pie-button-hover-background-color`. They remain supported for host
-compatibility, but fall back through the canonical `--pie-button-bg`,
-`--pie-button-border`, and `--pie-button-hover-bg` tokens before broad surface
-tokens.
+Trigger and control backgrounds read `--pie-button-background-color` ahead of
+the canonical `--pie-button-bg`; borders and hover backgrounds read
+`--pie-button-border` and `--pie-button-hover-bg`. Each falls back to the broad
+surface tokens.
 
 ## Architecture
 

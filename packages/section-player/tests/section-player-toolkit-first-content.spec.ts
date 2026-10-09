@@ -125,9 +125,9 @@ const coordinatorReady = (page: Page) =>
 const ttsStarted = (page: Page) =>
 	page.evaluate(() => {
 		const coordinator = window.__probe?.coordinators.at(-1) as
-			| { getInitStatus(): { tts: boolean } }
+			| { ttsInitialized: boolean }
 			| undefined;
-		return coordinator?.getInitStatus().tts ?? null;
+		return coordinator?.ttsInitialized ?? null;
 	});
 
 const playReading = (page: Page) =>

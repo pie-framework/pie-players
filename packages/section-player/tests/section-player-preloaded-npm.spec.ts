@@ -536,7 +536,6 @@ for (const layout of LAYOUTS) {
 					runtime?: unknown;
 					section?: unknown;
 				};
-				fresh.setAttribute("assessment-id", "npm-unregistered-assessment");
 				fresh.setAttribute("section-id", section.identifier);
 				fresh.setAttribute("attempt-id", `npm-${Date.now()}`);
 				fresh.addEventListener("pie-stage-change", (event) =>
@@ -550,7 +549,11 @@ for (const layout of LAYOUTS) {
 				fresh.addEventListener("framework-error", (event) =>
 					events.push({ type: "framework-error", kind: (event as CustomEvent).detail?.kind }),
 				);
-				fresh.runtime = { playerType: "preloaded", env: { mode: "gather", role: "student" } };
+				fresh.runtime = {
+					assessmentId: "npm-unregistered-assessment",
+					playerType: "preloaded",
+					env: { mode: "gather", role: "student" },
+				};
 				fresh.section = section;
 				parent.appendChild(fresh);
 			}, layoutTag(layout));

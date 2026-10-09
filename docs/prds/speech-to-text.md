@@ -218,7 +218,7 @@ which is why the provider interface below reports locality rather than assuming 
 - Public export path: package root for the registration and provider types, matching
   `pie-tool-sign-language`.
 - Composition: **deliberately absent from `createPackagedToolRegistry()` and from
-  `UNIVERSAL_SUPPORTS_PRESET`.** Accommodation-tier, device-dependent, and requiring a cross-repo
+  `createUniversalPersonalNeedsProfile()`.** Accommodation-tier, device-dependent, and requiring a cross-repo
   content declaration — the same three reasons signing is opt-in. A deployment installs and registers
   it as it would one of its own.
 - Consuming packages or apps: section-player (item-level toolbar), PNP debugger, `section-demos`.

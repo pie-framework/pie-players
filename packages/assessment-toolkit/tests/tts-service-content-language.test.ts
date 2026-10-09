@@ -48,7 +48,6 @@ const startService = async (providerOptions?: Record<string, unknown>) => {
 		providerName: "Mock Provider",
 		version: "1.0.0",
 		initialize: async () => impl,
-		supportsFeature: () => true,
 		getCapabilities: () =>
 			({
 				supportsPause: true,

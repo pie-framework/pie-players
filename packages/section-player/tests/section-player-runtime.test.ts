@@ -180,72 +180,23 @@ describe("resolvePlayerRuntime", () => {
 });
 
 describe("resolveSectionPlayerRuntimeState", () => {
-	test("propagates onFrameworkError into effectiveRuntime", async () => {
+	test("carries the runtime callbacks onto effectiveRuntime", async () => {
 		const { resolveSectionPlayerRuntimeState } = await loadHostRuntime();
-		const handler = () => {};
+		const onFrameworkError = () => {};
+		const onStageChange = () => {};
+		const onLoadingComplete = () => {};
 		const state = resolveSectionPlayerRuntimeState({
-			assessmentId: "a1",
 			toolConfigStrictness: "error",
-			onFrameworkError: handler,
-			runtime: null,
+			runtime: { onFrameworkError, onStageChange, onLoadingComplete },
 		});
-		expect((state.effectiveRuntime as any).onFrameworkError).toBe(handler);
-	});
-
-	test("propagates onStageChange into effectiveRuntime", async () => {
-		const { resolveSectionPlayerRuntimeState } = await loadHostRuntime();
-		const handler = () => {};
-		const state = resolveSectionPlayerRuntimeState({
-			assessmentId: "a1",
-			toolConfigStrictness: "error",
-			onStageChange: handler,
-			runtime: null,
-		});
-		expect((state.effectiveRuntime as any).onStageChange).toBe(handler);
-	});
-
-	test("propagates onLoadingComplete into effectiveRuntime", async () => {
-		const { resolveSectionPlayerRuntimeState } = await loadHostRuntime();
-		const handler = () => {};
-		const state = resolveSectionPlayerRuntimeState({
-			assessmentId: "a1",
-			toolConfigStrictness: "error",
-			onLoadingComplete: handler,
-			runtime: null,
-		});
-		expect((state.effectiveRuntime as any).onLoadingComplete).toBe(handler);
-	});
-
-	test("runtime.onStageChange wins over the top-level prop", async () => {
-		const { resolveSectionPlayerRuntimeState } = await loadHostRuntime();
-		const fromRuntime = () => {};
-		const fromProp = () => {};
-		const state = resolveSectionPlayerRuntimeState({
-			assessmentId: "a1",
-			toolConfigStrictness: "error",
-			onStageChange: fromProp,
-			runtime: { onStageChange: fromRuntime },
-		});
-		expect((state.effectiveRuntime as any).onStageChange).toBe(fromRuntime);
-	});
-
-	test("runtime.onLoadingComplete wins over the top-level prop", async () => {
-		const { resolveSectionPlayerRuntimeState } = await loadHostRuntime();
-		const fromRuntime = () => {};
-		const fromProp = () => {};
-		const state = resolveSectionPlayerRuntimeState({
-			assessmentId: "a1",
-			toolConfigStrictness: "error",
-			onLoadingComplete: fromProp,
-			runtime: { onLoadingComplete: fromRuntime },
-		});
-		expect((state.effectiveRuntime as any).onLoadingComplete).toBe(fromRuntime);
+		expect(state.effectiveRuntime.onFrameworkError).toBe(onFrameworkError);
+		expect(state.effectiveRuntime.onStageChange).toBe(onStageChange);
+		expect(state.effectiveRuntime.onLoadingComplete).toBe(onLoadingComplete);
 	});
 
 	test("threads through resolved playerRuntime so the host can read both halves at once", async () => {
 		const { resolveSectionPlayerRuntimeState } = await loadHostRuntime();
 		const state = resolveSectionPlayerRuntimeState({
-			assessmentId: "a1",
 			toolConfigStrictness: "error",
 			runtime: {
 				playerType: "iife",

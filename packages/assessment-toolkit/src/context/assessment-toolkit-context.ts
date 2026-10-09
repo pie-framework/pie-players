@@ -36,8 +36,8 @@ export interface AssessmentToolkitRuntimeContext {
 	/**
 	 * Opt-in flag: context consumers render the vendored `<nds-icon-button>`
 	 * only when this is `true`; otherwise (unset/`false`, the default) they
-	 * render plain `<button>` controls. Sourced from the host's
-	 * `runtime.ndsIcons` (or the `nds-icons` attribute on the toolkit).
+	 * render plain `<button>` controls. Sourced from the `nds-icons` attribute
+	 * on the toolkit or section player.
 	 */
 	ndsIcons?: boolean;
 	/**
@@ -46,8 +46,8 @@ export interface AssessmentToolkitRuntimeContext {
 	 * authored content, which {@link contentLanguage} carries.
 	 *
 	 * A composition context in the sense of `composition-context.md`: the
-	 * deployment knows it and no tool can. Sourced from the host's
-	 * `runtime.locale` (or the `locale` attribute on the toolkit), defaulting to
+	 * deployment knows it and no tool can. Sourced from the `locale` attribute
+	 * on the toolkit or section player, defaulting to
 	 * `en-US` with no host input — never `navigator.language`, because a
 	 * rendered-string change reaches a host's live delivery on their next install
 	 * with no build signal on their side.

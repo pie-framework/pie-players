@@ -140,11 +140,6 @@ export interface ITTSProvider {
 	initialize(config: TTSConfig): Promise<ITTSProviderImplementation>;
 
 	/**
-	 * Check if a specific feature is supported
-	 */
-	supportsFeature(feature: TTSFeature): boolean;
-
-	/**
 	 * Get provider capabilities
 	 */
 	getCapabilities(): TTSProviderCapabilities;
@@ -287,13 +282,3 @@ export interface TTSProviderCapabilities {
 	maxTextLength?: number;
 }
 
-/**
- * TTS features for capability checking
- */
-export type TTSFeature =
-	| "pause"
-	| "resume"
-	| "wordBoundary"
-	| "voiceSelection"
-	| "rateControl"
-	| "pitchControl";

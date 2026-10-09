@@ -56,7 +56,7 @@ export type SectionEngineState = {
 	/**
 	 * Readiness signal snapshot, replaced by each `update-readiness-signals`
 	 * input from the host. Strict-mode gating is applied at derivation time
-	 * through `createReadinessDetail`.
+	 * through `resolveReadinessGates`.
 	 */
 	readinessSignals: EngineReadinessSignals;
 

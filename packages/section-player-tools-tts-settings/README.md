@@ -95,7 +95,8 @@ const customProviders = [
     async buildApplyConfig({ state, apiEndpoint }) {
       return {
         config: {
-          backend: "acme-tts",
+          backend: "server",
+          serverProvider: "custom",
           transportMode: "custom",
           apiEndpoint,
           defaultVoice: state.voice,
@@ -130,7 +131,8 @@ const customProviders = [
     async buildApplyConfig({ state, apiEndpoint }) {
       return {
         config: {
-          backend: "vendor-x",
+          backend: "server",
+          serverProvider: "custom",
           transportMode: "custom",
           apiEndpoint,
           providerOptions: state

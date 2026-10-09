@@ -55,9 +55,6 @@ class CapturingTTSProvider implements ITTSProvider {
 	async initialize(_config: TTSConfig): Promise<ITTSProviderImplementation> {
 		return this.impl;
 	}
-	supportsFeature(): boolean {
-		return true;
-	}
 	getCapabilities(): TTSProviderCapabilities {
 		return {
 			supportsPause: true,

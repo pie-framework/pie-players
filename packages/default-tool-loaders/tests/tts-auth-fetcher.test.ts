@@ -209,7 +209,7 @@ describe("TTS credentials from provider.runtime.authFetcher", () => {
 		expect(requests.length).toBe(3);
 	});
 
-	test("reports a failed fetch through the init-error telemetry and falls back to browser speech", async () => {
+	test("reports a failed fetch and falls back to browser speech", async () => {
 		const { coordinator, telemetry } = createCoordinator(async () => {
 			throw new Error("credential service unavailable");
 		});
@@ -227,10 +227,10 @@ describe("TTS credentials from provider.runtime.authFetcher", () => {
 		);
 		expect(telemetry).toContainEqual(
 			expect.objectContaining({
-				eventName: "pie-tool-init-error",
+				eventName: "pie-tool-init-fallback",
 				payload: expect.objectContaining({
 					toolId: "textToSpeech",
-					errorType: "TTSRegistryInitError",
+					toProvider: "browser",
 				}),
 			}),
 		);

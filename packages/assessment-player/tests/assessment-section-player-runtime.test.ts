@@ -147,4 +147,20 @@ describe("assessment section-player runtime", () => {
 			kind: "section-runtime-coordinator",
 		});
 	});
+
+	test("carries the assessment id in runtime, under the host's own", () => {
+		expect(
+			resolveAssessmentSectionPlayerRuntime({
+				playerType: "iife",
+				assessmentId: "assessment-1",
+			}).assessmentId,
+		).toBe("assessment-1");
+		expect(
+			resolveAssessmentSectionPlayerRuntime({
+				sectionPlayerRuntime: { assessmentId: "host-assessment" },
+				playerType: "iife",
+				assessmentId: "assessment-1",
+			}).assessmentId,
+		).toBe("host-assessment");
+	});
 });

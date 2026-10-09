@@ -4,16 +4,13 @@
 		// Use light DOM so item-player/runtime styles can cascade into rendered item content.
 		shadow: "none",
 		props: {
-			assessmentId: { attribute: "assessment-id", type: "String" },
 			runtime: { type: "Object", reflect: false },
-			// Presentation flag: opt in to NDS icon buttons. Convenience
-			// attribute mirrored onto `runtime.ndsIcons` (runtime wins if both
-			// are set). Defaults to unset (plain <button>s).
+			// Presentation flag: opt in to NDS icon buttons. Unset renders plain
+			// <button>s.
 			ndsIcons: { attribute: "nds-icons", type: "Boolean" },
 			// Interface locale: the language the player renders its own UI in, as a
-			// BCP-47 tag. Convenience attribute mirrored onto `runtime.locale`
-			// (runtime wins if both are set). Unset renders `en-US`. Distinct
-			// from the authored content language, which travels on `env`.
+			// BCP-47 tag. Unset renders `en-US`. Distinct from the authored content
+			// language, which travels on `runtime.contentLanguage`.
 			locale: { attribute: "locale", type: "String" },
 			section: { type: "Object", reflect: false },
 			// The section's session, applied by the controller created for
@@ -42,15 +39,6 @@
 				attribute: "tool-config-strictness",
 				type: "String",
 			},
-			onFrameworkError: { type: "Object", reflect: false },
-			// M6 canonical stage-change callback. Mirrors
-			// `runtime.onStageChange`; resolver picks runtime over prop.
-			onStageChange: { type: "Object", reflect: false },
-			// M6 canonical loading-complete callback. Mirrors
-			// `runtime.onLoadingComplete`; the kernel invokes it at the
-			// same emit point as `pie-loading-complete` so callback and
-			// event stay in lockstep per cohort.
-			onLoadingComplete: { type: "Object", reflect: false },
 			narrowLayoutBreakpoint: { attribute: "narrow-layout-breakpoint", type: "Number" },
 			contentMaxWidthNoPassage: {
 				attribute: "content-max-width-no-passage",
@@ -75,7 +63,7 @@
 		},
 		// The host methods, callable before the component mounts.
 		extend: (ElementClass) =>
-			coerceBooleanAttributes(withHostMethods(NULL_READS)(ElementClass)),
+			coerceBooleanAttributes(withHostMethods(null)(ElementClass)),
 	}}
 />
 
@@ -92,20 +80,15 @@
 	import "./section-player-passages-pane-element.js";
 	import { isOwnSectionPlayerEvent } from "./shared/section-player-own-event.js";
 	import SectionPlayerLayoutKernel from "./shared/SectionPlayerLayoutKernel.svelte";
-	import { mergeLayoutAttrsIntoRuntime } from "./shared/section-player-host-runtime.js";
-	import {
-		NULL_READS,
-		withHostMethods,
-	} from "./shared/layout-host-methods.js";
+	import { withHostMethods } from "./shared/layout-host-methods.js";
 	import SectionPlayerTabbedContent from "./shared/SectionPlayerTabbedContent.svelte";
 	import SectionPlayerVerticalContent from "./shared/SectionPlayerVerticalContent.svelte";
 	// TS language service false-positive in this workspace: Svelte component has a default export.
 	// @ts-ignore false-positive no-default-export in IDE language service for this import
 	import SectionSplitDivider from "./shared/SectionSplitDivider.svelte";
 	import { useInterfaceI18n } from "./shared/use-interface-i18n.svelte.js";
-	import { createEventDispatcher, untrack } from "svelte";
+	import { untrack } from "svelte";
 	import type {
-		FrameworkErrorModel,
 		ToolConfigStrictness,
 		ToolRegistry,
 		ToolbarItem,
@@ -115,17 +98,13 @@
 		AssessmentSection,
 		SectionControllerSessionState,
 	} from "@pie-players/pie-players-shared/types";
-	import type {
-		RuntimeConfig,
-		StageChangeHandler,
-		LoadingCompleteHandler,
-	} from "@pie-players/pie-assessment-toolkit/runtime/engine";
+	import type { RuntimeConfig } from "@pie-players/pie-assessment-toolkit/runtime/engine";
 	import type {
 		SectionPlayerRuntimeHostContract,
 		SectionPlayerSnapshot,
 	} from "../contracts/runtime-host-contract.js";
 	import type { SectionPlayerPolicies } from "../policies/types.js";
-	import { isTelemetryEnabled } from "../policies/index.js";
+	import { resolveSectionPlayerPolicies } from "../policies/index.js";
 	import type { SectionPlayerHostHooks } from "../contracts/host-hooks.js";
 	import {
 		clampNarrowBreakpoint,
@@ -219,7 +198,6 @@
 	}
 
 	let {
-		assessmentId,
 		runtime = null as RuntimeConfig | null,
 		ndsIcons = undefined as boolean | undefined,
 		locale = "",
@@ -240,11 +218,6 @@
 		policies = undefined as Partial<SectionPlayerPolicies> | undefined,
 		hooks = undefined as SectionPlayerHostHooks | undefined,
 		toolConfigStrictness = undefined as ToolConfigStrictness | undefined,
-		onFrameworkError = undefined as
-			| undefined
-			| ((model: FrameworkErrorModel) => void),
-		onStageChange = undefined as StageChangeHandler | undefined,
-		onLoadingComplete = undefined as LoadingCompleteHandler | undefined,
 		narrowLayoutBreakpoint = undefined as number | undefined,
 		contentMaxWidthNoPassage = undefined as number | undefined,
 		contentMaxWidthWithPassage = undefined as number | undefined,
@@ -252,12 +225,6 @@
 		splitPaneInitialPassageWidth = undefined as number | string | undefined,
 		splitPaneCollapseStrategy = "tabbed" as "vertical" | "tabbed" | string,
 	} = $props();
-
-	// Fold the `nds-icons` convenience attribute into the runtime handed to
-	// the kernel (host `runtime.ndsIcons` still wins if both are set).
-	const kernelRuntime = $derived(
-		mergeLayoutAttrsIntoRuntime(runtime, { ndsIcons, locale }),
-	);
 
 	// Snapshot of the resolved prop at mount. Renders the divider in the
 	// right place on the first frame (so consumers don't see a 50% flash
@@ -285,7 +252,6 @@
 	const interfaceI18n = useInterfaceI18n(() => splitContainerElement);
 	let anchor = $state<HTMLDivElement | null>(null);
 	let kernelRef = $state<SectionPlayerRuntimeHostContract | null>(null);
-	const dispatch = createEventDispatcher();
 	const paneIdBase = $derived.by(() =>
 		`pie-section-player-splitpane-${(sectionId || attemptId || "default").replace(/[^a-zA-Z0-9_-]/g, "-")}`
 	);
@@ -317,11 +283,6 @@
 			component: "pie-section-player-splitpane",
 		}),
 	);
-	// Two-tier resolution for `onFrameworkError` is handled by the
-	// kernel's resolver (`resolveSectionPlayerRuntimeState` →
-	// `effectiveRuntime.onFrameworkError`); the CE forwards the
-	// top-level prop and `runtime` verbatim and the resolver picks
-	// `runtime.onFrameworkError` over `onFrameworkError`.
 
 	const hostElement = $derived.by(() => getHostElementFromAnchor(anchor));
 
@@ -371,33 +332,20 @@
 		});
 	});
 
-	function forward(event: Event) {
-		const customEvent = event as CustomEvent;
-		dispatch(customEvent.type, customEvent.detail);
-	}
+	const layoutElement = $host();
+	const forwardPreloadRetry = (detail: Record<string, unknown>) =>
+		layoutElement.dispatchEvent(new CustomEvent("element-preload-retry", { detail }));
+	const forwardPreloadError = (detail: Record<string, unknown>) =>
+		layoutElement.dispatchEvent(new CustomEvent("element-preload-error", { detail }));
 
-	function handleSplitResizePreview(event: Event) {
+	function handleSplitResize(next: number) {
 		if (!splitContainerElement) return;
-		const detail = (event as CustomEvent<{ value: number }>).detail;
-		const next = Number(detail?.value);
 		if (Number.isNaN(next)) return;
 		leftPanelWidth = clampSplitWidth(next, splitBounds);
 	}
 
 	export function getSnapshot(): SectionPlayerSnapshot | null {
 		return kernelRef?.getSnapshot?.() ?? null;
-	}
-
-	export function selectComposition(): SectionPlayerSnapshot["composition"] | null {
-		return kernelRef?.selectComposition?.() ?? null;
-	}
-
-	export function selectNavigation(): SectionPlayerSnapshot["navigation"] | null {
-		return kernelRef?.selectNavigation?.() ?? null;
-	}
-
-	export function selectReadiness(): SectionPlayerSnapshot["readiness"] | null {
-		return kernelRef?.selectReadiness?.() ?? null;
 	}
 
 	export function navigateTo(index: number): boolean {
@@ -422,7 +370,7 @@
 		// setup entirely so hosts that opt out emit no `pie-section-*`
 		// telemetry events through the bridge. Hosts that need a different
 		// shape of opt-out can still supply a custom `instrumentationProvider`.
-		if (!isTelemetryEnabled(policies)) return;
+		if (!resolveSectionPlayerPolicies(policies).telemetry.enabled) return;
 		const localHost = hostElement;
 		return attachInstrumentationEventBridge({
 			host: localHost,
@@ -431,7 +379,7 @@
 			eventMap: SECTION_INSTRUMENTATION_EVENT_MAP,
 			staticAttributes: {
 				instrumentationLayer: "section",
-				assessmentId,
+				assessmentId: runtime?.assessmentId,
 				sectionId,
 				attemptId: attemptId || undefined,
 			},
@@ -446,8 +394,9 @@
 <div bind:this={anchor} class="pie-section-player-observability-anchor" aria-hidden="true"></div>
 <SectionPlayerLayoutKernel
 	bind:this={kernelRef}
-	{assessmentId}
-	runtime={kernelRuntime}
+	{runtime}
+	{ndsIcons}
+	{locale}
 	{section}
 	{session}
 	{assessment}
@@ -465,17 +414,14 @@
 	{policies}
 	{hooks}
 	{toolConfigStrictness}
-	{onFrameworkError}
-	{onStageChange}
-	{onLoadingComplete}
+	onElementPreloadRetry={forwardPreloadRetry}
+	onElementPreloadError={forwardPreloadError}
 	sourceCe="pie-section-player-splitpane"
 	host={hostElement}
 	playerActionConfig={{
 		stateKey: "__splitPaneAppliedParams",
 		includeSessionRefInState: true,
 	}}
-	on:element-preload-retry={forward}
-	on:element-preload-error={forward}
 	let:layoutModel
 >
 	{#if narrowLayout.isNarrow}
@@ -529,8 +475,7 @@
 						ariaLabel={interfaceI18n.t("player.resizePassagesAndItemsA11y")}
 						ariaControls={passagesPaneId}
 						ariaValueText={splitDividerValueText}
-						on:resize-preview={handleSplitResizePreview}
-						on:resize-commit={handleSplitResizePreview}
+						onResize={handleSplitResize}
 					/>
 				{/if}
 

@@ -1,5 +1,5 @@
 /**
- * PNP Policy Source — precedence rule tests (M8 PR 1).
+ * PNP Policy Source — precedence rule tests.
  *
  * Exercises the canonical `PnpPolicySource.apply(...)` entry point for
  * PNP/profile precedence.
@@ -18,7 +18,7 @@ function source() {
 	return new PnpPolicySource(registry);
 }
 
-describe("PnpPolicySource — 7-level precedence", () => {
+describe("PnpPolicySource — 8-level precedence", () => {
 	test("1. district-block overrides everything else", () => {
 		const result = source().apply({
 			assessment: {
@@ -85,7 +85,7 @@ describe("PnpPolicySource — 7-level precedence", () => {
 				featureId: "calculator",
 				rule: "test-admin-override",
 				action: "enable",
-				precedence: 4,
+				precedence: 5,
 			}),
 		]);
 		expect(enabled.perToolFlags.get("calculator")).toMatchObject({
@@ -141,10 +141,44 @@ describe("PnpPolicySource — 7-level precedence", () => {
 		expect(result.decisions[0]).toMatchObject({
 			rule: "pnp-prohibited",
 			action: "block",
+			precedence: 4,
 		});
 	});
 
-	test("4. a test-admin enable outranks a district requirement", () => {
+	test("4. a PNP prohibition outranks a district requirement with no override", () => {
+		const result = source().apply({
+			assessment: {
+				id: "a1",
+				personalNeedsProfile: { prohibitedSupports: ["calculator"] },
+				settings: { districtPolicy: { requiredTools: ["calculator"] } },
+			} as AssessmentEntity,
+		});
+		expect(result.blockedToolIds.has("calculator")).toBe(true);
+		expect(result.mandatedToolIds.has("calculator")).toBe(false);
+		expect(result.blockedOverrides.size).toBe(0);
+		expect(result.decisions).toEqual([
+			expect.objectContaining({
+				rule: "pnp-prohibited",
+				action: "block",
+				precedence: 4,
+			}),
+		]);
+	});
+
+	test("4. a PNP prohibition outranks an item requirement", () => {
+		const result = source().apply({
+			assessment: {
+				id: "a1",
+				personalNeedsProfile: { prohibitedSupports: ["calculator"] },
+			} as AssessmentEntity,
+			item: { id: "i1", settings: { requiredTools: ["calculator"] } },
+		});
+		expect(result.blockedToolIds.has("calculator")).toBe(true);
+		expect(result.mandatedToolIds.has("calculator")).toBe(false);
+		expect(result.decisions[0]?.rule).toBe("pnp-prohibited");
+	});
+
+	test("5. a test-admin enable outranks a district requirement", () => {
 		const result = source().apply({
 			assessment: {
 				id: "a1",
@@ -159,7 +193,7 @@ describe("PnpPolicySource — 7-level precedence", () => {
 		expect(result.decisions[0]).toMatchObject({
 			rule: "test-admin-override",
 			action: "enable",
-			precedence: 4,
+			precedence: 5,
 		});
 	});
 
@@ -213,7 +247,7 @@ describe("PnpPolicySource — 7-level precedence", () => {
 		expect(result.mandatedToolIds.has("calculator")).toBe(false);
 	});
 
-	test("5. item-requirement marks the tool required + mandated", () => {
+	test("6. item-requirement marks the tool required + mandated", () => {
 		const result = source().apply({
 			assessment: { id: "a1" } as AssessmentEntity,
 			item: {
@@ -230,7 +264,7 @@ describe("PnpPolicySource — 7-level precedence", () => {
 		});
 	});
 
-	test("6. district-requirement marks the tool required + mandated", () => {
+	test("7. district-requirement marks the tool required + mandated", () => {
 		const result = source().apply({
 			assessment: {
 				id: "a1",
@@ -243,7 +277,7 @@ describe("PnpPolicySource — 7-level precedence", () => {
 		);
 	});
 
-	test("7. pnp-support marks the tool alwaysAvailable but NOT required", () => {
+	test("8. pnp-support marks the tool alwaysAvailable but NOT required", () => {
 		const result = source().apply({
 			assessment: {
 				id: "a1",
@@ -258,7 +292,7 @@ describe("PnpPolicySource — 7-level precedence", () => {
 		expect(result.mandatedToolIds.has("calculator")).toBe(false);
 	});
 
-	test("7. pnp-prohibited blocks even when supports lists the tool", () => {
+	test("4. pnp-prohibited blocks even when supports lists the tool", () => {
 		const result = source().apply({
 			assessment: {
 				id: "a1",
@@ -274,7 +308,7 @@ describe("PnpPolicySource — 7-level precedence", () => {
 		).toBeDefined();
 	});
 
-	test("7. pnp-prohibited blocks even when supports omits the tool", () => {
+	test("4. pnp-prohibited blocks even when supports omits the tool", () => {
 		const result = source().apply({
 			assessment: {
 				id: "a1",
@@ -323,7 +357,10 @@ describe("PnpPolicySource — 7-level precedence", () => {
 		const result = new PnpPolicySource(createTestToolRegistry()).apply({
 			assessment: {
 				id: "a1",
-				personalNeedsProfile: { supports: ["typoTool"], prohibitedSupports: [] },
+				personalNeedsProfile: {
+					supports: ["typoTool"],
+					prohibitedSupports: ["otherTypo"],
+				},
 				settings: {
 					districtPolicy: { blockedTools: ["typoTool"], requiredTools: ["otherTypo"] },
 					testAdministration: { toolOverrides: { overrideTypo: true } },
@@ -338,7 +375,7 @@ describe("PnpPolicySource — 7-level precedence", () => {
 			["typoTool", ["district-block", "pnp-support"]],
 			["overrideTypo", ["test-admin-override"]],
 			["itemTypo", ["item-restriction"]],
-			["otherTypo", ["district-requirement"]],
+			["otherTypo", ["pnp-prohibited", "district-requirement"]],
 		]);
 	});
 

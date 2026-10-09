@@ -36,7 +36,7 @@ AssessmentItemRef
 └── settings: ItemSettings         # Per-item rules, registered by the item's <pie-item-scope>
     ├── requiredTools: string[]
     ├── restrictedTools: string[]
-    └── toolParameters: Record<string, any>
+    └── toolParameters: Record<string, Record<string, unknown>>
 ```
 
 Policy reads the profile of the bound assessment: the `assessment` property of a section player or toolkit that builds its coordinator, or `coordinator.updateAssessment` on a coordinator the host passes. A section carries no profile: a profile is learner data, and section content is shared by every learner. The section player warns once when a section carries one.
@@ -153,7 +153,7 @@ const assessment: AssessmentEntity = {
 - Technical issues (TTS audio broken, disable for this session)
 - Test security (disable features for high-stakes tests)
 
-**Precedence**: `toolOverrides` is keyed by tool id. `false` withdraws the tool for the session, and only a district block outranks it. `true` grants it, below a district block, the item's `restrictedTools` and the profile's `prohibitedSupports`, and above item and district requirements and profile supports. When a restriction or prohibition withdraws a tool an override grants, the decision carries a `tool-policy.overrideBlocked` diagnostic naming the rule. With no override, a district requirement still outranks a prohibition. A `true` override is a grant like a PNP support: the entry carries `alwaysAvailable`, so the item toolbar's relevance check does not withdraw it.
+**Precedence**: `toolOverrides` is keyed by tool id. `false` withdraws the tool for the session, and only a district block outranks it. `true` grants it, below a district block, the item's `restrictedTools` and the profile's `prohibitedSupports`, and above item and district requirements and profile supports. When a restriction or prohibition withdraws a tool an override grants, the decision carries a `tool-policy.overrideBlocked` diagnostic naming the rule. The full order is district block, `false` override, item restriction, profile prohibition, `true` override, item requirement, district requirement, profile support. A `true` override is a grant like a PNP support: the entry carries `alwaysAvailable`, so the item toolbar's relevance check does not withdraw it.
 
 ### 4. Item-Level Settings (Content Requirements)
 
@@ -242,7 +242,8 @@ const coordinator = new ToolkitCoordinator({
     },
     providers: {
       textToSpeech: {
-        backend: "polly",
+        backend: "server",
+        serverProvider: "polly",
         defaultVoice: "Matthew",
         rate: 1.0,
         engine: "neural"
@@ -311,14 +312,14 @@ console.log('Allowed tools:', allowedToolIds);
 //
 // Why?
 // - calculator: Blocked by district policy (#1)
-// - textToSpeech: Restricted for this item (#3), which outranks the district requirement (#6)
+// - textToSpeech: Restricted for this item (#3), which outranks the district requirement (#7)
 // - annotationToolbar: Placed at item level and granted by the profile
 // - magnification: No tool is registered under it; the decision carries a
 //   `tool-policy.unknownSupportId` diagnostic
 // - lineReader: Granted, but this configuration places it at passage level only
 ```
 
-`settings.toolConfigs` holds feature parameters keyed by support id, and an item's `toolParameters` override them. A feature granted by a PNP support, a requirement or a test-administration override carries them as its policy parameters (`ToolPolicyEntry.settings`, `FeaturePolicyDecision.parameters`), which is where the sign-language capability reads `signLang`. Provider configuration, such as the TTS backend and voice in step 2, belongs in `tools.providers`. The server backends (`polly`, `google`, `server`) send requests to the host's TTS server at `apiEndpoint` (default `/api/tts`) through `@pie-players/tts-client-server`, which `@pie-players/pie-default-tool-loaders` installs.
+`settings.toolConfigs` holds feature parameters keyed by support id, and an item's `toolParameters` override them. A feature granted by a PNP support, a requirement or a test-administration override carries them as its policy parameters (`ToolPolicyEntry.settings`, `FeaturePolicyDecision.parameters`), which is where the sign-language capability reads `signLang`. Provider configuration, such as the TTS backend and voice in step 2, belongs in `tools.providers`. The `server` backend sends requests to the host's TTS server at `apiEndpoint` (default `/api/tts`) through `@pie-players/tts-client-server`, which `@pie-players/pie-default-tool-loaders` installs.
 
 ## Precedence Resolution Examples
 
@@ -336,7 +337,7 @@ console.log('Allowed tools:', allowedToolIds);
   }
 }
 // Result: calculator BLOCKED
-// District policy (#1) overrides PNP supports (#7)
+// District policy (#1) overrides PNP supports (#8)
 ```
 
 ### Example 2: Item Restriction Wins
@@ -354,7 +355,7 @@ console.log('Allowed tools:', allowedToolIds);
   }
 }
 // Result: calculator BLOCKED on this item's own toolbar only
-// Item restriction (#3) overrides PNP supports (#7). A section-level
+// Item restriction (#3) overrides PNP supports (#8). A section-level
 // calculator stays and reports `tool-policy.itemSettingNotApplied`.
 ```
 
@@ -369,8 +370,10 @@ console.log('Allowed tools:', allowedToolIds);
     requiredTools: ["calculator"]  // Complex computation problem
   }
 }
-// Result: calculator ENABLED on this item's own toolbar
-// Item requirement (#5) forces enablement there
+// Result: a calculator placed at item level stays on this item's own
+// toolbar through relevance filtering and carries the item's toolParameters.
+// The requirement (#6) places nothing: without an item-level placement,
+// no calculator renders.
 ```
 
 ### Example 4: Test Admin Override
@@ -502,7 +505,7 @@ Provide UI for:
    interface ItemSettingsEditor {
      requiredTools: string[];    // Multi-select from available tools
      restrictedTools: string[];  // Multi-select from available tools
-     toolParameters: Record<string, any>;
+     toolParameters: Record<string, Record<string, unknown>>;
    }
    ```
 

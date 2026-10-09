@@ -1,6 +1,4 @@
-import "@pie-players/pie-section-player/components/section-player-splitpane-element";
-import "@pie-players/pie-section-player/components/section-player-vertical-element";
-import { SECTION_PLAYER_PUBLIC_EVENTS } from "@pie-players/pie-section-player/contracts/public-events";
+import "@pie-players/pie-section-player";
 import {
 	coerceBooleanLike,
 	type InstrumentationProvider,
@@ -695,6 +693,7 @@ export class AssessmentPlayerDefaultElement
 		return resolveAssessmentSectionPlayerRuntime({
 			sectionPlayerRuntime: this.sectionPlayerRuntime,
 			playerType: this.playerType,
+			assessmentId: this.assessmentId || undefined,
 			attemptId: this.attemptId || undefined,
 			env: this.env as Record<string, unknown> | null,
 			coordinator: this.coordinator,
@@ -783,7 +782,7 @@ export class AssessmentPlayerDefaultElement
 				if (settled) return;
 				settled = true;
 				clearTimeout(timer);
-				sectionEl.removeEventListener(SECTION_PLAYER_PUBLIC_EVENTS.stageChange, onStageChange);
+				sectionEl.removeEventListener("pie-stage-change", onStageChange);
 				resolve(controller);
 			};
 			// A section whose controller cannot be created, including one whose saved
@@ -796,7 +795,7 @@ export class AssessmentPlayerDefaultElement
 				else if (stage === "engine-ready") finish(sectionEl.getSectionController?.() || null);
 			};
 			const timer = setTimeout(() => finish(null), 5000);
-			sectionEl.addEventListener(SECTION_PLAYER_PUBLIC_EVENTS.stageChange, onStageChange);
+			sectionEl.addEventListener("pie-stage-change", onStageChange);
 			cancelReadiness = () => finish(null);
 		});
 		void ready
@@ -889,7 +888,7 @@ export class AssessmentPlayerDefaultElement
 				padding: 0.5rem;
 				border: 1px solid var(--pie-border-light, #e5e7eb);
 				border-radius: 0.375rem;
-				background: var(--pie-background-light, var(--pie-background, #fff));
+				background: var(--pie-background, #fff);
 			}
 			.pie-assessment-player-navigation[hidden] { display: none; }
 			.pie-assessment-player-current-position {
@@ -904,7 +903,7 @@ export class AssessmentPlayerDefaultElement
 				padding: 0.35rem 0.75rem;
 				border: 1px solid var(--pie-border-light, #e5e7eb);
 				border-radius: 0.375rem;
-				background: var(--pie-background-light, var(--pie-background, #fff));
+				background: var(--pie-background, #fff);
 				cursor: pointer;
 			}
 			.pie-assessment-player-nav-btn:disabled {
@@ -975,7 +974,6 @@ export class AssessmentPlayerDefaultElement
 		if (currentSection) {
 			const sectionTag = this.buildSectionPlayerTag();
 			const sectionEl = document.createElement(sectionTag);
-			sectionEl.setAttribute("assessment-id", this.assessmentId);
 			sectionEl.setAttribute("section-id", currentSection.sectionIdentifier);
 			if (this.attemptId) sectionEl.setAttribute("attempt-id", this.attemptId);
 			if (this.locale) sectionEl.setAttribute("locale", this.locale);

@@ -440,8 +440,8 @@ export const sectionDemos: Record<string, SectionDemoInfo> = {
 		focus:
 			"Shows the vendored `<nds-icon-button>` rendering for the toolbar tools (calculator), the calculator shell controls, the inline text-to-speech trigger, and the section scroll-hint. Identical to Single Question except the player element carries `nds-icons={true}`; every other demo omits it and renders plain `<button>`s.",
 		whatMakesItTick: [
-			"`nds-icons={true}` on the `<pie-section-player-*>` element is folded into the runtime and surfaced on the toolkit runtime context, so consumers render `<nds-icon-button>` instead of plain buttons.",
-			"Opt-in with presence semantics: omit the attribute (the default) for plain buttons; `runtime.ndsIcons` still works and wins when both are set.",
+			"`nds-icons={true}` on the `<pie-section-player-*>` element reaches the toolkit runtime context, so consumers render `<nds-icon-button>` instead of plain buttons.",
+			"Opt-in with presence semantics: omit the attribute (the default) for plain buttons.",
 			"`calculator` is placed on the item toolbar so both the NDS toolbar button and its NDS-styled floating shell controls are visible.",
 			"Inline text-to-speech renders its NDS circular play/pause trigger.",
 		],
@@ -685,14 +685,14 @@ export const sectionDemos: Record<string, SectionDemoInfo> = {
 		id: "pnp-default-on",
 		name: "PNP Default On (Auto-detect)",
 		description:
-			"Smoke fixture: an assessment that carries profile policy material auto-promotes `pnpEnforcement` to 'on' without an explicit `pnp-enforcement` attribute.",
+			"Smoke fixture: an assessment that carries profile policy material auto-promotes `pnpEnforcement` to 'on' without an explicit `tools.pnpEnforcement`.",
 		integrationLevel: 4,
 		integrationTheme: "Tool policy engine",
 		focus:
 			"Proves the M8 PR 4 narrow auto-on rule end-to-end: bind an `AssessmentEntity` with PNP / district policy through `coord.updateAssessment(...)` and the coordinator flips PNP/profile gates on by itself.",
 		whatMakesItTick: [
 			"Listens for `toolkit-ready` and binds an assessment with `personalNeedsProfile.supports = ['graph']` and `districtPolicy.requiredTools = ['graph']`.",
-			"Never sets the `pnp-enforcement` attribute, so the auto-default rule (`assessmentHasPnpPolicyInputs` / `itemSettingsHavePnpPolicyInputs`) decides.",
+			"Never sets `tools.pnpEnforcement`, so the auto-default rule (`assessmentHasPnpPolicyInputs` / `itemSettingsHavePnpPolicyInputs`) decides.",
 			"Reads back `coord.getPolicyInputs().pnpEnforcement` and the engine's `decideToolPolicy(...)` so the resolved mode is visible in the page.",
 		],
 		section: demo1Section,

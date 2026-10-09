@@ -209,7 +209,7 @@ No new persisted or wire-facing types. The transcript card is `CatalogCard` unch
 Required test coverage:
 
 - feature-decision tests for `transcript` across all six precedence levels, mirroring `tests/policy/sign-language-feature-policy.test.ts`;
-- a regression test pinning that `transcript` stays out of any wholesale grant, via the composition package's assertion that no id in `UNIVERSAL_SUPPORTS_PRESET` belongs to a registration declaring `requiresAuthoredContent`;
+- a regression test pinning that `transcript` stays out of any wholesale grant, via the composition package's assertion that no support id in `createUniversalPersonalNeedsProfile()` belongs to a registration declaring `requiresAuthoredContent`;
 - resolver tests for a `transcript` card resolved by owner scope with no `data-catalog-idref` present — the case signing never exercises;
 - section-player tests for granted / not-granted / granted-but-no-card, and for reading order placing the transcript before the audio;
 - an accessibility test asserting the transcript is associated with its audio across the region boundary;

@@ -1,12 +1,15 @@
 <script lang="ts">
-	import '@pie-players/pie-section-player/components/section-player-kernel-host-element';
+	import '@pie-players/pie-section-player';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
 
 	const sectionId = $derived(String(data.section?.identifier || 'custom-layout-section'));
 	const attemptId = 'custom-layout-attempt';
-	const runtime = { env: { mode: 'gather' as const, role: 'student' as const } };
+	const runtime = {
+		assessmentId: 'section-demos.custom-layout',
+		env: { mode: 'gather' as const, role: 'student' as const },
+	};
 </script>
 
 <svelte:head>
@@ -17,7 +20,6 @@
 	<pie-section-player-kernel-host
 		class="custom-layout-player"
 		{runtime}
-		assessment-id="section-demos.custom-layout"
 		{sectionId}
 		{attemptId}
 		section={data.section}

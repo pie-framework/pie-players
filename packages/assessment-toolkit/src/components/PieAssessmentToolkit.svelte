@@ -34,14 +34,10 @@
 			createSectionController: { type: "Object", reflect: false },
 			onFrameworkError: { type: "Object", reflect: false },
 			errorRenderer: { type: "Object", reflect: false },
-			// Tool policy inputs, forwarded to the coordinator this toolkit
-			// owns: the assessment whose profile and settings policy reads, and
-			// the enforcement override.
+			// The assessment whose profile and settings tool policy reads,
+			// forwarded to the coordinator this toolkit owns. The enforcement
+			// override is `tools.pnpEnforcement`.
 			assessment: { type: "Object", reflect: false },
-			pnpEnforcement: {
-				attribute: "pnp-enforcement",
-				type: "String",
-			},
 			// `"inherit"` (the default) or `"force"`, as an attribute or a property;
 			// section-player layouts set the property from `runtime.isolation`.
 			// `type: "String"` because an observed attribute of type `Object` is
@@ -246,15 +242,7 @@ const DEFAULT_ENV = {
 					title?: string;
 					details?: string[];
 			  }),
-		// Tool policy inputs; see the `<svelte:options>` props block above.
-		// `pnpEnforcement` accepts `"on"`, `"off"`, or `null` (auto —
-		// each decision enforces when the bound `assessment`, or the item it
-		// is scoped to, carries PNP/profile material). Embedded
-		// under `<pie-section-player-*>` the same override flows via
-		// `runtime.tools.pnpEnforcement`; both entry points converge on
-		// the same coordinator call.
 		assessment = null as AssessmentEntity | null,
-		pnpEnforcement = null as PnpEnforcementMode | null,
 		isolation = "inherit",
 		session = null as SectionControllerSessionState | null,
 	} = $props();
@@ -523,7 +511,7 @@ const DEFAULT_ENV = {
 	function handleTimedMediaAudioStarted(event: { type?: string } | null): void {
 		if (event?.type !== "timed-media-audio-started") return;
 		if (!effectiveCoordinator) return;
-		pauseTtsForMediaAudio(effectiveCoordinator.getServiceBundle().ttsService);
+		pauseTtsForMediaAudio(effectiveCoordinator.ttsService);
 	}
 
 	/**
@@ -985,40 +973,15 @@ const DEFAULT_ENV = {
 		].join("|");
 	}
 
-	// Coerce the public PNP enforcement CE attribute (string or null)
-	// into the engine's `PnpEnforcementMode | null` contract. Anything
-	// outside the canonical "on" / "off" set — typos like "ON",
-	// missing-attribute artifacts like "" or "null" strings — collapses
-	// to `null` (auto-mode) instead of silently degrading inside the
-	// engine. This is the single canonical entry point for the prop.
-	function coercePnpEnforcement(
-		value: PnpEnforcementMode | null | string | undefined,
-	): PnpEnforcementMode | null {
-		return value === "on" || value === "off" ? value : null;
-	}
-
-	// Resolve the effective override that flows into the coordinator.
-	// The explicit `pnp-enforcement` attribute (standalone path) wins
-	// over `tools.pnpEnforcement` (embedded path via
-	// runtime tools config); all fall back to `null` (auto-mode) so the coordinator's
-	// {@link resolveDefaultPnpEnforcement} helper runs on the bound
-	// assessment / item ref.
+	// `tools.pnpEnforcement` is `"on"`, `"off"`, or absent (auto: each decision
+	// enforces when the bound `assessment`, or the item it is scoped to, carries
+	// PNP/profile material). Anything else reads as auto.
 	function resolvePnpEnforcementInput(
-		explicitPnp: PnpEnforcementMode | null | string | undefined,
 		toolsConfig: unknown,
 	): PnpEnforcementMode | null {
-		const explicitMode = coercePnpEnforcement(explicitPnp);
-		if (explicitMode) return explicitMode;
-		if (toolsConfig && typeof toolsConfig === "object") {
-			const toolConfig = toolsConfig as {
-				pnpEnforcement?: unknown;
-			};
-			const candidate = toolConfig.pnpEnforcement;
-			return coercePnpEnforcement(
-				typeof candidate === "string" ? candidate : null,
-			);
-		}
-		return null;
+		const candidate = (toolsConfig as { pnpEnforcement?: unknown } | null)
+			?.pnpEnforcement;
+		return candidate === "on" || candidate === "off" ? candidate : null;
 	}
 
 	function buildOwnedCoordinator(validatedTools: unknown): ToolkitCoordinator {
@@ -1322,14 +1285,13 @@ const DEFAULT_ENV = {
 	);
 	const runtimeContextValue = $derived.by((): AssessmentToolkitRuntimeContext | null => {
 		if (!effectiveCoordinator) return null;
-		const services = effectiveCoordinator.getServiceBundle();
 		return {
 			toolkitCoordinator: effectiveCoordinator,
 			toolCoordinator: effectiveCoordinator.toolCoordinator,
-			ttsService: services.ttsService,
-			highlightCoordinator: services.highlightCoordinator,
-			catalogResolver: services.catalogResolver,
-			elementToolStateStore: services.elementToolStateStore,
+			ttsService: effectiveCoordinator.ttsService,
+			highlightCoordinator: effectiveCoordinator.highlightCoordinator,
+			catalogResolver: effectiveCoordinator.catalogResolver,
+			elementToolStateStore: effectiveCoordinator.elementToolStateStore,
 			assessmentId: effectiveAssessmentId,
 			sectionId: effectiveSectionId,
 			itemPlayer: effectiveItemPlayer,
@@ -1443,7 +1405,7 @@ const DEFAULT_ENV = {
 			element,
 			observeMathControlNames(element, {
 				getMathSpeech: () =>
-					effectiveCoordinator?.getServiceBundle().ttsService.getMathSpeechOptions(),
+					effectiveCoordinator?.ttsService.getMathSpeechOptions(),
 				getContentLanguage: () => contentLanguage,
 			}),
 		);
@@ -1545,8 +1507,7 @@ const DEFAULT_ENV = {
 		if (!coordinator) return;
 		return untrack(() =>
 			bindTtsAudioHandoff({
-				ttsService: coordinator.getServiceBundle().ttsService,
-				listenerId: `timed-media-audio-handoff:${runtimeId}`,
+				ttsService: coordinator.ttsService,
 				silence: () => sectionBinding.requestMediaPauseForCompetingAudio(),
 			}),
 		);
@@ -1630,13 +1591,10 @@ const DEFAULT_ENV = {
 		});
 	});
 
-	// Forward the policy inputs (`assessment`, `pnpEnforcement`) to the
+	// Forward the policy inputs (`assessment`, `tools.pnpEnforcement`) to the
 	// coordinator this toolkit owns, each only when its own value changes:
 	// `policyInputsToForward` keeps a re-run of this effect from resetting a
-	// binding the host made on the coordinator. The
-	// enforcement mode resolves through `resolvePnpEnforcementInput`, so the
-	// embedded path (`runtime.tools.pnpEnforcement`) and the standalone
-	// `pnp-enforcement` attribute converge on one call.
+	// binding the host made on the coordinator.
 	//
 	// A coordinator the host passes or shares is never written: its policy
 	// inputs are the host's to bind through `coord.updateAssessment(...)`.
@@ -1646,14 +1604,13 @@ const DEFAULT_ENV = {
 	} | null = null;
 	$effect(() => {
 		void assessment;
-		void pnpEnforcement;
 		void tools;
 		const coord = effectiveCoordinator;
 		if (!coord) return;
 		if (coord !== ownedCoordinator) return;
 		untrack(() => {
 			const next: ForwardedPolicyInputs = {
-				pnpEnforcement: resolvePnpEnforcementInput(pnpEnforcement, tools),
+				pnpEnforcement: resolvePnpEnforcementInput(tools),
 				assessment: assessment ?? null,
 			};
 			const previous =
@@ -2022,13 +1979,6 @@ const DEFAULT_ENV = {
 			throw new Error("Coordinator not initialized");
 		}
 		await effectiveCoordinator.waitUntilReady();
-	}
-
-	export function getServiceBundle() {
-		if (!effectiveCoordinator) {
-			throw new Error("Coordinator not initialized");
-		}
-		return effectiveCoordinator.getServiceBundle();
 	}
 
 	export function setHooks(hooks: Record<string, unknown>): void {

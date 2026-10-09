@@ -148,8 +148,9 @@ and now log the warning, and its playground keeps binding the assessment through
 `updateAssessment`. Host R's PNP debugger mount keeps its props. A `true`
 `toolOverrides` entry now ranks below an item's `restrictedTools` and the
 profile's `prohibitedSupports`, which raise `tool-policy.overrideBlocked` when
-they withdraw it; no checkout names `toolOverrides` or `prohibitedSupports`. Row
-verification dates are unchanged.
+they withdraw it, and a prohibition outranks item and district requirements; no
+checkout names `toolOverrides` or `prohibitedSupports`. Row verification dates
+are unchanged.
 
 On 2026-10-08 the annotation toolbar's read-aloud started reading spoken cards: a
 `data-catalog-idref` node the selection holds whole reads its card, from the
@@ -192,6 +193,27 @@ are now its speech provider's, calls `updateSettings`, `highlightTTSWord` or
 `pauseTtsForMediaAudio`, or reads backend-call telemetry, and Host A calls only
 `ttsService.stop()`, which still ends a loading read. Row verification dates are
 unchanged.
+
+Also on 2026-10-08 each section-player input took one tier. `nds-icons`,
+`locale` and `tool-config-strictness` are layout attributes only; `assessmentId`,
+the three callbacks and tool config are `runtime` keys only, so the layouts no
+longer take `assessment-id` or the callback properties, and the toolkit reads PNP
+enforcement from `tools.pnpEnforcement` alone. The layouts lost
+`selectComposition`, `selectNavigation` and `selectReadiness` and the
+readiness-phase types; `getSnapshot()` and `pie-stage-change` stay. The section
+player keeps the root, `./browser`, the splitpane subpath and its contract,
+policies and item-section entries; the vertical, tabbed and inner component
+subpaths go, with the layout-contract constants and `SECTION_PLAYER_PUBLIC_EVENTS`.
+`ToolkitCoordinatorApi` lost `getServiceBundle`, `getInitStatus`, `isToolEnabled`
+and the resolver-registration methods, and requires `onReadyChange`. Read-aloud
+names a server provider as `backend: "server"` with `serverProvider`, and the
+`settings` nesting is no longer read. Checked against the checkouts of Hosts A,
+M, P, R and V: Host A already carries its assessment id in `runtime`, passes
+`nds-icons` as an attribute, imports the splitpane subpath and reads aloud
+through `backend: "server"` with `serverProvider: "custom"`, so it is unaffected.
+Host R's `assessment-id` mounts and vertical-subpath import were moved to
+`runtime.assessmentId` and the root entry in its repository the same day. No host
+names any other removed surface. Row verification dates are unchanged.
 
 The 2026-09-17 session-commit change (PIE-1058) was checked against the
 recorded rows rather than re-derived from the checkouts. It renames and removes
@@ -391,9 +413,8 @@ and `DesmosCalculatorProviderConfig` is now `CalculatorProviderConfig` with
 `settings` narrowed to `DesmosCalculatorSettings`. No checkout passes `desmos`,
 names either type, or sets a credential in a config bag, so all three removals
 are source breaks with no source to break. Host A configures Desmos through
-`provider.runtime.authFetcher` alone. Host R sets `authFetcher` directly on
-`tools.providers.calculator`, a key the calculator registration never reads, so
-its Desmos loads unkeyed.
+`provider.runtime.authFetcher` alone. Host R passes it the same way, on its playground and
+section-preview mounts.
 
 The open-source Cortex calculator is additive and was assessed against the
 recorded calculator rows rather than a fresh consumer-checkout refresh, so it
@@ -590,8 +611,8 @@ Packages consumed:
   `components.css` subpath. `pie-players-shared` is held to the same build by an
   override and imported nowhere.
 - **Host R** — 29 declared `@pie-players` packages. Imported: the toolkit,
-  `pie-default-tool-loaders`, `pie-players-shared` and its `types` subpath, two
-  `pie-section-player/components/*-element` subpaths, `pie-theme` plus its
+  `pie-default-tool-loaders`, `pie-players-shared` and its `types` subpath,
+  `pie-section-player` and its splitpane subpath, `pie-theme` plus its
   `tokens.css` and `token-registry.json` subpaths, eleven `pie-tool-*`, four
   `section-player-tools-*` debuggers plus `section-player-tools-tts-settings`,
   and `tts-server-core` / `-google` / `-polly` / `-sc`. It loads
@@ -641,7 +662,7 @@ and to fix it there in the same push.
 | `@pie-players/pie-theme/tokens.css` | R | Imported unlayered so tokens are present in the first paint, ahead of the theme element upgrading |
 | `@pie-players/pie-theme/token-registry.json` | R | Default import, cast to `PieThemeTokenRegistry`; the entry fields it reads are listed under theme tokens below |
 | `@pie-players/pie-section-player/components/section-player-splitpane-element` | A, R | |
-| `@pie-players/pie-section-player/components/section-player-vertical-element` | R | |
+| `@pie-players/pie-section-player` | R | Root entry, for its layout elements' side-effect registration |
 | `@pie-players/pie-assessment-toolkit` | R | Root entry, for values and types both |
 | `@pie-players/pie-default-tool-loaders` | R | |
 | `@pie-players/pie-players-shared` | R | Instrumentation providers |
@@ -683,9 +704,10 @@ reconstruct `env` down to its declared keys.
 Host R drives a wider surface than Host V — ten properties across five routes,
 four item and passage previews and a preloaded-package view: `config`, `env`,
 `session`, `render-stimulus`, `allowed-resize`, `add-correct-response`,
-`show-bottom-border`, `hosted`, `bundleEndpoints`, `strategy`. All ten exist on
+`show-bottom-border`, `hosted`, `loaderOptions`, `strategy`. All ten exist on
 `origin/develop`. Host P sets six of them, `session` and `strategy` among them;
-`render-stimulus`, `allowed-resize` and `bundleEndpoints` are Host R's alone.
+`render-stimulus`, `allowed-resize` and `loaderOptions` are Host R's alone. Host
+R's `bundleEndpoints` reaches only the legacy `<pie-player>`.
 
 The preloaded-package view loads the published `pie-preloaded-player` from a CDN
 at `@<version>/dist/index.js`, mounts `pie-item-player` with
@@ -783,10 +805,9 @@ nor writes without one, so its resume depends on the attribute being non-empty.
 Host A additionally: `debug`, `narrow-layout-breakpoint`,
 `split-pane-initial-passage-width`, `nds-icons`. Host R passes none of those
 four, so a change to one of them is a Host A question alone. Host R
-additionally: `assessment-id` on its demo, playground and preview mounts,
-`toolbar-position` on the demo and playground ones, and `iife-bundle-host` on the
-playground alone. Host A carries its
-assessment id in `runtime.assessmentId` instead. Neither host passes
+additionally: `toolbar-position` on the demo and playground mounts, and
+`iife-bundle-host` on the playground alone. Both hosts carry the assessment id in
+`runtime.assessmentId`. Neither host passes
 `locale`, `base-heading-level`, `tool-config-strictness`, the two
 `content-max-width-*` attributes, either remaining `split-pane-*` attribute, the
 three `*HostButtons` object props, or `policies`.
@@ -1765,7 +1786,7 @@ re-derived rather than remembered.
 - The `ColorSchemeSnapshot` return of `listPieColorSchemes()` and the `id` /
   `name` fields on its descriptors
 - `dist/pie-item-player.js` as a CDN filename, and `render-stimulus`,
-  `allowed-resize` and `bundleEndpoints` on `pie-item-player` — the three of that
+  `allowed-resize` and `loaderOptions` on `pie-item-player` — the three of that
   host's ten properties no client-facing host sets
 - The `bundleHash`, `elements` and `loaderVersion` fields of a generated
   preloaded package's `pie` block, and the registry publish time beside them

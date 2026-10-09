@@ -9,7 +9,6 @@
   type StandardTTSConfig
   type TTSConfig
   type TTSConfigExtensions
-  type TTSFeature
   type TTSProviderCapabilities
   type TTSProviderOptions
   type TTSSpeechSegment

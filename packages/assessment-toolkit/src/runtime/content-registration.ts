@@ -12,13 +12,13 @@ import type { RuntimeRegistrationDetail } from "./registration-events.js";
 export function registerContentWithCoordinator(
 	coordinator: Pick<
 		ToolkitCoordinatorApi,
-		"getServiceBundle" | "registerItemSettings"
+		"catalogResolver" | "registerItemSettings"
 	>,
 	detail: RuntimeRegistrationDetail,
 	owner: { assessmentId: string; sectionId: string },
 ): Array<() => void> {
 	const cleanups = [
-		coordinator.getServiceBundle().catalogResolver.registerOwner({
+		coordinator.catalogResolver.registerOwner({
 			owner: {
 				kind: detail.kind,
 				itemId: detail.itemId,

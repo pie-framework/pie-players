@@ -56,9 +56,6 @@ class MockTTSProvider implements ITTSProvider {
 	async initialize(_config: TTSConfig): Promise<ITTSProviderImplementation> {
 		return this.impl;
 	}
-	supportsFeature(): boolean {
-		return true;
-	}
 	getCapabilities(): TTSProviderCapabilities {
 		return {
 			supportsPause: true,
@@ -113,7 +110,6 @@ function createRecordingCoordinator() {
 				clearTypes.push(String(type));
 			},
 			clearTTS: () => {},
-			clearAll: () => {},
 			isSupported: () => true,
 			updateTTSHighlightStyle: () => {},
 		},

@@ -25,6 +25,7 @@ export {
 export type {
 	ItemSettingNotAppliedDetails,
 	OverrideBlockedDetails,
+	PlacementMissingDetails,
 	RequiredToolBlockedDetails,
 	ToolPolicyDecision,
 	ToolPolicyDecisionRequest,
@@ -44,13 +45,7 @@ export type {
 } from "./core/PolicySource.js";
 
 export type {
-	PolicySourceTag,
 	PnpPolicySourceRule,
-	PnpPolicySourceTag,
-	CustomPolicySourceTag,
-} from "./core/policy-source-tag.js";
-
-export type {
 	ToolPolicyDecisionRule,
 	ToolPolicyFeatureTrail,
 	ToolPolicyProvenance,

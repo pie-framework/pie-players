@@ -16,8 +16,8 @@ import type {
 import { resolveInterfaceI18n } from "@pie-players/pie-players-shared/i18n/provider";
 
 import {
+	createUniversalPersonalNeedsProfile,
 	PACKAGED_TOOL_TAG_MAP,
-	UNIVERSAL_SUPPORTS_PRESET,
 } from "../src/packaged-capability-composition.js";
 import {
 	createDictionaryToolRegistration,
@@ -38,13 +38,12 @@ describe("the packaged Spanish variants", () => {
 		expect(pictureDictionaryToolRegistration.toolId).toBe("pictureDictionary");
 	});
 
-	test("stay out of the universal preset, because a dictionary is always granted", () => {
+	test("stay out of the universal profile, because a dictionary is always granted", () => {
 		// A universal variant would hand every learner a Spanish gloss on a vocabulary item,
 		// changing what it measures.
-		expect(UNIVERSAL_SUPPORTS_PRESET).not.toContain(
-			spanishDictionaryToolRegistration.toolId,
-		);
-		expect(UNIVERSAL_SUPPORTS_PRESET).not.toContain(
+		const { supports } = createUniversalPersonalNeedsProfile();
+		expect(supports).not.toContain(spanishDictionaryToolRegistration.toolId);
+		expect(supports).not.toContain(
 			spanishPictureDictionaryToolRegistration.toolId,
 		);
 	});

@@ -178,7 +178,7 @@ await import("@pie-players/pie-item-player");
 - A package registers at one version per page, because the players align every authored version of a package to the registered one. Registering a second version throws.
 - `element` is the package's `./browser/delivery` module: `./browser/*` is the npm entry because it resolves React from the element package, so a host does not switch to `./delivery`.
 - `controller` is the package's `./browser/controller` module. A player that is not hosted runs its `model()` in the browser and warns once per tag registered without one. A hosted player renders server-processed models and needs none.
-- `math` sets where the elements' MathJax loads its fonts and speech data from ([MathJax assets](#mathjax-assets)). Elements on adapter 0.1.3 or later render without web fonts and speech when neither it nor the page gives a root or the files' URLs.
+- `math` sets where the elements' MathJax loads its fonts and speech data from, and whether math is in the tab order ([MathJax assets](#mathjax-assets)). Elements on adapter 0.1.3 or later render without web fonts and speech when neither it nor the page gives a root or the files' URLs.
 - The call is synchronous and validates every entry, and `math`, before registering any. A tag that is already defined keeps its definition.
 
 ### Preloaded player builds
@@ -222,6 +222,7 @@ registerPreloadedElements(entries, {
 - `assetUrls` maps npm paths to the URLs of those files, a string or a `URL` each; the files it does not list load from the root.
 - `speechPath` is the directory of `speech-worker.js` and its `mathmaps/`, by default `mathjax@<version>/sre` under the root. A directory of its own serves locales SRE does not ship.
 - `speechLocales` are the locales the speech language menu lists, as ids or as ids mapped to their labels; by default every locale SRE ships. List only those that can load.
+- `inTabOrder: true` puts typeset math in the keyboard tab order, a tab stop on each expression, for the MathJax menu's setting and its explorer; unset or `false`, math stays out of it. It takes effect at a copy's first math load: a copy reads it as it starts MathJax, so a later change reaches only copies that have not started. A host that loads a generated preloaded-player build, whose entry registers its elements itself, sets `opts.inTabOrder` on the page before the entry evaluates, and the entry's registration keeps it. The `iife` strategy's MathJax 3 renderer, and a MathJax the host loads and configures itself, keep their own configuration and ignore it. Adapter 0.1.4 and earlier ignore it.
 
 The call writes the options it is given, adds its `assetUrls` to those the page lists, and keeps the page options it leaves unset. A host without the players sets the same page options before the first element renders. With neither a root nor the fonts' URLs a copy warns once and dispatches `pie-mathjax-no-asset-root` on `window`: the browser build renders without web fonts and speech, and the npm build loads no MathJax. Players with `trackPageActions` on forward the event to instrumentation once per provider. Copies up to adapter 0.1.2 ignore the options and load from jsDelivr. The origins these files add to a Content-Security-Policy are in [security](../security/readme.md#content-security-policy).
 

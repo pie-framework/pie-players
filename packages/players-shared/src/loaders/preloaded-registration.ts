@@ -63,9 +63,10 @@ export interface PreloadedElement {
 export interface PreloadedRegistrationOptions {
 	/**
 	 * Where the elements' MathJax loads its fonts, its speech worker and, on the
-	 * adapter's npm build, MathJax itself from, written to
-	 * `window['@pie-lib/math-rendering@2'].opts`. With neither an `assetRoot`
-	 * nor the fonts in `assetUrls`, math renders without web fonts and speech.
+	 * adapter's npm build, MathJax itself from, and whether math is in the tab
+	 * order, written to `window['@pie-lib/math-rendering@2'].opts`. With neither
+	 * an `assetRoot` nor the fonts in `assetUrls`, math renders without web fonts
+	 * and speech.
 	 */
 	math?: MathAssetOptions;
 }

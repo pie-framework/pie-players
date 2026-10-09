@@ -58,14 +58,8 @@ export const RENAMED_OUTPUTS: Record<string, Record<string, string>> = {
 	"@pie-players/pie-section-player-tools-tts-settings": {
 		"./dist/section-player-tools-tts-settings.js": "TtsSettingsPanel.svelte",
 	},
-	"@pie-players/pie-tool-calculator-cortex": {
-		"./dist/pie-tool-calculator-cortex.js": "tool-calculator-cortex.svelte",
-	},
 	"@pie-players/pie-tool-calculator-desmos": {
 		"./dist/pie-tool-calculator.js": "index.ts",
-	},
-	"@pie-players/pie-tool-calculator-geogebra": {
-		"./dist/pie-tool-calculator-geogebra.js": "tool-calculator-geogebra.svelte",
 	},
 	"@pie-players/pie-tool-sign-language": {
 		"./dist/tool-sign-language.js": "index.ts",

@@ -1,4 +1,0 @@
-# Resolve workspace siblings to source for unit tests. Rationale, and why each
-# package carries its own copy, in the root bunfig.toml.
-[test]
-preload = ["../../test-support/bun-workspace-sources.ts"]

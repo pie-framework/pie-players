@@ -48,7 +48,7 @@
 	} from "@pie-players/pie-assessment-toolkit";
 	import {
 		catalogOwnerContextFor,
-		connectAssessmentToolkitRuntimeContext,
+		connectToolRuntimeContext,
 		dispatchCrossBoundaryEvent,
 		PIE_INTERNAL_FORMATIVE_ACTION_EVENT,
 		type InternalFormativeActionDetail,
@@ -204,7 +204,7 @@
 
 	$effect(() => {
 		if (!contextAnchor) return;
-		return connectAssessmentToolkitRuntimeContext(contextAnchor, (value) => {
+		return connectToolRuntimeContext(contextAnchor, (value) => {
 			runtimeContext = value;
 		});
 	});

@@ -36,7 +36,7 @@
 	import { withDemoLoaderOptions } from '#lib/demo-runtime/demo-player-config.js';
 	import { SECTION_DEMOS_DEFAULT_TTS_TOOL_PROVIDER } from '#lib/demo-runtime/section-demos-default-tts.js';
 	import {
-		createSectionDemoToolRegistryForCalculator,
+		createSectionDemoToolRegistry,
 		type SectionDemoCalculatorProvider
 	} from '#lib/demo-runtime/default-tool-registry.js';
 	import { preloadSectionElements } from '#lib/demo-runtime/preload-utils.js';
@@ -95,7 +95,7 @@
 		? createItemDataCalculatorIntegration(untrack(() => data.section))
 		: null;
 	const calculatorProviderAtInit = untrack(() => calculatorProvider);
-	const toolRegistry = createSectionDemoToolRegistryForCalculator(calculatorProviderAtInit);
+	const toolRegistry = createSectionDemoToolRegistry();
 	/*
 	 * The provider selection, plus whatever configuration the route asked for. The
 	 * two are separate seams: `provider.id` picks the adapter, and `restrictedMode`

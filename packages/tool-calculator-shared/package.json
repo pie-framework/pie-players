@@ -47,10 +47,13 @@
 	"jsdelivr": "./dist/calculator-element.js",
 	"dependencies": {
 		"@pie-players/pie-assessment-toolkit": "workspace:*",
+		"@pie-players/pie-calculator": "workspace:*",
 		"@pie-players/pie-players-shared": "workspace:*"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "^2.5.15",
+		"@happy-dom/global-registrator": "^20.14.5",
+		"@pie-players/pie-context": "workspace:*",
 		"@sveltejs/vite-plugin-svelte": "^7.3.1",
 		"svelte": "^5.57.1",
 		"svelte-check": "^4.7.6",

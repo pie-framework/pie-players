@@ -257,8 +257,17 @@ describe("ToolRegistry", () => {
 			};
 
 			// Request tool that doesn't exist
-			const visible = registry.filterVisibleInContext(["nonexistent"], context);
-			expect(visible.length).toBe(0);
+			const warnings: unknown[][] = [];
+			const originalWarn = console.warn;
+			console.warn = (...args: unknown[]) => warnings.push(args);
+			try {
+				const visible = registry.filterVisibleInContext(["nonexistent"], context);
+				registry.filterVisibleInContext(["nonexistent"], context);
+				expect(visible.length).toBe(0);
+				expect(warnings).toHaveLength(1);
+			} finally {
+				console.warn = originalWarn;
+			}
 		});
 
 		test("filters by supported level", () => {
@@ -445,6 +454,39 @@ describe("ToolRegistry", () => {
 			expect(ttsLoads).toBe(1);
 			expect(registry.isToolModuleLoaded("textToSpeech")).toBe(true);
 			expect(registry.isToolModuleLoaded("calculator")).toBe(false);
+		});
+
+		test("keeps the loader of a loaded module and warns once about a replacement", async () => {
+			const events: string[] = [];
+			const warnings: unknown[][] = [];
+			const originalWarn = console.warn;
+			console.warn = (...args: unknown[]) => warnings.push(args);
+			try {
+				let firstLoads = 0;
+				let replacementLoads = 0;
+				registry.setToolModuleLoaders({
+					calculator: async () => {
+						firstLoads += 1;
+					},
+				});
+				await registry.ensureToolModuleLoaded("calculator");
+				registry.onRegistryChange((event) => events.push(event.kind));
+
+				const replacement = async () => {
+					replacementLoads += 1;
+				};
+				registry.setToolModuleLoaders({ calculator: replacement });
+				registry.setToolModuleLoaders({ calculator: replacement });
+				await registry.ensureToolModuleLoaded("calculator");
+
+				expect(firstLoads).toBe(1);
+				expect(replacementLoads).toBe(0);
+				expect(events).toEqual([]);
+				expect(warnings).toHaveLength(1);
+				expect(String(warnings[0]?.[0])).toContain('"calculator"');
+			} finally {
+				console.warn = originalWarn;
+			}
 		});
 	});
 

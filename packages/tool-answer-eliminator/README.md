@@ -69,8 +69,11 @@ For a custom layout inside the toolkit:
   import '@pie-players/pie-tool-answer-eliminator';
 
   const tool = document.querySelector('pie-tool-answer-eliminator');
-  // Composite key into the toolkit's element tool state store
-  tool.globalElementId = 'my-assessment:section-1:question-1:mc1';
+  // Store key per PIE element in the question, by model id
+  tool.elementStateKeys = {
+    mc1: 'my-assessment:section-1:question-1:mc1',
+    mc2: 'my-assessment:section-1:question-1:mc2',
+  };
   tool.scopeElement = document.querySelector('.question-content');
   tool.visible = true; // or alwaysOn = true; the tool injects no buttons while neither is set
 </script>
@@ -82,7 +85,7 @@ For a custom layout inside the toolkit:
 
 ## Props/Attributes
 
-`globalElementId` and `scopeElement` are JS properties only; the others also take the attribute shown.
+`elementStateKeys` and `scopeElement` are JS properties only; the others also take the attribute shown.
 
 | Property | Attribute | Type | Default | Description |
 |----------|-----------|------|---------|-------------|
@@ -91,7 +94,7 @@ For a custom layout inside the toolkit:
 | `strategy` | `strategy` | `'strikethrough' \| 'mask'` | `'strikethrough'` | Elimination styling; any other value uses `strikethrough` |
 | `buttonAlignment` | `button-alignment` | `'left' \| 'right' \| 'inline'` | `'right'` | Button placement relative to the choice |
 | `toolId` | `tool-id` | `string` | `'answerEliminator'` | Id the tool registers with the coordinator under |
-| `globalElementId` | | `string` | | Composite key `assessmentId:sectionId:itemId:elementId` into the runtime context's element tool state store; enables stored eliminations |
+| `elementStateKeys` | | `Record<string, string>` | `{}` | Composite key `assessmentId:sectionId:itemId:elementId` per PIE element, by model id, into the runtime context's element tool state store. A choice is tracked under its nearest ancestor with a listed id and persists under that key; choices outside a listed element are kept in memory only |
 | `scopeElement` | | `HTMLElement` | | Root to detect choices in. Without it the tool uses the root its enclosing `pie-item-scope` provides, and with neither it warns and injects nothing |
 
 ## Global Element ID Format
@@ -105,7 +108,7 @@ ${assessmentId}:${sectionId}:${itemId}:${elementId}
 **Example:**
 ```typescript
 "demo-assessment:section-1:question-1:mc1"
-"biology-exam:section-2:genetics-q1:ebsr-part1"
+"biology-exam:section-2:genetics-q1:ebsr1"
 ```
 
 ### Benefits of Composite Keys
@@ -117,16 +120,16 @@ ${assessmentId}:${sectionId}:${itemId}:${elementId}
 
 ### Why Element-Level?
 
-Items can contain **multiple interactive elements** (e.g., EBSR with two parts). Each element needs independent state:
+Items can contain **multiple interactive elements** whose choice ids repeat (two multiple-choice elements both have a choice `a`). Each element needs independent state:
 
 ```typescript
 // ✅ Correct: Element-level state
 {
-  "demo:section-1:question-1:ebsr-part1": {
-    "answerEliminator": { "eliminatedChoices": ["choice-a", "choice-c"] }
+  "demo:section-1:question-1:mc1": {
+    "answerEliminator": { "eliminatedChoices": ["a", "c"] }
   },
-  "demo:section-1:question-1:ebsr-part2": {
-    "answerEliminator": { "eliminatedChoices": ["choice-b"] }
+  "demo:section-1:question-1:mc2": {
+    "answerEliminator": { "eliminatedChoices": ["a"] }
   }
 }
 ```

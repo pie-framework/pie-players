@@ -10,8 +10,8 @@
 			buttonAlignment: { type: 'String', attribute: 'button-alignment' },
 			scopeElement: { type: 'Object', reflect: false },
 
-			// Key into the toolkit's element tool state store (JS property only)
-			globalElementId: { type: 'String', reflect: false }
+			// Store key per PIE element, by model id (JS property only)
+			elementStateKeys: { type: 'Object', reflect: false }
 		},
 		extend: coerceBooleanAttributes,
 	}}
@@ -58,7 +58,7 @@
 		ToolCoordinatorApi,
 	} from '@pie-players/pie-assessment-toolkit/tools/registration';
 	import { onMount } from 'svelte';
-	import { AnswerEliminatorCore } from './answer-eliminator-core.js';
+	import { AnswerEliminatorCore, type ElementStateKeys } from './answer-eliminator-core.js';
 
 	// Props
 	let {
@@ -68,7 +68,7 @@
 		alwaysOn = false, // Set true for profile-based accommodation
 		buttonAlignment = 'right' as 'left' | 'right' | 'inline', // Button placement: left, right, or inline with checkbox
 		scopeElement = null, // Container element to limit DOM queries (for multi-item pages)
-		globalElementId = '' // Composite key: "assessmentId:sectionId:itemId:elementId"
+		elementStateKeys = {} as ElementStateKeys // Store key per PIE element, by model id
 	}: {
 		visible?: boolean;
 		toolId?: string;
@@ -76,7 +76,7 @@
 		alwaysOn?: boolean;
 		buttonAlignment?: 'left' | 'right' | 'inline';
 		scopeElement?: HTMLElement | null;
-		globalElementId?: string;
+		elementStateKeys?: ElementStateKeys;
 	} = $props();
 
 	// State
@@ -137,21 +137,16 @@
 	// Re-registers when a republished context brings a new coordinator.
 	$effect(() => registration.sync(coordinator, toolId));
 
-	// Update store integration when the store or the element key changes
+	// Update store integration when the store or the element keys change
 	$effect(() => {
-		if (core && elementToolStateStore && globalElementId) {
-			core.setStoreIntegration(elementToolStateStore, globalElementId);
-		}
+		core?.setStoreIntegration(elementToolStateStore, elementStateKeys ?? {});
 	});
 
 	onMount(() => {
 		// Initialize core engine with configuration
 		core = new AnswerEliminatorCore(strategy, buttonAlignment);
 
-		// Set up store integration if provided
-		if (core && elementToolStateStore && globalElementId) {
-			core.setStoreIntegration(elementToolStateStore, globalElementId);
-		}
+		core.setStoreIntegration(elementToolStateStore, elementStateKeys ?? {});
 
 		// Initialize for current question if active, otherwise ensure clean state
 		if (isActive) {

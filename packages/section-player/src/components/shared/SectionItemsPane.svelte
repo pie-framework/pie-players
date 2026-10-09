@@ -13,7 +13,7 @@
 		ToolbarItem,
 	} from "@pie-players/pie-assessment-toolkit";
 	import {
-		connectAssessmentToolkitRuntimeContext,
+		connectToolRuntimeContext,
 		toFrameworkErrorModel,
 	} from "@pie-players/pie-assessment-toolkit";
 	import { resolveInterfaceI18n } from "@pie-players/pie-players-shared/i18n/provider";
@@ -537,7 +537,7 @@
 
 	$effect(() => {
 		if (!scrollHintSentinel) return;
-		return connectAssessmentToolkitRuntimeContext(
+		return connectToolRuntimeContext(
 			scrollHintSentinel,
 			(value: AssessmentToolkitRuntimeContext) => {
 				ndsIconsFromContext = value?.ndsIcons;

@@ -1,7 +1,6 @@
 import type { SectionPlayerPolicies } from "./types.js";
 
 export type {
-	ReadinessPolicyAdapter,
 	SectionPlayerPolicies,
 	SectionPlayerPreloadPolicy,
 	SectionPlayerReadinessPolicy,

@@ -270,8 +270,6 @@ describe("TTSService telemetry", () => {
 				voice: "Joanna",
 				rate: 1.25,
 				pitch: 0.8,
-				region: "us-east-1",
-				organizationId: "server-tenant",
 				mathTokenHighlighting: true,
 				providerOptions: {
 					engine: "neural",

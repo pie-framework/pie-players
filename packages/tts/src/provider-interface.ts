@@ -54,22 +54,6 @@ export interface StandardTTSConfig {
  */
 export interface TTSConfigExtensions {
 	/**
-	 * Organization/tenant identifier
-	 *
-	 * @extension Application-specific
-	 * @use Multi-tenant applications
-	 */
-	organizationId?: string;
-
-	/**
-	 * Provider region or endpoint
-	 *
-	 * @extension Provider-specific
-	 * @example "us-east-1" (AWS), "us-central1" (Google Cloud)
-	 */
-	region?: string;
-
-	/**
 	 * Provider options. A provider's configuration type narrows this to the
 	 * options it reads.
 	 *
@@ -122,8 +106,6 @@ export interface TTSProviderOptions {
  *   voice: "Joanna",
  *   rate: 1.0,
  *   // Extensions
- *   region: "us-east-1",
- *   organizationId: "acme-corp",
  *   providerOptions: { engine: "neural" }
  * };
  * ```

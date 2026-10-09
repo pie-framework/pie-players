@@ -1,5 +1,3 @@
-import type { SectionPlayerReadinessChangeDetail } from "../contracts/public-events.js";
-
 export type SectionPlayerReadinessPolicy = {
 	mode: "progressive" | "strict";
 };
@@ -17,7 +15,3 @@ export type SectionPlayerPolicies = {
 	preload: SectionPlayerPreloadPolicy;
 	telemetry: SectionPlayerTelemetryPolicy;
 };
-
-export interface ReadinessPolicyAdapter {
-	computeFinalReady(detail: SectionPlayerReadinessChangeDetail): boolean;
-}

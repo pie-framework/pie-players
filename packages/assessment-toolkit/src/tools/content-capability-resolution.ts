@@ -40,7 +40,7 @@ export type ContentCapabilityPolicy =
 	| {
 			outcome: "granted";
 			/** Feature parameters carried by the decision, if any. */
-			parameters?: unknown;
+			parameters?: Record<string, unknown>;
 	  }
 	/**
 	 * No source granted it and none denied it. A capability declaring
@@ -69,7 +69,7 @@ export interface ResolvedContentCapability {
 	 * tell them apart at render time.
 	 */
 	granted: boolean;
-	parameters?: unknown;
+	parameters?: Record<string, unknown>;
 	/** Whatever the capability's own `resolve` returned; never inspected here. */
 	content: unknown;
 }

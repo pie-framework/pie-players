@@ -470,7 +470,7 @@ export function createToolSurfaceHost(
 		const coordinator = current.services.toolkitCoordinator;
 		if (!coordinator) return null;
 		let granted = false;
-		let parameters: unknown;
+		let parameters: Record<string, unknown> | undefined;
 
 		try {
 			if (registration.activation === "region") {

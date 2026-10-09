@@ -652,7 +652,7 @@ export interface AssessmentSettings {
 	 * item's `toolParameters` entry wins on that item's own toolbar. Provider
 	 * configuration belongs in the toolkit's `tools.providers`.
 	 */
-	toolConfigs?: ToolParameters;
+	toolParameters?: ToolParameters;
 }
 
 /**
@@ -684,7 +684,7 @@ export type ToolParameters = {
 export interface ItemSettings {
 	requiredTools?: string[]; // Tool ids required for this item
 	restrictedTools?: string[]; // Tool ids blocked for this item
-	/** Parameters by tool id; outranks the assessment's `toolConfigs` entry. */
+	/** Parameters by tool id; outranks the assessment's `toolParameters` entry. */
 	toolParameters?: ToolParameters;
 }
 

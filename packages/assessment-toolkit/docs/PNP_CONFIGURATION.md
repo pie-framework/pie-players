@@ -28,9 +28,9 @@ AssessmentEntity
     ├── testAdministration         # Session control
     │   └── toolOverrides: Record<string, boolean>
     │
-    └── toolConfigs                # Feature parameters by support id
-        ├── calculator: {...}
-        └── textToSpeech: {...}
+    └── toolParameters             # Feature parameters by support id
+        ├── calculator: { type }
+        └── answerEliminator: { strategy }
 
 AssessmentItemRef
 └── settings: ItemSettings         # Per-item rules, registered by the item's <pie-item-scope>
@@ -178,17 +178,9 @@ const itemRef: AssessmentItemRef = {
       "calculator"      // Mental math question - calculator would invalidate
     ],
 
-    // Feature parameters by support id; these override assessment `toolConfigs`
+    // Feature parameters by support id; these override the assessment's `toolParameters`
     toolParameters: {
-      calculator: {
-        type: "basic",
-        allowedFunctions: ["+", "-", "*", "/"]
-      },
-      graph: {
-        domain: [-10, 10],
-        range: [-10, 10],
-        gridEnabled: true
-      }
+      calculator: { type: "scientific" }
     }
   }
 };
@@ -319,7 +311,7 @@ console.log('Allowed tools:', allowedToolIds);
 //   `tool-policy.itemSettingNotApplied` diagnostic
 ```
 
-`settings.toolConfigs` holds feature parameters keyed by support id, and an item's `toolParameters` override them. Every tool policy shows carries them as its policy parameters (`ToolPolicyEntry.parameters`, `FeaturePolicyDecision.parameters`), whether or not a grant admits it and whatever `pnpEnforcement` is; the item's entry applies on the item's own toolbar and scope. The calculator reads `type` as its default flavor, the answer eliminator `strategy` (`strikethrough` or `mask`), and the sign-language capability `signLang`; `ToolParameterMap` in `@pie-players/pie-players-shared/types` types them. Provider configuration, such as the TTS backend and voice in step 2, belongs in `tools.providers`. The `server` backend sends requests to the host's TTS server at `apiEndpoint` (default `/api/tts`) through `@pie-players/tts-client-server`, which `@pie-players/pie-default-tool-loaders` installs.
+`settings.toolParameters` holds feature parameters keyed by support id, and an item's `toolParameters` override them. Every tool policy shows carries them as its policy parameters (`ToolPolicyEntry.parameters`, `FeaturePolicyDecision.parameters`), whether or not a grant admits it and whatever `pnpEnforcement` is; the item's entry applies on the item's own toolbar and scope. The calculator reads `type` as its default flavor, the answer eliminator `strategy` (`strikethrough` or `mask`), and the sign-language capability `signLang`; `ToolParameterMap` in `@pie-players/pie-players-shared/types` types them. Provider configuration, such as the TTS backend and voice in step 2, belongs in `tools.providers`. The `server` backend sends requests to the host's TTS server at `apiEndpoint` (default `/api/tts`) through `@pie-players/tts-client-server`, which `@pie-players/pie-default-tool-loaders` installs.
 
 ## Precedence Resolution Examples
 

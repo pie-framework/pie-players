@@ -66,8 +66,12 @@
 
 	const isBrowser = typeof window !== 'undefined';
 
-	// Storage key for sessionStorage
-	const STORAGE_KEY = 'pie-annotations';
+	// The tool id annotations are kept under in the toolkit's tool-state store.
+	const TOOL_STATE_ID = 'annotationToolbar';
+
+	// How long a restore waits for the section's content to render, since a
+	// serialized range resolves only against the rendered DOM.
+	const RESTORE_DELAY_MS = 2000;
 
 	// Disallowed elements - don't show toolbar when selecting these
 	const DISALLOWED_SELECTORS = [
@@ -91,6 +95,7 @@
 	// toolkit has one.
 	const highlightCoordinator = $derived(runtimeContext?.highlightCoordinator ?? null);
 	const ttsService = $derived(runtimeContext?.ttsService ?? null);
+	const elementToolStateStore = $derived(runtimeContext?.elementToolStateStore ?? null);
 
 	// Available highlight colors (modern, accessible palette). `$derived` because
 	// the labels come from the catalog, so the list rebuilds when the locale moves —
@@ -225,10 +230,23 @@
 		return effectiveScopeElement || ownerDoc?.documentElement || document.documentElement;
 	}
 
-	function getStorageKey(): string {
-		const scopeKey = shellContext?.canonicalItemId || shellContext?.itemId || 'global';
-		return `${STORAGE_KEY}:${scopeKey}`;
-	}
+	/**
+	 * Where this strip's annotations live in the tool-state store: the section and
+	 * attempt, and the item when the strip sits in an item's shell. `null` without
+	 * a store or the ids it keys by, and annotations then last as long as the page.
+	 */
+	let stateKey = $derived.by((): string | null => {
+		const assessmentId = runtimeContext?.assessmentId;
+		const sectionId = runtimeContext?.sectionId;
+		if (!elementToolStateStore || !assessmentId || !sectionId) return null;
+		return elementToolStateStore.getGlobalElementId({
+			assessmentId,
+			sectionId,
+			attemptId: runtimeContext?.attemptId ?? '',
+			itemId: shellContext?.canonicalItemId || shellContext?.itemId || '',
+			elementId: ''
+		});
+	});
 
 	/**
 	 * Find annotation that overlaps with the given range
@@ -291,36 +309,32 @@
 		return composedContains(effectiveScopeElement, range.commonAncestorContainer);
 	}
 
-	/**
-	 * Save annotations to sessionStorage.
-	 * Uses HighlightCoordinator's exportAnnotations for proper serialization.
-	 */
+	/** Record the current annotations under {@link stateKey}. */
 	function saveAnnotations() {
-		if (!isBrowser || !highlightCoordinator) return;
+		if (!highlightCoordinator || !elementToolStateStore || !stateKey) return;
 
 		try {
-			const root = getEffectiveRoot();
-			const serialized = highlightCoordinator.exportAnnotations(root);
-			sessionStorage.setItem(getStorageKey(), JSON.stringify(serialized));
+			const serialized = highlightCoordinator.exportAnnotations(getEffectiveRoot());
+			elementToolStateStore.setState(stateKey, TOOL_STATE_ID, serialized);
 		} catch (error) {
 			reportToolFailure(runtimeContext?.toolkitCoordinator, 'annotationToolbar', 'tool-state-save', error);
 		}
 	}
 
 	/**
-	 * Load annotations from sessionStorage.
-	 * Uses HighlightCoordinator's importAnnotations for proper deserialization.
+	 * Replace the shown annotations with those recorded under `key`, so a new
+	 * attempt starts without the previous one's, and a strip mounted again over
+	 * the same content does not add a second copy of each.
 	 */
-	function loadAnnotations() {
-		if (!isBrowser || !highlightCoordinator) return;
+	function restoreAnnotations(key: string) {
+		if (!highlightCoordinator || !elementToolStateStore) return;
 
 		try {
-			const json = sessionStorage.getItem(getStorageKey());
-			if (!json) return;
-
-			const data = JSON.parse(json);
-			const root = getEffectiveRoot();
-			highlightCoordinator.importAnnotations(data, root);
+			const recorded = elementToolStateStore.getState(key, TOOL_STATE_ID);
+			highlightCoordinator.clearAnnotations();
+			if (Array.isArray(recorded)) {
+				highlightCoordinator.importAnnotations(recorded, getEffectiveRoot());
+			}
 			annotationCount = highlightCoordinator.getAnnotations().length;
 		} catch (error) {
 			reportToolFailure(runtimeContext?.toolkitCoordinator, 'annotationToolbar', 'tool-state-load', error);
@@ -597,7 +611,7 @@
 		const count = annotationCount;
 		highlightCoordinator?.clearAnnotations();
 		annotationCount = 0;
-		sessionStorage.removeItem(getStorageKey());
+		saveAnnotations();
 
 		// Announce to screen readers
 		announce(`${count} annotation${count === 1 ? '' : 's'} cleared`, 3000);
@@ -763,16 +777,18 @@
 		hideToolbar();
 	}
 
-	// Effect for event listeners and initialization
+	// Restores on mount and whenever the key moves: a new section or attempt.
 	$effect(() => {
 		if (!isBrowser) return;
+		const key = stateKey;
+		if (!key || !highlightCoordinator) return;
+		const restoreTimer = setTimeout(() => untrack(() => restoreAnnotations(key)), RESTORE_DELAY_MS);
+		return () => clearTimeout(restoreTimer);
+	});
 
-		// Load persisted annotations after a delay to ensure content is rendered
-		// PIE section player needs time to render items before we can restore ranges
-		// Increased from 500ms to 2000ms to ensure all content is fully loaded
-		const loadTimer = setTimeout(() => {
-			loadAnnotations();
-		}, 2000);
+	// Effect for event listeners
+	$effect(() => {
+		if (!isBrowser) return;
 
 		const pointerEventTarget: HTMLElement | Document = effectiveScopeElement || document;
 		pointerEventTarget.addEventListener('click', handleDocumentClick);
@@ -792,7 +808,6 @@
 		window.addEventListener('resize', handleScroll);
 
 		return () => {
-			clearTimeout(loadTimer);
 			if (announcementTimer !== null) clearTimeout(announcementTimer);
 			if (selectionFrame !== null && typeof cancelAnimationFrame === 'function') {
 				cancelAnimationFrame(selectionFrame);

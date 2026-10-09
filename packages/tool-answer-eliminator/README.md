@@ -71,8 +71,8 @@ For a custom layout inside the toolkit. The tool detects choices under the item 
   const tool = document.querySelector('pie-tool-answer-eliminator');
   // Store key per PIE element in the question, by model id
   tool.elementStateKeys = {
-    mc1: 'my-assessment:section-1:question-1:mc1',
-    mc2: 'my-assessment:section-1:question-1:mc2',
+    mc1: 'my-assessment:section-1:attempt-1:question-1:mc1',
+    mc2: 'my-assessment:section-1:attempt-1:question-1:mc2',
   };
   tool.visible = true; // or alwaysOn = true; the tool injects no buttons while neither is set
 </script>
@@ -95,20 +95,20 @@ For a custom layout inside the toolkit. The tool detects choices under the item 
 | `alwaysOn` | `always-on` | `boolean` | `false` | Shows the buttons regardless of `visible`, for a profile-based accommodation |
 | `strategy` | `strategy` | `'strikethrough' \| 'mask'` | `'strikethrough'` | Elimination styling; any other value uses `strikethrough` |
 | `buttonAlignment` | `button-alignment` | `'left' \| 'right' \| 'inline'` | `'right'` | Button placement relative to the choice |
-| `elementStateKeys` | | `Record<string, string>` | `{}` | Composite key `assessmentId:sectionId:itemId:elementId` per PIE element, by model id, into the runtime context's element tool state store. A choice is tracked under its nearest ancestor with a listed id and persists under that key; choices outside a listed element are kept in memory only |
+| `elementStateKeys` | | `Record<string, string>` | `{}` | Composite key `assessmentId:sectionId:attemptId:itemId:elementId` per PIE element, by model id, into the runtime context's element tool state store. A choice is tracked under its nearest ancestor with a listed id and persists under that key; choices outside a listed element are kept in memory only |
 
 ## Global Element ID Format
 
 The tool uses globally unique composite keys for state management:
 
 ```
-${assessmentId}:${sectionId}:${itemId}:${elementId}
+${assessmentId}:${sectionId}:${attemptId}:${itemId}:${elementId}
 ```
 
 **Example:**
 ```typescript
-"demo-assessment:section-1:question-1:mc1"
-"biology-exam:section-2:genetics-q1:ebsr1"
+"demo-assessment:section-1:attempt-1:question-1:mc1"
+"biology-exam:section-2:attempt-1:genetics-q1:ebsr1"
 ```
 
 ### Benefits of Composite Keys
@@ -125,10 +125,10 @@ Items can contain **multiple interactive elements** whose choice ids repeat (two
 ```typescript
 // ✅ Correct: Element-level state
 {
-  "demo:section-1:question-1:mc1": {
+  "demo:section-1:attempt-1:question-1:mc1": {
     "answerEliminator": { "eliminatedChoices": ["a", "c"] }
   },
-  "demo:section-1:question-1:mc2": {
+  "demo:section-1:attempt-1:question-1:mc2": {
     "answerEliminator": { "eliminatedChoices": ["a"] }
   }
 }
@@ -143,7 +143,7 @@ The answer eliminator stores state in **ElementToolStateStore** (ephemeral, clie
 **Tool State (Ephemeral - NOT sent to server):**
 ```typescript
 {
-  "demo:section-1:question-1:mc1": {
+  "demo:section-1:attempt-1:question-1:mc1": {
     "answerEliminator": {
       "eliminatedChoices": ["choice-b", "choice-d"]
     }
@@ -255,7 +255,7 @@ The ElementToolStateStore provides cleanup methods:
 
 ```typescript
 // Clear state for a specific element
-store.clearElement('demo:section-1:question-1:mc1');
+store.clearElement('demo:section-1:attempt-1:question-1:mc1');
 
 // Clear all answer eliminator state across all elements
 store.clearTool('answerEliminator');

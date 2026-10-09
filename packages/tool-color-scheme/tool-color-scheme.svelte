@@ -40,8 +40,8 @@
 		AssessmentToolkitRuntimeContext,
 		ToolCoordinatorApi,
 	} from '@pie-players/pie-assessment-toolkit/tools/registration';
-	import { createFocusTrap, safeLocalStorageGet } from '@pie-players/pie-players-shared';
-	import { onMount } from 'svelte';
+	import { createFocusTrap } from '@pie-players/pie-players-shared';
+	import { onMount, untrack } from 'svelte';
 	import { resolveInterfaceI18n } from '@pie-players/pie-players-shared/i18n/provider';
 
 	let {
@@ -52,6 +52,7 @@
 		toolId?: string;
 	} = $props();
 
+	let contextHostElement = $state<HTMLDivElement | undefined>();
 	let containerEl = $state<HTMLDivElement | undefined>();
 	let dropdownTriggerEl = $state<HTMLButtonElement | undefined>();
 	let runtimeContext = $state<AssessmentToolkitRuntimeContext | null>(null);
@@ -61,16 +62,41 @@
 
 	const registration = createToolCoordinatorRegistration('Theme', ZIndexLayer.MODAL);
 
+	// Connected from an element that is always rendered, so a learner's recorded
+	// choice is reapplied before the tool is first opened.
 	$effect(() => {
-		if (!containerEl) return;
-		return connectToolRuntimeContext(containerEl, (value: AssessmentToolkitRuntimeContext) => {
+		if (!contextHostElement) return;
+		return connectToolRuntimeContext(contextHostElement, (value: AssessmentToolkitRuntimeContext) => {
 			runtimeContext = value;
 		});
 	});
 
 	function resolveThemeHost(): HTMLElement | null {
-		return resolvePieThemeHost(containerEl);
+		return resolvePieThemeHost(contextHostElement);
 	}
+
+	function readHostScheme(): string {
+		return resolveThemeHost()?.getAttribute('scheme')?.trim() || 'default';
+	}
+
+	/**
+	 * Where a learner's choice is recorded in the tool-state store: the section
+	 * and attempt. `null` without a store or the ids it keys by, and a choice then
+	 * lasts only on the theme host.
+	 */
+	const elementToolStateStore = $derived(runtimeContext?.elementToolStateStore ?? null);
+	const stateKey = $derived.by((): string | null => {
+		const assessmentId = runtimeContext?.assessmentId;
+		const sectionId = runtimeContext?.sectionId;
+		if (!elementToolStateStore || !assessmentId || !sectionId) return null;
+		return elementToolStateStore.getGlobalElementId({
+			assessmentId,
+			sectionId,
+			attemptId: runtimeContext?.attemptId ?? '',
+			itemId: '',
+			elementId: ''
+		});
+	});
 
 	// Interface locale, re-derived on every context republish.
 	const interfaceI18n = $derived(resolveInterfaceI18n(runtimeContext));
@@ -97,10 +123,12 @@
 	// Focus trap cleanup function (plain variable, not reactive)
 	let cleanupFocusTrap: (() => void) | null = null;
 
-	// Apply color scheme to document
+	// The theme host owns the scheme. A choice is applied there and recorded only
+	// under the attempt: a value kept for the device would carry one learner's
+	// scheme over the scheme the host derives for the next.
 	function applyColorScheme(schemeId: string) {
 		if (!browser) return;
-		applyPieColorScheme(schemeId, { from: containerEl });
+		applyPieColorScheme(schemeId, { from: contextHostElement, persistenceKey: null });
 	}
 
 	// Select scheme and close the tool
@@ -109,6 +137,9 @@
 		requestedScheme = schemeId;
 		dropdownOpen = false;
 		applyColorScheme(schemeId);
+		if (elementToolStateStore && stateKey) {
+			elementToolStateStore.setState(stateKey, toolId, schemeId);
+		}
 		// Close the entire tool modal and deselect toolbar button
 		coordinator?.hideTool(toolId);
 	}
@@ -170,6 +201,27 @@
 		}
 	}
 
+	// The attempt's recorded choice wins over the host's scheme; without one the
+	// picker shows what the theme host has.
+	$effect(() => {
+		if (!browser) return;
+		const key = stateKey;
+		const recorded = key ? elementToolStateStore?.getState(key, toolId) : undefined;
+		untrack(() => {
+			if (typeof recorded === 'string' && recorded) {
+				requestedScheme = recorded;
+				if (readHostScheme() !== recorded) applyColorScheme(recorded);
+			} else {
+				requestedScheme = readHostScheme();
+			}
+		});
+	});
+
+	// Opening re-reads the host, which may have moved the scheme since.
+	$effect(() => {
+		if (visible) untrack(() => (requestedScheme = readHostScheme()));
+	});
+
 	// Re-registers when a republished context brings a new coordinator.
 	$effect(() => registration.sync(coordinator, toolId));
 
@@ -205,19 +257,6 @@
 			}
 		});
 
-		// Load saved scheme from localStorage safely
-		if (browser) {
-			const themeHost = resolveThemeHost();
-			const hostScheme = themeHost?.getAttribute('scheme');
-			const saved = safeLocalStorageGet('pie-color-scheme') ?? hostScheme ?? 'default';
-			requestedScheme = saved;
-			if (saved) {
-				requestAnimationFrame(() => {
-					applyColorScheme(saved);
-				});
-			}
-		}
-
 		// Click outside handler
 		function handleClickOutside(e: MouseEvent) {
 			if (!dropdownOpen) return;
@@ -236,6 +275,8 @@
 		};
 	});
 </script>
+
+<div bind:this={contextHostElement} style="display: none;" aria-hidden="true"></div>
 
 {#if visible}
 	<div

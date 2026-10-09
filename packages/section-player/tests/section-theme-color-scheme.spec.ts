@@ -17,6 +17,13 @@ async function gotoDemo(page: Page) {
 	await expectDemoChromeReady(page);
 }
 
+/** Set the scheme the way a host does, on its document-scoped `<pie-theme>`. */
+async function setHostScheme(page: Page, scheme: string) {
+	await page
+		.locator('pie-theme[scope="document"]')
+		.evaluate((host, value) => host.setAttribute("scheme", value), scheme);
+}
+
 /**
  * Resolve once every CSS transition running on `locator` and its descendants has
  * finished, so a colour read lands on the resting value rather than an
@@ -746,13 +753,36 @@ test.describe("section theme and color scheme integration", () => {
 		await expect(trigger).toBeFocused();
 	});
 
-	test("keeps a persisted unavailable scheme visible without making it selectable", async ({
+	test("follows the host scheme over a stored pie-color-scheme", async ({
 		page,
 	}) => {
 		await page.addInitScript(() => {
 			window.localStorage.setItem("pie-color-scheme", "district-retired");
 		});
 		await gotoDemo(page);
+		await page
+			.getByRole("button", { name: "Theme, change colors and contrast" })
+			.first()
+			.click();
+
+		const themeTool = page.locator("pie-tool-theme").first();
+		await expect(
+			themeTool.getByRole("button", { name: /Select theme/ }),
+		).toBeVisible();
+		await expect(themeTool.getByRole("status")).not.toContainText(
+			"unavailable",
+		);
+		await expect(page.locator('pie-theme[scope="document"]')).not.toHaveAttribute(
+			"scheme",
+			"district-retired",
+		);
+	});
+
+	test("keeps an unavailable host scheme visible without making it selectable", async ({
+		page,
+	}) => {
+		await gotoDemo(page);
+		await setHostScheme(page, "district-retired");
 		await page
 			.getByRole("button", { name: "Theme, change colors and contrast" })
 			.first()
@@ -783,10 +813,8 @@ test.describe("section theme and color scheme integration", () => {
 		page,
 	}) => {
 		await page.emulateMedia({ forcedColors: "active" });
-		await page.addInitScript(() => {
-			window.localStorage.setItem("pie-color-scheme", "forced-unavailable");
-		});
 		await gotoDemo(page);
+		await setHostScheme(page, "forced-unavailable");
 		await page
 			.getByRole("button", { name: "Theme, change colors and contrast" })
 			.first()

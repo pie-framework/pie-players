@@ -736,7 +736,7 @@ Enable/disable uses canonical tool config and follows standard precedence:
 
 ### State Persistence Pattern
 
-Tools write per-element state to the coordinator's `ElementToolStateStore`, keyed `assessmentId:sectionId:itemId:elementId`; the answer eliminator is the packaged tool that writes to it. The host persists the store through two coordinator hooks:
+Tools write state to the coordinator's `ElementToolStateStore`, keyed `assessmentId:sectionId:attemptId:itemId:elementId`, so each attempt keeps its own. The answer eliminator writes per element; the annotation toolbar writes per item, or per section when it sits outside an item, leaving the trailing parts empty; the theme picker writes the learner's scheme per section and attempt. The host persists the store through two coordinator hooks:
 
 ```typescript
 const coordinator = new ToolkitCoordinator({
@@ -761,7 +761,6 @@ const coordinator = new ToolkitCoordinator({
 - Host controls storage strategy
 - Tools don't need storage logic
 
-The annotation toolbar keeps its annotations in sessionStorage under a per-item key, outside the store.
 
 ### PIE Element Integration
 

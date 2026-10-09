@@ -32,6 +32,12 @@ export interface AssessmentToolkitRuntimeContext {
 	elementToolStateStore: ElementToolStateStoreApi;
 	assessmentId: string;
 	sectionId: string;
+	/**
+	 * The attempt the toolkit's `attempt-id` names, unset when the host names
+	 * none. Tool state keys carry it, so two attempts at one section never share
+	 * a tool's state.
+	 */
+	attemptId?: string;
 	itemPlayer: ItemPlayerConfig;
 	/**
 	 * Opt-in flag: context consumers render the vendored `<nds-icon-button>`

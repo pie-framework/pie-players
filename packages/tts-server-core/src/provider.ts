@@ -137,6 +137,49 @@ export abstract class BaseTTSProvider implements ITTSServerProvider {
 	async destroy(): Promise<void> {
 		this.initialized = false;
 		this.config = {};
+		this.voiceListing = undefined;
+	}
+
+	private voiceListing: Promise<Voice[]> | undefined;
+
+	/**
+	 * The voice a request is read in. A named voice wins. A request that names
+	 * only a language reads in `defaultVoice` when that voice speaks the
+	 * language, else in the first listed voice for it, `prefer` breaking ties;
+	 * a language no voice speaks reads in `defaultVoice`.
+	 *
+	 * A language matches a voice on the full tag, else on the primary subtag
+	 * (`es` matches `es-US`). The listing is fetched once per provider; a failed
+	 * listing reads in `defaultVoice` and is retried on the next request.
+	 */
+	protected async resolveRequestVoice(
+		request: SynthesizeRequest,
+		defaultVoice: string,
+		prefer?: (voice: Voice) => boolean,
+	): Promise<string> {
+		if (request.voice) return request.voice;
+		const language = request.language?.trim().toLowerCase();
+		if (!language) return defaultVoice;
+		let voices: Voice[];
+		try {
+			this.voiceListing ??= this.getVoices();
+			voices = await this.voiceListing;
+		} catch {
+			this.voiceListing = undefined;
+			return defaultVoice;
+		}
+		const primary = language.split("-")[0];
+		const code = (voice: Voice) => voice.languageCode.toLowerCase();
+		const exact = voices.filter((voice) => code(voice) === language);
+		const candidates = exact.length
+			? exact
+			: voices.filter((voice) => code(voice).split("-")[0] === primary);
+		if (candidates.some((voice) => voice.id === defaultVoice)) {
+			return defaultVoice;
+		}
+		const chosen =
+			(prefer ? candidates.find(prefer) : undefined) ?? candidates[0];
+		return chosen?.id ?? defaultVoice;
 	}
 
 	/**

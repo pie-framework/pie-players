@@ -246,7 +246,7 @@ describe("TTSService structural pauses", () => {
 		try {
 			const text =
 				"A. Chlorophyll and carbon dioxide B. Oxygen and glucose C. Carbon dioxide and energy D. Oxygen and starch";
-			const segments = (service as any).createSpeechPlan(root, text);
+			const segments = (service as any).createSpeechPlan(root, text, 0, "en-US");
 			expect(segments.map((s: any) => s.text)).toEqual([
 				"A. Chlorophyll and carbon dioxide",
 				"B. Oxygen and glucose",
@@ -553,6 +553,35 @@ describe("TTSService structural pauses", () => {
 		expect(restartedSegments).toEqual([
 			{ text: "Second sentence.", startOffset: 16, pauseMsAfter: 0 },
 		]);
+	});
+
+	test("a seek under a pause moves the cursor and stays paused until resume", async () => {
+		const impl = new MockTTSImpl(false);
+		(impl as any).speakSegments = undefined;
+		const service = new TTSService();
+		await service.initialize(new MockTTSProvider(impl));
+		(service as any).state = PlaybackState.PAUSED;
+		(service as any).currentText = "First. Second. Third.";
+		(service as any).seekSegments = [
+			{ text: "First.", startOffset: 0, pauseMsAfter: 0 },
+			{ text: "Second.", startOffset: 7, pauseMsAfter: 0 },
+			{ text: "Third.", startOffset: 15, pauseMsAfter: 0 },
+		] as TTSSpeechSegment[];
+		(service as any).currentBoundaryOffset = 0;
+
+		const firstSeek = service.seekForward();
+		const secondSeek = service.seekForward();
+		await firstSeek;
+		await Promise.resolve();
+
+		expect(service.getState()).toBe(PlaybackState.PAUSED);
+		expect(impl.speakCalls).toEqual([]);
+
+		service.resume();
+		await secondSeek;
+
+		expect(impl.speakCalls).toEqual(["Third."]);
+		expect(service.getState()).toBe(PlaybackState.IDLE);
 	});
 
 	test("keeps a start-aware seek replacement loading and unhighlighted until native start", async () => {

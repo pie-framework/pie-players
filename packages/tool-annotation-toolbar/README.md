@@ -153,8 +153,8 @@ from the selection's offset within its content root:
 ttsSpeaking = true;
 try {
   // contentRoot: the item or passage scope element, else the document element.
-  // language: the nearest `lang` in the content, else the toolkit's
-  // `content-language`, else en-US.
+  // language: the toolkit's `content-language`; `speak` lets a `lang` in
+  // the content win over it.
   // catalogContext: from the shell holding the selection.
   await ttsService.speak(selectedRange, { contentRoot, language, catalogContext });
 } finally {

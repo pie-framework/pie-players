@@ -428,6 +428,10 @@
 	let activeSessionSnapshot: SessionSnapshot | null = null;
 	let offeredSnapshotKey = "";
 	let pendingSessionSnapshot: SessionSnapshotRecord | null = null;
+	// The host session container the controller last took, and while a session
+	// swap commits the outgoing responses, the container they are projected onto.
+	let appliedSessionContainer: unknown = null;
+	let outgoingSessionContainer: unknown = null;
 	// The custom element itself, resolved while the player is still connected.
 	// `hostElement` is the inner `<div>`; by the time a removal reaches
 	// `onDestroy` that div can already be detached from the custom element, and
@@ -623,6 +627,38 @@
 		// written again by the render this starts.
 		derivedStateUnannounced = false;
 		return true;
+	}
+
+	function sessionIdOf(input: unknown): string {
+		return isRecord(input) && typeof input.id === "string" ? input.id : "";
+	}
+
+	/**
+	 * The host replaced the session with one carrying a different id: a new
+	 * attempt, or another item in a card the host kept mounted.
+	 */
+	function isSessionSwap(incoming: unknown): boolean {
+		if (!sessionController) return false;
+		const currentId = sessionIdOf(sessionController.getSession());
+		const incomingId = sessionIdOf(incoming);
+		return currentId !== "" && incomingId !== "" && currentId !== incomingId;
+	}
+
+	/**
+	 * Commit the mounted elements' pending responses into the session they were
+	 * given for, before the incoming one reaches the controller. Each commit is
+	 * projected onto the host container that session came in; projected onto the
+	 * new one, an outgoing response would become the next session's answer.
+	 */
+	function commitOutgoingSessions(): void {
+		outgoingSessionContainer = appliedSessionContainer;
+		try {
+			commitPendingSessions(hostElement, { reason: "navigate", logger });
+		} catch (errorValue) {
+			logger.warn("[pie-item-player] session commit on session swap failed", errorValue);
+		} finally {
+			outgoingSessionContainer = null;
+		}
 	}
 
 	function hasIncompleteStructuredShuffledValues(entry: unknown): boolean {
@@ -1183,11 +1219,16 @@
 	});
 
 	$effect(() => {
-		const parsed = parseSessionProp(effectiveSession);
+		const container = effectiveSession;
+		const parsed = parseSessionProp(container);
 		const shouldForceBackendReplacement =
 			backendOrchestrator.hasPendingSessionReplacement();
 		const controllerItemId = itemConfig?.id || "pie-item-player";
 		untrack(() => {
+			if (isSessionSwap(parsed)) {
+				commitOutgoingSessions();
+			}
+			appliedSessionContainer = container;
 			const controller = ensureSessionController(controllerItemId, parsed);
 			// Do not let metadata-only prop churn wipe user responses already in the controller.
 			syncControllerSession(controller, parsed, {
@@ -1352,7 +1393,10 @@
 	// attribute has no object to project onto and is skipped.
 	function publishSessionToHostProp(nextSession: unknown): void {
 		try {
-			projectSessionIntoHostContainer(session, nextSession);
+			projectSessionIntoHostContainer(
+				outgoingSessionContainer ?? session,
+				nextSession,
+			);
 		} catch (error) {
 			logger.warn(
 				"[pie-item-player] could not project the session onto the host container",

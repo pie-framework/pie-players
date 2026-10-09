@@ -25,7 +25,7 @@ import { resolveOverlayElement } from "./overlay-element-cache.js";
 
 type EliminationStrategy = "strikethrough" | "mask";
 
-/** `tools.providers.answerEliminator.strategy`, defaulting to strikethrough. */
+/** The policy parameters' `strategy`, defaulting to strikethrough. */
 const normalizeEliminationStrategy = (value: unknown): EliminationStrategy =>
 	value === "mask" ? "mask" : "strikethrough";
 
@@ -114,7 +114,7 @@ export const answerEliminatorToolRegistration: ToolRegistration = {
 		overlay.setAttribute(
 			"strategy",
 			normalizeEliminationStrategy(
-				toolbarContext.toolkitCoordinator?.getToolConfig(this.toolId)?.strategy,
+				toolbarContext.getToolParameters?.("answerEliminator")?.strategy,
 			),
 		);
 

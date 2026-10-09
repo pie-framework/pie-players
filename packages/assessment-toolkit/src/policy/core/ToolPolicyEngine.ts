@@ -18,6 +18,7 @@
 import type {
 	AssessmentEntity,
 	ItemSettings,
+	ToolParametersFor,
 } from "@pie-players/pie-players-shared/types";
 
 import type {
@@ -43,6 +44,7 @@ import {
 } from "./feature-decision.js";
 import { composeDecision } from "./compose-decision.js";
 import { resolveDefaultPnpEnforcement } from "./pnp-policy-inputs.js";
+import { resolveToolParameters } from "./tool-parameters.js";
 import { structurallyEqual } from "../../utils/structural-equality.js";
 import {
 	type PnpPolicyItem,
@@ -264,20 +266,25 @@ export class ToolPolicyEngine {
 	 * `scope` is the surface asking. An item's scope brings in the item's
 	 * registered settings, as {@link decide} does for the item's toolbar.
 	 */
-	decideFeature(featureId: string, scope?: ToolScope): FeaturePolicyDecision {
+	decideFeature<K extends string>(
+		featureId: K,
+		scope?: ToolScope,
+	): FeaturePolicyDecision<ToolParametersFor<K>> {
 		this.assertNotDisposed();
 		const hostDenial = this.hostFeatureGate(featureId);
 		if (hostDenial) return hostDenial;
+		const item = this.itemForScope(scope);
 		return interpretFeatureResult(
 			featureId,
 			this.pnpPolicySource.resolveFeature(featureId, {
 				assessment: this.assessment ?? undefined,
-				item: this.itemForScope(scope),
+				item,
 			}),
 			// `resolveFeature` takes the assessment as `undefined` either way, so the
 			// source cannot tell an unbound host from one whose profile is silent.
 			// The engine can.
 			{ assessmentBound: this.assessment !== null },
+			resolveToolParameters(featureId, this.assessment, item),
 		);
 	}
 
@@ -292,7 +299,9 @@ export class ToolPolicyEngine {
 	 * `placement-membership` are deliberately not applied: both are statements
 	 * about a toolbar the feature was never on.
 	 */
-	private hostFeatureGate(featureId: string): FeaturePolicyDecision | null {
+	private hostFeatureGate(
+		featureId: string,
+	): FeaturePolicyDecision<never> | null {
 		const context = { assessmentBound: this.assessment !== null };
 		const blocked = normalizeToolList(this.tools.policy.blocked);
 		if (blocked.includes(featureId)) {

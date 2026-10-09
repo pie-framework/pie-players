@@ -18,6 +18,7 @@ import type {
 	AccessibilityCatalog,
 	AssessmentEntity,
 	ItemSettings,
+	ToolParametersFor,
 } from "@pie-players/pie-players-shared/types";
 import {
 	type CanonicalToolsConfig,
@@ -2986,10 +2987,10 @@ export class ToolkitCoordinator {
 	 * `scope` is the surface asking; an item's scope brings in that item's
 	 * registered settings ({@link registerItemSettings}).
 	 */
-	decideFeaturePolicy(
-		featureId: string,
+	decideFeaturePolicy<K extends string>(
+		featureId: K,
 		scope?: ToolScope,
-	): FeaturePolicyDecision {
+	): FeaturePolicyDecision<ToolParametersFor<K>> {
 		const decision = this.policyEngine.decideFeature(featureId, scope);
 		this.warnPolicyDiagnostics(decision.diagnostics);
 		const unboundIsMisconfigured =

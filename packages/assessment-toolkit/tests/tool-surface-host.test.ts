@@ -54,9 +54,9 @@ function createCoordinator() {
 		decideFeaturePolicy: (featureId: string) =>
 			grants.get(featureId) ?? { granted: false },
 		decideToolPolicy: () => ({
-			visibleTools: [...visibleTools].map(([toolId, settings]) => ({
+			visibleTools: [...visibleTools].map(([toolId, parameters]) => ({
 				toolId,
-				settings,
+				parameters,
 			})),
 		}),
 		onPolicyChange: (listener: () => void) => {

@@ -173,18 +173,21 @@ describe("itemSettingsHavePnpPolicyInputs — structural PNP/profile policy mate
 		).toBe(false);
 	});
 
-	test("returns true for non-empty `requiredTools` / `restrictedTools` / `toolParameters`", () => {
+	test("returns true for non-empty `requiredTools` / `restrictedTools`", () => {
 		expect(itemSettingsHavePnpPolicyInputs({ requiredTools: ["graph"] })).toBe(
 			true,
 		);
 		expect(
 			itemSettingsHavePnpPolicyInputs({ restrictedTools: ["calculator"] }),
 		).toBe(true);
+	});
+
+	test("returns false for tool parameters alone", () => {
 		expect(
 			itemSettingsHavePnpPolicyInputs({
-				toolParameters: { calculator: { mode: "basic" } },
+				toolParameters: { calculator: { type: "basic" } },
 			}),
-		).toBe(true);
+		).toBe(false);
 	});
 });
 

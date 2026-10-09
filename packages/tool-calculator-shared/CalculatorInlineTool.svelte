@@ -170,7 +170,12 @@
 
 	function handleToggle(): void {
 		if (!coordinator || !toolkitCoordinator || !target) return;
-		const result = toggleInlineCalculator(coordinator, toolkitCoordinator, target);
+		const result = toggleInlineCalculator(coordinator, toolkitCoordinator, target, {
+			calculatorType: variant,
+			availableTypes: CALCULATOR_VARIANTS.filter(
+				(type) => type === variant || supportedTypes.has(type),
+			),
+		});
 		if (result === 'unavailable') {
 			requestable = false;
 			return;

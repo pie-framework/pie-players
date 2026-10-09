@@ -6,6 +6,7 @@ export interface DecidedToolbarTool {
 	toolId: string;
 	required: boolean;
 	alwaysAvailable: boolean;
+	parameters?: Record<string, unknown>;
 }
 
 /**
@@ -32,6 +33,7 @@ export function createDecidedToolsTracker(): (
 			toolId: entry.toolId,
 			required: entry.required,
 			alwaysAvailable: entry.alwaysAvailable,
+			parameters: entry.parameters,
 		}));
 		if (
 			last?.renderVersion === renderVersion &&

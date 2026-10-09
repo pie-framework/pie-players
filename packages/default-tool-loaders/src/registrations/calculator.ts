@@ -91,7 +91,13 @@ function getCalculatorRenderParams(toolbarContext: ToolbarContext): {
 	displayName: string;
 } {
 	const params = toolbarContext.getToolRenderParams?.("calculator") ?? {};
-	const calculatorType = normalizeCalculatorType(params.calculatorType);
+	// A host resolver or a request names the type; the policy parameters'
+	// `type` is the default beneath both.
+	const calculatorType =
+		normalizeCalculatorType(params.calculatorType) ??
+		normalizeCalculatorType(
+			toolbarContext.getToolParameters?.("calculator")?.type,
+		);
 	const availableTypesRaw = params.availableTypes;
 	const availableTypes = Array.isArray(availableTypesRaw)
 		? availableTypesRaw

@@ -15,7 +15,10 @@
  *   - `settings.districtPolicy` (any `blockedTools` or `requiredTools`),
  *   - `settings.testAdministration` (any `toolOverrides` entry),
  *   - or, for an item-scoped decision, the item's settings carry
- *     `requiredTools` / `restrictedTools` / `toolParameters`.
+ *     `requiredTools` / `restrictedTools`.
+ *
+ * Tool parameters are no policy material: the engine resolves them whatever the
+ * enforcement state.
  *
  * Hosts opt out of the auto-on behavior by passing
  * `pnpEnforcement: "off"` explicitly (engine input or
@@ -79,7 +82,7 @@ export function assessmentHasPnpPolicyInputs(
 
 /**
  * Return `true` when an item's settings carry item-level profile policy
- * material (`requiredTools`, `restrictedTools`, or `toolParameters`).
+ * material (`requiredTools` or `restrictedTools`).
  *
  * Used in addition to {@link assessmentHasPnpPolicyInputs} for a decision scoped
  * to the item, so an item with profile-relevant settings engages PNP/profile
@@ -99,13 +102,6 @@ export function itemSettingsHavePnpPolicyInputs(
 	if (
 		Array.isArray(settings.restrictedTools) &&
 		settings.restrictedTools.length > 0
-	) {
-		return true;
-	}
-	if (
-		settings.toolParameters &&
-		typeof settings.toolParameters === "object" &&
-		Object.keys(settings.toolParameters).length > 0
 	) {
 		return true;
 	}

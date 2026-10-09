@@ -70,21 +70,33 @@ export function canOpenInlineCalculator(
 	);
 }
 
+/** The calculator variant a button names, as the render params it requests. */
+export interface InlineCalculatorVariant {
+	calculatorType: string;
+	availableTypes: string[];
+}
+
 /**
  * Hide the calculator when it is open; otherwise ask the target toolbar to open
- * it. `"unavailable"` when no toolbar claimed the request.
+ * the variant the button names. `"unavailable"` when no toolbar claimed the
+ * request.
  */
 export function toggleInlineCalculator(
 	toolCoordinator: Pick<ToolCoordinatorApi, "isToolVisible" | "hideTool">,
 	toolkitCoordinator: Pick<ToolkitCoordinatorApi, "requestTool">,
 	target: InlineCalculatorTarget,
+	variant: InlineCalculatorVariant,
 ): "opened" | "closed" | "unavailable" {
 	const instanceId = inlineCalculatorInstanceId(target);
 	if (toolCoordinator.isToolVisible(instanceId)) {
 		toolCoordinator.hideTool(instanceId);
 		return "closed";
 	}
-	return toolkitCoordinator.requestTool?.(target) === true
+	const params = {
+		calculatorType: variant.calculatorType,
+		availableTypes: variant.availableTypes,
+	};
+	return toolkitCoordinator.requestTool?.({ ...target, params }) === true
 		? "opened"
 		: "unavailable";
 }

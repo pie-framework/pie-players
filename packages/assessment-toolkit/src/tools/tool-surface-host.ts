@@ -499,7 +499,7 @@ export function createToolSurfaceHost(
 					// test-administration override grants it.
 					placed = true;
 					granted = entry.required || entry.alwaysAvailable;
-					parameters = entry.settings;
+					parameters = entry.parameters;
 					break;
 				}
 				if (!placed) return null;

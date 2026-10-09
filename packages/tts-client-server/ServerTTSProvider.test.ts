@@ -232,6 +232,44 @@ describe("ServerTTSProvider", () => {
 		expect(MockAudio.instances[0]?.playbackRate).toBe(1);
 	});
 
+	test("anchors pie transport marks to the spoken text", async () => {
+		// Offsets in UTF-8 bytes, as a Polly-backed server built before marks
+		// were anchored server-side returns them.
+		globalThis.fetch = vi.fn(async () =>
+			createJSONResponse({
+				audio: btoa("audio-bytes"),
+				contentType: "audio/mpeg",
+				speechMarks: [
+					{ time: 0, type: "word", start: 0, end: 3, value: "Él" },
+					{ time: 300, type: "word", start: 4, end: 10, value: "comió" },
+					{ time: 600, type: "word", start: 11, end: 15, value: "más" },
+				],
+			}),
+		) as unknown as typeof fetch;
+		const impl = await new ServerTTSProvider().initialize({
+			apiEndpoint: "/api/tts",
+		} as any);
+
+		let timings: Array<{ charIndex: number; length: number }> = [];
+		impl.onPlaybackStart = () => {
+			timings = (impl as any).wordTimings;
+		};
+		await impl.speak("Él comió más");
+
+		expect(
+			timings.map(
+				(timing: { charIndex: number; length: number }) => [
+					timing.charIndex,
+					timing.length,
+				],
+			),
+		).toEqual([
+			[0, 2],
+			[3, 5],
+			[9, 3],
+		]);
+	});
+
 	test("supports custom transport with root POST and JSONL marks", async () => {
 		const fetchMock = vi.fn(
 			async (input: RequestInfo | URL, init?: RequestInit) => {

@@ -29,6 +29,7 @@ export { resolveTTSErrorCodeForHttpStatus } from "./http-error-mapping.js";
 // Export speech marks utilities
 export {
 	adjustSpeechMarksForRate,
+	anchorSpeechMarks,
 	estimateSpeechMarks,
 	filterSpeechMarksByType,
 	getSpeechMarkAtTime,

@@ -46,6 +46,18 @@ type DictionaryPanelElement = HTMLElement & {
 	credentials?: string;
 };
 
+type LookupField = "endpoint" | "lookup" | "headers" | "credentials";
+
+/**
+ * The lookup fields each panel last took from render params. The panel outlives
+ * renders, so a field the host stops supplying is cleared here; a field it never
+ * supplied, such as one a component factory set, is left alone.
+ */
+const appliedLookupFields = new WeakMap<
+	DictionaryPanelElement,
+	ReadonlySet<LookupField>
+>();
+
 /**
  * Apply the host's per-tool render params to the panel.
  *
@@ -67,11 +79,22 @@ function applyLookupParams(
 	lookupLanguage?: string,
 ): void {
 	const params = toolbarContext.getToolRenderParams?.(toolId) ?? {};
-	if (typeof params.endpoint === "string") element.endpoint = params.endpoint;
-	if (typeof params.lookup === "function") element.lookup = params.lookup;
-	if (typeof params.headers === "function") element.headers = params.headers;
+	const supplied: Partial<Record<LookupField, unknown>> = {};
+	if (typeof params.endpoint === "string") supplied.endpoint = params.endpoint;
+	if (typeof params.lookup === "function") supplied.lookup = params.lookup;
+	if (typeof params.headers === "function") supplied.headers = params.headers;
 	if (typeof params.credentials === "string")
-		element.credentials = params.credentials;
+		supplied.credentials = params.credentials;
+	// A dropped `lookup` left in place would keep outranking the endpoint that
+	// replaced it.
+	for (const field of appliedLookupFields.get(element) ?? []) {
+		if (!(field in supplied)) element[field] = undefined;
+	}
+	Object.assign(element, supplied);
+	appliedLookupFields.set(
+		element,
+		new Set(Object.keys(supplied) as LookupField[]),
+	);
 	// The selection door: a gateway acting on the learner's selection requests this
 	// tool with the words in `term`, and the toolbar layers that over the host's own
 	// params. The toolbar stamps every request with a neutral `toolRequestId` — core

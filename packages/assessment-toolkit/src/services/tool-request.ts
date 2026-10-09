@@ -20,6 +20,7 @@
  * pairing of a selection action to a dictionary lives in the composition layer.
  */
 
+import type { ToolFailurePhase } from "./tool-failure.js";
 import type { ToolPlacementLevel } from "./tools-config-normalizer.js";
 
 /** Level a request resolves against when the requester names none. */
@@ -87,6 +88,16 @@ export class ToolRequestRegistry {
 	private readonly targets = new Set<ToolRequestTarget>();
 	private readonly changeListeners = new Set<() => void>();
 
+	/** `onTargetFailure` receives a target's throw, which the registry recovers from. */
+	constructor(
+		private readonly onTargetFailure: (
+			toolId: string,
+			phase: ToolFailurePhase,
+			error: unknown,
+		) => void = (toolId, phase, error) =>
+			console.error(`[ToolRequestRegistry] "${toolId}" ${phase} failed:`, error),
+	) {}
+
 	registerTarget(target: ToolRequestTarget): () => void {
 		this.targets.add(target);
 		this.notifyTargetsChange();
@@ -122,10 +133,7 @@ export class ToolRequestRegistry {
 		try {
 			target.open(request.toolId, request.params);
 		} catch (error) {
-			console.error(
-				`[ToolRequestRegistry] Target failed to open "${request.toolId}":`,
-				error,
-			);
+			this.onTargetFailure(request.toolId, "tool-request-open", error);
 			return false;
 		}
 		return true;
@@ -190,10 +198,7 @@ export class ToolRequestRegistry {
 		try {
 			return target.hostsTool(toolId) === true;
 		} catch (error) {
-			console.warn(
-				`[ToolRequestRegistry] Target at level "${target.level}" failed the host check for "${toolId}":`,
-				error,
-			);
+			this.onTargetFailure(toolId, "tool-request-host-check", error);
 			return false;
 		}
 	}

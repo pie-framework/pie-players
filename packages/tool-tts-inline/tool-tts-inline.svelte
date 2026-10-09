@@ -35,6 +35,8 @@
 	import {
 		catalogContextForShell,
 		flatTextContent,
+		isTTSStartFailure,
+		reportToolFailure,
 		resolveContentRegion
 	} from '@pie-players/pie-assessment-toolkit/tools/registration';
 	// Side-effect import: registers <nds-icon-button>. Single vendored source of
@@ -671,6 +673,15 @@
 		}
 	}
 
+	// A start failure is reported by the toolkit's text-to-speech start.
+	function reportPlaybackFailure(error: unknown): void {
+		if (isTTSStartFailure(error)) {
+			console.error('[TTS Inline] Speech could not start:', error);
+			return;
+		}
+		reportToolFailure(runtimeContext?.toolkitCoordinator, 'textToSpeech', 'tool-playback', error);
+	}
+
 	async function startSpeaking(): Promise<void> {
 		if (!ttsService) return;
 		let resolverDisposer: (() => void) | null = null;
@@ -710,7 +721,7 @@
 					statusMessage = '';
 				}
 			}).catch((error) => {
-				console.error('[TTS Inline] Error:', error);
+				reportPlaybackFailure(error);
 				handlePlaybackStartFailure(resolverDisposer);
 			}).finally(() => {
 				if (!shouldRetainHighlightTargetResolverProvider()) {
@@ -718,7 +729,7 @@
 				}
 			});
 		} catch (error) {
-			console.error('[TTS Inline] Error:', error);
+			reportPlaybackFailure(error);
 			handlePlaybackStartFailure(resolverDisposer);
 		}
 	}
@@ -795,7 +806,7 @@
 			await ttsService.seekForward(1);
 			statusMessage = interfaceI18n.t('tools.textToSpeech.inline.skippedForward');
 		} catch (error) {
-			console.error('[TTS Inline] Seek forward failed:', error);
+			reportPlaybackFailure(error);
 			statusMessage = interfaceI18n.t('tools.textToSpeech.inline.skipForwardFailed');
 		}
 	}
@@ -806,7 +817,7 @@
 			await ttsService.seekBackward(1);
 			statusMessage = interfaceI18n.t('tools.textToSpeech.inline.skippedBackward');
 		} catch (error) {
-			console.error('[TTS Inline] Seek backward failed:', error);
+			reportPlaybackFailure(error);
 			statusMessage = interfaceI18n.t('tools.textToSpeech.inline.skipBackwardFailed');
 		}
 	}
@@ -834,7 +845,7 @@
 			if (lastSyncedPlaybackRateTarget === syncTarget) {
 				lastSyncedPlaybackRateTarget = null;
 			}
-			console.error('[TTS Inline] Playback speed change failed:', error);
+			reportPlaybackFailure(error);
 			requestedPlaybackRate = previousRequestedRate;
 			requestedPlaybackChoicesKey = previousRequestedChoicesKey;
 			statusMessage = interfaceI18n.t('tools.textToSpeech.inline.speedChangeFailed');
@@ -898,7 +909,7 @@
 				if (lastSyncedPlaybackRateTarget === syncTarget) {
 					lastSyncedPlaybackRateTarget = null;
 				}
-				console.error('[TTS Inline] External playback speed sync failed:', error);
+				reportPlaybackFailure(error);
 			});
 		});
 		return () => {

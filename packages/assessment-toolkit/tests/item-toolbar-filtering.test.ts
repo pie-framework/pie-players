@@ -103,6 +103,49 @@ describe("<pie-item-toolbar> three-pass filtering", () => {
 		expect(toolbar.buttonLabels()).toEqual(["listed"]);
 		expect(loaded).toEqual(["listed"]);
 	});
+
+	test("reports a throwing relevance or applicability check to the coordinator", async () => {
+		const { registry } = registryWith([
+			{ toolId: "relevant" },
+			{
+				toolId: "throwsRelevance",
+				visible: () => {
+					throw new Error("relevance threw");
+				},
+			},
+			{
+				toolId: "throwsApplicability",
+				applicable: () => {
+					throw new Error("applicability threw");
+				},
+			},
+		]);
+		const failures: [string, string][] = [];
+
+		const toolbar = await mountItemToolbar({
+			registry,
+			placed: [
+				{ toolId: "relevant" },
+				{ toolId: "throwsRelevance" },
+				{ toolId: "throwsApplicability" },
+			],
+			reportToolFailure: (toolId, phase) => failures.push([toolId, phase]),
+		});
+		mounted.push(toolbar);
+
+		// Each check keeps its recovery: a throwing relevance check withholds the
+		// tool and a throwing applicability gate keeps it.
+		expect(toolbar.buttonLabels().sort()).toEqual([
+			"relevant",
+			"throwsApplicability",
+		]);
+		expect(new Set(failures.map((failure) => failure.join(" ")))).toEqual(
+			new Set([
+				"throwsRelevance tool-visibility",
+				"throwsApplicability tool-applicability",
+			]),
+		);
+	});
 });
 
 /** A registry with one toolbar tool that hands out its toolbar context. */

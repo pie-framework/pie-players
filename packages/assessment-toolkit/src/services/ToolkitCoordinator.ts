@@ -70,6 +70,7 @@ import type {
 	ToolContextResolverMap,
 	ToolRegistration,
 } from "./ToolRegistry.js";
+import type { ToolFailurePhase } from "./tool-failure.js";
 import { ToolRequestRegistry } from "./tool-request.js";
 import type { ToolOpenRequest, ToolRequestTarget } from "./tool-request.js";
 import {
@@ -279,12 +280,23 @@ export interface ToolkitErrorContext {
 		| "tts-init"
 		| "section-controller-init"
 		| "section-controller-dispose"
-		| "tool-module-load";
+		| ToolFailurePhase;
 	/** The tool whose provider failed. */
 	toolId?: string;
 	details?: Record<string, unknown>;
 	recoverable?: boolean;
 }
+
+const TOOL_FAILURE_SUMMARY: Record<ToolFailurePhase, string> = {
+	"tool-module-load": "failed to load",
+	"tool-request-open": "failed to open on request",
+	"tool-request-host-check": "failed its toolbar's host check",
+	"tool-visibility": "failed its relevance check",
+	"tool-applicability": "failed its applicability check",
+	"tool-state-load": "failed to restore its state",
+	"tool-state-save": "failed to save its state",
+	"tool-playback": "failed during playback",
+};
 
 export interface ProviderLifecycleContext {
 	providerName?: string;
@@ -592,8 +604,8 @@ export class ToolkitCoordinator {
 		string,
 		{ error: unknown; context: ToolkitErrorContext }
 	>();
-	/** Tools a toolbar reported a module failure for, each reported once. */
-	private readonly toolModuleFailures = new Set<string>();
+	/** Tool failures already reported, by phase and tool, each reported once. */
+	private readonly reportedToolFailures = new Set<string>();
 	private readonly readyChangeListeners = new Set<() => void>();
 	private readonly eagerInit: boolean;
 	private toolRegistry: ToolRegistry;
@@ -615,7 +627,9 @@ export class ToolkitCoordinator {
 		ToolContextResolver
 	>();
 	private readonly toolContextResolverChangeListeners = new Set<() => void>();
-	private readonly toolRequests = new ToolRequestRegistry();
+	private readonly toolRequests = new ToolRequestRegistry(
+		(toolId, phase, error) => this.reportToolFailure(toolId, phase, error),
+	);
 	private readonly sectionControllers = new Map<
 		string,
 		SectionControllerHandle
@@ -1030,7 +1044,7 @@ export class ToolkitCoordinator {
 	 * `fallbackFollows` marks a failure another path absorbs, which is recoverable
 	 * whatever the policy.
 	 */
-	private reportToolFailure(
+	private reportStartFailure(
 		error: unknown,
 		context: ToolkitErrorContext,
 		toolIds: Iterable<string>,
@@ -1046,25 +1060,39 @@ export class ToolkitCoordinator {
 	}
 
 	/**
-	 * Report that a toolbar could not load a tool's module. The failure follows
-	 * the start-failure policy: the tool degrades, so the toolbar withholds it,
-	 * unless policy grants it. Reported once per tool however many toolbars fail
-	 * to load it. Every report re-announces the request targets, since the
-	 * reporting toolbar no longer hosts the tool.
+	 * Report that a tool failed in `phase`. A module that failed to load follows
+	 * the start-failure policy: the tool degrades, so toolbars withhold it, unless
+	 * policy grants it. Every other phase is recoverable, since its report site
+	 * keeps a recovery, and is reported on a microtask. Reported once per tool and
+	 * phase however many toolbars or instances fail. A module failure re-announces the request targets, since
+	 * the reporting toolbar no longer hosts the tool.
 	 */
-	reportToolModuleFailure(toolId: string, error: unknown): void {
-		this.toolRequests.notifyTargetsChange();
-		if (this.toolModuleFailures.has(toolId)) return;
-		this.toolModuleFailures.add(toolId);
+	reportToolFailure(
+		toolId: string,
+		phase: ToolFailurePhase,
+		error: unknown,
+	): void {
+		if (phase === "tool-module-load") this.toolRequests.notifyTargetsChange();
+		const key = `${phase}\u0000${toolId}`;
+		if (this.reportedToolFailures.has(key)) return;
+		this.reportedToolFailures.add(key);
 		const detail =
 			error instanceof Error && error.message.trim().length > 0
 				? error.message
 				: String(error);
-		this.reportToolFailure(
-			new Error(`Tool "${toolId}" failed to load: ${detail}`, { cause: error }),
-			{ phase: "tool-module-load", details: { toolId } },
-			[toolId],
-		);
+		const report = () =>
+			this.reportStartFailure(
+				new Error(`Tool "${toolId}" ${TOOL_FAILURE_SUMMARY[phase]}: ${detail}`, {
+					cause: error,
+				}),
+				{ phase, details: { toolId } },
+				[toolId],
+				phase !== "tool-module-load",
+			);
+		// The recoverable phases fail inside a toolbar's derived state, where a
+		// listener writing state would throw.
+		if (phase === "tool-module-load") report();
+		else queueMicrotask(report);
 	}
 
 	private reportNewlyGrantedFailures(): void {
@@ -1440,7 +1468,7 @@ export class ToolkitCoordinator {
 			`[ToolkitCoordinator] Failed to register the provider of tool "${toolId}":`,
 			err,
 		);
-		this.reportToolFailure(err, { phase: "provider-register", toolId }, [toolId]);
+		this.reportStartFailure(err, { phase: "provider-register", toolId }, [toolId]);
 	}
 
 	public async ensureProviderReady(toolId: string): Promise<ToolProviderApi> {
@@ -1481,7 +1509,7 @@ export class ToolkitCoordinator {
 			} catch (err) {
 				if (err instanceof ToolkitCoordinatorDisposedError) throw err;
 				const error = err instanceof Error ? err : new Error(String(err));
-				this.reportToolFailure(
+				this.reportStartFailure(
 					error,
 					{ phase: "provider-init", toolId },
 					// Attributed when the id names a tool with a provider; any other id
@@ -2630,7 +2658,7 @@ export class ToolkitCoordinator {
 			if (error instanceof ToolkitCoordinatorDisposedError) throw error;
 			const normalized =
 				error instanceof Error ? error : new Error(String(error));
-			this.reportToolFailure(normalized, { phase: "tts-init" }, ["textToSpeech"]);
+			this.reportStartFailure(normalized, { phase: "tts-init" }, ["textToSpeech"]);
 			await this.emitTelemetry("pie-toolkit-tts-init-error", {
 				message: normalized.message,
 			});

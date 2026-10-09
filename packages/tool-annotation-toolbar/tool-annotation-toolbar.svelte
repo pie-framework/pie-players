@@ -24,7 +24,8 @@
 		connectToolShellContext,
 		connectToolRuntimeContext,
 		HighlightColor,
-		isTTSStartFailure
+		isTTSStartFailure,
+		reportToolFailure
 	} from '@pie-players/pie-assessment-toolkit/tools/registration';
 	import {
 		catalogContextHolding,
@@ -302,7 +303,7 @@
 			const serialized = highlightCoordinator.exportAnnotations(root);
 			sessionStorage.setItem(getStorageKey(), JSON.stringify(serialized));
 		} catch (error) {
-			console.error('[AnnotationToolbar] Failed to save annotations:', error);
+			reportToolFailure(runtimeContext?.toolkitCoordinator, 'annotationToolbar', 'tool-state-save', error);
 		}
 	}
 
@@ -322,7 +323,7 @@
 			highlightCoordinator.importAnnotations(data, root);
 			annotationCount = highlightCoordinator.getAnnotations().length;
 		} catch (error) {
-			console.error('[AnnotationToolbar] Failed to load annotations:', error);
+			reportToolFailure(runtimeContext?.toolkitCoordinator, 'annotationToolbar', 'tool-state-load', error);
 		}
 	}
 
@@ -664,9 +665,11 @@
 				catalogContext: catalogContextHolding(selectedRange.startContainer, runtimeContext)
 			});
 		} catch (error) {
-			console.error('[AnnotationToolbar] TTS error:', error);
 			if (isTTSStartFailure(error)) {
+				console.error('[AnnotationToolbar] Speech could not start:', error);
 				announce(interfaceI18n.t('tools.textToSpeech.inline.initFailed'), 5000);
+			} else {
+				reportToolFailure(runtimeContext?.toolkitCoordinator, 'textToSpeech', 'tool-playback', error);
 			}
 		} finally {
 			ttsSpeaking = false;

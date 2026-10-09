@@ -507,6 +507,17 @@ export function hasReadableText(context: ToolContext): boolean {
 }
 
 /**
+ * Whether read-aloud has something to read: readable text, or markup carrying
+ * a catalog idref, whose spoken card reads for content with no text.
+ */
+export function hasSpokenContent(context: ToolContext): boolean {
+	return (
+		hasReadableText(context) ||
+		/\bdata-catalog-idref\s*=/.test(extractMarkupContent(context))
+	);
+}
+
+/**
  * Helper to check if context contains science content
  * (Basic heuristic - can be overridden by tools)
  */

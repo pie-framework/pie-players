@@ -666,7 +666,7 @@
 		} catch (error) {
 			console.error('[AnnotationToolbar] TTS error:', error);
 			if (isTTSStartFailure(error)) {
-				announce(interfaceI18n.t('tools.textToSpeech.inline.initFailed'), 5000);
+				announce(interfaceI18n.t('tools.textToSpeech.initFailed'), 5000);
 			}
 		} finally {
 			ttsSpeaking = false;

@@ -179,6 +179,7 @@
   dispatchCrossBoundaryEvent
   frameworkErrorFromUnknown
   hasReadableText
+  hasSpokenContent
   setCurrentPosition
   setCurrentSectionPosition
   toFrameworkErrorModel
@@ -356,6 +357,7 @@
   hasMathContent
   hasReadableText
   hasScienceContent
+  hasSpokenContent
   isShadowRootNode
   isTTSStartFailure
   normalizeTTSLayoutMode

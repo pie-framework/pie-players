@@ -83,6 +83,7 @@ export {
 	hasChoiceInteraction,
 	hasMathContent,
 	hasReadableText,
+	hasSpokenContent,
 	hasScienceContent,
 } from "../services/tool-context.js";
 

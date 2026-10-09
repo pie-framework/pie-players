@@ -67,20 +67,19 @@
 	const isBrowser = typeof window !== 'undefined';
 
 	// ── FontAwesome + Roboto wiring for <nds-icon-button> ─────────────────────
-	// The vendored NDS button renders `<i class="fa-light fa-…">` and expects
-	// Roboto. Mirror @pie-players/pie-assessment-toolkit's ItemToolBar: prefetch
-	// the stylesheets into document <head>, then clone whatever FA <link>s the
-	// host has into this element's shadow root (document-head styles don't cross
-	// the shadow boundary). See the toolkit's ItemToolBar for the full rationale.
-	const FA_PRO_HREFS = ['/_fa-pro/fontawesome.min.css', '/_fa-pro/light.min.css'];
+	// The vendored NDS button expects Roboto, and every glyph here is FA Solid,
+	// which FA Free carries. Mirror @pie-players/pie-assessment-toolkit's
+	// ItemToolBar: add the stylesheets to document <head> unless the host links
+	// its own, then clone the FA <link>s into this element's shadow root
+	// (document-head styles don't cross the shadow boundary).
 	const FA_FREE_HREF =
 		'https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.5.2/css/all.min.css';
 	const ROBOTO_HREF =
 		'https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap';
 	const FA_HREF_PATTERN = /font.?awesome|fa-?pro/i;
-	// A stylesheet that fails to load, such as the `/_fa-pro/` probe on a host
-	// without that path, stays in <head> marked `data-pie-load-failed`: no later
-	// call requests it again, and no shadow root copies it.
+	// A stylesheet that fails to load stays in <head> marked
+	// `data-pie-load-failed`: no later call requests it again, and no shadow root
+	// copies it.
 	const appendHeadStylesheet = (href: string) => {
 		if (document.querySelector(`link[href="${href}"]`)) return;
 		const link = document.createElement('link');
@@ -95,8 +94,7 @@
 		);
 		document.head.appendChild(link);
 	};
-	// The plain trigger and the panel render `fa-solid` glyphs, which FA Free
-	// carries. Roboto and the FA Pro Light probe serve <nds-icon-button> only.
+	// Roboto serves <nds-icon-button> only.
 	const ensureFaAssets = (forNdsButton: boolean) => {
 		if (!isBrowser) return;
 		if (forNdsButton && !document.querySelector('link[href*="Roboto"]')) {
@@ -107,7 +105,6 @@
 		).some((link) => FA_HREF_PATTERN.test(link.href));
 		if (hostHasFa) return;
 		appendHeadStylesheet(FA_FREE_HREF);
-		if (forNdsButton) for (const href of FA_PRO_HREFS) appendHeadStylesheet(href);
 	};
 	const FA_SHADOW_INSTALLED = '__pieFaTtsShadowInstalled';
 	const installFaInShadow = (node: HTMLElement) => {

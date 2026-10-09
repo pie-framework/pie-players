@@ -340,7 +340,8 @@ the page has no Font Awesome stylesheet, and Roboto from `fonts.googleapis.com`
 when it has no Roboto stylesheet. A page showing those toolbars adds
 `https://cdn.jsdelivr.net https://fonts.googleapis.com` to `style-src` and
 `https://cdn.jsdelivr.net https://fonts.gstatic.com` to `font-src`, or supplies
-both stylesheets itself.
+both stylesheets itself. A page that links Font Awesome Pro gets the design's
+Light glyphs; with Free, its own or the toolbar's, they render in Solid.
 
 In Firefox the ESM strategy loads through es-module-shims whenever the browser
 rejects its import map (see

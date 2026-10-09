@@ -1,12 +1,18 @@
 import { expect, type Locator, type Page, test } from "@playwright/test";
 
 /**
- * The demos link FontAwesome in their own document head, which the toolbar and
- * the read-aloud trigger detect and reuse. These tests strip those links and
- * serve no `/_fa-pro/` path, the setup of a host that links no FontAwesome: the
- * players then add FA Free for the glyphs they render, and probe FA Pro Light
- * only for NDS icon buttons.
+ * The demos link FA Pro in their own document head, which the toolbar and the
+ * read-aloud trigger detect and reuse. Most of these tests strip those links,
+ * the setup of a host that links no FontAwesome: the players then add FA Free
+ * and render every NDS glyph in Solid, the one Free weight carrying them all.
  */
+const desmosStub = `window.Desmos = Object.fromEntries(
+	["GraphingCalculator", "ScientificCalculator", "FourFunctionCalculator"].map((name) => [
+		name,
+		() => ({ destroy() {}, resize() {}, setBlank() {}, getState() { return {}; }, setState() {}, focusFirstExpression() {} }),
+	]),
+);`;
+
 const asHostWithoutFontAwesome = async (
 	page: Page,
 	{ faFreeLoads = true } = {},
@@ -41,6 +47,13 @@ const asHostWithoutFontAwesome = async (
 		);
 		await route.fulfill({ response, body });
 	});
+	await page.route("https://www.desmos.com/api/**/calculator.js**", (route) =>
+		route.fulfill({
+			status: 200,
+			contentType: "application/javascript",
+			body: desmosStub,
+		}),
+	);
 	return requests;
 };
 
@@ -56,6 +69,18 @@ const shadowStylesheets = (host: Locator) =>
 			(link) => new URL(link.href).pathname,
 		),
 	);
+
+/** The FA weight class on each NDS glyph, deduplicated. */
+const glyphWeights = async (scope: Locator) => [
+	...new Set(
+		await scope.evaluate((element) =>
+			Array.from(
+				(element.shadowRoot ?? element).querySelectorAll("nds-icon-button i"),
+				(icon) => icon.className.match(/\bfa-(light|regular|solid)\b/)?.[0],
+			),
+		),
+	),
+];
 
 const NDS_ICON_PAGE = "/quiz-engine-nds-icon?mode=candidate&layout=splitpane";
 
@@ -78,25 +103,33 @@ test.describe("FontAwesome assets on a host that links none", () => {
 		expect(requests).toEqual(["fa-free"]);
 	});
 
-	test("NDS icon buttons probe each FA Pro stylesheet once", async ({
-		page,
-	}) => {
+	test("NDS icon buttons render in FA Free Solid", async ({ page }) => {
 		const requests = await asHostWithoutFontAwesome(page);
 		await page.goto(NDS_ICON_PAGE, { waitUntil: "networkidle" });
 		const toolbar = page.locator("pie-item-toolbar").first();
-		await expect(toolbar.locator("nds-icon-button").first()).toBeVisible();
+		const calculatorButton = toolbar.locator("nds-icon-button").first();
+		await expect(calculatorButton).toBeVisible();
 		await expect(
 			page.locator("pie-tool-tts-inline nds-icon-button").first(),
 		).toBeVisible();
 
-		// The toolbar's shadow root copies the stylesheet that loaded and skips the
-		// probes that failed, so the probes are not requested again.
+		// The toolbar's shadow root copies the stylesheet the toolbar added. FA
+		// Free has no Light weight, so `fa-light` would render no glyph.
 		await expect
 			.poll(() => shadowStylesheets(toolbar))
 			.toEqual([expect.stringContaining("/@fortawesome/fontawesome-free@")]);
-		expect(count(requests, "/_fa-pro/fontawesome.min.css")).toBe(1);
-		expect(count(requests, "/_fa-pro/light.min.css")).toBe(1);
+		expect(await glyphWeights(toolbar)).toEqual(["fa-solid"]);
 		expect(count(requests, "fa-free")).toBe(1);
+		expect(
+			requests.filter((request) => request.startsWith("/_fa-pro/")),
+		).toEqual([]);
+
+		// Free's Regular font lacks the window controls' icons, which drew as
+		// boxes before they moved to Solid.
+		await calculatorButton.click();
+		const shell = page.locator('[data-pie-tool-shell="calculator"]').first();
+		await expect(shell).toBeVisible();
+		expect(await glyphWeights(shell)).toEqual(["fa-solid"]);
 	});
 
 	test("stylesheets that all fail are requested once each", async ({
@@ -120,8 +153,37 @@ test.describe("FontAwesome assets on a host that links none", () => {
 		for (const toolbar of await toolbars.all()) {
 			expect(await shadowStylesheets(toolbar)).toEqual([]);
 		}
-		expect(count(requests, "/_fa-pro/fontawesome.min.css")).toBe(1);
-		expect(count(requests, "/_fa-pro/light.min.css")).toBe(1);
 		expect(count(requests, "fa-free")).toBe(1);
+	});
+});
+
+test.describe("FontAwesome assets on a host that links FA Pro", () => {
+	test("NDS icon buttons keep the design weights", async ({ page }) => {
+		await page.route("**/_fa-pro/**", (route) =>
+			route.fulfill({ status: 200, contentType: "text/css", body: "" }),
+		);
+		await page.route("https://www.desmos.com/api/**/calculator.js**", (route) =>
+			route.fulfill({
+				status: 200,
+				contentType: "application/javascript",
+				body: desmosStub,
+			}),
+		);
+		const freeRequests: string[] = [];
+		page.on("request", (request) => {
+			if (request.url().includes("/@fortawesome/fontawesome-free"))
+				freeRequests.push(request.url());
+		});
+		await page.goto(NDS_ICON_PAGE, { waitUntil: "networkidle" });
+		const toolbar = page.locator("pie-item-toolbar").first();
+		const calculatorButton = toolbar.locator("nds-icon-button").first();
+		await expect(calculatorButton).toBeVisible();
+
+		expect(await glyphWeights(toolbar)).toEqual(["fa-light"]);
+		await calculatorButton.click();
+		const shell = page.locator('[data-pie-tool-shell="calculator"]').first();
+		await expect(shell).toBeVisible();
+		expect(await glyphWeights(shell)).toEqual(["fa-regular"]);
+		expect(freeRequests).toEqual([]);
 	});
 });

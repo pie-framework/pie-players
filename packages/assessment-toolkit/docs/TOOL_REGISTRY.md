@@ -323,7 +323,7 @@ const allowedToolIds = coordinator
 // Returns: ["calculator", "textToSpeech", "theme", ...]
 ```
 
-The policy engine reads the assessment's `personalNeedsProfile`, `settings.districtPolicy` and `settings.testAdministration`, and, for a decision scoped to an item, that item's registered `settings`. A support id in any of them is a tool id: `supports: ["calculator"]` grants the tool registered as `calculator`, and an id no tool is registered under produces a `tool-policy.unknownSupportId` diagnostic naming the fields that list it. A requirement that a block or a restriction outranks produces `tool-policy.requiredToolBlocked`. Both ride on the toolbar decision and the feature decision; the toolkit coordinator logs each once per code and tool.
+The policy engine reads the assessment's `personalNeedsProfile`, `settings.districtPolicy` and `settings.testAdministration`, and, for a decision scoped to an item, that item's registered `settings`. A support id in any of them is a tool id: `supports: ["calculator"]` grants the tool registered as `calculator`, and an id no tool is registered under produces a `tool-policy.unknownSupportId` diagnostic naming the fields that list it. A requirement that a host gate keeps off every toolbar (`policy.blocked`, the allowlist, a disabled provider, or no level of `placement` listing it) produces `tool-policy.requiredToolBlocked`; one placed at another level is served there and raises nothing. Both ride on the toolbar decision and the feature decision. The toolkit coordinator logs each once per code and tool and hands it to its `onPolicyDiagnostic` listeners.
 
 ### Filtering by Context
 

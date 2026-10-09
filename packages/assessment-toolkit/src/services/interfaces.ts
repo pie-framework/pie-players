@@ -60,6 +60,7 @@ import type {
 	ToolPolicyChangeListener,
 	ToolPolicyDecision,
 	ToolPolicyDecisionRequest,
+	ToolPolicyDiagnostic,
 	ToolScope,
 } from "../policy/engine.js";
 import type {
@@ -882,6 +883,17 @@ export interface ToolkitCoordinatorApi {
 	 * should call `decideToolPolicy(...)` with their level / scope.
 	 */
 	onPolicyChange(listener: ToolPolicyChangeListener): () => void;
+
+	/**
+	 * Subscribe to the policy diagnostics the coordinator reports: the ones it
+	 * logs as console warnings, once per code, tool and item. A new listener is
+	 * first handed every diagnostic already reported. A change to the bound
+	 * policy inputs or to PNP enforcement clears the record, so a conflict that
+	 * survives the change is reported again once.
+	 */
+	onPolicyDiagnostic(
+		listener: (diagnostic: ToolPolicyDiagnostic) => void,
+	): () => void;
 
 	/**
 	 * Subscribe to accessibility-catalog registrations and removals.

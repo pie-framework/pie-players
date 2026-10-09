@@ -67,12 +67,18 @@ function decideViaEngine(
 	return engine.decide(level === "section" ? SECTION_REQUEST : ITEM_REQUEST);
 }
 
+type RequiredToolBlocked = Extract<
+	ToolPolicyDiagnostic,
+	{ code: "tool-policy.requiredToolBlocked" }
+>;
+
 function findRequiredBlocked(
 	diagnostics: readonly ToolPolicyDiagnostic[],
 	toolId: string,
-): ToolPolicyDiagnostic | undefined {
+): RequiredToolBlocked | undefined {
 	return diagnostics.find(
-		(d) => d.code === "tool-policy.requiredToolBlocked" && d.toolId === toolId,
+		(d): d is RequiredToolBlocked =>
+			d.code === "tool-policy.requiredToolBlocked" && d.toolId === toolId,
 	);
 }
 
@@ -145,7 +151,49 @@ describe("tool-policy.requiredToolBlocked — engine-level (district-requirement
 
 		const diag = findRequiredBlocked(decision.diagnostics, "calculator");
 		expect(diag).toBeDefined();
-		expect(diag?.details?.hostRule).toBe("placement-missing");
+		expect(diag?.details.hostRule).toBe("placement-missing");
+		expect(diag?.details.hostValue).toEqual(tools.placement);
+		expect(diag?.message).toContain("no level of tools.placement lists it");
+	});
+
+	test("a district-required tool placed at another level fires nothing at this one", () => {
+		// The section toolbar serves `calculator`, so the item toolbar leaving it
+		// out is the host's layout, not a conflict with the requirement.
+		const tools = normalizeToolsConfig({
+			placement: { section: ["calculator"], item: ["tts"] },
+		});
+		const assessment: AssessmentEntity = {
+			id: "asm-1",
+			settings: { districtPolicy: { requiredTools: ["calculator"] } },
+		} as AssessmentEntity;
+
+		const item = decideViaEngine(tools, assessment, null, "item");
+		expect(item.visibleTools.map((e) => e.toolId)).toEqual(["tts"]);
+		expect(item.diagnostics).toEqual([]);
+
+		const section = decideViaEngine(tools, assessment, null, "section");
+		expect(section.visibleTools.map((e) => e.toolId)).toEqual(["calculator"]);
+		expect(section.diagnostics).toEqual([]);
+	});
+
+	test("a host gate on a tool placed at another level still fires at this one", () => {
+		// `policy.blocked` removes `calculator` everywhere, so no level serves it.
+		const tools = normalizeToolsConfig({
+			policy: { allowed: [], blocked: ["calculator"] },
+			placement: { section: ["calculator"], item: ["tts"] },
+		});
+		const assessment: AssessmentEntity = {
+			id: "asm-1",
+			settings: { districtPolicy: { requiredTools: ["calculator"] } },
+		} as AssessmentEntity;
+
+		const decision = decideViaEngine(tools, assessment, null, "section");
+		expect(findRequiredBlocked(decision.diagnostics, "calculator")?.details)
+			.toEqual({
+				rule: "district-requirement",
+				hostRule: "host-blocked",
+				hostValue: ["calculator"],
+			});
 	});
 
 	test("provider-disabled collides with district `requiredTools` → `provider-disabled` host gate", () => {
@@ -162,8 +210,8 @@ describe("tool-policy.requiredToolBlocked — engine-level (district-requirement
 
 		const diag = findRequiredBlocked(decision.diagnostics, "calculator");
 		expect(diag).toBeDefined();
-		expect(diag?.details?.hostRule).toBe("provider-disabled");
-		expect(diag?.details?.hostValue).toBe(false);
+		expect(diag?.details.hostRule).toBe("provider-disabled");
+		expect(diag?.details.hostValue).toBe(false);
 	});
 
 	test("host `policy.allowed` excludes a district-required tool → `host-allowlist` host gate", () => {
@@ -180,8 +228,8 @@ describe("tool-policy.requiredToolBlocked — engine-level (district-requirement
 
 		const diag = findRequiredBlocked(decision.diagnostics, "calculator");
 		expect(diag).toBeDefined();
-		expect(diag?.details?.hostRule).toBe("host-allowlist");
-		expect(diag?.details?.hostValue).toEqual(["tts"]);
+		expect(diag?.details.hostRule).toBe("host-allowlist");
+		expect(diag?.details.hostValue).toEqual(["tts"]);
 	});
 });
 
@@ -290,5 +338,87 @@ describe("tool-policy.requiredToolBlocked — coordinator surface (PR 3 toolbar 
 				(d) => d.code === "tool-policy.requiredToolBlocked",
 			),
 		).toBeUndefined();
+	});
+});
+
+describe("ToolkitCoordinator.onPolicyDiagnostic", () => {
+	const ITEM_DECISION = {
+		level: "item",
+		scope: { level: "item", scopeId: "i1" },
+	} as const;
+
+	function blockedCalculatorCoordinator(assessmentId: string) {
+		const coord = new ToolkitCoordinator({
+			assessmentId,
+			lazyInit: true,
+			toolConfigStrictness: "off",
+			tools: {
+				policy: { allowed: [], blocked: ["calculator"] },
+				placement: { item: ["calculator", "tts"] },
+			},
+		});
+		coord.updateAssessment({
+			id: "asm-1",
+			settings: { districtPolicy: { requiredTools: ["calculator"] } },
+		} as AssessmentEntity);
+		return coord;
+	}
+
+	test("reports a diagnostic once however many decisions carry it", () => {
+		const coord = blockedCalculatorCoordinator("diagnostic-once");
+		const seen: ToolPolicyDiagnostic[] = [];
+		coord.onPolicyDiagnostic((d) => seen.push(d));
+
+		coord.decideToolPolicy(ITEM_DECISION);
+		coord.decideToolPolicy(ITEM_DECISION);
+
+		expect(seen.map((d) => [d.code, d.toolId])).toEqual([
+			["tool-policy.requiredToolBlocked", "calculator"],
+		]);
+	});
+
+	test("hands a late listener the diagnostics already reported", () => {
+		const coord = blockedCalculatorCoordinator("diagnostic-replay");
+		coord.decideToolPolicy(ITEM_DECISION);
+
+		const seen: ToolPolicyDiagnostic[] = [];
+		coord.onPolicyDiagnostic((d) => seen.push(d));
+
+		expect(seen.map((d) => d.toolId)).toEqual(["calculator"]);
+	});
+
+	test("reports a surviving conflict again after an input change, and not after an equal one", () => {
+		const coord = blockedCalculatorCoordinator("diagnostic-reset");
+		const seen: ToolPolicyDiagnostic[] = [];
+		coord.onPolicyDiagnostic((d) => seen.push(d));
+		coord.decideToolPolicy(ITEM_DECISION);
+
+		coord.updateAssessment({
+			id: "asm-1",
+			settings: { districtPolicy: { requiredTools: ["calculator"] } },
+		} as AssessmentEntity);
+		coord.decideToolPolicy(ITEM_DECISION);
+		expect(seen).toHaveLength(1);
+
+		coord.updateToolsPlacement({ item: ["calculator", "tts", "ruler"] });
+		coord.decideToolPolicy(ITEM_DECISION);
+		expect(seen).toHaveLength(2);
+	});
+
+	test("a failing listener neither stops the others nor the decision", () => {
+		const coord = blockedCalculatorCoordinator("diagnostic-throw");
+		const seen: string[] = [];
+		coord.onPolicyDiagnostic(() => {
+			throw new Error("listener failed");
+		});
+		const unsubscribe = coord.onPolicyDiagnostic((d) => seen.push(d.toolId));
+
+		expect(() => coord.decideToolPolicy(ITEM_DECISION)).not.toThrow();
+		expect(seen).toEqual(["calculator"]);
+
+		unsubscribe();
+		coord.updateToolsPlacement({ item: ["calculator"] });
+		coord.decideToolPolicy(ITEM_DECISION);
+		expect(seen).toEqual(["calculator"]);
 	});
 });

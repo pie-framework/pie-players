@@ -78,7 +78,6 @@ import type { ToolOpenRequest, ToolRequestTarget } from "./tool-request.js";
 import {
 	ToolPolicyEngine,
 	type FeaturePolicyDecision,
-	type ItemSettingNotAppliedDetails,
 	type PnpEnforcementMode,
 	type PolicySource,
 	type ResolvedEngineInputs,
@@ -712,11 +711,17 @@ export class ToolkitCoordinator {
 	private pnpEnforcementOverride: PnpEnforcementMode | null = null;
 
 	/**
-	 * Policy diagnostics already logged, keyed by code, tool id and, for
-	 * `tool-policy.itemSettingNotApplied`, item id; see
+	 * Policy diagnostics reported since the last input change, keyed by code,
+	 * tool id and, for `tool-policy.itemSettingNotApplied`, item id; see
 	 * {@link warnPolicyDiagnostics}.
 	 */
-	private readonly warnedPolicyDiagnostics = new Set<string>();
+	private readonly reportedPolicyDiagnostics = new Map<
+		string,
+		ToolPolicyDiagnostic
+	>();
+	private readonly policyDiagnosticListeners = new Set<
+		(diagnostic: ToolPolicyDiagnostic) => void
+	>();
 
 	/**
 	 * Whether {@link decideFeaturePolicy} has already reported serving a decision
@@ -908,7 +913,11 @@ export class ToolkitCoordinator {
 		});
 
 		this.policyEngine.onPolicyChange((event) => {
-			if (event.reason !== "disposed") this.reportNewlyGrantedFailures();
+			if (event.reason === "disposed") return;
+			if (event.reason === "inputs" || event.reason === "pnp-enforcement") {
+				this.reportedPolicyDiagnostics.clear();
+			}
+			this.reportNewlyGrantedFailures();
 		});
 
 		if (this.eagerInit) {
@@ -2515,6 +2524,7 @@ export class ToolkitCoordinator {
 
 		this.toolContextResolvers.clear();
 		this.toolContextResolverChangeListeners.clear();
+		this.policyDiagnosticListeners.clear();
 		this.sectionControllerLifecycleListeners.clear();
 		this.telemetryListeners.clear();
 		this.frameworkErrorHookUnsubscribe?.();
@@ -2964,9 +2974,10 @@ export class ToolkitCoordinator {
 	}
 
 	/**
-	 * Log each policy diagnostic as a console warning, once per code and tool
-	 * id, and per item for `tool-policy.itemSettingNotApplied`. Decisions re-run
-	 * on every input change, so a conflict would otherwise repeat on each.
+	 * Report each policy diagnostic as a console warning and to the
+	 * {@link onPolicyDiagnostic} listeners, once per code and tool id, and per
+	 * item for `tool-policy.itemSettingNotApplied`. Every toolbar and feature
+	 * asks for decisions, so a conflict would otherwise repeat on each.
 	 */
 	private warnPolicyDiagnostics(
 		diagnostics: readonly ToolPolicyDiagnostic[],
@@ -2974,12 +2985,29 @@ export class ToolkitCoordinator {
 		for (const diagnostic of diagnostics) {
 			const itemId =
 				diagnostic.code === "tool-policy.itemSettingNotApplied"
-					? (diagnostic.details as ItemSettingNotAppliedDetails).itemId
+					? diagnostic.details.itemId
 					: "";
 			const key = `${diagnostic.code}\0${diagnostic.toolId}\0${itemId}`;
-			if (this.warnedPolicyDiagnostics.has(key)) continue;
-			this.warnedPolicyDiagnostics.add(key);
+			if (this.reportedPolicyDiagnostics.has(key)) continue;
+			this.reportedPolicyDiagnostics.set(key, diagnostic);
 			console.warn(`[ToolkitCoordinator] ${diagnostic.message}`);
+			for (const listener of Array.from(this.policyDiagnosticListeners)) {
+				this.notifyPolicyDiagnosticListener(listener, diagnostic);
+			}
+		}
+	}
+
+	private notifyPolicyDiagnosticListener(
+		listener: (diagnostic: ToolPolicyDiagnostic) => void,
+		diagnostic: ToolPolicyDiagnostic,
+	): void {
+		try {
+			listener(diagnostic);
+		} catch (error) {
+			console.error(
+				"[ToolkitCoordinator] Policy diagnostic listener failed:",
+				error,
+			);
 		}
 	}
 
@@ -3057,6 +3085,18 @@ export class ToolkitCoordinator {
 	 */
 	onPolicyChange(listener: ToolPolicyChangeListener): () => void {
 		return this.policyEngine.onPolicyChange(listener);
+	}
+
+	onPolicyDiagnostic(
+		listener: (diagnostic: ToolPolicyDiagnostic) => void,
+	): () => void {
+		this.policyDiagnosticListeners.add(listener);
+		for (const diagnostic of Array.from(this.reportedPolicyDiagnostics.values())) {
+			this.notifyPolicyDiagnosticListener(listener, diagnostic);
+		}
+		return () => {
+			this.policyDiagnosticListeners.delete(listener);
+		};
 	}
 
 	/**

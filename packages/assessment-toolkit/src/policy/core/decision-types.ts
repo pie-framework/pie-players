@@ -111,8 +111,8 @@ export type ToolPolicyHostGate =
 
 /** Payload of a `tool-policy.requiredToolBlocked` diagnostic. */
 export interface RequiredToolBlockedDetails {
-	/** The profile policy rule that mandated the tool (e.g. `district-requirement`). */
-	rule: string;
+	/** The requirement that mandates the tool. */
+	rule: "item-requirement" | "district-requirement";
 	/** Which host gate removed the tool. */
 	hostRule: ToolPolicyHostGate;
 	/** The host configuration value that triggered the gate (best-effort, may be omitted). */

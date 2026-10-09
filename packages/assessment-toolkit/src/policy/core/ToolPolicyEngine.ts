@@ -199,10 +199,20 @@ export class ToolPolicyEngine {
 	 * Whether some surface is granted `featureId`: a decision with no item scope,
 	 * or one scoped to a registered item. A provider serves every surface, so its
 	 * failure denies the accommodation wherever one surface is granted it.
+	 *
+	 * `enforced` counts only scopes whose `pnpEnforcement` is on, as a toolbar
+	 * tool's decisions do; a feature with no placement leaves it unset.
 	 */
-	grantsFeatureAnywhere(featureId: string): boolean {
-		if (this.decideFeature(featureId).granted) return true;
+	grantsFeatureAnywhere(
+		featureId: string,
+		options: { enforced?: boolean } = {},
+	): boolean {
+		const counts = (item?: PnpPolicyItem) =>
+			!options.enforced || this.enforcementFor(item) === "on";
+		if (counts() && this.decideFeature(featureId).granted) return true;
 		for (const id of this.itemSettings.keys()) {
+			const settings = this.itemSettingsFor(id);
+			if (!counts(settings ? { id, settings } : undefined)) continue;
 			if (this.decideFeature(featureId, { level: "item", scopeId: id }).granted) {
 				return true;
 			}

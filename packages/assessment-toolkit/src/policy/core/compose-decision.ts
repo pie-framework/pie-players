@@ -236,7 +236,7 @@ export function composeDecision(
 		const placedAtAnyLevel = new Set(
 			Object.values(tools.placement).flatMap(normalizeToolList),
 		);
-		for (const mandatedToolId of pnpPolicyResult.mandatedToolIds) {
+		for (const [mandatedToolId, ruleName] of pnpPolicyResult.mandates) {
 			if (postHostCandidates.has(mandatedToolId)) continue;
 			if (
 				!placement.includes(mandatedToolId) &&
@@ -244,8 +244,6 @@ export function composeDecision(
 			) {
 				continue;
 			}
-			const flag = pnpPolicyResult.perToolFlags.get(mandatedToolId);
-			const ruleName = flag?.rule ?? "required-tool";
 			const hostGate = detectHostRemovalGate(mandatedToolId, {
 				placedAtAnyLevel,
 				allTools: tools.placement,
@@ -428,7 +426,7 @@ function detectHostRemovalGate(
 		};
 	}
 	// Defensive: `removedByHost` is true at the call site (the tool is
-	// in `mandatedToolIds` but not in `postHostCandidates`), so one of
+	// in `mandates` but not in `postHostCandidates`), so one of
 	// the four gates above MUST have fired. If none did, the host
 	// pipeline has a bug; surface a best-effort rather than throwing.
 	return { hostRule: "placement-missing", hostValue: args.allTools };

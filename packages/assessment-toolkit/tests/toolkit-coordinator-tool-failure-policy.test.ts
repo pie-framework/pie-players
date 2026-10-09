@@ -135,6 +135,74 @@ describe("tool start failures", () => {
 		expect(errors[0]).toMatchObject({ kind: "provider-init", recoverable: false });
 	});
 
+	const providerFailure = async (
+		assessmentId: string,
+		registry: ToolRegistry,
+		assessment: AssessmentEntity,
+		pnpEnforcement?: "on" | "off",
+		placement: string[] = ["calculator"],
+	) => {
+		const coordinator = new ToolkitCoordinator({
+			assessmentId,
+			eagerInit: false,
+			toolRegistry: registry,
+			tools: { placement: { item: placement }, pnpEnforcement },
+		});
+		coordinator.updateAssessment(assessment);
+		const errors = collectErrors(coordinator);
+		await expect(
+			coordinator.ensureProviderReady("calculator"),
+		).rejects.toThrow();
+		return errors.map((model) => model.recoverable);
+	};
+
+	test("a provider failure is fatal for a tool a test-administration override grants", async () => {
+		const assessment = {
+			id: "failure-policy",
+			settings: {
+				testAdministration: { toolOverrides: { calculator: true } },
+			},
+		} as AssessmentEntity;
+		expect(
+			await providerFailure("override-granted", registryWith("calculator"), assessment),
+		).toEqual([false]);
+	});
+
+	test("pnpEnforcement off leaves a profile-supported toolbar tool's failure recoverable", async () => {
+		expect(
+			await providerFailure(
+				"enforcement-off",
+				registryWith("calculator"),
+				granting("calculator"),
+				"off",
+			),
+		).toEqual([true]);
+	});
+
+	test("pnpEnforcement off still makes a granted region feature's failure fatal", async () => {
+		const registry = new ToolRegistry();
+		registry.register({
+			...createTestToolRegistration({
+				toolId: "calculator",
+				supportedLevels: ["item"],
+				provider: createFailingAuthProviderDescriptor("calculator"),
+			}),
+			activation: "region",
+			surfaces: ["item-media"],
+			renderToolbar: undefined,
+			renderSurface: () => null,
+		});
+		expect(
+			await providerFailure(
+				"region-enforcement-off",
+				registry,
+				granting("calculator"),
+				"off",
+				[],
+			),
+		).toEqual([false]);
+	});
+
 	test("a degraded tool that policy later grants is reported again as fatal", async () => {
 		const coordinator = new ToolkitCoordinator({
 			assessmentId: "provider-granted-later",

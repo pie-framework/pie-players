@@ -422,3 +422,39 @@ describe("ToolkitCoordinator.onPolicyDiagnostic", () => {
 		expect(seen).toEqual(["calculator"]);
 	});
 });
+
+describe("tool-policy.requiredToolBlocked — under a `true` override", () => {
+	const tools = normalizeToolsConfig({
+		policy: { allowed: [], blocked: ["calculator"] },
+		placement: { item: ["calculator"] },
+	});
+	const overriding = (settings: AssessmentEntity["settings"]) =>
+		({
+			id: "a1",
+			settings: {
+				...settings,
+				testAdministration: { toolOverrides: { calculator: true } },
+			},
+		}) as AssessmentEntity;
+
+	test("a district requirement keeps its mandate, so a host block raises it", () => {
+		const decision = decideViaEngine(
+			tools,
+			overriding({ districtPolicy: { requiredTools: ["calculator"] } }),
+		);
+		expect(findRequiredBlocked(decision.diagnostics, "calculator")?.details).toMatchObject({
+			rule: "district-requirement",
+			hostRule: "host-blocked",
+		});
+	});
+
+	test("an item requirement keeps its mandate, so a host block raises it", () => {
+		const decision = decideViaEngine(tools, overriding({}), {
+			requiredTools: ["calculator"],
+		});
+		expect(findRequiredBlocked(decision.diagnostics, "calculator")?.details).toMatchObject({
+			rule: "item-requirement",
+			hostRule: "host-blocked",
+		});
+	});
+});

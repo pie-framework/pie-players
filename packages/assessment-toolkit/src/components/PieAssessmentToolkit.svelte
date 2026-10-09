@@ -100,6 +100,7 @@
 		formatFrameworkErrorForConsole,
 		frameworkErrorFromUnknown,
 		toFrameworkErrorModel,
+		type FrameworkErrorCohort,
 		type FrameworkErrorModel,
 	} from "../services/framework-error.js";
 	import { FrameworkErrorBus } from "../services/framework-error-bus.js";
@@ -431,14 +432,16 @@ const DEFAULT_ENV = {
 		source: string;
 		error: unknown;
 		recoverable?: boolean;
-		scope?: FrameworkErrorModel["scope"];
+		/** The section the failure takes down; without one the error is runtime-scoped. */
+		cohort?: FrameworkErrorCohort;
 	}): FrameworkErrorModel {
 		const model = frameworkErrorFromUnknown({
 			kind: args.kind,
 			source: args.source,
 			error: args.error,
 			recoverable: args.recoverable,
-			scope: args.scope,
+			scope: args.cohort ? "cohort" : "runtime",
+			cohort: args.cohort,
 		});
 		frameworkErrorBus.reportFrameworkError(model);
 		return model;
@@ -456,7 +459,10 @@ const DEFAULT_ENV = {
 	 * Every other controller event reaches hosts through the composition republish
 	 * and the coordinator's own subscriptions; nothing else is intercepted here.
 	 */
-	function reportTimedMediaDiagnostic(event: { type?: string } | null): void {
+	function reportTimedMediaDiagnostic(
+		event: { type?: string } | null,
+		cohort: FrameworkErrorCohort,
+	): void {
 		if (event?.type === "timed-media-policy-degraded") {
 			const degradations =
 				(event as { degradations?: Array<{ message?: string }> }).degradations || [];
@@ -472,6 +478,7 @@ const DEFAULT_ENV = {
 						.filter((message): message is string => typeof message === "string"),
 					recoverable: true,
 					scope: "cohort",
+					cohort,
 				}),
 			);
 			return;
@@ -490,6 +497,7 @@ const DEFAULT_ENV = {
 					.filter((message): message is string => typeof message === "string"),
 				recoverable: false,
 				scope: "cohort",
+				cohort,
 			}),
 		);
 	}
@@ -1707,7 +1715,7 @@ const DEFAULT_ENV = {
 				onControllerEvent: (event) => {
 					if (cancelled) return;
 					handleTimedMediaAudioStarted(event);
-					reportTimedMediaDiagnostic(event);
+					reportTimedMediaDiagnostic(event, cohort);
 				},
 			})
 			.then(() => {
@@ -1762,7 +1770,7 @@ const DEFAULT_ENV = {
 							kind: "runtime-init",
 							source: "pie-assessment-toolkit",
 							error,
-							scope: "cohort",
+							cohort: cohort,
 						}),
 					);
 				}

@@ -401,6 +401,36 @@ describe("<pie-assessment-toolkit> lifecycle", () => {
 		expect(banner()).toBeNull();
 	});
 
+	test("a section that fails after the learner left it names that section", async () => {
+		let rejectFirst: (error: Error) => void = () => {};
+		const firstStart = new Promise<void>((_, reject) => {
+			rejectFirst = reject;
+		});
+		let created = 0;
+		const { element, of } = await mount({
+			sectionId: "s1",
+			attemptId: "attempt-1",
+			section: section("s1"),
+			createSectionController: () => {
+				created += 1;
+				return created === 1 ? controller(() => firstStart) : controller();
+			},
+		});
+
+		Object.assign(element, { sectionId: "s2", section: section("s2") });
+		await settle();
+		rejectFirst(new Error("s1 failed to start"));
+		await settle();
+
+		expect(of("framework-error").map((event) => event.detail)).toMatchObject([
+			{
+				kind: "section-controller-init",
+				scope: "cohort",
+				cohort: { sectionId: "s1", attemptId: "attempt-1" },
+			},
+		]);
+	});
+
 	test("isolation=\"force\" as an attribute gives a nested toolkit its own coordinator", async () => {
 		const outer = await mount({});
 		const inner = document.createElement("pie-assessment-toolkit") as ToolkitElement;

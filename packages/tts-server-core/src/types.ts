@@ -14,10 +14,10 @@ export interface SpeechMark {
 	/** Type of speech mark */
 	type: "word" | "sentence" | "ssml";
 
-	/** Character index in original text (inclusive) */
+	/** UTF-16 index into the request text (inclusive) */
 	start: number;
 
-	/** Character index in original text (exclusive) */
+	/** UTF-16 index into the request text (exclusive) */
 	end: number;
 
 	/** The actual word or text */
@@ -219,7 +219,7 @@ export interface SynthesizeMetadata {
 	/** Voice ID used */
 	voice: string;
 
-	/** Audio duration in seconds */
+	/** Seconds the provider took to synthesize, not the audio's length */
 	duration: number;
 
 	/** Character count of input text */

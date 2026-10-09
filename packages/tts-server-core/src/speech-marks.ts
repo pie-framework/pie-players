@@ -5,12 +5,15 @@
 
 import type { SpeechMark } from "./types.js";
 
+// A mark as a wire format carries it, before `type` is narrowed.
+type WireSpeechMark = Omit<SpeechMark, "type"> & { type: string };
+
 const asFiniteNumber = (value: unknown): number | null => {
 	const next = Number(value);
 	return Number.isFinite(next) ? next : null;
 };
 
-const sortWordMarks = (marks: SpeechMark[]): SpeechMark[] =>
+const sortWordMarks = <Mark extends WireSpeechMark>(marks: Mark[]): Mark[] =>
 	[...marks].sort((left, right) => {
 		if (left.time !== right.time) return left.time - right.time;
 		if (left.start !== right.start) return left.start - right.start;
@@ -68,44 +71,74 @@ const normalizeMarkTimeUnits = (marks: SpeechMark[]): SpeechMark[] => {
 	return marks.map((mark) => ({ ...mark, time: mark.time * 1000 }));
 };
 
-const estimateOffsetShift = (marks: SpeechMark[], requestText: string): number => {
-	if (!marks.length || !requestText.length) return 0;
-	const textLower = requestText.toLowerCase();
-	const candidates: number[] = [];
-	let cursor = 0;
-	for (const mark of marks) {
-		const token = mark.value.trim().toLowerCase();
-		if (!token) continue;
-		const found = textLower.indexOf(token, cursor);
-		if (found < 0) continue;
-		const delta = mark.start - found;
-		if (delta >= 0) candidates.push(delta);
-		cursor = found + token.length;
-		if (candidates.length >= 8) break;
-	}
-	if (candidates.length > 0) {
-		const ordered = [...candidates].sort((a, b) => a - b);
-		return ordered[Math.floor(ordered.length / 2)];
-	}
-	return Math.max(0, Math.floor(marks[0].start));
+// Case-folds for matching only, and only when folding keeps every index.
+const foldForMatching = (text: string): string => {
+	const folded = text.toLowerCase();
+	return folded.length === text.length ? folded : text;
 };
 
-const rebaseOffsetsToRequestText = (
-	marks: SpeechMark[],
-	requestText: string,
-): SpeechMark[] => {
-	if (!marks.length || !requestText.length) return marks;
-	const textLength = requestText.length;
-	const maxEnd = Math.max(...marks.map((mark) => mark.end));
-	if (maxEnd <= textLength + 2) return marks;
-	const shift = estimateOffsetShift(marks, requestText);
-	if (shift <= 0) return marks;
-	return marks.map((mark) => ({
-		...mark,
-		start: mark.start - shift,
-		end: mark.end - shift,
-	}));
+const nearestOccurrence = (
+	haystack: string,
+	token: string,
+	from: number,
+	expected: number,
+	tolerance: number,
+): number => {
+	let best = -1;
+	for (
+		let found = haystack.indexOf(token, from);
+		found >= 0 && found <= expected + tolerance;
+		found = haystack.indexOf(token, found + 1)
+	) {
+		if (best < 0 || Math.abs(found - expected) < Math.abs(best - expected)) {
+			best = found;
+		}
+	}
+	return best >= 0 && Math.abs(best - expected) <= tolerance ? best : -1;
 };
+
+/**
+ * Re-derive each mark's `start`/`end` from where its `value` occurs in the
+ * request text, in time order, so offsets index that text in UTF-16 code
+ * units. Reported offsets are only comparable within one provider: Polly's
+ * count UTF-8 bytes of the SSML it was sent, and SchoolCity's carry a constant
+ * shift. The first mark of each type takes its value's first occurrence; each
+ * later one takes the occurrence nearest the offset the previous anchored
+ * mark's shift predicts. A mark whose value is not found there keeps that
+ * predicted offset. Idempotent on offsets that already index the text.
+ */
+export function anchorSpeechMarks<Mark extends WireSpeechMark>(
+	marks: Mark[],
+	requestText: string,
+): Mark[] {
+	if (!marks.length || !requestText.length) return marks;
+	const haystack = foldForMatching(requestText);
+	const progress = new Map<string, { cursor: number; shift: number | null }>();
+	return sortWordMarks(marks).map((mark) => {
+		const state = progress.get(mark.type) ?? { cursor: 0, shift: null };
+		progress.set(mark.type, state);
+		const token = mark.value.trim();
+		const length = mark.end - mark.start;
+		const expected = mark.start - (state.shift ?? 0);
+		const found = !token
+			? -1
+			: state.shift === null
+				? haystack.indexOf(foldForMatching(token), state.cursor)
+				: nearestOccurrence(
+						haystack,
+						foldForMatching(token),
+						state.cursor,
+						expected,
+						Math.max(8, token.length),
+					);
+		if (found < 0) {
+			return { ...mark, start: expected, end: expected + length };
+		}
+		state.shift = mark.start - found;
+		state.cursor = found + token.length;
+		return { ...mark, start: found, end: found + token.length };
+	});
+}
 
 const clampMarkRanges = (marks: SpeechMark[], requestText: string): SpeechMark[] => {
 	if (!requestText.length) return marks;
@@ -125,8 +158,8 @@ const clampMarkRanges = (marks: SpeechMark[], requestText: string): SpeechMark[]
 /**
  * Parse and correct a provider's JSONL word-mark response against the text
  * that was actually requested: normalizes second-vs-millisecond time units,
- * rebases offsets that drifted from the request text (a provider quirk seen
- * in production), and clamps ranges to the request text's bounds.
+ * anchors offsets to the request text (`anchorSpeechMarks`), and clamps
+ * ranges to the request text's bounds.
  *
  * Shared by every provider/transport that speaks this wire shape so the
  * correction is applied once rather than reimplemented per caller.
@@ -137,8 +170,8 @@ export function normalizeSpeechMarks(
 ): SpeechMark[] {
 	const parsed = parseWordMarksJsonl(raw);
 	const withTimes = normalizeMarkTimeUnits(parsed);
-	const rebased = rebaseOffsetsToRequestText(withTimes, requestText);
-	return clampMarkRanges(rebased, requestText);
+	const anchored = anchorSpeechMarks(withTimes, requestText);
+	return clampMarkRanges(anchored, requestText);
 }
 
 /**

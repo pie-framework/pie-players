@@ -37,6 +37,7 @@
   ElementToolStateStore
   type ElementToolStateStoreApi
   type ExtractionResult
+  type FrameworkErrorCohort
   type FrameworkErrorKind
   type FrameworkErrorListener
   type FrameworkErrorModel
@@ -179,6 +180,7 @@
   dispatchCrossBoundaryEvent
   frameworkErrorFromUnknown
   hasReadableText
+  hasSpokenContent
   setCurrentPosition
   setCurrentSectionPosition
   toFrameworkErrorModel
@@ -356,6 +358,7 @@
   hasMathContent
   hasReadableText
   hasScienceContent
+  hasSpokenContent
   isShadowRootNode
   isTTSStartFailure
   normalizeTTSLayoutMode

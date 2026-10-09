@@ -62,7 +62,7 @@ runtime context, so it has to sit inside `<pie-assessment-toolkit>`.
 
 ### Manual Integration (Advanced)
 
-For a custom layout inside the toolkit:
+For a custom layout inside the toolkit. The tool detects choices under the item root its enclosing `<pie-item-scope>` provides, and with none it warns and injects nothing:
 
 ```html
 <script type="module">
@@ -74,18 +74,20 @@ For a custom layout inside the toolkit:
     mc1: 'my-assessment:section-1:question-1:mc1',
     mc2: 'my-assessment:section-1:question-1:mc2',
   };
-  tool.scopeElement = document.querySelector('.question-content');
   tool.visible = true; // or alwaysOn = true; the tool injects no buttons while neither is set
 </script>
 
 <pie-assessment-toolkit>
-  <pie-tool-answer-eliminator></pie-tool-answer-eliminator>
+  <pie-item-scope item-id="question-1">
+    <!-- the item's rendered content -->
+    <pie-tool-answer-eliminator></pie-tool-answer-eliminator>
+  </pie-item-scope>
 </pie-assessment-toolkit>
 ```
 
 ## Props/Attributes
 
-`elementStateKeys` and `scopeElement` are JS properties only; the others also take the attribute shown.
+`elementStateKeys` is a JS property only; the others also take the attribute shown.
 
 | Property | Attribute | Type | Default | Description |
 |----------|-----------|------|---------|-------------|
@@ -93,9 +95,7 @@ For a custom layout inside the toolkit:
 | `alwaysOn` | `always-on` | `boolean` | `false` | Shows the buttons regardless of `visible`, for a profile-based accommodation |
 | `strategy` | `strategy` | `'strikethrough' \| 'mask'` | `'strikethrough'` | Elimination styling; any other value uses `strikethrough` |
 | `buttonAlignment` | `button-alignment` | `'left' \| 'right' \| 'inline'` | `'right'` | Button placement relative to the choice |
-| `toolId` | `tool-id` | `string` | `'answerEliminator'` | Id the tool registers with the coordinator under |
 | `elementStateKeys` | | `Record<string, string>` | `{}` | Composite key `assessmentId:sectionId:itemId:elementId` per PIE element, by model id, into the runtime context's element tool state store. A choice is tracked under its nearest ancestor with a listed id and persists under that key; choices outside a listed element are kept in memory only |
-| `scopeElement` | | `HTMLElement` | | Root to detect choices in. Without it the tool uses the root its enclosing `pie-item-scope` provides, and with neither it warns and injects nothing |
 
 ## Global Element ID Format
 

@@ -415,6 +415,7 @@
 						"The toolkit's section-ready carried no section controller, so the stage chain stays at booting-section.",
 					recoverable: true,
 					scope: "cohort",
+					cohort,
 				}),
 			);
 			return;
@@ -459,6 +460,7 @@
 			frameworkErrorLatch,
 			detail,
 			toolkitCoordinator,
+			makeCohort({ sectionId: cohortSectionId, attemptId }),
 		);
 	}
 

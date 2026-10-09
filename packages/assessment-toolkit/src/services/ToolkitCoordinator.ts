@@ -41,8 +41,8 @@ import type { CatalogChangeListener } from "./AccessibilityCatalogResolver.js";
 import { ElementToolStateStore } from "./ElementToolStateStore.js";
 import {
 	frameworkErrorFromCoordinatorContext,
+	type FrameworkErrorCohort,
 	type FrameworkErrorModel,
-	type FrameworkErrorScope,
 } from "./framework-error.js";
 import {
 	FrameworkErrorBus,
@@ -996,18 +996,19 @@ export class ToolkitCoordinator {
 
 	/**
 	 * Every report site states whether the coordinator carries on after the
-	 * failure; one that takes down only its section passes `scope: "cohort"`.
+	 * failure; one that takes down only its section passes that section.
 	 */
 	private handleError(
 		error: unknown,
 		context: ToolkitErrorContext & { recoverable: boolean },
-		scope: FrameworkErrorScope = "runtime",
+		cohort?: FrameworkErrorCohort,
 	): void {
 		const model = frameworkErrorFromCoordinatorContext({
 			error,
 			context,
 			recoverable: context.recoverable,
-			scope,
+			scope: cohort ? "cohort" : "runtime",
+			cohort,
 		});
 		this.frameworkErrorBus.reportFrameworkError(model);
 	}
@@ -2210,7 +2211,7 @@ export class ToolkitCoordinator {
 				},
 				recoverable: false,
 			},
-			"cohort",
+			{ sectionId: args.sectionId, attemptId: args.attemptId },
 		);
 	}
 

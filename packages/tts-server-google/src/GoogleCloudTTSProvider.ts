@@ -104,6 +104,29 @@ export interface GoogleCloudTTSConfig extends TTSServerConfig {
  * - Full SSML support
  * - Single API call for audio + speech marks
  */
+// Letters, digits and combining marks, so accented words stay whole.
+const WORD_PATTERN = /[\p{L}\p{M}\p{N}'\u2019]+/gu;
+const SSML_TEXT_TOKEN_PATTERN =
+	/&(?:#\d+|#x[\da-f]+|[a-z]+);|[\p{L}\p{M}\p{N}'\u2019]+/giu;
+
+const SSML_ENTITIES: Record<string, string> = {
+	amp: "&",
+	lt: "<",
+	gt: ">",
+	quot: '"',
+	apos: "'",
+};
+
+const decodeSSMLText = (text: string): string =>
+	text.replace(/&(#\d+|#x[\da-f]+|[a-z]+);/gi, (entity, name: string) => {
+		if (name[0] !== "#") return SSML_ENTITIES[name.toLowerCase()] ?? entity;
+		const code =
+			name[1] === "x" || name[1] === "X"
+				? Number.parseInt(name.slice(2), 16)
+				: Number.parseInt(name.slice(1), 10);
+		return Number.isFinite(code) ? String.fromCodePoint(code) : entity;
+	});
+
 export class GoogleCloudTTSProvider extends BaseTTSProvider {
 	readonly providerId = "google-cloud-tts";
 	readonly providerName = "Google Cloud Text-to-Speech";
@@ -440,32 +463,18 @@ export class GoogleCloudTTSProvider extends BaseTTSProvider {
 			end: number;
 			markName: string;
 		}> = [];
-		const wordRegex = /\b[\w']+\b/g;
-		let match;
-		let markIndex = 0;
-
-		while ((match = wordRegex.exec(text)) !== null) {
-			const word = match[0];
-			const start = match.index;
-			const end = start + word.length;
-			const markName = `w${markIndex++}`;
-
-			words.push({ word, start, end, markName });
-		}
-
-		// Build SSML with marks
 		let ssml = prosodyAttrs ? `<speak><prosody ${prosodyAttrs}>` : "<speak>";
 		let lastEnd = 0;
 
-		for (const { word, start, end, markName } of words) {
-			// Add text before word (including whitespace and punctuation)
-			ssml += this.escapeSSML(text.slice(lastEnd, start));
-			// Add marked word
-			ssml += `<mark name="${markName}"/>${this.escapeSSML(word)}`;
-			lastEnd = end;
+		for (const match of text.matchAll(WORD_PATTERN)) {
+			const word = match[0];
+			const start = match.index;
+			const markName = `w${words.length}`;
+			words.push({ word, start, end: start + word.length, markName });
+			ssml += `${this.escapeSSML(text.slice(lastEnd, start))}<mark name="${markName}"/>${this.escapeSSML(word)}`;
+			lastEnd = start + word.length;
 		}
 
-		// Add remaining text
 		ssml +=
 			this.escapeSSML(text.slice(lastEnd)) +
 			(prosodyAttrs ? "</prosody>" : "") +
@@ -475,7 +484,10 @@ export class GoogleCloudTTSProvider extends BaseTTSProvider {
 	}
 
 	/**
-	 * Extract words from existing SSML (simplified version for v1)
+	 * Inject a mark before each word of authored SSML, keeping its markup.
+	 * Offsets index the SSML itself. An element whose content the engine
+	 * replaces (`<sub>`, `<say-as>`, `<phoneme>`) takes one mark before its
+	 * opening tag, valued with its text, since a mark may not sit inside it.
 	 */
 	private extractWordsFromSSML(ssmlText: string): {
 		ssml: string;
@@ -486,14 +498,70 @@ export class GoogleCloudTTSProvider extends BaseTTSProvider {
 			markName: string;
 		}>;
 	} {
-		// For now, just strip SSML tags and inject marks
-		// More sophisticated SSML parsing can be added in future versions
-		const plainText = ssmlText
-			.replace(/<[^>]+>/g, " ") // Remove all tags
-			.replace(/\s+/g, " ") // Normalize whitespace
-			.trim();
+		const words: Array<{
+			word: string;
+			start: number;
+			end: number;
+			markName: string;
+		}> = [];
+		const mark = (word: string, start: number, end: number) => {
+			const markName = `w${words.length}`;
+			words.push({ word, start, end, markName });
+			return `<mark name="${markName}"/>`;
+		};
+		let ssml = "";
+		let cursor = 0;
 
-		return this.injectSSMLMarks(plainText);
+		for (const tag of ssmlText.matchAll(/<[^>]*>/g)) {
+			if (tag.index < cursor) continue;
+			ssml += this.markTextNode(ssmlText, cursor, tag.index, mark);
+			const opaque = /^<\s*(sub|say-as|phoneme)\b(?![^>]*\/>)[^>]*>$/i.exec(
+				tag[0],
+			);
+			const close = opaque
+				? new RegExp(`</\\s*${opaque[1]}\\s*>`, "i")
+				: null;
+			const closeMatch = close?.exec(ssmlText.slice(tag.index));
+			if (opaque && closeMatch) {
+				const contentStart = tag.index + tag[0].length;
+				const contentEnd = tag.index + closeMatch.index;
+				const raw = ssmlText.slice(contentStart, contentEnd);
+				const inner = raw.trim();
+				const innerStart = contentStart + raw.indexOf(inner);
+				const elementEnd = contentEnd + closeMatch[0].length;
+				ssml += inner
+					? mark(decodeSSMLText(inner), innerStart, innerStart + inner.length)
+					: "";
+				ssml += ssmlText.slice(tag.index, elementEnd);
+				cursor = elementEnd;
+				continue;
+			}
+			ssml += tag[0];
+			cursor = tag.index + tag[0].length;
+		}
+		ssml += this.markTextNode(ssmlText, cursor, ssmlText.length, mark);
+
+		return { ssml, wordMap: words };
+	}
+
+	// Marks each word of an SSML text node, which is already escaped, so
+	// entities stay whole and are never read as words.
+	private markTextNode(
+		ssmlText: string,
+		from: number,
+		to: number,
+		mark: (word: string, start: number, end: number) => string,
+	): string {
+		const segment = ssmlText.slice(from, to);
+		let out = "";
+		let lastEnd = 0;
+		for (const match of segment.matchAll(SSML_TEXT_TOKEN_PATTERN)) {
+			if (match[0].startsWith("&")) continue;
+			const start = from + match.index;
+			out += `${segment.slice(lastEnd, match.index)}${mark(match[0], start, start + match[0].length)}${match[0]}`;
+			lastEnd = match.index + match[0].length;
+		}
+		return out + segment.slice(lastEnd);
 	}
 
 	/**

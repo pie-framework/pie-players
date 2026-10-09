@@ -10,7 +10,7 @@ import type {
 	ToolbarContext,
 } from "@pie-players/pie-assessment-toolkit/tools/registration";
 import type { ToolContext } from "@pie-players/pie-assessment-toolkit/tools/registration";
-import { hasReadableText } from "@pie-players/pie-assessment-toolkit/tools/registration";
+import { hasSpokenContent } from "@pie-players/pie-assessment-toolkit/tools/registration";
 import {
 	createScopedToolId,
 	createToolElement,
@@ -89,11 +89,10 @@ export const ttsToolRegistration: ToolRegistration = {
 	/**
 	 * Pass 2: Determine if TTS is relevant in this context
 	 *
-	 * TTS is relevant when:
-	 * - Context contains readable text (at least 10 characters)
+	 * TTS is relevant when the context holds readable text or a catalog idref.
 	 */
 	isVisibleInContext(context: ToolContext): boolean {
-		return hasReadableText(context);
+		return hasSpokenContent(context);
 	},
 
 	renderToolbar(

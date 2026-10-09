@@ -135,9 +135,9 @@ Semantics:
 
 ## Behavior
 
-1. **Services**: Reads `ttsService`, `highlightCoordinator` and `toolkitCoordinator` from the toolkit runtime context; the controls stay disabled until a `ttsService` arrives, and starting playback awaits `toolkitCoordinator.ensureTTSReady()`
+1. **Services**: Reads `ttsService`, `highlightCoordinator` and `toolkitCoordinator` from the toolkit runtime context; the controls stay disabled until a `ttsService` arrives. A read started before the service is ready waits on the service's readiness gate, and a failure there announces that text-to-speech could not initialize
 2. **Text Extraction**: Reads the text of the scope element's content region (the region scope, else the shell scope, when it is `[data-region='content']`, else its first `[data-region='content']` descendant, else the scope element itself), including text rendered into open shadow roots
-3. **TTS Trigger**: Calls `ttsService.speak(readingTarget, { catalogId, catalogContext, language })`, where `catalogContext` names the owning item or passage and `language` is the `language` attribute, else the toolkit's `content-language`. `speak` resolves the read's language from it as [TTS language](../../docs/architecture/internationalization.md#tts-language) sets out
+3. **TTS Trigger**: Calls `ttsService.speak(readingTarget, { ownerId, rate, catalogId, catalogContext, language })`, where `ownerId` names this instance, `rate` is the selected speed, `catalogContext` names the owning item or passage and `language` is the `language` attribute, else the toolkit's `content-language`. The service decides whether anything is speakable, cards included; a read that settles without playing closes the panel and announces that there is nothing to read. `speak` resolves the read's language from it as [TTS language](../../docs/architecture/internationalization.md#tts-language) sets out
 4. **Catalog Resolution**: TTSService checks for SSML in accessibility catalogs (priority order):
    - **Extracted catalogs** (from embedded SSML) - generated before render by hosts that run `SSMLExtractor`
    - **Item-level catalogs** (manually authored)
@@ -145,11 +145,10 @@ Semantics:
    - **Plain text fallback** (browser TTS)
 5. **Expanded Controls**:
    - The trigger starts, pauses and resumes reading; starting opens the panel
-   - Starting one instance stops playback another instance owns and closes that instance's panel
+   - The instance owns the service's run its read started (`getRunOwner()`); a read started by anything else, another instance or a selection read, closes its panel
    - Stop halts playback and closes the panel
    - Fast-forward/Rewind call `seekForward(1)` / `seekBackward(1)` on the TTS service, one sentence per press, and are enabled only while reading
-   - Speed buttons call `ttsService.setPlaybackRate(rate)` when available,
-     otherwise `ttsService.updateSettings({ rate })`
+   - Speed buttons call `ttsService.setPlaybackRate(rate)`
    - Speed choices render as a named `Playback speed` radio group with
      `aria-checked` state
    - Selecting another speed switches the active radio to that option
@@ -158,7 +157,7 @@ Semantics:
      reset to `1x` while rewind/forward/stop still render
 6. **Keyboard Interaction**: Arrow keys, Home and End move focus within one cluster, either the speed radio group or the Rewind/Fast-forward/Stop buttons, and skip disabled controls; arrowing onto a speed also selects it. Every control is a Tab stop except the speed radios, which share one Tab stop on the checked option
 7. **Active State**: Opening or closing the panel dispatches a bubbling, composed `pie-tool-active-change` event with `{ active }` and mirrors the state in the host's `data-active` attribute
-8. **Cleanup**: Releases playback ownership and clears its highlight target resolver provider on unmount
+8. **Cleanup**: Clears its highlight target resolver provider on unmount
 
 ## SSML Extraction Integration
 

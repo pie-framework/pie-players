@@ -152,7 +152,10 @@ export type {
 	ToolContext,
 	ToolLevel,
 } from "./services/tool-context.js";
-export { hasReadableText } from "./services/tool-context.js";
+export {
+	hasReadableText,
+	hasSpokenContent,
+} from "./services/tool-context.js";
 export type { CreateToolsConfigArgs } from "./services/create-tools-config.js";
 export { createToolsConfig } from "./services/create-tools-config.js";
 export type {
@@ -204,6 +207,7 @@ export type {
 	TextToSpeechToolProviderConfig,
 } from "./services/tools-config-normalizer.js";
 export type {
+	FrameworkErrorCohort,
 	FrameworkErrorKind,
 	FrameworkErrorModel,
 	FrameworkErrorScope,

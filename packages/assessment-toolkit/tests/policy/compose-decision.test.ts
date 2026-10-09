@@ -683,6 +683,35 @@ describe("composeDecision — unknown PNP support id", () => {
 		expect(unknown).toHaveLength(1);
 		expect(unknown[0].toolId).toBe("responseMasking");
 		expect(unknown[0].message).toContain("responseMasking");
+		expect(unknown[0].message).toContain("personalNeedsProfile.supports");
+		expect(unknown[0].source).toBe("pnp.pnp-support");
+	});
+
+	test("an id in a district list is labelled by that list", () => {
+		const decision = composeDecision({
+			request: baseRequest,
+			tools: tools({
+				placement: { section: [], item: ["answerEliminator"], passage: [] },
+			}),
+			pnpPolicy: {
+				source: new PnpPolicySource(createTestToolRegistry()),
+				assessment: {
+					id: "asm-1",
+					settings: { districtPolicy: { blockedTools: ["calcualtor"] } },
+				} as AssessmentEntity,
+				enforcement: "on",
+			},
+			customSources: [],
+			contextId: "test",
+		});
+
+		const unknown = decision.diagnostics.filter(
+			(d) => d.code === "tool-policy.unknownSupportId",
+		);
+		expect(unknown).toHaveLength(1);
+		expect(unknown[0].source).toBe("pnp.district-block");
+		expect(unknown[0].message).toContain("settings.districtPolicy.blockedTools");
+		expect(unknown[0].details).toEqual({ origins: ["district-block"] });
 	});
 
 	test("the tool id for the same capability produces none", () => {

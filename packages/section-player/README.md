@@ -360,6 +360,7 @@ The layout elements (`pie-section-player-splitpane`,
 - `runtime` (object): primary coordinator/tools/player runtime bundle
 - `section` (object): assessment section payload
 - `session` (object, JS property only): the section's session, a `SectionControllerSessionState`; see [Session lifecycle](#session-lifecycle)
+- `assessment` (object, JS property only): the `AssessmentEntity` whose `personalNeedsProfile` and `settings` tool policy reads, forwarded to the coordinator the player builds. A coordinator passed in `runtime` is the host's to bind with `updateAssessment`. A section's own `personalNeedsProfile` is not read, and the player warns once when it finds one
 - `debug` (boolean-like): verbose debug logging control (`"true"` enables, `"false"`/`"0"` disables)
 - `toolbar-position` (string): `top|right|bottom|left|none`
 - `narrow-layout-breakpoint` (number, optional): viewport width in px below which the layout collapses (split pane: single column; vertical: toolbar moves to top). Clamped to 400–2000; default 1100.

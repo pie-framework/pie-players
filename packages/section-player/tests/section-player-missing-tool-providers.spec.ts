@@ -1,3 +1,4 @@
+import { createUniversalPersonalNeedsProfile } from "@pie-players/pie-default-tool-loaders";
 import { expect, type Page, test } from "@playwright/test";
 
 // A coordinator constructed with a `toolRegistry` registers tool providers only
@@ -44,7 +45,7 @@ async function mountFreshPlayer(
 	coordinator: "bare" | "narrow" | "own",
 ) {
 	await page.evaluate(
-		({ tag, mode }) => {
+		({ tag, mode, personalNeedsProfile }) => {
 			const existing = document.querySelector(tag) as
 				| (HTMLElement & {
 						runtime?: Record<string, unknown>;
@@ -62,7 +63,6 @@ async function mountFreshPlayer(
 			};
 			// The demo's item-metadata resolvers are what show the calculator here.
 			const toolContextResolvers = demoCoordinator.config.toolContextResolvers;
-			const section = existing.section as { personalNeedsProfile?: unknown };
 			let hostCoordinator: object | undefined;
 			if (mode !== "own") {
 				const registry = existing.toolRegistry as {
@@ -79,7 +79,7 @@ async function mountFreshPlayer(
 				});
 				bare.updateAssessment({
 					id: "missing-providers-assessment",
-					personalNeedsProfile: section.personalNeedsProfile,
+					personalNeedsProfile,
 				});
 				hostCoordinator = bare;
 			}
@@ -101,7 +101,7 @@ async function mountFreshPlayer(
 						}>
 					).detail?.coordinator?.updateAssessment({
 						id: "missing-providers-assessment",
-						personalNeedsProfile: section.personalNeedsProfile,
+						personalNeedsProfile,
 					});
 				});
 			}
@@ -116,7 +116,11 @@ async function mountFreshPlayer(
 			existing.remove();
 			parent.appendChild(fresh);
 		},
-		{ tag: LAYOUT_TAG, mode: coordinator },
+		{
+			tag: LAYOUT_TAG,
+			mode: coordinator,
+			personalNeedsProfile: createUniversalPersonalNeedsProfile(),
+		},
 	);
 	await expect(calculatorButton(page)).toBeVisible({ timeout: 30_000 });
 }

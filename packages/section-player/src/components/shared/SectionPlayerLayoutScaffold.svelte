@@ -6,6 +6,7 @@
 		ToolbarItem,
 	} from "@pie-players/pie-assessment-toolkit";
 	import type {
+		AssessmentEntity,
 		AssessmentSection,
 		SectionControllerSessionState,
 	} from "@pie-players/pie-players-shared/types";
@@ -29,6 +30,7 @@
 		runtime = null as Record<string, unknown> | null,
 		section = null as AssessmentSection | null,
 		session = null as SectionControllerSessionState | null,
+		assessment = null as AssessmentEntity | null,
 		sectionId = "",
 		attemptId = "",
 		showToolbar = "false" as boolean | string | null | undefined,
@@ -46,6 +48,7 @@
 		runtime?: Record<string, unknown> | null;
 		section?: AssessmentSection | null;
 		session?: SectionControllerSessionState | null;
+		assessment?: AssessmentEntity | null;
 		sectionId?: string;
 		attemptId?: string;
 		showToolbar?: boolean | string | null | undefined;
@@ -252,6 +255,7 @@
 	{runtime}
 	{section}
 	{session}
+	{assessment}
 	section-id={sectionId}
 	attempt-id={attemptId}
 	{toolRegistry}

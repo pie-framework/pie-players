@@ -15,6 +15,7 @@ export type SectionPlayerBasicPropName =
 	| "assessmentId"
 	| "section"
 	| "session"
+	| "assessment"
 	| "sectionId"
 	| "attemptId"
 	| "debug"

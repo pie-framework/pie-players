@@ -484,6 +484,7 @@ export function createToolSurfaceHost(
 				parameters = decision.parameters;
 			} else {
 				const scopeId = current.scope.sectionId || "*";
+				let placed = false;
 				for (const level of SECTION_POLICY_LEVELS) {
 					const decision = coordinator.decideToolPolicy({
 						level,
@@ -498,11 +499,14 @@ export function createToolSurfaceHost(
 						(candidate) => candidate.toolId === registration.toolId,
 					);
 					if (!entry) continue;
-					granted = true;
+					// Placement admits the tool; only a support, requirement or
+					// test-administration override grants it.
+					placed = true;
+					granted = entry.required || entry.alwaysAvailable;
 					parameters = entry.settings;
 					break;
 				}
-				if (!granted) return null;
+				if (!placed) return null;
 			}
 		} catch (error) {
 			report(

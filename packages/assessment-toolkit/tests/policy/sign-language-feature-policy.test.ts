@@ -63,7 +63,7 @@ describe("signLanguage feature eligibility", () => {
 			granted: true,
 			action: "enable",
 			rule: "pnp-support",
-			precedence: 6,
+			precedence: 7,
 			sourceType: "student",
 			required: false,
 		});
@@ -143,7 +143,7 @@ describe("signLanguage feature eligibility", () => {
 		expect(decision).toMatchObject({
 			granted: true,
 			rule: "item-requirement",
-			precedence: 4,
+			precedence: 5,
 			required: true,
 		});
 	});
@@ -158,7 +158,7 @@ describe("signLanguage feature eligibility", () => {
 		expect(decision).toMatchObject({
 			granted: true,
 			rule: "district-requirement",
-			precedence: 5,
+			precedence: 6,
 			required: true,
 		});
 	});

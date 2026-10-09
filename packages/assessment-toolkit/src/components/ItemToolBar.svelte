@@ -105,28 +105,16 @@
 	import '@pie-players/pie-players-shared/nds-icon-button';
 
 	const isBrowser = typeof window !== 'undefined';
-	// FontAwesome icon source, in load order:
+	// FontAwesome comes from the host page when it links any FA stylesheet.
+	// Otherwise the toolbar adds FA Free from jsDelivr. Pro is never fetched from
+	// here: its CSS is served cross-origin from ui.renaissance.com with
+	// CORS-blocked font binaries, so a host that licenses it links it itself, as
+	// section-demos does through its dev proxy.
 	//
-	//   1. FA Pro Light from the host's same-origin `/_fa-pro/` path. Hosts
-	//      that have licensed FA Pro (e.g., the section-demos dev server, see
-	//      apps/section-demos/vite.config.ts) proxy this to ui.renaissance.com.
-	//      When the proxy is present, Pro Light renders the design-spec
-	//      `fa-light fa-${iconName}` classes the vendored bundle emits.
-	//   2. FA Free from jsDelivr as a fallback. If the host doesn't expose
-	//      `/_fa-pro/`, the link tag 404s silently and Free's stylesheet stays
-	//      effective. Free ships icons in Solid weight (900); the shim below
-	//      remaps `.fa-light` accordingly so glyphs still render — at a
-	//      thicker stroke than the design intends, but visible.
-	//
-	// Renaissance's direct CDN URL (https://ui.renaissance.com/...) is not
-	// usable directly: the CSS responds 200 cross-origin but the font binaries
-	// it references are CORS-blocked. The proxy avoids that by making the
-	// fetch same-origin from the browser's POV.
-	// FA Pro splits the cascade across two files: `fontawesome.min.css`
-	// defines the glyph map (`.fa-chevron-left:before {content: ...}` etc.)
-	// plus the base `.fa-light` font-family rule, while `light.min.css` adds
-	// the @font-face declaration and weight 300 override. Both are required.
-	const FA_PRO_HREFS = ['/_fa-pro/fontawesome.min.css', '/_fa-pro/light.min.css'];
+	// The NDS bundle renders `fa-light fa-${name}`, a weight only Pro carries.
+	// Free has no `.fa-light` rule and its Regular font lacks the toolbar's and
+	// calculator window's icons, so without Pro every NDS glyph renders in
+	// Solid, the one Free weight that has them all.
 	const FA_FREE_HREF =
 		'https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.5.2/css/all.min.css';
 	// Pre-inject Roboto from a CORS-enabled origin. The vendored bundle's
@@ -137,15 +125,39 @@
 	// and our CORS-clean stylesheet wins.
 	const ROBOTO_HREF =
 		'https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap';
-	// Match any FA stylesheet href the host page already has loaded — covers
-	// `fontawesome.min.css`, `font-awesome.css`, `/_fa-pro/light.min.css`,
-	// `fontawesome-free@…`, etc. Cloning the host's actual FA <link> is what
-	// makes prod work: the previous hardcoded `/_fa-pro/` paths only resolve on
-	// hosts that proxy FA Pro themselves (e.g., section-demos dev server).
+	// Matches any FA stylesheet the host page links: `fontawesome.min.css`,
+	// `font-awesome.css`, a `/_fa-pro/` proxy, `fontawesome-free@…`.
 	const FA_HREF_PATTERN = /font.?awesome|fa-?pro/i;
-	// A stylesheet that fails to load, such as the `/_fa-pro/` probe on a host
-	// without that path, stays in <head> marked `data-pie-load-failed`: no later
-	// call requests it again, and no shadow root copies it.
+	const FA_FREE_HREF_PATTERN = /fontawesome-free/i;
+	const pageLinksFaPro = () =>
+		Array.from(document.querySelectorAll<HTMLLinkElement>('link[rel="stylesheet"][href]')).some(
+			(link) => FA_HREF_PATTERN.test(link.href) && !FA_FREE_HREF_PATTERN.test(link.href)
+		);
+	type NdsGlyphVariant = 'fa-light' | 'fa-regular' | 'fa-solid';
+	// Re-applies whenever Lit renders or rewrites the icon's class. Our own class
+	// edit removes `fa-light`, so the callback it triggers is a no-op.
+	const applyNdsGlyphVariant = (button: HTMLElement, preferred: NdsGlyphVariant) => {
+		const variant = pageLinksFaPro() ? preferred : 'fa-solid';
+		if (variant === 'fa-light') return () => {};
+		const apply = () => {
+			for (const icon of button.querySelectorAll<HTMLElement>('i.fa-light')) {
+				icon.classList.remove('fa-light');
+				icon.classList.add(variant);
+			}
+		};
+		apply();
+		const observer = new MutationObserver(apply);
+		observer.observe(button, {
+			childList: true,
+			subtree: true,
+			attributes: true,
+			attributeFilter: ['class']
+		});
+		return () => observer.disconnect();
+	};
+	// A stylesheet that fails to load stays in <head> marked
+	// `data-pie-load-failed`: no later call requests it again, and no shadow root
+	// copies it.
 	const appendHeadStylesheet = (href: string) => {
 		if (document.querySelector(`link[href="${href}"]`)) return;
 		const link = document.createElement('link');
@@ -178,7 +190,6 @@
 		).some((link) => FA_HREF_PATTERN.test(link.href));
 		if (hostHasFa) return;
 		appendHeadStylesheet(FA_FREE_HREF);
-		for (const href of FA_PRO_HREFS) appendHeadStylesheet(href);
 	};
 
 	// <nds-icon-button> renders into light DOM (createRenderRoot returns `this`),
@@ -229,7 +240,7 @@
 	const ndsIconButtonAction = (node: HTMLElement) => {
 		ensureNdsAssets();
 		installFaInToolbarShadow(node);
-		return {};
+		return { destroy: applyNdsGlyphVariant(node, 'fa-light') };
 	};
 
 	// <nds-icon-button> exposes only `button-aria-label` on its inner light-DOM
@@ -1590,19 +1601,16 @@
 		// onActivate from a click listener (the element fires `icon-button-click`,
 		// but it bubbles a regular `click` too via the inner <button>).
 		//
-		// `faVariant` overrides the FA family class on the rendered <i>. The
-		// nds bundle hardcodes `fa-light fa-${name}`; when FA Pro Light isn't
-		// reachable in prod our `.fa-light` shim falls back to FA Free Solid
-		// (weight 900), which renders the magnifying-glass with thick filled
-		// handles. Pass 'fa-regular' for those icons so they pick up the
-		// outline variant (Pro Regular when present, FA Free Regular as
-		// fallback — both ship the outline shape).
+		// `faVariant` is the weight the window's controls take on a page with FA
+		// Pro, Regular by default. Without Pro they take Solid, like every NDS
+		// glyph.
 		const createShellIconButton = (
 			label: string,
 			iconName: string,
 			onActivate: () => void,
-			faVariant: 'fa-light' | 'fa-regular' | 'fa-solid' = 'fa-regular'
+			faVariant: NdsGlyphVariant = 'fa-regular'
 		) => {
+			ensureNdsAssets();
 			const button = document.createElement('nds-icon-button');
 			button.setAttribute('variant', 'tertiary');
 			button.setAttribute('size', 'small');
@@ -1615,28 +1623,8 @@
 				onActivate();
 				bringToFront();
 			});
-			if (faVariant !== 'fa-light') {
-				// nds-icon-button renders into light DOM via createRenderRoot
-				// returning `this`, but the <i> only exists after Lit's first
-				// update cycle. Watch for it and swap classes once it appears.
-				const swapVariant = (icon: HTMLElement) => {
-					icon.classList.remove('fa-light');
-					icon.classList.add(faVariant);
-				};
-				const existing = button.querySelector<HTMLElement>('i.fa-light');
-				if (existing) {
-					swapVariant(existing);
-				} else {
-					const observer = new MutationObserver(() => {
-						const target = button.querySelector<HTMLElement>('i.fa-light');
-						if (target) {
-							swapVariant(target);
-							observer.disconnect();
-						}
-					});
-					observer.observe(button, { childList: true, subtree: true });
-				}
-			}
+			// Detached with the window, which takes the observer with it.
+			applyNdsGlyphVariant(button, faVariant);
 			return button;
 		};
 
@@ -2230,7 +2218,7 @@
 				glyph: string,
 				iconName: string,
 				onActivate: () => void,
-				faVariant: 'fa-light' | 'fa-regular' | 'fa-solid' = 'fa-regular'
+				faVariant: NdsGlyphVariant = 'fa-regular'
 			) => {
 				if (!controlsEl) return;
 				const label = currentArgs.i18n.t(key);

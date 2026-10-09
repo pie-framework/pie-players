@@ -120,6 +120,20 @@ later policy change grants it. A provider that fails to register
 dispose (`section-controller-dispose`) are recoverable: the coordinator carries on
 without the state, and the next section gets a fresh controller.
 
+A tool that fails after it started reports through the coordinator's
+`reportToolFailure(toolId, phase, error)`, once per tool and phase, and is
+recoverable whatever the policy, because each report site keeps a recovery:
+
+| Kind | Phase | Recovery |
+| --- | --- | --- |
+| `tool-request` | a toolbar threw opening a requested tool, or answering whether it hosts one | the request goes unclaimed, or passes that toolbar by |
+| `tool-registration` | a registration's relevance check or applicability gate threw | the tool is withheld unless a grant protects it; a throwing gate counts as applicable |
+| `tool-state-load`, `tool-state-save` | a tool could not restore or keep its own learner state, as the annotation toolbar's highlights | the tool carries on without it |
+| `tool-playback` | speech failed after it started: playback, seeking, or a rate change | the tool stays available; a start failure is `tts-init` |
+
+The coordinator delivers these on a microtask, since the checks run inside a
+toolbar's derived state.
+
 ### Optional host extension points
 
 - `onFrameworkError?: (errorModel: FrameworkErrorModel) => void` — canonical

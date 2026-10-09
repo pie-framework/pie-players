@@ -58,7 +58,8 @@
 	import { ContextProvider } from '@pie-players/pie-context';
 	import type { I18nProvider, MessageKeyInput } from '@pie-players/pie-players-shared/i18n/types';
 	import { ZIndexLayer } from '../services/ToolCoordinator.js';
-	import { ToolRegistry } from '../services/ToolRegistry.js';
+	import { ToolRegistry, type ToolCallbackFailureHandler } from '../services/ToolRegistry.js';
+	import { reportToolFailure } from '../services/tool-failure.js';
 	import type {
 		HostedToolContext,
 		ResolvedToolContext,
@@ -770,15 +771,17 @@
 		toolOwnedToolIds
 			.filter((toolId) => grantProtectedToolIds.has(toolId))
 			.forEach((toolId) => visible.add(toolId));
+		const reportCallbackFailure: ToolCallbackFailureHandler = (toolId, phase, error) =>
+			reportToolFailure(runtimeContext?.toolkitCoordinator, toolId, phase, error);
 		if (toolContext) {
 			effectiveToolRegistry
-				.filterVisibleInContext(toolOwnedToolIds, toolContext)
+				.filterVisibleInContext(toolOwnedToolIds, toolContext, reportCallbackFailure)
 				.forEach((tool) => visible.add(tool.toolId));
 		}
 
 		for (const context of elementContexts) {
 			effectiveToolRegistry
-				.filterVisibleInContext(toolOwnedToolIds, context)
+				.filterVisibleInContext(toolOwnedToolIds, context, reportCallbackFailure)
 				.forEach((tool) => visible.add(tool.toolId));
 		}
 
@@ -792,7 +795,7 @@
 		const candidateContexts = toolContext ? [toolContext, ...elementContexts] : elementContexts;
 		for (const toolId of Array.from(visible)) {
 			if (hostResolvedToolIds.has(toolId)) continue;
-			if (!effectiveToolRegistry.isApplicableToAnyContext(toolId, candidateContexts)) {
+			if (!effectiveToolRegistry.isApplicableToAnyContext(toolId, candidateContexts, reportCallbackFailure)) {
 				visible.delete(toolId);
 			}
 		}
@@ -811,14 +814,6 @@
 		return failed ? toolIds.filter((toolId) => !failed.has(toolId)) : toolIds;
 	});
 
-	function reportToolModuleFailure(toolId: string, error: unknown): void {
-		const coordinator = runtimeContext?.toolkitCoordinator;
-		if (typeof coordinator?.reportToolModuleFailure === 'function') {
-			coordinator.reportToolModuleFailure(toolId, error);
-			return;
-		}
-		console.error(`[ItemToolBar] Tool "${toolId}" failed to load:`, error);
-	}
 
 	// Dynamically load whatever tools are currently visible.
 	// The registry owns module loader configuration by toolId.
@@ -832,7 +827,7 @@
 				// Recorded before reporting: the report re-announces request targets,
 				// and this toolbar must already answer that it no longer hosts the tool.
 				failedToolModules = { registry, toolIds: new Set([...previous, ...failures.keys()]) };
-				for (const [toolId, error] of failures) reportToolModuleFailure(toolId, error);
+				for (const [toolId, error] of failures) reportToolFailure(runtimeContext?.toolkitCoordinator, toolId, 'tool-module-load', error);
 			}
 			if (!cancelled) moduleLoadVersion += 1;
 		});

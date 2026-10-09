@@ -117,6 +117,7 @@
   type TextDirection
   type TextToSpeechToolProviderConfig
   type ToolActivation
+  type ToolCallbackFailureHandler
   type ToolComponentFactory
   type ToolComponentFactoryMap
   type ToolComponentOverrides
@@ -133,6 +134,7 @@
   type ToolContextResolverResult
   ToolCoordinator
   type ToolCoordinatorApi
+  type ToolFailurePhase
   type ToolLevel
   type ToolModuleLoader
   type ToolOpenRequest
@@ -308,6 +310,7 @@
   type ToolContext
   type ToolCoordinatorApi
   type ToolCoordinatorRegistration
+  type ToolFailurePhase
   type ToolModuleLoader
   type ToolPlacementLevel
   type ToolProviderApi
@@ -366,6 +369,7 @@
   parseScopedToolId
   parseTTSSpeedOptionsFromText
   pauseTtsForMediaAudio
+  reportToolFailure
   resolveContentCapabilities
   resolveContentRegion
   resolveFallbackToolIcon

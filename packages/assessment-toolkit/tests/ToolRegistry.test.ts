@@ -270,6 +270,27 @@ describe("ToolRegistry", () => {
 			}
 		});
 
+		test("hands a relevance check's throw to the failure handler and withholds the tool", () => {
+			registry.register({
+				...mockCalculatorTool,
+				isVisibleInContext: () => {
+					throw new Error("boom");
+				},
+			});
+			const failures: unknown[][] = [];
+
+			const visible = registry.filterVisibleInContext(
+				["calculator"],
+				{ level: "item", assessment: {} as any, itemRef: {} as any, item: {} as any },
+				(...failure) => failures.push(failure),
+			);
+
+			expect(visible).toEqual([]);
+			expect(failures).toEqual([
+				["calculator", "tool-visibility", new Error("boom")],
+			]);
+		});
+
 		test("filters by supported level", () => {
 			registry.register(mockCalculatorTool); // Supports: item, section, element
 
@@ -360,9 +381,15 @@ describe("ToolRegistry", () => {
 				},
 			});
 
-			expect(registry.isApplicableToAnyContext("gated", [itemContext])).toBe(
-				true,
-			);
+			const failures: unknown[][] = [];
+			expect(
+				registry.isApplicableToAnyContext("gated", [itemContext], (...failure) =>
+					failures.push(failure),
+				),
+			).toBe(true);
+			expect(failures).toEqual([
+				["gated", "tool-applicability", new Error("boom")],
+			]);
 		});
 
 		test("an unregistered tool is applicable", () => {

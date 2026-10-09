@@ -218,7 +218,7 @@ The **Assessment Toolkit** provides composable services for coordinating tools, 
 2. **No Framework Lock-in** - Works with any JavaScript framework
 3. **Product Control** - Products control navigation, layout and backend. Session persistence defaults to `localStorage` at the section layer and at the assessment layer, stored per attempt id and inactive without one, and a product replaces either through its persistence hook (`createSectionSessionPersistence` on the coordinator, `createAssessmentSessionPersistence` on the assessment player)
 4. **Standard Contracts** - Well-defined event types for component communication
-5. **QTI-Inspired Patterns** - Reuses QTI 3.0 Personal Needs Profile (PNP) concepts for accessibility accommodations
+5. **AfA PNP 3.0 Profiles** - A student's Personal Needs Profile follows AfA PNP 3.0; district, test-administration and item settings are PIE extensions
 6. **Section Player Integration** - Toolkit services integrate seamlessly with the section player
 
 ### Primary Interface: Section Splitpane Player
@@ -251,7 +251,7 @@ This approach is intentional:
 
 **1. Personal Needs Profile (PNP)** - Student accommodations and IEP/504 support
 
-Grants PIE tools from QTI 3.0 PNP support ids, where a support id is the tool id it grants, with precedence hierarchy:
+Applies AfA PNP 3.0 support ids to placed PIE tools, where a support id is the tool id it grants. A grant protects a placed tool from relevance filtering and carries its settings; it never places a tool. Precedence hierarchy:
 1. District block (absolute veto) - highest priority
 2. Test administration withdrawal (`toolOverrides` set to `false`)
 3. Item restriction (per-item block)
@@ -388,7 +388,7 @@ The coordinator's services work together:
 
 #### 7. ToolPolicyEngine
 
-**Purpose**: QTI 3.0 Personal Needs Profile (PNP), host policy, provider, and placement decisions with precedence hierarchy.
+**Purpose**: Tool decisions from the AfA PNP 3.0 Personal Needs Profile (PNP), host policy, provider and placement, with precedence hierarchy.
 
 **Architecture**: Resolves tool availability through policy sources, granting each tool by its tool id and returning canonical `ToolPolicyDecision` results. The coordinator holds it privately and answers through `decideToolPolicy(...)` and `decideFeaturePolicy(...)`.
 

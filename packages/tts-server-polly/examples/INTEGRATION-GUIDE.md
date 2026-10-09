@@ -329,9 +329,7 @@ await ttsService.speak(document.getElementById('content'));
   });
 
   async function handleSpeak() {
-    await ttsService.speak('Hello world', {
-      contentElement,
-    });
+    await ttsService.speak(contentElement);
   }
 </script>
 

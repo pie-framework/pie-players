@@ -116,6 +116,10 @@ generation. The system reads visible text with the active provider.
    });
    ```
 
+   `speak` resolves the read's language from `language` and the content's
+   markup as [TTS language](../architecture/internationalization.md#tts-language)
+   sets out.
+
 5. Before playback, `ToolkitCoordinator.ensureTTSReady()` makes sure a provider
    exists. The registry initializes `TTSToolProvider`, which chooses browser or
    server-backed TTS from host config.
@@ -129,7 +133,9 @@ generation. The system reads visible text with the active provider.
 9. Boundary events flow back to `TTSService`, which maps each word through the
    position map to the ranges covering it, one per tree the word spans, and
    `HighlightCoordinator.highlightTTSWord` paints them. Every word target, from
-   boundaries, catalog spans or math tokens, takes that one call.
+   boundaries, catalog spans or math tokens, takes that one call. The browser
+   provider reports no word boundaries by default, so a browser read highlights
+   sentence by sentence (see Browser Provider).
 
 ### Browser Provider
 
@@ -138,6 +144,11 @@ The browser provider is direct:
 ```text
 TTSService -> BrowserTTSProvider -> Web Speech API -> boundary events
 ```
+
+It highlights sentence by sentence by default: its capabilities declare no word
+boundaries, and it drops the engine's word events. `providerOptions.highlightMode:
+"word"` turns word highlighting on, which follows the engine's `onboundary`
+events and is only as accurate as the platform voice reports them.
 
 It does not support SSML. When generated Math speech is used with the browser
 provider, the toolkit sends plain speech text rather than `<speak>...</speak>`.
@@ -382,7 +393,7 @@ no toolkit and keep the elements' labels.
 
 | Scenario | Trigger | Spoken Source | Provider Payload | Highlighting |
 | --- | --- | --- | --- | --- |
-| Simple happy path | No matching catalog and no generated Math needed | normalized visible text | plain text | word boundaries against visible text |
+| Simple happy path | No matching catalog and no generated Math needed | normalized visible text | plain text | word boundaries against visible text; sentences on the browser provider unless `highlightMode` is `"word"` |
 | Authored content-provided TTS | explicit catalog or `data-catalog-idref` regions | `spoken` catalog card content | SSML or plain catalog content | aligned to visible DOM, with region fallback for complex SSML |
 | On-the-fly Math TTS | the target contains Math and no authored speech wins | SRE generated Math speech plus visible prose | plain or SSML per provider capability | math-aware token mapping, with expression fallback |
 

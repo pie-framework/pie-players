@@ -2345,10 +2345,6 @@ export class TTSService {
 		}
 	}
 
-	private highlightCatalogActiveRange(range: Range): void {
-		this.paintTTSWord([range]);
-	}
-
 	private highlightRenderableRegionTarget(
 		target: RenderableHighlightTarget | null,
 	): void {
@@ -2409,7 +2405,7 @@ export class TTSService {
 			return;
 		}
 		if (target.type === "range") {
-			this.highlightCatalogActiveRange(target.range);
+			this.paintTTSWord(target.ranges ?? [target.range]);
 			return;
 		}
 		const elementNativeRange = document.createRange();

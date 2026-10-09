@@ -9,6 +9,7 @@ import { dynamicMessageKey } from "@pie-players/pie-players-shared/i18n/provider
 import type { I18nProvider } from "@pie-players/pie-players-shared/i18n/types";
 import type { ToolParametersFor } from "@pie-players/pie-players-shared/types";
 import type { CatalogOwnerSnapshot } from "./AccessibilityCatalogResolver.js";
+import type { ToolPolicyEntry } from "../policy/core/decision-types.js";
 import type { ToolContext, ToolLevel } from "./tool-context.js";
 import {
 	type ToolComponentOverrides,
@@ -1207,6 +1208,68 @@ export class ToolRegistry {
 				return true;
 			}
 		});
+	}
+
+	/**
+	 * Passes 2 and 3 over a policy decision's tools: the ids a surface at `level`
+	 * shows against `contexts`, in decision order. This is the rule a toolbar
+	 * applies, for a host that builds its own tool surface.
+	 *
+	 * - A tool that does not support `level` is dropped.
+	 * - Relevance (`isVisibleInContext`) keeps a tool visible in any one context.
+	 *   It does not run for a granted entry (`required` or `alwaysAvailable`),
+	 *   at section level, whose relevance is item-dependent, or when `contexts`
+	 *   is empty, since content that has not resolved cannot rule a tool out.
+	 * - Applicability (`isApplicableToContent`) then removes a tool that can act
+	 *   on none of `contexts`, granted or not. It does not run at section level.
+	 *
+	 * @param entries - The decision's surviving entries (Pass 1), such as
+	 *   `ToolPolicyDecision.visibleTools`
+	 * @param level - The level of the surface the tools render on
+	 * @param contexts - Every context the tools could act on at that surface
+	 * @param onFailure - Receives a relevance or applicability check's throw.
+	 *   Logs when omitted.
+	 */
+	filterDecidedToolIds(
+		entries: readonly Pick<
+			ToolPolicyEntry,
+			"toolId" | "required" | "alwaysAvailable"
+		>[],
+		level: ToolLevel,
+		contexts: readonly ToolContext[],
+		onFailure: ToolCallbackFailureHandler = logToolCallbackFailure,
+	): string[] {
+		const granted = new Set<string>();
+		const decided: string[] = [];
+		for (const entry of entries) {
+			const toolId = this.normalizeToolId(entry.toolId);
+			if (!toolId) continue;
+			if (entry.required || entry.alwaysAvailable) granted.add(toolId);
+			if (decided.includes(toolId)) continue;
+			if (!this.get(toolId)?.supportedLevels.includes(level)) continue;
+			decided.push(toolId);
+		}
+		if (level === "section") return decided;
+		const relevant = new Set<string>(
+			contexts.length === 0
+				? decided
+				: decided.filter((toolId) => granted.has(toolId)),
+		);
+		for (const context of contexts) {
+			const ungranted = decided.filter((toolId) => !relevant.has(toolId));
+			for (const tool of this.filterVisibleInContext(
+				ungranted,
+				context,
+				onFailure,
+			)) {
+				relevant.add(tool.toolId);
+			}
+		}
+		return decided.filter(
+			(toolId) =>
+				relevant.has(toolId) &&
+				this.isApplicableToAnyContext(toolId, contexts, onFailure),
+		);
 	}
 
 	/**

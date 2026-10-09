@@ -524,26 +524,6 @@
 		return () => clearTimeout(timer);
 	});
 
-	// Tools a PNP/profile grant mandates (`requiredTools`, or a `supports` entry the
-	// host cannot toggle off). Pass 2 is a *relevance* heuristic — "is a calculator
-	// plausibly useful for this item" — and a heuristic must not withdraw an
-	// accommodation a learner is entitled to. The one-way veto still holds in the
-	// direction that matters: nothing here can make a tool visible that pass 1
-	// removed, because these ids come from the decision's own surviving entries.
-	const grantProtectedToolIds = $derived.by((): Set<string> => {
-		const protectedIds = new Set<string>();
-		if (!decidedTools) return protectedIds;
-		for (const entry of decidedTools) {
-			if (!entry.required && !entry.alwaysAvailable) continue;
-			for (const toolId of effectiveToolRegistry
-				.normalizeToolIds([entry.toolId])
-				.filter(Boolean)) {
-				protectedIds.add(toolId);
-			}
-		}
-		return protectedIds;
-	});
-
 	const contentReady = $derived.by(() => {
 		if (effectiveLevel === 'section' || effectiveLevel === 'assessment') return true;
 		const config = (effectiveItem as ItemEntity | null)?.config;
@@ -755,69 +735,23 @@
 		return resolved;
 	});
 
-	// Pass 2: tool-owned context filtering (item + element aggregation)
+	// Passes 2 and 3, in decision order. A host that resolved a tool's visibility
+	// keeps that answer: it may own an adapter this content works with. The
+	// registry decides the rest, and a granted accommodation survives relevance
+	// there.
 	const visibleToolIds = $derived.by(() => {
-		const levelCompatibleToolIds = allowedToolIds.filter((toolId) => {
-			const registration = effectiveToolRegistry.get(toolId);
-			return registration ? registration.supportedLevels.includes(effectiveLevel) : false;
-		});
-		const hostResolvedEntries = Object.values(hostResolvedToolContextById);
-		const hostResolvedToolIds = new Set(hostResolvedEntries.map((entry) => entry.toolId));
-		const visible = new Set<string>(
-			hostResolvedEntries
-				.filter((entry) => entry.visible)
-				.map((entry) => entry.toolId)
-		);
-		const toolOwnedToolIds = levelCompatibleToolIds.filter((toolId) => !hostResolvedToolIds.has(toolId));
-		if (effectiveLevel === 'section') {
-			// Section toolbars are orchestrator-driven. Tool-level relevance is often
-			// item-content dependent. Keep pass-1 as the source of truth here.
-			toolOwnedToolIds.forEach((toolId) => visible.add(toolId));
-			return Array.from(visible);
-		}
-		if (!contentReady) {
-			// Stage 1: orchestrator-level allow-list only.
-			toolOwnedToolIds.forEach((toolId) => visible.add(toolId));
-			return Array.from(visible);
-		}
-		if (!toolContext && elementContexts.length === 0) {
-			toolOwnedToolIds.forEach((toolId) => visible.add(toolId));
-			return Array.from(visible);
-		}
-		// A granted accommodation skips the relevance gate entirely.
-		toolOwnedToolIds
-			.filter((toolId) => grantProtectedToolIds.has(toolId))
-			.forEach((toolId) => visible.add(toolId));
+		const hostResolved = hostResolvedToolContextById;
+		const entries = (
+			decidedTools ??
+			allowedToolIds.map((toolId) => ({ toolId, required: false, alwaysAvailable: false }))
+		).filter((entry) => !hostResolved[effectiveToolRegistry.normalizeToolId(entry.toolId)]);
+		const contexts = !contentReady ? [] : toolContext ? [toolContext, ...elementContexts] : elementContexts;
 		const reportCallbackFailure: ToolCallbackFailureHandler = (toolId, phase, error) =>
 			reportToolFailure(runtimeContext?.toolkitCoordinator, toolId, phase, error);
-		if (toolContext) {
-			effectiveToolRegistry
-				.filterVisibleInContext(toolOwnedToolIds, toolContext, reportCallbackFailure)
-				.forEach((tool) => visible.add(tool.toolId));
-		}
-
-		for (const context of elementContexts) {
-			effectiveToolRegistry
-				.filterVisibleInContext(toolOwnedToolIds, context, reportCallbackFailure)
-				.forEach((tool) => visible.add(tool.toolId));
-		}
-
-		// Pass 3: applicability, the one gate a grant does not survive. Relevance
-		// asks whether a tool is plausibly useful and must never withdraw an
-		// accommodation; this asks whether the tool can act on this content at all,
-		// and a control that provably does nothing serves no learner. Only a tool
-		// that declares the gate can be removed here, and a host that resolved a
-		// tool's visibility itself keeps that answer — it may own an adapter this
-		// content works with.
-		const candidateContexts = toolContext ? [toolContext, ...elementContexts] : elementContexts;
-		for (const toolId of Array.from(visible)) {
-			if (hostResolvedToolIds.has(toolId)) continue;
-			if (!effectiveToolRegistry.isApplicableToAnyContext(toolId, candidateContexts, reportCallbackFailure)) {
-				visible.delete(toolId);
-			}
-		}
-
-		return Array.from(visible);
+		const visible = new Set(
+			effectiveToolRegistry.filterDecidedToolIds(entries, effectiveLevel, contexts, reportCallbackFailure)
+		);
+		return allowedToolIds.filter((toolId) => visible.has(toolId) || hostResolved[toolId]?.visible);
 	});
 	// Tools whose module failed to load from the current registry. Such a tool is
 	// unavailable here: its button is withheld, requests for it pass this toolbar

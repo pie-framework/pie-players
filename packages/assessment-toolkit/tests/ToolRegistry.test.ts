@@ -409,6 +409,152 @@ describe("ToolRegistry", () => {
 		});
 	});
 
+	describe("filterDecidedToolIds", () => {
+		const itemContext: ToolContext = {
+			level: "item",
+			assessment: {} as any,
+			itemRef: {} as any,
+			item: {} as any,
+		};
+		const entry = (toolId: string, granted = false) => ({
+			toolId,
+			required: granted,
+			alwaysAvailable: false,
+		});
+		const register = (
+			toolId: string,
+			gates: Partial<ToolRegistration> = {},
+		) => registry.register({ ...mockCalculatorTool, toolId, ...gates });
+
+		test("relevance drops an ungranted tool and spares a granted one", () => {
+			register("irrelevant", { isVisibleInContext: () => false });
+			register("granted", { isVisibleInContext: () => false });
+
+			expect(
+				registry.filterDecidedToolIds(
+					[entry("irrelevant"), entry("granted", true)],
+					"item",
+					[itemContext],
+				),
+			).toEqual(["granted"]);
+		});
+
+		test("alwaysAvailable protects like required", () => {
+			register("granted", { isVisibleInContext: () => false });
+
+			expect(
+				registry.filterDecidedToolIds(
+					[{ toolId: "granted", required: false, alwaysAvailable: true }],
+					"item",
+					[itemContext],
+				),
+			).toEqual(["granted"]);
+		});
+
+		test("applicability withdraws a granted tool", () => {
+			register("useless", { isApplicableToContent: () => false });
+
+			expect(
+				registry.filterDecidedToolIds(
+					[entry("useless", true)],
+					"item",
+					[itemContext],
+				),
+			).toEqual([]);
+		});
+
+		test("one relevant context is enough", () => {
+			register("elementOnly", {
+				isVisibleInContext: (context) => context.level === "element",
+			});
+			const elementContext = { ...itemContext, level: "element" } as any;
+
+			expect(
+				registry.filterDecidedToolIds([entry("elementOnly")], "item", [
+					itemContext,
+					elementContext,
+				]),
+			).toEqual(["elementOnly"]);
+		});
+
+		test("no contexts runs neither pass", () => {
+			register("gated", {
+				isVisibleInContext: () => false,
+				isApplicableToContent: () => false,
+			});
+
+			expect(
+				registry.filterDecidedToolIds([entry("gated")], "item", []),
+			).toEqual(["gated"]);
+		});
+
+		test("section level runs neither pass", () => {
+			register("gated", {
+				isVisibleInContext: () => false,
+				isApplicableToContent: () => false,
+			});
+
+			expect(
+				registry.filterDecidedToolIds([entry("gated")], "section", [
+					{ ...itemContext, level: "section" } as any,
+				]),
+			).toEqual(["gated"]);
+		});
+
+		test("keeps decision order, dedupes, and drops unsupported levels and unknown ids", () => {
+			register("b");
+			register("a");
+			register("passageOnly", { supportedLevels: ["passage"] });
+
+			expect(
+				registry.filterDecidedToolIds(
+					[
+						entry(" b "),
+						entry("passageOnly"),
+						entry("unknown"),
+						entry("a", true),
+						entry("b"),
+					],
+					"item",
+					[itemContext],
+				),
+			).toEqual(["b", "a"]);
+		});
+
+		test("a duplicate's grant protects the tool", () => {
+			register("granted", { isVisibleInContext: () => false });
+
+			expect(
+				registry.filterDecidedToolIds(
+					[entry("granted"), entry("granted", true)],
+					"item",
+					[itemContext],
+				),
+			).toEqual(["granted"]);
+		});
+
+		test("reports a throwing check to onFailure", () => {
+			register("throws", {
+				isVisibleInContext: () => {
+					throw new Error("boom");
+				},
+			});
+			const failures: unknown[][] = [];
+
+			expect(
+				registry.filterDecidedToolIds(
+					[entry("throws")],
+					"item",
+					[itemContext],
+					(...failure) => failures.push(failure),
+				),
+			).toEqual([]);
+			expect(failures).toEqual([
+				["throws", "tool-visibility", new Error("boom")],
+			]);
+		});
+	});
+
 	describe("getToolMetadata", () => {
 		test("returns metadata for all tools", () => {
 			registry.register(mockCalculatorTool);

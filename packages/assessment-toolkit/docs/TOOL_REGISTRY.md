@@ -65,20 +65,19 @@ Tools can **hide themselves** but cannot **override orchestrator's NO**:
 - ✅ Orchestrator says YES → Tool can say NO (hide via `isVisibleInContext`)
 - ❌ Orchestrator says NO → Tool cannot say YES (tool not in `allowedToolIds`)
 
-This is enforced architecturally: `filterVisibleInContext()` only filters the `allowedToolIds` array.
+This is enforced architecturally: `filterDecidedToolIds()` only filters the entries of the policy decision it is given.
 
-`<pie-item-toolbar>` skips Pass 2 at section level, where relevance would depend on item content, and for a tool whose policy entry is `required` or `alwaysAvailable`, so a relevance heuristic cannot withdraw a granted accommodation. Pass 3 runs below section level once content has resolved: a registration that declares `isApplicableToContent(context)` and answers `false` for every context at its placement is removed even under a grant, because a control that provably does nothing serves no learner. A tool whose visibility a host resolver decided keeps that answer. The answer eliminator declares the gate, answering `false` for content with no choice interaction.
+`filterDecidedToolIds(entries, level, contexts)` applies the toolbar's rule, and `<pie-item-toolbar>` calls it. It skips Pass 2 at section level, where relevance would depend on item content, and for a tool whose policy entry is `required` or `alwaysAvailable`, so a relevance heuristic cannot withdraw a granted accommodation. Pass 3 runs below section level once content has resolved: a registration that declares `isApplicableToContent(context)` and answers `false` for every context at its placement is removed even under a grant, because a control that provably does nothing serves no learner. A tool whose visibility a host resolver decided keeps that answer. The answer eliminator declares the gate, answering `false` for content with no choice interaction.
 
 ### Refresh / Init Contract
 
 Toolbar containers may remain mounted, but button visibility is re-evaluated on each
 init/render refresh:
 
-1. Resolve `allowedToolIds` (Pass 1).
-2. Rebuild the current `ToolContext`.
-3. Call `filterVisibleInContext(allowedToolIds, context)` (Pass 2).
-4. Drop each tool for which `isApplicableToAnyContext(toolId, contexts)` is `false` (Pass 3).
-5. Render only the resulting buttons.
+1. Decide the toolbar's tools (Pass 1).
+2. Rebuild the current item and element `ToolContext`s.
+3. Call `filterDecidedToolIds(decision.visibleTools, level, contexts)` (Passes 2 and 3).
+4. Render only the resulting buttons.
 
 This keeps visibility deterministic and context-driven for every refresh cycle.
 
@@ -329,11 +328,11 @@ The policy engine reads the assessment's `personalNeedsProfile`, `settings.distr
 
 ```typescript
 // Pass 1: Orchestrator determines allowed tools
-const allowedToolIds = coordinator
-  .decideToolPolicy({ level: "item", scope: { level: "item", scopeId: itemRef.identifier } })
-  .visibleTools.map((tool) => tool.toolId);
+const decision = coordinator.decideToolPolicy({
+  level: "item",
+  scope: { level: "item", scopeId: itemRef.identifier }
+});
 
-// Pass 2: Filter by tool relevance
 const context: ItemToolContext = {
   level: "item",
   assessment,
@@ -342,13 +341,9 @@ const context: ItemToolContext = {
   item
 };
 
-const relevantTools = toolRegistry.filterVisibleInContext(allowedToolIds, context);
-
-// Pass 3: Drop tools that declare they cannot act on this content
-const visibleTools = relevantTools.filter((tool) =>
-  toolRegistry.isApplicableToAnyContext(tool.toolId, [context])
-);
-// Returns: ToolRegistration[] (only tools that passed all three gates)
+// Passes 2 and 3: relevance, which a granted entry skips, then applicability
+const visibleToolIds = toolRegistry.filterDecidedToolIds(decision.visibleTools, "item", [context]);
+// Returns: tool ids that passed all three gates, in decision order
 ```
 
 ### Toolbar Rendering
@@ -356,9 +351,9 @@ const visibleTools = relevantTools.filter((tool) =>
 ```typescript
 // Load the tools' element modules, then render through the registry,
 // which attaches its component overrides
-await toolRegistry.ensureToolModulesLoaded(visibleTools.map((tool) => tool.toolId));
-for (const tool of visibleTools) {
-  const result = toolRegistry.renderForToolbar(tool.toolId, context, toolbarContext);
+await toolRegistry.ensureToolModulesLoaded(visibleToolIds);
+for (const toolId of visibleToolIds) {
+  const result = toolRegistry.renderForToolbar(toolId, context, toolbarContext);
   if (!result) continue;
   // result.button: toolId, label, icon, ariaLabel, onClick, active
   // result.elements: tool elements to mount beside the buttons
@@ -762,12 +757,13 @@ const coordinator = new ToolkitCoordinator({
 });
 coordinator.updateAssessment(assessment);
 coordinator.registerItemSettings(itemRef.identifier, itemRef.settings);
-const allowedToolIds = coordinator
-  .decideToolPolicy({ level: "item", scope: { level: "item", scopeId: itemRef.identifier } })
-  .visibleTools.map((tool) => tool.toolId);
+const decision = coordinator.decideToolPolicy({
+  level: "item",
+  scope: { level: "item", scopeId: itemRef.identifier }
+});
 
 // Filter by context
-const visibleTools = toolRegistry.filterVisibleInContext(allowedToolIds, context);
+const visibleToolIds = toolRegistry.filterDecidedToolIds(decision.visibleTools, "item", [context]);
 ```
 
 ## PNP Precedence Hierarchy

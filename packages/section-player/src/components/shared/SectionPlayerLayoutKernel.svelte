@@ -3,10 +3,12 @@
 		createPieLogger,
 		isGlobalDebugEnabled,
 	} from "@pie-players/pie-players-shared";
-	import type {
-		ToolRegistry,
-		ToolbarItem,
-		ToolConfigStrictness,
+	import {
+		toFrameworkErrorModel,
+		type ToolRegistry,
+		type ToolbarItem,
+		type ToolConfigStrictness,
+		type ToolkitCoordinatorApi,
 	} from "@pie-players/pie-assessment-toolkit";
 	import {
 		createPackagedToolRegistry,
@@ -20,6 +22,7 @@
 		type EngineReadinessSignals,
 	} from "@pie-players/pie-assessment-toolkit/runtime/engine";
 	import type {
+		AssessmentEntity,
 		AssessmentSection,
 		SectionControllerSessionState,
 	} from "@pie-players/pie-players-shared/types";
@@ -64,15 +67,13 @@
 	import { coerceBooleanLike } from "@pie-players/pie-players-shared";
 	import { createReadinessDetail } from "@pie-players/pie-assessment-toolkit/runtime/engine";
 	import SectionPlayerLayoutScaffold from "./SectionPlayerLayoutScaffold.svelte";
+	import {
+		CLEAR_FRAMEWORK_ERROR_LATCH,
+		isFrameworkErrorLatched,
+		latchFrameworkError,
+		rollFrameworkErrorLatch,
+	} from "./framework-error-latch.js";
 	import type { SectionPlayerHostHooks } from "../../contracts/host-hooks.js";
-
-	/** Fatal failures that belong to the section's content, not the runtime. */
-	const COHORT_SCOPED_ERROR_KINDS = new Set<FrameworkErrorModel["kind"]>([
-		"runtime-init",
-		"section-controller-init",
-		"timed-media",
-		"element-preload",
-	]);
 
 	type PlayerActionConfig = {
 		stateKey: string;
@@ -98,6 +99,7 @@
 		runtime = null as RuntimeConfig | null,
 		section = null as AssessmentSection | null,
 		session = null as SectionControllerSessionState | null,
+		assessment = null as AssessmentEntity | null,
 		sectionId = "",
 		attemptId = "",
 		iifeBundleHost,
@@ -122,19 +124,12 @@
 		onFrameworkError = undefined as
 			| undefined
 			| ((model: FrameworkErrorModel) => void),
-		// M6 canonical stage-change callback. The DOM event
-		// `pie-stage-change` remains the canonical channel; this
-		// callback runs at the same emit point so hosts that prefer
-		// callback-style wiring stay in lockstep with the event. Per
-		// the strict mirror rule, `runtime.onStageChange` wins; the
-		// resolved handler arrives via `runtimeState.effectiveRuntime`.
+		// Callback form of `pie-stage-change`, invoked at the same emit point.
+		// `runtime.onStageChange` wins over this prop; the resolved handler
+		// arrives via `runtimeState.effectiveRuntime`.
 		onStageChange = undefined as StageChangeHandler | undefined,
-		// M6 canonical loading-complete callback. Mirrors the
-		// `pie-loading-complete` DOM event one-to-one; invoked at the
-		// same dispatch point so the event and the callback fire in
-		// lockstep for the same cohort. Resolved through the runtime
-		// (`runtime.onLoadingComplete` wins over the top-level prop)
-		// so any host channel reaches the same effective handler.
+		// Callback form of `pie-loading-complete`, invoked at the same emit
+		// point. `runtime.onLoadingComplete` wins over this prop.
 		onLoadingComplete = undefined as LoadingCompleteHandler | undefined,
 		// `sourceCe` is the host layout CE's tag name (without the
 		// `--version-<encoded>` suffix) used to label `pie-stage-change`
@@ -203,13 +198,16 @@
 		getNavigationStateSnapshot?: () => SectionPlayerNavigationSnapshot;
 	} | null>(null);
 	let sectionReady = $state(false);
-	// A fatal failure of the section's own content latches its cohort; one of the
-	// coordinator or its tools, a granted accommodation's included, latches the
-	// runtime, since the next section runs on the same coordinator.
-	let cohortErrorLatched = $state(false);
-	let runtimeErrorLatched = $state(false);
-	const runtimeErrorState = $derived(cohortErrorLatched || runtimeErrorLatched);
-	let sectionControllerReadyDispatched = $state(false);
+	// Latched by the scope each framework error's report site set.
+	let frameworkErrorLatch = $state(CLEAR_FRAMEWORK_ERROR_LATCH);
+	const runtimeErrorState = $derived(isFrameworkErrorLatched(frameworkErrorLatch));
+	// The latest `section-ready` controller, with the cohort it belongs to: that
+	// event can arrive before the engine driver rolls to its cohort.
+	let readyController: {
+		cohort: NonNullable<ReturnType<typeof makeCohort>>;
+		controller: SectionControllerHandle;
+	} | null = null;
+	let controllerResolvedFor: ReturnType<typeof makeCohort> = null;
 
 	// One section runtime engine per kernel mount: the section player's only
 	// stage emitter. It dispatches `pie-stage-change` and
@@ -421,8 +419,63 @@
 		);
 	}
 
-	function handleSectionReady(_event: Event) {
+	// The coordinator of the toolkit this layout renders, from its `toolkit-ready`.
+	let toolkitCoordinator: ToolkitCoordinatorApi | null = null;
+
+	/**
+	 * The toolkit's `section-ready` carries the section's controller and cohort,
+	 * which advance that cohort's stage chain past `booting-section`. One without
+	 * a controller leaves the chain where it is and reports it.
+	 */
+	function handleSectionReady(event: Event) {
 		sectionReady = true;
+		const detail = (
+			event as CustomEvent<{
+				sectionId?: string;
+				attemptId?: string;
+				controller?: SectionControllerHandle | null;
+			}>
+		).detail;
+		const cohort = makeCohort({
+			sectionId: detail?.sectionId,
+			attemptId: detail?.attemptId,
+		});
+		if (!cohort) return;
+		if (!detail?.controller) {
+			toolkitCoordinator?.reportFrameworkError?.(
+				toFrameworkErrorModel({
+					kind: "section-controller-init",
+					severity: "warning",
+					source: sourceCe,
+					message:
+						"The toolkit's section-ready carried no section controller, so the stage chain stays at booting-section.",
+					recoverable: true,
+					scope: "cohort",
+				}),
+			);
+			return;
+		}
+		readyController = { cohort, controller: detail.controller };
+		resolveReadyController();
+	}
+
+	// Advances the engine to `engine-ready` once per cohort, when the driver's
+	// cohort is the one the ready controller belongs to. The kernel's former
+	// `section-controller-ready` event is gone: hosts call
+	// `waitForSectionController(timeoutMs)` or `getSectionController()` on the
+	// layout element, or filter `pie-stage-change` for `engine-ready`.
+	function resolveReadyController() {
+		if (!readyController || !cohortsEqual(readyController.cohort, lastCohort)) return;
+		if (cohortsEqual(controllerResolvedFor, lastCohort)) return;
+		controllerResolvedFor = lastCohort;
+		engine.dispatchInput({ kind: "section-controller-resolved" });
+	}
+
+
+	function handleToolkitReady(event: Event) {
+		toolkitCoordinator =
+			(event as CustomEvent<{ coordinator?: ToolkitCoordinatorApi }>).detail
+				?.coordinator ?? null;
 	}
 
 	function handleFrameworkError(event: Event) {
@@ -434,36 +487,9 @@
 		// assessment; a non-recoverable failure latches readiness to `error`,
 		// and before `interactive` that ends the cohort's stage chain as
 		// `failed`.
-		if (detail && detail.recoverable !== true) {
-			if (COHORT_SCOPED_ERROR_KINDS.has(detail.kind)) cohortErrorLatched = true;
-			else runtimeErrorLatched = true;
-		}
+		frameworkErrorLatch = latchFrameworkError(frameworkErrorLatch, detail);
 	}
 
-	function notifySectionControllerResolved(_controller: SectionControllerHandle) {
-		// Drives the engine FSM stage progression
-		// `booting-section → engine-ready`. Idempotent per cohort via
-		// the `sectionControllerReadyDispatched` latch (reset in the
-		// engine-driver `$effect` whenever the cohort rolls). The
-		// previously co-emitted kernel `section-controller-ready` Svelte
-		// event was removed in the broad architecture review compat
-		// sweep; hosts should call `waitForSectionController(timeoutMs)`
-		// or `getSectionController()` on the layout CE, or filter
-		// `pie-stage-change` for `detail.stage === "engine-ready"`.
-		engine.dispatchInput({ kind: "section-controller-resolved" });
-	}
-
-	async function emitSectionControllerReadyIfNeeded() {
-		if (sectionControllerReadyDispatched) return;
-		const controller = await scaffoldRef?.waitForSectionController?.(2500);
-		if (!controller) return;
-		sectionControllerReadyDispatched = true;
-		notifySectionControllerResolved(controller);
-	}
-
-	function handleToolkitReady(_event: Event) {
-		void emitSectionControllerReadyIfNeeded();
-	}
 
 	function getNavigationState(): SectionPlayerNavigationSnapshot {
 		return (
@@ -578,10 +604,8 @@
 	//                                         to the engine.
 	//        - no cohort                    → no-op (engine stays in
 	//                                         `idle`)
-	//      On any cohort rollover the local
-	//      `sectionControllerReadyDispatched` latch is also reset so
-	//      `notifySectionControllerResolved` will fire once for the
-	//      next cohort.
+	//      After the rollover, a `section-ready` that already arrived for
+	//      the new cohort dispatches `section-controller-resolved`.
 	//   4. While a cohort is active, push the latest readiness signals
 	//      so the engine can re-derive `EngineReadinessDetail`,
 	//      advance the phase to `interactive`, and emit
@@ -614,7 +638,7 @@
 		void cohortSectionId;
 		void attemptId;
 		untrack(() => {
-			cohortErrorLatched = false;
+			frameworkErrorLatch = rollFrameworkErrorLatch(frameworkErrorLatch);
 			sectionReady = false;
 		});
 	});
@@ -638,7 +662,6 @@
 			const itemCount = items.length;
 
 			if (!cohortsEqual(lastCohort, nextCohort)) {
-				sectionControllerReadyDispatched = false;
 				if (nextCohort) {
 					if (lastCohort === null) {
 						engine.dispatchInput({
@@ -659,6 +682,7 @@
 					}
 				}
 				lastCohort = nextCohort;
+				resolveReadyController();
 			} else if (nextCohort !== null) {
 				engine.dispatchInput({
 					kind: "update-runtime",
@@ -677,7 +701,6 @@
 				engine.dispatchInput({
 					kind: "update-readiness-signals",
 					signals,
-					loadedCount: itemCount,
 					itemCount,
 					mode: effectivePolicies.readiness.mode,
 				});
@@ -730,6 +753,7 @@
 	runtime={effectiveRuntime}
 	{section}
 	{session}
+	{assessment}
 	sectionId={sectionId}
 	attemptId={attemptId}
 	onCompositionChanged={handleBaseCompositionChanged}

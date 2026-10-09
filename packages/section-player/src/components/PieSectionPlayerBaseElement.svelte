@@ -19,6 +19,9 @@
 			section: { type: "Object", reflect: false },
 			// Transport for the layouts' `session`; the toolkit applies it.
 			session: { type: "Object", reflect: false },
+			// The assessment entity whose `personalNeedsProfile` and `settings` the
+			// toolkit's tool policy reads, forwarded to the coordinator it builds.
+			assessment: { type: "Object", reflect: false },
 			sectionId: { attribute: "section-id", type: "String" },
 			attemptId: { attribute: "attempt-id", type: "String" },
 			toolRegistry: { type: "Object", reflect: false },
@@ -61,6 +64,7 @@
 	import { watchMissingToolProviders } from "./shared/missing-tool-providers.js";
 	import { waitForToolkitReady } from "./shared/toolkit-ready-wait.js";
 	import type {
+		AssessmentEntity,
 		AssessmentSection,
 		SectionControllerSessionState,
 	} from "@pie-players/pie-players-shared/types";
@@ -83,6 +87,7 @@
 		locale = "",
 		section = null as AssessmentSection | null,
 		session = null as SectionControllerSessionState | null,
+		assessment = null as AssessmentEntity | null,
 		sectionId = "",
 		attemptId = "",
 		toolRegistry = null as ToolRegistry | null,
@@ -181,6 +186,19 @@
 	const effectiveSectionId = $derived(
 		resolveSectionId({ sectionId, section, assessmentId: effectiveAssessmentId }),
 	);
+
+	// Tool policy reads the profile from the assessment entity only, so a profile
+	// a host puts on the section changes no decision.
+	let reportedSectionProfile = false;
+	$effect(() => {
+		const profile = (section as { personalNeedsProfile?: unknown } | null)
+			?.personalNeedsProfile;
+		if (reportedSectionProfile || !profile) return;
+		reportedSectionProfile = true;
+		console.warn(
+			"[pie-section-player] section.personalNeedsProfile is not read: tool policy reads the profile from the assessment entity. Set this element's `assessment` property to an assessment carrying it, or call updateAssessment(...) on a coordinator you pass. Reported once per element.",
+		);
+	});
 
 	// The toolkit's events bubble out of this element on their own, which is
 	// the one channel they reach the layout host and `document` by. This element
@@ -427,6 +445,7 @@
 	assessment-id={effectiveAssessmentId}
 	section={section}
 	session={session}
+	assessment={assessment}
 	section-id={sectionId}
 	attempt-id={attemptId}
 	player-type={effectivePlayerType}

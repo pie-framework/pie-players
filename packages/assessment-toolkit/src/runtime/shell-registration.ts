@@ -75,10 +75,31 @@ function catalogsOf(identity: ShellRegistrationIdentity): string | null {
 	);
 }
 
+/**
+ * The runtime a registration is addressed to: its id, and the element it
+ * listens on, which a shell whose host has left the document dispatches on.
+ */
+export type ShellRuntimeAddress = {
+	runtimeId: string;
+	eventTarget: EventTarget;
+};
+
+/**
+ * Where a shell's event to `runtime` goes: from the shell host while it is in
+ * the document, so the event bubbles through the tree like any other, and on
+ * the runtime's own element once it is not.
+ */
+export function shellEventTarget(
+	host: HTMLElement,
+	runtime: ShellRuntimeAddress | undefined,
+): EventTarget {
+	return host.isConnected || !runtime ? host : runtime.eventTarget;
+}
+
 function dispatch(
 	eventName: string,
 	identity: ShellRegistrationIdentity,
-	runtimeId: string | undefined,
+	runtime: ShellRuntimeAddress | undefined,
 ): void {
 	const detail: RuntimeRegistrationDetail = {
 		kind: identity.kind,
@@ -88,9 +109,13 @@ function dispatch(
 		item: identity.item,
 		...(identity.settings ? { settings: identity.settings } : {}),
 		element: identity.host,
-		...(runtimeId ? { runtimeId } : {}),
+		...(runtime ? { runtimeId: runtime.runtimeId } : {}),
 	};
-	dispatchCrossBoundaryEvent(identity.host, eventName, detail);
+	dispatchCrossBoundaryEvent(
+		shellEventTarget(identity.host, runtime),
+		eventName,
+		detail,
+	);
 }
 
 export type ShellRegistrationDispatcher = {
@@ -103,15 +128,19 @@ export type ShellRegistrationDispatcher = {
 	 * Never dispatches `pie-unregister` before a re-register to the same
 	 * runtime: both registration paths in the toolkit are keyed by element and
 	 * replace what is there, so the unregister only ever created the gap. A
-	 * registration moving to a different `runtimeId` is retired first, addressed
+	 * registration moving to a different runtime is retired first, addressed
 	 * to the runtime that holds it.
 	 */
-	sync: (identity: ShellRegistrationIdentity | null, runtimeId?: string) => void;
+	sync: (
+		identity: ShellRegistrationIdentity | null,
+		runtime?: ShellRuntimeAddress,
+	) => void;
 	/**
 	 * Retire the live registration, replaying the identity and runtime it was
 	 * made under rather than whatever the props say now — by the time a
 	 * registration is retired the props may already describe its replacement,
 	 * and unregistering under the new identity would leave the old one live.
+	 * A host already out of the document retires on the runtime's element.
 	 *
 	 * Belongs in a teardown that runs on teardown only. Attaching it to an effect
 	 * that re-runs on prop changes is what made the churn.
@@ -128,27 +157,29 @@ export function createShellRegistrationDispatcher(): ShellRegistrationDispatcher
 	 */
 	let dispatched: ShellRegistrationIdentity | null = null;
 	let dispatchedCatalogs: string | null = null;
-	let dispatchedRuntimeId: string | undefined;
+	let dispatchedRuntime: ShellRuntimeAddress | undefined;
 
 	function retire(): void {
 		const previous = dispatched;
 		if (!previous) return;
-		const previousRuntimeId = dispatchedRuntimeId;
+		const previousRuntime = dispatchedRuntime;
 		dispatched = null;
 		dispatchedCatalogs = null;
-		dispatchedRuntimeId = undefined;
-		dispatch(PIE_UNREGISTER_EVENT, previous, previousRuntimeId);
+		dispatchedRuntime = undefined;
+		dispatch(PIE_UNREGISTER_EVENT, previous, previousRuntime);
 	}
 
 	function sync(
 		identity: ShellRegistrationIdentity | null,
-		runtimeId?: string,
+		runtime?: ShellRuntimeAddress,
 	): void {
 		if (!identity) {
 			retire();
 			return;
 		}
-		if (dispatched && dispatchedRuntimeId !== runtimeId) retire();
+		if (dispatched && dispatchedRuntime?.runtimeId !== runtime?.runtimeId) {
+			retire();
+		}
 		if (dispatched && sameOwner(dispatched, identity)) {
 			// A re-render re-applies the object last seen, so identity settles most
 			// runs without serializing anything.
@@ -160,13 +191,13 @@ export function createShellRegistrationDispatcher(): ShellRegistrationDispatcher
 			}
 			dispatched = identity;
 			dispatchedCatalogs = catalogs;
-			dispatch(PIE_REGISTER_EVENT, identity, runtimeId);
+			dispatch(PIE_REGISTER_EVENT, identity, runtime);
 			return;
 		}
 		dispatched = identity;
 		dispatchedCatalogs = catalogsOf(identity);
-		dispatchedRuntimeId = runtimeId;
-		dispatch(PIE_REGISTER_EVENT, identity, runtimeId);
+		dispatchedRuntime = runtime;
+		dispatch(PIE_REGISTER_EVENT, identity, runtime);
 	}
 
 	return { sync, retire };

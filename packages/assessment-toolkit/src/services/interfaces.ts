@@ -850,7 +850,7 @@ export interface ToolkitCoordinatorApi {
 	reportToolModuleFailure?(toolId: string, error: unknown): void;
 
 	// ----------------------------------------------------------------
-	// Tool Policy Engine — public surface (M8 PR 2 / PR 3).
+	// Tool Policy Engine — public surface.
 	//
 	// The coordinator owns a single `ToolPolicyEngine` instance and
 	// exposes its decision and subscription surface through the API
@@ -872,7 +872,7 @@ export interface ToolkitCoordinatorApi {
 	decideToolPolicy(request: ToolPolicyDecisionRequest): ToolPolicyDecision;
 
 	/**
-	 * Resolve eligibility for one PNP/AfA feature id through the six-level
+	 * Resolve eligibility for one PNP/AfA feature id through the seven-level
 	 * precedence, independent of toolbar placement — for capabilities that
 	 * render as their own surface rather than a toolbar button (a signed
 	 * alternate's region, for example).

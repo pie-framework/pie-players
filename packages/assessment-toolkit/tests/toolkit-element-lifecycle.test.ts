@@ -227,6 +227,68 @@ describe("<pie-assessment-toolkit> lifecycle", () => {
 		]);
 	});
 
+	test("a session set for a section still starting never reaches the next section", async () => {
+		const applied: Array<{ sectionId: string; session: unknown }> = [];
+		let releaseFirst: () => void = () => {};
+		const firstStarted = new Promise<void>((resolve) => {
+			releaseFirst = resolve;
+		});
+		const sectionIds = ["s1", "s2"];
+		const { element } = await mount({
+			sectionId: "s1",
+			section: section("s1"),
+			createSectionController: () => {
+				const sectionId = sectionIds.shift() as string;
+				return {
+					...controller(sectionId === "s1" ? () => firstStarted : undefined),
+					applySession: async (session: unknown) => {
+						applied.push({ sectionId, session });
+					},
+				};
+			},
+		});
+		element.session = {
+			itemSessions: { "s1-q1": { id: "s1-q1", data: [{ id: "a", value: ["x"] }] } },
+		};
+		await settle();
+
+		Object.assign(element, { sectionId: "s2", section: section("s2") });
+		await settle();
+		releaseFirst();
+		await settle();
+
+		expect(applied.map(({ sectionId }) => sectionId)).not.toContain("s2");
+	});
+
+	test("a check on an item whose ref is not its item id reaches the controller", async () => {
+		// The composition keys the renderable by its item id; the controller keys
+		// formative state by the ref identifier the card names as canonical.
+		const tries: string[] = [];
+		const { element } = await mount({
+			sectionId: "s1",
+			section: section("s1"),
+			createSectionController: () => ({
+				...controller(),
+				getCompositionModel: () => ({
+					section: section("s1"),
+					renderables: [{ flavor: "item", entity: { id: "item-1" } }],
+				}),
+				recordFormativeTry: ({ itemId }: { itemId: string }) => tries.push(itemId),
+			}),
+		});
+		const card = document.createElement("div");
+		element.append(card);
+		card.dispatchEvent(
+			new CustomEvent("pie-formative-action", {
+				bubbles: true,
+				composed: true,
+				detail: { itemId: "item-1", canonicalItemId: "ref-1", action: "check", outcomes: [] },
+			}),
+		);
+
+		expect(tries).toEqual(["ref-1"]);
+	});
+
 	test("each section's composition is published before its section-ready", async () => {
 		const composing = (sectionId: string) => ({
 			...controller(),

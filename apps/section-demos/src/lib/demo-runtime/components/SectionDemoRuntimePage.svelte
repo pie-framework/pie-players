@@ -12,7 +12,6 @@
 		ToolkitCoordinator,
 		type ToolkitCoordinatorHooks
 	} from '@pie-players/pie-assessment-toolkit';
-	import { createUniversalPersonalNeedsProfile } from '@pie-players/pie-default-tool-loaders';
 	import '@pie-players/pie-section-player/components/section-player-splitpane-element';
 	import '@pie-players/pie-section-player/components/section-player-vertical-element';
 	import DemoRuntimeChrome from '#lib/demo-runtime/components/DemoRuntimeChrome.svelte';
@@ -197,18 +196,7 @@
 	let pnpDebuggerElement: any = $state(null);
 
 	const DEMO_PERSISTENCE_STORAGE_PREFIX = `pie:section-controller:v1:${DEMO_ASSESSMENT_ID}:`;
-	let resolvedSectionForPlayer = $derived.by(() => {
-		const section = data.section as any;
-		if (!section) return section;
-		const hasExplicitPnp = Boolean(
-			section?.personalNeedsProfile || section?.settings?.personalNeedsProfile
-		);
-		if (hasExplicitPnp) return section;
-		return {
-			...section,
-			personalNeedsProfile: createUniversalPersonalNeedsProfile()
-		};
-	});
+	let resolvedSectionForPlayer = $derived(data.section as any);
 	// Re-runs only when `resolvedSectionForPlayer` recomputes, which is what keeps
 	// the binding off the engine's change feed — see `bindDemoAssessment`.
 	$effect(() => {

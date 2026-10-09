@@ -57,6 +57,15 @@ export interface TTSRuntimeSettings {
 	rate?: number;
 	pitch?: number;
 	apiEndpoint?: string;
+	/**
+	 * The host's locale, used for a read whose content names no language: it
+	 * drives text normalization and segmentation, is sent as `language` on the
+	 * `pie` transport and as `lang_id` on the `custom` transport when nothing
+	 * names a language, and a server given no voice picks one for it. The
+	 * content language a read resolves (markup `lang`, the tool's `language`,
+	 * the toolkit's `content-language`, then `lang_id`) wins over it.
+	 * `docs/architecture/internationalization.md#tts-language` is the contract.
+	 */
 	language?: string;
 	transportMode?: "pie" | "custom";
 	endpointMode?: "synthesizePath" | "rootPost";
@@ -71,6 +80,12 @@ export interface TTSRuntimeSettings {
 	validateEndpoint?: boolean;
 	cache?: boolean;
 	speedRate?: "slow" | "medium" | "fast";
+	/**
+	 * The custom transport's locale, sent on every read in place of the content
+	 * language. Where markup and the tool name no language it is also the read's
+	 * content language, so text processing and catalog lookups follow it. Leave
+	 * it unset to let content language reach the service.
+	 */
 	lang_id?: string;
 	/**
 	 * Optional inline TTS speed buttons.
@@ -382,22 +397,11 @@ const applyRuntimeDefaults = (
 	if (backend === "polly") {
 		return {
 			...withServerDefaults,
-			defaultVoice: withDefault(withServerDefaults.defaultVoice, "Joanna"),
 			engine: withDefault(withServerDefaults.engine, "neural"),
 			format: withDefault(withServerDefaults.format, "mp3"),
 			speechMarksMode: withDefault(
 				withServerDefaults.speechMarksMode,
 				"word+sentence",
-			),
-		};
-	}
-
-	if (backend === "google") {
-		return {
-			...withServerDefaults,
-			defaultVoice: withDefault(
-				withServerDefaults.defaultVoice,
-				"en-US-Wavenet-A",
 			),
 		};
 	}

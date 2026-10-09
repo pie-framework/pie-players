@@ -72,10 +72,10 @@ export interface AssessmentToolkitRuntimeContext {
 	 * read-aloud speaks it in and catalog lookups select alternates by. Sourced
 	 * from the host's `content-language` attribute on the toolkit (or
 	 * `runtime.contentLanguage` on a section player), and unset when the host
-	 * names none. A `lang` in the content's markup wins over it and `en-US`
-	 * stands in for both; tools resolve it at use through
-	 * `resolveContentLanguage`. Independent of {@link locale}, since a learner
-	 * can read content in one language through an interface in another.
+	 * names none. A `lang` in the content's markup wins over it; read-aloud
+	 * resolves both per read in `TTSService.speak`. Independent of
+	 * {@link locale}, since a learner can read content in one language through
+	 * an interface in another.
 	 */
 	contentLanguage?: string;
 	/**
@@ -98,6 +98,12 @@ export interface AssessmentToolkitHostRuntimeContext {
 	 * to the section. Without one the host owns its players and their events.
 	 */
 	sectionBound: boolean;
+	/**
+	 * The element the runtime hears its shells' events on. A shell whose host
+	 * has left the document, as on teardown, dispatches here: an event bubbling
+	 * from a detached host reaches nothing.
+	 */
+	eventTarget: EventTarget;
 }
 
 export const assessmentToolkitHostRuntimeContext =

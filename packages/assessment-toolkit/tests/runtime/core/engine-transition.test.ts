@@ -144,6 +144,64 @@ describe("transition: section-controller-resolved", () => {
 		expect(next.outputs).toEqual([]);
 	});
 
+	test("readiness reported while booting advances to interactive once the controller resolves", () => {
+		const booting = fold(createInitialEngineState(), [
+			initialize(COHORT_A, 1),
+			{
+				kind: "update-readiness-signals",
+				mode: "progressive",
+				signals: {
+					sectionReady: true,
+					interactionReady: true,
+					allLoadingComplete: true,
+					runtimeError: false,
+				},
+				itemCount: 1,
+			},
+		]);
+		expect(booting.state.phase).toBe("booting-section");
+		const next = transition(booting.state, {
+			kind: "section-controller-resolved",
+		});
+		expect(next.state.phase).toBe("interactive");
+		expect(next.outputs).toEqual([
+			{
+				kind: "stage-change",
+				stage: "engine-ready",
+				status: "entered",
+				cohort: COHORT_A,
+			},
+			{
+				kind: "stage-change",
+				stage: "interactive",
+				status: "entered",
+				cohort: COHORT_A,
+			},
+		]);
+	});
+
+	test("a strict snapshot short of loading-complete stays at engine-ready", () => {
+		const booting = fold(createInitialEngineState(), [
+			initialize(COHORT_A, 2),
+			{
+				kind: "update-readiness-signals",
+				mode: "strict",
+				signals: {
+					sectionReady: true,
+					interactionReady: true,
+					allLoadingComplete: false,
+					runtimeError: false,
+				},
+				itemCount: 2,
+			},
+		]);
+		const next = transition(booting.state, {
+			kind: "section-controller-resolved",
+		});
+		expect(next.state.phase).toBe("engine-ready");
+		expect(next.outputs.map((output) => output.kind)).toEqual(["stage-change"]);
+	});
+
 	test("ignored before initialize (idle stays idle, no stage emit)", () => {
 		const next = transition(createInitialEngineState(), {
 			kind: "section-controller-resolved",
@@ -169,7 +227,6 @@ describe("transition: update-readiness-signals (progressive)", () => {
 				allLoadingComplete: false,
 				runtimeError: false,
 			},
-			loadedCount: 0,
 			itemCount: 1,
 		});
 		expect(next.state.phase).toBe("interactive");
@@ -197,7 +254,6 @@ describe("transition: update-readiness-signals (progressive)", () => {
 				allLoadingComplete: true,
 				runtimeError: false,
 			},
-			loadedCount: 2,
 			itemCount: 2,
 		});
 		expect(next.state.phase).toBe("interactive");
@@ -211,7 +267,6 @@ describe("transition: update-readiness-signals (progressive)", () => {
 		expect(loadingComplete).toMatchObject({
 			cohort: COHORT_A,
 			itemCount: 2,
-			loadedCount: 2,
 		});
 	});
 
@@ -228,7 +283,6 @@ describe("transition: update-readiness-signals (progressive)", () => {
 					allLoadingComplete: true,
 					runtimeError: false,
 				},
-				loadedCount: 1,
 				itemCount: 1,
 			},
 		]);
@@ -241,7 +295,6 @@ describe("transition: update-readiness-signals (progressive)", () => {
 				allLoadingComplete: true,
 				runtimeError: false,
 			},
-			loadedCount: 1,
 			itemCount: 1,
 		});
 		expect(next.outputs).toEqual([]);
@@ -263,7 +316,6 @@ describe("transition: update-readiness-signals (progressive)", () => {
 				allLoadingComplete: true,
 				runtimeError: false,
 			},
-			loadedCount: 1,
 			itemCount: 1,
 		});
 		expect(next.state.phase).toBe("engine-ready");
@@ -281,7 +333,6 @@ describe("transition: update-readiness-signals (progressive)", () => {
 				allLoadingComplete: true,
 				runtimeError: false,
 			},
-			loadedCount: 0,
 			itemCount: 0,
 		});
 		expect(next.outputs).toEqual([]);
@@ -303,7 +354,6 @@ describe("transition: update-readiness-signals (strict mode)", () => {
 				allLoadingComplete: false,
 				runtimeError: false,
 			},
-			loadedCount: 1,
 			itemCount: 2,
 		});
 		// Strict mode collapses interactionReady to false until loading
@@ -322,7 +372,6 @@ describe("transition: update-readiness-signals (strict mode)", () => {
 				allLoadingComplete: true,
 				runtimeError: false,
 			},
-			loadedCount: 2,
 			itemCount: 2,
 		});
 		expect(complete.state.phase).toBe("interactive");
@@ -343,7 +392,6 @@ describe("transition: cohort-change", () => {
 					allLoadingComplete: true,
 					runtimeError: false,
 				},
-				loadedCount: 1,
 				itemCount: 1,
 			},
 		]);
@@ -422,7 +470,6 @@ function readiness(
 			runtimeError: false,
 			...signals,
 		},
-		loadedCount: 0,
 		itemCount: 1,
 		mode: "progressive",
 	};
@@ -562,7 +609,6 @@ describe("transition: dispose", () => {
 				allLoadingComplete: true,
 				runtimeError: false,
 			},
-			loadedCount: 1,
 			itemCount: 1,
 		});
 		expect(afterReadiness.outputs).toEqual([]);

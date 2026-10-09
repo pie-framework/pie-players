@@ -22,6 +22,8 @@ import { PIE_INTERNAL_CONTENT_LOADED_EVENT } from "./registration-events.js";
 import {
 	createShellRegistrationDispatcher,
 	type ShellRegistrationIdentity,
+	type ShellRuntimeAddress,
+	shellEventTarget,
 } from "./shell-registration.js";
 import { dispatchCrossBoundaryEvent } from "./tool-host-contract.js";
 
@@ -57,7 +59,10 @@ export interface ShellScope {
 	disconnect: () => void;
 	/**
 	 * Dispatches `type` from the shell host with the id of the runtime that
-	 * answered the scope in its detail, so that runtime claims it by id. Events
+	 * answered the scope in its detail, so that runtime claims it by id. Once
+	 * the host has left the document, as in a teardown, the event is dispatched
+	 * on the runtime's element instead, which the scope captured when the
+	 * runtime answered. Events
 	 * sent before a runtime has answered are held, the newest
 	 * {@link MAX_HELD_SHELL_EVENTS}, and delivered in order once one does.
 	 * `disconnect` and `publish(null)` drop them.
@@ -170,19 +175,22 @@ export function createShellScope(): ShellScope {
 	let region: Provided<typeof assessmentToolkitRegionScopeContext> | null =
 		null;
 	let stopFindingRuntime: (() => void) | null = null;
-	let runtimeId: string | null = null;
+	let runtime: ShellRuntimeAddress | null = null;
 	let identity: ShellRegistrationIdentity | null = null;
 	let held: Array<{ type: string; detail: object }> = [];
 	let loaded: object | null = null;
 
 	const syncRegistration = () => {
-		if (runtimeId !== null) registration.sync(identity, runtimeId);
+		if (runtime !== null) registration.sync(identity, runtime);
 	};
 
 	function send(type: string, detail: object): void {
 		if (type === PIE_INTERNAL_CONTENT_LOADED_EVENT) loaded = detail;
-		if (host && runtimeId !== null) {
-			dispatchCrossBoundaryEvent(host, type, { ...detail, runtimeId });
+		if (host && runtime !== null) {
+			dispatchCrossBoundaryEvent(shellEventTarget(host, runtime), type, {
+				...detail,
+				runtimeId: runtime.runtimeId,
+			});
 			return;
 		}
 		held.push({ type, detail });
@@ -192,9 +200,9 @@ export function createShellScope(): ShellScope {
 	// The subscription re-answers whenever the runtime republishes its context,
 	// so only a different id means anything here.
 	function onRuntime(value: AssessmentToolkitHostRuntimeContext): void {
-		if (value.runtimeId === runtimeId) return;
-		const moved = runtimeId !== null;
-		runtimeId = value.runtimeId;
+		if (value.runtimeId === runtime?.runtimeId) return;
+		const moved = runtime !== null;
+		runtime = { runtimeId: value.runtimeId, eventTarget: value.eventTarget };
 		syncRegistration();
 		const pending = held;
 		held = [];
@@ -206,7 +214,7 @@ export function createShellScope(): ShellScope {
 		for (const provided of [shell, region]) provided?.provider.disconnect();
 		stopFindingRuntime?.();
 		stopFindingRuntime = null;
-		runtimeId = null;
+		runtime = null;
 		held = [];
 		loaded = null;
 		identity = null;

@@ -34,7 +34,6 @@
 	import {
 		catalogContextForShell,
 		flatTextContent,
-		findContentLanguage,
 		resolveContentRegion
 	} from '@pie-players/pie-assessment-toolkit/tools/registration';
 	// Side-effect import: registers <nds-icon-button>. Single vendored source of
@@ -46,9 +45,9 @@
 
 	let {
 		catalogId = '', // Explicit catalog ID
-		// The host's content language for this reading, when it names one. Markup
-		// `lang` inside the shell wins over it, and the toolkit's `content-language`
-		// stands in for it; see findContentLanguage.
+		// The host's content language for this reading, when it names one, else the
+		// toolkit's `content-language`. The service resolves the read's language:
+		// markup `lang` inside the shell wins over both.
 		language = '',
 		size = 'md' as 'sm' | 'md' | 'lg',
 		speedOptions = undefined,
@@ -708,9 +707,7 @@
 			void service.speak(readingTarget, {
 				catalogId: catalogId || undefined,
 				catalogContext: resolveCatalogContext(),
-				language: findContentLanguage(readingTarget, {
-					contentLanguage: language || runtimeContext?.contentLanguage
-				}),
+				language: language || runtimeContext?.contentLanguage || undefined,
 			}).then(() => {
 				// Nothing speakable, such as content marked not-to-be-spoken: the
 				// service never left idle, so no state change ends the start.

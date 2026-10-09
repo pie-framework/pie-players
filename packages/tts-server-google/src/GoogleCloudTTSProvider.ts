@@ -204,7 +204,14 @@ export class GoogleCloudTTSProvider extends BaseTTSProvider {
 		const capabilities = this.getCapabilities();
 		this.validateRequest(request, capabilities);
 
-		const voice = request.voice || this.defaultVoice;
+		const voiceType = { wavenet: "Wavenet", standard: "Standard", studio: "Studio" }[
+			this.voiceType
+		];
+		const voice = await this.resolveRequestVoice(
+			request,
+			this.defaultVoice,
+			(candidate) => candidate.id.includes(voiceType),
+		);
 		const startTime = Date.now();
 
 		try {

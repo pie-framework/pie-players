@@ -35,7 +35,7 @@ import {
 	createReadinessDetail,
 	type EngineReadinessSignals,
 } from "./engine-readiness.js";
-import { phaseToStage } from "./engine-stage-derivation.js";
+import type { Stage } from "@pie-players/pie-players-shared/pie";
 import {
 	createInitialEngineState,
 	type SectionEnginePhase,
@@ -45,6 +45,23 @@ import {
 export interface TransitionResult {
 	state: SectionEngineState;
 	outputs: SectionEngineOutput[];
+}
+
+/** `idle` and `failed` have no stage of their own. */
+function phaseToStage(phase: SectionEnginePhase): Stage | null {
+	switch (phase) {
+		case "idle":
+		case "failed":
+			return null;
+		case "booting-section":
+			return "composed";
+		case "engine-ready":
+			return "engine-ready";
+		case "interactive":
+			return "interactive";
+		case "disposed":
+			return "disposed";
+	}
 }
 
 function emitStageChange(
@@ -74,6 +91,7 @@ function startCohort(args: {
 		...createInitialEngineState(),
 		phase: "booting-section",
 		cohort: args.cohort,
+		readinessMode: args.state.readinessMode,
 		effectiveRuntime: args.effectiveRuntime,
 		effectiveToolsConfig: args.effectiveToolsConfig,
 		itemCount: args.itemCount,
@@ -112,7 +130,6 @@ function applyReadinessUpdate(
 	args: {
 		signals: EngineReadinessSignals;
 		mode: "progressive" | "strict";
-		loadedCount: number;
 		itemCount: number;
 	},
 ): TransitionResult {
@@ -151,7 +168,6 @@ function applyReadinessUpdate(
 			kind: "loading-complete",
 			cohort: state.cohort,
 			itemCount: args.itemCount,
-			loadedCount: args.loadedCount,
 		});
 	}
 
@@ -159,7 +175,7 @@ function applyReadinessUpdate(
 		...state,
 		phase,
 		readinessSignals: args.signals,
-		loadedCount: args.loadedCount,
+		readinessMode: args.mode,
 		itemCount: args.itemCount,
 		loadingCompleteEmitted,
 	};
@@ -270,10 +286,24 @@ export function transition(
 			}
 			const outputs: SectionEngineOutput[] = [];
 			emitStageChange(outputs, "engine-ready", state.cohort);
+			// Readiness can be satisfied before the controller resolves: with
+			// preloaded elements the items load in the same flush as the
+			// composition. No later signal change would move the cohort on, so
+			// the stored snapshot gates `interactive` here.
+			let phase: SectionEnginePhase = "engine-ready";
+			if (
+				createReadinessDetail({
+					mode: state.readinessMode,
+					signals: state.readinessSignals,
+				}).interactionReady
+			) {
+				phase = "interactive";
+				emitStageChange(outputs, phase, state.cohort);
+			}
 			return {
 				state: {
 					...state,
-					phase: "engine-ready",
+					phase,
 					controllerResolved: true,
 				},
 				outputs,
@@ -284,7 +314,6 @@ export function transition(
 			return applyReadinessUpdate(state, {
 				signals: input.signals,
 				mode: input.mode,
-				loadedCount: input.loadedCount,
 				itemCount: input.itemCount,
 			});
 		}

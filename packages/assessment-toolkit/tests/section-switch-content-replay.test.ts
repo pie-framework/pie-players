@@ -1,13 +1,15 @@
 /**
- * A section switch hands the new section's controller only that section's
+ * A section switch hands each section's controller only that section's
  * renderables.
  *
  * The binding's registry outlives the switch: shells of the section being left
- * stay registered until they unmount, and a removed shell's `pie-unregister`
- * never reaches the toolkit. Replaying that registry unfiltered into the next
- * section's controller reported the previous section's items as loaded there,
- * so subscribers of section B received section A's `content-loaded` events and
- * a `section-loading-complete` before any of B's elements had loaded.
+ * stay registered until they unmount. Replaying that registry unfiltered into
+ * the next section's controller reported the previous section's items as
+ * loaded there, so subscribers of section B received section A's
+ * `content-loaded` events and a `section-loading-complete` before any of B's
+ * elements had loaded. An outgoing shell's unregister, session and errors
+ * belong to its own section's cached controller, and a revisit of that section
+ * completes loading only once its new shells load.
  *
  * The controller here keeps the per-renderable tracking `SectionController`
  * keeps: one key per content kind and canonical id, idempotent register and
@@ -70,6 +72,10 @@ interface SectionLikeController extends SectionControllerHandle {
 	/** Every item id a `handleContent*` call named, in call order. */
 	readonly heardIds: string[];
 	readonly unregisteredIds: string[];
+	/** Item ids of the sessions, player errors and section errors it received. */
+	readonly sessionIds: string[];
+	readonly playerErrorIds: string[];
+	readonly sectionErrorIds: Array<string | undefined>;
 	getRuntimeState(): SectionControllerRuntimeState;
 	/** The binding's controller signature; the stub leaves it unimplemented. */
 	updateItemSession?: (
@@ -87,6 +93,9 @@ function createSectionLikeController(
 	const loaded = new Set<string>();
 	const heardIds: string[] = [];
 	const unregisteredIds: string[] = [];
+	const sessionIds: string[] = [];
+	const playerErrorIds: string[] = [];
+	const sectionErrorIds: Array<string | undefined> = [];
 	let loadingComplete = false;
 	const emit = (event: SectionControllerEvent) => {
 		for (const listener of Array.from(listeners)) listener(event);
@@ -113,6 +122,19 @@ function createSectionLikeController(
 		tracked,
 		heardIds,
 		unregisteredIds,
+		sessionIds,
+		playerErrorIds,
+		sectionErrorIds,
+		updateItemSession(itemId: string) {
+			sessionIds.push(itemId);
+			return null;
+		},
+		handleItemPlayerError(args: { itemId: string }) {
+			playerErrorIds.push(args.itemId);
+		},
+		reportSectionError(args: { itemId?: string }) {
+			sectionErrorIds.push(args.itemId);
+		},
 		subscribe(listener) {
 			listeners.add(listener);
 			return () => {
@@ -380,13 +402,21 @@ describe("section switch content replay", () => {
 		]);
 	});
 
-	test("A's shells unregistering after the switch leave B's controller untouched", async () => {
+	test("A's shells unregistering after the switch reach A's controller, not B's", async () => {
 		const shellsA = await loadSectionA();
 		await initialize("section-B");
 		const shellsB = [shell("q3"), shell("q4")];
 		for (const detail of shellsB) mount(detail);
 		for (const detail of shellsA) unmount(detail);
 
+		expect(controllers.get("section-A")?.unregisteredIds).toEqual([
+			"passage-1",
+			"q1",
+			"q2",
+		]);
+		expect(controllers.get("section-A")?.getRuntimeState().loadingComplete).toBe(
+			false,
+		);
 		const controllerB = controllers.get("section-B");
 		expect(controllerB?.unregisteredIds).toEqual([]);
 		expect(
@@ -429,6 +459,99 @@ describe("section switch content replay", () => {
 			]);
 		} finally {
 			SECTIONS["section-B"] = ["q3", "q4"];
+		}
+	});
+	async function revisitSectionA(args: { unregisterHeard: boolean }) {
+		const shellsA = await loadSectionA();
+		await initialize("section-B");
+		const shellsB = [shell("q3"), shell("q4")];
+		for (const detail of shellsB) mount(detail);
+		for (const detail of shellsA) {
+			if (args.unregisterHeard) {
+				unmount(detail);
+			} else {
+				// Gone from the registry without the binding hearing the unregister.
+				binding.unregister(detail.element);
+				detail.element.remove();
+			}
+		}
+		for (const detail of shellsB) load(detail);
+		subscribe(received);
+		received.length = 0;
+
+		await initialize("section-A");
+		expect(completions(received)).toHaveLength(0);
+		const shellsA2 = [
+			shell("passage-1", "rubric-block-stimulus"),
+			shell("q1"),
+			shell("q2"),
+		];
+		for (const detail of shellsA2) mount(detail);
+		for (const detail of shellsB) unmount(detail);
+		expect(completions(received)).toHaveLength(0);
+		for (const detail of shellsA2) load(detail);
+		expect(contentLoadedIds(received)).toEqual(["passage-1", "q1", "q2"]);
+		expect(completions(received)).toHaveLength(1);
+
+		const late: SectionControllerEvent[] = [];
+		subscribe(late);
+		expect(contentLoadedIds(late)).toEqual(["passage-1", "q1", "q2"]);
+		expect(completions(late)).toHaveLength(1);
+		expect(controllers.get("section-B")?.unregisteredIds).toEqual(["q3", "q4"]);
+	}
+
+	test("a revisited section completes loading only once its new shells load", async () => {
+		await revisitSectionA({ unregisterHeard: true });
+	});
+
+	test("a revisit forgets the loads of shells whose unregister never arrived", async () => {
+		await revisitSectionA({ unregisterHeard: false });
+	});
+
+	test("an outgoing shell's session and errors reach its own section's controller", async () => {
+		await loadSectionA();
+		await initialize("section-B");
+		const shellsB = [shell("q3"), shell("q4")];
+		for (const detail of shellsB) mount(detail);
+
+		binding.updateItemSession("q1", { session: { id: "q1", data: [] } });
+		binding.handleItemPlayerError({
+			itemId: "q1",
+			canonicalItemId: "q1",
+			contentKind: "assessment-item",
+			error: new Error("late"),
+		});
+		binding.reportSectionError({
+			source: "item-player",
+			error: new Error("late"),
+			itemId: "q2",
+		});
+		binding.updateItemSession("q3", { session: { id: "q3", data: [] } });
+		binding.reportSectionError({ source: "toolkit", error: new Error("b") });
+
+		const controllerA = controllers.get("section-A");
+		const controllerB = controllers.get("section-B");
+		expect(controllerA?.sessionIds).toEqual(["q1"]);
+		expect(controllerA?.playerErrorIds).toEqual(["q1"]);
+		expect(controllerA?.sectionErrorIds).toEqual(["q2"]);
+		expect(controllerB?.sessionIds).toEqual(["q3"]);
+		expect(controllerB?.playerErrorIds).toEqual([]);
+		expect(controllerB?.sectionErrorIds).toEqual([undefined]);
+	});
+
+	test("an event for a renderable no bound section renders is dropped", async () => {
+		await loadSectionA();
+		await initialize("section-B");
+		binding.updateItemSession("stray", { session: { id: "stray", data: [] } });
+		binding.handleItemPlayerError({
+			itemId: "stray",
+			error: new Error("stray"),
+		});
+		for (const sectionId of ["section-A", "section-B"]) {
+			const controller = controllers.get(sectionId);
+			expect(controller?.sessionIds).toEqual([]);
+			expect(controller?.playerErrorIds).toEqual([]);
+			expect(controller?.sectionErrorIds).toEqual([]);
 		}
 	});
 });

@@ -12,6 +12,9 @@
 			// The section's session, applied by the controller created for
 			// `section` in place of hydrating from the persistence strategy.
 			session: { type: "Object", reflect: false },
+			// The assessment entity whose `personalNeedsProfile` and `settings` the
+			// toolkit's tool policy reads, forwarded to the coordinator it builds.
+			assessment: { type: "Object", reflect: false },
 			sectionId: { attribute: "section-id", type: "String" },
 			attemptId: { attribute: "attempt-id", type: "String" },
 			iifeBundleHost: { attribute: "iife-bundle-host", type: "String" },
@@ -33,13 +36,10 @@
 				type: "String",
 			},
 			onFrameworkError: { type: "Object", reflect: false },
-			// M6 canonical stage-change callback. Mirrors
-			// `runtime.onStageChange`; resolver picks runtime over prop.
+			// Callback form of `pie-stage-change`; `runtime.onStageChange` wins.
 			onStageChange: { type: "Object", reflect: false },
-			// M6 canonical loading-complete callback. Mirrors
-			// `runtime.onLoadingComplete`; the kernel invokes it at the
-			// same emit point as `pie-loading-complete` so callback and
-			// event stay in lockstep per cohort.
+			// Callback form of `pie-loading-complete`, invoked at the same emit
+			// point; `runtime.onLoadingComplete` wins.
 			onLoadingComplete: { type: "Object", reflect: false },
 		},
 		// The host methods, callable before the component mounts.
@@ -91,6 +91,7 @@
 		runtime = null as RuntimeConfig | null,
 		section = null,
 		session = null,
+		assessment = null,
 		sectionId = "",
 		attemptId = "",
 		iifeBundleHost,
@@ -225,6 +226,7 @@
 	{runtime}
 	{section}
 	{session}
+	{assessment}
 	{sectionId}
 	{attemptId}
 	{iifeBundleHost}

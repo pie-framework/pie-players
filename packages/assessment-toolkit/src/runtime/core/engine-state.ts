@@ -60,6 +60,13 @@ export type SectionEngineState = {
 	 */
 	readinessSignals: EngineReadinessSignals;
 
+	/**
+	 * Readiness mode of the last `update-readiness-signals` input. Kept with
+	 * the signals so `section-controller-resolved` can apply a snapshot that
+	 * arrived while the controller was pending.
+	 */
+	readinessMode: "progressive" | "strict";
+
 	/** Last resolved effective runtime (output of `resolveRuntime`). */
 	effectiveRuntime: EffectiveRuntime | null;
 
@@ -74,11 +81,8 @@ export type SectionEngineState = {
 	 */
 	loadingCompleteEmitted: boolean;
 
-	/** Number of items the host has registered for the current cohort. */
+	/** Number of items in the current cohort's composition. */
 	itemCount: number;
-
-	/** Number of items reported as loaded. */
-	loadedCount: number;
 };
 
 /**
@@ -96,10 +100,10 @@ export function createInitialEngineState(): SectionEngineState {
 			allLoadingComplete: false,
 			runtimeError: false,
 		},
+		readinessMode: "progressive",
 		effectiveRuntime: null,
 		effectiveToolsConfig: null,
 		loadingCompleteEmitted: false,
 		itemCount: 0,
-		loadedCount: 0,
 	};
 }

@@ -32,8 +32,8 @@ describe("tts-runtime-config defaults", () => {
 		expect(provider).toBe("polly");
 		expect(transportMode).toBe("pie");
 
+		expect(runtimeConfig.voice).toBeUndefined();
 		expect(runtimeConfig).toMatchObject({
-			voice: "Joanna",
 			rate: 1,
 			apiEndpoint: "/api/tts",
 			provider: "polly",
@@ -172,8 +172,8 @@ describe("tts-runtime-config defaults", () => {
 		expect(provider).toBe("google");
 		expect(settings.apiEndpoint).toBe("/api/tts");
 
+		expect(runtimeConfig.voice).toBeUndefined();
 		expect(runtimeConfig).toMatchObject({
-			voice: "en-US-Wavenet-A",
 			rate: 1,
 			apiEndpoint: "/api/tts",
 			provider: "google",

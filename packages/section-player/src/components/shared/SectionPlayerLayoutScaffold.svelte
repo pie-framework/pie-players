@@ -6,6 +6,7 @@
 		ToolbarItem,
 	} from "@pie-players/pie-assessment-toolkit";
 	import type {
+		AssessmentEntity,
 		AssessmentSection,
 		SectionControllerSessionState,
 	} from "@pie-players/pie-players-shared/types";
@@ -29,6 +30,7 @@
 		runtime = null as Record<string, unknown> | null,
 		section = null as AssessmentSection | null,
 		session = null as SectionControllerSessionState | null,
+		assessment = null as AssessmentEntity | null,
 		sectionId = "",
 		attemptId = "",
 		showToolbar = "false" as boolean | string | null | undefined,
@@ -46,6 +48,7 @@
 		runtime?: Record<string, unknown> | null;
 		section?: AssessmentSection | null;
 		session?: SectionControllerSessionState | null;
+		assessment?: AssessmentEntity | null;
 		sectionId?: string;
 		attemptId?: string;
 		showToolbar?: boolean | string | null | undefined;
@@ -132,7 +135,17 @@
 		onCompositionChanged?.(event);
 	}
 
+	// The base's own toolkit renders in the base's shadow root. A ready event
+	// from any other toolkit, such as one nested in the layout's content, is not
+	// this section's.
+	function isOwnToolkitEvent(event: Event): boolean {
+		const origin = event.composedPath()[0] as Node | undefined;
+		const base = event.currentTarget as Element | null;
+		return Boolean(base?.shadowRoot) && origin?.getRootNode?.() === base?.shadowRoot;
+	}
+
 	function handleSectionReady(event: Event) {
+		if (!isOwnToolkitEvent(event)) return;
 		onSectionReady?.(event);
 	}
 
@@ -141,10 +154,8 @@
 	}
 
 	function handleToolkitReady(event: Event) {
+		if (!isOwnToolkitEvent(event)) return;
 		onToolkitReady?.(event);
-		// The base's own toolkit is in its shadow root, so its event arrives
-		// retargeted to the base; a nested toolkit's keeps its own target.
-		if (event.target !== event.currentTarget) return;
 		subscribeNavigationStatus(
 			(event as CustomEvent<{ coordinator?: ToolkitCoordinatorApi }>).detail
 				?.coordinator ?? null,
@@ -252,6 +263,7 @@
 	{runtime}
 	{section}
 	{session}
+	{assessment}
 	section-id={sectionId}
 	attempt-id={attemptId}
 	{toolRegistry}

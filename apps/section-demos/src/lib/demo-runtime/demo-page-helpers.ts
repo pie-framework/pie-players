@@ -1,3 +1,4 @@
+import { createUniversalPersonalNeedsProfile } from "@pie-players/pie-default-tool-loaders";
 import { applyPieColorScheme, DAISYUI_THEME_CATALOG } from "@pie-players/pie-theme";
 import type {
 	AssessmentEntity,
@@ -108,20 +109,33 @@ export function buildSectionPageHref(args: {
 }
 
 /**
- * Bind the demo's assessment so the policy engine has something to decide
- * against.
- *
- * The demo pages carry their learner's profile on the section object they
- * build, and this lifts it onto the bound assessment. Neither the player nor
- * policy reads a profile on a section: `decideFeaturePolicy` reads the *bound
- * assessment*, so a demo that never called this declined every capability
- * gating on a feature decision rather than on toolbar placement — with the same
- * verdict a properly-declined student gets. Toolbars were unaffected
- * throughout, which is why it went unnoticed.
+ * The assessment a demo binds: tool policy reads the profile from the bound
+ * assessment only. A section's own profile overrides the universal one.
  *
  * Only the profile is bound. District policy and test administration have their
  * own demos, and placeholders here would make every demo assert precedence it
  * does not exercise.
+ */
+export function demoAssessmentFor(
+	section: {
+		personalNeedsProfile?: PersonalNeedsProfile;
+		settings?: { personalNeedsProfile?: PersonalNeedsProfile };
+	} | null,
+): AssessmentEntity | null {
+	if (!section) return null;
+	return {
+		id: DEMO_ASSESSMENT_ID,
+		personalNeedsProfile:
+			section.personalNeedsProfile ??
+			section.settings?.personalNeedsProfile ??
+			createUniversalPersonalNeedsProfile(),
+	};
+}
+
+/**
+ * Bind the demo's assessment on a coordinator the demo constructs and passes
+ * in `runtime.coordinator`; the player forwards its `assessment` property only
+ * to a coordinator it owns.
  *
  * Safe to call repeatedly: the engine compares the assessment structurally, so
  * re-binding the same profile emits no policy-change event.
@@ -130,18 +144,11 @@ export function bindDemoAssessment(
 	coordinator: {
 		updateAssessment?: (assessment: AssessmentEntity | null) => void;
 	} | null,
-	section: {
-		personalNeedsProfile?: PersonalNeedsProfile;
-		settings?: { personalNeedsProfile?: PersonalNeedsProfile };
-	} | null,
+	section: Parameters<typeof demoAssessmentFor>[0],
 ): void {
 	if (typeof coordinator?.updateAssessment !== "function") return;
-	if (!section) return;
-	coordinator.updateAssessment({
-		id: DEMO_ASSESSMENT_ID,
-		personalNeedsProfile:
-			section.personalNeedsProfile ?? section.settings?.personalNeedsProfile,
-	});
+	const assessment = demoAssessmentFor(section);
+	if (assessment) coordinator.updateAssessment(assessment);
 }
 
 /**

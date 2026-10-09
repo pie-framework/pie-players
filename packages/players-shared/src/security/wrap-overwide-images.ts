@@ -43,8 +43,10 @@ function buildAriaLabel(image: Element): string {
 
 /**
  * A block-level image — an element's own `display: block`, a flex item — gets a
- * block wrapper, so wrapping it adds no line box below it. The live pass reads
- * the computed display; markup parsed off-document has only the inline style.
+ * block wrapper, so wrapping it adds no line box below it — a host reset of
+ * `img { display: block }` included. The live pass reads the computed display;
+ * markup parsed off-document has only the inline style, so the live pass reads
+ * a wrapper built there again.
  */
 function imageLayoutClass(image: Element): string | null {
 	const view = image.ownerDocument?.defaultView;

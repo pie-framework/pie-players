@@ -63,3 +63,38 @@ describe("image wrapper layout", () => {
 		expect(out.match(/class="pie-image-scroll"/g)?.length).toBe(1);
 	});
 });
+
+describe("image wrapper layout after the markup pass", () => {
+	// The theme makes every wrapped image a block, so the live read has to look
+	// past the wrapper to see the host's own layout.
+	const styles =
+		"<style>img { display: block; } " +
+		".inline-images img { display: inline; } " +
+		".pie-image-scroll > img { display: block; }</style>";
+
+	test("a host-reset block image wrapped off-document gets a block wrapper once attached", () => {
+		const markup = wrapOverwideImages(
+			'<p><img id="reset" src="/a.png" alt="a"></p>' +
+				'<p class="inline-images">text <img id="inline" src="/b.png" alt="b"> text</p>',
+		);
+		expect(markup.match(/class="pie-image-scroll"/g)?.length).toBe(2);
+
+		const root = mountRoot(styles + markup);
+		expect(wrapOverwideImagesInElement(root)).toBe(0);
+		expect(wrapperClass(root, "reset")).toBe(
+			"pie-image-scroll pie-image-scroll-block",
+		);
+		expect(wrapperClass(root, "inline")).toBe("pie-image-scroll");
+	});
+
+	test("reads a wrapper's layout once", () => {
+		const root = mountRoot(
+			`${styles}${wrapOverwideImages('<p><img id="once" src="/a.png" alt="a"></p>')}`,
+		);
+		wrapOverwideImagesInElement(root);
+		const wrapper = root.querySelector("#once")?.parentElement as HTMLElement;
+		wrapper.classList.remove("pie-image-scroll-block");
+		wrapOverwideImagesInElement(root);
+		expect(wrapper.className).toBe("pie-image-scroll");
+	});
+});

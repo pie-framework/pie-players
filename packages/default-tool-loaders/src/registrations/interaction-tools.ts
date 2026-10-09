@@ -104,12 +104,9 @@ export const answerEliminatorToolRegistration: ToolRegistration = {
 					componentOverrides,
 				) as HTMLElement & {
 					visible?: boolean;
-					toolId?: string;
 					elementStateKeys?: Record<string, string>;
-					scopeElement?: HTMLElement | null;
 				},
 		);
-		overlay.setAttribute("tool-id", visibility.fullToolId);
 		overlay.setAttribute("button-alignment", "inline");
 		overlay.setAttribute(
 			"strategy",
@@ -139,7 +136,6 @@ export const answerEliminatorToolRegistration: ToolRegistration = {
 					overlay,
 					isActive: visibility.isActive,
 				});
-				overlay.scopeElement = toolbarContext.getScopeElement?.() || null;
 				overlay.elementStateKeys = resolveElementStateKeys(
 					context,
 					toolbarContext,

@@ -162,11 +162,11 @@ describe("ToolProviderRegistry logging", () => {
 		}
 		const registry = new ToolProviderRegistry();
 		const disabled = new GatedProvider();
-		registry.register("calculator", { provider: disabled });
+		registry.register("calculator", { provider: disabled, config: {} });
 		const start = registry.initialize("calculator").catch(() => {});
 		const unregister = registry.unregister("calculator");
 		const enabled = new GatedProvider();
-		registry.register("calculator", { provider: enabled });
+		registry.register("calculator", { provider: enabled, config: {} });
 		release();
 		await start;
 		await unregister;

@@ -19,6 +19,9 @@
 			// The section's session, applied by the controller created for
 			// `section` in place of hydrating from the persistence strategy.
 			session: { type: "Object", reflect: false },
+			// The assessment entity whose `personalNeedsProfile` and `settings` the
+			// toolkit's tool policy reads, forwarded to the coordinator it builds.
+			assessment: { type: "Object", reflect: false },
 			sectionId: { attribute: "section-id", type: "String" },
 			attemptId: { attribute: "attempt-id", type: "String" },
 			iifeBundleHost: { attribute: "iife-bundle-host", type: "String" },
@@ -108,6 +111,7 @@
 		ToolbarItem,
 	} from "@pie-players/pie-assessment-toolkit";
 	import type {
+		AssessmentEntity,
 		AssessmentSection,
 		SectionControllerSessionState,
 	} from "@pie-players/pie-players-shared/types";
@@ -221,6 +225,7 @@
 		locale = "",
 		section = null as AssessmentSection | null,
 		session = null as SectionControllerSessionState | null,
+		assessment = null as AssessmentEntity | null,
 		sectionId = "",
 		attemptId = "",
 		iifeBundleHost,
@@ -445,6 +450,7 @@
 	runtime={kernelRuntime}
 	{section}
 	{session}
+	{assessment}
 	{sectionId}
 	{attemptId}
 	{iifeBundleHost}

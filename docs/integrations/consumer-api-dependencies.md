@@ -131,6 +131,26 @@ the optional scope and the new `"item-settings"` change reason. A section's own
 `personalNeedsProfile` stays unread by policy, now as documented. Row
 verification dates are unchanged.
 
+On 2026-10-08 the section-player layout elements gained an optional `assessment`
+property, forwarded to the coordinator the toolkit builds, and a section carrying
+`personalNeedsProfile` now logs one warning per element saying policy reads the
+profile from the assessment. The toolkit coordinator logs `unknownSupportId` and
+`requiredToolBlocked` once per code and tool, feature decisions carry
+`diagnostics`, `unknownSupportId` covers every policy list, and the PNP
+debugger shows the decisions' diagnostics and the coordinator's enforcement
+override. `AssessmentSettings` and `ItemSettings` lose their index signatures and
+`toolConfigs.textToSpeech` its typed shape. Checked against the checkouts of Hosts
+A, M, P, R and V, each scan reaching `@pie-players` imports: none names
+`AssessmentSettings`, `ItemSettings`, `toolConfigs`, `pnpEnforcement` or the
+render context's `granted`. Host R alone puts a profile on the section, on its
+section preview, playground and demo routes; those profiles granted nothing before
+and now log the warning, and its playground keeps binding the assessment through
+`updateAssessment`. Host R's PNP debugger mount keeps its props. A `true`
+`toolOverrides` entry now ranks below an item's `restrictedTools` and the
+profile's `prohibitedSupports`, which raise `tool-policy.overrideBlocked` when
+they withdraw it; no checkout names `toolOverrides` or `prohibitedSupports`. Row
+verification dates are unchanged.
+
 On 2026-10-08 the annotation toolbar's read-aloud started reading spoken cards: a
 `data-catalog-idref` node the selection holds whole reads its card, from the
 cards the selection's shell registered and then the assessment's, as tts-inline

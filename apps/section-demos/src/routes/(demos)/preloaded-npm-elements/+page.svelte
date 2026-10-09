@@ -23,7 +23,6 @@
 		ToolkitCoordinator,
 		type ToolkitCoordinatorHooks
 	} from '@pie-players/pie-assessment-toolkit';
-	import { createUniversalPersonalNeedsProfile } from '@pie-players/pie-default-tool-loaders';
 	import { DEMO_PRELOADED_OPTIONS } from '@pie-players/demo-ui/preloaded';
 	import { registerPreloadedElements } from '@pie-players/pie-item-player/preloaded';
 	import '@pie-players/pie-section-player/components/section-player-splitpane-element';
@@ -132,10 +131,7 @@
 		routerReady = true;
 	});
 
-	const sections = PRELOADED_NPM_SECTIONS.map((section) => ({
-		...section,
-		personalNeedsProfile: createUniversalPersonalNeedsProfile()
-	}));
+	const sections = PRELOADED_NPM_SECTIONS;
 	let sectionIndex = $state(0);
 	let section = $derived(sections[sectionIndex]);
 	let sectionId = $derived(section.identifier);

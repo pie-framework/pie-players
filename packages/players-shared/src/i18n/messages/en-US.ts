@@ -558,6 +558,7 @@ const enUS = {
 			resolvedTools: "Resolved Tools (toolkit)",
 			provenanceSummary: "Tool Policy Provenance Summary",
 			perToolDecisions: "Per-Tool Decisions",
+			policyDiagnostics: "Policy Diagnostics",
 			profileReadOnly: "PNP Profile (read-only)",
 		},
 

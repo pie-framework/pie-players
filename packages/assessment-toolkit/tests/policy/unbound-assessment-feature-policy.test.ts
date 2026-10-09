@@ -66,11 +66,11 @@ describe("a denial says whether an assessment was bound", () => {
 
 	test("the verdict and its precedence are untouched", () => {
 		// Nothing fired, so the rule stays what the source reported rather than
-		// naming a seventh precedence level that does not exist.
+		// naming an eighth precedence level that does not exist.
 		const decision = engine({}).decideFeature(FEATURE);
 		expect(decision.action).toBe("skip");
 		expect(decision.rule).toBe("pnp-support");
-		expect(decision.precedence).toBe(6);
+		expect(decision.precedence).toBe(7);
 	});
 });
 
@@ -86,7 +86,7 @@ describe("granting is unchanged", () => {
 	});
 
 	test("unbound is not a synonym for denied", () => {
-		// An item's settings carry their own mandate, so precedence 4 grants within
+		// An item's settings carry their own mandate, so precedence 5 grants within
 		// the item's scope with no assessment in sight — and the source's reason
 		// survives, because the feature was in fact decided.
 		const decision = engine({
@@ -96,7 +96,7 @@ describe("granting is unchanged", () => {
 			granted: true,
 			assessmentBound: false,
 			rule: "item-requirement",
-			precedence: 4,
+			precedence: 5,
 		});
 		expect(decision.reason).not.toContain("No assessment is bound");
 	});

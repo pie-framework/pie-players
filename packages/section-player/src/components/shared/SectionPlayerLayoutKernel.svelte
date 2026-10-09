@@ -22,6 +22,7 @@
 		type EngineReadinessSignals,
 	} from "@pie-players/pie-assessment-toolkit/runtime/engine";
 	import type {
+		AssessmentEntity,
 		AssessmentSection,
 		SectionControllerSessionState,
 	} from "@pie-players/pie-players-shared/types";
@@ -98,6 +99,7 @@
 		runtime = null as RuntimeConfig | null,
 		section = null as AssessmentSection | null,
 		session = null as SectionControllerSessionState | null,
+		assessment = null as AssessmentEntity | null,
 		sectionId = "",
 		attemptId = "",
 		iifeBundleHost,
@@ -751,6 +753,7 @@
 	runtime={effectiveRuntime}
 	{section}
 	{session}
+	{assessment}
 	sectionId={sectionId}
 	attemptId={attemptId}
 	onCompositionChanged={handleBaseCompositionChanged}

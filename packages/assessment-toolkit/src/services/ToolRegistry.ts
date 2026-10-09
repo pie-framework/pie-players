@@ -357,7 +357,9 @@ export interface ToolSurfaceServices {
 export interface ToolSurfaceRenderContext {
 	toolId: string;
 	/**
-	 * Whether policy granted the capability for this render; `false` only for a
+	 * Whether a PNP support, a requirement or a test-administration override
+	 * granted the capability. `false` for a capability rendered because it is
+	 * placed with no grant, and for a
 	 * {@link ToolRegistration.resolvesWithoutGrant} capability answering from
 	 * content alone.
 	 */

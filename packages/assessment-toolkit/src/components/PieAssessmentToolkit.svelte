@@ -34,12 +34,9 @@
 			createSectionController: { type: "Object", reflect: false },
 			onFrameworkError: { type: "Object", reflect: false },
 			errorRenderer: { type: "Object", reflect: false },
-			// M8 PR 2 — additive Tool Policy Engine inputs. The toolkit
-			// CE forwards these into the owned `ToolkitCoordinator` so
-			// the engine has the PNP/profile inputs needed for accessibility-
-			// aware policy decisions. PR 2 introduces them unused by
-			// internal toolbars; PR 3 switches the toolbars onto the
-			// engine and these props become the canonical input path.
+			// Tool policy inputs, forwarded to the coordinator this toolkit
+			// owns: the assessment whose profile and settings policy reads, and
+			// the enforcement override.
 			assessment: { type: "Object", reflect: false },
 			pnpEnforcement: {
 				attribute: "pnp-enforcement",
@@ -249,8 +246,7 @@ const DEFAULT_ENV = {
 					title?: string;
 					details?: string[];
 			  }),
-		// M8 PR 2 — additive Tool Policy Engine inputs. See the
-		// `<svelte:options>` props block above for the rationale.
+		// Tool policy inputs; see the `<svelte:options>` props block above.
 		// `pnpEnforcement` accepts `"on"`, `"off"`, or `null` (auto —
 		// each decision enforces when the bound `assessment`, or the item it
 		// is scoped to, carries PNP/profile material). Embedded

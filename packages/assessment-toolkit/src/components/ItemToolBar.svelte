@@ -435,8 +435,7 @@
 		return 'item';
 	});
 
-	// Pass 1 — single source of truth via the ToolPolicyEngine
-	// (M8 PR 3). When the toolbar is mounted under
+	// Policy is decided by the ToolPolicyEngine. When the toolbar is mounted under
 	// `<pie-assessment-toolkit>` the coordinator owns the engine and
 	// applies `placement → policy.allowed → policy.blocked →
 	// providers → PNP/profile policy` plus any custom `PolicySource`s the host has

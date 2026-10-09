@@ -22,6 +22,11 @@
  */
 
 import type { PnpPolicyResult } from "../sources/PnpPolicySource.js";
+import {
+	overrideBlockedDiagnostic,
+	unknownSupportIdDiagnostic,
+} from "./compose-decision.js";
+import type { ToolPolicyDiagnostic } from "./decision-types.js";
 import type { PnpPolicySourceRule } from "./policy-source-tag.js";
 import type {
 	ToolPolicyResolutionDecision,
@@ -29,7 +34,7 @@ import type {
 } from "./provenance.js";
 
 /**
- * A feature verdict comes from one of the six PNP precedence levels, or from a
+ * A feature verdict comes from one of the seven PNP precedence levels, or from a
  * host gate that never reaches them: `tools.policy.blocked` and a non-empty
  * `tools.policy.allowed` are absolute for the id they name, exactly as they are
  * on the placement-scoped path.
@@ -43,7 +48,7 @@ export interface FeaturePolicyDecision {
 	/** The PNP/AfA support id that was evaluated (e.g. `"signLanguage"`). */
 	featureId: string;
 	/**
-	 * `true` only when policy explicitly granted the feature at one of the six
+	 * `true` only when policy explicitly granted the feature at one of the seven
 	 * precedence levels. A feature nobody configured is **not** available —
 	 * accommodations require a documented need, so silence means no.
 	 */
@@ -51,7 +56,7 @@ export interface FeaturePolicyDecision {
 	action: ToolPolicyResolutionDecision["action"];
 	/** Which precedence rule produced the verdict. */
 	rule: FeaturePolicyRule;
-	precedence: 0 | 1 | 2 | 3 | 4 | 5 | 6;
+	precedence: 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7;
 	sourceType: ToolPolicySourceType;
 	/** Human-readable explanation, suitable for a policy debugger. */
 	reason: string;
@@ -62,7 +67,7 @@ export interface FeaturePolicyDecision {
 	 * district policy or test administration could be consulted, because there was
 	 * no assessment to read them from. It is not itself a denial — an item's
 	 * registered settings carrying `requiredTools` mandate a feature at precedence
-	 * 4 with no assessment bound — so read it alongside `granted` rather than
+	 * 5 with no assessment bound — so read it alongside `granted` rather than
 	 * instead of it.
 	 *
 	 * Granting is unaffected either way: an unbound host with no item mandate still
@@ -85,6 +90,12 @@ export interface FeaturePolicyDecision {
 	 * presentation would hang on; no vocabulary is defined yet.
 	 */
 	parameters?: unknown;
+	/**
+	 * Conflicts found while deciding: a `tool-policy.unknownSupportId` for each
+	 * id the bound inputs name that no tool is registered under. Empty on a host
+	 * denial, which consults no policy source.
+	 */
+	diagnostics: ToolPolicyDiagnostic[];
 }
 
 /** What the engine knows that a single support-id resolution does not. */
@@ -132,6 +143,7 @@ export function hostFeatureDenial(
 				: `Not listed in tools.policy.allowed (${hostValue.join(", ")})`,
 		required: false,
 		assessmentBound: context.assessmentBound,
+		diagnostics: [],
 	};
 }
 
@@ -172,11 +184,11 @@ export function interpretFeatureResult(
 		granted,
 		action: decision?.action ?? "skip",
 		rule: decision?.rule ?? "pnp-support",
-		precedence: decision?.precedence ?? 6,
+		precedence: decision?.precedence ?? 7,
 		sourceType: decision?.sourceType ?? "system",
 		// Only a denial is re-worded. An unbound host can still be granted the
 		// feature — an item's registered settings carrying `requiredTools` mandate
-		// it at precedence 4 with no assessment in sight — and there the source's
+		// it at precedence 5 with no assessment in sight — and there the source's
 		// reason is the true one.
 		reason:
 			context.assessmentBound || granted
@@ -185,5 +197,13 @@ export function interpretFeatureResult(
 		required: Boolean(flags?.required),
 		parameters: flags?.settings,
 		assessmentBound: context.assessmentBound,
+		diagnostics: [
+			...Array.from(result.unmappedSupportIds, ([supportId, origins]) =>
+				unknownSupportIdDiagnostic(supportId, origins),
+			),
+			...Array.from(result.blockedOverrides, ([toolId, rule]) =>
+				overrideBlockedDiagnostic(toolId, rule),
+			),
+		],
 	};
 }

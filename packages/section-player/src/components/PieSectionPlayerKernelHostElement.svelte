@@ -12,6 +12,9 @@
 			// The section's session, applied by the controller created for
 			// `section` in place of hydrating from the persistence strategy.
 			session: { type: "Object", reflect: false },
+			// The assessment entity whose `personalNeedsProfile` and `settings` the
+			// toolkit's tool policy reads, forwarded to the coordinator it builds.
+			assessment: { type: "Object", reflect: false },
 			sectionId: { attribute: "section-id", type: "String" },
 			attemptId: { attribute: "attempt-id", type: "String" },
 			iifeBundleHost: { attribute: "iife-bundle-host", type: "String" },
@@ -88,6 +91,7 @@
 		runtime = null as RuntimeConfig | null,
 		section = null,
 		session = null,
+		assessment = null,
 		sectionId = "",
 		attemptId = "",
 		iifeBundleHost,
@@ -222,6 +226,7 @@
 	{runtime}
 	{section}
 	{session}
+	{assessment}
 	{sectionId}
 	{attemptId}
 	{iifeBundleHost}

@@ -5,6 +5,7 @@ const RECOMMENDED_BASIC_PROPS = [
 	"assessmentId",
 	"section",
 	"session",
+	"assessment",
 	"sectionId",
 	"attemptId",
 	"debug",

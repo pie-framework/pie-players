@@ -24,6 +24,7 @@ export {
 
 export type {
 	ItemSettingNotAppliedDetails,
+	OverrideBlockedDetails,
 	RequiredToolBlockedDetails,
 	ToolPolicyDecision,
 	ToolPolicyDecisionRequest,
@@ -32,6 +33,7 @@ export type {
 	ToolPolicyEntry,
 	ToolPolicyHostGate,
 	ToolScope,
+	UnknownSupportIdDetails,
 } from "./core/decision-types.js";
 
 export type {

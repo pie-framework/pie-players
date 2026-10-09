@@ -208,6 +208,7 @@
   type FeaturePolicyDecision
   type FeaturePolicyRule
   type ItemSettingNotAppliedDetails
+  type OverrideBlockedDetails
   type PnpEnforcementMode
   type PnpPolicySourceRule
   type PnpPolicySourceTag
@@ -235,6 +236,7 @@
   type ToolPolicyResolutionDecision
   type ToolPolicySourceType
   type ToolScope
+  type UnknownSupportIdDetails
   isHostDeniedFeature
 
 ./runtime/engine

@@ -12,10 +12,7 @@
 		ToolkitCoordinator,
 		type ToolkitCoordinatorHooks
 	} from '@pie-players/pie-assessment-toolkit';
-	import {
-		createUniversalPersonalNeedsProfile,
-		SECTION_PLAYER_PREFERRED_TOOL_PLACEMENT
-	} from '@pie-players/pie-default-tool-loaders';
+	import { SECTION_PLAYER_PREFERRED_TOOL_PLACEMENT } from '@pie-players/pie-default-tool-loaders';
 	import '@pie-players/pie-section-player/components/section-player-splitpane-element';
 	import '@pie-players/pie-section-player/components/section-player-vertical-element';
 	import DemoRuntimeChrome from '#lib/demo-runtime/components/DemoRuntimeChrome.svelte';
@@ -158,18 +155,7 @@ const sectionPlayerHooks = $derived.by(() =>
 );
 
 	const DEMO_PERSISTENCE_STORAGE_PREFIX = `pie:section-controller:v1:${DEMO_ASSESSMENT_ID}:`;
-	let resolvedSectionForPlayer = $derived.by(() => {
-		const section = data.section as any;
-		if (!section) return section;
-		const hasExplicitPnp = Boolean(
-			section?.personalNeedsProfile || section?.settings?.personalNeedsProfile
-		);
-		if (hasExplicitPnp) return section;
-		return {
-			...section,
-			personalNeedsProfile: createUniversalPersonalNeedsProfile()
-		};
-	});
+	let resolvedSectionForPlayer = $derived(data.section as any);
 	let sessionPanelSectionId = $derived(
 		String(
 			(resolvedSectionForPlayer as any)?.identifier ||
@@ -194,8 +180,8 @@ const sectionPlayerHooks = $derived.by(() =>
 		const detail = (event as CustomEvent<{ coordinator?: unknown }>).detail;
 		if (!coordinator) return;
 		if (detail?.coordinator !== coordinator) return;
-		// Bind the profile so policy has an input to decide against; the section
-		// payload alone is invisible to `decideFeaturePolicy`.
+		// The player forwards `assessment` only to a coordinator it owns, so a
+		// demo-built coordinator gets the assessment directly.
 		bindDemoAssessment(coordinator, resolvedSectionForPlayer as any);
 		coordinator.setHooks({
 			onFrameworkError: (model) => {

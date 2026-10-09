@@ -554,42 +554,37 @@ class PackagedCapabilityComposition {
 			...this.itemModuleLoaders,
 			...this.sectionModuleLoaders,
 		});
-		this.placement = Object.freeze(
-			Object.fromEntries(
-				PACKAGED_PLACEMENT_LEVELS.map((level) => [
+		const placementIds = (level: PackagedPlacementLevel) =>
+			Object.freeze(
+				orderedToolIds(definitions, level, ({ placementOrder }) => placementOrder),
+			);
+		this.placement = Object.freeze({
+			assessment: placementIds("assessment"),
+			section: placementIds("section"),
+			item: placementIds("item"),
+			passage: placementIds("passage"),
+			rubric: placementIds("rubric"),
+			element: placementIds("element"),
+		});
+		const preferredIds = (level: PreferredPlacementLevel) =>
+			Object.freeze(
+				orderedToolIds(
+					definitions,
 					level,
-					Object.freeze(
-						orderedToolIds(
-							definitions,
-							level,
-							(definition) => definition.placementOrder,
-						),
-					),
-				]),
-			) as Record<PackagedPlacementLevel, readonly string[]>,
-		);
-		this.preferredPlacement = Object.freeze(
-			Object.fromEntries(
-				PREFERRED_PLACEMENT_LEVELS.map((level) => [
-					level,
-					Object.freeze(
-						orderedToolIds(
-							definitions,
-							level,
-							(definition) => definition.preferredPlacementOrder,
-						),
-					),
-				]),
-			) as Record<PreferredPlacementLevel, readonly string[]>,
-		);
+					({ preferredPlacementOrder }) => preferredPlacementOrder,
+				),
+			);
+		this.preferredPlacement = Object.freeze({
+			section: preferredIds("section"),
+			item: preferredIds("item"),
+			passage: preferredIds("passage"),
+		});
 		this.toolbarOrder = Object.freeze(
 			definitions
-				.filter((definition) => definition.toolbarOrder !== undefined)
-				.slice()
-				.sort(
-					(left, right) =>
-						(left.toolbarOrder as number) - (right.toolbarOrder as number),
+				.flatMap(({ registration, toolbarOrder }) =>
+					toolbarOrder === undefined ? [] : [{ registration, toolbarOrder }],
 				)
+				.sort((left, right) => left.toolbarOrder - right.toolbarOrder)
 				.map(({ registration }) => registration.toolId),
 		);
 		this.universalSupportIds = Object.freeze(

@@ -101,6 +101,7 @@ interface PollyProviderConfig {
   };
   engine?: 'neural' | 'standard';   // Voice engine (default: 'neural')
   defaultVoice?: string;             // Default voice ID (default: 'Joanna')
+  enableLogging?: boolean;           // Debug logging (default: false)
 }
 ```
 

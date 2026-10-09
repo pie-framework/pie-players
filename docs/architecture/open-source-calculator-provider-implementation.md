@@ -53,31 +53,24 @@ MathLive settings lease remain internal details.
              ^
              |
 @pie-players/pie-default-tool-loaders
-    CortexToolProvider registration adapter, calculator-cortex composition
-    and lazy loading
+    CortexToolProvider registration adapter and lazy loading
 
 @pie-players/pie-tool-calculator-shared
-    generic shell, inline shell, neutral generic-element registration
-             ^                         ^
-             |                         |
-pie-tool-calculator-cortex   pie-tool-calculator-inline-cortex
-    direct provider tags         direct inline provider tag
+    generic shell and inline shell, registered as <pie-tool-calculator> and
+    <pie-tool-calculator-inline> for every provider
 ```
 
 ### Public packages
 
-1. `@pie-players/pie-calculator-cortex`
-   - Owns the provider implementation and all Cortex-specific public types.
-   - Bundles the three runtime dependencies and worker entry.
-   - Exposes no internal library object in its public API.
-2. `@pie-players/pie-tool-calculator-cortex`
-   - Registers `<pie-tool-calculator-cortex>`.
-   - Supplies `providerId = "calculator-cortex"` to the shared shell.
-3. `@pie-players/pie-tool-calculator-inline-cortex`
-   - Registers `<pie-tool-calculator-inline-cortex>`.
-   - Supplies the same provider ID to the shared inline shell.
+`@pie-players/pie-calculator-cortex` owns the provider implementation and all
+Cortex-specific public types, bundles the three runtime dependencies and the
+worker entry, and exposes no internal library object in its public API. It
+joins the fixed Changesets release block.
 
-All three packages join the fixed Changesets release block.
+Cortex has no element of its own. `provider.id = "calculator-cortex"` in
+`tools.providers.calculator` selects it, and the generic element mounts it under
+the `calculator` tool id. Provider-specific wrapper packages were removed: they
+differed from the generic element only in tag name.
 
 ### Existing packages changed
 

@@ -1,53 +1,20 @@
 <script lang="ts">
 	import { untrack } from "svelte";
-	import type {
-		ToolRegistry,
-		ToolbarItem,
-	} from "@pie-players/pie-assessment-toolkit";
 	import { useInterfaceI18n } from "./use-interface-i18n.svelte.js";
 
 	type LayoutModel = {
 		passages: unknown[];
-		items: unknown[];
-		compositionModel: unknown;
-		paneElementsLoaded: boolean;
-		resolvedPlayerEnv: unknown;
-		resolvedPlayerAttributes: unknown;
-		resolvedPlayerProps: unknown;
-		playerStrategy: unknown;
-		preloadedRenderables: unknown;
-		preloadedRenderablesSignature: string;
-		toolRegistry: ToolRegistry | null;
-		itemHostButtons: ToolbarItem[];
-		passageHostButtons: ToolbarItem[];
-		onItemsPaneElementsLoaded: (event: Event) => void;
-		onItemsPanePreloadRetry: (event: Event) => void;
-		onItemsPanePreloadError: (event: Event) => void;
 	};
 
 	type TabKey = "passage" | "items";
 
 	let {
 		layoutModel,
-		itemToolbarTools = "",
-		passageToolbarTools = "",
-		toolRegistry = null as ToolRegistry | null,
-		itemHostButtons = [] as ToolbarItem[],
-		passageHostButtons = [] as ToolbarItem[],
-		iifeBundleHost,
-		preloadComponentTag = "pie-section-player-tabbed",
 		contentMaxWidthNoPassagePx = undefined as number | undefined,
 		contentMaxWidthWithPassagePx = undefined as number | undefined,
 		idBase = "pie-section-player-tabbed",
 	} = $props<{
 		layoutModel: LayoutModel;
-		itemToolbarTools?: string;
-		passageToolbarTools?: string;
-		toolRegistry?: ToolRegistry | null;
-		itemHostButtons?: ToolbarItem[];
-		passageHostButtons?: ToolbarItem[];
-		iifeBundleHost?: string;
-		preloadComponentTag?: string;
 		contentMaxWidthNoPassagePx?: number;
 		contentMaxWidthWithPassagePx?: number;
 		idBase?: string;
@@ -133,7 +100,7 @@
 					id={passageTabId}
 					type="button"
 					role="tab"
-					class={`pie-section-player-tab ${selectedTab === "passage" ? "pie-section-player-tab--active" : ""} passage-label`}
+					class={`pie-section-player-tab ${selectedTab === "passage" ? "pie-section-player-tab--active" : ""}`}
 					data-pie-purpose="passage-label"
 					aria-controls={passagePanelId}
 					aria-selected={selectedTab === "passage"}
@@ -148,7 +115,7 @@
 					id={itemsTabId}
 					type="button"
 					role="tab"
-					class={`pie-section-player-tab ${selectedTab === "items" ? "pie-section-player-tab--active" : ""} item-label`}
+					class={`pie-section-player-tab ${selectedTab === "items" ? "pie-section-player-tab--active" : ""}`}
 					data-pie-purpose="item-label"
 					aria-controls={itemsPanelId}
 					aria-selected={selectedTab === "items"}
@@ -169,23 +136,7 @@
 				aria-labelledby={passageTabId}
 				hidden={selectedTab !== "passage"}
 			>
-				<pie-section-player-passages-pane
-					compositionModel={layoutModel.compositionModel}
-					passages={layoutModel.passages}
-					elementsLoaded={layoutModel.paneElementsLoaded}
-					resolvedPlayerEnv={layoutModel.resolvedPlayerEnv}
-					resolvedPlayerAttributes={layoutModel.resolvedPlayerAttributes}
-					resolvedPlayerProps={layoutModel.resolvedPlayerProps}
-					baseHeadingLevel={layoutModel.baseHeadingLevel}
-					playerStrategy={layoutModel.playerStrategy}
-					passageToolbarTools={passageToolbarTools}
-					toolRegistry={toolRegistry || layoutModel.toolRegistry}
-					hostButtons={
-						passageHostButtons.length > 0
-							? passageHostButtons
-							: layoutModel.passageHostButtons
-					}
-				></pie-section-player-passages-pane>
+				<pie-section-player-passages-pane></pie-section-player-passages-pane>
 			</div>
 		{/if}
 
@@ -196,28 +147,7 @@
 			aria-labelledby={hasPassages ? itemsTabId : undefined}
 			hidden={hasPassages && selectedTab !== "items"}
 		>
-			<pie-section-player-items-pane
-				items={layoutModel.items}
-				compositionModel={layoutModel.compositionModel}
-				resolvedPlayerEnv={layoutModel.resolvedPlayerEnv}
-				resolvedPlayerAttributes={layoutModel.resolvedPlayerAttributes}
-				resolvedPlayerProps={layoutModel.resolvedPlayerProps}
-				baseHeadingLevel={layoutModel.baseHeadingLevel}
-				playerStrategy={layoutModel.playerStrategy}
-				itemToolbarTools={itemToolbarTools}
-				toolRegistry={toolRegistry || layoutModel.toolRegistry}
-				hostButtons={
-					itemHostButtons.length > 0 ? itemHostButtons : layoutModel.itemHostButtons
-				}
-				iifeBundleHost={iifeBundleHost}
-				preloadedRenderables={layoutModel.preloadedRenderables}
-				preloadedRenderablesSignature={layoutModel.preloadedRenderablesSignature}
-				{preloadComponentTag}
-				preloadEnabled={layoutModel.preloadEnabled}
-				onelements-loaded-change={layoutModel.onItemsPaneElementsLoaded}
-				onelement-preload-retry={layoutModel.onItemsPanePreloadRetry}
-				onelement-preload-error={layoutModel.onItemsPanePreloadError}
-			></pie-section-player-items-pane>
+			<pie-section-player-items-pane></pie-section-player-items-pane>
 		</div>
 	</div>
 </div>

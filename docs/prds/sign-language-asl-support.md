@@ -53,7 +53,7 @@ Confluence counterparts, added 2026-08-26 — this PRD and these pages had no li
 Deaf and hard-of-hearing learners need item language delivered in sign language. PIE has the vocabulary for this and none of the behavior:
 
 - `CatalogType` in `AccessibilityCatalogResolver` already listed `"sign-language"`, but before this work nothing rendered it: the only consumer of `getAlternative()` was `TTSService`, for `spoken`. Section-player now calls it for `sign-language` too — see the implementation note above.
-- `QTI_STANDARD_ACCESS_FEATURES` already lists `signLanguage`, `signLanguageInterpretation`, and `visualLanguage`, and the `deafHardOfHearing` example profile lists `signLanguage` and `visualLanguage` (not `signLanguageInterpretation`) — but no tool declares those `pnpSupportIds`, so no PNP support activates anything.
+- The toolkit's reference vocabulary, since removed, listed `signLanguage`, `signLanguageInterpretation`, and `visualLanguage`, but no tool declared those `pnpSupportIds`, so no PNP support activated anything.
 - `CatalogCard.content` is a flat `string`. A signing video needs more than one URL.
 
 The gap is visible in real content. Learnosity items in the ETL playground carry ASL video and render it in the Learnosity view; the PIE view of the same item shows the multiple-choice question with no video, because nothing translates that content into a PIE-renderable alternate representation.
@@ -74,7 +74,7 @@ Four domain facts drive this contract. Getting them wrong produces the wrong arc
 
 This is why the accessibility catalog is the right rail: catalog cards attach to arbitrary content nodes through `data-catalog-idref`, they are additive to the English content rather than a substitute for it, and PIE already docks TTS this way. That parallel is the strongest evidence the model is right — authored `<speak>` SSML is item-level content that `SSMLExtractor` lifts into item catalogs and the toolkit plus policy decide whether to expose. Signing is the second instance of a shipped pattern, not a new one.
 
-`CatalogOwnerKind` is already `"global" | "passage" | "itemModel"`, so passage-scoped signing cards are structurally supported without new plumbing.
+A catalog owner's `ownerKind` is already `"global" | "passage" | "itemModel"`, so passage-scoped signing cards are structurally supported without new plumbing.
 
 ### The Import Invariant
 
@@ -122,7 +122,7 @@ Merging satisfies this trivially. Emitting both satisfies it only if assembly an
 
 Two things were being coupled that should not be. The card's `data-catalog-idref` says **what** the video translates; the layout says **where** it appears. With one signing video per item — which is what the content actually has — the region does not need to sit adjacent to a specific DOM node, so placement becomes a layout concern and presentation stays policy-driven rather than hard-coded.
 
-This also keeps the platform from limiting presentation. Because signing has a feature id, its availability *and* its presentation parameters can be set at host, district, test-administration, item, and student level through machinery that already exists — `settings.districtPolicy`, `settings.testAdministration`, `currentItemRef.settings.toolParameters`, and `personalNeedsProfile`. Only the parameter vocabulary is new; the seam is not.
+This also keeps the platform from limiting presentation. Because signing has a feature id, its availability *and* its presentation parameters can be set at host, district, test-administration, item, and student level through machinery that already exists — `settings.districtPolicy`, `settings.testAdministration`, an item's `settings.toolParameters`, and `personalNeedsProfile`. Only the parameter vocabulary is new; the seam is not.
 
 **Per content card, not section-wide.** An earlier draft said "the way the passage shell has one," which was underspecified: a passage sits *once* beside a column of items because a passage is genuinely shared across them, and a *section-wide* region would be the wrong shape for signing. What shipped is one region per content card — both `SectionItemCard.svelte` and `SectionPassageCard.svelte` render the same `SectionCardMediaSplit`, differing only in owner scope, and the registration declares `supportedLevels: ["item", "passage"]`. Passage-owned signing therefore renders today; it is not a separate placement and not pending release. An earlier revision of this paragraph said the region belonged in the item card only, which was true of the first cut and stopped being true on 2026-08-10.
 
@@ -324,7 +324,7 @@ QTI 3 is **inspiration, not an interop target.** PIE's catalog model borrows the
 | Media Fragments URI on the source | `fragment` | QTI 3 replaced APIP's separate start/end cue elements with fragment notation, letting one recording serve several nodes. |
 | `data-catalog-idref` docking, conventionally on a hidden docking div | `data-catalog-idref` | Already the same attribute PIE uses for TTS. |
 | APIP `signFileASL` / `signFileSignedEnglish` | catalog card + language | APIP's two sign types collapse into card language. Signed English is scoped out for MVP; see Open Questions. |
-| PNP 3.0 / AfA `signLanguage` | `PersonalNeedsProfile.supports` | Vocabulary already present in `pnp-standard-features.ts`. |
+| PNP 3.0 / AfA `sign-language` | `PersonalNeedsProfile.supports` | `signLanguage`, the sign-language tool's id: the AfA term, camelCased. |
 
 The table covers signing. It is not a survey of the catalog model, and two places where PIE's shape and the standard's diverge are recorded as open questions below rather than as mappings: QTI's `spoken` card may carry a pre-recorded audio file rather than SSML, and `ext:`-prefixed vendor support tokens have nowhere to land in a closed `CatalogType`. Neither is a defect in this design — nothing here promised to represent them — but both would surface the day something actually reads QTI, so they are written down while the reasoning is fresh.
 

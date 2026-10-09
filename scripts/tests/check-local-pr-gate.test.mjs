@@ -1,16 +1,32 @@
 import { describe, expect, test } from "bun:test";
 
 import { collectGateFailures } from "../check-local-pr-gate.mjs";
+import { LOCAL_GATE_E2E_SUITES } from "../lib/local-e2e-suites.mjs";
+
+/** Each suite as a build chained to its `:prebuilt` run, the shape the local gate splits. */
+function suiteScripts(suites) {
+	return Object.fromEntries(
+		suites.flatMap((suite) => [
+			[
+				`test:e2e:${suite}`,
+				`bun run build:e2e:${suite.split(":")[0]} && bun run test:e2e:${suite}:prebuilt`,
+			],
+			[`test:e2e:${suite}:prebuilt`, "bunx playwright test"],
+		]),
+	);
+}
 
 const basePackageJson = {
 	scripts: {
 		"verify:pre-commit":
-			"bun run check:changeset-patch-only && bun run check:local-pr-gate && bun run check:resolution-boundary && bun run check:deps && bun run check:package-metadata && bun run check:docs:publishable-packages && bun run check:svelte-runtime-deps && bun run check:custom-elements && bun run check:ce-define-safety && bun run check:speech-composition-purity && bun run check:source-exports && bun run check:consumer-boundaries && bun run check:scripts && bun run lint:biome && bun run check",
+			"bun run check:changeset-patch-only && bun run check:local-pr-gate && bun run check:resolution-boundary && bun run check:deps && bun run check:package-metadata && bun run check:docs:publishable-packages && bun run check:svelte-runtime-deps && bun run check:custom-elements && bun run check:ce-define-safety && bun run check:speech-composition-purity && bun run check:source-exports && bun run check:api-report && bun run check:consumer-boundaries && bun run check:scripts && bun run lint:biome && bun run check",
 		"verify:ci-lint-typecheck":
-			"bun run check:local-pr-gate && bun run check:resolution-boundary && bun run check:deps && bun run check:package-metadata && bun run check:docs:publishable-packages && bun run check:svelte-runtime-deps && bun run check:custom-elements && bun run check:ce-define-safety && bun run check:speech-composition-purity && bun run check:scripts && bun run build && bun run check:custom-elements:dist && bun run check:player-tool-boundaries && bun run check:bundle-safety && bun run check:publint && bun run check:types-publish && bun run check:svelte-type-imports && bun run check:pack-integrity && bun run check:node-consumer-imports && bun run check:consumer-boundaries && bun run lint:all",
+			"bun run check:local-pr-gate && bun run check:resolution-boundary && bun run check:deps && bun run check:package-metadata && bun run check:docs:publishable-packages && bun run check:svelte-runtime-deps && bun run check:custom-elements && bun run check:ce-define-safety && bun run check:speech-composition-purity && bun run check:api-report && bun run check:scripts && bun run build && bun run check:custom-elements:dist && bun run check:player-tool-boundaries && bun run check:bundle-safety && bun run check:publint && bun run check:types-publish && bun run check:svelte-type-imports && bun run check:pack-integrity && bun run check:node-consumer-imports && bun run check:consumer-boundaries && bun run lint:all",
 		"verify:local-pr":
-			"bun run check:changeset-patch-only && bun run verify:ci-lint-typecheck && bun run test:e2e:section-player:critical && bun run test:e2e:item-player:critical && bun run test:e2e:assessment-player",
+			"bun run check:changeset-patch-only && bun run verify:ci-lint-typecheck && bun run test:e2e:local-gate",
 		"verify:pre-push": "bun run verify:local-pr",
+		"test:e2e:local-gate": "bun ./scripts/run-local-e2e.mjs",
+		...suiteScripts(LOCAL_GATE_E2E_SUITES),
 	},
 };
 
@@ -78,14 +94,68 @@ describe("check-local-pr-gate policy", () => {
 		});
 
 		expect(failures).toContain(
-			'verify:local-pr is missing "bun run test:e2e:section-player:critical".',
+			'verify:local-pr is missing "bun run test:e2e:local-gate".',
 		);
-		expect(failures).toContain(
-			'verify:local-pr is missing "bun run test:e2e:item-player:critical".',
-		);
-		expect(failures).toContain(
-			'verify:local-pr is missing "bun run test:e2e:assessment-player".',
-		);
+	});
+
+	test("rejects a local e2e stage that drops a critical suite", () => {
+		const failures = collectGateFailures({
+			packageJson: basePackageJson,
+			lefthook: baseLefthook,
+			ciWorkflow: baseCiWorkflow,
+			prePushGate: basePrePushGate,
+			prePushHookScript: basePrePushHookScript,
+			localE2eSuites: LOCAL_GATE_E2E_SUITES.filter(
+				(suite) => suite !== "assessment-player",
+			),
+		});
+
+		expect(failures).toEqual([
+			'test:e2e:local-gate does not run "test:e2e:assessment-player".',
+		]);
+	});
+
+	test("rejects a suite script the local e2e stage cannot split into build and run", () => {
+		const packageJson = {
+			scripts: {
+				...basePackageJson.scripts,
+				"test:e2e:item-player:critical":
+					"bun run build:e2e:item-player && bunx playwright test",
+			},
+		};
+
+		const failures = collectGateFailures({
+			packageJson,
+			lefthook: baseLefthook,
+			ciWorkflow: baseCiWorkflow,
+			prePushGate: basePrePushGate,
+			prePushHookScript: basePrePushHookScript,
+		});
+
+		expect(failures).toEqual([
+			'test:e2e:item-player:critical must be "bun run build:e2e:<name> && bun run test:e2e:item-player:critical:prebuilt", so the local gate can build it once and run it concurrently.',
+		]);
+	});
+
+	test("rejects a local e2e stage that does not run the runner", () => {
+		const packageJson = {
+			scripts: {
+				...basePackageJson.scripts,
+				"test:e2e:local-gate": "bun run test:e2e:item-player:critical",
+			},
+		};
+
+		const failures = collectGateFailures({
+			packageJson,
+			lefthook: baseLefthook,
+			ciWorkflow: baseCiWorkflow,
+			prePushGate: basePrePushGate,
+			prePushHookScript: basePrePushHookScript,
+		});
+
+		expect(failures).toEqual([
+			'test:e2e:local-gate must run "bun ./scripts/run-local-e2e.mjs".',
+		]);
 	});
 
 	test("rejects a CI matrix that runs only the critical section-player subset", () => {
@@ -192,6 +262,9 @@ describe("check-local-pr-gate policy", () => {
 		);
 		expect(failures).toContain(
 			'verify:pre-commit is missing "bun run check:source-exports".',
+		);
+		expect(failures).toContain(
+			'verify:pre-commit is missing "bun run check:api-report".',
 		);
 		expect(failures).toContain(
 			'verify:pre-commit is missing "bun run check:consumer-boundaries".',

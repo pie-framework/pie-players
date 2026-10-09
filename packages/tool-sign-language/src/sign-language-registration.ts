@@ -4,7 +4,7 @@
  *
  * This is the first registration to live outside the composition package, and it
  * exists to prove the shape works from outside: it is authored against
- * `@pie-players/pie-assessment-toolkit/tools/internal`, the same entry point our
+ * `@pie-players/pie-assessment-toolkit/tools/registration`, the same entry point our
  * own registrations use, and section-player reaches it only through
  * `getToolsBySurface("content-media")`. Nothing in the player names signing, the
  * `signLanguage` support id, the `sign-language` catalog type or this package.
@@ -23,17 +23,17 @@
 
 import {
 	resolveToolTag,
-	type ToolComponentOverrides,
 	type ToolContentDependencyContext,
 	type ToolRegistration,
 	type ToolSurfaceRenderContext,
 	type ToolSurfaceRenderResult,
-} from "@pie-players/pie-assessment-toolkit/tools/internal";
+} from "@pie-players/pie-assessment-toolkit/tools/registration";
 import {
 	resolveSignLanguageContent,
 	SIGN_LANGUAGE_FEATURE_ID,
 	type ResolvedSignLanguageAlternate,
 } from "./sign-language-content.js";
+import { warnSignLanguageOnce } from "./sign-language-warnings.js";
 
 /**
  * Host surface this capability docks into: media beside a card's content.
@@ -47,6 +47,15 @@ export const CONTENT_MEDIA_SURFACE = "content-media";
 /** Element tag this package registers. A host may substitute its own. */
 export const SIGN_LANGUAGE_ELEMENT_TAG = "pie-tool-sign-language";
 
+/**
+ * The tag mapping for this capability, in the shape `setComponentOverrides`
+ * takes. The registration falls back to it, so installing it is optional; a
+ * host `toolTagMap` entry for the same id wins.
+ */
+export const SIGN_LANGUAGE_TOOL_TAG_MAP: Readonly<Record<string, string>> = {
+	[SIGN_LANGUAGE_FEATURE_ID]: SIGN_LANGUAGE_ELEMENT_TAG,
+};
+
 export const signLanguageRegistration: ToolRegistration = {
 	toolId: SIGN_LANGUAGE_FEATURE_ID,
 	name: "Sign Language",
@@ -56,8 +65,6 @@ export const signLanguageRegistration: ToolRegistration = {
 	// carry content nodes. No section-level answer: a section is a container, and
 	// its shared content is a passage or a rubric block that answers for itself.
 	supportedLevels: ["item", "passage"],
-
-	pnpSupportIds: [SIGN_LANGUAGE_FEATURE_ID],
 
 	activation: "region",
 	surfaces: [CONTENT_MEDIA_SURFACE],
@@ -78,38 +85,42 @@ export const signLanguageRegistration: ToolRegistration = {
 		const media = context.content as ResolvedSignLanguageAlternate | null;
 		// No content means the host asked before resolving, or resolved to nothing.
 		// Declining is the honest answer; an empty player is not.
-		if (!media) return null;
+		if (!media) {
+			warnSignLanguageOnce(
+				`render-without-content.${context.surface}`,
+				`Tool "${context.toolId}" rendered nothing into the "${context.surface}" surface: its render context carries no resolved signed alternate. Resolve requiresAuthoredContent first and render only when it returns content.`,
+			);
+			return null;
+		}
 
-		const componentOverrides =
-			(context.componentOverrides as ToolComponentOverrides | undefined) ?? {};
-		// This package registers its own element, so it supplies its own mapping
-		// rather than requiring the host to install one — but a host override still
-		// wins, which is how a deployment substitutes its own region component.
+		const componentOverrides = context.componentOverrides ?? {};
+		// A host override wins, which is how a deployment substitutes its own
+		// region component.
 		const tagName = resolveToolTag(context.toolId, {
 			...componentOverrides,
 			toolTagMap: {
-				[SIGN_LANGUAGE_FEATURE_ID]: SIGN_LANGUAGE_ELEMENT_TAG,
+				...SIGN_LANGUAGE_TOOL_TAG_MAP,
 				...componentOverrides.toolTagMap,
 			},
 		});
 		if (typeof customElements !== "undefined" && !customElements.get(tagName)) {
 			// Importing this package registers the element, so reaching here means a
 			// host mapped the id to an element it never defined.
+			warnSignLanguageOnce(
+				`undefined-tag.${tagName}`,
+				`Tool "${context.toolId}" renders <${tagName}>, which is undefined, so the "${context.surface}" surface stays empty. Define the element before the surface renders, or map the tool to a defined tag.`,
+			);
 			return null;
 		}
 
 		const element = document.createElement(tagName) as HTMLElement & {
 			media?: ResolvedSignLanguageAlternate | null;
-			ttsService?: unknown;
 		};
 		// Reads the context it is handed, never the one captured above: on a re-sync
 		// the host's context carries the freshly resolved card, and a learner who
 		// switched signed language must not keep watching the previous recording.
 		const applyProps = (current: ToolSurfaceRenderContext) => {
 			element.media = current.content as ResolvedSignLanguageAlternate | null;
-			// Signing playback and read-aloud must not run at once; the region needs
-			// the service to pause the other one.
-			element.ttsService = current.services.ttsService;
 		};
 		applyProps(context);
 		return {

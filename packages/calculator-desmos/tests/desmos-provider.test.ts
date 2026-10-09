@@ -96,14 +96,10 @@ function installDesmosStub(): CapturedConstructorCall[] {
 }
 
 describe("DesmosCalculatorProvider loading contract", () => {
-	test("preserves the legacy unkeyed Desmos load when no config is supplied", async () => {
-		const browser = installScriptLoadingBrowser();
+	test("refuses to load Desmos without a key", async () => {
+		installScriptLoadingBrowser();
 		const provider = new DesmosCalculatorProvider();
-		await provider.initialize();
-
-		const url = new URL(browser.getLoadedSrc());
-		expect(url.pathname).toBe("/api/v1.12/calculator.js");
-		expect(url.searchParams.has("apiKey")).toBe(false);
+		await expect(provider.initialize()).rejects.toThrow(/apiKey or proxyEndpoint/);
 	});
 
 	test("loads only the official v1.12 URL with the supplied key", async () => {
@@ -124,7 +120,7 @@ describe("DesmosCalculatorProvider loading contract", () => {
 			new Response(JSON.stringify({ apiKey: "runtime licensed key" }), {
 				status: 200,
 				headers: { "content-type": "application/json" },
-			})) as typeof fetch;
+			})) as unknown as typeof fetch;
 		try {
 			const provider = new DesmosCalculatorProvider();
 			await provider.initialize({ proxyEndpoint: "/runtime/desmos-key" });

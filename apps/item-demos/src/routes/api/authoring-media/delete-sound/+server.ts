@@ -3,7 +3,7 @@ import type { RequestHandler } from "./$types";
 import {
 	deleteStoredFile,
 	fileNameFromMediaUrl,
-} from "$lib/server/authoring-media-store";
+} from "#lib/server/authoring-media-store.js";
 
 export const POST: RequestHandler = async ({ request }) => {
 	const body = (await request.json().catch(() => ({}))) as { src?: string };

@@ -57,7 +57,6 @@ const dependencyContext = (
 		entity: itemWithCards(cards),
 	});
 	return {
-		featureId: granted ? AUDIO_TRANSCRIPT_FEATURE_ID : "",
 		catalogs: resolver
 			.forOwner({ ownerKind: "itemModel", itemId: "item-1" })
 			.snapshot(),
@@ -68,7 +67,7 @@ const dependencyContext = (
 const renderContext = (content: unknown, granted: boolean) =>
 	({
 		toolId: AUDIO_TRANSCRIPT_FEATURE_ID,
-		featureId: granted ? AUDIO_TRANSCRIPT_FEATURE_ID : "",
+		granted,
 		surface: CONTENT_LEAD_SURFACE,
 		content,
 		services: {

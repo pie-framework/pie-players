@@ -4,18 +4,21 @@
 		// Use light DOM so item-player/runtime styles can cascade into rendered item content.
 		shadow: "none",
 		props: {
-			assessmentId: { attribute: "assessment-id", type: "String" },
 			runtime: { type: "Object", reflect: false },
-			// Presentation flag: opt in to NDS icon buttons. Convenience
-			// attribute mirrored onto `runtime.ndsIcons` (runtime wins if both
-			// are set). Defaults to unset (plain <button>s).
+			// Presentation flag: opt in to NDS icon buttons. Unset renders plain
+			// <button>s.
 			ndsIcons: { attribute: "nds-icons", type: "Boolean" },
 			// Interface locale: the language the player renders its own UI in, as a
-			// BCP-47 tag. Convenience attribute mirrored onto `runtime.locale`
-			// (runtime wins if both are set). Unset renders `en-US`. Distinct
-			// from the authored content language, which travels on `env`.
+			// BCP-47 tag. Unset renders `en-US`. Distinct from the authored content
+			// language, which travels on `runtime.contentLanguage`.
 			locale: { attribute: "locale", type: "String" },
 			section: { type: "Object", reflect: false },
+			// The section's session, applied by the controller created for
+			// `section` in place of hydrating from the persistence strategy.
+			session: { type: "Object", reflect: false },
+			// The assessment entity whose `personalNeedsProfile` and `settings` the
+			// toolkit's tool policy reads, forwarded to the coordinator it builds.
+			assessment: { type: "Object", reflect: false },
 			sectionId: { attribute: "section-id", type: "String" },
 			attemptId: { attribute: "attempt-id", type: "String" },
 			iifeBundleHost: { attribute: "iife-bundle-host", type: "String" },
@@ -36,15 +39,6 @@
 				attribute: "tool-config-strictness",
 				type: "String",
 			},
-			onFrameworkError: { type: "Object", reflect: false },
-			// M6 canonical stage-change callback. Mirrors
-			// `runtime.onStageChange`; resolver picks runtime over prop.
-			onStageChange: { type: "Object", reflect: false },
-			// M6 canonical loading-complete callback. Mirrors
-			// `runtime.onLoadingComplete`; the kernel invokes it at the
-			// same emit point as `pie-loading-complete` so callback and
-			// event stay in lockstep per cohort.
-			onLoadingComplete: { type: "Object", reflect: false },
 			narrowLayoutBreakpoint: { attribute: "narrow-layout-breakpoint", type: "Number" },
 			contentMaxWidthNoPassage: {
 				attribute: "content-max-width-no-passage",
@@ -54,22 +48,10 @@
 				attribute: "content-max-width-with-passage",
 				type: "Number",
 			},
-			splitPaneMinRegionWidth: {
-				attribute: "split-pane-min-region-width",
-				type: "Number",
-			},
-			splitPaneInitialPassageWidth: {
-				attribute: "split-pane-initial-passage-width",
-				type: "Number",
-			},
-			splitPaneCollapseStrategy: {
-				attribute: "split-pane-collapse-strategy",
-				type: "String",
-			},
 		},
 		// The host methods, callable before the component mounts.
 		extend: (ElementClass) =>
-			coerceBooleanAttributes(withHostMethods(NULL_READS)(ElementClass)),
+			coerceBooleanAttributes(withHostMethods(null)(ElementClass)),
 	}}
 />
 
@@ -84,47 +66,46 @@
 	import "./section-player-passage-card-element.js";
 	import "./section-player-items-pane-element.js";
 	import "./section-player-passages-pane-element.js";
+	import { isOwnSectionPlayerEvent } from "./shared/section-player-own-event.js";
 	import SectionPlayerLayoutKernel from "./shared/SectionPlayerLayoutKernel.svelte";
-	import { mergeLayoutAttrsIntoRuntime } from "./shared/section-player-host-runtime.js";
-	import {
-		NULL_READS,
-		withHostMethods,
-	} from "./shared/layout-host-methods.js";
+	import { withHostMethods } from "./shared/layout-host-methods.js";
 	import SectionPlayerVerticalContent from "./shared/SectionPlayerVerticalContent.svelte";
-	import { createEventDispatcher } from "svelte";
 	import type {
-		FrameworkErrorModel,
 		ToolConfigStrictness,
 		ToolRegistry,
 		ToolbarItem,
 	} from "@pie-players/pie-assessment-toolkit";
-	import type { AssessmentSection } from "@pie-players/pie-players-shared/types";
 	import type {
-		RuntimeConfig,
-		StageChangeHandler,
-		LoadingCompleteHandler,
-	} from "@pie-players/pie-assessment-toolkit/runtime/internal";
+		AssessmentEntity,
+		AssessmentSection,
+		SectionControllerSessionState,
+	} from "@pie-players/pie-players-shared/types";
+	import {
+		resolveSectionId,
+		type RuntimeConfig,
+	} from "@pie-players/pie-assessment-toolkit/runtime/engine";
 	import type {
 		SectionPlayerRuntimeHostContract,
 		SectionPlayerSnapshot,
 	} from "../contracts/runtime-host-contract.js";
 	import type { SectionPlayerPolicies } from "../policies/types.js";
-	import { isTelemetryEnabled } from "../policies/index.js";
+	import { resolveSectionPlayerPolicies } from "../policies/index.js";
 	import type { SectionPlayerHostHooks } from "../contracts/host-hooks.js";
 	import {
 		clampNarrowBreakpoint,
 		createNarrowLayoutWatch,
-		getShellHostElement,
 		resolveContentMaxWidths,
 	} from "./shared/section-player-shell-layout.svelte.js";
+	import { getHostElementFromAnchor } from "./shared/host-element.js";
 
 
 	let {
-		assessmentId,
 		runtime = null as RuntimeConfig | null,
 		ndsIcons = undefined as boolean | undefined,
 		locale = "",
 		section = null as AssessmentSection | null,
+		session = null as SectionControllerSessionState | null,
+		assessment = null as AssessmentEntity | null,
 		sectionId = "",
 		attemptId = "",
 		iifeBundleHost,
@@ -139,32 +120,10 @@
 		policies = undefined as Partial<SectionPlayerPolicies> | undefined,
 		hooks = undefined as SectionPlayerHostHooks | undefined,
 		toolConfigStrictness = undefined as ToolConfigStrictness | undefined,
-		onFrameworkError = undefined as
-			| undefined
-			| ((model: FrameworkErrorModel) => void),
-		onStageChange = undefined as StageChangeHandler | undefined,
-		onLoadingComplete = undefined as LoadingCompleteHandler | undefined,
 		narrowLayoutBreakpoint = undefined as number | undefined,
 		contentMaxWidthNoPassage = undefined as number | undefined,
 		contentMaxWidthWithPassage = undefined as number | undefined,
-		splitPaneMinRegionWidth: _splitPaneMinRegionWidth = undefined as
-			| number
-			| undefined,
-		splitPaneInitialPassageWidth: _splitPaneInitialPassageWidth = undefined as
-			| number
-			| string
-			| undefined,
-		splitPaneCollapseStrategy: _splitPaneCollapseStrategy = "vertical" as
-			| "vertical"
-			| "tabbed"
-			| string,
 	} = $props();
-	// Fold the `nds-icons` convenience attribute into the runtime handed to
-	// the kernel (host `runtime.ndsIcons` still wins if both are set).
-	const kernelRuntime = $derived(
-		mergeLayoutAttrsIntoRuntime(runtime, { ndsIcons, locale }),
-	);
-	const dispatch = createEventDispatcher();
 	let anchor = $state<HTMLDivElement | null>(null);
 	let kernelRef = $state<SectionPlayerRuntimeHostContract | null>(null);
 	const instrumentationProvider = $derived.by(() =>
@@ -173,13 +132,8 @@
 			component: "pie-section-player-vertical",
 		}),
 	);
-	// Two-tier resolution for `onFrameworkError` is handled by the
-	// kernel's resolver (`resolveSectionPlayerRuntimeState` →
-	// `effectiveRuntime.onFrameworkError`); the CE forwards the
-	// top-level prop and `runtime` verbatim and the resolver picks
-	// `runtime.onFrameworkError` over `onFrameworkError`.
 
-	const hostElement = $derived.by(() => getShellHostElement(anchor));
+	const hostElement = $derived.by(() => getHostElementFromAnchor(anchor));
 
 	const clampedBreakpoint = $derived(
 		clampNarrowBreakpoint(narrowLayoutBreakpoint),
@@ -198,25 +152,14 @@
 		contentMaxWidths.withPassagePx,
 	);
 
-	function forward(event: Event) {
-		const customEvent = event as CustomEvent;
-		dispatch(customEvent.type, customEvent.detail);
-	}
+	const layoutElement = $host();
+	const forwardPreloadRetry = (detail: Record<string, unknown>) =>
+		layoutElement.dispatchEvent(new CustomEvent("element-preload-retry", { detail }));
+	const forwardPreloadError = (detail: Record<string, unknown>) =>
+		layoutElement.dispatchEvent(new CustomEvent("element-preload-error", { detail }));
 
 	export function getSnapshot(): SectionPlayerSnapshot | null {
 		return kernelRef?.getSnapshot?.() ?? null;
-	}
-
-	export function selectComposition(): SectionPlayerSnapshot["composition"] | null {
-		return kernelRef?.selectComposition?.() ?? null;
-	}
-
-	export function selectNavigation(): SectionPlayerSnapshot["navigation"] | null {
-		return kernelRef?.selectNavigation?.() ?? null;
-	}
-
-	export function selectReadiness(): SectionPlayerSnapshot["readiness"] | null {
-		return kernelRef?.selectReadiness?.() ?? null;
 	}
 
 	export function navigateTo(index: number): boolean {
@@ -240,7 +183,7 @@
 		// `policies.telemetry.enabled === false` skips instrumentation bridge
 		// setup entirely so hosts that opt out emit no `pie-section-*`
 		// telemetry events through the bridge.
-		if (!isTelemetryEnabled(policies)) return;
+		if (!resolveSectionPlayerPolicies(policies).telemetry.enabled) return;
 		const localHost = hostElement;
 		return attachInstrumentationEventBridge({
 			host: localHost,
@@ -249,11 +192,16 @@
 			eventMap: SECTION_INSTRUMENTATION_EVENT_MAP,
 			staticAttributes: {
 				instrumentationLayer: "section",
-				assessmentId,
-				sectionId,
+				assessmentId: runtime?.assessmentId,
+				sectionId: resolveSectionId({
+					sectionId,
+					section,
+					assessmentId: runtime?.assessmentId,
+				}),
 				attemptId: attemptId || undefined,
 			},
-			shouldTrackEvent: (event: Event) => event.target === localHost,
+			shouldTrackEvent: (event: Event) =>
+				isOwnSectionPlayerEvent(event, localHost),
 			dedupeWindowMs: 100,
 		});
 	});
@@ -262,9 +210,12 @@
 <div bind:this={anchor} class="pie-section-player-observability-anchor" aria-hidden="true"></div>
 <SectionPlayerLayoutKernel
 	bind:this={kernelRef}
-	{assessmentId}
-	runtime={kernelRuntime}
+	{runtime}
+	{ndsIcons}
+	{locale}
 	{section}
+	{session}
+	{assessment}
 	{sectionId}
 	{attemptId}
 	{iifeBundleHost}
@@ -279,30 +230,20 @@
 	{policies}
 	{hooks}
 	{toolConfigStrictness}
-	{onFrameworkError}
-	{onStageChange}
-	{onLoadingComplete}
+	onElementPreloadRetry={forwardPreloadRetry}
+	onElementPreloadError={forwardPreloadError}
 	sourceCe="pie-section-player-vertical"
 	host={hostElement}
 	playerActionConfig={{
 		stateKey: "__verticalAppliedParams",
 		includeSessionRefInState: false,
 	}}
-	on:element-preload-retry={forward}
-	on:element-preload-error={forward}
 	let:layoutModel
 >
 	<SectionPlayerVerticalContent
 		{layoutModel}
-		itemToolbarTools={layoutModel.itemToolbarTools}
-		passageToolbarTools={layoutModel.passageToolbarTools}
 		contentMaxWidthNoPassagePx={configuredContentMaxWidthNoPassagePx}
 		contentMaxWidthWithPassagePx={configuredContentMaxWidthWithPassagePx}
-		toolRegistry={layoutModel.toolRegistry}
-		itemHostButtons={layoutModel.itemHostButtons}
-		passageHostButtons={layoutModel.passageHostButtons}
-		{iifeBundleHost}
-		preloadComponentTag="pie-section-player-vertical"
 	/>
 </SectionPlayerLayoutKernel>
 

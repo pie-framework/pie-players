@@ -46,7 +46,7 @@ export default defineConfig({
 		minify: "esbuild",
 		sourcemap: false,
 		rollupOptions: {
-			external: ["@pie-players/pie-assessment-toolkit"],
+			external: [/^@pie-players\/pie-assessment-toolkit(?:\/|$)/],
 			output: {
 				format: "es",
 			},

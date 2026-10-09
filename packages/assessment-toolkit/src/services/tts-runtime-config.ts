@@ -1,5 +1,8 @@
 import type { TTSConfig } from "./TTSService.js";
-import type { TextToSpeechToolProviderConfig } from "./tools-config-normalizer.js";
+import type {
+	TextToSpeechToolProviderConfig,
+	ToolProviderConfig,
+} from "./tools-config-normalizer.js";
 import {
 	normalizeSREMathSpeechOptions,
 	type SREMathSpeechOptions,
@@ -46,9 +49,10 @@ export interface NormalizedTTSSpeedOption {
 }
 
 export interface TTSRuntimeSettings {
-	backend?: "browser" | "polly" | "google" | "server";
+	/** `browser` speaks through the Web Speech API; `server` through a TTS server. */
+	backend?: "browser" | "server";
+	/** The service behind a `server` backend. */
 	serverProvider?: "polly" | "google" | "custom";
-	provider?: "polly" | "google" | "custom";
 	engine?: "standard" | "neural";
 	sampleRate?: number;
 	format?: "mp3" | "ogg" | "pcm";
@@ -57,6 +61,15 @@ export interface TTSRuntimeSettings {
 	rate?: number;
 	pitch?: number;
 	apiEndpoint?: string;
+	/**
+	 * The host's locale, used for a read whose content names no language: it
+	 * drives text normalization and segmentation, is sent as `language` on the
+	 * `pie` transport and as `lang_id` on the `custom` transport when nothing
+	 * names a language, and a server given no voice picks one for it. The
+	 * content language a read resolves (markup `lang`, the tool's `language`,
+	 * the toolkit's `content-language`, then `lang_id`) wins over it.
+	 * `docs/architecture/internationalization.md#tts-language` is the contract.
+	 */
 	language?: string;
 	transportMode?: "pie" | "custom";
 	endpointMode?: "synthesizePath" | "rootPost";
@@ -71,6 +84,12 @@ export interface TTSRuntimeSettings {
 	validateEndpoint?: boolean;
 	cache?: boolean;
 	speedRate?: "slow" | "medium" | "fast";
+	/**
+	 * The custom transport's locale, sent on every read in place of the content
+	 * language. Where markup and the tool name no language it is also the read's
+	 * content language, so text processing and catalog lookups follow it. Leave
+	 * it unset to let content language reach the service.
+	 */
 	lang_id?: string;
 	/**
 	 * Optional inline TTS speed buttons.
@@ -111,11 +130,6 @@ export interface TTSRuntimeSettings {
 const toRecord = (value: unknown): Record<string, unknown> =>
 	value && typeof value === "object" ? (value as Record<string, unknown>) : {};
 
-const isServerBackend = (
-	backend: TTSRuntimeSettings["backend"],
-): backend is "polly" | "google" | "server" =>
-	backend === "polly" || backend === "google" || backend === "server";
-
 const withDefault = <T>(value: T | undefined, fallback: T): T =>
 	value === undefined ? fallback : value;
 
@@ -128,22 +142,11 @@ export const normalizeTTSLayoutMode = (
 		? (value as TTSLayoutMode)
 		: fallback;
 
-/** Legacy numeric helper defaults. Rendered controls add visible Normal separately. */
-export const DEFAULT_TTS_SPEED_OPTIONS = Object.freeze([0.8, 1.25]);
-
 const DEFAULT_TTS_SPEED_CONTROL_OPTIONS = Object.freeze([
 	{ rate: 0.8, label: "Slow", ariaLabel: "Slow speed" },
 	{ rate: 1, label: "Normal", ariaLabel: "Normal speed", default: true },
 	{ rate: 1.25, label: "Fast", ariaLabel: "Fast speed" },
 ] satisfies TTSSpeedOptionConfig[]);
-
-const normalizeSpeedRate = (entry: unknown): number | undefined => {
-	if (typeof entry !== "number" || !Number.isFinite(entry) || entry <= 0) {
-		return undefined;
-	}
-	const rounded = Math.round(entry * 100) / 100;
-	return rounded === 1 ? undefined : rounded;
-};
 
 const normalizeControlSpeedRate = (entry: unknown): number | undefined => {
 	if (typeof entry !== "number" || !Number.isFinite(entry) || entry <= 0) {
@@ -178,57 +181,6 @@ const normalizeSpeedAriaLabel = (
 	if (!ariaLabel) return formatSpeedAriaLabel(label, usedDefaultLabel);
 	if (ariaLabel.toLowerCase().includes(label.toLowerCase())) return ariaLabel;
 	return `${label} ${ariaLabel}`;
-};
-
-const normalizeTTSSpeedOptionConfig = (
-	entry: unknown,
-): TTSSpeedOption | undefined => {
-	if (typeof entry === "number") return normalizeSpeedRate(entry);
-	if (!entry || typeof entry !== "object" || Array.isArray(entry))
-		return undefined;
-	const record = entry as Record<string, unknown>;
-	const rate = normalizeSpeedRate(record.rate);
-	if (rate === undefined) return undefined;
-	const label = trimOptionalText(record.label);
-	const ariaLabel = trimOptionalText(record.ariaLabel);
-	return {
-		rate,
-		...(label ? { label } : {}),
-		...(ariaLabel ? { ariaLabel } : {}),
-	};
-};
-
-export const normalizeTTSSpeedOptionConfigs = (
-	value: unknown,
-): TTSSpeedOption[] => {
-	if (!Array.isArray(value)) return [...DEFAULT_TTS_SPEED_OPTIONS];
-	if (value.length === 0) return [];
-	const dedupedRates = new Set<number>();
-	const normalized: TTSSpeedOption[] = [];
-	for (const entry of value) {
-		const option = normalizeTTSSpeedOptionConfig(entry);
-		if (option === undefined) continue;
-		const rate = typeof option === "number" ? option : option.rate;
-		if (dedupedRates.has(rate)) continue;
-		dedupedRates.add(rate);
-		normalized.push(option);
-	}
-	return normalized.length ? normalized : [...DEFAULT_TTS_SPEED_OPTIONS];
-};
-
-/**
- * Resolves inline toolbar speed options from host config.
- * - Omitted/non-array: default speed buttons.
- * - Empty array: hide speed buttons.
- * - Arrays that sanitize to no valid values: default speed buttons.
- * - 1.0× is never shown as a discrete speed button.
- */
-export const normalizeTTSSpeedOptions = (value: unknown): number[] => {
-	if (!Array.isArray(value)) return [...DEFAULT_TTS_SPEED_OPTIONS];
-	if (value.length === 0) return [];
-	return normalizeTTSSpeedOptionConfigs(value).map((option) =>
-		typeof option === "number" ? option : option.rate,
-	);
 };
 
 export const normalizeTTSSpeedControlOptions = (
@@ -359,8 +311,7 @@ const applyRuntimeDefaults = (
 		...config,
 		layoutMode: normalizeTTSLayoutMode(config.layoutMode),
 	};
-	const backend = config.backend || "browser";
-	if (!isServerBackend(backend)) return withLayoutDefaults;
+	if (config.backend !== "server") return withLayoutDefaults;
 
 	const withServerDefaults: TTSRuntimeSettings = {
 		...withLayoutDefaults,
@@ -379,10 +330,9 @@ const applyRuntimeDefaults = (
 		language: withDefault(withLayoutDefaults.language, "en-US"),
 	};
 
-	if (backend === "polly") {
+	if (config.serverProvider === "polly") {
 		return {
 			...withServerDefaults,
-			defaultVoice: withDefault(withServerDefaults.defaultVoice, "Joanna"),
 			engine: withDefault(withServerDefaults.engine, "neural"),
 			format: withDefault(withServerDefaults.format, "mp3"),
 			speechMarksMode: withDefault(
@@ -392,53 +342,32 @@ const applyRuntimeDefaults = (
 		};
 	}
 
-	if (backend === "google") {
-		return {
-			...withServerDefaults,
-			defaultVoice: withDefault(
-				withServerDefaults.defaultVoice,
-				"en-US-Wavenet-A",
-			),
-		};
-	}
-
 	return withServerDefaults;
 };
 
+/**
+ * The runtime settings of a `textToSpeech` provider entry: its top-level keys
+ * with defaults applied. `enabled` and the runtime `provider` object belong to
+ * the tool registration and are dropped.
+ */
 export const resolveTTSRuntimeSettings = (
-	config: TextToSpeechToolProviderConfig | TTSRuntimeSettings | undefined,
+	config:
+		| TextToSpeechToolProviderConfig
+		| ToolProviderConfig
+		| TTSRuntimeSettings
+		| undefined,
 ): TTSRuntimeSettings => {
-	const configRecord = toRecord(config);
-	const settingsRecord = toRecord(configRecord.settings);
-	const { provider, ...merged } = { ...configRecord, ...settingsRecord };
-	// A runtime provider object in `provider` is for the tool registration; the
-	// runtime settings carry only a server provider id.
-	return applyRuntimeDefaults({
-		...merged,
-		...(typeof provider === "string" ? { provider } : {}),
-	} as TTSRuntimeSettings);
+	const {
+		enabled: _enabled,
+		provider: _provider,
+		...settings
+	} = toRecord(config);
+	return applyRuntimeDefaults(settings as TTSRuntimeSettings);
 };
 
 export const resolveTTSBackend = (
 	config: TTSRuntimeSettings,
 ): NonNullable<TTSRuntimeSettings["backend"]> => config.backend || "browser";
-
-export const resolveRuntimeProvider = (
-	config: TTSRuntimeSettings,
-	backend: NonNullable<TTSRuntimeSettings["backend"]>,
-): TTSRuntimeSettings["serverProvider"] => {
-	if (backend === "polly" || backend === "google") return backend;
-	if (backend === "server") {
-		return config.serverProvider || config.provider;
-	}
-	return config.serverProvider || config.provider;
-};
-
-export const resolveTransportMode = (
-	config: TTSRuntimeSettings,
-	runtimeProvider: TTSRuntimeSettings["serverProvider"],
-): NonNullable<TTSRuntimeSettings["transportMode"]> =>
-	config.transportMode || (runtimeProvider === "custom" ? "custom" : "pie");
 
 /**
  * The provider configuration built from host settings: the contract's portable
@@ -467,9 +396,11 @@ export type RuntimeTTSConfig = Pick<
 export const buildRuntimeTTSConfig = (
 	config: TTSRuntimeSettings,
 ): RuntimeTTSConfig => {
-	const backend = resolveTTSBackend(config);
-	const runtimeProvider = resolveRuntimeProvider(config, backend);
-	const transportMode = resolveTransportMode(config, runtimeProvider);
+	const runtimeProvider =
+		resolveTTSBackend(config) === "server" ? config.serverProvider : undefined;
+	const polly = runtimeProvider === "polly";
+	const transportMode =
+		config.transportMode || (runtimeProvider === "custom" ? "custom" : "pie");
 	const mathSpeech = normalizeSREMathSpeechOptions(config.mathSpeech);
 	const runtimeConfig: RuntimeTTSConfig = {
 		voice: config.defaultVoice,
@@ -478,16 +409,16 @@ export const buildRuntimeTTSConfig = (
 		providerOptions: {
 			...toRecord(config.providerOptions),
 			...(config.language ? { locale: config.language } : {}),
-			...(backend === "polly" && config.engine
+			...(polly && config.engine
 				? { engine: config.engine }
 				: {}),
-			...(backend === "polly" && typeof config.sampleRate === "number"
+			...(polly && typeof config.sampleRate === "number"
 				? { sampleRate: config.sampleRate }
 				: {}),
-			...(backend === "polly" && config.format
+			...(polly && config.format
 				? { format: config.format }
 				: {}),
-			...(backend === "polly"
+			...(polly
 				? {
 						speechMarkTypes:
 							config.speechMarksMode === "word+sentence"

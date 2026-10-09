@@ -5,7 +5,7 @@ of an item, docked beside its content.
 
 This package is also the worked example of a capability contributed entirely from
 outside the player. It is authored against
-`@pie-players/pie-assessment-toolkit/tools/internal` — the same entry point the
+`@pie-players/pie-assessment-toolkit/tools/registration` — the same entry point the
 packaged registrations use — and `@pie-players/pie-section-player` reaches it only
 through `ToolRegistry.getToolsBySurface("content-media")`. No package in the player
 names signing, the `signLanguage` support id, the `sign-language` catalog type or
@@ -62,9 +62,9 @@ is never substituted.
 ## The element
 
 `<pie-tool-sign-language>` — open shadow root, mounted by the registration's
-`renderSurface`, never authored directly. Props are `media` (a resolved
-alternate) and `ttsService`; signing playback and read-aloud pause each other, and
-the action the learner just took wins.
+`renderSurface`, never authored directly. Its prop is `media` (a resolved
+alternate); read-aloud comes from the toolkit runtime context. Signing playback and
+read-aloud pause each other, and the action the learner just took wins.
 
 Sizing is driven by the recording's own frame shape, because signing needs height
 for hands and face. Host overrides:

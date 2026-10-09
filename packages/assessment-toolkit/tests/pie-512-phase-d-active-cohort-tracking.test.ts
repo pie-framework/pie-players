@@ -22,10 +22,9 @@ import {
  *
  * These tests pin Phase D's coordinator-side behavior precisely, using
  * the synthetic-controller harness pattern from
- * `toolkit-coordinator-section-events.test.ts`. They assume the runtime
- * call signature ignores any `sectionId` / `attemptId` arg (back-compat
- * tolerance for hosts that still pass them) and binds purely against the
- * coordinator's active cohort.
+ * `toolkit-coordinator-section-events.test.ts`. Subscriptions take no
+ * `sectionId` / `attemptId` and bind purely against the coordinator's
+ * active cohort.
  */
 
 type ControllerHarness = {
@@ -765,6 +764,122 @@ describe("PIE-512 Phase D: subscribeSectionEvents follows the active cohort", ()
 			"content-loaded",
 			"content-loaded",
 			"section-loading-complete",
+		]);
+	});
+
+	test("subscribing while the next section starts binds when it becomes active", async () => {
+		const controllerA = createTestController();
+		const controllerB = createTestController();
+		const releaseB = createDeferred();
+		const coordinator = new ToolkitCoordinator({
+			assessmentId: "phase-d-subscribe-during-switch",
+			lazyInit: true,
+		});
+		await coordinator.getOrCreateSectionController({
+			sectionId: "section-A",
+			attemptId: ATTEMPT_ID,
+			createDefaultController: () => controllerA.handle,
+		});
+		const pendingB = coordinator.getOrCreateSectionController({
+			sectionId: "section-B",
+			attemptId: ATTEMPT_ID,
+			createDefaultController: async () => {
+				await releaseB.promise;
+				return controllerB.handle;
+			},
+		});
+
+		const received: SectionControllerEvent[] = [];
+		coordinator.subscribeItemEvents({
+			eventTypes: ["item-selected"],
+			listener: (event) => received.push(event),
+		});
+		controllerA.emit(itemSelectedEvent("from-a-while-b-starts"));
+		releaseB.resolve();
+		await pendingB;
+		controllerB.emit(itemSelectedEvent("from-b"));
+
+		expect(received.map((event) => (event as { currentItemId?: string }).currentItemId)).toEqual([
+			"from-b",
+		]);
+	});
+
+	test("a section that fails to start delivers its section-error to the host's subscriptions", async () => {
+		const controllerA = createTestController();
+		const failure = new Error("section B failed to start");
+		const coordinator = new ToolkitCoordinator({
+			assessmentId: "phase-d-start-failure-reaches-subscribers",
+			lazyInit: true,
+		});
+		await coordinator.getOrCreateSectionController({
+			sectionId: "section-A",
+			attemptId: ATTEMPT_ID,
+			createDefaultController: () => controllerA.handle,
+		});
+		const received: SectionControllerEvent[] = [];
+		coordinator.subscribeSectionLifecycleEvents({
+			listener: (event) => received.push(event),
+		});
+
+		await expect(
+			coordinator.getOrCreateSectionController({
+				sectionId: "section-B",
+				attemptId: ATTEMPT_ID,
+				createDefaultController: () => ({
+					...createTestController().handle,
+					initialize: async () => {
+						throw failure;
+					},
+				}),
+			}),
+		).rejects.toBe(failure);
+
+		expect(received).toEqual([
+			expect.objectContaining({
+				type: "section-error",
+				source: "section-runtime",
+				error: failure,
+			}),
+		]);
+	});
+
+	test("returning to a section that fails to update delivers its section-error to the host's subscriptions", async () => {
+		const controllerA = createTestController();
+		const controllerB = createTestController();
+		const failure = new Error("section A failed to update");
+		const coordinator = new ToolkitCoordinator({
+			assessmentId: "phase-d-return-failure-reaches-subscribers",
+			lazyInit: true,
+		});
+		await coordinator.getOrCreateSectionController({
+			sectionId: "section-A",
+			attemptId: ATTEMPT_ID,
+			createDefaultController: () => controllerA.handle,
+		});
+		await coordinator.getOrCreateSectionController({
+			sectionId: "section-B",
+			attemptId: ATTEMPT_ID,
+			createDefaultController: () => controllerB.handle,
+		});
+		const received: SectionControllerEvent[] = [];
+		coordinator.subscribeSectionLifecycleEvents({
+			eventTypes: ["section-error"],
+			listener: (event) => received.push(event),
+		});
+		controllerA.handle.updateInput = async () => {
+			throw failure;
+		};
+
+		await expect(
+			coordinator.getOrCreateSectionController({
+				sectionId: "section-A",
+				attemptId: ATTEMPT_ID,
+				createDefaultController: () => controllerA.handle,
+			}),
+		).rejects.toBe(failure);
+
+		expect(received).toEqual([
+			expect.objectContaining({ type: "section-error", error: failure }),
 		]);
 	});
 });

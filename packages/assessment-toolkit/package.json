@@ -21,13 +21,13 @@
 			"types": "./dist/index.d.ts",
 			"import": "./dist/index.js"
 		},
-		"./tools/client": {
-			"types": "./dist/tools/client.d.ts",
-			"import": "./dist/tools/client.js"
+		"./tools/registration": {
+			"types": "./dist/tools/registration.d.ts",
+			"import": "./dist/tools/registration.js"
 		},
-		"./tools/internal": {
-			"types": "./dist/tools/internal.d.ts",
-			"import": "./dist/tools/internal.js"
+		"./components/item-scope-element": {
+			"types": "./dist/components/item-scope-element.d.ts",
+			"import": "./dist/components/item-scope-element.js"
 		},
 		"./components/item-toolbar-element": {
 			"types": "./dist/components/item-toolbar-element.d.ts",
@@ -45,29 +45,13 @@
 			"types": "./dist/services/AccessibilityCatalogResolver.d.ts",
 			"import": "./dist/services/AccessibilityCatalogResolver.js"
 		},
-		"./services/pnp-standard-features": {
-			"types": "./dist/services/pnp-standard-features.d.ts",
-			"import": "./dist/services/pnp-standard-features.js"
-		},
-		"./services/I18nService": {
-			"types": "./dist/services/I18nService.d.ts",
-			"import": "./dist/services/I18nService.js"
-		},
 		"./runtime/engine": {
 			"types": "./dist/runtime/engine.d.ts",
 			"import": "./dist/runtime/engine.js"
 		},
-		"./runtime/internal": {
-			"types": "./dist/runtime/internal.d.ts",
-			"import": "./dist/runtime/internal.js"
-		},
 		"./policy/engine": {
 			"types": "./dist/policy/engine.d.ts",
 			"import": "./dist/policy/engine.js"
-		},
-		"./policy/internal": {
-			"types": "./dist/policy/internal.d.ts",
-			"import": "./dist/policy/internal.js"
 		}
 	},
 	"files": [
@@ -77,7 +61,7 @@
 	"scripts": {
 		"build": "rm -rf dist tsconfig.tsbuildinfo && tsc -p tsconfig.json && bun ./scripts/build-ce-components.mjs",
 		"dev": "tsc -p tsconfig.json --watch",
-		"typecheck": "tsc -p tsconfig.json --noEmit",
+		"typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.tests.json",
 		"lint": "biome lint .",
 		"check": "svelte-check --tsconfig ./tsconfig.json",
 		"test": "bun test"

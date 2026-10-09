@@ -46,3 +46,53 @@ export const segmentSentences = (
 	}
 	return parsed.length > 0 ? parsed : [{ text, offset: 0 }];
 };
+
+/**
+ * `text` in pieces of at most `maxLength` characters: whole sentences while they
+ * fit, a sentence too long for one piece cut at its last space that fits, and a
+ * word too long for one piece cut where the limit falls. Each piece is a trimmed
+ * substring of `text`, at its offset there.
+ */
+export const splitTextToLength = (
+	text: string,
+	maxLength: number,
+	options?: SentenceSegmentationOptions,
+): SentenceSegment[] => {
+	const limit = Math.max(1, Math.floor(maxLength));
+	const pieces: SentenceSegment[] = [];
+	let start = -1;
+	let end = -1;
+	const flush = () => {
+		if (start >= 0)
+			pieces.push({ text: text.slice(start, end), offset: start });
+		start = -1;
+	};
+	const append = (spanStart: number, spanEnd: number) => {
+		if (start >= 0 && spanEnd - start <= limit) {
+			end = spanEnd;
+			return;
+		}
+		flush();
+		let cursor = spanStart;
+		while (spanEnd - cursor > limit) {
+			const window = text.slice(cursor, cursor + limit + 1);
+			const space = window.search(/\s\S*$/);
+			const cut = space > 0 ? cursor + space : cursor + limit;
+			pieces.push({ text: text.slice(cursor, cut).trimEnd(), offset: cursor });
+			cursor = cut;
+			while (cursor < spanEnd && /\s/.test(text[cursor])) cursor++;
+		}
+		if (cursor < spanEnd) {
+			start = cursor;
+			end = spanEnd;
+		}
+	};
+	for (const sentence of segmentSentences(text, options)) {
+		const leading = sentence.text.search(/\S/);
+		if (leading === -1) continue;
+		const spanStart = sentence.offset + leading;
+		append(spanStart, sentence.offset + sentence.text.trimEnd().length);
+	}
+	flush();
+	return pieces;
+};

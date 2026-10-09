@@ -4,7 +4,7 @@ import {
 	resolveToolTag,
 	type ToolbarContext,
 	type ToolContext,
-} from "@pie-players/pie-assessment-toolkit/tools/internal";
+} from "@pie-players/pie-assessment-toolkit/tools/registration";
 import { resolveInterfaceI18n } from "@pie-players/pie-players-shared/i18n/provider";
 import { createPackagedToolRegistry } from "../src/packaged-capability-composition.js";
 import { PACKAGED_TOOL_TAG_MAP } from "../src/packaged-capability-composition.js";
@@ -87,10 +87,12 @@ describe("packaged tool tag map", () => {
 				{},
 				{
 					toolTagMap: PACKAGED_TOOL_TAG_MAP,
-					toolComponentFactory: ({ tagName }) => {
-						const out = document.createElement(tagName) as any;
-						out.setAttribute("data-factory", "yes");
-						return out;
+					toolComponentFactories: {
+						calculator: ({ tagName }) => {
+							const out = document.createElement(tagName) as any;
+							out.setAttribute("data-factory", "yes");
+							return out;
+						},
 					},
 				},
 			),
@@ -100,18 +102,8 @@ describe("packaged tool tag map", () => {
 });
 
 describe("createPackagedToolRegistry component overrides", () => {
-	test("selects the provider-specific packaged calculator tag", () => {
+	test("renders the one packaged calculator tag", () => {
 		const defaultRegistry = createPackagedToolRegistry();
-		const geogebraRegistry = createPackagedToolRegistry({
-			calculatorProviderConfig: {
-				provider: { id: "calculator-geogebra" },
-			},
-		});
-		const cortexRegistry = createPackagedToolRegistry({
-			calculatorProviderConfig: {
-				provider: { id: "calculator-cortex" },
-			},
-		});
 		const toolbarContext: ToolbarContext = {
 			scope: { level: "item", scopeId: "item-1", itemId: "item-1" },
 			itemId: "item-1",
@@ -138,8 +130,6 @@ describe("createPackagedToolRegistry component overrides", () => {
 			);
 
 		expect(renderTag(defaultRegistry)).toBe("pie-tool-calculator");
-		expect(renderTag(geogebraRegistry)).toBe("pie-tool-calculator-geogebra");
-		expect(renderTag(cortexRegistry)).toBe("pie-tool-calculator-cortex");
 	});
 
 	test("applies custom tool tag map during toolbar render", () => {

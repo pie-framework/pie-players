@@ -5,13 +5,12 @@ import {
 	LazyCalculatorToolProvider,
 	type LazyCalculatorProviderDefinition,
 } from "./LazyCalculatorToolProvider.js";
-import type { ToolProviderCapabilities } from "@pie-players/pie-assessment-toolkit/tools/internal";
+import type { ToolProviderCapabilities } from "@pie-players/pie-assessment-toolkit/tools/registration";
 
 /** Provider initialization is the provider-neutral calculator contract. */
 export type DesmosToolProviderConfig = CalculatorProviderInit;
 
 export class DesmosToolProvider extends LazyCalculatorToolProvider<DesmosToolProviderConfig> {
-	readonly providerId = "desmos-calculator";
 	readonly providerName = "Desmos Calculator";
 	readonly version = "1.12";
 	readonly requiresAuth = true;

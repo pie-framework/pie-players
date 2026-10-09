@@ -24,10 +24,10 @@ describe("ToolkitCoordinator tool ids without a registry", () => {
 			tools: { providers: { textToSpeech: { enabled: true } } },
 		} as never);
 
-		expect(() => coordinator.isToolEnabled("textToSpeech")).not.toThrow();
+		expect(() => coordinator.getToolConfig("textToSpeech")).not.toThrow();
 		expect(() => coordinator.getToolConfig("textToSpeech")).not.toThrow();
 		// An id nobody has ever shipped is equally unvalidatable here.
-		expect(() => coordinator.isToolEnabled("hostOwnedCapability")).not.toThrow();
+		expect(() => coordinator.getToolConfig("hostOwnedCapability")).not.toThrow();
 	});
 
 	test("a supplied registry still rejects an id it does not carry", () => {
@@ -44,24 +44,19 @@ describe("ToolkitCoordinator tool ids without a registry", () => {
 			toolRegistry: registry,
 		} as never);
 
-		expect(() => coordinator.isToolEnabled("textToSpeech")).not.toThrow();
-		expect(() => coordinator.isToolEnabled("notRegistered")).toThrow(
+		expect(() => coordinator.getToolConfig("textToSpeech")).not.toThrow();
+		expect(() => coordinator.getToolConfig("notRegistered")).toThrow(
 			/Unknown tool id "notRegistered"/,
 		);
 	});
 
-	test("the tts rename error survives an empty registry", () => {
+	test("an empty tool id is rejected even without a registry", () => {
 		const coordinator = new ToolkitCoordinator({
-			assessmentId: "registryless-tts",
+			assessmentId: "registryless-empty-id",
 			lazyInit: true,
 		});
 
-		// Checked before the registry, so a host migrating off the old key gets the
-		// migration message rather than silence.
-		expect(() => coordinator.isToolEnabled("tts")).toThrow(
-			/no longer supported/,
-		);
-		expect(() => coordinator.isToolEnabled("")).toThrow(/non-empty string/);
+		expect(() => coordinator.getToolConfig("")).toThrow(/non-empty string/);
 	});
 
 	test("the missing registry is reported once per coordinator, once known", () => {

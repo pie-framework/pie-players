@@ -1,43 +1,28 @@
 import { describe, expect, test } from "bun:test";
-// Host-facing TTS config helpers come from the public surface; the
-// registration-authoring resolvers come from `tools/internal`.
-import {
-	DEFAULT_TTS_SPEED_OPTIONS,
-	formatTTSSpeedOptionsAsText,
-	normalizeTTSSpeedOptions,
-	parseTTSSpeedOptionsFromText,
-} from "@pie-players/pie-assessment-toolkit";
 import {
 	buildRuntimeTTSConfig,
+	formatTTSSpeedOptionsAsText,
 	normalizeTTSLayoutMode,
 	normalizeTTSSpeedControlOptions,
+	parseTTSSpeedOptionsFromText,
 	resolveTTSHostToolbarLayout,
 	resolveTTSLayoutMode,
-	resolveRuntimeProvider,
-	resolveTTSBackend,
 	resolveTTSRuntimeSettings,
-	resolveTransportMode,
-} from "@pie-players/pie-assessment-toolkit/tools/internal";
+} from "@pie-players/pie-assessment-toolkit/tools/registration";
 import { ttsToolRegistration } from "../src/registrations/tts.js";
 
 describe("tts-runtime-config defaults", () => {
-	test("applies minimal Polly defaults for server-backed setup", () => {
+	test("applies minimal Polly defaults for a Polly server backend", () => {
 		const settings = resolveTTSRuntimeSettings({
 			enabled: true,
-			backend: "polly",
+			backend: "server",
+			serverProvider: "polly",
 			apiEndpoint: "/api/tts",
-		} as any);
-		const backend = resolveTTSBackend(settings);
-		const provider = resolveRuntimeProvider(settings, backend);
-		const transportMode = resolveTransportMode(settings, provider);
+		});
 		const runtimeConfig = buildRuntimeTTSConfig(settings);
 
-		expect(backend).toBe("polly");
-		expect(provider).toBe("polly");
-		expect(transportMode).toBe("pie");
-
+		expect(runtimeConfig.voice).toBeUndefined();
 		expect(runtimeConfig).toMatchObject({
-			voice: "Joanna",
 			rate: 1,
 			apiEndpoint: "/api/tts",
 			provider: "polly",
@@ -59,7 +44,8 @@ describe("tts-runtime-config defaults", () => {
 		const runtimeConfig = buildRuntimeTTSConfig(
 			resolveTTSRuntimeSettings({
 				enabled: true,
-				backend: "polly",
+				backend: "server",
+				serverProvider: "polly",
 				language: "es-ES",
 				providerOptions: { highlightMode: "word", locale: "fr-FR" },
 			} as any),
@@ -101,13 +87,11 @@ describe("tts-runtime-config defaults", () => {
 		const runtimeConfig = buildRuntimeTTSConfig(
 			resolveTTSRuntimeSettings({
 				enabled: true,
-				settings: {
-					mathSpeech: {
-						domain: "clearspeak",
-						style: "ImpliedTimes_MoreImpliedTimes:Paren_Silent",
-					},
+				mathSpeech: {
+					domain: "clearspeak",
+					style: "ImpliedTimes_MoreImpliedTimes:Paren_Silent",
 				},
-			} as any),
+			}),
 		);
 
 		expect(runtimeConfig.providerOptions).toMatchObject({
@@ -118,40 +102,16 @@ describe("tts-runtime-config defaults", () => {
 		});
 	});
 
-	test("settings.mathSpeech overrides top-level mathSpeech", () => {
-		const runtimeConfig = buildRuntimeTTSConfig(
-			resolveTTSRuntimeSettings({
-				enabled: true,
-				mathSpeech: { domain: "mathspeak", style: "brief" },
-				settings: {
-					mathSpeech: {
-						domain: "clearspeak",
-						style: "Paren_Silent",
-					},
-				},
-			} as any),
-		);
-
-		expect(runtimeConfig.providerOptions).toMatchObject({
-			mathSpeech: {
-				domain: "clearspeak",
-				style: "Paren_Silent",
-			},
-		});
-	});
-
 	test("forwards normalized math speech engineOptions", () => {
 		const runtimeConfig = buildRuntimeTTSConfig(
 			resolveTTSRuntimeSettings({
 				enabled: true,
-				settings: {
-					mathSpeech: {
-						domain: " clearspeak ",
-						style: " Paren_Silent ",
-						engineOptions: { subiso: "us" },
-					},
+				mathSpeech: {
+					domain: " clearspeak ",
+					style: " Paren_Silent ",
+					engineOptions: { subiso: "us" },
 				},
-			} as any),
+			}),
 		);
 
 		expect(runtimeConfig.providerOptions).toMatchObject({
@@ -166,18 +126,15 @@ describe("tts-runtime-config defaults", () => {
 	test("applies minimal Google defaults including apiEndpoint", () => {
 		const settings = resolveTTSRuntimeSettings({
 			enabled: true,
-			backend: "google",
-		} as any);
-		const backend = resolveTTSBackend(settings);
-		const provider = resolveRuntimeProvider(settings, backend);
+			backend: "server",
+			serverProvider: "google",
+		});
 		const runtimeConfig = buildRuntimeTTSConfig(settings);
 
-		expect(backend).toBe("google");
-		expect(provider).toBe("google");
 		expect(settings.apiEndpoint).toBe("/api/tts");
 
+		expect(runtimeConfig.voice).toBeUndefined();
 		expect(runtimeConfig).toMatchObject({
-			voice: "en-US-Wavenet-A",
 			rate: 1,
 			apiEndpoint: "/api/tts",
 			provider: "google",
@@ -195,7 +152,8 @@ describe("tts-runtime-config defaults", () => {
 	test("preserves explicit overrides over defaults", () => {
 		const settings = resolveTTSRuntimeSettings({
 			enabled: true,
-			backend: "polly",
+			backend: "server",
+			serverProvider: "polly",
 			apiEndpoint: "https://example.com/custom-tts",
 			defaultVoice: "Matthew",
 			rate: 1.25,
@@ -207,12 +165,9 @@ describe("tts-runtime-config defaults", () => {
 			endpointValidationMode: "none",
 			validateEndpoint: false,
 			includeAuthOnAssetFetch: true,
-		} as any);
-		const backend = resolveTTSBackend(settings);
-		const provider = resolveRuntimeProvider(settings, backend);
+		});
 		const runtimeConfig = buildRuntimeTTSConfig(settings);
 
-		expect(provider).toBe("polly");
 		expect(runtimeConfig).toMatchObject({
 			voice: "Matthew",
 			rate: 1.25,
@@ -232,38 +187,20 @@ describe("tts-runtime-config defaults", () => {
 		});
 	});
 
-	test("prefers explicit google backend over stale custom provider markers", () => {
-		const settings = resolveTTSRuntimeSettings({
-			enabled: true,
-			backend: "google",
-			serverProvider: "custom",
-			provider: "custom",
-		} as any);
-		const backend = resolveTTSBackend(settings);
-		const provider = resolveRuntimeProvider(settings, backend);
-		const runtimeConfig = buildRuntimeTTSConfig(settings);
+	test("a browser backend carries no server provider or Polly options", () => {
+		const runtimeConfig = buildRuntimeTTSConfig(
+			resolveTTSRuntimeSettings({
+				enabled: true,
+				backend: "browser",
+				serverProvider: "polly",
+				engine: "neural",
+			}),
+		);
 
-		expect(backend).toBe("google");
-		expect(provider).toBe("google");
-		expect(runtimeConfig.provider).toBe("google");
+		expect(runtimeConfig.provider).toBeUndefined();
 		expect(runtimeConfig.transportMode).toBe("pie");
-	});
-
-	test("prefers explicit polly backend over stale custom provider markers", () => {
-		const settings = resolveTTSRuntimeSettings({
-			enabled: true,
-			backend: "polly",
-			serverProvider: "custom",
-			provider: "custom",
-		} as any);
-		const backend = resolveTTSBackend(settings);
-		const provider = resolveRuntimeProvider(settings, backend);
-		const runtimeConfig = buildRuntimeTTSConfig(settings);
-
-		expect(backend).toBe("polly");
-		expect(provider).toBe("polly");
-		expect(runtimeConfig.provider).toBe("polly");
-		expect(runtimeConfig.transportMode).toBe("pie");
+		expect(runtimeConfig.providerOptions).not.toHaveProperty("engine");
+		expect(runtimeConfig.providerOptions).not.toHaveProperty("speechMarkTypes");
 	});
 
 	test("defaults layout mode to left-aligned", () => {
@@ -323,54 +260,6 @@ describe("tts-runtime-config defaults", () => {
 			resolveTTSLayoutMode({ layoutMode: "not-a-layout" as any } as any),
 		).toBe("left-aligned");
 	});
-
-	test("settings.layoutMode overrides top-level layoutMode when both are provided", () => {
-		const settings = resolveTTSRuntimeSettings({
-			enabled: true,
-			layoutMode: "reserved-row",
-			settings: {
-				layoutMode: "floating-overlay",
-			},
-		} as any);
-		expect(resolveTTSLayoutMode(settings)).toBe("floating-overlay");
-	});
-});
-
-describe("normalizeTTSSpeedOptions", () => {
-	test("defaults when omitted or non-array", () => {
-		expect(normalizeTTSSpeedOptions(undefined)).toEqual([
-			...DEFAULT_TTS_SPEED_OPTIONS,
-		]);
-		expect(normalizeTTSSpeedOptions("nope")).toEqual([
-			...DEFAULT_TTS_SPEED_OPTIONS,
-		]);
-	});
-
-	test("returns empty array for explicit empty input", () => {
-		expect(normalizeTTSSpeedOptions([])).toEqual([]);
-	});
-
-	test("dedupes and excludes 1.0, preserving order", () => {
-		expect(normalizeTTSSpeedOptions([2, 1, 1.5, 2, 0.8])).toEqual([
-			2, 1.5, 0.8,
-		]);
-	});
-
-	test("falls back to defaults when only invalid or 1.0 remain", () => {
-		expect(normalizeTTSSpeedOptions([1, "x", -1])).toEqual([
-			...DEFAULT_TTS_SPEED_OPTIONS,
-		]);
-	});
-
-	test("extracts rates from object-form options for public numeric compatibility", () => {
-		expect(
-			normalizeTTSSpeedOptions([
-				{ rate: 0.8, label: "Slow" },
-				{ rate: 1.5, label: "Fast" },
-				{ rate: 1.5, label: "Duplicate fast" },
-			]),
-		).toEqual([0.8, 1.5]);
-	});
 });
 
 describe("normalizeTTSSpeedControlOptions", () => {
@@ -387,8 +276,7 @@ describe("normalizeTTSSpeedControlOptions", () => {
 		]);
 	});
 
-	test("keeps numeric compatibility helpers separate from rendered radio options", () => {
-		expect(normalizeTTSSpeedOptions([0.8, 1, 1.25])).toEqual([0.8, 1.25]);
+	test("adds Normal to host rates that omit it", () => {
 		expect(normalizeTTSSpeedControlOptions([0.8, 1.25])).toEqual([
 			{ rate: 0.8, label: "0.8x", ariaLabel: "Speed 0.8x", isDefault: false },
 			{
@@ -496,10 +384,8 @@ describe("runtime provider object in the provider slot", () => {
 		const initConfig =
 			ttsToolRegistration.provider?.getInitConfig?.(objectProviderConfig);
 
-		expect(settings.provider).toBeUndefined();
-		expect(resolveRuntimeProvider(settings, "server")).toBeUndefined();
+		expect(settings).not.toHaveProperty("provider");
 		expect(runtimeConfig.provider).toBeUndefined();
-		expect(initConfig?.serverProvider).toBeUndefined();
 		expect(initConfig?.provider).toBeUndefined();
 		expect(
 			ttsToolRegistration.provider?.getAuthFetcher?.(objectProviderConfig),
@@ -515,10 +401,8 @@ describe("runtime provider object in the provider slot", () => {
 		const runtimeConfig = buildRuntimeTTSConfig(settings);
 		const initConfig = ttsToolRegistration.provider?.getInitConfig?.(config);
 
-		expect(settings.provider).toBeUndefined();
-		expect(resolveRuntimeProvider(settings, "server")).toBe("custom");
+		expect(settings).not.toHaveProperty("provider");
 		expect(runtimeConfig.provider).toBe("custom");
-		expect(initConfig?.serverProvider).toBe("custom");
 		expect(initConfig?.provider).toBe("custom");
 		expect(ttsToolRegistration.provider?.getAuthFetcher?.(config)).toBe(
 			authFetcher,
@@ -530,14 +414,16 @@ describe("tts registration auth fetcher behavior", () => {
 	test("does not require authFetcher for init config resolution", () => {
 		const initConfig = ttsToolRegistration.provider?.getInitConfig?.({
 			enabled: true,
-			backend: "polly",
+			backend: "server",
+			serverProvider: "polly",
 			apiEndpoint: "/api/tts",
-		} as any);
+		});
 		const authFetcher = ttsToolRegistration.provider?.getAuthFetcher?.({
 			enabled: true,
-			backend: "polly",
+			backend: "server",
+			serverProvider: "polly",
 			apiEndpoint: "/api/tts",
-		} as any);
+		});
 
 		expect(initConfig).toBeDefined();
 		expect(authFetcher).toBeUndefined();

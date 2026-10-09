@@ -45,7 +45,7 @@
 		"build": "vite build",
 		"dev": "vite build --watch",
 		"test": "bun test",
-		"typecheck": "tsc --noEmit",
+		"typecheck": "tsc --noEmit && tsc -p tsconfig.tests.json",
 		"check": "tsc --noEmit",
 		"lint": "biome lint ."
 	},
@@ -60,7 +60,7 @@
 		"@biomejs/biome": "^2.5.15",
 		"typescript": "^5.9.3",
 		"vite": "^8.3.2",
-		"vite-plugin-dts": "^5.1.1"
+		"vite-plugin-dts": "^5.1.2"
 	},
 	"homepage": "https://github.com/pie-framework/pie-players/tree/master/packages/assessment-player#readme",
 	"bugs": {

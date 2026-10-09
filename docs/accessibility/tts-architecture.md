@@ -28,7 +28,6 @@ READMEs document package-specific APIs, configuration, and provider setup.
 - `ITTSProviderImplementation` - Playback implementation interface
 - `TTSProviderCapabilities` - Feature support descriptor
 - `TTSConfig` - Configuration types
-- `TTSFeature` - Feature union types
 
 **Dependencies:** None
 
@@ -54,8 +53,8 @@ READMEs document package-specific APIs, configuration, and provider setup.
 - `@pie-players/pie-players-shared` (for UI components, i18n)
 
 **TTS Features:**
-- Re-exports all types from `tts` for convenience
-- Includes `BrowserTTSProvider` as the default, always-available fallback
+- Re-exports the provider types from `tts`: `ITTSProvider`, `ITTSProviderImplementation`, `TTSSpeechSegment`, `TTSFeature` and `TTSProviderCapabilities`
+- Includes `BrowserTTSProvider` as the default fallback, available wherever the browser implements the Speech Synthesis API
 - Integrates with QTI 3.0 accessibility catalogs
 - **Authored SSML/catalog support** through accessibility catalogs and
   `data-catalog-idref`
@@ -170,29 +169,28 @@ See [Server-Side TTS Integration Guide](../../packages/tts-server-polly/examples
 
 ## Fallback Strategy
 
-The assessment toolkit **always includes** `BrowserTTSProvider` as a built-in fallback. This ensures TTS functionality is always available, even if optional providers fail.
+The assessment toolkit **always includes** `BrowserTTSProvider` as a built-in fallback. It needs no server and no configuration. It fails to initialize where the browser has no Speech Synthesis API, and it speaks only in the voices the device has installed.
 
 ### Recommended Pattern
 
 ```typescript
-import { TTSService, BrowserTTSProvider } from '@pie-players/pie-assessment-toolkit';
-import { ServerTTSProvider } from '@pie-players/tts-client-server';
+import { TTSService } from '@pie-players/pie-assessment-toolkit';
+import {
+  ServerTTSProvider,
+  type ServerTTSProviderConfig,
+} from '@pie-players/tts-client-server';
 
 const ttsService = new TTSService();
 
-try {
-  // Try to initialize server-side TTS (preferred for production)
-  await ttsService.initialize(new ServerTTSProvider(), {
-    apiEndpoint: '/api/tts',
-    provider: 'polly',
-    voice: 'Joanna',
-  });
-  console.log('Using server-side TTS with speech marks');
-} catch (error) {
-  // Fallback to browser TTS
-  console.warn('Server TTS unavailable, falling back to browser TTS', error);
-  await ttsService.initialize(new BrowserTTSProvider());
-}
+// Server-side TTS (preferred for production). `initialize` rejects when the
+// provider fails to start; falling back to browser speech is the toolkit
+// coordinator's job.
+const serverConfig: ServerTTSProviderConfig = {
+  apiEndpoint: '/api/tts',
+  provider: 'polly',
+  voice: 'Joanna',
+};
+await ttsService.initialize(new ServerTTSProvider(), serverConfig);
 ```
 
 When using toolkit `tools.providers.textToSpeech` configuration (instead of initializing
@@ -216,10 +214,9 @@ All TTS providers implement the same interfaces, allowing:
 - Custom provider implementations
 - A/B testing different providers
 
-### 3. **Always-Available Fallback**
-Browser TTS is built into the toolkit, ensuring:
-- TTS always works (no network required)
-- Offline capability
+### 3. **Built-in Fallback**
+Browser TTS is built into the toolkit, giving:
+- Offline capability, with no server
 - Zero additional configuration
 - Immediate availability during development
 
@@ -300,18 +297,22 @@ With normalization:
 
 #### Implementation in TTSService
 
-The `TTSService.buildPositionMap()` method delegates to text core helpers:
+`TTSService.buildPositionMap()` walks the content's flat tree, open shadow roots
+included, with the text core's `collectVisibleTextAndMap`. It normalizes the
+visible text the way the spoken text is normalized and maps each normalized
+position to its `{text node, offset}`.
 
-1. Takes the spoken text (already normalized)
-2. Extracts DOM text with `range.toString()`
-3. Normalizes DOM text the same way
-4. Builds a character-by-character map: `normalized position → {text node, offset}`
-5. Handles whitespace collapsing during mapping
+A word boundary resolves through that map to one range over the word's
+characters, spanning every text node the word covers, or one range per tree when
+it crosses a shadow boundary. `HighlightCoordinator.highlightTTSWord(ranges)`
+paints them; it is the one word-highlight call. Adjacent alphanumeric text nodes
+gain a space in the visible text, so a word an author split across inline
+elements is read as two ("Mis sissippi"): a deliberate trade, keeping words in
+neighbouring elements from running together at the cost of that split.
 
 #### Implementation in TTS Tools
 
-TTS tools should pass `contentElement` and let `TTSService` apply one shared normalization path.
-This keeps `speak()`, `speakRange()`, and toolbar-triggered flows aligned and avoids duplicate normalization logic.
+TTS tools pass the DOM they read, an element or a range, to `speak()`, so every read takes one normalization path.
 
 #### Common Pitfalls
 
@@ -324,7 +325,8 @@ This keeps `speak()`, `speakRange()`, and toolbar-triggered flows aligned and av
 
 When implementing TTS highlighting:
 
-1. Check console: `[TTSService] Text comparison: { match: true }`
+1. With `PIE_TTS_DEBUG=1` or `globalThis.__PIE_TTS_DEBUG__ = true`, check the
+   console: `[tts-service] Text comparison: { match: true }`
 2. Verify: `mapLengthMatchesSpoken: true`
 3. Test with content containing lots of whitespace
 4. Verify words highlight at correct positions, not ahead/behind
@@ -354,11 +356,12 @@ import type {
   ITTSProviderImplementation,
   TTSConfig,
   TTSProviderCapabilities,
-  TTSFeature
 } from '@pie-players/pie-tts';
 
 class MyTTSImpl implements ITTSProviderImplementation {
   onPlaybackStart?: () => void;
+
+  constructor(private readonly config: TTSConfig) {}
 
   async speak(text: string): Promise<void> {
     await myEngine.speak(text, {
@@ -370,6 +373,7 @@ class MyTTSImpl implements ITTSProviderImplementation {
   stop(): void { /* ... */ }
   isPlaying(): boolean { return false; }
   isPaused(): boolean { return false; }
+  updateSettings(settings: Partial<TTSConfig>): void { /* ... */ }
 }
 
 export class MyTTSProvider implements ITTSProvider {
@@ -381,8 +385,16 @@ export class MyTTSProvider implements ITTSProvider {
     return new MyTTSImpl(config);
   }
 
-  supportsFeature(feature: TTSFeature): boolean { /* ... */ }
-  getCapabilities(): TTSProviderCapabilities { /* ... */ }
+  getCapabilities(): TTSProviderCapabilities {
+    return {
+      supportsPause: true,
+      supportsResume: true,
+      supportsWordBoundary: false,
+      supportsVoiceSelection: false,
+      supportsRateControl: false,
+      supportsPitchControl: false,
+    };
+  }
   destroy(): void { /* ... */ }
 }
 ```
@@ -392,6 +404,15 @@ the native or media playback-start event—not when speech is merely queued. The
 toolkit uses that signal to move into playing state and begin highlighting only
 when output has actually started.
 
+`updateSettings` is required: the toolkit sends rate, pitch and voice changes
+through it, and each read's content language
+([TTS language](../architecture/internationalization.md#tts-language)). A `pause()` that lands before a
+speak's audio starts holds it until `resume()`.
+
+A provider declaring `maxTextLength` in its capabilities never receives longer
+text: the toolkit splits it at sentences, then words, then characters, and
+keeps word highlights on the visible text.
+
 ## QTI-Inspired Integration with Section Player
 
 The TTS system integrates seamlessly with QTI 3.0 accessibility catalogs through the **PIE Section Player**:
@@ -399,9 +420,14 @@ The TTS system integrates seamlessly with QTI 3.0 accessibility catalogs through
 ```javascript
 import '@pie-players/pie-section-player/components/section-player-splitpane-element';
 import { ToolkitCoordinator } from '@pie-players/pie-assessment-toolkit';
-import { createPackagedToolRegistry } from '@pie-players/pie-default-tool-loaders';
+import {
+  createPackagedToolRegistry,
+  DEFAULT_TOOL_MODULE_LOADERS,
+} from '@pie-players/pie-default-tool-loaders';
 
-const toolRegistry = createPackagedToolRegistry();
+const toolRegistry = createPackagedToolRegistry({
+  toolModuleLoaders: DEFAULT_TOOL_MODULE_LOADERS,
+});
 const coordinator = new ToolkitCoordinator({
   assessmentId: assessment.id,
   toolRegistry,
@@ -413,7 +439,7 @@ const coordinator = new ToolkitCoordinator({
     placement: { item: ['textToSpeech'], passage: ['textToSpeech'], section: [] },
     providers: {
       textToSpeech: {
-        settings: { backend: 'browser' },
+        backend: 'browser',
       },
     },
   },
@@ -565,4 +591,4 @@ All server providers follow the same pattern:
   - **tts-server-sc**: SchoolCity-backed reference implementation
   - **tts-client-server**: Browser client
 - **Pattern**: Try server-side TTS, fallback to browser TTS
-- **Benefit**: Always-working TTS with optional high-quality upgrades and precise word highlighting
+- **Benefit**: Browser speech when the server path fails, with optional high-quality voices and precise word highlighting

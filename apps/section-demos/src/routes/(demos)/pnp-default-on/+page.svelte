@@ -2,7 +2,7 @@
 	/**
 	 * Demo: PNP default-on (M8 PR 4 smoke fixture).
 	 *
-	 * The host never sets the `pnp-enforcement` attribute. Instead it
+	 * The host never sets `tools.pnpEnforcement`. Instead it
 	 * binds an `AssessmentEntity` that carries profile policy material via
 	 * `ToolkitCoordinator.updateAssessment(...)`. The coordinator's
 	 * narrow auto-on rule (see
@@ -74,8 +74,8 @@
 		const coord = detail?.coordinator ?? null;
 		toolkitCoordinator = coord;
 		if (!coord) return;
-		// Bind the profile-bearing assessment. With no `pnp-enforcement`
-		// attribute set on the layout CE, the coordinator's auto-on
+		// Bind the profile-bearing assessment. With no `tools.pnpEnforcement`
+		// in the layout CE's runtime, the coordinator's auto-on
 		// rule is what resolves `pnpEnforcement` to 'on' here.
 		coord.updateAssessment(assessmentEntity);
 		coord.onPolicyChange(() => refreshPolicySnapshot());
@@ -105,16 +105,16 @@
 			</div>
 			<p class="policy-snapshot-help">
 				Expected: <code>pnpEnforcement = "on"</code> as soon as the
-				toolkit binds the assessment, even though no
-				<code>pnp-enforcement</code> attribute is set on the player.
+				toolkit binds the assessment, even though the player's runtime
+				sets no <code>tools.pnpEnforcement</code>.
 			</p>
 		</div>
 
 		<pie-section-player-splitpane
 			runtime={ {
+				assessmentId: assessmentEntity.id,
 				tools: toolkitToolsConfig
 			} }
-			assessment-id={assessmentEntity.id}
 			{sectionId}
 			{attemptId}
 			section={data.section}

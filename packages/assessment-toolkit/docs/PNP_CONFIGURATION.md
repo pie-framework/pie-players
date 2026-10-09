@@ -1,23 +1,24 @@
 # PNP Configuration Guide
 
-This guide explains how integrators configure tool governance rules using QTI 3.0 Personal Needs Profiles (PNP) and PIE's assessment settings.
+This guide explains how integrators configure tool governance with a student's Personal Needs Profile (PNP), whose baseline is AfA PNP 3.0, and PIE's assessment settings.
 
 ## Overview
 
-Tool availability is determined by combining:
-1. **Student PNP profile** (QTI 3.0 standard) - Student's documented accessibility needs
-2. **District policy** (implementation-specific) - Institutional governance rules
-3. **Test administration** (implementation-specific) - Session-level operational control
-4. **Item settings** (QTI 3.0 standard) - Per-item requirements/restrictions
+Placement decides which tools a toolbar can show. Policy then reads four inputs, by tool id:
+1. **Student PNP profile** (AfA PNP 3.0) - Student's documented accessibility needs
+2. **District policy** (PIE extension) - Institutional governance rules
+3. **Test administration** (PIE extension) - Session-level operational control
+4. **Item settings** (PIE extension) - Per-item requirements and restrictions, applied on the item's own toolbar
+
+A grant (a profile support, a requirement or a test-administration override set to `true`) protects a placed tool from the registry's relevance filter and carries its `toolConfigs` parameters. Among the policy inputs, only a block removes a placed tool: a district block, an item restriction, a prohibited support, or an override set to `false`. A grant puts no unplaced tool on a toolbar.
 
 ## Data Structure Hierarchy
 
 ```
 AssessmentEntity
-├── personalNeedsProfile           # QTI 3.0: Student's PNP profile
-│   ├── supports: string[]         # Enabled accessibility features
-│   ├── prohibitedSupports: string[]
-│   └── activateAtInit: string[]
+├── personalNeedsProfile           # AfA PNP 3.0: Student's PNP profile
+│   ├── supports: string[]         # Granted support ids
+│   └── prohibitedSupports: string[]
 │
 └── settings: AssessmentSettings   # PIE extension
     ├── districtPolicy             # Institutional governance
@@ -25,7 +26,6 @@ AssessmentEntity
     │   └── requiredTools: string[]
     │
     ├── testAdministration         # Session control
-    │   ├── mode: "practice" | "test" | "benchmark"
     │   └── toolOverrides: Record<string, boolean>
     │
     └── toolConfigs                # Feature parameters by support id
@@ -33,43 +33,39 @@ AssessmentEntity
         └── textToSpeech: {...}
 
 AssessmentItemRef
-└── settings: ItemSettings         # Per-item rules
+└── settings: ItemSettings         # Per-item rules, registered by the item's <pie-item-scope>
     ├── requiredTools: string[]
     ├── restrictedTools: string[]
-    └── toolParameters: Record<string, any>
+    └── toolParameters: Record<string, Record<string, unknown>>
 ```
+
+Policy reads the profile of the bound assessment: the `assessment` property of a section player or toolkit that builds its coordinator, or `coordinator.updateAssessment` on a coordinator the host passes. A section carries no profile: a profile is learner data, and section content is shared by every learner. The section player warns once when a section carries one.
 
 ## Configuration Examples
 
-### 1. Student PNP Profile (QTI 3.0 Standard)
+### 1. Student PNP Profile (AfA PNP 3.0)
 
-The student's Personal Needs Profile is part of the QTI 3.0 `AssessmentEntity`:
+The student's Personal Needs Profile is part of the `AssessmentEntity`:
 
 ```typescript
 const assessment: AssessmentEntity = {
   id: "assessment-123",
   name: "Math Assessment",
 
-  // QTI 3.0: Student's documented accessibility needs
+  // Student's documented accessibility needs
   personalNeedsProfile: {
-    // Accessibility features this student is authorized to use
+    // Accessibility features this student is authorized to use, by tool id
     supports: [
-      "textToSpeech",      // QTI 3.0 standard
-      "magnification",     // QTI 3.0 standard
-      "calculator",        // QTI 3.0 standard
-      "highlighting",      // QTI 3.0 standard
-      "readingMask"        // QTI 3.0 standard
+      "textToSpeech",
+      "magnification",     // No packaged tool; reported as an unknown support id
+      "calculator",
+      "annotationToolbar",
+      "lineReader"
     ],
 
     // Features explicitly prohibited for this student
     prohibitedSupports: [
-      "answerMasking"      // Not allowed per IEP
-    ],
-
-    // Features to auto-activate at assessment start
-    activateAtInit: [
-      "textToSpeech",
-      "magnification"
+      "answerEliminator"   // Not allowed per IEP
     ]
   },
 
@@ -107,13 +103,7 @@ const assessment: AssessmentEntity = {
       // Required for all students in this district
       requiredTools: [
         "textToSpeech"     // District mandates TTS for all ELL students
-      ],
-
-      // Additional policies (extensible)
-      policies: {
-        allowTranslation: false,
-        proctorRequired: true
-      }
+      ]
     }
   }
 };
@@ -137,24 +127,17 @@ const assessment: AssessmentEntity = {
   name: "Chapter 5 Quiz",
 
   personalNeedsProfile: {
-    supports: ["calculator", "textToSpeech", "highlighting"]
+    supports: ["calculator", "textToSpeech", "annotationToolbar"]
   },
 
   settings: {
     testAdministration: {
-      // Testing mode
-      mode: "test",  // "practice" | "test" | "benchmark"
-
       // Session-specific overrides
       // Proctor can disable tools due to operational issues
       toolOverrides: {
         "textToSpeech": false,  // TTS disabled - audio equipment broken
         "calculator": true      // Calculator explicitly enabled
-      },
-
-      // Testing window
-      startDate: "2024-03-15T08:00:00Z",
-      endDate: "2024-03-15T10:00:00Z"
+      }
     }
   }
 };
@@ -163,13 +146,14 @@ const assessment: AssessmentEntity = {
 **Source**: Typically set by:
 - Test proctors/administrators
 - Testing center staff
-- Automated testing platform (practice vs. live)
+- Automated testing platform
 - Session management systems
 
 **Use Cases**:
 - Technical issues (TTS audio broken, disable for this session)
-- Practice mode (enable all tools for learning)
 - Test security (disable features for high-stakes tests)
+
+**Precedence**: `toolOverrides` is keyed by tool id. `false` withdraws the tool for the session, and only a district block outranks it. `true` grants it, below a district block, the item's `restrictedTools` and the profile's `prohibitedSupports`, and above item and district requirements and profile supports. When a restriction or prohibition withdraws a tool an override grants, the decision carries a `tool-policy.overrideBlocked` diagnostic naming the rule. The full order is district block, `false` override, item restriction, profile prohibition, `true` override, item requirement, district requirement, profile support. A `true` override is a grant like a PNP support: the entry carries `alwaysAvailable`, so the item toolbar's relevance check does not withdraw it.
 
 ### 4. Item-Level Settings (Content Requirements)
 
@@ -208,6 +192,14 @@ const itemRef: AssessmentItemRef = {
 };
 ```
 
+#### Scope of item settings
+
+An item's settings govern the decisions scoped to that item: its own item-level toolbar, and the feature decisions its content asks with the item's scope. They reach the coordinator through the item's `<pie-item-scope>`, whose `settings` property carries them. The section player fills it from each item's `AssessmentItemRef.settings`; a host composing its own item player sets it on the scope it wraps the player in. A host driving a coordinator without the elements files them with `coordinator.registerItemSettings(itemId, settings)`, under the item's canonical id, which is the id its item toolbar scopes decisions by. The call returns the function that withdraws them.
+
+Section-, assessment- and passage-level toolbars ignore item settings. Placement there is the host's choice for content every item shares, and the items on the page are not aggregated into it. When a mounted item's `restrictedTools` or `requiredTools` names a tool the placement puts on such a toolbar, the decision carries a `tool-policy.itemSettingNotApplied` diagnostic, whose details name the `itemId`, the `settings` keys and the `toolbarLevel`, and the coordinator logs a warning once per tool and item. Place the tool at item level to enforce the setting per item. An item whose decisions PNP enforcement leaves off raises no diagnostic.
+
+In auto-mode (no `pnpEnforcement` set), an item's settings turn enforcement on for the decisions scoped to that item, and for no others.
+
 **Source**: Typically configured by:
 - Assessment item authors
 - Content development teams
@@ -228,10 +220,15 @@ Here's a complete example showing how all levels interact:
 import {
   ToolkitCoordinator
 } from '@pie-players/pie-assessment-toolkit';
-import { createPackagedToolRegistry } from '@pie-players/pie-default-tool-loaders';
+import {
+  createPackagedToolRegistry,
+  DEFAULT_TOOL_MODULE_LOADERS,
+} from '@pie-players/pie-default-tool-loaders';
 
-// 1. Create tool registry
-const toolRegistry = createPackagedToolRegistry();
+// 1. Create tool registry; its loaders load each tool's element on first render
+const toolRegistry = createPackagedToolRegistry({
+  toolModuleLoaders: DEFAULT_TOOL_MODULE_LOADERS
+});
 
 // 2. Create coordinator with the registry, configured placements and tool providers
 const coordinator = new ToolkitCoordinator({
@@ -245,7 +242,8 @@ const coordinator = new ToolkitCoordinator({
     },
     providers: {
       textToSpeech: {
-        backend: "polly",
+        backend: "server",
+        serverProvider: "polly",
         defaultVoice: "Matthew",
         rate: 1.0,
         engine: "neural"
@@ -264,11 +262,10 @@ const assessment: AssessmentEntity = {
     supports: [
       "textToSpeech",
       "magnification",
-      "highlighting",
-      "readingMask",
+      "annotationToolbar",
+      "lineReader",
       "calculator"
-    ],
-    activateAtInit: ["textToSpeech", "magnification"]
+    ]
   },
 
   // District/institutional governance
@@ -284,7 +281,6 @@ const assessment: AssessmentEntity = {
 
     // Test administration session control
     testAdministration: {
-      mode: "test",
       toolOverrides: {
         // Proctor can make session-specific adjustments
       }
@@ -292,7 +288,7 @@ const assessment: AssessmentEntity = {
   }
 };
 
-// 4. Resolve tools for an item
+// 4. Resolve tools for an item's own toolbar
 const currentItem: AssessmentItemRef = {
   identifier: "item-1",
 
@@ -304,7 +300,8 @@ const currentItem: AssessmentItemRef = {
   }
 };
 coordinator.updateAssessment(assessment);
-coordinator.updateCurrentItemRef(currentItem);
+// The item's <pie-item-scope> does this when it mounts with `settings`.
+coordinator.registerItemSettings(currentItem.identifier, currentItem.settings!);
 
 const allowedToolIds = coordinator
   .decideToolPolicy({ level: "item", scope: { level: "item", scopeId: currentItem.identifier } })
@@ -315,14 +312,14 @@ console.log('Allowed tools:', allowedToolIds);
 //
 // Why?
 // - calculator: Blocked by district policy (#1)
-// - textToSpeech: Restricted for this item (#3), which outranks the district requirement (#5)
-// - annotationToolbar: Placed at item level; the "highlighting" support maps to it
-// - magnification: No registered tool claims it; the decision carries a
+// - textToSpeech: Restricted for this item (#3), which outranks the district requirement (#7)
+// - annotationToolbar: Placed at item level and granted by the profile
+// - magnification: No tool is registered under it; the decision carries a
 //   `tool-policy.unknownSupportId` diagnostic
-// - readingMask: Maps to lineReader, which this configuration places at passage level only
+// - lineReader: Granted, but this configuration places it at passage level only
 ```
 
-`settings.toolConfigs` holds feature parameters keyed by support id, and an item's `toolParameters` override them. A feature granted by a PNP support or a requirement carries them as its policy parameters (`ToolPolicyEntry.settings`, `FeaturePolicyDecision.parameters`), which is where the sign-language capability reads `signLang`. Provider configuration, such as the TTS backend and voice in step 2, belongs in `tools.providers`. The server backends (`polly`, `google`, `server`) send requests to the host's TTS server at `apiEndpoint` (default `/api/tts`) through `@pie-players/tts-client-server`, which `@pie-players/pie-default-tool-loaders` installs.
+`settings.toolConfigs` holds feature parameters keyed by support id, and an item's `toolParameters` override them. A feature granted by a PNP support, a requirement or a test-administration override carries them as its policy parameters (`ToolPolicyEntry.settings`, `FeaturePolicyDecision.parameters`), which is where the sign-language capability reads `signLang`. Provider configuration, such as the TTS backend and voice in step 2, belongs in `tools.providers`. The `server` backend sends requests to the host's TTS server at `apiEndpoint` (default `/api/tts`) through `@pie-players/tts-client-server`, which `@pie-players/pie-default-tool-loaders` installs.
 
 ## Precedence Resolution Examples
 
@@ -340,7 +337,7 @@ console.log('Allowed tools:', allowedToolIds);
   }
 }
 // Result: calculator BLOCKED
-// District policy (#1) overrides PNP supports (#6)
+// District policy (#1) overrides PNP supports (#8)
 ```
 
 ### Example 2: Item Restriction Wins
@@ -357,11 +354,12 @@ console.log('Allowed tools:', allowedToolIds);
     restrictedTools: ["calculator"]  // Mental math question
   }
 }
-// Result: calculator BLOCKED for this item only
-// Item restriction (#3) overrides PNP supports (#6)
+// Result: calculator BLOCKED on this item's own toolbar only
+// Item restriction (#3) overrides PNP supports (#8). A section-level
+// calculator stays and reports `tool-policy.itemSettingNotApplied`.
 ```
 
-### Example 3: Item Requirement Forces Enable
+### Example 3: Item Requirement on an Item-Placed Tool
 
 ```typescript
 {
@@ -372,8 +370,10 @@ console.log('Allowed tools:', allowedToolIds);
     requiredTools: ["calculator"]  // Complex computation problem
   }
 }
-// Result: calculator ENABLED for this item
-// Item requirement (#4) forces enablement
+// Result: a calculator placed at item level stays on this item's own
+// toolbar through relevance filtering and carries the item's toolParameters.
+// The requirement (#6) places nothing: without an item-level placement,
+// no calculator renders.
 ```
 
 ### Example 4: Test Admin Override
@@ -409,10 +409,16 @@ When integrating the PNP system, ensure you:
 ### API Integration
 
 ```typescript
-import { createPackagedToolRegistry } from '@pie-players/pie-default-tool-loaders';
+import {
+  createPackagedToolRegistry,
+  DEFAULT_TOOL_MODULE_LOADERS,
+} from '@pie-players/pie-default-tool-loaders';
 
-// 1. Create registry and coordinator
-const registry = createPackagedToolRegistry();
+// 1. Create registry and coordinator. The toolbar below renders from this
+//    registry, so it carries the loaders for each tool's element.
+const registry = createPackagedToolRegistry({
+  toolModuleLoaders: DEFAULT_TOOL_MODULE_LOADERS
+});
 const coordinator = new ToolkitCoordinator({
   assessmentId: assessment.id,
   toolRegistry: registry,
@@ -423,7 +429,7 @@ const coordinator = new ToolkitCoordinator({
   }
 });
 coordinator.updateAssessment(assessment);
-coordinator.updateCurrentItemRef(currentItem);
+coordinator.registerItemSettings(currentItem.identifier, currentItem.settings!);
 
 // 2. Resolve tools for current context
 const allowedToolIds = coordinator
@@ -439,35 +445,41 @@ const context: ItemToolContext = {
   item: itemData
 };
 
-// 4. Filter by relevance (Pass 2)
-const visibleTools = registry.filterVisibleInContext(allowedToolIds, context);
+// 4. Filter by relevance (Pass 2) and applicability (Pass 3).
+//    <pie-item-toolbar> runs both passes itself; this is for a host-built toolbar.
+const visibleTools = registry
+  .filterVisibleInContext(allowedToolIds, context)
+  .filter((tool) => registry.isApplicableToAnyContext(tool.toolId, [context]));
+```
 
-// 5. Render toolbar: it takes the coordinator from the enclosing toolkit
+5. Render the toolbar. It takes the coordinator from the enclosing toolkit and
+   the item's identity from the enclosing item scope:
+
+```html
 <pie-assessment-toolkit .coordinator={coordinator}>
-  <pie-item-toolbar
-    .toolRegistry={registry}
-    .item={itemData}
-  ></pie-item-toolbar>
+  <pie-item-scope item-id="item-1" .item={itemData} .settings={currentItem.settings}>
+    <pie-item-toolbar .toolRegistry={registry}></pie-item-toolbar>
+  </pie-item-scope>
 </pie-assessment-toolkit>
 ```
 
-Policy inputs reach the toolbar through the coordinator. A toolkit that builds its own coordinator forwards its `assessment` and `currentItemRef` properties to it; a host that passes `coordinator`, as here, binds them with `updateAssessment` and `updateCurrentItemRef`.
+Policy inputs reach the toolbar through the coordinator. A toolkit that builds its own coordinator forwards its `assessment` property to it, and the section players forward theirs to that toolkit. A host that passes `coordinator`, as here, binds the assessment with `updateAssessment`. Item settings arrive either way through each item's `<pie-item-scope>` registration; the explicit `registerItemSettings` in step 1 is for a host that decides without the elements.
 
 ### Data Sources
 
 Typical data flow:
 
 ```
-IEP/504 Database
+tools.placement (host)            IEP/504 database → personalNeedsProfile
+    ↓                                                 districtPolicy, testAdministration, item settings
+ToolPolicyEngine: placed tools, minus blocks; grants mark entries required/alwaysAvailable
     ↓
-personalNeedsProfile.supports
-    ↓
-ToolPolicyEngine → allowedToolIds
-    ↓
-ToolRegistry → visibleTools
+ToolRegistry → visibleTools (relevance filter skips granted entries)
     ↓
 pie-item-toolbar → rendered buttons
 ```
+
+The profile and settings change which placed tools survive and how they are parameterized. They never add a tool placement leaves out.
 
 ### Admin Interfaces
 
@@ -476,16 +488,14 @@ Provide UI for:
 1. **District administrators** to configure `districtPolicy`:
    ```typescript
    interface DistrictPolicyEditor {
-     blockedTools: string[];     // Select from QTI_STANDARD_ACCESS_FEATURES
+     blockedTools: string[];     // Multi-select from registered tool ids
      requiredTools: string[];
-     policies: Record<string, any>;
    }
    ```
 
 2. **Proctors** to set `testAdministration` overrides:
    ```typescript
    interface TestAdminPanel {
-     mode: "practice" | "test" | "benchmark";
      toolOverrides: Record<string, boolean>;  // Per-tool toggles
    }
    ```
@@ -495,13 +505,13 @@ Provide UI for:
    interface ItemSettingsEditor {
      requiredTools: string[];    // Multi-select from available tools
      restrictedTools: string[];  // Multi-select from available tools
-     toolParameters: Record<string, any>;
+     toolParameters: Record<string, Record<string, unknown>>;
    }
    ```
 
 ## Best Practices
 
-1. **Use QTI 3.0 standard features** - Check `QTI_STANDARD_ACCESS_FEATURES` before custom IDs
+1. **Name support ids by tool id** - A support id is the `toolId` it grants; translate a profile held in AfA PNP 3.0 terms (`line-reader`, `answer-masking`) to the tools that serve them (`lineReader`, `answerEliminator`), as [Support ids](TOOL_REGISTRY.md#support-ids) lists
 2. **Document governance rules** - Explain why certain tools are blocked/required
 3. **Audit trail** - Log who makes policy decisions and when
 4. **Test precedence** - Verify district blocks actually override PNP
@@ -515,15 +525,18 @@ Provide UI for:
 Check precedence hierarchy in order:
 1. Is it blocked by `districtPolicy.blockedTools`?
 2. Is it disabled in `testAdministration.toolOverrides`?
-3. Is it in `itemSettings.restrictedTools`?
-4. Does the tool's `isVisibleInContext()` return false?
+3. Is it in `itemSettings.restrictedTools`, on the item's own toolbar, or in `personalNeedsProfile.prohibitedSupports`? Either withdraws a tool a `true` override grants, and the decision carries a `tool-policy.overrideBlocked` diagnostic.
+4. Is it placed at this level in `tools.placement`? A grant does not place a tool.
+5. Does the tool's `isVisibleInContext()` return false? A `required` or `alwaysAvailable` grant skips this check.
+6. Does the tool's `isApplicableToContent()` return false for this content? This check removes the tool even under a grant.
 
 ### "Tool showing up when it shouldn't"
 
 Check:
 1. Is it in `districtPolicy.requiredTools`?
-2. Is it in `itemSettings.requiredTools`?
+2. Is it in `itemSettings.requiredTools`, on the item's own toolbar?
 3. Is `toolOverrides` explicitly enabling it?
+4. Is an item's restriction meant to withdraw it from a section-, assessment- or passage-level toolbar? Item settings do not reach those toolbars; the decision's `tool-policy.itemSettingNotApplied` diagnostic names the item. Place the tool at item level instead.
 
 ### "Need custom policy rules"
 
@@ -542,6 +555,4 @@ const unregister = coordinator.registerPolicySource({
 ## References
 
 - [Tool Registry Architecture](TOOL_REGISTRY.md) - Tool registration and filtering
-- [QTI 3.0 PNP Specification](https://www.imsglobal.org/spec/qti/v3p0)
-- [IMS AfA 3.0 Specification](https://www.imsglobal.org/spec/afa/v3p0)
-- [QTI Standard Access Features](../src/services/pnp-standard-features.ts)
+- [IMS AfA PNP 3.0 Information Model](https://www.imsglobal.org/spec/afa/v3p0/info)

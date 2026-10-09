@@ -4,7 +4,7 @@
 		extractPackageInfo,
 		type ElementOverrides
 	} from '@pie-players/pie-players-shared/pie';
-	import ElementVersionSelector from '$lib/components/ElementVersionSelector.svelte';
+	import ElementVersionSelector from '#lib/components/ElementVersionSelector.svelte';
 
 	type ElementsMap = Record<string, string>;
 
@@ -124,7 +124,7 @@
 								packageName={pkg.name}
 								label={pkg.displayName}
 								value={resolvedVersion(pkg.name, pkg.defaultVersion)}
-								on:change={(event) => onChange(event.detail)}
+								{onChange}
 							/>
 						</div>
 						{#if overrides?.[pkg.name]}

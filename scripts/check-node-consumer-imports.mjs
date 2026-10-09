@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { execFileSync } from "node:child_process";
+import { execFile, execFileSync } from "node:child_process";
 import {
 	existsSync,
 	mkdirSync,
@@ -12,13 +12,17 @@ import {
 } from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { promisify } from "node:util";
 import {
 	getImportTarget,
 	getNodeConsumerImportTargets,
-	parsePackJson,
+	mapConcurrent,
 	readPublishPolicy,
+	runPack,
 	splitPackageSpecifier,
 } from "./lib/pack-inspection.mjs";
+
+const execFileAsync = promisify(execFile);
 
 const ROOT = process.cwd();
 const ROOT_PACKAGE_JSON = path.join(ROOT, "package.json");
@@ -104,23 +108,6 @@ const collectFixturePackageNames = (packageMap, initialSpecifiers) => {
 	return [...included].sort();
 };
 
-const packWorkspacePackage = (dir) => {
-	const rawOutput = execFileSync("npm", ["pack", "--json"], {
-		cwd: dir,
-		stdio: ["ignore", "pipe", "pipe"],
-	}).toString();
-	const packData = parsePackJson(rawOutput);
-	const tarballName = packData?.[0]?.filename;
-	if (!tarballName) {
-		throw new Error("npm pack did not return tarball filename");
-	}
-	const tarballPath = path.join(dir, tarballName);
-	if (!existsSync(tarballPath)) {
-		throw new Error(`npm pack tarball not found: ${tarballPath}`);
-	}
-	return tarballPath;
-};
-
 const rewriteWorkspaceRangesForFixture = (manifest, packageMap) => {
 	const depBuckets = [
 		"dependencies",
@@ -145,15 +132,17 @@ const rewriteWorkspaceRangesForFixture = (manifest, packageMap) => {
 	}
 };
 
-const createPatchedFixtureTarball = (fixtureDir, sourceTarball, packageMap) => {
+const createPatchedFixtureTarball = async (
+	fixtureDir,
+	sourceTarball,
+	packageMap,
+) => {
 	const unpackDir = mkdtempSync(path.join(fixtureDir, "pack-unpack-"));
 	const tarballsDir = path.join(fixtureDir, "tarballs");
 	mkdirSync(tarballsDir, { recursive: true });
 
 	try {
-		execFileSync("tar", ["-xzf", sourceTarball, "-C", unpackDir], {
-			stdio: ["ignore", "pipe", "pipe"],
-		});
+		await execFileAsync("tar", ["-xzf", sourceTarball, "-C", unpackDir]);
 		const manifestPath = path.join(unpackDir, "package", "package.json");
 		const manifest = readJson(manifestPath);
 		rewriteWorkspaceRangesForFixture(manifest, packageMap);
@@ -162,13 +151,13 @@ const createPatchedFixtureTarball = (fixtureDir, sourceTarball, packageMap) => {
 			tarballsDir,
 			path.basename(sourceTarball),
 		);
-		execFileSync(
-			"tar",
-			["-czf", patchedTarballPath, "-C", unpackDir, "package"],
-			{
-				stdio: ["ignore", "pipe", "pipe"],
-			},
-		);
+		await execFileAsync("tar", [
+			"-czf",
+			patchedTarballPath,
+			"-C",
+			unpackDir,
+			"package",
+		]);
 		return patchedTarballPath;
 	} finally {
 		rmSync(unpackDir, { recursive: true, force: true });
@@ -294,7 +283,7 @@ const typecheckToolkitWithoutOptionalPeers = (fixtureDir, optionalPeers) => {
 		`import type {
 	ToolProviderApi,
 	TTSToolProvider,
-} from "@pie-players/pie-assessment-toolkit/tools/internal";
+} from "@pie-players/pie-assessment-toolkit/tools/registration";
 
 export type ToolkitToolProviders = [ToolProviderApi, TTSToolProvider];
 `,
@@ -377,14 +366,16 @@ const run = async () => {
 		...ALL_TARGETS.map((specifier) => splitPackageSpecifier(specifier).name),
 		TTS_SERVER_CORE,
 	]);
-	const sourceTarballs = [];
-	const fixtureTarballs = [];
 	let ttsServerCoreTarball = "";
 	let fixtureDir = "";
 
 	try {
 		fixtureDir = createFixtureProject();
+		// Packed into the fixture, so removing it removes every tarball.
+		const sourceTarballsDir = path.join(fixtureDir, "source-tarballs");
+		mkdirSync(sourceTarballsDir);
 
+		const fixtureEntries = [];
 		for (const packageName of fixturePackageNames) {
 			const entry = packageMap.get(packageName);
 			if (!entry) {
@@ -393,18 +384,26 @@ const run = async () => {
 				);
 				continue;
 			}
-			const sourceTarballPath = packWorkspacePackage(entry.dir);
-			sourceTarballs.push(sourceTarballPath);
-			const patchedTarballPath = createPatchedFixtureTarball(
-				fixtureDir,
-				sourceTarballPath,
-				packageMap,
-			);
-			fixtureTarballs.push(patchedTarballPath);
-			if (packageName === TTS_SERVER_CORE) {
-				ttsServerCoreTarball = patchedTarballPath;
-			}
+			fixtureEntries.push({ packageName, entry });
 		}
+
+		const fixtureTarballs = await mapConcurrent(
+			fixtureEntries,
+			async ({ packageName, entry }) => {
+				const { tarballPath } = await runPack(entry.dir, {
+					destination: sourceTarballsDir,
+				});
+				const patchedTarballPath = await createPatchedFixtureTarball(
+					fixtureDir,
+					tarballPath,
+					packageMap,
+				);
+				if (packageName === TTS_SERVER_CORE) {
+					ttsServerCoreTarball = patchedTarballPath;
+				}
+				return patchedTarballPath;
+			},
+		);
 
 		installTarballs(fixtureDir, fixtureTarballs);
 
@@ -453,7 +452,7 @@ const run = async () => {
 		);
 		if (!typecheckResult.ok) {
 			failures.push(
-				`[node-consumer] ${toolkitPackageName}/tools/internal failed TypeScript consumption without optional peers: ${typecheckResult.message}`,
+				`[node-consumer] ${toolkitPackageName}/tools/registration failed TypeScript consumption without optional peers: ${typecheckResult.message}`,
 			);
 		}
 	} catch (error) {
@@ -463,9 +462,6 @@ const run = async () => {
 	} finally {
 		if (fixtureDir) {
 			rmSync(fixtureDir, { recursive: true, force: true });
-		}
-		for (const tarballPath of sourceTarballs) {
-			rmSync(tarballPath, { force: true });
 		}
 	}
 

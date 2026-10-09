@@ -3,10 +3,6 @@
  *
  * Registers the calculator tool with support for multiple calculator types
  * (basic, scientific, graphing) through a host-selected provider.
- *
- * Maps to QTI 3.0 standard access features:
- * - calculator (cognitive support)
- * - graphingCalculator (assessment tool)
  */
 
 import type {
@@ -14,14 +10,14 @@ import type {
 	ToolToolbarButtonDefinition,
 	ToolToolbarRenderResult,
 	ToolbarContext,
-} from "@pie-players/pie-assessment-toolkit/tools/internal";
-import type { ToolProviderConfig } from "@pie-players/pie-assessment-toolkit/tools/internal";
-import type { ToolContext } from "@pie-players/pie-assessment-toolkit/tools/internal";
+} from "@pie-players/pie-assessment-toolkit/tools/registration";
+import type { ToolProviderConfig } from "@pie-players/pie-assessment-toolkit/tools/registration";
+import type { ToolContext } from "@pie-players/pie-assessment-toolkit/tools/registration";
 import type { MessageKey } from "@pie-players/pie-players-shared/i18n/types";
-import { hasMathContent } from "@pie-players/pie-assessment-toolkit/tools/internal";
-import { createScopedToolId } from "@pie-players/pie-assessment-toolkit/tools/internal";
-import { createToolElement } from "@pie-players/pie-assessment-toolkit/tools/internal";
-import type { CalculatorProviderConfig } from "@pie-players/pie-assessment-toolkit/tools/client";
+import { hasMathContent } from "@pie-players/pie-assessment-toolkit/tools/registration";
+import { createScopedToolId } from "@pie-players/pie-assessment-toolkit/tools/registration";
+import { createToolElement } from "@pie-players/pie-assessment-toolkit/tools/registration";
+import type { CalculatorProviderConfig } from "@pie-players/pie-calculator";
 import { CortexToolProvider } from "../calculator-providers/CortexToolProvider.js";
 import { DesmosToolProvider } from "../calculator-providers/DesmosToolProvider.js";
 import { GeoGebraToolProvider } from "../calculator-providers/GeoGebraToolProvider.js";
@@ -132,18 +128,14 @@ function applyCalculatorParamsToElement(
 	element: HTMLElement,
 	calculatorType: CalculatorType | null,
 	availableTypes: CalculatorType[] | null,
-	providerId: CalculatorProviderId,
 	calculatorConfig: CalculatorProviderConfig,
 ): void {
 	const calculatorElement = element as HTMLElement & {
 		calculatorType?: CalculatorType;
 		availableTypes?: CalculatorType[];
-		providerId?: CalculatorProviderId;
 		calculatorConfig?: CalculatorProviderConfig;
 	};
-	calculatorElement.providerId = providerId;
 	calculatorElement.calculatorConfig = calculatorConfig;
-	element.setAttribute("provider-id", providerId);
 
 	if (calculatorType) {
 		calculatorElement.calculatorType = calculatorType;
@@ -176,7 +168,6 @@ export const calculatorToolRegistration: ToolRegistration = {
 	descriptionKey: "tools.calculator.description",
 	icon: "calculator",
 	provider: {
-		getProviderId: resolveCalculatorProviderId,
 		createProvider: createCalculatorToolProvider,
 		getInitConfig: (config: ToolProviderConfig | undefined) =>
 			config?.provider?.init ?? {},
@@ -191,17 +182,6 @@ export const calculatorToolRegistration: ToolRegistration = {
 
 	// Calculator is item-level in this player architecture.
 	supportedLevels: ["item"],
-
-	// PNP support IDs that enable this tool
-	// Maps to QTI 3.0 standard features: calculator, graphingCalculator
-	// A type is not a feature id: `calculatorType` arrives through the host's
-	// render params, so `basicCalculator` / `scientificCalculator` granted the
-	// same untyped calculator these two do and only looked like they selected a
-	// variant.
-	pnpSupportIds: [
-		"calculator", // QTI 3.0 standard (cognitive.calculator)
-		"graphingCalculator", // QTI 3.0 standard (assessment.graphingCalculator)
-	],
 
 	/**
 	 * Pass 2: Determine if calculator is relevant in this context
@@ -223,7 +203,6 @@ export const calculatorToolRegistration: ToolRegistration = {
 		const calculatorToolConfig =
 			toolbarContext.toolkitCoordinator?.getToolConfig(this.toolId) ||
 			undefined;
-		const providerId = resolveCalculatorProviderId(calculatorToolConfig);
 		const calculatorConfig = getCalculatorInstanceConfig(calculatorToolConfig);
 		const fullToolId = createScopedToolId(
 			this.toolId,
@@ -245,16 +224,13 @@ export const calculatorToolRegistration: ToolRegistration = {
 				) as HTMLElement & {
 					visible?: boolean;
 					toolId?: string;
-					toolkitCoordinator?: unknown;
 				},
 		);
 		overlay.setAttribute("tool-id", fullToolId);
-		overlay.toolkitCoordinator = toolbarContext.toolkitCoordinator;
 		applyCalculatorParamsToElement(
 			overlay,
 			calculatorType,
 			availableTypes,
-			providerId,
 			calculatorConfig,
 		);
 
@@ -274,7 +250,7 @@ export const calculatorToolRegistration: ToolRegistration = {
 			ariaLabel: displayName,
 			tooltip: displayName,
 			onClick: () => toolbarContext.toggleTool(this.toolId),
-			active: toolbarContext.isToolVisible(fullToolId),
+			active: toolbarContext.isToolVisible(this.toolId),
 		};
 		let lastVisibleState: boolean | undefined = button.active;
 		if (overlay.visible !== button.active) {
@@ -355,7 +331,7 @@ export const calculatorToolRegistration: ToolRegistration = {
 			],
 			button,
 			sync: () => {
-				const active = toolbarContext.isToolVisible(fullToolId);
+				const active = toolbarContext.isToolVisible(this.toolId);
 				button.active = active;
 				button.label = displayName;
 				// Static across the toggle. The previous `Close ${name.toLowerCase()}`
@@ -368,21 +344,17 @@ export const calculatorToolRegistration: ToolRegistration = {
 					overlay.visible = active;
 					lastVisibleState = active;
 				}
-				if (overlay.toolkitCoordinator !== toolbarContext.toolkitCoordinator) {
-					overlay.toolkitCoordinator = toolbarContext.toolkitCoordinator;
-				}
 				applyCalculatorParamsToElement(
 					overlay,
 					calculatorType,
 					availableTypes,
-					providerId,
 					calculatorConfig,
 				);
 			},
 			subscribeActive: (callback: (active: boolean) => void) => {
 				if (!toolbarContext.subscribeVisibility) return () => {};
 				return toolbarContext.subscribeVisibility(() => {
-					callback(toolbarContext.isToolVisible(fullToolId));
+					callback(toolbarContext.isToolVisible(this.toolId));
 				});
 			},
 		};

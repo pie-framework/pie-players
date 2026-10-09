@@ -1,23 +1,9 @@
 /**
- * Tool policy engine — facade entry point (M8 PR 1).
- *
- * Narrow, stable public surface for hosts that want to instantiate or
- * consume a `ToolPolicyEngine`. Re-exports the engine class, its
- * decision request/response types, the Svelte context key, and the
- * minimal `PolicySource` extension contract.
- *
- * **Pairing.** This module is the stable counterpart to
- * `./policy/internal`, which exposes the wider, evolving surface
- * (composition pipeline, provenance builder, PNP policy source). Consumers
- * that only need to drive an engine and read its decisions should
- * import from here. Consumers that need to reach past the facade
- * (e.g. test the composition pipeline directly, build a custom PNP policy
- * source variant, instrument provenance generation) should import
- * from `./policy/internal` and accept the documented stability
- * disclaimer there.
- *
- * Mirrors the M7 `runtime/engine` / `runtime/internal` split — see
- * the same rationale in `src/runtime/engine.ts`.
+ * Tool policy engine — the stable entry for a host that instantiates or
+ * consumes a `ToolPolicyEngine`: the engine class, its decision request and
+ * response types, and the `PolicySource` extension contract. The composition
+ * pipeline, the PNP policy source and the provenance builder stay behind the
+ * engine, with no entry of their own.
  */
 
 export {
@@ -31,17 +17,15 @@ export {
 } from "./core/ToolPolicyEngine.js";
 
 export {
-	TOOL_POLICY_ENGINE_KEY,
-	type ToolPolicyEngineContext,
-} from "./core/engine-context.js";
-
-export {
 	isHostDeniedFeature,
 	type FeaturePolicyDecision,
 	type FeaturePolicyRule,
 } from "./core/feature-decision.js";
 
 export type {
+	ItemSettingNotAppliedDetails,
+	OverrideBlockedDetails,
+	PlacementMissingDetails,
 	RequiredToolBlockedDetails,
 	ToolPolicyDecision,
 	ToolPolicyDecisionRequest,
@@ -50,6 +34,7 @@ export type {
 	ToolPolicyEntry,
 	ToolPolicyHostGate,
 	ToolScope,
+	UnknownSupportIdDetails,
 } from "./core/decision-types.js";
 
 export type {
@@ -60,13 +45,7 @@ export type {
 } from "./core/PolicySource.js";
 
 export type {
-	PolicySourceTag,
 	PnpPolicySourceRule,
-	PnpPolicySourceTag,
-	CustomPolicySourceTag,
-} from "./core/policy-source-tag.js";
-
-export type {
 	ToolPolicyDecisionRule,
 	ToolPolicyFeatureTrail,
 	ToolPolicyProvenance,

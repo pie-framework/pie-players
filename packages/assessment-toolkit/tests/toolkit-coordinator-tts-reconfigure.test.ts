@@ -1,7 +1,21 @@
-import { describe, expect, test } from "bun:test";
+import { GlobalRegistrator } from "@happy-dom/global-registrator";
+import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { ToolkitCoordinator } from "../src/services/ToolkitCoordinator.js";
 import { createTestToolRegistry } from "./fixtures/test-tool-registry.js";
 import type { ToolRegistration } from "../src/services/ToolRegistry.js";
+import { contentWith } from "./fixtures/read-aloud-content.js";
+
+beforeAll(() => {
+	if (!GlobalRegistrator.isRegistered) {
+		GlobalRegistrator.register();
+	}
+});
+
+afterAll(() => {
+	if (GlobalRegistrator.isRegistered) {
+		GlobalRegistrator.unregister();
+	}
+});
 
 describe("ToolkitCoordinator TTS reconfigure sequencing", () => {
 	test("the TTS service highlights through the coordinator's highlighter from construction", () => {
@@ -13,144 +27,6 @@ describe("ToolkitCoordinator TTS reconfigure sequencing", () => {
 		expect((coordinator.ttsService as any).highlightCoordinator).toBe(
 			coordinator.highlightCoordinator,
 		);
-	});
-
-	test("browser readiness waits for voiceschanged when voices are initially empty", async () => {
-		const coordinator = new ToolkitCoordinator({
-			assessmentId: "tts-browser-voice-prewarm-test",
-			lazyInit: true,
-			toolRegistry: createTestToolRegistry(),
-		});
-
-		let voices: SpeechSynthesisVoice[] = [];
-		let voicesChangedListener: (() => void) | null = null;
-		let listenerRegistered = false;
-		const synthMock = {
-			getVoices: () => voices,
-			addEventListener: (_event: string, listener: () => void) => {
-				listenerRegistered = true;
-				voicesChangedListener = listener;
-			},
-			removeEventListener: (_event: string, listener: () => void) => {
-				if (voicesChangedListener === listener) {
-					voicesChangedListener = null;
-				}
-			},
-		} as unknown as SpeechSynthesis;
-		const previousWindow = (globalThis as any).window;
-		(globalThis as any).window = {
-			setTimeout,
-			clearTimeout,
-			speechSynthesis: synthMock,
-		};
-
-		try {
-			let resolved = false;
-			const readyPromise = (coordinator as any)
-				.ensureBrowserVoicesReady({
-					providerId: "browser",
-				})
-				.then(() => {
-					resolved = true;
-				});
-			await new Promise((resolve) => setTimeout(resolve, 1));
-			expect(listenerRegistered).toBe(true);
-			expect(resolved).toBe(false);
-			expect(typeof voicesChangedListener).toBe("function");
-			setTimeout(() => {
-				voices = [{ name: "Demo Voice" } as SpeechSynthesisVoice];
-				voicesChangedListener?.();
-			}, 5);
-			await readyPromise;
-			expect(resolved).toBe(true);
-		} finally {
-			(globalThis as any).window = previousWindow;
-		}
-	});
-
-	test("browser readiness resolves on timeout and cleans up listeners", async () => {
-		const coordinator = new ToolkitCoordinator({
-			assessmentId: "tts-browser-voice-timeout-test",
-			lazyInit: true,
-			toolRegistry: createTestToolRegistry(),
-		});
-		const removeCalls: Array<() => void> = [];
-		let voicesChangedListener: (() => void) | null = null;
-		const synthMock = {
-			getVoices: () => [] as SpeechSynthesisVoice[],
-			addEventListener: (_event: string, listener: () => void) => {
-				voicesChangedListener = listener;
-			},
-			removeEventListener: (_event: string, listener: () => void) => {
-				removeCalls.push(listener);
-				if (voicesChangedListener === listener) {
-					voicesChangedListener = null;
-				}
-			},
-		} as unknown as SpeechSynthesis;
-		const previousWindow = (globalThis as any).window;
-		(globalThis as any).window = {
-			setTimeout,
-			clearTimeout,
-			speechSynthesis: synthMock,
-		};
-		try {
-			await (coordinator as any).ensureBrowserVoicesReady(
-				{
-					providerId: "browser",
-				},
-				1,
-			);
-			expect(removeCalls.length).toBeGreaterThan(0);
-			expect(voicesChangedListener).toBeNull();
-		} finally {
-			(globalThis as any).window = previousWindow;
-		}
-	});
-
-	test("browser readiness resolves when voice events are unavailable", async () => {
-		const coordinator = new ToolkitCoordinator({
-			assessmentId: "tts-browser-voice-no-events-test",
-			lazyInit: true,
-			toolRegistry: createTestToolRegistry(),
-		});
-		const synthMock = {
-			getVoices: () => [] as SpeechSynthesisVoice[],
-		} as unknown as SpeechSynthesis;
-		const previousWindow = (globalThis as any).window;
-		(globalThis as any).window = {
-			setTimeout,
-			clearTimeout,
-			speechSynthesis: synthMock,
-		};
-		try {
-			const result = await Promise.race([
-				(coordinator as any)
-					.ensureBrowserVoicesReady(
-						{
-							providerId: "browser",
-						},
-						1,
-					)
-					.then(() => "ready"),
-				new Promise((resolve) => setTimeout(() => resolve("timeout"), 20)),
-			]);
-			expect(result).toBe("ready");
-		} finally {
-			(globalThis as any).window = previousWindow;
-		}
-	});
-
-	test("browser readiness is a no-op for non-browser providers", async () => {
-		const coordinator = new ToolkitCoordinator({
-			assessmentId: "tts-browser-voice-prewarm-noop-test",
-			lazyInit: true,
-			toolRegistry: createTestToolRegistry(),
-		});
-
-		await (coordinator as any).ensureBrowserVoicesReady({
-			providerId: "polly",
-		});
 	});
 
 	test("ensureTTSReady waits for in-flight TTS reconfigure", async () => {
@@ -178,7 +54,8 @@ describe("ToolkitCoordinator TTS reconfigure sequencing", () => {
 
 		coordinator.updateToolConfig("textToSpeech", {
 			enabled: true,
-			backend: "polly",
+			backend: "server",
+			serverProvider: "polly",
 			apiEndpoint: "/api/tts",
 		} as any);
 
@@ -190,44 +67,76 @@ describe("ToolkitCoordinator TTS reconfigure sequencing", () => {
 		expect(internals.ttsInitialized).toBe(true);
 	});
 
-	test("rejects removed providers.tts in strict error mode", async () => {
-		expect(
-			() =>
-				new ToolkitCoordinator({
-					assessmentId: "tts-removed-provider-key-test",
-					lazyInit: true,
-					toolConfigStrictness: "error",
-					tools: {
-						providers: {
-							tts: {
-								enabled: true,
-								backend: "browser",
-							},
+	test("a speak after a reconfigure starts the reconfigured provider", async () => {
+		// A default voice is left to the engine, so neither configured voice is one.
+		const voices = ["System Voice", "Voice A", "Voice B"].map((name) => ({
+			name,
+			voiceURI: name,
+			lang: "en-US",
+			default: name === "System Voice",
+			localService: true,
+		}));
+		const spokenWith: Array<string | undefined> = [];
+		const synth = {
+			getVoices: () => voices,
+			speak: (utterance: {
+				voice?: { name: string } | null;
+				onstart?: () => void;
+				onend?: () => void;
+			}) => {
+				spokenWith.push(utterance.voice?.name);
+				utterance.onstart?.();
+				utterance.onend?.();
+			},
+			cancel: () => {},
+			pause: () => {},
+			resume: () => {},
+		};
+		class FakeUtterance {
+			voice: unknown = null;
+			lang = "";
+			rate = 1;
+			pitch = 1;
+			constructor(readonly text: string) {}
+		}
+		const globals = globalThis as Record<string, unknown>;
+		const saved = {
+			speechSynthesis: globals.speechSynthesis,
+			SpeechSynthesisUtterance: globals.SpeechSynthesisUtterance,
+		};
+		// The registered window is `globalThis`, so this is `window.speechSynthesis`.
+		globals.speechSynthesis = synth;
+		globals.SpeechSynthesisUtterance = FakeUtterance;
+		try {
+			const coordinator = new ToolkitCoordinator({
+				assessmentId: "tts-speak-after-reconfigure",
+				lazyInit: true,
+				toolRegistry: createTestToolRegistry(),
+				tools: {
+					providers: {
+						textToSpeech: {
+							enabled: true,
+							backend: "browser",
+							defaultVoice: "Voice A",
 						},
 					},
-				} as any),
-		).toThrow(`Provider key "tts" is no longer supported`);
+				},
+			});
+			await coordinator.ttsService.speak(contentWith("Before"));
+
+			coordinator.updateToolConfig("textToSpeech", { defaultVoice: "Voice B" });
+			await coordinator.ttsService.speak(contentWith("After"));
+
+			expect(spokenWith).toEqual(["Voice A", "Voice B"]);
+		} finally {
+			for (const [key, value] of Object.entries(saved)) {
+				if (value === undefined) delete globals[key];
+				else globals[key] = value;
+			}
+		}
 	});
 
-	test("rejects removed providers.tts by default strictness", () => {
-		expect(
-			() =>
-				new ToolkitCoordinator({
-					assessmentId: "tts-removed-default-strictness-test",
-					lazyInit: true,
-					tools: {
-						providers: {
-							tts: {
-								enabled: true,
-								backend: "browser",
-							},
-						},
-					},
-				} as any),
-		).toThrow(`Provider key "tts" is no longer supported`);
-	});
-
-	test("accepts textToSpeech string runtime provider selectors", () => {
+	test("rejects a textToSpeech string provider selector", () => {
 		expect(
 			() =>
 				new ToolkitCoordinator({
@@ -242,18 +151,19 @@ describe("ToolkitCoordinator TTS reconfigure sequencing", () => {
 						},
 					},
 				} as any),
-		).not.toThrow();
+		).toThrow('"providers.textToSpeech.provider": expected an object');
 	});
 
 	test("waitUntilReady initializes TTS from textToSpeech-only config", async () => {
 		const coordinator = new ToolkitCoordinator({
 			assessmentId: "tts-alias-wait-until-ready-test",
-			lazyInit: true,
+			eagerInit: false,
 			tools: {
 				providers: {
 					textToSpeech: {
 						enabled: true,
-						backend: "polly",
+						backend: "server",
+						serverProvider: "polly",
 						apiEndpoint: "/api/tts",
 					},
 				},
@@ -270,12 +180,13 @@ describe("ToolkitCoordinator TTS reconfigure sequencing", () => {
 
 		await coordinator.waitUntilReady();
 
-		expect(capturedConfig?.backend).toBe("polly");
+		expect(capturedConfig?.backend).toBe("server");
+		expect(capturedConfig?.serverProvider).toBe("polly");
 		expect(capturedConfig?.apiEndpoint).toBe("/api/tts");
-		expect(coordinator.getInitStatus().coordinator).toBe(true);
+		expect(coordinator.isReady()).toBe(true);
 	});
 
-	test("initializes TTS with nested mathSpeech settings in providerOptions", async () => {
+	test("initializes TTS with top-level mathSpeech in providerOptions", async () => {
 		const coordinator = new ToolkitCoordinator({
 			assessmentId: "tts-math-speech-settings-init-test",
 			lazyInit: true,
@@ -284,11 +195,9 @@ describe("ToolkitCoordinator TTS reconfigure sequencing", () => {
 					textToSpeech: {
 						enabled: true,
 						backend: "browser",
-						settings: {
-							mathSpeech: {
-								domain: "clearspeak",
-								style: "ImpliedTimes_MoreImpliedTimes:Paren_Silent",
-							},
+						mathSpeech: {
+							domain: "clearspeak",
+							style: "ImpliedTimes_MoreImpliedTimes:Paren_Silent",
 						},
 					},
 				},
@@ -315,7 +224,7 @@ describe("ToolkitCoordinator TTS reconfigure sequencing", () => {
 		});
 	});
 
-	test("reinitializes TTS with updated mathSpeech settings after reconfigure", async () => {
+	test("reinitializes TTS with updated mathSpeech after reconfigure", async () => {
 		const coordinator = new ToolkitCoordinator({
 			assessmentId: "tts-math-speech-settings-reconfigure-test",
 			lazyInit: true,
@@ -347,11 +256,9 @@ describe("ToolkitCoordinator TTS reconfigure sequencing", () => {
 		coordinator.updateToolConfig("textToSpeech", {
 			enabled: true,
 			backend: "browser",
-			settings: {
-				mathSpeech: {
-					domain: "clearspeak",
-					style: "Paren_Silent",
-				},
+			mathSpeech: {
+				domain: "clearspeak",
+				style: "Paren_Silent",
 			},
 		} as any);
 		await coordinator.ensureTTSReady(
@@ -364,7 +271,7 @@ describe("ToolkitCoordinator TTS reconfigure sequencing", () => {
 		});
 	});
 
-	test("preserves nested mathSpeech settings across partial settings updates", async () => {
+	test("preserves mathSpeech across partial updates", async () => {
 		const coordinator = new ToolkitCoordinator({
 			assessmentId: "tts-math-speech-settings-partial-update-test",
 			lazyInit: true,
@@ -373,11 +280,9 @@ describe("ToolkitCoordinator TTS reconfigure sequencing", () => {
 					textToSpeech: {
 						enabled: true,
 						backend: "browser",
-						settings: {
-							mathSpeech: {
-								domain: "clearspeak",
-								style: "Paren_Silent",
-							},
+						mathSpeech: {
+							domain: "clearspeak",
+							style: "Paren_Silent",
 						},
 					},
 				},
@@ -400,9 +305,7 @@ describe("ToolkitCoordinator TTS reconfigure sequencing", () => {
 		};
 
 		coordinator.updateToolConfig("textToSpeech", {
-			settings: {
-				rate: 1.25,
-			},
+			rate: 1.25,
 		} as any);
 		await coordinator.ensureTTSReady(
 			coordinator.getToolConfig("textToSpeech") ?? undefined,
@@ -415,7 +318,7 @@ describe("ToolkitCoordinator TTS reconfigure sequencing", () => {
 		});
 	});
 
-	test("deep-merges partial nested mathSpeech updates", async () => {
+	test("deep-merges partial mathSpeech updates", async () => {
 		const coordinator = new ToolkitCoordinator({
 			assessmentId: "tts-math-speech-settings-nested-partial-update-test",
 			lazyInit: true,
@@ -424,12 +327,10 @@ describe("ToolkitCoordinator TTS reconfigure sequencing", () => {
 					textToSpeech: {
 						enabled: true,
 						backend: "browser",
-						settings: {
-							mathSpeech: {
-								domain: "clearspeak",
-								style: "Paren_Silent",
-								engineOptions: { modality: "speech" },
-							},
+						mathSpeech: {
+							domain: "clearspeak",
+							style: "Paren_Silent",
+							engineOptions: { modality: "speech" },
 						},
 					},
 				},
@@ -452,10 +353,8 @@ describe("ToolkitCoordinator TTS reconfigure sequencing", () => {
 		};
 
 		coordinator.updateToolConfig("textToSpeech", {
-			settings: {
-				mathSpeech: {
-					style: "ImpliedTimes_MoreImpliedTimes",
-				},
+			mathSpeech: {
+				style: "ImpliedTimes_MoreImpliedTimes",
 			},
 		} as any);
 		await coordinator.ensureTTSReady(
@@ -548,20 +447,17 @@ describe("ToolkitCoordinator TTS reconfigure sequencing", () => {
 		).not.toThrow();
 	});
 
-	test("fails removed tts method ids deterministically", () => {
+	test("rejects a tool id the registry does not know", () => {
 		const coordinator = new ToolkitCoordinator({
 			assessmentId: "tts-method-id-rejection-test",
 			lazyInit: true,
 			toolRegistry: createTestToolRegistry(),
 		});
-		expect(() => coordinator.isToolEnabled("tts")).toThrow(
-			`Tool id "tts" is no longer supported`,
-		);
 		expect(() => coordinator.getToolConfig("tts")).toThrow(
-			`Tool id "tts" is no longer supported`,
+			`Unknown tool id "tts"`,
 		);
 		expect(() =>
 			coordinator.updateToolConfig("tts", { enabled: true } as any),
-		).toThrow(`Tool id "tts" is no longer supported`);
+		).toThrow(`Unknown tool id "tts"`);
 	});
 });

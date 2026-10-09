@@ -17,7 +17,6 @@
 <script lang="ts">
 	import { coerceBooleanAttributes } from '@pie-players/pie-players-shared/ui/attribute-coercion';
 	import {
-		catalogOwnerContextFor,
 		connectToolRegionScopeContext,
 		connectToolRuntimeContext,
 		connectToolShellContext,
@@ -29,9 +28,15 @@
 		type CatalogLookupContext,
 		type HighlightCoordinatorApi,
 		type NormalizedTTSSpeedOption,
+		type TTSLayoutMode,
 		type TTSSpeedOption,
 		type TtsServiceApi,
-	} from '@pie-players/pie-assessment-toolkit';
+	} from '@pie-players/pie-assessment-toolkit/tools/registration';
+	import {
+		catalogContextForShell,
+		flatTextContent,
+		resolveContentRegion
+	} from '@pie-players/pie-assessment-toolkit/tools/registration';
 	// Side-effect import: registers <nds-icon-button>. Single vendored source of
 	// truth lives in players-shared (Lit inlined, self-contained); see
 	// players-shared/src/components/vendor/nds/README.md. players-shared is not
@@ -41,22 +46,21 @@
 
 	let {
 		catalogId = '', // Explicit catalog ID
-		language = 'en-US',
+		// The host's content language for this reading, when it names one, else the
+		// toolkit's `content-language`. The service resolves the read's language:
+		// markup `lang` inside the shell wins over both.
+		language = '',
 		size = 'md' as 'sm' | 'md' | 'lg',
 		speedOptions = undefined,
 		showSingleSpeedOption = false,
-		layoutMode = 'expanding-row' as
-			| 'reserved-row'
-			| 'expanding-row'
-			| 'floating-overlay'
-			| 'left-aligned'
+		layoutMode = 'left-aligned' as TTSLayoutMode
 	}: {
 		catalogId?: string;
 		language?: string;
 		size?: 'sm' | 'md' | 'lg';
 		speedOptions?: TTSSpeedOption[];
 		showSingleSpeedOption?: boolean;
-		layoutMode?: 'reserved-row' | 'expanding-row' | 'floating-overlay' | 'left-aligned';
+		layoutMode?: TTSLayoutMode;
 	} = $props();
 
 	const isBrowser = typeof window !== 'undefined';
@@ -276,7 +280,6 @@
 	// no separate roving index is needed.
 
 	const instanceId = `pie-tts-inline-instance-${Math.random().toString(36).slice(2)}`;
-	const listenerId = `pie-tts-inline-${Math.random().toString(36).slice(2)}`;
 	const panelId = `${instanceId}-controls`;
 
 	function getActiveOwnerId(): string | null {
@@ -482,11 +485,9 @@
 				queueMicrotask(moveFocusOffDisabledSeekControl);
 			}
 		};
-		ttsService.onStateChange(listenerId, stateListener as (state: any) => void);
+		const unsubscribe = ttsService.onStateChange(stateListener);
 		syncFromState(ttsService.getState() as unknown as string);
-		return () => {
-			ttsService.offStateChange(listenerId, stateListener as (state: any) => void);
-		};
+		return unsubscribe;
 	});
 
 	$effect(() => {
@@ -610,25 +611,11 @@
 	}
 
 	function resolveReadingTarget(): Element | null {
-		if (!targetContainer) return null;
-		const asElement = targetContainer as Element;
-		if (asElement.getAttribute?.('data-region') === 'content') {
-			return asElement;
-		}
-		const contentRegion = asElement.querySelector?.("[data-region='content']");
-		if (contentRegion instanceof Element) return contentRegion;
-		return asElement;
+		return targetContainer ? resolveContentRegion(targetContainer as Element) : null;
 	}
 
 	function resolveCatalogContext(): CatalogLookupContext | undefined {
-		if (!shellContext) return undefined;
-		return catalogOwnerContextFor({
-			kind: shellContext.kind,
-			assessmentId: runtimeContext?.assessmentId,
-			sectionId: runtimeContext?.sectionId,
-			itemId: shellContext.itemId,
-			canonicalItemId: shellContext.canonicalItemId || shellContext.itemId,
-		});
+		return shellContext ? catalogContextForShell(shellContext, runtimeContext) : undefined;
 	}
 
 	function syncHighlightTargetResolverProvider(readingTarget: Element): (() => void) | null {
@@ -694,7 +681,7 @@
 		}
 		try {
 			controlsVisible = true;
-			const text = (readingTarget as HTMLElement).textContent || '';
+			const text = flatTextContent(readingTarget);
 			if (!text) {
 				console.warn('[TTS Inline] No text content found');
 				return;
@@ -708,15 +695,21 @@
 				choicesKey: speedChoicesKey,
 			};
 			resolverDisposer = syncHighlightTargetResolverProvider(readingTarget);
-			(ttsService as any).setRootElement?.(readingTarget as HTMLElement);
 			playbackStartInFlight = true;
 			statusMessage = interfaceI18n.t('tools.textToSpeech.inline.starting');
-			void ttsService.speak(text, {
+			const service = ttsService;
+			void service.speak(readingTarget, {
 				catalogId: catalogId || undefined,
 				catalogContext: resolveCatalogContext(),
-				language,
-				contentElement: readingTarget,
-			} as any).catch((error) => {
+				language: language || runtimeContext?.contentLanguage || undefined,
+			}).then(() => {
+				// Nothing speakable, such as content marked not-to-be-spoken: the
+				// service never left idle, so no state change ends the start.
+				if (playbackStartInFlight && String(service.getState?.() || '') === 'idle') {
+					playbackStartInFlight = false;
+					statusMessage = '';
+				}
+			}).catch((error) => {
 				console.error('[TTS Inline] Error:', error);
 				handlePlaybackStartFailure(resolverDisposer);
 			}).finally(() => {
@@ -799,7 +792,7 @@
 	async function handleSeekForward() {
 		if (!ttsService || !speaking) return;
 		try {
-			await (ttsService as any).seekForward?.(1);
+			await ttsService.seekForward(1);
 			statusMessage = interfaceI18n.t('tools.textToSpeech.inline.skippedForward');
 		} catch (error) {
 			console.error('[TTS Inline] Seek forward failed:', error);
@@ -810,7 +803,7 @@
 	async function handleSeekBackward() {
 		if (!ttsService || !speaking) return;
 		try {
-			await (ttsService as any).seekBackward?.(1);
+			await ttsService.seekBackward(1);
 			statusMessage = interfaceI18n.t('tools.textToSpeech.inline.skippedBackward');
 		} catch (error) {
 			console.error('[TTS Inline] Seek backward failed:', error);
@@ -1382,7 +1375,7 @@
 		);
 		border-color: var(
 			--pie-tool-trigger-active-border-color,
-			var(--pie-button-border-color, var(--pie-button-border, var(--pie-border, #c6c6c6)))
+			var(--pie-button-border, var(--pie-border, #c6c6c6))
 		);
 	}
 
@@ -1399,7 +1392,7 @@
 	}
 
 	.pie-tool-tts-inline__control:hover:not(:disabled) {
-		background-color: var(--pie-button-hover-background-color, var(--pie-button-hover-bg, var(--pie-secondary-background, #f2f4f8)));
+		background-color: var(--pie-button-hover-bg, var(--pie-secondary-background, #f2f4f8));
 		transform: translateY(-1px);
 		box-shadow: 0 2px 6px color-mix(in srgb, var(--pie-shadow, #000) 14%, transparent);
 	}
@@ -1474,7 +1467,7 @@
 		justify-content: center;
 		width: 2rem;
 		height: 2rem;
-		border: 1px solid var(--pie-button-border-color, var(--pie-button-border, var(--pie-border, #c6c6c6)));
+		border: 1px solid var(--pie-button-border, var(--pie-border, #c6c6c6));
 		border-radius: 0.25rem;
 		background: var(--pie-button-background-color, var(--pie-button-bg, var(--pie-background, #fff)));
 		color: var(--pie-button-color, var(--pie-text, #222));

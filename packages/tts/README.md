@@ -24,7 +24,6 @@ This package provides the foundational interfaces and types for building TTS (Te
 
 ### Types
 
-- **`TTSFeature`** - Union type of supported features
 - Configuration and capability types
 
 ## Installation
@@ -45,11 +44,12 @@ import type {
   ITTSProviderImplementation,
   TTSConfig,
   TTSProviderCapabilities,
-  TTSFeature
 } from '@pie-players/pie-tts';
 
 class MyTTSImplementation implements ITTSProviderImplementation {
   onPlaybackStart?: () => void;
+
+  constructor(private readonly config: TTSConfig) {}
 
   async speak(text: string): Promise<void> {
     await myEngine.speak(text, {
@@ -62,6 +62,7 @@ class MyTTSImplementation implements ITTSProviderImplementation {
   stop(): void { /* ... */ }
   isPlaying(): boolean { return false; }
   isPaused(): boolean { return false; }
+  updateSettings(settings: Partial<TTSConfig>): void { /* ... */ }
 }
 
 export class MyTTSProvider implements ITTSProvider {
@@ -71,10 +72,6 @@ export class MyTTSProvider implements ITTSProvider {
 
   async initialize(config: TTSConfig): Promise<ITTSProviderImplementation> {
     return new MyTTSImplementation(config);
-  }
-
-  supportsFeature(feature: TTSFeature): boolean {
-    return feature === 'pause' || feature === 'resume';
   }
 
   getCapabilities(): TTSProviderCapabilities {

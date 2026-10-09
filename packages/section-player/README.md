@@ -6,7 +6,9 @@ Section rendering package with layout custom elements:
 - `pie-section-player-vertical`
 - `pie-section-player-tabbed`
 
-Use the layout custom elements listed above for section rendering.
+A host that arranges the section itself builds its layout from
+`pie-section-player-kernel-host` and the two panes; see
+[Custom layout authoring](#custom-layout-authoring).
 
 ## Install
 
@@ -33,8 +35,10 @@ opt-out.
 import "@pie-players/pie-section-player";
 ```
 
-If hosts need explicit registration control, keep using documented component
-entrypoints under `@pie-players/pie-section-player/components/*`.
+The entrypoints under `@pie-players/pie-section-player/components/*` load one
+element each, together with every element it renders: a layout entry also
+registers the cards, panes and shell. They choose which layouts a host loads; the
+tag names stay fixed.
 
 The entries are bundler-only: they import `@pie-players/pie-item-player`,
 `@pie-players/pie-default-tool-loaders` and `speech-rule-engine`, with the
@@ -80,7 +84,22 @@ snapshot).
 
 ### Session lifecycle
 
-A typical host flow:
+Set `session` with `section` to restore a section. The controller created for
+that section applies it in replace mode in place of hydrating from the
+persistence strategy, before the controller is published, so the first
+composition, `engine-ready` and every reader see it. The strategy still receives
+every `persist()`.
+
+A later assignment applies through `applySession(value, { mode: "replace" })`
+under the rules `<pie-item-player>` applies to its `session`: a value equal to
+the current session is a no-op, so echoing `session-changed` back is safe, and an
+item session with neither a response value nor a response field leaves one that
+holds responses in place. `null` after creation is a no-op. A `section` change
+without a `session` assignment hydrates the new controller from the strategy.
+Reading `session` returns the assigned value until the controller is published,
+and a fresh `getSession()` snapshot after.
+
+Driving the controller directly:
 
 ```ts
 controller?.configureSessionPersistence?.({ context, strategy });
@@ -184,9 +203,9 @@ projected over the section env — with `role: "instructor"` under
 `feedback: "solution"` — and the element draws the rest. Only that item's env
 changes; its neighbours stay editable. A retry withdraws the projection.
 
-Read the resolved state from `getFormativeProjection()`, or off
-`compositionModel.formative` in a custom layout. Drive it from a host through the
-same handle:
+Read the resolved state from `getFormativeProjection()`, or from
+`composition.formative` in a `composition-changed` event's detail. Drive it from a
+host through the same handle:
 
 ```ts
 const controller = await host.waitForSectionController(5000);
@@ -303,14 +322,10 @@ for the contract and the decision record.
 
 ## Usage
 
-Import the custom-element registration entrypoint in consumers:
+Import the package root, which registers every section-player element:
 
 ```ts
-import '@pie-players/pie-section-player/components/section-player-splitpane-element';
-import '@pie-players/pie-section-player/components/section-player-vertical-element';
-import '@pie-players/pie-section-player/components/section-player-tabbed-element';
-import '@pie-players/pie-section-player/components/section-player-item-card-element';
-import '@pie-players/pie-section-player/components/section-player-passage-card-element';
+import '@pie-players/pie-section-player';
 ```
 
 Render in HTML/Svelte/JSX:
@@ -319,17 +334,17 @@ Render in HTML/Svelte/JSX:
 <pie-section-player-splitpane></pie-section-player-splitpane>
 ```
 
-Set complex values (`runtime`, `section`) as JS properties. `env` is a
+Set complex values (`runtime`, `section`, `session`) as JS properties. `env` is a
 `runtime` field (`runtime.env`); the layout elements have no `env` property.
 
 Set `runtime` no later than `section`. When the player builds its own
 coordinator, the section's arrival rebuilds that coordinator from the current
 `runtime`, so both can be set a tick after the element mounts. Once the section
 has initialized, a change to `runtime.tools`, `runtime.assessmentId`,
-`runtime.accessibility`, `runtime.lazyInit`, `runtime.toolConfigStrictness` or
+`runtime.accessibility`, `runtime.lazyInit`, `tool-config-strictness` or
 `toolRegistry` is reported once in the console and does not reach that
 coordinator; `runtime.tools.pnpEnforcement` still applies. Change a running
-coordinator through the one `toolkit-ready` delivers, with
+coordinator through the one `toolkit-ready` carries, with
 `updateToolConfig(...)` or `updateToolsPlacement(...)`, or pass your own as
 `runtime.coordinator`.
 
@@ -340,25 +355,30 @@ The layout elements (`pie-section-player-splitpane`,
 
 - `runtime` (object): primary coordinator/tools/player runtime bundle
 - `section` (object): assessment section payload
+- `session` (object, JS property only): the section's session, a `SectionControllerSessionState`; see [Session lifecycle](#session-lifecycle)
+- `assessment` (object, JS property only): the `AssessmentEntity` whose `personalNeedsProfile` and `settings` tool policy reads, forwarded to the coordinator the player builds. A coordinator passed in `runtime` is the host's to bind with `updateAssessment`. A section's own `personalNeedsProfile` is not read, and the player warns once when it finds one
 - `debug` (boolean-like): verbose debug logging control (`"true"` enables, `"false"`/`"0"` disables)
 - `toolbar-position` (string): `top|right|bottom|left|none`
 - `narrow-layout-breakpoint` (number, optional): viewport width in px below which the layout collapses (split pane: single column; vertical: toolbar moves to top). Clamped to 400–2000; default 1100.
 - `content-max-width-no-passage` (number, optional): max width in px when no passages exist. Clamped to 320–2200. Unset by default (layout uses available width).
 - `content-max-width-with-passage` (number, optional): max width in px when passages are present. Clamped to 320–2200. Unset by default (layout uses available width).
-- `split-pane-min-region-width` (number, optional): splitpane minimum pane width in px. Clamped to 160–1200. Unset by default (split bounds stay at 20–80). (Ignored by vertical layout; supported for API parity.)
-- `split-pane-collapse-strategy` (string, optional): splitpane stacked-mode strategy. Supported values: `tabbed` (default) and `vertical`. (Ignored by vertical/tabbed layouts; supported for API parity.)
+- `split-pane-min-region-width` (number, optional): splitpane minimum pane width in px. Clamped to 160–1200. Unset by default (split bounds stay at 20–80). Splitpane only.
+- `split-pane-collapse-strategy` (string, optional): splitpane stacked-mode strategy. Supported values: `tabbed` (default) and `vertical`. Splitpane only.
 - `base-heading-level` (number, optional): the heading level this player's card headings occupy, and the level every descendant's outline derives from. Clamped to 1–6; default 2. See [Heading structure](#heading-structure).
 - `show-toolbar` (boolean-like): accepts `true/false` and common string forms (`"true"`, `"false"`, `"1"`, `"0"`, `"yes"`, `"no"`); default `false`, so tools placed at `section` level render only when it is `true`
-- `locale` (string, optional): BCP-47 locale for the player's own interface text. Mirrored onto `runtime.locale`, which wins when both are set. Unset renders `en-US`.
-- `nds-icons` (boolean): opt in to NDS icon buttons. Mirrored onto `runtime.ndsIcons`, which wins when both are set.
-- `tool-config-strictness` (string, optional): `off|warn|error` for tool-config validation; default `error`. `runtime.toolConfigStrictness` wins when both are set.
-- `split-pane-initial-passage-width` (number, optional): splitpane passage pane width in percent at mount. Clamped to 20–80; default 50.
+- `locale` (string, optional): BCP-47 locale for the player's own interface text. Unset renders `en-US`.
+- `runtime.contentLanguage` (string, optional, `runtime` only): BCP-47 language of the content where its markup names none, which read-aloud speaks in and picks catalog cards by. A `lang` between the content and its card wins; unset reads `en-US`. `locale` never sets it.
+- `nds-icons` (boolean): opt in to NDS icon buttons.
+- `tool-config-strictness` (string, optional): `off|warn|error` for tool-config validation; default `error`.
+- `split-pane-initial-passage-width` (number, optional): splitpane passage pane width in percent at mount. Clamped to 20–80; default 50. Splitpane only.
 - `iife-bundle-host` (string, optional): bundle host for the IIFE element pre-warm when `runtime.player.loaderOptions.bundleHost` is unset.
 - Host extension props (JS properties only): `toolRegistry`, `sectionHostButtons`, `itemHostButtons`, `passageHostButtons`, `hooks`
 
-When viewport width is within the collapsed range (~1100px and below), splitpane and
-vertical layout hosts normalize section toolbar placement to `top`. This includes
-`left`, `right`, `bottom`, and `none` values.
+When the viewport is no wider than `narrow-layout-breakpoint` (default 1100px),
+splitpane and vertical layout hosts normalize section toolbar placement to `top`.
+This includes `left`, `right`, `bottom`, and `none` values. Separately, the shell
+moves a `left` or `right` toolbar to `top` at a fixed 1100px, so with a smaller
+breakpoint side toolbars still move to the top from 1100px down.
 
 `hooks.cardTitleFormatter` remains active across responsive splitpane transitions (split -> stacked and stacked -> split), because title rendering is provided through shared card context rather than layout-specific state.
 
@@ -440,10 +460,7 @@ hooks for theming:
 - `pie-section-player-tab--active`
 - `pie-section-player-tab-panel`
 
-For theme compatibility with existing passage-label patterns, tabs also expose:
-
-- `data-pie-purpose="passage-label"` and alias class `passage-label`
-- `data-pie-purpose="item-label"` and alias class `item-label`
+Tabs also carry `data-pie-purpose="passage-label"` and `data-pie-purpose="item-label"`.
 
 Tab colors, spacing, and track geometry can be themed via CSS variables:
 `--pie-section-player-tab-color`, `--pie-section-player-tab-background`,
@@ -559,14 +576,14 @@ mountable-but-unoccupied result, not an error.
 The intended usage model is:
 
 - **CE props for default/standard flows (roughly 90% use cases)**:
-  - `assessment-id`, `section`, `section-id`, `attempt-id`, `debug`
+  - `section`, `section-id`, `attempt-id`, `debug`, `locale`, `nds-icons`, `tool-config-strictness`
   - `show-toolbar`, `toolbar-position`, `narrow-layout-breakpoint`
-  - `content-max-width-no-passage`, `content-max-width-with-passage`, `split-pane-min-region-width`, `split-pane-collapse-strategy`
+  - `content-max-width-no-passage`, `content-max-width-with-passage`, and on splitpane `split-pane-min-region-width`, `split-pane-collapse-strategy`
 - **JS API for advanced customization**:
   - Get the controller handle via `getSectionController()` or `waitForSectionController()` (preferred)
   - Listen for `pie-stage-change` and filter on `detail.stage === "engine-ready"` for an event-driven entry point
   - Apply custom policy/gating in host code (for example, domain-specific `canNext` based on controller events like `section-items-complete-changed`)
-  - Compose forward/backward eligibility in host code using `selectNavigation()` + host state; there is intentionally no separate parallel CE gating API for this
+  - Compose forward/backward eligibility in host code using `getSnapshot().navigation` + host state; there is intentionally no separate parallel CE gating API for this
   - Inject custom toolbar tooling with `toolRegistry` and optional host button arrays (`sectionHostButtons`, `itemHostButtons`, `passageHostButtons`)
   - Register host callbacks via `hooks` (for example `hooks.cardTitleFormatter`)
 
@@ -666,15 +683,18 @@ import * as delivery from "@pie-element/multiple-choice/browser/delivery";
 import * as controller from "@pie-element/multiple-choice/browser/controller";
 import manifest from "../package.json"; // pins "@pie-element/multiple-choice" exactly
 
-registerPreloadedElements([
-  {
-    tag: "pie-element-multiple-choice",
-    package: "@pie-element/multiple-choice",
-    version: manifest.dependencies["@pie-element/multiple-choice"],
-    element: delivery,
-    controller,
-  },
-]);
+registerPreloadedElements(
+  [
+    {
+      tag: "pie-element-multiple-choice",
+      package: "@pie-element/multiple-choice",
+      version: manifest.dependencies["@pie-element/multiple-choice"],
+      element: delivery,
+      controller,
+    },
+  ],
+  { math: { assetRoot: "https://assets.example.com/npm" } },
+);
 
 sectionPlayer.runtime = { ...sectionPlayer.runtime, playerType: "preloaded" };
 ```
@@ -693,6 +713,10 @@ sectionPlayer.runtime = { ...sectionPlayer.runtime, playerType: "preloaded" };
   an element can typeset with a MathJax it was not built for. Elements that
   bundle their own MathJax share none
   ([One MathJax version per page](../../docs/item-player/loading-strategies.md#one-mathjax-version-per-page)).
+- Pass `math.assetRoot`, an npm root serving the fonts and speech the elements'
+  bundled MathJax loads, or `math.assetUrls`, each file's URL; without either,
+  elements on adapter 0.1.3 or later render without web fonts and speech
+  ([MathJax assets](../../docs/item-player/loading-strategies.md#mathjax-assets)).
 - Register one version per package. The players align every authored version
   of a package to the registered one, and registering a second version throws.
 - Register each package's `controller` unless the item players are hosted
@@ -733,8 +757,8 @@ sequential keyboard navigation.
 unset field, a missing section included, takes its value from
 `DEFAULT_SECTION_PLAYER_POLICIES`.
 
-- `readiness.mode` (`"progressive"` | `"strict"`) — the mode
-  `SectionPlayerLayoutKernel` passes to `createReadinessDetail`. Both modes
+- `readiness.mode` (`"progressive"` | `"strict"`) — the mode the layout
+  kernel gates readiness by. Both modes
   hold the `interactive` stage and `pie-loading-complete` until the section's
   element pre-warm resolves and the item cards can mount. The kernel has no
   later loading signal, so the two modes currently emit the same sequence.
@@ -750,10 +774,8 @@ unset field, a missing section included, takes its value from
   shape of opt-out can still override `runtime.player.loaderConfig.instrumentationProvider`.
   Default: `true`.
 
-The exported `isPreloadEnabled(policies)` and `isTelemetryEnabled(policies)`
-helpers read these toggles with the documented default-true semantics, so
-host code that needs to mirror the same gate (e.g. when composing a custom
-layout host) can call them directly.
+`resolveSectionPlayerPolicies(policies)` returns the filled-in object, for
+host code that needs the same gates.
 
 ### Navigation signals
 
@@ -762,20 +784,20 @@ layout host) can call them directly.
 
 Runtime configuration is explicit:
 
-- `runtime` owns runtime fields (`assessmentId`, `playerType`, `player`, `lazyInit`, `tools`, `accessibility`, `coordinator`, `isolation`, `env`, `createSectionController`).
+- `runtime` owns runtime fields (`assessmentId`, `playerType`, `player`, `lazyInit`, `tools`, `toolContextResolvers`, `accessibility`, `coordinator`, `createSectionController`, `isolation`, `env`, `contentLanguage` and the `on*` callbacks). `locale`, `nds-icons` and `tool-config-strictness` are attributes only.
 - Tool placement is configured through `runtime.tools.placement.section`, `runtime.tools.placement.item`, and `runtime.tools.placement.passage`.
-- Tool configuration validation is canonical in toolkit initialization (`pie-assessment-toolkit`), including toolbar overlays. Use `runtime.toolConfigStrictness` (`off` | `warn` | `error`) to control warning-only vs fail-fast behavior.
+- Tool configuration validation is canonical in toolkit initialization (`pie-assessment-toolkit`), including toolbar overlays. Use the `tool-config-strictness` attribute (`off` | `warn` | `error`) to control warning-only vs fail-fast behavior.
 - TTS provider config must use `tools.providers.textToSpeech` (canonical). `tools.providers.tts` is rejected by validation.
-- Host tool overrides are additive:
-  - `toolRegistry` overrides the default toolbar registry when provided
+- Host tool overrides:
+  - `toolRegistry` replaces the default toolbar registry when provided. Build it with `createPackagedToolRegistry({ toolModuleLoaders: DEFAULT_TOOL_MODULE_LOADERS })` and register custom tools on it, since toolbars load each tool's element through the registry's loaders. A player that builds its own coordinator gives it this registry; a coordinator passed as `runtime.coordinator` keeps its own, which decides policy, so build that coordinator with the same registry
   - host buttons are appended per toolbar scope via `sectionHostButtons`, `itemHostButtons`, `passageHostButtons`
 
-Debug logging can be controlled per section-player host:
+Debug logging is page-wide. A layout's `debug` attribute writes `window.PIE_DEBUG`, the flag every PIE logger on the page reads, so the last host to set it decides for all of them:
 
 - Enable: `<pie-section-player-splitpane debug="true">`
 - Disable: `<pie-section-player-splitpane debug="false">` (or `debug="0"`)
 
-You can also disable globally via `window.PIE_DEBUG = false`.
+Without a `debug` attribute a layout follows `window.PIE_DEBUG`, which a host can set directly.
 
 See the progressive demo routes in `apps/section-demos/src/routes/(demos)` (for example `single-question/+page.svelte` and `session-hydrate-db/+page.svelte`) for end-to-end host integrations.
 
@@ -804,43 +826,132 @@ Structural composition changes (new/removed/reordered entities) may legitimately
 
 ## Custom layout authoring
 
-For section layout authors, `pie-section-player-shell` is the primary abstraction:
+A host builds its own section layout from `pie-section-player-kernel-host` and the
+two panes. The kernel host runs the section: toolkit, section controller,
+readiness, element pre-warm and the section toolbar. Its element children are the
+layout, and the panes inside them render the section's items and passages. The
+stock layouts are built from the same panes.
 
-- Use `pie-section-player-shell` to place the section toolbar around your layout body.
-- Keep your custom layout logic focused on passages/items and layout UI.
-- Treat `pie-section-player-base` as internal runtime plumbing that wraps the shell.
-- Use `pie-section-player-item-card` and `pie-section-player-passage-card` as reusable card primitives.
-- Prefer shared context for cross-cutting card render plumbing (resolved player tag/action) over repeated prop drilling.
+```html
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <style>
+      body { margin: 0; }
+      pie-section-player-kernel-host { display: block; height: 100vh; }
+      .columns { display: grid; grid-template-columns: 3fr 2fr; height: 100%; }
+      .column { min-height: 0; overflow: auto; }
+    </style>
+    <script type="module">
+      import "https://cdn.jsdelivr.net/npm/@pie-players/pie-section-player@x.y.z/dist/browser/pie-section-player.js";
 
-Minimal pattern for package layout components:
-
-```svelte
-<pie-section-player-base runtime={effectiveRuntime} {section} section-id={sectionId} attempt-id={attemptId}>
-  <pie-section-player-shell
-    show-toolbar={showToolbar}
-    toolbar-position={toolbarPosition}
-    toolRegistry={toolRegistry}
-    sectionHostButtons={sectionHostButtons}
-  >
-    <!-- layout-specific body -->
-    <pie-section-player-passage-card
-      passage={passage}
-      playerParams={passagePlayerParams}
-      passageToolbarTools={passageToolbarTools}
-      toolRegistry={toolRegistry}
-      hostButtons={passageHostButtons}
-    ></pie-section-player-passage-card>
-    <pie-section-player-item-card
-      item={item}
-      canonicalItemId={canonicalItemId}
-      playerParams={itemPlayerParams}
-      itemToolbarTools={itemToolbarTools}
-      toolRegistry={toolRegistry}
-      hostButtons={itemHostButtons}
-    ></pie-section-player-item-card>
-  </pie-section-player-shell>
-</pie-section-player-base>
+      const player = document.querySelector("pie-section-player-kernel-host");
+      player.addEventListener("pie-loading-complete", () => {
+        console.log("ready", player.getSnapshot().navigation);
+      });
+      player.runtime = { env: { mode: "gather", role: "student" } };
+      player.section = {
+        identifier: "water-cycle",
+        rubricBlocks: [
+          {
+            identifier: "passage-1",
+            class: "stimulus",
+            view: ["candidate"],
+            passage: {
+              id: "passage-1",
+              config: {
+                markup: "<p>Water evaporates, condenses into clouds and falls as rain.</p>",
+                elements: {},
+                models: [],
+              },
+            },
+          },
+        ],
+        assessmentItemRefs: [
+          {
+            identifier: "item-1",
+            item: {
+              id: "item-1",
+              config: {
+                markup: "<p>Name the stage in which water vapour forms clouds.</p>",
+                elements: {},
+                models: [],
+              },
+            },
+          },
+        ],
+      };
+    </script>
+  </head>
+  <body>
+    <pie-section-player-kernel-host section-id="water-cycle" attempt-id="attempt-1">
+      <div class="columns">
+        <div class="column"><pie-section-player-items-pane></pie-section-player-items-pane></div>
+        <div class="column"><pie-section-player-passages-pane></pie-section-player-passages-pane></div>
+      </div>
+    </pie-section-player-kernel-host>
+  </body>
+</html>
 ```
+
+The example loads the [browser build](../../docs/setup/cdn_usage.md#section-player-browser-build).
+A bundled host imports `@pie-players/pie-section-player`, which defines the
+kernel host and the panes too. An item with PIE elements names them in
+`config.elements` and carries their `config.models`, as in any section. The
+`/custom-layout` route of `apps/section-demos`
+([source](../../apps/section-demos/src/routes/%28demos%29/custom-layout/+page.svelte))
+builds the same two columns in Svelte.
+
+### Kernel host
+
+- **Inputs and host methods.** Those of the layout elements in
+  [Runtime Inputs](#runtime-inputs), without the layout dimensions
+  (`narrow-layout-breakpoint`, `content-max-width-*`, `split-pane-*`).
+- **DOM.** The open shadow root holds the toolkit and the section toolbar around
+  one default slot; `show-toolbar` and `toolbar-position` place the toolbar around
+  the layout. The children, the panes and the content they render stay in light
+  DOM, where page styles and the content stylesheet reach them. The element has
+  no styles of its own, so the host gives it `display` and a height.
+- **Stock body.** With no element children it renders its own layout, the
+  passages pane above the items pane, and places the passages pane only for a
+  section with passages. The stock body leaves when the first element child
+  arrives and returns when the last one leaves. Text and comment children do not
+  count, so markup whitespace and a framework's placeholder comments leave it in
+  place.
+- **Navigation and state.** The host methods (`navigateNext`, `navigatePrevious`,
+  `navigateTo`, `getSnapshot`, `getSectionController`, `waitForSectionController`)
+  and the events (`pie-stage-change`, `pie-loading-complete`,
+  `composition-changed`, `session-changed`, `framework-error`, `toolkit-ready`)
+  are those of the stock layouts. `detail.sourceCe` on its `pie-stage-change`
+  and `pie-loading-complete` events reads `pie-section-player-kernel-host`.
+
+### Panes
+
+`<pie-section-player-items-pane>` renders the item cards of the current
+composition, with their toolbars, and runs the element pre-warm;
+`<pie-section-player-passages-pane>` renders the passage cards. A pane takes no
+attributes or properties, and its pre-warm failures arrive as the section
+player's `framework-error` and `element-preload-error` events. It reads the
+section player it belongs to from a context the kernel publishes, so it renders
+at any depth below the kernel host, and outside a section player it renders
+nothing.
+
+- **One pane of each kind renders**: the first connected. A second pane of a
+  kind renders nothing and takes over when the first disconnects; the player
+  reports the duplicate once in the console.
+- **Readiness follows the rendering items pane.** `interactive` and
+  `pie-loading-complete` wait for its element pre-warm, and reports from any
+  other pane are ignored. A section with items and no items pane never reaches
+  either; the player reports it once in the console a task after
+  `section-ready`.
+- **The passages pane is optional.** A section without passages needs none, and
+  readiness does not wait for it.
+- **Scrolling belongs to the layout.** The items pane's scroll hint follows the
+  nearest ancestor with `overflow-y: auto` or `scroll`, so the layout gives each
+  pane's container that overflow and a bounded height. The stock layouts' pane backdrops and margins
+  stay with those layouts; the cards keep their tags and
+  [styling hooks](#card-header-styling-hooks).
 
 ### JS API example for advanced host policy
 
@@ -856,7 +967,7 @@ const unsubscribe = controller?.subscribe?.((event: any) => {
 });
 
 function canAdvance() {
-  const nav = host.selectNavigation?.();
+  const nav = host.getSnapshot?.()?.navigation;
   return Boolean(nav?.canNext && sectionComplete);
 }
 ```
@@ -877,7 +988,7 @@ const unsubscribeSection = coordinator.subscribeSectionLifecycleEvents({
 });
 ```
 
-Subscribe **after** the first `getOrCreateSectionController(...)` resolves (or after `toolkit-ready` once the section player has fully wired its controller — typically the safest anchor in host code is `toolkit-ready` followed by the first controller-resolve). Calling subscribe before any cohort exists throws.
+Subscribe **after** the first `getOrCreateSectionController(...)` resolves (or after `toolkit-ready` once the section player has fully wired its controller — typically the safest anchor in host code is `toolkit-ready` followed by the first controller-resolve). Calling subscribe before the first `getOrCreateSectionController(...)` call throws; a listener added while a section is starting binds when that section becomes active.
 
 Use `subscribeSectionEvents(...)` only for advanced mixed filtering requirements.
 
@@ -929,39 +1040,29 @@ Section-player instrumentation is provider-agnostic and uses the shared
 - Toolkit telemetry forwarding uses the same provider path, so tool/backend
   operational events are visible alongside section events when toolkit is mounted.
 
-Canonical lifecycle stream (engine-routed, dispatched on the outer layout CE):
+Canonical lifecycle stream (engine-routed, dispatched on the outer layout CE,
+bubbling and composed):
 
 - `pie-stage-change` — single typed transition stream covering
   `composed` → `engine-ready` → `interactive` → `disposed`. Payload is a
-  `StageChangeDetail`.
+  `StageChangeDetail`. A non-recoverable framework error before
+  `interactive` emits the current stage `failed` and each stage it never
+  reached `skipped`.
 - `pie-loading-complete` — fires once per cohort, when the section's element
   pre-warm resolves for the current composition and the item cards can mount
   (kernel-routed).
 - `framework-error` — canonical error event for any failure crossing the
-  framework boundary. Payload is a `FrameworkErrorModel`. The toolkit's
-  package-internal `FrameworkErrorBus` and the `onFrameworkError`
-  callback prop deliver each error exactly once regardless of wrapper
-  depth, including errors from a coordinator the host passes as
-  `runtime.coordinator`. The `framework-error` *DOM event* on the outer
-  layout CE also delivers each error exactly once: the kernel listener at
-  `<pie-section-player-base>` stops the toolkit's bubbled emit, and the
-  engine dispatches the error on the layout host without bubbling, so it
-  does not reach `document`. `tests/section-player-event-delivery.spec.ts`
-  pins these counts. Direct listeners attached to `<pie-assessment-toolkit>`
-  itself still see the toolkit's own emit.
+  framework boundary. Payload is a `FrameworkErrorModel`. The toolkit
+  dispatches it once per error, bubbling and composed, so it reaches the
+  layout CE and `document`; errors from a coordinator the host passes as
+  `runtime.coordinator` arrive the same way.
+  `tests/section-player-event-delivery.spec.ts` pins these counts.
 
-Callback-prop mirrors with two-tier precedence (`runtime.<key>` wins over
-the top-level prop):
+Callbacks on `runtime`:
 
-- `onStageChange(detail)` — on every layout CE, `pie-section-player-base`,
-  and `pie-assessment-toolkit`.
-- `onLoadingComplete(detail)` — on the kernel-backed layout CEs only
-  (split-pane / vertical / tabbed / kernel-host).
-- `onFrameworkError(model)` — on every layout CE and
-  `pie-section-player-base`. Fires exactly once per error regardless of
-  wrapper depth (delivered through the package-internal
-  `FrameworkErrorBus`). The `framework-error` DOM event on the layout
-  CE host is also single-fire; consume either.
+- `runtime.onStageChange(detail)` and `runtime.onLoadingComplete(detail)`.
+- `runtime.onFrameworkError(model)` fires once per error regardless of
+  wrapper depth, like the `framework-error` DOM event; consume either.
 
 Section-player owned instrumentation stream:
 
@@ -973,9 +1074,7 @@ Section-player owned instrumentation stream:
 
 Build consumers against these canonical lifecycle events:
 
-- `readiness-change` → listen for `pie-stage-change`. The readiness
-  payload is also available via `selectReadiness()` /
-  `getSnapshot().readiness` on the layout CE.
+- `readiness-change` → listen for `pie-stage-change`.
 - `interaction-ready` → `pie-stage-change` filtered on
   `detail.stage === "interactive"`.
 - `ready` → `pie-loading-complete`.
@@ -1025,8 +1124,33 @@ await controller?.updateItemSession?.("q1", {
 });
 ```
 
-The same controller snapshot is what the persistence strategy saves/loads.
+The same controller snapshot is what the persistence strategy saves/loads, and
+what the layout's `session` property takes.
 When a controller is reused for the same `sectionId`/`attemptId`, `updateInput()` refreshes composition input while preserving in-memory section session data.
+
+### One item as a section
+
+`sectionFromItem` wraps one item config, in the shape `<pie-item-player config>`
+takes, and optionally its session, in the `section` and `session` the layouts
+take. It is exported from the package root and from
+`@pie-players/pie-section-player/item-section`, which defines no custom element
+and imports in Node.
+
+```ts
+import { sectionFromItem } from "@pie-players/pie-section-player/item-section";
+
+const { section, session } = sectionFromItem(itemConfig, { session: itemSession });
+player.setAttribute("section-id", section.identifier);
+player.section = section;
+player.session = session;
+```
+
+The item ref's `identifier` and the item's `id` are the config's `id`, so every
+`itemId` the section reports is the id the host already holds. An advanced
+config's `passage` becomes the item's passage, and its `instructorResources` and
+`defaultExtraModels` stay on the item's config. The section carries no `baseId`
+or `version`; `options.sectionId` names the section, which defaults to the
+config's `id`.
 
 ### Commit at a section boundary
 
@@ -1038,7 +1162,7 @@ The player also commits when an item shell tears down and when the page goes
 hidden.
 
 A committed response travels like any other. A raw element `session-changed`
-does not leave its `<pie-item-shell>`, which re-dispatches it as the normalized
+does not leave its `<pie-item-scope>`, which re-dispatches it as the normalized
 `item-session-changed` (`PIE_ITEM_SESSION_CHANGED_EVENT`); the toolkit then
 publishes the section's canonical `session-changed`. Both bubble through the
 layout element to `document`, and a listener on either receives each dispatch
@@ -1097,21 +1221,12 @@ produced by a trusted pipeline.
 Published exports are intentionally minimal:
 
 - `@pie-players/pie-section-player`
-- `@pie-players/pie-section-player/components/section-player-splitpane-element`
-- `@pie-players/pie-section-player/components/section-player-vertical-element`
-- `@pie-players/pie-section-player/components/section-player-tabbed-element`
-- `@pie-players/pie-section-player/components/section-player-kernel-host-element`
-- `@pie-players/pie-section-player/components/section-player-shell-element`
-- `@pie-players/pie-section-player/components/section-player-item-card-element`
-- `@pie-players/pie-section-player/components/section-player-passage-card-element`
-- `@pie-players/pie-section-player/components/section-player-items-pane-element`
-- `@pie-players/pie-section-player/components/section-player-passages-pane-element`
-- `@pie-players/pie-section-player/contracts/layout-contract`
-- `@pie-players/pie-section-player/contracts/public-events`
+- `@pie-players/pie-section-player/browser`, the self-contained browser build ([CDN usage](../../docs/setup/cdn_usage.md#section-player-browser-build))
+- `@pie-players/pie-section-player/components/section-player-splitpane-element`, which resolves to the package root
 - `@pie-players/pie-section-player/contracts/runtime-host-contract`
-- `@pie-players/pie-section-player/contracts/layout-parity-metadata`
 - `@pie-players/pie-section-player/contracts/host-hooks`
 - `@pie-players/pie-section-player/policies`
+- `@pie-players/pie-section-player/item-section`
 
 ## Development
 

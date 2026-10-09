@@ -4,7 +4,7 @@
  * Signing is policy-addressable but is not a toolbar tool, so eligibility comes
  * from `ToolPolicyEngine.decideFeature(...)` rather than a placement-scoped
  * `decide(...)`. These tests pin the two things the accommodation depends on:
- * the six-level precedence applies unchanged, and it is never granted by
+ * the eight-level precedence applies unchanged, and it is never granted by
  * default.
  */
 
@@ -12,26 +12,27 @@ import { describe, expect, test } from "bun:test";
 
 import type {
 	AssessmentEntity,
-	AssessmentItemRef,
+	ItemSettings,
 } from "@pie-players/pie-players-shared/types";
 
 import { ToolPolicyEngine } from "../../src/policy/core/ToolPolicyEngine.js";
-import { createEmptyPersonalNeedsProfile } from "../../src/services/defaultPersonalNeedsProfile.js";
 import { ToolRegistry } from "../../src/services/ToolRegistry.js";
 
 const FEATURE = "signLanguage";
 
+/** The scope item `i1`'s content asks feature policy with. */
+const ITEM_SCOPE = { level: "item", scopeId: "i1" } as const;
+
 function engine(inputs: {
 	assessment?: AssessmentEntity;
-	currentItemRef?: AssessmentItemRef;
+	itemSettings?: ItemSettings;
 }) {
-	return new ToolPolicyEngine({
+	const created = new ToolPolicyEngine({
 		toolRegistry: new ToolRegistry(),
-		inputs: {
-			assessment: inputs.assessment ?? null,
-			currentItemRef: inputs.currentItemRef ?? null,
-		},
+		inputs: { assessment: inputs.assessment ?? null },
 	});
+	if (inputs.itemSettings) created.registerItemSettings("i1", inputs.itemSettings);
+	return created;
 }
 
 describe("signLanguage feature eligibility", () => {
@@ -61,7 +62,7 @@ describe("signLanguage feature eligibility", () => {
 			granted: true,
 			action: "enable",
 			rule: "pnp-support",
-			precedence: 6,
+			precedence: 8,
 			sourceType: "student",
 			required: false,
 		});
@@ -116,27 +117,32 @@ describe("signLanguage feature eligibility", () => {
 				id: "a1",
 				personalNeedsProfile: { supports: [FEATURE] },
 			} as AssessmentEntity,
-			currentItemRef: {
-				identifier: "i1",
-				settings: { restrictedTools: [FEATURE] },
-			} as AssessmentItemRef,
-		}).decideFeature(FEATURE);
+			itemSettings: { restrictedTools: [FEATURE] },
+		}).decideFeature(FEATURE, ITEM_SCOPE);
 		expect(decision.granted).toBe(false);
 		expect(decision).toMatchObject({ rule: "item-restriction", precedence: 3 });
+	});
+
+	test("an item restriction does not reach a decision outside the item's scope", () => {
+		const decision = engine({
+			assessment: {
+				id: "a1",
+				personalNeedsProfile: { supports: [FEATURE] },
+			} as AssessmentEntity,
+			itemSettings: { restrictedTools: [FEATURE] },
+		}).decideFeature(FEATURE);
+		expect(decision).toMatchObject({ granted: true, rule: "pnp-support" });
 	});
 
 	test("an item requirement mandates it", () => {
 		const decision = engine({
 			assessment: { id: "a1" } as AssessmentEntity,
-			currentItemRef: {
-				identifier: "i1",
-				settings: { requiredTools: [FEATURE] },
-			} as AssessmentItemRef,
-		}).decideFeature(FEATURE);
+			itemSettings: { requiredTools: [FEATURE] },
+		}).decideFeature(FEATURE, ITEM_SCOPE);
 		expect(decision).toMatchObject({
 			granted: true,
 			rule: "item-requirement",
-			precedence: 4,
+			precedence: 6,
 			required: true,
 		});
 	});
@@ -151,7 +157,7 @@ describe("signLanguage feature eligibility", () => {
 		expect(decision).toMatchObject({
 			granted: true,
 			rule: "district-requirement",
-			precedence: 5,
+			precedence: 7,
 			required: true,
 		});
 	});
@@ -163,11 +169,8 @@ describe("signLanguage feature eligibility", () => {
 				settings: { toolConfigs: { [FEATURE]: { signLang: "bfi" } } },
 				personalNeedsProfile: { supports: [FEATURE] },
 			} as AssessmentEntity,
-			currentItemRef: {
-				identifier: "i1",
-				settings: { toolParameters: { [FEATURE]: { signLang: "ase" } } },
-			} as AssessmentItemRef,
-		}).decideFeature(FEATURE);
+			itemSettings: { toolParameters: { [FEATURE]: { signLang: "ase" } } },
+		}).decideFeature(FEATURE, ITEM_SCOPE);
 		expect(decision.parameters).toEqual({ signLang: "ase" });
 	});
 
@@ -190,32 +193,12 @@ describe("signLanguage feature eligibility", () => {
 	});
 });
 
-describe("the core ships no populated default profile", () => {
-	test("grants nothing", () => {
-		// The core once derived a profile from every registered tool's
-		// `pnpSupportIds`, which read registry membership as eligibility tier and
-		// granted an accommodation to every student whose host supplied no profile.
-		// Nothing is granted now, so no exclusion list is needed to keep signing
-		// out.
-		const profile = createEmptyPersonalNeedsProfile();
-		expect(profile.supports).toEqual([]);
-		expect(profile.prohibitedSupports).toEqual([]);
-		expect(profile.activateAtInit).toEqual([]);
-	});
-
-	test("returns a fresh profile per call", () => {
-		// Profiles flow into policy inputs hosts mutate; a shared reference would
-		// let one host's edit reach another's.
-		const first = createEmptyPersonalNeedsProfile();
-		first.supports.push(FEATURE);
-		expect(createEmptyPersonalNeedsProfile().supports).toEqual([]);
-	});
-
-	test("an empty profile does not grant the accommodation", () => {
+describe("an empty profile", () => {
+	test("does not grant the accommodation", () => {
 		const decision = engine({
 			assessment: {
 				id: "a1",
-				personalNeedsProfile: createEmptyPersonalNeedsProfile(),
+				personalNeedsProfile: { supports: [], prohibitedSupports: [] },
 			} as AssessmentEntity,
 		}).decideFeature(FEATURE);
 		expect(decision.granted).toBe(false);

@@ -432,30 +432,6 @@ const enUS = {
 		textToSpeech: {
 			name: "Text to Speech",
 			description: "Read content aloud",
-			toolA11y: "Text-to-speech tool",
-			title: "Text-to-Speech",
-			initializing: "Initializing…",
-			initFailed: "Failed to initialize text-to-speech.",
-			selectText: "Select text on the page to read it aloud.",
-			speed: "Speed:",
-			play: "Play",
-			pause: "Pause",
-			resume: "Resume",
-			stop: "Stop",
-			speaking: "Speaking…",
-			paused: "Paused",
-			charactersSelected: {
-				one: "{count} character selected",
-				other: "{count} characters selected",
-			},
-			rate: {
-				slow: "Slow",
-				slower: "Slower",
-				normal: "Normal",
-				faster: "Faster",
-				fast: "Fast",
-				veryFast: "Very Fast",
-			},
 			/** Inline reading controls and their live-region announcements. */
 			inline: {
 				controlsA11y: "Reading controls",
@@ -582,6 +558,7 @@ const enUS = {
 			resolvedTools: "Resolved Tools (toolkit)",
 			provenanceSummary: "Tool Policy Provenance Summary",
 			perToolDecisions: "Per-Tool Decisions",
+			policyDiagnostics: "Policy Diagnostics",
 			profileReadOnly: "PNP Profile (read-only)",
 		},
 

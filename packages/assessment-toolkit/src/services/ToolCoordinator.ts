@@ -1,20 +1,24 @@
 /**
  * ToolCoordinator
  *
- * Manages z-index layering and visibility for floating tools.
- * Prevents conflicts between calculator, ruler, protractor, etc.
+ * Holds the visibility state of floating tools and stacks their elements.
  *
- * Features:
- * - Centralized z-index management with defined layers
- * - Tool visibility state tracking
- * - Bring-to-front on interaction
- * - Framework-agnostic (works with any DOM element)
+ * Visibility is state: the coordinator records it and notifies subscribers, and
+ * whoever renders a tool shows or hides it from that state. Stacking is the
+ * coordinator's alone: an element bound to a tool (`registerTool` with an
+ * element, or `updateToolElement`) takes a z-index in the tool's layer and comes
+ * to the front of that layer when shown or pressed.
  *
  * Part of PIE Assessment Toolkit.
  */
 
 import { createLogger } from "../utils/logger.js";
-import type { ToolCoordinatorApi, ToolState } from "./interfaces.js";
+import type {
+	ToolCoordinatorApi,
+	ToolState,
+	ToolStateFilter,
+} from "./interfaces.js";
+import { parseScopedToolId } from "./tool-instance-id.js";
 
 const log = createLogger("ToolCoordinator");
 
@@ -23,47 +27,54 @@ const log = createLogger("ToolCoordinator");
  */
 export enum ZIndexLayer {
 	BASE = 0, // PIE content, player chrome (0-999)
-	TOOL = 1000, // Non-modal tools (ruler, protractor) (1000-1999)
-	MODAL = 2000, // Modal tools (calculator) (2000-2999)
+	TOOL = 1000, // Floating tools and their windows (1000-1999)
+	MODAL = 2000, // Modal tool surfaces (2000-2999)
 	CONTROL = 3000, // Drag handles, resize controls (3000-3999)
 	HIGHLIGHT = 4000, // TTS and annotation highlights (4000-4999)
 }
 
 /**
- * Tool registration info
+ * A tool the coordinator knows. An entry outlives its element registration: a
+ * tool's element unregisters and re-registers as its item re-renders, and the
+ * tool's on/off state belongs to the entry, so a toggle made while no element is
+ * registered still lands. Only {@link ToolCoordinator.releaseTool} removes it.
  */
-interface ToolRegistration {
+interface ToolEntry {
 	id: string;
 	name: string;
+	/** Whether an element registration currently holds the entry. */
+	registered: boolean;
 	element: HTMLElement | null;
 	layer: ZIndexLayer;
+	/**
+	 * Whether a registration named the layer. A toolbar registers a tool it
+	 * activates before the tool's own element registers; the tool's layer
+	 * replaces the toolbar's when it arrives.
+	 */
+	layerDeclared: boolean;
 	isVisible: boolean;
 	baseZIndex: number;
 	mouseDownHandler?: (e: MouseEvent) => void;
 }
 
-export class ToolCoordinator implements ToolCoordinatorApi {
-	private tools = new Map<string, ToolRegistration>();
-	private layerCounters = new Map<ZIndexLayer, number>();
-	private listeners = new Set<() => void>();
-	/**
-	 * Activation (on/off) state keyed by tool id, kept independent of the
-	 * element registration lifecycle. A tool's DOM element can be unregistered
-	 * and re-registered as the item re-renders (e.g. a model change re-mounts
-	 * the toolbar overlay); when that happens the on/off state must survive so
-	 * that only an explicit toggle — the toolbar button — turns a tool off.
-	 * Cleared on genuine teardown via {@link releaseTool}.
-	 */
-	private visibilityState = new Map<string, boolean>();
+function matchesFilter(id: string, filter?: ToolStateFilter): boolean {
+	if (!filter?.baseId) return true;
+	return (parseScopedToolId(id)?.baseToolId ?? id) === filter.baseId;
+}
 
-	constructor() {
-		// Initialize layer counters
-		this.layerCounters.set(ZIndexLayer.BASE, 0);
-		this.layerCounters.set(ZIndexLayer.TOOL, 0);
-		this.layerCounters.set(ZIndexLayer.MODAL, 0);
-		this.layerCounters.set(ZIndexLayer.CONTROL, 0);
-		this.layerCounters.set(ZIndexLayer.HIGHLIGHT, 0);
-	}
+function toToolState(entry: ToolEntry): ToolState {
+	return {
+		id: entry.id,
+		name: entry.name,
+		isVisible: entry.isVisible,
+		element: entry.element,
+		layer: entry.layer,
+	};
+}
+
+export class ToolCoordinator implements ToolCoordinatorApi {
+	private tools = new Map<string, ToolEntry>();
+	private listeners = new Set<() => void>();
 
 	/**
 	 * Subscribe to tool state changes
@@ -76,118 +87,91 @@ export class ToolCoordinator implements ToolCoordinatorApi {
 		};
 	}
 
-	/**
-	 * Notify all listeners of state change
-	 */
 	private notifyListeners(): void {
-		this.listeners.forEach((listener) => listener());
+		for (const listener of this.listeners) {
+			try {
+				listener();
+			} catch (error) {
+				console.warn("[ToolCoordinator] listener failed:", error);
+			}
+		}
 	}
 
 	/**
-	 * Register a tool with the coordinator
+	 * Register a tool with the coordinator. Registering a known id keeps its
+	 * on/off state and takes the name, the element when one is given, and the
+	 * layer when none was declared before.
 	 *
 	 * @param id Unique tool identifier
 	 * @param name Display name
-	 * @param element DOM element for the tool (optional)
-	 * @param layer Z-index layer (defaults to MODAL)
+	 * @param element DOM element to stack (optional)
+	 * @param layer Z-index layer. Without one the tool stacks on TOOL until a
+	 * registration names one.
 	 */
 	registerTool(
 		id: string,
 		name: string,
 		element?: HTMLElement,
-		layer: ZIndexLayer = ZIndexLayer.MODAL,
+		layer?: ZIndexLayer,
 	): void {
 		log("registerTool called:", { id, name, hasElement: !!element, layer });
 
-		if (this.tools.has(id)) {
-			log(`Tool ${id} is already registered`);
-			return;
-		}
-
-		// Restore prior on/off state. A re-registration (e.g. after an item
-		// re-render unmounts and re-mounts the tool element) must preserve the
-		// tool's activation state so only an explicit toggle can turn it off.
-		const isVisible = this.visibilityState.get(id) ?? false;
-
-		// If no element provided, create a placeholder registration
-		if (!element) {
-			this.tools.set(id, {
+		let entry = this.tools.get(id);
+		if (entry) {
+			entry.name = name;
+			const wasRegistered = entry.registered;
+			entry.registered = true;
+			if (layer !== undefined && !entry.layerDeclared) {
+				entry.layer = layer;
+				entry.layerDeclared = true;
+				this.stackOnTop(entry);
+			} else if (!wasRegistered) {
+				this.stackOnTop(entry);
+			}
+		} else {
+			entry = {
 				id,
 				name,
+				registered: true,
 				element: null,
-				layer,
-				isVisible,
-				baseZIndex: layer,
-			});
-			log("Tool registered without element:", id);
-			return;
+				layer: layer ?? ZIndexLayer.TOOL,
+				layerDeclared: layer !== undefined,
+				isVisible: false,
+				baseZIndex: 0,
+			};
+			this.tools.set(id, entry);
+			this.stackOnTop(entry);
 		}
-
-		// Calculate base z-index for this layer
-		const baseZIndex = layer + this.getNextLayerOffset(layer);
-
-		// Apply z-index
-		element.style.zIndex = String(baseZIndex);
-
-		// Reflect restored visibility onto the freshly registered element.
-		element.style.display = isVisible ? "" : "none";
-
-		// Create and store event handler to enable proper cleanup
-		const mouseDownHandler = () => this.bringToFront(element);
-		element.addEventListener("mousedown", mouseDownHandler);
-
-		// Register tool with handler reference
-		this.tools.set(id, {
-			id,
-			name,
-			element,
-			layer,
-			isVisible,
-			baseZIndex,
-			mouseDownHandler,
-		});
-
-		if (isVisible) {
-			this.bringToFront(element);
-		}
-
-		log("Tool registered with element:", id);
+		if (element) this.updateToolElement(id, element);
 	}
 
 	/**
-	 * Unregister a tool
-	 *
-	 * Detaches the element binding (listeners, registration) but intentionally
-	 * preserves the tool's activation state in {@link visibilityState}, so a
-	 * subsequent re-registration of the same id (e.g. after an item re-render)
-	 * restores whether the tool was on or off. Use {@link releaseTool} to also
-	 * discard the activation state on genuine teardown.
+	 * Unregister a tool's element binding, keeping its on/off state so a
+	 * re-registration of the same id (an item re-render) restores it. Use
+	 * {@link releaseTool} on genuine teardown.
 	 *
 	 * @param id Tool identifier
 	 */
 	unregisterTool(id: string): void {
-		const tool = this.tools.get(id);
-		if (!tool) return;
-
-		// Remove event listeners using stored handler reference
-		if (tool.element && tool.mouseDownHandler) {
-			tool.element.removeEventListener("mousedown", tool.mouseDownHandler);
-		}
-
-		this.tools.delete(id);
+		const entry = this.tools.get(id);
+		if (!entry?.registered) return;
+		this.detachElement(entry);
+		entry.registered = false;
 	}
 
 	/**
-	 * Fully release a tool: unregister its element binding AND discard its
-	 * preserved activation state. Call this on genuine teardown (e.g. leaving
-	 * the item/section that owns the tool) rather than {@link unregisterTool},
-	 * which keeps the on/off state alive across element re-registration.
+	 * Fully release a tool: unregister its element binding and discard its
+	 * on/off state. Call this on genuine teardown (leaving the item or section
+	 * that owns the tool).
 	 *
 	 * @param id Tool identifier
 	 */
 	releaseTool(id: string): void {
-		this.unregisterTool(id);
-		this.visibilityState.delete(id);
+		const entry = this.tools.get(id);
+		if (!entry) return;
+		this.detachElement(entry);
+		this.tools.delete(id);
+		if (entry.isVisible) this.notifyListeners();
 	}
 
 	/**
@@ -196,19 +180,13 @@ export class ToolCoordinator implements ToolCoordinatorApi {
 	 * @param id Tool identifier
 	 */
 	showTool(id: string): void {
-		const tool = this.tools.get(id);
-		if (!tool) {
+		const entry = this.tools.get(id);
+		if (!entry) {
 			log(`Tool ${id} not found`);
 			return;
 		}
-
-		if (tool.element) {
-			tool.element.style.display = "";
-			this.bringToFront(tool.element);
-		}
-		tool.isVisible = true;
-		this.visibilityState.set(id, true);
-		this.notifyListeners();
+		if (entry.element) this.bringToFront(entry.element);
+		this.setVisible(entry, true);
 	}
 
 	/**
@@ -217,18 +195,12 @@ export class ToolCoordinator implements ToolCoordinatorApi {
 	 * @param id Tool identifier
 	 */
 	hideTool(id: string): void {
-		const tool = this.tools.get(id);
-		if (!tool) {
+		const entry = this.tools.get(id);
+		if (!entry) {
 			log(`Tool ${id} not found`);
 			return;
 		}
-
-		if (tool.element) {
-			tool.element.style.display = "none";
-		}
-		tool.isVisible = false;
-		this.visibilityState.set(id, false);
-		this.notifyListeners();
+		this.setVisible(entry, false);
 	}
 
 	/**
@@ -237,18 +209,12 @@ export class ToolCoordinator implements ToolCoordinatorApi {
 	 * @param id Tool identifier
 	 */
 	toggleTool(id: string): void {
-		log("toggleTool called for:", id);
-		const tool = this.tools.get(id);
-		if (!tool) {
-			log(
-				`Tool ${id} not found. Registered tools:`,
-				Array.from(this.tools.keys()),
-			);
+		const entry = this.tools.get(id);
+		if (!entry) {
+			log(`Tool ${id} not found`);
 			return;
 		}
-
-		log("Tool found, current visibility:", tool.isVisible);
-		if (tool.isVisible) {
+		if (entry.isVisible) {
 			this.hideTool(id);
 		} else {
 			this.showTool(id);
@@ -259,43 +225,33 @@ export class ToolCoordinator implements ToolCoordinatorApi {
 	 * Check if tool is visible
 	 *
 	 * @param id Tool identifier
-	 * @returns true if tool is visible
 	 */
 	isToolVisible(id: string): boolean {
-		const tool = this.tools.get(id);
-		if (tool) return tool.isVisible;
-		// No live element registration (e.g. mid re-render, between unmount and
-		// re-mount): fall back to the preserved activation state so the tool
-		// doesn't read as "off" during the gap.
-		return this.visibilityState.get(id) ?? false;
+		return this.tools.get(id)?.isVisible ?? false;
 	}
 
 	/**
-	 * Bring element to front of its layer
+	 * Bring a bound element to the front of its tool's layer. An element no tool
+	 * is bound to is left alone.
 	 *
 	 * @param element DOM element to bring forward
 	 */
 	bringToFront(element: HTMLElement): void {
-		// Find tool registration
-		const tool = Array.from(this.tools.values()).find(
+		const entry = Array.from(this.tools.values()).find(
 			(t) => t.element === element,
 		);
-		if (!tool) return;
+		if (!entry) return;
 
-		// Calculate new z-index (highest in layer + 1)
-		const maxZIndexInLayer = this.getMaxZIndexInLayer(tool.layer);
-		const newZIndex = Math.max(maxZIndexInLayer + 1, tool.layer + 1);
-
-		// Update z-index
-		element.style.zIndex = String(newZIndex);
-		tool.baseZIndex = newZIndex;
+		this.stackOnTop(entry);
 	}
 
 	/**
-	 * Get all registered tool IDs
+	 * Ids of the tools an element registration currently holds.
 	 */
 	getRegisteredTools(): string[] {
-		return Array.from(this.tools.keys());
+		return Array.from(this.tools.values())
+			.filter((entry) => entry.registered)
+			.map((entry) => entry.id);
 	}
 
 	/**
@@ -305,119 +261,108 @@ export class ToolCoordinator implements ToolCoordinatorApi {
 		return this.tools.get(id)?.element ?? null;
 	}
 
-	/**
-	 * Get next offset within a layer
-	 */
-	private getNextLayerOffset(layer: ZIndexLayer): number {
-		const current = this.layerCounters.get(layer) ?? 0;
-		this.layerCounters.set(layer, current + 1);
-		return current;
+	private setVisible(entry: ToolEntry, visible: boolean): void {
+		if (entry.isVisible === visible) return;
+		entry.isVisible = visible;
+		this.notifyListeners();
 	}
 
-	/**
-	 * Get maximum z-index currently in use in a layer
-	 */
-	private getMaxZIndexInLayer(layer: ZIndexLayer): number {
-		let max = layer;
-
-		for (const tool of this.tools.values()) {
-			if (tool.layer === layer) {
-				max = Math.max(max, tool.baseZIndex);
-			}
+	private detachElement(entry: ToolEntry): void {
+		if (entry.element && entry.mouseDownHandler) {
+			entry.element.removeEventListener("mousedown", entry.mouseDownHandler);
 		}
-
-		return max;
+		entry.element = null;
+		entry.mouseDownHandler = undefined;
 	}
 
 	/**
-	 * Reset all tools to their base z-indices
+	 * Put `entry` in front of its layer. The layer is renumbered from its base on
+	 * every move, so its z-indices stay within it however often tools are raised.
 	 */
-	resetZIndices(): void {
-		for (const tool of this.tools.values()) {
-			if (tool.element) {
-				tool.element.style.zIndex = String(tool.baseZIndex);
-			}
+	private stackOnTop(entry: ToolEntry): void {
+		const others = Array.from(this.tools.values())
+			.filter(
+				(other) =>
+					other.registered && other.layer === entry.layer && other !== entry,
+			)
+			.sort((a, b) => a.baseZIndex - b.baseZIndex);
+		const top = entry.layer + others.length + 1;
+		if (
+			entry.baseZIndex === top &&
+			others.every((other) => other.baseZIndex < top)
+		) {
+			return;
 		}
+		[...others, entry].forEach((stacked, index) => {
+			stacked.baseZIndex = entry.layer + 1 + index;
+			if (stacked.element) {
+				stacked.element.style.zIndex = String(stacked.baseZIndex);
+			}
+		});
 	}
 
 	/**
-	 * Update tool element reference
+	 * Bind the element a tool stacks by. It takes the tool's z-index and comes to
+	 * the front of the layer when pressed, and when bound while the tool is shown.
+	 *
+	 * The outermost element stacks: binding an element inside the bound one keeps
+	 * the binding, so a tool rendered inside a toolbar's floating window stacks
+	 * by that window whichever binds first.
 	 *
 	 * @param id Tool identifier
 	 * @param element New DOM element
 	 */
 	updateToolElement(id: string, element: HTMLElement): void {
-		const tool = this.tools.get(id);
-		if (!tool) {
+		const entry = this.tools.get(id);
+		if (!entry?.registered) {
 			log(`Tool ${id} not found`);
 			return;
 		}
+		if (entry.element === element) return;
+		if (entry.element?.isConnected && entry.element.contains(element)) return;
 
-		// Remove old event listener using stored handler reference
-		if (tool.element && tool.mouseDownHandler) {
-			tool.element.removeEventListener("mousedown", tool.mouseDownHandler);
-		}
-
-		// Create new handler and add listener
+		this.detachElement(entry);
 		const mouseDownHandler = () => this.bringToFront(element);
 		element.addEventListener("mousedown", mouseDownHandler);
+		entry.element = element;
+		entry.mouseDownHandler = mouseDownHandler;
 
-		// Update element and handler reference
-		tool.element = element;
-		tool.mouseDownHandler = mouseDownHandler;
-
-		// Apply z-index to new element
-		element.style.zIndex = String(tool.baseZIndex);
-		if (tool.isVisible) {
-			element.style.display = "";
-		} else {
-			element.style.display = "none";
-		}
+		element.style.zIndex = String(entry.baseZIndex);
+		if (entry.isVisible) this.bringToFront(element);
 	}
 
 	/**
-	 * Hide all tools
+	 * Hide every visible tool, or every instance of one tool with
+	 * `{ baseId }`, notifying subscribers once.
 	 */
-	hideAllTools(): void {
-		for (const id of this.tools.keys()) {
-			this.hideTool(id);
+	hideAllTools(filter?: ToolStateFilter): void {
+		let changed = false;
+		for (const entry of this.tools.values()) {
+			if (!entry.isVisible || !matchesFilter(entry.id, filter)) continue;
+			entry.isVisible = false;
+			changed = true;
 		}
-		this.notifyListeners();
+		if (changed) this.notifyListeners();
 	}
 
 	/**
-	 * Get tool state (interface method)
+	 * State of a tool an element registration holds.
 	 *
 	 * @param id Tool identifier
-	 * @returns Tool state or undefined
 	 */
 	getToolState(id: string): ToolState | undefined {
-		const tool = this.tools.get(id);
-		if (!tool) return undefined;
-
-		return {
-			id: tool.id,
-			name: tool.name,
-			isVisible: tool.isVisible,
-			element: tool.element ?? null,
-			layer: tool.layer,
-		};
+		const entry = this.tools.get(id);
+		return entry?.registered ? toToolState(entry) : undefined;
 	}
 
 	/**
-	 * Get all visible tools (interface method)
-	 *
-	 * @returns Array of visible tool states
+	 * Every visible tool, or every visible instance of one tool with
+	 * `{ baseId }`. A tool shown while its element re-renders counts, as
+	 * {@link isToolVisible} counts it.
 	 */
-	getVisibleTools(): ToolState[] {
+	getVisibleTools(filter?: ToolStateFilter): ToolState[] {
 		return Array.from(this.tools.values())
-			.filter((tool) => tool.isVisible)
-			.map((tool) => ({
-				id: tool.id,
-				name: tool.name,
-				isVisible: tool.isVisible,
-				element: tool.element ?? null,
-				layer: tool.layer,
-			}));
+			.filter((entry) => entry.isVisible && matchesFilter(entry.id, filter))
+			.map(toToolState);
 	}
 }

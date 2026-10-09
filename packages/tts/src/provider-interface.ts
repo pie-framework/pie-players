@@ -54,34 +54,38 @@ export interface StandardTTSConfig {
  */
 export interface TTSConfigExtensions {
 	/**
-	 * Organization/tenant identifier
-	 *
-	 * @extension Application-specific
-	 * @use Multi-tenant applications
-	 */
-	organizationId?: string;
-
-	/**
-	 * Provider region or endpoint
-	 *
-	 * @extension Provider-specific
-	 * @example "us-east-1" (AWS), "us-central1" (Google Cloud)
-	 */
-	region?: string;
-
-	/**
-	 * Arbitrary provider-specific options
+	 * Provider options. A provider's configuration type narrows this to the
+	 * options it reads.
 	 *
 	 * @extension Extensibility point
 	 * @example { engine: 'neural' } for AWS Polly
 	 */
-	providerOptions?: Record<string, unknown>;
+	providerOptions?: TTSProviderOptions;
 
 	/**
 	 * Internal read-along hint used by the assessment toolkit to choose between
 	 * per-token math highlighting and expression-level math highlighting.
 	 */
 	mathTokenHighlighting?: boolean;
+}
+
+/**
+ * The provider options every provider may receive. The assessment toolkit sets
+ * them; a provider reads the ones it acts on, and its own options extend these.
+ * Keys no provider declares pass through untouched.
+ */
+export interface TTSProviderOptions {
+	/** Telemetry callback the toolkit installs for a provider's backend calls. */
+	__pieTelemetry?: (
+		eventName: string,
+		payload?: Record<string, unknown>,
+	) => void | Promise<void>;
+	/**
+	 * BCP 47 language of the content being read, set per speak when the content
+	 * or the host names one.
+	 */
+	contentLanguage?: string;
+	[option: string]: unknown;
 }
 
 /**
@@ -102,8 +106,6 @@ export interface TTSConfigExtensions {
  *   voice: "Joanna",
  *   rate: 1.0,
  *   // Extensions
- *   region: "us-east-1",
- *   organizationId: "acme-corp",
  *   providerOptions: { engine: "neural" }
  * };
  * ```
@@ -138,11 +140,6 @@ export interface ITTSProvider {
 	initialize(config: TTSConfig): Promise<ITTSProviderImplementation>;
 
 	/**
-	 * Check if a specific feature is supported
-	 */
-	supportsFeature(feature: TTSFeature): boolean;
-
-	/**
 	 * Get provider capabilities
 	 */
 	getCapabilities(): TTSProviderCapabilities;
@@ -174,12 +171,13 @@ export interface ITTSProviderImplementation {
 	speakSegments?(segments: TTSSpeechSegment[]): Promise<void>;
 
 	/**
-	 * Pause playback
+	 * Pause playback. A pause issued while a speak is still preparing its audio
+	 * holds it: the audio does not start until {@link resume}.
 	 */
 	pause(): void;
 
 	/**
-	 * Resume playback
+	 * Resume playback, starting audio a pause held before it began.
 	 */
 	resume(): void;
 
@@ -197,6 +195,13 @@ export interface ITTSProviderImplementation {
 	 * Check if paused
 	 */
 	isPaused(): boolean;
+
+	/**
+	 * Apply changed settings from the next speak on. The toolkit sends rate,
+	 * pitch and voice changes, and the per-speak `providerOptions.contentLanguage`
+	 * merged over the provider options already configured.
+	 */
+	updateSettings(settings: Partial<TTSConfig>): void | Promise<void>;
 
 	/**
 	 * Playback-start callback (optional).
@@ -238,9 +243,15 @@ export interface TTSProviderCapabilities {
 	supportsResume: boolean;
 
 	/**
-	 * Supports word boundary events for highlighting
+	 * Sends word boundary events for highlighting
 	 */
 	supportsWordBoundary: boolean;
+
+	/**
+	 * Highlight mode used when the host configures none. Omitted, it is `"word"`
+	 * when `supportsWordBoundary` is true and `"sentence"` otherwise.
+	 */
+	defaultHighlightMode?: "word" | "sentence";
 
 	/**
 	 * Supports voice selection
@@ -277,13 +288,3 @@ export interface TTSProviderCapabilities {
 	maxTextLength?: number;
 }
 
-/**
- * TTS features for capability checking
- */
-export type TTSFeature =
-	| "pause"
-	| "resume"
-	| "wordBoundary"
-	| "voiceSelection"
-	| "rateControl"
-	| "pitchControl";

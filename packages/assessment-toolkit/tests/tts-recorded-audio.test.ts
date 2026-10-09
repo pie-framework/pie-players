@@ -15,10 +15,11 @@ import {
 	beforeAll,
 	describe,
 	expect,
+	spyOn,
 	test,
 } from "bun:test";
 
-import type { CatalogCard } from "@pie-players/pie-players-shared";
+import type { CatalogCard } from "@pie-players/pie-players-shared/types";
 import { AccessibilityCatalogResolver } from "../src/services/AccessibilityCatalogResolver";
 import { PlaybackState, TTSService } from "../src/services/TTSService";
 import type {
@@ -47,6 +48,7 @@ class MockTTSImpl implements ITTSProviderImplementation {
 	isPaused(): boolean {
 		return false;
 	}
+	updateSettings(): void {}
 }
 
 class MockTTSProvider implements ITTSProvider {
@@ -56,9 +58,6 @@ class MockTTSProvider implements ITTSProvider {
 	constructor(private impl: ITTSProviderImplementation) {}
 	async initialize(_config: TTSConfig): Promise<ITTSProviderImplementation> {
 		return this.impl;
-	}
-	supportsFeature(): boolean {
-		return true;
 	}
 	getCapabilities(): TTSProviderCapabilities {
 		return {
@@ -151,10 +150,7 @@ const audioOnlyRoot = () => {
 };
 
 const speakItem = (service: TTSService, root: Element) =>
-	service.speak(root.textContent || "", {
-		contentElement: root,
-		language: "en-US",
-	} as never);
+	service.speak(root, { language: "en-US" });
 
 beforeAll(() => {
 	if (typeof (globalThis as { window?: unknown }).window === "undefined") {
@@ -192,7 +188,7 @@ describe("recorded audio as a spoken alternate", () => {
 
 	test("keeps recorded-first playback loading until media actually starts", async () => {
 		const { service } = await newService([audioCard()]);
-		let resolvePlay: (() => void) | null = null;
+		let resolvePlay = null as (() => void) | null;
 		captureAudioElements(
 			() =>
 				new Promise<void>((resolve) => {
@@ -213,9 +209,51 @@ describe("recorded audio as a spoken alternate", () => {
 		expect(service.getState()).toBe(PlaybackState.IDLE);
 	});
 
+	test("a pause before the clip starts holds it, and resume plays the clip", async () => {
+		const { impl, service } = await newService([scriptCard(), audioCard()]);
+		const plays: Array<{
+			resolve: () => void;
+			reject: (error: Error) => void;
+		}> = [];
+		captureAudioElements(
+			() =>
+				new Promise<void>((resolve, reject) => {
+					plays.push({ resolve, reject });
+				}),
+		);
+		const speaking = speakItem(service, audioOnlyRoot());
+		const element = await nextAudioElement();
+		// A browser rejects a pending play with an AbortError when the element
+		// is paused before it starts.
+		element.pause = () => {
+			plays.at(-1)?.reject(
+				Object.assign(new Error("play() interrupted by pause()"), {
+					name: "AbortError",
+				}),
+			);
+		};
+		expect(service.getState()).toBe(PlaybackState.LOADING);
+
+		service.pause();
+		await new Promise((resolve) => setTimeout(resolve, 5));
+
+		expect(service.getState()).toBe(PlaybackState.PAUSED);
+		// The clip did not fail: the reading script stays unread.
+		expect(impl.speakCalls).toEqual([]);
+
+		service.resume();
+		expect(plays).toHaveLength(2);
+		plays[1].resolve();
+		await Promise.resolve();
+		expect(service.getState()).toBe(PlaybackState.PLAYING);
+		element.dispatchEvent(new Event("ended"));
+		await speaking;
+		expect(impl.speakCalls).toEqual([]);
+	});
+
 	test("keeps a recorded-audio replacement loading until replacement media starts", async () => {
 		const { service } = await newService([]);
-		let resolvePlay: (() => void) | null = null;
+		let resolvePlay = null as (() => void) | null;
 		captureAudioElements(
 			() =>
 				new Promise<void>((resolve) => {
@@ -280,7 +318,7 @@ describe("recorded audio as a spoken alternate", () => {
 		const { impl, service } = await newService([scriptCard(), audioCard()]);
 		captureAudioElements(() => new Promise<void>(() => {}));
 		const states: PlaybackState[] = [];
-		service.onStateChange("recorded-fallback", (state) => states.push(state));
+		service.onStateChange((state) => states.push(state));
 		const speaking = speakItem(service, audioOnlyRoot());
 
 		const element = await nextAudioElement();
@@ -377,5 +415,23 @@ describe("recorded audio as a spoken alternate", () => {
 		// would hang forever and every later stop would leak a live clip.
 		await speaking;
 		expect(element.paused).toBe(true);
+	});
+
+	test("a new speak ends a recording still playing", async () => {
+		const { impl, service } = await newService([audioCard()]);
+		captureAudioElements();
+		const speaking = speakItem(service, audioOnlyRoot());
+		const element = await nextAudioElement();
+		const pauses = spyOn(element, "pause");
+
+		const next = document.createElement("p");
+		next.textContent = "Next question.";
+		await service.speak(next, { language: "en-US" });
+
+		// The superseded run settles: its clip was cancelled, not left to end.
+		await speaking;
+		expect(pauses).toHaveBeenCalled();
+		expect(impl.speakCalls).toEqual(["Next question."]);
+		expect(service.getState()).toBe(PlaybackState.IDLE);
 	});
 });

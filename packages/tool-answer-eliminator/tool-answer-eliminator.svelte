@@ -10,9 +10,8 @@
 			buttonAlignment: { type: 'String', attribute: 'button-alignment' },
 			scopeElement: { type: 'Object', reflect: false },
 
-			// Store integration (JS properties only)
-			elementToolStateStore: { type: 'Object', reflect: false },
-			globalElementId: { type: 'String', reflect: false }
+			// Store key per PIE element, by model id (JS property only)
+			elementStateKeys: { type: 'Object', reflect: false }
 		},
 		extend: coerceBooleanAttributes,
 	}}
@@ -34,7 +33,7 @@
   - Modern CSS Custom Highlight API (zero DOM mutation, 10-15x faster)
   - Generic adapter pattern (works with multiple-choice, EBSR, inline-dropdown)
   - Strikethrough visual (WCAG 2.2 AA compliant, best for accessibility)
-  - localStorage persistence across question navigation
+  - Eliminations persist across question navigation through the toolkit's element tool state store
   - Keyboard accessible with proper ARIA attributes
 
   **WCAG 2.2 Level AA Compliant:**
@@ -52,36 +51,32 @@
 		connectToolShellContext,
 		createToolCoordinatorRegistration,
 		ZIndexLayer,
-	} from '@pie-players/pie-assessment-toolkit';
+	} from '@pie-players/pie-assessment-toolkit/tools/registration';
 	import type {
 		AssessmentToolkitShellContext,
 		AssessmentToolkitRuntimeContext,
 		ToolCoordinatorApi,
-	} from '@pie-players/pie-assessment-toolkit';
+	} from '@pie-players/pie-assessment-toolkit/tools/registration';
 	import { onMount } from 'svelte';
-	import { AnswerEliminatorCore } from './answer-eliminator-core.js';
+	import { AnswerEliminatorCore, type ElementStateKeys } from './answer-eliminator-core.js';
 
 	// Props
 	let {
 		visible = false,
 		toolId = 'answerEliminator',
-		strategy = 'strikethrough' as 'strikethrough' | 'mask' | 'gray',
+		strategy = 'strikethrough' as 'strikethrough' | 'mask',
 		alwaysOn = false, // Set true for profile-based accommodation
 		buttonAlignment = 'right' as 'left' | 'right' | 'inline', // Button placement: left, right, or inline with checkbox
 		scopeElement = null, // Container element to limit DOM queries (for multi-item pages)
-
-		// Store integration
-		elementToolStateStore = null, // ElementToolStateStore instance
-		globalElementId = '' // Composite key: "assessmentId:sectionId:itemId:elementId"
+		elementStateKeys = {} as ElementStateKeys // Store key per PIE element, by model id
 	}: {
 		visible?: boolean;
 		toolId?: string;
-		strategy?: 'strikethrough' | 'mask' | 'gray';
+		strategy?: 'strikethrough' | 'mask';
 		alwaysOn?: boolean;
 		buttonAlignment?: 'left' | 'right' | 'inline';
 		scopeElement?: HTMLElement | null;
-		elementToolStateStore?: any;
-		globalElementId?: string;
+		elementStateKeys?: ElementStateKeys;
 	} = $props();
 
 	// State
@@ -91,6 +86,8 @@
 	const coordinator = $derived(
 		runtimeContext?.toolCoordinator as ToolCoordinatorApi | undefined,
 	);
+	// Where eliminations persist across question navigation.
+	const elementToolStateStore = $derived(runtimeContext?.elementToolStateStore ?? null);
 	let core = $state<AnswerEliminatorCore | null>(null);
 	let lastShellContextVersion = $state<number | null>(null);
 
@@ -140,21 +137,16 @@
 	// Re-registers when a republished context brings a new coordinator.
 	$effect(() => registration.sync(coordinator, toolId));
 
-	// Update store integration when store props change
+	// Update store integration when the store or the element keys change
 	$effect(() => {
-		if (core && elementToolStateStore && globalElementId) {
-			core.setStoreIntegration(elementToolStateStore, globalElementId);
-		}
+		core?.setStoreIntegration(elementToolStateStore, elementStateKeys ?? {});
 	});
 
 	onMount(() => {
 		// Initialize core engine with configuration
 		core = new AnswerEliminatorCore(strategy, buttonAlignment);
 
-		// Set up store integration if provided
-		if (core && elementToolStateStore && globalElementId) {
-			core.setStoreIntegration(elementToolStateStore, globalElementId);
-		}
+		core.setStoreIntegration(elementToolStateStore, elementStateKeys ?? {});
 
 		// Initialize for current question if active, otherwise ensure clean state
 		if (isActive) {

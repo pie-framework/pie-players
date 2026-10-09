@@ -1,35 +1,27 @@
 import { describe, expect, test } from "bun:test";
-import { createPackagedToolRegistry } from "../src/packaged-capability-composition.js";
 import {
-	UNIVERSAL_SUPPORTS_PRESET,
+	createEmptyPersonalNeedsProfile,
+	createPackagedToolRegistry,
 	createUniversalPersonalNeedsProfile,
 } from "../src/packaged-capability-composition.js";
 
-describe("universal supports preset", () => {
-	test("carries the packaged set's universal feature ids", () => {
+const universalSupports = () => createUniversalPersonalNeedsProfile().supports;
+
+describe("universal personal-needs profile", () => {
+	test("grants the packaged set's universal tool ids", () => {
 		// Pinned as data. This list was previously recomputed on every import from
 		// the registry, which is what let registry membership decide eligibility
 		// tier; a diff here should be a deliberate program decision, not a
 		// side-effect of registering something.
-		expect([...UNIVERSAL_SUPPORTS_PRESET]).toEqual([
-			"annotations",
+		expect(universalSupports()).toEqual([
+			"annotationToolbar",
 			"answerEliminator",
-			"answerMasking",
 			"calculator",
-			"colorContrast",
 			"graph",
-			"graphingCalculator",
-			"highContrastDisplay",
-			"highlighting",
-			"invertColors",
+			"lineReader",
 			"periodicTable",
 			"protractor",
-			"readAloud",
-			"readingGuide",
-			"readingMask",
-			"readingRuler",
 			"ruler",
-			"strikethrough",
 			"textToSpeech",
 			"theme",
 		]);
@@ -48,7 +40,7 @@ describe("universal supports preset", () => {
 		const registry = createPackagedToolRegistry();
 		const contentDependent = registry.getContentDependentSupportIds();
 		expect(
-			[...UNIVERSAL_SUPPORTS_PRESET].filter((id) =>
+			universalSupports().filter((id) =>
 				contentDependent.includes(id),
 			),
 		).toEqual([]);
@@ -68,28 +60,20 @@ describe("universal supports preset", () => {
 		// signing does.
 		const registry = createPackagedToolRegistry();
 		const contentDependent = registry.getContentDependentSupportIds();
-		const withoutPresentationHalf = contentDependent.filter((id) => {
-			const tool = registry
-				.getAllTools()
-				.find((candidate) =>
-					(candidate.pnpSupportIds ?? [candidate.toolId]).includes(id),
-				);
-			return !tool?.resolvesWithoutGrant;
-		});
+		const withoutPresentationHalf = contentDependent.filter(
+			(id) => !registry.get(id)?.resolvesWithoutGrant,
+		);
 		expect(withoutPresentationHalf).toEqual([]);
 	});
 
 	test("is sorted and free of duplicates", () => {
-		const ids = [...UNIVERSAL_SUPPORTS_PRESET];
+		const ids = universalSupports();
 		expect(ids).toEqual([...ids].sort());
 		expect(new Set(ids).size).toBe(ids.length);
 	});
 
-	test("builds a profile granting the preset", () => {
-		const profile = createUniversalPersonalNeedsProfile();
-		expect(profile.supports).toEqual([...UNIVERSAL_SUPPORTS_PRESET]);
-		expect(profile.prohibitedSupports).toEqual([]);
-		expect(profile.activateAtInit).toEqual([]);
+	test("prohibits nothing", () => {
+		expect(createUniversalPersonalNeedsProfile().prohibitedSupports).toEqual([]);
 	});
 
 	test("returns a fresh profile per call", () => {
@@ -97,8 +81,20 @@ describe("universal supports preset", () => {
 		// would let one host's edit reach another's.
 		const first = createUniversalPersonalNeedsProfile();
 		first.supports.push("hostSpecificSupport");
-		expect(createUniversalPersonalNeedsProfile().supports).toEqual([
-			...UNIVERSAL_SUPPORTS_PRESET,
-		]);
+		expect(universalSupports()).not.toContain("hostSpecificSupport");
+	});
+});
+
+describe("empty personal-needs profile", () => {
+	test("grants and prohibits nothing", () => {
+		const profile = createEmptyPersonalNeedsProfile();
+		expect(profile.supports).toEqual([]);
+		expect(profile.prohibitedSupports).toEqual([]);
+	});
+
+	test("returns a fresh profile per call", () => {
+		const first = createEmptyPersonalNeedsProfile();
+		first.supports.push("hostSpecificSupport");
+		expect(createEmptyPersonalNeedsProfile().supports).toEqual([]);
 	});
 });

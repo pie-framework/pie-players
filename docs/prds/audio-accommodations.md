@@ -51,7 +51,7 @@ That is an accommodation, and PIE has the machinery for accommodations — the m
 ## Package And Export Ownership
 
 - Owning package: `@pie-players/pie-assessment-toolkit` for the support id, the decision API and the grant-AND-content rule; `@pie-players/pie-default-tool-loaders` for the capability itself; `@pie-players/pie-section-player` and `@pie-players/pie-print-player` for rendering it into their own surfaces.
-- Public export path: `resolveContentCapabilities` on the existing `tools/internal` entry, `AccessibilityCatalogResolver` on a narrow `services/` subpath so print can reach it without bundling the toolkit root, and `accessibility` on `<pie-print>`'s config. `ToolkitCoordinator.decideFeaturePolicy(featureId)` and `AccessibilityCatalogResolver.getAlternative(...)` need no additions.
+- Public export path: `resolveContentCapabilities` on the `tools/registration` entry, `AccessibilityCatalogResolver` on a narrow `services/` subpath so print can reach it without bundling the toolkit root, and `accessibility` on `<pie-print>`'s config. `ToolkitCoordinator.decideFeaturePolicy(featureId)` and `AccessibilityCatalogResolver.getAlternative(...)` need no additions.
 - Consuming packages or apps: section-player, print-player, PNP debugger. `pie-elements-ng` loses code rather than gaining any.
 - Runtime environment: browser.
 - Outside this repo: the content side lands in `pie-api-aws` — the Learnosity → PIE mappers in `packages/transform/src/ly-pie/` and a backfill command in `dev/cli`. That work is independently shippable and should go first; see [Where The Transform Actually Lives](#where-the-transform-actually-lives).
@@ -73,7 +73,7 @@ No new types. A transcript is a string alternate, so it is a `CatalogCard` with 
 }
 ```
 
-`transcript` is **already** in the toolkit's AfA vocabulary — `packages/assessment-toolkit/src/services/pnp-standard-features.ts:74`, under "visual alternatives for audio", beside `signLanguage`. It is a support id looking for a consumer, which is the same position `sign-language` was in before PIE-880.
+`transcript` is the AfA support term, and no tool registers under it yet, which is the same position `sign-language` was in before PIE-880.
 
 It must not be granted by default, for the reason the source page gives — a transcript shown to a student who did not need it can invalidate a listening-comprehension item, so inheriting it by default is worse than not having it at all.
 
@@ -209,7 +209,7 @@ No new persisted or wire-facing types. The transcript card is `CatalogCard` unch
 Required test coverage:
 
 - feature-decision tests for `transcript` across all six precedence levels, mirroring `tests/policy/sign-language-feature-policy.test.ts`;
-- a regression test pinning that `transcript` stays out of any wholesale grant, via the composition package's assertion that no id in `UNIVERSAL_SUPPORTS_PRESET` belongs to a registration declaring `requiresAuthoredContent`;
+- a regression test pinning that `transcript` stays out of any wholesale grant, via the composition package's assertion that no support id in `createUniversalPersonalNeedsProfile()` belongs to a registration declaring `requiresAuthoredContent`;
 - resolver tests for a `transcript` card resolved by owner scope with no `data-catalog-idref` present — the case signing never exercises;
 - section-player tests for granted / not-granted / granted-but-no-card, and for reading order placing the transcript before the audio;
 - an accessibility test asserting the transcript is associated with its audio across the region boundary;

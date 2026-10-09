@@ -229,6 +229,51 @@ test.describe("sanitizeItemMarkup (real browser)", () => {
 		expect(out).not.toContain("<script");
 	});
 
+	test("an allowedCustomElements entry cannot admit a forbidden tag", async ({
+		page,
+	}) => {
+		const out = await sanitizeInPage(page, "<script>bad()</script><p>ok</p>", {
+			allowedCustomElements: ["script"],
+		});
+		expect(out).toBe("<p>ok</p>");
+	});
+
+	test.describe("MathML", () => {
+		const unchanged = {
+			stack:
+				'<math><mstack stackalign="right" charalign="center" charspacing="loose"><mscarries location="n" crossout="updiagonalstrike" position="1"><mscarry location="nw" crossout="none"><mn>1</mn></mscarry><none/></mscarries><mn>19</mn><msgroup position="0" shift="1"><msrow position="0"><mo>+</mo><mn>3</mn></msrow></msgroup><msline position="0" length="2" leftoverhang="1" rightoverhang="1" mslinethickness="thin"></msline><mn>22</mn></mstack></math>',
+			longDivision:
+				'<math><mlongdiv longdivstyle="lefttop"><mn>4</mn><mn>12</mn><mn>48</mn><msline length="1"></msline><mn>8</mn></mlongdiv></math>',
+			lineBreak:
+				'<math><mi>a</mi><mspace linebreak="newline"></mspace><mi>b</mi></math>',
+			annotation:
+				'<math><semantics><mi>x</mi><annotation encoding="application/x-tex">x</annotation></semantics></math>',
+			prescripts:
+				"<math><mmultiscripts><mi>C</mi><none/><none/><mprescripts/><mn>14</mn><none/></mmultiscripts></math>",
+			prefixed:
+				"<mml:math><mml:mfrac><mml:mn>1</mml:mn><mml:mn>2</mml:mn></mml:mfrac></mml:math>",
+		};
+
+		for (const [name, markup] of Object.entries(unchanged)) {
+			test(`keeps ${name} markup`, async ({ page }) => {
+				const out = await sanitizeInPage(page, markup);
+				// Serialization closes void MathML elements explicitly.
+				expect(out).toBe(
+					markup.replace(/<(none|mprescripts)\/>/g, "<$1></$1>"),
+				);
+			});
+		}
+
+		test("drops annotation-xml with its HTML", async ({ page }) => {
+			const out = await sanitizeInPage(
+				page,
+				'<math><semantics><mi>x</mi><annotation-xml encoding="text/html"><img src="x" onerror="bad()"></annotation-xml></semantics></math>',
+			);
+			expect(out).not.toContain("annotation-xml");
+			expect(out).not.toContain("onerror");
+		});
+	});
+
 	test.describe("<style> elements", () => {
 		// A <style> element is a document-global stylesheet and the item player
 		// renders in light DOM, so authored CSS that survives here restyles the
@@ -463,6 +508,106 @@ test.describe("sanitizeItemMarkup (real browser)", () => {
 			});
 			expect(out).not.toContain("evil.test");
 			expect(out).toContain("fill: red");
+		});
+	});
+
+	test.describe("authored color markers", () => {
+		// The classification itself is tested where it lives, in
+		// @pie-element/shared-utils. These assert the wiring: item markup gets
+		// the same markers element model HTML does. (PIE-1119)
+
+		/** The markers on each marked element of the sanitized markup, in order. */
+		function markersInPage(page: Page, markup: string) {
+			return page.evaluate((markup) => {
+				const api = (
+					window as unknown as {
+						PieSanitizerUnderTest: {
+							sanitizeItemMarkup: (m: string) => string;
+						};
+					}
+				).PieSanitizerUnderTest;
+				const template = document.createElement("template");
+				template.innerHTML = api.sanitizeItemMarkup(markup);
+				return [
+					...template.content.querySelectorAll(
+						"[data-pie-authored-ink], [data-pie-authored-fill], [data-pie-authored-border]",
+					),
+				].map((el) => ({
+					tag: el.localName,
+					ink: el.hasAttribute("data-pie-authored-ink"),
+					fill: el.getAttribute("data-pie-authored-fill"),
+					border: el.hasAttribute("data-pie-authored-border"),
+				}));
+			}, markup);
+		}
+
+		test("marks authored ink, fills and borders", async ({ page }) => {
+			const marked = await markersInPage(
+				page,
+				'<p style="color: rgb(81, 82, 84); background-color: rgb(255, 255, 255)">x</p>' +
+					'<table><tbody><tr bgcolor="lightgrey"><td style="border: 1px solid black">x</td></tr></tbody></table>' +
+					'<span style="color: var(--pie-text); background-color: transparent">x</span>',
+			);
+			expect(marked).toEqual([
+				{ tag: "p", ink: true, fill: "light", border: false },
+				{ tag: "tr", ink: false, fill: "shade", border: false },
+				{ tag: "td", ink: false, fill: null, border: true },
+			]);
+		});
+
+		test("marks a fill the style filter keeps from a shorthand it filters", async ({
+			page,
+		}) => {
+			const marked = await markersInPage(
+				page,
+				'<div style="background: #ddd url(https://evil.test/a.png)">x</div>',
+			);
+			expect(marked).toEqual([
+				{ tag: "div", ink: false, fill: "shade", border: false },
+			]);
+		});
+
+		test("drops !important from a marked declaration only", async ({ page }) => {
+			// An inline !important outranks the scheme stylesheet's own.
+			const priorities = await page.evaluate(() => {
+				const api = (
+					window as unknown as {
+						PieSanitizerUnderTest: {
+							sanitizeItemMarkup: (m: string) => string;
+						};
+					}
+				).PieSanitizerUnderTest;
+				const template = document.createElement("template");
+				template.innerHTML = api.sanitizeItemMarkup(
+					'<span style="color: red !important; font-weight: bold !important">x</span>',
+				);
+				const span = template.content.querySelector("span") as HTMLElement;
+				return {
+					color: span.style.getPropertyPriority("color"),
+					fontWeight: span.style.getPropertyPriority("font-weight"),
+				};
+			});
+			expect(priorities).toEqual({ color: "", fontWeight: "important" });
+		});
+
+		test("recomputes markers the author wrote", async ({ page }) => {
+			const marked = await markersInPage(
+				page,
+				'<p data-pie-authored-fill="light" data-pie-authored-border style="background-color: navy">x</p>' +
+					'<p data-pie-authored-ink>x</p>',
+			);
+			expect(marked).toEqual([
+				{ tag: "p", ink: false, fill: "shade", border: false },
+			]);
+		});
+
+		test("keeps the markers inside the overwide wrappers", async ({ page }) => {
+			const out = await sanitizeInPage(
+				page,
+				'<table><tbody><tr><th style="background-color: rgb(221, 221, 221)">h</th></tr></tbody></table>',
+			);
+			expect(out).toContain("pie-table-scroll");
+			expect(out).toContain('data-pie-authored-fill="shade"');
 		});
 	});
 

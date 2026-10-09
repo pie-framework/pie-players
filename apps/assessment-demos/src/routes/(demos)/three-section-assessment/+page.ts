@@ -1,5 +1,5 @@
-import { getAssessmentDemoById } from "$lib/content/assessments";
-import { resolveAssessmentDemoTtsBackend } from "$lib/demo-runtime/demo-tts";
+import { getAssessmentDemoById } from "#lib/content/assessments.js";
+import { resolveAssessmentDemoTtsBackend } from "#lib/demo-runtime/demo-tts.js";
 import { error } from "@sveltejs/kit";
 import type { PageLoad } from "./$types";
 

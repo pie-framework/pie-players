@@ -1,22 +1,17 @@
 /**
- * Engine transition tests (M7 PR 1).
+ * Engine transition tests.
  *
- * Exhaustive coverage of `transition(state, input)` over the four-phase
- * FSM (`idle` → `booting-section` → `engine-ready` → `interactive` →
- * `disposed`) and every input variant. The transition is pure and
- * total, so every assertion runs without a host, DOM, or coordinator.
+ * Exhaustive coverage of `transition(state, input)` over the FSM
+ * (`idle` → `booting-section` → `engine-ready` → `interactive` →
+ * `disposed`, with `failed` ending a chain before `interactive`) and every
+ * input variant. The transition is pure and total, so every assertion runs
+ * without a host, DOM, or coordinator.
  *
  * Output ordering invariants asserted here:
  *   1. `stage-change` for stage advancement fires before any
  *      `loading-complete` triggered by the same input.
  *   2. `loading-complete` fires once per cohort, gated on
  *      `state.loadingCompleteEmitted`.
- *   3. `framework-error` is independent of stage progression.
- *
- * Readiness alias output kinds (`readiness-change`,
- * `interaction-ready`, `ready`) and their DOM-event bridge were
- * removed in the broad architecture review compat sweep; assertions
- * here cover only the canonical surface that remains.
  */
 
 import { describe, expect, test } from "bun:test";
@@ -149,6 +144,64 @@ describe("transition: section-controller-resolved", () => {
 		expect(next.outputs).toEqual([]);
 	});
 
+	test("readiness reported while booting advances to interactive once the controller resolves", () => {
+		const booting = fold(createInitialEngineState(), [
+			initialize(COHORT_A, 1),
+			{
+				kind: "update-readiness-signals",
+				mode: "progressive",
+				signals: {
+					sectionReady: true,
+					interactionReady: true,
+					allLoadingComplete: true,
+					runtimeError: false,
+				},
+				itemCount: 1,
+			},
+		]);
+		expect(booting.state.phase).toBe("booting-section");
+		const next = transition(booting.state, {
+			kind: "section-controller-resolved",
+		});
+		expect(next.state.phase).toBe("interactive");
+		expect(next.outputs).toEqual([
+			{
+				kind: "stage-change",
+				stage: "engine-ready",
+				status: "entered",
+				cohort: COHORT_A,
+			},
+			{
+				kind: "stage-change",
+				stage: "interactive",
+				status: "entered",
+				cohort: COHORT_A,
+			},
+		]);
+	});
+
+	test("a strict snapshot short of loading-complete stays at engine-ready", () => {
+		const booting = fold(createInitialEngineState(), [
+			initialize(COHORT_A, 2),
+			{
+				kind: "update-readiness-signals",
+				mode: "strict",
+				signals: {
+					sectionReady: true,
+					interactionReady: true,
+					allLoadingComplete: false,
+					runtimeError: false,
+				},
+				itemCount: 2,
+			},
+		]);
+		const next = transition(booting.state, {
+			kind: "section-controller-resolved",
+		});
+		expect(next.state.phase).toBe("engine-ready");
+		expect(next.outputs.map((output) => output.kind)).toEqual(["stage-change"]);
+	});
+
 	test("ignored before initialize (idle stays idle, no stage emit)", () => {
 		const next = transition(createInitialEngineState(), {
 			kind: "section-controller-resolved",
@@ -174,7 +227,6 @@ describe("transition: update-readiness-signals (progressive)", () => {
 				allLoadingComplete: false,
 				runtimeError: false,
 			},
-			loadedCount: 0,
 			itemCount: 1,
 		});
 		expect(next.state.phase).toBe("interactive");
@@ -202,7 +254,6 @@ describe("transition: update-readiness-signals (progressive)", () => {
 				allLoadingComplete: true,
 				runtimeError: false,
 			},
-			loadedCount: 2,
 			itemCount: 2,
 		});
 		expect(next.state.phase).toBe("interactive");
@@ -216,7 +267,6 @@ describe("transition: update-readiness-signals (progressive)", () => {
 		expect(loadingComplete).toMatchObject({
 			cohort: COHORT_A,
 			itemCount: 2,
-			loadedCount: 2,
 		});
 	});
 
@@ -233,7 +283,6 @@ describe("transition: update-readiness-signals (progressive)", () => {
 					allLoadingComplete: true,
 					runtimeError: false,
 				},
-				loadedCount: 1,
 				itemCount: 1,
 			},
 		]);
@@ -246,7 +295,6 @@ describe("transition: update-readiness-signals (progressive)", () => {
 				allLoadingComplete: true,
 				runtimeError: false,
 			},
-			loadedCount: 1,
 			itemCount: 1,
 		});
 		expect(next.outputs).toEqual([]);
@@ -268,7 +316,6 @@ describe("transition: update-readiness-signals (progressive)", () => {
 				allLoadingComplete: true,
 				runtimeError: false,
 			},
-			loadedCount: 1,
 			itemCount: 1,
 		});
 		expect(next.state.phase).toBe("engine-ready");
@@ -286,7 +333,6 @@ describe("transition: update-readiness-signals (progressive)", () => {
 				allLoadingComplete: true,
 				runtimeError: false,
 			},
-			loadedCount: 0,
 			itemCount: 0,
 		});
 		expect(next.outputs).toEqual([]);
@@ -308,7 +354,6 @@ describe("transition: update-readiness-signals (strict mode)", () => {
 				allLoadingComplete: false,
 				runtimeError: false,
 			},
-			loadedCount: 1,
 			itemCount: 2,
 		});
 		// Strict mode collapses interactionReady to false until loading
@@ -327,7 +372,6 @@ describe("transition: update-readiness-signals (strict mode)", () => {
 				allLoadingComplete: true,
 				runtimeError: false,
 			},
-			loadedCount: 2,
 			itemCount: 2,
 		});
 		expect(complete.state.phase).toBe("interactive");
@@ -348,7 +392,6 @@ describe("transition: cohort-change", () => {
 					allLoadingComplete: true,
 					runtimeError: false,
 				},
-				loadedCount: 1,
 				itemCount: 1,
 			},
 		]);
@@ -410,67 +453,105 @@ describe("transition: cohort-change", () => {
 	});
 });
 
-describe("transition: framework-error", () => {
-	test("records error and emits framework-error output without changing phase", () => {
+function readiness(
+	signals: Partial<{
+		sectionReady: boolean;
+		interactionReady: boolean;
+		allLoadingComplete: boolean;
+		runtimeError: boolean;
+	}>,
+): SectionEngineInput {
+	return {
+		kind: "update-readiness-signals",
+		signals: {
+			sectionReady: false,
+			interactionReady: false,
+			allLoadingComplete: false,
+			runtimeError: false,
+			...signals,
+		},
+		itemCount: 1,
+		mode: "progressive",
+	};
+}
+
+function stages(outputs: readonly SectionEngineOutput[]): string[] {
+	return outputs.flatMap((output) =>
+		output.kind === "stage-change" ? [`${output.stage}:${output.status}`] : [],
+	);
+}
+
+describe("transition: runtime error before interactive", () => {
+	test("while booting, `engine-ready` fails and `interactive` is skipped", () => {
+		const start = fold(createInitialEngineState(), [initialize(COHORT_A)]);
+		const next = transition(start.state, readiness({ runtimeError: true }));
+		expect(next.state.phase).toBe("failed");
+		expect(stages(next.outputs)).toEqual([
+			"engine-ready:failed",
+			"interactive:skipped",
+		]);
+	});
+
+	test("after `engine-ready`, `interactive` fails", () => {
 		const start = fold(createInitialEngineState(), [
 			initialize(COHORT_A),
 			{ kind: "section-controller-resolved" },
 		]);
-		const next = transition(start.state, {
-			kind: "framework-error",
-			error: {
-				kind: "tool-config",
-				severity: "error",
-				source: "test",
-				message: "boom",
-				details: [],
-				recoverable: false,
-			},
-		});
-		expect(next.state.phase).toBe("engine-ready");
-		expect(next.state.lastFrameworkError?.message).toBe("boom");
-		expect(next.state.readinessSignals.runtimeError).toBe(true);
-		expect(next.outputs).toHaveLength(1);
-		expect(next.outputs[0]?.kind).toBe("framework-error");
+		const next = transition(start.state, readiness({ runtimeError: true }));
+		expect(next.state.phase).toBe("failed");
+		expect(stages(next.outputs)).toEqual(["interactive:failed"]);
 	});
 
-	test("framework-error in idle phase still records and emits", () => {
-		const next = transition(createInitialEngineState(), {
-			kind: "framework-error",
-			error: {
-				kind: "coordinator-init",
-				severity: "fatal",
-				source: "toolkit",
-				message: "init failed",
-				details: [],
-				recoverable: false,
-			},
-		});
-		expect(next.outputs).toHaveLength(1);
-		expect(next.state.lastFrameworkError?.kind).toBe("coordinator-init");
+	test("a failed chain stays ended: a late controller and repeated signals emit no stage", () => {
+		const { outputs } = fold(createInitialEngineState(), [
+			initialize(COHORT_A),
+			readiness({ runtimeError: true }),
+			{ kind: "section-controller-resolved" },
+			readiness({ runtimeError: true, sectionReady: true, interactionReady: true }),
+		]);
+		expect(stages(outputs)).toEqual([
+			"composed:entered",
+			"engine-ready:failed",
+			"interactive:skipped",
+		]);
 	});
 
-	test("recoverable framework warnings emit without forcing readiness to error", () => {
+	test("after `interactive`, an error emits no stage", () => {
 		const start = fold(createInitialEngineState(), [
 			initialize(COHORT_A),
 			{ kind: "section-controller-resolved" },
+			readiness({ sectionReady: true, interactionReady: true }),
 		]);
-		const next = transition(start.state, {
-			kind: "framework-error",
-			error: {
-				kind: "tool-surface",
-				severity: "warning",
-				source: "test",
-				message: "one optional surface failed",
-				details: [],
-				recoverable: true,
-			},
-		});
+		expect(start.state.phase).toBe("interactive");
+		const next = transition(start.state, readiness({ runtimeError: true }));
+		expect(next.state.phase).toBe("interactive");
+		expect(stages(next.outputs)).toEqual([]);
+	});
 
-		expect(next.state.lastFrameworkError?.kind).toBe("tool-surface");
-		expect(next.state.readinessSignals.runtimeError).toBe(false);
-		expect(next.outputs).toHaveLength(1);
-		expect(next.outputs[0]?.kind).toBe("framework-error");
+	test("a failed cohort is disposed on dispose and on cohort change", () => {
+		const failed = fold(createInitialEngineState(), [
+			initialize(COHORT_A),
+			readiness({ runtimeError: true }),
+		]);
+		expect(stages(transition(failed.state, { kind: "dispose" }).outputs)).toEqual([
+			"disposed:entered",
+		]);
+		const switched = transition(failed.state, initialize(COHORT_B));
+		expect(switched.state.phase).toBe("booting-section");
+		expect(stages(switched.outputs)).toEqual([
+			"disposed:entered",
+			"composed:entered",
+		]);
+	});
+
+	test("a failed cohort still reports loading-complete once", () => {
+		const { outputs } = fold(createInitialEngineState(), [
+			initialize(COHORT_A),
+			readiness({ runtimeError: true }),
+			readiness({ runtimeError: true, sectionReady: true, allLoadingComplete: true }),
+			readiness({ runtimeError: true, sectionReady: true, allLoadingComplete: true }),
+		]);
+		expect(outputs.filter((o) => o.kind === "loading-complete")).toHaveLength(1);
 	});
 });
 
@@ -528,7 +609,6 @@ describe("transition: dispose", () => {
 				allLoadingComplete: true,
 				runtimeError: false,
 			},
-			loadedCount: 1,
 			itemCount: 1,
 		});
 		expect(afterReadiness.outputs).toEqual([]);

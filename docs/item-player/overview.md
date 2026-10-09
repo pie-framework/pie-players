@@ -25,7 +25,7 @@ For the full attribute/property/event reference, see the [package README](../../
 
 All loader, controller, and type code lives in `@pie-players/pie-players-shared` (`packages/players-shared`); the item-player package composes them.
 
-**PieItemPlayer.svelte** -- The outer custom element. Parses the `config` prop, then drives a linear pipeline over the `ElementLoader` primitive (selecting the IIFE, ESM, or preloaded path based on `strategy`) to register PIE element bundles, and delegates rendering to `PieItemRenderer`. Manages the config-load lifecycle (loading spinner, error display, loaded state) and exposes host methods such as `provideScore()`, `updateElementModel()`, and authoring `validateModels()`.
+**PieItemPlayer.svelte** -- The outer custom element. Parses the `config` prop, then drives a linear pipeline over the `ElementLoader` primitive (selecting the IIFE, ESM, or preloaded path based on `strategy`) to register PIE element bundles, and delegates rendering to `PieItemRenderer`. Manages the config-load lifecycle (loading spinner, error display, loaded state) and exposes host methods such as `provideScore()` and authoring `validateModels()`.
 
 **ItemController** (`players-shared/src/pie/item-controller.ts`) -- Manages the session container (`{ id, data }`) in memory. The player creates one controller per item and uses it to deduplicate and normalize `session-changed` events from PIE elements, preventing metadata-only events from overwriting real responses.
 
@@ -106,7 +106,7 @@ player.backend = {
 
 Delivery backend support owns networking concerns: item/session load, autosave,
 explicit `saveSession()`, and server-backed `score()`. Existing inputs such as
-`env`, `strategy`, `loaderOptions`, `bundleEndpoints`, `renderStimulus`, and
+`env`, `strategy`, `loaderOptions`, `renderStimulus`, and
 styling props stay on the player itself. Local browser scoring remains
 `provideScore()` and is intentionally separate from server scoring.
 
@@ -125,7 +125,9 @@ The player manages session state through `ItemController`:
 
 Hosts receive a single `session-changed` event on the `<pie-item-player>` element with the full updated session container.
 
-The `session` property stays a live view of that container, the contract `<pie-player>` had. The player writes an entry per model into the host's object at `load-complete` and each change into that entry before it dispatches, so a host that reads `player.session.data` — or holds a reference into it — keeps working. The projection is one-directional: `ItemController` owns the session and does not read the property back after the first load, and entries the player did not produce stay, so a section-level container spanning several items is safe to pass.
+The `session` property stays a live view of that container, the contract `<pie-player>` had. The player writes an entry per model into the host's object at `load-complete` and each change into that entry before it dispatches, so a host that reads `player.session.data` — or holds a reference into it — keeps working. The projection is one-directional: `ItemController` owns the session and does not observe in-place changes to the host's object, and entries the player did not produce stay, so a section-level container spanning several items is safe to pass. Assigning a new value to `session` applies it through `ItemController.setSession`, except that a value with neither a response value nor a response field does not replace a session that holds responses.
+
+The section player's layouts take a `session` property under the same rules. A host that delivers one item through a layout builds its `section` and `session` from the item's `config` and `session` with `sectionFromItem` ([section player README](../../packages/section-player/README.md#one-item-as-a-section)).
 
 ### Session commit
 
@@ -154,6 +156,8 @@ Nothing is announced unless it changed since the host last heard. The discrimina
 There is no snapshot without a delivery `sessionId`. The item id alone is the same for every learner, so on a shared device a snapshot keyed by it would offer one student's draft to the next — and the offer is the disclosure, whether or not the host applies it. A host driving the player by props alone opts in with an explicit `sessionSnapshot.key` and owns the uniqueness of that key.
 
 The snapshot is offered, never applied: on load, a matching snapshot raises `session-snapshot-available` with `{ key, session, timestamp }` and the host decides. School devices are shared, and the player cannot tell a legitimate recovery from a previous student's draft. The record stays available from `getPendingSessionSnapshot()` after the event fires, for a host that binds its listener late. A host that wants recovery across a full browser restart supplies a `localStorage`-backed `store` and owns the retention consequences. The snapshot is cleared on a successful backend save.
+
+The section player's default session persistence applies what it stores, where the snapshot is offered, and shares the snapshot's rule on identity. A section controller created without a `session` hydrates from `localStorage` under `pie:section-controller:v1:{assessmentId}:{sectionId}:{attemptId}` and applies what it finds. Without an attempt id the default strategy neither reads nor writes: nothing then tells two learners on one device apart. A host delivering through the section player passes a per-learner `attempt-id` for a section to survive a reload, or replaces the strategy through the coordinator's `hooks.createSectionSessionPersistence` ([section player tutorial](../section-player/client-architecture-tutorial.md#8-session-persistence)).
 
 ## External styles
 

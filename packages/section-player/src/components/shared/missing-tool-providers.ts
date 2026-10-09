@@ -13,7 +13,6 @@ import type {
 	ToolkitCoordinatorApi,
 	ToolRegistry,
 } from "@pie-players/pie-assessment-toolkit";
-import { resolveToolProviderId } from "@pie-players/pie-assessment-toolkit/tools/internal";
 
 /**
  * Tool ids already reported, per coordinator. Module-scoped so a host that
@@ -21,14 +20,10 @@ import { resolveToolProviderId } from "@pie-players/pie-assessment-toolkit/tools
  */
 const reportedToolIds = new WeakMap<object, Set<string>>();
 
-/** A check polls readiness every 100 ms and gives up after 30 s. */
-const READINESS_POLL_INTERVAL_MS = 100;
-const READINESS_POLL_LIMIT = 300;
-
 /**
  * Warn once per placed tool whose registration carries a provider the coordinator
- * has not registered. Reads the coordinator's current placement and providers, so
- * call it only once the coordinator reports ready.
+ * has not registered under the tool's id. Reads the coordinator's current
+ * placement and providers, so call it only once the coordinator reports ready.
  */
 export function reportMissingToolProviders(
 	coordinator: ToolkitCoordinatorApi,
@@ -48,72 +43,47 @@ export function reportMissingToolProviders(
 	let reported = reportedToolIds.get(coordinator);
 	for (const toolId of placed) {
 		if (reported?.has(toolId)) continue;
-		const registration = toolRegistry.get(toolId);
-		if (!registration?.provider) continue;
-		let providerId: string | null;
-		try {
-			const config = coordinator.getToolConfig(toolId) ?? undefined;
-			if (config?.enabled === false) continue;
-			providerId = resolveToolProviderId(registration, config);
-		} catch {
-			// An id or provider config the coordinator rejects is its validator's to
-			// report.
-			continue;
-		}
-		if (!providerId || coordinator.toolProviderRegistry.has(providerId)) continue;
+		if (!toolRegistry.get(toolId)?.provider) continue;
+		if (coordinator.getToolConfig(toolId)?.enabled === false) continue;
+		if (coordinator.toolProviderRegistry.has(toolId)) continue;
 		if (!reported) {
 			reported = new Set();
 			reportedToolIds.set(coordinator, reported);
 		}
 		reported.add(toolId);
 		console.warn(
-			`[pie-section-player] Placed tool "${toolId}" uses provider "${providerId}", which the host-supplied coordinator (runtime.coordinator) has not registered. That coordinator registers tool providers only from the \`toolRegistry\` it was constructed with: include this tool's registration there — for the packaged capability set, \`createPackagedToolRegistry()\` from "@pie-players/pie-default-tool-loaders" — or construct it without one to use the section player's. Reported once per tool and coordinator.`,
+			`[pie-section-player] Placed tool "${toolId}" has a provider the host-supplied coordinator (runtime.coordinator) has not registered. That coordinator registers tool providers only from the \`toolRegistry\` it was constructed with: include this tool's registration there — for the packaged capability set, \`createPackagedToolRegistry()\` from "@pie-players/pie-default-tool-loaders" — or construct it without one to use the section player's. Reported once per tool and coordinator.`,
 		);
 	}
 }
 
 /**
- * Check `coordinator` now and whenever its policy inputs change, since placement
- * can. A check runs once the coordinator reports ready: its providers have
- * registered by then, and a text-to-speech reconfiguration, which unregisters and
- * re-registers that provider, holds readiness until it is back. Readiness is
- * polled because `waitUntilReady()` would start initialization a lazy
- * coordinator defers, and retry one that failed. Returns the teardown.
+ * Check `coordinator` once it reports ready, and again whenever readiness or its
+ * policy inputs change, since placement can. Its providers have registered by
+ * then, and a text-to-speech reconfiguration, which unregisters and re-registers
+ * that provider, holds readiness until it is back. `waitUntilReady()` is not
+ * awaited: it would start text-to-speech a lazy coordinator defers, and retry
+ * one that failed. Returns the teardown.
  */
 export function watchMissingToolProviders(
 	coordinator: ToolkitCoordinatorApi,
 	toolRegistry: ToolRegistry,
 ): () => void {
 	let stopped = false;
-	let pollTimer: ReturnType<typeof setInterval> | undefined;
-	const stopPolling = () => {
-		clearInterval(pollTimer);
-		pollTimer = undefined;
-	};
-	const reportIfReady = (): boolean => {
+	const check = () => {
+		if (stopped) return;
 		let ready = false;
 		try {
 			ready = coordinator.isReady();
 		} catch {
-			stopPolling();
-			return true;
+			return;
 		}
-		if (!ready) return false;
-		stopPolling();
-		reportMissingToolProviders(coordinator, toolRegistry);
-		return true;
+		if (ready) reportMissingToolProviders(coordinator, toolRegistry);
 	};
-	const check = () => {
-		if (stopped || reportIfReady() || pollTimer !== undefined) return;
-		let polls = 0;
-		pollTimer = setInterval(() => {
-			polls += 1;
-			if (!reportIfReady() && polls >= READINESS_POLL_LIMIT) stopPolling();
-		}, READINESS_POLL_INTERVAL_MS);
-	};
-	const unsubscribe = coordinator.onPolicyChange((event) => {
+	const stopFollowingReadiness = coordinator.onReadyChange(check);
+	const stopFollowingPolicy = coordinator.onPolicyChange((event) => {
 		if (event.reason === "disposed") {
-			stopPolling();
+			stopped = true;
 			return;
 		}
 		// The change is dispatched mid-update; checking after it lets a
@@ -123,7 +93,7 @@ export function watchMissingToolProviders(
 	check();
 	return () => {
 		stopped = true;
-		stopPolling();
-		unsubscribe();
+		stopFollowingReadiness?.();
+		stopFollowingPolicy();
 	};
 }

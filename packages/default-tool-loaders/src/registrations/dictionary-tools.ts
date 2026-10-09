@@ -23,13 +23,13 @@ import type {
 	ToolToolbarRenderResult,
 	ToolbarContext,
 	ToolComponentOverrides,
-} from "@pie-players/pie-assessment-toolkit/tools/internal";
+} from "@pie-players/pie-assessment-toolkit/tools/registration";
 import {
 	createScopedVisibilityBinding,
 	createToolElement,
 	hasReadableText,
 	syncButtonAndOverlayVisibility,
-} from "@pie-players/pie-assessment-toolkit/tools/internal";
+} from "@pie-players/pie-assessment-toolkit/tools/registration";
 import type { MessageKey } from "@pie-players/pie-players-shared/i18n/types";
 import { resolveOverlayElement } from "./overlay-element-cache.js";
 
@@ -45,6 +45,18 @@ type DictionaryPanelElement = HTMLElement & {
 	headers?: unknown;
 	credentials?: string;
 };
+
+type LookupField = "endpoint" | "lookup" | "headers" | "credentials";
+
+/**
+ * The lookup fields each panel last took from render params. The panel outlives
+ * renders, so a field the host stops supplying is cleared here; a field it never
+ * supplied, such as one a component factory set, is left alone.
+ */
+const appliedLookupFields = new WeakMap<
+	DictionaryPanelElement,
+	ReadonlySet<LookupField>
+>();
 
 /**
  * Apply the host's per-tool render params to the panel.
@@ -67,11 +79,22 @@ function applyLookupParams(
 	lookupLanguage?: string,
 ): void {
 	const params = toolbarContext.getToolRenderParams?.(toolId) ?? {};
-	if (typeof params.endpoint === "string") element.endpoint = params.endpoint;
-	if (typeof params.lookup === "function") element.lookup = params.lookup;
-	if (typeof params.headers === "function") element.headers = params.headers;
+	const supplied: Partial<Record<LookupField, unknown>> = {};
+	if (typeof params.endpoint === "string") supplied.endpoint = params.endpoint;
+	if (typeof params.lookup === "function") supplied.lookup = params.lookup;
+	if (typeof params.headers === "function") supplied.headers = params.headers;
 	if (typeof params.credentials === "string")
-		element.credentials = params.credentials;
+		supplied.credentials = params.credentials;
+	// A dropped `lookup` left in place would keep outranking the endpoint that
+	// replaced it.
+	for (const field of appliedLookupFields.get(element) ?? []) {
+		if (!(field in supplied)) element[field] = undefined;
+	}
+	Object.assign(element, supplied);
+	appliedLookupFields.set(
+		element,
+		new Set(Object.keys(supplied) as LookupField[]),
+	);
 	// The selection door: a gateway acting on the learner's selection requests this
 	// tool with the words in `term`, and the toolbar layers that over the host's own
 	// params. The toolbar stamps every request with a neutral `toolRequestId` — core
@@ -208,14 +231,15 @@ function renderDictionaryPanel(args: {
  * so a host catalog that lacks one is a plain label rather than a broken button.
  */
 export interface DictionaryVariantOptions {
-	/** Capability id, unique per language. Defaults to the base tool's id. */
+	/**
+	 * Capability id, unique per language, and the PNP support id that grants it.
+	 * Defaults to the base tool's id.
+	 */
 	toolId?: string;
 	name?: string;
 	description?: string;
 	/** Catalog prefix for this variant's strings. Defaults to `tools.<toolId>`. */
 	messageKeyPrefix?: string;
-	/** PNP ids that grant this variant. A language variant needs its own. */
-	pnpSupportIds?: string[];
 	/**
 	 * The corpus language this capability looks words up in, as a BCP-47 tag.
 	 *
@@ -230,7 +254,7 @@ export interface DictionaryVariantOptions {
  * Dictionary tool registration
  *
  * Word lookup from a host-supplied service, in one language. Call this again with another
- * `toolId`, `pnpSupportIds` and `lookupLanguage` to offer a second language beside it.
+ * `toolId` and `lookupLanguage` to offer a second language beside it.
  */
 export function createDictionaryToolRegistration(
 	options: DictionaryVariantOptions = {},
@@ -247,16 +271,6 @@ export function createDictionaryToolRegistration(
 
 		// Text can appear at any of these; the panel itself floats at section scope.
 		supportedLevels: ["section", "item", "passage", "rubric"],
-
-		// PNP support IDs
-		// Maps to AfA PNP 3.0 / QTI 3.0 dictionary support, plus the common variants a
-		// host profile is likely to carry.
-		pnpSupportIds: options.pnpSupportIds ?? [
-			"dictionary", // Canonical id
-			"englishDictionary", // Common variant
-			"glossary", // Common variant
-			"definitions", // Common variant
-		],
 
 		/** Pass 2: a dictionary is relevant wherever there is text to look words up from. */
 		isVisibleInContext(context: ToolContext): boolean {
@@ -309,16 +323,6 @@ export function createPictureDictionaryToolRegistration(
 
 		supportedLevels: ["section", "item", "passage", "rubric"],
 
-		// PNP support IDs
-		// AfA PNP 3.0 names an illustrated equivalent of a glossary; the variants cover
-		// what host profiles call it in practice.
-		pnpSupportIds: options.pnpSupportIds ?? [
-			"pictureDictionary", // Canonical id
-			"illustratedGlossary", // Common variant
-			"symbolDictionary", // Common variant
-			"pictureSupport", // Common variant
-		],
-
 		isVisibleInContext(context: ToolContext): boolean {
 			return hasReadableText(context);
 		},
@@ -357,7 +361,6 @@ export const spanishDictionaryToolRegistration: ToolRegistration =
 		toolId: "dictionarySpanish",
 		name: "Spanish Dictionary",
 		description: "Look up word definitions in Spanish",
-		pnpSupportIds: ["spanishDictionary"],
 		lookupLanguage: "es",
 	});
 
@@ -366,6 +369,5 @@ export const spanishPictureDictionaryToolRegistration: ToolRegistration =
 		toolId: "pictureDictionarySpanish",
 		name: "Spanish Picture Dictionary",
 		description: "Look up pictures for words in Spanish",
-		pnpSupportIds: ["spanishPictureDictionary"],
 		lookupLanguage: "es",
 	});

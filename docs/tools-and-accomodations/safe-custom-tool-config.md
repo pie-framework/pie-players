@@ -19,6 +19,7 @@ message payload.
 3. Pass the resulting `config` into `ToolkitCoordinator`.
 4. Keep strict enforcement at `error` so invalid config fails at boundary time.
 5. Optionally listen for `framework-error` to add host-specific observability/UX.
+6. Under a section player, also set the same registry as the layout's `toolRegistry` property.
 
 ```ts
 import {
@@ -27,9 +28,14 @@ import {
 } from "@pie-players/pie-assessment-toolkit";
 // The packaged capability set is composition, not core: the toolkit knows
 // placement levels and precedence and no capability ids.
-import { createPackagedToolRegistry } from "@pie-players/pie-default-tool-loaders";
+import {
+  createPackagedToolRegistry,
+  DEFAULT_TOOL_MODULE_LOADERS,
+} from "@pie-players/pie-default-tool-loaders";
 
-const registry = createPackagedToolRegistry();
+const registry = createPackagedToolRegistry({
+  toolModuleLoaders: DEFAULT_TOOL_MODULE_LOADERS,
+});
 registry.register(wordCounterToolRegistration);
 registry.register(sectionMetaInfoToolRegistration);
 
@@ -60,9 +66,20 @@ const coordinator = new ToolkitCoordinator({
 });
 ```
 
-## Custom provider hooks
+The coordinator's registry decides policy; a section player's toolbars render from
+the layout's `toolRegistry` property, which defaults to the packaged registry. A
+custom tool registered only with the coordinator passes policy and never renders,
+so a section-player host also passes the registry to the layout:
 
-Custom tool registrations can add provider hooks to enforce tool-specific schema:
+```ts
+layout.runtime = { ...(layout.runtime ?? {}), coordinator };
+layout.toolRegistry = registry;
+```
+
+## Custom config hooks
+
+A tool registration can declare hooks that enforce its own schema on its
+`providers.<toolId>` entry, with or without a provider:
 
 - `sanitizeConfig(config)` to normalize input.
 - `validateConfig(config)` to return diagnostics.
@@ -72,7 +89,6 @@ This keeps core validation generic while allowing custom tools to define their o
 ## Canonical keys
 
 - TTS provider key: `providers.textToSpeech`.
-- `providers.tts` is invalid and rejected by validation.
 
 ## Overlay safety in section-player
 

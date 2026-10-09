@@ -29,7 +29,7 @@ const providerWarnings = (): string[] =>
 		.map((args: unknown[]) => args.map(String).join(" "))
 		.filter((line: string) => line.startsWith(PROVIDER_WARNING));
 
-const nextPoll = () => new Promise((resolve) => setTimeout(resolve, 150));
+const settle = () => new Promise((resolve) => setTimeout(resolve, 0));
 
 beforeEach(() => {
 	globals.speechSynthesis = silentSpeechSynthesis;
@@ -59,11 +59,15 @@ const tools = {
 };
 
 const createCoordinator = (
-	options: { toolRegistry?: ReturnType<typeof createPackagedToolRegistry> } = {},
+	options: {
+		toolRegistry?: ReturnType<typeof createPackagedToolRegistry>;
+		lazyInit?: boolean;
+	} = {},
 ) =>
 	new ToolkitCoordinator({
 		assessmentId: "missing-tool-providers",
-		lazyInit: true,
+		lazyInit: options.lazyInit,
+		eagerInit: false,
 		toolRegistry: options.toolRegistry,
 		tools,
 	});
@@ -85,36 +89,34 @@ describe("placed tools a host-supplied coordinator has no provider for", () => {
 		const coordinator = createCoordinator();
 		const playerRegistry = createPackagedToolRegistry();
 		watch(coordinator, playerRegistry);
-		await nextPoll();
+		await settle();
 		expect(providerWarnings()).toEqual([]);
 
 		await coordinator.waitUntilReady();
-		await nextPoll();
+		await settle();
 		const warnings = providerWarnings();
 		expect(warnings).toHaveLength(2);
-		expect(warnings[0]).toContain(
-			'Placed tool "calculator" uses provider "calculator-desmos"',
-		);
-		expect(warnings[1]).toContain('Placed tool "textToSpeech" uses provider "tts"');
+		expect(warnings[0]).toContain('Placed tool "calculator" has a provider');
+		expect(warnings[1]).toContain('Placed tool "textToSpeech" has a provider');
 		expect(warnings[0]).toContain("createPackagedToolRegistry()");
 
 		coordinator.updateToolsPlacement({
 			item: ["calculator", "textToSpeech", "answerEliminator"],
 		});
-		await nextPoll();
+		await settle();
 		// A remount around the same coordinator.
 		watch(coordinator, playerRegistry);
-		await nextPoll();
+		await settle();
 		expect(providerWarnings()).toHaveLength(2);
 	});
 
-	test("waiting does not start initialization a lazy coordinator defers", async () => {
-		const coordinator = createCoordinator();
+	test("a lazy coordinator is checked without starting text-to-speech", async () => {
+		const coordinator = createCoordinator({ lazyInit: true });
 		watch(coordinator, createPackagedToolRegistry());
-		await nextPoll();
+		await settle();
 
-		expect(coordinator.getInitStatus().tts).toBe(false);
-		expect(providerWarnings()).toEqual([]);
+		expect((coordinator as unknown as { ttsInitialized: boolean }).ttsInitialized).toBe(false);
+		expect(providerWarnings()).toHaveLength(2);
 	});
 
 	test("a disabled tool is not reported", async () => {
@@ -122,7 +124,7 @@ describe("placed tools a host-supplied coordinator has no provider for", () => {
 		coordinator.updateToolConfig("calculator", { enabled: false });
 		watch(coordinator, createPackagedToolRegistry());
 		await coordinator.waitUntilReady();
-		await nextPoll();
+		await settle();
 
 		expect(providerWarnings()).toHaveLength(1);
 		expect(providerWarnings()[0]).toContain('Placed tool "textToSpeech"');
@@ -133,13 +135,13 @@ describe("placed tools a host-supplied coordinator has no provider for", () => {
 		const coordinator = createCoordinator({ toolRegistry: playerRegistry });
 		watch(coordinator, playerRegistry);
 		await coordinator.waitUntilReady();
-		await nextPoll();
+		await settle();
 
 		coordinator.updateToolConfig("textToSpeech", { rate: 1.2 });
 		await coordinator.waitUntilReady();
-		await nextPoll();
+		await settle();
 
-		expect(coordinator.toolProviderRegistry.has("tts")).toBe(true);
+		expect(coordinator.toolProviderRegistry.has("textToSpeech")).toBe(true);
 		expect(providerWarnings()).toEqual([]);
 	});
 
@@ -148,19 +150,22 @@ describe("placed tools a host-supplied coordinator has no provider for", () => {
 		const coordinator = createCoordinator({ toolRegistry: playerRegistry });
 		watch(coordinator, playerRegistry);
 		await coordinator.waitUntilReady();
-		await nextPoll();
+		await settle();
 
 		coordinator.updateToolConfig("calculator", {
 			provider: { id: "calculator-geogebra" },
 		});
-		await nextPoll();
+		await settle();
 
-		expect(coordinator.toolProviderRegistry.has("calculator-geogebra")).toBe(
-			true,
-		);
-		expect(coordinator.toolProviderRegistry.has("calculator-desmos")).toBe(
-			false,
-		);
+		// The vendor switch replaces the provider under the tool's own id.
+		expect(coordinator.toolProviderRegistry.getProviderIds().sort()).toEqual([
+			"calculator",
+			"textToSpeech",
+		]);
+		expect(
+			(await coordinator.toolProviderRegistry.getProvider("calculator", false))
+				.providerName,
+		).toBe("GeoGebra Calculator");
 		expect(providerWarnings()).toEqual([]);
 	});
 });

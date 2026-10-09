@@ -23,7 +23,9 @@ async function validateControllerAccess(args: {
 					waitForSectionController?: (
 						timeoutMs?: number,
 					) => Promise<unknown | null>;
-					selectNavigation?: () => { canNext?: boolean; canPrevious?: boolean };
+					getSnapshot?: () => {
+						navigation?: { canNext?: boolean; canPrevious?: boolean };
+					};
 					navigateNext?: () => boolean;
 					navigatePrevious?: () => boolean;
 					canNavigateForward?: () => boolean;
@@ -47,10 +49,10 @@ async function validateControllerAccess(args: {
 			typeof (awaited as { subscribe?: unknown } | null)?.subscribe ===
 			"function";
 		let sectionComplete = false;
-		const navBefore = host.selectNavigation?.();
+		const navBefore = host.getSnapshot?.()?.navigation;
 		const canAdvanceBefore = Boolean(navBefore?.canNext && sectionComplete);
 		sectionComplete = true;
-		const navAfter = host.selectNavigation?.();
+		const navAfter = host.getSnapshot?.()?.navigation;
 		const canAdvanceAfter = Boolean(navAfter?.canNext && sectionComplete);
 
 		return {

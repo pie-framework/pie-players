@@ -1,4 +1,12 @@
-import { afterEach, describe, expect, test } from "bun:test";
+import { GlobalRegistrator } from "@happy-dom/global-registrator";
+import {
+	afterAll,
+	afterEach,
+	beforeAll,
+	describe,
+	expect,
+	test,
+} from "bun:test";
 import { PlaybackState, TTSService } from "../src/services/TTSService";
 import type {
 	ITTSProvider,
@@ -6,6 +14,19 @@ import type {
 	TTSConfig,
 	TTSProviderCapabilities,
 } from "@pie-players/pie-tts";
+import { contentWith } from "./fixtures/read-aloud-content";
+
+beforeAll(() => {
+	if (!GlobalRegistrator.isRegistered) {
+		GlobalRegistrator.register();
+	}
+});
+
+afterAll(() => {
+	if (GlobalRegistrator.isRegistered) {
+		GlobalRegistrator.unregister();
+	}
+});
 
 class TelemetryMockProvider implements ITTSProvider {
 	readonly providerId = "mock";
@@ -16,10 +37,6 @@ class TelemetryMockProvider implements ITTSProvider {
 
 	async initialize(_config: TTSConfig): Promise<ITTSProviderImplementation> {
 		return this.impl;
-	}
-
-	supportsFeature(): boolean {
-		return true;
 	}
 
 	getCapabilities(): TTSProviderCapabilities {
@@ -45,10 +62,6 @@ class FailingInitializeProvider implements ITTSProvider {
 		throw new Error("Server TTS API not available at /api/tts/sc");
 	}
 
-	supportsFeature(): boolean {
-		return true;
-	}
-
 	getCapabilities(): TTSProviderCapabilities {
 		return {
 			supportsPause: true,
@@ -63,7 +76,6 @@ class FailingInitializeProvider implements ITTSProvider {
 	destroy(): void {}
 }
 
-const originalWindow = (globalThis as any).window;
 const originalSpeechSynthesis = (globalThis as any).speechSynthesis;
 const originalUtterance = (globalThis as any).SpeechSynthesisUtterance;
 
@@ -103,13 +115,12 @@ const installBrowserSpeechMocks = () => {
 	};
 
 	(globalThis as any).SpeechSynthesisUtterance = MockSpeechSynthesisUtterance;
+	// The registered window is `globalThis`, so this is `window.speechSynthesis`.
 	(globalThis as any).speechSynthesis = synth;
-	(globalThis as any).window = { speechSynthesis: synth };
 };
 
 describe("TTSService telemetry", () => {
 	afterEach(() => {
-		(globalThis as any).window = originalWindow;
 		(globalThis as any).speechSynthesis = originalSpeechSynthesis;
 		(globalThis as any).SpeechSynthesisUtterance = originalUtterance;
 	});
@@ -126,6 +137,7 @@ describe("TTSService telemetry", () => {
 			stop: () => {},
 			isPlaying: () => false,
 			isPaused: () => false,
+			updateSettings: () => {},
 		};
 		const service = new TTSService();
 		await service.initialize(new TelemetryMockProvider(impl), {
@@ -139,7 +151,7 @@ describe("TTSService telemetry", () => {
 			},
 		});
 
-		await service.speak("hello world");
+		await service.speak(contentWith("hello world"));
 
 		expect(emitted.map((entry) => entry.eventName)).toEqual(
 			expect.arrayContaining([
@@ -171,6 +183,7 @@ describe("TTSService telemetry", () => {
 			stop: () => {},
 			isPlaying: () => false,
 			isPaused: () => false,
+			updateSettings: () => {},
 		};
 		const service = new TTSService();
 		await service.initialize(new TelemetryMockProvider(impl), {
@@ -184,7 +197,7 @@ describe("TTSService telemetry", () => {
 			},
 		});
 
-		await expect(service.speak("hello world")).rejects.toThrow(
+		await expect(service.speak(contentWith("hello world"))).rejects.toThrow(
 			"synthesize failed",
 		);
 		expect(emitted.map((entry) => entry.eventName)).toContain(
@@ -192,170 +205,20 @@ describe("TTSService telemetry", () => {
 		);
 	});
 
-	test("does not switch to browser provider on server playback outage", async () => {
+	test("initialize throws when the provider fails to start, with browser speech available", async () => {
 		installBrowserSpeechMocks();
-		const emitted: Array<{
-			eventName: string;
-			payload?: Record<string, unknown>;
-		}> = [];
-		const failingServerImpl: ITTSProviderImplementation = {
-			speak: async () => {
-				throw new Error("Server returned 503");
-			},
-			pause: () => {},
-			resume: () => {},
-			stop: () => {},
-			isPlaying: () => false,
-			isPaused: () => false,
-		};
-		const service = new TTSService();
-		await service.initialize(new TelemetryMockProvider(failingServerImpl), {
-			providerOptions: {
-				__pieTelemetry: (
-					eventName: string,
-					payload?: Record<string, unknown>,
-				) => {
-					emitted.push({ eventName, payload });
-				},
-			},
-		});
-
-		await expect(
-			service.speak("fallback should not mask errors"),
-		).rejects.toThrow("Server returned 503");
-		expect(service.getState()).toBe(PlaybackState.ERROR);
-		expect(emitted.map((entry) => entry.eventName)).not.toContain(
-			"pie-tool-runtime-fallback",
-		);
-		expect(
-			emitted.some(
-				(entry) =>
-					entry.eventName === "pie-tool-runtime-fallback" &&
-					entry.payload?.toProvider === "browser",
-			),
-		).toBe(false);
-	});
-
-	test("falls back to browser provider when provider initialization fails", async () => {
-		installBrowserSpeechMocks();
-		const emitted: Array<{
-			eventName: string;
-			payload?: Record<string, unknown>;
-		}> = [];
+		const emitted: string[] = [];
 		const service = new TTSService();
 		await expect(
 			service.initialize(new FailingInitializeProvider(), {
-				voice: "Joanna",
-				rate: 1.25,
-				pitch: 0.8,
-				region: "us-east-1",
-				organizationId: "server-tenant",
-				mathTokenHighlighting: true,
 				providerOptions: {
-					engine: "neural",
-					__pieTelemetry: (
-						eventName: string,
-						payload?: Record<string, unknown>,
-					) => {
-						emitted.push({ eventName, payload });
+					__pieTelemetry: (eventName: string) => {
+						emitted.push(eventName);
 					},
 				},
 			}),
-		).resolves.toBeUndefined();
-		expect((service as any).ttsConfig).toEqual({
-			rate: 1.25,
-			pitch: 0.8,
-			mathTokenHighlighting: true,
-		});
-
-		await expect(
-			service.speak("fallback should succeed"),
-		).resolves.toBeUndefined();
-		expect(service.getState()).toBe(PlaybackState.IDLE);
-		expect(emitted.map((entry) => entry.eventName)).toContain(
-			"pie-tool-runtime-fallback",
-		);
-		expect(
-			emitted.some(
-				(entry) =>
-					entry.eventName === "pie-tool-runtime-fallback" &&
-					entry.payload?.fromProvider === "server-tts" &&
-					entry.payload?.toProvider === "browser",
-			),
-		).toBe(true);
-	});
-
-	test("does not switch to browser provider on server env request error", async () => {
-		installBrowserSpeechMocks();
-		const emitted: Array<{
-			eventName: string;
-			payload?: Record<string, unknown>;
-		}> = [];
-		const failingServerImpl: ITTSProviderImplementation = {
-			speak: async () => {
-				throw new Error("Missing required SC TTS env vars: TTS_SCHOOLCITY_ISS");
-			},
-			pause: () => {},
-			resume: () => {},
-			stop: () => {},
-			isPlaying: () => false,
-			isPaused: () => false,
-		};
-		const service = new TTSService();
-		await service.initialize(new TelemetryMockProvider(failingServerImpl), {
-			providerOptions: {
-				__pieTelemetry: (
-					eventName: string,
-					payload?: Record<string, unknown>,
-				) => {
-					emitted.push({ eventName, payload });
-				},
-			},
-		});
-
-		await expect(
-			service.speak("fallback should not mask errors"),
-		).rejects.toThrow("Missing required SC TTS env vars: TTS_SCHOOLCITY_ISS");
-		expect(service.getState()).toBe(PlaybackState.ERROR);
-		expect(emitted.map((entry) => entry.eventName)).not.toContain(
-			"pie-tool-runtime-fallback",
-		);
-	});
-
-	test("does not switch to browser provider on unknown server runtime error", async () => {
-		installBrowserSpeechMocks();
-		const emitted: Array<{
-			eventName: string;
-			payload?: Record<string, unknown>;
-		}> = [];
-		const failingServerImpl: ITTSProviderImplementation = {
-			speak: async () => {
-				throw new Error("Unexpected backend runtime failure");
-			},
-			pause: () => {},
-			resume: () => {},
-			stop: () => {},
-			isPlaying: () => false,
-			isPaused: () => false,
-		};
-		const service = new TTSService();
-		await service.initialize(new TelemetryMockProvider(failingServerImpl), {
-			providerOptions: {
-				__pieTelemetry: (
-					eventName: string,
-					payload?: Record<string, unknown>,
-				) => {
-					emitted.push({ eventName, payload });
-				},
-			},
-		});
-
-		await expect(
-			service.speak("fallback should not mask errors"),
-		).rejects.toThrow("Unexpected backend runtime failure");
-		expect(service.getState()).toBe(PlaybackState.ERROR);
-		expect(emitted.map((entry) => entry.eventName)).not.toContain(
-			"pie-tool-runtime-fallback",
-		);
+		).rejects.toThrow("Server TTS API not available at /api/tts/sc");
+		await expect(service.speak(contentWith("no provider"))).rejects.toThrow();
+		expect(emitted.every((name) => !name.includes("fallback"))).toBe(true);
 	});
 });

@@ -5,17 +5,9 @@ export type InstrumentationEventMapping = {
 
 export const TOOLKIT_INSTRUMENTATION_EVENT_MAP: InstrumentationEventMapping[] =
 	[
-		// M6 canonical readiness vocabulary. The four-stage canonical list
-		// (`composed`, `engine-ready`, `interactive`, `disposed`) is identical
-		// across the toolkit CE and the layout CEs — the M6 retro removed the
-		// `attached`, `runtime-bound`, and `ui-rendered` stages because they
-		// had zero internal or external consumers. Hosts listen for the
-		// DOM-prefixed name directly (`pie-stage-change`); the instrumentation
-		// bridge forwards the same name to telemetry.
-		{
-			sourceEventName: "pie-stage-change",
-			instrumentationEventName: "pie-toolkit-stage-change",
-		},
+		// The toolkit emits no stage events: the section player's runtime
+		// engine dispatches `pie-stage-change` on the layout element, above the
+		// toolkit, and the section map tracks it there.
 		{
 			sourceEventName: "runtime-owned",
 			instrumentationEventName: "pie-toolkit-runtime-owned",
@@ -23,6 +15,10 @@ export const TOOLKIT_INSTRUMENTATION_EVENT_MAP: InstrumentationEventMapping[] =
 		{
 			sourceEventName: "runtime-inherited",
 			instrumentationEventName: "pie-toolkit-runtime-inherited",
+		},
+		{
+			sourceEventName: "runtime-ready",
+			instrumentationEventName: "pie-toolkit-runtime-ready",
 		},
 		{
 			sourceEventName: "toolkit-ready",
@@ -40,13 +36,10 @@ export const TOOLKIT_INSTRUMENTATION_EVENT_MAP: InstrumentationEventMapping[] =
 
 export const SECTION_INSTRUMENTATION_EVENT_MAP: InstrumentationEventMapping[] =
 	[
-		// M6 canonical readiness vocabulary. Hosts listen for the DOM-prefixed
-		// names directly (`pie-stage-change`, `pie-loading-complete`); the
-		// instrumentation bridge forwards the same names to telemetry. The
-		// readiness alias mappings (`readiness-change`, `interaction-ready`,
-		// `ready`) and the `section-controller-ready` mapping were removed
-		// alongside their DOM-event surfaces. `session-changed` stays off the
-		// bridge for the reason the item map gives below.
+		// The runtime engine dispatches `pie-stage-change` and
+		// `pie-loading-complete` on the layout element; `framework-error`
+		// bubbles to it from the player's toolkit. `session-changed` stays off
+		// the bridge for the reason the item map gives below.
 		{
 			sourceEventName: "pie-stage-change",
 			instrumentationEventName: "pie-section-stage-change",

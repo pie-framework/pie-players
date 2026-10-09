@@ -4,7 +4,8 @@ import type { AssessmentSection } from "@pie-players/pie-players-shared/types";
  * One item with no calculator metadata, so the learner's profile is the only
  * input to whether a calculator shows and which flavor it opens in. The page
  * renders the item without a section player; the section is only how the demo
- * registry carries content.
+ * registry carries content. The equation carries a spoken card, which read-aloud
+ * speaks in its place.
  */
 export const demoCalculatorPnpSection: AssessmentSection = {
 	identifier: "demo-calculator-pnp",
@@ -18,6 +19,18 @@ export const demoCalculatorPnpSection: AssessmentSection = {
 				name: "Question 1",
 				baseId: "calculator-pnp-q1",
 				version: { major: 1, minor: 0, patch: 0 },
+				accessibilityCatalogs: [
+					{
+						identifier: "calculator-pnp-q1-equation",
+						cards: [
+							{
+								catalog: "spoken",
+								language: "en-US",
+								content: "y equals x squared, minus 4 x, plus 1",
+							},
+						],
+					},
+				],
 				config: {
 					markup: '<multiple-choice id="q1"></multiple-choice>',
 					elements: {
@@ -28,7 +41,7 @@ export const demoCalculatorPnpSection: AssessmentSection = {
 							id: "q1",
 							element: "multiple-choice",
 							prompt:
-								"Graph y = x^2 - 4x + 1. What are the coordinates of its vertex?",
+								'Graph <span data-catalog-idref="calculator-pnp-q1-equation">y = x^2 - 4x + 1</span>. What are the coordinates of its vertex?',
 							choiceMode: "radio",
 							choices: [
 								{ value: "a", label: "(2, -3)", correct: true },

@@ -84,7 +84,11 @@ describe("composeDecision — host-only pipeline", () => {
 			"calculator",
 			"tts",
 		]);
-		expect(decision.visibleTools[0].sources).toEqual(["placement"]);
+		expect(
+			decision.provenance.features
+				.get("calculator")
+				?.allDecisions.map(({ rule }) => rule),
+		).toEqual(["placement-membership"]);
 		expect(decision.visibleTools[0].required).toBe(false);
 		expect(decision.visibleTools[0].alwaysAvailable).toBe(false);
 	});
@@ -218,10 +222,11 @@ describe("composeDecision — host-only pipeline", () => {
 		});
 		expect(decision.visibleTools[0].toolId).toBe("calculator");
 		expect(decision.visibleTools[0].alwaysAvailable).toBe(true);
-		expect(decision.visibleTools[0].sources).toEqual([
-			"placement",
-			"pnp.pnp-support",
-		]);
+		expect(
+			decision.provenance.features
+				.get("calculator")
+				?.allDecisions.map(({ rule }) => rule),
+		).toEqual(["placement-membership", "pnp-support"]);
 	});
 
 	test("step 5 — host blocklist wins over district requirement (requiredToolBlocked diagnostic)", () => {
@@ -263,10 +268,10 @@ describe("composeDecision — host-only pipeline", () => {
 		const assessment: AssessmentEntity = {
 			id: "asm-1",
 		} as AssessmentEntity;
-		const itemRef = {
-			identifier: "item-1",
+		const item = {
+			id: "item-1",
 			settings: { restrictedTools: ["calculator"] },
-		} as any;
+		};
 		const decision = composeDecision({
 			request: baseRequest,
 			tools: tools({
@@ -275,7 +280,7 @@ describe("composeDecision — host-only pipeline", () => {
 			pnpPolicy: {
 				source: new PnpPolicySource(registry),
 				assessment,
-				currentItemRef: itemRef,
+				item,
 				enforcement: "on",
 			},
 			customSources: [],
@@ -286,10 +291,10 @@ describe("composeDecision — host-only pipeline", () => {
 	});
 
 	test("step 5 — item-only profile material still applies when no assessment is bound", () => {
-		const itemRef = {
-			identifier: "item-1",
+		const item = {
+			id: "item-1",
 			settings: { restrictedTools: ["calculator"] },
-		} as any;
+		};
 		const decision = composeDecision({
 			request: baseRequest,
 			tools: tools({
@@ -297,7 +302,7 @@ describe("composeDecision — host-only pipeline", () => {
 			}),
 			pnpPolicy: {
 				source: new PnpPolicySource(registry),
-				currentItemRef: itemRef,
+				item,
 				enforcement: "on",
 			},
 			customSources: [],
@@ -305,6 +310,51 @@ describe("composeDecision — host-only pipeline", () => {
 		});
 		expect(decision.visibleTools.map((e) => e.toolId)).toEqual(["tts"]);
 		expect(decision.provenance.sources.item?.id).toBe("item-1");
+	});
+
+	test("step 7 — a shared toolbar keeps a tool an item names and reports it per item", () => {
+		const decision = composeDecision({
+			request: { level: "section", scope: { level: "section", scopeId: "s1" } },
+			tools: tools({
+				placement: { section: ["calculator", "tts"], item: [], passage: [] },
+			}),
+			pnpPolicy: {
+				source: new PnpPolicySource(registry),
+				enforcement: "off",
+			},
+			unappliedItems: [
+				{ id: "item-1", settings: { restrictedTools: ["calculator"] } },
+				{
+					id: "item-2",
+					settings: { requiredTools: ["calculator"], restrictedTools: ["calculator"] },
+				},
+				{ id: "item-3", settings: { toolParameters: { calculator: {} } } },
+			],
+			customSources: [],
+			contextId: "test",
+		});
+		expect(decision.visibleTools.map((e) => e.toolId)).toEqual([
+			"calculator",
+			"tts",
+		]);
+		expect(
+			decision.diagnostics.map((d) => [d.code, d.toolId, d.details]),
+		).toEqual([
+			[
+				"tool-policy.itemSettingNotApplied",
+				"calculator",
+				{ itemId: "item-1", settings: ["restrictedTools"], toolbarLevel: "section" },
+			],
+			[
+				"tool-policy.itemSettingNotApplied",
+				"calculator",
+				{
+					itemId: "item-2",
+					settings: ["restrictedTools", "requiredTools"],
+					toolbarLevel: "section",
+				},
+			],
+		]);
 	});
 
 	test("step 6 — custom source narrows the candidate set", () => {
@@ -333,10 +383,9 @@ describe("composeDecision — host-only pipeline", () => {
 			contextId: "test",
 		});
 		expect(decision.visibleTools.map((e) => e.toolId)).toEqual(["calculator"]);
-		expect(decision.visibleTools[0].sources).toEqual([
-			"placement",
-			"custom.even-only",
-		]);
+		expect(decision.provenance.features.get("tts")?.winningDecision).toMatchObject(
+			{ rule: "custom-source", action: "block" },
+		);
 	});
 
 	test("step 6 — custom source attempting to add IDs is rejected with placementMissing", () => {
@@ -360,7 +409,7 @@ describe("composeDecision — host-only pipeline", () => {
 		expect(decision.diagnostics[0]).toMatchObject({
 			code: "tool-policy.placementMissing",
 			toolId: "ghost-tool",
-			source: "custom.sneaky",
+			details: { customSourceId: "sneaky" },
 		});
 	});
 
@@ -605,71 +654,14 @@ describe("composeDecision — provenance reconciliation (M8 PR 1 R2 M1 fix)", ()
 		expect(trail?.finalState).toBe("enabled");
 		expect(trail?.featureId).toBe("pencil");
 	});
-
-	test("R1 S1 — profile policy's own block of a required tool does NOT fire requiredToolBlocked", () => {
-		// Repro of R1 S1: when two PNP supports map to the same toolId
-		// (legitimate case — e.g. "calculator-basic" and
-		// "calculator-scientific" both map to "calculator"), profile policy can
-		// land the same toolId in BOTH `mandatedToolIds` (one support
-		// fired item/district `requiredTools` at p=4/5) AND
-		// `blockedToolIds` (the other support fired pnp-prohibited at
-		// p=6). The host did nothing wrong — profile policy's own internal
-		// precedence resolved the conflict — so step 5b must not blame
-		// the host with a `requiredToolBlocked` diagnostic.
-		registry.register({
-			toolId: "calculator",
-			name: "Calculator",
-			description: "A calculator",
-			icon: "calc",
-			supportedLevels: ["item"],
-			pnpSupportIds: ["calculator-basic", "calculator-scientific"],
-			isVisibleInContext: () => true,
-			renderToolbar: () => null,
-		});
-
-		const assessment: AssessmentEntity = {
-			id: "asm-1",
-			personalNeedsProfile: {
-				supports: ["calculator-basic"],
-				prohibitedSupports: ["calculator-basic"],
-			},
-			settings: {
-				districtPolicy: { requiredTools: ["calculator-scientific"] },
-			},
-		} as AssessmentEntity;
-
-		const decision = composeDecision({
-			request: baseRequest,
-			tools: tools({
-				placement: { section: [], item: ["calculator", "tts"], passage: [] },
-			}),
-			pnpPolicy: {
-				source: new PnpPolicySource(registry),
-				assessment,
-				enforcement: "on",
-			},
-			customSources: [],
-			contextId: "test",
-		});
-
-		expect(decision.visibleTools.map((e) => e.toolId)).toEqual(["tts"]);
-		const requiredToolBlocked = decision.diagnostics.filter(
-			(d) => d.code === "tool-policy.requiredToolBlocked",
-		);
-		expect(requiredToolBlocked).toEqual([]);
-		// The provenance trail still tells the full story.
-		const trail = decision.provenance.features.get("calculator");
-		expect(trail?.finalState).toBe("blocked");
-	});
 });
 
 describe("composeDecision — unknown PNP support id", () => {
-	// A host naming a capability in its own vocabulary rather than with an AfA
-	// 3.0 / QTI 3.0 feature id used to get silence: `mapSupportToToolId` returns
-	// an unclaimed id verbatim, it matches nothing in placement, and the
+	// A host naming a capability in its own vocabulary rather than by its tool id
+	// used to get silence: the id matches nothing in placement, and the
 	// capability is simply absent. Reported so the host learns the id was the
 	// problem instead of concluding the toolkit is unwired.
-	test("a support id no registration claims produces a diagnostic", () => {
+	test("a support id no tool is registered under produces a diagnostic", () => {
 		const assessment: AssessmentEntity = {
 			id: "asm-1",
 			personalNeedsProfile: { supports: ["responseMasking"] },
@@ -695,9 +687,37 @@ describe("composeDecision — unknown PNP support id", () => {
 		expect(unknown).toHaveLength(1);
 		expect(unknown[0].toolId).toBe("responseMasking");
 		expect(unknown[0].message).toContain("responseMasking");
+		expect(unknown[0].message).toContain("personalNeedsProfile.supports");
+		expect(unknown[0].details).toEqual({ origins: ["pnp-support"] });
 	});
 
-	test("the standard id for the same capability produces none", () => {
+	test("an id in a district list is labelled by that list", () => {
+		const decision = composeDecision({
+			request: baseRequest,
+			tools: tools({
+				placement: { section: [], item: ["answerEliminator"], passage: [] },
+			}),
+			pnpPolicy: {
+				source: new PnpPolicySource(createTestToolRegistry()),
+				assessment: {
+					id: "asm-1",
+					settings: { districtPolicy: { blockedTools: ["calcualtor"] } },
+				} as AssessmentEntity,
+				enforcement: "on",
+			},
+			customSources: [],
+			contextId: "test",
+		});
+
+		const unknown = decision.diagnostics.filter(
+			(d) => d.code === "tool-policy.unknownSupportId",
+		);
+		expect(unknown).toHaveLength(1);
+		expect(unknown[0].message).toContain("settings.districtPolicy.blockedTools");
+		expect(unknown[0].details).toEqual({ origins: ["district-block"] });
+	});
+
+	test("the tool id for the same capability produces none", () => {
 		const assessment: AssessmentEntity = {
 			id: "asm-1",
 			personalNeedsProfile: { supports: ["answerEliminator"] },

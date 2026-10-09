@@ -12,8 +12,10 @@
 
 import type { ToolPlacementLevel } from "../../services/tools-config-normalizer.js";
 import type { ToolContext, ToolLevel } from "../../services/tool-context.js";
-import type { PolicySourceTag } from "./policy-source-tag.js";
-import type { ToolPolicyProvenance } from "./provenance.js";
+import type {
+	PnpPolicySourceRule,
+	ToolPolicyProvenance,
+} from "./provenance.js";
 
 /**
  * Scope identifier for a `decide(...)` request. The engine uses
@@ -21,8 +23,8 @@ import type { ToolPolicyProvenance } from "./provenance.js";
  * to the engine (it is round-tripped into provenance for human-readable
  * trails) and is typically the section-id, item-id, or passage-id of
  * the surface asking the question. `contentKind` mirrors the
- * `ToolbarContext.scope.contentKind` field already in use by
- * `<pie-item-toolbar>` Pass-2 visibility.
+ * `ToolbarContext.scope.contentKind` field `<pie-item-toolbar>` reads for
+ * content relevance.
  */
 export interface ToolScope {
 	level: ToolLevel;
@@ -44,33 +46,50 @@ export interface ToolPolicyDecisionRequest {
 	level: ToolPlacementLevel;
 	scope: ToolScope;
 	/**
-	 * Optional Pass-2 context. The engine itself does NOT call
-	 * `isVisibleInContext(...)`; that gate is intentionally applied
-	 * at the toolbar boundary (Pass-2 = relevance, Pass-1 = the
-	 * engine's job). The context is forwarded to custom
-	 * `PolicySource` instances so they can refine the candidate set
-	 * if they need to.
+	 * Optional tool context. The engine does not call
+	 * `isVisibleInContext(...)`: content relevance is applied at the toolbar
+	 * boundary. The context is forwarded to custom `PolicySource` instances so
+	 * they can refine the candidate set.
 	 */
 	context?: ToolContext;
 }
 
 /**
- * Diagnostic codes the engine may emit alongside a decision. The
- * canonical case in M8 is `tool-policy.requiredToolBlocked` — fired
- * when a host policy gate (`policy.blocked`, missing-from-`placement`,
- * provider veto) removed a tool that profile policy `requiredTools` /
- * `district.requiredTools` mandates.
+ * Diagnostic codes the engine may emit alongside a decision.
+ * `tool-policy.requiredToolBlocked` fires when a host policy gate
+ * (`policy.blocked`, missing-from-`placement`, provider veto) removed a tool
+ * that item or district `requiredTools` mandates.
  *
  * `tool-policy.placementMissing` fires when a custom `PolicySource`
  * references a tool ID that is not present in `tools.placement[level]`
- * for the resolved level. The host-side `ToolConfigDiagnostic` channel
+ * for the resolved level. `details` is {@link PlacementMissingDetails}.
+ * The host-side `ToolConfigDiagnostic` channel
  * (already used by `tool-config-validation.ts`) covers config-time
  * misconfiguration; this channel covers per-decision conflicts.
+ *
+ * `tool-policy.unknownSupportId` fires for each id a profile, district
+ * policy, test administration or item names that no tool is registered under.
+ * `details` is {@link UnknownSupportIdDetails}.
+ *
+ * `tool-policy.itemSettingNotApplied` fires on a section-, assessment- or
+ * passage-level decision for each tool on that toolbar a mounted item's
+ * `restrictedTools` or `requiredTools` names, once per tool and item: item
+ * settings govern only the item's own toolbar. `details` is
+ * {@link ItemSettingNotAppliedDetails}.
+ *
+ * `tool-policy.overrideBlocked` fires for each tool a `true`
+ * `settings.testAdministration.toolOverrides` entry grants that an item's
+ * `restrictedTools` or the profile's `prohibitedSupports` withdraws instead.
+ * `details` is {@link OverrideBlockedDetails}.
+ *
+ * The toolkit coordinator logs each diagnostic once per code, tool and item.
  */
 export type ToolPolicyDiagnosticCode =
 	| "tool-policy.requiredToolBlocked"
 	| "tool-policy.placementMissing"
-	| "tool-policy.unknownSupportId";
+	| "tool-policy.unknownSupportId"
+	| "tool-policy.itemSettingNotApplied"
+	| "tool-policy.overrideBlocked";
 
 /**
  * Which host gate removed a profile-mandated tool. Surfaced inside
@@ -108,12 +127,40 @@ export interface RequiredToolBlockedDetails extends Record<string, unknown> {
 	hostValue?: unknown;
 }
 
+/** Payload of a `tool-policy.unknownSupportId` diagnostic. */
+export interface UnknownSupportIdDetails extends Record<string, unknown> {
+	/** The rules whose lists name the id, in precedence order. */
+	origins: PnpPolicySourceRule[];
+}
+
+/** Payload of a `tool-policy.placementMissing` diagnostic. */
+export interface PlacementMissingDetails extends Record<string, unknown> {
+	/** The custom `PolicySource` that named the tool. */
+	customSourceId: string;
+}
+
+/** Payload of a `tool-policy.overrideBlocked` diagnostic. */
+export interface OverrideBlockedDetails extends Record<string, unknown> {
+	/** The rule that withdrew the granted tool. */
+	rule: "item-restriction" | "pnp-prohibited";
+}
+
+/** Payload of a `tool-policy.itemSettingNotApplied` diagnostic. */
+export interface ItemSettingNotAppliedDetails extends Record<string, unknown> {
+	/** Canonical id of the item whose setting names the tool. */
+	itemId: string;
+	/** The item settings that name it. */
+	settings: Array<"restrictedTools" | "requiredTools">;
+	/** The level of the toolbar the tool is on. */
+	toolbarLevel: ToolLevel;
+}
+
 export interface ToolPolicyDiagnostic {
 	code: ToolPolicyDiagnosticCode;
-	level: ToolPlacementLevel;
+	/** The toolbar level decided; absent on a feature decision. */
+	level?: ToolPlacementLevel;
 	toolId: string;
 	message: string;
-	source?: PolicySourceTag;
 	details?: Record<string, unknown>;
 }
 
@@ -121,17 +168,17 @@ export interface ToolPolicyEntry {
 	toolId: string;
 	/**
 	 * `true` when PNP/profile policy mandates this tool (item or district
-	 * `requiredTools`, or PNP support without prohibition). Advisory
-	 * mandates that the host blocked do *not* surface here — they
-	 * appear in `diagnostics` instead. Hosts that need to know about
-	 * those should listen on the diagnostic channel.
+	 * `requiredTools`). Advisory mandates that the host blocked do *not*
+	 * surface here — they appear in `diagnostics` instead. Hosts that need
+	 * to know about those should listen on the diagnostic channel.
 	 */
 	required: boolean;
 	/**
-	 * `true` for PNP `supports` — UI-level signal that the host
-	 * cannot toggle this tool off in user preferences. Does NOT
-	 * override host blocks (they would have removed the entry
-	 * before this flag is read).
+	 * `true` for a tool the student's PNP `supports` or a
+	 * `testAdministration.toolOverrides` entry grants — UI-level signal that
+	 * the host cannot toggle this tool off in user preferences. Does NOT
+	 * override host blocks (they would have removed the entry before this
+	 * flag is read).
 	 */
 	alwaysAvailable: boolean;
 	/**
@@ -141,13 +188,6 @@ export interface ToolPolicyEntry {
 	 * the assessment entity from above the engine.
 	 */
 	settings?: unknown;
-	/**
-	 * Every contributor that helped this entry survive the
-	 * composition pipeline. Always non-empty — at minimum
-	 * `["placement"]` for any entry that came from
-	 * `tools.placement[level]`.
-	 */
-	sources: PolicySourceTag[];
 }
 
 export interface ToolPolicyDecision {

@@ -1,6 +1,4 @@
 <script lang="ts">
-	import { createEventDispatcher } from "svelte";
-
 	let {
 		value = 50,
 		min = 20,
@@ -10,6 +8,7 @@
 		ariaLabel = "Resize panels",
 		ariaControls = "",
 		ariaValueText = "",
+		onResize,
 	} = $props<{
 		value?: number;
 		min?: number;
@@ -19,13 +18,8 @@
 		ariaLabel?: string;
 		ariaControls?: string;
 		ariaValueText?: string;
-	}>();
-
-	const dispatch = createEventDispatcher<{
-		"resize-start": { value: number };
-		"resize-preview": { value: number; input: "pointer" | "keyboard" };
-		"resize-commit": { value: number; input: "pointer" | "keyboard" };
-		"resize-cancel": { value: number };
+		/** The requested split percentage, bounded by `min` and `max`. */
+		onResize?: (value: number) => void;
 	}>();
 
 	let dragging = $state(false);
@@ -42,7 +36,6 @@
 		dragging = true;
 		startX = event.clientX;
 		startValue = value;
-		dispatch("resize-start", { value });
 	}
 
 	function onMouseMove(event: MouseEvent) {
@@ -50,13 +43,12 @@
 		const deltaPx = event.clientX - startX;
 		// Divider math stays in wrappers; here we emit a bounded percentage hint.
 		const next = clamp(startValue + deltaPx * 0.1);
-		dispatch("resize-preview", { value: next, input: "pointer" });
+		onResize?.(next);
 	}
 
 	function onMouseUp() {
 		if (!dragging) return;
 		dragging = false;
-		dispatch("resize-commit", { value, input: "pointer" });
 	}
 
 	function onKeyDown(event: KeyboardEvent) {
@@ -72,7 +64,6 @@
 		}
 		event.preventDefault();
 		if (event.key === "Escape") {
-			dispatch("resize-cancel", { value });
 			return;
 		}
 		let next = value;
@@ -84,8 +75,7 @@
 			const delta = event.key === "ArrowLeft" ? -step : step;
 			next = clamp(value + delta);
 		}
-		dispatch("resize-preview", { value: next, input: "keyboard" });
-		dispatch("resize-commit", { value: next, input: "keyboard" });
+		onResize?.(next);
 	}
 
 	$effect(() => {

@@ -8,14 +8,15 @@ import {
 	sharedSveltePlugins,
 } from "./vite.config.shared.js";
 
-/** Source modules behind the `./contracts/*` and `./policies` exports. */
+/**
+ * Source modules behind the `./contracts/*`, `./policies` and `./item-section`
+ * exports.
+ */
 const CONTRACT_ENTRIES = [
-	"contracts/layout-contract",
-	"contracts/public-events",
 	"contracts/runtime-host-contract",
-	"contracts/layout-parity-metadata",
 	"contracts/host-hooks",
 	"policies/index",
+	"item-section/index",
 ];
 
 export default defineConfig({

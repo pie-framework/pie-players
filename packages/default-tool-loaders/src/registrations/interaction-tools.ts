@@ -3,12 +3,6 @@
  *
  * Registers tools for interacting with question content:
  * - Answer Eliminator (strike through answer choices)
- * - Highlighter (highlight text passages)
- *
- * Maps to QTI 3.0 standard access features:
- * - answerMasking (assessment tool)
- * - strikethrough (visual transformation)
- * - highlighting (cognitive/reading support)
  */
 
 import type {
@@ -16,18 +10,40 @@ import type {
 	ToolToolbarButtonDefinition,
 	ToolToolbarRenderResult,
 	ToolbarContext,
-} from "@pie-players/pie-assessment-toolkit/tools/internal";
-import type { ToolContext } from "@pie-players/pie-assessment-toolkit/tools/internal";
-import { hasChoiceInteraction } from "@pie-players/pie-assessment-toolkit/tools/internal";
+} from "@pie-players/pie-assessment-toolkit/tools/registration";
+import type { ToolContext } from "@pie-players/pie-assessment-toolkit/tools/registration";
+import { hasChoiceInteraction } from "@pie-players/pie-assessment-toolkit/tools/registration";
 import {
 	createToolElement,
 	type ToolComponentOverrides,
-} from "@pie-players/pie-assessment-toolkit/tools/internal";
+} from "@pie-players/pie-assessment-toolkit/tools/registration";
 import {
 	createScopedVisibilityBinding,
 	syncButtonAndOverlayVisibility,
-} from "@pie-players/pie-assessment-toolkit/tools/internal";
+} from "@pie-players/pie-assessment-toolkit/tools/registration";
 import { resolveOverlayElement } from "./overlay-element-cache.js";
+
+type EliminationStrategy = "strikethrough" | "mask";
+
+/** `tools.providers.answerEliminator.strategy`, defaulting to strikethrough. */
+const normalizeEliminationStrategy = (value: unknown): EliminationStrategy =>
+	value === "mask" ? "mask" : "strikethrough";
+
+/** The state-store key of each PIE element in the item, by model id. */
+function resolveElementStateKeys(
+	context: ToolContext,
+	toolbarContext: ToolbarContext,
+): Record<string, string> {
+	const keys: Record<string, string> = {};
+	if (!("item" in context) || !toolbarContext.getGlobalElementId) return keys;
+	for (const model of context.item?.config?.models ?? []) {
+		const elementId = model?.id;
+		if (typeof elementId !== "string" || !elementId) continue;
+		const key = toolbarContext.getGlobalElementId(elementId);
+		if (key) keys[elementId] = key;
+	}
+	return keys;
+}
 
 /**
  * Answer Eliminator tool registration
@@ -45,14 +61,6 @@ export const answerEliminatorToolRegistration: ToolRegistration = {
 
 	// Answer eliminator appears at item level only
 	supportedLevels: ["item"],
-
-	// PNP support IDs
-	// Maps to QTI 3.0 standard feature: answerMasking
-	pnpSupportIds: [
-		"answerMasking", // QTI 3.0 standard (assessment.answerMasking)
-		"answerEliminator", // QTI 3.0 standard (assessment.answerEliminator)
-		"strikethrough", // QTI 3.0 standard (assessment.strikethrough)
-	],
 
 	/**
 	 * Pass 2: Answer eliminator is relevant only for choice-based questions
@@ -97,15 +105,18 @@ export const answerEliminatorToolRegistration: ToolRegistration = {
 				) as HTMLElement & {
 					visible?: boolean;
 					toolId?: string;
-					coordinator?: unknown;
-					elementToolStateStore?: unknown;
-					globalElementId?: string;
+					elementStateKeys?: Record<string, string>;
 					scopeElement?: HTMLElement | null;
 				},
 		);
 		overlay.setAttribute("tool-id", visibility.fullToolId);
-		overlay.setAttribute("strategy", "strikethrough");
 		overlay.setAttribute("button-alignment", "inline");
+		overlay.setAttribute(
+			"strategy",
+			normalizeEliminationStrategy(
+				toolbarContext.toolkitCoordinator?.getToolConfig(this.toolId)?.strategy,
+			),
+		);
 
 		const button: ToolToolbarButtonDefinition = {
 			toolId: this.toolId,
@@ -128,17 +139,11 @@ export const answerEliminatorToolRegistration: ToolRegistration = {
 					overlay,
 					isActive: visibility.isActive,
 				});
-				if (toolbarContext.toolCoordinator) {
-					overlay.coordinator = toolbarContext.toolCoordinator;
-				}
 				overlay.scopeElement = toolbarContext.getScopeElement?.() || null;
-				if (toolbarContext.elementToolStateStore) {
-					overlay.elementToolStateStore = toolbarContext.elementToolStateStore;
-				}
-				const globalElementId = toolbarContext.getGlobalElementId?.();
-				if (globalElementId) {
-					overlay.globalElementId = globalElementId;
-				}
+				overlay.elementStateKeys = resolveElementStateKeys(
+					context,
+					toolbarContext,
+				);
 			},
 			subscribeActive: visibility.subscribeActive,
 		};

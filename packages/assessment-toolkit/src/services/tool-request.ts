@@ -45,18 +45,27 @@ export interface ToolOpenRequest {
 	 * to match a placement made elsewhere is a step it has no reason to expect.
 	 *
 	 * At `"item"` and `"passage"` a section holds one target per card, and the first
-	 * registered one that hosts the tool claims the request. A requester that needs a
-	 * particular card's instance cannot express that here, and the gateway PIE ships
-	 * does not need to: the strip is a section-scoped singleton acting on passage
-	 * selections, so the selection belongs to no card, and what opens is a floating
-	 * shell rather than anything rendered inside one.
+	 * registered one that hosts the tool claims the request unless `scopeId` names
+	 * the card.
 	 */
 	level?: ToolPlacementLevel;
+	/**
+	 * Scope of the toolbar that should open the tool: the item's canonical id for
+	 * an item toolbar, the section id for a section toolbar. A constraint like
+	 * `level`, for a requester that belongs to one card, as an inline control in an
+	 * item does. Only a target registered with the same `scopeId` claims it.
+	 */
+	scopeId?: string;
 }
 
 export interface ToolRequestTarget {
 	/** The placement level this toolbar renders. */
 	level: ToolPlacementLevel;
+	/**
+	 * The scope this toolbar renders for, matched against a request's `scopeId`.
+	 * A target without one claims only requests that name no scope.
+	 */
+	readonly scopeId?: string;
 	/** Whether this toolbar currently renders the tool, per its own policy pass. */
 	hostsTool: (toolId: string) => boolean;
 	/**
@@ -80,10 +89,10 @@ export class ToolRequestRegistry {
 
 	registerTarget(target: ToolRequestTarget): () => void {
 		this.targets.add(target);
-		this.notifyChange();
+		this.notifyTargetsChange();
 		return () => {
 			if (!this.targets.delete(target)) return;
-			this.notifyChange();
+			this.notifyTargetsChange();
 		};
 	}
 
@@ -94,13 +103,21 @@ export class ToolRequestRegistry {
 	 * nothing is worse than an absent one, and availability moves with policy —
 	 * hence {@link onTargetsChange}.
 	 */
-	canRequest(toolId: string, level?: ToolPlacementLevel): boolean {
-		return this.findTarget(toolId, level) !== null;
+	canRequest(
+		toolId: string,
+		level?: ToolPlacementLevel,
+		scopeId?: string,
+	): boolean {
+		return this.findTarget(toolId, level, scopeId) !== null;
 	}
 
 	/** Returns whether a target claimed the request. */
 	request(request: ToolOpenRequest): boolean {
-		const target = this.findTarget(request.toolId, request.level);
+		const target = this.findTarget(
+			request.toolId,
+			request.level,
+			request.scopeId,
+		);
 		if (!target) return false;
 		try {
 			target.open(request.toolId, request.params);
@@ -115,12 +132,13 @@ export class ToolRequestRegistry {
 	}
 
 	/**
-	 * Fires when a toolbar registers or unregisters.
+	 * Fires when a toolbar registers or unregisters, and on
+	 * {@link notifyTargetsChange}.
 	 *
-	 * Not when a registered toolbar's own visible set changes: `hostsTool` is read
-	 * live, so a caller re-asking `canRequest` gets the current answer. A surface
-	 * that needs to notice a policy change should also follow the policy signal it
-	 * already has.
+	 * Not when a policy change moves a registered toolbar's visible set: `hostsTool`
+	 * is read live, so a caller re-asking `canRequest` gets the current answer. A
+	 * surface that needs to notice a policy change should also follow the policy
+	 * signal it already has.
 	 */
 	onTargetsChange(listener: () => void): () => void {
 		this.changeListeners.add(listener);
@@ -139,14 +157,17 @@ export class ToolRequestRegistry {
 	private findTarget(
 		toolId: string,
 		level?: ToolPlacementLevel,
+		scopeId?: string,
 	): ToolRequestTarget | null {
 		const preferred = this.findTargetAtLevel(
 			toolId,
 			level ?? DEFAULT_TOOL_REQUEST_LEVEL,
+			scopeId,
 		);
 		if (preferred || level !== undefined) return preferred;
 		for (const target of this.targets) {
 			if (target.level === DEFAULT_TOOL_REQUEST_LEVEL) continue;
+			if (scopeId !== undefined && target.scopeId !== scopeId) continue;
 			if (this.hostsTool(target, toolId)) return target;
 		}
 		return null;
@@ -155,9 +176,11 @@ export class ToolRequestRegistry {
 	private findTargetAtLevel(
 		toolId: string,
 		level: ToolPlacementLevel,
+		scopeId?: string,
 	): ToolRequestTarget | null {
 		for (const target of this.targets) {
 			if (target.level !== level) continue;
+			if (scopeId !== undefined && target.scopeId !== scopeId) continue;
 			if (this.hostsTool(target, toolId)) return target;
 		}
 		return null;
@@ -175,7 +198,12 @@ export class ToolRequestRegistry {
 		}
 	}
 
-	private notifyChange(): void {
+	/**
+	 * Tell change listeners that what the targets can claim changed. Registration
+	 * calls it, and so does the coordinator when a target stops hosting a tool
+	 * outside a policy change, as when the tool's module fails to load.
+	 */
+	notifyTargetsChange(): void {
 		for (const listener of this.changeListeners) {
 			try {
 				listener();

@@ -125,6 +125,36 @@ export interface ItemEntity
 }
 
 /**
+ * `baseId` and `version` are optional on an entity a section references. They
+ * identify a stored version, which a host building a section from an item
+ * config does not have, and no player reads either.
+ */
+type WithOptionalVersion<T extends VersionEntity> = Omit<
+	T,
+	"baseId" | "version"
+> &
+	Partial<Pick<VersionEntity, "baseId" | "version">>;
+
+/**
+ * A passage as a section's item references it. `name` is optional on the same
+ * ground: the section player reads it only as a fallback for a missing `id`.
+ */
+export type ReferencedPassageEntity = Omit<
+	WithOptionalVersion<PassageEntity>,
+	"name"
+> & {
+	name?: string;
+};
+
+/** An item as `AssessmentItemRef.item` references it. */
+export type ReferencedItemEntity = Omit<
+	WithOptionalVersion<ItemEntity>,
+	"passage"
+> & {
+	passage?: string | ReferencedPassageEntity | null;
+};
+
+/**
  * Metadata specifically for interpretation by clients, typically containing
  * options that are relevant for the user interface. This is not indexed for search.
  */
@@ -197,7 +227,7 @@ export interface AssessmentItemRef extends SearchMetaDataEntity {
 	 * Resolved item entity with PIE config.
 	 * This is populated by the client before passing to the player.
 	 */
-	item?: ItemEntity;
+	item?: ReferencedItemEntity;
 
 	/** Item-level settings for tool requirements and customization */
 	settings?: ItemSettings;
@@ -242,15 +272,6 @@ export interface AssessmentSection
 
 	// Shared context (passages/instructions/rubrics) for this section
 	rubricBlocks?: RubricBlock[];
-
-	/**
-	 * QTI 3.0: Personal Needs Profile (PNP 3.0) for section-scoped delivery.
-	 *
-	 * Section players read this (falling back to `settings.personalNeedsProfile`,
-	 * then to the computed default profile) to drive PNP policy when a section is
-	 * delivered without an enclosing assessment.
-	 */
-	personalNeedsProfile?: PersonalNeedsProfile;
 
 	/**
 	 * Formative delivery policy for this section: how many Tries a learner gets
@@ -575,22 +596,7 @@ export interface AccessibilityCatalog {
 export interface PersonalNeedsProfile {
 	supports: string[];
 	prohibitedSupports?: string[];
-	activateAtInit?: string[];
 }
-
-/**
- * QTI 3.0: Reference to a shared stimulus (passage).
- * Maps to qti-assessment-stimulus-ref element.
- *
- * NOTE: Not currently used. We embed PassageEntity directly in RubricBlock instead.
- * Kept for potential future use if we need to support external stimulus references.
- */
-/*
-export interface StimulusRef {
-	identifier: string;
-	href: string;
-}
-*/
 
 export interface AssessmentEntity extends BaseEntity, SearchMetaDataEntity {
 	name?: string;
@@ -617,141 +623,55 @@ export interface AssessmentEntity extends BaseEntity, SearchMetaDataEntity {
 	 * QTI 3.0: testParts structure (authoritative for QTI format).
 	 */
 	testParts?: TestPart[];
-
-	/** QTI 3.0: Stimulus material references (Phase 3 - placeholder) */
-	stimulusRefs?: any[];
 }
 
 /**
- * Enhanced settings structure for assessment configuration.
- * Provides structured fields for district policies, test administration,
- * tool configurations, and theme settings while remaining extensible.
+ * Assessment settings the tool policy reads: district policy, test
+ * administration and per-tool parameters.
  */
 export interface AssessmentSettings {
 	/** District/organization policies */
 	districtPolicy?: {
-		blockedTools?: string[]; // PNP support IDs that are blocked
-		requiredTools?: string[]; // PNP support IDs that are required
-		policies?: Record<string, any>;
+		blockedTools?: string[]; // Tool ids blocked for every student
+		requiredTools?: string[]; // Tool ids required for every student
 	};
 
 	/** Test administration configuration */
 	testAdministration?: {
-		mode?: "practice" | "test" | "benchmark";
-		toolOverrides?: Record<string, boolean>; // Override specific PNP supports
-		startDate?: string;
-		endDate?: string;
-	};
-
-	/** Tool-specific provider configurations */
-	toolConfigs?: {
-		// Calculator-specific options are owned by the calculator tool package.
-		calculator?: AssessmentCalculatorConfig;
 		/**
-		 * Text-to-speech configuration.
-		 *
-		 * Standard parameters (voice, rate, pitch) are portable across providers
-		 * and follow W3C Web Speech API specifications.
-		 *
-		 * Provider-specific extensions should be placed in providerOptions.
-		 *
-		 * @see https://w3c.github.io/speech-api/
+		 * Per-session override by tool id. `false` withdraws the tool and
+		 * outranks every policy level except a district block. `true` grants it
+		 * below a district block, an item's `restrictedTools` and the profile's
+		 * `prohibitedSupports`, and above requirements and profile supports.
 		 */
-		textToSpeech?: {
-			/**
-			 * TTS provider
-			 *
-			 * @standard "browser" uses W3C Web Speech API
-			 * @extension "polly" and "custom" are provider-specific
-			 */
-			provider?: "browser" | "polly" | "custom";
-
-			/**
-			 * Voice identifier (provider-specific names)
-			 *
-			 * @standard W3C Web Speech API (concept)
-			 * @example "Joanna" (Polly), "en-US-Standard-A" (Google), browser voices
-			 */
-			voice?: string;
-
-			/**
-			 * Speech rate (speed multiplier)
-			 *
-			 * @standard W3C Web Speech API
-			 * @range 0.25 to 4.0
-			 * @default 1.0
-			 */
-			rate?: number;
-
-			/**
-			 * Pitch adjustment
-			 *
-			 * @standard W3C Web Speech API
-			 * @range 0 to 2 (as multiplier)
-			 * @default 1.0
-			 */
-			pitch?: number;
-
-			/**
-			 * Speech Rule Engine options for generated MathML speech.
-			 *
-			 * `style` is passed to SRE directly; ClearSpeak combines multiple
-			 * preferences with ":" (for example,
-			 * "ImpliedTimes_MoreImpliedTimes:Paren_Silent").
-			 *
-			 * Mirrors assessment-toolkit's SREMathSpeechOptions without importing
-			 * toolkit service types into the shared content contract package.
-			 */
-			mathSpeech?: {
-				domain?: string;
-				style?: string;
-				engineOptions?: Record<string, unknown>;
-			};
-
-			/**
-			 * Provider-specific options (extensions)
-			 *
-			 * @extension Not portable across providers
-			 * @example For AWS Polly: { engine: "neural", region: "us-east-1" }
-			 * @example For Google Cloud: { audioEncoding: "MP3", effectsProfileId: ["headphone-class-device"] }
-			 */
-			providerOptions?: Record<string, any>;
-		};
-		[toolId: string]: any; // Other tool configs
+		toolOverrides?: Record<string, boolean>;
 	};
 
-	/** Theme configuration (not in PNP) */
-	themeConfig?: {
-		scheme?: "default" | "high-contrast" | "dark";
-		fontSize?: number;
-		fontFamily?: string;
-		lineHeight?: number;
-		reducedMotion?: boolean;
+	/**
+	 * Parameters by tool id, handed to a tool a grant or requirement admits;
+	 * an item's `toolParameters` entry wins. Provider configuration belongs in
+	 * the toolkit's `tools.providers`.
+	 */
+	toolConfigs?: {
+		calculator?: AssessmentCalculatorConfig;
+		[toolId: string]: Record<string, unknown> | undefined;
 	};
-
-	/** Product-specific extensions */
-	[key: string]: any;
 }
 
-/**
- * Calculator options exposed through assessment settings.
- * The engine is implicit (Desmos).
- */
-export interface AssessmentCalculatorConfig {
+/** Calculator parameters in assessment settings. */
+export type AssessmentCalculatorConfig = {
 	type?: "basic" | "scientific" | "graphing";
-	[key: string]: any;
-}
+};
 
 /**
  * Item-level settings for tool requirements.
  * Used in AssessmentItemRef.settings to specify item-specific tool needs.
  */
 export interface ItemSettings {
-	requiredTools?: string[]; // PNP support IDs required for this item
-	restrictedTools?: string[]; // PNP support IDs blocked for this item
-	toolParameters?: Record<string, any>; // Tool-specific config per item
-
-	[key: string]: any; // Product extensions
+	requiredTools?: string[]; // Tool ids required for this item
+	restrictedTools?: string[]; // Tool ids blocked for this item
+	/** Parameters by tool id; outranks the assessment's `toolConfigs` entry. */
+	toolParameters?: Record<string, Record<string, unknown>>;
 }
 
 export type PlayerMode = "gather" | "view" | "evaluate" | "author";

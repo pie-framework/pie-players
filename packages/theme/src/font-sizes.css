@@ -52,9 +52,9 @@
 
 /* Content hosts.
  *
- * `pie-item-shell` and `pie-passage-shell` are this repo's section-player
- * content hosts and `pie-item-player` its standalone one; each renders PIE
- * elements directly into its own shadow tree. `pie-player` is the externally
+ * `pie-item-scope` and `pie-passage-shell` hold the section player's content,
+ * the scope around a host's own item player too, and `pie-item-player` renders
+ * PIE elements into its own shadow tree. `pie-player` is the externally
  * loaded item wrapper some hosts render items through instead, so both delivery
  * paths are covered — targeting only the wrapper, as this file previously did,
  * missed every item this repo renders itself.
@@ -62,11 +62,11 @@
  * Scoped under `[data-font-size]` so the declaration only exists once a host has
  * opted in, and so a host's own rules keep the upper hand at equal specificity.
  */
-[data-font-size] pie-item-shell,
+[data-font-size] pie-item-scope,
 [data-font-size] pie-passage-shell,
 [data-font-size] pie-item-player,
 [data-font-size] pie-player,
-pie-item-shell[data-font-size],
+pie-item-scope[data-font-size],
 pie-passage-shell[data-font-size],
 pie-item-player[data-font-size],
 pie-player[data-font-size] {
@@ -78,15 +78,15 @@ pie-player[data-font-size] {
 
 /* Line height has to open up with the type or the block tightens as it grows.
  * A ratio, so a host that sets its own line-height still wins. */
-[data-font-size="large"] pie-item-shell,
+[data-font-size="large"] pie-item-scope,
 [data-font-size="large"] pie-passage-shell,
 [data-font-size="large"] pie-item-player,
 [data-font-size="large"] pie-player,
-[data-font-size="xlarge"] pie-item-shell,
+[data-font-size="xlarge"] pie-item-scope,
 [data-font-size="xlarge"] pie-passage-shell,
 [data-font-size="xlarge"] pie-item-player,
 [data-font-size="xlarge"] pie-player,
-[data-font-size="xxlarge"] pie-item-shell,
+[data-font-size="xxlarge"] pie-item-scope,
 [data-font-size="xxlarge"] pie-passage-shell,
 [data-font-size="xxlarge"] pie-item-player,
 [data-font-size="xxlarge"] pie-player {

@@ -3,6 +3,11 @@
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 
+import {
+	LOCAL_GATE_E2E_SUITES,
+	planLocalE2e,
+} from "./lib/local-e2e-suites.mjs";
+
 const ROOT = process.cwd();
 const requiredPreCommitCommands = [
 	"check:changeset-patch-only",
@@ -20,6 +25,7 @@ const requiredPreCommitCommands = [
 	"check:ce-define-safety",
 	"check:speech-composition-purity",
 	"check:source-exports",
+	"check:api-report",
 	"check:consumer-boundaries",
 	"check:scripts",
 	"lint:biome",
@@ -38,6 +44,7 @@ const requiredCiLintTypecheckCommands = [
 	"check:custom-elements",
 	"check:ce-define-safety",
 	"check:speech-composition-purity",
+	"check:api-report",
 	"check:scripts",
 	"build",
 	// Reads build output, so it must follow the build: ahead of it, it reads a
@@ -64,9 +71,16 @@ const requiredPrePushCommands = ["verify:local-pr"];
 const requiredLocalPrCommands = [
 	"check:changeset-patch-only",
 	"verify:ci-lint-typecheck",
-	"test:e2e:section-player:critical",
-	"test:e2e:item-player:critical",
-	"test:e2e:assessment-player",
+	"test:e2e:local-gate",
+];
+
+const LOCAL_GATE_E2E_COMMAND = "bun ./scripts/run-local-e2e.mjs";
+
+/** Suites `test:e2e:local-gate` must run; scripts/lib/local-e2e-suites.mjs lists them. */
+const requiredLocalE2eSuites = [
+	"section-player:critical",
+	"item-player:critical",
+	"assessment-player",
 ];
 
 const requiredCiE2eCommands = [
@@ -124,6 +138,7 @@ export function collectGateFailures({
 	ciWorkflow,
 	prePushGate = "",
 	prePushHookScript = "",
+	localE2eSuites = LOCAL_GATE_E2E_SUITES,
 }) {
 	const failures = [];
 	const scripts = packageJson.scripts;
@@ -155,6 +170,18 @@ export function collectGateFailures({
 		required: requiredLocalPrCommands,
 		failures,
 	});
+
+	// `test:e2e:local-gate` runs the same build and `:prebuilt` scripts CI's
+	// `test:e2e:<suite>` chains, reordered so the suites run concurrently.
+	if (scripts?.["test:e2e:local-gate"] !== LOCAL_GATE_E2E_COMMAND) {
+		failures.push(`test:e2e:local-gate must run "${LOCAL_GATE_E2E_COMMAND}".`);
+	}
+	for (const suite of requiredLocalE2eSuites) {
+		if (!localE2eSuites.includes(suite)) {
+			failures.push(`test:e2e:local-gate does not run "test:e2e:${suite}".`);
+		}
+	}
+	failures.push(...planLocalE2e(scripts, localE2eSuites).failures);
 
 	// The pre-push hook reaches verify:pre-push through scripts/pre-push-gate.mjs, which
 	// skips the gate for pushes that carry no new commits. That indirection is only safe

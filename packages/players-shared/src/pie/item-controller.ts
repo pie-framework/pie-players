@@ -82,8 +82,13 @@ export class ItemController {
 	): ItemSessionContainer {
 		const next = normalizeSessionContainer(input, this.sessionId);
 		const allowMetadataOverwrite = options.allowMetadataOverwrite ?? false;
+		// The guard keeps a response from metadata churn on the same session. A
+		// session with another id is a new attempt or item, and replaces it.
+		const sameSession =
+			next.id === "" || this.session.id === "" || next.id === this.session.id;
 		if (
 			!allowMetadataOverwrite &&
+			sameSession &&
 			hasResponseValue(this.session) &&
 			!hasResponseValue(next) &&
 			!hasResponseField(next)

@@ -1,5 +1,5 @@
 /**
- * PNP Policy Source — precedence rule tests (M8 PR 1).
+ * PNP Policy Source — precedence rule tests.
  *
  * Exercises the canonical `PnpPolicySource.apply(...)` entry point for
  * PNP/profile precedence.
@@ -7,20 +7,18 @@
 
 import { describe, expect, test } from "bun:test";
 
-import type {
-	AssessmentEntity,
-	AssessmentItemRef,
-} from "@pie-players/pie-players-shared/types";
+import type { AssessmentEntity } from "@pie-players/pie-players-shared/types";
 
 import { PnpPolicySource } from "../../src/policy/sources/PnpPolicySource.js";
 import { ToolRegistry } from "../../src/services/ToolRegistry.js";
+import { createTestToolRegistry } from "../fixtures/test-tool-registry.js";
 
 function source() {
 	const registry = new ToolRegistry();
 	return new PnpPolicySource(registry);
 }
 
-describe("PnpPolicySource — 6-level precedence", () => {
+describe("PnpPolicySource — 8-level precedence", () => {
 	test("1. district-block overrides everything else", () => {
 		const result = source().apply({
 			assessment: {
@@ -33,10 +31,10 @@ describe("PnpPolicySource — 6-level precedence", () => {
 				},
 				personalNeedsProfile: { supports: ["calculator"] },
 			} as AssessmentEntity,
-			currentItemRef: {
-				identifier: "i1",
+			item: {
+				id: "i1",
 				settings: { requiredTools: ["calculator"] },
-			} as AssessmentItemRef,
+			},
 		});
 		expect(result.blockedToolIds.has("calculator")).toBe(true);
 		expect(result.mandatedToolIds.has("calculator")).toBe(false);
@@ -63,28 +61,199 @@ describe("PnpPolicySource — 6-level precedence", () => {
 		).toBeDefined();
 	});
 
+	test("2. a test-admin override is evaluated when no other level names the id", () => {
+		const blocked = source().apply({
+			assessment: {
+				id: "a1",
+				settings: {
+					testAdministration: { toolOverrides: { calculator: false } },
+				},
+			} as AssessmentEntity,
+		});
+		expect(blocked.blockedToolIds.has("calculator")).toBe(true);
+
+		const enabled = source().apply({
+			assessment: {
+				id: "a1",
+				settings: {
+					testAdministration: { toolOverrides: { calculator: true } },
+				},
+			} as AssessmentEntity,
+		});
+		expect(enabled.decisions).toEqual([
+			expect.objectContaining({
+				featureId: "calculator",
+				rule: "test-admin-override",
+				action: "enable",
+				precedence: 5,
+			}),
+		]);
+		expect(enabled.perToolFlags.get("calculator")).toMatchObject({
+			required: false,
+			alwaysAvailable: true,
+			rule: "test-admin-override",
+		});
+	});
+
+	test("3. an item restriction outranks a test-admin enable, and records it", () => {
+		const s = source();
+		const args = {
+			assessment: {
+				id: "a1",
+				personalNeedsProfile: {
+					supports: [],
+					prohibitedSupports: ["calculator"],
+				},
+				settings: {
+					testAdministration: { toolOverrides: { calculator: true } },
+				},
+			} as AssessmentEntity,
+			item: {
+				id: "i1",
+				settings: { restrictedTools: ["calculator"] },
+			},
+		};
+		const result = s.apply(args);
+		expect(result.blockedToolIds.has("calculator")).toBe(true);
+		expect(result.blockedOverrides.get("calculator")).toBe("item-restriction");
+		expect(s.resolveFeature("calculator", args).decisions[0]).toMatchObject({
+			rule: "item-restriction",
+			action: "block",
+			precedence: 3,
+		});
+	});
+
+	test("4. a PNP prohibition outranks a test-admin enable, and records it", () => {
+		const result = source().apply({
+			assessment: {
+				id: "a1",
+				personalNeedsProfile: {
+					supports: [],
+					prohibitedSupports: ["calculator"],
+				},
+				settings: {
+					testAdministration: { toolOverrides: { calculator: true } },
+				},
+			} as AssessmentEntity,
+		});
+		expect(result.blockedToolIds.has("calculator")).toBe(true);
+		expect(result.blockedOverrides.get("calculator")).toBe("pnp-prohibited");
+		expect(result.decisions[0]).toMatchObject({
+			rule: "pnp-prohibited",
+			action: "block",
+			precedence: 4,
+		});
+	});
+
+	test("4. a PNP prohibition outranks a district requirement with no override", () => {
+		const result = source().apply({
+			assessment: {
+				id: "a1",
+				personalNeedsProfile: { prohibitedSupports: ["calculator"] },
+				settings: { districtPolicy: { requiredTools: ["calculator"] } },
+			} as AssessmentEntity,
+		});
+		expect(result.blockedToolIds.has("calculator")).toBe(true);
+		expect(result.mandatedToolIds.has("calculator")).toBe(false);
+		expect(result.blockedOverrides.size).toBe(0);
+		expect(result.decisions).toEqual([
+			expect.objectContaining({
+				rule: "pnp-prohibited",
+				action: "block",
+				precedence: 4,
+			}),
+		]);
+	});
+
+	test("4. a PNP prohibition outranks an item requirement", () => {
+		const result = source().apply({
+			assessment: {
+				id: "a1",
+				personalNeedsProfile: { prohibitedSupports: ["calculator"] },
+			} as AssessmentEntity,
+			item: { id: "i1", settings: { requiredTools: ["calculator"] } },
+		});
+		expect(result.blockedToolIds.has("calculator")).toBe(true);
+		expect(result.mandatedToolIds.has("calculator")).toBe(false);
+		expect(result.decisions[0]?.rule).toBe("pnp-prohibited");
+	});
+
+	test("5. a test-admin enable outranks a district requirement", () => {
+		const result = source().apply({
+			assessment: {
+				id: "a1",
+				settings: {
+					districtPolicy: { requiredTools: ["calculator"] },
+					testAdministration: { toolOverrides: { calculator: true } },
+				},
+			} as AssessmentEntity,
+		});
+		expect(result.mandatedToolIds.has("calculator")).toBe(false);
+		expect(result.blockedOverrides.size).toBe(0);
+		expect(result.decisions[0]).toMatchObject({
+			rule: "test-admin-override",
+			action: "enable",
+			precedence: 5,
+		});
+	});
+
+	test("2. a test-admin withdrawal records no blocked override", () => {
+		const result = source().apply({
+			assessment: {
+				id: "a1",
+				personalNeedsProfile: {
+					supports: [],
+					prohibitedSupports: ["calculator"],
+				},
+				settings: {
+					testAdministration: { toolOverrides: { calculator: false } },
+				},
+			} as AssessmentEntity,
+		});
+		expect(result.blockedToolIds.has("calculator")).toBe(true);
+		expect(result.blockedOverrides.size).toBe(0);
+		expect(result.decisions[0]).toMatchObject({
+			rule: "test-admin-override",
+			precedence: 2,
+		});
+	});
+
+	test("1. a district block outranks a test-admin enable", () => {
+		const result = source().apply({
+			assessment: {
+				id: "a1",
+				settings: {
+					districtPolicy: { blockedTools: ["calculator"] },
+					testAdministration: { toolOverrides: { calculator: true } },
+				},
+			} as AssessmentEntity,
+		});
+		expect(result.blockedToolIds.has("calculator")).toBe(true);
+		expect(result.decisions[0]?.rule).toBe("district-block");
+	});
+
 	test("3. item-restriction beats item-requirement", () => {
 		const result = source().apply({
 			assessment: { id: "a1" } as AssessmentEntity,
-			currentItemRef: {
-				identifier: "i1",
+			item: {
+				id: "i1",
 				settings: {
 					requiredTools: ["calculator"],
 					restrictedTools: ["calculator"],
 				},
-			} as AssessmentItemRef,
+			},
 		});
 		expect(result.blockedToolIds.has("calculator")).toBe(true);
 		expect(result.mandatedToolIds.has("calculator")).toBe(false);
 	});
 
-	test("4. item-requirement marks the tool required + mandated", () => {
+	test("6. item-requirement marks the tool required + mandated", () => {
 		const result = source().apply({
 			assessment: { id: "a1" } as AssessmentEntity,
-			currentItemRef: {
-				identifier: "i1",
+			item: {
+				id: "i1",
 				settings: { requiredTools: ["calculator"] },
-			} as AssessmentItemRef,
+			},
 		});
 		expect(result.blockedToolIds.has("calculator")).toBe(false);
 		expect(result.mandatedToolIds.has("calculator")).toBe(true);
@@ -95,7 +264,7 @@ describe("PnpPolicySource — 6-level precedence", () => {
 		});
 	});
 
-	test("5. district-requirement marks the tool required + mandated", () => {
+	test("7. district-requirement marks the tool required + mandated", () => {
 		const result = source().apply({
 			assessment: {
 				id: "a1",
@@ -108,7 +277,7 @@ describe("PnpPolicySource — 6-level precedence", () => {
 		);
 	});
 
-	test("6. pnp-support marks the tool alwaysAvailable but NOT required", () => {
+	test("8. pnp-support marks the tool alwaysAvailable but NOT required", () => {
 		const result = source().apply({
 			assessment: {
 				id: "a1",
@@ -123,7 +292,7 @@ describe("PnpPolicySource — 6-level precedence", () => {
 		expect(result.mandatedToolIds.has("calculator")).toBe(false);
 	});
 
-	test("6. pnp-prohibited blocks even when supports lists the tool", () => {
+	test("4. pnp-prohibited blocks even when supports lists the tool", () => {
 		const result = source().apply({
 			assessment: {
 				id: "a1",
@@ -139,7 +308,7 @@ describe("PnpPolicySource — 6-level precedence", () => {
 		).toBeDefined();
 	});
 
-	test("6. pnp-prohibited blocks even when supports omits the tool", () => {
+	test("4. pnp-prohibited blocks even when supports omits the tool", () => {
 		const result = source().apply({
 			assessment: {
 				id: "a1",
@@ -158,7 +327,7 @@ describe("PnpPolicySource — 6-level precedence", () => {
 		});
 	});
 
-	test("missing pnpSupport → toolId mapping uses supportId verbatim", () => {
+	test("an unregistered support id is carried through verbatim", () => {
 		const result = source().apply({
 			assessment: {
 				id: "a1",
@@ -168,48 +337,51 @@ describe("PnpPolicySource — 6-level precedence", () => {
 		expect(result.perToolFlags.has("customSupport")).toBe(true);
 	});
 
-	test("mapSupportToToolId — first-registered tool wins when multiple tools share a support id (R1 N6)", () => {
-		// Locks the documented "first-wins" semantics of
-		// `PnpPolicySource.mapSupportToToolId(...)`. A second tool that
-		// claims the same `pnpSupportIds` array must not silently steal
-		// the mapping; integrators who want to override should
-		// `unregister(...)` the default first.
-		const registry = new ToolRegistry();
-		const baseToolReg = {
-			name: "x",
-			description: "x",
-			icon: "x",
-			supportedLevels: ["item" as const],
-			isVisibleInContext: () => true,
-			renderToolbar: () => null,
-		};
-		registry.register({
-			...baseToolReg,
-			toolId: "calculator-default",
-			pnpSupportIds: ["calculator"],
-		});
-		registry.register({
-			...baseToolReg,
-			toolId: "calculator-replacement",
-			pnpSupportIds: ["calculator"],
-		});
+	test("an unregistered support id is reported only against a non-empty registry", () => {
+		const assessment = {
+			id: "a1",
+			personalNeedsProfile: { supports: ["calculator", "customSupport"] },
+		} as AssessmentEntity;
 
-		const result = new PnpPolicySource(registry).apply({
-			assessment: {
-				id: "a1",
-				personalNeedsProfile: { supports: ["calculator"] },
-			} as AssessmentEntity,
-		});
-
-		expect(result.perToolFlags.has("calculator-default")).toBe(true);
-		expect(result.perToolFlags.has("calculator-replacement")).toBe(false);
+		expect([
+			...new PnpPolicySource(createTestToolRegistry()).apply({ assessment })
+				.unmappedSupportIds,
+		]).toEqual([["customSupport", ["pnp-support"]]]);
+		expect(
+			new PnpPolicySource(new ToolRegistry()).apply({ assessment })
+				.unmappedSupportIds.size,
+		).toBe(0);
 	});
 
-	test("mapSupportToToolId — unmapped support id falls through verbatim across all rules (R1 N6)", () => {
-		// Sister case: when no tool registers `customSupport`, the
-		// support id itself becomes the `featureId` for every decision
-		// the source emits — including non-PNP rules. Hosts that rely
-		// on raw QTI strings for unmapped tools depend on this.
+	test("an unregistered id is reported with every list that names it, in precedence order", () => {
+		const result = new PnpPolicySource(createTestToolRegistry()).apply({
+			assessment: {
+				id: "a1",
+				personalNeedsProfile: {
+					supports: ["typoTool"],
+					prohibitedSupports: ["otherTypo"],
+				},
+				settings: {
+					districtPolicy: { blockedTools: ["typoTool"], requiredTools: ["otherTypo"] },
+					testAdministration: { toolOverrides: { overrideTypo: true } },
+				},
+			} as AssessmentEntity,
+			item: {
+				id: "q1",
+				settings: { restrictedTools: ["itemTypo"] },
+			} as never,
+		});
+		expect([...result.unmappedSupportIds]).toEqual([
+			["typoTool", ["district-block", "pnp-support"]],
+			["overrideTypo", ["test-admin-override"]],
+			["itemTypo", ["item-restriction"]],
+			["otherTypo", ["pnp-prohibited", "district-requirement"]],
+		]);
+	});
+
+	test("an unregistered support id is carried through verbatim across all rules", () => {
+		// The support id itself becomes the `featureId` for every decision the
+		// source emits, including non-PNP rules.
 		const registry = new ToolRegistry();
 		const result = new PnpPolicySource(registry).apply({
 			assessment: {

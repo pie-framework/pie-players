@@ -1,12 +1,14 @@
-import type { UnknownContext } from "@pie-players/pie-context";
+import { connectContextWithRetry } from "@pie-players/pie-context";
 import {
-	connectAssessmentToolkitRegionScopeContext,
-	connectAssessmentToolkitRuntimeContext,
-	connectAssessmentToolkitShellContext,
-	type RegionScopeContextListener,
-	type RuntimeContextListener,
-	type ShellContextListener,
-} from "../context/runtime-context-consumer.js";
+	assessmentToolkitHostRuntimeContext,
+	assessmentToolkitRegionScopeContext,
+	assessmentToolkitRuntimeContext,
+	assessmentToolkitShellContext,
+	type AssessmentToolkitHostRuntimeContext,
+	type AssessmentToolkitRegionScopeContext,
+	type AssessmentToolkitRuntimeContext,
+	type AssessmentToolkitShellContext,
+} from "../context/assessment-toolkit-context.js";
 import type { ZIndexLayer } from "../services/ToolCoordinator.js";
 import type { ToolCoordinatorApi } from "../services/interfaces.js";
 
@@ -47,13 +49,14 @@ export function dispatchCrossBoundaryEvent<T>(
 
 /**
  * Shared runtime-context connection contract for tools and shells.
- * Uses retry + provider announcements so late providers are tolerated.
+ * A provider that connects after the tool answers it through the document's
+ * context root.
  */
 export function connectToolRuntimeContext(
 	host: HTMLElement,
-	onValue: RuntimeContextListener,
+	onValue: (value: AssessmentToolkitRuntimeContext) => void,
 ): () => void {
-	return connectAssessmentToolkitRuntimeContext(host, onValue);
+	return connectContextWithRetry(host, assessmentToolkitRuntimeContext, onValue);
 }
 
 /**
@@ -61,9 +64,9 @@ export function connectToolRuntimeContext(
  */
 export function connectToolShellContext(
 	host: HTMLElement,
-	onValue: ShellContextListener,
+	onValue: (value: AssessmentToolkitShellContext) => void,
 ): () => void {
-	return connectAssessmentToolkitShellContext(host, onValue);
+	return connectContextWithRetry(host, assessmentToolkitShellContext, onValue);
 }
 
 /**
@@ -71,9 +74,25 @@ export function connectToolShellContext(
  */
 export function connectToolRegionScopeContext(
 	host: HTMLElement,
-	onValue: RegionScopeContextListener,
+	onValue: (value: AssessmentToolkitRegionScopeContext) => void,
 ): () => void {
-	return connectAssessmentToolkitRegionScopeContext(host, onValue);
+	return connectContextWithRetry(
+		host,
+		assessmentToolkitRegionScopeContext,
+		onValue,
+	);
+}
+
+/** Connects a shell or toolkit element to the host runtime context above it. */
+export function connectHostRuntimeContext(
+	host: HTMLElement,
+	onValue: (value: AssessmentToolkitHostRuntimeContext) => void,
+): () => void {
+	return connectContextWithRetry(
+		host,
+		assessmentToolkitHostRuntimeContext,
+		onValue,
+	);
 }
 
 /** A tool's registration with the coordinator in its runtime context. */
@@ -124,13 +143,4 @@ export function createToolCoordinatorRegistration(
 		},
 		release,
 	};
-}
-
-/**
- * Guard utility: narrows unknown context payloads when needed by callers.
- */
-export function isContextValueDefined<T extends UnknownContext>(
-	value: unknown,
-): value is T["__context__"] {
-	return value !== null && value !== undefined;
 }

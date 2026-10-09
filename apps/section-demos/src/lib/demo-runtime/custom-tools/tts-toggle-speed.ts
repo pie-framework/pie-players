@@ -122,17 +122,15 @@ const createToggleSpeedElement = (
 		await toolbarContext.toolkitCoordinator?.ensureTTSReady?.();
 		await setPlaybackRate(toolbarContext, playbackRate);
 		const target = resolveReadingTarget(toolbarContext);
-		const text = target?.textContent || "";
-		if (!target || !text.trim()) return;
+		if (!target?.textContent?.trim()) return;
 		setControlsVisible(true);
 		speaking = true;
 		paused = false;
 		updateTriggerState();
-		await ttsService.speak(text, {
+		await ttsService.speak(target, {
 			catalogId: toolbarContext.catalogId || undefined,
 			language: toolbarContext.language || "en-US",
-			contentElement: target,
-		} as any);
+		});
 	};
 
 	const pauseReading = () => {
@@ -220,7 +218,7 @@ const createToggleSpeedElement = (
 			justify-content: center;
 			width: 2rem;
 			height: 2rem;
-			border: 1px solid var(--pie-button-border-color, var(--pie-button-border, var(--pie-border, #c6c6c6)));
+			border: 1px solid var(--pie-button-border, var(--pie-border, #c6c6c6));
 			background-color: var(--pie-button-background-color, var(--pie-button-bg, var(--pie-background, #fff)));
 			color: var(--pie-button-color, var(--pie-text, #333));
 			border-radius: 0.25rem;
@@ -229,7 +227,7 @@ const createToggleSpeedElement = (
 		}
 		.pie-tool-tts-inline__trigger:hover:not(:disabled),
 		.pie-tool-tts-inline__control:hover:not(:disabled) {
-			background-color: var(--pie-button-hover-background-color, var(--pie-button-hover-bg, var(--pie-secondary-background, #f2f4f8)));
+			background-color: var(--pie-button-hover-bg, var(--pie-secondary-background, #f2f4f8));
 			transform: translateY(-1px);
 			box-shadow: 0 2px 6px color-mix(in srgb, var(--pie-shadow, #000) 14%, transparent);
 		}
@@ -287,7 +285,7 @@ const createToggleSpeedElement = (
 			justify-content: center;
 			width: 2rem;
 			height: 2rem;
-			border: 1px solid var(--pie-button-border-color, var(--pie-button-border, var(--pie-border, #c6c6c6)));
+			border: 1px solid var(--pie-button-border, var(--pie-border, #c6c6c6));
 			border-radius: 0.25rem;
 			background: var(--pie-button-background-color, var(--pie-button-bg, var(--pie-background, #fff)));
 			color: var(--pie-button-color, var(--pie-text, #222));

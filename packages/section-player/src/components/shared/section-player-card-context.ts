@@ -1,7 +1,6 @@
 import {
 	connectContextWithRetry,
 	ContextProvider,
-	ContextRoot,
 	createContext,
 } from "@pie-players/pie-context";
 import type { SectionPlayerCardTitleFormatter } from "../../contracts/card-title-formatters.js";
@@ -18,17 +17,6 @@ export const sectionPlayerCardRenderContext =
 		Symbol.for("@pie-players/pie-section-player/card-render-context"),
 	);
 
-export function getHostElementFromAnchor(
-	anchor: HTMLElement | null,
-): HTMLElement | null {
-	if (!anchor) return null;
-	const rootNode = anchor.getRootNode();
-	if (rootNode && "host" in rootNode) {
-		return (rootNode as ShadowRoot).host as HTMLElement;
-	}
-	return anchor.parentElement as HTMLElement | null;
-}
-
 export function connectSectionPlayerCardRenderContext(
 	host: HTMLElement,
 	onValue: (value: SectionPlayerCardRenderContext) => void,
@@ -36,6 +24,11 @@ export function connectSectionPlayerCardRenderContext(
 	return connectContextWithRetry(host, sectionPlayerCardRenderContext, onValue);
 }
 
+/**
+ * A card that subscribes before this provider connects is answered through the
+ * document's context root, which replays its request when the provider
+ * announces itself.
+ */
 export function createSectionPlayerCardRenderContextProvider(
 	host: HTMLElement,
 	initialValue: SectionPlayerCardRenderContext,
@@ -45,14 +38,9 @@ export function createSectionPlayerCardRenderContextProvider(
 		initialValue,
 	});
 	provider.connect();
-	const root = new ContextRoot(host);
-	root.attach();
 	return {
 		setValue: (value: SectionPlayerCardRenderContext) =>
 			provider.setValue(value),
-		disconnect: () => {
-			root.detach();
-			provider.disconnect();
-		},
+		disconnect: () => provider.disconnect(),
 	};
 }

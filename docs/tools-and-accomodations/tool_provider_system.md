@@ -58,7 +58,7 @@ type CanonicalToolsConfig = {
 
 ### Canonical tool IDs
 
-Use the current semantic tool IDs in docs and examples:
+`createPackagedToolRegistry()` registers these toolbar tool IDs:
 
 - `textToSpeech`
 - `calculator`
@@ -70,14 +70,32 @@ Use the current semantic tool IDs in docs and examples:
 - `periodicTable`
 - `protractor`
 - `theme`
+- `dictionary`, `dictionarySpanish`
+- `pictureDictionary`, `pictureDictionarySpanish`
+
+It also registers `transcript`, a region capability with no toolbar button, which
+`tools.placement` cannot place. Sign language is a separate package
+(`@pie-players/pie-tool-sign-language`) that a host registers itself.
+
+The tool id is the one key for a tool: its `tools.providers` entry, its
+placement and policy, failure attribution, and its provider's entry in the
+coordinator's provider registry. `provider.id` inside the entry selects an
+implementation (for the calculator `calculator-desmos`, `calculator-geogebra`
+or `calculator-cortex`) and never names a registry entry, so selecting another
+through `updateToolConfig` replaces the provider under the same id.
 
 ## Basic Integration
 
 ```ts
 import { ToolkitCoordinator } from "@pie-players/pie-assessment-toolkit";
-import { createPackagedToolRegistry } from "@pie-players/pie-default-tool-loaders";
+import {
+  createPackagedToolRegistry,
+  DEFAULT_TOOL_MODULE_LOADERS,
+} from "@pie-players/pie-default-tool-loaders";
 
-const toolRegistry = createPackagedToolRegistry();
+const toolRegistry = createPackagedToolRegistry({
+  toolModuleLoaders: DEFAULT_TOOL_MODULE_LOADERS,
+});
 const coordinator = new ToolkitCoordinator({
   assessmentId: "demo-assessment",
   toolRegistry,
@@ -89,7 +107,7 @@ const coordinator = new ToolkitCoordinator({
     },
     providers: {
       textToSpeech: {
-        settings: { backend: "browser" },
+        backend: "browser",
       },
       calculator: {
         enabled: true,
@@ -172,8 +190,12 @@ Resolver order is deliberately narrow:
 2. A host resolver, when registered for a surviving tool, may hide that tool
    for the current scope or attach render params.
 3. If no host resolver is registered, the tool registration uses its built-in
-   `isVisibleInContext` relevance check.
-4. The tool's `renderToolbar` receives params through
+   `isVisibleInContext` relevance check. Section toolbars skip it, and so does a
+   tool a PNP grant marks required or always available.
+4. Below section level, once content has resolved, a tool whose registration
+   reports it inapplicable to every content context (`isApplicableToContent`) is
+   dropped, granted or not. A host-resolved tool keeps the resolver's answer.
+5. The tool's `renderToolbar` receives params through
    `toolbarContext.getToolRenderParams(toolId)`.
 
 This means host item metadata can decide calculator type without overriding
@@ -195,18 +217,16 @@ const coordinator = new ToolkitCoordinator({
     },
     providers: {
       textToSpeech: {
-        settings: {
-          backend: "browser",
-          // Optional: an exact voiceURI or name from speechSynthesis.getVoices().
-          layoutMode: "expanding-row",
-        },
+        backend: "browser",
+        // Optional: an exact voiceURI or name from speechSynthesis.getVoices().
+        layoutMode: "expanding-row",
       },
     },
   },
 });
 ```
 
-`layoutMode` can be configured directly on `tools.providers.textToSpeech` (either top-level or inside `settings`). When omitted, the toolkit uses **`left-aligned`**; a standalone `<pie-tool-tts-inline>` without a `layoutMode` uses `expanding-row`. Supported values are:
+`layoutMode` is configured directly on `tools.providers.textToSpeech`. When omitted, the toolkit and a standalone `<pie-tool-tts-inline>` both use **`left-aligned`**. Supported values are:
 
 - `reserved-row`
 - `expanding-row`
@@ -332,9 +352,8 @@ tier licensed for the application, and proxy or self-host Desmos only when a
 partner agreement grants that right.
 
 The calculator capability defaults to `calculator-desmos` when no provider id
-is configured. The adapter still sends the historical unkeyed request in that
-case; Desmos's CDN rejects it with HTTP 403, and it does not grant or imply a
-Desmos license. Select the separate GeoGebra suite explicitly:
+is configured. The adapter needs an application key and refuses to initialize
+without one. Select the separate GeoGebra suite explicitly:
 
 ```ts
 calculator: {

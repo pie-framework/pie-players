@@ -1,6 +1,6 @@
 <script lang="ts">
-	import { browser } from '$app/environment';
-	import { afterNavigate, replaceState } from '$app/navigation';
+	import { browser } from '$app/env';
+	import { afterNavigate, goto } from '$app/navigation';
 	import {
 		CompositeInstrumentationProvider,
 		DebugPanelInstrumentationProvider,
@@ -10,19 +10,16 @@
 		createToolsConfig,
 		ToolkitCoordinator
 	} from '@pie-players/pie-assessment-toolkit';
-	import {
-		createUniversalPersonalNeedsProfile,
-		SECTION_PLAYER_PREFERRED_TOOL_PLACEMENT
-	} from '@pie-players/pie-default-tool-loaders';
+	import { SECTION_PLAYER_PREFERRED_TOOL_PLACEMENT } from '@pie-players/pie-default-tool-loaders';
 	import '@pie-players/pie-section-player/components/section-player-splitpane-element';
-	import '@pie-players/pie-section-player/components/section-player-vertical-element';
-	import DemoRuntimeChrome from '$lib/demo-runtime/components/DemoRuntimeChrome.svelte';
+	import '@pie-players/pie-section-player';
+	import DemoRuntimeChrome from '#lib/demo-runtime/components/DemoRuntimeChrome.svelte';
 	import {
 		deleteSnapshotFromSessionDb,
 		loadSessionDemoActivity,
 		loadSnapshotFromSessionDb,
 		saveSnapshotToSessionDb
-	} from '$lib/demo-runtime/session-demo-db-client';
+	} from '#lib/demo-runtime/session-demo-db-client.js';
 	import {
 		applyDaisyTheme,
 		applyToolkitScheme,
@@ -39,11 +36,11 @@
 		MODE_OPTIONS,
 		onSectionSessionChanged,
 		PLAYER_OPTIONS
-	} from '$lib/demo-runtime/demo-page-helpers';
-	import { withDemoLoaderOptions } from '$lib/demo-runtime/demo-player-config';
-	import { SECTION_DEMOS_DEFAULT_TTS_TOOL_PROVIDER } from '$lib/demo-runtime/section-demos-default-tts';
-	import { createSectionDemoToolRegistry } from '$lib/demo-runtime/default-tool-registry';
-	import { preloadSectionElements } from '$lib/demo-runtime/preload-utils';
+	} from '#lib/demo-runtime/demo-page-helpers.js';
+	import { withDemoLoaderOptions } from '#lib/demo-runtime/demo-player-config.js';
+	import { SECTION_DEMOS_DEFAULT_TTS_TOOL_PROVIDER } from '#lib/demo-runtime/section-demos-default-tts.js';
+	import { createSectionDemoToolRegistry } from '#lib/demo-runtime/default-tool-registry.js';
+	import { preloadSectionElements } from '#lib/demo-runtime/preload-utils.js';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
@@ -154,7 +151,8 @@
 	let selectedDaisyTheme = $state<string>(DEFAULT_DAISY_THEME);
 	let attemptId = $state(getOrCreateAttemptId());
 	let routerReady = $state(false);
-	afterNavigate(() => {
+	afterNavigate(({ shallow, type }) => {
+		if (shallow && type === 'goto') return;
 		routerReady = true;
 	});
 	let playerInstanceKey = $state(0);
@@ -189,19 +187,11 @@
 		const canUseServerSection =
 			Boolean(serverLoadedSection) && Boolean(routeSectionId) && serverSectionId === routeSectionId;
 		const section = (canUseServerSection ? serverLoadedSection : routeSection) || routeSection;
-		if (!section) return section;
-		const hasExplicitPnp = Boolean(
-			section?.personalNeedsProfile || section?.settings?.personalNeedsProfile
-		);
-		if (hasExplicitPnp) return section;
-		return {
-			...section,
-			personalNeedsProfile: createUniversalPersonalNeedsProfile()
-		};
+		return section;
 	});
 
-	// Bind the profile so policy has an input to decide against; the section
-	// payload alone is invisible to `decideFeaturePolicy`.
+	// The player forwards `assessment` only to a coordinator it owns, so a
+	// demo-built coordinator gets the assessment directly.
 	$effect(() => {
 		bindDemoAssessment(coordinator, resolvedSectionForPlayer as any);
 	});
@@ -337,7 +327,7 @@
 		if (existingAttemptId === attemptId && existingLayout === layoutType) return;
 		url.searchParams.set(ATTEMPT_QUERY_PARAM, attemptId);
 		url.searchParams.set('layout', layoutType);
-		replaceState(url, {});
+		goto(url, { shallow: true, replace: true });
 	});
 
 	$effect(() => {
@@ -522,10 +512,10 @@
 			{:else if layoutType === 'vertical'}
 				<pie-section-player-vertical
 					bind:this={playerHostElement}
-					assessment-id={DEMO_ASSESSMENT_ID}
 					section-id={sessionPanelSectionId}
 					attempt-id={attemptId}
 					runtime={ {
+						assessmentId: DEMO_ASSESSMENT_ID,
 						playerType: selectedPlayerType,
 						lazyInit: true,
 						tools: toolkitToolsConfig,
@@ -541,10 +531,10 @@
 			{:else}
 				<pie-section-player-splitpane
 					bind:this={playerHostElement}
-					assessment-id={DEMO_ASSESSMENT_ID}
 					section-id={sessionPanelSectionId}
 					attempt-id={attemptId}
 					runtime={ {
+						assessmentId: DEMO_ASSESSMENT_ID,
 						playerType: selectedPlayerType,
 						lazyInit: true,
 						tools: toolkitToolsConfig,

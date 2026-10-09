@@ -15,7 +15,7 @@ The examples build their tool registry with `createPackagedToolRegistry()` from
 in its own dependencies. The section player depends on it too, but strict
 installers such as pnpm expose only the packages a host declares.
 
-Server-backed TTS (`backend: "polly"`, `"google"` or `"server"`) loads
+Server-backed TTS (`backend: "server"`) loads
 `@pie-players/tts-client-server`, a dependency of
 `@pie-players/pie-default-tool-loaders` whose TTS registration imports it on
 first use. If it fails to load, TTS initialization reports a `provider-init`
@@ -52,10 +52,15 @@ player.toolCoordinator = toolCoordinator;
 
 **After** (coordinator orchestrates):
 ```typescript
-import { createPackagedToolRegistry } from '@pie-players/pie-default-tool-loaders';
+import {
+  createPackagedToolRegistry,
+  DEFAULT_TOOL_MODULE_LOADERS,
+} from '@pie-players/pie-default-tool-loaders';
 
 // Create one coordinator with configuration
-const toolRegistry = createPackagedToolRegistry();
+const toolRegistry = createPackagedToolRegistry({
+  toolModuleLoaders: DEFAULT_TOOL_MODULE_LOADERS,
+});
 const toolkitCoordinator = new ToolkitCoordinator({
   assessmentId: 'my-assessment',
   toolRegistry,
@@ -113,9 +118,9 @@ provider path is the item-player loader config:
 
 ### Toolkit-Owned Canonical Event Stream
 
-- `pie-toolkit-stage-change`
 - `pie-toolkit-runtime-owned`
 - `pie-toolkit-runtime-inherited`
+- `pie-toolkit-runtime-ready`
 - `pie-toolkit-ready`
 - `pie-toolkit-section-ready`
 - `pie-toolkit-framework-error`
@@ -139,20 +144,20 @@ See the [ToolkitCoordinator section in the architecture overview](../../docs/arc
 1. **Centralized Coordination**: ToolkitCoordinator orchestrates all services
 2. **Composable Services**: Import only what you need (or use coordinator for convenience)
 3. **No Framework Lock-in**: Works with any JavaScript framework
-4. **Product Control**: Products control navigation, persistence, layout, backend
+4. **Product Control**: Products control navigation, layout and backend. Session persistence defaults to `localStorage` at the section and assessment layers, stored per attempt id and inactive without one, and a product replaces either through its persistence hook (`createSectionSessionPersistence` on the coordinator, `createAssessmentSessionPersistence` on the assessment player)
 5. **Standard Contracts**: Well-defined event types for component communication
 6. **Element-Level Granularity**: Tool state tracked per PIE element, not per item
 7. **State Separation**: Tool state (ephemeral) separate from PIE session data (persistent)
 
-## Configuration tiers: easy attribute + sophisticated `runtime`
+## Configuration: attributes and a constructed coordinator
 
-This package and `@pie-players/pie-section-player` follow a deliberate
-two-tier configuration model. The same knob can usually be set in either
-tier; the choice is about ergonomics, not capability.
+This package and `@pie-players/pie-section-player` give each input one entry
+point (see [One tier per input](#one-tier-per-input)). A host that needs more
+than the element inputs builds the coordinator itself.
 
-### When to use each tier
+### Element inputs and a constructed coordinator
 
-- **Easy tier — top-level CE attributes / properties.** Use these for the
+- **Element attributes / properties.** Use these for the
   common cases that are static for the lifetime of the player or that hosts
   want to set declaratively in HTML / templating frameworks. Example:
 
@@ -164,16 +169,21 @@ tier; the choice is about ergonomics, not capability.
   ></pie-assessment-toolkit>
   ```
 
-- **Sophisticated tier — passing a constructed `ToolkitCoordinator` (or a
+- **A constructed `ToolkitCoordinator` (or a
   `runtime` object on consumer CEs).** Use this for advanced cases: composed
-  configuration, dynamic overrides, runtime mutation, fields without a
-  tier-1 attribute, or anything that benefits from being a single typed
+  configuration, dynamic overrides, runtime mutation, fields without an
+  attribute, or anything that benefits from being a single typed
   object passed by reference. Example:
 
   ```ts
-  import { createPackagedToolRegistry } from "@pie-players/pie-default-tool-loaders";
+  import {
+    createPackagedToolRegistry,
+    DEFAULT_TOOL_MODULE_LOADERS,
+  } from "@pie-players/pie-default-tool-loaders";
 
-  const toolRegistry = createPackagedToolRegistry();
+  const toolRegistry = createPackagedToolRegistry({
+    toolModuleLoaders: DEFAULT_TOOL_MODULE_LOADERS,
+  });
   const coordinator = new ToolkitCoordinator({
     assessmentId: "my-assessment",
     toolRegistry,
@@ -192,38 +202,32 @@ Top-level attributes use kebab-case (`assessment-id`,
 `tool-config-strictness`). Section-player runtime configuration is grouped
 under the `runtime` object instead of duplicated as top-level props.
 
-### Precedence rule
+### One tier per input
 
-The configuration object owns runtime fields. Section-player layout attributes
-cover identity, layout, diagnostics, and callback/event convenience:
+Each input has one entry point. On the section-player layout elements,
+`runtime` carries `assessmentId`, the player, tool, accessibility,
+coordinator, env and isolation fields, runtime factories and the `on*`
+callbacks; attributes carry section identity, layout controls, `nds-icons`,
+`locale` and `tool-config-strictness`. Unset inputs take their documented
+defaults.
 
-1. Use `runtime.<key>` for player, tool, accessibility, coordinator, env,
-   isolation, and runtime factories.
-2. Use top-level layout attributes for section identity and layout controls.
-3. Use documented defaults when neither is provided.
+`<pie-assessment-toolkit>` takes the same fields as its own properties,
+with `assessment-id`, `nds-icons`, `locale` and `tool-config-strictness` as
+attributes, and reads `pnpEnforcement` from `tools.pnpEnforcement`.
 
-### Canonical tier-1 attribute set
+### Canonical attribute set
 
-The tier-1 attribute set is the same shape across
-`pie-assessment-toolkit`, `pie-section-player-base`, and the
-`pie-section-player-*` layout elements (locked in M5). Every tier-1
-surface obeys the strict mirror rule:
-
-```
-kebab-attribute  ↔  camelCaseProp  ↔  runtime.<sameCamelCaseKey>
-```
-
-Common members include:
-
-- Identity: `assessment-id`, `section-id`, `attempt-id`
+- Identity: `assessment-id` on the toolkit, `section-id`, `attempt-id`
 - Runtime config on section-player CEs: `runtime`
 - Toolkit-only object properties: `tools`, `tool-registry`, `coordinator`,
   `accessibility`
+- Interface: `nds-icons`, `locale`
 - Diagnostics: `tool-config-strictness`, `debug`. Framework-error
-  delivery is via the canonical `onFrameworkError` callback prop and the
+  delivery is via the `onFrameworkError` callback (a toolkit property,
+  `runtime.onFrameworkError` on a section player) and the
   `framework-error` DOM event dispatched on the layout CE host.
 
-Documented exceptions to the mirror rule:
+Inputs outside the runtime config:
 
 - Identity (`section-id`, `attempt-id`, `section`): per-attempt host
   state, not configuration.
@@ -235,17 +239,15 @@ Documented exceptions to the mirror rule:
   `runtime.tools.placement.{item,passage}` directly.
 - Runtime-only keys on the section-player layout CEs
   (`createSectionController`, `isolation`): accepted only via
-  `runtime.<key>`. `<pie-assessment-toolkit>`
-  itself keeps `createSectionController` and `isolation` as JS-only
-  props (no kebab-attribute surface): section-player layouts forward
-  `runtime.isolation` and `runtime.createSectionController` to the
-  wrapped toolkit via property bindings; standalone hosts that need
-  to override coordinator inheritance should pass an explicit
-  `coordinator={...}` instead.
+  `runtime.<key>`. Section-player layouts forward both to the wrapped
+  toolkit as properties. `<pie-assessment-toolkit>` keeps
+  `createSectionController` JS-only and takes `isolation` as an
+  attribute or a property. A `coordinator` passed to it wins over an
+  outer toolkit's.
 
-### When to add a tier-1 attribute
+### When to add an attribute
 
-Add a tier-1 attribute only if all of the following hold:
+Add an attribute only if all of the following hold:
 
 - It is a common case that hosts set without composing a `ToolkitCoordinator`
   / `runtime` object.
@@ -263,10 +265,15 @@ Otherwise expose it through the configuration object only.
 
 ```typescript
 import { ToolkitCoordinator } from '@pie-players/pie-assessment-toolkit';
-import { createPackagedToolRegistry } from '@pie-players/pie-default-tool-loaders';
+import {
+  createPackagedToolRegistry,
+  DEFAULT_TOOL_MODULE_LOADERS,
+} from '@pie-players/pie-default-tool-loaders';
 
 // Create coordinator with configuration
-const toolRegistry = createPackagedToolRegistry();
+const toolRegistry = createPackagedToolRegistry({
+  toolModuleLoaders: DEFAULT_TOOL_MODULE_LOADERS,
+});
 const coordinator = new ToolkitCoordinator({
   assessmentId: 'demo-assessment',
   toolRegistry,
@@ -324,6 +331,7 @@ Behavior pins (PIE-512 Phase D):
 
 - Subscribe **after** the first `getOrCreateSectionController(...)` resolves; calling subscribe before any cohort exists throws.
 - On every cohort transition (navigation, fresh `getOrCreateSectionController` for a new section), the listener is automatically migrated to the new controller and receives a snapshot replay (`content-loaded` × N then `section-loading-complete`) in the same order a fresh subscriber would have seen.
+- A section's subscriptions receive `content-loaded` only for that section's renderables, live or replayed; the previous section's loads stay with it. A renderable in both sections, such as a passage that stays mounted across the switch, counts as loaded in each.
 - Subscribing the **same listener function** twice replaces the first subscription (filter args from the second call win).
 - A listener that throws is caught and `console.warn`-logged; the throw does not interrupt fan-out to other listeners.
 
@@ -357,7 +365,7 @@ What this means in practice for typed integrations:
 
 - **TypeScript breaking change.** `SectionEventSubscriptionArgs`, `SectionItemEventSubscriptionArgs`, and `SectionScopedEventSubscriptionArgs` no longer declare `sectionId?` / `attemptId?` properties. Any host that imports these arg types directly and passes those keys will fail to compile after upgrade. **Action required.**
 - **Runtime is tolerant.** The runtime silently ignores extra unknown properties, so an untyped or lightly-typed call site that still passes `sectionId` / `attemptId` continues to work without source changes. The args have **no effect** at runtime — the subscription always follows the active cohort.
-- **New precondition.** `subscribe*` now throws if no active section cohort exists. Subscribe **after** the first `getOrCreateSectionController(...)` resolves. Subscribing on `toolkit-ready` alone is no longer sufficient — though in practice the section player emits `toolkit-ready` *after* its first `getOrCreateSectionController(...)` resolves, so a `toolkit-ready` anchor is safe in section-player hosts.
+- **New precondition.** `subscribe*` throws until the first `getOrCreateSectionController(...)` call; a listener added while a section is starting binds when that section becomes active. Subscribe **after** the first `getOrCreateSectionController(...)` resolves. Subscribing on `toolkit-ready` alone is no longer sufficient — though in practice the section player emits `toolkit-ready` *after* its first `getOrCreateSectionController(...)` resolves, so a `toolkit-ready` anchor is safe in section-player hosts.
 - **Cohort migration is automatic.** If your wrapper previously re-subscribed on every navigation to keep listeners alive across sections, that wiring is no longer needed (and should be removed). A single subscribe call after the first controller-resolve is now enough — the listener migrates automatically and is replayed the new cohort's snapshot on every transition.
 - **Watch for double-replay if you re-subscribe on every `toolkit-ready`.** Hosts that detached and re-subscribed on every `toolkit-ready` event (the correct pre-Phase D pattern, since each subscription was pinned to a `sectionId`) will now observe **two snapshot replays per navigation**: one delivered automatically when Phase D migrates the existing listener to the new active cohort, and a second when the manual re-subscribe attaches a fresh listener that replays again. Listener handlers that are not strictly idempotent will fire twice — analytics `pageAction`s, non-Set counters, side-effecting hydration. The fix is a one-line guard (`if (this.controllerUnsubscribe) return;`) so the subscribe runs only on the first `toolkit-ready`.
 - **For intentionally-pinned subscriptions to inactive sections** (e.g. a host UI that wants to keep watching section A while the user views section B), the helper API does not support that pattern by design. Use `coordinator.getSectionController({ sectionId, attemptId })` and subscribe directly on the controller handle (`controller.subscribe?.(...)`) — that binding is pinned to one controller instance and does not migrate.
@@ -425,27 +433,41 @@ const catalogResolver = new AccessibilityCatalogResolver([], 'en-US');
 await ttsService.initialize(new BrowserTTSProvider());
 ttsService.setCatalogResolver(catalogResolver);
 
-// Pass services individually
-player.ttsService = ttsService;
-player.toolCoordinator = toolCoordinator;
-// ...
+// Use them from host-built UI
 ```
+
+No player element takes services one by one. The section and assessment
+players reach services only through a coordinator, `runtime.coordinator` on a
+section player and `coordinator` on an assessment player; manually created
+services serve host code that drives them directly.
 
 ### Without a Section Player
 
 `<pie-assessment-toolkit>` needs no section. Bind none and it provides tools,
 policy and services to the item toolbars and item players inside it, which is
-how the toolkit accompanies a plain item player:
+how the toolkit accompanies a plain item player. `<pie-item-scope>` holds the
+item for its tools, as it does in a section player's card. The tree this
+builds:
 
 ```html
-<pie-assessment-toolkit pnp-enforcement="on">
-  <pie-item-toolbar item-id="q1"></pie-item-toolbar>
-  <pie-item-player></pie-item-player>
+<pie-assessment-toolkit>
+  <pie-item-scope item-id="q1">
+    <pie-item-toolbar></pie-item-toolbar>
+    <div data-region="content">
+      <pie-item-player></pie-item-player>
+    </div>
+  </pie-item-scope>
 </pie-assessment-toolkit>
 ```
 
+The host sets the toolkit's properties before the tree enters the document. A
+scope registers as soon as it mounts, and that first registration starts the
+coordinator from the toolkit's inputs at that moment; see the binding rules
+below.
+
 ```typescript
 import '@pie-players/pie-assessment-toolkit/components/pie-assessment-toolkit-element';
+import '@pie-players/pie-assessment-toolkit/components/item-scope-element';
 import '@pie-players/pie-assessment-toolkit/components/item-toolbar-element';
 import '@pie-players/pie-item-player';
 import {
@@ -458,41 +480,79 @@ const toolRegistry = createPackagedToolRegistry({
   toolModuleLoaders: DEFAULT_TOOL_MODULE_LOADERS,
 });
 
-toolkit.tools = { placement: { item: ['calculator'] } };
+const toolkit = document.createElement('pie-assessment-toolkit');
+toolkit.tools = {
+  pnpEnforcement: 'on',
+  placement: { item: ['textToSpeech', 'calculator'] },
+};
 toolkit.toolRegistry = toolRegistry;
 toolkit.toolContextResolvers = toolContextResolvers;
 toolkit.assessment = { id: 'a1', personalNeedsProfile: { supports: ['calculator'] } };
 
-toolbar.item = item;
-toolbar.toolRegistry = toolRegistry; // the toolbar does not read the toolkit's
-toolbar.scopeElement = player; // the content answerEliminator acts on
+const scope = document.createElement('pie-item-scope');
+scope.setAttribute('item-id', 'q1');
+scope.item = item;
+scope.innerHTML = `
+  <pie-item-toolbar></pie-item-toolbar>
+  <div data-region="content"><pie-item-player></pie-item-player></div>
+`;
+
+toolkit.append(scope);
+container.append(toolkit);
 ```
 
-A registry built without `toolModuleLoaders` renders toolbar buttons whose tool
-elements never load. `textToSpeech` reads the region an item shell publishes,
-which only the section player's cards provide, so it has no reading target in
-this composition.
+The toolbars and tools inside the scope take the item and its id from it, and
+act on the scope, or on the element its `scopeElement` property names;
+`textToSpeech` reads the scope's `[data-region="content"]` first. A toolbar's
+own `item`, `item-id` and `scopeElement` still override the scope, and its
+`toolRegistry` the toolkit's. The scope
+registers the item with the toolkit once it finds one above it, so it may mount
+first, and the toolkit files the item's accessibility catalogs, which read-aloud
+speaks in place of the markup they name. Item player events pass through the
+scope unchanged, and the session stays the item player's. A registry built
+without `toolModuleLoaders` renders toolbar buttons whose tool elements never
+load.
 
 A profile change is a new `assessment` value; the toolbars re-derive on the
-policy change it emits. Readiness events are section events: `toolkit-ready`,
-`section-ready` and every stage, `composed` included, wait for a bound section,
-and the toolkit builds its own coordinator only after it mounts. A host that needs a
-readiness point constructs the `ToolkitCoordinator`, passes it as
-`coordinator`, awaits `coordinator.waitUntilReady()`, and changes the profile
-with `coordinator.updateAssessment(...)`, since the toolkit applies its
-`assessment` property to a coordinator it owns. The `calculator-pnp` section
-demo composes the owned-coordinator form.
+policy change it emits. The toolkit announces `runtime-ready`, with
+`{ runtimeId, coordinator, ownership }`, once per coordinator, with or without a
+section. Without one, the coordinator starts at the first item that registers,
+and a host reads its readiness from `coordinator.waitUntilReady()` or
+`isReady()`; `toolkit-ready` and `section-ready` wait for a bound section. The
+toolkit emits no stage events: `pie-stage-change` is the section player's. A
+host that holds
+the coordinator from `runtime-ready`, or passes its own as `coordinator`,
+changes the profile with `coordinator.updateAssessment(...)`; the toolkit
+applies its `assessment` property only to a coordinator it owns. The
+`calculator-pnp` section demo composes the owned-coordinator form.
 
 The toolkit builds its own coordinator at mount from `tools`, `enabled-tools`,
 `assessment-id`, `accessibility`, `lazy-init`, `tool-config-strictness` and
-`toolRegistry`. A section that arrives after one of those changed initializes
-with a coordinator rebuilt from the current values, and the toolbars move to
-it. After a section has initialized, a change to them is reported once in the
-console and does not reach the coordinator; `pnp-enforcement`, `assessment`,
-`currentItemRef` and `toolContextResolvers` apply to it at any time. That
+`toolRegistry`. Its first content binds it: the section, or without one the
+first item scope that registers. Content that arrives after one of those inputs
+changed binds a coordinator rebuilt from the current values, and the toolbars
+move to it. After that, a change to them is reported once in the console and
+does not reach the coordinator, except a `toolRegistry` given to a toolkit that
+had none, which the coordinator adopts in place; `tools.pnpEnforcement`,
+`assessment` and `toolContextResolvers` apply to it at any
+time. That
 coordinator reports feature policy asked with no assessment bound only while
-`pnp-enforcement` is `on`: a toolkit given no `assessment` and no enforcement
+`tools.pnpEnforcement` is `on`: a toolkit given no `assessment` and no enforcement
 has asked for no accommodation.
+
+A toolkit nested in another inherits the outer one's coordinator when the outer
+one has a coordinator by the time the inner one connects, which holds for both
+mounted together. Otherwise the inner one builds its own and keeps it, and
+reports an outer coordinator arriving later once in the console. `isolation`
+`"force"` keeps a nested toolkit on its own coordinator by design.
+
+Text-to-speech starts at the toolkit's first content, once the section composes
+or the first item scope registers, and `coordinator.waitUntilReady()` waits for it. With `lazy-init` it starts at the first read-aloud instead, unless policy
+grants it. A tool provider or text-to-speech that fails to start is a
+recoverable framework error: the tool reports itself unavailable and the
+assessment goes on. When policy grants the tool, through an item or district
+requirement or a profile support, the failure is fatal, including one that a
+later policy change grants.
 
 ## Tool Configuration Model
 
@@ -625,9 +685,14 @@ Use **floating tools** when:
 Complete example showing both types:
 
 ```typescript
-import { createPackagedToolRegistry } from '@pie-players/pie-default-tool-loaders';
+import {
+  createPackagedToolRegistry,
+  DEFAULT_TOOL_MODULE_LOADERS,
+} from '@pie-players/pie-default-tool-loaders';
 
-const toolRegistry = createPackagedToolRegistry();
+const toolRegistry = createPackagedToolRegistry({
+  toolModuleLoaders: DEFAULT_TOOL_MODULE_LOADERS,
+});
 const coordinator = new ToolkitCoordinator({
   assessmentId: 'math-exam',
   toolRegistry,
@@ -661,14 +726,22 @@ const coordinator = new ToolkitCoordinator({
 });
 ```
 
-**Simple Default (All Tools Enabled):**
+**A common placement:**
 
-For most use cases, simply enable all available tools:
+A coordinator shows a tool only where `tools.placement` lists it. Its default
+placement is empty, so a coordinator configured without one shows no tools, and
+a profile grant does not place a tool either. This placement covers the
+commonly used tools:
 
 ```typescript
-import { createPackagedToolRegistry } from '@pie-players/pie-default-tool-loaders';
+import {
+  createPackagedToolRegistry,
+  DEFAULT_TOOL_MODULE_LOADERS,
+} from '@pie-players/pie-default-tool-loaders';
 
-const toolRegistry = createPackagedToolRegistry();
+const toolRegistry = createPackagedToolRegistry({
+  toolModuleLoaders: DEFAULT_TOOL_MODULE_LOADERS,
+});
 const coordinator = new ToolkitCoordinator({
   assessmentId: 'my-assessment',
   toolRegistry,
@@ -736,7 +809,8 @@ tools: {
   providers: {
     textToSpeech: {
       enabled: true,
-      backend: 'polly'
+      backend: 'server',
+      serverProvider: 'polly'
     }
   }
 }
@@ -752,7 +826,7 @@ You can still set `apiEndpoint` explicitly when your host route is not `/api/tts
 
 ### Inline TTS Speed Options
 
-Inline TTS speed buttons are configurable via `speedOptions` in provider settings.
+Inline TTS speed buttons are configurable via `speedOptions` on the provider config.
 
 ```typescript
 tools: {
@@ -760,9 +834,7 @@ tools: {
     textToSpeech: {
       enabled: true,
       backend: "browser",
-      settings: {
-        speedOptions: [2, 1.25, 1.5] // host options keep this order; Normal is added if omitted
-      }
+      speedOptions: [2, 1.25, 1.5] // host options keep this order; Normal is added if omitted
     }
   }
 }
@@ -779,13 +851,11 @@ tools: {
       enabled: true,
       backend: "server",
       serverProvider: "custom",
-      settings: {
-        speedOptions: [
-          { rate: 0.8, label: "Slow", ariaLabel: "Slow speed" },
-          { rate: 1, label: "Normal", ariaLabel: "Normal speed", default: true },
-          { rate: 1.5, label: "Fast", ariaLabel: "Fast speed" }
-        ]
-      }
+      speedOptions: [
+        { rate: 0.8, label: "Slow", ariaLabel: "Slow speed" },
+        { rate: 1, label: "Normal", ariaLabel: "Normal speed", default: true },
+        { rate: 1.5, label: "Fast", ariaLabel: "Fast speed" }
+      ]
     }
   }
 }
@@ -810,25 +880,15 @@ tools: {
 - Speed choices are exposed as a `Playback speed` radio group: one option is
   always selected, and choosing the already-selected speed is a no-op.
 - If only one speed option remains, the speed group is hidden by default. Set
-  `showSingleSpeedOption: true` in TTS settings to surface that one-option state.
+  `showSingleSpeedOption: true` on the provider config to surface that one-option state.
 
-### Runtime Fallback: Server TTS -> Browser TTS
+### Browser Fallback
 
-When server-backed playback fails at runtime (for example `503`, network outage,
-or synthesized asset fetch failure), `TTSService` now performs a one-time
-runtime fallback for that session:
-
-1. Switches provider from server-backed implementation to browser speech synthesis.
-2. Rebinds highlight callbacks to the browser provider.
-3. Retries the same `speak()` request once.
-
-This keeps the inline/passage TTS controls usable during transient backend
-incidents without requiring host-side reconfiguration.
-
-Telemetry emitted for observability:
-
-- `pie-tool-runtime-fallback` (fallback switch succeeded)
-- `pie-tool-runtime-fallback-error` (fallback switch failed)
+The coordinator owns fallback to browser speech. When a server-backed provider
+fails to initialize, the coordinator re-initializes TTS on the browser backend
+and reports `pie-tool-init-fallback`. `TTSService.initialize` itself rejects
+when its provider fails to start, and a playback failure after initialization
+rejects that read without switching provider.
 
 `provider.runtime.authFetcher` is optional. Add it only when your host environment
 requires runtime auth material for TTS requests:
@@ -838,7 +898,8 @@ tools: {
   providers: {
     textToSpeech: {
       enabled: true,
-      backend: 'polly',
+      backend: 'server',
+      serverProvider: 'polly',
       apiEndpoint: '/api/tts',
       provider: {
         runtime: {
@@ -858,10 +919,10 @@ provider config: a returned `authToken` is sent as `Authorization: Bearer <token
 and returned `headers` with every synthesis request, and under
 `includeAuthOnAssetFetch` the `Authorization` header also reaches the custom
 transport's speech-mark and audio fetches. A failed fetch falls back to browser
-speech and reports `pie-tool-init-error`.
+speech and reports `pie-tool-init-fallback`.
 
 For a server that authenticates by cookie on another origin, set `credentials:
-"include"` in the `textToSpeech` provider settings, beside
+"include"` on the `textToSpeech` provider config, beside
 `includeAuthOnAssetFetch`. The cookie reaches speech-mark and audio fetches only
 for origins in `assetOrigins`; unset, every TTS fetch keeps the browser default.
 
@@ -900,27 +961,34 @@ SchoolCity is used as a host-configured integration example for custom transport
 Toolkit defaults still remain browser/standard providers unless the host explicitly
 configures custom server-backed TTS.
 
-## Test Attempt Session Adapter (pie backend)
+## Test Attempt Session
 
-The toolkit exposes a canonical `TestAttemptSession` runtime and a deterministic adapter for pie backend activity payloads from `../../kds/pie-api-aws`.
+The toolkit exposes a canonical `TestAttemptSession` runtime. The host maps its
+backend's attempt payload into it and back out.
 
 ```typescript
 import {
-  mapActivityToTestAttemptSession,
+  createNewTestAttemptSession,
   toItemSessionsRecord,
-  buildActivitySessionPatchFromTestAttemptSession
+  upsertItemSessionFromPieSessionChange,
 } from "@pie-players/pie-assessment-toolkit";
 
-const testAttemptSession = mapActivityToTestAttemptSession({
-  activityDefinition,
-  activitySession
+let testAttemptSession = createNewTestAttemptSession({
+  testAttemptSessionIdentifier: attempt.id,
+  assessmentId: assessment.id,
+  seed: attempt.id,
+  itemIdentifiers: assessment.itemIdentifiers,
+});
+
+// Record a PIE session change against its item
+testAttemptSession = upsertItemSessionFromPieSessionChange(testAttemptSession, {
+  itemIdentifier: "q1",
+  pieSessionId: change.session.id,
+  session: change.session,
 });
 
 // Use in section-player handoff (same item session shape as item players expect)
 const itemSessions = toItemSessionsRecord(testAttemptSession);
-
-// Host-owned backend persistence payload
-const patch = buildActivitySessionPatchFromTestAttemptSession(testAttemptSession);
 ```
 
 ### Integration Boundary
@@ -944,21 +1012,17 @@ The persistence strategy works with the same `SectionControllerSessionState` sha
 
 - **ToolkitCoordinator**: ⭐ NEW - Centralized service orchestration
 - **ElementToolStateStore**: ⭐ NEW - Element-level ephemeral tool state management
-- **ToolRegistry**: ⭐ NEW - Registry-based tool management with QTI 3.0 PNP support
-- **ToolPolicyEngine**: QTI 3.0 Personal Needs Profile and host policy decisions via registry-backed policy sources
+- **ToolRegistry**: ⭐ NEW - Registry-based tool management with AfA PNP 3.0 profile support
+- **ToolPolicyEngine**: AfA PNP 3.0 Personal Needs Profile and host policy decisions via registry-backed policy sources
 - **ToolCoordinator**: Manages z-index layering and visibility for floating tools
 - **HighlightCoordinator**: Separate highlight layers for TTS (temporary) and annotations (persistent)
 - **TTSService**: Text-to-speech with QTI 3.0 catalog support
 - **AccessibilityCatalogResolver**: QTI 3.0 accessibility catalog management
 - **SSMLExtractor**: Automatic extraction of embedded `<speak>` tags
-- **ThemeProvider**: Consistent accessibility theming
 
-### ✅ QTI 3.0 Standard Access Features
+### ✅ PNP Support Ids
 
-- **95+ Standardized Features**: Complete QTI 3.0 / IMS AfA 3.0 accessibility features
-- **8 Feature Categories**: Visual, auditory, motor, cognitive, reading, navigation, linguistic, assessment
-- **Example Configurations**: Illustrative PNP profile examples (low vision, dyslexia, ADHD, etc.)
-- **Tool Mappings**: Every packaged tool registration maps to standard QTI 3.0 features
+- **Support ids are tool ids**: A profile, district policy or item setting names a tool by its `toolId`, and an id no registered tool carries raises `tool-policy.unknownSupportId`. [Support ids](docs/TOOL_REGISTRY.md#support-ids) lists the AfA PNP 3.0 terms the packaged ids serve.
 
 ### ✅ Section Player Integration
 
@@ -990,7 +1054,8 @@ export interface ToolkitCoordinatorConfig {
     providers?: {
       textToSpeech?: {
         enabled?: boolean;
-        backend?: 'browser' | 'polly' | 'google' | 'server';
+        backend?: 'browser' | 'server';
+        serverProvider?: 'polly' | 'google' | 'custom';
         defaultVoice?: string;
         rate?: number;
       };
@@ -1019,14 +1084,9 @@ export interface ToolkitCoordinatorConfig {
 ### Methods
 
 ```typescript
-// Get all services as a bundle
-const services = coordinator.getServiceBundle();
-// Returns: { ttsService, toolCoordinator, highlightCoordinator, elementToolStateStore, catalogResolver }
-
 // Tool configuration
-coordinator.isToolEnabled('textToSpeech');  // Check if tool is enabled
 coordinator.getToolConfig('textToSpeech');  // Get tool-specific config
-coordinator.updateToolConfig('textToSpeech', { rate: 1.5 });  // Update tool config
+coordinator.updateToolConfig('textToSpeech', { rate: 1.5 });  // Update tool config; replaces the tool's provider, which starts again on next use
 
 // Final teardown by the owner that constructed the coordinator
 await coordinator.dispose();
@@ -1138,6 +1198,8 @@ unsubscribe();
 ### TTSService
 
 ```typescript
+import { BrowserTTSProvider, TTSService } from '@pie-players/pie-assessment-toolkit';
+
 const ttsService = new TTSService();
 
 // Initialize with provider
@@ -1146,8 +1208,8 @@ await ttsService.initialize(new BrowserTTSProvider());
 // Set catalog resolver for SSML support
 ttsService.setCatalogResolver(catalogResolver);
 
-// Playback
-await ttsService.speak('Read this text', {
+// Playback: reads an element or a range, or the named card in its place
+await ttsService.speak(promptElement, {
   catalogId: 'prompt-001',
   language: 'en-US'
 });
@@ -1166,36 +1228,46 @@ await ttsService.updateSettings({
 
 ### ToolCoordinator
 
+The toolkit owns the coordinator. A tool element registers with the one in its
+runtime context and hands it the element once it renders:
+
 ```typescript
-const toolCoordinator = new ToolCoordinator();
+import {
+  createToolCoordinatorRegistration,
+  ZIndexLayer,
+} from '@pie-players/pie-assessment-toolkit/tools/registration';
 
-// Register tools
-toolCoordinator.registerTool('calculator', 'Calculator', element);
+const registration = createToolCoordinatorRegistration('Calculator', ZIndexLayer.TOOL);
 
-// Manage visibility
-toolCoordinator.showTool('calculator');
-toolCoordinator.hideTool('calculator');
-toolCoordinator.toggleTool('calculator');
-
-// Z-index management
-toolCoordinator.bringToFront(element);
-
-// Check state
-const isVisible = toolCoordinator.isToolVisible('calculator');
+// Re-registers when a republished context brings a new coordinator.
+$effect(() => registration.sync(coordinator, toolId));
+$effect(() => {
+  if (coordinator && containerEl && toolId) {
+    coordinator.updateToolElement(toolId, containerEl);
+  }
+});
+onDestroy(() => registration.release());
 ```
+
+Visibility and stacking then go through the coordinator by scoped tool id:
+`showTool`, `hideTool`, `toggleTool`, `isToolVisible`, `bringToFront(element)`,
+and `getVisibleTools({ baseId })` / `hideAllTools({ baseId })` for one tool
+across scopes.
 
 ### HighlightCoordinator
 
 ```typescript
+import { HighlightColor, HighlightCoordinator } from '@pie-players/pie-assessment-toolkit';
+
 const highlightCoordinator = new HighlightCoordinator();
 
 // TTS highlights (temporary)
-highlightCoordinator.highlightTTSWord(textNode, start, end);
+highlightCoordinator.highlightTTSWord([wordRange]); // one range per tree the word spans
 highlightCoordinator.highlightTTSSentence([range1, range2]);
 highlightCoordinator.clearTTS();
 
 // Annotation highlights (persistent)
-const id = highlightCoordinator.addAnnotation(range, 'yellow');
+const id = highlightCoordinator.addAnnotation(range, HighlightColor.YELLOW);
 highlightCoordinator.removeAnnotation(id);
 ```
 
@@ -1220,6 +1292,8 @@ maintaining, across every scheme it ships.
 ### AccessibilityCatalogResolver
 
 ```typescript
+import { AccessibilityCatalogResolver } from '@pie-players/pie-assessment-toolkit';
+
 const resolver = new AccessibilityCatalogResolver(
   assessment.accessibilityCatalogs,
   'en-US'
@@ -1283,6 +1357,8 @@ such as TTS may still call `getAlternative(...)` with a context built by
 ### SSMLExtractor
 
 ```typescript
+import { SSMLExtractor } from '@pie-players/pie-assessment-toolkit';
+
 const extractor = new SSMLExtractor();
 
 // Extract from item config
@@ -1313,20 +1389,22 @@ needs them — signing's card validators and its resolution rules live in
 
 ### Feature policy without a placement
 
-`ToolPolicyEngine.decideFeature(featureId)` (and
-`ToolkitCoordinator.decideFeaturePolicy(featureId)`) resolve one feature id
+`ToolPolicyEngine.decideFeature(featureId, scope?)` (and
+`ToolkitCoordinator.decideFeaturePolicy(featureId, scope?)`) resolve one feature id
 through `PnpPolicySource`'s six-level precedence, independent of any toolbar
 placement. Use it for capabilities that are not toolbar surfaces — signing is the
 first — where a placement-scoped `decide(...)` would answer the wrong question:
 absent because it was never placed, rather than absent because policy said no.
+An item scope applies that item's registered settings, the item restriction and
+requirement rungs; a decision without one applies no item's.
 
-`createEmptyPersonalNeedsProfile()` is the only profile this package ships, and it
-grants nothing. Which capabilities a deployment grants by default is a property
+This package ships no profile. Which capabilities a deployment grants by default is a property
 of the program rather than of a capability — TTS is a universal feature in one
 program and a documented accommodation in another — so it belongs in policy
 configuration alongside the district and test-administration levels. Hosts that
 want today's universal set take `createUniversalPersonalNeedsProfile()` from
-`@pie-players/pie-default-tool-loaders`, which ships it as data.
+`@pie-players/pie-default-tool-loaders`, which ships it as data beside
+`createEmptyPersonalNeedsProfile()`.
 
 Nothing derives a profile from the registry any more. Doing so read registry
 membership as eligibility tier — registration means "policy-addressable", not
@@ -1352,10 +1430,15 @@ The section player provides automatic ToolkitCoordinator integration:
 
 <script type="module">
   import { ToolkitCoordinator } from '@pie-players/pie-assessment-toolkit';
-  import { createPackagedToolRegistry } from '@pie-players/pie-default-tool-loaders';
+  import {
+    createPackagedToolRegistry,
+    DEFAULT_TOOL_MODULE_LOADERS,
+  } from '@pie-players/pie-default-tool-loaders';
 
   // Create coordinator
-  const toolRegistry = createPackagedToolRegistry();
+  const toolRegistry = createPackagedToolRegistry({
+    toolModuleLoaders: DEFAULT_TOOL_MODULE_LOADERS,
+  });
   const coordinator = new ToolkitCoordinator({
     assessmentId: 'my-assessment',
     toolRegistry,
@@ -1378,21 +1461,27 @@ The section player provides automatic ToolkitCoordinator integration:
   // - Extracts services from coordinator
   // - Scopes its runtime engine to `section-id`
   // - Provides runtime context to child components
-  // - Manages SSML extraction
+  // - Registers item catalogs, including SSML catalogs a host extracted
+  //   into `config.extractedCatalogs` with `SSMLExtractor`
   // - Handles catalog lifecycle
 </script>
 ```
 
 ### Runtime Context Contract
 
-The toolkit now exports a shared context key used by section-player and toolkit
-components:
+Section-player and toolkit components share one runtime context. An element
+inside the toolkit's tree connects to it:
 
 ```typescript
 import {
-  assessmentToolkitRuntimeContext,
+  connectToolRuntimeContext,
   type AssessmentToolkitRuntimeContext
 } from "@pie-players/pie-assessment-toolkit";
+
+let runtime: AssessmentToolkitRuntimeContext | undefined;
+const disconnect = connectToolRuntimeContext(hostElement, (value) => {
+  runtime = value;
+});
 ```
 
 `AssessmentToolkitRuntimeContext` carries ambient orchestration dependencies
@@ -1422,7 +1511,7 @@ player.section = mySection;
 
 // Internally creates:
 // new ToolkitCoordinator({
-//   assessmentId: 'section-demo-direct', // or the assessment-id attribute
+//   assessmentId: 'section-demo-direct', // or runtime.assessmentId
 //   toolRegistry,                        // the player's toolRegistry, else the packaged registry
 //   tools: player.runtime?.tools         // no tools are placed when this is unset
 // })
@@ -1444,9 +1533,14 @@ import {
   createToolsConfig,
   ToolkitCoordinator
 } from "@pie-players/pie-assessment-toolkit";
-import { createPackagedToolRegistry } from "@pie-players/pie-default-tool-loaders";
+import {
+  createPackagedToolRegistry,
+  DEFAULT_TOOL_MODULE_LOADERS,
+} from "@pie-players/pie-default-tool-loaders";
 
-const toolRegistry = createPackagedToolRegistry();
+const toolRegistry = createPackagedToolRegistry({
+  toolModuleLoaders: DEFAULT_TOOL_MODULE_LOADERS,
+});
 const { config, diagnostics } = createToolsConfig({
   source: "host.bootstrap",
   strictness: "error",
@@ -1474,7 +1568,7 @@ const coordinator = new ToolkitCoordinator({
 Notes:
 - `providers.textToSpeech` is the canonical TTS provider key.
 - `providers.tts` is rejected by the validation contract.
-- Custom tools can provide provider-level `sanitizeConfig` and `validateConfig` hooks.
+- A tool registration can declare `sanitizeConfig` and `validateConfig` hooks for its `providers.<toolId>` entry.
 - Hosts can react to framework errors via the `framework-error` DOM event,
   the `onFrameworkError(model)` callback prop, or by subscribing directly
   to the package-internal bus via
@@ -1488,45 +1582,110 @@ Notes:
 
 ## Section Runtime Engine (advanced)
 
-The toolkit exposes a layered **section runtime engine** that consolidates
-runtime resolution, FSM-driven stage progression, framework-error reporting,
-DOM-event fan-out, and instrumentation into a single object hosts can mount
-and dispose. The engine is what `<pie-section-player-…>` and
-`<pie-assessment-toolkit>` use internally, and it is also the surface
-custom hosts (or alternate layout shells) consume directly.
+The section runtime engine is the section player's stage chain: a pure FSM that
+turns the cohort a layout shows, the controller resolving and the readiness
+signals the layout derives into `pie-stage-change` and `pie-loading-complete`.
+The section player's layout kernel owns one per layout element, and it is the
+only stage emitter. `<pie-assessment-toolkit>` emits no stages: its
+`SectionControllerBinding` resolves the section's controller, which the toolkit
+announces with `toolkit-ready`, and the toolkit publishes framework errors.
 
-### Two import paths
+### Entry point
 
-The engine ships with two deliberately separate entry points so consumers
-pick the stability surface that matches their use case:
+`@pie-players/pie-assessment-toolkit/runtime/engine` is the stable entry for a
+host that drives a section's stage chain. It carries `SectionRuntimeEngine` and
+the vocabulary of its surface: the `SectionEngineInput`s `dispatchInput` takes,
+the `SectionEngineOutput`s `subscribe` delivers, the `SectionEngineState` and
+`SectionEnginePhase` `getState` returns, the cohort helpers (`makeCohort`,
+`cohortsEqual`), the runtime config types with
+`resolveSectionEngineRuntimeState`, and the readiness signals. The engine core, its adapter and its DOM bridge have no
+entry: a host reaches them through the facade.
 
-- **Stable facade — `@pie-players/pie-assessment-toolkit/runtime/engine`.**
-  Narrow, semver-stable surface for hosts that want to mount, drive, and
-  dispose a section runtime. Re-exports `SectionRuntimeEngine`,
-  `SECTION_RUNTIME_ENGINE_KEY` (Svelte context), the cross-CE host
-  context (`sectionRuntimeEngineHostContext`), and the consumer-side
-  helper for that bridge (`connectSectionRuntimeEngineHostContext`).
-  The cross-CE host context exposes only a lifecycle handle; controller
-  methods stay on `SectionRuntimeEngine`.
-- **Internal surface — `@pie-players/pie-assessment-toolkit/runtime/internal`.**
-  Wider, evolving surface for advanced hosts that need to construct an
-  engine manually, inspect FSM state, or build alternate fan-out paths.
-  Exposes `SectionEngineCore`, the four adapter bridges
-  (`createDomEventBridge`, `createFrameworkErrorBridge`,
-  `createCoordinatorBridge`, `createInstrumentationBridge`),
-  `FrameworkErrorBus`, cohort helpers,
-  and the `resolveRuntime` / `resolveToolsConfig` /
-  `resolveSectionEngineRuntimeState` helpers. Symbols here may change
-  between minor versions with a changeset note.
+### Stage chain
+
+A cohort moves through `composed`, `engine-ready` and `interactive`, and ends at
+`disposed` on a cohort change or unmount. `engine-ready` follows the
+`section-controller-resolved` input, `interactive` the readiness signals that
+satisfy the readiness mode. A readiness update that reports `runtimeError`
+before `interactive` ends the chain: the first stage the cohort did not reach is
+`failed` and the rest up to `interactive` are `skipped`. The section player sets
+`runtimeError` from a non-recoverable `framework-error`, so a host waiting on
+`engine-ready` or `interactive` always hears an answer. `pie-loading-complete`
+fires once per cohort, when every item has loaded.
+
+### Common-host wiring example
+
+Most hosts never construct the engine: the section-player layout elements do,
+and a host-built section layout takes its engine from
+`pie-section-player-kernel-host` (see the section player's
+[Custom layout authoring](../section-player/README.md#custom-layout-authoring)).
+Use the facade for a section renderer outside the section player. The shape
+mirrors the section-player kernel:
+
+```ts
+import {
+  SectionRuntimeEngine,
+  makeCohort,
+} from "@pie-players/pie-assessment-toolkit/runtime/engine";
+
+const engine = new SectionRuntimeEngine();
+
+// 1. Attach to the layout host. `sourceCe` is stamped onto every event.
+engine.attachHost({ host: layoutHostElement, sourceCe: "my-custom-layout" });
+
+// 2. (Optional) Subscribe to the output batches the DOM bridge dispatches.
+engine.subscribe((outputs) => {
+  // `stage-change` and `loading-complete` outputs
+});
+
+// 3. Drive the engine with `SectionEngineInput`s.
+const cohort = makeCohort({ sectionId, attemptId });
+engine.dispatchInput({
+  kind: "initialize",
+  cohort,
+  effectiveRuntime,
+  effectiveToolsConfig,
+  itemCount,
+});
+
+// When the toolkit's `section-ready` delivers the cohort's section controller:
+engine.dispatchInput({ kind: "section-controller-resolved" });
+
+// On readiness signal updates:
+engine.dispatchInput({
+  kind: "update-readiness-signals",
+  signals: {
+    sectionReady,
+    interactionReady,
+    allLoadingComplete,
+    runtimeError,
+  },
+  itemCount,
+  mode: "progressive",
+});
+
+// On unmount; emits `disposed` for the active cohort.
+engine.dispose();
+```
+
+The adapter dispatches `pie-stage-change` and `pie-loading-complete` on `host`,
+bubbling and composed, as the toolkit dispatches its own events. Framework
+errors are not an engine output. The toolkit that owns the coordinator publishes
+each one once: one bubbling, composed `framework-error` event, which reaches the
+layout host and `document`, and one `onFrameworkError` call. A coordinator the
+host passes in reports through the same surfaces.
+`packages/section-player/tests/section-player-event-delivery.spec.ts` pins these
+counts.
 
 ## Writing a capability package
 
-`@pie-players/pie-assessment-toolkit/tools/internal` is what a capability
-package imports: the `ToolRegistration` contract, the `ToolProviderApi` its
-provider descriptor creates, the surface and content dependency types,
-`resolveToolTag` and the toolbar registration helpers. Same
-stability contract as the other `*/internal` entry points — symbols may change
-between minor versions with a changeset note.
+`@pie-players/pie-assessment-toolkit/tools/registration` is the stable entry a
+capability package imports: the `ToolRegistration` contract, the
+`ToolProviderApi` its provider descriptor creates, the surface and content
+dependency types, the context predicates, `createToolElement`, `resolveToolTag`
+and the toolbar registration helpers. A renderer that puts registrations on
+screen uses the same entry for `createToolSurfaceHost` and
+`resolveContentCapabilities`.
 
 Import it rather than the package root: the root pulls in `ToolkitCoordinator`,
 `TTSService` and the components, none of which a registration needs, and a
@@ -1539,128 +1698,6 @@ registration, a content resolver, its own custom element, and no edit to any
 generic package. `packages/default-tool-loaders/README.md` covers how a
 deployment then composes it in, and `docs/TOOL_REGISTRY.md` the registration and
 host-surface contracts.
-
-### Lifecycle emit coordination
-
-When `<pie-assessment-toolkit>` is nested inside a section-player layout,
-the layout kernel publishes a lifecycle handle via
-`sectionRuntimeEngineHostContext`. The toolkit detects that host
-lifecycle owner and **suppresses its own external lifecycle DOM emits
-and `onStageChange` callback** in favor of the layout CE host. From the
-outside, one cohort yields one `pie-stage-change` /
-`pie-loading-complete` chain on the layout CE host regardless of wrapper
-depth. Controller-side
-registration, content loading, session propagation, and persistence
-remain toolkit-local through its own `SectionRuntimeEngine` instance.
-A standalone `<pie-assessment-toolkit>` (no host context) emits from
-its own engine.
-
-**Detection.** If a custom layout shell emits two `pie-stage-change`
-events per stage transition (or two `pie-loading-complete` per cohort)
-on the same layout CE — typically with two distinct `detail.runtimeId`
-values — the shell has not published its engine via
-`sectionRuntimeEngineHostContext`, so the wrapped
-`<pie-assessment-toolkit>` falls back to its standalone lifecycle emit
-path. Wire the bridge as shown below.
-
-### Common-host wiring example
-
-Most hosts never construct the engine directly — the section-player
-layout CE and the toolkit CE handle it. Use the facade only when
-building an alternate layout shell (e.g. a custom kernel host). The
-shape mirrors what the section-player kernel does internally:
-
-```ts
-import { ContextProvider } from "@pie-players/pie-context";
-import {
-  SectionRuntimeEngine,
-  sectionRuntimeEngineHostContext,
-} from "@pie-players/pie-assessment-toolkit/runtime/engine";
-import {
-  FrameworkErrorBus,
-  makeCohort,
-} from "@pie-players/pie-assessment-toolkit/runtime/internal";
-
-const bus = new FrameworkErrorBus();
-const engine = new SectionRuntimeEngine();
-
-// 1. Attach to the layout CE host. `sourceCe` is stamped onto every
-//    DOM event the engine dispatches and is required.
-engine.attachHost({
-  host: layoutHostElement,
-  sourceCe: "my-custom-layout",
-  frameworkErrorBus: bus,
-  coordinator: toolkitCoordinator,
-});
-
-// 2. Publish a lifecycle handle on the layout CE host so any wrapped
-//    <pie-assessment-toolkit> suppresses duplicate external lifecycle
-//    emits. The toolkit still owns its controller registration/session
-//    plumbing locally.
-const engineProvider = new ContextProvider(layoutHostElement, {
-  context: sectionRuntimeEngineHostContext,
-  initialValue: {
-    engine: {
-      getRuntimeId: () => engine.getRuntimeId(),
-    },
-  },
-});
-engineProvider.connect();
-
-// 3. (Optional) Subscribe to the structured output stream — same set
-//    of outputs the DOM-event bridge fans out to the host element.
-engine.subscribe((output) => {
-  // tap stage transitions, readiness updates, framework errors,
-  // instrumentation events
-});
-
-// 4. Drive the engine. Use real `SectionEngineInput` shapes:
-const cohort = makeCohort({ sectionId, attemptId });
-engine.dispatchInput({
-  kind: "initialize",
-  cohort,
-  effectiveRuntime,
-  effectiveToolsConfig,
-  itemCount,
-});
-
-// On loading-progress / readiness signal updates:
-engine.dispatchInput({
-  kind: "update-readiness-signals",
-  signals: {
-    sectionReady,
-    interactionReady,
-    allLoadingComplete,
-    runtimeError,
-  },
-  loadedCount,
-  itemCount,
-  mode: "progressive",
-});
-
-// On unmount:
-engineProvider.disconnect();
-engine.dispose();
-```
-
-The DOM events `pie-stage-change`, `pie-loading-complete`, and
-`framework-error` are dispatched on `host` automatically by the
-adapter's `dom-event-bridge`. The canonical `onFrameworkError` callback
-prop and the package-internal `FrameworkErrorBus` deliver each error
-exactly once regardless of wrapper depth. The `framework-error` DOM
-event on the layout CE host also delivers each error exactly once: the
-section-player kernel intercepts the toolkit's bubbled emit at
-`<pie-section-player-base>` and calls `event.stopPropagation()`, so the
-layout host sees only the canonical engine-bridge emit. Direct
-listeners on `<pie-assessment-toolkit>` itself still see the toolkit's
-own emit (the toolkit dispatch reaches them before the kernel listener
-runs). A coordinator the host passes in reports through the same
-surfaces. `packages/section-player/tests/section-player-event-delivery.spec.ts`
-pins these counts.
-The layout host emits one `framework-error` DOM event per framework error.
-
-Hosts should listen to `pie-stage-change` (with the readiness detail also
-available via the kernel's `selectReadiness()`) and `pie-loading-complete`.
 
 ## State Separation: Tool State vs Session Data
 
@@ -1725,8 +1762,7 @@ Full TypeScript definitions included:
 import type {
   ToolkitCoordinatorApi,
   ElementToolStateStoreApi,
-  ToolkitCoordinatorConfig,
-  ToolkitServiceBundle
+  ToolkitCoordinatorConfig
 } from '@pie-players/pie-assessment-toolkit';
 ```
 
@@ -1760,7 +1796,7 @@ from tool configuration. Two sanitization layers apply:
 
 ## Related Documentation
 
-- **[Tool Registry Architecture](docs/TOOL_REGISTRY.md)** - ⭐ NEW - Registry-based tool management and QTI 3.0 PNP support
+- **[Tool Registry Architecture](docs/TOOL_REGISTRY.md)** - ⭐ NEW - Registry-based tool management and AfA PNP 3.0 profile support
 - **[PNP Configuration Guide](docs/PNP_CONFIGURATION.md)** - ⭐ NEW - How to configure student profiles, district policies, and governance rules
 - [ToolkitCoordinator Architecture](../../docs/architecture/architecture.md#toolkitcoordinator-centralized-service-management) - Design decisions and patterns
 - [Section Player README](../section-player/README.md) - Section player integration

@@ -46,18 +46,16 @@ const DENIED: ContentCapabilityPolicy = { outcome: "denied" };
 
 const granting =
 	(...supportIds: string[]) =>
-	(featureId: string): ContentCapabilityPolicy =>
-		supportIds.includes(featureId)
-			? { outcome: "granted", featureId }
-			: SILENT;
+	(supportId: string): ContentCapabilityPolicy =>
+		supportIds.includes(supportId) ? { outcome: "granted" } : SILENT;
 
 const grantsNothing = (): ContentCapabilityPolicy => SILENT;
 
 /** Host gate on the named ids; everything else unconfigured. */
 const denying =
 	(...deniedIds: string[]) =>
-	(featureId: string): ContentCapabilityPolicy =>
-		deniedIds.includes(featureId) ? DENIED : SILENT;
+	(supportId: string): ContentCapabilityPolicy =>
+		deniedIds.includes(supportId) ? DENIED : SILENT;
 
 describe("resolveContentCapabilities", () => {
 	it("resolves a granted capability whose content is present", () => {
@@ -69,7 +67,7 @@ describe("resolveContentCapabilities", () => {
 
 		expect(resolved).toHaveLength(1);
 		expect(resolved[0]?.content).toEqual({ text: "here" });
-		expect(resolved[0]?.featureId).toBe("alternate");
+		expect(resolved[0]?.granted).toBe(true);
 	});
 
 	it("drops a granted capability whose content is absent", () => {
@@ -116,24 +114,10 @@ describe("resolveContentCapabilities", () => {
 		});
 
 		expect(resolved).toHaveLength(1);
+		expect(resolved[0]?.granted).toBe(false);
 		// How the capability tells authored presentation from an accommodation.
 		expect(seen[0]?.granted).toBe(false);
-		expect(seen[0]?.featureId).toBe("");
 		expect(seen[0]?.catalogs).toBe(catalogs);
-	});
-
-	it("takes the first granted support id a capability declares", () => {
-		const resolved = resolveContentCapabilities({
-			registrations: [
-				withContent(() => ({ text: "here" }), {
-					pnpSupportIds: ["primary", "secondary"],
-				}),
-			],
-			catalogs,
-			policyFor: granting("secondary"),
-		});
-
-		expect(resolved[0]?.featureId).toBe("secondary");
 	});
 
 	it("needs only a grant when a capability declares no content dependency", () => {
@@ -173,9 +157,9 @@ describe("resolveContentCapabilities", () => {
 				withContent(() => ({ text: "second" }), { toolId: "second" }),
 			],
 			catalogs,
-			policyFor: (featureId) => {
-				if (featureId === "first") throw new Error("policy exploded");
-				return { outcome: "granted", featureId };
+			policyFor: (supportId) => {
+				if (supportId === "first") throw new Error("policy exploded");
+				return { outcome: "granted" };
 			},
 			onError: (registration, phase) =>
 				failures.push(`${registration.toolId}:${phase}`),
@@ -209,67 +193,13 @@ describe("resolveContentCapabilities", () => {
 		expect(asked).toBe(false);
 	});
 
-	it("lets a denial on one declared support id switch the capability off", () => {
-		const resolved = resolveContentCapabilities({
-			registrations: [
-				withContent(() => ({ text: "here" }), {
-					pnpSupportIds: ["primary", "secondary"],
-					resolvesWithoutGrant: true,
-				}),
-			],
-			catalogs,
-			policyFor: (featureId) =>
-				featureId === "primary" ? DENIED : { outcome: "granted", featureId },
-		});
-
-		expect(resolved).toHaveLength(0);
-	});
-
-	it("honours a host denial named against the tool id, not a support id", () => {
-		const resolved = resolveContentCapabilities({
-			registrations: [
-				withContent(() => ({ text: "here" }), {
-					toolId: "alternate",
-					pnpSupportIds: ["someOtherSupportId"],
-					resolvesWithoutGrant: true,
-				}),
-			],
-			catalogs,
-			// A host gate names capabilities, so the tool id has to be probed even
-			// though the capability answers policy through a different support id.
-			policyFor: denying("alternate"),
-		});
-
-		expect(resolved).toHaveLength(0);
-	});
-
-	it("ignores a grant on the tool id that is not a declared support id", () => {
-		const asked: string[] = [];
-		const resolved = resolveContentCapabilities({
-			registrations: [
-				capability({ toolId: "alternate", pnpSupportIds: ["declared"] }),
-			],
-			catalogs,
-			policyFor: (featureId) => {
-				asked.push(featureId);
-				return featureId === "alternate"
-					? { outcome: "granted", featureId }
-					: SILENT;
-			},
-		});
-
-		// The tool-id probe is a gate, never a second way to switch a capability on.
-		expect(resolved).toHaveLength(0);
-		expect(asked).toEqual(["declared", "alternate"]);
-	});
-
-	it("does not probe the tool id when it is already a declared support id", () => {
+	it("asks policy once, by tool id", () => {
 		const asked: string[] = [];
 		resolveContentCapabilities({
 			registrations: [withContent(() => ({ text: "here" }))],
 			catalogs,
-			policyFor: (featureId) => {
-				asked.push(featureId);
+			policyFor: (supportId) => {
+				asked.push(supportId);
 				return SILENT;
 			},
 		});

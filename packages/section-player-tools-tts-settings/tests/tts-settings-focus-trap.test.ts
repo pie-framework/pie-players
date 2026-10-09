@@ -1,10 +1,11 @@
 import { GlobalRegistrator } from "@happy-dom/global-registrator";
-import { afterAll, afterEach, expect, test } from "bun:test";
+import { afterEach, expect, test } from "bun:test";
 
-const ownsDom = typeof window === "undefined";
-if (ownsDom) GlobalRegistrator.register();
+// The panel's custom element is defined once per test process, in the window
+// registered first, so this file leaves happy-dom registered for the next one.
+if (typeof window === "undefined") GlobalRegistrator.register();
 
-await import("../dist/section-player-tools-tts-settings.js");
+await import("../TtsSettingsPanel.svelte");
 
 const settle = async () => {
 	await Promise.resolve();
@@ -62,10 +63,6 @@ afterEach(async () => {
 	await settle();
 });
 
-afterAll(() => {
-	if (ownsDom && GlobalRegistrator.isRegistered) GlobalRegistrator.unregister();
-});
-
 test("Shift+Tab between a component provider's shadow controls stays with the browser", async () => {
 	const panel = await mountPanel();
 	const tab = Array.from(panel.querySelectorAll("button")).find(
@@ -105,4 +102,31 @@ test("closing the panel returns focus to an opener inside a shadow root", async 
 	await settle();
 
 	expect(deepActiveElement()).toBe(opener);
+});
+
+test("Escape dispatches a non-bubbling close event on the panel element", async () => {
+	const panel = await mountPanel();
+	const closes: Event[] = [];
+	panel.addEventListener("close", (event) => closes.push(event));
+	let bubbledToBody = false;
+	document.body.addEventListener("close", () => {
+		bubbledToBody = true;
+	});
+
+	panel
+		.querySelector("[role='dialog'] button")
+		?.dispatchEvent(
+			new KeyboardEvent("keydown", {
+				key: "Escape",
+				bubbles: true,
+				composed: true,
+				cancelable: true,
+			}),
+		);
+
+	expect(closes).toHaveLength(1);
+	expect(closes[0]).toBeInstanceOf(CustomEvent);
+	expect(closes[0].bubbles).toBe(false);
+	expect(closes[0].composed).toBe(false);
+	expect(bubbledToBody).toBe(false);
 });

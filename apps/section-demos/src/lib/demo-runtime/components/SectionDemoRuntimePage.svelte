@@ -1,6 +1,6 @@
 <script lang="ts">
-	import { browser } from '$app/environment';
-	import { afterNavigate, replaceState } from '$app/navigation';
+	import { browser } from '$app/env';
+	import { afterNavigate, goto } from '$app/navigation';
 	import { untrack } from 'svelte';
 	import {
 		CompositeInstrumentationProvider,
@@ -12,11 +12,10 @@
 		ToolkitCoordinator,
 		type ToolkitCoordinatorHooks
 	} from '@pie-players/pie-assessment-toolkit';
-	import { createUniversalPersonalNeedsProfile } from '@pie-players/pie-default-tool-loaders';
 	import '@pie-players/pie-section-player/components/section-player-splitpane-element';
-	import '@pie-players/pie-section-player/components/section-player-vertical-element';
-	import DemoRuntimeChrome from '$lib/demo-runtime/components/DemoRuntimeChrome.svelte';
-	import { demoLocale } from '$lib/demo-locale.svelte';
+	import '@pie-players/pie-section-player';
+	import DemoRuntimeChrome from '#lib/demo-runtime/components/DemoRuntimeChrome.svelte';
+	import { demoLocale } from '#lib/demo-locale.svelte.js';
 	import {
 		applyDaisyTheme,
 		applyToolkitScheme,
@@ -33,16 +32,16 @@
 		MODE_OPTIONS,
 		onSectionSessionChanged,
 		PLAYER_OPTIONS
-	} from '$lib/demo-runtime/demo-page-helpers';
-	import { withDemoLoaderOptions } from '$lib/demo-runtime/demo-player-config';
-	import { SECTION_DEMOS_DEFAULT_TTS_TOOL_PROVIDER } from '$lib/demo-runtime/section-demos-default-tts';
+	} from '#lib/demo-runtime/demo-page-helpers.js';
+	import { withDemoLoaderOptions } from '#lib/demo-runtime/demo-player-config.js';
+	import { SECTION_DEMOS_DEFAULT_TTS_TOOL_PROVIDER } from '#lib/demo-runtime/section-demos-default-tts.js';
 	import {
-		createSectionDemoToolRegistryForCalculator,
+		createSectionDemoToolRegistry,
 		type SectionDemoCalculatorProvider
-	} from '$lib/demo-runtime/default-tool-registry';
-	import { preloadSectionElements } from '$lib/demo-runtime/preload-utils';
-	import { createItemDataCalculatorIntegration } from '$lib/demo-runtime/item-data-calculator-tools';
-	import type { DemoRouteData } from '$lib/content/demo-load';
+	} from '#lib/demo-runtime/default-tool-registry.js';
+	import { preloadSectionElements } from '#lib/demo-runtime/preload-utils.js';
+	import { createItemDataCalculatorIntegration } from '#lib/demo-runtime/item-data-calculator-tools.js';
+	import type { DemoRouteData } from '#lib/content/demo-load.js';
 
 	let {
 		data,
@@ -57,8 +56,7 @@
 		localeSwitcher = false,
 		/**
 		 * Select the calculator implementation for provider-composition demos.
-		 * Leaving this unset deliberately exercises the backwards-compatible
-		 * Desmos default.
+		 * Unset, the page uses Desmos, the default calculator.
 		 */
 		calculatorProvider = 'desmos',
 		/**
@@ -96,7 +94,7 @@
 		? createItemDataCalculatorIntegration(untrack(() => data.section))
 		: null;
 	const calculatorProviderAtInit = untrack(() => calculatorProvider);
-	const toolRegistry = createSectionDemoToolRegistryForCalculator(calculatorProviderAtInit);
+	const toolRegistry = createSectionDemoToolRegistry();
 	/*
 	 * The provider selection, plus whatever configuration the route asked for. The
 	 * two are separate seams: `provider.id` picks the adapter, and `restrictedMode`
@@ -175,7 +173,8 @@
 	let selectedDaisyTheme = $state<string>(DEFAULT_DAISY_THEME);
 	let attemptId = $state(getOrCreateAttemptId());
 	let routerReady = $state(false);
-	afterNavigate(() => {
+	afterNavigate(({ shallow, type }) => {
+		if (shallow && type === 'goto') return;
 		routerReady = true;
 	});
 	let playerInstanceKey = $state(0);
@@ -196,18 +195,7 @@
 	let pnpDebuggerElement: any = $state(null);
 
 	const DEMO_PERSISTENCE_STORAGE_PREFIX = `pie:section-controller:v1:${DEMO_ASSESSMENT_ID}:`;
-	let resolvedSectionForPlayer = $derived.by(() => {
-		const section = data.section as any;
-		if (!section) return section;
-		const hasExplicitPnp = Boolean(
-			section?.personalNeedsProfile || section?.settings?.personalNeedsProfile
-		);
-		if (hasExplicitPnp) return section;
-		return {
-			...section,
-			personalNeedsProfile: createUniversalPersonalNeedsProfile()
-		};
-	});
+	let resolvedSectionForPlayer = $derived(data.section as any);
 	// Re-runs only when `resolvedSectionForPlayer` recomputes, which is what keeps
 	// the binding off the engine's change feed — see `bindDemoAssessment`.
 	$effect(() => {
@@ -266,7 +254,7 @@
 		if (existingAttemptId === attemptId && existingLayout === layoutType) return;
 		url.searchParams.set(ATTEMPT_QUERY_PARAM, attemptId);
 		url.searchParams.set('layout', layoutType);
-		replaceState(url, {});
+		goto(url, { shallow: true, replace: true });
 	});
 
 	$effect(() => {
@@ -431,10 +419,10 @@
 		{:else if layoutType === 'vertical'}
 			<pie-section-player-vertical
 				bind:this={playerHostElement}
-				assessment-id={DEMO_ASSESSMENT_ID}
 				section-id={sessionPanelSectionId}
 				attempt-id={attemptId}
 				runtime={ {
+					assessmentId: DEMO_ASSESSMENT_ID,
 					playerType: selectedPlayerType,
 					lazyInit: true,
 					tools: toolkitToolsConfig,
@@ -451,10 +439,10 @@
 		{:else}
 			<pie-section-player-splitpane
 				bind:this={playerHostElement}
-				assessment-id={DEMO_ASSESSMENT_ID}
 				section-id={sessionPanelSectionId}
 				attempt-id={attemptId}
 				runtime={ {
+					assessmentId: DEMO_ASSESSMENT_ID,
 					playerType: selectedPlayerType,
 					lazyInit: true,
 					tools: toolkitToolsConfig,

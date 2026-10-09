@@ -8,16 +8,55 @@ import { StrikethroughStrategy } from "./strategies/strikethrough-strategy.js";
  * Core engine for answer eliminator tool
  * Coordinates adapters, strategies, and state management
  */
+/**
+ * Where eliminations persist: the toolkit's element tool state store, keyed per
+ * PIE element.
+ */
+export interface EliminatorStateStore {
+	getState(globalElementId: string, toolId: string): unknown;
+	setState(globalElementId: string, toolId: string, state: unknown): void;
+}
+
+/**
+ * Store key per PIE element, by the element's model id (which is also its DOM
+ * id). A choice persists under the key of the nearest ancestor listed here.
+ */
+export type ElementStateKeys = Readonly<Record<string, string>>;
+
+interface TrackedChoice {
+	choiceId: string;
+	/** The owning element's model id, or an anonymous token when it is not keyed. */
+	group: string;
+	strategyKey: string;
+	element: HTMLElement;
+	adapter: ChoiceAdapter;
+	button: HTMLButtonElement | null;
+}
+
+const STATE_TOOL_ID = "answerEliminator";
+
+/**
+ * Core engine for answer eliminator tool
+ * Coordinates adapters, strategies, and state management
+ *
+ * Choice ids are only unique within one PIE element (two multiple-choice
+ * elements both have a choice "a"), so every choice is tracked under its owning
+ * element.
+ */
 export class AnswerEliminatorCore {
 	private static readonly TOGGLE_CLASS = "pie-answer-eliminator-toggle";
 	private static readonly TOGGLE_ACTIVE_CLASS =
 		"pie-answer-eliminator-toggle--active";
 	private registry: AdapterRegistry;
 	private strategy: EliminationStrategy;
-	private eliminatedChoices = new Set<string>(); // Set<choiceId> for current element
-	private choiceElements = new Map<string, HTMLElement>(); // choiceId -> element
-	private choiceButtons = new Map<string, HTMLButtonElement>(); // choiceId -> button
-	private choiceAdapters = new Map<string, ChoiceAdapter>(); // choiceId -> adapter
+	// Keyed by `trackingKey(group, choiceId)`.
+	private choices = new Map<string, TrackedChoice>();
+	private eliminated = new Set<string>();
+	// Strategy ids end up in CSS highlight names and attribute values, so they
+	// are opaque tokens that stay stable for this core's lifetime.
+	private strategyKeys = new Map<string, string>();
+	private anonymousGroups = new WeakMap<Element, string>();
+	private nextToken = 0;
 	private buttonAlignment: "left" | "right" | "inline" = "right";
 	private shouldRestoreState: boolean = true; // Whether to restore eliminations from state storage
 	// Whether the question-level feature is currently on. When off, the
@@ -36,14 +75,11 @@ export class AnswerEliminatorCore {
 	private selectionObserver: MutationObserver | null = null;
 	private selectionRefreshFrame: number | null = null;
 
-	// Store integration (replaces session/localStorage)
-	private storeIntegration: {
-		store: any; // ElementToolStateStore
-		globalElementId: string; // Composite key: "assessmentId:sectionId:itemId:elementId"
-	} | null = null;
+	private store: EliminatorStateStore | null = null;
+	private elementStateKeys: ElementStateKeys = {};
 
 	constructor(
-		strategyType: "strikethrough" | "mask" | "gray" = "strikethrough",
+		strategyType: "strikethrough" | "mask" = "strikethrough",
 		buttonAlignment: "left" | "right" | "inline" = "right",
 	) {
 		this.registry = new AdapterRegistry();
@@ -69,21 +105,28 @@ export class AnswerEliminatorCore {
 		// Initializing means the feature is on.
 		this.active = true;
 
-		// Clean up previous question
+		// Start from a clean slate: the previous question's strikes and
+		// disabled inputs must not outlive its choices.
+		const previous = new Set(this.eliminated);
+		this.restoreAllSelectable();
+		this.strategy.clearAll();
+		this.eliminated.clear();
 		this.cleanupButtons();
 
-		// Find all choices with their adapters
 		const choicesWithAdapters =
 			this.registry.findAllChoicesWithAdapters(questionRoot);
-
-		// Attach elimination functionality to each choice
 		for (const { choice, adapter } of choicesWithAdapters) {
-			this.initializeChoice(choice, adapter);
+			this.initializeChoice(choice, adapter, questionRoot);
 		}
 
-		// Restore eliminated state from store (only if enabled)
-		if (this.shouldRestoreState) {
-			this.restoreState();
+		// Keyed elements restore from the store; anything else keeps what this
+		// core held before the re-initialization.
+		const persisted = this.readPersistedEliminations();
+		for (const [key, tracked] of this.choices) {
+			const restore = persisted.has(tracked.group)
+				? persisted.get(tracked.group)?.has(tracked.choiceId)
+				: previous.has(key);
+			if (restore) this.applyElimination(key, tracked);
 		}
 
 		// React to live selection changes so a selected choice's button is
@@ -92,29 +135,72 @@ export class AnswerEliminatorCore {
 		this.attachSelectionListener(questionRoot);
 	}
 
+	private trackingKey(group: string, choiceId: string): string {
+		return `${group}\u0000${choiceId}`;
+	}
+
+	/**
+	 * The PIE element a choice belongs to: the nearest keyed ancestor, else the
+	 * nearest custom element, which gets an anonymous token.
+	 */
+	private resolveGroup(choice: HTMLElement, questionRoot: HTMLElement): string {
+		let fallback: Element | null = null;
+		for (
+			let node: Element | null = choice.parentElement;
+			node !== null;
+			node = node === questionRoot ? null : node.parentElement
+		) {
+			if (node.id && Object.hasOwn(this.elementStateKeys, node.id)) {
+				return node.id;
+			}
+			if (fallback === null && node.localName.includes("-")) fallback = node;
+		}
+		const owner = fallback ?? questionRoot;
+		let token = this.anonymousGroups.get(owner);
+		if (!token) {
+			token = `\u0000anonymous-${this.nextToken++}`;
+			this.anonymousGroups.set(owner, token);
+		}
+		return token;
+	}
+
+	private strategyKeyFor(key: string): string {
+		let strategyKey = this.strategyKeys.get(key);
+		if (!strategyKey) {
+			strategyKey = `choice-${this.nextToken++}`;
+			this.strategyKeys.set(key, strategyKey);
+		}
+		return strategyKey;
+	}
+
 	/**
 	 * Initialize a single choice
 	 */
-	private initializeChoice(choice: HTMLElement, adapter: ChoiceAdapter): void {
+	private initializeChoice(
+		choice: HTMLElement,
+		adapter: ChoiceAdapter,
+		questionRoot: HTMLElement,
+	): void {
 		const choiceId = adapter.getChoiceId(choice);
+		const group = this.resolveGroup(choice, questionRoot);
+		const key = this.trackingKey(group, choiceId);
+		const tracked: TrackedChoice = {
+			choiceId,
+			group,
+			strategyKey: this.strategyKeyFor(key),
+			element: choice,
+			adapter,
+			button: null,
+		};
+		this.choices.set(key, tracked);
 
-		// Track element
-		this.choiceElements.set(choiceId, choice);
-		this.choiceAdapters.set(choiceId, adapter);
-
-		// Create elimination toggle button
-		const button = this.createToggleButton(choice, adapter);
-		if (!button) return;
-
-		this.choiceButtons.set(choiceId, button);
+		const button = this.createToggleButton(key, tracked);
+		tracked.button = button;
 
 		// Apply the initial visibility rule (hidden if selected, or if the
 		// feature is off and this choice isn't struck). Kept in sync afterwards
 		// via the question-root `change` listener and toggle actions.
-		this.setButtonHidden(
-			button,
-			this.shouldHideButton(choiceId, choice, adapter),
-		);
+		this.updateButtonVisibility(key);
 
 		// Attach button to choice
 		const container = adapter.getButtonContainer(choice);
@@ -129,18 +215,17 @@ export class AnswerEliminatorCore {
 	 * Create elimination toggle button
 	 */
 	private createToggleButton(
-		choice: HTMLElement,
-		adapter: ChoiceAdapter,
-	): HTMLButtonElement | null {
-		const choiceId = adapter.getChoiceId(choice);
-		const choiceLabel = adapter.getChoiceLabel(choice);
+		key: string,
+		tracked: TrackedChoice,
+	): HTMLButtonElement {
+		const choiceLabel = tracked.adapter.getChoiceLabel(tracked.element);
 
 		const button = document.createElement("button");
 		button.type = "button";
 		button.className = AnswerEliminatorCore.TOGGLE_CLASS;
 		button.setAttribute("aria-label", `Toggle elimination for ${choiceLabel}`);
 		button.setAttribute("aria-pressed", "false");
-		button.setAttribute("data-choice-id", choiceId);
+		button.setAttribute("data-choice-id", tracked.choiceId);
 		// The glyph is decoration: the button is named by its aria-label, and an
 		// exposed glyph is spoken by read-aloud after every choice.
 		const glyph = document.createElement("span");
@@ -159,230 +244,175 @@ export class AnswerEliminatorCore {
 		button.addEventListener("click", (e) => {
 			e.preventDefault();
 			e.stopPropagation();
-			this.toggleElimination(choice, adapter);
+			this.toggleElimination(key);
 		});
 
 		return button;
 	}
 
 	/**
-	 * Toggle elimination for a choice
+	 * Toggle elimination for a tracked choice
 	 */
-	toggleElimination(choice: HTMLElement, adapter: ChoiceAdapter): void {
-		const choiceId = adapter.getChoiceId(choice);
+	private toggleElimination(key: string): void {
+		const tracked = this.choices.get(key);
+		if (!tracked) return;
 
-		// Check if already eliminated
-		const isEliminated = this.strategy.isEliminated(choiceId);
-
-		if (isEliminated) {
-			// Restore
-			this.restoreChoice(choiceId);
+		if (this.eliminated.has(key)) {
+			this.restoreChoice(key);
 		} else {
-			// Eliminate
-			if (!adapter.canEliminate(choice)) {
+			if (!tracked.adapter.canEliminate(tracked.element)) {
 				console.warn(
 					"Cannot eliminate this choice (already selected or in evaluate mode)",
 				);
 				return;
 			}
-
-			this.eliminateChoice(choice, adapter);
+			if (!this.applyElimination(key, tracked)) {
+				console.error("Failed to create range for choice");
+				return;
+			}
 		}
 
-		// Save state
-		this.saveState();
+		this.saveState(tracked.group);
 	}
 
 	/**
-	 * Eliminate a choice
+	 * Strike a choice through and make it non-selectable. Returns false when
+	 * no range could be built for it.
 	 */
-	private eliminateChoice(choice: HTMLElement, adapter: ChoiceAdapter): void {
-		const choiceId = adapter.getChoiceId(choice);
+	private applyElimination(key: string, tracked: TrackedChoice): boolean {
+		// Never strike a currently-selected choice.
+		if (tracked.adapter.isSelected?.(tracked.element)) return false;
+		const range = tracked.adapter.createChoiceRange(tracked.element);
+		if (!range) return false;
 
-		// Create range for CSS Highlight API
-		const range = adapter.createChoiceRange(choice);
-		if (!range) {
-			console.error("Failed to create range for choice");
-			return;
-		}
+		this.strategy.apply(tracked.strategyKey, range);
+		this.eliminated.add(key);
 
-		// Apply strategy
-		this.strategy.apply(choiceId, range);
+		// A student must not be able to select an answer they have struck
+		// through.
+		tracked.adapter.setSelectable?.(tracked.element, false);
 
-		// Track in state
-		this.eliminatedChoices.add(choiceId);
-
-		// Make the choice non-selectable while eliminated: a student must not
-		// be able to select an answer they have struck through.
-		adapter.setSelectable?.(choice, false);
-
-		// Update button appearance to show eliminated state
-		const button = this.choiceButtons.get(choiceId);
-		if (button) {
-			button.classList.add(AnswerEliminatorCore.TOGGLE_ACTIVE_CLASS);
-			button.setAttribute("aria-pressed", "true");
+		if (tracked.button) {
+			tracked.button.classList.add(AnswerEliminatorCore.TOGGLE_ACTIVE_CLASS);
+			tracked.button.setAttribute("aria-pressed", "true");
 		}
 
 		// A struck choice always keeps a visible button (even when the feature
 		// is toggled off) so it can be undone.
-		this.updateButtonVisibility(choiceId);
-
-		// Save to store
-		this.saveState();
+		this.updateButtonVisibility(key);
+		return true;
 	}
 
 	/**
 	 * Restore a choice
 	 */
-	private restoreChoice(choiceId: string): void {
-		// Remove from strategy
-		this.strategy.remove(choiceId);
+	private restoreChoice(key: string): void {
+		const tracked = this.choices.get(key);
+		this.eliminated.delete(key);
+		if (!tracked) return;
 
-		// Remove from state
-		this.eliminatedChoices.delete(choiceId);
+		this.strategy.remove(tracked.strategyKey);
 
 		// Re-enable selection now that the choice is no longer struck through.
-		const choice = this.choiceElements.get(choiceId);
-		const adapter = this.choiceAdapters.get(choiceId);
-		if (choice && adapter) {
-			adapter.setSelectable?.(choice, true);
-		}
+		tracked.adapter.setSelectable?.(tracked.element, true);
 
-		// Reset button appearance to default state
-		const button = this.choiceButtons.get(choiceId);
-		if (button) {
-			button.classList.remove(AnswerEliminatorCore.TOGGLE_ACTIVE_CLASS);
-			button.setAttribute("aria-pressed", "false");
+		if (tracked.button) {
+			tracked.button.classList.remove(AnswerEliminatorCore.TOGGLE_ACTIVE_CLASS);
+			tracked.button.setAttribute("aria-pressed", "false");
 		}
 
 		// No longer struck: re-apply the visibility rule (hidden when the
 		// feature is off, or when the choice is selected).
-		this.updateButtonVisibility(choiceId);
-
-		// Save to store
-		this.saveState();
+		this.updateButtonVisibility(key);
 	}
 
 	/**
-	 * Reset all eliminations for current element
+	 * Reset all eliminations for the current question
 	 */
 	resetAll(): void {
-		if (this.eliminatedChoices.size === 0) return;
-
-		// Restore all choices
-		for (const choiceId of Array.from(this.eliminatedChoices)) {
-			this.restoreChoice(choiceId);
+		if (this.eliminated.size === 0) return;
+		const groups = new Set<string>();
+		for (const key of Array.from(this.eliminated)) {
+			const group = this.choices.get(key)?.group;
+			if (group !== undefined) groups.add(group);
+			this.restoreChoice(key);
 		}
-
-		// Clear state
-		this.eliminatedChoices.clear();
-		this.saveState();
+		for (const group of groups) this.saveState(group);
 	}
 
 	/**
-	 * Get count of eliminated choices for current element
+	 * Get count of eliminated choices for the current question
 	 */
 	getEliminatedCount(): number {
-		return this.eliminatedChoices.size;
+		return this.eliminated.size;
 	}
 
 	/**
-	 * Set store integration for element-level state
-	 * @param store ElementToolStateStore instance
-	 * @param globalElementId Composite key: "assessmentId:sectionId:itemId:elementId"
+	 * Persist eliminations in the toolkit's element tool state store.
+	 * @param store The element tool state store
+	 * @param elementStateKeys Store key per PIE element, by model id
 	 */
-	setStoreIntegration(store: any, globalElementId: string): void {
-		this.storeIntegration = { store, globalElementId };
+	setStoreIntegration(
+		store: EliminatorStateStore | null,
+		elementStateKeys: ElementStateKeys,
+	): void {
+		this.store = store;
+		this.elementStateKeys = elementStateKeys;
 	}
 
 	/**
-	 * Save state to ElementToolStateStore
+	 * Save one element's eliminations to the store
 	 */
-	private saveState(): void {
-		if (!this.storeIntegration) return;
+	private saveState(group: string): void {
+		if (!this.store || !Object.hasOwn(this.elementStateKeys, group)) return;
 
-		const state = {
-			eliminatedChoices: Array.from(this.eliminatedChoices),
-		};
-
-		this.storeIntegration.store.setState(
-			this.storeIntegration.globalElementId,
-			"answerEliminator",
-			state,
-		);
-	}
-
-	/**
-	 * Restore state from ElementToolStateStore
-	 */
-	private restoreState(): void {
-		if (!this.storeIntegration) return;
-
-		const state = this.storeIntegration.store.getState(
-			this.storeIntegration.globalElementId,
-			"answerEliminator",
-		);
-
-		if (!state || !state.eliminatedChoices) return;
-
-		try {
-			const eliminated = state.eliminatedChoices;
-
-			if (!eliminated || eliminated.length === 0) return;
-
-			// Restore eliminated choices for current element
-			for (const choiceId of eliminated) {
-				const choice = this.choiceElements.get(choiceId);
-				if (!choice) continue;
-
-				// Use the adapter captured during initialization
-				const adapter = this.choiceAdapters.get(choiceId);
-				if (!adapter) continue;
-
-				// Never re-apply an elimination onto a currently-selected
-				// choice — a selected answer cannot be struck through.
-				if (adapter.isSelected?.(choice)) continue;
-
-				// Re-eliminate without saving (already in state)
-				const range = adapter.createChoiceRange(choice);
-				if (range) {
-					this.strategy.apply(choiceId, range);
-
-					// Track in memory
-					this.eliminatedChoices.add(choiceId);
-
-					// Restore the non-selectable state for the struck choice.
-					adapter.setSelectable?.(choice, false);
-
-					// Update button appearance to show eliminated state
-					const button = this.choiceButtons.get(choiceId);
-					if (button) {
-						button.classList.add(AnswerEliminatorCore.TOGGLE_ACTIVE_CLASS);
-						button.setAttribute("aria-pressed", "true");
-					}
-
-					// A struck choice keeps a visible button regardless of the
-					// on/off state.
-					this.updateButtonVisibility(choiceId);
-				}
-			}
-		} catch (error) {
-			console.error("Failed to restore eliminator state:", error);
+		const eliminatedChoices: string[] = [];
+		for (const key of this.eliminated) {
+			const tracked = this.choices.get(key);
+			if (tracked?.group === group) eliminatedChoices.push(tracked.choiceId);
 		}
+		this.store.setState(this.elementStateKeys[group], STATE_TOOL_ID, {
+			eliminatedChoices,
+		});
+	}
+
+	/**
+	 * Eliminated choice ids per keyed element present in this question, read
+	 * from the store. Empty when restoration is off or there is no store.
+	 */
+	private readPersistedEliminations(): Map<string, Set<string>> {
+		const persisted = new Map<string, Set<string>>();
+		if (!this.store || !this.shouldRestoreState) return persisted;
+		for (const { group } of this.choices.values()) {
+			if (persisted.has(group) || !Object.hasOwn(this.elementStateKeys, group))
+				continue;
+			try {
+				const state = this.store.getState(
+					this.elementStateKeys[group],
+					STATE_TOOL_ID,
+				) as { eliminatedChoices?: unknown } | undefined | null;
+				const ids = Array.isArray(state?.eliminatedChoices)
+					? state.eliminatedChoices.filter(
+							(id): id is string => typeof id === "string",
+						)
+					: [];
+				persisted.set(group, new Set(ids));
+			} catch (error) {
+				console.error("Failed to restore eliminator state:", error);
+			}
+		}
+		return persisted;
 	}
 
 	/**
 	 * Re-enable selection for every currently-tracked struck choice.
-	 * Must run before the element/adapter maps are cleared, otherwise the
-	 * inputs would be left disabled after the tool is turned off.
+	 * Must run before the tracked choices are cleared, otherwise the inputs
+	 * would be left disabled after the tool is turned off.
 	 */
 	private restoreAllSelectable(): void {
-		for (const choiceId of this.eliminatedChoices) {
-			const choice = this.choiceElements.get(choiceId);
-			const adapter = this.choiceAdapters.get(choiceId);
-			if (choice && adapter) {
-				adapter.setSelectable?.(choice, true);
-			}
+		for (const key of this.eliminated) {
+			const tracked = this.choices.get(key);
+			tracked?.adapter.setSelectable?.(tracked.element, true);
 		}
 	}
 
@@ -406,28 +436,19 @@ export class AnswerEliminatorCore {
 	 * - When the feature is on, a non-struck choice hides its button only while
 	 *   it is selected (a selected answer must not be eliminable).
 	 */
-	private shouldHideButton(
-		choiceId: string,
-		choice: HTMLElement,
-		adapter: ChoiceAdapter,
-	): boolean {
-		if (this.eliminatedChoices.has(choiceId)) return false;
+	private shouldHideButton(key: string, tracked: TrackedChoice): boolean {
+		if (this.eliminated.has(key)) return false;
 		if (!this.active) return true;
-		return adapter.isSelected?.(choice) ?? false;
+		return tracked.adapter.isSelected?.(tracked.element) ?? false;
 	}
 
 	/**
 	 * Re-apply the visibility rule to a single choice's button.
 	 */
-	private updateButtonVisibility(choiceId: string): void {
-		const choice = this.choiceElements.get(choiceId);
-		const adapter = this.choiceAdapters.get(choiceId);
-		const button = this.choiceButtons.get(choiceId);
-		if (!choice || !adapter || !button) return;
-		this.setButtonHidden(
-			button,
-			this.shouldHideButton(choiceId, choice, adapter),
-		);
+	private updateButtonVisibility(key: string): void {
+		const tracked = this.choices.get(key);
+		if (!tracked?.button) return;
+		this.setButtonHidden(tracked.button, this.shouldHideButton(key, tracked));
 	}
 
 	/**
@@ -435,14 +456,8 @@ export class AnswerEliminatorCore {
 	 * selection changes and by toggling the feature on/off.
 	 */
 	private refreshSelectionState(): void {
-		for (const [choiceId, choice] of this.choiceElements) {
-			const adapter = this.choiceAdapters.get(choiceId);
-			const button = this.choiceButtons.get(choiceId);
-			if (!adapter || !button) continue;
-			this.setButtonHidden(
-				button,
-				this.shouldHideButton(choiceId, choice, adapter),
-			);
+		for (const key of this.choices.keys()) {
+			this.updateButtonVisibility(key);
 		}
 	}
 
@@ -481,7 +496,10 @@ export class AnswerEliminatorCore {
 
 		if (typeof MutationObserver !== "undefined") {
 			this.selectionObserver = new MutationObserver((records) => {
-				const ownButtons = new Set<Node>(this.choiceButtons.values());
+				const ownButtons = new Set<Node>();
+				for (const { button } of this.choices.values()) {
+					if (button) ownButtons.add(button);
+				}
 				// Only react to changes that aren't our own button toggling.
 				const relevant = records.some(
 					(record) => !ownButtons.has(record.target),
@@ -521,13 +539,10 @@ export class AnswerEliminatorCore {
 	private cleanupButtons(): void {
 		this.detachSelectionListener();
 
-		for (const button of this.choiceButtons.values()) {
-			button.remove();
+		for (const { button } of this.choices.values()) {
+			button?.remove();
 		}
-
-		this.choiceButtons.clear();
-		this.choiceElements.clear();
-		this.choiceAdapters.clear();
+		this.choices.clear();
 	}
 
 	/**
@@ -569,14 +584,14 @@ export class AnswerEliminatorCore {
 	}
 
 	/**
-	 * Enable state restoration from localStorage
+	 * Enable state restoration from the element tool state store
 	 */
 	enableStateRestoration(): void {
 		this.shouldRestoreState = true;
 	}
 
 	/**
-	 * Disable state restoration from localStorage
+	 * Disable state restoration from the element tool state store
 	 */
 	disableStateRestoration(): void {
 		this.shouldRestoreState = false;
@@ -601,6 +616,7 @@ export class AnswerEliminatorCore {
 	 */
 	destroy(): void {
 		this.restoreAllSelectable();
+		this.eliminated.clear();
 		this.cleanupButtons();
 		this.strategy.destroy();
 	}

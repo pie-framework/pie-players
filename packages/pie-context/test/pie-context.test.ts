@@ -1,3 +1,4 @@
+import "./setup-dom.js";
 import { describe, expect, test } from "bun:test";
 import {
 	connectContextWithRetry,
@@ -14,7 +15,7 @@ describe("pie-context", () => {
 	test("createContext preserves key identity", () => {
 		const key = Symbol("runtime");
 		const context = createContext<{ value: number }>(key);
-		expect(context).toBe(key);
+		expect(context as unknown).toBe(key);
 	});
 
 	test("ContextRequestEvent defaults subscribe to false", () => {
@@ -26,6 +27,37 @@ describe("pie-context", () => {
 			() => {},
 		);
 		expect(request.subscribe).toBe(false);
+	});
+
+	test("an event is built on the Event of its target's window", () => {
+		// Stands for another window's `Event`, which its `dispatchEvent` requires.
+		class WindowEvent extends Event {}
+		const target = {
+			ownerDocument: { defaultView: { Event: WindowEvent } },
+		} as unknown as Element;
+		const context = createContext<string>(Symbol("window-realm"));
+
+		const request = new ContextRequestEvent(context, target, () => {}, true);
+		const announcement = new ContextProviderEvent(context, target);
+
+		expect(request).toBeInstanceOf(WindowEvent);
+		expect(request).toBeInstanceOf(ContextRequestEvent);
+		expect(request).not.toBeInstanceOf(ContextProviderEvent);
+		expect(request).toMatchObject({
+			type: "context-request",
+			bubbles: true,
+			composed: true,
+			context,
+			contextTarget: target,
+			subscribe: true,
+		});
+		expect(announcement).toBeInstanceOf(WindowEvent);
+		expect(announcement).toBeInstanceOf(ContextProviderEvent);
+		expect(announcement).toMatchObject({
+			type: "context-provider",
+			context,
+			contextTarget: target,
+		});
 	});
 
 	test("ContextProvider serves one-time requests", () => {
@@ -339,35 +371,29 @@ describe("pie-context", () => {
 		cleanup();
 	});
 
-	test("connectContextWithRetry polls for a silent provider and stops once it has a value", async () => {
+	test("connectContextWithRetry requests once and waits for an announcement", async () => {
 		const host = new EventTarget() as unknown as Element;
 		const runtimeContext = createContext<string>(Symbol("silent-provider"));
+		const provider = answerRequestsOnHost(host, runtimeContext);
+		const cleanup = connectContextWithRetry(host, runtimeContext, () => {});
+		await new Promise((resolve) => setTimeout(resolve, 120));
+		expect(provider.requests).toBe(1);
+		cleanup();
+	});
+
+	test("connectContextWithRetry stops listening for announcements on cleanup", () => {
+		const host = new EventTarget() as unknown as Element;
+		const runtimeContext = createContext<string>(Symbol("absent-provider"));
 		const provider = answerRequestsOnHost(host, runtimeContext);
 		const seen: string[] = [];
 		const cleanup = connectContextWithRetry(host, runtimeContext, (value) =>
 			seen.push(value),
 		);
-
-		provider.value = "polled";
-		await new Promise((resolve) => setTimeout(resolve, 120));
-		expect(seen).toEqual(["polled"]);
-		const requestsAfterValue = provider.requests;
-		await new Promise((resolve) => setTimeout(resolve, 120));
-		expect(provider.requests).toBe(requestsAfterValue);
 		cleanup();
-	});
 
-	test("connectContextWithRetry stops polling on cleanup", async () => {
-		const host = new EventTarget() as unknown as Element;
-		const runtimeContext = createContext<string>(Symbol("absent-provider"));
-		const provider = answerRequestsOnHost(host, runtimeContext);
-		const cleanup = connectContextWithRetry(host, runtimeContext, () => {});
-		await new Promise((resolve) => setTimeout(resolve, 120));
-		expect(provider.requests).toBeGreaterThan(1);
-
-		cleanup();
-		const requestsAtCleanup = provider.requests;
-		await new Promise((resolve) => setTimeout(resolve, 120));
-		expect(provider.requests).toBe(requestsAtCleanup);
+		provider.value = "late";
+		host.dispatchEvent(new ContextProviderEvent(runtimeContext, host));
+		expect(provider.requests).toBe(1);
+		expect(seen).toEqual([]);
 	});
 });

@@ -31,10 +31,11 @@ bun add @pie-players/pie-tool-tts-inline
 
 ## Usage
 
-The element renders inside `<pie-item-shell>` or `<pie-passage-shell>` under
-`<pie-assessment-toolkit>`. The toolkit runtime context supplies the TTS
-service, the highlight coordinator and the toolkit coordinator, and the shell
-supplies the content to read; section players provide both. The packaged
+The element renders inside `<pie-item-scope>` or `<pie-passage-shell>` under
+`<pie-assessment-toolkit>`. The toolkit runtime context supplies the TTS service,
+the highlight coordinator and the toolkit coordinator, and the shell supplies the
+content to read. Section players provide both; around a plain item player, the
+host writes the toolkit and the scope. The packaged
 `textToSpeech` capability in `@pie-players/pie-default-tool-loaders` creates
 this element in item and passage toolbars, takes `catalog-id`, `language` and
 `size` from the toolbar, and takes `layout-mode`, `speedOptions` and
@@ -73,9 +74,11 @@ passageHeader.append(ttsButton);
 ### HTML Attributes
 
 - `catalog-id` - QTI 3.0 accessibility catalog ID for SSML lookup (default: `''`)
-- `language` - Language code for TTS (default: `'en-US'`)
+- `language` - The content language when the markup names none (default: `''`,
+  which falls back to the toolkit's `content-language`). A `lang` attribute
+  between the reading target and its shell wins over it.
 - `size` - Icon size: `'sm'` (1.5rem), `'md'` (2rem), or `'lg'` (2.5rem) (default: `'md'`)
-- `layout-mode` - Panel placement (default: `'expanding-row'`). `'reserved-row'`
+- `layout-mode` - Panel placement (default: `'left-aligned'`). `'reserved-row'`
   and `'expanding-row'` drop the panel below the trigger; in the packaged toolbar
   the first keeps the controls row reserved and the second expands it while the
   panel is open. `'floating-overlay'` and `'left-aligned'` open the panel as an
@@ -133,8 +136,8 @@ Semantics:
 ## Behavior
 
 1. **Services**: Reads `ttsService`, `highlightCoordinator` and `toolkitCoordinator` from the toolkit runtime context; the controls stay disabled until a `ttsService` arrives, and starting playback awaits `toolkitCoordinator.ensureTTSReady()`
-2. **Text Extraction**: Reads the `textContent` of the scope element (the region scope, else the shell scope) when it is `[data-region='content']`, else of its first `[data-region='content']` descendant, else of the scope element itself
-3. **TTS Trigger**: Calls `ttsService.speak(text, { catalogId, catalogContext, language, contentElement })`, where `contentElement` is that reading target and `catalogContext` names the owning item or passage
+2. **Text Extraction**: Reads the text of the scope element's content region (the region scope, else the shell scope, when it is `[data-region='content']`, else its first `[data-region='content']` descendant, else the scope element itself), including text rendered into open shadow roots
+3. **TTS Trigger**: Calls `ttsService.speak(readingTarget, { catalogId, catalogContext, language })`, where `catalogContext` names the owning item or passage and `language` is the `language` attribute, else the toolkit's `content-language`. `speak` resolves the read's language from it as [TTS language](../../docs/architecture/internationalization.md#tts-language) sets out
 4. **Catalog Resolution**: TTSService checks for SSML in accessibility catalogs (priority order):
    - **Extracted catalogs** (from embedded SSML) - generated before render by hosts that run `SSMLExtractor`
    - **Item-level catalogs** (manually authored)
@@ -180,7 +183,7 @@ when a host/import pipeline runs `SSMLExtractor` before render:
 **Tool uses extracted catalog:**
 
 - User clicks TTS button in header
-- Tool calls `ttsService.speak(text, { catalogId: 'auto-prompt-q1-0' })`
+- Tool calls `ttsService.speak(readingTarget, { catalogId: 'auto-prompt-q1-0' })`
 - TTSService finds SSML in extracted catalogs
 - Speaks with proper math pronunciation and pacing
 
@@ -208,7 +211,7 @@ component-scoped variables instead of overriding broad semantic tokens such as
 If unset, the trigger looks the same open as closed: each hook falls back to the
 value the control already resolves to — background through
 `--pie-button-background-color` / `--pie-button-bg` / `--pie-background`, border
-through `--pie-button-border-color` / `--pie-button-border` / `--pie-border`, and
+through `--pie-button-border` / `--pie-border`, and
 foreground through `--pie-button-color` / `--pie-text`. Setting a hook is how a
 host opts into a distinct active/open appearance.
 
@@ -257,12 +260,10 @@ Selection reads from the chip fill and the bolder weight instead of from hue. A
 host that wants a branded accent sets `--pie-tts-button-color` and owns the
 contrast, as with the active-trigger hooks above.
 
-Ordinary trigger and control button styling also preserves these legacy aliases:
-`--pie-button-background-color`, `--pie-button-border-color`, and
-`--pie-button-hover-background-color`. They remain supported for host
-compatibility, but fall back through the canonical `--pie-button-bg`,
-`--pie-button-border`, and `--pie-button-hover-bg` tokens before broad surface
-tokens.
+Trigger and control backgrounds read `--pie-button-background-color` ahead of
+the canonical `--pie-button-bg`; borders and hover backgrounds read
+`--pie-button-border` and `--pie-button-hover-bg`. Each falls back to the broad
+surface tokens.
 
 ## Architecture
 

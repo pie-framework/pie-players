@@ -107,7 +107,8 @@ registered under its own distinct tag.
   referenced `.svelte` files are available from publish/build output paths.
 - Consumer imports of package CE entrypoints resolve to built `dist` output.
   After changing package `src`, rebuild the changed package and direct `dist`
-  consumers before validating in a consumer app or tests.
+  consumers before validating in a consumer app or an e2e suite. Unit tests
+  resolve workspace siblings to source and need no rebuild (see Testing).
 - If a failure may be stale-artifact related, rebuild and rerun once before
   deeper debugging.
 - For split-panel scrolling behavior, mirror
@@ -145,8 +146,9 @@ Rules from those records bind new code directly. From ADR 0002:
 From ADR 0003, for every host and element:
 
 - An element learns the student's accessibility settings only from the
-  `Symbol.for("pie.accessibility")` context, whose key and type live in
-  `@pie-players/pie-context`, and never imports `@pie-players/pie-assessment-toolkit`.
+  `Symbol.for("pie.accessibility")` context, whose key and type
+  `@pie-players/pie-context` exports with the first consumer, and never imports
+  `@pie-players/pie-assessment-toolkit`.
   A setting that changes rendering travels through that context; `env` keeps the
   settings that change the model.
 - The mapping from a profile to support ids lives in the host, which resolves it
@@ -356,10 +358,9 @@ default `testMatch` discovers both as well.
   `pathIgnorePatterns = ["**/*.spec.ts"]` keeps them out, where
   `@playwright/test`'s `test()` would otherwise throw on the missing worker
   fixtures. Bun reads that file from the current working directory only — no
-  walking up to the workspace root, and no `extends` — so the root has one and so
-  does every package holding Playwright specs. A new package that adds a spec
-  needs its own copy; the rationale stays in the root file, and the duplicated
-  content is the one glob.
+  walking up to the workspace root, and no `extends` — so the root has one, and
+  every package holding Playwright specs carries the glob in its own copy beside
+  the source preload below. The rationale stays in the root file.
 - **Playwright must not load bun tests.** Every `playwright.config.ts` sets
   `testMatch: /.*\.spec\.ts/`. This one is not cosmetic: a `*.test.ts` inside
   `testDir` imports `bun:test`, Playwright's Node loader rejects the `bun:`
@@ -373,11 +374,39 @@ Where two configs share one `testDir`, the narrower one owns its files by
 `packages/item-player`'s backend-demo specs need the `backend-demos` server and
 belong to `playwright.backend.config.ts`, so the main config ignores them.
 
+Unit tests resolve every `@pie-players/*` workspace sibling to its source, so a
+suite runs against the sibling's current code whether its `dist` is stale,
+missing or fresh. `test-support/workspace-sources.ts` maps each export to the
+file its build starts from. Bun loads the map through
+`test-support/bun-workspace-sources.ts`, which also compiles each `.svelte` file
+that source reaches with the options the package builds use; the root and every
+package running `bun test` preload it from their `bunfig.toml`. A Vitest package
+with tests and a workspace sibling sets `workspaceSourcesVitePlugin()` in its
+`vitest.config.ts`.
+`scripts/tests/workspace-sources.test.mjs` fails on a package missing either. A
+test of a built artifact builds its own package in its `test` script, as
+`tool-color-scheme` and `tool-calculator-shared` do, so `turbo test` and CI run
+no build before unit tests.
+
 The default `git push` pre-push hook runs `bun run verify:pre-push`, which is
 expected to run the full local PR gate and critical Playwright e2e suites.
 The item-player and section-player configs run the esm strategy's specs in
-Firefox as well as Chromium, so a local run needs both:
-`bunx playwright install chromium firefox`.
+Firefox as well as Chromium, and item-player runs its focus-order spec in
+WebKit, so a local run needs all three:
+`bunx playwright install chromium firefox webkit`.
+
+`verify:local-pr` runs the suites through `test:e2e:local-gate`
+(`scripts/run-local-e2e.mjs`): each suite's `build:e2e:*` script once, in turn,
+then every suite's `:prebuilt` run concurrently, with each suite's output printed
+as one block when it finishes. The builds go first because concurrent turbo runs
+race on restoring the same `dist`, and section-demos reloads the page when a
+workspace `dist` changes under a running test. `PIE_E2E_CONCURRENCY` caps how many
+suites run at once (default: half the cores, at most one per suite);
+`PIE_E2E_CONCURRENCY=1` runs them serially, which separates a failure that only
+appears under load. A suite joins the gate in `scripts/lib/local-e2e-suites.mjs`,
+and its `test:e2e:<suite>` script, which CI runs, stays
+`bun run build:e2e:<name> && bun run test:e2e:<suite>:prebuilt`;
+`check:local-pr-gate` enforces both.
 
 It reaches that gate through `scripts/pre-push-gate.mjs`, which skips it when the
 push carries no new commits — creating a branch at a commit already on the remote,
@@ -398,10 +427,12 @@ skipped for a push whose commits only deleted files or were empty.
 
 ### Git Worktrees
 
-A fresh worktree needs `bun install` **and** `bun run build` before the gates
-pass. Without build artifacts `bun run check` fails with `TS2307: Cannot find
-module '@pie-players/pie-players-shared'` from packages that resolve a workspace
-sibling through its published `exports`.
+A fresh worktree needs `bun install` before the gates pass. Unit tests,
+`bun run check:cli` included, resolve workspace siblings to source and need no
+build. `bun run check` and `bun run typecheck` build the packages they resolve
+first (`dependsOn: ["^build"]` in `turbo.json`), and turbo caches both against
+those builds, so a commit or push that leaves a package and its dependencies
+unchanged replays that package's result.
 
 A worktree under `.claude/worktrees/` sits inside the main checkout, so whatever
 it does not install itself comes from the main checkout's install. Bun, Node and
@@ -515,6 +546,21 @@ bun run check:player-tool-boundaries
 For release work, follow `docs/setup/publishing.md` and the release alignment
 rule in this file.
 
+Three gates keep the published surface, the tests and the docs in step with the
+code:
+
+- `api-report/` lists the exported names of every entry of each published
+  package. `check:api-report` fails when an entry's exports change until
+  `bun run api-report` regenerates the report, so every surface change is a
+  reviewed diff in the report.
+- A package's bun tests typecheck through the `tsconfig.tests.json` beside its
+  `tsconfig.json`, which its `typecheck` script runs after the source
+  typecheck. A package that adds bun tests adds one.
+- `check:docs:examples` typechecks each TypeScript fence in the docs that
+  imports from `@pie-players/*` against the packages' sources. An example that
+  names a removed export or calls a changed signature fails it; fix the example
+  in the change that made it stale.
+
 Lint catches errors, not style. `biome.json` runs `preset: "none"` with only the
 `correctness` and `suspicious` presets on and no `style` group at all. Do not add
 `style`, `complexity`, `performance`, or naming and filename conventions, and do
@@ -533,7 +579,7 @@ It lives in `tsconfig.json`, `tsconfig.base.json`, and the five package configs
 that extend neither — `calculator`, `calculator-desmos`, `tts`,
 `tts-client-server`, `tts-server-core`. A new tsconfig that extends neither root
 config needs it too; there is no single file that reaches everything. The demo
-apps need nothing: SvelteKit generates it into `.svelte-kit/tsconfig.json`.
+apps need nothing: SvelteKit generates it into `node_modules/$app/tsconfig.json`, which each app's `tsconfig.json` extends as `$app/tsconfig`.
 
 ## Technology Stack
 

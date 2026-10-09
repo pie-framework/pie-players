@@ -5,7 +5,7 @@ import type {
 import type {
 	ToolProviderApi,
 	ToolProviderCapabilities,
-} from "@pie-players/pie-assessment-toolkit/tools/internal";
+} from "@pie-players/pie-assessment-toolkit/tools/registration";
 
 export type CalculatorToolProviderInitConfig = Pick<
 	CalculatorProviderInit,
@@ -31,9 +31,8 @@ export interface LazyCalculatorProviderDefinition<TConfig> {
  */
 export abstract class LazyCalculatorToolProvider<
 	TConfig extends CalculatorToolProviderInitConfig,
-> implements ToolProviderApi<TConfig, CalculatorProvider>
+> implements ToolProviderApi<CalculatorProvider>
 {
-	abstract readonly providerId: string;
 	abstract readonly providerName: string;
 	readonly category = "calculator" as const;
 	abstract readonly version: string;

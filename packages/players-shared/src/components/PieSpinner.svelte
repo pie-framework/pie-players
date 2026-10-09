@@ -1,5 +1,5 @@
 <script lang="ts">
-	export let fixed: boolean = false;
+	let { fixed = false }: { fixed?: boolean } = $props();
 </script>
 
 <div class="pie-loading {fixed ? 'fixed' : ''}"></div>

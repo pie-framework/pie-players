@@ -1,6 +1,15 @@
-import { afterEach, beforeEach, describe, expect, test } from "bun:test";
+import { GlobalRegistrator } from "@happy-dom/global-registrator";
+import {
+	afterAll,
+	afterEach,
+	beforeAll,
+	beforeEach,
+	describe,
+	expect,
+	test,
+} from "bun:test";
 import { ToolkitCoordinator } from "@pie-players/pie-assessment-toolkit";
-import { ToolRegistry } from "@pie-players/pie-assessment-toolkit/tools/internal";
+import { ToolRegistry } from "@pie-players/pie-assessment-toolkit/tools/registration";
 import { ttsToolRegistration } from "../src/registrations/tts.js";
 
 const API_ENDPOINT = "https://tts.example.test/synthesize";
@@ -15,6 +24,7 @@ type RecordedRequest = {
 
 class PlayingAudio {
 	onplay: (() => void) | null = null;
+	onplaying: (() => void) | null = null;
 	onended: (() => void) | null = null;
 	onerror: ((event: unknown) => void) | null = null;
 	onpause: (() => void) | null = null;
@@ -25,6 +35,7 @@ class PlayingAudio {
 	play(): Promise<void> {
 		queueMicrotask(() => {
 			this.onplay?.();
+			this.onplaying?.();
 			this.onended?.();
 		});
 		return Promise.resolve();
@@ -51,14 +62,25 @@ const silentSpeechSynthesis = {
 };
 
 const globals = globalThis as Record<string, unknown>;
-const originals = {
-	fetch: globalThis.fetch,
-	Audio: globals.Audio,
-	window: globals.window,
-	speechSynthesis: globals.speechSynthesis,
-	SpeechSynthesisUtterance: globals.SpeechSynthesisUtterance,
-};
+let originals: Record<
+	"fetch" | "Audio" | "speechSynthesis" | "SpeechSynthesisUtterance",
+	unknown
+>;
 let requests: RecordedRequest[] = [];
+
+beforeAll(() => {
+	if (!GlobalRegistrator.isRegistered) GlobalRegistrator.register();
+	originals = {
+		fetch: globalThis.fetch,
+		Audio: globals.Audio,
+		speechSynthesis: globals.speechSynthesis,
+		SpeechSynthesisUtterance: globals.SpeechSynthesisUtterance,
+	};
+});
+
+afterAll(() => {
+	if (GlobalRegistrator.isRegistered) GlobalRegistrator.unregister();
+});
 
 beforeEach(() => {
 	requests = [];
@@ -85,18 +107,12 @@ beforeEach(() => {
 	globals.Audio = PlayingAudio;
 	globals.speechSynthesis = silentSpeechSynthesis;
 	globals.SpeechSynthesisUtterance = SilentUtterance;
-	globals.window = {
-		setTimeout,
-		clearTimeout,
-		speechSynthesis: silentSpeechSynthesis,
-	};
 });
 
 afterEach(() => {
-	globalThis.fetch = originals.fetch;
+	globalThis.fetch = originals.fetch as typeof fetch;
 	for (const key of [
 		"Audio",
-		"window",
 		"speechSynthesis",
 		"SpeechSynthesisUtterance",
 	] as const) {
@@ -148,7 +164,10 @@ const speakThroughCoordinator = async (
 ) => {
 	const { coordinator, telemetry } = createCoordinator(authFetcher);
 	await coordinator.waitUntilReady();
-	await coordinator.ttsService.speak("Hello");
+	const content = document.createElement("p");
+	content.textContent = "Hello";
+	document.body.append(content);
+	await coordinator.ttsService.speak(content);
 	return {
 		synthesis: requests.find((request) => request.url === API_ENDPOINT),
 		marks: requests.find((request) => request.url === MARKS_URL),
@@ -190,7 +209,7 @@ describe("TTS credentials from provider.runtime.authFetcher", () => {
 		expect(requests.length).toBe(3);
 	});
 
-	test("reports a failed fetch through the init-error telemetry and falls back to browser speech", async () => {
+	test("reports a failed fetch and falls back to browser speech", async () => {
 		const { coordinator, telemetry } = createCoordinator(async () => {
 			throw new Error("credential service unavailable");
 		});
@@ -208,10 +227,10 @@ describe("TTS credentials from provider.runtime.authFetcher", () => {
 		);
 		expect(telemetry).toContainEqual(
 			expect.objectContaining({
-				eventName: "pie-tool-init-error",
+				eventName: "pie-tool-init-fallback",
 				payload: expect.objectContaining({
 					toolId: "textToSpeech",
-					errorType: "TTSRegistryInitError",
+					toProvider: "browser",
 				}),
 			}),
 		);

@@ -29,15 +29,19 @@ afterAll(() => {
 	}
 });
 
+const MATH_OPTIONS = "@pie-lib/math-rendering@2";
+
 const host = () =>
 	window as unknown as {
 		PIE_REGISTRY?: Record<string, any>;
 		PIE_PRELOADED_ELEMENTS?: Record<string, string>;
+		[MATH_OPTIONS]?: { opts?: Record<string, unknown> };
 	};
 
 beforeEach(() => {
 	host().PIE_REGISTRY = undefined;
 	host().PIE_PRELOADED_ELEMENTS = undefined;
+	host()[MATH_OPTIONS] = undefined;
 });
 
 // `customElements` cannot be reset, so every test registers its own package.
@@ -109,7 +113,9 @@ describe("registerPreloadedElements", () => {
 			controller,
 			bundleType: BundleType.clientPlayer,
 		});
-		expect(findPieController(tag, BundleType.clientPlayer)).toBe(controller);
+		expect(findPieController(tag, BundleType.clientPlayer) as unknown).toBe(
+			controller,
+		);
 		expect(findPieController(tag, BundleType.player)).toBeUndefined();
 	});
 
@@ -128,7 +134,10 @@ describe("registerPreloadedElements", () => {
 		]);
 
 		expect(
-			findPieController("pie-default-controller--version-1-0-0", BundleType.clientPlayer),
+			findPieController(
+				"pie-default-controller--version-1-0-0",
+				BundleType.clientPlayer,
+			) as unknown,
 		).toBe(controller);
 	});
 
@@ -235,5 +244,98 @@ describe("registerPreloadedElements", () => {
 			registerPreloadedElements([valid, { ...valid, tag: "pie-invalid", ...override } as any]),
 		).toThrow(message);
 		expect(customElements.get("pie-valid--version-1-0-0")).toBeUndefined();
+	});
+});
+
+describe("registerPreloadedElements options.math", () => {
+	const entry = () => {
+		const pkg = uniquePackage();
+		return { tag: `pie-math-${nextPackage}`, package: pkg, version: "1.0.0", element: elementClass() };
+	};
+
+	test("writes the asset options to the page options the math adapter reads", () => {
+		host()[MATH_OPTIONS] = { opts: { useSingleDollar: true, speechPath: "/sre" } };
+
+		registerPreloadedElements([entry()], {
+			math: {
+				assetRoot: new URL("https://assets.test/npm"),
+				speechLocales: { en: "English", cy: "Cymraeg" },
+			},
+		});
+
+		expect(host()[MATH_OPTIONS]).toEqual({
+			opts: {
+				useSingleDollar: true,
+				speechPath: "/sre",
+				assetRoot: "https://assets.test/npm",
+				speechLocales: { en: "English", cy: "Cymraeg" },
+			},
+		});
+	});
+
+	test("adds the URL of each listed file to those the page lists", () => {
+		const font = "@mathjax/mathjax-newcm-font@4.1.3/chtml/woff2/mjx-ncm-n.woff2";
+		const worker = "mathjax@4.1.3/sre/speech-worker.js";
+		host()[MATH_OPTIONS] = {
+			opts: { assetUrls: { [font]: "https://page.test/n.woff2", "x@1/y": "https://page.test/y" } },
+		};
+
+		registerPreloadedElements([entry()], {
+			math: {
+				assetUrls: {
+					[font]: new URL("https://host.test/assets/mjx-ncm-n-1a.woff2"),
+					[worker]: "https://host.test/assets/speech-worker-2b.js",
+				},
+			},
+		});
+
+		expect(host()[MATH_OPTIONS]?.opts?.assetUrls).toEqual({
+			[font]: "https://host.test/assets/mjx-ncm-n-1a.woff2",
+			[worker]: "https://host.test/assets/speech-worker-2b.js",
+			"x@1/y": "https://page.test/y",
+		});
+	});
+
+	test.each([true, false])("writes inTabOrder %s to the page options", (inTabOrder) => {
+		host()[MATH_OPTIONS] = { opts: { assetRoot: "https://assets.test/npm" } };
+
+		registerPreloadedElements([entry()], { math: { inTabOrder } });
+
+		expect(host()[MATH_OPTIONS]).toEqual({
+			opts: { assetRoot: "https://assets.test/npm", inTabOrder },
+		});
+	});
+
+	test("keeps the page's inTabOrder when the options leave it unset", () => {
+		host()[MATH_OPTIONS] = { opts: { inTabOrder: true } };
+
+		registerPreloadedElements([entry()], { math: { assetRoot: "https://assets.test/npm" } });
+
+		expect(host()[MATH_OPTIONS]?.opts?.inTabOrder).toBe(true);
+	});
+
+	test("leaves the page options alone without it", () => {
+		registerPreloadedElements([entry()]);
+
+		expect(host()[MATH_OPTIONS]).toBeUndefined();
+	});
+
+	test.each([
+		["an empty asset root", { assetRoot: "" }, "assetRoot must be a URL"],
+		["a speech path that is no URL", { speechPath: 42 }, "speechPath must be a URL"],
+		["a file URL that is no URL", { assetUrls: { "x@1/y": 1 } }, "assetUrls must map npm paths to URLs"],
+		["file URLs in a list", { assetUrls: ["https://assets.test/y"] }, "assetUrls must map"],
+		["a locale that is no string", { speechLocales: ["en", 1] }, "speechLocales must be"],
+		["a label that is no string", { speechLocales: { en: true } }, "speechLocales must be"],
+		["an inTabOrder that is no boolean", { inTabOrder: "true" }, "inTabOrder must be a boolean"],
+		["no object", "https://assets.test/npm", "must be an object"],
+	])("rejects %s before registering anything", (_label, math, message) => {
+		const valid = entry();
+
+		expect(() => registerPreloadedElements([valid], { math: math as any })).toThrow(
+			`options.math: ${message}`,
+		);
+		expect(customElements.get(`${valid.tag}--version-1-0-0`)).toBeUndefined();
+		expect(host()[MATH_OPTIONS]).toBeUndefined();
 	});
 });

@@ -61,7 +61,6 @@ In CE-first mode, you pass tool and section configuration directly as element at
 
 ```html
 <pie-section-player-splitpane
-  assessment-id="my-assessment-001"
   section-id="section-a"
   attempt-id="attempt-xyz"
   show-toolbar="true"
@@ -69,15 +68,14 @@ In CE-first mode, you pass tool and section configuration directly as element at
 ></pie-section-player-splitpane>
 ```
 
-Key props you'll set via attributes:
+Key inputs; `section` and `runtime` are JS properties, the rest are attributes:
 
 | Attribute | Type | Purpose |
 | --- | --- | --- |
-| `assessment-id` | `string` | Scopes tool state across sections |
 | `section-id` | `string` | Identifies this section |
 | `attempt-id` | `string` | Identifies the attempt (host-owned) |
 | `section` | `object` | Section content/composition model |
-| `runtime` | `object` | Player, tool, environment, accessibility, and coordinator config |
+| `runtime` | `object` | `assessmentId` (scopes tool state across sections), player, tool, environment, accessibility and coordinator config, and the `on*` callbacks |
 | `debug` | `boolean` | Verbose logging control (`true` to enable, `false`/`0` to disable) |
 | `show-toolbar` | `boolean` | Whether to render the section toolbar |
 
@@ -98,9 +96,14 @@ When your host application needs to own the coordinator lifecycle — because it
 
 ```ts
 import { ToolkitCoordinator } from '@pie-players/pie-assessment-toolkit';
-import { createPackagedToolRegistry } from '@pie-players/pie-default-tool-loaders';
+import {
+  createPackagedToolRegistry,
+  DEFAULT_TOOL_MODULE_LOADERS,
+} from '@pie-players/pie-default-tool-loaders';
 
-const toolRegistry = createPackagedToolRegistry();
+const toolRegistry = createPackagedToolRegistry({
+  toolModuleLoaders: DEFAULT_TOOL_MODULE_LOADERS,
+});
 const coordinator = new ToolkitCoordinator({
   assessmentId: 'my-assessment-001',
   toolRegistry,
@@ -148,7 +151,7 @@ Content items are rendered via `<pie-item-player>` elements. `runtime.playerType
 
 - **`esm`**: Elements are loaded via dynamic `import()` from an ESM CDN (default: `https://cdn.jsdelivr.net/npm`). This is the intended future default — the PIE team is targeting ESM as the primary strategy by end of 2026. Compared to IIFE, ESM loading offers genuine architectural advantages: modules are fetched concurrently and cached by the browser's native module cache across loads (unlike IIFE script tags, which are re-executed every time), shared dependencies between elements can be deduplicated at the module graph level rather than being bundled redundantly into each IIFE, and the format supports standard toolchain features like tree-shaking and source maps. ESM also produces a better local development experience since modules integrate naturally with browser DevTools and bundlers. The PIE elements library is still being migrated to full ESM compatibility; the team is targeting full ESM support by end of 2026.
 
-- **`preloaded`**: The host installs the pie-elements-ng packages the section needs as npm dependencies, all from one release, and registers their ESM builds with `registerPreloadedElements` (`@pie-players/pie-item-player/preloaded`) before the section mounts; the player loads nothing at runtime. Before mounting items, the section's element pre-warm aligns authored versions with the registered ones and asserts each registration; a missing one leaves the items unmounted and reports an `element-preload` framework error (see [`strategy="preloaded"`](../item-player/loading-strategies.md#strategypreloaded)). Generated `@pie-players/pie-preloaded-player` builds register the same way and remain for hosts that have not moved. Because the element set and versions are locked to your application's CI/CD cycle, this trades flexibility for zero-network-request rendering: useful for offline environments, strict performance budgets, or controlled test harnesses. The downside is that updating an element version or adding a new element requires a redeployment — you lose the ability to hot-swap element versions dynamically without a full release cycle.
+- **`preloaded`**: The host installs the pie-elements-ng packages the section needs as npm dependencies, all from one release, and registers their ESM builds with `registerPreloadedElements` (`@pie-players/pie-item-player/preloaded`) before the section mounts, with the [asset root](../item-player/loading-strategies.md#mathjax-assets) MathJax loads its fonts and speech from; the player loads no element code at runtime. Before mounting items, the section's element pre-warm aligns authored versions with the registered ones and asserts each registration; a missing one leaves the items unmounted and reports an `element-preload` framework error (see [`strategy="preloaded"`](../item-player/loading-strategies.md#strategypreloaded)). Generated `@pie-players/pie-preloaded-player` builds register the same way and remain for hosts that have not moved. Because the element set and versions are locked to your application's CI/CD cycle, this trades flexibility for zero-network-request rendering: useful for offline environments, strict performance budgets, or controlled test harnesses. The downside is that updating an element version or adding a new element requires a redeployment — you lose the ability to hot-swap element versions dynamically without a full release cycle.
 
 For `loaderOptions` (custom bundle host URL, ESM CDN URL, import-map mode, etc.) see [docs/item-player/loading-strategies.md](../item-player/loading-strategies.md).
 
@@ -226,7 +229,6 @@ Section-player owned canonical event stream:
 
 Toolkit-owned canonical stream (when present) is separate and intentionally non-overlapping:
 
-- `pie-toolkit-stage-change`
 - `pie-toolkit-runtime-owned`
 - `pie-toolkit-runtime-inherited`
 - `pie-toolkit-ready`
@@ -249,7 +251,7 @@ Tools are placed at three levels — section, item, and passage — each with it
 
 ![Tool placement levels — section toolbar, per-item toolbars, and per-passage toolbars driven by the ToolkitCoordinator](../img/sp-tool-placement-levels-1-1773512461444.jpg)
 
-Tool configuration flows through the `tools` property on `ToolkitCoordinator` (or directly on the element in CE-first mode). The structure normalizes to a `CanonicalToolsConfig` with three top-level keys:
+Tool configuration flows through the `tools` property on `ToolkitCoordinator`, or through `runtime.tools` on the element in CE-first mode; the layout elements have no `tools` property. The structure normalizes to a `CanonicalToolsConfig` with three top-level keys:
 
 ```ts
 tools: {
@@ -294,7 +296,7 @@ const tools = {
   },
   providers: {
     textToSpeech: {
-      backend: 'browser',        // 'browser' | 'polly' | 'google' | 'server'
+      backend: 'browser',        // 'browser' | 'server'; a server backend names its serverProvider
       // Omit defaultVoice for automatic selection. To pin a Browser voice,
       // use an exact voiceURI or name returned by speechSynthesis.getVoices().
     },
@@ -314,10 +316,8 @@ const tools = {
 };
 ```
 
-Desmos is the default if `provider.id` is omitted. Its adapter still requests
-the historical unkeyed URL when no key is configured; Desmos's CDN rejects that
-request with HTTP 403, and it does not grant or imply a license. A licensed
-deployment provides its application key through
+Desmos is the default if `provider.id` is omitted. Its adapter refuses to
+initialize without a key. A licensed deployment provides its application key through
 `provider.runtime.authFetcher`; the documented browser integration includes the
 key in the script URL, so runtime delivery keeps it out of the static bundle but
 does not make it secret. See the current
@@ -343,12 +343,15 @@ Custom transport is a host-owned integration pattern. Toolkit defaults still rem
 The following is a full client-side example showing:
 
 - host `ToolkitCoordinator` custom TTS provider config
-- section-player wiring with `tools` and `coordinator`
+- section-player wiring with `runtime.tools` and `runtime.coordinator`
 - optional TTS settings dialog custom tab (`customProviders`) with apply + preview hooks
 
 ```ts
 import { ToolkitCoordinator } from "@pie-players/pie-assessment-toolkit";
-import { createPackagedToolRegistry } from "@pie-players/pie-default-tool-loaders";
+import {
+  createPackagedToolRegistry,
+  DEFAULT_TOOL_MODULE_LOADERS,
+} from "@pie-players/pie-default-tool-loaders";
 
 const customTtsProvider = {
   enabled: true,
@@ -387,7 +390,9 @@ const tools = {
   },
 };
 
-const toolRegistry = createPackagedToolRegistry();
+const toolRegistry = createPackagedToolRegistry({
+  toolModuleLoaders: DEFAULT_TOOL_MODULE_LOADERS,
+});
 
 export const coordinator = new ToolkitCoordinator({
   assessmentId: "my-assessment-id",
@@ -407,11 +412,11 @@ export const coordinator = new ToolkitCoordinator({
 </script>
 
 <pie-section-player-splitpane
-  assessment-id="my-assessment-id"
   section-id={sectionId}
   attempt-id={attemptId}
   section={section}
   runtime={{
+    assessmentId: "my-assessment-id",
     coordinator,
     tools: coordinator.config.tools
   }}
@@ -766,9 +771,20 @@ const coordinator = new ToolkitCoordinator({
 
 The hook receives two arguments: `context` (containing the `(assessmentId, sectionId, attemptId)` key) and `defaults`, which provides a `createDefaultPersistence()` factory. You can use this to wrap or fall back to the built-in localStorage strategy rather than replacing it entirely — useful for offline-first integrations that want localStorage as a local cache with a remote backend as the source of truth.
 
-The default strategy (when the hook is not provided) uses `localStorage` keyed as `pie:section-controller:v1:{assessmentId}:{sectionId}:{attemptId}`. For production, always supply your own strategy backed by a real backend.
+The default strategy (when the hook is not provided, or returns no strategy) uses `localStorage` keyed as `pie:section-controller:v1:{assessmentId}:{sectionId}:{attemptId}`. Without an `attemptId` it neither loads nor saves: nothing then tells two learners on one device apart. For production, always supply your own strategy backed by a real backend.
 
 If your host uses different session identifiers than `assessmentId`/`sectionId`/`attemptId`, close over your own IDs from the surrounding scope rather than relying solely on `context.key`. The hook is called with the coordinator's view of the key, but your persistence implementation can use whatever identifiers your backend expects — the two don't need to match. The session snapshot itself (`getSession()` output) is what you store; the key is just how you address the storage slot.
+
+### Supplying the session
+
+A host that already holds the section's session sets it as the layout's `session` property with `section`, and the strategy's `loadSession` is not called for that controller:
+
+```ts
+playerEl.section = section;
+playerEl.session = snapshotFromBackend; // a getSession() snapshot
+```
+
+The controller created for `section` applies the session in replace mode in place of `hydrate()`. The strategy is still resolved and still receives every `persist()`. A later assignment updates the published controller, and an echo of `session-changed` is a no-op; the [section player README](../../packages/section-player/README.md#session-lifecycle) gives the rules.
 
 ### Triggering persistence
 
@@ -803,18 +819,16 @@ You can also subscribe directly on the controller handle (see §9) and react to 
 
 The typical page-load sequence is:
 
-1. Mount the player element with `assessmentId`, `sectionId`, `attemptId`, and `coordinator`.
-2. Player bootstraps, registers the section controller with the coordinator.
-3. `toolkit-ready` event fires — by this point the coordinator is active.
-4. `pie-stage-change` reaches `detail.stage === "engine-ready"` — the section controller is now available via `waitForSectionController()` / `getSectionController()`.
-5. The coordinator calls `createSectionSessionPersistence` to resolve the strategy.
-6. On `controller.hydrate()`, the strategy's `loadSession` is called and the snapshot is applied via `applySession`.
-7. Item elements register and load, emitting `section-loading-complete` when done.
-8. After loading completes, the player **replays** `applySession` with `replay: true` to ensure all loaded items reflect the restored state.
+1. Mount the player element with `assessmentId`, `sectionId`, `attemptId`, `coordinator` and `section`, and `session` when the host holds it.
+2. The toolkit asks the coordinator for the section controller. The coordinator calls `createSectionSessionPersistence` to resolve the strategy, creates the controller and configures it with that strategy.
+3. With a `session` property, the controller applies it via `applySession(session, { mode: 'replace' })`. Without one, `controller.hydrate()` calls the strategy's `loadSession` and applies the snapshot.
+4. The coordinator publishes the controller: its `ready` lifecycle event and `onSectionControllerReady` fire, `pie-stage-change` reaches `detail.stage === "engine-ready"` and `toolkit-ready` fires. The controller is now available via `waitForSectionController()` / `getSectionController()`, already holding the restored session.
+5. Item elements register and load, emitting `section-loading-complete` when done.
+6. After loading completes, the controller **replays** the applied session with `replay: true` to ensure all loaded items reflect the restored state.
 
-Step 8 exists because of a timing gap: hydration (step 6) typically runs before item elements have registered — the bundles haven't loaded yet. `applySession` writes the snapshot into the controller's internal model, but an item element can only receive session data once it exists and is registered. The replay runs after `section-loading-complete`, when all elements are present, and re-applies the same snapshot against the now-complete item set. Without it, items that registered after hydration would render with no prior responses.
+Step 6 exists because of a timing gap: the session is applied (step 3) before item elements have registered — the bundles haven't loaded yet. `applySession` writes the snapshot into the controller's internal model, but an item element can only receive session data once it exists and is registered. The replay runs after `section-loading-complete`, when all elements are present, and re-applies the same snapshot against the now-complete item set. Without it, items that registered after hydration would render with no prior responses.
 
-**Empty session semantics.** When `loadSession` returns `null` or an empty `itemSessions` map, the player treats this as a clean-slate session — items render with no prior responses. However, some PIE item runtimes expect an explicit empty response shape (e.g., `{ id: 'item-id', data: [] }`) rather than the absence of a key to visibly clear their UI on hydration. If you observe items that fail to clear visually after a reset, supply an explicit empty session shape per item in your `loadSession` return value rather than deleting the row or returning `null`. The exact shape is item-runtime-specific; check the element's session schema.
+**Empty session semantics.** When `loadSession` returns `null` or an empty `itemSessions` map, the player treats this as a clean-slate session — items render with no prior responses. However, some PIE item runtimes expect an explicit empty response shape (e.g., `{ id: 'item-id', data: [] }`) rather than the absence of a key to visibly clear their UI on hydration. If you observe items that fail to clear visually after a reset, supply an explicit empty session shape per item in your `loadSession` return value or `session` property rather than deleting the row or returning `null`. The exact shape is item-runtime-specific; check the element's session schema.
 
 As a consequence, `section-session-applied` fires twice in a normal hydrated flow. Any host logic that reacts to this event (analytics, autosave triggers) must guard for idempotency:
 
@@ -870,7 +884,7 @@ const unsub = coordinator.subscribeItemEvents({
 unsub();
 ```
 
-The subscription follows the toolkit's *active section cohort* automatically — across navigation between sections, the listener is migrated to the new controller and receives a snapshot replay (per-item `content-loaded` then `section-loading-complete`) in the canonical order a fresh subscriber would have observed. You can also narrow by event type or specific item IDs:
+The subscription follows the toolkit's *active section cohort* automatically — across navigation between sections, the listener is migrated to the new controller and receives a snapshot replay (per-item `content-loaded` for the new section's renderables, then `section-loading-complete`) in the canonical order a fresh subscriber would have observed. You can also narrow by event type or specific item IDs:
 
 ```ts
 coordinator.subscribeItemEvents({
@@ -938,22 +952,22 @@ The player element does dispatch a small set of DOM `CustomEvent`s that are genu
 
 ### Canonical readiness and error events (recommended)
 
-These are the events to build host integrations against, with stable typed payloads. The section runtime engine dispatches `pie-stage-change`, `pie-loading-complete` and `framework-error` on the layout custom element (`pie-section-player-splitpane` / `-vertical` / `-tabbed` / `-kernel-host`); `toolkit-ready` comes from the wrapped `<pie-assessment-toolkit>` and reaches the layout element by bubbling.
+These are the events to build host integrations against, with stable typed payloads. The section runtime engine dispatches `pie-stage-change` and `pie-loading-complete` on the layout custom element (`pie-section-player-splitpane` / `-vertical` / `-tabbed` / `-kernel-host`); `framework-error` and `toolkit-ready` come from the wrapped `<pie-assessment-toolkit>`. All four bubble and are composed, so a listener on the layout element or on `document` receives them.
 
-| Event name | Detail | Callback-prop mirror | When |
+| Event name | Detail | `runtime` callback | When |
 | --- | --- | --- | --- |
-| `toolkit-ready` | `{ runtimeId, assessmentId, sectionId, itemPlayer, coordinator }` | — | Coordinator initialized — **CE-first only**: this is how you obtain the coordinator reference when you haven't constructed one yourself |
-| `pie-stage-change` | `StageChangeDetail` (`{ stage, status, runtimeId, sectionId, attemptId, sourceCe, timestamp }`) | `onStageChange(detail)` | One typed transition stream covering the full lifecycle: `composed` → `engine-ready` → `interactive` → `disposed`, with a single subscription that correlates across wrapper depths. |
-| `pie-loading-complete` | `LoadingCompleteDetail` (`{ runtimeId, sectionId, attemptId, itemCount, loadedCount, sourceCe, timestamp }`) | `onLoadingComplete(detail)` | Fires once per cohort, when the section's element pre-warm resolves for the current composition and the item cards can mount. |
-| `framework-error` | `FrameworkErrorModel` | `onFrameworkError(model)` | Canonical error event for any failure crossing the framework boundary (coordinator init, runtime init, tool config, provider/TTS init, tool runtime/surface, the section's element pre-warm). The callback prop, the package-internal `FrameworkErrorBus`, and the layout-host DOM event each deliver one notification per error. Recoverable warnings remain observable without setting readiness to `error`. |
+| `toolkit-ready` | `{ runtimeId, assessmentId, sectionId, itemPlayer, coordinator }` | — | The section's controller resolved. Fires on every section initialization: the first section, each section switch, and each update to the current section. **CE-first only**: this is how you obtain the coordinator reference when you haven't constructed one yourself |
+| `pie-stage-change` | `StageChangeDetail` (`{ stage, status, runtimeId, sectionId, attemptId, sourceCe, timestamp }`) | `onStageChange(detail)` | One typed transition stream covering the full lifecycle: `composed` → `engine-ready` → `interactive` → `disposed`. `status` is `entered`; a non-recoverable framework error before `interactive` ends the chain with the current stage `failed` and the stages it never reached `skipped`. |
+| `pie-loading-complete` | `LoadingCompleteDetail` (`{ runtimeId, sectionId, attemptId, itemCount, sourceCe, timestamp }`) | `onLoadingComplete(detail)` | Fires once per cohort, when the section's element pre-warm resolves for the current composition and the item cards can mount. |
+| `framework-error` | `FrameworkErrorModel` | `onFrameworkError(model)` | Canonical error event for any failure crossing the framework boundary (coordinator init, runtime init, tool config, provider/TTS init, tool runtime/surface, the section's element pre-warm). Each error is one DOM event and one `onFrameworkError` call. Recoverable warnings remain observable without setting readiness to `error`. |
 
-Callback-prop precedence: `runtime.<key>` (set on the layout CE's `runtime` object) wins over the top-level CE prop. Both fire at the same emit point as the DOM event so callback and event stay in lockstep across cohort changes.
+The `runtime` callbacks fire at the same emit point as the DOM event so callback and event stay in lockstep across cohort changes.
 
 Recommended host wiring:
 
 - Gate "start test" UI on `pie-stage-change` with `detail.stage === "interactive"`, or subscribe to the engine via `engine.subscribe(outputs => { for (const output of outputs) { if (output.kind === "stage-change" && output.stage === "interactive") { /* … */ } } })` if you hold a programmatic engine reference. The listener receives each batch of outputs as an array.
 - Show item-loading affordances until `pie-loading-complete` fires for the active cohort.
-- Surface `framework-error` to your error UX via `onFrameworkError(model)` (single-fire) or via the layout-host DOM event — both deliver each error exactly once. Use `recoverable` to distinguish a warning that preserved assessment continuity (for example, one optional `tool-surface` capability failing) from an error that blocks readiness.
+- Surface `framework-error` to your error UX via `onFrameworkError(model)` or via the DOM event; each delivers an error once. Use `recoverable` to distinguish a warning that preserved assessment continuity (for example, one optional `tool-surface` capability failing) from an error that blocks readiness.
 
 ### Event Mapping
 
@@ -961,16 +975,16 @@ Build host integrations against the canonical events as follows:
 
 | Removed event name | Replacement | Notes |
 | --- | --- | --- |
-| `readiness-change` | `pie-stage-change` (full phase sequence; `stage` + `status` discriminator) | The readiness payload is also reachable via `selectReadiness()` / `getSnapshot().readiness` on the layout CE. |
+| `readiness-change` | `pie-stage-change` (full phase sequence; `stage` + `status` discriminator) | |
 | `interaction-ready` | `pie-stage-change` filtered on `detail.stage === "interactive"` | |
 | `ready` | `pie-loading-complete` | Same single-shot, cohort-scoped semantics. |
 | `section-controller-ready` | `waitForSectionController(timeoutMs)` / `getSectionController()` on the layout CE, or `pie-stage-change` filtered on `detail.stage === "engine-ready"` | Removed alongside its `pie-section-controller-ready` instrumentation mapping. |
 
-Note on `framework-error`: while a `<pie-assessment-toolkit>` is nested inside a layout CE, the kernel listener at `<pie-section-player-base>` stops the bubbled toolkit emit, leaving the engine-bridge emit on the layout host as the single canonical DOM surface; it does not bubble to `document`. `packages/section-player/tests/section-player-event-delivery.spec.ts` pins these counts. Direct listeners attached to `<pie-assessment-toolkit>` itself are unaffected — the toolkit's own emit reaches them before the kernel listener runs.
+Note on `framework-error`: the toolkit publishes each error once, and the event bubbles through the layout CE to `document`. The kernel only reads it to set readiness to `error`. `packages/section-player/tests/section-player-event-delivery.spec.ts` pins these counts.
 
 ### Session and runtime events
 
-The player also dispatches `session-changed`, `composition-changed`, `runtime-owned`, and `runtime-inherited`. They are public events (`SECTION_PLAYER_PUBLIC_EVENTS` in `packages/section-player/src/contracts/public-events.ts`), dispatched by the toolkit and bubbling once through the layout element to `document`. `session-changed` publishes the section's canonical session on each change; the coordinator subscription API (§9) remains the typed, scoped surface for session state.
+The player also dispatches `session-changed`, `composition-changed`, `runtime-owned`, and `runtime-inherited`. They are public events, dispatched by the toolkit and bubbling once through the layout element to `document`. `session-changed` publishes the section's canonical session on each change; the coordinator subscription API (§9) remains the typed, scoped surface for session state.
 
 ---
 

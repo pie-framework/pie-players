@@ -9,7 +9,10 @@
  */
 
 import type { I18nServiceApi } from "@pie-players/pie-players-shared/i18n";
-import type { AccessibilityCatalog } from "@pie-players/pie-players-shared/types";
+import type {
+	AccessibilityCatalog,
+	SectionControllerSessionState,
+} from "@pie-players/pie-players-shared/types";
 import type {
 	AccessibilityCatalogResolver,
 	CatalogChangeListener,
@@ -24,25 +27,28 @@ import type {
 import type { CatalogOwnerContext } from "./catalog-owner.js";
 import type { FrameworkErrorListener } from "./framework-error-bus.js";
 import type { FrameworkErrorModel } from "./framework-error.js";
-import type { HighlightColor, HighlightType } from "./HighlightCoordinator.js";
+import type {
+	Annotation,
+	HighlightColor,
+	HighlightType,
+} from "./HighlightCoordinator.js";
+import type { SerializedRange } from "./RangeSerializer.js";
 import type {
 	SectionControllerHandle,
 	SectionItemEventSubscriptionArgs,
 	SectionScopedEventSubscriptionArgs,
 	SectionEventSubscriptionArgs,
 	ToolkitCoordinatorHooks,
-	ToolkitInitStatus,
-	TTSToolConfig,
 } from "./ToolkitCoordinator.js";
-import type { ThemeConfig } from "./ThemeProvider.js";
 import type { ZIndexLayer } from "./ToolCoordinator.js";
 import type { PlaybackState, TTSConfig } from "./TTSService.js";
 import type { TTSHighlightTargetResolverProvider } from "./tts/highlight-target-resolver.js";
 import type {
+	TextToSpeechToolProviderConfig,
 	ToolPlacementConfig,
-	ToolPlacementLevel,
 	ToolProviderConfig,
 } from "./tools-config-normalizer.js";
+import type { ToolProviderApi } from "./tool-providers/ToolProviderApi.js";
 import type { ToolProviderRegistry } from "./tool-providers/ToolProviderRegistry.js";
 import type {
 	FeaturePolicyDecision,
@@ -52,10 +58,11 @@ import type {
 	ToolPolicyChangeListener,
 	ToolPolicyDecision,
 	ToolPolicyDecisionRequest,
+	ToolScope,
 } from "../policy/engine.js";
 import type {
 	AssessmentEntity,
-	AssessmentItemRef,
+	ItemSettings,
 } from "@pie-players/pie-players-shared/types";
 import type {
 	ITTSProvider,
@@ -63,41 +70,13 @@ import type {
 } from "@pie-players/pie-tts";
 import type {
 	ResolvedToolContext,
-	ToolContextResolver,
 	ToolContextResolverContext,
-	ToolContextResolverMap,
+	ToolRegistry,
 } from "./ToolRegistry.js";
 import type { ToolOpenRequest, ToolRequestTarget } from "./tool-request.js";
 
 // Re-export I18nServiceApi from players-shared
 export type { I18nServiceApi };
-
-/**
- * Theme provider interface
- *
- * Applies consistent accessibility theming across items and tools.
- */
-export interface ThemeProviderApi {
-	/**
-	 * Apply theme configuration
-	 */
-	applyTheme(config: ThemeConfig): void;
-
-	/**
-	 * Get current theme configuration
-	 */
-	getCurrentTheme(): Required<ThemeConfig>;
-
-	/**
-	 * Reset to default theme
-	 */
-	reset(): void;
-
-	/**
-	 * Clean up and remove theme styles
-	 */
-	destroy(): void;
-}
 
 /**
  * Highlight coordinator interface
@@ -115,13 +94,11 @@ export interface HighlightCoordinatorApi {
 	): void;
 
 	/**
-	 * Highlight a word for TTS (temporary)
+	 * Highlight the word being read (temporary): one range per tree the word
+	 * spans, all painted, so a word split across inline elements highlights
+	 * whole.
 	 */
-	highlightTTSWord(
-		textNode: Text,
-		startOffset: number,
-		endOffset: number,
-	): void;
+	highlightTTSWord(ranges: Range[]): void;
 
 	/**
 	 * Highlight a single element as the active TTS word (temporary).
@@ -132,10 +109,8 @@ export interface HighlightCoordinatorApi {
 	 * (e.g. `<mjx-mi><mjx-c/></mjx-mi>`) and whole-expression fallbacks. Painting
 	 * the element itself is what lets a resolved math token highlight as a token
 	 * rather than escalating to the full `<math>` / `<mjx-container>`.
-	 *
-	 * Optional so lightweight coordinator mocks can omit it.
 	 */
-	highlightTTSWordElement?(element: Element): void;
+	highlightTTSWordElement(element: Element): void;
 
 	/**
 	 * Highlight sentence(s) for TTS (background layer)
@@ -144,10 +119,8 @@ export interface HighlightCoordinatorApi {
 
 	/**
 	 * Highlight sentence/block element targets for TTS (background layer).
-	 *
-	 * Optional so lightweight coordinator mocks can omit it.
 	 */
-	highlightTTSSentenceElements?(elements: Element[]): void;
+	highlightTTSSentenceElements(elements: Element[]): void;
 
 	/**
 	 * Clear all TTS highlights (word and sentence)
@@ -160,11 +133,6 @@ export interface HighlightCoordinatorApi {
 	clearHighlights(type: HighlightType): void;
 
 	/**
-	 * Clear all highlights
-	 */
-	clearAll(): void;
-
-	/**
 	 * Check if highlighting is supported in current environment
 	 */
 	isSupported(): boolean;
@@ -173,6 +141,58 @@ export interface HighlightCoordinatorApi {
 	 * Update TTS highlight style dynamically
 	 */
 	updateTTSHighlightStyle(color: string, opacity: number): void;
+
+	/**
+	 * Record a learner annotation over a range.
+	 *
+	 * @returns Annotation id for later lookup or removal
+	 */
+	addAnnotation(range: Range, color?: HighlightColor): string;
+
+	/**
+	 * Remove one annotation
+	 */
+	removeAnnotation(id: string): void;
+
+	/**
+	 * Remove all annotations
+	 */
+	clearAnnotations(): void;
+
+	/**
+	 * All recorded annotations
+	 */
+	getAnnotations(): Annotation[];
+
+	/**
+	 * One annotation by id
+	 */
+	getAnnotation(id: string): Annotation | null;
+
+	/**
+	 * Serialize annotations relative to `root` for persistence
+	 */
+	exportAnnotations(
+		root?: Element,
+	): Array<
+		SerializedRange & { id: string; color: HighlightColor; timestamp: number }
+	>;
+
+	/**
+	 * Restore annotations serialized by `exportAnnotations` against the same root
+	 *
+	 * @returns Number of annotations restored
+	 */
+	importAnnotations(
+		data: Array<
+			SerializedRange & {
+				id?: string;
+				color: HighlightColor;
+				timestamp?: number;
+			}
+		>,
+		root?: Element,
+	): number;
 }
 
 /**
@@ -184,6 +204,12 @@ export interface ToolState {
 	isVisible: boolean;
 	element: HTMLElement | null;
 	layer: ZIndexLayer;
+}
+
+/** Narrows tool-state queries to the instances of one tool. */
+export interface ToolStateFilter {
+	/** Base tool id, such as `calculator`, matching every scoped instance of it. */
+	baseId?: string;
 }
 
 /**
@@ -250,14 +276,39 @@ export interface ToolCoordinatorApi {
 	getToolState(id: string): ToolState | undefined;
 
 	/**
-	 * Get all visible tools
+	 * Every visible tool, or with `{ baseId }` every visible instance of one
+	 * tool, so a host need not parse scoped ids.
 	 */
-	getVisibleTools(): ToolState[];
+	getVisibleTools(filter?: ToolStateFilter): ToolState[];
+
+	/**
+	 * Hide every visible tool, or every instance of one tool with `{ baseId }`.
+	 */
+	hideAllTools(filter?: ToolStateFilter): void;
 
 	/**
 	 * Subscribe to tool state changes
 	 */
 	subscribe(listener: () => void): () => void;
+}
+
+/** Options for {@link TtsServiceApi.speak}. */
+export interface SpeakOptions {
+	/**
+	 * The spoken card of the content root, read in place of its content when the
+	 * target holds the whole root.
+	 */
+	catalogId?: string;
+	/** The owner whose registered cards apply; without it only assessment-level cards do. */
+	catalogContext?: CatalogLookupContext;
+	/** BCP 47 language of the content read. */
+	language?: string;
+	/**
+	 * For a range target, the content root that scopes highlighting and the
+	 * offsets of the selection. Defaults to the range's nearest element. An
+	 * element target is its own root.
+	 */
+	contentRoot?: Element | null;
 }
 
 /**
@@ -276,25 +327,13 @@ export interface TtsServiceApi {
 	): Promise<void>;
 
 	/**
-	 * Speak text with optional catalog support
+	 * Read `target` aloud: a range reads the text it selects, an element its
+	 * content. A node with a spoken card that the target holds whole reads its
+	 * card, and math reads as math speech. Content marked not-to-be-spoken is
+	 * never read; when nothing speakable remains, nothing is spoken and playback
+	 * already running continues.
 	 */
-	speak(
-		text: string,
-		options?: {
-			catalogId?: string;
-			catalogContext?: CatalogLookupContext;
-			language?: string;
-			contentElement?: Element;
-		},
-	): Promise<void>;
-
-	/**
-	 * Speak a text range
-	 */
-	speakRange(
-		range: Range,
-		options?: { contentRoot?: Element | null },
-	): Promise<void>;
+	speak(target: Range | Element, options?: SpeakOptions): Promise<void>;
 
 	/**
 	 * Pause playback
@@ -310,6 +349,12 @@ export interface TtsServiceApi {
 	 * Stop playback
 	 */
 	stop(): void;
+
+	/**
+	 * Stop, release the provider and drop every listener and timer. A disposed
+	 * service cannot speak.
+	 */
+	dispose(): void;
 
 	/**
 	 * Request active TTS controls to hand off/deactivate their UI state.
@@ -350,21 +395,9 @@ export interface TtsServiceApi {
 	getCurrentText(): string | null;
 
 	/**
-	 * Whether a catalog holds spoken content this service could speak.
-	 * Optional: a service without one resolves a selection to the nearest
-	 * docked catalog id.
+	 * Subscribe to state changes. Returns the function that unsubscribes.
 	 */
-	hasSpokenAlternate?(catalogId: string, language?: string): boolean;
-
-	/**
-	 * Subscribe to state changes
-	 */
-	onStateChange(id: string, callback: (state: PlaybackState) => void): void;
-
-	/**
-	 * Unsubscribe from state changes
-	 */
-	offStateChange(id: string, callback: (state: PlaybackState) => void): void;
+	onStateChange(callback: (state: PlaybackState) => void): () => void;
 
 	/**
 	 * Get capabilities of current provider
@@ -619,26 +652,17 @@ export interface ToolkitCoordinatorApi {
 	readonly toolProviderRegistry: ToolProviderRegistry;
 
 	/**
-	 * Get all services as a bundle
-	 */
-	getServiceBundle(): {
-		ttsService: TtsServiceApi;
-		toolCoordinator: ToolCoordinatorApi;
-		highlightCoordinator: HighlightCoordinatorApi;
-		elementToolStateStore: ElementToolStateStoreApi;
-		catalogResolver: AccessibilityCatalogResolverApi;
-		toolProviderRegistry: ToolProviderRegistry;
-	};
-
-	/**
 	 * Ensure TTS service is initialized and ready.
 	 */
 	ensureTTSReady(config?: Record<string, unknown>): Promise<void>;
 
 	/**
-	 * Ensure a provider is initialized and ready.
+	 * Ensure a tool's provider is initialized and ready. Providers register under
+	 * their tool's id, so a tool passes its own base tool id. A tool starts its
+	 * provider here, so that a failure meets the toolkit's tool failure policy:
+	 * recoverable unless policy grants the tool.
 	 */
-	ensureProviderReady(providerId: string): Promise<unknown>;
+	ensureProviderReady(toolId: string): Promise<ToolProviderApi>;
 
 	/**
 	 * Wait until coordinator initialization is complete.
@@ -651,19 +675,14 @@ export interface ToolkitCoordinatorApi {
 	isReady(): boolean;
 
 	/**
-	 * Read current initialization status.
+	 * Subscribe to changes of {@link isReady}.
 	 */
-	getInitStatus(): ToolkitInitStatus;
-
-	/**
-	 * Check if a tool is enabled
-	 */
-	isToolEnabled(toolId: string): boolean;
+	onReadyChange(listener: () => void): () => void;
 
 	/**
 	 * Get tool configuration
 	 */
-	getToolConfig(toolId: "textToSpeech"): TTSToolConfig | null;
+	getToolConfig(toolId: "textToSpeech"): TextToSpeechToolProviderConfig | null;
 	getToolConfig(toolId: string): ToolProviderConfig | null;
 
 	/**
@@ -671,14 +690,9 @@ export interface ToolkitCoordinatorApi {
 	 */
 	updateToolConfig(
 		toolId: "textToSpeech",
-		updates: Partial<TTSToolConfig>,
+		updates: Partial<TextToSpeechToolProviderConfig>,
 	): void;
 	updateToolConfig(toolId: string, updates: Partial<ToolProviderConfig>): void;
-
-	/**
-	 * Update the enabled tool list for one placement level.
-	 */
-	updateToolPlacement(level: ToolPlacementLevel, toolIds: string[]): void;
 
 	/**
 	 * Patch one or more placement levels in the canonical tools config.
@@ -709,11 +723,12 @@ export interface ToolkitCoordinatorApi {
 	 * aggregate `section-loading-complete`, in the canonical order a
 	 * fresh subscriber would have observed.
 	 *
-	 * Throws if no active section cohort exists; host code must call
-	 * `getOrCreateSectionController(...)` at least once before
-	 * subscribing. (`toolkit-ready` alone is not sufficient — it fires
-	 * once toolkit state has loaded but before any section controller
-	 * has been created.) The typical pattern is to subscribe once
+	 * Throws until the first `getOrCreateSectionController(...)` call; a
+	 * listener added while a section is starting binds when that section
+	 * becomes active. `runtime-ready` alone is not sufficient: it fires once
+	 * the coordinator is bound, before any section controller exists. A
+	 * `<pie-assessment-toolkit>` holding a section emits `toolkit-ready`
+	 * after its controller resolves. The typical pattern is to subscribe once
 	 * immediately after the first `getOrCreateSectionController(...)`
 	 * resolves; the subscription then follows the active cohort across
 	 * all subsequent navigation without further wiring.
@@ -747,12 +762,18 @@ export interface ToolkitCoordinatorApi {
 
 	/**
 	 * Create or reuse a section controller with single-flight deduplication.
+	 *
+	 * `initialSession` is a host-supplied session. A new controller applies it in
+	 * replace mode in place of `hydrate()`, before it is published; an existing
+	 * one applies it unless it equals the current session, keeping recorded
+	 * responses that a response-free item session would replace.
 	 */
 	getOrCreateSectionController(args: {
 		sectionId: string;
 		attemptId?: string;
 		input?: unknown;
 		updateExisting?: boolean;
+		initialSession?: SectionControllerSessionState | null;
 		createDefaultController: () =>
 			| SectionControllerHandle
 			| Promise<SectionControllerHandle>;
@@ -793,8 +814,15 @@ export interface ToolkitCoordinatorApi {
 	 */
 	reportFrameworkError?(model: FrameworkErrorModel): void;
 
+	/**
+	 * Report that a toolbar could not load a tool's module. The tool degrades
+	 * unless policy grants it, in which case the failure is fatal. Optional so
+	 * structural host coordinators remain assignable; a toolbar without it logs.
+	 */
+	reportToolModuleFailure?(toolId: string, error: unknown): void;
+
 	// ----------------------------------------------------------------
-	// Tool Policy Engine — public surface (M8 PR 2 / PR 3).
+	// Tool Policy Engine — public surface.
 	//
 	// The coordinator owns a single `ToolPolicyEngine` instance and
 	// exposes its decision and subscription surface through the API
@@ -802,8 +830,8 @@ export interface ToolkitCoordinatorApi {
 	// `pie-section-toolbar`), the base section player, and bespoke
 	// host instrumentation (PNP debugger, etc.) all flow through the
 	// same engine. Hosts that want to drive PNP/profile inputs imperatively
-	// (instead of binding props on `<pie-assessment-toolkit>`) call
-	// `updateAssessment` / `updateCurrentItemRef` /
+	// (instead of binding props on `<pie-assessment-toolkit>` and
+	// `<pie-item-scope>`) call `updateAssessment` / `registerItemSettings` /
 	// `setPnpEnforcement` directly.
 	// ----------------------------------------------------------------
 
@@ -816,23 +844,29 @@ export interface ToolkitCoordinatorApi {
 	decideToolPolicy(request: ToolPolicyDecisionRequest): ToolPolicyDecision;
 
 	/**
-	 * Resolve eligibility for one PNP/AfA feature id through the six-level
+	 * Resolve eligibility for one PNP/AfA feature id through the eight-level
 	 * precedence, independent of toolbar placement — for capabilities that
 	 * render as their own surface rather than a toolbar button (a signed
 	 * alternate's region, for example).
 	 *
+	 * `scope` is the surface asking; an item's scope brings in that item's
+	 * registered settings ({@link registerItemSettings}).
+	 *
 	 * Optional so host-supplied coordinator stubs predating this method stay
 	 * assignable; call sites must feature-detect.
 	 */
-	decideFeaturePolicy?(featureId: string): FeaturePolicyDecision;
+	decideFeaturePolicy?(
+		featureId: string,
+		scope?: ToolScope,
+	): FeaturePolicyDecision;
 
 	/**
 	 * Subscribe to policy-engine change events. Fires whenever the
 	 * coordinator's bound policy inputs change (`updateToolConfig`,
-	 * `updateToolPlacement`, `updateAssessment`, `updateCurrentItemRef`,
-	 * `setPnpEnforcement`) or a custom `PolicySource` is registered /
-	 * removed. Listeners that need the new visible tool set should
-	 * call `decideToolPolicy(...)` with their level / scope.
+	 * `updateToolsPlacement`, `updateAssessment`, `setPnpEnforcement`), an
+	 * item's settings are registered or withdrawn, or a custom `PolicySource`
+	 * is registered / removed. Listeners that need the new visible tool set
+	 * should call `decideToolPolicy(...)` with their level / scope.
 	 */
 	onPolicyChange(listener: ToolPolicyChangeListener): () => void;
 
@@ -857,12 +891,12 @@ export interface ToolkitCoordinatorApi {
 	/**
 	 * Bind (or clear) the active assessment for PNP/profile policy decisions.
 	 *
-	 * Under auto-mode (no host override via {@link setPnpEnforcement}),
-	 * the engine flips to `pnpEnforcement: "on"` iff the assessment
-	 * carries profile precedence material (`personalNeedsProfile`,
-	 * `settings.districtPolicy`, `settings.testAdministration`) or the
-	 * currently-bound item ref carries item-level profile inputs. A bare
-	 * assessment record (just `id` / `name`) keeps `"off"`.
+	 * Under auto-mode (no host override via {@link setPnpEnforcement}), a
+	 * decision enforces PNP/profile policy iff the assessment carries profile
+	 * precedence material (`personalNeedsProfile`, `settings.districtPolicy`,
+	 * `settings.testAdministration`), or the decision is scoped to an item whose
+	 * registered settings carry item-level policy inputs. A bare assessment
+	 * record (just `id` / `name`) keeps `"off"`.
 	 *
 	 * The host override set via {@link setPnpEnforcement} is sticky
 	 * across assessment swaps.
@@ -870,19 +904,20 @@ export interface ToolkitCoordinatorApi {
 	updateAssessment(assessment: AssessmentEntity | null): void;
 
 	/**
-	 * Bind (or clear) the current item reference for policy decisions.
-	 * Used by item-level profile gates (item `requiredTools` /
-	 * `restrictedTools` / `toolParameters`). Item-level profile material
-	 * also feeds the auto-mode helper — navigating to an item with
-	 * profile settings can flip auto-mode to `"on"` even when the parent
-	 * assessment carries no profile block of its own.
+	 * File a mounted item's policy settings (`requiredTools`, `restrictedTools`,
+	 * `toolParameters`) under its canonical id; the returned function withdraws
+	 * them. They govern only decisions scoped to that item: its own item-level
+	 * toolbar, and feature decisions asked with the item's scope. A section- or
+	 * assessment-level toolbar ignores them, and reports each tool on it that
+	 * they restrict or require as `tool-policy.itemSettingNotApplied`.
+	 * `<pie-item-scope>` registers its `settings` property through this.
 	 */
-	updateCurrentItemRef(itemRef: AssessmentItemRef | null): void;
+	registerItemSettings(itemId: string, settings: ItemSettings): () => void;
 
 	/**
 	 * Override the auto-mode PNP/profile enforcement decision. Pass `"on"` /
 	 * `"off"` to pin the mode, or `null` to clear the override and
-	 * return to auto-mode (`"on"` iff the bound assessment / item ref
+	 * return to auto-mode (`"on"` for a decision whose assessment or item
 	 * carries profile material, otherwise `"off"`).
 	 */
 	setPnpEnforcement(mode: PnpEnforcementMode | null): void;
@@ -901,21 +936,6 @@ export interface ToolkitCoordinatorApi {
 	registerPolicySource(source: PolicySource): () => void;
 
 	/**
-	 * Register a host-owned resolver for scoped tool render context.
-	 */
-	registerToolContextResolver(
-		toolId: string,
-		resolver: ToolContextResolver,
-	): () => void;
-
-	/**
-	 * Replace all host-owned render-context resolvers.
-	 */
-	setToolContextResolvers(
-		resolvers: ToolContextResolverMap | null | undefined,
-	): void;
-
-	/**
 	 * Whether a host resolver is registered for this tool.
 	 */
 	hasToolContextResolver(toolId: string): boolean;
@@ -931,6 +951,15 @@ export interface ToolkitCoordinatorApi {
 	 * Subscribe to resolver registration/removal changes.
 	 */
 	onToolContextResolverChange(listener: () => void): () => void;
+
+	/**
+	 * The registry this coordinator's providers and policy resolve against: the
+	 * one it was built with or adopted, else the empty one it started with. A
+	 * toolbar that is not handed a registry reads it here, again on each
+	 * {@link onPolicyChange}, which an adoption fires. Optional for the same reason
+	 * as the request seam below: a host-supplied coordinator may predate it.
+	 */
+	getToolRegistry?(): ToolRegistry;
 
 	/**
 	 * The tool-open request seam, optional as a group.
@@ -956,7 +985,11 @@ export interface ToolkitCoordinatorApi {
 	 * Whether a request for this tool would reach a toolbar. A surface asks before
 	 * offering the affordance.
 	 */
-	canRequestTool?(toolId: string, level?: ToolOpenRequest["level"]): boolean;
+	canRequestTool?(
+		toolId: string,
+		level?: ToolOpenRequest["level"],
+		scopeId?: string,
+	): boolean;
 
 	/**
 	 * Subscribe to toolbar registration/removal, so a surface can re-evaluate the

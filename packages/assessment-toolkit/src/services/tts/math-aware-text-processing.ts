@@ -1,3 +1,9 @@
+import {
+	flatQuerySelector,
+	flatTreeChildNodes,
+	flatTreeParentElement,
+	rangeIntersectsComposedNode,
+} from "./flat-tree.js";
 import { canonicalizeMathML } from "./mathml-sanitization.js";
 import {
 	collectVisibleTextAndMap,
@@ -5,6 +11,7 @@ import {
 	type TextProcessingOptions,
 	isNodeExcludedFromSpeech,
 	normalizeTextForSpeech,
+	rangeHoldsSpeakableElement,
 	shouldInsertWordBoundarySpace,
 } from "./text-processing.js";
 
@@ -68,7 +75,7 @@ const getDataMathML = (element: Element): string | null => {
 };
 
 const findAssistiveMathML = (element: Element): string | null => {
-	const assistive = element.querySelector("mjx-assistive-mml math");
+	const assistive = flatQuerySelector(element, "mjx-assistive-mml math");
 	return assistive?.outerHTML || null;
 };
 
@@ -124,7 +131,7 @@ const resolveTextChunkSourceElement = (
 	textNode: Text,
 	root: Element,
 ): Element => {
-	let current = textNode.parentElement;
+	let current = flatTreeParentElement(textNode);
 	let best: Element | null = null;
 	while (current && current !== root) {
 		const role = (current.getAttribute("role") || "").toLowerCase();
@@ -136,7 +143,7 @@ const resolveTextChunkSourceElement = (
 			best = current;
 			break;
 		}
-		current = current.parentElement;
+		current = flatTreeParentElement(current);
 	}
 	return best || root;
 };
@@ -144,7 +151,8 @@ const resolveTextChunkSourceElement = (
 const hasMathCandidate = (element: Element): boolean =>
 	Boolean(
 		typeof element.querySelector === "function" &&
-			element.querySelector(
+			flatQuerySelector(
+				element,
 				"math, [data-mathml], .MathJax, mjx-container, mjx-assistive-mml",
 			),
 	) ||
@@ -194,10 +202,16 @@ const shouldInsertBoundarySpace = (
 	return shouldInsertWordBoundarySpace(previous, nextCharacter, acc.options);
 };
 
-const appendTextNode = (acc: TextAccumulator, textNode: Text): void => {
+/** `start` and `end` bound the part of the node appended, for a selection. */
+const appendTextNode = (
+	acc: TextAccumulator,
+	textNode: Text,
+	start = 0,
+	end = (textNode.textContent || "").length,
+): void => {
 	const raw = textNode.textContent || "";
 	let appendedNonWhitespaceInNode = false;
-	for (let i = 0; i < raw.length; i++) {
+	for (let i = start; i < end; i++) {
 		const character = raw[i];
 		const isWhitespace = /\s/.test(character);
 		if (acc.inLeadingWhitespace) {
@@ -307,7 +321,7 @@ const mapFallbackToAssistiveMath = (
 ): NormalizedTextMap => {
 	const map: NormalizedTextMap = new Map();
 	const sourceMath = isMathJaxElement(element)
-		? element.querySelector("mjx-assistive-mml math")
+		? flatQuerySelector(element, "mjx-assistive-mml math")
 		: null;
 	if (!sourceMath) return map;
 	const characters: Array<{ node: Text; offset: number }> = [];
@@ -322,7 +336,7 @@ const mapFallbackToAssistiveMath = (
 			return;
 		}
 		if (node.nodeType !== 1 || isAnnotationElement(node as Element)) return;
-		for (const child of Array.from(node.childNodes)) {
+		for (const child of flatTreeChildNodes(node)) {
 			visit(child);
 		}
 	};
@@ -360,7 +374,7 @@ const collectVisibleMathFallback = (
 		) {
 			return;
 		}
-		for (const child of Array.from(childElement.childNodes)) {
+		for (const child of flatTreeChildNodes(childElement)) {
 			visit(child);
 		}
 	};
@@ -391,6 +405,7 @@ const trimTrailingWhitespace = (acc: TextAccumulator): void => {
 const collectMathAware = (
 	root: Element,
 	options?: TextProcessingOptions,
+	range?: Range,
 ): MathAwareTextResult => {
 	const acc = createAccumulator(options);
 	const chunks: MathAwareSpeechChunk[] = [];
@@ -415,20 +430,32 @@ const collectMathAware = (
 
 	const processNode = (node: Node): void => {
 		if (isNodeExcludedFromSpeech(node, root)) return;
-		if (node.nodeType === Node.TEXT_NODE) {
+		if (range && !rangeIntersectsComposedNode(range, node)) return;
+		if (node.nodeType === 3) {
 			const sourceElement = resolveTextChunkSourceElement(node as Text, root);
 			if (textChunkSourceElement && sourceElement !== textChunkSourceElement) {
 				flushTextChunk();
 			}
 			textChunkSourceElement = sourceElement;
-			appendTextNode(acc, node as Text);
+			const textNode = node as Text;
+			appendTextNode(
+				acc,
+				textNode,
+				range?.startContainer === textNode ? range.startOffset : undefined,
+				range?.endContainer === textNode ? range.endOffset : undefined,
+			);
 			return;
 		}
-		if (node.nodeType !== Node.ELEMENT_NODE) return;
+		if (node.nodeType !== 1) return;
 		const element = node as Element;
 		if (isAssistiveMathElement(element)) return;
 		const canonicalMathML = findCanonicalMathML(element);
-		if (canonicalMathML) {
+		// An equation is spoken as math only when the selection holds all of it;
+		// a part of one reads as the text selected.
+		if (
+			canonicalMathML &&
+			(!range || rangeHoldsSpeakableElement(range, element, root))
+		) {
 			flushTextChunk();
 			const collected = collectVisibleMathFallback(
 				element,
@@ -447,12 +474,12 @@ const collectMathAware = (
 			containsMathMarkup = true;
 			return;
 		}
-		for (const child of Array.from(element.childNodes)) {
+		for (const child of flatTreeChildNodes(element)) {
 			processNode(child);
 		}
 	};
 
-	for (const child of Array.from(root.childNodes)) {
+	for (const child of flatTreeChildNodes(root)) {
 		processNode(child);
 	}
 
@@ -470,10 +497,16 @@ const collectMathAware = (
 	};
 };
 
+/**
+ * With `range`, only the part of `element` the range selects: text it selects
+ * and equations it holds whole.
+ */
 export const collectMathAwareTextAndMap = (
 	element: Element,
 	options?: TextProcessingOptions,
+	range?: Range,
 ): MathAwareTextResult => {
+	if (range) return collectMathAware(element, options, range);
 	if (!hasMathCandidate(element)) {
 		const { text, map } = collectVisibleTextAndMap(element, options);
 		return {

@@ -1,8 +1,8 @@
 <script lang="ts">
 	import { get } from 'svelte/store';
-	import JsonEditor from '$lib/components/JsonEditor.svelte';
-	import { config as configStore, updateConfig } from '$lib/stores/demo-state';
-	import { demoHeadingName } from '$lib/utils/demo-heading-name';
+	import JsonEditor from '#lib/components/JsonEditor.svelte';
+	import { config as configStore, updateConfig } from '#lib/stores/demo-state.js';
+	import { demoHeadingName } from '#lib/utils/demo-heading-name.js';
 
 	let { data } = $props();
 

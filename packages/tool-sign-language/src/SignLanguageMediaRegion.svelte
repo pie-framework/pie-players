@@ -4,16 +4,9 @@
 		shadow: "open",
 		props: {
 			media: { type: "Object", reflect: false },
-			ttsService: { type: "Object", reflect: false },
 		},
 	}}
 />
-
-<script lang="ts" module>
-	// One page can hold several item cards, each with its own region, so the TTS
-	// listener id has to be unique per instance. Module scope, not instance scope.
-	let instanceCounter = 0;
-</script>
 
 <script lang="ts">
 	/**
@@ -25,13 +18,14 @@
 	 * The host mounts this through the registration's `renderSurface` and hands it
 	 * a resolved card; it does no resolution of its own, so a card that reaches
 	 * here is already known to be playable and already known to be one the learner
-	 * is eligible for.
+	 * is eligible for. Read-aloud comes from the toolkit runtime context.
 	 */
 	import {
 		bindTtsAudioHandoff,
+		connectToolRuntimeContext,
 		pauseTtsForMediaAudio,
-		type TtsServiceApi,
-	} from "@pie-players/pie-assessment-toolkit";
+		type AssessmentToolkitRuntimeContext,
+	} from "@pie-players/pie-assessment-toolkit/tools/registration";
 	import {
 		applyMediaFragment,
 		enforceMediaFragment,
@@ -44,11 +38,9 @@
 
 	let {
 		media = null as ResolvedSignLanguageAlternate | null,
-		ttsService = null as TtsServiceApi | null,
 		i18n = undefined as I18nProvider | undefined,
 	} = $props<{
 		media?: ResolvedSignLanguageAlternate | null;
-		ttsService?: TtsServiceApi | null;
 		/**
 		 * Interface-locale provider, supplied by the host surface. Absent, the
 		 * English-only default names the language rather than leaking a key.
@@ -57,7 +49,11 @@
 	}>();
 
 	let videoElement = $state<HTMLVideoElement | null>(null);
-	const listenerId = `pie-tool-sign-language-${(instanceCounter += 1)}`;
+	let contextHostElement = $state<HTMLElement | null>(null);
+	let runtimeContext = $state<AssessmentToolkitRuntimeContext | null>(null);
+	// Signing playback and read-aloud must not run at once; the service is what
+	// pauses the other one.
+	const ttsService = $derived(runtimeContext?.ttsService ?? null);
 
 	const languageName = $derived(describeSignLanguage(media?.signLang, i18n));
 	// The label names the language rather than saying "video": "American Sign
@@ -72,6 +68,13 @@
 			src: applyMediaFragment(source.src, media?.fragment),
 		})),
 	);
+
+	$effect(() => {
+		if (!contextHostElement) return;
+		return connectToolRuntimeContext(contextHostElement, (value) => {
+			runtimeContext = value;
+		});
+	});
 
 	function pauseSigning(): void {
 		if (videoElement && !videoElement.paused) videoElement.pause();
@@ -92,10 +95,11 @@
 	});
 
 	$effect(() =>
-		bindTtsAudioHandoff({ ttsService, listenerId, silence: pauseSigning }),
+		bindTtsAudioHandoff({ ttsService, silence: pauseSigning }),
 	);
 </script>
 
+<div bind:this={contextHostElement} style="display: none;" aria-hidden="true"></div>
 {#if media && sources.length > 0}
 	<figure
 		class="pie-tool-sign-language"

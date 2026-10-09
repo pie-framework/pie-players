@@ -1,19 +1,17 @@
 /**
- * Section runtime engine — facade smoke test (M7 PR 3).
+ * Section runtime engine — facade smoke test.
  *
  * Drives the layered facade through the canonical four-stage sequence
  * (`composed` → `engine-ready` → `interactive` → `disposed`) and asserts
  * that the same outputs are observable both via the public
  * `subscribe(...)` channel and as DOM `CustomEvent`s on a jsdom-style
- * host. Mirrors the kernel's existing emit chain so PR 5 (kernel
- * switch) is a structural delete, not a behavior change.
+ * host, matching the kernel's emit chain.
  *
  * Also asserts:
- *   - `getEffectiveRuntime(...)` returns the same value as a direct
- *     `resolveSectionEngineRuntimeState(...).effectiveRuntime` call —
- *     proves the facade is a pure pass-through over the resolver.
  *   - Strict and progressive readiness modes gate the
  *     `engine-ready` → `interactive` transition correctly.
+ *   - A runtime error before `interactive` ends the chain as `failed`, and
+ *     the events bubble out of the host.
  *   - Pre-`attachHost` calls (`subscribe`, `dispatchInput`) are safe
  *     no-ops, matching the documented lifecycle.
  *
@@ -34,12 +32,7 @@ import {
 import { SectionRuntimeEngine } from "../../src/runtime/SectionRuntimeEngine.js";
 import type { CohortKey } from "../../src/runtime/core/cohort.js";
 import type { SectionEngineOutput } from "../../src/runtime/core/engine-output.js";
-import {
-	resolveSectionEngineRuntimeState,
-	type EffectiveRuntime,
-	type RuntimeInputs,
-} from "../../src/runtime/core/engine-resolver.js";
-import { FrameworkErrorBus } from "../../src/services/framework-error-bus.js";
+import type { EffectiveRuntime } from "../../src/runtime/core/engine-resolver.js";
 
 beforeAll(() => {
 	if (
@@ -63,36 +56,15 @@ const STUB_RUNTIME = {
 } as unknown as EffectiveRuntime;
 const STUB_TOOLS = { placement: {} };
 
-function makeRuntimeInputs(
-	overrides: Partial<RuntimeInputs> = {},
-): RuntimeInputs {
-	return {
-		assessmentId: "assess-1",
-		playerType: "iife",
-		player: null,
-		lazyInit: true,
-		tools: null,
-		accessibility: null,
-		coordinator: null,
-		env: null,
-		toolConfigStrictness: "error",
-		runtime: null,
-		enabledTools: "",
-		...overrides,
-	};
-}
-
 interface CapturedDom {
 	stageEvents: string[];
 	loadingComplete: number;
-	frameworkErrors: number;
 }
 
 function bindDomCapture(host: EventTarget): CapturedDom {
 	const captured: CapturedDom = {
 		stageEvents: [],
 		loadingComplete: 0,
-		frameworkErrors: 0,
 	};
 	host.addEventListener("pie-stage-change", (event) => {
 		const detail = (event as CustomEvent).detail as { stage: string };
@@ -101,34 +73,25 @@ function bindDomCapture(host: EventTarget): CapturedDom {
 	host.addEventListener("pie-loading-complete", () => {
 		captured.loadingComplete += 1;
 	});
-	host.addEventListener("framework-error", () => {
-		captured.frameworkErrors += 1;
-	});
 	return captured;
 }
 
 describe("SectionRuntimeEngine facade — common-host smoke", () => {
 	let engine: SectionRuntimeEngine;
 	let host: HTMLElement;
-	let bus: FrameworkErrorBus;
 	let captured: CapturedDom;
 	let outputs: SectionEngineOutput[];
 
 	beforeEach(() => {
 		engine = new SectionRuntimeEngine();
 		host = document.createElement("div");
-		bus = new FrameworkErrorBus();
 		captured = bindDomCapture(host);
 		outputs = [];
 
-		// Five-line happy path: attach host + bus, subscribe to outputs,
-		// drive the FSM through `initialize` → `controller-resolved` →
+		// Five-line happy path: attach host, subscribe to outputs, drive the
+		// FSM through `initialize` → `controller-resolved` →
 		// `update-readiness-signals` → `dispose`.
-		engine.attachHost({
-			host,
-			sourceCe: "pie-section-player",
-			frameworkErrorBus: bus,
-		});
+		engine.attachHost({ host, sourceCe: "pie-section-player" });
 		engine.subscribe((batch) => {
 			outputs.push(...batch);
 		});
@@ -151,7 +114,6 @@ describe("SectionRuntimeEngine facade — common-host smoke", () => {
 				allLoadingComplete: true,
 				runtimeError: false,
 			},
-			loadedCount: 1,
 			itemCount: 1,
 			mode: "strict",
 		});
@@ -177,7 +139,6 @@ describe("SectionRuntimeEngine facade — common-host smoke", () => {
 			"disposed",
 		]);
 		expect(captured.loadingComplete).toBe(1);
-		expect(captured.frameworkErrors).toBe(0);
 	});
 
 	test("strict mode: `interactive` does not advance until `allLoadingComplete`", () => {
@@ -199,7 +160,6 @@ describe("SectionRuntimeEngine facade — common-host smoke", () => {
 				allLoadingComplete: false,
 				runtimeError: false,
 			},
-			loadedCount: 0,
 			itemCount: 1,
 			mode: "strict",
 		});
@@ -214,7 +174,6 @@ describe("SectionRuntimeEngine facade — common-host smoke", () => {
 				allLoadingComplete: true,
 				runtimeError: false,
 			},
-			loadedCount: 1,
 			itemCount: 1,
 			mode: "strict",
 		});
@@ -243,7 +202,6 @@ describe("SectionRuntimeEngine facade — common-host smoke", () => {
 				allLoadingComplete: false,
 				runtimeError: false,
 			},
-			loadedCount: 0,
 			itemCount: 1,
 			mode: "progressive",
 		});
@@ -259,10 +217,16 @@ describe("SectionRuntimeEngine facade — common-host smoke", () => {
 		expect(captured.loadingComplete).toBe(0);
 	});
 
-	test("framework-error inputs fan out to the host bus, the DOM event, and subscribers", () => {
-		const busHits: string[] = [];
-		bus.subscribeFrameworkErrors((model) => {
-			busHits.push(model.message);
+	test("a runtime error before `interactive` fails the chain, and the events bubble", () => {
+		const parent = document.createElement("div");
+		parent.appendChild(host);
+		const bubbled: string[] = [];
+		parent.addEventListener("pie-stage-change", (event) => {
+			const { stage, status } = (event as CustomEvent).detail as {
+				stage: string;
+				status: string;
+			};
+			bubbled.push(`${stage}:${status}`);
 		});
 
 		engine.dispatchInput({
@@ -273,47 +237,28 @@ describe("SectionRuntimeEngine facade — common-host smoke", () => {
 			itemCount: 1,
 		});
 		engine.dispatchInput({
-			kind: "framework-error",
-			error: {
-				kind: "tool-config",
-				severity: "error",
-				source: "engine-smoke",
-				message: "boom",
-				details: [],
-				recoverable: false,
+			kind: "update-readiness-signals",
+			signals: {
+				sectionReady: false,
+				interactionReady: false,
+				allLoadingComplete: false,
+				runtimeError: true,
 			},
+			itemCount: 1,
+			mode: "strict",
 		});
+		engine.dispose();
 
-		expect(busHits).toEqual(["boom"]);
-		expect(captured.frameworkErrors).toBe(1);
-		const errorOutputs = outputs.filter((o) => o.kind === "framework-error");
-		expect(errorOutputs).toHaveLength(1);
+		expect(bubbled).toEqual([
+			"composed:entered",
+			"engine-ready:failed",
+			"interactive:skipped",
+			"disposed:entered",
+		]);
 	});
 });
 
-describe("SectionRuntimeEngine facade — getEffectiveRuntime parity", () => {
-	test("returns the same value as a direct resolveSectionEngineRuntimeState call", () => {
-		const engine = new SectionRuntimeEngine();
-		const inputs = makeRuntimeInputs({
-			env: { mode: "review" },
-			runtime: { onFrameworkError: () => {} },
-		});
-		const stub = (resolverArgs: {
-			effectiveRuntime: Record<string, unknown>;
-			playerType: string;
-			env: Record<string, unknown> | null;
-		}) => ({ tag: resolverArgs.playerType });
-
-		const fromFacade = engine.getEffectiveRuntime(inputs, {
-			resolvePlayerRuntime: stub,
-		});
-		const fromResolver = resolveSectionEngineRuntimeState(inputs, {
-			resolvePlayerRuntime: stub,
-		}).effectiveRuntime;
-
-		expect(fromFacade).toEqual(fromResolver);
-	});
-
+describe("SectionRuntimeEngine facade — pre-attach", () => {
 	test("pre-attach callers are safe no-ops", () => {
 		const engine = new SectionRuntimeEngine();
 		const subscribed: SectionEngineOutput[][] = [];
@@ -336,10 +281,5 @@ describe("SectionRuntimeEngine facade — getEffectiveRuntime parity", () => {
 
 		// And the FSM state is still the initial idle snapshot.
 		expect(engine.getState().phase).toBe("idle");
-
-		// An audio-handoff request with no controller to ask reports media audio
-		// silent, because there is none: read-aloud must not be held back waiting for
-		// a section that never had a media port.
-		expect(engine.requestMediaPauseForCompetingAudio()).toBe(true);
 	});
 });

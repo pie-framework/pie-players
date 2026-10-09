@@ -36,18 +36,18 @@ export interface AssessmentToolkitRuntimeContext {
 	/**
 	 * Opt-in flag: context consumers render the vendored `<nds-icon-button>`
 	 * only when this is `true`; otherwise (unset/`false`, the default) they
-	 * render plain `<button>` controls. Sourced from the host's
-	 * `runtime.ndsIcons` (or the `nds-icons` attribute on the toolkit).
+	 * render plain `<button>` controls. Sourced from the `nds-icons` attribute
+	 * on the toolkit or section player.
 	 */
 	ndsIcons?: boolean;
 	/**
 	 * Interface locale: the language this deployment renders its *own* UI in —
 	 * toolbar labels, tool panels, `aria-label`s. Not the language of the
-	 * authored content, which is a fact about the item and travels on `env`.
+	 * authored content, which {@link contentLanguage} carries.
 	 *
 	 * A composition context in the sense of `composition-context.md`: the
-	 * deployment knows it and no tool can. Sourced from the host's
-	 * `runtime.locale` (or the `locale` attribute on the toolkit), defaulting to
+	 * deployment knows it and no tool can. Sourced from the `locale` attribute
+	 * on the toolkit or section player, defaulting to
 	 * `en-US` with no host input — never `navigator.language`, because a
 	 * rendered-string change reaches a host's live delivery on their next install
 	 * with no build signal on their side.
@@ -67,7 +67,17 @@ export interface AssessmentToolkitRuntimeContext {
 	 * they saw.
 	 */
 	i18n?: I18nProvider;
-	reportSessionChanged?: (itemId: string, detail: unknown) => void;
+	/**
+	 * Content language: the language the authored content is written in, which
+	 * read-aloud speaks it in and catalog lookups select alternates by. Sourced
+	 * from the host's `content-language` attribute on the toolkit (or
+	 * `runtime.contentLanguage` on a section player), and unset when the host
+	 * names none. A `lang` in the content's markup wins over it; read-aloud
+	 * resolves both per read in `TTSService.speak`. Independent of
+	 * {@link locale}, since a learner can read content in one language through
+	 * an interface in another.
+	 */
+	contentLanguage?: string;
 	/**
 	 * Reports a failure that keeps the section's content from loading as the
 	 * section controller's `section-error`, with source `section-runtime`.
@@ -83,6 +93,17 @@ export const assessmentToolkitRuntimeContext =
 export interface AssessmentToolkitHostRuntimeContext {
 	runtimeId: string;
 	coordinator: ToolkitCoordinatorApi;
+	/**
+	 * The toolkit holds a section, so a shell under it is its content's channel
+	 * to the section. Without one the host owns its players and their events.
+	 */
+	sectionBound: boolean;
+	/**
+	 * The element the runtime hears its shells' events on. A shell whose host
+	 * has left the document, as on teardown, dispatches here: an event bubbling
+	 * from a detached host reaches nothing.
+	 */
+	eventTarget: EventTarget;
 }
 
 export const assessmentToolkitHostRuntimeContext =

@@ -1,4 +1,4 @@
-import { createSessionDemoSeedPayload } from "$lib/demo-runtime/session-demo-db-client";
+import { createSessionDemoSeedPayload } from "#lib/demo-runtime/session-demo-db-client.js";
 import { json } from "@sveltejs/kit";
 import {
 	clearAllSessionDemoData,

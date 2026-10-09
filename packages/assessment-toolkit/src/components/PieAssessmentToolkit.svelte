@@ -18,6 +18,9 @@
 			// attribute values as strings and a BCP-47 tag is one; POSIX
 			// (`nl_NL`) and bare (`nl`) forms both resolve.
 			locale: { attribute: "locale", type: "String" },
+			// Content language, published onto the runtime context for read-aloud
+			// and catalog lookups. Markup `lang` inside a shell wins over it.
+			contentLanguage: { attribute: "content-language", type: "String" },
 			lazyInit: { attribute: "lazy-init", type: "Boolean" },
 			toolConfigStrictness: { attribute: "tool-config-strictness", type: "String" },
 			tools: { attribute: "tools", type: "Object" },
@@ -31,33 +34,21 @@
 			createSectionController: { type: "Object", reflect: false },
 			onFrameworkError: { type: "Object", reflect: false },
 			errorRenderer: { type: "Object", reflect: false },
-			// M6 canonical stage-change callback. Invoked at the same
-			// emit point as `pie-stage-change` so the callback and DOM
-			// event stay in lockstep. Hosts using `<pie-section-player-*>`
-			// receive this through the base CE's runtime-tier resolver.
-			onStageChange: { type: "Object", reflect: false },
-			// M8 PR 2 — additive Tool Policy Engine inputs. The toolkit
-			// CE forwards these into the owned `ToolkitCoordinator` so
-			// the engine has the PNP/profile inputs needed for accessibility-
-			// aware policy decisions. PR 2 introduces them unused by
-			// internal toolbars; PR 3 switches the toolbars onto the
-			// engine and these props become the canonical input path.
+			// The assessment whose profile and settings tool policy reads,
+			// forwarded to the coordinator this toolkit owns. The enforcement
+			// override is `tools.pnpEnforcement`.
 			assessment: { type: "Object", reflect: false },
-			currentItemRef: { type: "Object", reflect: false },
-			pnpEnforcement: {
-				attribute: "pnp-enforcement",
-				type: "String",
-			},
-			// JS-only prop. Section-player layouts forward
-			// `runtime.isolation` through this property via
-			// `<pie-assessment-toolkit isolation={effectiveIsolation}>`
-			// in `PieSectionPlayerBaseElement.svelte`. Standalone
-			// hosts that want to override the toolkit's coordinator-
-			// inheritance behavior should pass an explicit
-			// `coordinator={...}` instead — the kebab-attribute
-			// surface (`<pie-assessment-toolkit isolation="force">`)
-			// is no longer observed.
-			isolation: { type: "Object", reflect: false },
+			// `"inherit"` (the default) or `"force"`, as an attribute or a property;
+			// section-player layouts set the property from `runtime.isolation`.
+			// `type: "String"` because an observed attribute of type `Object` is
+			// JSON-parsed, and `isolation="force"` would throw.
+			isolation: { attribute: "isolation", type: "String", reflect: false },
+			// JS-only prop. Section-player layouts forward their `session`
+			// through this property. The controller created for `section`
+			// applies it in place of hydrating from the persistence strategy;
+			// a later value is applied to the live controller unless it equals
+			// the current session.
+			session: { type: "Object", reflect: false },
 		},
 		extend: coerceBooleanAttributes,
 	}}
@@ -66,19 +57,18 @@
 <script lang="ts">
 	import { coerceBooleanAttributes } from "@pie-players/pie-players-shared/ui/attribute-coercion";
 	import { untrack } from "svelte";
-	import {
-		ContextProvider,
-		ContextRoot,
-		requestContext,
-	} from "@pie-players/pie-context";
+	import { ContextProvider, requestContext } from "@pie-players/pie-context";
 	import {
 		attachInstrumentationEventBridge,
-		createStageTracker,
 		resolveInstrumentationProvider,
 		TOOLKIT_INSTRUMENTATION_EVENT_MAP,
-		type StageChangeDetail,
 	} from "@pie-players/pie-players-shared/pie";
-	import { isInstrumentationProvider } from "@pie-players/pie-players-shared";
+	import {
+		commitPendingSessions,
+		createPieLogger,
+		isGlobalDebugEnabled,
+		isInstrumentationProvider,
+	} from "@pie-players/pie-players-shared";
 	import {
 		createPieI18n,
 		DEFAULT_LOCALE,
@@ -91,8 +81,8 @@
 		type ItemPlayerConfig,
 		type ItemPlayerType,
 	} from "../context/assessment-toolkit-context.js";
-	import { connectAssessmentToolkitHostRuntimeContext } from "../context/runtime-context-consumer.js";
 	import { ToolkitCoordinator } from "../services/ToolkitCoordinator.js";
+	import { resolveSectionSessionAssignment } from "../services/section-session-assignment.js";
 	import {
 		bindTtsAudioHandoff,
 		pauseTtsForMediaAudio,
@@ -100,7 +90,7 @@
 	import type { PnpEnforcementMode } from "../policy/engine.js";
 	import type {
 		AssessmentEntity,
-		AssessmentItemRef,
+		SectionControllerSessionState,
 	} from "@pie-players/pie-players-shared/types";
 	import {
 		timedMediaProjectionSignature,
@@ -134,14 +124,20 @@
 		type InternalMediaTimeSourceDetail,
 		type RuntimeRegistrationDetail,
 	} from "../runtime/registration-events.js";
-	import { dispatchCrossBoundaryEvent } from "../runtime/tool-host-contract.js";
-	import type { CatalogSourceEntity } from "../services/catalog-owner.js";
-	import { SectionRuntimeEngine } from "../runtime/SectionRuntimeEngine.js";
 	import {
-		connectSectionRuntimeEngineHostContext,
-		type SectionRuntimeLifecycleHandle,
-	} from "../runtime/section-runtime-engine-host-context.js";
-	import { runStageEmitWithSuppression } from "../runtime/stage-emit-gate.js";
+		connectHostRuntimeContext,
+		dispatchCrossBoundaryEvent,
+	} from "../runtime/tool-host-contract.js";
+	import { isRuntimeEventClaimed } from "../runtime/runtime-event-claim.js";
+	import { registerContentWithCoordinator } from "../runtime/content-registration.js";
+	import { observeMathControlNames } from "../services/tts/math-control-names.js";
+	import { SectionControllerBinding } from "../runtime/SectionControllerBinding.js";
+	import { resolveSectionId } from "../runtime/core/engine-resolver.js";
+	import {
+		type ForwardedPolicyInputs,
+		policyInputsToForward,
+	} from "../runtime/policy-input-forwarding.js";
+	import { watchForUnclaimedRegistrations } from "../runtime/unclaimed-registration-watch.js";
 	import { createCompositionEmitScheduler } from "../runtime/composition-emit-scheduler.js";
 	import {
 		createRuntimeId,
@@ -151,6 +147,10 @@
 		resetSessionEmitPolicyState,
 		shouldEmitCanonicalSessionEvent,
 	} from "../runtime/session-event-emitter-policy.js";
+
+	const logger = createPieLogger("pie-assessment-toolkit", () =>
+		isGlobalDebugEnabled(),
+	);
 
 	type SessionChangedLike = {
 		eventDetail?: unknown;
@@ -194,14 +194,10 @@
 	> | null;
 
 	const runtimeId = createRuntimeId("toolkit");
-	const sectionEngine = new SectionRuntimeEngine();
-	// When wrapped by a section-player layout, the kernel publishes a
-	// lifecycle engine handle via `sectionRuntimeEngineHostContext`. The
-	// toolkit uses that host lifecycle presence only to suppress duplicate
-	// external lifecycle emits on the toolkit CE. Controller registration,
-	// content loading, session propagation, and persistence still flow through
-	// the toolkit-local `sectionEngine` below.
-	let hostLifecycleEngine = $state<SectionRuntimeLifecycleHandle | null>(null);
+	// Resolves the section's controller and carries shell registration, content
+	// loading, sessions and host commands to it. The stage chain is not the
+	// toolkit's: a section player's layout kernel emits it.
+	const sectionBinding = new SectionControllerBinding();
 	// Per-CE-instance framework-error bus. Shared with the owned
 	// `ToolkitCoordinator` so coordinator-side failures (provider-init,
 	// tts-init, ...) flow through the same fan-out as CE-side failures
@@ -229,7 +225,8 @@ const DEFAULT_ENV = {
 		env = {},
 		ndsIcons = false,
 		locale = "",
-		lazyInit = true,
+		contentLanguage = "",
+		lazyInit = false,
 		toolConfigStrictness = "error" as ToolConfigStrictness,
 		tools = {},
 		toolContextResolvers = null as Record<string, unknown> | null,
@@ -247,19 +244,9 @@ const DEFAULT_ENV = {
 					title?: string;
 					details?: string[];
 			  }),
-		onStageChange = null as null | ((detail: StageChangeDetail) => void),
-		// M8 PR 2 — additive Tool Policy Engine inputs. See the
-		// `<svelte:options>` props block above for the rationale.
-		// `pnpEnforcement` accepts `"on"`, `"off"`, or `null` (auto —
-		// the coordinator infers the effective mode from PNP/profile material
-		// on the bound `assessment` / `currentItemRef`). Embedded
-		// under `<pie-section-player-*>` the same override flows via
-		// `runtime.tools.pnpEnforcement`; both entry points converge on
-		// the same coordinator call.
 		assessment = null as AssessmentEntity | null,
-		currentItemRef = null as AssessmentItemRef | null,
-		pnpEnforcement = null as PnpEnforcementMode | null,
 		isolation = "inherit",
+		session = null as SectionControllerSessionState | null,
 	} = $props();
 
 	let anchor = $state<HTMLDivElement | null>(null);
@@ -272,13 +259,19 @@ const DEFAULT_ENV = {
 	// consumer, so a plain `let` is safer and matches the canonical Svelte
 	// 5 latch pattern documented in `AGENTS.md`.
 	let lastOwnership: "owned" | "inherited" | null = null;
+	// The coordinator `runtime-ready` last announced. Plain `let` for the same
+	// reason as `lastOwnership`.
+	let announcedCoordinator: ToolkitCoordinator | null = null;
+	// Set when this toolkit builds its own coordinator after finding no outer
+	// runtime, which settles ownership: a runtime that connects above it later
+	// is not inherited. Cleared with the subscription to outer runtimes, when
+	// `host` or `isolation` changes. A latch like `lastOwnership`.
+	let ownsByDecision = false;
 	let lastAppliedToolContextResolvers: Record<string, unknown> | null = null;
 	let provider: ContextProvider<typeof assessmentToolkitRuntimeContext> | null = null;
-	let contextRoot: ContextRoot | null = null;
 	let hostRuntimeProvider: ContextProvider<
 		typeof assessmentToolkitHostRuntimeContext
 	> | null = null;
-	let hostRuntimeRoot: ContextRoot | null = null;
 	let compositionVersion = $state(0);
 	let compositionModel = $state<unknown>(null);
 	let frameworkErrorModel = $state<FrameworkErrorModel | null>(null);
@@ -293,95 +286,57 @@ const DEFAULT_ENV = {
 	// any subscriber.
 	let deliveredFrameworkErrorKey = "";
 	let lastOwnedBootstrapFailureKey = "";
-	// The inputs the owned coordinator was built from, and whether a section has
-	// initialized with it. Plain `let` for the same reason as the latches above.
+	// The inputs the owned coordinator was built from, and what bound it: the
+	// section that initialized with it, or the item that registered with it first.
+	// Plain `let` for the same reason as the latches above.
 	let ownedCoordinatorInputs: OwnedCoordinatorInputs | null = null;
-	let ownedCoordinatorBound = false;
+	let ownedCoordinatorBinding: "a section initialized" | "an item registered" | null =
+		null;
+	// A `session` value belongs to the section and attempt current when it was
+	// set. It waits in `sessionAssignment` until that section's controller takes
+	// it: at creation, or once resolved. A section change discards a value set
+	// for the outgoing section, so it never reaches another section's controller.
+	// `notedSession` is the last value seen, by identity, so a section change that
+	// comes without a new value hydrates as before. `resolvedCohort` is the
+	// section whose controller has resolved. Plain `let` for the same reason as
+	// the latches above.
+	type SessionCohort = { sectionId: string; attemptId: string | undefined };
+	let sessionAssignment: {
+		value: SectionControllerSessionState;
+		cohort: SessionCohort;
+	} | null = null;
+	let notedSession: SectionControllerSessionState | null = null;
+	let resolvedCohort: SessionCohort | null = null;
+	// The section and attempt the last initialize started, so a change of either
+	// commits the outgoing section first. Plain `let` for the same reason as the
+	// latches above.
+	let initializedCohort: { sectionId: string; attemptId: string | undefined } | null =
+		null;
+	// The key of the banner a section that failed to start raised, which the next
+	// section to start takes down. Plain `let` for the same reason as the latches
+	// above.
+	let sectionFailureBannerKey: string | null = null;
 	let reportedLateOwnedCoordinatorInputs = false;
+	// The coordinator the first-content effect started. Plain `let` for the same
+	// reason as the latches above.
+	let startedCoordinator: ToolkitCoordinator | null = null;
+	let reportedLateOuterRuntime = false;
 	let lastCompositionRevisionKey = $state("");
 	let pendingCompositionModel: unknown = null;
-	// PIE-885: the emit latch and its frame/deadline handles live in the
-	// scheduler, so a cancelled or superseded frame can never leave the latch
-	// set — which is what stranded `composition-changed` forever in a document
-	// that never paints. See `runtime/composition-emit-scheduler.ts`.
+	// The emit latch and its frame/deadline handles live in the scheduler, so a
+	// cancelled or superseded frame can never leave the latch set and strand
+	// `composition-changed`. See `runtime/composition-emit-scheduler.ts`.
 	const compositionEmitScheduler = createCompositionEmitScheduler();
 	let pendingCrossBoundaryEvents: Array<{ name: string; detail: unknown }> = [];
 	const runtimeRegistrationDetails = new Map<HTMLElement, RuntimeRegistrationDetail>();
 	const catalogRegistrationCleanups = new WeakMap<HTMLElement, Array<() => void>>();
+	const mathNameObservers = new Map<HTMLElement, () => void>();
 	const sessionEmitPolicyState = createSessionEmitPolicyState();
 
-	// M6 canonical stage tracker. Post-retro the toolkit applies the
-	// same four-stage canonical list (`composed`, `engine-ready`,
-	// `interactive`, `disposed`) as every layout CE; subscriber
-	// iteration order stays stable across `<pie-section-player-*>` and
-	// `<pie-assessment-toolkit>` CE shapes. Cohort changes
-	// (`(sectionId, attemptId)`) reset the tracker so the new cohort
-	// begins emitting from `composed`. Initial seed values are captured
-	// via `untrack` because the tracker explicitly absorbs subsequent
-	// cohort changes through `reset()`, not through prop reactivity at
-	// construction time.
-	const stageTracker = createStageTracker({
-		sourceCe: "pie-assessment-toolkit",
-		sourceCeShape: "toolkit",
-		runtimeId,
-		sectionId: untrack(() => sectionId || undefined),
-		attemptId: untrack(() => attemptId || undefined),
-		emit: (detail: StageChangeDetail) => {
-			// M7 PR 6: route the toolkit's stage-emit through the
-			// extracted `runStageEmitWithSuppression` helper so the
-			// wrapped/standalone gating logic is testable in isolation
-			// (see `tests/runtime/stage-emit-gate.test.ts`). The
-			// thunks below preserve pre-PR-6 semantics:
-			//
-			//   - `isSuppressed`: when wrapped by a section-player
-			//     layout the kernel's engine emits the canonical
-			//     `pie-stage-change` chain on the layout CE host and
-			//     invokes the runtime-tier `onStageChange` callback
-			//     itself. Suppressing here prevents the toolkit CE
-			//     from also emitting (which would bubble through
-			//     `composed: true` to the layout CE host and produce a
-			//     duplicate emission for outside listeners). The
-			//     internal stage-tracker latch state advances before
-			//     `opts.emit` runs, so suppression only short-circuits
-			//     externally-visible side effects — the toolkit's own
-			//     readiness path (`waitUntilReady` / `engine-ready` /
-			//     `interactive`) stays correct in standalone mode and
-			//     degenerates into a series of suppressed emits in
-			//     wrapped mode without losing any latch transitions.
-			//
-			//     The reactive `hostLifecycleEngine` is read inside the
-			//     thunk (i.e. at emit time, not at construction time)
-			//     and all callers of `stageTracker.enter(...)` are
-			//     themselves wrapped in `untrack(...)` (see effects
-			//     below), so the read does not feed back into any
-			//     tracked dependency graph.
-			//
-			//   - `getOnStageChange`: the prop is read on every emit
-			//     so reassignments (cohort change, host swap) always
-			//     reach the latest handler.
-			runStageEmitWithSuppression(
-				{
-					isSuppressed: () => hostLifecycleEngine !== null,
-					dispatchDomEvent: (d) => emit("pie-stage-change", d),
-					getOnStageChange: () => onStageChange,
-				},
-				detail,
-			);
-		},
-	});
-	let lastStageCohortKey = $state(
-		untrack(() => `${sectionId}|${attemptId}`),
-	);
-	let composedStageEntered = $state(false);
-	let engineReadyStageEntered = $state(false);
-	let interactiveStageEntered = $state(false);
-	// `sectionInitialized` is the second of two preconditions for the
-	// `interactive` stage emission. The toolkit's interactive entrance
-	// requires *both* `engine-ready` (coordinator bring-up settled) and
-	// `sectionInitialized` (section composition + controller hydrated)
-	// before it fires. A reactive effect below joins them so neither
-	// race ordering silently drops a stage.
-	let sectionInitialized = $state(false);
+	// Whether a shell has registered with this toolkit. A toolkit's first content
+	// is its section, or without one its first registered item: the coordinator
+	// starts from it, and the inputs it was built from are fixed by it.
+	let contentRegistered = $state(false);
 
 	function getHostElement(): HTMLElement | null {
 		if (!anchor) return null;
@@ -476,12 +431,14 @@ const DEFAULT_ENV = {
 		source: string;
 		error: unknown;
 		recoverable?: boolean;
+		scope?: FrameworkErrorModel["scope"];
 	}): FrameworkErrorModel {
 		const model = frameworkErrorFromUnknown({
 			kind: args.kind,
 			source: args.source,
 			error: args.error,
 			recoverable: args.recoverable,
+			scope: args.scope,
 		});
 		frameworkErrorBus.reportFrameworkError(model);
 		return model;
@@ -514,6 +471,7 @@ const DEFAULT_ENV = {
 						.map((entry) => entry?.message)
 						.filter((message): message is string => typeof message === "string"),
 					recoverable: true,
+					scope: "cohort",
 				}),
 			);
 			return;
@@ -531,6 +489,7 @@ const DEFAULT_ENV = {
 					.map((entry) => entry?.message)
 					.filter((message): message is string => typeof message === "string"),
 				recoverable: false,
+				scope: "cohort",
 			}),
 		);
 	}
@@ -553,7 +512,7 @@ const DEFAULT_ENV = {
 	function handleTimedMediaAudioStarted(event: { type?: string } | null): void {
 		if (event?.type !== "timed-media-audio-started") return;
 		if (!effectiveCoordinator) return;
-		pauseTtsForMediaAudio(effectiveCoordinator.getServiceBundle().ttsService);
+		pauseTtsForMediaAudio(effectiveCoordinator.ttsService);
 	}
 
 	/**
@@ -575,11 +534,15 @@ const DEFAULT_ENV = {
 		);
 	}
 
+	function frameworkErrorKey(model: FrameworkErrorModel): string {
+		return `${model.kind}|${model.source}|${model.message}`;
+	}
+
 	function deliverFrameworkErrorHook(model: FrameworkErrorModel): void {
 		if (!onFrameworkError) return;
 		try {
 			onFrameworkError(model);
-			deliveredFrameworkErrorKey = `${model.kind}|${model.source}|${model.message}`;
+			deliveredFrameworkErrorKey = frameworkErrorKey(model);
 		} catch (hookError) {
 			console.error(
 				`[pie-framework:${model.kind}:${model.source}] framework error hook failed`,
@@ -591,16 +554,38 @@ const DEFAULT_ENV = {
 	// Errors republished from a coordinator the host constructed. See the forward
 	// below.
 	const hostCoordinatorErrors = new WeakSet<FrameworkErrorModel>();
+	// The model each error object was published as, so a failure the coordinator
+	// reported is not reported a second time by the section initialization it
+	// failed.
+	const publishedFrameworkErrors = new WeakMap<object, FrameworkErrorModel>();
+
+	function reportedFrameworkErrorFor(error: unknown): FrameworkErrorModel | null {
+		if (typeof error !== "object" || error === null) return null;
+		return publishedFrameworkErrors.get(error) ?? null;
+	}
+
+	function showFrameworkErrorBanner(model: FrameworkErrorModel): void {
+		const rendered = applyErrorRenderer(model);
+		frameworkErrorModel = model;
+		frameworkErrorTitle = rendered.title;
+		frameworkErrorDetails = rendered.details;
+	}
+
+	function clearFrameworkErrorBanner(): void {
+		frameworkErrorModel = null;
+		frameworkErrorTitle = "Unable to initialize assessment toolkit.";
+		frameworkErrorDetails = [];
+	}
 
 	$effect(() => {
 		const detach = frameworkErrorBus.subscribeFrameworkErrors((model) => {
 			console.error(formatFrameworkErrorForConsole(model), model.cause);
+			if (typeof model.cause === "object" && model.cause !== null) {
+				publishedFrameworkErrors.set(model.cause, model);
+			}
 
 			if (isBootstrapKind(model.kind) && !hostCoordinatorErrors.has(model)) {
-				const rendered = applyErrorRenderer(model);
-				frameworkErrorModel = model;
-				frameworkErrorTitle = rendered.title;
-				frameworkErrorDetails = rendered.details;
+				showFrameworkErrorBanner(model);
 			}
 
 			emit("framework-error", model);
@@ -631,20 +616,27 @@ const DEFAULT_ENV = {
 		);
 	});
 
-	// A host coordinator constructed without a registry takes this toolkit's, so
-	// its providers are the ones behind the toolbar's buttons.
+	// A coordinator without a registry, whether the host constructed it or this
+	// toolkit built it, takes this toolkit's, so its providers are the ones behind
+	// the toolbar's buttons. A registry set after mount is adopted in place. A host
+	// coordinator also hears that there is none, which reports it missing.
 	$effect(() => {
-		const hostCoordinator = coordinator;
+		const coord = effectiveCoordinator;
 		const registry = toolRegistry;
-		if (!hostCoordinator || effectiveCoordinator !== hostCoordinator) return;
-		if (typeof hostCoordinator.adoptToolRegistry !== "function") return;
-		untrack(() => hostCoordinator.adoptToolRegistry(registry));
+		if (!coord || inheritsOuterRuntime) return;
+		if (typeof coord.adoptToolRegistry !== "function") return;
+		untrack(() => {
+			const owned = coord === ownedCoordinator;
+			if (owned && !registry) return;
+			if (coord.adoptToolRegistry(registry) && owned && ownedCoordinatorInputs) {
+				ownedCoordinatorInputs = { ...ownedCoordinatorInputs, toolRegistry: registry };
+			}
+		});
 	});
 
 	$effect(() => {
 		if (!frameworkErrorModel) return;
-		const frameworkErrorKey = `${frameworkErrorModel.kind}|${frameworkErrorModel.source}|${frameworkErrorModel.message}`;
-		if (deliveredFrameworkErrorKey === frameworkErrorKey) return;
+		if (deliveredFrameworkErrorKey === frameworkErrorKey(frameworkErrorModel)) return;
 		// Hook prop became available after the framework-error model was
 		// already produced (e.g. host wired it asynchronously). Re-deliver
 		// once for the current model so late-binding hosts see the error.
@@ -840,6 +832,71 @@ const DEFAULT_ENV = {
 		return "candidate";
 	}
 
+	function sameSessionCohort(a: SessionCohort, b: SessionCohort): boolean {
+		return a.sectionId === b.sectionId && a.attemptId === b.attemptId;
+	}
+
+	function noteSession(): void {
+		if (!session || session === notedSession) return;
+		notedSession = session;
+		sessionAssignment = {
+			value: session,
+			cohort: { sectionId: effectiveSectionId, attemptId: attemptId || undefined },
+		};
+	}
+
+	/**
+	 * The value set for `cohort`, once. Initializing a section discards a value
+	 * set for any other, which can only be an outgoing one; a resolved controller
+	 * leaves it, since it may be the next section's.
+	 */
+	function takeSessionFor(
+		cohort: SessionCohort,
+		initializing: boolean,
+	): SectionControllerSessionState | null {
+		noteSession();
+		const assignment = sessionAssignment;
+		if (!assignment) return null;
+		if (!sameSessionCohort(assignment.cohort, cohort)) {
+			if (initializing) sessionAssignment = null;
+			return null;
+		}
+		sessionAssignment = null;
+		return assignment.value;
+	}
+
+	function assignSessionToController(): void {
+		const cohort = resolvedCohort;
+		const coordinator = effectiveCoordinator;
+		if (!cohort || !coordinator) return;
+		const next = takeSessionFor(cohort, false);
+		if (!next) return;
+		const controller = coordinator.getSectionController(cohort);
+		if (!controller) return;
+		const resolved = resolveSectionSessionAssignment(
+			controller.getSession?.() ?? null,
+			next,
+		);
+		if (!resolved) return;
+		void Promise.resolve()
+			.then(() => {
+				if (!controller.applySession) {
+					throw new Error(
+						"Section controller cannot apply the assigned session: it has no applySession.",
+					);
+				}
+				return controller.applySession(resolved, { mode: "replace" });
+			})
+			.catch((error) => {
+				reportFrameworkError({
+					kind: "unknown",
+					source: "pie-assessment-toolkit",
+					error,
+					recoverable: true,
+				});
+			});
+	}
+
 	async function createDefaultSectionController() {
 		if (createSectionController) {
 			return createSectionController() as any;
@@ -917,40 +974,15 @@ const DEFAULT_ENV = {
 		].join("|");
 	}
 
-	// Coerce the public PNP enforcement CE attribute (string or null)
-	// into the engine's `PnpEnforcementMode | null` contract. Anything
-	// outside the canonical "on" / "off" set — typos like "ON",
-	// missing-attribute artifacts like "" or "null" strings — collapses
-	// to `null` (auto-mode) instead of silently degrading inside the
-	// engine. This is the single canonical entry point for the prop.
-	function coercePnpEnforcement(
-		value: PnpEnforcementMode | null | string | undefined,
-	): PnpEnforcementMode | null {
-		return value === "on" || value === "off" ? value : null;
-	}
-
-	// Resolve the effective override that flows into the coordinator.
-	// The explicit `pnp-enforcement` attribute (standalone path) wins
-	// over `tools.pnpEnforcement` (embedded path via
-	// runtime tools config); all fall back to `null` (auto-mode) so the coordinator's
-	// {@link resolveDefaultPnpEnforcement} helper runs on the bound
-	// assessment / item ref.
+	// `tools.pnpEnforcement` is `"on"`, `"off"`, or absent (auto: each decision
+	// enforces when the bound `assessment`, or the item it is scoped to, carries
+	// PNP/profile material). Anything else reads as auto.
 	function resolvePnpEnforcementInput(
-		explicitPnp: PnpEnforcementMode | null | string | undefined,
 		toolsConfig: unknown,
 	): PnpEnforcementMode | null {
-		const explicitMode = coercePnpEnforcement(explicitPnp);
-		if (explicitMode) return explicitMode;
-		if (toolsConfig && typeof toolsConfig === "object") {
-			const toolConfig = toolsConfig as {
-				pnpEnforcement?: unknown;
-			};
-			const candidate = toolConfig.pnpEnforcement;
-			return coercePnpEnforcement(
-				typeof candidate === "string" ? candidate : null,
-			);
-		}
-		return null;
+		const candidate = (toolsConfig as { pnpEnforcement?: unknown } | null)
+			?.pnpEnforcement;
+		return candidate === "on" || candidate === "off" ? candidate : null;
 	}
 
 	function buildOwnedCoordinator(validatedTools: unknown): ToolkitCoordinator {
@@ -961,6 +993,10 @@ const DEFAULT_ENV = {
 		return new ToolkitCoordinator({
 			assessmentId: fallbackAssessmentId,
 			lazyInit,
+			// Initialization starts at first content, once the section composes; a
+			// coordinator that started at construction would start text-to-speech,
+			// and report its failures, before there is a section.
+			eagerInit: false,
 			toolConfigStrictness,
 			deferToolConfigValidation: true,
 			// This toolkit binds only its `assessment` prop, which a section player
@@ -1013,15 +1049,29 @@ const DEFAULT_ENV = {
 		const changed = Object.keys(current.signatures).filter(
 			(name) => current.signatures[name] !== built.signatures[name],
 		);
-		if (current.toolRegistry !== built.toolRegistry) changed.push("toolRegistry");
+		// A coordinator built without a registry adopts the first one in place.
+		if (built.toolRegistry && current.toolRegistry !== built.toolRegistry) {
+			changed.push("toolRegistry");
+		}
 		return changed;
 	}
 
-	function reportLateOwnedCoordinatorInputs(changed: string[]): void {
+	function reportLateOwnedCoordinatorInputs(
+		changed: string[],
+		binding: NonNullable<typeof ownedCoordinatorBinding>,
+	): void {
 		if (reportedLateOwnedCoordinatorInputs) return;
 		reportedLateOwnedCoordinatorInputs = true;
 		console.warn(
-			`[pie-assessment-toolkit] ${changed.join(", ")} changed after a section initialized with the coordinator this toolkit built, and that coordinator keeps the values it was built with. Set these inputs no later than the section, pass a coordinator of your own, or update this one from toolkit-ready with updateToolConfig(...) or updateToolsPlacement(...). Reported once per toolkit.`,
+			`[pie-assessment-toolkit] ${changed.join(", ")} changed after ${binding} with the coordinator this toolkit built, and that coordinator keeps the values it was built with. Set these inputs no later than the section or the first item scope, pass a coordinator of your own, or update this one from runtime-ready with updateToolConfig(...) or updateToolsPlacement(...). Reported once per toolkit.`,
+		);
+	}
+
+	function reportLateOuterRuntime(outerRuntimeId: string): void {
+		if (reportedLateOuterRuntime) return;
+		reportedLateOuterRuntime = true;
+		console.warn(
+			`[pie-assessment-toolkit] The toolkit above this one (runtime "${outerRuntimeId}") had no coordinator when this one connected, so this one built its own and keeps it: the two share no tool state, policy or read-aloud. Give the outer toolkit its coordinator before the inner one connects, or set isolation="force" on the inner one to keep them apart on purpose. Reported once per toolkit.`,
 		);
 	}
 
@@ -1041,9 +1091,14 @@ const DEFAULT_ENV = {
 		});
 	}
 
+	// A coordinator the host passes wins over an outer runtime, which is followed
+	// meanwhile so that removing the prop inherits at once.
+	const inheritsOuterRuntime = $derived(
+		!coordinator && isolation !== "force" && inheritedRuntime?.coordinator != null,
+	);
 	const effectiveCoordinator = $derived.by(() => {
-		if (isolation !== "force" && inheritedRuntime?.coordinator) {
-			return inheritedRuntime.coordinator as ToolkitCoordinator;
+		if (inheritsOuterRuntime) {
+			return inheritedRuntime?.coordinator as ToolkitCoordinator;
 		}
 		return coordinator || ownedCoordinator;
 	});
@@ -1060,12 +1115,13 @@ const DEFAULT_ENV = {
 	// only the ownership inputs and run the bootstrap body inside
 	// `untrack`, matching the Svelte subscription guidance in `AGENTS.md`.
 	//
-	// It also tracks what the owned coordinator is built from, and whether a
-	// section is present. A section that arrives after one of those inputs
-	// changed initializes with a coordinator rebuilt from the current values,
-	// so a host that sets `runtime` and `section` a tick after mount gets the
-	// coordinator it would have had setting them first. Once a section has
-	// initialized with the coordinator, a change is reported instead.
+	// It also tracks what the owned coordinator is built from, and the toolkit's
+	// first content. Content that arrives after one of those inputs changed binds
+	// a coordinator rebuilt from the current values, so a host that sets `runtime`
+	// and `section` a tick after mount gets the coordinator it would have had
+	// setting them first. Once content has bound the coordinator, which has then
+	// started, a change is reported instead. A registry is the exception: the
+	// registry effect above hands it to a coordinator built without one.
 	$effect(() => {
 		void host;
 		void coordinator;
@@ -1073,6 +1129,7 @@ const DEFAULT_ENV = {
 		void inheritedRuntime;
 		void toolContextResolvers;
 		void hasSection;
+		void contentRegistered;
 		void tools;
 		void enabledTools;
 		void assessmentId;
@@ -1102,9 +1159,9 @@ const DEFAULT_ENV = {
 			}
 			if (ownedCoordinator) {
 				const changed = changedOwnedCoordinatorInputs();
-				if (changed.length > 0 && ownedCoordinatorBound) {
-					reportLateOwnedCoordinatorInputs(changed);
-				} else if (changed.length > 0 && section) {
+				if (changed.length > 0 && ownedCoordinatorBinding) {
+					reportLateOwnedCoordinatorInputs(changed, ownedCoordinatorBinding);
+				} else if (changed.length > 0 && (section || contentRegistered)) {
 					void releaseOwnedCoordinator().catch(
 						reportOwnedCoordinatorDisposeError,
 					);
@@ -1127,6 +1184,18 @@ const DEFAULT_ENV = {
 				return;
 			}
 			if (!ownedCoordinator) {
+				// Ownership is decided before anything is built. An outer runtime
+				// already providing its context is inherited; the subscription
+				// below would find it a moment later, after an owned coordinator
+				// had been built only to be released.
+				if (isolation !== "force" && !ownsByDecision) {
+					const outer = requestContext(host, assessmentToolkitHostRuntimeContext);
+					if (outer?.coordinator && outer.runtimeId !== runtimeId) {
+						inheritedRuntime = outer;
+						lastAppliedToolContextResolvers = null;
+						return;
+					}
+				}
 				const failureKey = getOwnedBootstrapFailureKey();
 				if (lastOwnedBootstrapFailureKey === failureKey) {
 					return;
@@ -1134,13 +1203,12 @@ const DEFAULT_ENV = {
 				try {
 					const validatedTools = validateToolsConfigForBootstrap();
 					ownedCoordinator = buildOwnedCoordinator(validatedTools);
+					ownsByDecision = isolation !== "force";
 					ownedCoordinatorInputs = readOwnedCoordinatorInputs();
-					ownedCoordinatorBound = false;
+					ownedCoordinatorBinding = null;
 					lastAppliedToolContextResolvers = toolContextResolvers;
 					lastOwnedBootstrapFailureKey = "";
-					frameworkErrorModel = null;
-					frameworkErrorTitle = "Unable to initialize assessment toolkit.";
-					frameworkErrorDetails = [];
+					clearFrameworkErrorBanner();
 				} catch (error) {
 					ownedCoordinator = null;
 					lastOwnedBootstrapFailureKey = failureKey;
@@ -1151,6 +1219,16 @@ const DEFAULT_ENV = {
 					});
 				}
 			}
+		});
+	});
+
+	// An item registering binds a coordinator no section has bound. After the
+	// bootstrap effect above, which rebuilds it first from inputs that changed.
+	$effect(() => {
+		if (!contentRegistered || !effectiveCoordinator) return;
+		const coord = effectiveCoordinator;
+		untrack(() => {
+			if (coord === ownedCoordinator) ownedCoordinatorBinding ??= "an item registered";
 		});
 	});
 
@@ -1182,6 +1260,7 @@ const DEFAULT_ENV = {
 					kind: "i18n-locale-load",
 					source: "pie-assessment-toolkit",
 					error: error instanceof Error ? error : new Error(String(error)),
+					recoverable: true,
 				});
 			});
 		});
@@ -1191,7 +1270,7 @@ const DEFAULT_ENV = {
 		assessmentId || effectiveCoordinator?.assessmentId || "",
 	);
 	const effectiveSectionId = $derived(
-		sectionId || (section as any)?.identifier || `section-${effectiveAssessmentId || "default"}`,
+		resolveSectionId({ sectionId, section, assessmentId: effectiveAssessmentId }),
 	);
 	const effectiveEnv = $derived.by(() => normalizeEnv(env));
 	const effectiveSectionView = $derived.by(() => resolveSectionViewFromEnv(effectiveEnv));
@@ -1207,14 +1286,13 @@ const DEFAULT_ENV = {
 	);
 	const runtimeContextValue = $derived.by((): AssessmentToolkitRuntimeContext | null => {
 		if (!effectiveCoordinator) return null;
-		const services = effectiveCoordinator.getServiceBundle();
 		return {
 			toolkitCoordinator: effectiveCoordinator,
 			toolCoordinator: effectiveCoordinator.toolCoordinator,
-			ttsService: services.ttsService,
-			highlightCoordinator: services.highlightCoordinator,
-			catalogResolver: services.catalogResolver,
-			elementToolStateStore: services.elementToolStateStore,
+			ttsService: effectiveCoordinator.ttsService,
+			highlightCoordinator: effectiveCoordinator.highlightCoordinator,
+			catalogResolver: effectiveCoordinator.catalogResolver,
+			elementToolStateStore: effectiveCoordinator.elementToolStateStore,
 			assessmentId: effectiveAssessmentId,
 			sectionId: effectiveSectionId,
 			itemPlayer: effectiveItemPlayer,
@@ -1227,16 +1305,9 @@ const DEFAULT_ENV = {
 			// load re-publish this object; see `interfaceI18nVersion`.
 			locale: (void interfaceI18nVersion, interfaceI18n.getLocale()),
 			i18n: interfaceI18n,
-			reportSessionChanged: (itemId: string, detail: unknown) => {
-				const result = sectionEngine.updateItemSession(itemId, detail);
-				emitNormalizedSessionChanged({
-					itemId,
-					result,
-					fallbackSession: detail,
-				});
-			},
+			contentLanguage: contentLanguage?.trim() || undefined,
 			reportSectionError: (error: unknown) => {
-				sectionEngine.reportSectionError({
+				sectionBinding.reportSectionError({
 					source: "section-runtime",
 					error,
 					timestamp: Date.now(),
@@ -1246,15 +1317,19 @@ const DEFAULT_ENV = {
 	});
 	const hostRuntimeContextValue = $derived.by(
 		(): AssessmentToolkitHostRuntimeContext | null => {
-			if (!effectiveCoordinator) return null;
+			if (!effectiveCoordinator || !host) return null;
 			return {
 				runtimeId,
 				coordinator: effectiveCoordinator,
+				sectionBound: hasSection,
+				eventTarget: host,
 			};
 		},
 	);
 
 	function flushCompositionChanged(nextModel: unknown) {
+		// A registration before any controller resolves has no composition to report.
+		if (nextModel == null) return;
 		const nextRevisionKey = getCompositionRevisionKey(nextModel);
 		if (nextRevisionKey === lastCompositionRevisionKey) {
 			return;
@@ -1269,12 +1344,19 @@ const DEFAULT_ENV = {
 	}
 
 	function emitCompositionChanged(nextModel?: unknown) {
-		pendingCompositionModel = nextModel ?? sectionEngine.getCompositionModel();
+		pendingCompositionModel = nextModel ?? sectionBinding.getCompositionModel();
 		// Coalescing lives in the scheduler: repeated calls before the cycle
 		// resolves only replace the model, and the flush reads the latest one.
 		compositionEmitScheduler.schedule(() => {
 			flushCompositionChanged(pendingCompositionModel);
 		});
+	}
+
+	/** Publish a scheduled composition now rather than on the next frame. */
+	function flushPendingComposition() {
+		if (!compositionEmitScheduler.isPending()) return;
+		compositionEmitScheduler.cancel();
+		flushCompositionChanged(pendingCompositionModel);
 	}
 
 	function unregisterCatalogsForElement(element?: HTMLElement | null): void {
@@ -1296,21 +1378,12 @@ const DEFAULT_ENV = {
 	function registerCatalogsForDetail(detail: RuntimeRegistrationDetail): void {
 		unregisterCatalogsForElement(detail.element);
 		if (!effectiveCoordinator) return;
-		const resolver = effectiveCoordinator.getServiceBundle().catalogResolver;
 		catalogRegistrationCleanups.set(
 			detail.element,
-			[
-				resolver.registerOwner({
-					owner: {
-						kind: detail.kind,
-						itemId: detail.itemId,
-						canonicalItemId: detail.canonicalItemId,
-						assessmentId: effectiveAssessmentId,
-						sectionId: effectiveSectionId,
-					},
-					entity: detail.item as CatalogSourceEntity | null | undefined,
-				}),
-			],
+			registerContentWithCoordinator(effectiveCoordinator, detail, {
+				assessmentId: effectiveAssessmentId,
+				sectionId: effectiveSectionId,
+			}),
 		);
 	}
 
@@ -1319,6 +1392,24 @@ const DEFAULT_ENV = {
 		for (const detail of runtimeRegistrationDetails.values()) {
 			registerCatalogsForDetail(detail);
 		}
+	}
+
+	function stopNamingMath(element?: HTMLElement | null): void {
+		if (!element) return;
+		mathNameObservers.get(element)?.();
+		mathNameObservers.delete(element);
+	}
+
+	function nameMathInControls(element: HTMLElement): void {
+		stopNamingMath(element);
+		mathNameObservers.set(
+			element,
+			observeMathControlNames(element, {
+				getMathSpeech: () =>
+					effectiveCoordinator?.ttsService.getMathSpeechOptions(),
+				getContentLanguage: () => contentLanguage,
+			}),
+		);
 	}
 
 	function emitNormalizedSessionChanged(args: {
@@ -1378,65 +1469,55 @@ const DEFAULT_ENV = {
 		};
 	}
 
-	$effect(() => {
-		if (!host) return;
-		if (isolation === "force") {
-			inheritedRuntime = null;
-			return;
-		}
-		return connectAssessmentToolkitHostRuntimeContext(host, (value) => {
-			if (value.runtimeId === runtimeId) {
-				return;
-			}
-			inheritedRuntime = value;
-		});
-	});
-
-	// Cross-CE lifecycle bridge consumer. When the toolkit CE renders inside a
-	// section-player layout, the kernel publishes a lifecycle handle via
-	// `sectionRuntimeEngineHostContext` on the layout CE host. The consumer's
-	// `context-request` bubbles across the toolkit's shadow boundary, the
-	// kernel's provider answers, and we record that host lifecycle ownership is
-	// present. When standalone, no provider responds within the consumer's
-	// retry window and `hostLifecycleEngine` stays `null` — that is the
-	// standalone path's contract. `isolation === "force"` does not opt out of
-	// this bridge: it is a lifecycle-emission seam, not a coordinator-isolation
-	// seam.
+	// Follows the outer runtime this toolkit inherits. The owned-coordinator
+	// bootstrap decides ownership first; once it has built an owned coordinator,
+	// an outer runtime answering later is reported and ignored, so the
+	// coordinator is never swapped under a running section. An inherited runtime
+	// republishing its context is followed.
 	$effect(() => {
 		const currentHost = host;
+		const currentIsolation = isolation;
 		return untrack(() => {
-			if (!currentHost) {
-				hostLifecycleEngine = null;
-				return;
+			if (!currentHost) return;
+			if (currentIsolation === "force") {
+				inheritedRuntime = null;
+				return () => {
+					ownsByDecision = false;
+				};
 			}
-			const detach = connectSectionRuntimeEngineHostContext(currentHost, (value) => {
-				if (value.engine === hostLifecycleEngine) return;
-				hostLifecycleEngine = value.engine;
+			const stop = connectHostRuntimeContext(currentHost, (value) => {
+				if (value.runtimeId === runtimeId) return;
+				if (ownsByDecision) {
+					reportLateOuterRuntime(value.runtimeId);
+					return;
+				}
+				inheritedRuntime = value;
 			});
 			return () => {
-				detach();
-				hostLifecycleEngine = null;
+				stop();
+				inheritedRuntime = null;
+				ownsByDecision = false;
 			};
 		});
 	});
 
 	// Wiring only: the coordinator is the dependency, and the subscription's callback
-	// writes no reactive state — it asks the engine to pause a media port.
+	// writes no reactive state — it asks the section binding to pause a media port.
 	$effect(() => {
 		const coordinator = effectiveCoordinator;
 		if (!coordinator) return;
 		return untrack(() =>
 			bindTtsAudioHandoff({
-				ttsService: coordinator.getServiceBundle().ttsService,
-				listenerId: `timed-media-audio-handoff:${runtimeId}`,
-				silence: () => sectionEngine.requestMediaPauseForCompetingAudio(),
+				ttsService: coordinator.ttsService,
+				silence: () => sectionBinding.requestMediaPauseForCompetingAudio(),
 			}),
 		);
 	});
 
 	$effect(() => {
-		const parentRuntimeId =
-			isolation !== "force" && inheritedRuntime ? inheritedRuntime.runtimeId : null;
+		const parentRuntimeId = inheritsOuterRuntime
+			? (inheritedRuntime?.runtimeId ?? null)
+			: null;
 		const ownership: "owned" | "inherited" = parentRuntimeId ? "inherited" : "owned";
 		if (ownership !== lastOwnership) {
 			lastOwnership = ownership;
@@ -1448,43 +1529,33 @@ const DEFAULT_ENV = {
 	});
 
 	$effect(() => {
+		const currentHost = host;
+		if (!currentHost) return;
+		untrack(() => watchForUnclaimedRegistrations(currentHost.ownerDocument));
+	});
+
+	// Once per coordinator, owned, passed or inherited, with or without a section:
+	// the point from which a host can drive the coordinator. `toolkit-ready` stays
+	// the section's.
+	$effect(() => {
+		const coord = effectiveCoordinator;
+		if (!coord) return;
+		const ownership: "owned" | "inherited" = inheritsOuterRuntime
+			? "inherited"
+			: "owned";
+		untrack(() => {
+			if (coord === announcedCoordinator) return;
+			announcedCoordinator = coord;
+			emit("runtime-ready", { runtimeId, coordinator: coord, ownership });
+		});
+	});
+
+	$effect(() => {
 		const currentSectionId = effectiveSectionId;
 		const currentAttemptId = attemptId || "";
 		void currentSectionId;
 		void currentAttemptId;
 		resetSessionEmitPolicyState(sessionEmitPolicyState);
-	});
-
-	// Each context has one provider per host, and `setValue` republishes a
-	// changed value to its subscribers. A provider replaced on every change
-	// drops them: when the coordinator changes, both providers and both roots
-	// are replaced in one flush and no root is left to replay the requests.
-	const hasHostRuntimeContext = $derived(hostRuntimeContextValue !== null);
-	const hasRuntimeContext = $derived(runtimeContextValue !== null);
-
-	$effect(() => {
-		if (!host || !hasHostRuntimeContext) return;
-		const initialValue = untrack(() => hostRuntimeContextValue);
-		if (!initialValue) return;
-		hostRuntimeProvider = new ContextProvider(host, {
-			context: assessmentToolkitHostRuntimeContext,
-			initialValue,
-		});
-		hostRuntimeProvider.connect();
-		hostRuntimeRoot = new ContextRoot(host);
-		hostRuntimeRoot.attach();
-
-		return () => {
-			hostRuntimeRoot?.detach();
-			hostRuntimeRoot = null;
-			hostRuntimeProvider?.disconnect();
-			hostRuntimeProvider = null;
-		};
-	});
-
-	$effect(() => {
-		if (!hostRuntimeContextValue) return;
-		hostRuntimeProvider?.setValue(hostRuntimeContextValue);
 	});
 
 	$effect(() => {
@@ -1493,32 +1564,6 @@ const DEFAULT_ENV = {
 		host.setAttribute("data-item-player-tag", effectiveItemPlayer.tagName);
 		host.setAttribute("data-env-mode", String((effectiveEnv as any)?.mode || ""));
 		host.setAttribute("data-env-role", String((effectiveEnv as any)?.role || ""));
-	});
-
-	$effect(() => {
-		if (!host || !hasRuntimeContext) return;
-		const initialValue = untrack(() => runtimeContextValue);
-		if (!initialValue) return;
-		provider = new ContextProvider(host, {
-			context: assessmentToolkitRuntimeContext,
-			initialValue,
-		});
-		provider.connect();
-		contextRoot = new ContextRoot(host);
-		contextRoot.attach();
-
-		return () => {
-			contextRoot?.detach();
-			contextRoot = null;
-			provider?.disconnect();
-			provider = null;
-		};
-	});
-
-	$effect(() => {
-		if (runtimeContextValue) {
-			provider?.setValue(runtimeContextValue);
-		}
 	});
 
 	$effect(() => {
@@ -1547,54 +1592,37 @@ const DEFAULT_ENV = {
 		});
 	});
 
-	// M8 — push Tool Policy Engine inputs (`assessment`,
-	// `currentItemRef`, `pnpEnforcement`) into the toolkit-owned
-	// coordinator whenever they change. The coordinator's
-	// `updateAssessment` / `updateCurrentItemRef` / `setPnpEnforcement`
-	// forwards land on `ToolPolicyEngine.updateInputs`, which value-
-	// diffs each key with `Object.is` and only emits an `inputs` event
-	// on real changes — so re-running this effect on coordinator swap
-	// is safe and self-idempotent. We touch the reactive props
-	// explicitly and then run the side effect inside `untrack(...)`
-	// per the Svelte subscription guidance in `AGENTS.md`.
+	// Forward the policy inputs (`assessment`, `tools.pnpEnforcement`) to the
+	// coordinator this toolkit owns, each only when its own value changes:
+	// `policyInputsToForward` keeps a re-run of this effect from resetting a
+	// binding the host made on the coordinator.
 	//
-	// `pnpEnforcement` resolves through {@link resolvePnpEnforcementInput}
-	// so the embedded path (`<pie-section-player-*>` setting
-	// `runtime.tools.pnpEnforcement`) and the standalone path (the
-	// explicit `pnp-enforcement` attribute on `<pie-assessment-toolkit>`)
-	// converge on a single coordinator call.
-	//
-	// CRITICAL: only push when the toolkit *owns* the coordinator
-	// (i.e. `effectiveCoordinator === ownedCoordinator`). When the
-	// host passes a coordinator via the `coordinator` prop or shares
-	// one through `assessmentToolkitHostRuntimeContext`, that
-	// coordinator's policy inputs are the host's contract — overwriting
-	// them with our prop defaults would silently null out a host's
-	// pre-bound `AssessmentEntity`, etc. Hosts that share a coordinator
-	// drive policy inputs directly via `coord.updateAssessment(...)`.
+	// A coordinator the host passes or shares is never written: its policy
+	// inputs are the host's to bind through `coord.updateAssessment(...)`.
+	let forwardedPolicyInputs: {
+		coordinator: ToolkitCoordinator;
+		inputs: ForwardedPolicyInputs;
+	} | null = null;
 	$effect(() => {
 		void assessment;
-		void currentItemRef;
-		void pnpEnforcement;
 		void tools;
 		const coord = effectiveCoordinator;
 		if (!coord) return;
-		// Host-owned coordinators are off-limits for this effect.
 		if (coord !== ownedCoordinator) return;
 		untrack(() => {
-			// Apply order matters: `setPnpEnforcement` lands the override
-			// (or clears it) FIRST so `updateAssessment(...)`'s
-			// auto-promote path sees the final override and doesn't
-			// briefly resolve to "on" (when binding an assessment with
-			// `pnpEnforcement="off"`) or "off" (when clearing an
-			// assessment with `pnpEnforcement="on"`). Without this
-			// ordering we would emit a transient wrong-state policy
-			// event between the calls.
-			coord.setPnpEnforcement(
-				resolvePnpEnforcementInput(pnpEnforcement, tools),
-			);
-			coord.updateAssessment(assessment);
-			coord.updateCurrentItemRef(currentItemRef);
+			const next: ForwardedPolicyInputs = {
+				pnpEnforcement: resolvePnpEnforcementInput(tools),
+				assessment: assessment ?? null,
+			};
+			const previous =
+				forwardedPolicyInputs?.coordinator === coord
+					? forwardedPolicyInputs.inputs
+					: null;
+			forwardedPolicyInputs = { coordinator: coord, inputs: next };
+			for (const key of policyInputsToForward(previous, next)) {
+				if (key === "pnpEnforcement") coord.setPnpEnforcement(next.pnpEnforcement);
+				else coord.updateAssessment(next.assessment);
+			}
 		});
 	});
 
@@ -1642,10 +1670,27 @@ const DEFAULT_ENV = {
 		// The section's controller now lives on the coordinator, and the host
 		// receives it from `toolkit-ready`, so an owned one is no longer rebuilt.
 		if (effectiveCoordinator === untrack(() => ownedCoordinator)) {
-			ownedCoordinatorBound = true;
+			ownedCoordinatorBinding ??= "a section initialized";
 		}
 
-		void sectionEngine
+		// Leaving a section commits its pending responses while its elements are
+		// mounted and its controller still holds the host's subscriptions: the
+		// coordinator detaches those as soon as it starts on the next section.
+		const cohort = { sectionId: effectiveSectionId, attemptId: attemptId || undefined };
+		const previousCohort = initializedCohort;
+		initializedCohort = cohort;
+		if (
+			previousCohort &&
+			(previousCohort.sectionId !== cohort.sectionId ||
+				previousCohort.attemptId !== cohort.attemptId)
+		) {
+			untrack(() => commitPendingSessions(host, { reason: "teardown", logger }));
+		}
+
+		resolvedCohort = null;
+		const initialSession = untrack(() => takeSessionFor(cohort, true));
+
+		void sectionBinding
 			.initialize({
 				coordinator: effectiveCoordinator,
 				section,
@@ -1653,6 +1698,7 @@ const DEFAULT_ENV = {
 				assessmentId: effectiveAssessmentId,
 				attemptId: attemptId || undefined,
 				view: effectiveSectionView,
+				initialSession,
 				createDefaultController: createDefaultSectionController,
 				onCompositionChanged: (nextComposition) => {
 					if (cancelled) return;
@@ -1666,61 +1712,73 @@ const DEFAULT_ENV = {
 			})
 			.then(() => {
 				if (cancelled) return;
-				emit("toolkit-ready", {
-					runtimeId,
-					assessmentId: effectiveAssessmentId,
-					sectionId: effectiveSectionId,
-					itemPlayer: effectiveItemPlayer,
-					coordinator: effectiveCoordinator,
-				});
-				emit("section-ready", {
-					sectionId: effectiveSectionId,
-				});
-				// Mark section initialization complete. The reactive
-				// effect below joins this with `engineReadyStageEntered`
-				// so `interactive` only fires once the canonical
-				// predecessor is in. Direct emit here would race with
-				// `waitUntilReady()` and silently auto-skip
-				// `engine-ready` on fast hydration paths.
-				untrack(() => {
-					sectionInitialized = true;
+				resolvedCohort = cohort;
+				const banner = untrack(() => frameworkErrorModel);
+				if (banner && frameworkErrorKey(banner) === sectionFailureBannerKey) {
+					clearFrameworkErrorBanner();
+				}
+				sectionFailureBannerKey = null;
+				// A value assigned while the controller was being created.
+				untrack(() => assignSessionToController());
+				// The section's composition goes out ahead of `section-ready`. A layout
+				// that counts readiness from `section-ready` then holds this section's
+				// composition, never the previous section's, which it would otherwise
+				// hold until the next frame.
+				untrack(() => flushPendingComposition());
+				// A microtask later, so the layout commits the composition before the
+				// ready handlers write: in the same task their writes joined its
+				// update, and a host-built layout's items pane never mounted its cards.
+				queueMicrotask(() => {
+					if (cancelled) return;
+					emit("toolkit-ready", {
+						runtimeId,
+						assessmentId: effectiveAssessmentId,
+						sectionId: effectiveSectionId,
+						itemPlayer: effectiveItemPlayer,
+						coordinator: effectiveCoordinator,
+					});
+					emit("section-ready", {
+						sectionId: cohort.sectionId,
+						attemptId: cohort.attemptId,
+						controller: effectiveCoordinator.getSectionController(cohort) ?? null,
+					});
 				});
 			})
 			.catch((error) => {
 				// A rerun or unmount retires the previous controller acquisition.
 				// Its rejection is cancellation of obsolete work, not a runtime failure.
 				if (cancelled) return;
-				untrack(() => {
-					// If `engine-ready` has not latched yet, mark it
-					// explicitly skipped so subscribers see a monotonic
-					// chain (`composed → engine-ready:skipped →
-					// interactive:failed`) instead of `engine-ready`
-					// silently disappearing from the canonical stream.
-					// `waitUntilReady()` is still in flight at this
-					// point; `engineReadyStageEntered` guards its
-					// resolver so a late success cannot regress past
-					// the recorded skip.
-					if (!engineReadyStageEntered) {
-						engineReadyStageEntered = true;
-						stageTracker.enter("engine-ready", "skipped");
-					}
-					stageTracker.enter("interactive", "failed");
-				});
-				sectionEngine.reportSectionError({
-					source: "section-runtime",
-					error,
-					timestamp: Date.now(),
-				});
-				reportFrameworkError({
-					kind: "runtime-init",
-					source: "pie-assessment-toolkit",
-					error,
-				});
+				// The coordinator has already delivered the failure to the host's
+				// section subscriptions, and reported a controller it could not
+				// create through this toolkit's bus. The failure is reported once,
+				// and the section it took down shows the banner either way.
+				const reported = untrack(() => reportedFrameworkErrorFor(error));
+				if (reported) {
+					untrack(() => showFrameworkErrorBanner(reported));
+					sectionFailureBannerKey = frameworkErrorKey(reported);
+				} else {
+					sectionFailureBannerKey = frameworkErrorKey(
+						reportFrameworkError({
+							kind: "runtime-init",
+							source: "pie-assessment-toolkit",
+							error,
+							scope: "cohort",
+						}),
+					);
+				}
 			});
 
 		return () => {
 			cancelled = true;
 		};
+	});
+
+	$effect(() => {
+		void session;
+		untrack(() => {
+			noteSession();
+			assignSessionToController();
+		});
 	});
 
 	$effect(() => {
@@ -1730,9 +1788,12 @@ const DEFAULT_ENV = {
 		// further: nothing above the runtime that handles it has a use for it,
 		// and hosts would otherwise receive every registration and raw session
 		// change on `document`. An event from another runtime's shell keeps
-		// bubbling toward the toolkit that owns it.
+		// bubbling toward the toolkit that owns it, by the id it is addressed to
+		// or else by its target.
 		const claimLocalEvent = (event: Event): boolean => {
-			if (!isLocalToCurrentRuntime(event.target)) return false;
+			if (!isRuntimeEventClaimed(event, runtimeId, isLocalToCurrentRuntime)) {
+				return false;
+			}
 			event.stopPropagation();
 			return true;
 		};
@@ -1746,10 +1807,12 @@ const DEFAULT_ENV = {
 					if (!claimLocalEvent(event)) return;
 					const detail = getEventDetail<RuntimeRegistrationDetail>(event);
 					if (!detail?.element || !detail?.itemId) return;
-					const changed = sectionEngine.register(detail);
+					const changed = sectionBinding.register(detail);
 					runtimeRegistrationDetails.set(detail.element, detail);
+					contentRegistered = true;
 					registerCatalogsForDetail(detail);
-					sectionEngine.handleContentRegistered(detail);
+					nameMathInControls(detail.element);
+					sectionBinding.handleContentRegistered(detail);
 					if (changed) emitCompositionChanged();
 				},
 			},
@@ -1760,13 +1823,14 @@ const DEFAULT_ENV = {
 					const detail = getEventDetail<RuntimeRegistrationDetail>(event);
 					if (!detail?.itemId) return;
 					const changed = detail?.element
-						? sectionEngine.unregister(detail.element)
+						? sectionBinding.unregister(detail.element)
 						: false;
 					unregisterCatalogsForElement(detail.element);
+					stopNamingMath(detail.element);
 					if (detail.element) {
 						runtimeRegistrationDetails.delete(detail.element);
 					}
-					sectionEngine.handleContentUnregistered(detail);
+					sectionBinding.handleContentUnregistered(detail);
 					if (changed) emitCompositionChanged();
 				},
 			},
@@ -1776,10 +1840,10 @@ const DEFAULT_ENV = {
 					if (!claimLocalEvent(event)) return;
 					const detail = getEventDetail<InternalItemSessionChangedDetail>(event);
 					if (!detail?.itemId) return;
-					const result = sectionEngine.updateItemSession(detail.itemId, detail.session);
+					const result = sectionBinding.updateItemSession(detail.itemId, detail.session);
 					emitNormalizedSessionChanged({
 						itemId: detail.itemId,
-						canonicalItemId: sectionEngine.getCanonicalItemId(detail.itemId),
+						canonicalItemId: sectionBinding.getCanonicalItemId(detail.itemId),
 						result,
 						fallbackSession: detail.session,
 					});
@@ -1791,7 +1855,7 @@ const DEFAULT_ENV = {
 					if (!claimLocalEvent(event)) return;
 					const detail = getEventDetail<InternalContentLoadedDetail>(event);
 					if (!detail?.itemId) return;
-					sectionEngine.handleContentLoaded({
+					sectionBinding.handleContentLoaded({
 						itemId: detail.itemId,
 						canonicalItemId: detail.canonicalItemId,
 						contentKind: detail.contentKind,
@@ -1806,7 +1870,7 @@ const DEFAULT_ENV = {
 					if (!claimLocalEvent(event)) return;
 					const detail = getEventDetail<InternalItemPlayerErrorDetail>(event);
 					if (!detail?.itemId) return;
-					sectionEngine.handleItemPlayerError({
+					sectionBinding.handleItemPlayerError({
 						itemId: detail.itemId,
 						canonicalItemId: detail.canonicalItemId,
 						contentKind: detail.contentKind,
@@ -1825,8 +1889,9 @@ const DEFAULT_ENV = {
 					const detail = getEventDetail<InternalFormativeActionDetail>(event);
 					if (!detail?.itemId) return;
 					if (detail.action !== "check" && detail.action !== "retry") return;
-					sectionEngine.handleFormativeAction({
-						itemId: detail.canonicalItemId || detail.itemId,
+					sectionBinding.handleFormativeAction({
+						itemId: detail.itemId,
+						canonicalItemId: detail.canonicalItemId,
 						action: detail.action,
 						outcomes: detail.outcomes,
 					});
@@ -1842,7 +1907,7 @@ const DEFAULT_ENV = {
 					const detail = getEventDetail<InternalMediaTimeSourceDetail>(event);
 					if (!detail?.renderableId) return;
 					if (detail.action !== "attach" && detail.action !== "detach") return;
-					sectionEngine.handleMediaTimeSource({
+					sectionBinding.handleMediaTimeSource({
 						renderableId: detail.renderableId,
 						action: detail.action,
 						source: detail.source,
@@ -1851,7 +1916,63 @@ const DEFAULT_ENV = {
 				},
 			},
 		];
-		return registerHostRuntimeListeners(localHost, bindings);
+		const unregisterListeners = registerHostRuntimeListeners(localHost, bindings);
+		return () => {
+			unregisterListeners();
+			for (const element of [...mathNameObservers.keys()]) stopNamingMath(element);
+		};
+	});
+
+	// One provider per context for the host's lifetime: created with the first
+	// value, republished with `setValue` after that, and left on the last value
+	// while there is none. A consumer keeps the provider that answered it and
+	// nothing asks it to request again, so a replaced provider would leave its
+	// subscribers on a value that never updates. These effects come after the
+	// claim listeners above: connecting announces the provider, the document's
+	// context root replays the shells' requests, and their registrations
+	// arrive while the provider connects.
+	$effect(() => {
+		if (!host) return;
+		return () => {
+			hostRuntimeProvider?.disconnect();
+			hostRuntimeProvider = null;
+			provider?.disconnect();
+			provider = null;
+		};
+	});
+
+	$effect(() => {
+		const currentHost = host;
+		const value = hostRuntimeContextValue;
+		if (!currentHost || !value) return;
+		untrack(() => {
+			if (hostRuntimeProvider) {
+				hostRuntimeProvider.setValue(value);
+				return;
+			}
+			hostRuntimeProvider = new ContextProvider(currentHost, {
+				context: assessmentToolkitHostRuntimeContext,
+				initialValue: value,
+			});
+			hostRuntimeProvider.connect();
+		});
+	});
+
+	$effect(() => {
+		const currentHost = host;
+		const value = runtimeContextValue;
+		if (!currentHost || !value) return;
+		untrack(() => {
+			if (provider) {
+				provider.setValue(value);
+				return;
+			}
+			provider = new ContextProvider(currentHost, {
+				context: assessmentToolkitRuntimeContext,
+				initialValue: value,
+			});
+			provider.connect();
+		});
 	});
 
 	export async function waitUntilReady(): Promise<void> {
@@ -1859,13 +1980,6 @@ const DEFAULT_ENV = {
 			throw new Error("Coordinator not initialized");
 		}
 		await effectiveCoordinator.waitUntilReady();
-	}
-
-	export function getServiceBundle() {
-		if (!effectiveCoordinator) {
-			throw new Error("Coordinator not initialized");
-		}
-		return effectiveCoordinator.getServiceBundle();
 	}
 
 	export function setHooks(hooks: Record<string, unknown>): void {
@@ -1876,11 +1990,11 @@ const DEFAULT_ENV = {
 	}
 
 	export function navigateToItem(index: number): unknown {
-		return sectionEngine.navigateToItem(index);
+		return sectionBinding.navigateToItem(index);
 	}
 
 	export function getCompositionModel(): unknown {
-		return sectionEngine.getCompositionModel();
+		return sectionBinding.getCompositionModel();
 	}
 
 	export function getItemPlayerConfig(): ItemPlayerConfig {
@@ -1888,122 +2002,35 @@ const DEFAULT_ENV = {
 	}
 
 	export async function persist(): Promise<void> {
-		await sectionEngine.persist();
+		await sectionBinding.persist();
 	}
 
 	export async function hydrate(): Promise<void> {
-		await sectionEngine.hydrate();
+		await sectionBinding.hydrate();
 	}
 
-	// Stage: `disposed` — wired on CE unmount. The four-stage retro
-	// dropped `attached` (it had no consumers); the toolkit no longer
-	// emits anything on mount and starts the canonical chain at
-	// `composed` once the section composition lands. `disposed` still
-	// fires on CE teardown so subscribers see a monotonic close-out.
+	// The coordinator starts at the toolkit's first content: its section's first
+	// composition, or without a section the first item that registers. One that
+	// started at construction would start text-to-speech, and report its
+	// failures, before there is anything to read. Readiness failures reach hosts
+	// as framework errors.
 	$effect(() => {
-		return () => {
-			untrack(() => {
-				if (stageTracker.getCurrent() !== null) {
-					stageTracker.enter("disposed");
-				}
-			});
-		};
-	});
-
-	// Cohort change handler: when `(sectionId, attemptId)` changes, emit
-	// `disposed` for the outgoing cohort and reset the tracker so the
-	// new cohort begins emitting from `composed` against the same DOM
-	// element. The boolean stage flags must reset in lockstep.
-	$effect(() => {
-		const nextKey = `${sectionId}|${attemptId}`;
-		untrack(() => {
-			if (nextKey === lastStageCohortKey) return;
-			if (stageTracker.getCurrent() !== null) {
-				stageTracker.enter("disposed");
-			}
-			stageTracker.reset({
-				sectionId: sectionId || undefined,
-				attemptId: attemptId || undefined,
-			});
-			lastStageCohortKey = nextKey;
-			composedStageEntered = false;
-			engineReadyStageEntered = false;
-			interactiveStageEntered = false;
-			sectionInitialized = false;
-		});
-	});
-
-	// `interactive` fires once both canonical predecessors land:
-	// `engine-ready` (coordinator bring-up settled) and
-	// `sectionInitialized` (section composition + controller hydrated).
-	// Joining here prevents the race that would otherwise silently
-	// auto-skip `engine-ready` when the section initializer wins.
-	$effect(() => {
-		const ready = engineReadyStageEntered && sectionInitialized;
-		untrack(() => {
-			if (!ready) return;
-			if (interactiveStageEntered) return;
-			interactiveStageEntered = true;
-			stageTracker.enter("interactive");
-		});
-	});
-
-	// Canonical M6 stage progression for the toolkit CE (post-retro:
-	// 4 stages). The tracker is idempotent and rejects backward
-	// transitions; gating with `composedStageEntered` keeps the emit
-	// order monotonic across asynchronous sources.
-	$effect(() => {
-		const composed = compositionVersion > 0 || compositionModel !== null;
-		untrack(() => {
-			if (!composedStageEntered && composed) {
-				composedStageEntered = true;
-				stageTracker.enter("composed");
-			}
-		});
-	});
-
-	// `engine-ready` resolves once `effectiveCoordinator.waitUntilReady()`
-	// settles — that promise covers state load, TTS bring-up, and provider
-	// initialization. Failures still flow through the framework-error bus;
-	// here we record the position with `failed` so subscribers see a
-	// monotonic stage chain even when the coordinator throws during
-	// readiness. Gated on `composedStageEntered` so the engine-ready
-	// emission cannot precede `composed` even if the coordinator
-	// resolves before composition lands (rare but possible during
-	// fast-hydration paths).
-	$effect(() => {
-		if (!effectiveCoordinator) return;
-		if (!composedStageEntered) return;
-		if (engineReadyStageEntered) return;
 		const coord = effectiveCoordinator;
-		let cancelled = false;
-		void coord
-			.waitUntilReady()
-			.then(() => {
-				if (cancelled) return;
-				untrack(() => {
-					if (engineReadyStageEntered) return;
-					engineReadyStageEntered = true;
-					stageTracker.enter("engine-ready");
-				});
-			})
-			.catch(() => {
-				if (cancelled) return;
-				untrack(() => {
-					if (engineReadyStageEntered) return;
-					engineReadyStageEntered = true;
-					stageTracker.enter("engine-ready", "failed");
-				});
-			});
-		return () => {
-			cancelled = true;
-		};
+		if (!coord) return;
+		const composed = compositionVersion > 0 || compositionModel !== null;
+		const sectionlessContent = !hasSection && contentRegistered;
+		if (!composed && !sectionlessContent) return;
+		untrack(() => {
+			if (coord === startedCoordinator) return;
+			startedCoordinator = coord;
+			void coord.waitUntilReady().catch(() => {});
+		});
 	});
 
 	$effect(() => {
 		return () => {
 			compositionEmitScheduler.cancel();
-			void sectionEngine
+			void sectionBinding
 				.dispose()
 				.catch((error) => {
 					reportFrameworkError({

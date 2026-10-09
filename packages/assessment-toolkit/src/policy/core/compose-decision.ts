@@ -12,27 +12,34 @@
  * `tests/policy/compose-decision.test.ts` lock the orchestration in.
  */
 
-import type {
-	AssessmentEntity,
-	AssessmentItemRef,
-} from "@pie-players/pie-players-shared/types";
+import type { AssessmentEntity } from "@pie-players/pie-players-shared/types";
 
 import {
 	type CanonicalToolsConfig,
 	normalizeToolList,
+	type ToolPlacementLevel,
 } from "../../services/tools-config-normalizer.js";
 import type {
+	ItemSettingNotAppliedDetails,
+	OverrideBlockedDetails,
 	RequiredToolBlockedDetails,
 	ToolPolicyDecision,
 	ToolPolicyDecisionRequest,
 	ToolPolicyDiagnostic,
 	ToolPolicyEntry,
+	PlacementMissingDetails,
 	ToolPolicyHostGate,
+	UnknownSupportIdDetails,
 } from "./decision-types.js";
 import type { PolicySource } from "./PolicySource.js";
-import type { PolicySourceTag } from "./policy-source-tag.js";
-import { ToolPolicyProvenanceBuilder } from "./provenance.js";
-import type { PnpPolicySource } from "../sources/PnpPolicySource.js";
+import {
+	type PnpPolicySourceRule,
+	ToolPolicyProvenanceBuilder,
+} from "./provenance.js";
+import type {
+	PnpPolicyItem,
+	PnpPolicySource,
+} from "../sources/PnpPolicySource.js";
 
 export interface ComposeDecisionInputs {
 	request: ToolPolicyDecisionRequest;
@@ -40,14 +47,22 @@ export interface ComposeDecisionInputs {
 	pnpPolicy: {
 		source: PnpPolicySource | null;
 		assessment?: AssessmentEntity;
-		currentItemRef?: AssessmentItemRef;
+		/** The item an item-scoped decision is for; see {@link PnpPolicyItem}. */
+		item?: PnpPolicyItem;
 		/**
 		 * "on" applies the PNP/profile precedence rules; "off" skips step 5
-		 * entirely. Defaults to "on" when an assessment is present
-		 * and the source is non-null (see M8 design Q5).
+		 * entirely. The engine resolves it from the enforcement override, or
+		 * from whether the assessment or item carries PNP/profile material.
 		 */
 		enforcement: "on" | "off";
 	};
+	/**
+	 * Mounted items whose settings this decision leaves out: set for a section-
+	 * or assessment-level toolbar. A tool on that toolbar that one of them
+	 * restricts or requires gets a `tool-policy.itemSettingNotApplied`
+	 * diagnostic.
+	 */
+	unappliedItems?: readonly PnpPolicyItem[];
 	customSources: readonly PolicySource[];
 	/** Stable identifier used as the provenance `contextId`. */
 	contextId: string;
@@ -152,27 +167,20 @@ export function composeDecision(
 
 	// Step 5 — PNP/profile policy gates.
 	const diagnostics: ToolPolicyDiagnostic[] = [];
-	const sourcesByTool = new Map<string, PolicySourceTag[]>();
-	for (const toolId of candidates) {
-		sourcesByTool.set(toolId, ["placement"]);
-	}
 
-	// Snapshot the post-host candidate set so step 5b can distinguish
-	// "host removed a required tool" (requiredToolBlocked fires)
-	// from "profile policy's own precedence removed a required tool" (fix
-	// per M8 PR 1 R1 S1 — multi-rule conflict on the same tool must
-	// not blame the host).
+	// Snapshot the post-host candidate set so step 5b reports
+	// requiredToolBlocked only for a mandated tool the host removed.
 	const postHostCandidates = new Set(candidates);
 
 	let pnpPolicyResult: ReturnType<PnpPolicySource["apply"]> | null = null;
 	if (
 		pnpPolicy.enforcement === "on" &&
 		pnpPolicy.source &&
-		(pnpPolicy.assessment || pnpPolicy.currentItemRef)
+		(pnpPolicy.assessment || pnpPolicy.item)
 	) {
 		pnpPolicyResult = pnpPolicy.source.apply({
 			assessment: pnpPolicy.assessment,
-			currentItemRef: pnpPolicy.currentItemRef,
+			item: pnpPolicy.item,
 		});
 
 		if (pnpPolicyResult.sources.assessment) {
@@ -197,30 +205,20 @@ export function composeDecision(
 			});
 		}
 
-		// A support id no registration claims resolves to itself and then matches
-		// nothing placed, so the capability is absent with no trace of why — the
-		// failure a host sending its own vocabulary instead of an AfA/QTI feature
-		// id actually hits. Reported per decision rather than at config time
-		// because the ids arrive with the profile, not with the tools config.
-		for (const supportId of pnpPolicyResult.unmappedSupportIds) {
-			diagnostics.push({
-				code: "tool-policy.unknownSupportId",
-				level: request.level,
-				toolId: supportId,
-				message: `No registered tool claims PNP support id "${supportId}"; it was carried through as a feature id and matched nothing. Expected an AfA 3.0 / QTI 3.0 access feature id.`,
-				source: "pnp.pnp-support",
-			});
+		// An id no tool is registered under matches nothing placed, so whatever it
+		// names is absent with no trace of why. Reported per decision because the
+		// ids arrive with the profile and settings, after the tools config.
+		for (const [supportId, origins] of pnpPolicyResult.unmappedSupportIds) {
+			diagnostics.push(unknownSupportIdDiagnostic(supportId, origins, request.level));
+		}
+		for (const [toolId, rule] of pnpPolicyResult.blockedOverrides) {
+			diagnostics.push(overrideBlockedDiagnostic(toolId, rule, request.level));
 		}
 
 		// 5a — remove PNP/profile-blocked tools from the candidate set.
 		candidates = candidates.filter((toolId) => {
 			return !pnpPolicyResult!.blockedToolIds.has(toolId);
 		});
-		for (const toolId of Array.from(sourcesByTool.keys())) {
-			if (pnpPolicyResult.blockedToolIds.has(toolId)) {
-				sourcesByTool.delete(toolId);
-			}
-		}
 
 		// 5b — surface requiredToolBlocked diagnostics ONLY for
 		// PNP/profile-mandated tools that the host removed (i.e., the tool was
@@ -268,16 +266,6 @@ export function composeDecision(
 				value: details,
 			});
 		}
-
-		// 5c — attach PNP policy source tags to surviving entries.
-		for (const toolId of candidates) {
-			const flag = pnpPolicyResult.perToolFlags.get(toolId);
-			if (flag) {
-				const tags = sourcesByTool.get(toolId) ?? [];
-				tags.push(`pnp.${flag.rule}` satisfies PolicySourceTag);
-				sourcesByTool.set(toolId, tags);
-			}
-		}
 	}
 
 	// Step 6 — Custom PolicySources.
@@ -297,7 +285,7 @@ export function composeDecision(
 					level: request.level,
 					toolId,
 					message: `Custom source "${source.id}" tried to add tool "${toolId}" that was not in candidates; ignored.`,
-					source: `custom.${source.id}` satisfies PolicySourceTag,
+					details: { customSourceId: source.id } satisfies PlacementMissingDetails,
 				});
 				refinedSet.delete(toolId);
 			}
@@ -310,7 +298,7 @@ export function composeDecision(
 		// this auto-log, the provenance trail for a silently-removed
 		// tool would show only the prior `enable` decisions and the
 		// final-state reconciliation would have no evidence to mark it
-		// `blocked` (M8 PR 1 R2 S1 / M1 case B).
+		// `blocked`.
 		const explicitBlocks = new Set<string>();
 		if (result.decisions) {
 			for (const event of result.decisions) {
@@ -343,19 +331,29 @@ export function composeDecision(
 				value: { customSourceId: source.id },
 			});
 		}
+	}
 
-		// Annotate surviving entries with `custom.<id>` so hosts can see
-		// which custom source kept them in.
-		for (const toolId of candidates) {
-			const tags = sourcesByTool.get(toolId) ?? ["placement"];
-			tags.push(`custom.${source.id}` satisfies PolicySourceTag);
-			sourcesByTool.set(toolId, tags);
-		}
-		// And drop attribution for IDs the source removed.
-		for (const toolId of before) {
-			if (!refinedSet.has(toolId)) {
-				sourcesByTool.delete(toolId);
-			}
+	// Step 7 — item settings a shared toolbar does not apply. Placement is the
+	// host's section-wide choice, so the tool stays; the diagnostic says where to
+	// place it for the item setting to hold.
+	for (const toolId of candidates) {
+		for (const item of inputs.unappliedItems ?? []) {
+			const settings = (["restrictedTools", "requiredTools"] as const).filter(
+				(key) => item.settings[key]?.includes(toolId) === true,
+			);
+			if (settings.length === 0) continue;
+			const details: ItemSettingNotAppliedDetails = {
+				itemId: item.id,
+				settings,
+				toolbarLevel: request.scope.level,
+			};
+			diagnostics.push({
+				code: "tool-policy.itemSettingNotApplied",
+				level: request.level,
+				toolId,
+				message: `Item "${item.id}" names "${toolId}" in ${settings.join(" and ")}, but "${toolId}" is on the ${request.scope.level}-level toolbar, which item settings do not reach. Place "${toolId}" at item level to enforce the setting per item.`,
+				details,
+			});
 		}
 	}
 
@@ -367,7 +365,6 @@ export function composeDecision(
 			required: flag?.required ?? false,
 			alwaysAvailable: flag?.alwaysAvailable ?? false,
 			settings: flag?.settings,
-			sources: sourcesByTool.get(toolId) ?? ["placement"],
 		};
 	});
 
@@ -417,4 +414,54 @@ function detectHostRemovalGate(
 	// the four gates above MUST have fired. If none did, the host
 	// pipeline has a bug; surface a best-effort rather than throwing.
 	return { hostRule: "placement-missing", hostValue: args.placement };
+}
+
+/** Where each PNP/profile rule's ids are authored. */
+const PNP_RULE_FIELDS: Record<PnpPolicySourceRule, string> = {
+	"district-block": "settings.districtPolicy.blockedTools",
+	"test-admin-override": "settings.testAdministration.toolOverrides",
+	"item-restriction": "item settings.restrictedTools",
+	"pnp-prohibited": "personalNeedsProfile.prohibitedSupports",
+	"item-requirement": "item settings.requiredTools",
+	"district-requirement": "settings.districtPolicy.requiredTools",
+	"pnp-support": "personalNeedsProfile.supports",
+};
+
+/**
+ * A `tool-policy.overrideBlocked` diagnostic for a tool a `true` test
+ * administration override grants and `rule` withdraws. `level` is absent on a
+ * feature decision, which has no toolbar level.
+ */
+export function overrideBlockedDiagnostic(
+	toolId: string,
+	rule: OverrideBlockedDetails["rule"],
+	level?: ToolPlacementLevel,
+): ToolPolicyDiagnostic {
+	return {
+		code: "tool-policy.overrideBlocked",
+		...(level ? { level } : {}),
+		toolId,
+		message: `settings.testAdministration.toolOverrides grants "${toolId}", but ${PNP_RULE_FIELDS[rule]} withdraws it and outranks a granting override.`,
+		details: { rule } satisfies OverrideBlockedDetails,
+	};
+}
+
+/**
+ * A `tool-policy.unknownSupportId` diagnostic for an id the registry lacks,
+ * attributed to the highest-precedence rule naming it. `level` is absent on a
+ * feature decision, which has no toolbar level.
+ */
+export function unknownSupportIdDiagnostic(
+	supportId: string,
+	origins: readonly PnpPolicySourceRule[],
+	level?: ToolPlacementLevel,
+): ToolPolicyDiagnostic {
+	const fields = origins.map((rule) => PNP_RULE_FIELDS[rule]).join(", ");
+	return {
+		code: "tool-policy.unknownSupportId",
+		...(level ? { level } : {}),
+		toolId: supportId,
+		message: `No tool is registered under "${supportId}", named in ${fields}, so it matches nothing. These lists name tools by tool id.`,
+		details: { origins: [...origins] } satisfies UnknownSupportIdDetails,
+	};
 }

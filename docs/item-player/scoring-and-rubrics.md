@@ -102,11 +102,8 @@ The exported `scorePieItem(...)` helper in
 `packages/players-shared/src/pie/scoring.ts` iterates `config.models[]` and
 returns `{ results: OutcomeResponse[] }`. It does not produce a single item score.
 
-`<pie-item-player>` reaches it through `provideScore()`, which passes
-`outcomeArguments: "model-session-env"` so element controllers receive the
-`(model, session, env)` shape the server executor uses. The helper's default
-`"session-env"` shape remains for its own older callers; a new caller should opt
-into `"model-session-env"`.
+`<pie-item-player>` reaches it through `provideScore()`. Element controllers
+receive `outcome(model, session, env)`, the shape the server executor uses.
 
 A host that needs a single score uses server-side scoring, or an explicit
 aggregation over element outcomes. Section-level formative delivery does the

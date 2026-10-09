@@ -97,7 +97,7 @@ if (existsSync(vendorSrc)) {
 	walkAndPatch(vendorDist);
 }
 
-// All three CEs go through one bundler invocation so they share chunks instead
+// Every CE goes through one bundler invocation so they share chunks instead
 // of each inlining its own copy of the Svelte runtime, the services layer, and
 // the policy engine. Bundling them separately triplicated that code.
 //
@@ -114,8 +114,10 @@ if (existsSync(vendorSrc)) {
 // so mounting a section toolbar guarantees `pie-item-toolbar` is registered).
 // Those shims point at build *outputs*, so they cannot be followed while those
 // outputs are still being produced — see REGISTRATION_ENTRY_REWRITES below.
+// The first entry names the shared chunks (`ItemToolBar-*`).
 const entries = [
 	{ name: "ItemToolBar", registrationEntry: "item-toolbar-element" },
+	{ name: "ItemScope", registrationEntry: "item-scope-element" },
 	{
 		name: "PieAssessmentToolkit",
 		registrationEntry: "pie-assessment-toolkit-element",
@@ -286,18 +288,6 @@ for (const entry of entries) {
 		"export {};\n",
 		"utf8",
 	);
-}
-
-// Remove stale copied Svelte sources from older build strategy.
-for (const staleFile of [
-	"ItemToolBar.svelte",
-	"PieAssessmentToolkit.svelte",
-	"SectionToolBar.svelte",
-]) {
-	const stalePath = path.join(distComponents, staleFile);
-	if (existsSync(stalePath)) {
-		rmSync(stalePath);
-	}
 }
 
 console.log(

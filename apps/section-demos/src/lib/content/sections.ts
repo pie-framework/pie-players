@@ -27,6 +27,7 @@ import {
 	demoSignLanguagePassageSection,
 } from "./demo-sign-language";
 import { demoReadAloudAccommodationsSection } from "./demo-read-aloud-accommodations";
+import { demoShadowReadingSection } from "./demo-shadow-reading";
 import { demoTwoPassagesSection } from "./demo-two-passages";
 import { demoPrintShowcaseSection } from "./demo-print-showcase";
 import { demoFormativeDeliverySection } from "./demo-formative-delivery";
@@ -439,8 +440,8 @@ export const sectionDemos: Record<string, SectionDemoInfo> = {
 		focus:
 			"Shows the vendored `<nds-icon-button>` rendering for the toolbar tools (calculator), the calculator shell controls, the inline text-to-speech trigger, and the section scroll-hint. Identical to Single Question except the player element carries `nds-icons={true}`; every other demo omits it and renders plain `<button>`s.",
 		whatMakesItTick: [
-			"`nds-icons={true}` on the `<pie-section-player-*>` element is folded into the runtime and surfaced on the toolkit runtime context, so consumers render `<nds-icon-button>` instead of plain buttons.",
-			"Opt-in with presence semantics: omit the attribute (the default) for plain buttons; `runtime.ndsIcons` still works and wins when both are set.",
+			"`nds-icons={true}` on the `<pie-section-player-*>` element reaches the toolkit runtime context, so consumers render `<nds-icon-button>` instead of plain buttons.",
+			"Opt-in with presence semantics: omit the attribute (the default) for plain buttons.",
 			"`calculator` is placed on the item toolbar so both the NDS toolbar button and its NDS-styled floating shell controls are visible.",
 			"Inline text-to-speech renders its NDS circular play/pause trigger.",
 		],
@@ -542,7 +543,7 @@ export const sectionDemos: Record<string, SectionDemoInfo> = {
 		whatMakesItTick: [
 			"A signed alternate arrives only as a catalog card. The first item authors one by hand on `accessibilityCatalogs` with a typed media payload; nothing lifts a signing video out of item markup at render time.",
 			"The second item carries no signing content and shows no region, because an affordance where no content exists is a dead affordance.",
-			"`?page=` switches between a PNP that grants `signLanguage` and one that does not; signing is excluded from the computed default profile, so it is never on by accident.",
+			"`?page=` switches between a profile that grants `signLanguage` and one that does not, bound as the assessment's; no default profile grants signing, so it is never on by accident.",
 			"The third item is not authored at all: it is the verbatim output of the Learnosity import in `pie-api-aws`, so the demo shows what an importer writes rather than what we believe it writes.",
 			"A third page authors the alternate on a shared passage instead of an item; it renders on the passage card, from the same card model and the same host surface.",
 			"The bundled clip is a real public-domain ASL recording that does not sign these prompts — a stand-in, since ASL video production and hosting are host-owned. See `static/demo-assets/sign-language/README.md`.",
@@ -684,14 +685,14 @@ export const sectionDemos: Record<string, SectionDemoInfo> = {
 		id: "pnp-default-on",
 		name: "PNP Default On (Auto-detect)",
 		description:
-			"Smoke fixture: an assessment that carries profile policy material auto-promotes `pnpEnforcement` to 'on' without an explicit `pnp-enforcement` attribute.",
+			"Smoke fixture: an assessment that carries profile policy material auto-promotes `pnpEnforcement` to 'on' without an explicit `tools.pnpEnforcement`.",
 		integrationLevel: 4,
 		integrationTheme: "Tool policy engine",
 		focus:
 			"Proves the M8 PR 4 narrow auto-on rule end-to-end: bind an `AssessmentEntity` with PNP / district policy through `coord.updateAssessment(...)` and the coordinator flips PNP/profile gates on by itself.",
 		whatMakesItTick: [
 			"Listens for `toolkit-ready` and binds an assessment with `personalNeedsProfile.supports = ['graph']` and `districtPolicy.requiredTools = ['graph']`.",
-			"Never sets the `pnp-enforcement` attribute, so the auto-default rule (`assessmentHasPnpPolicyInputs` / `itemRefHasPnpPolicyInputs`) decides.",
+			"Never sets `tools.pnpEnforcement`, so the auto-default rule (`assessmentHasPnpPolicyInputs` / `itemSettingsHavePnpPolicyInputs`) decides.",
 			"Reads back `coord.getPolicyInputs().pnpEnforcement` and the engine's `decideToolPolicy(...)` so the resolved mode is visible in the page.",
 		],
 		section: demo1Section,
@@ -805,15 +806,16 @@ export const sectionDemos: Record<string, SectionDemoInfo> = {
 		id: "calculator-pnp",
 		name: "Calculator by Profile",
 		description:
-			"The learner's profile decides whether the calculator shows and which flavor it opens in, with the toolkit composed around one item and no section player",
+			"The learner's profile decides whether the calculator shows and its config which flavor it opens in, with the toolkit composed around one item and no section player",
 		integrationLevel: 4,
 		integrationTheme: "Profile-driven tool selection",
 		focus:
-			"Composes `<pie-assessment-toolkit>` around an item toolbar and an item player, and changes the profile mid-session.",
+			"Composes `<pie-assessment-toolkit>` around an item scope holding an item toolbar and an item player, and changes the profile mid-session.",
 		whatMakesItTick: [
-			"No section player and no section controller: the toolkit owns its coordinator, and the toolbar and item player sit inside it.",
-			"The host's calculator resolver reads the profile through `decideFeaturePolicy`: `graphingCalculator` opens graphing with scientific one switch away, `calculator` opens scientific, and neither hides the button.",
-			"Changing the profile rebinds `assessment`; the resolver re-runs on the policy change, so the button and an open calculator follow without a reload.",
+			"No section player and no section controller: the toolkit owns its coordinator, and `<pie-item-scope>` gives the toolbar's tools the item and the region they act on.",
+			"Read-aloud speaks the equation's spoken card in its place: the scope registered the item, and the toolkit filed its catalogs.",
+			"The host's calculator resolver reads `decideFeaturePolicy('calculator')`: a grant whose `toolConfigs.calculator.type` is `graphing` opens graphing with scientific one switch away, any other grant opens scientific, and no grant hides the button.",
+			"Changing the option rebinds `assessment`; the resolver re-runs on the policy change, so the button and an open calculator follow without a reload.",
 		],
 		section: demoCalculatorPnpSection,
 	},
@@ -851,6 +853,23 @@ export const sectionDemos: Record<string, SectionDemoInfo> = {
 			"The narration is macOS `say` output, not human recording — it proves the file-playback path, not the fidelity of anyone's narration. See `static/demo-assets/read-aloud/README.md`.",
 		],
 		section: demoReadAloudAccommodationsSection,
+	},
+	"shadow-reading": {
+		id: "shadow-reading",
+		name: "Read-Aloud: content in shadow roots",
+		description:
+			"Read-aloud, highlighting and the annotation toolbar reaching content an element renders into an open shadow root",
+		integrationLevel: 4,
+		integrationTheme: "Accessibility catalogs",
+		focus:
+			"Shows the reading tools walking the flat tree, the tree the page renders: shadow content in place of a host's light children, slotted children where their slot sits.",
+		whatMakesItTick: [
+			"Item 1's `data-demo-shadow-reading` host renders text, a span docked to a `spoken` card, native MathML and a slot into an open shadow root. Read-aloud speaks it between the light text around the host, in rendering order, and highlights it through a stylesheet adopted into that shadow root.",
+			'The host in item 2 carries `lang="es-MX"`. Its docked span resolves to the `es-MX` card of the two it has, and a selection read through the annotation toolbar is spoken as `es-MX`: the nearest `lang` between the text and its shell names the content language.',
+			"Item 3 holds native MathML alone in a shadow root, so read-aloud generates its speech. Item 1's math is read as its text: an item with a docked span is composed from its text and its cards.",
+			"The annotation toolbar opens for a selection inside a card's content region, shadow text included, and stays closed for one in the card header.",
+		],
+		section: demoShadowReadingSection,
 	},
 	"tts-generated-ssml": {
 		id: "tts-generated-ssml",
@@ -898,6 +917,22 @@ export const sectionDemos: Record<string, SectionDemoInfo> = {
 			"Includes one passage and at least three items to validate tab navigation end-to-end.",
 			"Uses dedicated bookmarkable subroutes: `/tabbed-layout/tabbed` and `/tabbed-layout/splitpane-tabbed-collapse`.",
 			"Provides both direct `pie-section-player-tabbed` and splitpane tabbed-collapse behavior without query-param toggling.",
+		],
+		section: demo6Section,
+	},
+	"custom-layout": {
+		id: "custom-layout",
+		name: "Custom Layout",
+		description:
+			"A host-built layout: the kernel host with the items pane on the left and the passages pane on the right",
+		integrationLevel: 4,
+		integrationTheme: "Host-built section layout",
+		focus:
+			"Shows a section layout a host builds from `<pie-section-player-kernel-host>` and the two panes, with no stock layout element involved.",
+		whatMakesItTick: [
+			"The kernel host runs the section; its children are the layout, so the stock body steps aside.",
+			"`<pie-section-player-items-pane>` and `<pie-section-player-passages-pane>` take everything they render from the kernel host, so they carry no attributes.",
+			"The page's own CSS sizes the kernel host and arranges the panes in two scrolling columns.",
 		],
 		section: demo6Section,
 	},

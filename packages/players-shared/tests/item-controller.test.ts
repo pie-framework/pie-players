@@ -84,6 +84,34 @@ describe("ItemController", () => {
 		expect(out).toEqual({ id: "", data: [{ id: "q1", value: ["A"] }] });
 	});
 
+	test("an empty session with another id replaces a responseful one", () => {
+		const controller = new ItemController({
+			itemId: "item-1",
+			initialSession: { id: "attempt-1", data: [{ id: "q1", value: ["A"] }] },
+			storage: new FakeStorage(),
+		});
+
+		const out = controller.setSession(
+			{ id: "attempt-2", data: [] },
+			{ persist: false, allowMetadataOverwrite: false },
+		);
+		expect(out).toEqual({ id: "attempt-2", data: [] });
+	});
+
+	test("an empty session with the same id keeps the response", () => {
+		const controller = new ItemController({
+			itemId: "item-1",
+			initialSession: { id: "attempt-1", data: [{ id: "q1", value: ["A"] }] },
+			storage: new FakeStorage(),
+		});
+
+		const out = controller.setSession(
+			{ id: "attempt-1", data: [] },
+			{ persist: false, allowMetadataOverwrite: false },
+		);
+		expect(out).toEqual({ id: "attempt-1", data: [{ id: "q1", value: ["A"] }] });
+	});
+
 	test("allows explicit response clear updates", () => {
 		const controller = new ItemController({
 			itemId: "item-1",

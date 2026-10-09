@@ -13,6 +13,33 @@ const originalDocument = (globalThis as any).document;
 const originalNodeFilter = (globalThis as any).NodeFilter;
 const originalWindow = (globalThis as any).window;
 
+/**
+ * A content root over `nodes`, each text node under its own copy of its parent
+ * element, shaped as far as the flat-tree walk reads it.
+ */
+const mockContent = (
+	nodes: Array<{ textContent: string; parentElement: Element }>,
+): Element => {
+	(globalThis as any).document = {};
+	return {
+		childNodes: nodes.map(({ textContent, parentElement }) => {
+			const parent: Record<string, unknown> = {
+				...(parentElement as object),
+				nodeType: 1,
+			};
+			const text = {
+				nodeType: 3,
+				textContent,
+				data: textContent,
+				parentNode: parent,
+				parentElement: parent,
+			};
+			parent.childNodes = [text];
+			return parent;
+		}),
+	} as unknown as Element;
+};
+
 const makeElement = (attrs: {
 	hidden?: boolean;
 	ariaHidden?: string;
@@ -57,16 +84,9 @@ describe("tts text-processing", () => {
 				parentElement: visibleParent,
 			},
 		];
-		let idx = 0;
-		(globalThis as any).NodeFilter = { SHOW_TEXT: 4 };
-		(globalThis as any).document = {
-			createTreeWalker: () => ({
-				nextNode: () => (idx < nodes.length ? nodes[idx++] : null),
-			}),
-		};
 		(globalThis as any).window = undefined;
 
-		const { text } = collectVisibleTextAndMap({} as Element);
+		const { text } = collectVisibleTextAndMap(mockContent(nodes));
 		expect(text).toBe("Multiple question");
 	});
 
@@ -77,16 +97,9 @@ describe("tts text-processing", () => {
 			{ textContent: "eB", parentElement: parent },
 			{ textContent: "oxygen", parentElement: parent },
 		];
-		let idx = 0;
-		(globalThis as any).NodeFilter = { SHOW_TEXT: 4 };
-		(globalThis as any).document = {
-			createTreeWalker: () => ({
-				nextNode: () => (idx < nodes.length ? nodes[idx++] : null),
-			}),
-		};
 		(globalThis as any).window = undefined;
 
-		const { text } = collectVisibleTextAndMap({} as Element, {
+		const { text } = collectVisibleTextAndMap(mockContent(nodes), {
 			boundarySpacingMode: "alnum",
 		});
 		expect(text).toBe("dioxid eB oxygen");
@@ -102,6 +115,7 @@ describe("tts text-processing", () => {
 
 const makeSuppressElement = (value: string | null) =>
 	({
+		nodeType: 1,
 		hidden: false,
 		getAttribute: (name: string) =>
 			name === TTS_SUPPRESS_ATTRIBUTE ? value : null,
@@ -187,6 +201,7 @@ describe("read-aloud suppression", () => {
 			getAttribute: () => null,
 			hasAttribute: () => false,
 			classList: { contains: () => false },
+			parentNode: suppressed,
 			parentElement: suppressed,
 		} as unknown as Element;
 		expect(isNodeSuppressedForTTS(child)).toBe(true);
@@ -201,16 +216,9 @@ describe("read-aloud suppression", () => {
 			{ textContent: "cake", parentElement: suppressedParent },
 			{ textContent: " ?", parentElement: visibleParent },
 		];
-		let idx = 0;
-		(globalThis as any).NodeFilter = { SHOW_TEXT: 4 };
-		(globalThis as any).document = {
-			createTreeWalker: () => ({
-				nextNode: () => (idx < nodes.length ? nodes[idx++] : null),
-			}),
-		};
 		(globalThis as any).window = undefined;
 
-		const { text } = collectVisibleTextAndMap({} as Element);
+		const { text } = collectVisibleTextAndMap(mockContent(nodes));
 		expect(text).toBe("Which word rhymes with ?");
 	});
 });

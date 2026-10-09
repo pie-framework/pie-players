@@ -1,10 +1,10 @@
 import { describe, expect, test } from "bun:test";
-import type { ToolbarContext } from "@pie-players/pie-assessment-toolkit/tools/internal";
-import type { ToolContext } from "@pie-players/pie-assessment-toolkit/tools/internal";
-import {
-	TOOL_ELEMENT_UNMOUNT_CALLBACK_PROP,
-	ttsToolRegistration,
-} from "../src/registrations/tts.js";
+import type { ToolbarContext } from "@pie-players/pie-assessment-toolkit/tools/registration";
+import type { ToolContext } from "@pie-players/pie-assessment-toolkit/tools/registration";
+import { PACKAGED_TOOL_TAG_MAP } from "../src/packaged-capability-composition.js";
+import { ttsToolRegistration } from "../src/registrations/tts.js";
+
+const packagedOverrides = { toolTagMap: PACKAGED_TOOL_TAG_MAP };
 
 const createFakeElement = (tag: string) =>
 	({
@@ -15,6 +15,9 @@ const createFakeElement = (tag: string) =>
 		},
 		getAttribute(name: string) {
 			return this.attrs.get(name) || null;
+		},
+		removeAttribute(name: string) {
+			this.attrs.delete(name);
 		},
 	}) as any;
 
@@ -49,9 +52,10 @@ describe("ttsToolRegistration speed options", () => {
 			catalogId: "item-1",
 			language: "en-US",
 			toolCoordinator: null,
+			componentOverrides: packagedOverrides,
 			toolkitCoordinator: {
 				getToolConfig: () => ({
-					settings: { speedOptions: [2, 1.25, 1.5, 2, 1] },
+					speedOptions: [2, 1.25, 1.5, 2, 1],
 				}),
 			} as any,
 			ttsService: null,
@@ -91,14 +95,13 @@ describe("ttsToolRegistration speed options", () => {
 			catalogId: "item-labeled",
 			language: "en-US",
 			toolCoordinator: null,
+			componentOverrides: packagedOverrides,
 			toolkitCoordinator: {
 				getToolConfig: () => ({
-					settings: {
-						speedOptions: [
-							{ rate: 0.8, label: "Slow", ariaLabel: "Slow speed" },
-							{ rate: 1.5, label: "Fast" },
-						],
-					},
+					speedOptions: [
+						{ rate: 0.8, label: "Slow", ariaLabel: "Slow speed" },
+						{ rate: 1.5, label: "Fast" },
+					],
 				}),
 			} as any,
 			ttsService: null,
@@ -137,9 +140,10 @@ describe("ttsToolRegistration speed options", () => {
 			catalogId: "item-1",
 			language: "en-US",
 			toolCoordinator: null,
+			componentOverrides: packagedOverrides,
 			toolkitCoordinator: {
 				getToolConfig: () => ({
-					settings: { speedOptions: ["fast", null, -2] },
+					speedOptions: ["fast", null, -2],
 				}),
 			} as any,
 			ttsService: null,
@@ -178,8 +182,9 @@ describe("ttsToolRegistration speed options", () => {
 			catalogId: "item-1",
 			language: "en-US",
 			toolCoordinator: null,
+			componentOverrides: packagedOverrides,
 			toolkitCoordinator: {
-				getToolConfig: () => ({ settings: { speedOptions: [] } }),
+				getToolConfig: () => ({ speedOptions: [] }),
 			} as any,
 			ttsService: null,
 			elementToolStateStore: null,
@@ -197,55 +202,48 @@ describe("ttsToolRegistration speed options", () => {
 		expect(element?.speedOptions).toEqual([]);
 	});
 
-	test("evicts cached inline element on unmount callback", () => {
-		const toolbarContext: ToolbarContext = {
-			scope: {
-				level: "item",
-				scopeId: "item-1",
-				itemId: "item-1",
-			},
-			itemId: "item-1",
-			catalogId: "item-1",
-			language: "en-US",
-			toolCoordinator: null,
-			toolkitCoordinator: null,
-			ttsService: null,
-			elementToolStateStore: null,
-			toggleTool: () => {},
-			isToolVisible: () => false,
-			subscribeVisibility: null,
-		};
+	test("keeps one element per coordinator and scope", () => {
+		// A module-global cache keyed by the scoped tool id alone handed one
+		// session's control to another player rendering the same item.
+		const contextFor = (toolCoordinator: unknown): ToolbarContext =>
+			({
+				scope: { level: "item", scopeId: "item-shared", itemId: "item-shared" },
+				itemId: "item-shared",
+				catalogId: "item-shared",
+				language: "en-US",
+				toolCoordinator,
+				componentOverrides: packagedOverrides,
+				toolkitCoordinator: null,
+				ttsService: null,
+				elementToolStateStore: null,
+				toggleTool: () => {},
+				isToolVisible: () => false,
+				subscribeVisibility: null,
+			}) as ToolbarContext;
+		const render = (toolbarContext: ToolbarContext) =>
+			withFakeDocument(
+				() =>
+					ttsToolRegistration.renderToolbar(itemContext, toolbarContext)
+						?.elements?.[0]?.element as unknown as { isConnected?: boolean },
+			);
+		const sessionA = contextFor({});
+		const first = render(sessionA);
+		first.isConnected = true;
 
-		const firstRender = withFakeDocument(() =>
-			ttsToolRegistration.renderToolbar(itemContext, toolbarContext),
-		);
-		const firstElement = firstRender?.elements?.[0]?.element as
-			| { [key: string]: unknown }
-			| undefined;
-		expect(typeof firstElement?.[TOOL_ELEMENT_UNMOUNT_CALLBACK_PROP]).toBe(
-			"function",
-		);
-		if (!firstElement) throw new Error("expected a rendered toolbar element");
-		(firstElement[TOOL_ELEMENT_UNMOUNT_CALLBACK_PROP] as () => void)();
-
-		const secondRender = withFakeDocument(() =>
-			ttsToolRegistration.renderToolbar(itemContext, toolbarContext),
-		);
-		const secondElement = secondRender?.elements?.[0]?.element;
-		expect(secondElement).not.toBe(firstElement as any);
+		expect(render(sessionA)).toBe(first);
+		expect(render(contextFor({}))).not.toBe(first);
 	});
 
-	test("recreates stale disconnected cached element", () => {
+	test("creates its element through the registry's tag map", () => {
 		const toolbarContext: ToolbarContext = {
-			scope: {
-				level: "item",
-				scopeId: "item-disconnected",
-				itemId: "item-disconnected",
-			},
-			itemId: "item-disconnected",
-			catalogId: "item-disconnected",
+			scope: { level: "item", scopeId: "item-tag", itemId: "item-tag" },
+			itemId: "item-tag",
+			catalogId: "item-tag",
 			language: "en-US",
 			toolCoordinator: null,
+			componentOverrides: {
+				toolTagMap: { textToSpeech: "host-read-aloud" },
+			},
 			toolkitCoordinator: null,
 			ttsService: null,
 			elementToolStateStore: null,
@@ -253,20 +251,12 @@ describe("ttsToolRegistration speed options", () => {
 			isToolVisible: () => false,
 			subscribeVisibility: null,
 		};
-
-		const firstRender = withFakeDocument(() =>
-			ttsToolRegistration.renderToolbar(itemContext, toolbarContext),
+		const element = withFakeDocument(
+			() =>
+				ttsToolRegistration.renderToolbar(itemContext, toolbarContext)
+					?.elements?.[0]?.element,
 		);
-		const firstElement = firstRender?.elements?.[0]?.element as {
-			isConnected?: boolean;
-		};
-		firstElement.isConnected = false;
-
-		const secondRender = withFakeDocument(() =>
-			ttsToolRegistration.renderToolbar(itemContext, toolbarContext),
-		);
-		const secondElement = secondRender?.elements?.[0]?.element;
-		expect(secondElement).not.toBe(firstElement as any);
+		expect(element?.tagName.toLowerCase()).toBe("host-read-aloud");
 	});
 
 	test("sync remains pure and does not initialize TTS", () => {
@@ -281,9 +271,10 @@ describe("ttsToolRegistration speed options", () => {
 			catalogId: "item-sync-pure",
 			language: "en-US",
 			toolCoordinator: null,
+			componentOverrides: packagedOverrides,
 			toolkitCoordinator: {
 				getToolConfig: () => ({
-					settings: { speedOptions: [1.5, 2] },
+					speedOptions: [1.5, 2],
 				}),
 				ensureTTSReady: async () => {
 					ensureCalls += 1;
@@ -315,12 +306,11 @@ describe("ttsToolRegistration speed options", () => {
 			catalogId: "item-one-option",
 			language: "en-US",
 			toolCoordinator: null,
+			componentOverrides: packagedOverrides,
 			toolkitCoordinator: {
 				getToolConfig: () => ({
-					settings: {
-						speedOptions: [{ rate: 1, label: "Normal" }],
-						showSingleSpeedOption: true,
-					},
+					speedOptions: [{ rate: 1, label: "Normal" }],
+					showSingleSpeedOption: true,
 				}),
 			} as any,
 			ttsService: null,
@@ -350,8 +340,9 @@ describe("ttsToolRegistration speed options", () => {
 			catalogId: "item-layout-default",
 			language: "en-US",
 			toolCoordinator: null,
+			componentOverrides: packagedOverrides,
 			toolkitCoordinator: {
-				getToolConfig: () => ({ settings: {} }),
+				getToolConfig: () => ({}),
 			} as any,
 			ttsService: null,
 			elementToolStateStore: null,
@@ -385,8 +376,9 @@ describe("ttsToolRegistration speed options", () => {
 			catalogId: "item-layout-floating",
 			language: "en-US",
 			toolCoordinator: null,
+			componentOverrides: packagedOverrides,
 			toolkitCoordinator: {
-				getToolConfig: () => ({ settings: { layoutMode: "floating-overlay" } }),
+				getToolConfig: () => ({ layoutMode: "floating-overlay" }),
 			} as any,
 			ttsService: null,
 			elementToolStateStore: null,
@@ -420,8 +412,9 @@ describe("ttsToolRegistration speed options", () => {
 			catalogId: "item-layout-expanding",
 			language: "en-US",
 			toolCoordinator: null,
+			componentOverrides: packagedOverrides,
 			toolkitCoordinator: {
-				getToolConfig: () => ({ settings: { layoutMode: "expanding-row" } }),
+				getToolConfig: () => ({ layoutMode: "expanding-row" }),
 			} as any,
 			ttsService: null,
 			elementToolStateStore: null,
@@ -455,8 +448,9 @@ describe("ttsToolRegistration speed options", () => {
 			catalogId: "item-layout-left",
 			language: "en-US",
 			toolCoordinator: null,
+			componentOverrides: packagedOverrides,
 			toolkitCoordinator: {
-				getToolConfig: () => ({ settings: { layoutMode: "left-aligned" } }),
+				getToolConfig: () => ({ layoutMode: "left-aligned" }),
 			} as any,
 			ttsService: null,
 			elementToolStateStore: null,
@@ -490,8 +484,9 @@ describe("ttsToolRegistration speed options", () => {
 			catalogId: "item-layout-invalid",
 			language: "en-US",
 			toolCoordinator: null,
+			componentOverrides: packagedOverrides,
 			toolkitCoordinator: {
-				getToolConfig: () => ({ settings: { layoutMode: "bad-mode" } }),
+				getToolConfig: () => ({ layoutMode: "bad-mode" }),
 			} as any,
 			ttsService: null,
 			elementToolStateStore: null,
@@ -515,80 +510,89 @@ describe("ttsToolRegistration speed options", () => {
 });
 
 describe("ttsToolRegistration sanitizeConfig", () => {
-	test("normalizes speedOptions in settings and top-level", () => {
-		const sanitize = ttsToolRegistration.provider?.sanitizeConfig as (
-			cfg: Record<string, unknown>,
-		) => Record<string, unknown>;
+	const sanitize = ttsToolRegistration.sanitizeConfig as (
+		cfg: Record<string, unknown>,
+	) => Record<string, unknown>;
+
+	test("normalizes speedOptions", () => {
 		const out = sanitize({
 			enabled: true,
 			speedOptions: [2, 1, "x", 1.5],
-			settings: { speedOptions: [0.8, 1, 1.25] },
 		});
 		expect(out.speedOptions).toEqual([
 			{ rate: 2, label: "2x", ariaLabel: "Speed 2x", isDefault: false },
 			{ rate: 1, label: "Normal", ariaLabel: "Normal speed", isDefault: true },
 			{ rate: 1.5, label: "1.5x", ariaLabel: "Speed 1.5x", isDefault: false },
 		]);
-		expect((out.settings as { speedOptions: unknown[] }).speedOptions).toEqual([
-			{ rate: 0.8, label: "0.8x", ariaLabel: "Speed 0.8x", isDefault: false },
-			{ rate: 1, label: "Normal", ariaLabel: "Normal speed", isDefault: true },
-			{
-				rate: 1.25,
-				label: "1.25x",
-				ariaLabel: "Speed 1.25x",
-				isDefault: false,
-			},
-		]);
 	});
 
 	test("preserves one-option visibility setting in sanitizeConfig", () => {
-		const sanitize = ttsToolRegistration.provider?.sanitizeConfig as (
-			cfg: Record<string, unknown>,
-		) => Record<string, unknown>;
-		const out = sanitize({
-			settings: { showSingleSpeedOption: true },
-		});
-		expect(
-			(out.settings as { showSingleSpeedOption?: boolean })
-				.showSingleSpeedOption,
-		).toBe(true);
+		const out = sanitize({ showSingleSpeedOption: true });
+		expect(out.showSingleSpeedOption).toBe(true);
 	});
 
-	test("preserves explicit empty speedOptions in settings", () => {
-		const sanitize = ttsToolRegistration.provider?.sanitizeConfig as (
-			cfg: Record<string, unknown>,
-		) => Record<string, unknown>;
-		const out = sanitize({
-			settings: { speedOptions: [] },
-		});
-		expect((out.settings as { speedOptions: number[] }).speedOptions).toEqual(
-			[],
-		);
+	test("preserves explicit empty speedOptions", () => {
+		const out = sanitize({ speedOptions: [] });
+		expect(out.speedOptions).toEqual([]);
 	});
 
 	test("preserves labeled speedOptions in sanitizeConfig", () => {
-		const sanitize = ttsToolRegistration.provider?.sanitizeConfig as (
-			cfg: Record<string, unknown>,
-		) => Record<string, unknown>;
 		const out = sanitize({
-			settings: {
-				speedOptions: [
-					{ rate: 0.8, label: "Slow", ariaLabel: "Slow speed" },
-					{
-						rate: 1,
-						label: "Normal",
-						ariaLabel: "Normal speed",
-						default: true,
-					},
-					{ rate: 1.5, label: "Fast" },
-					{ rate: 1.5, label: "Duplicate" },
-				],
-			},
+			speedOptions: [
+				{ rate: 0.8, label: "Slow", ariaLabel: "Slow speed" },
+				{
+					rate: 1,
+					label: "Normal",
+					ariaLabel: "Normal speed",
+					default: true,
+				},
+				{ rate: 1.5, label: "Fast" },
+				{ rate: 1.5, label: "Duplicate" },
+			],
 		});
-		expect((out.settings as { speedOptions: unknown[] }).speedOptions).toEqual([
+		expect(out.speedOptions).toEqual([
 			{ rate: 0.8, label: "Slow", ariaLabel: "Slow speed", isDefault: false },
 			{ rate: 1, label: "Normal", ariaLabel: "Normal speed", isDefault: true },
 			{ rate: 1.5, label: "Fast", ariaLabel: "Fast speed", isDefault: false },
 		]);
+	});
+
+	test("normalizes layoutMode", () => {
+		expect(sanitize({ layoutMode: "bad-mode" }).layoutMode).toBe(
+			"left-aligned",
+		);
+	});
+});
+
+describe("ttsToolRegistration content language", () => {
+	const renderWithLanguage = (language: string | undefined) => {
+		const toolbarContext: ToolbarContext = {
+			scope: { level: "item", scopeId: "item-lang", itemId: "item-lang" },
+			itemId: "item-lang",
+			catalogId: "item-lang",
+			language,
+			toolCoordinator: null,
+			componentOverrides: packagedOverrides,
+			toolkitCoordinator: { getToolConfig: () => ({}) } as any,
+			ttsService: null,
+			elementToolStateStore: null,
+			toggleTool: () => {},
+			isToolVisible: () => false,
+			subscribeVisibility: null,
+		};
+		const renderResult = withFakeDocument(() =>
+			ttsToolRegistration.renderToolbar(itemContext, toolbarContext),
+		);
+		return renderResult?.elements?.[0]?.element as {
+			getAttribute(name: string): string | null;
+		};
+	};
+
+	test("passes a language the toolbar names", () => {
+		expect(renderWithLanguage("es-MX").getAttribute("language")).toBe("es-MX");
+	});
+
+	test("names no language when the toolbar names none", () => {
+		expect(renderWithLanguage(undefined).getAttribute("language")).toBeNull();
 	});
 });

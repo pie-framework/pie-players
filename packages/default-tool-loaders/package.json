@@ -2,7 +2,7 @@
 	"name": "@pie-players/pie-default-tool-loaders",
 	"version": "0.3.74",
 	"type": "module",
-	"description": "Composition layer for the packaged PIE assessment tools: registrations, tag map, placement presets, universal supports and lazy module loaders",
+	"description": "Composition layer for the packaged PIE assessment tools: registrations, tag map, placement preset, universal and empty profiles, and lazy module loaders",
 	"repository": {
 		"type": "git",
 		"url": "git+https://github.com/pie-framework/pie-players.git",
@@ -41,8 +41,6 @@
 		"@pie-players/pie-players-shared": "workspace:*",
 		"@pie-players/pie-tool-annotation-toolbar": "workspace:*",
 		"@pie-players/pie-tool-answer-eliminator": "workspace:*",
-		"@pie-players/pie-tool-calculator-cortex": "workspace:*",
-		"@pie-players/pie-tool-calculator-geogebra": "workspace:*",
 		"@pie-players/pie-tool-calculator-shared": "workspace:*",
 		"@pie-players/pie-tool-dictionary": "workspace:*",
 		"@pie-players/pie-tool-graph": "workspace:*",
@@ -57,6 +55,7 @@
 	},
 	"devDependencies": {
 		"@biomejs/biome": "^2.5.15",
+		"@happy-dom/global-registrator": "^20.14.5",
 		"typescript": "^5.9.3"
 	},
 	"homepage": "https://github.com/pie-framework/pie-players/tree/master/packages/default-tool-loaders#readme",

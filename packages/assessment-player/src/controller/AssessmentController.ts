@@ -3,6 +3,7 @@ import {
 	setCurrentSectionPosition,
 	upsertSectionSession,
 } from "@pie-players/pie-assessment-toolkit";
+import { cloneDeep } from "@pie-players/pie-players-shared/object";
 import type {
 	AssessmentDefinition,
 	AssessmentDeliveryPlan,
@@ -104,8 +105,8 @@ export interface AssessmentControllerHandle {
 	 * persistence strategy.
 	 *
 	 * Hosts call this on whatever cadence they choose (debounced on
-	 * change, on visibility change, on submit). `submit()` always
-	 * `persist()`s as its final step.
+	 * change, on visibility change, on submit). Saves run in call order.
+	 * A failed save goes to `onError` and the returned promise resolves.
 	 */
 	persist(): Promise<void>;
 	/**
@@ -144,9 +145,9 @@ export interface AssessmentControllerHandle {
 	 */
 	navigatePrevious(): boolean;
 	/**
-	 * Mark the assessment as submitted, emit
-	 * `assessment-submission-state-changed`, and `persist()` the final
-	 * snapshot.
+	 * Save the final snapshot, then mark the assessment as submitted and
+	 * emit `assessment-submission-state-changed`. A failed save goes to
+	 * `onError` and rejects, and the assessment stays unsubmitted.
 	 */
 	submit(): Promise<void>;
 	/**
@@ -270,11 +271,14 @@ export class AssessmentController implements AssessmentControllerHandle {
 	private readiness: AssessmentControllerRuntimeState["readiness"] =
 		"bootstrapping";
 	private submitted = false;
+	private saveQueue: Promise<void> = Promise.resolve();
 	private persistenceStrategy?: AssessmentSessionPersistenceStrategy;
 	private initializationPromise?: Promise<void>;
 	private disposalPromise?: Promise<void>;
 	private disposed = false;
 	private readonly storageContext;
+	/** Taken by the first hydrate; a later `hydrate()` loads from the strategy. */
+	private initialSession: AssessmentSession | null;
 
 	constructor(
 		private readonly args: {
@@ -282,12 +286,21 @@ export class AssessmentController implements AssessmentControllerHandle {
 			attemptId?: string;
 			assessment: AssessmentDefinition | null;
 			hooks?: AssessmentPlayerHooks;
+			/**
+			 * A host-supplied session, applied by the first hydrate in place of the
+			 * persistence strategy's `loadSession` result. The controller keeps a
+			 * copy, so later updates never write into the host's object.
+			 */
+			initialSession?: AssessmentSession | null;
 		},
 	) {
 		this.storageContext = {
 			assessmentId: args.assessmentId,
 			attemptId: args.attemptId,
 		};
+		this.initialSession = args.initialSession
+			? cloneDeep(args.initialSession)
+			: null;
 	}
 
 	private emit(event: AssessmentControllerEvent): void {
@@ -322,10 +335,16 @@ export class AssessmentController implements AssessmentControllerHandle {
 		const defaults = {
 			createDefaultPersistence: (): AssessmentSessionPersistenceStrategy => {
 				const storage = getBrowserLocalStorage();
-				const key = `pie:assessment-controller:v1:${this.storageContext.assessmentId}:${this.storageContext.attemptId || "default"}`;
+				// Stored per attempt. Without an attempt id nothing tells two
+				// learners on one device apart, so the session is neither read nor
+				// written.
+				const { assessmentId, attemptId } = this.storageContext;
+				const key = attemptId
+					? `pie:assessment-controller:v1:${assessmentId}:${attemptId}`
+					: null;
 				return {
 					async loadSession() {
-						if (!storage) return null;
+						if (!storage || !key) return null;
 						const raw = storage.getItem(key);
 						if (!raw) return null;
 						try {
@@ -335,11 +354,11 @@ export class AssessmentController implements AssessmentControllerHandle {
 						}
 					},
 					async saveSession(_context, session) {
-						if (!storage) return;
+						if (!storage || !key) return;
 						storage.setItem(key, JSON.stringify(session));
 					},
 					async clearSession() {
-						if (!storage) return;
+						if (!storage || !key) return;
 						storage.removeItem(key);
 					},
 				};
@@ -430,7 +449,10 @@ export class AssessmentController implements AssessmentControllerHandle {
 			this.assertActive();
 			const strategy = await this.getPersistenceStrategy();
 			this.assertActive();
-			const loaded = await strategy.loadSession(this.storageContext);
+			const initialSession = this.initialSession;
+			this.initialSession = null;
+			const loaded =
+				initialSession ?? (await strategy.loadSession(this.storageContext));
 			this.assertActive();
 			if (loaded) {
 				this.session = loaded;
@@ -473,6 +495,18 @@ export class AssessmentController implements AssessmentControllerHandle {
 	async persist(): Promise<void> {
 		this.assertActive();
 		try {
+			await this.save();
+		} catch (error) {
+			if (!this.disposed) this.handleError(error, "session-save");
+		}
+	}
+
+	/**
+	 * Saves run one at a time, in call order, so a slow older write can never
+	 * land after a newer one. A failed save rejects only its own caller.
+	 */
+	private save(): Promise<void> {
+		const run = this.saveQueue.then(async () => {
 			const strategy = await this.getPersistenceStrategy();
 			if (this.disposed) return;
 			await this.args.hooks?.onBeforeAssessmentPersist?.(
@@ -481,9 +515,9 @@ export class AssessmentController implements AssessmentControllerHandle {
 			);
 			if (this.disposed) return;
 			await strategy.saveSession(this.storageContext, this.session);
-		} catch (error) {
-			if (!this.disposed) this.handleError(error, "session-save");
-		}
+		});
+		this.saveQueue = run.catch(() => {});
+		return run;
 	}
 
 	getSession(): AssessmentSession | null {
@@ -582,13 +616,19 @@ export class AssessmentController implements AssessmentControllerHandle {
 
 	async submit(): Promise<void> {
 		this.assertActive();
+		try {
+			await this.save();
+		} catch (error) {
+			if (!this.disposed) this.handleError(error, "session-save");
+			throw error;
+		}
+		if (this.disposed) return;
 		this.submitted = true;
 		this.emit({
 			type: "assessment-submission-state-changed",
 			timestamp: now(),
 			submitted: true,
 		});
-		await this.persist();
 	}
 
 	subscribe(listener: (event: AssessmentControllerEvent) => void): () => void {

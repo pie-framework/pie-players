@@ -4,8 +4,6 @@
 		shadow: 'open',
 		props: {
 			enabled: { type: 'Boolean', attribute: 'enabled' },
-			highlightCoordinator: { type: 'Object' },
-			ttsService: { type: 'Object' },
 			selectionActions: { type: 'Object' }
 		},
 		extend: coerceBooleanAttributes,
@@ -19,16 +17,21 @@
 		AssessmentToolkitRegionScopeContext,
 		AssessmentToolkitRuntimeContext,
 		AssessmentToolkitShellContext,
-		HighlightCoordinator,
-		ToolSelectionAction,
-		TtsServiceApi
-	} from '@pie-players/pie-assessment-toolkit';
+		ToolSelectionAction
+	} from '@pie-players/pie-assessment-toolkit/tools/registration';
 	import {
-		connectAssessmentToolkitRegionScopeContext,
-		connectAssessmentToolkitShellContext,
+		connectToolRegionScopeContext,
+		connectToolShellContext,
 		connectToolRuntimeContext,
-		HighlightColor
-	} from '@pie-players/pie-assessment-toolkit';
+		HighlightColor,
+		isTTSStartFailure
+	} from '@pie-players/pie-assessment-toolkit/tools/registration';
+	import {
+		catalogContextHolding,
+		composedClosest,
+		composedContains,
+		isShadowRootNode
+	} from '@pie-players/pie-assessment-toolkit/tools/registration';
 	import { resolveInterfaceI18n } from '@pie-players/pie-players-shared/i18n/provider';
 	import { sanitizeSvgIcon } from '@pie-players/pie-players-shared/security';
 	import {
@@ -39,12 +42,11 @@
 		requestsSelectionToolbar,
 		toolbarAnchor
 	} from './selection-keyboard.js';
-	import { usableSelectionActions } from './selection-actions.js';
+	import { offersReadAloud, usableSelectionActions } from './selection-actions.js';
+	import { contentRegionHolding, readSelection } from './selection-range.js';
 
 	interface Props {
 		enabled?: boolean;
-		highlightCoordinator?: HighlightCoordinator | null;
-		ttsService?: TtsServiceApi | null;
 		/**
 		 * Actions on the current selection, supplied by whoever mounts this gateway.
 		 *
@@ -58,8 +60,6 @@
 
 	let {
 		enabled = true,
-		highlightCoordinator = null,
-		ttsService = null,
 		selectionActions = null
 	}: Props = $props();
 
@@ -86,6 +86,10 @@
 	let runtimeContext = $state<AssessmentToolkitRuntimeContext | null>(null);
 	// Interface locale, re-derived on every context republish.
 	const interfaceI18n = $derived(resolveInterfaceI18n(runtimeContext));
+	// Where annotations are recorded, and the read-aloud the strip offers when the
+	// toolkit has one.
+	const highlightCoordinator = $derived(runtimeContext?.highlightCoordinator ?? null);
+	const ttsService = $derived(runtimeContext?.ttsService ?? null);
 
 	// Available highlight colors (modern, accessible palette). `$derived` because
 	// the labels come from the catalog, so the list rebuilds when the locale moves —
@@ -202,6 +206,12 @@
 		return usableSelectionActions(selectionActions);
 	});
 
+	/** Re-asked per selection, as {@link availableActions} is. */
+	let readAloudAvailable = $derived.by((): boolean => {
+		void toolbarState.isVisible;
+		return offersReadAloud(ttsService, runtimeContext?.toolkitCoordinator);
+	});
+
 	// Derived state
 	let hasAnnotations = $derived(annotationCount > 0);
 	let hasOverlappingAnnotation = $derived(overlappingAnnotationId !== null);
@@ -227,6 +237,11 @@
 
 		const annotations = highlightCoordinator.getAnnotations();
 		for (const annotation of annotations) {
+			// Ranges in different trees (one inside a shadow root) cannot overlap, and
+			// comparing them throws.
+			if (range.startContainer.getRootNode() !== annotation.range.startContainer.getRootNode()) {
+				continue;
+			}
 			// Check if ranges overlap
 			// Two ranges overlap if: startA < endB && startB < endA
 			const cmp1 = range.compareBoundaryPoints(Range.START_TO_START, annotation.range);
@@ -253,18 +268,17 @@
 	 * Check if selection is in an allowed area
 	 */
 	function isInAllowedArea(node: Node): boolean {
-		if (node.nodeType !== Node.ELEMENT_NODE && node.nodeType !== Node.TEXT_NODE) {
+		// A selection over a shadow root's top-level children has the root as its
+		// common ancestor; its host is where the climb starts.
+		const start = isShadowRootNode(node) ? node.host : node;
+		if (start.nodeType !== Node.ELEMENT_NODE && start.nodeType !== Node.TEXT_NODE) {
 			return false;
 		}
 
-		// For text nodes, check parent element
-		const element = node.nodeType === Node.TEXT_NODE ? node.parentElement : (node as Element);
-		if (!element) return false;
-
-		// Check if element or any ancestor matches disallowed selectors
+		// Check if the node or any ancestor, through shadow hosts, matches disallowed selectors
 		return !DISALLOWED_SELECTORS.some((sel) => {
 			try {
-				return element.closest(sel) !== null;
+				return composedClosest(start, sel) !== null;
 			} catch {
 				return false;
 			}
@@ -273,12 +287,7 @@
 
 	function isWithinScope(range: Range): boolean {
 		if (!effectiveScopeElement) return true;
-		const ancestor = range.commonAncestorContainer;
-		const element =
-			ancestor.nodeType === Node.TEXT_NODE
-				? ancestor.parentElement
-				: (ancestor as Element);
-		return !!element && effectiveScopeElement.contains(element);
+		return composedContains(effectiveScopeElement, range.commonAncestorContainer);
 	}
 
 	/**
@@ -310,9 +319,7 @@
 
 			const data = JSON.parse(json);
 			const root = getEffectiveRoot();
-			const restored = highlightCoordinator.importAnnotations(data, root);
-
-			console.log(`[AnnotationToolbar] Restored ${restored} annotations`);
+			highlightCoordinator.importAnnotations(data, root);
 			annotationCount = highlightCoordinator.getAnnotations().length;
 		} catch (error) {
 			console.error('[AnnotationToolbar] Failed to load annotations:', error);
@@ -353,13 +360,19 @@
 		if (isPointerGestureActive(pointerDownAt, Date.now())) return;
 
 		const sel = window.getSelection();
-		if (!sel || sel.rangeCount === 0) return hideToolbar();
+		const selection = sel ? readSelection(sel) : null;
+		if (!selection) return hideToolbar();
 
-		const range = sel.getRangeAt(0);
-		const text = sel.toString().trim();
+		const { range } = selection;
+		const text = selection.text.trim();
 
-		// Hide if empty or in disallowed area
-		if (!text || !isWithinScope(range) || !isInAllowedArea(range.commonAncestorContainer)) {
+		// Hide if empty, outside a shell's content region, or in a disallowed area
+		if (
+			!text ||
+			!isWithinScope(range) ||
+			!contentRegionHolding(range) ||
+			!isInAllowedArea(range.commonAncestorContainer)
+		) {
 			return hideToolbar();
 		}
 
@@ -558,8 +571,6 @@
 			return;
 		}
 
-		console.log('[AnnotationToolbar] Removing annotation:', overlappingAnnotationId);
-
 		const annotation = highlightCoordinator.getAnnotation(overlappingAnnotationId);
 		if (!annotation) {
 			console.warn('[AnnotationToolbar] Annotation not found:', overlappingAnnotationId);
@@ -568,9 +579,7 @@
 
 		const text = annotation.range.toString();
 		highlightCoordinator.removeAnnotation(overlappingAnnotationId);
-		const newCount = highlightCoordinator.getAnnotations().length;
-		annotationCount = newCount;
-		console.log('[AnnotationToolbar] Annotations remaining:', newCount);
+		annotationCount = highlightCoordinator.getAnnotations().length;
 		saveAnnotations();
 
 		// Announce to screen readers
@@ -638,22 +647,27 @@
 	 * Read aloud with TTS
 	 */
 	async function handleTTSClick() {
-		if (!toolbarState.selectedRange || !ttsService) return;
+		// `aria-disabled` rather than `disabled` while reading: disabling the focused
+		// button moves focus out of the strip, and the focusout that follows dismisses
+		// it and stops the read a frame after it starts.
+		if (ttsSpeaking || !toolbarState.selectedRange || !ttsService || !readAloudAvailable) return;
 
 		ttsSpeaking = true;
 		try {
-			console.log('[AnnotationToolbar] Speaking range:', toolbarState.selectedRange.toString().substring(0, 50));
-
-			// Use speakRange for accurate word highlighting
-			// Note: TTS service should already be initialized by ToolkitCoordinator
-			await ttsService.speakRange(toolbarState.selectedRange, {
-				contentRoot: getEffectiveRoot()
+			// A service not yet started starts here, through the coordinator's
+			// readiness gate. The catalog context is the selection's shell, since
+			// this strip serves the whole section.
+			const selectedRange = toolbarState.selectedRange;
+			await ttsService.speak(selectedRange, {
+				contentRoot: contentRegionHolding(selectedRange) ?? getEffectiveRoot(),
+				language: runtimeContext?.contentLanguage,
+				catalogContext: catalogContextHolding(selectedRange.startContainer, runtimeContext)
 			});
-
-			console.log('[AnnotationToolbar] TTS completed successfully');
 		} catch (error) {
 			console.error('[AnnotationToolbar] TTS error:', error);
-			alert(`TTS failed: ${error instanceof Error ? error.message : String(error)}`);
+			if (isTTSStartFailure(error)) {
+				announce(interfaceI18n.t('tools.textToSpeech.inline.initFailed'), 5000);
+			}
 		} finally {
 			ttsSpeaking = false;
 		}
@@ -817,7 +831,7 @@
 		void availableActions;
 		void hasOverlappingAnnotation;
 		void hasAnnotations;
-		void ttsService;
+		void readAloudAvailable;
 		untrack(() => {
 			if (!toolbarState.isVisible || !toolbarElement) return;
 			repositionToSelection();
@@ -828,7 +842,7 @@
 	 * Apply the roving tabindex to whatever controls are currently rendered.
 	 *
 	 * Done here rather than as a `tabindex` binding per button because the control
-	 * set is conditional — read-aloud only with a TTS service, remove only over an
+	 * set is conditional — read-aloud only while a toolbar hosts TTS, remove only over an
 	 * existing annotation — so a static index per button drifts out of step with the
 	 * rendered order as soon as one of them is absent.
 	 */
@@ -852,13 +866,13 @@
 
 	$effect(() => {
 		if (!contextHostElement) return;
-		const cleanupShell = connectAssessmentToolkitShellContext(
+		const cleanupShell = connectToolShellContext(
 			contextHostElement,
 			(value: AssessmentToolkitShellContext) => {
 				shellContext = value;
 			}
 		);
-		const cleanupRegion = connectAssessmentToolkitRegionScopeContext(
+		const cleanupRegion = connectToolRegionScopeContext(
 			contextHostElement,
 			(value: AssessmentToolkitRegionScopeContext) => {
 				regionScopeContext = value;
@@ -929,13 +943,13 @@
 			</svg>
 		</button>
 
-		<!-- Text-to-Speech (only if ttsService available) -->
-		{#if ttsService}
+		<!-- Read-aloud, while a toolbar hosts textToSpeech -->
+		{#if readAloudAvailable}
 			<div class="divider divider-horizontal mx-0 w-px"></div>
 			<button
 				class="pie-tool-annotation-toolbar__button pie-tool-annotation-toolbar__button--icon"
 				onclick={handleTTSClick}
-				disabled={ttsSpeaking}
+				aria-disabled={ttsSpeaking}
 				aria-label={interfaceI18n.t('tools.annotationToolbar.readAloudA11y')}
 				title={interfaceI18n.t('tools.annotationToolbar.readAloud')}
 			>
@@ -1143,7 +1157,8 @@
 		outline-offset: 2px;
 	}
 
-	.pie-tool-annotation-toolbar__button:disabled {
+	.pie-tool-annotation-toolbar__button:disabled,
+	.pie-tool-annotation-toolbar__button[aria-disabled='true'] {
 		opacity: 0.6;
 		cursor: not-allowed;
 	}

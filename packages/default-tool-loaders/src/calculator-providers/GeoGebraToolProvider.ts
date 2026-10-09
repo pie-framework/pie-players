@@ -5,7 +5,7 @@ import type {
 	LazyCalculatorProviderDefinition,
 } from "./LazyCalculatorToolProvider.js";
 import { LazyCalculatorToolProvider } from "./LazyCalculatorToolProvider.js";
-import type { ToolProviderCapabilities } from "@pie-players/pie-assessment-toolkit/tools/internal";
+import type { ToolProviderCapabilities } from "@pie-players/pie-assessment-toolkit/tools/registration";
 
 export interface GeoGebraToolProviderConfig
 	extends CalculatorToolProviderInitConfig {
@@ -14,7 +14,6 @@ export interface GeoGebraToolProviderConfig
 }
 
 export class GeoGebraToolProvider extends LazyCalculatorToolProvider<GeoGebraToolProviderConfig> {
-	readonly providerId = "geogebra-calculator";
 	readonly providerName = "GeoGebra Calculator";
 	readonly version = "6";
 	readonly requiresAuth = false;

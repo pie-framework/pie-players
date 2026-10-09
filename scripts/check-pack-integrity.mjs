@@ -8,6 +8,7 @@ import {
 	collectTargets,
 	getPublishablePackages,
 	isPackedMatch,
+	mapConcurrent,
 	readJson,
 	runPack,
 	runPackDryRun,
@@ -294,59 +295,64 @@ const readPolicy = () => {
 	return readJson(POLICY_PATH);
 };
 
-const run = () => {
+const checkPackage = async ({ dir, pkg }, forbiddenPublicExports) => {
+	const violations = collectManifestSurfaceViolations(
+		pkg,
+		forbiddenPublicExports,
+	);
+
+	let packCleanup = null;
+	try {
+		let packedFiles;
+		if (USE_REAL_PACK) {
+			const result = await runPack(dir);
+			packCleanup = result.cleanup;
+			packedFiles = result.packedFiles;
+		} else {
+			packedFiles = await runPackDryRun(dir);
+		}
+		violations.push(...collectPackedFileSurfaceViolations(packedFiles, pkg));
+		violations.push(
+			...collectExportTargetViolations(
+				collectDeclaredTargets(pkg),
+				packedFiles,
+			),
+		);
+		violations.push(...collectSourcemapSourceViolations(dir, packedFiles));
+	} catch (error) {
+		violations.push(
+			error.stderr?.toString()?.trim() ||
+				error.message ||
+				"failed to inspect npm pack contents",
+		);
+	} finally {
+		packCleanup?.();
+	}
+
+	return violations.length > 0
+		? {
+				name: pkg.name || path.basename(dir),
+				dir: toPosix(path.relative(ROOT, dir)),
+				violations,
+			}
+		: null;
+};
+
+const run = async () => {
 	const policy = readPolicy();
 	const forbiddenPublicExports = new Map(
 		Object.entries(policy.forbiddenPublicExports || {}),
 	);
-	const failures = [];
-	let checked = 0;
-
-	for (const { dir, pkg } of getPublishablePackages({
+	const packages = getPublishablePackages({
 		root: ROOT,
 		workspaceRoots: policy.workspaceRoots ?? ["packages"],
-	})) {
-		checked += 1;
-		const violations = collectManifestSurfaceViolations(
-			pkg,
-			forbiddenPublicExports,
-		);
-
-		let packCleanup = null;
-		try {
-			const packedFiles = USE_REAL_PACK
-				? (() => {
-						const result = runPack(dir);
-						packCleanup = result.cleanup;
-						return result.packedFiles;
-					})()
-				: runPackDryRun(dir);
-			violations.push(...collectPackedFileSurfaceViolations(packedFiles, pkg));
-			violations.push(
-				...collectExportTargetViolations(
-					collectDeclaredTargets(pkg),
-					packedFiles,
-				),
-			);
-			violations.push(...collectSourcemapSourceViolations(dir, packedFiles));
-		} catch (error) {
-			violations.push(
-				error.stderr?.toString()?.trim() ||
-					error.message ||
-					"failed to inspect npm pack contents",
-			);
-		} finally {
-			packCleanup?.();
-		}
-
-		if (violations.length > 0) {
-			failures.push({
-				name: pkg.name || path.basename(dir),
-				dir: toPosix(path.relative(ROOT, dir)),
-				violations,
-			});
-		}
-	}
+	});
+	const checked = packages.length;
+	const failures = (
+		await mapConcurrent(packages, (entry) =>
+			checkPackage(entry, forbiddenPublicExports),
+		)
+	).filter(Boolean);
 
 	try {
 		assertPublishablePackagesChecked(checked);
@@ -385,5 +391,5 @@ if (
 	process.argv[1] &&
 	import.meta.url === pathToFileURL(process.argv[1]).href
 ) {
-	run();
+	await run();
 }

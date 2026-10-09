@@ -1,8 +1,6 @@
 import { expect, test } from "@playwright/test";
 import {
 	DEFAULT_SECTION_PLAYER_POLICIES,
-	isPreloadEnabled,
-	isTelemetryEnabled,
 	resolveSectionPlayerPolicies,
 } from "../src/policies/index.js";
 import type { SectionPlayerPolicies } from "../src/policies/types.js";
@@ -29,42 +27,18 @@ test.describe("section player policy invariants", () => {
 		expect(override.preload?.enabled).toBe(false);
 	});
 
-	test("isPreloadEnabled defaults to true and respects explicit opt-out", async () => {
-		expect(isPreloadEnabled(undefined)).toBe(true);
-		expect(isPreloadEnabled(null)).toBe(true);
-		expect(isPreloadEnabled({} as SectionPlayerPolicies)).toBe(true);
-		expect(isPreloadEnabled(DEFAULT_SECTION_PLAYER_POLICIES)).toBe(true);
-		expect(
-			isPreloadEnabled({
-				...DEFAULT_SECTION_PLAYER_POLICIES,
-				preload: { enabled: true },
-			}),
-		).toBe(true);
-		expect(
-			isPreloadEnabled({
-				...DEFAULT_SECTION_PLAYER_POLICIES,
-				preload: { enabled: false },
-			}),
-		).toBe(false);
-	});
-
-	test("isTelemetryEnabled defaults to true and respects explicit opt-out", async () => {
-		expect(isTelemetryEnabled(undefined)).toBe(true);
-		expect(isTelemetryEnabled(null)).toBe(true);
-		expect(isTelemetryEnabled({} as SectionPlayerPolicies)).toBe(true);
-		expect(isTelemetryEnabled(DEFAULT_SECTION_PLAYER_POLICIES)).toBe(true);
-		expect(
-			isTelemetryEnabled({
-				...DEFAULT_SECTION_PLAYER_POLICIES,
-				telemetry: { enabled: true },
-			}),
-		).toBe(true);
-		expect(
-			isTelemetryEnabled({
-				...DEFAULT_SECTION_PLAYER_POLICIES,
-				telemetry: { enabled: false },
-			}),
-		).toBe(false);
+	test("preload and telemetry default on and honor an explicit opt-out", async () => {
+		const partial = (value: unknown) => value as SectionPlayerPolicies;
+		for (const input of [undefined, null, partial({})]) {
+			const resolved = resolveSectionPlayerPolicies(input);
+			expect(resolved.preload.enabled).toBe(true);
+			expect(resolved.telemetry.enabled).toBe(true);
+		}
+		const optedOut = resolveSectionPlayerPolicies(
+			partial({ preload: { enabled: false }, telemetry: { enabled: false } }),
+		);
+		expect(optedOut.preload.enabled).toBe(false);
+		expect(optedOut.telemetry.enabled).toBe(false);
 	});
 
 	test("resolveSectionPlayerPolicies fills every unset field from the defaults", async () => {

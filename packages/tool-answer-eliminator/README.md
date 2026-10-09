@@ -28,9 +28,14 @@ The answer eliminator is automatically integrated when using the PIE Section Pla
 <script type="module">
   import '@pie-players/pie-section-player';
   import { ToolkitCoordinator } from '@pie-players/pie-assessment-toolkit';
-  import { createPackagedToolRegistry } from '@pie-players/pie-default-tool-loaders';
+  import {
+    createPackagedToolRegistry,
+    DEFAULT_TOOL_MODULE_LOADERS,
+  } from '@pie-players/pie-default-tool-loaders';
 
-  const toolRegistry = createPackagedToolRegistry();
+  const toolRegistry = createPackagedToolRegistry({
+    toolModuleLoaders: DEFAULT_TOOL_MODULE_LOADERS,
+  });
   const coordinator = new ToolkitCoordinator({
     assessmentId: 'my-assessment',
     toolRegistry,
@@ -50,44 +55,47 @@ The answer eliminator is automatically integrated when using the PIE Section Pla
 The section player automatically:
 - Renders answer eliminator buttons in question toolbars
 - Generates global element IDs
-- Passes ElementToolStateStore to the tool
 - Manages state lifecycle
+
+The tool reads its coordinator and the `ElementToolStateStore` from the toolkit
+runtime context, so it has to sit inside `<pie-assessment-toolkit>`.
 
 ### Manual Integration (Advanced)
 
-For custom implementations outside the section player:
+For a custom layout inside the toolkit:
 
 ```html
 <script type="module">
   import '@pie-players/pie-tool-answer-eliminator';
-  import { ElementToolStateStore } from '@pie-players/pie-assessment-toolkit';
-
-  const store = new ElementToolStateStore();
-  const globalElementId = store.getGlobalElementId(
-    'my-assessment',
-    'section-1',
-    'question-1',
-    'mc1'
-  );
 
   const tool = document.querySelector('pie-tool-answer-eliminator');
-  tool.globalElementId = globalElementId;
-  tool.elementToolStateStore = store;
+  // Store key per PIE element in the question, by model id
+  tool.elementStateKeys = {
+    mc1: 'my-assessment:section-1:question-1:mc1',
+    mc2: 'my-assessment:section-1:question-1:mc2',
+  };
   tool.scopeElement = document.querySelector('.question-content');
+  tool.visible = true; // or alwaysOn = true; the tool injects no buttons while neither is set
 </script>
 
-<pie-tool-answer-eliminator></pie-tool-answer-eliminator>
+<pie-assessment-toolkit>
+  <pie-tool-answer-eliminator></pie-tool-answer-eliminator>
+</pie-assessment-toolkit>
 ```
 
 ## Props/Attributes
 
-The web component accepts the following properties (set via JavaScript, not HTML attributes):
+`elementStateKeys` and `scopeElement` are JS properties only; the others also take the attribute shown.
 
-| Property | Type | Required | Description |
-|----------|------|----------|-------------|
-| `globalElementId` | `string` | Yes | Composite key: `assessmentId:sectionId:itemId:elementId` |
-| `elementToolStateStore` | `ElementToolStateStoreApi` | Yes | Store for element-level tool state |
-| `scopeElement` | `HTMLElement` | No | DOM element to scope choice detection (defaults to document) |
+| Property | Attribute | Type | Default | Description |
+|----------|-----------|------|---------|-------------|
+| `visible` | `visible` | `boolean` | `false` | Shows the elimination buttons; the toolbar toggle sets it |
+| `alwaysOn` | `always-on` | `boolean` | `false` | Shows the buttons regardless of `visible`, for a profile-based accommodation |
+| `strategy` | `strategy` | `'strikethrough' \| 'mask'` | `'strikethrough'` | Elimination styling; any other value uses `strikethrough` |
+| `buttonAlignment` | `button-alignment` | `'left' \| 'right' \| 'inline'` | `'right'` | Button placement relative to the choice |
+| `toolId` | `tool-id` | `string` | `'answerEliminator'` | Id the tool registers with the coordinator under |
+| `elementStateKeys` | | `Record<string, string>` | `{}` | Composite key `assessmentId:sectionId:itemId:elementId` per PIE element, by model id, into the runtime context's element tool state store. A choice is tracked under its nearest ancestor with a listed id and persists under that key; choices outside a listed element are kept in memory only |
+| `scopeElement` | | `HTMLElement` | | Root to detect choices in. Without it the tool uses the root its enclosing `pie-item-scope` provides, and with neither it warns and injects nothing |
 
 ## Global Element ID Format
 
@@ -100,7 +108,7 @@ ${assessmentId}:${sectionId}:${itemId}:${elementId}
 **Example:**
 ```typescript
 "demo-assessment:section-1:question-1:mc1"
-"biology-exam:section-2:genetics-q1:ebsr-part1"
+"biology-exam:section-2:genetics-q1:ebsr1"
 ```
 
 ### Benefits of Composite Keys
@@ -112,16 +120,16 @@ ${assessmentId}:${sectionId}:${itemId}:${elementId}
 
 ### Why Element-Level?
 
-Items can contain **multiple interactive elements** (e.g., EBSR with two parts). Each element needs independent state:
+Items can contain **multiple interactive elements** whose choice ids repeat (two multiple-choice elements both have a choice `a`). Each element needs independent state:
 
 ```typescript
 // ✅ Correct: Element-level state
 {
-  "demo:section-1:question-1:ebsr-part1": {
-    "answerEliminator": { "eliminatedChoices": ["choice-a", "choice-c"] }
+  "demo:section-1:question-1:mc1": {
+    "answerEliminator": { "eliminatedChoices": ["a", "c"] }
   },
-  "demo:section-1:question-1:ebsr-part2": {
-    "answerEliminator": { "eliminatedChoices": ["choice-b"] }
+  "demo:section-1:question-1:mc2": {
+    "answerEliminator": { "eliminatedChoices": ["a"] }
   }
 }
 ```
@@ -160,9 +168,14 @@ The answer eliminator stores state in **ElementToolStateStore** (ephemeral, clie
 To persist tool state across page refreshes:
 
 ```typescript
-import { createPackagedToolRegistry } from '@pie-players/pie-default-tool-loaders';
+import {
+  createPackagedToolRegistry,
+  DEFAULT_TOOL_MODULE_LOADERS,
+} from '@pie-players/pie-default-tool-loaders';
 
-const toolRegistry = createPackagedToolRegistry();
+const toolRegistry = createPackagedToolRegistry({
+  toolModuleLoaders: DEFAULT_TOOL_MODULE_LOADERS,
+});
 const coordinator = new ToolkitCoordinator({
   assessmentId: 'my-assessment',
   toolRegistry,
@@ -194,14 +207,7 @@ The tool detects choices through an **adapter registry** (`AdapterRegistry`), no
 | `EBSRAdapter` | `ebsr` | delegates to the multiple-choice adapter for each `ebsr-multiple-choice` part (Part A/B), prefixing choice IDs with the part |
 | `InlineDropdownAdapter` | `inline-dropdown` | dropdown items with `role="option"` |
 
-Support more element types at runtime by registering your own adapter (any object implementing the `ChoiceAdapter` interface: `canHandle`, `findChoices`, `getChoiceId`, `getChoiceLabel`, `canEliminate`, `createChoiceRange`, `getButtonContainer`):
-
-```typescript
-import { AdapterRegistry } from '@pie-players/pie-tool-answer-eliminator/adapters/adapter-registry';
-
-const registry = new AdapterRegistry();
-registry.registerAdapter(myCustomChoiceAdapter);
-```
+The tool builds its registry internally with these three adapters and has no injection point. The `./adapters/adapter-registry` export provides `AdapterRegistry` and `registerAdapter(...)`, and a registry a host constructs is not the one the tool reads, so supporting another element type is a change to this package. A `ChoiceAdapter` declares `elementType`, `priority`, `canHandle`, `findChoices`, `getChoiceId`, `getChoiceLabel`, `canEliminate`, `createChoiceRange` and `getButtonContainer`.
 
 ### 2. State Storage
 

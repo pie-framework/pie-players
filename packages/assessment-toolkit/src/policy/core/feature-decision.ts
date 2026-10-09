@@ -22,14 +22,19 @@
  */
 
 import type { PnpPolicyResult } from "../sources/PnpPolicySource.js";
-import type { PnpPolicySourceRule } from "./policy-source-tag.js";
+import {
+	overrideBlockedDiagnostic,
+	unknownSupportIdDiagnostic,
+} from "./compose-decision.js";
+import type { ToolPolicyDiagnostic } from "./decision-types.js";
 import type {
+	PnpPolicySourceRule,
 	ToolPolicyResolutionDecision,
 	ToolPolicySourceType,
 } from "./provenance.js";
 
 /**
- * A feature verdict comes from one of the six PNP precedence levels, or from a
+ * A feature verdict comes from one of the eight PNP precedence levels, or from a
  * host gate that never reaches them: `tools.policy.blocked` and a non-empty
  * `tools.policy.allowed` are absolute for the id they name, exactly as they are
  * on the placement-scoped path.
@@ -43,7 +48,7 @@ export interface FeaturePolicyDecision {
 	/** The PNP/AfA support id that was evaluated (e.g. `"signLanguage"`). */
 	featureId: string;
 	/**
-	 * `true` only when policy explicitly granted the feature at one of the six
+	 * `true` only when policy explicitly granted the feature at one of the eight
 	 * precedence levels. A feature nobody configured is **not** available —
 	 * accommodations require a documented need, so silence means no.
 	 */
@@ -51,7 +56,7 @@ export interface FeaturePolicyDecision {
 	action: ToolPolicyResolutionDecision["action"];
 	/** Which precedence rule produced the verdict. */
 	rule: FeaturePolicyRule;
-	precedence: 0 | 1 | 2 | 3 | 4 | 5 | 6;
+	precedence: 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8;
 	sourceType: ToolPolicySourceType;
 	/** Human-readable explanation, suitable for a policy debugger. */
 	reason: string;
@@ -60,9 +65,10 @@ export interface FeaturePolicyDecision {
 	 *
 	 * `false` makes a *denial* a wiring gap rather than a verdict: no profile,
 	 * district policy or test administration could be consulted, because there was
-	 * no assessment to read them from. It is not itself a denial — an item ref
-	 * carrying `requiredTools` mandates a feature at precedence 4 with no
-	 * assessment bound — so read it alongside `granted` rather than instead of it.
+	 * no assessment to read them from. It is not itself a denial — an item's
+	 * registered settings carrying `requiredTools` mandate a feature at precedence
+	 * 6 with no assessment bound — so read it alongside `granted` rather than
+	 * instead of it.
 	 *
 	 * Granting is unaffected either way: an unbound host with no item mandate still
 	 * gets `granted: false`, since an accommodation requires a documented need and
@@ -75,7 +81,7 @@ export interface FeaturePolicyDecision {
 	assessmentBound: boolean;
 	/**
 	 * `true` when the grant is a mandate (item or district `requiredTools`)
-	 * rather than a student-profile support.
+	 * rather than a student-profile support or a test-administration override.
 	 */
 	required: boolean;
 	/**
@@ -84,6 +90,12 @@ export interface FeaturePolicyDecision {
 	 * presentation would hang on; no vocabulary is defined yet.
 	 */
 	parameters?: unknown;
+	/**
+	 * Conflicts found while deciding: a `tool-policy.unknownSupportId` for each
+	 * id the bound inputs name that no tool is registered under. Empty on a host
+	 * denial, which consults no policy source.
+	 */
+	diagnostics: ToolPolicyDiagnostic[];
 }
 
 /** What the engine knows that a single support-id resolution does not. */
@@ -95,10 +107,10 @@ export interface FeatureDecisionContext {
 /**
  * Reason text for a denial that had no assessment to decide against.
  *
- * Replaces the `pnp-support` skip's "not configured at any level", which is
- * true but reads as a completed evaluation. `rule` and `precedence` stay as the
- * source reported them: nothing fired, so naming a seventh rule would describe
- * a precedence level that does not exist.
+ * Used in place of the `pnp-support` skip's "not configured at any level",
+ * which is true but reads as a completed evaluation. `rule` and `precedence`
+ * stay as the source reported them: nothing fired, so naming a ninth rule
+ * would describe a precedence level that does not exist.
  */
 const unboundAssessmentReason = (featureId: string) =>
 	`No assessment is bound, so no policy source could grant "${featureId}"`;
@@ -131,6 +143,7 @@ export function hostFeatureDenial(
 				: `Not listed in tools.policy.allowed (${hostValue.join(", ")})`,
 		required: false,
 		assessmentBound: context.assessmentBound,
+		diagnostics: [],
 	};
 }
 
@@ -171,12 +184,12 @@ export function interpretFeatureResult(
 		granted,
 		action: decision?.action ?? "skip",
 		rule: decision?.rule ?? "pnp-support",
-		precedence: decision?.precedence ?? 6,
+		precedence: decision?.precedence ?? 8,
 		sourceType: decision?.sourceType ?? "system",
 		// Only a denial is re-worded. An unbound host can still be granted the
-		// feature — an item ref carrying `requiredTools` mandates it at precedence 4
-		// with no assessment in sight — and there the source's reason is the true
-		// one.
+		// feature — an item's registered settings carrying `requiredTools` mandate
+		// it at precedence 6 with no assessment in sight — and there the source's
+		// reason is the true one.
 		reason:
 			context.assessmentBound || granted
 				? reason
@@ -184,5 +197,13 @@ export function interpretFeatureResult(
 		required: Boolean(flags?.required),
 		parameters: flags?.settings,
 		assessmentBound: context.assessmentBound,
+		diagnostics: [
+			...Array.from(result.unmappedSupportIds, ([supportId, origins]) =>
+				unknownSupportIdDiagnostic(supportId, origins),
+			),
+			...Array.from(result.blockedOverrides, ([toolId, rule]) =>
+				overrideBlockedDiagnostic(toolId, rule),
+			),
+		],
 	};
 }

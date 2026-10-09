@@ -23,13 +23,13 @@ describe("ToolkitCoordinator telemetry listeners", () => {
 
 		await (coordinator as any).emitTelemetry("pie-tool-init-start", {
 			toolId: "textToSpeech",
-			backend: "polly",
+			backend: "server",
 		});
 		unsubscribe();
 
 		expect(received).toContainEqual({
 			eventName: "pie-tool-init-start",
-			payload: { toolId: "textToSpeech", backend: "polly" },
+			payload: { toolId: "textToSpeech", backend: "server" },
 		});
 	});
 
@@ -41,7 +41,8 @@ describe("ToolkitCoordinator telemetry listeners", () => {
 				providers: {
 					textToSpeech: {
 						enabled: true,
-						backend: "polly",
+						backend: "server",
+						serverProvider: "polly",
 						apiEndpoint: "/api/tts",
 						provider: {
 							runtime: {
@@ -64,8 +65,7 @@ describe("ToolkitCoordinator telemetry listeners", () => {
 					createTestToolRegistration({
 						toolId: "textToSpeech",
 						supportedLevels: ["item", "passage"],
-						pnpSupportIds: ["textToSpeech"],
-						provider: createFailingAuthProviderDescriptor("tts"),
+						provider: createFailingAuthProviderDescriptor("textToSpeech"),
 					}),
 				);
 				return registry;
@@ -80,7 +80,7 @@ describe("ToolkitCoordinator telemetry listeners", () => {
 			received.push(event);
 		});
 
-		await expect(coordinator.ensureProviderReady("tts")).rejects.toThrow(
+		await expect(coordinator.ensureProviderReady("textToSpeech")).rejects.toThrow(
 			"Failed to fetch auth credentials for provider",
 		);
 		unsubscribe();
@@ -92,9 +92,95 @@ describe("ToolkitCoordinator telemetry listeners", () => {
 			received.some(
 				(entry) =>
 					entry.eventName === "pie-tool-backend-call-error" &&
-					entry.payload?.toolId === "textToSpeech" &&
-					entry.payload?.providerId === "tts",
+					entry.payload?.toolId === "textToSpeech",
 			),
 		).toBe(true);
+	});
+});
+
+describe("ToolkitCoordinator tool provider ids", () => {
+	test("a tool's provider events and lifecycle hooks name the tool once, as toolId", async () => {
+		const events: Array<{
+			eventName: string;
+			payload?: Record<string, unknown>;
+		}> = [];
+		const lifecycle: Array<[string, unknown]> = [];
+		const registry = new ToolRegistry();
+		registry.register(
+			createTestToolRegistration({
+				toolId: "calculator",
+				supportedLevels: ["item"],
+				provider: {
+					createProvider: () => ({
+						providerName: "Stub calculator provider",
+						category: "calculator",
+						version: "0.0.0",
+						requiresAuth: false,
+						// A provider's own telemetry reaches the host through the
+						// reporter the coordinator adds to its init config.
+						initialize: async (config: {
+							onTelemetry?: (
+								eventName: string,
+								payload?: Record<string, unknown>,
+							) => Promise<void>;
+						}) => {
+							await config.onTelemetry?.("pie-tool-library-load-start", {
+								operation: "stub-load",
+							});
+						},
+						createInstance: async () => ({}),
+						getCapabilities: () => ({}) as never,
+						isReady: () => true,
+						destroy: () => undefined,
+					}),
+				},
+			}),
+		);
+		const coordinator = new ToolkitCoordinator({
+			assessmentId: "telemetry-tool-ids",
+			lazyInit: true,
+			toolRegistry: registry,
+			tools: {
+				providers: { calculator: { enabled: true } },
+				placement: { item: ["calculator"] },
+			},
+			hooks: {
+				onTelemetry: (eventName, payload) => {
+					events.push({ eventName, payload });
+				},
+				onProviderRegistered: (toolId, meta) => {
+					lifecycle.push([toolId, meta]);
+				},
+				onProviderInitStart: (toolId, meta) => {
+					lifecycle.push([toolId, meta]);
+				},
+				onProviderReady: (toolId, meta) => {
+					lifecycle.push([toolId, meta]);
+				},
+			},
+		});
+
+		await coordinator.ensureProviderReady("calculator");
+
+		const providerEvents = events.filter(({ eventName }) =>
+			/^pie-tool(kit-provider)?-/.test(eventName),
+		);
+		expect(providerEvents.map(({ eventName }) => eventName)).toEqual([
+			"pie-toolkit-provider-registered",
+			"pie-tool-init-start",
+			"pie-tool-library-load-start",
+			"pie-tool-init-success",
+			"pie-toolkit-provider-ready",
+		]);
+		for (const { payload } of providerEvents) {
+			expect(payload?.toolId).toBe("calculator");
+			expect(payload).not.toHaveProperty("providerId");
+		}
+		const meta = { providerName: "Stub calculator provider" };
+		expect(lifecycle).toEqual([
+			["calculator", meta],
+			["calculator", meta],
+			["calculator", meta],
+		]);
 	});
 });

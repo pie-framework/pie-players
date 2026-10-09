@@ -1,13 +1,14 @@
 <script lang="ts">
 	import {
 		connectToolRuntimeContext,
+		parseScopedToolId,
 		type AssessmentToolkitRuntimeContext,
-	} from '@pie-players/pie-assessment-toolkit';
+	} from '@pie-players/pie-assessment-toolkit/tools/registration';
 	import type {
 		Calculator,
 		CalculatorProviderConfig,
 		CalculatorType,
-	} from '@pie-players/pie-assessment-toolkit/tools/client';
+	} from '@pie-players/pie-calculator';
 	import { resolveInterfaceI18n } from '@pie-players/pie-players-shared/i18n/provider';
 	import { onMount, untrack } from 'svelte';
 	import { createCalculatorConfigKey } from './calculator-config-key.js';
@@ -15,19 +16,15 @@
 	let {
 		visible = false,
 		toolId = 'calculator',
-		providerId = '',
 		calculatorType = 'basic' as CalculatorType,
 		availableTypes: availableTypesInput = ['basic', 'scientific', 'graphing'] as CalculatorType[],
 		calculatorConfig = {} as CalculatorProviderConfig,
-		toolkitCoordinator: explicitToolkitCoordinator = null,
 	}: {
 		visible?: boolean;
 		toolId?: string;
-		providerId?: string;
 		calculatorType?: CalculatorType;
 		availableTypes?: CalculatorType[] | string;
 		calculatorConfig?: CalculatorProviderConfig;
-		toolkitCoordinator?: AssessmentToolkitRuntimeContext['toolkitCoordinator'] | null;
 	} = $props();
 
 	let contextHostElement = $state<HTMLDivElement | null>(null);
@@ -39,9 +36,10 @@
 	let hasMountedSurface = $state(false);
 
 	const interfaceI18n = $derived(resolveInterfaceI18n(runtimeContext));
-	const toolkitCoordinator = $derived(
-		explicitToolkitCoordinator ?? runtimeContext?.toolkitCoordinator,
-	);
+	const toolkitCoordinator = $derived(runtimeContext?.toolkitCoordinator);
+	// The toolkit registers a tool's provider under the tool's own id; the instance id
+	// carries the scope on top of it.
+	const baseToolId = $derived(parseScopedToolId(toolId)?.baseToolId ?? toolId);
 	const availableTypes = $derived(
 		(typeof availableTypesInput === 'string'
 			? availableTypesInput.split(',').map((value) => value.trim())
@@ -57,8 +55,12 @@
 			: (availableTypes[0] ?? 'basic'),
 	);
 	const calculatorConfigKey = $derived(createCalculatorConfigKey(calculatorConfig));
+	// The credit the mounted provider's terms require, whichever element hosts it.
+	const attribution = $derived(calculatorInstance?.provider.attribution ?? null);
 
 	let activeMountKey: string | null = null;
+	// The provider the calculator was created from; a tool-config update replaces it.
+	let mountedProvider: { isReady(): boolean } | null = null;
 	let currentMountElement: HTMLDivElement | null = null;
 	let mountGeneration = 0;
 	let reconcileQueued = false;
@@ -96,6 +98,7 @@
 		}
 		mountElement?.remove();
 		activeMountKey = null;
+		mountedProvider = null;
 		isInitializing = false;
 		hasMountedSurface = false;
 	}
@@ -134,10 +137,8 @@
 		isInitializing = true;
 		initializationError = null;
 		try {
-			if (!providerId) throw new Error('Calculator provider id is required');
-			const registry = toolkitCoordinator?.toolProviderRegistry;
-			if (!registry) throw new Error('Calculator provider registry is unavailable');
-			const toolProvider = await registry.getProvider(providerId);
+			if (!toolkitCoordinator) throw new Error('Calculator provider registry is unavailable');
+			const toolProvider = await toolkitCoordinator.ensureProviderReady(baseToolId);
 			const calculatorProvider = await toolProvider.createInstance();
 			if (generation !== mountGeneration || !visible || !mountElement.isConnected) {
 				mountElement.remove();
@@ -157,6 +158,7 @@
 
 			calculatorInstance = instance;
 			activeMountKey = mountKey;
+			mountedProvider = toolProvider;
 			hasMountedSurface = mountElement.childElementCount > 0;
 			startResizeTracking(instance, mountElement);
 			requestAnimationFrame(() => {
@@ -190,10 +192,11 @@
 			return;
 		}
 
-		const mountKey = `${providerId}:${effectiveCalculatorType}:${calculatorConfigKey}`;
+		const mountKey = `${baseToolId}:${effectiveCalculatorType}:${calculatorConfigKey}`;
 		if (
 			calculatorInstance &&
-			activeMountKey === mountKey
+			activeMountKey === mountKey &&
+			mountedProvider?.isReady()
 		) {
 			focusCalculator();
 			return;
@@ -214,9 +217,34 @@
 		queueMicrotask(reconcileCalculator);
 	}
 
+	// Replacing the provider leaves this element's props alone, so the policy
+	// change a tool-config update dispatches is the cue to remount on the new one.
+	async function remountIfProviderReplaced(): Promise<void> {
+		const provider = mountedProvider;
+		const generation = mountGeneration;
+		const coordinator = toolkitCoordinator;
+		if (!provider || !coordinator) return;
+		const current = await coordinator
+			.ensureProviderReady(baseToolId)
+			.catch(() => null);
+		if (generation !== mountGeneration || provider !== mountedProvider) return;
+		if (current === provider) return;
+		destroyCalculator();
+		queueReconcile();
+	}
+
+	$effect(() => {
+		const coordinator = toolkitCoordinator;
+		if (!coordinator) return;
+		// The update registers the new provider after dispatching the change.
+		return coordinator.onPolicyChange(() => {
+			queueMicrotask(() => void remountIfProviderReplaced());
+		});
+	});
+
 	$effect(() => {
 		void visible;
-		void providerId;
+		void baseToolId;
 		void effectiveCalculatorType;
 		void calculatorConfig;
 		void calculatorConfigKey;
@@ -232,9 +260,9 @@
 	{#if visible}
 		<div
 			class="pie-tool-calculator notranslate"
+			class:pie-tool-calculator--attributed={attribution !== null}
 			role="region"
 			data-tool-id={toolId}
-			data-provider-id={providerId}
 			tabindex="-1"
 			lang={interfaceI18n.getLocale()}
 			dir={interfaceI18n.getDirection?.() ?? 'ltr'}
@@ -246,6 +274,14 @@
 				class="pie-tool-calculator__container"
 				data-calculator-type={effectiveCalculatorType}
 			></div>
+			{#if attribution}
+				<a
+					class="pie-tool-calculator__attribution"
+					href={attribution.href}
+					target="_blank"
+					rel="noreferrer"
+				>{attribution.label}</a>
+			{/if}
 			{#if isInitializing || (!initializationError && !hasMountedSurface)}
 				<div class="pie-tool-calculator__loading">
 					{interfaceI18n.t('tools.calculator.loading')}
@@ -301,6 +337,26 @@
 		height: 100%;
 		min-width: 100%;
 		min-height: 100%;
+	}
+
+	/* The credit sits below the calculator rather than over it, where it would
+	   cover the vendor's own controls. */
+	.pie-tool-calculator--attributed {
+		flex-direction: column;
+	}
+
+	.pie-tool-calculator--attributed .pie-tool-calculator__container {
+		flex: 1 1 auto;
+		height: auto;
+		min-height: 0;
+	}
+
+	.pie-tool-calculator__attribution {
+		align-self: flex-end;
+		flex: 0 0 auto;
+		padding: 0.1rem 0.25rem;
+		color: var(--pie-text, #334155);
+		font-size: 0.65rem;
 	}
 
 	.pie-tool-calculator__loading {

@@ -2,20 +2,19 @@
  * Text-to-Speech (TTS) Tool Registration
  *
  * Registers the TTS tool for reading content aloud.
- *
- * Maps to QTI 3.0 standard access features:
- * - textToSpeech (auditory support)
- * - readAloud (auditory support)
  */
 
 import type {
 	ToolRegistration,
 	ToolToolbarRenderResult,
 	ToolbarContext,
-} from "@pie-players/pie-assessment-toolkit/tools/internal";
-import type { ToolContext } from "@pie-players/pie-assessment-toolkit/tools/internal";
-import { hasReadableText } from "@pie-players/pie-assessment-toolkit/tools/internal";
-import { createScopedToolId } from "@pie-players/pie-assessment-toolkit/tools/internal";
+} from "@pie-players/pie-assessment-toolkit/tools/registration";
+import type { ToolContext } from "@pie-players/pie-assessment-toolkit/tools/registration";
+import { hasReadableText } from "@pie-players/pie-assessment-toolkit/tools/registration";
+import {
+	createScopedToolId,
+	createToolElement,
+} from "@pie-players/pie-assessment-toolkit/tools/registration";
 import {
 	buildRuntimeTTSConfig,
 	normalizeTTSLayoutMode,
@@ -23,20 +22,16 @@ import {
 	type NormalizedTTSSpeedOption,
 	resolveTTSHostToolbarLayout,
 	resolveTTSLayoutMode,
-	resolveTTSBackend,
 	resolveTTSRuntimeSettings,
-	resolveRuntimeProvider,
-	resolveTransportMode,
-} from "@pie-players/pie-assessment-toolkit/tools/internal";
-import { TTSToolProvider } from "@pie-players/pie-assessment-toolkit/tools/internal";
+} from "@pie-players/pie-assessment-toolkit/tools/registration";
+import { TTSToolProvider } from "@pie-players/pie-assessment-toolkit/tools/registration";
+import { resolveOverlayElement } from "./overlay-element-cache.js";
 
 // This package owns the server adapter's import, so the toolkit never names it
 // and a bundler building the toolkit alone has nothing to resolve.
 const loadServerTTSProvider = async () =>
 	(await import("@pie-players/tts-client-server")).ServerTTSProvider;
 
-const inlineTTSControls = new Map<string, HTMLElement>();
-export const TOOL_ELEMENT_UNMOUNT_CALLBACK_PROP = "__pieToolElementUnmount";
 export const TOOL_ACTIVE_CHANGE_EVENT = "pie-tool-active-change";
 
 /**
@@ -55,74 +50,41 @@ export const ttsToolRegistration: ToolRegistration = {
 	descriptionKey: "tools.textToSpeech.description",
 	icon: "volume-up",
 	provider: {
-		getProviderId: () => "tts",
 		createProvider: (config) => {
-			const settings = resolveTTSRuntimeSettings(config);
-			return new TTSToolProvider(resolveTTSBackend(settings), {
+			return new TTSToolProvider(resolveTTSRuntimeSettings(config).backend, {
 				loadServerProvider: loadServerTTSProvider,
 			});
 		},
-		getInitConfig: (config) => {
-			const settings = resolveTTSRuntimeSettings(config);
-			const backend = resolveTTSBackend(settings);
-			const serverProvider = resolveRuntimeProvider(settings, backend);
-			const transportMode = resolveTransportMode(settings, serverProvider);
-			return {
-				backend,
-				serverProvider,
-				transportMode,
-				...buildRuntimeTTSConfig(settings),
-			};
-		},
+		getInitConfig: (config) =>
+			buildRuntimeTTSConfig(resolveTTSRuntimeSettings(config)),
 		getAuthFetcher: (config) => {
 			const runtimeAuthFetcher = config?.provider?.runtime?.authFetcher;
 			return typeof runtimeAuthFetcher === "function"
 				? runtimeAuthFetcher
 				: undefined;
 		},
-		sanitizeConfig: (config) => {
-			const settings =
-				config.settings && typeof config.settings === "object"
-					? { ...(config.settings as Record<string, unknown>) }
-					: undefined;
-			if (settings && "layoutMode" in settings) {
-				settings.layoutMode = normalizeTTSLayoutMode(settings.layoutMode);
-			}
-			if (settings && "speedOptions" in settings) {
-				settings.speedOptions = normalizeTTSSpeedControlOptions(
-					settings.speedOptions,
-				);
-			}
-			const normalizedConfig: Record<string, unknown> = {
-				...(config as Record<string, unknown>),
-			};
-			if ("layoutMode" in normalizedConfig) {
-				normalizedConfig.layoutMode = normalizeTTSLayoutMode(
-					normalizedConfig.layoutMode,
-				);
-			}
-			if ("speedOptions" in normalizedConfig) {
-				normalizedConfig.speedOptions = normalizeTTSSpeedControlOptions(
-					normalizedConfig.speedOptions,
-				);
-			}
-			if (settings) {
-				normalizedConfig.settings = settings;
-			}
-			return normalizedConfig as typeof config;
-		},
 		lazy: true,
+	},
+
+	sanitizeConfig: (config) => {
+		const normalizedConfig: Record<string, unknown> = {
+			...(config as Record<string, unknown>),
+		};
+		if ("layoutMode" in normalizedConfig) {
+			normalizedConfig.layoutMode = normalizeTTSLayoutMode(
+				normalizedConfig.layoutMode,
+			);
+		}
+		if ("speedOptions" in normalizedConfig) {
+			normalizedConfig.speedOptions = normalizeTTSSpeedControlOptions(
+				normalizedConfig.speedOptions,
+			);
+		}
+		return normalizedConfig as typeof config;
 	},
 
 	// TTS is inline-only and scoped to item/passage contexts.
 	supportedLevels: ["item", "passage"],
-
-	// PNP support IDs that enable this tool
-	// Maps to QTI 3.0 standard features: textToSpeech, readAloud
-	pnpSupportIds: [
-		"textToSpeech", // QTI 3.0 standard (auditory.textToSpeech)
-		"readAloud", // QTI 3.0 standard (auditory.readAloud)
-	],
 
 	/**
 	 * Pass 2: Determine if TTS is relevant in this context
@@ -135,7 +97,7 @@ export const ttsToolRegistration: ToolRegistration = {
 	},
 
 	renderToolbar(
-		_context: ToolContext,
+		context: ToolContext,
 		toolbarContext: ToolbarContext,
 	): ToolToolbarRenderResult {
 		const resolveRuntimeSettings = () =>
@@ -156,50 +118,46 @@ export const ttsToolRegistration: ToolRegistration = {
 			toolbarContext.scope.level,
 			toolbarContext.scope.scopeId,
 		);
+		// Only a language the toolbar or its host named: unnamed, the control resolves
+		// markup `lang`, and the browser voice follows the browser's language.
+		const applyContentLanguage = (element: HTMLElement) => {
+			if (toolbarContext.language) {
+				element.setAttribute("language", toolbarContext.language);
+			} else {
+				element.removeAttribute("language");
+			}
+		};
 		const resolveControlSize = (): "sm" | "md" | "lg" => {
 			const raw = toolbarContext.ui?.size;
 			return raw === "sm" || raw === "lg" ? raw : "md";
 		};
-		const ensureElement = (): HTMLElement => {
-			let element = inlineTTSControls.get(fullToolId);
-			if (
-				element &&
-				typeof (element as { isConnected?: boolean }).isConnected ===
-					"boolean" &&
-				!(element as { isConnected?: boolean }).isConnected
-			) {
-				inlineTTSControls.delete(fullToolId);
-				element = undefined;
-			}
-			if (!element) {
-				element = document.createElement("pie-tool-tts-inline");
-				(
-					element as HTMLElement & {
-						[key: string]: unknown;
-					}
-				)[TOOL_ELEMENT_UNMOUNT_CALLBACK_PROP] = () => {
-					if (inlineTTSControls.get(fullToolId) === element) {
-						inlineTTSControls.delete(fullToolId);
-					}
-				};
-				inlineTTSControls.set(fullToolId, element);
-			}
+		const element = resolveOverlayElement(
+			toolbarContext,
+			fullToolId,
+			() =>
+				createToolElement(
+					this.toolId,
+					context,
+					toolbarContext,
+					toolbarContext.componentOverrides,
+				) as HTMLElement & {
+					speedOptions?: NormalizedTTSSpeedOption[];
+					showSingleSpeedOption?: boolean;
+				},
+		);
+		const applyAttributes = () => {
 			element.setAttribute(
 				"catalog-id",
 				toolbarContext.catalogId || toolbarContext.itemId,
 			);
-			element.setAttribute("language", toolbarContext.language || "en-US");
+			applyContentLanguage(element);
 			element.setAttribute("size", resolveControlSize());
 			element.setAttribute("layout-mode", resolveLayoutMode());
-			(
-				element as HTMLElement & { speedOptions?: NormalizedTTSSpeedOption[] }
-			).speedOptions = resolveElementSpeedOptions();
-			(
-				element as HTMLElement & { showSingleSpeedOption?: boolean }
-			).showSingleSpeedOption =
+			element.speedOptions = resolveElementSpeedOptions();
+			element.showSingleSpeedOption =
 				resolveRuntimeSettings().showSingleSpeedOption === true;
-			return element;
 		};
+		applyAttributes();
 		const hostLayout = resolveHostLayout();
 
 		return {
@@ -207,7 +165,7 @@ export const ttsToolRegistration: ToolRegistration = {
 			button: null,
 			elements: [
 				{
-					element: ensureElement(),
+					element,
 					mount: hostLayout.mount,
 					layoutHints: {
 						controlsRow: {
@@ -221,7 +179,6 @@ export const ttsToolRegistration: ToolRegistration = {
 				},
 			],
 			subscribeActive: (callback) => {
-				const element = ensureElement();
 				const handler = (event: Event) => {
 					const detail = (event as CustomEvent<{ active?: boolean }>).detail;
 					callback(detail?.active === true);
@@ -231,24 +188,7 @@ export const ttsToolRegistration: ToolRegistration = {
 					element.removeEventListener(TOOL_ACTIVE_CHANGE_EVENT, handler);
 				};
 			},
-			sync: () => {
-				const element = ensureElement();
-				element.setAttribute("tool-id", fullToolId);
-				element.setAttribute(
-					"catalog-id",
-					toolbarContext.catalogId || toolbarContext.itemId,
-				);
-				element.setAttribute("language", toolbarContext.language || "en-US");
-				element.setAttribute("size", resolveControlSize());
-				element.setAttribute("layout-mode", resolveLayoutMode());
-				(
-					element as HTMLElement & { speedOptions?: NormalizedTTSSpeedOption[] }
-				).speedOptions = resolveElementSpeedOptions();
-				(
-					element as HTMLElement & { showSingleSpeedOption?: boolean }
-				).showSingleSpeedOption =
-					resolveRuntimeSettings().showSingleSpeedOption === true;
-			},
+			sync: applyAttributes,
 		};
 	},
 };

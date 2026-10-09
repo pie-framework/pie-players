@@ -62,6 +62,7 @@ class MockTTSImpl implements ITTSProviderImplementation {
 	isPaused(): boolean {
 		return false;
 	}
+	updateSettings(): void {}
 }
 
 class MockTTSProvider implements ITTSProvider {
@@ -73,9 +74,6 @@ class MockTTSProvider implements ITTSProvider {
 
 	async initialize(_config: TTSConfig): Promise<ITTSProviderImplementation> {
 		return this.impl;
-	}
-	supportsFeature(): boolean {
-		return true;
 	}
 	getCapabilities(): TTSProviderCapabilities {
 		return {
@@ -145,8 +143,7 @@ describe("TTSService catalog speech composition", () => {
 			<span data-catalog-idref="q1-choice-a">A</span> after.</p>
 		`;
 
-		await service.speak(root.textContent || "", {
-			contentElement: root,
+		await service.speak(root, {
 			language: "en-US",
 			catalogContext: {
 				ownerKind: "itemModel",
@@ -154,7 +151,7 @@ describe("TTSService catalog speech composition", () => {
 				canonicalItemId: "item-1",
 				modelId: "q1",
 			},
-		} as any);
+		});
 
 		expect(impl.speakCalls).toEqual([
 			"Before",
@@ -189,7 +186,7 @@ describe("TTSService catalog speech composition", () => {
 		range.setStart(textNode, "Select only ".length);
 		range.setEnd(textNode, "Select only these".length);
 
-		await service.speakRange(range, { contentRoot: root });
+		await service.speak(range, { contentRoot: root });
 
 		expect(impl.speakCalls).toEqual(["these"]);
 	});
@@ -207,7 +204,7 @@ describe("TTSService catalog speech composition", () => {
 		range.setStart(textNode, "Mars is the ".length);
 		range.setEnd(textNode, "Mars is the fourth planet".length);
 
-		await service.speakRange(range, { contentRoot: root });
+		await service.speak(range, { contentRoot: root });
 
 		expect(impl.speakCalls).toEqual(["fourth planet"]);
 		root.remove();
@@ -226,7 +223,7 @@ describe("TTSService catalog speech composition", () => {
 		range.setStart(paragraphs[0]?.firstChild as Text, "Mars is the ".length);
 		range.setEnd(paragraphs[1]?.firstChild as Text, "It has".length);
 
-		await service.speakRange(range, { contentRoot: root });
+		await service.speak(range, { contentRoot: root });
 
 		expect(impl.speakCalls).toEqual([
 			"fourth planet from the Sun.",
@@ -250,8 +247,8 @@ describe("TTSService catalog speech composition", () => {
 		const words: string[] = [];
 		const sentences: string[] = [];
 		service.setHighlightCoordinator({
-			highlightTTSWord: (node: Text, start: number, end: number) => {
-				words.push(node.textContent?.slice(start, end) || "");
+			highlightTTSWord: (ranges: Range[]) => {
+				words.push(ranges.join(""));
 			},
 			highlightTTSSentence: (ranges: Range[]) => {
 				sentences.push(ranges.map((r) => r.toString()).join(""));
@@ -261,7 +258,7 @@ describe("TTSService catalog speech composition", () => {
 			updateTTSHighlightStyle: () => {},
 		} as any);
 
-		await service.speakRange(range, { contentRoot: root });
+		await service.speak(range, { contentRoot: root });
 
 		expect(words).toEqual(["fourth", "It"]);
 		expect(sentences.length).toBeGreaterThan(0);
@@ -271,7 +268,7 @@ describe("TTSService catalog speech composition", () => {
 		root.remove();
 	});
 
-	test("selection speech keeps word highlighting while ignoring catalogs", async () => {
+	test("selection speech keeps word highlighting inside part of a cataloged node", async () => {
 		const impl = new MockTTSImpl();
 		const service = new TTSService();
 		await service.initialize(new MockTTSProvider(impl));
@@ -296,8 +293,8 @@ describe("TTSService catalog speech composition", () => {
 		range.setEnd(textNode, "Select only these".length);
 		const highlightedWords: string[] = [];
 		service.setHighlightCoordinator({
-			highlightTTSWord: (node: Text, start: number, end: number) => {
-				highlightedWords.push(node.textContent?.slice(start, end) || "");
+			highlightTTSWord: (ranges: Range[]) => {
+				highlightedWords.push(ranges.join(""));
 			},
 			highlightTTSSentence: () => {},
 			clearTTS: () => {},
@@ -305,10 +302,97 @@ describe("TTSService catalog speech composition", () => {
 			updateTTSHighlightStyle: () => {},
 		} as any);
 
-		await service.speakRange(range, { contentRoot: root });
+		await service.speak(range, { contentRoot: root });
 
 		expect(impl.speakCalls).toEqual(["these"]);
 		expect(highlightedWords).toEqual(["these"]);
+	});
+
+	test("selection speech reads the spoken card of a node it holds whole", async () => {
+		const impl = new MockTTSImpl();
+		const service = new TTSService();
+		await service.initialize(new MockTTSProvider(impl));
+		service.setCatalogResolver(
+			new AccessibilityCatalogResolver([
+				{
+					identifier: "term",
+					cards: [
+						{ catalog: "spoken", language: "en-US", content: "authored term" },
+					],
+				},
+			]),
+		);
+		const root = document.createElement("div");
+		root.innerHTML = `<p>Before <span data-catalog-idref="term">x</span> after.</p>`;
+		const [before, , after] = Array.from(
+			root.querySelector("p")?.childNodes ?? [],
+		) as Text[];
+		const range = document.createRange();
+		range.setStart(before, "Be".length);
+		range.setEnd(after, " af".length);
+
+		await service.speak(range, { contentRoot: root });
+
+		expect(impl.speakCalls).toEqual(["fore", "authored term", "af"]);
+	});
+
+	test("selection speech reads the card when its ends lie at the node's text ends", async () => {
+		const impl = new MockTTSImpl();
+		const service = new TTSService();
+		await service.initialize(new MockTTSProvider(impl));
+		service.setCatalogResolver(
+			new AccessibilityCatalogResolver([
+				{
+					identifier: "term",
+					cards: [
+						{ catalog: "spoken", language: "en-US", content: "authored term" },
+					],
+				},
+			]),
+		);
+		const root = document.createElement("div");
+		root.innerHTML = `<p>Before <span data-catalog-idref="term"> xy </span> after.</p>`;
+		const text = root.querySelector("span")?.firstChild as Text;
+		const range = document.createRange();
+		range.setStart(text, " ".length);
+		range.setEnd(text, " xy".length);
+
+		await service.speak(range, { contentRoot: root });
+
+		expect(impl.speakCalls).toEqual(["authored term"]);
+	});
+
+	test("selection speech reads a registered card for the owner it names", async () => {
+		const owner = {
+			ownerKind: "itemModel",
+			itemId: "item-1",
+			canonicalItemId: "item-1",
+		} as const;
+		const resolver = new AccessibilityCatalogResolver();
+		resolver.registerCatalogs(owner, [
+			{
+				identifier: "term",
+				cards: [
+					{ catalog: "spoken", language: "en-US", content: "registered term" },
+				],
+			},
+		]);
+		const root = document.createElement("div");
+		root.innerHTML = `<p>Read <span data-catalog-idref="term">x</span> now.</p>`;
+		const range = document.createRange();
+		range.selectNodeContents(root.querySelector("p") as Element);
+
+		const speakWith = async (catalogContext?: typeof owner) => {
+			const impl = new MockTTSImpl();
+			const service = new TTSService();
+			await service.initialize(new MockTTSProvider(impl));
+			service.setCatalogResolver(resolver);
+			await service.speak(range, { contentRoot: root, catalogContext });
+			return impl.speakCalls;
+		};
+
+		expect(await speakWith(owner)).toEqual(["Read", "registered term", "now."]);
+		expect(await speakWith()).toEqual(["Read x now."]);
 	});
 
 	test("uses exact words and anchor spans for mixed catalog chunks", async () => {
@@ -378,8 +462,8 @@ describe("TTSService catalog speech composition", () => {
 		const highlightedWords: string[] = [];
 		const sentenceHighlights: string[] = [];
 		service.setHighlightCoordinator({
-			highlightTTSWord: (node: Text, start: number, end: number) => {
-				highlightedWords.push(node.textContent?.slice(start, end) || "");
+			highlightTTSWord: (ranges: Range[]) => {
+				highlightedWords.push(ranges.join(""));
 			},
 			highlightTTSSentence: (ranges: Range[]) => {
 				sentenceHighlights.push(
@@ -391,10 +475,7 @@ describe("TTSService catalog speech composition", () => {
 			updateTTSHighlightStyle: () => {},
 		} as any);
 
-		await service.speak(root.textContent || "", {
-			contentElement: root,
-			language: "en-US",
-		} as any);
+		await service.speak(root, { language: "en-US" });
 
 		expect(impl.speakCalls).toEqual([
 			"Start here.",
@@ -414,6 +495,59 @@ describe("TTSService catalog speech composition", () => {
 				highlight.includes("x = (-b ± √(b² - 4ac)) / 2a"),
 			),
 		).toBe(true);
+	});
+
+	test("paints a catalog word crossing a shadow boundary in each tree", async () => {
+		const impl = new MockTTSImpl();
+		// "ü" and "r" are not ASCII alphanumerics, so the shadow boundary inside
+		// the word adds no space to the visible text.
+		impl.boundariesByText.set("Leaving Zürich.", [
+			{ word: "Zürich", position: 8, length: "Zürich".length },
+		]);
+		const service = new TTSService();
+		await service.initialize(new MockTTSProvider(impl));
+		service.setCatalogResolver(
+			new AccessibilityCatalogResolver([
+				{
+					identifier: "river",
+					cards: [
+						{
+							catalog: "spoken",
+							language: "en-US",
+							content: "Leaving Zürich.",
+						},
+					],
+				},
+			]),
+		);
+		const root = document.createElement("div");
+		root.innerHTML =
+			'<span data-catalog-idref="river">Leaving Zü<span data-part></span>.</span>';
+		root
+			.querySelector("[data-part]")
+			?.attachShadow({ mode: "open" })
+			.append(document.createTextNode("rich"));
+		document.body.append(root);
+		const highlightedWords: string[][] = [];
+		service.setHighlightCoordinator({
+			highlightTTSWord: (ranges: Range[]) => {
+				highlightedWords.push(ranges.map(String));
+			},
+			highlightTTSSentence: () => {},
+			clearTTS: () => {},
+			clearHighlights: () => {},
+			isSupported: () => true,
+			updateTTSHighlightStyle: () => {},
+		} as any);
+
+		try {
+			await service.speak(root, { language: "en-US" });
+		} finally {
+			root.remove();
+		}
+
+		expect(impl.speakCalls).toEqual(["Leaving Zürich."]);
+		expect(highlightedWords).toContainEqual(["Zü", "rich"]);
 	});
 
 	test("maps raw SSML provider offsets for exact catalog chunks", async () => {
@@ -440,8 +574,8 @@ describe("TTSService catalog speech composition", () => {
 		root.innerHTML = `<span data-catalog-idref="prompt">Hello world</span>`;
 		const highlightedWords: string[] = [];
 		service.setHighlightCoordinator({
-			highlightTTSWord: (node: Text, start: number, end: number) => {
-				highlightedWords.push(node.textContent?.slice(start, end) || "");
+			highlightTTSWord: (ranges: Range[]) => {
+				highlightedWords.push(ranges.join(""));
 			},
 			highlightTTSSentence: () => {},
 			clearTTS: () => {},
@@ -449,10 +583,7 @@ describe("TTSService catalog speech composition", () => {
 			updateTTSHighlightStyle: () => {},
 		} as any);
 
-		await service.speak(root.textContent || "", {
-			contentElement: root,
-			language: "en-US",
-		} as any);
+		await service.speak(root, { language: "en-US" });
 
 		expect(highlightedWords).toEqual(["Hello"]);
 	});
@@ -482,8 +613,8 @@ describe("TTSService catalog speech composition", () => {
 		const highlightedWords: string[] = [];
 		const highlightedRanges: string[] = [];
 		service.setHighlightCoordinator({
-			highlightTTSWord: (node: Text, start: number, end: number) => {
-				highlightedWords.push(node.textContent?.slice(start, end) || "");
+			highlightTTSWord: (ranges: Range[]) => {
+				highlightedWords.push(ranges.join(""));
 			},
 			highlightRange: (range: Range) => {
 				highlightedRanges.push(range.toString());
@@ -499,10 +630,7 @@ describe("TTSService catalog speech composition", () => {
 			updateTTSHighlightStyle: () => {},
 		} as any);
 
-		await service.speak(root.textContent || "", {
-			contentElement: root,
-			language: "en-US",
-		} as any);
+		await service.speak(root, { language: "en-US" });
 
 		expect(highlightedWords).toEqual(["×"]);
 		// Native MathML is token-capable, so the operator highlights as a token
@@ -538,8 +666,8 @@ describe("TTSService catalog speech composition", () => {
 		const highlightedWords: string[] = [];
 		const sentenceHighlights: string[] = [];
 		service.setHighlightCoordinator({
-			highlightTTSWord: (node: Text, start: number, end: number) => {
-				highlightedWords.push(node.textContent?.slice(start, end) || "");
+			highlightTTSWord: (ranges: Range[]) => {
+				highlightedWords.push(ranges.join(""));
 			},
 			highlightRange: (range: Range) => {
 				highlightedWords.push(range.toString());
@@ -555,10 +683,7 @@ describe("TTSService catalog speech composition", () => {
 			updateTTSHighlightStyle: () => {},
 		} as any);
 
-		await service.speak(root.textContent || "", {
-			contentElement: root,
-			language: "en-US",
-		} as any);
+		await service.speak(root, { language: "en-US" });
 
 		expect(highlightedWords).toContain("Before");
 		expect(highlightedWords).toContain("×");
@@ -593,8 +718,8 @@ describe("TTSService catalog speech composition", () => {
 		`;
 		const highlightedWords: string[] = [];
 		service.setHighlightCoordinator({
-			highlightTTSWord: (node: Text, start: number, end: number) => {
-				highlightedWords.push(node.textContent?.slice(start, end) || "");
+			highlightTTSWord: (ranges: Range[]) => {
+				highlightedWords.push(ranges.join(""));
 			},
 			highlightRange: (range: Range) => {
 				highlightedWords.push(range.toString());
@@ -606,10 +731,7 @@ describe("TTSService catalog speech composition", () => {
 			updateTTSHighlightStyle: () => {},
 		} as any);
 
-		await service.speak(root.textContent || "", {
-			contentElement: root,
-			language: "en-US",
-		} as any);
+		await service.speak(root, { language: "en-US" });
 
 		expect(highlightedWords).toEqual(["times", "×"]);
 	});
@@ -658,8 +780,8 @@ describe("TTSService catalog speech composition", () => {
 		const highlightedWords: string[] = [];
 		const sentenceHighlights: string[] = [];
 		service.setHighlightCoordinator({
-			highlightTTSWord: (node: Text, start: number, end: number) => {
-				highlightedWords.push(node.textContent?.slice(start, end) || "");
+			highlightTTSWord: (ranges: Range[]) => {
+				highlightedWords.push(ranges.join(""));
 			},
 			highlightRange: (range: Range) => {
 				highlightedWords.push(range.toString());
@@ -681,10 +803,7 @@ describe("TTSService catalog speech composition", () => {
 			updateTTSHighlightStyle: () => {},
 		} as any);
 
-		await service.speak(root.textContent || "", {
-			contentElement: root,
-			language: "en-US",
-		} as any);
+		await service.speak(root, { language: "en-US" });
 
 		expect(
 			sentenceHighlights.some(
@@ -728,8 +847,8 @@ describe("TTSService catalog speech composition", () => {
 		const highlightedWords: string[] = [];
 		const sentenceHighlights: string[] = [];
 		service.setHighlightCoordinator({
-			highlightTTSWord: (node: Text, start: number, end: number) => {
-				highlightedWords.push(node.textContent?.slice(start, end) || "");
+			highlightTTSWord: (ranges: Range[]) => {
+				highlightedWords.push(ranges.join(""));
 			},
 			highlightTTSSentence: (ranges: Range[]) => {
 				sentenceHighlights.push(
@@ -741,10 +860,7 @@ describe("TTSService catalog speech composition", () => {
 			updateTTSHighlightStyle: () => {},
 		} as any);
 
-		await service.speak(root.textContent || "", {
-			contentElement: root,
-			language: "en-US",
-		} as any);
+		await service.speak(root, { language: "en-US" });
 
 		expect(highlightedWords).toEqual([]);
 		expect(sentenceHighlights).toContain("Listen now.");
@@ -803,10 +919,7 @@ describe("TTSService catalog speech composition", () => {
 			updateTTSHighlightStyle: () => {},
 		} as any);
 
-		await service.speak(root.textContent || "", {
-			contentElement: root,
-			language: "en-US",
-		} as any);
+		await service.speak(root, { language: "en-US" });
 
 		// The whole formula is painted at the word layer (element textContent
 		// carries surrounding markup whitespace, so compare without it).
@@ -855,10 +968,7 @@ describe("TTSService catalog speech composition", () => {
 			updateTTSHighlightStyle: () => {},
 		} as any);
 
-		await service.speak(root.textContent || "", {
-			contentElement: root,
-			language: "en-US",
-		} as any);
+		await service.speak(root, { language: "en-US" });
 
 		expect(sentenceHighlights.at(-1)).toBe("alpha beta");
 	});
@@ -892,12 +1002,9 @@ describe("TTSService catalog speech composition", () => {
 			updateTTSHighlightStyle: () => {},
 		} as any);
 
-		await expect(
-			service.speak(root.textContent || "", {
-				contentElement: root,
-				language: "en-US",
-			} as any),
-		).rejects.toThrow("mock speak failed");
+		await expect(service.speak(root, { language: "en-US" })).rejects.toThrow(
+			"mock speak failed",
+		);
 
 		expect(impl.onWordBoundary).toBeUndefined();
 	});
@@ -926,12 +1033,10 @@ describe("TTSService catalog speech composition", () => {
 			updateTTSHighlightStyle: () => {},
 		} as any);
 
-		const speakPromise = service.speak(root.textContent || "", {
-			contentElement: root,
-			language: "en-US",
-		} as any);
-		await Promise.resolve();
-		await Promise.resolve();
+		const speakPromise = service.speak(root, { language: "en-US" });
+		for (let tick = 0; tick < 50 && !impl.speakCalls.includes(ssml); tick++) {
+			await Promise.resolve();
+		}
 		expect(impl.onWordBoundary).toBeDefined();
 
 		service.stop();
@@ -939,5 +1044,93 @@ describe("TTSService catalog speech composition", () => {
 		await speakPromise;
 
 		expect(impl.onWordBoundary).toBeUndefined();
+	});
+});
+
+class HandlerRecordingImpl extends MockTTSImpl {
+	/** Whether a word-boundary handler was installed at each speak call. */
+	public handlerAtSpeak: boolean[] = [];
+
+	async speak(text: string): Promise<void> {
+		this.handlerAtSpeak.push(typeof this.onWordBoundary === "function");
+		return super.speak(text);
+	}
+}
+
+function noopHighlightCoordinator() {
+	return {
+		highlightTTSWord: () => {},
+		highlightTTSSentence: () => {},
+		clearTTS: () => {},
+		isSupported: () => true,
+		updateTTSHighlightStyle: () => {},
+	} as any;
+}
+
+function alignedCatalogRoot(service: TTSService): HTMLElement {
+	service.setCatalogResolver(
+		new AccessibilityCatalogResolver([
+			{
+				identifier: "intro",
+				cards: [
+					{ catalog: "spoken", language: "en-US", content: "Start here." },
+				],
+			},
+		]),
+	);
+	const root = document.createElement("div");
+	root.innerHTML = `<span data-catalog-idref="intro">Start here.</span>`;
+	return root;
+}
+
+describe("TTSService word boundaries follow the highlight mode", () => {
+	test("a sentence-mode speak after a word-mode run installs no boundary handler", async () => {
+		const impl = new HandlerRecordingImpl();
+		const service = new TTSService();
+		await service.initialize(new MockTTSProvider(impl), {
+			providerOptions: { highlightMode: "word" },
+		});
+		service.setHighlightCoordinator(noopHighlightCoordinator());
+		const root = document.createElement("div");
+		root.textContent = "Read these words aloud.";
+
+		await service.speak(root, { language: "en-US" });
+		expect(impl.handlerAtSpeak).toEqual([true]);
+		expect(impl.onWordBoundary).toBeUndefined();
+
+		await service.updateSettings({
+			providerOptions: { highlightMode: "sentence" },
+		});
+		impl.handlerAtSpeak = [];
+		await service.speak(root, { language: "en-US" });
+
+		expect(impl.handlerAtSpeak.length).toBeGreaterThan(0);
+		expect(impl.handlerAtSpeak.every((installed) => !installed)).toBe(true);
+	});
+
+	test("an aligned catalog chunk takes boundaries in word mode only", async () => {
+		const wordImpl = new HandlerRecordingImpl();
+		const wordService = new TTSService();
+		await wordService.initialize(new MockTTSProvider(wordImpl), {
+			providerOptions: { highlightMode: "word" },
+		});
+		wordService.setHighlightCoordinator(noopHighlightCoordinator());
+		await wordService.speak(alignedCatalogRoot(wordService), {
+			language: "en-US",
+		});
+		expect(wordImpl.speakCalls).toEqual(["Start here."]);
+		expect(wordImpl.handlerAtSpeak).toEqual([true]);
+
+		const sentenceImpl = new HandlerRecordingImpl();
+		const sentenceService = new TTSService();
+		await sentenceService.initialize(new MockTTSProvider(sentenceImpl), {
+			providerOptions: { highlightMode: "sentence" },
+		});
+		sentenceService.setHighlightCoordinator(noopHighlightCoordinator());
+		await sentenceService.speak(alignedCatalogRoot(sentenceService), {
+			language: "en-US",
+		});
+		expect(sentenceImpl.speakCalls).toEqual(["Start here."]);
+		expect(sentenceImpl.handlerAtSpeak).toEqual([false]);
 	});
 });

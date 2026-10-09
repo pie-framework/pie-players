@@ -5,19 +5,36 @@
 		ToolRegistry,
 		ToolbarItem,
 	} from "@pie-players/pie-assessment-toolkit";
-	import type { AssessmentSection } from "@pie-players/pie-players-shared/types";
+	import type {
+		AssessmentEntity,
+		AssessmentSection,
+		SectionControllerSessionState,
+	} from "@pie-players/pie-players-shared/types";
 	import {
 		createSectionPlayerCardRenderContextProvider,
-		getHostElementFromAnchor,
 		type SectionPlayerCardRenderContext,
 	} from "./section-player-card-context.js";
-	import type { SectionControllerHandle } from "@pie-players/pie-assessment-toolkit";
+	import { getHostElementFromAnchor } from "./host-element.js";
+	import {
+		createSectionPlayerLayoutContextProvider,
+		type SectionPlayerLayoutContext,
+	} from "./section-player-layout-context.js";
+	import type {
+		SectionControllerHandle,
+		ToolConfigStrictness,
+		ToolkitCoordinatorApi,
+	} from "@pie-players/pie-assessment-toolkit";
 	import { coerceBooleanLike } from "@pie-players/pie-players-shared";
-	import { onDestroy } from "svelte";
+	import { onDestroy, untrack } from "svelte";
 
 	let {
 		runtime = null as Record<string, unknown> | null,
+		ndsIcons = undefined as boolean | undefined,
+		locale = "",
+		toolConfigStrictness = undefined as ToolConfigStrictness | undefined,
 		section = null as AssessmentSection | null,
+		session = null as SectionControllerSessionState | null,
+		assessment = null as AssessmentEntity | null,
 		sectionId = "",
 		attemptId = "",
 		showToolbar = "false" as boolean | string | null | undefined,
@@ -26,13 +43,19 @@
 		toolRegistry = null as ToolRegistry | null,
 		sectionHostButtons = [] as ToolbarItem[],
 		cardRenderContext = null as SectionPlayerCardRenderContext | null,
+		layoutContext = null as SectionPlayerLayoutContext | null,
 		onCompositionChanged,
 		onSectionReady,
 		onFrameworkErrorEvent,
 		onToolkitReady,
 	} = $props<{
 		runtime?: Record<string, unknown> | null;
+		ndsIcons?: boolean;
+		locale?: string;
+		toolConfigStrictness?: ToolConfigStrictness;
 		section?: AssessmentSection | null;
+		session?: SectionControllerSessionState | null;
+		assessment?: AssessmentEntity | null;
 		sectionId?: string;
 		attemptId?: string;
 		showToolbar?: boolean | string | null | undefined;
@@ -41,14 +64,13 @@
 		toolRegistry?: ToolRegistry | null;
 		sectionHostButtons?: ToolbarItem[];
 		cardRenderContext?: SectionPlayerCardRenderContext | null;
+		layoutContext?: SectionPlayerLayoutContext | null;
 		onCompositionChanged?: (event: Event) => void;
 		onSectionReady?: (event: Event) => void;
 		/**
 		 * Internal scaffold-level event-listener for `framework-error` DOM
-		 * events. Distinct from the canonical, model-shape
-		 * `onFrameworkError` prop on `SectionPlayerLayoutKernel` and the
-		 * layout custom elements: the scaffold does not own the canonical
-		 * model contract — it only re-emits raw events to its consumer.
+		 * events. The model-shape callback is `runtime.onFrameworkError`; the
+		 * scaffold only hands the raw event to its consumer.
 		 */
 		onFrameworkErrorEvent?: (event: Event) => void;
 		onToolkitReady?: (event: Event) => void;
@@ -56,6 +78,7 @@
 	let cardContextAnchor = $state<HTMLDivElement | null>(null);
 	let navigationStatusMessage = $state("");
 	let unsubscribeNavigationStatus: (() => void) | null = null;
+	let navigationStatusCoordinator: ToolkitCoordinatorApi | null = null;
 
 	function buildStatusMessage(event: { itemIndex?: number; totalItems?: number; itemLabel?: string }): string {
 		const position = typeof event.itemIndex === "number" ? event.itemIndex + 1 : null;
@@ -69,13 +92,17 @@
 		return "";
 	}
 
-	function subscribeNavigationStatus(controller: SectionControllerHandle | null): void {
+	// One subscription per coordinator: it follows the active section across
+	// navigation, as a host's does.
+	function subscribeNavigationStatus(coordinator: ToolkitCoordinatorApi | null): void {
+		if (!coordinator || coordinator === navigationStatusCoordinator) return;
 		unsubscribeNavigationStatus?.();
-		unsubscribeNavigationStatus = null;
-		if (!controller?.subscribe) return;
-		unsubscribeNavigationStatus = controller.subscribe((event: any) => {
-			if (event?.type !== "item-selected") return;
-			navigationStatusMessage = buildStatusMessage(event);
+		navigationStatusCoordinator = coordinator;
+		unsubscribeNavigationStatus = coordinator.subscribeSectionEvents({
+			eventTypes: ["item-selected"],
+			listener: (event: any) => {
+				navigationStatusMessage = buildStatusMessage(event);
+			},
 		});
 	}
 
@@ -98,10 +125,14 @@
 			currentItemId?: string;
 		};
 	} | null>(null);
-	let cardContextProvider = $state<{
+	let cardContextProvider: {
 		setValue: (value: SectionPlayerCardRenderContext) => void;
 		disconnect: () => void;
-	} | null>(null);
+	} | null = null;
+	let layoutContextProvider: {
+		setValue: (value: SectionPlayerLayoutContext) => void;
+		disconnect: () => void;
+	} | null = null;
 	const host = $derived.by(() => getHostElementFromAnchor(cardContextAnchor));
 	const normalizedShowToolbar = $derived(coerceBooleanLike(showToolbar, false));
 
@@ -109,7 +140,17 @@
 		onCompositionChanged?.(event);
 	}
 
+	// The base's own toolkit renders in the base's shadow root. A ready event
+	// from any other toolkit, such as one nested in the layout's content, is not
+	// this section's.
+	function isOwnToolkitEvent(event: Event): boolean {
+		const origin = event.composedPath()[0] as Node | undefined;
+		const base = event.currentTarget as Element | null;
+		return Boolean(base?.shadowRoot) && origin?.getRootNode?.() === base?.shadowRoot;
+	}
+
 	function handleSectionReady(event: Event) {
+		if (!isOwnToolkitEvent(event)) return;
 		onSectionReady?.(event);
 	}
 
@@ -118,10 +159,12 @@
 	}
 
 	function handleToolkitReady(event: Event) {
+		if (!isOwnToolkitEvent(event)) return;
 		onToolkitReady?.(event);
-		// Subscribe for navigation announcements as soon as the controller is available.
-		const controller = baseElement?.getSectionController?.() ?? null;
-		subscribeNavigationStatus(controller);
+		subscribeNavigationStatus(
+			(event as CustomEvent<{ coordinator?: ToolkitCoordinatorApi }>).detail
+				?.coordinator ?? null,
+		);
 	}
 
 	export function navigateToItem(index: number): boolean {
@@ -166,21 +209,50 @@
 		return baseElement.waitForSectionController(timeoutMs);
 	}
 
+	// One provider of each context for the host's lifetime, created with the
+	// first value and republished with `setValue` after that: a card or pane
+	// keeps the provider that answered it, so a replaced one would leave it
+	// relying on the announce.
 	$effect(() => {
-		if (!host || !cardRenderContext) return;
-		cardContextProvider = createSectionPlayerCardRenderContextProvider(
-			host,
-			cardRenderContext,
-		);
+		if (!host) return;
 		return () => {
 			cardContextProvider?.disconnect();
 			cardContextProvider = null;
+			layoutContextProvider?.disconnect();
+			layoutContextProvider = null;
 		};
 	});
 
 	$effect(() => {
-		if (!cardRenderContext) return;
-		cardContextProvider?.setValue(cardRenderContext);
+		const currentHost = host;
+		const value = cardRenderContext;
+		if (!currentHost || !value) return;
+		untrack(() => {
+			if (cardContextProvider) {
+				cardContextProvider.setValue(value);
+				return;
+			}
+			cardContextProvider = createSectionPlayerCardRenderContextProvider(
+				currentHost,
+				value,
+			);
+		});
+	});
+
+	$effect(() => {
+		const currentHost = host;
+		const value = layoutContext;
+		if (!currentHost || !value) return;
+		untrack(() => {
+			if (layoutContextProvider) {
+				layoutContextProvider.setValue(value);
+				return;
+			}
+			layoutContextProvider = createSectionPlayerLayoutContextProvider(
+				currentHost,
+				value,
+			);
+		});
 	});
 </script>
 
@@ -194,7 +266,12 @@
 <pie-section-player-base
 	bind:this={baseElement}
 	{runtime}
+	{ndsIcons}
+	{locale}
+	{toolConfigStrictness}
 	{section}
+	{session}
+	{assessment}
 	section-id={sectionId}
 	attempt-id={attemptId}
 	{toolRegistry}

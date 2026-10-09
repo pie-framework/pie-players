@@ -21,7 +21,7 @@ function graphButton(page: Page): Locator {
 }
 
 function firstItem(page: Page): Locator {
-	return page.locator("pie-item-shell").first();
+	return page.locator("pie-item-scope").first();
 }
 
 test.describe("PNP tools debugger", () => {

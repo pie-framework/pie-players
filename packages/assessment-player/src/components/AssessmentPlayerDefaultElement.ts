@@ -1,6 +1,4 @@
-import "@pie-players/pie-section-player/components/section-player-splitpane-element";
-import "@pie-players/pie-section-player/components/section-player-vertical-element";
-import { SECTION_PLAYER_PUBLIC_EVENTS } from "@pie-players/pie-section-player/contracts/public-events";
+import "@pie-players/pie-section-player";
 import {
 	coerceBooleanLike,
 	type InstrumentationProvider,
@@ -42,6 +40,7 @@ import type {
 	AssessmentDefinition,
 	AssessmentPlayerHooks,
 	AssessmentPlayerRuntimeConfig,
+	AssessmentSession,
 } from "../types.js";
 
 interface SectionPlayerHostElement extends HTMLElement {
@@ -56,6 +55,27 @@ interface TtsServiceHandle {
 interface CoordinatorWithTtsService {
 	ttsService?: TtsServiceHandle;
 	reportFrameworkError?: (model: FrameworkErrorModel) => void;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return Boolean(value) && typeof value === "object";
+}
+
+/** Structural equality, independent of key order. */
+function sameContent(a: unknown, b: unknown): boolean {
+	if (Object.is(a, b)) return true;
+	if (Array.isArray(a) || Array.isArray(b)) {
+		if (!Array.isArray(a) || !Array.isArray(b) || a.length !== b.length) {
+			return false;
+		}
+		return a.every((entry, index) => sameContent(entry, b[index]));
+	}
+	if (!isRecord(a) || !isRecord(b)) return false;
+	const keys = new Set([...Object.keys(a), ...Object.keys(b)]);
+	for (const key of keys) {
+		if (!sameContent(a[key], b[key])) return false;
+	}
+	return true;
 }
 
 const DEFAULT_SECTION_TAG = "pie-section-player-splitpane";
@@ -89,6 +109,13 @@ export class AssessmentPlayerDefaultElement
 	private _env: Env | null = null;
 	private _coordinator: unknown = null;
 	private _hooks: AssessmentPlayerHooks | null = null;
+	/**
+	 * The assigned session until a controller initializes from it. A later
+	 * rebuild, such as one an `assessment` change causes, hydrates from the
+	 * persistence strategy rather than reapplying a value the learner has since
+	 * moved past.
+	 */
+	private pendingSession: AssessmentSession | null = null;
 	private _showNavigation: boolean | string | null | undefined = true;
 	private _sectionPlayerLayout: "splitpane" | "vertical" = "splitpane";
 	private _playerType: "iife" | "esm" | "preloaded" = "iife";
@@ -158,6 +185,28 @@ export class AssessmentPlayerDefaultElement
 	set hooks(value: AssessmentPlayerHooks | null) {
 		if (this._hooks === value) return;
 		this._hooks = value;
+		this.queueReconciliation();
+	}
+
+	/**
+	 * Before a controller is ready, the assigned session; after, a copy of the
+	 * controller's.
+	 */
+	get session(): AssessmentSession | null {
+		if (this.controller) return cloneDeep(this.controller.getSession());
+		return this.pendingSession;
+	}
+	set session(value: AssessmentSession | null) {
+		const next = value ?? null;
+		if (next === this.pendingSession) return;
+		// An echo of the current session, as a host that writes
+		// `assessment-session-changed` back into the property makes, is a no-op.
+		if (next && this.controller && sameContent(next, this.controller.getSession())) {
+			return;
+		}
+		this.pendingSession = next;
+		// Replacing the session mid-attempt is a resume, which remounts the
+		// section anyway, so a new value rebuilds the controller from it.
 		this.queueReconciliation();
 	}
 
@@ -374,11 +423,13 @@ export class AssessmentPlayerDefaultElement
 		const generation = this.generation;
 		const hooks = this.hooks;
 		const isCurrent = () => this.isConnected && this.generation === generation;
+		const initialSession = this.pendingSession;
 
 		const controller: AssessmentController = new AssessmentController({
 			assessmentId: this.assessmentId,
 			attemptId: this.attemptId || undefined,
 			assessment: this.assessment,
+			initialSession,
 			hooks: {
 				...hooks,
 				onError: (error, context) => {
@@ -443,6 +494,7 @@ export class AssessmentPlayerDefaultElement
 		try {
 			await controller.initialize();
 			if (!isCurrent()) return;
+			if (this.pendingSession === initialSession) this.pendingSession = null;
 			this.initializingController = null;
 			this.controller = controller;
 			this.readiness = { phase: "ready" };
@@ -641,6 +693,7 @@ export class AssessmentPlayerDefaultElement
 		return resolveAssessmentSectionPlayerRuntime({
 			sectionPlayerRuntime: this.sectionPlayerRuntime,
 			playerType: this.playerType,
+			assessmentId: this.assessmentId || undefined,
 			attemptId: this.attemptId || undefined,
 			env: this.env as Record<string, unknown> | null,
 			coordinator: this.coordinator,
@@ -703,16 +756,19 @@ export class AssessmentPlayerDefaultElement
 		);
 	}
 
+	/**
+	 * `restoring` is whether the section was handed a saved session, which it
+	 * applies while it creates its controller, before `engine-ready`.
+	 */
 	private attachSectionControllerReadyListener(
 		target: HTMLElement,
 		sectionIdentifier: string,
+		restoring: boolean,
 	): void {
 		const sectionEl = target as SectionPlayerHostElement;
 		const generation = this.generation;
 		const sectionHost = this.sectionHost!;
 		const assessmentController = this.controller!;
-		// Capture before the new section can emit an empty initialization state.
-		const saved = cloneDeep(assessmentController.getSectionSession(sectionIdentifier));
 		const isCurrent = () => this.isConnected && this.generation === generation &&
 			this.sectionHost === sectionHost && this.controller === assessmentController;
 		sectionHost.setAttribute("aria-busy", "true");
@@ -726,9 +782,12 @@ export class AssessmentPlayerDefaultElement
 				if (settled) return;
 				settled = true;
 				clearTimeout(timer);
-				sectionEl.removeEventListener(SECTION_PLAYER_PUBLIC_EVENTS.stageChange, onStageChange);
+				sectionEl.removeEventListener("pie-stage-change", onStageChange);
 				resolve(controller);
 			};
+			// A section whose controller cannot be created, including one whose saved
+			// session fails to apply, reports a non-recoverable framework error, and
+			// its stage chain ends with `engine-ready` failed.
 			const onStageChange = (event: Event) => {
 				if (event.target !== sectionEl) return;
 				const { stage, status } = (event as CustomEvent<StageChangeDetail>).detail;
@@ -736,17 +795,13 @@ export class AssessmentPlayerDefaultElement
 				else if (stage === "engine-ready") finish(sectionEl.getSectionController?.() || null);
 			};
 			const timer = setTimeout(() => finish(null), 5000);
-			sectionEl.addEventListener(SECTION_PLAYER_PUBLIC_EVENTS.stageChange, onStageChange);
+			sectionEl.addEventListener("pie-stage-change", onStageChange);
 			cancelReadiness = () => finish(null);
 		});
 		void ready
 			.then(async (controller) => {
 				if (!isCurrent()) return;
 				if (!controller) throw new Error("Section controller did not become ready");
-				if (saved) {
-					if (!controller.applySession) throw new Error("Section controller cannot restore its saved session");
-					await controller.applySession(saved, { mode: "replace" });
-				}
 				if (!isCurrent()) return;
 				this.sectionControllerRef = controller;
 				this.sectionSessionReady = true;
@@ -762,7 +817,7 @@ export class AssessmentPlayerDefaultElement
 				this.sectionControllerRef = null;
 				this.sectionSessionReady = false;
 				const hadFocus = sectionHost.contains(document.activeElement);
-				const status = this.createStatusContent(saved ? "player.assessment.restoreFailed" : "player.assessment.loadFailed", () => {
+				const status = this.createStatusContent(restoring ? "player.assessment.restoreFailed" : "player.assessment.loadFailed", () => {
 					this.restoreFocusOnRender = this.contains(document.activeElement);
 					this.render();
 				});
@@ -833,7 +888,7 @@ export class AssessmentPlayerDefaultElement
 				padding: 0.5rem;
 				border: 1px solid var(--pie-border-light, #e5e7eb);
 				border-radius: 0.375rem;
-				background: var(--pie-background-light, var(--pie-background, #fff));
+				background: var(--pie-background, #fff);
 			}
 			.pie-assessment-player-navigation[hidden] { display: none; }
 			.pie-assessment-player-current-position {
@@ -848,7 +903,7 @@ export class AssessmentPlayerDefaultElement
 				padding: 0.35rem 0.75rem;
 				border: 1px solid var(--pie-border-light, #e5e7eb);
 				border-radius: 0.375rem;
-				background: var(--pie-background-light, var(--pie-background, #fff));
+				background: var(--pie-background, #fff);
 				cursor: pointer;
 			}
 			.pie-assessment-player-nav-btn:disabled {
@@ -919,7 +974,6 @@ export class AssessmentPlayerDefaultElement
 		if (currentSection) {
 			const sectionTag = this.buildSectionPlayerTag();
 			const sectionEl = document.createElement(sectionTag);
-			sectionEl.setAttribute("assessment-id", this.assessmentId);
 			sectionEl.setAttribute("section-id", currentSection.sectionIdentifier);
 			if (this.attemptId) sectionEl.setAttribute("attempt-id", this.attemptId);
 			if (this.locale) sectionEl.setAttribute("locale", this.locale);
@@ -928,13 +982,22 @@ export class AssessmentPlayerDefaultElement
 					typeof this.debug === "boolean" ? String(this.debug) : this.debug;
 				sectionEl.setAttribute("debug", debugValue);
 			}
+			// Captured before the new section can emit an empty initialization state.
+			const savedSectionSession = cloneDeep(
+				controller.getSectionSession(currentSection.sectionIdentifier),
+			);
 			(sectionEl as any).section = currentSection.section;
+			if (savedSectionSession) (sectionEl as any).session = savedSectionSession;
 			(sectionEl as any).runtime = this.buildSectionRuntime();
 			(sectionEl as any).hooks = {
 				cardTitleFormatter: this.hooks?.cardTitleFormatter,
 			};
 			sectionHost.appendChild(sectionEl);
-			this.attachSectionControllerReadyListener(sectionEl, currentSection.sectionIdentifier);
+			this.attachSectionControllerReadyListener(
+				sectionEl,
+				currentSection.sectionIdentifier,
+				Boolean(savedSectionSession),
+			);
 		}
 
 		container.appendChild(sectionHost);

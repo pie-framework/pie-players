@@ -16,8 +16,10 @@
 import type {
 	ToolCoordinatorApi,
 	ToolbarContext,
-} from "@pie-players/pie-assessment-toolkit/tools/internal";
-import { TOOL_ELEMENT_UNMOUNT_CALLBACK_PROP } from "./tts.js";
+} from "@pie-players/pie-assessment-toolkit/tools/registration";
+
+/** The property the toolbar calls as it unmounts a tool element. */
+export const TOOL_ELEMENT_UNMOUNT_CALLBACK_PROP = "__pieToolElementUnmount";
 
 const overlayElements = new WeakMap<
 	ToolCoordinatorApi,

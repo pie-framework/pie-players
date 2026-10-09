@@ -2,23 +2,22 @@
  * Pure helpers for `PnpPanel.svelte` panel data derivation.
  *
  * Extracted out of the Svelte component so the panel's read of the
- * coordinator's `ToolPolicyEngine` provenance shape (M8 PR 3) can be
- * unit-tested without instantiating the custom element. Everything
- * here is synchronous, side-effect-free, and operates on plain
- * objects — see `tests/derive-panel-data.test.ts`.
+ * coordinator's `ToolPolicyEngine` provenance can be unit-tested without
+ * instantiating the custom element. Everything here is synchronous,
+ * side-effect-free, and operates on plain objects — see
+ * `tests/derive-panel-data.test.ts`.
  *
- * The panel still renders PNP-centric chrome at the UI level (panel
- * title, "PNP Profile" card), but the policy-decision payload it
- * displays is multi-source: every Pass-1 contributor (placement,
- * host policy, provider veto, PNP/profile gates, custom sources) is folded
- * into the same `ToolPolicyProvenance` and the panel surfaces all of
- * it. Naming inside this helper deliberately uses "policy" /
- * "decision" / "feature trail" rather than "PNP" to reflect that.
+ * The panel renders PNP-centric chrome (panel title, "PNP Profile" card), but
+ * the decision payload it displays is multi-source: placement, host policy,
+ * provider veto, PNP/profile gates and custom sources all fold into the same
+ * `ToolPolicyProvenance`, so naming here uses "policy" / "decision" /
+ * "feature trail".
  */
 
 import type {
 	ResolvedEngineInputs,
 	ToolPolicyDecision,
+	ToolPolicyDiagnostic,
 	ToolPolicyFeatureTrail,
 	ToolPolicyProvenance,
 } from "@pie-players/pie-assessment-toolkit/policy/engine";
@@ -44,7 +43,9 @@ export interface PolicyPanelCoordinator {
 		scope: { level: ToolPlacementLevel; scopeId: string };
 	}) => ToolPolicyDecision;
 	getPolicyInputs?: () => Readonly<ResolvedEngineInputs>;
-	updateToolPlacement?: (level: ToolPlacementLevel, toolIds: string[]) => void;
+	updateToolsPlacement?: (
+		partial: Partial<Record<ToolPlacementLevel, string[]>>,
+	) => void;
 	updateToolConfig?: (toolId: string, updates: Record<string, unknown>) => void;
 	updateAssessment?: (assessment: unknown) => void;
 	setPnpEnforcement?: (mode: "on" | "off" | null) => void;
@@ -69,7 +70,6 @@ export interface ToolRegistrationLike {
 	name?: string;
 	description?: string;
 	supportedLevels?: readonly string[];
-	pnpSupportIds?: readonly string[];
 	/**
 	 * How the capability reaches the learner. `"region"` capabilities are the
 	 * reason this panel cannot treat every row alike: they render into a host
@@ -91,8 +91,15 @@ export interface PnpPanelInputs {
 	sectionData: {
 		id?: string;
 		identifier?: string;
-		personalNeedsProfile?: unknown;
-		settings?: { personalNeedsProfile?: unknown };
+		assessmentItemRefs?: Array<{
+			identifier?: string;
+			item?: { id?: string } | null;
+			settings?: Record<string, unknown> | null;
+		}>;
+		rubricBlocks?: Array<{
+			class?: string;
+			passage?: { id?: string } | null;
+		}>;
 	} | null;
 	roleType: "candidate" | "scorer";
 	floatingTools: string[];
@@ -113,10 +120,17 @@ export interface PnpPanelData {
 	allAvailablePlacement: Record<ToolPlacementLevel, string[]>;
 	pnpEnforcement: {
 		effective: "on" | "off" | "unknown";
+		/** The host's override, or `"auto"` when none is set. */
 		selection: PnpEnforcementSelection;
 	};
+	/**
+	 * Diagnostics of the section, item and passage decisions the panel made,
+	 * one per code, tool and item.
+	 */
+	diagnostics: ToolPolicyDiagnostic[];
 	determination: {
 		source: string;
+		/** The policy input locations present on the bound assessment and items. */
 		checked: string[];
 		note: string;
 		runtimeContext: {
@@ -153,8 +167,6 @@ export interface EditableToolRow {
 	name: string;
 	description: string;
 	supportedLevels: ToolPlacementLevel[];
-	pnpSupportIds: string[];
-	primaryPnpSupportId: string;
 	providerEnabled: boolean;
 	placement: Record<ToolPlacementLevel, boolean>;
 	visible: Record<ToolPlacementLevel, boolean>;
@@ -176,26 +188,50 @@ export interface EditableToolRow {
 }
 
 /**
- * Resolve the active PNP profile and the source label that explains
- * where it came from.
+ * Resolve the PNP profile to show and the source label that explains where it
+ * came from: the bound assessment's, which is the one policy reads, or the
+ * panel's own fallback.
  */
 export function resolvePnpProfile(
-	sectionData: PnpPanelInputs["sectionData"],
 	defaultPnpProfile: unknown,
+	boundAssessment?: unknown,
 ): { profile: unknown; source: string; note: string } {
-	const directProfile = sectionData?.personalNeedsProfile;
-	const settingsProfile = sectionData?.settings?.personalNeedsProfile;
-	const profile = directProfile ?? settingsProfile ?? defaultPnpProfile;
-	const source = directProfile
-		? "section.personalNeedsProfile"
-		: settingsProfile
-			? "section.settings.personalNeedsProfile"
-			: "panel fallback (no profile in section)";
-	const note =
-		directProfile || settingsProfile
-			? "Profile was taken directly from section payload."
-			: "The section carries no PNP profile. Nothing derives one — a player grants no support the host did not configure, so placement alone decides which tools appear. This panel is showing its own fallback profile so the rows below have something to read.";
-	return { profile, source, note };
+	const boundProfile = isRecord(boundAssessment)
+		? boundAssessment.personalNeedsProfile
+		: undefined;
+	if (boundProfile) {
+		return {
+			profile: boundProfile,
+			source: "assessment.personalNeedsProfile",
+			note: "Profile of the bound assessment, which is the profile policy reads.",
+		};
+	}
+	return {
+		profile: defaultPnpProfile,
+		source: "panel fallback (no profile bound)",
+		note: "The bound assessment carries no PNP profile. Nothing derives one — a player grants no support the host did not configure, so placement alone decides which tools appear. This panel is showing its own fallback profile so the rows below have something to read.",
+	};
+}
+
+/**
+ * The assessment to bind when the panel edits the profile: the bound assessment
+ * with `profile` in place of its own, keeping its settings (district policy,
+ * test administration, tool configs). With nothing bound, a minimal assessment
+ * named after the section.
+ */
+export function createSimulatedAssessment(
+	boundAssessment: unknown,
+	sectionData: PnpPanelInputs["sectionData"],
+	profile: Record<string, unknown>,
+): Record<string, unknown> {
+	const base = isRecord(boundAssessment)
+		? boundAssessment
+		: { id: sectionData?.id || sectionData?.identifier || "debug-section" };
+	return { ...base, personalNeedsProfile: profile };
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return Boolean(value) && typeof value === "object";
 }
 
 /**
@@ -301,10 +337,6 @@ function getPnpStringArray(profile: unknown, key: string): string[] {
 	return asStringArray((profile as Record<string, unknown>)[key]);
 }
 
-function hasAnySupport(profileIds: string[], supportIds: string[]): boolean {
-	return supportIds.some((supportId) => profileIds.includes(supportId));
-}
-
 function normalizeSupportedLevels(
 	tool: ToolRegistrationLike,
 ): ToolPlacementLevel[] {
@@ -325,27 +357,31 @@ function buildPlacementState(
 	};
 }
 
+/** Decisions per level: one per scope at that level, `null` where it failed. */
+export type PanelDecisions = Partial<
+	Record<ToolPlacementLevel, ReadonlyArray<ToolPolicyDecision | null>>
+>;
+
 function buildVisibleState(
-	decisions: Partial<Record<ToolPlacementLevel, ToolPolicyDecision | null>>,
+	decisions: PanelDecisions,
 	toolId: string,
 ): Record<ToolPlacementLevel, boolean> {
+	const visibleAt = (level: ToolPlacementLevel) =>
+		(decisions[level] ?? []).some((decision) =>
+			decision?.visibleTools.some((entry) => entry.toolId === toolId),
+		);
 	return {
-		section: Boolean(
-			decisions.section?.visibleTools.some((entry) => entry.toolId === toolId),
-		),
-		item: Boolean(
-			decisions.item?.visibleTools.some((entry) => entry.toolId === toolId),
-		),
-		passage: Boolean(
-			decisions.passage?.visibleTools.some((entry) => entry.toolId === toolId),
-		),
+		section: visibleAt("section"),
+		item: visibleAt("item"),
+		passage: visibleAt("passage"),
 	};
 }
 
 export function buildEditableToolRows(args: {
 	coordinator: PolicyPanelCoordinator | null;
 	pnpProfile: unknown;
-	decisions: Partial<Record<ToolPlacementLevel, ToolPolicyDecision | null>>;
+	/** A tool is visible at a level when any decision at that level shows it. */
+	decisions: PanelDecisions;
 }): EditableToolRow[] {
 	const tools = args.coordinator?.config?.toolRegistry?.getAllTools?.() ?? [];
 	const placement = args.coordinator?.config?.tools?.placement ?? {};
@@ -359,17 +395,12 @@ export function buildEditableToolRows(args: {
 	return tools
 		.map((tool) => {
 			const supportedLevels = normalizeSupportedLevels(tool);
-			const pnpSupportIds = [
-				...new Set([...(tool.pnpSupportIds ?? []), tool.toolId]),
-			];
 			const placeable = tool.activation !== "region";
 			return {
 				toolId: tool.toolId,
 				name: tool.name || tool.toolId,
 				description: tool.description || "",
 				supportedLevels,
-				pnpSupportIds,
-				primaryPnpSupportId: pnpSupportIds[0] || tool.toolId,
 				providerEnabled: providers[tool.toolId]?.enabled !== false,
 				placeable,
 				contentDependency: tool.requiresAuthoredContent
@@ -377,8 +408,8 @@ export function buildEditableToolRows(args: {
 					: null,
 				placement: buildPlacementState(placement, tool.toolId),
 				visible: buildVisibleState(args.decisions, tool.toolId),
-				pnpSupported: hasAnySupport(supports, pnpSupportIds),
-				pnpProhibited: hasAnySupport(prohibitedSupports, pnpSupportIds),
+				pnpSupported: supports.includes(tool.toolId),
+				pnpProhibited: prohibitedSupports.includes(tool.toolId),
 			};
 		})
 		.filter((row) => row.supportedLevels.length > 0)
@@ -412,7 +443,7 @@ export function deriveAllAvailablePlacement(
 export function createPatchedPnpProfile(
 	profile: unknown,
 	key: "supports" | "prohibitedSupports",
-	supportIds: string[],
+	supportId: string,
 	enabled: boolean,
 ): Record<string, unknown> {
 	const base =
@@ -420,12 +451,10 @@ export function createPatchedPnpProfile(
 			? { ...(profile as Record<string, unknown>) }
 			: {};
 	const next = new Set(getPnpStringArray(base, key));
-	for (const supportId of supportIds) {
-		if (enabled) {
-			next.add(supportId);
-		} else {
-			next.delete(supportId);
-		}
+	if (enabled) {
+		next.add(supportId);
+	} else {
+		next.delete(supportId);
 	}
 	base[key] = Array.from(next).sort();
 	return base;
@@ -445,31 +474,34 @@ export function derivePnpPanelData(inputs: PnpPanelInputs): PnpPanelData {
 		coordinator,
 	} = inputs;
 
+	const policyInputs = coordinator?.getPolicyInputs?.() as
+		| {
+				pnpEnforcement?: "on" | "off";
+				pnpEnforcementOverride?: "on" | "off" | null;
+				assessment?: unknown;
+		  }
+		| undefined;
 	const { profile, source, note } = resolvePnpProfile(
-		sectionData,
 		defaultPnpProfile,
+		policyInputs?.assessment,
 	);
 
 	const scopeId = sectionData?.id || sectionData?.identifier || "section";
 	const decision = fetchPolicyDecision(coordinator, "section", scopeId);
-	const itemDecision = fetchPolicyDecision(
-		coordinator,
-		"item",
-		`${scopeId}:item`,
-	);
-	const passageDecision = fetchPolicyDecision(
-		coordinator,
-		"passage",
-		`${scopeId}:passage`,
-	);
+	// Each item and passage toolbar decides under the item's or passage's own
+	// id, which is what brings an item's registered settings in.
+	const decisions: PanelDecisions = {
+		section: [decision],
+		item: sectionItemIds(sectionData).map((id) =>
+			fetchPolicyDecision(coordinator, "item", id),
+		),
+		passage: sectionPassageIds(sectionData).map((id) =>
+			fetchPolicyDecision(coordinator, "passage", id),
+		),
+	};
 	const provenance = decision?.provenance ?? null;
 	const resolvedToolIds =
 		decision?.visibleTools.map((entry) => entry.toolId) ?? [];
-	const decisions = {
-		section: decision,
-		item: itemDecision,
-		passage: passageDecision,
-	};
 	const toolRows = buildEditableToolRows({
 		coordinator,
 		pnpProfile: profile,
@@ -485,9 +517,6 @@ export function derivePnpPanelData(inputs: PnpPanelInputs): PnpPanelData {
 	const catalogStats = hasCatalogResolver
 		? (coordinator?.catalogResolver?.getStatistics?.() ?? null)
 		: null;
-	const policyInputs = coordinator?.getPolicyInputs?.() as
-		| { pnpEnforcement?: "on" | "off"; assessment?: unknown }
-		| undefined;
 	// Distinguished from a profile that grants nothing, which looks identical in
 	// every other field on this panel: with no assessment bound there is no
 	// profile, district policy or test administration for policy to read, so every
@@ -511,14 +540,12 @@ export function derivePnpPanelData(inputs: PnpPanelInputs): PnpPanelData {
 		allAvailablePlacement: deriveAllAvailablePlacement(toolRows),
 		pnpEnforcement: {
 			effective: policyInputs?.pnpEnforcement ?? "unknown",
-			selection: "auto",
+			selection: policyInputs?.pnpEnforcementOverride ?? "auto",
 		},
+		diagnostics: collectDiagnostics(decisions),
 		determination: {
 			source,
-			checked: [
-				"section.personalNeedsProfile",
-				"section.settings.personalNeedsProfile",
-			],
+			checked: presentPolicyInputs(policyInputs?.assessment, sectionData),
 			note,
 			runtimeContext: {
 				role: roleType,
@@ -531,4 +558,70 @@ export function derivePnpPanelData(inputs: PnpPanelInputs): PnpPanelData {
 			},
 		},
 	};
+}
+
+/** The canonical ids of the section's items, as their toolbars scope them. */
+function sectionItemIds(sectionData: PnpPanelInputs["sectionData"]): string[] {
+	const ids = (sectionData?.assessmentItemRefs ?? []).map(
+		(ref) => ref.identifier || ref.item?.id || "",
+	);
+	return [...new Set(ids.filter(Boolean))];
+}
+
+/** The ids of the section's passages, as their toolbars scope them. */
+function sectionPassageIds(
+	sectionData: PnpPanelInputs["sectionData"],
+): string[] {
+	const ids = (sectionData?.rubricBlocks ?? [])
+		.filter((block) => block.class === "stimulus")
+		.map((block) => block.passage?.id || "");
+	return [...new Set(ids.filter(Boolean))];
+}
+
+function collectDiagnostics(decisions: PanelDecisions): ToolPolicyDiagnostic[] {
+	const seen = new Set<string>();
+	const out: ToolPolicyDiagnostic[] = [];
+	for (const level of TOOL_PLACEMENT_LEVELS) {
+		for (const decision of decisions[level] ?? []) {
+			for (const diagnostic of decision?.diagnostics ?? []) {
+				const itemId = isRecord(diagnostic.details)
+					? String(diagnostic.details.itemId ?? "")
+					: "";
+				const key = `${diagnostic.code}\0${diagnostic.toolId}\0${itemId}`;
+				if (seen.has(key)) continue;
+				seen.add(key);
+				out.push(diagnostic);
+			}
+		}
+	}
+	return out;
+}
+
+function presentPolicyInputs(
+	assessment: unknown,
+	sectionData: PnpPanelInputs["sectionData"],
+): string[] {
+	const checked: string[] = [];
+	if (isRecord(assessment)) {
+		if (assessment.personalNeedsProfile) {
+			checked.push("assessment.personalNeedsProfile");
+		}
+		const settings = isRecord(assessment.settings) ? assessment.settings : {};
+		if (settings.districtPolicy) {
+			checked.push("assessment.settings.districtPolicy");
+		}
+		if (settings.testAdministration) {
+			checked.push("assessment.settings.testAdministration");
+		}
+	}
+	for (const ref of sectionData?.assessmentItemRefs ?? []) {
+		const settings = ref.settings;
+		if (
+			settings &&
+			(settings.requiredTools || settings.restrictedTools || settings.toolParameters)
+		) {
+			checked.push(`item ${ref.identifier || ref.item?.id} settings`);
+		}
+	}
+	return checked;
 }

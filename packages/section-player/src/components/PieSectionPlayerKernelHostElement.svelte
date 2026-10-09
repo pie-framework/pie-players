@@ -1,12 +1,26 @@
 <svelte:options
 	customElement={{
 		tag: "pie-section-player-kernel-host",
-		// Keep light DOM so item/passage runtime content can inherit host/page styles.
-		shadow: "none",
+		// The shadow root holds the player's chrome and one slot. The panes, and
+		// the item and passage content in them, stay in light DOM, where host and
+		// page styles reach them.
+		shadow: "open",
 		props: {
-			assessmentId: { attribute: "assessment-id", type: "String" },
 			runtime: { type: "Object", reflect: false },
+			// Presentation flag: opt in to NDS icon buttons. Unset renders plain
+			// <button>s.
+			ndsIcons: { attribute: "nds-icons", type: "Boolean" },
+			// Interface locale: the language the player renders its own UI in, as a
+			// BCP-47 tag. Unset renders `en-US`. Distinct from the authored content
+			// language, which travels on `runtime.contentLanguage`.
+			locale: { attribute: "locale", type: "String" },
 			section: { type: "Object", reflect: false },
+			// The section's session, applied by the controller created for
+			// `section` in place of hydrating from the persistence strategy.
+			session: { type: "Object", reflect: false },
+			// The assessment entity whose `personalNeedsProfile` and `settings` the
+			// toolkit's tool policy reads, forwarded to the coordinator it builds.
+			assessment: { type: "Object", reflect: false },
 			sectionId: { attribute: "section-id", type: "String" },
 			attemptId: { attribute: "attempt-id", type: "String" },
 			iifeBundleHost: { attribute: "iife-bundle-host", type: "String" },
@@ -27,25 +41,17 @@
 				attribute: "tool-config-strictness",
 				type: "String",
 			},
-			onFrameworkError: { type: "Object", reflect: false },
-			// M6 canonical stage-change callback. Mirrors
-			// `runtime.onStageChange`; resolver picks runtime over prop.
-			onStageChange: { type: "Object", reflect: false },
-			// M6 canonical loading-complete callback. Mirrors
-			// `runtime.onLoadingComplete`; the kernel invokes it at the
-			// same emit point as `pie-loading-complete` so callback and
-			// event stay in lockstep per cohort.
-			onLoadingComplete: { type: "Object", reflect: false },
 		},
 		// The host methods, callable before the component mounts.
-		extend: withHostMethods(BOOTSTRAP_READS),
+		extend: (ElementClass) =>
+			coerceBooleanAttributes(withHostMethods(BOOTSTRAP_SNAPSHOT)(ElementClass)),
 	}}
 />
 
 <script lang="ts">
-	import { createEventDispatcher } from "svelte";
+	import { mount, unmount } from "svelte";
+	import { coerceBooleanAttributes } from "@pie-players/pie-players-shared/ui/attribute-coercion";
 	import type {
-		FrameworkErrorModel,
 		ToolConfigStrictness,
 		ToolRegistry,
 		ToolbarItem,
@@ -57,10 +63,11 @@
 	} from "@pie-players/pie-players-shared/pie";
 	import "./section-player-items-pane-element.js";
 	import "./section-player-passages-pane-element.js";
+	import { isOwnSectionPlayerEvent } from "./shared/section-player-own-event.js";
 	import SectionPlayerLayoutKernel from "./shared/SectionPlayerLayoutKernel.svelte";
+	import SectionPlayerKernelHostBody from "./shared/SectionPlayerKernelHostBody.svelte";
+	import { attachKernelHostDefaultBody } from "./shared/kernel-host-default-body.js";
 	import {
-		BOOTSTRAP_READINESS,
-		BOOTSTRAP_READS,
 		BOOTSTRAP_SNAPSHOT,
 		withHostMethods,
 	} from "./shared/layout-host-methods.js";
@@ -69,19 +76,21 @@
 		SectionPlayerSnapshot,
 	} from "../contracts/runtime-host-contract.js";
 	import type { SectionPlayerHostHooks } from "../contracts/host-hooks.js";
-	import type {
-		RuntimeConfig,
-		StageChangeHandler,
-		LoadingCompleteHandler,
-	} from "@pie-players/pie-assessment-toolkit/runtime/internal";
+	import {
+		resolveSectionId,
+		type RuntimeConfig,
+	} from "@pie-players/pie-assessment-toolkit/runtime/engine";
 	import type { SectionPlayerPolicies } from "../policies/types.js";
-	import { isTelemetryEnabled } from "../policies/index.js";
-	import { getShellHostElement } from "./shared/section-player-shell-layout.svelte.js";
+	import { resolveSectionPlayerPolicies } from "../policies/index.js";
+	import { getHostElementFromAnchor } from "./shared/host-element.js";
 
 	let {
-		assessmentId,
 		runtime = null as RuntimeConfig | null,
+		ndsIcons = undefined as boolean | undefined,
+		locale = "",
 		section = null,
+		session = null,
+		assessment = null,
 		sectionId = "",
 		attemptId = "",
 		iifeBundleHost,
@@ -96,19 +105,8 @@
 		policies = undefined as Partial<SectionPlayerPolicies> | undefined,
 		hooks = undefined as SectionPlayerHostHooks | undefined,
 		toolConfigStrictness = undefined as ToolConfigStrictness | undefined,
-		onFrameworkError = undefined as
-			| undefined
-			| ((model: FrameworkErrorModel) => void),
-		onStageChange = undefined as StageChangeHandler | undefined,
-		onLoadingComplete = undefined as LoadingCompleteHandler | undefined,
 	} = $props();
-	// Two-tier resolution for `onFrameworkError` is handled by the
-	// kernel's resolver (`resolveSectionPlayerRuntimeState` →
-	// `effectiveRuntime.onFrameworkError`); the CE forwards the
-	// top-level prop and `runtime` verbatim and the resolver picks
-	// `runtime.onFrameworkError` over `onFrameworkError`.
 
-	const dispatch = createEventDispatcher();
 	let anchor = $state<HTMLDivElement | null>(null);
 	let kernelRef = $state<SectionPlayerRuntimeHostContract | null>(null);
 	const instrumentationProvider = $derived.by(() =>
@@ -118,26 +116,10 @@
 		}),
 	);
 
-	const hostElement = $derived.by(() => getShellHostElement(anchor));
+	const hostElement = $derived.by(() => getHostElementFromAnchor(anchor));
 
 	export function getSnapshot(): SectionPlayerSnapshot {
-		return {
-			readiness: selectReadiness(),
-			composition: selectComposition(),
-			navigation: selectNavigation(),
-		};
-	}
-
-	export function selectComposition(): SectionPlayerSnapshot["composition"] {
-		return kernelRef?.selectComposition?.() || BOOTSTRAP_SNAPSHOT.composition;
-	}
-
-	export function selectNavigation(): SectionPlayerSnapshot["navigation"] {
-		return kernelRef?.selectNavigation?.() || BOOTSTRAP_SNAPSHOT.navigation;
-	}
-
-	export function selectReadiness(): SectionPlayerSnapshot["readiness"] {
-		return kernelRef?.selectReadiness?.() || BOOTSTRAP_READINESS;
+		return kernelRef?.getSnapshot?.() || BOOTSTRAP_SNAPSHOT;
 	}
 
 	export function navigateTo(_index: number): boolean {
@@ -156,17 +138,30 @@
 		return kernelRef?.getSectionController?.() || null;
 	}
 
-	function reemit(event: Event) {
-		const customEvent = event as CustomEvent;
-		dispatch(customEvent.type, customEvent.detail);
-	}
+	const layoutElement = $host();
+	const forwardPreloadRetry = (detail: Record<string, unknown>) =>
+		layoutElement.dispatchEvent(new CustomEvent("element-preload-retry", { detail }));
+	const forwardPreloadError = (detail: Record<string, unknown>) =>
+		layoutElement.dispatchEvent(new CustomEvent("element-preload-error", { detail }));
+
+	// A host that places its own panes as children gets its layout; one that
+	// gives the element none gets the stock one.
+	$effect(() => {
+		if (!hostElement) return;
+		return attachKernelHostDefaultBody(hostElement, (target) => {
+			const body = mount(SectionPlayerKernelHostBody, { target });
+			return () => {
+				void unmount(body);
+			};
+		});
+	});
 
 	$effect(() => {
 		if (!hostElement) return;
 		// `policies.telemetry.enabled === false` skips instrumentation bridge
 		// setup entirely so hosts that opt out emit no `pie-section-*`
 		// telemetry events through the bridge.
-		if (!isTelemetryEnabled(policies)) return;
+		if (!resolveSectionPlayerPolicies(policies).telemetry.enabled) return;
 		const localHost = hostElement;
 		return attachInstrumentationEventBridge({
 			host: localHost,
@@ -175,33 +170,40 @@
 			eventMap: SECTION_INSTRUMENTATION_EVENT_MAP,
 			staticAttributes: {
 				instrumentationLayer: "section",
-				assessmentId,
-				sectionId,
+				assessmentId: runtime?.assessmentId,
+				sectionId: resolveSectionId({
+					sectionId,
+					section,
+					assessmentId: runtime?.assessmentId,
+				}),
 				attemptId: attemptId || undefined,
 			},
-			shouldTrackEvent: (event: Event) => event.target === localHost,
+			shouldTrackEvent: (event: Event) =>
+				isOwnSectionPlayerEvent(event, localHost),
 			dedupeWindowMs: 100,
 		});
 	});
 
-	// Engine-owned events (`pie-stage-change`, `pie-loading-complete`,
-	// `framework-error`) are dispatched by the kernel-owned section
-	// runtime engine directly onto this CE element via its DOM-event
-	// bridge, and the toolkit's own events (`session-changed`,
-	// `composition-changed`, `runtime-owned`, `runtime-inherited`,
-	// `toolkit-ready`, `section-ready`) bubble to it from the toolkit, so
+	// Engine-owned events (`pie-stage-change`, `pie-loading-complete`)
+	// are dispatched by the kernel-owned section runtime engine directly
+	// onto this CE element via its DOM-event bridge, and the toolkit's own
+	// events (`framework-error`, `session-changed`, `composition-changed`,
+	// `runtime-owned`, `runtime-inherited`, `toolkit-ready`,
+	// `section-ready`) bubble to it from the toolkit, so
 	// outside listeners on `<pie-section-player-kernel-host>` see each once
 	// without any CE-level re-emission. Snapshots are read on demand from
-	// the kernel, which owns the canonical composition, navigation and
-	// readiness state.
+	// the kernel, which owns the composition and navigation state.
 </script>
 
 <div bind:this={anchor} class="pie-section-player-observability-anchor" aria-hidden="true"></div>
 <SectionPlayerLayoutKernel
 	bind:this={kernelRef}
-	{assessmentId}
 	{runtime}
+	{ndsIcons}
+	{locale}
 	{section}
+	{session}
+	{assessment}
 	{sectionId}
 	{attemptId}
 	{iifeBundleHost}
@@ -216,94 +218,15 @@
 	{policies}
 	{hooks}
 	{toolConfigStrictness}
-	{onFrameworkError}
-	{onStageChange}
-	{onLoadingComplete}
-	sourceCe="pie-section-player"
+	sourceCe="pie-section-player-kernel-host"
 	host={hostElement}
-	on:element-preload-retry={reemit}
-	on:element-preload-error={reemit}
-	let:items
-	let:passages
-	let:compositionModel
-	let:resolvedPlayerEnv
-	let:resolvedPlayerAttributes
-	let:resolvedPlayerProps
-	let:playerStrategy
-	let:baseHeadingLevel
-	let:preloadedRenderables
-	let:preloadedRenderablesSignature
-	let:preloadEnabled
-	let:itemToolbarTools
-	let:passageToolbarTools
-	let:toolRegistry={layoutToolRegistry}
-	let:readinessDetail
-	let:onItemsPaneElementsLoaded
-	let:onItemsPanePreloadRetry
-	let:onItemsPanePreloadError
+	onElementPreloadRetry={forwardPreloadRetry}
+	onElementPreloadError={forwardPreloadError}
 >
-	<div class="pie-section-player-kernel-host-content">
-		{#if passages.length > 0}
-			<pie-section-player-passages-pane
-				compositionModel={compositionModel}
-				{passages}
-				elementsLoaded={readinessDetail.allLoadingComplete}
-				{resolvedPlayerEnv}
-				{resolvedPlayerAttributes}
-				{resolvedPlayerProps}
-				{baseHeadingLevel}
-				{playerStrategy}
-				passageToolbarTools={passageToolbarTools}
-				toolRegistry={layoutToolRegistry}
-				hostButtons={passageHostButtons}
-			></pie-section-player-passages-pane>
-		{/if}
-		<pie-section-player-items-pane
-			{items}
-			{compositionModel}
-			{resolvedPlayerEnv}
-			{resolvedPlayerAttributes}
-			{resolvedPlayerProps}
-			{baseHeadingLevel}
-			{playerStrategy}
-			itemToolbarTools={itemToolbarTools}
-			toolRegistry={layoutToolRegistry}
-			hostButtons={itemHostButtons}
-			iifeBundleHost={iifeBundleHost}
-			preloadedRenderables={preloadedRenderables}
-			preloadedRenderablesSignature={preloadedRenderablesSignature}
-			preloadComponentTag="pie-section-player-kernel-host"
-			preloadEnabled={preloadEnabled}
-			onelements-loaded-change={onItemsPaneElementsLoaded}
-			onelement-preload-retry={onItemsPanePreloadRetry}
-			onelement-preload-error={onItemsPanePreloadError}
-		></pie-section-player-items-pane>
-	</div>
+	<slot></slot>
 </SectionPlayerLayoutKernel>
 
 <style>
-	:host {
-		display: block;
-		width: 100%;
-		height: 100%;
-		min-height: 0;
-		overflow: hidden;
-	}
-
-	.pie-section-player-kernel-host-content {
-		display: flex;
-		flex-direction: column;
-		gap: 1rem;
-		min-height: 0;
-		height: 100%;
-		padding: 0.5rem;
-		box-sizing: border-box;
-	}
-
-	pie-section-player-items-pane :global(.pie-section-player-scroll-hint) {
-	    bottom: -0.5rem;
-	}
-
 	.pie-section-player-observability-anchor {
 		display: none;
 	}

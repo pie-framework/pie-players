@@ -7,8 +7,10 @@ import type {
 	AssessmentPlayerHooks,
 	AssessmentPlayerRuntimeHostContract,
 } from "@pie-players/pie-assessment-player";
+import type { AssessmentSession } from "@pie-players/pie-players-shared/types";
 
 type Host = HTMLElement & AssessmentPlayerRuntimeHostContract & {
+	session: AssessmentSession | null;
 	assessmentId: string;
 	attemptId: string;
 	assessment: AssessmentDefinition | null;
@@ -48,6 +50,7 @@ async function mountHost(
 ) {
 	await page.goto("/lifecycle-host");
 	await page.waitForFunction(() => customElements.get("pie-assessment-player-default"));
+	await page.waitForSelector("[data-pie-assessment-fixture]", { state: "attached" });
 	await page.evaluate((options) => {
 		const host = document.createElement("pie-assessment-player-default") as Host;
 		const target = document.querySelector("[data-pie-assessment-fixture]")!;
@@ -343,4 +346,56 @@ test("a nested player releases its section without disposing a borrowed coordina
 	expect(await page.evaluate(() => window.assessmentLifecycle.disposeCalls)).toBe(0);
 	await page.evaluate(() => window.assessmentLifecycle.host.remove());
 	await expect.poll(() => page.evaluate(() => window.assessmentLifecycle.disposeCalls)).toBe(1);
+});
+
+test("a session property resumes without a load, and an echo of it is a no-op", async ({ page }) => {
+	const host = await mountHost(page);
+	const position = host.locator(".pie-assessment-player-current-position");
+	await expect(position).toHaveText("Section 1 of 2");
+	await host.getByRole("button", { name: "Next", exact: true }).click();
+	await expect(position).toHaveText("Section 2 of 2");
+	const read = await page.evaluate(() => {
+		const { host } = window.assessmentLifecycle;
+		const session = host.session;
+		(window as any).resumed = session;
+		return {
+			copy: session !== host.getAssessmentController()!.getSession(),
+			equal: JSON.stringify(session) === JSON.stringify(host.getAssessmentController()!.getSession()),
+		};
+	});
+	expect(read).toEqual({ copy: true, equal: true });
+	await host.getByRole("button", { name: "Back", exact: true }).click();
+	await expect(position).toHaveText("Section 1 of 2");
+
+	await page.evaluate(() => {
+		const state = window.assessmentLifecycle;
+		state.firstController = state.host.getAssessmentController();
+		state.host.session = (window as any).resumed;
+	});
+	await expect(position).toHaveText("Section 2 of 2");
+	expect(await page.evaluate(() => {
+		const state = window.assessmentLifecycle;
+		return {
+			rebuilt: state.host.getAssessmentController() !== state.firstController,
+			loads: state.loads,
+			ready: state.readyEvents.length,
+		};
+	})).toEqual({ rebuilt: true, loads: ["first"], ready: 2 });
+
+	await page.evaluate(() => {
+		const state = window.assessmentLifecycle;
+		state.firstController = state.host.getAssessmentController();
+		// The getter returns a copy, so this is the echo a host writing
+		// `assessment-session-changed` back into the property makes.
+		const echo = state.host.session;
+		state.host.session = echo;
+	});
+	await page.waitForTimeout(300);
+	expect(await page.evaluate(() => {
+		const state = window.assessmentLifecycle;
+		return {
+			same: state.host.getAssessmentController() === state.firstController,
+			ready: state.readyEvents.length,
+		};
+	})).toEqual({ same: true, ready: 2 });
 });

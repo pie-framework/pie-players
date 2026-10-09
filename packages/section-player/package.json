@@ -29,53 +29,9 @@
 			"types": "./dist/pie-section-player.d.ts",
 			"import": "./dist/pie-section-player.js"
 		},
-		"./components/section-player-vertical-element": {
-			"types": "./dist/pie-section-player.d.ts",
-			"import": "./dist/pie-section-player.js"
-		},
-		"./components/section-player-tabbed-element": {
-			"types": "./dist/pie-section-player.d.ts",
-			"import": "./dist/pie-section-player.js"
-		},
-		"./components/section-player-shell-element": {
-			"types": "./dist/pie-section-player.d.ts",
-			"import": "./dist/pie-section-player.js"
-		},
-		"./components/section-player-item-card-element": {
-			"types": "./dist/pie-section-player.d.ts",
-			"import": "./dist/pie-section-player.js"
-		},
-		"./components/section-player-passage-card-element": {
-			"types": "./dist/pie-section-player.d.ts",
-			"import": "./dist/pie-section-player.js"
-		},
-		"./components/section-player-items-pane-element": {
-			"types": "./dist/pie-section-player.d.ts",
-			"import": "./dist/pie-section-player.js"
-		},
-		"./components/section-player-passages-pane-element": {
-			"types": "./dist/pie-section-player.d.ts",
-			"import": "./dist/pie-section-player.js"
-		},
-		"./components/section-player-kernel-host-element": {
-			"types": "./dist/pie-section-player.d.ts",
-			"import": "./dist/pie-section-player.js"
-		},
-		"./contracts/layout-contract": {
-			"types": "./dist/contracts/layout-contract.d.ts",
-			"import": "./dist/contracts/layout-contract.js"
-		},
-		"./contracts/public-events": {
-			"types": "./dist/contracts/public-events.d.ts",
-			"import": "./dist/contracts/public-events.js"
-		},
 		"./contracts/runtime-host-contract": {
 			"types": "./dist/contracts/runtime-host-contract.d.ts",
 			"import": "./dist/contracts/runtime-host-contract.js"
-		},
-		"./contracts/layout-parity-metadata": {
-			"types": "./dist/contracts/layout-parity-metadata.d.ts",
-			"import": "./dist/contracts/layout-parity-metadata.js"
 		},
 		"./contracts/host-hooks": {
 			"types": "./dist/contracts/host-hooks.d.ts",
@@ -84,6 +40,10 @@
 		"./policies": {
 			"types": "./dist/policies/index.d.ts",
 			"import": "./dist/policies/index.js"
+		},
+		"./item-section": {
+			"types": "./dist/item-section/index.d.ts",
+			"import": "./dist/item-section/index.js"
 		}
 	},
 	"files": [
@@ -92,7 +52,7 @@
 	"scripts": {
 		"build": "vite build && vite build --config vite.config.browser.ts",
 		"dev": "vite build --watch",
-		"typecheck": "tsc --noEmit",
+		"typecheck": "tsc --noEmit && tsc -p tsconfig.tests.json",
 		"check": "svelte-check --tsconfig ./tsconfig.svelte-check.json --compiler-warnings options_missing_custom_element:ignore",
 		"lint": "biome lint .",
 		"test": "bun test"
@@ -117,7 +77,7 @@
 		"svelte-check": "^4.7.6",
 		"typescript": "^5.9.3",
 		"vite": "^8.3.2",
-		"vite-plugin-dts": "^5.1.1"
+		"vite-plugin-dts": "^5.1.2"
 	},
 	"homepage": "https://github.com/pie-framework/pie-players/tree/master/packages/section-player#readme",
 	"bugs": {

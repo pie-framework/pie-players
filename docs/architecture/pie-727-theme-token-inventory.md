@@ -58,8 +58,7 @@ for example `--pie-button-`, `--pie-focus-`, and
 | --- | --- | --- |
 | Canonical semantic | `--pie-text`, `--pie-background`, `--pie-primary`, feedback, border, neutral, focus-checked, `--pie-surface`, and `--pie-button-*` defaults | Owned by `@pie-players/pie-theme`; the active color tokens are required Scheme Participants. Existing Host A token names and fallback behavior remain source-compatible. |
 | Component-public | `--pie-tool-trigger-active-*`, section tab hooks, annotation hooks, and the five TTS reading-highlight tokens | Owned by component packages but discoverable in `packages/theme/src/token-registry.json`; optional Scheme Participants unless their normal fallback cannot remain accessible. The annotation outline and two underline tokens are required. The five TTS reading-highlight tokens are `excluded`: the highlight coordinator derives them from the resolved theme at runtime, so no scheme value applies. |
-| Legacy/component aliases | `--pie-button-background-color`, `--pie-button-border-color`, `--pie-button-hover-background-color`, `--pie-focus-ring-color` | Host A's observed `--pie-button-background-color` remains a compatibility contract. The other names are classified historical paths, not reasons to add or retain further shims. All are excluded from Scheme Participation. |
-| Unsupported or intentional gaps | `--pie-background-light` | Do not treat as canonical until promoted by decision record; current usage falls back through `--pie-background`. |
+| Legacy/component aliases | `--pie-button-background-color`, `--pie-button-hover-background-color`, `--pie-focus-ring-color` | Host A's observed `--pie-button-background-color` remains a compatibility contract. The other names are classified historical paths, not reasons to add or retain further shims. All are excluded from Scheme Participation. |
 | Package-private or future public hooks | annotation highlight tokens, TTS panel chrome tokens, the three scrollbar hooks `--pie-scrollbar-thumb`, `--pie-scrollbar-thumb-hover` and `--pie-scrollbar-track`, `--pie-section-player-focus-outline`, `--pie-shadow` | Leave package-scoped unless a source-changing slice documents them as public and adds registry/docs/tests. The scrollbar three are registered as `package-private` with `excluded` participation: no theme or scheme sets a value, so each one's fallback chain is the contract rather than its name. |
 | Package-private layout handoffs | `--pie-section-player-layout-max-width`, `--pie-toolbar-tools-row-height`, `--pie-tts-controls-row-height` | Geometry passed between a component and its own subtree, set from props or measured at runtime, never a palette value and never a host hook. Hosts reach the same behaviour through documented max-width attributes and toolbar size inputs; overriding these directly desynchronises the component from the measurement it made. All are `excluded` from Scheme Participation. |
 
@@ -75,11 +74,13 @@ browser scaling and the existing responsive layout.
    `--pie-button-hover-background-color` as direct aliases that skipped the
    canonical `--pie-button-*` chain. An earlier slice routed them through
    `--pie-button-bg`, `--pie-button-border`, and `--pie-button-hover-bg`.
-   Only the background-color alias is an observed external dependency.
+   Only the background-color alias is an observed external dependency, so the
+   TTS inline tool now reads only that one; the border alias is gone and the
+   hover alias remains on the calculator inline tool alone.
 2. `packages/assessment-player/src/components/AssessmentPlayerDefaultElement.ts`
-   used undefined `--pie-background-light`. An earlier slice classified it as
-   unsupported and added a `--pie-background` fallback; it is not an observed
-   external dependency.
+   used undefined `--pie-background-light`. No host sets it, so it is removed
+   from the registry; the player reads `--pie-background` and the two dictionary
+   panels read `--pie-secondary-background`.
 3. `packages/theme/src/components.css` used `--pie-focus-ring-color` as an
    isolated focus token. An earlier slice classified it as a legacy alias and
    routed it through `--pie-focus-outline` and
@@ -160,8 +161,8 @@ would.
   changeset. One that fails it requires an allowlist line and nothing else.
 - Preserve existing names when the consumer pad records a client-facing
   dependency. Do not add compatibility paths for unobserved legacy interfaces.
-- Ambiguous tokens should be classified as `legacy`, `unsupported`, or
-  `package-private` before any source-changing use.
+- Ambiguous tokens should be classified as `legacy` or `package-private`
+  before any source-changing use.
 - Component-scoped hooks should be added only when existing semantic tokens and
   `--pie-button-*` chains are not sufficient for a safe host integration point.
 - Update the TypeScript definition, run

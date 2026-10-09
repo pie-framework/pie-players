@@ -1,6 +1,6 @@
 <script lang="ts">
-	import { browser } from '$app/environment';
-	import { afterNavigate, replaceState } from '$app/navigation';
+	import { browser } from '$app/env';
+	import { afterNavigate, goto } from '$app/navigation';
 	import { onMount } from 'svelte';
 	import Categorize from '@pie-element/categorize/browser/delivery';
 	import * as categorizeController from '@pie-element/categorize/browser/controller';
@@ -23,15 +23,15 @@
 		ToolkitCoordinator,
 		type ToolkitCoordinatorHooks
 	} from '@pie-players/pie-assessment-toolkit';
-	import { createUniversalPersonalNeedsProfile } from '@pie-players/pie-default-tool-loaders';
+	import { DEMO_PRELOADED_OPTIONS } from '@pie-players/demo-ui/preloaded';
 	import { registerPreloadedElements } from '@pie-players/pie-item-player/preloaded';
 	import '@pie-players/pie-section-player/components/section-player-splitpane-element';
-	import '@pie-players/pie-section-player/components/section-player-vertical-element';
-	import DemoRuntimeChrome from '$lib/demo-runtime/components/DemoRuntimeChrome.svelte';
+	import '@pie-players/pie-section-player';
+	import DemoRuntimeChrome from '#lib/demo-runtime/components/DemoRuntimeChrome.svelte';
 	import {
 		PRELOADED_NPM_PACKAGES,
 		PRELOADED_NPM_SECTIONS
-	} from '$lib/content/demo-preloaded-npm-elements';
+	} from '#lib/content/demo-preloaded-npm-elements.js';
 	import {
 		applyDaisyTheme,
 		applyToolkitScheme,
@@ -47,9 +47,9 @@
 		LAYOUT_OPTIONS,
 		MODE_OPTIONS,
 		onSectionSessionChanged
-	} from '$lib/demo-runtime/demo-page-helpers';
-	import { withDemoLoaderOptions } from '$lib/demo-runtime/demo-player-config';
-	import { createSectionDemoToolRegistry } from '$lib/demo-runtime/default-tool-registry';
+	} from '#lib/demo-runtime/demo-page-helpers.js';
+	import { withDemoLoaderOptions } from '#lib/demo-runtime/demo-player-config.js';
+	import { createSectionDemoToolRegistry } from '#lib/demo-runtime/default-tool-registry.js';
 	import type { PageData } from './$types';
 
 	/**
@@ -94,7 +94,7 @@
 			{ ...mcPopulatedBlank, element: McPopulatedBlank, controller: mcPopulatedBlankController },
 			{ ...multipleChoice, element: MultipleChoice, controller: multipleChoiceController },
 			{ ...passage, element: Passage, controller: passageController }
-		]);
+		], DEMO_PRELOADED_OPTIONS);
 	} catch (error) {
 		registrationError = error instanceof Error ? error.message : String(error);
 	}
@@ -126,14 +126,12 @@
 	let selectedDaisyTheme = $state<string>(DEFAULT_DAISY_THEME);
 	let attemptId = $state(getOrCreateAttemptId());
 	let routerReady = $state(false);
-	afterNavigate(() => {
+	afterNavigate(({ shallow, type }) => {
+		if (shallow && type === 'goto') return;
 		routerReady = true;
 	});
 
-	const sections = PRELOADED_NPM_SECTIONS.map((section) => ({
-		...section,
-		personalNeedsProfile: createUniversalPersonalNeedsProfile()
-	}));
+	const sections = PRELOADED_NPM_SECTIONS;
 	let sectionIndex = $state(0);
 	let section = $derived(sections[sectionIndex]);
 	let sectionId = $derived(section.identifier);
@@ -144,6 +142,7 @@
 		role: roleType === 'candidate' ? 'student' : 'instructor'
 	} as const;
 	let runtime = $derived({
+		assessmentId: DEMO_ASSESSMENT_ID,
 		playerType: 'preloaded',
 		lazyInit: true,
 		tools: toolkitToolsConfig,
@@ -206,7 +205,7 @@
 		const url = new URL(window.location.href);
 		if (next) url.searchParams.set('hosted', '1');
 		else url.searchParams.delete('hosted');
-		replaceState(url, {});
+		goto(url, { shallow: true, replace: true });
 	}
 
 	onMount(() => {
@@ -234,7 +233,7 @@
 		}
 		url.searchParams.set(ATTEMPT_QUERY_PARAM, attemptId);
 		url.searchParams.set('layout', layoutType);
-		replaceState(url, {});
+		goto(url, { shallow: true, replace: true });
 	});
 
 	$effect(() => {
@@ -377,7 +376,6 @@
 		{:else if layoutType === 'vertical'}
 			<pie-section-player-vertical
 				bind:this={playerHostElement}
-				assessment-id={DEMO_ASSESSMENT_ID}
 				section-id={sectionId}
 				attempt-id={attemptId}
 				{runtime}
@@ -388,7 +386,6 @@
 		{:else}
 			<pie-section-player-splitpane
 				bind:this={playerHostElement}
-				assessment-id={DEMO_ASSESSMENT_ID}
 				section-id={sectionId}
 				attempt-id={attemptId}
 				{runtime}

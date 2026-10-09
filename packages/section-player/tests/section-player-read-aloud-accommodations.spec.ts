@@ -200,9 +200,8 @@ test.describe("read-aloud suppression", () => {
 		);
 		await expect(word).toHaveText(SUPPRESSED_WORD);
 
-		// Select just that word and ask the service to speak the selection — the
-		// path that hands `range.toString()` straight to the provider and consults
-		// no catalog. Two clicks is all a candidate would need.
+		// Select just that word and ask the service to speak the selection. Two
+		// clicks is all a candidate would need.
 		const spokenBefore = (await spokenText(page)).length;
 		await word.evaluate((element) => {
 			const range = document.createRange();
@@ -213,7 +212,7 @@ test.describe("read-aloud suppression", () => {
 			const coordinator = (
 				window as unknown as { __pieDemoToolkitCoordinator?: any }
 			).__pieDemoToolkitCoordinator;
-			void coordinator?.ttsService?.speakRange?.(range);
+			void coordinator?.ttsService?.speak(range);
 		});
 
 		await page.waitForTimeout(1_000);

@@ -17,7 +17,6 @@
 			hosted: { attribute: "hosted", type: "Boolean" },
 			debug: { attribute: "debug", type: "String" },
 			customClassName: { attribute: "custom-class-name", type: "String" },
-			customClassname: { attribute: "custom-classname", type: "String" },
 			containerClass: { attribute: "container-class", type: "String" },
 			passageContainerClass: { attribute: "passage-container-class", type: "String" },
 			externalStyleUrls: { attribute: "external-style-urls", type: "String" },
@@ -45,10 +44,6 @@
 			// nothing keeps exactly the chrome it has today. Distinct from the
 			// authored content's language, which the item declares.
 			locale: { attribute: "locale", type: "String" },
-			bundleHost: { attribute: "bundle-host", type: "String" },
-			bundleEndpoints: { attribute: "bundle-endpoints", type: "Object" },
-			disableBundler: { attribute: "disable-bundler", type: "Boolean" },
-			reFetchBundle: { attribute: "re-fetch-bundle", type: "Boolean" },
 			loaderConfig: { attribute: "loader-config", type: "Object" },
 			strategy: { attribute: "strategy", type: "String" },
 			mode: { attribute: "mode", type: "String" },
@@ -133,6 +128,7 @@
 		ensureHostSessionEntries,
 		ensureRegistered,
 		flushPendingSessionNotifications,
+		forwardMathjaxEvents,
 		ItemController,
 		isGlobalDebugEnabled,
 		initializeMathRendering,
@@ -144,6 +140,7 @@
 		parsePackageName,
 		projectSessionIntoHostContainer,
 		resolveInstrumentationProvider,
+		resolveEsmAssetRoot,
 		resolveEsmRuntimeSupportUrl,
 		resolveLoadControllers,
 		attachInstrumentationEventBridge,
@@ -209,7 +206,6 @@
 		hosted = undefined as boolean | undefined,
 		debug = "" as string | boolean,
 		customClassName = "",
-		customClassname = "",
 		containerClass = "",
 		passageContainerClass = "",
 		externalStyleUrls = "",
@@ -219,10 +215,6 @@
 		baseHeadingLevel = undefined as 1 | 2 | 3 | 4 | 5 | 6 | undefined,
 		locale = "",
 		includeSrHeading = true,
-		bundleHost = "",
-		bundleEndpoints = null as Record<string, unknown> | null,
-		disableBundler = false,
-		reFetchBundle = false,
 		loaderConfig = DEFAULT_LOADER_CONFIG as LoaderConfig,
 		strategy = undefined as "iife" | "esm" | "preloaded" | undefined,
 		mode = "view" as "view" | "author",
@@ -244,32 +236,24 @@
 	} = $props();
 
 	const isBrowser = typeof window !== "undefined" && typeof document !== "undefined";
-	const requestedStrategy = $derived(
-		strategy ??
-			// pie-item contract compatibility: legacy <pie-player> used
-			// `disableBundler` for host-preloaded elements; current `strategy` remains canonical.
-			(disableBundler
-				? "preloaded"
-				: "iife"),
-	);
-	const normalizedStrategy = $derived(normalizeItemPlayerStrategy(requestedStrategy, "iife"));
+	const normalizedStrategy = $derived(normalizeItemPlayerStrategy(strategy));
 	const resolvedMode = $derived(mode === "author" ? "author" : "view");
-	const resolvedCustomClassName = $derived(
-		customClassName ||
-			// pie-item contract compatibility: legacy <pie-player> exposed `customClassname`;
-			// the current `customClassName` API remains canonical when both are provided.
-			customClassname ||
-			"",
-	);
 	const resolvedIifeBundleHost = $derived(
-		loaderOptions?.bundleHost ||
-			// pie-item contract compatibility: legacy <pie-player> exposed `bundleHost`
-			// as a top-level property; `loaderOptions.bundleHost` remains canonical.
-			bundleHost ||
-			DEFAULT_BUNDLE_HOST,
+		loaderOptions?.bundleHost || DEFAULT_BUNDLE_HOST,
 	);
 	const resolvedEsmCdnUrl = $derived(
 		loaderOptions?.esmCdnUrl || DEFAULT_ESM_CDN_URL,
+	);
+	// The root the player's own MathJax, for math in the item's markup, loads its
+	// fonts and speech from when the page sets none: under `esm`, the CDN the
+	// elements come from. A host-bundled player finds no root in its module URL.
+	const markupMathAssetRoot = $derived(
+		normalizedStrategy === "esm"
+			? resolveEsmAssetRoot({
+					cdnBaseUrl: resolvedEsmCdnUrl,
+					cdnProvider: loaderOptions?.esmCdnProvider,
+				})
+			: undefined,
 	);
 	const loaderRetrySignature = $derived.by(() =>
 		JSON.stringify(loaderConfig?.iifeBundleRetry || {}),
@@ -444,6 +428,10 @@
 	let activeSessionSnapshot: SessionSnapshot | null = null;
 	let offeredSnapshotKey = "";
 	let pendingSessionSnapshot: SessionSnapshotRecord | null = null;
+	// The host session container the controller last took, and while a session
+	// swap commits the outgoing responses, the container they are projected onto.
+	let appliedSessionContainer: unknown = null;
+	let outgoingSessionContainer: unknown = null;
 	// The custom element itself, resolved while the player is still connected.
 	// `hostElement` is the inner `<div>`; by the time a removal reaches
 	// `onDestroy` that div can already be detached from the custom element, and
@@ -641,6 +629,38 @@
 		return true;
 	}
 
+	function sessionIdOf(input: unknown): string {
+		return isRecord(input) && typeof input.id === "string" ? input.id : "";
+	}
+
+	/**
+	 * The host replaced the session with one carrying a different id: a new
+	 * attempt, or another item in a card the host kept mounted.
+	 */
+	function isSessionSwap(incoming: unknown): boolean {
+		if (!sessionController) return false;
+		const currentId = sessionIdOf(sessionController.getSession());
+		const incomingId = sessionIdOf(incoming);
+		return currentId !== "" && incomingId !== "" && currentId !== incomingId;
+	}
+
+	/**
+	 * Commit the mounted elements' pending responses into the session they were
+	 * given for, before the incoming one reaches the controller. Each commit is
+	 * projected onto the host container that session came in; projected onto the
+	 * new one, an outgoing response would become the next session's answer.
+	 */
+	function commitOutgoingSessions(): void {
+		outgoingSessionContainer = appliedSessionContainer;
+		try {
+			commitPendingSessions(hostElement, { reason: "navigate", logger });
+		} catch (errorValue) {
+			logger.warn("[pie-item-player] session commit on session swap failed", errorValue);
+		} finally {
+			outgoingSessionContainer = null;
+		}
+	}
+
 	function hasIncompleteStructuredShuffledValues(entry: unknown): boolean {
 		if (!isRecord(entry)) return false;
 		const shuffledValues = entry.shuffledValues;
@@ -710,10 +730,10 @@
 		].join("|"),
 	);
 
-	const scopeClass = $derived(resolvedCustomClassName.trim());
+	const scopeClass = $derived(customClassName.trim());
 	const instanceStyleScopeClass = createExternalStyleScopeClass();
 	const stylesheetScopeClass = $derived(
-		resolvedCustomClassName ? scopeClass : instanceStyleScopeClass,
+		customClassName ? scopeClass : instanceStyleScopeClass,
 	);
 	const additionalStylesheetScopeClass = $derived(
 		stylesheetScopeClass === scopeClass ? "" : stylesheetScopeClass,
@@ -765,8 +785,8 @@
 		}
 
 		if (isRecord(input) && isConfigEntityLike(input.pie)) {
-			// pie-item contract compatibility: legacy <pie-player> accepted advanced
-			// stimulus configs shaped as `{ pie, passage }`; root ConfigEntity remains canonical.
+			// A stimulus item arrives as `{ pie, passage }`: the item config plus the
+			// passage config rendered beside it.
 			return {
 				item: input.pie,
 				passage: isConfigEntityLike(input.passage) ? input.passage : null,
@@ -805,9 +825,6 @@
 		}
 		return (input || { mode: "gather", role: "student" }) as Env;
 	}
-
-	// pie-item contract compatibility: legacy <pie-player> exposed `allowedResize`
-	// for opt-in passage resizing; the default current layout remains unchanged.
 
 	/**
 	 * `baseHeadingLevel` / `includeSrHeading` are host surface, not a transform
@@ -982,9 +999,6 @@
 			runtimeSupportCheck: loaderOptions?.runtimeSupportCheck ?? "off",
 			view: loaderOptions?.view ?? null,
 			elementPackagePolicy: loaderOptions?.elementPackagePolicy ?? null,
-			disableBundler,
-			bundleEndpoints,
-			reFetchBundle,
 		});
 		if (
 			configSignature === lastProcessedConfigSignature &&
@@ -1066,13 +1080,6 @@
 			}
 
 			stage = "normalize-config";
-			if (bundleEndpoints || reFetchBundle) {
-				// pie-item contract compatibility: these legacy loader knobs are accepted at
-				// the boundary, but the current loader has no equivalent mutable endpoint cache.
-				logger.warn(
-					"[pie-item-player] bundleEndpoints/reFetchBundle are accepted for legacy host compatibility but are not used by the current loader boundary.",
-				);
-			}
 			const transformedConfig = prepareConfigEntity(normalizedInput.item);
 			const transformedPassageConfig = normalizedInput.passage
 				? prepareConfigEntity(normalizedInput.passage)
@@ -1202,11 +1209,8 @@
 		void resolvedEsmCdnUrl;
 		void loaderRetrySignature;
 		void loaderOptions;
-		void disableBundler;
 		void allowedResize;
 		void autoplayAudioEnabled;
-		void bundleEndpoints;
-		void reFetchBundle;
 		queueMicrotask(() => {
 			untrack(() => {
 				loadConfig(currentConfig);
@@ -1215,11 +1219,16 @@
 	});
 
 	$effect(() => {
-		const parsed = parseSessionProp(effectiveSession);
+		const container = effectiveSession;
+		const parsed = parseSessionProp(container);
 		const shouldForceBackendReplacement =
 			backendOrchestrator.hasPendingSessionReplacement();
 		const controllerItemId = itemConfig?.id || "pie-item-player";
 		untrack(() => {
+			if (isSessionSwap(parsed)) {
+				commitOutgoingSessions();
+			}
+			appliedSessionContainer = container;
 			const controller = ensureSessionController(controllerItemId, parsed);
 			// Do not let metadata-only prop churn wipe user responses already in the controller.
 			syncControllerSession(controller, parsed, {
@@ -1329,6 +1338,17 @@
 		});
 	});
 
+	// The ESM loader forwards the MathJax adapter's page events; under
+	// `preloaded` no loader runs, so the player does, on the same terms.
+	$effect(() => {
+		if (normalizedStrategy !== "preloaded" || !loaderConfig?.trackPageActions) return;
+		if (typeof window === "undefined") return;
+		const provider = resolvedInstrumentationProvider;
+		return forwardMathjaxEvents(window, () =>
+			provider?.isReady() ? provider : undefined,
+		);
+	});
+
 	$effect(() => {
 		const cfg = itemConfig;
 		if (showBottomBorder && env.mode === "evaluate" && cfg?.elements) {
@@ -1373,7 +1393,10 @@
 	// attribute has no object to project onto and is skipped.
 	function publishSessionToHostProp(nextSession: unknown): void {
 		try {
-			projectSessionIntoHostContainer(session, nextSession);
+			projectSessionIntoHostContainer(
+				outgoingSessionContainer ?? session,
+				nextSession,
+			);
 		} catch (error) {
 			logger.warn(
 				"[pie-item-player] could not project the session onto the host container",
@@ -1601,9 +1624,7 @@
 		return backendOrchestrator.releaseContent(options);
 	}
 
-	// pie-item contract compatibility: legacy <pie-player> exposed local
-	// browser scoring through provideScore(); current item-player behavior is
-	// unchanged unless a host opts into this new imperative method.
+	// Local browser scoring: one result slot per scored model.
 	export async function provideScore(): Promise<false | any[]> {
 		const cfg = itemConfig;
 		if (!cfg?.models?.length) {
@@ -1617,7 +1638,6 @@
 				mode: "evaluate",
 				partialScoring: currentEnv.partialScoring,
 			},
-			outcomeArguments: "model-session-env",
 			includeMissingResults: true,
 			bundleType: resolveBundleType(),
 		});
@@ -1633,7 +1653,7 @@
 		}
 		const updateId = typeof update?.id === "string" ? update.id : "";
 		if (!updateId) {
-			throw new Error("updateElementModel(update) requires update.id.");
+			throw new Error("A model update requires update.id.");
 		}
 		const modelIndex = itemConfig.models?.findIndex((model) => model.id === updateId) ?? -1;
 		if (modelIndex < 0) {
@@ -1660,21 +1680,6 @@
 		};
 		itemConfig = nextConfig;
 		return nextConfig;
-	}
-
-	// pie-item contract compatibility: legacy <pie-player> preview hosts update a
-	// rendered element model imperatively; keep the existing strict id/tag binding.
-	export async function updateElementModel(update: Record<string, any>): Promise<void> {
-		const nextConfig = applyItemConfigModelUpdate(update);
-		await tick();
-		void updatePieElements(
-			nextConfig,
-			rendererSession,
-			parseEnvValue(env),
-			hostElement ?? undefined,
-			handleElementSessionUpdate,
-			resolveBundleType(),
-		);
 	}
 
 	function handleModelUpdated(detail: unknown) {
@@ -1850,6 +1855,7 @@
 					i18n={interfaceMessages}
 					bundleType={resolveBundleType()}
 					{loaderConfig}
+					{markupMathAssetRoot}
 					mode={resolvedMode}
 					authoringBackend={authoringBackend}
 					{trustMarkup}

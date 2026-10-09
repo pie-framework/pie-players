@@ -41,12 +41,33 @@ function buildAriaLabel(image: Element): string {
 	return trimmed ? `Scrollable image: ${trimmed}` : "Scrollable image";
 }
 
+/**
+ * A block-level image — an element's own `display: block`, a flex item — gets a
+ * block wrapper, so wrapping it adds no line box below it — a host reset of
+ * `img { display: block }` included. The live pass reads the computed display;
+ * markup parsed off-document has only the inline style, so the live pass reads
+ * a wrapper built there again.
+ */
+function imageLayoutClass(image: Element): string | null {
+	const view = image.ownerDocument?.defaultView;
+	const display = view
+		? view.getComputedStyle(image).display
+		: (image as HTMLElement).style?.display;
+	const blockLevel =
+		!!display &&
+		!display.startsWith("inline") &&
+		display !== "none" &&
+		display !== "contents";
+	return blockLevel ? "pie-image-scroll-block" : null;
+}
+
 const IMAGE_SPEC: OverwideWrapSpec = {
 	selector: "img",
 	wrapperTag: "span",
 	wrapperClass: "pie-image-scroll",
 	markupProbe: /<img\b/i,
 	buildAriaLabel,
+	layoutClass: imageLayoutClass,
 };
 
 export type WrapOverwideImagesInElementOptions = WrapOverwideOptions;

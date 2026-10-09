@@ -151,7 +151,9 @@ does: the section and assessment players are bundler-only.
   clears here too. A frozen container is left untouched, and a section player
   hands each item a per-render copy, so `detail.session` on the event is the
   authoritative payload; `ItemController` owns the session and never reads this
-  object back after the first load.
+  object back after the first load. Assigning a new value applies it, except
+  that a value with neither a response value nor a response field does not
+  replace a session that holds responses.
 - `env`: `Object`, default `{ mode: "gather", role: "student" }`.
   Environment mode and role.
 - `strategy`: `String`, default `"iife"`. Loading strategy: `"iife"`,
@@ -234,11 +236,8 @@ These are set via JavaScript, not HTML attributes.
 ## Methods
 
 - `provideScore(): Promise<false | Array<Record<string, unknown> | undefined>>`
-  returns one result slot per scored model for legacy-compatible local browser
-  scoring. A hosted player, including one with `backend.delivery` enabled and
+  returns one result slot per scored model from local browser scoring. A hosted player, including one with `backend.delivery` enabled and
   `hosted` unset, runs no controllers and leaves every slot `undefined`.
-- `updateElementModel(update): Promise<void>` applies a legacy-compatible
-  preview update for a single loaded PIE model.
 - `validateModels(): Promise<AuthoringValidationResult>` runs authoring-mode
   validation for rendered configure elements and returns
   `{ hasErrors, validatedModels }`.
@@ -259,7 +258,10 @@ These are set via JavaScript, not HTML attributes.
 
 ## Events
 
-- `load-complete`: emitted when PIE elements finish loading.
+- `load-complete`: emitted once the PIE elements have loaded and rendered and the
+  math in the item's own markup is typeset, which it waits for at most two
+  seconds (see
+  [Load completion](../../docs/item-player/loading-strategies.md#load-completion)).
 - `session-changed`: emitted when an element's session or completion changes.
   An element's own announcement is forwarded when its `complete` or its session
   differs from what that element last announced, so each element reaches the
@@ -340,7 +342,7 @@ These are set via JavaScript, not HTML attributes.
 
 Backend support is a JS-only namespace for networking and persistence. It does
 not duplicate existing delivery inputs such as `env`, `strategy`,
-`loaderOptions`, `bundleEndpoints`, or styling props.
+`loaderOptions`, or styling props.
 
 ```ts
 const el = document.querySelector("pie-item-player");
@@ -391,8 +393,11 @@ The canonical producer-side contract for `@pie-element/*` packages lives in the
 - `strategy="preloaded"` means the host installs pie-elements-ng packages as
   npm dependencies and registers their ESM builds with
   `registerPreloadedElements` from `@pie-players/pie-item-player/preloaded`
-  before the player renders. Generated `@pie-players/pie-preloaded-player`
-  builds register the same way and remain for hosts that have not moved. See
+  before the player renders, passing the
+  [MathJax asset root](../../docs/item-player/loading-strategies.md#mathjax-assets)
+  the elements' bundled MathJax loads its fonts and speech from. Generated
+  `@pie-players/pie-preloaded-player` builds register the same way, listing the
+  URL of each MathJax file they ship, and remain for hosts that have not moved. See
   [Loading strategies](../../docs/item-player/loading-strategies.md#strategypreloaded).
 
 ## Authoring configuration

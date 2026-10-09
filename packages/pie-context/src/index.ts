@@ -9,7 +9,7 @@ export {
 	requestContext,
 } from "./consumer.js";
 export { provideContext, ContextProvider } from "./provider.js";
-export { ContextRoot } from "./root.js";
+export { ContextRoot, ensureDocumentContextRoot } from "./root.js";
 export type {
 	Context,
 	ContextCallback,

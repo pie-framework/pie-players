@@ -17,18 +17,26 @@ This contract defines the minimum runtime guarantees between host components
   nothing the toolkit counts. A tool that connects and discards the value buys a
   retry timer and nothing else, so a tool taking everything it needs through the
   params seam does not connect.
+- The runtime context is the one channel to the toolkit's services. A tool
+  element declares no prop carrying a coordinator, the TTS service, the
+  highlight coordinator, the catalog resolver or the element tool state store,
+  and a registration assigns none onto the element it creates. A tool starts its
+  provider with `toolkitCoordinator.ensureProviderReady(baseToolId)`: providers
+  register under their tool's id.
 - Shell-aware tools must consume `assessmentToolkitShellContext`, and
   region-aware tools `assessmentToolkitRegionScopeContext`. Both carry scope a
   tool cannot obtain another way, so for those the requirement is unconditional.
 
-Use contract helpers exported from `@pie-players/pie-assessment-toolkit`:
+Use contract helpers exported from
+`@pie-players/pie-assessment-toolkit/tools/registration`:
 
 - `connectToolRuntimeContext(host, onValue)`
 - `connectToolShellContext(host, onValue)`
 - `connectToolRegionScopeContext(host, onValue)`
 
-These helpers include provider-announcement handling and retry behavior so late
-provider registration is tolerated.
+These helpers subscribe, so a provider that registers late answers through the
+document's context root, which replays the request when the provider announces
+itself.
 
 ## Event Semantics
 
@@ -37,10 +45,8 @@ Cross-boundary events (tool -> host, shell -> host, host -> tool) must be:
 - `bubbles: true`
 - `composed: true`
 
-Use helpers:
-
-- `createCrossBoundaryEvent(name, detail)`
-- `dispatchCrossBoundaryEvent(target, name, detail)`
+Use `dispatchCrossBoundaryEvent(target, name, detail)` from the
+`@pie-players/pie-assessment-toolkit` root.
 
 ## Initialization Guarantees
 
@@ -49,6 +55,42 @@ Tools must tolerate delayed context arrival and context re-binding:
 - tool can mount before provider exists
 - tool reconnects when provider becomes available
 - tool cleans up subscriptions on unmount
+
+## Shell Scope
+
+A shell publishes the content it holds: its identity as
+`assessmentToolkitShellContext`, the region its tools act on as
+`assessmentToolkitRegionScopeContext`, and a `pie-register` the toolkit files
+the content's accessibility catalogs under. `<pie-item-scope>` publishes it for
+an item, in a section player's card or around a plain item player, and
+`<pie-passage-shell>` for a passage, both through `createShellScope`.
+A shell registers once `assessmentToolkitHostRuntimeContext` answers, so a
+shell may mount before its toolkit. The registration carries the answering
+toolkit's `runtimeId`, and a toolkit claims an event carrying a `runtimeId` only
+when the id is its own; one without falls back to the runtime its target
+resolves. A nearer toolkit answering later moves the registration: the old
+toolkit gets a `pie-unregister` addressed to its id. `send(type, detail)`
+addresses any other shell event the same way, holding up to 50 until a toolkit
+answers.
+
+Inside a shell, `data-region="content"` marks the content tools read and
+annotate; a shell that marks no content region is read whole. Read-aloud reads
+its shell's content region. The annotation toolbar is section-scoped, so it
+finds the shell from the selection, through the `data-pie-shell-root` attribute
+`createShellScope` sets on the shell host, and opens only for a selection
+inside that shell's content region. Tools resolve the region at use with
+`resolveContentRegion`, from
+`@pie-players/pie-assessment-toolkit/tools/registration`, because a card
+renders its regions after its tools connect.
+
+Content in the region may render into open shadow roots, which read-aloud,
+highlighting and annotation reach. The language of any part of it is the
+nearest `lang` between that part and its shell host, else the language the
+read names. The page's `lang` above the shell is the interface language and
+never counts. `TTSService.speak` resolves it once per read, so a tool passes the
+language it knows and nothing more;
+[TTS language](../architecture/internationalization.md#tts-language) sets out
+the precedence and what each transport does with it.
 
 ## Host / Overlay Root Contract
 
@@ -88,17 +130,20 @@ offers all three types and names itself "Calculator". Content metadata therefore
 code, while PNP/profile restrictions remain framework-owned and higher
 precedence.
 
-Which flavor a profile grants is the host's rule, read through
-`decideFeaturePolicy`. The `calculator` and `graphingCalculator` support ids both
-grant the one `calculator` tool; the flavor is a render param:
+Which flavor a grant opens is the host's rule, read through
+`decideFeaturePolicy("calculator")`. The decision carries the calculator's
+feature parameters, from item `toolParameters` then assessment
+`settings.toolConfigs.calculator`, and the flavor is a render param:
 
 ```ts
 const toolContextResolvers = {
   calculator: ({ toolbarContext }) => {
-    const granted = (featureId: string) =>
-      toolbarContext.toolkitCoordinator?.decideFeaturePolicy?.(featureId)
-        .granted === true;
-    if (granted("graphingCalculator")) {
+    const decision =
+      toolbarContext.toolkitCoordinator?.decideFeaturePolicy?.("calculator");
+    if (decision?.granted !== true) {
+      return { visible: false, reason: "The profile grants no calculator." };
+    }
+    if ((decision.parameters as { type?: string } | undefined)?.type === "graphing") {
       return {
         visible: true,
         params: {
@@ -107,19 +152,17 @@ const toolContextResolvers = {
         },
       };
     }
-    if (granted("calculator")) {
-      return {
-        visible: true,
-        params: { calculatorType: "scientific", availableTypes: ["scientific"] },
-      };
-    }
-    return { visible: false, reason: "The profile grants no calculator." };
+    return {
+      visible: true,
+      params: { calculatorType: "scientific", availableTypes: ["scientific"] },
+    };
   },
 };
 ```
 
 Resolvers re-run on every policy change, so rebinding the assessment with a
-changed profile updates the button and an open calculator in place. The
+changed profile or calculator config updates the button and an open calculator
+in place. The
 `calculator-pnp` section demo composes exactly this around one item with no
 section player.
 
@@ -232,12 +275,11 @@ Any `/api/...` route referenced by a toolkit provider must be:
 The routes in `apps/section-demos/src/routes/api/` are intentionally
 unauthenticated and exist for local development and e2e specs. In
 particular, `GET /api/tools/desmos/auth` returns the configured
-`DESMOS_API_KEY` with no session check. When it is absent, the demo returns an
-empty compatibility response and the adapter falls back to the historical
-unkeyed load, which Desmos's CDN rejects with HTTP 403; the fallback does not
-grant or imply a Desmos license. Do not copy this route verbatim into a production
-deployment — use it only as a shape reference, require the host's auth
-middleware, and use a key/tier licensed for the deployed application.
+`DESMOS_API_KEY` with no session check. When it is absent, the route returns
+`{ apiKey: null }` and the calculator cannot load. Do not copy this route
+verbatim into a production deployment — use it only as a shape reference,
+require the host's auth middleware, and use a key/tier licensed for the deployed
+application.
 
 ### Related documentation
 

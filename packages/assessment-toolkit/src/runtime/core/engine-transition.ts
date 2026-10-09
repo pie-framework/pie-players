@@ -1,46 +1,41 @@
 /**
- * Pure transition function for the section runtime engine (M7 — Variant
- * C, layered core).
+ * Pure transition function for the section runtime engine.
  *
  * `transition(state, input)` is total over `(state, input)` pairs and
  * returns:
- *   - the next `SectionEngineState` (immutable; the input state object
- *     is never mutated);
- *   - the ordered list of `SectionEngineOutput`s the adapter must
- *     dispatch (DOM events, framework-error fan-out, etc.).
+ *   - the next `SectionEngineState` (the input state object is never
+ *     mutated);
+ *   - the ordered list of `SectionEngineOutput`s the adapter dispatches.
  *
- * The function imports nothing from Svelte, the DOM, or the
- * coordinator. The `core/` constraint is enforced by the per-PR audit
- * step in the M7 implementation plan.
+ * The function imports nothing from Svelte, the DOM, or the coordinator;
+ * `scripts/check-engine-core-purity.mjs` enforces that.
  *
  * Phase machine (per `engine-state.ts`):
  *   idle → booting-section → engine-ready → interactive → disposed
- *   (cohort-change rolls back to booting-section for the new cohort
- *    after emitting `disposed` for the outgoing cohort)
+ *   booting-section | engine-ready → failed → disposed
+ *   (cohort-change emits `disposed` for the outgoing cohort and restarts at
+ *    booting-section for the new one)
+ *
+ * A readiness update that reports `runtimeError` before `interactive` ends the
+ * chain: the first stage the cohort did not reach is recorded as `failed` and
+ * any after it as `skipped`, so a host waiting on `engine-ready` or
+ * `interactive` always hears an answer.
  *
  * Output ordering invariants:
  *   1. `stage-change` for stage advancement fires before any
  *      `loading-complete` triggered by the same input.
  *   2. `loading-complete` fires once per cohort, gated on
  *      `state.loadingCompleteEmitted`.
- *   3. `framework-error` outputs are independent of the stage chain
- *      and do not move the phase.
- *
- * Readiness alias output kinds (`readiness-change`,
- * `interaction-ready`, `ready`) and their DOM-event bridge were
- * removed in the broad architecture review compat sweep. Hosts that
- * need the readiness detail read it via the kernel's `selectReadiness`
- * / `getSnapshot` selectors or via `SectionEngineCore.getState()`.
  */
 
 import { cohortsEqual, type CohortKey } from "./cohort.js";
 import type { SectionEngineInput } from "./engine-input.js";
 import type { SectionEngineOutput } from "./engine-output.js";
 import {
-	createReadinessDetail,
+	resolveReadinessGates,
 	type EngineReadinessSignals,
 } from "./engine-readiness.js";
-import { phaseToStage } from "./engine-stage-derivation.js";
+import type { Stage } from "@pie-players/pie-players-shared/pie";
 import {
 	createInitialEngineState,
 	type SectionEnginePhase,
@@ -50,6 +45,23 @@ import {
 export interface TransitionResult {
 	state: SectionEngineState;
 	outputs: SectionEngineOutput[];
+}
+
+/** `idle` and `failed` have no stage of their own. */
+function phaseToStage(phase: SectionEnginePhase): Stage | null {
+	switch (phase) {
+		case "idle":
+		case "failed":
+			return null;
+		case "booting-section":
+			return "composed";
+		case "engine-ready":
+			return "engine-ready";
+		case "interactive":
+			return "interactive";
+		case "disposed":
+			return "disposed";
+	}
 }
 
 function emitStageChange(
@@ -79,6 +91,7 @@ function startCohort(args: {
 		...createInitialEngineState(),
 		phase: "booting-section",
 		cohort: args.cohort,
+		readinessMode: args.state.readinessMode,
 		effectiveRuntime: args.effectiveRuntime,
 		effectiveToolsConfig: args.effectiveToolsConfig,
 		itemCount: args.itemCount,
@@ -89,16 +102,34 @@ function startCohort(args: {
 }
 
 /**
+ * End the chain of a cohort that has not reached `interactive`. Returns the
+ * `failed` phase after recording the stages it will not reach.
+ */
+function failChain(
+	outputs: SectionEngineOutput[],
+	phase: "booting-section" | "engine-ready",
+	cohort: CohortKey | null,
+): SectionEnginePhase {
+	if (phase === "booting-section") {
+		emitStageChange(outputs, "engine-ready", cohort, "failed");
+		emitStageChange(outputs, "interactive", cohort, "skipped");
+	} else {
+		emitStageChange(outputs, "interactive", cohort, "failed");
+	}
+	return "failed";
+}
+
+/**
  * Apply a readiness update: store new signals, derive the detail in
- * the requested mode, advance the phase to `interactive` when gated,
- * and emit `loading-complete` once per cohort.
+ * the requested mode, end the chain on a runtime error before
+ * `interactive`, advance the phase to `interactive` when gated, and emit
+ * `loading-complete` once per cohort.
  */
 function applyReadinessUpdate(
 	state: SectionEngineState,
 	args: {
 		signals: EngineReadinessSignals;
 		mode: "progressive" | "strict";
-		loadedCount: number;
 		itemCount: number;
 	},
 ): TransitionResult {
@@ -107,18 +138,20 @@ function applyReadinessUpdate(
 		return { state, outputs: [] };
 	}
 
-	const detail = createReadinessDetail({
-		mode: args.mode,
-		signals: args.signals,
-	});
+	const detail = resolveReadinessGates(args.mode, args.signals);
 	const outputs: SectionEngineOutput[] = [];
 
-	let phase = state.phase;
+	let phase: SectionEnginePhase = state.phase;
 	let loadingCompleteEmitted = state.loadingCompleteEmitted;
 
-	// Stage advancement: engine-ready → interactive when readiness
-	// satisfies `interactionReady` (mode-aware via `createReadinessDetail`).
-	if (phase === "engine-ready" && detail.interactionReady) {
+	if (
+		args.signals.runtimeError &&
+		(phase === "booting-section" || phase === "engine-ready")
+	) {
+		phase = failChain(outputs, phase, state.cohort);
+	} else if (phase === "engine-ready" && detail.interactionReady) {
+		// engine-ready → interactive when readiness satisfies
+		// `interactionReady` (mode-aware via `resolveReadinessGates`).
 		phase = "interactive";
 		emitStageChange(outputs, phase, state.cohort);
 	}
@@ -132,7 +165,6 @@ function applyReadinessUpdate(
 			kind: "loading-complete",
 			cohort: state.cohort,
 			itemCount: args.itemCount,
-			loadedCount: args.loadedCount,
 		});
 	}
 
@@ -140,7 +172,7 @@ function applyReadinessUpdate(
 		...state,
 		phase,
 		readinessSignals: args.signals,
-		loadedCount: args.loadedCount,
+		readinessMode: args.mode,
 		itemCount: args.itemCount,
 		loadingCompleteEmitted,
 	};
@@ -242,8 +274,8 @@ export function transition(
 
 		case "section-controller-resolved": {
 			if (state.phase !== "booting-section") {
-				// Either too early (idle), too late (interactive / disposed),
-				// or a duplicate notification; the FSM is monotonic.
+				// Either too early (idle), too late (interactive / failed /
+				// disposed), or a duplicate notification; the FSM is monotonic.
 				return {
 					state: { ...state, controllerResolved: true },
 					outputs: [],
@@ -251,10 +283,22 @@ export function transition(
 			}
 			const outputs: SectionEngineOutput[] = [];
 			emitStageChange(outputs, "engine-ready", state.cohort);
+			// Readiness can be satisfied before the controller resolves: with
+			// preloaded elements the items load in the same flush as the
+			// composition. No later signal change would move the cohort on, so
+			// the stored snapshot gates `interactive` here.
+			let phase: SectionEnginePhase = "engine-ready";
+			if (
+				resolveReadinessGates(state.readinessMode, state.readinessSignals)
+					.interactionReady
+			) {
+				phase = "interactive";
+				emitStageChange(outputs, phase, state.cohort);
+			}
 			return {
 				state: {
 					...state,
-					phase: "engine-ready",
+					phase,
 					controllerResolved: true,
 				},
 				outputs,
@@ -265,26 +309,8 @@ export function transition(
 			return applyReadinessUpdate(state, {
 				signals: input.signals,
 				mode: input.mode,
-				loadedCount: input.loadedCount,
 				itemCount: input.itemCount,
 			});
-		}
-
-		case "framework-error": {
-			return {
-				state: {
-					...state,
-					lastFrameworkError: input.error,
-					readinessSignals: {
-						...state.readinessSignals,
-						runtimeError:
-							input.error.recoverable === true
-								? state.readinessSignals.runtimeError
-								: true,
-					},
-				},
-				outputs: [{ kind: "framework-error", error: input.error }],
-			};
 		}
 
 		case "dispose": {

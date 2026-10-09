@@ -33,17 +33,17 @@
  * existing PIE-512 e2e missed this because it drives
  * `handleContentRegistered` / `handleContentLoaded` directly on each
  * cohort's controller via the test harness (the demo runs with
- * `lazy-init={true}`), bypassing the engine layer where the gap lives.
+ * `lazy-init={true}`), bypassing the binding layer where the gap lives.
  *
- * This test exercises the `SectionRuntimeEngine` cohort handoff
+ * This test exercises the `SectionControllerBinding` cohort handoff
  * directly:
  *
- *   1. `engine.register(passage)` + `engine.handleContentRegistered(...)`
- *      + `engine.handleContentLoaded(...)` for cohort A — simulates the
+ *   1. `binding.register(passage)` + `binding.handleContentRegistered(...)`
+ *      + `binding.handleContentLoaded(...)` for cohort A — simulates the
  *      passage shell mounting, registering, and emitting `load-complete`.
- *   2. `engine.initialize({ sectionId: "B", ... })` — cohort flip; the
+ *   2. `binding.initialize({ sectionId: "B", ... })` — cohort flip; the
  *      coordinator returns a fresh `SectionController` for B. The
- *      engine's `RuntimeRegistry` still holds the passage entry because
+ *      binding's `RuntimeRegistry` still holds the passage entry because
  *      the persistent shell never fired `pie-unregister`.
  *   3. The new B controller should observe register + load for the
  *      passage (it is, by construction, currently mounted and loaded),
@@ -51,7 +51,7 @@
  *      replay that a fresh-cohort live subscriber would have seen.
  *
  * Pre-fix expectation: B's controller receives nothing — assertion
- * fails. The fix (PR forthcoming) makes `engine.initialize` re-feed the
+ * fails. The fix (PR forthcoming) makes `binding.initialize` re-feed the
  * new controller with the registry's current registered + loaded set.
  */
 
@@ -71,7 +71,7 @@ import {
 	type SectionControllerHandle,
 } from "../src/index.js";
 import type { RuntimeRegistrationDetail } from "../src/runtime/registration-events.js";
-import { SectionRuntimeEngine } from "../src/runtime/SectionRuntimeEngine.js";
+import { SectionControllerBinding } from "../src/runtime/SectionControllerBinding.js";
 
 beforeAll(() => {
 	if (
@@ -88,6 +88,8 @@ afterAll(() => {
 	}
 });
 
+type ContentArgs = { itemId: string; contentKind?: string };
+
 interface ControllerCall {
 	method:
 		| "handleContentRegistered"
@@ -97,7 +99,10 @@ interface ControllerCall {
 	contentKind: string | undefined;
 }
 
-interface TrackingController extends SectionControllerHandle {
+// The binding narrows `updateItemSession`'s result, and this controller never
+// implements it.
+interface TrackingController
+	extends Omit<SectionControllerHandle, "updateItemSession"> {
 	__sectionId: string;
 	__calls: ControllerCall[];
 }
@@ -107,8 +112,8 @@ interface TrackingController extends SectionControllerHandle {
  * test can assert which renderables the cohort's controller saw.
  *
  * Intentionally minimal: it does NOT internally evaluate readiness or
- * emit replay events. The assertion is at the engine→controller seam
- * (did the engine forward register+loaded into the new cohort's
+ * emit replay events. The assertion is at the binding→controller seam
+ * (did the binding forward register+loaded into the new cohort's
  * controller?), not at the coordinator replay layer (which the existing
  * `pie-512-cross-section-event-delivery.test.ts` already pins).
  */
@@ -129,21 +134,21 @@ function createTrackingController(sectionId: string): TrackingController {
 		dispose() {
 			calls.length = 0;
 		},
-		handleContentRegistered(args) {
+		handleContentRegistered(args: ContentArgs) {
 			calls.push({
 				method: "handleContentRegistered",
 				itemId: args.itemId,
 				contentKind: args.contentKind,
 			});
 		},
-		handleContentLoaded(args) {
+		handleContentLoaded(args: ContentArgs) {
 			calls.push({
 				method: "handleContentLoaded",
 				itemId: args.itemId,
 				contentKind: args.contentKind,
 			});
 		},
-		handleContentUnregistered(args) {
+		handleContentUnregistered(args: ContentArgs) {
 			calls.push({
 				method: "handleContentUnregistered",
 				itemId: args.itemId,
@@ -171,11 +176,11 @@ function makePassageRegistration(): RuntimeRegistrationDetail {
 }
 
 describe("PIE-512 persistent-shell cohort handoff", () => {
-	let engine: SectionRuntimeEngine;
+	let binding: SectionControllerBinding;
 	let coordinator: ToolkitCoordinator;
 
 	beforeEach(() => {
-		engine = new SectionRuntimeEngine();
+		binding = new SectionControllerBinding();
 		coordinator = new ToolkitCoordinator({
 			assessmentId: "pie-512-persistent-shell",
 			lazyInit: true,
@@ -190,10 +195,10 @@ describe("PIE-512 persistent-shell cohort handoff", () => {
 			const controllerB = createTrackingController("section-B");
 
 			// Cohort A: initialize, simulate the passage shell mounting and
-			// firing its load-complete signal. These are the engine-side
+			// firing its load-complete signal. These are the binding-side
 			// surfaces that PieAssessmentToolkit's `pie-register` /
 			// `pie-content-loaded` event handlers normally drive.
-			await engine.initialize({
+			await binding.initialize({
 				coordinator,
 				section: { identifier: "section-A" },
 				sectionId: "section-A",
@@ -204,9 +209,9 @@ describe("PIE-512 persistent-shell cohort handoff", () => {
 			});
 
 			const passage = makePassageRegistration();
-			engine.register(passage);
-			engine.handleContentRegistered(passage);
-			engine.handleContentLoaded({
+			binding.register(passage);
+			binding.handleContentRegistered(passage);
+			binding.handleContentLoaded({
 				itemId: passage.itemId,
 				canonicalItemId: passage.canonicalItemId,
 				contentKind: passage.contentKind,
@@ -230,16 +235,16 @@ describe("PIE-512 persistent-shell cohort handoff", () => {
 
 			// Cohort flip → B. The persistent passage shell did NOT unregister
 			// (no `pie-unregister` fired because the DOM element stayed
-			// mounted), so the engine's RuntimeRegistry still has the entry.
+			// mounted), so the binding's RuntimeRegistry still has the entry.
 			// PieAssessmentToolkit's section-init effect re-runs and calls
-			// engine.initialize for the new (sectionId, attemptId).
+			// binding.initialize for the new (sectionId, attemptId).
 			//
 			// Crucially: NO new register/load events fire — the test does NOT
-			// call engine.register / engine.handleContentRegistered /
-			// engine.handleContentLoaded again. That mirrors the real-world
+			// call binding.register / binding.handleContentRegistered /
+			// binding.handleContentLoaded again. That mirrors the real-world
 			// passage-only-viewport repro where the passage shell does not
 			// re-mount and item shells are unmounted.
-			await engine.initialize({
+			await binding.initialize({
 				coordinator,
 				section: { identifier: "section-B" },
 				sectionId: "section-B",
@@ -276,7 +281,7 @@ describe("PIE-512 persistent-shell cohort handoff", () => {
 			const controllerA = createTrackingController("section-A");
 			const controllerB = createTrackingController("section-B");
 
-			await engine.initialize({
+			await binding.initialize({
 				coordinator,
 				section: { identifier: "section-A" },
 				sectionId: "section-A",
@@ -290,11 +295,11 @@ describe("PIE-512 persistent-shell cohort handoff", () => {
 			// underlying item player has not finished loading by the time the
 			// cohort flips — only `pie-register` has fired so far.
 			const passage = makePassageRegistration();
-			engine.register(passage);
-			engine.handleContentRegistered(passage);
+			binding.register(passage);
+			binding.handleContentRegistered(passage);
 
 			// Cohort flip → B. Same persistent shell, still mid-load.
-			await engine.initialize({
+			await binding.initialize({
 				coordinator,
 				section: { identifier: "section-B" },
 				sectionId: "section-B",
@@ -327,12 +332,12 @@ describe("PIE-512 persistent-shell cohort handoff", () => {
 	);
 
 	test(
-		"PIE-512 Phase C: replay also fires when engine.initialize resolves " +
+		"PIE-512 Phase C: replay also fires when binding.initialize resolves " +
 			"to the EXISTING controller (same-cohort updateInput path)",
 		async () => {
 			// Phase B's fix gated `replayRegisteredShellsIntoController`
 			// behind `resolved !== previousController`. That left a hole:
-			// when the engine's `initialize` resolves to the existing
+			// when the binding's `initialize` resolves to the existing
 			// controller (because the coordinator's
 			// `resolveExistingSectionController` is called with the same
 			// `(sectionId, attemptId)` tuple), no replay fires. Pre-Phase-C
@@ -341,11 +346,11 @@ describe("PIE-512 persistent-shell cohort handoff", () => {
 			// attached after the wipe and before any new live event saw
 			// empty `runtimeState.loadedRenderables` and never received
 			// `content-loaded` / `section-loading-complete` for the
-			// already-mounted persistent shells. Phase C drops the engine's
+			// already-mounted persistent shells. Phase C drops the binding's
 			// identity gate so replay fires every time.
 			const controllerA = createTrackingController("section-A");
 
-			await engine.initialize({
+			await binding.initialize({
 				coordinator,
 				section: { identifier: "section-A" },
 				sectionId: "section-A",
@@ -356,9 +361,9 @@ describe("PIE-512 persistent-shell cohort handoff", () => {
 			});
 
 			const passage = makePassageRegistration();
-			engine.register(passage);
-			engine.handleContentRegistered(passage);
-			engine.handleContentLoaded({
+			binding.register(passage);
+			binding.handleContentRegistered(passage);
+			binding.handleContentLoaded({
 				itemId: passage.itemId,
 				canonicalItemId: passage.canonicalItemId,
 				contentKind: passage.contentKind,
@@ -372,9 +377,9 @@ describe("PIE-512 persistent-shell cohort handoff", () => {
 			const callsAfterCohortA = controllerA.__calls.length;
 
 			// Same `sectionId` + `attemptId` → coordinator returns the
-			// SAME controller. Pre-Phase-C the engine's identity gate
+			// SAME controller. Pre-Phase-C the binding's identity gate
 			// (`resolved !== previousController`) skipped replay here.
-			await engine.initialize({
+			await binding.initialize({
 				coordinator,
 				section: { identifier: "section-A" },
 				sectionId: "section-A",

@@ -19,13 +19,13 @@
 	import {
 		type AssessmentToolkitRuntimeContext,
 		connectToolRuntimeContext,
-	} from "@pie-players/pie-assessment-toolkit";
+	} from "@pie-players/pie-assessment-toolkit/tools/registration";
 	import { resolveInterfaceI18n } from "@pie-players/pie-players-shared/i18n/provider";
 	import { SharedFloatingPanel } from "@pie-players/pie-section-player-tools-shared";
-	import { createEventDispatcher, untrack } from 'svelte';
-	import { createEmptyPersonalNeedsProfile } from '@pie-players/pie-assessment-toolkit';
+	import { untrack } from 'svelte';
 	import {
 		createPatchedPnpProfile,
+		createSimulatedAssessment,
 		derivePnpPanelData,
 		resolveSectionToolIds,
 		TOOL_PLACEMENT_LEVELS,
@@ -33,7 +33,6 @@
 		type PnpEnforcementSelection,
 		type PolicyPanelCoordinator
 	} from './derive-panel-data.js';
-	const dispatch = createEventDispatcher<{ close: undefined }>();
 
 	interface Props {
 		sectionData: any;
@@ -54,8 +53,6 @@
 	}: Props = $props();
 
 	let floatingTools = $state<string[]>([]);
-	let simulatedPnpProfile = $state<Record<string, unknown> | null>(null);
-	let pnpEnforcementSelection = $state<PnpEnforcementSelection>('auto');
 	// Bumped from `coordinator.onPolicyChange(...)` so the
 	// `pnpPanelData` derivation re-runs whenever the engine inputs
 	// change (assessment binding, PNP override, custom source). The
@@ -85,28 +82,16 @@
 		};
 	});
 
-	// M8 PR 3 — read the coordinator's owned ToolPolicyEngine via the
-	// pure `derivePnpPanelData` helper. Decisions reflect every
-	// Pass-1 contributor (placement, host policy, provider veto,
-	// PNP/profile gates, custom sources) — not just PNP — which is the correct
-	// debugger surface as of M8. The panel keeps its PNP-focused
-	// chrome (title, profile card) but also surfaces the broader
-	// per-tool feature trails the engine emits.
-	let effectiveSectionData = $derived.by(() => {
-		if (!simulatedPnpProfile) return sectionData;
-		return {
-			...(sectionData || {}),
-			personalNeedsProfile: simulatedPnpProfile
-		};
-	});
-
+	// Decisions come from the coordinator's ToolPolicyEngine through
+	// `derivePnpPanelData` and carry every policy contributor: placement, host
+	// policy, provider veto, PNP/profile gates and custom sources.
 	let pnpPanelData = $derived.by(() => {
 		void policyVersion;
 		return derivePnpPanelData({
-			sectionData: effectiveSectionData,
+			sectionData,
 			roleType,
 			floatingTools,
-			defaultPnpProfile: createEmptyPersonalNeedsProfile(),
+			defaultPnpProfile: { supports: [], prohibitedSupports: [] },
 			coordinator: toolkitCoordinator as PolicyPanelCoordinator | null
 		});
 	});
@@ -117,8 +102,8 @@
 	}
 
 	function setPlacement(level: 'section' | 'item' | 'passage', toolIds: string[]) {
-		if (typeof toolkitCoordinator?.updateToolPlacement === 'function') {
-			toolkitCoordinator.updateToolPlacement(level, toolIds);
+		if (typeof toolkitCoordinator?.updateToolsPlacement === 'function') {
+			toolkitCoordinator.updateToolsPlacement({ [level]: toolIds });
 		}
 		policyVersion += 1;
 	}
@@ -146,13 +131,17 @@
 		policyVersion += 1;
 	}
 
+	// Edits the profile of the bound assessment and nothing else, so the host's
+	// district policy, test administration and tool configs stay bound.
 	function updateSimulatedAssessment(profile: Record<string, unknown>) {
-		simulatedPnpProfile = profile;
-		toolkitCoordinator?.updateAssessment?.({
-			...(sectionData || {}),
-			id: sectionData?.id || sectionData?.identifier || 'debug-section',
-			personalNeedsProfile: profile
-		});
+		const coordinator = toolkitCoordinator as PolicyPanelCoordinator | null;
+		coordinator?.updateAssessment?.(
+			createSimulatedAssessment(
+				coordinator.getPolicyInputs?.()?.assessment,
+				sectionData,
+				profile
+			)
+		);
 		policyVersion += 1;
 	}
 
@@ -162,14 +151,16 @@
 			createPatchedPnpProfile(
 				pnpPanelData.pnpProfile,
 				key,
-				row.pnpSupportIds,
+				row.toolId,
 				enabled
 			)
 		);
 	}
 
-	function applyPnpEnforcement() {
-		const mode = pnpEnforcementSelection === 'auto' ? null : pnpEnforcementSelection;
+	// The select shows the coordinator's override, so a host's own
+	// `setPnpEnforcement(...)` call is what the panel displays.
+	function applyPnpEnforcement(selection: PnpEnforcementSelection) {
+		const mode = selection === 'auto' ? null : selection;
 		if (typeof toolkitCoordinator?.setPnpEnforcement === 'function') {
 			toolkitCoordinator.setPnpEnforcement(mode);
 		}
@@ -215,7 +206,7 @@
 	}}
 	className="pie-section-player-tools-pnp-debugger"
 	bodyClass="pie-section-player-tools-pnp-debugger__content-shell"
-	onClose={() => dispatch('close')}
+	onClose={() => $host().dispatchEvent(new CustomEvent('close'))}
 >
 	<svelte:fragment slot="icon">
 			<svg
@@ -258,8 +249,9 @@
 					<label class="pie-section-player-tools-pnp-debugger__field">
 						<span>{interfaceI18n.t("debug.pnp.enforcement")}</span>
 						<select
-							bind:value={pnpEnforcementSelection}
-							onchange={applyPnpEnforcement}
+							value={pnpPanelData.pnpEnforcement.selection}
+							onchange={(event) =>
+								applyPnpEnforcement(event.currentTarget.value as PnpEnforcementSelection)}
 							data-testid="pnp-enforcement-select"
 						>
 							<option value="auto">{interfaceI18n.t("common.auto")}</option>
@@ -336,7 +328,6 @@
 								class:active={row.pnpSupported}
 								onclick={() => togglePnp(row, 'supports')}
 								data-testid={`pnp-support-toggle-${row.toolId}`}
-								title={row.pnpSupportIds.join(', ')}
 							>
 								support
 							</button>
@@ -345,7 +336,6 @@
 								class:danger={row.pnpProhibited}
 								onclick={() => togglePnp(row, 'prohibitedSupports')}
 								data-testid={`pnp-prohibit-toggle-${row.toolId}`}
-								title={row.pnpSupportIds.join(', ')}
 							>
 								prohibit
 							</button>
@@ -362,6 +352,12 @@
 			<div class="pie-section-player-tools-pnp-debugger__card-title">{interfaceI18n.t("debug.pnp.provenanceSummary")}</div>
 			<pre class="pie-section-player-tools-pnp-debugger__card-pre">{JSON.stringify(pnpPanelData.provenance, null, 2)}</pre>
 		</div>
+		{#if pnpPanelData.diagnostics.length > 0}
+			<div class="pie-section-player-tools-pnp-debugger__card" data-testid="pnp-policy-diagnostics">
+				<div class="pie-section-player-tools-pnp-debugger__card-title">{interfaceI18n.t("debug.pnp.policyDiagnostics")}</div>
+				<pre class="pie-section-player-tools-pnp-debugger__card-pre">{JSON.stringify(pnpPanelData.diagnostics, null, 2)}</pre>
+			</div>
+		{/if}
 		<div class="pie-section-player-tools-pnp-debugger__card">
 			<div class="pie-section-player-tools-pnp-debugger__card-title">{interfaceI18n.t("debug.pnp.perToolDecisions")}</div>
 			<pre class="pie-section-player-tools-pnp-debugger__card-pre">{JSON.stringify(pnpPanelData.featureTrails, null, 2)}</pre>

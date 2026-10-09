@@ -33,7 +33,7 @@
 import type {
 	CatalogOwnerSnapshot,
 	ToolContentDependencyContext,
-} from "@pie-players/pie-assessment-toolkit/tools/internal";
+} from "@pie-players/pie-assessment-toolkit/tools/registration";
 import {
 	AMERICAN_SIGN_LANGUAGE,
 	isSignLanguageCard,
@@ -41,6 +41,7 @@ import {
 	resolveSignLanguageMedia,
 	type SignLanguageMedia,
 } from "./sign-language-cards.js";
+import { warnSignLanguageOnce } from "./sign-language-warnings.js";
 
 /** QTI 3.0 / AfA support id gating signed alternates. */
 export const SIGN_LANGUAGE_FEATURE_ID = "signLanguage";
@@ -69,13 +70,36 @@ export interface SignLanguageLookupArgs {
 export function resolveSignLanguageAlternate(
 	args: SignLanguageLookupArgs,
 ): ResolvedSignLanguageAlternate | null {
-	const requested = args.requestedSignLang?.trim() || AMERICAN_SIGN_LANGUAGE;
-	const candidates = args.catalogs.cards.flatMap(({ catalogId, card }) => {
+	return pickSignLanguageAlternate(
+		signLanguageCandidates(args.catalogs).candidates,
+		args.requestedSignLang,
+	);
+}
+
+interface SignLanguageCandidate {
+	catalogId: string;
+	media: SignLanguageMedia;
+}
+
+function signLanguageCandidates(catalogs: CatalogOwnerSnapshot): {
+	signingCardCount: number;
+	candidates: SignLanguageCandidate[];
+} {
+	let signingCardCount = 0;
+	const candidates = catalogs.cards.flatMap(({ catalogId, card }) => {
 		if (!isSignLanguageCard(card)) return [];
+		signingCardCount++;
 		const media = resolveSignLanguageMedia(card);
 		return media ? [{ catalogId, media }] : [];
 	});
+	return { signingCardCount, candidates };
+}
 
+function pickSignLanguageAlternate(
+	candidates: readonly SignLanguageCandidate[],
+	requestedSignLang: string | undefined,
+): ResolvedSignLanguageAlternate | null {
+	const requested = requestedSignLang?.trim() || AMERICAN_SIGN_LANGUAGE;
 	// An exact language always beats an unlabelled fallback, regardless of card
 	// order. A differently-labelled card is never a fallback.
 	for (const candidate of candidates) {
@@ -119,9 +143,36 @@ export function resolveRequestedSignLanguage(
 export function resolveSignLanguageContent(
 	context: ToolContentDependencyContext,
 ): ResolvedSignLanguageAlternate | null {
-	if (!context.catalogs) return null;
-	return resolveSignLanguageAlternate({
-		catalogs: context.catalogs,
-		requestedSignLang: resolveRequestedSignLanguage(context.parameters),
-	});
+	if (!context.catalogs) {
+		warnSignLanguageOnce(
+			"no-catalogs",
+			`"${SIGN_LANGUAGE_FEATURE_ID}" resolved no signed alternate: the host has no accessibility catalog resolver for this content, so no sign-language card can be read.`,
+		);
+		return null;
+	}
+	const requestedSignLang =
+		resolveRequestedSignLanguage(context.parameters) ?? AMERICAN_SIGN_LANGUAGE;
+	const { signingCardCount, candidates } = signLanguageCandidates(
+		context.catalogs,
+	);
+	const alternate = pickSignLanguageAlternate(candidates, requestedSignLang);
+	if (alternate) return alternate;
+
+	// An item with no sign-language card is the common case and stays silent.
+	if (signingCardCount === 0) return null;
+	if (candidates.length === 0) {
+		warnSignLanguageOnce(
+			"unplayable-cards",
+			`"${SIGN_LANGUAGE_FEATURE_ID}" resolved no signed alternate: the content carries sign-language cards, but none has playable media.`,
+		);
+	} else {
+		const authored = [
+			...new Set(candidates.map(({ media }) => media.signLang).filter(Boolean)),
+		].join(", ");
+		warnSignLanguageOnce(
+			`language-mismatch.${requestedSignLang}`,
+			`"${SIGN_LANGUAGE_FEATURE_ID}" resolved no signed alternate: the learner is entitled to "${requestedSignLang}", the content carries only "${authored}", and another sign language is never substituted.`,
+		);
+	}
+	return null;
 }

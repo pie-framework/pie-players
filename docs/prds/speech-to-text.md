@@ -218,7 +218,7 @@ which is why the provider interface below reports locality rather than assuming 
 - Public export path: package root for the registration and provider types, matching
   `pie-tool-sign-language`.
 - Composition: **deliberately absent from `createPackagedToolRegistry()` and from
-  `UNIVERSAL_SUPPORTS_PRESET`.** Accommodation-tier, device-dependent, and requiring a cross-repo
+  `createUniversalPersonalNeedsProfile()`.** Accommodation-tier, device-dependent, and requiring a cross-repo
   content declaration — the same three reasons signing is opt-in. A deployment installs and registers
   it as it would one of its own.
 - Consuming packages or apps: section-player (item-level toolbar), PNP debugger, `section-demos`.
@@ -230,11 +230,10 @@ which is why the provider interface below reports locality rather than assuming 
 
 ### Support Id
 
-`speechToText`, added to `packages/assessment-toolkit/src/services/pnp-standard-features.ts` under
-`motor`, with a comment recording that it has **no AfA PNP 3.0 or QTI 3 counterpart** and is a PIE
+`speechToText`, the dictation tool's id. It has **no AfA PNP 3.0 or QTI 3 counterpart** and is a PIE
 extension.
 
-It is specifically **not** `voiceControl`, which already exists in that file's `motor` group.
+It is specifically **not** `voiceControl`.
 `voiceControl` is schema.org's `accessibilityControl` sense — operating the interface by voice — and a
 learner who needs to dictate an essay and a learner who needs to drive the UI by voice are different
 populations with different grants. Conflating them would make one grant deliver the other.
@@ -304,8 +303,6 @@ export const speechToTextRegistration: ToolRegistration = {
 
   // Item level only. A section has no response surface, and dictation targets one.
   supportedLevels: ["item"],
-
-  pnpSupportIds: ["speechToText"],
 
   activation: "toolbar-toggle",
 
@@ -400,7 +397,7 @@ This PRD touches:
 - **PIE element runtime contracts.** Response-bearing elements gain a target declaration and, for
   `custom-event` mode, a handler. No model field changes, and no element learns anything about
   policy — the element declares a capability of its surface, not an accommodation.
-- **The support vocabulary.** One new id in `pnp-standard-features.ts`. Additive.
+- **The support id.** `speechToText`, carried by the new tool's registration. Additive.
 - **`ToolContext`.** Needs the scope element for the target predicate. Additive.
 
 It must not change versioned `pie-*` tag names, `pie-item-player` properties/events/methods,

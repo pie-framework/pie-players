@@ -1,14 +1,20 @@
 /**
  * TTS Tool Provider
  *
- * Unified provider for all TTS backends:
- * - Browser Web Speech API (no auth)
- * - AWS Polly (requires auth via server proxy)
- * - Google Cloud TTS (requires auth via server proxy)
+ * Unified provider for both TTS backends:
+ * - `browser`: the Web Speech API (no auth)
+ * - `server`: a TTS server, its service named by the config's `provider`.
+ *   `polly` and `google` run on the `pie` transport; `custom` runs on the
+ *   `custom` transport to a host's own service, which takes `lang_id`,
+ *   `speedRate` and `cache`
  *
  * Part of PIE Assessment Toolkit.
  */
 
+import {
+	createPieLogger,
+	isTtsDebugEnabled,
+} from "@pie-players/pie-players-shared/pie";
 import type { ITTSProvider } from "@pie-players/pie-tts";
 import { BrowserTTSProvider } from "../../services/tts/browser-provider.js";
 import type {
@@ -20,15 +26,15 @@ import type {
 	ToolProviderCapabilities,
 } from "./ToolProviderApi.js";
 
+const logger = createPieLogger("tts-tool-provider", isTtsDebugEnabled);
+
 export type TTSBackend = NonNullable<TTSRuntimeSettings["backend"]>;
 
 /**
- * The runtime provider config plus the backend selection and instrumentation
- * this tool provider reads.
+ * The runtime provider config plus the credentials and instrumentation this
+ * tool provider reads. The backend is fixed at construction.
  */
 export type TTSToolProviderConfig = RuntimeTTSConfig & {
-	backend: TTSBackend;
-	serverProvider?: TTSRuntimeSettings["serverProvider"];
 	/**
 	 * Bearer token for a server backend, sent as `Authorization`. A host supplies
 	 * it through `provider.runtime.authFetcher`.
@@ -51,10 +57,7 @@ export type TTSToolProviderOptions = {
 };
 
 /** The part of `TTSToolProviderConfig` a server backend's provider reads. */
-type ServerBackendConfig = Omit<
-	TTSToolProviderConfig,
-	"backend" | "serverProvider" | "onTelemetry"
->;
+type ServerBackendConfig = Omit<TTSToolProviderConfig, "onTelemetry">;
 
 /**
  * Binds a server backend's provider to the config the registry initialized this
@@ -84,7 +87,6 @@ function bindServerBackendConfig(
 			};
 			return provider.initialize(merged);
 		},
-		supportsFeature: (feature) => provider.supportsFeature(feature),
 		getCapabilities: () => provider.getCapabilities(),
 		destroy: () => provider.destroy(),
 	};
@@ -93,37 +95,37 @@ function bindServerBackendConfig(
 /**
  * TTS Tool Provider
  *
- * Wraps TTS providers (Browser, Polly, Google) with the ToolProviderApi interface
+ * Wraps the browser or a server TTS provider with the ToolProviderApi interface
  * for use in the ToolProviderRegistry.
  *
  * @example Browser TTS (no auth)
  * ```typescript
  * const provider = new TTSToolProvider();
- * await provider.initialize({ backend: 'browser' });
+ * await provider.initialize({});
  * const ttsProvider = await provider.createInstance();
  * ```
  *
  * @example Server TTS
  * ```typescript
- * const provider = new TTSToolProvider('polly', {
+ * const provider = new TTSToolProvider('server', {
  *   loadServerProvider: async () => ServerTTSProvider,
  * });
  * await provider.initialize({
- *   backend: 'polly',
+ *   provider: 'polly',
  *   apiEndpoint: '/api/tts',
  * });
  * const ttsProvider = await provider.createInstance();
  * ```
  */
 export class TTSToolProvider
-	implements ToolProviderApi<TTSToolProviderConfig, ITTSProvider>
+	implements ToolProviderApi<ITTSProvider>
 {
-	readonly providerId = "tts-service";
 	readonly providerName = "Text-to-Speech";
 	readonly category = "tts" as const;
 	readonly version = "1.0";
 	readonly requiresAuth: boolean;
 
+	private readonly backend: TTSBackend;
 	private ttsProvider: ITTSProvider | null = null;
 	private config: TTSToolProviderConfig | null = null;
 	private readonly loadServerProvider: TTSToolProviderOptions["loadServerProvider"];
@@ -149,6 +151,7 @@ export class TTSToolProvider
 		backend: TTSBackend = "browser",
 		options: TTSToolProviderOptions = {},
 	) {
+		this.backend = backend;
 		this.requiresAuth = backend !== "browser";
 		this.loadServerProvider = options.loadServerProvider;
 	}
@@ -158,7 +161,7 @@ export class TTSToolProvider
 	 *
 	 * Sets up the appropriate TTS backend.
 	 *
-	 * @param config Configuration with backend type and credentials
+	 * @param config Runtime configuration and credentials
 	 * @throws Error if initialization fails or required config missing
 	 */
 	async initialize(config: TTSToolProviderConfig): Promise<void> {
@@ -171,24 +174,20 @@ export class TTSToolProvider
 
 		this.config = config;
 
-		switch (config.backend) {
+		switch (this.backend) {
 			case "browser":
 				await this._initializeBrowserTTS(config);
 				break;
 
-			case "polly":
-			case "google":
 			case "server":
 				await this._initializeServerTTS(config);
 				break;
 
 			default:
-				throw new Error(`[TTSToolProvider] Unknown backend: ${config.backend}`);
+				throw new Error(`[TTSToolProvider] Unknown backend: ${this.backend}`);
 		}
 
-		console.log(
-			`[TTSToolProvider] Initialized successfully (backend: ${config.backend})`,
-		);
+		logger.debug(`initialized (backend: ${this.backend})`);
 	}
 
 	/**
@@ -205,11 +204,11 @@ export class TTSToolProvider
 		}
 
 		this.ttsProvider = new BrowserTTSProvider();
-		console.log("[TTSToolProvider] Browser TTS initialized (Web Speech API)");
+		logger.debug("browser TTS initialized (Web Speech API)");
 	}
 
 	/**
-	 * Initialize server-based TTS (Polly, Google)
+	 * Initialize server-based TTS
 	 */
 	private async _initializeServerTTS(
 		config: TTSToolProviderConfig,
@@ -227,11 +226,12 @@ export class TTSToolProvider
 			);
 		}
 
+		const serverProvider = config.provider || this.backend;
 		const moduleLoadStartedAt = Date.now();
 		await this.emitTelemetry("pie-tool-library-load-start", {
 			toolId: "textToSpeech",
 			operation: "server-provider-module-import",
-			backend: config.serverProvider || config.backend,
+			backend: serverProvider,
 		});
 		const ServerProvider = await (async () => {
 			try {
@@ -239,7 +239,7 @@ export class TTSToolProvider
 				await this.emitTelemetry("pie-tool-library-load-success", {
 					toolId: "textToSpeech",
 					operation: "server-provider-module-import",
-					backend: config.serverProvider || config.backend,
+					backend: serverProvider,
 					duration: Date.now() - moduleLoadStartedAt,
 				});
 				return loaded;
@@ -247,7 +247,7 @@ export class TTSToolProvider
 				await this.emitTelemetry("pie-tool-library-load-error", {
 					toolId: "textToSpeech",
 					operation: "server-provider-module-import",
-					backend: config.serverProvider || config.backend,
+					backend: serverProvider,
 					duration: Date.now() - moduleLoadStartedAt,
 					errorType: "ToolLibraryLoadError",
 					message: error instanceof Error ? error.message : String(error),
@@ -261,7 +261,7 @@ export class TTSToolProvider
 		// which declaration emit leaves out (ADR 0002).
 		type ServerTTSProviderConfig =
 			import("@pie-players/tts-client-server").ServerTTSProviderConfig;
-		const { backend, serverProvider, onTelemetry, ...backendConfig } = config;
+		const { onTelemetry: _onTelemetry, ...backendConfig } = config;
 		this.ttsProvider = bindServerBackendConfig(
 			new ServerProvider(),
 			backendConfig satisfies Partial<
@@ -269,8 +269,8 @@ export class TTSToolProvider
 			>,
 		);
 
-		console.log(
-			`[TTSToolProvider] Server TTS initialized (provider: ${config.serverProvider || config.backend})`,
+		logger.debug(
+			`server TTS initialized (provider: ${serverProvider})`,
 		);
 	}
 
@@ -296,24 +296,24 @@ export class TTSToolProvider
 	}
 
 	/**
-	 * Get provider capabilities
-	 *
-	 * @returns TTS capabilities based on backend
+	 * The backend's capabilities. Its features are the speech provider's own,
+	 * and all false before {@link initialize} creates it.
 	 */
 	getCapabilities(): ToolProviderCapabilities {
-		const isBrowser = this.config?.backend === "browser";
+		const isBrowser = this.backend === "browser";
+		const speech = this.ttsProvider?.getCapabilities();
 
 		return {
 			supportsOffline: isBrowser,
 			requiresAuth: !isBrowser,
 			maxInstances: 1, // Single TTS instance (playback is sequential)
 			features: {
-				wordBoundary: true, // All backends support word highlighting
-				pause: true,
-				resume: true,
-				rateControl: true,
-				pitchControl: isBrowser, // Only browser supports pitch
-				voiceSelection: true,
+				wordBoundary: speech?.supportsWordBoundary ?? false,
+				pause: speech?.supportsPause ?? false,
+				resume: speech?.supportsResume ?? false,
+				rateControl: speech?.supportsRateControl ?? false,
+				pitchControl: speech?.supportsPitchControl ?? false,
+				voiceSelection: speech?.supportsVoiceSelection ?? false,
 			},
 		};
 	}
@@ -338,6 +338,6 @@ export class TTSToolProvider
 			this.ttsProvider = null;
 		}
 		this.config = null;
-		console.log("[TTSToolProvider] Destroyed");
+		logger.debug("destroyed");
 	}
 }

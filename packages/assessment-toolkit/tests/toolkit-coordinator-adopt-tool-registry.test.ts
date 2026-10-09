@@ -30,10 +30,8 @@ const warnings = (): string[] =>
 	warnSpy.mock.calls.map((args: unknown[]) => args.map(String).join(" "));
 
 const calculatorProvider: ToolProviderDescriptor = {
-	getProviderId: () => "calculator-stub",
 	createProvider: () =>
 		({
-			providerId: "calculator-stub",
 			providerName: "Stub calculator provider",
 			category: "calculator",
 			version: "0.0.0",
@@ -56,7 +54,6 @@ function toolkitRegistry(): ToolRegistry {
 		createTestToolRegistration({
 			toolId: "calculator",
 			supportedLevels: ["item", "section"],
-			pnpSupportIds: ["calculator"],
 			provider: calculatorProvider,
 		}),
 	);
@@ -72,11 +69,11 @@ describe("ToolkitCoordinator.adoptToolRegistry", () => {
 			lazyInit: true,
 			tools,
 		});
-		expect(coordinator.toolProviderRegistry.has("calculator-stub")).toBe(false);
+		expect(coordinator.toolProviderRegistry.has("calculator")).toBe(false);
 
 		expect(coordinator.adoptToolRegistry(toolkitRegistry())).toBe(true);
 
-		expect(coordinator.toolProviderRegistry.has("calculator-stub")).toBe(true);
+		expect(coordinator.toolProviderRegistry.has("calculator")).toBe(true);
 		expect(
 			warnings().filter((line) => line.includes("No tool registry")),
 		).toEqual([]);
@@ -88,7 +85,7 @@ describe("ToolkitCoordinator.adoptToolRegistry", () => {
 			lazyInit: true,
 			tools: { placement: { item: ["calculator", "notShipped"] } },
 		});
-		expect(() => coordinator.isToolEnabled("notShipped")).not.toThrow();
+		expect(() => coordinator.getToolConfig("notShipped")).not.toThrow();
 
 		coordinator.adoptToolRegistry(toolkitRegistry());
 
@@ -100,7 +97,7 @@ describe("ToolkitCoordinator.adoptToolRegistry", () => {
 					line.includes("notShipped"),
 			),
 		).toBe(true);
-		expect(() => coordinator.isToolEnabled("notShipped")).toThrow(
+		expect(() => coordinator.getToolConfig("notShipped")).toThrow(
 			/Unknown tool id "notShipped"/,
 		);
 	});
@@ -128,8 +125,8 @@ describe("ToolkitCoordinator.adoptToolRegistry", () => {
 		});
 
 		expect(coordinator.adoptToolRegistry(toolkitRegistry())).toBe(false);
-		expect(coordinator.toolProviderRegistry.has("calculator-stub")).toBe(false);
-		expect(() => coordinator.isToolEnabled("calculator")).toThrow(
+		expect(coordinator.toolProviderRegistry.has("calculator")).toBe(false);
+		expect(() => coordinator.getToolConfig("calculator")).toThrow(
 			/Unknown tool id "calculator"/,
 		);
 	});
@@ -145,7 +142,24 @@ describe("ToolkitCoordinator.adoptToolRegistry", () => {
 				createTestToolRegistry(["textToSpeech", "annotationToolbar"]),
 			),
 		).toBe(false);
-		expect(() => coordinator.isToolEnabled("calculator")).not.toThrow();
+		expect(() => coordinator.getToolConfig("calculator")).not.toThrow();
+	});
+
+	test("adopts a registry that arrives after a toolkit reported none", () => {
+		const coordinator = new ToolkitCoordinator({
+			assessmentId: "adopt-after-none",
+			lazyInit: true,
+			tools,
+		});
+		expect(coordinator.adoptToolRegistry(null)).toBe(false);
+
+		expect(coordinator.adoptToolRegistry(toolkitRegistry())).toBe(true);
+		expect(coordinator.toolProviderRegistry.has("calculator")).toBe(true);
+		expect(
+			coordinator.adoptToolRegistry(
+				createTestToolRegistry(["textToSpeech", "annotationToolbar"]),
+			),
+		).toBe(false);
 	});
 
 	test("does nothing once disposed", async () => {
@@ -156,6 +170,6 @@ describe("ToolkitCoordinator.adoptToolRegistry", () => {
 		await coordinator.dispose();
 
 		expect(coordinator.adoptToolRegistry(toolkitRegistry())).toBe(false);
-		expect(coordinator.toolProviderRegistry.has("calculator-stub")).toBe(false);
+		expect(coordinator.toolProviderRegistry.has("calculator")).toBe(false);
 	});
 });

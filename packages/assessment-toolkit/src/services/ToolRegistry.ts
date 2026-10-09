@@ -9,7 +9,14 @@ import { dynamicMessageKey } from "@pie-players/pie-players-shared/i18n/provider
 import type { I18nProvider } from "@pie-players/pie-players-shared/i18n/types";
 import type { CatalogOwnerSnapshot } from "./AccessibilityCatalogResolver.js";
 import type { ToolContext, ToolLevel } from "./tool-context.js";
-import type { ToolComponentOverrides } from "../tools/tool-tag-map.js";
+import {
+	type ToolComponentOverrides,
+	resolveToolTag,
+} from "../tools/tool-tag-map.js";
+import {
+	PENDING_INPUT_WARNING_DELAY_MS,
+	warnOncePerDocument,
+} from "../runtime/page-warnings.js";
 import type {
 	AccessibilityCatalogResolverApi,
 	ElementToolStateStoreApi,
@@ -20,7 +27,6 @@ import type {
 import type { ToolProviderApi } from "./tool-providers/ToolProviderApi.js";
 import type { ToolProviderConfig as ToolRuntimeConfig } from "./tools-config-normalizer.js";
 import type { ToolConfigDiagnostic } from "./tool-config-validation.js";
-import { normalizeToolAlias } from "./tools-config-normalizer.js";
 
 export type ToolModuleLoader = () => Promise<unknown>;
 
@@ -88,9 +94,10 @@ export interface ToolbarContext {
 	 * Content-alternate language: which authored alternate the catalog resolver
 	 * should select. Not the interface locale — see {@link ToolbarContext.i18n}. The
 	 * two are independent by QTI 3's own statement, and conflating them is how a
-	 * Spanish passage ends up forcing Spanish widget chrome.
+	 * Spanish passage ends up forcing Spanish widget chrome. Absent when neither
+	 * the toolbar's `language` nor the host's `content-language` names one.
 	 */
-	language: string;
+	language?: string;
 	/**
 	 * Interface-locale provider for this capability's own UI strings.
 	 *
@@ -106,12 +113,19 @@ export interface ToolbarContext {
 		size?: string;
 	};
 	getScopeElement?: () => HTMLElement | null;
-	getGlobalElementId?: () => string | null;
+	/**
+	 * State key of one PIE element in this toolbar's item, by its model id, for
+	 * `elementToolStateStore`. `null` until the store and the ids it needs are
+	 * known.
+	 */
+	getGlobalElementId?: (elementId: string) => string | null;
 	toolCoordinator: ToolCoordinatorApi | null;
 	toolkitCoordinator: ToolkitCoordinatorApi | null;
 	ttsService: TtsServiceApi | null;
 	elementToolStateStore: ElementToolStateStoreApi | null;
+	/** Toggles this toolbar's instance of a base tool id. */
 	toggleTool: (toolId: string) => void;
+	/** Whether this toolbar's instance of a base tool id is shown. */
 	isToolVisible: (toolId: string) => boolean;
 	subscribeVisibility: ((listener: () => void) => () => void) | null;
 	componentOverrides?: ToolComponentOverrides;
@@ -253,39 +267,21 @@ export interface HostedToolSize {
 	height: number;
 }
 
+/**
+ * How the coordinator builds a tool's provider from the tool's config. The
+ * provider registers under the tool's own id, so `ensureProviderReady(toolId)`
+ * finds it; `provider.id` in the config selects an implementation and never
+ * renames the registration.
+ */
 export interface ToolProviderDescriptor {
-	getProviderId?: (config: ToolRuntimeConfig | undefined) => string;
 	createProvider: (config: ToolRuntimeConfig | undefined) => ToolProviderApi;
 	getInitConfig?: (
 		config: ToolRuntimeConfig | undefined,
 	) => Record<string, unknown>;
-	sanitizeConfig?: (config: ToolRuntimeConfig) => ToolRuntimeConfig;
-	validateConfig?: (config: ToolRuntimeConfig) => ToolConfigDiagnostic[];
 	getAuthFetcher?: (
 		config: ToolRuntimeConfig | undefined,
 	) => (() => Promise<Record<string, unknown>>) | undefined;
 	lazy?: boolean;
-}
-
-/**
- * The id a registration's provider registers under for one tool config: the
- * descriptor's answer, then the config's `provider.id`, then the tool id. `null`
- * when the registration carries no provider.
- *
- * The coordinator registers providers under this id and the section player looks
- * for them in a host-supplied coordinator by it, so the two resolve it one way.
- */
-export function resolveToolProviderId(
-	registration: Pick<ToolRegistration, "toolId" | "provider">,
-	config: ToolRuntimeConfig | undefined,
-): string | null {
-	const descriptor = registration.provider;
-	if (!descriptor) return null;
-	return (
-		descriptor.getProviderId?.(config) ??
-		config?.provider?.id ??
-		registration.toolId
-	);
 }
 
 export interface ToolToolbarRenderResult {
@@ -367,8 +363,14 @@ export interface ToolSurfaceServices {
  */
 export interface ToolSurfaceRenderContext {
 	toolId: string;
-	/** The PNP/AfA support id policy granted for this render. */
-	featureId: string;
+	/**
+	 * Whether a PNP support, a requirement or a test-administration override
+	 * granted the capability. `false` for a capability rendered because it is
+	 * placed with no grant, and for a
+	 * {@link ToolRegistration.resolvesWithoutGrant} capability answering from
+	 * content alone.
+	 */
+	granted: boolean;
 	/** Host slot being filled. */
 	surface: string;
 	/** Feature parameters from the policy decision, if any. */
@@ -384,8 +386,6 @@ export interface ToolSurfaceRenderContext {
  * present.
  */
 export interface ToolContentDependencyContext {
-	/** The PNP/AfA support id being resolved. */
-	featureId: string;
 	/** Feature parameters from the policy decision, if any. */
 	parameters?: unknown;
 	/**
@@ -397,7 +397,7 @@ export interface ToolContentDependencyContext {
 	 */
 	catalogs: CatalogOwnerSnapshot | null;
 	/**
-	 * Whether policy granted one of this capability's support ids.
+	 * Whether policy granted this capability's support id.
 	 *
 	 * `false` reaches `resolve` only for a capability that declares
 	 * {@link ToolRegistration.resolvesWithoutGrant}, and it is the signal that the
@@ -550,13 +550,6 @@ export interface ToolRegistration {
 	singletonScope?: ToolSingletonScope;
 
 	/**
-	 * PNP support IDs that enable this tool (optional)
-	 * Used by the tool policy engine to determine if a PNP support enables this tool.
-	 * Example: ['calculator', 'basic-calculator', 'scientific-calculator']
-	 */
-	pnpSupportIds?: string[];
-
-	/**
 	 * Authored content this capability needs before it has anything to show.
 	 *
 	 * Declaring it makes availability "grant AND content", and excludes the
@@ -588,6 +581,16 @@ export interface ToolRegistration {
 	 * without hardcoded tool-specific branches.
 	 */
 	provider?: ToolProviderDescriptor;
+	/**
+	 * Normalize this tool's `tools.providers.<toolId>` entry. Tools-config
+	 * validation runs it before {@link ToolRegistration.validateConfig}; a throw is
+	 * reported as a diagnostic and the entry passes through unchanged.
+	 */
+	sanitizeConfig?: (config: ToolRuntimeConfig) => ToolRuntimeConfig;
+	/**
+	 * Diagnostics for this tool's sanitized `tools.providers.<toolId>` entry.
+	 */
+	validateConfig?: (config: ToolRuntimeConfig) => ToolConfigDiagnostic[];
 	/**
 	 * Optional shell-host lifecycle hooks for hosted (floating) tools.
 	 */
@@ -847,17 +850,6 @@ function assertToolRegistrationShape(registration: ToolRegistration): void {
 		);
 	}
 	if (
-		registration.pnpSupportIds !== undefined &&
-		(!Array.isArray(registration.pnpSupportIds) ||
-			registration.pnpSupportIds.some(
-				(pnpId) => typeof pnpId !== "string" || pnpId.trim().length === 0,
-			))
-	) {
-		throw new Error(
-			`Invalid tool registration "${registration.toolId}": "pnpSupportIds" must be an array of non-empty strings.`,
-		);
-	}
-	if (
 		registration.activation !== "region" &&
 		typeof registration.isVisibleInContext !== "function"
 	) {
@@ -891,14 +883,6 @@ function assertToolRegistrationShape(registration: ToolRegistration): void {
 				`Invalid tool registration "${registration.toolId}": "requiresAuthoredContent" must be an object with a "resolve" function.`,
 			);
 		}
-		if (!registration.pnpSupportIds?.length) {
-			// A content dependency's second job is keeping the capability out of a
-			// wholesale grant, and a host filters that by support id. Declaring one
-			// with no id to filter on would silently drop that guarantee.
-			throw new Error(
-				`Invalid tool registration "${registration.toolId}": "requiresAuthoredContent" requires at least one entry in "pnpSupportIds", which is what a host filters a default grant list on.`,
-			);
-		}
 	}
 	if (registration.renderToolbar !== undefined) {
 		if (typeof registration.renderToolbar !== "function") {
@@ -920,10 +904,12 @@ function assertToolRegistrationShape(registration: ToolRegistration): void {
  */
 export class ToolRegistry {
 	private tools = new Map<string, ToolRegistration>();
-	private pnpIndex = new Map<string, Set<string>>(); // pnpSupportId → Set<toolId>
 	private componentOverrides: ToolComponentOverrides = {};
+	private watchedUndefinedToolElements = new Set<string>();
 	private moduleLoaders = new Map<string, ToolModuleLoader>();
 	private loadedToolModules = new Set<string>();
+	private warnedLoaderReplacements = new Set<string>();
+	private warnedUnregisteredAllowedTools = new Set<string>();
 	private moduleLoadPromises = new Map<string, Promise<void>>();
 	private changeListeners = new Set<ToolRegistryChangeListener>();
 
@@ -952,14 +938,14 @@ export class ToolRegistry {
 	}
 
 	/**
-	 * Normalize a single tool alias to canonical toolId.
+	 * Normalize a single tool id (trims surrounding whitespace).
 	 */
 	normalizeToolId(toolId: string): string {
-		return normalizeToolAlias(toolId);
+		return toolId.trim();
 	}
 
 	/**
-	 * Normalize a list of tool aliases to canonical toolIds.
+	 * Normalize a list of tool ids (trims surrounding whitespace).
 	 */
 	normalizeToolIds(toolIds: string[]): string[] {
 		return toolIds.map((toolId) => this.normalizeToolId(toolId));
@@ -978,16 +964,6 @@ export class ToolRegistry {
 		}
 
 		this.tools.set(registration.toolId, registration);
-
-		// Index PNP support IDs
-		if (registration.pnpSupportIds) {
-			for (const pnpId of registration.pnpSupportIds) {
-				if (!this.pnpIndex.has(pnpId)) {
-					this.pnpIndex.set(pnpId, new Set());
-				}
-				this.pnpIndex.get(pnpId)!.add(registration.toolId);
-			}
-		}
 		this.emitChange({ kind: "register", toolIds: [registration.toolId] });
 	}
 
@@ -1004,26 +980,7 @@ export class ToolRegistry {
 			);
 		}
 
-		// Remove old PNP index entries
-		const oldReg = this.tools.get(registration.toolId)!;
-		if (oldReg.pnpSupportIds) {
-			for (const pnpId of oldReg.pnpSupportIds) {
-				this.pnpIndex.get(pnpId)?.delete(registration.toolId);
-			}
-		}
-
-		// Add new registration
 		this.tools.set(registration.toolId, registration);
-
-		// Re-index PNP support IDs
-		if (registration.pnpSupportIds) {
-			for (const pnpId of registration.pnpSupportIds) {
-				if (!this.pnpIndex.has(pnpId)) {
-					this.pnpIndex.set(pnpId, new Set());
-				}
-				this.pnpIndex.get(pnpId)!.add(registration.toolId);
-			}
-		}
 		this.emitChange({ kind: "override", toolIds: [registration.toolId] });
 	}
 
@@ -1033,16 +990,7 @@ export class ToolRegistry {
 	 * @param toolId - Tool ID to remove
 	 */
 	unregister(toolId: string): void {
-		const reg = this.tools.get(toolId);
-		if (!reg) return;
-
-		// Remove PNP index entries
-		if (reg.pnpSupportIds) {
-			for (const pnpId of reg.pnpSupportIds) {
-				this.pnpIndex.get(pnpId)?.delete(toolId);
-			}
-		}
-
+		if (!this.tools.has(toolId)) return;
 		this.tools.delete(toolId);
 		this.emitChange({ kind: "unregister", toolIds: [toolId] });
 	}
@@ -1083,16 +1031,6 @@ export class ToolRegistry {
 	 */
 	getAllTools(): ToolRegistration[] {
 		return Array.from(this.tools.values());
-	}
-
-	/**
-	 * Find tool IDs that support a given PNP support ID
-	 *
-	 * @param pnpSupportId - PNP support ID (e.g., 'calculator')
-	 * @returns Set of tool IDs that support this PNP ID
-	 */
-	getToolsByPNPSupport(pnpSupportId: string): Set<string> {
-		return this.pnpIndex.get(pnpSupportId) || new Set();
 	}
 
 	/**
@@ -1139,19 +1077,18 @@ export class ToolRegistry {
 	}
 
 	/**
-	 * Support ids belonging to capabilities that need authored content.
+	 * Support ids, which are tool ids, of the capabilities that need authored
+	 * content.
 	 *
-	 * What a host filters a default grant list on, in place of the compile-time
-	 * exclusion array this replaced: granting one of these wholesale grants an
-	 * accommodation to learners with no documented need for it.
+	 * What a host filters a default grant list on: granting one of these
+	 * wholesale grants an accommodation to learners with no documented need
+	 * for it.
 	 */
 	getContentDependentSupportIds(): string[] {
-		const ids = new Set<string>();
-		for (const tool of this.getAllTools()) {
-			if (!tool.requiresAuthoredContent) continue;
-			for (const supportId of tool.pnpSupportIds || []) ids.add(supportId);
-		}
-		return [...ids].sort();
+		return this.getAllTools()
+			.filter((tool) => tool.requiresAuthoredContent)
+			.map((tool) => tool.toolId)
+			.sort();
 	}
 
 	/**
@@ -1169,7 +1106,7 @@ export class ToolRegistry {
 	/**
 	 * Filter tools by visibility in a given context
 	 *
-	 * Pass 2 of the two-pass model: Given a list of allowed tool IDs (from Pass 1),
+	 * Pass 2 of the three-pass model: Given a list of allowed tool IDs (from Pass 1),
 	 * ask each tool if it's relevant in this context.
 	 *
 	 * @param allowedToolIds - Tool IDs that passed Pass 1 (orchestrator approval)
@@ -1185,7 +1122,11 @@ export class ToolRegistry {
 		for (const toolId of allowedToolIds) {
 			const tool = this.get(toolId);
 			if (!tool) {
-				console.warn(`Tool '${toolId}' is allowed but not registered`);
+				// Toolbars filter on every render; one warning per id carries it.
+				if (!this.warnedUnregisteredAllowedTools.has(toolId)) {
+					this.warnedUnregisteredAllowedTools.add(toolId);
+					console.warn(`Tool '${toolId}' is allowed but not registered`);
+				}
 				continue;
 			}
 
@@ -1249,13 +1190,12 @@ export class ToolRegistry {
 	 * Get tool metadata for building UIs
 	 * Useful for building PNP configuration interfaces
 	 *
-	 * @returns Array of tool metadata (id, name, description, pnpSupportIds)
+	 * @returns Array of tool metadata (id, name, description, levels, activation)
 	 */
 	getToolMetadata(): Array<{
 		toolId: string;
 		name: string;
 		description: string;
-		pnpSupportIds: string[];
 		supportedLevels: ToolLevel[];
 		activation: ToolActivation;
 		singletonScope: ToolSingletonScope | null;
@@ -1267,7 +1207,6 @@ export class ToolRegistry {
 			toolId: tool.toolId,
 			name: tool.name,
 			description: tool.description,
-			pnpSupportIds: tool.pnpSupportIds || [],
 			supportedLevels: tool.supportedLevels,
 			activation: tool.activation || "toolbar-toggle",
 			singletonScope: tool.singletonScope || null,
@@ -1279,35 +1218,12 @@ export class ToolRegistry {
 	}
 
 	/**
-	 * Generate PNP support IDs from enabled tools
-	 * Useful for creating PNP profiles
-	 *
-	 * @param enabledToolIds - Tool IDs to enable
-	 * @returns Array of unique PNP support IDs
-	 */
-	generatePNPSupportsFromTools(enabledToolIds: string[]): string[] {
-		const pnpSupports = new Set<string>();
-
-		for (const toolId of enabledToolIds) {
-			const tool = this.get(toolId);
-			if (tool?.pnpSupportIds) {
-				for (const pnpId of tool.pnpSupportIds) {
-					pnpSupports.add(pnpId);
-				}
-			}
-		}
-
-		return Array.from(pnpSupports);
-	}
-
-	/**
 	 * Clear all registrations (useful for testing)
 	 */
 	clear(): void {
 		const toolIds = this.getAllToolIds();
 		if (toolIds.length === 0) return;
 		this.tools.clear();
-		this.pnpIndex.clear();
 		this.emitChange({ kind: "clear", toolIds });
 	}
 
@@ -1323,6 +1239,8 @@ export class ToolRegistry {
 	/**
 	 * Register lazy module loaders by toolId.
 	 * Toolbars call ensureToolModuleLoaded(toolId) before instance creation.
+	 * A tool whose module has loaded, or is loading, keeps its loader: its
+	 * elements are already defined, so a replacement could never take effect.
 	 */
 	setToolModuleLoaders(
 		loaders: Partial<Record<string, ToolModuleLoader>>,
@@ -1342,12 +1260,27 @@ export class ToolRegistry {
 		const changedToolIds: string[] = [];
 		for (const [toolId, loader] of entries) {
 			if (this.moduleLoaders.get(toolId) === loader) continue;
+			if (
+				this.loadedToolModules.has(toolId) ||
+				this.moduleLoadPromises.has(toolId)
+			) {
+				this.warnLoaderReplacedAfterLoad(toolId);
+				continue;
+			}
 			this.moduleLoaders.set(toolId, loader);
 			changedToolIds.push(toolId);
 		}
 		if (changedToolIds.length > 0) {
 			this.emitChange({ kind: "module-loaders", toolIds: changedToolIds });
 		}
+	}
+
+	private warnLoaderReplacedAfterLoad(toolId: string): void {
+		if (this.warnedLoaderReplacements.has(toolId)) return;
+		this.warnedLoaderReplacements.add(toolId);
+		console.warn(
+			`[ToolRegistry] Ignored a new module loader for "${toolId}": its module already loaded, so the elements it defines stay in place. Register loaders before the tool first renders.`,
+		);
 	}
 
 	/**
@@ -1364,11 +1297,15 @@ export class ToolRegistry {
 		}
 
 		const loader = this.moduleLoaders.get(toolId);
-		if (!loader) return;
+		if (!loader) {
+			this.watchUndefinedToolElement(toolId);
+			return;
+		}
 
 		const loadPromise = (async () => {
 			await loader();
 			this.loadedToolModules.add(toolId);
+			this.warnIfLoadedToolElementUndefined(toolId);
 		})();
 
 		this.moduleLoadPromises.set(toolId, loadPromise);
@@ -1380,12 +1317,78 @@ export class ToolRegistry {
 	}
 
 	/**
-	 * Ensure a set of tool modules are loaded.
+	 * The undefined element tag a tool would render, or `null` when the tool is
+	 * built by a component factory, its element is defined, or there is no DOM.
 	 */
-	async ensureToolModulesLoaded(toolIds: string[]): Promise<void> {
-		await Promise.all(
+	private undefinedToolElementTag(toolId: string): string | null {
+		if (typeof customElements === "undefined" || typeof document === "undefined") {
+			return null;
+		}
+		const overrides = this.componentOverrides;
+		if (overrides.toolComponentFactories?.[toolId]) return null;
+		let tagName: string;
+		try {
+			tagName = resolveToolTag(toolId, overrides);
+		} catch {
+			// Element creation reports the missing tag mapping.
+			return null;
+		}
+		return customElements.get(tagName) ? null : tagName;
+	}
+
+	/**
+	 * Warn when a tool's module loader finished without defining the element the
+	 * tag map points the tool at, as when a host remaps the tag but keeps a
+	 * loader that defines the packaged element. The tool otherwise renders blank.
+	 */
+	private warnIfLoadedToolElementUndefined(toolId: string): void {
+		const tagName = this.undefinedToolElementTag(toolId);
+		if (!tagName) return;
+		warnOncePerDocument(
+			document,
+			`loadedToolElementUndefined.${toolId}.${tagName}`,
+			`[ToolRegistry] Tool "${toolId}" renders <${tagName}>, but its module loader finished without defining it, so the tool renders blank. The tag map and the loader disagree: map "${toolId}" to the tag its loader defines, or register a loader that defines <${tagName}>. Reported once per page.`,
+		);
+	}
+
+	/**
+	 * Warn when a tool with no module loader still has no element definition
+	 * after the pending-input delay. A registry built without loaders otherwise
+	 * renders the tool as an unknown element with no error.
+	 */
+	private watchUndefinedToolElement(toolId: string): void {
+		if (this.watchedUndefinedToolElements.has(toolId)) return;
+		const tagName = this.undefinedToolElementTag(toolId);
+		if (!tagName) return;
+		this.watchedUndefinedToolElements.add(toolId);
+		const doc = document;
+		const timer = setTimeout(() => {
+			if (customElements.get(tagName)) return;
+			warnOncePerDocument(
+				doc,
+				`undefinedToolElement.${toolId}`,
+				`[ToolRegistry] Tool "${toolId}" renders <${tagName}>, which is still undefined after ${PENDING_INPUT_WARNING_DELAY_MS / 1000} s, and its registry has no module loader for it. Pass toolModuleLoaders to createPackagedToolRegistry (DEFAULT_TOOL_MODULE_LOADERS from @pie-players/pie-default-tool-loaders loads the stock tools), register one with setToolModuleLoaders, or import the tool's package before it renders. Reported once per page.`,
+			);
+		}, PENDING_INPUT_WARNING_DELAY_MS);
+		void customElements.whenDefined(tagName).then(() => clearTimeout(timer));
+	}
+
+	/**
+	 * Load a set of tool modules, each to completion, and resolve with the error
+	 * of every tool whose module failed, by tool id. One failure leaves the other
+	 * tools loaded and usable. A failed tool is retried on the next call.
+	 */
+	async ensureToolModulesLoaded(
+		toolIds: string[],
+	): Promise<Map<string, unknown>> {
+		const results = await Promise.allSettled(
 			toolIds.map((toolId) => this.ensureToolModuleLoaded(toolId)),
 		);
+		const failures = new Map<string, unknown>();
+		results.forEach((result, index) => {
+			if (result.status === "rejected") failures.set(toolIds[index], result.reason);
+		});
+		return failures;
 	}
 
 	/**
@@ -1438,9 +1441,7 @@ export class ToolRegistry {
 	 */
 	renderForSurface(
 		toolId: string,
-		context: Omit<ToolSurfaceRenderContext, "componentOverrides"> & {
-			componentOverrides?: ToolComponentOverrides;
-		},
+		context: ToolSurfaceRenderContext,
 	): ToolSurfaceRenderResult | null {
 		const tool = this.get(toolId);
 		if (!tool) {

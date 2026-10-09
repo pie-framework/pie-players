@@ -12,10 +12,7 @@
 // ============================================================================
 
 export type {
-	AssessmentToolkitHostRuntimeContext,
-	AssessmentToolkitRegionScopeContext,
 	AssessmentToolkitRuntimeContext,
-	AssessmentToolkitShellContext,
 	ItemPlayerConfig,
 	ItemPlayerType,
 	ShellContextKind,
@@ -27,52 +24,34 @@ export type {
 	TTSHighlightTargetResolverRuntime,
 } from "./services/tts/highlight-target-resolver.js";
 export {
-	assessmentToolkitHostRuntimeContext,
-	assessmentToolkitRegionScopeContext,
-	assessmentToolkitRuntimeContext,
-	assessmentToolkitShellContext,
-} from "./context/assessment-toolkit-context.js";
-export {
-	connectAssessmentToolkitHostRuntimeContext,
-	connectAssessmentToolkitRegionScopeContext,
-	connectAssessmentToolkitRuntimeContext,
-	connectAssessmentToolkitShellContext,
-} from "./context/runtime-context-consumer.js";
-export {
 	catalogOwnerContextFor,
-	catalogSourceSignature,
 	type CatalogOwnerContext,
 	type CatalogOwnerIdentity,
-	type CatalogOwnerKind,
 	type CatalogSourceEntity,
 } from "./services/catalog-owner.js";
 export {
-	PIE_INTERNAL_CONTENT_LOADED_EVENT,
 	PIE_INTERNAL_FORMATIVE_ACTION_EVENT,
 	PIE_INTERNAL_ITEM_SESSION_CHANGED_EVENT,
-	PIE_INTERNAL_ITEM_PLAYER_ERROR_EVENT,
 	PIE_INTERNAL_MEDIA_TIME_SOURCE_EVENT,
 	PIE_ITEM_SESSION_CHANGED_EVENT,
-	PIE_REGISTER_EVENT,
-	PIE_UNREGISTER_EVENT,
-	type InternalContentLoadedDetail,
 	type InternalFormativeActionDetail,
-	type InternalItemSessionChangedDetail,
-	type InternalItemPlayerErrorDetail,
 	type InternalMediaTimeSourceDetail,
-	type ItemSessionChangedDetail,
-	type RuntimeRegistrationDetail,
-	type RuntimeRegistrationKind,
 } from "./runtime/registration-events.js";
 export {
-	connectToolRegionScopeContext,
+	createShellScope,
+	type ShellScope,
+	type ShellScopeState,
+} from "./runtime/shell-scope.js";
+// A shell's translation of its player's events into the runtime's, shared by the
+// section player's passage shell and `<pie-item-scope>`.
+export {
+	createShellEventBridge,
+	type ShellEventBridge,
+	type ShellEventBridgeOptions,
+} from "./runtime/shell-event-bridge.js";
+export {
 	connectToolRuntimeContext,
-	connectToolShellContext,
-	createCrossBoundaryEvent,
-	createToolCoordinatorRegistration,
 	dispatchCrossBoundaryEvent,
-	isContextValueDefined,
-	type ToolCoordinatorRegistration,
 } from "./runtime/tool-host-contract.js";
 
 // ============================================================================
@@ -83,12 +62,12 @@ export type {
 	AccessibilityCatalogResolverApi,
 	ElementToolStateStoreApi,
 	HighlightCoordinatorApi,
-	I18nServiceApi,
-	ThemeProviderApi,
 	ToolCoordinatorApi,
 	ToolkitCoordinatorApi,
+	SpeakOptions,
 	TtsServiceApi,
 	ToolState,
+	ToolStateFilter,
 } from "./services/interfaces.js";
 
 // ============================================================================
@@ -111,14 +90,7 @@ export type {
 	CatalogType,
 	ResolvedCatalog,
 } from "./services/AccessibilityCatalogResolver.js";
-export {
-	AccessibilityCatalogResolver,
-	catalogCardForm,
-	isKnownCatalogType,
-	KNOWN_CATALOG_TYPES,
-} from "./services/AccessibilityCatalogResolver.js";
-// Context Variable Store (QTI 3.0 Context Declarations)
-export { ContextVariableStore } from "./services/ContextVariableStore.js";
+export { AccessibilityCatalogResolver } from "./services/AccessibilityCatalogResolver.js";
 // Element Tool State Store (Element-level ephemeral tool state)
 export { ElementToolStateStore } from "./services/ElementToolStateStore.js";
 // Highlight Coordinator
@@ -128,22 +100,18 @@ export {
 	HighlightCoordinator,
 	HighlightType,
 } from "./services/HighlightCoordinator.js";
-// Range Serializer (for annotation persistence)
+// Serialized annotation ranges
 export type { SerializedRange } from "./services/RangeSerializer.js";
-export { RangeSerializer } from "./services/RangeSerializer.js";
-// I18n Service. `I18nProvider` is the contract a component depends on; the rest
-// is for a host constructing or replacing the provider.
+// I18n types, re-exported from players-shared: the `I18nProvider` contract a
+// component depends on, and the types its methods take.
 export type {
-	I18nConfig,
 	I18nProvider,
 	InterpolationValues,
 	LocaleCode,
-	MessageCatalog,
 	MessageKeyInput,
 	PluralOptions,
 	TextDirection,
-} from "./services/I18nService.js";
-export { I18nService } from "./services/I18nService.js";
+} from "@pie-players/pie-players-shared/i18n";
 // Tool Registry (Registry-based tool system)
 export type {
 	ResolvedToolContext,
@@ -165,23 +133,14 @@ export type {
 	ToolSurfaceServices,
 	ToolToolbarButtonDefinition,
 	ToolToolbarRenderResult,
-	ToolWindowShellAction,
-	ToolWindowShellAlign,
-	ToolWindowShellConfig,
-	ToolWindowShellContentConfig,
 	ToolRegistration,
 } from "./services/ToolRegistry.js";
 export { ToolRegistry } from "./services/ToolRegistry.js";
-// Tool open requests, and the selection-action contract a gateway renders.
+// Tool open requests
 export type {
 	ToolOpenRequest,
 	ToolRequestTarget,
 } from "./services/tool-request.js";
-export { DEFAULT_TOOL_REQUEST_LEVEL } from "./services/tool-request.js";
-export type {
-	ToolSelectionAction,
-	ToolSelectionContext,
-} from "./services/selection-action.js";
 export type {
 	AssessmentToolContext,
 	BaseToolContext,
@@ -193,73 +152,22 @@ export type {
 	ToolContext,
 	ToolLevel,
 } from "./services/tool-context.js";
-export {
-	extractTextContent,
-	hasChoiceInteraction,
-	hasMathContent,
-	hasReadableText,
-	isAssessmentContext,
-	isElementContext,
-	isItemContext,
-	isPassageContext,
-	isRubricContext,
-	isSectionContext,
-} from "./services/tool-context.js";
-export { DEFAULT_TOOL_PLACEMENT } from "./services/tool-config-defaults.js";
+export { hasReadableText } from "./services/tool-context.js";
 export type { CreateToolsConfigArgs } from "./services/create-tools-config.js";
 export { createToolsConfig } from "./services/create-tools-config.js";
-export { createEmptyPersonalNeedsProfile } from "./services/defaultPersonalNeedsProfile.js";
 export type {
 	ToolComponentFactory,
 	ToolComponentFactoryMap,
 	ToolComponentOverrides,
 	ToolTagMap,
 } from "./tools/tool-tag-map.js";
-export {
-	createToolElement,
-	resolveToolTag,
-	toToolIdFromTag,
-} from "./tools/tool-tag-map.js";
-// QTI 3.0 Standard Access Features
-export {
-	ALL_STANDARD_ACCESS_FEATURES,
-	EXAMPLE_PNP_CONFIGURATIONS,
-	getFeatureCategory,
-	getFeaturesInCategory,
-	isStandardAccessFeature,
-	QTI_STANDARD_ACCESS_FEATURES,
-} from "./services/pnp-standard-features.js";
-// Media-bearing catalog cards: the generic half, shared by every card form that
-// references a recording rather than carrying text. Owned by
-// `@pie-players/pie-players-shared/media`, which an element can import without
-// this package; re-exported here for toolkit consumers.
-export {
-	applyMediaFragment,
-	enforceMediaFragment,
-	isSafeMediaSrc,
-	isUnsupportedMediaAssetVersion,
-	normalizeMediaFragment,
-	normalizeMediaSources,
-	SUPPORTED_MEDIA_ASSET_VERSION,
-	trimmedOrUndefined,
-} from "@pie-players/pie-players-shared/media";
-// Spoken catalog cards carrying recorded audio rather than a reading script
-export type { SpokenAudioMedia } from "./services/spoken-audio-cards.js";
-export {
-	resolveSpokenAudioMedia,
-	SPOKEN_CATALOG_TYPE,
-} from "./services/spoken-audio-cards.js";
 // SSML Extractor (Auto-generates catalogs from embedded SSML)
 export type { ExtractionResult } from "./services/SSMLExtractor.js";
 export { SSMLExtractor } from "./services/SSMLExtractor.js";
-// Theme Provider
-export type { FontSize, ThemeConfig } from "./services/ThemeProvider.js";
-export { ThemeProvider } from "./services/ThemeProvider.js";
 // Tool Coordinator
 export { ToolCoordinator, ZIndexLayer } from "./services/ToolCoordinator.js";
 // Toolkit Coordinator (Centralized service management)
 export type {
-	AnswerEliminatorToolConfig,
 	ProviderLifecycleContext,
 	SectionControllerContext,
 	SectionControllerEvent,
@@ -280,14 +188,9 @@ export type {
 	SectionControllerRuntimeState,
 	SectionControllerSessionState,
 	SectionPersistenceFactoryDefaults,
-	ToolConfig,
 	ToolkitCoordinatorConfig,
 	ToolkitCoordinatorHooks,
 	ToolkitErrorContext,
-	ToolkitInitStatus,
-	ToolkitServiceBundle,
-	ToolkitToolsConfig,
-	TTSToolConfig,
 } from "./services/ToolkitCoordinator.js";
 export { ToolkitCoordinator } from "./services/ToolkitCoordinator.js";
 export type {
@@ -298,15 +201,15 @@ export type {
 	ToolPolicyConfig,
 	ToolProvidersConfig,
 	ToolsConfigInput,
+	TextToSpeechToolProviderConfig,
 } from "./services/tools-config-normalizer.js";
 export type {
 	FrameworkErrorKind,
 	FrameworkErrorModel,
+	FrameworkErrorScope,
 	FrameworkErrorSeverity,
 } from "./services/framework-error.js";
 export {
-	formatFrameworkErrorForConsole,
-	frameworkErrorFromToolConfigDiagnostics,
 	frameworkErrorFromUnknown,
 	toFrameworkErrorModel,
 } from "./services/framework-error.js";
@@ -315,7 +218,6 @@ export type {
 	ToolConfigDiagnostic,
 	ToolConfigDiagnosticSeverity,
 	ToolConfigStrictness,
-	ToolConfigValidationOptions,
 	ToolConfigValidationResult,
 } from "./services/tool-config-validation.js";
 export type {
@@ -324,110 +226,41 @@ export type {
 	ToolbarItemBase,
 	ToolbarLinkItem,
 } from "./services/toolbar-items.js";
-export {
-	isExternalIconUrl,
-	isInlineSvgIcon,
-	isToolbarLinkItem,
-	isValidToolbarItemShape,
-} from "./services/toolbar-items.js";
-export {
-	normalizeToolsConfig,
-	normalizeToolAlias,
-	normalizeToolList,
-	parseToolList,
-} from "./services/tools-config-normalizer.js";
-export { isHostDeniedFeature } from "./policy/core/feature-decision.js";
-export {
-	frameworkErrorFromToolConfigValidation,
-	normalizeAndValidateToolsConfig,
-} from "./services/tool-config-validation.js";
-export type {
-	ParsedToolInstanceId,
-	ToolScopeLevel,
-} from "./services/tool-instance-id.js";
-export {
-	createScopedToolId,
-	parseScopedToolId,
-	toOverlayToolId,
-} from "./services/tool-instance-id.js";
+export type { ToolScopeLevel } from "./services/tool-instance-id.js";
+export { createScopedToolId } from "./services/tool-instance-id.js";
 // Text-to-Speech Service
 export type { TTSConfig } from "./services/TTSService.js";
 export { PlaybackState, TTSService } from "./services/TTSService.js";
-export {
-	PIE_TTS_CONTROL_HANDOFF_EVENT,
-	type TTSControlHandoffDetail,
-} from "./services/tts-control-events.js";
-export {
-	bindTtsAudioHandoff,
-	pauseTtsForMediaAudio,
-} from "./services/audio-handoff.js";
 export { BrowserTTSProvider } from "./services/tts/browser-provider.js";
 export type { SREMathSpeechOptions } from "./services/tts/math-speech.js";
 export type {
-	NormalizedTTSSpeedOption,
-	TTSHostToolbarLayout,
 	TTSLayoutMode,
 	TTSRuntimeSettings,
 	TTSSpeedOption,
 	TTSSpeedOptionConfig,
-} from "./services/tts-runtime-config.js";
-export {
-	DEFAULT_TTS_SPEED_OPTIONS,
-	formatTTSSpeedOptionsAsText,
-	normalizeTTSLayoutMode,
-	normalizeTTSSpeedControlOptions,
-	normalizeTTSSpeedOptionConfigs,
-	normalizeTTSSpeedOptions,
-	parseTTSSpeedOptionsFromText,
-	resolveTTSHostToolbarLayout,
-	resolveTTSLayoutMode,
-	resolveTTSRuntimeSettings,
 } from "./services/tts-runtime-config.js";
 // TTS Provider System
 export type {
 	ITTSProvider,
 	ITTSProviderImplementation,
 	TTSSpeechSegment,
-	TTSFeature,
 	TTSProviderCapabilities,
 } from "@pie-players/pie-tts";
-
-// ============================================================================
-// Item loading (client-resolvable default; optional backend hook)
-// ============================================================================
-
-export type {
-	CreateLoadItemOptions,
-	LoadItem,
-	LoadItemOptions,
-} from "./item-loader.js";
-export {
-	createFetchItemLoader,
-	createLoadItem,
-	ItemLoadError,
-} from "./item-loader.js";
 
 // ============================================================================
 // Attempt Session
 // ============================================================================
 
 export type {
-	StorageLike,
 	TestAttemptItemSession,
 	TestAttemptSession,
 	TestAttemptSessionNavigationState,
 	TestAttemptSessionRealization,
 } from "./attempt/TestSession.js";
 export {
-	createMemoryStorage,
-	createTestAttemptSessionIdentifier,
 	createNewTestAttemptSession,
-	getBrowserLocalStorage,
-	getOrCreateAnonymousDeviceId,
-	getTestAttemptSessionStorageKey,
-	loadTestAttemptSession,
-	saveTestAttemptSession,
 	setCurrentPosition,
+	toItemSessionsRecord,
 	upsertItemSessionFromPieSessionChange,
 	upsertVisitedItem,
 } from "./attempt/TestSession.js";
@@ -442,19 +275,6 @@ export {
 	setCurrentSectionPosition,
 	upsertSectionSession,
 } from "./attempt/AssessmentSession.js";
-export type {
-	ActivitySessionPatchPayload,
-	MapActivityToTestAttemptSessionArgs,
-	PieBackendActivityDefinition,
-	PieBackendActivityItemRef,
-	PieBackendActivitySession,
-} from "./attempt/adapters/activity-to-test-attempt-session.js";
-export {
-	buildActivitySessionItemUpdate,
-	buildActivitySessionPatchFromTestAttemptSession,
-	mapActivityToTestAttemptSession,
-	toItemSessionsRecord,
-} from "./attempt/adapters/activity-to-test-attempt-session.js";
 
 // Section Player - Use @pie-players/pie-section-player web component
 

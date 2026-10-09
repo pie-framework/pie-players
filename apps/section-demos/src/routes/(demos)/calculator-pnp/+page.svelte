@@ -1,74 +1,86 @@
 <script lang="ts">
 	/*
 	 * The toolkit without a section player: `<pie-assessment-toolkit>` wraps one
-	 * item toolbar and one item player, and owns its coordinator. The learner's
-	 * profile decides whether the calculator shows and which flavor it opens in;
-	 * changing the profile below rebinds `assessment`, and the toolbar follows
-	 * without a reload.
+	 * item scope, which holds an item toolbar and an item player, and owns its
+	 * coordinator. The scope gives the toolbar's tools the item and the region
+	 * they act on, and registers the item's catalogs. The learner's profile
+	 * decides whether the calculator shows, and the assessment's calculator
+	 * config which flavor it opens in; changing the option below rebinds
+	 * `assessment`, and the toolbar follows without a reload.
 	 */
 	import '@pie-players/pie-assessment-toolkit/components/pie-assessment-toolkit-element';
+	import '@pie-players/pie-assessment-toolkit/components/item-scope-element';
 	import '@pie-players/pie-assessment-toolkit/components/item-toolbar-element';
 	import '@pie-players/pie-item-player';
 	import type { ToolContextResolverMap } from '@pie-players/pie-assessment-toolkit';
 	import type { AssessmentEntity, ItemEntity } from '@pie-players/pie-players-shared/types';
-	import { createSectionDemoToolRegistryForCalculator } from '$lib/demo-runtime/default-tool-registry';
-	import { withDemoLoaderOptions } from '$lib/demo-runtime/demo-player-config';
+	import { createSectionDemoToolRegistry } from '#lib/demo-runtime/default-tool-registry.js';
+	import { withDemoLoaderOptions } from '#lib/demo-runtime/demo-player-config.js';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
 
 	type ProfileOption = 'none' | 'calculator' | 'graphing';
-	const PROFILE_OPTIONS: { value: ProfileOption; label: string; supports: string[] }[] = [
+	const PROFILE_OPTIONS: {
+		value: ProfileOption;
+		label: string;
+		supports: string[];
+		calculatorType?: 'graphing';
+	}[] = [
 		{ value: 'none', label: 'No calculator', supports: [] },
 		{ value: 'calculator', label: 'calculator', supports: ['calculator'] },
 		{
 			value: 'graphing',
-			label: 'calculator + graphingCalculator',
-			supports: ['calculator', 'graphingCalculator']
+			label: 'calculator, graphing type',
+			supports: ['calculator'],
+			calculatorType: 'graphing'
 		}
 	];
 
 	const item = $derived((data.section as any)?.assessmentItemRefs?.[0]?.item as ItemEntity);
-	const toolRegistry = createSectionDemoToolRegistryForCalculator('cortex');
+	const toolRegistry = createSectionDemoToolRegistry();
 	const tools = {
-		placement: { item: ['calculator'] },
+		pnpEnforcement: 'on',
+		placement: { item: ['textToSpeech', 'calculator'] },
 		providers: { calculator: { provider: { id: 'calculator-cortex' } } }
-	};
+	} as const;
 
 	/*
-	 * The host's rule, read from the profile at render time: a graphing grant opens
-	 * the graphing calculator and keeps scientific one switch away, a calculator
-	 * grant opens scientific only, and no grant hides the button. Resolvers re-run
-	 * on every policy change, so a rebound profile re-derives all three.
+	 * The host's rule, read from the calculator's policy decision at render time:
+	 * a grant configured for the graphing type opens graphing and keeps scientific
+	 * one switch away, any other grant opens scientific only, and no grant hides
+	 * the button. Resolvers re-run on every policy change, so a rebound assessment
+	 * re-derives all three.
 	 */
 	const toolContextResolvers: ToolContextResolverMap = {
 		calculator: ({ toolbarContext }) => {
-			const coordinator = toolbarContext.toolkitCoordinator;
-			const granted = (featureId: string) =>
-				coordinator?.decideFeaturePolicy?.(featureId).granted === true;
-			if (granted('graphingCalculator')) {
+			const decision = toolbarContext.toolkitCoordinator?.decideFeaturePolicy?.('calculator');
+			if (decision?.granted !== true) {
+				return { visible: false, reason: 'The profile grants no calculator.' };
+			}
+			const type = (decision.parameters as { type?: string } | undefined)?.type;
+			if (type === 'graphing') {
 				return {
 					visible: true,
 					params: { calculatorType: 'graphing', availableTypes: ['scientific', 'graphing'] }
 				};
 			}
-			if (granted('calculator')) {
-				return {
-					visible: true,
-					params: { calculatorType: 'scientific', availableTypes: ['scientific'] }
-				};
-			}
-			return { visible: false, reason: 'The profile grants no calculator.' };
+			return {
+				visible: true,
+				params: { calculatorType: 'scientific', availableTypes: ['scientific'] }
+			};
 		}
 	};
 
 	let profile = $state<ProfileOption>('calculator');
+	const selected = $derived(PROFILE_OPTIONS.find((option) => option.value === profile));
 	const assessment = $derived<AssessmentEntity>({
 		id: 'section-demos.calculator-pnp',
 		name: 'Calculator by profile',
-		personalNeedsProfile: {
-			supports: PROFILE_OPTIONS.find((option) => option.value === profile)?.supports ?? []
-		}
+		personalNeedsProfile: { supports: selected?.supports ?? [] },
+		settings: selected?.calculatorType
+			? { toolConfigs: { calculator: { type: selected.calculatorType } } }
+			: undefined
 	} as AssessmentEntity);
 
 	const playerConfig = withDemoLoaderOptions<{ loaderOptions?: Record<string, unknown> }>({});
@@ -101,25 +113,27 @@
 
 	<pie-assessment-toolkit
 		assessment-id={assessment.id}
-		pnp-enforcement="on"
 		{assessment}
 		{tools}
 		{toolRegistry}
 		{toolContextResolvers}
 	>
-		<article class="calculator-pnp-item" data-testid="calculator-pnp-item">
-			<header class="calculator-pnp-item-header">
-				<h2>{item.name}</h2>
-				<pie-item-toolbar item-id={item.id} catalog-id={item.id} {item} {toolRegistry}
-				></pie-item-toolbar>
-			</header>
-			<pie-item-player
-				config={item.config}
-				{env}
-				{session}
-				loaderOptions={playerConfig.loaderOptions}
-			></pie-item-player>
-		</article>
+		<pie-item-scope item-id={item.id} {item}>
+			<article class="calculator-pnp-item" data-testid="calculator-pnp-item">
+				<header class="calculator-pnp-item-header">
+					<h2>{item.name}</h2>
+					<pie-item-toolbar></pie-item-toolbar>
+				</header>
+				<div data-region="content">
+					<pie-item-player
+						config={item.config}
+						{env}
+						{session}
+						loaderOptions={playerConfig.loaderOptions}
+					></pie-item-player>
+				</div>
+			</article>
+		</pie-item-scope>
 	</pie-assessment-toolkit>
 </main>
 

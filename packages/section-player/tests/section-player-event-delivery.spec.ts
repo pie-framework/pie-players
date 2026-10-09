@@ -38,11 +38,13 @@ const INTERNAL_EVENTS = [
 	"pie-formative-action",
 	"pie-media-time-source",
 ] as const;
+// Dispatched by the section runtime engine on the layout element.
+const ENGINE_EVENTS = ["pie-stage-change", "pie-loading-complete"] as const;
 const OBSERVED_EVENTS = [
 	...TOOLKIT_EVENTS,
 	...INTERNAL_EVENTS,
+	...ENGINE_EVENTS,
 	"framework-error",
-	"pie-loading-complete",
 	"element-preload-error",
 ];
 
@@ -170,7 +172,6 @@ async function mountFreshLayout(
 				runtime?: unknown;
 				section?: unknown;
 			};
-			fresh.setAttribute("assessment-id", "delivery-assessment");
 			fresh.setAttribute(
 				"section-id",
 				existing.getAttribute("section-id") || "delivery-section",
@@ -200,8 +201,9 @@ async function mountFreshLayout(
 				log.onFrameworkError += 1;
 			};
 			fresh.runtime = hostCoordinator
-				? { ...existingRuntime, onFrameworkError }
+				? { ...existingRuntime, assessmentId: "delivery-assessment", onFrameworkError }
 				: {
+						assessmentId: "delivery-assessment",
 						playerType: "preloaded",
 						env: { mode: "gather", role: "student" },
 						onFrameworkError,
@@ -295,9 +297,11 @@ test.describe("section player event delivery", () => {
 			// Nothing on this page makes a toolkit inherit a runtime, so the
 			// delivery path is driven with a dispatch from the toolkit itself.
 			await page.evaluate((layoutTag) => {
-				const base = document
-					.querySelector(layoutTag)
-					?.querySelector("pie-section-player-base");
+				// The kernel host renders its base in its shadow root.
+				const host = document.querySelector(layoutTag);
+				const base = (host?.shadowRoot ?? host)?.querySelector(
+					"pie-section-player-base",
+				);
 				const toolkit = base?.shadowRoot?.querySelector(
 					"pie-assessment-toolkit",
 				);
@@ -322,26 +326,19 @@ test.describe("section player event delivery", () => {
 				host: countsOf(log.host, TOOLKIT_EVENTS),
 				document: countsOf(log.document, TOOLKIT_EVENTS),
 			}).toEqual({ host: dispatched, document: dispatched });
-			// A framework error is published once on the layout element and does not
-			// bubble past it.
+			// A framework error is published once, and bubbles on to `document`.
 			const errors = log.source["framework-error"] || 0;
 			expect(errors).toBeGreaterThan(0);
 			expect({
 				host: log.host["framework-error"] || 0,
 				onFrameworkError: log.onFrameworkError,
 				document: log.document["framework-error"] || 0,
-			}).toEqual({ host: errors, onFrameworkError: errors, document: 0 });
-			// The probe error is recoverable, so readiness does not latch to `error`.
-			const phase = await page.evaluate(
-				(layoutTag) =>
-					(
-						document.querySelector(layoutTag) as
-							| (HTMLElement & { selectReadiness?: () => { phase?: string } })
-							| null
-					)?.selectReadiness?.()?.phase,
-				tag,
-			);
-			expect(phase).toBe("ready");
+			}).toEqual({ host: errors, onFrameworkError: errors, document: errors });
+			// The engine's events bubble from the layout element as well.
+			const engineEvents = countsOf(log.host, ENGINE_EVENTS);
+			// The probe error is recoverable, so loading still completes.
+			expect(engineEvents["pie-loading-complete"]).toBe(1);
+			expect(countsOf(log.document, ENGINE_EVENTS)).toEqual(engineEvents);
 		});
 	}
 
@@ -385,7 +382,7 @@ test.describe("section player event delivery", () => {
 		}).toEqual({
 			host: 1,
 			onFrameworkError: 1,
-			document: 0,
+			document: 1,
 			coordinatorHook: 1,
 		});
 	});
@@ -534,10 +531,10 @@ test.describe("section player event delivery", () => {
 					"pie-section-player-splitpane",
 				) as HTMLElement & { runtime?: unknown; section?: unknown };
 				player.id = `delivery-${name}`;
-				player.setAttribute("assessment-id", `delivery-${name}`);
 				player.setAttribute("section-id", "delivery-section");
 				player.setAttribute("attempt-id", `delivery-${name}-${Date.now()}`);
 				player.runtime = {
+					assessmentId: `delivery-${name}`,
 					playerType: "preloaded",
 					env: { mode: "gather", role: "student" },
 				};

@@ -18,21 +18,19 @@
  *
  * `canonical-semantic` is the themeable contract: a host sets these. Everything
  * else narrows — `component-public` is a per-component hook falling back through
- * a canonical token, `package-private` is internal, and `unsupported` and
- * `legacy` name tokens that exist but must not be adopted.
+ * a canonical token, `package-private` is internal, and `legacy` names tokens
+ * that exist but must not be adopted.
  */
 export type PieThemeTokenScope =
 	| "canonical-semantic"
 	| "component-public"
 	| "package-private"
-	| "unsupported"
 	| "legacy";
 
 /** Whether the token is live. Non-`active` entries document a decision. */
 export type PieThemeTokenStatus =
 	| "active"
 	| "deprecated"
-	| "intentional-gap"
 	| "planned";
 
 /**

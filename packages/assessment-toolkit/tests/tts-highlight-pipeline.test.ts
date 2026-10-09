@@ -453,6 +453,51 @@ describe("TTS highlight pipeline", () => {
 		});
 	});
 
+	test("resolves a catalog word crossing a shadow boundary to a range in each tree", () => {
+		const root = document.createElement("p");
+		const light = document.createTextNode("Missi");
+		const host = document.createElement("span");
+		root.append(light, host);
+		document.body.append(root);
+		const shadowText = document.createTextNode("ssippi");
+		host.attachShadow({ mode: "open" }).append(shadowText);
+		const visibleMap = new Map(
+			Array.from("Mississippi", (_, index) => [
+				index,
+				index < 5
+					? { node: light, offset: index }
+					: { node: shadowText, offset: index - 5 },
+			]),
+		);
+		const chunk = makeChunk({
+			speechText: "Mississippi",
+			visibleText: "Mississippi",
+			contentRoot: root,
+			sourceElement: root,
+			regionElement: root,
+			visibleMap,
+			catalogAlignment: createCatalogSpanAlignment({
+				speechText: "Mississippi",
+				visibleText: "Mississippi",
+			}),
+		});
+
+		const decision = createTTSHighlightPlan({
+			chunks: [chunk],
+		}).resolveBoundary({
+			chunkId: chunk.id,
+			word: "Mississippi",
+			position: 0,
+			length: "Mississippi".length,
+			providerOffsetSpace: "plain-spoken-text",
+		});
+
+		const target = decision.activeTarget as { range: Range; ranges?: Range[] };
+		expect(target.ranges?.map(String)).toEqual(["Missi", "ssippi"]);
+		expect(target.range).toBe(target.ranges?.[0] as Range);
+		root.remove();
+	});
+
 	test("normalizes speech composition chunks into stable pipeline chunks", () => {
 		const root = document.createElement("div");
 		const span = document.createElement("span");
@@ -918,9 +963,9 @@ describe("TTS highlight pipeline", () => {
 			type: "element",
 			quality: "semantic-token",
 		});
-		expect((decision.activeTarget as { element: Element }).element).toBe(
-			mathElements[1].querySelector("mo"),
-		);
+		expect(
+			(decision.activeTarget as { element: Element | null }).element,
+		).toBe(mathElements[1].querySelector("mo"));
 	});
 
 	test("holds the last token through a gap in a token-mode equation", () => {

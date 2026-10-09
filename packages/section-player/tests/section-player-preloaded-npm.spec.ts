@@ -528,7 +528,7 @@ for (const layout of LAYOUTS) {
 						},
 					},
 				});
-				const events: Array<{ type: string; kind?: string; stage?: string }> = [];
+				const events: Array<{ type: string; kind?: string; stage?: string; status?: string }> = [];
 				(window as unknown as { __npmFreshEvents: typeof events }).__npmFreshEvents = events;
 				const parent = existing.parentElement;
 				existing.remove();
@@ -536,17 +536,24 @@ for (const layout of LAYOUTS) {
 					runtime?: unknown;
 					section?: unknown;
 				};
-				fresh.setAttribute("assessment-id", "npm-unregistered-assessment");
 				fresh.setAttribute("section-id", section.identifier);
 				fresh.setAttribute("attempt-id", `npm-${Date.now()}`);
 				fresh.addEventListener("pie-stage-change", (event) =>
-					events.push({ type: "pie-stage-change", stage: (event as CustomEvent).detail?.stage }),
+					events.push({
+						type: "pie-stage-change",
+						stage: (event as CustomEvent).detail?.stage,
+						status: (event as CustomEvent).detail?.status,
+					}),
 				);
 				fresh.addEventListener("pie-loading-complete", () => events.push({ type: "pie-loading-complete" }));
 				fresh.addEventListener("framework-error", (event) =>
 					events.push({ type: "framework-error", kind: (event as CustomEvent).detail?.kind }),
 				);
-				fresh.runtime = { playerType: "preloaded", env: { mode: "gather", role: "student" } };
+				fresh.runtime = {
+					assessmentId: "npm-unregistered-assessment",
+					playerType: "preloaded",
+					env: { mode: "gather", role: "student" },
+				};
 				fresh.section = section;
 				parent.appendChild(fresh);
 			}, layoutTag(layout));
@@ -554,7 +561,11 @@ for (const layout of LAYOUTS) {
 			const events = () =>
 				page.evaluate(
 					() =>
-						(window as unknown as { __npmFreshEvents: Array<{ type: string; kind?: string; stage?: string }> })
+						(
+							window as unknown as {
+								__npmFreshEvents: Array<{ type: string; kind?: string; stage?: string; status?: string }>;
+							}
+						)
 							.__npmFreshEvents,
 				);
 			await expect
@@ -565,7 +576,10 @@ for (const layout of LAYOUTS) {
 			// Give a premature `interactive` or `pie-loading-complete` time to show.
 			await page.waitForTimeout(1_000);
 			const all = await events();
-			expect(all.map((event) => event.stage)).not.toContain("interactive");
+			// The error ends the stage chain: `interactive` arrives only as `failed` or `skipped`.
+			expect(
+				all.filter((event) => event.stage === "interactive").map((event) => event.status),
+			).not.toContain("entered");
 			expect(all.map((event) => event.type)).not.toContain("pie-loading-complete");
 		});
 	});

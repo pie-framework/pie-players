@@ -1,6 +1,9 @@
-import { describe, expect, test } from "bun:test";
+import { describe, expect, spyOn, test } from "bun:test";
 
-import { resolveMathSpeechFromChunks } from "../src/services/tts/math-speech";
+import {
+	createSreLoader,
+	resolveMathSpeechFromChunks,
+} from "../src/services/tts/math-speech";
 import type { MathAwareSpeechChunk } from "../src/services/tts/math-aware-text-processing";
 
 const chunks: MathAwareSpeechChunk[] = [
@@ -179,6 +182,23 @@ describe("TTS math speech generation", () => {
 		});
 	});
 
+	test("resets SRE's style when the host sets none", async () => {
+		const setupCalls: Record<string, unknown>[] = [];
+
+		await resolveMathSpeechFromChunks(chunks, {
+			language: "en-US",
+			loadSre: async () => ({
+				setupEngine: async (options: Record<string, unknown>) => {
+					setupCalls.push(options);
+				},
+				engineReady: async () => {},
+				toSpeech: () => "x squared",
+			}),
+		});
+
+		expect(setupCalls[0]).toMatchObject({ style: "default" });
+	});
+
 	test("serializes SRE setup and speech when math speech settings differ", async () => {
 		let activeStyle = "default";
 		const fakeSre = {
@@ -351,5 +371,46 @@ describe("TTS math speech generation", () => {
 			usedMathSpeech: false,
 			usedFallback: true,
 		});
+	});
+});
+
+describe("speech-rule-engine loading", () => {
+	test("tries a failed load again on the next call, warning once", async () => {
+		const warnings = spyOn(console, "warn").mockImplementation(() => {});
+		try {
+			let imports = 0;
+			const engine = { toSpeech: () => "x" };
+			const loadSre = createSreLoader(async () => {
+				imports += 1;
+				if (imports < 3) throw new Error("chunk failed to load");
+				return engine;
+			});
+
+			await expect(loadSre()).rejects.toThrow("chunk failed to load");
+			await expect(loadSre()).rejects.toThrow("chunk failed to load");
+			await expect(loadSre()).resolves.toBe(engine);
+			await expect(loadSre()).resolves.toBe(engine);
+
+			expect(imports).toBe(3);
+			expect(warnings).toHaveBeenCalledTimes(1);
+		} finally {
+			warnings.mockRestore();
+		}
+	});
+
+	test("after a failed load, math speech resolves to no math speech without throwing", async () => {
+		const warnings = spyOn(console, "warn").mockImplementation(() => {});
+		try {
+			const loadSre = createSreLoader(async () => {
+				throw new Error("chunk failed to load");
+			});
+
+			const result = await resolveMathSpeechFromChunks(chunks, { loadSre });
+
+			// Control names label only on math speech, so they keep the elements' own.
+			expect(result.usedMathSpeech).toBeFalse();
+		} finally {
+			warnings.mockRestore();
+		}
 	});
 });

@@ -3,7 +3,6 @@ import {
 	type CanonicalToolsConfig,
 	type ToolPlacementLevel,
 	type ToolProviderConfig,
-	type TextToSpeechToolProviderConfig,
 	type ToolsConfigInput,
 } from "./tools-config-normalizer.js";
 import {
@@ -24,7 +23,6 @@ export interface ToolConfigDiagnostic {
 		| "tools.unplaceableActivation"
 		| "tools.registryUnavailable"
 		| "tools.unknownProviderKey"
-		| "tools.removedProviderKey"
 		| "tools.providerSanitizeFailed"
 		| "tools.providerValidateFailed"
 		| "tools.invalidProviderValidation";
@@ -32,7 +30,6 @@ export interface ToolConfigDiagnostic {
 	path: string;
 	message: string;
 	toolId?: string;
-	providerId?: string;
 }
 
 export interface ToolConfigValidationOptions {
@@ -97,20 +94,15 @@ function getRegistryToolMap(
 	);
 }
 
-function sanitizeProviderConfig(
-	providerId: string,
-	providerConfig:
-		| ToolProviderConfig
-		| TextToSpeechToolProviderConfig
-		| undefined,
+function sanitizeToolConfig(
+	toolId: string,
+	providerConfig: ToolProviderConfig | undefined,
 	tool: ToolRegistration | undefined,
 	diagnostics: ToolConfigDiagnostic[],
-): ToolProviderConfig | TextToSpeechToolProviderConfig | undefined {
-	if (!providerConfig || !tool?.provider?.sanitizeConfig) return providerConfig;
+): ToolProviderConfig | undefined {
+	if (!providerConfig || !tool?.sanitizeConfig) return providerConfig;
 	try {
-		const sanitized = tool.provider.sanitizeConfig(
-			providerConfig as ToolProviderConfig,
-		);
+		const sanitized = tool.sanitizeConfig(providerConfig);
 		if (
 			!sanitized ||
 			typeof sanitized !== "object" ||
@@ -120,65 +112,56 @@ function sanitizeProviderConfig(
 				createDiagnostic({
 					code: "tools.providerSanitizeFailed",
 					severity: "error",
-					path: `providers.${providerId}`,
-					message: `Provider sanitizer for "${providerId}" must return an object.`,
-					providerId,
-					toolId: providerId,
+					path: `providers.${toolId}`,
+					message: `Config sanitizer of tool "${toolId}" must return an object.`,
+					toolId,
 				}),
 			);
 			return providerConfig;
 		}
-		return sanitized as ToolProviderConfig | TextToSpeechToolProviderConfig;
+		return sanitized;
 	} catch (error) {
 		diagnostics.push(
 			createDiagnostic({
 				code: "tools.providerSanitizeFailed",
 				severity: "error",
-				path: `providers.${providerId}`,
-				message: `Provider sanitizer failed for "${providerId}": ${
+				path: `providers.${toolId}`,
+				message: `Config sanitizer of tool "${toolId}" failed: ${
 					error instanceof Error ? error.message : String(error)
 				}`,
-				providerId,
-				toolId: providerId,
+				toolId,
 			}),
 		);
 		return providerConfig;
 	}
 }
 
-function validateProviderConfig(
-	providerId: string,
-	providerConfig:
-		| ToolProviderConfig
-		| TextToSpeechToolProviderConfig
-		| undefined,
+function validateToolConfig(
+	toolId: string,
+	providerConfig: ToolProviderConfig | undefined,
 	tool: ToolRegistration | undefined,
 	diagnostics: ToolConfigDiagnostic[],
 ): void {
-	if (!providerConfig || !tool?.provider?.validateConfig) return;
+	if (!providerConfig || !tool?.validateConfig) return;
 	try {
-		const providerDiagnostics = tool.provider.validateConfig(
-			providerConfig as ToolProviderConfig,
-		);
-		if (!Array.isArray(providerDiagnostics)) {
+		const toolDiagnostics = tool.validateConfig(providerConfig);
+		if (!Array.isArray(toolDiagnostics)) {
 			diagnostics.push(
 				createDiagnostic({
 					code: "tools.invalidProviderValidation",
 					severity: "error",
-					path: `providers.${providerId}`,
-					message: `Provider validator for "${providerId}" must return an array.`,
-					providerId,
-					toolId: providerId,
+					path: `providers.${toolId}`,
+					message: `Config validator of tool "${toolId}" must return an array.`,
+					toolId,
 				}),
 			);
 			return;
 		}
-		for (const diagnostic of providerDiagnostics) {
+		for (const diagnostic of toolDiagnostics) {
 			diagnostics.push({
 				...diagnostic,
-				path: diagnostic.path || `providers.${providerId}`,
-				providerId: diagnostic.providerId || providerId,
-				toolId: diagnostic.toolId || providerId,
+				path: diagnostic.path || `providers.${toolId}`,
+				toolId: diagnostic.toolId || toolId,
 			});
 		}
 	} catch (error) {
@@ -186,12 +169,11 @@ function validateProviderConfig(
 			createDiagnostic({
 				code: "tools.providerValidateFailed",
 				severity: "error",
-				path: `providers.${providerId}`,
-				message: `Provider validator failed for "${providerId}": ${
+				path: `providers.${toolId}`,
+				message: `Config validator of tool "${toolId}" failed: ${
 					error instanceof Error ? error.message : String(error)
 				}`,
-				providerId,
-				toolId: providerId,
+				toolId,
 			}),
 		);
 	}
@@ -291,31 +273,17 @@ function collectPolicyDiagnostics(
 function collectProviderKeyDiagnostics(
 	config: CanonicalToolsConfig,
 	toolMap: Map<string, ToolRegistration>,
-	hasRemovedTtsKey: boolean,
 	diagnostics: ToolConfigDiagnostic[],
 ): void {
-	if (hasRemovedTtsKey) {
-		diagnostics.push(
-			createDiagnostic({
-				code: "tools.removedProviderKey",
-				severity: "error",
-				path: "providers.tts",
-				message: `Provider key "tts" is no longer supported. Use "providers.textToSpeech".`,
-				providerId: "tts",
-				toolId: "textToSpeech",
-			}),
-		);
-	}
-	for (const providerId of Object.keys(config.providers).sort()) {
-		if (toolMap.size === 0 || toolMap.has(providerId)) continue;
+	for (const key of Object.keys(config.providers).sort()) {
+		if (toolMap.size === 0 || toolMap.has(key)) continue;
 		diagnostics.push(
 			createDiagnostic({
 				code: "tools.unknownProviderKey",
 				severity: "error",
-				path: `providers.${providerId}`,
-				message: `Unknown provider key "${providerId}".`,
-				providerId,
-				toolId: providerId,
+				path: `providers.${key}`,
+				message: `Unknown provider key "${key}".`,
+				toolId: key,
 			}),
 		);
 	}
@@ -388,29 +356,18 @@ export function collectToolConfigDiagnostics(
 		);
 	}
 
-	const hasRemovedTtsKey = Object.hasOwn(normalized.providers, "tts");
-
 	const nextProviders: CanonicalToolsConfig["providers"] = {
 		...(normalized.providers || {}),
 	};
-	for (const providerId of Object.keys(nextProviders).sort()) {
-		if (providerId === "tts") {
-			delete nextProviders.tts;
-			continue;
-		}
-		const tool = registryTools.get(providerId);
-		nextProviders[providerId] = sanitizeProviderConfig(
-			providerId,
-			nextProviders[providerId],
+	for (const toolId of Object.keys(nextProviders).sort()) {
+		const tool = registryTools.get(toolId);
+		nextProviders[toolId] = sanitizeToolConfig(
+			toolId,
+			nextProviders[toolId],
 			tool,
 			diagnostics,
 		);
-		validateProviderConfig(
-			providerId,
-			nextProviders[providerId],
-			tool,
-			diagnostics,
-		);
+		validateToolConfig(toolId, nextProviders[toolId], tool, diagnostics);
 	}
 	const nextConfig: CanonicalToolsConfig = {
 		...normalized,
@@ -422,7 +379,6 @@ export function collectToolConfigDiagnostics(
 	collectProviderKeyDiagnostics(
 		nextConfig,
 		registryTools,
-		hasRemovedTtsKey,
 		diagnostics,
 	);
 
@@ -433,9 +389,9 @@ export function collectToolConfigDiagnostics(
 }
 
 /**
- * Report diagnostics as {@link normalizeAndValidateToolsConfig} does: a removed
- * provider key throws at every strictness, `"warn"` prints every diagnostic, and
- * `"error"` throws the blocking ones or, when there are none, prints the rest.
+ * Report diagnostics as {@link normalizeAndValidateToolsConfig} does: `"warn"`
+ * prints every diagnostic, and `"error"` throws the blocking ones or, when there
+ * are none, prints the rest.
  */
 export function reportToolConfigDiagnostics(
 	diagnostics: ToolConfigDiagnostic[],
@@ -443,13 +399,6 @@ export function reportToolConfigDiagnostics(
 ): void {
 	const strictness = normalizeToolConfigStrictness(options.strictness);
 	const source = options.source ?? "tools";
-	const removedKeys = diagnostics.filter(
-		(entry) => entry.code === "tools.removedProviderKey",
-	);
-	if (removedKeys.length > 0) {
-		throwValidationError(removedKeys, source);
-	}
-
 	if (strictness === "warn") {
 		emitWarnings(diagnostics, source);
 	}

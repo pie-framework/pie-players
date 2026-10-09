@@ -1,6 +1,6 @@
 <script lang="ts">
-	import { browser } from '$app/environment';
-	import { afterNavigate, replaceState } from '$app/navigation';
+	import { browser } from '$app/env';
+	import { afterNavigate, goto } from '$app/navigation';
 	import {
 		CompositeInstrumentationProvider,
 		DebugPanelInstrumentationProvider,
@@ -10,16 +10,15 @@
 		createToolsConfig,
 		type ToolkitCoordinatorHooks
 	} from '@pie-players/pie-assessment-toolkit';
-	import { createUniversalPersonalNeedsProfile } from '@pie-players/pie-default-tool-loaders';
 	import '@pie-players/pie-section-player/components/section-player-splitpane-element';
-	import '@pie-players/pie-section-player/components/section-player-vertical-element';
-	import DemoRuntimeChrome from '$lib/demo-runtime/components/DemoRuntimeChrome.svelte';
+	import '@pie-players/pie-section-player';
+	import DemoRuntimeChrome from '#lib/demo-runtime/components/DemoRuntimeChrome.svelte';
 	import {
 		applyDaisyTheme,
 		applyToolkitScheme,
 		ATTEMPT_QUERY_PARAM,
 		ATTEMPT_STORAGE_KEY,
-		bindDemoAssessment,
+		demoAssessmentFor,
 		createAttemptId,
 		DAISY_THEME_STORAGE_KEY,
 		DEFAULT_DAISY_THEME,
@@ -29,11 +28,11 @@
 		LAYOUT_OPTIONS,
 		MODE_OPTIONS,
 		PLAYER_OPTIONS
-	} from '$lib/demo-runtime/demo-page-helpers';
-	import { withDemoLoaderOptions } from '$lib/demo-runtime/demo-player-config';
-	import { SECTION_DEMOS_POLLY_TTS_TOOL_PROVIDER } from '$lib/demo-runtime/section-demos-default-tts';
-	import { preloadSectionElements } from '$lib/demo-runtime/preload-utils';
-	import { createSectionDemoToolRegistry } from '$lib/demo-runtime/default-tool-registry';
+	} from '#lib/demo-runtime/demo-page-helpers.js';
+	import { withDemoLoaderOptions } from '#lib/demo-runtime/demo-player-config.js';
+	import { SECTION_DEMOS_POLLY_TTS_TOOL_PROVIDER } from '#lib/demo-runtime/section-demos-default-tts.js';
+	import { preloadSectionElements } from '#lib/demo-runtime/preload-utils.js';
+	import { createSectionDemoToolRegistry } from '#lib/demo-runtime/default-tool-registry.js';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
@@ -48,10 +47,8 @@
 			providers: {
 				textToSpeech: {
 					...SECTION_DEMOS_POLLY_TTS_TOOL_PROVIDER,
-					settings: {
-						mathSpeech: {
-							style: 'ImpliedTimes_MoreImpliedTimes:Paren_Silent'
-						}
+					mathSpeech: {
+						style: 'ImpliedTimes_MoreImpliedTimes:Paren_Silent'
 					}
 				},
 				annotationToolbar: {
@@ -98,7 +95,8 @@
 	let selectedDaisyTheme = $state<string>(DEFAULT_DAISY_THEME);
 	let attemptId = $state(getOrCreateAttemptId());
 	let routerReady = $state(false);
-	afterNavigate(() => {
+	afterNavigate(({ shallow, type }) => {
+		if (shallow && type === 'goto') return;
 		routerReady = true;
 	});
 	let playerInstanceKey = $state(0);
@@ -118,18 +116,8 @@
 	let pnpDebuggerElement: any = $state(null);
 
 	const demoPersistenceStoragePrefix = `pie:section-controller:v1:${DEMO_ASSESSMENT_ID}:`;
-	let resolvedSectionForPlayer = $derived.by(() => {
-		const section = data.section as any;
-		if (!section) return section;
-		const hasExplicitPnp = Boolean(
-			section?.personalNeedsProfile || section?.settings?.personalNeedsProfile
-		);
-		if (hasExplicitPnp) return section;
-		return {
-			...section,
-			personalNeedsProfile: createUniversalPersonalNeedsProfile()
-		};
-	});
+	let resolvedSectionForPlayer = $derived(data.section as any);
+	const demoAssessment = $derived(demoAssessmentFor(resolvedSectionForPlayer));
 	let sessionPanelSectionId = $derived(
 		String(
 			(resolvedSectionForPlayer as any)?.identifier ||
@@ -153,9 +141,6 @@
 	function handleToolkitReady(event: Event) {
 		const detail = (event as CustomEvent<{ coordinator?: any }>).detail;
 		toolkitCoordinator = detail?.coordinator || null;
-		// Bind the profile so policy has an input to decide against; the section
-		// payload alone is invisible to `decideFeaturePolicy`.
-		bindDemoAssessment(toolkitCoordinator, resolvedSectionForPlayer as any);
 		toolkitCoordinator?.setHooks?.({
 			onFrameworkError: (model) => {
 				console.error('[tts-generated-ssml demo] Toolkit framework error:', model);
@@ -189,7 +174,7 @@
 		if (existingAttemptId === attemptId && existingLayout === layoutType) return;
 		url.searchParams.set(ATTEMPT_QUERY_PARAM, attemptId);
 		url.searchParams.set('layout', layoutType);
-		replaceState(url, {});
+		goto(url, { shallow: true, replace: true });
 	});
 
 	$effect(() => {
@@ -310,10 +295,10 @@
 			<div class="preload-status">Preloading section item bundles...</div>
 		{:else if layoutType === 'vertical'}
 			<pie-section-player-vertical
-				assessment-id={DEMO_ASSESSMENT_ID}
 				section-id={sessionPanelSectionId}
 				attempt-id={attemptId}
 				runtime={ {
+					assessmentId: DEMO_ASSESSMENT_ID,
 					playerType: selectedPlayerType,
 					lazyInit: true,
 					tools: toolkitToolsConfig,
@@ -321,6 +306,7 @@
 					env: pieEnv
 				} }
 				section={resolvedSectionForPlayer}
+				assessment={demoAssessment}
 				{toolRegistry}
 				toolbar-position="right"
 				show-toolbar={true}
@@ -328,10 +314,10 @@
 			></pie-section-player-vertical>
 		{:else}
 			<pie-section-player-splitpane
-				assessment-id={DEMO_ASSESSMENT_ID}
 				section-id={sessionPanelSectionId}
 				attempt-id={attemptId}
 				runtime={ {
+					assessmentId: DEMO_ASSESSMENT_ID,
 					playerType: selectedPlayerType,
 					lazyInit: true,
 					tools: toolkitToolsConfig,
@@ -339,6 +325,7 @@
 					env: pieEnv
 				} }
 				section={resolvedSectionForPlayer}
+				assessment={demoAssessment}
 				{toolRegistry}
 				toolbar-position="right"
 				show-toolbar={true}

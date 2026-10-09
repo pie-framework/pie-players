@@ -73,6 +73,8 @@ const PACKAGE_PRIVATE_SOURCE_TOKENS = new Set([
 	"--pie-font-family",
 	"--pie-header-text",
 	"--pie-loading-accent",
+	"--pie-scheme-ink",
+	"--pie-scheme-page",
 	"--pie-section-player-focus-outline",
 	"--pie-selected-button-background",
 	"--pie-selected-button-border",

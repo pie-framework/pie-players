@@ -3,20 +3,20 @@
 		tag: "pie-section-player-base",
 		shadow: "open",
 		props: {
-			assessmentId: { attribute: "assessment-id", type: "String" },
 			runtime: { type: "Object", reflect: false },
-			// Presentation flag mirrored onto the toolkit runtime context.
-			// Controls render <nds-icon-button> only when this is explicitly
-			// true; otherwise they use plain <button>s. Two-tier:
-			// `runtime.ndsIcons` wins over this top-level prop; defaults to
-			// false (opt-in).
+			// Presentation flag: controls render <nds-icon-button> only when this
+			// is explicitly true; otherwise they use plain <button>s.
 			ndsIcons: { attribute: "nds-icons", type: "Boolean" },
 			// Interface locale: the language the player renders its own UI in, as a
-			// BCP-47 tag. Convenience attribute mirrored onto `runtime.locale`
-			// (runtime wins if both are set). Unset renders `en-US`. Distinct
-			// from the authored content language, which travels on `env`.
+			// BCP-47 tag. Unset renders `en-US`. Distinct from the authored content
+			// language, which travels on `runtime.contentLanguage`.
 			locale: { attribute: "locale", type: "String" },
 			section: { type: "Object", reflect: false },
+			// Transport for the layouts' `session`; the toolkit applies it.
+			session: { type: "Object", reflect: false },
+			// The assessment entity whose `personalNeedsProfile` and `settings` the
+			// toolkit's tool policy reads, forwarded to the coordinator it builds.
+			assessment: { type: "Object", reflect: false },
 			sectionId: { attribute: "section-id", type: "String" },
 			attemptId: { attribute: "attempt-id", type: "String" },
 			toolRegistry: { type: "Object", reflect: false },
@@ -24,12 +24,6 @@
 				attribute: "tool-config-strictness",
 				type: "String",
 			},
-			onFrameworkError: { type: "Object", reflect: false },
-			// M6 canonical stage-change callback. Mirrors
-			// `runtime.onStageChange`; resolver picks runtime over prop.
-			// Wired imperatively to the toolkit element so the resolved
-			// handler reaches the canonical stage emit point.
-			onStageChange: { type: "Object", reflect: false },
 		},
 		extend: coerceBooleanAttributes,
 	}}
@@ -39,7 +33,6 @@
 	import { coerceBooleanAttributes } from "@pie-players/pie-players-shared/ui/attribute-coercion";
 	import "@pie-players/pie-assessment-toolkit/components/pie-assessment-toolkit-element";
 	import {
-		type FrameworkErrorModel,
 		type ToolConfigStrictness,
 		type ToolkitCoordinatorApi,
 		type ToolRegistry,
@@ -62,38 +55,38 @@
 	import { onDestroy, untrack } from "svelte";
 	import { SectionController } from "../controllers/SectionController.js";
 	import { watchMissingToolProviders } from "./shared/missing-tool-providers.js";
-	import type { AssessmentSection } from "@pie-players/pie-players-shared/types";
-	import { createToolSurfaceHost } from "@pie-players/pie-assessment-toolkit/tools/internal";
+	import { waitForToolkitReady } from "./shared/toolkit-ready-wait.js";
+	import type {
+		AssessmentEntity,
+		AssessmentSection,
+		SectionControllerSessionState,
+	} from "@pie-players/pie-players-shared/types";
+	import { createToolSurfaceHost } from "@pie-players/pie-assessment-toolkit/tools/registration";
 	import {
-		DEFAULT_ASSESSMENT_ID,
 		DEFAULT_ENV,
 		DEFAULT_ISOLATION,
-		resolveOnFrameworkError,
+		resolveSectionId,
 		type RuntimeConfig,
-		type StageChangeHandler,
-	} from "@pie-players/pie-assessment-toolkit/runtime/internal";
+	} from "@pie-players/pie-assessment-toolkit/runtime/engine";
 
 	const logger = createPieLogger("pie-section-player", () => false);
 
 	let {
-		assessmentId = DEFAULT_ASSESSMENT_ID,
 		runtime = null as RuntimeConfig | null,
 		ndsIcons = false,
 		locale = "",
 		section = null as AssessmentSection | null,
+		session = null as SectionControllerSessionState | null,
+		assessment = null as AssessmentEntity | null,
 		sectionId = "",
 		attemptId = "",
 		toolRegistry = null as ToolRegistry | null,
 		toolConfigStrictness = undefined as ToolConfigStrictness | undefined,
-		onFrameworkError = undefined as
-			| undefined
-			| ((model: FrameworkErrorModel) => void),
-		onStageChange = undefined as StageChangeHandler | undefined,
 	} = $props();
 
 	let toolkitElement = $state<any>(null);
 	let activeToolkitCoordinator = $state<ToolkitCoordinatorApi | null>(null);
-	const effectiveAssessmentId = $derived.by(() => runtime?.assessmentId ?? assessmentId);
+	const effectiveAssessmentId = $derived.by(() => runtime?.assessmentId);
 	const effectivePlayerType = $derived.by(() => runtime?.playerType);
 	const effectivePlayer = $derived.by(() => runtime?.player ?? null);
 	const effectiveLazyInit = $derived.by(() => runtime?.lazyInit);
@@ -102,7 +95,7 @@
 		() => runtime?.toolContextResolvers ?? null,
 	);
 	const effectiveToolConfigStrictness = $derived.by(() => {
-		const value = runtime?.toolConfigStrictness ?? toolConfigStrictness;
+		const value = toolConfigStrictness;
 		return value === "off" || value === "warn" || value === "error"
 			? value
 			: "error";
@@ -118,7 +111,6 @@
 		() => runtime?.isolation ?? DEFAULT_ISOLATION,
 	);
 	const effectiveEnv = $derived.by(() => runtime?.env ?? DEFAULT_ENV);
-	// Two-tier resolution: `runtime.ndsIcons` wins over the top-level prop.
 	// Opt-in — NDS icon buttons render only when explicitly enabled.
 	//
 	// Resolve to `true` or `undefined` (never `false`): a Svelte custom
@@ -128,16 +120,17 @@
 	// removes the attribute so the toolkit falls back to its own `false`
 	// default. See PieAssessmentToolkit `ndsIcons`.
 	const effectiveNdsIcons = $derived.by(() =>
-		(runtime?.ndsIcons ?? ndsIcons) === true ? true : undefined,
+		ndsIcons === true ? true : undefined,
 	);
-	// Two-tier resolution: `runtime.locale` wins over the top-level prop.
-	//
 	// Resolves to a tag or `undefined`, never `""`. A Svelte custom element
 	// serializes an unset string prop to an empty attribute, and forwarding that
 	// would have the toolkit resolve the empty locale rather than fall back to
 	// its `en-US` default.
-	const effectiveLocale = $derived.by(
-		() => runtime?.locale || locale || undefined,
+	const effectiveLocale = $derived.by(() => locale || undefined);
+	// Content language, for read-aloud and catalog lookups; runtime-only. A tag or
+	// `undefined`, never `""`, for the same reason as the locale above.
+	const effectiveContentLanguage = $derived.by(
+		() => runtime?.contentLanguage || undefined,
 	);
 	// Interface locale for the section-overlay surfaces this element mounts.
 	//
@@ -164,22 +157,23 @@
 		toolModuleLoaders: DEFAULT_TOOL_MODULE_LOADERS,
 	});
 	const effectiveToolRegistry = $derived(toolRegistry ?? defaultToolRegistry);
-	// Two-tier resolution. The base CE talks to the toolkit directly (no
-	// kernel layer), so it owns the resolver boundary in this path.
-	const effectiveOnFrameworkError = $derived.by(() =>
-		resolveOnFrameworkError({
-			runtime,
-			onFrameworkError,
-		}),
+	const effectiveOnFrameworkError = $derived.by(() => runtime?.onFrameworkError);
+	const effectiveSectionId = $derived(
+		resolveSectionId({ sectionId, section, assessmentId: effectiveAssessmentId }),
 	);
-	// Two-tier resolution for `onStageChange` (M6). Strict mirror rule
-	// applies: `runtime.onStageChange` wins over the top-level prop.
-	const effectiveOnStageChange = $derived.by(
-		() => runtime?.onStageChange ?? onStageChange,
-	);
-	const effectiveSectionId = $derived.by(
-		() => sectionId || (section as any)?.identifier || "",
-	);
+
+	// Tool policy reads the profile from the assessment entity only, so a profile
+	// a host puts on the section changes no decision.
+	let reportedSectionProfile = false;
+	$effect(() => {
+		const profile = (section as { personalNeedsProfile?: unknown } | null)
+			?.personalNeedsProfile;
+		if (reportedSectionProfile || !profile) return;
+		reportedSectionProfile = true;
+		console.warn(
+			"[pie-section-player] section.personalNeedsProfile is not read: tool policy reads the profile from the assessment entity. Set this element's `assessment` property to an assessment carrying it, or call updateAssessment(...) on a coordinator you pass. Reported once per element.",
+		);
+	});
 
 	// The toolkit's events bubble out of this element on their own, which is
 	// the one channel they reach the layout host and `document` by. This element
@@ -187,11 +181,16 @@
 	// a re-dispatch reaches every listener on this element a second time,
 	// because a Svelte custom element's `addEventListener` also subscribes to
 	// its component events.
-	function handleToolkitReadyEvent(event: Event): void {
+	function toolkitReadyCoordinator(event: Event): ToolkitCoordinatorApi | null {
 		const coordinator = (event as CustomEvent<{ coordinator?: unknown }>).detail
 			?.coordinator;
+		return coordinator ? (coordinator as ToolkitCoordinatorApi) : null;
+	}
+
+	function handleToolkitReadyEvent(event: Event): void {
+		const coordinator = toolkitReadyCoordinator(event);
 		if (coordinator) {
-			activeToolkitCoordinator = coordinator as ToolkitCoordinatorApi;
+			activeToolkitCoordinator = coordinator;
 		}
 	}
 
@@ -238,7 +237,7 @@
 			},
 			scope: {
 				kind: "section",
-				assessmentId: effectiveAssessmentId,
+				assessmentId: effectiveAssessmentId || coordinator?.assessmentId || "",
 				sectionId: effectiveSectionId,
 			},
 		});
@@ -247,9 +246,10 @@
 	onDestroy(() => overlaySurfaceHost.destroy());
 
 	// Every controller this player drives commits pending element sessions at the
-	// boundaries it owns — item navigation, a section swap, a persist. The
-	// controller stays DOM-free, so the root comes from here, and a cohort flip
-	// commits before the outgoing controller is replaced.
+	// boundaries it owns — item navigation, a same-section input update, a
+	// persist. The controller stays DOM-free, so the root comes from here. A
+	// section swap is the toolkit's to commit: it does so before the coordinator
+	// moves the host's subscriptions off the outgoing controller.
 	//
 	// Overriding the factory alone reaches only controllers built after this
 	// effect runs, and the toolkit has usually built the first section's
@@ -266,49 +266,41 @@
 			typeof hostFactory === "function"
 				? (hostFactory as () => unknown)
 				: () => new SectionController();
-		const commit = (reason: "navigate" | "teardown") => {
-			commitPendingSessions(root, { reason, logger });
-		};
 		const register = (controller: unknown) => {
 			(
 				controller as {
 					setPendingSessionCommit?: (fn: (() => void) | null) => void;
 				} | null
-			)?.setPendingSessionCommit?.(() => commit("navigate"));
+			)?.setPendingSessionCommit?.(() =>
+				commitPendingSessions(root, { reason: "navigate", logger }),
+			);
 		};
 		const installedFactory = () => {
-			commit("teardown");
 			const controller = factory();
 			register(controller);
 			return controller;
 		};
-		const previousFactory = root.createSectionController;
+		// Untracked: an effect that reads the prop it writes invalidates itself.
+		const previousFactory = untrack(() => root.createSectionController);
 		root.createSectionController = installedFactory;
 
-		// The controller the toolkit has already built, if any. Tried
-		// synchronously first, then polled, since it appears asynchronously.
+		// The controller the toolkit has already built, if any, and otherwise
+		// the one it has once it emits `toolkit-ready`, which follows the
+		// section's controller resolving.
 		register(resolveSectionController());
-		let pollAbandoned = false;
-		void (async () => {
-			const deadline = Date.now() + 10_000;
-			while (!pollAbandoned && Date.now() < deadline) {
-				const controller = resolveSectionController();
-				if (controller) {
-					if (!pollAbandoned) register(controller);
-					return;
-				}
-				await new Promise((resolve) => setTimeout(resolve, 25));
-			}
-		})();
+		const onToolkitReady = (event: Event) => {
+			register(resolveSectionController(toolkitReadyCoordinator(event)));
+		};
+		root.addEventListener("toolkit-ready", onToolkitReady);
 
 		// This effect reads the section, attempt and coordinator, so it re-runs on
-		// a section swap or a cohort flip. A poll left running across that would
-		// register a commit closure over the previous root onto whichever
-		// controller is live when it resolves, and one outliving the component
-		// would sweep a detached subtree.
+		// a section swap or a cohort flip. A listener left attached across that
+		// would register a commit closure over the previous root onto the next
+		// controller, and one outliving the component would sweep a detached
+		// subtree.
 		return () => {
-			pollAbandoned = true;
-			if (root.createSectionController === installedFactory) {
+			root.removeEventListener("toolkit-ready", onToolkitReady);
+			if (untrack(() => root.createSectionController) === installedFactory) {
 				root.createSectionController = previousFactory;
 			}
 		};
@@ -326,25 +318,13 @@
 	// `addEventListener('camelcase', fn)` rather than a property
 	// assignment, so the canonical model-shape `onFrameworkError`
 	// callback prop on the toolkit cannot be wired through template
-	// binding. Imperatively assign it here so the base CE's resolved
-	// callback (runtime > prop) reaches the toolkit's bus subscriber.
+	// binding. Imperatively assign it here so `runtime.onFrameworkError`
+	// reaches the toolkit's bus subscriber.
 	$effect(() => {
 		if (!toolkitElement) return;
 		toolkitElement.onFrameworkError = effectiveOnFrameworkError;
 		return () => {
 			toolkitElement.onFrameworkError = undefined;
-		};
-	});
-
-	// Same Svelte-5 rationale for the M6 `onStageChange` callback. The
-	// toolkit's stage tracker invokes the resolved handler at the same
-	// emit point as the `pie-stage-change` DOM event so the callback
-	// and the event stay in lockstep for hosts using either surface.
-	$effect(() => {
-		if (!toolkitElement) return;
-		toolkitElement.onStageChange = effectiveOnStageChange;
-		return () => {
-			toolkitElement.onStageChange = undefined;
 		};
 	});
 
@@ -392,11 +372,12 @@
 		};
 	}
 
-	function resolveSectionController(): SectionControllerHandle | null {
-		const targetSectionId = effectiveSectionId;
-		if (!targetSectionId) return null;
+	function resolveSectionController(
+		readyCoordinator: ToolkitCoordinatorApi | null = null,
+	): SectionControllerHandle | null {
 		const resolvedAttemptId = attemptId || undefined;
 		const coordinator =
+			readyCoordinator ||
 			activeToolkitCoordinator ||
 			(effectiveCoordinator as {
 				getSectionController?: (args: {
@@ -407,7 +388,7 @@
 		if (!coordinator?.getSectionController) return null;
 		return (
 			coordinator.getSectionController({
-				sectionId: targetSectionId,
+				sectionId: effectiveSectionId,
 				attemptId: resolvedAttemptId,
 			}) || null
 		);
@@ -420,13 +401,16 @@
 	export async function waitForSectionController(
 		timeoutMs = 5000,
 	): Promise<SectionControllerHandle | null> {
-		const start = Date.now();
-		while (Date.now() - start < timeoutMs) {
-			const controller = resolveSectionController();
-			if (controller) return controller;
-			await new Promise((resolve) => setTimeout(resolve, 25));
-		}
-		return null;
+		if (!(timeoutMs > 0)) return null;
+		return (
+			resolveSectionController() ??
+			waitForToolkitReady(
+				toolkitElement as EventTarget | null,
+				(event) =>
+					resolveSectionController(event ? toolkitReadyCoordinator(event) : null),
+				timeoutMs,
+			)
+		);
 	}
 
 </script>
@@ -435,6 +419,8 @@
 	bind:this={toolkitElement}
 	assessment-id={effectiveAssessmentId}
 	section={section}
+	session={session}
+	assessment={assessment}
 	section-id={sectionId}
 	attempt-id={attemptId}
 	player-type={effectivePlayerType}
@@ -442,6 +428,7 @@
 	env={effectiveEnv}
 	nds-icons={effectiveNdsIcons}
 	locale={effectiveLocale}
+	content-language={effectiveContentLanguage}
 	lazy-init={effectiveLazyInit}
 	tool-config-strictness={effectiveToolConfigStrictness}
 	tools={effectiveTools}

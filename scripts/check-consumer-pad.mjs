@@ -166,7 +166,7 @@ const TRIGGERS = [
 			/^packages\/(calculator|tts)\/src\/(index|provider-interface)\.ts$/.test(
 				file,
 			) ||
-			/^packages\/assessment-toolkit\/src\/tools\/(client|internal|types)\.ts$/.test(
+			/^packages\/assessment-toolkit\/src\/tools\/(client|registration|types)\.ts$/.test(
 				file,
 			),
 	},

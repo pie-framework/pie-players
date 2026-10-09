@@ -198,7 +198,7 @@ Registry membership therefore does *not* imply anything about three independent 
 
 **1. Who may enable it (eligibility).** The assessment domain distinguishes *universal features* available to every student (highlighter, zoom, line reader), *designated supports* an educator indicates a need for (masking, color contrast, often TTS), and *accommodations* requiring a documented need such as an IEP or 504 (braille, ASL, scribe). This is the CCSSO / Smarter Balanced framing.
 
-**Eligibility does not belong in a tool registration.** It is a property of the program, not of the capability: TTS is a universal tool in one program and a documented accommodation in another. It belongs in policy configuration, where the district and test-administration levels already live. `PnpPolicySource`'s precedence rules (`district-block`, `test-admin-override`, `item-restriction`, `item-requirement`, `district-requirement`, `pnp-support`, `pnp-prohibited`) are the right home.
+**Eligibility does not belong in a tool registration.** It is a property of the program, not of the capability: TTS is a universal tool in one program and a documented accommodation in another. It belongs in policy configuration, where the district and test-administration levels already live. `PnpPolicySource`'s precedence rules (`district-block`, `test-admin-override`, `item-restriction`, `pnp-prohibited`, `item-requirement`, `district-requirement`, `pnp-support`) are the right home.
 
 **2. Whether it needs authored content.** A calculator works on any item. A highlighter works on any item. ASL needs a signing video authored for *that specific content*; braille needs a transcription; authored-SSML speech needs `<speak>` in that item. For these, availability is a function of the content as well as the student, and an affordance offered where no content exists is a dead affordance.
 
@@ -216,17 +216,17 @@ Neither reference point draws the tool-versus-accommodation line, and how each d
 
 ### Consequence For PIE
 
-The shape here is already right and is closer to the standards than it looks: an AfA-shaped, eligibility-free `supports` vocabulary (`pnpSupportIds`, `PersonalNeedsProfile.supports`), plus a policy engine supplying the tiering AfA omits.
+The shape here is already right and is closer to the standards than it looks: an AfA-shaped, eligibility-free `supports` list (`PersonalNeedsProfile.supports`, naming capabilities by `toolId`), plus a policy engine supplying the tiering AfA omits.
 
-So **accommodations are not a separate kind of thing in this architecture.** They get a feature id like everything else, their eligibility comes from policy configuration, and their content dependency is checked by catalog resolution. Sign language is the worked example: it takes a feature id so it inherits the six-level precedence, declares a content dependency so it is absent when an item carries no card, and renders as its own section-player region rather than a toolbar surface — three independent answers, none of which follow from the other two. See [`../prds/sign-language-asl-support.md`](../prds/sign-language-asl-support.md).
+So **accommodations are not a separate kind of thing in this architecture.** They get a feature id like everything else, their eligibility comes from policy configuration, and their content dependency is checked by catalog resolution. Sign language is the worked example: it takes a feature id so it inherits the eight-level precedence, declares a content dependency so it is absent when an item carries no card, and renders as its own section-player region rather than a toolbar surface — three independent answers, none of which follow from the other two. See [`../prds/sign-language-asl-support.md`](../prds/sign-language-asl-support.md).
 
 Two mechanisms this needed, added 2026-08-08 when signing shipped:
 
-**Decisions without a placement.** `decide(...)` answers "should this tool appear in *this* toolbar," which is the wrong question for a capability that has no toolbar surface — the answer comes back absent because nothing placed it, not because policy refused. `ToolPolicyEngine.decideFeature(featureId)` (exposed as `ToolkitCoordinator.decideFeaturePolicy(featureId)`) resolves one feature id through the same six levels, independent of placement. It delegates to `PnpPolicySource.resolveFeature(...)`, which reuses the existing rule evaluation rather than restating the precedence, so the two paths cannot drift. Note it deliberately does not consult `pnpEnforcement`: that flag governs whether profile policy *refines* an otherwise-visible tool set, and a capability with no placement has no unrefined baseline to fall back to, so honouring the flag would make the accommodation permanently unavailable rather than merely unrefined.
+**Decisions without a placement.** `decide(...)` answers "should this tool appear in *this* toolbar," which is the wrong question for a capability that has no toolbar surface — the answer comes back absent because nothing placed it, not because policy refused. `ToolPolicyEngine.decideFeature(featureId)` (exposed as `ToolkitCoordinator.decideFeaturePolicy(featureId)`) resolves one feature id through the same eight levels, independent of placement. It delegates to `PnpPolicySource.resolveFeature(...)`, which reuses the existing rule evaluation rather than restating the precedence, so the two paths cannot drift. Note it deliberately does not consult `pnpEnforcement`: that flag governs whether profile policy *refines* an otherwise-visible tool set, and a capability with no placement has no unrefined baseline to fall back to, so honouring the flag would make the accommodation permanently unavailable rather than merely unrefined.
 
-**Eligibility tier is configuration, not a derivation.** The core ships no populated default profile: `createEmptyPersonalNeedsProfile()` grants nothing. A default was briefly derived from every registered tool's `pnpSupportIds`, which read registry membership as eligibility tier — registration means "policy-addressable", not "universal, on by default" — so an accommodation-tier capability was granted to every student of every host that supplied no profile. The remedy was `ACCOMMODATION_ONLY_SUPPORT_IDS`, a compile-time list of ids to exclude that a host could not extend for its own accommodation; both the derivation and the list are gone.
+**Eligibility tier is configuration, not a derivation.** The core ships no default profile; `createEmptyPersonalNeedsProfile()` in `@pie-players/pie-default-tool-loaders` grants nothing. A default was briefly derived from every registered tool's support ids, which read registry membership as eligibility tier — registration means "policy-addressable", not "universal, on by default" — so an accommodation-tier capability was granted to every student of every host that supplied no profile. The remedy was `ACCOMMODATION_ONLY_SUPPORT_IDS`, a compile-time list of ids to exclude that a host could not extend for its own accommodation; both the derivation and the list are gone.
 
-Tiering belongs where the district and test-administration levels already live, because it is a property of the program rather than of the capability: TTS is a universal feature in one program and a documented accommodation in another. `@pie-players/pie-default-tool-loaders` ships today's universal set as `UNIVERSAL_SUPPORTS_PRESET` and `createUniversalPersonalNeedsProfile()` — data a host adopts, extends or replaces. What does belong on a registration is the content dependency, `requiresAuthoredContent`: signing needs an authored catalog card, braille a transcription. That is the resource half of AfA's PNP/DRD pair, it is intrinsic to the capability, and declaring it keeps a content-dependent accommodation out of a wholesale grant structurally rather than by name.
+Tiering belongs where the district and test-administration levels already live, because it is a property of the program rather than of the capability: TTS is a universal feature in one program and a documented accommodation in another. `@pie-players/pie-default-tool-loaders` ships today's universal set as `createUniversalPersonalNeedsProfile()` — data a host adopts, extends or replaces. What does belong on a registration is the content dependency, `requiresAuthoredContent`: signing needs an authored catalog card, braille a transcription. That is the resource half of AfA's PNP/DRD pair, it is intrinsic to the capability, and declaring it keeps a content-dependent accommodation out of a wholesale grant structurally rather than by name.
 
 ---
 
@@ -249,12 +249,12 @@ Within the composition layer, PIE's packaged set is authored through one
 **Packaged Capability Composition**. A capability entry binds its registration
 to its custom-element delivery and lazy-loader bootstrap sets, its membership
 and order in the shipped placement presets, its toolbar order, and an explicit
-list of support ids this program treats as universal. The familiar root exports
+flag for whether this program treats it as universal. The familiar root exports
 — `PACKAGED_TOOL_REGISTRATIONS`, tag and loader maps, placement/order constants,
 the universal preset, and `createPackagedToolRegistry()` — are projections of
 that module rather than independent catalogues. Universal policy remains
-explicit data: the composition validates a declared universal id against its
-registration but never infers eligibility from registry membership.
+explicit data: the composition rejects a universal content-dependent capability
+but never infers eligibility from registry membership.
 
 Composition invariants are strict in the package build because they are
 PIE-authored release data, not runtime host input. They are not repeated as a
@@ -369,16 +369,21 @@ Tools that float above the entire assessment and persist across navigation:
 
 **State Management:**
 
-A section-level tool keeps its state in its own element; the graph's points and lines are component state. That state lasts while the section toolbar keeps the element mounted. Any policy change, including a host binding the next item with `updateCurrentItemRef`, re-renders the toolbar and swaps in a fresh element, whose state starts over.
+A section-level tool keeps its state in its own element; the graph's points and lines are component state. That state lasts while the section toolbar keeps the element mounted. A policy change re-renders the toolbar and swaps in a fresh element, whose state starts over, with one exception: an item's settings registering or withdrawing, as items mount and unmount, re-decides every toolbar but re-renders only a toolbar whose tools it changed, which is that item's own.
 
 ### Configuration in ToolkitCoordinator
 
 The configuration structure reflects this scope distinction via `tools.placement` and `tools.providers`:
 
 ```typescript
-import { createPackagedToolRegistry } from '@pie-players/pie-default-tool-loaders';
+import {
+  createPackagedToolRegistry,
+  DEFAULT_TOOL_MODULE_LOADERS,
+} from '@pie-players/pie-default-tool-loaders';
 
-const toolRegistry = createPackagedToolRegistry();
+const toolRegistry = createPackagedToolRegistry({
+  toolModuleLoaders: DEFAULT_TOOL_MODULE_LOADERS,
+});
 const coordinator = new ToolkitCoordinator({
   assessmentId: 'math-exam',
   toolRegistry,
@@ -402,7 +407,7 @@ const coordinator = new ToolkitCoordinator({
       },
       textToSpeech: {
         enabled: true,
-        settings: { backend: 'browser' }
+        backend: 'browser'
       }
     }
   }
@@ -473,10 +478,10 @@ The runtime can register additional levels if your product needs custom scopes.
 - Floating tools: one state for the section (graph points and lines)
 
 **5. Different PNP Mapping**
-- QTI 3.0 access features map to tools through each registration's `pnpSupportIds`; placement sets the level the tool shows at
-- Example: `answerMasking` → answerEliminator, placed at item level
-- Example: `graph` → graph, placed at section level
-- A support id that no registration claims produces a `tool-policy.unknownSupportId` diagnostic
+- A profile grants a tool by its `toolId`, which is its support id; placement sets the level the tool shows at
+- Example: `answerEliminator`, placed at item level
+- Example: `graph`, placed at section level
+- An id no tool is registered under, in the profile, district policy, test administration or item settings, produces a `tool-policy.unknownSupportId` diagnostic on the decision, which the toolkit coordinator logs once per id
 
 ### Implementation Example
 
@@ -533,14 +538,16 @@ This separation emerged from real-world assessment platform analysis and reflect
 
 ### ToolCoordinator
 
-**Purpose:** Central service managing tool visibility and z-index layering.
+**Purpose:** Central service holding tool visibility state and stacking tool elements.
 
 **Responsibilities:**
 - Register/unregister tools
-- Show/hide tools
-- Bring tool to front on interaction
+- Hold each tool's on/off state; whoever renders a tool shows or hides it from that state
+- Bring a tool to the front of its layer when it is shown or pressed
 - Maintain z-index layers
 - Notify subscribers of state changes
+
+A tool's own registration names its layer. A toolbar registers the tool when it activates it, before the tool's component mounts, and binds its floating window; the window then stacks in the tool's layer. The outermost bound element stacks, so a tool rendered inside a toolbar window stacks by the window.
 
 **Z-Index Layers:**
 ```
@@ -572,7 +579,7 @@ This separation emerged from real-world assessment platform analysis and reflect
 **Key Methods:**
 ```typescript
 // TTS Highlights (temporary)
-highlightTTSWord(textNode, startOffset, endOffset)
+highlightTTSWord(ranges)
 highlightTTSSentence(ranges)
 clearTTS()
 
@@ -648,14 +655,13 @@ Yellow highlight with underline (::highlight CSS)
 **Multi-Level TTS Entry Points:**
 
 - **Content-Level TTS** (`tool-tts-inline`): Speaker icons in passage/item headers pass catalog context and a live content element, allowing `TTSService` to resolve `data-catalog-idref` regions.
-- **Floating selection TTS** (`tool-text-to-speech`): Can detect the nearest `data-catalog-idref` and request a catalog-backed utterance.
-- **Annotation toolbar read-aloud**: Speaks the selected visible range and intentionally bypasses catalogs with `ignoreCatalogs`.
+- **Annotation toolbar read-aloud**: Passes the selection's range to `speak`, with the catalog context of the shell holding it. A `data-catalog-idref` region the selection holds whole reads its spoken card; part of one reads as the selected visible text.
 
 **Read-aloud suppression:** `data-tts-suppress` on a content element marks it never-spoken, for items where reading is the construct (decoding, spelling). It is enforced in *every* entry point above — including the selection path, which filters the `Range` because it never walks the DOM — and it overrides both an authored `spoken` card and the learner's PNP entitlement. Speech-only by decision: braille preserves orthography where speech destroys it, and for signing the deciding fact lives in the recording rather than the markup. See [Accessibility Catalogs Integration Guide](../accessibility/accessibility-catalogs-integration-guide.md#suppressing-read-aloud).
 
 **Recorded audio:** a `spoken` card may carry an audio file instead of a script, which QTI treats as the same support rather than a separate accommodation. The clip plays in the composed chunk sequence, the docked node highlights as a block for its duration since a recording emits no word boundaries, and a clip that will not play degrades to the node's script. See [Recorded Audio as a Spoken Alternate](../accessibility/accessibility-catalogs-integration-guide.md#recorded-audio-as-a-spoken-alternate).
 
-**Design Decision:** TTS is a singleton service, not a tool. Multiple entry points all use the same service to prevent conflicts. Catalog resolution is shared for entry points that pass catalog IDs or content elements; selection-only read-aloud can intentionally use visible text.
+**Design Decision:** TTS is a singleton service, not a tool. Multiple entry points all use the same service to prevent conflicts. Catalog resolution is shared by every entry point: tts-inline resolves cards for the region it reads, selection read-aloud for the regions a selection holds whole.
 
 ---
 
@@ -663,19 +669,30 @@ Yellow highlight with underline (::highlight CSS)
 
 ### Tool Registration Pattern
 
-Tools register with ToolCoordinator on mount:
+A tool element registers with the ToolCoordinator in its runtime context through
+`createToolCoordinatorRegistration`, then hands the coordinator its element once
+it renders:
 
 ```typescript
-onMount(() => {
-  coordinator.registerTool(toolId, toolName, element, ZIndexLayer.MODAL);
-  return () => coordinator.unregisterTool(toolId);
+import {
+  createToolCoordinatorRegistration,
+  ZIndexLayer,
+} from "@pie-players/pie-assessment-toolkit/tools/registration";
+
+const registration = createToolCoordinatorRegistration("Line Reader", ZIndexLayer.TOOL);
+
+// Re-registers when a republished context brings a new coordinator.
+$effect(() => registration.sync(coordinator, toolId));
+$effect(() => {
+  if (coordinator && containerEl && toolId) {
+    coordinator.updateToolElement(toolId, containerEl);
+  }
 });
+onDestroy(() => registration.release());
 ```
 
-**Benefits:**
-- Declarative lifecycle management
-- Automatic cleanup on unmount
-- Type-safe layer assignment
+`release` unregisters from the coordinator the registration was made against,
+which is not necessarily the one currently in context.
 
 ### Text Selection Pattern
 

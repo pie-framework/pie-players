@@ -61,7 +61,7 @@ function itemCard(page: Page) {
 	// The shell, not the inner content card: both carry the id, and the media
 	// region is a sibling of the content card inside the shell.
 	return page.locator(
-		`pie-item-shell[data-canonical-item-id="${IMPORTED_ITEM_ID}"]`,
+		`pie-item-scope[data-canonical-item-id="${IMPORTED_ITEM_ID}"]`,
 	);
 }
 

@@ -17,14 +17,14 @@ describe("ToolkitCoordinator framework-error contract", () => {
 
 		(coordinator as any).handleError(new Error("provider boom"), {
 			phase: "provider-init",
-			providerId: "tts",
+			toolId: "textToSpeech",
 		});
 		detach();
 
 		expect(received).toHaveLength(1);
 		expect(received[0]).toMatchObject({
 			kind: "provider-init",
-			source: "pie-toolkit-coordinator/tts",
+			source: "pie-toolkit-coordinator/textToSpeech",
 			message: "provider boom",
 			severity: "error",
 		});
@@ -44,6 +44,7 @@ describe("ToolkitCoordinator framework-error contract", () => {
 
 		(coordinator as any).handleError(new Error("state load failed"), {
 			phase: "state-load",
+			recoverable: true,
 		});
 
 		expect(calls).toHaveLength(1);
@@ -119,6 +120,7 @@ describe("ToolkitCoordinator framework-error contract", () => {
 			message: "host pre-coordinator error",
 			details: ["context detail"],
 			recoverable: false,
+			scope: "cohort",
 		});
 
 		expect(calls).toHaveLength(1);
@@ -169,11 +171,71 @@ describe("ToolkitCoordinator framework-error contract", () => {
 
 		(coordinator as any).handleError(new Error("once"), {
 			phase: "provider-init",
-			providerId: "calculator",
+			toolId: "calculator",
 		});
 
 		expect(canonical).toHaveLength(1);
 		expect(busHits).toHaveLength(1);
 		expect(canonical[0]).toBe(busHits[0]);
+	});
+});
+
+describe("ToolkitCoordinator hooks", () => {
+	test("setHooks leaves the hooks object the host constructed it with as it was", () => {
+		const hooks = { onTTSReady: () => {} };
+		const coordinator = new ToolkitCoordinator({
+			assessmentId: "set-hooks-copies",
+			lazyInit: true,
+			hooks,
+		});
+
+		coordinator.setHooks({ onFrameworkError: () => {} });
+
+		expect(Object.keys(hooks)).toEqual(["onTTSReady"]);
+	});
+
+	test("a failed tool-state load is reported once and the coordinator readies without it", async () => {
+		let loads = 0;
+		const calls: FrameworkErrorModel[] = [];
+		const coordinator = new ToolkitCoordinator({
+			assessmentId: "state-load-failure-settles",
+			lazyInit: true,
+			hooks: {
+				loadToolState: async () => {
+					loads += 1;
+					throw new Error("tool state unavailable");
+				},
+				onFrameworkError: (model) => calls.push(model),
+			},
+		});
+
+		await coordinator.waitUntilReady();
+		await coordinator.waitUntilReady();
+
+		expect(coordinator.isReady()).toBe(true);
+		expect((coordinator as unknown as { stateLoaded: boolean }).stateLoaded).toBe(false);
+		expect(loads).toBe(1);
+		expect(calls.map((model) => model.kind)).toEqual(["tool-state-load"]);
+		expect(calls[0]).toMatchObject({ recoverable: true, scope: "runtime" });
+	});
+
+	test("a section that fails to start reports a cohort-scoped error", () => {
+		const calls: FrameworkErrorModel[] = [];
+		const coordinator = new ToolkitCoordinator({
+			assessmentId: "section-init-failure-scope",
+			lazyInit: true,
+			hooks: { onFrameworkError: (model) => calls.push(model) },
+		});
+
+		(coordinator as any).handleSectionControllerInitError(new Error("no section"), {
+			sectionId: "s1",
+		});
+
+		expect(calls).toHaveLength(1);
+		expect(calls[0]).toMatchObject({
+			kind: "section-controller-init",
+			recoverable: false,
+			scope: "cohort",
+		});
 	});
 });

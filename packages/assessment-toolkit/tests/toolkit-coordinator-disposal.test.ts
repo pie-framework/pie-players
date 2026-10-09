@@ -31,7 +31,7 @@ describe("ToolkitCoordinator disposal", () => {
 		let oldDisposeCount = 0;
 		let replacementDisposeCount = 0;
 		let durableState = "stale";
-		let replacementHydratedState: string | null = null;
+		let replacementHydratedState = null as string | null;
 		const oldController = controller({
 			async persist() {
 				persistStarted.resolve();
@@ -359,7 +359,6 @@ describe("ToolkitCoordinator disposal", () => {
 		});
 		coordinator.toolProviderRegistry.register("owned-provider", {
 			provider: {
-				providerId: "owned-provider",
 				providerName: "Owned provider",
 				category: "other",
 				version: "1",
@@ -417,6 +416,20 @@ describe("ToolkitCoordinator disposal", () => {
 		).rejects.toThrow(/disposed/i);
 	});
 
+	test("dispose disposes the read-aloud service, which then refuses to speak", async () => {
+		const coordinator = new ToolkitCoordinator({
+			assessmentId: "tts-disposal",
+			lazyInit: true,
+		});
+		const { ttsService } = coordinator;
+
+		await coordinator.dispose();
+
+		await expect(ttsService.speak({} as Element)).rejects.toThrow(
+			"TTS service disposed",
+		);
+	});
+
 	test("dispose waits for admitted readiness and suppresses late ready callbacks", async () => {
 		const ttsInitStarted = deferred();
 		const ttsInitGate = deferred();
@@ -425,7 +438,7 @@ describe("ToolkitCoordinator disposal", () => {
 		const frameworkErrorKinds: string[] = [];
 		const coordinator = new ToolkitCoordinator({
 			assessmentId: "pending-readiness-disposal",
-			lazyInit: true,
+			eagerInit: false,
 			hooks: {
 				async onBeforeTTSInit() {
 					ttsInitStarted.resolve();
@@ -486,7 +499,6 @@ describe("ToolkitCoordinator disposal", () => {
 		});
 		coordinator.toolProviderRegistry.register("slow-provider", {
 			provider: {
-				providerId: "slow-provider",
 				providerName: "Slow provider",
 				category: "other",
 				version: "1",
@@ -587,7 +599,6 @@ describe("ToolkitCoordinator disposal", () => {
 			icon: "host-tool",
 			supportedLevels: ["section"],
 			activation: "toolbar-toggle",
-			pnpSupportIds: [],
 			isVisibleInContext: () => true,
 			renderToolbar: () => null,
 		} as ToolRegistration);

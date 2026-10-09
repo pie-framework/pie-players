@@ -57,9 +57,7 @@ const requiredComponentPublicTokens = [
 ] as const;
 
 const requiredDecisionGateTokens = [
-	"--pie-background-light",
 	"--pie-button-background-color",
-	"--pie-button-border-color",
 	"--pie-button-hover-background-color",
 	"--pie-focus-ring-color",
 	"--pie-focus-outline",
@@ -137,7 +135,9 @@ describe("PIE theme token registry contract", () => {
 			registry.map((entry) => [entry.name, entry.schemeParticipation]),
 		);
 
-		expect(PIE_THEME_SCHEME_PARTICIPATION).toEqual(registryParticipation);
+		expect<Record<string, unknown>>(PIE_THEME_SCHEME_PARTICIPATION).toEqual(
+			registryParticipation,
+		);
 	});
 
 	test("built-in definitions and generated CSS use exactly required scheme tokens", () => {
@@ -183,9 +183,10 @@ describe("PIE theme token registry contract", () => {
 				"canonical-semantic",
 				"component-public",
 				"legacy",
-				"unsupported",
-			]).toContain(entry?.scope);
-			expect(["active", "planned", "intentional-gap"]).toContain(entry?.status);
+			]).toContain(entry?.scope as string);
+			expect(["active", "planned"]).toContain(
+				entry?.status as string,
+			);
 		}
 	});
 

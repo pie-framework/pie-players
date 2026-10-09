@@ -9,6 +9,9 @@
 			itemCount: { attribute: "item-count", type: "Number" },
 			isCurrent: { attribute: "is-current", type: "Boolean", reflect: true },
 			canonicalItemId: { attribute: "canonical-item-id", type: "String" },
+			// The item's policy settings from its assessment item reference,
+			// registered through the item scope; they govern the item's own toolbar.
+			itemSettings: { attribute: "item-settings", type: "Object", reflect: false },
 			// Composition context published by the pane: the level this card's own
 			// heading occupies. The card renders it, and the item/passage player
 			// beneath derives its outline from the same number — see
@@ -35,7 +38,7 @@
 <script lang="ts">
 	import { coerceBooleanAttributes } from "@pie-players/pie-players-shared/ui/attribute-coercion";
 	import { onMount, untrack } from "svelte";
-	import "../item-shell-element.js";
+	import "@pie-players/pie-assessment-toolkit/components/item-scope-element";
 	import "@pie-players/pie-assessment-toolkit/components/item-toolbar-element";
 	import type {
 		AssessmentToolkitRuntimeContext,
@@ -45,12 +48,15 @@
 	} from "@pie-players/pie-assessment-toolkit";
 	import {
 		catalogOwnerContextFor,
-		connectAssessmentToolkitRuntimeContext,
+		connectToolRuntimeContext,
 		dispatchCrossBoundaryEvent,
 		PIE_INTERNAL_FORMATIVE_ACTION_EVENT,
 		type InternalFormativeActionDetail,
 	} from "@pie-players/pie-assessment-toolkit";
-	import type { ItemEntity } from "@pie-players/pie-players-shared/types";
+	import type {
+		ItemEntity,
+		ItemSettings,
+	} from "@pie-players/pie-players-shared/types";
 	import { resolveInterfaceI18n } from "@pie-players/pie-players-shared/i18n/provider";
 	import type { FormativeItemView } from "@pie-players/pie-players-shared/formative";
 	import type { TimedMediaItemView } from "./section-player-view-state.js";
@@ -62,9 +68,9 @@
 	} from "./section-player-view-state.js";
 	import {
 		connectSectionPlayerCardRenderContext,
-		getHostElementFromAnchor,
 		type SectionPlayerCardRenderContext,
 	} from "./section-player-card-context.js";
+	import { getHostElementFromAnchor } from "./host-element.js";
 	import SectionCardMediaSplit from "./SectionCardMediaSplit.svelte";
 	import SectionCardSurfaceStack from "./SectionCardSurfaceStack.svelte";
 	import { CONTENT_LEAD_SURFACE } from "./card-media-region.js";
@@ -75,6 +81,7 @@
 		itemCount = 1,
 		isCurrent = false,
 		canonicalItemId,
+		itemSettings = null as ItemSettings | null,
 		baseHeadingLevel = DEFAULT_SECTION_BASE_HEADING_LEVEL as number,
 		resolvedPlayerTag = "div",
 		playerAction = (_node: HTMLElement, _params: PlayerElementParams) => undefined,
@@ -90,6 +97,7 @@
 		itemCount?: number;
 		isCurrent?: boolean;
 		canonicalItemId: string;
+		itemSettings?: ItemSettings | null;
 		baseHeadingLevel?: number;
 		resolvedPlayerTag?: string;
 		playerAction?: (node: HTMLElement, params: PlayerElementParams) => unknown;
@@ -196,7 +204,7 @@
 
 	$effect(() => {
 		if (!contextAnchor) return;
-		return connectAssessmentToolkitRuntimeContext(contextAnchor, (value) => {
+		return connectToolRuntimeContext(contextAnchor, (value) => {
 			runtimeContext = value;
 		});
 	});
@@ -362,11 +370,12 @@
 </script>
 
 <div bind:this={contextAnchor} class="pie-section-player-item-card-anchor" aria-hidden="true"></div>
-<pie-item-shell
+<pie-item-scope
 	item-id={item.id}
 	canonical-item-id={canonicalItemId}
 	content-kind="assessment-item"
 	item={item}
+	settings={itemSettings}
 >
 	<!-- svelte-ignore a11y_no_noninteractive_tabindex -->
 	<!-- `tabindex="-1"` is exactly what a programmatic focus target takes, and the
@@ -397,7 +406,6 @@
 				tools={itemToolbarTools}
 				content-kind="assessment-item"
 				size="md"
-				language="en-US"
 				{toolRegistry}
 				{hostButtons}
 			></pie-item-toolbar>
@@ -465,7 +473,7 @@
 			{/if}
 		</div>
 	</div>
-</pie-item-shell>
+</pie-item-scope>
 
 <style>
 	.pie-section-player-item-card-anchor {
@@ -554,7 +562,7 @@
 		overflow-wrap: anywhere;
 		z-index: 0;
 		margin: 0;
-		/* Reads the scale rather than inheriting it: the card wraps the item shell
+		/* Reads the scale rather than inheriting it: the card wraps the item scope
 		   that `font-sizes.css` scales, so nothing above this rule carries the
 		   scaled size. Root-relative, so it does not compound with the shell. */
 		font-size: calc(0.95rem * var(--pie-font-scale, 1));

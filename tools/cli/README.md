@@ -17,6 +17,8 @@ Common command families:
   pie-elements-ng packages installed from npm, all from one release with exact
   pins, and registered as ESM with `registerPreloadedElements`
   ([Registering elements from npm](../../docs/item-player/loading-strategies.md#registering-elements-from-npm)).
+  The build commands' `--speechLocales` sets the math speech locales a build
+  ships ([configs](../../configs/preloaded-player/README.md)).
 - `pack:*` for local package packing workflows.
 
 ## Related Documentation

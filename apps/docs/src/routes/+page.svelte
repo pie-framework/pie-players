@@ -249,16 +249,6 @@
 
 			<div class="card bg-base-100 border border-base-300">
 				<div class="card-body">
-					<h4 class="font-bold text-primary mb-2">ThemeProvider</h4>
-					<p class="text-sm">
-						Accessibility theming for high contrast modes, color schemes, and font size adjustments
-						via CSS custom properties.
-					</p>
-				</div>
-			</div>
-
-			<div class="card bg-base-100 border border-base-300">
-				<div class="card-body">
 					<h4 class="font-bold text-primary mb-2">ToolPolicyEngine</h4>
 					<p class="text-sm">
 						Resolves tool availability from placement, host policy, provider gates, profile data,
@@ -411,12 +401,6 @@ player.addEventListener(
 const outcome =
   await player
     .provideScore();
-
-// Preview an updated element model
-await player.updateElementModel({'{'}
-  id: modelId
-  // model fields to update
-{'}'});
 
 // Authoring validation
 const validation =

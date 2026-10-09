@@ -10,7 +10,6 @@ import type {
 	SoundHandler,
 } from "@pie-players/pie-players-shared/types";
 import type { LoaderConfig } from "@pie-players/pie-players-shared/loader-config";
-import type { PieModel } from "@pie-players/pie-players-shared/types";
 import type {
 	BackendConfig,
 	BackendAuthoringReleaseOptions,
@@ -54,21 +53,14 @@ export interface PieItemPlayerElement extends HTMLElement {
 	includeSrHeading?: boolean;
 	passageContainerClass?: string;
 	customClassName?: string;
-	customClassname?: string;
-	bundleHost?: string;
-	bundleEndpoints?: Record<string, unknown>;
-	disableBundler?: boolean;
-	reFetchBundle?: boolean;
 	onInsertImage?: (handler: ImageHandler) => void;
 	onDeleteImage?: (src: string, done: DeleteDone) => void;
 	onInsertSound?: (handler: SoundHandler) => void;
 	onDeleteSound?: (src: string, done: DeleteDone) => void;
 	loaderOptions?: PieItemPlayerLoaderOptions;
 	loaderConfig?: LoaderConfig;
-	/** Legacy-compatible local browser scoring; returns one result slot per scored model. */
+	/** Local browser scoring; returns one result slot per scored model. */
 	provideScore(): Promise<false | Array<Record<string, unknown> | undefined>>;
-	/** Legacy-compatible preview update for a single loaded PIE model. */
-	updateElementModel(update: Partial<PieModel> & { id: string }): Promise<void>;
 	/** Authoring-mode validation for rendered configure elements. */
 	validateModels(): Promise<AuthoringValidationResult>;
 	/** Load configured backend data into the existing config/session pipeline. */

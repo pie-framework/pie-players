@@ -25,9 +25,8 @@ import { SectionController } from "../src/controllers/SectionController";
  *     `content-loaded` and does not re-evaluate
  *     `section-loading-complete`.
  *
- * Together these enable the engine to safely re-feed its registry into
- * the controller on every `initialize(...)` call (the gate-drop change
- * in `SectionRuntimeEngine`) — both fresh-controller cohort flips and
+ * Together these enable the toolkit's `SectionControllerBinding` to re-feed
+ * its registry into the controller on every `initialize(...)` call — both fresh-controller cohort flips and
  * same-cohort `updateInput` resolves are handled by a single replay
  * code path with no duplicate emits.
  */
@@ -228,6 +227,54 @@ describe("SectionController PIE-512 Phase C invariants", () => {
 		unsubscribe();
 		expect(contentLoadedEvents).toHaveLength(1);
 		expect(loadingCompleteEvents).toHaveLength(1);
+	});
+
+	test("a load for an unregistered key waits for its registration", async () => {
+		const controller = new SectionController();
+		const section = makeSection("section-pc-held", ["item-a", "item-b"]);
+		await controller.initialize({
+			section,
+			sectionId: "section-pc-held",
+			assessmentId: "assessment-pc",
+			view: ["candidate"],
+		});
+		const events: string[] = [];
+		controller.subscribe((event) => {
+			if (event.type === "content-loaded") events.push(`loaded:${event.canonicalItemId}`);
+			if (event.type === "section-loading-complete") events.push("complete");
+		});
+		const itemA = { itemId: "runtime-a", canonicalItemId: "item-a", contentKind: "item" };
+		const itemB = { itemId: "runtime-b", canonicalItemId: "item-b", contentKind: "item" };
+
+		controller.handleContentRegistered(itemA);
+		// Two loads for one registration: B's is held, so A alone completes nothing.
+		controller.handleContentLoaded(itemB);
+		expect(controller.getRuntimeState()?.loadingComplete).toBe(false);
+		controller.handleContentLoaded(itemA);
+		expect(events).toEqual(["loaded:item-a", "complete"]);
+
+		events.length = 0;
+		controller.handleContentRegistered(itemB);
+		expect(events).toEqual(["loaded:item-b", "complete"]);
+		expect(controller.getRuntimeState()?.totalLoaded).toBe(2);
+	});
+
+	test("a foreign load does not complete the section", async () => {
+		const controller = new SectionController();
+		const section = makeSection("section-pc-foreign", ["item-a", "item-b"]);
+		await controller.initialize({
+			section,
+			sectionId: "section-pc-foreign",
+			assessmentId: "assessment-pc",
+			view: ["candidate"],
+		});
+		controller.handleContentRegistered({ itemId: "runtime-a", canonicalItemId: "item-a", contentKind: "item" });
+		controller.handleContentRegistered({ itemId: "runtime-b", canonicalItemId: "item-b", contentKind: "item" });
+		controller.handleContentLoaded({ itemId: "runtime-a", canonicalItemId: "item-a", contentKind: "item" });
+		controller.handleContentLoaded({ itemId: "elsewhere", canonicalItemId: "elsewhere", contentKind: "item" });
+		const state = controller.getRuntimeState();
+		expect(state?.loadingComplete).toBe(false);
+		expect(state?.totalLoaded).toBe(1);
 	});
 
 	test("late subscriber on same-section updateInput observes preserved runtime state", async () => {

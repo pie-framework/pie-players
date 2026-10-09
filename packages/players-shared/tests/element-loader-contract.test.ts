@@ -33,6 +33,7 @@ import {
 	type ElementLoaderBackend,
 	type RegistrationFailureReason,
 } from "../src/loaders/element-loader.js";
+import type { BackendContext } from "../src/loaders/element-loader-types.js";
 import {
 	createIifeBackend,
 	type IifeBackendTestSeams,
@@ -40,6 +41,7 @@ import {
 import {
 	createEsmBackend,
 	mapEsmViewElements,
+	resolveEsmAssetRoot,
 	resolveEsmRuntimeSupportUrl,
 	type EsmBackendConfig,
 	type EsmBackendTestSeams,
@@ -121,7 +123,7 @@ function installScriptedCustomElements(): ScriptedRegistry {
 			});
 		},
 	};
-	g.customElements = scriptedRegistry;
+	g.customElements = scriptedRegistry as unknown as GlobalWithDom["customElements"];
 
 	return {
 		define(tag, ctor) {
@@ -178,6 +180,11 @@ function createMockDocument(): Document {
 		querySelectorAll: () => [] as unknown as NodeListOf<Element>,
 		_scripts: scripts,
 	} as unknown as Document;
+}
+
+/** The context `ensureRegistered` hands an adapter. The adapters read only `doc`. */
+function backendContext(doc: Document): BackendContext {
+	return { doc, whenDefinedTimeoutMs: 5000 };
 }
 
 type ScriptStub = EventTarget & {
@@ -252,7 +259,7 @@ beforeEach(() => {
 	} as unknown as GlobalWithDom["HTMLScriptElement"];
 	g.window = {
 		customElements: g.customElements,
-		fetch: async () =>
+		fetch: (async () =>
 			({
 				ok: true,
 				async json() {
@@ -265,14 +272,14 @@ beforeEach(() => {
 						},
 					};
 				},
-			}) as Response,
+			}) as Response) as unknown as typeof fetch,
 		pieHelpers: {
 			loadingScripts: {},
 			loadingPromises: {},
 			globalLoadQueue: Promise.resolve(),
 			activeBundleUrl: null,
 		},
-	};
+	} as unknown as GlobalWithDom["window"];
 	elementLoaderTesting.resetDedupState();
 });
 
@@ -523,7 +530,12 @@ describe("ensureRegistered — primitive-level contract", () => {
 				doc: createMockDocument(),
 				whenDefinedTimeoutMs: 10_000,
 			},
-		).catch((err: unknown) => err as ElementLoaderError);
+		).then(
+			() => {
+				throw new Error("expected ensureRegistered to reject");
+			},
+			(err: unknown) => err as ElementLoaderError,
+		);
 
 		expect(Date.now() - startedAt).toBeLessThan(1000);
 		expect(error).toBeInstanceOf(ElementLoaderError);
@@ -549,7 +561,12 @@ describe("ensureRegistered — primitive-level contract", () => {
 				doc: createMockDocument(),
 				whenDefinedTimeoutMs: 10_000,
 			},
-		).catch((err: unknown) => err as ElementLoaderError);
+		).then(
+			() => {
+				throw new Error("expected ensureRegistered to reject");
+			},
+			(err: unknown) => err as ElementLoaderError,
+		);
 
 		expect(Date.now() - startedAt).toBeLessThan(1000);
 		expect(error.reasons.get("pie-mc--version-11-0-1")).toEqual({
@@ -584,7 +601,12 @@ describe("ensureRegistered — primitive-level contract", () => {
 				[late]: "@pie-element/passage@3.2.4",
 			},
 			{ backend: fake, doc: createMockDocument(), whenDefinedTimeoutMs: 5000 },
-		).catch((err: unknown) => err as ElementLoaderError);
+		).then(
+			() => {
+				throw new Error("expected ensureRegistered to reject");
+			},
+			(err: unknown) => err as ElementLoaderError,
+		);
 
 		expect(Date.now() - startedAt).toBeLessThan(1000);
 		expect(g.customElements?.get(late)).toBeDefined();
@@ -1578,9 +1600,7 @@ describe("ESM adapter — contract", () => {
 			{
 				"pie-mc--version-13-2-0": "@pie-element/multiple-choice@13.2.0",
 			},
-			{
-				doc: createMockDocument(),
-			},
+			backendContext(createMockDocument()),
 		);
 
 		const imports = JSON.parse(injectedMaps[0] ?? "{}").imports;
@@ -1654,9 +1674,7 @@ describe("ESM adapter — contract", () => {
 			{
 				"pie-mc--version-13-2-0": "@pie-element/multiple-choice@13.2.0",
 			},
-			{
-				doc: createMockDocument(),
-			},
+			backendContext(createMockDocument()),
 		);
 
 		const imports = JSON.parse(injectedMaps[0] ?? "{}").imports;
@@ -1729,9 +1747,7 @@ describe("ESM adapter — contract", () => {
 			{
 				"pie-mc--version-13-2-0": "@pie-element/multiple-choice@13.2.0",
 			},
-			{
-				doc: createMockDocument(),
-			},
+			backendContext(createMockDocument()),
 		);
 
 		const imports = JSON.parse(injectedMaps[0] ?? "{}").imports;
@@ -1809,9 +1825,7 @@ describe("ESM adapter — contract", () => {
 			{
 				"pie-mc--version-13-2-0": "@pie-element/multiple-choice@13.2.0",
 			},
-			{
-				doc: createMockDocument(),
-			},
+			backendContext(createMockDocument()),
 		);
 
 		const imports = JSON.parse(injectedMaps[0] ?? "{}").imports;
@@ -1857,9 +1871,7 @@ describe("ESM adapter — contract", () => {
 				{
 					"pie-mc--version-13-2-0": "@pie-element/multiple-choice@13.2.0",
 				},
-				{
-					doc: createMockDocument(),
-				},
+				backendContext(createMockDocument()),
 			),
 		).rejects.toThrow(/browserSharedDependencies/);
 	});
@@ -1958,7 +1970,7 @@ describe("ESM adapter — contract", () => {
 		const error = await backend
 			.load(
 				{ [tag]: "@pie-element/math-inline@12.1.0" },
-				{ doc: createMockDocument() },
+				backendContext(createMockDocument()),
 			)
 			.then(
 				() => undefined,
@@ -2124,9 +2136,7 @@ describe("ESM adapter — contract", () => {
 					"pie-mc--version-13-2-0": "@pie-element/multiple-choice@13.2.0",
 					"pie-passage--version-3-2-4": "@pie-element/passage@3.2.4",
 				},
-				{
-					doc: createMockDocument(),
-				},
+				backendContext(createMockDocument()),
 			);
 
 			const imports = JSON.parse(injectedMaps[0] ?? "{}").imports;
@@ -2194,9 +2204,7 @@ describe("ESM adapter — contract", () => {
 
 		await backend.load(
 			{ "pie-mc--version-13-2-0": "@pie-element/multiple-choice@13.2.0" },
-			{
-				doc: createMockDocument(),
-			},
+			backendContext(createMockDocument()),
 		);
 
 		await expect(
@@ -2204,9 +2212,7 @@ describe("ESM adapter — contract", () => {
 				{
 					"pie-passage--version-3-2-4": "@pie-element/passage@3.2.4",
 				},
-				{
-					doc: createMockDocument(),
-				},
+				backendContext(createMockDocument()),
 			),
 		).rejects.toThrow(/cannot be upgraded/);
 		expect(
@@ -2251,7 +2257,7 @@ describe("ESM adapter — contract", () => {
 					"pie-mc--version-13-2-0": "@pie-element/multiple-choice@13.2.0",
 					"pie-passage--version-3-2-4": "@pie-element/passage@3.2.4",
 				},
-				{ doc: createMockDocument() },
+				backendContext(createMockDocument()),
 			);
 			expect(JSON.parse(batch.injected[0] ?? "{}").imports.react).toBe(
 				"https://cdn.jsdelivr.net/npm/react@18.3.0-next.10/+esm",
@@ -2260,12 +2266,12 @@ describe("ESM adapter — contract", () => {
 			const sequential = createBackend();
 			await sequential.backend.load(
 				{ "pie-mc--version-13-2-1": "@pie-element/multiple-choice@13.2.1" },
-				{ doc: createMockDocument() },
+				backendContext(createMockDocument()),
 			);
 			await expect(
 				sequential.backend.load(
 					{ "pie-passage--version-3-2-5": "@pie-element/passage@3.2.5" },
-					{ doc: createMockDocument() },
+					backendContext(createMockDocument()),
 				),
 			).rejects.toThrow(/requires higher version 18\.3\.0-next\.10/);
 		} finally {
@@ -2375,11 +2381,11 @@ describe("ESM adapter — contract", () => {
 
 		await backend.load(
 			{ "pie-mc--version-13-2-0": "@pie-element/multiple-choice@13.2.0" },
-			{ doc: createMockDocument() },
+			backendContext(createMockDocument()),
 		);
 		await backend.load(
 			{ "pie-mc--version-13-3-0": "@pie-element/multiple-choice@13.3.0" },
-			{ doc: createMockDocument() },
+			backendContext(createMockDocument()),
 		);
 
 		expect(seenMetadata).toEqual([
@@ -2419,9 +2425,7 @@ describe("ESM adapter — contract", () => {
 					"pie-mc--version-13-2-0": "@pie-element/multiple-choice@13.2.0",
 					"pie-passage--version-3-2-4": "@pie-element/passage@3.2.4",
 				},
-				{
-					doc: createMockDocument(),
-				},
+				backendContext(createMockDocument()),
 			),
 		).rejects.toThrow(/Conflicting shared browser dependency react/);
 	});
@@ -2499,7 +2503,7 @@ describe("ESM adapter — contract", () => {
 			"timeout",
 			"module-load-failed",
 			"backend-rejected",
-		]).toContain(reason?.kind);
+		]).toContain(reason?.kind as string);
 	});
 
 	test("import-map mode: a second load() call with new elements extends the map (does not silently assume prior map covers)", async () => {
@@ -3204,7 +3208,7 @@ describe("PIE_REGISTRY entries", () => {
 
 		await backend.load(
 			{ [tag]: "@pie-element/esm-entry@1.0.0" },
-			{ doc: createMockDocument() },
+			backendContext(createMockDocument()),
 		);
 
 		expect(registryOf()[tag]?.bundleType).toBe(BundleType.esm);
@@ -3236,7 +3240,7 @@ describe("PIE_REGISTRY entries", () => {
 
 		await backend.load(
 			{ [tag]: "@pie-element/multiple-choice@13.2.0" },
-			{ doc: createMockDocument() },
+			backendContext(createMockDocument()),
 		);
 
 		const entry = registryOf()[tag];
@@ -3285,7 +3289,7 @@ describe("ESM adapter — existing import maps", () => {
 
 		await backend.load(
 			{ "pie-own-map--version-1-0-0": "@pie-element/own-map@1.0.0" },
-			{ doc },
+			backendContext(doc),
 		);
 
 		expect(injected).toEqual([]);
@@ -3300,7 +3304,7 @@ describe("ESM adapter — existing import maps", () => {
 
 		await backend.load(
 			{ "pie-partial-map--version-1-0-0": "@pie-element/partial-map@1.0.0" },
-			{ doc },
+			backendContext(doc),
 		);
 
 		expect(injected).toHaveLength(1);
@@ -3318,13 +3322,13 @@ describe("ESM adapter — existing import maps", () => {
 
 		await first.backend.load(
 			{ "pie-first-player--version-1-0-0": "@pie-element/first-player@1.0.0" },
-			{ doc },
+			backendContext(doc),
 		);
 		await second.backend.load(
 			{
 				"pie-second-player--version-1-0-0": "@pie-element/second-player@1.0.0",
 			},
-			{ doc },
+			backendContext(doc),
 		);
 
 		expect(first.injected).toHaveLength(1);
@@ -3413,7 +3417,7 @@ describe("ESM adapter — import maps the browser rejects", () => {
 		const fake = fakeImportShim();
 		const backend = backendFor(native, async () => fake.shim);
 
-		await backend.load({ [tagOf("mc")]: "@pie-element/mc@1.0.0" }, { doc });
+		await backend.load({ [tagOf("mc")]: "@pie-element/mc@1.0.0" }, backendContext(doc));
 
 		expect(native.imported).toEqual([IMPORT_MAP_PROBE, REACT_URL]);
 		expect(fake.imported).toEqual([elementUrl("mc")]);
@@ -3435,7 +3439,7 @@ describe("ESM adapter — import maps the browser rejects", () => {
 			return fakeImportShim().shim;
 		});
 
-		await backend.load({ [tagOf("mc")]: "@pie-element/mc@1.0.0" }, { doc });
+		await backend.load({ [tagOf("mc")]: "@pie-element/mc@1.0.0" }, backendContext(doc));
 
 		expect(native.imported).toEqual([IMPORT_MAP_PROBE, elementUrl("mc")]);
 		expect(shimLoads).toBe(0);
@@ -3461,7 +3465,7 @@ describe("ESM adapter — import maps the browser rejects", () => {
 		});
 
 		const failure = await backend
-			.load({ [tagOf("mc")]: "@pie-element/mc@1.0.0" }, { doc })
+			.load({ [tagOf("mc")]: "@pie-element/mc@1.0.0" }, backendContext(doc))
 			.then(
 				() => null,
 				(err: unknown) => err,
@@ -3491,7 +3495,7 @@ describe("ESM adapter — import maps the browser rejects", () => {
 		const fake = fakeImportShim();
 		const backend = backendFor(native, async () => fake.shim);
 
-		await backend.load({ [tagOf("mc")]: "@pie-element/mc@1.0.0" }, { doc });
+		await backend.load({ [tagOf("mc")]: "@pie-element/mc@1.0.0" }, backendContext(doc));
 
 		expect(native.imported).toEqual([]);
 		expect(fake.imported).toEqual([elementUrl("mc")]);
@@ -3526,12 +3530,12 @@ describe("ESM adapter — import maps the browser rejects", () => {
 
 		const firstLoad = first.load(
 			{ [tagOf("mc")]: "@pie-element/mc@1.0.0" },
-			{ doc },
+			backendContext(doc),
 		);
 		while (pieMaps(doc).length === 0) await Promise.resolve();
 		const secondLoad = second.load(
 			{ [tagOf("passage")]: "@pie-element/passage@1.0.0" },
-			{ doc },
+			backendContext(doc),
 		);
 		for (let i = 0; i < 20; i++) await Promise.resolve();
 		expect(fake.imported).toEqual([]);
@@ -3572,7 +3576,7 @@ describe("ESM adapter — import maps the browser rejects", () => {
 
 			await defaultShimBackend(browserImporter({ mapsApply: false })).load(
 				{ [tagOf("mc")]: "@pie-element/mc@1.0.0" },
-				{ doc },
+				backendContext(doc),
 			);
 
 			expect(fake.imported).toEqual([elementUrl("mc")]);
@@ -3590,7 +3594,7 @@ describe("ESM adapter — import maps the browser rejects", () => {
 			const failure = await defaultShimBackend(
 				browserImporter({ mapsApply: false }),
 			)
-				.load({ [tagOf("mc")]: "@pie-element/mc@1.0.0" }, { doc })
+				.load({ [tagOf("mc")]: "@pie-element/mc@1.0.0" }, backendContext(doc))
 				.then(
 					() => null,
 					(err: unknown) => err,
@@ -3770,7 +3774,7 @@ describe("ESM adapter — shared editor runtime", () => {
 			[`${RUNTIME}@0.1.1-next.0`]: runtimePackage(),
 		});
 
-		await delivery.backend.load({ [MC_TAG]: MC, [VENN_TAG]: VENN }, { doc });
+		await delivery.backend.load({ [MC_TAG]: MC, [VENN_TAG]: VENN }, backendContext(doc));
 
 		expect(delivery.imported.sort()).toEqual(
 			[
@@ -3803,7 +3807,7 @@ describe("ESM adapter — shared editor runtime", () => {
 			},
 			{ config: { view: "author" } },
 		);
-		await author.backend.load({ [`${MC_TAG}-config`]: MC }, { doc });
+		await author.backend.load({ [`${MC_TAG}-config`]: MC }, backendContext(doc));
 
 		expect(author.imported).toEqual([
 			url(MC, "editor-runtime/author"),
@@ -3839,7 +3843,7 @@ describe("ESM adapter — shared editor runtime", () => {
 				backend.__seams.replaceImporter(async (specifier) => ({
 					default: createConstructorFor(specifier),
 				}));
-				return backend.load({ [tag]: packageVersion }, { doc });
+				return backend.load({ [tag]: packageVersion }, backendContext(doc));
 			}),
 		);
 
@@ -3874,7 +3878,7 @@ describe("ESM adapter — shared editor runtime", () => {
 			{ config: { cdnBaseUrl: "https://ignored.test", cdnProvider } },
 		);
 
-		await backend.load({ [MC_TAG]: MC }, { doc });
+		await backend.load({ [MC_TAG]: MC }, backendContext(doc));
 
 		expect(runtimeRequests(metadataRequests)).toEqual([
 			`https://meta.test/${RUNTIME}@0.1.1-next.0`,
@@ -3905,7 +3909,7 @@ describe("ESM adapter — shared editor runtime", () => {
 			{ config: { moduleResolution: "import-map" } },
 		);
 
-		await backend.load({ [MC_TAG]: MC }, { doc });
+		await backend.load({ [MC_TAG]: MC }, backendContext(doc));
 
 		expect(imported).toEqual([
 			IMPORT_MAP_PROBE,
@@ -3929,7 +3933,7 @@ describe("ESM adapter — shared editor runtime", () => {
 			[`${RUNTIME}@0.1.1-next.0`]: runtimePackage(),
 		});
 
-		await backend.load({ [MC_TAG]: MC, [PASSAGE_TAG]: PASSAGE }, { doc });
+		await backend.load({ [MC_TAG]: MC, [PASSAGE_TAG]: PASSAGE }, backendContext(doc));
 
 		expect(imported.sort()).toEqual(
 			[
@@ -3959,7 +3963,7 @@ describe("ESM adapter — shared editor runtime", () => {
 			{ config: { view: "print" } },
 		);
 
-		await backend.load({ [`${VENN_TAG}-print`]: VENN }, { doc });
+		await backend.load({ [`${VENN_TAG}-print`]: VENN }, backendContext(doc));
 
 		expect(imported).toEqual([url(VENN, "print"), url(VENN, "controller")]);
 		expect(injected).toEqual([]);
@@ -3976,8 +3980,8 @@ describe("ESM adapter — shared editor runtime", () => {
 			[`${RUNTIME}@0.1.1-next.1`]: runtimePackage(),
 		});
 
-		await backend.load({ [MC_TAG]: MC }, { doc });
-		await backend.load({ [EBSR_TAG]: EBSR }, { doc });
+		await backend.load({ [MC_TAG]: MC }, backendContext(doc));
+		await backend.load({ [EBSR_TAG]: EBSR }, backendContext(doc));
 
 		expect(imported.filter((specifier) => specifier.includes(EBSR))).toEqual([
 			url(EBSR, "delivery"),
@@ -4019,8 +4023,8 @@ describe("ESM adapter — shared editor runtime", () => {
 			{ config: { cdnBaseUrl: "https://cdn.other.test/npm" } },
 		);
 
-		await first.backend.load({ [MC_TAG]: MC }, { doc });
-		await second.backend.load({ [EBSR_TAG]: EBSR }, { doc });
+		await first.backend.load({ [MC_TAG]: MC }, backendContext(doc));
+		await second.backend.load({ [EBSR_TAG]: EBSR }, backendContext(doc));
 
 		expect(second.imported).toEqual([
 			`https://cdn.other.test/npm/${EBSR}/dist/browser/delivery/index.js`,
@@ -4048,8 +4052,8 @@ describe("ESM adapter — shared editor runtime", () => {
 			[`${RUNTIME}@0.1.1-next.1`]: runtimePackage(),
 		});
 
-		await backend.load({ [EBSR_TAG]: EBSR }, { doc });
-		await backend.load({ [MC_TAG]: MC }, { doc });
+		await backend.load({ [EBSR_TAG]: EBSR }, backendContext(doc));
+		await backend.load({ [MC_TAG]: MC }, backendContext(doc));
 
 		expect(imported.filter((specifier) => specifier.includes(MC))).toEqual([
 			url(MC, "editor-runtime/delivery"),
@@ -4088,8 +4092,8 @@ describe("ESM adapter — shared editor runtime", () => {
 				[`${RUNTIME}@${mapped}`]: runtimePackage(),
 			});
 
-			await backend.load({ [MC_TAG]: MC }, { doc });
-			await backend.load({ [EBSR_TAG]: EBSR }, { doc });
+			await backend.load({ [MC_TAG]: MC }, backendContext(doc));
+			await backend.load({ [EBSR_TAG]: EBSR }, backendContext(doc));
 
 			expect(imported.filter((specifier) => specifier.includes(EBSR))[0]).toBe(
 				url(EBSR, served ? "editor-runtime/delivery" : "delivery"),
@@ -4106,7 +4110,7 @@ describe("ESM adapter — shared editor runtime", () => {
 			[`${RUNTIME}@0.1.1-next.10`]: runtimePackage(),
 		});
 
-		await backend.load({ [MC_TAG]: MC, [EBSR_TAG]: EBSR }, { doc });
+		await backend.load({ [MC_TAG]: MC, [EBSR_TAG]: EBSR }, backendContext(doc));
 
 		expect(runtimeRequests(metadataRequests)).toEqual([
 			`${CDN}/${RUNTIME}@0.1.1-next.10/package.json`,
@@ -4129,7 +4133,7 @@ describe("ESM adapter — shared editor runtime", () => {
 			[`${RUNTIME}@0.1.1-next.0`]: runtimePackage(),
 		});
 
-		await backend.load({ [MC_TAG]: MC }, { doc });
+		await backend.load({ [MC_TAG]: MC }, backendContext(doc));
 
 		expect(imported).toEqual([
 			IMPORT_MAP_PROBE,
@@ -4180,7 +4184,7 @@ describe("ESM adapter — shared editor runtime", () => {
 				[`${RUNTIME}@0.1.1-next.0`]: runtimeMetadata,
 			});
 
-			await backend.load({ [MC_TAG]: MC }, { doc });
+			await backend.load({ [MC_TAG]: MC }, backendContext(doc));
 
 			expect(imported).toEqual([
 				IMPORT_MAP_PROBE,
@@ -4207,7 +4211,7 @@ describe("ESM adapter — shared editor runtime", () => {
 			{ failImport: (specifier) => specifier === variant },
 		);
 
-		await backend.load({ [MC_TAG]: MC }, { doc });
+		await backend.load({ [MC_TAG]: MC }, backendContext(doc));
 
 		expect(imported).toEqual([
 			IMPORT_MAP_PROBE,
@@ -4236,7 +4240,7 @@ describe("ESM adapter — shared editor runtime", () => {
 			{ failImport: (specifier) => specifier === variantController },
 		);
 
-		await backend.load({ [MC_TAG]: MC }, { doc });
+		await backend.load({ [MC_TAG]: MC }, backendContext(doc));
 
 		expect(imported).toEqual([
 			IMPORT_MAP_PROBE,
@@ -4271,7 +4275,7 @@ describe("ESM adapter — shared editor runtime", () => {
 				[MC]: declaring("0.1.1-next.0", overrides),
 			});
 
-			await backend.load({ [MC_TAG]: MC }, { doc });
+			await backend.load({ [MC_TAG]: MC }, backendContext(doc));
 
 			expect(imported).toEqual([
 				IMPORT_MAP_PROBE,
@@ -4303,7 +4307,7 @@ describe("ESM adapter — shared editor runtime", () => {
 			[`${RUNTIME}@0.1.1-next.0`]: runtimePackage(),
 		});
 
-		await backend.load({ [VENN_TAG]: VENN }, { doc });
+		await backend.load({ [VENN_TAG]: VENN }, backendContext(doc));
 
 		expect(imported).toEqual([url(VENN, "delivery"), url(VENN, "controller")]);
 		expect(injected).toEqual([]);
@@ -4365,6 +4369,38 @@ describe("resolveEsmRuntimeSupportUrl", () => {
 				cdnProvider: customProvider({
 					packageJsonUrl: (pv) => `https://cdn.test/meta?package=${pv}`,
 				}),
+			}),
+		).toBeUndefined();
+	});
+});
+
+describe("resolveEsmAssetRoot", () => {
+	const provider = (packageJsonUrl: (pv: string) => string): EsmCdnProvider => ({
+		name: "local",
+		packageJsonUrl,
+		browserViewUrl: (pv, view) => `https://cdn.test/${pv}/dist/browser/${view}/index.js`,
+		browserControllerUrl: (pv) => `https://cdn.test/${pv}/dist/browser/controller/index.js`,
+		sharedDependencyUrl: (dep, version) => `https://cdn.test/${dep}@${version}`,
+	});
+
+	test("is the npm root jsDelivr and esm.sh serve raw package files under", () => {
+		expect(resolveEsmAssetRoot({ cdnBaseUrl: "https://cdn.jsdelivr.net/npm/" })).toBe(
+			"https://cdn.jsdelivr.net/npm",
+		);
+		expect(resolveEsmAssetRoot({ cdnBaseUrl: "https://esm.sh" })).toBe("https://raw.esm.sh");
+	});
+
+	test("is what a custom provider puts before the package, if anything", () => {
+		expect(
+			resolveEsmAssetRoot({
+				cdnBaseUrl: "https://cdn.test",
+				cdnProvider: provider((pv) => `https://mirror.test/npm/${pv}/package.json`),
+			}),
+		).toBe("https://mirror.test/npm");
+		expect(
+			resolveEsmAssetRoot({
+				cdnBaseUrl: "https://cdn.test",
+				cdnProvider: provider((pv) => `https://cdn.test/meta?package=${pv}`),
 			}),
 		).toBeUndefined();
 	});

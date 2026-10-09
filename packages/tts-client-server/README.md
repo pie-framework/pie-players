@@ -30,18 +30,22 @@ npm install @pie-players/tts-client-server
 ### Basic Setup
 
 ```typescript
-import { ServerTTSProvider } from '@pie-players/tts-client-server';
+import {
+  ServerTTSProvider,
+  type ServerTTSProviderConfig,
+} from '@pie-players/tts-client-server';
 import { TTSService } from '@pie-players/pie-assessment-toolkit';
 
 const provider = new ServerTTSProvider();
-
-const ttsService = new TTSService();
-await ttsService.initialize(provider, {
+const config: ServerTTSProviderConfig = {
   apiEndpoint: '/api/tts',  // Your SvelteKit API route
   provider: 'polly',         // Server-side provider to use
   voice: 'Joanna',
   language: 'en-US',
-});
+};
+
+const ttsService = new TTSService();
+await ttsService.initialize(provider, config);
 ```
 
 `apiEndpoint`, `provider`, `voice` and `language` are top-level fields; the
@@ -68,9 +72,7 @@ await ttsService.initialize(provider, {
 
 ```typescript
 // The provider automatically coordinates word highlighting
-await ttsService.speak('Hello world, this is a test.', {
-  contentElement: document.getElementById('content'),
-});
+await ttsService.speak(document.getElementById('content'));
 ```
 
 ## Transport Modes
@@ -138,7 +140,10 @@ await ttsService.speak('Hello world, this is a test.', {
 ```
 
 The language travels under both `lang_id` and `langId`, so a server that binds
-JSON in camelCase reads it without a mapping of its own.
+JSON in camelCase reads it without a mapping of its own. It is the host's
+`providerOptions.lang_id`, else the language a speak names, else `language`,
+else `en-US`. In PIE mode, `language` is the language a speak names, else the
+configured one.
 
 ### Custom mode response
 
@@ -231,7 +236,7 @@ for the host-wide contract this provider fits into.
 
 ## How It Works
 
-1. **Client calls** `speak(text)`
+1. **Client calls** `speak(element)`
 2. **Adapter builds** backend-specific request payload
 3. **Provider POSTs** to resolved synthesis endpoint (`/synthesize` or root POST)
 4. **Adapter normalizes** response into audio + speech marks
@@ -272,7 +277,7 @@ The provider automatically manages Blob URLs:
 
 ```typescript
 try {
-  await ttsService.speak('Hello world');
+  await ttsService.speak(document.getElementById('content'));
 } catch (error) {
   console.error('TTS failed:', error.message);
   // Fallback to browser TTS or show error

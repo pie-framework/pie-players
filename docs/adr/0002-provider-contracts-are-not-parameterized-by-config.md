@@ -28,10 +28,11 @@ The precision it appeared to buy comes from the adapter's class signature instea
 caller holding `DesmosCalculatorProvider` gets `DesmosCalculatorProviderConfig` on
 `createCalculator` with no parameter in the contract at all.
 
-This is not a rule against generics. A parameter in return position is checked:
-`ToolProviderApi<TConfig, TInstance>` in `assessment-toolkit` keeps both, because
-`createInstance(): Promise<TInstance>` makes `TInstance` load-bearing. The
-discriminant is argument-only position.
+This is not a rule against generics. A parameter in return position is checked.
+In `assessment-toolkit`'s `ToolProviderApi<TConfig, TInstance>`,
+`createInstance(): Promise<TInstance>` makes `TInstance` load-bearing, while
+`TConfig` appears only in the arguments of `initialize` and `createInstance` and
+so, by this rule, constrains nothing. The discriminant is argument-only position.
 
 ## Supporting reason
 
@@ -67,7 +68,8 @@ callers that had no business writing vendor config.
   interface, never by an adapter type. `DesmosToolProvider` is
   `ToolProviderApi<DesmosToolProviderConfig, CalculatorProvider>`, matching
   `TTSToolProvider` with `ITTSProvider`.
-- An adapter that is an **optional peer** appears only inside a method body.
+- An adapter that is an **optional peer**, or any package that is only a
+  dev dependency, appears only inside a method body.
   Declaration emit preserves `implements` clauses and public return types, so a
   top-level `import type` from an optional peer lands in the published `.d.ts` and
   makes that peer required for any consumer type-checking without `skipLibCheck` —
@@ -101,6 +103,16 @@ Since 498f9376 (2026-09-25) the calculator tool providers live in
 as ordinary dependencies. `DesmosToolProvider` now extends
 `LazyCalculatorToolProvider`, which implements
 `ToolProviderApi<TConfig, CalculatorProvider>`, so the typing rule in
-**Consequences** holds there. The toolkit's one remaining optional peer is
-`@pie-players/tts-client-server`, which `TTSToolProvider` and
-`tts-runtime-config.ts` name only inside function bodies.
+**Consequences** holds there. The toolkit now declares no optional
+peers. `@pie-players/tts-client-server` is a dev dependency, which
+`TTSToolProvider` and `tts-runtime-config.ts` name only inside function bodies;
+`TTSToolProvider` takes the server provider class from its caller through
+`loadServerProvider`, and `@pie-players/pie-default-tool-loaders` supplies it.
+
+## Update, 2026-10-08
+
+`ToolProviderApi` dropped `TConfig` and is now `ToolProviderApi<TInstance>`, with
+`initialize` and `createInstance` taking `unknown`. `TTSToolProvider` implements
+`ToolProviderApi<ITTSProvider>` and `LazyCalculatorToolProvider`
+`ToolProviderApi<CalculatorProvider>`; each narrows its config in its own method
+signatures.

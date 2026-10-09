@@ -14,6 +14,14 @@ const KERNEL_HOST_PATH = resolve(
 	__dirname,
 	"../src/components/PieSectionPlayerKernelHostElement.svelte",
 );
+const ITEMS_PANE_PATH = resolve(
+	__dirname,
+	"../src/components/shared/SectionItemsPane.svelte",
+);
+const PASSAGES_PANE_PATH = resolve(
+	__dirname,
+	"../src/components/shared/SectionPassagesPane.svelte",
+);
 const ITEM_CARD_PATH = resolve(
 	__dirname,
 	"../src/components/shared/SectionItemCard.svelte",
@@ -87,17 +95,18 @@ describe("section-player default tool registry boundary", () => {
 		}
 	});
 
-	test("kernel-host panes receive the kernel effective registry from the slot", () => {
-		const source = readSource(KERNEL_HOST_PATH);
-
-		expect(source).toContain("let:toolRegistry={layoutToolRegistry}");
-		expect(source).toContain("toolRegistry={layoutToolRegistry}");
-		expect(source).not.toContain(
-			"passageToolbarTools={passageToolbarTools}\n\t\t\t\t{toolRegistry}",
+	test("panes take the kernel's effective registry from the layout context", () => {
+		expect(readCode(KERNEL_PATH)).toContain(
+			"toolRegistry: effectiveToolRegistry,",
 		);
-		expect(source).not.toContain(
-			"itemToolbarTools={itemToolbarTools}\n\t\t\t{toolRegistry}",
-		);
+		for (const sourcePath of [ITEMS_PANE_PATH, PASSAGES_PANE_PATH]) {
+			const source = readCode(sourcePath);
+			expect(source).toContain(
+				"const toolRegistry = $derived(layout?.toolRegistry ?? null);",
+			);
+			expect(source).not.toContain("$props()");
+		}
+		expect(readCode(KERNEL_HOST_PATH)).not.toContain("toolRegistry={");
 	});
 });
 describe("section-player tool surface host seam", () => {

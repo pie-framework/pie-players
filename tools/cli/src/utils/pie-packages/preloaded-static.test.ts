@@ -13,6 +13,7 @@ import {
 	minifyPlayerModules,
 	parseElementsInput,
 	readElementSet,
+	readSpeechLocales,
 } from "./preloaded-static.js";
 
 const writeConfig = async (name: string, content: unknown): Promise<string> => {
@@ -71,6 +72,19 @@ describe("preloaded static utilities", () => {
 		const file = await writeConfig("Star_0326.json", []);
 		await expect(readElementSet(file)).rejects.toThrow("not a valid element-set name");
 	});
+
+	test("readSpeechLocales reads the flag, then the config file", async () => {
+		const file = await writeConfig("star-0326.json", { speechLocales: ["en", "es"], elements: [] });
+		expect(await readSpeechLocales(file)).toEqual(["en", "es"]);
+		expect(await readSpeechLocales(file, "en, de")).toEqual(["en", "de"]);
+		expect(await readSpeechLocales(await writeConfig("plain.json", []))).toBeUndefined();
+		expect(await readSpeechLocales(undefined)).toBeUndefined();
+	});
+
+	test("readSpeechLocales rejects locales that are not a list of ids", async () => {
+		const file = await writeConfig("star-0326.json", { speechLocales: "en", elements: [] });
+		await expect(readSpeechLocales(file)).rejects.toThrow('"speechLocales" in');
+	});
 });
 
 // ─── Generated entry ──────────────────────────────────────────────────────────
@@ -87,6 +101,7 @@ const PAGE_GLOBALS = [
 	"PIE_PRELOADED_ELEMENTS",
 	"pieFixedPlayerLoaded",
 	"__generatedEntry",
+	"@pie-lib/math-rendering@2",
 ] as const;
 
 const ELEMENTS = [
@@ -94,6 +109,11 @@ const ELEMENTS = [
 	"@pie-element/mc-populated-blank@0.3.0-next.9",
 ];
 const ELEMENT_TAGS = { "@pie-element/multiple-choice": "pie-element-multiple-choice" };
+const MATHJAX_FILES = [
+	"@mathjax/mathjax-newcm-font@4.1.3/chtml/woff2/mjx-ncm-n.woff2",
+	"mathjax@4.1.3/sre/mathmaps/en.json",
+	"mathjax@4.1.3/sre/speech-worker.js",
+];
 
 class HTMLElementStub {}
 const elementClasses = {
@@ -104,7 +124,6 @@ let page: {
 	order: string[];
 	loadStates: string[];
 	defined: Map<string, unknown>;
-	mathSrc?: string;
 };
 
 /** A document with only what the generated entry and the helper touch. */
@@ -126,16 +145,18 @@ function installPage(): void {
 			return true;
 		},
 	};
-	g.__generatedEntry = { page, elementClasses };
+	g.__generatedEntry = { page, elementClasses, registerPreloadedElements };
 }
 
 /** The generated entry beside stand-ins for the files the build writes next to it. */
-async function writeBuild({ mathjax = true } = {}): Promise<string> {
+async function writeBuild(math: { mathjaxFiles?: string[]; speechLocales?: string[] } = {}): Promise<string> {
 	const dir = await mkdtemp(join(os.tmpdir(), "pie-preloaded-index-"));
-	const loaders = import.meta.resolve("@pie-players/pie-players-shared/loaders");
+	// The stand-in hands over the function this file imported: a bare specifier
+	// does not resolve from a temporary directory, and `import.meta.resolve` needs
+	// the sibling built.
 	await writeFile(
 		join(dir, "preloaded.js"),
-		`export { registerPreloadedElements } from ${JSON.stringify(loaders)};
+		`export const { registerPreloadedElements } = globalThis.__generatedEntry;
 `,
 	);
 	await mkdir(join(dir, "elements"));
@@ -144,10 +165,6 @@ async function writeBuild({ mathjax = true } = {}): Promise<string> {
 		`const { page, elementClasses } = globalThis.__generatedEntry;
 page.order.push("elements");
 export const elements = elementClasses;
-export function startMathRendering(srcUrl) {
-  page.order.push("math");
-  page.mathSrc = srcUrl;
-}
 `,
 	);
 	await writeFile(
@@ -158,7 +175,7 @@ customElements.define("pie-item-player", class extends HTMLElement {});
 	);
 	await writeFile(
 		join(dir, "index.js"),
-		generateIndex(ELEMENTS, ELEMENT_TAGS, { mathjax }),
+		generateIndex(ELEMENTS, ELEMENT_TAGS, math),
 	);
 	return pathToFileURL(join(dir, "index.js")).href;
 }
@@ -203,24 +220,45 @@ describe("generated preloaded entry", () => {
 		]);
 	});
 
-	test("starts MathJax from the build's copy before registering, and loads the player last", async () => {
-		const entry = await writeBuild();
-		await import(entry);
-		expect(page.order).toEqual(["elements", "math", "player"]);
-		expect(page.mathSrc).toBe(new URL("./mathjax/load.js", entry).href);
+	test("registers the elements, then loads the player", async () => {
+		await import(await writeBuild());
+		expect(page.order).toEqual(["elements", "player"]);
 		expect(page.loadStates).toEqual(["PIE-Fixed-Player-Load-Complete"]);
 		expect(g.pieFixedPlayerLoaded).toBe(true);
 	});
 
-	test("starts no MathJax for a build that ships none", async () => {
-		await import(await writeBuild({ mathjax: false }));
-		expect(page.order).toEqual(["elements", "player"]);
+	test("gives the adapter copies the URL of each MathJax file the build ships", async () => {
+		const entry = await writeBuild({ mathjaxFiles: MATHJAX_FILES, speechLocales: ["en"] });
+		await import(entry);
+		expect(g["@pie-lib/math-rendering@2"].opts).toEqual({
+			assetUrls: Object.fromEntries(
+				MATHJAX_FILES.map((file) => [file, new URL(`./mathjax/npm/${file}`, entry).href]),
+			),
+			speechLocales: ["en"],
+		});
+	});
+
+	test("names each module and file with a literal a bundler follows", () => {
+		const source = generateIndex(ELEMENTS, ELEMENT_TAGS, { mathjaxFiles: MATHJAX_FILES, speechLocales: ["en"] });
+		expect([...(source.match(/import\([^)]*\)/g) ?? [])]).toEqual([
+			"import('./preloaded.js')",
+			"import('./elements/index.js')",
+			"import('./pie-item-player.js')",
+		]);
+		expect([...(source.match(/new URL\([^)]*\)/g) ?? [])]).toEqual(
+			MATHJAX_FILES.map((file) => `new URL("./mathjax/npm/${file}", import.meta.url)`),
+		);
+	});
+
+	test("leaves the page's math options alone for a build without MathJax files", async () => {
+		await import(await writeBuild());
+		expect(g["@pie-lib/math-rendering@2"]).toBeUndefined();
 	});
 
 	test("renders through a pie-item-player the page already holds", async () => {
 		g.customElements.define("pie-item-player", class {});
 		await import(await writeBuild());
-		expect(page.order).toEqual(["elements", "math"]);
+		expect(page.order).toEqual(["elements"]);
 	});
 
 	test("fails the load when the page registered another version of a package", async () => {

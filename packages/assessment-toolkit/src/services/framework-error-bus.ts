@@ -52,12 +52,9 @@ export interface FrameworkErrorReporter {
  *   before constructing the coordinator so the `coordinator-init`
  *   failure path emits through the same bus.
  *
- * **Why not a public class.** This bus is constructed inside the toolkit
- * CE (`PieAssessmentToolkit.svelte`) and passed into
- * `ToolkitCoordinator`. Hosts subscribe via
- * `ToolkitCoordinatorApi.subscribeFrameworkErrors`, never via the bus
- * class itself. Keeping the class package-internal lets us iterate on
- * its shape without a public-API change.
+ * **Where it is constructed.** The toolkit CE (`PieAssessmentToolkit.svelte`)
+ * builds one and passes it into `ToolkitCoordinator`; hosts subscribe via
+ * `ToolkitCoordinatorApi.subscribeFrameworkErrors`.
  */
 export class FrameworkErrorBus
 	implements FrameworkErrorPort, FrameworkErrorReporter

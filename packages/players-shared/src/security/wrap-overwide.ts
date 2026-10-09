@@ -45,6 +45,11 @@ export interface OverwideWrapSpec {
 	markupProbe: RegExp;
 	/** The wrapper's accessible name for one node. */
 	buildAriaLabel: (node: Element) => string;
+	/**
+	 * An extra wrapper class carrying the node's own layout, or `null` for none.
+	 * Absent when every wrapper lays out alike.
+	 */
+	layoutClass?: (node: Element) => string | null;
 }
 
 export interface WrapOverwideOptions {
@@ -69,8 +74,18 @@ function isInsidePieCustomElement(node: Element, root: Element): boolean {
 }
 
 /**
+ * Wrappers whose layout class was read from the live cascade. A wrapper built
+ * off-document saw only its node's inline style, so the first live pass to meet
+ * it reads the layout again; this set keeps that to once per wrapper.
+ */
+const liveLayoutRead = new WeakSet<Element>();
+
+/**
  * Wrap every unwrapped match under `root`. Returns the number newly wrapped so
  * callers can short-circuit when nothing changed. Idempotent.
+ *
+ * Under a connected `root`, a wrapper whose layout was never read live gains
+ * the layout class this pass would have given it.
  */
 export function wrapOverwideInElement(
 	root: Element,
@@ -84,24 +99,61 @@ export function wrapOverwideInElement(
 	const ownerDocument = root.ownerDocument;
 	if (!ownerDocument) return 0;
 
-	let wrapped = 0;
+	const readsLiveLayout =
+		!!spec.layoutClass && !!ownerDocument.defaultView && root.isConnected;
+
+	const targets: Element[] = [];
+	const unread: Element[] = [];
 	for (const node of nodes) {
 		const parent = node.parentElement;
 		if (!parent) continue;
 
 		// Idempotency — already wrapped.
-		if (parent.classList?.contains(spec.wrapperClass)) continue;
+		const wrapped = parent.classList?.contains(spec.wrapperClass);
+		if (wrapped && (!readsLiveLayout || liveLayoutRead.has(parent))) continue;
 
 		// Authored-markup pass: leave PIE custom-element internals alone.
 		if (skipPieDescendants && isInsidePieCustomElement(node, root)) continue;
 
 		if (node.closest(EDITING_HOST_SELECTOR)) continue;
 
+		if (!wrapped) targets.push(node);
+		else if (!unread.some((other) => other.parentElement === parent))
+			unread.push(node);
+	}
+
+	// Layout is read for every node before the first insertion: a read after a
+	// wrap forces a fresh style resolution, one per node. A wrapper's own styles
+	// override its node's layout — the theme makes every wrapped image a block —
+	// so an existing wrapper is read with its classes lifted.
+	const unreadWrappers = unread.map((node) => node.parentElement as Element);
+	const liftedClasses = unreadWrappers.map((wrapper) => wrapper.className);
+	for (const wrapper of unreadWrappers) wrapper.className = "";
+	const layoutClasses = targets.map((node) => spec.layoutClass?.(node) ?? null);
+	const unreadLayoutClasses = unread.map(
+		(node) => spec.layoutClass?.(node) ?? null,
+	);
+	for (const [index, wrapper] of unreadWrappers.entries()) {
+		wrapper.className = liftedClasses[index];
+		const layoutClass = unreadLayoutClasses[index];
+		if (layoutClass) wrapper.classList.add(layoutClass);
+		liveLayoutRead.add(wrapper);
+	}
+
+	let wrapped = 0;
+	for (const [index, node] of targets.entries()) {
+		const parent = node.parentElement;
+		if (!parent) continue;
+
 		const wrapper = ownerDocument.createElement(spec.wrapperTag);
-		wrapper.className = spec.wrapperClass;
+		const layoutClass = layoutClasses[index];
+		wrapper.className = layoutClass
+			? `${spec.wrapperClass} ${layoutClass}`
+			: spec.wrapperClass;
 		wrapper.setAttribute("tabindex", "0");
 		wrapper.setAttribute("role", "region");
 		wrapper.setAttribute("aria-label", spec.buildAriaLabel(node));
+		if (readsLiveLayout) liveLayoutRead.add(wrapper);
 
 		parent.insertBefore(wrapper, node);
 		wrapper.appendChild(node);

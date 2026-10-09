@@ -1,6 +1,6 @@
 <script lang="ts">
-	import { dev } from "$app/environment";
-	import { getAllAssessmentDemos } from "$lib/content/assessments";
+	import { dev } from "$app/env";
+	import { getAllAssessmentDemos } from "#lib/content/assessments.js";
 
 	const demos = getAllAssessmentDemos();
 </script>

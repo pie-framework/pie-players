@@ -20,6 +20,7 @@ const LOADING_SECTION = "Loading section content";
 type Recorded = {
 	type: string;
 	stage?: string;
+	status?: string;
 	kind?: string;
 	recoverable?: boolean;
 };
@@ -105,12 +106,16 @@ async function mountFreshSplitpane(
 			const fresh = document.createElement(
 				"pie-section-player-splitpane",
 			) as HTMLElement & { runtime?: unknown; section?: unknown };
-			fresh.setAttribute("assessment-id", "drift-assessment");
 			fresh.setAttribute("section-id", "drift-section");
 			fresh.setAttribute("attempt-id", `drift-${Date.now()}`);
 			fresh.addEventListener("pie-stage-change", (event) => {
-				const detail = (event as CustomEvent<{ stage?: string }>).detail;
-				events.push({ type: "pie-stage-change", stage: detail?.stage });
+				const detail = (event as CustomEvent<{ stage?: string; status?: string }>)
+					.detail;
+				events.push({
+					type: "pie-stage-change",
+					stage: detail?.stage,
+					status: detail?.status,
+				});
 			});
 			fresh.addEventListener("pie-loading-complete", () => {
 				events.push({ type: "pie-loading-complete" });
@@ -126,6 +131,7 @@ async function mountFreshSplitpane(
 				});
 			});
 			fresh.runtime = {
+				assessmentId: "drift-assessment",
 				playerType: "preloaded",
 				env: { mode: "gather", role: "student" },
 				onFrameworkError: (model: { kind?: string }) => {
@@ -266,7 +272,12 @@ test.describe("section player preloaded version drift", () => {
 		expect(
 			events.filter((event) => event.type === "onFrameworkError"),
 		).toHaveLength(1);
-		expect(events.map((event) => event.stage)).not.toContain("interactive");
+		// The error ends the stage chain: `interactive` arrives only as `failed` or `skipped`.
+		expect(
+			events
+				.filter((event) => event.stage === "interactive")
+				.map((event) => event.status),
+		).not.toContain("entered");
 		expect(events.map((event) => event.type)).not.toContain(
 			"pie-loading-complete",
 		);

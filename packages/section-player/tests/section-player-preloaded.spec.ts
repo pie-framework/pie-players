@@ -62,7 +62,7 @@ test.describe("section player preloaded strategy", () => {
 		// fixture in f3dffd7d (PIE-619). The passage is a `pie-passage-shell`, so it
 		// is not in this count.
 		await expect(
-			page.locator('pie-item-shell[data-pie-shell-root="item"]'),
+			page.locator('pie-item-scope[data-pie-shell-root="item"]'),
 		).toHaveCount(2, { timeout: 30_000 });
 		// The passage's math is typeset by its passage element.
 		await expect(
@@ -107,7 +107,7 @@ test.describe("section player preloaded strategy", () => {
 		// fixture in f3dffd7d (PIE-619). The passage is a `pie-passage-shell`, so it
 		// is not in this count.
 		await expect(
-			page.locator('pie-item-shell[data-pie-shell-root="item"]'),
+			page.locator('pie-item-scope[data-pie-shell-root="item"]'),
 		).toHaveCount(2, { timeout: 30_000 });
 	});
 
@@ -190,7 +190,6 @@ test.describe("section player preloaded strategy", () => {
 				const fresh = document.createElement(
 					"pie-section-player-splitpane",
 				) as HTMLElement & { runtime?: unknown; section?: unknown };
-				fresh.setAttribute("assessment-id", "eliminator-assessment");
 				fresh.setAttribute("section-id", "eliminator-section");
 				fresh.setAttribute("attempt-id", `eliminator-${Date.now()}`);
 				fresh.addEventListener("toolkit-ready", (event) => {
@@ -204,6 +203,7 @@ test.describe("section player preloaded strategy", () => {
 					});
 				});
 				fresh.runtime = {
+					assessmentId: "eliminator-assessment",
 					playerType: "preloaded",
 					env: { mode: "gather", role: "student" },
 					tools: {
@@ -223,7 +223,7 @@ test.describe("section player preloaded strategy", () => {
 		);
 
 		const itemShells = page.locator(
-			'pie-item-shell[data-pie-shell-root="item"]',
+			'pie-item-scope[data-pie-shell-root="item"]',
 		);
 		const multipleChoice = itemShells.nth(0);
 		const categorize = itemShells.nth(1);
@@ -435,7 +435,7 @@ test.describe("section player preloaded strategy", () => {
 
 		await page.evaluate(() => {
 			for (const shell of document.querySelectorAll(
-				'pie-item-shell[data-pie-shell-root="item"]',
+				'pie-item-scope[data-pie-shell-root="item"]',
 			)) {
 				shell.setAttribute("data-remount-probe", "");
 			}

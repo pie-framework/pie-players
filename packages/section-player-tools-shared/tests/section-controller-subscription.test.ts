@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 
 import { createSectionControllerSubscriptionManager } from "../section-controller-subscription.js";
+import type { SectionControllerLifecycleEventLike } from "../section-controller.js";
 
 type FakeController = { id: string };
 
@@ -83,9 +84,13 @@ describe("createSectionControllerSubscriptionManager", () => {
 		manager.ensure("section-1", "attempt-1");
 		expect(subscribeCalls).toBe(1);
 
-		let lifecycleListener: ((event: unknown) => void) | null = null;
+		let lifecycleListener = null as
+			| ((event: SectionControllerLifecycleEventLike) => void)
+			| null;
 		const coordinator = {
-			onSectionControllerLifecycle: (listener: (event: unknown) => void) => {
+			onSectionControllerLifecycle: (
+				listener: (event: SectionControllerLifecycleEventLike) => void,
+			) => {
 				lifecycleListener = listener;
 				return () => {
 					lifecycleListener = null;
@@ -116,9 +121,13 @@ describe("createSectionControllerSubscriptionManager", () => {
 		});
 		manager.ensure("section-1", "attempt-1");
 
-		let lifecycleListener: ((event: unknown) => void) | null = null;
+		let lifecycleListener = null as
+			| ((event: SectionControllerLifecycleEventLike) => void)
+			| null;
 		const coordinator = {
-			onSectionControllerLifecycle: (listener: (event: unknown) => void) => {
+			onSectionControllerLifecycle: (
+				listener: (event: SectionControllerLifecycleEventLike) => void,
+			) => {
 				lifecycleListener = listener;
 				return () => {};
 			},

@@ -1,5 +1,7 @@
 import type { MathAwareSpeechChunk } from "../math-aware-text-processing.js";
 import {
+	createReadSreLoad,
+	type ResolveMathSpeechOptions,
 	resolveMathSpeechFromChunks,
 	type ResolvedMathSpeech,
 	type SREMathSpeechOptions,
@@ -21,6 +23,8 @@ export type MathSpeechResolver = (
 		language?: string;
 		produceSsml?: boolean;
 		mathSpeech?: SREMathSpeechOptions;
+		/** The read's one engine load, shared by its equations. */
+		loadSre?: ResolveMathSpeechOptions["loadSre"];
 	},
 ) => Promise<ResolvedMathSpeech>;
 
@@ -76,6 +80,7 @@ export const assembleGeneratedSpeech = async (args: {
 	resolveMathSpeech?: MathSpeechResolver;
 }): Promise<AssembledSpeech> => {
 	const resolveMathSpeech = args.resolveMathSpeech ?? defaultMathSpeechResolver;
+	const loadSre = createReadSreLoad(args.mathSpeech);
 	const { visibleText } = args;
 	const segments: AssembledSegment[] = [];
 
@@ -125,6 +130,7 @@ export const assembleGeneratedSpeech = async (args: {
 			language: args.language,
 			produceSsml: args.produceSsml,
 			mathSpeech: args.mathSpeech,
+			loadSre,
 		});
 		const usedFallback = !generated.speechText;
 		const spokenText = generated.speechText || chunk.fallbackText;

@@ -74,12 +74,23 @@ describe("content stylesheet theming", () => {
 		expect(source).not.toContain("background-color: #d3d3d3");
 	});
 
-	test("subtle grid rules are mixed from the ink, not --pie-border-light", () => {
-		// --pie-border-light is filled from DaisyUI base-200 — a surface — so a
-		// border taken from it disappears into the page.
-		expect(source).toContain(
-			"color-mix(in srgb, var(--pie-text, #000) 15%, transparent)",
+	test("table grid rules paint the ink, like every other authored grid", () => {
+		// A 15% ink mix measured 1.41:1 on white against SC 1.4.11's 3:1, and the
+		// share that would clear it depends on the palette, so no share is safe.
+		const tableRules = [
+			...withoutComments.matchAll(/(\.table[^{]*)\{([^}]*)\}/g),
+		].map(([, selector, body]) => ({ selector: selector.trim(), body }));
+		const gridPaints = tableRules.flatMap(({ selector, body }) =>
+			body
+				.split(";")
+				.map((declaration) => declaration.trim().replace(/\s+/g, " "))
+				.filter((declaration) => /^border(-top|-bottom)?:/.test(declaration))
+				.map((declaration) => `${selector} { ${declaration} }`),
 		);
+		expect(gridPaints.length).toBe(4);
+		for (const paint of gridPaints) {
+			expect(paint).toContain("solid var(--pie-text, black)");
+		}
 		expect(source).not.toContain("#dee2e6;");
 	});
 
@@ -104,11 +115,11 @@ describe("content stylesheet theming", () => {
 
 	test("the shipped rules that could not be made accessible are gone", () => {
 		// Global-id 50% floats cannot reflow and applied to any host element with
-		// those ids; the `lrn_` rules styled a product PIE does not render.
+		// those ids; the legacy players never applied the `.lrn_feature` override.
 		// The removal is recorded in a comment, so assert against the rules only.
 		expect(withoutComments).not.toContain("#stimulus");
 		expect(withoutComments).not.toContain("#item {");
-		expect(withoutComments).not.toContain(".lrn_");
+		expect(withoutComments).not.toContain(".lrn_feature");
 		// Headings keep the browser's weight, so the level still reads visually.
 		expect(collapsed).not.toContain("font-weight:500");
 	});

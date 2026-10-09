@@ -41,7 +41,7 @@ import type {
 	ToolRegistration,
 	ToolSurfaceRenderContext,
 	ToolSurfaceRenderResult,
-} from "@pie-players/pie-assessment-toolkit/tools/internal";
+} from "@pie-players/pie-assessment-toolkit/tools/registration";
 
 /** QTI 3.0 / AfA support id gating an audio transcript. */
 export const AUDIO_TRANSCRIPT_FEATURE_ID = "transcript";
@@ -188,8 +188,6 @@ export const audioTranscriptRegistration: ToolRegistration = {
 	descriptionKey: "tools.audioTranscript.description",
 
 	supportedLevels: ["item", "passage"],
-
-	pnpSupportIds: [AUDIO_TRANSCRIPT_FEATURE_ID],
 
 	// No button to press: a transcript is either authored-visible, or granted and
 	// present, or absent. `region` is the activation for a capability with no

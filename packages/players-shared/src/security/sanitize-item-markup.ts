@@ -8,6 +8,7 @@
  * allow-list.
  */
 
+import { markAuthoredColors } from "@pie-element/shared-utils";
 import DOMPurify from "dompurify";
 
 import {
@@ -58,6 +59,43 @@ const BASE_ALLOWED_ATTRS = [
 	"dir",
 ];
 
+// MathML authored content uses that DOMPurify drops: elementary math, which
+// `@pie-element/shared-math-rendering-mathjax` rewrites as a table before
+// MathJax reads it, and `semantics`, `annotation`, `mprescripts` and `none`.
+// `annotation-xml` stays out because it is an HTML integration point.
+const MATHML_TAGS = new Set([
+	"mstack",
+	"mlongdiv",
+	"msgroup",
+	"msrow",
+	"msline",
+	"mscarries",
+	"mscarry",
+	"semantics",
+	"annotation",
+	"mprescripts",
+	"none",
+]);
+
+const MATHML_ATTRS = [
+	"stackalign",
+	"charalign",
+	"charspacing",
+	"longdivstyle",
+	"position",
+	"shift",
+	"location",
+	"crossout",
+	"leftoverhang",
+	"rightoverhang",
+	"mslinethickness",
+	"linebreak",
+];
+
+// Prefixed MathML such as `<m:math>`, which the HTML parser reads as unknown
+// HTML elements and the math adapter re-creates as MathML.
+const PREFIXED_TAG = /^[a-z_][\w.-]*:[a-z][\w.-]*$/;
+
 const BASE_URI_SAFE_ATTRS = ["pie-id"];
 
 const FORBIDDEN_TAGS = SANITIZER_FORBIDDEN_TAGS;
@@ -104,6 +142,12 @@ function resolvePurifier(): DOMPurifyInstance | null {
 	// `style` is URI-safe to DOMPurify, so nothing inside it is inspected
 	// without this. See sanitize-style-attribute.ts.
 	installStyleAttributeHook(purifierInstance);
+	// After the style filter, so only declarations that survive it are marked.
+	// The markers are the contract a color scheme's CSS overrides authored
+	// colors through, shared with element model HTML. (PIE-1119)
+	purifierInstance.addHook?.("afterSanitizeAttributes", (node) =>
+		markAuthoredColors(node as Element),
+	);
 	return purifierInstance;
 }
 
@@ -115,6 +159,10 @@ function resolvePurifier(): DOMPurifyInstance | null {
  *   `form`, `meta`, `link`).
  * - Preserves PIE custom elements (`pie-*`) and any extra tags listed in
  *   `allowedCustomElements`.
+ * - Marks elements that carry an authored color, as `markAuthoredColors`
+ *   in `@pie-element/shared-utils` describes, so a color scheme can override
+ *   it. A host that opts out with `trust-markup` or supplies its own
+ *   sanitizer gets no markers.
  * - During SSR (no `window`) returns an empty string so untrusted markup
  *   never reaches the prerender output; the live renderer will re-run the
  *   sanitizer on hydrate.
@@ -133,8 +181,12 @@ export function sanitizeItemMarkup(
 	const explicitCustomElementSet = new Set(allowedCustomElements);
 
 	const result = purifier.sanitize(markup, {
-		ADD_TAGS: allowedCustomElements,
-		ADD_ATTR: BASE_ALLOWED_ATTRS,
+		// DOMPurify still removes a tag in FORBID_TAGS that this accepts.
+		ADD_TAGS: (tagName: string) =>
+			explicitCustomElementSet.has(tagName) ||
+			MATHML_TAGS.has(tagName) ||
+			PREFIXED_TAG.test(tagName),
+		ADD_ATTR: [...BASE_ALLOWED_ATTRS, ...MATHML_ATTRS],
 		ADD_URI_SAFE_ATTR: BASE_URI_SAFE_ATTRS,
 		FORBID_TAGS: FORBIDDEN_TAGS,
 		FORBID_ATTR: FORBIDDEN_ATTRS,

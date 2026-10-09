@@ -286,7 +286,7 @@
 		padding: 0.35rem 0.75rem;
 		border: 1px solid var(--pie-border-light, #e5e7eb);
 		border-radius: 0.375rem;
-		background: var(--pie-background-light, #f9fafb);
+		background: var(--pie-secondary-background, #f9fafb);
 		color: inherit;
 		font: inherit;
 		cursor: pointer;

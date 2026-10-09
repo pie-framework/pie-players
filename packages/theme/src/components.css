@@ -16,7 +16,9 @@
    document-wide, because elements portal menus and popovers holding authored
    markup to `<body>`, outside every `[data-pie-content]` root: an
    inline-dropdown's choices keep their KDS fractions and MathJax glyph fixes
-   there. The `:root` sentinel below stays unscoped too.
+   there. A rule that requires an authored-colour marker stays document-wide
+   for the same reason. The `:root` sentinel below and the `[data-color-scheme]`
+   rule that captures a scheme's ink and page stay unscoped too.
 
    Colour values resolve through the canonical --pie-* tokens with the original
    literal kept as the no-theme last resort. The literals came from content
@@ -126,12 +128,23 @@
  * column the scrollbar stays hidden (overflow-x: auto); when it doesn't, the
  * wrapper — not the passage or section layout — provides the sideways scroll
  * needed to satisfy WCAG 1.4.10 Reflow at 400% zoom.
+ *
+ * The wrapper is inline-block so an image keeps its place in the line: a block
+ * wrapper put every image on a line of its own, stacking a row of picture-graph
+ * icons into a column and adding a line to every image choice. Its baseline is
+ * its bottom edge, as an inline image's is, so the image sits where it did. An
+ * image laid out as a block gets `pie-image-scroll-block` from the player, so
+ * its wrapper adds no line box below it.
  */
 :where([data-pie-content]) .pie-image-scroll {
-	display: block;
+	display: inline-block;
 	max-width: 100%;
 	overflow-x: auto;
 	overflow-y: hidden;
+}
+
+:where([data-pie-content]) .pie-image-scroll.pie-image-scroll-block {
+	display: block;
 }
 
 :where([data-pie-content]) .pie-image-scroll > img {
@@ -610,55 +623,105 @@ table.KdsTable02 > tbody > tr > td {
 	padding: 2px;
 }
 
-/* The grid rules below are mixed from the ink instead of taken from
-   --pie-border-light, which the DaisyUI mapping fills from base-200 — a surface,
-   so a border set from it disappears into the page. The 15% mix keeps the
-   near-invisible weight #dee2e6 had on white and inverts to a faint light rule
-   on a dark surface. Mixed inline, not hoisted to a custom property: a custom
-   property substitutes var(--pie-text) where it is declared, so a scoped
-   <pie-theme scope="self"> below :root would not reach it. */
-:where([data-pie-content]) .table {
+/* Bootstrap 4 / Learnosity table classes, as content migrated from Learnosity
+   carries them: `.table`, `.table-bordered`, `.table-striped`,
+   `.table-no-border`, `.lrn_width_auto`. Hosts once imported these rules from
+   pie-player-components to give data tables visible borders (PD-876).
+
+   A layout table gets none of them. Authors mark one with `.table-no-border`,
+   `role="presentation"` or both, and the grid, 100% width and cell padding
+   pushed its letter tiles and images apart, where hosts that never imported
+   the rules render it bare. The class carries the exclusion on its own,
+   because one exported markup spells the role into the class list
+   (`class="table … role= table-no-border"`) and has no role attribute.
+   Elements leave presentation tables unstyled for the same reason (PIE-440).
+   The exclusion sits in `:where()` so every selector keeps the specificity of
+   its plain `.table` form.
+
+   The grid rules paint the ink, as every other authored grid in this file
+   does and as pie-lib's table grid falls back to: --pie-text is held to 4.5:1
+   against the page, so the rules clear SC 1.4.11's 3:1 wherever the text is
+   legible. They were a 15% mix, as faint as the fixed light grey (#dee2e6)
+   they first shipped with: 1.41:1 on white. A lighter fixed share cannot be
+   certified: the share that clears 3:1 depends on the palette, 62% on the
+   Grey on Light Grey scheme, and is unknown for a host's own.
+   --pie-border-light is no substitute either; the DaisyUI mapping fills it
+   from base-200, a surface. Each rule reads the ink itself, not through a
+   custom property, which would substitute var(--pie-text) where it is
+   declared: a scoped <pie-theme scope="self"> below :root would not reach it,
+   and neither would a shade fill's swapped ink (AUTHORED COLOURS below), which
+   keeps the rules around adjacent filled cells in the scheme's page colour. */
+:where([data-pie-content])
+.table:where(:not(.table-no-border, [role="presentation"])) {
 	width: 100%;
 	margin-bottom: 1em;
 	background-color: transparent;
 	border-collapse: collapse;
 }
 
-:where([data-pie-content]) .table th,
-:where([data-pie-content]) .table td {
+/* Learnosity's opt-out of the full-width table: it sizes to its content
+   (PD-194). */
+:where([data-pie-content])
+.table.lrn_width_auto:where(:not(.table-no-border, [role="presentation"])) {
+	width: auto;
+}
+
+:where([data-pie-content])
+	.table:where(:not(.table-no-border, [role="presentation"]))
+	th,
+:where([data-pie-content])
+	.table:where(:not(.table-no-border, [role="presentation"]))
+	td {
 	padding: 0.75em;
 	vertical-align: top;
-	border-top: 1px solid
-		color-mix(in srgb, var(--pie-text, #000) 15%, transparent);
+	border-top: 1px solid var(--pie-text, black);
 }
 
-:where([data-pie-content]) .table tbody + tbody {
-	border-top: 2px solid
-		color-mix(in srgb, var(--pie-text, #000) 15%, transparent);
+:where([data-pie-content])
+	.table:where(:not(.table-no-border, [role="presentation"]))
+	tbody
+	+ tbody {
+	border-top: 2px solid var(--pie-text, black);
 }
 
-:where([data-pie-content]) .table thead th {
+:where([data-pie-content])
+	.table:where(:not(.table-no-border, [role="presentation"]))
+	thead
+	th {
 	vertical-align: bottom;
-	border-bottom: 2px solid
-		color-mix(in srgb, var(--pie-text, #000) 15%, transparent);
+	border-bottom: 2px solid var(--pie-text, black);
 }
 
 :where([data-pie-content]) th {
 	text-align: inherit;
 }
 
-:where([data-pie-content]) .table-bordered,
-:where([data-pie-content]) .table-bordered th,
-:where([data-pie-content]) .table-bordered td {
-	border: 1px solid color-mix(in srgb, var(--pie-text, #000) 15%, transparent);
+:where([data-pie-content])
+	.table-bordered:where(:not(.table-no-border, [role="presentation"])),
+:where([data-pie-content])
+	.table-bordered:where(:not(.table-no-border, [role="presentation"]))
+	th,
+:where([data-pie-content])
+	.table-bordered:where(:not(.table-no-border, [role="presentation"]))
+	td {
+	border: 1px solid var(--pie-text, black);
 }
 
-:where([data-pie-content]) .table-bordered thead td,
-:where([data-pie-content]) .table-bordered thead th {
+:where([data-pie-content])
+	.table-bordered:where(:not(.table-no-border, [role="presentation"]))
+	thead
+	td,
+:where([data-pie-content])
+	.table-bordered:where(:not(.table-no-border, [role="presentation"]))
+	thead
+	th {
 	border-bottom-width: 2px;
 }
 
-:where([data-pie-content]) .table-striped tbody tr:nth-of-type(odd) {
+:where([data-pie-content])
+	.table-striped:where(:not(.table-no-border, [role="presentation"]))
+	tbody
+	tr:nth-of-type(odd) {
 	background-color: color-mix(in srgb, var(--pie-text, #000) 5%, transparent);
 }
 
@@ -702,13 +765,12 @@ table.KdsTable02 > tbody > tr > td {
 }
 
 /*
- * Removed: a `#stimulus` / `#item` pair of 50% left floats, a `.lrn_feature h3`
- * margin override and `.lrn_width_auto.table`. The float pair hard-coded a
- * two-column layout keyed to two global ids — it cannot reflow at 400% zoom
- * (SC 1.4.10), and it applied to any element in the host document carrying
- * those ids. The other two styled a third-party product's markup that PIE does
- * not render. None of the three could be made correct here, so they are gone
- * rather than patched.
+ * Removed: a `#stimulus` / `#item` pair of 50% left floats and a
+ * `.lrn_feature h3` margin override. The float pair hard-coded a two-column
+ * layout keyed to two global ids — it cannot reflow at 400% zoom (SC 1.4.10),
+ * and it applied to any element in the host document carrying those ids.
+ * The legacy players never applied the margin override, so content migrated
+ * with `.lrn_feature` keeps the heading margin it had there.
  */
 
 .TEX-S3 {
@@ -927,4 +989,56 @@ mjx-c.mjx-c27 {
 	width: 1px;
 	height: 1px;
 	overflow: hidden;
+}
+
+/* AUTHORED COLOURS
+
+   Under a color scheme, colours written into authored markup give way to the
+   scheme. Sanitizers mark the elements that carry one (`markAuthoredColors` in
+   @pie-element/shared-utils): `data-pie-authored-ink` for a text colour,
+   `data-pie-authored-border` for a border colour and `data-pie-authored-fill`
+   for a background, `light` when it is near white and `shade` otherwise. Ink
+   and borders take the scheme's text and border colours. A light fill, usually
+   the page the text was pasted from, drops away. A shade fill (a header row, a highlight) inverts:
+   it takes the scheme's ink, and everything inside it reads the scheme's page
+   as its ink, so it keeps the contrast the scheme certifies and still stands
+   out. The default theme stamps no data-color-scheme and keeps the authored
+   colours. Gradients, background images and colours in MathJax output carry
+   no marker and render as authored.
+
+   The ink and page are captured on the element that declares the scheme's
+   tokens, so the swap inside a fill reads them without a cycle, and a fill
+   nested in a fill inverts once. Controls inside a fill read the swapped
+   neutral tokens; accent and feedback tokens keep their page values.
+
+   `!important` outranks the authored inline style, and the sanitizers drop
+   `!important` from a marked declaration. The rules stay document-wide: the
+   markers name authored content only, and elements portal authored markup to
+   <body>. */
+[data-color-scheme] {
+	--pie-scheme-ink: var(--pie-text);
+	--pie-scheme-page: var(--pie-background);
+}
+
+[data-color-scheme] [data-pie-authored-ink] {
+	color: var(--pie-text) !important;
+}
+
+[data-color-scheme] [data-pie-authored-border] {
+	border-color: var(--pie-border) !important;
+}
+
+[data-color-scheme] [data-pie-authored-fill="light"] {
+	background-color: transparent !important;
+	color: var(--pie-text) !important;
+}
+
+[data-color-scheme] [data-pie-authored-fill="shade"] {
+	--pie-text: var(--pie-scheme-page);
+	--pie-black: var(--pie-scheme-page);
+	--pie-border: var(--pie-scheme-page);
+	--pie-background: var(--pie-scheme-ink);
+	--pie-white: var(--pie-scheme-ink);
+	background-color: var(--pie-scheme-ink) !important;
+	color: var(--pie-scheme-page) !important;
 }

@@ -2,28 +2,19 @@
  * PNP/profile policy input detection. See
  * `docs/tools-and-accomodations/architecture.md`.
  *
- * Pure helpers that decide whether the inputs the engine has been given
- * actually carry PNP/profile policy material. Used by:
- *
- *   - {@link ToolPolicyEngine}'s constructor as the auto-default for
- *     `pnpEnforcement` when the host did not pass an explicit `"on"` /
- *     `"off"`.
- *   - {@link ToolkitCoordinator.resolveEffectivePnpEnforcement} as the
- *     auto-mode rule. PR 2 used a coarse "any non-null assessment → on"
- *     placeholder; PR 4 narrows it to "assessment OR currentItemRef
- *     carries profile policy material."
+ * Pure helpers that decide whether policy inputs carry PNP/profile policy
+ * material, which is what auto-mode `pnpEnforcement` turns on for. The engine
+ * resolves auto-mode per decision: the bound assessment for every decision, and
+ * for a decision scoped to an item, that item's settings as well.
  *
  * The rule is intentionally narrow. Hosts that bind a bare assessment
  * record (only `id` / `name`, no PNP and no settings) do not engage
  * PNP/profile gates. The flip happens the moment the assessment carries any of:
  *
- *   - `personalNeedsProfile` (any `supports`, `prohibitedSupports`, or
- *     `activateAtInit`),
- *   - `settings.districtPolicy` (any `blockedTools`, `requiredTools`,
- *     or `policies`),
- *   - `settings.testAdministration` (any populated key — `mode`,
- *     `toolOverrides`, etc.),
- *   - or the bound `currentItemRef.settings` carries
+ *   - `personalNeedsProfile` (any `supports` or `prohibitedSupports`),
+ *   - `settings.districtPolicy` (any `blockedTools` or `requiredTools`),
+ *   - `settings.testAdministration` (any `toolOverrides` entry),
+ *   - or, for an item-scoped decision, the item's settings carry
  *     `requiredTools` / `restrictedTools` / `toolParameters`.
  *
  * Hosts opt out of the auto-on behavior by passing
@@ -33,16 +24,15 @@
 
 import type {
 	AssessmentEntity,
-	AssessmentItemRef,
+	ItemSettings,
 } from "@pie-players/pie-players-shared/types";
 
 /**
  * Return `true` when the assessment carries any PNP/profile policy
  * material that the engine's `PnpPolicySource` would consume.
  *
- * The check is structural — the presence of a non-empty PNP, district
- * policy, or test administration block is enough; the content does not
- * have to validate against any specific rule.
+ * The check is structural — a non-empty field the source reads is enough;
+ * the content does not have to validate against any specific rule.
  */
 export function assessmentHasPnpPolicyInputs(
 	assessment: AssessmentEntity | null | undefined,
@@ -55,9 +45,6 @@ export function assessmentHasPnpPolicyInputs(
 			Array.isArray(pnp.prohibitedSupports) &&
 			pnp.prohibitedSupports.length > 0
 		) {
-			return true;
-		}
-		if (Array.isArray(pnp.activateAtInit) && pnp.activateAtInit.length > 0) {
 			return true;
 		}
 	}
@@ -77,47 +64,31 @@ export function assessmentHasPnpPolicyInputs(
 			) {
 				return true;
 			}
-			if (
-				district.policies &&
-				typeof district.policies === "object" &&
-				Object.keys(district.policies).length > 0
-			) {
-				return true;
-			}
 		}
-		const admin = settings.testAdministration;
-		if (admin && typeof admin === "object") {
-			for (const key of Object.keys(admin)) {
-				const value = (admin as Record<string, unknown>)[key];
-				if (value === undefined || value === null) continue;
-				if (Array.isArray(value) && value.length === 0) continue;
-				if (
-					typeof value === "object" &&
-					!Array.isArray(value) &&
-					Object.keys(value as Record<string, unknown>).length === 0
-				) {
-					continue;
-				}
-				return true;
-			}
+		const overrides = settings.testAdministration?.toolOverrides;
+		if (
+			overrides &&
+			typeof overrides === "object" &&
+			Object.keys(overrides).length > 0
+		) {
+			return true;
 		}
 	}
 	return false;
 }
 
 /**
- * Return `true` when the bound item reference carries item-level profile policy
+ * Return `true` when an item's settings carry item-level profile policy
  * material (`requiredTools`, `restrictedTools`, or `toolParameters`).
  *
- * Used in addition to {@link assessmentHasPnpPolicyInputs} so a host that
- * navigates to an item with profile-relevant settings — without a parent
- * assessment carrying its own PNP/district/test-admin block — still
- * gets PNP/profile gates engaged for that item.
+ * Used in addition to {@link assessmentHasPnpPolicyInputs} for a decision scoped
+ * to the item, so an item with profile-relevant settings engages PNP/profile
+ * gates on its own toolbar without a parent assessment carrying a
+ * PNP/district/test-admin block.
  */
-export function itemRefHasPnpPolicyInputs(
-	itemRef: AssessmentItemRef | null | undefined,
+export function itemSettingsHavePnpPolicyInputs(
+	settings: ItemSettings | null | undefined,
 ): boolean {
-	const settings = itemRef?.settings;
 	if (!settings) return false;
 	if (
 		Array.isArray(settings.requiredTools) &&
@@ -142,19 +113,20 @@ export function itemRefHasPnpPolicyInputs(
 }
 
 /**
- * Resolve the default `pnpEnforcement` mode given the bound inputs.
+ * Resolve the auto-mode `pnpEnforcement` for one decision.
  *
- * Returns `"on"` when {@link assessmentHasPnpPolicyInputs} or
- * {@link itemRefHasPnpPolicyInputs} reports any profile policy material; otherwise
- * `"off"`. Hosts override the default by passing an explicit
- * `pnpEnforcement` value (engine input) or by calling
+ * Returns `"on"` when {@link assessmentHasPnpPolicyInputs} reports profile
+ * policy material, or when `itemSettings` (the settings of the item a decision
+ * is scoped to) do per {@link itemSettingsHavePnpPolicyInputs}; otherwise
+ * `"off"`. Hosts override the default by passing an explicit `pnpEnforcement`
+ * value (engine input) or by calling
  * `ToolkitCoordinator.setPnpEnforcement("on" | "off")`.
  */
 export function resolveDefaultPnpEnforcement(args: {
 	assessment?: AssessmentEntity | null;
-	currentItemRef?: AssessmentItemRef | null;
+	itemSettings?: ItemSettings | null;
 }): "on" | "off" {
 	if (assessmentHasPnpPolicyInputs(args.assessment)) return "on";
-	if (itemRefHasPnpPolicyInputs(args.currentItemRef)) return "on";
+	if (itemSettingsHavePnpPolicyInputs(args.itemSettings)) return "on";
 	return "off";
 }

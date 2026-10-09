@@ -15,6 +15,7 @@
 		"CalculatorElement.svelte",
 		"calculator-element.ts",
 		"calculator-config-key.ts",
+		"inline-calculator-target.ts",
 		"svelte-source-aliases.ts",
 		"svelte-shims.d.ts"
 	],

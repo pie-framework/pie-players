@@ -27,7 +27,7 @@
 	"scripts": {
 		"build": "vite build",
 		"dev": "vite build --watch",
-		"test": "bun run build && bun test tests",
+		"test": "bun test tests",
 		"typecheck": "tsc --noEmit",
 		"check": "svelte-check --tsconfig ./tsconfig.svelte-check.json --compiler-warnings options_missing_custom_element:ignore",
 		"lint": "biome lint ."
@@ -44,7 +44,7 @@
 		"svelte-check": "^4.7.6",
 		"typescript": "^5.9.3",
 		"vite": "^8.3.2",
-		"vite-plugin-dts": "^5.1.1"
+		"vite-plugin-dts": "^5.1.2"
 	},
 	"homepage": "https://github.com/pie-framework/pie-players/tree/master/packages/tool-tts-inline#readme",
 	"bugs": {

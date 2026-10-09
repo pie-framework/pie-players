@@ -1,6 +1,13 @@
-import { execSync } from "node:child_process";
+import { execFile } from "node:child_process";
 import { existsSync, readFileSync, readdirSync, rmSync } from "node:fs";
+import { availableParallelism } from "node:os";
 import path from "node:path";
+import { promisify } from "node:util";
+
+const execFileAsync = promisify(execFile);
+
+/** `npm pack --json` lists every packed file; the largest packages run to hundreds of KiB. */
+const PACK_MAX_BUFFER = 16 * 1024 * 1024;
 
 export const toPosix = (value) =>
 	value.replaceAll(path.sep, "/").replaceAll("\\", "/");
@@ -199,26 +206,64 @@ export const getPublishablePackages = ({
 export const packedFilesFromPackData = (packData) =>
 	new Set((packData?.[0]?.files ?? []).map((entry) => toPosix(entry.path)));
 
-export const runPackDryRun = (dir) => {
-	const rawOutput = execSync("npm pack --dry-run --json", {
-		cwd: dir,
-		stdio: ["ignore", "pipe", "pipe"],
-	}).toString();
-	const packData = parsePackJson(rawOutput);
-	return packedFilesFromPackData(packData);
+/**
+ * Maps `items` through `fn`, at most `limit` at a time, keeping input order.
+ *
+ * The packaging checks spend nearly all their time in `npm pack`, about a second
+ * per package of which most is npm starting up, so they pack concurrently. After a
+ * rejection no further item starts; the ones in flight finish before it is rethrown,
+ * so a caller's cleanup never races a pack still writing.
+ */
+export const mapConcurrent = async (
+	items,
+	fn,
+	limit = availableParallelism(),
+) => {
+	const results = new Array(items.length);
+	let nextIndex = 0;
+	let failure = null;
+	const worker = async () => {
+		while (failure === null && nextIndex < items.length) {
+			const index = nextIndex++;
+			try {
+				results[index] = await fn(items[index], index);
+			} catch (error) {
+				failure ??= { error };
+			}
+		}
+	};
+	await Promise.all(
+		Array.from({ length: Math.max(1, Math.min(limit, items.length)) }, worker),
+	);
+	if (failure) throw failure.error;
+	return results;
 };
 
-export const runPack = (dir) => {
-	const rawOutput = execSync("npm pack --json", {
+const npmPack = async (dir, args) => {
+	const { stdout } = await execFileAsync("npm", ["pack", "--json", ...args], {
 		cwd: dir,
-		stdio: ["ignore", "pipe", "pipe"],
-	}).toString();
-	const packData = parsePackJson(rawOutput);
+		maxBuffer: PACK_MAX_BUFFER,
+	});
+	return parsePackJson(stdout);
+};
+
+export const runPackDryRun = async (dir) =>
+	packedFilesFromPackData(await npmPack(dir, ["--dry-run"]));
+
+/**
+ * Packs `dir` into `destination` (default: `dir` itself). The caller removes the
+ * tarball, through `cleanup` or by removing `destination`.
+ */
+export const runPack = async (dir, { destination = dir } = {}) => {
+	const packData = await npmPack(
+		dir,
+		destination === dir ? [] : ["--pack-destination", destination],
+	);
 	const tarballName = packData?.[0]?.filename;
 	if (!tarballName) {
 		throw new Error("npm pack did not return tarball filename");
 	}
-	const tarballPath = path.join(dir, tarballName);
+	const tarballPath = path.join(destination, path.basename(tarballName));
 	if (!existsSync(tarballPath)) {
 		throw new Error(`npm pack tarball not found: ${tarballPath}`);
 	}

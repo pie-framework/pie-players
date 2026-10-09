@@ -53,10 +53,10 @@ Added a shared error model in assessment-toolkit:
 - `FrameworkErrorModel`
 - `FrameworkErrorKind`
 - `FrameworkErrorSeverity`
-- conversion helpers for unknown errors and tools diagnostics/validation:
-  - `frameworkErrorFromUnknown`
-  - `frameworkErrorFromToolConfigDiagnostics`
-  - `frameworkErrorFromToolConfigValidation`
+- `FrameworkErrorScope`: `cohort` or `runtime`, set by the report site. See
+  [Readiness latching](#readiness-latching).
+- `frameworkErrorFromUnknown`, which converts an unknown error. The conversions
+  of tools-config diagnostics and validation results are internal to the toolkit.
 
 Primary file:
 
@@ -79,11 +79,11 @@ Primary file:
 ### New default behavior
 
 - Log to `console.error(...)` with framework prefix.
-- Publish a single `FrameworkErrorModel` to the package-internal
-  `FrameworkErrorBus`. The bus has one subscriber on
-  `pie-assessment-toolkit` that fans out to every observable surface so
-  every host integration sees the same payload exactly once.
-- Emit `framework-error` (canonical event).
+- Publish a single `FrameworkErrorModel` to the coordinator's
+  `FrameworkErrorBus`. The toolkit subscribes once and delivers each error
+  as one `framework-error` DOM event and one `onFrameworkError` call; an
+  error the coordinator already published is not published again when it
+  rethrows into the toolkit.
 - Render built-in fallback UI when the error is a fatal bootstrap kind
   (`coordinator-init`, `runtime-init`, `tool-config`) and is not flagged
   recoverable. Non-bootstrap kinds (e.g. `provider-init`, `provider-register`,
@@ -111,18 +111,24 @@ panel or move section readiness to `error`. The default slot remains active when
 `severity: "warning"`, and `recoverable: true`: one optional capability may be
 omitted or keep its last working element while the assessment and other
 capabilities continue.
+A toolbar that cannot load a tool's module reports `kind: "tool-module-load"`
+once per tool and withholds the tool. It follows the tool start-failure policy:
+recoverable unless policy grants the tool, and reported again as fatal if a
+later policy change grants it. A provider that fails to register
+(`provider-register`) follows the same policy. A failed tool-state load or save
+(`tool-state-load`, `tool-state-save`) and a section controller that fails to
+dispose (`section-controller-dispose`) are recoverable: the coordinator carries on
+without the state, and the next section gets a fresh controller.
 
 ### Optional host extension points
 
 - `onFrameworkError?: (errorModel: FrameworkErrorModel) => void` — canonical
-  prop. Mirrors the `framework-error` DOM event payload exactly, fires
+  toolkit property. Mirrors the `framework-error` DOM event payload exactly, fires
   exactly once per error.
 - `errorRenderer?: (errorModel) => { title?: string; details?: string[] }`
 
-The `<pie-section-player-…>` layout custom elements (and
-`SectionPlayerLayoutKernel`) accept the same `onFrameworkError` prop. The
-two-tier configuration model applies: `runtime.onFrameworkError` wins
-over the top-level `onFrameworkError` prop. The merged callback flows
+On the `<pie-section-player-…>` layout custom elements the callback is
+`runtime.onFrameworkError`. It flows
 down through `effectiveRuntime → pie-section-player-base →
 pie-assessment-toolkit`, which is the single delivery point — there is
 no double-firing across wrapper layers.
@@ -140,8 +146,9 @@ Section-player runtime tools overlay resolution now preserves host-provided shap
 Primary files:
 
 - `packages/assessment-toolkit/src/runtime/core/engine-resolver.ts`
-  (canonical `resolveRuntime` / `resolveToolsConfig`, exported via
-  `@pie-players/pie-assessment-toolkit/runtime/internal`)
+  (canonical `resolveRuntime` / `resolveToolsConfig`, reached through
+  `resolveSectionEngineRuntimeState` on
+  `@pie-players/pie-assessment-toolkit/runtime/engine`)
 - `packages/section-player/src/components/shared/section-player-host-runtime.ts`
   (section-player-coupled wrapper that delegates to the toolkit
   resolver and adds player-side coupling such as
@@ -160,7 +167,22 @@ tool IDs now typically fail when the toolkit builds/initializes its coordinator.
 
 ## 4) `framework-error` propagation across wrappers
 
-A section-player layout element dispatches one non-bubbling `framework-error` per error on its own host. The kernel stops the toolkit's bubbling event at the section-player base and routes it through the section runtime engine, so a listener belongs on the layout element; listeners on `document` or other ancestors receive nothing.
+The toolkit's `framework-error` is the only DOM emit. It bubbles and is composed, so it reaches the layout element and `document` once per error. The section-player kernel reads it on the way up to set readiness to `error` for a non-recoverable error, which ends the stage chain with the current stage `failed`.
+
+### Readiness latching
+
+A non-recoverable error latches readiness for the scope its report site set:
+
+| Scope | Kinds | Clears |
+| --- | --- | --- |
+| `cohort` | `runtime-init` and `section-controller-init` (the section's controller could not start), `element-preload`, `timed-media` | when the learner moves to another section or attempt |
+| `runtime` | every other kind, `coordinator-init`, `provider-init`, `provider-register`, `tts-init`, `tool-module-load` and `tool-config` among them | never: every later section runs on the same coordinator |
+
+A kind that is recoverable at one report site and fatal at another, such as
+`provider-init` for a tool policy does or does not grant, latches only when fatal.
+A host that publishes its own `FrameworkErrorModel` through the coordinator sets
+`scope` the same way; one built with `toFrameworkErrorModel` or
+`frameworkErrorFromUnknown` defaults to `runtime`.
 
 Updated files:
 
@@ -193,13 +215,11 @@ The e2e test verifies:
 
 ### Canonical event
 
-- `framework-error` — payload is a `FrameworkErrorModel`. Emitted by
-  `<pie-assessment-toolkit>` with `bubbles: true, composed: true`. Inside a
-  section player the kernel stops that event at the section-player base, and
-  the layout custom element dispatches one non-bubbling `framework-error` on
-  its own host. The toolkit is the single source of truth; the canonical
-  `onFrameworkError` callback is delivered exactly once per error,
-  regardless of wrapper depth.
+- `framework-error` — payload is a `FrameworkErrorModel`. Emitted once per
+  error by `<pie-assessment-toolkit>` with `bubbles: true, composed: true`,
+  so inside a section player it reaches the layout custom element and
+  `document`. The canonical `onFrameworkError` callback is delivered once
+  per error, regardless of wrapper depth.
 
 ### Telemetry mapping
 

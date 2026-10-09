@@ -14,30 +14,29 @@ and how does the program tier them":
 
 | Export | What it decides |
 | --- | --- |
-| `PACKAGED_TOOL_REGISTRATIONS`, `createPackagedToolRegistry`, `registerPackagedTools` | Which capabilities exist, and their toolbar and surface contracts |
+| `PACKAGED_TOOL_REGISTRATIONS`, `createPackagedToolRegistry` | Which capabilities exist, and their toolbar and surface contracts |
 | `PACKAGED_TOOL_TAG_MAP` | Which custom element each one renders as |
-| `PACKAGED_TOOL_PLACEMENT`, `SECTION_PLAYER_PREFERRED_TOOL_PLACEMENT`, `PACKAGED_TOOL_ORDER` | Where they appear and in what order |
-| `UNIVERSAL_SUPPORTS_PRESET`, `createUniversalPersonalNeedsProfile` | Which of their support ids the program grants to everyone |
-| `DEFAULT_TOOL_MODULE_LOADERS`, `createDefaultToolModuleLoaders`, `registerSectionToolModuleLoaders` | When each one's bundle loads |
+| `SECTION_PLAYER_PREFERRED_TOOL_PLACEMENT` | Where they appear and in what order |
+| `createUniversalPersonalNeedsProfile`, `createEmptyPersonalNeedsProfile` | Which of them the program grants to everyone, or to no one |
+| `DEFAULT_TOOL_MODULE_LOADERS` | When each one's bundle loads |
 
 The individual registrations are exported too, so a host can compose its own set
 rather than take the packaged one whole.
 
 These exports are projections of one internal **Packaged Capability
 Composition**. Each packaged capability is authored once with its registration,
-element delivery, loader bootstrap sets, placement/order membership and explicit
+element delivery, module loader, preferred placement and explicit
 universal-support policy. The package build rejects contradictory PIE-owned data
-— for example, a region capability with a toolbar tag, or a universal support
-id its registration does not declare — so release tests find a missing facet
+— for example, a region capability with a toolbar tag, or a content-dependent
+capability marked universal — so release tests find a missing facet
 instead of a learner finding a dead affordance. The browser does not repeat that
 strict gate at import time: a PIE authoring defect must block publication, not an
 otherwise usable assessment.
 
-That invariant boundary does not make host input stricter. The existing public
-factory and constants are unchanged: lazy module loading remains opt-in,
-registration/tag/factory overrides retain precedence, an empty `toolIds` array
-still selects the full packaged set, and unknown selected ids are ignored while
-known ids continue to register.
+That invariant boundary does not make host input stricter: lazy module loading
+is opt-in, registration/tag/factory overrides take precedence, an empty
+`toolIds` array selects the full packaged set, and unknown selected ids are
+ignored while known ids register.
 
 ## Usage
 
@@ -53,35 +52,27 @@ const registry = createPackagedToolRegistry({
 });
 ```
 
-Desmos remains the calculator delivery when no provider is configured. To use
-GeoGebra or the fully bundled open-source Cortex implementation, pass the same
-calculator configuration to both the toolkit and the
-packaged composition. The composition then owns the matching element tag and
-module loader; hosts do not hand-maintain a second vendor map.
+One loader set serves every host shape. `DEFAULT_TOOL_MODULE_LOADERS` holds a
+loader per packaged capability, and a registry loads a module only when a tool
+first renders, so an item player, a section player and an assessment player
+pass the same set and load only the tools they place.
+
+The calculator is one element, `<pie-tool-calculator>`, for every provider.
+Desmos is the provider when none is configured; the toolkit picks another from
+`tools.providers.calculator` when the element mounts, and an open calculator
+remounts on the new provider when a tool-config update replaces it.
 
 ```ts
-import {
-	createDefaultToolModuleLoaders,
-	createPackagedToolRegistry,
-} from "@pie-players/pie-default-tool-loaders";
-
-const calculatorProviderConfig = {
-	provider: {
-		id: "calculator-geogebra",
-		init: { appletTimeoutMs: 20_000 },
-	},
-	settings: { showResetIcon: true },
-};
-
-const registry = createPackagedToolRegistry({
-	calculatorProviderConfig,
-	toolModuleLoaders: createDefaultToolModuleLoaders({
-		calculatorProviderConfig,
-	}),
-});
-
 const tools = {
-	providers: { calculator: calculatorProviderConfig },
+	providers: {
+		calculator: {
+			provider: {
+				id: "calculator-geogebra",
+				init: { appletTimeoutMs: 20_000 },
+			},
+			settings: { showResetIcon: true },
+		},
+	},
 };
 ```
 
@@ -90,16 +81,16 @@ For an offline-capable calculator with no API key or runtime CDN, use
 history, evaluation limit, allowed functions, clipboard policy, and graph
 viewport options documented by `@pie-players/pie-calculator-cortex`.
 
-The toolkit's `ToolRegistry` is the other end of that choice: it starts empty,
-and a host composing its own set registers into it and installs the tag map its
-registrations create elements from.
+A host composing its own set starts from the toolkit's empty `ToolRegistry`,
+registers into it, and installs the tag map its registrations create elements
+from.
 
 ```ts
 import { ToolRegistry } from "@pie-players/pie-assessment-toolkit";
 import {
 	calculatorToolRegistration,
+	DEFAULT_TOOL_MODULE_LOADERS,
 	PACKAGED_TOOL_TAG_MAP,
-	registerDefaultToolModuleLoaders,
 	ttsToolRegistration,
 } from "@pie-players/pie-default-tool-loaders";
 
@@ -107,22 +98,21 @@ const registry = new ToolRegistry();
 registry.register(calculatorToolRegistration);
 registry.register(ttsToolRegistration);
 registry.setComponentOverrides({ toolTagMap: PACKAGED_TOOL_TAG_MAP });
-registerDefaultToolModuleLoaders(registry);
+registry.setToolModuleLoaders(DEFAULT_TOOL_MODULE_LOADERS);
 ```
 
-`registerDefaultToolModuleLoaders` installs a loader for every packaged tool.
-`registerSectionToolModuleLoaders` installs only the section-bootstrap subset,
-which has no text-to-speech loader, so a registry that places item-level text to
-speech needs the full set.
+A later `setToolModuleLoaders` call adds or replaces entries. A replacement
+registered after a tool's module has loaded is ignored with a warning, since the
+elements it defines are already in place.
 
 ## Content-dependent capabilities require an explicit packaging decision
 
-A content-dependent capability is never inferred into
-`UNIVERSAL_SUPPORTS_PRESET`. It may ship in `PACKAGED_TOOL_REGISTRATIONS` only
+A content-dependent capability is never granted by
+`createUniversalPersonalNeedsProfile()`. It may ship in `PACKAGED_TOOL_REGISTRATIONS` only
 when it has a useful presentation path without a grant and declares
 `resolvesWithoutGrant`. Audio transcript is the shipped example: an authored
 `visibility: "always"` transcript reaches every player, while its accommodation
-path remains policy-gated and `transcript` stays out of the universal preset.
+path remains policy-gated and `transcript` stays out of the universal profile.
 
 A content-dependent capability with no presentation path remains an explicit
 deployment choice. Signing is the shipped example: install
@@ -135,11 +125,11 @@ import { signLanguageRegistration } from "@pie-players/pie-tool-sign-language";
 registry.register(signLanguageRegistration);
 ```
 
-## Universal supports preset
+## Universal and empty profiles
 
-`createUniversalPersonalNeedsProfile()` builds a `PersonalNeedsProfile` granting
-`UNIVERSAL_SUPPORTS_PRESET` — the support ids the packaged tool set treats as
-universal features.
+`createUniversalPersonalNeedsProfile()` builds a fresh `PersonalNeedsProfile`
+granting the tool ids of the capabilities the packaged set treats as universal
+features. A support id is the tool id it grants.
 
 ```ts
 import { createUniversalPersonalNeedsProfile } from "@pie-players/pie-default-tool-loaders";
@@ -150,11 +140,11 @@ const section = {
 };
 ```
 
-The core ships no populated default — `createEmptyPersonalNeedsProfile()` in
-`@pie-players/pie-assessment-toolkit` grants nothing. Which capabilities a
+The toolkit ships no populated default, and `createEmptyPersonalNeedsProfile()`
+builds a profile granting nothing. Which capabilities a
 deployment grants by default is a property of the program, not of a capability:
 TTS is a universal feature in one program and a documented accommodation in
-another. So the preset is data to adopt, extend or replace alongside the district
+another. So the universal profile is data to adopt, extend or replace alongside the district
 and test-administration configuration, and it deliberately excludes any
 capability that declares a content dependency.
 

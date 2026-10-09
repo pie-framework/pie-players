@@ -156,9 +156,9 @@ describe("defineAuthoredPreloadedTags", () => {
 			controller,
 			bundleType: BundleType.clientPlayer,
 		});
-		expect(findPieController("scored--version-2-1-0", BundleType.clientPlayer)).toBe(
-			controller,
-		);
+		expect(
+			findPieController("scored--version-2-1-0", BundleType.clientPlayer) as unknown,
+		).toBe(controller);
 	});
 
 	test("takes a registration with a controller over one without", () => {

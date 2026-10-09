@@ -6,7 +6,10 @@
  * copy run beside it.
  *
  * The adapter is imported on the first root to typeset, so an item without
- * markup math loads none of it.
+ * markup math loads none of it. Its fonts and speech load from the page options'
+ * asset root, which a preloaded registration sets, then from the root the player
+ * passes, the ESM CDN under `esm`, then from the npm root of the player's own
+ * module URL.
  *
  * Under `src/components/`, which `tsc` leaves out of `dist`: only the item
  * player's build compiles this module, resolving the adapter's browser build
@@ -14,19 +17,40 @@
  * dependency of this package.
  */
 
-type Adapter = typeof import("@pie-element/shared-math-rendering-mathjax");
+import { pageMathAssetRoot } from "../pie/math-assets.js";
 
-let adapter: Promise<Adapter> | null = null;
+type Renderer = (root: HTMLElement) => Promise<void>;
 
-export async function renderPrivateMath(root: HTMLElement): Promise<void> {
-	adapter ??= import("@pie-element/shared-math-rendering-mathjax");
-	let loaded: Adapter;
+let renderer: Promise<Renderer> | null = null;
+
+/** The legacy opt-in for `$…$` inline math, which the adapter's `renderMath` reads too. */
+function pageUsesSingleDollar(): boolean {
+	const legacy = (globalThis as Record<string, any>)["@pie-lib/math-rendering@2"];
+	return Boolean(legacy?.opts?.useSingleDollar);
+}
+
+/**
+ * Typesets the math in `root`. The first call creates the renderer, so its
+ * `assetRoot` is the one MathJax starts with.
+ */
+export async function renderPrivateMath(
+	root: HTMLElement,
+	assetRoot?: string,
+): Promise<void> {
+	renderer ??= import("@pie-element/shared-math-rendering-mathjax").then(
+		({ createMathjaxRenderer }) =>
+			createMathjaxRenderer({
+				useSingleDollar: pageUsesSingleDollar(),
+				assetRoot: pageMathAssetRoot() ? undefined : assetRoot,
+			}),
+	);
+	let render: Renderer;
 	try {
-		loaded = await adapter;
+		render = await renderer;
 	} catch (error) {
 		// The next pass imports it again.
-		adapter = null;
+		renderer = null;
 		throw error;
 	}
-	await loaded.renderMath(root);
+	await render(root);
 }

@@ -28,8 +28,6 @@ test.describe("section player tabbed layout", () => {
 			"passage-label",
 		);
 		await expect(itemsTab).toHaveAttribute("data-pie-purpose", "item-label");
-		await expect(passageTab).toHaveClass(/passage-label/);
-		await expect(itemsTab).toHaveClass(/item-label/);
 		await expect(passageTab).toHaveClass(/pie-section-player-tab--active/);
 		await expect(passageTab).toHaveAttribute("aria-selected", "true");
 

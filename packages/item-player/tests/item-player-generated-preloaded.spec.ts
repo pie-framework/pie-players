@@ -2,15 +2,21 @@ import { expect, test } from "@playwright/test";
 import { readdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
 import demo from "../../../apps/item-demos/src/lib/content/multiple-choice-radio-simple";
-import mathDemo from "../../../apps/item-demos/src/lib/content/multiple-choice-math-algebra-quadratic";
-import { type ServedPackage, serveFromTarballOnly, serveGeneratedPackage, workspace } from "./generated-preloaded-package";
+import {
+  MULTIPLE_CHOICE_VERSION,
+  type ServedPackage,
+  serveFromTarballOnly,
+  serveGeneratedPackage,
+  workspace,
+} from "./generated-preloaded-package";
 
 const packageName = "@pie-element/multiple-choice";
-const packageSpec = `${packageName}@14.0.0`;
+const packageSpec = `${packageName}@${MULTIPLE_CHOICE_VERSION}`;
+const tagVersion = MULTIPLE_CHOICE_VERSION.replace(/\./g, "-");
 // The build registers the base tag the published configs give the package, and
 // the items author `multiple-choice`, so each player defines the tag it renders.
-const registeredTag = "pie-element-multiple-choice--version-14-0-0";
-const runtimeTag = "multiple-choice--version-14-0-0";
+const registeredTag = `pie-element-multiple-choice--version-${tagVersion}`;
+const runtimeTag = `multiple-choice--version-${tagVersion}`;
 let built: ServedPackage;
 let origin: string;
 
@@ -94,81 +100,6 @@ test("packed preloaded output registers authored tags, loads chunks, and records
   await expect(page.locator('input[type="radio"][value="mars"]')).toBeChecked();
   await expect.poll(() => page.evaluate(() => (window as any).savedSession?.data?.find((entry: any) => entry.id === "2")?.value)).toEqual(["mars"]);
   expect(loadedChunks.length).toBeGreaterThan(0);
-  expect(failedRequests).toEqual([]);
-  expect(browserErrors).toEqual([]);
-});
-
-test("renders math with the MathJax the build ships, its fonts included", async ({ page }) => {
-  const failedRequests: string[] = [];
-  const browserErrors: string[] = [];
-  const mathjaxFiles: string[] = [];
-  page.on("pageerror", (error) => browserErrors.push(error.message));
-  page.on("console", (message) => { if (message.type() === "error") browserErrors.push(message.text()); });
-  page.on("requestfailed", (request) => failedRequests.push(request.url()));
-  page.on("response", (response) => {
-    if (response.status() >= 400) failedRequests.push(`${response.status()} ${response.url()}`);
-    const { pathname } = new URL(response.url());
-    if (response.ok() && pathname.startsWith("/package/dist/mathjax/")) mathjaxFiles.push(pathname);
-  });
-  await serveFromTarballOnly(page, origin);
-  await page.goto(origin, { waitUntil: "networkidle" });
-  await page.evaluate(async () => {
-    const entry = "/package/dist/index.js";
-    await import(entry);
-  });
-
-  await page.evaluate((config) => {
-    const player = document.createElement("pie-item-player") as any;
-    player.strategy = "preloaded";
-    player.hosted = true;
-    player.config = config;
-    player.env = { mode: "gather", role: "student" };
-    player.session = { id: "math-attempt", data: [] };
-    document.body.appendChild(player);
-  }, structuredClone(mathDemo.item.config));
-  await expect(page.locator(`${runtimeTag} mjx-container`).first()).toBeVisible();
-  await expect.poll(() => mathjaxFiles.some((file) => file.startsWith("/package/dist/mathjax/fonts/mathjax-newcm-font/chtml/"))).toBe(true);
-  expect(mathjaxFiles).toContain("/package/dist/mathjax/load.js");
-  expect(mathjaxFiles).toContain("/package/dist/mathjax/tex-mml-chtml.js");
-  expect(await page.evaluate(() => (window as any).MathJax?.version)).toMatch(/^4\./);
-  expect(failedRequests).toEqual([]);
-  expect(browserErrors).toEqual([]);
-});
-
-test("typesets mhchem chemistry with the font extension the build ships", async ({ page }) => {
-  const failedRequests: string[] = [];
-  const browserErrors: string[] = [];
-  const mathjaxFiles: string[] = [];
-  page.on("pageerror", (error) => browserErrors.push(error.message));
-  page.on("console", (message) => { if (message.type() === "error") browserErrors.push(message.text()); });
-  page.on("requestfailed", (request) => failedRequests.push(request.url()));
-  page.on("response", (response) => {
-    if (response.status() >= 400) failedRequests.push(`${response.status()} ${response.url()}`);
-    const { pathname } = new URL(response.url());
-    if (response.ok() && pathname.startsWith("/package/dist/mathjax/")) mathjaxFiles.push(pathname);
-  });
-  await serveFromTarballOnly(page, origin);
-  await page.goto(origin, { waitUntil: "networkidle" });
-  await page.evaluate(async () => {
-    const entry = "/package/dist/index.js";
-    await import(entry);
-  });
-
-  const config = structuredClone(mathDemo.item.config);
-  config.models[0].prompt = "<p>Water is \\(\\ce{H2O}\\).</p>";
-  await page.evaluate((config) => {
-    const player = document.createElement("pie-item-player") as any;
-    player.strategy = "preloaded";
-    player.hosted = true;
-    player.config = config;
-    player.env = { mode: "gather", role: "student" };
-    player.session = { id: "chemistry-attempt", data: [] };
-    document.body.appendChild(player);
-  }, config);
-  const water = page.locator(`${runtimeTag} mjx-container`, { has: page.locator("mjx-msub") }).first();
-  await expect(water).toBeVisible();
-  await expect.poll(() => mathjaxFiles).toContain("/package/dist/mathjax/fonts/mathjax-mhchem-font-extension/chtml.js");
-  await expect(page.locator(`${runtimeTag} mjx-merror`)).toHaveCount(0);
   expect(failedRequests).toEqual([]);
   expect(browserErrors).toEqual([]);
 });
@@ -306,7 +237,7 @@ test("a second item-player copy loading after the build leaves the build's copy 
 test("import rejects when the element module is missing its promised element", async ({ page }) => {
   await page.route("**/dist/elements/index.js", (route) => route.fulfill({
     contentType: "text/javascript",
-    body: "export const elements = {}; export function startMathRendering() {}",
+    body: "export const elements = {};",
   }));
   await page.goto(origin);
   const result = await page.evaluate(async () => {

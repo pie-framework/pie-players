@@ -5,12 +5,11 @@ import type {
 	LazyCalculatorProviderDefinition,
 } from "./LazyCalculatorToolProvider.js";
 import { LazyCalculatorToolProvider } from "./LazyCalculatorToolProvider.js";
-import type { ToolProviderCapabilities } from "@pie-players/pie-assessment-toolkit/tools/internal";
+import type { ToolProviderCapabilities } from "@pie-players/pie-assessment-toolkit/tools/registration";
 
 export type CortexToolProviderConfig = CalculatorToolProviderInitConfig;
 
 export class CortexToolProvider extends LazyCalculatorToolProvider<CortexToolProviderConfig> {
-	readonly providerId = "cortex-calculator";
 	readonly providerName = "PIE Open-Source Calculator";
 	readonly version = "1";
 	readonly requiresAuth = false;

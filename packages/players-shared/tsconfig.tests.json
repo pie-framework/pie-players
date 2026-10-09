@@ -1,0 +1,9 @@
+{
+	"extends": ["./tsconfig.json", "../../tsconfig.tests.json"],
+	"compilerOptions": {
+		// A test imports the build's math-rendering script, which is plain ESM.
+		"allowJs": true
+	},
+	"include": ["tests/**/*.ts", "src/**/*.d.ts"],
+	"exclude": ["node_modules", "dist", "**/*.spec.ts"]
+}

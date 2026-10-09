@@ -10,7 +10,7 @@
  *
  * Every timing primitive is injected, so the frame/timer race is driven by hand
  * rather than by wall-clock or by whatever a DOM shim decides to do. No DOM and
- * no Svelte mount, same approach as `stage-emit-gate.test.ts`.
+ * no Svelte mount.
  *
  * The three acceptance criteria map onto the cases below:
  *
@@ -419,7 +419,7 @@ describe("createCompositionEmitScheduler", () => {
 
 /**
  * Source guardrail, in the style of
- * `packages/section-player/tests/m5-mirror-rule.test.ts`.
+ * `packages/section-player/tests/runtime-config-boundary.test.ts`.
  *
  * The scheduler only helps while the toolkit actually routes through it. A
  * future refactor that inlines a bare `requestAnimationFrame` back into the

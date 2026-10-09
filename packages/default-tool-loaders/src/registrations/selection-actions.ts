@@ -17,8 +17,8 @@ import type {
 	ToolSelectionAction,
 	ToolSelectionContext,
 	ToolSurfaceServices,
-} from "@pie-players/pie-assessment-toolkit/tools/internal";
-import { resolveFallbackToolIcon } from "@pie-players/pie-assessment-toolkit/tools/internal";
+} from "@pie-players/pie-assessment-toolkit/tools/registration";
+import { resolveFallbackToolIcon } from "@pie-players/pie-assessment-toolkit/tools/registration";
 
 /**
  * Minimum this composer needs from a coordinator to offer an action at all.

@@ -353,30 +353,6 @@ const nlNL = {
 		textToSpeech: {
 			name: "Voorlezen",
 			description: "Inhoud laten voorlezen",
-			toolA11y: "Voorleeshulp",
-			title: "Voorlezen",
-			initializing: "Wordt gestart…",
-			initFailed: "Voorlezen kon niet worden gestart.",
-			selectText: "Selecteer tekst op de pagina om die te laten voorlezen.",
-			speed: "Snelheid:",
-			play: "Voorlezen",
-			pause: "Pauzeren",
-			resume: "Hervatten",
-			stop: "Stoppen",
-			speaking: "Aan het voorlezen…",
-			paused: "Gepauzeerd",
-			charactersSelected: {
-				one: "{count} teken geselecteerd",
-				other: "{count} tekens geselecteerd",
-			},
-			rate: {
-				slow: "Langzaam",
-				slower: "Langzamer",
-				normal: "Normaal",
-				faster: "Sneller",
-				fast: "Snel",
-				veryFast: "Zeer snel",
-			},
 			inline: {
 				controlsA11y: "Voorleesknoppen",
 				playbackSpeedA11y: "Voorleessnelheid",
@@ -487,6 +463,7 @@ const nlNL = {
 			resolvedTools: "Toegekende hulpmiddelen (toolkit)",
 			provenanceSummary: "Overzicht van herkomst van het hulpmiddelenbeleid",
 			perToolDecisions: "Beslissingen per hulpmiddel",
+			policyDiagnostics: "Diagnose van het hulpmiddelenbeleid",
 			profileReadOnly: "PNP-profiel (alleen lezen)",
 		},
 

@@ -22,11 +22,11 @@ export function createScopedVisibilityBinding(
 	);
 	return {
 		fullToolId,
-		isActive: () => toolbarContext.isToolVisible(fullToolId),
+		isActive: () => toolbarContext.isToolVisible(toolId),
 		subscribeActive: (callback: (active: boolean) => void) => {
 			if (!toolbarContext.subscribeVisibility) return () => {};
 			return toolbarContext.subscribeVisibility(() => {
-				callback(toolbarContext.isToolVisible(fullToolId));
+				callback(toolbarContext.isToolVisible(toolId));
 			});
 		},
 	};

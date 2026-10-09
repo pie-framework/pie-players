@@ -38,6 +38,7 @@
     holdsPlaceholderSession,
   } from "../pie/element-announcements.js";
   import { observePieElements } from "../pie/element-observer.js";
+  import { elementsRendered } from "../pie/elements-rendered.js";
   import {
     canPopulateCorrectResponses,
     getCorrectResponseEnv,
@@ -87,6 +88,7 @@
     containerClass = "",
     bundleType = BundleType.player, // Default to player.js (server-processed models)
     loaderConfig = DEFAULT_LOADER_CONFIG as LoaderConfig,
+    markupMathAssetRoot = undefined,
     // Authoring mode props
     mode = "view" as "view" | "author",
     configuration = {} as Record<string, any>,
@@ -141,6 +143,11 @@
     containerClass?: string;
     bundleType?: BundleType;
     loaderConfig?: LoaderConfig;
+    /**
+     * The npm root the player's own MathJax, for math in the item's markup,
+     * loads its fonts and speech from when the page options set none.
+     */
+    markupMathAssetRoot?: string;
     // Authoring mode props
     mode?: "view" | "author";
     configuration?: Record<string, any>;
@@ -708,7 +715,7 @@
     // `session-changed` from its own host below, which is the one that
     // reaches hosts; letting the raw event past this point published two
     // events per change with different contracts under one name.
-    // Section-player's ItemShellElement already dedupes what escapes,
+    // The toolkit's shell event bridge already dedupes what escapes,
     // which is the cost this avoids rather than a reason to keep it.
     // Stop before the re-entry check so the raw event never escapes on the
     // early-return paths either.
@@ -955,6 +962,13 @@
 
         // Note: Resource monitor starts automatically via useResourceMonitor when rootElement is set
 
+        // Hosts reveal the item on `load-complete`, so it waits for the
+        // elements to render and for the markup's math, which the flush below
+        // starts typesetting.
+        await tick();
+        await loadSettled();
+        if (destroyed) return;
+
         logger.debug(
           "[PieItemPlayer] Initialization complete, dispatching load-complete event"
         );
@@ -972,6 +986,8 @@
     });
   });
 
+  let destroyed = false;
+
   // No session commit here. This component is the one a `{#key}` swap replaces
   // on a config change, and a commit routes through `handleSessionChanged` into
   // the owning player's session state - a write landing in the middle of the swap,
@@ -979,6 +995,7 @@
   // owning player commits before it changes the config instead, while these
   // elements are still mounted and connected.
   onDestroy(() => {
+    destroyed = true;
     try {
       assetEventManager?.detach();
     } catch {}
@@ -1232,12 +1249,38 @@
   // for the markup (see private-math-renderer.ts).
   //
   // Runs once the elements are initialized and again when a markup block is
-  // replaced, and never holds `load-complete` back. Passes are chained, so none
-  // walks a root another is still typesetting.
+  // replaced. Passes are chained, so none walks a root another is still
+  // typesetting.
   const markupMathTags = $derived(
     [...new Set([...itemAllowList, ...passageAllowList])].join(" ")
   );
   let markupMathPass: Promise<void> = Promise.resolve();
+
+  // `load-complete` waits for the first markup math pass and for the elements'
+  // first render (see elements-rendered.ts), for at most LOAD_SETTLE_MS
+  // together: a typeset that hangs or an element that never renders still
+  // lets the host reveal the item well inside its own load timeout.
+  const LOAD_SETTLE_MS = 2000;
+  function loadSettled(): Promise<void> {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const bound = new Promise<void>((resolve) => {
+      timer = setTimeout(resolve, LOAD_SETTLE_MS);
+    });
+    const rendering = new AbortController();
+    const configs = [itemConfig, passageConfig].filter(
+      (config): config is ConfigEntity => Boolean(config)
+    );
+    const rendered =
+      mode === "author" || !rootElement
+        ? undefined
+        : elementsRendered(rootElement, configs, rendering.signal);
+    return Promise.race([Promise.all([markupMathPass, rendered]), bound])
+      .then(() => undefined)
+      .finally(() => {
+        clearTimeout(timer);
+        rendering.abort();
+      });
+  }
   $effect(() => {
     if (!initialized || mode === "author") return;
     const containers = [passageContainer, itemContainer].filter(
@@ -1255,7 +1298,7 @@
           pieTags,
           typeof renderer?.renderMath === "function"
             ? (root) => renderer.renderMath(root)
-            : renderPrivateMath
+            : (root) => renderPrivateMath(root, markupMathAssetRoot)
         );
       })
       .catch((error: unknown) => {

@@ -1,12 +1,12 @@
 /**
- * Section runtime engine — pure core (M7 — Variant C, layered).
+ * Section runtime engine — pure core.
  *
  * `SectionEngineCore` is a thin object oriented wrapper over the pure
  * `transition()` function. It owns the current `SectionEngineState`,
  * applies inputs serially, and fans out the resulting
  * `SectionEngineOutput[]` to subscribers. There is no DOM, Svelte,
  * coordinator, or timing dependency in this module — all I/O lives in
- * the adapter layer (PR 2).
+ * the adapter layer.
  *
  * Lifetime model:
  *   - One instance per cohort logical lifetime. Cohort changes happen

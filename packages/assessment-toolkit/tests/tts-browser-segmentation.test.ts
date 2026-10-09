@@ -1,5 +1,8 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { BrowserTTSProvider } from "../src/services/tts/browser-provider";
+import {
+	BrowserTTSProvider,
+	waitForBrowserVoices,
+} from "../src/services/tts/browser-provider";
 
 const originalWindow = (globalThis as any).window;
 const originalSpeechSynthesis = (globalThis as any).speechSynthesis;
@@ -94,7 +97,7 @@ describe("browser provider segmentation", () => {
 	});
 
 	test("chooses a local language-matched voice when no voice is configured", async () => {
-		let spokenVoiceName: string | null = null;
+		let spokenVoiceName = null as string | null;
 		const voices = [
 			{
 				default: true,
@@ -152,7 +155,7 @@ describe("browser provider segmentation", () => {
 	});
 
 	test("preserves an explicitly configured browser voice", async () => {
-		let spokenVoiceName: string | null = null;
+		let spokenVoiceName = null as string | null;
 		const voices = [
 			{
 				default: false,
@@ -302,8 +305,8 @@ describe("browser provider segmentation", () => {
 	});
 
 	test("resolves an explicitly configured voice URI", async () => {
-		let spokenVoiceName: string | null = null;
-		let spokenVoiceURI: string | null = null;
+		let spokenVoiceName = null as string | null;
+		let spokenVoiceURI = null as string | null;
 		const voices = [
 			{
 				default: false,
@@ -357,9 +360,9 @@ describe("browser provider segmentation", () => {
 		expect(spokenVoiceURI).toBe("local-english");
 	});
 
-	test("waits for voiceschanged before speaking with an explicit voice", async () => {
+	test("initialize waits for voiceschanged, then speaks with an explicit voice", async () => {
 		let voices: SpeechSynthesisVoice[] = [];
-		let spokenVoiceURI: string | null = null;
+		let spokenVoiceURI = null as string | null;
 		const listeners = new Set<EventListener>();
 		const synth = {
 			getVoices: () => voices,
@@ -385,12 +388,10 @@ describe("browser provider segmentation", () => {
 		(globalThis as any).speechSynthesis = synth;
 		(globalThis as any).window = { speechSynthesis: synth };
 
-		const impl = await new BrowserTTSProvider().initialize({
+		const initializing = new BrowserTTSProvider().initialize({
 			voice: "local-english",
 		} as any);
-		const speak = impl.speak("Read this text");
 		expect(listeners.size).toBe(1);
-		expect(spokenVoiceURI).toBeNull();
 
 		voices = [
 			{
@@ -404,9 +405,29 @@ describe("browser provider segmentation", () => {
 		for (const listener of listeners) {
 			listener({ type: "voiceschanged" } as Event);
 		}
-		await speak;
+		const impl = await initializing;
+		expect(listeners.size).toBe(0);
+		await impl.speak("Read this text");
 
 		expect(spokenVoiceURI).toBe("local-english");
+		expect(listeners.size).toBe(0);
+	});
+
+	test("initialize does not wait for the inventory without a configured voice", async () => {
+		const listeners = new Set<EventListener>();
+		const synth = {
+			getVoices: () => [] as SpeechSynthesisVoice[],
+			addEventListener: (_type: string, listener: EventListener) => {
+				listeners.add(listener);
+			},
+			removeEventListener: (_type: string, listener: EventListener) => {
+				listeners.delete(listener);
+			},
+		};
+		(globalThis as any).speechSynthesis = synth;
+		(globalThis as any).window = { speechSynthesis: synth };
+
+		await new BrowserTTSProvider().initialize({} as any);
 		expect(listeners.size).toBe(0);
 	});
 
@@ -440,38 +461,6 @@ describe("browser provider segmentation", () => {
 			'Configured browser voice "missing-voice" is unavailable',
 		);
 		expect(speakCalls).toBe(0);
-	});
-
-	test("cancels a pending voice inventory wait when playback is stopped", async () => {
-		const listeners = new Set<EventListener>();
-		const synth = {
-			getVoices: () => [] as SpeechSynthesisVoice[],
-			addEventListener: (_type: string, listener: EventListener) => {
-				listeners.add(listener);
-			},
-			removeEventListener: (_type: string, listener: EventListener) => {
-				listeners.delete(listener);
-			},
-			speak: () => {
-				throw new Error("speech must not be queued after stop");
-			},
-			cancel: () => {},
-			pause: () => {},
-			resume: () => {},
-		};
-		(globalThis as any).speechSynthesis = synth;
-		(globalThis as any).window = { speechSynthesis: synth };
-
-		const impl = await new BrowserTTSProvider().initialize({
-			voice: "local-english",
-		} as any);
-		const speak = impl.speak("Read this text");
-		expect(listeners.size).toBe(1);
-
-		impl.stop();
-		await speak;
-
-		expect(listeners.size).toBe(0);
 	});
 
 	test("fails when an explicit voice inventory never becomes available", async () => {
@@ -509,17 +498,17 @@ describe("browser provider segmentation", () => {
 			(globalThis as any).speechSynthesis = synth;
 			(globalThis as any).window = { speechSynthesis: synth };
 
-			const impl = await new BrowserTTSProvider().initialize({
+			const initializing = new BrowserTTSProvider().initialize({
 				voice: "local-english",
 			} as any);
-			const speak = impl.speak("Read this text");
 			const inventoryTimer = [...timers.values()].find(
 				(timer) => timer.delay === 2_000,
 			);
 			expect(inventoryTimer).toBeDefined();
 			inventoryTimer?.callback();
+			const impl = await initializing;
 
-			await expect(speak).rejects.toThrow(
+			await expect(impl.speak("Read this text")).rejects.toThrow(
 				"browser did not publish its voice inventory within 2 seconds",
 			);
 			expect(speakCalls).toBe(0);
@@ -661,5 +650,160 @@ describe("browser provider segmentation", () => {
 			(globalThis as any).setTimeout = realSetTimeout;
 			(globalThis as any).clearTimeout = realClearTimeout;
 		}
+	});
+
+	test("reports word boundaries and defaults to sentence highlighting", () => {
+		const capabilities = new BrowserTTSProvider().getCapabilities();
+
+		expect(capabilities.supportsWordBoundary).toBeTrue();
+		expect(capabilities.defaultHighlightMode).toBe("sentence");
+	});
+
+	describe("waitForBrowserVoices", () => {
+		const voice = { voiceURI: "v", name: "V", lang: "en-US" };
+
+		test("resolves true at once when the inventory is published", async () => {
+			const synth = { getVoices: () => [voice] } as any;
+			expect(await waitForBrowserVoices(synth, 1_000)).toBeTrue();
+		});
+
+		test("resolves false when the synth has no voiceschanged channel", async () => {
+			const synth = { getVoices: () => [] } as any;
+			expect(await waitForBrowserVoices(synth, 60_000)).toBeFalse();
+		});
+
+		test("chains and restores a previous onvoiceschanged handler", async () => {
+			let voices: unknown[] = [];
+			let previousCalls = 0;
+			const previous = () => {
+				previousCalls += 1;
+			};
+			const synth = {
+				getVoices: () => voices,
+				onvoiceschanged: previous as any,
+			};
+			const waiting = waitForBrowserVoices(synth as any, 60_000);
+			expect(synth.onvoiceschanged).not.toBe(previous);
+
+			voices = [voice];
+			synth.onvoiceschanged({ type: "voiceschanged" } as Event);
+
+			expect(await waiting).toBeTrue();
+			expect(previousCalls).toBe(1);
+			expect(synth.onvoiceschanged).toBe(previous);
+		});
+
+		test("resolves false once the wait is superseded", async () => {
+			const listeners = new Set<EventListener>();
+			let current = true;
+			const synth = {
+				getVoices: () => [],
+				addEventListener: (_type: string, listener: EventListener) =>
+					listeners.add(listener),
+				removeEventListener: (_type: string, listener: EventListener) =>
+					listeners.delete(listener),
+			};
+			const waiting = waitForBrowserVoices(synth as any, 60_000, () => current);
+			expect(listeners.size).toBe(1);
+
+			current = false;
+			for (const listener of listeners) {
+				listener({ type: "voiceschanged" } as Event);
+			}
+
+			expect(await waiting).toBeFalse();
+			expect(listeners.size).toBe(0);
+		});
+	});
+
+	describe("a pause between utterances", () => {
+		const installQueue = () => {
+			const spoken: string[] = [];
+			const synthCalls: string[] = [];
+			const synth = {
+				getVoices: () => [],
+				speak: (utterance: SpeechSynthesisUtterance) => {
+					spoken.push(utterance.text);
+					utterance.onstart?.({} as SpeechSynthesisEvent);
+					setTimeout(() => utterance.onend?.({} as SpeechSynthesisEvent), 0);
+				},
+				cancel: () => synthCalls.push("cancel"),
+				pause: () => synthCalls.push("pause"),
+				resume: () => synthCalls.push("resume"),
+			};
+			(globalThis as any).SpeechSynthesisUtterance = class {
+				constructor(readonly text: string) {}
+			};
+			(globalThis as any).speechSynthesis = synth;
+			(globalThis as any).window = { speechSynthesis: synth };
+			return { spoken, synthCalls };
+		};
+		const waitFor = async (condition: () => boolean) => {
+			for (let attempt = 0; attempt < 100 && !condition(); attempt++) {
+				await new Promise((resolve) => setTimeout(resolve, 1));
+			}
+			expect(condition()).toBeTrue();
+		};
+		const elapse = (ms: number) =>
+			new Promise((resolve) => setTimeout(resolve, ms));
+
+		test("holds the next segment through a structural gap until resume", async () => {
+			const { spoken } = installQueue();
+			const impl = await new BrowserTTSProvider().initialize({} as any);
+
+			const playback = impl.speakSegments?.([
+				{ text: "First.", startOffset: 0, pauseMsAfter: 10 },
+				{ text: "Second.", startOffset: 7 },
+			]);
+			await waitFor(() => spoken.length === 1 && !impl.isPlaying());
+			impl.pause();
+			await elapse(30);
+
+			expect(impl.isPaused()).toBeTrue();
+			expect(spoken).toEqual(["First."]);
+
+			impl.resume();
+			await playback;
+			expect(spoken).toEqual(["First.", "Second."]);
+		});
+
+		test("pauses an utterance that starts after the pause landed", async () => {
+			const { spoken, synthCalls } = installQueue();
+			const impl = await new BrowserTTSProvider().initialize({} as any);
+			const synth = (globalThis as any).speechSynthesis;
+			const speakNow = synth.speak;
+			let startLate = null as (() => void) | null;
+			synth.speak = (utterance: SpeechSynthesisUtterance) => {
+				startLate = () => speakNow(utterance);
+			};
+
+			const playback = impl.speak("Late start.");
+			await waitFor(() => startLate !== null);
+			impl.pause();
+			startLate?.();
+
+			expect(spoken).toEqual(["Late start."]);
+			expect(synthCalls).toContain("pause");
+			expect(impl.isPaused()).toBeTrue();
+			impl.resume();
+			await playback;
+		});
+
+		test("a stop during the held gap ends the run", async () => {
+			const { spoken } = installQueue();
+			const impl = await new BrowserTTSProvider().initialize({} as any);
+
+			const playback = impl.speakSegments?.([
+				{ text: "First.", startOffset: 0, pauseMsAfter: 10 },
+				{ text: "Second.", startOffset: 7 },
+			]);
+			await waitFor(() => spoken.length === 1 && !impl.isPlaying());
+			impl.pause();
+			impl.stop();
+			await playback;
+
+			expect(spoken).toEqual(["First."]);
+			expect(impl.isPaused()).toBeFalse();
+		});
 	});
 });

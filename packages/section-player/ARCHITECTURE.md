@@ -11,14 +11,15 @@ This package exposes layout-specific section-player custom elements:
 
 1. Host app imports a layout entrypoint from package exports.
 2. Host sets `runtime` and `section` on the layout custom element; `env` travels as `runtime.env`.
-3. Layout element composes passages/items and delegates runtime wiring to:
-   - `pie-section-player-base`
-   - `SectionPlayerShell`
-   - `pie-section-player-item-card`
-   - `pie-section-player-passage-card`
-   - `pie-item-shell`
-   - `pie-passage-shell`
-4. Item rendering is resolved from `DEFAULT_PLAYER_DEFINITIONS` in `component-definitions.ts`.
+3. The layout element runs `SectionPlayerLayoutKernel`, which wraps the layout in
+   `pie-section-player-base` (toolkit, controller, session) and `SectionPlayerShell`
+   (section toolbar), and publishes the layout context.
+4. The layout's markup, or a host's children of `pie-section-player-kernel-host`,
+   places `pie-section-player-items-pane` and `pie-section-player-passages-pane`.
+   Each pane reads the layout context and renders the cards:
+   - `pie-section-player-item-card`, inside `pie-item-scope` from the toolkit
+   - `pie-section-player-passage-card`, inside `pie-passage-shell`
+5. Item rendering is resolved from `DEFAULT_PLAYER_DEFINITIONS` in `component-definitions.ts`.
 
 ## Core files
 
@@ -30,66 +31,61 @@ This package exposes layout-specific section-player custom elements:
 - `src/components/SectionPlayerShell.svelte`
 - `src/components/shared/SectionPlayerLayoutKernel.svelte`
 - `src/components/shared/SectionPlayerLayoutScaffold.svelte`
+- `src/components/shared/section-player-layout-context.ts`
+- `src/components/shared/SectionItemsPane.svelte`
+- `src/components/shared/SectionPassagesPane.svelte`
+- `src/components/shared/SectionPlayerKernelHostBody.svelte`
+- `src/components/shared/kernel-host-default-body.ts`
 - `src/components/shared/SectionItemCard.svelte`
 - `src/components/shared/SectionPassageCard.svelte`
 - `src/components/shared/section-player-card-context.ts`
-- `src/components/ItemShellElement.svelte`
 - `src/components/PassageShellElement.svelte`
 - `src/component-definitions.ts`
 - `src/controllers/*`
 
 ## Public vs internal contracts
 
-- Public author-facing contract: `pie-section-player-shell`.
-  - Use this to place the section toolbar (`top|right|bottom|left|none`) around your layout body.
-  - Layout authors should focus on rendering passages/items and layout-specific UI inside the shell slot.
-- Public card primitives: `pie-section-player-item-card` and `pie-section-player-passage-card`.
-  - Layouts pass per-entity values (`item`/`passage`, `playerParams`, toolbar tools).
-  - Layouts should prefer context for shared render plumbing (resolved player tag + player action).
+- Host layout contract: `pie-section-player-kernel-host` and the two panes. See
+  [Custom layouts](#custom-layouts).
+- Card primitives: `pie-section-player-item-card` and `pie-section-player-passage-card`.
+  - The panes pass the per-entity values (`item`/`passage`, `playerParams`, toolbar tools).
+  - The card render context carries the shared render plumbing (resolved player tag and action).
+- `pie-section-player-shell`: places the section toolbar (`top|right|bottom|left|none`)
+  around the layout body. The kernel renders it; hosts set it through `show-toolbar`
+  and `toolbar-position` on the layout element.
 - Internal runtime contract: `pie-section-player-base`.
-  - Handles runtime/toolkit/session wiring and emits composition events used by layout elements.
-  - Consider this package-internal plumbing rather than the primary abstraction for layout authoring.
-
-This keeps runtime contracts stable while giving layout authors one clear composition primitive.
+  - Handles runtime/toolkit/session wiring and emits the composition events the kernel reads.
+  - The kernel renders it; no layout or host composes it directly.
 
 ## Layered runtime engine (post-M7)
 
-Section-player no longer owns its own runtime resolver, readiness deriver, or
-stage-tracker. Those live in `@pie-players/pie-assessment-toolkit` as a
-layered runtime engine. The section-player kernel owns the canonical
-lifecycle-emitting engine for the layout host; the toolkit CE keeps local
-controller/session plumbing and coordinates external lifecycle emits with the
-kernel through a narrow host context.
+Section-player owns no runtime resolver, readiness deriver or stage emitter
+of its own. Those live in `@pie-players/pie-assessment-toolkit` as a layered
+runtime engine. The section-player kernel owns the one engine per layout
+host and is the only stage emitter; the toolkit CE owns the section
+controller and its session plumbing through `SectionControllerBinding`.
 
 ### Architectural pieces
 
-- **`SectionEngineCore`** — pure, framework-free finite-state machine.
-  Inputs: composition / coordinator / lifecycle events. Outputs: stage
-  transitions, readiness signals, framework errors, instrumentation
-  events. Lives in
+- **Engine core** — pure, framework-free finite-state machine. Inputs: the
+  cohort, the controller resolving, readiness signals. Outputs: stage
+  transitions and loading completion. Lives in
   [`assessment-toolkit/src/runtime/core/`](../assessment-toolkit/src/runtime/core/).
-- **`SectionEngineAdapter`** — single I/O seam over the core. Fans
-  outputs to the four bridges below.
+- **`SectionEngineAdapter`** — the I/O seam over the core. Hands each batch
+  of outputs to the DOM event bridge and to `subscribe(...)` listeners.
   ([`assessment-toolkit/src/runtime/adapter/SectionEngineAdapter.ts`](../assessment-toolkit/src/runtime/adapter/SectionEngineAdapter.ts))
-- **Adapter bridges:**
-  - `dom-event-bridge` — emits `pie-stage-change`, `pie-loading-complete`,
-    `framework-error` on the layout host element.
-  - `framework-error-bridge` — reports framework errors onto the
-    package-internal `FrameworkErrorBus`.
-  - `coordinator-bridge` — resolves the `SectionControllerHandle` from a
-    `ToolkitCoordinator`.
-  - `instrumentation-bridge` — invokes the host-supplied
-    `InstrumentationHook` on each `SectionEngineOutput`, with
-    `runtimeId`, `sourceCe`, and `timestamp` stamped from the adapter.
-
-  Note: hosts should build against `pie-stage-change`,
-  `pie-loading-complete`, and `waitForSectionController(...)`; see the
-  Migration section below.
-- **`SectionRuntimeEngine`** — narrow, stable facade hosts use to mount,
-  drive, and dispose a section runtime. Owns the registry, lazily constructs
-  the adapter on `attachHost(...)`, exposes `dispatchInput`, `subscribe`,
-  `getState`, `dispose`. Lives in
+- **`dom-event-bridge`** — dispatches `pie-stage-change` and
+  `pie-loading-complete` on the layout host element, bubbling and composed.
+- **`SectionRuntimeEngine`** — the facade the kernel drives: `attachHost`,
+  `dispatchInput`, `subscribe`, `getState`, `dispose`. Holds no controller.
+  Lives in
   [`assessment-toolkit/src/runtime/SectionRuntimeEngine.ts`](../assessment-toolkit/src/runtime/SectionRuntimeEngine.ts).
+- **`SectionControllerBinding`** — the toolkit CE's controller half: it
+  resolves the section controller from the coordinator, keeps the
+  registered item and passage shells, and forwards shell events, session
+  updates and host commands to the controller.
+  Lives in
+  [`assessment-toolkit/src/runtime/SectionControllerBinding.ts`](../assessment-toolkit/src/runtime/SectionControllerBinding.ts).
 - **Resolvers** — `resolveRuntime`, `resolveToolsConfig`,
   `resolveSectionEngineRuntimeState` produce the effective runtime + tools
   snapshot the engine consumes. Live in
@@ -99,115 +95,96 @@ kernel through a narrow host context.
 
 Section-player owns two pieces of glue:
 
-- **`SectionPlayerLayoutKernel.svelte`** — constructs (or reuses) one
-  `SectionRuntimeEngine` per cohort, calls `attachHost(layoutHost, …)`,
-  drives `dispatchInput(...)` from a single tracked `$effect` wrapped in
-  `untrack(...)`, and publishes the engine via a Svelte context
-  (`SECTION_RUNTIME_ENGINE_KEY`) and a cross-CE host context
-  (`sectionRuntimeEngineHostContext`). The cross-CE context is deliberately
-  narrow: nested `pie-assessment-toolkit` instances use it as a lifecycle
-  ownership signal so external lifecycle emits stay on the layout CE host,
-  while toolkit controller registration/session plumbing remains local to
-  the toolkit CE.
+- **`SectionPlayerLayoutKernel.svelte`** — constructs one
+  `SectionRuntimeEngine` per layout element, calls
+  `attachHost({ host, sourceCe })`, and drives `dispatchInput(...)` from a
+  single tracked `$effect` wrapped in `untrack(...)`. It learns from
+  `section-ready`, which carries the controller and its cohort, that the
+  controller resolved, and latches the readiness error signal from the
+  toolkit's bubbling `framework-error` by the error's `scope`. A toolkit
+  bootstrap failure is held against the coordinator announced when it was
+  reported and clears when `toolkit-ready` announces another. Element warmup
+  fails a section through the items pane's `reportWarmup`, which carries the
+  renderables signature it ran for and counts only from the cohort's
+  `section-ready`, so one section's warmup outcome never reaches the next.
 - **`section-player-host-runtime.ts`**
   ([source](src/components/shared/section-player-host-runtime.ts)) — the
   player-coupled wrapper around the toolkit resolver. Holds
   `resolvePlayerRuntime`, `mapRenderablesToItems`, and
   `resolveSectionPlayerRuntimeState` (the only resolver pieces that
   depend on section-player–specific defaults like
-  `DEFAULT_PLAYER_DEFINITIONS`). Custom layouts compose this helper
-  rather than reaching into toolkit core.
+  `DEFAULT_PLAYER_DEFINITIONS`). The layout kernel is its one caller, so
+  no layout reaches into toolkit core.
 
 ### Public toolkit entry points
 
-- `@pie-players/pie-assessment-toolkit/runtime/engine` — narrow stable
-  facade (`SectionRuntimeEngine`, `SECTION_RUNTIME_ENGINE_KEY`,
-  `sectionRuntimeEngineHostContext`,
-  `connectSectionRuntimeEngineHostContext`).
-- `@pie-players/pie-assessment-toolkit/runtime/internal` — wider evolving
-  surface (core types, adapter bridges, cohort helpers, resolvers,
-  `FrameworkErrorBus`). Use this when you need to construct an engine
-  manually, inspect FSM state, or build alternate fan-out paths. Symbols
-  here may change between minor versions with a changeset note.
+- `@pie-players/pie-assessment-toolkit/runtime/engine` — the stable entry
+  the layout kernel drives the engine through: `SectionRuntimeEngine`, the
+  `SectionEngineInput` / `SectionEngineOutput` / `SectionEngineState`
+  vocabulary, the runtime config and its resolution (`RuntimeConfig`,
+  `resolveSectionEngineRuntimeState`, the `DEFAULT_*` values), the cohort
+  helpers, and the readiness signals.
+- `@pie-players/pie-assessment-toolkit/tools/registration` — the tool
+  surface host and the tool registry the cards and overlays render
+  registrations with.
+- `@pie-players/pie-assessment-toolkit` — everything else, including
+  `createShellEventBridge` for the passage shell.
+
+The engine's core, adapter and bridges have no entry: the section player
+reaches them only through the facade.
 
 ### Lifecycle emit invariant
 
-A nested `pie-assessment-toolkit` detects the kernel-published lifecycle
-handle via `sectionRuntimeEngineHostContext` and **suppresses its own
-external lifecycle DOM emits and `onStageChange` callback** in favor of the
-layout host. A standalone `pie-assessment-toolkit` (no host context) emits
-from its own engine. Either way, the externally observable invariant is **one
-cohort = one canonical event chain on the layout host** (one
-`pie-stage-change` per stage, one `pie-loading-complete` per cohort),
-regardless of wrapper depth. Controller-side toolkit plumbing remains
-toolkit-local; the host context is not a controller API.
+One cohort is one event chain on the layout host: one `pie-stage-change`
+per stage and one `pie-loading-complete`, whatever the wrapper depth. The
+kernel's engine is the only emitter; `<pie-assessment-toolkit>` emits no
+stage events, standalone or nested. A host that drives the engine itself
+follows the "Common-host wiring example" in
+[`packages/assessment-toolkit/README.md`](../assessment-toolkit/README.md#section-runtime-engine-advanced).
 
-**Detection.** If a custom layout shell sees two `pie-stage-change`
-per stage on the same layout host (typically with two distinct
-`detail.runtimeId` values) the shell has not published its engine via
-`sectionRuntimeEngineHostContext`; the wrapped toolkit fell back to
-its standalone lifecycle emit path. See the
-"Common-host wiring example" in
-[`packages/assessment-toolkit/README.md`](../assessment-toolkit/README.md#section-runtime-engine-advanced)
-for the publish step.
+## Configuration inputs: one tier per input
 
-Do not bypass this invariant by constructing `StageTracker` instances
-directly inside section-player components.
+Each input of this package and `pie-assessment-toolkit` has exactly one
+entry point, chosen by its kind:
 
-## Configuration tiers: easy attribute + sophisticated `runtime`
+- **Attributes** carry primitives a host sets declaratively: identity
+  (`section-id`, `attempt-id`), layout and diagnostics, and `nds-icons`,
+  `locale` and `tool-config-strictness`.
+- **`runtime`** carries composed and callable configuration: `assessmentId`,
+  `playerType`, `player`, `lazyInit`, `tools` (with `tools.pnpEnforcement`),
+  `toolContextResolvers`, `accessibility`, `coordinator`,
+  `createSectionController`, `isolation`, `env`, `contentLanguage` and the
+  `onFrameworkError`, `onStageChange` and `onLoadingComplete` callbacks.
 
-This package and `pie-assessment-toolkit` follow a deliberate two-tier
-configuration model. The same knob can usually be set in either tier; the
-choice is about ergonomics, not capability.
+```html
+<pie-section-player-splitpane
+  section-id="s-1"
+  toolbar-position="top"
+  tool-config-strictness="warn"
+  show-toolbar
+></pie-section-player-splitpane>
+```
 
-### When to use each tier
+```ts
+el.runtime = {
+  assessmentId: "a-1",
+  playerType: "custom",
+  tools: { providers: { calculator: { enabled: true } } },
+  onFrameworkError: (model) => report(model),
+};
+```
 
-- **Easy tier — top-level CE attributes / properties.** Use these for the
-  common cases that are static for the lifetime of the player or that hosts
-  want to set declaratively in HTML / templating frameworks. Example:
+No key exists in both tiers, so nothing resolves between them.
+[`tests/runtime-config-boundary.test.ts`](tests/runtime-config-boundary.test.ts)
+parses the layout CE sources and asserts that no `RuntimeConfig` key is a
+layout prop and that every layout CE declares the three attribute-only inputs.
 
-  ```html
-  <pie-section-player-splitpane
-    section-id="s-1"
-    toolbar-position="top"
-    show-toolbar
-  ></pie-section-player-splitpane>
-  ```
-
-- **Sophisticated tier — the `runtime` object.** Use this for advanced cases:
-  composed configuration, dynamic overrides, runtime mutation, fields without
-  a tier-1 attribute, or anything that benefits from being a single typed
-  object passed by reference. Example:
-
-  ```ts
-  el.runtime = {
-    playerType: "custom",
-    toolConfigStrictness: "warn",
-    tools: { providers: { calculator: { enabled: true } } },
-  };
-  ```
-
-### Runtime Configuration Rule
-
-Top-level layout attributes are reserved for identity, layout, diagnostics,
-and callback/event convenience. Runtime configuration such as player strategy,
-tool placement, accessibility, coordinator, env, and factories belongs on
-`runtime.<key>`.
-
-This is enforced by
-[`tests/m5-mirror-rule.test.ts`](tests/m5-mirror-rule.test.ts), which parses
-the layout CE source files and asserts that runtime-owned keys are not exposed
-as duplicate top-level layout props.
-
-This is implemented centrally in `resolveRuntime` / `resolveToolsConfig`,
-which now live in the toolkit at
+`resolveRuntime` / `resolveToolsConfig` in
 [`packages/assessment-toolkit/src/runtime/core/engine-resolver.ts`](../assessment-toolkit/src/runtime/core/engine-resolver.ts)
-(re-exported via `@pie-players/pie-assessment-toolkit/runtime/internal`).
-Both helpers use a single `pick(runtimeVal, attrVal)` helper applied per
-key — so adding a new knob means appending exactly one entry to
-`RuntimeConfig`, one prop on each layout CE, and one `pick(...)` slot in
-`resolveRuntime`. Per-key precedence is locked behind parametrized tests
-in
+(reached through `resolveSectionEngineRuntimeState` on
+`@pie-players/pie-assessment-toolkit/runtime/engine`) fill `runtime`'s
+defaults and take `toolConfigStrictness` from the element, defaulting to
+`error`. They are locked by
 [`packages/assessment-toolkit/tests/runtime/core/engine-resolver.test.ts`](../assessment-toolkit/tests/runtime/core/engine-resolver.test.ts);
 the section-player-coupled wrapper (`resolvePlayerRuntime`,
 `resolveSectionPlayerRuntimeState`) lives in
@@ -216,14 +193,14 @@ and is locked by
 [`tests/section-player-runtime.test.ts`](tests/section-player-runtime.test.ts).
 New knobs MUST go through these helpers; do not add ad-hoc fall-throughs.
 
-### Documented exceptions to the mirror rule
+### Inputs outside `RuntimeConfig`
 
-A small set of tier-1 attributes have *no* `runtime.<key>` mirror by
-design:
+These inputs are element props the resolver never sees:
 
-- **Identity** (`section-id`, `attempt-id`, `section`): per-attempt host
-  state, not configuration. Re-using a section across attempts is the
-  reason `assessmentId` *does* mirror.
+- **Identity** (`section-id`, `attempt-id`, `section`, `session`):
+  per-attempt host state, not configuration. `session` is the
+  section's session: the controller created for `section` applies it in
+  place of hydrating from the persistence strategy.
 - **Layout-only shell knobs** (`show-toolbar`, `toolbar-position`,
   `narrow-layout-breakpoint`, `split-pane-collapse-strategy`,
   `content-max-width-no-passage`, `content-max-width-with-passage`,
@@ -234,45 +211,42 @@ design:
 - **Layout-shell host data** (`policies`, `hooks`, `toolRegistry`,
   `sectionHostButtons`, `itemHostButtons`, `passageHostButtons`):
   consumed by the layout kernel through its top-level prop, not via
-  `runtime`. They pass straight through to the kernel/scaffold and
-  are not part of the two-tier mirror.
+  `runtime`. They pass straight through to the kernel/scaffold.
 - Per-region toolbar tool placement is configured directly on the
   canonical `tools` object as `tools.placement.item` /
   `tools.placement.passage` (or via `runtime.tools.placement.{item,passage}`).
   Per-region toolbar strings are derived from those placement arrays for
   the internal card and pane custom elements.
-- **Runtime-only keys** (`createSectionController`, `isolation`):
-  accepted only via `runtime.<key>` on every section-player layout CE.
-  The top-level prop aliases were removed in the broad architecture
-  review compat sweep; the runtime tier is the sole supported entry
-  point on the layout CEs. `<pie-assessment-toolkit>` keeps both keys
-  as JS-only props (no kebab-attribute surface): section-player
-  layouts forward `runtime.createSectionController` and
-  `runtime.isolation` to the wrapped toolkit via Svelte property
-  bindings, and standalone hosts that need to override coordinator
-  inheritance should pass an explicit `coordinator={...}` instead.
 
-### Canonical tier-1 attribute set
+`<pie-assessment-toolkit>` takes the runtime fields as its own properties:
+`createSectionController` as a JS-only prop, `isolation` as a property or an
+`isolation` attribute (`inherit` | `force`), and its own `assessment-id`
+attribute. Section-player layouts forward `runtime.createSectionController`,
+`runtime.isolation` and `runtime.assessmentId` to the wrapped toolkit; a
+standalone host that needs to override coordinator inheritance passes an
+explicit `coordinator={...}`.
 
-The tier-1 attribute set is the same shape across the
-`pie-section-player-*` layout elements, `pie-section-player-base`, and
-`pie-assessment-toolkit`. Common members include:
+### Canonical attribute set
 
-- Identity: `assessment-id`, `section-id`, `attempt-id`
-- Runtime config: `runtime`
-- Diagnostics: `tool-config-strictness`, `debug`. Framework-error
-  delivery is via the canonical `onFrameworkError` callback prop and the
+The attribute set is the same shape across the `pie-section-player-*` layout
+elements and `pie-section-player-base`:
+
+- Identity: `section-id`, `attempt-id`
+- Interface: `nds-icons`, `locale`
+- Diagnostics: `tool-config-strictness`, and `debug` on the layouts only.
+  Framework-error delivery is via `runtime.onFrameworkError` and the
   `framework-error` DOM event, which bubbles from `<pie-assessment-toolkit>`
   and is dispatched without bubbling on a layout element (see "Framework
   error contract" below).
 - Layout / shell (section-player only): `show-toolbar`, `toolbar-position`,
-  `narrow-layout-breakpoint`, `split-pane-collapse-strategy`,
-  `content-max-width-no-passage`, `content-max-width-with-passage`,
-  `split-pane-min-region-width`
+  `narrow-layout-breakpoint`, `content-max-width-no-passage`,
+  `content-max-width-with-passage`, and on splitpane
+  `split-pane-collapse-strategy`, `split-pane-min-region-width` and
+  `split-pane-initial-passage-width`
 
-### When to add a tier-1 attribute
+### When to add an attribute
 
-Add a tier-1 attribute only if all of the following hold:
+Add an attribute only if all of the following hold:
 
 - It is a common case that hosts set without composing a `runtime` object.
 - Its value is a primitive or small typed object that round-trips through
@@ -333,7 +307,7 @@ The shells' events for their runtime (`pie-register`,
 `pie-unregister`, `pie-item-session-changed`, `pie-content-loaded`,
 `pie-item-player-error`, `pie-formative-action`,
 `pie-media-time-source`) stop at the toolkit that handles them. A raw
-item-player `session-changed` stops at its `<pie-item-shell>`, which
+item-player `session-changed` stops at its `<pie-item-scope>`, which
 drops it when it repeats the last event that shell forwarded, and
 otherwise forwards it to the runtime and, unless it carries only
 metadata, as `item-session-changed`.
@@ -356,7 +330,7 @@ Single-fire delivery (callback / bus)
   stack is. Layout custom elements (`pie-section-player-splitpane`,
   `pie-section-player-vertical`, `pie-section-player-tabbed`,
   `pie-section-player-kernel-host`) and `pie-section-player-base`
-  forward `onFrameworkError` through `effectiveRuntime →
+  forward `runtime.onFrameworkError` through `effectiveRuntime →
   pie-section-player-base → pie-assessment-toolkit`.
 - A coordinator the host passes as `runtime.coordinator` reports into
   a bus of its own. The toolkit subscribes to it and republishes each
@@ -366,26 +340,13 @@ Single-fire delivery (callback / bus)
   that constructed the coordinator handles its failures.
 
 DOM event (single-emit)
-- The `framework-error` *DOM event* on the layout CE host delivers
-  each error exactly once. The kernel listener at
-  `<pie-section-player-base>` intercepts the toolkit's bubbled emit
-  (`bubbles: true, composed: true`), calls `event.stopPropagation()`,
-  and re-feeds the detail into the section runtime engine — the
-  engine's `dom-event-bridge` then dispatches a (non-bubbling)
-  `framework-error` directly on the layout CE host. Outside listeners
-  on the layout host therefore see exactly one emit per error, and
-  `document` sees none.
-  Direct listeners attached to `<pie-assessment-toolkit>` itself are
-  unaffected (the toolkit dispatch reaches them before the kernel
-  listener runs). The kernel does **not** re-invoke the
-  `onFrameworkError` callback for the intercepted event, so callback
-  delivery is also single-fire.
+- `<pie-assessment-toolkit>` dispatches one `framework-error` per error,
+  `bubbles: true, composed: true`. It reaches the layout CE host and
+  `document` once. The kernel listener at `<pie-section-player-base>`
+  only reads it: a non-recoverable error sets the readiness error signal,
+  which ends the stage chain with the current stage `failed`.
   [`tests/section-player-event-delivery.spec.ts`](tests/section-player-event-delivery.spec.ts)
-  pins both counts on every layout element.
-
-Two-tier precedence
-- `runtime.onFrameworkError` wins over the top-level
-  `onFrameworkError` prop. The merge happens once in `resolveRuntime`.
+  pins the event and callback counts on every layout element.
 
 DOM events
 - Canonical: `framework-error` (detail = `FrameworkErrorModel`).
@@ -407,25 +368,21 @@ Stages and order (post-retro: 4 canonical stages)
   bring-up settled, section controller initialized)
 - `interactive` (user input accepted). A layout element enters it once
   the section controller is ready and the section's element pre-warm has
-  resolved for the current items; the toolkit enters it on the join of
-  `engine-ready` and `sectionInitialized`.
+  resolved for the current items.
 - `disposed` (cohort change or unmount)
 
 The original M6 plan included `attached`, `runtime-bound`, and
 `ui-rendered` stages. The post-M5/M6 cumulative review confirmed zero
 internal or external consumers for those three stages, so the retro
-removed them. The retro also unifies the canonical list across CE
-shapes: both the layout CEs and the toolkit CE now apply the same four
-stages, eliminating the auto-skip of `ui-rendered` on the toolkit and
-the per-DOM-element single-fire requirement on `attached`.
+removed them.
 
-The `StageTracker` primitive (`@pie-players/pie-players-shared/pie`)
-enforces monotonic ordering, applicability per CE shape (layout vs
-toolkit; identical post-retro), and cohort reset on
-`(sectionId, attemptId)` change. `<pie-assessment-toolkit>` emits its
-stages through it. The layout kernel emits the stages the section
-runtime engine derives, through the engine's DOM event bridge. Each
-detail's `sourceCe` names the emitting element.
+The section runtime engine derives the stages in order and resets on a
+`(sectionId, attemptId)` change; the layout kernel emits them through the
+engine's DOM event bridge, and each detail's `sourceCe` names the layout
+element. `status` is `entered`. A non-recoverable framework error before
+`interactive` ends the chain: the current stage is emitted `failed` and
+each stage it never reached `skipped`, and `disposed` still follows on
+cohort change or unmount.
 
 DOM events
 - Canonical: `pie-stage-change` (detail = `StageChangeDetail`).
@@ -434,9 +391,7 @@ DOM events
   element's `interactive`: the section controller is ready and the element
   pre-warm has resolved for the current items.
 - Use the canonical events as follows:
-  - `readiness-change` → listen for `pie-stage-change`; the readiness
-    payload is also reachable via `selectReadiness()` /
-    `getSnapshot().readiness` on the layout CE.
+  - `readiness-change` → listen for `pie-stage-change`.
   - `interaction-ready` → listen for `pie-stage-change` and filter on
     `detail.stage === "interactive"`.
   - `ready` → listen for `pie-loading-complete`.
@@ -445,24 +400,13 @@ DOM events
     on the layout CE, or filter `pie-stage-change` for
     `detail.stage === "engine-ready"`.
 
-Callback prop mirrors
-- `onStageChange(detail)` is exposed on every `<pie-section-player-…>`
-  layout element, `<pie-section-player-base>`, and
-  `<pie-assessment-toolkit>`. The kernel and the toolkit invoke the
-  resolved handler at the same emit point as `pie-stage-change`, so
-  callback and event stay in lockstep across cohort changes.
-- `onLoadingComplete(detail)` is exposed on the kernel-backed layout
-  CEs only (split-pane / vertical / tabbed / kernel-host). The toolkit
-  and the base CE do not own a `pie-loading-complete` emit point and
-  intentionally omit the prop. `runtime.onLoadingComplete` set on
-  those surfaces still flows through `runtime` passthrough — it just
-  never fires from there.
-
-Two-tier precedence
-- `runtime.onStageChange` wins over the top-level `onStageChange`
-  prop; same for `runtime.onLoadingComplete`. Resolved through the
-  shared per-key `pick(...)` slot in `resolveRuntime` (Decision D1) —
-  no per-feature special-casing.
+Callbacks
+- `runtime.onStageChange(detail)` and `runtime.onLoadingComplete(detail)`
+  fire on the kernel-backed layout CEs (split-pane / vertical / tabbed /
+  kernel-host). The kernel invokes the handler at the same emit point as
+  the DOM event, so callback and event stay in lockstep across cohort
+  changes. The base CE and the toolkit own no emit point; the two
+  callbacks pass through them and never fire there.
 - Thrown handlers are caught at the emit point and logged so a faulty
   consumer cannot break the stage pipeline.
 
@@ -476,37 +420,91 @@ Two-tier precedence
   - `packages/section-player/tests/section-player-event-panel.spec.ts`
 - Item shell identity stability on session-only updates:
   - `packages/section-player/tests/section-player-event-panel.spec.ts`
+- Kernel host stock body, layout context resolution, pane registry and readiness rule:
+  - `packages/section-player/tests/section-player-custom-layout.test.ts`
+- Host-built layout rendering and reaching `pie-loading-complete`:
+  - `packages/section-player/tests/section-player-custom-layout.spec.ts`
 
-## Creating a custom layout
+## Custom layouts
 
-1. Create a new layout custom element in `src/components/`.
-2. Reuse `resolveSectionPlayerRuntimeState` from `src/components/shared/section-player-host-runtime.ts`.
-3. Treat `pie-section-player-shell` as the main authoring primitive, and render your layout body in its slot.
-4. Keep runtime plumbing in `pie-section-player-base` around the shell.
-5. Render passages/items via card custom elements (`pie-section-player-passage-card`, `pie-section-player-item-card`) or your own content components.
+A layout is an arrangement of two panes under a section player. The kernel runs
+the section, the panes render it, and the layout element owns only placement:
+pane containers, dividers, tabs and backdrops. The stock layouts and a host's own
+layout are built the same way. The README's
+[Custom layout authoring](README.md#custom-layout-authoring) is the host-facing
+contract.
 
-Minimal shape:
+### Kernel host composition
 
-```svelte
-<pie-section-player-base runtime={effectiveRuntime} {section} section-id={sectionId} attempt-id={attemptId}>
-  <pie-section-player-shell
-    show-toolbar={showToolbar}
-    toolbar-position={toolbarPosition}
-  >
-    <pie-section-player-passage-card
-      passage={passage}
-      playerParams={passagePlayerParams}
-      passageToolbarTools={passageToolbarTools}
-    ></pie-section-player-passage-card>
-    <pie-section-player-item-card
-      item={item}
-      canonicalItemId={canonicalItemId}
-      playerParams={itemPlayerParams}
-      itemToolbarTools={itemToolbarTools}
-    ></pie-section-player-item-card>
-  </pie-section-player-shell>
-</pie-section-player-base>
-```
+`pie-section-player-kernel-host` is a layout element without a layout of its
+own. `SectionPlayerLayoutKernel` and the scaffold (base and shell) render in its
+open shadow root, with one default slot as the shell's body. The host's light-DOM
+children fill the slot. The panes, cards and item content stay in light DOM,
+because document styles (`components.css`, the item players' injected styles,
+MathJax) reach item content only there; the stock layout elements are
+`shadow: "none"` for the same reason. Events from the shadow tree retarget to the
+kernel host, so `pie-stage-change`, `pie-loading-complete` and the toolkit's
+events reach a host listener once, with `sourceCe:
+"pie-section-player-kernel-host"`.
+
+### Default body
+
+`attachKernelHostDefaultBody` mounts `SectionPlayerKernelHostBody` into the kernel
+host's light DOM while the host has no element children, and follows the child
+list through a `MutationObserver`. Text and comment children do not count. Slot
+fallback content was the alternative and loses on placement: fallback content
+lives in the shadow tree, out of reach of document styles, and stays mounted,
+hidden, beside a host's own panes, which would register a second pane of each
+kind.
+
+### Layout context
+
+`section-player-layout-context.ts` follows the card render context: a
+`createContext` from `@pie-players/pie-context` keyed by
+`Symbol.for("@pie-players/pie-section-player/layout-context")`, one
+`ContextProvider` per kernel republished through `setValue`, and panes
+subscribing with `connectContextWithRetry`. The global symbol lets a pane from one
+copy of the package resolve a provider from another. The provider sits in the
+kernel's tree, so a pane's request travels through the slot to the closest
+section player and nested players resolve their own. A pane that connects before
+its provider is answered when the provider announces itself. Hosts never import
+the context.
+
+The context carries the composition, the pre-warm inputs (renderables, their
+signature, `preloadEnabled`), the resolved player env, attributes, props and
+strategy, the heading level, the tool registry, toolbar tools and host buttons,
+`elementsLoaded`, the active pane of each kind, and the panes' `register` and
+`report*` callbacks. The panes take no props: no value a pane renders differs by
+placement.
+
+### Pane registry and readiness
+
+`createSectionPlayerPaneRegistry` keeps each kind's panes in connection order,
+and the first is active. The kernel accepts `reportWarmup` and the
+pre-warm retry and error reports from the active items pane only, so readiness
+follows exactly one pane and a pane that renders nothing cannot hold or release
+`interactive`. A duplicate idles and takes over when the active pane disconnects.
+The passages pane takes no part in readiness; it shows its loading card until
+`elementsLoaded`.
+
+Misplaced panes are reported through `console.warn`, once per section player: the
+channel the toolkit, `pie-item-scope` and the item toolbar use for an element
+placed where it cannot work, with the same "Reported once per ..." form.
+`framework-error` was the alternative; it latches the cohort's error state, and a
+layout mistake is the host's to fix in development. The duplicate check runs a
+task after a second registration, so a layout that swaps a pane is not reported.
+The missing-pane check runs a task after `section-ready` for a composition with
+items; such a section never reaches `interactive`, because no pane runs the
+pre-warm. A section with no items and no items pane does not complete either, and is
+not reported.
+
+### Stock layouts
+
+Split-pane, vertical, tabbed (through `SectionPlayerTabbedContent` and
+`SectionPlayerVerticalContent`) and the kernel host's default body all place the
+same two panes. A new stock layout element is a `shadow: "none"` custom element
+that renders `SectionPlayerLayoutKernel` with its own `sourceCe` and places the
+panes in its markup, plus its registration in `src/pie-section-player.ts`.
 
 ## Removed architecture
 

@@ -3,7 +3,7 @@
  * catalog interface.
  */
 
-import { describe, expect, test } from "bun:test";
+import { describe, expect, spyOn, test } from "bun:test";
 import {
 	AccessibilityCatalogResolver,
 	catalogOwnerContextFor,
@@ -20,7 +20,6 @@ import {
 	resolveRequestedSignLanguage,
 	resolveSignLanguageAlternate,
 	resolveSignLanguageContent,
-	SIGN_LANGUAGE_FEATURE_ID,
 } from "../src/sign-language-content.js";
 
 function signPayload(signLang: string, src: string): SignLanguageCardPayload {
@@ -221,7 +220,6 @@ describe("resolveSignLanguageContent", () => {
 		parameters?: unknown;
 	}): ReturnType<typeof resolveSignLanguageContent> {
 		const context: ToolContentDependencyContext = {
-			featureId: SIGN_LANGUAGE_FEATURE_ID,
 			parameters: args.parameters,
 			catalogs: args.catalogs,
 			granted: true,
@@ -243,20 +241,69 @@ describe("resolveSignLanguageContent", () => {
 		}
 	});
 
-	test("honours the requested sign language from policy parameters", () => {
-		expect(
-			contentFor({
-				catalogs: ownerSnapshot(
-					entity({
-						accessibilityCatalogs: [signCatalog("c1", "ase", "asl.mp4")],
-					}),
-				),
-				parameters: { signLang: "bfi" },
+	function warningsDuring(run: () => void): string[] {
+		const warn = spyOn(console, "warn").mockImplementation(() => {});
+		try {
+			run();
+			return warn.mock.calls.map((call) => String(call[0]));
+		} finally {
+			warn.mockRestore();
+		}
+	}
+
+	test("honours the requested sign language from policy parameters, and says so once", () => {
+		const catalogs = ownerSnapshot(
+			entity({
+				accessibilityCatalogs: [signCatalog("c1", "ase", "asl.mp4")],
 			}),
-		).toBeNull();
+		);
+		const warnings = warningsDuring(() => {
+			for (let attempt = 0; attempt < 2; attempt++) {
+				expect(
+					contentFor({ catalogs, parameters: { signLang: "bfi" } }),
+				).toBeNull();
+			}
+		});
+		expect(warnings).toHaveLength(1);
+		expect(warnings[0]).toContain('entitled to "bfi"');
+		expect(warnings[0]).toContain('carries only "ase"');
 	});
 
-	test("is absent when no resolver-backed owner snapshot is available", () => {
-		expect(contentFor({ catalogs: null })).toBeNull();
+	test("is absent when no resolver-backed owner snapshot is available, and says so once", () => {
+		const warnings = warningsDuring(() => {
+			expect(contentFor({ catalogs: null })).toBeNull();
+			expect(contentFor({ catalogs: null })).toBeNull();
+		});
+		expect(warnings).toHaveLength(1);
+		expect(warnings[0]).toContain("no accessibility catalog resolver");
+	});
+
+	test("reports sign-language cards with no playable media", () => {
+		const warnings = warningsDuring(() => {
+			expect(
+				contentFor({
+					catalogs: ownerSnapshot(
+						entity({
+							accessibilityCatalogs: [
+								{
+									identifier: "c1",
+									cards: [{ catalog: "sign-language", content: "bare.mp4" }],
+								},
+							],
+						}),
+					),
+				}),
+			).toBeNull();
+		});
+		expect(
+			warnings.filter((message) => message.includes("none has playable media")),
+		).toHaveLength(1);
+	});
+
+	test("stays silent for content that carries no sign-language card", () => {
+		const warnings = warningsDuring(() => {
+			expect(contentFor({ catalogs: ownerSnapshot(entity()) })).toBeNull();
+		});
+		expect(warnings).toEqual([]);
 	});
 });

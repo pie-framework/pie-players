@@ -82,9 +82,6 @@ const SCOPED_TARGETS = [
 	},
 	{ file: path.join(TOOLKIT_SRC, "services", "tool-config-validation.ts") },
 	{ file: path.join(TOOLKIT_SRC, "services", "tool-config-defaults.ts") },
-	{
-		file: path.join(TOOLKIT_SRC, "services", "defaultPersonalNeedsProfile.ts"),
-	},
 	{ file: path.join(TOOLKIT_SRC, "tools", "tool-tag-map.ts") },
 	{ file: path.join(TOOLKIT_SRC, "components", "ItemToolBar.svelte") },
 	{ file: path.join(TOOLKIT_SRC, "components", "SectionToolBar.svelte") },
@@ -92,39 +89,6 @@ const SCOPED_TARGETS = [
 		file: path.join(TOOLKIT_SRC, "tools", "content-capability-resolution.ts"),
 	},
 ];
-
-/**
- * `pnp-standard-features.ts` is deliberately not scoped: it enumerates the
- * AfA/QTI vocabulary and is exported rather than imported by any core module. A
- * published list of standard support ids is legitimate — it is a vocabulary, not
- * a dependency on a capability.
- */
-
-/**
- * Known exceptions, each with the reason it is one.
- *
- * An allowlist rather than dropping the file from scope: an exemption should be
- * one line a reviewer can see and argue with, not a silent gap in coverage.
- */
-const ALLOWED = [
-	{
-		file: path.join(TOOLKIT_SRC, "services", "tool-config-validation.ts"),
-		id: "textToSpeech",
-		// A migration diagnostic for the `providers.tts` -> `providers.textToSpeech`
-		// rename. It is one capability's rename living in generic validation, and it
-		// is a legacy shim of the kind AGENTS.md disallows outside the `pie-item`
-		// contract. Left in place because deleting it silently drops a useful
-		// migration error, and generalising it (a `deprecatedProviderKeys`
-		// declaration on the registration) is a design change rather than part of
-		// moving the registrations. Tracked as follow-up work, not exempted forever.
-		reason:
-			"providers.tts -> providers.textToSpeech migration diagnostic; see PIE-886 follow-up",
-	},
-];
-
-function isAllowed(absPath, id) {
-	return ALLOWED.some((entry) => entry.file === absPath && entry.id === id);
-}
 
 
 function collectTsFiles(dir) {
@@ -162,7 +126,7 @@ function checkFile(absPath) {
 		// Only a quoted id counts. `calculator` appears in type names and generic
 		// identifiers where it is not naming a capability instance.
 		const quoted = new RegExp(`["'\`]${id}["'\`]`);
-		if (quoted.test(code) && !isAllowed(absPath, id)) {
+		if (quoted.test(code)) {
 			violations.push(`names capability id "${id}"`);
 		}
 	}

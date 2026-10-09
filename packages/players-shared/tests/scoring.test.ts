@@ -55,7 +55,7 @@ function registerController(controller: Partial<PieController>) {
 }
 
 describe("scorePieItem", () => {
-	test("scopes element lookup to the supplied container and uses item-player outcome arguments", async () => {
+	test("scopes element lookup to the supplied container and calls outcome(model, session, env)", async () => {
 		const calls: Array<{
 			modelId: string;
 			sessionValue: unknown;
@@ -97,7 +97,6 @@ describe("scorePieItem", () => {
 			{
 				container: currentPlayer,
 				env: { mode: "gather", role: "student", partialScoring: true },
-				outcomeArguments: "model-session-env",
 				includeMissingResults: true,
 			},
 		);
@@ -122,7 +121,7 @@ describe("scorePieItem", () => {
 		]);
 	});
 
-	test("keeps existing filtered result shape unless missing slots are requested", async () => {
+	test("filters missing results unless missing slots are requested", async () => {
 		registerController({});
 		const currentPlayer = document.createElement("section");
 		currentPlayer.innerHTML =
@@ -139,34 +138,6 @@ describe("scorePieItem", () => {
 			includeMissingResults: true,
 		});
 		expect(aligned.results).toEqual([undefined, undefined]);
-	});
-
-	test("keeps the existing scorePieItem outcome(session, env) call shape by default", async () => {
-		const calls: Array<{ sessionId: string; mode: unknown }> = [];
-		registerController({
-			outcome: async (session: any, env: any) => {
-				calls.push({ sessionId: session.id, mode: env.mode });
-				return { id: session.id, element: session.element, score: 1 };
-			},
-		});
-		const currentPlayer = document.createElement("section");
-		currentPlayer.innerHTML =
-			'<pie-mc--version-1-0-0 id="q1"></pie-mc--version-1-0-0>';
-		document.body.append(currentPlayer);
-
-		const { results } = await scorePieItem(
-			{
-				...config,
-				models: [{ id: "q1", element: "pie-mc--version-1-0-0" }],
-			},
-			[{ id: "q1", element: "pie-mc--version-1-0-0", value: "A" }],
-			{ container: currentPlayer },
-		);
-
-		expect(calls).toEqual([{ sessionId: "q1", mode: "evaluate" }]);
-		expect(results).toEqual([
-			{ id: "q1", element: "pie-mc--version-1-0-0", value: "A", score: 1 },
-		]);
 	});
 
 	test("preserves exact id matching for versioned PIE elements", async () => {
@@ -190,7 +161,6 @@ describe("scorePieItem", () => {
 			[{ id: "q1", element: "pie-mc--version-1-0-0", value: "exact" }],
 			{
 				container: currentPlayer,
-				outcomeArguments: "model-session-env",
 				includeMissingResults: true,
 			},
 		);

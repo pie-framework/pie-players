@@ -141,6 +141,9 @@ test.describe("annotation toolbar keyboard access", () => {
 	}) => {
 		await gotoDemo(page);
 		const selected = await selectPassageText(page);
+		// The selection's own `selectionchange` is dispatched as a task, which can run
+		// after both key presses and show the strip again; it has run once the strip shows.
+		await expect(strip(page)).toBeVisible();
 		await page.keyboard.press("Shift+F10");
 		await expect(stripButtons(page).first()).toBeFocused();
 
@@ -228,5 +231,89 @@ test.describe("annotation toolbar keyboard access", () => {
 			"pie-tool-annotation-toolbar [role='status']",
 		);
 		await expect(announcement).toContainText("highlighted");
+	});
+
+	/**
+	 * The defect: the read button disabled itself while reading, which moved focus out
+	 * of the strip; the strip's focusout dismissed it, and dismissal stops speech, so
+	 * the read was cancelled a frame after it started.
+	 */
+	test("reading a selection aloud keeps the strip and the read going", async ({
+		page,
+	}) => {
+		// Speech that lasts until cancelled, counting the cancels.
+		await page.addInitScript(() => {
+			if (!("speechSynthesis" in window)) return;
+			const record = { spoken: 0, cancelled: 0 };
+			(window as unknown as { __pieSpeech: typeof record }).__pieSpeech = record;
+			const original = window.speechSynthesis;
+			let active: SpeechSynthesisUtterance | null = null;
+			Object.defineProperty(window, "speechSynthesis", {
+				configurable: true,
+				value: {
+					...original,
+					getVoices: () => original.getVoices(),
+					speak: (utterance: SpeechSynthesisUtterance) => {
+						record.spoken += 1;
+						active = utterance;
+						utterance.onstart?.(new Event("start") as SpeechSynthesisEvent);
+					},
+					cancel: () => {
+						record.cancelled += 1;
+						active?.onend?.(new Event("end") as SpeechSynthesisEvent);
+						active = null;
+					},
+					pause: () => {},
+					resume: () => {},
+					get speaking() {
+						return active !== null;
+					},
+					get paused() {
+						return false;
+					},
+					get pending() {
+						return false;
+					},
+				},
+			});
+		});
+		await gotoDemo(page);
+		await selectPassageText(page);
+		await expect(strip(page)).toBeVisible();
+		await page.keyboard.press("Shift+F10");
+
+		const read = strip(page).getByRole("button", {
+			name: "Read selected text aloud",
+		});
+		const count = await stripButtons(page).count();
+		for (let step = 0; step < count; step += 1) {
+			if (await read.evaluate((node) => node === node.getRootNode().activeElement))
+				break;
+			await page.keyboard.press("ArrowRight");
+		}
+		await expect(read).toBeFocused();
+		await page.keyboard.press("Enter");
+
+		const speech = () =>
+			page.evaluate(
+				() =>
+					(window as unknown as { __pieSpeech: { spoken: number; cancelled: number } })
+						.__pieSpeech,
+			);
+		await expect
+			.poll(async () => (await speech()).spoken, { timeout: 20_000 })
+			.toBeGreaterThan(0);
+		// Focus fix-up runs at the next rendering update.
+		await page.evaluate(
+			() =>
+				new Promise<void>((resolve) =>
+					requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
+				),
+		);
+
+		await expect(strip(page)).toBeVisible();
+		await expect(read).toBeFocused();
+		await expect(read).toHaveAttribute("aria-disabled", "true");
+		expect((await speech()).cancelled).toBe(0);
 	});
 });

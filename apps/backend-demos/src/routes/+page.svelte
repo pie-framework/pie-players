@@ -1,16 +1,16 @@
 <script lang="ts">
 	import { goto } from "$app/navigation";
-	import { page } from "$app/stores";
+	import { page } from "$app/state";
 	import { onMount, tick } from "svelte";
 	import {
 		DEFAULT_BUNDLE_HOST,
 		pieElementContextsWithin,
 	} from "@pie-players/pie-players-shared";
 	import "@pie-players/pie-item-player";
-	import BackendStatePanel from "$lib/components/BackendStatePanel.svelte";
-	import BackendToolBar from "$lib/components/BackendToolBar.svelte";
-	import BackendToolWindow from "$lib/components/BackendToolWindow.svelte";
-	import BackendTrafficPanel from "$lib/components/BackendTrafficPanel.svelte";
+	import BackendStatePanel from "#lib/components/BackendStatePanel.svelte";
+	import BackendToolBar from "#lib/components/BackendToolBar.svelte";
+	import BackendToolWindow from "#lib/components/BackendToolWindow.svelte";
+	import BackendTrafficPanel from "#lib/components/BackendTrafficPanel.svelte";
 
 	type BackendTrafficEntry = {
 		id: number;
@@ -71,13 +71,11 @@
 	}
 
 	function updateSearchParams(mutator: (params: URLSearchParams) => void) {
-		const url = new URL($page.url);
+		const url = new URL(page.url.href);
 		mutator(url.searchParams);
 		const query = url.searchParams.toString();
 		return goto(query ? `${url.pathname}?${query}` : url.pathname, {
-			replaceState: true,
-			noScroll: true,
-			keepFocus: true,
+			replace: true, reset: false
 		});
 	}
 
@@ -175,7 +173,7 @@
 	}
 
 	function setToolOpen(toolId: ToolId, open: boolean) {
-		const tools = normalizeToolParam($page.url.searchParams.get("tools"));
+		const tools = normalizeToolParam(page.url.searchParams.get("tools"));
 		if (open) {
 			tools.add(toolId);
 		} else {
@@ -192,7 +190,7 @@
 	}
 
 	function deliveryHrefForItem(itemId: string): string {
-		const params = new URLSearchParams($page.url.searchParams);
+		const params = new URLSearchParams(page.url.search);
 		params.set("sessionId", defaultSessionIdForItem(itemId));
 		const query = params.toString();
 		return `/delivery/${encodeURIComponent(itemId)}${query ? `?${query}` : ""}`;
@@ -545,10 +543,10 @@
 	});
 
 	$effect(() => {
-		const routedItemId = $page.params.itemId || defaultItemId;
+		const routedItemId = page.params.itemId || defaultItemId;
 		const routedSessionId =
-			$page.url.searchParams.get("sessionId") || defaultSessionIdForItem(routedItemId);
-		const tools = normalizeToolParam($page.url.searchParams.get("tools"));
+			page.url.searchParams.get("sessionId") || defaultSessionIdForItem(routedItemId);
+		const tools = normalizeToolParam(page.url.searchParams.get("tools"));
 
 		if (selectedItemId !== routedItemId) {
 			selectedItemId = routedItemId;
@@ -559,7 +557,7 @@
 		}
 		showTrafficPanel = tools.has("traffic");
 		showSessionPanel = tools.has("session");
-		showInfoDialog = $page.url.searchParams.get("info") === "1";
+		showInfoDialog = page.url.searchParams.get("info") === "1";
 	});
 
 	$effect(() => {
@@ -676,10 +674,7 @@
 
 	async function loadSelectedItem(event: Event) {
 		const target = event.target as HTMLSelectElement;
-		await goto(deliveryHrefForItem(target.value), {
-			noScroll: true,
-			keepFocus: true,
-		});
+		await goto(deliveryHrefForItem(target.value), { reset: false });
 		await reloadCurrentSession();
 	}
 

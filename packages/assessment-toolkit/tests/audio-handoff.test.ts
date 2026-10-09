@@ -7,24 +7,24 @@ import { PlaybackState } from "../src/services/TTSService";
 
 /** A TTS service reduced to what a handoff touches. */
 function fakeTts(initial: PlaybackState = PlaybackState.IDLE) {
-	const listeners = new Map<string, (state: PlaybackState) => void>();
+	const listeners = new Set<(state: PlaybackState) => void>();
 	const calls: string[] = [];
 	let state = initial;
 	return {
 		calls,
 		emit(next: PlaybackState) {
 			state = next;
-			for (const listener of Array.from(listeners.values())) listener(next);
+			for (const listener of Array.from(listeners)) listener(next);
 		},
 		listenerCount: () => listeners.size,
 		service: {
-			onStateChange(id: string, callback: (state: PlaybackState) => void) {
-				listeners.set(id, callback);
+			onStateChange(callback: (state: PlaybackState) => void) {
+				listeners.add(callback);
+				return () => {
+					listeners.delete(callback);
+				};
 			},
-			offStateChange(id: string) {
-				listeners.delete(id);
-			},
-			isPlaying: () => state === PlaybackState.PLAYING,
+			getState: () => state,
 			pause() {
 				calls.push("pause");
 			},
@@ -38,7 +38,6 @@ describe("bindTtsAudioHandoff", () => {
 		let silenced = 0;
 		const teardown = bindTtsAudioHandoff({
 			ttsService: tts.service,
-			listenerId: "surface-1",
 			silence: () => {
 				silenced += 1;
 			},
@@ -67,7 +66,6 @@ describe("bindTtsAudioHandoff", () => {
 		expect(() =>
 			bindTtsAudioHandoff({
 				ttsService: null,
-				listenerId: "surface-1",
 				silence: () => {},
 			})(),
 		).not.toThrow();
@@ -75,7 +73,6 @@ describe("bindTtsAudioHandoff", () => {
 		expect(() =>
 			bindTtsAudioHandoff({
 				ttsService: { isPlaying: () => true } as never,
-				listenerId: "surface-1",
 				silence: () => {},
 			})(),
 		).not.toThrow();
@@ -83,21 +80,32 @@ describe("bindTtsAudioHandoff", () => {
 });
 
 describe("pauseTtsForMediaAudio", () => {
-	test("pauses speech that is running and leaves silence alone", () => {
+	test("pauses speech that is running or loading and leaves silence alone", () => {
 		const speaking = fakeTts(PlaybackState.PLAYING);
 		pauseTtsForMediaAudio(speaking.service);
 		expect(speaking.calls).toEqual(["pause"]);
 
-		const idle = fakeTts(PlaybackState.IDLE);
-		pauseTtsForMediaAudio(idle.service);
-		expect(idle.calls).toEqual([]);
+		// A loading read sounds once its audio arrives, over the media.
+		const loading = fakeTts(PlaybackState.LOADING);
+		pauseTtsForMediaAudio(loading.service);
+		expect(loading.calls).toEqual(["pause"]);
+
+		for (const quiet of [
+			PlaybackState.IDLE,
+			PlaybackState.PAUSED,
+			PlaybackState.ERROR,
+		]) {
+			const idle = fakeTts(quiet);
+			pauseTtsForMediaAudio(idle.service);
+			expect(idle.calls).toEqual([]);
+		}
 	});
 
 	test("a torn-down service does not break the playback that asked", () => {
 		expect(() => pauseTtsForMediaAudio(null)).not.toThrow();
 		expect(() =>
 			pauseTtsForMediaAudio({
-				isPlaying: () => {
+				getState: () => {
 					throw new Error("service is gone");
 				},
 			}),

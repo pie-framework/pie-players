@@ -1,13 +1,13 @@
 <script lang="ts">
 	import { goto } from "$app/navigation";
-	import { page } from "$app/stores";
+	import { page } from "$app/state";
 	import { tick, untrack } from "svelte";
 	import "@pie-players/pie-section-player/components/section-player-splitpane-element";
-	import "@pie-players/pie-section-player/components/section-player-vertical-element";
-	import BackendToolBar from "$lib/components/BackendToolBar.svelte";
-	import BackendToolWindow from "$lib/components/BackendToolWindow.svelte";
-	import BackendTrafficPanel from "$lib/components/BackendTrafficPanel.svelte";
-	import JsonInspectPanel from "$lib/components/JsonInspectPanel.svelte";
+	import "@pie-players/pie-section-player";
+	import BackendToolBar from "#lib/components/BackendToolBar.svelte";
+	import BackendToolWindow from "#lib/components/BackendToolWindow.svelte";
+	import BackendTrafficPanel from "#lib/components/BackendTrafficPanel.svelte";
+	import JsonInspectPanel from "#lib/components/JsonInspectPanel.svelte";
 
 	type DemoItemId =
 		| "backend-delivery-planets"
@@ -79,6 +79,7 @@
 	const sectionSeedJson = $derived(JSON.stringify(demoSection, null, 2));
 	const safeModelsById = $derived(createSafeModelsById(demoSection));
 	const runtime = $derived({
+		assessmentId,
 		playerType: "iife",
 		env,
 		player: {
@@ -279,18 +280,16 @@
 	}
 
 	function updateSearchParams(mutator: (params: URLSearchParams) => void) {
-		const url = new URL($page.url);
+		const url = new URL(page.url.href);
 		mutator(url.searchParams);
 		const query = url.searchParams.toString();
 		return goto(query ? `${url.pathname}?${query}` : url.pathname, {
-			replaceState: true,
-			noScroll: true,
-			keepFocus: true,
+			replace: true, reset: false
 		});
 	}
 
 	function setToolOpen(toolId: ToolId, open: boolean) {
-		const tools = normalizeToolParam($page.url.searchParams.get("tools"));
+		const tools = normalizeToolParam(page.url.searchParams.get("tools"));
 		if (open) {
 			tools.add(toolId);
 		} else {
@@ -551,12 +550,12 @@
 	}
 
 	$effect(() => {
-		const routedSectionId = $page.params.sectionId || defaultSectionId;
+		const routedSectionId = page.params.sectionId || defaultSectionId;
 		const routedAttemptId =
-			$page.url.searchParams.get("attemptId") || defaultAttemptId;
-		const routedLayout = normalizeLayout($page.url.searchParams.get("layout"));
-		const tools = normalizeToolParam($page.url.searchParams.get("tools"));
-		const infoOpen = $page.url.searchParams.get("info") === "1";
+			page.url.searchParams.get("attemptId") || defaultAttemptId;
+		const routedLayout = normalizeLayout(page.url.searchParams.get("layout"));
+		const tools = normalizeToolParam(page.url.searchParams.get("tools"));
+		const infoOpen = page.url.searchParams.get("info") === "1";
 
 		untrack(() => {
 			sectionId = routedSectionId;
@@ -732,7 +731,6 @@
 					{#if layout === "splitpane"}
 						<pie-section-player-splitpane
 							bind:this={sectionPlayerEl}
-							assessment-id={assessmentId}
 							section-id={sectionId}
 							attempt-id={attemptId}
 							section={demoSection}
@@ -742,7 +740,6 @@
 					{:else}
 						<pie-section-player-vertical
 							bind:this={sectionPlayerEl}
-							assessment-id={assessmentId}
 							section-id={sectionId}
 							attempt-id={attemptId}
 							section={demoSection}

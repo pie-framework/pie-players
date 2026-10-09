@@ -1,12 +1,12 @@
 /**
- * Lockstep runtime-callback bridge (M7 PR 5).
+ * Lockstep runtime-callback bridge.
  *
- * The section runtime engine's DOM-event bridge dispatches the canonical
- * `pie-stage-change` and `pie-loading-complete` events directly on the
- * layout CE host. This helper installs matching `addEventListener`s on
- * the same host so the resolved `runtime.onStageChange` and
- * `runtime.onLoadingComplete` callbacks fire at the exact same emit
- * point as the DOM events for that cohort.
+ * The section runtime engine dispatches `pie-stage-change` and
+ * `pie-loading-complete` on the layout CE host, bubbling and composed. This
+ * helper listens on the same host so the resolved `runtime.onStageChange` and
+ * `runtime.onLoadingComplete` callbacks fire at the same emit point as the DOM
+ * events. It handles only events whose target is the host: a nested player's
+ * events bubble through, and belong to that player's callbacks.
  *
  * Why a helper (and not just an inline `$effect` block in
  * `SectionPlayerLayoutKernel.svelte`):
@@ -33,7 +33,7 @@ import type {
 import type {
 	LoadingCompleteHandler,
 	StageChangeHandler,
-} from "@pie-players/pie-assessment-toolkit/runtime/internal";
+} from "@pie-players/pie-assessment-toolkit/runtime/engine";
 
 export type RuntimeCallbackBridgeChannel =
 	| "onStageChange"
@@ -75,6 +75,7 @@ export function attachRuntimeCallbackBridge(
 	const { host, getOnStageChange, getOnLoadingComplete, onError } = options;
 
 	const stageHandler = (event: Event) => {
+		if (event.target !== host) return;
 		const detail = (event as CustomEvent<StageChangeDetail>).detail;
 		const handler = getOnStageChange();
 		if (!handler) return;
@@ -85,6 +86,7 @@ export function attachRuntimeCallbackBridge(
 		}
 	};
 	const loadingHandler = (event: Event) => {
+		if (event.target !== host) return;
 		const detail = (event as CustomEvent<LoadingCompleteDetail>).detail;
 		const handler = getOnLoadingComplete();
 		if (!handler) return;

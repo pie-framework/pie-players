@@ -4,7 +4,9 @@
  */
 export {
 	registerPreloadedElements,
+	type MathAssetOptions,
 	type PreloadedController,
 	type PreloadedElement,
+	type PreloadedRegistrationOptions,
 } from "@pie-players/pie-players-shared/loaders";
 export { ensureItemPlayerMathRenderingReady } from "./math-rendering-ready.js";

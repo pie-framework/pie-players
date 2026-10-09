@@ -9,8 +9,10 @@ import {
 	audioTranscriptRegistration,
 	resolveAudioTranscript,
 } from "../src/registrations/audio-transcript.js";
-import { PACKAGED_TOOL_REGISTRATIONS } from "../src/packaged-capability-composition.js";
-import { UNIVERSAL_SUPPORTS_PRESET } from "../src/packaged-capability-composition.js";
+import {
+	createUniversalPersonalNeedsProfile,
+	PACKAGED_TOOL_REGISTRATIONS,
+} from "../src/packaged-capability-composition.js";
 
 const itemWithCards = (cards: CatalogCard[]) =>
 	({
@@ -34,7 +36,6 @@ const dependencyContext = (
 	const owner = { kind: "item" as const, itemId: "item-1" };
 	resolver.registerOwner({ owner, entity: itemWithCards(cards) });
 	return {
-		featureId: granted ? AUDIO_TRANSCRIPT_FEATURE_ID : "",
 		catalogs: resolver
 			.forOwner({ ownerKind: "itemModel", itemId: "item-1" })
 			.snapshot(),
@@ -117,14 +118,12 @@ describe("audio transcript packaging", () => {
 	});
 
 	it("is gated by its own support id and declares a content dependency", () => {
-		expect(audioTranscriptRegistration.pnpSupportIds).toEqual([
-			AUDIO_TRANSCRIPT_FEATURE_ID,
-		]);
+		expect(audioTranscriptRegistration.toolId).toBe(AUDIO_TRANSCRIPT_FEATURE_ID);
 		expect(audioTranscriptRegistration.requiresAuthoredContent).toBeTruthy();
 	});
 
-	it("stays out of the universal preset, being content-dependent", () => {
-		expect(UNIVERSAL_SUPPORTS_PRESET).not.toContain(
+	it("stays out of the universal profile, being content-dependent", () => {
+		expect(createUniversalPersonalNeedsProfile().supports).not.toContain(
 			AUDIO_TRANSCRIPT_FEATURE_ID,
 		);
 	});

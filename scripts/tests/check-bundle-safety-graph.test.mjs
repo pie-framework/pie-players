@@ -23,7 +23,7 @@ describe("findIdenticalFiles", () => {
 		expect(
 			findIdenticalFiles([
 				{ path: "contracts/host-hooks.js", content: "" },
-				{ path: "contracts/layout-contract.js", content: "" },
+				{ path: "contracts/runtime-host-contract.js", content: "" },
 				{ path: "services/types.js", content: "export {};\n" },
 				{ path: "services/tts/types.js", content: "export {};\n" },
 			]),

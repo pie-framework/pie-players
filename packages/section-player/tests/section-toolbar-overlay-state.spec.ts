@@ -90,17 +90,21 @@ test.describe("section toolbar overlay state", () => {
 				window as unknown as {
 					__coordinator: {
 						updateToolConfig(id: string, updates: object): void;
-						updateCurrentItemRef(ref: object | null): void;
+						registerItemSettings(itemId: string, settings: object): () => void;
 						updateAssessment(assessment: object | null): void;
-						boundAssessment?: object | null;
+						getPolicyInputs(): { assessment: object | null };
 						assessmentId: string;
 					};
 				}
 			).__coordinator;
 			coordinator.updateToolConfig("ruler", { enabled: true });
-			coordinator.updateCurrentItemRef({ identifier: "overlay-state-ref" });
+			coordinator.registerItemSettings("overlay-state-item", {
+				restrictedTools: ["calculator"],
+			});
 			coordinator.updateAssessment({
-				...(coordinator.boundAssessment ?? { id: coordinator.assessmentId }),
+				...(coordinator.getPolicyInputs().assessment ?? {
+					id: coordinator.assessmentId,
+				}),
 			});
 		});
 		await expect.poll(() => rulerState(page)).toEqual(moved);

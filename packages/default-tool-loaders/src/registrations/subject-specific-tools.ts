@@ -4,22 +4,18 @@
  * Registers tools for specific subject areas:
  * - Graph (coordinate plane)
  * - Periodic Table (chemistry reference)
- *
- * Maps to QTI 3.0 standard access features:
- * - graph (assessment tool)
- * - periodicTable (assessment tool)
  */
 
 import type {
 	ToolRegistration,
 	ToolToolbarRenderResult,
 	ToolbarContext,
-} from "@pie-players/pie-assessment-toolkit/tools/internal";
-import type { ToolContext } from "@pie-players/pie-assessment-toolkit/tools/internal";
+} from "@pie-players/pie-assessment-toolkit/tools/registration";
+import type { ToolContext } from "@pie-players/pie-assessment-toolkit/tools/registration";
 import {
 	hasMathContent,
 	hasScienceContent,
-} from "@pie-players/pie-assessment-toolkit/tools/internal";
+} from "@pie-players/pie-assessment-toolkit/tools/registration";
 import { renderOverlayToolbar } from "./overlay-toolbar-render.js";
 
 /**
@@ -39,12 +35,6 @@ export const graphToolRegistration: ToolRegistration = {
 	// A floating tool, placed on a section toolbar or on an item toolbar where
 	// the toolkit runs without a section.
 	supportedLevels: ["section", "item"],
-
-	// `graphingCalculator` grants the calculator, whose graphing type a host
-	// selects through render params; the coordinate plane is not that tool.
-	pnpSupportIds: [
-		"graph", // QTI 3.0 standard (assessment.graph)
-	],
 
 	/**
 	 * Pass 2: Graph is relevant when math content is present
@@ -86,12 +76,6 @@ export const periodicTableToolRegistration: ToolRegistration = {
 	// A floating tool, placed on a section toolbar or on an item toolbar where
 	// the toolkit runs without a section.
 	supportedLevels: ["section", "item"],
-
-	// PNP support IDs
-	// Maps to QTI 3.0 standard feature: periodicTable
-	pnpSupportIds: [
-		"periodicTable", // QTI 3.0 standard (assessment.periodicTable)
-	],
 
 	/**
 	 * Pass 2: Periodic table is relevant when science content is present

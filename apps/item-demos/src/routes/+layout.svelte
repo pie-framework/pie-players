@@ -2,7 +2,7 @@
 	import '../app.css';
 	import '@pie-players/pie-theme';
 	import '@pie-players/pie-theme/components.css';
-	import { initTheme, selectedTheme } from '$lib/stores/theme';
+	import { initTheme, selectedTheme } from '#lib/stores/theme.js';
 
 	let { children } = $props();
 

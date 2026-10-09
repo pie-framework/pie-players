@@ -76,7 +76,7 @@ One thing in **Consequences** above reads differently now, and the record keeps
 both: cue and playback policy ownership was taken to ride on where the section
 flavor attaches. It does not. `assessment-toolkit` sits beneath the standalone
 section-player path as well as beneath assessment-player — the formative Try round
-trip runs controller → `SectionRuntimeEngine` → `PieAssessmentToolkit` →
+trip runs controller → `SectionControllerBinding` → `PieAssessmentToolkit` →
 composition republish, with no assessment-player in it — so `ToolPolicyEngine` can
 own cue and playback policy whichever player mounts the section. Where the flavor
 attaches was then decided the same day — the existing layouts on the standalone

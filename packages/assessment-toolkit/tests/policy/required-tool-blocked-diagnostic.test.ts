@@ -27,7 +27,7 @@ import { describe, expect, test } from "bun:test";
 
 import type {
 	AssessmentEntity,
-	AssessmentItemRef,
+	ItemSettings,
 } from "@pie-players/pie-players-shared/types";
 
 import { ToolPolicyEngine } from "../../src/policy/core/ToolPolicyEngine.js";
@@ -52,7 +52,7 @@ const ITEM_REQUEST = {
 function decideViaEngine(
 	tools: CanonicalToolsConfig,
 	assessment: AssessmentEntity | null,
-	currentItemRef: AssessmentItemRef | null = null,
+	itemSettings: ItemSettings | null = null,
 	level: "section" | "item" = "item",
 ) {
 	const engine = new ToolPolicyEngine({
@@ -60,10 +60,10 @@ function decideViaEngine(
 		inputs: {
 			tools,
 			assessment,
-			currentItemRef,
 			pnpEnforcement: "on",
 		},
 	});
+	if (itemSettings) engine.registerItemSettings("i1", itemSettings);
 	return engine.decide(level === "section" ? SECTION_REQUEST : ITEM_REQUEST);
 }
 
@@ -192,12 +192,9 @@ describe("tool-policy.requiredToolBlocked — engine-level (item-requirement)", 
 			placement: { item: ["calculator", "tts"] },
 		});
 		const assessment: AssessmentEntity = { id: "asm-1" } as AssessmentEntity;
-		const itemRef: AssessmentItemRef = {
-			identifier: "i1",
-			settings: { requiredTools: ["calculator"] },
-		};
+		const itemSettings: ItemSettings = { requiredTools: ["calculator"] };
 
-		const decision = decideViaEngine(tools, assessment, itemRef, "item");
+		const decision = decideViaEngine(tools, assessment, itemSettings, "item");
 
 		const diag = findRequiredBlocked(decision.diagnostics, "calculator");
 		expect(diag).toBeDefined();

@@ -40,6 +40,7 @@ class MockTTSImpl implements ITTSProviderImplementation {
 	isPaused(): boolean {
 		return false;
 	}
+	updateSettings(): void {}
 }
 
 class MockTTSProvider implements ITTSProvider {
@@ -54,9 +55,6 @@ class MockTTSProvider implements ITTSProvider {
 
 	async initialize(_config: TTSConfig): Promise<ITTSProviderImplementation> {
 		return this.impl;
-	}
-	supportsFeature(): boolean {
-		return true;
 	}
 	getCapabilities(): TTSProviderCapabilities {
 		return {
@@ -90,11 +88,8 @@ function createRecordingCoordinator() {
 		sentenceElementHighlights,
 		clearTypes,
 		coordinator: {
-			highlightTTSWord: (node: Text, start: number, end: number) => {
-				wordHighlights.push(node.textContent?.slice(start, end) || "");
-			},
-			highlightRange: (range: Range) => {
-				wordHighlights.push(range.toString());
+			highlightTTSWord: (ranges: Range[]) => {
+				wordHighlights.push(ranges.join(""));
 			},
 			highlightTTSWordElement: (element: Element) => {
 				wordHighlights.push(element.textContent || "");
@@ -115,7 +110,6 @@ function createRecordingCoordinator() {
 				clearTypes.push(String(type));
 			},
 			clearTTS: () => {},
-			clearAll: () => {},
 			isSupported: () => true,
 			updateTTSHighlightStyle: () => {},
 		},
@@ -169,11 +163,57 @@ describe("TTSService highlight target resolver", () => {
 			context: { scopeElement: root },
 		}));
 
-		await service.speak(root.textContent || "", {
-			contentElement: root,
-		} as any);
+		await service.speak(root);
 
 		expect(recording.wordHighlights).toContain("spoken");
+	});
+
+	test("highlights a word spanning several text nodes whole", async () => {
+		const impl = new MockTTSImpl();
+		impl.boundariesByText.set("café au lait", [
+			{ word: "café", position: 0, length: "café".length },
+		]);
+		const service = new TTSService();
+		await service.initialize(new MockTTSProvider(impl));
+		const root = document.createElement("p");
+		root.innerHTML = "caf<em>é</em> au lait";
+		const recording = createRecordingCoordinator();
+		service.setHighlightCoordinator(recording.coordinator as any);
+
+		await service.speak(root);
+
+		expect(impl.speakCalls).toEqual(["café au lait"]);
+		expect(recording.wordHighlights).toEqual(["café"]);
+	});
+
+	test("traces a read only while the read-aloud debug flag is set", async () => {
+		const impl = new MockTTSImpl();
+		impl.boundariesByText.set("spoken visible", [
+			{ word: "spoken", position: 0, length: "spoken".length },
+		]);
+		const service = new TTSService();
+		await service.initialize(new MockTTSProvider(impl));
+		const root = document.createElement("div");
+		root.textContent = "spoken visible";
+		service.setHighlightCoordinator(
+			createRecordingCoordinator().coordinator as any,
+		);
+		const traced: string[] = [];
+		const originalDebug = console.debug;
+		console.debug = (prefix: unknown) => {
+			traced.push(String(prefix));
+		};
+		try {
+			await service.speak(root);
+			expect(traced).toEqual([]);
+
+			(globalThis as any).__PIE_TTS_DEBUG__ = true;
+			await service.speak(root);
+			expect(traced).toContain("[tts-service]");
+		} finally {
+			console.debug = originalDebug;
+			(globalThis as any).__PIE_TTS_DEBUG__ = undefined;
+		}
 	});
 
 	test("lets a host resolver remap the active word range before painting", async () => {
@@ -195,9 +235,7 @@ describe("TTSService highlight target resolver", () => {
 			},
 		}));
 
-		await service.speak(root.textContent || "", {
-			contentElement: root,
-		} as any);
+		await service.speak(root);
 
 		expect(recording.wordHighlights).toContain("visible");
 		expect(recording.wordHighlights).not.toContain("spoken");
@@ -219,10 +257,7 @@ describe("TTSService highlight target resolver", () => {
 			},
 		}));
 
-		await service.speak("native sentence.", {
-			contentElement: root.querySelector("p")!,
-			highlightModeOverride: "sentence",
-		} as any);
+		await service.speak(root.querySelector("p")!);
 
 		expect(recording.sentenceElementHighlights).toContain("visible-block");
 		expect(recording.sentenceHighlights).not.toContain("native sentence.");
@@ -247,9 +282,7 @@ describe("TTSService highlight target resolver", () => {
 			},
 		}));
 
-		await service.speak("native sentence.", {
-			contentElement: root.querySelector("p")!,
-		} as any);
+		await service.speak(root.querySelector("p")!);
 
 		expect(recording.wordHighlights).toContain("native");
 		expect(recording.sentenceElementHighlights).toContain("visible-block");
@@ -275,9 +308,7 @@ describe("TTSService highlight target resolver", () => {
 			},
 		}));
 
-		await service.speak(root.textContent || "", {
-			contentElement: root,
-		} as any);
+		await service.speak(root);
 
 		expect(recording.wordHighlights).toContain("spoken");
 	});
@@ -301,9 +332,7 @@ describe("TTSService highlight target resolver", () => {
 			},
 		}));
 
-		await service.speak(root.textContent || "", {
-			contentElement: root,
-		} as any);
+		await service.speak(root);
 
 		expect(recording.wordHighlights).toContain("spoken");
 		expect(recording.wordHighlights).not.toContain("detached");
@@ -337,13 +366,9 @@ describe("TTSService highlight target resolver", () => {
 			},
 		}));
 
-		await service.speak(firstRoot.textContent || "", {
-			contentElement: firstRoot,
-		} as any);
+		await service.speak(firstRoot);
 		currentRoot = secondRoot;
-		await service.speak(secondRoot.textContent || "", {
-			contentElement: secondRoot,
-		} as any);
+		await service.speak(secondRoot);
 
 		expect(recording.wordHighlights).toContain("one");
 		expect(recording.wordHighlights).toContain("two");
@@ -377,9 +402,7 @@ describe("TTSService highlight target resolver", () => {
 		}));
 
 		disposeOld();
-		await service.speak(root.textContent || "", {
-			contentElement: root,
-		} as any);
+		await service.speak(root);
 		disposeCurrent();
 
 		expect(recording.wordHighlights).toContain("first");
@@ -409,9 +432,7 @@ describe("TTSService highlight target resolver", () => {
 		// provider exists for — got remapping for exactly one playback and then
 		// silently fell back to identity for the service's remaining life.
 		service.stop();
-		await service.speak(root.textContent || "", {
-			contentElement: root,
-		} as any);
+		await service.speak(root);
 
 		expect(recording.wordHighlights).toContain("first");
 		expect(recording.wordHighlights).not.toContain("spoken");

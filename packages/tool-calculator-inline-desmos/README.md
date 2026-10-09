@@ -13,21 +13,21 @@ packages share.
 
 - **Web Component** - Custom element with an open shadow root
 - **Toolkit context** - Takes its ToolCoordinator from the toolkit runtime context and its item from the enclosing item shell
-- **Shared state** - Opens the item toolbar's calculator instance, so the button and the toolbar stay in step
+- **Shared state** - Opens the item toolbar's calculator through the toolkit's tool request path, so the button and the toolbar stay in step and policy applies to both
 - **Size Variants** - Supports sm, md, lg button sizes
 - **WCAG 2.2 Level AA** - Fully accessible with proper ARIA attributes
 - **Material Design Icon** - Calculator icon from Material Design
 
 ## Usage
 
-The element renders inside `<pie-item-shell>` under `<pie-assessment-toolkit>`.
+The element renders inside `<pie-item-scope>` under `<pie-assessment-toolkit>`.
 The toolkit runtime context supplies the ToolCoordinator and the shell supplies
 the item; section players provide both.
 
 ```javascript
 import '@pie-players/pie-tool-calculator-inline-desmos';
 
-// itemHeader: an element inside <pie-item-shell>
+// itemHeader: an element inside <pie-item-scope>
 const calculatorButton = document.createElement('pie-tool-calculator-inline');
 calculatorButton.setAttribute('calculator-type', 'scientific');
 itemHeader.append(calculatorButton);
@@ -35,27 +35,29 @@ itemHeader.append(calculatorButton);
 
 The calculator it opens is the item toolbar's: the toolkit's tool configuration
 places `calculator` in the item toolbar and names its provider, and the item
-toolbar renders that calculator. The button adds no calculator of its own, so
-an item whose tool policy leaves the calculator out has nothing for it to open.
+toolbar renders that calculator. The button adds no calculator of its own and is
+disabled while the toolbar does not render one, as when the item's tool policy
+leaves the calculator out or its module failed to load.
 
 ### Props
 
 #### Attributes (String)
 
-- `target-tool-id` - Coordinator tool id the button toggles (default: `''`). Empty resolves the enclosing item's calculator, `calculator:item:<itemId>`; set it only to toggle a calculator registered under another id
+- `target-tool-id` - Scoped id of the calculator the button toggles, `<toolId>:<section|item|passage>:<scopeId>` (default: `''`). Empty resolves the enclosing item's calculator, `calculator:item:<itemId>`; set it only to toggle another toolbar's calculator
 - `calculator-type` - Calculator type named in the button's label and announcements (default: `'basic'`); a type outside `available-types` falls back to `'basic'`
 - `available-types` - Comma-separated list of calculator types (default: `'basic,scientific,graphing'`)
 - `size` - Button size: `'sm' | 'md' | 'lg'` (default: `'md'`)
 
 The button is disabled until the toolkit runtime context supplies a
-ToolCoordinator and a target resolves. With no item shell and no
-`target-tool-id`, it stays disabled and logs a console warning.
+ToolCoordinator and the target toolbar renders the calculator. With no item
+shell and no valid `target-tool-id`, it stays disabled and logs a console
+warning.
 
 ## Toggle behavior
 
-1. The button resolves its target from the item shell context: `calculator:item:<canonicalItemId or itemId>`, the id the item toolbar uses.
-2. A click registers that id with the coordinator if the toolbar has not yet, then calls `toggleTool`.
-3. The item toolbar renders or hides its calculator from the coordinator's visibility state.
+1. The button resolves its target from the item shell context: the item toolbar for `<canonicalItemId or itemId>`, which shows the calculator as `calculator:item:<id>`.
+2. It asks the toolkit coordinator whether a tool request for `calculator` at that level and scope reaches a toolbar (`canRequestTool`), and re-asks when toolbars register or policy changes.
+3. A click on a closed calculator sends the request (`requestTool`), and the toolbar shows its calculator; a click on an open one hides it.
 4. `aria-pressed`, the active style and a status announcement follow the target's visibility, including changes made from the toolbar.
 
 ## Accessibility

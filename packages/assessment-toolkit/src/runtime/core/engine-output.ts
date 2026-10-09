@@ -1,38 +1,24 @@
 /**
- * Section runtime engine outputs (M7 — Variant C, layered core).
+ * Section runtime engine outputs.
  *
- * Outputs are the closed discriminated union of effects the transition
- * function returns. The adapter (PR 2) takes the output array, walks
- * it in order, and dispatches each one to the right bridge (DOM
- * events, framework-error bus, subscriber fan-out).
+ * Outputs are the closed union of effects the transition function returns. The
+ * adapter walks each batch in order and hands it to the DOM-event bridge and the
+ * subscriber fan-out. Outputs carry only plain data, so the transition table is
+ * testable without DOM or coordinator wiring.
  *
- * Outputs carry only plain data so the transition table can be tested
- * exhaustively without any DOM or coordinator wiring.
- *
- * Adjustment A2 from the M7 implementation plan: `loading-complete`
- * is an output, **not** an FSM phase. The transition emits it from
- * the `interactive` phase when the readiness signals indicate every
- * item has finished loading. This mirrors today's
- * `pie-loading-complete` DOM event semantics.
- *
- * Readiness alias output kinds (`readiness-change`,
- * `interaction-ready`, `ready`) were removed in the broad
- * architecture review compat sweep along with their DOM-event bridge
- * event bridge. Stage and readiness changes now flow
- * through `stage-change` (with `EngineReadinessDetail` available via
- * `SectionEngineCore.getState()` / kernel `selectReadiness()`); the
- * "all items loaded" signal flows through `loading-complete` only.
+ * Framework errors are not an output. The toolkit that owns the coordinator
+ * publishes each one once, as its `framework-error` event and `onFrameworkError`
+ * hook; the engine sees an error only through the readiness signals, and a
+ * fatal one before `interactive` ends the cohort's stage chain as `failed`.
  */
 
 import type { Stage, StageStatus } from "@pie-players/pie-players-shared/pie";
 import type { CohortKey } from "./cohort.js";
-import type { FrameworkErrorModel } from "../../services/framework-error.js";
 
 /**
- * Stage transition. The adapter dispatches a `pie-stage-change` DOM
- * event with the canonical detail and forwards to subscribers /
- * coordinator. The status indicates whether the stage was entered,
- * skipped, or recorded as failed.
+ * Stage transition. The adapter dispatches it as `pie-stage-change` with the
+ * canonical detail. The status says whether the stage was entered, skipped, or
+ * recorded as failed.
  */
 export type EngineOutputStageChange = {
 	kind: "stage-change";
@@ -42,28 +28,16 @@ export type EngineOutputStageChange = {
 };
 
 /**
- * Canonical `pie-loading-complete` emit (M6 D1). One-shot per cohort.
- * Fires from the `interactive` phase when loaded == items count and
- * the readiness signals satisfy `allLoadingComplete`.
+ * Canonical `pie-loading-complete`. One-shot per cohort, emitted when the
+ * readiness signals satisfy `allLoadingComplete`, so every one of `itemCount`
+ * items has loaded.
  */
 export type EngineOutputLoadingComplete = {
 	kind: "loading-complete";
 	cohort: CohortKey;
 	itemCount: number;
-	loadedCount: number;
-};
-
-/**
- * Framework error fan-out. Mirrors the M3 `framework-error` DOM event
- * and the `subscribeFrameworkErrors` listener channel. Emitted on
- * every `framework-error` input.
- */
-export type EngineOutputFrameworkError = {
-	kind: "framework-error";
-	error: FrameworkErrorModel;
 };
 
 export type SectionEngineOutput =
 	| EngineOutputStageChange
-	| EngineOutputLoadingComplete
-	| EngineOutputFrameworkError;
+	| EngineOutputLoadingComplete;

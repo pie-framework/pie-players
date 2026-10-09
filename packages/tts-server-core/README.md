@@ -29,7 +29,15 @@ npm install @pie-players/tts-server-core
 ### Implementing a Provider
 
 ```typescript
-import { BaseTTSProvider, type SynthesizeRequest, type SynthesizeResponse } from '@pie-players/tts-server-core';
+import {
+  BaseTTSProvider,
+  estimateSpeechMarks,
+  type ServerProviderCapabilities,
+  type SynthesizeRequest,
+  type SynthesizeResponse,
+  type TTSServerConfig,
+  type Voice,
+} from '@pie-players/tts-server-core';
 
 export class MyTTSProvider extends BaseTTSProvider {
   readonly providerId = 'my-tts';
@@ -45,13 +53,13 @@ export class MyTTSProvider extends BaseTTSProvider {
     this.ensureInitialized();
 
     // Your synthesis logic here
-    const audio = await this.callTTSAPI(request.text);
-    const speechMarks = await this.getSpeechMarks(request.text);
+    const audio = await myEngine.synthesize(request.text);
 
     return {
       audio,
       contentType: 'audio/mpeg',
-      speechMarks,
+      // Estimated marks, for an engine that returns none
+      speechMarks: estimateSpeechMarks(request.text),
       metadata: {
         providerId: this.providerId,
         voice: request.voice || 'default',
@@ -62,7 +70,27 @@ export class MyTTSProvider extends BaseTTSProvider {
     };
   }
 
-  // ... implement other required methods
+  async getVoices(): Promise<Voice[]> {
+    return myEngine.listVoices();
+  }
+
+  getCapabilities(): ServerProviderCapabilities {
+    return {
+      standard: {
+        supportsSSML: false,
+        supportsPitch: false,
+        supportsRate: true,
+        supportsVolume: false,
+        supportsMultipleVoices: true,
+        maxTextLength: 3000,
+      },
+      extensions: {
+        supportsSpeechMarks: false,
+        supportedFormats: ['mp3'],
+        supportsSampleRate: false,
+      },
+    };
+  }
 }
 ```
 
@@ -92,14 +120,11 @@ const cacheKey = await generateHashedCacheKey({
   voice: 'default',
 });
 
-// Check cache
+// Check cache, and store a fresh result for 24 hours
 const cached = await cache.get(cacheKey);
-if (cached) {
-  return cached;
+if (!cached) {
+  await cache.set(cacheKey, await provider.synthesize(request), 86400);
 }
-
-// Store in cache (24 hour TTL)
-await cache.set(cacheKey, result, 86400);
 ```
 
 `MemoryCache` is for development and testing. It is a bounded LRU over one

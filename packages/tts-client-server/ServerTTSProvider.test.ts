@@ -10,6 +10,7 @@ class MockAudio {
 	paused = true;
 	ended = false;
 	onplay: (() => void) | null = null;
+	onplaying: (() => void) | null = null;
 	onended: (() => void) | null = null;
 	onerror: ((event: Event) => void) | null = null;
 	onpause: (() => void) | null = null;
@@ -22,6 +23,7 @@ class MockAudio {
 	play(): Promise<void> {
 		this.paused = false;
 		this.onplay?.();
+		this.onplaying?.();
 		setTimeout(() => {
 			if (!this.paused) {
 				this.ended = true;
@@ -139,6 +141,68 @@ describe("ServerTTSProvider", () => {
 		expect(starts).toEqual(["start"]);
 	});
 
+	test("reports playback start when the audio sounds, not when play is requested", async () => {
+		globalThis.fetch = vi.fn(async () =>
+			createJSONResponse({ audio: btoa("audio-bytes"), speechMarks: [] }),
+		) as unknown as typeof fetch;
+		class BufferingAudio extends MockAudio {
+			play(): Promise<void> {
+				this.paused = false;
+				this.onplay?.();
+				return Promise.resolve();
+			}
+		}
+		(globalThis as Record<string, unknown>).Audio = BufferingAudio;
+		const provider = new ServerTTSProvider();
+		const impl = await provider.initialize({ apiEndpoint: "/api/tts" } as any);
+		const starts: string[] = [];
+		impl.onPlaybackStart = () => starts.push("start");
+
+		const speaking = impl.speak("hello");
+		await vi.waitFor(() => expect(MockAudio.instances).toHaveLength(1));
+		await new Promise((resolve) => setTimeout(resolve, 5));
+		expect(starts).toEqual([]);
+
+		const audio = MockAudio.instances[0];
+		audio?.onplaying?.();
+		expect(starts).toEqual(["start"]);
+		audio?.onended?.();
+		await speaking;
+	});
+
+	test("a superseded audio's error neither fails its speak nor clears the next one", async () => {
+		globalThis.fetch = vi.fn(async () =>
+			createJSONResponse({ audio: btoa("audio-bytes"), speechMarks: [] }),
+		) as unknown as typeof fetch;
+		class HeldAudio extends MockAudio {
+			play(): Promise<void> {
+				this.paused = false;
+				this.onplay?.();
+				this.onplaying?.();
+				return Promise.resolve();
+			}
+		}
+		(globalThis as Record<string, unknown>).Audio = HeldAudio;
+		const provider = new ServerTTSProvider();
+		const impl = await provider.initialize({ apiEndpoint: "/api/tts" } as any);
+
+		const first = impl.speak("first");
+		await vi.waitFor(() => expect(MockAudio.instances).toHaveLength(1));
+		const firstAudio = MockAudio.instances[0];
+		const second = impl.speak("second");
+		await vi.waitFor(() => expect(MockAudio.instances).toHaveLength(2));
+		const secondAudio = MockAudio.instances[1];
+
+		// The first element reports its error after the second speak took over.
+		firstAudio?.onerror?.(new Event("error"));
+		await expect(first).resolves.toBeUndefined();
+		expect(impl.isPlaying()).toBe(true);
+		expect((impl as any).currentAudio).toBe(secondAudio);
+
+		secondAudio?.onended?.();
+		await expect(second).resolves.toBeUndefined();
+	});
+
 	test("does not media-rescale initially synthesized server audio", async () => {
 		const fetchMock = vi.fn(async () =>
 			createJSONResponse({
@@ -249,6 +313,94 @@ describe("ServerTTSProvider", () => {
 		const synthBody = JSON.parse(String(options.body));
 		expect(synthBody.lang_id).toBe("es-MX");
 		expect(synthBody.langId).toBe("es-MX");
+	});
+
+	test("sends the language a speak names on the custom transport, then the configured one again", async () => {
+		const fetchMock = vi.fn(async (input: RequestInfo | URL) =>
+			String(input) === "https://tts.custom.example/v1"
+				? createJSONResponse({
+						audioContent: "https://tts.custom.example/audio.mp3",
+						speechMarks: [],
+					})
+				: new Response(new Blob(["mp3-bytes"]), { status: 200 }),
+		);
+		globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+		const provider = new ServerTTSProvider();
+		const impl = await provider.initialize({
+			apiEndpoint: "https://tts.custom.example/v1",
+			transportMode: "custom",
+			endpointMode: "rootPost",
+			language: "en-US",
+		} as any);
+		const updateSettings = (impl as any).updateSettings.bind(impl);
+		const sentLanguage = (call: number) => {
+			const options = fetchMock.mock.calls[call]?.[1] as
+				| RequestInit
+				| undefined;
+			return JSON.parse(String(options?.body)).lang_id;
+		};
+
+		updateSettings({ providerOptions: { contentLanguage: "es-MX" } });
+		await impl.speak("Leer");
+		expect(sentLanguage(0)).toBe("es-MX");
+
+		updateSettings({ providerOptions: { contentLanguage: undefined } });
+		await impl.speak("Read");
+		expect(sentLanguage(2)).toBe("en-US");
+	});
+
+	test("keeps a host's lang_id over the language a speak names", async () => {
+		const fetchMock = vi.fn(async (input: RequestInfo | URL) =>
+			String(input) === "https://tts.custom.example/v1"
+				? createJSONResponse({
+						audioContent: "https://tts.custom.example/audio.mp3",
+						speechMarks: [],
+					})
+				: new Response(new Blob(["mp3-bytes"]), { status: 200 }),
+		);
+		globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+		const provider = new ServerTTSProvider();
+		const impl = await provider.initialize({
+			apiEndpoint: "https://tts.custom.example/v1",
+			transportMode: "custom",
+			endpointMode: "rootPost",
+			language: "en-US",
+			providerOptions: { lang_id: "es-MX" },
+		} as any);
+		(impl as any).updateSettings({
+			providerOptions: { contentLanguage: "en-US" },
+		});
+		await impl.speak("Leer");
+
+		const options = fetchMock.mock.calls[0]?.[1] as RequestInit | undefined;
+		expect(JSON.parse(String(options?.body)).lang_id).toBe("es-MX");
+	});
+
+	test("sends the language a speak names on the pie transport", async () => {
+		const fetchMock = vi.fn(async () =>
+			createJSONResponse({
+				audio: btoa("audio-bytes"),
+				contentType: "audio/mpeg",
+				speechMarks: [],
+			}),
+		);
+		globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+		const provider = new ServerTTSProvider();
+		const impl = await provider.initialize({
+			apiEndpoint: "/api/tts",
+			provider: "polly",
+			language: "en-US",
+		} as any);
+		(impl as any).updateSettings({
+			providerOptions: { contentLanguage: "es-MX" },
+		});
+		await impl.speak("hola");
+
+		const options = fetchMock.mock.calls[0]?.[1] as RequestInit | undefined;
+		expect(JSON.parse(String(options?.body)).language).toBe("es-MX");
 	});
 
 	describe("custom transport asset auth", () => {
@@ -433,7 +585,7 @@ describe("ServerTTSProvider", () => {
 		]);
 	});
 
-	test("aborts in-flight synthesis when stopped", async () => {
+	test("a stopped synthesis aborts its request and resolves without reporting an error", async () => {
 		let aborted = false;
 		const fetchMock = vi.fn(
 			async (
@@ -454,14 +606,147 @@ describe("ServerTTSProvider", () => {
 		);
 		globalThis.fetch = fetchMock as unknown as typeof fetch;
 
+		const events: string[] = [];
 		const provider = new ServerTTSProvider();
 		const impl = await provider.initialize({
 			apiEndpoint: "/api/tts",
+			providerOptions: {
+				__pieTelemetry: (eventName: string) => {
+					events.push(eventName);
+				},
+			},
 		} as any);
 		const speakPromise = impl.speak("long running synthesis");
 		impl.stop();
-		await expect(speakPromise).rejects.toThrow();
+		await expect(speakPromise).resolves.toBeUndefined();
 		expect(aborted).toBe(true);
+		expect(events).toContain("pie-tool-backend-call-start");
+		expect(events).not.toContain("pie-tool-backend-call-error");
+	});
+
+	test("telemetry names the tool textToSpeech on every backend call", async () => {
+		let fail = false;
+		globalThis.fetch = vi.fn(async () =>
+			fail
+				? createJSONResponse({ message: "unavailable" }, 500)
+				: createJSONResponse({
+						audio: btoa("audio-bytes"),
+						contentType: "audio/mpeg",
+						speechMarks: [],
+						metadata: {
+							providerId: "polly",
+							voice: "Joanna",
+							duration: 1,
+							charCount: 5,
+							cached: false,
+						},
+					}),
+		) as unknown as typeof fetch;
+		const events: Array<[string, unknown]> = [];
+		const provider = new ServerTTSProvider();
+		const impl = await provider.initialize({
+			apiEndpoint: "/api/tts",
+			validateEndpoint: true,
+			providerOptions: {
+				__pieTelemetry: (
+					eventName: string,
+					payload?: Record<string, unknown>,
+				) => {
+					events.push([eventName, payload?.toolId]);
+				},
+			},
+		} as any);
+		await impl.speak("hello");
+		fail = true;
+		await impl.speak("hello").catch(() => {});
+
+		expect(new Set(events.map(([name]) => name))).toEqual(
+			new Set([
+				"pie-tool-backend-call-start",
+				"pie-tool-backend-call-success",
+				"pie-tool-backend-call-error",
+			]),
+		);
+		expect(new Set(events.map(([, toolId]) => toolId))).toEqual(
+			new Set(["textToSpeech"]),
+		);
+	});
+
+	describe("a pause before the audio sounds", () => {
+		const synthesized = () =>
+			createJSONResponse({
+				audio: btoa("audio-bytes"),
+				contentType: "audio/mpeg",
+				speechMarks: [],
+				metadata: {
+					providerId: "polly",
+					voice: "Joanna",
+					duration: 1,
+					charCount: 5,
+					cached: false,
+				},
+			});
+
+		test("during synthesis holds the audio until resume", async () => {
+			let respond: (() => void) | null = null;
+			globalThis.fetch = vi.fn(
+				() =>
+					new Promise<Response>((resolve) => {
+						respond = () => resolve(synthesized());
+					}),
+			) as unknown as typeof fetch;
+			const provider = new ServerTTSProvider();
+			const impl = await provider.initialize({ apiEndpoint: "/api/tts" } as any);
+			const starts: string[] = [];
+			impl.onPlaybackStart = () => starts.push("start");
+
+			const speaking = impl.speak("hello");
+			await vi.waitFor(() => expect(respond).not.toBeNull());
+			impl.pause();
+			respond?.();
+			await vi.waitFor(() => expect(MockAudio.instances).toHaveLength(1));
+			await new Promise((resolve) => setTimeout(resolve, 5));
+
+			expect(MockAudio.instances[0]?.paused).toBe(true);
+			expect(starts).toEqual([]);
+			expect(impl.isPaused()).toBe(true);
+
+			impl.resume();
+			await speaking;
+			expect(starts).toEqual(["start"]);
+		});
+
+		test("while the audio buffers does not fail the speak", async () => {
+			globalThis.fetch = vi.fn(async () =>
+				synthesized(),
+			) as unknown as typeof fetch;
+			// A browser rejects a pending play with an AbortError when the element
+			// is paused before it starts.
+			class BufferingAudio extends MockAudio {
+				private pendingPlay: ((error?: Error) => void) | null = null;
+				play(): Promise<void> {
+					if (this.pendingPlay) return super.play();
+					return new Promise((resolve, reject) => {
+						this.pendingPlay = (error) => (error ? reject(error) : resolve());
+					});
+				}
+				pause(): void {
+					super.pause();
+					this.pendingPlay?.(new DOMException("interrupted", "AbortError"));
+				}
+			}
+			(globalThis as Record<string, unknown>).Audio = BufferingAudio;
+			const provider = new ServerTTSProvider();
+			const impl = await provider.initialize({ apiEndpoint: "/api/tts" } as any);
+
+			const speaking = impl.speak("hello");
+			await vi.waitFor(() => expect(MockAudio.instances).toHaveLength(1));
+			impl.pause();
+			await new Promise((resolve) => setTimeout(resolve, 5));
+			impl.resume();
+
+			await expect(speaking).resolves.toBeUndefined();
+		});
 	});
 
 	test("validates provider-specific voices endpoint for Polly", async () => {

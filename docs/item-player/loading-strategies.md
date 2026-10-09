@@ -145,7 +145,7 @@ The player assumes all required PIE custom elements are already defined in the b
 
 Registration records each package's version in `window.PIE_PRELOADED_ELEMENTS`. The player replaces every authored spec of a recorded package with that version on its runtime copy of the config. Content can author a package under another base tag than the one it is registered under, so the player then defines each resulting versioned tag the page lacks from the element registered for the same package spec, with that registration's controller and bundle type (`defineAuthoredPreloadedTags`), and calls `assertRegistered` from the `ElementLoader` primitive for the versioned tags. A tag whose package spec the page did not register stays undefined and throws `ElementAssertionError`, naming each missing tag and the tags its package is registered as; there is no fall-back to bundle fetching.
 
-The player installs no math renderer under `preloaded`, as under `esm`: the elements start MathJax 4 themselves, on `window.MathJax` or as a copy of their own ([below](#one-mathjax-version-per-page)).
+The player installs no math renderer under `preloaded`, as under `esm`: the elements start MathJax 4 themselves, on `window.MathJax` or as a copy of their own ([below](#one-mathjax-version-per-page)). A bundled copy has no npm root of its own, so the host passes the [MathJax asset root](#mathjax-assets) when it registers the elements.
 
 ### Registering elements from npm
 
@@ -157,15 +157,18 @@ import * as delivery from "@pie-element/multiple-choice/browser/delivery";
 import * as controller from "@pie-element/multiple-choice/browser/controller";
 import manifest from "../package.json"; // pins "@pie-element/multiple-choice" exactly
 
-registerPreloadedElements([
-  {
-    tag: "pie-element-multiple-choice",
-    package: "@pie-element/multiple-choice",
-    version: manifest.dependencies["@pie-element/multiple-choice"],
-    element: delivery,
-    controller,
-  },
-]);
+registerPreloadedElements(
+  [
+    {
+      tag: "pie-element-multiple-choice",
+      package: "@pie-element/multiple-choice",
+      version: manifest.dependencies["@pie-element/multiple-choice"],
+      element: delivery,
+      controller,
+    },
+  ],
+  { math: { assetRoot: "https://assets.example.com/npm" } },
+);
 await import("@pie-players/pie-item-player");
 ```
 
@@ -175,11 +178,12 @@ await import("@pie-players/pie-item-player");
 - A package registers at one version per page, because the players align every authored version of a package to the registered one. Registering a second version throws.
 - `element` is the package's `./browser/delivery` module: `./browser/*` is the npm entry because it resolves React from the element package, so a host does not switch to `./delivery`.
 - `controller` is the package's `./browser/controller` module. A player that is not hosted runs its `model()` in the browser and warns once per tag registered without one. A hosted player renders server-processed models and needs none.
-- The call is synchronous and validates every entry before registering any. A tag that is already defined keeps its definition.
+- `math` sets where the elements' MathJax loads its fonts and speech data from, and whether math is in the tab order ([MathJax assets](#mathjax-assets)). Elements on adapter 0.1.3 or later render without web fonts and speech when neither it nor the page gives a root or the files' URLs.
+- The call is synchronous and validates every entry, and `math`, before registering any. A tag that is already defined keeps its definition.
 
 ### Preloaded player builds
 
-Generated `@pie-players/pie-preloaded-player` builds bundle a fixed set of pie-elements-ng elements from their ESM browser builds together with the item player, and ship the MathJax 4, fonts and speech data those elements render with, so nothing loads from the bundle service or a CDN and the entry installs no `window["@pie-lib/math-rendering"]` renderer. They stay published for hosts that have not moved to npm registration; a new integration registers ESM builds instead. A build published before the generator moved to ESM elements carries a PITS IIFE bundle of its elements, and its entry installs the MathJax 3 renderer that bundle reads ([below](#one-mathjax-version-per-page)).
+Generated `@pie-players/pie-preloaded-player` builds bundle a fixed set of pie-elements-ng elements from their ESM browser builds together with the item player, MathJax 4 inside their chunks, and ship the fonts and speech data that MathJax loads. The entry names each of those files by `new URL(…, import.meta.url)`, so every request goes to the server the package is on, or to the host's own build output when the host's bundler processes the entry; nothing loads from the bundle service or a CDN, and the entry installs no `window["@pie-lib/math-rendering"]` renderer. The generator takes elements on `@pie-element/shared-math-rendering-mathjax` 0.1.3 or later. Speech ships in English; a config's `speechLocales` ships more. They stay published for hosts that have not moved to npm registration; a new integration registers ESM builds instead. A build published before the generator moved to ESM elements carries a PITS IIFE bundle of its elements, and its entry installs the MathJax 3 renderer that bundle reads ([below](#one-mathjax-version-per-page)).
 
 The `configs/preloaded-player/` directory contains JSON manifests that define predefined sets of PIE elements to bundle into a single `@pie-players/pie-preloaded-player` package. This package registers all listed elements at import time through `registerPreloadedElements`, without controllers, so a hosted `<pie-item-player strategy="preloaded">` renders them without fetching bundles. See [`docs/preloaded-player/readme.md`](../preloaded-player/readme.md).
 
@@ -192,9 +196,39 @@ bun run cli pie-packages:preloaded-player-build-package \
 
 CI publishes preloaded-player variants via `.github/workflows/publish-preloaded-player.yml`.
 
+## Load completion
+
+`load-complete` goes out once the item's and passage's elements have rendered and the first [markup math](#item-markup-math) pass is done, for at most two seconds together, so a host that reveals the item on it shows it drawn; a render or typeset that outlasts the bound holds it no further. An element has rendered once it holds content, and so has every custom element it painted, as an `ebsr` paints its parts. No element event marks a render in both element generations, so the player reads the DOM: an element still empty once the player's subtree has had no mutation for 200ms counts as rendering nothing, as a rubric does for a student, and a tag no bundle has defined is not waited for. In author mode it waits for neither.
+
 ## Item markup math
 
-Each element typesets the math in its own subtree. The player typesets the math in the rest of the item and passage markup, handing a renderer only the parts that hold math and no element, so no element's content is typeset twice. It does so once the elements are initialized and again when a markup block is replaced, and does not hold `load-complete` back. The renderer is the page's, `window["@pie-lib/math-rendering"]`: under `iife` the one the player installs, under `esm` and `preloaded` one the host installs, which ESM elements render with as well. On a page without one the player typesets the markup on a MathJax 4.1.3 of its own, the browser build of `@pie-element/shared-math-rendering-mathjax` that ESM elements bundle, imported on the first markup that holds math. Like the elements' copies, it neither reads nor writes `window.MathJax` or the page renderer, and loads its fonts and speech data from jsDelivr; generated `@pie-players/pie-preloaded-player` builds serve them from `dist/mathjax/npm/`.
+Each element typesets the math in its own subtree. The player typesets the math in the rest of the item and passage markup, handing a renderer only the parts that hold math and no element, so no element's content is typeset twice. It does so once the elements are initialized and again when a markup block is replaced, and [`load-complete`](#load-completion) waits for the first pass, so a host that reveals the item on it shows the markup's math typeset. The renderer is the page's, `window["@pie-lib/math-rendering"]`: under `iife` the one the player installs, under `esm` and `preloaded` one the host installs, which ESM elements render with as well. On a page without one the player typesets the markup on a MathJax 4.1.3 of its own, the browser build of `@pie-element/shared-math-rendering-mathjax` that ESM elements bundle, imported on the first markup that holds math. Like the elements' copies, it neither reads nor writes `window.MathJax` or the page renderer, and loads its fonts and speech data as [MathJax assets](#mathjax-assets) sets out.
+
+## MathJax assets
+
+Copies of `@pie-element/shared-math-rendering-mathjax` from 0.1.3, in the elements and in the player's own MathJax, load MathJax's fonts and speech data as math renders, and on the adapter's npm build MathJax itself. No build names a CDN host. A copy loads each file from:
+
+1. Its URL in `window["@pie-lib/math-rendering@2"].opts.assetUrls`, keyed by npm path, such as `@mathjax/mathjax-newcm-font@4.1.3/chtml/woff2/mjx-ncm-n.woff2`. The browser build reads it.
+2. Otherwise the asset root, an npm root: a URL under which `<package>@<version>/<path>` serves that file of the package. A copy takes the first of `opts.assetRoot`; for the player's own MathJax under `esm`, the npm root of the element CDN (`esmCdnUrl` for jsDelivr, `https://raw.esm.sh` for esm.sh, the root of a provider object's `packageJsonUrl` layout when it has one); and the npm root of the URL the copy loaded from.
+
+Under `esm` the files come from the CDN the elements load from, with no configuration. A generated preloaded-player build lists every file it ships in `assetUrls`, each by `new URL("./mathjax/npm/…", import.meta.url)`, so it needs no root and a host bundler emits the files ([Preloaded player builds](#preloaded-player-builds)). A host that registers ESM builds it bundles itself passes the files' location through `registerPreloadedElements`:
+
+```ts
+registerPreloadedElements(entries, {
+  math: {
+    assetRoot: "https://assets.example.com/npm",
+    speechLocales: ["en", "es"],
+  },
+});
+```
+
+- `assetRoot` is the npm root. A self-hosted one serves the files [Math Rendering in pie-elements-ng](https://github.com/pie-framework/pie-elements-ng/blob/develop/docs/MATH-RENDERING.md#assets) lists, for the packages the adapter's `pie.assetPackages` names. A relative URL resolves against the page.
+- `assetUrls` maps npm paths to the URLs of those files, a string or a `URL` each; the files it does not list load from the root.
+- `speechPath` is the directory of `speech-worker.js` and its `mathmaps/`, by default `mathjax@<version>/sre` under the root. A directory of its own serves locales SRE does not ship.
+- `speechLocales` are the locales the speech language menu lists, as ids or as ids mapped to their labels; by default every locale SRE ships. List only those that can load.
+- `inTabOrder: true` puts typeset math in the keyboard tab order, a tab stop on each expression, for the MathJax menu's setting and its explorer; unset or `false`, math stays out of it. It takes effect at a copy's first math load: a copy reads it as it starts MathJax, so a later change reaches only copies that have not started. A host that loads a generated preloaded-player build, whose entry registers its elements itself, sets `opts.inTabOrder` on the page before the entry evaluates, and the entry's registration keeps it. The `iife` strategy's MathJax 3 renderer, and a MathJax the host loads and configures itself, keep their own configuration and ignore it. Adapter 0.1.4 and earlier ignore it.
+
+The call writes the options it is given, adds its `assetUrls` to those the page lists, and keeps the page options it leaves unset. A host without the players sets the same page options before the first element renders. With neither a root nor the fonts' URLs a copy warns once and dispatches `pie-mathjax-no-asset-root` on `window`: the browser build renders without web fonts and speech, and the npm build loads no MathJax. Players with `trackPageActions` on forward the event to instrumentation once per provider. Copies up to adapter 0.1.2 ignore the options and load from jsDelivr. The origins these files add to a Content-Security-Policy are in [security](../security/readme.md#content-security-policy).
 
 ## One MathJax version per page
 
@@ -204,7 +238,7 @@ The page's `window.MathJax` holds one MathJax major version, and which builds ty
 - ESM element builds whose `@pie-element/shared-math-rendering-mathjax` is 0.1.1 or earlier. They load MathJax 4.1.3 into `window.MathJax`, or typeset with the MathJax the page already has.
 - A host's own MathJax.
 
-ESM element builds whose adapter is 0.1.2-next.20261003161149 or later bundle a MathJax 4.1.3 private to the module: it neither reads nor writes `window.MathJax`, and every element package on the page starts its own copy, with its own `<style id="PIE-MJX-CHTML-styles-<n>">`. An element pins its adapter exactly in its `package.json`; `@pie-element/multiple-choice` 14.0.0 pins 0.1.1. `esm` loads the build of the version the item names, `preloaded` runs the builds the host installed, and a generated preloaded-player build that bundles ESM builds carries the versions its manifest lists. [Math Rendering in pie-elements-ng](https://github.com/pie-framework/pie-elements-ng/blob/develop/docs/MATH-RENDERING.md#builds) describes both adapter builds.
+ESM element builds whose adapter is 0.1.2-next.20261003161149 or later bundle a MathJax 4.1.3 private to the module: it neither reads nor writes `window.MathJax`, and every element package on the page starts its own copy, with its own `<style id="PIE-MJX-CHTML-styles-<n>">`. From 0.1.3 each copy loads its files from the [asset root](#mathjax-assets). An element pins its adapter exactly in its `package.json`; `@pie-element/multiple-choice` 14.0.0 pins 0.1.1. `esm` loads the build of the version the item names, `preloaded` runs the builds the host installed, and a generated preloaded-player build that bundles ESM builds carries the versions its manifest lists. [Math Rendering in pie-elements-ng](https://github.com/pie-framework/pie-elements-ng/blob/develop/docs/MATH-RENDERING.md#builds) describes both adapter builds.
 
 ESM builds run MathJax 4 because MathJax 3 ships no ES modules and depends on the `window.MathJax` global; its last release is 3.2.2, from June 2022, and npm marks `mathjax-full` deprecated in favour of `@mathjax/src`. MathJax 3 and MathJax 4 on `window.MathJax` together is unsupported: an `iife` item player next to `esm` or `preloaded` elements that typeset on the page global, or a host's own MathJax 3 next to them. The player still attempts to render such a page and guarantees nothing about the result. Elements with their own MathJax run beside a host's MathJax 3 that typesets only its own content. Observed in Chromium, with the builds each observation applies to:
 

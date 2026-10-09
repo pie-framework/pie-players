@@ -127,7 +127,6 @@ test.describe("pie-print accessibility alternates (real browser)", () => {
 				personalNeedsProfile: {
 					supports: ["transcript"],
 					prohibitedSupports: [],
-					activateAtInit: [],
 				},
 			},
 		});

@@ -1,4 +1,7 @@
-import type { ItemEntity } from "@pie-players/pie-players-shared/types";
+import type {
+	ItemEntity,
+	ItemSettings,
+} from "@pie-players/pie-players-shared/types";
 import type {
 	SectionCanonicalItemViewModel,
 	SectionCompositionModel,
@@ -36,6 +39,14 @@ export function getCanonicalItemIdForItem(
 ): string {
 	const fromViewModel = getItemViewModelForItem(compositionModel, item);
 	return fromViewModel?.canonicalItemId || "";
+}
+
+/** The item's policy settings from its assessment item reference. */
+export function getItemSettingsForItem(
+	compositionModel: SectionCompositionModel,
+	item: ItemEntity,
+): ItemSettings | null {
+	return getItemViewModelForItem(compositionModel, item)?.settings ?? null;
 }
 
 export function getSessionForItem(

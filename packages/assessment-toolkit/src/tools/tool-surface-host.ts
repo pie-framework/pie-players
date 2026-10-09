@@ -1,21 +1,18 @@
 /**
  * Headless host for capabilities that render into a renderer's surfaces.
  *
- * The interface deliberately exposes only current input, a two-boolean snapshot,
- * and teardown. Discovery, policy/catalog invalidation, content resolution, lazy
+ * The interface exposes only current input, a two-boolean snapshot, and
+ * teardown. Discovery, policy/catalog invalidation, content resolution, lazy
  * loading, DOM reconciliation, error isolation, and registry observation stay
  * inside this module. Svelte callers are geometry adapters over this seam.
  *
- * It lives here rather than in `section-player`, where it was written, because a
- * second renderer now opens a surface: the annotation toolbar hosts the
- * capabilities that act on a text selection. Two copies of mount/reconcile/
- * registry-observation would drift, and the drift would be invisible until one
- * renderer stopped honouring the grant-AND-content rule. Nothing about the module
- * was section-shaped — it already imported only from this package — so the move
- * is a relocation, not a rewrite. The one thing that *was* section-shaped is the
- * name it reported errors under, which is now {@link ToolSurfaceHostOptions.hostLabel}.
+ * Every renderer that opens a surface shares this one host, so each honours the
+ * grant-AND-content rule the same way: the section player's cards and the
+ * annotation toolbar's selection surface. Errors are reported under
+ * {@link ToolSurfaceHostOptions.hostLabel}.
  */
 
+import type { ToolScope } from "../policy/core/decision-types.js";
 import { isHostDeniedFeature } from "../policy/core/feature-decision.js";
 import type {
 	CatalogOwnerSnapshot,
@@ -43,6 +40,20 @@ export type ToolSurfaceScope =
 			assessmentId: string;
 			sectionId: string;
 	  };
+
+/**
+ * The scope an item's content asks feature policy with, which brings in the
+ * item's settings; other owners ask unscoped.
+ */
+function itemFeatureScope(owner: CatalogOwnerContext): ToolScope | undefined {
+	if (owner.ownerKind !== "itemModel") return undefined;
+	return {
+		level: "item",
+		scopeId: owner.canonicalItemId || owner.itemId,
+		itemId: owner.itemId,
+		canonicalItemId: owner.canonicalItemId,
+	};
+}
 
 export interface ToolSurfaceHostInput {
 	anchor: HTMLElement | null;
@@ -217,7 +228,7 @@ function contextSignature(context: ToolSurfaceRenderContext): string | null {
 	try {
 		return stableSerializableJson({
 			toolId: context.toolId,
-			featureId: context.featureId,
+			granted: context.granted,
 			surface: context.surface,
 			parameters: context.parameters ?? null,
 			content: context.content ?? null,
@@ -375,25 +386,24 @@ export function createToolSurfaceHost(
 	): EligibleCapability | null {
 		if (current.scope.kind !== "content") return null;
 		const coordinator = current.services.toolkitCoordinator;
+		const featureScope = itemFeatureScope(current.scope.ownerContext);
 		const [resolved] = resolveContentCapabilities({
 			registrations: [registration],
 			catalogs,
-			// One decision per feature id, in the rule's three states. The scan across
-			// a capability's support ids, the gate-only probe of its tool id, and
-			// denial's precedence over both a grant and `resolvesWithoutGrant` live in
-			// the rule, so this host and print cannot answer differently. All this
-			// adapter owns is reading a `FeaturePolicyDecision`: `granted` is not
-			// enough on its own, because a host gate and an unconfigured feature are
-			// both `granted: false` and only one of them may be reopened by content.
-			policyFor: (featureId) => {
-				const decision = coordinator?.decideFeaturePolicy?.(featureId);
+			// One decision per support id, in the rule's three states. Denial's
+			// precedence over both a grant and `resolvesWithoutGrant` lives in the
+			// rule, so this host and print cannot answer differently. All this adapter
+			// owns is reading a `FeaturePolicyDecision`: `granted` is not enough on its
+			// own, because a host gate and an unconfigured feature are both
+			// `granted: false` and only one of them may be reopened by content.
+			policyFor: (supportId) => {
+				const decision = coordinator?.decideFeaturePolicy?.(
+					supportId,
+					featureScope,
+				);
 				if (isHostDeniedFeature(decision)) return { outcome: "denied" };
 				if (decision?.granted === true) {
-					return {
-						outcome: "granted",
-						featureId,
-						parameters: decision.parameters,
-					};
+					return { outcome: "granted", parameters: decision.parameters };
 				}
 				return { outcome: "silent" };
 			},
@@ -430,7 +440,7 @@ export function createToolSurfaceHost(
 
 		const context: ToolSurfaceRenderContext = {
 			toolId: registration.toolId,
-			featureId: resolved.featureId,
+			granted: resolved.granted,
 			surface: current.surface,
 			parameters: resolved.parameters,
 			content: resolved.content,
@@ -459,24 +469,18 @@ export function createToolSurfaceHost(
 
 		const coordinator = current.services.toolkitCoordinator;
 		if (!coordinator) return null;
-		const supportIds = registration.pnpSupportIds?.length
-			? registration.pnpSupportIds
-			: [registration.toolId];
-		let featureId = "";
+		let granted = false;
 		let parameters: unknown;
 
 		try {
 			if (registration.activation === "region") {
-				for (const supportId of supportIds) {
-					const decision = coordinator.decideFeaturePolicy?.(supportId);
-					if (decision?.granted !== true) continue;
-					featureId = supportId;
-					parameters = decision.parameters;
-					break;
-				}
-				if (!featureId) return null;
+				const decision = coordinator.decideFeaturePolicy?.(registration.toolId);
+				if (decision?.granted !== true) return null;
+				granted = true;
+				parameters = decision.parameters;
 			} else {
 				const scopeId = current.scope.sectionId || "*";
+				let placed = false;
 				for (const level of SECTION_POLICY_LEVELS) {
 					const decision = coordinator.decideToolPolicy({
 						level,
@@ -491,11 +495,14 @@ export function createToolSurfaceHost(
 						(candidate) => candidate.toolId === registration.toolId,
 					);
 					if (!entry) continue;
-					featureId = supportIds[0] ?? registration.toolId;
+					// Placement admits the tool; only a support, requirement or
+					// test-administration override grants it.
+					placed = true;
+					granted = entry.required || entry.alwaysAvailable;
 					parameters = entry.settings;
 					break;
 				}
-				if (!featureId) return null;
+				if (!placed) return null;
 			}
 		} catch (error) {
 			report(
@@ -509,7 +516,7 @@ export function createToolSurfaceHost(
 
 		const context: ToolSurfaceRenderContext = {
 			toolId: registration.toolId,
-			featureId,
+			granted,
 			surface: current.surface,
 			parameters,
 			services: current.services,

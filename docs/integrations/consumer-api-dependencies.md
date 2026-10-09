@@ -66,6 +66,155 @@ outside the sheet. Hosts V and M are unchanged: their copies sit inside `@scope`
 which still bounds every rule to the scope root. Row verification dates are
 unchanged.
 
+On 2026-10-06 MathJax's fonts and speech, from
+`@pie-element/shared-math-rendering-mathjax` 0.1.3, load from the file URLs or the
+asset root `registerPreloadedElements` takes as `math.assetUrls` and
+`math.assetRoot`, checked against the recorded rows and every host's checkout,
+none of which reads `mathjax/load.js`, `startMathRendering` or the asset options.
+Hosts V and A run the `iife` strategy, where the legacy renderer typesets and the
+item player's own MathJax never loads. Host P and Host R's preloaded-package view
+load a generated package whose `index.js` lists every file under its
+`mathjax/npm/` in `math.assetUrls`. The generator no longer ships `mathjax/load.js`
+or the page MathJax it started, and refuses elements on an adapter before 0.1.3,
+so a set config pinning such elements stops building until it moves; packages
+already published are unchanged. Host R's `esm` branch gives the player's MathJax
+the element CDN's npm root. Host M registers neither, so the player's own markup
+math renders without web fonts or speech once it takes the release; its element
+is on an earlier adapter and keeps loading from jsDelivr. Row verification dates
+are unchanged.
+
+On 2026-10-06 the `.table` family stopped applying to layout tables, those
+carrying `.table-no-border` or `role="presentation"`, and `.table.lrn_width_auto`
+went back to `width: auto`. Host P renders migrated content whose layout tables
+it showed bare under the legacy player; it now shows them bare again, with no
+rule above the first row and no cell padding pushing tiles apart. Bordered data
+tables keep the grid. Hosts V and M see the same once their copies come from a
+release carrying the change; Host A gets it through the player's copy. A host
+whose content carries none of these classes sees no difference. The same day the
+`.pie-image-scroll` wrapper went from `display: block` to `inline-block`: every
+host rendering content through a player had each image on a line of its own,
+which stacked rows of images into columns and added a line to every image
+choice, and gets them back in the line. An image laid out as a block, by an
+element or by a host stylesheet resetting `img` to `display: block`, gets a
+block wrapper, carrying `pie-image-scroll-block`, so no gap opens below it.
+Row verification dates are unchanged.
+
+On 2026-10-07 read-aloud, its highlighting and the annotation toolbar started
+reaching content rendered into open shadow roots, and read-aloud started speaking
+in the content language: the nearest `lang` inside the shell, else the new
+`content-language` input, else `en-US`. Checked against the recorded rows and
+the checkouts of Hosts A and R, the two that render the toolkit. The annotation
+toolbar now opens only for a selection inside a card's content region, so Host R,
+the one host placing `annotationToolbar`, no longer gets it for a selection in a
+card's header, lead surfaces or media region. Host A reads aloud through the
+server backend, whose request language stays the one its provider config names.
+The browser voice, which only Host R reaches, speaks the content language: en-US
+unless content markup or a host names another, where before it followed the
+browser's language. Math control names take the same content language, where
+before they took the nearest `lang` up to the page's. Row verification dates are
+unchanged.
+
+On 2026-10-08 an item's policy settings (`requiredTools`, `restrictedTools`,
+`toolParameters`) started reaching section delivery. They arrive on
+`<pie-item-scope>` `settings`, which the section player fills from each item ref,
+and govern only that item's own toolbar; a tool placed on a section or assessment
+toolbar ignores them, and the toolkit raises `tool-policy.itemSettingNotApplied`
+for it. Before, nothing set the toolkit's `currentItemRef`, so Host A, which
+delivers through the section player, applied no item settings; it now applies any
+its items carry. `currentItemRef` and `updateCurrentItemRef` are removed. The same
+change applies `toolOverrides` as documented, withholds a tool whose module fails
+to load and reports `tool-module-load`, and has the PNP debugger edit only the
+bound assessment's profile. Checked against the checkouts of Hosts A, M, P, R and
+V: none names `currentItemRef`, `updateCurrentItemRef` or `toolOverrides`, and
+Host R's `decideFeaturePolicy(id)` and `onPolicyChange` calls keep working under
+the optional scope and the new `"item-settings"` change reason. A section's own
+`personalNeedsProfile` stays unread by policy, now as documented. Row
+verification dates are unchanged.
+
+On 2026-10-08 the section-player layout elements gained an optional `assessment`
+property, forwarded to the coordinator the toolkit builds, and a section carrying
+`personalNeedsProfile` now logs one warning per element saying policy reads the
+profile from the assessment. The toolkit coordinator logs `unknownSupportId` and
+`requiredToolBlocked` once per code and tool, feature decisions carry
+`diagnostics`, `unknownSupportId` covers every policy list, and the PNP
+debugger shows the decisions' diagnostics and the coordinator's enforcement
+override. `AssessmentSettings` and `ItemSettings` lose their index signatures and
+`toolConfigs.textToSpeech` its typed shape. Checked against the checkouts of Hosts
+A, M, P, R and V, each scan reaching `@pie-players` imports: none names
+`AssessmentSettings`, `ItemSettings`, `toolConfigs`, `pnpEnforcement` or the
+render context's `granted`. Host R alone puts a profile on the section, on its
+section preview, playground and demo routes; those profiles granted nothing before
+and now log the warning, and its playground keeps binding the assessment through
+`updateAssessment`. Host R's PNP debugger mount keeps its props. A `true`
+`toolOverrides` entry now ranks below an item's `restrictedTools` and the
+profile's `prohibitedSupports`, which raise `tool-policy.overrideBlocked` when
+they withdraw it, and a prohibition outranks item and district requirements; no
+checkout names `toolOverrides` or `prohibitedSupports`. Row verification dates
+are unchanged.
+
+On 2026-10-08 the annotation toolbar's read-aloud started reading spoken cards: a
+`data-catalog-idref` node the selection holds whole reads its card, from the
+cards the selection's shell registered and then the assessment's, as tts-inline
+reads it. A selection holding part of a node still reads the selected text.
+Host R, the one host placing `annotationToolbar`, hears authored cards for such
+selections where it heard their visible text. The same change keeps the read
+button focused while it reads: since v0.3.68 it disabled itself, which moved
+focus out of the strip and dismissed it, stopping the read a frame after it
+started, so Host R's annotation read-aloud is heard in full again. Checked
+against the recorded rows and the checkouts of Hosts A and R; neither calls
+`speakRange` or passes the internal `ignoreCatalogs` speak option, which is
+removed. Row verification dates are unchanged.
+
+Also on 2026-10-08 the toolkit's TTS service took one read-aloud entry,
+`speak(target, options)`, which reads a DOM range or element; `speak(text)` and
+`speakRange` are removed, and `dispose()` is added, which the coordinator's own
+dispose calls. Checked against the checkouts of Hosts A, M, P, R and V: Host A
+calls only `ttsService.stop()`, and no host calls `speak` or `speakRange` or
+imports `SpeakOptions`. The server backend now sends the language a read names,
+except that a `lang_id` the host sets wins on the custom transport; Hosts A and
+R both read aloud over that transport with `lang_id` set, so their requests are
+unchanged. Row verification dates are unchanged.
+
+Also on 2026-10-08 a pause or stop issued while a read loads started holding:
+before, the read began once its audio arrived. Media started during loading now
+pauses the read, as it pauses one already sounding. A word spanning several
+text nodes highlights whole, through the one word-highlight path:
+`HighlightCoordinator.highlightTTSWord` takes the word's ranges, where it took a
+text node and offsets. `ITTSProviderImplementation.updateSettings` is required.
+The TTS settings panel picks its automatic, recommended and preview browser
+voices for the runtime context's content language, as the reader does, else the
+browser's language; Host R, the one host mounting the panel, names no content
+language, so its panel offers the voices it did. Read-aloud's providers, tool
+provider and settings panel log only under `PIE_TTS_DEBUG`. The server backend's
+backend-call telemetry names the tool `textToSpeech`, as the toolkit's does,
+where it named it `tts`. Checked against the checkouts of Hosts A, M, P, R and
+V: none implements a TTS provider, constructs `TTSToolProvider`, whose features
+are now its speech provider's, calls `updateSettings`, `highlightTTSWord` or
+`pauseTtsForMediaAudio`, or reads backend-call telemetry, and Host A calls only
+`ttsService.stop()`, which still ends a loading read. Row verification dates are
+unchanged.
+
+Also on 2026-10-08 each section-player input took one tier. `nds-icons`,
+`locale` and `tool-config-strictness` are layout attributes only; `assessmentId`,
+the three callbacks and tool config are `runtime` keys only, so the layouts no
+longer take `assessment-id` or the callback properties, and the toolkit reads PNP
+enforcement from `tools.pnpEnforcement` alone. The layouts lost
+`selectComposition`, `selectNavigation` and `selectReadiness` and the
+readiness-phase types; `getSnapshot()` and `pie-stage-change` stay. The section
+player keeps the root, `./browser`, the splitpane subpath and its contract,
+policies and item-section entries; the vertical, tabbed and inner component
+subpaths go, with the layout-contract constants and `SECTION_PLAYER_PUBLIC_EVENTS`.
+`ToolkitCoordinatorApi` lost `getServiceBundle`, `getInitStatus`, `isToolEnabled`
+and the resolver-registration methods, and requires `onReadyChange`. Read-aloud
+names a server provider as `backend: "server"` with `serverProvider`, and the
+`settings` nesting is no longer read. Checked against the checkouts of Hosts A,
+M, P, R and V: Host A already carries its assessment id in `runtime`, passes
+`nds-icons` as an attribute, imports the splitpane subpath and reads aloud
+through `backend: "server"` with `serverProvider: "custom"`, so it is unaffected.
+Host R's `assessment-id` mounts and vertical-subpath import were moved to
+`runtime.assessmentId` and the root entry in its repository the same day. No host
+names any other removed surface. Row verification dates are unchanged.
+
 The 2026-09-17 session-commit change (PIE-1058) was checked against the
 recorded rows rather than re-derived from the checkouts. It renames and removes
 nothing: `pie-item-player` gains one opt-in property, `session-snapshot`, one
@@ -116,7 +265,11 @@ currently satisfies:
   still receives the commit afterwards: such a handler should leave navigation
   state alone for an event carrying `sessionCommitReason`, or call `persist()`
   before dispatching its own navigation. `sectionId` names the section the item
-  belongs to.
+  belongs to. For a section switch Host A already does the latter: it persists
+  the outgoing section before it hands the player the next one, so the switch's
+  own commit finds nothing pending. Without that persist the outgoing item would
+  arrive after Host A has moved to the next section, where its handler does not
+  find it.
 
 A host **migrating off `<pie-player>`** keeps its session read. On
 `<pie-player>` the `session` property was live: `findOrAddSession` pushed each
@@ -260,9 +413,8 @@ and `DesmosCalculatorProviderConfig` is now `CalculatorProviderConfig` with
 `settings` narrowed to `DesmosCalculatorSettings`. No checkout passes `desmos`,
 names either type, or sets a credential in a config bag, so all three removals
 are source breaks with no source to break. Host A configures Desmos through
-`provider.runtime.authFetcher` alone. Host R sets `authFetcher` directly on
-`tools.providers.calculator`, a key the calculator registration never reads, so
-its Desmos loads unkeyed.
+`provider.runtime.authFetcher` alone. Host R passes it the same way, on its playground and
+section-preview mounts.
 
 The open-source Cortex calculator is additive and was assessed against the
 recorded calculator rows rather than a fresh consumer-checkout refresh, so it
@@ -310,7 +462,7 @@ verification date. Hosts V and P install neither the loaders nor the toolkit.
 The server TTS adapter `tts-client-server` has since moved the same way, from an
 optional peer of the toolkit to a dependency of `pie-default-tool-loaders`,
 whose TTS registration holds its only import and passes it to `TTSToolProvider`
-as a loader. `TTSToolProvider` stays on `./tools/internal` and takes that loader
+as a loader. `TTSToolProvider` stays on `./tools/registration` and takes that loader
 as an optional second constructor argument; without it, a server backend fails
 to initialize and speech falls back to the browser. Checked against all four
 checkouts on 2026-09-28 as a targeted lookup, so it does not advance the
@@ -380,6 +532,43 @@ published with no call sites anywhere, which is what made replacing it rather
 than versioning it the right move. No host passes `locale` to a `pie-*` element
 either.
 
+On 2026-10-08 tools went to one channel and one provider namespace. Tool
+elements dropped the service and provider-id properties they took beside the
+runtime context: `toolkitCoordinator` and `providerId` / `provider-id` on the
+calculator elements, `highlightCoordinator` and `ttsService` on
+`pie-tool-annotation-toolbar`, `elementToolStateStore` on
+`pie-tool-answer-eliminator` (whose `strategy` also drops the unimplemented
+`gray`), and `ttsService` on the sign-language region. Providers register under
+their tool's id (`calculator`, `textToSpeech`): `ToolProviderApi.providerId`,
+`ToolProviderDescriptor.getProviderId`, `resolveToolProviderId` and
+`ToolkitCoordinator.getToolProvider` are gone, and `ensureProviderReady` takes a
+tool id. The toolkit names a tool by that id under `toolId` only: the provider
+lifecycle hooks pass it as their first argument, `ToolkitErrorContext` carries it
+as `toolId` (framework-error source `pie-toolkit-coordinator/<toolId>`), and
+`ProviderLifecycleContext.providerId`, `ToolConfigDiagnostic.providerId` and the
+`providerId` the provider and playback telemetry repeated beside `toolId` are
+deleted. Telemetry that carried `"tts"` or a vendor's selection id as `providerId`
+reads `"textToSpeech"` or `"calculator"` as `toolId`. `sanitizeConfig` and
+`validateConfig` moved from the provider descriptor to `ToolRegistration`. `AnswerEliminatorToolConfig`
+is deleted, and `PACKAGED_TOOL_REGISTRATIONS`, `PACKAGED_TOOL_PLACEMENT` and
+`PACKAGED_TOOL_ORDER` are typed as plain arrays where they were cast to literal
+tuples. Checked against all five checkouts the same day as a targeted lookup, so
+it does not advance the verification date: no checkout sets any of those
+properties on a tool element, reads a provider's `providerId`, subscribes to
+toolkit telemetry or provider lifecycle hooks, calls `getToolProvider` or
+`ensureProviderReady`, reads
+`toolProviderRegistry`, declares a provider descriptor or config hook, or names
+`ToolkitErrorContext`, `ProviderLifecycleContext`, `ToolConfigDiagnostic`, the
+deleted type or the composition constants. Host R alone hands the section player
+a New Relic instrumentation provider, so its toolkit events lose the `providerId`
+attribute and keep `toolId`. Host A takes the calculator,
+annotation toolbar and answer eliminator from the packaged loaders and sets
+none of their properties; the edits to `CortexToolProvider` and the composition
+module change no import, so its single-file build inlines the same modules.
+Host R's element type declarations still list a `highlightCoordinator` property
+it never sets, and its debugger panels keep the `toolkitCoordinator` property,
+which this change does not touch.
+
 ## Consumer profiles
 
 The control-sizing repair removes automatic zoom compensation from section
@@ -401,7 +590,7 @@ The 2026-09-26 re-derivation found neither surface in any host.
 | **Host A** | Angular + webpack | Full fixed-form delivery: one layout CE, the toolkit coordinator via `toolkit-ready`, session persistence, TTS, calculator, PNP | Highest — external client-facing, drives live delivery |
 | **Host P** | Angular + webpack, packaged as a custom element that an outer page mounts | One item at a time in learner delivery, through the preloaded build of `pie-item-player`, which it serves from its own static assets; migrating off `@pie-framework/pie-fixed-player-static` behind a host-side player-type switch | High — external client-facing; the `@pie-players` path is live wherever that switch selects it |
 | **Host M** | Framework-free TypeScript custom element, built by Vite into one ES module and loaded as a micro-frontend remote by an Angular shell | One item at a time through `pie-item-player` on the `preloaded` strategy, with the element and its controller bundled and registered by the host so evaluation runs in the browser; themed through a provider adapter of its own | High once shipped — mounted on a development route only so far, and the base a client-facing product is building on |
-| **Host R** | SvelteKit reference/QA app | Nearly the whole suite, and the only consumer of the **programmatic** API: it constructs `ToolkitCoordinator` itself, drives the composition layer, reads the theme token registry, and runs the Node-side TTS providers | Low to fix, high to notice — internally controlled, but it is the first place a regression surfaces |
+| **Host R** | SvelteKit reference/QA app | Nearly the whole suite, and the only consumer of the **programmatic** API: it drives the coordinator the section player builds, the composition layer, reads the theme token registry, and runs the Node-side TTS providers | Low to fix, high to notice — internally controlled, but it is the first place a regression surfaces |
 
 Packages consumed:
 
@@ -409,18 +598,21 @@ Packages consumed:
 - **Host A** — `pie-section-player`, `pie-assessment-toolkit`, `pie-theme`,
   `pie-calculator-desmos`, `pie-calculator-cortex` (aliased to a local stub in
   its build), `pie-calculator-geogebra`, `pie-tool-calculator-desmos`,
-  `pie-tool-text-to-speech`, `tts-client-server`, `tts-server-polly`, and the
-  event and session debuggers. Its source imports only the splitpane layout
-  element and `pie-theme`. The section player imports `pie-item-player`
-  by name to render items, so that package reaches Host A as its dependency.
+  `tts-client-server`, `tts-server-polly`, and the event and session debuggers.
+  Its source imports only the splitpane layout element and `pie-theme`. The
+  section player imports `pie-item-player` by name to render items, so that
+  package reaches Host A as its dependency. It also declares the deprecated
+  `pie-tool-text-to-speech` and imports nothing from it; that range stops at
+  `0.3.74`, the last published version, and an install prints npm's
+  deprecation notice.
 - **Host P** — `pie-preloaded-player` alone, and never imported: its `dist/` is
   copied into the host's static assets and loaded by path.
 - **Host M** — `pie-item-player` and its `preloaded` subpath, `pie-theme` and its
   `components.css` subpath. `pie-players-shared` is held to the same build by an
   override and imported nowhere.
 - **Host R** — 29 declared `@pie-players` packages. Imported: the toolkit,
-  `pie-default-tool-loaders`, `pie-players-shared` and its `types` subpath, two
-  `pie-section-player/components/*-element` subpaths, `pie-theme` plus its
+  `pie-default-tool-loaders`, `pie-players-shared` and its `types` subpath,
+  `pie-section-player` and its splitpane subpath, `pie-theme` plus its
   `tokens.css` and `token-registry.json` subpaths, eleven `pie-tool-*`, four
   `section-player-tools-*` debuggers plus `section-player-tools-tts-settings`,
   and `tts-server-core` / `-google` / `-polly` / `-sc`. It loads
@@ -429,7 +621,8 @@ Packages consumed:
   Four declared packages are imported nowhere in its source —
   `pie-calculator-desmos`, `pie-tool-text-to-speech`,
   `pie-section-player-tools-shared`, `tts-client-server` — so their ranges
-  resolve without their surfaces being consumed. Two more tool packages, both
+  resolve without their surfaces being consumed. `pie-tool-text-to-speech` is
+  deprecated, so its range stops at `0.3.74`, the last published version. Two more tool packages, both
   dictionaries, reach it transitively as dependencies of
   `pie-default-tool-loaders`, whose packaged registry dynamically imports them.
   The Cortex and GeoGebra calculator engines reach it the same way, imported by
@@ -469,7 +662,7 @@ and to fix it there in the same push.
 | `@pie-players/pie-theme/tokens.css` | R | Imported unlayered so tokens are present in the first paint, ahead of the theme element upgrading |
 | `@pie-players/pie-theme/token-registry.json` | R | Default import, cast to `PieThemeTokenRegistry`; the entry fields it reads are listed under theme tokens below |
 | `@pie-players/pie-section-player/components/section-player-splitpane-element` | A, R | |
-| `@pie-players/pie-section-player/components/section-player-vertical-element` | R | |
+| `@pie-players/pie-section-player` | R | Root entry, for its layout elements' side-effect registration |
 | `@pie-players/pie-assessment-toolkit` | R | Root entry, for values and types both |
 | `@pie-players/pie-default-tool-loaders` | R | |
 | `@pie-players/pie-players-shared` | R | Instrumentation providers |
@@ -511,9 +704,10 @@ reconstruct `env` down to its declared keys.
 Host R drives a wider surface than Host V — ten properties across five routes,
 four item and passage previews and a preloaded-package view: `config`, `env`,
 `session`, `render-stimulus`, `allowed-resize`, `add-correct-response`,
-`show-bottom-border`, `hosted`, `bundleEndpoints`, `strategy`. All ten exist on
+`show-bottom-border`, `hosted`, `loaderOptions`, `strategy`. All ten exist on
 `origin/develop`. Host P sets six of them, `session` and `strategy` among them;
-`render-stimulus`, `allowed-resize` and `bundleEndpoints` are Host R's alone.
+`render-stimulus`, `allowed-resize` and `loaderOptions` are Host R's alone. Host
+R's `bundleEndpoints` reaches only the legacy `<pie-player>`.
 
 The preloaded-package view loads the published `pie-preloaded-player` from a CDN
 at `@<version>/dist/index.js`, mounts `pie-item-player` with
@@ -589,26 +783,42 @@ bundle evaluates, so renaming an entry field or no longer accepting a module
 namespace for `element` or `controller` stops the remote loading. Skipping
 alignment for a registered package fails that item's load.
 
+Host M passes no second argument, so it sets no MathJax asset root. From
+`@pie-element/shared-math-rendering-mathjax` 0.1.3, the adapter version the
+item player imports, the player's own MathJax and the copy in any element built
+on that version load fonts and speech only from the URLs in `math.assetUrls`,
+the root in `math.assetRoot` or the page options, or the npm root of their own
+module URL, which a bundle does not have. Without one they render without web
+fonts or speech and warn once.
+Its element is on an adapter from before 0.1.3, which keeps loading from
+jsDelivr.
+
 ### `pie-section-player-splitpane` and `-vertical` (Hosts A, R)
 
 Object properties: `runtime`, `section`, `hooks` (A), `toolRegistry` (R).
 
 Attributes both hosts pass: `section-id`, `attempt-id`, `show-toolbar`.
+Host A's `persist()` and `hydrate()` go through the default section
+persistence, which stores a section under its `attempt-id` and neither reads
+nor writes without one, so its resume depends on the attribute being non-empty.
 
 Host A additionally: `debug`, `narrow-layout-breakpoint`,
 `split-pane-initial-passage-width`, `nds-icons`. Host R passes none of those
 four, so a change to one of them is a Host A question alone. Host R
-additionally: `assessment-id` on its demo, playground and preview mounts,
-`toolbar-position` on the demo and playground ones, and `iife-bundle-host` on the
-playground alone. Host A carries its
-assessment id in `runtime.assessmentId` instead. Neither host passes
+additionally: `toolbar-position` on the demo and playground mounts, and
+`iife-bundle-host` on the playground alone. Both hosts carry the assessment id in
+`runtime.assessmentId`. Neither host passes
 `locale`, `base-heading-level`, `tool-config-strictness`, the two
 `content-max-width-*` attributes, either remaining `split-pane-*` attribute, the
 three `*HostButtons` object props, or `policies`.
 
 Method: `waitForSectionController(timeoutMs)` (A, off a
 `document.querySelector` handle) and the zero-argument `getSectionController()`
-(R, off the event's `currentTarget`). Both overloads are live.
+(R, off the event's `currentTarget`). Both overloads are live. Since 0.3.75
+`waitForSectionController` resolves on `toolkit-ready` or when the controller
+resolves, where it polled before; the signature and the timeout are unchanged.
+Since 2026-10-08 neither call advances the stage chain: only `toolkit-ready`
+does, so a read during a section switch can return the outgoing controller.
 
 Events: `toolkit-ready`, read as `event.detail.coordinator`. A listens with
 `addEventListener`; R uses the Svelte 5 `ontoolkit-ready` attribute form. R also
@@ -756,20 +966,10 @@ provider row and reports nothing.
 The deepest coupling in the set, and the one no client-facing host has. From
 `@pie-players/pie-assessment-toolkit`:
 
-- `new ToolkitCoordinator(config)` — constructed by the host in six places, not
-  obtained from `toolkit-ready`. Config keys used: `assessmentId`,
-  `toolConfigStrictness`, `tools`, `toolRegistry`, `toolContextResolvers`. Every
-  call site pins itself with `satisfies ConstructorParameters<…>[0]`, so a
-  constructor-signature change is a type error there rather than a silent
-  misconfiguration. `hooks` is no longer passed to the constructor. Only the
-  section-preview route passes `toolRegistry`; the four section demos and the
-  playground build a registry for `createToolsConfig` and omit it from the
-  constructor, so their coordinators adopt the registry of the section player
-  they are bound to, which validates their config and registers the providers
-  behind their TTS backend and calculator. A coordinator that stops adopting
-  puts them back on browser speech with a calculator that fails to open.
-- `coordinator.setHooks({ onFrameworkError })`, with the handler reading the
-  framework-error model as an opaque value
+- The coordinator the section player builds, taken off `toolkit-ready` at all
+  six call sites; the host constructs none (checked on its `develop`,
+  2026-10-07). The playground also hands the layout element the registry it
+  builds for `createToolsConfig`.
 - `coordinator.updateAssessment(entity)` — driven off a `$effect`, so it is
   called repeatedly with a fresh entity carrying the same id; the method has to
   stay idempotent under that
@@ -786,8 +986,10 @@ The deepest coupling in the set, and the one no client-facing host has. From
 - `coordinator.subscribeSectionLifecycleEvents({ eventTypes, listener })`, with
   `eventTypes` narrowed to `section-loading-complete`,
   `section-items-complete-changed`, `section-error`. Wrapped in a `try` because
-  the method throws before a section cohort exists — the host relies on that
-  documented throw rather than on a return value
+  the method throws before the first section is requested — the host relies on
+  that documented throw rather than on a return value. Since 2026-10-08 a call
+  during a section switch registers and binds to the incoming section, where it
+  threw before
 - `createToolsConfig({ source, strictness, toolRegistry, tools })` →
   `{ config, diagnostics }`
 - Diagnostic shape `{ code, severity, path, message }`. The host branches on
@@ -796,9 +998,10 @@ The deepest coupling in the set, and the one no client-facing host has. From
   constructs a diagnostic or reads any `code` value. Diagnostic **codes are no
   longer API to any consumer**; `severity`, `path` and `message` are
 - Types imported: `ToolRegistry`, `ToolConfigStrictness`,
-  `ToolkitCoordinatorApi`, `ToolkitCoordinatorHooks`, `ToolContextResolver`,
-  `ToolContextResolverMap`. `CanonicalToolsConfig`, `ToolConfigDiagnostic` and
-  `ToolkitCoordinatorConfig` are no longer imported — the config type is taken
+  `CreateToolsConfigArgs`, `ToolkitCoordinatorApi`, `ToolContextResolver`,
+  `ToolContextResolverMap`, `FrameworkErrorModel` (checked 2026-10-08).
+  `CanonicalToolsConfig`, `ToolConfigDiagnostic`, `ToolkitCoordinatorConfig` and
+  `ToolkitCoordinatorHooks` are no longer imported — the config type is taken
   structurally through `ReturnType<typeof createToolsConfig>['config']`, which
   couples the host to the function's return type instead of to the type name.
 
@@ -860,13 +1063,13 @@ API**.
 
 | Name | Route | Consumers | Use |
 | --- | --- | --- | --- |
-| `toolkit-ready` | DOM event on the layout CE | A, R | Captures `detail.coordinator`. R compares it against the coordinator it constructed itself and warns on a mismatch, so identity is checked, not just presence |
+| `toolkit-ready` | DOM event on the layout CE | A, R | Captures `detail.coordinator`. R keeps it as the coordinator its session reset and lifecycle logging drive, replacing it on each event |
 | `pie-stage-change` | DOM event on the layout CE | R | Filtered on `detail.stage === "engine-ready"`, then calls the zero-arg `getSectionController()` off `currentTarget`. The stage vocabulary and this transition's timing are both API |
 | `item-session-data-changed` | `subscribeItemEvents` | A | Response capture → store dispatch → autosave. The handler also takes the event's item as the current item, marks it answered, submits the previously answered item when the item changes within the section, and in a preview mode requests a score, so an event naming an item other than the one on screen moves the host's current item |
 | `content-loaded` | `subscribeItemEvents` | A | Per-item and `contentKind === "rubric"` load tracking; cancels a load-timeout watchdog |
 | `section-loading-complete` | `subscribeSectionLifecycleEvents` | A, R | A subscribes with an empty handler; R logs it |
 | `section-items-complete-changed` | `subscribeSectionLifecycleEvents` | A, R | A subscribes with no handler body; R logs it |
-| `section-error` | `subscribeSectionLifecycleEvents` | A, R | Fatal for A: exits the delivery session. R logs it |
+| `section-error` | `subscribeSectionLifecycleEvents` | A, R | Fatal for A: exits the delivery session. R logs it. Since 2026-10-08 a section that fails to start, or a revisited section that fails to update, delivers it to the subscriptions already registered. A subscribes on `toolkit-ready`, so from its second section on such a failure ends the session at once, where its load timeout ended it before |
 | `item-session-changed` | DOM, bubbling and composed | A, R | `document`-level listener → snapshot + persist. R adds two listeners per route in the **capture** phase, so it depends on the event reaching `document` during capture as well as bubble |
 | `session-changed` | DOM event out of the section player's toolkit, bubbling and composed | A, R | The same `document`-level handlers as `item-session-changed`, so each answer persists once per event. R listens in the capture phase here too |
 | `session-changed` | DOM event out of `pie-item-player`, bubbling | P | Response capture; the fields it reads are below |
@@ -877,11 +1080,22 @@ API**.
 | `pie-resource-load-failed`, `pie-resource-retry-failed` | Resource monitor, bubbling out of `pie-item-player` | P | Logged with the serialized `detail` |
 | `PiePlayerLoadEvent` | `document` event from the preloaded build's `index.js`, alongside `window.pieFixedPlayerLoaded` | none | P waits on the same signal only on its predecessor-player path |
 
-The `content-loaded` payload fields Host A reads are `itemId` and `contentKind`.
-It counts distinct `itemId`s against the section's expected item list and treats
-equality as "section loaded". Emitting `content-loaded` more than once per item,
-or for an item outside the section, would leave the count short or overshoot;
-either way the host's watchdog fires and ends the session.
+The `content-loaded` payload fields Host A reads are `itemId`, `contentKind` and,
+for a passage, `canonicalItemId`. It counts distinct `itemId`s and treats a count
+equal to the section's expected item count as "section loaded", which cancels its
+load-timeout watchdog; a `contentKind: "rubric"` event, which every passage load
+is, cancels the watchdog on its own. Within a section, `content-loaded` reaches a
+subscription only for that section's renderables, live or replayed on a rebind.
+An event for a renderable outside the section brings the count to equality before
+the section's own elements load, or cancels the watchdog outright when it is a
+passage's, so a hung element bundle leaves the learner on an empty section with
+no watchdog to end it. Since 2026-10-08 a section switch carries none of the
+previous section's loads into the next section; until then every section after
+the first received them, and A's watchdog could not fire there. A host that
+resubscribes on `toolkit-ready` receives a revisited section's loads twice: on
+the rebind of its existing subscription, and replayed to the new one. A's
+section-render telemetry then fires once per replayed load unless it counts only
+items it has not seen.
 
 `item-session-changed` reaches `document` because it is dispatched through
 `dispatchCrossBoundaryEvent` in
@@ -903,6 +1117,11 @@ a page-wide 500 ms window used to drop an identical response from a second shell
 for the same item, whether a second player's or a re-mounted one's. Checked
 against all four checkouts on 2026-09-26 as a targeted lookup, so it does not
 advance the verification date.
+
+Since 2026-10-08 `framework-error`, `pie-stage-change` and `pie-loading-complete`
+continue past the layout element to `document`, once each; until then they
+stopped there. No checkout listens for any of the three above the layout element,
+checked against every checkout in this pad on 2026-10-08 as a targeted lookup.
 
 The `item-session-data-changed` payload is destructured as
 `event.session.data[0]`, with `event.complete` read through an
@@ -1008,6 +1227,18 @@ combination in particular (`transportMode: "custom"` +
 deliberately unvalidated path; treat it as a supported configuration, not as a
 loophole to tighten.
 
+Since 0.3.75 a tool whose provider fails to start leaves the section on screen
+and reports itself unavailable, unless policy grants it through an item
+requirement, a district requirement or a profile support; a granted tool's
+failure ends in the section's error state. So a failing Desmos auth fetch leaves
+the calculator unavailable and reports a recoverable `provider-init` error, where
+before it showed only in the calculator panel; a calculator policy grants now
+ends in the error state. A failing TTS endpoint is recoverable whatever the
+policy, because browser speech takes over; only browser speech failing too counts
+as the tool failing, where before a failing endpoint ended in the error state.
+Host A passes no `lazyInit`, so text-to-speech still starts at the first
+composition.
+
 Host R sets the same eleven-key TTS provider config, the same three-part
 unvalidated transport combination among them, and adds a twelfth key —
 `providerOptions`, an untyped object. The toolkit merges it into the provider's
@@ -1025,33 +1256,31 @@ pad previously recorded:
 - `assessmentId`
 - `playerType` — `"iife"` / `"esm"` / `"preloaded"`, selected by a control, so
   all three branches are exercised there and nowhere else
-- `lazyInit: true`
+- `lazyInit: true`, in the playground and the four section demos: text-to-speech
+  starts at the first read-aloud instead of at composition, unless policy grants
+  it. Until 0.3.75 the flag was ignored
 - `tools` — a `createToolsConfig` output, not a literal
 - `toolContextResolvers` — a host resolver map for `calculator`, built from
   item metadata
 - `player.loaderConfig` — `trackPageActions` plus the constructed
   `instrumentationProvider`
 - `env` — `{ mode: "gather" | "evaluate", role: "student" | "instructor" }`
-- `coordinator` — the host-constructed `ToolkitCoordinator` instance, passed
-  **through the runtime object**, which is how a host-supplied coordinator
-  reaches the engine
+- `onFrameworkError`, in the playground and the four section demos
 
 `toolRegistry` stays a separate element property rather than a runtime key,
 because the layout shell rather than the engine consumes it.
 
-Two of these are single-consumer surfaces with no client-facing backstop.
-`env` on the section-player runtime is exercised only here — Host V passes `env`
-to the item player instead, and Host A passes none — and it is the only place the
-`gather` and `evaluate` modes appear in any checkout. `runtime.coordinator` is
-likewise Host R's alone; Host A takes its coordinator off `toolkit-ready` and
-supplies none.
+`env` on the section-player runtime is a single-consumer surface with no
+client-facing backstop: it is exercised only here — Host V passes `env` to the
+item player instead, and Host A passes none — and it is the only place the
+`gather` and `evaluate` modes appear in any checkout. No host passes
+`runtime.coordinator`.
 
 Host R is also the only host that feeds the player a `createToolsConfig` output
 rather than a hand-written literal, so it is the only one that would notice the
 canonical config type and the CE's expected `tools` shape drifting apart. It
-sets `toolConfigStrictness: 'error'` at every one of its six coordinator call
-sites and passes `strictness: 'error'` to `createToolsConfig` — no longer `'off'`
-— so a diagnostic this repository promotes to `error` severity now blocks that
+passes `strictness: 'error'` to `createToolsConfig` at all six call sites — no
+longer `'off'` — so a diagnostic this repository promotes to `error` severity now blocks that
 host's render behind an error panel instead of logging.
 
 ## Hooks
@@ -1063,13 +1292,9 @@ formatter is the only thing producing correct question numbers in that delivery.
 Changing the context shape, or calling the formatter for a new `kind` without a
 `defaultTitle`, produces wrong or blank card titles.
 
-Host R sets `onFrameworkError` through `coordinator.setHooks` instead of on the
-element. Its hook still receives each error once. Since 2026-09-26 an error its
-coordinator reports after the section player mounts also reaches the layout's
-`framework-error` event, the `onFrameworkError` prop and the console, as one
-from a toolkit-owned coordinator does. The toolkit's initialization banner stays
-off for these errors, so the section stays on screen when Host R's coordinator
-fails to initialize.
+Host R passes `onFrameworkError` in the runtime object, where it receives each
+error once. A tool's start failure arrives there with `recoverable: true` unless
+policy grants the tool, and the section stays on screen.
 
 ## Theme tokens set by hosts
 
@@ -1240,7 +1465,8 @@ string the host's launch configuration supplies. That makes three things API
 there: `dist/index.js` as the entry name; `dist/` as a self-contained tree whose
 runtime imports are all relative — `preloaded.js`, `elements/` with its
 chunks, `mathjax/`, `pie-item-player.js`, and the `chunks/` both player modules
-import;
+import, with `index.js` naming each file under `mathjax/npm/` beside it by
+`new URL(…, import.meta.url)` in `math.assetUrls`;
 and a `version` string usable as a directory name. The generated package has no
 `exports` map, so none of this passes through one. A break shows up only in the
 browser, as a failed import before any player exists, and ends in the host's load
@@ -1335,9 +1561,21 @@ against a MathJax 4 global.
 The item player's own MathJax 4, the browser build of
 `@pie-element/shared-math-rendering-mathjax` it imports for markup math on a
 page with no math renderer, is a dynamic import as well, so in Host M it
-evaluates at startup with its font chunks, about 2.9 MB. Like the copies in the
-`browser/delivery` element builds Host M bundles (checked 2026-10-05), it neither
-reads nor writes `window.MathJax`, and the shell's MathJax 4 is left alone.
+evaluates at startup with its font chunks, about 2.9 MB. It neither reads nor
+writes `window.MathJax`, and the shell's MathJax 4 is left alone. From adapter
+0.1.3 it takes its files' location from the registration, and the bundle URL
+gives it none (see the item-player section).
+
+The element builds Host M bundles (`@pie-element/multiple-choice`
+13.4.0-next.15, adapter 0.1.1-next.2) do write `window.MathJax` (checked
+2026-10-08). Since 0.3.74 the `preloaded` strategy installs no page renderer, so
+on a shell page without its own MathJax the element adapter sets
+`window.MathJax` with `useSingleDollar: true` and loads `mathjax@4` from
+jsDelivr, whose default startup typesets the whole shell page: `$`-delimited
+text outside the remote renders as math. With the shell's MathJax on the page
+the element uses that copy and nothing else is typeset. Elements on adapter
+0.1.3 or later set `startup.typeset: false` and load only from an asset root,
+which Host M passes as `registerPreloadedElements(elements, { math: { assetRoot } })`.
 
 ## Content stylesheet delivery
 
@@ -1395,12 +1633,13 @@ sentinel detection, M through the opt-out. Any further change to how content
 styles are delivered has to account for both, and for the other three relying on
 the player's copy by supplying none.
 
-Three rules were removed from it outright: a `#stimulus` / `#item` pair of
-50%-wide left floats, a `.lrn_feature h3` margin override and
-`.lrn_width_auto.table`. The float pair is the one to check against a host — it
-laid out two global ids as columns, so a host page carrying either id got the
-layout whether or not it wanted it, and the recorded rows show no host relying on
-that. The `lrn_` pair styled a third-party product's markup. Also gone from the
+Two rules were removed from it outright: a `#stimulus` / `#item` pair of
+50%-wide left floats and a `.lrn_feature h3` margin override. The float pair is
+the one to check against a host — it laid out two global ids as columns, so a
+host page carrying either id got the layout whether or not it wanted it, and the
+recorded rows show no host relying on that. A third, `.lrn_width_auto.table`, was
+removed on the premise that no rendered content carries it; migrated content does,
+and it was restored on 2026-10-06. Also gone from the
 heading reset is `font-weight: 500`, so authored headings render at the browser's
 weight; hosts V and A both load this stylesheet and will see that.
 
@@ -1531,13 +1770,13 @@ re-derived rather than remembered.
 - Renaming a `TTSErrorCode` member
 - Changing `supportedLevels`, or the `ToolRegistry.getAllTools` and `register`
   signatures
-- `ToolkitCoordinator` constructor, `createToolsConfig`, `setHooks`,
+- `createToolsConfig`,
   `updateAssessment`, `onPolicyChange`, `decideFeaturePolicy`,
   `disposeSectionController`
 - The `granted` and `reason` fields on `FeaturePolicyDecision` — `reason` is
   rendered to a person there, so its wording is user-visible in that host
-- `subscribeSectionLifecycleEvents` throwing before a section cohort exists;
-  Host R catches that throw rather than checking a precondition
+- `subscribeSectionLifecycleEvents` throwing before the first section is
+  requested; Host R catches that throw rather than checking a precondition
 - `pie-stage-change`'s stage vocabulary, and the `engine-ready` transition
   arriving before the zero-arg `getSectionController()` can answer
 - The theme token registry — six of its nine entry fields and four of its five
@@ -1547,11 +1786,11 @@ re-derived rather than remembered.
 - The `ColorSchemeSnapshot` return of `listPieColorSchemes()` and the `id` /
   `name` fields on its descriptors
 - `dist/pie-item-player.js` as a CDN filename, and `render-stimulus`,
-  `allowed-resize` and `bundleEndpoints` on `pie-item-player` — the three of that
+  `allowed-resize` and `loaderOptions` on `pie-item-player` — the three of that
   host's ten properties no client-facing host sets
 - The `bundleHash`, `elements` and `loaderVersion` fields of a generated
   preloaded package's `pie` block, and the registry publish time beside them
-- `runtime.coordinator`, `runtime.playerType`, `runtime.lazyInit`,
+- `runtime.playerType`, `runtime.lazyInit`,
   `runtime.player.loaderConfig`, and `env` on the section-player runtime
 - The five debugger and settings panel CE prop sets, and the duck-typed
   `customProviders` entry shape
@@ -1562,10 +1801,9 @@ re-derived rather than remembered.
   `pie-tool-dictionary` as of the declaration-emit fix below, and their picture
   equivalents from `pie-tool-picture-dictionary`
 
-The coordinator constructor and `createToolsConfig` are pinned with `satisfies`
-in Host R, so signature changes there surface as type errors on its next
-typecheck rather than at runtime. The rest of this list does not: `env`,
-`runtime.coordinator`, the CE prop sets and `customProviders` are all untyped at
+`createToolsConfig` is typed in Host R, so a signature change there surfaces as a
+type error on its next typecheck rather than at runtime. The rest of this list
+does not: `env`, the CE prop sets and `customProviders` are all untyped at
 the boundary, the dictionary contract crosses an HTTP endpoint no typecheck can
 span even now that its shape ships, and the `pie-item-player` properties arrive
 over a CDN with no typecheck at all.
@@ -1574,10 +1812,31 @@ over a CDN with no typecheck at all.
 
 - The assessment player, the print player, the tabbed section layout, the
   toolbars package, and `pie-context` — no consumer imports any of them
+- `pie-tool-text-to-speech`, deprecated on npm and no longer published, and
+  `hasSpokenAlternate` on `TtsServiceApi`, which only that panel called. Hosts A
+  and R declare the package and import nothing from it, so their ranges keep
+  resolving to its last published version, `0.3.74`; Host R's own
+  `HTMLElementTagNameMap` entry for the tag is a local type. No checkout calls
+  the method. Checked against all five checkouts on 2026-10-08 as a targeted
+  lookup, so it does not advance the verification date
+- `pie-item-shell`, removed: section-player item cards render `pie-item-scope`,
+  which takes the shell's attributes and keeps its `data-pie-shell-root="item"`
+  marker and the card's classes. No checkout names the tag
 - Attributes and props on the layout elements not listed above, including the
   additive `locale` attribute on `pie-item-player` and the section-player layouts,
-  and the additive opt-in `session-snapshot` property with its
-  `session-snapshot-available` event
+  the additive opt-in `session-snapshot` property with its
+  `session-snapshot-available` event, and the additive `session` property on the
+  section-player layouts and `pie-assessment-toolkit`, which no host sets. Without
+  it a section controller is still created through `hydrate()`, so Host A's
+  resume path is untouched
+- The optional `initialSession` argument on
+  `ToolkitCoordinatorApi.getOrCreateSectionController`. Host R imports the
+  interface without implementing it, and no host calls the method
+- `baseId` and `version` becoming optional on `AssessmentItemRef.item` and its
+  `passage`, and `name` on that passage. Host R assigns its own item type into
+  the field and reads neither back through the PIE types; Host A declares its own
+  item-ref type
+- `sectionFromItem` and the `./item-section` subpath of the section player
 - `PiePlayerLoadEvent`, its two detail strings and `window.pieFixedPlayerLoaded`
   from the preloaded entry — the one host on that build renders without waiting
   for them
@@ -1585,6 +1844,15 @@ over a CDN with no typecheck at all.
   no call site in any checkout, so its replacement breaks nobody
 - Additive optional members on `ToolRegistration`, `ToolbarContext`,
   `ToolSurfaceServices` and the toolkit runtime context
+- `<pie-item-scope>`, the `runtime-ready` event, `sectionBound` on the host
+  runtime context, the coordinator's `getToolRegistry`, `onReadyChange` and
+  `eagerInit`, and `isTTSStartFailure` — no checkout uses any of them
+- A `<pie-assessment-toolkit>` without a section starting its coordinator at the
+  first item scope that registers, and taking a `toolRegistry` set after that in
+  place; `adoptToolRegistry` taking a registry after `null`; the toolbar's
+  empty-registry warning waiting 10 s. Every recorded host runs the toolkit
+  inside a section player, which binds at the section and always passes a
+  registry, and none calls `adoptToolRegistry`
 - `theme="auto"` behavior, and `variables` on `pie-theme`
 - The additive `ToolRegistry.onRegistryChange` observer and recoverable
   `tool-surface` framework-warning kind; no recorded host calls or branches on
@@ -1673,7 +1941,8 @@ over a CDN with no typecheck at all.
   names are API there, the values reach nobody
 - Exports deleted as unused on 2026-09-28: the legacy tool types, the
   `ToolCategory` enum and `responseDiscovery` on the toolkit's `./tools/client`
-  subpath, which keeps its calculator types; the `ToolCoordinator` and
+  subpath, which kept its calculator types until it was deleted on 2026-10-08
+  (below); the `ToolCoordinator` and
   `HighlightCoordinator` constructor argument; `isPassageEntity`, `isPrerelease`,
   `formatVersion`, `SessionChangedEvent`, `LoadResponse`, the `Tracker` types,
   `BUILDER_ORIGIN_URL`, `renderMath` and `initializeMathRendering`'s renderer
@@ -1681,6 +1950,76 @@ over a CDN with no typecheck at all.
   the item player. No checkout imports any of them. Host R declares its own
   types and math helpers under several of these names, none resolved from this
   repository
+- `<pie-item-scope>` and `createShellScope` on the toolkit, added on 2026-10-07,
+  and the item and passage shells publishing through `createShellScope`, which
+  republishes a changed scope to tools already subscribed. No host renders a
+  shell or imports the scope
+- The `content-language` attribute on `pie-assessment-toolkit`,
+  `runtime.contentLanguage` on the section-player layouts and the
+  `contentLanguage` member of the toolkit runtime context, added on 2026-10-07.
+  No host sets either input, so content language stays `en-US` wherever markup
+  names none
+- The `isolation` attribute on `pie-assessment-toolkit`, added on 2026-10-08
+  beside the property the section-player layouts set, and a `coordinator` passed
+  to a nested toolkit winning over the outer toolkit's. No host nests a toolkit
+  or sets `isolation` itself
+- The toolkit's `./runtime/internal` and `./policy/internal` subpaths, deleted on
+  2026-10-08, and `./tools/internal`, renamed `./tools/registration` and cut to
+  what a package imports from it. The section player's engine vocabulary moved to
+  `./runtime/engine`, and the shell event bridge and the content-region,
+  content-language, catalog-context and flat-tree helpers the tools use moved to
+  the root, and later the same day back to `./tools/registration` (below). The
+  provider registry's `ToolProviderConfig` was renamed
+  `ToolProviderRegistration`, leaving the name to the tools-config shape. Checked
+  against all five checkouts on 2026-10-08 as a targeted lookup, so it does not
+  advance the verification date: no checkout imports any toolkit subpath or names
+  either type
+- The toolkit's `pnp-standard-features` module, deleted on 2026-10-08 with its
+  `./services/pnp-standard-features` subpath and the six root exports
+  (`QTI_STANDARD_ACCESS_FEATURES`, `ALL_STANDARD_ACCESS_FEATURES`,
+  `EXAMPLE_PNP_CONFIGURATIONS`, `isStandardAccessFeature`, `getFeatureCategory`,
+  `getFeaturesInCategory`). Nothing read it at runtime; support ids resolve
+  against the registry. Checked against all five checkouts on 2026-10-08 as a
+  targeted lookup: no checkout imports any of them
+- `AssessmentSection.personalNeedsProfile` and the `PersonalNeedsProfile` fields
+  `activateAtInit`, `districtPolicy.policies` and `testAdministration.mode`,
+  `startDate` and `endDate`, deleted on 2026-10-08. Policy read none of them, and
+  a `testAdministration` without a `toolOverrides` entry no longer turns automatic
+  PNP enforcement on. Checked against all five checkouts on 2026-10-08 as a
+  targeted lookup: only Host R sets one, a profile on the section objects of its
+  section demos, cast `as any`. It now reaches nothing, the PNP debugger
+  included; binding it as the assessment's with `updateAssessment` keeps it
+- The toolkit root, cut on 2026-10-08 from 326 names to 185: the names Host R,
+  the players and the demo apps import, and the types their signatures carry.
+  The 32 names only tool packages import moved to `./tools/registration`, with
+  the 5 types their signatures carry, and 7 names that entry already exported
+  left the root. 96 names nothing imports were deleted, among them the backend
+  activity-session adapters, the item loader, the session-storage helpers and
+  the context keys the `connect…` functions wrap, and `isHostDeniedFeature`
+  stays only on `./policy/engine`. The section-player debugger and settings
+  panels import from `./tools/registration` and keep their props and `close`
+  event. Checked against all five checkouts on 2026-10-08 as a targeted lookup,
+  so it does not advance the verification date: Hosts V, A, P and M import
+  nothing from the toolkit, and Host R's eight root imports all stay
+- Tool surfaces deleted on 2026-10-08. On the toolkit: the `./tools/client`
+  subpath; `connectAssessmentToolkitRuntimeContext` on the root and
+  `connectAssessmentToolkitShellContext` / `…RegionScopeContext` on
+  `./tools/registration`, which duplicated the `connectTool…` functions; the
+  singular `toolComponentFactory` override; and `ToolCoordinator.resetZIndices`.
+  `ToolbarContext.getGlobalElementId` now takes the element id, and the
+  coordinator's `getVisibleTools` and `hideAllTools` take an optional
+  `{ baseId }` filter. On `pie-default-tool-loaders`: `calculatorProviderConfig`,
+  `createDefaultToolModuleLoaders`, `createSectionToolModuleLoaders`,
+  `ITEM_TOOL_MODULE_LOADERS`, `SECTION_TOOL_MODULE_LOADERS` and
+  `registerSectionToolModuleLoaders`. The packages `pie-tool-calculator-geogebra`,
+  `-cortex`, `-inline-geogebra` and `-inline-cortex` were removed, since
+  `<pie-tool-calculator>` and `<pie-tool-calculator-inline>` mount every provider
+  `tools.providers.calculator` selects, and the answer eliminator's
+  `globalElementId` prop became `elementStateKeys`. Checked against all five
+  checkouts on 2026-10-08 as a targeted lookup, so it does not advance the
+  verification date: no checkout names any of them. Host A's
+  `getVisibleTools()` prefix filter feeding `hideTool` and Host R's
+  `pie-tool-calculator-desmos` import keep working
 
 ## Consumer-side defects worth reporting upstream
 
@@ -1713,8 +2052,9 @@ repo.
   `pie-calculator-desmos`, `pie-tool-text-to-speech`,
   `pie-section-player-tools-shared`, `tts-client-server`. The packaged registry
   reaches `pie-calculator-desmos` without the declaration, and nothing reaches
-  `pie-tool-text-to-speech`: the registry's text-to-speech tool is
-  `pie-tool-tts-inline`. None of the four is load-bearing, and together they make
+  `pie-tool-text-to-speech`, which is deprecated and gone from this repository:
+  the registry's text-to-speech tool is `pie-tool-tts-inline`, and the host's
+  local tag type names an element nothing defines. None of the four is load-bearing, and together they make
   its dependency list overstate what it consumes, which is what made the previous
   entrypoint rows wrong in the other direction.
 - Host R sets `--pie-padding`, `--pie-spacing` and `--pie-gap` on a legacy

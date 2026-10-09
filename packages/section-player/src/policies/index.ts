@@ -1,7 +1,6 @@
 import type { SectionPlayerPolicies } from "./types.js";
 
 export type {
-	ReadinessPolicyAdapter,
 	SectionPlayerPolicies,
 	SectionPlayerPreloadPolicy,
 	SectionPlayerReadinessPolicy,
@@ -13,34 +12,6 @@ export const DEFAULT_SECTION_PLAYER_POLICIES: SectionPlayerPolicies = {
 	preload: { enabled: true },
 	telemetry: { enabled: true },
 };
-
-/**
- * Whether the section-level element preload pipeline should run. Defaults to
- * `true` when the policy is unset or partially set so existing hosts are
- * unaffected. Hosts opt out by passing `policies.preload.enabled === false`,
- * which short-circuits `warmupSectionElements` in `SectionItemsPane`. Items
- * still mount and item-players register their own elements on demand.
- */
-export function isPreloadEnabled(
-	policies: Partial<SectionPlayerPolicies> | null | undefined,
-): boolean {
-	return policies?.preload?.enabled !== false;
-}
-
-/**
- * Whether the section-player layout elements should attach the
- * instrumentation event bridge. Defaults to `true` when the policy is unset
- * or partially set. Hosts opt out by passing
- * `policies.telemetry.enabled === false`, which skips
- * `attachInstrumentationEventBridge` setup entirely. Hosts that want a
- * different shape of opt-out can still supply a custom
- * `instrumentationProvider`.
- */
-export function isTelemetryEnabled(
-	policies: Partial<SectionPlayerPolicies> | null | undefined,
-): boolean {
-	return policies?.telemetry?.enabled !== false;
-}
 
 /**
  * The complete policy set a layout runs under: each field the host leaves
@@ -58,7 +29,7 @@ export function resolveSectionPlayerPolicies(
 					? mode
 					: DEFAULT_SECTION_PLAYER_POLICIES.readiness.mode,
 		},
-		preload: { enabled: isPreloadEnabled(policies) },
-		telemetry: { enabled: isTelemetryEnabled(policies) },
+		preload: { enabled: policies?.preload?.enabled !== false },
+		telemetry: { enabled: policies?.telemetry?.enabled !== false },
 	};
 }

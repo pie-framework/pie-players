@@ -15,7 +15,7 @@ All packages in this inventory participate in the fixed lockstep release set.
 While the project remains on the pre-1.0 `0.x.y` line, releases are patch-only;
 see [`publishing.md`](./publishing.md) for the full policy.
 
-Publishable packages (45):
+Publishable packages (44):
 
 - `@pie-players/pie-assessment-player`
 - `@pie-players/pie-assessment-toolkit`
@@ -38,12 +38,8 @@ Publishable packages (45):
 - `@pie-players/pie-theme`
 - `@pie-players/pie-tool-annotation-toolbar`
 - `@pie-players/pie-tool-answer-eliminator`
-- `@pie-players/pie-tool-calculator-cortex`
 - `@pie-players/pie-tool-calculator-desmos`
-- `@pie-players/pie-tool-calculator-geogebra`
-- `@pie-players/pie-tool-calculator-inline-cortex`
 - `@pie-players/pie-tool-calculator-inline-desmos`
-- `@pie-players/pie-tool-calculator-inline-geogebra`
 - `@pie-players/pie-tool-calculator-shared`
 - `@pie-players/pie-tool-dictionary`
 - `@pie-players/pie-tool-picture-dictionary`
@@ -54,7 +50,6 @@ Publishable packages (45):
 - `@pie-players/pie-tool-protractor`
 - `@pie-players/pie-tool-ruler`
 - `@pie-players/pie-tool-sign-language`
-- `@pie-players/pie-tool-text-to-speech`
 - `@pie-players/pie-tool-tts-inline`
 - `@pie-players/pie-tts`
 - `@pie-players/tts-client-server`

@@ -2,19 +2,15 @@
  * Measurement Tools Registrations
  *
  * Registers ruler and protractor tools for on-screen measurements.
- *
- * Maps to QTI 3.0 standard access features:
- * - ruler (assessment tool)
- * - protractor (assessment tool)
  */
 
 import type {
 	ToolRegistration,
 	ToolToolbarRenderResult,
 	ToolbarContext,
-} from "@pie-players/pie-assessment-toolkit/tools/internal";
-import type { ToolContext } from "@pie-players/pie-assessment-toolkit/tools/internal";
-import { hasMathContent } from "@pie-players/pie-assessment-toolkit/tools/internal";
+} from "@pie-players/pie-assessment-toolkit/tools/registration";
+import type { ToolContext } from "@pie-players/pie-assessment-toolkit/tools/registration";
+import { hasMathContent } from "@pie-players/pie-assessment-toolkit/tools/registration";
 import { renderOverlayToolbar } from "./overlay-toolbar-render.js";
 
 /**
@@ -34,12 +30,6 @@ export const rulerToolRegistration: ToolRegistration = {
 	// Ruler typically appears at section/item/element level
 	supportedLevels: ["section", "item", "element"],
 
-	// PNP support IDs
-	// Maps to QTI 3.0 standard feature: ruler
-	pnpSupportIds: [
-		"ruler", // QTI 3.0 standard (assessment.ruler)
-	],
-
 	/**
 	 * Pass 2: Ruler is relevant when math content is present
 	 */
@@ -53,7 +43,6 @@ export const rulerToolRegistration: ToolRegistration = {
 	): ToolToolbarRenderResult {
 		return renderOverlayToolbar(this, context, toolbarContext, {
 			surface: "frameless",
-			handsOverCoordinator: true,
 		});
 	},
 };
@@ -75,12 +64,6 @@ export const protractorToolRegistration: ToolRegistration = {
 	// Protractor typically appears at section/item/element level
 	supportedLevels: ["section", "item", "element"],
 
-	// PNP support IDs
-	// Maps to QTI 3.0 standard feature: protractor
-	pnpSupportIds: [
-		"protractor", // QTI 3.0 standard (assessment.protractor)
-	],
-
 	/**
 	 * Pass 2: Protractor is relevant when math content is present
 	 */
@@ -94,7 +77,6 @@ export const protractorToolRegistration: ToolRegistration = {
 	): ToolToolbarRenderResult {
 		return renderOverlayToolbar(this, context, toolbarContext, {
 			surface: "frameless",
-			handsOverCoordinator: true,
 		});
 	},
 };

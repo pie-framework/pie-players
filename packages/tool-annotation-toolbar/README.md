@@ -39,16 +39,14 @@ A text selection toolbar for highlighting and annotating text in PIE assessment 
 
 ## Props
 
-The strip shows itself when text is selected and hides when the selection is cleared or Escape is pressed. What it needs from its host is the services it annotates and reads with, and the actions it should offer on a selection.
+The strip shows itself when text is selected and hides when the selection is cleared or Escape is pressed. It records annotations through the toolkit runtime context's `highlightCoordinator` and offers read-aloud when that context carries a `ttsService`; without a highlight coordinator the highlight controls no-op.
 
-| Name                  | Attribute | Type                    | Notes                                                                     |
-| --------------------- | --------- | ----------------------- | ------------------------------------------------------------------------- |
-| `enabled`             | `enabled` | boolean                 | Defaults to `true`; `false` stops it reacting to selections.              |
-| `highlightCoordinator`| —         | object                  | Where annotations are recorded. Without one the highlight controls no-op. |
-| `ttsService`          | —         | object                  | Read-aloud is offered only when present.                                  |
-| `selectionActions`    | —         | `ToolSelectionAction[]` | Host-supplied actions on the current selection. See below.               |
+| Name               | Attribute | Type                    | Notes                                                        |
+| ------------------ | --------- | ----------------------- | ------------------------------------------------------------ |
+| `enabled`          | `enabled` | boolean                 | Defaults to `true`; `false` stops it reacting to selections. |
+| `selectionActions` | —         | `ToolSelectionAction[]` | Host-supplied actions on the current selection. See below.   |
 
-Under `<pie-assessment-toolkit>` all four are supplied by the capability's registration, so a host mounting the strip through the toolkit passes nothing.
+Under `<pie-assessment-toolkit>` both are supplied by the capability's registration, so a host mounting the strip through the toolkit passes nothing.
 
 ### Selection actions
 
@@ -74,7 +72,7 @@ The toolbar takes its surface and text from the canonical `--pie-background` and
 | `--pie-annotation-underline`           | `#4221d5`                      | Underline mark on a light page                     |
 | `--pie-annotation-underline-dark`      | `#9c89ec`                      | Underline mark on a dark page                      |
 
-The underline tokens are applied by `HighlightCoordinator` in `@pie-players/pie-assessment-toolkit`, which owns the `::highlight()` rules. They exist as a pair because one value cannot serve both surfaces — `#4221d5` is 2.41:1 on black and `#9c89ec` is 2.85:1 on white — and as two separate tokens so overriding one never silently moves the other. Neither consults `--pie-primary`: a theme accent is chosen against one background and is illegible on the other.
+The underline tokens are applied by `HighlightCoordinator` in `@pie-players/pie-assessment-toolkit`, which owns the `::highlight()` rules. They exist as a pair because one value cannot serve both surfaces — `#4221d5` is 2.41:1 on black and `#9c89ec` is 2.85:1 on white — and as two separate tokens so overriding one never silently moves the other. Under `data-theme="light"` and `data-theme="dark"` the underline reads only its own token, because a theme accent is chosen against one background and is illegible on the other. Under any other `data-theme` value, such as a host or DaisyUI palette, it reads `--pie-annotation-underline` and falls back to that palette's `--pie-primary`.
 
 Which of the pair applies is decided by `[data-theme]`, which reports what the **page** declares — not which color scheme is active. A host that declares itself light while running a dark scheme would otherwise pin the light value over a dark background, so the accessibility palettes hand both states their own accent (below).
 
@@ -92,7 +90,7 @@ Hosts may override any of the three, but must keep 3:1 against both the toolbar 
 
 The annotation toolbar integrates with PIE's shared highlight infrastructure:
 
-- **HighlightCoordinator**: Singleton managing both TTS and annotation highlights
+- **HighlightCoordinator**: One per `ToolkitCoordinator`, shared by TTS and annotation highlights
 - **RangeSerializer**: Serializes/deserializes DOM ranges for persistence
 - **CSS Custom Highlight API**: Modern browser API for non-invasive highlighting
 
@@ -108,27 +106,31 @@ For unsupported browsers, the component gracefully degrades (no highlights shown
 
 ## Annotation Persistence
 
-Annotations are automatically saved to `sessionStorage` and restored on page load. The storage key includes the current URL path to scope annotations to specific content.
+Annotations are saved to `sessionStorage` after each change and restored two seconds after the toolbar mounts. The key is `pie-annotations:<id>`, where `<id>` is the enclosing item's canonical item id, else its item id, else `global`, so each item keeps its own annotations across navigation within the browser session.
 
-Storage format:
+Storage format, an array with one record per annotation:
 
 ```typescript
-{
-  "annotation-highlight-yellow-1234567890": {
-    startContainer: ["body", "div", "p", "#text"],
+[
+  {
+    id: "annotation-0",
+    color: "yellow",
+    timestamp: 1234567890,
+    startContainer: "div:nth-of-type(2) > p",
     startOffset: 10,
-    endContainer: ["body", "div", "p", "#text"],
+    endContainer: "div:nth-of-type(2) > p",
     endOffset: 20,
     text: "highlighted text"
   }
-}
+]
 ```
 
-Annotations are automatically cleared when:
+`startContainer` and `endContainer` are selector paths relative to the scope root, with ` >>> ` marking a step into a shadow root.
 
-- User explicitly clicks "Clear" button
-- User navigates to different content
-- sessionStorage is cleared
+Stored annotations are removed when:
+
+- The user presses "Clear all", which removes that item's key
+- `sessionStorage` is cleared, for example when the tab closes
 
 ## Text-to-Speech Integration
 
@@ -144,26 +146,25 @@ The annotation toolbar includes a "Read" button that uses the TTS service to rea
 
 ### Technical Implementation
 
-The toolbar uses `ttsService.speakRange()` instead of `ttsService.speak()` to ensure accurate word highlighting:
+The toolbar passes the selected range to `ttsService.speak()`, which highlights
+from the selection's offset within its content root:
 
 ```typescript
 ttsSpeaking = true;
 try {
-  // speakRange() calculates text offset for accurate highlighting.
   // contentRoot: the item or passage scope element, else the document element.
-  await ttsService.speakRange(selectedRange, { contentRoot });
+  // language: the toolkit's `content-language`; `speak` lets a `lang` in
+  // the content win over it.
+  // catalogContext: from the shell holding the selection.
+  await ttsService.speak(selectedRange, { contentRoot, language, catalogContext });
 } finally {
   ttsSpeaking = false;
 }
 ```
 
-`speakRange` resolves when reading ends and rejects on a playback error.
-
-**Why this matters:**
-
-- User selects text in the middle of a paragraph
-- `speak(text)` would highlight from the beginning of the container (wrong)
-- `speakRange(range)` highlights the exact selected text (correct)
+`speak` resolves when reading ends and rejects on a playback error. A
+`data-catalog-idref` node the selection holds whole reads its spoken card, as
+under tts-inline; part of one reads as the selected text.
 
 ### UX Details
 

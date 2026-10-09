@@ -88,25 +88,10 @@ bun run build:e2e:assessment-player
 bunx playwright test packages/assessment-player/tests/assessment-persistence-lab.spec.ts --config packages/assessment-player/playwright.config.ts
 ```
 
-The three lab/transport tests must pass. The two R2 tests assert the **desired**
-behavior and currently use `test.fail` immediately before their final invariant
-assertion. Setup, transport, storage, and reload errors are not expected failures.
-The save-race test gives the newer request a bounded one-second admission window
-before releasing the old write; it also works when a repaired writer serializes
-that second request until release. It asserts the final state after both settle,
-not a specific queue implementation.
-
-To see the two defects as ordinary failing tests:
-
-```bash
-PIE_R2_STRICT=1 bunx playwright test packages/assessment-player/tests/assessment-persistence-lab.spec.ts --config packages/assessment-player/playwright.config.ts --grep R2
-```
-
-When repairing R2, remove the two expected-failure annotations and this temporary
-strict-mode switch in the same change. An unexpected pass currently fails the
-suite, so an implementation change cannot silently leave obsolete markers.
-The lab is evidence for this explicit reference contract. It does not refresh
-Host V/A/R verification dates or decide backend finalization, receipts,
-multitab conflict handling, or retry after an uncertain outcome. The
-[remediation tracker](../../docs/architecture/delivery-reliability-remediation-plan.md#r2--saves-race-and-submission-can-falsely-succeed)
-continues to own R2's repair status.
+All five lab tests must pass, the two R2 tests included: a newer save survives
+an older held write completing last, and a rejected submission rejects its caller
+without announcing success. The save-race test gives the newer request a bounded
+one-second admission window before releasing the old write, which the
+controller's serialized writer leaves pending until release; it asserts the final
+state after both settle. The lab does not decide backend finalization, receipts,
+multitab conflict handling, or retry after an uncertain outcome.

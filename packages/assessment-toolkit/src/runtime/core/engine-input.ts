@@ -1,25 +1,23 @@
 /**
- * Section runtime engine inputs (M7 — Variant C, layered core).
+ * Section runtime engine inputs.
  *
- * Inputs are the discriminated union of events the adapter (PR 2) feeds
- * into the pure transition function (`engine-transition.ts`). The shape
- * is closed: every field is plain data so the transition can be tested
- * without any DOM, Svelte, or coordinator wiring.
+ * Inputs are the closed union of events the adapter feeds into the pure
+ * transition function (`engine-transition.ts`). Every field is plain data, so
+ * the transition is testable without DOM, Svelte, or coordinator wiring.
  *
  * Adapter→core boundary contract:
- *   - The adapter never mutates engine state directly. It always
- *     constructs an input and calls `core.dispatch(input)`.
- *   - Inputs are total: an unhandled `kind` is a programming error
- *     (the transition uses `assertNever` exhaustiveness).
- *   - Inputs carry only data, never live host references that would
- *     pin lifetime. Coordinator and controller handles live in the
- *     adapter; the core only sees readiness signals derived from them.
+ *   - The adapter never mutates engine state directly. It constructs an input
+ *     and calls `core.dispatch(input)`.
+ *   - The transition switch is exhaustive over `kind`: a new input kind that
+ *     it does not handle fails to type-check.
+ *   - Inputs carry no live host references. Coordinator and controller handles
+ *     live in the adapter; the core sees only readiness signals derived from
+ *     them.
  */
 
 import type { CohortKey } from "./cohort.js";
 import type { EffectiveRuntime, RuntimeInputs } from "./engine-resolver.js";
 import type { EngineReadinessSignals } from "./engine-readiness.js";
-import type { FrameworkErrorModel } from "../../services/framework-error.js";
 
 /**
  * `initialize` is the first transition out of `idle`. It carries the
@@ -65,7 +63,8 @@ export type EngineInputCohortChange = {
  * the controller for the current cohort. Advances the phase from
  * `booting-section` → `engine-ready` (assuming `composed` is already
  * implied by `phase >= booting-section`, which the FSM treats as
- * monotonic).
+ * monotonic), and on to `interactive` when the last readiness snapshot
+ * already satisfies it.
  */
 export type EngineInputSectionControllerResolved = {
 	kind: "section-controller-resolved";
@@ -74,7 +73,8 @@ export type EngineInputSectionControllerResolved = {
 /**
  * `update-readiness-signals` carries the latest readiness snapshot
  * from the host. The transition uses it to gate the move into
- * `interactive` and to decide whether to emit `loading-complete`.
+ * `interactive`, to end the chain as `failed` when `runtimeError` is set
+ * before `interactive`, and to decide whether to emit `loading-complete`.
  *
  * The full signal set is sent every time so the transition does not
  * have to reason about partial overlays.
@@ -82,7 +82,6 @@ export type EngineInputSectionControllerResolved = {
 export type EngineInputUpdateReadinessSignals = {
 	kind: "update-readiness-signals";
 	signals: EngineReadinessSignals;
-	loadedCount: number;
 	itemCount: number;
 	/**
 	 * Strict-mode gate. When `"strict"`, `interactive` only fires
@@ -94,21 +93,9 @@ export type EngineInputUpdateReadinessSignals = {
 };
 
 /**
- * `framework-error` is sent for every framework-error report (M3
- * canonical channel). The transition records the latest error in
- * state and emits a `framework-error` output so the adapter can fan
- * out to subscribers and the DOM event.
- */
-export type EngineInputFrameworkError = {
-	kind: "framework-error";
-	error: FrameworkErrorModel;
-};
-
-/**
  * `dispose` tears the engine down. Emits `disposed` for the current
- * cohort (if any) and moves to the terminal `disposed` phase. After
- * dispose the engine accepts no further inputs (the transition logs
- * a warning and is a no-op).
+ * cohort (if any) and moves to the terminal `disposed` phase. Every input
+ * after dispose is a no-op.
  */
 export type EngineInputDispose = {
 	kind: "dispose";
@@ -120,7 +107,6 @@ export type SectionEngineInput =
 	| EngineInputCohortChange
 	| EngineInputSectionControllerResolved
 	| EngineInputUpdateReadinessSignals
-	| EngineInputFrameworkError
 	| EngineInputDispose;
 
 /**

@@ -163,23 +163,17 @@ session object is section state that `persist()` saves — a host reading a
 section's item responses reads them from the controller, not off the item
 player's property.
 
-## Delivery host compatibility
+## Renamed delivery props
 
-The current player keeps a small set of legacy delivery-host aliases where they
-preserve the `pie-item` client contract:
+`<pie-item-player>` accepts only its own attribute and property names:
 
-- `disableBundler={true}` maps to `strategy="preloaded"`.
-- `bundleHost` maps to `loaderOptions.bundleHost`.
-- `customClassname` maps to `customClassName`; prefer `custom-class-name` in new
-  markup.
-- Configs shaped as `{ pie, passage }` are still accepted, but a root
-  `ConfigEntity` remains the canonical input.
-- `allowedResize` is still accepted for opt-in passage resizing.
-- `bundleEndpoints` and `reFetchBundle` are accepted for old hosts but are not
-  used by the current loader boundary.
-
-For new integrations, use the canonical attributes and properties documented in
-the package README.
+- `disableBundler={true}` becomes `strategy="preloaded"`.
+- `bundleHost` becomes `loaderOptions.bundleHost`.
+- `customClassname` becomes `customClassName` (`custom-class-name`).
+- `bundleEndpoints`, `reFetchBundle` and `updateElementModel()` have no
+  equivalent.
+- A stimulus item is passed as a `{ pie, passage }` config, and
+  `allowedResize` enables passage resizing.
 
 ## What is not changing
 

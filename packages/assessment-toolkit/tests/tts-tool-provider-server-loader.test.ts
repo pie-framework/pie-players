@@ -7,7 +7,6 @@ class StubServerProvider {
 	readonly providerName = "Stub";
 	readonly version = "0";
 	initialize = async () => ({}) as never;
-	supportsFeature = () => false;
 	getCapabilities = () => ({}) as never;
 	destroy = () => {};
 }
@@ -17,7 +16,7 @@ describe("TTSToolProvider server adapter loader", () => {
 		const provider = new TTSToolProvider("server");
 
 		await expect(
-			provider.initialize({ backend: "server", apiEndpoint: "/api/tts" }),
+			provider.initialize({ apiEndpoint: "/api/tts" }),
 		).rejects.toThrow("loadServerProvider");
 		expect(provider.isReady()).toBe(false);
 	});
@@ -30,7 +29,6 @@ describe("TTSToolProvider server adapter loader", () => {
 		});
 
 		await provider.initialize({
-			backend: "server",
 			apiEndpoint: "/api/tts",
 			onTelemetry: (eventName) => {
 				events.push(eventName);
@@ -54,7 +52,6 @@ describe("TTSToolProvider server adapter loader", () => {
 
 		await expect(
 			provider.initialize({
-				backend: "server",
 				apiEndpoint: "/api/tts",
 				onTelemetry: (eventName) => {
 					events.push(eventName);

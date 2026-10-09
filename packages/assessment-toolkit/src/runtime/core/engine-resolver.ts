@@ -1,11 +1,9 @@
 /**
- * Section runtime engine resolver (M7).
+ * Section runtime engine resolver.
  *
  * Canonical home of `resolveRuntime`, `resolveToolsConfig`, and their
- * supporting helpers/types. As of M7 PR 7 the previous duplicates in
- * `packages/section-player/src/components/shared/section-player-runtime.ts`
- * have been deleted; section-player now consumes these helpers via
- * `@pie-players/pie-assessment-toolkit/runtime/internal`.
+ * supporting helpers/types; section-player consumes them through
+ * `@pie-players/pie-assessment-toolkit/runtime/engine`.
  *
  * What is NOT absorbed in this module:
  * - `resolvePlayerRuntime` stays in section-player because it depends on
@@ -18,8 +16,10 @@
  *   `packages/section-player/src/components/shared/section-player-host-runtime.ts`)
  *   hands its local implementation in.
  *
- * Runtime-owned configuration flows through `runtime.<key>`. Layout-only
- * inputs stay on the section-player host elements.
+ * Each input has one tier. `assessmentId`, the tools and player config and the
+ * `on*` callbacks arrive on `runtime`. The primitive inputs (`nds-icons`,
+ * `locale`, `tool-config-strictness`) are element attributes; the resolver takes
+ * `toolConfigStrictness` beside `runtime`.
  */
 
 import type { LoaderConfig } from "@pie-players/pie-players-shared/loader-config";
@@ -30,9 +30,8 @@ import type {
 import type { FrameworkErrorModel } from "../../services/framework-error.js";
 import type { ToolConfigStrictness } from "../../services/tool-config-validation.js";
 
-export const DEFAULT_ASSESSMENT_ID = "section-demo-direct";
 export const DEFAULT_PLAYER_TYPE = "iife";
-export const DEFAULT_LAZY_INIT = true;
+export const DEFAULT_LAZY_INIT = false;
 export const DEFAULT_ISOLATION = "inherit";
 export const DEFAULT_ENV = { mode: "gather", role: "student" } as Record<
 	string,
@@ -40,9 +39,12 @@ export const DEFAULT_ENV = { mode: "gather", role: "student" } as Record<
 >;
 
 export type PlayerOverrides = {
+	/** The host has already loaded the item bundles; the player loads none. */
+	hosted?: boolean;
 	loaderConfig?: LoaderConfig;
 	loaderOptions?: Record<string, unknown>;
-	[key: string]: unknown;
+	/** The item player's `backend` config, passed through unread. */
+	backend?: Record<string, unknown> | null;
 };
 
 export type FrameworkErrorHandler = (model: FrameworkErrorModel) => void;
@@ -72,75 +74,44 @@ export type RuntimeConfig = {
 	isolation?: string;
 	env?: Record<string, unknown>;
 	/**
-	 * Presentation flag: opt-in to the vendored `<nds-icon-button>` for the
-	 * toolbar tool buttons, the calculator shell controls, inline-TTS
-	 * play/pause, and the section scroll-hint. NDS icons render only when
-	 * this is explicitly `true`; unset/`false` keeps the plain `<button>`
-	 * markup (the default). Purely visual — no engine effect.
-	 */
-	ndsIcons?: boolean;
-	/**
-	 * Interface locale: a BCP-47 tag naming the language the player renders its own
-	 * UI in. Purely presentational — no engine effect.
+	 * Content language: a BCP-47 tag naming the language the authored content is
+	 * written in, which read-aloud speaks it in and catalog lookups select
+	 * alternates by. A `lang` in the content's markup wins over it. Purely
+	 * presentational — no engine effect.
 	 *
-	 * Distinct from content language, which describes the authored item and
-	 * travels on `env`. QTI 3's implementation guide states the independence
-	 * directly: a candidate may choose an interface language which may or may not
-	 * also be the language of the content.
-	 *
-	 * Unset renders `en-US`. POSIX (`nl_NL`) and bare (`nl`) forms both resolve.
+	 * Unset reads as `en-US` wherever the markup names no language.
 	 */
-	locale?: string;
-	toolConfigStrictness?: ToolConfigStrictness;
+	contentLanguage?: string;
 
-	// Canonical framework-error callback.
 	onFrameworkError?: FrameworkErrorHandler;
-
-	// Canonical stage-change callback. The DOM event
-	// `pie-stage-change` remains the primary channel; this callback is
-	// the convenience surface that mirrors the event one-to-one.
+	/** Called with each `pie-stage-change` detail. */
 	onStageChange?: StageChangeHandler;
-
-	// Canonical loading-complete callback. Mirrors the
-	// `pie-loading-complete` DOM event, which the engine dispatches
-	// once per cohort when every item has finished loading.
+	/** Called with each `pie-loading-complete` detail. */
 	onLoadingComplete?: LoadingCompleteHandler;
 };
 
 export type RuntimeInputs = {
-	assessmentId?: string;
-	toolConfigStrictness?: ToolConfigStrictness;
-	onFrameworkError?: FrameworkErrorHandler;
-	onStageChange?: StageChangeHandler;
-	onLoadingComplete?: LoadingCompleteHandler;
 	runtime: RuntimeConfig | null;
+	toolConfigStrictness?: ToolConfigStrictness;
 };
 
 /**
- * Pick the runtime-tier value when defined, otherwise the prop/attribute
- * value. The strict mirror rule means every tier-1 surface is resolved
- * with this single helper; per-feature special-casing is forbidden.
+ * The id a section runs under: the host's `section-id`, else the section's own
+ * `identifier`, else one named after the assessment. The toolkit keys the
+ * section's controller by it, and the layout kernel its stage cohort.
  */
-function pick<T>(
-	runtimeVal: T | undefined,
-	attrVal: T | undefined,
-): T | undefined {
-	return runtimeVal !== undefined ? runtimeVal : attrVal;
-}
-
-/**
- * Resolve the canonical `onFrameworkError` handler from the two-tier
- * surface. Precedence (highest first): `runtime.onFrameworkError`,
- * then top-level `onFrameworkError`. Layout CEs and the kernel call
- * this so every entry point converges on the same handler.
- */
-export function resolveOnFrameworkError(args: {
-	runtime: RuntimeConfig | null;
-	onFrameworkError?: FrameworkErrorHandler;
-}): FrameworkErrorHandler | undefined {
-	const r = args.runtime ?? {};
-	if (r.onFrameworkError !== undefined) return r.onFrameworkError;
-	return args.onFrameworkError;
+export function resolveSectionId(args: {
+	sectionId?: string | null;
+	section?: unknown;
+	assessmentId?: string | null;
+}): string {
+	const identifier = (args.section as { identifier?: unknown } | null)
+		?.identifier;
+	return (
+		args.sectionId ||
+		(typeof identifier === "string" ? identifier : "") ||
+		`section-${args.assessmentId || "default"}`
+	);
 }
 
 export function resolveToolsConfig(args: { runtime: RuntimeConfig | null }) {
@@ -152,19 +123,14 @@ export function resolveToolsConfig(args: { runtime: RuntimeConfig | null }) {
 }
 
 export function resolveRuntime(args: {
-	assessmentId: string;
 	runtime: RuntimeConfig | null;
 	effectiveToolsConfig: unknown;
 	toolConfigStrictness?: ToolConfigStrictness;
-	onFrameworkError?: FrameworkErrorHandler;
-	onStageChange?: StageChangeHandler;
-	onLoadingComplete?: LoadingCompleteHandler;
 }) {
 	const r = args.runtime || {};
 	const runtimePlayer = r.player ? { ...r.player } : null;
 	return {
 		...r,
-		assessmentId: pick(r.assessmentId, args.assessmentId),
 		playerType: r.playerType ?? DEFAULT_PLAYER_TYPE,
 		player: runtimePlayer,
 		lazyInit: r.lazyInit ?? DEFAULT_LAZY_INIT,
@@ -173,32 +139,11 @@ export function resolveRuntime(args: {
 		createSectionController: r.createSectionController,
 		isolation: r.isolation ?? DEFAULT_ISOLATION,
 		env: r.env ?? DEFAULT_ENV,
-		toolConfigStrictness:
-			pick(r.toolConfigStrictness, args.toolConfigStrictness) ?? "error",
-
-		// Runtime callback wins; top-level callback remains a layout CE event
-		// convenience for hosts that do not use DOM listeners.
-		onFrameworkError: resolveOnFrameworkError({
-			runtime: args.runtime,
-			onFrameworkError: args.onFrameworkError,
-		}),
-
-		// Runtime callback wins over the top-level callback prop.
-		onStageChange: pick(r.onStageChange, args.onStageChange),
-
-		// Runtime callback wins over the top-level callback prop.
-		onLoadingComplete: pick(r.onLoadingComplete, args.onLoadingComplete),
-
+		toolConfigStrictness: args.toolConfigStrictness ?? "error",
 		tools: args.effectiveToolsConfig,
 	};
 }
 
-/**
- * Effective runtime returned by `resolveRuntime`. The shape is exposed
- * as `unknown` at the public boundary because consumers spread it into
- * arbitrary host props; downstream call sites narrow with the specific
- * keys they need.
- */
 export type EffectiveRuntime = ReturnType<typeof resolveRuntime>;
 
 /**
@@ -221,19 +166,13 @@ export function resolveSectionEngineRuntimeState<P>(
 	effectiveRuntime: EffectiveRuntime;
 	playerRuntime: P;
 } {
-	const assessmentId = args.assessmentId ?? DEFAULT_ASSESSMENT_ID;
-
 	const effectiveToolsConfig = resolveToolsConfig({
 		runtime: args.runtime,
 	});
 	const effectiveRuntime = resolveRuntime({
-		assessmentId,
 		runtime: args.runtime,
 		effectiveToolsConfig,
 		toolConfigStrictness: args.toolConfigStrictness,
-		onFrameworkError: args.onFrameworkError,
-		onStageChange: args.onStageChange,
-		onLoadingComplete: args.onLoadingComplete,
 	});
 	const playerRuntime = deps.resolvePlayerRuntime({
 		effectiveRuntime: effectiveRuntime as Record<string, unknown>,

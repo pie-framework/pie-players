@@ -32,7 +32,7 @@
 	 * it. Otherwise the host owns the item player and its events pass through
 	 * unchanged; the toolkit hears only that the item loaded or failed.
 	 */
-	import { connectAssessmentToolkitHostRuntimeContext } from "../context/runtime-context-consumer.js";
+	import { connectHostRuntimeContext } from "../runtime/tool-host-contract.js";
 	import {
 		PENDING_INPUT_WARNING_DELAY_MS,
 		warnOncePerDocument,
@@ -69,7 +69,7 @@
 		const scopeHost = host;
 		let sectionBound = false;
 		let runtimeFound = false;
-		const stopFollowingRuntime = connectAssessmentToolkitHostRuntimeContext(
+		const stopFollowingRuntime = connectHostRuntimeContext(
 			scopeHost,
 			(runtime) => {
 				runtimeFound = true;

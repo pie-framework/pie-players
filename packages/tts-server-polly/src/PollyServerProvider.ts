@@ -13,6 +13,7 @@ import {
 } from "@aws-sdk/client-polly";
 
 import {
+	anchorSpeechMarks,
 	BaseTTSProvider,
 	type GetVoicesOptions,
 	type ServerProviderCapabilities,
@@ -357,7 +358,7 @@ export class PollyServerProvider extends BaseTTSProvider {
 
 		// Parse NDJSON (newline-delimited JSON)
 		// Each line is a separate JSON object
-		const speechMarks = marksText
+		const reported = marksText
 			.trim()
 			.split("\n")
 			.filter((line) => line.trim())
@@ -378,7 +379,9 @@ export class PollyServerProvider extends BaseTTSProvider {
 				};
 			});
 
-		return speechMarks;
+		// Polly's offsets count UTF-8 bytes of the text it was sent, prosody
+		// envelope included.
+		return anchorSpeechMarks(reported, request.text);
 	}
 
 	/**

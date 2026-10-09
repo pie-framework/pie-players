@@ -1,5 +1,79 @@
 # @pie-players/pie-tool-tts-inline
 
+## 0.3.75
+
+### Patch Changes
+
+- d58f703: The annotation toolbar's read-aloud reads spoken cards. A `data-catalog-idref` node the selection holds whole reads its card, from the cards the selection's shell registered and then the assessment's, as tts-inline reads it; a selection holding part of a node reads the selected text. `speakRange` takes a `catalogContext`, and `catalogContextHolding` gives a tool serving several shells the context of the shell holding a node. The read button stays focused while it reads; it used to disable itself, which dismissed the strip and stopped the read a frame after it started.
+- c6b509c: Each section-player input has one tier: `nds-icons`, `locale` and `tool-config-strictness` are layout attributes only, and `assessmentId`, `onFrameworkError`, `onStageChange`, `onLoadingComplete` and tool config are `runtime` keys only, so a host that sets `assessment-id` or a callback property on a layout element moves it into `runtime`. The toolkit's `pnp-enforcement` attribute is gone; set `tools.pnpEnforcement`. Layout elements drop `selectComposition`, `selectNavigation`, `selectReadiness` and the readiness-phase types; read `getSnapshot()` and listen for `pie-stage-change`. The section player's entries are the root, `./browser`, the splitpane component subpath, `./contracts/runtime-host-contract`, `./contracts/host-hooks`, `./policies` and `./item-section`; a host importing another component subpath imports the root. The layout-contract constants, `SECTION_PLAYER_PUBLIC_EVENTS`, `isPreloadEnabled` and `isTelemetryEnabled` are removed; read `resolveSectionPlayerPolicies(policies)`. The toolkit's `./runtime/engine` no longer exports `createReadinessDetail`, `resolveOnFrameworkError`, `DEFAULT_ASSESSMENT_ID` or `EffectiveRuntime`.
+  
+  `ToolkitCoordinatorApi` drops `getServiceBundle`, `getInitStatus`, `isToolEnabled`, `registerToolContextResolver` and `setToolContextResolvers`, and the toolkit element drops `getServiceBundle()`; read the coordinator's service properties, `isReady()` and `getToolConfig()`, and pass resolvers as `runtime.toolContextResolvers`. A host-supplied coordinator must implement `onReadyChange`. `ToolkitInitStatus` and `ToolkitServiceBundle` are removed. `createEmptyPersonalNeedsProfile` moves to `@pie-players/pie-default-tool-loaders`, which drops `registerPackagedTools`, `registerDefaultToolModuleLoaders`, `PACKAGED_TOOL_ORDER`, `PACKAGED_TOOL_PLACEMENT`, `UNIVERSAL_SUPPORTS_PRESET` and the re-exported `ToolModuleLoader`. The policy source-tag types, `ToolPolicyEntry.sources` and `ToolPolicyDiagnostic.source` are removed; a decision's `rule` and a diagnostic's `details` carry attribution, and `"tts"` is no longer special-cased as a tool id. A profile's `prohibitedSupports` now outranks item and district requirements, so PNP precedence is one order: district block, `false` override, item restriction, prohibition, `true` override, item requirement, district requirement, profile support. `stimulusRefs` is removed from the shared types, and `toolConfigs` and `toolParameters` are object-valued records. `@pie-players/pie-tool-calculator-shared` drops its root entry; import `/calculator-element`. The PNP debugger and TTS settings panels dispatch `close` from the host element, without bubbling.
+  
+  Text-to-speech names a server provider one way: `backend: "server"` with `serverProvider: "polly" | "google" | "custom"`, so a host setting `backend: "polly"` or `"google"` moves the name to `serverProvider`, and a string `provider` is rejected. Keys nested under `settings` are no longer read; move them, `mathSpeech` included, to the top level. `TextToSpeechToolProviderConfig` is closed and exported in place of `ToolConfig` and `TTSToolConfig`. `TTSFeature` and `ITTSProvider.supportsFeature` are removed; a custom provider deletes the method. `DEFAULT_TTS_SPEED_OPTIONS`, `normalizeTTSSpeedOptions`, `resolveRuntimeProvider`, `resolveTTSBackend`, `resolveTransportMode` and `BrowserVoiceTraits` leave `./tools/registration`. `TtsServiceApi.onStateChange(callback)` returns its unsubscribe function and `offStateChange` is removed, and `bindTtsAudioHandoff` drops `listenerId`. A custom highlight coordinator implements `highlightTTSWordElement` and `highlightTTSSentenceElements`; `clearAll` leaves the interface. `TTSService.initialize` rejects when its provider fails to start, and the coordinator owns the browser fallback, reported as `pie-tool-init-fallback`. `<pie-tool-tts-inline>` defaults `layoutMode` to `left-aligned`, and reads `--pie-button-border` and `--pie-button-hover-bg` in place of `--pie-button-border-color` and `--pie-button-hover-background-color`. The annotation toolbar offers read-aloud only when a toolbar hosts `textToSpeech`. `--pie-background-light` leaves the theme token registry, the assessment player's navigation reads `--pie-background` in its place, and the dictionary and picture-dictionary panels read `--pie-secondary-background`. `PieThemeTokenScope` drops `"unsupported"` and `PieThemeTokenStatus` drops `"intentional-gap"`, which no entry uses.
+- d7c46ac: The toolkit drops surface that nothing constructs or calls: `ThemeProvider` with `ThemeConfig`, `FontSize` and `ThemeProviderApi`; `I18nService` and its `./services/I18nService` subpath; the Svelte context keys `TOOL_POLICY_ENGINE_KEY` and `SECTION_RUNTIME_ENGINE_KEY` with their context types; `normalizeToolAlias`; `ToolkitCoordinator.updateToolPlacement`; and the runtime context's `reportSessionChanged`. `AssessmentSettings.themeConfig` leaves the shared types. On the runtime engine, `SectionRuntimeEngine` loses `getEffectiveRuntime`, `setInstrumentationHook` and the `coordinator` and `instrumentationHook` attach options, and `runtime/internal` loses the coordinator and instrumentation bridges.
+  
+  In their place: `createPieI18n` from `@pie-players/pie-players-shared/i18n` for `I18nService`, `updateToolsPlacement({ [level]: ids })` for `updateToolPlacement`, and `engine.subscribe(...)` for an instrumentation hook. The i18n types stay exported from the toolkit root.
+- d2de576: Warn when a tool with no module loader still has no element definition 10 s after it is requested, and export `SpeakOptions` from the toolkit root.
+- cf199c9: Read-aloud has one entry: `ttsService.speak(target, options)` reads a DOM range or element, with spoken cards, math speech and `data-tts-suppress` applied the same way on every path. `speak(text)` and `speakRange` are removed; a caller passes the element or range it read. `TTSService.dispose()` is added, and the coordinator's dispose calls it.
+  
+  A new speak stops a recorded clip still playing, a pause between two parts of a read holds the next part, and a superseded server read no longer logs an error. The server provider sends the language a read names, except that a host's `lang_id` wins on the custom transport, and text over a provider's `maxTextLength` is read in pieces. A toolbar read names a language only when the toolbar's `language` or the host's `content-language` does, and `ToolbarContext.language` is otherwise absent. Two toolkits on one page share the page's highlights, and a theme change keeps the read-aloud colors adapted to the content.
+- f80f159: Read-aloud, its highlighting and the annotation toolbar reach content rendered into open shadow roots, in rendering order, with highlight styles adopted into each shadow root and annotations that round-trip through them. Read-aloud reads a shell's `data-region="content"` region, and the annotation toolbar opens only for a selection inside one, so a card's header, lead surfaces and media no longer offer it. Content language is the nearest `lang` between the read content and its shell, else the new `content-language` attribute on `pie-assessment-toolkit` (`runtime.contentLanguage` on the section-player layouts), else `en-US`; it picks catalog cards, and the browser voice's language when markup or the host names it, the voice otherwise following the browser's language as before. `resolveContentRegion` is exported from `@pie-players/pie-assessment-toolkit/tools/registration`.
+- 8d94ae3: The toolkit's `./runtime/internal` and `./policy/internal` entries are removed, and `./tools/internal` is renamed `./tools/registration`, a stable entry for writing and rendering a `ToolRegistration`; `./runtime/engine` now carries the engine's input vocabulary, and the root carries the shell event bridge. The provider registry's `ToolProviderConfig` is renamed `ToolProviderRegistration`.
+- d9f56e8: The toolkit root exports 185 names instead of 326: the names only tool packages use moved to `./tools/registration`, and the names nothing imports are removed, among them the backend activity-session adapters, the item loader and the session-storage helpers. The TypeScript examples in the READMEs match the current API.
+- fbd4570: `TTSService.speak` resolves a read's language once for every entry point, a pinned `lang_id` stands in as the content language where markup and the tool name none, and a read without a language restores the host's locales. The Polly and Google servers pick a voice for the request's `language` when none is named, and the toolkit no longer names a default voice for them. A seek while paused moves the cursor and stays paused. The TTS settings panel's applies replace the previous backend's fields, and its browser preview reads through a `TTSService` of its own, so the panel now depends on `speech-rule-engine`. A browser fallback no longer destroys a registry-owned provider, server audio reports start on `playing`, and a superseded audio element's error is ignored.
+- Updated dependencies [d58f703]
+- Updated dependencies [3f3eb08]
+- Updated dependencies [7cf309e]
+- Updated dependencies [7400511]
+- Updated dependencies [14e53c9]
+- Updated dependencies [53940c9]
+- Updated dependencies [6b26e88]
+- Updated dependencies [f5465e5]
+- Updated dependencies [8edca42]
+- Updated dependencies [c6b509c]
+- Updated dependencies [6ee4cb8]
+- Updated dependencies [1025fba]
+- Updated dependencies [db280dd]
+- Updated dependencies [296055c]
+- Updated dependencies [6f57b31]
+- Updated dependencies [ad05203]
+- Updated dependencies [240f300]
+- Updated dependencies [4e9913f]
+- Updated dependencies [cdc3dd7]
+- Updated dependencies [dcc7375]
+- Updated dependencies [7c162ea]
+- Updated dependencies [78491f2]
+- Updated dependencies [0e00095]
+- Updated dependencies [7aeddb9]
+- Updated dependencies [d36dbae]
+- Updated dependencies [57a8d50]
+- Updated dependencies [3ac0028]
+- Updated dependencies [3ac0028]
+- Updated dependencies [d7c46ac]
+- Updated dependencies [bb9c165]
+- Updated dependencies [699f1c6]
+- Updated dependencies [d2de576]
+- Updated dependencies [1ec8e34]
+- Updated dependencies [d89f462]
+- Updated dependencies [cb93fdd]
+- Updated dependencies [cf199c9]
+- Updated dependencies [8122e1e]
+- Updated dependencies [bcba901]
+- Updated dependencies [c5634aa]
+- Updated dependencies [f80f159]
+- Updated dependencies [36e2770]
+- Updated dependencies [9464e2b]
+- Updated dependencies [8d94ae3]
+- Updated dependencies [d9f56e8]
+- Updated dependencies [5b15d5c]
+- Updated dependencies [4e9f832]
+- Updated dependencies [ccc2765]
+- Updated dependencies [fbd4570]
+- Updated dependencies [55d97fd]
+- Updated dependencies [4d94e9c]
+  - @pie-players/pie-assessment-toolkit@0.3.75
+  - @pie-players/pie-players-shared@0.3.75
+
 ## 0.3.74
 
 ### Patch Changes

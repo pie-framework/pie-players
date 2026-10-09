@@ -1,5 +1,75 @@
 # @pie-players/pie-tool-calculator-shared
 
+## 0.3.75
+
+### Patch Changes
+
+- c6b509c: Each section-player input has one tier: `nds-icons`, `locale` and `tool-config-strictness` are layout attributes only, and `assessmentId`, `onFrameworkError`, `onStageChange`, `onLoadingComplete` and tool config are `runtime` keys only, so a host that sets `assessment-id` or a callback property on a layout element moves it into `runtime`. The toolkit's `pnp-enforcement` attribute is gone; set `tools.pnpEnforcement`. Layout elements drop `selectComposition`, `selectNavigation`, `selectReadiness` and the readiness-phase types; read `getSnapshot()` and listen for `pie-stage-change`. The section player's entries are the root, `./browser`, the splitpane component subpath, `./contracts/runtime-host-contract`, `./contracts/host-hooks`, `./policies` and `./item-section`; a host importing another component subpath imports the root. The layout-contract constants, `SECTION_PLAYER_PUBLIC_EVENTS`, `isPreloadEnabled` and `isTelemetryEnabled` are removed; read `resolveSectionPlayerPolicies(policies)`. The toolkit's `./runtime/engine` no longer exports `createReadinessDetail`, `resolveOnFrameworkError`, `DEFAULT_ASSESSMENT_ID` or `EffectiveRuntime`.
+  
+  `ToolkitCoordinatorApi` drops `getServiceBundle`, `getInitStatus`, `isToolEnabled`, `registerToolContextResolver` and `setToolContextResolvers`, and the toolkit element drops `getServiceBundle()`; read the coordinator's service properties, `isReady()` and `getToolConfig()`, and pass resolvers as `runtime.toolContextResolvers`. A host-supplied coordinator must implement `onReadyChange`. `ToolkitInitStatus` and `ToolkitServiceBundle` are removed. `createEmptyPersonalNeedsProfile` moves to `@pie-players/pie-default-tool-loaders`, which drops `registerPackagedTools`, `registerDefaultToolModuleLoaders`, `PACKAGED_TOOL_ORDER`, `PACKAGED_TOOL_PLACEMENT`, `UNIVERSAL_SUPPORTS_PRESET` and the re-exported `ToolModuleLoader`. The policy source-tag types, `ToolPolicyEntry.sources` and `ToolPolicyDiagnostic.source` are removed; a decision's `rule` and a diagnostic's `details` carry attribution, and `"tts"` is no longer special-cased as a tool id. A profile's `prohibitedSupports` now outranks item and district requirements, so PNP precedence is one order: district block, `false` override, item restriction, prohibition, `true` override, item requirement, district requirement, profile support. `stimulusRefs` is removed from the shared types, and `toolConfigs` and `toolParameters` are object-valued records. `@pie-players/pie-tool-calculator-shared` drops its root entry; import `/calculator-element`. The PNP debugger and TTS settings panels dispatch `close` from the host element, without bubbling.
+  
+  Text-to-speech names a server provider one way: `backend: "server"` with `serverProvider: "polly" | "google" | "custom"`, so a host setting `backend: "polly"` or `"google"` moves the name to `serverProvider`, and a string `provider` is rejected. Keys nested under `settings` are no longer read; move them, `mathSpeech` included, to the top level. `TextToSpeechToolProviderConfig` is closed and exported in place of `ToolConfig` and `TTSToolConfig`. `TTSFeature` and `ITTSProvider.supportsFeature` are removed; a custom provider deletes the method. `DEFAULT_TTS_SPEED_OPTIONS`, `normalizeTTSSpeedOptions`, `resolveRuntimeProvider`, `resolveTTSBackend`, `resolveTransportMode` and `BrowserVoiceTraits` leave `./tools/registration`. `TtsServiceApi.onStateChange(callback)` returns its unsubscribe function and `offStateChange` is removed, and `bindTtsAudioHandoff` drops `listenerId`. A custom highlight coordinator implements `highlightTTSWordElement` and `highlightTTSSentenceElements`; `clearAll` leaves the interface. `TTSService.initialize` rejects when its provider fails to start, and the coordinator owns the browser fallback, reported as `pie-tool-init-fallback`. `<pie-tool-tts-inline>` defaults `layoutMode` to `left-aligned`, and reads `--pie-button-border` and `--pie-button-hover-bg` in place of `--pie-button-border-color` and `--pie-button-hover-background-color`. The annotation toolbar offers read-aloud only when a toolbar hosts `textToSpeech`. `--pie-background-light` leaves the theme token registry, the assessment player's navigation reads `--pie-background` in its place, and the dictionary and picture-dictionary panels read `--pie-secondary-background`. `PieThemeTokenScope` drops `"unsupported"` and `PieThemeTokenStatus` drops `"intentional-gap"`, which no entry uses.
+- 240f300: `<pie-item-shell>` is removed. Section-player item cards render `<pie-item-scope>`, the toolkit's item element, which now takes `region-policy`; `data-pie-shell-root="item"` and the card's classes are unchanged, so a host selecting the tag selects `pie-item-scope` instead. The theme's font-size rules scale `pie-item-scope`, around a host's own item player too.
+- 57a8d50: `updateToolConfig` replaces the tool's provider even when the provider id stays the same, so a new `provider.init` or `provider.runtime.authFetcher` takes effect; an open calculator remounts on the new provider. After a text-to-speech reconfigure the next speak starts the reconfigured provider, also under `lazyInit`. Registering a provider under an id that is already registered now replaces it.
+- bcba901: `toolOverrides` applies as documented, the policy engine compares its inputs structurally, an embedded toolkit keeps the assessment its host bound, and the PNP debugger no longer overwrites settings. A toolbar that cannot load a tool's module withholds the tool and reports `tool-module-load`, fatal only when policy grants it; the inline calculator opens through its item's toolbar and only where that toolbar offers the calculator; GeoGebra calculators show their attribution; tool windows stack within their tool's z-index layer while the ToolCoordinator leaves display to the renderer; and element tool state ids containing `:` round-trip.
+- 36e2770: `pie-assessment-toolkit` takes `isolation` as an attribute, and a `coordinator` passed to a nested toolkit wins over the outer one's. The calculator starts its provider under the toolkit's tool failure policy. Selection read-aloud and math control names take the content language, `en-US` unless markup or the host names another. A toolkit without a section starts its coordinator at the first item scope that registers, rebuilds it from inputs changed before then and reports later changes, and adopts a `toolRegistry` set after mount in place; the toolbar's empty-registry warning waits 10 s for one.
+- d9f56e8: The toolkit root exports 185 names instead of 326: the names only tool packages use moved to `./tools/registration`, and the names nothing imports are removed, among them the backend activity-session adapters, the item loader and the session-storage helpers. The TypeScript examples in the READMEs match the current API.
+- 5b15d5c: Tool elements read the toolkit's services from the runtime context only, so the calculator, annotation toolbar, answer eliminator and sign-language elements drop their coordinator, service and `providerId` properties. Providers register under their tool's id (`calculator`, `textToSpeech`), and the toolkit reports a tool by that id as `toolId` only: lifecycle hooks pass it as their first argument, `ToolkitErrorContext.providerId` becomes `toolId`, and `ProviderLifecycleContext.providerId`, `ToolConfigDiagnostic.providerId` and the `providerId` telemetry repeated beside `toolId` are removed. `ToolProviderApi.providerId`, `getProviderId`, `resolveToolProviderId`, `ToolkitCoordinator.getToolProvider` and `AnswerEliminatorToolConfig` are removed, and `sanitizeConfig` / `validateConfig` move from the provider descriptor to `ToolRegistration`.
+- 4e9f832: An open calculator remounts on a provider that a tool-config update replaces, answer eliminations are kept per element, toolbar-seeded tools release their coordinator entries, and one `<pie-tool-calculator>` element and one loader set serve every calculator provider and host shape. Removed: the toolkit's `./tools/client` subpath, `connectAssessmentToolkitRuntimeContext`, `connectAssessmentToolkitShellContext` and `connectAssessmentToolkitRegionScopeContext` (use the `connectTool…` functions), the singular `toolComponentFactory` override, `ToolCoordinator.resetZIndices`, the loader options `calculatorProviderConfig`, `createDefaultToolModuleLoaders`, `createSectionToolModuleLoaders`, `ITEM_TOOL_MODULE_LOADERS`, `SECTION_TOOL_MODULE_LOADERS` and `registerSectionToolModuleLoaders` (use `DEFAULT_TOOL_MODULE_LOADERS` and `tools.providers.calculator`), the `pie-tool-calculator-geogebra`, `-cortex`, `-inline-geogebra` and `-inline-cortex` packages (use `<pie-tool-calculator>` and `<pie-tool-calculator-inline>`), and the answer eliminator's `globalElementId` prop, replaced by `elementStateKeys`; `ToolbarContext.getGlobalElementId` now takes the element id.
+- Updated dependencies [d58f703]
+- Updated dependencies [3f3eb08]
+- Updated dependencies [7cf309e]
+- Updated dependencies [7400511]
+- Updated dependencies [14e53c9]
+- Updated dependencies [53940c9]
+- Updated dependencies [6b26e88]
+- Updated dependencies [f5465e5]
+- Updated dependencies [8edca42]
+- Updated dependencies [c6b509c]
+- Updated dependencies [6ee4cb8]
+- Updated dependencies [1025fba]
+- Updated dependencies [db280dd]
+- Updated dependencies [296055c]
+- Updated dependencies [6f57b31]
+- Updated dependencies [ad05203]
+- Updated dependencies [240f300]
+- Updated dependencies [4e9913f]
+- Updated dependencies [cdc3dd7]
+- Updated dependencies [dcc7375]
+- Updated dependencies [7c162ea]
+- Updated dependencies [78491f2]
+- Updated dependencies [0e00095]
+- Updated dependencies [7aeddb9]
+- Updated dependencies [d36dbae]
+- Updated dependencies [57a8d50]
+- Updated dependencies [3ac0028]
+- Updated dependencies [3ac0028]
+- Updated dependencies [d7c46ac]
+- Updated dependencies [bb9c165]
+- Updated dependencies [699f1c6]
+- Updated dependencies [d2de576]
+- Updated dependencies [1ec8e34]
+- Updated dependencies [d89f462]
+- Updated dependencies [cb93fdd]
+- Updated dependencies [cf199c9]
+- Updated dependencies [8122e1e]
+- Updated dependencies [bcba901]
+- Updated dependencies [c5634aa]
+- Updated dependencies [f80f159]
+- Updated dependencies [36e2770]
+- Updated dependencies [9464e2b]
+- Updated dependencies [8d94ae3]
+- Updated dependencies [d9f56e8]
+- Updated dependencies [5b15d5c]
+- Updated dependencies [4e9f832]
+- Updated dependencies [ccc2765]
+- Updated dependencies [fbd4570]
+- Updated dependencies [55d97fd]
+- Updated dependencies [4d94e9c]
+  - @pie-players/pie-assessment-toolkit@0.3.75
+  - @pie-players/pie-players-shared@0.3.75
+  - @pie-players/pie-calculator@0.3.75
+
 ## 0.3.74
 
 ### Patch Changes

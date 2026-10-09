@@ -15,6 +15,7 @@
  */
 
 import type {
+	PnpEnforcementMode,
 	ResolvedEngineInputs,
 	ToolPolicyDecision,
 	ToolPolicyDiagnostic,
@@ -43,19 +44,15 @@ export interface PolicyPanelCoordinator {
 		scope: { level: ToolPlacementLevel; scopeId: string };
 	}) => ToolPolicyDecision;
 	getPolicyInputs?: () => Readonly<ResolvedEngineInputs>;
+	getToolRegistry?: () => ToolRegistryLike;
 	updateToolsPlacement?: (
 		partial: Partial<Record<ToolPlacementLevel, string[]>>,
 	) => void;
 	updateToolConfig?: (toolId: string, updates: Record<string, unknown>) => void;
 	updateAssessment?: (assessment: unknown) => void;
-	setPnpEnforcement?: (mode: "on" | "off" | null) => void;
-	config?: {
-		tools?: {
-			placement?: Partial<Record<ToolPlacementLevel, string[]>>;
-			providers?: Record<string, { enabled?: boolean } | undefined>;
-		};
-		toolRegistry?: ToolRegistryLike | null;
-	};
+	setPnpEnforcement?: (mode: PnpEnforcementMode | null) => void;
+	/** Set on the coordinator `<pie-assessment-toolkit>` builds for itself. */
+	config?: { assessmentOptional?: boolean };
 	catalogResolver?: {
 		getStatistics?: () => {
 			totalCatalogs?: number;
@@ -144,11 +141,18 @@ export interface PnpPanelData {
 			 * Whether an assessment is bound. `undefined` when the coordinator does
 			 * not expose its policy inputs, which is not the same as nothing bound.
 			 *
-			 * `false` is the deployment defect this panel exists to make findable: a
-			 * host that never called `updateAssessment` declines every accommodation
-			 * with the same verdict a properly-declined student gets.
+			 * `false` where {@link assessmentExpected} holds is the deployment defect
+			 * this panel exists to make findable: profile, district and
+			 * test-administration policy decline for want of an input, with the
+			 * verdict a properly-declined student gets.
 			 */
 			assessmentBound?: boolean;
+			/**
+			 * Whether an unbound assessment is a misconfiguration. The coordinator
+			 * `<pie-assessment-toolkit>` builds for itself binds only the assessment
+			 * its host passes, so there it is one only while enforcement is `"on"`.
+			 */
+			assessmentExpected: boolean;
 		};
 	};
 }
@@ -321,7 +325,7 @@ export function resolveSectionToolIds(
 	if (Array.isArray(fromDecision)) {
 		return fromDecision;
 	}
-	const fromConfig = coordinator?.config?.tools?.placement?.section;
+	const fromConfig = coordinator?.getPolicyInputs?.()?.tools?.placement?.section;
 	if (Array.isArray(fromConfig)) return [...fromConfig];
 	return [];
 }
@@ -347,7 +351,7 @@ function normalizeSupportedLevels(
 }
 
 function buildPlacementState(
-	placement: Partial<Record<ToolPlacementLevel, string[]>> | undefined,
+	placement: Partial<Record<ToolPlacementLevel, readonly string[]>> | undefined,
 	toolId: string,
 ): Record<ToolPlacementLevel, boolean> {
 	return {
@@ -383,9 +387,12 @@ export function buildEditableToolRows(args: {
 	/** A tool is visible at a level when any decision at that level shows it. */
 	decisions: PanelDecisions;
 }): EditableToolRow[] {
-	const tools = args.coordinator?.config?.toolRegistry?.getAllTools?.() ?? [];
-	const placement = args.coordinator?.config?.tools?.placement ?? {};
-	const providers = args.coordinator?.config?.tools?.providers ?? {};
+	const tools = args.coordinator?.getToolRegistry?.()?.getAllTools?.() ?? [];
+	const inputs = args.coordinator?.getPolicyInputs?.();
+	const placement: Partial<Record<ToolPlacementLevel, readonly string[]>> =
+		inputs?.tools?.placement ?? {};
+	const providers: Record<string, { enabled?: boolean } | undefined> =
+		inputs?.tools?.providers ?? {};
 	const supports = getPnpStringArray(args.pnpProfile, "supports");
 	const prohibitedSupports = getPnpStringArray(
 		args.pnpProfile,
@@ -474,13 +481,7 @@ export function derivePnpPanelData(inputs: PnpPanelInputs): PnpPanelData {
 		coordinator,
 	} = inputs;
 
-	const policyInputs = coordinator?.getPolicyInputs?.() as
-		| {
-				pnpEnforcement?: "on" | "off";
-				pnpEnforcementOverride?: "on" | "off" | null;
-				assessment?: unknown;
-		  }
-		| undefined;
+	const policyInputs = coordinator?.getPolicyInputs?.();
 	const { profile, source, note } = resolvePnpProfile(
 		defaultPnpProfile,
 		policyInputs?.assessment,
@@ -519,13 +520,15 @@ export function derivePnpPanelData(inputs: PnpPanelInputs): PnpPanelData {
 		: null;
 	// Distinguished from a profile that grants nothing, which looks identical in
 	// every other field on this panel: with no assessment bound there is no
-	// profile, district policy or test administration for policy to read, so every
-	// capability is declined for want of an input rather than by a verdict.
+	// profile, district policy or test administration for policy to read.
 	// `undefined` means the coordinator does not expose its inputs, which is not
 	// the same claim as "nothing is bound".
 	const assessmentBound = policyInputs
 		? policyInputs.assessment != null
 		: undefined;
+	const assessmentExpected =
+		coordinator?.config?.assessmentOptional !== true ||
+		policyInputs?.pnpEnforcementOverride === "on";
 
 	return {
 		pnpProfile: profile,
@@ -555,6 +558,7 @@ export function derivePnpPanelData(inputs: PnpPanelInputs): PnpPanelData {
 				assessmentCatalogCount: catalogStats?.assessmentCatalogs ?? 0,
 				itemCatalogCount: catalogStats?.itemCatalogs ?? 0,
 				assessmentBound,
+				assessmentExpected,
 			},
 		},
 	};

@@ -1,6 +1,6 @@
 # Why a New Project?
 
-PIE Players is the modern player project for the PIE ecosystem. It provides the runtime pieces that render PIE items, compose sections, orchestrate assessment attempts, coordinate tools and accommodations, support print workflows, and expose observability signals for production hosts.
+PIE Players is the modern player project for the PIE ecosystem. It provides the runtime pieces that render PIE items, compose sections, keep assessment-session state, coordinate tools and accommodations, support print workflows, and expose observability signals for production hosts. Hosts assemble their production assessment players from these pieces; PIE ships a basic assessment player as a reference assembly ([product scope](./architecture/architecture.md#product-scope)).
 
 The project exists because the prior player model solved item rendering, but it did not give us a clean foundation for modern module loading, authoring and delivery in one surface, section-level composition, assessment-level orchestration, or coordinated tool and accommodation support. PIE Players supports deployed PIE content while giving new integrations clearer contracts and a better development experience.
 
@@ -10,7 +10,7 @@ PIE Players is a project, not just a single custom element. It includes:
 
 - **Item player**: renders one PIE item, loads the required element bundles, manages item session state, and emits item-level lifecycle and response events.
 - **Section player**: composes items, passages, section-level tools, item and passage toolbars, layouts, and section session state into a complete section screen.
-- **Assessment player**: coordinates section routing, assessment-level session snapshots, progress, and submission without replacing the section player as the rendering workhorse.
+- **Assessment player**: a reference assembly that coordinates section routing, assessment-level session snapshots, progress, and submission on top of the section player. It shows how a custom multi-section player is built and is not a production delivery shell.
 - **Assessment toolkit**: coordinates tools, accommodations, text-to-speech, highlighting, accessibility catalogs, and tool state through a single runtime coordinator.
 - **Tools and accommodations**: calculators, text-to-speech, ruler, protractor, line reader, answer eliminator, color scheme tools, and related service infrastructure.
 - **Print, theming, TTS, demos, and verification**: supporting packages and apps that make the runtime testable, publishable, and usable in production-style environments.
@@ -34,7 +34,7 @@ PIE Players modernizes that model around web components, TypeScript, Svelte 5, E
 | Delivery and authoring | Separate delivery and authoring custom elements. | One item player surface supports delivery, evaluation, and authoring through mode. |
 | Loading | Primarily IIFE bundle loading through script injection. | Three strategies: IIFE for compatibility, ESM for modern module loading, and preloaded for zero runtime fetch paths. |
 | Session handling | More logic was embedded in player implementation details. | Item, section, and assessment controllers expose clearer ownership for response, navigation, and persistence snapshots. |
-| Composition | Products often built their own item-plus-passage and assessment shells. | Section and assessment players provide tested composition layers while still letting hosts own product policy. |
+| Composition | Products often built their own item-plus-passage and assessment shells. | The section player provides a tested composition layer and the toolkit the assessment-session state above it; hosts build the multi-section shell and own its policy, with the assessment player as a reference. |
 | Tools and accommodations | No central toolkit model in the player itself. | Assessment toolkit coordinates tools, accommodations, TTS, highlighting, catalogs, and tool state. |
 | Observability | Telemetry was narrower and more implementation-specific. | Provider-agnostic streams exist across item, section, assessment, toolkit, and tool/backend operations. |
 
@@ -44,7 +44,7 @@ The project is layered so teams can adopt only what they need:
 
 - **Use item player** when a product needs to render a single PIE item and own the surrounding application shell itself.
 - **Use section player** when the product needs a complete section screen: passages, items, section navigation, section tools, item and passage toolbars, and section session state.
-- **Use assessment player** when the product needs a tested foundation for routing across sections, aggregating assessment session state, tracking progress, and submitting an attempt.
+- **Build your own assessment player** for multi-section delivery: section players, one toolkit coordinator per attempt, and the toolkit's assessment-session helpers, with routing, persistence and submission against your backend. The assessment player and its demos show that assembly working and are the place to start reading.
 
 The important boundary is that players own runtime mechanics, while host applications own durable data and product policy: authentication, timing, save cadence, navigation rules, submission confirmation, app routing, and backend integration.
 
@@ -96,7 +96,7 @@ The release pipeline builds publishable packages, verifies package metadata and 
 
 ## Current Status
 
-PIE Players is the forward-looking player project for the PIE ecosystem. The item player provides the bridge from IIFE bundle loading to ESM and preloaded strategies. The section player and assessment player add higher-level orchestration. The assessment toolkit brings tools and accommodations into the same runtime model. Together, they form the foundation for modern PIE assessment delivery.
+PIE Players is the forward-looking player project for the PIE ecosystem. The item player provides the bridge from IIFE bundle loading to ESM and preloaded strategies. The section player adds higher-level composition, and the assessment toolkit brings tools, accommodations and assessment-session state into the same runtime model. Together, they are the building blocks hosts assemble modern PIE assessment delivery from; the assessment player is the reference assembly.
 
 ## Quick Reference
 

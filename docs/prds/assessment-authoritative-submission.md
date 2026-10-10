@@ -4,6 +4,13 @@ Status: Draft
 
 Owner: `@pie-players/pie-assessment-player`
 
+Scope: the reference assessment player only
+([product scope](../architecture/architecture.md#product-scope)). Production
+assessment players are host-built and submit through their own backend, so this
+contract binds no building block and its priority follows the reference
+player's. A part a custom player would also need, such as the failure
+vocabulary, belongs in a building block if it is ever built.
+
 Related architecture:
 
 - [Backend support](../item-player/backend-support.md)
@@ -13,12 +20,12 @@ Related architecture:
 
 ## Problem
 
-`AssessmentController.submit()` currently marks the local controller submitted,
-emits `assessment-submission-state-changed`, and saves the final
-`AssessmentSession` through `AssessmentSessionPersistenceStrategy`. That is enough
-for local lifecycle state, but it cannot represent a backend that must finalize
-an attempt exactly once, reject a conflict, return an authoritative receipt, or
-recover after an indeterminate request.
+`AssessmentController.submit()` saves the final `AssessmentSession` through
+`AssessmentSessionPersistenceStrategy`, and only after that save succeeds marks
+the controller submitted and emits `assessment-submission-state-changed`. That is
+enough for local lifecycle state, but it cannot represent a backend that must
+finalize an attempt exactly once, reject a conflict, return an authoritative
+receipt, or recover after an indeterminate request.
 
 Ordinary snapshot persistence and terminal submission are different operations.
 Overloading `saveSession()` with both meanings makes idempotency and failure
@@ -55,8 +62,8 @@ operation at the assessment-controller seam.
 - Owning package: `@pie-players/pie-assessment-player`.
 - Public export path: `@pie-players/pie-assessment-player` through the existing
   assessment-player entrypoint.
-- Consuming packages or apps: assessment-player hosts, assessment demos, and LTI
-  adapters; section-player and item-player do not consume this contract.
+- Consuming packages or apps: the assessment demos and LTI demo; section-player
+  and item-player do not consume this contract.
 - Runtime environment: browser custom-element/controller interface with a
   host-supplied adapter.
 

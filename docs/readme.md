@@ -51,7 +51,9 @@ accepted PRDs or ADRs retained as current contract and decision references; see
 
 ## Assessment Player
 
-- [`assessment-player/client-architecture-tutorial.md`](./assessment-player/client-architecture-tutorial.md) - Production-oriented integration guide and host boundary philosophy
+Production assessment players are host-built from the section player and toolkit; the assessment player is a reference assembly ([product scope](./architecture/architecture.md#product-scope)).
+
+- [`assessment-player/client-architecture-tutorial.md`](./assessment-player/client-architecture-tutorial.md) - How the reference assessment player assembles the building blocks, and the patterns a custom multi-section player reuses
 - [`architecture/assessment-player-lifecycle-persistence-implementation-plan.md`](./architecture/assessment-player-lifecycle-persistence-implementation-plan.md) - Technical scope and evidence gates for the tracked assessment repairs; authoritative submission remains separate
 
 ## Integrations

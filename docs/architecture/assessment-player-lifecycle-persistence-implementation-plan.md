@@ -108,24 +108,28 @@ or hide a remaining coordinator race.
 
 ## Decisions that need host evidence
 
-Do not choose the following designs from repository demos alone:
+The assessment player is a reference assembly
+([product scope](./architecture.md#product-scope)), so no host will supply
+evidence for it. The gate binds decisions that change a building block, and
+their evidence comes from a host whose own player is built on the section
+player. Do not choose the following from repository demos alone:
 
-- whether assessment-player, section-player, or a host is the durable owner of
-  embedded section state;
+- whether section-player or a host is the durable owner of embedded section
+  state;
 - whether any new section-controller acquisition mode is needed;
-- assessment-session schema additions;
-- authoritative-submission idempotency and receipt recovery; or
-- backend retry, reload, and indeterminate-outcome behavior.
+- `AssessmentSession` schema additions in `players-shared/types`; or
+- section-layer backend retry, reload, and indeterminate-outcome behavior.
 
-R2 was repaired on 2026-10-08 without host evidence, since no host mounts the
-assessment player: saves are serialized in call order and `submit()` succeeds
-only after its save does.
+Decisions confined to `@pie-players/pie-assessment-player` are made on reference
+grounds: the design a custom player should copy. R2 was repaired that way on
+2026-10-08: saves are serialized in call order and `submit()` succeeds only after
+its save does.
 
-Authoritative submission remains owned by the existing Draft
+Authoritative submission remains owned by the Draft
 [Assessment Authoritative Submission PRD](../prds/assessment-authoritative-submission.md).
-It is unscheduled pending representative host evidence and an accepted PRD. This
-plan neither revises that contract nor selects its schema, queue, idempotency, or
-recovery design.
+Its contract binds only the reference player, and it is unscheduled; its priority
+follows the reference player's. This plan neither revises that contract nor
+selects its schema, queue, idempotency, or recovery design.
 
 ## Required black-box evidence
 

@@ -1,6 +1,9 @@
 # PIE Assessment Player Demos
 
-Demonstrations for the PIE assessment player and toolkit host integration.
+Demonstrations for the PIE assessment player and toolkit host integration. The
+assessment player is a reference assembly of the building blocks, and these demos
+are examples of that assembly
+([product scope](../../docs/architecture/architecture.md#product-scope)).
 
 ## Running the Demos
 

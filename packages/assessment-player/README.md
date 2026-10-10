@@ -1,6 +1,6 @@
 # PIE Assessment Player
 
-`@pie-players/pie-assessment-player` provides assessment-level orchestration custom elements.
+`@pie-players/pie-assessment-player` provides assessment-level orchestration custom elements. It is a reference assembly: a basic multi-section player for reference and examples, built only from the public exports of the section player, the assessment toolkit and `pie-players-shared`. Production assessment players are host-built from those packages, and this one changes without a compatibility period ([product scope](../../docs/architecture/architecture.md#product-scope)).
 
 It coordinates section flow and assessment session state while delegating section rendering to `@pie-players/pie-section-player` and shared services to `@pie-players/pie-assessment-toolkit`.
 

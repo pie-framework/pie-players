@@ -595,7 +595,9 @@ apps need nothing: SvelteKit generates it into `node_modules/$app/tsconfig.json`
 
 - `packages/section-player` - multi-item section delivery.
 - `packages/item-player` - single-item delivery.
-- `packages/assessment-player` - multi-section assessment delivery.
+- `packages/assessment-player` - reference multi-section player assembled from
+  the public building blocks; hosts build their own production players. Changes
+  freely, without compatibility work or host-evidence gates.
 - `packages/print-player` - item-level print rendering.
 - `packages/assessment-toolkit` - shared assessment services and components.
   Generic core: it knows `featureId`, placement levels, activation kinds and
@@ -621,5 +623,9 @@ they fall back to the remote ESM CDN.
 
 ## Current Focus
 
-The framework is production-grade. Preserve accessibility, the custom-element
-contract, and lockstep release behavior when shipping changes.
+The building blocks — item player, section player, assessment toolkit, theme,
+tools, print player — are production-grade. Preserve accessibility, the
+custom-element contract, and lockstep release behavior when shipping changes.
+The assessment player and demo apps are reference assemblies
+([product scope](docs/architecture/architecture.md#product-scope)): effort goes
+to the building blocks, and a gap a custom player would hit is fixed there.

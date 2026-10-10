@@ -33,10 +33,10 @@ Related:
 ## Priority And Issue Register
 
 The four original findings are P1. Fix shared zoom behavior first because it affects
-existing section and tool surfaces. Treat the other three as blockers before
-production adoption of the assessment player. The consumer inventory records no
-external assessment-player consumer; the review did not refresh downstream
-checkouts, so verify that observation before relying on it during implementation.
+existing section and tool surfaces. The other three are assessment-player
+defects. The assessment player is a reference assembly
+([product scope](./architecture.md#product-scope)) and the consumer inventory
+records no consumer of it, so they carry its priority.
 R5 is an independent dependency-audit blocker and can proceed while R4 is in review.
 
 | Order | Issue | Branch | Status | PR / merge evidence |

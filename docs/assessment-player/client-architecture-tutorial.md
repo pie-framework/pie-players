@@ -1,6 +1,8 @@
 # Assessment Player — Client Integration Guide
 
-This guide is for teams integrating `@pie-players/pie-assessment-player` into real assessment applications. It covers the architectural model, both CE-first and JS API integration patterns, hooks/events philosophy, session persistence, and the boundary ownership between assessment-player, section-player, assessment-toolkit, and the host application.
+`@pie-players/pie-assessment-player` is a reference assembly: a basic multi-section player built only from the section player's and assessment toolkit's public exports, for reference and examples. Production assessment players are host-built from the same building blocks, because PIE ships no backend, CMS or attempt store and multi-section policy is product policy ([product scope](../architecture/architecture.md#product-scope)). The assessment player changes without a compatibility period.
+
+This guide is for teams building a multi-section player, whether they mount the reference player in a prototype or copy its patterns into their own. It covers the architectural model, both CE-first and JS API integration patterns, hooks/events philosophy, session persistence, and the boundary ownership between assessment-player, section-player, assessment-toolkit, and the host application. Everything it says about section-player and toolkit behavior holds for a custom player too.
 
 This is intentionally an architecture and integration guide, not a quickstart. It assumes familiarity with custom elements, TypeScript, and host-managed persistence/lifecycle in browser applications.
 
@@ -28,7 +30,7 @@ The visual shape often includes assessment-level navigation like the example bel
 
 ![Assessment-style composition with global navigation, section content, and tools](../img/schoolcity-1.png)
 
-Every team that builds beyond the section level ends up re-solving section routing, assessment session aggregation, and navigation state. The assessment player provides that layer as a tested foundation — so integration teams can focus on their product's unique concerns rather than rebuilding orchestration plumbing.
+Every team that builds beyond the section level solves section routing, assessment session aggregation, and navigation state. The toolkit supplies the session aggregation (`createNewAssessmentSession`, `upsertSectionSession`, `setCurrentSectionPosition`); the assessment player shows the routing and navigation state assembled around it, as a worked example a team reads or copies.
 
 ---
 
@@ -798,7 +800,9 @@ For full section-player integration details, see the [Section Player Client Inte
 
 ---
 
-## 14. Production Guardrails
+## 14. Guardrails
+
+These hold for the reference player and for a custom player built on the section player alike.
 
 **One coordinator per assessment context.** Create one `ToolkitCoordinator` and pass it through the assessment player to all section players. Dual coordinator references drift in lifecycle timing and produce ambiguous event streams.
 

@@ -74,7 +74,10 @@ Framework-completing, unbuilt, in priority order:
 Product-completing, and out of scope: standards and skill alignment; policy
 authoring surfaces; gradebooks, reporting and analytics warehouses; item banks
 and media hosting; durable persistence; authorization and proctoring;
-psychometrics; adaptive selection engines; peer- and staff-review workflow.
+psychometrics; adaptive selection engines; peer- and staff-review workflow;
+production multi-section delivery shells. `@pie-players/pie-assessment-player`
+is a reference assembly of the building blocks, which keeps that last item out of
+scope ([product scope](./architecture.md#product-scope)).
 
 ## Seam obligations
 

@@ -440,15 +440,13 @@ export class ToolPolicyEngine {
 		});
 		return () => {
 			const idx = this.customSources.indexOf(source);
-			if (idx !== -1) {
-				this.customSources.splice(idx, 1);
-				if (!this.disposed) {
-					this.emit({
-						reason: "policy-source-removed",
-						inputs: this.snapshotInputs(),
-					});
-				}
-			}
+			if (idx === -1) return;
+			this.customSources.splice(idx, 1);
+			if (this.disposed) return;
+			this.emit({
+				reason: "policy-source-removed",
+				inputs: this.snapshotInputs(),
+			});
 		};
 	}
 

@@ -11,8 +11,8 @@ import type { DomAnchor, GeneratedSpeechChunk } from "./types.js";
 export interface PlanToChunksOptions {
 	/**
 	 * Playback format:
-	 *   - "plain" (default): plain spoken text for every chunk (Phase A, the
-	 *     stable generated-speech behavior).
+	 *   - "plain" (default): plain spoken text for every chunk (the stable
+	 *     generated-speech behavior).
 	 *   - "ssml": math chunks with SRE SSML send that SSML to the provider (with
 	 *     a plain fallback attached); prose chunks always stay plain.
 	 */

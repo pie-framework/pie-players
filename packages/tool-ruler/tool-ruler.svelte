@@ -31,13 +31,10 @@
 	import rulerCm from './ruler-cm.svg';
 	import rulerInches from './ruler-inches.svg';
 
-	// Props
 	let { visible = false, toolId = 'ruler' }: { visible?: boolean; toolId?: string } = $props();
 
-	// Check if running in browser
 	const isBrowser = typeof window !== 'undefined';
 
-	// State
 	let containerEl = $state<HTMLDivElement | undefined>();
 	let runtimeContext = $state<AssessmentToolkitRuntimeContext | null>(null);
 	const coordinator = $derived(
@@ -69,18 +66,30 @@
 
 	let currentRuler = $derived(unit === 'inches' ? rulerInches : rulerCm);
 
+	// One timer for the live region, so an earlier announcement's clear cannot
+	// blank a later one.
+	let announceTimer: ReturnType<typeof setTimeout> | null = null;
+
 	function announce(message: string) {
+		if (announceTimer !== null) clearTimeout(announceTimer);
 		announceText = message;
-		setTimeout(() => announceText = '', 1000);
+		announceTimer = setTimeout(() => {
+			announceText = '';
+			announceTimer = null;
+		}, 1000);
+	}
+
+	function setUnit(next: 'inches' | 'cm') {
+		unit = next;
+		announce(
+			interfaceI18n.t('tools.ruler.switchedTo', {
+				unit: interfaceI18n.t(unitNameInSentenceKey(next)),
+			}),
+		);
 	}
 
 	function toggleUnit() {
-		unit = unit === 'inches' ? 'cm' : 'inches';
-		announce(
-			interfaceI18n.t('tools.ruler.switchedTo', {
-				unit: interfaceI18n.t(unitNameInSentenceKey(unit)),
-			}),
-		);
+		setUnit(unit === 'inches' ? 'cm' : 'inches');
 	}
 
 	/**
@@ -88,7 +97,7 @@
 	 * `tools.ruler.inches` is the button's Title Case form; interpolating it
 	 * into "Switched to {unit}" would announce "Switched to Inches".
 	 */
-	function unitNameInSentenceKey(current: string) {
+	function unitNameInSentenceKey(current: 'inches' | 'cm') {
 		return current === 'inches'
 			? 'tools.ruler.inchesInSentence'
 			: 'tools.ruler.centimetersInSentence';
@@ -106,12 +115,13 @@
 	// Each reveal mounts a fresh panel centred by its stylesheet, so the placement
 	// starts over with it.
 	$effect(() => {
-		if (visible && containerEl && isBrowser) {
-			// Wait for the next tick to ensure DOM is updated
-			setTimeout(() => placement.show(), 0);
-		} else {
+		if (!visible || !containerEl || !isBrowser) {
 			placement.reset();
+			return;
 		}
+		// Wait for the next tick to ensure DOM is updated
+		const timer = setTimeout(() => placement.show(), 0);
+		return () => clearTimeout(timer);
 	});
 
 	// Re-registers when a republished context brings a new coordinator.
@@ -120,6 +130,7 @@
 	onMount(() => {
 		const disconnect = placement.connect();
 		return () => {
+			if (announceTimer !== null) clearTimeout(announceTimer);
 			disconnect();
 			registration.release();
 		};
@@ -135,9 +146,9 @@
 	// Auto-focus when tool becomes visible. `preventScroll` so revealing the
 	// tool cannot scroll the pane it sits in.
 	$effect(() => {
-		if (visible && containerEl) {
-			setTimeout(() => containerEl?.focus({ preventScroll: true }), 100);
-		}
+		if (!visible || !containerEl) return;
+		const timer = setTimeout(() => containerEl?.focus({ preventScroll: true }), 100);
+		return () => clearTimeout(timer);
 	});
 </script>
 
@@ -175,7 +186,7 @@
 				draggable="false"
 			/>
 
-			<!-- Unit toggle button group (matching production implementation style) -->
+			<!-- Unit toggle button group -->
 			<div
 				class="pie-tool-ruler__unit-group"
 				role="group"
@@ -185,14 +196,7 @@
 				<button
 					class="pie-tool-ruler__unit-button"
 					class:pie-tool-ruler__unit-button--active={unit === 'inches'}
-					onclick={() => {
-						unit = 'inches';
-						announce(
-							interfaceI18n.t('tools.ruler.switchedTo', {
-								unit: interfaceI18n.t('tools.ruler.inchesInSentence'),
-							}),
-						);
-					}}
+					onclick={() => setUnit('inches')}
 					title={interfaceI18n.t('tools.ruler.inches')}
 					aria-label={interfaceI18n.t('tools.ruler.switchToInchesA11y')}
 					aria-pressed={unit === 'inches'}
@@ -202,14 +206,7 @@
 				<button
 					class="pie-tool-ruler__unit-button"
 					class:pie-tool-ruler__unit-button--active={unit === 'cm'}
-					onclick={() => {
-						unit = 'cm';
-						announce(
-							interfaceI18n.t('tools.ruler.switchedTo', {
-								unit: interfaceI18n.t('tools.ruler.centimetersInSentence'),
-							}),
-						);
-					}}
+					onclick={() => setUnit('cm')}
 					title={interfaceI18n.t('tools.ruler.centimeters')}
 					aria-label={interfaceI18n.t('tools.ruler.switchToCentimetersA11y')}
 					aria-pressed={unit === 'cm'}
@@ -243,6 +240,8 @@
 		border-width: 0;
 	}
 
+	/* The frame and ruler dimensions, the container's tint and the unit group's
+	   border and offsets match the production implementation. */
 	.pie-tool-ruler {
 		border-left: none;
 		border-right: none;
@@ -258,7 +257,7 @@
 		-webkit-touch-callout: none;
 		-webkit-user-select: none;
 		user-select: none;
-		width: 540px; /* Matching production implementation frame width */
+		width: 540px;
 	}
 
 	.pie-tool-ruler:focus-visible {
@@ -277,14 +276,14 @@
 	}
 
 	.pie-tool-ruler__container {
-		background-color: color-mix(in srgb, var(--pie-background, #fff) 90%, transparent); /* Matching production implementation semi-transparent white background */
+		background-color: color-mix(in srgb, var(--pie-background, #fff) 90%, transparent);
 		position: relative;
 	}
 
 	.pie-tool-ruler__container,
 	.pie-tool-ruler__image {
-		height: 100px; /* Matching production implementation ruler height */
-		width: 864px; /* Matching production implementation ruler width */
+		height: 100px;
+		width: 864px;
 	}
 
 	.pie-tool-ruler__image {
@@ -293,11 +292,11 @@
 		display: block;
 	}
 
-	/* Unit toggle button group (matching production implementation style) */
+	/* Unit toggle button group */
 	.pie-tool-ruler__unit-group {
-		border: 1px solid var(--pie-primary, #3f51b5); /* Matching production implementation primary color */
-		bottom: 0.5rem; /* Matching production implementation positioning */
-		left: 0.5rem; /* Matching production implementation positioning */
+		border: 1px solid var(--pie-primary, #3f51b5);
+		bottom: 0.5rem;
+		left: 0.5rem;
 		position: absolute;
 		display: flex;
 		z-index: 10;

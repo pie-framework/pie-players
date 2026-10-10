@@ -151,30 +151,20 @@
 	let googleVoice = $state("");
 	let googleRate = $state(1);
 
-	let browserState = $state<AvailabilityState>({
-		checked: false,
-		loading: false,
-		available: false,
-		message: null,
-		detail: null,
-		voices: []
-	});
-	let pollyState = $state<AvailabilityState>({
-		checked: false,
-		loading: false,
-		available: false,
-		message: null,
-		detail: null,
-		voices: []
-	});
-	let googleState = $state<AvailabilityState>({
-		checked: false,
-		loading: false,
-		available: false,
-		message: null,
-		detail: null,
-		voices: []
-	});
+	function uncheckedAvailability(): AvailabilityState {
+		return {
+			checked: false,
+			loading: false,
+			available: false,
+			message: null,
+			detail: null,
+			voices: []
+		};
+	}
+
+	let browserState = $state<AvailabilityState>(uncheckedAvailability());
+	let pollyState = $state<AvailabilityState>(uncheckedAvailability());
+	let googleState = $state<AvailabilityState>(uncheckedAvailability());
 	/** Settles the preview audio that is playing; `stopPreview` calls it. */
 	let settlePreviewAudio: (() => void) | null = null;
 	let browserPreviewService: TTSService | null = null;
@@ -392,12 +382,9 @@
 	async function checkCustomProviderAvailability(providerId: string): Promise<void> {
 		const provider = getCustomProviderOrThrow(providerId);
 		const loading: AvailabilityState = {
+			...uncheckedAvailability(),
 			checked: true,
-			loading: true,
-			available: false,
-			message: null,
-			detail: null,
-			voices: []
+			loading: true
 		};
 		customProviderAvailabilityById = { ...customProviderAvailabilityById, [provider.id]: loading };
 		try {
@@ -586,14 +573,7 @@
 		for (const provider of normalizedCustomProviders) {
 			nextState[provider.id] = customProviderStateById[provider.id] || provider.initialState || {};
 			nextAvailability[provider.id] =
-				customProviderAvailabilityById[provider.id] || {
-					checked: false,
-					loading: false,
-					available: false,
-					message: null,
-					detail: null,
-					voices: []
-				};
+				customProviderAvailabilityById[provider.id] || uncheckedAvailability();
 		}
 		if (!sameRecordEntries(customProviderStateById, nextState)) {
 			customProviderStateById = nextState;
@@ -701,36 +681,33 @@
 		return Array.isArray(payload?.voices) ? payload.voices : [];
 	}
 
-	function buildPollyVoicesUrl() {
-		const baseUrl = new URL(
-			normalizeApiEndpoint(pollyApiEndpoint, getDefaultApiEndpoint()),
+	/** A server provider's voices route, with each non-empty filter as a query parameter. */
+	function buildVoicesUrl(
+		endpoint: string,
+		provider: "polly" | "google",
+		filters: Record<string, string>
+	): URL {
+		const url = new URL(
+			normalizeApiEndpoint(endpoint, getDefaultApiEndpoint()),
 			window.location.origin
 		);
-		baseUrl.pathname = `${baseUrl.pathname.replace(/\/+$/, "")}/polly/voices`;
-		const url = baseUrl;
-		if (pollyLanguage) url.searchParams.set("language", pollyLanguage);
-		if (pollyGender) url.searchParams.set("gender", pollyGender);
-		if (pollyEngine) url.searchParams.set("engine", pollyEngine);
-		return url;
-	}
-
-	function buildGoogleVoicesUrl() {
-		const baseUrl = new URL(
-			normalizeApiEndpoint(googleApiEndpoint, getDefaultApiEndpoint()),
-			window.location.origin
-		);
-		baseUrl.pathname = `${baseUrl.pathname.replace(/\/+$/, "")}/google/voices`;
-		const url = baseUrl;
-		if (googleLanguage) url.searchParams.set("language", googleLanguage);
-		if (googleGender) url.searchParams.set("gender", googleGender);
-		if (googleVoiceType) url.searchParams.set("voiceType", googleVoiceType);
+		url.pathname = `${url.pathname.replace(/\/+$/, "")}/${provider}/voices`;
+		for (const [name, value] of Object.entries(filters)) {
+			if (value) url.searchParams.set(name, value);
+		}
 		return url;
 	}
 
 	async function checkPollyAvailability() {
 		pollyState = { ...pollyState, checked: true, loading: true, message: null, detail: null };
 		try {
-			const voices = await fetchServerVoices(buildPollyVoicesUrl());
+			const voices = await fetchServerVoices(
+				buildVoicesUrl(pollyApiEndpoint, "polly", {
+					language: pollyLanguage,
+					gender: pollyGender,
+					engine: pollyEngine
+				})
+			);
 			pollyVoice = knownVoice(pollyVoice, voices) ?? "";
 			pollyState = {
 				checked: true,
@@ -761,7 +738,13 @@
 	async function checkGoogleAvailability() {
 		googleState = { ...googleState, checked: true, loading: true, message: null, detail: null };
 		try {
-			const voices = await fetchServerVoices(buildGoogleVoicesUrl());
+			const voices = await fetchServerVoices(
+				buildVoicesUrl(googleApiEndpoint, "google", {
+					language: googleLanguage,
+					gender: googleGender,
+					voiceType: googleVoiceType
+				})
+			);
 			googleVoice = knownVoice(googleVoice, voices) ?? "";
 			googleState = {
 				checked: true,
@@ -824,12 +807,8 @@
 		if (activeTab === "google") return googleState;
 		return (
 			customProviderAvailabilityById[activeTab] || {
-				checked: false,
-				loading: false,
-				available: false,
-				message: interfaceI18n.t("debug.tts.providerNotChecked"),
-				detail: null,
-				voices: []
+				...uncheckedAvailability(),
+				message: interfaceI18n.t("debug.tts.providerNotChecked")
 			}
 		);
 	}
@@ -2081,19 +2060,6 @@
 		.pie-tts-grid-3 {
 			grid-template-columns: 1fr;
 		}
-	}
-
-	.pie-tts-range {
-		--range-thumb-size: 0.85rem;
-		height: 1.35rem;
-		min-height: 1.35rem;
-	}
-
-	.pie-tts-range-value {
-		font-size: 0.65rem;
-		line-height: 1.2;
-		opacity: 0.7;
-		margin-top: -0.1rem;
 	}
 
 	.pie-tts-preview-block {

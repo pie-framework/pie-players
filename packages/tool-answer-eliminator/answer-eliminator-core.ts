@@ -5,10 +5,6 @@ import { MaskStrategy } from "./strategies/mask-strategy.js";
 import { StrikethroughStrategy } from "./strategies/strikethrough-strategy.js";
 
 /**
- * Core engine for answer eliminator tool
- * Coordinates adapters, strategies, and state management
- */
-/**
  * Where eliminations persist: the toolkit's element tool state store, keyed per
  * PIE element.
  */
@@ -58,18 +54,15 @@ export class AnswerEliminatorCore {
 	private anonymousGroups = new WeakMap<Element, string>();
 	private nextToken = 0;
 	private buttonAlignment: "left" | "right" | "inline" = "right";
-	private shouldRestoreState: boolean = true; // Whether to restore eliminations from state storage
+	private shouldRestoreState: boolean = true;
 	// Whether the question-level feature is currently on. When off, the
 	// eliminate controls are hidden for choices that are NOT struck through,
 	// while struck choices keep their strikethrough and a visible button so the
 	// student can still undo them.
 	private active: boolean = true;
 
-	// Live selection tracking: choice selection can change without a full
-	// re-render, and controlled widgets (e.g. PIE multiple-choice) commit the
-	// new `checked`/`aria-checked` on their own render *after* the native
-	// `change` event. We therefore observe DOM commits directly so the read is
-	// never a render behind, and also listen for `change` as a fast path.
+	// Live selection tracking (see `attachSelectionListener`): `change` is the
+	// fast path, the observer catches controlled widgets' later commits.
 	private questionRoot: HTMLElement | null = null;
 	private selectionChangeHandler: (() => void) | null = null;
 	private selectionObserver: MutationObserver | null = null;
@@ -102,7 +95,6 @@ export class AnswerEliminatorCore {
 	 * Initialize eliminator for a question
 	 */
 	initializeForQuestion(questionRoot: HTMLElement): void {
-		// Initializing means the feature is on.
 		this.active = true;
 
 		// Start from a clean slate: the previous question's strikes and
@@ -173,9 +165,6 @@ export class AnswerEliminatorCore {
 		return strategyKey;
 	}
 
-	/**
-	 * Initialize a single choice
-	 */
 	private initializeChoice(
 		choice: HTMLElement,
 		adapter: ChoiceAdapter,
@@ -202,18 +191,13 @@ export class AnswerEliminatorCore {
 		// via the question-root `change` listener and toggle actions.
 		this.updateButtonVisibility(key);
 
-		// Attach button to choice
 		const container = adapter.getButtonContainer(choice);
 		if (container) {
-			// Position button within container
 			container.style.position = "relative";
 			container.appendChild(button);
 		}
 	}
 
-	/**
-	 * Create elimination toggle button
-	 */
 	private createToggleButton(
 		key: string,
 		tracked: TrackedChoice,
@@ -233,7 +217,6 @@ export class AnswerEliminatorCore {
 		glyph.textContent = "⊗";
 		button.appendChild(glyph);
 
-		// Apply positioning based on alignment configuration
 		this.applyButtonAlignment(button);
 
 		// Remember the visible `display` value chosen by the alignment (e.g.
@@ -250,9 +233,6 @@ export class AnswerEliminatorCore {
 		return button;
 	}
 
-	/**
-	 * Toggle elimination for a tracked choice
-	 */
 	private toggleElimination(key: string): void {
 		const tracked = this.choices.get(key);
 		if (!tracked) return;
@@ -303,9 +283,6 @@ export class AnswerEliminatorCore {
 		return true;
 	}
 
-	/**
-	 * Restore a choice
-	 */
 	private restoreChoice(key: string): void {
 		const tracked = this.choices.get(key);
 		this.eliminated.delete(key);
@@ -533,9 +510,6 @@ export class AnswerEliminatorCore {
 		this.selectionChangeHandler = null;
 	}
 
-	/**
-	 * Cleanup buttons from previous element
-	 */
 	private cleanupButtons(): void {
 		this.detachSelectionListener();
 
@@ -545,9 +519,6 @@ export class AnswerEliminatorCore {
 		this.choices.clear();
 	}
 
-	/**
-	 * Apply button positioning based on alignment configuration
-	 */
 	private applyButtonAlignment(button: HTMLButtonElement): void {
 		switch (this.buttonAlignment) {
 			case "right":

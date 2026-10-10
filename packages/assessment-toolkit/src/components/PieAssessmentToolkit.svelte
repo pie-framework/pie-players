@@ -140,9 +140,7 @@
 	} from "../runtime/policy-input-forwarding.js";
 	import { watchForUnclaimedRegistrations } from "../runtime/unclaimed-registration-watch.js";
 	import { createCompositionEmitScheduler } from "../runtime/composition-emit-scheduler.js";
-	import {
-		createRuntimeId,
-	} from "../runtime/runtime-id.js";
+	import { createRuntimeId } from "../runtime/runtime-id.js";
 	import {
 		createSessionEmitPolicyState,
 		resetSessionEmitPolicyState,
@@ -217,6 +215,7 @@ const DEFAULT_ENV = {
 	preloaded: "pie-item-player",
 		custom: "",
 	};
+	const DEFAULT_FRAMEWORK_ERROR_TITLE = "Unable to initialize assessment toolkit.";
 
 	let {
 		assessmentId = "",
@@ -276,7 +275,7 @@ const DEFAULT_ENV = {
 	let compositionVersion = $state(0);
 	let compositionModel = $state<unknown>(null);
 	let frameworkErrorModel = $state<FrameworkErrorModel | null>(null);
-	let frameworkErrorTitle = $state("Unable to initialize assessment toolkit.");
+	let frameworkErrorTitle = $state(DEFAULT_FRAMEWORK_ERROR_TITLE);
 	let frameworkErrorDetails = $state<string[]>([]);
 	// Self-comparison latches for the framework-error redelivery `$effect`
 	// and the owned-coordinator bootstrap `$effect` below. Same rationale
@@ -311,8 +310,7 @@ const DEFAULT_ENV = {
 	// The section and attempt the last initialize started, so a change of either
 	// commits the outgoing section first. Plain `let` for the same reason as the
 	// latches above.
-	let initializedCohort: { sectionId: string; attemptId: string | undefined } | null =
-		null;
+	let initializedCohort: SessionCohort | null = null;
 	// The key of the banner a section that failed to start raised, which the next
 	// section to start takes down. Plain `let` for the same reason as the latches
 	// above.
@@ -374,14 +372,18 @@ const DEFAULT_ENV = {
 		});
 	});
 
+	function detailsOrMessage(model: FrameworkErrorModel): string[] {
+		return model.details.length > 0 ? model.details : [model.message];
+	}
+
 	function applyErrorRenderer(model: FrameworkErrorModel): {
 		title: string;
 		details: string[];
 	} {
 		if (!errorRenderer) {
 			return {
-				title: "Unable to initialize assessment toolkit.",
-				details: model.details.length > 0 ? model.details : [model.message],
+				title: DEFAULT_FRAMEWORK_ERROR_TITLE,
+				details: detailsOrMessage(model),
 			};
 		}
 		try {
@@ -390,13 +392,11 @@ const DEFAULT_ENV = {
 				title:
 					typeof rendered.title === "string" && rendered.title.trim().length > 0
 						? rendered.title
-						: "Unable to initialize assessment toolkit.",
+						: DEFAULT_FRAMEWORK_ERROR_TITLE,
 				details:
 					Array.isArray(rendered.details) && rendered.details.length > 0
 						? rendered.details.map((detail) => String(detail))
-						: model.details.length > 0
-							? model.details
-							: [model.message],
+						: detailsOrMessage(model),
 			};
 		} catch (rendererError) {
 			const message =
@@ -404,7 +404,7 @@ const DEFAULT_ENV = {
 					? rendererError.message
 					: String(rendererError || "Unknown renderer error");
 			return {
-				title: "Unable to initialize assessment toolkit.",
+				title: DEFAULT_FRAMEWORK_ERROR_TITLE,
 				details: [
 					...model.details,
 					`Error renderer failed: ${message}`,
@@ -459,13 +459,19 @@ const DEFAULT_ENV = {
 	 * Every other controller event reaches hosts through the composition republish
 	 * and the coordinator's own subscriptions; nothing else is intercepted here.
 	 */
+	function diagnosticMessages(
+		entries: Array<{ message?: string }> | undefined,
+	): string[] {
+		return (entries || [])
+			.map((entry) => entry?.message)
+			.filter((message): message is string => typeof message === "string");
+	}
+
 	function reportTimedMediaDiagnostic(
 		event: { type?: string } | null,
 		cohort: FrameworkErrorCohort,
 	): void {
 		if (event?.type === "timed-media-policy-degraded") {
-			const degradations =
-				(event as { degradations?: Array<{ message?: string }> }).degradations || [];
 			frameworkErrorBus.reportFrameworkError(
 				toFrameworkErrorModel({
 					kind: "timed-media",
@@ -473,9 +479,9 @@ const DEFAULT_ENV = {
 					source: "pie-assessment-toolkit",
 					message:
 						"A timed-media playback policy degraded to advisory: the media time source does not report the capability it needs.",
-					details: degradations
-						.map((entry) => entry?.message)
-						.filter((message): message is string => typeof message === "string"),
+					details: diagnosticMessages(
+						(event as { degradations?: Array<{ message?: string }> }).degradations,
+					),
 					recoverable: true,
 					scope: "cohort",
 					cohort,
@@ -484,7 +490,6 @@ const DEFAULT_ENV = {
 			return;
 		}
 		if (event?.type !== "timed-media-invalid") return;
-		const errors = (event as { errors?: Array<{ message?: string }> }).errors || [];
 		frameworkErrorBus.reportFrameworkError(
 			toFrameworkErrorModel({
 				kind: "timed-media",
@@ -492,9 +497,9 @@ const DEFAULT_ENV = {
 				source: "pie-assessment-toolkit",
 				message:
 					'This section declares sectionType: "timed-media" but its timedMedia data is not deliverable; the section renders without cue behavior.',
-				details: errors
-					.map((entry) => entry?.message)
-					.filter((message): message is string => typeof message === "string"),
+				details: diagnosticMessages(
+					(event as { errors?: Array<{ message?: string }> }).errors,
+				),
 				recoverable: false,
 				scope: "cohort",
 				cohort,
@@ -510,7 +515,7 @@ const DEFAULT_ENV = {
 	 * Arbitrated here because this is the only layer that holds both capabilities.
 	 * The section owns the media port and no policy over speech; the TTS service
 	 * owns speech and knows nothing of a stimulus. Neither can yield to the other
-	 * on its own, which is why the overlap survived the port landing.
+	 * on its own.
 	 *
 	 * Neither direction resumes what it silenced. A learner who paused media before
 	 * starting read-aloud would not expect it back, and auto-resuming into a held
@@ -581,7 +586,7 @@ const DEFAULT_ENV = {
 
 	function clearFrameworkErrorBanner(): void {
 		frameworkErrorModel = null;
-		frameworkErrorTitle = "Unable to initialize assessment toolkit.";
+		frameworkErrorTitle = DEFAULT_FRAMEWORK_ERROR_TITLE;
 		frameworkErrorDetails = [];
 	}
 
@@ -1117,11 +1122,9 @@ const DEFAULT_ENV = {
 	// change so the toolkit can swap between owned, passed-in, and
 	// inherited coordinators. It must *not* re-run on its own writes to
 	// `ownedCoordinator` / `lastOwnedBootstrapFailureKey` /
-	// `frameworkError*` — those self-mutations were the
-	// observed source of the `effect_update_depth_exceeded` warnings in
-	// the assessment-player smoke flow. We therefore explicitly track
-	// only the ownership inputs and run the bootstrap body inside
-	// `untrack`, matching the Svelte subscription guidance in `AGENTS.md`.
+	// `frameworkError*`, which tripped `effect_update_depth_exceeded`. It
+	// tracks only the ownership inputs and runs the bootstrap body inside
+	// `untrack`, per the Svelte subscription guidance in `AGENTS.md`.
 	//
 	// It also tracks what the owned coordinator is built from, and the toolkit's
 	// first content. Content that arrives after one of those inputs changed binds
@@ -1574,8 +1577,8 @@ const DEFAULT_ENV = {
 		if (!host) return;
 		host.setAttribute("data-item-player-type", effectiveItemPlayer.type);
 		host.setAttribute("data-item-player-tag", effectiveItemPlayer.tagName);
-		host.setAttribute("data-env-mode", String((effectiveEnv as any)?.mode || ""));
-		host.setAttribute("data-env-role", String((effectiveEnv as any)?.role || ""));
+		host.setAttribute("data-env-mode", effectiveEnv.mode);
+		host.setAttribute("data-env-role", effectiveEnv.role);
 	});
 
 	$effect(() => {
@@ -1643,10 +1646,6 @@ const DEFAULT_ENV = {
 		return effectiveCoordinator.subscribeTelemetry(({ eventName, payload }) => {
 			if (!isInstrumentationProvider(instrumentationProvider)) return;
 			if (!instrumentationProvider.isReady()) return;
-			// Telemetry event names are prefixed at the emit site in
-			// `ToolkitCoordinator.emitTelemetry`. See the JSDoc on that
-			// method for the namespace convention. No fallback here.
-			const instrumentationEventName = eventName;
 			const timestamp = new Date().toISOString();
 			const attributes = {
 				...(payload || {}),
@@ -1658,7 +1657,10 @@ const DEFAULT_ENV = {
 				sourceEventName: eventName,
 				timestamp,
 			} as Record<string, unknown>;
-			instrumentationProvider.trackEvent(instrumentationEventName, attributes);
+			// Telemetry event names are prefixed at the emit site in
+			// `ToolkitCoordinator.emitTelemetry`. See the JSDoc on that
+			// method for the namespace convention. No fallback here.
+			instrumentationProvider.trackEvent(eventName, attributes);
 			const payloadErrorType =
 				payload && typeof payload.errorType === "string"
 					? payload.errorType
@@ -1691,11 +1693,7 @@ const DEFAULT_ENV = {
 		const cohort = { sectionId: effectiveSectionId, attemptId: attemptId || undefined };
 		const previousCohort = initializedCohort;
 		initializedCohort = cohort;
-		if (
-			previousCohort &&
-			(previousCohort.sectionId !== cohort.sectionId ||
-				previousCohort.attemptId !== cohort.attemptId)
-		) {
+		if (previousCohort && !sameSessionCohort(previousCohort, cohort)) {
 			untrack(() => commitPendingSessions(host, { reason: "teardown", logger }));
 		}
 
@@ -1774,7 +1772,7 @@ const DEFAULT_ENV = {
 							kind: "runtime-init",
 							source: "pie-assessment-toolkit",
 							error,
-							cohort: cohort,
+							cohort,
 						}),
 					);
 				}

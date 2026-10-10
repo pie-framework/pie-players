@@ -15,13 +15,9 @@ import type { SectionPlayerRuntimeConfig } from "@pie-players/pie-section-player
  * Re-exported so every existing import site keeps its specifier. These shapes are
  * canonical in `@pie-players/pie-players-shared/types`.
  *
- * `SectionControllerSessionState` replaces a local `SectionSessionSnapshot` that
- * declared only `currentItemIndex`, `visitedItemIdentifiers` and `itemSessions`.
- * The runtime always carried the full snapshot — both `upsertSectionSession`
- * implementations pass the object through by reference — so the narrow type never
- * lost data; it made the `formative` and `timedMedia` slices unreadable from here
- * without a cast, which is why the assessment layer could not roll up mastery it
- * was already persisting.
+ * `SectionControllerSessionState` is the full section snapshot both
+ * `upsertSectionSession` implementations pass through, so the assessment layer
+ * reads its `formative` and `timedMedia` slices without a cast.
  */
 export type {
 	AssessmentSession,
@@ -113,10 +109,6 @@ export interface AssessmentPlayerHooks {
 			details?: Record<string, unknown>;
 		},
 	) => void;
-	onTelemetry?: (
-		eventName: string,
-		payload?: Record<string, unknown>,
-	) => void | Promise<void>;
 }
 
 export interface AssessmentDefinition {

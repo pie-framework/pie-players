@@ -275,6 +275,8 @@ export function createEsmBackend(config: EsmBackendConfig): EsmBackend {
 			let injectedMap: HTMLScriptElement | undefined;
 			if (Object.keys(imports).length > 0) {
 				const json = JSON.stringify({ imports }, null, 2);
+				// URL resolution maps the shared dependencies and the editor
+				// runtime, so it needs import maps too.
 				assertImportMapSupported();
 				injectedMap = injectImportMap(
 					json,
@@ -283,6 +285,9 @@ export function createEsmBackend(config: EsmBackendConfig): EsmBackend {
 				);
 				importMapObserver?.(json, context.doc);
 			}
+			// Recorded before the map settles: a load that starts meanwhile skips
+			// these packages, builds on the shared dependency versions this map
+			// fixed, and its imports wait for the map in `importModule`.
 			for (const [pkg, variant] of runtimePlan?.served ?? []) {
 				editorRuntimeVariants.set(pkg, variant);
 			}
@@ -313,7 +318,7 @@ export function createEsmBackend(config: EsmBackendConfig): EsmBackend {
 					reasons.set(tag, {
 						kind: "define-failed",
 						tag,
-						cause: err instanceof Error ? err.message : String(err),
+						cause: errorMessage(err),
 					});
 					return;
 				}
@@ -371,10 +376,7 @@ export function createEsmBackend(config: EsmBackendConfig): EsmBackend {
 									kind: "module-load-failed",
 									tag,
 									specifier: fallbackSpecifier,
-									cause:
-										fallbackErr instanceof Error
-											? fallbackErr.message
-											: String(fallbackErr),
+									cause: errorMessage(fallbackErr),
 								});
 								return;
 							}
@@ -383,7 +385,7 @@ export function createEsmBackend(config: EsmBackendConfig): EsmBackend {
 								kind: "module-load-failed",
 								tag,
 								specifier,
-								cause: err instanceof Error ? err.message : String(err),
+								cause: errorMessage(err),
 							});
 							return;
 						}
@@ -410,6 +412,8 @@ export function createEsmBackend(config: EsmBackendConfig): EsmBackend {
 				}
 
 				try {
+					// `customElements` rejects a constructor already defined under
+					// another tag, so each versioned tag gets its own subclass.
 					defineCustomElementSafely(
 						actualTag,
 						class extends ElementClass {},
@@ -419,50 +423,14 @@ export function createEsmBackend(config: EsmBackendConfig): EsmBackend {
 					reasons.set(tag, {
 						kind: "define-failed",
 						tag,
-						cause: err instanceof Error ? err.message : String(err),
+						cause: errorMessage(err),
 					});
 					return;
 				}
 
-				let controller: any = null;
-				if (loadControllers) {
-					const servedVariant = editorRuntimeVariants.get(packageVersion);
-					const variantController = servedVariant?.views.controller;
-					if (servedVariant && variantController) {
-						try {
-							const controllerModule: any = await importModule(
-								cdnProvider.browserViewUrl(packageVersion, variantController),
-								context.doc,
-							);
-							controller = controllerModule?.default ?? controllerModule;
-						} catch (err) {
-							reportEditorRuntimeFallback(
-								packageVersion,
-								servedVariant.declaration,
-								servedVariant.runtime,
-								`its editor-runtime controller failed to load: ${errorMessage(err)}`,
-							);
-						}
-					}
-					if (!controller) {
-						const controllerSpecifier = resolveControllerSpecifier(
-							packageName,
-							packageVersion,
-							moduleResolution,
-							cdnProvider,
-						);
-						try {
-							const controllerModule: any = await importModule(
-								controllerSpecifier,
-								context.doc,
-							);
-							controller = controllerModule?.default ?? controllerModule;
-						} catch {
-							// Controllers are best-effort; element registration is what the
-							// primitive verifies.
-						}
-					}
-				}
+				const controller = loadControllers
+					? await importController(packageName, packageVersion, context.doc)
+					: null;
 
 				writeRegistryEntry({
 					package: packageVersion,
@@ -510,6 +478,53 @@ export function createEsmBackend(config: EsmBackendConfig): EsmBackend {
 				`its editor-runtime ${browserView} view failed to load: ${errorMessage(err)}`,
 			);
 			return undefined;
+		}
+	}
+
+	/**
+	 * The package's controller: its editor-runtime variant's when one is served
+	 * and loads, else the package's own. Controllers are best-effort; element
+	 * registration is what the primitive verifies.
+	 */
+	async function importController(
+		packageName: string,
+		packageVersion: string,
+		doc: Document,
+	): Promise<any> {
+		let controller: any = null;
+		const servedVariant = editorRuntimeVariants.get(packageVersion);
+		const variantController = servedVariant?.views.controller;
+		if (servedVariant && variantController) {
+			try {
+				const controllerModule: any = await importModule(
+					cdnProvider.browserViewUrl(packageVersion, variantController),
+					doc,
+				);
+				controller = controllerModule?.default ?? controllerModule;
+				if (controller) return controller;
+			} catch (err) {
+				reportEditorRuntimeFallback(
+					packageVersion,
+					servedVariant.declaration,
+					servedVariant.runtime,
+					`its editor-runtime controller failed to load: ${errorMessage(err)}`,
+				);
+			}
+		}
+		const controllerSpecifier = resolveControllerSpecifier(
+			packageName,
+			packageVersion,
+			moduleResolution,
+			cdnProvider,
+		);
+		try {
+			const controllerModule: any = await importModule(
+				controllerSpecifier,
+				doc,
+			);
+			return controllerModule?.default ?? controllerModule;
+		} catch {
+			return controller;
 		}
 	}
 
@@ -830,7 +845,8 @@ export function mapEsmViewElements(
 }
 
 function defaultImporter(specifier: string): Promise<unknown> {
-	// @vite-ignore — dynamic import resolved at runtime.
+	// Host bundlers must leave this import alone: the specifier is a CDN URL or
+	// import-map specifier known only at runtime.
 	return import(/* webpackIgnore: true */ /* @vite-ignore */ specifier);
 }
 

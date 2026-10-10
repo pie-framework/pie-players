@@ -202,10 +202,8 @@
 
 	/**
 	 * The section-scoped surface this CE offers. Capabilities opt in by listing it
-	 * in their registration's `surfaces`, so nothing here names one — the
-	 * annotation toolbar used to be named in three places in this file, which is
-	 * why a host could not contribute a second section-scoped capability without
-	 * a PR against this repo.
+	 * in their registration's `surfaces`, so nothing here names one and a host
+	 * contributes a section-scoped capability without changing this package.
 	 */
 	const SECTION_OVERLAY_SURFACE = "section-overlay";
 	let overlayAnchor = $state<HTMLDivElement | null>(null);

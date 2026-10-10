@@ -628,12 +628,12 @@
 
 <style>
 	/*
-	 * This panel read DaisyUI's `--color-*` slots directly, which follows the host's
-	 * DaisyUI palette or these literals, never the PIE colour scheme -- so a tester
-	 * inspecting an item under White on Black got a light panel over a dark page.
-	 * The surface is the certified `--pie-text` on `--pie-background-dark` recessed
-	 * pair; `--pie-background`, which `--color-base-100` maps to, is transparent in
-	 * the light Base Theme by design and cannot back a floating panel.
+	 * The panel follows the PIE colour scheme. DaisyUI's `--color-*` slots follow
+	 * the host's DaisyUI palette instead, which leaves a light panel over a dark
+	 * scheme. The surface is the certified `--pie-text` on `--pie-background-dark`
+	 * recessed pair; `--pie-background`, which `--color-base-100` maps to, is
+	 * transparent in the light Base Theme by design and cannot back a floating
+	 * panel.
 	 */
 	.pie-item-player-session-debugger {
 		position: fixed;
@@ -692,7 +692,7 @@
 		padding: 0;
 		border: 1px solid var(--pie-button-border, #8f8f8f);
 		border-radius: 9999px;
-		/* Was a translucent white, a light chip on any dark palette. */
+		/* Opaque: a translucent white fill reads as a light chip on a dark palette. */
 		background: var(--pie-button-bg, #ffffff);
 		color: var(--pie-button-color, #334155);
 		cursor: pointer;
@@ -744,10 +744,9 @@
 	}
 
 	.pie-item-player-session-debugger__tab--active {
-		/* Was ink-as-fill with the page colour as its label, an inversion that breaks
-		   the moment the page colour is transparent. `--pie-button-active-bg` with
-		   `--pie-button-color` is the pair the contract certifies for a selected
-		   control. */
+		/* `--pie-button-active-bg` with `--pie-button-color` is the pair the contract
+		   certifies for a selected control. Ink as the fill with the page colour as
+		   the label breaks once the page colour is transparent. */
 		background: var(--pie-button-active-bg, #f3f4f6);
 		border-color: var(--pie-button-hover-border, #8b919c);
 		color: var(--pie-button-color, #374151);

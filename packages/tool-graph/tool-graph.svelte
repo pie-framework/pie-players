@@ -19,7 +19,6 @@
 	} from '@pie-players/pie-assessment-toolkit/tools/registration';
 	import { resolveInterfaceI18n } from '@pie-players/pie-players-shared/i18n/provider';
 
-	// Props
 	let {
 		visible = false,
 		toolId = 'graph'
@@ -28,10 +27,8 @@
 		toolId?: string;
 	} = $props();
 
-	// Tool types
 	type Tool = 'selector' | 'point' | 'line' | 'delete';
 
-	// Data structures
 	interface Point {
 		id: number;
 		x: number; // Coordinate in the dynamic viewBox space
@@ -49,7 +46,6 @@
 		y: number;
 	}
 
-	// State
 	let canvasWrapperEl = $state<HTMLDivElement | undefined>();
 	let containerEl = $state<HTMLDivElement | undefined>();
 	let svgCanvasEl = $state<SVGSVGElement | undefined>();
@@ -63,12 +59,21 @@
 	let tempLineStartPointId = $state<number | null>(null);
 	let draggingPointId = $state<number | null>(null);
 	let currentPointerPos = $state<Coordinates | null>(null);
+	// Where an arrow key last asked the keyboard cursor to go; null until then.
+	let keyboardCursorTarget = $state<Coordinates | null>(null);
 
 	// Grid configuration
 	const MAJOR_VERTICAL_DIVISIONS = 5; // Fixed number of rows
 	const SUBGRID_DIVISIONS = 5; // 5x5 minor grid
 	const DESIRED_MAJOR_CELL_SIZE_SVG = 100 / MAJOR_VERTICAL_DIVISIONS; // 100 / 5 = 20 units
 	const DESIRED_MINOR_CELL_SIZE_SVG = DESIRED_MAJOR_CELL_SIZE_SVG / SUBGRID_DIVISIONS; // 20 / 5 = 4 units
+
+	const ARROW_KEY_STEPS: Record<string, [number, number]> = {
+		ArrowLeft: [-1, 0],
+		ArrowRight: [1, 0],
+		ArrowUp: [0, -1],
+		ArrowDown: [0, 1]
+	};
 
 	// Container pixel dimensions (from ResizeObserver)
 	let containerPixelWidth = $state(0);
@@ -85,6 +90,16 @@
 		const requiredWidthSVG = containerPixelWidth / scaleY;
 		// Ensure a minimum width
 		return Math.max(100, requiredWidthSVG);
+	});
+
+	// Keyboard placement position: the canvas centre until an arrow key moves it,
+	// snapped to minor grid intersections inside the current viewBox.
+	let keyboardCursor = $derived.by((): Coordinates => {
+		const target = keyboardCursorTarget ?? { x: viewBoxWidth / 2, y: 50 };
+		return {
+			x: snapToMinorGrid(target.x, viewBoxWidth),
+			y: snapToMinorGrid(target.y, 100)
+		};
 	});
 
 	let runtimeContext = $state<AssessmentToolkitRuntimeContext | null>(null);
@@ -124,7 +139,6 @@
 		});
 	});
 
-	// Helper functions
 	function getUniqueId(): number {
 		return nextId++;
 	}
@@ -132,6 +146,12 @@
 	function getPointById(id: number | null): Point | undefined {
 		if (id === null) return undefined;
 		return points.find((p) => p.id === id);
+	}
+
+	function snapToMinorGrid(value: number, max: number): number {
+		const lastStep = Math.floor(max / DESIRED_MINOR_CELL_SIZE_SVG);
+		const step = Math.max(0, Math.min(lastStep, Math.round(value / DESIRED_MINOR_CELL_SIZE_SVG)));
+		return step * DESIRED_MINOR_CELL_SIZE_SVG;
 	}
 
 	function getSVGCoordinates(event: MouseEvent | PointerEvent): Coordinates | null {
@@ -179,10 +199,27 @@
 		return pointId === tempLineStartPointId || pointId === draggingPointId;
 	}
 
+	function removePoint(pointId: number) {
+		points = points.filter((p) => p.id !== pointId);
+		lines = lines.filter((l) => l.p1Id !== pointId && l.p2Id !== pointId);
+	}
+
+	// Adds a line unless both ends are the same point or the pair is already joined.
+	function connectPoints(startId: number, endId: number) {
+		if (startId === endId) return;
+		const exists = lines.some(
+			(l) =>
+				(l.p1Id === startId && l.p2Id === endId) ||
+				(l.p1Id === endId && l.p2Id === startId)
+		);
+		if (!exists) {
+			lines = [...lines, { id: getUniqueId(), p1Id: startId, p2Id: endId }];
+		}
+	}
+
 	function activatePoint(pointId: number) {
 		if (currentTool === 'delete') {
-			points = points.filter((p) => p.id !== pointId);
-			lines = lines.filter((l) => l.p1Id !== pointId && l.p2Id !== pointId);
+			removePoint(pointId);
 			return;
 		}
 
@@ -192,16 +229,7 @@
 				return;
 			}
 
-			if (tempLineStartPointId !== pointId) {
-				const exists = lines.some(
-					(l) =>
-						(l.p1Id === tempLineStartPointId && l.p2Id === pointId) ||
-						(l.p1Id === pointId && l.p2Id === tempLineStartPointId)
-				);
-				if (!exists) {
-					lines = [...lines, { id: getUniqueId(), p1Id: tempLineStartPointId, p2Id: pointId }];
-				}
-			}
+			connectPoints(tempLineStartPointId, pointId);
 			tempLineStartPointId = null;
 			currentPointerPos = null;
 		}
@@ -249,7 +277,6 @@
 		return lines;
 	});
 
-	// Event handlers
 	function setTool(tool: Tool) {
 		currentTool = tool;
 		tempLineStartPointId = null;
@@ -259,8 +286,29 @@
 
 	function handleCanvasClick(event: MouseEvent) {
 		const coords = getSVGCoordinates(event);
-		if (!coords) return;
+		if (coords) placeAt(coords);
+	}
 
+	function handleCanvasKeydown(event: KeyboardEvent) {
+		// Keys on a focused point bubble here too; its own handler owns them.
+		if (event.target !== event.currentTarget) return;
+
+		const step = ARROW_KEY_STEPS[event.key];
+		if (step) {
+			event.preventDefault();
+			keyboardCursorTarget = {
+				x: keyboardCursor.x + step[0] * DESIRED_MINOR_CELL_SIZE_SVG,
+				y: keyboardCursor.y + step[1] * DESIRED_MINOR_CELL_SIZE_SVG
+			};
+			if (tempLineStartPointId !== null) currentPointerPos = keyboardCursor;
+		} else if (event.key === 'Enter' || event.key === ' ') {
+			event.preventDefault();
+			placeAt(keyboardCursor);
+		}
+	}
+
+	// Applies the current tool at a position in viewBox coordinates.
+	function placeAt(coords: Coordinates) {
 		const nearestPoint = findNearestPoint(coords, DESIRED_MINOR_CELL_SIZE_SVG);
 
 		switch (currentTool) {
@@ -279,23 +327,7 @@
 				if (tempLineStartPointId === null) {
 					tempLineStartPointId = targetPoint.id;
 				} else {
-					if (tempLineStartPointId !== targetPoint.id) {
-						const exists = lines.some(
-							(l) =>
-								(l.p1Id === tempLineStartPointId && l.p2Id === targetPoint.id) ||
-								(l.p1Id === targetPoint.id && l.p2Id === tempLineStartPointId)
-						);
-						if (!exists) {
-							lines = [
-								...lines,
-								{
-									id: getUniqueId(),
-									p1Id: tempLineStartPointId,
-									p2Id: targetPoint.id
-								}
-							];
-						}
-					}
+					connectPoints(tempLineStartPointId, targetPoint.id);
 					tempLineStartPointId = null;
 					currentPointerPos = null;
 				}
@@ -305,12 +337,7 @@
 				// Use a smaller threshold for precise deletion
 				const pointToDelete = findNearestPoint(coords, 2);
 				if (pointToDelete) {
-					// Remove the point
-					points = points.filter((p) => p.id !== pointToDelete.id);
-					// Remove lines connected to this point
-					lines = lines.filter(
-						(l) => l.p1Id !== pointToDelete.id && l.p2Id !== pointToDelete.id
-					);
+					removePoint(pointToDelete.id);
 				}
 				break;
 
@@ -338,7 +365,6 @@
 				// Update stored coords (which are in the dynamic viewBox space)
 				point.x = coords.x;
 				point.y = coords.y; // Y is clamped 0-100 anyway
-				points = points; // Trigger reactivity
 			}
 		}
 	}
@@ -470,12 +496,7 @@
 			tabindex="0"
 			aria-label={interfaceI18n.t('tools.graph.canvasA11y')}
 			onclick={handleCanvasClick}
-			onkeydown={(e) => {
-				if (e.key === 'Enter' || e.key === ' ') {
-					e.preventDefault();
-					handleCanvasClick(e as any);
-				}
-			}}
+			onkeydown={handleCanvasKeydown}
 		>
 			<svg
 				bind:this={svgCanvasEl}
@@ -589,6 +610,14 @@
 						/>
 					{/if}
 				{/if}
+
+				<!-- Keyboard cursor: where Enter or Space applies the tool -->
+				<circle
+					cx={keyboardCursor.x}
+					cy={keyboardCursor.y}
+					r="3"
+					class="pie-tool-graph__keyboard-cursor"
+				/>
 			</svg>
 		</div>
 	</div>
@@ -740,6 +769,19 @@
 		stroke-dasharray: 2, 2;
 		stroke-width: 0.75;
 		vector-effect: non-scaling-stroke;
+	}
+
+	.pie-tool-graph__keyboard-cursor {
+		display: none;
+		fill: none;
+		pointer-events: none;
+		stroke: var(--pie-button-focus-outline, var(--pie-primary, #3f51b5));
+		stroke-width: 2;
+		vector-effect: non-scaling-stroke;
+	}
+
+	.pie-tool-graph__canvas-wrapper:focus-visible .pie-tool-graph__keyboard-cursor {
+		display: inline;
 	}
 
 </style>

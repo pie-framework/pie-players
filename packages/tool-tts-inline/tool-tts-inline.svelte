@@ -263,13 +263,6 @@
 		}
 		return resolveDefaultPlaybackRate(speedChoices);
 	});
-	// Every panel control is a real Tab stop, so Shift+Tab off the play/pause
-	// trigger walks backwards through stop → fast-forward → rewind → speeds. The
-	// speed radios are the one exception: as a radiogroup they share a single Tab
-	// stop, which — per the ARIA radiogroup pattern — sits on the CHECKED option.
-	// Arrow keys inside the group both move focus and select (see
-	// focusClusterControlAt), so the focused radio is always the checked one and
-	// no separate roving index is needed.
 
 	const instanceId = `pie-tts-inline-instance-${Math.random().toString(36).slice(2)}`;
 	const panelId = `${instanceId}-controls`;
@@ -336,15 +329,12 @@
 	}
 
 	function focusTriggerIfPanelHadFocus(hadPanelFocus: boolean): void {
-		if (!containerEl || !hadPanelFocus) return;
-		const root = containerEl.getRootNode();
-		if (!(root instanceof ShadowRoot)) return;
-		// The trigger is now an <nds-icon-button> host whose real focusable
-		// control is its inner light-DOM <button>; fall back to the host for any
-		// non-nds rendering.
-		const trigger = root.querySelector('.pie-tool-tts-inline__trigger');
-		const focusTarget = (trigger?.querySelector('button') ??
-			trigger) as HTMLElement | null;
+		if (!hadPanelFocus) return;
+		// The trigger is an <nds-icon-button> host whose real focusable control is
+		// its inner light-DOM <button>; fall back to the host for any non-nds
+		// rendering.
+		const trigger = getTriggerElement();
+		const focusTarget = trigger?.querySelector('button') ?? trigger;
 		focusTarget?.focus();
 	}
 
@@ -466,6 +456,14 @@
 		};
 	});
 
+	// Every panel control is a real Tab stop, so Shift+Tab off the play/pause
+	// trigger walks backwards through stop → fast-forward → rewind → speeds. The
+	// speed radios are the one exception: as a radiogroup they share a single Tab
+	// stop, which — per the ARIA radiogroup pattern — sits on the CHECKED option.
+	// Arrow keys inside the group both move focus and select (see
+	// focusClusterControlAt), so the focused radio is always the checked one and
+	// no separate roving index is needed.
+	//
 	// Arrow keys stay inside the cluster they started in — the speed radiogroup,
 	// or the media buttons (rewind / fast-forward / stop). Tab is what crosses
 	// between clusters, so an arrow key never traverses the radiogroup boundary.
@@ -773,6 +771,13 @@
 				? 'pie-tool-tts-inline__trigger--lg'
 				: 'pie-tool-tts-inline__trigger--md',
 	);
+	const triggerLabelKey = $derived(
+		speaking && !paused
+			? 'tools.textToSpeech.inline.pauseA11y'
+			: paused
+				? 'tools.textToSpeech.inline.resumeA11y'
+				: 'tools.textToSpeech.inline.playA11y',
+	);
 	const isControlsRowLayout = $derived(
 		layoutMode === 'reserved-row' || layoutMode === 'expanding-row'
 	);
@@ -1027,10 +1032,9 @@
 		{#snippet triggerButton()}
 			<span class="pie-tool-tts-inline__trigger-zoom">
 				{#if useNdsIcons}
-				<!-- NDS circular icon button. `variant="primary"` (filled) marks the
-					     active/open state; `ghost` is the resting state. The native click
-					     bubbles out of the component's inner <button>, so `onclick` still
-					     runs handlePlayPause. `reflectAria` mirrors the disclosure/toggle
+				<!-- NDS circular icon button. The native click bubbles out of the
+					     component's inner <button>, so `onclick` still runs
+					     handlePlayPause. `reflectAria` mirrors the disclosure/toggle
 					     relationships onto that inner button (nds exposes only aria-label). -->
 					<!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
 					<nds-icon-button
@@ -1046,13 +1050,7 @@
 						size="small"
 						variant="tertiary"
 						icon-name={speaking && !paused ? 'pause' : 'play'}
-						button-aria-label={interfaceI18n.t(
-						speaking && !paused
-							? 'tools.textToSpeech.inline.pauseA11y'
-							: paused
-								? 'tools.textToSpeech.inline.resumeA11y'
-								: 'tools.textToSpeech.inline.playA11y',
-					)}
+						button-aria-label={interfaceI18n.t(triggerLabelKey)}
 						disabled={!ttsService}
 						onclick={handlePlayPause}
 					></nds-icon-button>
@@ -1068,13 +1066,7 @@
 					aria-expanded={controlsVisible ? 'true' : 'false'}
 					aria-controls={controlsVisible ? panelId : undefined}
 					aria-pressed={controlsVisible ? 'true' : 'false'}
-					aria-label={interfaceI18n.t(
-						speaking && !paused
-							? 'tools.textToSpeech.inline.pauseA11y'
-							: paused
-								? 'tools.textToSpeech.inline.resumeA11y'
-								: 'tools.textToSpeech.inline.playA11y',
-					)}
+					aria-label={interfaceI18n.t(triggerLabelKey)}
 					aria-busy={playbackStartInFlight ? 'true' : undefined}
 					disabled={!ttsService}
 					onclick={handlePlayPause}
@@ -1226,12 +1218,11 @@
 		justify-content: flex-end;
 	}
 
-	/* The play/pause trigger and the "more" overflow control are now
-	   <nds-icon-button> hosts; the NDS component owns their shape, colours,
-	   hover/active/focus states, and the filled active (`variant="primary"`)
-	   appearance. This class only drives the host's size via NDS's own size
-	   custom properties (see the size variants below), so the light-DOM inner
-	   button matches the toolbar's md/sm/lg dimensions. */
+	/* The play/pause trigger is an <nds-icon-button> host; the NDS component
+	   owns its shape, colours and hover/active/focus states. This class only
+	   drives the host's size via NDS's own size custom properties (see the size
+	   variants below), so the light-DOM inner button matches the toolbar's
+	   md/sm/lg dimensions. */
 	.pie-tool-tts-inline__trigger-zoom {
 		display: inline-flex;
 	}
@@ -1267,20 +1258,18 @@
 		color: var(--pie-tts-button-color, var(--pie-button-color, var(--pie-text, #222)));
 	}
 
-	/* Active/open trigger hooks (PIE-727).
+	/* Active/open trigger hooks.
 	   ---------------------------------------------------------------------------
 	   README documents --pie-tool-trigger-active-background / -color /
 	   -border-color as the supported way to style this trigger while its panel is
-	   open, instead of overriding broad tokens like --pie-primary. The component
-	   had stopped honouring all three, so a host following the docs got nothing.
-	   These rules restore them, matching how tool-calculator-inline-desmos wires
-	   the same three hooks.
+	   open, instead of overriding broad tokens like --pie-primary. These rules
+	   honour all three, matching how tool-calculator-inline-desmos wires the same
+	   hooks.
 	   ---------------------------------------------------------------------------
-	   Every fallback is the value this element already resolves to when the hook
-	   is unset, so adding these rules changes nothing by default. That is
-	   deliberate: unlike the calculator, this trigger has never had a filled
-	   active look, and introducing one here would restyle the control for every
-	   host. Hosts opt in by setting a hook; nobody is opted in by us.
+	   Every fallback is the value this element resolves to when the hook is
+	   unset, so the rules are inert by default: unlike the calculator, this
+	   trigger has no filled active look, and adding one would restyle the
+	   control for every host. Hosts opt in by setting a hook.
 
 	   Keyed off [aria-expanded='true'], which the markup already maintains, so
 	   there is no new state to keep in sync. */
@@ -1462,16 +1451,13 @@
 	}
 
 	/* ── Overlay layouts (floating-overlay + left-aligned) ──────────────────────
-	   The Knowledge-Check design keeps the controls on the surrounding
-	   Question/Passage header: a low-chrome card, icon-only media glyphs, and speed
-	   radios as plain text with the selected one lifted into a chip.
+	   The design keeps the controls on the surrounding Question/Passage header: a
+	   low-chrome card, icon-only media glyphs, and speed radios as plain text with
+	   the selected one lifted into a chip.
 
-	   Shape comes from that design; colour comes from the theme. The overlay used
-	   to paint literals (#146eb3 glyphs on a #fff card with a #f3f5f7 chip), which
-	   left a blue-on-white panel floating over every non-default theme — a DaisyUI
-	   `valentine` page rendered a pink player with a blue TTS panel. Each surface
-	   now defaults through a canonical token and keeps its literal only as the
-	   no-theme last resort.
+	   Shape comes from that design; colour comes from the theme. Each surface
+	   defaults through a canonical token, and its literal is only the no-theme
+	   last resort.
 
 	   Foregrounds resolve through --pie-button-color (DaisyUI base-content), the
 	   one family whose contrast against the card is guaranteed in every shipped
@@ -1480,7 +1466,7 @@
 	   from either drops to 1.37:1 on `pastel` and 11 of 35 themes fall under 3:1.
 	   Selection is signalled by the chip and the bolder weight rather than by hue.
 
-	   Host knobs, all unchanged: --pie-tts-button-color (accent),
+	   Host knobs: --pie-tts-button-color (accent),
 	   --pie-tts-inline-muted-color, --pie-tts-selected-bg,
 	   --pie-selected-button-background/-border, --pie-tts-menu-shadow. */
 	.pie-tool-tts-inline__panel--floating,

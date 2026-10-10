@@ -64,18 +64,22 @@ export type ResourceMonitorConfig = {
 	debug?: boolean;
 };
 
-const DEFAULT_CONFIG = {
-	trackPageActions: false as const,
-	manageProviderLifecycle: false as const,
-	maxRetries: 3 as number,
-	initialRetryDelay: 500 as number,
-	maxRetryDelay: 5000 as number,
-	debug: false as const,
+type ResolvedResourceMonitorConfig = Required<
+	Omit<ResourceMonitorConfig, "instrumentationProvider">
+>;
+
+const DEFAULT_CONFIG: ResolvedResourceMonitorConfig = {
+	trackPageActions: false,
+	manageProviderLifecycle: false,
+	maxRetries: 3,
+	initialRetryDelay: 500,
+	maxRetryDelay: 5000,
+	debug: false,
 };
 
-// Constants
 const MAX_URL_LENGTH = 80;
-const URL_TRUNCATE_LENGTH = 77;
+/** Leaves room for the "..." prefix within MAX_URL_LENGTH. */
+const URL_TRUNCATE_LENGTH = MAX_URL_LENGTH - "...".length;
 const MEDIA_RETRY_RECONCILIATION_TIMEOUT_MS = 1200;
 const MEDIA_RETRY_RECONCILIATION_POLL_MS = 75;
 
@@ -85,6 +89,28 @@ type ResourceElement =
 	| HTMLVideoElement
 	| HTMLLinkElement
 	| HTMLSourceElement;
+
+type MediaTarget = {
+	mediaEl: HTMLAudioElement | HTMLVideoElement;
+	mediaTag: "audio" | "video";
+};
+
+/** The elements of each initiator type that carry a resource URL. */
+const RESOURCE_SELECTOR_BY_INITIATOR = new Map([
+	["img", "img[src]"],
+	["audio", "audio[src]"],
+	["video", "video[src]"],
+	["link", "link[href]"],
+	["source", "source[src]"],
+]);
+
+/** How a retry reloads each element type, as named in the retry log. */
+const RETRY_STRATEGY_BY_TAG = new Map([
+	["img", "Cache-busting URL"],
+	["link", "Cache-busting URL"],
+	["audio", "element.load()"],
+	["video", "element.load()"],
+]);
 
 /**
  * Event detail for resource monitoring events
@@ -103,17 +129,23 @@ export interface MediaRetryReadyDetail extends ResourceMonitorEventDetail {
 	mediaTag: "audio" | "video";
 }
 
-/**
- * Resource monitor event contract
+/*
+ * Resource monitor event contract. Events are dispatched on the container
+ * unless noted, and bubble and compose.
  *
  * - `pie-resource-load-success`: emitted when a resource request is successful.
  *   For retried media resources, this is emitted only after media becomes healthy.
+ * - `pie-resource-load-failed`: emitted when an initial request fails, as seen
+ *   in its resource timing.
+ * - `pie-resource-retry-failed`: emitted when a retried request fails, or when a
+ *   retried media fetch succeeds but media does not become healthy before the
+ *   reconciliation timeout. After a timeout the monitor retries again, or fails
+ *   permanently when no retry target remains.
  * - `pie-resource-retry-success`: emitted once per successful retry cycle.
  * - `pie-media-retry-ready`: emitted once per successful retry cycle to recovered
  *   media targets (`audio`/`video`), including `<source>`-driven retries resolved
  *   to their parent media element.
- * - `pie-resource-load-error`: emitted when retries are exhausted or when a retried
- *   media fetch succeeds but media does not become healthy before reconciliation timeout.
+ * - `pie-resource-load-error`: emitted when retries are exhausted.
  */
 
 interface ResourceErrorDiagnostics {
@@ -138,23 +170,31 @@ interface ResourceErrorDiagnostics {
 }
 
 /**
- * Tracks resource loads and provides retry capability
+ * Tracks the resource loads of one container and retries failed ones with
+ * exponential backoff and cache-busting URLs. The events it dispatches are
+ * listed in the event contract above.
  */
 export class ResourceMonitor {
-	private config: Required<
-		Omit<ResourceMonitorConfig, "instrumentationProvider">
-	>;
+	private config: ResolvedResourceMonitorConfig;
 	private logger: ReturnType<typeof createPieLogger>;
 	private observer: PerformanceObserver | null = null;
 	private mutationObserver: MutationObserver | null = null;
 	private errorHandler: ((event: Event) => void) | null = null;
+	/** Retries scheduled so far, keyed by the URL without retry parameters. */
 	private retryAttempts = new Map<string, number>();
+	/** Elements that failed to load each URL; a retry reloads the first one. */
 	private retryTargets = new Map<string, Set<ResourceElement>>();
 	private container: HTMLElement | null = null;
-	private isBrowser: boolean;
-	private containerResources = new Set<string>(); // Track resources within our container
+	private readonly isBrowser =
+		typeof window !== "undefined" && typeof document !== "undefined";
+	/** URLs referenced inside the container; timing entries for others are ignored. */
+	private containerResources = new Set<string>();
 	private provider: InstrumentationProvider | undefined;
 	private started = false;
+	/**
+	 * Bumped on every start and stop, so timers and listeners captured in an
+	 * earlier lifecycle see themselves as stale.
+	 */
 	private lifecycleVersion = 0;
 	private pendingRetryTimers = new Map<string, ReturnType<typeof setTimeout>>();
 	private retryInFlight = new Set<string>();
@@ -207,8 +247,6 @@ export class ResourceMonitor {
 				"Skipping provider lifecycle management for injected provider",
 			);
 		}
-		this.isBrowser =
-			typeof window !== "undefined" && typeof document !== "undefined";
 	}
 
 	/**
@@ -387,9 +425,6 @@ export class ResourceMonitor {
 		this.logger.info("✅ Resource monitoring started");
 	}
 
-	/**
-	 * Stop monitoring and clean up
-	 */
 	public stop(): void {
 		if (!this.started) return;
 		this.lifecycleVersion += 1;
@@ -441,8 +476,8 @@ export class ResourceMonitor {
 	}
 
 	/**
-	 * Set up MutationObserver to track DOM changes within container
-	 * This allows us to know which resources belong to our container
+	 * Tracks resources added to the container, or retargeted inside it, so
+	 * timing entries can be attributed to this container.
 	 */
 	private setupMutationObserver(): void {
 		if (
@@ -457,14 +492,12 @@ export class ResourceMonitor {
 		try {
 			this.mutationObserver = new MutationObserver((mutations) => {
 				for (const mutation of mutations) {
-					// Check added nodes
 					mutation.addedNodes.forEach((node) => {
 						if (node instanceof HTMLElement) {
 							this.scanElementForResources(node);
 						}
 					});
 
-					// Check attribute changes (src, href changes)
 					if (
 						mutation.type === "attributes" &&
 						mutation.target instanceof HTMLElement
@@ -485,7 +518,6 @@ export class ResourceMonitor {
 				}
 			});
 
-			// Observe the container for changes
 			this.mutationObserver.observe(this.container, {
 				childList: true,
 				subtree: true,
@@ -503,7 +535,6 @@ export class ResourceMonitor {
 	 * Scan an element and its descendants for resources
 	 */
 	private scanElementForResources(element: HTMLElement): void {
-		// Check the element itself
 		if (this.isResourceElement(element)) {
 			const src = this.getResourceSrc(element);
 			if (src) {
@@ -514,7 +545,6 @@ export class ResourceMonitor {
 			}
 		}
 
-		// Check descendants
 		const resourceSelectors = [
 			"img",
 			"audio",
@@ -525,7 +555,7 @@ export class ResourceMonitor {
 		resourceSelectors.forEach((selector) => {
 			element.querySelectorAll(selector).forEach((el) => {
 				if (this.isResourceElement(el)) {
-					const src = this.getResourceSrc(el as ResourceElement);
+					const src = this.getResourceSrc(el);
 					if (src) {
 						this.containerResources.add(src);
 					}
@@ -574,11 +604,11 @@ export class ResourceMonitor {
 				}
 			});
 
-			// Use 'type' (singular) instead of 'entryTypes' (plural) to support buffered option
-			// The buffered flag only works with the newer 'type' parameter
+			// `buffered` replays resources that loaded before the observer
+			// started, and is honored only with the single `type` form.
 			this.observer.observe({
 				type: "resource",
-				buffered: true, // Capture resources loaded before observer started
+				buffered: true,
 			});
 
 			this.logger.debug("PerformanceObserver set up successfully");
@@ -587,14 +617,8 @@ export class ResourceMonitor {
 		}
 	}
 
-	/**
-	 * Handle resource timing entry
-	 */
 	private handleResourceTiming(entry: PerformanceResourceTiming): void {
-		// Only track media and image resources that are relevant to PIE content
-		const isRelevant = this.isRelevantResource(entry);
-
-		if (!isRelevant) {
+		if (!this.isRelevantResource(entry)) {
 			if (
 				this.isDebugEnabled() &&
 				(entry.initiatorType === "img" ||
@@ -610,78 +634,18 @@ export class ResourceMonitor {
 
 		const duration = entry.duration;
 		const size = entry.transferSize;
-		const url = entry.name;
-		const originalUrl = this.getOriginalUrl(url);
+		const originalUrl = this.getOriginalUrl(entry.name);
 
-		// Detect actual failures: responseEnd === 0 means the request didn't complete
-		// Note: transferSize === 0 is NOT a failure indicator (can be cache, CORS, or small resources)
-		// We primarily rely on the error event handler for detecting failures
+		// A zero responseEnd means the request never completed. A zero
+		// transferSize does not: cached, cross-origin and tiny responses all
+		// report it. The error listener remains the main failure signal.
 		const failed = entry.responseEnd === 0 && entry.duration > 0;
 
-		// Check if this was a retry that succeeded
 		const wasRetried = this.retryAttempts.has(originalUrl);
 		const retryCount = this.retryAttempts.get(originalUrl) || 0;
 
-		// Enhanced debug logging with detailed timing breakdown
-		if (this.isDebugEnabled()) {
-			const shortUrl = this.truncateUrl(url);
-			const sizeKB = (size / 1024).toFixed(2);
-			const status = failed ? "❌ FAILED" : "✅ SUCCESS";
+		this.logResourceTiming(entry, failed, wasRetried, retryCount);
 
-			// Detailed timing breakdown
-			const timingDetails = {
-				total: `${duration.toFixed(2)}ms`,
-				dns:
-					entry.domainLookupEnd > 0
-						? `${(entry.domainLookupEnd - entry.domainLookupStart).toFixed(2)}ms`
-						: "n/a",
-				tcp:
-					entry.connectEnd > 0
-						? `${(entry.connectEnd - entry.connectStart).toFixed(2)}ms`
-						: "n/a",
-				request:
-					entry.responseStart > 0
-						? `${(entry.responseStart - entry.requestStart).toFixed(2)}ms`
-						: "n/a",
-				response:
-					entry.responseEnd > 0
-						? `${(entry.responseEnd - entry.responseStart).toFixed(2)}ms`
-						: "n/a",
-				size: size > 0 ? `${sizeKB} KB` : "0 KB",
-				type: entry.initiatorType,
-				protocol: entry.nextHopProtocol || "unknown",
-			};
-
-			// Add retry context if this was retried
-			const retryContext =
-				wasRetried && !failed
-					? `\n   🔄 Retry Success: Succeeded after ${retryCount} ${retryCount === 1 ? "retry" : "retries"}`
-					: "";
-
-			this.logger.info(
-				`📊 PIE Resource Load ${status}\n` +
-					`   URL: ${shortUrl}\n` +
-					`   Type: ${timingDetails.type} | Protocol: ${timingDetails.protocol}\n` +
-					`   ⏱️  Total Time: ${timingDetails.total}\n` +
-					`   └─ DNS Lookup: ${timingDetails.dns}\n` +
-					`   └─ TCP Connect: ${timingDetails.tcp}\n` +
-					`   └─ Request Time: ${timingDetails.request}\n` +
-					`   └─ Response Time: ${timingDetails.response}\n` +
-					`   📦 Transfer Size: ${timingDetails.size}${retryContext}`,
-			);
-		} else {
-			// Simple logging when debug is off but tracking is on
-			this.logger.debug(`Resource loaded: ${entry.name}`, {
-				duration: `${duration.toFixed(2)}ms`,
-				size: `${size} bytes`,
-				type: entry.initiatorType,
-				failed,
-				wasRetried,
-				retryCount,
-			});
-		}
-
-		// Handle successful loads
 		if (!failed) {
 			this.handleSuccessfulLoad(
 				originalUrl,
@@ -693,7 +657,6 @@ export class ResourceMonitor {
 			);
 		}
 
-		// Track with instrumentation provider
 		this.trackInstrumentationEvent("pie-resource-load", {
 			url: entry.name,
 			duration: Math.round(duration),
@@ -704,7 +667,6 @@ export class ResourceMonitor {
 			retryCount,
 		});
 
-		// Track failed loads
 		if (failed) {
 			this.handleFailedLoad(
 				originalUrl,
@@ -714,6 +676,69 @@ export class ResourceMonitor {
 				wasRetried,
 			);
 		}
+	}
+
+	private logResourceTiming(
+		entry: PerformanceResourceTiming,
+		failed: boolean,
+		wasRetried: boolean,
+		retryCount: number,
+	): void {
+		const duration = entry.duration;
+		const size = entry.transferSize;
+		if (!this.isDebugEnabled()) {
+			this.logger.debug(`Resource loaded: ${entry.name}`, {
+				duration: `${duration.toFixed(2)}ms`,
+				size: `${size} bytes`,
+				type: entry.initiatorType,
+				failed,
+				wasRetried,
+				retryCount,
+			});
+			return;
+		}
+
+		const shortUrl = this.truncateUrl(entry.name);
+		const sizeKB = (size / 1024).toFixed(2);
+		const status = failed ? "❌ FAILED" : "✅ SUCCESS";
+		const timingDetails = {
+			total: `${duration.toFixed(2)}ms`,
+			dns:
+				entry.domainLookupEnd > 0
+					? `${(entry.domainLookupEnd - entry.domainLookupStart).toFixed(2)}ms`
+					: "n/a",
+			tcp:
+				entry.connectEnd > 0
+					? `${(entry.connectEnd - entry.connectStart).toFixed(2)}ms`
+					: "n/a",
+			request:
+				entry.responseStart > 0
+					? `${(entry.responseStart - entry.requestStart).toFixed(2)}ms`
+					: "n/a",
+			response:
+				entry.responseEnd > 0
+					? `${(entry.responseEnd - entry.responseStart).toFixed(2)}ms`
+					: "n/a",
+			size: size > 0 ? `${sizeKB} KB` : "0 KB",
+			type: entry.initiatorType,
+			protocol: entry.nextHopProtocol || "unknown",
+		};
+		const retryContext =
+			wasRetried && !failed
+				? `\n   🔄 Retry Success: Succeeded after ${retryCount} ${retryCount === 1 ? "retry" : "retries"}`
+				: "";
+
+		this.logger.info(
+			`📊 PIE Resource Load ${status}\n` +
+				`   URL: ${shortUrl}\n` +
+				`   Type: ${timingDetails.type} | Protocol: ${timingDetails.protocol}\n` +
+				`   ⏱️  Total Time: ${timingDetails.total}\n` +
+				`   └─ DNS Lookup: ${timingDetails.dns}\n` +
+				`   └─ TCP Connect: ${timingDetails.tcp}\n` +
+				`   └─ Request Time: ${timingDetails.request}\n` +
+				`   └─ Response Time: ${timingDetails.response}\n` +
+				`   📦 Transfer Size: ${timingDetails.size}${retryContext}`,
+		);
 	}
 
 	private isLifecycleActive(version: number): boolean {
@@ -751,9 +776,6 @@ export class ResourceMonitor {
 		return null;
 	}
 
-	/**
-	 * Handle successful resource load
-	 */
 	private handleSuccessfulLoad(
 		url: string,
 		entry: PerformanceResourceTiming,
@@ -786,10 +808,7 @@ export class ResourceMonitor {
 		}
 	}
 
-	private resolveMediaTarget(target: ResourceElement): {
-		mediaEl: HTMLAudioElement | HTMLVideoElement;
-		mediaTag: "audio" | "video";
-	} | null {
+	private resolveMediaTarget(target: ResourceElement): MediaTarget | null {
 		if (target instanceof HTMLAudioElement) {
 			return { mediaEl: target, mediaTag: "audio" };
 		}
@@ -808,17 +827,11 @@ export class ResourceMonitor {
 		return null;
 	}
 
-	private resolveMediaTargetsForUrl(url: string): Array<{
-		mediaEl: HTMLAudioElement | HTMLVideoElement;
-		mediaTag: "audio" | "video";
-	}> {
+	private resolveMediaTargetsForUrl(url: string): MediaTarget[] {
 		const targets = this.retryTargets.get(url);
 		if (!targets || targets.size === 0) return [];
 		const resolved = new Set<HTMLAudioElement | HTMLVideoElement>();
-		const out: Array<{
-			mediaEl: HTMLAudioElement | HTMLVideoElement;
-			mediaTag: "audio" | "video";
-		}> = [];
+		const out: MediaTarget[] = [];
 		for (const target of targets) {
 			const mediaTarget = this.resolveMediaTarget(target);
 			if (!mediaTarget) continue;
@@ -883,14 +896,19 @@ export class ResourceMonitor {
 		this.clearRetryTracking(url);
 	}
 
+	/**
+	 * A retried media fetch that succeeds does not mean the element recovered:
+	 * it can still hold an error or no source. Success waits until a media
+	 * target reports metadata, checked on `loadedmetadata`/`canplay` and by
+	 * polling, and the reconciliation timeout bounds the wait.
+	 */
 	private reconcileMediaRetrySuccess(
 		url: string,
 		detail: ResourceMonitorEventDetail,
 	): void {
 		this.clearPendingMediaCheck(url);
 		if (this.isMediaRetryRecovered(url)) {
-			this.dispatchEvent("pie-resource-load-success", detail);
-			this.finalizeRetrySuccess(url, detail);
+			this.completeMediaRetry(url, detail);
 			return;
 		}
 		if (this.isDebugEnabled()) {
@@ -899,44 +917,31 @@ export class ResourceMonitor {
 			);
 		}
 		const version = this.lifecycleVersion;
+		const isStale = () =>
+			!this.isLifecycleActive(version) || !this.retryAttempts.has(url);
 		const mediaTargets = this.resolveMediaTargetsForUrl(url);
 		const eventHandlers: Array<{
-			mediaEl: HTMLAudioElement | HTMLVideoElement;
+			mediaEl: MediaTarget["mediaEl"];
 			handler: EventListener;
 		}> = [];
 		const pollTimer = setInterval(() => {
-			if (!this.isLifecycleActive(version)) {
-				this.clearPendingMediaCheck(url);
-				return;
-			}
-			if (!this.retryAttempts.has(url)) {
+			if (isStale()) {
 				this.clearPendingMediaCheck(url);
 				return;
 			}
 			if (this.isMediaRetryRecovered(url)) {
-				this.dispatchEvent("pie-resource-load-success", detail);
-				this.finalizeRetrySuccess(url, detail);
+				this.completeMediaRetry(url, detail);
 			}
 		}, MEDIA_RETRY_RECONCILIATION_POLL_MS);
 		const timeoutTimer = setTimeout(() => {
-			if (!this.isLifecycleActive(version)) {
-				this.clearPendingMediaCheck(url);
-				return;
-			}
-			if (!this.retryAttempts.has(url)) {
-				this.clearPendingMediaCheck(url);
-				return;
-			}
 			this.clearPendingMediaCheck(url);
+			if (isStale()) return;
 			this.handleMediaRetryReconciliationTimeout(url, detail);
 		}, MEDIA_RETRY_RECONCILIATION_TIMEOUT_MS);
 		for (const { mediaEl } of mediaTargets) {
 			const handler: EventListener = () => {
-				if (!this.isLifecycleActive(version)) return;
-				if (!this.retryAttempts.has(url)) return;
-				if (!this.isMediaRetryRecovered(url)) return;
-				this.dispatchEvent("pie-resource-load-success", detail);
-				this.finalizeRetrySuccess(url, detail);
+				if (isStale() || !this.isMediaRetryRecovered(url)) return;
+				this.completeMediaRetry(url, detail);
 			};
 			mediaEl.addEventListener("loadedmetadata", handler);
 			mediaEl.addEventListener("canplay", handler);
@@ -952,6 +957,14 @@ export class ResourceMonitor {
 				}
 			},
 		});
+	}
+
+	private completeMediaRetry(
+		url: string,
+		detail: ResourceMonitorEventDetail,
+	): void {
+		this.dispatchEvent("pie-resource-load-success", detail);
+		this.finalizeRetrySuccess(url, detail);
 	}
 
 	private handleMediaRetryReconciliationTimeout(
@@ -1010,9 +1023,6 @@ export class ResourceMonitor {
 		}
 	}
 
-	/**
-	 * Handle failed resource load
-	 */
 	private handleFailedLoad(
 		url: string,
 		entry: PerformanceResourceTiming,
@@ -1023,7 +1033,6 @@ export class ResourceMonitor {
 		const shortUrl = this.truncateUrl(url);
 
 		if (wasRetried) {
-			// This is a retry that also failed - use warn since we'll retry again
 			this.logger.warn(
 				`⚠️  PIE Resource Retry Failed\n` +
 					`   URL: ${shortUrl}\n` +
@@ -1031,8 +1040,6 @@ export class ResourceMonitor {
 					`   Remaining Attempts: ${this.config.maxRetries - retryCount}\n` +
 					`   Status: Will ${retryCount >= this.config.maxRetries ? "give up" : "retry again"}`,
 			);
-
-			// Dispatch retry failure event
 			this.dispatchEvent("pie-resource-retry-failed", {
 				url,
 				resourceType: entry.initiatorType,
@@ -1042,14 +1049,11 @@ export class ResourceMonitor {
 				error: "Resource load failed after retry",
 			});
 		} else {
-			// Initial failure - use warn since we'll retry
 			this.logger.warn(
 				`⚠️  PIE Resource Initial Load Failed\n` +
 					`   URL: ${shortUrl}\n` +
 					`   Status: Will attempt ${this.config.maxRetries} ${this.config.maxRetries === 1 ? "retry" : "retries"}`,
 			);
-
-			// Dispatch initial failure event
 			this.dispatchEvent("pie-resource-load-failed", {
 				url,
 				resourceType: entry.initiatorType,
@@ -1060,7 +1064,6 @@ export class ResourceMonitor {
 			});
 		}
 
-		// Track error with instrumentation provider
 		this.trackInstrumentationError(
 			new Error(`Resource load failed: ${entry.name}`),
 			{
@@ -1074,118 +1077,50 @@ export class ResourceMonitor {
 	}
 
 	/**
-	 * Check if resource is relevant to our container
-	 * Uses container-scoped tracking via MutationObserver
-	 * Also retroactively checks if resource belongs to container if not yet tracked
+	 * Whether a timing entry belongs to this container. Timing entries carry
+	 * absolute URLs, so a suffix match against a tracked URL also counts. The
+	 * buffered observer also reports resources that loaded before the scan
+	 * tracked them; those are looked up in the container's DOM.
 	 */
 	private isRelevantResource(entry: PerformanceResourceTiming): boolean {
 		const url = entry.name;
+		if (this.containerResources.has(url)) return true;
 
-		// Only track resources that we know are in our container
-		let isInContainer = this.containerResources.has(url);
-
-		if (!isInContainer) {
-			// Also check if it's a relative URL that might match
-			// (PerformanceResourceTiming gives absolute URLs)
-			for (const containerUrl of this.containerResources) {
-				if (url.endsWith(containerUrl) || containerUrl.endsWith(url)) {
-					return true;
-				}
-			}
-
-			// Retroactively check if this resource belongs to our container
-			// This handles the case where resources load before MutationObserver scans
-			// PerformanceObserver can capture resources that loaded before it started (buffered: true)
-			// but if they loaded before MutationObserver scanned, they won't be in containerResources
-			if (this.container) {
-				// Simple check: if resource is a media/image type and we have a container,
-				// check if any element in container has this src/href
-				// This is a fallback for resources that loaded very quickly before scan completed
-				const isInContainer = this.isResourceInContainer(
-					url,
-					entry.initiatorType,
-				);
-				if (isInContainer) {
-					this.containerResources.add(url);
-					if (this.isDebugEnabled()) {
-						this.logger.debug(
-							`📌 Retroactively tracked resource: ${this.truncateUrl(url)}`,
-						);
-					}
-					return true;
-				}
+		for (const containerUrl of this.containerResources) {
+			if (url.endsWith(containerUrl) || containerUrl.endsWith(url)) {
+				return true;
 			}
 		}
 
-		return isInContainer;
+		if (!this.isResourceInContainer(url, entry.initiatorType)) return false;
+		this.containerResources.add(url);
+		if (this.isDebugEnabled()) {
+			this.logger.debug(
+				`📌 Retroactively tracked resource: ${this.truncateUrl(url)}`,
+			);
+		}
+		return true;
 	}
 
-	/**
-	 * Check if a resource URL actually belongs to our container by checking DOM elements
-	 * This is a fallback for resources that loaded before MutationObserver scanned
-	 */
 	private isResourceInContainer(url: string, initiatorType: string): boolean {
 		if (!this.container) {
 			return false;
 		}
 
 		try {
-			// Check if any element in the container has this URL as src/href
 			const urlObj = new URL(url);
 			const urlPath = urlObj.pathname + urlObj.search;
-
-			// For images, audio, video - check src attributes
-			if (
-				initiatorType === "img" ||
-				initiatorType === "audio" ||
-				initiatorType === "video"
-			) {
-				const elements = this.container.querySelectorAll(
-					`${initiatorType}[src]`,
-				);
-				for (const el of elements) {
-					const resourceEl = el as
-						| HTMLImageElement
-						| HTMLAudioElement
-						| HTMLVideoElement;
-					if (
-						resourceEl.src &&
-						(resourceEl.src === url || resourceEl.src.endsWith(urlPath))
-					) {
-						return true;
-					}
-				}
-			}
-
-			// For link elements (stylesheets) - check href
-			if (initiatorType === "link") {
-				const links = this.container.querySelectorAll("link[href]");
-				for (const link of links) {
-					const linkEl = link as HTMLLinkElement;
-					if (
-						linkEl.href &&
-						(linkEl.href === url || linkEl.href.endsWith(urlPath))
-					) {
-						return true;
-					}
-				}
-			}
-
-			// For source elements (inside audio/video) - check src
-			if (initiatorType === "source") {
-				const sources = this.container.querySelectorAll("source[src]");
-				for (const source of sources) {
-					const sourceEl = source as HTMLSourceElement;
-					if (
-						sourceEl.src &&
-						(sourceEl.src === url || sourceEl.src.endsWith(urlPath))
-					) {
-						return true;
-					}
+			const selector = RESOURCE_SELECTOR_BY_INITIATOR.get(initiatorType);
+			if (!selector) return false;
+			for (const el of this.container.querySelectorAll<ResourceElement>(
+				selector,
+			)) {
+				const src = this.getResourceSrc(el);
+				if (src && (src === url || src.endsWith(urlPath))) {
+					return true;
 				}
 			}
 		} catch (error) {
-			// If URL parsing fails or querySelector fails, fall back to false
 			if (this.isDebugEnabled()) {
 				this.logger.debug(
 					`Error checking if resource is in container: ${error}`,
@@ -1196,19 +1131,13 @@ export class ResourceMonitor {
 		return false;
 	}
 
-	/**
-	 * Set up error event handler for resource loading failures
-	 */
 	private setupErrorHandler(): void {
 		if (!this.container) {
 			return;
 		}
 
-		// Use capturing phase to catch errors before they bubble
 		this.errorHandler = (event: Event) => {
-			const target = event.target as ResourceElement;
-
-			// Only handle resource elements
+			const target = event.target;
 			if (!this.isResourceElement(target)) {
 				return;
 			}
@@ -1220,10 +1149,7 @@ export class ResourceMonitor {
 				return;
 			}
 
-			// Get the original URL without retry parameters
 			const originalSrc = this.getOriginalUrl(src);
-
-			// Check if we have retries remaining
 			const currentRetries = this.retryAttempts.get(originalSrc) || 0;
 			const remainingRetries = this.config.maxRetries - currentRetries;
 			const willRetry = remainingRetries > 0;
@@ -1236,15 +1162,12 @@ export class ResourceMonitor {
 				willRetry,
 			});
 
-			// Enhanced debug logging for errors
-			// Use warn if we'll retry, error if we've exhausted retries
+			const logMethod = willRetry
+				? this.logger.warn.bind(this.logger)
+				: this.logger.error.bind(this.logger);
+			const icon = willRetry ? "⚠️" : "❌";
 			if (this.isDebugEnabled()) {
 				const shortUrl = this.truncateUrl(src);
-				const logMethod = willRetry
-					? this.logger.warn.bind(this.logger)
-					: this.logger.error.bind(this.logger);
-				const icon = willRetry ? "⚠️" : "❌";
-
 				logMethod(
 					`${icon} PIE Resource Load Error\n` +
 						`   Element: <${tagName}>\n` +
@@ -1255,16 +1178,10 @@ export class ResourceMonitor {
 					diagnostics,
 				);
 			} else {
-				const logMethod = willRetry
-					? this.logger.warn.bind(this.logger)
-					: this.logger.error.bind(this.logger);
-				const icon = willRetry ? "⚠️" : "❌";
 				logMethod(`${icon} Resource error: ${tagName} failed to load ${src}`);
 			}
 
 			this.trackInstrumentationEvent("pie-resource-load-error", diagnostics);
-
-			// Track error with instrumentation provider
 			this.trackInstrumentationError(
 				new Error(`Resource load error: ${originalSrc}`),
 				{
@@ -1273,10 +1190,11 @@ export class ResourceMonitor {
 				},
 			);
 
-			// Attempt retry with original URL
 			this.retryResourceLoad(target, originalSrc);
 		};
 
+		// Resource `error` events do not bubble, so only a capturing listener on
+		// the container sees them.
 		this.container.addEventListener("error", this.errorHandler, true);
 		this.logger.debug("Error handler attached to container");
 	}
@@ -1336,7 +1254,6 @@ export class ResourceMonitor {
 			);
 		}
 
-		// Dispatch permanent failure event
 		this.dispatchEvent("pie-resource-load-error", {
 			url,
 			resourceType,
@@ -1344,8 +1261,6 @@ export class ResourceMonitor {
 			maxRetries: this.config.maxRetries,
 			error: `Resource permanently failed after ${this.config.maxRetries} retries`,
 		});
-
-		// Track final failure with instrumentation provider
 		this.trackInstrumentationError(
 			new Error(
 				`Resource permanently failed after ${this.config.maxRetries} retries: ${url}`,
@@ -1358,9 +1273,14 @@ export class ResourceMonitor {
 		);
 	}
 
-	/**
-	 * Log retry schedule information
-	 */
+	/** Exponential backoff, capped at `maxRetryDelay`. */
+	private retryDelay(retryCount: number): number {
+		return Math.min(
+			this.config.initialRetryDelay * 2 ** retryCount,
+			this.config.maxRetryDelay,
+		);
+	}
+
 	private logRetrySchedule(
 		url: string,
 		retryCount: number,
@@ -1369,19 +1289,8 @@ export class ResourceMonitor {
 	): void {
 		if (this.isDebugEnabled()) {
 			const shortUrl = this.truncateUrl(url);
-			const nextDelay = Math.min(
-				this.config.initialRetryDelay * Math.pow(2, retryCount + 1),
-				this.config.maxRetryDelay,
-			);
-
-			const strategy =
-				elementTag === "img"
-					? "Cache-busting URL"
-					: elementTag === "audio" || elementTag === "video"
-						? "element.load()"
-						: elementTag === "link"
-							? "Cache-busting URL"
-							: "URL update";
+			const nextDelay = this.retryDelay(retryCount + 1);
+			const strategy = RETRY_STRATEGY_BY_TAG.get(elementTag) ?? "URL update";
 
 			this.logger.info(
 				`🔄 PIE Resource Retry Scheduled\n` +
@@ -1399,7 +1308,8 @@ export class ResourceMonitor {
 	}
 
 	/**
-	 * Retry loading a failed resource with exponential backoff
+	 * Reloads one element under a cache-busting URL. Media elements also need
+	 * `load()`, since changing a `<source>` alone does not restart the fetch.
 	 */
 	private performRetryLoadAttempt(
 		element: ResourceElement,
@@ -1480,13 +1390,17 @@ export class ResourceMonitor {
 			}
 			this.trackInstrumentationError(
 				new Error(`Retry attempt error for resource: ${originalSrc}`),
-				{
-					...diagnostics,
-				},
+				diagnostics,
 			);
 		}
 	}
 
+	/**
+	 * Schedules the next retry of a failed resource with exponential backoff,
+	 * or fails it permanently once `maxRetries` is spent. Every failing element
+	 * joins the URL's retry targets; concurrent errors for one URL share the
+	 * retry already in flight.
+	 */
 	private retryResourceLoad(
 		element: ResourceElement,
 		originalSrc: string,
@@ -1510,10 +1424,7 @@ export class ResourceMonitor {
 			);
 			return;
 		}
-		const delay = Math.min(
-			this.config.initialRetryDelay * Math.pow(2, currentRetries),
-			this.config.maxRetryDelay,
-		);
+		const delay = this.retryDelay(currentRetries);
 		const attemptNumber = currentRetries + 1;
 		this.retryInFlight.add(originalSrc);
 		this.retryAttempts.set(originalSrc, attemptNumber);
@@ -1547,23 +1458,18 @@ export class ResourceMonitor {
 		this.pendingRetryTimers.set(originalSrc, timer);
 	}
 
-	/**
-	 * Dispatch a custom event from the container
-	 */
 	private dispatchEvent(
 		eventName: string,
 		detail: ResourceMonitorEventDetail,
 	): void {
 		if (!this.container) {
-			// Silent return - if container is null, events can't be dispatched
-			// This should only happen if ResourceMonitor wasn't properly initialized
 			return;
 		}
 
 		const event = new CustomEvent(eventName, {
 			detail,
 			bubbles: true,
-			composed: true, // Allow crossing shadow DOM boundaries
+			composed: true,
 		});
 
 		this.container.dispatchEvent(event);

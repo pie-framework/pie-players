@@ -93,15 +93,10 @@ export type CatalogType =
 /**
  * The catalog types PIE names, plus the rule for the ones it does not.
  *
- * The type above stays open on purpose: QTI treats the support vocabulary as
- * extensible, and closing it here would reject content PIE has no reason to
- * reject and could not usefully validate anyway, since catalogs arrive as
- * authored JSON rather than through this type. Keeping it open cost something
- * though — the named literals were documentation only, so a card written
- * `"spokn"` was a perfectly valid `CatalogType` that no reader would ever ask
- * for, and it failed by being invisible rather than by failing. That is what
- * `isKnownCatalogType` and the warnings below are for: the openness stays, the
- * silence does not.
+ * `CatalogType` stays open because QTI treats the support vocabulary as
+ * extensible, and catalogs arrive as authored JSON this type never validates.
+ * The trade: a card written `"spokn"` is a valid `CatalogType` no reader asks
+ * for, so `isKnownCatalogType` and the warnings below report it.
  */
 export const KNOWN_CATALOG_TYPES: ReadonlySet<string> = new Set([
 	"spoken",
@@ -200,12 +195,9 @@ function reportUnknownCatalogType(
 }
 
 /**
- * Which of a card's two content slots it fills.
- *
- * Not a new field on the card and not a second discriminant: the card already
- * says which form it is by carrying `content` or `payload`, and the
- * exactly-one-of invariant is what makes that unambiguous. This names the
- * distinction so a lookup can ask for one.
+ * Which of a card's two content slots it fills. The card says so by carrying
+ * `content` or `payload`, and the exactly-one-of invariant makes that
+ * unambiguous; this type names the distinction so a lookup can ask for one.
  */
 export type CatalogCardForm = "content" | "payload";
 
@@ -228,17 +220,15 @@ export interface CatalogLookupOptions {
 	 * Preferred content form, when one catalog type legitimately has both on the
 	 * same node.
 	 *
-	 * The case this exists for is a `spoken` node carrying both a reading script
-	 * and a recording of it — which is APIP's authoring pattern and what QTI 3's
-	 * migration guidance tells you to keep, the script doubling as the source the
-	 * audio was generated from and as the fallback when it cannot play. Before
-	 * this, both resolution rungs took the first card matching type and language,
-	 * so whichever of the two was written second in the array was unreachable and
-	 * nothing said so.
+	 * The case is a `spoken` node carrying both a reading script and a recording
+	 * of it, which is APIP's authoring pattern and what QTI 3's migration
+	 * guidance keeps: the script is the source the audio was generated from and
+	 * the fallback when it cannot play. Without a form, a lookup returns the
+	 * first card matching type and language.
 	 *
 	 * A preference, not a filter: if the requested form is not present, the other
-	 * one is still returned. Callers that cannot use a form must check what they
-	 * got, exactly as they already must for a card of a type they did not expect.
+	 * one is still returned. Callers that cannot use a form check what they got,
+	 * as they do for a card of a type they did not expect.
 	 */
 	form?: CatalogCardForm;
 }
@@ -588,9 +578,11 @@ export class AccessibilityCatalogResolver {
 	}
 
 	/**
-	 * Get alternative content for a catalog identifier
+	 * Get alternative content for a catalog identifier.
 	 *
-	 * Priority: Item-level catalogs take precedence over assessment-level
+	 * With a `context`, the catalog registered for exactly that owner comes
+	 * first, then the one compatible scoped catalog (several are ambiguous and
+	 * resolve to null). Item-level catalogs come next, then assessment-level.
 	 */
 	getAlternative(
 		catalogId: string,
@@ -804,10 +796,10 @@ export class AccessibilityCatalogResolver {
 		return false;
 	}
 
-	// The single funnel every registration path runs through — the constructor and
-	// `addItemCatalogs` by way of `indexCatalogs`, and `registerCatalogs`
-	// directly — which is why the unknown-type report lives here rather than at
-	// each entry point.
+	// The single funnel every registration path runs through (the constructor and
+	// `addItemCatalogs` by way of `indexCatalogs`, `registerCatalogs` and
+	// `registerOwner` by way of `insertScopedCatalogs`), so the unknown-type
+	// report lives here.
 	private sanitizeCatalogs(
 		catalogs: AccessibilityCatalog[],
 	): AccessibilityCatalog[] {
@@ -840,11 +832,10 @@ export class AccessibilityCatalogResolver {
 		// Language rungs, most specific first: the requested language, then the
 		// default language, then any.
 		//
-		// Each requested tag expands into its RFC 4647 lookup sequence, so `es-MX`
-		// tries `es-mx` and then `es` before falling through to the default. Matching
-		// was `===`, which made a POSIX `es_ES` card — what the Learnosity transform
-		// emits — unreachable for an `es-ES` request except through the final
-		// no-constraint rung, i.e. by accident.
+		// Each requested tag expands into its RFC 4647 lookup sequence over
+		// normalized tags, so `es-MX` tries `es-mx` and then `es` before falling
+		// through to the default, and a POSIX `es_ES` card (what the Learnosity
+		// transform emits) matches an `es-ES` request on its own rung.
 		const languageRungs: Array<(card: CatalogCard) => boolean> = [];
 		const pushLookupRungs = (tag: string) => {
 			for (const step of languageTagLookupSequence(tag)) {
@@ -866,19 +857,17 @@ export class AccessibilityCatalogResolver {
 				(card) => card.catalog === type && matchesLanguage(card),
 			);
 			if (candidates.length === 0) continue;
-			// Form is preferred inside a language rung and never across them: a
-			// recording in the requested language beats a script in that language,
-			// but a script in the requested language beats a recording in another
-			// one. Getting this backwards would answer a Spanish lookup with English
-			// audio, which is worse than answering it with Spanish text.
+			// Language outranks form: form is preferred inside a language rung and
+			// never across them, so a Spanish lookup preferring a recording gets a
+			// Spanish recording first, then Spanish text, and never English audio
+			// ahead of either.
 			if (form) {
 				const preferred = candidates.find(
 					(card) => catalogCardForm(card) === form,
 				);
 				if (preferred) return preferred;
 			}
-			// No preference expressed, or the preferred form is absent: first match,
-			// which is what every caller got before form preference existed.
+			// No preference, or the preferred form is absent: the first match.
 			return candidates[0];
 		}
 
@@ -889,25 +878,20 @@ export class AccessibilityCatalogResolver {
 	 * Get all available alternatives for a catalog identifier
 	 *
 	 * Every card goes through `resolveCard`, the same projection `getAlternative`
-	 * uses, so enumeration cannot describe a card differently from the resolution
-	 * that renders it. It was hand-rolled here once and drifted immediately: the
-	 * `signLanguage` alias was folded in on the resolution path only, so a card
-	 * that arrived under the alias rendered correctly and was still reported as
-	 * carrying no payload by anything asking what alternates exist.
+	 * uses, so enumeration describes a card exactly as the resolution that
+	 * renders it. A hand-rolled copy here drifted: the `signLanguage` alias was
+	 * folded in on the resolution path only.
 	 */
 	getAllAlternatives(catalogId: string): ResolvedCatalog[] {
 		const results: ResolvedCatalog[] = [];
-		// Type, language *and* form: one catalog identifier legitimately carries
-		// several cards of the same type in different languages, and also a script
-		// and a recording of the same type in the *same* language. Keying on type
-		// and language alone dropped the second of those on the floor, so anything
-		// asking what alternates exist under-reported them.
+		// Keyed on type, language and form: one catalog identifier can carry cards
+		// of one type in several languages, and a script and a recording of one
+		// type in the same language.
 		const claimed = new Set<string>();
 		const add = (card: CatalogCard, source: ResolvedCatalog["source"]) => {
 			// The language part is normalized, so a POSIX `es_ES` card and a BCP-47
-			// `es-ES` card collapse to one entry here exactly as they now collapse on
-			// the resolution path. Keying on the raw string would report two
-			// alternates where resolution can only ever return one.
+			// `es-ES` card collapse to one entry, as on the resolution path, which
+			// only ever returns one of them.
 			const key = `${card.catalog}|${normalizeLanguageTag(card.language)}|${catalogCardForm(card)}`;
 			if (claimed.has(key)) return;
 			claimed.add(key);
@@ -956,7 +940,6 @@ export class AccessibilityCatalogResolver {
 		const allTypes = new Set<CatalogType>();
 		const allLanguages = new Set<string>();
 
-		// Collect from assessment catalogs
 		for (const catalog of this.assessmentCatalogs.values()) {
 			for (const card of catalog.cards) {
 				allTypes.add(card.catalog);
@@ -964,7 +947,6 @@ export class AccessibilityCatalogResolver {
 			}
 		}
 
-		// Collect from item catalogs
 		for (const catalog of this.itemCatalogs.values()) {
 			for (const card of catalog.cards) {
 				allTypes.add(card.catalog);

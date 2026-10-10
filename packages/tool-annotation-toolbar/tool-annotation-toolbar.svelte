@@ -86,7 +86,9 @@
 		'[role="textbox"]'
 	];
 
-	// State - using Svelte 5 $state rune for reactive state
+	// Longest stretch of selected text an announcement quotes before eliding it.
+	const ANNOUNCED_TEXT_MAX_LENGTH = 30;
+
 	let contextHostElement = $state<HTMLElement | null>(null);
 	let runtimeContext = $state<AssessmentToolkitRuntimeContext | null>(null);
 	// Interface locale, re-derived on every context republish.
@@ -101,7 +103,7 @@
 	// the labels come from the catalog, so the list rebuilds when the locale moves —
 	// which is also why it has to be declared after `interfaceI18n` rather than with
 	// the other constants above.
-	const HIGHLIGHT_COLORS = $derived([
+	const highlightColors = $derived([
 		{
 			name: HighlightColor.YELLOW,
 			hex: '#fde995',
@@ -133,10 +135,7 @@
 		toolbarPosition: { x: 0, y: 0, below: false }
 	});
 
-	// TTS state
 	let ttsSpeaking = $state(false);
-
-	// UX state
 	let justShown = $state(false); // Flag to prevent immediate hiding after showing
 	let positionAnnouncement = $state(''); // For screen readers when toolbar is repositioned
 
@@ -171,7 +170,7 @@
 	 * selection itself survives on purpose — the learner's place in the text is not
 	 * ours to clear. Without this latch the next `selectionchange` re-shows the strip
 	 * over the panel the action just opened, and opening a panel moves focus, which
-	 * fires one: measured, the strip came straight back over the definition.
+	 * fires one.
 	 *
 	 * Only completed actions latch. Escape, focus leaving and an outside click do not,
 	 * because a learner who dismissed the strip may want it again — Shift+F10 is how
@@ -186,10 +185,8 @@
 	let focusReturnTarget: HTMLElement | null = null;
 
 	/**
-	 * One timer for the live region.
-	 *
-	 * Each announcement used to schedule its own clear, so two in quick succession
-	 * left the first one's timer to blank the second mid-sentence.
+	 * Speak through the live region, then clear it. One timer serves every
+	 * announcement, so an earlier one's clear cannot blank a later one mid-sentence.
 	 */
 	function announce(message: string, clearAfterMs: number): void {
 		if (announcementTimer !== null) clearTimeout(announcementTimer);
@@ -198,6 +195,13 @@
 			positionAnnouncement = '';
 			announcementTimer = null;
 		}, clearAfterMs);
+	}
+
+	/** `text` as an announcement quotes it, elided past {@link ANNOUNCED_TEXT_MAX_LENGTH}. */
+	function previewText(text: string): string {
+		return text.length > ANNOUNCED_TEXT_MAX_LENGTH
+			? text.substring(0, ANNOUNCED_TEXT_MAX_LENGTH) + '...'
+			: text;
 	}
 
 	/**
@@ -218,7 +222,6 @@
 		return offersReadAloud(ttsService, runtimeContext?.toolkitCoordinator);
 	});
 
-	// Derived state
 	let hasAnnotations = $derived(annotationCount > 0);
 	let hasOverlappingAnnotation = $derived(overlappingAnnotationId !== null);
 	let effectiveScopeElement = $derived(
@@ -261,21 +264,17 @@
 			if (range.startContainer.getRootNode() !== annotation.range.startContainer.getRootNode()) {
 				continue;
 			}
-			// Check if ranges overlap
-			// Two ranges overlap if: startA < endB && startB < endA
-			const cmp1 = range.compareBoundaryPoints(Range.START_TO_START, annotation.range);
-			const cmp2 = range.compareBoundaryPoints(Range.END_TO_END, annotation.range);
-			const cmp3 = range.compareBoundaryPoints(Range.START_TO_END, annotation.range);
-			const cmp4 = range.compareBoundaryPoints(Range.END_TO_START, annotation.range);
+			// Each value orders a boundary of the selection against one of the
+			// annotation's: negative when the selection's point comes first.
+			const startVsStart = range.compareBoundaryPoints(Range.START_TO_START, annotation.range);
+			const endVsEnd = range.compareBoundaryPoints(Range.END_TO_END, annotation.range);
+			const endVsAnnotationStart = range.compareBoundaryPoints(Range.START_TO_END, annotation.range);
+			const startVsAnnotationEnd = range.compareBoundaryPoints(Range.END_TO_START, annotation.range);
 
-			// Check various overlap conditions:
-			// 1. Selection is inside annotation
-			// 2. Annotation is inside selection
-			// 3. Selection partially overlaps annotation
 			if (
-				(cmp1 >= 0 && cmp2 <= 0) || // selection inside annotation
-				(cmp1 <= 0 && cmp2 >= 0) || // annotation inside selection
-				(cmp3 > 0 && cmp4 < 0)      // partial overlap
+				(startVsStart >= 0 && endVsEnd <= 0) || // selection inside annotation
+				(startVsStart <= 0 && endVsEnd >= 0) || // annotation inside selection
+				(endVsAnnotationStart > 0 && startVsAnnotationEnd < 0) // partial overlap
 			) {
 				return annotation.id;
 			}
@@ -363,11 +362,9 @@
 	/**
 	 * Show the toolbar for the current selection, or hide it when there is none.
 	 *
-	 * Driven by `selectionchange` rather than `mouseup`/`touchend`. The pointer
-	 * events could not see a selection made with Shift+Arrow, so highlight,
-	 * underline and read-aloud were unreachable without a mouse — WCAG 2.2 SC 2.1.1.
-	 * Selection is a keyboard operation in every browser, so the trigger has to be
-	 * the selection itself.
+	 * Driven by `selectionchange` rather than `mouseup`/`touchend`: pointer events
+	 * miss a selection made with Shift+Arrow, which would leave highlight, underline
+	 * and read-aloud unreachable without a mouse (WCAG 2.2 SC 2.1.1).
 	 */
 	function evaluateSelection(options: { force?: boolean } = {}) {
 		if (!enabled || !isBrowser) return;
@@ -398,7 +395,6 @@
 		}
 		if (actedOnText === text) return;
 
-		// Check if selection overlaps with an existing annotation
 		overlappingAnnotationId = findOverlappingAnnotation(range);
 
 		const alreadyVisible = toolbarState.isVisible;
@@ -410,9 +406,8 @@
 		// Announce once per selection, not once per keystroke.
 		if (announcedForText !== text) {
 			announcedForText = text;
-			const textPreview = text.length > 30 ? text.substring(0, 30) + '...' : text;
 			announce(
-				`Annotation toolbar available for "${textPreview}". Press Shift+F10 for annotation tools.`,
+				`Annotation toolbar available for "${previewText(text)}". Press Shift+F10 for annotation tools.`,
 				4000
 			);
 		}
@@ -427,12 +422,9 @@
 	}
 
 	/**
-	 * Track the selection's viewport rect.
-	 *
-	 * Scrolling used to hide the toolbar outright, which a keyboard user hits
-	 * constantly: extending a selection past the fold scrolls the page, so the strip
-	 * disappeared on the keystroke that created the selection it was showing. It now
-	 * follows the selection and only withdraws once that selection is off screen.
+	 * Track the selection's viewport rect, withdrawing only once the selection is
+	 * off screen. Hiding on scroll would drop the strip on the very keystroke that
+	 * extends a selection past the fold, since that keystroke scrolls the page.
 	 */
 	function repositionToSelection(range: Range | null = toolbarState.selectedRange) {
 		if (!range) return;
@@ -559,9 +551,6 @@
 		controls[activeControlIndex]?.focus();
 	}
 
-	/**
-	 * Add highlight annotation
-	 */
 	function handleHighlight(color: HighlightColor) {
 		if (!toolbarState.selectedRange || !highlightCoordinator) return;
 		const text = toolbarState.selectedText;
@@ -569,17 +558,13 @@
 		annotationCount = highlightCoordinator.getAnnotations().length;
 		saveAnnotations();
 
-		// Announce to screen readers
 		const colorName = color === HighlightColor.UNDERLINE ? 'underlined' : `highlighted in ${color}`;
-		const textPreview = text.length > 30 ? text.substring(0, 30) + '...' : text;
-		announce(`"${textPreview}" ${colorName}`, 3000);
+		announce(`"${previewText(text)}" ${colorName}`, 3000);
 
 		finishAction();
 	}
 
-	/**
-	 * Remove the annotation that overlaps with current selection
-	 */
+	/** Remove the annotation the current selection overlaps. */
 	function handleRemoveAnnotation() {
 		if (!overlappingAnnotationId || !highlightCoordinator) {
 			console.warn('[AnnotationToolbar] No overlapping annotation to remove');
@@ -597,26 +582,32 @@
 		annotationCount = highlightCoordinator.getAnnotations().length;
 		saveAnnotations();
 
-		// Announce to screen readers
-		const textPreview = text.length > 30 ? text.substring(0, 30) + '...' : text;
-		announce(`Removed annotation from "${textPreview}"`, 3000);
+		announce(`Removed annotation from "${previewText(text)}"`, 3000);
 
 		finishAction();
 	}
 
-	/**
-	 * Clear all annotations
-	 */
 	function handleClearAnnotations() {
 		const count = annotationCount;
 		highlightCoordinator?.clearAnnotations();
 		annotationCount = 0;
 		saveAnnotations();
 
-		// Announce to screen readers
 		announce(`${count} annotation${count === 1 ? '' : 's'} cleared`, 3000);
 
 		finishAction();
+	}
+
+	/**
+	 * Sanitized icon markup, or `''` when there is none to render.
+	 *
+	 * Sanitized even though a composer authored it: this is the one place the strip
+	 * renders markup it did not write, and the sanitizer is also what turns an icon it
+	 * cannot render into an empty string — which is the signal to fall back to the
+	 * label, so a button is never blank to a sighted learner.
+	 */
+	function actionIconMarkup(action: ToolSelectionAction): string {
+		return action.iconSvg ? sanitizeSvgIcon(action.iconSvg) : '';
 	}
 
 	/**
@@ -632,18 +623,6 @@
 	 * panel that never opens still leaves focus back in the content rather than on
 	 * `<body>`.
 	 */
-	/**
-	 * Sanitized icon markup, or `''` when there is none to render.
-	 *
-	 * Sanitized even though a composer authored it: this is the one place the strip
-	 * renders markup it did not write, and the sanitizer is also what turns an icon it
-	 * cannot render into an empty string — which is the signal to fall back to the
-	 * label, so a button is never blank to a sighted learner.
-	 */
-	function actionIconMarkup(action: ToolSelectionAction): string {
-		return action.iconSvg ? sanitizeSvgIcon(action.iconSvg) : '';
-	}
-
 	function handleSelectionAction(action: ToolSelectionAction) {
 		const text = toolbarState.selectedText;
 		const range = toolbarState.selectedRange;
@@ -658,9 +637,6 @@
 		finishAction();
 	}
 
-	/**
-	 * Read aloud with TTS
-	 */
 	async function handleTTSClick() {
 		// `aria-disabled` rather than `disabled` while reading: disabling the focused
 		// button moves focus out of the strip, and the focusout that follows dismisses
@@ -690,9 +666,7 @@
 		}
 	}
 
-	/**
-	 * Handle keyboard shortcuts
-	 */
+	/** Document-level keys: Escape dismisses the strip, the toolbar shortcut focuses it. */
 	function handleKeyDown(e: KeyboardEvent) {
 		if (e.key === 'Escape' && toolbarState.isVisible) {
 			e.preventDefault();
@@ -718,11 +692,8 @@
 
 	/**
 	 * ARIA toolbar navigation: arrows move between controls, Home/End jump, and the
-	 * strip keeps one tab stop.
-	 *
-	 * Before this, every button was its own tab stop inside a `role="toolbar"`, so a
-	 * screen-reader user was told "toolbar" and then found that the arrow keys the
-	 * role advertises did nothing.
+	 * strip keeps one tab stop, which is what `role="toolbar"` tells a screen-reader
+	 * user to expect.
 	 */
 	function handleToolbarKeyDown(e: KeyboardEvent) {
 		if (e.key === 'Escape') {
@@ -756,9 +727,7 @@
 		hideToolbar();
 	}
 
-	/**
-	 * Handle click outside toolbar
-	 */
+	/** Dismiss on a click or touch outside the strip. */
 	function handleDocumentClick(e: Event) {
 		if (!toolbarState.isVisible || justShown) return;
 		if (!toolbarElement) return;
@@ -786,7 +755,6 @@
 		return () => clearTimeout(restoreTimer);
 	});
 
-	// Effect for event listeners
 	$effect(() => {
 		if (!isBrowser) return;
 
@@ -802,7 +770,6 @@
 		document.addEventListener('pointerup', handlePointerUp);
 		document.addEventListener('pointercancel', handlePointerUp);
 
-		// Keyboard and scroll events
 		document.addEventListener('keydown', handleKeyDown);
 		window.addEventListener('scroll', handleScroll, true);
 		window.addEventListener('resize', handleScroll);
@@ -822,7 +789,6 @@
 			document.removeEventListener('pointerup', handlePointerUp);
 			document.removeEventListener('pointercancel', handlePointerUp);
 
-			// Remove keyboard and scroll events
 			document.removeEventListener('keydown', handleKeyDown);
 			window.removeEventListener('scroll', handleScroll, true);
 			window.removeEventListener('resize', handleScroll);
@@ -928,7 +894,7 @@
 		onfocusout={handleToolbarFocusOut}
 	>
 		<!-- Highlight Color Swatches -->
-		{#each HIGHLIGHT_COLORS as color}
+		{#each highlightColors as color}
 			<button
 				class="pie-tool-annotation-toolbar__highlight-swatch"
 				style="background-color: {color.hex};"

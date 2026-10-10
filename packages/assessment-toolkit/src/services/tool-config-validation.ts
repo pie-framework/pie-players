@@ -286,6 +286,11 @@ function throwValidationError(
 	);
 }
 
+/**
+ * Normalize a tools config, sanitize and validate each provider entry with its
+ * registration's hooks, check ids and levels against `options.toolRegistry`,
+ * and report the diagnostics by `options.strictness` (default `"error"`).
+ */
 export function normalizeAndValidateToolsConfig(
 	input?: ToolsConfigInput | null,
 	options: ToolConfigValidationOptions = {},
@@ -308,11 +313,9 @@ export function collectToolConfigDiagnostics(
 	const diagnostics: ToolConfigDiagnostic[] = [];
 
 	// Tool-id and provider checks need a registry to check against, and every
-	// collector below returns early without one. Say so: this package no longer
-	// falls back to a packaged registry, so a caller that used to get id
-	// validation for free now gets none, and a silent downgrade of "your ids are
-	// valid" to "nobody looked" is the kind of change that surfaces as a typo
-	// reaching a learner.
+	// collector below returns early without one. Say so, since there is no
+	// packaged fallback registry: silence would read as "your ids are valid" when
+	// nobody looked, and a typo would reach a learner.
 	const hasConfiguredTools =
 		Object.values(normalized.placement).some((ids) => ids.length > 0) ||
 		Object.keys(normalized.providers).length > 0 ||
@@ -376,11 +379,9 @@ export function reportToolConfigDiagnostics(
 	if (strictness === "warn") {
 		emitWarnings(diagnostics, source);
 	}
-	// Severity decides what `strictness: "error"` rejects. Every diagnostic was
-	// `"error"` until `tools.registryUnavailable`, which reports that validation
-	// could not run rather than that the config is wrong — throwing on it would
-	// turn "no registry supplied" from a host's existing, working setup into a
-	// construction failure.
+	// Severity decides what `strictness: "error"` rejects. `tools.registryUnavailable`
+	// is a warning: it reports that validation could not run, and throwing on it
+	// would fail construction for a host whose setup works without a registry.
 	const blocking = diagnostics.filter((entry) => entry.severity === "error");
 	if (strictness === "error" && blocking.length > 0) {
 		throwValidationError(blocking, source);

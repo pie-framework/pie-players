@@ -13,10 +13,9 @@
 <script lang="ts">
 	import { coerceBooleanAttributes } from '@pie-players/pie-players-shared/ui/attribute-coercion';
 
-	// The import attribute is required under `module: NodeNext` and is what the
-	// pre-adoption i18n catalogs omitted, which is how every non-English locale
-	// failed to load outside a bundler. Vite inlines the JSON at build time, so the
-	// attribute costs nothing there.
+	// The import attribute is required under `module: NodeNext`; a JSON import
+	// without it fails to load outside a bundler. Vite inlines the JSON at build
+	// time, so the attribute costs nothing there.
 	import periodicTableData from './periodic-table-data.json' with { type: 'json' };
 	import {
 		type AssessmentToolkitRuntimeContext,
@@ -40,7 +39,6 @@
 		electron_configuration_semantic: string;
 	}
 
-	// Props
 	let {
 		visible = false,
 		toolId = 'periodicTable'
@@ -63,13 +61,9 @@
 		});
 	});
 
-	// Tool state
 	let selectedElement = $state<Element | null>(allElements[0] || null); // Initialize with Hydrogen
 	let selectedCategory = $state<string>('All');
 
-	/**
-	 * Normalize category name
-	 */
 	function normalizeCategory(category: string): string {
 		const lower = category.toLowerCase();
 		if (lower.indexOf('unknown') !== -1) {
@@ -95,6 +89,11 @@
 		return mappings[lower] || category;
 	}
 
+	// Suffix of the `__category--*` class for a normalized category.
+	function categorySlug(category: string): string {
+		return category.replace(' ', '-').toLowerCase();
+	}
+
 	/**
 	 * Category name in the interface locale.
 	 *
@@ -116,9 +115,6 @@
 			.join(' ');
 	}
 
-	/**
-	 * Get unique normalized categories
-	 */
 	let uniqueCategories = $derived.by(() => {
 		const categories = new Set<string>();
 		allElements.forEach((element) => {
@@ -142,16 +138,10 @@
 		);
 	}
 
-	/**
-	 * Select element
-	 */
 	function showElementDetails(element: Element) {
 		selectedElement = element;
 	}
 
-	/**
-	 * Set category filter
-	 */
 	function setCategory(category: string) {
 		selectedCategory = category;
 	}
@@ -198,7 +188,7 @@
 						<!-- Each category badge -->
 						{#each uniqueCategories as category (category)}
 							<button
-								class="pie-tool-periodic-table__category-badge pie-tool-periodic-table__category--{category.replace(' ', '-').toLowerCase()}"
+								class="pie-tool-periodic-table__category-badge pie-tool-periodic-table__category--{categorySlug(category)}"
 								class:pie-tool-periodic-table__category-badge--active={selectedCategory === category}
 								onclick={() => setCategory(category)}
 								aria-label={interfaceI18n.t('tools.periodicTable.filterByA11y', {
@@ -219,7 +209,7 @@
 							aria-live="polite"
 						>
 							<div
-								class="pie-tool-periodic-table__selected-element pie-tool-periodic-table__selected-grid pie-tool-periodic-table__category--{normalizeCategory(selectedElement.category).replace(' ', '-').toLowerCase()}"
+								class="pie-tool-periodic-table__selected-element pie-tool-periodic-table__selected-grid pie-tool-periodic-table__category--{categorySlug(normalizeCategory(selectedElement.category))}"
 							>
 								<!-- LEFT COLUMN: Large Symbol & Element Name -->
 								<div class="pie-tool-periodic-table__left-col">
@@ -259,7 +249,7 @@
 					<!-- Periodic elements -->
 					{#each allElements as element (element.symbol)}
 						<button
-							class="pie-tool-periodic-table__element pie-tool-periodic-table__category--{normalizeCategory(element.category).replace(' ', '-').toLowerCase()}"
+							class="pie-tool-periodic-table__element pie-tool-periodic-table__category--{categorySlug(normalizeCategory(element.category))}"
 							class:pie-tool-periodic-table__element--selected={selectedElement?.symbol === element.symbol}
 							class:pie-tool-periodic-table__element--dim={isFilteredOut(element)}
 							style="grid-row: {element.ypos}; grid-column: {element.xpos};"
@@ -751,12 +741,13 @@
 		);
 	}
 
+	/* The nonmetal and halogen fills follow the production implementation. */
 	.pie-tool-periodic-table__category--nonmetal {
 		background-color: color-mix(
 			in srgb,
 			var(--pie-background-dark, #f5f5f5) var(--pie-fixed-hue-collapse, 0%),
 			#f0f0f0
-		); /* Production implementation also has this */
+		);
 	}
 
 	.pie-tool-periodic-table__category--halogen {
@@ -764,7 +755,7 @@
 			in srgb,
 			var(--pie-background-dark, #f5f5f5) var(--pie-fixed-hue-collapse, 0%),
 			#8ef5d0
-		); /* Production implementation has halogen color */
+		);
 	}
 
 	.pie-tool-periodic-table__category--unknown {

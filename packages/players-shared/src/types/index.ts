@@ -1,11 +1,12 @@
 /**
- * This contains copies of the data types we use in PIEOneer. These types, unlike
- * the ones in the datastore package, should not have any dependencies, and might in some
- * cases be more shallow than their originals. The main reason for these is that they should
- * be able to be used in front-end code (as well as the PIEOneer backend code).
+ * The PIE content and assessment model the players share: item, passage and
+ * section configs, the QTI-aligned assessment structure, session snapshots,
+ * accessibility catalogs and media references, `Env`, the element controller
+ * contract and authoring asset events.
  *
- * INCLUDING REFERENCES TO THE DATASTORE PACKAGE INSTEAD WILL MAKE PIEONEER THROW 500
- * EVERYWHERE WITHOUT ANY FURTHER EXPLANATION
+ * The `*Entity` shapes mirror content-store records and may be shallower than
+ * them. The module depends on nothing beyond this package's own type modules,
+ * so front-end and server code can both import it.
  */
 import type {
 	FormativeDeliveryPolicy,
@@ -73,7 +74,8 @@ export interface ConfigEntity {
 	markup: string;
 	elements: ConfigElements;
 	models: PieModel[];
-	configuration?: Record<string, any>; // NEW: Configure settings for authoring mode
+	/** Configure settings for authoring mode. */
+	configuration?: Record<string, any>;
 
 	/**
 	 * QTI 3.0: Extracted accessibility catalogs from embedded SSML.
@@ -108,12 +110,9 @@ export interface ItemEntity
 		SearchMetaDataEntity {
 	name?: string;
 	/**
-	 * `null` as well as absent, because importers write it. JSON has no
-	 * `undefined`, so an item transformed from another format carries an explicit
-	 * `passage: null` for "no passage" — the runtime has always tested for
-	 * null, so it expected it while the type denied it. Excluding null
-	 * only meant a host feeding real importer output through a typed path had to
-	 * cast it away.
+	 * `null` as well as absent, because importers write it: JSON has no
+	 * `undefined`, so an item transformed from another format carries an
+	 * explicit `passage: null` for "no passage", and the runtime tests for it.
 	 */
 	passage?: string | PassageEntity | null;
 	/** QTI/APIP-style accessibility catalogs owned by the item root. */
@@ -325,11 +324,9 @@ export interface TestPart {
  * The host-facing persistence snapshot for one section, returned by
  * `SectionControllerHandle.getSession()` and accepted by `applySession()`.
  *
- * Canonical here rather than in a player or the toolkit: the toolkit is
- * complementary to a player rather than an alternative to one and sits beneath
- * both entry paths, so a shape both need belongs alongside `AssessmentSection`.
- * The delivery slices it carries are defined in this package too, which is what
- * previously forced them to reference this shape in prose instead of types.
+ * Canonical here, beside `AssessmentSection`: both entry paths need it, and the
+ * toolkit complements a player and sits beneath both of them. The delivery
+ * slices it carries live in this package too, so they reference it as a type.
  */
 export interface SectionControllerSessionState {
 	currentItemIndex?: number;
@@ -486,7 +483,7 @@ export interface MediaFragmentRange {
  * inside `qti-card-entry` — multiple sources, MIME types, poster, and an
  * optional time range.
  *
- * Note there is no `kind` discriminant: the card's `catalog` field is QTI's
+ * It carries no `kind` discriminant: the card's `catalog` field is QTI's
  * `qti-card@support` and is the only discriminator. Restating it here would
  * create a second source of truth that can disagree with the first.
  */
@@ -517,8 +514,7 @@ export interface SignLanguageCardPayload {
  *
  * QTI 3 treats recorded audio and synthesized speech as the *same* support:
  * both are `spoken`, and a card holds recorded audio through `qti-file-href`
- * plus a MIME type. So this is not a new accommodation, it is the other form the
- * existing one can take.
+ * plus a MIME type. A recording is the other form that accommodation takes.
  *
  * A node commonly carries both this and a `content` card in the same language —
  * APIP's pattern, which QTI's migration guidance keeps, because the script is
@@ -558,12 +554,10 @@ export type CatalogCardPayload =
  * `pie-elements-ng` (PIE-879) and the `pie-api-aws` Learnosity importer
  * (PIE-881) restate structurally; all three read the same authored JSON and none
  * of them takes a package dependency on the others, so keeping the declarations
- * identical is the only thing holding interop together. It briefly was not:
- * those two producers wrote the signing payload under `signLanguage`, this
- * repo tolerated that as an input alias, and the alias was folded in on the
- * resolution path but not the enumeration path — so an imported card rendered
- * its signing video and simultaneously reported that the item had no signed
- * alternate. Both producers now emit `payload` and the alias is gone.
+ * identical is the only thing holding interop together; a `signLanguage` input
+ * alias, folded in on the resolution path but not the enumeration path, once
+ * had an imported card render its signing video while reporting no signed
+ * alternate. Both producers now emit `payload`.
  */
 export interface CatalogCard {
 	catalog: string; // 'spoken', 'sign-language', 'braille', etc.
@@ -826,8 +820,8 @@ export interface AdvancedItemConfig {
 export type ItemConfig = PieContent | AdvancedItemConfig;
 
 /**
- * During the loading of elements from PIE bundles, we do a trick where we make
- * editor components available as web components by appending this to the element name.
+ * Appended to an element's tag name to register the bundle's editor component
+ * as a custom element of its own when PIE bundles load.
  */
 export const editorPostFix = "-pie-editor--";
 

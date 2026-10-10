@@ -4,7 +4,7 @@
  * A registration names an icon rather than shipping markup, so a host swapping the
  * button chrome gets one consistent set. A name with no entry here renders no icon
  * at all, and an icon-only button with no icon is a blank square — so a registration
- * naming an icon and this map are one change, not two.
+ * that names a new icon adds its entry here in the same change.
  *
  * Names are generic shapes ("book-open", "beaker"), never capability names. Core
  * naming a capability is what the composition layer exists to prevent.

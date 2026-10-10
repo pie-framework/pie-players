@@ -26,9 +26,9 @@ At a high level:
 - `section-player` renders one section and coordinates section/item runtime behavior
 - `assessment-player` orchestrates which section is active and how assessment-level state evolves
 
-The visual shape often includes assessment-level navigation like the example below:
+Each section renders as one composed view, like the example below; the assessment layer adds navigation between sections around it:
 
-![Assessment-style composition with global navigation, section content, and tools](../img/schoolcity-1.png)
+![A section player view: passage, items with their own tools, and a section toolbar](../img/section-player-composition.png)
 
 Every team that builds beyond the section level solves section routing, assessment session aggregation, and navigation state. The toolkit supplies the session aggregation (`createNewAssessmentSession`, `upsertSectionSession`, `setCurrentSectionPosition`); the assessment player shows the routing and navigation state assembled around it, as a worked example a team reads or copies.
 
@@ -149,6 +149,7 @@ Key attributes/properties on `pie-assessment-player-default`:
 | --- | --- | --- |
 | `assessment-id` | `string` | Identifies the assessment |
 | `attempt-id` | `string` | Identifies the attempt (host-owned) |
+| `locale` | `string` | Interface locale for the player chrome (BCP-47), forwarded to the section player |
 | `section-player-layout` | `'splitpane' \| 'vertical'` | Which section player layout to use |
 | `show-navigation` | `boolean` | Whether to render built-in Back/Next navigation |
 | `debug` | `boolean` | Verbose logging control (`true` to enable, `false`/`0` to disable) |
@@ -189,8 +190,12 @@ timeout. A waiter timeout does not cancel the active initialization. The ready
 hook and ready event observe the same controller as the getter and waiter, once
 per successful initialization. A rejected ready notification reaches the error
 hook and event while the successfully hydrated assessment stays ready.
+Only the newest connected initialization can publish a controller, UI, event,
+hook or error; a failed, superseded or disconnected one exposes no ready
+controller.
 
-The element disposes its old controller on input replacement or disconnect.
+The element disposes its old controller and removes its nested player on input
+replacement or disconnect.
 The controller's `dispose()` is idempotent and retires its listeners and state.
 Nested toolkit coordinators retain their existing ownership: internally created
 ones are disposed with their toolkit; host-supplied ones remain borrowed.
@@ -247,8 +252,7 @@ Notes:
 - For observability providers, prefer object property assignment to preserve provider instance references.
 - Assessment-level public events (for example `assessment-navigation-requested`, `assessment-route-changed`, `assessment-session-changed`) are instrumented through the same generic provider contract. They are not New Relic-specific hooks.
 - Use `loaderConfig.instrumentationProvider` as the canonical injection point; New Relic is one possible provider implementation.
-- With `trackPageActions: true`, missing/`undefined` `instrumentationProvider` uses the default New Relic provider path.
-- `instrumentationProvider: null` is an explicit no-op opt-out.
+- How an unset, `null` or invalid provider resolves is set out in [Instrumentation providers](../architecture/instrumentation-providers.md#provider-resolution).
 - Ownership model: assessment-player instrumentation owns assessment events; section-player owns section events; toolkit owns toolkit lifecycle events. This keeps event streams clean and non-overlapping.
 
 ### Instrumentation (dedicated)
@@ -261,9 +265,7 @@ Canonical provider injection paths:
 
 Provider semantics:
 
-- With `trackPageActions: true`, missing/`undefined` provider values use the default New Relic provider path.
-- `provider: null` explicitly disables instrumentation.
-- Invalid provider objects are ignored (optional debug warning), also no-op.
+- How an unset, `null` or invalid provider resolves is set out in [Instrumentation providers](../architecture/instrumentation-providers.md#provider-resolution).
 - Post-connect provider updates are supported: the bridge rebinds when provider-bearing properties change.
 - Toolkit telemetry forwarding uses the same provider instance, so tool/backend operations are visible in the same stream as assessment/section events.
 
@@ -280,11 +282,7 @@ Assessment-player owned canonical event stream:
 
 Ownership rule: assessment-player does not claim section/toolkit semantics. Keep streams independent, and rely on bridge dedupe only as a defensive safety net.
 
-Toolkit tool/backend operational events (visible through assessment-player when toolkit is mounted) include:
-
-- `pie-tool-init-start|success|error`
-- `pie-tool-backend-call-start|success|error`
-- `pie-tool-library-load-start|success|error`
+Toolkit operational events are listed in [Instrumentation providers](../architecture/instrumentation-providers.md#operational-events).
 
 ---
 
@@ -359,7 +357,7 @@ Commercial Tier covers the demo or deployment; see the current
 
 The same coordinator instance is reused across section transitions. When the user navigates from section 1 to section 2, the assessment player unmounts the old section player and mounts a new one with the same coordinator — TTS playback state, tool state, and highlight layers reset per-section, but the coordinator's configuration and service instances persist.
 
-For full coverage of tool placement levels, provider configuration, theming, and color schemes, see the [section player integration guide](../section-player/client-architecture-tutorial.md) §5–§6.
+Tool placement levels and provider configuration are covered in the [section player integration guide](../section-player/client-architecture-tutorial.md) §5; theming and color schemes in the [theme package README](../../packages/theme/README.md).
 
 ---
 
@@ -369,12 +367,17 @@ Hook naming is intentionally aligned with toolkit conventions:
 
 - `create*` — structural factories, called once to produce a strategy or plan
 - `onBefore*` — pre-lifecycle interception, opportunity to modify or block
-- `on*` — lifecycle callbacks for telemetry, logging, and error handling
+- `on*` — lifecycle callbacks for logging and error handling; telemetry goes through the [instrumentation provider](#instrumentation-dedicated)
 
 ### Assessment Player Hooks
 
 ```ts
 const hooks: AssessmentPlayerHooks = {
+  // Forwarded to each mounted section player; null keeps the default title
+  cardTitleFormatter(context) {
+    return null;
+  },
+
   // Factory: produce the delivery plan (section ordering/filtering)
   createAssessmentDeliveryPlan(context, defaults) {
     // context: { assessmentId, attemptId, assessment }
@@ -382,7 +385,7 @@ const hooks: AssessmentPlayerHooks = {
     return defaults.createDefaultDeliveryPlan();
   },
 
-  // Factory: produce the persistence strategy (see §8)
+  // Factory: produce the persistence strategy (see §10)
   createAssessmentSessionPersistence(context, defaults) {
     return buildBackendPersistenceStrategy(context);
   },
@@ -410,11 +413,6 @@ const hooks: AssessmentPlayerHooks = {
   // Error handling: all assessment-level errors route here
   onError(error, context) {
     console.error(`[${context.phase}]`, error.message, context.details);
-  },
-
-  // Telemetry: assessment-level events for analytics
-  onTelemetry(eventName, payload) {
-    analytics.track(eventName, payload);
   },
 };
 ```
@@ -523,6 +521,7 @@ This keeps the public API small while giving hosts enough information to impleme
 ```ts
 interface AssessmentControllerHandle {
   initialize(): Promise<void>;
+  dispose(): Promise<void>;
   hydrate(): Promise<void>;
   persist(): Promise<void>;
   getSession(): AssessmentSession | null;
@@ -534,8 +533,8 @@ interface AssessmentControllerHandle {
   subscribe(listener: (event: AssessmentControllerEvent) => void): () => void;
   getCurrentSection(): AssessmentSectionInstance | null;
   getSectionAt(index: number): AssessmentSectionInstance | null;
-  getSectionSession(sectionId: string): SectionSessionSnapshot | null;
-  updateSectionSession(sectionId: string, session: SectionSessionSnapshot | null): void;
+  getSectionSession(sectionId: string): SectionControllerSessionState | null;
+  updateSectionSession(sectionId: string, session: SectionControllerSessionState | null): void;
 }
 ```
 
@@ -602,7 +601,7 @@ interface AssessmentSession {
   sectionSessions: Record<string, {
     sectionIdentifier: string;
     updatedAt: string;
-    session: SectionSessionSnapshot | null;
+    session: SectionControllerSessionState | null;
   }>;
   contextVariables?: Record<string, unknown>;
 }
@@ -750,8 +749,8 @@ async function resetAssessmentAttempt(currentAttemptId: string) {
   // 1. Get the persistence strategy and clear stored data
   const controller = playerEl.getAssessmentController();
   if (controller) {
-    // Persist nothing, then clear
-    await controller.persist();  // optional: save final state before clearing
+    // Optionally save final state before clearing
+    await controller.persist();
   }
 
   // 2. Clear backend/local persistence

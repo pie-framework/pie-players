@@ -6,13 +6,13 @@ The project exists because the prior player model solved item rendering, but it 
 
 ## What PIE Players Covers
 
-PIE Players is a project, not just a single custom element. It includes:
+PIE Players is a suite of packages. It includes:
 
 - **Item player**: renders one PIE item, loads the required element bundles, manages item session state, and emits item-level lifecycle and response events.
 - **Section player**: composes items, passages, section-level tools, item and passage toolbars, layouts, and section session state into a complete section screen.
 - **Assessment player**: a reference assembly that coordinates section routing, assessment-level session snapshots, progress, and submission on top of the section player. It shows how a custom multi-section player is built and is not a production delivery shell.
 - **Assessment toolkit**: coordinates tools, accommodations, text-to-speech, highlighting, accessibility catalogs, and tool state through a single runtime coordinator.
-- **Tools and accommodations**: calculators, text-to-speech, ruler, protractor, line reader, answer eliminator, color scheme tools, and related service infrastructure.
+- **Tools and accommodations**: calculators, graphing, a periodic table, dictionary and picture dictionary, text-to-speech, highlighting and underlining, ruler, protractor, line reader, answer eliminator, color scheme tools, sign language video, and related service infrastructure.
 - **Print, theming, TTS, demos, and verification**: supporting packages and apps that make the runtime testable, publishable, and usable in production-style environments.
 
 ## Why a New Player Project
@@ -33,7 +33,7 @@ PIE Players modernizes that model around web components, TypeScript, Svelte 5, E
 | --- | --- | --- |
 | Delivery and authoring | Separate delivery and authoring custom elements. | One item player surface supports delivery, evaluation, and authoring through mode. |
 | Loading | Primarily IIFE bundle loading through script injection. | Three strategies: IIFE for compatibility, ESM for modern module loading, and preloaded for zero runtime fetch paths. |
-| Session handling | More logic was embedded in player implementation details. | Item, section, and assessment controllers expose clearer ownership for response, navigation, and persistence snapshots. |
+| Session handling | More logic was embedded in player implementation details. | Item and section controllers, with the toolkit's assessment-session helpers, expose clearer ownership for response, navigation, and persistence snapshots. |
 | Composition | Products often built their own item-plus-passage and assessment shells. | The section player provides a tested composition layer and the toolkit the assessment-session state above it; hosts build the multi-section shell and own its policy, with the assessment player as a reference. |
 | Tools and accommodations | No central toolkit model in the player itself. | Assessment toolkit coordinates tools, accommodations, TTS, highlighting, catalogs, and tool state. |
 | Observability | Telemetry was narrower and more implementation-specific. | Provider-agnostic streams exist across item, section, assessment, toolkit, and tool/backend operations. |
@@ -42,7 +42,7 @@ PIE Players modernizes that model around web components, TypeScript, Svelte 5, E
 
 The project is layered so teams can adopt only what they need:
 
-- **Use item player** when a product needs to render a single PIE item and own the surrounding application shell itself.
+- **Use item player** when a product needs to render a single PIE item and own the surrounding application shell itself. Wrapped in `<pie-item-scope>` inside `<pie-assessment-toolkit>`, it gets the toolkit's tools and accommodations without a section player.
 - **Use section player** when the product needs a complete section screen: passages, items, section navigation, section tools, item and passage toolbars, and section session state.
 - **Build your own assessment player** for multi-section delivery: section players, one toolkit coordinator per attempt, and the toolkit's assessment-session helpers, with routing, persistence and submission against your backend. The assessment player and its demos show that assembly working and are the place to start reading.
 
@@ -64,7 +64,7 @@ This matters because real assessment screens are not just questions. They includ
 
 ## Observability and Runtime Signals
 
-Observability is part of the architecture, not an afterthought. PIE Players uses provider-agnostic instrumentation contracts so a host can route signals to New Relic, a debug overlay, a composite provider, or another monitoring backend.
+Every layer emits provider-agnostic instrumentation, so a host can route signals to New Relic, a debug overlay, a composite provider, or another monitoring backend.
 
 Each layer owns its own semantic stream:
 
@@ -83,7 +83,7 @@ The project improves developer experience in several ways:
 - **Standard tooling**: Bun, Turbo, Vite, TypeScript, Biome, Playwright, and Changesets replace more bespoke workflows.
 - **Dist-first demos**: demo apps load built package artifacts the same way consumers do, reducing "works locally but not from npm" drift.
 - **Explicit boundaries**: consumers import custom-element entrypoints and package exports, not internal source paths.
-- **Clear controllers**: item, section, and assessment controllers make ownership of session, navigation, and persistence snapshots more explicit.
+- **Clear controllers**: item and section controllers, with the toolkit's assessment-session helpers, make ownership of session, navigation, and persistence snapshots more explicit.
 - **Verification gates**: package metadata, custom element registration, source export boundaries, runtime compatibility, dependency integrity, type surfaces, package packing, and fixed versioning are checked before publish.
 
 These same qualities improve AI-assisted development. Agents and developers have fewer hidden conventions to infer, clearer public surfaces to follow, and better tests/checks to catch accidental boundary violations.
@@ -92,7 +92,7 @@ These same qualities improve AI-assisted development. Agents and developers have
 
 Publishable packages in the project use fixed versioning. Consumers can pick one version of the `@pie-players/*` suite and update the suite together, without maintaining a compatibility matrix across players, tools, toolkit services, and shared packages.
 
-The release pipeline builds publishable packages, verifies package metadata and exports, checks custom element safety, validates type and pack surfaces, runs dependency and consumer-boundary checks, enforces fixed versioning, and publishes preloaded player variants as part of the release flow.
+The release pipeline builds publishable packages, verifies package metadata and exports, checks custom element safety, validates type and pack surfaces, runs dependency and consumer-boundary checks, and enforces fixed versioning. Preloaded player builds publish from their own workflow on pushes to `master`.
 
 ## Current Status
 

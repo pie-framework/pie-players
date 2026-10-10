@@ -260,7 +260,7 @@ explicitly runs that preprocessing step.
 
 **What happens:**
 1. Preprocessing extracts `<speak>` content
-2. Generates catalog entry with ID `auto-prompt-q1`
+2. Generates catalog entry with ID `auto-prompt-q1-0`
 3. Removes `<speak>` tags from visual markup
 4. Docks the catalog on the element wrapping the `<speak>` — the `<div>` above — via `data-catalog-idref`
 5. Runtime catalog registration registers the extracted catalog
@@ -392,14 +392,11 @@ Always test how your SSML sounds. Use the PIE demos or AWS Polly console to prev
 
 ## SSML Provider Support
 
-Not all TTS providers support SSML equally:
-
-| Provider | SSML Support | Notes |
-|----------|--------------|-------|
-| **AWS Polly** | ✅ Full | Supports all common tags |
-| **Google Cloud TTS** | ✅ Full | Supports all common tags |
-| **Azure Speech** | ✅ Full | Supports all common tags |
-| **Browser TTS** | ⚠️ Limited | Tags are stripped; the text is read plainly |
+| Provider | SSML support |
+|----------|--------------|
+| **AWS Polly** | Polly's supported subset ([tags](https://docs.aws.amazon.com/polly/latest/dg/supportedtags.html)) |
+| **Google Cloud TTS** | Google's supported subset ([tags](https://cloud.google.com/text-to-speech/docs/ssml)) |
+| **Browser TTS** | None: tags are stripped and the text is read plainly |
 
 **Recommendation:** Author with SSML for cloud TTS. Browser speech strips the tags and reads the text, which is acceptable for basic functionality.
 
@@ -531,77 +528,6 @@ Question 2: "The author's main purpose..." (with 4 options)
 
 ---
 
-## AWS Polly SSML Reference (Common Tags)
-
-PIE Players with AWS Polly support these SSML tags:
-
-### Pauses
-
-```xml
-<break time="300ms"/>          <!-- Exact duration -->
-<break strength="strong"/>      <!-- Named strength -->
-```
-
-### Speaking Rate
-
-```xml
-<prosody rate="slow">text</prosody>
-<prosody rate="80%">text</prosody>
-```
-
-### Emphasis
-
-```xml
-<emphasis level="strong">important word</emphasis>
-```
-
-### Pronunciation
-
-```xml
-<sub alias="sequel">SQL</sub>
-<phoneme alphabet="ipa" ph="təˈmeɪtoʊ">tomato</phoneme>
-```
-
-### Pitch and Volume
-
-```xml
-<prosody pitch="high">text</prosody>
-<prosody volume="loud">text</prosody>
-```
-
-### Language
-
-```xml
-<lang xml:lang="es-ES">Hola</lang>
-```
-
-**Full reference:** [AWS Polly SSML Tags](https://docs.aws.amazon.com/polly/latest/dg/supportedtags.html)
-
----
-
-## Prosody Guidelines
-
-### Pause Durations
-
-| Context | Duration | Example |
-|---------|----------|---------|
-| Between sentences | Natural (.) | Use periods |
-| After heading | 300-500ms | `<break time="300ms"/>` |
-| Between list items | 200ms | `<break time="200ms"/>` |
-| Between clauses | 100ms | Use commas or `<break time="100ms"/>` |
-| After labels | 200-300ms | "Question 1: <break time="300ms"/>" |
-
-### Speaking Rates
-
-| Content Type | Rate | Example |
-|--------------|------|---------|
-| Normal prose | `medium` (default) | Passages, instructions |
-| Math expressions | `slow` or `80%` | "x² - 5x + 6" |
-| Technical terms | `slow` | "polynomial", "coefficient" |
-| Review/summary | `medium` to `fast` | End-of-section review |
-
----
-
 ## Testing Your SSML
 
 ### 1. Use the Demo Apps
@@ -721,9 +647,6 @@ If you're unsure whether to add SSML:
 
 - [TTS Architecture](./tts-architecture.md) - Technical implementation details
 - [Accessibility Catalogs Integration Guide](./accessibility-catalogs-integration-guide.md) - How to structure catalogs
-- [SSML Extraction](./accessibility-catalogs-tts-integration.md) - SSML extraction and catalog registration
-- [AWS SSML Tags Reference](./aws-ssml-tags-reference.md) - Complete tag list
-
----
-
-**Author:** PIE Players Team
+- [SSML Extraction](./accessibility-catalogs-integration-guide.md#ssml-extraction-from-pie-content) - SSML extraction and catalog registration
+- [Accessibility Catalogs TTS Integration](./accessibility-catalogs-tts-integration.md) - How TTS resolves a card, and troubleshooting
+- [Polly SSML reference](https://docs.aws.amazon.com/polly/latest/dg/supportedtags.html) - Tags and `amazon:*` extensions Polly supports

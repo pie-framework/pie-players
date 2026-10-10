@@ -14,6 +14,10 @@ import type {
 	SectionControllerSessionState,
 } from "../types.js";
 
+type AssessmentErrorPhase = Parameters<
+	NonNullable<AssessmentPlayerHooks["onError"]>
+>[1]["phase"];
+
 export interface AssessmentControllerRuntimeState {
 	readiness: "bootstrapping" | "hydrating" | "ready" | "error";
 	currentSectionIndex: number;
@@ -317,17 +321,29 @@ export class AssessmentController implements AssessmentControllerHandle {
 
 	private handleError(
 		error: unknown,
-		phase:
-			| "delivery-plan-create"
-			| "session-load"
-			| "session-save"
-			| "controller-init"
-			| "controller-dispose"
-			| "navigation",
+		phase: AssessmentErrorPhase,
 		details?: Record<string, unknown>,
 	): void {
 		const e = error instanceof Error ? error : new Error(String(error));
 		this.args.hooks?.onError?.(e, { phase, details });
+	}
+
+	/**
+	 * Marks a live controller failed and reports through `onError` when a phase is
+	 * given. A throwing hook is logged so the caller still rethrows the original.
+	 */
+	private reportFailure(
+		error: unknown,
+		phase: AssessmentErrorPhase | null,
+	): void {
+		try {
+			if (!this.disposed) {
+				this.readiness = "error";
+				if (phase) this.handleError(error, phase);
+			}
+		} catch (reportError) {
+			console.error("Assessment error hook failed", reportError);
+		}
 	}
 
 	private async getPersistenceStrategy(): Promise<AssessmentSessionPersistenceStrategy> {
@@ -429,14 +445,7 @@ export class AssessmentController implements AssessmentControllerHandle {
 			this.assertActive();
 			this.readiness = "ready";
 		} catch (error) {
-			try {
-				if (!this.disposed) {
-					this.readiness = "error";
-					if (errorPhase) this.handleError(error, errorPhase);
-				}
-			} catch (reportError) {
-				console.error("Assessment error hook failed", reportError);
-			}
+			this.reportFailure(error, errorPhase);
 			throw error;
 		}
 	}
@@ -462,14 +471,7 @@ export class AssessmentController implements AssessmentControllerHandle {
 			if (loaded) this.emit({ type: "assessment-session-applied", timestamp: now() });
 			this.assertActive();
 		} catch (error) {
-			try {
-				if (!this.disposed) {
-					this.readiness = "error";
-					this.handleError(error, "session-load");
-				}
-			} catch (reportError) {
-				console.error("Assessment error hook failed", reportError);
-			}
+			this.reportFailure(error, "session-load");
 			throw error;
 		}
 	}
@@ -580,6 +582,7 @@ export class AssessmentController implements AssessmentControllerHandle {
 			canNext: nextSnapshot.canNext,
 			canPrevious: nextSnapshot.canPrevious,
 		});
+		// A listener may dispose the controller; stop emitting once it has.
 		if (this.disposed) return false;
 		this.emit({ type: "assessment-session-changed", timestamp: now() });
 		if (this.disposed) return false;

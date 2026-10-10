@@ -321,7 +321,7 @@ alone sets `nds-icons`, links no Roboto or Font Awesome stylesheet and serves fr
 a Renaissance origin, so its buttons keep the Roboto and Font Awesome Free they
 load today. Row verification dates are unchanged.
 
-The 2026-09-17 session-commit change (PIE-1058) was checked against the
+The 2026-09-17 session-commit change was checked against the
 recorded rows rather than re-derived from the checkouts. It renames and removes
 nothing: `pie-item-player` gains one opt-in property, `session-snapshot`, one
 event, `session-snapshot-available`, and two methods,

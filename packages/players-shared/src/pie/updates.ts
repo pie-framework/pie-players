@@ -21,7 +21,6 @@ import type {
 import { defaultPieElementOptions } from "./types.js";
 import { findOrAddSession } from "./utils.js";
 
-// Create module-level logger (respects global debug flag - pass function for dynamic checking)
 const logger = createPieLogger("pie-updates", () => isGlobalDebugEnabled());
 
 type ControllerErrorDetail = {
@@ -120,8 +119,10 @@ const trackRemoval = (element: Element): (() => boolean) => {
 };
 
 /**
- * Helper function to apply controller to element
- * Extracted to eliminate duplication and ensure consistent controller invocation
+ * Runs the controller's `model()` and assigns the result to the element, with
+ * the authored model's `id` and `element` as defaults, together with the
+ * session the controller may have written to. Assigns nothing once the element
+ * was removed.
  */
 const applyControllerToElement = async (
 	element: PieElement,
@@ -200,7 +201,7 @@ const applyControllerToElement = async (
 		element.session = elementSession;
 	} catch (err) {
 		logger.error(`${logPrefix} ❌ Controller error:`, err);
-		throw err; // Re-throw - controller errors are fatal
+		throw err; // The caller reports it and falls back to the authored model.
 	}
 };
 

@@ -1,7 +1,7 @@
 /**
- * A problem using the spread operator merging objects is that undefined properties may override
- * defined properties, which is often NOT what you want (e.g. when providing default values). This
- * function merges objects, but ignores properties that are null or undefined.
+ * Merges objects left to right, skipping properties whose value is `null` or
+ * `undefined`, so a later object's unset field never overrides an earlier
+ * default the way object spread does.
  * @param objects The objects to merge.
  */
 export const mergeObjectsIgnoringNullUndefined = <T extends object>(
@@ -26,14 +26,11 @@ export const mergeObjectsIgnoringNullUndefined = <T extends object>(
  */
 export const cloneDeep = <T>(value: T): T => {
 	if (value === null || typeof value !== "object") {
-		// Primitive value (or null), just return it
 		return value;
 	}
 	if (Array.isArray(value)) {
-		// Array: clone each element recursively
 		return value.map(cloneDeep) as T;
 	}
-	// Object: create a new object and clone its properties
 	const copy = {} as T;
 	for (const key in value as any) {
 		if (Object.hasOwn(value, key)) {

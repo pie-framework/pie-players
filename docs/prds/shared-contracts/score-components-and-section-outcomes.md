@@ -184,5 +184,5 @@ bun run check:custom-elements
 
 - Should `@pie-players/pie-players-shared` be the canonical type home?
 - Should section score projections be controller methods, helper functions, host adapters, or a separate package?
-- Should toolkit `AssessmentSession` become the canonical assessment session type for assessment-player before assessment-level outcomes are added?
+- Resolved: `AssessmentSession` is canonical in `@pie-players/pie-players-shared/types`, and the `@pie-players/pie-assessment-toolkit` root re-exports it.
 - Which aggregation defaults, if any, should PIE provide?

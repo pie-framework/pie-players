@@ -13,19 +13,15 @@ const srcComponents = path.join(packageRoot, "src", "components");
 const distComponents = path.join(packageRoot, "dist", "components");
 
 // Every runtime dependency stays external, so a dependency reaches a consumer's
-// graph exactly once.
+// graph exactly once. An inlined copy has this package's chunk file as its
+// module id, so a consumer's bundler cannot deduplicate it against the same
+// dependency reached through the tsc module output: `speech-rule-engine` landed
+// in the section player twice that way (~1.3 MB), once via
+// `services/tts/math-speech.js` and once inside the pre-bundled CE chunk.
 //
-// Inlining a dependency here creates a copy the consumer's bundler cannot
-// deduplicate: its module id is this package's chunk file, not the dependency's
-// path in `node_modules`, so a consumer that also reaches that dependency
-// through our tsc module output ends up bundling it twice. That is not
-// hypothetical — `speech-rule-engine` was landing in the section player twice
-// (~1.3 MB) for exactly this reason, once via `services/tts/math-speech.js` and
-// once inside the pre-bundled CE chunk.
-//
-// This imposes nothing new on consumers: these artifacts already emit bare
+// Consumers already need a bundler for these artifacts: they emit bare
 // `@pie-players/*` specifiers and import `speech-rule-engine`'s JSON locale
-// tables without import attributes, so they require a bundler.
+// tables without import attributes.
 const packageManifest = JSON.parse(
 	readFileSync(path.join(packageRoot, "package.json"), "utf8"),
 );
@@ -48,12 +44,12 @@ rmSync(path.join(distComponents, ".generated"), {
 // otherwise accumulate into the published `files: ["dist"]` payload.
 rmSync(path.join(distComponents, "chunks"), { recursive: true, force: true });
 
-// Every CE goes through one bundler invocation so they share chunks instead
-// of each inlining its own copy of the Svelte runtime, the services layer, and
-// the policy engine. Bundling them separately triplicated that code.
+// Every CE goes through one bundler invocation so they share one copy of the
+// Svelte runtime, the services layer and the policy engine through chunks;
+// bundling them separately triplicated that code.
 //
-// `generated` deliberately sits directly in `dist/components`, not a
-// subdirectory: the Svelte compiler emits relative specifiers such as
+// `generated` sits directly in `dist/components` because the Svelte compiler
+// emits relative specifiers such as
 // `../services/ToolkitCoordinator.js`, which only resolve against the tsc
 // output when the bundler entry sits at the same depth as the artifact it
 // stands in for. The temp basename is the CE's base name so that
@@ -81,13 +77,11 @@ const entries = [
 }));
 
 // Redirect cross-CE registration imports onto the sibling entry in this same
-// build. The old script sidestepped this by bundling one entry at a time, in an
-// order where the referenced `*.custom-element.js` happened to already exist on
-// disk — an unstated ordering dependency that also made `SectionToolBar` inline
-// a complete second copy of the already-bundled `ItemToolBar`. Pointing at the
-// entry instead lets the bundler share one copy through `chunks/` while keeping
-// the registration side effect intact: importing `section-toolbar-element` still
-// registers `pie-item-toolbar`.
+// build, so the bundler shares one copy through `chunks/` and the registration
+// side effect holds: importing `section-toolbar-element` still registers
+// `pie-item-toolbar`. Following the shim needs the referenced
+// `*.custom-element.js` on disk already, an ordering dependency between entries
+// that also inlined a second copy of `ItemToolBar` into `SectionToolBar`.
 const REGISTRATION_ENTRY_REWRITES = new Map(
 	entries.map((entry) => [
 		`./${entry.registrationEntry}.js`,
@@ -189,15 +183,12 @@ const dropSvelteDevImport = {
 	},
 };
 
-// One invocation for every entry. `splitting` is what lets the bundler hoist
-// shared code into `chunks/`, and it is also what makes dynamic imports stay
-// dynamic: with the previous single-file `--outfile` build there was nowhere to
-// put a chunk, so the `import("speech-rule-engine")` in
-// `src/services/tts/math-speech.ts` was flattened into the eager bundle —
-// roughly half of the toolkit artifact, loaded by every host whether or not it
-// ever spoke a formula. Splitting restores the lazy boundary the source asks
-// for. `minify` matches what every Vite-built package in this repo already
-// does; this script predates that convention and never adopted it.
+// One invocation for every entry. `splitting` hoists shared code into `chunks/`
+// and keeps dynamic imports dynamic: without a place for chunks, the
+// `import("speech-rule-engine")` in `src/services/tts/math-speech.ts` is
+// flattened into the eager bundle, roughly half of the toolkit artifact, loaded
+// by every host whether or not it speaks a formula. `minify` matches the
+// Vite-built packages in this repo.
 //
 // The `NODE_ENV` define and the `production` condition are Bun's production
 // resolution for every module the plugin does not rewrite. The define alone

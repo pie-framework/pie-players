@@ -1,9 +1,9 @@
 # Composition Context
 
 Authored content renders in containers it was never written for. An item goes
-into a section player's split pane, a vertical stack, a tabbed narrow layout, a
-Studio preview, a print booklet, Quiz Engine's page and DNA-OT's page — and some
-part of rendering it correctly depends on which of those it landed in.
+into a section player's split pane, a vertical stack, a tabbed narrow layout, an
+authoring preview, a print booklet or a host's own page, and some part of
+rendering it correctly depends on which of those it landed in.
 
 **Composition context** is the name for those facts. A composition context is a
 fact about the *place* content is rendered, not about the content and not about
@@ -47,8 +47,8 @@ Property, then attribute, then a default that works with no publisher at all.
 published context without one is read exactly once.
 
 **Graceful default.** What a resolver produces with no publisher present. This is
-what lets the same component render inside our players, inside Studio, and in a
-bare page.
+what lets the same component render inside our players, inside an authoring
+host, and in a bare page.
 
 ## Why pull rather than push
 
@@ -76,8 +76,8 @@ player knows none of that.
 independently, and fetched at runtime from a bundle service. A push channel needs
 a container release for every new consumer; a pull channel needs none.
 
-**Resolvers must work with no container.** The same elements run in Studio
-preview, in authoring harnesses, and in `print-player`, which never mounts a
+**Resolvers must work with no container.** The same elements run in authoring
+previews, in authoring harnesses, and in `print-player`, which never mounts a
 player element at all. Pull degrades to the graceful default. Push makes the
 container a hard dependency.
 
@@ -96,19 +96,10 @@ has to carry client display state, and caching and diffing lose their meaning.
 These are the parts that have failed in practice.
 
 **A published context must carry a change signal.** Without one, resolvers pin
-the first value they see and nothing errors. This has failed twice here, at two
-different layers, in the same quarter:
-
-- `ToolSurfaceRenderResult.sync` took no argument, so a capability had nothing to
-  read but the context captured when it first rendered. A signed alternate
-  re-resolved to a different recording left the learner watching the previous
-  one.
-- `baseHeadingLevel` was published as a property but the resolver observes the
-  attribute, so a host's change reached the element's property and never
-  triggered a re-read. Two of a demo's controls did nothing.
-
-Both were silent. Both rendered the first value forever. When you add a
-composition context, decide the change signal in the same change as the value.
+the first value they see and nothing errors; this failed silently in
+`ToolSurfaceRenderResult.sync`, which took no argument, and in
+`baseHeadingLevel`, published as a property while the resolver observes the
+attribute. Decide the change signal in the same change as the value.
 
 **Publish the invariant, derive the variant.** Split the decision so the
 publisher owns the small, slow-changing half and the resolver owns the
@@ -138,10 +129,9 @@ without skipping and must not duplicate. Two constraints collide:
   duplicate.
 - The element knows what headings it emits, which differs per element type.
 
-The same element wants opposite answers in different containers. From the design
-record for [PIE-159](https://illuminate.atlassian.net/browse/PIE-159): in Quiz
-Engine the item level is `h2` and the element must furnish no heading, because
-the section player supplies "Question 5"; in DNA-OT the item level is `h2` and the
+The same element wants opposite answers in different containers. In one host
+the item level is `h2` and the element must furnish no heading, because the
+section player supplies "Question 5"; in another the item level is `h2` and the
 element must furnish its own, because nothing above it does.
 
 ### The mechanism
@@ -208,14 +198,12 @@ Three defects, all one cause — a composition context that was never published:
 2. **Flat passage structure.** The passage title sat at the level of its own
    group label.
 3. **Authored headings inert.** `data-heading` markup is only promoted to heading
-   elements once a level is published. Nothing published one, so
-   [PIE-151](https://illuminate.atlassian.net/browse/PIE-151) — semantic headings
-   inside passages and prompts — produced paragraphs in every shipped host.
+   elements once a level is published. Nothing published one, so semantic
+   headings inside passages and prompts produced paragraphs in every shipped host.
 
-The third is the one worth dwelling on for planning purposes. It was a completed
-feature, with authored content already relying on it, that produced nothing. No
-error, no warning, no failing test: the markup rendered, it just was not
-structure. A composition context with no publisher does not announce itself.
+The third was a shipped feature that authored content already relied on, and it
+failed with no error, warning or failing test: a composition context with no
+publisher does not announce itself.
 
 ### Beyond screen readers
 
@@ -255,9 +243,3 @@ invariants do not.
 - [`developer_patterns.md`](./developer_patterns.md) — CE communication mechanisms
 - [`../tools-and-accomodations/architecture.md`](../tools-and-accomodations/architecture.md)
   — host surfaces, the same pattern applied to tool capabilities
-- [PIE-159](https://illuminate.atlassian.net/browse/PIE-159) — heading structure
-  for screen-reader accessibility, and its design record
-- [PIE-150](https://illuminate.atlassian.net/browse/PIE-150) — host-controlled
-  passage heading level
-- [PIE-151](https://illuminate.atlassian.net/browse/PIE-151) — `data-heading`
-  semantic markup for headings inside content

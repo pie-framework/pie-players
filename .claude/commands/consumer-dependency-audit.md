@@ -12,7 +12,7 @@ Scope from `$ARGUMENTS`:
 
 - **Empty** — full refresh. Resolve every consumer label, re-derive each one,
   rewrite the pad, advance the verified date.
-- **A consumer label** (`Host V`, `Host A`, `Host R`) — re-derive that consumer
+- **A consumer label** (`Host A`, `Host M`, `Host P`, `Host R`, `Host V`) — re-derive that consumer
   only. Leave the other rows and their verification dates alone, and do not
   advance the pad's date.
 - **A surface** (a tag, attribute, event, export path, token, or method name) —

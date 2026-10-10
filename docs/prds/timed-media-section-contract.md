@@ -471,7 +471,7 @@ means "counts toward completion" and would silently change gate behaviour for an
 author who set it for a completion reason.
 
 **Composition authoring is PIE-native, needs the media resolvable, and is built in
-composer.** Three decisions for the future authoring PRD, which this one does not
+a separate authoring application.** Three decisions for the future authoring PRD, which this one does not
 write. The authored artifact is `timedMedia` itself, not QTI-with-cues: no QTI
 representation of cue-gated delivery exists, so authoring into QTI would make the
 authoring surface the place those semantics are invented and leave the conversion
@@ -481,14 +481,14 @@ because scrubbing against the real clip is the value and timestamps typed blind
 against an absent asset are the hand-writing this surface exists to replace —
 `MediaAssetRef` already carries the reference, and supplying a playable one is a
 prerequisite on the host's asset pipeline rather than work this surface does. The
-surface is built in `kds/composer`, which already owns item and passage authoring and
-already assembles and previews an `AssessmentSection`; a new `pie-players` package
+surface is built in the authoring application that already owns item and passage
+authoring and already assembles and previews an `AssessmentSection`; a new `pie-players` package
 would have to grow item and passage authoring from nothing to invoke them, which
 [Authoring Model](../architecture/timed-media-section.md#authoring-model) assigns
 elsewhere. The PRD lives here, beside this contract and the shared contracts it
-depends on. Condition on the location: composer is pre-production,
-single-developer and not tracked in Jira, so that tracking gap is closed before the
-work starts rather than inherited with it.
+depends on. Condition on the location: that application is pre-production,
+single-developer and has no issue tracking, so that gap is closed before the work
+starts.
 
 What the MVP contains is that PRD's to set. The architecture note's Authoring Model
 already enumerates the surface — cue points, cue-to-item bindings, playback and

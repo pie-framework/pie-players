@@ -209,11 +209,9 @@
 		color: var(--pie-section-player-tab-color, var(--pie-text, #111827));
 		padding: var(--pie-section-player-tab-padding-block, 0.35rem) 12px;
 		font: inherit;
-		/* Was a hard `12px`, the only pixel type size in the content path: it
-		   ignored the font accommodation and the reader's own browser font size
-		   alike, leaving 12px tab labels beside body text at 175%. `0.75rem` is
-		   the same 12px at a default root, so this only diverges for a host that
-		   moves the root size — which is the point of using rem. */
+		/* rem, so the label follows the font accommodation and the reader's own
+		   browser font size along with the body text. `0.75rem` is 12px at a
+		   default root. */
 		font-size: calc(0.75rem * var(--pie-font-scale, 1));
 		font-weight: 600;
 		cursor: pointer;

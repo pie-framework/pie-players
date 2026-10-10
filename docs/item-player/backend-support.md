@@ -31,6 +31,8 @@ player.backend = {
 };
 ```
 
+The `endpoints` shown are the defaults; a host sets only the paths it changes.
+
 Existing delivery inputs stay where they are: `env`, `strategy`,
 `loaderOptions`, `renderStimulus`, styling props, `config`,
 and `session` are not duplicated under `backend.delivery`.

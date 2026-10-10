@@ -1,10 +1,12 @@
 <!--
-  PieItemPlayer - Pure PIE Item Renderer
-  
-  This component renders a PIE item using direct PIE elements (no pie-player wrapper).
-  It assumes PIE bundles are already loaded via window.pie.
-  
-  Uses the same reactive pattern as PieItemPreview.svelte (proven to work).
+  PieItemPlayer - renders one item, and its passage, with direct PIE elements
+  from bundles already on window.pie (no pie-player wrapper).
+
+  Layout: props; markup (author-mode rewrite, then sanitization); error
+  reporting; authoring handlers; correct-response population; session
+  forwarding from elements to the owning player; initialization once the
+  markup renders; the env/session update pass; the post-render wrap pass; and
+  markup math, which `load-complete` waits on.
 -->
 <script lang="ts">
   import { onDestroy, tick, untrack } from "svelte";
@@ -69,12 +71,11 @@
     SoundHandler,
   } from "../types/index.js";
 
-  // Create logger (respects global debug flag - pass function for dynamic checking)
+  // A function, so toggling the global debug flag takes effect without a remount.
   const logger = createPieLogger("pie-item-player", () =>
     isGlobalDebugEnabled()
   );
 
-  // Use Svelte 5 runes for props
   let {
     itemConfig,
     passageConfig = null,
@@ -101,7 +102,7 @@
     onDeleteImage,
     onInsertSound,
     onDeleteSound,
-    // Event callbacks (Svelte 5 pattern)
+    // Event callbacks
     onLoadComplete,
     onPlayerError,
     onSessionChanged,
@@ -224,8 +225,9 @@
      * Interface-locale provider for the player's own chrome — error banners, status
      * text. Not the authored content's language, which the item declares.
      *
-     * Optional: this component renders in Studio preview and in `print-player`,
-     * neither of which publishes one, and the English-only default covers that.
+     * Optional: this component renders in authoring previews and in
+     * `print-player`, neither of which publishes one, and the English-only
+     * default covers that.
      */
     i18n?: I18nProvider;
   } = $props();
@@ -287,6 +289,12 @@
     return applySanitizer(raw, passageAllowList);
   });
 
+  const UNKNOWN_RUNTIME_ERROR_MESSAGE = "Unknown PIE runtime error";
+
+  function isNonBlankString(value: unknown): value is string {
+    return typeof value === "string" && value.trim().length > 0;
+  }
+
   /** A detail that does not say it is recoverable is reported as unrecoverable. */
   function normalizePlayerErrorDetail(
     detail: unknown,
@@ -294,21 +302,18 @@
   ): PieItemPlayerErrorDetail {
     if (detail && typeof detail === "object") {
       const detailObject = detail as Record<string, unknown>;
-      const message =
-        typeof detailObject.message === "string" && detailObject.message.trim().length > 0
-          ? detailObject.message
-          : "Unknown PIE runtime error";
-      const code =
-        typeof detailObject.code === "string" && detailObject.code.trim().length > 0
-          ? detailObject.code
-          : fallbackCode;
+      const message = isNonBlankString(detailObject.message)
+        ? detailObject.message
+        : UNKNOWN_RUNTIME_ERROR_MESSAGE;
+      const code = isNonBlankString(detailObject.code)
+        ? detailObject.code
+        : fallbackCode;
       const recoverable = detailObject.recoverable === true;
       return { ...detailObject, message, code, recoverable };
     }
-    const message =
-      typeof detail === "string" && detail.trim().length > 0
-        ? detail
-        : "Unknown PIE runtime error";
+    const message = isNonBlankString(detail)
+      ? detail
+      : UNKNOWN_RUNTIME_ERROR_MESSAGE;
     return { code: fallbackCode, message, recoverable: false };
   }
 
@@ -385,11 +390,8 @@
 
   function buildEffectiveAuthoringHandlers() {
     if (authoringBackend === "required") {
-      const missing: string[] = [];
-      if (!onInsertImage) missing.push("onInsertImage");
-      if (!onDeleteImage) missing.push("onDeleteImage");
-      if (!onInsertSound) missing.push("onInsertSound");
-      if (!onDeleteSound) missing.push("onDeleteSound");
+      const handlers = { onInsertImage, onDeleteImage, onInsertSound, onDeleteSound };
+      const missing = requiredHandlerNames.filter((name) => !handlers[name]);
 
       if (missing.length > 0) {
         const message = `Authoring backend is required but missing handlers: ${missing.join(", ")}. Provide all ${requiredHandlerNames.join(", ")} callbacks.`;
@@ -459,12 +461,9 @@
 
   // Populate session with correct responses when addCorrectResponse is true
   async function populateCorrectResponses(force = false) {
-    // Early return checks
     if (!addCorrectResponse || !itemConfig || (correctResponsesAdded && !force))
       return;
 
-    // Keep evaluate mode behavior unchanged by forcing instructor role internally
-    // when generating correct responses.
     if (!canPopulateCorrectResponses(env)) {
       logger.debug(
         "[PieItemPlayer] Skipping populateCorrectResponses - env not suitable (mode=%s)",
@@ -472,6 +471,8 @@
       );
       return;
     }
+    // Keep evaluate mode behavior unchanged by forcing instructor role internally
+    // when generating correct responses.
     const correctResponseEnv = getCorrectResponseEnv(env);
     const newSession: any[] = [];
 
@@ -492,7 +493,6 @@
               correctResponseEnv
             )) as any;
 
-          // Check if we got a valid response
           if (!correctResponse) {
             logger.debug(
               "[PieItemPlayer] createCorrectResponseSession returned null for %s (env=%j)",
@@ -518,7 +518,6 @@
       }
     }
 
-    // Update session with correct responses
     session.length = 0;
     session.push(...newSession);
 
@@ -599,7 +598,6 @@
     }
   }
 
-  // Build CSS classes for containers using $derived
   const passageContainerClassFinal = $derived(
     ["pie-passage-container", customClassName, passageContainerClass]
       .filter(Boolean)
@@ -638,9 +636,7 @@
     if (Array.isArray(record.data)) return;
     const entryId = typeof record.id === "string" ? record.id : "";
     if (!entryId) return;
-    const existing = session.find(
-      (entry: any) => entry && typeof entry === "object" && entry.id === entryId
-    );
+    const existing = sessionEntry(entryId);
     if (existing === record) return;
     if (existing) {
       Object.assign(existing, record);
@@ -672,7 +668,7 @@
     }
   }
 
-  function sessionEntry(modelId: string): unknown {
+  function sessionEntry(modelId: string): Record<string, unknown> | undefined {
     return session.find(
       (entry: any) => entry && typeof entry === "object" && entry.id === modelId
     );
@@ -817,7 +813,7 @@
     "pie-item-player"
   );
 
-  // Initialize PIE elements AFTER markup is rendered (reactive pattern like PieItemPreview)
+  // Initialize PIE elements once the markup has rendered.
   $effect(() => {
     if (!itemConfig || initialized) return;
     logger.debug(
@@ -850,7 +846,7 @@
           logger.debug("[PieItemPlayer] Initializing in authoring mode");
           authoringBlockedError = null;
           const effectiveHandlers = buildEffectiveAuthoringHandlers();
-          if (authoringBlockedError || !effectiveHandlers) {
+          if (!effectiveHandlers) {
             initialized = false;
             return;
           }
@@ -884,7 +880,7 @@
             configuration,
           });
 
-          if (rootElement && effectiveHandlers) {
+          if (rootElement) {
             assetEventManager = createAuthoringAssetEventManager(
               rootElement,
               effectiveHandlers,
@@ -960,8 +956,6 @@
 
         initialized = true;
 
-        // Note: Resource monitor starts automatically via useResourceMonitor when rootElement is set
-
         // Hosts reveal the item on `load-complete`, so it waits for the
         // elements to render and for the markup's math, which the flush below
         // starts typesetting.
@@ -1024,7 +1018,9 @@
     }
   });
 
-  // Update PIE elements when env or session changes (after initialization) - using $effect
+  // Keep the update guard active until controller-derived session writes have
+  // landed; if props change during that window, run once more with the latest
+  // state instead of dropping the update.
   let isUpdating = false;
   let updateQueued = false;
   function runElementUpdate() {
@@ -1081,10 +1077,10 @@
     });
   }
 
+  // Update PIE elements when env or session changes after initialization.
   $effect(() => {
     if (!initialized || !env || !itemConfig || !session) return;
 
-    // Log changes
     logger.debug("[PieItemPlayer] Dependencies changed, updating elements");
     logger.debug("[PieItemPlayer] Env:", env);
     logger.debug(
@@ -1092,9 +1088,6 @@
       session
     );
 
-    // Keep the update guard active until controller-derived session writes have
-    // landed; if props change during that window, run once more with the latest
-    // state instead of dropping the update.
     runElementUpdate();
   });
 
@@ -1104,14 +1097,11 @@
       const customEvent = event as CustomEvent;
       reportPlayerError(customEvent.detail, "PIE_CONTROLLER_RUNTIME_ERROR");
     };
-    rootElement.addEventListener(
-      "pie-controller-error",
-      handleControllerError as EventListener
-    );
+    rootElement.addEventListener("pie-controller-error", handleControllerError);
     return () => {
       rootElement?.removeEventListener(
         "pie-controller-error",
-        handleControllerError as EventListener
+        handleControllerError
       );
     };
   });
@@ -1250,7 +1240,8 @@
   //
   // Runs once the elements are initialized and again when a markup block is
   // replaced. Passes are chained, so none walks a root another is still
-  // typesetting.
+  // typesetting. The tag set is joined into a string so the pass re-runs only
+  // when the set changes.
   const markupMathTags = $derived(
     [...new Set([...itemAllowList, ...passageAllowList])].join(" ")
   );
@@ -1305,8 +1296,6 @@
         logger.warn("[PieItemPlayer] Typesetting the markup's math failed:", error);
       });
   });
-
-  // Note: Resource monitor cleanup is handled automatically by useResourceMonitor's onDestroy
 </script>
 
 <div class={rootClassFinal} bind:this={rootElement}>

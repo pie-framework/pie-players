@@ -24,7 +24,7 @@
  *   they never appeared in the authored markup string.
  *
  * The wrapping itself lives in `./wrap-overwide.js`, shared with the table
- * wrapper: only the four values below and the accessible name differ.
+ * wrapper: only the spec below differs.
  */
 
 import {

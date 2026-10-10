@@ -9,7 +9,6 @@ Related:
 
 - [PIE-727 Broad Theming Contract](../prds/pie-727-broad-theming-contract.md)
 - [PIE-727 Theme Token Inventory](./pie-727-theme-token-inventory.md)
-- [PIE-727 Theming Implementation Slices](./pie-727-theming-implementation-slices.md)
 
 ## Purpose
 
@@ -72,6 +71,9 @@ threshold rather than inferring a relationship from token names.
 | Canonical built-in palettes | `@pie-players/pie-theme` | Runtime and generated light-DOM CSS adapter | `default`, every built-in, base/provider precedence | Every built-in over light and dark base inputs | 1.4.1, 1.4.3, 1.4.11, 2.4.7, 2.4.13 | `packages/theme/tests/token-registry-contract.test.ts` and `theme-definition-contract.test.ts` assert complete participating token sets, opaque required contrast-role values, named 4.5:1 text and 3:1 UI/focus relationships, and generated/runtime parity | Covered |
 | Requested unavailable scheme | `@pie-players/pie-theme` | `<pie-theme>` self or document scope | unavailable, late registration, removal, re-registration | Light, dark, provider result, retained CSS selector hook | 1.4.1, 1.4.3, 1.4.11 | `packages/theme/tests/theme-resolution.test.ts` and `theme-element-dom.test.ts` assert the requested id survives while a safe palette renders and restores; `packages/section-player/tests/section-theme-color-scheme.spec.ts` asserts the normal cascade for stylesheet-only delivery, the `!important` boundary against mounted inline tokens, and a persisted unavailable scheme staying visible but unselectable | Covered |
 | Theme selector tool | `@pie-players/pie-tool-theme` (source at `packages/tool-color-scheme`) | Shadow DOM | `default`, `hover`, `focus-visible`, `selected`, `open`, `disabled`, `unavailable` | Default matrix set, every built-in derived preview, late custom registration, forced-colors | 1.4.1, 1.4.3, 1.4.11, 2.4.7, 2.4.11, 2.4.13, 2.5.8, 4.1.3 | `packages/tool-color-scheme/tests/built-theme-registry-integration.test.ts` asserts the built picker observes the theme-package registry; `section-theme-color-scheme.spec.ts` covers every built-in picker state at its named threshold, selected text through the DaisyUI provider, menu keyboard navigation with focus return on Escape, and forced-colors participation. Hover and disabled are not asserted | Partial |
+
+Floating tools still owe documentation of each package's private hooks in its own
+README, and of any hook promoted to public in the token registry.
 
 ## Required Commands
 

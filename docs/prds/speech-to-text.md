@@ -4,9 +4,6 @@ Status: Draft
 
 Owner: PIE Players maintainers
 
-Jira: [PIE-473](https://illuminate.atlassian.net/browse/PIE-473) Speech to Text (STT), under
-[PIE-500](https://illuminate.atlassian.net/browse/PIE-500) PIE Tools and Accommodations Master List.
-
 Related architecture:
 
 - [What Counts As A Tool](../tools-and-accomodations/architecture.md#what-counts-as-a-tool) — the
@@ -21,8 +18,8 @@ Related architecture:
 - [Non-Embedded Dictation](../tools-and-accomodations/non-embedded-dictation.md) — the guarantee from
   [Rollout](#rollout-and-release-notes) step 2, landed: what platform dictation into a PIE response
   surface is verified to do, and the blur commit boundary it exposed
-- [SchoolCity Tool Parity Report](../tools-and-accomodations/schoolcity-tool-parity-report.md) — the
-  row that produced this ticket
+- [SchoolCity Tool Parity Report](https://illuminate.atlassian.net/wiki/spaces/CE/pages/19505840145/SchoolCity+Tool+Parity+PIE+Players+Toolkit+Quiz+Engine+Host)
+  (Confluence) — the row that produced this ticket
 
 ## Problem
 
@@ -94,9 +91,8 @@ in-built options. Its VPAT covers question types and the assessment player, not 
 accommodation.
 
 Its voice-related question type, `audio` (audio recorder), captures a recording *as* the response and
-does not transcribe. That is voice-as-response, which is
-[PIE-489](https://illuminate.atlassian.net/browse/PIE-489) Alternative Input Methods, not this
-ticket — a distinction the parity report already draws and this PRD keeps.
+does not transcribe. That is voice-as-response, which belongs to alternative input methods; the parity report draws the
+same distinction, and this PRD keeps it.
 
 So Learnosity's answer to STT is the non-embedded one: the platform's AT does it, and the player is
 built not to obstruct it. That is a real position, cheaply available to PIE, and it is why the
@@ -177,7 +173,7 @@ which is why the provider interface below reports locality rather than assuming 
 - Keep non-embedded dictation working, deliberately: document that platform dictation into a PIE
   response surface is supported, and test it, so the accommodation PIE holds by accident becomes one
   it holds on purpose.
-- Give dictation a policy identity, so eligibility resolves through the existing six-level precedence
+- Give dictation a policy identity, so eligibility resolves through the existing PNP precedence
   and appears in the PNP debugger — including item-level restriction, which matters more here than for
   any presentation accommodation.
 - Define the insertion contract: how a transcript reaches a response without the player mutating
@@ -185,15 +181,15 @@ which is why the provider interface below reports locality rather than assuming 
 - Keep the recognizer swappable behind one capability — on-device Web Speech, platform AT, host
   service — with locality declared and enforced rather than assumed.
 - Make dictation target any declared editable surface rather than "the essay box", so notes
-  ([PIE-470](https://illuminate.atlassian.net/browse/PIE-470)) inherit it when they ship.
+  inherit it when they ship.
 
 ## Non-Goals
 
 - **Voice as the response.** Audio recording, storage, and playback as the scored artifact is
-  [PIE-489](https://illuminate.atlassian.net/browse/PIE-489) and Learnosity's `audio` question type.
+  alternative input and Learnosity's `audio` question type.
   Different feature, different scoring, different retention. Named here to fence it out.
 - **Human scribe.** A designated-support/accommodation delivered by a person, with no runtime surface.
-- **Spell check.** [PIE-495](https://illuminate.atlassian.net/browse/PIE-495) is the same layer and
+- **Spell check.** Spell check is the same layer and
   the same defect (`spellCheckEnabled` as an authored model field), and it has an actual AfA term,
   `spell-checker-on-screen`. It should reuse the input-support seam this PRD establishes, in its own
   PRD.
@@ -502,16 +498,15 @@ Playwright specs run outside the sandbox.
      `packages/item-player/tests/item-player-dictation.spec.ts`. It also established the commit
      boundary the rest of this PRD has to design around — a constructed response reaches the session
      on blur and not before, so a dictation affordance that keeps focus in the editor keeps the
-     response out of the session for as long as it runs
-     ([PIE-916](https://illuminate.atlassian.net/browse/PIE-916)).
+     response out of the session for as long as it runs.
   3. **Support id and policy identity**, so eligibility is auditable before any recognizer exists.
   4. **The capability package**, behind the on-device Web Speech provider only.
   5. **A remote provider**, only if a program needs a language on-device recognition does not cover on
      the platforms the program ships.
 - Release risk: low through step 3, then gated on the ChromeOS answer below. Steps 4 and 5 should not
   start until it is known.
-- Documentation updates: this PRD, the parity report row, and a section in
-  `docs/tools-and-accomodations/` on the non-embedded guarantee once step 2 lands.
+- Documentation updates: this PRD and the parity report row. The non-embedded guarantee is documented
+  in [`non-embedded-dictation.md`](../tools-and-accomodations/non-embedded-dictation.md).
 
 ## Open Questions
 
@@ -522,14 +517,14 @@ Playwright specs run outside the sandbox.
 - **Language-pack provisioning on a managed fleet.** ~60MB per language through `install()`. Is that
   an admin-pushed artifact or a per-device download, and what happens when a student triggers it
   mid-assessment on school wifi?
-- **Does Renaissance's secure-browser posture permit the microphone, and separately, permit OS
+- **Does the host's secure-browser posture permit the microphone, and separately, permit OS
   dictation?** These are independent answers with opposite consequences: if OS dictation is permitted,
   most of the need is already met at near-zero cost.
 - **Spanish.** The UAAG requires Spanish STT for math open-ended items. Chrome's on-device language
   list includes Spanish; per-platform verification is needed before committing.
 - **Does TipTap/ProseMirror honor an untrusted `beforeinput`?** Step 1 above. Everything else in the
   contract shape is contingent on it.
-- **Program tier and item scope.** Confirm Renaissance treats STT as accommodation-tier, and get the
+- **Program tier and item scope.** Confirm the program treats STT as accommodation-tier, and get the
   item-scope rule from assessment product. Which items may be dictated is a construct-validity
   decision — dictation on an item measuring transcription measures something else — and it is not an
   engineering call.

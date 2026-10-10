@@ -1,6 +1,6 @@
 # Controller Boundaries
 
-This package follows a controller-first boundary:
+The section player follows a controller-first boundary:
 
 - `SectionController` is the domain authority for section-level state (navigation, canonical item-session aggregation, persistence snapshots).
 - Custom elements (`pie-section-player*`, shell elements) are transport adapters only (DOM events, context bridging, host wiring).

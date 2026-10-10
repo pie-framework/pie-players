@@ -53,7 +53,6 @@ export function dynamicMessageKey(key: string): DynamicMessageKey {
  * Consulted only where `Intl.Locale.prototype.textInfo` is unavailable — it is
  * the authoritative CLDR answer but shipped late in Safari, and an assessment
  * laid out left-to-right for an Arabic reader is not a graceful degradation.
- * Replaces a four-entry list that omitted every subtag below.
  */
 const RTL_LANGUAGES = new Set([
 	"ar", // Arabic
@@ -127,12 +126,10 @@ export function detectBrowserLocale(): string {
 /**
  * The bundled provider.
  *
- * Retains the `SimpleI18n` name and the `I18nServiceApi` surface it published
- * before adoption. What changed is behaviour that had no caller: catalogs are
- * BCP-47 keyed and resolved through RFC 4647 lookup rather than string equality,
- * `dir`/`lang` are no longer written to `document.documentElement` (an embedded
- * player has no business writing the host page's root), and plural categories
- * come from `Intl.PluralRules` alone.
+ * Catalogs are BCP-47 keyed and resolved through RFC 4647 lookup, and plural
+ * categories come from `Intl.PluralRules`. It never writes `dir` or `lang` to
+ * `document.documentElement`: an embedded player does not own the host page's
+ * root.
  */
 export class SimpleI18n implements I18nServiceApi {
 	/** Shared across instances and views: `Intl.PluralRules` is not cheap. */
@@ -196,7 +193,13 @@ export class SimpleI18n implements I18nServiceApi {
 			return;
 		}
 
-		if (!this.catalogs.has(resolved)) {
+		// The loader is asked only for tags it declares. A tag that resolved through
+		// host messages alone has nothing to load, and is honoured like the
+		// unresolved case above.
+		if (
+			!this.catalogs.has(resolved) &&
+			this.config.availableLocales?.includes(resolved)
+		) {
 			const inFlight = this.loading.get(resolved);
 			if (inFlight) {
 				await inFlight;
@@ -363,9 +366,9 @@ export class SimpleI18n implements I18nServiceApi {
 		try {
 			this.catalogs.set(locale, await load(locale));
 		} catch (error) {
-			// A failed load is not fatal: the fallback chain still resolves every
-			// key to English. Rethrowing here would take down a player over a
-			// missing chunk.
+			// Rethrown with the locale named: `setLocale` rejects before switching
+			// (it assigns `this.locale` only after the load), so the previous locale
+			// stays active.
 			throw new Error(`Failed to load i18n catalog for locale: ${locale}`, {
 				cause: error,
 			});
@@ -393,9 +396,9 @@ export class SimpleI18n implements I18nServiceApi {
 	private lookup(key: string): string | undefined {
 		const node = this.lookupNode(key);
 		if (typeof node === "string") return node;
-		// A key landing on a namespace (`t("common")`) or on a plural group is a
-		// miss, not a hit: returning the object would put one where the caller
-		// expects a string, and interpolating it throws.
+		// A plural group resolves to its `other` form. A namespace (`t("common")`)
+		// is a miss: returning the object would put one where the caller expects
+		// a string, and interpolating it throws.
 		if (node !== undefined && isPluralGroup(node)) return node.other;
 		return undefined;
 	}
@@ -465,18 +468,17 @@ function deepMerge(target: MessageCatalog, source: MessageCatalog) {
 	return result;
 }
 
+let defaultProvider: SimpleI18n | undefined;
+
 /**
  * The graceful default: an English-only provider, shared process-wide.
  *
  * `composition-context.md` requires a resolver to work with no publisher
- * present, and this is that state. A tool mounted bare — in `print-player`, in
- * Studio preview, in an authoring harness — resolves this and renders English
- * rather than leaking raw message keys onto the screen. It carries no locale
- * loader, so it pulls no catalog beyond the 5 KB English one already in the
- * bundle.
+ * present, and this is that state. A tool mounted bare — in `print-player` or
+ * an authoring harness — resolves this and renders English rather than
+ * leaking raw message keys onto the screen. It carries no locale loader, so it
+ * pulls no catalog beyond the 5 KB English one already in the bundle.
  */
-let defaultProvider: SimpleI18n | undefined;
-
 export function getDefaultI18n(): I18nServiceApi {
 	if (!defaultProvider) defaultProvider = new SimpleI18n();
 	return defaultProvider;
@@ -485,7 +487,7 @@ export function getDefaultI18n(): I18nServiceApi {
 /**
  * Resolve a component's interface-locale provider from a published context.
  *
- * Returns a **fresh** object on every call, and that is the whole point. A
+ * Returns a **fresh** object on every call. A
  * provider is mutable: `setLocale` swaps its catalog in place, so its identity is
  * unchanged before and after a locale load. A reactive `$derived` reading the
  * provider directly therefore never invalidates, and a label rendered while the

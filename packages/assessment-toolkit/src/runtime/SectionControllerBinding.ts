@@ -162,6 +162,17 @@ function readRenderableIds(model: unknown): ReadonlySet<string> | null {
 	return ids;
 }
 
+/** Whether `ids` holds the shell's runtime or canonical id. */
+function rendersShell(
+	ids: ReadonlySet<string>,
+	shell: { itemId: string; canonicalItemId?: string },
+): boolean {
+	return (
+		ids.has(shell.itemId) ||
+		(!!shell.canonicalItemId && ids.has(shell.canonicalItemId))
+	);
+}
+
 export class SectionControllerBinding {
 	private readonly registry = new RuntimeRegistry();
 	private controller: RuntimeController | null = null;
@@ -355,11 +366,7 @@ export class SectionControllerBinding {
 		canonicalItemId?: string;
 	}): boolean {
 		const ids = this.sectionRenderableIds;
-		if (!ids) return true;
-		return (
-			ids.has(args.itemId) ||
-			(!!args.canonicalItemId && ids.has(args.canonicalItemId))
-		);
+		return !ids || rendersShell(ids, args);
 	}
 
 	private getSectionKey(sectionId: string, attemptId: string | undefined) {
@@ -382,12 +389,7 @@ export class SectionControllerBinding {
 		const sections = [...this.boundSections.entries()].reverse();
 		for (const [key, section] of sections) {
 			if (key === current || !section.renderableIds) continue;
-			if (
-				!section.renderableIds.has(args.itemId) &&
-				!(args.canonicalItemId && section.renderableIds.has(args.canonicalItemId))
-			) {
-				continue;
-			}
+			if (!rendersShell(section.renderableIds, args)) continue;
 			const owner = this.coordinator?.getSectionController({
 				sectionId: section.sectionId,
 				attemptId: section.attemptId,

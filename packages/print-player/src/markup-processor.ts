@@ -170,7 +170,7 @@ export const processMarkup = (
 		});
 
 		return { html: doc.body.innerHTML, nodes: results };
-	} catch (e) {
+	} catch {
 		throw new Error(`Failed to parse the markup - is it valid html: ${markup}`);
 	}
 };
@@ -225,7 +225,7 @@ export const printItemAndFloaters = (
 				if (!res || !res.printTagName) {
 					throw new Error(`cant find resolution for element: ${m.element}`);
 				}
-				return { ...m, element: res?.printTagName };
+				return { ...m, element: res.printTagName };
 			}),
 		},
 		floaters,

@@ -43,6 +43,24 @@ class TestProvider extends BaseTTSProvider {
 	escapeSSMLPublic(text: string): string {
 		return this.escapeSSML(text);
 	}
+
+	validateRequestPublic(request: SynthesizeRequest): void {
+		this.validateRequest(request, {
+			standard: {
+				supportsSSML: true,
+				supportsPitch: true,
+				supportsRate: true,
+				supportsVolume: false,
+				supportsMultipleVoices: true,
+				maxTextLength: 3000,
+			},
+			extensions: {
+				supportsSpeechMarks: false,
+				supportedFormats: ["mp3"],
+				supportsSampleRate: false,
+			},
+		});
+	}
 }
 
 describe("BaseTTSProvider prosody helpers", () => {
@@ -70,6 +88,15 @@ describe("BaseTTSProvider prosody helpers", () => {
 		);
 		expect(provider.buildProsodyAttrsPublic({ text: "hi", pitch: 0.8 })).toBe(
 			'pitch="-20%"',
+		);
+	});
+
+	it("maps the ends of the pitch range to -100% and +100%", () => {
+		expect(provider.buildProsodyAttrsPublic({ text: "hi", pitch: 0 })).toBe(
+			'pitch="-100%"',
+		);
+		expect(provider.buildProsodyAttrsPublic({ text: "hi", pitch: 2 })).toBe(
+			'pitch="+100%"',
 		);
 	});
 
@@ -102,6 +129,24 @@ describe("BaseTTSProvider prosody helpers", () => {
 		};
 		const result = provider.applyProsodyPublic(request.text, request);
 		expect(result).toEqual({ text: "<speak>hi</speak>", isSsml: true });
+	});
+});
+
+describe("BaseTTSProvider request validation", () => {
+	const provider = new TestProvider();
+	const validate = (pitch: number) => () =>
+		provider.validateRequestPublic({ text: "hi", pitch });
+
+	it("accepts a pitch multiplier from 0 to 2 inclusive", () => {
+		for (const pitch of [0, 0.5, 1, 1.5, 2]) {
+			expect(validate(pitch)).not.toThrow();
+		}
+	});
+
+	it("rejects a pitch outside 0 to 2, semitone values included", () => {
+		for (const pitch of [-0.01, 2.01, -5, 5, -20, 20]) {
+			expect(validate(pitch)).toThrow("Pitch must be between 0 and 2");
+		}
 	});
 });
 

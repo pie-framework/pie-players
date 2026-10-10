@@ -214,7 +214,7 @@ from the first attempt across the whole run. Only E404 and ETARGET retry, so an 
 failure still fails immediately.
 
 The deadline is shared rather than per-package deliberately. Versioning is fixed, so a real partial
-release fails for all 45 packages at once; a per-package budget would turn that into a step running
+release fails for every package in the group at once; a per-package budget would turn that into a step running
 for the better part of an hour. Once the deadline passes, the remaining packages fail fast and the
 error names which bound was hit — `PIE_REGISTRY_PROPAGATION_DEADLINE_SECONDS` widens it for a rerun
 when npm is having a slow day.
@@ -244,6 +244,17 @@ auth mode before publishing:
 
 Because `auto` prefers a token when one is present, **the cutover is a secret deletion,
 not a workflow edit**. While `NPM_TOKEN` exists the repo keeps publishing via token.
+
+### Token mode
+
+The `token` mode and local publishing use an npm token with publish rights on the
+`@pie-players` scope: CI reads it from the `NPM_TOKEN` repository secret (Settings →
+Secrets and variables → Actions), local runs from `NPM_TOKEN` in the repo's `.env`
+([Manual publishing](#manual-publishing-local)).
+`npm org ls pie-players --registry=https://registry.npmjs.org/` lists the accounts with
+access. To rotate, generate a replacement on npmjs.com, update the secret and `.env`, then
+revoke the old token. Revoke a leaked token first, then replace it and review recent
+publishes.
 
 ### Requirements the workflows satisfy
 
@@ -402,10 +413,9 @@ credential to check, hence the gate.
 - Metadata failures: update package `package.json` fields listed in the error.
 - `publint` failures: align `exports`, `types`, and packed files with published
   entry points.
-- ATTW failures: fix type entrypoints/resolution issues or move package to the
-  documented exclusion set with rationale until remediated.
-- Pack export/smoke failures: ensure all declared targets are included in `files`
-  and produced by build output.
+- ATTW failures: fix the type entrypoints or their resolution.
+- Pack integrity failures (`check:pack-integrity:real`): include every declared
+  export target in `files` and produce it in the build.
 - Fixed-versioning failures:
   - ensure all publishable package versions are identical after `bun run version`
   - ensure internal `@pie-players/*` deps remain `workspace:*` in source manifests

@@ -30,34 +30,18 @@ is the standard's, and we currently model none of it.
 **Interface locale is adopted in `pie-players`.** A `locale` attribute on the item
 and section players publishes a provider on the toolkit runtime context, and every
 component that renders a string of its own resolves it from there;
-`en-US` and `nl-NL` ship complete at 402 keys, and `check:i18n-coverage` gates
+`en-US` and `nl-NL` ship complete, and `check:i18n-coverage` gates
 both the pre-commit and CI runs. `docs/architecture/i18n-interface-locale-adoption.md` is
-the design record. Content language and in-item alternates are untouched — the
-rest of this document still describes the gap.
-
-What was there before is why that slice was a replacement rather than an
-extension. `SimpleI18n` and its near-verbatim duplicate
-`assessment-toolkit/src/services/I18nService.ts` were both published with zero
-call sites, against 142 keys translated to `en`/`es`/`zh`/`ar` at nominal 100%
-coverage. The number certified nothing: the reference had been harvested from a
-design rather than from call sites, so 76 of the 142 keys named UI this codebase
-does not render — a section-builder, an assessment shell, 25 Desmos internals —
-while `"Passage"`, `"Try again"`, the formative feedback strings and the
-sign-language names had no keys at all. Nor could the translations load: the
-static English imports carried `with { type: "json" }` and the three dynamic ones
-did not, so under Node's ESM loader every non-English locale threw
-`ERR_IMPORT_ATTRIBUTE_MISSING`, which the `catch` rethrew as "Translation files
-not found" — pointing at files that were present. English worked, which is why
-nothing surfaced it, and `players-shared` is on the publish policy's `nodeSafe`
-list, so it was a conformance break and not only a latent one. The four catalogs
-were deleted with the layer.
+the design record, including the layer it replaced and why it was replaced rather
+than extended. Content language reaches only read-aloud, and in-item language
+alternates wait on parameterized PNP; the rest of this document describes the gap.
 
 The hardcoded-string scanner reports 465 strings across 128 of 476 files, and it
 stays advisory: it excludes lines that already resolve through a provider, so the
 count falls as adoption lands, but it matches quoted capitalized text and
 therefore cannot tell a rendered label from a `KeyboardEvent.key` value, a
-font-family name or an HTTP header. That number is not comparable with the 616
-the ticket cites: the scanner used to skip any line carrying `aria-*`, `title`,
+font-family name or an HTTP header. That number is not comparable with the earlier count of
+616: the scanner used to skip any line carrying `aria-*`, `title`,
 `alt` or `placeholder`, so it could not see accessible names — the surface this
 pass most needed it to police — and those exclusions are gone. Two blind spots
 remain, both structural: plain template text (`Item header row reservation:`
@@ -70,8 +54,8 @@ under CSS values and identifiers, so it is a lead list, never a gate.
 the authored item. Catalogs are `en`/`es` only, both eagerly imported, and marked
 `@auto-generated` from upstream `pie-lib` — edits are overwritten by the sync, so
 keys cannot be added there. PIE production already holds content those two
-catalogs cannot serve: 467 `fr` and 97 `de` items, from publishers other than
-Studio. `packages/elements-svelte/*` has no i18n at all.
+catalogs cannot serve: French and German items from other publishers.
+`pie-elements-ng`'s `packages/elements-svelte/*` has no i18n at all.
 Classic `pie-elements` is the same design through `@pie-lib/translator`.
 
 The consequence of keying on `model.language` is that interface locale is a side
@@ -95,14 +79,12 @@ matter: the card's `language` is the only field resolution selects on, `signLang
 is the language of the *adaptation* and must never be inferred from the item's
 content language, and there is deliberately no cross-sign-language fallback.
 
-**Language matching is strict string equality**, and this is a live defect rather
-than a gap. `card.language === language`, with no BCP-47 normalization and no
-RFC 4647 fallback anywhere in either repo. The audio-accommodations PRD records
-the consequence: the Learnosity transform emits POSIX `es_ES`, which matches no
-request and surfaces only through the no-constraint rung — resolution by
-accident. `pie-elements-ng` carries the same POSIX/BCP-47 split as a hand-written
-mapping table, and `pie-qti` needed the same workaround. Three independent
-codebases have hand-patched the absence of one function.
+**Language matching follows RFC 4647 lookup.** `AccessibilityCatalogResolver`
+normalizes both tags (`_`→`-`, lowercase) and expands the request into its lookup
+sequence, so the POSIX `es_ES` the Learnosity transform emits matches an `es-ES`
+request; it was `===`, which reached such a card only through the no-constraint
+rung. `pie-elements-ng` carries the same POSIX/BCP-47 split as a hand-written
+mapping table, and `pie-qti` needed the same workaround.
 
 **Read-aloud resolves a content language per read**, as
 [TTS language](#tts-language) sets out. No host supplies the
@@ -128,14 +110,13 @@ Node or plain browser ESM. And pluralization is hardcoded `one`/`other`, so the
 shipped Arabic catalog's `zero`/`two`/`few`/`many` forms are unreachable and
 Arabic counts render the wrong grammatical form.
 
-**Studio holds the content language and drops it on the way out.** `item.locale`
-(`varchar(10)`, default `en_US`) and `item.translation` (a self-FK to
-`item(id)`, carried on the *Spanish* row) are real columns with a real
-constraint, surfaced through a "Language Equivalents" report and a linked-items
-UI. Alongside them runs an informal convention: public IDs are minted
-`E257926` → `S257926` by `replace("E","S")`, never validated by a constraint.
-Neither `locale` nor `translation` is in the Envers audit table, so there is no
-history of linking or relinking.
+**The main authoring host holds the content language and drops it on the way
+out.** Its item records carry a locale (`varchar(10)`, default `en_US`) and a
+translation self-link carried on the *Spanish* row, real columns with a real
+constraint, surfaced through a language-equivalents report and a linked-items UI.
+Alongside them runs an informal convention: public IDs are minted `E257926` →
+`S257926` by swapping the prefix, never validated by a constraint. Neither column
+is audited, so there is no history of linking or relinking.
 
 The QTI export path hardcodes `<language>en</language>` and emits no `xml:lang`
 anywhere, so a Spanish item exported to QTI is affirmatively mislabelled as
@@ -146,11 +127,11 @@ The search index knows the language; the player never does. Three further limits
 ID, it is set only on the Spanish side, and passages get the equivalent but never
 `k12_locales` because the stimulus mutation has no metadata parameter.
 
-Studio is the ceiling, not PIE. Its `Language` enum is two values, restated
-independently in a hardcoded JSP dropdown, the `E`/`S` rule and SQL `CASE`
+The authoring host is the ceiling. Its language enum is two values, restated
+independently in a hardcoded dropdown, the `E`/`S` rule and SQL `CASE`
 statements, while PIE's own `k12_locales_ENUM` already accepts the full CLDR list
 including `es_419`, `es_MX` and `es_US`. Designing pie-players for two languages
-would import a limit only Studio has.
+would import a limit only that host has.
 
 ## TTS language
 
@@ -213,9 +194,9 @@ explicit that Item Translation (A13) "Establishes a different variant within the
 item package" while Keyword Translation (A14) does not. QTI 3's migration guide
 carries it forward verbatim.
 
-Studio's model is essentially APIP variants without the manifest: two item rows
-with their own identifiers and a link between them. The gap is not the data model
-but that the link and the language never reach delivery.
+The authoring host's model is essentially APIP variants without the manifest:
+two item rows with their own identifiers and a link between them. The gap is that
+the link and the language never reach delivery.
 
 **In-item alternates are catalog cards, at any granularity.** The chain is
 `qti-catalog-info > qti-catalog > qti-card[support] > qti-card-entry[xml:lang]`,
@@ -245,7 +226,7 @@ access features, with `xml:lang` appearing zero times in the Best Practice guide
 **IMS Content Packaging 1.1.4 declares no language of its own**, delegating to
 the separate Meta-Data specification. So package-level language variance rides on
 LOM `general/language` or AfA `adaptationStatement/language`, not on any CP
-construct — relevant to whatever Studio's export should emit.
+construct — relevant to what an authoring host's export should emit.
 
 **Runtime re-resolution against a mutated PNP is proven.** The reference
 open-source QTI 3 player applies a language-support change to an already-loaded
@@ -300,7 +281,7 @@ PIE elements — third-party, independently versioned, fetched at runtime from a
 bundle service — it is a property with a reflected attribute and a
 `MutationObserver`, exactly as `baseHeadingLevel` works today. The graceful
 default is English with no publisher present, which is what keeps elements
-working in Studio preview, authoring harnesses and `print-player`.
+working in authoring previews, authoring harnesses and `print-player`.
 
 Do **not** route interface locale through `model`. The four arguments in
 `composition-context.md` apply verbatim: the publisher does not know its
@@ -343,9 +324,9 @@ screen-reader pronunciation and every other consumer of the attribute.
 
 That default constrains the slice. `lang` inherits and the nearest ancestor
 wins, so a content wrapper carrying the resolved language is overridden inside
-those six subtrees, and Studio content is precisely the case that triggers it:
-PIE production holds 48,168 Studio-origin `es_ES` items whose stored element
-models carry no `language` at all. Reflecting on the wrapper is necessary and
+those six subtrees, and imported Spanish content is precisely the case that
+triggers it: tens of thousands of `es_ES` items in production carry no `language`
+in their stored element models. Reflecting on the wrapper is necessary and
 insufficient. The element default has to become "stamp `lang` only when
 `model.language` is present", or `env.locale` has to reach `model.language` at
 the controller boundary. `passage` in that list is the sharpest case: it is the
@@ -382,7 +363,7 @@ already earned.
 
 ### Four content-localization models, not one
 
-Renaissance content teams produce parallel translated items today, and QTI models
+Host content teams produce parallel translated items today, and QTI models
 wholesale translation the same way. That is current practice and a standards
 alignment, not a constraint the framework should impose. Four models are worth
 supporting, and three of them need no new data model:
@@ -390,16 +371,16 @@ supporting, and three of them need no new data model:
 **Parallel items with a family link.** Today's practice. Each variant separately
 calibrated, selected at form assembly, no runtime swap. Needs the content-language
 declaration on the payload and a family identifier that survives export —
-Studio's self-FK exists but publishes only a UUID, on one side, on a channel the
-player does not read.
+the authoring host's self-link exists but publishes only a UUID, on one side, on
+a channel the player does not read.
 
-The link is derivable rather than authored, within measured limits. Studio
-production carries two locale values, `en_US` and `es_ES`; `item.translation` is
+The link is derivable rather than authored, within measured limits. The authoring
+host carries two locale values, `en_US` and `es_ES`; the translation link is
 set on the Spanish row and points at the English item's internal UUID, and is
 null on the English row, so the English-to-Spanish direction has to be built by
-inversion. PIE already carries the same fact as `k12_languageEquivalent` on
-45,411 of the 48,168 Studio-origin `es_ES` items, leaving roughly 6% of Spanish
-items with no link to invert. The `E`/`S` public-ID convention is real and not a
+inversion. PIE already carries the same fact as `k12_languageEquivalent` on about
+94% of that host's `es_ES` items, leaving roughly 6% of Spanish items with no link
+to invert. The `E`/`S` public-ID convention is real and not a
 substitute: `S257943` pairs with `E257943`, while `E257926` exists with no
 `S257926`, so the numbering carries no pairing that can be computed.
 
@@ -418,7 +399,7 @@ PNP is parameterized.
 first three, not a fourth data model. It needs a region and an arbitration rule,
 not a new content shape.
 
-Offering the second model is where we would exceed what Studio emits and what the
+Offering the second model is where we would exceed what the authoring host emits and what the
 QTI export round-trips, so its cost is interop work, not player work.
 
 ## Optionality and cost
@@ -480,8 +461,8 @@ locale.
 2. **Content language end to end.** `Env.locale`, item payload carries its
    language, player reflects `lang`/`dir` to the content subtree, and the six
    elements that stamp `lang` off `model.language` stop defaulting it to `'en'`.
-   Requires the matching Studio change to emit locale on the PIE content channel
-   and to add `xml:lang` on the QTI channel. Studio publishes no content
+   Requires the matching authoring-host change to emit locale on the PIE content
+   channel and to add `xml:lang` on the QTI channel. The host publishes no content
    language on either channel today: the hardcoded `"en"` in its QTI output is
    LOM `metametadata/language` in `imsmanifest.xml`, once per package, declaring
    the language of the metadata record, and the PIE payload carries locale only
@@ -500,7 +481,7 @@ locale.
    `glossary-on-screen` as first consumers.
 6. **Tool and accommodation locale.** TTS voice selection from the resolved
    language rather than `navigator.language` — which needs a data decision
-   alongside the tag decision, since Studio stores `es_ES` for content written
+   alongside the tag decision, since the authoring host stores `es_ES` for content written
    for US Spanish speakers, and normalizing to `es-ES` preserves the wrong
    region faithfully enough to select a Castilian voice; STT recognizer
    language, where the STT PRD's proposed `PieDictationInsertDetail.lang` would
@@ -510,14 +491,15 @@ locale.
 
 ## Open questions
 
-- Where per-capability tool strings live, given capability neutrality in core and
-  `ToolRegistration.name` being host-facing API.
-- Whether interface locale defaults to following content language when a host
-  supplies neither, which is what classic PIE effectively does today.
+- Resolved: per-capability tool strings ride on `ToolRegistration.nameKey` and
+  `descriptionKey`, supplied by `default-tool-loaders`; core stays
+  capability-neutral and `name` stays the host-facing fallback.
+- Resolved: with no host locale, interface locale is `en-US`; it does not follow
+  content language, which is what classic PIE effectively does.
 - Whether a whole-body `language-translation` card is a model we want to offer,
   given it asserts item equivalence that a separately calibrated parallel item
   does not.
-- Inline English fallbacks versus a single English catalog.
+- Resolved: a single English catalog, with no inline English fallbacks.
 - Unverified in this pass and worth a second research round: Learnosity's locale
   and UI-string-override surfaces, TAO and Cambium/TDS item translation models,
   Smarter Balanced stacked-translation practice, the psychometric comparability

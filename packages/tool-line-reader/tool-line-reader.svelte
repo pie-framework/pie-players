@@ -32,13 +32,10 @@ import {
 import { resolveInterfaceI18n } from '@pie-players/pie-players-shared/i18n/provider';
 import { onMount, untrack } from 'svelte';
 
-	// Props
 	let { visible = false, toolId = 'lineReader' }: { visible?: boolean; toolId?: string } = $props();
 
-	// Check if running in browser
 	const isBrowser = typeof window !== 'undefined';
 
-	// State
 	let containerEl = $state<HTMLDivElement | undefined>();
 	let runtimeContext = $state<AssessmentToolkitRuntimeContext | null>(null);
 	const coordinator = $derived(
@@ -241,8 +238,8 @@ import { onMount, untrack } from 'svelte';
 	}
 
 	// Drags and resizes share one gesture, which ends on a cancelled touch as well
-	// as on release, so one iPadOS takes over for a system gesture does not stay
-	// stuck to the next touch.
+	// as on release, so a touch iPadOS takes over for a system gesture does not
+	// leave the drag stuck to the next touch.
 	const gesture = createPointerGesture({
 		onMove: handlePointerMove,
 		onEnd: () => {
@@ -300,7 +297,6 @@ import { onMount, untrack } from 'svelte';
 		// band already moves the bottom edge 1:1 because it grows at both ends.
 		const deltaY = e.clientY - resizeStart.mouseY;
 		if (resizeTarget === 'pane') {
-			// Vertical resize of the reading window only
 			paneHeight = clampPaneHeight(resizeStart.paneHeight + deltaY * 2);
 			return;
 		}

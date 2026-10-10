@@ -6,8 +6,8 @@ For the cross-package TTS architecture and browser/server flow, see
 [TTS Architecture](../../docs/accessibility/tts-architecture.md). This README
 focuses on the SchoolCity-backed reference provider and its SSRF defenses.
 
-This package uses SchoolCity as an internal Renaissance-backed reference implementation
-for custom server-side TTS integrations. The intent is to demonstrate a reusable
+This package is a reference implementation for custom server-side TTS
+integrations, using SchoolCity's TTS service. It demonstrates a reusable
 "custom backend adapter" pattern you can apply to your own TTS service.
 
 ## What it does
@@ -50,8 +50,8 @@ If `assetOrigins` is not supplied, the provider permits:
   `baseUrl`.
 
 This matches the common "service at `x.vendor.tld`, CDN at `y.vendor.tld`"
-deployment (e.g. `baseUrl = https://tts.svcdev.schoolcity.com` permits
-`https://tts-cdn.svcdev.schoolcity.com` out of the box) without opening the
+deployment (e.g. `baseUrl = https://tts.example.com` permits
+`https://tts-cdn.example.com` out of the box) without opening the
 provider up to arbitrary external hosts. The registrable domain is computed
 via the Public Suffix List (`tldts`), so it is correct for multi-label TLDs
 (`.co.uk`, `.com.au`, etc.). If `baseUrl` is an IP literal or a hostname
@@ -69,8 +69,8 @@ await provider.initialize({
   apiKey: process.env.TTS_SCHOOLCITY_API_KEY!,
   issuer: process.env.TTS_SCHOOLCITY_ISS!,
   assetOrigins: [
-    "https://tts.svcdev.schoolcity.com",
-    "https://tts-cdn.svcdev.schoolcity.com",
+    "https://tts.example.com",
+    "https://tts-cdn.example.com",
   ],
 });
 ```
@@ -164,7 +164,7 @@ const result = await provider.synthesize({
 
 The service serves 29 locales with one default voice each, and exposes no
 endpoint to ask which. `getVoices()` answers from a table transcribed from the
-map the service reads (`src/helpers/voices.js`), so it costs no request. It
+service's voice map, so it costs no request. It
 throws until `initialize` has run, which takes the credentials;
 `schoolCityVoices()` below answers without either:
 
@@ -200,7 +200,7 @@ Check the locale before synthesizing. An unrecognized `lang_id` is not an error
 upstream — the service rewrites it to `en-US` and returns English audio, so an
 unserved locale fails silently rather than loudly.
 
-## Dogfood adapter example (section-demos shape)
+## Asset-shaped responses
 
 If you need to return the SchoolCity-style response shape (`audioContent`, `word`) while reusing provider logic:
 

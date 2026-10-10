@@ -7,6 +7,7 @@ Dictionary panel for the PIE assessment player. Registers
 
 PIE ships no dictionary endpoint. The corpus behind a dictionary is licensed per
 programme, so a default here would bake one deployment into the package.
+[Dictionary Languages And Services](../../docs/tools-and-accomodations/dictionary-languages-and-services.md) records where service selection, credentials and the lookup language sit.
 
 Two ways to supply one, in precedence order:
 

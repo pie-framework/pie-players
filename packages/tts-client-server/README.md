@@ -12,12 +12,12 @@ This package provides a browser-side TTS provider that offloads synthesis to a s
 
 ## Features
 
-- ✅ **Server-Side Synthesis** - Keeps credentials secure on server
-- ✅ **Speech Marks** - Precise word-level timing from server
-- ✅ **Multiple Providers** - Server can use Polly, Google, ElevenLabs, etc.
-- ✅ **Word Highlighting** - 50ms polling for smooth synchronization
-- ✅ **Audio Playback** - HTMLAudioElement with pause/resume
-- ✅ **Blob URLs** - Efficient memory management
+- **Server-Side Synthesis** - Keeps credentials secure on server
+- **Speech Marks** - Precise word-level timing from server
+- **Multiple Providers** - the server picks Polly, Google, or any provider built on `@pie-players/tts-server-core`
+- **Word Highlighting** - 50ms polling for smooth synchronization
+- **Audio Playback** - HTMLAudioElement with pause/resume
+- **Blob URLs** - Efficient memory management
 
 ## Installation
 
@@ -118,18 +118,6 @@ applies the same default from `serverProvider`.
     "charCount": 11,
     "cached": false
   }
-}
-```
-
-### PIE mode response
-
-```json
-{
-  "audio": "base64-encoded-audio",
-  "contentType": "audio/mpeg",
-  "speechMarks": [
-    { "time": 0, "type": "word", "start": 0, "end": 5, "value": "Hello" }
-  ]
 }
 ```
 
@@ -262,12 +250,10 @@ const currentTime = audio.currentTime * 1000; // Convert to ms
 // Find words that should be highlighted
 for (const timing of wordTimings) {
   if (currentTime >= timing.time) {
-    onWordBoundary('', timing.charIndex, timing.length);
+    onWordBoundary(timing.word, timing.charIndex, timing.length);
   }
 }
 ```
-
-This is **much more reliable** than browser's `onboundary` events (which are broken in Safari and unreliable in Chrome).
 
 ## Memory Management
 
@@ -291,10 +277,10 @@ try {
 
 ## Browser Compatibility
 
-- ✅ Chrome/Edge (latest)
-- ✅ Firefox (latest)
-- ✅ Safari (latest)
-- ✅ Mobile browsers
+- Chrome/Edge (latest)
+- Firefox (latest)
+- Safari (latest)
+- Mobile browsers
 
 Requires:
 
@@ -305,10 +291,9 @@ Requires:
 
 ## Performance
 
-- **Audio caching:** Server-side (Redis)
+- **Audio caching:** server-side, through the host's `ITTSCache` (see `@pie-players/tts-server-core`)
 - **Blob URLs:** Efficient memory usage
 - **50ms polling:** Smooth highlighting without jank
-- **Parallel requests:** Audio + marks fetched together
 
 ## License
 

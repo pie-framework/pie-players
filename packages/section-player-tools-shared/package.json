@@ -38,7 +38,7 @@
 		"typecheck": "tsc --noEmit && tsc -p tsconfig.tests.json",
 		"check": "svelte-check --tsconfig ./tsconfig.json --compiler-warnings options_missing_custom_element:ignore",
 		"test": "bun test tests",
-		"lint": "biome lint PanelWindowControls.svelte PanelResizeHandle.svelte SharedFloatingPanel.svelte SessionDbPanel.svelte DebugPanelToggles.svelte floating-panel.ts section-controller.ts index.ts vite.config.ts package.json tests"
+		"lint": "biome lint ."
 	},
 	"devDependencies": {
 		"@biomejs/biome": "^2.5.15",

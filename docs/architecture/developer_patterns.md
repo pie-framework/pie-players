@@ -6,12 +6,7 @@ Use this as practical guidance when adding features or fixing bugs.
 
 ## Svelte 5 Reactivity Patterns
 
-- Keep `$effect` focused on wiring (subscribe/unsubscribe, setup/teardown), not UI state mutation.
-- If setup must read/write reactive state (for example seed debugger rows), wrap setup in `untrack(() => { ... })`.
-- Make subscription setup idempotent: if `sectionId` and `attemptId` did not change and a subscription exists, return early.
-- Prefer stable key checks (`sectionId`, `attemptId`) over controller object identity for rebinding decisions.
-- Queue lifecycle-driven rebinds with `queueMicrotask` to avoid synchronous re-entrant update loops.
-- On lifecycle `"disposed"` events, detach first, then queue rebind.
+Effect and subscription rules live in [`AGENTS.md`](../../AGENTS.md#svelte-subscription-safety).
 
 ## Controller and Event Contract
 
@@ -22,12 +17,9 @@ Use this as practical guidance when adding features or fixing bugs.
 
 ## Custom Element Boundaries
 
-- Import CE registration entrypoints from package exports, not package `src` files.
-- Dogfood CE consumption inside this monorepo the same way external consumers do: use package export entrypoints (for example `@pie-players/<pkg>/components/...`) instead of local source imports.
-- Prefer CE tag usage in apps/demos and integration surfaces where CEs are the published contract, so packaging/runtime issues surface during normal development.
-- Do not use cross-package `?customElement` imports.
-- Keep runtime exports pointing to `dist` artifacts for publishable packages.
-- Use stable `pie-*` or `data-pie-*` hooks for light-DOM custom-element selectors/classes.
+Import, packaging and DOM-hook rules live in [`AGENTS.md`](../../AGENTS.md#custom-element-import-and-packaging-boundaries).
+Apps and demos render the published custom-element tags so packaging and runtime
+issues surface during normal development.
 
 ## CE Communication Patterns
 
@@ -140,8 +132,8 @@ const runtimeState = coordinator
 
 ```ts
 element.dispatchEvent(
-  new CustomEvent("pie-ready", {
-    detail: { sectionId, attemptId },
+  new CustomEvent("session-changed", {
+    detail: { ...session, itemId, canonicalItemId },
     bubbles: true,
     composed: true,
   }),
@@ -156,52 +148,18 @@ element.dispatchEvent(
 
 ## Theming Contract (Shadow-Safe)
 
-- Treat `--pie-*` CSS variables as the stable public theming interface for both
-  light-DOM and shadow-DOM CEs.
-- Keep one side-effect-free TypeScript definition in
-  `@pie-players/pie-theme` for light/dark bases and complete built-in color
-  schemes. Raw base and palette tables are package-private.
-- Cross the theme seam through `resolvePieTheme`, `listPieColorSchemes`,
-  `observePieColorSchemes`, and `registerPieColorSchemes`. A mounted catalog UI
-  observes snapshots; it does not copy the list once or maintain its own palette
-  metadata.
-- `listPieColorSchemes()` returns an immutable `{ generation, schemes }`
-  snapshot. Catalog previews resolve over PIE's canonical light Base Theme and
-  project background, text, and primary; they are never separately authored
-  swatches or a promise to mirror a host-specific provider.
-- Resolve theme values in this order: base theme -> Theme Provider -> resolved
-  registered scheme -> explicit `variables` override. DaisyUI stays a provider
-  adapter because it reads host state rather than defining a built-in palette.
-- Distinguish Requested Scheme from Resolved Scheme. An unavailable requested id
-  remains in `scheme` and `data-color-scheme`, renders the base/provider result
-  plus explicit overrides, and resolves after late registration. Do not reset it
-  to `default`.
-- Use Registered Custom Schemes for managed precedence, diagnostics, and picker
-  discovery. CSS-only schemes are a best-effort selector hook whose author owns
-  the cascade: normal cascade rules work in stylesheet-only integrations, while
-  rules competing with a mounted `<pie-theme>` need `!important`.
-- Retain a registration receipt when the caller owns lifecycle cleanup. Its
-  `unregister()` is idempotent and cannot remove a newer replacement for the
-  same id.
-- Built-ins define every `required` Scheme Participant. Custom entries may use
-  only registry tokens marked `required` or `optional`; explicit instance-only
-  values belong in `variables`.
-- Regenerate checked-in adapters with
-  `bun --cwd packages/theme run generate:css`; verify without writes using
-  `bun --cwd packages/theme run check:generated-css`. Builds and
-  `bun run check:theme-tokens` reject stale adapters.
-- Keep `tokens.css` and `color-schemes.css` unlayered and at their existing
-  export/`dist` paths. External hosts depend on those paths and on being able to
-  win with normal cascade and `!important`.
-- Preserve entrypoint asymmetry: the package root self-registers `<pie-theme>`;
-  `@pie-players/pie-theme/theme-element` is side-effect-free.
+The theme model, resolution order and entrypoints are in
+[`how-theming-works.md`](../theming/how-theming-works.md) and the
+[`@pie-players/pie-theme` README](../../packages/theme/README.md). Component
+authors:
+
 - In shadow-DOM CEs, style internals from `:host` tokens and expose host customization via documented `::part(...)`/attributes only when needed.
 - In light-DOM CEs, avoid depending on host app utility classes; still consume the same `--pie-*` variables so migration to `shadow: "open"` stays incremental.
 - Include interaction/accessibility tokens (`--pie-focus-*`, `--pie-button-*`) in component styles; avoid hardcoded color literals for focus/active/hover states.
 - Theme switching and scheme/provider registration must update existing nodes
   (light and shadow) without remounts.
 - Cover forced-colors behavior without `forced-color-adjust: none`; system color
-  replacement is an accessibility feature, not a palette failure.
+  replacement is an accessibility feature.
 
 ## DOM Usage Rules
 
@@ -216,16 +174,11 @@ element.dispatchEvent(
 
 ## Build and Validation Workflow
 
-- After changing CE package `src`, rebuild that package before validating in a consumer app.
-- If behavior appears unchanged after source edits, suspect stale `dist` first.
-- Run boundary checks for CE-related changes:
-  - `bun run check:source-exports`
-  - `bun run check:consumer-boundaries`
-  - `bun run check:custom-elements`
+Rebuild and boundary-check rules for CE changes live in [`AGENTS.md`](../../AGENTS.md#custom-element-import-and-packaging-boundaries).
 
 ## Types and Utilities Ownership
 
-- Use the canonical contract map in `docs/architecture/types-and-utilities-contract.md` when adding or changing shared type/utility symbols.
+- Shared types live with their canonical owner. New symbols take no `I*` prefix, write acronyms as Pascal words (`Pnp`, `Pie`, `Tts`), name booleans `is*`/`has*`/`can*`/`should*`, and name events `*-changed` for post-state and `*-change` for intent; type-only imports use `import type`.
 - Use canonical API names from `@pie-players/pie-assessment-toolkit` (`ToolCoordinatorApi`, `ToolkitCoordinatorApi`, `TtsServiceApi`, `ToolProviderApi`) instead of older `I*` interface names in new docs/examples.
 - Re-export shared contracts instead of re-defining near-identical shapes in multiple packages.
 - For cross-package constants (for example layering/z-index enums), import from the canonical package owner and re-export locally only when needed for consumer convenience.

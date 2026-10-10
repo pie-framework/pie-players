@@ -64,14 +64,14 @@ lab displays server commits, caller promise outcomes, the controller's submitted
 flag, and successful submission-event count separately so contradictions remain
 visible. It adds no compensating client save queue or submission error handling.
 
-Reproduce the two open defects:
+The two R2 scenarios:
 
 1. Choose an answer in section 1. Select Hold and Save. Navigate to section 2,
-   choose another answer, and Save normally. Wait for the newer write to commit,
-   then release the older write. Reload: the older section-1 snapshot wins.
+   choose another answer, and Save; the newer write waits behind the held one.
+   Release the older write. Reload: the section-2 snapshot and answer survive.
 2. On a new attempt, choose an answer, select Reject, and Submit. The server
-   records no commit and the error hook reports rejection, but the controller
-   reports submitted and the submit promise resolves.
+   records no commit, the error hook reports rejection, the submit promise
+   rejects, and the controller stays unsubmitted.
 
 ### Regression coverage
 

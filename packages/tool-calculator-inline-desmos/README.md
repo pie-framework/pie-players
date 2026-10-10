@@ -6,8 +6,7 @@ Inline calculator toggle button for PIE assessment player question headers.
 
 `<pie-tool-calculator-inline>` is a toggle button for the calculator an item
 toolbar renders. It wraps the provider-neutral inline surface from
-`@pie-players/pie-tool-calculator-shared`, which the GeoGebra and Cortex inline
-packages share.
+`@pie-players/pie-tool-calculator-shared`.
 
 ## Features
 
@@ -15,7 +14,7 @@ packages share.
 - **Toolkit context** - Takes its ToolCoordinator from the toolkit runtime context and its item from the enclosing item shell
 - **Shared state** - Opens the item toolbar's calculator through the toolkit's tool request path, so the button and the toolbar stay in step and policy applies to both
 - **Size Variants** - Supports sm, md, lg button sizes
-- **WCAG 2.2 Level AA** - Fully accessible with proper ARIA attributes
+- **Accessible** - Pressed state, status announcements and visible focus (see [Accessibility](#accessibility))
 - **Material Design Icon** - Calculator icon from Material Design
 
 ## Usage
@@ -62,19 +61,17 @@ warning.
 
 ## Accessibility
 
-- **WCAG 2.2 Level AA compliant**
 - **Keyboard accessible** - Full keyboard navigation support
-- **Focus indicators** - Clear focus states (2.4.7, 2.4.13)
+- **Focus indicators** - 2px outline with offset (2.4.7)
 - **ARIA attributes** - `aria-label`, `aria-pressed`
 - **Screen reader announcements** - Status changes announced
 - **Reduced motion** - Respects `prefers-reduced-motion`
-- **Touch targets** - Minimum 44px touch target (2.5.2)
+- **Target size** - every size is at least 24×24 CSS px (2.5.8)
 
 ## Size Variants
 
 ### Small (`sm`)
 - Visual size: 1.5rem × 1.5rem
-- Touch target: 44px × 44px (with padding)
 - Icon: 1rem × 1rem
 
 ### Medium (`md`) - Default
@@ -92,19 +89,22 @@ The component uses CSS custom properties for theming:
 ```css
 --pie-border: Border color (default: #ccc)
 --pie-button-background-color: Button fill, ahead of --pie-button-bg
---pie-button-bg: Button fill (default: theme button surface)
+--pie-button-bg: Button fill (default: --pie-white, #fff)
 --pie-text: Text color (default: #333)
 --pie-button-hover-background-color: Hover fill, ahead of --pie-button-hover-bg
---pie-button-hover-bg: Hover fill (default: theme hover surface)
+--pie-button-hover-bg: Hover fill (default: --pie-secondary-background, #f5f5f5)
 --pie-tool-trigger-active-background: Active/open button background
 --pie-tool-trigger-active-color: Active/open button foreground
 --pie-tool-trigger-active-border-color: Active/open button border
 ```
 
+`--pie-button-background-color`, `--pie-button-hover-background-color` and the
+three `--pie-tool-trigger-active-*` tokens are registered `component-public`
+tokens; the others are canonical semantic tokens.
+
 The trigger fills itself from the button tokens. `--pie-background` is the page
-token and the base light theme ships it transparent, so a host that sets it does
-not change this button; set `--pie-button-bg`, or `--pie-button-background-color`
-for this control alone.
+token a host may point at its own backdrop, so this button does not read it; set
+`--pie-button-bg`, or `--pie-button-background-color` for this control alone.
 
 Hosts should prefer the `--pie-tool-trigger-active-*` variables when styling the
 calculator button's active/open state instead of overriding broad semantic tokens
@@ -135,6 +135,7 @@ bun run lint
 ## Dependencies
 
 - `@pie-players/pie-assessment-toolkit` - Toolkit contexts and scoped tool ids
+- `@pie-players/pie-players-shared` - Interface strings and custom-element registration
 
 ## License
 

@@ -14,7 +14,6 @@ the same setup flow.
 | Package/provider architecture | [TTS Architecture](./tts-architecture.md) |
 | Authoring SSML in item content and catalogs | [TTS Authoring Guide](./tts-authoring-guide.md) |
 | AWS Polly setup | [AWS Polly Setup Guide](./aws-polly-setup-guide.md) |
-| AWS/Polly SSML tag syntax | [AWS SSML Tags Reference](./aws-ssml-tags-reference.md) |
 
 Start with the integration guide for host wiring, then use the deep dive for
 runtime behavior and the authoring guide for content-level SSML decisions.

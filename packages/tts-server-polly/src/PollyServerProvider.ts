@@ -458,29 +458,29 @@ export class PollyServerProvider extends BaseTTSProvider {
 		return {
 			// W3C Standard features
 			standard: {
-				supportsSSML: true, // ✅ Full SSML 1.1 + AWS extensions
-				supportsPitch: true, // ✅ Via SSML <prosody pitch> (not direct API param)
-				supportsRate: true, // ✅ Via SSML <prosody rate> (not direct API param)
-				supportsVolume: false, // ❌ Not supported by Polly API (handle client-side)
-				supportsMultipleVoices: true, // ✅ 60+ voices across 25+ languages
+				supportsSSML: true, // Polly's supported SSML subset
+				supportsPitch: true, // Via SSML <prosody pitch> (not direct API param)
+				supportsRate: true, // Via SSML <prosody rate> (not direct API param)
+				supportsVolume: false, // Not supported by Polly API (handle client-side)
+				supportsMultipleVoices: true, // see describeVoices for the roster
 				maxTextLength: 3000, // AWS Polly limit per request
 			},
 
 			// Provider-specific extensions
 			extensions: {
-				supportsSpeechMarks: true, // ✅ Native WORD speech marks (millisecond precision)
+				supportsSpeechMarks: true, // Native WORD speech marks (millisecond precision)
 				supportedFormats: ["mp3", "ogg", "pcm"],
-				supportsSampleRate: true, // ✅ Configurable sample rate
+				supportsSampleRate: true, // Configurable sample rate
 
 				// AWS Polly-specific features
 				providerSpecific: {
 					engines: ["neural", "standard"], // Engine selection
 					supportedSpeechMarkTypes: ["word", "sentence", "ssml"],
 					supportsLexicons: false, // Not yet implemented
-					awsSSMLExtensions: true, // <aws-break>, <aws-emphasis>, <aws-w>, etc.
-					neuralVoicesCount: 30, // ~30 neural voices available
-					standardVoicesCount: 30, // ~30 standard voices available
-					languagesCount: 25, // 25+ languages supported
+					awsSSMLExtensions: true, // <amazon:effect>, <amazon:domain>, <amazon:auto-breaths>
+					neuralVoicesCount: 30,
+					standardVoicesCount: 30,
+					languagesCount: 25,
 				},
 			},
 		};

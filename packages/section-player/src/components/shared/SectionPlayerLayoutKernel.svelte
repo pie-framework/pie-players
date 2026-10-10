@@ -267,7 +267,6 @@
 		const passage = tools?.placement?.passage;
 		return Array.isArray(passage) ? passage.join(",") : "";
 	});
-	const resolvedPlayerDefinition = $derived(playerRuntime.resolvedPlayerDefinition);
 	const resolvedPlayerTag = $derived(playerRuntime.resolvedPlayerTag);
 	const resolvedPlayerAttributes = $derived(playerRuntime.resolvedPlayerAttributes);
 	const resolvedPlayerProps = $derived(playerRuntime.resolvedPlayerProps);
@@ -512,12 +511,6 @@
 	): Promise<SectionControllerHandle | null> {
 		return (await scaffoldRef?.waitForSectionController?.(timeoutMs)) || null;
 	}
-
-	$effect(() => {
-		resolvedPlayerDefinition?.ensureDefined?.().catch((error: unknown) => {
-			logger.error("Failed to load item player component:", error);
-		});
-	});
 
 	// Primary engine-driver effect. Reads every
 	// host-side input the engine cares about so Svelte tracks them as

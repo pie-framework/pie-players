@@ -171,7 +171,7 @@ export class TTSToolProvider
 
 		switch (this.backend) {
 			case "browser":
-				await this._initializeBrowserTTS(config);
+				await this._initializeBrowserTTS();
 				break;
 
 			case "server":
@@ -188,9 +188,7 @@ export class TTSToolProvider
 	/**
 	 * Initialize browser TTS (Web Speech API)
 	 */
-	private async _initializeBrowserTTS(
-		config: TTSToolProviderConfig,
-	): Promise<void> {
+	private async _initializeBrowserTTS(): Promise<void> {
 		// Check if Web Speech API is available
 		if (typeof window === "undefined" || !("speechSynthesis" in window)) {
 			throw new Error(

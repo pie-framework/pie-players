@@ -2,7 +2,7 @@
  * The locale roster the SchoolCity TTS service actually serves.
  *
  * The service is AWS Polly behind a two-route Fastify app, and it carries one
- * default voice per locale in `src/helpers/voices.js`. That map is the source of
+ * default voice per locale in its voice map. That map is the source of
  * truth transcribed here, and it does two jobs upstream: it supplies the
  * `VoiceId` when a request omits `voice`, and it gates `lang_id` — an
  * unrecognized `lang_id` is **silently rewritten to `en-US`** rather than
@@ -17,7 +17,7 @@
  * traceable to a single upstream line rather than derived.
  *
  * Only the *default* voice per locale is listed. The service accepts any
- * `VoiceId` Polly knows, and `voices.js` names alternates for most locales in
+ * `VoiceId` Polly knows, and the voice map names alternates for most locales in
  * trailing comments, so a per-locale voice roster is reachable — but it would be
  * assembled from hand-maintained comments rather than from the map the service
  * reads, so it is left out.
@@ -37,7 +37,7 @@ export interface SchoolCityVoiceEntry {
 	/** Polly `VoiceId`, sent as `voice` when the caller names none. */
 	readonly voiceId: string;
 	/**
-	 * Absent where the upstream map records no gender. `voices.js` annotates most
+	 * Absent where the upstream map records no gender. The map annotates most
 	 * locales with the female and male voices available, and two — `arb` and
 	 * `cmn-CN` — carry no annotation at all. Inferring those from elsewhere would
 	 * put a fact in this table that its source does not support, so they stay
@@ -47,8 +47,8 @@ export interface SchoolCityVoiceEntry {
 }
 
 /**
- * Transcribed from `sc-texttospeech-api/src/helpers/voices.js`, in upstream
- * order. Genders come from that file's own trailing comments.
+ * Transcribed from the service's voice map, in upstream order. Genders come
+ * from that map's own trailing comments.
  */
 export const SCHOOLCITY_DEFAULT_VOICES: readonly SchoolCityVoiceEntry[] = [
 	{ languageCode: "arb", language: "Arabic", voiceId: "Zeina" },
@@ -281,8 +281,8 @@ export const schoolCityVoices = (options?: GetVoicesOptions): Voice[] => {
 /**
  * Whether the service serves this locale, matched exactly as `lang_id` is.
  *
- * Worth checking before synthesis: an unserved `lang_id` is not an error
- * upstream, it is English audio.
+ * Check it before synthesis: upstream answers an unserved `lang_id` with
+ * English audio and no error.
  */
 export const isSupportedSchoolCityLanguage = (
 	languageCode: string,

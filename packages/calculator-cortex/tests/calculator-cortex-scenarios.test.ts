@@ -404,9 +404,8 @@ const SCIENTIFIC_REFUSALS: readonly Refusal[] = [
 	/*
 	 * What typing `log_2` into the mathfield actually produces. MathLive nests the
 	 * subscript rather than filling it, so a base-2 logarithm is unreachable from
-	 * the keyboard even though `\\log_{2}(8)` now answers 3 -- and unreachable from
-	 * the keypad, which ships no base-n log key. The capability is therefore
-	 * currently exercised only by host-seeded or imported state.
+	 * the keyboard even though `\\log_{2}(8)` answers 3. The keypad's base-n log
+	 * key is the input path.
 	 */
 	{
 		latex: "\\log_{_2}(8)",

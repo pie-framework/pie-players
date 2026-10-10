@@ -1139,7 +1139,6 @@ export class TTSService {
 	): TTSSpeechSegment[] {
 		const boundaries = this.collectSpeechPlanBoundaries(
 			contentElement,
-			normalizedText,
 			language,
 		);
 		if (textOffset === 0) {
@@ -1154,7 +1153,6 @@ export class TTSService {
 
 	private collectSpeechPlanBoundaries(
 		contentElement: Element,
-		normalizedText: string,
 		language: string,
 	): Map<number, number> {
 		const boundaries = new Map<number, number>();

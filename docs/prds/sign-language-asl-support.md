@@ -1,37 +1,36 @@
 # Sign Language (ASL) Support
 
 Status: Accepted for the `pie-players` contract, which is implemented and is the
-current reference. PIE-879 (`pie-elements-ng`) and PIE-881 (`pie-api-aws`) are
-both Done as of 2026-08-10, closing out sprint 2026.17 alongside PIE-880 — all
-three stories under PIE-801 are complete.
+current reference. The `pie-elements-ng` and `pie-api-aws` halves were complete
+as of 2026-08-10.
 
 Owner: PIE Players maintainers
 
-Tracking: unlike the timed-media workstream, this one **is** tracked. Tickets belong under epic [PIE-801](https://illuminate.atlassian.net/browse/PIE-801) (parent initiative [REN-103](https://illuminate.atlassian.net/browse/REN-103)). This PRD is the contract; PIE-801 is the delivery record. Three stories were opened 2026-08-07, spanning the three repos the feature crosses:
+Tracking: delivery was tracked as three stories, one per repo the feature crosses, opened 2026-08-07. This PRD is the contract; the tracker is the delivery record.
 
-| Story | Repo | Scope | Status |
-| --- | --- | --- | --- |
-| [PIE-879](https://illuminate.atlassian.net/browse/PIE-879) | `pie-elements-ng` | Verify the dormant `accessibilityCatalogs` model carries sign-language cards. | Done |
-| [PIE-880](https://illuminate.atlassian.net/browse/PIE-880) | `pie-players` | Extract, resolve, and render `sign-language` cards in a section-player region. Depends on PIE-879 for the payload shape. | Done |
-| [PIE-881](https://illuminate.atlassian.net/browse/PIE-881) | `pie-api-aws` | Carry ASL video through the Learnosity→PIE import transform; end-to-end proof using real ASL item samples. | Done |
+| Repo | Scope | Status |
+| --- | --- | --- |
+| `pie-elements-ng` | Verify the dormant `accessibilityCatalogs` model carries sign-language cards. | Done |
+| `pie-players` | Extract, resolve, and render `sign-language` cards in a section-player region. Depends on the `pie-elements-ng` story for the payload shape. | Done |
+| `pie-api-aws` | Carry ASL video through the Learnosity→PIE import transform; end-to-end proof using real ASL item samples. | Done |
 
-PIE-881 is the integration proof for all three. The pipeline is Learnosity source → `pie-api-aws` transform → PIE item `accessibilityCatalogs` → `pie-players` render; a story landing in isolation proves nothing until that path runs end to end.
+The `pie-api-aws` story is the integration proof for all three. The pipeline is Learnosity source → `pie-api-aws` transform → PIE item `accessibilityCatalogs` → `pie-players` render; a story landing in isolation proves nothing until that path runs end to end.
 
-**Implementation status, 2026-08-26.** All three PIE-801 stories are Done. PIE-880 landed on `develop`: the card contract in `players-shared`, resolution, the content-scoped media region, and `signLanguage` policy gating, extracted into `@pie-players/pie-tool-sign-language` on 2026-08-10. PIE-881 landed the same day in `pie-api-aws` (`621f351d`, `43d28521`): the Learnosity→PIE transform detects the Feature form of a signing video and writes a `sign-language` catalog card, filed per model rather than at the item root, resolving the clip's MIME type from its extension. The import path is proved in-repo by `packages/section-player/tests/pie881-imported-asl-integration.spec.ts`, which renders the unmodified output of `mapLearnosityItemToPieItem` — synthetic source item, public-domain clip, so both fixture and spec are committable — and asserts it resolves, gates and plays. Per PIE-881, the transform was also proven end-to-end against a real secure-bank item in `pie-api-aws`, but that item cannot live in any repository, so the demo's clip stays a stand-in that does not sign the demo's prompts — see the video-sizing open question below, which PIE-881 landing did not close. Decisions taken while building this are recorded in [Resolved Decisions](#resolved-decisions), and where they supersede an earlier line in this PRD, that line says so rather than being quietly rewritten.
+**Implementation status, 2026-08-26.** All three stories are Done. The `pie-players` half landed on `develop`: the card contract in `players-shared`, resolution, the content-scoped media region, and `signLanguage` policy gating, extracted into `@pie-players/pie-tool-sign-language` on 2026-08-10. The `pie-api-aws` half landed the same day: the Learnosity→PIE transform detects the Feature form of a signing video and writes a `sign-language` catalog card, filed per model rather than at the item root, resolving the clip's MIME type from its extension. The import path is proved in-repo by `packages/section-player/tests/pie881-imported-asl-integration.spec.ts`, which renders the unmodified output of `mapLearnosityItemToPieItem` — synthetic source item, public-domain clip, so both fixture and spec are committable — and asserts it resolves, gates and plays. The transform was also proven end-to-end against a real item in `pie-api-aws`, but that item cannot live in any repository, so the demo's clip stays a stand-in that does not sign the demo's prompts — see the video-sizing open question below, which that proof did not close. Decisions taken while building this are recorded in [Resolved Decisions](#resolved-decisions), and where they supersede an earlier line in this PRD, that line says so.
 
-[PIE-882](https://illuminate.atlassian.net/browse/PIE-882) runs ahead of all three: it retires `@pie-element/core`, a dead `pie-elements-ng` package whose stale copy of the type model made a single canonical `accessibilityCatalogs` definition look like two competing ones. Not ASL work and not a code dependency — sequenced first so this work targets one unambiguous type home.
+A `pie-elements-ng` change sequenced ahead of all three retired `@pie-element/core`, a dead package whose stale copy of the type model made a single canonical `accessibilityCatalogs` definition look like two competing ones. It was not ASL work and not a code dependency; it left this work one type home.
 
-Naming: the epic currently says "Video Support (e.g. ASL)". That should be renamed to "ASL support" — the work is catalog/PNP/accommodation-shaped, not video-player-shaped. See [Relationship To Section-Player And To Timed Media](#relationship-to-section-player-and-to-timed-media). Signed English (`eng-US`) rides the same card type, so a video-centric name obscures that too.
+Naming: the feature is ASL support, because the work is catalog/PNP/accommodation-shaped rather than video-player-shaped. See [Relationship To Section-Player And To Timed Media](#relationship-to-section-player-and-to-timed-media). Signed English (`eng-US`) rides the same card type, which a video-centric name would obscure.
 
-**Direction, now settled.** These were the maintainers' engineering direction pending a prototype; the prototype shipped, so every bullet below is either implemented or recorded as a decision, and each says which. Kept as a section because the reasoning is what makes the decisions reviewable, not because any of it is still provisional:
+**Direction.** The maintainers' engineering direction, set before the prototype; each bullet says whether it shipped or stands as a decision:
 
-- **Link video to the existing item id; do not clone a separate ASL item.** Resolves [The Import Invariant](#the-import-invariant) below toward "merge," chosen for scalability and lower technical debt over the simpler clone-based path. Shipped in PIE-881 (Done, 2026-08-10): the importer files the card against the existing item, not a cloned one.
+- **Link video to the existing item id; do not clone a separate ASL item.** Resolves [The Import Invariant](#the-import-invariant) below toward "merge," chosen for scalability and lower technical debt over the simpler clone-based path. Shipped 2026-08-10: the importer files the card against the existing item.
 - **Default the video's own audio off** — shipped: the region renders `<video muted>`. Which audio channel that settles is still only the signing track; whether the item's own narration should also be suppressed while a signed alternate plays is untouched by this, and related to but not the same decision as the [TTS-versus-signing coordination](#resolved-decisions) rule below.
 - **Keep the framework generic, not ASL-specific.** Corroborates this PRD's existing catalog/`MediaAssetRef` reuse rather than changing it.
 - **Authoring tooling is explicitly deferred.** Ship rendering now; hold off on any UI for authoring cue/catalog data until a concrete use case exists. Reinforces the existing Non-Goal below rather than changing it.
 - **Presentation is settled for the first iteration** — fixed right-side split, resizable, no orientation options. See [Region Presentation](#region-presentation).
 
-Superseded 2026-08-26: this section used to warn that it would go stale fast and to check it against the prototype. It did go stale, and the check has now been done against shipped source rather than against this document.
+Checked against shipped source on 2026-08-26.
 
 Related architecture:
 
@@ -41,12 +40,12 @@ Related architecture:
 - [Accessibility runtime patterns](./shared-contracts/accessibility-runtime-patterns.md)
 - [Timed media section architecture](../architecture/timed-media-section.md) — related media work, but a different mechanism; see [Relationship To Section-Player And To Timed Media](#relationship-to-section-player-and-to-timed-media)
 
-Confluence counterparts, added 2026-08-26 — this PRD and these pages had no links between them in either direction, which is how the pages came to carry state claims this repo could have corrected months earlier:
+Product-side counterparts live in the product wiki, outside this repository:
 
-- [Signing Video Display: Student and Authoring Experience](https://illuminate.atlassian.net/wiki/spaces/CE/pages/19650281892/Signing+Video+Display+Student+and+Authoring+Experience) — the product-side experience spec for students and authors. It names this PRD as its canonical source for implemented behaviour, so a change here that alters delivery behaviour needs its state tables re-checked. Its authoring half (§2) has no counterpart in this repo and is not constrained by this PRD.
-- [PIE Accommodation Catalogs](https://illuminate.atlassian.net/wiki/spaces/CE/pages/19649497734/PIE+Accommodation+Catalogs) — model owner on the Confluence side.
-- [Item and Passage Authoring Template](https://illuminate.atlassian.net/wiki/spaces/CE/pages/19664372082/Item+and+Passage+Authoring+Template) — the shared companion-slot shell signing's authoring experience would live in. Note the companion-slot generalization there assumes signing, spoken script, transcript, translation, braille and tactile graphics share one grain and one slot; that assumption is contested and is not one this PRD makes.
-- [Signing Video CMS Operations](https://illuminate.atlassian.net/wiki/spaces/CE/pages/19657293851/Signing+Video+CMS+Operations) — production, rights and coverage, all host-owned per [Data Ownership And Host Responsibilities](#data-ownership-and-host-responsibilities).
+- the student and authoring experience spec for signing video, which names this PRD as its canonical source for implemented behaviour, so a change here that alters delivery behaviour needs its state tables re-checked. Its authoring half has no counterpart in this repo and is not constrained by this PRD;
+- the accommodation catalog model page;
+- the item and passage authoring template, whose companion-slot shell assumes signing, spoken script, transcript, translation, braille and tactile graphics share one grain and one slot. This PRD does not make that assumption;
+- the signing video CMS operations page: production, rights and coverage, all host-owned per [Data Ownership And Host Responsibilities](#data-ownership-and-host-responsibilities).
 
 ## Problem
 
@@ -56,7 +55,7 @@ Deaf and hard-of-hearing learners need item language delivered in sign language.
 - The toolkit's reference vocabulary, since removed, listed `signLanguage`, `signLanguageInterpretation`, and `visualLanguage`, but no tool declared those `pnpSupportIds`, so no PNP support activated anything.
 - `CatalogCard.content` is a flat `string`. A signing video needs more than one URL.
 
-The gap is visible in real content. Learnosity items in the ETL playground carry ASL video and render it in the Learnosity view; the PIE view of the same item shows the multiple-choice question with no video, because nothing translates that content into a PIE-renderable alternate representation.
+The gap is visible in real content. Imported Learnosity items carry ASL video and render it in the Learnosity view; the PIE view of the same item shows the multiple-choice question with no video, because nothing translates that content into a PIE-renderable alternate representation.
 
 ### What ASL Is, In PIE Terms
 
@@ -64,7 +63,7 @@ Four domain facts drive this contract. Getting them wrong produces the wrong arc
 
 1. **ASL video translates the prompt, not the passage.** Learnosity's "stimulus" field corresponds to what PIE calls **prompt** — not to what PIE calls **passage**. The signing video is a translation of the prompt into another language. It is not shared context framing several items, so it is not passage-shaped and not section-shaped.
 
-2. **ASL coexists with written English; it does not replace it.** Spanish translation in Renaissance practice produces a different item (a different id, not just a different content version), all in Spanish with no English. ASL cannot work that way, in significant part because ASL is not written down in everyday practice — transcription systems exist but are of theoretical interest rather than part of most signers' linguistic practice. Deaf learners in the US typically use ASL for real-time communication and English for reading and writing, often with very different fluency in each, and in either direction depending on whether deafness was congenital. So the ASL video must sit **alongside** the English content in the same item, as an alternate representation, not as a translated sibling item.
+2. **ASL coexists with written English; it does not replace it.** Spanish translation in current authoring practice produces a different item (a different id, not just a different content version), all in Spanish with no English. ASL cannot work that way, in significant part because ASL is not written down in everyday practice — transcription systems exist but are of theoretical interest rather than part of most signers' linguistic practice. Deaf learners in the US typically use ASL for real-time communication and English for reading and writing, often with very different fluency in each, and in either direction depending on whether deafness was congenital. So the ASL video must sit **alongside** the English content in the same item, as an alternate representation, not as a translated sibling item.
 
 3. **Language-bearing content beyond the prompt may also need signing.** Answer choices expressed as language plausibly need signed translations too. Choices expressed as images do not. Granularity therefore has to reach below the item — the card model must stay per-content-node capable even though today's content does not exercise it. The sample items are one video per item, and their choices are images, so per-node docking is a future capability rather than an MVP concern — and as of 2026-08-26 explicitly out of near-term scope, without giving up the capability. See [Resolved Decisions](#resolved-decisions).
 
@@ -84,7 +83,7 @@ Because the source has two Learnosity items (a base and an ASL copy) while PIE w
 
 Merging satisfies this trivially. Emitting both satisfies it only if assembly and policy agree, and the failure mode is quiet: serve a "dedicated ASL item" to a student without the accommodation and gating hides the video, producing an ASL item that shows no ASL.
 
-**Resolved: merge.** Link the signing video to the existing item id rather than cloning a separate ASL item, chosen for scalability over a simpler clone-based path that would have covered a narrower near-term delivery target. Shipped in PIE-881 (`pie-api-aws`, Done 2026-08-10): the transform files the card against the existing item.
+**Resolved: merge.** Link the signing video to the existing item id rather than cloning a separate ASL item, chosen for scalability over a simpler clone-based path that would have covered a narrower near-term delivery target. Shipped in `pie-api-aws` on 2026-08-10: the transform files the card against the existing item.
 
 ## Goals
 
@@ -104,17 +103,17 @@ Merging satisfies this trivially. Emitting both satisfies it only if assembly an
 - No Learnosity→PIE import implementation. The ETL/import path lives outside `pie-players`; this PRD defines the PIE-side target shape that an importer writes into.
 - No authoring UI for creating or editing cue/catalog data. Explicitly deferred — see the direction callout above: ship rendering now, build authoring tooling only once a concrete use case exists.
 - No QTI conformance claim. Mapping belongs in `pie-qti`.
-- No decision here on whether the video player component is shared with `video-stimulus`; see Open Questions.
+- No video player component shared with `video-stimulus`; see [Resolved Decisions](#resolved-decisions).
 
 ## Package And Export Ownership
 
-- Owning package for the generic machinery: `@pie-players/pie-assessment-toolkit` (source at `packages/assessment-toolkit`). It owns `AccessibilityCatalogResolver`, the PNP feature vocabulary, `ToolPolicyEngine` and the registration contract — and, since PIE-886, names no capability.
+- Owning package for the generic machinery: `@pie-players/pie-assessment-toolkit` (source at `packages/assessment-toolkit`). It owns `AccessibilityCatalogResolver`, the PNP feature vocabulary, `ToolPolicyEngine` and the registration contract, and names no capability.
 - Owning package for signing itself: `@pie-players/pie-tool-sign-language` (source at `packages/tool-sign-language`), added 2026-08-10. It holds the card validation, the content resolver, the registration and the region element. Signing is the worked example of a capability contributed from outside the player: it is not in `createPackagedToolRegistry`, so a deployment opts in by registering it.
 - Owning package for data types: `@pie-players/pie-players-shared` (source at `packages/players-shared`), where `CatalogCard`, `AccessibilityCatalog`, and `PersonalNeedsProfile` already live.
 - Runtime host: `@pie-players/pie-section-player`, same as spoken/TTS catalogs today. It offers the `content-media` surface and mounts whatever is registered on it; it does not depend on the signing package and does not name signing, the `signLanguage` support id or the `sign-language` catalog type.
 - Rendering placement: **a content-scoped region shared by item and passage cards**, alongside the `header` and `content` regions they already declare — decided 2026-08-07, generalized from the original item-only placement on 2026-08-10, and reached through the generic `content-media` surface rather than by name. Not a toolbar surface, and not an item-player affordance. `item-player` needs to know nothing about signing.
-- Policy identity: **signing takes a feature id and registers for policy**, so it inherits the six-level precedence in `PnpPolicySource` (`district-block`, `test-admin-override`, `item-restriction`, `item-requirement`, `district-requirement`, `pnp-support`, `pnp-prohibited`). Policy identity and rendering placement are deliberately separated here; see [What Counts As A Tool](../tools-and-accomodations/architecture.md#what-counts-as-a-tool).
-- Public export path: `@pie-players/pie-tool-sign-language` for the registration, the card validators and the content resolver. The generic media-payload helpers (`applyMediaFragment` and the normalizers) are owned by `@pie-players/pie-players-shared/media`, which the signing package imports; the toolkit root re-exports them.
+- Policy identity: **signing takes a feature id and registers for policy**, so it inherits the eight-level precedence in `PnpPolicySource`: `district-block`, `test-admin-override` set to `false`, `item-restriction`, `pnp-prohibited`, `test-admin-override` set to `true`, `item-requirement`, `district-requirement`, `pnp-support`. Policy identity and rendering placement are deliberately separated here; see [What Counts As A Tool](../tools-and-accomodations/architecture.md#what-counts-as-a-tool).
+- Public export path: `@pie-players/pie-tool-sign-language` for the registration, the card validators and the content resolver. The generic media-payload helpers (`applyMediaFragment` and the normalizers) are owned by `@pie-players/pie-players-shared/media`, which the signing package imports.
 - Consuming packages or apps: `section-player`, `assessment-toolkit` registry and policy engine, demo apps, `pie-elements-ng` only if per-node docking below the prompt is later scoped, and `pie-qti` adapters.
 - Runtime environment: browser and custom element; data types must stay Node-safe for importers and adapters.
 
@@ -183,7 +182,7 @@ interface CatalogCard {
 }
 ```
 
-**Either `content` or `payload`, never both — decided 2026-08-08 during PIE-880,
+**Either `content` or `payload`, never both — decided 2026-08-08 during implementation,
 superseding the tagged-union sketch this section originally carried.** Two
 duplications came out of that sketch, and both were removed:
 
@@ -200,34 +199,21 @@ breaking change to two published types — taken deliberately while nothing outs
 this repo consumes catalogs beyond TTS. `TTSService` treats a card with no string
 form as "no catalog" and falls through to generated speech.
 
-One integration consequence, resolved 2026-08-08, then re-resolved the same day.
-Two landed producers — `pie-elements-ng` (PIE-879) and the `pie-api-aws`
-Learnosity importer (PIE-881) — carried the media block under `signLanguage`,
-while this repo read only `payload`, so an imported or element-authored card
-resolved to nothing: it validates, it imports, and then no signing video renders.
-The first repair accepted `signLanguage` as an input alias, folded into `payload`
-where the resolver projects a card.
+Both landed producers, `pie-elements-ng` and the `pie-api-aws` Learnosity
+importer, first carried the media block under `signLanguage`. An input alias for
+it was accepted on 2026-08-08 and withdrawn the same day: it was folded in on the
+resolution path only, so an aliased card rendered its video while
+`hasAlternativeType(..., "sign-language")` reported none. Both producers now emit
+`payload`, and the alias is gone from the type, from `resolveCard`, and from
+`resolveSignLanguageMedia`. All three repos declare one card shape: a single
+generic `payload` slot interpreted by `catalog`, which is what QTI's
+one-content-slot `qti-card` describes and what keeps braille, the next structured
+alternate, additive. `resolveSignLanguageMedia` warns on any `sign-language` card
+it cannot resolve, so a card left over from the old spelling says so.
 
-That repair was withdrawn, because it caused a worse version of the same bug.
-The fold-in was on the resolution path only; `getAllAlternatives` read `payload`
-alone, so a card that arrived under the alias rendered its signing video *and*
-answered "no" to `hasAlternativeType(..., "sign-language")`. The accommodation
-worked and anything asking whether it existed was told it did not — invisible to
-everyone except the learner. One fact under two names makes every read path a
-place to forget one of them, and the first new read path forgot.
-
-Both producers now emit `payload`, so the alias has nothing left to accept and is
-gone from the type, from `resolveCard`, and from `resolveSignLanguageMedia`. All
-three repos declare one card shape: a single generic `payload` slot interpreted
-by `catalog`, which is what QTI's one-content-slot `qti-card` describes and what
-keeps braille — the next structured alternate — additive rather than a breaking
-widening in three places. `resolveSignLanguageMedia` now warns on *any*
-`sign-language` card it cannot resolve, so a card left over from the old spelling
-says so instead of silently resolving to nothing.
-
-The three changes must land together: a host shipping this player against content
-built by the older element types or the older importer will see signing cards
-stop resolving, with that warning as the signal.
+A host shipping this player against content built by the older element types or
+the older importer sees signing cards stop resolving, with that warning as the
+signal.
 
 `MediaAssetRef` is reused deliberately rather than defining media fields here — decided 2026-08-07 — to avoid two media vocabularies in one codebase. Two consequences the accepted contract must carry:
 
@@ -238,7 +224,7 @@ Resolution and gating reuse existing seams:
 
 - owner traversal and precedence stay in `AccessibilityCatalogResolver`; the content capability receives one immutable owner snapshot and applies strict `sign-language` and requested-language matching itself;
 - docking stays `data-catalog-idref` on the content node, the same attribute `SSMLExtractor` writes and `TTSService` reads;
-- eligibility comes from `PnpPolicySource`, at any of its six precedence levels — not from the student profile alone.
+- eligibility comes from `PnpPolicySource`, at any level of its precedence — not from the student profile alone.
 
 ### Availability Rule
 
@@ -246,7 +232,7 @@ Signing is available when **both** conditions hold: the content carries a matchi
 
 This is deliberately not framed as "default on versus default off." The content condition is the DRD half of AfA's matching pair (see [What Counts As A Tool](../tools-and-accomodations/architecture.md#what-counts-as-a-tool)), and it is what prevents a dead affordance on the overwhelming majority of items that carry no signing video — regardless of what the computed default profile happens to say. The eligibility half follows the accommodation tier: not granted by default, because signing requires a documented need.
 
-Revised 2026-08-09 (PIE-886): the core no longer synthesizes a default profile, so there is nothing for signing to leak into. An earlier version of this line required excluding `signLanguage` from `computeDefaultSupports()` by id; that derivation and its exclusion list are both gone. Signing instead declares `requiresAuthoredContent`, which is what keeps it out of a host's wholesale grant structurally. Hosts that supply their own profile are unaffected either way.
+Revised 2026-08-09: the core no longer synthesizes a default profile, so there is nothing for signing to leak into. An earlier version of this line required excluding `signLanguage` from `computeDefaultSupports()` by id; that derivation and its exclusion list are both gone. Signing instead declares `requiresAuthoredContent`, which is what keeps it out of a host's wholesale grant structurally. Hosts that supply their own profile are unaffected either way.
 
 Validation: `sign-language` cards need indexing and validation distinct from text cards, since a malformed media payload must not silently degrade to an empty string or render a URL as visible text.
 
@@ -256,7 +242,7 @@ This PRD touches these surfaces:
 
 - **Contract attributes.** It adds a second consumer of `data-catalog-idref`. TTS behavior through that attribute must not change; the attribute stays one canonical name with two readers.
 - **Persisted/authored wire data.** `CatalogCard` gains a payload shape. Existing `{ catalog, language?, content }` cards keep resolving unchanged, and `content` is where every text-ish type still lives. Revised 2026-08-08: an earlier version of this bullet also required `sign-language` cards carrying a bare URL in `content` to keep working as a legacy single-source form. That requirement is dropped — no producer writes that shape, and accepting it would mean a second code path and a second source of truth for the same URL while silently discarding the MIME type, label, and any second source. Such a card is now reported and ignored.
-- **Default PNP.** Signing must be explicitly opted into (decided 2026-08-08). The mechanism changed on 2026-08-09 under PIE-886: rather than excluding `signLanguage` by id from a profile computed off the packaged registry, the core stops computing a profile at all — `createEmptyPersonalNeedsProfile()` grants nothing, and `@pie-players/pie-default-tool-loaders` ships the universal set as a named preset a host adopts. Signing's registration declares `requiresAuthoredContent`, so a host building its own grant list has a declaration to filter on instead of a compile-time array it cannot extend.
+- **Default PNP.** Signing must be explicitly opted into (decided 2026-08-08). The mechanism changed on 2026-08-09: rather than excluding `signLanguage` by id from a profile computed off the packaged registry, the core stops computing a profile at all — `createEmptyPersonalNeedsProfile()` grants nothing, and `@pie-players/pie-default-tool-loaders` ships the universal set as a named preset a host adopts. Signing's registration declares `requiresAuthoredContent`, so a host building its own grant list has a declaration to filter on instead of a compile-time array it cannot extend.
 - **`pie-elements-ng`.** Choice-level docking requires element markup to carry `data-catalog-idref` on choice nodes. That is element-repo work and must not be faked by synthesizing ids in the player.
 
 It must not change PIE element runtime/controller contracts, versioned `pie-*` tag names, `pie-item-player` properties/events/methods, section completion state, or assessment-player routing.
@@ -284,13 +270,13 @@ Hosts own:
 
 ## Serialization And Versioning
 
-Catalog data is authored and wire-facing. The accepted PRD must define:
+Catalog data is authored and wire-facing. The contract settles:
 
-- a version marker on the sign-language card payload, or an explicit statement that `CatalogCard` versioning is inherited from the enclosing assessment/item content version;
-- validation ownership in `players-shared` or `assessment-toolkit`, consistent with wherever `CatalogCard` validation lands;
-- unknown-`catalog`-type behavior: unknown types are already tolerated by `CatalogType`'s `| string` tail and must continue to be ignored rather than rejected;
-- unknown-payload-shape behavior: a `sign-language` card whose payload does not validate must be treated as absent, and must not be rendered as raw text;
-- fixtures for single-source, multi-source, poster, fragment-range and missing-language cards, plus the two rejected shapes (bare-URL `content`, and a payload with no usable source).
+- versioning: the sign-language payload carries no version marker of its own. Its `media` is a `MediaAssetRef`, and this build renders only `version: 1` (`SUPPORTED_MEDIA_ASSET_VERSION` in `@pie-players/pie-players-shared/media`). A card whose media claims another version is reported and ignored; one whose media omits `version` is accepted, since producers predate the field;
+- validation ownership: `@pie-players/pie-tool-sign-language` validates sign-language cards (`resolveSignLanguageMedia`), using the generic media normalizers in `@pie-players/pie-players-shared/media`;
+- unknown-`catalog`-type behavior: unknown types are tolerated by `CatalogType`'s `| string` tail and ignored rather than rejected, with one report per token (see [Resolved Decisions](#resolved-decisions));
+- unknown-payload-shape behavior: a `sign-language` card whose payload does not validate is treated as absent and is never rendered as raw text;
+- fixtures: the package's card tests cover single-source, multi-source, poster, fragment-range and missing-language cards, plus the two rejected shapes (bare-URL `content`, and a payload with no usable source).
 
 ## Accessibility
 
@@ -302,7 +288,7 @@ Requirements:
 
 - the signing affordance is keyboard reachable and labelled, and its label names the language (for example "American Sign Language") rather than a generic "video";
 - opening and closing signing playback moves focus predictably and restores it on dismiss;
-- signing playback and TTS must not run simultaneously; the accepted PRD defines which yields;
+- signing playback and TTS must not run simultaneously: starting either pauses the other (see [Resolved Decisions](#resolved-decisions));
 - the English content the card is docked to stays visible while signing plays, because both languages are in use — signing must not replace or obscure the prompt it translates;
 - signing UI must not obscure captions, transcripts, media controls, or answer choices;
 - playback controls must include pause, replay, and speed where the player provides them, since re-watching is normal for translation rather than exceptional;
@@ -323,16 +309,16 @@ QTI 3 is **inspiration, not an interop target.** PIE's catalog model borrows the
 | `qti-html-content` with `<video>` and multiple `<source>` | `SignLanguageCardPayload.media` | Today's flat `content: string` cannot carry this. |
 | Media Fragments URI on the source | `fragment` | QTI 3 replaced APIP's separate start/end cue elements with fragment notation, letting one recording serve several nodes. |
 | `data-catalog-idref` docking, conventionally on a hidden docking div | `data-catalog-idref` | Already the same attribute PIE uses for TTS. |
-| APIP `signFileASL` / `signFileSignedEnglish` | catalog card + language | APIP's two sign types collapse into card language. Signed English is scoped out for MVP; see Open Questions. |
+| APIP `signFileASL` / `signFileSignedEnglish` | catalog card + language | APIP's two sign types collapse into card language. Signed English is scoped out for MVP; see [Resolved Decisions](#resolved-decisions). |
 | PNP 3.0 / AfA `sign-language` | `PersonalNeedsProfile.supports` | `signLanguage`, the sign-language tool's id: the AfA term, camelCased. |
 
-The table covers signing. It is not a survey of the catalog model, and two places where PIE's shape and the standard's diverge are recorded as open questions below rather than as mappings: QTI's `spoken` card may carry a pre-recorded audio file rather than SSML, and `ext:`-prefixed vendor support tokens have nowhere to land in a closed `CatalogType`. Neither is a defect in this design — nothing here promised to represent them — but both would surface the day something actually reads QTI, so they are written down while the reasoning is fresh.
+The table covers signing and is not a survey of the catalog model. Two places where PIE's shape and the standard's diverged are settled in [Resolved Decisions](#resolved-decisions): QTI's `spoken` card may carry a pre-recorded audio file, which PIE reads as `SpokenAudioCardPayload`, and `ext:`-prefixed vendor support tokens, which `isKnownCatalogType` accepts in an open `CatalogType`.
 
 Import/export mapping, if it is ever built, belongs in `pie-qti` and is where any lossy transform gets documented — in particular whether the hidden-docking-div convention survives a PIE round trip.
 
 ## Relationship To Section-Player And To Timed Media
 
-**Section-player is the runtime host** for signing, and there is nothing new about that: the accessibility catalog resolver lives in `assessment-toolkit`, which section-player consumes, and section-player already renders `spoken` catalog cards through the same path that this PRD extends. Signing is a new *type* of catalog card and a new *renderer*, not a new host. Since PIE-886 the host relationship is by surface rather than by name: section-player mounts whatever declares `surfaces: ["content-media"]`, and signing lives in its own package.
+**Section-player is the runtime host** for signing, and there is nothing new about that: the accessibility catalog resolver lives in `assessment-toolkit`, which section-player consumes, and section-player already renders `spoken` catalog cards through the same path that this PRD extends. Signing is a new *type* of catalog card and a new *renderer*, not a new host. The host relationship is by surface rather than by name: section-player mounts whatever declares `surfaces: ["content-media"]`, and signing lives in its own package.
 
 What this PRD is *not* is a new section flavor. [Timed media](./timed-media-section-contract.md) is a section flavor — it introduces `sectionType: "timed-media"` and cue orchestration, and runs in the existing section-player layouts — because it composes multiple items around a shared timeline. Signing does none of that: many short recordings, each translating one content node, played on learner demand, gating nothing.
 
@@ -391,27 +377,27 @@ Settled in review 2026-08-07 and inlined into the sections above rather than lef
 | Rendering placement | A region per content card, beside the existing `header`/`content` regions. Superseded 2026-08-10: originally item-only, generalized so `SectionItemCard.svelte` and `SectionPassageCard.svelte` render one shared `SectionCardMediaSplit` and the registration declares `supportedLevels: ["item", "passage"]`. Not section-wide like the passage shell, not a toolbar surface, not an item-player affordance. |
 | Region presentation | Fixed default to the right of item content, resizable via the `SectionSplitDivider.svelte` pattern. No configurable orientation and no free drag in the first iteration. See [Region Presentation](#region-presentation). |
 | Region naming | Generic (media/catalog-media), not ASL-specific — the slot holds a resolved catalog card, and audio description is the same shape. |
-| Policy identity | Takes a feature id and registers for policy, inheriting the six-level precedence. Separate from rendering placement. |
+| Policy identity | Takes a feature id and registers for policy, inheriting the PNP precedence. Separate from rendering placement. |
 | Presentation limits | None imposed by the platform. Driven by policy at host, district, test-administration, item, and student level via existing seams; only the parameter vocabulary is new. |
-| Default availability | Requires a matching card *and* eligibility. Excluded from the computed default profile. |
+| Default availability | Requires a matching card *and* eligibility; `requiresAuthoredContent` keeps signing out of any wholesale grant. |
 | Media payload | Reuse `MediaAssetRef`; declare the required subset per consumer; `tracks`/`transcript` meaningless for signing. |
 | Player component | Minimal `<video>` wrapper. Not shared with `video-stimulus` — the clips are seconds long, and a dependency on an unbuilt element buys nothing. |
-| Per-choice docking | **Out of scope, decided 2026-08-26.** Not a near-term focus: the stated Star requirement is one video per question, and the sample content is one video per item with image choices. This is a scope decision, not a judgement that per-choice signing is wrong — [fact 3](#what-asl-is-in-pie-terms) still holds for language-bearing choices. What keeps the door open costs nothing to maintain: the card model stays per-content-node capable, `data-catalog-idref` stays author-owned and byte-for-byte, and resolution takes the first card for the scope rather than assuming one exists. Reopening it is additive — `data-catalog-idref` on choice nodes from `pie-elements-ng`, and a resolver that returns more than one card per scope. Nothing needs undoing first. |
+| Per-choice docking | **Out of scope, decided 2026-08-26.** Not a near-term focus: the stated product requirement is one video per question, and the sample content is one video per item with image choices. This is a scope decision, not a judgement that per-choice signing is wrong — [fact 3](#what-asl-is-in-pie-terms) still holds for language-bearing choices. What keeps the door open costs nothing to maintain: the card model stays per-content-node capable, `data-catalog-idref` stays author-owned and byte-for-byte, and resolution takes the first card for the scope rather than assuming one exists. Reopening it is additive — `data-catalog-idref` on choice nodes from `pie-elements-ng`, and a resolver that returns more than one card per scope. Nothing needs undoing first. |
 | TTS versus signing | The action the learner just took wins; starting one pauses the other. |
 | Signed English in scope? | Not needed for current (US) scope. Distinct from the international sign-language question below; don't conflate the two. |
 | Multi-signed-language capability | Ships as part of the base design at no extra cost — same card-array-plus-`language` mechanism already used for multi-language spoken TTS, applied to a new catalog type rather than built new. Default to *no* cross-sign-language fallback (show nothing rather than silently substitute a different sign language a student may not follow); revisit only if real usage shows the strict default is wrong. |
-| Item model, clone vs. link | Link video to the existing item id rather than cloning. Shipped in PIE-881, Done 2026-08-10. See [The Import Invariant](#the-import-invariant). |
+| Item model, clone vs. link | Link video to the existing item id rather than cloning. Shipped 2026-08-10. See [The Import Invariant](#the-import-invariant). |
 | Default audio state | Shipped: the region renders `<video muted>`, which settles the signing track. Whether the item's own narration is suppressed while signing plays stays open — see the callout at the top of this PRD. |
 | Authoring tooling | Explicitly deferred until a concrete use case exists. Ship rendering first. |
 
-Settled during PIE-880 implementation, 2026-08-08:
+Settled during implementation, 2026-08-08:
 
 | Decision | Outcome |
 | --- | --- |
 | Card content shape | Either `content` or `payload`, never both; `catalog` is the only discriminator, so the payload carries no `kind`; nothing is mirrored between the two, so `content` is optional. See [Contract Shape](#contract-shape). |
 | Bare-URL signing cards | Not accepted. Reported and ignored rather than half-rendered through a second code path. Supersedes the original compatibility requirement. |
 | Payload key name | `payload`, and only `payload`. The `signLanguage` alias two producers had landed with was accepted for part of a day and then withdrawn: it was folded in on the resolution path but not the enumeration path, so an aliased card rendered its video while reporting that no signed alternate existed. `pie-elements-ng` and the `pie-api-aws` importer now emit `payload` too, on branches that land with this one. |
-| Non-tool feature decisions | A feature id is sufficient — no non-tool feature concept is needed. `ToolPolicyEngine.decideFeature(featureId)` and `ToolkitCoordinator.decideFeaturePolicy(featureId)` resolve one id through `PnpPolicySource`'s existing six levels, independent of placement, and `PnpPolicySource.resolveFeature(...)` reuses that rule evaluation rather than copying it. Answers an Open Question below. |
+| Non-tool feature decisions | A feature id is sufficient — no non-tool feature concept is needed. `ToolPolicyEngine.decideFeature(featureId)` and `ToolkitCoordinator.decideFeaturePolicy(featureId)` resolve one id through `PnpPolicySource`'s existing precedence, independent of placement, and `PnpPolicySource.resolveFeature(...)` reuses that rule evaluation rather than copying it. Answers an Open Question below. |
 | Video sizing | An aspect-ratio target with a height floor, not a flat width percentage, retunable through three `--pie-section-player-item-media-*` theme tokens — the token prefix still says `item-media` though the surface was renamed `content-media`. The region stacks and the divider withdraws below a 560px *card* width, measured by `ResizeObserver` on the split container rather than a CSS media query, so a narrow card in a wide viewport stacks too. |
 | Fragment enforcement, and what it does not reach | The out point is enforced by the player, not left to the browser: `enforceMediaFragment` seeks forward after `loadedmetadata` and pauses at the end via `timeupdate` plus a 100 ms poll. What the *type* allows and the shipped region does not reach is one recording serving several nodes — resolution returns a single card per owner scope, so the multi-node case in the payload comment and the QTI mapping table is a model capability, not shipped behavior. Read those two mentions as forward-looking. |
 | Owner-scope agreement | `AccessibilityCatalogResolver.registerOwner(...)` owns the entity walk and transaction; `forOwner(...)` owns scoped reads and observation. The region receives only the resulting immutable snapshot, so it cannot reconstruct a scope registration never wrote. Direct lookup clients use `catalogOwnerContextFor(...)`. |
@@ -428,7 +414,7 @@ Settled during PIE-880 implementation, 2026-08-08:
 
 - **International sign-language variants.** A future consideration, separate from Signed English: ASL, British Sign Language, and French Sign Language are not interchangeable, and international rollout would need separately authored content per variant. The language-tagged-card mechanism already generalizes to this at no extra engineering cost — same as the resolved multi-signed-language capability above — so nothing needs to be built differently now. Recorded so the framework isn't later assumed to be ASL-only by accident; not a near-term requirement.
 - **Presentation parameter vocabulary.** [Region Presentation](#region-presentation) settles the first iteration's layout, but not the names of the parameters a later configurable version would take. The seam is `toolParameters`; the vocabulary is new and PIE-local, since AfA has no signing-layout token. Deferred with the generalization itself — there is no point naming parameters for a configurability that is not being built yet.
-- **Video sizing numbers.** The *mechanism* is settled (aspect-ratio target plus height floor, exposed as theme tokens — see Resolved Decisions). The numbers are not: they were chosen against a stand-in clip rather than footage authored to sign these prompts. PIE-881 (Done, 2026-08-10) proved the transform end-to-end against a real secure-bank item, but that item cannot live in any repository, so it did not supply a clip this repo can check sizing against — this question is still open pending a redistributable real ASL clip.
+- **Video sizing numbers.** The *mechanism* is settled (aspect-ratio target plus height floor, exposed as theme tokens — see Resolved Decisions). The numbers are not: they were chosen against a stand-in clip rather than footage authored to sign these prompts. The import transform was proved end-to-end on 2026-08-10 against a real item, but that item cannot live in any repository, so it did not supply a clip this repo can check sizing against — this question is still open pending a redistributable real ASL clip.
 - Should PIE surface *coverage* — which content has signing available — so a learner is not left guessing? Low stakes while signing is one-per-item; matters if per-node docking lands.
 - How does signing interact with the line reader, highlighter, and other capabilities that own the same content nodes?
 - Does accommodation-usage telemetry belong in the instrumentation stream, and if so what is emitted without recording accommodation status as learner data?

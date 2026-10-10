@@ -96,12 +96,7 @@ export class DesmosCalculatorProvider implements CalculatorProvider {
 	 * first, leaked all of them.
 	 */
 	private readonly instances = new Set<Calculator>();
-	private onTelemetry:
-		| ((
-				eventName: string,
-				payload?: Record<string, unknown>,
-		  ) => void | Promise<void>)
-		| undefined;
+	private onTelemetry: CalculatorProviderInit["onTelemetry"];
 
 	private async emitTelemetry(
 		eventName: string,

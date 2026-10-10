@@ -49,7 +49,7 @@ The answer eliminator is automatically integrated when using the PIE Section Pla
 
 The section player automatically:
 - Renders answer eliminator buttons in question toolbars
-- Generates global element IDs
+- Passes each element's composite state key to the tool as `elementStateKeys`
 - Manages state lifecycle
 
 The tool reads its coordinator and the `ElementToolStateStore` from the toolkit
@@ -108,17 +108,17 @@ ${assessmentId}:${sectionId}:${attemptId}:${itemId}:${elementId}
 
 ### Benefits of Composite Keys
 
-- ✅ **Element-Level Granularity**: Each PIE element has independent eliminations
-- ✅ **No Cross-Item Contamination**: Eliminations from question 1 don't appear on question 2
-- ✅ **Cross-Section Persistence**: State persists when navigating between sections
-- ✅ **Global Uniqueness**: No ID collisions across entire assessment
+- **Element-Level Granularity**: Each PIE element has independent eliminations
+- **No Cross-Item Contamination**: Eliminations from question 1 don't appear on question 2
+- **Cross-Section Persistence**: State persists when navigating between sections
+- **Global Uniqueness**: No ID collisions across entire assessment
 
 ### Why Element-Level?
 
 Items can contain **multiple interactive elements** whose choice ids repeat (two multiple-choice elements both have a choice `a`). Each element needs independent state:
 
 ```typescript
-// ✅ Correct: Element-level state
+// Element-level state
 {
   "demo:section-1:attempt-1:question-1:mc1": {
     "answerEliminator": { "eliminatedChoices": ["a", "c"] }
@@ -163,26 +163,19 @@ The answer eliminator stores state in **ElementToolStateStore** (ephemeral, clie
 To persist tool state across page refreshes:
 
 ```typescript
+import { ToolkitCoordinator } from '@pie-players/pie-assessment-toolkit';
 import { createPackagedToolRegistry } from '@pie-players/pie-default-tool-loaders';
 
-const toolRegistry = createPackagedToolRegistry();
+const storageKey = 'tool-state:my-assessment';
 const coordinator = new ToolkitCoordinator({
   assessmentId: 'my-assessment',
-  toolRegistry,
-  tools: { placement: { item: ['answerEliminator'] } }
+  toolRegistry: createPackagedToolRegistry(),
+  tools: { placement: { item: ['answerEliminator'] } },
+  hooks: {
+    loadToolState: () => JSON.parse(localStorage.getItem(storageKey) ?? 'null'),
+    saveToolState: (state) => localStorage.setItem(storageKey, JSON.stringify(state)),
+  },
 });
-
-// Save to localStorage on change
-const storageKey = `tool-state:${coordinator.assessmentId}`;
-coordinator.elementToolStateStore.setOnStateChange((state) => {
-  localStorage.setItem(storageKey, JSON.stringify(state));
-});
-
-// Load on mount
-const saved = localStorage.getItem(storageKey);
-if (saved) {
-  coordinator.elementToolStateStore.loadState(JSON.parse(saved));
-}
 ```
 
 ## How It Works
@@ -216,7 +209,7 @@ Elimination styling is applied by a pluggable `EliminationStrategy` built on the
 - `strikethrough` (default): a `::highlight(pie-answer-eliminated-<id>)` rule renders a line-through over the choice label.
 - `mask`: a `::highlight(pie-answer-masked-<id>)` rule dims and blurs the choice.
 
-Images need separate treatment: they are replaced elements, so neither `::highlight()` nor `text-decoration` paints on them and a picture choice would look untouched. The `strikethrough` strategy therefore wraps each `img` in the eliminated choice in a `span.pie-answer-eliminator-image-strike` (marked with `data-pie-answer-eliminator-image-strike`) and overlays a decorative, `pointer-events: none` SVG that draws an X corner to corner — upper-left to lower-right and lower-left to upper-right. Restoring the choice unwraps the image and returns the DOM to its original shape. Each diagonal is painted over a wider light casing line (`--pie-answer-eliminator-image-strike-casing-color`) so it stays legible over dark artwork.
+Images need separate treatment: they are replaced elements, so neither `::highlight()` nor `text-decoration` paints on them and a picture choice would look untouched. The `strikethrough` strategy therefore wraps each `img` in the eliminated choice in a `span.pie-answer-eliminator-image-strike` (marked with `data-pie-answer-eliminator-image-strike`) and overlays a decorative, `pointer-events: none` SVG that draws an X corner to corner — upper-left to lower-right and lower-left to upper-right. Restoring the choice unwraps the image and returns the DOM to its original shape. Each diagonal is painted over a wider light casing line (`--pie-answer-eliminator-image-strike-casing-color`, package-private with no compatibility guarantee) so it stays legible over dark artwork.
 
 MathJax-rendered math needs its own mark for the same reason. MathJax's CHTML output draws each glyph as an `mjx-c` element with empty `textContent` (the character comes from `::before` generated content, which belongs to no Range), and its SVG output has no text at all — so the highlight had nothing to decorate and a math-only choice looked untouched. For each `mjx-container` in the eliminated choice, the `strikethrough` strategy marks the inner `mjx-math` box with `pie-answer-eliminator-math-strike` plus one of two modifiers, and the theme paints it:
 
@@ -231,7 +224,7 @@ The inner `mjx-math` box is the paint target, not the container: for inline math
 
 Only MathJax containers are marked: natively rendered MathML keeps real text in `mi`/`mn`/`mo`, so the highlight already strikes every token there.
 
-All three treatments — the text line-through, the diagonals over an image, the line over math — are drawn in one colour, `--pie-answer-eliminator-strike-color` (defaulting to `--pie-incorrect`), so a choice mixing prose, pictures, and math reads as a single strike and can be restyled from one place.
+All three treatments — the text line-through, the diagonals over an image, the line over math — are drawn in one colour, `--pie-answer-eliminator-strike-color` (a registered `component-public` token, defaulting to `--pie-incorrect`), so a choice mixing prose, pictures, and math reads as a single strike and can be restyled from one place.
 
 For browsers without the Highlight API, each strategy falls back to a class on the choice container. Either way the eliminated choice also receives ARIA hooks (`data-pie-answer-eliminated`, plus `aria-disabled`/`aria-hidden` and an offscreen "(eliminated)" announcement) for assistive technology.
 
@@ -269,20 +262,12 @@ interface AnswerEliminatorState {
 }
 ```
 
-## Browser Support
-
-- Chrome/Edge 90+
-- Firefox 88+
-- Safari 14+
-
-Requires ES2020+ support (native ES modules, optional chaining, nullish coalescing).
-
 ## Examples
 
 See the [section-demos](../../apps/section-demos/) for complete examples:
 
 - **Three Questions Demo**: Element-level answer eliminator with state persistence
-- **Paired Passages Demo**: Multi-section assessment with cross-section state
+- **Two Passages Demo**: Multi-section assessment with cross-section state
 
 ## Related Documentation
 

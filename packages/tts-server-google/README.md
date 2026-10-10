@@ -12,13 +12,12 @@ This package provides a server-side TTS provider that uses Google Cloud Text-to-
 
 ## Features
 
-- ✅ **Speech Marks Support** - Millisecond-accurate word timing via SSML marks + timepoints (Standard and WaveNet voices; Studio voices return none)
-- ✅ **WaveNet Neural Voices** - High-quality neural TTS with Google's WaveNet technology
-- ✅ **50+ Languages** - Extensive language support
-- ✅ **Full SSML** - Supports Speech Synthesis Markup Language 1.1
-- ✅ **Single API Call** - Audio and speech marks in one request (more efficient than AWS Polly)
-- ✅ **200+ Voices** - Multiple voice types per language (Standard, WaveNet, Studio)
-- ✅ **Flexible Authentication** - Service account, API key, or Application Default Credentials
+- **Speech Marks Support** - Millisecond-accurate word timing via SSML marks + timepoints (Standard and WaveNet voices; Studio voices return none)
+- **WaveNet Neural Voices** - High-quality neural TTS with Google's WaveNet technology
+- **SSML** - Google's supported subset
+- **Single API Call** - Audio and speech marks in one request
+- **Voice Types** - Standard, WaveNet and Studio
+- **Flexible Authentication** - Service account, API key, or Application Default Credentials
 
 ## Installation
 
@@ -27,6 +26,9 @@ npm install @pie-players/tts-server-google
 ```
 
 ## Usage
+
+For a server route that wires this provider into an application, see the
+[integration guide](./examples/INTEGRATION-GUIDE.md).
 
 ### Basic Setup
 
@@ -179,22 +181,17 @@ GOOGLE_APPLICATION_CREDENTIALS=/path/to/service-account.json
 
 | Feature | Support |
 |---------|---------|
-| Speech Marks | ✅ Via SSML marks; none for Studio voices |
-| SSML | ✅ Full 1.1 |
-| Pitch Control | ✅ SSML |
-| Rate Control | ✅ SSML |
-| Volume Control | ❌ Client-side |
+| Speech Marks | Via SSML marks; none for Studio voices |
+| SSML | Google's supported subset |
+| Pitch Control | SSML |
+| Rate Control | SSML |
+| Volume Control | Client-side |
 | Max Text Length | 5000 chars |
 | Audio Formats | MP3, WAV, OGG |
 
 ## Cost
 
-- **Standard voices:** $4 per 1M characters
-- **WaveNet (neural) voices:** $16 per 1M characters
-- **Studio voices:** $16 per 1M characters
-- **Speech marks (timepoints):** Included (no extra charge)
-
-Pricing is competitive with AWS Polly.
+Current rates: <https://cloud.google.com/text-to-speech/pricing>
 
 ## Supported Voices
 
@@ -225,7 +222,7 @@ Popular voices include:
 Studio voices take no SSML `<mark>` tags, so a Studio voice is synthesized as
 audio only and returns `speechMarks: []`, so `ServerTTSProvider` reports no word boundaries for it.
 
-Use `getVoices()` for the complete list of 200+ voices.
+Use `getVoices()` for the complete list.
 
 ## Voice Naming Convention
 
@@ -286,15 +283,9 @@ gcloud projects add-iam-policy-binding PROJECT_ID \
 
 | Feature | Google Cloud TTS | AWS Polly |
 |---------|------------------|-----------|
-| **Voices** | 200+ voices | 60+ voices |
-| **Languages** | 50+ languages | 25+ languages |
 | **Speech Marks** | Via SSML marks | Native |
 | **API Calls** | Single call | Two parallel calls |
 | **Max Text** | 5000 chars | 3000 chars |
-| **Neural Cost** | $16/1M chars | $16/1M chars |
-| **Standard Cost** | $4/1M chars | $4/1M chars |
-| **Authentication** | Flexible (4 methods) | AWS credentials |
-| **Region** | Global service | Region-specific |
 
 ## How Speech Marks Work
 

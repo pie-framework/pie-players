@@ -1,11 +1,10 @@
 # Framework-Owned Error Handling
 
-## Summary
+`pie-players` owns baseline error handling for tools configuration and toolkit
+runtime initialization. Hosts need no `try/catch` around section-player or
+toolkit bootstrapping to avoid a blank UI.
 
-`pie-players` now owns baseline error handling for tools configuration and toolkit runtime initialization.  
-Hosts no longer need to wrap section-player/toolkit bootstrapping in manual `try/catch` just to avoid blank UI.
-
-The framework now does three things by default:
+By default the framework:
 
 1. Logs deterministic console errors with a stable prefix:
    - `[pie-framework:<kind>:<source>]`
@@ -14,69 +13,28 @@ The framework now does three things by default:
 
 ---
 
-## Why this change was made
+## Error model
 
-Before this change, hosts had to combine several responsibilities:
-
-- perform strict tools-config validation
-- catch thrown validation/runtime initialization errors
-- decide how to log the error
-- implement user-facing fallback rendering
-
-That created duplicated boilerplate and inconsistent behavior across integrations.
-
-### Main problems observed
-
-- **Blank/failed render risk** if host did not catch and render on startup failures.
-- **Inconsistent logging** and error message quality across host apps.
-- **Too many validation paths** (overlay and runtime checks happening in multiple places).
-- **No single canonical error contract** for hosts to subscribe to.
-
----
-
-## Design goals
-
-- Keep host integration simple and consistent.
-- Make framework behavior safe by default.
-- Preserve compatibility where practical.
-- Avoid introducing a competing integration style.
-- Keep strict validation and diagnostics typed and deterministic.
-
----
-
-## What changed
-
-## 1) Typed framework error model
-
-Added a shared error model in assessment-toolkit:
+`@pie-players/pie-assessment-toolkit` exports the shared error model:
 
 - `FrameworkErrorModel`
 - `FrameworkErrorKind`
 - `FrameworkErrorSeverity`
 - `FrameworkErrorScope`: `cohort` or `runtime`, set by the report site. See
   [Readiness latching](#readiness-latching).
+- `toFrameworkErrorModel`, which builds a model from explicit fields. `severity`
+  defaults to `error`, `recoverable` to `false`, and `scope` to `runtime`.
 - `frameworkErrorFromUnknown`, which converts an unknown error. The conversions
   of tools-config diagnostics and validation results are internal to the toolkit.
 
-Primary file:
-
-- `packages/assessment-toolkit/src/services/framework-error.ts`
-
-This model is exported from:
-
-- `packages/assessment-toolkit/src/index.ts`
-
 ---
 
-## 2) Toolkit-level error boundary behavior
+## Toolkit error boundary
 
-`pie-assessment-toolkit` now catches initialization/disposal failures and reports them through the same framework model.
+`pie-assessment-toolkit` catches initialization and disposal failures and reports
+them through the same framework model.
 
-Primary file:
-
-- `packages/assessment-toolkit/src/components/PieAssessmentToolkit.svelte`
-
-### New default behavior
+### Default behavior
 
 - Log to `console.error(...)` with framework prefix.
 - Publish a single `FrameworkErrorModel` to the coordinator's
@@ -92,7 +50,7 @@ Primary file:
 
 ### Error kind mapping note
 
-During owned coordinator construction, failures currently surface as:
+During owned coordinator construction, failures surface as:
 
 - `kind: "coordinator-init"`
 - `source: "pie-assessment-toolkit"`
@@ -104,8 +62,8 @@ should not assume startup tool validation always emits `kind: "tool-config"`.
 
 ### Recoverable behavior note
 
-Recoverable framework errors are still logged and emitted through
-`framework-error`, but they do not trigger the built-in fatal fallback
+Recoverable framework errors are logged and emitted through
+`framework-error` but do not trigger the built-in fatal fallback
 panel or move section readiness to `error`. The default slot remains active when
 `recoverable === true`. Tool Surface Host failures use `kind: "tool-surface"`,
 `severity: "warning"`, and `recoverable: true`: one optional capability may be
@@ -121,6 +79,10 @@ region feature's grant counts whatever the enforcement, as its decisions do. A p
 (`tool-state-load`, `tool-state-save`) and a section controller that fails to
 dispose (`section-controller-dispose`) are recoverable: the coordinator carries on
 without the state, and the next section gets a fresh controller.
+A toolkit whose section binding or owned coordinator fails to dispose reports
+`runtime-dispose`, and an interface-locale catalog that fails to load reports
+`i18n-locale-load`. Both are recoverable; after a failed locale load every string
+resolves through the English fallback.
 
 A tool that fails after it started reports through the coordinator's
 `reportToolFailure(toolId, phase, error)`, once per tool and phase, and is
@@ -155,33 +117,16 @@ to observe framework errors without going through the DOM.
 
 ---
 
-## 3) Canonical validation pass ownership
+## Validation pass ownership
 
-Section-player runtime tools overlay resolution now preserves host-provided shape, and strict validation is performed during toolkit initialization.
-
-Primary files:
-
-- `packages/assessment-toolkit/src/runtime/core/engine-resolver.ts`
-  (canonical `resolveRuntime` / `resolveToolsConfig`, reached through
-  `resolveSectionEngineRuntimeState` on
-  `@pie-players/pie-assessment-toolkit/runtime/engine`)
-- `packages/section-player/src/components/shared/section-player-host-runtime.ts`
-  (section-player-coupled wrapper that delegates to the toolkit
-  resolver and adds player-side coupling such as
-  `DEFAULT_PLAYER_DEFINITIONS`)
-
-This removes host-side shape correction/early throw paths and centralizes failure
-surfacing through the toolkit boundary.
-
-### Migration timing note
-
-If your integration previously expected `resolveToolsConfig` to throw during
-section-player runtime resolution, update that assumption. Invalid overlay/runtime
-tool IDs now typically fail when the toolkit builds/initializes its coordinator.
+Section-player runtime tools overlay resolution preserves the host-provided
+shape, and strict validation runs during toolkit initialization.
+`resolveToolsConfig` does not throw on an invalid overlay or runtime tool ID; the
+toolkit reports it when it builds its coordinator.
 
 ---
 
-## 4) `framework-error` propagation across wrappers
+## Propagation across wrappers
 
 The toolkit's `framework-error` is the only DOM emit. It bubbles and is composed, so it reaches the layout element and `document` once per error. The section-player kernel reads it on the way up to set readiness to `error` for a non-recoverable error, which ends the stage chain with the current stage `failed`.
 
@@ -200,34 +145,9 @@ A host that publishes its own `FrameworkErrorModel` through the coordinator sets
 `scope` the same way; one built with `toFrameworkErrorModel` or
 `frameworkErrorFromUnknown` defaults to `runtime`.
 
-Updated files:
-
-- `packages/section-player/src/components/shared/SectionPlayerLayoutScaffold.svelte`
-- `packages/section-player/src/components/shared/SectionPlayerLayoutKernel.svelte`
-- `packages/section-player/src/components/PieSectionPlayerBaseElement.svelte`
-- `packages/section-player/src/components/PieSectionPlayerKernelHostElement.svelte`
-
 ---
 
-## 5) Demo + tests for invalid config surfacing
-
-The invalid tools-config demo now exercises framework-owned handling (no host try/catch fallback panel logic).
-
-Updated/added:
-
-- `apps/section-demos/src/routes/(demos)/invalid-tools-config/+page.svelte`
-- `packages/section-player/tests/section-player-tool-config-error-surfacing.spec.ts`
-- `packages/assessment-toolkit/tests/tool-config-validation.test.ts`
-
-The e2e test verifies:
-
-- framework console logging
-- framework fallback UI rendering
-- `framework-error` event emission
-
----
-
-## Event and compatibility contract
+## Event contract
 
 ### Canonical event
 
@@ -258,15 +178,3 @@ For optional host-specific behavior:
 
 - listen to `framework-error`
 - provide `onFrameworkError` and/or `errorRenderer` when needed
-
----
-
-## Operational outcome
-
-This change standardizes startup failure behavior across `pie-players`:
-
-- deterministic logs for developers
-- predictable fallback for users
-- typed and observable error contract for hosts
-
-In short: safer defaults, less host boilerplate, and one canonical framework error-handling path.

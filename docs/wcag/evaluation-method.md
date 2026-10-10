@@ -109,6 +109,7 @@ Relevant repo references:
 Project rule:
 
 - passing an axe scan does **not** equal WCAG conformance
+
 Automated checks are evidence inputs, not the final conclusion.
 
 ### 3.1 Run the critical automated baseline

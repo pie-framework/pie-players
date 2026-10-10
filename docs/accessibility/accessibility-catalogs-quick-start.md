@@ -14,8 +14,10 @@ QTI 3.0 accessibility catalogs provide alternative representations of content fo
 
 - **Spoken** - Pre-authored TTS scripts (better than generated speech)
 - **Sign Language** - Video for signed content
+- **Transcript** - Text transcript of an audio stimulus
 - **Braille** - Braille-ready transcriptions
 - **Simplified Language** - Plain language alternatives for cognitive accessibility
+- **Audio Description** - Extended audio descriptions of visual content
 - **Tactile/Extended Descriptions** - For complex diagrams/images
 
 Three types have runtime consumers. `TTSService` reads `spoken` cards. The
@@ -201,36 +203,11 @@ Use for item-specific content like prompts and choices:
 
 ### Pattern 3: Multi-Language Support
 
-```typescript
-{
-  identifier: 'greeting',
-  cards: [
-    { catalog: 'spoken', language: 'en-US', content: '<speak>Hello</speak>' },
-    { catalog: 'spoken', language: 'es-ES', content: '<speak>Hola</speak>' },
-    { catalog: 'spoken', language: 'fr-FR', content: '<speak>Bonjour</speak>' }
-  ]
-}
-
-// Get Spanish version
-const spanish = resolver.getAlternative('greeting', {
-  type: 'spoken',
-  language: 'es-ES'
-});
-
-// A missing language falls back to the resolver's default language ('en-US'
-// unless it was constructed with another), then to a card in any language
-const german = resolver.getAlternative('greeting', {
-  type: 'spoken',
-  language: 'de-DE' // Not available
-});
-
-// useFallback defaults to true; false returns a de-DE card or null
-const germanOnly = resolver.getAlternative('greeting', {
-  type: 'spoken',
-  language: 'de-DE',
-  useFallback: false
-});
-```
+Give a catalog one card per language. The resolver returns the requested
+language, then the resolver's default language, then a card in any language;
+`useFallback: false` stops at the requested language.
+[Example 2](./accessibility-catalogs-integration-guide.md#example-2-multi-language-support)
+shows the lookups.
 
 ---
 
@@ -239,12 +216,13 @@ const germanOnly = resolver.getAlternative('greeting', {
 Use `TTSService` with an `AccessibilityCatalogResolver` to prefer authored spoken content when available.
 
 ```typescript
-import { TTSService } from '@pie-players/pie-assessment-toolkit';
+import { BrowserTTSProvider, TTSService } from '@pie-players/pie-assessment-toolkit';
 
 const ttsService = new TTSService();
+await ttsService.initialize(new BrowserTTSProvider());
 
 // Set catalog resolver
-ttsService.setCatalogResolver(catalogResolver);
+ttsService.setCatalogResolver(resolver);
 
 // Speak an element with catalog support
 const welcome = document.querySelector('#welcome');
@@ -361,41 +339,8 @@ console.log(result.source);  // 'item'
 
 ## SSML Tips
 
-### Basic SSML Structure
-
-```xml
-<speak>
-  <prosody rate="medium" pitch="medium">
-    This is the main content.
-    <break time="500ms"/>
-    Use breaks for pacing.
-    <emphasis level="strong">Emphasize</emphasis> important words.
-  </prosody>
-</speak>
-```
-
-### Common SSML Tags
-
-```xml
-<!-- Pause -->
-<break time="500ms"/>
-<break time="1s"/>
-
-<!-- Emphasis -->
-<emphasis level="strong">Important word</emphasis>
-<emphasis level="moderate">Somewhat important</emphasis>
-
-<!-- Speed/Pitch -->
-<prosody rate="slow">Speak slowly</prosody>
-<prosody rate="fast">Speak quickly</prosody>
-<prosody pitch="high">Higher pitch</prosody>
-<prosody pitch="low">Lower pitch</prosody>
-
-<!-- Say as (numbers, dates, etc.) -->
-<say-as interpret-as="cardinal">123</say-as>  <!-- one hundred twenty-three -->
-<say-as interpret-as="ordinal">1</say-as>     <!-- first -->
-<say-as interpret-as="date" format="mdy">12/25/2025</say-as>
-```
+The [TTS Authoring Guide](./tts-authoring-guide.md#ssml-elements-you-should-know)
+covers the SSML elements worth authoring and when each one helps.
 
 ---
 
@@ -421,8 +366,8 @@ console.log(result.source);  // 'item'
 
 **Resources:**
 
-- [Nemeth Code](http://www.brailleauthority.org/nemeth/nemeth.pdf)
-- [UEB Guidelines](http://www.brailleauthority.org/ueb.html)
+- [Nemeth Code](https://www.brailleauthority.org/nemeth-code)
+- [Unified English Braille](https://www.brailleauthority.org/unified-english-braille-ueb)
 
 ---
 
@@ -475,12 +420,9 @@ describe('AccessibilityCatalogResolver', () => {
 
 See the examples in this guide and in [accessibility-catalogs-integration-guide.md](./accessibility-catalogs-integration-guide.md) for:
 
-- ✅ Assessment with shared catalogs
-- ✅ Items with item-specific catalogs
-- ✅ All catalog types (spoken, braille, simplified, sign-language, tactile)
-- ✅ Multi-language examples
-- ✅ Math items with Nemeth braille
-- ✅ Science items with tactile diagrams
+- Assessment with shared catalogs
+- Items with item-specific catalogs
+- Multi-language examples
 
 ---
 
@@ -500,9 +442,7 @@ See the examples in this guide and in [accessibility-catalogs-integration-guide.
 
 ### Q: How do I handle video URLs for sign language?
 
-**A:** In `payload`, not `content`. A flat string cannot carry multiple sources,
-MIME types, poster, or a time range, all of which QTI 3 expresses inside
-`qti-card-entry` — so a signing card has no string form at all:
+**A:** In `payload`. A `sign-language` card has no string form:
 
 ```typescript
 {
@@ -522,40 +462,16 @@ MIME types, poster, or a time range, all of which QTI 3 expresses inside
 }
 ```
 
-A card carries **either** `content` **or** `payload`, never both: `content` is
-the string form for types a string can express (SSML for `spoken`), and `payload`
-is the structured form for types it cannot. Nothing is mirrored between them, so
-there is never a second copy to fall out of sync. Which one applies is decided by
-`catalog` — QTI's `qti-card@support`, and the only discriminator — so the payload
-carries no type tag of its own. A `sign-language` card with a bare URL in
-`content` is malformed; it is reported and ignored rather than rendered.
-
-Tag the card `language: 'ase'` (ISO 639-3 for American Sign Language) rather than
-with a spoken-language code like `en-US`, matching QTI 3's `xml:lang` on the card
-entry. The code is the language of the *adaptation*, so never derive it from the
-item's content language — a Spanish item's signed alternate is LSM, not ASL.
-
-The payload's optional `signLang` names the same thing and is worth authoring
-only where the two differ: a card tagged with the item's content language
-(`language: 'en-US'`, `signLang: 'ase'`) so resolution reaches it by the
-default-language rung. Resolution selects on `language` alone; `signLang` is read
-afterwards, for the region's accessible label and to refuse a card in a sign
-language the learner did not ask for.
-
-With `signLanguageRegistration` from `@pie-players/pie-tool-sign-language`
-registered on the registry the section player renders from, the player docks
-these in a `data-region="media"` region beside the item or passage when the
-content carries a matching card **and** policy grants the `signLanguage` PNP
-support. The packaged registry leaves signing out, so without that registration
-nothing renders. There is no cross-sign-language fallback: if ASL is requested and only
-BSL exists, nothing renders rather than a language the learner may not follow.
-`signLanguage` is deliberately excluded from the computed default profile, so it
-has to be granted. See
-[Sign Language (ASL) Support](../prds/sign-language-asl-support.md).
-
-A signing video left in a prompt is *not* an alternative to a card. Nothing lifts
-it out at render time, so it renders as ordinary content to every learner,
-ungated. Signed alternates only ever arrive as catalog cards.
+`language` is the ISO 639-3 code of the sign language (`ase` for ASL), which is
+independent of the item's content language. The section player docks the video
+beside the content once a host registers `signLanguageRegistration` from
+`@pie-players/pie-tool-sign-language` and policy grants the `signLanguage`
+support. A signing video embedded in a prompt renders as ordinary content to
+every learner; signed alternates arrive only as catalog cards.
+[Card content](./accessibility-catalogs-integration-guide.md#card-content-string-or-payload)
+covers the `content`/`payload` split, and
+[Sign Language (ASL) Support](../prds/sign-language-asl-support.md) covers
+`signLang`, gating and the absence of cross-sign-language fallback.
 
 ### Q: Can I update catalogs at runtime?
 
@@ -569,9 +485,8 @@ and let shell lifecycle register and unregister them. If you use
 ## Performance Tips
 
 1. **Lazy Loading:** Only load item catalogs when needed
-2. **Caching:** Resolver caches lookups internally
-3. **Cleanup:** Section-player shell lifecycle cleans scoped registrations; direct resolver users should call `clearItemCatalogs()` when changing items
-4. **Statistics:** Use `getStatistics()` to understand catalog usage
+2. **Cleanup:** Section-player shell lifecycle cleans scoped registrations; direct resolver users should call `clearItemCatalogs()` when changing items
+3. **Statistics:** Use `getStatistics()` to understand catalog usage
 
 ---
 

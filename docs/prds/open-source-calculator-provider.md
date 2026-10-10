@@ -532,11 +532,10 @@ Playwright-backed tests and the full local PR gate run outside the sandbox.
 - Migration notes: none. Provider selection is additive and Desmos remains the
   default.
 - Documentation updates: calculator setup, provider selection, restrictions,
-  state, dependency attribution, direct custom-element entrypoints, and local
-  demo coverage.
+  state, dependency attribution, and local demo coverage.
 - Release risk: medium. The provider is additive, but introduces three bundled
   browser libraries, a worker boundary, a lease over MathLive's page-wide
-  settings, new custom-element packages, and a persisted provider-state schema.
+  settings, and a persisted provider-state schema.
 - Implementation followed the GeoGebra provider suite, which landed on
   2026-08-26 (8bb668b0) ahead of the Cortex suite (787ad8ff).
 
@@ -546,7 +545,6 @@ None open. The pre-implementation revalidation items are settled in place: the
 post-GeoGebra seams in [Package And Export Ownership](#package-and-export-ownership),
 where the calculator adapters have lived in
 `@pie-players/pie-default-tool-loaders` since 498f9376; the dependency pins in
-the package's `package.json` (`@cortex-js/compute-engine` 0.130.0, `jsxgraph`
-1.13.2, `mathlive` 0.110.0) and their notices in its `LICENSE.md`; and the
+the package's `package.json` and their notices in its `LICENSE.md`; and the
 palette as the six `--pie-calculator-series-1` to `--pie-calculator-series-6`
 tokens described under [Accessibility](#accessibility).

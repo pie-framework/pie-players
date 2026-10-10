@@ -64,16 +64,15 @@ the expectations did.
 | --- | --- | --- | --- |
 | `mathquill` | MPL-2.0 | Keystroke sequences: `/` opening a fraction over what precedes it, `^` opening a superscript, an unmatched `(` closing itself, and the cursor staying inside a sub-box until moved out. Became the typing tests, which assert only the answer. | Nothing about evaluation — it is an editor. Its copyleft is per-file, so cases are derived rather than copied. |
 | `math-expressions` (Doenet) | GPL-3.0 OR Apache-2.0 | ~400 LaTeX grouping and precedence strings: `-x^2`, `{x^y}^z`, nested `|…|`, bare leading and trailing decimal points, `\cdot`, `\left…\right`, implicit multiplication after a fraction. | Answers — it produces ASTs. Dual-licensed, so the Apache-2.0 option governs, but attribution would be required to copy. |
-| `perseus` (`math-input`) | MIT | A keypad inventory to diff against ours: 40 shipped keys against our 33. | Calculator arithmetic — it is an expression-entry field for answer grading, and its evaluator compares algebraic equivalence. |
+| `perseus` (`math-input`) | MIT | A keypad inventory to diff against ours: 40 shipped keys against our 33 at the time. | Calculator arithmetic — it is an expression-entry field for answer grading, and its evaluator compares algebraic equivalence. |
 | `mathjax-full` | Apache-2.0 | Nothing. Its `master` has no test directory and the `testsuite` branch holds 11 files, all API plumbing. Recorded so nobody looks again. | — |
 
-The keypad diff produced three real gaps rather than scope differences: no sign
-key, so a leading `-` is entered through subtraction; no stacked-fraction
-template, though `\frac` evaluates when MathLive builds one; and no base-*n*
-logarithm key. The last matters because `\log_{2}(8)` now answers 3 while typing
-`log_2` produces `\log_{_2}`, which MathLive nests instead of filling — so that
-capability is currently reachable only through host-seeded or imported state. Both
-states are pinned in the scenario table.
+The keypad diff found three gaps. Two are closed: the keypad has a stacked-fraction
+key and a base-*n* logarithm key, and `\log_{2}(8)` answers 3. The sign key stays
+absent by design: in a mathfield `-` is contextual, so Minus on an empty expression
+negates, and an e2e test pins that path. Typing `log_2` still produces
+`\log_{_2}`, which MathLive nests instead of filling; the scenario table pins that
+state.
 
 ## Considered and not used
 

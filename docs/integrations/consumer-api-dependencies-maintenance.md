@@ -166,8 +166,7 @@ Keep the existing section order. Within it:
   group.
 - State the invariant, not the incident. "The invariant to preserve is
   pass-through" beats a narrative about how it was discovered.
-- Delete rows you could not confirm. A stale row is worse than a missing one,
-  because it gets trusted.
+- Delete rows you could not confirm for a consumer you re-derived.
 - Update the "last verified" date, and the version range recorded per consumer.
 
 Follow the documentation voice used elsewhere in `docs/`: state the decision

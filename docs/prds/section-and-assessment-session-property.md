@@ -10,7 +10,6 @@ Related architecture:
 - [Section player client architecture](../section-player/client-architecture-tutorial.md)
 - [Section controller boundaries](../section-player/controller-boundaries.md)
 - [Assessment player client architecture](../assessment-player/client-architecture-tutorial.md)
-- [Assessment player lifecycle and persistence plan](../architecture/assessment-player-lifecycle-persistence-implementation-plan.md)
 - [Consumer API dependencies](../integrations/consumer-api-dependencies.md)
 
 ## Problem
@@ -76,8 +75,8 @@ itself. The section demos write it by hand, with an invented `version`
 - Moving the device-local `session-snapshot` to section level. It stays on
   `<pie-item-player>`, offered and never applied.
 - Deciding whether the assessment session is the sole authority over embedded
-  section state. That decision is open in the
-  [lifecycle plan](../architecture/assessment-player-lifecycle-persistence-implementation-plan.md).
+  section state. That decision is open in
+  [framework-completing work](../architecture/framework-completing-work.md#decisions-that-need-host-evidence).
 - Mapping `item-session-data-changed` to a host's own response payload.
 
 ## Package And Export Ownership
@@ -181,11 +180,8 @@ add a second write path into host state.
 timing changes otherwise.
 
 The property is an identity input like `section`, `section-id` and `attempt-id`,
-and is not a `runtime` key. It is added to `SectionPlayerBasicPropName`
-(`packages/section-player/src/contracts/layout-contract.ts`), to
-`RECOMMENDED_BASIC_PROPS` and the per-layout contracts
-(`packages/section-player/src/contracts/layout-parity-metadata.ts`), and to the
-identity exceptions in `packages/section-player/ARCHITECTURE.md`.
+and is not a `runtime` key; `packages/section-player/ARCHITECTURE.md` lists it
+among the identity inputs.
 
 ### Assessment player `session`
 

@@ -2,8 +2,6 @@
 
 **Independent, composable services** for coordinating tools, accommodations, and item players in assessment applications.
 
-This is not an opinionated framework or monolithic "player" - it's a toolkit that solves specific problems through centralized service management.
-
 ## Install
 
 ```bash
@@ -27,53 +25,6 @@ the section player's, which then validates its config and registers its
 providers. A registry passed at construction is never replaced. Bound to a
 toolkit that has none, it registers no providers, skips tool-id and placement
 validation, and warns once (`tools.registryUnavailable`).
-
-## What's New: ToolkitCoordinator
-
-✨ **Centralized Service Management**: The new `ToolkitCoordinator` provides a single entry point for all toolkit services, simplifying initialization and configuration.
-
-**Before** (scattered services):
-```typescript
-// Create 5+ services independently
-const ttsService = new TTSService();
-const highlightCoordinator = new HighlightCoordinator();
-const catalogResolver = new AccessibilityCatalogResolver([...]);
-// Missing: ElementToolStateStore
-
-await ttsService.initialize(new BrowserTTSProvider());
-ttsService.setCatalogResolver(catalogResolver);
-
-// Pass all services separately
-player.ttsService = ttsService;
-// ...
-```
-
-**After** (coordinator orchestrates):
-```typescript
-import { createPackagedToolRegistry } from '@pie-players/pie-default-tool-loaders';
-
-// Create one coordinator with configuration
-const toolRegistry = createPackagedToolRegistry();
-const toolkitCoordinator = new ToolkitCoordinator({
-  assessmentId: 'my-assessment',
-  toolRegistry,
-  tools: {
-    providers: {
-      textToSpeech: { enabled: true, backend: 'browser' },
-      // Desmos needs an application key; see "Simple Default" below.
-      calculator: { enabled: true }
-    },
-    placement: {
-      section: ['graph', 'periodicTable', 'protractor', 'lineReader', 'ruler'],
-      item: ['calculator', 'textToSpeech', 'answerEliminator'],
-      passage: ['textToSpeech']
-    }
-  }
-});
-
-// Pass single coordinator to section-player through runtime
-player.runtime = { ...(player.runtime ?? {}), coordinator: toolkitCoordinator };
-```
 
 ## What Does It Solve?
 
@@ -99,9 +50,7 @@ provider path is the item-player loader config:
 
 ### Semantics
 
-- With `trackPageActions: true`, missing/`undefined` providers use the default New Relic provider path.
-- `instrumentationProvider: null` explicitly disables instrumentation.
-- Invalid provider objects are ignored (optional debug warning), also no-op.
+- How an unset, `null` or invalid provider resolves is set out in [Instrumentation providers](../../docs/architecture/instrumentation-providers.md#provider-resolution).
 - Existing `item-player` behavior remains the compatibility anchor.
 - Debug overlays can consume the same stream by composing providers with
   `CompositeInstrumentationProvider` (for example New Relic + debug panel).
@@ -118,11 +67,7 @@ provider path is the item-player loader config:
 - `pie-toolkit-section-ready`
 - `pie-toolkit-framework-error`
 
-Toolkit tool/backend operational stream:
-
-- `pie-tool-init-start|success|error`
-- `pie-tool-backend-call-start|success|error`
-- `pie-tool-library-load-start|success|error`
+Toolkit operational events are listed in [Instrumentation providers](../../docs/architecture/instrumentation-providers.md#operational-events).
 
 Ownership boundary: toolkit emits toolkit lifecycle semantics only. Section and
 assessment semantic streams stay in their own layers to avoid overlap. Bridge
@@ -137,7 +82,7 @@ See the [ToolkitCoordinator section in the architecture overview](../../docs/arc
 1. **Centralized Coordination**: ToolkitCoordinator orchestrates all services
 2. **Composable Services**: Import only what you need (or use coordinator for convenience)
 3. **No Framework Lock-in**: Works with any JavaScript framework
-4. **Product Control**: Products control navigation, layout and backend. Session persistence defaults to `localStorage` at the section and assessment layers, stored per attempt id and inactive without one, and a product replaces either through its persistence hook (`createSectionSessionPersistence` on the coordinator, `createAssessmentSessionPersistence` on the assessment player)
+4. **Product Control**: Products control navigation, layout and backend. Session persistence defaults to `localStorage` at the section and assessment layers, stored per attempt id and inactive without one, and a product replaces either through its persistence hook (`hooks.createSectionSessionPersistence` on the coordinator, `createAssessmentSessionPersistence` on the assessment player)
 5. **Standard Contracts**: Well-defined event types for component communication
 6. **Element-Level Granularity**: Tool state tracked per PIE element, not per item
 7. **State Separation**: Tool state (ephemeral) separate from PIE session data (persistent)
@@ -199,18 +144,21 @@ callbacks; attributes carry section identity, layout controls, `nds-icons`,
 `locale` and `tool-config-strictness`. Unset inputs take their documented
 defaults.
 
-`<pie-assessment-toolkit>` takes the same fields as its own properties,
-with `assessment-id`, `nds-icons`, `locale` and `tool-config-strictness` as
-attributes, and reads `pnpEnforcement` from `tools.pnpEnforcement`.
+`<pie-assessment-toolkit>` takes the same fields as its own properties. Its
+string and boolean attributes are `assessment-id`, `section-id`, `attempt-id`,
+`nds-icons`, `locale`, `content-language`, `lazy-init`,
+`tool-config-strictness`, `enabled-tools`, `player-type` and `isolation`;
+`section`, `env`, `tools` and `player` also accept JSON attributes. It reads
+`pnpEnforcement` from `tools.pnpEnforcement`.
 
 ### Canonical attribute set
 
 - Identity: `assessment-id` on the toolkit, `section-id`, `attempt-id`
 - Runtime config on section-player CEs: `runtime`
-- Toolkit-only object properties: `tools`, `tool-registry`, `coordinator`,
+- Toolkit-only object properties: `tools`, `toolRegistry`, `coordinator`,
   `accessibility`
 - Interface: `nds-icons`, `locale`
-- Diagnostics: `tool-config-strictness`, `debug`. Framework-error
+- Diagnostics: `tool-config-strictness`, and `debug` on the section-player layouts. Framework-error
   delivery is via the `onFrameworkError` callback (a toolkit property,
   `runtime.onFrameworkError` on a section player) and the
   `framework-error` DOM event dispatched on the layout CE host.
@@ -263,7 +211,7 @@ const coordinator = new ToolkitCoordinator({
   tools: {
     providers: {
       textToSpeech: { enabled: true, backend: 'browser' },
-      // Desmos needs an application key; see "Simple Default" below.
+      // Desmos needs an application key; see "Configuration Example" below.
       calculator: { enabled: true }
     },
     placement: {
@@ -310,7 +258,7 @@ unsubscribeItem?.();
 unsubscribeSection?.();
 ```
 
-Behavior pins (PIE-512 Phase D):
+Subscription behavior:
 
 - Subscribe **after** the first `getOrCreateSectionController(...)` resolves; calling subscribe before any cohort exists throws.
 - On every cohort transition (navigation, fresh `getOrCreateSectionController` for a new section), the listener is automatically migrated to the new controller and receives a snapshot replay (`content-loaded` × N then `section-loading-complete`) in the same order a fresh subscriber would have seen.
@@ -321,78 +269,6 @@ Behavior pins (PIE-512 Phase D):
 Use `subscribeSectionEvents(...)` when you need advanced/custom filtering mixes. Section-scoped events do not carry item IDs, so pairing them with `itemIds` filters will not match.
 
 To persist or snapshot an inactive section, use `coordinator.getSectionController({ sectionId, attemptId })` — that lookup is by id and is unaffected by the active-cohort behavior described above.
-
-#### Migrating from `<0.3.35` (BREAKING — pre-1.0)
-
-`0.3.35` is the first release where `subscribeSectionEvents` (and its two helper wrappers `subscribeItemEvents` / `subscribeSectionLifecycleEvents`) follows the toolkit's *active section cohort* automatically. The on-the-wire shape of the subscription args object changed.
-
-If your host code looked like this:
-
-```typescript
-const unsub = coordinator.subscribeItemEvents({
-  sectionId: 'section-1',
-  attemptId: 'attempt-1',
-  listener: handleEvent,
-});
-```
-
-Update it to drop `sectionId` / `attemptId`:
-
-```typescript
-const unsub = coordinator.subscribeItemEvents({
-  listener: handleEvent,
-});
-```
-
-What this means in practice for typed integrations:
-
-- **TypeScript breaking change.** `SectionEventSubscriptionArgs`, `SectionItemEventSubscriptionArgs`, and `SectionScopedEventSubscriptionArgs` no longer declare `sectionId?` / `attemptId?` properties. Any host that imports these arg types directly and passes those keys will fail to compile after upgrade. **Action required.**
-- **Runtime is tolerant.** The runtime silently ignores extra unknown properties, so an untyped or lightly-typed call site that still passes `sectionId` / `attemptId` continues to work without source changes. The args have **no effect** at runtime — the subscription always follows the active cohort.
-- **New precondition.** `subscribe*` throws until the first `getOrCreateSectionController(...)` call; a listener added while a section is starting binds when that section becomes active. Subscribe **after** the first `getOrCreateSectionController(...)` resolves. Subscribing on `toolkit-ready` alone is no longer sufficient — though in practice the section player emits `toolkit-ready` *after* its first `getOrCreateSectionController(...)` resolves, so a `toolkit-ready` anchor is safe in section-player hosts.
-- **Cohort migration is automatic.** If your wrapper previously re-subscribed on every navigation to keep listeners alive across sections, that wiring is no longer needed (and should be removed). A single subscribe call after the first controller-resolve is now enough — the listener migrates automatically and is replayed the new cohort's snapshot on every transition.
-- **Watch for double-replay if you re-subscribe on every `toolkit-ready`.** Hosts that detached and re-subscribed on every `toolkit-ready` event (the correct pre-Phase D pattern, since each subscription was pinned to a `sectionId`) will now observe **two snapshot replays per navigation**: one delivered automatically when Phase D migrates the existing listener to the new active cohort, and a second when the manual re-subscribe attaches a fresh listener that replays again. Listener handlers that are not strictly idempotent will fire twice — analytics `pageAction`s, non-Set counters, side-effecting hydration. The fix is a one-line guard (`if (this.controllerUnsubscribe) return;`) so the subscribe runs only on the first `toolkit-ready`.
-- **For intentionally-pinned subscriptions to inactive sections** (e.g. a host UI that wants to keep watching section A while the user views section B), the helper API does not support that pattern by design. Use `coordinator.getSectionController({ sectionId, attemptId })` and subscribe directly on the controller handle (`controller.subscribe?.(...)`) — that binding is pinned to one controller instance and does not migrate.
-
-If your local types were hand-rolled structural copies of the public arg types (e.g. an Angular wrapper duplicating the shape rather than importing the package types), `sectionId` / `attemptId` keys will compile but are dead code at runtime — recommend dropping them as part of the upgrade.
-
-#### Pre-Phase D vs Phase D wrapper pattern
-
-```typescript
-// BEFORE (pre-Phase D): rebind for every section change because the
-// subscription was pinned to a sectionId.
-public handleToolkitReady(event: Event): void {
-  const coordinator = (event as CustomEvent).detail?.coordinator;
-  if (!coordinator) return;
-  this.controllerUnsubscribe?.();  // detach prior pin
-  const itemUnsub = coordinator.subscribeItemEvents({
-    sectionId: this.sectionId,
-    listener: handleItemEvent,
-  });
-  const sectionUnsub = coordinator.subscribeSectionLifecycleEvents({
-    sectionId: this.sectionId,
-    listener: handleSectionEvent,
-  });
-  this.controllerUnsubscribe = () => { itemUnsub?.(); sectionUnsub?.(); };
-}
-```
-
-```typescript
-// AFTER (Phase D): subscribe once; the listener follows the active
-// cohort across all subsequent navigation.
-public handleToolkitReady(event: Event): void {
-  const coordinator = (event as CustomEvent).detail?.coordinator;
-  if (!coordinator) return;
-  this.toolkitCoordinator = coordinator;
-  if (this.controllerUnsubscribe) return; // already subscribed; do nothing on re-fire
-  const itemUnsub = coordinator.subscribeItemEvents({
-    listener: handleItemEvent,
-  });
-  const sectionUnsub = coordinator.subscribeSectionLifecycleEvents({
-    listener: handleSectionEvent,
-  });
-  this.controllerUnsubscribe = () => { itemUnsub?.(); sectionUnsub?.(); };
-}
-```
 
 ### Option 2: Create Services Manually (Advanced)
 
@@ -550,6 +426,11 @@ The toolkit uses one canonical `tools` model with three concerns:
   default `toolConfigStrictness: "error"`.
 - `providers`: provider/runtime options (calculator, textToSpeech, etc.)
 
+A profile, district policy or item setting names a tool by its `toolId`, and an
+id no registered tool carries raises `tool-policy.unknownSupportId`.
+[Support ids](docs/TOOL_REGISTRY.md#support-ids) lists the AfA PNP 3.0 terms the
+packaged ids serve.
+
 Example:
 
 ```typescript
@@ -576,7 +457,7 @@ tools: {
 
 ### Scope and Lifecycle
 
-The runtime still distinguishes between contextual (`item`/`passage`) and section-wide tools:
+The runtime distinguishes between contextual (`item`/`passage`) and section-wide tools:
 
 Tool instances use structured IDs so scope is explicit:
 
@@ -934,8 +815,7 @@ Recommended host boundary:
 - Browser never receives shared secret, API key, or signing material.
 
 SchoolCity is used as a host-configured integration example for custom transport.
-Toolkit defaults still remain browser/standard providers unless the host explicitly
-configures custom server-backed TTS.
+Toolkit defaults stay on browser speech unless the host configures server-backed TTS.
 
 ## Test Attempt Session
 
@@ -970,7 +850,7 @@ const itemSessions = toItemSessionsRecord(testAttemptSession);
 ### Integration Boundary
 
 - `@pie-players/pie-section-player` stays backend-agnostic and emits session/state changes.
-- Host applications own backend I/O to pie backend (`../../kds/pie-api-aws`).
+- Host applications own backend I/O.
 - Hosts decide persistence policy (immediate, debounced, checkpoint, submit).
 
 ### Section session API (controller + persistence)
@@ -981,34 +861,6 @@ For section-level session flows, the toolkit supports two complementary APIs:
 - Direct controller API: `getSession()`, `applySession(session, { mode })`, `updateItemSession(itemId, detail)`
 
 The persistence strategy works with the same `SectionControllerSessionState` shape exposed by the controller, so hosts can choose bulk restore (`applySession`) and fine-grained updates (`updateItemSession`) without internal runtime coupling.
-
-## Implementation Status
-
-### ✅ Toolkit Services
-
-- **ToolkitCoordinator**: ⭐ NEW - Centralized service orchestration
-- **ElementToolStateStore**: ⭐ NEW - Element-level ephemeral tool state management
-- **ToolRegistry**: ⭐ NEW - Registry-based tool management with AfA PNP 3.0 profile support
-- **ToolPolicyEngine**: AfA PNP 3.0 Personal Needs Profile and host policy decisions via registry-backed policy sources
-- **ToolCoordinator**: Manages z-index layering and visibility for floating tools
-- **HighlightCoordinator**: Separate highlight layers for TTS (temporary) and annotations (persistent)
-- **TTSService**: Text-to-speech with QTI 3.0 catalog support
-- **AccessibilityCatalogResolver**: QTI 3.0 accessibility catalog management
-- **SSMLExtractor**: Extraction of embedded `<speak>` tags into `config.extractedCatalogs`, run by a host's preprocessing step
-
-### ✅ PNP Support Ids
-
-- **Support ids are tool ids**: A profile, district policy or item setting names a tool by its `toolId`, and an id no registered tool carries raises `tool-policy.unknownSupportId`. [Support ids](docs/TOOL_REGISTRY.md#support-ids) lists the AfA PNP 3.0 terms the packaged ids serve.
-
-### ✅ Section Player Integration
-
-The toolkit integrates seamlessly with the **PIE Section Player**:
-
-- **Primary Interface**: Section player is the main integration point
-- **Default Coordinator**: Creates ToolkitCoordinator automatically if not provided
-- **Extracted SSML Catalogs**: Registers the `config.extractedCatalogs` that `SSMLExtractor` preprocessing writes onto passages and items
-- **Catalog Lifecycle**: Manages item-level catalogs automatically
-- **Service Coordination**: All toolkit services work together automatically
 
 ## ToolkitCoordinator API
 
@@ -1049,11 +901,16 @@ export interface ToolkitCoordinatorConfig {
       };
     };
   };
+  toolConfigStrictness?: 'off' | 'warn' | 'error';  // default 'error'
   toolRegistry?: ToolRegistry | null;
+  toolContextResolvers?: ToolContextResolverMap;
   accessibility?: {
     catalogs?: any[];
     language?: string;
   };
+  hooks?: ToolkitCoordinatorHooks;
+  lazyInit?: boolean;   // default false
+  eagerInit?: boolean;  // default !lazyInit
 }
 ```
 
@@ -1146,17 +1003,21 @@ store.clearAll();
 
 ### Persistence Integration
 
-```typescript
-// Set callback for persistence (e.g., localStorage)
-store.setOnStateChange((state) => {
-  localStorage.setItem('tool-state', JSON.stringify(state));
-});
+A coordinator's store reports changes to the coordinator, which forwards them
+to `hooks.saveToolState`; `loadToolState` is read once while the coordinator
+gets ready. Persist tool state through those hooks. `store.setOnStateChange`
+holds a single callback, so calling it on a coordinator's store disconnects
+`saveToolState`.
 
-// Load state from persistence
-const saved = localStorage.getItem('tool-state');
-if (saved) {
-  store.loadState(JSON.parse(saved));
-}
+```typescript
+const coordinator = new ToolkitCoordinator({
+  assessmentId: 'demo-assessment',
+  toolRegistry,
+  hooks: {
+    loadToolState: () => JSON.parse(localStorage.getItem('tool-state') ?? 'null'),
+    saveToolState: (state) => localStorage.setItem('tool-state', JSON.stringify(state)),
+  },
+});
 ```
 
 ### Reactivity
@@ -1353,11 +1214,8 @@ catalogResolver.addItemCatalogs(result.catalogs);
 
 ### Cards without an extractor
 
-Not every catalog card is lifted out of item markup. A signed alternate is
-authored or written by an importer and has no extractor at all; one such lift
-existed and was removed, because nothing produced the inline form and a runtime
-that could not parse the markup left the video in the visible content, showing the
-accommodation to every learner regardless of eligibility.
+A signed alternate is authored or written by an importer; no extractor lifts it
+from markup.
 
 This package resolves and registers those cards through
 `AccessibilityCatalogResolver` and the generic media helpers it re-exports
@@ -1370,7 +1228,7 @@ needs them — signing's card validators and its resolution rules live in
 
 `ToolPolicyEngine.decideFeature(featureId, scope?)` (and
 `ToolkitCoordinator.decideFeaturePolicy(featureId, scope?)`) resolve one feature id
-through `PnpPolicySource`'s six-level precedence, independent of any toolbar
+through `PnpPolicySource`'s PNP precedence, independent of any toolbar
 placement. Use it for capabilities that are not toolbar surfaces — signing is the
 first — where a placement-scoped `decide(...)` would answer the wrong question:
 absent because it was never placed, rather than absent because policy said no.
@@ -1385,10 +1243,7 @@ want today's universal set take `createUniversalPersonalNeedsProfile()` from
 `@pie-players/pie-default-tool-loaders`, which ships it as data beside
 `createEmptyPersonalNeedsProfile()`.
 
-Nothing derives a profile from the registry any more. Doing so read registry
-membership as eligibility tier — registration means "policy-addressable", not
-"universal, on by default" — and had to be corrected with a compile-time list of
-ids to exclude that a host could not extend for its own accommodation.
+Registry membership makes a tool policy-addressable; it grants nothing.
 
 ### Live registry changes
 
@@ -1485,7 +1340,7 @@ player.section = mySection;
 
 // Internally creates:
 // new ToolkitCoordinator({
-//   assessmentId: 'section-demo-direct', // or runtime.assessmentId
+//   assessmentId: runtime.assessmentId ?? section.identifier ?? 'assessment-<random>',
 //   toolRegistry,                        // the player's toolRegistry, else the packaged registry
 //   tools: player.runtime?.tools         // no tools are placed when this is unset
 // })
@@ -1493,12 +1348,7 @@ player.section = mySection;
 
 ### Safe Custom Tool Configuration
 
-Default behavior is now framework-owned: invalid tools/runtime initialization is handled in `pie-assessment-toolkit` without host try/catch.
-
-- Framework logs a deterministic console error prefix: `[pie-framework:<kind>:<source>]`
-- Framework emits a canonical `framework-error` event
-- Framework renders a fallback error panel instead of a blank player
-- Startup tool-config validation can surface as `kind: "coordinator-init"` when the owned coordinator construction path throws.
+Invalid tool or runtime initialization is handled inside `pie-assessment-toolkit`; the host needs no try/catch. The error model, its events and hooks, and the fallback panel are in [Framework-owned error handling](../../docs/tools-and-accomodations/framework-owned-error-handling.md); host-side config patterns are in [Safe custom tool configuration](../../docs/tools-and-accomodations/safe-custom-tool-config.md).
 
 Use `createToolsConfig()` when you want to pre-validate and inspect diagnostics before mounting:
 
@@ -1538,16 +1388,6 @@ Notes:
 - `providers.textToSpeech` is the canonical TTS provider key.
 - `providers.tts` is rejected by the validation contract.
 - A tool registration can declare `sanitizeConfig` and `validateConfig` hooks for its `providers.<toolId>` entry.
-- Hosts can react to framework errors via the `framework-error` DOM event,
-  the `onFrameworkError(model)` callback prop, or by subscribing directly
-  to the package-internal bus via
-  `ToolkitCoordinator.subscribeFrameworkErrors(listener)`. The callback
-  prop fires exactly once per error, regardless of wrapper depth. Filter
-  by `model.kind` (e.g. `"tts-init"`, `"provider-init"`,
-	`"provider-register"`, `"tool-surface"`) for tool- or provider-specific
-	handling. Recoverable warnings remain observable but do not move section
-	readiness to `error`.
-- See `docs/tools-and-accomodations/framework-owned-error-handling.md` for event payload and error-kind mapping details.
 
 ## Section Runtime Engine (advanced)
 
@@ -1717,11 +1557,7 @@ The toolkit enforces a clear separation between ephemeral tool state and persist
 
 ## Examples
 
-See the [section-demos](../../apps/section-demos/) for complete examples:
-
-- **Three Questions Demo**: Element-level answer eliminator with state persistence
-- **TTS Integration Demo**: Toolkit coordinator with TTS service
-- **Paired Passages Demo**: Multi-section assessment with cross-section state
+See [section-demos](../../apps/section-demos/) for complete examples, among them "Demo 3: Three Questions, One Passage", "Demo 4: TTS with SSML Extraction" and "Two Passages with One Question".
 
 ## TypeScript Support
 
@@ -1745,18 +1581,8 @@ from tool configuration. Two sanitization layers apply:
   `pie-item-player`. See
   [pie-item-player README](../item-player/README.md#content-trust-boundary)
   for the `trust-markup` opt-out and the `sanitizeMarkup` override.
-  As a post-sanitization step, every authored `<img>` outside a `pie-*`
-  custom element is wrapped in `<span class="pie-image-scroll">` so
-  overwide images surface a horizontal scrollbar instead of being
-  clipped by the section layout's `overflow-x: hidden` ancestors
-  (PIE-94 / WCAG 1.4.10 Reflow at 400% zoom). The wrapper is
-  keyboard-scrollable (`tabindex="0"`, `role="region"`) and carries
-  the image's `alt` text in its `aria-label`; matching CSS lives in
-  `@pie-players/pie-theme` (`components.css`). Authored `<table>`
-  elements outside a `pie-*` custom element get the same treatment via
-  `<div class="pie-table-scroll">` so wide data grids reflow into a
-  horizontally scrollable region; the wrapper's `aria-label` is derived
-  from the table's `aria-label` / `aria-labelledby` / `<caption>`.
+  The player also wraps overwide images and tables in scrollable regions
+  ([reflow wrappers](../item-player/README.md#reflow-wrappers)).
 - **Tool icons and SSML** - tool-registered icon markup is parsed and
   DOMPurified inside the toolbar at render time; SSML payloads are
   restricted to an allow-listed subset of SSML tags/attributes before
@@ -1765,8 +1591,8 @@ from tool configuration. Two sanitization layers apply:
 
 ## Related Documentation
 
-- **[Tool Registry Architecture](docs/TOOL_REGISTRY.md)** - ⭐ NEW - Registry-based tool management and AfA PNP 3.0 profile support
-- **[PNP Configuration Guide](docs/PNP_CONFIGURATION.md)** - ⭐ NEW - How to configure student profiles, district policies, and governance rules
+- **[Tool Registry Architecture](docs/TOOL_REGISTRY.md)** - Registry-based tool management and AfA PNP 3.0 profile support
+- **[PNP Configuration Guide](docs/PNP_CONFIGURATION.md)** - How to configure student profiles, district policies, and governance rules
 - [ToolkitCoordinator Architecture](../../docs/architecture/architecture.md#toolkitcoordinator-centralized-service-management) - Design decisions and patterns
 - [Section Player README](../section-player/README.md) - Section player integration
 - [Section Player Architecture](../section-player/ARCHITECTURE.md#layered-runtime-engine-post-m7) - Layered runtime engine, kernel/toolkit wiring, lifecycle emit invariant

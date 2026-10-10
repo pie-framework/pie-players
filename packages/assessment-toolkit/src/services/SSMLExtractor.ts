@@ -180,7 +180,7 @@ function isSafeSsmlAudioSrc(raw: string): boolean {
  * replace disallowed elements with their text content (so phrasing order
  * is preserved but no scripts / iframes / unknown tags survive).
  */
-export function sanitizeSsmlElement(element: Element): void {
+function sanitizeSsmlElement(element: Element): void {
 	// Walk children snapshot first because we may replace nodes as we go.
 	const children = Array.from(element.children);
 	for (const child of children) {
@@ -223,7 +223,7 @@ export function sanitizeSsmlElement(element: Element): void {
  * normalised and disallowed descendants cannot reappear through quirks
  * in the serializer.
  */
-export function serializeSsmlElement(element: Element): string {
+function serializeSsmlElement(element: Element): string {
 	const tagName = element.tagName.toLowerCase();
 	const attrs = Array.from(element.attributes)
 		.filter((attr) => SSML_ALLOWED_ATTRS.has(attr.name.toLowerCase()))

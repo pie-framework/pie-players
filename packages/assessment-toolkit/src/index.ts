@@ -284,13 +284,3 @@ export {
 	setCurrentSectionPosition,
 	upsertSectionSession,
 } from "./attempt/AssessmentSession.js";
-
-// Section Player - Use @pie-players/pie-section-player web component
-
-// ============================================================================
-// Shared Components
-// ============================================================================
-
-// ItemToolBar custom element registration helper is exported via package.json exports field
-// Import using: import '@pie-players/pie-assessment-toolkit/components/item-toolbar-element';
-// PieAssessmentToolkit custom element registration helper is exported via package.json exports field

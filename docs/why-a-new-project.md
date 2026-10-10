@@ -6,7 +6,7 @@ The project exists because the prior player model solved item rendering, but it 
 
 ## What PIE Players Covers
 
-PIE Players is a project, not just a single custom element. It includes:
+PIE Players is a suite of packages. It includes:
 
 - **Item player**: renders one PIE item, loads the required element bundles, manages item session state, and emits item-level lifecycle and response events.
 - **Section player**: composes items, passages, section-level tools, item and passage toolbars, layouts, and section session state into a complete section screen.
@@ -64,7 +64,7 @@ This matters because real assessment screens are not just questions. They includ
 
 ## Observability and Runtime Signals
 
-Observability is part of the architecture, not an afterthought. PIE Players uses provider-agnostic instrumentation contracts so a host can route signals to New Relic, a debug overlay, a composite provider, or another monitoring backend.
+Every layer emits provider-agnostic instrumentation, so a host can route signals to New Relic, a debug overlay, a composite provider, or another monitoring backend.
 
 Each layer owns its own semantic stream:
 
@@ -92,7 +92,7 @@ These same qualities improve AI-assisted development. Agents and developers have
 
 Publishable packages in the project use fixed versioning. Consumers can pick one version of the `@pie-players/*` suite and update the suite together, without maintaining a compatibility matrix across players, tools, toolkit services, and shared packages.
 
-The release pipeline builds publishable packages, verifies package metadata and exports, checks custom element safety, validates type and pack surfaces, runs dependency and consumer-boundary checks, enforces fixed versioning, and publishes preloaded player variants as part of the release flow.
+The release pipeline builds publishable packages, verifies package metadata and exports, checks custom element safety, validates type and pack surfaces, runs dependency and consumer-boundary checks, and enforces fixed versioning. Preloaded player builds publish from their own workflow on pushes to `master`.
 
 ## Current Status
 

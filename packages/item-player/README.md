@@ -113,8 +113,9 @@ control (for example the session debugger element export).
 `ensureItemPlayerMathRenderingReady`, and defines no element.
 
 The root entry imports no bare specifier, so it loads raw from a CDN as under
-[Install](#install) as well as through a bundler. It is the only player that
-does: the section and assessment players are bundler-only.
+[Install](#install) as well as through a bundler. The section player's npm
+entry is bundler-only and its `./browser` export loads raw from a CDN; the
+assessment player is bundler-only.
 
 ## Quick start
 
@@ -168,6 +169,10 @@ does: the section and assessment players are bundler-only.
   responses on models.
 - `show-bottom-border`: `Boolean`, default `false`. Add bottom border in
   evaluate mode.
+- `render-stimulus`: `Boolean`, default `true`. Render the item's passage
+  (stimulus); `false` renders the item alone.
+- `allowed-resize`: `Boolean`, default `false`. Let the learner resize the
+  passage container horizontally.
 - `autoplay-audio-enabled`: `Boolean`, default unset (each model's own
   `autoplayAudioEnabled` value is left as-is). When set, forces
   `autoplayAudioEnabled` onto every model in the config, overwriting whatever
@@ -176,12 +181,22 @@ does: the section and assessment players are bundler-only.
   (`player.autoplayAudioEnabled = false`) instead of using this attribute —
   a literal `false` value passed through an HTML attribute can be misread as
   `true` once it reaches the custom element.
+- `base-heading-level`: `Number` (1–6), default unset. The level of the
+  item's visually hidden heading, which PIE elements emit; authored headings
+  nest one level below it. Reflected, because elements read it off the player.
+- `include-sr-heading`: `Boolean`, default `true`. Emit the item's visually
+  hidden heading. The attribute cannot express off; set the
+  `includeSrHeading` property to `false` to suppress it.
+- `locale`: `String`, default `""` (renders `en-US`). BCP-47 interface locale
+  for the player's own UI. The item's content language is separate.
 - `debug`: `String`, default `""`. Truthy values enable verbose logs;
   `"false"`, `"0"`, and `""` disable them. Also reads `window.PIE_DEBUG`.
 - `custom-class-name`: `String`, default `""`. CSS scope class applied to the
   player container.
 - `container-class`: `String`, default `""`. Extra class on the inner item
   container.
+- `passage-container-class`: `String`, default `""`. Extra class on the
+  passage container; `itemConfig.resources.passageContainerClass` overrides it.
 - `external-style-urls`: `String`, default `""`. Comma-separated CSS URLs
   loaded and scoped to the player. URLs must be `http:` or `https:`, and
   same-origin unless their origin is named in `allowed-style-origins`.
@@ -470,8 +485,15 @@ import type {
   SoundHandler,
   DeleteDone,
   AuthoringValidationResult,
+  PieItemPlayerErrorDetail,
+  PieItemPlayerLoaderOptions,
+  BackendConfig,
 } from "@pie-players/pie-item-player";
 ```
+
+The root entry also exports `definePieItemPlayer(tagName?)`, which registers
+the element under another tag, and the `Backend*` types that `BackendConfig`
+is built from.
 
 ## Content trust boundary
 
@@ -479,13 +501,12 @@ import type {
 (and from `passageConfig.markup` when a passage is attached) into the DOM
 via Svelte's `{@html}` directive. To avoid XSS when hosts embed
 attacker-influenced item/passage JSON (preview surfaces, multi-tenant
-authoring, etc.) the player now ships with a **default-on** markup
+authoring, etc.) the player ships with a **default-on** markup
 sanitizer powered by [DOMPurify](https://github.com/cure53/DOMPurify). The
 sanitizer:
 
-- Strips `<script>`, `<iframe>`, `<object>`, `<embed>`, `<base>`, `<form>`,
-  `<meta>`, `<link>`, `<foreignObject>`, `<style>`, and any event-handler
-  attributes (`onerror`, `onload`, ...).
+- Strips the forbidden tags and attributes, event handlers among them, listed
+  in [Sanitizer guarantees](../../docs/security/readme.md#sanitizer-guarantees).
 - Rejects unknown URL protocols (`javascript:`, `data:` unless explicitly
   marked safe).
 - Filters `style` attributes per declaration, dropping URL-fetching functions
@@ -499,6 +520,20 @@ The limits this sanitizer deliberately accepts — chiefly authored
 `position: absolute` overlays, which light DOM does not contain — and the host
 obligations that go with them are in
 [`docs/security/readme.md`](../../docs/security/readme.md).
+
+### Reflow wrappers
+
+After sanitizing, the player wraps every authored `<img>` and `<table>` outside
+a `pie-*` element in a horizontally scrollable region, so content wider than
+its column scrolls instead of being clipped by an `overflow-x: hidden` ancestor
+(WCAG 1.4.10 Reflow at 400% zoom). Images get
+`<span class="pie-image-scroll">`, plus `pie-image-scroll-block` when the image
+is laid out as a block; tables get `<div class="pie-table-scroll">`. Each
+wrapper is keyboard-scrollable (`tabindex="0"`, `role="region"`) and takes its
+`aria-label` from the image's `alt`, or from the table's `aria-label`,
+`aria-labelledby` or `<caption>`. A post-render pass wraps the images and
+tables an element paints into its own light DOM the same way. The wrapper CSS
+is part of the [content styles](#content-styles).
 
 ### Opt out (trusted content)
 

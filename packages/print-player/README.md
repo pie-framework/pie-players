@@ -14,8 +14,8 @@ The print player is a specialized, non-interactive version of the PIE element pl
 
 Built with Lit 3.x and modern ESM architecture.
 
-By default, `@pie-element/*` packages are loaded from their PIE-626 browser ESM
-print artifacts at `dist/browser/print/index.js`. The player uses the shared
+By default, `@pie-element/*` packages are loaded from their browser ESM print
+artifacts at `dist/browser/print/index.js`. The player uses the shared
 PIE ESM loader so React and React DOM are resolved through the same import-map
 policy as the other browser ESM players.
 
@@ -33,58 +33,12 @@ bun add @pie-players/pie-print-player
 
 ## Content styles
 
-Authored content relies on shared classes that belong to no single component:
-passage markup (`.numbered-paragraph`, `.p-number`, `div.passage-title` /
-`-subtitle` / `-author`), the legacy `kds-*` content classes, and — load-bearing
-for this player specifically — the `@media print` rules that hide `.noprint` and
-`.kds-noprint`. They live in `@pie-players/pie-theme/components.css`.
-
-**The player installs that stylesheet itself.** Importing the element is all a
-host needs:
-
-```ts
-import "@pie-players/pie-print-player";
-```
-
-The stylesheet is bundled into the player as text and installed once per
-document, at import time, before any instance renders. It is prepended to
-`<head>` so host CSS that comes later still wins at equal specificity.
-Installation is idempotent, so a page that loads both this player and
-`@pie-players/pie-item-player` ends up with a single copy.
-
-This applies to CDN hosts too: no extra `<link>` is needed. Its rules apply
-inside the `[data-pie-content]` root `<pie-print>` renders into; see
-[content styles](../item-player/README.md#content-styles).
-
-Without it, printed output regresses in two ways: authored passage titles and
-`kds-*` markup render unstyled, and content the author marked `.noprint` is
-printed rather than hidden.
-
-### Taking ownership of the stylesheet
-
-A host that loads `components.css` itself — to control its position in the
-cascade, to ship a patched copy, or to confine it to the player's subtree with
-`@scope (…) { … }` — owns it. The player recognises the copy by
-`--pie-content-styles`, a sentinel the stylesheet declares, and installs nothing;
-when the host's copy lands after the player's, the player removes its own. A copy
-served from another origin cannot be read, so such a host declares ownership on
-the root element before the player script runs:
-
-```html
-<html data-pie-content-styles="host"></html>
-```
-
-With the attribute set, the player installs nothing, and if no content stylesheet
-turns out to be present it logs a one-time `console.warn` naming the missing
-import, rather than silently printing unstyled content. Declare `@pie-players/pie-theme` in your own
-`package.json` if you go this route: the player inlines its copy of the
-stylesheet at build time and does not install the package.
-
-This stylesheet is only the shared content styles. See
-[`@pie-players/pie-theme`](../theme/README.md) for `--pie-*` tokens, the
-`<pie-theme>` host element, and color-scheme / font-size theming — all optional
-for correct rendering, since every `var(--pie-*)` in `components.css` has a
-fallback.
+The player installs `@pie-players/pie-theme/components.css` at import, with the
+item player's detection and ownership opt-out
+([content styles](../item-player/README.md#content-styles)). Its `@media print`
+rules hide `.noprint` and `.kds-noprint`. Without the stylesheet, authored
+passage titles and `kds-*` markup render unstyled, and content the author marked
+`.noprint` is printed rather than hidden.
 
 ## Usage
 
@@ -95,7 +49,7 @@ fallback.
   player.config = {
     item: {
       markup: '<multiple-choice id="q1"></multiple-choice>',
-      elements: { 'multiple-choice': '@pie-element/multiple-choice@12.0.0' },
+      elements: { 'multiple-choice': '@pie-element/multiple-choice@<version>' },
       models: [{ id: 'q1', element: 'multiple-choice', prompt: '...', choices: [...] }]
     },
     options: { role: 'student' }
@@ -146,6 +100,7 @@ interface Config {
   options?: {
     role?: 'student' | 'instructor';
   };
+  accessibility?: PrintAccessibilityConfig;
 }
 
 interface Item {
@@ -180,6 +135,7 @@ player.resolve = (tagName, pkg) => {
 ```typescript
 import {
   PiePrint,
+  ALTERNATES_CLASS, CONTENT_LEAD_SURFACE, mountItemAlternates,
   define, status, whenDefined,
   defaultLoadResolution, defaultResolve, hashCode,
   mkItem, printItemAndFloaters, processMarkup
@@ -188,8 +144,8 @@ import {
 import type {
   Config, Elements, Item, Model,
   LoadResolutionFn, LoadResolutionResult,
-  MissingElFn, NodeResult,
-  PkgResolution, ResolverFn
+  MissingElFn, MountedAlternates, NodeResult,
+  PkgResolution, PrintAccessibilityConfig, ResolverFn
 } from '@pie-players/pie-print-player';
 ```
 

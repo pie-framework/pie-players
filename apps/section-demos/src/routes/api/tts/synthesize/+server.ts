@@ -55,7 +55,7 @@ async function getPollyProvider(
 			!process.env.AWS_SECRET_ACCESS_KEY
 		) {
 			throw new TtsNotConfiguredError(
-				"AWS credentials not configured. Please set AWS_REGION, AWS_ACCESS_KEY_ID, and AWS_SECRET_ACCESS_KEY in .env file. See docs/aws-polly-setup-guide.md",
+				"AWS credentials not configured. Please set AWS_REGION, AWS_ACCESS_KEY_ID, and AWS_SECRET_ACCESS_KEY in .env file. See docs/accessibility/aws-polly-setup-guide.md",
 			);
 		}
 

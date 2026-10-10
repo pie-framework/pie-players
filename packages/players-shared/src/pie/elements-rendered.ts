@@ -19,7 +19,7 @@
 import type { ConfigEntity } from "../types/index.js";
 
 /** Longer than the 50ms render debounce legacy elements use, plus a scheduler task. */
-export const ELEMENT_RENDER_QUIET_MS = 200;
+const ELEMENT_RENDER_QUIET_MS = 200;
 
 function hasContent(element: Element): boolean {
 	if (element.firstElementChild || element.shadowRoot?.firstChild) return true;

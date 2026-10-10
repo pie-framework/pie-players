@@ -81,13 +81,13 @@ The frame stays a dark scrim in every PIE colour scheme instead of following
 an ink-coloured scrim defeats that on its own scheme — a yellow scrim over
 `yellow-on-blue` text hides nothing, and a white one glares in a dark scheme the
 reader chose to avoid glare. Dimming works in both directions: at the default fill
-and opacity, across all six built-in schemes the covered text drops from
-10.9–19.3:1 down to 1.09–1.71:1.
+and opacity, across all ten built-in schemes the covered text drops from
+6.2–21:1 down to 1.36–1.66:1.
 
 What does follow the scheme is the boundary. On a light page the dark scrim shows
-its own edge against the background (11.7–17.6:1), but on a dark page it blends in,
+its own edge against the background (7.7–12.6:1), but on a dark page it blends in,
 so `--pie-tool-line-reader-outline-color` draws an ink hairline that reads against
-the scrim (7.6–9.8:1 in the dark schemes). The drop shadow is ink-derived for the
+the scrim (7.6–10:1 in the dark schemes). The drop shadow is ink-derived for the
 same reason, becoming a soft halo rather than disappearing.
 
 Because the fill is a deployment setting rather than a scheme-derived one, a host
@@ -97,9 +97,8 @@ that overrides it owns these numbers for the schemes it ships.
 
 The remaining custom properties are package-private, not part of the registered
 host token contract: they are read as `var(--x, fallback)` (or set inline by the
-component, for the geometry ones), so a host can override them, but they carry no
-compatibility guarantee and may change with the tool's internals. Prefer the
-semantic tokens they derive from.
+component, for the geometry ones), carry no compatibility guarantee, and may
+change with the tool's internals. Prefer the semantic tokens they derive from.
 
 | Custom property | Default | Description |
 |---|---|---|

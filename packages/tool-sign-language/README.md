@@ -7,9 +7,8 @@ This package is also the worked example of a capability contributed entirely fro
 outside the player. It is authored against
 `@pie-players/pie-assessment-toolkit/tools/registration` — the same entry point the
 packaged registrations use — and `@pie-players/pie-section-player` reaches it only
-through `ToolRegistry.getToolsBySurface("content-media")`. No package in the player
-names signing, the `signLanguage` support id, the `sign-language` catalog type or
-this package.
+through `ToolRegistry.getToolsBySurface("content-media")`. No package renders the
+`sign-language` catalog type except this tool.
 
 ## Opting in
 
@@ -74,6 +73,8 @@ for hands and face. Host overrides:
 | `--pie-section-player-item-media-aspect-ratio` | `3 / 4` |
 | `--pie-section-player-item-media-min-height` | `220px` |
 | `--pie-section-player-item-media-max-height` | `60vh` |
+
+All three are registered `component-public` tokens.
 
 The region's share of the card width, the drag-to-resize handle and the stacking
 breakpoint belong to the host: that is the card's layout, not the capability's.

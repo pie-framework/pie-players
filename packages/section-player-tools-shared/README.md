@@ -2,7 +2,7 @@
 
 Shared panel UI and helper utilities for the section-player debugger packages.
 This package is not a custom element by itself; it provides building blocks used
-by the event, PNP, session, TTS settings, and instrumentation debugger panels.
+by the event, PNP, session and instrumentation debugger panels.
 
 ## Usage
 
@@ -18,7 +18,6 @@ import {
 - `@pie-players/pie-section-player-tools-event-debugger`
 - `@pie-players/pie-section-player-tools-pnp-debugger`
 - `@pie-players/pie-section-player-tools-session-debugger`
-- `@pie-players/pie-section-player-tools-tts-settings`
 - `@pie-players/pie-section-player-tools-instrumentation-debugger`
 
 ## Related Documentation

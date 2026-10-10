@@ -1,4 +1,3 @@
-import type { ToolConfigDiagnostic } from "./tool-config-validation.js";
 import type { ToolFailurePhase } from "./tool-failure.js";
 
 export type FrameworkErrorKind =
@@ -215,27 +214,6 @@ export function frameworkErrorFromCoordinatorContext(args: {
 		recoverable: args.recoverable,
 		scope: args.scope,
 		cohort: args.cohort,
-	});
-}
-
-export function frameworkErrorFromToolConfigDiagnostics(args: {
-	source: string;
-	diagnostics: ToolConfigDiagnostic[];
-	recoverable?: boolean;
-}): FrameworkErrorModel {
-	const details = args.diagnostics.map(
-		(diagnostic) => `${diagnostic.path}: ${diagnostic.message}`,
-	);
-	const message =
-		details.length > 0
-			? "Invalid tools config."
-			: "Invalid tools config (no diagnostics details were provided).";
-	return toFrameworkErrorModel({
-		kind: "tool-config",
-		source: args.source,
-		message,
-		details,
-		recoverable: args.recoverable,
 	});
 }
 

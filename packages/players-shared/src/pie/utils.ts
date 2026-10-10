@@ -124,8 +124,6 @@ export const getPackageWithoutVersion = (packages: string): string =>
 /**
  * Find or add a session entry for a given element
  *
- * TODO: kinda gnarly, copied from player project
- *
  * @param data - Session data array
  * @param id - Model/element ID
  * @param element - Element tag name (optional)

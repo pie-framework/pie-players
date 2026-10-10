@@ -27,7 +27,7 @@ function createEngine(settings: WorkerEvaluationSettings): ComputeEngine {
 	return engine;
 }
 
-export function workerSettingsToResolved(
+function workerSettingsToResolved(
 	type: "basic" | "scientific" | "graphing",
 	settings: WorkerEvaluationSettings,
 ): ResolvedCortexSettings {

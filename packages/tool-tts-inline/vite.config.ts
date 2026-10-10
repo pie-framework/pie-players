@@ -31,14 +31,8 @@ export default defineConfig({
 			// copy of each. A pattern, because an exact-string external still
 			// inlines the subpaths this tool imports.
 			external: [
-				"svelte",
 				/^@pie-players\/pie-(?:assessment-toolkit|players-shared|context)(?:\/|$)/,
 			],
-			output: {
-				globals: {
-					svelte: "Svelte",
-				},
-			},
 		},
 	},
 });

@@ -1,4 +1,4 @@
-export const DEFAULT_TOOL_SCOPE_LEVELS = [
+const DEFAULT_TOOL_SCOPE_LEVELS = [
 	"assessment",
 	"section",
 	"item",
@@ -15,21 +15,11 @@ export interface ParsedToolInstanceId {
 	scopeId: string;
 }
 
-const registeredToolScopeLevels = new Set<string>(DEFAULT_TOOL_SCOPE_LEVELS);
+const registeredToolScopeLevels: ReadonlySet<string> = new Set(
+	DEFAULT_TOOL_SCOPE_LEVELS,
+);
 
-export function getRegisteredToolScopeLevels(): string[] {
-	return Array.from(registeredToolScopeLevels.values());
-}
-
-export function registerToolScopeLevel(scopeLevel: string): void {
-	const normalized = scopeLevel.trim();
-	if (!normalized) {
-		throw new Error("Tool scope level must be a non-empty string");
-	}
-	registeredToolScopeLevels.add(normalized);
-}
-
-export function isRegisteredToolScopeLevel(
+function isRegisteredToolScopeLevel(
 	scopeLevel: string,
 ): scopeLevel is ToolScopeLevel {
 	return registeredToolScopeLevels.has(scopeLevel);
@@ -47,7 +37,7 @@ export function createScopedToolId(
 	}
 	if (!isRegisteredToolScopeLevel(scopeLevel)) {
 		throw new Error(
-			`Unknown tool scope level '${scopeLevel}'. Register custom levels with registerToolScopeLevel().`,
+			`Unknown tool scope level '${scopeLevel}'.`,
 		);
 	}
 	return `${normalizedBase}:${scopeLevel}:${normalizedScopeId}`;

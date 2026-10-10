@@ -1,7 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import { expectDemoChromeReady } from "../../../test-support/demo-menu";
 
-// Reproduction: use the Browser backend from the settings panel, preview a
+// Browser TTS backend: use the Browser backend from the settings panel, preview a
 // voice, apply it, and confirm the runtime speaks through the selected native
 // Browser API voice.
 const SERVER_DEFAULT_DEMO_PATH =

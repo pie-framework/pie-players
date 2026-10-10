@@ -104,7 +104,7 @@ Item players are Web Components that render individual PIE assessment items. The
 
 **Use Cases**:
 - Modern browsers with native ESM support
-- Smaller bundle sizes (~85% reduction vs IIFE)
+- Smaller downloads than IIFE bundles
 
 **View System**:
 
@@ -186,12 +186,6 @@ The section player implements **element aggregation** to eliminate duplicate bun
 - Loads all unique elements in one operation
 - Items initialize from pre-loaded registry
 
-**Performance Benefits**:
-- Section with 5 items (3 multiple-choice, 2 hotspot)
-  - Before: 5 loader calls, ~550ms total
-  - After: 1 loader call, ~250ms total
-  - **50% faster**
-
 **Architecture**: `aggregateElements(items)` collects the section's elements into one map keyed by versioned tag and throws when one tag maps to two package specs. `ensureRegistered(elements, { backend })` loads that map through the IIFE or ESM adapter and resolves once every tag is registered.
 
 See: `@pie-players/pie-players-shared/loaders` for implementation details.
@@ -200,7 +194,7 @@ See: `@pie-players/pie-players-shared/loaders` for implementation details.
 
 ### Unified Authoring & Delivery
 
-**New in this generation**: All players support both **delivery** (student/teacher views) and **authoring** (configuration) modes in a single package.
+All players support both **delivery** (student/teacher views) and **authoring** (configuration) modes in a single package.
 
 **Benefits**:
 - Single package to install and maintain
@@ -274,7 +268,6 @@ A restriction or prohibition that withdraws a tool a `true` override grants rais
 #### Benefits
 
 - **QTI-Inspired Model**: Reuses QTI 3.0 concepts while remaining PIE-oriented
-- **Simpler Code**: 72% reduction in abstraction complexity
 - **Easy Integration**: One-line initialization for QTI-inspired toolkit services
 - **Third-Party Friendly**: All services work independently
 
@@ -313,11 +306,10 @@ The coordinator's services work together:
 
 **Architecture**: Maintains tool registry with visibility state and manages z-index layers:
 - 0-999: PIE content and player chrome
-- 1000-1999: Non-modal tools (ruler, protractor, line reader)
-- 2000-2999: Modal tools (calculator)
+- 1000-1999: Floating tools and their windows (the default layer for every registered tool)
+- 2000-2999: Modal tool surfaces
 - 3000-3999: Tool control handles (drag, resize)
 - 4000-4999: Highlight infrastructure (TTS, annotations)
-- 5000+: Critical overlays (errors, notifications)
 
 ---
 
@@ -343,7 +335,7 @@ The coordinator's services work together:
 **Purpose**: Text-to-speech service with word highlighting synchronization.
 
 **Architecture**:
-- Provider-based (BrowserTTSProvider, AWS Polly Provider)
+- Provider-based: `BrowserTTSProvider` (Web Speech) and `ServerTTSProvider` over the `tts-server-polly`, `tts-server-google` and `tts-server-sc` backends (`backend: "server"` plus `serverProvider`)
 - Integrates with HighlightCoordinator for synchronized highlighting
 - Works with AccessibilityCatalogResolver for QTI 3.0 catalog support
 
@@ -361,7 +353,7 @@ The coordinator's services work together:
 **Purpose**: QTI 3.0 accessibility catalog resolution for authored and preprocessed alternatives.
 
 **Architecture**:
-- Resolves catalogs with priority: extracted → item → assessment
+- Resolves an item's authored catalogs ahead of its `config.extractedCatalogs` (the first registration of an id wins), and item-level catalogs ahead of assessment-level ones
 - Supports pre-recorded audio, sign language videos, braille
 - Integrates with section player runtime registration; `config.extractedCatalogs`
   are registered when a preprocessing/import step has produced them
@@ -372,7 +364,7 @@ The coordinator's services work together:
 
 **Purpose**: Manages element-level ephemeral tool state using globally unique composite keys.
 
-**Architecture**: Uses composite key format `${assessmentId}:${sectionId}:${itemId}:${elementId}` to ensure uniqueness across multi-section assessments.
+**Architecture**: Uses composite key format `${assessmentId}:${sectionId}:${attemptId}:${itemId}:${elementId}`, each part escaped (`%`→`%25`, `:`→`%3A`), so keys stay unique across sections and attempts.
 
 **State Separation**: Tool state (ephemeral, client-only) is separate from PIE session data (persistent, sent to server for scoring).
 
@@ -443,7 +435,6 @@ The coordinator's services work together:
 ### Browser Support
 
 - **Target**: Modern evergreen browsers
-- **Coverage**: ~85% global browser market (2026)
 - **Fallback Strategy**: Graceful degradation for advanced features
 
 ---
@@ -460,11 +451,11 @@ Use a single item player for rendering individual questions. Suitable for embedd
 
 ---
 
-### Pattern 2: Item Player + Standalone Tools
+### Pattern 2: Item Player + Toolkit
 
-Add individual assessment tools to item player without full toolkit integration. Suitable for simple test-taking experiences with limited accommodation needs.
+Wrap item players in `<pie-assessment-toolkit>`, with a `<pie-item-scope>` per item and `<pie-item-toolbar>` for its tools. Suits hosts that render items one at a time and need tools and accommodations without a section player; see [Without a Section Player](../../packages/assessment-toolkit/README.md#without-a-section-player).
 
-**Architecture**: Direct tool registration with ToolCoordinator
+**Architecture**: Toolkit coordinator scoped by `<pie-item-scope>`; per-item inputs ride on the scope
 **Complexity**: Medium
 **Use Case**: Simple assessments with basic tools
 
@@ -509,9 +500,7 @@ Instrumentation across players is intentionally provider-agnostic and built on
 
 ### Provider Semantics
 
-- With tracking enabled, missing/`undefined` provider values use the default New Relic provider path.
-- `instrumentationProvider: null` explicitly disables instrumentation.
-- Invalid provider objects are ignored (optional debug warning), also no-op.
+- How an unset, `null` or invalid provider resolves is set out in [Instrumentation providers](./instrumentation-providers.md#provider-resolution).
 - Existing `item-player` behavior is the compatibility anchor.
 - For local debugging, you can compose providers (for example New Relic + debug panel) by using a fan-out provider rather than replacing production telemetry.
 - Debug panel parity rule: production-bound events are preserved as events (same filtering/sampling pipeline), and debug-only metric rows are additive.
@@ -521,7 +510,7 @@ Instrumentation across players is intentionally provider-agnostic and built on
 - **Toolkit layer** owns toolkit lifecycle stream (for example `pie-toolkit-*`).
 - **Section layer** owns section runtime/public stream (for example `pie-section-*`).
 - **Assessment layer** owns assessment orchestration stream (for example `pie-assessment-*`).
-- **Tool/backend layer** (via toolkit telemetry forwarding) owns operational stream for tool init/backend/library calls (for example `pie-tool-init-*`, `pie-tool-backend-call-*`, `pie-tool-library-load-*`).
+- **Tool/backend layer** (via toolkit telemetry forwarding) owns operational stream for tool init/backend/library calls (for example `pie-tool-init-*`, `pie-tool-backend-call-*`, `pie-tool-library-load-*`); [Instrumentation providers](./instrumentation-providers.md#operational-events) lists every event.
 
 Bridge dedupe exists as a safety net for accidental duplicate dispatch paths,
 but correctness is ownership-first by design.
@@ -560,18 +549,3 @@ but correctness is ownership-first by design.
 - [PIE Documentation](https://pie-api.readme.io/)
 - [PIE Elements](https://github.com/pie-framework/pie-elements)
 - [PIE Examples](https://github.com/pie-framework/pie-examples)
-
----
-
-## Conclusion
-
-The **PIE Players** architecture provides a comprehensive, modern foundation for rendering PIE assessment content. The system is organized into three major areas:
-
-1. **Item Players** - Multiple player strategies (IIFE, ESM, Preloaded, Print) for different deployment scenarios
-2. **Assessment Toolkit** - Composable services for full test delivery with tools and accommodations
-3. **Tools & Accommodations** - 15 packaged capabilities, plus separately packaged ones such as sign language, with WCAG 2.2 AA compliance
-
-By leveraging modern web standards (Web Components, CSS Custom Highlight API) and maintaining framework independence, the architecture ensures long-term maintainability, excellent performance, and broad compatibility.
-
-The toolkit approach (vs framework) gives products maximum flexibility while providing battle-tested reference implementations for common scenarios. The section player serves as the primary interface for catalog lifecycle and service coordination; embedded SSML extraction is a preprocessing concern when that authoring style is used.
-

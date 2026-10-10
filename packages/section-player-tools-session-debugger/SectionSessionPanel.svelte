@@ -174,6 +174,8 @@
 		});
 	}
 
+	// Distinct identities per subscription: the coordinator dedupes by
+	// listener, so one function for both would drop the item subscription.
 	function handleItemControllerEvent(detail: { itemId?: string; timestamp?: number }): void {
 		handleControllerEvent(detail);
 	}

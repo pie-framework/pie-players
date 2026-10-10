@@ -1,6 +1,6 @@
 # PIE-727 Theme Token Inventory
 
-Status: Draft
+Status: Active
 
 Owner: PIE Players maintainers
 
@@ -28,8 +28,8 @@ registered or explicitly classified as package-private.
 ## Summary
 
 Counts are the PIE-727 scan snapshot, not a live figure: the token surface has
-grown with each chrome slice, and `token-registry.json` holds 86 entries as of
-2026-08-15. `bun run check:theme-tokens` is the authority on what exists.
+grown with each chrome slice, and `token-registry.json` holds 101 entries as of
+2026-10-10. `bun run check:theme-tokens` is the authority on what exists.
 
 - Token-like names found: 95.
 - Names with at least one in-repo declaration: 56.
@@ -116,7 +116,10 @@ Other one-off values belong in `<pie-theme>.variables` or deliberate host CSS.
 ## Registry admission
 
 A `--pie-*` name earns a `token-registry.json` entry when a host sets it, or when
-package documentation tells a host to set it. Every other name stays in the
+package documentation tells a host to set it. Eight `package-private` entries are
+registered as well: the section player's three scrollbar hooks, whose fallback
+chain is the contract; the `--pie-content-styles` presence sentinel; and four
+sizing and layout handoffs, one of them retired. Every other name stays in the
 `PACKAGE_PRIVATE_SOURCE_TOKENS` allowlist in `scripts/check-theme-tokens.mjs`.
 
 Existing in source is not the test. Applied on 2026-08-02 it published seventeen

@@ -37,8 +37,7 @@
 	"scripts": {
 		"build": "tsc",
 		"dev": "tsc --watch",
-		"test": "vitest run --passWithNoTests",
-		"test:coverage": "vitest --coverage"
+		"test": "vitest run"
 	},
 	"type": "module",
 	"types": "./dist/index.d.ts",

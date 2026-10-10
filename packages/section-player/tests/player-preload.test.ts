@@ -412,24 +412,26 @@ describe("warmupSectionElements", () => {
 		);
 	});
 
-	test("preloaded strategy with all aggregate tags registered resolves without touching the loader", async () => {
+	test("preloaded strategy with all aggregate tags registered resolves", async () => {
 		const { warmupSectionElements } = await loadPlayerPreloadModule();
 		definePreloadedTag("pie-mc-pa--version-1-0-0");
-		await warmupSectionElements({
-			strategy: "preloaded",
-			renderables: [
-				{
-					id: "item-1",
-					config: {
-						markup: '<pie-mc-pa id="m1"></pie-mc-pa>',
-						elements: { "pie-mc-pa": "@pie-element/multiple-choice@1.0.0" },
-						models: [{ id: "m1", element: "pie-mc-pa" }],
-					},
-				} as any,
-			],
-			resolvedPlayerProps: {},
-			resolvedPlayerEnv: {},
-		});
+		await expect(
+			warmupSectionElements({
+				strategy: "preloaded",
+				renderables: [
+					{
+						id: "item-1",
+						config: {
+							markup: '<pie-mc-pa id="m1"></pie-mc-pa>',
+							elements: { "pie-mc-pa": "@pie-element/multiple-choice@1.0.0" },
+							models: [{ id: "m1", element: "pie-mc-pa" }],
+						},
+					} as any,
+				],
+				resolvedPlayerProps: {},
+				resolvedPlayerEnv: {},
+			}),
+		).resolves.toBeUndefined();
 	});
 
 	test("preloaded strategy in author mode asserts the editor tags", async () => {
@@ -573,24 +575,28 @@ describe("warmupSectionElements", () => {
 
 	test("no-op for preloaded strategy with empty renderables", async () => {
 		const { warmupSectionElements } = await loadPlayerPreloadModule();
-		await warmupSectionElements({
-			strategy: "preloaded",
-			renderables: [],
-			resolvedPlayerProps: {},
-			resolvedPlayerEnv: {},
-		});
+		await expect(
+			warmupSectionElements({
+				strategy: "preloaded",
+				renderables: [],
+				resolvedPlayerProps: {},
+				resolvedPlayerEnv: {},
+			}),
+		).resolves.toBeUndefined();
 	});
 
 	test("no-op for empty renderables", async () => {
 		const { warmupSectionElements } = await loadPlayerPreloadModule();
-		await warmupSectionElements({
-			strategy: "iife",
-			renderables: [],
-			resolvedPlayerProps: {
-				loaderOptions: { bundleHost: "https://proxy.pie-api.com/bundles" },
-			},
-			resolvedPlayerEnv: {},
-		});
+		await expect(
+			warmupSectionElements({
+				strategy: "iife",
+				renderables: [],
+				resolvedPlayerProps: {
+					loaderOptions: { bundleHost: "https://proxy.pie-api.com/bundles" },
+				},
+				resolvedPlayerEnv: {},
+			}),
+		).resolves.toBeUndefined();
 	});
 
 	test("esm strategy does not install the math renderer", async () => {

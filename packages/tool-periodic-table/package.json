@@ -28,7 +28,6 @@
 	},
 	"files": [
 		"dist",
-		"periodic-table-data.json",
 		"package.json"
 	],
 	"license": "MIT",

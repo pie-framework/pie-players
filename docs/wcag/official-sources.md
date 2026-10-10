@@ -35,7 +35,7 @@ Use it as the first stop whenever you need to decide whether something is:
 
 | Source | Type | Use it for |
 | --- | --- | --- |
-| [ARIA Authoring Practices Guide (APG)](https://www.w3.org/TR/wai-aria-practices-1.2/) | Official supporting guidance | Pattern and practice guidance for accessible widgets and interaction models. |
+| [ARIA Authoring Practices Guide (APG)](https://www.w3.org/WAI/ARIA/apg/) | Official supporting guidance | Pattern and practice guidance for accessible widgets and interaction models. |
 | [Dialog (Modal) Pattern](https://www.w3.org/WAI/ARIA/apg/patterns/dialogmodal/) | Official supporting guidance | Modal dialog focus behavior, keyboard expectations, labeling, and `aria-modal` cautions. |
 | [Toolbar Pattern](https://www.w3.org/WAI/ARIA/apg/patterns/toolbar/) | Official supporting guidance | Grouped-control semantics, arrow-key navigation, and toolbar labeling. |
 | [Window Splitter Pattern](https://www.w3.org/WAI/ARIA/apg/patterns/windowsplitter/) | Official supporting guidance | Semantics and keyboard behavior for adjustable split panes. |

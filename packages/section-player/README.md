@@ -35,12 +35,11 @@ opt-out.
 import "@pie-players/pie-section-player";
 ```
 
-The entrypoints under `@pie-players/pie-section-player/components/*` load one
-element each, together with every element it renders: a layout entry also
-registers the cards, panes and shell. They choose which layouts a host loads; the
-tag names stay fixed.
+`@pie-players/pie-section-player/components/section-player-splitpane-element`
+remains as an alias of the root entry, which registers every section-player
+element.
 
-The entries are bundler-only: they import `@pie-players/pie-item-player`,
+The root entry is bundler-only: it imports `@pie-players/pie-item-player`,
 `@pie-players/pie-default-tool-loaders` and `speech-rule-engine`, with the
 engine's JSON locale tables, by bare specifier and without import attributes.
 Items render through the host's one `@pie-players/pie-item-player`, which this
@@ -357,6 +356,9 @@ The layout elements (`pie-section-player-splitpane`,
 
 - `runtime` (object): primary coordinator/tools/player runtime bundle
 - `section` (object): assessment section payload
+- `section-id` (string, optional): the section's id for the controller and its persistence. Unset, the player uses `section.identifier`, then `section-<assessmentId>`.
+- `attempt-id` (string, optional): the attempt the section's session belongs to. Without one, the default session persistence neither reads nor writes.
+- `policies` (object, JS property only): a partial `SectionPlayerPolicies` for readiness, element pre-warm and telemetry; see **Policy fields** under [Host-owned focus](#host-owned-focus)
 - `session` (object, JS property only): the section's session, a `SectionControllerSessionState`; see [Session lifecycle](#session-lifecycle)
 - `assessment` (object, JS property only): the `AssessmentEntity` whose `personalNeedsProfile` and `settings` tool policy reads, forwarded to the coordinator the player builds. A coordinator passed in `runtime` is the host's to bind with `updateAssessment`. A section's own `personalNeedsProfile` is not read, and the player warns once when it finds one
 - `debug` (boolean-like): verbose debug logging control (`"true"` enables, `"false"`/`"0"` disables)
@@ -384,7 +386,7 @@ breakpoint side toolbars still move to the top from 1100px down.
 
 `hooks.cardTitleFormatter` remains active across responsive splitpane transitions (split -> stacked and stacked -> split), because title rendering is provided through shared card context rather than layout-specific state.
 
-To opt into PIE-117 dimensions from a host, configure:
+To opt into the asymmetric layout dimensions from a host, configure:
 
 ```html
 <pie-section-player-splitpane
@@ -436,10 +438,8 @@ card's heading is a group label, so the passage player is told to start one leve
 deeper, putting the passage's own title beneath it.
 
 Authored `data-heading="headingN"` markup in passages and prompts becomes real
-heading elements only when a level is published, which the player now always does.
-Content authored against
-[PIE-151](https://illuminate.atlassian.net/browse/PIE-151) therefore renders as
-structure without any host configuration.
+heading elements only when a level is published, which the player always does,
+so authored heading markup renders as structure without any host configuration.
 
 A host that needs the element's own screen-reader item heading — because it is not
 supplying question headings of its own — overrides per player through the runtime:
@@ -544,10 +544,12 @@ surface becomes mountable only when policy grants the capability and its own
 `requiresAuthoredContent` resolves, so an item or passage without the authored
 resource gets no dead affordance.
 
-Today's occupant is `@pie-players/pie-tool-sign-language` — a signed (ASL)
-translation gated on the `signLanguage` PNP support. It is not part of the
-packaged capability set: a deployment opts in by registering it on the tool
-registry it passes to the player.
+The packaged audio transcript (`audioTranscriptRegistration` in
+`@pie-players/pie-default-tool-loaders`) renders in `content-lead`.
+`content-media` holds `@pie-players/pie-tool-sign-language`, a signed (ASL)
+translation gated on the `signLanguage` PNP support; it is outside the packaged
+set, so a deployment opts in by registering it on the tool registry it passes to
+the player.
 
 The `content-media` adapter sits to the right of the content and is resizable via a
 keyboard-accessible divider (`role="separator"`; arrow keys, `Home`/`End`,
@@ -701,38 +703,12 @@ registerPreloadedElements(
 sectionPlayer.runtime = { ...sectionPlayer.runtime, playerType: "preloaded" };
 ```
 
-- Register before the section player mounts. A tag missing at pre-warm leaves
-  the items unmounted and raises a non-recoverable `element-preload` framework
-  error.
-- Install element packages with `npm install --save-exact`. npm otherwise saves
-  a caret range, which registration rejects as a `version`, and which a fresh
-  install can resolve to another release line: `^13.4.0-next.15` resolves to
-  the legacy `13.4.4`, which has no `./browser/*` modules.
-- Install every pie-elements-ng package from one release, in one install from
-  the same dist-tag, and upgrade them together. Elements whose `./browser/*`
-  builds typeset on `window.MathJax` share the MathJax the first of them loads,
-  in the build and configuration of that element's release, so in a mixed set
-  an element can typeset with a MathJax it was not built for. Elements that
-  bundle their own MathJax share none
-  ([One MathJax version per page](../../docs/item-player/loading-strategies.md#one-mathjax-version-per-page)).
-- Pass `math.assetRoot`, an npm root serving the fonts and speech the elements'
-  bundled MathJax loads, or `math.assetUrls`, each file's URL; without either,
-  elements on adapter 0.1.3 or later render without web fonts and speech
-  ([MathJax assets](../../docs/item-player/loading-strategies.md#mathjax-assets)).
-- Register one version per package. The players align every authored version
-  of a package to the registered one, and registering a second version throws.
-- Register each package's `controller` unless the item players are hosted
-  (`runtime.player.hosted`, or an enabled `runtime.player.backend.delivery`).
-  A player that is not hosted runs `model()` in the browser and warns for each
-  tag registered without one.
-- Only `@pie-element/*` builds from pie-elements-ng publish
-  `./browser/delivery` and `./browser/controller`.
-- Under TypeScript, the `package.json` import needs `resolveJsonModule`, and a
-  package version that ships no declarations for `./browser/*` needs a
-  `declare module` shim for those subpaths.
-
-See [`strategy="preloaded"`](../../docs/item-player/loading-strategies.md#strategypreloaded)
-for the registration contract.
+Register before the section player mounts: a tag missing at pre-warm leaves
+the items unmounted and raises a non-recoverable `element-preload` framework
+error. Item players count as hosted under `runtime.player.hosted` or an enabled
+`runtime.player.backend.delivery`, and then need no `controller`. Version pins,
+element sets, MathJax assets and TypeScript setup are in
+[Registering elements from npm](../../docs/item-player/loading-strategies.md#registering-elements-from-npm).
 
 ### Host-owned focus
 
@@ -994,8 +970,6 @@ Subscribe **after** the first `getOrCreateSectionController(...)` resolves (or a
 
 Use `subscribeSectionEvents(...)` only for advanced mixed filtering requirements.
 
-> **Upgrading from `<0.3.35`?** The `sectionId` / `attemptId` arguments on `subscribeItemEvents` / `subscribeSectionLifecycleEvents` / `subscribeSectionEvents` were dropped — subscriptions now follow the toolkit's active section cohort automatically and migrate across navigation. See the **"Migrating from `<0.3.35`"** section in [`@pie-players/pie-assessment-toolkit`](../assessment-toolkit/README.md#migrating-from-0335-breaking--pre-10) for the full upgrade recipe.
-
 ### Item-level observability configuration
 
 Item-level resource observability is configured on the embedded `pie-item-player` via
@@ -1034,10 +1008,7 @@ Section-player instrumentation is provider-agnostic and uses the shared
 `InstrumentationProvider` contract.
 
 - Canonical provider path: `runtime.player.loaderConfig.instrumentationProvider`
-- With `trackPageActions: true`, missing/`undefined` providers use the default New Relic provider path.
-- `instrumentationProvider: null` explicitly disables instrumentation.
-- Invalid provider objects are ignored (optional debug warning), also no-op.
-- Existing `item-player` behavior is preserved.
+- How an unset, `null` or invalid provider resolves is set out in [Instrumentation providers](../../docs/architecture/instrumentation-providers.md#provider-resolution).
 - For local debug overlays, compose providers (for example `NewRelicInstrumentationProvider` + `DebugPanelInstrumentationProvider`) through `CompositeInstrumentationProvider`.
 - Toolkit telemetry forwarding uses the same provider path, so tool/backend
   operational events are visible alongside section events when toolkit is mounted.
@@ -1078,26 +1049,11 @@ Section-player owned instrumentation stream:
 - `pie-section-element-preload-retry`
 - `pie-section-element-preload-error`
 
-Build consumers against these canonical lifecycle events:
-
-- `readiness-change` → listen for `pie-stage-change`.
-- `interaction-ready` → `pie-stage-change` filtered on
-  `detail.stage === "interactive"`.
-- `ready` → `pie-loading-complete`.
-- `section-controller-ready` → call
-  `waitForSectionController(timeoutMs)` or `getSectionController()`
-  on the layout CE, or filter `pie-stage-change` for
-  `detail.stage === "engine-ready"`.
-
 If toolkit is mounted, toolkit lifecycle events are emitted on a separate
 `pie-toolkit-*` stream. This separation avoids semantic overlap; bridge dedupe
 is a defensive safety net only.
 
-Toolkit tool/backend operational stream:
-
-- `pie-tool-init-start|success|error`
-- `pie-tool-backend-call-start|success|error`
-- `pie-tool-library-load-start|success|error`
+Toolkit operational events are listed in [Instrumentation providers](../../docs/architecture/instrumentation-providers.md#operational-events).
 
 ### Item session management
 

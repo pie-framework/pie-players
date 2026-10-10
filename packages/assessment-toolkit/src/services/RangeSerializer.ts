@@ -312,26 +312,4 @@ export class RangeSerializer {
 			return null;
 		}
 	}
-
-	/**
-	 * Batch serialize multiple ranges.
-	 *
-	 * @param ranges - Ranges to serialize
-	 * @param root - Root element
-	 * @returns Array of serialized ranges
-	 */
-	serializeMany(ranges: Range[], root: Element): SerializedRange[] {
-		return ranges.map((range) => this.serialize(range, root));
-	}
-
-	/**
-	 * Batch deserialize multiple ranges.
-	 *
-	 * @param data - Array of serialized ranges
-	 * @param root - Root element
-	 * @returns Array of ranges (nulls for invalid ranges)
-	 */
-	deserializeMany(data: SerializedRange[], root: Element): (Range | null)[] {
-		return data.map((item) => this.deserialize(item, root));
-	}
 }

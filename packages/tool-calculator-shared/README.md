@@ -29,11 +29,13 @@ The shared inline trigger owns these component-level active-state theme hooks:
 - `--pie-tool-trigger-active-border-color`
 - `--pie-tool-trigger-active-color`
 
+All three are registered `component-public` tokens.
+
 Its resting and hover fills resolve through the button tokens —
 `--pie-button-background-color` then `--pie-button-bg`, and
 `--pie-button-hover-background-color` then `--pie-button-hover-bg`. Every base
-theme and colour scheme sets those opaque. `--pie-background` is the page token
-and the base light theme ships it transparent, so it does not reach this fill.
+theme and colour scheme sets those opaque. `--pie-background` is the page token a
+host may point at its own backdrop, so it does not reach this fill.
 
 Vendor wrappers inherit the same WCAG-focused focus, pressed-state, reduced
 motion, and touch-target behavior.

@@ -18,15 +18,7 @@ export default defineConfig({
 			prerender: {
 				entries: ["*"],
 				handleMissingId: "warn",
-				handleHttpError: ({ path, message }) => {
-					// Ignore 404 for /examples/ (served by separate app)
-					if (path === "/examples/" || path.startsWith("/examples/")) {
-						return;
-					}
-
-					// Throw error for other 404s
-					throw new Error(message);
-				},
+				handleHttpError: "fail",
 			},
 		}),
 	],

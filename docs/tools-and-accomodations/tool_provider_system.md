@@ -261,7 +261,7 @@ const coordinator = new ToolkitCoordinator({
         provider: {
           runtime: {
             authFetcher: async () => {
-              const res = await fetch("/api/tools/desmos/token");
+              const res = await fetch("/api/tools/desmos/auth");
               return res.json();
             },
           },
@@ -335,9 +335,9 @@ Provider runtime hooks are where hosts bridge tool packages to authenticated bac
 
 Typical examples:
 
-- `/api/tools/desmos/token`
+- `/api/tools/desmos/auth`
 - `/api/tts/synthesize`
-- `/api/tools/tts/google/token`
+- `/api/tools/dictionary`
 
 Those endpoint names are host-owned. The tool system only requires that the configured provider runtime functions return the data the provider expects.
 

@@ -113,7 +113,7 @@ exact log text depends on the host API route.
 
 ## Security Best Practices
 
-### ✅ DO
+### Do
 
 - **Use IAM users with minimal permissions** (only `polly:SynthesizeSpeech` and `polly:DescribeVoices`)
 - **Rotate access keys regularly** (every 90 days)
@@ -121,7 +121,7 @@ exact log text depends on the host API route.
 - **Enable CloudTrail logging** to monitor Polly API usage
 - **Set up billing alerts** to monitor costs
 
-### ❌ DON'T
+### Don't
 
 - **Don't commit `.env` files** to version control
 - **Don't use root account credentials**
@@ -131,19 +131,9 @@ exact log text depends on the host API route.
 
 ## Cost Management
 
-### Pricing (as of 2024)
-
-- **Standard voices**: $4 per 1M characters
-- **Neural voices**: $16 per 1M characters
-- **Speech marks**: Included (no extra charge)
-
-### Example Costs
-
-**Scenario**: 1000 students, each listening to 5 passages of 500 words
-
-- Characters: 1000 × 5 × 500 words × 5 chars/word = **12.5M characters**
-- Cost (neural): ~$200 without caching
-- Cost (neural + 80% cache hit): ~$40
+A read with highlighting makes two SynthesizeSpeech requests (audio and speech
+marks), each billed by characters. Current rates:
+<https://aws.amazon.com/polly/pricing/>
 
 ### Reduce Costs
 

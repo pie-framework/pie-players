@@ -146,7 +146,7 @@ export type ToolContext =
 /**
  * Type guard to check if context is at item level
  */
-export function isItemContext(
+function isItemContext(
 	context: ToolContext,
 ): context is ItemToolContext {
 	return context.level === "item";
@@ -155,7 +155,7 @@ export function isItemContext(
 /**
  * Type guard to check if context is at passage level
  */
-export function isPassageContext(
+function isPassageContext(
 	context: ToolContext,
 ): context is PassageToolContext {
 	return context.level === "passage";
@@ -164,7 +164,7 @@ export function isPassageContext(
 /**
  * Type guard to check if context is at rubric level
  */
-export function isRubricContext(
+function isRubricContext(
 	context: ToolContext,
 ): context is RubricToolContext {
 	return context.level === "rubric";
@@ -173,7 +173,7 @@ export function isRubricContext(
 /**
  * Type guard to check if context is at element level
  */
-export function isElementContext(
+function isElementContext(
 	context: ToolContext,
 ): context is ElementToolContext {
 	return context.level === "element";
@@ -320,7 +320,7 @@ function extractContent(
 }
 
 /** The plain text a context carries, tags removed. */
-export function extractTextContent(context: ToolContext): string {
+function extractTextContent(context: ToolContext): string {
 	return extractContent(context, stripHtml);
 }
 
@@ -330,7 +330,7 @@ export function extractTextContent(context: ToolContext): string {
  * For indicators that live in the markup rather than in the prose — `<math>`
  * above all, whose whole signal is the element name.
  */
-export function extractMarkupContent(context: ToolContext): string {
+function extractMarkupContent(context: ToolContext): string {
 	return extractContent(context, (value) => value);
 }
 

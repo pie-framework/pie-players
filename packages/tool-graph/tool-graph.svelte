@@ -28,10 +28,10 @@
 		toolId?: string;
 	} = $props();
 
-	// Tool types (matching production implementation)
+	// Tool types
 	type Tool = 'selector' | 'point' | 'line' | 'delete';
 
-	// Data structures (matching production implementation)
+	// Data structures
 	interface Point {
 		id: number;
 		x: number; // Coordinate in the dynamic viewBox space
@@ -64,7 +64,7 @@
 	let draggingPointId = $state<number | null>(null);
 	let currentPointerPos = $state<Coordinates | null>(null);
 
-	// Grid configuration (matching production implementation)
+	// Grid configuration
 	const MAJOR_VERTICAL_DIVISIONS = 5; // Fixed number of rows
 	const SUBGRID_DIVISIONS = 5; // 5x5 minor grid
 	const DESIRED_MAJOR_CELL_SIZE_SVG = 100 / MAJOR_VERTICAL_DIVISIONS; // 100 / 5 = 20 units
@@ -74,7 +74,7 @@
 	let containerPixelWidth = $state(0);
 	let containerPixelHeight = $state(0);
 
-	// Dynamic viewBox width (matching production implementation)
+	// Dynamic viewBox width
 	let viewBoxWidth = $derived.by(() => {
 		if (containerPixelHeight <= 0 || containerPixelWidth <= 0) {
 			return 100; // Default width until dimensions are known
@@ -93,29 +93,25 @@
 
 	// Mode definitions. `$derived` rather than a plain const: the labels come from
 	// the catalog, so the list has to rebuild when the locale moves.
-	const tools: Array<{ name: Tool; icon: string; label: string; title: string }> =
+	const tools: Array<{ name: Tool; label: string; title: string }> =
 		$derived([
 			{
 				name: 'selector',
-				icon: 'selector',
 				label: interfaceI18n.t('tools.graph.modeSelector'),
 				title: interfaceI18n.t('tools.graph.modeSelectorHint')
 			},
 			{
 				name: 'point',
-				icon: 'point',
 				label: interfaceI18n.t('tools.graph.modePoint'),
 				title: interfaceI18n.t('tools.graph.modePointHint')
 			},
 			{
 				name: 'line',
-				icon: 'line',
 				label: interfaceI18n.t('tools.graph.modeLine'),
 				title: interfaceI18n.t('tools.graph.modeLineHint')
 			},
 			{
 				name: 'delete',
-				icon: 'delete',
 				label: interfaceI18n.t('tools.graph.modeDelete'),
 				title: interfaceI18n.t('tools.graph.modeDeleteHint')
 			}
@@ -211,7 +207,7 @@
 		}
 	}
 
-	// Computed grid lines (matching production implementation)
+	// Computed grid lines
 	let gridLines = $derived.by(() => {
 		const lines = {
 			majorVertical: [] as number[],
@@ -360,7 +356,7 @@
 		}
 	}
 
-	// ResizeObserver for dynamic viewBox width (matching production implementation)
+	// ResizeObserver for dynamic viewBox width
 	let resizeObserver: ResizeObserver | null = null;
 	$effect(() => {
 		if (!canvasWrapperEl) return;
@@ -401,7 +397,7 @@
 		aria-label={interfaceI18n.t('tools.graph.toolA11y')}
 		data-tool-id={toolId}
 	>
-		<!-- Toolbar (matching production implementation: lighter teal) -->
+		<!-- Toolbar -->
 		<div class="pie-tool-graph__toolbar">
 			<!-- Tool buttons -->
 			<div class="pie-tool-graph__tool-buttons">
@@ -449,7 +445,7 @@
 				{/each}
 			</div>
 
-			<!-- Grid opacity slider (matching production implementation) -->
+			<!-- Grid opacity slider -->
 			<div class="pie-tool-graph__transparency-control">
 				<label for="grid-opacity">{interfaceI18n.t('tools.graph.grid')}</label>
 				<input
@@ -612,7 +608,7 @@
 		flex-direction: column;
 	}
 
-	/* Toolbar (matching production implementation: lighter teal) */
+	/* Toolbar */
 	.pie-tool-graph__toolbar {
 		padding: 8px;
 		background: var(--pie-primary-light, #5a7fa3); /* Lighter teal-like color */
@@ -701,7 +697,7 @@
 		height: 100%;
 	}
 
-	/* Grid lines (matching production implementation: dark gray) */
+	/* Grid lines */
 	.pie-tool-graph__grid-line {
 		stroke: var(--pie-border-dark, #666);
 		vector-effect: non-scaling-stroke;

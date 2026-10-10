@@ -24,7 +24,10 @@ This package provides the foundational interfaces and types for building TTS (Te
 
 ### Types
 
-- Configuration and capability types
+- **`TTSPlaybackStart`** - What a provider knows about one playback when it starts
+- **`TTSSpeechSegment`** - Pre-segmented speech unit with global offsets
+- **`TTSProviderOptions`** - Provider options the toolkit sets; a provider's own options extend them
+- **`SpeedRateBucket`** - The `slow` / `medium` / `fast` vocabulary a server transport sends in place of a numeric rate
 
 ## Installation
 
@@ -82,19 +85,26 @@ export class MyTTSProvider implements ITTSProvider {
 }
 ```
 
+`onPlaybackStart` is optional, but a provider that exposes it must call it from
+the native or media playback-start event, never when speech is merely queued.
+The toolkit uses that signal to move into playing state and to begin
+highlighting once output has started. A provider whose word boundaries depend on
+the response passes `{ wordBoundaries }` (`TTSPlaybackStart`): with `false`, the
+toolkit highlights the sentence being read, word highlight mode included.
+
+`updateSettings` is required: the toolkit sends rate, pitch and voice changes
+through it, and each read's content language
+([TTS language](../../docs/architecture/internationalization.md#tts-language)). A
+`pause()` that lands before a speak's audio starts holds it until `resume()`.
+
+A provider declaring `maxTextLength` in its capabilities never receives longer
+text: the toolkit splits it at sentences, then words, then characters, and keeps
+word highlights on the visible text.
+
 ## Official Implementations
 
 - **Browser TTS** (in `@pie-players/pie-assessment-toolkit`) - Uses Web Speech API, always available as fallback
 - **Server TTS** (`@pie-players/tts-client-server`) - High-quality server-backed voices (Polly/Google/etc.) with speech marks
-
-## Design Philosophy
-
-This core package intentionally:
-- ✅ Has **zero runtime dependencies**
-- ✅ Contains **only TypeScript interfaces and types**
-- ✅ Is **framework-agnostic** (no React, Svelte, Vue, etc.)
-- ✅ Supports **pluggable architecture**
-- ✅ Enables **type-safe TTS implementations**
 
 ## License
 

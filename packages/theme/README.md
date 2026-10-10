@@ -128,11 +128,11 @@ registerPieColorSchemes(entries): RegistrationReceipt
 
 `resolvePieTheme()` accepts `baseTheme` (`light` or `dark`),
 `requestedScheme`, `providerVariables`, and final `variables`. Its result
-contains `baseTheme`, `requestedScheme`, `resolvedScheme`, `status` (`default`,
-`built-in`, `custom`, or `unavailable`), final `variables`, and `diagnostics`.
+contains `baseTheme`, `requestedScheme`, `resolvedScheme` (the descriptor, or
+`null`), `status` (`default`, `built-in`, `custom`, or `unavailable`), the final
+immutable `variables`, `colorScheme` (the CSS `color-scheme` keyword the
+resolution implies, `null` without a scheme), and `diagnostics`.
 
-`resolvePieTheme()` returns the requested id, resolution status, resolved
-descriptor when available, final immutable token values, and diagnostics.
 `listPieColorSchemes()` returns an immutable snapshot whose `schemes` list keeps
 the built-in order and starts with the `default` descriptor. Catalog previews
 resolve each scheme over PIE's canonical light base, then project
@@ -236,7 +236,7 @@ registerPieColorSchemes([
 ]);
 ```
 
-`packages/theme/tests/schoolcity-scheme-registration.test.ts` carries a validated
+[`tests/schoolcity-scheme-registration.test.ts`](./tests/schoolcity-scheme-registration.test.ts) carries a validated
 palette for one scheme of each cost class and is the place to copy from.
 
 Read the receipt. Contrast diagnostics are warnings, not errors, because the
@@ -246,10 +246,10 @@ ships cyan links on a mid-blue page. `registerPieColorSchemes` checks only the
 relationships whose tokens the overlay touches, so covering a flagged token is
 what clears its relationship.
 
-These are host palettes rather than built-ins on purpose. A built-in is a full
-48-token palette, since a two-colour scheme is a promise the whole surface has to
-keep, and which schemes a programme wants is still open on
-[PIE-472](https://illuminate.atlassian.net/browse/PIE-472).
+These are host palettes rather than built-ins on purpose. A built-in sets every
+token whose scheme participation is `required`, since a two-colour scheme is a
+promise the whole surface has to keep, and which schemes a programme wants is
+still open.
 
 ## Fixed hues
 
@@ -275,8 +275,7 @@ accessible name.
 - If DaisyUI tokens are present on the target scope, `pie-theme` uses the built-in `daisyui` provider adapter.
 - Override precedence is: base PIE -> provider output -> scheme -> `variables`.
 - `provider="none"` (`PIE_THEME_PROVIDER_NONE`) resolves no provider at all, leaving this package's shipped defaults. It is how a host reproduces the palette it had before adopting a provider, which is the first thing to check when colours differ between two environments.
-- The adapter is the whole integration. `DAISYUI_PIE_TOKEN_MAP` is its sole source, and it corrects a slot that would land illegible because it reads resolved colours — which a stylesheet cannot do. The separate `pie-theme-daisyui` package that shipped the same table as static CSS was removed: `<pie-theme scope="document">` writes `--pie-*` as inline styles, so a stylesheet declaring them lost to it and the import did nothing.
-- A host on some other token vocabulary aliases its own names to `--pie-*` in its own stylesheet, which is what a non-DaisyUI design system needs anyway. Do that under `[data-color-scheme]` to make an accommodation reach host chrome, since `<pie-theme>` never writes `--color-*` or any other host prefix.
+- `DAISYUI_PIE_TOKEN_MAP` is the adapter's sole source. [How theming works](../../docs/theming/how-theming-works.md#provider-adapters) gives the reason the integration is an adapter, and [Token namespaces](../../docs/theming/how-theming-works.md#token-namespaces) shows how a host on another token vocabulary aliases its names to `--pie-*`.
 
 ## Font size scaling
 
@@ -330,7 +329,7 @@ owns the token, the presets, and the rules that consume them.
 
 ## Token registry
 
-`@pie-players/pie-theme/token-registry.json` lists every `--pie-*` token with its
+`@pie-players/pie-theme/token-registry.json` lists each registered `--pie-*` token with its
 owner, scope, category, status, fallback policy, and scheme participation
 (`required`, `optional`, or `excluded`). `PieThemeTokenRegistryEntry` types it.
 
@@ -375,25 +374,21 @@ stylesheet as text and installs it once per document at import time, unless the
 host already loads a copy; see
 [content styles](../item-player/README.md#content-styles) for host ownership.
 Its rules apply inside a `[data-pie-content]` element only, the root each player
-renders content into, except rules keyed on KDS or MathJax names or legacy
-content classes, which stay document-wide so authored markup an element portals
+renders content into, except rules keyed on `kds-*` or MathJax (`mjx-*`) class
+names or legacy content classes, which stay document-wide so authored markup an element portals
 to `<body>` keeps them.
 
-Note for players adding this: a plain `import "…/components.css"` does **not**
-work in these packages' library builds. Vite extracts it to an unreferenced
-`dist/assets/*.css` that nothing loads and no exports entry exposes — a silent
-no-op that left authored passage markup unstyled in production. Import the text
-with `?raw` and hand it to `installContentStyles` from
-`@pie-players/pie-players-shared`.
+Players adding this import the text with `?raw` and hand it to
+`installContentStyles` from `@pie-players/pie-players-shared`. In these packages'
+library builds a plain `import "…/components.css"` is extracted by Vite to an
+unreferenced `dist/assets/*.css` that nothing loads.
 
 `components.css` declares `--pie-content-styles` on `:root` as a presence
 sentinel so players can recognise a copy the host loaded itself, scoped or not,
 and install none of their own. It is not a themeable value; do not consume it for
 styling.
 
-- Theme-owned shared `pie-*` class families include:
-  - `pie-section-player-tools-pnp-debugger*`
-  - `pie-section-player-tools-session-debugger*`
-  - `pie-answer-eliminator-*` and `pie-answer-masked-*`
+- Theme-owned shared `pie-*` class families include `pie-answer-eliminator-*`
+  and `pie-answer-masked-*`.
 - Keep runtime behavior, DOM mutation logic, and element-specific layout mechanics in the owning package.
 - Prefer stable `pie-*` / `data-pie-*` hooks in component markup; avoid introducing new generic class contracts.

@@ -64,10 +64,9 @@ state outside the PIE Players cleanup lifecycle.
 
 Owning package: `@pie-players/pie-assessment-toolkit`.
 
-Public type exports should be available from a toolkit-owned public path that
-consumers can import without reaching into `src` or coordinator internals. The
-implementation PR should choose the narrowest existing public export path that
-matches local package conventions.
+Public type exports: the package root, `@pie-players/pie-assessment-toolkit`,
+exports all four types; no subpath was added (see
+[Resolved Decisions](#resolved-decisions)).
 
 Consuming packages or apps:
 

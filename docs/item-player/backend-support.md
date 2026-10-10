@@ -37,6 +37,8 @@ player.backend = {
 };
 ```
 
+The `endpoints` shown are the defaults; a host sets only the paths it changes.
+
 Existing delivery inputs stay where they are: `env`, `strategy`,
 `loaderOptions`, `renderStimulus`, styling props, `config`,
 and `session` are not duplicated under `backend.delivery`.
@@ -148,12 +150,6 @@ sectionPlayer.runtime = {
         enabled: true,
         baseUrl: bffUrl,
         assignmentId: playerSessionId,
-        endpoints: {
-          load: "/api/player/load",
-          saveSession: "/api/player/save",
-          model: "/api/player/model",
-          score: "/api/player/score",
-        },
       },
     },
   },
@@ -210,12 +206,6 @@ assessmentPlayer.sectionPlayerRuntime = {
       delivery: {
         enabled: true,
         baseUrl: bffUrl,
-        endpoints: {
-          load: "/api/player/load",
-          saveSession: "/api/player/save",
-          model: "/api/player/model",
-          score: "/api/player/score",
-        },
       },
     },
   },
@@ -393,7 +383,7 @@ The load response must include an item config under `config`, `item`, or
     ]
   },
   "session": { "id": "item-session-1", "data": [] },
-  "metadata": { "source": "quiz-engine-bff" }
+  "metadata": { "source": "host-bff" }
 }
 ```
 
@@ -411,7 +401,9 @@ Save session:
   ],
   "env": { "mode": "gather", "role": "student" },
   "itemId": "item-1",
-  "assignmentId": "attempt-1"
+  "assignmentId": "attempt-1",
+  "models": [{ "id": "q1", "element": "multiple-choice--version-1-2-3" }],
+  "passageModels": []
 }
 ```
 

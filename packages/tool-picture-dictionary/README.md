@@ -7,6 +7,7 @@ Picture dictionary panel for the PIE assessment player. Registers
 
 PIE ships no endpoint. The symbol corpus behind a picture dictionary is licensed, so
 a host supplies one.
+[Dictionary Languages And Services](../../docs/tools-and-accomodations/dictionary-languages-and-services.md) records where service selection, credentials and the lookup language sit.
 
 ```html
 <pie-tool-picture-dictionary endpoint="/api/picture-dictionary" language="en">

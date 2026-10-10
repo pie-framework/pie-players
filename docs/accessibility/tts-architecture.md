@@ -4,7 +4,7 @@
 
 ## Overview
 
-The PIE Players TTS (Text-to-Speech) system uses a clean, layered architecture with pluggable providers and zero UI framework dependencies in the core.
+The PIE Players TTS (Text-to-Speech) system is layered: a zero-dependency interface package, a browser provider built into the toolkit, and pluggable server-backed providers.
 
 See also:
 
@@ -49,8 +49,10 @@ READMEs document package-specific APIs, configuration, and provider setup.
 - Playback state management
 
 **Dependencies:**
-- `@pie-players/pie-tts` (for interfaces)
-- `@pie-players/pie-players-shared` (for UI components, i18n)
+- `@pie-players/pie-tts` (provider interfaces)
+- `@pie-players/pie-players-shared` (UI components, i18n)
+- `@pie-players/pie-calculator` and `@pie-players/pie-context`
+- `speech-rule-engine` (MathML speech)
 
 **TTS Features:**
 - Re-exports the provider types from `tts`: `ITTSProvider`, `ITTSProviderImplementation`, `TTSConfig`, `TTSSpeechSegment` and `TTSProviderCapabilities`
@@ -77,7 +79,7 @@ The server-side architecture splits TTS into server-side and client-side compone
 - AWS Polly implementation for Node.js
 - Native speech marks support (millisecond-precise)
 - Parallel audio + marks requests
-- Full SSML support
+- SSML (Polly's supported subset)
 
 **@pie-players/tts-server-google**
 - Google Cloud Text-to-Speech implementation for Node.js
@@ -110,30 +112,6 @@ Custom backend integrations can use:
 Browser → ServerTTSProvider (custom transport) → Custom root POST API
 ```
 
-### 4. Server-Side TTS Providers
-
-**For production deployments**, use the server-side architecture with speech marks support:
-
-**@pie-players/tts-client-server** (Client package)
-
-- Calls server API for TTS synthesis
-- Receives audio + speech marks
-- Supports word-level highlighting via speech marks
-- 50ms polling-based synchronization
-
-**@pie-players/tts-server-polly** / **@pie-players/tts-server-google** (Server packages)
-
-- Server-side provider implementations for Node.js
-- Native or normalized speech marks for synchronized highlighting
-- Provider-specific SSML and voice support
-- Secure credential management
-
-**Integration:** SvelteKit API routes connect browser client to a server-side provider
-
-```
-Browser → ServerTTSProvider → /api/tts/synthesize → server provider → TTS backend
-```
-
 See [Server-Side TTS Integration Guide](../../packages/tts-server-polly/examples/INTEGRATION-GUIDE.md) for setup instructions.
 
 ## Architecture Diagram
@@ -157,8 +135,8 @@ See [Server-Side TTS Integration Guide](../../packages/tts-server-polly/examples
 │                           │  │                             │
 │ - TTSService              │  │ - ServerTTSProvider         │
 │ - BrowserTTSProvider      │  │ - Server API integration    │
-│   (built-in fallback)     │  │ - Neural voices             │
-│ - Catalog integration     │  │ - Full SSML                 │
+│   (built-in fallback)     │  │ - Speech-mark highlighting  │
+│ - Catalog integration     │  │ - Server-side SSML          │
 │ - State management        │  │                             │
 └───────────────────────────┘  └─────────────────────────────┘
           │                                  │
@@ -231,16 +209,12 @@ Premium providers like Polly are separate packages:
 
 | Feature | Browser TTS | Server TTS (Polly) |
 | ------- | ----------- | ------------------ |
-| **Voice Quality** | ⭐⭐⭐ Synthetic | ⭐⭐⭐⭐⭐ Neural |
-| **Word Highlighting** | ⚠️ Unreliable | ✅ Millisecond-precise |
-| **SSML Support** | ⚠️ Limited/None | ✅ Full |
-| **Cost** | ✅ Free | 💰 $16/1M chars |
-| **Offline** | ✅ Works offline | ❌ Requires internet |
-| **Latency** | ~50-100ms | ~200-500ms |
-| **Consistency** | ⚠️ Varies by OS | ✅ Same everywhere |
-| **Bundle Size** | 0 KB (built-in) | ~20 KB (client) |
-| **Configuration** | None required | Server endpoint |
-| **Security** | N/A | ✅ Credentials on server |
+| **Highlighting** | Sentence-level by default | Word-level from speech marks |
+| **SSML** | None: tags are stripped and the text is read plainly | Polly's supported subset |
+| **Voices** | Those installed on the device | Polly's, the same on every device |
+| **Server** | None | A synthesis endpoint the host runs; credentials stay on it |
+| **Text per request** | No limit declared | 3000 characters; the toolkit splits longer text |
+| **Requests per read** | None | Two SynthesizeSpeech calls (audio and speech marks) |
 
 ## Word Highlighting Architecture
 
@@ -318,8 +292,7 @@ TTS tools pass the DOM they read, an element or a range, to `speak()`, so every 
 
 1. **Bypassing `TTSService` normalization path** - custom pre-normalization can desync offsets
 2. **Extracting text from one element, highlighting in another** - Text content differs
-3. **Not rebuilding after TTSService changes** - stale integration code runs with bugs
-4. **Speech marks in wrong coordinate system** - Server returns trimmed positions, must match
+3. **Speech marks in wrong coordinate system** - Server returns trimmed positions, must match
 
 #### Testing Checklist
 
@@ -342,241 +315,18 @@ When implementing TTS highlighting:
 
 ## Creating Custom Providers
 
-To create a custom TTS provider:
+A custom provider implements `ITTSProvider` and `ITTSProviderImplementation`
+from `@pie-players/pie-tts`. The [`@pie-players/pie-tts` README](../../packages/tts/README.md)
+has the example and the playback, settings and text-length contracts the toolkit
+holds a provider to.
 
-1. Install `@pie-players/pie-tts`
-2. Implement `ITTSProvider` and `ITTSProviderImplementation`
-3. Publish as a separate package
+## Catalogs and SSML Extraction
 
-Example:
-
-```typescript
-import type {
-  ITTSProvider,
-  ITTSProviderImplementation,
-  TTSConfig,
-  TTSProviderCapabilities,
-} from '@pie-players/pie-tts';
-
-class MyTTSImpl implements ITTSProviderImplementation {
-  onPlaybackStart?: () => void;
-
-  constructor(private readonly config: TTSConfig) {}
-
-  async speak(text: string): Promise<void> {
-    await myEngine.speak(text, {
-      onStart: () => this.onPlaybackStart?.(),
-    });
-  }
-  pause(): void { /* ... */ }
-  resume(): void { /* ... */ }
-  stop(): void { /* ... */ }
-  updateSettings(settings: Partial<TTSConfig>): void { /* ... */ }
-}
-
-export class MyTTSProvider implements ITTSProvider {
-  readonly providerId = 'my-custom-tts';
-
-  async initialize(config: TTSConfig): Promise<ITTSProviderImplementation> {
-    return new MyTTSImpl(config);
-  }
-
-  getCapabilities(): TTSProviderCapabilities {
-    return {
-      supportsWordBoundary: false,
-    };
-  }
-  destroy(): void { /* ... */ }
-}
-```
-
-`onPlaybackStart` is optional, but providers that expose it must call it from
-the native or media playback-start event—not when speech is merely queued. The
-toolkit uses that signal to move into playing state and begin highlighting only
-when output has actually started. A provider whose word boundaries depend on the
-response passes `{ wordBoundaries }` (`TTSPlaybackStart`): with `false`, the
-toolkit highlights the sentence being read, word highlight mode included.
-
-`updateSettings` is required: the toolkit sends rate, pitch and voice changes
-through it, and each read's content language
-([TTS language](../architecture/internationalization.md#tts-language)). A `pause()` that lands before a
-speak's audio starts holds it until `resume()`.
-
-A provider declaring `maxTextLength` in its capabilities never receives longer
-text: the toolkit splits it at sentences, then words, then characters, and
-keeps word highlights on the visible text.
-
-## QTI-Inspired Integration with Section Player
-
-The TTS system integrates seamlessly with QTI 3.0 accessibility catalogs through the **PIE Section Player**:
-
-```javascript
-import '@pie-players/pie-section-player/components/section-player-splitpane-element';
-import { ToolkitCoordinator } from '@pie-players/pie-assessment-toolkit';
-import { createPackagedToolRegistry } from '@pie-players/pie-default-tool-loaders';
-
-const toolRegistry = createPackagedToolRegistry();
-const coordinator = new ToolkitCoordinator({
-  assessmentId: assessment.id,
-  toolRegistry,
-  accessibility: {
-    catalogs: assessment.accessibilityCatalogs ?? [],
-    language: 'en-US',
-  },
-  tools: {
-    placement: { item: ['textToSpeech'], passage: ['textToSpeech'], section: [] },
-    providers: {
-      textToSpeech: {
-        backend: 'browser',
-      },
-    },
-  },
-});
-
-const sectionPlayer = document.querySelector('pie-section-player-splitpane');
-sectionPlayer.runtime = {
-  ...(sectionPlayer.runtime ?? {}),
-  coordinator,
-  tools: coordinator.config.tools,
-};
-sectionPlayer.section = section;
-```
-
-The section player uses the coordinator-managed services to resolve registered
-spoken catalogs, play pre-authored SSML when available, and fall back to
-generated speech or visible text.
-
-## SSML Extraction Utility And Catalog Generation
-
-`SSMLExtractor` can convert embedded SSML from item content into QTI 3.0
-accessibility catalogs. Runtime catalog registration will pick up
-`config.extractedCatalogs` when they are already present, but the current shell
-registration path does not automatically invoke extraction. For the current
-runtime flow, see [TTS Deep Dive](./tts-deep-dive.md).
-
-### Why Use Extraction?
-
-Authors can embed SSML directly in content for convenience:
-- Proper pronunciation of technical terms (e.g., "polynomial")
-- Math expressions spoken correctly ("x squared minus five x")
-- Emphasis and pacing control
-- No need to maintain separate catalog files
-
-An integration can:
-1. Extract SSML before rendering or registration
-2. Generate catalog entries with unique IDs
-3. Clean visual markup (removes SSML tags)
-4. Provide `config.extractedCatalogs` so runtime registration can register them
-
-### Example: Before and After Extraction
-
-**Original Item (Author Creates):**
-```typescript
-{
-  config: {
-    markup: '<multiple-choice id="q1"></multiple-choice>',
-    elements: {
-      'multiple-choice': '@pie-element/multiple-choice@latest'
-    },
-    models: [{
-      id: 'q1',
-      element: 'multiple-choice',
-      prompt: `<div>
-        <speak xml:lang="en-US">
-          Which method should you use to solve
-          <prosody rate="slow">x squared, minus five x, plus six</prosody>?
-        </speak>
-        <p><strong>Which method should you use to solve x² - 5x + 6 = 0?</strong></p>
-      </div>`
-    }]
-  }
-}
-```
-
-**After Extraction (Preprocessed Config):**
-```typescript
-{
-  config: {
-    markup: '<multiple-choice id="q1"></multiple-choice>',
-    elements: {
-      'multiple-choice': '@pie-element/multiple-choice@latest'
-    },
-    models: [{
-      id: 'q1',
-      element: 'multiple-choice',
-      prompt: `<div data-catalog-idref="auto-prompt-q1-0">
-        <p><strong>Which method should you use to solve x² - 5x + 6 = 0?</strong></p>
-      </div>`
-    }],
-    extractedCatalogs: [
-      {
-        identifier: 'auto-prompt-q1-0',
-        cards: [{
-          catalog: 'spoken',
-          language: 'en-US',
-          content: `<speak xml:lang="en-US">
-            Which method should you use to solve
-            <prosody rate="slow">x squared, minus five x, plus six</prosody>?
-          </speak>`
-        }]
-      }
-    ]
-  }
-}
-```
-
-### Extraction Service
-
-**Location:** `packages/assessment-toolkit/src/services/SSMLExtractor.ts`
-
-**Usage:**
-```typescript
-import { SSMLExtractor } from '@pie-players/pie-assessment-toolkit';
-
-const extractor = new SSMLExtractor();
-const result = extractor.extractFromItemConfig(item.config);
-
-// Update config with cleaned content
-item.config = result.cleanedConfig;
-item.config.extractedCatalogs = result.catalogs;
-
-```
-
-**Integration Points:**
-- A preprocessing/import step can run `SSMLExtractor`
-- Runtime registration reads `config.extractedCatalogs`
-- `TTSService` resolves the resulting catalog content during playback
-
-**Usage Pattern:**
-The section player is the primary container for assessment toolkit integration.
-Pass a `ToolkitCoordinator` through `runtime.coordinator`, provide catalogs or
-`extractedCatalogs` on the content data, and the player handles catalog
-registration and TTS tool rendering.
-
-See [Accessibility Catalogs Integration Guide](./accessibility-catalogs-integration-guide.md) for complete examples.
-
-## Additional Server-Side TTS Providers
-
-- **@pie-players/tts-server-google** - Google Cloud Text-to-Speech
-- **@pie-players/tts-server-sc** - SchoolCity-backed reference provider
-- **Future provider packages** - Azure Cognitive Services, ElevenLabs, or other
-  backends can follow the same server-provider pattern when implemented.
-
-All server providers follow the same pattern:
-
-- Implement `ITTSServerProvider` interface from `@pie-players/tts-server-core`
-- Expose via SvelteKit API routes in demo apps
-- Client uses `ServerTTSProvider` from `@pie-players/tts-client-server`
-
-## Summary
-
-- **@pie-players/pie-tts**: Pure interfaces, zero dependencies
-- **@pie-players/pie-assessment-toolkit**: Built-in browser TTS fallback + services
-- **Server-side architecture**: Secure, production-ready TTS with speech marks
-  - **tts-server-core**: Server provider interfaces
-  - **tts-server-polly**: AWS Polly implementation
-  - **tts-server-google**: Google Cloud implementation
-  - **tts-server-sc**: SchoolCity-backed reference implementation
-  - **tts-client-server**: Browser client
-- **Pattern**: Try server-side TTS, fallback to browser TTS
-- **Benefit**: Browser speech when the server path fails, with optional high-quality voices and precise word highlighting
+The section player resolves registered `spoken` catalogs through the
+coordinator's services, plays pre-authored SSML when a card is available, and
+falls back to generated speech or visible text. The
+[Accessibility Catalogs Integration Guide](./accessibility-catalogs-integration-guide.md)
+owns the wiring
+([Section Player Integration](./accessibility-catalogs-integration-guide.md#section-player-integration))
+and `SSMLExtractor`
+([SSML Extraction from PIE Content](./accessibility-catalogs-integration-guide.md#ssml-extraction-from-pie-content)).

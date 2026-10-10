@@ -1,5 +1,5 @@
 /**
- * @pie-players/pie-tts-core
+ * @pie-players/pie-tts
  *
  * Core TTS interfaces and types for PIE Assessment Toolkit.
  * No UI dependencies - pure TypeScript interfaces.

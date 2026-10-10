@@ -38,7 +38,8 @@ so orchestration/runtime dependencies can be shared without prop drilling.
   A subscription whose consumer is out of the document is held and re-dispatched
   when the provider reconnects, so a subtree moved with its provider keeps its
   subscriptions.
-- Subscriptions are opt-in (`subscribe: true`) and include unsubscribe callbacks.
+- `ContextConsumer` subscribes unless given `subscribe: false`. Subscriptions
+  include unsubscribe callbacks.
 - `ContextRoot` only tracks subscribing requests to avoid unnecessary retention.
 - `ContextRoot` dedupes pending replay by `(requestor, callback)` pair.
 - `ContextRoot` skips a request a provider has already answered, never stops

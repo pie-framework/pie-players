@@ -2,9 +2,11 @@
 
 Status: Design note. Shipped today: the `InstrumentationProvider` contract,
 `BaseInstrumentationProvider`, the New Relic, console, debug-panel and
-composite adapters, probed readiness, and the one default factory;
+composite adapters, probed readiness, the one default factory,
+[provider resolution](#provider-resolution) and the
+[operational events](#operational-events);
 [`architecture.md`](./architecture.md#instrumentation--observability) owns the
-current provider semantics and the per-layer event ownership model. Not
+per-layer event ownership model. Not
 implemented: agent detection, the conformance suite, central attribute naming,
 and buffering. The DataDog and OpenTelemetry adapters
 described here are untested examples of host-owned adapters, not products PIE
@@ -53,7 +55,7 @@ by construction and the fixture is a worked example of code a host writes.
 | Which agent is on the page | Host |
 | Adapter from the contract to that agent's API | PIE for New Relic, host for everything else |
 | Attribute naming, event names, event ownership per layer | PIE |
-| Whether PIE sends anything | Host, via `trackPageActions` |
+| Whether PIE sends anything | Host, via `trackPageActions` or by passing a provider |
 
 No adapter imports a vendor package or `@opentelemetry/api`. Each declares the
 minimal call shape it uses as a local structural type and duck-types the handle,
@@ -233,6 +235,58 @@ takes the provider its player resolves and constructs none, so
 `instrumentationProvider: null` and an invalid provider silence it as they
 silence every other emitter. The monitor leaves a provider's lifecycle to
 whoever passed it in, which is what makes sharing one instance safe.
+
+## Provider resolution
+
+`resolveInstrumentationProvider` reads `instrumentationProvider` and
+`trackPageActions` from a player's `loaderConfig`: the section-layer elements
+read `runtime.player.loaderConfig`, the item player its own `loaderConfig`, and
+the toolkit the item-player configuration it is given.
+
+| `instrumentationProvider` | Resolves to |
+| --- | --- |
+| Unset or `undefined` | The shared New Relic default when `trackPageActions` is `true`; otherwise none |
+| `null` | None, whatever `trackPageActions` says |
+| An object meeting the `InstrumentationProvider` contract | That object |
+| Anything else | None, with a debug-mode warning; it does not fall back to the default |
+
+`trackPageActions` defaults to `false`. A provider that resolves still sends
+only while its own `isReady()` is true.
+
+## Operational events
+
+A resolved provider receives three streams.
+
+**Toolkit telemetry.** `ToolkitCoordinator` emits these, and
+`<pie-assessment-toolkit>` forwards each to `trackEvent` with
+`instrumentationLayer: "toolkit"` and the assessment, section and attempt ids. A
+name ending in `-error`, or a payload carrying `errorType`, also goes to
+`trackError`. Tool events carry `toolId`.
+
+| Events | Emitted by |
+| --- | --- |
+| `pie-toolkit-coordinator-ready`, `pie-toolkit-provider-registered`, `pie-toolkit-provider-ready`, `pie-toolkit-tool-state-loaded`, `pie-toolkit-tool-config-updated`, `pie-toolkit-section-controller-ready`, `pie-toolkit-section-controller-disposed` | `ToolkitCoordinator` |
+| `pie-toolkit-tts-init-start\|success\|error`, `pie-tool-init-fallback` | `ToolkitCoordinator` |
+| `pie-tool-init-start\|success\|error` | `ToolkitCoordinator` and `ToolProviderRegistry` |
+| `pie-tool-backend-call-start\|success\|error` | `ToolProviderRegistry`, the Desmos provider, the server TTS provider |
+| `pie-tool-library-load-start\|success\|error` | The TTS tool provider, the Desmos and GeoGebra providers, the lazy calculator provider |
+| `pie-tool-operation-start\|success\|error` | The Cortex calculator, for `operation: "evaluate"` |
+| `pie-tool-playback-start\|resume\|pause\|stop\|error\|state-changed` | `TTSService` |
+
+**Bridged public events.** Each layer maps a fixed set of its public DOM events
+onto `pie-toolkit-*`, `pie-section-*`, `pie-item-*` and `pie-assessment-*` names
+([`instrumentation-event-map.ts`](../../packages/players-shared/src/pie/instrumentation-event-map.ts)).
+The item map carries only `correct-responses-populated`, so the learner
+responses in `session-changed` reach no provider by default. The item player
+also sends a `trackError` per runtime error.
+
+**Loader and resource events.** These also need `trackPageActions: true`: the
+resource monitor's `pie-resource-load`, `pie-resource-retry` and
+`pie-resource-load-error`; the IIFE loader's `pie-iife-bundle-retry`,
+`pie-iife-bundle-retry-success` and `pie-iife-bundle-retry-timeout`; the ESM
+loader's `pie-esm-shared-dependency-conflict`; and `pie-mathjax-version-conflict`
+and `pie-mathjax-no-asset-root`. The monitor and both loaders also send a
+`trackError` per failure.
 
 ## Attribute naming
 

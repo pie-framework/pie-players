@@ -41,8 +41,8 @@ See [loading-strategies.md](./loading-strategies.md) for details.
 
 ## Modern stack
 
-- Framework: Stencil 1.7 in legacy, Svelte 5 + Vite in the current player.
-- TypeScript: 3.3 in legacy, 5.9 in the current player.
+- Framework: Stencil 3 in legacy, Svelte 5 + Vite in the current player.
+- TypeScript: 4.9 in legacy, 5.9 in the current player.
 - Module format: CJS + IIFE in legacy Stencil dist, ESM-first
   (`"type": "module"`) in the current player.
 - Registration: legacy used `defineCustomElements(window)` or auto-registration
@@ -157,8 +157,8 @@ player.addEventListener("session-changed", (event) => {
 
 Two limits on the projection. A frozen container, or one object shared as a
 default across items, is left untouched: the player will not write one item's
-entries into state another item also reads. And inside `<pie-section-player>`
-each item player is handed a per-render copy, because the composition's own
+entries into state another item also reads. And inside a section player layout
+(`<pie-section-player-splitpane>`, `-vertical`, `-tabbed`) each item player is handed a per-render copy, because the composition's own
 session object is section state that `persist()` saves — a host reading a
 section's item responses reads them from the controller, not off the item
 player's property.

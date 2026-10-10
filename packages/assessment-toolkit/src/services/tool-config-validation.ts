@@ -5,11 +5,6 @@ import {
 	type ToolProviderConfig,
 	type ToolsConfigInput,
 } from "./tools-config-normalizer.js";
-import {
-	frameworkErrorFromToolConfigDiagnostics,
-	frameworkErrorFromUnknown,
-	type FrameworkErrorModel,
-} from "./framework-error.js";
 import type { ToolRegistration, ToolRegistry } from "./ToolRegistry.js";
 
 export type ToolConfigStrictness = "off" | "warn" | "error";
@@ -41,27 +36,6 @@ export interface ToolConfigValidationOptions {
 export interface ToolConfigValidationResult {
 	config: CanonicalToolsConfig;
 	diagnostics: ToolConfigDiagnostic[];
-}
-
-export function frameworkErrorFromToolConfigValidation(args: {
-	source: string;
-	diagnostics?: ToolConfigDiagnostic[] | null;
-	error?: unknown;
-	recoverable?: boolean;
-}): FrameworkErrorModel {
-	if (Array.isArray(args.diagnostics) && args.diagnostics.length > 0) {
-		return frameworkErrorFromToolConfigDiagnostics({
-			source: args.source,
-			diagnostics: args.diagnostics,
-			recoverable: args.recoverable,
-		});
-	}
-	return frameworkErrorFromUnknown({
-		kind: "tool-config",
-		source: args.source,
-		error: args.error ?? new Error("Invalid tools config"),
-		recoverable: args.recoverable,
-	});
 }
 
 const DEFAULT_STRICTNESS: ToolConfigStrictness = "error";

@@ -213,7 +213,6 @@ describe("ToolkitCoordinator hooks", () => {
 		await coordinator.waitUntilReady();
 
 		expect(coordinator.isReady()).toBe(true);
-		expect((coordinator as unknown as { stateLoaded: boolean }).stateLoaded).toBe(false);
 		expect(loads).toBe(1);
 		expect(calls.map((model) => model.kind)).toEqual(["tool-state-load"]);
 		expect(calls[0]).toMatchObject({ recoverable: true, scope: "runtime" });

@@ -4,10 +4,10 @@ import {
 } from "../services/tts/flat-tree.js";
 
 /** Marks the part of a shell scope that holds the content tools read and annotate. */
-export const CONTENT_REGION_SELECTOR = "[data-region='content']";
+const CONTENT_REGION_SELECTOR = "[data-region='content']";
 
 /** Marks the host of a shell scope (`<pie-item-scope>`, `<pie-passage-shell>`). */
-export const SHELL_SCOPE_HOST_SELECTOR = "[data-pie-shell-root]";
+const SHELL_SCOPE_HOST_SELECTOR = "[data-pie-shell-root]";
 
 /**
  * The content region of `scope` that tools read and annotate.

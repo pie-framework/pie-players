@@ -17,8 +17,7 @@
 	"scripts": {
 		"build": "tsc",
 		"dev": "tsc --watch",
-		"test": "vitest run",
-		"test:coverage": "vitest --coverage"
+		"test": "vitest run"
 	},
 	"keywords": [
 		"tts",

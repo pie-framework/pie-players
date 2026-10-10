@@ -23,16 +23,10 @@ player.backend = {
   },
   delivery: {
     enabled: true,
-    provider: "pie-api",
+    baseUrl: pieApiUrl,
     itemId: "item-1",
     sessionId: "session-1",
     autosave: { enabled: true, debounceMs: 250 },
-    endpoints: {
-      load: "/api/player/load",
-      saveSession: "/api/player/save",
-      model: "/api/player/model",
-      score: "/api/player/score",
-    },
   },
 };
 ```
@@ -116,6 +110,120 @@ per model; that includes a player with `backend.delivery` enabled and `hosted`
 unset. `score()` delegates to the configured backend and returns whatever the
 backend's scoring contract returns.
 
+### pie-api-aws Wire Contract
+
+The built-in `pie-api` client speaks pie-api-aws's player routes, which
+`<pie-api-player>` from pie-api-components also calls. `baseUrl` is the API
+origin and each default path carries `/api` (`/api/player/load|save|model|score`);
+a path in `endpoints` is appended to `baseUrl` as given.
+
+Every request is a JSON `POST` with `authorization: Bearer <token>` and
+`x-date`, the client's clock in epoch milliseconds. pie-api-aws stamps a
+request's session events from `x-date`, so they keep call order when requests
+overtake each other. `overrides` comes from `backend.delivery.options.overrides`
+and is sent only when it has entries: pie-api-aws answers 401 to any `overrides`
+value, an empty map included, from a token without the `overrides` scope.
+
+A failed request rejects with pie-api-aws's `error` detail, or with the API
+gateway's `message` when only that is present.
+
+Load:
+
+```json
+{
+  "itemId": "item-1",
+  "sessionId": "item-session-1",
+  "assignmentId": "assignment-1",
+  "env": { "mode": "gather", "role": "student" }
+}
+```
+
+The load response must include an item config under `config`, `item`, or
+`item.config`, or pie-api-aws's `item: { pie, passage }`, plus an optional
+session:
+
+```json
+{
+  "item": {
+    "markup": "<multiple-choice id=\"q1\"></multiple-choice>",
+    "elements": {
+      "multiple-choice": "@pie-element/multiple-choice@1.2.3"
+    },
+    "models": [
+      { "id": "q1", "element": "multiple-choice", "prompt": "Pick one" }
+    ]
+  },
+  "session": { "id": "item-session-1", "data": [] }
+}
+```
+
+Save session, answered with an empty 201 that resolves `saveSession()` to
+`null`:
+
+```json
+{
+  "sessionId": "item-session-1",
+  "data": [
+    {
+      "id": "q1",
+      "element": "multiple-choice--version-1-2-3",
+      "value": ["a"]
+    }
+  ],
+  "env": { "mode": "gather", "role": "student" },
+  "itemId": "item-1",
+  "assignmentId": "assignment-1"
+}
+```
+
+Model refresh names the session when there is one. pie-api-aws then records
+`data` on that session before modelling it:
+
+```json
+{
+  "sessionId": "item-session-1",
+  "data": [],
+  "env": { "mode": "gather", "role": "student" },
+  "models": [{ "id": "q1", "element": "multiple-choice--version-1-2-3" }],
+  "passageModels": [
+    { "id": "passage-1", "element": "pie-passage--version-4-5-6" }
+  ]
+}
+```
+
+Without a session it sends `itemId` and `assignmentId` instead, and pie-api-aws
+models the item fresh, ignoring `data` and recording nothing.
+
+`models` and `passageModels` carry the current model identities after the
+player has applied `makeUniqueTags`. pie-api-aws answers with one flat model
+array under authored tags (`"multiple-choice"`); a backend may instead answer
+`{ models, passageModels }`. An incoming model updates the current model with
+the same `id` when its `element` is either the current runtime tag or that
+tag's authored base. A model naming another element is ignored, and a flat array
+applies to item and passage models alike.
+
+Score sends the session with any `player.score(options)` fields; `skipCached:
+true` makes pie-api-aws evaluate again instead of answering from its cache.
+Partial scoring follows `env.partialScoring`. The response is pie-api-aws's
+`SessionScore`, `{ max, points, partialScoring, type }`, returned as sent:
+
+```json
+{
+  "skipCached": true,
+  "sessionId": "item-session-1",
+  "data": [
+    {
+      "id": "q1",
+      "element": "multiple-choice--version-1-2-3",
+      "value": ["a"]
+    }
+  ],
+  "env": { "mode": "gather", "role": "student", "partialScoring": false },
+  "itemId": "item-1",
+  "assignmentId": "assignment-1"
+}
+```
+
 ## Why Model And Score Belong On The Backend
 
 In production and other non-trivial deployments, backend delivery does more than
@@ -147,12 +255,6 @@ sectionPlayer.runtime = {
         enabled: true,
         baseUrl: bffUrl,
         assignmentId,
-        endpoints: {
-          load: "/api/player/load",
-          saveSession: "/api/player/save",
-          model: "/api/player/model",
-          score: "/api/player/score",
-        },
       },
     },
   },
@@ -209,12 +311,6 @@ assessmentPlayer.sectionPlayerRuntime = {
       delivery: {
         enabled: true,
         baseUrl: bffUrl,
-        endpoints: {
-          load: "/api/player/load",
-          saveSession: "/api/player/save",
-          model: "/api/player/model",
-          score: "/api/player/score",
-        },
       },
     },
   },
@@ -385,35 +481,25 @@ under `backend.authoring.media`. Top-level props win when both are present.
 | Item authoring | `<pie-item-player>.backend.authoring` | Implemented through a host `client`. Draft content load/save/release and authoring media callbacks. |
 | Section session persistence | `ToolkitCoordinatorHooks.createSectionSessionPersistence` | Implemented. Hydrate/persist/clear `SectionControllerSessionState`; no `runtime.backend.section` alias is planned. |
 | Assessment session persistence | `AssessmentPlayerHooks.createAssessmentSessionPersistence` | Implemented. Hydrate/persist/clear `AssessmentSession`; no `backend.assessment` alias is planned. |
-| Assessment finalization | Future dedicated submission strategy | Not implemented. Authoritative submit/idempotency/receipt semantics, separate from ordinary snapshot persistence. |
-| Section or assessment definition loading | Host-provided inputs; possible future definition-source interfaces | Player-initiated loading is not implemented. Do not combine content loading with session persistence by default. |
+| Assessment finalization | Future dedicated submission strategy | Not implemented. Authoritative submit/idempotency/receipt semantics, separate from ordinary snapshot persistence; see the draft [Assessment Authoritative Submission](../prds/assessment-authoritative-submission.md) PRD. |
+| Section or assessment definition loading | Host-provided inputs; possible future definition-source interfaces | Player-initiated loading is not implemented; add it only if it removes repeated host orchestration. Do not combine content loading with session persistence by default. |
 | Tool provider backends | Assessment toolkit/tool config | Implemented per provider. TTS, Desmos, and other tool-specific services. |
 | Element-loader backend | `loaderConfig` / `loaderOptions` | Implemented. Player/element bundle loading, separate from item delivery. |
 
 ## Remaining Front-End Contract Gaps
 
-The remaining work is not a generic backend namespace. It is a small set of
-lifecycle guarantees at existing or narrowly defined seams:
+Besides finalization and definition loading, listed above, the remaining work is
+a small set of lifecycle guarantees at existing seams:
 
-1. **Authoritative assessment finalization.** Keep ordinary snapshot persistence
-   on `AssessmentSessionPersistenceStrategy`, but give a host one terminal
-   submission operation with idempotency and a typed receipt. See the draft
-   [Assessment Authoritative Submission](../prds/assessment-authoritative-submission.md)
-   PRD.
-2. **Persistence ordering and observability.** Specify whether repeated
+1. **Persistence ordering and observability.** Specify whether repeated
    `persist()` calls serialize or coalesce, prevent an older completion from
    becoming the apparent latest save, and expose enough state for host chrome to
    report a recoverable failure. This should deepen the existing controller
    interfaces rather than add another adapter namespace.
-3. **Reset parity.** Both persistence strategies already permit
+2. **Reset parity.** Both persistence strategies already permit
    `clearSession?()`, but controller-level reset/clear behavior and its events are
    not uniform or prominent.
-4. **Definition loading, only if consumer pressure requires it.** A host can
-   already fetch section and assessment definitions before assigning player
-   inputs. Add a definition-source interface only if player-owned loading removes
-   repeated host orchestration; do not add it merely for symmetry with item
-   delivery.
-5. **Integrated evidence.** Add one demo/test that exercises assessment
+3. **Integrated evidence.** Add one demo/test that exercises assessment
    persistence, section persistence, derived item delivery, and final submission
    together so ownership and duplicate-save behavior are observable.
 
@@ -421,120 +507,6 @@ Backends continue to own durable storage, authorization, conflict policy,
 retention, reporting, and workflow. PIE owns the browser lifecycle, canonical
 session snapshots, operation ordering, and observable state at its controller
 interfaces.
-
-## pie-api-aws Delivery Contract
-
-The built-in `pie-api` client speaks pie-api-aws's player routes, which
-`<pie-api-player>` from pie-api-components also calls. `baseUrl` is the API
-origin and each default path carries `/api` (`/api/player/load|save|model|score`);
-a path in `endpoints` is appended to `baseUrl` as given.
-
-Every request is a JSON `POST` with `authorization: Bearer <token>` and
-`x-date`, the client's clock in epoch milliseconds. pie-api-aws stamps a
-request's session events from `x-date`, so they keep call order when requests
-overtake each other. `overrides` comes from `backend.delivery.options.overrides`
-and is sent only when it has entries: pie-api-aws answers 401 to any `overrides`
-value, an empty map included, from a token without the `overrides` scope.
-
-A failed request rejects with pie-api-aws's `error` detail, or with the API
-gateway's `message` when only that is present.
-
-Load:
-
-```json
-{
-  "itemId": "item-1",
-  "sessionId": "item-session-1",
-  "assignmentId": "assignment-1",
-  "env": { "mode": "gather", "role": "student" }
-}
-```
-
-The load response must include an item config under `config`, `item`, or
-`item.config`, or pie-api-aws's `item: { pie, passage }`, plus an optional
-session:
-
-```json
-{
-  "item": {
-    "markup": "<multiple-choice id=\"q1\"></multiple-choice>",
-    "elements": {
-      "multiple-choice": "@pie-element/multiple-choice@1.2.3"
-    },
-    "models": [
-      { "id": "q1", "element": "multiple-choice", "prompt": "Pick one" }
-    ]
-  },
-  "session": { "id": "item-session-1", "data": [] }
-}
-```
-
-Save session, answered with an empty 201 that resolves `saveSession()` to
-`null`:
-
-```json
-{
-  "sessionId": "item-session-1",
-  "data": [
-    {
-      "id": "q1",
-      "element": "multiple-choice--version-1-2-3",
-      "value": ["a"]
-    }
-  ],
-  "env": { "mode": "gather", "role": "student" },
-  "itemId": "item-1",
-  "assignmentId": "assignment-1"
-}
-```
-
-Model refresh names the session when there is one. pie-api-aws then records
-`data` on that session before modelling it:
-
-```json
-{
-  "sessionId": "item-session-1",
-  "data": [],
-  "env": { "mode": "gather", "role": "student" },
-  "models": [{ "id": "q1", "element": "multiple-choice--version-1-2-3" }],
-  "passageModels": [
-    { "id": "passage-1", "element": "pie-passage--version-4-5-6" }
-  ]
-}
-```
-
-Without a session it sends `itemId` and `assignmentId` instead, and pie-api-aws
-models the item fresh, ignoring `data` and recording nothing.
-
-`models` and `passageModels` carry the current model identities after the
-player has applied `makeUniqueTags`. pie-api-aws answers with one flat model
-array under authored tags (`"multiple-choice"`); a backend may instead answer
-`{ models, passageModels }`. An incoming model updates the current model with
-the same `id` when its `element` is either the current runtime tag or that
-tag's authored base. A model naming another element is ignored, and a flat array
-applies to item and passage models alike.
-
-Score sends the session with any `player.score(options)` fields; `skipCached:
-true` makes pie-api-aws evaluate again instead of answering from its cache.
-Partial scoring follows `env.partialScoring`. The response is pie-api-aws's
-`SessionScore`, `{ max, points, partialScoring, type }`, returned as sent:
-
-```json
-{
-  "skipCached": true,
-  "sessionId": "item-session-1",
-  "data": [
-    {
-      "id": "q1",
-      "element": "multiple-choice--version-1-2-3",
-      "value": ["a"]
-    }
-  ],
-  "env": { "mode": "gather", "role": "student", "partialScoring": false },
-  "itemId": "item-1",
-  "assignmentId": "assignment-1"
-}
-```
 
 ## Events
 

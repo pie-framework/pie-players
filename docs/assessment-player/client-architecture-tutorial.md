@@ -367,7 +367,7 @@ Hook naming is intentionally aligned with toolkit conventions:
 
 - `create*` — structural factories, called once to produce a strategy or plan
 - `onBefore*` — pre-lifecycle interception, opportunity to modify or block
-- `on*` — lifecycle callbacks for telemetry, logging, and error handling
+- `on*` — lifecycle callbacks for logging and error handling; telemetry goes through the [instrumentation provider](#instrumentation-dedicated)
 
 ### Assessment Player Hooks
 
@@ -413,11 +413,6 @@ const hooks: AssessmentPlayerHooks = {
   // Error handling: all assessment-level errors route here
   onError(error, context) {
     console.error(`[${context.phase}]`, error.message, context.details);
-  },
-
-  // Telemetry: assessment-level events for analytics
-  onTelemetry(eventName, payload) {
-    analytics.track(eventName, payload);
   },
 };
 ```

@@ -113,10 +113,6 @@ export interface AssessmentPlayerHooks {
 			details?: Record<string, unknown>;
 		},
 	) => void;
-	onTelemetry?: (
-		eventName: string,
-		payload?: Record<string, unknown>,
-	) => void | Promise<void>;
 }
 
 export interface AssessmentDefinition {

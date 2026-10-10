@@ -145,7 +145,7 @@ export const calculatorToolRegistration: ToolRegistration = {
       ariaLabel: "Calculator",
       tooltip: "Calculator",
       onClick: () => toolbarContext.toggleTool(this.toolId),
-      active: toolbarContext.isToolVisible(fullToolId)
+      active: toolbarContext.isToolVisible(this.toolId)
     };
     calculator.visible = button.active;
 
@@ -161,7 +161,7 @@ export const calculatorToolRegistration: ToolRegistration = {
       ],
       // Called by the toolbar on render and on every tool visibility change
       sync: () => {
-        button.active = toolbarContext.isToolVisible(fullToolId);
+        button.active = toolbarContext.isToolVisible(this.toolId);
         calculator.visible = button.active;
       }
     };
@@ -310,7 +310,7 @@ const toolRegistry = createPackagedToolRegistry();
 const coordinator = new ToolkitCoordinator({
   assessmentId: assessment.id,
   toolRegistry,
-  tools: { placement: { item: ["calculator", "textToSpeech", "theme"] } }
+  tools: { placement: { item: ["calculator", "textToSpeech"] } }
 });
 coordinator.updateAssessment(assessment);
 // An item's <pie-item-scope> registers its settings when it mounts.
@@ -319,10 +319,10 @@ coordinator.registerItemSettings(itemRef.identifier, itemRef.settings);
 const allowedToolIds = coordinator
   .decideToolPolicy({ level: "item", scope: { level: "item", scopeId: itemRef.identifier } })
   .visibleTools.map((tool) => tool.toolId);
-// Returns: ["calculator", "textToSpeech", "theme", ...]
+// Returns: ["calculator", "textToSpeech"]
 ```
 
-The policy engine reads the assessment's `personalNeedsProfile`, `settings.districtPolicy` and `settings.testAdministration`, and, for a decision scoped to an item, that item's registered `settings`. A support id in any of them is a tool id: `supports: ["calculator"]` grants the tool registered as `calculator`, and an id no tool is registered under produces a `tool-policy.unknownSupportId` diagnostic naming the fields that list it. A requirement that a host gate keeps off every toolbar (`policy.blocked`, the allowlist, a disabled provider, or no level of `placement` listing it) produces `tool-policy.requiredToolBlocked`; one placed at another level is served there and raises nothing. Both ride on the toolbar decision and the feature decision. The toolkit coordinator logs each once per code and tool and hands it to its `onPolicyDiagnostic` listeners.
+The policy engine reads the assessment's `personalNeedsProfile`, `settings.districtPolicy` and `settings.testAdministration`, and, for a decision scoped to an item, that item's registered `settings`. A support id in any of them is a tool id: `supports: ["calculator"]` grants the tool registered as `calculator`, and an id no tool is registered under produces a `tool-policy.unknownSupportId` diagnostic naming the fields that list it. A requirement that a host gate keeps off every toolbar (`policy.blocked`, the allowlist, a disabled provider, or no level of `placement` listing it) produces `tool-policy.requiredToolBlocked`; one placed at another level is served there and raises nothing. `requiredToolBlocked` rides on the toolbar decision. `unknownSupportId` describes the inputs, so it rides on the engine's resolved inputs (`coordinator.getPolicyInputs().diagnostics`), recomputed when the assessment, an item's settings or the registry's tool ids change. The toolkit coordinator logs each once per code and tool and hands it to its `onPolicyDiagnostic` listeners.
 
 ### Filtering by Context
 
@@ -503,7 +503,7 @@ coordinator.canRequestTool("calculator", "item", itemId); // one card's toolbar
 
 A toolbar claims requests for its placement level through `registerToolRequestTarget`, turns the unscoped id into a scoped instance, applies `params` and shows the tool. `params` layer over whatever a host's `ToolContextResolver` returned and arrive through `getToolRenderParams`, so a tool already reading that seam receives a request with no new code.
 
-Resolution is a claim, not a broadcast: exactly one target answers, the one at the requested level that hosts the tool. `level` defaults to `"section"`, the level at which a whole section shares one instance and the level a section-scoped gateway can address unambiguously. At `"item"` and `"passage"` a section holds one target per card and the first that hosts the tool claims the request, unless the request names the card's `scopeId`; a control inside one card, such as the inline calculator, names it. A toolbar whose module load for a tool failed stops hosting that tool, and the coordinator re-announces the targets through `onToolRequestTargetsChange`.
+Resolution is a claim, not a broadcast: exactly one target answers, the one at the requested level that hosts the tool. A request naming a level is held to it. One naming none prefers `"section"`, the level at which a whole section shares one instance and the level a section-scoped gateway can address unambiguously, and otherwise goes to the first toolbar at any level that hosts the tool. At `"item"` and `"passage"` a section holds one target per card and the first that hosts the tool claims the request, unless the request names the card's `scopeId`; a control inside one card, such as the inline calculator, names it. A toolbar whose module load for a tool failed stops hosting that tool, and the coordinator re-announces the targets through `onToolRequestTargetsChange`.
 
 An action is a shortcut and never a capability's only entry point. Chromium will not extend a selection with Shift+Arrow in non-editable content unless caret browsing is on — an OS toggle absent on mobile — so a sighted keyboard-only learner cannot originate one. A capability reachable only through a selection gateway is unreachable for them, which is why both dictionaries keep a toolbar button and their own term field.
 
@@ -825,7 +825,7 @@ Rungs 3 and 6 apply to decisions scoped to the item: its item-level toolbar and 
 
 8. **PNP supports** (student needs)
    - **Purpose**: AfA PNP 3.0 student supports
-   - **Example**: Student's IEP document specifies a reading mask
+   - **Example**: Student's IEP document specifies a line reader
    - **Effect**: `supports` grants a placed tool
 
 ### Governance Rationale
@@ -847,7 +847,7 @@ This hierarchy aligns with typical **IEP/504 accommodation hierarchies** in US K
 
 ## Best Practices
 
-1. **Keep a tool id stable once profiles use it** - A profile grants the tool by its id, so renaming it drops the grant from every profile that lists the old id. An existing id keeps its name where the AfA term differs: the packaged `lineReader` serves the AfA `readingMask` feature
+1. **Keep a tool id stable once profiles use it** - A profile grants the tool by its id, so renaming it drops the grant from every profile that lists the old id. An existing id keeps its name where the AfA term differs: the packaged `textToSpeech` serves the AfA `spoken` support
 2. **Make tools context-aware** - Use helper functions like `hasMathContent()`, `hasReadableText()`
 3. **Test all three passes** - Verify tools respect orchestrator allowance, context relevance and, where declared, the applicability veto
 4. **Keep visibility logic simple** - Complex logic should be in helper functions, not in `isVisibleInContext()`

@@ -657,41 +657,9 @@ describe("composeDecision — provenance reconciliation (M8 PR 1 R2 M1 fix)", ()
 });
 
 describe("composeDecision — unknown PNP support id", () => {
-	// A host naming a capability in its own vocabulary rather than by its tool id
-	// used to get silence: the id matches nothing in placement, and the
-	// capability is simply absent. Reported so the host learns the id was the
-	// problem instead of concluding the toolkit is unwired.
-	test("a support id no tool is registered under produces a diagnostic", () => {
-		const assessment: AssessmentEntity = {
-			id: "asm-1",
-			personalNeedsProfile: { supports: ["responseMasking"] },
-		} as AssessmentEntity;
-
-		const decision = composeDecision({
-			request: baseRequest,
-			tools: tools({
-				placement: { section: [], item: ["answerEliminator"], passage: [] },
-			}),
-			pnpPolicy: {
-				source: new PnpPolicySource(createTestToolRegistry()),
-				assessment,
-				enforcement: "on",
-			},
-			customSources: [],
-			contextId: "test",
-		});
-
-		const unknown = decision.diagnostics.filter(
-			(d) => d.code === "tool-policy.unknownSupportId",
-		);
-		expect(unknown).toHaveLength(1);
-		expect(unknown[0].toolId).toBe("responseMasking");
-		expect(unknown[0].message).toContain("responseMasking");
-		expect(unknown[0].message).toContain("personalNeedsProfile.supports");
-		expect(unknown[0].details).toEqual({ origins: ["pnp-support"] });
-	});
-
-	test("an id in a district list is labelled by that list", () => {
+	// An unknown id describes the inputs, so the engine reports it once per input
+	// change on its resolved inputs (tests/policy/ToolPolicyEngine.test.ts).
+	test("a decision carries no unknownSupportId diagnostic", () => {
 		const decision = composeDecision({
 			request: baseRequest,
 			tools: tools({
@@ -701,68 +669,8 @@ describe("composeDecision — unknown PNP support id", () => {
 				source: new PnpPolicySource(createTestToolRegistry()),
 				assessment: {
 					id: "asm-1",
-					settings: { districtPolicy: { blockedTools: ["calcualtor"] } },
+					personalNeedsProfile: { supports: ["responseMasking"] },
 				} as AssessmentEntity,
-				enforcement: "on",
-			},
-			customSources: [],
-			contextId: "test",
-		});
-
-		const unknown = decision.diagnostics.filter(
-			(d) => d.code === "tool-policy.unknownSupportId",
-		);
-		expect(unknown).toHaveLength(1);
-		expect(unknown[0].message).toContain("settings.districtPolicy.blockedTools");
-		expect(unknown[0].details).toEqual({ origins: ["district-block"] });
-	});
-
-	test("the tool id for the same capability produces none", () => {
-		const assessment: AssessmentEntity = {
-			id: "asm-1",
-			personalNeedsProfile: { supports: ["answerEliminator"] },
-		} as AssessmentEntity;
-
-		const decision = composeDecision({
-			request: baseRequest,
-			tools: tools({
-				placement: { section: [], item: ["answerEliminator"], passage: [] },
-			}),
-			pnpPolicy: {
-				source: new PnpPolicySource(createTestToolRegistry()),
-				assessment,
-				enforcement: "on",
-			},
-			customSources: [],
-			contextId: "test",
-		});
-
-		expect(
-			decision.diagnostics.filter(
-				(d) => d.code === "tool-policy.unknownSupportId",
-			),
-		).toEqual([]);
-		expect(decision.visibleTools.map((e) => e.toolId)).toEqual([
-			"answerEliminator",
-		]);
-	});
-
-	// The guard that keeps the diagnostic honest: with nothing registered there
-	// is no vocabulary to check against, so every id would be reported.
-	test("an empty registry reports nothing", () => {
-		const assessment: AssessmentEntity = {
-			id: "asm-1",
-			personalNeedsProfile: { supports: ["responseMasking"] },
-		} as AssessmentEntity;
-
-		const decision = composeDecision({
-			request: baseRequest,
-			tools: tools({
-				placement: { section: [], item: ["answerEliminator"], passage: [] },
-			}),
-			pnpPolicy: {
-				source: new PnpPolicySource(new ToolRegistry()),
-				assessment,
 				enforcement: "on",
 			},
 			customSources: [],

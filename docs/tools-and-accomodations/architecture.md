@@ -476,7 +476,7 @@ The runtime can register additional levels if your product needs custom scopes.
 - A profile grants a tool by its `toolId`, which is its support id; placement sets the level the tool shows at
 - Example: `answerEliminator`, placed at item level
 - Example: `graph`, placed at section level
-- An id no tool is registered under, in the profile, district policy, test administration or item settings, produces a `tool-policy.unknownSupportId` diagnostic on the decision, which the toolkit coordinator logs once per id
+- An id no tool is registered under, in the profile, district policy, test administration or item settings, produces a `tool-policy.unknownSupportId` diagnostic on the policy engine's resolved inputs, which the toolkit coordinator logs once per id
 
 ### Implementation Example
 

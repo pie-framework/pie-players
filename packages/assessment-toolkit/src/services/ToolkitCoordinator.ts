@@ -896,6 +896,7 @@ export class ToolkitCoordinator {
 		this.policyEngine = new ToolPolicyEngine({
 			toolRegistry: this.toolRegistry,
 			contextId: `toolkit-coordinator:${this.assessmentId}`,
+			assessmentOptional: this.config.assessmentOptional === true,
 			inputs: {
 				tools: this.config.tools as CanonicalToolsConfig,
 				assessment: null,
@@ -903,11 +904,14 @@ export class ToolkitCoordinator {
 			},
 		});
 
+		// Input diagnostics are computed once per change, so they are reported
+		// here rather than with each decision.
 		this.policyEngine.onPolicyChange((event) => {
 			if (event.reason === "disposed") return;
 			if (event.reason === "inputs" || event.reason === "pnp-enforcement") {
 				this.reportedPolicyDiagnostics.clear();
 			}
+			this.warnPolicyDiagnostics(event.inputs.diagnostics);
 			this.reportNewlyGrantedFailures();
 		});
 
@@ -2966,7 +2970,8 @@ export class ToolkitCoordinator {
 	 * Report each policy diagnostic as a console warning and to the
 	 * {@link onPolicyDiagnostic} listeners, once per code and tool id, and per
 	 * item for `tool-policy.itemSettingNotApplied`. Every toolbar and feature
-	 * asks for decisions, so a conflict would otherwise repeat on each.
+	 * asks for decisions, so a conflict would otherwise repeat on each; the
+	 * engine's input diagnostics arrive with each policy change.
 	 */
 	private warnPolicyDiagnostics(
 		diagnostics: readonly ToolPolicyDiagnostic[],
@@ -3039,12 +3044,9 @@ export class ToolkitCoordinator {
 	): FeaturePolicyDecision<ToolParametersFor<K>> {
 		const decision = this.policyEngine.decideFeature(featureId, scope);
 		this.warnPolicyDiagnostics(decision.diagnostics);
-		const unboundIsMisconfigured =
-			this.config.assessmentOptional !== true ||
-			this.policyEngine.getInputs().pnpEnforcementOverride === "on";
 		if (
 			!decision.assessmentBound &&
-			unboundIsMisconfigured &&
+			this.policyEngine.getInputs().assessmentExpected &&
 			!this.reportedUnboundFeaturePolicy
 		) {
 			this.reportedUnboundFeaturePolicy = true;

@@ -249,6 +249,21 @@ set `endpointValidationMode: "none"` and `speedRate: "medium"`, both still valid
 and Host R's `providerOptions` still type-check. Row verification dates are
 unchanged.
 
+Also on 2026-10-09 `tool-policy.unknownSupportId` moved off the toolbar and
+feature decisions onto the policy engine's resolved inputs
+(`getPolicyInputs().diagnostics`). It is computed once per change to the
+assessment, an item's settings or the registry's tools, whatever the PNP
+enforcement, and the coordinator reports it through `onPolicyDiagnostic` at that
+change, so registering a tool the profile names clears it and emits an
+`"inputs"` change. The resolved inputs gained `assessmentExpected`, which the
+PNP debugger reads with the placement in place of the coordinator's config.
+`PnpPolicyResult.unmappedSupportIds` is removed. Checked against the checkouts of
+Hosts A, M, P, R and V, each scan reaching `@pie-players` imports, and Host A's
+and Host P's feature branches: no host reads a decision's diagnostics, the
+resolved inputs or the policy-engine subpath. Host R re-reads its feature
+decisions on every `onPolicyChange`, which now also fires on such a registration,
+and its PNP debugger mount keeps its props. Row verification dates are unchanged.
+
 The 2026-09-17 session-commit change (PIE-1058) was checked against the
 recorded rows rather than re-derived from the checkouts. It renames and removes
 nothing: `pie-item-player` gains one opt-in property, `session-snapshot`, one

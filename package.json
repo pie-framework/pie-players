@@ -146,7 +146,7 @@
 		"@axe-core/playwright": "^4.13.0",
 		"@biomejs/biome": "^2.5.15",
 		"@changesets/cli": "^3.0.3",
-		"@dotenvx/dotenvx": "^2.32.4",
+		"@dotenvx/dotenvx": "^2.33.0",
 		"@playwright/test": "^1.63.0",
 		"@types/bun": "^1.4.2",
 		"esbuild": "^0.28.2",

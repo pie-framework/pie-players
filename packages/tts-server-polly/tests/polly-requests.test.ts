@@ -150,3 +150,35 @@ describe("Polly pitch", () => {
 		expect(sent).toEqual([]);
 	});
 });
+
+describe("Polly rate", () => {
+	it("sends rates up to 2 as they are and caps faster ones at 200%", async () => {
+		const { client, sent } = textRecordingClient();
+		const provider = await withEngine(client, "neural");
+
+		for (const rate of [0.25, 2, 2.5, 4]) {
+			await provider.synthesize({
+				text: "Hello",
+				rate,
+				includeSpeechMarks: false,
+			});
+		}
+
+		expect(sent.map((request) => request.Text)).toEqual([
+			'<speak><prosody rate="25%">Hello</prosody></speak>',
+			'<speak><prosody rate="200%">Hello</prosody></speak>',
+			'<speak><prosody rate="200%">Hello</prosody></speak>',
+			'<speak><prosody rate="200%">Hello</prosody></speak>',
+		]);
+	});
+
+	it("rejects a rate outside 0.25 to 4 before calling Polly", async () => {
+		const { client, sent } = textRecordingClient();
+		const provider = await withEngine(client, "neural");
+
+		await expect(
+			provider.synthesize({ text: "Hello", rate: 4.5 }),
+		).rejects.toThrow("Rate must be between 0.25 and 4.0");
+		expect(sent).toEqual([]);
+	});
+});

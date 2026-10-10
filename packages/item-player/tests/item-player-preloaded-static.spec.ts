@@ -1294,25 +1294,31 @@ test.describe("item-player strategy regressions", () => {
 				player.env = { mode: "review", role: "instructor" };
 			});
 		});
-		await page.waitForFunction(() => {
-			const resolvers = (window as any).__pieModelRefreshResolvers;
-			return !!resolvers.evaluate && !!resolvers.review;
+		// Model requests write the session, so they queue: the review refresh is
+		// sent once the evaluate one settles, and by then evaluate is stale.
+		await page.waitForFunction(
+			() => !!(window as any).__pieModelRefreshResolvers.evaluate,
+		);
+		await page.evaluate(() => {
+			(window as any).__pieModelRefreshResolvers.evaluate([
+				{
+					id: "model-stale-model",
+					element: "pie-model-refresh--version-1-0-0",
+					prompt: "<p>Stale evaluate prompt</p>",
+					promptEnabled: true,
+				},
+			]);
 		});
-
+		await page.waitForFunction(
+			() => !!(window as any).__pieModelRefreshResolvers.review,
+		);
+		await expect(fixture.getByText("Stale evaluate prompt")).toHaveCount(0);
 		await page.evaluate(() => {
 			(window as any).__pieModelRefreshResolvers.review([
 				{
 					id: "model-stale-model",
 					element: "pie-model-refresh--version-1-0-0",
 					prompt: "<p>Fresh review prompt</p>",
-					promptEnabled: true,
-				},
-			]);
-			(window as any).__pieModelRefreshResolvers.evaluate([
-				{
-					id: "model-stale-model",
-					element: "pie-model-refresh--version-1-0-0",
-					prompt: "<p>Stale evaluate prompt</p>",
 					promptEnabled: true,
 				},
 			]);

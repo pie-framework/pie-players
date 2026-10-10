@@ -96,6 +96,13 @@ await player.saveSession();
 Autosave is opt-in through `backend.delivery.autosave`. Autosave listens to the
 same normalized `session-changed` event the player already emits.
 
+Save, model and score requests each carry the session, and the PIE API stores
+it on every one of them, so the player sends them one at a time in call order,
+each with the session as it stood at its call. A failed request rejects only its
+own caller. When no newer request for the same ids follows it, its session is
+sent once more at the next flush: the host moving to another item, the page
+going hidden, or the player tearing down.
+
 Server scoring is separate from local browser scoring:
 
 ```ts

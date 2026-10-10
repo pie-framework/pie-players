@@ -10,8 +10,15 @@ const TTS_BACKENDS = new Set<TextToSpeechToolProviderConfig["backend"]>([
 	"server",
 ]);
 
-/** The panel's stored settings: the tool config plus the panel's own `tab`. */
-type StoredTTSSettings = TextToSpeechToolProviderConfig & { tab?: string };
+/**
+ * The panel's stored settings: the tool config plus the panel's own `tab` and
+ * Google voice-list filters, which the restore leaves out.
+ */
+type StoredTTSSettings = TextToSpeechToolProviderConfig & {
+	tab?: string;
+	googleVoiceType?: string;
+	googleGender?: string;
+};
 
 export type SectionDemoTtsSettingsCoordinator = Pick<
 	ToolkitCoordinatorApi,
@@ -45,6 +52,8 @@ function readStoredTTSSettings(
 
 function buildCoordinatorUpdate({
 	tab: _tab,
+	googleVoiceType: _googleVoiceType,
+	googleGender: _googleGender,
 	...stored
 }: StoredTTSSettings): TextToSpeechToolProviderConfig {
 	if (stored.backend !== "browser") {

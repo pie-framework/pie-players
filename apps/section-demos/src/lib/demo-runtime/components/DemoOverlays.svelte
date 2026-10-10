@@ -1,6 +1,7 @@
 <script lang="ts">
 	import SourcePanel from './SourcePanel.svelte';
 	import SessionDbPanel from './SessionDbPanel.svelte';
+	import type { CustomProviderDescriptor } from '@pie-players/pie-section-player-tools-tts-settings';
 	import { createSectionDemoTtsSettingsStorageKey } from '#lib/demo-runtime/tts-settings-persistence.js';
 
 	interface Props {
@@ -160,12 +161,11 @@ function debugCustomProvider(event: string, payload?: Record<string, unknown>): 
 		});
 	}
 
-	const demoCustomTtsProviders = [
+	const demoCustomTtsProviders: CustomProviderDescriptor[] = [
 		{
 			id: "demo-custom-provider",
 			label: "Demo Custom",
-			description: "Example custom provider tab wired through adapter mode.",
-			mode: "adapter",
+			description: "Example custom provider tab.",
 			initialState: {
 				voice: "demo-voice-a"
 			},
@@ -173,11 +173,10 @@ function debugCustomProvider(event: string, payload?: Record<string, unknown>): 
 				available: true,
 				message: "Demo custom provider available."
 			}),
-			buildApplyConfig: ({ apiEndpoint, state }: { apiEndpoint: string; state: Record<string, unknown> }) => ({
-				config: buildDemoCustomProviderConfig({ apiEndpoint, state }),
-				message: "Applied Demo Custom provider settings."
+			buildApplyConfig: ({ apiEndpoint, state }) => ({
+				config: buildDemoCustomProviderConfig({ apiEndpoint, state })
 			}),
-			preview: async ({ apiEndpoint, state, previewText }: { apiEndpoint: string; state: Record<string, unknown>; previewText?: string }) => {
+			preview: async ({ apiEndpoint, state, previewText }) => {
 				const config = buildDemoCustomProviderConfig({ apiEndpoint, state }) as Record<string, unknown>;
 				const endpoint = String(config.apiEndpoint || "/api/tts/sc");
 				const text = String(previewText || "").trim() || "This is a demo custom provider preview.";

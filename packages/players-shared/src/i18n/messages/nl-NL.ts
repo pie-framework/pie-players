@@ -539,18 +539,45 @@ const nlNL = {
 				"Een voorbeeld is niet mogelijk zolang deze dienst niet beschikbaar is.",
 			browserSynthesisUnavailable:
 				"Spraaksynthese van de browser is niet beschikbaar.",
-			browserSynthesisEndedEarly:
-				"De spraaksynthese van de browser stopte voordat de audio begon. Start de browser opnieuw en probeer het nog eens.",
-			browserSynthesisQueueFailed:
-				"De spraaksynthese van de browser kon het voorbeeldfragment niet in de wachtrij zetten.",
-			browserPreviewFailed:
-				"Het voorbeeld van de browserstem kon niet worden afgespeeld.",
 			ssmlWordTrackingDisabled:
 				"Bij een Google SSML-voorbeeld blijft de SSML uit de bron intact, waardoor woordmarkering is uitgeschakeld.",
 			applyUnavailable:
 				"Instellingen toepassen is niet mogelijk zolang deze dienst niet beschikbaar is.",
 			coordinatorUnavailable:
 				"De toolkitcoördinator is niet beschikbaar voor voorleesinstellingen.",
+			customProviderNotRegistered: "Aangepaste provider '{id}' is niet geregistreerd.",
+			customProviderNoConfig:
+				"Aangepaste provider '{id}' gaf geen configuratie om toe te passen.",
+			httpError: "HTTP {status}: {message}",
+			unknownError: "Onbekende fout",
+			previewRequestFailed: "Het voorbeeldverzoek is mislukt ({status}).",
+			notAvailable: "n.v.t.",
+			voiceLocal: "lokaal",
+			voiceRemote: "extern",
+			voiceBrowserDefault: "browserstandaard",
+			browserAvailable: {
+				one: "Browserspraak beschikbaar ({count} stem gevonden).",
+				other: "Browserspraak beschikbaar ({count} stemmen gevonden).",
+			},
+			pollyAvailable: {
+				one: "AWS Polly beschikbaar ({count} passende stem, engine {engine}).",
+				other: "AWS Polly beschikbaar ({count} passende stemmen, engine {engine}).",
+			},
+			googleAvailable: {
+				one: "Google Cloud TTS beschikbaar ({count} passende stem).",
+				other: "Google Cloud TTS beschikbaar ({count} passende stemmen).",
+			},
+			headerRowReservation: "Rij in de itemkop gereserveerd: {state}",
+			speedOptionsHelp:
+				"Vermenigvuldigers, gescheiden door komma's of puntkomma's. Neem 1 op voor Normaal; laat leeg om de snelheidsknoppen te verbergen.",
+			usingSelectedVoice: "Gekozen stem: {voice}",
+			autoVoice: "Beste beschikbare stem (automatisch): {voice}",
+			autoVoiceWaiting:
+				"Beste beschikbare stem (automatisch): wachten op de stemmen van de browser.",
+			previewHintBrowserSsml: "SSML wordt niet ondersteund in het browservoorbeeld.",
+			previewHintGoogleSsml: "SSML blijft intact. Markering uitgeschakeld.",
+			previewHintCustom: "Markering actief wanneer de provider spraakmarkeringen teruggeeft.",
+			previewHintTracking: "Markering actief tijdens het afspelen van het voorbeeld.",
 		},
 	},
 };

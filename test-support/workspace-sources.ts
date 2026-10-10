@@ -143,6 +143,21 @@ export interface WorkspaceExport {
 	source: string;
 	/** Absolute path of the published `dist` target; none for an aliased subpath. */
 	target?: string;
+	/**
+	 * For an export built from Svelte or JavaScript, the absolute path of the
+	 * TypeScript source its `types` declarations are built from, when it has one.
+	 */
+	typesSource?: string;
+}
+
+/** The TypeScript source an entry's `./dist/*.d.ts` `types` target is built from. */
+function typesSourceOf(dir: string, entry: unknown): string | undefined {
+	if (!entry || typeof entry !== "object") return undefined;
+	const types = (entry as Record<string, unknown>).types;
+	if (typeof types !== "string" || !types.startsWith("./dist/")) return undefined;
+	if (!types.endsWith(".d.ts")) return undefined;
+	const source = conventionalSource(dir, `${types.slice(0, -".d.ts".length)}.js`);
+	return source?.endsWith(".ts") ? path.join(dir, source) : undefined;
 }
 
 /**
@@ -165,10 +180,14 @@ export function workspaceExports(root = REPO_ROOT): WorkspaceExport[] {
 				RENAMED_OUTPUTS[name]?.[target] ?? conventionalSource(dir, target);
 			const specifier = subpath === "." ? name : `${name}/${subpath.slice(2)}`;
 			if (source && existsSync(path.join(dir, source))) {
+				const typesSource = source.endsWith(".ts")
+					? undefined
+					: typesSourceOf(dir, entry);
 				found.push({
 					specifier,
 					source: path.join(dir, source),
 					target: path.join(dir, target),
+					...(typesSource ? { typesSource } : {}),
 				});
 			} else {
 				missing.push(`${specifier} (${target})`);

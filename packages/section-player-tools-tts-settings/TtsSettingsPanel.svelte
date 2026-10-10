@@ -2,12 +2,10 @@
 	customElement={{
 		tag: "pie-section-player-tools-tts-settings",
 		shadow: "none",
+		// `toolkitCoordinator` and `customProviders` are set as properties only.
 		props: {
-			toolkitCoordinator: { type: "Object", attribute: "toolkit-coordinator" },
 			apiEndpoint: { type: "String", attribute: "api-endpoint" },
-			storageKey: { type: "String", attribute: "storage-key" },
-			adapters: { type: "Object", attribute: "adapters" },
-			customProviders: { type: "Object", attribute: "custom-providers" }
+			storageKey: { type: "String", attribute: "storage-key" }
 		}
 	}}
 />
@@ -23,6 +21,8 @@
 	import {
 		BrowserTTSProvider,
 		PlaybackState,
+		type TextToSpeechToolProviderConfig,
+		type ToolkitCoordinatorApi,
 		TTSService,
 	} from "@pie-players/pie-assessment-toolkit";
 	import { createFocusTrap } from "@pie-players/pie-players-shared";
@@ -40,10 +40,17 @@
 		type TTSLayoutMode,
 	} from "@pie-players/pie-assessment-toolkit/tools/registration";
 	import { onDestroy, onMount, untrack } from "svelte";
+	import type {
+		CustomProviderContext,
+		CustomProviderDescriptor,
+		CustomProviderPreviewResult,
+		PreviewMode,
+		PreviewSpeechMark,
+		ProviderAvailabilityResult,
+	} from "./types.js";
 
 	type BuiltInBackendTab = "browser" | "polly" | "google";
 	type BackendTab = BuiltInBackendTab | string;
-	type PreviewMode = "plain" | "ssml";
 	type PollyFormat = "mp3" | "ogg" | "pcm";
 	type PollySpeechMarksMode = "word" | "word+sentence";
 	const INLINE_SPEED_DEFAULT_RATES = [0.8, 1, 1.25];
@@ -56,7 +63,6 @@
 		voiceURI?: string;
 		lang?: string;
 		gender?: string;
-		quality?: string;
 		localService?: boolean;
 		default?: boolean;
 	};
@@ -70,94 +76,11 @@
 		voices: DemoVoice[];
 	};
 
-	type SynthesizeProbeResponse = {
+	type SynthesizeResponse = {
 		audio: string;
 		contentType?: string;
-		speechMarks?: Array<{ time: number; start: number; end: number }>;
-	};
-type PreviewSpeechMark = { time: number; start: number; end: number; value?: string };
-	type CustomProviderPreviewResult = {
-		note?: string;
-		audioUrl?: string;
 		speechMarks?: PreviewSpeechMark[];
-		trackingText?: string;
 	};
-
-	type TtsSettingsAdapters = {
-		fetchPollyVoices?: (args: {
-			endpoint: string;
-			language: string;
-			gender: string;
-			engine: "standard" | "neural";
-			url: URL;
-		}) => Promise<DemoVoice[]>;
-		fetchGoogleVoices?: (args: {
-			endpoint: string;
-			language: string;
-			gender: string;
-			voiceType: string;
-			url: URL;
-		}) => Promise<DemoVoice[]>;
-		synthesizeProbe?: (args: {
-			endpoint: string;
-			provider: "polly" | "google";
-			body: Record<string, unknown>;
-		}) => Promise<SynthesizeProbeResponse>;
-	};
-
-	type ProviderAvailabilityResult = {
-		available: boolean;
-		message?: string | null;
-		detail?: string | null;
-	};
-
-	type ProviderApplyResult = {
-		config: Record<string, unknown>;
-		message?: string;
-	};
-
-	type CustomProviderContext = {
-		id: string;
-		toolkitCoordinator: any;
-		apiEndpoint: string;
-		state: Record<string, unknown>;
-		previewText?: string;
-		previewMode?: PreviewMode;
-	};
-
-	type CustomProviderAdapter = {
-		id: string;
-		label: string;
-		description?: string;
-		mode: "adapter";
-		checkAvailability?: (
-			context: CustomProviderContext
-		) => ProviderAvailabilityResult | Promise<ProviderAvailabilityResult>;
-		buildApplyConfig: (
-			context: CustomProviderContext
-		) => ProviderApplyResult | Promise<ProviderApplyResult>;
-		preview?: (context: CustomProviderContext) => Promise<void | CustomProviderPreviewResult>;
-		initialState?: Record<string, unknown>;
-	};
-
-	type CustomProviderComponent = {
-		id: string;
-		label: string;
-		description?: string;
-		mode: "component";
-		tagName: string;
-		componentProps?: Record<string, unknown>;
-		checkAvailability?: (
-			context: CustomProviderContext
-		) => ProviderAvailabilityResult | Promise<ProviderAvailabilityResult>;
-		buildApplyConfig?: (
-			context: CustomProviderContext
-		) => ProviderApplyResult | Promise<ProviderApplyResult>;
-		preview?: (context: CustomProviderContext) => Promise<void | CustomProviderPreviewResult>;
-		initialState?: Record<string, unknown>;
-	};
-
-	type CustomProviderDescriptor = CustomProviderAdapter | CustomProviderComponent;
 
 	const DEFAULT_API_ENDPOINT = "/api/tts";
 	const DEFAULT_STORAGE_KEY = "pie:section-player-tools:tts-settings";
@@ -165,48 +88,30 @@ type PreviewSpeechMark = { time: number; start: number; end: number; value?: str
 
 	let {
 		toolkitCoordinator = null,
-		apiEndpoint = "/api/tts",
+		apiEndpoint = DEFAULT_API_ENDPOINT,
 		storageKey = DEFAULT_STORAGE_KEY,
-		adapters = {},
 		customProviders = []
 	}: {
-		toolkitCoordinator?: any;
+		toolkitCoordinator?: ToolkitCoordinatorApi | null;
 		apiEndpoint?: string;
 		storageKey?: string;
-		adapters?: TtsSettingsAdapters;
 		customProviders?: CustomProviderDescriptor[];
 	} = $props();
 
-	type PersistedTTSSettings = {
-		backend?: "browser" | "server";
-		serverProvider?: "polly" | "google" | "custom";
-		/** The panel tab that applied these settings; never sent to the coordinator. */
+	/**
+	 * The stored record: the config the tab applied, without the provider options
+	 * it does not own, plus the panel's own fields, which never reach the
+	 * coordinator.
+	 */
+	type PersistedTTSSettings = Record<string, unknown> & {
+		/** The panel tab that applied these settings. */
 		tab?: BackendTab;
-		apiEndpoint?: string;
-		defaultVoice?: string;
-		rate?: number;
-		pitch?: number;
-		language?: string;
-		transportMode?: "pie" | "custom";
-		endpointMode?: "synthesizePath" | "rootPost";
-		endpointValidationMode?: "voices" | "endpoint" | "none";
-		engine?: "standard" | "neural";
-		sampleRate?: number;
-		format?: PollyFormat;
-		speechMarksMode?: PollySpeechMarksMode;
+		/** Google voice-list filters: the voices route reads them, the runtime does not. */
 		googleVoiceType?: string;
 		googleGender?: string;
-		providerOptions?: Record<string, unknown>;
-		layoutMode?: TTSLayoutMode;
-		/** Inline toolbar speed multipliers; `[]` hides speed buttons. */
-		speedOptions?: TTSSpeedOption[];
-		/** Per-token math highlighting; `false` highlights formulas as one block. */
-		mathTokenHighlighting?: boolean;
-		[key: string]: unknown;
 	};
 
 	let activeTab = $state<BackendTab>("browser");
-	let applyMessage = $state<string | null>(null);
 	let applyError = $state<string | null>(null);
 	let isApplying = $state(false);
 	let isPreviewing = $state(false);
@@ -218,7 +123,6 @@ type PreviewSpeechMark = { time: number; start: number; end: number; value?: str
 	let previewTrackIndex = $state<number>(-1);
 	let previewTrackLength = $state<number>(0);
 	let customProviderStateById = $state<Record<string, Record<string, unknown>>>({});
-	let customProviderApplyRequestById = $state<Record<string, ProviderApplyResult | undefined>>({});
 	let customProviderAvailabilityById = $state<Record<string, AvailabilityState>>({});
 
 	let browserVoice = $state("");
@@ -271,12 +175,13 @@ type PreviewSpeechMark = { time: number; start: number; end: number; value?: str
 		detail: null,
 		voices: []
 	});
-	let currentPreviewAudio: HTMLAudioElement | null = null;
+	/** Settles the preview audio that is playing; `stopPreview` calls it. */
+	let settlePreviewAudio: (() => void) | null = null;
 	let browserPreviewService: TTSService | null = null;
 	let browserPreviewHost: HTMLElement | null = null;
 	let previewPollingTimer: number | null = null;
+	/** Bumped by every start and stop; a run whose id is stale changes nothing. */
 	let previewRunId = 0;
-	let activeCustomProviderElement = $state<Element | null>(null);
 	let dialogEl = $state<HTMLElement | null>(null);
 	let closeButtonEl = $state<HTMLButtonElement | null>(null);
 	let cleanupFocusTrap: (() => void) | null = null;
@@ -311,16 +216,29 @@ function browserVoiceLabel(voice: DemoVoice): string {
 	const name =
 		voice.name || voice.id || interfaceI18n.t("debug.tts.unnamedVoice");
 	const metadata = [
-		voice.lang || "n/a",
-		voice.localService ? "local" : "remote",
-		voice.default ? "browser default" : ""
+		voice.lang || interfaceI18n.t("debug.tts.notAvailable"),
+		interfaceI18n.t(voice.localService ? "debug.tts.voiceLocal" : "debug.tts.voiceRemote"),
+		voice.default ? interfaceI18n.t("debug.tts.voiceBrowserDefault") : ""
 	].filter(Boolean);
 	return `${name} (${metadata.join(", ")})`;
 }
 
-function browserVoiceIdentity(voice: DemoVoice): string {
+function voiceIdentity(voice: DemoVoice): string {
 	return voice.id || voice.name || "";
 }
+
+	/** `selected` when the listed voices carry it; otherwise the server picks. */
+	function knownVoice(selected: string, voices: DemoVoice[]): string | undefined {
+		return selected && voices.some((voice) => voiceIdentity(voice) === selected)
+			? selected
+			: undefined;
+	}
+
+	function compareSpeechMarks(left: PreviewSpeechMark, right: PreviewSpeechMark): number {
+		if (left.time !== right.time) return left.time - right.time;
+		if (left.start !== right.start) return left.start - right.start;
+		return left.end - right.end;
+	}
 
 	function resetInlineSpeedOptionsToDefaults(): void {
 		speedOptionsText = formatTTSSpeedOptionsAsText(INLINE_SPEED_DEFAULT_RATES);
@@ -404,14 +322,14 @@ function browserVoiceIdentity(voice: DemoVoice): string {
 	);
 	const recommendedBrowserVoices = $derived.by(() =>
 		browserState.voices.filter((voice) => {
-			const identity = browserVoiceIdentity(voice);
+			const identity = voiceIdentity(voice);
 			return identity.length > 0 && isRecommendedBrowserVoice(voice, contentLanguage);
 		})
 	);
 	const allBrowserVoices = $derived.by(() => {
-		const recommended = new Set(recommendedBrowserVoices.map(browserVoiceIdentity));
+		const recommended = new Set(recommendedBrowserVoices.map(voiceIdentity));
 		return browserState.voices.filter((voice) => {
-			const identity = browserVoiceIdentity(voice);
+			const identity = voiceIdentity(voice);
 			return identity.length > 0 && !recommended.has(identity);
 		});
 	});
@@ -426,7 +344,6 @@ function browserVoiceIdentity(voice: DemoVoice): string {
 	): CustomProviderContext {
 		return {
 			id: providerId,
-			toolkitCoordinator,
 			apiEndpoint: getDefaultApiEndpoint(),
 			state: customProviderStateById[providerId] || {},
 			...overrides
@@ -465,7 +382,9 @@ function browserVoiceIdentity(voice: DemoVoice): string {
 	function getCustomProviderOrThrow(providerId: string): CustomProviderDescriptor {
 		const provider = normalizedCustomProviders.find((entry) => entry.id === providerId);
 		if (!provider) {
-			throw new Error(`Custom provider '${providerId}' is not registered.`);
+			throw new Error(
+				interfaceI18n.t("debug.tts.customProviderNotRegistered", { id: providerId })
+			);
 		}
 		return provider;
 	}
@@ -510,46 +429,6 @@ function browserVoiceIdentity(voice: DemoVoice): string {
 		};
 	}
 
-	function onCustomProviderChange(providerId: string, event: CustomEvent): void {
-		const payload = (event?.detail || {}) as { state?: Record<string, unknown> };
-		if (!payload.state || typeof payload.state !== "object") return;
-		updateCustomProviderState(providerId, payload.state);
-	}
-
-	function onCustomProviderAvailability(providerId: string, event: CustomEvent): void {
-		const payload = (event?.detail || {}) as ProviderAvailabilityResult;
-		customProviderAvailabilityById = {
-			...customProviderAvailabilityById,
-			[providerId]: buildAvailabilityState(payload)
-		};
-	}
-
-	function resolveComponentProps(provider: CustomProviderComponent): Record<string, unknown> {
-		return {
-			toolkitCoordinator,
-			apiEndpoint: getDefaultApiEndpoint(),
-			state: customProviderStateById[provider.id] || {},
-			...(provider.componentProps || {})
-		};
-	}
-
-	async function onCustomProviderApplyRequest(providerId: string, event: CustomEvent): Promise<void> {
-		const payload = (event?.detail || {}) as ProviderApplyResult;
-		if (!payload || typeof payload !== "object" || !payload.config) return;
-		customProviderApplyRequestById = {
-			...customProviderApplyRequestById,
-			[providerId]: payload
-		};
-		await applySettings();
-	}
-
-	async function onCustomProviderPreviewRequest(providerId: string): Promise<void> {
-		if (activeTab !== providerId) {
-			setActiveTab(providerId);
-		}
-		await previewSelectedVoice();
-	}
-
 	function normalizeRate(value: number): number {
 		const next = Number(value);
 		if (!Number.isFinite(next)) return 1;
@@ -579,7 +458,7 @@ function browserVoiceIdentity(voice: DemoVoice): string {
 	}
 
 	function initializeFromCoordinator() {
-		const existing = toolkitCoordinator?.getToolConfig?.("textToSpeech") || {};
+		const existing = toolkitCoordinator?.getToolConfig("textToSpeech") ?? {};
 		const stored = readStoredSettings();
 		const source = mergeStoredSettings(existing, stored);
 		const resolvedDefaultApiEndpoint = getDefaultApiEndpoint();
@@ -603,14 +482,7 @@ function browserVoiceIdentity(voice: DemoVoice): string {
 			typeof source?.language === "string" && source.language.trim().length > 0
 				? source.language
 				: "en-US";
-		const defaultEngine =
-			source?.engine === "standard"
-				? "standard"
-				: source?.engine === "neural"
-					? "neural"
-					: source?.quality === "standard"
-						? "standard"
-						: "neural";
+		const defaultEngine = source?.engine === "standard" ? "standard" : "neural";
 		const sourceProviderOptions = (source?.providerOptions || {}) as Record<string, unknown>;
 		mathTokenHighlighting = source?.mathTokenHighlighting !== false;
 		const runtimeForSpeed = resolveTTSRuntimeSettings(
@@ -723,17 +595,11 @@ function browserVoiceIdentity(voice: DemoVoice): string {
 					voices: []
 				};
 		}
-		const nextApplyRequests = Object.fromEntries(
-			Object.entries(customProviderApplyRequestById).filter(([id]) => Boolean(nextState[id]))
-		);
 		if (!sameRecordEntries(customProviderStateById, nextState)) {
 			customProviderStateById = nextState;
 		}
 		if (!sameRecordEntries(customProviderAvailabilityById, nextAvailability)) {
 			customProviderAvailabilityById = nextAvailability;
-		}
-		if (!sameRecordEntries(customProviderApplyRequestById, nextApplyRequests)) {
-			customProviderApplyRequestById = nextApplyRequests;
 		}
 		if (!isBuiltInTab(activeTab) && !nextState[activeTab]) {
 			activeTab = "browser";
@@ -788,14 +654,14 @@ function browserVoiceIdentity(voice: DemoVoice): string {
 				? findBrowserVoice(mappedVoices, browserVoice)
 				: null;
 			if (configuredVoice) {
-				browserVoice = browserVoiceIdentity(configuredVoice);
+				browserVoice = voiceIdentity(configuredVoice);
 			}
 			browserState = {
 				checked: true,
 				loading: false,
 				available: true,
 				message: voices.length
-					? `Browser TTS available (${voices.length} voices detected).`
+					? (interfaceI18n.plural?.("debug.tts.browserAvailable", { count: voices.length }) ?? "")
 					: interfaceI18n.t("debug.tts.browserNoVoices"),
 				detail: null,
 				voices: mappedVoices
@@ -818,6 +684,21 @@ function browserVoiceIdentity(voice: DemoVoice): string {
 		} catch {
 			return {};
 		}
+	}
+
+	async function fetchServerVoices(url: URL): Promise<DemoVoice[]> {
+		const response = await fetch(url.toString());
+		const payload = await readJsonSafe(response);
+		if (!response.ok) {
+			throw new Error(
+				interfaceI18n.t("debug.tts.httpError", {
+					status: response.status,
+					message:
+						payload?.error || payload?.message || interfaceI18n.t("debug.tts.unknownError"),
+				})
+			);
+		}
+		return Array.isArray(payload?.voices) ? payload.voices : [];
 	}
 
 	function buildPollyVoicesUrl() {
@@ -849,40 +730,19 @@ function browserVoiceIdentity(voice: DemoVoice): string {
 	async function checkPollyAvailability() {
 		pollyState = { ...pollyState, checked: true, loading: true, message: null, detail: null };
 		try {
-			const url = buildPollyVoicesUrl();
-			const adapterVoices = await adapters.fetchPollyVoices?.({
-				endpoint: normalizeApiEndpoint(pollyApiEndpoint, getDefaultApiEndpoint()),
-				language: pollyLanguage,
-				gender: pollyGender,
-				engine: pollyEngine,
-				url
-			});
-			const voices = Array.isArray(adapterVoices)
-				? adapterVoices
-				: await (async () => {
-						const response = await fetch(url.toString());
-						const payload = await readJsonSafe(response);
-						if (!response.ok) {
-							throw new Error(
-								`HTTP ${response.status}: ${payload?.error || payload?.message || "Unknown error"}`
-							);
-						}
-						return Array.isArray(payload?.voices) ? payload.voices : [];
-					})();
-
-			if (pollyVoice) {
-				const hasVoice = voices.some(
-					(voice: DemoVoice) => (voice.id || voice.name || "") === pollyVoice
-				);
-				if (!hasVoice) {
-					pollyVoice = "";
-				}
-			}
+			const voices = await fetchServerVoices(buildPollyVoicesUrl());
+			pollyVoice = knownVoice(pollyVoice, voices) ?? "";
 			pollyState = {
 				checked: true,
 				loading: false,
 				available: true,
-				message: `AWS Polly available (${voices.length} matching voices, ${pollyEngine} engine).`,
+				message:
+					interfaceI18n.plural?.("debug.tts.pollyAvailable", {
+						count: voices.length,
+						engine: interfaceI18n.t(
+							pollyEngine === "standard" ? "debug.tts.standard" : "debug.tts.neural"
+						),
+					}) ?? "",
 				detail: null,
 				voices
 			};
@@ -901,40 +761,14 @@ function browserVoiceIdentity(voice: DemoVoice): string {
 	async function checkGoogleAvailability() {
 		googleState = { ...googleState, checked: true, loading: true, message: null, detail: null };
 		try {
-			const url = buildGoogleVoicesUrl();
-			const adapterVoices = await adapters.fetchGoogleVoices?.({
-				endpoint: normalizeApiEndpoint(googleApiEndpoint, getDefaultApiEndpoint()),
-				language: googleLanguage,
-				gender: googleGender,
-				voiceType: googleVoiceType,
-				url
-			});
-			const voices = Array.isArray(adapterVoices)
-				? adapterVoices
-				: await (async () => {
-						const response = await fetch(url.toString());
-						const payload = await readJsonSafe(response);
-						if (!response.ok) {
-							throw new Error(
-								`HTTP ${response.status}: ${payload?.error || payload?.message || "Unknown error"}`
-							);
-						}
-						return Array.isArray(payload?.voices) ? payload.voices : [];
-					})();
-
-			if (googleVoice) {
-				const hasVoice = voices.some(
-					(voice: DemoVoice) => (voice.id || voice.name || "") === googleVoice
-				);
-				if (!hasVoice) {
-					googleVoice = "";
-				}
-			}
+			const voices = await fetchServerVoices(buildGoogleVoicesUrl());
+			googleVoice = knownVoice(googleVoice, voices) ?? "";
 			googleState = {
 				checked: true,
 				loading: false,
 				available: true,
-				message: `Google Cloud TTS available (${voices.length} matching voices).`,
+				message:
+					interfaceI18n.plural?.("debug.tts.googleAvailable", { count: voices.length }) ?? "",
 				detail: null,
 				voices
 			};
@@ -1006,25 +840,11 @@ function browserVoiceIdentity(voice: DemoVoice): string {
 		return typeof activeCustomProvider.preview === "function";
 	}
 
-	function resolveVoiceForBackend(backend: BackendTab): string | undefined {
-		if (backend === "browser") {
-			return browserVoice || undefined;
-		}
-		if (backend === "polly") {
-			if (!pollyVoice) return undefined;
-			const isKnown = pollyState.voices.some(
-				(voice) => (voice.id || voice.name || "") === pollyVoice
-			);
-			return isKnown ? pollyVoice : undefined;
-		}
-		if (googleVoice) {
-			const isKnown = googleState.voices.some(
-				(voice) => (voice.id || voice.name || "") === googleVoice
-			);
-			if (isKnown) return googleVoice;
-		}
-		const firstMatching = googleState.voices[0];
-		return firstMatching ? firstMatching.id || firstMatching.name || undefined : undefined;
+	/** The voice a backend applies and previews; none leaves the choice to the server. */
+	function resolveVoiceForBackend(backend: BuiltInBackendTab): string | undefined {
+		if (backend === "browser") return browserVoice || undefined;
+		if (backend === "polly") return knownVoice(pollyVoice, pollyState.voices);
+		return knownVoice(googleVoice, googleState.voices);
 	}
 
 	function normalizeApiEndpoint(endpoint: string, fallback = DEFAULT_API_ENDPOINT): string {
@@ -1050,11 +870,15 @@ function browserVoiceIdentity(voice: DemoVoice): string {
 		return DEFAULT_PREVIEW_TEXT[tab];
 	}
 
-	function clearPreviewTracking() {
+	function stopPreviewPolling() {
 		if (previewPollingTimer !== null && typeof window !== "undefined") {
 			window.clearInterval(previewPollingTimer);
 		}
 		previewPollingTimer = null;
+	}
+
+	function clearPreviewTracking() {
+		stopPreviewPolling();
 		previewTrackIndex = -1;
 		previewTrackLength = 0;
 	}
@@ -1077,6 +901,7 @@ function browserVoiceIdentity(voice: DemoVoice): string {
 	function setPreviewTextForCurrentTab() {
 		if (!isBuiltInTab(activeTab)) {
 			const customLabel = activeCustomProvider?.label || "custom";
+			// Sample text, unlocalized like `DEFAULT_PREVIEW_TEXT`: see `getSampleText`.
 			const customSample = `This is a ${customLabel} TTS provider sample.`;
 			if (previewMode === "ssml") {
 				previewText = `<speak>${customSample}</speak>`;
@@ -1100,23 +925,15 @@ function browserVoiceIdentity(voice: DemoVoice): string {
 		if (previewMode === mode) return;
 		stopPreview();
 		previewMode = mode;
-		previewError = null;
-		previewNote = null;
 		setPreviewTextForCurrentTab();
 	}
 
 	function updateTrackingFromSpeechMarks(
 		audio: HTMLAudioElement,
-		speechMarks: Array<{ time: number; start: number; end: number }>
+		speechMarks: PreviewSpeechMark[]
 	) {
-		if (previewPollingTimer !== null) {
-			window.clearInterval(previewPollingTimer);
-		}
-		const orderedMarks = [...speechMarks].sort((left, right) => {
-			if (left.time !== right.time) return left.time - right.time;
-			if (left.start !== right.start) return left.start - right.start;
-			return left.end - right.end;
-		});
+		stopPreviewPolling();
+		const orderedMarks = [...speechMarks].sort(compareSpeechMarks);
 		if (orderedMarks.length === 0) return;
 	const firstMark = orderedMarks[0];
 	debugPreview("tracking:init", {
@@ -1160,17 +977,14 @@ function browserVoiceIdentity(voice: DemoVoice): string {
 		}, 40);
 	}
 
+	/** Ends the current preview run, which then settles without reporting an error. */
 	function stopPreview() {
+		previewRunId += 1;
+		settlePreviewAudio?.();
+		releaseBrowserPreview();
 		clearPreviewTracking();
 		previewError = null;
 		previewNote = null;
-		browserPreviewService?.stop();
-		releaseBrowserPreview();
-		if (currentPreviewAudio) {
-			currentPreviewAudio.pause();
-			currentPreviewAudio.src = "";
-			currentPreviewAudio = null;
-		}
 		isPreviewing = false;
 		previewBackend = null;
 	}
@@ -1180,11 +994,7 @@ function browserVoiceIdentity(voice: DemoVoice): string {
 		audioDurationSeconds: number
 	): PreviewSpeechMark[] {
 		if (speechMarks.length === 0) return speechMarks;
-		const ordered = [...speechMarks].sort((left, right) => {
-			if (left.time !== right.time) return left.time - right.time;
-			if (left.start !== right.start) return left.start - right.start;
-			return left.end - right.end;
-		});
+		const ordered = [...speechMarks].sort(compareSpeechMarks);
 		const times = ordered.map((mark) => Number(mark.time) || 0).filter((value) => value >= 0);
 		const maxTime = times.length ? Math.max(...times) : 0;
 		const deltas: number[] = [];
@@ -1214,11 +1024,7 @@ function normalizePreviewSpeechMarkOffsets(
 	trackingText: string
 ): PreviewSpeechMark[] {
 	if (speechMarks.length === 0) return speechMarks;
-	const ordered = [...speechMarks].sort((left, right) => {
-		if (left.time !== right.time) return left.time - right.time;
-		if (left.start !== right.start) return left.start - right.start;
-		return left.end - right.end;
-	});
+	const ordered = [...speechMarks].sort(compareSpeechMarks);
 	const safeText = typeof trackingText === "string" ? trackingText : "";
 	const textLength = safeText.length;
 	if (!textLength) return ordered;
@@ -1252,32 +1058,64 @@ function normalizePreviewSpeechMarkOffsets(
 	return rebased;
 }
 
+	/**
+	 * Plays `audio` to its end, and fails when the audio does. `release` runs once
+	 * the audio settles: on its end, its failure, or `stopPreview`, which settles
+	 * it without an error.
+	 */
+	function playPreviewAudio(audio: HTMLAudioElement, release: () => void = () => {}): Promise<void> {
+		return new Promise<void>((resolve, reject) => {
+			let settled = false;
+			const settle = (error?: Error) => {
+				if (settled) return;
+				settled = true;
+				audio.onended = null;
+				audio.onerror = null;
+				audio.pause();
+				stopPreviewPolling();
+				if (settlePreviewAudio === stop) settlePreviewAudio = null;
+				release();
+				if (error) reject(error);
+				else resolve();
+			};
+			const stop = () => settle();
+			settlePreviewAudio = stop;
+			audio.onended = stop;
+			audio.onerror = () => settle(new Error(interfaceI18n.t("debug.tts.previewFailed")));
+			audio.play().catch((error: unknown) => {
+				settle(error instanceof Error ? error : new Error(String(error)));
+			});
+		});
+	}
+
+	/** Resolves once `audio` knows its duration, fails to load, or 1.2 s pass. */
+	function waitForAudioMetadata(audio: HTMLAudioElement): Promise<void> {
+		return new Promise<void>((resolve) => {
+			if (Number.isFinite(audio.duration) && audio.duration > 0) {
+				resolve();
+				return;
+			}
+			const finish = () => {
+				audio.removeEventListener("loadedmetadata", finish);
+				audio.removeEventListener("error", finish);
+				window.clearTimeout(timeout);
+				resolve();
+			};
+			audio.addEventListener("loadedmetadata", finish);
+			audio.addEventListener("error", finish);
+			const timeout = window.setTimeout(finish, 1200);
+		});
+	}
+
 	async function playPreviewAudioFromUrl(
 		audioUrl: string,
-		speechMarks: PreviewSpeechMark[] = []
+		speechMarks: PreviewSpeechMark[],
+		runId: number
 	): Promise<void> {
 		const audio = new Audio(audioUrl);
-		currentPreviewAudio = audio;
 		if (speechMarks.length > 0) {
-			await new Promise<void>((resolve) => {
-				if (Number.isFinite(audio.duration) && audio.duration > 0) {
-					resolve();
-					return;
-				}
-				let settled = false;
-				const finish = () => {
-					if (settled) return;
-					settled = true;
-					audio.removeEventListener("loadedmetadata", finish);
-					audio.removeEventListener("error", finish);
-					resolve();
-				};
-				audio.addEventListener("loadedmetadata", finish, { once: true });
-				audio.addEventListener("error", finish, { once: true });
-				if (typeof window !== "undefined") {
-					window.setTimeout(finish, 1200);
-				}
-			});
+			await waitForAudioMetadata(audio);
+			if (runId !== previewRunId) return;
 		const audioDurationSeconds = Number(audio.duration);
 		const normalizedMarks = normalizePreviewSpeechMarks(speechMarks, audioDurationSeconds);
 		const offsetNormalizedMarks = normalizePreviewSpeechMarkOffsets(normalizedMarks, previewText);
@@ -1298,27 +1136,10 @@ function normalizePreviewSpeechMarkOffsets(
 	} else {
 		debugPreview("marks:missing", { audioUrl });
 		}
-		await new Promise<void>((resolve, reject) => {
-			audio.onended = () => {
-				if (previewPollingTimer !== null) {
-					window.clearInterval(previewPollingTimer);
-					previewPollingTimer = null;
-				}
-				resolve();
-			};
-			audio.onerror = () => {
-				if (previewPollingTimer !== null) {
-					window.clearInterval(previewPollingTimer);
-					previewPollingTimer = null;
-				}
-				reject(new Error(interfaceI18n.t("debug.tts.previewFailed")));
-			};
-			void audio.play().catch(reject);
-		});
-		currentPreviewAudio = null;
+		await playPreviewAudio(audio);
 	}
 
-	async function previewServerVoice(provider: "polly" | "google") {
+	async function previewServerVoice(provider: "polly" | "google", runId: number) {
 		const endpoint = normalizeApiEndpoint(
 			provider === "polly" ? pollyApiEndpoint : googleApiEndpoint,
 			getDefaultApiEndpoint()
@@ -1329,10 +1150,7 @@ function normalizePreviewSpeechMarkOffsets(
 			provider,
 			rate: normalizeRate(provider === "polly" ? pollyRate : googleRate),
 			language: provider === "polly" ? pollyLanguage || undefined : googleLanguage || undefined,
-			voice:
-				provider === "polly"
-					? resolveVoiceForBackend("polly")
-					: resolveVoiceForBackend("google"),
+			voice: resolveVoiceForBackend(provider),
 			includeSpeechMarks
 		};
 		if (provider === "polly") {
@@ -1341,24 +1159,21 @@ function normalizePreviewSpeechMarkOffsets(
 			requestBody.format = pollyFormat;
 			requestBody.speechMarkTypes = getPollySpeechMarkTypes();
 		}
-		const payload = adapters.synthesizeProbe
-			? await adapters.synthesizeProbe({ endpoint, provider, body: requestBody })
-			: await (async () => {
-					const response = await fetch(`${endpoint}/synthesize`, {
-						method: "POST",
-						headers: { "Content-Type": "application/json" },
-						body: JSON.stringify(requestBody)
-					});
-					const nextPayload = await readJsonSafe(response);
-					if (!response.ok) {
-						throw new Error(
-							nextPayload?.message ||
-								nextPayload?.error ||
-								`Preview request failed (${response.status})`
-						);
-					}
-					return nextPayload as SynthesizeProbeResponse;
-				})();
+		const response = await fetch(`${endpoint}/synthesize`, {
+			method: "POST",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify(requestBody)
+		});
+		const payload = (await readJsonSafe(response)) as SynthesizeResponse;
+		if (runId !== previewRunId) return;
+		if (!response.ok) {
+			const failure = payload as { message?: string; error?: string } | null;
+			throw new Error(
+				failure?.message ||
+					failure?.error ||
+					interfaceI18n.t("debug.tts.previewRequestFailed", { status: response.status })
+			);
+		}
 
 		const audioBase64 = payload?.audio;
 		const contentType = payload?.contentType || "audio/mpeg";
@@ -1373,31 +1188,11 @@ function normalizePreviewSpeechMarkOffsets(
 		const blob = new Blob([new Uint8Array(byteNumbers)], { type: contentType });
 		const objectUrl = URL.createObjectURL(blob);
 		const audio = new Audio(objectUrl);
-		currentPreviewAudio = audio;
 		const speechMarks = Array.isArray(payload?.speechMarks) ? payload.speechMarks : [];
 		if (includeSpeechMarks && speechMarks.length > 0) {
 			updateTrackingFromSpeechMarks(audio, speechMarks);
 		}
-		await new Promise<void>((resolve, reject) => {
-			audio.onended = () => {
-				if (previewPollingTimer !== null) {
-					window.clearInterval(previewPollingTimer);
-					previewPollingTimer = null;
-				}
-				URL.revokeObjectURL(objectUrl);
-				resolve();
-			};
-			audio.onerror = () => {
-				if (previewPollingTimer !== null) {
-					window.clearInterval(previewPollingTimer);
-					previewPollingTimer = null;
-				}
-				URL.revokeObjectURL(objectUrl);
-				reject(new Error(interfaceI18n.t("debug.tts.previewFailed")));
-			};
-			void audio.play().catch(reject);
-		});
-		currentPreviewAudio = null;
+		await playPreviewAudio(audio, () => URL.revokeObjectURL(objectUrl));
 	}
 
 	function releaseBrowserPreview() {
@@ -1430,14 +1225,13 @@ function normalizePreviewSpeechMarkOffsets(
 	 * of its own. The browser has one speech queue, so the toolkit's read stops
 	 * first through its own service.
 	 */
-	async function previewBrowserVoice() {
+	async function previewBrowserVoice(runId: number) {
 		if (typeof window === "undefined" || !("speechSynthesis" in window)) {
 			throw new Error(interfaceI18n.t("debug.tts.browserSynthesisUnavailable"));
 		}
 		if (previewMode === "ssml") {
-			throw new Error("SSML preview is not supported in the Browser backend.");
+			throw new Error(interfaceI18n.t("debug.tts.ssmlPreviewUnsupported"));
 		}
-		toolkitCoordinator?.ttsService?.stop?.();
 		const service = new TTSService();
 		const host = document.createElement("div");
 		host.setAttribute("style", "position:fixed;left:-10000px;top:0;width:20em;");
@@ -1462,6 +1256,7 @@ function normalizePreviewSpeechMarkOffsets(
 				// The browser provider reports word boundaries only in word mode.
 				providerOptions: { highlightMode: "word" },
 			});
+			if (runId !== previewRunId) return;
 			debugPreview("browser:speak", { voice: browserVoice || "(default)" });
 			await service.speak(host, { language: contentLanguage });
 		} finally {
@@ -1470,16 +1265,15 @@ function normalizePreviewSpeechMarkOffsets(
 	}
 
 	async function previewSelectedVoice() {
+		if (isPreviewing && previewBackend === activeTab) {
+			stopPreview();
+			return;
+		}
 		previewError = null;
 		previewNote = null;
 		const activeState = getActiveState();
 		if (!activeState.available) {
 			previewError = interfaceI18n.t("debug.tts.previewUnavailable");
-			return;
-		}
-		if (isPreviewing && previewBackend === activeTab) {
-			previewRunId += 1;
-			stopPreview();
 			return;
 		}
 		const activePreviewText = typeof previewText === "string" ? previewText : "";
@@ -1493,13 +1287,15 @@ function normalizePreviewSpeechMarkOffsets(
 			previewError = interfaceI18n.t("debug.tts.ssmlPreviewUnsupported");
 			return;
 		}
-		if (isPreviewing || previewBackend || currentPreviewAudio || browserPreviewService) {
-			stopPreview();
-		} else {
-			clearPreviewTracking();
-			previewNote = null;
-		}
-		const runId = ++previewRunId;
+		stopPreview();
+		const runId = previewRunId;
+		// The toolkit reader and the preview share one audio output: silence the
+		// reader now, and end the preview when the reader starts again.
+		const toolkitTts = toolkitCoordinator?.ttsService;
+		toolkitTts?.stop();
+		const unsubscribeToolkitTts = toolkitTts?.onStateChange((state) => {
+			if (state !== PlaybackState.IDLE && runId === previewRunId) stopPreview();
+		});
 		isPreviewing = true;
 		previewBackend = activeTab;
 		try {
@@ -1511,6 +1307,7 @@ function normalizePreviewSpeechMarkOffsets(
 						previewMode
 					})
 				);
+				if (runId !== previewRunId) return;
 				const customResult = (result || null) as CustomProviderPreviewResult | null;
 				if (customResult?.audioUrl && typeof customResult.audioUrl === "string") {
 					const speechMarks = Array.isArray(customResult.speechMarks)
@@ -1523,29 +1320,29 @@ function normalizePreviewSpeechMarkOffsets(
 					if (trackingText) {
 						previewText = trackingText;
 					}
-					await playPreviewAudioFromUrl(customResult.audioUrl, speechMarks);
+					await playPreviewAudioFromUrl(customResult.audioUrl, speechMarks, runId);
 				}
-				previewNote = result?.note || null;
 			} else if (activeTab === "browser") {
-				await previewBrowserVoice();
+				await previewBrowserVoice(runId);
 			} else if (activeTab === "polly") {
 				if (previewMode === "ssml") {
 					previewNote =
 						interfaceI18n.t("debug.tts.pollySsmlHint");
 				}
-				await previewServerVoice("polly");
+				await previewServerVoice("polly", runId);
 			} else {
 				if (previewMode === "ssml") {
 					previewNote =
 						interfaceI18n.t("debug.tts.ssmlWordTrackingDisabled");
 				}
-				await previewServerVoice("google");
+				await previewServerVoice("google", runId);
 			}
 		} catch (error) {
 			if (runId === previewRunId) {
 				previewError = error instanceof Error ? error.message : String(error);
 			}
 		} finally {
+			unsubscribeToolkitTts?.();
 			if (runId === previewRunId) {
 				clearPreviewTracking();
 				isPreviewing = false;
@@ -1574,8 +1371,6 @@ function normalizePreviewSpeechMarkOffsets(
 		sampleRate: undefined,
 		format: undefined,
 		speechMarksMode: undefined,
-		googleVoiceType: undefined,
-		googleGender: undefined,
 	};
 	const BACKEND_PROVIDER_OPTIONS = [
 		"engine",
@@ -1591,7 +1386,7 @@ function normalizePreviewSpeechMarkOffsets(
 	function backendProviderOptions(
 		own: Record<string, unknown> = {}
 	): Record<string, unknown> {
-		const current = toolkitCoordinator?.getToolConfig?.("textToSpeech")?.providerOptions;
+		const current = toolkitCoordinator?.getToolConfig("textToSpeech")?.providerOptions;
 		const shared = Object.fromEntries(
 			Object.entries(current && typeof current === "object" ? current : {}).filter(
 				([key]) => !BACKEND_PROVIDER_OPTIONS.includes(key)
@@ -1600,135 +1395,109 @@ function normalizePreviewSpeechMarkOffsets(
 		return { ...shared, ...own };
 	}
 
+	/** The config a tab owns, before backend resets and shared options. */
+	async function buildTabConfig(tab: BackendTab): Promise<Record<string, unknown>> {
+		if (tab === "browser") {
+			return {
+				backend: "browser",
+				defaultVoice: resolveVoiceForBackend("browser"),
+				rate: normalizeRate(browserRate),
+				pitch: normalizePitch(browserPitch),
+				transportMode: "pie",
+			};
+		}
+		if (tab === "polly") {
+			return {
+				backend: "server",
+				serverProvider: "polly",
+				apiEndpoint: normalizeApiEndpoint(pollyApiEndpoint, getDefaultApiEndpoint()),
+				transportMode: "pie",
+				endpointMode: "synthesizePath",
+				endpointValidationMode: "voices",
+				defaultVoice: resolveVoiceForBackend("polly"),
+				rate: normalizeRate(pollyRate),
+				language: pollyLanguage || undefined,
+				engine: pollyEngine,
+				sampleRate: normalizePollySampleRate(pollySampleRate),
+				format: pollyFormat,
+				speechMarksMode: pollySpeechMarksMode,
+				providerOptions: { speechMarkTypes: getPollySpeechMarkTypes() },
+			};
+		}
+		if (tab === "google") {
+			return {
+				backend: "server",
+				serverProvider: "google",
+				apiEndpoint: normalizeApiEndpoint(googleApiEndpoint, getDefaultApiEndpoint()),
+				transportMode: "pie",
+				endpointMode: "synthesizePath",
+				endpointValidationMode: "voices",
+				defaultVoice: resolveVoiceForBackend("google"),
+				rate: normalizeRate(googleRate),
+				language: googleLanguage || undefined,
+			};
+		}
+		const provider = getCustomProviderOrThrow(tab);
+		const result = await provider.buildApplyConfig(createProviderContext(provider.id));
+		if (!result?.config) {
+			throw new Error(interfaceI18n.t("debug.tts.customProviderNoConfig", { id: provider.id }));
+		}
+		return result.config;
+	}
+
+	/**
+	 * What applying `tab` sends the coordinator, and what the panel stores to
+	 * restore it. The stored record leaves out provider options the tab does not
+	 * own, and adds the panel-only Google voice-list filters.
+	 */
+	async function buildApplyPayload(tab: BackendTab): Promise<{
+		applied: Partial<TextToSpeechToolProviderConfig>;
+		persisted: PersistedTTSSettings;
+	}> {
+		const config = await buildTabConfig(tab);
+		const shared = {
+			layoutMode,
+			speedOptions: resolveAppliedSpeedOptions(),
+			mathTokenHighlighting,
+		};
+		const applied = {
+			enabled: true,
+			...BACKEND_CONFIG_FIELDS,
+			...config,
+			providerOptions: backendProviderOptions(
+				config.providerOptions as Record<string, unknown> | undefined
+			),
+			...shared,
+		} as Partial<TextToSpeechToolProviderConfig>;
+		const persisted: PersistedTTSSettings = {
+			...config,
+			...shared,
+			tab,
+			...(tab === "google" ? { googleVoiceType, googleGender } : {}),
+		};
+		return { applied, persisted };
+	}
+
 	async function applySettings() {
-		applyMessage = null;
 		applyError = null;
 		const activeState = getActiveState();
 		if (!activeState.available) {
 			applyError = interfaceI18n.t("debug.tts.applyUnavailable");
 			return;
 		}
-		if (!toolkitCoordinator?.updateToolConfig) {
+		if (!toolkitCoordinator) {
 			applyError = interfaceI18n.t("debug.tts.coordinatorUnavailable");
 			return;
 		}
 
 		isApplying = true;
 		try {
-			const appliedSpeedOptions = resolveAppliedSpeedOptions();
-			if (!isBuiltInTab(activeTab)) {
-				const provider = getCustomProviderOrThrow(activeTab);
-				let next: ProviderApplyResult | undefined;
-				if (provider.buildApplyConfig) {
-					next = await provider.buildApplyConfig(createProviderContext(provider.id));
-				}
-				if (!next?.config) {
-					next = customProviderApplyRequestById[provider.id];
-				}
-				if (!next?.config) {
-					throw new Error(
-						`Custom provider '${provider.id}' did not return apply config.`
-					);
-				}
-				const customConfig = next.config as Record<string, unknown>;
-				toolkitCoordinator.updateToolConfig("textToSpeech", {
-					enabled: true,
-					...BACKEND_CONFIG_FIELDS,
-					...customConfig,
-					providerOptions: backendProviderOptions(
-						customConfig.providerOptions as Record<string, unknown> | undefined
-					),
-					layoutMode,
-					speedOptions: appliedSpeedOptions,
-					mathTokenHighlighting,
-				});
-				persistSettings({
-					...(next.config || {}),
-					tab: provider.id,
-					layoutMode,
-					speedOptions: appliedSpeedOptions,
-					mathTokenHighlighting,
-				});
-				applyMessage = next.message || `Applied ${provider.label} TTS settings.`;
-			} else if (activeTab === "browser") {
-				const next = {
-					...BACKEND_CONFIG_FIELDS,
-					backend: "browser" as const,
-					providerOptions: backendProviderOptions(),
-					defaultVoice: resolveVoiceForBackend("browser"),
-					rate: normalizeRate(browserRate),
-					pitch: normalizePitch(browserPitch),
-					transportMode: "pie" as const,
-					layoutMode,
-					speedOptions: appliedSpeedOptions,
-					mathTokenHighlighting,
-				};
-				toolkitCoordinator.updateToolConfig("textToSpeech", {
-					enabled: true,
-					...next
-				});
-				persistSettings({ ...next, providerOptions: undefined });
-			} else if (activeTab === "polly") {
-				const pollyProviderOptions = {
-					engine: pollyEngine,
-					sampleRate: normalizePollySampleRate(pollySampleRate),
-					format: pollyFormat,
-					speechMarkTypes: getPollySpeechMarkTypes()
-				};
-				const next = {
-					...BACKEND_CONFIG_FIELDS,
-					backend: "server" as const,
-					serverProvider: "polly" as const,
-					apiEndpoint: normalizeApiEndpoint(pollyApiEndpoint, getDefaultApiEndpoint()),
-					transportMode: "pie" as const,
-					endpointMode: "synthesizePath" as const,
-					endpointValidationMode: "voices" as const,
-					defaultVoice: resolveVoiceForBackend("polly"),
-					rate: normalizeRate(pollyRate),
-					language: pollyLanguage || undefined,
-					engine: pollyEngine,
-					sampleRate: normalizePollySampleRate(pollySampleRate),
-					format: pollyFormat,
-					speechMarksMode: pollySpeechMarksMode,
-					providerOptions: backendProviderOptions(pollyProviderOptions),
-					layoutMode,
-					speedOptions: appliedSpeedOptions,
-					mathTokenHighlighting,
-				};
-				toolkitCoordinator.updateToolConfig("textToSpeech", {
-					enabled: true,
-					...next
-				});
-				persistSettings({ ...next, providerOptions: pollyProviderOptions });
-			} else {
-				const next = {
-					...BACKEND_CONFIG_FIELDS,
-					backend: "server" as const,
-					serverProvider: "google" as const,
-					providerOptions: backendProviderOptions(),
-					apiEndpoint: normalizeApiEndpoint(googleApiEndpoint, getDefaultApiEndpoint()),
-					transportMode: "pie" as const,
-					endpointMode: "synthesizePath" as const,
-					endpointValidationMode: "voices" as const,
-					defaultVoice: resolveVoiceForBackend("google"),
-					rate: normalizeRate(googleRate),
-					language: googleLanguage || undefined,
-					googleVoiceType,
-					googleGender,
-					layoutMode,
-					speedOptions: appliedSpeedOptions,
-					mathTokenHighlighting,
-				};
-				toolkitCoordinator.updateToolConfig("textToSpeech", {
-					enabled: true,
-					...next
-				});
-				persistSettings({ ...next, providerOptions: undefined });
-			}
-			await toolkitCoordinator?.ensureTTSReady?.();
-			if (isBuiltInTab(activeTab)) {
-				applyMessage = `Applied ${activeTab} TTS settings.`;
-			}
+			const { applied, persisted } = await buildApplyPayload(activeTab);
+			toolkitCoordinator.updateToolConfig("textToSpeech", applied);
+			persistSettings(persisted);
+			// The update reconfigures the reader without starting it; readiness
+			// surfaces a backend that fails to start before the panel closes.
+			await toolkitCoordinator.ensureTTSReady();
 			requestClose();
 		} catch (error) {
 			applyError = error instanceof Error ? error.message : String(error);
@@ -1761,27 +1530,6 @@ function normalizePreviewSpeechMarkOffsets(
 		untrack(() => {
 			syncCustomProvidersState();
 		});
-	});
-
-	$effect(() => {
-		void activeCustomProvider;
-		const provider = activeCustomProvider;
-		const target = activeCustomProviderElement;
-		if (!provider || provider.mode !== "component" || !target) return;
-		const onAvailability = (event: Event) =>
-			onCustomProviderAvailability(provider.id, event as CustomEvent);
-		const onApplyRequest = (event: Event) =>
-			void onCustomProviderApplyRequest(provider.id, event as CustomEvent);
-		const onPreviewRequest = () => void onCustomProviderPreviewRequest(provider.id);
-
-		target.addEventListener("availability", onAvailability as EventListener);
-		target.addEventListener("apply-request", onApplyRequest as EventListener);
-		target.addEventListener("preview-request", onPreviewRequest as EventListener);
-		return () => {
-			target.removeEventListener("availability", onAvailability as EventListener);
-			target.removeEventListener("apply-request", onApplyRequest as EventListener);
-			target.removeEventListener("preview-request", onPreviewRequest as EventListener);
-		};
 	});
 
 	onDestroy(() => {
@@ -1860,7 +1608,11 @@ function normalizePreviewSpeechMarkOffsets(
 					<option value="left-aligned">{interfaceI18n.t("debug.tts.leftAlignedControls")}</option>
 				</select>
 				<div class="text-xs opacity-75">
-					Item header row reservation: {layoutModeReservesRow ? interfaceI18n.t("common.enabled") : interfaceI18n.t("common.disabled")}
+					{interfaceI18n.t("debug.tts.headerRowReservation", {
+						state: layoutModeReservesRow
+							? interfaceI18n.t("common.enabled")
+							: interfaceI18n.t("common.disabled"),
+					})}
 				</div>
 			</div>
 			<div class="pie-tts-field">
@@ -1874,8 +1626,7 @@ function normalizePreviewSpeechMarkOffsets(
 				/>
 				<div class="mt-1 flex flex-wrap items-center gap-2">
 					<span class="text-xs opacity-75">
-						Comma or semicolon-separated multipliers. Include 1 for Normal; leave empty to hide
-						speed controls.
+						{interfaceI18n.t("debug.tts.speedOptionsHelp")}
 					</span>
 					<button
 						type="button"
@@ -1951,14 +1702,14 @@ function normalizePreviewSpeechMarkOffsets(
 						{#if recommendedBrowserVoices.length > 0}
 							<optgroup label={interfaceI18n.t("debug.tts.recommendedVoices")}>
 								{#each recommendedBrowserVoices as voice}
-									<option value={browserVoiceIdentity(voice)}>{browserVoiceLabel(voice)}</option>
+									<option value={voiceIdentity(voice)}>{browserVoiceLabel(voice)}</option>
 								{/each}
 							</optgroup>
 						{/if}
 						{#if allBrowserVoices.length > 0}
 							<optgroup label={interfaceI18n.t("debug.tts.allVoices")}>
 								{#each allBrowserVoices as voice}
-									<option value={browserVoiceIdentity(voice)}>{browserVoiceLabel(voice)}</option>
+									<option value={voiceIdentity(voice)}>{browserVoiceLabel(voice)}</option>
 								{/each}
 							</optgroup>
 						{/if}
@@ -1969,13 +1720,13 @@ function normalizePreviewSpeechMarkOffsets(
 						aria-live="polite"
 					>
 						{#if browserVoice}
-							Using selected voice: {resolvedBrowserVoice
-								? browserVoiceLabel(resolvedBrowserVoice)
-								: browserVoice}
+							{interfaceI18n.t("debug.tts.usingSelectedVoice", {
+								voice: resolvedBrowserVoice ? browserVoiceLabel(resolvedBrowserVoice) : browserVoice,
+							})}
 						{:else if resolvedBrowserVoice}
-							Best available voice (auto): {browserVoiceLabel(resolvedBrowserVoice)}
+							{interfaceI18n.t("debug.tts.autoVoice", { voice: browserVoiceLabel(resolvedBrowserVoice) })}
 						{:else}
-							Best available voice (auto): waiting for browser voices.
+							{interfaceI18n.t("debug.tts.autoVoiceWaiting")}
 						{/if}
 					</div>
 				</div>
@@ -2031,7 +1782,7 @@ function normalizePreviewSpeechMarkOffsets(
 					<select id="tts-polly-voice" class="select select-sm select-bordered w-full" bind:value={pollyVoice}>
 						<option value="">{interfaceI18n.t("debug.tts.providerDefault")}</option>
 						{#each pollyState.voices as voice}
-							<option value={voice.id || voice.name || ""}>{voice.name || voice.id} ({voice.languageCode || "n/a"})</option>
+							<option value={voiceIdentity(voice)}>{voice.name || voice.id} ({voice.languageCode || interfaceI18n.t("debug.tts.notAvailable")})</option>
 						{/each}
 					</select>
 				</div>
@@ -2115,7 +1866,7 @@ function normalizePreviewSpeechMarkOffsets(
 					<select id="tts-google-voice" class="select select-sm select-bordered w-full" bind:value={googleVoice}>
 						<option value="">{interfaceI18n.t("debug.tts.providerDefault")}</option>
 						{#each googleState.voices as voice}
-							<option value={voice.id || voice.name || ""}>{voice.name || voice.id} ({voice.languageCode || "n/a"})</option>
+							<option value={voiceIdentity(voice)}>{voice.name || voice.id} ({voice.languageCode || interfaceI18n.t("debug.tts.notAvailable")})</option>
 						{/each}
 					</select>
 				</div>
@@ -2128,21 +1879,6 @@ function normalizePreviewSpeechMarkOffsets(
 						<div class="text-xs opacity-75">{activeCustomProvider.description}</div>
 					{/if}
 				</div>
-				{#if activeCustomProvider.mode === "component"}
-					<svelte:element
-						this={activeCustomProvider.tagName}
-						class="pie-tts-custom-provider-element"
-						bind:this={activeCustomProviderElement}
-						{...resolveComponentProps(activeCustomProvider)}
-						onchange={(event: Event) =>
-							onCustomProviderChange(activeCustomProvider.id, event as unknown as CustomEvent)}
-					/>
-				{:else}
-					<div class="text-xs opacity-75">
-						This provider uses adapter mode. Configure provider state from your host app via
-						`customProviders`.
-					</div>
-				{/if}
 			</fieldset>
 		{/if}
 
@@ -2182,13 +1918,13 @@ function normalizePreviewSpeechMarkOffsets(
 				</button>
 				<span class="text-xs opacity-70">
 					{#if activeTab === "browser" && previewMode === "ssml"}
-						SSML is unsupported in Browser preview.
+						{interfaceI18n.t("debug.tts.previewHintBrowserSsml")}
 					{:else if activeTab === "google" && previewMode === "ssml"}
-						SSML preserved. Tracking disabled.
+						{interfaceI18n.t("debug.tts.previewHintGoogleSsml")}
 					{:else if !isBuiltInTab(activeTab)}
-						Tracking enabled when provider returns speech marks.
+						{interfaceI18n.t("debug.tts.previewHintCustom")}
 					{:else}
-						Tracking enabled while preview plays.
+						{interfaceI18n.t("debug.tts.previewHintTracking")}
 					{/if}
 				</span>
 			</div>
@@ -2199,9 +1935,6 @@ function normalizePreviewSpeechMarkOffsets(
 			</div>
 		</div>
 
-		{#if applyMessage}
-			<div class="alert alert-success text-xs" role="status"><span>{applyMessage}</span></div>
-		{/if}
 		{#if applyError}
 			<div class="alert alert-error text-xs" role="alert"><span>{applyError}</span></div>
 		{/if}
@@ -2372,11 +2105,6 @@ function normalizePreviewSpeechMarkOffsets(
 		flex-direction: column;
 		gap: 0.2rem;
 		margin-bottom: 0.25rem;
-	}
-
-	.pie-tts-custom-provider-element {
-		display: block;
-		width: 100%;
 	}
 
 	.pie-tts-preview-header {

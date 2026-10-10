@@ -188,6 +188,26 @@ export function workspaceExports(root = REPO_ROOT): WorkspaceExport[] {
 	return found;
 }
 
+/**
+ * Stylesheet specifier -> the source file its `dist` target is copied from, for
+ * the `?raw` imports a test loads as text.
+ */
+export function workspaceStylesheets(root = REPO_ROOT): Map<string, string> {
+	const found = new Map<string, string>();
+	for (const { name, dir, manifest } of workspacePackages(root)) {
+		if (!manifest.exports || typeof manifest.exports !== "object") continue;
+		for (const [subpath, entry] of Object.entries(
+			manifest.exports as Record<string, unknown>,
+		)) {
+			const target = runtimeTarget(entry);
+			if (!target?.startsWith("./dist/") || !target.endsWith(".css")) continue;
+			const source = conventionalSource(dir, target);
+			if (source) found.set(`${name}/${subpath.slice(2)}`, path.join(dir, source));
+		}
+	}
+	return found;
+}
+
 /** Specifier -> absolute source path, for every entry of `workspaceExports`. */
 export function workspaceSources(root = REPO_ROOT): Map<string, string> {
 	return new Map(

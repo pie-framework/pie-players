@@ -165,6 +165,7 @@
 		DEFAULT_LOCALE,
 	} from "@pie-players/pie-players-shared/i18n";
 	import { onDestroy, tick, untrack } from "svelte";
+	import { isPlainRecord } from "@pie-players/pie-players-shared/object";
 	// The shared content stylesheet is NOT imported here. In this package's
 	// library build, a plain CSS import is extracted to dist/assets/*.css, which
 	// nothing loads at runtime and which the exports map does not expose — a
@@ -630,7 +631,7 @@
 	}
 
 	function sessionIdOf(input: unknown): string {
-		return isRecord(input) && typeof input.id === "string" ? input.id : "";
+		return isPlainRecord(input) && typeof input.id === "string" ? input.id : "";
 	}
 
 	/**
@@ -662,9 +663,9 @@
 	}
 
 	function hasIncompleteStructuredShuffledValues(entry: unknown): boolean {
-		if (!isRecord(entry)) return false;
+		if (!isPlainRecord(entry)) return false;
 		const shuffledValues = entry.shuffledValues;
-		if (!isRecord(shuffledValues)) return false;
+		if (!isPlainRecord(shuffledValues)) return false;
 		const hasPartA = "partA" in shuffledValues;
 		const hasPartB = "partB" in shuffledValues;
 		return (hasPartA || hasPartB) && !(hasPartA && hasPartB);
@@ -673,7 +674,10 @@
 	function sessionDataForRenderer(data: unknown[]): unknown[] {
 		let changed = false;
 		const nextData = data.map((entry) => {
-			if (!hasIncompleteStructuredShuffledValues(entry) || !isRecord(entry)) {
+			if (
+				!hasIncompleteStructuredShuffledValues(entry) ||
+				!isPlainRecord(entry)
+			) {
 				return entry;
 			}
 			const { shuffledValues: _shuffledValues, ...rest } = entry;
@@ -766,15 +770,11 @@
 		passage: ConfigEntity | null;
 	};
 
-	function isRecord(value: unknown): value is Record<string, unknown> {
-		return !!value && typeof value === "object" && !Array.isArray(value);
-	}
-
 	function isConfigEntityLike(value: unknown): value is ConfigEntity {
-		if (!isRecord(value)) return false;
+		if (!isPlainRecord(value)) return false;
 		return (
 			typeof value.markup === "string" &&
-			isRecord(value.elements) &&
+			isPlainRecord(value.elements) &&
 			Array.isArray(value.models)
 		);
 	}
@@ -784,7 +784,7 @@
 			return { item: input, passage: null };
 		}
 
-		if (isRecord(input) && isConfigEntityLike(input.pie)) {
+		if (isPlainRecord(input) && isConfigEntityLike(input.pie)) {
 			// A stimulus item arrives as `{ pie, passage }`: the item config plus the
 			// passage config rendered beside it.
 			return {

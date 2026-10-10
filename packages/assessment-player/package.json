@@ -24,18 +24,6 @@
 		"./components/assessment-player-default-element": {
 			"types": "./dist/pie-assessment-player.d.ts",
 			"import": "./dist/pie-assessment-player.js"
-		},
-		"./components/assessment-player-shell-element": {
-			"types": "./dist/pie-assessment-player.d.ts",
-			"import": "./dist/pie-assessment-player.js"
-		},
-		"./contracts/public-events": {
-			"types": "./dist/pie-assessment-player.d.ts",
-			"import": "./dist/pie-assessment-player.js"
-		},
-		"./contracts/runtime-host-contract": {
-			"types": "./dist/pie-assessment-player.d.ts",
-			"import": "./dist/pie-assessment-player.js"
 		}
 	},
 	"files": [

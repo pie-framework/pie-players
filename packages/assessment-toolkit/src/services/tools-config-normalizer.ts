@@ -1,6 +1,7 @@
 import type { CalculatorProviderConfig } from "@pie-players/pie-calculator";
 import { DEFAULT_TOOL_PLACEMENT } from "./tool-config-defaults.js";
 import type { TTSRuntimeSettings } from "./tts-runtime-config.js";
+import { isPlainRecord } from "@pie-players/pie-players-shared/object";
 
 export type ToolPlacementLevel = "section" | "item" | "passage";
 
@@ -137,10 +138,6 @@ const DEFAULT_PLACEMENT: Required<ToolPlacementConfig> = {
 	passage: [...DEFAULT_TOOL_PLACEMENT.passage],
 };
 
-function isPlainObject(value: unknown): value is Record<string, unknown> {
-	return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-
 function assertStringArray(value: unknown, fieldPath: string): string[] {
 	if (value == null) return [];
 	if (!Array.isArray(value)) {
@@ -161,7 +158,7 @@ function assertPlacementConfig(
 	value: unknown,
 ): ToolPlacementConfig | undefined {
 	if (value == null) return undefined;
-	if (!isPlainObject(value)) {
+	if (!isPlainRecord(value)) {
 		throw new Error(
 			'Invalid tools config at "placement": expected an object with section/item/passage arrays.',
 		);
@@ -171,7 +168,7 @@ function assertPlacementConfig(
 
 function assertPolicyConfig(value: unknown): ToolPolicyConfig | undefined {
 	if (value == null) return undefined;
-	if (!isPlainObject(value)) {
+	if (!isPlainRecord(value)) {
 		throw new Error(
 			'Invalid tools config at "policy": expected an object with allowed/blocked arrays.',
 		);
@@ -184,7 +181,7 @@ function assertProviderConfig(
 	value: unknown,
 ): ToolProviderConfig | undefined {
 	if (value == null) return undefined;
-	if (!isPlainObject(value)) {
+	if (!isPlainRecord(value)) {
 		throw new Error(
 			`Invalid tools config at "providers.${providerId}": expected an object.`,
 		);
@@ -202,7 +199,7 @@ function assertProviderConfig(
 	if (
 		"settings" in config &&
 		config.settings !== undefined &&
-		!isPlainObject(config.settings)
+		!isPlainRecord(config.settings)
 	) {
 		throw new Error(
 			`Invalid tools config at "providers.${providerId}.settings": expected an object.`,
@@ -211,7 +208,7 @@ function assertProviderConfig(
 	if (
 		"provider" in config &&
 		config.provider !== undefined &&
-		!isPlainObject(config.provider)
+		!isPlainRecord(config.provider)
 	) {
 		throw new Error(
 			`Invalid tools config at "providers.${providerId}.provider": expected an object.`,
@@ -222,7 +219,7 @@ function assertProviderConfig(
 
 function assertProvidersConfig(value: unknown): ToolProvidersConfig {
 	if (value == null) return {};
-	if (!isPlainObject(value)) {
+	if (!isPlainRecord(value)) {
 		throw new Error(
 			'Invalid tools config at "providers": expected an object keyed by tool id.',
 		);
@@ -276,7 +273,7 @@ function assertPnpEnforcement(
 export function normalizeToolsConfig(
 	input?: ToolsConfigInput | null,
 ): CanonicalToolsConfig {
-	if (input != null && !isPlainObject(input)) {
+	if (input != null && !isPlainRecord(input)) {
 		throw new Error(
 			'Invalid tools config: expected an object with "policy", "placement", and "providers".',
 		);

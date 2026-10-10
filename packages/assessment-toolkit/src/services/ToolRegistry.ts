@@ -11,6 +11,7 @@ import type { ToolParametersFor } from "@pie-players/pie-players-shared/types";
 import type { CatalogOwnerSnapshot } from "./AccessibilityCatalogResolver.js";
 import type { ToolPolicyEntry } from "../policy/core/decision-types.js";
 import type { ToolContext, ToolLevel } from "./tool-context.js";
+import type { ToolScopeLevel } from "./tool-instance-id.js";
 import {
 	type ToolComponentOverrides,
 	resolveToolTag,
@@ -96,7 +97,7 @@ export interface ToolToolbarButtonDefinition {
 
 export interface ToolbarContext {
 	scope: {
-		level: ToolLevel;
+		level: ToolScopeLevel;
 		scopeId: string;
 		assessmentId?: string;
 		sectionId?: string;

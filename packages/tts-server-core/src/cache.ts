@@ -96,45 +96,13 @@ export interface CacheStats {
 }
 
 /**
- * Generate cache key from components
- *
- * @param components - Cache key components
- * @returns Cache key string
- */
-export function generateCacheKey(components: CacheKeyComponents): string {
-	const {
-		providerId,
-		text,
-		voice,
-		language = "",
-		rate = 1.0,
-		format = "mp3",
-	} = components;
-
-	// Create deterministic key from components
-	const keyParts = [
-		"tts",
-		providerId,
-		voice,
-		language,
-		rate.toFixed(2),
-		format,
-		text,
-	];
-
-	// Use simple concatenation with delimiter
-	// In production, consider using a hash function for shorter keys
-	return keyParts.join(":");
-}
-
-/**
  * Generate SHA-256 hash for cache key
  * Useful for creating shorter keys from long text
  *
  * @param text - Text to hash
  * @returns Hex string hash
  */
-export async function hashText(text: string): Promise<string> {
+async function hashText(text: string): Promise<string> {
 	// Use Web Crypto API (available in modern Node.js and browsers)
 	const encoder = new TextEncoder();
 	const data = encoder.encode(text);

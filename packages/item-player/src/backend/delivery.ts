@@ -8,18 +8,15 @@ import type {
 	BackendLoadResult,
 	BackendScoreOptions,
 } from "./types.js";
+import { isPlainRecord } from "@pie-players/pie-players-shared/object";
 
 const DEFAULT_AUTOSAVE_DEBOUNCE_MS = 100;
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return !!value && typeof value === "object" && !Array.isArray(value);
-}
-
 function isConfigLike(value: unknown): boolean {
 	return (
-		isRecord(value) &&
+		isPlainRecord(value) &&
 		typeof value.markup === "string" &&
-		isRecord(value.elements) &&
+		isPlainRecord(value.elements) &&
 		Array.isArray(value.models)
 	);
 }
@@ -27,10 +24,10 @@ function isConfigLike(value: unknown): boolean {
 function resolveLoadedConfig(result: BackendDeliveryLoadResult): unknown {
 	if (isConfigLike(result.config)) return result.config;
 	if (isConfigLike(result.item)) return result.item;
-	if (isRecord(result.item) && isConfigLike(result.item.config)) {
+	if (isPlainRecord(result.item) && isConfigLike(result.item.config)) {
 		return result.item.config;
 	}
-	if (isRecord(result.item) && isConfigLike(result.item.pie)) {
+	if (isPlainRecord(result.item) && isConfigLike(result.item.pie)) {
 		return {
 			pie: result.item.pie,
 			passage: isConfigLike(result.item.passage)

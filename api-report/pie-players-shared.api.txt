@@ -232,6 +232,7 @@
   isOverwideTableWrapMutation
   isPieAvailable
   isPieRegistryAvailable
+  isPlainRecord
   isProgrammaticFocusTarget
   isSessionSnapshotEnabled
   isSnapshotIdentitySpecific
@@ -468,6 +469,7 @@
 
 ./object
   cloneDeep
+  isPlainRecord
   mergeObjectsIgnoringNullUndefined
 
 ./pie

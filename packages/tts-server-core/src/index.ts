@@ -9,12 +9,7 @@ export type {
 	CacheStats,
 	ITTSCache,
 } from "./cache.js";
-export {
-	generateCacheKey,
-	generateHashedCacheKey,
-	hashText,
-	MemoryCache,
-} from "./cache.js";
+export { generateHashedCacheKey, MemoryCache } from "./cache.js";
 
 // Export provider interfaces
 export type {
@@ -27,17 +22,7 @@ export { BaseTTSProvider } from "./provider.js";
 export { resolveTTSErrorCodeForHttpStatus } from "./http-error-mapping.js";
 
 // Export speech marks utilities
-export {
-	adjustSpeechMarksForRate,
-	anchorSpeechMarks,
-	estimateSpeechMarks,
-	filterSpeechMarksByType,
-	getSpeechMarkAtTime,
-	getSpeechMarksStats,
-	mergeSpeechMarks,
-	normalizeSpeechMarks,
-	validateSpeechMarks,
-} from "./speech-marks.js";
+export { anchorSpeechMarks, normalizeSpeechMarks } from "./speech-marks.js";
 export {
 	resolveSpeedRateBucket,
 	type SpeedRateBucket,

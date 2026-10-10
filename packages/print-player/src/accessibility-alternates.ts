@@ -33,7 +33,10 @@ import {
 	ToolPolicyEngine,
 } from "@pie-players/pie-assessment-toolkit/policy/engine";
 import { AccessibilityCatalogResolver } from "@pie-players/pie-assessment-toolkit/services/AccessibilityCatalogResolver";
-import { CONTENT_ALTERNATE_REGISTRATIONS } from "@pie-players/pie-default-tool-loaders";
+import {
+	CONTENT_ALTERNATE_REGISTRATIONS,
+	CONTENT_LEAD_SURFACE,
+} from "@pie-players/pie-default-tool-loaders";
 import { resolveInterfaceI18n } from "@pie-players/pie-players-shared/i18n/provider";
 import type {
 	AccessibilityCatalog,
@@ -46,13 +49,10 @@ import type { Item } from "./types.js";
 
 /**
  * Host slot for an alternate that has to be read in order with the content.
- *
- * The name is the section player's, deliberately: the two renderers open the same
- * slot for the same reason — full width, above the content body, in flow — and a
- * capability declares it once to reach both. Diverging here would mean an
- * alternate reaching the screen and not paper because of a spelling.
+ * Print takes the capability's own declaration, so an alternate that declares
+ * the slot reaches paper by construction.
  */
-export const CONTENT_LEAD_SURFACE = "content-lead";
+export { CONTENT_LEAD_SURFACE };
 
 /**
  * Class hook for the block print fills with the alternates in play.

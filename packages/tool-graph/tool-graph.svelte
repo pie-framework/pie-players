@@ -395,7 +395,7 @@
 		lang={interfaceI18n.getLocale()}
 		dir={interfaceI18n.getDirection?.() ?? 'ltr'}
 		aria-label={interfaceI18n.t('tools.graph.toolA11y')}
-		data-tool-id={toolId}
+		data-pie-tool-id={toolId}
 	>
 		<!-- Toolbar -->
 		<div class="pie-tool-graph__toolbar">

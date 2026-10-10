@@ -1,5 +1,6 @@
 import type { ConfigEntity, PieModel } from "@pie-players/pie-players-shared";
 import type { BackendDeliveryModelResult } from "./types.js";
+import { isPlainRecord } from "@pie-players/pie-players-shared/object";
 
 export type NormalizedDeliveryModelResult = {
 	models?: Array<Record<string, unknown>>;
@@ -16,16 +17,12 @@ export type DeliveryModelRefreshConfigResult = {
 	changed: boolean;
 };
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return !!value && typeof value === "object" && !Array.isArray(value);
-}
-
 function isBackendModel(value: unknown): value is Record<string, unknown> & {
 	id: string;
 	element: string;
 } {
 	return (
-		isRecord(value) &&
+		isPlainRecord(value) &&
 		typeof value.id === "string" &&
 		typeof value.element === "string"
 	);
@@ -88,7 +85,7 @@ export function normalizeDeliveryModelResult(
 		passageModels: Array.isArray(result.passageModels)
 			? result.passageModels
 			: undefined,
-		metadata: isRecord(result.metadata) ? result.metadata : undefined,
+		metadata: isPlainRecord(result.metadata) ? result.metadata : undefined,
 	};
 }
 

@@ -4,6 +4,7 @@ import type {
 	RuntimeConfig,
 } from "@pie-players/pie-assessment-toolkit/runtime/engine";
 import type { ItemEntity } from "@pie-players/pie-players-shared/types";
+import { isPlainRecord } from "@pie-players/pie-players-shared/object";
 
 type DeliveryConfig = NonNullable<BackendConfig["delivery"]>;
 type AuthoringConfig = NonNullable<BackendConfig["authoring"]>;
@@ -46,10 +47,6 @@ export type ResolveItemPlayerBackendPropsArgs = {
 	sectionId?: string;
 	env: Record<string, unknown>;
 };
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return !!value && typeof value === "object" && !Array.isArray(value);
-}
 
 function cloneAuth<T extends Record<string, unknown> | undefined>(auth: T): T {
 	return auth ? ({ ...auth } as T) : auth;
@@ -273,7 +270,7 @@ export function resolveItemPlayerPropsWithBackend(
 		...forwardedProps
 	} = args.resolvedPlayerProps as SectionPlayerRuntimePlayerConfig;
 
-	if (!rawBackend || !isRecord(rawBackend)) {
+	if (!rawBackend || !isPlainRecord(rawBackend)) {
 		return forwardedProps;
 	}
 
@@ -301,7 +298,7 @@ export function resolveItemPlayerPropsWithBackend(
 			},
 			resolverBase,
 		);
-		if (resolved && isRecord(resolved)) {
+		if (resolved && isPlainRecord(resolved)) {
 			backend = mergeBackendConfig(baseBackend, resolved);
 		}
 	}
@@ -320,7 +317,7 @@ export function stripItemDeliveryBackendProps(
 		resolveBackend: _resolveBackend,
 		...forwardedProps
 	} = resolvedPlayerProps as SectionPlayerRuntimePlayerConfig;
-	if (!rawBackend || !isRecord(rawBackend)) {
+	if (!rawBackend || !isPlainRecord(rawBackend)) {
 		return forwardedProps;
 	}
 	const { delivery: _delivery, ...passageBackend } =

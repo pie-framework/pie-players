@@ -31,7 +31,6 @@ npm install @pie-players/tts-server-core
 ```typescript
 import {
   BaseTTSProvider,
-  estimateSpeechMarks,
   type ServerProviderCapabilities,
   type SynthesizeRequest,
   type SynthesizeResponse,
@@ -58,8 +57,8 @@ export class MyTTSProvider extends BaseTTSProvider {
     return {
       audio,
       contentType: 'audio/mpeg',
-      // Estimated marks, for an engine that returns none
-      speechMarks: estimateSpeechMarks(request.text),
+      // An engine without word timings returns none
+      speechMarks: [],
       metadata: {
         providerId: this.providerId,
         voice: request.voice || 'default',
@@ -92,18 +91,6 @@ export class MyTTSProvider extends BaseTTSProvider {
     };
   }
 }
-```
-
-### Using Speech Marks Utilities
-
-```typescript
-import { estimateSpeechMarks, adjustSpeechMarksForRate } from '@pie-players/tts-server-core';
-
-// Generate estimated marks when provider doesn't support them
-const marks = estimateSpeechMarks('Hello world');
-
-// Adjust timing for different speech rates
-const fasterMarks = adjustSpeechMarksForRate(marks, 1.5);
 ```
 
 ### Using Cache
@@ -158,20 +145,11 @@ sketches the Redis shape.
 
 ### Functions
 
-- `estimateSpeechMarks()` - Generate estimated timing
-- `adjustSpeechMarksForRate()` - Adjust for speech rate
-- `validateSpeechMarks()` - Validate marks
 - `normalizeSpeechMarks()` - Parse a JSONL word-mark response, normalize time units, anchor offsets to the request text and clamp ranges
 - `anchorSpeechMarks()` - Re-derive each mark's `start`/`end` from where its `value` occurs in the request text
-- `mergeSpeechMarks()` - Merge overlapping or adjacent marks
-- `filterSpeechMarksByType()` - Keep marks of one type (`word`, `sentence` or `ssml`)
-- `getSpeechMarkAtTime()` - The mark at a time in milliseconds, or `null`
-- `getSpeechMarksStats()` - Count, total duration, average word duration and words per minute
 - `resolveSpeedRateBucket()` - Bucket a rate multiplier into `slow` (at most 0.95), `fast` (at least 1.5) or the fallback (default `medium`)
 - `resolveTTSErrorCodeForHttpStatus()` - Map an HTTP status to the closest `TTSErrorCode`, for REST-backed providers
-- `generateCacheKey()` - Create cache key
 - `generateHashedCacheKey()` - Create a short cache key by hashing the key components
-- `hashText()` - SHA-256 hash for cache keys
 
 ## Speech Marks Format
 

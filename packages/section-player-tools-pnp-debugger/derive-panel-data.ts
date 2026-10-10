@@ -22,6 +22,7 @@ import type {
 	ToolPolicyFeatureTrail,
 	ToolPolicyProvenance,
 } from "@pie-players/pie-assessment-toolkit/policy/engine";
+import { isPlainRecord } from "@pie-players/pie-players-shared/object";
 
 export type ToolPlacementLevel = "section" | "item" | "passage";
 export type PnpEnforcementSelection = "auto" | "on" | "off";
@@ -198,7 +199,7 @@ export function resolvePnpProfile(
 	defaultPnpProfile: unknown,
 	boundAssessment?: unknown,
 ): { profile: unknown; source: string; note: string } {
-	const boundProfile = isRecord(boundAssessment)
+	const boundProfile = isPlainRecord(boundAssessment)
 		? boundAssessment.personalNeedsProfile
 		: undefined;
 	if (boundProfile) {
@@ -226,14 +227,10 @@ export function createSimulatedAssessment(
 	sectionData: PnpPanelInputs["sectionData"],
 	profile: Record<string, unknown>,
 ): Record<string, unknown> {
-	const base = isRecord(boundAssessment)
+	const base = isPlainRecord(boundAssessment)
 		? boundAssessment
 		: { id: sectionData?.id || sectionData?.identifier || "debug-section" };
 	return { ...base, personalNeedsProfile: profile };
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return Boolean(value) && typeof value === "object";
 }
 
 /**
@@ -586,7 +583,7 @@ function collectDiagnostics(
 	const seen = new Set<string>();
 	const out: ToolPolicyDiagnostic[] = [];
 	const add = (diagnostic: ToolPolicyDiagnostic) => {
-		const itemId = isRecord(diagnostic.details)
+		const itemId = isPlainRecord(diagnostic.details)
 			? String(diagnostic.details.itemId ?? "")
 			: "";
 		const key = `${diagnostic.code}\0${diagnostic.toolId}\0${itemId}`;
@@ -608,11 +605,11 @@ function presentPolicyInputs(
 	sectionData: PnpPanelInputs["sectionData"],
 ): string[] {
 	const checked: string[] = [];
-	if (isRecord(assessment)) {
+	if (isPlainRecord(assessment)) {
 		if (assessment.personalNeedsProfile) {
 			checked.push("assessment.personalNeedsProfile");
 		}
-		const settings = isRecord(assessment.settings) ? assessment.settings : {};
+		const settings = isPlainRecord(assessment.settings) ? assessment.settings : {};
 		if (settings.districtPolicy) {
 			checked.push("assessment.settings.districtPolicy");
 		}

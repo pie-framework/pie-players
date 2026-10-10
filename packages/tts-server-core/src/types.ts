@@ -72,13 +72,15 @@ export interface StandardTTSParameters {
 	rate?: number;
 
 	/**
-	 * Pitch adjustment
-	 * - Range: -20 to +20 semitones (or 0 to 2 as multiplier depending on provider)
-	 * - Default: 0 (or 1.0 as multiplier)
-	 * - Negative values = lower pitch, positive = higher pitch
+	 * Pitch multiplier
+	 * - Range: 0 to 2
+	 * - Default: 1.0 (the voice's own pitch)
+	 * - Below 1 = lower pitch, above 1 = higher pitch
 	 *
-	 * @standard W3C Web Speech API, SSML <prosody pitch>
-	 * @note Some providers use semitones (-20 to +20), others use multipliers (0 to 2)
+	 * SSML providers send it as a relative `<prosody pitch>` percentage: 1.2 is
+	 * `+20%`, 0.8 is `-20%`.
+	 *
+	 * @standard W3C Web Speech API (`SpeechSynthesisUtterance.pitch`), SSML <prosody pitch>
 	 */
 	pitch?: number;
 
@@ -309,7 +311,8 @@ export interface ServerProviderCapabilities {
 		supportsSSML: boolean;
 
 		/**
-		 * Supports pitch control via rate parameter or SSML <prosody>
+		 * Applies `SynthesizeRequest.pitch`; a provider without it accepts the
+		 * field and ignores it.
 		 *
 		 * @standard W3C Web Speech API, SSML <prosody pitch>
 		 * @note May be via API parameter or SSML only

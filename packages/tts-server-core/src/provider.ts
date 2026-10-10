@@ -237,10 +237,9 @@ export abstract class BaseTTSProvider implements ITTSServerProvider {
 	 * Build an SSML `<prosody>` attribute string from a request's `rate` /
 	 * `pitch`, or `""` if neither differs from its default. `rate` is the
 	 * standard 0.25–4.0 speed multiplier, mapped straight to `rate` as a
-	 * percentage. `pitch` follows this repo's existing 0–2 multiplier
-	 * convention (the TTS settings UI's `normalizePitch`, matching the Web
-	 * Speech API default of 1.0), converted to SSML's relative percentage
-	 * form: a 1.2 multiplier is `pitch="+20%"`.
+	 * percentage. `pitch` is the Web Speech API's 0–2 multiplier, converted
+	 * to SSML's relative percentage form: a 1.2 multiplier is
+	 * `pitch="+20%"`. Percentages, because Polly takes no semitone form.
 	 */
 	protected buildProsodyAttrs(request: SynthesizeRequest): string {
 		const attrs: string[] = [];
@@ -317,9 +316,9 @@ export abstract class BaseTTSProvider implements ITTSServerProvider {
 
 		if (
 			request.pitch !== undefined &&
-			(request.pitch < -20 || request.pitch > 20)
+			(request.pitch < 0 || request.pitch > 2)
 		) {
-			throw new Error("Pitch must be between -20 and 20");
+			throw new Error("Pitch must be between 0 and 2");
 		}
 
 		if (

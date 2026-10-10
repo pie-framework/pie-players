@@ -495,7 +495,9 @@ policy change it emits. The toolkit announces `runtime-ready`, with
 `{ runtimeId, coordinator, ownership }`, once per coordinator, with or without a
 section. Without one, the coordinator starts at the first item that registers,
 and a host reads its readiness from `coordinator.waitUntilReady()` or
-`isReady()`; `toolkit-ready` and `section-ready` wait for a bound section. The
+`isReady()`; `toolkit-ready` and `section-ready` wait for a bound section, and
+both fire again for every section the toolkit initializes, `toolkit-ready`
+first. A handler that needs the coordinator once guards itself. The
 toolkit emits no stage events: `pie-stage-change` is the section player's. A
 host that holds
 the coordinator from `runtime-ready`, or passes its own as `coordinator`,

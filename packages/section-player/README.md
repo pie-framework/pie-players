@@ -368,7 +368,7 @@ The layout elements (`pie-section-player-splitpane`,
 - `show-toolbar` (boolean-like): accepts `true/false` and common string forms (`"true"`, `"false"`, `"1"`, `"0"`, `"yes"`, `"no"`); default `false`, so tools placed at `section` level render only when it is `true`
 - `locale` (string, optional): BCP-47 locale for the player's own interface text. Unset renders `en-US`.
 - `runtime.contentLanguage` (string, optional, `runtime` only): BCP-47 language of the content where its markup names none, which read-aloud speaks in and picks catalog cards by. A `lang` between the content and its card wins; unset reads `en-US`. `locale` never sets it.
-- `nds-icons` (boolean): opt in to NDS icon buttons.
+- `nds-icons` (boolean): opt in to NDS icon buttons. They render in Font Awesome and Roboto. The players add Font Awesome Free from jsDelivr unless the page links a Font Awesome stylesheet, and the buttons add Roboto from `ui.renaissance.com` unless the page links a stylesheet whose URL contains `Roboto`. That CDN serves the font files to Renaissance origins only, so a page elsewhere links its own Roboto. A page that links Font Awesome Pro keeps the design's Light and Regular weights; without Pro every glyph renders in Solid.
 - `tool-config-strictness` (string, optional): `off|warn|error` for tool-config validation; default `error`.
 - `split-pane-initial-passage-width` (number, optional): splitpane passage pane width in percent at mount. Clamped to 20–80; default 50. Splitpane only.
 - `iife-bundle-host` (string, optional): bundle host for the IIFE element pre-warm when `runtime.player.loaderOptions.bundleHost` is unset.

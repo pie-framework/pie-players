@@ -107,9 +107,9 @@
 	const isBrowser = typeof window !== 'undefined';
 	// FontAwesome comes from the host page when it links any FA stylesheet.
 	// Otherwise the toolbar adds FA Free from jsDelivr. Pro is never fetched from
-	// here: its CSS is served cross-origin from ui.renaissance.com with
-	// CORS-blocked font binaries, so a host that licenses it links it itself, as
-	// section-demos does through its dev proxy.
+	// here: ui.renaissance.com serves its font files to Renaissance origins only,
+	// so a host that licenses it links it itself, as section-demos does through
+	// its dev proxy.
 	//
 	// The NDS bundle renders `fa-light fa-${name}`, a weight only Pro carries.
 	// Free has no `.fa-light` rule and its Regular font lacks the toolbar's and
@@ -117,14 +117,10 @@
 	// Solid, the one Free weight that has them all.
 	const FA_FREE_HREF =
 		'https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.5.2/css/all.min.css';
-	// Pre-inject Roboto from a CORS-enabled origin. The vendored bundle's
-	// connectedCallback ships its own `link[href*="Roboto"]` injection from
-	// ui.renaissance.com, which serves the CSS but blocks cross-origin font
-	// downloads. By installing a Roboto link first, the bundle's
-	// `document.querySelector('link[href*="Roboto"]')` guard short-circuits
-	// and our CORS-clean stylesheet wins.
-	const ROBOTO_HREF =
-		'https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap';
+	// Roboto comes from the vendored button: its connectedCallback links
+	// ui.renaissance.com's Roboto unless the page links a stylesheet whose URL
+	// contains `Roboto`. That CDN serves the font files to Renaissance origins
+	// only, so a host elsewhere links its own.
 	// Matches any FA stylesheet the host page links: `fontawesome.min.css`,
 	// `font-awesome.css`, a `/_fa-pro/` proxy, `fontawesome-free@…`.
 	const FA_HREF_PATTERN = /font.?awesome|fa-?pro/i;
@@ -176,7 +172,6 @@
 	const ensureNdsAssets = () => {
 		if (!isBrowser || ndsAssetsInstalled) return;
 		ndsAssetsInstalled = true;
-		if (!document.querySelector('link[href*="Roboto"]')) appendHeadStylesheet(ROBOTO_HREF);
 		// Only inject our FA stylesheets when the host page hasn't already
 		// loaded one. If we always appended Free, it would land later in the
 		// document cascade than the host's FA Pro and override Pro's
@@ -1019,7 +1014,7 @@
 		};
 	});
 
-	// Prefetch FA + Roboto into document head as soon as we know an NDS icon will
+	// Prefetch FA into document head as soon as we know an NDS icon will
 	// render. The shadow-root injection in `ndsIconButtonAction` clones whatever
 	// <link>s are already on the page; running this first means the prod-host's FA
 	// stylesheet is guaranteed to be present by the time the button mounts. Plain

@@ -139,7 +139,7 @@ Semantics:
    - **Extracted catalogs** (from embedded SSML) - generated before render by hosts that run `SSMLExtractor`
    - **Item-level catalogs** (manually authored)
    - **Assessment-level catalogs** (manually authored)
-   - **Plain text fallback** (browser TTS)
+   - **Generated speech** - MathML speech, else the visible text, on any backend
 5. **Expanded Controls**:
    - The trigger starts, pauses and resumes reading; starting opens the panel
    - The instance owns the service's run its read started (`getRunOwner()`); a read started by anything else, another instance or a selection read, closes its panel

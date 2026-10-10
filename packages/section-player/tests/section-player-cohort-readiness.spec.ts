@@ -93,6 +93,26 @@ const setPlayerAttribute = (page: Page, name: string, value: string) =>
 		[name, value],
 	);
 
+// The kernel's mount tests switch sections only: under happy-dom an attempt-only
+// switch does not reach the toolkit.
+test("a new attempt on a healthy section runs its own stage chain", async ({ page }) => {
+	await mountPlayer(page);
+	await expect.poll(async () => (await events(page)).includes("loading-complete")).toBe(true);
+
+	const from = await eventCount(page);
+	await setPlayerAttribute(page, "attempt-id", "cohort-second-attempt");
+	await expect
+		.poll(async () => (await events(page, from)).includes("loading-complete"), { timeout: 30_000 })
+		.toBe(true);
+	expect(await events(page, from)).toEqual([
+		"disposed:entered",
+		"composed:entered",
+		"engine-ready:entered",
+		"interactive:entered",
+		"loading-complete",
+	]);
+});
+
 test("a new attempt on a section whose element warmup failed fails too", async ({ page }) => {
 	await mountPlayer(page, { section: brokenSection("cohort-first-section") });
 	await untilChainEnds(page);

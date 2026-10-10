@@ -304,7 +304,7 @@ coordinator constructed before mount sees a resolver that appears later or
 changes on rerender. `assessmentToolkitRegionScopeContext`, this PRD's preferred
 ingress, would have coupled resolver lookup to region scope while the provider
 owns the context it hands over. Custom-element hosts reach the same seam through
-the `ttsHighlightTargetResolver` property on `pie-item-shell` and
+the `ttsHighlightTargetResolver` property on `pie-item-scope` and
 `pie-passage-shell`, forwarded through toolkit context. When the provider throws
 or the context is absent, `scopeElement` falls back to the service's current
 content element.

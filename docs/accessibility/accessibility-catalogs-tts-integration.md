@@ -167,39 +167,30 @@ itself during shell registration.
 The TTSService follows this resolution flow:
 
 ```
-┌─────────────────────────────────────────────┐
-│ ttsService.speak(target, { catalogId })     │
-└─────────────────┬───────────────────────────┘
-                  │
-                  ▼
-         ┌────────────────┐
-         │ catalogId      │ NO
-         │ provided?      ├──────► Use plain text
-         └────────┬───────┘
-                  │ YES
-                  ▼
-         ┌────────────────┐
-         │ Check catalog  │
-         │ resolver       │
-         └────────┬───────┘
-                  │
-          ┌───────┴────────┐
-          │                │
-          ▼                ▼
-    ┌──────────────┐  ┌─────────┐
-    │ Spoken card  │  │ Not     │
-    │ with content │  │ found   │
-    └────┬─────────┘  └────┬────┘
-         │                 │
-         ▼                 ▼
-    Use catalog       Use plain text
-    content (SSML)    (fallback)
+┌──────────────────────────────────────────────┐
+│ ttsService.speak(target, { catalogId })      │
+└──────────────────────┬───────────────────────┘
+                       ▼
+     ┌──────────────────────────────────┐  YES
+     │ catalogId names a spoken card    ├──────► Speak the card's
+     │ with content?                    │        content (SSML)
+     └─────────────────┬────────────────┘
+                       │ NO
+                       ▼
+     ┌──────────────────────────────────┐  YES
+     │ target holds data-catalog-idref  ├──────► Compose: each such node's
+     │ nodes with spoken cards?         │        card, visible text between
+     └─────────────────┬────────────────┘
+                       │ NO
+                       ▼
+            Generated speech: MathML
+            speech, else visible text
 ```
 
-"Found" means a `spoken` card that carries a string. A card with no string form —
-a `sign-language` card on the same `data-catalog-idref` node, for instance — is
-not TTS content, and speech falls through to the generated path rather than
-speaking an empty string.
+A `catalogId` card counts only when it is a `spoken` card that carries a string.
+A card with no string form, such as a `sign-language` card on the same
+`data-catalog-idref` node, is not TTS content, and resolution moves to the next
+step rather than speaking an empty string.
 
 **Priority Order:**
 1. Catalogs scoped to the active item/model, including `config.extractedCatalogs`

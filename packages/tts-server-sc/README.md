@@ -164,8 +164,9 @@ const result = await provider.synthesize({
 
 The service serves 29 locales with one default voice each, and exposes no
 endpoint to ask which. `getVoices()` answers from a table transcribed from the
-map the service reads (`src/helpers/voices.js`), so it costs no request and
-works before any credential is configured:
+map the service reads (`src/helpers/voices.js`), so it costs no request. It
+throws until `initialize` has run, which takes the credentials;
+`schoolCityVoices()` below answers without either:
 
 ```ts
 await provider.getVoices();                      // all 29 locales
@@ -182,8 +183,8 @@ A `Voice.id` is the Polly `VoiceId`, which is what `synthesize` takes back as
 `voice`. The service accepts any voice Polly knows; the table names only the
 default per locale, which is what it substitutes when a request omits `voice`.
 
-The same data is available without a provider instance, which is what a route
-serving a picker wants:
+The same data is available without a provider instance or credentials, which
+is what a route serving a picker wants:
 
 ```ts
 import {

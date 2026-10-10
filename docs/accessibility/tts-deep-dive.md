@@ -39,8 +39,8 @@ classes are:
 - `ToolkitCoordinator`, which creates shared services and registers tool
   providers.
 - `ToolProviderRegistry`, which stores providers by tool id.
-- `TTSToolProvider`, which chooses browser, Polly, Google, or generic server
-  backed TTS.
+- `TTSToolProvider`, which chooses the browser or server backend; the server
+  backend's vendor (`polly`, `google` or `custom`) is its `serverProvider`.
 - `TTSService`, which resolves speech content, owns playback state, calls the
   provider, and coordinates highlighting.
 - `AccessibilityCatalogResolver`, which stores scoped spoken alternatives from
@@ -134,8 +134,8 @@ generation. The system reads visible text with the active provider.
    position map to the ranges covering it, one per tree the word spans, and
    `HighlightCoordinator.highlightTTSWord` paints them. Every word target, from
    boundaries, catalog spans or math tokens, takes that one call. The browser
-   provider reports no word boundaries by default, so a browser read highlights
-   sentence by sentence (see Browser Provider).
+   provider defaults to sentence highlighting, so a browser read highlights
+   sentence by sentence unless word mode is configured (see Browser Provider).
 
 ### Browser Provider
 
@@ -145,10 +145,12 @@ The browser provider is direct:
 TTSService -> BrowserTTSProvider -> Web Speech API -> boundary events
 ```
 
-It highlights sentence by sentence by default: its capabilities declare no word
-boundaries, and it drops the engine's word events. `providerOptions.highlightMode:
-"word"` turns word highlighting on, which follows the engine's `onboundary`
-events and is only as accurate as the platform voice reports them.
+It highlights sentence by sentence by default: its capabilities report word
+boundaries with `defaultHighlightMode: "sentence"`, because boundary events
+depend on the voice and several network voices send none, and a sentence-mode
+read takes no word boundaries. `providerOptions.highlightMode: "word"` turns word
+highlighting on, which follows the engine's `onboundary` events and is only as
+accurate as the platform voice reports them.
 
 It does not support SSML. When generated Math speech is used with the browser
 provider, the toolkit sends plain speech text rather than `<speak>...</speak>`.
@@ -236,8 +238,8 @@ interface CatalogCard {
 
 A card carries either `content` or `payload`, decided by `catalog`. TTS only ever
 reads the string form: a resolved card with no `content` (a `sign-language` card,
-for instance) is treated as no catalog at all, and speech falls through to the
-generated path rather than speaking an empty string.
+for instance) is treated as no catalog at all, and resolution continues with the
+next step of the priority above rather than speaking an empty string.
 
 Visible markup points to catalog entries with `data-catalog-idref`:
 

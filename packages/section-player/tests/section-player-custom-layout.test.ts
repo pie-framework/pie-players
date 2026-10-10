@@ -3,9 +3,7 @@
  * the panes read, and the rule that one pane of each kind renders.
  *
  * The helpers run against happy-dom directly, and `<pie-section-player-kernel-host>`
- * registers from source. The toolkit's `components/*-element` entries import
- * their build output, so this file stubs them and registers the toolkit's
- * elements from their `.svelte` sources.
+ * registers from source.
  */
 
 import { GlobalRegistrator } from "@happy-dom/global-registrator";
@@ -15,12 +13,13 @@ import {
 	beforeAll,
 	describe,
 	expect,
-	mock,
 	test,
 } from "bun:test";
 
-const ownsDom = typeof window === "undefined";
-if (ownsDom) GlobalRegistrator.register();
+// Mounts register custom elements on this window, and bun runs every test file in
+// one process with a shared module cache: another file mounting the same
+// elements finds them defined here, so the DOM stays registered for the process.
+if (typeof window === "undefined") GlobalRegistrator.register();
 
 const { attachKernelHostDefaultBody } = await import(
 	"../src/components/shared/kernel-host-default-body.js"
@@ -36,30 +35,10 @@ const { getHostElementFromAnchor } = await import(
 const { isOwnSectionPlayerEvent } = await import(
 	"../src/components/shared/section-player-own-event.js"
 );
-const toolkitComponents = new URL(
-	"../../assessment-toolkit/src/components/",
-	import.meta.url,
-);
-const TOOLKIT_ELEMENTS = {
-	"item-scope-element": "ItemScope",
-	"item-toolbar-element": "ItemToolBar",
-	"pie-assessment-toolkit-element": "PieAssessmentToolkit",
-	"section-toolbar-element": "SectionToolBar",
-};
-for (const entry of Object.keys(TOOLKIT_ELEMENTS)) {
-	mock.module(new URL(`${entry}.ts`, toolkitComponents).pathname, () => ({}));
-}
-for (const component of Object.values(TOOLKIT_ELEMENTS)) {
-	await import(new URL(`${component}.svelte`, toolkitComponents).pathname);
-}
 await import("../src/components/PieSectionPlayerKernelHostElement.svelte");
 
 type LayoutContext =
 	import("../src/components/shared/section-player-layout-context.js").SectionPlayerLayoutContext;
-
-afterAll(() => {
-	if (ownsDom && GlobalRegistrator.isRegistered) GlobalRegistrator.unregister();
-});
 
 afterEach(() => {
 	document.body.replaceChildren();

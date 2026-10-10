@@ -36,9 +36,14 @@ item payloads still use `config.markup`, `config.elements`, and
 **Solution - Add SSML with breaks:**
 ```json
 {
-  "prompt": "<speak><prosody rate=\"medium\">Question 1: Method Selection<break time=\"300ms\"/></prosody>Based on the passage, which method...</speak>"
+  "prompt": "<div><speak><prosody rate=\"medium\">Question 1: Method Selection<break time=\"300ms\"/></prosody>Based on the passage, which method...</speak><h3>Question 1: Method Selection</h3><p>Based on the passage, which method...</p></div>"
 }
 ```
+
+Inline `<speak>` reaches TTS only through `SSMLExtractor` preprocessing, and only
+inside an element that holds the visible content it speaks, the `<div>` here
+(see [Method 1](#method-1-inline-ssml-preprocessed-extraction)). Without that
+preprocessing, author the SSML as a `spoken` catalog card (Method 2).
 
 **How it sounds:** "Question one: Method Selection. *[pause]* Based on the passage..."
 

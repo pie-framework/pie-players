@@ -160,8 +160,8 @@ point: the inline tool, the annotation toolbar and any host call.
 The **content language** is the first of:
 
 1. the nearest `lang` attribute between the content and its player shell;
-2. the language the read names: the tool's `language` attribute, else the
-   toolkit's `content-language` input;
+2. the language the read names, which the inline tool and the annotation
+   toolbar take from the toolkit's `content-language` input;
 3. `providerOptions.lang_id`, which a host pins for the custom transport.
 
 A host names the language of content whose markup carries none through the

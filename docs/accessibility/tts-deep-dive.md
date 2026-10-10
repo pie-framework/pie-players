@@ -169,6 +169,11 @@ For the standard PIE transport, the host route returns audio plus speech marks.
 For custom transports such as SchoolCity-style integrations, the provider can
 fetch URL-based audio and word mark assets with origin/SSRF protections.
 
+Server reads highlight words, and a response that carries no speech marks
+highlights the sentence it voices instead. The choice is per response, so an
+explicit `providerOptions.highlightMode: "word"` keeps word highlighting where
+marks arrive and falls back to sentences where they do not.
+
 ### Pause, Stop And Media
 
 A pause or stop holds from the moment a read starts loading. `pause()` while the

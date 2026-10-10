@@ -266,6 +266,62 @@ describe("a pause between the parts of a run", () => {
 	});
 });
 
+describe("a seek restart", () => {
+	const threeSentences: TTSSpeechSegment[] = [
+		{ text: "First.", startOffset: 0, pauseMsAfter: 0 },
+		{ text: "Second.", startOffset: 7, pauseMsAfter: 0 },
+		{ text: "Third.", startOffset: 15, pauseMsAfter: 0 },
+	];
+
+	const seekingService = async () => {
+		const { impl, service } = await newService();
+		usePlan(service, threeSentences);
+		impl.holdSpeech = true;
+		const playback = service.speak(contentWith("First. Second. Third."));
+		await waitFor(() => impl.speakCalls.length === 1);
+		const states: PlaybackState[] = [];
+		service.onStateChange((state) => states.push(state));
+		return { impl, service, playback, states };
+	};
+
+	test("a stop ends it quietly, without an error state", async () => {
+		const { impl, service, playback, states } = await seekingService();
+		const errors = spyOn(console, "error").mockImplementation(() => {});
+		try {
+			const seek = service.seekForward();
+			await waitFor(() => impl.speakCalls.length === 2);
+
+			service.stop();
+			await seek;
+			await playback;
+
+			expect(impl.speakCalls).toEqual(["First.", "Second."]);
+			expect(states).not.toContain(PlaybackState.ERROR);
+			expect(service.getState()).toBe(PlaybackState.IDLE);
+			expect(errors).not.toHaveBeenCalled();
+		} finally {
+			errors.mockRestore();
+		}
+	});
+
+	test("a newer seek supersedes it quietly and reads on", async () => {
+		const { impl, service, playback, states } = await seekingService();
+		const firstSeek = service.seekForward();
+		await waitFor(() => impl.speakCalls.length === 2);
+
+		const secondSeek = service.seekForward();
+		await waitFor(() => impl.speakCalls.length === 3);
+		await firstSeek;
+		impl.finish();
+		await secondSeek;
+		await playback;
+
+		expect(impl.speakCalls).toEqual(["First.", "Second.", "Third."]);
+		expect(states).not.toContain(PlaybackState.ERROR);
+		expect(service.getState()).toBe(PlaybackState.IDLE);
+	});
+});
+
 describe("a pause or stop while the read loads", () => {
 	/** A service whose provider starts when the test opens its readiness gate. */
 	const gatedService = () => {

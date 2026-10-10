@@ -37,8 +37,8 @@ the highlight coordinator and the toolkit coordinator, and the shell supplies th
 content to read. Section players provide both; around a plain item player, the
 host writes the toolkit and the scope. The packaged
 `textToSpeech` capability in `@pie-players/pie-default-tool-loaders` creates
-this element in item and passage toolbars, takes `catalog-id`, `language` and
-`size` from the toolbar, and takes `layout-mode`, `speedOptions` and
+this element in item and passage toolbars, takes `catalog-id` and `size` from
+the toolbar, and takes `layout-mode`, `speedOptions` and
 `showSingleSpeedOption` from the toolkit's `textToSpeech` tool configuration.
 
 ```javascript
@@ -74,9 +74,6 @@ passageHeader.append(ttsButton);
 ### HTML Attributes
 
 - `catalog-id` - QTI 3.0 accessibility catalog ID for SSML lookup (default: `''`)
-- `language` - The content language when the markup names none (default: `''`,
-  which falls back to the toolkit's `content-language`). A `lang` attribute
-  between the reading target and its shell wins over it.
 - `size` - Icon size: `'sm'` (1.5rem), `'md'` (2rem), or `'lg'` (2.5rem) (default: `'md'`)
 - `layout-mode` - Panel placement (default: `'left-aligned'`). `'reserved-row'`
   and `'expanding-row'` drop the panel below the trigger; in the packaged toolbar
@@ -137,7 +134,7 @@ Semantics:
 
 1. **Services**: Reads `ttsService`, `highlightCoordinator` and `toolkitCoordinator` from the toolkit runtime context; the controls stay disabled until a `ttsService` arrives. A read started before the service is ready waits on the service's readiness gate, and a failure there announces that text-to-speech could not initialize
 2. **Text Extraction**: Reads the text of the scope element's content region (the region scope, else the shell scope, when it is `[data-region='content']`, else its first `[data-region='content']` descendant, else the scope element itself), including text rendered into open shadow roots
-3. **TTS Trigger**: Calls `ttsService.speak(readingTarget, { ownerId, rate, catalogId, catalogContext, language })`, where `ownerId` names this instance, `rate` is the selected speed, `catalogContext` names the owning item or passage and `language` is the `language` attribute, else the toolkit's `content-language`. The service decides whether anything is speakable, cards included; a read that settles without playing closes the panel and announces that there is nothing to read. `speak` resolves the read's language from it as [TTS language](../../docs/architecture/internationalization.md#tts-language) sets out
+3. **TTS Trigger**: Calls `ttsService.speak(readingTarget, { ownerId, rate, catalogId, catalogContext, language })`, where `ownerId` names this instance, `rate` is the selected speed, `catalogContext` names the owning item or passage and `language` is the toolkit's `content-language`. The service decides whether anything is speakable, cards included; a read that settles without playing closes the panel and announces that there is nothing to read. `speak` resolves the read's language from it as [TTS language](../../docs/architecture/internationalization.md#tts-language) sets out
 4. **Catalog Resolution**: TTSService checks for SSML in accessibility catalogs (priority order):
    - **Extracted catalogs** (from embedded SSML) - generated before render by hosts that run `SSMLExtractor`
    - **Item-level catalogs** (manually authored)

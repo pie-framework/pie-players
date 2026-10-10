@@ -280,6 +280,19 @@ resolved inputs or the policy-engine subpath. Host R re-reads its feature
 decisions on every `onPolicyChange`, which now also fires on such a registration,
 and its PNP debugger mount keeps its props. Row verification dates are unchanged.
 
+Also on 2026-10-09 a provider's `onPlaybackStart` takes an optional
+`TTSPlaybackStart` from `pie-tts`, saying whether the audio that started carries
+word boundaries, and a server response without speech marks highlights by
+sentence. `<pie-tool-tts-inline>` lost its `language` property and speaks the
+runtime context's content language, as the annotation toolbar's read-aloud does.
+`PollyServerProvider` and `GoogleCloudTTSProvider` gained a protected
+`createClient`. Checked against the checkouts of Hosts A, M, P, R and V, each
+scan reaching `@pie-players` imports, and Host P's feature branches: no host
+implements a TTS provider, sets `language` on the inline tool or a toolbar, or
+subclasses a server provider. Host A declares `tts-server-polly` and imports
+nothing from it, and Host R's inline-tool mounts set no language. Row
+verification dates are unchanged.
+
 Also on 2026-10-09 the section-player layouts' `element-preload-retry` and
 `element-preload-error` events started bubbling and crossing shadow boundaries,
 as the player's other events do; they were dispatched on the layout element

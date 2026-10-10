@@ -4,7 +4,6 @@
 		shadow: 'open',
 		props: {
 			catalogId: { type: 'String', attribute: 'catalog-id' },
-			language: { type: 'String', attribute: 'language' },
 			size: { type: 'String', attribute: 'size' },
 			speedOptions: { type: 'Array', attribute: 'speed-options' },
 			showSingleSpeedOption: { type: 'Boolean', attribute: 'show-single-speed-option' },
@@ -44,20 +43,18 @@
 	// externalized by this package's Vite build, so the bundle is inlined here.
 	import '@pie-players/pie-players-shared/nds-icon-button';
 	import { resolveInterfaceI18n } from '@pie-players/pie-players-shared/i18n/provider';
+	import { createPieLogger, isTtsDebugEnabled } from '@pie-players/pie-players-shared/pie';
+
+	const logger = createPieLogger('tts-inline', isTtsDebugEnabled);
 
 	let {
 		catalogId = '', // Explicit catalog ID
-		// The host's content language for this reading, when it names one, else the
-		// toolkit's `content-language`. The service resolves the read's language:
-		// markup `lang` inside the shell wins over both.
-		language = '',
 		size = 'md' as 'sm' | 'md' | 'lg',
 		speedOptions = undefined,
 		showSingleSpeedOption = false,
 		layoutMode = 'left-aligned' as TTSLayoutMode
 	}: {
 		catalogId?: string;
-		language?: string;
 		size?: 'sm' | 'md' | 'lg';
 		speedOptions?: TTSSpeedOption[];
 		showSingleSpeedOption?: boolean;
@@ -614,10 +611,7 @@
 
 	// A start failure is reported by the toolkit's text-to-speech start.
 	function reportPlaybackFailure(error: unknown): void {
-		if (isTTSStartFailure(error)) {
-			console.error('[TTS Inline] Speech could not start:', error);
-			return;
-		}
+		if (isTTSStartFailure(error)) return;
 		reportToolFailure(runtimeContext?.toolkitCoordinator, 'textToSpeech', 'tool-playback', error);
 	}
 
@@ -628,7 +622,7 @@
 		if (!service) return;
 		const readingTarget = resolveReadingTarget();
 		if (!readingTarget) {
-			console.warn('[TTS Inline] No target container found from shell scope context');
+			logger.debug('No target container found from shell scope context');
 			return;
 		}
 		const attempt = ++startAttempt;
@@ -647,7 +641,7 @@
 				rate: playbackRate,
 				catalogId: catalogId || undefined,
 				catalogContext: resolveCatalogContext(),
-				language: language || runtimeContext?.contentLanguage || undefined,
+				language: runtimeContext?.contentLanguage || undefined,
 			});
 		} catch (error) {
 			read = Promise.reject(error);

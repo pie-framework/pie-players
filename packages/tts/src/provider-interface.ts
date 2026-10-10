@@ -164,14 +164,29 @@ export interface ITTSProviderImplementation {
 	 * Playback-start callback (optional).
 	 * Providers that expose it call it only when native/media playback actually
 	 * begins, allowing service state and highlighting to follow audible playback.
+	 * A provider that knows whether this playback sends word boundaries passes
+	 * {@link TTSPlaybackStart}; called without it, the toolkit assumes it does
+	 * when the capabilities say so.
 	 */
-	onPlaybackStart?: () => void;
+	onPlaybackStart?: (playback?: TTSPlaybackStart) => void;
 
 	/**
 	 * Word boundary callback (optional)
 	 * Called during speech for word highlighting
 	 */
 	onWordBoundary?: (word: string, position: number, length?: number) => void;
+}
+
+/**
+ * What a provider knows about one playback when it starts.
+ */
+export interface TTSPlaybackStart {
+	/**
+	 * Whether this playback sends word boundaries. False for a server response
+	 * that carries no speech marks: the toolkit then highlights the sentence
+	 * being read, whatever highlight mode is configured.
+	 */
+	wordBoundaries: boolean;
 }
 
 /**
@@ -189,7 +204,10 @@ export interface TTSSpeechSegment {
  */
 export interface TTSProviderCapabilities {
 	/**
-	 * Sends word boundary events for highlighting
+	 * Sends word boundary events for highlighting. A provider whose boundaries
+	 * depend on the response, such as a server returning speech marks or not,
+	 * reports each playback's at its start through
+	 * {@link ITTSProviderImplementation.onPlaybackStart}.
 	 */
 	supportsWordBoundary: boolean;
 

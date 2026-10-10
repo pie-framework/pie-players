@@ -336,7 +336,7 @@ When implementing TTS highlighting:
 
 - Browser adapter sentence chunking uses `Intl.Segmenter` (`granularity: "sentence"`) when available.
 - Browser highlighting defaults to sentence-level for stability.
-- Server-backed providers that return speech marks keep word-level highlighting.
+- Server-backed providers that return speech marks keep word-level highlighting; a response without marks highlights its sentence, word mode included.
 - Fallback behavior remains regex-based for environments without `Intl.Segmenter`.
 - Locale is threaded through TTS settings into both text-processing and browser segmentation.
 
@@ -393,7 +393,9 @@ export class MyTTSProvider implements ITTSProvider {
 `onPlaybackStart` is optional, but providers that expose it must call it from
 the native or media playback-start event—not when speech is merely queued. The
 toolkit uses that signal to move into playing state and begin highlighting only
-when output has actually started.
+when output has actually started. A provider whose word boundaries depend on the
+response passes `{ wordBoundaries }` (`TTSPlaybackStart`): with `false`, the
+toolkit highlights the sentence being read, word highlight mode included.
 
 `updateSettings` is required: the toolkit sends rate, pitch and voice changes
 through it, and each read's content language

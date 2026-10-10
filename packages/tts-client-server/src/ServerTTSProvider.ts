@@ -11,6 +11,7 @@ import type {
 	ITTSProviderImplementation,
 	SpeedRateBucket,
 	TTSConfig,
+	TTSPlaybackStart,
 	TTSProviderCapabilities,
 	TTSProviderOptions,
 } from "@pie-players/pie-tts";
@@ -639,7 +640,7 @@ class ServerTTSProviderImpl implements ITTSProviderImplementation {
 	private synthesisRunId = 0;
 	private readonly telemetryReporter: TelemetryReporter | undefined;
 
-	public onPlaybackStart?: () => void;
+	public onPlaybackStart?: (playback?: TTSPlaybackStart) => void;
 	public onWordBoundary?: (
 		word: string,
 		position: number,
@@ -722,7 +723,9 @@ class ServerTTSProviderImpl implements ITTSProviderImplementation {
 				if (superseded()) return;
 				this.pausedState = false;
 				try {
-					this.onPlaybackStart?.();
+					this.onPlaybackStart?.({
+						wordBoundaries: this.wordTimings.length > 0,
+					});
 				} catch (error) {
 					logger.warn("playback-start callback failed:", error);
 				}
@@ -1335,7 +1338,8 @@ export class ServerTTSProvider implements ITTSProvider {
 	getCapabilities(): TTSProviderCapabilities {
 		const mode = this.config ? resolveTransportMode(this.config) : "pie";
 		return {
-			// Word boundaries come from the server's speech marks.
+			// Word boundaries come from the server's speech marks; a response
+			// without them reports so at its playback start.
 			supportsWordBoundary: true,
 			supportsSSML: resolveSupportsSSML(this.config),
 			maxTextLength: MAX_TEXT_LENGTH_BY_MODE[mode],

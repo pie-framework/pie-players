@@ -51,7 +51,7 @@
 		"@pie-players/tts-server-google": "workspace:*",
 		"@pie-players/tts-server-polly": "workspace:*",
 		"@pie-players/tts-server-sc": "workspace:*",
-		"dotenv": "^18.0.4"
+		"dotenv": "^18.0.6"
 	},
 	"devDependencies": {
 		"@playwright/test": "^1.63.0",

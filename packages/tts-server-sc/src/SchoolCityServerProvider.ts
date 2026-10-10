@@ -154,13 +154,18 @@ const ipv4BareToDotted = (hostname: string): string | null => {
 
 const normalizeHostnameForSafetyCheck = (hostname: string): string => {
 	let host = hostname.replace(/^\[|\]$/g, "").replace(/\.$/, "");
-	// Unmap IPv4-in-IPv6 (e.g. `::ffff:127.0.0.1` / `::ffff:7f00:1`).
-	const mapped = host.match(/^::ffff:([0-9a-f.]+)$/i);
+	// Unmap IPv4-in-IPv6. The URL parser serialises `::ffff:127.0.0.1` as
+	// `::ffff:7f00:1`, so a parsed hostname carries the hex form.
+	const mapped = host.match(
+		/^::ffff:(?:(\d+\.\d+\.\d+\.\d+)|([0-9a-f]{1,4}):([0-9a-f]{1,4}))$/i,
+	);
 	if (mapped) {
-		const inner = mapped[1];
-		if (/^\d+\.\d+\.\d+\.\d+$/.test(inner)) {
-			host = inner;
-		}
+		const [, dotted, high, low] = mapped;
+		if (dotted) return dotted;
+		const words = [Number.parseInt(high, 16), Number.parseInt(low, 16)];
+		host = words
+			.flatMap((word) => [(word >>> 8) & 0xff, word & 0xff])
+			.join(".");
 	}
 	return host;
 };

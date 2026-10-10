@@ -131,6 +131,7 @@ test("a browser apply replaces the fields a server backend set", async () => {
 		updateToolConfig: (_toolId: string, update: Record<string, unknown>) => {
 			updates.push(update);
 		},
+		ensureTTSReady: async () => {},
 	};
 	document.body.append(panel);
 	await settle();
@@ -154,17 +155,34 @@ test("a browser apply replaces the fields a server backend set", async () => {
 test("a server backend opens the tab of its server provider", async () => {
 	// Settings an earlier apply persisted would win over the coordinator's.
 	window.localStorage.clear();
+	const voiceRequests: string[] = [];
+	const savedFetch = globalThis.fetch;
+	globalThis.fetch = (async (input: RequestInfo | URL) => {
+		voiceRequests.push(String(input));
+		return new Response(JSON.stringify({ voices: [] }), { status: 200 });
+	}) as typeof fetch;
 	const panel = document.createElement(
 		"pie-section-player-tools-tts-settings",
-	) as HTMLElement & { toolkitCoordinator: unknown; adapters: unknown };
-	panel.adapters = { fetchGoogleVoices: async () => [] };
+	) as HTMLElement & { toolkitCoordinator: unknown; apiEndpoint: string };
+	// The panel resolves voice URLs against the page origin, which is "null" in a
+	// fresh happy-dom window.
+	(window as any).happyDOM.setURL("http://tts.test/");
+	panel.apiEndpoint = "http://tts.test/api/tts";
 	panel.toolkitCoordinator = {
 		getToolConfig: () => ({ backend: "server", serverProvider: "google" }),
 		updateToolConfig: () => {},
+		ensureTTSReady: async () => {},
 	};
-	document.body.append(panel);
-	await settle();
-	await settle();
+	try {
+		document.body.append(panel);
+		await settle();
+		await settle();
+	} finally {
+		globalThis.fetch = savedFetch;
+	}
+
+	expect(voiceRequests).toHaveLength(1);
+	expect(voiceRequests[0]).toStartWith("http://tts.test/api/tts/google/voices");
 
 	const pressed = Array.from(
 		panel.querySelectorAll<HTMLButtonElement>(".pie-tts-tabs button"),

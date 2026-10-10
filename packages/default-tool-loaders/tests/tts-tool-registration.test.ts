@@ -586,11 +586,9 @@ describe("ttsToolRegistration content language", () => {
 		};
 	};
 
-	test("passes a language the toolbar names", () => {
-		expect(renderWithLanguage("es-MX").getAttribute("language")).toBe("es-MX");
-	});
-
-	test("names no language when the toolbar names none", () => {
+	// A read takes the toolkit's `content-language`, as a selection read does.
+	test("names no language on the control, whatever the toolbar names", () => {
+		expect(renderWithLanguage("es-MX").getAttribute("language")).toBeNull();
 		expect(renderWithLanguage(undefined).getAttribute("language")).toBeNull();
 	});
 });

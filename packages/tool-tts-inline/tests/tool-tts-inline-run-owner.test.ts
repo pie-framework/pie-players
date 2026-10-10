@@ -1,5 +1,5 @@
 import { GlobalRegistrator } from "@happy-dom/global-registrator";
-import { afterEach, expect, test } from "bun:test";
+import { afterEach, expect, spyOn, test } from "bun:test";
 
 const ownsDom = typeof window === "undefined";
 if (ownsDom) GlobalRegistrator.register();
@@ -65,16 +65,21 @@ async function readyService(): Promise<{ service: Service; impl: HeldImpl }> {
 	return { service, impl };
 }
 
-function mount(service: Service, content: string, catalogId?: string) {
+function mount(
+	service: Service,
+	content: string,
+	catalogId?: string,
+	runtimeFields: Record<string, unknown> = {},
+) {
 	const wrapper = document.createElement("div");
 	const scope = document.createElement("div");
 	scope.innerHTML = content;
 	wrapper.append(scope);
-	const runtime = { ttsService: service };
+	const runtime = { ttsService: service, ...runtimeFields };
 	const shell = {
 		kind: "item",
 		itemId: "item-1",
-		canonicalItemId: "item-1",
+		canonicalItemId: "item-1-canonical",
 		contentKind: "item",
 		regionPolicy: "default",
 		scopeElement: scope,
@@ -148,6 +153,74 @@ test("a read carries the instance as owner, the selected rate and the catalog id
 	expect(impl.speakCalls).toEqual(["Read this passage aloud."]);
 	expect(panelOpen(element)).toBe(true);
 	expect(status(element)).toBe("Reading started");
+	impl.finish();
+});
+
+test("a read names the content language and the shell's catalog context", async () => {
+	const { service, impl } = await readyService();
+	const speak = service.speak.bind(service);
+	const calls: Array<Record<string, unknown>> = [];
+	service.speak = (target, options) => {
+		calls.push({ ...options });
+		return speak(target, options);
+	};
+	const element = mount(service, "<p>Read this passage aloud.</p>", undefined, {
+		contentLanguage: "es-MX",
+		assessmentId: "assessment-1",
+		sectionId: "section-1",
+	});
+
+	await play(element);
+
+	expect(calls).toHaveLength(1);
+	expect(calls[0].language).toBe("es-MX");
+	expect(calls[0].catalogContext).toEqual({
+		ownerKind: "itemModel",
+		assessmentId: "assessment-1",
+		sectionId: "section-1",
+		itemId: "item-1",
+		canonicalItemId: "item-1-canonical",
+	});
+	impl.finish();
+});
+
+test("a read without a content language names none", async () => {
+	const { service, impl } = await readyService();
+	const speak = service.speak.bind(service);
+	const calls: Array<Record<string, unknown>> = [];
+	service.speak = (target, options) => {
+		calls.push({ ...options });
+		return speak(target, options);
+	};
+	const element = mount(service, "<p>Read this passage aloud.</p>");
+
+	await play(element);
+
+	expect(calls).toHaveLength(1);
+	expect(calls[0].language).toBeUndefined();
+	impl.finish();
+});
+
+test("activating the trigger again while a read starts starts no second read", async () => {
+	const { service, impl } = await readyService();
+	const speak = service.speak.bind(service);
+	let speakCount = 0;
+	service.speak = (target, options) => {
+		speakCount += 1;
+		return speak(target, options);
+	};
+	const element = mount(service, "<p>Read this passage aloud.</p>");
+	await settle();
+
+	trigger(element).click();
+	trigger(element).click();
+	trigger(element).click();
+	await settle();
+
+	expect(speakCount).toBe(1);
+	expect(impl.speakCalls).toEqual(["Read this passage aloud."]);
+	expect(service.getState()).toBe("playing");
+	expect(panelOpen(element)).toBe(true);
 	impl.finish();
 });
 
@@ -270,6 +343,45 @@ test("stop during a read closes the panel and keeps the stop announcement", asyn
 	expect(impl.speaking).toBe(false);
 });
 
+const focusStopAndClick = async (element: Element) => {
+	const stop = element.shadowRoot?.querySelector(
+		"[data-pie-tts-stop]",
+	) as HTMLButtonElement;
+	stop.focus();
+	expect(element.shadowRoot?.activeElement).toBe(stop);
+	stop.click();
+	await settle();
+};
+const triggerFocused = (element: Element) =>
+	element.shadowRoot?.activeElement ===
+	(trigger(element).querySelector("button") ?? trigger(element));
+
+test("stop during a read hands focus from the panel back to the trigger", async () => {
+	const { service, impl } = await readyService();
+	const element = mount(service, "<p>Read this passage aloud.</p>");
+	await play(element);
+
+	await focusStopAndClick(element);
+
+	expect(panelOpen(element)).toBe(false);
+	expect(triggerFocused(element)).toBe(true);
+	expect(impl.speaking).toBe(false);
+});
+
+test("stop after a read ended hands focus from the panel back to the trigger", async () => {
+	const { service, impl } = await readyService();
+	const element = mount(service, "<p>Read this passage aloud.</p>");
+	await play(element);
+	impl.finish();
+	await settle();
+	expect(panelOpen(element)).toBe(true);
+
+	await focusStopAndClick(element);
+
+	expect(panelOpen(element)).toBe(false);
+	expect(triggerFocused(element)).toBe(true);
+});
+
 test("a provider failure announces that reading could not start", async () => {
 	const { service, impl } = await readyService();
 	impl.speak = async () => {
@@ -281,6 +393,59 @@ test("a provider failure announces that reading could not start", async () => {
 
 	expect(panelOpen(element)).toBe(false);
 	expect(status(element)).toBe("Unable to start reading");
+});
+
+const failureRecorder = () => {
+	const failures: Array<{ toolId: string; phase: string; error: unknown }> = [];
+	const toolkitCoordinator = {
+		reportToolFailure: (toolId: string, phase: string, error: unknown) => {
+			failures.push({ toolId, phase, error });
+		},
+	};
+	return { failures, toolkitCoordinator };
+};
+
+test("a provider failure is reported to the toolkit as the speech tool's", async () => {
+	const { service, impl } = await readyService();
+	impl.speak = async () => {
+		throw new Error("synthesis failed");
+	};
+	const { failures, toolkitCoordinator } = failureRecorder();
+	const element = mount(service, "<p>Read this passage aloud.</p>", undefined, {
+		toolkitCoordinator,
+	});
+
+	await play(element);
+
+	expect(failures.map(({ toolId, phase }) => [toolId, phase])).toEqual([
+		["textToSpeech", "tool-playback"],
+	]);
+	expect(String(failures[0].error)).toContain("synthesis failed");
+});
+
+test("a start failure is left to the toolkit's start and logs nothing", async () => {
+	const service = new TTSService();
+	service.setReadinessGate(() => Promise.reject(new Error("provider down")));
+	const { failures, toolkitCoordinator } = failureRecorder();
+	const consoleError = spyOn(console, "error").mockImplementation(() => {});
+	const consoleWarn = spyOn(console, "warn").mockImplementation(() => {});
+	try {
+		const element = mount(service, "<p>Read this passage aloud.</p>", undefined, {
+			toolkitCoordinator,
+		});
+
+		await play(element);
+
+		expect(status(element)).toBe(
+			"Unable to initialize text-to-speech. Try again.",
+		);
+		expect(failures).toEqual([]);
+		expect(consoleError).not.toHaveBeenCalled();
+		expect(consoleWarn).not.toHaveBeenCalled();
+	} finally {
+		consoleError.mockRestore();
+		consoleWarn.mockRestore();
+	}
 });
 
 test("a host stop closes the open panel and announces the stop", async () => {

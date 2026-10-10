@@ -11,6 +11,7 @@ export type {
 	SpeedRateBucket,
 	TTSSpeechSegment,
 	TTSConfig,
+	TTSPlaybackStart,
 	TTSProviderCapabilities,
 	TTSProviderOptions,
 } from "./provider-interface.js";

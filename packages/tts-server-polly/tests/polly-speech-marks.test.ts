@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { PollyServerProvider } from "../src/PollyServerProvider.js";
+import { pollyWithClient } from "./fake-polly-client.js";
 
 const SPANISH = "La canción está aquí, señor. Él comió más pan después.";
 const encoder = new TextEncoder();
@@ -31,13 +31,11 @@ const fakePollyClient = () => ({
 });
 
 const synthesize = async (rate?: number) => {
-	const provider = new PollyServerProvider();
+	const provider = pollyWithClient(fakePollyClient());
 	await provider.initialize({
 		region: "us-east-1",
 		credentials: { accessKeyId: "test", secretAccessKey: "test" },
 	});
-	// Stands in for the AWS client, so no request leaves the test.
-	(provider as unknown as { client: unknown }).client = fakePollyClient();
 	return await provider.synthesize({ text: SPANISH, voice: "Lupe", rate });
 };
 

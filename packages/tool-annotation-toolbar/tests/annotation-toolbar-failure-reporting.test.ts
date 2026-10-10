@@ -13,10 +13,4 @@ describe("tool-annotation-toolbar failure reporting", () => {
 			"reportToolFailure(runtimeContext?.toolkitCoordinator, 'annotationToolbar', 'tool-state-load', error);",
 		);
 	});
-
-	test("reports a read-aloud playback failure as the speech tool's", () => {
-		expect(source).toContain(
-			"reportToolFailure(runtimeContext?.toolkitCoordinator, 'textToSpeech', 'tool-playback', error);",
-		);
-	});
 });

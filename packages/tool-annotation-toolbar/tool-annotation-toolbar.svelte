@@ -679,8 +679,8 @@
 				catalogContext: catalogContextHolding(selectedRange.startContainer, runtimeContext)
 			});
 		} catch (error) {
+			// The toolkit reports a start failure; the strip only announces it.
 			if (isTTSStartFailure(error)) {
-				console.error('[AnnotationToolbar] Speech could not start:', error);
 				announce(interfaceI18n.t('tools.textToSpeech.initFailed'), 5000);
 			} else {
 				reportToolFailure(runtimeContext?.toolkitCoordinator, 'textToSpeech', 'tool-playback', error);

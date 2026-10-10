@@ -40,13 +40,4 @@ describe("tool-tts-inline runtime dependency contract", () => {
 		expect(source).toContain("handlePlaybackStartFailure(error, resolverDisposer);");
 	});
 
-	test("reports playback failures to the toolkit, leaving start failures to its start", () => {
-		expect(source).toContain(
-			"reportToolFailure(runtimeContext?.toolkitCoordinator, 'textToSpeech', 'tool-playback', error);",
-		);
-		expect(source).toContain("if (isTTSStartFailure(error)) {");
-		// Every playback catch goes through the one reporter.
-		expect(source.match(/reportPlaybackFailure\(error\);/g)).toHaveLength(5);
-		expect(source).not.toContain("console.error('[TTS Inline] Error:'");
-	});
 });

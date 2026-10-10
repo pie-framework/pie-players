@@ -422,32 +422,54 @@ export class HighlightCoordinator implements HighlightCoordinatorApi {
 		this.setupThemeObservation();
 	}
 
+	/**
+	 * Re-adapt the TTS colors when the page's theme moves: on the document
+	 * element, on a `<pie-theme>` host, and when a `<pie-theme>` mounts, which
+	 * themes its target as it connects.
+	 */
 	private setupThemeObservation(): void {
 		if (typeof document === "undefined") return;
 		if (typeof MutationObserver === "undefined") return;
 
-		const refresh = () => this.applyAdaptiveTTSStyle();
-		this.themeObserver = new MutationObserver(refresh);
+		const themeHosts = document.getElementsByTagName("pie-theme");
+		const observedHosts = new WeakSet<Element>();
+		const observeNewHosts = (): boolean => {
+			let found = false;
+			for (const host of themeHosts) {
+				if (observedHosts.has(host)) continue;
+				observedHosts.add(host);
+				observer.observe(host, {
+					attributes: true,
+					attributeFilter: [
+						"theme",
+						"scheme",
+						"provider",
+						"variables",
+						"style",
+						"data-theme",
+						"data-color-scheme",
+					],
+				});
+				found = true;
+			}
+			return found;
+		};
+		const observer = new MutationObserver((records) => {
+			const mounted = observeNewHosts();
+			if (mounted || records.some((record) => record.type === "attributes")) {
+				this.applyAdaptiveTTSStyle();
+			}
+		});
+		this.themeObserver = observer;
 
-		this.themeObserver.observe(document.documentElement, {
+		observer.observe(document.documentElement, {
 			attributes: true,
 			attributeFilter: ["style", "data-theme", "data-color-scheme", "class"],
 		});
-
-		for (const host of document.querySelectorAll("pie-theme")) {
-			this.themeObserver.observe(host, {
-				attributes: true,
-				attributeFilter: [
-					"theme",
-					"scheme",
-					"provider",
-					"variables",
-					"style",
-					"data-theme",
-					"data-color-scheme",
-				],
-			});
-		}
+		// Insertions, so a `<pie-theme>` mounted later is found. An insertion
+		// costs a walk of the live host list, which holds a handful at most.
+		observer.observe(document, { childList: true, subtree: true });
+		observeNewHosts();
 	}
 
 	private parseColor(

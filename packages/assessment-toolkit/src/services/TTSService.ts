@@ -20,6 +20,7 @@ import type {
 	ITTSProvider,
 	ITTSProviderImplementation,
 	TTSConfig,
+	TTSPlaybackStart,
 	TTSSpeechSegment,
 } from "@pie-players/pie-tts";
 import {
@@ -328,6 +329,8 @@ export class TTSService {
 	} | null = null;
 	private activePlaybackRate: number | null = null;
 	private activeHighlightMode: HighlightMode = "word";
+	// What the plan part being spoken paints in sentence mode.
+	private wordlessPartHighlight: (() => void) | null = null;
 	private lastRenderedRegionTarget: RenderableHighlightTarget | null = null;
 	private telemetryReporter:
 		| ((
@@ -353,7 +356,10 @@ export class TTSService {
 		}
 	}
 
-	private notifyPlaybackStarted(runId: number): void {
+	private notifyPlaybackStarted(
+		runId: number,
+		playback?: TTSPlaybackStart,
+	): void {
 		if (
 			this.playbackStartDeferredRunId !== runId ||
 			runId !== this.speakRunId
@@ -370,6 +376,19 @@ export class TTSService {
 		for (const applyHighlight of pendingHighlights) {
 			applyHighlight();
 		}
+		if (playback?.wordBoundaries === false) this.highlightWordlessPlayback();
+	}
+
+	/**
+	 * A word-mode part whose playback sends no boundaries, such as a server
+	 * response without speech marks, highlights as a sentence-mode read does.
+	 * Catalog chunks and a single speak highlight the same in both modes.
+	 */
+	private highlightWordlessPlayback(): void {
+		const paint = this.wordlessPartHighlight;
+		if (!paint || this.activeHighlightMode !== "word") return;
+		this.highlightCoordinator?.clearTTSWord();
+		paint();
 	}
 
 	private installPlaybackStartBarrier(
@@ -383,11 +402,11 @@ export class TTSService {
 		if (!startAwareProvider && !hasMediaStartSignal) return null;
 
 		const previousOnPlaybackStart = startAwareProvider?.onPlaybackStart;
-		const onPlaybackStart = () => {
+		const onPlaybackStart = (playback?: TTSPlaybackStart) => {
 			try {
-				this.notifyPlaybackStarted(runId);
+				this.notifyPlaybackStarted(runId, playback);
 			} finally {
-				previousOnPlaybackStart?.();
+				previousOnPlaybackStart?.(playback);
 			}
 		};
 		if (startAwareProvider) {
@@ -1389,12 +1408,20 @@ export class TTSService {
 			await this.waitWhilePaused(runId);
 			if (runId !== this.speakRunId) return;
 			this.currentBoundaryOffset = segment.startOffset;
+			const highlightSegment = () => {
+				this.highlightSentenceSegment(segment.startOffset, segment.text);
+			};
 			if (shouldTrackSentenceProgress) {
-				this.runWhenPlaybackStarts(runId, () => {
-					this.highlightSentenceSegment(segment.startOffset, segment.text);
-				});
+				this.runWhenPlaybackStarts(runId, highlightSegment);
 			}
-			await this.speakWithinLimit(segment.text, runId);
+			this.wordlessPartHighlight = highlightSegment;
+			try {
+				await this.speakWithinLimit(segment.text, runId);
+			} finally {
+				if (this.wordlessPartHighlight === highlightSegment) {
+					this.wordlessPartHighlight = null;
+				}
+			}
 			const pauseMs = segment.pauseMsAfter ?? 0;
 			if (pauseMs > 0 && runId === this.speakRunId) {
 				await this.waitStructuralPause(pauseMs);
@@ -2720,6 +2747,7 @@ export class TTSService {
 		this.playbackChunks = [];
 		this.sentenceHighlightSegments = [];
 		this.activeSentenceStartOffset = null;
+		this.wordlessPartHighlight = null;
 	}
 
 	/**

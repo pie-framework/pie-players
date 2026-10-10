@@ -202,7 +202,7 @@ export class GoogleCloudTTSProvider extends BaseTTSProvider {
 			}
 			// Else: Use Application Default Credentials (ADC)
 
-			this.client = new v1beta1.TextToSpeechClient(clientConfig);
+			this.client = this.createClient(clientConfig);
 			this.initialized = true;
 
 			if (this.enableLogging) {
@@ -216,6 +216,13 @@ export class GoogleCloudTTSProvider extends BaseTTSProvider {
 				this.providerId,
 			);
 		}
+	}
+
+	/** The Google client every request goes through; a test subclass supplies a fake. */
+	protected createClient(
+		clientConfig: ConstructorParameters<typeof v1beta1.TextToSpeechClient>[0],
+	): v1beta1.TextToSpeechClient {
+		return new v1beta1.TextToSpeechClient(clientConfig);
 	}
 
 	/**

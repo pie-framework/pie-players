@@ -557,10 +557,8 @@ describe("ttsToolRegistration sanitizeConfig", () => {
 		]);
 	});
 
-	test("normalizes layoutMode", () => {
-		expect(sanitize({ layoutMode: "bad-mode" }).layoutMode).toBe(
-			"left-aligned",
-		);
+	test("leaves layoutMode to runtime resolution", () => {
+		expect(sanitize({ layoutMode: "bad-mode" }).layoutMode).toBe("bad-mode");
 	});
 });
 
@@ -594,5 +592,89 @@ describe("ttsToolRegistration content language", () => {
 
 	test("names no language when the toolbar names none", () => {
 		expect(renderWithLanguage(undefined).getAttribute("language")).toBeNull();
+	});
+});
+
+describe("ttsToolRegistration element wiring", () => {
+	const createEventTargetElement = (tag: string) =>
+		Object.assign(new EventTarget(), createFakeElement(tag));
+
+	const render = (overrides: Partial<ToolbarContext>) => {
+		const toolbarContext: ToolbarContext = {
+			scope: { level: "item", scopeId: "item-wiring", itemId: "item-wiring" },
+			itemId: "item-wiring",
+			catalogId: "item-wiring",
+			language: "en-US",
+			toolCoordinator: null,
+			componentOverrides: packagedOverrides,
+			toolkitCoordinator: { getToolConfig: () => ({}) } as any,
+			ttsService: null,
+			elementToolStateStore: null,
+			toggleTool: () => {},
+			isToolVisible: () => false,
+			subscribeVisibility: null,
+			...overrides,
+		};
+		const previousDocument = (globalThis as { document?: Document }).document;
+		(globalThis as { document?: Document }).document = {
+			createElement: (tag: string) => createEventTargetElement(tag),
+		} as unknown as Document;
+		try {
+			return ttsToolRegistration.renderToolbar(itemContext, toolbarContext);
+		} finally {
+			(globalThis as { document?: Document }).document = previousDocument;
+		}
+	};
+
+	test("names the item as the catalog when the toolbar names no catalog", () => {
+		const element = render({ itemId: "item-77", catalogId: undefined })
+			?.elements?.[0]?.element as unknown as {
+			getAttribute(name: string): string | null;
+		};
+		expect(element.getAttribute("catalog-id")).toBe("item-77");
+	});
+
+	test("prefers the toolbar's catalog over the item", () => {
+		const element = render({ itemId: "item-77", catalogId: "catalog-9" })
+			?.elements?.[0]?.element as unknown as {
+			getAttribute(name: string): string | null;
+		};
+		expect(element.getAttribute("catalog-id")).toBe("catalog-9");
+	});
+
+	test("relays the element's active-change event until unsubscribed", () => {
+		const result = render({});
+		const element = result?.elements?.[0]?.element as unknown as EventTarget;
+		const seen: boolean[] = [];
+		const unsubscribe = result?.subscribeActive?.((active) => {
+			seen.push(active);
+		});
+		const announce = (detail: unknown) =>
+			element.dispatchEvent(
+				new CustomEvent("pie-tool-active-change", { detail }),
+			);
+
+		announce({ active: true });
+		announce({ active: false });
+		announce({});
+		expect(seen).toEqual([true, false, false]);
+
+		unsubscribe?.();
+		announce({ active: true });
+		expect(seen).toEqual([true, false, false]);
+	});
+
+	test("renders an unknown layoutMode as left-aligned", () => {
+		const result = render({
+			toolkitCoordinator: {
+				getToolConfig: () => ({ layoutMode: "bad-mode" }),
+			} as any,
+		});
+		const entry = result?.elements?.[0];
+		const element = entry?.element as unknown as {
+			getAttribute(name: string): string | null;
+		};
+		expect(element.getAttribute("layout-mode")).toBe("left-aligned");
+		expect(entry?.layoutHints?.headerOverlay?.showWhenToolActive).toBe(true);
 	});
 });

@@ -7,6 +7,13 @@ import { createScopedToolId } from "../../services/tool-instance-id.js";
 
 export type ToolOverlaySurface = "default" | "frameless";
 
+/**
+ * The event a tool element dispatches, bubbling and composed, with
+ * `{ active: boolean }` as its detail when it opens or closes its own panel.
+ * A registration relays it as the toolbar button's active state.
+ */
+export const TOOL_ACTIVE_CHANGE_EVENT = "pie-tool-active-change";
+
 export function createScopedVisibilityBinding(
 	toolId: string,
 	toolbarContext: ToolbarContext,

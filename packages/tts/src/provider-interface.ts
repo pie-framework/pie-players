@@ -83,6 +83,13 @@ export interface TTSProviderOptions {
 }
 
 /**
+ * The three-value speed vocabulary a server transport sends in place of a
+ * numeric rate. The toolkit's settings and the server provider's options both
+ * type `speedRate` with it.
+ */
+export type SpeedRateBucket = "slow" | "medium" | "fast";
+
+/**
  * TTS Provider interface
  *
  * Providers are stateless factories that create TTS implementations.

@@ -9,6 +9,7 @@
 import type {
 	ITTSProvider,
 	ITTSProviderImplementation,
+	SpeedRateBucket,
 	TTSConfig,
 	TTSProviderCapabilities,
 	TTSProviderOptions,
@@ -43,8 +44,11 @@ export interface ServerTTSProviderOptions extends TTSProviderOptions {
 	format?: "mp3" | "ogg" | "pcm";
 	/** Speech mark types requested, on the pie transport. */
 	speechMarkTypes?: Array<"word" | "sentence" | "ssml">;
-	/** Speed bucket, on the custom transport; derived from `rate` when unset. */
-	speedRate?: string;
+	/**
+	 * Speed bucket, on the custom transport; derived from `rate` when unset or
+	 * not one of the three buckets.
+	 */
+	speedRate?: SpeedRateBucket;
 	/**
 	 * Language id, on the custom transport. Without it, the language a speak
 	 * names, then `language`, then en-US.
@@ -96,10 +100,12 @@ export interface ServerTTSProviderConfig extends TTSConfig {
 	endpointMode?: "synthesizePath" | "rootPost";
 
 	/**
-	 * Endpoint validation mode used during initialize(validateEndpoint=true).
-	 * - voices: probe {apiEndpoint}/voices
-	 * - endpoint: probe resolved synthesis endpoint
-	 * - none: skip endpoint probe
+	 * The probe `initialize()` runs before it resolves; a failed probe rejects it.
+	 * - voices: GET {apiEndpoint}/voices, trying the provider's own route first
+	 * - endpoint: OPTIONS on the resolved synthesis endpoint
+	 * - none: no probe, so an unreachable server fails at the first synthesis
+	 *
+	 * @default "none"
 	 */
 	endpointValidationMode?: "voices" | "endpoint" | "none";
 
@@ -130,15 +136,6 @@ export interface ServerTTSProviderConfig extends TTSConfig {
 	 * fetch on the browser default, `"same-origin"`.
 	 */
 	credentials?: "omit" | "same-origin" | "include";
-
-	/**
-	 * Validate API endpoint availability during initialization (slower but safer)
-	 *
-	 * @extension Performance vs safety tradeoff
-	 * @default false (fast initialization, fail on first synthesis if unavailable)
-	 * @note When true, adds 100-500ms to initialization time
-	 */
-	validateEndpoint?: boolean;
 }
 
 type TelemetryReporter = (
@@ -418,15 +415,21 @@ const resolveEndpointMode = (
 
 const resolveValidationMode = (
 	config: ServerTTSProviderConfig,
-	mode: TransportAdapter["id"],
-): NonNullable<ServerTTSProviderConfig["endpointValidationMode"]> => {
-	if (config.endpointValidationMode) return config.endpointValidationMode;
-	return mode === "custom" ? "none" : "voices";
-};
+): NonNullable<ServerTTSProviderConfig["endpointValidationMode"]> =>
+	config.endpointValidationMode === "voices" ||
+	config.endpointValidationMode === "endpoint"
+		? config.endpointValidationMode
+		: "none";
 
-const resolveSpeedRate = (config: ServerTTSProviderConfig): string => {
+const SPEED_RATE_BUCKETS: ReadonlySet<unknown> = new Set<SpeedRateBucket>([
+	"slow",
+	"medium",
+	"fast",
+]);
+
+const resolveSpeedRate = (config: ServerTTSProviderConfig): SpeedRateBucket => {
 	const speedRate = config.providerOptions?.speedRate;
-	if (typeof speedRate === "string") return speedRate;
+	if (SPEED_RATE_BUCKETS.has(speedRate)) return speedRate as SpeedRateBucket;
 	return resolveSpeedRateBucket(config.rate);
 };
 
@@ -1231,10 +1234,8 @@ export class ServerTTSProvider implements ITTSProvider {
 	/**
 	 * Initialize the server TTS provider.
 	 *
-	 * This is designed to be fast by default (no API calls).
-	 * Set validateEndpoint: true in config to test API availability during initialization.
-	 *
-	 * @performance Default: <10ms, With validation: 100-500ms
+	 * Makes no request unless `endpointValidationMode` names a probe, which
+	 * adds 100-500ms.
 	 */
 	async initialize(config: TTSConfig): Promise<ITTSProviderImplementation> {
 		const serverConfig = config as ServerTTSProviderConfig;
@@ -1248,15 +1249,15 @@ export class ServerTTSProvider implements ITTSProvider {
 		const transportMode = resolveTransportMode(serverConfig);
 		this.adapter = ADAPTERS[transportMode];
 
-		// Only test API availability if explicitly requested (slower but safer)
-		if (serverConfig.validateEndpoint) {
+		const validationMode = resolveValidationMode(serverConfig);
+		if (validationMode !== "none") {
 			const validationStartedAt = Date.now();
 			await this.emitTelemetry("pie-tool-backend-call-start", {
 				toolId: TOOL_ID,
 				backend: serverConfig.provider || "server",
 				operation: "validate-endpoint",
 			});
-			const available = await this.testAPIAvailability();
+			const available = await this.testAPIAvailability(validationMode);
 			if (!available) {
 				await this.emitTelemetry("pie-tool-backend-call-error", {
 					toolId: TOOL_ID,
@@ -1286,7 +1287,9 @@ export class ServerTTSProvider implements ITTSProvider {
 	 *
 	 * @performance 100-500ms depending on network
 	 */
-	private async testAPIAvailability(): Promise<boolean> {
+	private async testAPIAvailability(
+		mode: "voices" | "endpoint",
+	): Promise<boolean> {
 		if (!this.config || !this.adapter) return false;
 
 		try {
@@ -1300,11 +1303,6 @@ export class ServerTTSProvider implements ITTSProvider {
 			const controller = new AbortController();
 			const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
 
-			const mode = resolveValidationMode(this.config, this.adapter.id);
-			if (mode === "none") {
-				clearTimeout(timeoutId);
-				return true;
-			}
 			const validationUrls =
 				mode === "voices"
 					? resolveVoicesValidationUrls(this.config)

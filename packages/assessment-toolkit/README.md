@@ -788,7 +788,8 @@ By default, server-backed TTS resolves:
 
 - `apiEndpoint: '/api/tts'`
 - `transportMode: 'pie'`
-- `endpointValidationMode: 'voices'`
+- `endpointValidationMode: 'voices'`, so the provider reads the voices route
+  before it reports ready; `'none'` skips the probe
 
 You can still set `apiEndpoint` explicitly when your host route is not `/api/tts`.
 

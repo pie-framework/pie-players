@@ -21,6 +21,7 @@
 		connectToolRuntimeContext,
 		connectToolShellContext,
 		normalizeTTSSpeedControlOptions,
+		TOOL_ACTIVE_CHANGE_EVENT,
 		type AssessmentToolkitRegionScopeContext,
 		type AssessmentToolkitRuntimeContext,
 		type AssessmentToolkitShellContext,
@@ -1013,7 +1014,7 @@
 			if (cancelled) return;
 			host.setAttribute('data-active', active ? 'true' : 'false');
 			host.dispatchEvent(
-				new CustomEvent('pie-tool-active-change', {
+				new CustomEvent(TOOL_ACTIVE_CHANGE_EVENT, {
 					detail: { active },
 					bubbles: true,
 					composed: true

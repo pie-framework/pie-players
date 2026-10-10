@@ -299,6 +299,7 @@
   type ParsedToolInstanceId
   type ResolveContentCapabilitiesArgs
   type ResolvedContentCapability
+  TOOL_ACTIVE_CHANGE_EVENT
   type TTSLayoutMode
   type TTSSpeedOption
   TTSToolProvider
@@ -363,7 +364,6 @@
   hasSpokenContent
   isShadowRootNode
   isTTSStartFailure
-  normalizeTTSLayoutMode
   normalizeTTSSpeedControlOptions
   parseScopedToolId
   parseTTSSpeedOptionsFromText
@@ -373,7 +373,6 @@
   resolveContentRegion
   resolveFallbackToolIcon
   resolveTTSHostToolbarLayout
-  resolveTTSLayoutMode
   resolveTTSRuntimeSettings
   resolveToolRegistrationName
   resolveToolTag

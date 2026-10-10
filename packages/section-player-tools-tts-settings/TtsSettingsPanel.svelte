@@ -201,31 +201,31 @@
 			'<speak>This is a <prosody rate="95%">Google Cloud SSML sample</prosody>. <break time="250ms"/> The preview preserves authored SSML.</speak>'
 	};
 	const BUILT_IN_TABS: BuiltInBackendTab[] = ["browser", "polly", "google"];
-const previewLogger = createPieLogger("pie-tts-preview", isTtsDebugEnabled);
+	const previewLogger = createPieLogger("pie-tts-preview", isTtsDebugEnabled);
 
-function debugPreview(event: string, payload?: Record<string, unknown>): void {
-	if (payload) previewLogger.debug(event, payload);
-	else previewLogger.debug(event);
-}
+	function debugPreview(event: string, payload?: Record<string, unknown>): void {
+		if (payload) previewLogger.debug(event, payload);
+		else previewLogger.debug(event);
+	}
 
-function isRecommendedBrowserVoice(voice: DemoVoice, contentLanguage?: string): boolean {
-	return Boolean(voice.localService && browserVoiceMatchesLanguage(voice, contentLanguage));
-}
+	function isRecommendedBrowserVoice(voice: DemoVoice, contentLanguage?: string): boolean {
+		return Boolean(voice.localService && browserVoiceMatchesLanguage(voice, contentLanguage));
+	}
 
-function browserVoiceLabel(voice: DemoVoice): string {
-	const name =
-		voice.name || voice.id || interfaceI18n.t("debug.tts.unnamedVoice");
-	const metadata = [
-		voice.lang || interfaceI18n.t("debug.tts.notAvailable"),
-		interfaceI18n.t(voice.localService ? "debug.tts.voiceLocal" : "debug.tts.voiceRemote"),
-		voice.default ? interfaceI18n.t("debug.tts.voiceBrowserDefault") : ""
-	].filter(Boolean);
-	return `${name} (${metadata.join(", ")})`;
-}
+	function browserVoiceLabel(voice: DemoVoice): string {
+		const name =
+			voice.name || voice.id || interfaceI18n.t("debug.tts.unnamedVoice");
+		const metadata = [
+			voice.lang || interfaceI18n.t("debug.tts.notAvailable"),
+			interfaceI18n.t(voice.localService ? "debug.tts.voiceLocal" : "debug.tts.voiceRemote"),
+			voice.default ? interfaceI18n.t("debug.tts.voiceBrowserDefault") : ""
+		].filter(Boolean);
+		return `${name} (${metadata.join(", ")})`;
+	}
 
-function voiceIdentity(voice: DemoVoice): string {
-	return voice.id || voice.name || "";
-}
+	function voiceIdentity(voice: DemoVoice): string {
+		return voice.id || voice.name || "";
+	}
 
 	/** `selected` when the listed voices carry it; otherwise the server picks. */
 	function knownVoice(selected: string, voices: DemoVoice[]): string | undefined {
@@ -935,21 +935,21 @@ function voiceIdentity(voice: DemoVoice): string {
 		stopPreviewPolling();
 		const orderedMarks = [...speechMarks].sort(compareSpeechMarks);
 		if (orderedMarks.length === 0) return;
-	const firstMark = orderedMarks[0];
-	debugPreview("tracking:init", {
-		audioCurrentMs: Math.round(audio.currentTime * 1000),
-		marks: orderedMarks.length,
-		firstMark,
-		firstSlice: previewText.slice(
-			Math.max(0, firstMark.start),
-			Math.max(firstMark.start, firstMark.end)
-		)
-	});
+		const firstMark = orderedMarks[0];
+		debugPreview("tracking:init", {
+			audioCurrentMs: Math.round(audio.currentTime * 1000),
+			marks: orderedMarks.length,
+			firstMark,
+			firstSlice: previewText.slice(
+				Math.max(0, firstMark.start),
+				Math.max(firstMark.start, firstMark.end)
+			)
+		});
 		// Ensure preview starts on the first spoken word instead of waiting for the first poll tick.
-	previewTrackIndex = firstMark.start;
-	previewTrackLength = Math.max(1, firstMark.end - firstMark.start);
+		previewTrackIndex = firstMark.start;
+		previewTrackLength = Math.max(1, firstMark.end - firstMark.start);
 		let lastIndex = 0;
-	let emittedTransitions = 0;
+		let emittedTransitions = 0;
 		previewPollingTimer = window.setInterval(() => {
 			const currentMs = audio.currentTime * 1000;
 			let nextIndex = lastIndex;
@@ -964,15 +964,15 @@ function voiceIdentity(voice: DemoVoice): string {
 				const mark = orderedMarks[lastIndex];
 				previewTrackIndex = mark.start;
 				previewTrackLength = Math.max(1, mark.end - mark.start);
-			if (emittedTransitions < 12) {
-				emittedTransitions += 1;
-				debugPreview("tracking:step", {
-					audioCurrentMs: Math.round(currentMs),
-					index: lastIndex,
-					mark,
-					slice: previewText.slice(Math.max(0, mark.start), Math.max(mark.start, mark.end))
-				});
-			}
+				if (emittedTransitions < 12) {
+					emittedTransitions += 1;
+					debugPreview("tracking:step", {
+						audioCurrentMs: Math.round(currentMs),
+						index: lastIndex,
+						mark,
+						slice: previewText.slice(Math.max(0, mark.start), Math.max(mark.start, mark.end))
+					});
+				}
 			}
 		}, 40);
 	}
@@ -1019,44 +1019,44 @@ function voiceIdentity(voice: DemoVoice): string {
 		return ordered.map((mark) => ({ ...mark, time: Number(mark.time) * 1000 }));
 	}
 
-function normalizePreviewSpeechMarkOffsets(
-	speechMarks: PreviewSpeechMark[],
-	trackingText: string
-): PreviewSpeechMark[] {
-	if (speechMarks.length === 0) return speechMarks;
-	const ordered = [...speechMarks].sort(compareSpeechMarks);
-	const safeText = typeof trackingText === "string" ? trackingText : "";
-	const textLength = safeText.length;
-	if (!textLength) return ordered;
-	const maxEnd = Math.max(...ordered.map((mark) => Number(mark.end) || 0));
-	const firstMark = ordered[0];
-	const firstWord =
-		typeof firstMark.value === "string" ? firstMark.value.trim() : "";
-	const firstWordIndex = firstWord
-		? safeText.toLowerCase().indexOf(firstWord.toLowerCase())
-		: -1;
-	const anchoredShift =
-		firstWordIndex >= 0 ? Number(firstMark.start || 0) - firstWordIndex : 0;
-	const fallbackShift = Number(firstMark.start || 0);
-	const shouldRebase = maxEnd > textLength + 2 && (anchoredShift > 0 || fallbackShift > 0);
-	if (!shouldRebase) return ordered;
-	const shift = anchoredShift > 0 ? anchoredShift : fallbackShift;
-	const rebased = ordered.map((mark) => {
-		const start = Math.max(0, Number(mark.start || 0) - shift);
-		const end = Math.max(start + 1, Number(mark.end || 0) - shift);
-		return { ...mark, start, end };
-	});
-	debugPreview("marks:offset-rebase", {
-		textLength,
-		firstWord,
-		firstWordIndex,
-		shift,
-		firstBefore: firstMark,
-		firstAfter: rebased[0],
-		lastAfter: rebased[rebased.length - 1]
-	});
-	return rebased;
-}
+	function normalizePreviewSpeechMarkOffsets(
+		speechMarks: PreviewSpeechMark[],
+		trackingText: string
+	): PreviewSpeechMark[] {
+		if (speechMarks.length === 0) return speechMarks;
+		const ordered = [...speechMarks].sort(compareSpeechMarks);
+		const safeText = typeof trackingText === "string" ? trackingText : "";
+		const textLength = safeText.length;
+		if (!textLength) return ordered;
+		const maxEnd = Math.max(...ordered.map((mark) => Number(mark.end) || 0));
+		const firstMark = ordered[0];
+		const firstWord =
+			typeof firstMark.value === "string" ? firstMark.value.trim() : "";
+		const firstWordIndex = firstWord
+			? safeText.toLowerCase().indexOf(firstWord.toLowerCase())
+			: -1;
+		const anchoredShift =
+			firstWordIndex >= 0 ? Number(firstMark.start || 0) - firstWordIndex : 0;
+		const fallbackShift = Number(firstMark.start || 0);
+		const shouldRebase = maxEnd > textLength + 2 && (anchoredShift > 0 || fallbackShift > 0);
+		if (!shouldRebase) return ordered;
+		const shift = anchoredShift > 0 ? anchoredShift : fallbackShift;
+		const rebased = ordered.map((mark) => {
+			const start = Math.max(0, Number(mark.start || 0) - shift);
+			const end = Math.max(start + 1, Number(mark.end || 0) - shift);
+			return { ...mark, start, end };
+		});
+		debugPreview("marks:offset-rebase", {
+			textLength,
+			firstWord,
+			firstWordIndex,
+			shift,
+			firstBefore: firstMark,
+			firstAfter: rebased[0],
+			lastAfter: rebased[rebased.length - 1]
+		});
+		return rebased;
+	}
 
 	/**
 	 * Plays `audio` to its end, and fails when the audio does. `release` runs once
@@ -1116,25 +1116,25 @@ function normalizePreviewSpeechMarkOffsets(
 		if (speechMarks.length > 0) {
 			await waitForAudioMetadata(audio);
 			if (runId !== previewRunId) return;
-		const audioDurationSeconds = Number(audio.duration);
-		const normalizedMarks = normalizePreviewSpeechMarks(speechMarks, audioDurationSeconds);
-		const offsetNormalizedMarks = normalizePreviewSpeechMarkOffsets(normalizedMarks, previewText);
-		const rawMaxTime = Math.max(...speechMarks.map((mark) => Number(mark.time) || 0));
-		const normalizedMaxTime = Math.max(...offsetNormalizedMarks.map((mark) => Number(mark.time) || 0));
-		debugPreview("marks:normalize", {
-			audioDurationSeconds,
-			rawCount: speechMarks.length,
-			normalizedCount: offsetNormalizedMarks.length,
-			rawMaxTime,
-			normalizedMaxTime,
-			rawFirst: speechMarks[0],
-			normalizedFirst: offsetNormalizedMarks[0],
-			rawLast: speechMarks[speechMarks.length - 1],
-			normalizedLast: offsetNormalizedMarks[offsetNormalizedMarks.length - 1]
-		});
-		updateTrackingFromSpeechMarks(audio, offsetNormalizedMarks);
-	} else {
-		debugPreview("marks:missing", { audioUrl });
+			const audioDurationSeconds = Number(audio.duration);
+			const normalizedMarks = normalizePreviewSpeechMarks(speechMarks, audioDurationSeconds);
+			const offsetNormalizedMarks = normalizePreviewSpeechMarkOffsets(normalizedMarks, previewText);
+			const rawMaxTime = Math.max(...speechMarks.map((mark) => Number(mark.time) || 0));
+			const normalizedMaxTime = Math.max(...offsetNormalizedMarks.map((mark) => Number(mark.time) || 0));
+			debugPreview("marks:normalize", {
+				audioDurationSeconds,
+				rawCount: speechMarks.length,
+				normalizedCount: offsetNormalizedMarks.length,
+				rawMaxTime,
+				normalizedMaxTime,
+				rawFirst: speechMarks[0],
+				normalizedFirst: offsetNormalizedMarks[0],
+				rawLast: speechMarks[speechMarks.length - 1],
+				normalizedLast: offsetNormalizedMarks[offsetNormalizedMarks.length - 1]
+			});
+			updateTrackingFromSpeechMarks(audio, offsetNormalizedMarks);
+		} else {
+			debugPreview("marks:missing", { audioUrl });
 		}
 		await playPreviewAudio(audio);
 	}

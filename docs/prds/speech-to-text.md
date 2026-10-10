@@ -18,8 +18,8 @@ Related architecture:
 - [Non-Embedded Dictation](../tools-and-accomodations/non-embedded-dictation.md) — the guarantee from
   [Rollout](#rollout-and-release-notes) step 2, landed: what platform dictation into a PIE response
   surface is verified to do, and the blur commit boundary it exposed
-- [SchoolCity Tool Parity Report](../tools-and-accomodations/schoolcity-tool-parity-report.md) — the
-  row that produced this ticket
+- [SchoolCity Tool Parity Report](https://illuminate.atlassian.net/wiki/spaces/CE/pages/19505840145/SchoolCity+Tool+Parity+PIE+Players+Toolkit+Quiz+Engine+Host)
+  (Confluence) — the row that produced this ticket
 
 ## Problem
 

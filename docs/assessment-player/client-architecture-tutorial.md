@@ -26,9 +26,9 @@ At a high level:
 - `section-player` renders one section and coordinates section/item runtime behavior
 - `assessment-player` orchestrates which section is active and how assessment-level state evolves
 
-The visual shape often includes assessment-level navigation like the example below:
+Each section renders as one composed view, like the example below; the assessment layer adds navigation between sections around it:
 
-![Assessment-style composition with global navigation, section content, and tools](../img/schoolcity-1.png)
+![A section player view: passage, items with their own tools, and a section toolbar](../img/section-player-composition.png)
 
 Every team that builds beyond the section level solves section routing, assessment session aggregation, and navigation state. The toolkit supplies the session aggregation (`createNewAssessmentSession`, `upsertSectionSession`, `setCurrentSectionPosition`); the assessment player shows the routing and navigation state assembled around it, as a worked example a team reads or copies.
 

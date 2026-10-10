@@ -193,7 +193,13 @@ export class SimpleI18n implements I18nServiceApi {
 			return;
 		}
 
-		if (!this.catalogs.has(resolved)) {
+		// The loader is asked only for tags it declares. A tag that resolved through
+		// host messages alone has nothing to load, and is honoured like the
+		// unresolved case above.
+		if (
+			!this.catalogs.has(resolved) &&
+			this.config.availableLocales?.includes(resolved)
+		) {
 			const inFlight = this.loading.get(resolved);
 			if (inFlight) {
 				await inFlight;

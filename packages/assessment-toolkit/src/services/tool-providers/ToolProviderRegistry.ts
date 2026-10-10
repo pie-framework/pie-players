@@ -3,8 +3,6 @@
  *
  * Centralized registry for managing tool providers.
  * Handles initialization, authentication, and lazy loading.
- *
- * Part of PIE Assessment Toolkit.
  */
 
 import {
@@ -15,6 +13,15 @@ import type { ToolProviderApi, ToolCategory } from "./ToolProviderApi.js";
 
 // Lifecycle lines need `window.PIE_DEBUG = true`, read on each line.
 const logger = createPieLogger("ToolProviderRegistry", isGlobalDebugEnabled);
+
+/** The `backend` a provider config names, for telemetry payloads. */
+function telemetryBackend(value: unknown): string {
+	const backend =
+		value && typeof value === "object"
+			? (value as { backend?: unknown }).backend
+			: undefined;
+	return typeof backend === "string" && backend ? backend : "unknown";
+}
 
 /**
  * What `register` takes: the provider, its config, and how it starts.
@@ -119,9 +126,6 @@ export class ToolProviderRegistry {
 	 * A registration under an id already registered replaces it: the replaced
 	 * provider is destroyed once a start in progress settles, and a caller
 	 * waiting on that start gets the replacement.
-	 *
-	 * @param toolId Id of the tool the provider serves
-	 * @param config Provider configuration
 	 */
 	register(toolId: string, config: ToolProviderRegistration): void {
 		const replaced = this.providers.get(toolId);
@@ -146,7 +150,6 @@ export class ToolProviderRegistry {
 			`${replaced ? "Replaced" : "Registered"} provider "${toolId}" (${config.provider.providerName})`,
 		);
 
-		// Initialize immediately if not lazy
 		if (config.lazy === false) {
 			this.initialize(toolId).catch((error) => {
 				console.error(
@@ -162,24 +165,18 @@ export class ToolProviderRegistry {
 	 *
 	 * Fetches auth if needed and initializes the provider.
 	 * Safe to call multiple times - subsequent calls wait for first initialization.
-	 *
-	 * @param toolId Tool whose provider to initialize
-	 * @returns Promise that resolves when initialization complete
-	 * @throws Error if provider not registered or initialization fails
+	 * Throws when the provider is not registered or its initialization fails.
 	 */
 	async initialize(toolId: string): Promise<void> {
-		// Already initialized
 		if (this.initialized.get(toolId)) {
 			return;
 		}
 
-		// Initialization in progress - wait for it
 		const existingPromise = this.initializationPromises.get(toolId);
 		if (existingPromise) {
 			return existingPromise;
 		}
 
-		// Start new initialization
 		const provider = this.providers.get(toolId);
 		const initPromise = this._doInitialize(toolId);
 		this.initializationPromises.set(toolId, initPromise);
@@ -187,6 +184,8 @@ export class ToolProviderRegistry {
 		try {
 			await initPromise;
 		} catch (error) {
+			// When a registration replaced the provider mid-start, this caller
+			// gets the replacement, so the old start's failure is dropped.
 			if (!this.isReplaced(toolId, provider)) throw error;
 		} finally {
 			if (this.initializationPromises.get(toolId) === initPromise) {
@@ -231,28 +230,19 @@ export class ToolProviderRegistry {
 			);
 		}
 
-		// Start with base config
 		let providerConfig = { ...config.config };
-		const deriveBackend = (value: unknown): string => {
-			const backend =
-				value && typeof value === "object"
-					? (value as { backend?: unknown }).backend
-					: undefined;
-			return typeof backend === "string" && backend ? backend : "unknown";
-		};
 		const providerInitStartedAt = Date.now();
 		await this.emitTelemetry(config, "pie-tool-init-start", {
 			toolId,
-			backend: deriveBackend(providerConfig),
+			backend: telemetryBackend(providerConfig),
 			operation: "provider-initialize",
 		});
 
-		// Fetch auth if needed
 		if (provider.requiresAuth && config.authFetcher) {
 			const authFetchStartedAt = Date.now();
 			await this.emitTelemetry(config, "pie-tool-backend-call-start", {
 				toolId,
-				backend: deriveBackend(providerConfig),
+				backend: telemetryBackend(providerConfig),
 				operation: "auth-fetch",
 			});
 			logger.debug(
@@ -263,14 +253,14 @@ export class ToolProviderRegistry {
 				providerConfig = { ...providerConfig, ...authData };
 				await this.emitTelemetry(config, "pie-tool-backend-call-success", {
 					toolId,
-					backend: deriveBackend(providerConfig),
+					backend: telemetryBackend(providerConfig),
 					operation: "auth-fetch",
 					duration: Date.now() - authFetchStartedAt,
 				});
 			} catch (error) {
 				await this.emitTelemetry(config, "pie-tool-backend-call-error", {
 					toolId,
-					backend: deriveBackend(providerConfig),
+					backend: telemetryBackend(providerConfig),
 					operation: "auth-fetch",
 					duration: Date.now() - authFetchStartedAt,
 					errorType: "ProviderAuthFetchError",
@@ -286,7 +276,6 @@ export class ToolProviderRegistry {
 			}
 		}
 
-		// Initialize provider
 		try {
 			await provider.initialize(providerConfig);
 			if (this.providers.get(toolId) === provider) {
@@ -294,7 +283,7 @@ export class ToolProviderRegistry {
 			}
 			await this.emitTelemetry(config, "pie-tool-init-success", {
 				toolId,
-				backend: deriveBackend(providerConfig),
+				backend: telemetryBackend(providerConfig),
 				operation: "provider-initialize",
 				duration: Date.now() - providerInitStartedAt,
 			});
@@ -304,7 +293,7 @@ export class ToolProviderRegistry {
 		} catch (error) {
 			await this.emitTelemetry(config, "pie-tool-init-error", {
 				toolId,
-				backend: deriveBackend(providerConfig),
+				backend: telemetryBackend(providerConfig),
 				operation: "provider-initialize",
 				duration: Date.now() - providerInitStartedAt,
 				errorType: "ProviderInitializationError",
@@ -322,12 +311,8 @@ export class ToolProviderRegistry {
 	 * Get a provider instance
 	 *
 	 * Retrieves a registered provider. If autoInitialize is true and provider
-	 * is not initialized, initializes it first.
-	 *
-	 * @param toolId Id of the tool the provider serves
-	 * @param autoInitialize Auto-initialize if not ready (default: true)
-	 * @returns Provider instance
-	 * @throws Error if provider not registered
+	 * is not initialized, initializes it first. Throws when the provider is not
+	 * registered.
 	 */
 	async getProvider<T extends ToolProviderApi = ToolProviderApi>(
 		toolId: string,
@@ -344,7 +329,6 @@ export class ToolProviderRegistry {
 			);
 		}
 
-		// Auto-initialize if needed
 		if (autoInitialize && !this.initialized.get(toolId)) {
 			logger.debug(
 				"Auto-initializing provider:",
@@ -356,11 +340,7 @@ export class ToolProviderRegistry {
 		return provider as T;
 	}
 
-	/**
-	 * The ids of the tools whose provider is in `category`.
-	 *
-	 * @param category Tool category to filter by
-	 */
+	/** The ids of the tools whose provider is in `category`. */
 	getProvidersByCategory(category: ToolCategory): string[] {
 		return Array.from(this.providers.entries())
 			.filter(([_, provider]) => provider.category === category)
@@ -374,32 +354,14 @@ export class ToolProviderRegistry {
 		return Array.from(this.providers.keys());
 	}
 
-	/**
-	 * Check if provider is registered
-	 *
-	 * @param toolId Id of the tool the provider serves
-	 * @returns true if provider is registered
-	 */
 	has(toolId: string): boolean {
 		return this.providers.has(toolId);
 	}
 
-	/**
-	 * Check if provider is initialized
-	 *
-	 * @param toolId Id of the tool the provider serves
-	 * @returns true if provider is initialized
-	 */
 	isInitialized(toolId: string): boolean {
 		return this.initialized.get(toolId) === true;
 	}
 
-	/**
-	 * Check if provider is currently initializing
-	 *
-	 * @param toolId Id of the tool the provider serves
-	 * @returns true if initialization in progress
-	 */
 	isInitializing(toolId: string): boolean {
 		return this.initializationPromises.has(toolId);
 	}
@@ -407,14 +369,12 @@ export class ToolProviderRegistry {
 	/**
 	 * Unregister and destroy a provider
 	 *
-	 * Removes the provider from the registry and calls its destroy method.
-	 *
-	 * @param toolId Tool whose provider to unregister
+	 * Removes the provider from the registry and calls its destroy method,
+	 * after any start in progress settles.
 	 */
 	async unregister(toolId: string): Promise<void> {
 		const provider = this.providers.get(toolId);
 		if (provider) {
-			// Wait for any pending initialization
 			const initPromise = this.initializationPromises.get(toolId);
 			if (initPromise) {
 				try {
@@ -429,7 +389,6 @@ export class ToolProviderRegistry {
 
 			this.destroyProvider(toolId, provider);
 
-			// Remove from registry
 			this.providers.delete(toolId);
 			this.configs.delete(toolId);
 			this.initialized.delete(toolId);

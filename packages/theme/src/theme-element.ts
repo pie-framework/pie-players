@@ -1,3 +1,13 @@
+/**
+ * `<pie-theme>` resolves the Base Theme, provider variables, Color Scheme and
+ * explicit overrides through `resolvePieTheme` and writes the result to its
+ * target: itself for `scope="self"`, `documentElement` for `scope="document"`.
+ * Under document scope several elements can own `documentElement`; the newest
+ * owner, or the one whose attributes changed last, is active. The host's own
+ * values are captured before the first write and restored when the last owner
+ * leaves.
+ */
+
 import { observePieColorSchemes, resolvePieTheme } from "./color-schemes.js";
 import {
 	observePieThemeProviders,
@@ -10,6 +20,8 @@ import {
 	type ThemeScope,
 	type ThemeVariables,
 } from "./theme-types.js";
+
+const DARK_SCHEME_QUERY = "(prefers-color-scheme: dark)";
 
 const HTMLElementBase =
 	typeof HTMLElement === "undefined"
@@ -115,6 +127,7 @@ function applyColorScheme(
 	}
 }
 
+// Insertion order is ownership order: the last entry is the active owner.
 const documentThemeOwners = new Map<PieThemeElement, DocumentThemeState>();
 let documentThemeBaseline: DocumentThemeBaseline | null = null;
 let documentThemeAppliedKeys = new Set<string>();
@@ -194,15 +207,7 @@ function restoreDocumentThemeBaseline(target: HTMLElement): void {
 	} else {
 		target.setAttribute("data-color-scheme", baseline.dataColorScheme);
 	}
-	if (baseline.colorScheme) {
-		target.style.setProperty(
-			"color-scheme",
-			baseline.colorScheme.value,
-			baseline.colorScheme.priority,
-		);
-	} else {
-		target.style.removeProperty("color-scheme");
-	}
+	applyColorScheme(target, null, baseline.colorScheme);
 	restoreDocumentThemeVariables(target);
 	documentThemeBaseline = null;
 	documentThemeAppliedKeys.clear();
@@ -423,9 +428,7 @@ export class PieThemeElement extends HTMLElementBase {
 	} {
 		const rawTheme = this.getAttribute("theme")?.trim();
 		if (rawTheme === "auto") {
-			const prefersDark = window.matchMedia(
-				"(prefers-color-scheme: dark)",
-			).matches;
+			const prefersDark = window.matchMedia(DARK_SCHEME_QUERY).matches;
 			const effectiveTheme = prefersDark ? "dark" : "light";
 			return { effectiveTheme, dataTheme: effectiveTheme };
 		}
@@ -480,7 +483,7 @@ export class PieThemeElement extends HTMLElementBase {
 		}
 
 		if (this.getAttribute("theme")?.trim() === "auto") {
-			this.mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+			this.mediaQuery = window.matchMedia(DARK_SCHEME_QUERY);
 			this.mediaQuery.addEventListener("change", this.onMediaChange);
 		}
 	}

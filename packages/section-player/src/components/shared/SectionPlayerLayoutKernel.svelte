@@ -1,11 +1,14 @@
 <script lang="ts">
 	import {
+		coerceBooleanLike,
 		createPieLogger,
 		isGlobalDebugEnabled,
 	} from "@pie-players/pie-players-shared";
 	import {
 		dispatchCrossBoundaryEvent,
 		toFrameworkErrorModel,
+		type FrameworkErrorModel,
+		type SectionControllerHandle,
 		type ToolRegistry,
 		type ToolbarItem,
 		type ToolConfigStrictness,
@@ -18,13 +21,15 @@
 		makeCohort,
 		resolveSectionId,
 		type EngineReadinessSignals,
+		type LoadingCompleteHandler,
+		type RuntimeConfig,
+		type StageChangeHandler,
 	} from "@pie-players/pie-assessment-toolkit/runtime/engine";
 	import type {
 		AssessmentEntity,
 		AssessmentSection,
 		SectionControllerSessionState,
 	} from "@pie-players/pie-players-shared/types";
-	import type { SectionControllerHandle } from "@pie-players/pie-assessment-toolkit";
 	import { untrack } from "svelte";
 	import type {
 		SectionPlayerNavigationSnapshot,
@@ -34,7 +39,6 @@
 		DEFAULT_SECTION_PLAYER_POLICIES,
 		resolveSectionPlayerPolicies,
 	} from "../../policies/index.js";
-	import type { FrameworkErrorModel } from "@pie-players/pie-assessment-toolkit";
 	import type { SectionPlayerPolicies } from "../../policies/types.js";
 	import { createPlayerAction } from "./player-action.js";
 	import {
@@ -45,11 +49,6 @@
 	} from "./section-player-view-state.js";
 	import { EMPTY_COMPOSITION } from "./composition.js";
 	import { resolveSectionPlayerRuntimeState } from "./section-player-host-runtime.js";
-	import type {
-		RuntimeConfig,
-		StageChangeHandler,
-		LoadingCompleteHandler,
-	} from "@pie-players/pie-assessment-toolkit/runtime/engine";
 	import { attachRuntimeCallbackBridge } from "./section-player-runtime-callbacks.js";
 	import type { SectionPlayerCardRenderContext } from "./section-player-card-context.js";
 	import {
@@ -62,7 +61,6 @@
 		ElementPreloadErrorDetail,
 		ElementPreloadRetryDetail,
 	} from "./player-preload.js";
-	import { coerceBooleanLike } from "@pie-players/pie-players-shared";
 	import SectionPlayerLayoutScaffold from "./SectionPlayerLayoutScaffold.svelte";
 	import {
 		announceToolkitCoordinator,
@@ -106,19 +104,14 @@
 		} satisfies PlayerActionConfig,
 		policies = DEFAULT_SECTION_PLAYER_POLICIES as Partial<SectionPlayerPolicies>,
 		hooks = undefined as SectionPlayerHostHooks | undefined,
-		// `sourceCe` is the host layout CE's tag name (without the
-		// `--version-<encoded>` suffix) used to label `pie-stage-change`
-		// emissions and the items pane's preload reports. Each layout CE that
-		// mounts the kernel passes its own
-		// canonical tag name; defaults to `pie-section-player` so kernel
-		// instantiations in tests/demos still produce well-formed events.
+		// The mounting layout CE's canonical tag name (without the
+		// `--version-<encoded>` suffix), which labels `pie-stage-change`
+		// emissions and the items pane's preload reports. The default keeps
+		// events well-formed for a kernel mounted in tests and demos.
 		sourceCe = "pie-section-player" as string,
-		// Host element the section runtime engine dispatches
-		// `pie-stage-change` and `pie-loading-complete` on. Each layout CE
-		// that mounts the kernel passes its own host element (`this`);
-		// defaults to `null` so the kernel keeps mounting before the layout
-		// CE has resolved its host. The engine attaches once `host` is
-		// non-null.
+		// The mounting layout CE's own element, on which the engine dispatches
+		// `pie-stage-change` and `pie-loading-complete`. `null` until the layout
+		// CE has resolved it; the engine attaches once it is set.
 		host = null as HTMLElement | null,
 	} = $props();
 
@@ -236,37 +229,19 @@
 	const defaultToolRegistry = createPackagedToolRegistry();
 	const effectiveToolRegistry = $derived(toolRegistry ?? defaultToolRegistry);
 	const playerRuntime = $derived(runtimeState.playerRuntime);
-	// Per-region toolbar-tools strings derived from the canonical
-	// `tools.placement.{item,passage}` arrays. Internal card / pane
-	// custom elements still consume these as comma-separated strings
-	// (the `<pie-item-toolbar tools="...">` attribute), so the kernel
-	// joins the canonical placement arrays back into strings and
-	// publishes them in the layout context. Hosts populate
-	// `runtime.tools.placement`.
-	const effectiveSectionToolbarTools = $derived.by(() => {
-		const tools = effectiveToolsConfig as
-			| { placement?: { section?: unknown } }
-			| undefined
-			| null;
-		const section = tools?.placement?.section;
-		return Array.isArray(section) ? section.join(",") : "";
-	});
-	const effectiveItemToolbarTools = $derived.by(() => {
-		const tools = effectiveToolsConfig as
-			| { placement?: { item?: unknown } }
-			| undefined
-			| null;
-		const item = tools?.placement?.item;
-		return Array.isArray(item) ? item.join(",") : "";
-	});
-	const effectivePassageToolbarTools = $derived.by(() => {
-		const tools = effectiveToolsConfig as
-			| { placement?: { passage?: unknown } }
-			| undefined
-			| null;
-		const passage = tools?.placement?.passage;
-		return Array.isArray(passage) ? passage.join(",") : "";
-	});
+	// Hosts set `runtime.tools.placement.{section,item,passage}` as arrays; the
+	// card and pane CEs take each level as the comma-separated `tools` attribute
+	// of `<pie-item-toolbar>`, so the kernel joins them for the layout context.
+	function placementToolsAttribute(level: "section" | "item" | "passage"): string {
+		const placement = (
+			effectiveToolsConfig as { placement?: Record<string, unknown> } | undefined | null
+		)?.placement;
+		const tools = placement?.[level];
+		return Array.isArray(tools) ? tools.join(",") : "";
+	}
+	const effectiveSectionToolbarTools = $derived(placementToolsAttribute("section"));
+	const effectiveItemToolbarTools = $derived(placementToolsAttribute("item"));
+	const effectivePassageToolbarTools = $derived(placementToolsAttribute("passage"));
 	const resolvedPlayerTag = $derived(playerRuntime.resolvedPlayerTag);
 	const resolvedPlayerAttributes = $derived(playerRuntime.resolvedPlayerAttributes);
 	const resolvedPlayerProps = $derived(playerRuntime.resolvedPlayerProps);
@@ -512,52 +487,6 @@
 		return (await scaffoldRef?.waitForSectionController?.(timeoutMs)) || null;
 	}
 
-	// Primary engine-driver effect. Reads every
-	// host-side input the engine cares about so Svelte tracks them as
-	// deps; performs the actual `attachHost` / `dispatchInput` calls
-	// inside `untrack` so the write to the non-reactive `lastCohort`
-	// does not feed back into this effect.
-	//
-	// Flow per run:
-	//   1. Bail until a host element is available; the layout CE
-	//      passes `host = this` after its first render, so this effect
-	//      remains a no-op on the very first mount tick.
-	//   2. `attachHost` once per `host` reference. The adapter handles
-	//      host swaps via `setHost` internally; calling `attachHost`
-	//      again with a fresh host updates it without rebuilding the
-	//      adapter, which is exactly the post-layout-swap contract.
-	//   3. Decide which input to dispatch:
-	//        - first cohort                 → `initialize`
-	//        - new cohort                   → `cohort-change` (engine
-	//                                         emits `disposed` for the
-	//                                         outgoing cohort and
-	//                                         re-arms latches for the
-	//                                         new one)
-	//        - same cohort                  → `update-runtime` so the
-	//                                         engine records the
-	//                                         latest resolver output
-	//        - cohort cleared (host clears
-	//          `section` and `sectionId`
-	//          while still mounted)         → no-op. Earlier stage
-	//                                         tracking emitted
-	//                                         `disposed` here;
-	//                                         the engine path
-	//                                         intentionally does not.
-	//                                         Hosts that need a
-	//                                         `disposed` for the
-	//                                         outgoing cohort should
-	//                                         unmount the layout CE,
-	//                                         which routes through the
-	//                                         cleanup `$effect` below
-	//                                         and dispatches `dispose`
-	//                                         to the engine.
-	//        - no cohort                    → no-op (engine stays in
-	//                                         `idle`)
-	//      After the rollover, a `section-ready` that already arrived for
-	//      the new cohort dispatches `section-controller-resolved`.
-	//   4. While a cohort is active, push the latest readiness signals
-	//      so the engine can advance to `interactive` and emit
-	//      `loading-complete` exactly once per cohort.
 	// A layout with no items pane leaves the items unrendered and readiness short
 	// of `interactive`. Checked a task after the section is ready with items, so a
 	// layout that mounts or swaps its pane after the composition arrives is not
@@ -591,6 +520,30 @@
 		});
 	});
 
+	// Primary engine driver. Reads every host-side input the engine cares about
+	// so Svelte tracks them, and makes the engine calls inside `untrack` so the
+	// write to the non-reactive `lastCohort` does not feed back into it.
+	//
+	// Per run:
+	//   1. No-op until the layout CE passes `host`, which it does after its
+	//      first render.
+	//   2. `attachHost` on every run: the engine builds its adapter on the first
+	//      call and only moves it to the new host on later ones, which covers a
+	//      layout swap.
+	//   3. Dispatch by cohort:
+	//        - first cohort → `initialize`
+	//        - new cohort   → `cohort-change`; the engine emits `disposed` for
+	//                         the outgoing cohort and re-arms its latches
+	//        - same cohort  → `update-runtime` with the latest resolver output
+	//        - cleared      → nothing, so no `disposed`; a host that needs one
+	//                         unmounts the layout CE, whose cleanup `$effect`
+	//                         below dispatches `dispose`
+	//        - none         → nothing; the engine stays `idle`
+	//      After a rollover, a `section-ready` that already arrived for the new
+	//      cohort dispatches `section-controller-resolved`.
+	//   4. While a cohort is active, push the latest readiness signals so the
+	//      engine can reach `interactive` and emit `loading-complete` once per
+	//      cohort.
 	$effect(() => {
 		void host;
 		void cohortSectionId;

@@ -132,11 +132,7 @@ export const defaultLoadResolution = async (
 		}
 	}
 
-	if (!r.module) {
-		throw new Error("only loading modules!");
-	}
-
-	return { success: false, pkg: r };
+	throw new Error("only loading modules!");
 };
 
 /**

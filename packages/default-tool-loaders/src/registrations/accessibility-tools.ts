@@ -37,7 +37,6 @@ export const lineReaderToolRegistration: ToolRegistration = {
 	descriptionKey: "tools.lineReader.description",
 	icon: "bars-3",
 
-	// Line reader appears where there's text to read
 	supportedLevels: ["section", "passage", "rubric", "item"],
 
 	/**
@@ -78,7 +77,7 @@ export const themeToolRegistration: ToolRegistration = {
 	 * Pass 2: Color scheme is always relevant when allowed
 	 */
 	isVisibleInContext(context: ToolContext): boolean {
-		return true; // Always show if allowed by orchestrator
+		return true;
 	},
 
 	renderToolbar(
@@ -114,16 +113,13 @@ export const annotationToolbarRegistration: ToolRegistration = {
 	singletonScope: "section",
 
 	/**
-	 * Section-scoped singleton surface. The gateway used to be mounted by
-	 * `PieSectionPlayerBaseElement.svelte`, which named this tool id in three
-	 * places — the policy check, the module load and the element — so no host
-	 * could contribute a second section-scoped capability. Declaring the surface
-	 * moves that wiring into this registration, and the renderer discovers it
-	 * through `ToolRegistry.getToolsBySurface("section-overlay")`.
+	 * Section-scoped singleton surface. The renderer discovers it through
+	 * `ToolRegistry.getToolsBySurface("section-overlay")`, so the section player
+	 * names no tool id and a host can contribute another section-scoped
+	 * capability.
 	 */
 	surfaces: ["section-overlay"],
 
-	// Annotation appears where there's text content
 	supportedLevels: ["passage", "rubric", "item", "element"],
 
 	/**

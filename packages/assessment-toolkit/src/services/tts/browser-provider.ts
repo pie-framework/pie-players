@@ -3,8 +3,6 @@
  *
  * Text-to-speech provider using the browser's Web Speech API.
  * Works in all modern browsers that support SpeechSynthesis.
- *
- * Part of PIE Assessment Toolkit.
  */
 
 import {
@@ -26,6 +24,9 @@ const logger = createPieLogger("browser-tts-provider", isTtsDebugEnabled);
 
 const NATIVE_START_TIMEOUT_MS = 5_000;
 const VOICE_INVENTORY_TIMEOUT_MS = 2_000;
+const MAX_CHUNK_LENGTH = 260;
+// A longer reported word length falls back to the inferred one.
+const MAX_TRUSTED_REPORTED_WORD_LENGTH = 80;
 
 // The provider options the toolkit and this provider read. Every other option,
 // and `voice`, belongs to the provider it was configured for: a Polly voice such
@@ -245,7 +246,6 @@ export class BrowserTTSProvider implements ITTSProvider {
 			throw new Error("BrowserTTSProvider requires browser environment");
 		}
 
-		// Check browser support
 		if (!("speechSynthesis" in window)) {
 			throw new Error("Browser does not support Speech Synthesis API");
 		}
@@ -421,7 +421,6 @@ class BrowserTTSProviderImpl implements ITTSProviderImplementation {
 	private splitIntoChunks(
 		text: string,
 	): Array<{ text: string; offset: number }> {
-		const MAX_CHUNK_LENGTH = 260;
 		if (text.length <= MAX_CHUNK_LENGTH) {
 			return [{ text, offset: 0 }];
 		}
@@ -473,7 +472,6 @@ class BrowserTTSProviderImpl implements ITTSProviderImplementation {
 
 	private getSegmentationPolicy(): {
 		useSentenceSegmenter: boolean;
-		useWordSegmenter: boolean;
 		locale?: string;
 	} {
 		const providerOptions = this.config?.providerOptions || {};
@@ -489,7 +487,6 @@ class BrowserTTSProviderImpl implements ITTSProviderImplementation {
 					: undefined;
 		return {
 			useSentenceSegmenter: useSegmenter,
-			useWordSegmenter: useSegmenter,
 			locale,
 		};
 	}
@@ -664,7 +661,7 @@ class BrowserTTSProviderImpl implements ITTSProviderImplementation {
 				const wordLength =
 					Number.isFinite(reportedLength) &&
 					reportedLength > 0 &&
-					reportedLength <= 80 &&
+					reportedLength <= MAX_TRUSTED_REPORTED_WORD_LENGTH &&
 					charIndex + reportedLength <= chunkText.length
 						? reportedLength
 						: inferredLength;
@@ -746,7 +743,6 @@ class BrowserTTSProviderImpl implements ITTSProviderImplementation {
 			this.config = {};
 		}
 
-		// Update config with new settings
 		if (settings.rate !== undefined) {
 			this.config.rate = settings.rate;
 		}

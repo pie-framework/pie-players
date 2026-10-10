@@ -44,7 +44,7 @@
 	section-id={sectionId}
 	tools={enabledTools}
 	content-kind="section"
-	position={position}
+	{position}
 	{size}
 	{language}
 	{toolRegistry}

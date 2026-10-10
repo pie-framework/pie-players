@@ -8,17 +8,21 @@ export interface SentenceSegmentationOptions {
 	useSentenceSegmenter?: boolean;
 }
 
+/**
+ * `text` split into sentences at their offsets in it, by Intl.Segmenter unless
+ * the policy disables it or it is missing. The segmenter path drops
+ * whitespace-only segments; the regex fallback keeps every match.
+ */
 export const segmentSentences = (
 	text: string,
 	options?: SentenceSegmentationOptions,
 ): SentenceSegment[] => {
-	const useSentenceSegmenter = options?.useSentenceSegmenter !== false;
-	try {
-		if (!useSentenceSegmenter) {
-			throw new Error("Segmenter disabled by policy");
-		}
-		const Segmenter = globalThis.Intl?.Segmenter;
-		if (typeof Segmenter === "function") {
+	const Segmenter =
+		options?.useSentenceSegmenter === false
+			? undefined
+			: globalThis.Intl?.Segmenter;
+	if (typeof Segmenter === "function") {
+		try {
 			const segmenter = new Segmenter(options?.locale, {
 				granularity: "sentence",
 			});
@@ -29,9 +33,9 @@ export const segmentSentences = (
 				}))
 				.filter((segment) => segment.text.trim().length > 0);
 			if (parsed.length > 0) return parsed;
+		} catch {
+			// Fall through to regex segmentation.
 		}
-	} catch {
-		// Fall through to regex segmentation.
 	}
 
 	const sentenceRegex = /[^.!?]+(?:[.!?]+|$)/g;

@@ -7,8 +7,6 @@
  *   `polly` and `google` run on the `pie` transport; `custom` runs on the
  *   `custom` transport to a host's own service, which takes `lang_id`,
  *   `speedRate` and `cache`
- *
- * Part of PIE Assessment Toolkit.
  */
 
 import {
@@ -136,12 +134,7 @@ export class TTSToolProvider
 		}
 	}
 
-	/**
-	 * Create TTS tool provider
-	 *
-	 * @param backend TTS backend to use (default: 'browser')
-	 * @param options Loader for the server adapter, required by server backends
-	 */
+	/** A server backend needs `options.loadServerProvider`. */
 	constructor(
 		backend: TTSBackend = "browser",
 		options: TTSToolProviderOptions = {},
@@ -152,12 +145,8 @@ export class TTSToolProvider
 	}
 
 	/**
-	 * Initialize TTS provider
-	 *
-	 * Sets up the appropriate TTS backend.
-	 *
-	 * @param config Runtime configuration and credentials
-	 * @throws Error if initialization fails or required config missing
+	 * Set up the backend's TTS provider. Throws when the backend is unavailable
+	 * or its required config is missing. Once initialized, a call only warns.
 	 */
 	async initialize(config: TTSToolProviderConfig): Promise<void> {
 		if (this.ttsProvider) {
@@ -185,11 +174,7 @@ export class TTSToolProvider
 		logger.debug(`initialized (backend: ${this.backend})`);
 	}
 
-	/**
-	 * Initialize browser TTS (Web Speech API)
-	 */
 	private async _initializeBrowserTTS(): Promise<void> {
-		// Check if Web Speech API is available
 		if (typeof window === "undefined" || !("speechSynthesis" in window)) {
 			throw new Error(
 				"[TTSToolProvider] Browser TTS not supported (Web Speech API not available)",
@@ -200,9 +185,6 @@ export class TTSToolProvider
 		logger.debug("browser TTS initialized (Web Speech API)");
 	}
 
-	/**
-	 * Initialize server-based TTS
-	 */
 	private async _initializeServerTTS(
 		config: TTSToolProviderConfig,
 	): Promise<void> {
@@ -272,13 +254,8 @@ export class TTSToolProvider
 	}
 
 	/**
-	 * Create a TTS provider instance
-	 *
-	 * Returns the initialized TTS provider.
-	 *
-	 * @param config Optional instance-specific configuration (currently unused)
-	 * @returns TTS provider
-	 * @throws Error if provider not initialized
+	 * The initialized TTS provider; every call returns the same one and ignores
+	 * `config`. Throws before `initialize`.
 	 */
 	async createInstance(
 		config?: Partial<TTSToolProviderConfig>,
@@ -292,20 +269,10 @@ export class TTSToolProvider
 		return this.ttsProvider;
 	}
 
-	/**
-	 * Check if provider is ready
-	 *
-	 * @returns true if provider is initialized
-	 */
 	isReady(): boolean {
 		return this.ttsProvider !== null;
 	}
 
-	/**
-	 * Clean up provider resources
-	 *
-	 * Destroys the TTS provider and releases resources.
-	 */
 	destroy(): void {
 		if (this.ttsProvider) {
 			this.ttsProvider.destroy();

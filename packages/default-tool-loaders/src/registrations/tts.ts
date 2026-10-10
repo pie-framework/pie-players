@@ -37,7 +37,7 @@ const loadServerTTSProvider = async () =>
  * Supports:
  * - Reading content aloud using browser TTS or external providers
  * - Context-aware visibility (shows when readable text is available)
- * - All levels except assessment and element
+ * - Item and passage levels
  */
 export const ttsToolRegistration: ToolRegistration = {
 	toolId: "textToSpeech",

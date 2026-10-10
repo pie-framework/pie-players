@@ -2,7 +2,7 @@
  * Generated-speech plan model (PURE core).
  *
  * This module is the speech-composition core for items that contain math but
- * ship without authored SSML / `accessibilityCatalogs` (PIE-623). It is
+ * ship without authored SSML / `accessibilityCatalogs`. It is
  * deliberately free of any imports from `TTSService`, the highlight renderer,
  * `HighlightCoordinator`, Svelte, or custom-element entrypoints
  * (`scripts/check-speech-composition-purity.mjs` enforces this). DOM primitive

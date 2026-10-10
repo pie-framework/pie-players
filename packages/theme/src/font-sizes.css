@@ -56,8 +56,8 @@
  * the scope around a host's own item player too, and `pie-item-player` renders
  * PIE elements into its own shadow tree. `pie-player` is the externally
  * loaded item wrapper some hosts render items through instead, so both delivery
- * paths are covered — targeting only the wrapper, as this file previously did,
- * missed every item this repo renders itself.
+ * paths are covered; targeting only the wrapper misses every item this repo
+ * renders itself.
  *
  * Scoped under `[data-font-size]` so the declaration only exists once a host has
  * opted in, and so a host's own rules keep the upper hand at equal specificity.

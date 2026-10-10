@@ -59,7 +59,6 @@ export const answerEliminatorToolRegistration: ToolRegistration = {
 	descriptionKey: "tools.answerEliminator.description",
 	icon: "strikethrough",
 
-	// Answer eliminator appears at item level only
 	supportedLevels: ["item"],
 
 	/**

@@ -13,8 +13,6 @@
  *
  * This enables proper pronunciation, emphasis, and pacing for TTS without
  * requiring authors to maintain separate catalog files.
- *
- * Part of PIE Assessment Toolkit.
  */
 
 import type {
@@ -62,11 +60,6 @@ const SSML_ALLOWED_TAGS = new Set([
 ]);
 
 /**
- * Allow-listed attributes across SSML elements. Attribute allow-listing is
- * global (not per-tag) because the union is small and consistent across
- * providers.
- */
-/**
  * Tags whose content must be dropped entirely (rather than unwrapped to
  * preserve phrasing text). These are dangerous containers whose text
  * payload could be re-interpreted downstream.
@@ -82,6 +75,10 @@ const SSML_DROP_FULLY_TAGS = new Set([
 	"template",
 ]);
 
+/**
+ * Allow-listed attributes across SSML elements. One list covers every tag
+ * because the union is small and consistent across providers.
+ */
 const SSML_ALLOWED_ATTRS = new Set([
 	"alphabet",
 	"ph",
@@ -204,10 +201,8 @@ function sanitizeSsmlElement(element: Element): void {
 			element.removeAttribute(attrName);
 		}
 	}
-	// Belt-and-braces: even though `src` is allow-listed, SSML `<audio>`
-	// sends its URL to a server-side TTS provider that will dereference
-	// it. Refuse non-http(s) schemes and private / cloud-metadata hosts
-	// at the SSML boundary so we never forward an SSRF primitive.
+	// `src` survives the attribute allow-list, and a server-side provider
+	// fetches it: keep it only for an http(s) URL off SSML_PRIVATE_AUDIO_HOSTS.
 	if (element.tagName.toLowerCase() === "audio") {
 		const src = element.getAttribute("src");
 		if (src !== null && !isSafeSsmlAudioSrc(src)) {
@@ -256,6 +251,12 @@ function serializeSsmlElement(element: Element): string {
 	return `<${tagName}${attrs}>${childPieces.join("")}</${tagName}>`;
 }
 
+/**
+ * SSML cut down to the allow-listed tags and attributes. Input with no markup,
+ * or with no DOMParser available, comes back unchanged. Otherwise the first
+ * <speak> element comes back sanitized, or, when there is none, the sanitized
+ * fragment with no <speak> wrapper.
+ */
 export function sanitizeSsmlString(input: string): string {
 	const trimmed = String(input || "").trim();
 	if (!trimmed || !trimmed.includes("<")) return input;
@@ -315,12 +316,7 @@ function escapeXmlAttr(value: string): string {
 export class SSMLExtractor {
 	private catalogCounter = 0;
 
-	/**
-	 * Extract SSML from entire item config (markup + models)
-	 *
-	 * @param config Item configuration with potential embedded SSML
-	 * @returns Extracted catalogs and cleaned config
-	 */
+	/** Extract SSML from the item's markup, prompts and choice labels. */
 	extractFromItemConfig(config: ConfigEntity): ExtractionResult {
 		const allCatalogs: AccessibilityCatalog[] = [];
 
@@ -384,13 +380,7 @@ export class SSMLExtractor {
 		};
 	}
 
-	/**
-	 * Extract SSML from markup string
-	 *
-	 * @param markup HTML markup potentially containing <speak> elements
-	 * @param idPrefix Prefix for generating catalog IDs
-	 * @returns Extracted catalogs and cleaned markup
-	 */
+	/** Extract SSML from one markup string. */
 	private extractFromMarkup(
 		markup: string,
 		idPrefix: string,
@@ -399,7 +389,6 @@ export class SSMLExtractor {
 			return { catalogs: [], cleanedMarkup: markup };
 		}
 
-		// Check if running in browser environment
 		if (typeof window === "undefined" || typeof DOMParser === "undefined") {
 			console.warn(
 				"[SSMLExtractor] DOMParser not available (SSR?), skipping extraction",
@@ -416,18 +405,14 @@ export class SSMLExtractor {
 				"text/html",
 			);
 
-			// Find all <speak> elements
 			const speakElements = Array.from(doc.querySelectorAll("speak"));
 
 			if (speakElements.length === 0) {
-				// No SSML found, return original markup
 				return { catalogs: [], cleanedMarkup: markup };
 			}
 
-			// Process each <speak> element
 			for (const speakEl of speakElements) {
 				try {
-					// Generate unique catalog ID
 					const catalogId = this.generateCatalogId(idPrefix);
 
 					// Sanitize before serializing so the SSML forwarded to the TTS
@@ -437,7 +422,6 @@ export class SSMLExtractor {
 					sanitizeSsmlElement(speakEl);
 					const ssmlContent = serializeSsmlElement(speakEl);
 
-					// Extract language (check both xml:lang and lang attributes)
 					const language =
 						speakEl.getAttribute("xml:lang") ||
 						speakEl.getAttribute("lang") ||
@@ -480,7 +464,6 @@ export class SSMLExtractor {
 						wrapper.setAttribute("data-catalog-idref", catalogId);
 					}
 
-					// Create catalog entry
 					catalogs.push({
 						identifier: catalogId,
 						cards: [
@@ -496,26 +479,21 @@ export class SSMLExtractor {
 						"[SSMLExtractor] Error processing <speak> element:",
 						error,
 					);
-					// Continue with other elements
 				}
 			}
 
-			// Return cleaned markup
 			const cleanedMarkup = doc.body.innerHTML;
 
 			return { catalogs, cleanedMarkup };
 		} catch (error) {
 			console.error("[SSMLExtractor] Error parsing markup:", error);
-			// Return original markup if parsing fails
 			return { catalogs: [], cleanedMarkup: markup };
 		}
 	}
 
 	/**
-	 * Generate unique catalog ID
-	 *
-	 * @param prefix Context prefix (e.g., 'prompt-q1', 'choice-q1-a')
-	 * @returns Unique catalog ID (e.g., 'auto-prompt-q1-0')
+	 * A catalog id unique to this extractor until reset(), e.g.
+	 * `auto-prompt-q1-0`.
 	 */
 	private generateCatalogId(prefix: string): string {
 		const id = `auto-${prefix}-${this.catalogCounter}`;

@@ -229,12 +229,7 @@ export const normalizeTTSSpeedControlOptions = (
 		if (rate === undefined || dedupedRates.has(rate)) continue;
 		dedupedRates.add(rate);
 
-		const defaultLabel =
-			rate === 1
-				? "Normal"
-				: typeof entry === "number"
-					? formatSpeedLabel(rate)
-					: formatSpeedLabel(rate);
+		const defaultLabel = rate === 1 ? "Normal" : formatSpeedLabel(rate);
 		const label =
 			typeof entry === "number"
 				? defaultLabel

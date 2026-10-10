@@ -226,7 +226,7 @@ export function createIifeBackend(config: IifeBackendConfig): IifeBackend {
 			} catch (error) {
 				const elapsedMs = Date.now() - startedAt;
 				const remainingMs = timeoutMs - elapsedMs;
-				const reason = error instanceof Error ? error.message : String(error);
+				const reason = errorMessage(error);
 				if (remainingMs <= 0) {
 					const timeoutError = new Error(
 						`IIFE bundle load timed out after ${timeoutMs}ms: ${url}`,
@@ -324,46 +324,34 @@ export function createIifeBackend(config: IifeBackendConfig): IifeBackend {
 
 		const conflict = findIifeElementMapConflict(elements);
 		if (conflict) {
-			const reasons = new Map<ElementTag, RegistrationFailureReason>();
-			for (const tag of Object.keys(elements)) {
-				reasons.set(tag, {
-					kind: "backend-rejected",
-					tag,
-					cause: conflict,
-				});
-			}
-			throw new AdapterFailure(reasons);
+			throw failureForEveryTag(elements, (tag) => ({
+				kind: "backend-rejected",
+				tag,
+				cause: conflict,
+			}));
 		}
 
 		const bundleUrl = buildBundleUrl(elements, bundleType, config);
 		try {
 			await ensureBundleLoaded(bundleUrl, context.doc);
 		} catch (err) {
-			const cause = err instanceof Error ? err.message : String(err);
-			const reasons = new Map<ElementTag, RegistrationFailureReason>();
-			for (const tag of Object.keys(elements)) {
-				reasons.set(tag, {
-					kind: "bundle-load-failed",
-					tag,
-					url: bundleUrl,
-					cause,
-				});
-			}
-			throw new AdapterFailure(reasons);
+			const cause = errorMessage(err);
+			throw failureForEveryTag(elements, (tag) => ({
+				kind: "bundle-load-failed",
+				tag,
+				url: bundleUrl,
+				cause,
+			}));
 		}
 
 		const pieModule = readPieModule();
 		if (!pieModule) {
-			const reasons = new Map<ElementTag, RegistrationFailureReason>();
-			for (const tag of Object.keys(elements)) {
-				reasons.set(tag, {
-					kind: "bundle-load-failed",
-					tag,
-					url: bundleUrl,
-					cause: "window.pie.default missing after bundle load",
-				});
-			}
-			throw new AdapterFailure(reasons);
+			throw failureForEveryTag(elements, (tag) => ({
+				kind: "bundle-load-failed",
+				tag,
+				url: bundleUrl,
+				cause: "window.pie.default missing after bundle load",
+			}));
 		}
 
 		const reasons = new Map<ElementTag, RegistrationFailureReason>();
@@ -414,12 +402,14 @@ export function createIifeBackend(config: IifeBackendConfig): IifeBackend {
 				reasons.set(tag, {
 					kind: "define-failed",
 					tag,
-					cause: err instanceof Error ? err.message : String(err),
+					cause: errorMessage(err),
 				});
 				continue;
 			}
 
 			try {
+				// `customElements` rejects a constructor already defined under
+				// another tag, so each versioned tag gets its own subclass.
 				defineCustomElementSafely(
 					actualTag,
 					class extends ElementClass {},
@@ -429,7 +419,7 @@ export function createIifeBackend(config: IifeBackendConfig): IifeBackend {
 				reasons.set(tag, {
 					kind: "define-failed",
 					tag,
-					cause: err instanceof Error ? err.message : String(err),
+					cause: errorMessage(err),
 				});
 				continue;
 			}
@@ -460,9 +450,25 @@ export function createIifeBackend(config: IifeBackendConfig): IifeBackend {
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
+/** A failure of the whole request, reported once per tag. */
+function failureForEveryTag(
+	elements: ElementMap,
+	reasonFor: (tag: ElementTag) => RegistrationFailureReason,
+): AdapterFailure {
+	const reasons = new Map<ElementTag, RegistrationFailureReason>();
+	for (const tag of Object.keys(elements)) {
+		reasons.set(tag, reasonFor(tag));
+	}
+	return new AdapterFailure(reasons);
+}
+
+function errorMessage(err: unknown): string {
+	return err instanceof Error ? err.message : String(err);
+}
+
 function defaultLoadBundleScript(url: string, doc: Document): Promise<void> {
 	return new Promise((resolve, reject) => {
-		const script = doc.createElement("script") as HTMLScriptElement;
+		const script = doc.createElement("script");
 		script.src = url;
 		script.defer = true;
 		script.setAttribute("data-pie-bundle", "true");

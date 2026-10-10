@@ -185,11 +185,9 @@
 		if (usableWidthPx <= 0) {
 			return { min: 50, max: 50 };
 		}
-		// The bound is on the region, not on the grid track it sits in. Each pane
-		// spends its gutter out of its own track, so sizing the track to the
-		// requested width handed back a region that much narrower — a host asking for
-		// 280px to keep a passage legible got 264px, and the shortfall grows with the
-		// gutter.
+		// The bound is on the region, not on the grid track it sits in: each pane
+		// spends its gutter out of its own track, so the track is the requested
+		// region width plus that gutter.
 		const trackWidthPx = minRegionWidthPx + getPaneGutterPx(container);
 		const rawMinPercent = (trackWidthPx / usableWidthPx) * 100;
 		if (!Number.isFinite(rawMinPercent) || rawMinPercent >= 50) {
@@ -530,9 +528,7 @@
 		overscroll-behavior: contain;
 		/* Margin (not padding) so the gutter sits outside the scrollable
 		   region. Padding lives inside the scroll box, letting any child
-		   that uses position:sticky bleed into it as content scrolls past.
-		   Kept as margin so this pane composes cleanly with arbitrary
-		   descendant content (sticky headers, floating toolbars, etc.). */
+		   that uses position:sticky bleed into it as content scrolls past. */
 		margin: 0.5rem;
 		box-sizing: border-box;
 		/* Backdrop for the scroll surround behind the cards. Deliberately the

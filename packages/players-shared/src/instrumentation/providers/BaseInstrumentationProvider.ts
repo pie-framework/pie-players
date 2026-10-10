@@ -140,20 +140,16 @@ export abstract class BaseInstrumentationProvider
 	 * @param attributes Contextual attributes
 	 */
 	trackError(error: Error, attributes: ErrorAttributes): void {
-		// Guard: check if provider is ready
 		if (!this.guardedOperation("trackError", error, attributes)) {
 			return;
 		}
 
-		// Apply error filter
 		if (!this.applyErrorFilter(error, attributes)) {
 			return;
 		}
 
-		// Transform attributes
 		const finalAttributes = this.transformAttributes(attributes);
 
-		// Delegate to concrete provider
 		try {
 			this.doTrackError(error, finalAttributes);
 
@@ -184,25 +180,20 @@ export abstract class BaseInstrumentationProvider
 	 * @param attributes Event attributes
 	 */
 	trackEvent(eventName: string, attributes: EventAttributes): void {
-		// Guard: check if provider is ready
 		if (!this.guardedOperation("trackEvent", eventName, attributes)) {
 			return;
 		}
 
-		// Apply event filter
 		if (!this.applyEventFilter(eventName, attributes)) {
 			return;
 		}
 
-		// Apply sampling
 		if (!this.applySampling(eventName)) {
 			return;
 		}
 
-		// Transform attributes
 		let finalAttributes = this.transformAttributes(attributes);
 
-		// Add timestamp if not present
 		if (!finalAttributes.timestamp) {
 			finalAttributes = {
 				...finalAttributes,
@@ -210,7 +201,6 @@ export abstract class BaseInstrumentationProvider
 			};
 		}
 
-		// Delegate to concrete provider
 		try {
 			this.doTrackEvent(eventName, finalAttributes);
 
@@ -260,12 +250,10 @@ export abstract class BaseInstrumentationProvider
 	 * @param attributes Optional user attributes
 	 */
 	setUserContext(userId: string, attributes?: Record<string, any>): void {
-		// Guard: check if provider is ready
 		if (!this.guardedOperation("setUserContext", userId, attributes)) {
 			return;
 		}
 
-		// Delegate to concrete provider
 		try {
 			this.doSetUserContext(userId, attributes);
 
@@ -290,12 +278,10 @@ export abstract class BaseInstrumentationProvider
 	 * @param attributes Attributes to set globally
 	 */
 	setGlobalAttributes(attributes: Record<string, any>): void {
-		// Guard: check if provider is ready
 		if (!this.guardedOperation("setGlobalAttributes", attributes)) {
 			return;
 		}
 
-		// Delegate to concrete provider
 		try {
 			this.doSetGlobalAttributes(attributes);
 
@@ -429,6 +415,6 @@ export abstract class BaseInstrumentationProvider
 		if (this.config?.attributeTransformer) {
 			return this.config.attributeTransformer(attributes);
 		}
-		return attributes as Record<string, any>;
+		return attributes;
 	}
 }

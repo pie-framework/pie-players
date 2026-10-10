@@ -100,7 +100,6 @@ export class PiePrint extends LitElement {
 		return this;
 	}
 
-	// Private properties
 	private _resolve: ResolverFn;
 	private _loadResolutions: LoadResolutionFn;
 	private _missingElement: MissingElFn;

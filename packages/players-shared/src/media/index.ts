@@ -2,12 +2,10 @@
  * Validation primitives shared by every catalog card whose payload references
  * media.
  *
- * Extracted from `sign-language-cards.ts` when `spoken` cards gained a recorded
- * audio form: both card types take authored, wire-facing URLs and hand them to a
- * media element in the learner's browser, so both need the same scheme
- * allow-list and the same "treat as absent, never as partially valid" posture.
- * Two copies of a URL allow-list is one copy that gets a fix and one that does
- * not.
+ * `sign-language` and recorded `spoken` cards both hand authored, wire-facing
+ * URLs to a media element in the learner's browser, so both take the same
+ * scheme allow-list and the same "treat as absent, never as partially valid"
+ * posture from here.
  *
  * Lives here, behind its own subpath, so a PIE element can validate authored
  * media without importing the assessment toolkit, whose root entry declares
@@ -24,7 +22,7 @@ import type { MediaFragmentRange, MediaSource } from "../types/index.js";
  * Relative and protocol-relative URLs are allowed — host content is commonly
  * served from the same origin as the player.
  */
-const DISALLOWED_SRC_SCHEME = /^[a-z][a-z0-9+.-]*:/i;
+const URL_SCHEME_PREFIX = /^[a-z][a-z0-9+.-]*:/i;
 const ALLOWED_SRC_SCHEMES = new Set(["http:", "https:", "data:", "blob:"]);
 
 /**
@@ -57,7 +55,7 @@ export function isSafeMediaSrc(raw: unknown): raw is string {
 	if (!src) return false;
 	// Relative ("/video.mp4", "video.mp4") and protocol-relative ("//cdn/x.mp4")
 	// forms carry no scheme to check and inherit the document's.
-	if (src.startsWith("//") || !DISALLOWED_SRC_SCHEME.test(src)) return true;
+	if (src.startsWith("//") || !URL_SCHEME_PREFIX.test(src)) return true;
 	const scheme = src.slice(0, src.indexOf(":") + 1).toLowerCase();
 	return ALLOWED_SRC_SCHEMES.has(scheme);
 }

@@ -156,8 +156,8 @@ export class PnpPolicySource {
 	 * feature: the returned result carries exactly one decision, and
 	 * `decisions[0].action` is the verdict.
 	 *
-	 * Reusing `resolveSupport(...)` rather than re-walking the precedence rules
-	 * is the point — a second copy of the eight levels would drift.
+	 * It reuses `resolveSupport(...)` because a second copy of the eight levels
+	 * would drift.
 	 */
 	resolveFeature(featureId: string, args: PnpPolicyApplyArgs): PnpPolicyResult {
 		const { ctx, result } = this.prepare(args);

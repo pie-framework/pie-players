@@ -48,7 +48,7 @@ export interface ToolPolicyResolutionDecision {
 	step: number;
 
 	/**
-	 * Precedence level. PNP/profile rules use `1`–`6`; non-profile rules use `0`
+	 * Precedence level. PNP/profile rules use `1`–`8`; non-profile rules use `0`
 	 * for host-side gates, and a custom source, which runs after PNP/profile
 	 * policy, uses its own or `100 + i` for the `i`th registered source.
 	 */

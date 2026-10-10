@@ -5,13 +5,13 @@
  * Two kinds of content wear the same shape, and the card says which:
  *
  *   - `visibility: "always"` is authored presentation. The item family was
- *     designed to be delivered with its transcript on screen — Star Early
- *     Literacy sentence items, for instance — so no profile grants it and none
- *     revokes it.
+ *     designed to be delivered with its transcript on screen — sentence items in
+ *     an early-literacy assessment, for instance — so no profile grants it and
+ *     none revokes it.
  *   - anything else, `"onGrant"` included, is the accommodation. Policy decides
- *     against the `transcript` support id, and silence means no. For the three
- *     Star families where a visible transcript turns the item into a reading
- *     task, that gate is the whole point.
+ *     against the `transcript` support id, and silence means no. For item
+ *     families where a visible transcript turns the item into a reading task,
+ *     that gate is the whole point.
  *
  * The toolkit renders the text, not the element. Before this, the transcript rode
  * on `model.audioTranscript` and `mc-populated-blank` revealed its own copy when

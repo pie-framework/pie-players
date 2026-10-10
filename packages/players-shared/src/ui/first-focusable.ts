@@ -1,6 +1,5 @@
 /**
  * Selector for elements that are commonly keyboard-focusable in assessment UI.
- * Kept in sync with `focus-trap.ts` for consistent tab-order surfaces.
  */
 export const FOCUSABLE_SELECTOR = [
 	"a[href]",

@@ -7,7 +7,8 @@
  * Uses CSS selector paths and node indices for robust serialization that
  * survives content changes when possible. A path into an open shadow root names
  * its host, then ` >>> `, then the path inside the root, so ranges in content
- * that renders into shadow roots round-trip; paths without one read as before.
+ * that renders into shadow roots round-trip; a path with no ` >>> ` is a plain
+ * selector path.
  */
 
 import { isShadowRootNode } from "./tts/flat-tree.js";
@@ -108,12 +109,10 @@ export class RangeSerializer {
 			range.setStart(startNode, data.startOffset);
 			range.setEnd(endNode, data.endOffset);
 
-			// Validate text hasn't changed
 			if (range.toString() === data.text) {
 				return range;
 			}
 
-			// Text changed, range is invalid
 			return null;
 		} catch (error) {
 			// Range construction failed (offsets invalid, etc.)
@@ -128,24 +127,18 @@ export class RangeSerializer {
 	 * Uses a hybrid approach:
 	 * - For element nodes: CSS selector path
 	 * - For text nodes: parent selector + text node index
-	 *
-	 * @param node - Node to get path for
-	 * @param root - Root element
-	 * @returns Path string
 	 */
 	private getNodePath(node: Node, root: Element): string {
 		if (node === root) {
 			return "";
 		}
 
-		// Handle text nodes
 		if (node.nodeType === Node.TEXT_NODE) {
 			const parent = node.parentNode;
 			if (!parent) {
 				throw new Error("Text node has no parent");
 			}
 
-			// Get index of this text node among its siblings
 			const textNodes = Array.from(parent.childNodes).filter(
 				(n) => n.nodeType === Node.TEXT_NODE,
 			);
@@ -157,7 +150,6 @@ export class RangeSerializer {
 			return `${parentPath}::text[${index}]`;
 		}
 
-		// Handle element nodes
 		if (node.nodeType === Node.ELEMENT_NODE) {
 			return this.getElementPath(node as Element, root);
 		}
@@ -169,13 +161,7 @@ export class RangeSerializer {
 		throw new Error(`Unsupported node type: ${node.nodeType}`);
 	}
 
-	/**
-	 * Get CSS selector path to an element.
-	 *
-	 * @param element - Element to get path for
-	 * @param root - Root element
-	 * @returns CSS selector path
-	 */
+	/** Get CSS selector path to an element. */
 	private getElementPath(element: Element, root: Element): string {
 		if (element === root) {
 			return "";
@@ -267,26 +253,18 @@ export class RangeSerializer {
 		return scope;
 	}
 
-	/**
-	 * Find a node by its path from root.
-	 *
-	 * @param path - Path string from getNodePath
-	 * @param root - Root element
-	 * @returns Node, or null if not found
-	 */
+	/** The node a getNodePath path names, or null if not found. */
 	private findNodeByPath(path: string, root: Element): Node | null {
 		if (path === "") {
 			return root;
 		}
 
-		// Handle text node paths
 		if (path.includes("::text[")) {
 			const marker = path.lastIndexOf("::text[");
 			const elementPath = path.slice(0, marker);
 			const textPart = path.slice(marker + "::text[".length);
 			const textIndex = Number.parseInt(textPart.replace("]", ""), 10);
 
-			// Find parent element
 			let parent: Element | ShadowRoot | null;
 			try {
 				parent = this.resolveElementPath(elementPath, root);
@@ -296,7 +274,6 @@ export class RangeSerializer {
 			}
 			if (!parent) return null;
 
-			// Find text node by index
 			const textNodes = Array.from(parent.childNodes).filter(
 				(n) => n.nodeType === Node.TEXT_NODE,
 			);
@@ -304,7 +281,6 @@ export class RangeSerializer {
 			return textNodes[textIndex] || null;
 		}
 
-		// Handle element paths
 		try {
 			return this.resolveElementPath(path, root);
 		} catch (error) {

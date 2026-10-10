@@ -128,12 +128,6 @@ function stableSerializableJson(value: unknown): string {
 		if (typeof current === "undefined") {
 			return undefined;
 		}
-		if (typeof current === "function" || typeof current === "symbol") {
-			throw new TypeError(`${path} is not JSON-serializable`);
-		}
-		if (typeof current === "bigint") {
-			throw new TypeError(`${path} is not JSON-serializable`);
-		}
 		if (typeof current !== "object") {
 			throw new TypeError(`${path} is not JSON-serializable`);
 		}
@@ -652,7 +646,6 @@ export function createToolSurfaceHost(
 				`Tool "${toolId}" failed to render into the "${current.surface}" surface.`,
 				error,
 			);
-			return;
 		}
 	}
 

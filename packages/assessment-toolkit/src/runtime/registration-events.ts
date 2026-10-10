@@ -81,16 +81,14 @@ export interface InternalFormativeActionDetail {
 /**
  * A Media Time Source becoming available or going away.
  *
- * The one seam through which a timed-media section reaches media, and
- * deliberately the *only* one: the stimulus card dispatches this with a native
- * `<video>` adapter, and a host wrapping a third-party player dispatches the same
- * event with its own port. One code path, two producers — which is what keeps
- * "a host can supply its own media element without shipping a PIE element" true
- * rather than aspirational.
+ * The only seam through which a timed-media section reaches media: the stimulus
+ * card dispatches it with a native `<video>` adapter, and a host wrapping a
+ * third-party player dispatches it with its own port. One code path with two
+ * producers is what lets a host supply its own media element without shipping a
+ * PIE element.
  *
- * `source` carries a live object, not serializable data. That is fine and
- * intended: this event never crosses a realm, exactly like the element reference
- * on `pie-register`.
+ * `source` is a live object. The event never crosses a realm, like the element
+ * reference on `pie-register`.
  */
 export interface InternalMediaTimeSourceDetail {
 	/** The renderable that owns the media, for matching against `stimulusRef`. */
@@ -103,11 +101,10 @@ export interface InternalMediaTimeSourceDetail {
 	 * wiring its own player, and omitting the field reads as `"host"` because a
 	 * caller constructing this event by hand is one.
 	 *
-	 * Load-bearing for precedence: the card re-runs its discovery whenever its
-	 * content changes, so without this a host that supplied a third-party port would
-	 * have it silently replaced by the native element mid-session — and the
-	 * capabilities would flip back with it, which is exactly the "appears to enforce"
-	 * failure this contract exists to prevent.
+	 * Precedence depends on it: the card re-runs its discovery whenever its content
+	 * changes, and without the field the native element would replace a host's
+	 * third-party port mid-session, flipping the capabilities back with it, so a
+	 * policy would read as enforced while it is not.
 	 */
 	origin?: "native-adapter" | "host";
 }

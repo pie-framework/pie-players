@@ -220,6 +220,9 @@ const DEFAULT_LOAD_TIMEOUT_MS = DEFAULT_IIFE_BUNDLE_RETRY_CONFIG.timeoutMs;
 // Module-scoped in-flight cache. Key: backend signature + sorted elements.
 // Keeps concurrent identical requests collapsed to one backend call.
 const inFlightRequests = new Map<string, Promise<void>>();
+// An ESM backend keeps page state that later loads build on (the import maps it
+// injected, the shared dependency versions they fixed), so every load with the
+// same config reuses one backend. IIFE backends are created per call.
 const resolvedEsmBackends = new Map<string, ElementLoaderBackend>();
 const resolvedBackendOverrides = new Map<string, ElementLoaderBackend>();
 
@@ -493,6 +496,10 @@ function backendKeyOf(backend: BackendOption): string {
 	return "unknown";
 }
 
+/**
+ * Plain data compares by value, functions and other objects by identity, so
+ * two configs get one key only when they behave the same.
+ */
 function fingerprintValue(value: unknown): string {
 	return JSON.stringify(normalizeForFingerprint(value, new Map()));
 }
@@ -502,18 +509,18 @@ function normalizeForFingerprint(
 	seen: Map<object, string>,
 ): unknown {
 	if (value === null || value === undefined) return value;
-	const primitiveType = typeof value;
+	const valueType = typeof value;
 	if (
-		primitiveType === "string" ||
-		primitiveType === "number" ||
-		primitiveType === "boolean"
+		valueType === "string" ||
+		valueType === "number" ||
+		valueType === "boolean"
 	) {
 		return value;
 	}
-	if (primitiveType === "function") {
+	if (valueType === "function") {
 		return { __functionRef: getFunctionRefId(value as Function) };
 	}
-	if (primitiveType !== "object") {
+	if (valueType !== "object") {
 		return String(value);
 	}
 

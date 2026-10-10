@@ -1,8 +1,15 @@
 /**
- * Tool Registry
+ * Tool registry: the registration contract every tool declares itself with,
+ * the shape validation `register` and `override` run, and the `ToolRegistry`
+ * class.
  *
- * Central registry for all assessment tools. Manages tool metadata, visibility logic,
- * and button/instance creation. Supports dynamic registration and override by integrators.
+ * Layout: the exported contract types come first, ending with
+ * `ToolRegistration`, then `assertToolRegistrationShape`, then the class. Its
+ * members run from mutation and change observation, through queries and the
+ * filters for the second and third passes of tool resolution (relevance in
+ * `filterVisibleInContext`, applicability in `filterDecidedToolIds`; the policy
+ * engine owns the first), to module loading with its undefined-element
+ * warnings and the toolbar and surface render helpers.
  */
 
 import { dynamicMessageKey } from "@pie-players/pie-players-shared/i18n/provider";
@@ -69,18 +76,16 @@ export interface ToolToolbarButtonDefinition {
 	toolId: string;
 	label: string;
 	/**
-	 * Optional to match what the renderer already does: `ItemToolBar.svelte`
-	 * guards on `button.icon`, and `ToolbarItem.icon` is
-	 * already optional, so requiring it here claimed a guarantee nothing relied
-	 * on. A registration that renders a button still has to declare an icon —
+	 * Optional to match the renderer: `ItemToolBar.svelte` guards on
+	 * `button.icon`, and `ToolbarItem.icon` is optional too. A registration that
+	 * renders a button still has to declare an icon —
 	 * `assertToolRegistrationShape` enforces that.
 	 */
 	icon?: string;
 	/**
 	 * FontAwesome icon name, opting this button into `<nds-icon-button>` rendering
 	 * where the host enables NDS icons (`ndsIcons`). Absent means the toolbar keeps
-	 * its own button rendering, which is what every capability got before the NDS
-	 * button existed.
+	 * its own button rendering.
 	 *
 	 * A declaration rather than a toolId lookup in the toolbar: which capabilities
 	 * a deployment renders through the host's design system is a composition-layer
@@ -441,8 +446,8 @@ export interface ToolContentDependencyContext {
  * It is intrinsic to the capability, unlike eligibility tier, which is a property
  * of the program.
  *
- * Two independent things follow from declaring it, and both used to be done by
- * naming ids in core:
+ * Two independent things follow from declaring it, neither of which needs core
+ * to name a capability id:
  *
  *   1. **Availability is grant AND content.** The host renders only when policy
  *      granted the feature *and* `resolve` returned something. Neither half
@@ -508,7 +513,8 @@ export interface ToolSurfaceRenderResult {
 }
 
 /**
- * Tool registration interface
+ * The contract a tool declares itself with; `ToolRegistry.register` validates
+ * its shape.
  */
 export interface ToolRegistration {
 	/** Unique tool identifier (e.g., 'calculator', 'textToSpeech') */
@@ -634,17 +640,14 @@ export interface ToolRegistration {
 	) => void | Promise<void>;
 
 	/**
-	 * Pass 2: Tool decides if it's relevant in this context
-	 * Called ONLY if orchestrator has already allowed the tool (Pass 1)
+	 * Whether the tool is relevant in this context (pass 2). Asked only for a
+	 * tool policy already allows (pass 1).
 	 *
 	 * Required for the toolbar activations, and meaningless for `activation:
 	 * "region"`: a region capability has no toolbar presence to be relevant to, and
 	 * the question it *would* answer — is there anything to show here — is
 	 * `requiresAuthoredContent`. A registration that omits this is never returned
-	 * by `getVisibleTools`.
-	 *
-	 * @param context - Rich context about where tool is being evaluated
-	 * @returns true if tool should be visible, false to hide
+	 * by `filterVisibleInContext`.
 	 */
 	isVisibleInContext?(context: ToolContext): boolean;
 
@@ -663,9 +666,6 @@ export interface ToolRegistration {
 	 * Declare this only where the tool's own controls provably do nothing:
 	 * withdrawing a granted accommodation on a false negative is the more
 	 * expensive failure. Omitting it means "applicable".
-	 *
-	 * @param context - The item or element context the tool would act on
-	 * @returns false to withdraw the tool from this context
 	 */
 	isApplicableToContent?(context: ToolContext): boolean;
 
@@ -977,10 +977,7 @@ export class ToolRegistry {
 	}
 
 	/**
-	 * Register a tool
-	 *
-	 * @param registration - Tool registration
-	 * @throws Error if toolId is already registered
+	 * Register a tool. Throws when its `toolId` is already registered.
 	 */
 	register(registration: ToolRegistration): void {
 		assertToolRegistrationShape(registration);
@@ -993,9 +990,8 @@ export class ToolRegistry {
 	}
 
 	/**
-	 * Override an existing tool registration
-	 *
-	 * @param registration - New tool registration (must have existing toolId)
+	 * Replace an existing tool registration. Throws when its `toolId` is not
+	 * registered.
 	 */
 	override(registration: ToolRegistration): void {
 		assertToolRegistrationShape(registration);
@@ -1010,9 +1006,7 @@ export class ToolRegistry {
 	}
 
 	/**
-	 * Unregister a tool
-	 *
-	 * @param toolId - Tool ID to remove
+	 * Unregister a tool. An unknown id is a no-op and emits no change.
 	 */
 	unregister(toolId: string): void {
 		if (!this.tools.has(toolId)) return;
@@ -1020,50 +1014,25 @@ export class ToolRegistry {
 		this.emitChange({ kind: "unregister", toolIds: [toolId] });
 	}
 
-	/**
-	 * Get a tool registration by ID
-	 *
-	 * @param toolId - Tool ID
-	 * @returns Tool registration or undefined
-	 */
 	get(toolId: string): ToolRegistration | undefined {
 		return this.tools.get(toolId);
 	}
 
-	/**
-	 * Check if a tool is registered
-	 *
-	 * @param toolId - Tool ID
-	 * @returns true if registered
-	 */
 	has(toolId: string): boolean {
 		return this.tools.has(toolId);
 	}
 
-	/**
-	 * Get all registered tool IDs
-	 *
-	 * @returns Array of tool IDs
-	 */
+	/** Registered tool ids, in registration order. */
 	getAllToolIds(): string[] {
 		return Array.from(this.tools.keys());
 	}
 
-	/**
-	 * Get all tool registrations
-	 *
-	 * @returns Array of tool registrations
-	 */
+	/** Registrations, in registration order. */
 	getAllTools(): ToolRegistration[] {
 		return Array.from(this.tools.values());
 	}
 
-	/**
-	 * Get tools that support a specific level
-	 *
-	 * @param level - Tool level (assessment, section, item, passage, element)
-	 * @returns Array of tool registrations that support this level
-	 */
+	/** Registrations whose `supportedLevels` include `level`. */
 	getToolsByLevel(level: ToolLevel): ToolRegistration[] {
 		return this.getAllTools().filter((tool) =>
 			tool.supportedLevels.includes(level),
@@ -1129,16 +1098,12 @@ export class ToolRegistry {
 	}
 
 	/**
-	 * Filter tools by visibility in a given context
+	 * Pass 2 of tool resolution: the registrations among `allowedToolIds` (the
+	 * ids policy allowed in pass 1) that support `context.level` and answer
+	 * `isVisibleInContext` with `true`.
 	 *
-	 * Pass 2 of the three-pass model: Given a list of allowed tool IDs (from Pass 1),
-	 * ask each tool if it's relevant in this context.
-	 *
-	 * @param allowedToolIds - Tool IDs that passed Pass 1 (orchestrator approval)
-	 * @param context - Context to evaluate
 	 * @param onFailure - Receives a relevance check's throw; the tool is then not
 	 *   visible. Logs when omitted.
-	 * @returns Array of visible tool registrations
 	 */
 	filterVisibleInContext(
 		allowedToolIds: string[],
@@ -1158,13 +1123,12 @@ export class ToolRegistry {
 				continue;
 			}
 
-			// Check if tool supports this level
 			if (!tool.supportedLevels.includes(context.level)) {
 				continue;
 			}
 
-			// Pass 2: Ask tool if it's relevant. A region capability declares no
-			// answer and has no toolbar presence, so it is never visible here.
+			// A region capability declares no answer and has no toolbar presence,
+			// so it is never visible here.
 			try {
 				if (tool.isVisibleInContext?.(context)) {
 					visible.push(tool);
@@ -1274,10 +1238,8 @@ export class ToolRegistry {
 	}
 
 	/**
-	 * Get tool metadata for building UIs
-	 * Useful for building PNP configuration interfaces
-	 *
-	 * @returns Array of tool metadata (id, name, description, levels, activation)
+	 * Plain metadata for every registration, in registration order, for UIs
+	 * such as a PNP configuration screen.
 	 */
 	getToolMetadata(): Array<{
 		toolId: string;
@@ -1508,10 +1470,9 @@ export class ToolRegistry {
 
 		const mergedContext: ToolbarContext = {
 			...toolbarContext,
-			componentOverrides: {
-				...(this.componentOverrides || {}),
-				...(toolbarContext.componentOverrides || {}),
-			},
+			componentOverrides: this.mergeComponentOverrides(
+				toolbarContext.componentOverrides,
+			),
 		};
 
 		return tool.renderToolbar(context, mergedContext);
@@ -1541,10 +1502,19 @@ export class ToolRegistry {
 		}
 		return tool.renderSurface({
 			...context,
-			componentOverrides: {
-				...(this.componentOverrides || {}),
-				...(context.componentOverrides || {}),
-			},
+			componentOverrides: this.mergeComponentOverrides(
+				context.componentOverrides,
+			),
 		});
+	}
+
+	/** The registry's component overrides, with the caller's taking precedence. */
+	private mergeComponentOverrides(
+		contextOverrides: ToolComponentOverrides | undefined,
+	): ToolComponentOverrides {
+		return {
+			...(this.componentOverrides || {}),
+			...(contextOverrides || {}),
+		};
 	}
 }

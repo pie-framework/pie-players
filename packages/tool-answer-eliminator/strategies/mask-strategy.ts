@@ -34,7 +34,6 @@ export class MaskStrategy implements EliminationStrategy {
 			return;
 		}
 
-		// Inject CSS for this specific highlight
 		this.injectHighlightCSS(choiceId);
 
 		const highlight = new Highlight(range);
@@ -56,8 +55,6 @@ export class MaskStrategy implements EliminationStrategy {
 		}
 
 		CSS.highlights.delete(`${MaskStrategy.HIGHLIGHT_NAME_PREFIX}${choiceId}`);
-
-		// Remove CSS for this specific highlight
 		this.removeHighlightCSS(choiceId);
 
 		const range = this.ranges.get(choiceId);
@@ -100,7 +97,7 @@ export class MaskStrategy implements EliminationStrategy {
 		const style = document.createElement("style");
 		style.id = styleId;
 		style.textContent = `
-      ::highlight(pie-answer-masked-${choiceId}) {
+      ::highlight(${MaskStrategy.HIGHLIGHT_NAME_PREFIX}${choiceId}) {
         opacity: 0.2;
         filter: blur(2px);
       }
@@ -132,8 +129,6 @@ export class MaskStrategy implements EliminationStrategy {
 
 	private findChoiceContainer(range: Range): HTMLElement | null {
 		let element: HTMLElement | null = range.startContainer as HTMLElement;
-
-		// If startContainer is a text node, get its parent
 		if (element.nodeType === Node.TEXT_NODE) {
 			element = element.parentElement;
 		}

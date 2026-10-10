@@ -34,6 +34,11 @@ interface MatchCandidate {
 	score: number;
 }
 
+// A spoken token equal to a visible token; phrase targets score below it.
+const EXACT_TOKEN_SCORE = 10;
+// Below this, an anchored chunk highlights its region instead of spans.
+const MIN_ANCHOR_SPAN_CONFIDENCE = 0.12;
+
 // LIMITATION (i18n): the phrase table is English, so multi-word operator
 // phrases ("plus or minus", "divided by") only align for English speech; other
 // locales degrade to coarse region highlighting.
@@ -77,7 +82,7 @@ const createCandidates = (
 					spokenStartToken: spokenIndex,
 					spokenEndToken: spokenIndex + 1,
 					visibleToken: visibleIndex,
-					score: 10,
+					score: EXACT_TOKEN_SCORE,
 				});
 			}
 		}
@@ -118,6 +123,9 @@ const createCandidates = (
 	return candidates;
 };
 
+// The highest-scoring chain of candidates monotonic in both spoken and visible
+// order (O(n²) DP). A gap whose spoken and visible token counts differ by more
+// than 2 pays the excess.
 const computeAnchors = (
 	spokenTokens: AlignmentTextToken[],
 	visibleTokens: AlignmentTextToken[],
@@ -194,7 +202,7 @@ const scoreConfidence = (
 	const averageScore =
 		anchors.reduce((total, anchor) => total + anchor.score, 0) /
 		anchors.length /
-		10;
+		EXACT_TOKEN_SCORE;
 	return Math.min(1, tokenCoverage * averageScore);
 };
 
@@ -214,17 +222,18 @@ export const createCatalogSpanAlignment = (args: {
 		speech.spokenText === visibleText && speech.spokenText.length > 0;
 	const hasShortSingleExactAnchor =
 		anchors.length === 1 &&
-		anchors[0].score === 10 &&
+		anchors[0].score === EXACT_TOKEN_SCORE &&
 		spokenTokens.length <= 2 &&
 		visibleTokens.length <= 2;
+	const anchorsAreTrusted =
+		(anchors.length >= 2 || hasShortSingleExactAnchor) &&
+		confidence >= MIN_ANCHOR_SPAN_CONFIDENCE;
 	const playbackMode: CatalogChunkPlaybackMode = speech.unsupportedSemantic
 		? "region-fallback"
 		: isExact
 			? "exact-word"
-			: anchors.length >= 2 || hasShortSingleExactAnchor
-				? confidence >= 0.12
-					? "anchor-span"
-					: "region-fallback"
+			: anchorsAreTrusted
+				? "anchor-span"
 				: "region-fallback";
 
 	return {

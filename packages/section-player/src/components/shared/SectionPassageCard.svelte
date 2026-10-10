@@ -119,7 +119,7 @@
 		(contextConnected ? contextPlayerAction : null) || playerAction,
 	);
 	const effectiveCardTitleFormatter = $derived(
-		(contextConnected ? contextCardTitleFormatter : null) || null,
+		contextConnected ? contextCardTitleFormatter : null,
 	);
 	const headerTitle = $derived.by(() => {
 		const defaultTitle = interfaceI18n.t("player.passage");

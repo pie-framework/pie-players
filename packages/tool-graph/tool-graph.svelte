@@ -19,7 +19,6 @@
 	} from '@pie-players/pie-assessment-toolkit/tools/registration';
 	import { resolveInterfaceI18n } from '@pie-players/pie-players-shared/i18n/provider';
 
-	// Props
 	let {
 		visible = false,
 		toolId = 'graph'
@@ -28,10 +27,8 @@
 		toolId?: string;
 	} = $props();
 
-	// Tool types
 	type Tool = 'selector' | 'point' | 'line' | 'delete';
 
-	// Data structures
 	interface Point {
 		id: number;
 		x: number; // Coordinate in the dynamic viewBox space
@@ -49,7 +46,6 @@
 		y: number;
 	}
 
-	// State
 	let canvasWrapperEl = $state<HTMLDivElement | undefined>();
 	let containerEl = $state<HTMLDivElement | undefined>();
 	let svgCanvasEl = $state<SVGSVGElement | undefined>();
@@ -124,7 +120,6 @@
 		});
 	});
 
-	// Helper functions
 	function getUniqueId(): number {
 		return nextId++;
 	}
@@ -179,10 +174,27 @@
 		return pointId === tempLineStartPointId || pointId === draggingPointId;
 	}
 
+	function removePoint(pointId: number) {
+		points = points.filter((p) => p.id !== pointId);
+		lines = lines.filter((l) => l.p1Id !== pointId && l.p2Id !== pointId);
+	}
+
+	// Adds a line unless both ends are the same point or the pair is already joined.
+	function connectPoints(startId: number, endId: number) {
+		if (startId === endId) return;
+		const exists = lines.some(
+			(l) =>
+				(l.p1Id === startId && l.p2Id === endId) ||
+				(l.p1Id === endId && l.p2Id === startId)
+		);
+		if (!exists) {
+			lines = [...lines, { id: getUniqueId(), p1Id: startId, p2Id: endId }];
+		}
+	}
+
 	function activatePoint(pointId: number) {
 		if (currentTool === 'delete') {
-			points = points.filter((p) => p.id !== pointId);
-			lines = lines.filter((l) => l.p1Id !== pointId && l.p2Id !== pointId);
+			removePoint(pointId);
 			return;
 		}
 
@@ -192,16 +204,7 @@
 				return;
 			}
 
-			if (tempLineStartPointId !== pointId) {
-				const exists = lines.some(
-					(l) =>
-						(l.p1Id === tempLineStartPointId && l.p2Id === pointId) ||
-						(l.p1Id === pointId && l.p2Id === tempLineStartPointId)
-				);
-				if (!exists) {
-					lines = [...lines, { id: getUniqueId(), p1Id: tempLineStartPointId, p2Id: pointId }];
-				}
-			}
+			connectPoints(tempLineStartPointId, pointId);
 			tempLineStartPointId = null;
 			currentPointerPos = null;
 		}
@@ -249,7 +252,6 @@
 		return lines;
 	});
 
-	// Event handlers
 	function setTool(tool: Tool) {
 		currentTool = tool;
 		tempLineStartPointId = null;
@@ -279,23 +281,7 @@
 				if (tempLineStartPointId === null) {
 					tempLineStartPointId = targetPoint.id;
 				} else {
-					if (tempLineStartPointId !== targetPoint.id) {
-						const exists = lines.some(
-							(l) =>
-								(l.p1Id === tempLineStartPointId && l.p2Id === targetPoint.id) ||
-								(l.p1Id === targetPoint.id && l.p2Id === tempLineStartPointId)
-						);
-						if (!exists) {
-							lines = [
-								...lines,
-								{
-									id: getUniqueId(),
-									p1Id: tempLineStartPointId,
-									p2Id: targetPoint.id
-								}
-							];
-						}
-					}
+					connectPoints(tempLineStartPointId, targetPoint.id);
 					tempLineStartPointId = null;
 					currentPointerPos = null;
 				}
@@ -305,12 +291,7 @@
 				// Use a smaller threshold for precise deletion
 				const pointToDelete = findNearestPoint(coords, 2);
 				if (pointToDelete) {
-					// Remove the point
-					points = points.filter((p) => p.id !== pointToDelete.id);
-					// Remove lines connected to this point
-					lines = lines.filter(
-						(l) => l.p1Id !== pointToDelete.id && l.p2Id !== pointToDelete.id
-					);
+					removePoint(pointToDelete.id);
 				}
 				break;
 
@@ -338,7 +319,6 @@
 				// Update stored coords (which are in the dynamic viewBox space)
 				point.x = coords.x;
 				point.y = coords.y; // Y is clamped 0-100 anyway
-				points = points; // Trigger reactivity
 			}
 		}
 	}

@@ -98,33 +98,19 @@
 	const logger = $derived(getPreloadLogger(componentTag));
 
 	/*
-	 * The reactive key for the warmup call. Captures only the inputs that
-	 * logically alter the `ensureRegistered` request: the strategy, the
-	 * element-set fingerprint of the renderables, the bundle host for
-	 * IIFE, and the view/bundle-type discriminants read from player
-	 * props/env.
+	 * The element set of each renderable, as its id and `tag=package` pairs.
+	 * ElementLoader dedupes concurrent identical requests on its own; this
+	 * fingerprint keeps `usePromise`'s input stable, so prop churn that changes
+	 * no element (current-item index, session data, controller events) does not
+	 * drop `elementsLoaded` back to `pending` and remount the items pane, which
+	 * flashes "Loading section content…" and breaks focus and shell identity.
 	 *
-	 * This is NOT the old `lastPreloadSignature` guard — the deep
-	 * ElementLoader primitive already dedupes concurrent identical
-	 * requests internally. The fingerprint here serves a different
-	 * purpose: it stabilizes `usePromise`'s reactive input so that
-	 * semantically no-op prop churn (current-item index change, session
-	 * data updates, controller event emission) does not drag
-	 * `elementsLoaded` back to `pending` and force an items-pane remount.
-	 * Without this, navigation and session-update tests observe transient
-	 * "Loading section content…" flashes that break focus and shell
-	 * identity invariants.
-	 *
-	 * The fingerprint is built inline (not via the layout-tree's
-	 * `getRenderablesSignature`) because the input here is unwrapped
-	 * `ItemEntity[]` produced by `mapRenderablesToItems`, while the
-	 * layout-tree helper expects each entry to carry an `entity` wrapper.
-	 * Conflating them would silently degrade the fingerprint to "list
-	 * length only" — a regression that hides element-set changes (e.g. a
-	 * section swap that adds `pie-passage`) from the warmup factory and
-	 * is especially load-bearing under `strategy="preloaded"` where the
-	 * cached resolved promise must invalidate when the aggregate tag set
-	 * changes.
+	 * Built inline because `preloadedRenderables` are unwrapped `ItemEntity`
+	 * values and `getRenderablesSignature` expects each entry to carry an
+	 * `entity` wrapper. Fed these, it reduces to the list length and hides
+	 * element-set changes, such as a section swap that adds `pie-passage`, from
+	 * the warmup; under `strategy="preloaded"` the cached resolved promise must
+	 * invalidate when the tag set changes.
 	 */
 	const renderablesFingerprint = $derived(
 		JSON.stringify(
@@ -137,11 +123,10 @@
 				const elements =
 					(entity.config as Record<string, unknown> | undefined)?.elements ?? {};
 				const elementsSignature = Object.entries(
-					(elements as Record<string, unknown>) ?? {},
+					elements as Record<string, unknown>,
 				)
 					.filter(
 						([tag, pkg]) =>
-							typeof tag === "string" &&
 							tag.length > 0 &&
 							typeof pkg === "string" &&
 							pkg.length > 0,
@@ -154,6 +139,10 @@
 		),
 	);
 
+	// The reactive key for the warmup call: only the inputs that alter the
+	// `ensureRegistered` request, which are the strategy, the element-set
+	// fingerprint, the IIFE bundle host, and the view and bundle-type
+	// discriminants read from player props and env.
 	const warmupInputsSignature = $derived(
 		JSON.stringify({
 			active,
@@ -161,36 +150,22 @@
 			strategy: playerStrategy,
 			renderables: renderablesFingerprint,
 			iifeBundleHost,
-			mode:
-				(resolvedPlayerProps as Record<string, unknown> | undefined)?.mode ?? null,
-			hosted:
-				(resolvedPlayerProps as Record<string, unknown> | undefined)?.hosted ??
-				null,
-			envMode:
-				(resolvedPlayerEnv as Record<string, unknown> | undefined)?.mode ?? null,
-			loaderOptions:
-				(resolvedPlayerProps as Record<string, unknown> | undefined)
-					?.loaderOptions ?? null,
+			mode: resolvedPlayerProps.mode ?? null,
+			hosted: resolvedPlayerProps.hosted ?? null,
+			envMode: resolvedPlayerEnv.mode ?? null,
+			loaderOptions: resolvedPlayerProps.loaderOptions ?? null,
 		}),
 	);
 
 	/*
-	 * The readiness lifecycle value.
-	 *
-	 * `usePromise` turns an async factory into a reactive
+	 * `usePromise` turns the async factory into a reactive
 	 * `{ status: "idle" | "pending" | "resolved" | "rejected" }` value that
-	 * invalidates instantly on signature change and ignores late
-	 * resolutions from stale invocations. This is what used to be a
-	 * hand-rolled trio of `$state` fields (`elementsLoaded`,
-	 * `preloadRunToken`, `lastPreloadSignature`) plus a separate
-	 * state-setter in `player-preload.ts` — all of which only existed to
-	 * re-implement this helper badly and produced the sporadic
-	 * section-swap race in the process.
+	 * invalidates on signature change and ignores late resolutions from stale
+	 * invocations, so a section swap cannot apply a stale warmup.
 	 *
-	 * Reactive dep: `warmupInputsSignature` only. The factory reads the
-	 * live prop values inside `untrack(...)` so transient reactive churn
-	 * on those same props (e.g. parent re-rendering on a composition
-	 * update) does not retrigger the effect.
+	 * Reactive dep: `warmupInputsSignature` only. The factory reads the live prop
+	 * values inside `untrack(...)` so churn on those same props (a parent
+	 * re-render on a composition update) does not retrigger it.
 	 */
 	const readiness = usePromise(() => {
 		// Establish the single reactive dep.
@@ -209,30 +184,16 @@
 			warmupSectionElements({
 				strategy: playerStrategy,
 				renderables: preloadedRenderables,
-				resolvedPlayerProps: resolvedPlayerProps as Record<string, unknown>,
-				resolvedPlayerEnv: resolvedPlayerEnv as Record<string, unknown>,
+				resolvedPlayerProps,
+				resolvedPlayerEnv,
 				iifeBundleHost,
 				logger,
 				onBundleRetryStatus: (status) => {
-					// Mirror the IIFE bundle-build retry transitions into the host's
-					// existing `element-preload-retry` event surface so hosts that
-					// already render "bundle still building, retrying" messaging
-					// keep working under the deep-primitive architecture. We dispatch
-					// every transition (retrying / completed / timeout / cancelled)
-					// so consumers can drive show/hide UI from the same stream.
-					let backendForTelemetry: ReturnType<
-						typeof buildBackendConfigFromProps
-					> | null = null;
-					try {
-						backendForTelemetry = buildBackendConfigFromProps({
-							strategy: playerStrategy,
-							resolvedPlayerProps: resolvedPlayerProps as Record<string, unknown>,
-							resolvedPlayerEnv: resolvedPlayerEnv as Record<string, unknown>,
-							iifeBundleHost,
-						});
-					} catch {
-						backendForTelemetry = null;
-					}
+					// Every IIFE bundle-build retry transition (retrying, completed,
+					// timeout, cancelled) goes out as `element-preload-retry`, so a
+					// host drives its "bundle still building" show/hide UI from one
+					// stream.
+					const backendForTelemetry = telemetryBackend();
 					const retryDelayMs = Math.max(status.retryDelayMs ?? 0, 1);
 					const maxRetries = Math.max(
 						1,
@@ -269,11 +230,10 @@
 	 *
 	 * The warmup signature carries inputs that change the *bundle request* but
 	 * not the *element set* — `hosted`, `mode`, `loaderOptions`. Enabling a
-	 * delivery backend at runtime flips `hosted` to `true`, so re-warming is
-	 * correct; tearing the cards down to do it is not. Every item player was
-	 * destroyed and recreated, which discarded in-progress session state and made
-	 * each item POST its delivery load twice — once from the dying instance and
-	 * once from its replacement.
+	 * delivery backend at runtime flips `hosted` to `true`, which re-warms; tearing
+	 * the cards down for it would recreate every item player, discarding
+	 * in-progress session state and making each item POST its delivery load
+	 * twice.
 	 *
 	 * So the placeholder is for a first paint and for a genuine content swap. Once
 	 * a warmup has resolved for an element set, the cards stay mounted through any
@@ -299,6 +259,22 @@
 			renderablesSignature: preloadedRenderablesSignature,
 		});
 	});
+
+	/** The warmup's backend config for telemetry, or `null` when it cannot be built. */
+	function telemetryBackend(): ReturnType<
+		typeof buildBackendConfigFromProps
+	> | null {
+		try {
+			return buildBackendConfigFromProps({
+				strategy: playerStrategy,
+				resolvedPlayerProps,
+				resolvedPlayerEnv,
+				iifeBundleHost,
+			});
+		} catch {
+			return null;
+		}
+	}
 
 	function describeWarmupFailure(error: unknown): {
 		stage: PreloadStage;
@@ -366,18 +342,7 @@
 	function dispatchWarmupFailure(error: unknown): void {
 		const { stage, cause } = describeWarmupFailure(error);
 		logger.error(formatElementLoadError(stage, cause));
-		let backendForTelemetry: ReturnType<typeof buildBackendConfigFromProps> | null =
-			null;
-		try {
-			backendForTelemetry = buildBackendConfigFromProps({
-				strategy: playerStrategy,
-				resolvedPlayerProps: resolvedPlayerProps as Record<string, unknown>,
-				resolvedPlayerEnv: resolvedPlayerEnv as Record<string, unknown>,
-				iifeBundleHost,
-			});
-		} catch {
-			backendForTelemetry = null;
-		}
+		const backendForTelemetry = telemetryBackend();
 		layout?.reportPreloadError(paneHost, {
 			componentTag,
 			stage,
@@ -427,6 +392,18 @@
 				getCanonicalItemId({ compositionModel, item }) === canonicalItemId,
 		);
 		return index >= 0 ? index + 1 : 1;
+	}
+
+	/** Waiting for the media, or which question the latest reveal made available. */
+	function revealStatus(
+		revealedCount: number,
+		latestRevealedItemId: string,
+	): string {
+		return revealedCount === 0
+			? interfaceI18n.t("player.timedMedia.waitingForMedia")
+			: interfaceI18n.t("player.timedMedia.questionAvailable", {
+					position: itemPositionOf(latestRevealedItemId),
+				});
 	}
 
 	let timedMediaStatus = $state("");
@@ -479,22 +456,12 @@
 				// learner facing a pane of hidden questions has nothing telling them the
 				// media is what reveals them.
 				lastRevealedCount = revealedCount;
-				timedMediaStatus =
-					revealedCount === 0
-						? interfaceI18n.t("player.timedMedia.waitingForMedia")
-						: interfaceI18n.t("player.timedMedia.questionAvailable", {
-							position: itemPositionOf(latestRevealedItemId),
-						});
+				timedMediaStatus = revealStatus(revealedCount, latestRevealedItemId);
 				return;
 			}
 			if (revealedCount !== lastRevealedCount) {
 				lastRevealedCount = revealedCount;
-				timedMediaStatus =
-					revealedCount === 0
-						? interfaceI18n.t("player.timedMedia.waitingForMedia")
-						: interfaceI18n.t("player.timedMedia.questionAvailable", {
-							position: itemPositionOf(latestRevealedItemId),
-						});
+				timedMediaStatus = revealStatus(revealedCount, latestRevealedItemId);
 			}
 		});
 	});
@@ -556,18 +523,18 @@
 		);
 	});
 
-	const scrollDown = () => scrollContainer?.scrollBy({ top: 150, behavior: "smooth" });
+	const SCROLL_STEP_PX = 150;
+	const scrollDown = () =>
+		scrollContainer?.scrollBy({ top: SCROLL_STEP_PX, behavior: "smooth" });
 
 	/**
 	 * Nearest ancestor the learner can actually scroll.
 	 *
-	 * PIE-549 took the pane element's parent as the scroll container. That is the
-	 * scrolling box in the split-pane and tabbed layouts, and an `overflow:
-	 * visible` `<section>` in the vertical layout, where the real scroller is one
-	 * level further up — so the hint measured a non-scrolling element, reported
-	 * content below the fold permanently (the sticky hint's own box overflows the
-	 * section by 16px, which is what made the measurement true), and clicked to no
-	 * effect.
+	 * The pane element's parent is the scrolling box in the split-pane and tabbed
+	 * layouts, but an `overflow: visible` `<section>` in the vertical layout, where
+	 * the real scroller is one level further up. Measuring that section reports
+	 * content below the fold permanently, because the sticky hint's own box
+	 * overflows it by 16px, and the hint clicks to no effect.
 	 *
 	 * `auto`, `scroll` and `overlay` only: `hidden` has a scrollport the learner
 	 * cannot reach, and hinting at content below the fold of a region nobody can
@@ -644,12 +611,11 @@
 		//
 		// A timer rather than requestAnimationFrame, matching the post-render wrap
 		// pass in `players-shared`'s PieItemPlayer: a document with no compositor
-		// never runs the frame callback, which is the PIE-885 failure recorded in
-		// assessment-toolkit's composition-emit-scheduler and regression-tested by
+		// never runs the frame callback, the failure recorded in assessment-toolkit's
+		// composition-emit-scheduler and regression-tested by
 		// `section-player-non-painting-document.spec.ts`. A hint that arms late in a
-		// hidden tab costs nothing; one that never arms is the below-the-fold
-		// discoverability regression PIE-549 exists to prevent, in exactly the
-		// headless and CI contexts the e2e suites run in.
+		// hidden tab costs nothing; one that never arms leaves content below the fold
+		// undiscoverable in the headless and CI contexts the e2e suites run in.
 		const scheduleRead = () => {
 			if (pendingHandle !== null) return;
 			pendingHandle = setTimeout(pass, 0);
@@ -670,15 +636,14 @@
 		// types past the fold.
 		//
 		// Mutation records plus a timer are the only signals here that do not depend
-		// on the document rendering, which is why the cost of a layout read per
-		// batch is accepted rather than designed away. An IntersectionObserver on an
-		// end-of-content sentinel expresses this predicate with no layout read at
-		// all — measured at two callbacks against 106 reads for the same typing
-		// session — but intersection observations, resize observations and scroll
-		// events are all delivered from the same "update the rendering" steps as the
-		// frame callback PIE-885 is about. Moving content-growth detection onto one
-		// of them would make the below-the-fold hint depend on the compositor that
-		// twice took composition delivery down with it.
+		// on the document rendering, so a layout read per batch is the accepted cost.
+		// An IntersectionObserver on an end-of-content sentinel needs no layout read
+		// (two callbacks against 106 reads for the same typing session), but
+		// intersection and resize observations and scroll events are all delivered
+		// from the same "update the rendering" steps as the frame callback a
+		// document with no compositor never runs. Content-growth detection on one of
+		// them would tie the hint to the compositor, a dependency that has twice
+		// taken composition delivery down.
 		const mutationObserver = new MutationObserver(scheduleRead);
 		mutationObserver.observe(host, {
 			childList: true,

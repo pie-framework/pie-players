@@ -156,7 +156,7 @@
 			: interfaceI18n.t("player.question"),
 	);
 	const effectiveCardTitleFormatter = $derived(
-		(contextConnected ? contextCardTitleFormatter : null) || null,
+		contextConnected ? contextCardTitleFormatter : null,
 	);
 	const headerTitle = $derived.by(() => {
 		if (!effectiveCardTitleFormatter) return defaultHeaderTitle;

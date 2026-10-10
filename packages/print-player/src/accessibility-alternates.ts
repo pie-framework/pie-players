@@ -3,9 +3,9 @@
  *
  * An alternate representation — a transcript today, braille and
  * simplified-language next — arrives as an accessibility catalog card and is
- * gated by the learner's profile. Print used to reach none of them: it renders
- * from the item model alone, so an alternate reached paper only where some
- * element happened to render it from a legacy model field.
+ * gated by the learner's profile. Print renders from the item model alone, so
+ * without this module an alternate reaches paper only where an element renders
+ * it from a legacy model field.
  *
  * A print job is one learner with one profile, decided once. There is no
  * coordinator, nothing to toggle, and no re-resolve: what print needs is the same
@@ -15,9 +15,9 @@
  * the only thing print owns is which host slot it opens.
  *
  * Print opens {@link CONTENT_LEAD_SURFACE} and not the docked-media slot beside
- * it. That is a property of paper, not a preference: a signed alternate is a
- * video, and on paper a video is a blank rectangle. Every alternate that can be
- * read in order reaches print by declaring the slot, without a change here.
+ * it: a signed alternate is a video, and on paper a video is a blank rectangle.
+ * Every alternate that can be read in order reaches print by declaring the slot,
+ * without a change here.
  *
  * Nothing in this module names a capability, a support id, or a catalog type.
  */

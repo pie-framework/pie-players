@@ -369,9 +369,8 @@ export class SimpleI18n implements I18nServiceApi {
 		try {
 			this.catalogs.set(locale, await load(locale));
 		} catch (error) {
-			// A failed load is not fatal: the fallback chain still resolves every
-			// key to English. Rethrowing here would take down a player over a
-			// missing chunk.
+			// Reported to the `setLocale` caller, which keeps the previous locale, so
+			// the provider still renders.
 			throw new Error(`Failed to load i18n catalog for locale: ${locale}`, {
 				cause: error,
 			});

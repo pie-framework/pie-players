@@ -140,13 +140,19 @@
 		onCompositionChanged?.(event);
 	}
 
-	// The base's own toolkit renders in the base's shadow root. A ready event
-	// from any other toolkit, such as one nested in the layout's content, is not
-	// this section's.
+	// The base's own toolkit is the top of the base's shadow root, and the
+	// layout's content is slotted through it. An event is this section's when the
+	// nearest toolkit on its path is that one: the toolkit's own events, and those
+	// of the panes and tools under it, but not those of a toolkit nested in them.
 	function isOwnToolkitEvent(event: Event): boolean {
-		const origin = event.composedPath()[0] as Node | undefined;
 		const base = event.currentTarget as Element | null;
-		return Boolean(base?.shadowRoot) && origin?.getRootNode?.() === base?.shadowRoot;
+		const toolkit = event
+			.composedPath()
+			.find(
+				(node): node is Element =>
+					(node as Element).localName === "pie-assessment-toolkit",
+			);
+		return Boolean(base?.shadowRoot) && toolkit?.parentNode === base?.shadowRoot;
 	}
 
 	function handleSectionReady(event: Event) {
@@ -155,6 +161,7 @@
 	}
 
 	function handleFrameworkError(event: Event) {
+		if (!isOwnToolkitEvent(event)) return;
 		onFrameworkErrorEvent?.(event);
 	}
 

@@ -637,16 +637,17 @@ export class SectionControllerBinding {
 		return this.registry;
 	}
 
+	/**
+	 * Releases the binding and leaves the coordinator's controllers cached: their
+	 * lifetime is the coordinator owner's. The toolkit disposes an owned
+	 * coordinator, and with it every controller, after this; a coordinator the
+	 * host passes or an outer toolkit lends keeps them until its owner disposes
+	 * the coordinator or calls `disposeSectionController`.
+	 */
 	async dispose(): Promise<void> {
 		this.activeInitToken += 1;
 		this.unsubscribeController?.();
 		this.unsubscribeController = null;
-		if (this.coordinator && this.sectionId) {
-			await this.coordinator.disposeSectionController({
-				sectionId: this.sectionId,
-				attemptId: this.attemptId,
-			});
-		}
 		this.registry.clear();
 		this.loadedRenderableKeys.clear();
 		this.boundSections.clear();

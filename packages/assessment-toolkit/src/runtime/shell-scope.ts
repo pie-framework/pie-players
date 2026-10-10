@@ -64,10 +64,10 @@ export interface ShellScope {
 	 * answered the scope in its detail, so that runtime claims it by id. Once
 	 * the host has left the document, as in a teardown, the event is dispatched
 	 * on the runtime's element instead, which the scope captured when the
-	 * runtime answered. Events
-	 * sent before a runtime has answered are held, the newest
-	 * {@link MAX_HELD_SHELL_EVENTS}, and delivered in order once one does.
-	 * `disconnect` and `publish(null)` drop them.
+	 * runtime answered. Events sent before a runtime has answered, or while the
+	 * runtime's element is out of the document and the host is in it, are held,
+	 * the newest {@link MAX_HELD_SHELL_EVENTS}, and delivered in order to the
+	 * runtime that answers next. `disconnect` and `publish(null)` drop them.
 	 */
 	send: (type: string, detail: object) => void;
 }
@@ -186,9 +186,18 @@ export function createShellScope(): ShellScope {
 		if (runtime !== null) registration.sync(identity, runtime);
 	};
 
+	// A runtime element that left the document while the shell stays in it no
+	// longer sits above the shell, so nothing would claim the shell's events.
+	const runtimeDeparted = (
+		shellHost: HTMLElement,
+		address: ShellRuntimeAddress,
+	): boolean =>
+		shellHost.isConnected &&
+		(address.eventTarget as Node).isConnected === false;
+
 	function send(type: string, detail: object): void {
 		if (type === PIE_INTERNAL_CONTENT_LOADED_EVENT) loaded = detail;
-		if (host && runtime !== null) {
+		if (host && runtime !== null && !runtimeDeparted(host, runtime)) {
 			dispatchCrossBoundaryEvent(shellEventTarget(host, runtime), type, {
 				...detail,
 				runtimeId: runtime.runtimeId,
@@ -199,17 +208,23 @@ export function createShellScope(): ShellScope {
 		if (held.length > MAX_HELD_SHELL_EVENTS) held.shift();
 	}
 
-	// The subscription re-answers whenever the runtime republishes its context,
-	// so only a different id means anything here.
+	// The subscription re-answers whenever the runtime republishes its context:
+	// under the same id it only delivers what the scope held meanwhile.
 	function onRuntime(value: AssessmentToolkitHostRuntimeContext): void {
-		if (value.runtimeId === runtime?.runtimeId) return;
-		const moved = runtime !== null;
-		runtime = { runtimeId: value.runtimeId, eventTarget: value.eventTarget };
-		syncRegistration();
+		const moved = runtime !== null && value.runtimeId !== runtime.runtimeId;
+		if (value.runtimeId !== runtime?.runtimeId) {
+			runtime = { runtimeId: value.runtimeId, eventTarget: value.eventTarget };
+			syncRegistration();
+		}
 		const pending = held;
 		held = [];
 		for (const event of pending) send(event.type, event.detail);
-		if (moved && loaded) send(PIE_INTERNAL_CONTENT_LOADED_EVENT, loaded);
+		const replayed = pending.some(
+			(event) => event.type === PIE_INTERNAL_CONTENT_LOADED_EVENT,
+		);
+		if (moved && loaded && !replayed) {
+			send(PIE_INTERNAL_CONTENT_LOADED_EVENT, loaded);
+		}
 	}
 
 	function disconnect(): void {

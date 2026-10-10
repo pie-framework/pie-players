@@ -265,6 +265,22 @@ still sets `mode` and an apply `message`, which the panel ignores, and builds th
 entry untyped, so nothing fails to compile; importing the type would make both
 excess properties. Row verification dates are unchanged.
 
+Also on 2026-10-09 the section-player layouts' `element-preload-retry` and
+`element-preload-error` events started bubbling and crossing shadow boundaries,
+as the player's other events do; they were dispatched on the layout element
+alone, with the same detail. The toolkit keys a section's controller by
+`section-id`, else the section's `identifier`, else an id named after its
+`assessment-id`, which is what the layout's stage chain keys by; it used to fall
+back to its coordinator's id, which for a coordinator the toolkit builds without
+an `assessment-id` is generated. A toolkit that unmounts disposes section
+controllers only through a coordinator it owns: one the host passes, or an outer
+toolkit lends, keeps them for its owner to dispose. Checked against the
+checkouts of Hosts A, M, P, R and V, each scan reaching `@pie-players` imports,
+and Host P's feature branch: no host listens for either preload event or passes
+its own coordinator, and Host A's sections carry identifiers. The
+section-controller reads above were corrected the same day. Row verification
+dates are unchanged.
+
 The 2026-09-17 session-commit change (PIE-1058) was checked against the
 recorded rows rather than re-derived from the checkouts. It renames and removes
 nothing: `pie-item-player` gains one opt-in property, `session-snapshot`, one
@@ -867,8 +883,11 @@ Method: `waitForSectionController(timeoutMs)` (A, off a
 (R, off the event's `currentTarget`). Both overloads are live. Since 0.3.75
 `waitForSectionController` resolves on `toolkit-ready` or when the controller
 resolves, where it polled before; the signature and the timeout are unchanged.
-Since 2026-10-08 neither call advances the stage chain: only `toolkit-ready`
-does, so a read during a section switch can return the outgoing controller.
+Since 2026-10-08 neither call advances the stage chain: the toolkit's
+`section-ready` does. Both look the controller up by the incoming section's id:
+during a section switch `getSectionController()` returns `null`, or on a revisit
+the incoming section's cached controller, and `waitForSectionController` returns
+that cached controller or waits for the incoming one.
 
 Events: `toolkit-ready`, read as `event.detail.coordinator`. A listens with
 `addEventListener`; R uses the Svelte 5 `ontoolkit-ready` attribute form. R also

@@ -335,12 +335,6 @@
 		});
 	});
 
-	const layoutElement = $host();
-	const forwardPreloadRetry = (detail: Record<string, unknown>) =>
-		layoutElement.dispatchEvent(new CustomEvent("element-preload-retry", { detail }));
-	const forwardPreloadError = (detail: Record<string, unknown>) =>
-		layoutElement.dispatchEvent(new CustomEvent("element-preload-error", { detail }));
-
 	function handleSplitResize(next: number) {
 		if (!splitContainerElement) return;
 		if (Number.isNaN(next)) return;
@@ -421,8 +415,6 @@
 	{policies}
 	{hooks}
 	{toolConfigStrictness}
-	onElementPreloadRetry={forwardPreloadRetry}
-	onElementPreloadError={forwardPreloadError}
 	sourceCe="pie-section-player-splitpane"
 	host={hostElement}
 	playerActionConfig={{

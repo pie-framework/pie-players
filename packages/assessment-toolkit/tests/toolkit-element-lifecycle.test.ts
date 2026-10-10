@@ -9,6 +9,7 @@ import { afterAll, afterEach, describe, expect, test } from "bun:test";
 const ownsDom = typeof window === "undefined";
 if (ownsDom) GlobalRegistrator.register();
 const { commitPendingSessions } = await import("@pie-players/pie-players-shared");
+const { ToolkitCoordinator } = await import("../src/services/ToolkitCoordinator.js");
 await import("../src/components/PieAssessmentToolkit.svelte");
 
 const OBSERVED_EVENTS = [
@@ -429,6 +430,34 @@ describe("<pie-assessment-toolkit> lifecycle", () => {
 				cohort: { sectionId: "s1", attemptId: "attempt-1" },
 			},
 		]);
+	});
+
+	test("a coordinator the host passes keeps its section controllers when the toolkit unmounts", async () => {
+		const disposed: string[] = [];
+		const coordinator = new ToolkitCoordinator({
+			assessmentId: "assessment-1",
+			lazyInit: true,
+		});
+		const { element } = await mount({
+			coordinator,
+			sectionId: "s1",
+			section: section("s1"),
+			createSectionController: () => ({
+				...controller(),
+				dispose: async () => {
+					disposed.push("s1");
+				},
+			}),
+		});
+		expect(coordinator.getSectionController({ sectionId: "s1" })).toBeDefined();
+
+		element.remove();
+		await settle();
+
+		expect(disposed).toEqual([]);
+		expect(coordinator.getSectionController({ sectionId: "s1" })).toBeDefined();
+		await coordinator.dispose();
+		expect(disposed).toEqual(["s1"]);
 	});
 
 	test("isolation=\"force\" as an attribute gives a nested toolkit its own coordinator", async () => {

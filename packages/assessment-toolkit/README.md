@@ -523,6 +523,13 @@ mounted together. Otherwise the inner one builds its own and keeps it, and
 reports an outer coordinator arriving later once in the console. `isolation`
 `"force"` keeps a nested toolkit on its own coordinator by design.
 
+Section controllers live as long as the coordinator that caches them. At
+unmount the toolkit disposes a coordinator it owns, which persists and disposes
+every cached controller. A coordinator the host passes, or an outer toolkit
+lends, keeps its controllers when the toolkit unmounts: its owner disposes them
+with `coordinator.dispose()`, or one section at a time with
+`coordinator.disposeSectionController(...)`.
+
 Text-to-speech starts at the toolkit's first content, once the section composes
 or the first item scope registers, and `coordinator.waitUntilReady()` waits for it. With `lazy-init` it starts at the first read-aloud instead, unless policy
 grants it. A tool provider or text-to-speech that fails to start is a

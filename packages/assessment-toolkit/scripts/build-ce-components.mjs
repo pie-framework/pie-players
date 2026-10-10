@@ -32,8 +32,8 @@ const distComponents = path.join(packageRoot, "dist", "components");
 // once inside the pre-bundled CE chunk.
 //
 // This imposes nothing new on consumers: these artifacts already emit bare
-// `@pie-players/*` specifiers, so they have always required a bundler or an
-// import map rather than being loadable directly from a bare browser.
+// `@pie-players/*` specifiers and import `speech-rule-engine`'s JSON locale
+// tables without import attributes, so they require a bundler.
 const packageManifest = JSON.parse(
 	readFileSync(path.join(packageRoot, "package.json"), "utf8"),
 );

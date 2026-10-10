@@ -1,6 +1,6 @@
 # Using PIE web components from an npm CDN
 
-`@pie-players/pie-item-player` loads directly in the browser from an npm CDN such as **jsDelivr** or **unpkg**, because its root entry imports no bare specifier. The section player publishes a separate self-contained build for the same purpose (see [Section player](#section-player-browser-build)). The assessment player, the toolkit's custom elements and the `pie-tool-*` packages import other packages by bare specifier, so a host loads them through a bundler, or an import map that resolves every one of those specifiers (see [library packaging strategy](./library-packaging-strategy.md#consumer-guidance-current-scope)).
+`@pie-players/pie-item-player` loads directly in the browser from an npm CDN such as **jsDelivr** or **unpkg**, because its root entry imports no bare specifier. The section player publishes a separate self-contained build for the same purpose (see [Section player](#section-player-browser-build)). The assessment player, the toolkit's custom elements and every `pie-tool-*` package except `pie-tool-dictionary` and `pie-tool-picture-dictionary`, which bundle everything they use, import other packages by bare specifier and reach the toolkit's text-to-speech service. That service imports `speech-rule-engine`'s JSON locale tables without import attributes, and a browser loads JSON as a module only with one, so a host loads these packages through a bundler (see [library packaging strategy](./library-packaging-strategy.md#consumer-guidance-current-scope)).
 
 ## Item player (recommended)
 
@@ -56,7 +56,7 @@ The following load from third-party origins in every install, npm or CDN, and ar
 
 ## Tools
 
-Outside the section player's browser build, tools load through a bundler or an import map, for the reason above. `pie-item-toolbar` and `pie-section-toolbar` take their coordinator from the runtime context that an enclosing `<pie-assessment-toolkit>` or section player provides, and render buttons only for tools in the tool registry they receive, typically `createPackagedToolRegistry()` from `@pie-players/pie-default-tool-loaders`, whose loaders define each tool's element on first render; a host that passes `toolModuleLoaders: {}` imports the elements itself. The [assessment toolkit README](../../packages/assessment-toolkit/README.md) covers the setup.
+Outside the section player's browser build, tools load through a bundler, for the reason above. `pie-item-toolbar` and `pie-section-toolbar` take their coordinator from the runtime context that an enclosing `<pie-assessment-toolkit>` or section player provides, and render buttons only for tools in the tool registry they receive, typically `createPackagedToolRegistry()` from `@pie-players/pie-default-tool-loaders`, whose loaders define each tool's element on first render; a host that passes `toolModuleLoaders: {}` imports the elements itself. The [assessment toolkit README](../../packages/assessment-toolkit/README.md) covers the setup.
 
 ## Notes
 

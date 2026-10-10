@@ -168,7 +168,7 @@ entry point, chosen by its kind:
 ```ts
 el.runtime = {
   assessmentId: "a-1",
-  playerType: "custom",
+  playerType: "preloaded",
   tools: { providers: { calculator: { enabled: true } } },
   onFrameworkError: (model) => report(model),
 };

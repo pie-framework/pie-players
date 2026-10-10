@@ -12,7 +12,7 @@ This package provides a server-side TTS provider that uses Google Cloud Text-to-
 
 ## Features
 
-- ✅ **Speech Marks Support** - Millisecond-accurate word timing via SSML marks + timepoints
+- ✅ **Speech Marks Support** - Millisecond-accurate word timing via SSML marks + timepoints (Standard and WaveNet voices; Studio voices return none)
 - ✅ **WaveNet Neural Voices** - High-quality neural TTS with Google's WaveNet technology
 - ✅ **50+ Languages** - Extensive language support
 - ✅ **Full SSML** - Supports Speech Synthesis Markup Language 1.1
@@ -38,7 +38,7 @@ const provider = new GoogleCloudTTSProvider();
 await provider.initialize({
   projectId: 'my-gcp-project',
   credentials: '/path/to/service-account.json', // Or use other auth methods
-  voiceType: 'wavenet', // 'wavenet', 'standard', or 'studio'
+  voiceType: 'wavenet', // 'wavenet', 'standard', or 'studio' (Studio returns no speech marks)
   defaultVoice: 'en-US-Wavenet-A',
 });
 ```
@@ -97,7 +97,7 @@ const result = await provider.synthesize({
 
 console.log('Audio:', result.audio); // Buffer
 console.log('Speech marks:', result.speechMarks); // Array of word timings
-console.log('Duration:', result.metadata.duration, 'seconds');
+console.log('Synthesis time:', result.metadata.duration, 'seconds');
 ```
 
 ### List Available Voices
@@ -179,7 +179,7 @@ GOOGLE_APPLICATION_CREDENTIALS=/path/to/service-account.json
 
 | Feature | Support |
 |---------|---------|
-| Speech Marks | ✅ Via SSML marks |
+| Speech Marks | ✅ Via SSML marks; none for Studio voices |
 | SSML | ✅ Full 1.1 |
 | Pitch Control | ✅ SSML |
 | Rate Control | ✅ SSML |
@@ -221,6 +221,9 @@ Popular voices include:
 ### Studio Voices
 - **English (US):** en-US-Studio-O/Q
 - **English (UK):** en-GB-Studio-B/C
+
+Studio voices take no SSML `<mark>` tags, so a Studio voice is synthesized as
+audio only and returns `speechMarks: []`, so `ServerTTSProvider` reports no word boundaries for it.
 
 Use `getVoices()` for the complete list of 200+ voices.
 
@@ -301,7 +304,10 @@ Unlike AWS Polly (which provides native speech marks), Google Cloud TTS requires
 2. Google Cloud TTS returns timepoints corresponding to these marks
 3. The provider converts timepoints to the unified speech mark format
 
-This process is transparent to the user - just set `includeSpeechMarks: true`.
+Speech marks are on unless the request sets `includeSpeechMarks: false`. A voice
+whose name contains `Studio`, or one Google answers with its Studio
+`<mark>`-unsupported error, is synthesized as audio only and returns
+`speechMarks: []`.
 
 ## Advanced Configuration
 

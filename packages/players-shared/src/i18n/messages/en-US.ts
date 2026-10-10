@@ -634,17 +634,43 @@ const enUS = {
 			previewUnavailable:
 				"Cannot preview while this service is unavailable.",
 			browserSynthesisUnavailable: "Browser speech synthesis is unavailable.",
-			browserSynthesisEndedEarly:
-				"Browser speech synthesis ended before audio started. Restart the browser and try again.",
-			browserSynthesisQueueFailed:
-				"Browser speech synthesis failed to queue preview audio.",
-			browserPreviewFailed: "Failed to play browser voice preview.",
 			ssmlWordTrackingDisabled:
 				"Google SSML preview preserves authored SSML, so word tracking is disabled.",
 			applyUnavailable:
 				"Cannot apply settings while this service is unavailable.",
 			coordinatorUnavailable:
 				"Toolkit coordinator is not available for text-to-speech updates.",
+			customProviderNotRegistered: "Custom provider '{id}' is not registered.",
+			customProviderNoConfig: "Custom provider '{id}' did not return an apply config.",
+			httpError: "HTTP {status}: {message}",
+			unknownError: "Unknown error",
+			previewRequestFailed: "Preview request failed ({status}).",
+			notAvailable: "n/a",
+			voiceLocal: "local",
+			voiceRemote: "remote",
+			voiceBrowserDefault: "browser default",
+			browserAvailable: {
+				one: "Browser TTS available ({count} voice detected).",
+				other: "Browser TTS available ({count} voices detected).",
+			},
+			pollyAvailable: {
+				one: "AWS Polly available ({count} matching voice, {engine} engine).",
+				other: "AWS Polly available ({count} matching voices, {engine} engine).",
+			},
+			googleAvailable: {
+				one: "Google Cloud TTS available ({count} matching voice).",
+				other: "Google Cloud TTS available ({count} matching voices).",
+			},
+			headerRowReservation: "Item header row reservation: {state}",
+			speedOptionsHelp:
+				"Comma or semicolon-separated multipliers. Include 1 for Normal; leave empty to hide speed controls.",
+			usingSelectedVoice: "Using selected voice: {voice}",
+			autoVoice: "Best available voice (auto): {voice}",
+			autoVoiceWaiting: "Best available voice (auto): waiting for browser voices.",
+			previewHintBrowserSsml: "SSML is unsupported in Browser preview.",
+			previewHintGoogleSsml: "SSML preserved. Tracking disabled.",
+			previewHintCustom: "Tracking enabled when provider returns speech marks.",
+			previewHintTracking: "Tracking enabled while preview plays.",
 		},
 	},
 };

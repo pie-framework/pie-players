@@ -151,4 +151,21 @@ describe("renderReports", () => {
 			"@pie-players/lib\n\n.\n  type Options\n  shared\n\n./side-effect\n  (no named exports)\n",
 		);
 	});
+
+	test("adds the types source's names to an entry built from Svelte", () => {
+		const root = fixture({
+			"package.json": JSON.stringify({ workspaces: ["packages/*"] }),
+			"packages/panel/package.json": JSON.stringify({
+				name: "@pie-players/panel",
+				exports: {
+					".": { types: "./dist/index.d.ts", import: "./dist/panel.js" },
+				},
+			}),
+			"packages/panel/panel.svelte": "<script>let open = 1;</script>",
+			"packages/panel/index.ts": "export type PanelOptions = { label: string };",
+		});
+		expect(renderReports(root).get("panel.api.txt")).toEndWith(
+			"@pie-players/panel\n\n.\n  type PanelOptions\n  default\n",
+		);
+	});
 });

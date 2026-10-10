@@ -415,23 +415,18 @@ export const coordinator = new ToolkitCoordinator({
 ```
 
 ```ts
-const customProviders = [
+import type { CustomProviderDescriptor } from "@pie-players/pie-section-player-tools-tts-settings";
+
+const customProviders: CustomProviderDescriptor[] = [
   {
     id: "demo-custom-provider",
     label: "Demo Custom",
-    description: "Example custom provider tab wired through adapter mode.",
-    mode: "adapter" as const,
+    description: "Example custom provider tab.",
     checkAvailability: async () => ({
       available: true,
       message: "Demo custom provider available.",
     }),
-    buildApplyConfig: ({
-      apiEndpoint,
-      state,
-    }: {
-      apiEndpoint: string;
-      state: Record<string, unknown>;
-    }) => {
+    buildApplyConfig: ({ apiEndpoint, state }) => {
       const base = String(apiEndpoint || "/api/tts")
         .replace(/\/+$/, "")
         .replace(/\/synthesize\/?$/i, "");
@@ -452,11 +447,7 @@ const customProviders = [
         },
       };
     },
-    preview: async ({
-      previewText,
-    }: {
-      previewText?: string;
-    }) => {
+    preview: async ({ previewText }) => {
       const text = String(previewText || "").trim() || "This is a custom provider preview.";
       const response = await fetch("/api/tts/sc", {
         method: "POST",

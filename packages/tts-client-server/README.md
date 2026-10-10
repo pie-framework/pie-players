@@ -52,7 +52,8 @@ await ttsService.initialize(provider, config);
 provider reads none of them from `providerOptions`. `providerOptions` carries
 request extras: the PIE transport forwards its `engine` (when no top-level
 `engine` is set), `sampleRate`, `format` and `speechMarkTypes`, and the custom
-transport reads its `speedRate`.
+transport reads its `speedRate` (else a bucket from `rate`), `lang_id` (else the
+content language, else `language`, else `en-US`) and `cache` (default `true`).
 
 `apiEndpoint` is required when using `ServerTTSProvider` directly, and
 `initialize` throws without it. Toolkit-level `tools.providers.textToSpeech`
@@ -77,10 +78,15 @@ await ttsService.speak(document.getElementById('content'));
 
 ## Transport Modes
 
-`ServerTTSProvider` now supports two transport modes:
+`ServerTTSProvider` supports two transport modes:
 
-- `pie` (default): POST `${apiEndpoint}/synthesize`, inline base64 audio + inline speech marks
+- `pie`: POST `${apiEndpoint}/synthesize`, inline base64 audio + inline speech marks
 - `custom`: POST to root endpoint, then fetch `audioContent` and JSONL marks URLs
+
+With `transportMode` unset, the transport is `custom` when `provider` is
+`"custom"` and `pie` otherwise. `endpointMode` defaults to `synthesizePath` for
+`pie` and `rootPost` for `custom`. The toolkit's `tools.providers.textToSpeech`
+applies the same default from `serverProvider`.
 
 ### PIE mode request
 

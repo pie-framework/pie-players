@@ -14,7 +14,8 @@
  *
  * `@pie-players/*` specifiers resolve to source through `workspaceExports`, the
  * map the unit tests resolve siblings with. An entry whose source is a Svelte
- * component or JavaScript has types only in its build, so it is declared an
+ * component or JavaScript resolves to the TypeScript source of its `types`
+ * declarations; without one it has types only in its build, so it is declared an
  * untyped module and what an example imports from it is `any`. Build output is
  * never read, so the check gives one answer with or without a build. The check
  * is non-strict, since null checks and implicit `any` would only lengthen an
@@ -123,8 +124,9 @@ function ambientDeclarations(root) {
 export function checkDocExamples(files, root = REPO_ROOT) {
 	const paths = {};
 	const untyped = [];
-	for (const { specifier, source } of workspaceExports(root)) {
-		if (TYPED_SOURCE.test(source)) paths[specifier] = [source];
+	for (const { specifier, source, typesSource } of workspaceExports(root)) {
+		const typed = TYPED_SOURCE.test(source) ? source : typesSource;
+		if (typed) paths[specifier] = [typed];
 		else untyped.push(specifier);
 	}
 	const ambientText = [

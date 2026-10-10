@@ -249,6 +249,22 @@ set `endpointValidationMode: "none"` and `speedRate: "medium"`, both still valid
 and Host R's `providerOptions` still type-check. Row verification dates are
 unchanged.
 
+Also on 2026-10-09 the TTS settings panel dropped its `adapters` prop and its
+component-mode provider tabs, with their `apply-request` and `preview-request`
+events. Custom provider entries lost `mode`, the apply result lost `message`, the
+preview result lost `note`, and the provider context lost `toolkitCoordinator`.
+The entry shape ships as `CustomProviderDescriptor` and its member types, and the
+panel's `.d.ts` imports nothing from the toolkit. Apply now awaits the
+coordinator's `ensureTTSReady()` and keeps the panel open with an error when the
+backend fails to start. The Google voice-type and gender filters stay in panel
+storage and leave the applied config, and the Polly `engine`, `sampleRate` and
+`format` apply at the config's top level alone. Checked against the checkouts of
+Hosts A, M, P, R and V, each scan reaching `@pie-players` imports, and Host A's
+and Host P's feature branches: only Host R mounts the panel. Its SchoolCity entry
+still sets `mode` and an apply `message`, which the panel ignores, and builds the
+entry untyped, so nothing fails to compile; importing the type would make both
+excess properties. Row verification dates are unchanged.
+
 Also on 2026-10-09 `tool-policy.unknownSupportId` moved off the toolbar and
 feature decisions onto the policy engine's resolved inputs
 (`getPolicyInputs().diagnostics`). It is computed once per change to the
@@ -1003,12 +1019,12 @@ consumer:
 - TTS settings — `toolkitCoordinator`, `storageKey`, `customProviders`, and an
   `onclose` callback prop
 
-`customProviders` is the sharp one. Its entries are duck-typed rather than
-imported: `{ id, label, description, mode: "adapter", checkAvailability({
-apiEndpoint, state }) }`, returning `{ available, message }`. Nothing in this
-repository types what the host passes, so a change to the member names or to the
-`checkAvailability` argument shape is a silent no-op there — the panel loses a
-provider row and reports nothing.
+`customProviders` is the sharp one. The panel types its entries as
+`CustomProviderDescriptor`, exported from the package since 2026-10-09, but Host
+R builds them untyped: `{ id, label, description, checkAvailability, buildApplyConfig,
+preview }`, plus a `mode` and an apply `message` the panel no longer reads. Until
+the host imports the type, a change to the member names or to the context shape
+is a silent no-op there — the panel loses a provider row and reports nothing.
 
 ## Programmatic API (Host R only)
 
@@ -1842,8 +1858,8 @@ re-derived rather than remembered.
   preloaded package's `pie` block, and the registry publish time beside them
 - `runtime.playerType`, `runtime.lazyInit`,
   `runtime.player.loaderConfig`, and `env` on the section-player runtime
-- The five debugger and settings panel CE prop sets, and the duck-typed
-  `customProviders` entry shape
+- The five debugger and settings panel CE prop sets, and the `customProviders`
+  entry shape, which Host R builds without importing `CustomProviderDescriptor`
 - `providerOptions` on the TTS provider config
 - The dictionary lookup wire contract. It breaks a host-served *endpoint*, so no
   typecheck spans the boundary; the shape is now importable, though —
@@ -1853,8 +1869,8 @@ re-derived rather than remembered.
 
 `createToolsConfig` is typed in Host R, so a signature change there surfaces as a
 type error on its next typecheck rather than at runtime. The rest of this list
-does not: `env`, the CE prop sets and `customProviders` are all untyped at
-the boundary, the dictionary contract crosses an HTTP endpoint no typecheck can
+does not: `env`, the CE prop sets and `customProviders` are all untyped on
+Host R's side of the boundary, the dictionary contract crosses an HTTP endpoint no typecheck can
 span even now that its shape ships, and the `pie-item-player` properties arrive
 over a CDN with no typecheck at all.
 

@@ -214,7 +214,8 @@ const coordinator = new ToolkitCoordinator({
     providers: {
       textToSpeech: {
         backend: "browser",
-        // Optional: an exact voiceURI or name from speechSynthesis.getVoices().
+        // Optional: `defaultVoice`, an exact voiceURI or name from
+        // speechSynthesis.getVoices().
         layoutMode: "expanding-row",
       },
     },
@@ -229,7 +230,7 @@ const coordinator = new ToolkitCoordinator({
 - `floating-overlay`
 - `left-aligned`
 
-Example using top-level provider fields:
+A minimal browser configuration with the default layout:
 
 ```ts
 providers: {
@@ -243,7 +244,7 @@ providers: {
 
 The `@pie-players/pie-section-player-tools-tts-settings` package is optional and only provides a runtime settings dialog UI. Hosts do not need that package to use TTS layout modes.
 
-`speedOptions` (inline toolbar playback-speed choices) can be set on `tools.providers.textToSpeech` at the top level or under `settings`, same as `layoutMode`. Defaults render as `Slow`, `Normal`, and `Fast`, with `Normal` mapped to `1.0×` and selected by default. A non-empty config that omits `1` gets a synthesized visible `Normal` choice while preserving host-provided option order; an explicit empty array hides speed controls and resets playback speed to `1.0`. The optional TTS settings dialog edits both `layoutMode` and `speedOptions` in one global toolbar section.
+`speedOptions` (inline toolbar playback-speed choices) is set at the top level of `tools.providers.textToSpeech`, beside `layoutMode`; the TTS tool reads no `settings` object. Defaults render as `Slow`, `Normal`, and `Fast`, with `Normal` mapped to `1.0×` and selected by default. A non-empty config that omits `1` gets a synthesized visible `Normal` choice while preserving host-provided option order; an explicit empty array hides speed controls and resets playback speed to `1.0`. The optional TTS settings dialog edits both `layoutMode` and `speedOptions` in one global toolbar section.
 
 ### Calculator With Host Auth
 

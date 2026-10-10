@@ -287,9 +287,9 @@ alone, with the same detail. The toolkit keys a section's controller by
 `section-id`, else the section's `identifier`, else an id named after its
 `assessment-id`, which is what the layout's stage chain keys by; it used to fall
 back to its coordinator's id, which for a coordinator the toolkit builds without
-an `assessment-id` is generated. A toolkit that unmounts disposes section
-controllers only through a coordinator it owns: one the host passes, or an outer
-toolkit lends, keeps them for its owner to dispose. Checked against the
+an `assessment-id` is generated. A toolkit that unmounts on a coordinator the
+host passes, or an outer toolkit lends, disposes the controller of every section
+it bound; it used to dispose only the current section's. Checked against the
 checkouts of Hosts A, M, P, R and V, each scan reaching `@pie-players` imports,
 and Host P's feature branch: no host listens for either preload event or passes
 its own coordinator, and Host A's sections carry identifiers. The

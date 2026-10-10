@@ -432,32 +432,38 @@ describe("<pie-assessment-toolkit> lifecycle", () => {
 		]);
 	});
 
-	test("a coordinator the host passes keeps its section controllers when the toolkit unmounts", async () => {
+	test("a toolkit unmounting from a coordinator the host passes disposes every section it bound", async () => {
 		const disposed: string[] = [];
 		const coordinator = new ToolkitCoordinator({
 			assessmentId: "assessment-1",
 			lazyInit: true,
 		});
+		const sectionIds = ["s1", "s2"];
 		const { element } = await mount({
 			coordinator,
 			sectionId: "s1",
 			section: section("s1"),
-			createSectionController: () => ({
-				...controller(),
-				dispose: async () => {
-					disposed.push("s1");
-				},
-			}),
+			createSectionController: () => {
+				const sectionId = sectionIds.shift() as string;
+				return {
+					...controller(),
+					dispose: async () => {
+						disposed.push(sectionId);
+					},
+				};
+			},
 		});
+		Object.assign(element, { sectionId: "s2", section: section("s2") });
+		await settle();
 		expect(coordinator.getSectionController({ sectionId: "s1" })).toBeDefined();
+		expect(coordinator.getSectionController({ sectionId: "s2" })).toBeDefined();
 
 		element.remove();
 		await settle();
 
-		expect(disposed).toEqual([]);
-		expect(coordinator.getSectionController({ sectionId: "s1" })).toBeDefined();
-		await coordinator.dispose();
-		expect(disposed).toEqual(["s1"]);
+		expect(disposed.sort()).toEqual(["s1", "s2"]);
+		expect(coordinator.getSectionController({ sectionId: "s1" })).toBeUndefined();
+		expect(coordinator.getSectionController({ sectionId: "s2" })).toBeUndefined();
 	});
 
 	test("isolation=\"force\" as an attribute gives a nested toolkit its own coordinator", async () => {

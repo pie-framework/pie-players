@@ -128,7 +128,7 @@ chrome. The instrumentation bridge forwards those DOM events under the
 
 ## Debug logging
 
-Assessment-player now exposes a `debug` option on `pie-assessment-player-default`.
+`pie-assessment-player-default` takes a `debug` attribute.
 
 - Enable verbose debug logs: `<pie-assessment-player-default debug="true">`
 - Disable verbose debug logs: `<pie-assessment-player-default debug="false">` (or `debug="0"`)
@@ -173,12 +173,9 @@ Canonical provider injection paths:
 
 - `sectionPlayerRuntime.player.loaderConfig.instrumentationProvider`
 
-Provider semantics:
+How an unset, `null` or invalid provider resolves is set out in
+[Instrumentation providers](../../docs/architecture/instrumentation-providers.md#provider-resolution).
 
-- With `trackPageActions: true`, missing/`undefined` provider values use the default New Relic provider path.
-- `instrumentationProvider: null` explicitly disables instrumentation.
-- Invalid provider objects are ignored (optional debug warning), also no-op.
-- Existing `item-player` behavior remains the compatibility anchor.
 - To keep production telemetry while debugging, use `CompositeInstrumentationProvider`
   with `NewRelicInstrumentationProvider` and `DebugPanelInstrumentationProvider`.
 - Toolkit telemetry forwarding uses the same provider path, so tool/backend
@@ -199,11 +196,8 @@ Ownership boundary: assessment-player owns assessment semantics only. Section
 and toolkit semantics remain in their own streams to avoid overlap. Bridge
 dedupe is a safety net, not the primary correctness mechanism.
 
-Toolkit tool/backend operational stream (when toolkit is mounted):
-
-- `pie-tool-init-start|success|error`
-- `pie-tool-backend-call-start|success|error`
-- `pie-tool-library-load-start|success|error`
+Toolkit operational events, forwarded when the toolkit is mounted, are listed in
+[Instrumentation providers](../../docs/architecture/instrumentation-providers.md#operational-events).
 
 ## Preloaded elements
 
@@ -233,41 +227,17 @@ registerPreloadedElements(
 );
 ```
 
-- A tag missing at pre-warm leaves the section's items unmounted and raises a
-  non-recoverable `element-preload` framework error.
-- Install element packages with `npm install --save-exact`. npm otherwise saves
-  a caret range, which registration rejects as a `version`, and which a fresh
-  install can resolve to another release line: `^13.4.0-next.15` resolves to
-  the legacy `13.4.4`, which has no `./browser/*` modules.
-- Install every pie-elements-ng package from one release, in one install from
-  the same dist-tag, and upgrade them together. Elements whose `./browser/*`
-  builds typeset on `window.MathJax` share the MathJax the first of them loads,
-  in the build and configuration of that element's release, so in a mixed set
-  an element can typeset with a MathJax it was not built for. Elements that
-  bundle their own MathJax share none
-  ([One MathJax version per page](../../docs/item-player/loading-strategies.md#one-mathjax-version-per-page)).
-- Pass `math.assetRoot`, an npm root serving the fonts and speech the elements'
-  bundled MathJax loads, or `math.assetUrls`, each file's URL; without either,
-  elements on adapter 0.1.3 or later render without web fonts and speech
-  ([MathJax assets](../../docs/item-player/loading-strategies.md#mathjax-assets)).
-- Register one version per package; registering a second version throws.
-- Register each package's `controller` unless the item players are hosted
-  (`sectionPlayerRuntime.player.hosted`, or an enabled
-  `sectionPlayerRuntime.player.backend.delivery`). A player that is not hosted
-  runs `model()` in the browser and warns for each tag registered without one.
-- Only `@pie-element/*` builds from pie-elements-ng publish
-  `./browser/delivery` and `./browser/controller`.
-- Under TypeScript, the `package.json` import needs `resolveJsonModule`, and a
-  package version that ships no declarations for `./browser/*` needs a
-  `declare module` shim for those subpaths.
-
-See [`strategy="preloaded"`](../../docs/item-player/loading-strategies.md#strategypreloaded)
-for the registration contract.
+A tag missing at pre-warm leaves the section's items unmounted and raises a
+non-recoverable `element-preload` framework error. Item players count as hosted
+under `sectionPlayerRuntime.player.hosted` or an enabled
+`sectionPlayerRuntime.player.backend.delivery`, and then need no `controller`.
+Version pins, element sets, MathJax assets and TypeScript setup are in
+[Registering elements from npm](../../docs/item-player/loading-strategies.md#registering-elements-from-npm).
 
 ## Content trust boundary
 
 Assessment markup reaches the DOM via the underlying
-`<pie-item-player>` element, which now sanitizes item / passage markup by
+`<pie-item-player>` element, which sanitizes item / passage markup by
 default through DOMPurify. See the
 [pie-item-player README](../item-player/README.md#content-trust-boundary)
 for the allow-list, opt-out mechanics (`trust-markup`), and the

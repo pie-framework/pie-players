@@ -25,7 +25,7 @@ const reportedToolIds = new WeakMap<object, Set<string>>();
  * has not registered under the tool's id. Reads the coordinator's current
  * placement and providers, so call it only once the coordinator reports ready.
  */
-export function reportMissingToolProviders(
+function reportMissingToolProviders(
 	coordinator: ToolkitCoordinatorApi,
 	toolRegistry: ToolRegistry,
 ): void {

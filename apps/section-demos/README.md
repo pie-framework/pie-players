@@ -1,68 +1,11 @@
 # PIE Section Player Demos
 
-Educational demonstrations of the PIE Section Player showcasing QTI 3.0 assessment sections with real K-12 content.
-
-## Demos
-
-### Demo 1: Single Question, No Passage ⭐☆☆
-**Difficulty:** Beginner
-**Estimated Time:** ~5 minutes
-**Topic:** Climate Change Science (9th grade)
-
-The simplest implementation - a single multiple-choice question with no supporting passage. Shows the minimal section player setup.
-
-**Learning Objectives:**
-- Understand the simplest section player implementation
-- See how a single question renders in page mode
-- Learn about greenhouse gases and climate change
-
-### Demo 2: Single Question with Passage ⭐⭐☆
-**Difficulty:** Intermediate
-**Estimated Time:** ~8 minutes
-**Topic:** Renaissance History (10th grade)
-
-Demonstrates reading comprehension with a passage and a related question. Shows how passages and questions work together in page mode.
-
-**Learning Objectives:**
-- Understand how passages and questions work together
-- See reading comprehension in page mode
-- Learn about the Renaissance period and its cultural impact
-
-### Demo 3: Three Questions with Passage ⭐⭐⭐
-**Difficulty:** Advanced
-**Estimated Time:** ~12 minutes
-**Topic:** Photosynthesis and Ecosystems (8-9th grade)
-
-Full reading comprehension assessment with three questions all referencing a single shared passage. Shows complex section structures in page mode.
-
-**Learning Objectives:**
-- Understand complex assessment structures with multiple questions
-- See how multiple questions share a single passage in page mode
-- Learn about photosynthesis and its role in ecosystems
-
-### Demo: Invalid Tools Config (Error Surfacing)
-**Difficulty:** Advanced
-**Estimated Time:** ~3 minutes
-**Topic:** Framework validation diagnostics
-
-Intentionally uses a malformed tools configuration shape (host nesting error) to verify strict validation behavior. This demo is the canonical check for:
-- Deterministic framework console diagnostics (including tool-validation details)
-- User-facing framework fallback UI with actionable format guidance
-- `framework-error` event emission for host observers (`onframework-error`)
-
-Use this route to validate framework-owned error handling before shipping new config changes.
-
-### Demo: Session Hydration (Server DB)
-**Difficulty:** Advanced
-**Estimated Time:** ~10 minutes
-**Topic:** Host-controlled resume simulation
-
-Demonstrates a restart/resume workflow with external server-side persistence. The demo boots with an empty player session, seeds backend records for two section pages, and lets you explicitly hydrate from the database.
-
-**Learning Objectives:**
-- Understand load vs save boundaries between player memory and backend persistence
-- Inspect normalized backend records (`attempt_sessions`, `section_sessions`, `item_sessions`)
-- Verify section hydration/de-hydration behavior across page switches
+Demonstrations of the PIE Section Player rendering QTI 3.0 assessment sections.
+The catalog at `/` links every demo registered in `src/lib/content/sections.ts`
+to its route under `src/routes/(demos)/`; the section content lives in
+`src/lib/content/`. The `invalid-tools-config` demo exercises framework-owned
+error handling: console diagnostics, the fallback UI and the `framework-error`
+event (`runtime.onFrameworkError`).
 
 ## Running the Demos
 
@@ -90,7 +33,7 @@ consistent monorepo startup behavior.
 ## Technical Details
 
 ### Technology Stack
-- **Framework:** SvelteKit with static adapter
+- **Framework:** SvelteKit with `@sveltejs/adapter-node`
 - **Styling:** Tailwind CSS v4 + DaisyUI v5
 - **Player:** PIE Section Player (QTI 3.0)
 - **Elements:** PITS bundles under `iife`, jsDelivr (`https://cdn.jsdelivr.net/npm`) under `esm`, the installed pie-elements-ng packages under `preloaded`
@@ -100,60 +43,7 @@ consistent monorepo startup behavior.
 
 `?player=preloaded` is the ESM builds as a host bundles them: before the player mounts, the page imports each element's `./browser/delivery` and `./browser/controller` from those installed packages and registers them through `registerPreloadedElements`, with jsDelivr as MathJax's [asset root](../../docs/item-player/loading-strategies.md#mathjax-assets), and the players load no element code. The players align each authored version to the installed one. The `preloaded-npm-elements` demo does the same with static imports of its own dependencies, as a host's page is written.
 
-### Content Standards
-All content is:
-- Age-appropriate for 8-10th grade students
-- Aligned with educational standards
-- Written at appropriate Lexile levels (950L-1050L)
-- Factually accurate and educationally sound
-
-### Key Features
-- Progressive difficulty (beginner → intermediate → advanced)
-- Real educational content (not lorem ipsum)
-- Clean, professional UI design with DaisyUI components
-- Responsive layout
-- Technical details view for developers
-
-## Educational Topics Covered
-
-1. **Climate Change Science** - Greenhouse gases and their effects
-2. **Renaissance History** - Cultural transformation and the printing press
-3. **Photosynthesis** - Plant biology and ecosystem dynamics
-
 ## For Developers
-
-### Project Structure
-```
-apps/section-demos/
-├── src/
-│   ├── routes/
-│   │   ├── +page.svelte           # Landing page
-│   │   ├── +layout.svelte         # Shared layout
-│   │   ├── (demos)/+layout.svelte # Shared demo route-group layout
-│   │   ├── (demos)/<demo-id>/     # One route per demo
-│   │   │   ├── +page.ts           # loadDemoRouteDataById("<demo-id>", url)
-│   │   │   └── +page.svelte       # Demo host
-│   │   └── api/                   # Local server routes (see api/README.md)
-│   ├── lib/
-│   │   ├── content/               # Demo sections and the demo registry
-│   │   ├── demo-runtime/          # Shared demo host helpers and components
-│   │   └── components/            # Site header, element version selector
-│   ├── app.html                   # HTML template
-│   └── app.css                    # Tailwind + DaisyUI styles
-├── package.json
-├── svelte.config.js
-├── vite.config.ts
-└── tailwind.config.ts
-```
-
-### Content Files
-Each demo has a TypeScript file defining the QTI 3.0 assessment section:
-- `demo1-single-question.ts` - Climate change MCQ
-- `demo2-question-passage.ts` - Renaissance passage + question
-- `demo3-three-questions.ts` - Photosynthesis passage + 3 questions
-- `demo4-tts-ssml.ts` - TTS + SSML coverage with multi-level catalogs
-- `demo10-tts-generated-ssml.ts` - Same content as `demo4-tts-ssml.ts`, minus the authored SSML/catalogs, so the toolkit generates math SSML on the fly
-- `sections.ts` - The demo registry (`sectionDemos`), plus the two section pages the `session-hydrate-db` demo switches between
 
 ### Customizing Demos
 To modify content, edit the files in `src/lib/content/`. Each file exports an `AssessmentSection` object with:
@@ -173,7 +63,7 @@ Use `?mode=candidate` or `?mode=scorer` to switch environment role/mode. The hos
 
 **Supported CDNs:**
 - **jsDelivr:** `https://cdn.jsdelivr.net/npm` (recommended, used in demos)
-- **esm.sh:** `https://esm.sh` (may have package resolution issues)
+- **esm.sh:** `https://esm.sh`
 
 The ESM player defaults to jsDelivr and URL-based module resolution (`moduleResolution: "url"`). Override `loaderOptions.esmCdnUrl` to use a different CDN, or set `moduleResolution: "import-map"` when import-map behavior is needed.
 
@@ -212,8 +102,8 @@ SSML are actually voiced.
   - `TTS_SCHOOLCITY_ASSET_ORIGINS` — comma-separated exact-origin allow-list
     for synthesized audio / speech-mark asset fetches. When unset, the provider
     defaults to allowing `TTS_SCHOOLCITY_URL`'s origin plus any host on the
-    same registrable domain (so a service at `tts.svcdev.schoolcity.com`
-    automatically permits `tts-cdn.svcdev.schoolcity.com` without further
+    same registrable domain (so a service at `tts.example.com`
+    automatically permits `tts-cdn.example.com` without further
     config). Set this env var to switch to a strict exact-origin allow-list
     (recommended for production for audit and typo resistance).
 
@@ -221,8 +111,7 @@ This keeps upstream auth/signing material server-side.
 
 Positioning notes:
 
-- SchoolCity is used here as an internal Renaissance-backed API example to demonstrate
-  custom TTS integration boundaries.
+- SchoolCity is used here as an example of a host-owned TTS API.
 - This is a demo-host integration pattern (custom provider + proxy route), not a toolkit default.
 - The custom provider appears in the TTS settings panel as the `demo-custom-provider` tab,
   showing how to plug in backend-specific preview/apply behavior without changing toolkit defaults.
@@ -243,20 +132,6 @@ Positioning notes:
 - The **DB panel** uses Server-Sent Events (SSE) for live backend updates
 - DB controls live in the **Session DB (Server)** panel (`Load from DB`, `Reset DB`)
 - Use the DB panel to inspect scoped raw table rows and reconstructed snapshots for the active section/attempt
-
-## Architecture Notes
-
-### Why SvelteKit?
-- Matches the `pie-elements-ng/apps/element-demo` architecture
-- Static site generation for easy deployment
-- File-based routing for clear demo organization
-- Built-in TypeScript support
-
-### Why jsDelivr over esm.sh?
-- Better package resolution for scoped packages
-- More reliable for published npm packages
-- Supports the `+esm` convention for ESM modules
-- Lower latency for common packages
 
 ## License
 

@@ -54,7 +54,7 @@ export function getCapForKind(kind: RecordKind, limits: RecordLimits): number {
 	return resolveCap(limits.maxRecordsByKind?.[kind], globalCap);
 }
 
-export function toTimestampValue(timestamp: string): number {
+function toTimestampValue(timestamp: string): number {
 	const parsed = Date.parse(timestamp);
 	return Number.isNaN(parsed) ? 0 : parsed;
 }

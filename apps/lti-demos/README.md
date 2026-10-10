@@ -18,7 +18,8 @@ bun run dev:lti -- --rebuild
 bun run dev:lti
 ```
 
-The LTI demo runs on `http://localhost:5600` by default.
+The LTI demo runs on `http://localhost:5600` by default. The backend demo uses
+the same port, so the two cannot run at the same time.
 
 The demo page fetches a server-approved launch context, maps it to
 `assessment-id` and `attempt-id`, mounts `pie-assessment-player-default`, and

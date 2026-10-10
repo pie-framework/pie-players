@@ -28,7 +28,7 @@
 		createSectionControllerSubscriptionManager,
 		getSectionControllerFromCoordinator,
 	} from "@pie-players/pie-section-player-tools-shared";
-	import { onDestroy, untrack } from "svelte";
+	import { untrack } from "svelte";
 
 	type ControllerEvent = {
 		type?: string;
@@ -289,6 +289,8 @@
 		pushRecord(event || {});
 	}
 
+	// Distinct identities per subscription: the coordinator dedupes by
+	// listener, so one function for both would drop the item subscription.
 	function handleItemControllerEvent(event: ControllerEvent): void {
 		handleControllerEvent(event);
 	}
@@ -411,9 +413,6 @@
 		reconcileRecordsWithLimits();
 	});
 
-	onDestroy(() => {
-		subscriptionManager.detachAll();
-	});
 	let contextAnchor = $state<HTMLDivElement | null>(null);
 	let chromeRuntimeContext = $state<AssessmentToolkitRuntimeContext | null>(null);
 	// Interface locale, re-derived on every context republish.

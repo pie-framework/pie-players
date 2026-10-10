@@ -43,7 +43,7 @@
 		"dev": "vite build --watch",
 		"typecheck": "tsc --noEmit",
 		"check": "svelte-check --tsconfig ./tsconfig.json --compiler-warnings options_missing_custom_element:ignore",
-		"lint": "biome lint SectionSessionPanel.svelte index.ts vite.config.ts package.json"
+		"lint": "biome lint ."
 	},
 	"devDependencies": {
 		"@biomejs/biome": "^2.5.15",

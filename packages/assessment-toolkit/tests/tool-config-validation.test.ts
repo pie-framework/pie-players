@@ -4,10 +4,7 @@ import {
 	ToolRegistry,
 	type ToolRegistration,
 } from "../src/services/ToolRegistry.js";
-import {
-	frameworkErrorFromToolConfigValidation,
-	normalizeAndValidateToolsConfig,
-} from "../src/services/tool-config-validation.js";
+import { normalizeAndValidateToolsConfig } from "../src/services/tool-config-validation.js";
 
 describe("tool-config-validation", () => {
 	test("keeps deterministic validation pipeline diagnostics", () => {
@@ -313,35 +310,6 @@ describe("tool-config-validation", () => {
 		expect(result.diagnostics).toEqual([]);
 	});
 
-	test("maps diagnostics to framework error model", () => {
-		const model = frameworkErrorFromToolConfigValidation({
-			source: "test.framework",
-			diagnostics: [
-				{
-					code: "tools.unsupportedLevel",
-					severity: "error",
-					path: "placement.section",
-					message: 'Tool "calculator" does not support level "section".',
-					toolId: "calculator",
-				},
-			],
-		});
-		expect(model.kind).toBe("tool-config");
-		expect(model.source).toBe("test.framework");
-		expect(model.details).toEqual([
-			'placement.section: Tool "calculator" does not support level "section".',
-		]);
-	});
-
-	test("maps unknown thrown error to framework error model", () => {
-		const model = frameworkErrorFromToolConfigValidation({
-			source: "test.framework",
-			error: new Error("bad config"),
-		});
-		expect(model.kind).toBe("tool-config");
-		expect(model.source).toBe("test.framework");
-		expect(model.message).toBe("bad config");
-	});
 	test("reports a region capability named in toolbar placement", () => {
 		// A region capability has no toolbar button, so placing it names a surface
 		// that will never render it. Caught at the config rather than at render

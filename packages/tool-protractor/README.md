@@ -1,4 +1,4 @@
-# Protractor Tool
+# @pie-players/pie-tool-protractor
 
 A draggable and rotatable protractor overlay tool for geometry and measurement questions.
 
@@ -116,6 +116,8 @@ The protractor uses:
 - Black strokes for visibility
 - A focus outline in `--pie-button-focus-outline`
 
+Both tokens are canonical semantic tokens.
+
 ## Accessibility
 
 - `role="application"` with a localized `aria-label` and `aria-roledescription`
@@ -125,11 +127,3 @@ The protractor uses:
   press on one keeps focus on the protractor, so the strip stays up
 - A polite live region announces each move and rotation
 - The protractor image has localized `alt` text
-
-## Future Enhancements
-
-- [ ] Degree readout showing current rotation
-- [ ] Snap-to-grid option
-- [ ] Measurement lines/guides
-- [ ] Different protractor sizes
-- [ ] Save/restore position between questions

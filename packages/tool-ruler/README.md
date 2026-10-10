@@ -1,4 +1,4 @@
-# Ruler Tool
+# @pie-players/pie-tool-ruler
 
 A draggable and rotatable ruler measurement tool for PIE assessment players.
 
@@ -35,7 +35,3 @@ A draggable and rotatable ruler measurement tool for PIE assessment players.
 
 - `visible` (boolean): Controls visibility of the tool
 - `toolId` (string): Unique identifier for tool coordination (default: 'ruler')
-
-## Based On
-
-This implementation is based on production ruler tool patterns, adapted for the PIE architecture.

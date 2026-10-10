@@ -204,6 +204,8 @@ component-scoped variables instead of overriding broad semantic tokens such as
 --pie-tool-trigger-active-border-color: Active/open trigger border
 ```
 
+These three are registered `component-public` tokens.
+
 If unset, the trigger looks the same open as closed: each hook falls back to the
 value the control already resolves to — background through
 `--pie-button-background-color` / `--pie-button-bg` / `--pie-background`, border
@@ -231,7 +233,7 @@ then a literal that only applies when no theme is loaded:
 --pie-selected-button-background /* selected speed chip      → --pie-button-active-bg */
 --pie-selected-button-border  /* selected speed chip border  → --pie-button-border */
 --pie-tts-menu-shadow         /* card elevation */
---pie-tts-card-border         /* card hairline; `transparent` for shadow-only */
+--pie-tts-card-border         /* card hairline */
 ```
 
 None of the seven is a registered host token. Each is read as
@@ -241,20 +243,16 @@ carries no compatibility guarantee — the panel's internals may move it.
 The card carries a hairline mixed from `--pie-text` because its shadow is black
 and disappears once the surface goes dark. It is deliberately not derived from
 `--pie-border`: a host that wants borderless controls sets that to transparent,
-which is the case where the shadow is the only edge. Set
-`--pie-tts-card-border: transparent` for the shadow-only card.
+which is the case where the shadow is the only edge.
 
 A host that sets `--pie-button-border: transparent` also flattens the selected
-speed chip, which defaults through it — set `--pie-selected-button-border` to
-keep the chip outlined.
+speed chip, which defaults through it.
 
 Foregrounds default through `--pie-button-color` (DaisyUI `base-content`) rather
 than `--pie-primary` or `--pie-tertiary`: those are direct mappings of DaisyUI
 slots chosen to pair with their own `-content` colour, so an accent glyph taken
 from either falls under 3:1 against the card in 11 of the 35 shipped themes.
-Selection reads from the chip fill and the bolder weight instead of from hue. A
-host that wants a branded accent sets `--pie-tts-button-color` and owns the
-contrast, as with the active-trigger hooks above.
+Selection reads from the chip fill and the bolder weight instead of from hue.
 
 Trigger and control backgrounds read `--pie-button-background-color` ahead of
 the canonical `--pie-button-bg`; borders and hover backgrounds read
@@ -271,10 +269,6 @@ This tool follows the PIE Assessment Toolkit tool pattern:
 - One instance owns playback at a time across the page
 - Panel state is announced with `pie-tool-active-change`, which the packaged
   toolbar registration subscribes to
-
-## Example
-
-See active demos in `apps/section-demos`.
 
 ## License
 

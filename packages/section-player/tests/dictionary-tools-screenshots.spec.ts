@@ -9,7 +9,8 @@ import { dirname, resolve } from "node:path";
  * of a panel that has not finished rendering. Behaviour lives in
  * `section-dictionary-tools.spec.ts`. Run this deliberately:
  *
- *   bunx playwright test packages/section-player/tests/dictionary-tools-screenshots.spec.ts \
+ *   PIE_CAPTURE_DICTIONARY_SCREENSHOTS=1 bunx playwright test \
+ *     packages/section-player/tests/dictionary-tools-screenshots.spec.ts \
  *     --config packages/section-player/playwright.config.ts
  *
  * Images land in `artifacts/dictionary-tools/` at the repo root, which is gitignored —
@@ -47,6 +48,10 @@ async function openTool(page: Page, ariaLabelStart: string) {
 }
 
 test.describe("dictionary tools evidence", () => {
+	test.skip(
+		process.env.PIE_CAPTURE_DICTIONARY_SCREENSHOTS !== "1",
+		"set PIE_CAPTURE_DICTIONARY_SCREENSHOTS=1 to capture dictionary tool evidence images",
+	);
 	test.use({ viewport: { width: 1400, height: 900 } });
 
 	test("captures the dictionary states", async ({ page }) => {

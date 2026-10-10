@@ -132,8 +132,8 @@ process's heap — 100 entries by default, evicting the least recently used entr
 with expired entries dropped ahead of live ones — so it is lost on restart and
 every replica of a scaled deployment synthesizes the same passage into its own
 copy. A production host implements `ITTSCache` over shared storage;
-`packages/tts-server-polly/examples/sveltekit/synthesize-server.ts` sketches the
-Redis shape.
+[`tts-server-polly/examples/sveltekit/synthesize-server.ts`](../tts-server-polly/examples/sveltekit/synthesize-server.ts)
+sketches the Redis shape.
 
 ## API Reference
 
@@ -161,7 +161,16 @@ Redis shape.
 - `estimateSpeechMarks()` - Generate estimated timing
 - `adjustSpeechMarksForRate()` - Adjust for speech rate
 - `validateSpeechMarks()` - Validate marks
+- `normalizeSpeechMarks()` - Parse a JSONL word-mark response, normalize time units, anchor offsets to the request text and clamp ranges
+- `anchorSpeechMarks()` - Re-derive each mark's `start`/`end` from where its `value` occurs in the request text
+- `mergeSpeechMarks()` - Merge overlapping or adjacent marks
+- `filterSpeechMarksByType()` - Keep marks of one type (`word`, `sentence` or `ssml`)
+- `getSpeechMarkAtTime()` - The mark at a time in milliseconds, or `null`
+- `getSpeechMarksStats()` - Count, total duration, average word duration and words per minute
+- `resolveSpeedRateBucket()` - Bucket a rate multiplier into `slow` (at most 0.95), `fast` (at least 1.5) or the fallback (default `medium`)
+- `resolveTTSErrorCodeForHttpStatus()` - Map an HTTP status to the closest `TTSErrorCode`, for REST-backed providers
 - `generateCacheKey()` - Create cache key
+- `generateHashedCacheKey()` - Create a short cache key by hashing the key components
 - `hashText()` - SHA-256 hash for cache keys
 
 ## Speech Marks Format

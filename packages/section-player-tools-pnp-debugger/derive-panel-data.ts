@@ -249,7 +249,7 @@ export function fetchSectionPolicyDecision(
 	return fetchPolicyDecision(coordinator, "section", scopeId);
 }
 
-export function fetchPolicyDecision(
+function fetchPolicyDecision(
 	coordinator: PolicyPanelCoordinator | null,
 	level: ToolPlacementLevel,
 	scopeId: string,

@@ -48,7 +48,7 @@ export interface ToolProviderRegistration<TConfig = any> {
 	 * @example
 	 * ```typescript
 	 * authFetcher: async () => {
-	 *   const response = await fetch('/api/desmos/token');
+	 *   const response = await fetch('/api/tools/desmos/auth');
 	 *   return response.json(); // { apiKey: '...' }
 	 * }
 	 * ```

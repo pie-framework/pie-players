@@ -76,10 +76,6 @@ export const defaultLoadResolution = async (
 	const s = status(r.printTagName);
 
 	if (s === "inProgress" || s === "inRegistry") {
-		console.log(
-			"[element-resolver] Tag already defined - skip",
-			r.printTagName,
-		);
 		return whenDefined(r.printTagName).then(() => ({ success: true, pkg: r }));
 	}
 

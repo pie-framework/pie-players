@@ -29,7 +29,7 @@ export default defineConfig({
 	reporter: "list",
 	use: {
 		baseURL,
-		screenshot: "on",
+		screenshot: "only-on-failure",
 		video: "retain-on-failure",
 	},
 	webServer: {

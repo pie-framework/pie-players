@@ -584,7 +584,6 @@ export class ToolkitCoordinator {
 	private ttsDegraded = false;
 	private ttsInitPromise?: Promise<void>;
 	private ttsReconfigurePromise?: Promise<void>;
-	private stateLoaded = false;
 	/**
 	 * The loader ran, whether or not it returned state. A failed load is
 	 * reported once and the coordinator runs without saved tool state.
@@ -1254,7 +1253,6 @@ export class ToolkitCoordinator {
 				if (state && typeof state === "object") {
 					this.elementToolStateStore.loadState(state);
 				}
-				this.stateLoaded = true;
 				this.stateLoadSettled = true;
 				await this.emitTelemetry("pie-toolkit-tool-state-loaded", {
 					hasState: Boolean(state),

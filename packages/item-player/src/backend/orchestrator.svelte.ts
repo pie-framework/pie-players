@@ -130,7 +130,7 @@ export type BackendOrchestrator = {
 };
 
 /** Deep copy for handing config to a backend without leaking the Svelte proxy. */
-export function cloneForBackend<T>(value: T): T {
+function cloneForBackend<T>(value: T): T {
 	if (typeof structuredClone === "function") {
 		try {
 			return structuredClone(value);

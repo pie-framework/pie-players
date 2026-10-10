@@ -26,6 +26,14 @@ Supported subpaths are declared in `package.json`:
 - `@pie-players/pie-players-shared/pie/tag-names`
 - `@pie-players/pie-players-shared/loaders`
 - `@pie-players/pie-players-shared/i18n`
+- `@pie-players/pie-players-shared/i18n/types`
+- `@pie-players/pie-players-shared/i18n/provider`
+- `@pie-players/pie-players-shared/i18n/catalogs`
+- `@pie-players/pie-players-shared/i18n/language-tags`
+- `@pie-players/pie-players-shared/nds-icon-button`
+- `@pie-players/pie-players-shared/ui/attribute-coercion`
+- `@pie-players/pie-players-shared/ui/content-styles`
+- `@pie-players/pie-players-shared/tools/term-lookup`
 
 ## Formative Delivery
 
@@ -136,7 +144,9 @@ package-file root as its asset root when the page sets none; see
 If multiple elements request different minor or patch versions of a shared
 singleton such as React, the loader chooses the highest same-major version and
 emits console plus instrumentation warnings. Different major versions fail the
-load and are also reported through console and instrumentation.
+load and are also reported through console and instrumentation. Once the import
+map is injected, the selected version is fixed: a later request for a higher
+version of the same major fails the load.
 
 Preloaded mode means the host has already registered the expected custom element
 tag; it is not a separate package format. IIFE mode remains supported through the
@@ -146,4 +156,3 @@ same package exports and controller compatibility shim used by legacy builders.
 
 - [PIE utilities README](src/pie/README.md)
 - [i18n README](src/i18n/README.md)
-- [PIE element tag/id contract](../../docs/architecture/types-and-utilities-contract.md)

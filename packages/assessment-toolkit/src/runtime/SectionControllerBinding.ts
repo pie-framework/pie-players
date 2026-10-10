@@ -633,10 +633,6 @@ export class SectionControllerBinding {
 		await this.controller?.hydrate?.();
 	}
 
-	getRegistry(): RuntimeRegistry {
-		return this.registry;
-	}
-
 	/**
 	 * Releases the binding and disposes the controller of every section it
 	 * bound, so a coordinator the host passes or an outer toolkit lends keeps

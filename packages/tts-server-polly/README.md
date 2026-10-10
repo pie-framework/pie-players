@@ -12,12 +12,10 @@ This package provides a server-side TTS provider that uses AWS Polly to generate
 
 ## Features
 
-- ✅ **Native Speech Marks** - Millisecond-accurate word timing from AWS Polly
-- ✅ **Neural Voices** - High-quality neural TTS (default) or standard voices
-- ✅ **25+ Languages** - Wide language support
-- ✅ **Full SSML** - Supports Speech Synthesis Markup Language
-- ✅ **Parallel Requests** - Audio and speech marks fetched simultaneously
-- ✅ **60+ Voices** - Multiple voices per language
+- **Native Speech Marks** - Millisecond-accurate word timing from AWS Polly
+- **Neural Voices** - High-quality neural TTS (default) or standard voices
+- **SSML** - Polly's supported subset
+- **Parallel Requests** - Audio and speech marks fetched simultaneously
 
 ## Installation
 
@@ -117,19 +115,19 @@ AWS_SECRET_ACCESS_KEY=your_secret_key
 
 | Feature | Support |
 |---------|---------|
-| Speech Marks | ✅ Native |
-| SSML | ✅ Full |
-| Pitch Control | ⚠️ SSML only |
-| Rate Control | ✅ SSML |
-| Volume Control | ❌ Client-side |
+| Speech Marks | Native |
+| SSML | Polly's supported subset |
+| Pitch Control | SSML only |
+| Rate Control | SSML |
+| Volume Control | Client-side |
 | Max Text Length | 3000 chars |
-| Audio Format | MP3 |
+| Audio Formats | MP3, OGG Vorbis, PCM |
 
 ## Cost
 
-- **Standard voices:** $4 per 1M characters
-- **Neural voices:** $16 per 1M characters
-- **Speech marks:** Included (no extra charge)
+Polly bills each SynthesizeSpeech request by characters; a synthesis with speech
+marks makes two (audio and marks). Current rates:
+<https://aws.amazon.com/polly/pricing/>
 
 ## Supported Voices
 
@@ -163,23 +161,9 @@ try {
 
 ## AWS IAM Permissions
 
-Required IAM permissions:
-
-```json
-{
-  "Version": "2012-10-17",
-  "Statement": [
-    {
-      "Effect": "Allow",
-      "Action": [
-        "polly:SynthesizeSpeech",
-        "polly:DescribeVoices"
-      ],
-      "Resource": "*"
-    }
-  ]
-}
-```
+The provider needs `polly:SynthesizeSpeech` and `polly:DescribeVoices`. The
+[AWS Polly Setup Guide](../../docs/accessibility/aws-polly-setup-guide.md) has the
+policy and the credential setup.
 
 ## License
 

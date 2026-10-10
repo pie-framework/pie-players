@@ -22,12 +22,14 @@ bun run dev:docs                   # Docs site
 ## Development
 
 ```bash
-bun run dev      # Turbo dev for section-demos (see package.json "dev")
-bun run build    # Build publishable packages + tools (excludes apps)
+bun run dev      # Section demos (same as dev:section)
+bun run build    # Build publishable packages (excludes apps and tools)
 bun run typecheck
 bun run test
-bun run format   # Format (Biome)
+bun run format   # Reformat every file with Biome (CI gates on biome lint only)
 ```
+
+Requires Bun 1.3.11 and Node 22.16 (`.nvmrc`); `bun run dev` serves section-demos on port 5300.
 
 Demo apps resolve publishable packages through **`dist/`** (and section-demos uses explicit Vite aliases for many tools). See [Demo workspace resolution](docs/development/demo-workspace-resolution.md).
 

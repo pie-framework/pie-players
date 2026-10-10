@@ -11,15 +11,6 @@ export default defineConfig({
 			fileName: "print-player",
 			formats: ["es"],
 		},
-		rollupOptions: {
-			// Externalize lit to avoid bundling it
-			external: [],
-			output: {
-				// Provide global variables for externalized deps in UMD build
-				globals: {},
-			},
-		},
-		// Generate sourcemaps for debugging
 		sourcemap: false,
 		// Target modern browsers
 		target: "es2020",

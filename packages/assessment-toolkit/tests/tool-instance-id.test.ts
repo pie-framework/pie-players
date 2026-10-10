@@ -1,9 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import {
 	createScopedToolId,
-	getRegisteredToolScopeLevels,
 	parseScopedToolId,
-	registerToolScopeLevel,
 } from "../src/services/tool-instance-id";
 
 describe("tool-instance-id", () => {
@@ -29,18 +27,5 @@ describe("tool-instance-id", () => {
 		expect(createScopedToolId("theme", "assessment", "assess-1")).toBe(
 			"theme:assessment:assess-1",
 		);
-	});
-
-	test("allows registering custom scope levels", () => {
-		registerToolScopeLevel("interaction");
-		expect(getRegisteredToolScopeLevels()).toContain("interaction");
-
-		const interactionId = createScopedToolId(
-			"answerEliminator",
-			"interaction",
-			"int-11",
-		);
-		expect(interactionId).toBe("answerEliminator:interaction:int-11");
-		expect(parseScopedToolId(interactionId)?.scopeLevel).toBe("interaction");
 	});
 });

@@ -29,8 +29,6 @@
 	},
 	"files": [
 		"dist",
-		"ruler-cm.svg",
-		"ruler-inches.svg",
 		"package.json",
 		"README.md"
 	],

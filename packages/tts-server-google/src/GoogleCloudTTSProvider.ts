@@ -63,7 +63,7 @@ export interface GoogleCloudTTSConfig extends TTSServerConfig {
 	 * Voice type: 'wavenet' (neural), 'standard', or 'studio' (premium)
 	 *
 	 * @default 'wavenet'
-	 * @note WaveNet: $16/1M chars, Standard: $4/1M chars, Studio: $16/1M chars
+	 * @see https://cloud.google.com/text-to-speech/pricing
 	 */
 	voiceType?: "wavenet" | "standard" | "studio";
 

@@ -17,7 +17,7 @@ export interface SelectionRead {
 }
 
 /** The open shadow roots holding `nodes`, innermost first, each once. */
-export const shadowRootsHolding = (
+const shadowRootsHolding = (
 	nodes: ReadonlyArray<Node | null | undefined>,
 ): ShadowRoot[] => {
 	const roots: ShadowRoot[] = [];
@@ -57,7 +57,7 @@ const composedRangeOf = (
  * shadow host holding the end, or at the end of the shadow root holding the
  * start.
  */
-export const liveRangeFrom = (composed: StaticRange): Range | null => {
+const liveRangeFrom = (composed: StaticRange): Range | null => {
 	const { startContainer, startOffset, endContainer, endOffset } = composed;
 	const doc = startContainer.ownerDocument;
 	if (!doc) return null;

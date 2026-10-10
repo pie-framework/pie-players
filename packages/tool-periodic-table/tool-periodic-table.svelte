@@ -27,14 +27,12 @@
 		resolveInterfaceI18n,
 	} from '@pie-players/pie-players-shared/i18n/provider';
 
-	// TypeScript interface matching production data structure
+	// Shape of an entry in periodic-table-data.json
 	interface Element {
 		name: string;
 		atomic_mass: number;
 		category: string;
 		number: number;
-		period: number;
-		group: number;
 		phase: string;
 		symbol: string;
 		xpos: number;
@@ -51,7 +49,7 @@
 		toolId?: string;
 	} = $props();
 
-	// Get all elements from production JSON data
+	// All elements from the bundled periodic-table-data.json
 	const allElements: Element[] = (periodicTableData as any).elements;
 
 	let containerEl = $state<HTMLDivElement | null>(null);
@@ -70,7 +68,7 @@
 	let selectedCategory = $state<string>('All');
 
 	/**
-	 * Normalize category name (matching production implementation)
+	 * Normalize category name
 	 */
 	function normalizeCategory(category: string): string {
 		const lower = category.toLowerCase();
@@ -117,8 +115,6 @@
 			.map((word) => word.charAt(0).toUpperCase() + word.slice(1))
 			.join(' ');
 	}
-
-	// Use xpos/ypos directly from production data (no calculation needed)
 
 	/**
 	 * Get unique normalized categories
@@ -182,7 +178,7 @@
 					role="grid"
 					aria-label={interfaceI18n.t('tools.periodicTable.elementsA11y')}
 				>
-					<!-- Category filter badges in row 1 (matching production implementation) -->
+					<!-- Category filter badges in row 1 -->
 					<div
 						class="pie-tool-periodic-table__category-header pie-tool-periodic-table__category-badge-row"
 						role="presentation"
@@ -215,7 +211,7 @@
 						{/each}
 					</div>
 
-					<!-- Element overview section (rows 2-3, matching production implementation) -->
+					<!-- Element overview section (rows 2-3) -->
 					{#if selectedElement}
 						<div
 							class="pie-tool-periodic-table__element-overview"
@@ -371,7 +367,7 @@
 		width: 100%;
 	}
 
-	/* Category badge row (matching production implementation) */
+	/* Category badge row */
 	.pie-tool-periodic-table__category-header.pie-tool-periodic-table__category-badge-row {
 		align-items: center;
 		background-color: transparent;
@@ -405,7 +401,7 @@
 		color: var(--pie-white, #fff);
 	}
 
-	/* Element overview section (matching production implementation) */
+	/* Element overview section */
 	.pie-tool-periodic-table__element-overview {
 		align-items: center;
 		display: flex;
@@ -666,7 +662,7 @@
 		);
 	}
 
-	/* Category-based background colors (matching production implementation) */
+	/* Category-based background colors */
 	.pie-tool-periodic-table__category--alkali-metal {
 		background-color: color-mix(
 			in srgb,

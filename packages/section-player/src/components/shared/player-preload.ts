@@ -129,7 +129,7 @@ function isAuthorMode(
 }
 
 /** The element view the item players render, which pre-warm has to match. */
-export function getLoaderView(
+function getLoaderView(
 	props: Record<string, unknown>,
 	env: Record<string, unknown>,
 ): string {

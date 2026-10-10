@@ -131,8 +131,9 @@ running to its edges. The screen holds the tape, the live expression and the ans
 with the angle mode pinned above its scroller so history passes behind it; the
 console is the keypad's recessed plane, carrying the layer tabs and the backspace and
 clear icons above the grid — inline SVG in `currentColor`, because `⌫` is the face a
-backspace button wants and the code point least likely to be in a host's font stack. Nothing sits on bare card, and the type's name is not drawn — the
-tool shell's header already carries it, and a second copy cost 46px of a 500px panel.
+backspace button wants and the code point least likely to be in a host's font
+stack. Nothing sits on bare card, and the type's name is not drawn — the tool
+shell's header already carries it, and a second copy cost 46px of a 500px panel.
 It stays as visually-hidden text for the document outline. `--cortex-tape-inset` and
 the keypad's inline padding are one value, so the mathfield's text and the first key
 column share a left edge.
@@ -180,19 +181,19 @@ returns.
 
 Consumed: `--pie-text`, `--pie-white`, `--pie-background-dark`, `--pie-border`,
 `--pie-border-gray`, `--pie-blue-grey-300`, `--pie-button-bg`,
-`--pie-button-color`, `--pie-button-hover-bg`, `--pie-button-active-bg`,
-`--pie-button-focus-outline`, `--pie-primary`, `--pie-primary-dark`,
-`--pie-incorrect`, `--pie-incorrect-secondary`, and `--pie-content-emphasis`.
+`--pie-button-color`, `--pie-button-hover-bg`, `--pie-button-hover-border`,
+`--pie-button-active-bg`, `--pie-button-focus-outline`, `--pie-primary`,
+`--pie-primary-dark`, `--pie-incorrect`, `--pie-incorrect-secondary`, and
+`--pie-content-emphasis`.
 
 `--pie-background` is deliberately **not** among them. It is the page token, which
 a host may point at its own backdrop or at a translucent value, and a calculator
 resolving its fill through it would take every contrast guarantee out of this
 package's hands. Surfaces take `--pie-white` for the card and
 `--pie-background-dark` for the recessed keypad plane, both opaque in the base
-themes and in all ten schemes. A host wanting different surfaces has package
-hooks: `--pie-calculator-surface` and `--pie-calculator-surface-raised`.
-Both are package-private rather than registered host tokens: read as
-`var(--x, fallback)` and so overridable, with no compatibility guarantee.
+themes and in all ten schemes. The card and keypad surfaces are package-private
+(`--pie-calculator-surface`, `--pie-calculator-surface-raised`) and carry no
+compatibility guarantee.
 
 `--pie-font-scale` is **not** consumed, matching the recorded decision in
 `section-player/tests/content-text-follows-font-scale.test.ts`: the font
@@ -202,7 +203,8 @@ passage is a layout problem rather than an accommodation.
 Graph colors have package-owned hooks because no canonical series palette
 exists: `--pie-calculator-series-1`, `--pie-calculator-series-2`,
 `--pie-calculator-series-3`, `--pie-calculator-series-4`,
-`--pie-calculator-series-5`, and `--pie-calculator-series-6`. Each series also
+`--pie-calculator-series-5`, and `--pie-calculator-series-6`, all registered
+`component-public` tokens. Each series also
 has a solid, dashed, or dotted line style; hosts overriding colors must retain
 3:1 contrast against the graph surface and keep the palette distinguishable.
 

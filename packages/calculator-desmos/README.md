@@ -34,8 +34,8 @@ Desmos's documented browser integration requires the key in the
 request. Fetching the key at runtime keeps it out of source and static bundles,
 but does not make it a server-only secret.
 
-Without a key, `initialize()` throws unless the host has already loaded
-`window.Desmos`. The deploying host is responsible for obtaining the rights
+Without `apiKey` or `proxyEndpoint`, `initialize()` throws unless the host has
+already loaded `window.Desmos`. The deploying host is responsible for obtaining the rights
 required for its application.
 
 ## Provider loading
@@ -58,11 +58,11 @@ The provider loads:
 https://www.desmos.com/api/v1.12/calculator.js?apiKey=<application-key>
 ```
 
-A host may fetch the key from an authenticated, same-origin endpoint before
-calling `initialize()`. That endpoint should be limited to authorized users,
-rate-limited as appropriate, and returned with `Cache-Control: private,
-no-store`. The key still reaches those users' browsers as required by the
-Desmos API.
+`proxyEndpoint` names an authenticated, same-origin endpoint; `initialize()`
+fetches it with a GET and reads `{ apiKey }` from the JSON body. Limit that
+endpoint to authorized users, rate-limit it as appropriate, and return it with
+`Cache-Control: private, no-store`. The key still reaches those users' browsers
+as required by the Desmos API.
 
 If a Desmos agreement permits the host to preload or self-host the API, load
 that build first and initialize without a key:

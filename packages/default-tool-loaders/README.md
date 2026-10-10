@@ -9,9 +9,6 @@ dependency-light and cycle-safe, and it is the layer above core — core knows
 `featureId`, placement levels, activation kinds and precedence rules, and knows
 no capability ids.
 
-It owns five things, all answers to "which capabilities does this deployment have
-and how does the program tier them":
-
 | Export | What it decides |
 | --- | --- |
 | `PACKAGED_TOOL_REGISTRATIONS`, `createPackagedToolRegistry` | Which capabilities exist, and their toolbar and surface contracts |
@@ -19,6 +16,7 @@ and how does the program tier them":
 | `SECTION_PLAYER_PREFERRED_TOOL_PLACEMENT` | Where they appear and in what order |
 | `createUniversalPersonalNeedsProfile`, `createEmptyPersonalNeedsProfile` | Which of them the program grants to everyone, or to no one |
 | `DEFAULT_TOOL_MODULE_LOADERS` | When each one's bundle loads |
+| `CONTENT_ALTERNATE_REGISTRATIONS` | Which of them carry an authored alternate that renders as a region; the print player mounts these |
 
 The individual registrations are exported too, so a host can compose its own set
 rather than take the packaged one whole.

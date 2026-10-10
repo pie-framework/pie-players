@@ -29,8 +29,8 @@ at the client provider boundary.
   When set, it replaces the default policy with a strict exact-origin allow-list
   (recommended for production; fully auditable). When unset, the provider
   permits `TTS_SCHOOLCITY_URL`'s origin plus any host on the same registrable
-  domain (eTLD+1) — e.g. setting `TTS_SCHOOLCITY_URL=https://tts.svcdev.schoolcity.com`
-  automatically permits `https://tts-cdn.svcdev.schoolcity.com`. Regardless of
+  domain (eTLD+1) — e.g. setting `TTS_SCHOOLCITY_URL=https://tts.example.com`
+  automatically permits `https://tts-cdn.example.com`. Regardless of
   this setting, the provider always rejects private/metadata hostnames,
   non-http(s) schemes, and cross-origin redirects that escape the policy.
 

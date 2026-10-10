@@ -228,8 +228,8 @@
 		border: 1px solid var(--pie-border, #ccc);
 		border-radius: 4px;
 		/* Button fills resolve through the button tokens, which every base theme
-		   and colour scheme sets opaque. The base light theme ships
-		   --pie-background transparent so PIE content reveals the host page. */
+		   and colour scheme sets opaque. --pie-background is the page token a host
+		   may point at its own backdrop, so this fill does not read it. */
 		background-color: var(--pie-button-background-color, var(--pie-button-bg, var(--pie-white, #fff)));
 		color: var(--pie-text, #333);
 		cursor: pointer;

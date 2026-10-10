@@ -1206,19 +1206,24 @@
 		return node;
 	}
 
+	// Set by default-tool-loaders' overlay element cache, which this package
+	// cannot import.
+	const TOOL_ELEMENT_UNMOUNT_CALLBACK_PROP = '__pieToolElementUnmount';
+
+	function invokeElementUnmount(value: HTMLElement | null) {
+		if (!value) return;
+		const callback = (value as unknown as { [key: string]: unknown })[
+			TOOL_ELEMENT_UNMOUNT_CALLBACK_PROP
+		];
+		if (typeof callback === 'function') {
+			(callback as () => void)();
+		}
+	}
+
 	function mountElement(node: HTMLSpanElement, entry: ToolRenderElement) {
 		let currentEntry = entry;
 		let mountedElement: HTMLElement | null = null;
 		let mountParent: HTMLElement = node;
-		const invokeElementUnmount = (value: HTMLElement | null) => {
-			if (!value) return;
-			const callback = (value as unknown as { [key: string]: unknown })[
-				'__pieToolElementUnmount'
-			];
-			if (typeof callback === 'function') {
-				(callback as () => void)();
-			}
-		};
 		const updateMountedElement = (nextElement: HTMLElement | null) => {
 			if (mountedElement === nextElement) return;
 			if (mountedElement) {
@@ -1351,15 +1356,6 @@
 		let openerEl: HTMLElement | null = null;
 		let previousActive = false;
 
-		const invokeElementUnmount = (value: HTMLElement | null) => {
-			if (!value) return;
-			const callback = (value as unknown as { [key: string]: unknown })[
-				'__pieToolElementUnmount'
-			];
-			if (typeof callback === 'function') {
-				(callback as () => void)();
-			}
-		};
 		const getHostedContext = (): HostedToolContext | null => {
 			const shellConfig = currentArgs.mounted.entry.shell;
 			if (!shellConfig) return null;
@@ -2533,6 +2529,21 @@
 	}
 </script>
 
+{#snippet toolbarIcon(icon: string)}
+	{#if isInlineSvgIcon(icon)}
+		<span aria-hidden="true">{@html sanitizeSvgIcon(icon)}</span>
+	{:else if isExternalIconUrl(icon)}
+		<img class="item-toolbar__icon-image" src={icon} alt="" />
+	{:else}
+		{@const fallbackIcon = getFallbackIconSvg(icon)}
+		{#if fallbackIcon}
+			<span aria-hidden="true">{@html sanitizeSvgIcon(fallbackIcon)}</span>
+		{:else}
+			<i class={`icon icon-${icon}`} aria-hidden="true"></i>
+		{/if}
+	{/if}
+{/snippet}
+
 {#if isBrowser}
 	<div
 		class="item-toolbar {className} item-toolbar--{size}"
@@ -2613,18 +2624,7 @@
 						}}
 					>
 						{#if item.icon}
-							{#if isInlineSvgIcon(item.icon)}
-								<span aria-hidden="true">{@html sanitizeSvgIcon(item.icon)}</span>
-							{:else if isExternalIconUrl(item.icon)}
-								<img class="item-toolbar__icon-image" src={item.icon} alt="" />
-							{:else}
-								{@const fallbackIcon = getFallbackIconSvg(item.icon)}
-								{#if fallbackIcon}
-									<span aria-hidden="true">{@html sanitizeSvgIcon(fallbackIcon)}</span>
-								{:else}
-									<i class={`icon icon-${item.icon}`} aria-hidden="true"></i>
-								{/if}
-							{/if}
+							{@render toolbarIcon(item.icon)}
 						{/if}
 					</a>
 				{:else}
@@ -2639,18 +2639,7 @@
 						disabled={item.disabled}
 					>
 						{#if item.icon}
-							{#if isInlineSvgIcon(item.icon)}
-								<span aria-hidden="true">{@html sanitizeSvgIcon(item.icon)}</span>
-							{:else if isExternalIconUrl(item.icon)}
-								<img class="item-toolbar__icon-image" src={item.icon} alt="" />
-							{:else}
-								{@const fallbackIcon = getFallbackIconSvg(item.icon)}
-								{#if fallbackIcon}
-									<span aria-hidden="true">{@html sanitizeSvgIcon(fallbackIcon)}</span>
-								{:else}
-									<i class={`icon icon-${item.icon}`} aria-hidden="true"></i>
-								{/if}
-							{/if}
+							{@render toolbarIcon(item.icon)}
 						{/if}
 					</button>
 				{/if}

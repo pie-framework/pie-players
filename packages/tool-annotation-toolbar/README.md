@@ -1,4 +1,4 @@
-# Annotation Toolbar
+# @pie-players/pie-tool-annotation-toolbar
 
 A text selection toolbar for highlighting and annotating text in PIE assessment players. Uses modern CSS Custom Highlight API for zero DOM mutation and optimal performance.
 
@@ -13,17 +13,12 @@ A text selection toolbar for highlighting and annotating text in PIE assessment 
 - **Viewport-Aware Placement**: Sits above the selection where it fits, flips below when it does not, and clamps so no control leaves the viewport. `data-pie-placement` on the strip reads `above` or `below`.
 - **Modern CSS Custom Highlight API**:
   - Zero DOM mutation (no `<span>` wrappers)
-  - 10-50x faster than traditional approaches
-  - 5-10x less memory usage
   - Framework-compatible (works with React, Vue, Svelte)
 - **Accessibility**:
   - Full ARIA labels and screen reader support
   - Keyboard navigation (Escape to close)
   - Focus-visible outlines
-  - WCAG 2.2 compliant
-- **Dark Mode**: Automatic adaptation to system color scheme
-- **High Contrast Mode**: Enhanced visibility in high contrast settings
-- **Responsive Design**: Optimized for mobile and desktop viewports
+- **Theme-aware**: the outline follows the declared `color-scheme` through `light-dark()`, and the `data-color-scheme` palettes set all three tokens (see Theming)
 
 ## Usage
 
@@ -72,6 +67,8 @@ The toolbar takes its surface and text from the canonical `--pie-background` and
 | `--pie-annotation-underline`           | `#4221d5`                      | Underline mark on a light page                     |
 | `--pie-annotation-underline-dark`      | `#9c89ec`                      | Underline mark on a dark page                      |
 
+All three are registered `component-public` tokens.
+
 The underline tokens are applied by `HighlightCoordinator` in `@pie-players/pie-assessment-toolkit`, which owns the `::highlight()` rules. They exist as a pair because one value cannot serve both surfaces — `#4221d5` is 2.41:1 on black and `#9c89ec` is 2.85:1 on white — and as two separate tokens so overriding one never silently moves the other. Under `data-theme="light"` and `data-theme="dark"` the underline reads only its own token, because a theme accent is chosen against one background and is illegible on the other. Under any other `data-theme` value, such as a host or DaisyUI palette, it reads `--pie-annotation-underline` and falls back to that palette's `--pie-primary`.
 
 Which of the pair applies is decided by `[data-theme]`, which reports what the **page** declares — not which color scheme is active. A host that declares itself light while running a dark scheme would otherwise pin the light value over a dark background, so the accessibility palettes hand both states their own accent (below).
@@ -100,7 +97,7 @@ Requires CSS Custom Highlight API support:
 
 - Chrome/Edge 105+
 - Safari 17.2+
-- Firefox 128+
+- Firefox 140+
 
 For unsupported browsers, the component gracefully degrades (no highlights shown).
 
@@ -138,7 +135,7 @@ The annotation toolbar includes a "Read" button that uses the TTS service to rea
 1. **User selects text** in the assessment content
 2. **Annotation toolbar appears** with highlight and read buttons
 3. **User clicks "Read"** button (speaker icon)
-4. **TTS service speaks the selected text** using Web Speech API
+4. **TTS service speaks the selected text** using the toolkit's configured TTS backend
 5. **Words are highlighted** in sync with speech using CSS Custom Highlight API
 
 ### Technical Implementation
@@ -172,16 +169,4 @@ under tts-inline; part of one reads as the selected text.
 
 ### TTS Browser Support
 
-- **TTS (Web Speech API)**: 97%+ browser support
-- **Word Highlighting**: 85-90% browser support (CSS Custom Highlight API)
 - **Graceful degradation**: TTS works without highlighting in older browsers
-
-## Based On
-
-This implementation is inspired by production annotation toolbar patterns but uses modern 2025 web standards:
-
-- CSS Custom Highlight API instead of DOM mutation
-- Svelte 5 patterns and best practices
-- Modern accessibility (WCAG 2.2)
-- Dark mode and high contrast support
-- Responsive design for mobile devices

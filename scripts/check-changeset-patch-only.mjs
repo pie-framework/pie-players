@@ -19,9 +19,10 @@
  * / CHANGELOG.md files; this guard catches the offending changeset BEFORE
  * any mutation, with a clearer error pointing the author at the rule.
  *
- * Wired into `verify:publish` (so PR/CI runs surface the failure) and as
- * the very first step of `release:with-version` (so a stray entry blocks
- * the entire local-publish flow before any side effects).
+ * Wired into `verify:pre-commit`, `verify:local-pr` and `verify:publish`
+ * (which the release workflow runs), and as the very first step of
+ * `release:with-version` (so a stray entry blocks the entire local-publish
+ * flow before any side effects). PR CI does not run it.
  */
 
 import { existsSync, readdirSync, readFileSync } from "node:fs";

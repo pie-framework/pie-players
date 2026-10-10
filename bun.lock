@@ -333,7 +333,7 @@
         "@cortex-js/compute-engine": "0.149.0",
         "@playwright/test": "^1.63.0",
         "@sveltejs/vite-plugin-svelte": "^7.3.1",
-        "jsxgraph": "1.13.3",
+        "jsxgraph": "1.14.0",
         "mathlive": "0.111.0",
         "svelte": "^5.57.1",
         "svelte-check": "^4.7.6",
@@ -2465,7 +2465,7 @@
 
     "jss-vendor-prefixer": ["jss-vendor-prefixer@7.0.0", "", { "dependencies": { "css-vendor": "^0.3.8" }, "peerDependencies": { "jss": "^9.0.0" } }, "sha512-Agd+FKmvsI0HLcYXkvy8GYOw3AAASBUpsmIRvVQheps+JWaN892uFOInTr0DRydwaD91vSSUCU4NssschvF7MA=="],
 
-    "jsxgraph": ["jsxgraph@1.13.3", "", { "dependencies": { "jsxgraph": "^1.12.0" } }, "sha512-sUVTxB5mDPL5WIEeuo9nprymRymU1ojU2YDtpcK6JzcIe3DkxpQ/2uolGuJ3R0lH6tb3wCGY+1PgVhCVic6yjg=="],
+    "jsxgraph": ["jsxgraph@1.14.0", "", {}, "sha512-BXdiVqmSKDKNuLvux6lvio0dY4rQy0G0c+ZAhP2YSuCqobczlzRwOzUn6USmIiJQs6+hvPyrbUeQaeg0d0gbXg=="],
 
     "jwa": ["jwa@2.0.1", "", { "dependencies": { "buffer-equal-constant-time": "^1.0.1", "ecdsa-sig-formatter": "1.0.11", "safe-buffer": "^5.0.1" } }, "sha512-hRF04fqJIP8Abbkq5NKGN0Bbr3JxlQ+qhZufXVr0DvujKy93ZCbXZMHDL4EOtodSbCWxOqR8MS1tXA5hwqCXDg=="],
 

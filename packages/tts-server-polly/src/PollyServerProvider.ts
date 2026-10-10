@@ -264,6 +264,13 @@ export class PollyServerProvider extends BaseTTSProvider {
 		}
 	}
 
+	/** Neural voices take `<prosody>` rate and volume but not pitch. */
+	protected override buildProsodyAttrs(request: SynthesizeRequest): string {
+		return super.buildProsodyAttrs(
+			this.engine === "neural" ? { ...request, pitch: undefined } : request,
+		);
+	}
+
 	/**
 	 * Synthesize audio stream
 	 */
@@ -459,7 +466,7 @@ export class PollyServerProvider extends BaseTTSProvider {
 			// W3C Standard features
 			standard: {
 				supportsSSML: true, // Polly's supported SSML subset
-				supportsPitch: true, // Via SSML <prosody pitch> (not direct API param)
+				supportsPitch: this.engine === "standard", // Via SSML <prosody pitch>; neural voices lack it
 				supportsRate: true, // Via SSML <prosody rate> (not direct API param)
 				supportsVolume: false, // Not supported by Polly API (handle client-side)
 				supportsMultipleVoices: true, // see describeVoices for the roster

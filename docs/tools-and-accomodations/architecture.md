@@ -29,7 +29,6 @@ See also:
 7. [Integration Patterns](#integration-patterns)
 8. [Technology Stack](#technology-stack)
 9. [Accessibility & Accommodations](#accessibility--accommodations)
-10. [Production Status](#production-status)
 
 ---
 
@@ -69,7 +68,7 @@ Tools never modify PIE item content DOM directly. Visual effects use modern brow
 
 WCAG 2.2 AA adherence is the primary requirement. All tools support keyboard navigation and screen reader compatibility. The system supports accommodations required by IEP and 504 plans.
 
-**Legal Context:** Public education agencies receiving federal funds must comply with Section 508 (ADA) and Section 504 (Rehabilitation Act). WCAG conformance is the standard for meeting these legal obligations.
+**Legal Context:** Public education agencies are covered by Section 504 of the Rehabilitation Act and Title II of the ADA; Section 508 governs federal agencies' own ICT. WCAG is the technical standard these obligations are measured against.
 
 ---
 
@@ -192,7 +191,7 @@ Each layer is testable without the others: a capability against its own input, a
 
 ## What Counts As A Tool
 
-Added 2026-08-07, prompted by fitting sign-language (ASL) support into this system. "Tool" in this codebase does not mean "gadget on a toolbar" — it means **policy-addressable capability**: something a `toolId` can name so district, test-administration, item, and student policy can decide whether it is available. `PnpPolicyDecisionEvent` calls this a `featureId`, which is the more honest name.
+A tool in this codebase is a **policy-addressable capability**: something a `toolId` names so district, test-administration, item and student policy can decide whether it is available. `PnpPolicyDecisionEvent` calls the same id a `featureId`.
 
 Registry membership therefore does *not* imply anything about three independent properties that are easy to conflate with it.
 
@@ -220,11 +219,11 @@ The shape here is already right and is closer to the standards than it looks: an
 
 So **accommodations are not a separate kind of thing in this architecture.** They get a feature id like everything else, their eligibility comes from policy configuration, and their content dependency is checked by catalog resolution. Sign language is the worked example: it takes a feature id so it inherits the eight-level precedence, declares a content dependency so it is absent when an item carries no card, and renders as its own section-player region rather than a toolbar surface — three independent answers, none of which follow from the other two. See [`../prds/sign-language-asl-support.md`](../prds/sign-language-asl-support.md).
 
-Two mechanisms this needed, added 2026-08-08 when signing shipped:
+Two mechanisms carry this:
 
-**Decisions without a placement.** `decide(...)` answers "should this tool appear in *this* toolbar," which is the wrong question for a capability that has no toolbar surface — the answer comes back absent because nothing placed it, not because policy refused. `ToolPolicyEngine.decideFeature(featureId)` (exposed as `ToolkitCoordinator.decideFeaturePolicy(featureId)`) resolves one feature id through the same eight levels, independent of placement. It delegates to `PnpPolicySource.resolveFeature(...)`, which reuses the existing rule evaluation rather than restating the precedence, so the two paths cannot drift. Note it deliberately does not consult `pnpEnforcement`: that flag governs whether profile policy *refines* an otherwise-visible tool set, and a capability with no placement has no unrefined baseline to fall back to, so honouring the flag would make the accommodation permanently unavailable rather than merely unrefined.
+**Decisions without a placement.** `decide(...)` answers "should this tool appear in *this* toolbar," which is the wrong question for a capability that has no toolbar surface — the answer comes back absent because nothing placed it, not because policy refused. `ToolPolicyEngine.decideFeature(featureId)` (exposed as `ToolkitCoordinator.decideFeaturePolicy(featureId)`) resolves one feature id through the same eight levels, independent of placement. It delegates to `PnpPolicySource.resolveFeature(...)`, which reuses the existing rule evaluation rather than restating the precedence, so the two paths cannot drift. It does not consult `pnpEnforcement`: that flag governs whether profile policy *refines* an otherwise-visible tool set, and a capability with no placement has no unrefined baseline to fall back to, so honouring the flag would make the accommodation permanently unavailable rather than merely unrefined.
 
-**Eligibility tier is configuration, not a derivation.** The core ships no default profile; `createEmptyPersonalNeedsProfile()` in `@pie-players/pie-default-tool-loaders` grants nothing. A default was briefly derived from every registered tool's support ids, which read registry membership as eligibility tier — registration means "policy-addressable", not "universal, on by default" — so an accommodation-tier capability was granted to every student of every host that supplied no profile. The remedy was `ACCOMMODATION_ONLY_SUPPORT_IDS`, a compile-time list of ids to exclude that a host could not extend for its own accommodation; both the derivation and the list are gone.
+**Eligibility tier is configuration.** The core ships no default profile; `createEmptyPersonalNeedsProfile()` in `@pie-players/pie-default-tool-loaders` grants nothing. A default derived from registered support ids was implemented and removed: it read registration, which means policy-addressable, as universal eligibility, and granted accommodation-tier capabilities to every learner of a host that supplied no profile.
 
 Tiering belongs where the district and test-administration levels already live, because it is a property of the program rather than of the capability: TTS is a universal feature in one program and a documented accommodation in another. `@pie-players/pie-default-tool-loaders` ships today's universal set as `createUniversalPersonalNeedsProfile()` — data a host adopts, extends or replaces. What does belong on a registration is the content dependency, `requiresAuthoredContent`: signing needs an authored catalog card, braille a transcription. That is the resource half of AfA's PNP/DRD pair, it is intrinsic to the capability, and declaring it keeps a content-dependent accommodation out of a wholesale grant structurally rather than by name.
 
@@ -335,13 +334,13 @@ Tools that operate within the context of a specific question/item:
 ```typescript
 // State stored with item-specific ID
 elementToolStateStore.setState(
-  'assessment:section-1:question-5:mc1',
+  'assessment:section-1:attempt-1:question-5:mc1',
   'answerEliminator',
   { eliminatedChoices: ['choice-b', 'choice-d'] }
 );
 
 // When user returns to Q5, state is restored
-const state = elementToolStateStore.getState('assessment:section-1:question-5:mc1', 'answerEliminator');
+const state = elementToolStateStore.getState('assessment:section-1:attempt-1:question-5:mc1', 'answerEliminator');
 // { eliminatedChoices: ['choice-b', 'choice-d'] }
 ```
 
@@ -394,7 +393,7 @@ const coordinator = new ToolkitCoordinator({
         provider: {
           runtime: {
             authFetcher: async () => {
-              const res = await fetch('/api/tools/desmos/token');
+              const res = await fetch('/api/tools/desmos/auth');
               return res.json();
             }
           }
@@ -411,30 +410,10 @@ const coordinator = new ToolkitCoordinator({
 
 ### Canonical Tool Resolution Flow
 
-Tool resolution is split between policy, host item metadata, and tool-owned
-rendering:
-
 ![Tool resolution from policy through host context](../img/tool-resolution-pnp-host-context-clean-1-1778688163577.jpg)
 
-The canonical order is:
-
-1. Static placement and provider config define the candidate set for the
-   current level (`section`, `item`, or `passage`).
-2. Policy rules narrow that set: `tools.policy`, provider `enabled`, custom
-   `PolicySource`s, and PNP/profile precedence.
-3. A host `toolContextResolvers[toolId]` callback may hide a surviving tool
-   for the current item/passage or attach render params such as
-   `{ calculatorType: "scientific" }`.
-4. If no host resolver is registered, the tool registration applies its
-   default `isVisibleInContext` relevance check.
-5. `renderToolbar` receives a resolved `ToolbarContext`, including
-   `getToolRenderParams(toolId)` and `getToolParameters(toolId)`, and renders
-   the final button and tool element.
-
-The host resolver intentionally cannot re-enable a tool removed by placement,
-provider config, district/test policy, or PNP/profile rules. It is the right
-place for content metadata, such as an item's tags, to choose whether the
-calculator appears and which calculator type to pass to the packaged tool.
+[Runtime Tool Context Resolvers](./tool_provider_system.md#runtime-tool-context-resolvers)
+gives the resolution order and what a host resolver may change.
 
 ### Structured Tool Instance IDs
 
@@ -546,15 +525,14 @@ A tool's own registration names its layer. A toolbar registers the tool when it 
 
 **Z-Index Layers:**
 ```
-0-999:     PIE content and player chrome
-1000-1999: Non-modal tools (ruler, protractor, line reader)
-2000-2999: Modal tools (calculator)
-3000-3999: Tool control handles (drag, resize)
-4000-4999: Highlight infrastructure (TTS, annotations)
-5000+:     Critical overlays (errors, notifications)
+0-999:     PIE content and player chrome (BASE)
+1000-1999: Floating tools and their windows: calculator, graph, ruler, protractor, line reader (TOOL)
+2000-2999: Modal tool surfaces: the theme picker (MODAL)
+3000-3999: Drag handles and resize controls (CONTROL)
+4000-4999: TTS and annotation highlights (HIGHLIGHT)
 ```
 
-**Pattern:** Singleton service with listener-based subscriptions.
+**Pattern:** One instance per ToolkitCoordinator, shared by every tool under it, with listener-based subscriptions.
 
 **Benefits:**
 - No z-index conflicts between tools
@@ -586,7 +564,7 @@ clearAnnotations()
 
 **Technology: CSS Custom Highlight API**
 
-Modern browser standard (Chrome 105+, Safari 17.2+, Firefox 128+) for highlighting text without DOM mutation:
+Modern browser standard (Chrome 105+, Safari 17.2+, Firefox 140+) for highlighting text without DOM mutation:
 
 ```typescript
 // NO DOM changes - virtual highlight layer
@@ -606,11 +584,11 @@ CSS.highlights.set('highlight-name', highlight);
 - Better performance
 - No security risks (no innerHTML)
 
-**Browser Support:** ~85% global coverage (2025). Graceful degradation for older browsers.
+**Browser Support:** Graceful degradation for older browsers.
 
 ### TTS Service
 
-**Purpose:** Singleton service providing text-to-speech with word highlighting synchronization.
+**Purpose:** Text-to-speech with word highlighting synchronization; one instance per ToolkitCoordinator, shared by every tool under it.
 
 **Why TTS Matters:**
 - Primary accommodation for students with reading disabilities
@@ -656,7 +634,7 @@ Yellow highlight with underline (::highlight CSS)
 
 **Recorded audio:** a `spoken` card may carry an audio file instead of a script, which QTI treats as the same support rather than a separate accommodation. The clip plays in the composed chunk sequence, the docked node highlights as a block for its duration since a recording emits no word boundaries, and a clip that will not play degrades to the node's script. See [Recorded Audio as a Spoken Alternate](../accessibility/accessibility-catalogs-integration-guide.md#recorded-audio-as-a-spoken-alternate).
 
-**Design Decision:** TTS is a singleton service, not a tool. Multiple entry points all use the same service to prevent conflicts. Catalog resolution is shared by every entry point: tts-inline resolves cards for the region it reads, selection read-aloud for the regions a selection holds whole.
+**Design Decision:** Every TTS entry point under a ToolkitCoordinator speaks through its one TTS service, so two entry points never play at once. Catalog resolution is shared by every entry point: tts-inline resolves cards for the region it reads, selection read-aloud for the regions a selection holds whole.
 
 ---
 
@@ -696,7 +674,7 @@ Annotation Toolbar detects selection and provides gateway to text-based tools:
 ```
 User selects text
   ↓
-Annotation Toolbar detects (mouseup, keyup events)
+Annotation Toolbar detects it from `selectionchange`; a pointer drag only delays the strip until it settles
   ↓
 Extract range, validate (highlightable content)
   ↓
@@ -792,7 +770,6 @@ Tools otherwise read the content itself. Relevance checks read the item's author
 - Internal tool implementation
 - Reactive state management with runes ($state, $derived, $effect)
 - Compiles to efficient vanilla JavaScript
-- Small bundle size (~3KB per component)
 
 **CSS Custom Highlight API**
 - Native browser highlighting without DOM mutation
@@ -833,12 +810,10 @@ Tools otherwise read the content itself. Relevance checks read the item's author
 **Target:** Modern evergreen browsers (Chrome, Edge, Firefox, Safari)
 
 **Key API Support:**
-- CSS Custom Highlight API: Chrome 105+, Safari 17.2+, Firefox 128+
+- CSS Custom Highlight API: Chrome 105+, Safari 17.2+, Firefox 140+
 - Web Components: Universal support
 - Web Speech API: Universal support
 - CSS Container Queries: Chrome 105+, Safari 16+, Firefox 110+
-
-**Coverage:** ~85% global browser market (2025)
 
 **Fallback Strategy:** Graceful degradation for highlighting (features work, visuals may be limited)
 
@@ -846,39 +821,10 @@ Tools otherwise read the content itself. Relevance checks read the item's author
 
 ## Accessibility & Accommodations
 
-### WCAG 2.2 AA Compliance
+### WCAG 2.2 AA Baseline
 
-The toolkit meets WCAG 2.2 Level AA requirements:
-
-**Keyboard Accessibility (2.1.1)**
-- All tools fully keyboard navigable
-- Tab/Shift+Tab for focus management
-- Arrow keys for tool interactions
-- Escape to close modals
-- No keyboard traps
-
-**Focus Management (2.4.3, 2.4.7)**
-- Logical focus order
-- Visible focus indicators
-- Focus trapped in modals
-- Focus returns on close
-
-**Color Contrast (1.4.3)**
-- 4.5:1 minimum for text
-- 3:1 minimum for UI components
-- Uses PIE color variables for consistency
-
-**ARIA (4.1.2, 4.1.3)**
-- Proper semantic HTML
-- ARIA labels on all controls
-- Role attributes (dialog, toolbar, button)
-- Live regions for dynamic updates
-
-**Screen Reader Support**
-- Tested with JAWS, NVDA, VoiceOver
-- Announces tool states
-- Describes interactions
-- Reading order preserved
+The toolkit is held to the criteria in the [WCAG 2.2 AA baseline](../wcag/wcag-2.2-aa-baseline.md).
+Known gaps against it are listed in [deferred issues](../wcag/deferred-issues.md).
 
 ### Accommodation Types
 
@@ -902,90 +848,9 @@ The toolkit meets WCAG 2.2 Level AA requirements:
 - Protractor (degree measurement)
 - Reference materials (periodic table)
 
-### Three-Tier Configuration
+### Configuration Precedence
 
-Accommodations are determined by merging three configuration levels:
-
-```
-Item Level (most specific):
-  "This question requires scientific calculator"
-      ↓
-Roster/Test Level:
-  "Calculator allowed, lineReader blocked"
-      ↓
-Student Level:
-  "Student has TTS accommodation per IEP"
-      ↓
-Final Configuration:
-  Scientific calculator (required) + TTS (enabled)
-```
-
-**Precedence Rules:**
-1. Item requirements override student preferences
-2. Roster blocks override accommodations
-3. Student accommodations fill remaining gaps
-
----
-
-## Production Status
-
-### Implemented & Production Ready
-
-✅ **Calculator Tool**
-- Desmos (default), GeoGebra and Cortex providers
-- Full featured with settings
-- Tested and deployed
-
-✅ **Ruler Tool**
-- Drag and rotate by mouse, pen or touch
-- Tap controls to move and rotate without dragging (WCAG 2.5.7)
-- Metric/imperial units
-- Keyboard accessible
-
-✅ **Protractor Tool**
-- 180° protractor with center origin
-- Drag and rotate by mouse, pen or touch
-- Tap controls to move and rotate without dragging (WCAG 2.5.7)
-- Keyboard rotation in 5° and 1° steps
-
-✅ **Line Reader Tool**
-- Transparent reading window with obscuring frame
-- Frame opacity control
-- Resize handle
-
-✅ **Annotation Toolbar**
-- Text selection detection, from the selection itself rather than pointer events
-- Highlight (4 colors) and underline
-- TTS integration
-- Host-supplied selection actions, paired to the dictionaries by the composition layer
-
-✅ **Dictionary and Picture Dictionary**
-- Host-supplied lookup, by endpoint or by an injected client
-- A term field alongside the selection action, which is what makes them keyboard reachable
-- No endpoint shipped: the corpus behind a dictionary is licensed per programme
-
-✅ **ToolCoordinator**
-- Z-index management
-- Tool visibility state
-- Bring to front behavior
-
-✅ **HighlightCoordinator**
-- CSS Custom Highlight API
-- TTS + annotation coexistence
-- Dynamic color injection
-
-✅ **TTS Service**
-- Web Speech API provider
-- Server provider for host TTS servers (Polly, Google)
-- Word highlighting
-- Pause/resume/stop controls
-
-### Partially Implemented
-
-⚠️ **Range Serialization**
-- Basic path-based export implemented
-- Complex restoration needs enhancement
-- Works for simple cases
+Policy merges district, test-administration, item and learner-profile inputs through eight precedence levels; [TOOL_REGISTRY.md](../../packages/assessment-toolkit/docs/TOOL_REGISTRY.md) lists them.
 
 ---
 
@@ -1016,22 +881,22 @@ CSS.highlights.set('annotation-yellow', highlight);
 - Framework-compatible
 - Screen reader friendly
 - Better performance
-- Simpler code (74% LOC reduction vs prior TTS implementations)
+- Simpler code
 
-### Why Singleton Services?
+### Why One Service Instance Per Coordinator?
 
-**ToolCoordinator, TTS Service, HighlightCoordinator are singletons.**
+**ToolCoordinator, TTS Service and HighlightCoordinator have one instance per ToolkitCoordinator, shared by every tool under it.**
 
 **Rationale:**
 - Single source of truth for state
 - Prevents conflicts (one TTS playback, one z-index manager)
 - Simplifies tool implementation (no coordination needed)
-- Easier testing (mock singleton instance)
-- Matches player container lifecycle (one per session)
+- Easier testing (one instance to mock)
+- Matches the coordinator's lifecycle
 
 ### Why Declared Activation Rather Than A Dependency Hierarchy?
 
-Capabilities were once described as three tiers, with a "dependent" tier that received its input from a selection gateway and could not function without one. That is retired: it made a capability's keyboard accessibility a property of the gateway, and no gateway can supply it, because a sighted keyboard-only learner cannot originate a text selection in non-editable content.
+A capability declares its activation and keeps its own input. A three-tier model with a gateway-dependent tier was retired: it made a capability's keyboard accessibility a property of the gateway, and no gateway can supply that, because a sighted keyboard-only learner cannot originate a text selection in non-editable content.
 
 **Rationale:** activation says how a capability is invoked and nothing about what it depends on. A selection is one way in, added by the composition layer; the capability keeps its own input and stays reachable when no gateway is granted.
 
@@ -1061,7 +926,7 @@ Capabilities were once described as three tiers, with a "dependent" tier that re
 
 The PIE Assessment Tools & Accommodations architecture provides a modern, scalable foundation for assistive technology in online assessments. By leveraging native browser APIs and Web Components, the system achieves framework independence while maintaining excellent performance and accessibility.
 
-Declared activation, singleton coordination services, and zero DOM mutation design enable a clean separation of concerns that simplifies development, testing, and maintenance.
+Declared activation, per-coordinator services, and zero DOM mutation design enable a clean separation of concerns that simplifies development, testing, and maintenance.
 
 The architecture is production-ready for core functionality, with clear paths for enhancement as needed.
 
@@ -1083,7 +948,7 @@ The architecture is production-ready for core functionality, with clear paths fo
 
 ### Implementation
 
-- [Svelte 5 Documentation](https://svelte-5-preview.vercel.app/docs/introduction)
+- [Svelte 5 Documentation](https://svelte.dev/docs/svelte/overview)
 - [Desmos API v1.12](https://www.desmos.com/api/v1.12/docs/index.html)
 - [Desmos API Terms](https://www.desmos.com/api-terms)
 - [GeoGebra Apps Embedding](https://geogebra.github.io/docs/reference/en/GeoGebra_Apps_Embedding/)

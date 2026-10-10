@@ -24,7 +24,7 @@ That recovery path is not an acceptable library contract.
 1. Consumer apps should not need cache-clearing rituals.
 2. Published entrypoints must be stable and explicit.
 3. Browser-only packages are clearly separated from Node-safe packages.
-4. Standalone browser variants are deferred until Node reliability is stable.
+4. A package that ships a no-bundler browser entry documents and tests it as a public export (`@pie-players/pie-section-player/browser`).
 5. Custom-element registration must be race-safe under HMR/concurrent import paths.
 
 ## Artifact Model
@@ -36,8 +36,6 @@ Publish one reliable default artifact model:
    - Deterministic filenames for emitted files.
    - Avoid hidden internal chunk renaming across equivalent builds.
 
-Standalone browser entrypoints are not part of the current public contract.
-
 ## Export Surface
 
 For package `@pie-players/pie-section-player`, exports follow this shape:
@@ -48,6 +46,10 @@ For package `@pie-players/pie-section-player`, exports follow this shape:
     ".": {
       "types": "./dist/pie-section-player.d.ts",
       "import": "./dist/pie-section-player.js"
+    },
+    "./browser": {
+      "types": "./dist/browser.d.ts",
+      "import": "./dist/browser/pie-section-player.js"
     },
     "./components/section-player-splitpane-element": {
       "types": "./dist/pie-section-player.d.ts",
@@ -73,16 +75,14 @@ Notes:
 - Keep sourcemaps optional by release mode.
 - Avoid hashing for published library internals unless strictly required.
 
-### Standalone variant
+### Browser entry
 
-- Do not add `./standalone` entries unless the package explicitly documents and
-  tests that browser-file contract.
+- A self-contained browser entry is a named export (`./browser`), documented and
+  covered by tests, as the section player's is.
 
 ## Versioning and Compatibility
 
 - Keep current fixed-versioning policy across publishable packages.
-- If both variants are in one package, versioning stays unchanged.
-- If separate `-standalone` packages are introduced, keep lockstep versions.
 
 ## Consumer Guidance (current scope)
 

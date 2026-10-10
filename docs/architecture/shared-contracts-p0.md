@@ -96,19 +96,18 @@ P0 should start from the contracts already present in the repositories.
 | Element events | `SessionChangedEvent` and `ModelSetEvent` in `@pie-element/shared-player-events` |
 | Leaf outcome | `OutcomeResult` in `pie-elements-ng`, `OutcomeResponse` in `@pie-players/pie-players-shared/types` |
 | Local item scoring | `scorePieItem(...)` in `players-shared/src/pie/scoring.ts` and `pie-item-player.provideScore()` |
-| Backend-style scoring prior art | `SessionScore`, `SessionAutoScore`, `SessionManualScore`, `ScoreResponse` |
 | Item session normalization | `ItemSessionContainer`, `NormalizedItemSessionChange`, `normalizeItemSessionChange(...)` |
 | Section attempt state | `TestAttemptSession`, `TestAttemptItemSession`, `upsertItemSessionFromPieSessionChange(...)` |
 | Section persistence snapshot | `SectionControllerSessionState` |
 | Section runtime completion | `SectionControllerRuntimeState`, `item-complete-changed`, `section-items-complete-changed` |
-| Assessment session rollup | toolkit `AssessmentSession`, `AssessmentSectionSessionState`, `upsertSectionSession(...)` |
+| Assessment session rollup | `AssessmentSession` and `AssessmentSectionSessionState` in `@pie-players/pie-players-shared/types`, toolkit `upsertSectionSession(...)` |
 
 Important current limits:
 
 - `pie-item-player.provideScore()` and `scorePieItem(...)` return per-element outcomes, not an accepted rolled-up item score. One consumer now rolls them up for a bounded purpose: the [formative delivery contract](../prds/formative-delivery-contract.md) derives a four-valued correctness per Try, always browser-derived and carrying no provenance or authority. A general score projection must stay able to express it, including its "excluded because not auto-scorable" state.
 - Item and section completion aggregation exist today. Assessment-player exposes routing, progress, submission state, and per-section snapshots, but not an accepted assessment-completion or assessment-score rollup.
 - Section and assessment session snapshots carry responses and navigation/completion-related state, not score summaries.
-- Assessment session types currently exist in both `assessment-toolkit` and `assessment-player`; a later implementation PRD should choose or consolidate the canonical type home before adding assessment-level fields.
+- Assessment session types have one home, `@pie-players/pie-players-shared/types`, re-exported from the `assessment-toolkit` root; assessment-level fields are added there.
 
 ## Contract Families
 
@@ -225,7 +224,7 @@ interface TimedMediaSectionState {
   visitedCueIdentifiers: string[];
 }
 
-interface ExtendedSectionSessionSnapshot {
+interface ExtendedSectionControllerSessionState {
   currentItemIndex?: number;
   visitedItemIdentifiers?: string[];
   itemSessions: Record<string, unknown>;
@@ -245,7 +244,7 @@ Leaf scoring remains element-owned:
 - multi-element items can produce multiple leaf outcomes;
 - rubric/manual-scored items may not have meaningful auto-score outcomes;
 - partial scoring is governed by element model and environment rules;
-- server-side scoring may remain authoritative for persisted Renaissance attempts.
+- server-side scoring may remain authoritative for persisted host attempts.
 
 The score projection should wrap existing leaf outcomes and optional aggregate fields. It should not add score fields to existing session snapshots unless a later PRD explicitly ratifies that additive change.
 
@@ -406,7 +405,7 @@ Detailed PRDs should live in [`../prds/shared-contracts/`](../prds/shared-contra
 1. `interaction-event-contract`
    - Event projection vocabulary, source refs, typed event families, privacy/telemetry rules, process/path fields.
 2. `score-components-and-section-outcomes`
-   - Alignment to `OutcomeResponse`, `SessionScore`, item completion, `TestAttemptSession`, `SectionControllerSessionState`, and `AssessmentSession`; missing section/assessment rollup projection.
+   - Alignment to `OutcomeResponse`, item completion, `TestAttemptSession`, `SectionControllerSessionState`, and `AssessmentSession`; missing section/assessment rollup projection.
 3. `media-asset-contract`
    - Stimulus media sources, captions, transcripts, poster, accessibility metadata, and host storage boundary.
 4. `branching-and-process-events`

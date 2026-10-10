@@ -51,3 +51,23 @@ bun run dev:demo
 ```
 
 This serves built package artifacts from workspace packages (see `scripts/serve-packages.ts`).
+
+## Local ESM CDN
+
+`bun run local-esm-cdn` serves a pie-elements-ng checkout (`PIE_ELEMENTS_NG_PATH`,
+else the sibling `../pie-elements-ng`) as an ESM CDN on port 5179, or
+`LOCAL_ESM_CDN_PORT`. It builds the checkout's React element and lib packages
+first; `LOCAL_ESM_CDN_SKIP_BUILD=1` skips the build. Point the ESM player at it
+with `loaderOptions.esmCdnUrl`.
+
+`bun run dev:section:cdn` serves the same checkout, built, from the section
+demos' dev server, and their `?player=esm` loads from it.
+`bun run dev:section:cdn-debug` adds verbose resolution logging
+(`LOCAL_ESM_CDN_DEBUG=true`).
+
+The dev-server plugin watches the `dist/` directories of the checkout's
+`packages/elements-react/*`, `packages/elements-svelte/*`, `packages/lib-react/*`
+and `packages/shared/*`, and of this repository's `packages/*`, and reloads the
+page when a loaded package's build changes. When the plugin does not load, check
+that `pie-elements-ng` is checked out beside this repository, or that
+`PIE_ELEMENTS_NG_PATH` points at it.

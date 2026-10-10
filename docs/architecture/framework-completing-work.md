@@ -57,6 +57,30 @@ that lifecycle, package, network, persistence, or ownership choices fit a real
 host. When those boundaries matter, use a representative host integration or
 keep the result experimental until one exists.
 
+## Decisions that need host evidence
+
+The assessment player is a reference assembly
+([product scope](./architecture.md#product-scope)), so no host supplies evidence
+for it. The gate binds decisions that change a building block, and their
+evidence comes from a host whose own player is built on the section player.
+These are not chosen from repository demos alone:
+
+- whether section-player or a host is the durable owner of embedded section
+  state;
+- whether any new section-controller acquisition mode is needed;
+- `AssessmentSession` schema additions in `players-shared/types`;
+- section-layer backend retry, reload, and indeterminate-outcome behavior.
+
+Decisions confined to `@pie-players/pie-assessment-player` are made on reference
+grounds: the design a custom player should copy. Its persistence repair of
+2026-10-08 was decided that way: saves are serialized in call order, and
+`submit()` succeeds only after its save does.
+
+Authoritative submission is owned by the Draft
+[Assessment Authoritative Submission PRD](../prds/assessment-authoritative-submission.md).
+Its contract binds only the reference player, and it is unscheduled; its
+priority follows the reference player's.
+
 ## Classification
 
 Framework-completing, unbuilt, in priority order:
@@ -65,7 +89,7 @@ Framework-completing, unbuilt, in priority order:
 | --- | --- | --- |
 | External or asynchronous Try outcome | Try state machine and the `revealed` projection | `recordFormativeTry({ itemId, outcomes })` is synchronous with outcomes in hand; no Try can be recorded pending, and none can be revised. Autograders, code execution, human scoring, LLM feedback and peer aggregation all need it, and it is what turns `correctness: "unknown"` from a terminal state into a pending one |
 | Hint reveal level | `FormativeFeedbackReveal` and the per-item `env` projection | The enum is `none \| correctness \| solution`; a fourth level is additive here plus an authored element-side field, and unreachable from a host |
-| ~~Canonical `AssessmentSession` shape~~ | `players-shared/types`, where `AssessmentSection` already lives | **Done.** `SectionControllerSessionState` and the four assessment-session shapes are canonical in `players-shared/types`; `assessment-toolkit` and `assessment-player` re-export them. This replaced five byte-identical copies of a three-field `SectionSessionSnapshot` — one in `assessment-player`, one in each of four demo apps — that omitted the `formative` and `timedMedia` slices. Nothing was lost at runtime, since both `upsertSectionSession` implementations pass the snapshot through by reference; the cost was that the assessment layer could not read the slices it was already persisting without a cast. The toolkit is complementary to a player rather than an alternative to one and sits beneath both entry paths, which is why neither package owns the shape |
+| ~~Canonical `AssessmentSession` shape~~ | `players-shared/types`, where `AssessmentSection` already lives | **Done.** `SectionControllerSessionState` and the four assessment-session shapes are canonical in `players-shared/types`, which `assessment-player` imports them from; the `assessment-toolkit` root re-exports them. This replaced five byte-identical copies of a three-field `SectionSessionSnapshot` — one in `assessment-player`, one in each of four demo apps — that omitted the `formative` and `timedMedia` slices. Nothing was lost at runtime, since both `upsertSectionSession` implementations pass the snapshot through by reference; the cost was that the assessment layer could not read the slices it was already persisting without a cast. The toolkit is complementary to a player rather than an alternative to one and sits beneath both entry paths, which is why neither package owns the shape |
 | Element formative-loop conformance | The element contract in `pie-elements-ng` | `docs/PIE_ELEMENT_CONTRACT.md` names the four modes and `outcome(model, session, env)`, and states nothing about what an element renders under `evaluate` × `student` versus `evaluate` × `instructor`, or that an `outcome()` without `score`/`max` drops the item out of every mastery denominator as `unknown` |
 | Cross-section mastery rollup | `AssessmentSession` | Arithmetic over `FormativeSectionProjection`, inheriting two settled rules: `unknown` items leave the denominator, and `scorableItems === 0` is never vacuously complete. Unblocked: the canonical snapshot now carries the `formative` slice through the assessment session, with round-trip coverage in `packages/assessment-player/tests/assessment-session-slice-round-trip.test.ts` |
 | Interaction event projection | Event identity and versioning | Instrumentation providers ship; the projection envelope — source reference, category, version — does not, and a host cannot synthesize stable identity from outside |

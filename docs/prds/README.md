@@ -53,8 +53,10 @@ documents are reference/history and should not be presented as planned work.
 
 A contract spanning repos qualifies the status on the same line — `Accepted for
 the pie-players contract` — and names what is outstanding, and where, in the
-implementation-status paragraph beneath it. An architecture note that carries a
-live per-slice record is `Active`.
+implementation-status paragraph beneath it. Architecture notes that carry a
+status use `Active` (governs current work, including a live per-slice record),
+`Implemented` (design record of shipped work), `Design note`, or `Architecture
+proposal` (direction no PRD has ratified yet).
 
 ## Structure
 

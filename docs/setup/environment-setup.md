@@ -38,7 +38,7 @@ bun run dev:section -- --rebuild
 bun run dev:section
 ```
 
-That's it! The demo scripts automatically load `.env` using `dotenvx`.
+The demo scripts load `.env` through `dotenvx`.
 
 ## Packaging reliability contract
 
@@ -47,7 +47,7 @@ That's it! The demo scripts automatically load `.env` using `dotenvx`.
   `pie-section-player`) are browser-only runtime packages.
 - Node-import-safe package guidance and boundary details live in:
   [`library-packaging-strategy.md`](./library-packaging-strategy.md)
-- Standalone variants are deferred; rely on documented default export paths.
+- `@pie-players/pie-section-player/browser` is the no-bundler entry.
 
 ## What Environment Variables Do
 
@@ -63,6 +63,27 @@ AWS_SECRET_ACCESS_KEY=wJalr...
 
 **Setup guide**: See [AWS Polly Setup Guide](../accessibility/aws-polly-setup-guide.md)
 
+`AWS_SESSION_TOKEN` is read as well, for temporary credentials.
+
+### Google Cloud TTS (optional)
+
+`GOOGLE_API_KEY`, or `GOOGLE_APPLICATION_CREDENTIALS` (a service-account JSON path)
+with `GOOGLE_CLOUD_PROJECT`, enables the demos' Google TTS routes.
+
+### Desmos (recommended)
+
+`DESMOS_API_KEY` is the licensed key the Desmos calculator needs to load. The
+section demos' `/api/tools/desmos/auth` route returns it to the browser, which puts
+it in the Desmos script URL, so the route keeps it out of bundles without making
+it secret.
+
+### SchoolCity TTS (optional)
+
+`TTS_SCHOOLCITY_URL`, `TTS_SCHOOLCITY_API_KEY` and `TTS_SCHOOLCITY_ISS` back the
+section demos' `/api/tts/sc` route. `TTS_SCHOOLCITY_ASSET_ORIGINS` replaces the
+default audio-asset policy with an exact-origin allow-list. See
+[section-demos](../../apps/section-demos/README.md).
+
 ### Redis caching
 
 Nothing in this repository reads `REDIS_URL`. The Polly SvelteKit example
@@ -77,35 +98,20 @@ We use `@dotenvx/dotenvx` to load environment variables from `.env` in the monor
 
 Demo entrypoints run through `dotenvx run --` so local `.env` values are available during startup.
 
-### Why dotenvx?
-
-- ✅ **Runs from monorepo root** - All demos share one `.env` file
-- ✅ **More secure** than dotenv - Better handling of encrypted secrets
-- ✅ **Zero config** - Just prefix commands with `dotenvx run --`
-- ✅ **Works with any tool** - Bun, Node, Vite, etc.
-
 ## Security
 
-### ✅ Safe to Commit
+### Committed
 
 - `.env.example` - Template file (no secrets)
-- `docs/accessibility/aws-polly-iam-policy.json` - Public IAM policy
+- [`docs/accessibility/aws-polly-iam-policy.json`](../accessibility/aws-polly-iam-policy.json) - the minimal IAM policy for the Polly credentials
 
-### ❌ NEVER Commit
+### Never committed
 
 - `.env` - Contains your secrets
 - `.env.local` - Local overrides
 - `.env.*.local` - Environment-specific secrets
 
 These are all in `.gitignore`.
-
-### Best Practices
-
-1. **Use minimal IAM permissions** - See [aws-polly-iam-policy.json](../accessibility/aws-polly-iam-policy.json)
-2. **Rotate keys regularly** - Every 90 days
-3. **Use IAM roles in production** - Never hardcode keys
-4. **Enable CloudTrail** - Monitor API usage
-5. **Set billing alerts** - Catch unexpected costs
 
 ## Troubleshooting
 
@@ -129,10 +135,10 @@ bun run dev:section
 **Check**: Are you running scripts from the monorepo root?
 
 ```bash
-# ✅ Good (from root)
+# From the root: loads .env
 bun run dev:section
 
-# ❌ Bad (from subdirectory)
+# From the app folder: plain `vite dev`, .env does not load
 cd apps/section-demos
 bun run dev
 ```
@@ -147,16 +153,16 @@ bun run dev
 # Check if .env exists
 ls .env
 
-# Check if variables are set (safe - doesn't show values)
-dotenvx run -- env | grep AWS_
+# Check which AWS variables are set (names only)
+dotenvx run -- printenv | cut -d= -f1 | grep '^AWS_'
 ```
 
 **Expected output**:
 
 ```text
-AWS_REGION=us-east-1
-AWS_ACCESS_KEY_ID=AKIA...
-AWS_SECRET_ACCESS_KEY=wJalr...
+AWS_REGION
+AWS_ACCESS_KEY_ID
+AWS_SECRET_ACCESS_KEY
 ```
 
 **Fix**: See [AWS Polly Setup Guide](../accessibility/aws-polly-setup-guide.md)

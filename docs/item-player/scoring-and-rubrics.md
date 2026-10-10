@@ -2,8 +2,7 @@
 
 This note summarizes how PIE item scoring works across the current `pie-players`
 repo, the element implementations in `../pie-elements-ng`, the legacy player in
-`../pie-player-components`, and the persisted scoring APIs in
-`../../kds/pie-api-components` / `../../kds/pie-api-aws`.
+`../pie-player-components`, and a persisted scoring service.
 
 The short version:
 
@@ -15,8 +14,8 @@ The short version:
   caller.
 - The current `pie-players` item runtime primarily gathers and forwards session
   state; it does not expose a built-in rolled-up score on `<pie-item-player>`.
-- `pie-api-aws` is the clearest authoritative score aggregator for persisted
-  sessions.
+- A persisted scoring service is the authoritative score aggregator for
+  persisted sessions.
 - The two-part choice element is spelled `EBSR` in the codebase, not `ESBR`.
 - Rubric-style elements describe manual scoring surfaces; they are not
   auto-scored student interactions.
@@ -141,19 +140,7 @@ as `provideScore()` is concerned.
 
 ## Persisted API Scoring
 
-The authoritative persisted scoring path is in `pie-api-aws`:
-
-- `../../kds/pie-api-aws/packages/services/src/services/Player.service.ts`
-- `../../kds/pie-api-aws/packages/services/src/services/SessionEvent.service.ts`
-- `../../kds/pie-api-aws/packages/services/src/controller/PieController.service.ts`
-- `../../kds/pie-api-aws/packages/services/src/controller/PieControllerExecutor.ts`
-
-`pie-api-components` delegates to that service:
-
-- `../../kds/pie-api-components/src/components/pie-api-player/pie-api-player.tsx`
-- `../../kds/pie-api-components/src/clients/player.ts`
-
-The API score flow:
+A persisted scoring service scores saved sessions. Its score flow:
 
 1. Save events are flattened into a current `session.data[]`.
 2. Manual score events take precedence if present.
@@ -163,7 +150,7 @@ The API score flow:
    manual score, the service returns a "No manual score available" result.
 5. Otherwise, the service forces `env.mode = "evaluate"` and calls each matching
    element controller's `outcome(model, sessionRow, env)`.
-6. The raw element outcomes are formatted into a `SessionAutoScore`.
+6. The raw element outcomes are formatted into the session's auto score.
 
 Default aggregation for multiple scored elements:
 
@@ -184,10 +171,6 @@ Example: two auto-scored elements, one full-credit and one zero-credit:
 // partialScoring: false
 { points: 0, max: 1, type: "auto" }
 ```
-
-There is a KDS-specific MPI exception when partial scoring is disabled. MPI
-items can use `formatScoreMax(...)`, where grouped parts can produce `max: N`
-and `points: M` instead of a normalized `max: 1` score.
 
 ## EBSR
 
@@ -244,8 +227,6 @@ Important files:
 - `../pie-elements-ng/packages/elements-react/rubric/src/controller/index.ts`
 - `../pie-elements-ng/packages/elements-react/multi-trait-rubric/src/controller/index.ts`
 - `../pie-elements-ng/packages/elements-react/complex-rubric/src/controller/index.ts`
-- `../../kds/pie-api-aws/packages/services/src/services/Item.service.ts`
-- `../../kds/pie-api-aws/packages/services/src/services/SessionEvent.service.ts`
 
 ### Simple Rubric
 
@@ -302,19 +283,19 @@ Element-specific details still matter. Multiple-choice radio mode is effectively
 dichotomous, EBSR has a Part A gate, and some elements return `0` because they
 require manual scoring.
 
-In `pie-api-aws`, `ItemService.isPartialScoringDisabled(...)` also forces
-`env.partialScoring = false` when every model in the item explicitly has
-`partialScoring: false`.
+The persisted scoring service also forces `env.partialScoring = false` when
+every model in the item explicitly has `partialScoring: false`.
 
 ## Practical Guidance
 
 Use these rules when deciding where to score:
 
-- For persisted student attempts, use `pie-api-aws` scoring. It knows about save
-  events, manual scores, cached auto scores, rubric blocking, partial scoring
-  mode, and KDS-specific MPI formatting.
+- For persisted student attempts, use the persisted scoring service. It knows
+  about save events, manual scores, cached auto scores, rubric blocking and
+  partial scoring mode.
 - For local demos or lightweight previews, call element `outcome(...)` directly
-  or use the legacy `provideScore()` style, but expect per-element outcomes.
+  or call the item player's `provideScore()`, which returns per-element outcomes
+  from local browser scoring.
 - For multi-element items, do not assume the player will sum scores. Define the
   aggregation rule explicitly.
 - For EBSR, do not split Part A and Part B into generic item-level aggregation.
@@ -330,12 +311,12 @@ flowchart TD
   itemConfig[Item Config] --> renderedElements[Rendered PIE Elements]
   renderedElements --> sessionChanged[session-changed Events]
   sessionChanged --> itemSession[Item Session data array]
-  itemSession --> apiScore[pie-api-aws scoreSession]
+  itemSession --> apiScore[scoring service]
   apiScore --> manualCheck{Manual Score?}
   manualCheck -->|yes| manualScore[Return Manual Score]
   manualCheck -->|no| rubricCheck{Rubric Element?}
   rubricCheck -->|yes| noAutoScore[No Auto Score Available]
   rubricCheck -->|no| controllerOutcome[Controller outcome per model]
   controllerOutcome --> aggregate[Format Auto Score]
-  aggregate --> score[SessionAutoScore]
+  aggregate --> score[Session Auto Score]
 ```

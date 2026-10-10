@@ -1,7 +1,7 @@
 # Interface locale adoption
 
-Status: `Active` — implementation plan for rollout slices 3 and 4 of
-[`internationalization.md`](./internationalization.md).
+Status: `Implemented` — design record for the interface locale, rollout slices 3
+and 4 of [`internationalization.md`](./internationalization.md).
 
 This plan covers **interface locale** only: the strings the packages in this
 repository render themselves — toolbar labels, tool panels, player status and
@@ -54,8 +54,8 @@ English value in the adoption commit therefore reproduces the literal it replace
 byte for byte, including its punctuation and its flaws, so that any text change is
 visible as a text change rather than arriving inside an i18n refactor.
 
-The hold covers the refactor, not the strings. A follow-up released it:
-`.changeset/english-string-cleanup.md` records the before and after of sixteen
+The hold covers the refactor. A follow-up released it: commit `67f286ce` records
+the before and after of sixteen
 reworded strings and of the nine toolbar button accessible names. `Graph Tool -
 Draw points…`, `applying`'s three ASCII dots and `tools.protractor.toolA11y`'s
 `Current rotation displayed via Moveable.js` are gone. The button names now follow
@@ -77,15 +77,15 @@ rendered the protractor's help without the Moveable.js clause from the start.
 
 **One provider, in `players-shared`, not a new package.** `players-shared` is
 already a runtime dependency of every tool and player, is already on the publish
-policy's `nodeSafe` list, and already owns `i18n/language-tags`. A 37th package
+policy's `nodeSafe` list, and already owns `i18n/language-tags`. Another package
 would mean a Changesets `fixed` entry, build wiring, and a dependency edit in 30
 packages to deliver one interface and one catalog.
 
 **The existing `SimpleI18n` is rewritten, not supplemented.** It and
 `I18nService` are the two implementations `internationalization.md` records as
 having drifted; adding a third alongside them repeats the mistake that produced
-the second. `SimpleI18n` keeps its name and its `I18nServiceApi` surface, and
-`I18nService` stays the thin delegating wrapper it already is.
+the second. `SimpleI18n` keeps its name and its `I18nServiceApi` surface; the toolkit's
+`I18nService` wrapper, constructed nowhere, was removed.
 
 **Catalogs become TypeScript modules, not JSON.** Two consequences. The English
 catalog's shape generates the `MessageKey` union, so a mistyped key is a compile
@@ -103,13 +103,13 @@ rendering a key. An open `MessageKey | (string & {})` was implemented first and 
 the wrong shape: it makes every mistyped literal assignable, which is exactly the
 failure the union exists to prevent.
 
-**Catalogs are keyed by full BCP-47 tag.** `en-US` and `nl-NL`, replacing today's
+**Catalogs are keyed by full BCP-47 tag.** `en-US` and `nl-NL`, replacing the earlier
 bare `en`/`es`/`zh`/`ar`. This matches `pie-qti`'s
 catalog names, matches what AfA PNP and QTI declare, and makes the POSIX forms a
 host actually sends (`nl_NL`) resolvable. `findBestLanguageMatch` from
 `i18n/language-tags` does the resolution, so `nl`, `nl_NL`, `nl-NL` and `NL-nl`
-all land on `nl-NL` without a mapping table. Nothing consumes
-`getAvailableLocales()` today, so the rename breaks no caller.
+all land on `nl-NL` without a mapping table. Nothing consumed
+`getAvailableLocales()`, so the rename broke no caller.
 
 **English is the single source; there are no inline English fallbacks.**
 `pie-qti` put an English literal at each of 153 call sites, which makes the i18n
@@ -163,19 +163,19 @@ and so never saw a locale change. A registration now reads `toolbarContext.i18n`
 and cannot get this wrong.
 
 **The graceful default is `en-US`, not `navigator.language`.** Under fixed
-lockstep patch-only versioning across 36 packages, any change that alters a
+lockstep patch-only versioning across every published package, any change that alters a
 rendered string reaches live delivery on a host's next install with no build
 signal on their side. Detecting the browser locale would silently switch a
 Dutch-configured laptop's assessment chrome to Dutch. `detectBrowserLocale()`
 stays exported for a host that wants it, and nothing calls it by default.
 
 **`lang` and `dir` go on the chrome subtree, never on
-`document.documentElement`.** Today's `SimpleI18n.applyDOMDirection()` stamps the
-document root, which an embedded player has no business writing. Each localized
+`document.documentElement`.** The pre-adoption `SimpleI18n.applyDOMDirection()`
+stamped the document root, which an embedded player has no business writing. Each localized
 custom element stamps its own host instead, so RTL chrome works inside an LTR
 page and two players on one page can differ. `direction` derives from
 `Intl.Locale.prototype.textInfo` with an RTL primary-subtag set as fallback,
-replacing today's four-entry list.
+replacing the old four-entry list.
 
 **Tool display names gain key fields; the required strings stay.**
 `ToolRegistration.name` and `.description` are host-facing required API and
@@ -212,9 +212,9 @@ Five namespaces, one module per locale:
 
 `plurals` are nested objects with CLDR category keys (`one`, `other`, and
 whatever else the locale needs); `Intl.PluralRules` selects the category, so
-Arabic's `zero`/`two`/`few`/`many` are reachable — they are not today, because
-`pie-qti` hardcodes a one/other split and the current `SimpleI18n` falls back to
-one when `Intl` is missing.
+Arabic's `zero`/`two`/`few`/`many` are reachable; the pre-adoption layer reached
+none of them, because `pie-qti` hardcodes a one/other split and the old
+`SimpleI18n` fell back to one when `Intl` was missing.
 
 ## Locale set and coverage policy
 
@@ -309,71 +309,34 @@ covers both a locale change under a live window and the first catalog import
 landing after the window was built. A window's title resolves through
 `ToolRegistration.nameKey`, not the raw `name` field.
 
-## Sequencing
-
-1. **Provider and catalog infrastructure.** `i18n/types.ts`, `i18n/messages/`,
-   `i18n/provider.ts`, `i18n/catalogs.ts`, `i18n/index.ts`; `SimpleI18n`
-   rewritten; `I18nService` re-pointed; package `exports` extended; unit tests
-   for resolution order, fallback chain, plural categories, direction and
-   `withLocale`.
-2. **English catalog.** Harvested from the 184 inventoried strings plus the 23
-   registration strings, superseding the drifted catalog.
-3. **Dutch catalog.** Complete, and the auditable deliverable.
-4. **Locale plumbing.** `RuntimeConfig.locale`, top-level `locale` prop and
-   attribute on `pie-item-player`, `pie-section-player-*`,
-   `pie-assessment-toolkit`; `locale` and `i18n` on
-   `AssessmentToolkitRuntimeContext`.
-5. **Component adoption**, package by package: `players-shared`,
-   `assessment-toolkit`, `section-player`, `item-player`, the 14 `tool-*`
-   packages, the 5 `section-player-tools-*` packages.
-6. **Registration keys.** `nameKey` / `descriptionKey` on `ToolRegistration`,
-   populated in `default-tool-loaders`, resolved in the toolbars.
-7. **Gates.** Two-tier `check-coverage`; a repo script that runs it; a
-   `nl-NL` end-to-end check that a locale actually changes rendered chrome.
-8. **Carried locales** re-keyed, and the existing `es`/`zh`/`ar` directories
-   removed.
-9. **English string cleanup**, as its own change with its own changeset entry —
-   the strings the byte-identical hold carried over unchanged, plus the toolbar
-   button naming rule.
-
 ## svelte-check coverage
 
-Adopting this surfaced a hole in the gate rather than in the design.
-`SessionDbPanel` took an `i18n` prop it never destructured from `$props()`, which
-is a `ReferenceError` at render; `verify:ci-lint-typecheck` passed anyway, and only
-an e2e spec that clicks a button inside that panel caught it. The cause: nineteen
-packages carrying `.svelte` files had no `check` script, so `turbo check` never ran
-`svelte-check` over any tool package. `svelte-check` diagnoses exactly this — *No
-value exists in scope for the shorthand property* — so the files were simply never
-read.
+Nineteen packages carrying `.svelte` files had no `check` script, so `turbo check`
+never ran `svelte-check` over any tool package. `SessionDbPanel` took an `i18n`
+prop it never destructured from `$props()`, a `ReferenceError` at render that
+passed `verify:ci-lint-typecheck` and was caught only by an e2e spec clicking a
+button inside that panel.
 
-All nineteen now run `check`, taking gate coverage from 9 packages to 28. Twelve
-were already clean. The other seven held 31 errors, and enabling the check is what
-made them visible:
+All nineteen now run `check`, taking gate coverage from 9 packages to 28. Seven
+held 31 errors:
 
 - Ten were this pass's own. `tool-annotation-toolbar` declared `interfaceI18n`
-  after the `HIGHLIGHT_COLORS` list that reads it — the same declaration-order
-  defect as `SessionDbPanel`, four labels' worth. And `TtsSettingsPanel` called
-  `debug.tts.any` twice, a key no catalog defines, so the gender filter's "Any"
-  option would have rendered its own key to a learner. That one is the exact
-  failure `MessageKey` exists to prevent, caught only because the union is closed
-  and the package is now read.
-- The rest were pre-existing and unrelated: `moveable` ships CJS with ESM-shaped
-  declarations and no `exports` map, so under `NodeNext` its default import
-  resolves to the module namespace and reads as neither constructable nor usable
-  as a type — the ruler and protractor now describe the slice of its surface they
-  use; `*.svg` imports needed `vite/client` in `types`; the periodic table's JSON
-  import needed the `type: "json"` attribute that `NodeNext` requires, which is the
-  same omission that broke every non-English locale in the layer this work
-  replaced; and `tool-tts-inline` needed a `tsconfig.svelte-check.json` mapping
-  `ui/use-zoom-compensation` to source, mirroring the alias its Vite config
-  carried, because a `.svelte.ts` rune module cannot ship through an
-  `exports` map as compiled output. The zoom helper and both aliases were later
-  removed by the [control-sizing repair](./delivery-reliability-remediation-plan.md#r4--accommodation-controls-shrink-in-constrained-viewports).
+  after the `HIGHLIGHT_COLORS` list that reads it, four labels' worth; and
+  `TtsSettingsPanel` called `debug.tts.any`, a key no catalog defines, which the
+  closed `MessageKey` union caught once the package was read.
+- The rest predated this work. `moveable` ships CJS with ESM-shaped declarations
+  and no `exports` map, so under `NodeNext` its default import resolves to the
+  module namespace; the ruler and protractor now describe the slice of its
+  surface they use. `*.svg` imports needed `vite/client` in `types`. The periodic
+  table's JSON import needed the `type: "json"` attribute `NodeNext` requires, the
+  omission that broke every non-English locale in the replaced layer. And
+  `tool-tts-inline` needed a `tsconfig.svelte-check.json` mapping
+  `ui/use-zoom-compensation` to source; the zoom helper and both aliases were
+  removed in 8acbbd40 (PR #375).
 
 ## What this does not do
 
 Content language, `Env.locale`, `lang`/`dir` on the *content* subtree, catalog
 cards, parameterized PNP, and TTS voice selection from the resolved language are
 slices 2, 5 and 6 in `internationalization.md`. None of them is blocked by this
-work, and this work is not blocked by Studio emitting a locale.
+work, and this work is not blocked by an authoring host emitting a locale.

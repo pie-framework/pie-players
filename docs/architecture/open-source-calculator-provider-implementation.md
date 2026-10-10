@@ -7,11 +7,9 @@ Related PRD:
 
 ## Purpose
 
-This document turns the open-source calculator PRD into implementation slices
-that can begin after the GeoGebra calculator integration is complete. It fixes
-the module boundaries, runtime ownership, worker protocol, state flow, and
-verification evidence while leaving the existing provider-neutral calculator
-contract intact.
+This document records the module boundaries, runtime ownership, worker
+protocol and state flow of the Cortex provider behind the provider-neutral
+calculator contract.
 
 The implementation is a deep provider module. Hosts see the existing
 `CalculatorProvider`/`Calculator` seam plus typed Cortex configuration and state.
@@ -31,8 +29,8 @@ MathLive settings lease remain internal details.
 - `@pie-players/pie-default-tool-loaders` remains the composition layer that
   names the packaged provider IDs and holds the calculator adapters, which
   lazy-import their engines.
-- The existing generic calculator custom element remains stable. Direct Cortex
-  custom elements are additive.
+- The generic `<pie-tool-calculator>` element mounts every provider; Cortex adds
+  no element.
 - No learner input is executed as JavaScript. Do not use `eval`, `Function`,
   Compute Engine `compile()`, or JSXGraph function-graph APIs with learner
   expressions.
@@ -85,10 +83,6 @@ differed from the generic element only in tag name.
   instead of importing the Desmos-named direct tool package merely to define
   the generic tag.
 
-The final GeoGebra implementation is the baseline for filenames, Svelte custom
-element wrappers, exports, and tests. If its landed structure differs, change
-this topology once in the PRD/spec before implementation.
-
 ## Provider Module Design
 
 Source layout of `packages/calculator-cortex/src/`:
@@ -107,6 +101,7 @@ types.ts
 evaluation-client.ts
 evaluation-engine.ts
 evaluation-worker.ts
+module-worker.ts
 worker-protocol.ts
 mathlive-runtime.ts
 mathlive-browser.d.ts
@@ -271,8 +266,10 @@ request still matches the active input generation.
 ## Worker Boundary
 
 `evaluation-worker.ts` is emitted as a module worker and resolved with a static
-bundler-owned URL. Consumers do not configure a worker CDN. The package artifact
-test verifies that the worker and its dependent chunks are present.
+bundler-owned URL. Consumers do not configure a worker CDN. A worker script on
+another origin, such as a CDN, starts from a page-origin `blob:` module that
+imports it (`module-worker.ts`). The package artifact test verifies that the
+worker and its dependent chunks are present.
 
 The provider creates the worker when it creates a calculator, so fetching,
 compiling and running the worker's module overlaps the learner's first edit. The
@@ -494,108 +491,3 @@ to recognize MathLive, Compute Engine, JSXGraph, or worker-native error shapes.
 The open-source claim describes the shipped implementation and its source
 dependencies. It does not claim that PIE provides a standards-certified
 calculator or that every deployment policy permits every dependency license.
-
-## Implementation Slices
-
-### Slice 1: Post-GeoGebra seam audit
-
-- Finish and land the GeoGebra provider work.
-- Compare its final provider adapter, package exports, direct tags, tests, and
-  generic shared shell with this document.
-- Update this PRD/spec for any final seam difference before adding Cortex code.
-- Confirm the consumer dependency pad and fixed-package list implications.
-
-Exit evidence: an approved, provider-neutral package diagram and no need for a
-second generic calculator shell.
-
-### Slice 2: Neutral generic-element delivery
-
-- Add the provider-neutral generic `<pie-tool-calculator>` registration entry
-  to `@pie-players/pie-tool-calculator-shared`.
-- Change packaged composition to import that entry rather than the
-  Desmos-named direct package.
-- Preserve tag, properties, attributes, loader behavior, and Desmos default.
-
-Exit evidence: custom-element/export checks and unchanged existing calculator
-contract tests.
-
-### Slice 3: Cortex foundation
-
-- Create `@pie-players/pie-calculator-cortex` and add it to the fixed release
-  block.
-- Implement settings, errors, function policy, state codec, worker protocol,
-  evaluation client, and provider lifecycle.
-- Bundle MathLive and Compute Engine assets locally.
-- Add unit/contract tests for limits, restrictions, evaluation, timeout,
-  restart, privacy, and state.
-
-Exit evidence: basic provider can initialize offline, evaluate through a worker,
-round-trip state, and recover from a forced timeout.
-
-### Slice 4: Basic and scientific UI
-
-- Implement the Svelte/MathLive view and mode-specific keypad layers.
-- Add result, error, history, angle mode, focus, resize, theme, locale, reflow,
-  and MathLive settings-lease behavior.
-- Complete automated and manual accessibility evidence for these modes.
-
-Exit evidence: basic and scientific acceptance tests pass with physical
-keyboard, on-screen keypad, touch-sized controls, and screen-reader flows.
-
-### Slice 5: Graphing
-
-- Add lazy JSXGraph loading, worker sampling, numeric-series rendering,
-  discontinuity segmentation, viewport controls, and stale-request handling.
-- Add six-row expression management, fixed style identity, accessible summary,
-  and keyboard trace.
-- Test offline production artifacts and graph accessibility.
-
-Exit evidence: explicit `y=f(x)` graphs remain responsive, bounded, and usable
-without interpreting the visual graph alone.
-
-### Slice 6: Toolkit and direct integration
-
-- Add `CortexToolProvider`, provider recognition and lazy composition to
-  default tool loaders.
-- Add shelled and inline direct custom-element packages and demos.
-- Update calculator, provider-system, package, attribution, and consumer-impact
-  documentation.
-- Add patch changesets for all publishable changes.
-
-Exit evidence: both configured provider selection and direct custom-element
-imports work from built package artifacts.
-
-### Slice 7: Release evidence
-
-- Run targeted unit, contract, accessibility, offline-network, and package
-  artifact tests.
-- Run all custom-element, export, consumer, capability, and player-tool gates.
-- Run the full local PR gate outside the sandbox.
-- Verify no regression in Desmos or GeoGebra selection and state behavior.
-- Record dependency versions, license review, browser evidence, known scope
-  limits, and consumer-pad disposition in the PR.
-
-Exit evidence: every PRD acceptance criterion is linked to an automated test or
-named manual artifact.
-
-## Definition Of Done
-
-The implementation is complete when:
-
-- A host can select `{ provider: { id: "calculator-cortex" } }` for basic,
-  scientific, and graphing calculators.
-- The runtime makes no calculator-related network request and ships no
-  proprietary calculator code or service dependency.
-- All input paths share one canonical policy, and learner input is never
-  executed or compiled as JavaScript.
-- Evaluation and graph sampling are worker-bounded, time-limited, cancellable by
-  generation, and recover after worker termination.
-- Provider state is versioned, validated atomically, and covered by round-trip
-  and hostile-input fixtures.
-- The UI meets the PRD accessibility requirements, including graph summary and
-  keyboard trace.
-- Existing Desmos and GeoGebra public behavior remains unchanged and Desmos is
-  still the omission default.
-- New packages are publishable, fixed-version aligned, documented, attributed,
-  and verified from built `dist` artifacts.
-- Consumer-impact documentation and every required repository gate pass.

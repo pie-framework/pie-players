@@ -32,13 +32,11 @@ no credential is provisioned for PIE at all. Where PIE hosts the delivery — a 
 app, a demo — its own server holds whatever the upstream requires and mints per-request
 tokens there, so nothing reaches the browser and the panel calls a same-origin route.
 
-The distinction decides who has to ask for what, which is the only reason it appears in a
-framework note. A credential scoped to the caller is the tidier arrangement and worth
-asking for where it is cheap to provision; a shared platform credential is a normal way for
-services inside one organisation to authenticate each other, and whether it suits a given
-deployment is for the teams that own both ends to settle. Either way the specifics — which
-secret, which issuer, which host — belong in the host's own repository rather than this
-one.
+The deployment shape decides who provisions the credential. Ask for a credential scoped
+to the caller where it is cheap to provision. A shared platform credential is an accepted
+way for services inside one organisation to authenticate each other, and the teams that
+own both ends decide whether it suits a deployment. The specifics — which secret, which
+issuer, which host — live in the host's repository.
 
 ## The language belongs to the learner
 
@@ -48,8 +46,8 @@ pass it as the lookup language. So a section authored in English offers an Engli
 dictionary, and a Spanish section a Spanish one, which is right for the reader who wants a
 definition in the language they are already reading.
 
-It is not enough on its own. The learner who needs a Spanish gloss is reading an English
-passage: the language of a definition is a property of the learner, not of the content.
+Content language misses the learner who needs a Spanish gloss while reading an English
+passage, because the language of a definition is a property of the learner.
 SchoolCity exposes English Dictionary and Spanish Dictionary as two separate tools, tabbed
 in one modal, for exactly that reason. A single capability whose language follows the
 content cannot express it: its support id is one grant.

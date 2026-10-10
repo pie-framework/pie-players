@@ -2,165 +2,24 @@
 
 <!-- markdownlint-disable MD032 MD040 MD060 -->
 
----
+`TTSService` speaks pre-authored `spoken` catalog cards (SSML) ahead of
+generated speech. This page covers how TTS resolves a card and how to diagnose
+one that is not spoken. The
+[Accessibility Catalogs Integration Guide](./accessibility-catalogs-integration-guide.md)
+owns the rest:
 
-## Overview
-
-The TTSService now supports QTI 3.0 accessibility catalogs, allowing assessments to provide pre-authored spoken content (SSML) that takes precedence over generated text-to-speech.
-
-This integration enables:
-- **High-quality spoken content** authored by content creators
-- **Multi-language support** with catalog-based fallbacks
-- **SSML control** over prosody, pauses, and pronunciation
-- **Automatic fallback** to generated TTS when catalogs unavailable
-
----
-
-## Quick Start
-
-### 1. Initialize ToolkitCoordinator and Section Player
-
-`ToolkitCoordinator` is the primary entry point for application integrations.
-It owns `TTSService`, `AccessibilityCatalogResolver`, highlighting, tool
-placement, and provider setup.
-
-```javascript
-import '@pie-players/pie-section-player/components/section-player-splitpane-element';
-import { ToolkitCoordinator } from '@pie-players/pie-assessment-toolkit';
-import { createPackagedToolRegistry } from '@pie-players/pie-default-tool-loaders';
-
-const toolRegistry = createPackagedToolRegistry();
-const coordinator = new ToolkitCoordinator({
-  assessmentId: assessment.id,
-  toolRegistry,
-  accessibility: {
-    catalogs: assessment.accessibilityCatalogs ?? [],
-    language: 'en-US',
-  },
-  tools: {
-    placement: {
-      item: ['textToSpeech'],
-      passage: ['textToSpeech'],
-      section: [],
-    },
-    providers: {
-      textToSpeech: {
-        backend: 'browser',
-      },
-    },
-  },
-});
-
-const sectionPlayer = document.querySelector('pie-section-player-splitpane');
-sectionPlayer.runtime = {
-  ...(sectionPlayer.runtime ?? {}),
-  assessmentId: assessment.id,
-  coordinator,
-  tools: coordinator.config.tools,
-};
-sectionPlayer.sectionId = section.identifier;
-sectionPlayer.attemptId = attempt.id;
-sectionPlayer.section = section;
-```
-
-### 2. Catalog Management
-
-The section player runtime:
-
-- **Registers provided catalogs** from passages, items, models, and
-  `config.extractedCatalogs`
-- **Manages scoped registrations** - registers on shell mount and unregisters on navigation/unmount
-- **Renders TTS tools** inline in passage/item headers when services present
-- **Resolves spoken content** from item/model-scoped catalogs, then shared assessment catalogs, then generated speech or visible text
-
-**You don't need to manually:**
-- Call `addItemCatalogs()` or `clearItemCatalogs()`
-- Manage TTS tool visibility
-- Handle catalog lifecycle
-
-If you author embedded `<speak>` tags, run `SSMLExtractor` or an equivalent
-preprocessing step before render so `config.extractedCatalogs` is present for
-runtime registration.
-
-### 3. Using Server-Side TTS (Optional)
-
-For production with high-quality voices and precise word highlighting:
-
-```javascript
-const coordinator = new ToolkitCoordinator({
-  assessmentId: assessment.id,
-  toolRegistry,
-  accessibility: {
-    catalogs: assessment.accessibilityCatalogs ?? [],
-    language: 'en-US',
-  },
-  tools: {
-    placement: { item: ['textToSpeech'], passage: ['textToSpeech'], section: [] },
-    providers: {
-      textToSpeech: {
-        backend: 'server',
-        serverProvider: 'polly',
-        apiEndpoint: '/api/tts',
-        defaultVoice: 'Joanna',
-        language: 'en-US',
-      },
-    },
-  },
-});
-```
+- [Section Player Integration](./accessibility-catalogs-integration-guide.md#section-player-integration)
+  wires `ToolkitCoordinator` into the player, and
+  [Minimal Server-Backed TTS Config](../../packages/assessment-toolkit/README.md#minimal-server-backed-tts-config)
+  replaces the browser backend with a server provider.
+- [SSML Extraction from PIE Content](./accessibility-catalogs-integration-guide.md#ssml-extraction-from-pie-content)
+  turns embedded `<speak>` into `config.extractedCatalogs`, which the runtime
+  registers when item and passage shells mount. The runtime does not run the
+  extraction itself.
+- [PIE Element Authoring](./accessibility-catalogs-integration-guide.md#pie-element-authoring)
+  shows where `data-catalog-idref` markers go.
 
 ---
-
-## SSML Extraction Workflow
-
-`SSMLExtractor` can convert embedded SSML into cleaned visual markup plus
-`extractedCatalogs`. The current section-player runtime registers
-`extractedCatalogs` when they are already present; it does not invoke extraction
-itself during shell registration.
-
-```
-┌────────────────────────────────────────────┐
-│ Item/Passage loads with embedded SSML      │
-└─────────────────┬──────────────────────────┘
-                  │
-                  ▼
-         ┌────────────────┐
-         │ SSMLExtractor  │
-         │ parses content │
-         └────────┬───────┘
-                  │
-          ┌───────┴────────┐
-          │                │
-          ▼                ▼
-    Find <speak>    Clean markup
-    elements        (remove SSML)
-          │                │
-          ▼                ▼
-    Extract SSML     Add catalog IDs
-    + language       (data-catalog-idref)
-          │                │
-          └───────┬────────┘
-                  │
-                  ▼
-         ┌────────────────┐
-         │ Generate       │
-         │ catalog        │
-         │ entries        │
-         └────────┬───────┘
-                  │
-          ┌───────┴────────┐
-          │                │
-          ▼                ▼
-    Update config    Register with
-    (cleaned +       CatalogResolver
-    catalogs)
-```
-
-**Extraction Points:**
-- Content import/preprocessing can call `SSMLExtractor`
-- The cleaned config carries `config.extractedCatalogs`
-- Runtime catalog registration registers those catalogs when item or passage
-  shells mount
 
 ## Catalog Resolution Flow
 
@@ -198,258 +57,32 @@ step rather than speaking an empty string.
 3. Generated speech, including supported MathML speech
 4. Visible text fallback
 
----
+### One Attribute, Typed Cards
 
-## Example: Assessment with Catalogs
-
-### Assessment Configuration
-
-```typescript
-const assessment: AssessmentEntity = {
-  id: 'qti3-demo',
-  qtiVersion: '3.0',
-
-  // Assessment-level catalogs (shared across items)
-  accessibilityCatalogs: [
-    {
-      identifier: 'welcome-message',
-      cards: [
-        {
-          catalog: 'spoken',
-          language: 'en-US',
-          content: '<speak><prosody rate="medium">Welcome to your assessment. <break time="500ms"/> Take your time and read each question carefully.</prosody></speak>'
-        },
-        {
-          catalog: 'spoken',
-          language: 'es-ES',
-          content: '<speak><prosody rate="medium">Bienvenido a tu evaluación.</prosody></speak>'
-        }
-      ]
-    }
-  ],
-
-  testParts: [
-    {
-      identifier: 'part1',
-      navigationMode: 'linear',
-      submissionMode: 'individual',
-      sections: [
-        {
-          identifier: 'section1',
-          rubricBlocks: [
-            {
-              view: ['candidate'],
-              class: 'instructions',
-              // Reference catalog in HTML
-              content: '<div data-catalog-idref="welcome-message"><h3>Welcome</h3><p>Welcome to your assessment.</p></div>'
-            }
-          ],
-          assessmentItemRefs: [...]
-        }
-      ]
-    }
-  ]
-};
-```
-
-### Item-Level Catalogs
-
-```typescript
-const item: ItemEntity = {
-  id: 'item-1',
-  baseId: 'item-1',
-  version: { major: 1, minor: 0, patch: 0 },
-
-  // Item-level catalogs (override assessment-level)
-  accessibilityCatalogs: [
-    {
-      identifier: 'item-prompt',
-      cards: [
-        {
-          catalog: 'spoken',
-          language: 'en-US',
-          content: '<speak>Question one. <break time="300ms"/> What is <emphasis>two</emphasis> plus <emphasis>two</emphasis>?</speak>'
-        }
-      ]
-    },
-    {
-      identifier: 'choice-a',
-      cards: [
-        {
-          catalog: 'spoken',
-          language: 'en-US',
-          content: '<speak>Choice A. <break time="200ms"/> Three</speak>'
-        }
-      ]
-    }
-  ],
-
-  config: {
-    markup: '<multiple-choice id="q1"></multiple-choice>',
-    elements: {
-      'multiple-choice': '@pie-element/multiple-choice@latest'
-    },
-    models: [
-      {
-        id: 'q1',
-        element: 'multiple-choice',
-        prompt: '<div data-catalog-idref="item-prompt">What is 2 + 2?</div>',
-        choices: [
-          { label: '<span data-catalog-idref="choice-a">3</span>', value: 'a' },
-          { label: '<span>4</span>', value: 'b' }
-        ]
-      }
-    ]
-  }
-};
-```
-
-### Usage with Section Player
-
-The **PIE Section Player** is the primary interface for integrating the assessment toolkit services.
-
-```javascript
-const sectionPlayer = document.querySelector('pie-section-player-splitpane');
-sectionPlayer.runtime = {
-  ...(sectionPlayer.runtime ?? {}),
-  coordinator,
-  tools: coordinator.config.tools,
-};
-sectionPlayer.section = section;
-```
-
-**Key Points:**
-- The section player registers catalogs already present on passages, items,
-  models, and `config.extractedCatalogs`
-- Item-level catalog registrations are scoped to shell lifecycle
-- TTS tools render inline in passage and item headers when services are provided
-- All catalog resolution happens transparently within the player
+`data-catalog-idref` names a whole catalog, whose cards can carry several types.
+TTS is the attribute's only reader and selects `spoken` cards; the sign-language
+capability finds `sign-language` cards among the item's catalogs without
+consulting it. `SSMLExtractor` never overwrites an existing `data-catalog-idref`,
+because the reference names a whole card array, and replacing it to win one type
+would take that node's other cards down with it. When an inline `<speak>` lands
+inside a node that is already docked, `SSMLExtractor` keeps the existing
+reference, still emits the extracted catalog, and warns. The extracted SSML is
+then unreachable by DOM walk; give the `<speak>` its own wrapper, or author it as
+a `spoken` card on the existing catalog.
 
 ---
 
-## SSML Support
+## Provider SSML Support
 
-The catalog resolver returns raw SSML content, which TTS providers can process:
+Browser TTS is the always-available fallback and reads SSML as plain text. A
+server-backed provider such as AWS Polly applies the tags it supports; the
+[TTS Authoring Guide](./tts-authoring-guide.md#ssml-provider-support) lists each
+provider's tag reference.
 
-### Example SSML
-
-```xml
-<speak>
-  <prosody rate="medium" pitch="medium">
-    Welcome to the assessment.
-    <break time="500ms"/>
-    Read each question carefully.
-  </prosody>
-</speak>
-```
-
-### SSML Features
-
-- **Prosody**: Control rate, pitch, volume
-- **Breaks**: Insert pauses between phrases
-- **Emphasis**: Highlight important words
-- **Say-as**: Control interpretation (numbers, dates, etc.)
-- **Voice**: Select specific voices (provider-dependent)
+For `TTSService` tests, follow the mock provider pattern in
+[`tts-service-catalog-composition.test.ts`](../../packages/assessment-toolkit/tests/tts-service-catalog-composition.test.ts).
 
 ---
-
-## Testing Catalog Integration
-
-```typescript
-import { AccessibilityCatalogResolver } from '@pie-players/pie-assessment-toolkit';
-
-// Test catalog resolution
-test('should use catalog content when available', async () => {
-  const catalogs = [
-    {
-      identifier: 'test-message',
-      cards: [
-        {
-          catalog: 'spoken',
-          language: 'en-US',
-          content: '<speak>Catalog content</speak>'
-        }
-      ]
-    }
-  ];
-
-  const resolver = new AccessibilityCatalogResolver(catalogs);
-  const spoken = resolver.getAlternative('test-message', {
-    type: 'spoken',
-    language: 'en-US'
-  });
-
-  expect(spoken?.content).toBe('<speak>Catalog content</speak>');
-});
-
-test('should fallback to plain text when catalog not found', async () => {
-  const resolver = new AccessibilityCatalogResolver([]);
-  const spoken = resolver.getAlternative('missing-catalog', {
-    type: 'spoken',
-    language: 'en-US',
-    useFallback: true
-  });
-
-  expect(spoken).toBeNull();
-});
-```
-
-For `TTSService` provider tests, follow the mock provider/implementation pattern
-in `packages/assessment-toolkit/tests/tts-service-catalog-composition.test.ts`.
-
----
-
-## Browser Compatibility
-
-Browser TTS is the always-available fallback, but full SSML support requires a
-server-backed provider such as AWS Polly. Keep provider-specific tag details in
-[AWS SSML Tags Reference](aws-ssml-tags-reference.md) and use this guide only
-for the catalog/TTS integration shape.
-
----
-
-## Embedded SSML Authoring Pattern
-
-Authors can embed SSML directly in PIE content:
-
-```typescript
-const item = {
-  config: {
-    markup: '<multiple-choice id="q1"></multiple-choice>',
-    elements: {
-      'multiple-choice': '@pie-element/multiple-choice@latest'
-    },
-    models: [
-      {
-        id: 'q1',
-        element: 'multiple-choice',
-        prompt: `<div>
-          <speak xml:lang="en-US">
-            Solve for <emphasis>x</emphasis> in the equation
-            <prosody rate="slow">x squared, plus two x, equals eight</prosody>.
-          </speak>
-          <p>Solve for <em>x</em> in the equation: x² + 2x = 8</p>
-        </div>`
-      }
-    ]
-  }
-};
-```
-
-**Preprocessing:**
-- A preprocessing step runs `SSMLExtractor`
-- Catalog generated with ID `auto-prompt-{modelId}-0`
-- Visual markup cleaned (SSML removed)
-- `data-catalog-idref` attribute added
-
-**At Runtime:**
-- Runtime registration registers the extracted catalog with the resolver
-
-**Result:**
-- TTS buttons use extracted SSML
-- User-selection TTS uses extracted SSML
-- Visual display shows clean HTML
-- No separate catalog authoring needed
 
 ## Troubleshooting
 
@@ -497,16 +130,6 @@ const item = {
 2. Format: `auto-prompt-{modelId}-{n}`, `auto-choice-{modelId}-{value}-{n}`, `auto-markup-{n}`
 3. The counter belongs to the extractor instance and runs until `reset()`, so one instance never repeats an id; separate instances, or a `reset()` between items, repeat ids for models that share an `id`
 4. Shell-scoped catalog registrations are replaced on navigation
-
-## Current Runtime Behavior
-
-- **SSML Extraction**: Import/preprocessing can convert embedded `<speak>` tags into catalog-backed alternatives
-- **TTS Tool Integration**: TTS controls render inline in passage and item headers when enabled
-- **Section Player Integration**: Section-player is the primary runtime surface for these flows
-- **Catalog Management**: Shell-scoped catalogs are registered and unregistered as section content changes
-- **HTML Content Detection**: Catalog IDs are discovered from rendered DOM content
-- **Server-Side TTS Support**: Server-backed providers such as AWS Polly can supply precise highlighting data
-- **One attribute, typed cards**: `data-catalog-idref` names a whole catalog, whose cards can carry several types. TTS is the attribute's only reader and selects `spoken` cards; the sign-language capability finds `sign-language` cards among the item's catalogs without consulting it. `SSMLExtractor` never overwrites an existing `data-catalog-idref`, because the reference names a whole card array, so replacing it to win one type would take that node's other cards down with it. When an inline `<speak>` lands inside a node that is already docked, `SSMLExtractor` keeps the existing reference, still emits the extracted catalog, and warns — the extracted SSML is then unreachable by DOM walk, and the fix is to give the `<speak>` its own wrapper or author it as a `spoken` card on the existing catalog
 
 ## References
 

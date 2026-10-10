@@ -53,7 +53,7 @@ _Avoid_: Authored preview colors, palette thumbnail metadata
 A runtime-host-supplied token value applied after the base theme, provider, and registered scheme.
 _Avoid_: Provider value, scheme value
 
-## Relationships
+## Theme Relationships
 
 - A **Base Theme** establishes the complete starting token set.
 - A **Theme Provider** may replace tokens from the **Base Theme** with runtime-host design-system values.
@@ -65,12 +65,12 @@ _Avoid_: Provider value, scheme value
 - A **Requested Scheme** without a **Resolved Scheme** retains its identifier while managed rendering falls back to the base theme and provider result.
 - A **Scheme Preview** is derived from the same canonical definitions that render the assessment and is never a separately authored palette.
 
-## Example dialogue
+## Theme Example dialogue
 
 > **Dev:** "Does `default` select the light accessibility palette?"
 > **Domain expert:** "No. The **Default Scheme** selects no named palette; the **Base Theme** still decides light or dark, then the **Theme Provider** may adapt it."
 
-## Flagged ambiguities
+## Theme Flagged ambiguities
 
 - "theme" previously referred to both light/dark selection and accessibility palettes — resolved: use **Base Theme** for light/dark and **Color Scheme** for a named accessibility palette.
 - "custom scheme" previously covered both registered data and host CSS selectors — resolved: distinguish **Registered Custom Scheme** from **CSS-only Scheme**.

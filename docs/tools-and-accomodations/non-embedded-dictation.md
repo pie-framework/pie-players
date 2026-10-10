@@ -14,9 +14,7 @@ IEP or 504 plan, and PIE's part in the non-embedded one is entirely negative: th
 platform writes into the focused editable, the response editor's input pipeline
 runs, and the element commits its own session.
 
-That was true by construction rather than by design until PIE-473, which is why it
-is now asserted. Nothing here is a PIE feature; it is a set of properties that must
-not regress.
+Nothing here is a PIE feature: the spec asserts properties that must not regress.
 
 ## Verified Behavior
 
@@ -58,8 +56,7 @@ Two consequences, both host-facing:
 
 The spec asserts the pre-blur state deliberately. A debounce would be a change to
 constructed-response persistence, and it should surface as a failing test here
-rather than land unnoticed. Tracked as
-[PIE-916](https://illuminate.atlassian.net/browse/PIE-916). The player commits each
+rather than land unnoticed. The player commits each
 element's pending session at a `config` change, a page hide and its own teardown
 ([Session commit](../item-player/overview.md#session-commit)), so a response the
 editor committed on blur reaches the host while its notification is still deferred.

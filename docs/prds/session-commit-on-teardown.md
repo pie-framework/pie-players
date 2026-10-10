@@ -13,10 +13,10 @@ still shipping from legacy `pie-elements` needs the inline flush. The
 device-local session snapshot is opt-in and implemented. See Open Questions for
 both.
 
-Owner:
+Owner: PIE Players maintainers
 
 Related architecture: [`../item-player/overview.md`](../item-player/overview.md),
-[`../section-player/`](../section-player), [PIE-1058](https://illuminate.atlassian.net/browse/PIE-1058), [PIE-916](https://illuminate.atlassian.net/browse/PIE-916)
+[`../section-player/`](../section-player)
 
 ## Problem
 
@@ -26,26 +26,26 @@ session write, and no layer flushes that write when it is torn down.
 
 In `pie-elements`:
 
-- `packages/extended-text-entry/src/main.jsx:60,62` — `debounce(onValueChange, 1500)`
+- `packages/extended-text-entry/src/main.jsx` — `debounce(onValueChange, 1500)`
   for value and comment, no `componentWillUnmount`, no `flush()`, no `cancel()`.
-- `packages/math-inline/src/index.js:19-21` and
-  `packages/math-templated/src/index.js:11-13` — 1000ms debounce on the
+- `packages/math-inline/src/index.js` and
+  `packages/math-templated/src/index.js` — 1000ms debounce on the
   `SessionChangedEvent` dispatch; `disconnectedCallback` unmounts the React root
   without flushing.
-- `packages/explicit-constructed-response/src/main.jsx:76` — 200ms with
+- `packages/explicit-constructed-response/src/main.jsx` — 200ms with
   `maxWait: 200`, no unmount handler.
-- `packages/multiple-choice/src/index.js:143` — `debounce()` with no wait, so
+- `packages/multiple-choice/src/index.js` — `debounce()` with no wait, so
   next-tick; same shape, negligible window.
 
 In the players:
 
-- `pie-api-components` — `src/components/pie-api-player/pie-api-player.tsx:784`
-  debounces the backend save 100ms; `disconnectedCallback` at :808 records a New
+- `pie-api-components` — `src/components/pie-api-player/pie-api-player.tsx`
+  debounces the backend save 100ms; its `disconnectedCallback` records a New
   Relic page action and nothing else, so the save is dropped on teardown even
   when the element committed in time.
 - `pie-player-components` — `src/components/pie-player/pie-player.tsx` has no
   `disconnectedCallback` or `componentDidUnload`, and replaces its elements
-  through the `innerHTML` vdom prop after `watchConfig` (:242) sets
+  through the `innerHTML` vdom prop after `watchConfig` sets
   `elementsLoaded = false`.
 - `pie-players` — `packages/item-player/src/PieItemPlayer.svelte` has no
   `onDestroy`, and nothing in the repository listens for `pagehide` or
@@ -104,7 +104,7 @@ either.
 
 - Owning package, element side: `@pie-element/shared-player-events`
   (`pie-elements-ng/packages/shared/player-events`), which already owns
-  `SessionChangedEvent` at `src/index.ts:46`. `pie-elements-ng` is the source of
+  `SessionChangedEvent` in `src/index.ts`. `pie-elements-ng` is the source of
   truth for `packages/elements-react/*` and `packages/lib-react/*` and publishes
   from there, so the helper is authored once, in the go-forward repository.
 - Legacy `pie-elements` gets no shared helper. Where an element there needs the
@@ -547,7 +547,7 @@ None. No adapter or validation suite is scoped here.
 ## Section Player
 
 The section player mounts items through `pie-item-player`
-(`packages/section-player/src/component-definitions.ts:16,28,40`), so it inherits
+(`packages/section-player/src/component-definitions.ts`), so it inherits
 the item-player guarantee without changes of its own.
 
 Intra-section navigation is already safe, and for a structural reason rather than

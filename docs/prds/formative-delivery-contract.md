@@ -560,14 +560,12 @@ Summing section rollups needs no score authority, no provenance and no manual
 state, which are that PRD's hard open questions; blocking on them would trade a
 week of arithmetic for a Draft.
 
-The real prerequisite is smaller and sharper: `AssessmentSession` exists in both
-`assessment-toolkit` and `assessment-player`, and
-[`shared-contracts-p0`](../architecture/shared-contracts-p0.md) already records
-that the canonical type home must be chosen before assessment-level fields are
-added. Adding a mastery rollup to the wrong one means migrating it later.
+`AssessmentSession` has one home, `@pie-players/pie-players-shared/types`, so a
+mastery rollup is added there (see
+[framework-completing work](../architecture/framework-completing-work.md)).
 `assessment-player` also has no data-driven renderer selection and no consumer,
-so a cross-section rollup lands there with no host to validate it against — worth
-knowing before scheduling it, not a reason to defer.
+so a cross-section rollup lands there with no host to validate it against, which
+does not defer it.
 
 Two things this contract already settled that the assessment rollup must not
 re-decide: `unknown` items leave the denominator rather than scoring zero, and

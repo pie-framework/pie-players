@@ -8,7 +8,7 @@ This is not a getting-started guide — it assumes you understand web components
 
 ## 1. Why a Section Player?
 
-PIE elements and the item player are the foundation of PIE's rendering stack. They handle individual assessment items — a multiple-choice question, a drag-and-drop interaction, a constructed response — and they're used directly by several production systems at Renaissance. Many integrations need nothing more: they embed item players, wire their own session handling, and build whatever composition layer their product requires. PIE is designed to be adopted incrementally, not consumed as a monolith.
+PIE elements and the item player are the foundation of PIE's rendering stack. They handle individual assessment items — a multiple-choice question, a drag-and-drop interaction, a constructed response — and they're used directly by several production systems. Many integrations need nothing more: they embed item players, wire their own session handling, and build whatever composition layer their product requires. PIE is designed to be adopted incrementally, not consumed as a monolith.
 
 But step back and look at what a real assessment screen looks like in practice:
 
@@ -125,14 +125,14 @@ const coordinator = new ToolkitCoordinator({
   },
 });
 
-// Pass to the element through runtime — no ontoolkit-ready handler needed
+// Pass to the element through runtime — no toolkit-ready handler needed
 playerEl.runtime = {
   ...(playerEl.runtime ?? {}),
   coordinator,
 };
 ```
 
-The `runtime.coordinator` value takes precedence over CE-generated coordinators. When you pass one, the `ontoolkit-ready` event still fires, but it carries the same coordinator reference you provided. Use it for identity checks rather than initialization.
+The `runtime.coordinator` value takes precedence over CE-generated coordinators. When you pass one, the `toolkit-ready` event still fires, but it carries the same coordinator reference you provided. Use it for identity checks rather than initialization.
 
 ---
 
@@ -142,9 +142,9 @@ The section player expects a `section` object describing the composition — ite
 
 Content items are rendered via `<pie-item-player>` elements. `runtime.playerType` maps directly to the item player's `strategy` and controls how PIE element bundles are fetched and registered.
 
-- **`iife`** (default): Elements are loaded by injecting `<script>` tags that fetch IIFE bundles from a bundle host (default: `https://proxy.pie-api.com/bundles`). PIE was built during an era when IIFE was the most reliable cross-environment delivery format, and this remains the most widely deployed strategy. It is the safe default for any production system today.
+- **`iife`** (default): Elements load through injected `<script>` tags that fetch IIFE bundles from a bundle host (default: `https://proxy.pie-api.com/bundles`). It is the most widely deployed strategy and the production default.
 
-- **`esm`**: Elements are loaded via dynamic `import()` from an ESM CDN (default: `https://cdn.jsdelivr.net/npm`). This is the intended future default — the PIE team is targeting ESM as the primary strategy by end of 2026. Compared to IIFE, ESM loading offers genuine architectural advantages: modules are fetched concurrently and cached by the browser's native module cache across loads (unlike IIFE script tags, which are re-executed every time), shared dependencies between elements can be deduplicated at the module graph level rather than being bundled redundantly into each IIFE, and the format supports standard toolchain features like tree-shaking and source maps. ESM also produces a better local development experience since modules integrate naturally with browser DevTools and bundlers. The PIE elements library is still being migrated to full ESM compatibility; the team is targeting full ESM support by end of 2026.
+- **`esm`**: Elements load through dynamic `import()` from an ESM CDN (default: `https://cdn.jsdelivr.net/npm`). Modules are fetched concurrently and cached in the browser's module cache across loads, shared dependencies between elements can be deduplicated in the module graph, and source maps and DevTools work as they do for any ES module. The PIE elements library is still being migrated to full ESM compatibility.
 
 - **`preloaded`**: The host installs the pie-elements-ng packages the section needs as npm dependencies, all from one release, and registers their ESM builds with `registerPreloadedElements` (`@pie-players/pie-item-player/preloaded`) before the section mounts, with the [asset root](../item-player/loading-strategies.md#mathjax-assets) MathJax loads its fonts and speech from; the player loads no element code at runtime. Before mounting items, the section's element pre-warm aligns authored versions with the registered ones and asserts each registration; a missing one leaves the items unmounted and reports an `element-preload` framework error (see [`strategy="preloaded"`](../item-player/loading-strategies.md#strategypreloaded)). Generated `@pie-players/pie-preloaded-player` builds register the same way and remain for hosts that have not moved. Because the element set and versions are locked to your application's CI/CD cycle, this trades flexibility for zero-network-request rendering: useful for offline environments, strict performance budgets, or controlled test harnesses. The downside is that updating an element version or adding a new element requires a redeployment — you lose the ability to hot-swap element versions dynamically without a full release cycle.
 
@@ -187,12 +187,9 @@ Notes:
 - `loaderOptions` and `loaderConfig` are different concerns: loading strategy vs observability/retry behavior.
 - For custom providers, pass object references as JS properties (`runtime`), not serialized string attributes.
 - Higher-level section/toolkit instrumentation is also provider-generic. Section-player emits runtime/public events (for example `pie-stage-change`, `pie-loading-complete`, `framework-error`) and those can be bridged to `InstrumentationProvider.trackEvent(...)` without coupling to New Relic-specific APIs. `session-changed` stays off the bridge because it carries learner responses.
-- New Relic remains one provider implementation option; it is not the player contract.
-- With `trackPageActions: true`, missing/`undefined` `instrumentationProvider` uses the default New Relic provider path.
-- `instrumentationProvider: null` is an explicit no-op opt-out.
 - Ownership model: section-player instrumentation owns section runtime/public events; toolkit instrumentation covers toolkit lifecycle events. This avoids semantic overlap and duplicate telemetry.
 
-The section controller tracks item loading through its `totalRegistered` and `totalLoaded` counters (accessible via `getRuntimeState()`) and emits `section-loading-complete` when every registered item has loaded. The layout element emits `pie-loading-complete` once the section's element pre-warm resolves for the current composition. The canonical lifecycle stream is `pie-stage-change`, which carries the full transition sequence (`composed` → `engine-ready` → `interactive` → `disposed`) on a single typed event. See §10 for the canonical host event mapping.
+The section controller tracks item loading through its `totalRegistered` and `totalLoaded` counters (accessible via `getRuntimeState()`) and emits `section-loading-complete` when every registered item has loaded. The layout element emits `pie-loading-complete` once the section's element pre-warm resolves for the current composition. The canonical lifecycle stream is `pie-stage-change`, which carries the full transition sequence (`composed` → `engine-ready` → `interactive` → `disposed`) on a single typed event. See §10 for host event wiring.
 
 ### Instrumentation (dedicated)
 
@@ -207,12 +204,7 @@ Canonical provider injection path:
 
 - `runtime.player.loaderConfig.instrumentationProvider`
 
-Provider semantics:
-
-- With `trackPageActions: true`, missing/`undefined` provider values use the default New Relic provider path.
-- `provider: null` explicitly disables instrumentation.
-- Invalid provider objects are ignored (optional debug warning), also no-op.
-- Existing `item-player` behavior remains the compatibility anchor.
+How an unset, `null` or invalid provider resolves is set out in [Instrumentation providers](../architecture/instrumentation-providers.md#provider-resolution).
 
 Section-player owned canonical event stream:
 
@@ -230,11 +222,7 @@ Toolkit-owned canonical stream (when present) is separate and intentionally non-
 - `pie-toolkit-section-ready`
 - `pie-toolkit-framework-error`
 
-Toolkit tool/backend operational stream (forwarded through the same provider path):
-
-- `pie-tool-init-start|success|error`
-- `pie-tool-backend-call-start|success|error`
-- `pie-tool-library-load-start|success|error`
+Toolkit tool and backend operational events go through the same provider path; they are listed in [Instrumentation providers](../architecture/instrumentation-providers.md#operational-events).
 
 Ownership rule: section semantics stay in section streams, toolkit semantics stay in toolkit streams. Dedupe in the bridge is a safety net, not the primary correctness mechanism.
 
@@ -329,7 +317,7 @@ coordinator.elementToolStateStore // ephemeral per-element tool state
 coordinator.catalogResolver      // QTI 3.0 accessibility catalog resolution
 ```
 
-The TTS service uses a pluggable provider architecture (browser Web Speech API by default, with AWS Polly and Google TTS as built-in alternatives, or implement `ITTSProvider` for your own backend). The highlight coordinator manages two independent layers — TTS word/sentence tracking and student-created annotations — using the browser's CSS Custom Highlight API for zero DOM mutation. See `@pie-players/pie-tts` and the assessment toolkit package documentation for the full service APIs.
+The TTS service uses a pluggable provider architecture (browser Web Speech API by default, with AWS Polly, Google and SchoolCity server providers as built-in alternatives, or implement `ITTSProvider` for your own backend). The highlight coordinator manages two independent layers — TTS word/sentence tracking and student-created annotations — using the browser's CSS Custom Highlight API for zero DOM mutation. See `@pie-players/pie-tts` and the assessment toolkit package documentation for the full service APIs.
 
 ### Custom TTS option (host-configured)
 
@@ -396,9 +384,11 @@ export const coordinator = new ToolkitCoordinator({
   import "@pie-players/pie-section-player/components/section-player-splitpane-element";
   import { coordinator } from "./coordinator";
 
-  export let section: unknown;
-  export let sectionId = "section-1";
-  export let attemptId = "attempt-1";
+  let {
+    section,
+    sectionId = "section-1",
+    attemptId = "attempt-1",
+  }: { section: unknown; sectionId?: string; attemptId?: string } = $props();
 </script>
 
 <pie-section-player-splitpane
@@ -490,144 +480,25 @@ Boundary rules for this setup:
 
 ## 6. Theming
 
-PIE item elements and toolkit UI components use shared Theme Tokens (`--pie-*`)
-for colors, contrast states, and font scaling. Control them through the
-`<pie-theme>` custom element from `@pie-players/pie-theme`.
-
-### Basic usage
-
-Wrap the section player (and any toolkit UI) in a `<pie-theme>` element:
-
-```ts
-// Registers <pie-theme> as an import side effect.
-import "@pie-players/pie-theme";
-```
-
-If a host needs explicit registration, import the side-effect-free
-`@pie-players/pie-theme/theme-element` subpath and call `definePieTheme()`.
+PIE item elements and toolkit UI read shared theme tokens (`--pie-*`) for
+colors, contrast states and font scaling. The `<pie-theme>` custom element from
+`@pie-players/pie-theme` resolves them for its subtree, or for the whole
+document with `scope="document"`; importing `@pie-players/pie-theme` registers
+it.
 
 ```html
-<!-- Light theme, scoped to the element and its descendants -->
-<pie-theme theme="light">
+<pie-theme theme="auto">
   <pie-section-player-splitpane ...></pie-section-player-splitpane>
 </pie-theme>
-
-<!-- Dark theme -->
-<pie-theme theme="dark">...</pie-theme>
-
-<!-- Follow the OS preference -->
-<pie-theme theme="auto">...</pie-theme>
 ```
 
-To apply the theme to the entire document rather than a subtree:
-
-```html
-<pie-theme theme="light" scope="document"></pie-theme>
-```
-
-### Attributes
-
-| Attribute | Values | Purpose |
-| --- | --- | --- |
-| `theme` | `light` / `dark` / `auto` / named | Base theme. `auto` tracks `prefers-color-scheme`. Named values (e.g. DaisyUI theme names) use light base defaults while still driving provider resolution. |
-| `scope` | `self` (default) / `document` | `self` applies variables to the element itself; `document` applies them to `<html>`. |
-| `provider` | `auto` (default) / `none` / `daisyui` / custom id | How to read variables from an existing design system. `auto` tries registered providers; `none` uses no provider. |
-| `scheme` | `default` / color scheme id | Records the Requested Scheme. `default` means no named scheme. |
-| `variables` | `Record<string, string>` | Direct CSS custom property overrides, applied last — highest specificity. |
-
-### Adapting to an existing design system
-
-The theme system uses a provider adapter to read values from an existing design
-system and map them to `--pie-*` tokens. A DaisyUI adapter is built in — set
-`provider="daisyui"` (or leave it as `auto`) and the section player inherits the
-host's DaisyUI theme. For another design system, implement
-`ThemeProviderAdapter` (`canRead`, `read`) and call
-`registerPieThemeProvider()`. Existing theme elements update after provider
-registration or removal. For direct overrides, the `variables` property accepts
-a `Record<string, string>` applied last.
-
-### Color schemes and the theme tool
-
-PIE's Built-in Color Schemes are complete accessibility palettes. A Registered
-Custom Scheme is a partial host-owned overlay. Resolution always follows:
-
-1. Base Theme (`light`, `dark`, or the result of `auto`)
-2. Theme Provider
-3. Resolved registered scheme
-4. Explicit `variables`
-
-The package interface is intentionally small:
-
-```ts
-import {
-  listPieColorSchemes,
-  observePieColorSchemes,
-  registerPieColorSchemes,
-  resolvePieTheme,
-} from "@pie-players/pie-theme";
-
-const snapshot = listPieColorSchemes();
-for (const scheme of snapshot.schemes) {
-  console.log(scheme.id, scheme.preview);
-}
-
-const unsubscribe = observePieColorSchemes((next) => {
-  renderSchemeOptions(next.schemes);
-});
-
-const registration = registerPieColorSchemes([
-  {
-    id: "district-high-contrast",
-    name: "District High Contrast",
-    variables: {
-      "--pie-background": "#000000",
-      "--pie-text": "#ffffff",
-      "--pie-primary": "#00ffff",
-    },
-  },
-]);
-
-const resolved = resolvePieTheme({
-  baseTheme: "light",
-  requestedScheme: "district-high-contrast",
-});
-
-// When this integration no longer owns the registration:
-registration.unregister();
-unsubscribe();
-```
-
-Snapshots and resolutions are immutable. Registration is synchronous and
-returns structured diagnostics instead of throwing for ordinary invalid input.
-Built-in ids are reserved; custom definitions may use only tokens whose registry
-Scheme Participation is `required` or `optional`.
-
-Requested and Resolved Scheme are deliberately separate. If a saved id is not
-registered, `<pie-theme>` retains it in `scheme` and `data-color-scheme`, renders
-the safe base/provider result plus explicit `variables`, and switches to it
-automatically after late registration. The theme picker shows that request as
-unavailable instead of resetting the preference. A host may still provide a
-CSS-only `[data-color-scheme="..."]` rule, but that is a best-effort selector
-hook and the host owns its cascade and accessibility. It participates in the
-normal cascade in a stylesheet-only integration; when a mounted `<pie-theme>`
-owns the resolved tokens inline, the rule needs `!important` or should become a
-Registered Custom Scheme.
-
-The `theme` toolbar tool is the student-facing control for selecting these color
-schemes. The `<pie-theme>` element remains the integration-owned resolver. The
-tool observes the package catalog, uses its canonical light-base preview, and
-writes the learner's Requested Scheme to the nearest theme host. The preview is
-derived rather than authored separately; a host-specific provider can still
-make the applied page differ from that catalog swatch.
-
-### Stylesheet-only integration
-
-`tokens.css` and `color-schemes.css` are checked-in generated adapters for hosts
-that apply tokens through CSS rather than `<pie-theme>`. They remain unlayered,
-so host declarations and `!important` keep their normal leverage. Do not copy or
-edit palette values in those files directly; update the canonical definition and
-run `bun --cwd packages/theme run generate:css`. The existing stylesheet export
-names and literal `dist` filenames are integration contracts.
+The `theme` toolbar tool is the student-facing color-scheme control: it writes
+the learner's requested scheme to the nearest `<pie-theme>`. Attributes,
+provider adapters (DaisyUI is built in), registered custom schemes and the
+stylesheet-only path are in the
+[theme package README](../../packages/theme/README.md);
+[How theming works](../theming/how-theming-works.md) covers how they fit
+together.
 
 ---
 
@@ -949,17 +820,6 @@ Recommended host wiring:
 - Gate "start test" UI on `pie-stage-change` with `detail.stage === "interactive"`, or subscribe to the engine via `engine.subscribe(outputs => { for (const output of outputs) { if (output.kind === "stage-change" && output.stage === "interactive") { /* … */ } } })` if you hold a programmatic engine reference. The listener receives each batch of outputs as an array.
 - Show item-loading affordances until `pie-loading-complete` fires for the active cohort.
 - Surface `framework-error` to your error UX via `onFrameworkError(model)` or via the DOM event; each delivers an error once. Use `recoverable` to distinguish a warning that preserved assessment continuity (for example, one optional `tool-surface` capability failing) from an error that blocks readiness.
-
-### Event Mapping
-
-Build host integrations against the canonical events as follows:
-
-| Removed event name | Replacement | Notes |
-| --- | --- | --- |
-| `readiness-change` | `pie-stage-change` (full phase sequence; `stage` + `status` discriminator) | |
-| `interaction-ready` | `pie-stage-change` filtered on `detail.stage === "interactive"` | |
-| `ready` | `pie-loading-complete` | Same single-shot, cohort-scoped semantics. |
-| `section-controller-ready` | `waitForSectionController(timeoutMs)` / `getSectionController()` on the layout CE, or `pie-stage-change` filtered on `detail.stage === "engine-ready"` | Removed alongside its `pie-section-controller-ready` instrumentation mapping. |
 
 Note on `framework-error`: the toolkit publishes each error once, and the event bubbles through the layout CE to `document`. The kernel only reads it to set readiness to `error`. `packages/section-player/tests/section-player-event-delivery.spec.ts` pins these counts.
 

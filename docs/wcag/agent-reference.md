@@ -18,7 +18,7 @@ Use it before making accessibility claims or drafting WCAG findings.
 | exact requirement or conformance language | [WCAG 2.2](https://www.w3.org/TR/wcag22/) |
 | quick criterion lookup | [Quick Reference](https://www.w3.org/WAI/WCAG22/quickref/) |
 | explanation and examples | [Understanding WCAG 2.2](https://www.w3.org/WAI/WCAG22/Understanding/) |
-| widget behavior | [APG](https://www.w3.org/TR/wai-aria-practices-1.2/) |
+| widget behavior | [APG](https://www.w3.org/WAI/ARIA/apg/) |
 | review process | [Evaluating Web Accessibility Overview](https://www.w3.org/WAI/test-evaluate/) |
 | conformance-style audit flow | [WCAG-EM Overview](https://www.w3.org/WAI/test-evaluate/conformance/wcag-em/) |
 

@@ -167,7 +167,7 @@ learner's browser.
 
 The precondition is client-side controllers, and that is the default.
 `resolveBundleType()` returns `clientPlayer` whenever the player is not hosted
-([`PieItemPlayer.svelte:869`](../../packages/item-player/src/PieItemPlayer.svelte)).
+([`PieItemPlayer.svelte`](../../packages/item-player/src/PieItemPlayer.svelte), `resolveBundleType`).
 `hosted` is unset by default and resolves as
 `hosted ?? isDeliveryBackendEnabled(backend)`, so a player is hosted only when
 the host sets `hosted` or enables `backend.delivery`. `clientPlayer` bundles
@@ -213,7 +213,7 @@ reaches this path through `itemConfig.resources.stylesheets[].url`, alongside
 the host-controlled `external-style-urls` attribute.
 
 The two origin classes are then handled asymmetrically
-([`PieItemPlayer.svelte:1225`](../../packages/item-player/src/PieItemPlayer.svelte)):
+([`PieItemPlayer.svelte`](../../packages/item-player/src/PieItemPlayer.svelte), `ensureCrossOriginExternalStyle` and `acquireScopedExternalStyle`):
 
 - **Same-origin** CSS is fetched, passed through `scopeStylesheetCss`, and
   appended to `document.head` scoped to `.pie-item-player.<scope>`
@@ -356,15 +356,16 @@ base policy plus the `esm` additions loads with no violations.
 Each of these moves a guarantee from the framework to the host that enables it.
 
 **`trust-markup`** skips sanitization completely
-([`PieItemPlayer.svelte:245`](../../packages/players-shared/src/components/PieItemPlayer.svelte)).
+(the `trustMarkup` prop of [`PieItemPlayer.svelte`](../../packages/players-shared/src/components/PieItemPlayer.svelte)).
 It is an observed attribute, so a script on the page can set it on a live
 player; a host that renders content it does not fully control should not ship a
 page where that attribute is reachable. Accepting it means accepting that
 authored markup is host-trusted code.
 
 **`sanitizeMarkup`** replaces the default sanitizer with a caller-supplied
-function (same file, line 246). It is a property with no attribute binding, so
-only host script sets it. A custom sanitizer owns everything on this page: the
+function (the `sanitizeMarkup` prop in the same file). It is a property with
+no attribute binding, so only host script sets it. A custom sanitizer owns
+everything on this page: the
 forbid-lists, the custom-element contract, and the `id` preservation that model
 lookup depends on.
 

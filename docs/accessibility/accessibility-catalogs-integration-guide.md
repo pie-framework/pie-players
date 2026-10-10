@@ -140,14 +140,9 @@ rendering, then pass the cleaned config and `config.extractedCatalogs` to the
 player. The runtime registers `extractedCatalogs` when shells mount, but it does
 not invoke extraction during shell registration.
 
-Signed content has no equivalent. A `sign-language` card is authored or written
-by an importer, never lifted out of markup at render time: a counterpart to
-`SSMLExtractor` was implemented and removed, because nothing produced the inline
-form — the Learnosity transform writes `accessibilityCatalogs` directly — and a
-runtime that failed to parse the markup left the video in the visible content,
-showing the accommodation to every learner. Inline `<speak>` earns its extractor
-because it is real authored content PIE does not control; inline signing video is
-not.
+Signed content has no extractor: a `sign-language` card is authored or written
+by an importer, and a signing video left in markup renders as ordinary content
+to every learner.
 
 #### Why Extraction?
 
@@ -238,7 +233,7 @@ The extraction step:
         'multiple-choice': '@pie-element/multiple-choice@latest'
       },
 
-      // ✅ CLEANED: SSML removed, catalog IDs added
+      // SSML removed, catalog IDs added
       models: [
         {
           id: 'q1',
@@ -268,7 +263,7 @@ The extraction step:
         }
       ],
 
-      // ✅ NEW: Extracted SSML catalogs
+      // Extracted SSML catalogs
       extractedCatalogs: [
         {
           identifier: 'auto-prompt-q1-0',
@@ -989,7 +984,7 @@ const germanOnly = resolver.getAlternative('welcome-message', {
 1. **Indicate Alternative Availability:**
    ```html
    <div data-catalog-idref="prompt-001" class="has-alternatives">
-     <span class="a11y-badge" aria-label="Available in multiple formats">A11y</span>
+     <span class="a11y-badge" role="img" aria-label="Available in multiple formats">A11y</span>
      Regular content here...
    </div>
    ```
@@ -1013,4 +1008,4 @@ const germanOnly = resolver.getAlternative('welcome-message', {
 - [APIP Specification](https://www.imsglobal.org/apip) - IMS Global APIP standard
 - [WCAG 2.2 Guidelines](https://www.w3.org/WAI/WCAG22/quickref/)
 - [Web Speech API](https://developer.mozilla.org/en-US/docs/Web/API/Web_Speech_API)
-- [Nemeth Braille Code](http://www.brailleauthority.org/nemeth/nemeth.pdf)
+- [Nemeth Braille Code](https://www.brailleauthority.org/nemeth-code)

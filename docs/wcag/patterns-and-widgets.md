@@ -8,7 +8,7 @@ Use it when implementing or reviewing widgets that are more complex than plain d
 
 - **Normative standard**: [WCAG 2.2](https://www.w3.org/TR/wcag22/)
 - **Official supporting guidance**:
-  - [ARIA Authoring Practices Guide (APG)](https://www.w3.org/TR/wai-aria-practices-1.2/)
+  - [ARIA Authoring Practices Guide (APG)](https://www.w3.org/WAI/ARIA/apg/)
   - [Dialog (Modal) Pattern](https://www.w3.org/WAI/ARIA/apg/patterns/dialogmodal/)
   - [Toolbar Pattern](https://www.w3.org/WAI/ARIA/apg/patterns/toolbar/)
   - [Window Splitter Pattern](https://www.w3.org/WAI/ARIA/apg/patterns/windowsplitter/)

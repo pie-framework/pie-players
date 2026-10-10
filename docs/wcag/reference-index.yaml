@@ -40,7 +40,7 @@ sources:
   - id: apg
     title: "ARIA Authoring Practices Guide"
     type: supporting
-    url: "https://www.w3.org/TR/wai-aria-practices-1.2/"
+    url: "https://www.w3.org/WAI/ARIA/apg/"
   - id: apg-dialog-modal
     title: "Dialog (Modal) Pattern"
     type: supporting
@@ -133,7 +133,7 @@ criteria:
     tags: [sticky-ui, overlays, masking]
   - id: "2.4.13"
     title: "Focus Appearance"
-    level: AA
+    level: AAA
     url: "https://www.w3.org/WAI/WCAG22/Understanding/focus-appearance"
     tags: [focus-ring, non-text-contrast]
   - id: "2.5.3"
@@ -227,14 +227,14 @@ project-surfaces:
     tags: [toolbar, floating-tools, coordination]
     docs:
       - "./project-surface-map.md"
-      - "../tool_provider_system.md"
-      - "../tool_host_contract.md"
+      - "../tools-and-accomodations/tool_provider_system.md"
+      - "../tools-and-accomodations/tool_host_contract.md"
   - id: section-player
     tags: [landmarks, layout, split-pane, repeated-cards]
     docs:
       - "./project-surface-map.md"
-      - "../section_player_integration_guide.md"
-      - "../assessment-toolkit-section-player-getting-started.md"
+      - "../section-player/client-architecture-tutorial.md"
+      - "../../packages/section-player/README.md"
   - id: tools
     tags: [tts, line-reader, annotation, calculator, ruler, protractor, graph, periodic-table]
     docs:

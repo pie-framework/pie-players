@@ -9,9 +9,8 @@ canonical definition, Scheme Participation metadata, `resolvePieTheme` /
 `listPieColorSchemes` / `observePieColorSchemes` / `registerPieColorSchemes`,
 generated `tokens.css` and `color-schemes.css` behind a stale-output check, and
 `@pie-players/pie-tool-theme` observing the catalog. `token-registry.json` is a
-published subpath. Chrome slices continue against the [implementation
-slices](../architecture/pie-727-theming-implementation-slices.md) and the [WCAG
-matrix](../architecture/pie-727-theming-wcag-matrix.md), which carry the
+published subpath. Chrome slices continue against the [WCAG
+matrix](../architecture/pie-727-theming-wcag-matrix.md), which carries the
 per-surface record; this PRD is the contract reference and does not track them.
 
 Related architecture:
@@ -20,7 +19,6 @@ Related architecture:
 - [Accessibility runtime patterns](./shared-contracts/accessibility-runtime-patterns.md)
 - [Section player client architecture tutorial](../section-player/client-architecture-tutorial.md)
 - [PIE-727 theme token inventory](../architecture/pie-727-theme-token-inventory.md)
-- [PIE-727 theming implementation slices](../architecture/pie-727-theming-implementation-slices.md)
 - [PIE-727 theming WCAG matrix](../architecture/pie-727-theming-wcag-matrix.md)
 
 ## Problem

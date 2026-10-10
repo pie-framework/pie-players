@@ -272,8 +272,8 @@ shows the pattern with installed pie-elements-ng packages.
 
 ## Upgrading from `pie-fixed-player`
 
-`@pie-framework/pie-fixed-player-static` (built and published from
-`pie-api-aws`'s custom-element build chain, retired 2026-08-14) predates this
+`@pie-framework/pie-fixed-player-static` (built and published from the former
+custom-element build chain) predates this
 package and served the same purpose. `<pie-fixed-player>` took the same
 `config`/`session`/`env` props plus the full behavioral/styling set
 (`addCorrectResponse`, `renderStimulus`, `allowedResize`, `showBottomBorder`,
@@ -293,7 +293,7 @@ existing integration is mostly a rename, with two behavior changes to expect:
   `assertRegistered` and throws `ElementAssertionError` if the page mounts
   the player before `pie-preloaded-player` has finished importing — a
   load-order bug that used to fail silently now fails loudly.
-- Publishing moved from `pie-api-aws`'s own build chain into this repo's
+- Publishing moved from its former build chain into this repo's
   `configs/preloaded-player/*.json` + CI (below). A combination not already
   covered by an existing config needs a new one landed here.
 
@@ -340,15 +340,11 @@ for this package names this workflow file (see
 `scripts/configure-trusted-publishers.mjs`). A second publish path would
 either race this one for the same version or publish without provenance, so:
 
-- `bun run release` does **not** publish preloaded packages. It used to end
-  with `publish-changed.mjs --all`, which meant a versioned release and this
-  workflow both published the same package on the same push. That was
-  removed.
-- A versioned release still triggers this workflow anyway: its path filter
-  covers `packages/item-player/**`, `packages/players-shared/**` and
-  `package.json`, all of which a version bump touches.
-- There was also a second, undocumented workflow (`preloaded-release.yml`)
-  publishing the same package off the same `master` trigger. It was deleted.
+- `bun run release` does not publish preloaded packages, and no other
+  workflow does.
+- A versioned release triggers this workflow: its path filter covers
+  `packages/item-player/**`, `packages/players-shared/**` and `package.json`,
+  all of which a version bump touches.
 
 **What triggers a publish.** A push to `master` touching
 `configs/preloaded-player/**`, `packages/item-player/**`, `tools/cli/**`,

@@ -14,6 +14,7 @@ accepted PRDs or ADRs retained as current contract and decision references; see
   3. `bun run dev:section` (daily run)
 - Packaging boundary contract (Node-safe vs browser-only packages):
   - [`setup/library-packaging-strategy.md`](./setup/library-packaging-strategy.md)
+- [`why-a-new-project.md`](./why-a-new-project.md) - What PIE Players covers, what changed from `pie-player-components`, and which layer a host adopts
 - [`item-player/overview.md`](./item-player/overview.md) - Core item-player architecture and standalone usage
 - [`section-player/client-architecture-tutorial.md`](./section-player/client-architecture-tutorial.md) - Section-player and assessment-toolkit integration guide
 - [`../packages/section-player/README.md`](../packages/section-player/README.md) - Current public section-player API and host-facing patterns
@@ -25,21 +26,23 @@ accepted PRDs or ADRs retained as current contract and decision references; see
 - [`architecture/developer_patterns.md`](./architecture/developer_patterns.md) - Project implementation patterns and boundary guidance
 - [`architecture/composition-context.md`](./architecture/composition-context.md) - How container-owned facts (heading depth, arbitration, scope) reach the descendants that need them
 - [`adr/`](./adr/) - Decision records for choices that span PRDs: sequencing, rejected alternatives, trade-offs
+- [`prds/README.md`](./prds/README.md) - Every PRD with its status, and the retention rule
 - [`architecture/domain-language.md`](./architecture/domain-language.md) - Format and admission rules for the root `CONTEXT.md` domain glossary
 - [`architecture/framework-completing-work.md`](./architecture/framework-completing-work.md) - The scope discriminant: what must live in PIE versus a host, and the evidence required before scheduling it
-- [`architecture/delivery-reliability-remediation-plan.md`](./architecture/delivery-reliability-remediation-plan.md) - Active issue tracker and sequential branch plan for zoom accessibility, assessment lifecycle, answer restoration, and persistence repairs
 - [`architecture/shared-contracts-p0.md`](./architecture/shared-contracts-p0.md) - Pre-PRD architecture proposal for shared event, session, scoring, media, evidence, and adapter contracts
 - [`architecture/internationalization.md`](./architecture/internationalization.md) - Interface locale, content language, and in-item language alternates as three separate concerns
-- [`architecture/timed-media-section.md`](./architecture/timed-media-section.md) - Pre-PRD architecture proposal for video-linked/timed-media sections
-- [`architecture/types-and-utilities-contract.md`](./architecture/types-and-utilities-contract.md) - Shared contracts and utility expectations
-- [`architecture/instrumentation-providers.md`](./architecture/instrumentation-providers.md) - Design note for provider readiness, New Relic agent detection, and the conformance proof that the contract is not vendor-shaped; `trackPageActions` stays the only switch that sends
+- [`architecture/i18n-interface-locale-adoption.md`](./architecture/i18n-interface-locale-adoption.md) - Design record for the interface-locale contract
+- [`architecture/timed-media-section.md`](./architecture/timed-media-section.md) - Design direction behind the timed-media section contract (implemented 2026-08-17)
+- [`architecture/instrumentation-providers.md`](./architecture/instrumentation-providers.md) - Provider resolution, the operational events PIE sends, provider readiness, and the design for New Relic agent detection and a vendor-neutral conformance suite
 - [`architecture/instrumentation-providers-implementation-plan.md`](./architecture/instrumentation-providers-implementation-plan.md) - Slices, evidence gates, and release rules for that work
+- [`architecture/open-source-calculator-provider-implementation.md`](./architecture/open-source-calculator-provider-implementation.md) - Implementation spec for the Cortex calculator provider
 
 ## Item Player
 
 - [`item-player/overview.md`](./item-player/overview.md) - Architecture and runtime behavior
 - [`item-player/loading-strategies.md`](./item-player/loading-strategies.md) - IIFE, ESM, and preloaded loading strategies
 - [`item-player/scoring-and-rubrics.md`](./item-player/scoring-and-rubrics.md) - Item scoring, multi-element aggregation, EBSR, and rubric/manual-scoring behavior
+- [`item-player/backend-support.md`](./item-player/backend-support.md) - JS-only namespace for loading and persisting the item player's config, session and env
 - [`prds/formative-delivery-contract.md`](./prds/formative-delivery-contract.md) - PRD for check-answer delivery: Try state, feedback reveal as a per-item `env` projection, and section mastery over the client-side scoring path
 - [`item-player/migration-from-pie-player-components.md`](./item-player/migration-from-pie-player-components.md) - Migration from `@pie-framework/pie-player-components`
 - [`preloaded-player/readme.md`](./preloaded-player/readme.md) - Generated preloaded-player builds (transitional)
@@ -47,6 +50,7 @@ accepted PRDs or ADRs retained as current contract and decision references; see
 ## Section Player
 
 - [`section-player/client-architecture-tutorial.md`](./section-player/client-architecture-tutorial.md) - Production-oriented integration and controller patterns
+- [`section-player/controller-boundaries.md`](./section-player/controller-boundaries.md) - Section state `SectionController` owns, and what the custom elements only adapt
 - [`../packages/section-player/ARCHITECTURE.md`](../packages/section-player/ARCHITECTURE.md) - Package architecture and layout authoring boundaries
 
 ## Assessment Player
@@ -54,7 +58,6 @@ accepted PRDs or ADRs retained as current contract and decision references; see
 Production assessment players are host-built from the section player and toolkit; the assessment player is a reference assembly ([product scope](./architecture/architecture.md#product-scope)).
 
 - [`assessment-player/client-architecture-tutorial.md`](./assessment-player/client-architecture-tutorial.md) - How the reference assessment player assembles the building blocks, and the patterns a custom multi-section player reuses
-- [`architecture/assessment-player-lifecycle-persistence-implementation-plan.md`](./architecture/assessment-player-lifecycle-persistence-implementation-plan.md) - Technical scope and evidence gates for the tracked assessment repairs; authoritative submission remains separate
 
 ## Integrations
 
@@ -70,18 +73,22 @@ Production assessment players are host-built from the section player and toolkit
 
 - [`theming/how-theming-works.md`](./theming/how-theming-works.md) - How `<pie-theme>` resolves tokens and writes them, why a host stylesheet cannot override them, and how a host carries an accommodation into its own chrome
 - [`../packages/theme/README.md`](../packages/theme/README.md) - Element attributes, runtime API, registered custom schemes, and the token registry
+- [`prds/pie-727-broad-theming-contract.md`](./prds/pie-727-broad-theming-contract.md) - PRD for the broad theming contract
+- [`architecture/pie-727-theme-token-inventory.md`](./architecture/pie-727-theme-token-inventory.md) - Token admission rule and the inventory behind the registry
+- [`architecture/pie-727-theming-wcag-matrix.md`](./architecture/pie-727-theming-wcag-matrix.md) - Per-surface WCAG coverage for theming
 
 ## Accessibility And TTS
 
+- [`accessibility/README.md`](./accessibility/README.md) - Which accessibility doc answers which need
 - [`accessibility/accessibility-catalogs-quick-start.md`](./accessibility/accessibility-catalogs-quick-start.md) - Quick start for accessibility catalogs
 - [`accessibility/accessibility-catalogs-integration-guide.md`](./accessibility/accessibility-catalogs-integration-guide.md) - Runtime integration patterns for catalogs
 - [`accessibility/accessibility-catalogs-tts-integration.md`](./accessibility/accessibility-catalogs-tts-integration.md) - How catalogs connect to TTS flows
 - [`accessibility/tts-architecture.md`](./accessibility/tts-architecture.md) - TTS system architecture and provider model
+- [`accessibility/tts-deep-dive.md`](./accessibility/tts-deep-dive.md) - End-to-end TTS runtime: provider selection, authored and generated speech, playback and highlighting
 - [`accessibility/tts-authoring-guide.md`](./accessibility/tts-authoring-guide.md) - Authoring guidance for spoken alternatives
 - [`accessibility/aws-polly-setup-guide.md`](./accessibility/aws-polly-setup-guide.md) - AWS Polly setup
-- [`accessibility/aws-ssml-tags-reference.md`](./accessibility/aws-ssml-tags-reference.md) - SSML authoring reference
 - [`prds/sign-language-asl-support.md`](./prds/sign-language-asl-support.md) - PRD for sign-language (ASL) delivery; section-player renders `sign-language` catalogs in a per-item media region, gated on the `signLanguage` PNP support
-- [`prds/audio-accommodations.md`](./prds/audio-accommodations.md) - PRD for the audio transcript accommodation and autoplay control; retires a pre-toolkit CSS-class gate by transforming Star content into catalog cards in the `pie-api-aws` import pipeline
+- [`prds/audio-accommodations.md`](./prds/audio-accommodations.md) - PRD for the audio transcript accommodation and autoplay control; retires a pre-toolkit CSS-class gate by transforming imported content into catalog cards in the content import pipeline
 
 ## WCAG Reference
 
@@ -92,6 +99,7 @@ Production assessment players are host-built from the section player and toolkit
 - [`wcag/patterns-and-widgets.md`](./wcag/patterns-and-widgets.md) - Widget and interaction guidance
 - [`wcag/project-surface-map.md`](./wcag/project-surface-map.md) - Surface-to-criteria map across the project
 - [`wcag/agent-reference.md`](./wcag/agent-reference.md) - Compact AI-agent lookup
+- [`wcag/deferred-issues.md`](./wcag/deferred-issues.md) - Confirmed accessibility issues and evidence gaps awaiting follow-up
 
 ## Tools And Accommodations
 
@@ -100,6 +108,8 @@ Production assessment players are host-built from the section player and toolkit
 - [`tools-and-accomodations/tool_host_contract.md`](./tools-and-accomodations/tool_host_contract.md) - Host and tool runtime contract
 - [`tools-and-accomodations/safe-custom-tool-config.md`](./tools-and-accomodations/safe-custom-tool-config.md) - Safe host-side custom tool configuration patterns
 - [`tools-and-accomodations/dictionary-languages-and-services.md`](./tools-and-accomodations/dictionary-languages-and-services.md) - Which service answers a lookup, and offering more than one dictionary language
+- [`tools-and-accomodations/framework-owned-error-handling.md`](./tools-and-accomodations/framework-owned-error-handling.md) - Error handling the framework owns for tool configuration and toolkit initialization
+- [`tools-and-accomodations/non-embedded-dictation.md`](./tools-and-accomodations/non-embedded-dictation.md) - Platform dictation into PIE response surfaces
 
 ## Setup And Publishing
 
@@ -107,8 +117,7 @@ Production assessment players are host-built from the section player and toolkit
 - [`development/calculator-external-test-corpora.md`](./development/calculator-external-test-corpora.md) - Calculator test data that CI does not ship: the on-demand GSM8K corpus, and the open-source suites mined for cases
 - [`setup/environment-setup.md`](./setup/environment-setup.md) - Local environment setup
 - [`setup/demo_system.md`](./setup/demo_system.md) - Canonical root demo commands and run orchestration
-- [`setup/publishing.md`](./setup/publishing.md) - Publishing workflow
+- [`setup/publishing.md`](./setup/publishing.md) - Publishing workflow and CI npm auth, including the [token mode](./setup/publishing.md#token-mode)
 - [`setup/publishable_packages.md`](./setup/publishable_packages.md) - Publishable package inventory
 - [`setup/library-packaging-strategy.md`](./setup/library-packaging-strategy.md) - Packaging strategy for bundler reliability and runtime boundary contracts
 - [`setup/cdn_usage.md`](./setup/cdn_usage.md) - CDN and loader usage
-- [`setup/npm_token_setup.md`](./setup/npm_token_setup.md) - npm token setup

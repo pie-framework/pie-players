@@ -6,16 +6,14 @@ Source of truth for lockstep release membership:
 
 - `.changeset/config.json`
 
-Release validation also checks package artifacts via:
-
-- `scripts/check-pack-exports.mjs`
-- `scripts/check-pack-smoke.mjs`
+Release validation checks package artifacts with `scripts/check-pack-integrity.mjs`
+(`check:pack-integrity:real`, run by `verify:publish`).
 
 All packages in this inventory participate in the fixed lockstep release set.
 While the project remains on the pre-1.0 `0.x.y` line, releases are patch-only;
 see [`publishing.md`](./publishing.md) for the full policy.
 
-Publishable packages (44):
+Publishable packages:
 
 - `@pie-players/pie-assessment-player`
 - `@pie-players/pie-assessment-toolkit`

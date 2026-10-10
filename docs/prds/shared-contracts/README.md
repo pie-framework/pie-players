@@ -38,9 +38,8 @@ Recommended review and implementation order:
      `score-components-and-section-outcomes` and `media-asset-contract` can
      proceed in parallel.
 2. [`score-components-and-section-outcomes`](./score-components-and-section-outcomes.md)
-   - Alignment to `OutcomeResponse`, `SessionScore`, item completion,
-     `TestAttemptSession`, `SectionControllerSessionState`, and
-     `AssessmentSession`.
+   - Alignment to `OutcomeResponse`, item completion, `TestAttemptSession`,
+     `SectionControllerSessionState`, and `AssessmentSession`.
    - Missing section/assessment score and completion rollup projections.
    - **Partly overtaken (2026-08-15).** The [formative delivery
      contract](../formative-delivery-contract.md) ships an item aggregation and a

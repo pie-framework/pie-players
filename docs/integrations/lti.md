@@ -145,8 +145,8 @@ Most LTI launches render inside an LMS iframe. Plan for that environment:
 - Set `frame-ancestors` to the LMS/platform origins that may embed the tool.
 - Validate item element registries and bundle/CDN origins before passing content
   to the player.
-- Keep `trust-markup` off unless the host has already validated all item and
-  passage markup through a trusted content pipeline.
+- Keep the item player's `trust-markup` off unless the host has already
+  validated all item and passage markup through a trusted content pipeline.
 
 ## What The Demo Proves
 

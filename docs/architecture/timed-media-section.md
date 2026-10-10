@@ -28,10 +28,10 @@ Three things in this note are now settled rather than open, and one is corrected
   on its merits rather than by inertia.
 - **The 2026-08-05 objection in item 4 stands and was honoured**: nothing about cue
   gating touches the canonical `Stage` vocabulary.
-- **Composition authoring has an owner, and it is not this repo.** The
+- **Composition authoring lives outside this repo.** The
   [Authoring Model](#authoring-model) table's "likely in `pie-players` or a companion
-  authoring package" is settled as `kds/composer`, which already owns item and passage
-  authoring and already assembles and previews an `AssessmentSection`. The authored
+  authoring package" is settled as a separate authoring application that already owns
+  item and passage authoring and already assembles and previews an `AssessmentSection`. The authored
   artifact is PIE-native `timedMedia` rather than QTI-with-cues, and the editor
   requires the stimulus media resolvable to a playable URL. The PRD stays in
   `pie-players`, beside the contract.
@@ -67,7 +67,7 @@ Added 2026-08-07: sign-language (ASL) video came up as a candidate use for this 
 
 ### Revalidation, 2026-08-09
 
-The sign-language work (PIE-880 in `pie-players`, PIE-881 in `pie-api-aws`) left this note's direction intact — the fence in [Sign Language Is Not This Section Flavor](#sign-language-is-not-this-section-flavor) held, and signing shipped through the catalog rail rather than as a section flavor. It moved four things this note describes, none of them a reversal.
+The sign-language work in `pie-players` and `pie-api-aws` left this note's direction intact — the fence in [Sign Language Is Not This Section Flavor](#sign-language-is-not-this-section-flavor) held, and signing shipped through the catalog rail rather than as a section flavor. It moved four things this note describes, none of them a reversal.
 
 **1. The media vocabulary is ratified, and has two shipped consumers rather than one.** [`../prds/shared-contracts/media-asset-contract.md`](../prds/shared-contracts/media-asset-contract.md) is `Accepted` as of 2026-08-09, ratified against this note's own proposed shapes before the release that first publishes the types. Two results bind this side: a cue range is `MediaFragmentRange { startSeconds, endSeconds? }` carried beside the asset, and `video-stimulus` needs nothing `MediaAssetRef` lacks — every field of [`VideoStimulusModel`](#stimulus-api-expectations) below maps onto a shipped one. The second consumer is `SpokenAudioCardPayload`, recorded audio as a `spoken` alternate, which exercised the same shape for `kind: "audio"` without a field change. So the media half of this workstream is inheritance, not design. What remains for the section contract is to say what a cue range *means* — the range type deliberately carries no playback semantics, and a cue's "window in which this cue is active" is not the signing consumer's "play only this slice".
 
@@ -105,7 +105,7 @@ controls are exactly the surface item 4 of the 2026-08-09 revalidation left
 unresolved, and they now have a contract to be built against rather than a gap.
 
 **3. The `content-lead` surface is a second shipped placement precedent.** The
-audio-transcript capability (PIE-902) renders a text alternate full width, above
+audio-transcript capability renders a text alternate full width, above
 the card body, in document flow, on both item and passage cards, while signing
 uses the side-docked `content-media` surface. A timed-media section's captions and
 transcript inherit both geometries rather than inventing a third.
@@ -166,7 +166,7 @@ whether an author can require enforcement and fail closed instead.
 
 PIE already has strong primitives for individual interactive questions, shared passages, section composition, and assessment-level routing. A video-linked assessment stretches those primitives in a useful way: one static media stimulus is paired with multiple normal PIE items, and timestamp cues control when those items appear, pause playback, gate progression, and contribute to an aggregate section outcome.
 
-This is not currently a Renaissance deployment requirement. It is a boundary test for how PIE should grow and a likely gap for users outside Renaissance, such as higher education, online courses, vocational training, HR/compliance training, and other scored/evaluated learning interactions.
+No current deployment requires this. It is a boundary test for how PIE should grow, and a likely gap for higher education, online courses, vocational training, HR/compliance training, and other scored/evaluated learning interactions.
 
 ## Goals
 

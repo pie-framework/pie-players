@@ -83,7 +83,7 @@ the result is the same either way under lockstep.
 | `bun run version` | Apply pending changesets to package versions. |
 | `bun run verify:publish` | Full pre-publish gate (build + every `check:*`). |
 | `bun run release:with-version` | **Canonical local-publish command.** Auto-generates a temporary all-packages patch changeset (lockstep coverage), runs `version`, restores workspace ranges, runs `check:npm-auth` + `verify:publish` + the workspace test suite, publishes via `release`, restores ranges again. Mirrors the CI release path. |
-| `bun run release` | Publish wrapper invoked by `release:with-version` and CI: builds the publishable packages, runs `changeset publish` with workspace ranges resolved, then publishes the preloaded-player bundles. Don't run directly — use `release:with-version`. |
+| `bun run release` | Publish wrapper invoked by `release:with-version` and CI: builds the publishable packages and runs `changeset publish` with workspace ranges resolved. The preloaded-player bundles publish separately, from `publish-preloaded-player.yml`. Don't run directly — use `release:with-version`. |
 | `bun run release:label` / `release:label:push` | Tag a coordinated release wave (annotated tag, default `pie-players-YYYY.MM.DD`). |
 
 ## Local publishing

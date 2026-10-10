@@ -173,13 +173,14 @@ await import("@pie-players/pie-item-player");
 ```
 
 - `tag` is the base tag to register. The element registers under its versioned form, which encodes the version: 13.4.0-next.15 registers as `pie-element-multiple-choice--version-13-4-0-next-15`. Content that authors the package under another base tag, such as `multiple-choice`, renders through the versioned tag the player defines from this registration.
-- `version` is the installed version, exact; a range throws. Reading it from the host's own exact pin, as above, keeps it equal to the installed package.
+- `version` is the installed version, exact; a range throws. Reading it from the host's own exact pin, as above, keeps it equal to the installed package. npm saves a caret range unless the install passes `--save-exact`, and a fresh install can resolve one to another release line: `^13.4.0-next.15` resolves to the legacy `13.4.4`, which has no `./browser/*` modules.
 - Install every pie-elements-ng package from one release, in one `npm install --save-exact` from the same dist-tag, and upgrade them together. Elements whose `./browser/*` builds typeset on `window.MathJax` share the MathJax the first of them loads, in the build and configuration of that element's release. Releases change both, so in a mixed set an element can typeset with a MathJax it was not built for: `@pie-element/multiple-choice` 13.4.0-next.15 loads a build without MathML input, 13.4.0-next.16 one with it. Elements that bundle their own MathJax ([below](#one-mathjax-version-per-page)) share none.
 - A package registers at one version per page, because the players align every authored version of a package to the registered one. Registering a second version throws.
-- `element` is the package's `./browser/delivery` module: `./browser/*` is the npm entry because it resolves React from the element package, so a host does not switch to `./delivery`.
+- `element` is the package's `./browser/delivery` module: `./browser/*` is the npm entry because it resolves React from the element package, so a host does not switch to `./delivery`. Only `@pie-element/*` builds from pie-elements-ng publish `./browser/delivery` and `./browser/controller`.
 - `controller` is the package's `./browser/controller` module. A player that is not hosted runs its `model()` in the browser and warns once per tag registered without one. A hosted player renders server-processed models and needs none.
 - `math` sets where the elements' MathJax loads its fonts and speech data from, and whether math is in the tab order ([MathJax assets](#mathjax-assets)). Elements on adapter 0.1.3 or later render without web fonts and speech when neither it nor the page gives a root or the files' URLs.
 - The call is synchronous and validates every entry, and `math`, before registering any. A tag that is already defined keeps its definition.
+- Under TypeScript, the `package.json` import needs `resolveJsonModule`, and a package version that ships no declarations for `./browser/*` needs a `declare module` shim for those subpaths.
 
 ### Preloaded player builds
 
@@ -249,7 +250,7 @@ ESM builds run MathJax 4 because MathJax 3 ships no ES modules and depends on th
 - MathJax 3 typesetting the page after ESM math rendered typesets MathJax 4's hidden MathML again, so formulas show twice. Page-global and bundled builds alike: the hidden MathML is in the page's DOM either way.
 - MathJax 3 writes its styles to `<style id="MJX-CHTML-styles">`, and so does the MathJax 4 that adapters 0.1.1-next.4 and earlier load; with those, the version that renders second removes the other's stylesheet, and math the first one rendered loses its layout. Later adapters write to their own stylesheet, `PIE-MJX-CHTML-styles` on the page global and `PIE-MJX-CHTML-styles-<n>` bundled, which MathJax 3 leaves in place. MathJax 3's stylesheet still matches the `mjx-*` elements of both and tightens their spacing, and the adapter reports it as `foreign-output-stylesheet`.
 
-A host that runs MathJax 3 for its own content keeps PIE on `iife`, or uses element builds with their own MathJax and typesets only its own containers. Testing and results are tracked in [PIE-1108](https://illuminate.atlassian.net/browse/PIE-1108).
+A host that runs MathJax 3 for its own content keeps PIE on `iife`, or uses element builds with their own MathJax and typesets only its own containers.
 
 ## Section player integration
 
@@ -266,7 +267,7 @@ const player = document.querySelector("pie-section-player-splitpane");
 player.runtime = { playerType: "preloaded" };
 ```
 
-`player-type` carries the resolved value internally — `PieSectionPlayerBaseElement` to `<pie-assessment-toolkit>` to the item player — and is not an attribute on `<pie-section-player-splitpane>` or `<pie-section-player-vertical>`. `<pie-assessment-player>` does accept a `player-type` attribute, and maps it onto the section player's `runtime.playerType`.
+`player-type` carries the resolved value internally — `PieSectionPlayerBaseElement` to `<pie-assessment-toolkit>` to the item player — and is not an attribute on `<pie-section-player-splitpane>` or `<pie-section-player-vertical>`. `<pie-assessment-player-default>` accepts a `player-type` attribute, and maps it onto the section player's `runtime.playerType`.
 
 In the demo apps, use query parameters to switch strategies:
 

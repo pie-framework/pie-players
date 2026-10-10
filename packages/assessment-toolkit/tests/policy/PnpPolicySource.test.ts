@@ -397,18 +397,22 @@ describe("PnpPolicySource — 8-level precedence", () => {
 		} as AssessmentEntity;
 
 		expect([
-			...new PnpPolicySource(createTestToolRegistry()).apply({ assessment })
-				.unmappedSupportIds,
+			...new PnpPolicySource(createTestToolRegistry()).unknownSupportIds(
+				assessment,
+				[],
+			),
 		]).toEqual([["customSupport", ["pnp-support"]]]);
 		expect(
-			new PnpPolicySource(new ToolRegistry()).apply({ assessment })
-				.unmappedSupportIds.size,
+			new PnpPolicySource(new ToolRegistry()).unknownSupportIds(assessment, [])
+				.size,
 		).toBe(0);
 	});
 
 	test("an unregistered id is reported with every list that names it, in precedence order", () => {
-		const result = new PnpPolicySource(createTestToolRegistry()).apply({
-			assessment: {
+		const unknown = new PnpPolicySource(
+			createTestToolRegistry(),
+		).unknownSupportIds(
+			{
 				id: "a1",
 				personalNeedsProfile: {
 					supports: ["typoTool"],
@@ -419,12 +423,9 @@ describe("PnpPolicySource — 8-level precedence", () => {
 					testAdministration: { toolOverrides: { overrideTypo: true } },
 				},
 			} as AssessmentEntity,
-			item: {
-				id: "q1",
-				settings: { restrictedTools: ["itemTypo"] },
-			} as never,
-		});
-		expect([...result.unmappedSupportIds]).toEqual([
+			[{ restrictedTools: ["itemTypo"] }],
+		);
+		expect([...unknown]).toEqual([
 			["typoTool", ["district-block", "pnp-support"]],
 			["overrideTypo", ["test-admin-override"]],
 			["itemTypo", ["item-restriction"]],

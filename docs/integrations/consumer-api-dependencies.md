@@ -265,6 +265,21 @@ still sets `mode` and an apply `message`, which the panel ignores, and builds th
 entry untyped, so nothing fails to compile; importing the type would make both
 excess properties. Row verification dates are unchanged.
 
+Also on 2026-10-09 `tool-policy.unknownSupportId` moved off the toolbar and
+feature decisions onto the policy engine's resolved inputs
+(`getPolicyInputs().diagnostics`). It is computed once per change to the
+assessment, an item's settings or the registry's tools, whatever the PNP
+enforcement, and the coordinator reports it through `onPolicyDiagnostic` at that
+change, so registering a tool the profile names clears it and emits an
+`"inputs"` change. The resolved inputs gained `assessmentExpected`, which the
+PNP debugger reads with the placement in place of the coordinator's config.
+`PnpPolicyResult.unmappedSupportIds` is removed. Checked against the checkouts of
+Hosts A, M, P, R and V, each scan reaching `@pie-players` imports, and Host A's
+and Host P's feature branches: no host reads a decision's diagnostics, the
+resolved inputs or the policy-engine subpath. Host R re-reads its feature
+decisions on every `onPolicyChange`, which now also fires on such a registration,
+and its PNP debugger mount keeps its props. Row verification dates are unchanged.
+
 Also on 2026-10-09 the section-player layouts' `element-preload-retry` and
 `element-preload-error` events started bubbling and crossing shadow boundaries,
 as the player's other events do; they were dispatched on the layout element

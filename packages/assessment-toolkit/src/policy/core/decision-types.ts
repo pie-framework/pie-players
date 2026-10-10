@@ -71,7 +71,9 @@ export interface ToolPolicyDecisionRequest {
  *
  * `tool-policy.unknownSupportId` fires for each id a profile, district
  * policy, test administration or item names that no tool is registered under.
- * `details` is {@link UnknownSupportIdDetails}.
+ * It describes the inputs, so the engine reports it on its resolved inputs'
+ * `diagnostics` rather than on a decision. `details` is
+ * {@link UnknownSupportIdDetails}.
  *
  * `tool-policy.itemSettingNotApplied` fires on a section-, assessment- or
  * passage-level decision for each tool on that toolbar a mounted item's
@@ -160,7 +162,10 @@ export interface ToolPolicyDiagnosticDetails {
 export type ToolPolicyDiagnostic = {
 	[C in ToolPolicyDiagnosticCode]: {
 		code: C;
-		/** The toolbar level decided; absent on a feature decision. */
+		/**
+		 * The toolbar level decided; absent on a feature decision and on an input
+		 * diagnostic.
+		 */
 		level?: ToolPlacementLevel;
 		toolId: string;
 		message: string;

@@ -692,26 +692,43 @@ describe("derivePnpPanelData", () => {
 		expect(withOne.determination.runtimeContext.assessmentBound).toBe(true);
 	});
 
-	test("expects an assessment unless the toolkit's own coordinator leaves enforcement unset", () => {
-		const expected = (
-			config: { assessmentOptional?: boolean },
-			pnpEnforcementOverride: "on" | "off" | null,
-		) =>
+	test("expects an assessment as the engine's resolved inputs say", () => {
+		const expected = (coordinator: PolicyPanelCoordinator) =>
 			derivePnpPanelData({
 				sectionData: { id: "s1" },
 				roleType: "candidate",
 				floatingTools: [],
 				defaultPnpProfile: DEFAULT_PNP,
-				coordinator: {
-					config,
-					getPolicyInputs: () =>
-						({ assessment: null, pnpEnforcementOverride }) as never,
-				},
+				coordinator,
 			}).determination.runtimeContext.assessmentExpected;
-		expect(expected({}, null)).toBe(true);
-		expect(expected({ assessmentOptional: true }, null)).toBe(false);
-		expect(expected({ assessmentOptional: true }, "off")).toBe(false);
-		expect(expected({ assessmentOptional: true }, "on")).toBe(true);
+		const withInputs = (assessmentExpected: boolean): PolicyPanelCoordinator => ({
+			getPolicyInputs: () =>
+				({ assessment: null, assessmentExpected }) as never,
+		});
+		expect(expected(withInputs(true))).toBe(true);
+		expect(expected(withInputs(false))).toBe(false);
+		expect(expected({})).toBe(true);
+	});
+
+	test("lists the engine's input diagnostics with the decisions'", () => {
+		const unknown: ToolPolicyDiagnostic = {
+			code: "tool-policy.unknownSupportId",
+			toolId: "magnification",
+			message: "unknown",
+			details: { origins: ["pnp-support"] },
+		};
+		const data = derivePnpPanelData({
+			sectionData: { id: "s1" },
+			roleType: "candidate",
+			floatingTools: [],
+			defaultPnpProfile: DEFAULT_PNP,
+			coordinator: {
+				getPolicyInputs: () =>
+					({ assessment: null, diagnostics: [unknown] }) as never,
+				decideToolPolicy: () => makeDecision([], makeProvenance([])),
+			},
+		});
+		expect(data.diagnostics).toEqual([unknown]);
 	});
 
 	test("leaves the binding unstated when the coordinator exposes no inputs", () => {

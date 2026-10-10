@@ -51,8 +51,6 @@ export interface PolicyPanelCoordinator {
 	updateToolConfig?: (toolId: string, updates: Record<string, unknown>) => void;
 	updateAssessment?: (assessment: unknown) => void;
 	setPnpEnforcement?: (mode: PnpEnforcementMode | null) => void;
-	/** Set on the coordinator `<pie-assessment-toolkit>` builds for itself. */
-	config?: { assessmentOptional?: boolean };
 	catalogResolver?: {
 		getStatistics?: () => {
 			totalCatalogs?: number;
@@ -526,9 +524,7 @@ export function derivePnpPanelData(inputs: PnpPanelInputs): PnpPanelData {
 	const assessmentBound = policyInputs
 		? policyInputs.assessment != null
 		: undefined;
-	const assessmentExpected =
-		coordinator?.config?.assessmentOptional !== true ||
-		policyInputs?.pnpEnforcementOverride === "on";
+	const assessmentExpected = policyInputs?.assessmentExpected ?? true;
 
 	return {
 		pnpProfile: profile,
@@ -545,7 +541,7 @@ export function derivePnpPanelData(inputs: PnpPanelInputs): PnpPanelData {
 			effective: policyInputs?.pnpEnforcement ?? "unknown",
 			selection: policyInputs?.pnpEnforcementOverride ?? "auto",
 		},
-		diagnostics: collectDiagnostics(decisions),
+		diagnostics: collectDiagnostics(policyInputs?.diagnostics ?? [], decisions),
 		determination: {
 			source,
 			checked: presentPolicyInputs(policyInputs?.assessment, sectionData),
@@ -582,20 +578,26 @@ function sectionPassageIds(
 	return [...new Set(ids.filter(Boolean))];
 }
 
-function collectDiagnostics(decisions: PanelDecisions): ToolPolicyDiagnostic[] {
+/** The engine's input diagnostics, then each decision's, once per code, tool and item. */
+function collectDiagnostics(
+	inputDiagnostics: readonly ToolPolicyDiagnostic[],
+	decisions: PanelDecisions,
+): ToolPolicyDiagnostic[] {
 	const seen = new Set<string>();
 	const out: ToolPolicyDiagnostic[] = [];
+	const add = (diagnostic: ToolPolicyDiagnostic) => {
+		const itemId = isRecord(diagnostic.details)
+			? String(diagnostic.details.itemId ?? "")
+			: "";
+		const key = `${diagnostic.code}\0${diagnostic.toolId}\0${itemId}`;
+		if (seen.has(key)) return;
+		seen.add(key);
+		out.push(diagnostic);
+	};
+	inputDiagnostics.forEach(add);
 	for (const level of TOOL_PLACEMENT_LEVELS) {
 		for (const decision of decisions[level] ?? []) {
-			for (const diagnostic of decision?.diagnostics ?? []) {
-				const itemId = isRecord(diagnostic.details)
-					? String(diagnostic.details.itemId ?? "")
-					: "";
-				const key = `${diagnostic.code}\0${diagnostic.toolId}\0${itemId}`;
-				if (seen.has(key)) continue;
-				seen.add(key);
-				out.push(diagnostic);
-			}
+			decision?.diagnostics?.forEach(add);
 		}
 	}
 	return out;

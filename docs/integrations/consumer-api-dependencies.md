@@ -309,6 +309,18 @@ its own coordinator, and Host A's sections carry identifiers. The
 section-controller reads above were corrected the same day. Row verification
 dates are unchanged.
 
+Also on 2026-10-09 the toolbar and the inline read-aloud tool stopped linking
+Google Fonts' Roboto. The NDS button links `ui.renaissance.com`'s Roboto when the
+page links no stylesheet whose URL contains `Roboto`, and its link was in place
+first on every page that renders one, so the Google link was never added; that
+CDN serves the font files to Renaissance origins only. `toolkit-ready` firing
+for every section the toolkit initializes, ahead of `section-ready`, is now
+documented as the contract. Checked against the checkouts of Hosts A, M, P, R and
+V, each scan reaching `@pie-players` imports, and Host P's feature branch: Host A
+alone sets `nds-icons`, links no Roboto or Font Awesome stylesheet and serves from
+a Renaissance origin, so its buttons keep the Roboto and Font Awesome Free they
+load today. Row verification dates are unchanged.
+
 The 2026-09-17 session-commit change (PIE-1058) was checked against the
 recorded rows rather than re-derived from the checkouts. It renames and removes
 nothing: `pie-item-player` gains one opt-in property, `session-snapshot`, one

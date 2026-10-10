@@ -336,11 +336,12 @@ emits among the host's own assets. The base policy sets no `worker-src`, so
 `'strict-dynamic'` in `script-src` admits the worker; a policy that sets
 `worker-src` or `child-src` lists `'self'` there. Toolbars that
 render Font Awesome icons load Font Awesome Free from `cdn.jsdelivr.net` when
-the page has no Font Awesome stylesheet, and Roboto from `fonts.googleapis.com`
-when it has no Roboto stylesheet. A page showing those toolbars adds
-`https://cdn.jsdelivr.net https://fonts.googleapis.com` to `style-src` and
-`https://cdn.jsdelivr.net https://fonts.gstatic.com` to `font-src`, or supplies
-both stylesheets itself. A page that links Font Awesome Pro gets the design's
+the page has no Font Awesome stylesheet, and their NDS buttons load Roboto from
+`ui.renaissance.com` when it has no stylesheet whose URL contains `Roboto`. That
+CDN serves the font files to Renaissance origins only. A page showing those
+toolbars adds `https://cdn.jsdelivr.net https://ui.renaissance.com` to
+`style-src` and `font-src`, or supplies both stylesheets itself; a page off a
+Renaissance origin links its own Roboto. A page that links Font Awesome Pro gets the design's
 Light glyphs; with Free, its own or the toolbar's, they render in Solid.
 
 In Firefox the ESM strategy loads through es-module-shims whenever the browser

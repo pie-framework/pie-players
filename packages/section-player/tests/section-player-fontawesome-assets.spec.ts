@@ -1,10 +1,11 @@
 import { expect, type Locator, type Page, test } from "@playwright/test";
 
 /**
- * The demos link FA Pro in their own document head, which the toolbar and the
- * read-aloud trigger detect and reuse. Most of these tests strip those links,
- * the setup of a host that links no FontAwesome: the players then add FA Free
- * and render every NDS glyph in Solid, the one Free weight carrying them all.
+ * The demos link FA Pro and Roboto in their own document head, which the
+ * toolbar and the read-aloud trigger detect and reuse. Most of these tests
+ * strip those links, the setup of a host that links no FontAwesome: the
+ * players then add FA Free and render every NDS glyph in Solid, the one Free
+ * weight carrying them all.
  */
 const desmosStub = `window.Desmos = Object.fromEntries(
 	["GraphingCalculator", "ScientificCalculator", "FourFunctionCalculator"].map((name) => [
@@ -23,10 +24,14 @@ const asHostWithoutFontAwesome = async (
 		if (url.pathname.startsWith("/_fa-pro/")) requests.push(url.pathname);
 		if (url.pathname.includes("/@fortawesome/fontawesome-free"))
 			requests.push("fa-free");
-		if (/roboto/i.test(request.url())) requests.push("roboto");
+		if (request.resourceType() === "stylesheet" && /roboto/i.test(url.href))
+			requests.push(`roboto:${url.hostname}`);
 	});
 	await page.route("**/_fa-pro/**", (route) =>
 		route.fulfill({ status: 404, body: "" }),
+	);
+	await page.route("https://ui.renaissance.com/fonts/Roboto/**", (route) =>
+		route.fulfill({ status: 200, contentType: "text/css", body: "" }),
 	);
 	await page.route("**/@fortawesome/fontawesome-free@*/**", (route) =>
 		faFreeLoads
@@ -42,7 +47,7 @@ const asHostWithoutFontAwesome = async (
 		if (route.request().resourceType() !== "document") return route.fallback();
 		const response = await route.fetch();
 		const body = (await response.text()).replace(
-			/<link rel="stylesheet" href="\/_(?:fa-pro|roboto)\/[^"]*" \/>/g,
+			/<link rel="stylesheet" href="\/_(?:fa-pro|fonts\/Roboto)\/[^"]*" \/>/g,
 			"",
 		);
 		await route.fulfill({ response, body });
@@ -123,6 +128,10 @@ test.describe("FontAwesome assets on a host that links none", () => {
 		expect(
 			requests.filter((request) => request.startsWith("/_fa-pro/")),
 		).toEqual([]);
+		// The NDS buttons link Renaissance's Roboto, once between them.
+		expect(requests.filter((request) => request.startsWith("roboto"))).toEqual([
+			"roboto:ui.renaissance.com",
+		]);
 
 		// Free's Regular font lacks the window controls' icons, which drew as
 		// boxes before they moved to Solid.
@@ -157,9 +166,11 @@ test.describe("FontAwesome assets on a host that links none", () => {
 	});
 });
 
-test.describe("FontAwesome assets on a host that links FA Pro", () => {
-	test("NDS icon buttons keep the design weights", async ({ page }) => {
-		await page.route("**/_fa-pro/**", (route) =>
+test.describe("FontAwesome assets on a host that links FA Pro and Roboto", () => {
+	test("NDS icon buttons keep the design weights and fetch nothing", async ({
+		page,
+	}) => {
+		await page.route(/\/_(?:fa-pro|fonts\/Roboto)\//, (route) =>
 			route.fulfill({ status: 200, contentType: "text/css", body: "" }),
 		);
 		await page.route("https://www.desmos.com/api/**/calculator.js**", (route) =>
@@ -169,10 +180,15 @@ test.describe("FontAwesome assets on a host that links FA Pro", () => {
 				body: desmosStub,
 			}),
 		);
-		const freeRequests: string[] = [];
+		const injectedRequests: string[] = [];
 		page.on("request", (request) => {
-			if (request.url().includes("/@fortawesome/fontawesome-free"))
-				freeRequests.push(request.url());
+			const url = request.url();
+			if (
+				url.includes("/@fortawesome/fontawesome-free") ||
+				url.includes("fonts.googleapis.com") ||
+				url.includes("ui.renaissance.com")
+			)
+				injectedRequests.push(url);
 		});
 		await page.goto(NDS_ICON_PAGE, { waitUntil: "networkidle" });
 		const toolbar = page.locator("pie-item-toolbar").first();
@@ -184,6 +200,6 @@ test.describe("FontAwesome assets on a host that links FA Pro", () => {
 		const shell = page.locator('[data-pie-tool-shell="calculator"]').first();
 		await expect(shell).toBeVisible();
 		expect(await glyphWeights(shell)).toEqual(["fa-regular"]);
-		expect(freeRequests).toEqual([]);
+		expect(injectedRequests).toEqual([]);
 	});
 });

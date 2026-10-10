@@ -63,16 +63,15 @@
 
 	const isBrowser = typeof window !== 'undefined';
 
-	// ── FontAwesome + Roboto wiring for <nds-icon-button> ─────────────────────
-	// The vendored NDS button expects Roboto, and every glyph here is FA Solid,
-	// which FA Free carries. Mirror @pie-players/pie-assessment-toolkit's
-	// ItemToolBar: add the stylesheets to document <head> unless the host links
-	// its own, then clone the FA <link>s into this element's shadow root
-	// (document-head styles don't cross the shadow boundary).
+	// ── FontAwesome wiring for <nds-icon-button> ──────────────────────────────
+	// Every glyph here is FA Solid, which FA Free carries. Mirror
+	// @pie-players/pie-assessment-toolkit's ItemToolBar: add FA Free to document
+	// <head> unless the host links its own FA, then clone the FA <link>s into this
+	// element's shadow root (document-head styles don't cross the shadow
+	// boundary). Roboto comes from the vendored button, as the ItemToolBar
+	// describes.
 	const FA_FREE_HREF =
 		'https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.5.2/css/all.min.css';
-	const ROBOTO_HREF =
-		'https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap';
 	const FA_HREF_PATTERN = /font.?awesome|fa-?pro/i;
 	// A stylesheet that fails to load stays in <head> marked
 	// `data-pie-load-failed`: no later call requests it again, and no shadow root
@@ -91,12 +90,8 @@
 		);
 		document.head.appendChild(link);
 	};
-	// Roboto serves <nds-icon-button> only.
-	const ensureFaAssets = (forNdsButton: boolean) => {
+	const ensureFaAssets = () => {
 		if (!isBrowser) return;
-		if (forNdsButton && !document.querySelector('link[href*="Roboto"]')) {
-			appendHeadStylesheet(ROBOTO_HREF);
-		}
 		const hostHasFa = Array.from(
 			document.querySelectorAll<HTMLLinkElement>('link[rel="stylesheet"][href]'),
 		).some((link) => FA_HREF_PATTERN.test(link.href));
@@ -148,7 +143,7 @@
 	// Solid is the weight FA Free ships, so it renders even without FA Pro. The
 	// swap re-applies whenever Lit rewrites the icon class (e.g. play↔pause).
 	const ndsIconButtonAction = (node: HTMLElement) => {
-		ensureFaAssets(true);
+		ensureFaAssets();
 		installFaInShadow(node);
 		const applySolid = () => {
 			for (const icon of node.querySelectorAll<HTMLElement>('i.fa-light')) {
@@ -210,7 +205,7 @@
 	// NDS trigger), but skip the fa-light→fa-solid swap since the fallback
 	// authors its glyphs as `fa-solid` directly.
 	const faAssetsAction = (node: HTMLElement) => {
-		ensureFaAssets(false);
+		ensureFaAssets();
 		installFaInShadow(node);
 		return {};
 	};

@@ -91,15 +91,6 @@ export interface PnpPolicyResult {
 	 */
 	decisions: PnpPolicyDecisionEvent[];
 	/**
-	 * Ids named by a profile, district policy, test administration or item that
-	 * no tool is registered under, each with the rules whose lists name it, in
-	 * precedence order. Nothing resolves them; the engine turns each into a
-	 * `tool-policy.unknownSupportId` diagnostic. Empty when the registry is: an
-	 * empty registry has nothing to check an id against, and
-	 * `tool-config-validation` already reports it once.
-	 */
-	unmappedSupportIds: Map<string, PnpPolicySourceRule[]>;
-	/**
 	 * Ids a `true` test-administration override names that an item restriction
 	 * or a PNP prohibition withdrew instead, each with the rule that did. The
 	 * engine turns each into a `tool-policy.overrideBlocked` diagnostic.
@@ -192,11 +183,6 @@ export class PnpPolicySource {
 			mandates: new Map(),
 			perToolFlags: new Map(),
 			decisions: [],
-			unmappedSupportIds: this.unmappedIds(
-				pnp,
-				settings,
-				itemSettings,
-			),
 			blockedOverrides: new Map(),
 			sources: {},
 		};
@@ -407,26 +393,31 @@ export class PnpPolicySource {
 	}
 
 	/**
-	 * The named ids no tool is registered under, with the rules naming each in
-	 * precedence order. A support id is the id of the tool it grants, so an id
-	 * missing from the registry matches nothing placed.
+	 * Ids the assessment or any of `items` names that no tool is registered
+	 * under, each with the rules whose lists name it, in precedence order. A
+	 * support id is the id of the tool it grants, so an id missing from the
+	 * registry matches nothing placed; the engine turns each into a
+	 * `tool-policy.unknownSupportId` diagnostic. Empty when the registry is: an
+	 * empty registry has nothing to check an id against, and
+	 * `tool-config-validation` already reports it once.
 	 */
-	private unmappedIds(
-		pnp: PersonalNeedsProfile | undefined,
-		settings: AssessmentSettings | undefined,
-		itemSettings: ItemSettings | undefined,
+	unknownSupportIds(
+		assessment: AssessmentEntity | null | undefined,
+		items: readonly ItemSettings[],
 	): Map<string, PnpPolicySourceRule[]> {
 		const unmapped = new Map<string, PnpPolicySourceRule[]>();
 		if (this.toolRegistry.getAllTools().length === 0) return unmapped;
+		const pnp = assessment?.personalNeedsProfile;
+		const settings = assessment?.settings as AssessmentSettings | undefined;
 		const named: Array<[PnpPolicySourceRule, readonly string[] | undefined]> = [
 			["district-block", settings?.districtPolicy?.blockedTools],
 			[
 				"test-admin-override",
 				Object.keys(settings?.testAdministration?.toolOverrides ?? {}),
 			],
-			["item-restriction", itemSettings?.restrictedTools],
+			["item-restriction", items.flatMap((item) => item.restrictedTools ?? [])],
 			["pnp-prohibited", pnp?.prohibitedSupports],
-			["item-requirement", itemSettings?.requiredTools],
+			["item-requirement", items.flatMap((item) => item.requiredTools ?? [])],
 			["district-requirement", settings?.districtPolicy?.requiredTools],
 			["pnp-support", pnp?.supports],
 		];

@@ -313,8 +313,8 @@ console.log('Allowed tools:', allowedToolIds);
 // - calculator: Blocked by district policy (#1)
 // - textToSpeech: Restricted for this item (#3), which outranks the district requirement (#7)
 // - annotationToolbar: Placed at item level and granted by the profile
-// - magnification: No tool is registered under it; the decision carries a
-//   `tool-policy.unknownSupportId` diagnostic
+// - magnification: No tool is registered under it; the coordinator's
+//   `getPolicyInputs().diagnostics` carries a `tool-policy.unknownSupportId`
 // - lineReader: Granted, but this configuration places it at passage level only
 // - The passage toolbar still shows textToSpeech: item settings reach only the
 //   item's own toolbar, and the decision carries a

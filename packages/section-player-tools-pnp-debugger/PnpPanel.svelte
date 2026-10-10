@@ -97,7 +97,9 @@
 	});
 
 	function placementIds(level: 'section' | 'item' | 'passage'): string[] {
-		const ids = toolkitCoordinator?.config?.tools?.placement?.[level];
+		const ids = (toolkitCoordinator as PolicyPanelCoordinator | null)
+			?.getPolicyInputs?.()
+			?.tools?.placement?.[level];
 		return Array.isArray(ids) ? [...ids] : [];
 	}
 

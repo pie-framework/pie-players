@@ -204,12 +204,6 @@ export function composeDecision(
 			});
 		}
 
-		// An id no tool is registered under matches nothing placed, so whatever it
-		// names is absent with no trace of why. Reported per decision because the
-		// ids arrive with the profile and settings, after the tools config.
-		for (const [supportId, origins] of pnpPolicyResult.unmappedSupportIds) {
-			diagnostics.push(unknownSupportIdDiagnostic(supportId, origins, request.level));
-		}
 		for (const [toolId, rule] of pnpPolicyResult.blockedOverrides) {
 			diagnostics.push(overrideBlockedDiagnostic(toolId, rule, request.level));
 		}
@@ -464,18 +458,16 @@ export function overrideBlockedDiagnostic(
 
 /**
  * A `tool-policy.unknownSupportId` diagnostic for an id the registry lacks,
- * attributed to the highest-precedence rule naming it. `level` is absent on a
- * feature decision, which has no toolbar level.
+ * naming every list that names it. It describes the engine's inputs rather
+ * than a decision, so it carries no level.
  */
 export function unknownSupportIdDiagnostic(
 	supportId: string,
 	origins: readonly PnpPolicySourceRule[],
-	level?: ToolPlacementLevel,
 ): ToolPolicyDiagnostic {
 	const fields = origins.map((rule) => PNP_RULE_FIELDS[rule]).join(", ");
 	return {
 		code: "tool-policy.unknownSupportId",
-		...(level ? { level } : {}),
 		toolId: supportId,
 		message: `No tool is registered under "${supportId}", named in ${fields}, so it matches nothing. These lists name tools by tool id.`,
 		details: { origins: [...origins] },

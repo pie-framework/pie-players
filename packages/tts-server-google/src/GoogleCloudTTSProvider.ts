@@ -306,23 +306,28 @@ export class GoogleCloudTTSProvider extends BaseTTSProvider {
 				request.includeSpeechMarks !== false &&
 				this.isStudioMarkUnsupportedError(error)
 			) {
-				return respond(await this.synthesizeAudio(request, voice), []);
+				return respond(await this.synthesizeAudio(request, voice, true), []);
 			}
 			throw this.mapGoogleErrorToTTSError(error);
 		}
 	}
 
 	/**
-	 * Synthesize audio stream only (no speech marks)
+	 * Synthesize audio stream only (no speech marks). A Studio voice takes
+	 * `<prosody>` rate but not pitch, so its request drops pitch.
 	 */
 	private async synthesizeAudio(
 		request: SynthesizeRequest,
 		voice: string,
+		studio = this.isStudioVoice(voice),
 	): Promise<{ audio: Buffer; contentType: string }> {
 		if (this.detectSSML(request.text) && this.enableLogging) {
 			console.log("[GoogleCloudTTS] Detected SSML content");
 		}
-		const { text, isSsml } = this.applyProsody(request.text, request);
+		const { text, isSsml } = this.applyProsody(
+			request.text,
+			studio ? { ...request, pitch: undefined } : request,
+		);
 
 		const [response] = await this.client.synthesizeSpeech({
 			input: isSsml ? { ssml: text } : { text },
@@ -633,7 +638,7 @@ export class GoogleCloudTTSProvider extends BaseTTSProvider {
 			// W3C Standard features
 			standard: {
 				supportsSSML: true, // ✅ Full SSML 1.1 support
-				supportsPitch: true, // ✅ Via SSML <prosody pitch>
+				supportsPitch: this.voiceType !== "studio", // Via SSML <prosody pitch>; Studio voices lack it
 				supportsRate: true, // ✅ Via SSML <prosody rate>
 				supportsVolume: false, // ❌ Not supported (handle client-side)
 				supportsMultipleVoices: true, // ✅ 200+ voices across 50+ languages

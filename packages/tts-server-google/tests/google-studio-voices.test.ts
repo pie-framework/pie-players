@@ -26,11 +26,15 @@ const recordingClient = (rejectMarks = false) => {
 	return { client, sent };
 };
 
-const initialized = async (client: unknown) => {
+const initialized = async (
+	client: unknown,
+	voiceType?: "wavenet" | "standard" | "studio",
+) => {
 	const provider = googleWithClient(client);
 	await provider.initialize({
 		projectId: "test",
 		credentials: { apiKey: "test" },
+		voiceType,
 	});
 	return provider;
 };
@@ -67,5 +71,69 @@ describe("Google Studio voices", () => {
 			false,
 		]);
 		expect(sent[1].input).toEqual({ text: "Hello world" });
+	});
+});
+
+describe("Google Studio voice pitch", () => {
+	it("apply rate and drop pitch for a Studio voice", async () => {
+		const { client, sent } = recordingClient();
+		const provider = await initialized(client);
+
+		await provider.synthesize({
+			text: "Hello world",
+			voice: "en-US-Studio-O",
+			rate: 1.5,
+			pitch: 1.2,
+		});
+		await provider.synthesize({
+			text: "Hello world",
+			voice: "en-US-Studio-O",
+			pitch: 1.2,
+		});
+
+		expect(sent.map((request) => request.input)).toEqual([
+			{ ssml: '<speak><prosody rate="150%">Hello world</prosody></speak>' },
+			{ text: "Hello world" },
+		]);
+	});
+
+	it("keep pitch for a voice that is not Studio", async () => {
+		const { client, sent } = recordingClient();
+		const provider = await initialized(client);
+
+		await provider.synthesize({
+			text: "Hello world",
+			voice: "en-US-Wavenet-A",
+			pitch: 1.2,
+			includeSpeechMarks: false,
+		});
+
+		expect(sent[0].input).toEqual({
+			ssml: '<speak><prosody pitch="+20%">Hello world</prosody></speak>',
+		});
+	});
+
+	it("drop pitch on the retry after Google rejects marks as a Studio voice", async () => {
+		const { client, sent } = recordingClient(true);
+		const provider = await initialized(client);
+
+		await provider.synthesize({
+			text: "Hello world",
+			voice: "en-US-Neural2-A",
+			pitch: 1.2,
+		});
+
+		expect(sent[0].input.ssml).toContain('<prosody pitch="+20%">');
+		expect(sent[1].input).toEqual({ text: "Hello world" });
+	});
+
+	it("report pitch support unless the voice type is Studio", async () => {
+		const { client } = recordingClient();
+
+		const wavenet = await initialized(client);
+		const studio = await initialized(client, "studio");
+
+		expect(wavenet.getCapabilities().standard.supportsPitch).toBe(true);
+		expect(studio.getCapabilities().standard.supportsPitch).toBe(false);
 	});
 });

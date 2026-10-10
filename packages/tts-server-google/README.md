@@ -183,7 +183,7 @@ GOOGLE_APPLICATION_CREDENTIALS=/path/to/service-account.json
 |---------|---------|
 | Speech Marks | Via SSML marks; none for Studio voices |
 | SSML | Google's supported subset |
-| Pitch Control | SSML |
+| Pitch Control | SSML; none for Studio voices |
 | Rate Control | SSML |
 | Volume Control | Client-side |
 | Max Text Length | 5000 chars |
@@ -221,6 +221,8 @@ Popular voices include:
 
 Studio voices take no SSML `<mark>` tags, so a Studio voice is synthesized as
 audio only and returns `speechMarks: []`, so `ServerTTSProvider` reports no word boundaries for it.
+They take no `<prosody pitch>` either: a Studio request applies `rate` and drops
+`pitch`, and `supportsPitch` is false when `voiceType` is `'studio'`.
 
 Use `getVoices()` for the complete list.
 

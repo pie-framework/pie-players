@@ -19,17 +19,21 @@ mock.module("@pie-players/pie-item-player", () => ({
 	ensureItemPlayerMathRenderingReady,
 }));
 
+// A DOM another file registered stays for that file to unregister.
+let ownsDom = false;
+
 beforeAll(() => {
 	if (
 		typeof (globalThis as unknown as { window?: unknown }).window ===
 		"undefined"
 	) {
 		GlobalRegistrator.register();
+		ownsDom = true;
 	}
 });
 
 afterAll(() => {
-	if (GlobalRegistrator.isRegistered) {
+	if (ownsDom && GlobalRegistrator.isRegistered) {
 		GlobalRegistrator.unregister();
 	}
 });

@@ -35,24 +35,15 @@ const impl: ITTSProviderImplementation = {
 	pause() {},
 	resume() {},
 	stop() {},
-	isPlaying: () => false,
-	isPaused: () => false,
 	updateSettings: () => {},
 };
 
 const provider: ITTSProvider = {
 	providerId: "mock",
-	providerName: "Mock Provider",
-	version: "1.0.0",
 	initialize: async () => impl,
 	getCapabilities: () =>
 		({
-			supportsPause: true,
-			supportsResume: true,
 			supportsWordBoundary: false,
-			supportsVoiceSelection: false,
-			supportsRateControl: false,
-			supportsPitchControl: false,
 		}) as TTSProviderCapabilities,
 	destroy() {},
 };

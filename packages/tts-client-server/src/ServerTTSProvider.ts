@@ -1167,14 +1167,6 @@ class ServerTTSProviderImpl implements ITTSProviderImplementation {
 		this.highlightCursor = -1;
 	}
 
-	isPlaying(): boolean {
-		return this.currentAudio !== null && !this.pausedState;
-	}
-
-	isPaused(): boolean {
-		return this.pausedState;
-	}
-
 	/**
 	 * Update settings dynamically (rate, pitch, voice)
 	 * Note: Server-side synthesis bakes rate, pitch, and voice into the audio and
@@ -1220,8 +1212,6 @@ class ServerTTSProviderImpl implements ITTSProviderImplementation {
  */
 export class ServerTTSProvider implements ITTSProvider {
 	readonly providerId = "server-tts";
-	readonly providerName = "Server TTS";
-	readonly version = "1.0.0";
 
 	private config: ServerTTSProviderConfig | null = null;
 	private adapter: TransportAdapter | null = null;
@@ -1347,12 +1337,8 @@ export class ServerTTSProvider implements ITTSProvider {
 	getCapabilities(): TTSProviderCapabilities {
 		const mode = this.config ? resolveTransportMode(this.config) : "pie";
 		return {
-			supportsPause: true,
-			supportsResume: true,
-			supportsWordBoundary: true, // ✅ Via speech marks from server
-			supportsVoiceSelection: true,
-			supportsRateControl: true,
-			supportsPitchControl: false, // Depends on server provider
+			// Word boundaries come from the server's speech marks.
+			supportsWordBoundary: true,
 			supportsSSML: resolveSupportsSSML(this.config),
 			maxTextLength: MAX_TEXT_LENGTH_BY_MODE[mode],
 		};

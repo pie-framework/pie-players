@@ -71,12 +71,6 @@ class MockTTSImpl implements ITTSProviderImplementation {
 	stop(): void {
 		this.stopCalls += 1;
 	}
-	isPlaying(): boolean {
-		return false;
-	}
-	isPaused(): boolean {
-		return false;
-	}
 	updateSettings(settings: Partial<TTSConfig>): void {
 		this.settingsUpdates.push(settings);
 	}
@@ -158,8 +152,6 @@ const stubGeneratedVisibleText = (
 
 class MockTTSProvider implements ITTSProvider {
 	readonly providerId: string;
-	readonly providerName = "Mock Provider";
-	readonly version = "1.0.0";
 
 	constructor(
 		private impl: ITTSProviderImplementation,
@@ -174,12 +166,7 @@ class MockTTSProvider implements ITTSProvider {
 	}
 	getCapabilities(): TTSProviderCapabilities {
 		return {
-			supportsPause: true,
-			supportsResume: true,
 			supportsWordBoundary: this.supportsWordBoundary,
-			supportsVoiceSelection: true,
-			supportsRateControl: true,
-			supportsPitchControl: true,
 		};
 	}
 	destroy(): void {}
@@ -335,15 +322,12 @@ describe("TTSService structural pauses", () => {
 			] as TTSSpeechSegment[];
 		const highlightedWords: string[] = [];
 		service.setHighlightCoordinator({
-			highlightRange: () => {},
 			highlightTTSWord: (ranges: Range[]) => {
 				highlightedWords.push(ranges.join(""));
 			},
 			highlightTTSSentence: () => {},
 			clearTTS: () => {},
-			clearHighlights: () => {},
-			isSupported: () => true,
-			updateTTSHighlightStyle: () => {},
+			clearTTSWord: () => {},
 		} as any);
 
 		await service.speak(contentWith("Prompt Option B"));
@@ -437,7 +421,6 @@ describe("TTSService structural pauses", () => {
 			}),
 		};
 		service.setHighlightCoordinator({
-			highlightRange: () => {},
 			highlightTTSWord: () => {},
 			highlightTTSSentence: () => {
 				sentenceHighlights += 1;
@@ -445,9 +428,7 @@ describe("TTSService structural pauses", () => {
 			clearTTS: () => {
 				clearCalls += 1;
 			},
-			clearHighlights: () => {},
-			isSupported: () => true,
-			updateTTSHighlightStyle: () => {},
+			clearTTSWord: () => {},
 		} as any);
 
 		try {
@@ -514,15 +495,12 @@ describe("TTSService structural pauses", () => {
 			}),
 		};
 		service.setHighlightCoordinator({
-			highlightRange: () => {},
 			highlightTTSWord: () => {},
 			highlightTTSSentence: (ranges: Range[]) => {
 				sentenceCalls.push(ranges);
 			},
 			clearTTS: () => {},
-			clearHighlights: () => {},
-			isSupported: () => true,
-			updateTTSHighlightStyle: () => {},
+			clearTTSWord: () => {},
 		} as any);
 
 		try {
@@ -743,15 +721,12 @@ describe("TTSService structural pauses", () => {
 		);
 		const highlightedWords: string[] = [];
 		service.setHighlightCoordinator({
-			highlightRange: () => {},
 			highlightTTSWord: (ranges: Range[]) => {
 				highlightedWords.push(ranges.join(""));
 			},
 			highlightTTSSentence: () => {},
 			clearTTS: () => {},
-			clearHighlights: () => {},
-			isSupported: () => true,
-			updateTTSHighlightStyle: () => {},
+			clearTTSWord: () => {},
 		} as any);
 
 		await service.seekForward();
@@ -783,15 +758,12 @@ describe("TTSService structural pauses", () => {
 		);
 		const highlightedWords: string[] = [];
 		service.setHighlightCoordinator({
-			highlightRange: () => {},
 			highlightTTSWord: (ranges: Range[]) => {
 				highlightedWords.push(ranges.join(""));
 			},
 			highlightTTSSentence: () => {},
 			clearTTS: () => {},
-			clearHighlights: () => {},
-			isSupported: () => true,
-			updateTTSHighlightStyle: () => {},
+			clearTTSWord: () => {},
 		} as any);
 		(service as any).configureWordBoundaryHighlighting({
 			highlightMode: "word",
@@ -852,6 +824,49 @@ describe("TTSService structural pauses", () => {
 		expect(impl.stopCalls).toBe(0);
 		expect(impl.speakCalls).toHaveLength(0);
 		expect(service.getState()).toBe(PlaybackState.PLAYING);
+	});
+
+	test("setPlaybackRate while paused writes the rate to the provider and keeps the run paused without restarting it", async () => {
+		const impl = new MockTTSImpl(false);
+		(impl as any).speakSegments = undefined;
+		const service = new TTSService();
+		await service.initialize(new MockTTSProvider(impl, "browser", true));
+		(service as any).state = PlaybackState.PAUSED;
+		(service as any).currentText = "First sentence. Second sentence.";
+		(service as any).seekSegments = [
+			{ text: "First sentence.", startOffset: 0, pauseMsAfter: 0 },
+			{ text: "Second sentence.", startOffset: 16, pauseMsAfter: 0 },
+		] as TTSSpeechSegment[];
+		(service as any).activePlaybackRate = 1;
+
+		await service.setPlaybackRate(1.25);
+
+		expect(impl.settingsUpdates).toContainEqual({ rate: 1.25 });
+		expect(impl.stopCalls).toBe(0);
+		expect(impl.speakCalls).toHaveLength(0);
+		expect(service.getState()).toBe(PlaybackState.PAUSED);
+	});
+
+	test("a seek whose restart fails moves to error and rethrows", async () => {
+		const impl = new MockTTSImpl(true);
+		const service = new TTSService();
+		await service.initialize(new MockTTSProvider(impl));
+		(service as any).state = PlaybackState.PLAYING;
+		(service as any).currentText = "First sentence. Second sentence.";
+		(service as any).seekSegments = [
+			{ text: "First sentence.", startOffset: 0, pauseMsAfter: 0 },
+			{ text: "Second sentence.", startOffset: 16, pauseMsAfter: 0 },
+		] as TTSSpeechSegment[];
+		(service as any).currentBoundaryOffset = 0;
+		const failure = new Error("restart failed");
+		(service as any).speakWithPlan = async () => {
+			throw failure;
+		};
+
+		await expect(service.seekForward()).rejects.toBe(failure);
+
+		expect(service.getState()).toBe(PlaybackState.ERROR);
+		expect((service as any).lastError).toBe("restart failed");
 	});
 
 	test("coalesces overlapping identical rate writes into one update and restart", async () => {
@@ -1106,13 +1121,10 @@ describe("TTSService structural pauses", () => {
 			}),
 		};
 		service.setHighlightCoordinator({
-			highlightRange: () => {},
 			highlightTTSWord: () => {},
 			highlightTTSSentence: (ranges: Range[]) => sentenceCalls.push(ranges),
 			clearTTS: () => {},
-			clearHighlights: () => {},
-			isSupported: () => true,
-			updateTTSHighlightStyle: () => {},
+			clearTTSWord: () => {},
 		} as any);
 
 		try {
@@ -1172,13 +1184,10 @@ describe("TTSService structural pauses", () => {
 			}),
 		};
 		service.setHighlightCoordinator({
-			highlightRange: () => {},
 			highlightTTSWord: () => {},
 			highlightTTSSentence: (ranges: Range[]) => sentenceCalls.push(ranges),
 			clearTTS: () => {},
-			clearHighlights: () => {},
-			isSupported: () => true,
-			updateTTSHighlightStyle: () => {},
+			clearTTSWord: () => {},
 		} as any);
 
 		try {

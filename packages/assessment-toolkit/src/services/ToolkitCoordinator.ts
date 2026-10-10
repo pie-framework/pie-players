@@ -51,11 +51,13 @@ import {
 import { HighlightCoordinator } from "./HighlightCoordinator.js";
 import { ToolCoordinator } from "./ToolCoordinator.js";
 import type { ToolCoordinatorApi } from "./interfaces.js";
-import { TTSService, type ITTSProvider, type TTSConfig } from "./TTSService.js";
+import type { ITTSProvider } from "@pie-players/pie-tts";
+import { TTSService } from "./TTSService.js";
 import {
 	BrowserTTSProvider,
 	browserFallbackConfig,
 } from "./tts/browser-provider.js";
+import type { ToolkitTTSConfig } from "./tts/provider-options.js";
 import {
 	buildRuntimeTTSConfig,
 	resolveTTSBackend,
@@ -2551,17 +2553,15 @@ export class ToolkitCoordinator {
 	}
 
 	/**
-	 * Initialize TTS service with provider
+	 * Initialize the TTS service from the `textToSpeech` tool config.
 	 */
-	public async ensureTTSReady(
-		config?: TextToSpeechToolProviderConfig,
-	): Promise<void> {
+	public async ensureTTSReady(): Promise<void> {
 		this.assertNotDisposed();
 		await this.waitForPendingTTSReconfigure();
 		this.assertNotDisposed();
 		if (this.ttsInitialized) return;
 		if (this.ttsInitPromise) return this.ttsInitPromise;
-		this.ttsInitPromise = this._initializeTTS(config)
+		this.ttsInitPromise = this._initializeTTS()
 			.then(() => this.assertNotDisposed())
 			.finally(() => {
 				this.ttsInitPromise = undefined;
@@ -2578,11 +2578,9 @@ export class ToolkitCoordinator {
 		}
 	}
 
-	private async _initializeTTS(
-		config?: TextToSpeechToolProviderConfig,
-	): Promise<void> {
+	private async _initializeTTS(): Promise<void> {
 		if (this.ttsInitialized) return;
-		const resolvedToolConfig = this.resolveTTSToolConfig(config);
+		const resolvedToolConfig = this.resolveTTSToolConfig();
 		const runtimeSettings = resolveTTSRuntimeSettings(resolvedToolConfig);
 		const resolvedBackend = resolveTTSBackend(runtimeSettings);
 		const runtimeTTSConfig = buildRuntimeTTSConfig(runtimeSettings);
@@ -2678,15 +2676,13 @@ export class ToolkitCoordinator {
 		}
 	}
 
-	private resolveTTSToolConfig(
-		config?: TextToSpeechToolProviderConfig,
-	): TextToSpeechToolProviderConfig {
-		return config || this.getTTSConfigFromProviders() || {};
+	private resolveTTSToolConfig(): TextToSpeechToolProviderConfig {
+		return this.getTTSConfigFromProviders() || {};
 	}
 
 	private async initializeTTSService(
 		provider: ITTSProvider,
-		config: Partial<TTSConfig>,
+		config: Partial<ToolkitTTSConfig>,
 	): Promise<void> {
 		const nextProviderOptions = {
 			...config.providerOptions,
@@ -2700,7 +2696,7 @@ export class ToolkitCoordinator {
 				});
 			},
 		};
-		const nextConfig: Partial<TTSConfig> = {
+		const nextConfig: Partial<ToolkitTTSConfig> = {
 			...config,
 			providerOptions: nextProviderOptions,
 		};
@@ -2764,7 +2760,7 @@ export class ToolkitCoordinator {
 	 */
 	private async startTTSForReadiness(): Promise<void> {
 		try {
-			await this.ensureTTSReady(this.getTTSConfigFromProviders());
+			await this.ensureTTSReady();
 		} catch (error) {
 			if (error instanceof ToolkitCoordinatorDisposedError) throw error;
 			if (this.isToolGranted("textToSpeech")) throw error;

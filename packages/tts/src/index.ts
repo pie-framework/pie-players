@@ -8,10 +8,8 @@
 export type {
 	ITTSProvider,
 	ITTSProviderImplementation,
-	StandardTTSConfig,
 	TTSSpeechSegment,
 	TTSConfig,
-	TTSConfigExtensions,
 	TTSProviderCapabilities,
 	TTSProviderOptions,
 } from "./provider-interface.js";

@@ -20,7 +20,6 @@
 		connectToolRegionScopeContext,
 		connectToolRuntimeContext,
 		connectToolShellContext,
-		PIE_TTS_CONTROL_HANDOFF_EVENT,
 		normalizeTTSSpeedControlOptions,
 		type AssessmentToolkitRegionScopeContext,
 		type AssessmentToolkitRuntimeContext,
@@ -405,7 +404,8 @@
 	});
 
 	$effect(() => {
-		if (!ttsService) return;
+		const service = ttsService;
+		if (!service) return;
 		const syncFromState = (state: string) => {
 			// Only the tool whose run it is, with its panel open, reflects the state.
 			if (!controlsVisible || !ownsRun()) {
@@ -430,6 +430,18 @@
 			if (runActive && !claimingRun && !ownsRun()) {
 				handleProgrammaticControlHandoff();
 			}
+			// A stop releases the run's owner; a read that ends on its own keeps it,
+			// so the panel stays open for a replay.
+			if (
+				playbackState === 'idle' &&
+				!claimingRun &&
+				service.getRunOwner() === null
+			) {
+				handleProgrammaticControlHandoff(
+					interfaceI18n.t('tools.textToSpeech.inline.stopped'),
+					true,
+				);
+			}
 			syncFromState(playbackState);
 			if (playbackState === 'playing') {
 				// Upgraded off the in-flight flag rather than off `statusMessage`:
@@ -450,23 +462,9 @@
 				queueMicrotask(moveFocusOffDisabledSeekControl);
 			}
 		};
-		const unsubscribe = ttsService.onStateChange(stateListener);
-		syncFromState(ttsService.getState() as unknown as string);
+		const unsubscribe = service.onStateChange(stateListener);
+		syncFromState(service.getState() as unknown as string);
 		return unsubscribe;
-	});
-
-	$effect(() => {
-		if (!isBrowser) return;
-		const controlHandoffListener = () => {
-			handleProgrammaticControlHandoff(
-				interfaceI18n.t('tools.textToSpeech.inline.switchedSection'),
-				true,
-			);
-		};
-		window.addEventListener(PIE_TTS_CONTROL_HANDOFF_EVENT, controlHandoffListener);
-		return () => {
-			window.removeEventListener(PIE_TTS_CONTROL_HANDOFF_EVENT, controlHandoffListener);
-		};
 	});
 
 	$effect(() => {
@@ -553,7 +551,10 @@
 		return shellContext ? catalogContextForShell(shellContext, runtimeContext) : undefined;
 	}
 
-	function syncHighlightTargetResolverProvider(readingTarget: Element): (() => void) | null {
+	function syncHighlightTargetResolverProvider(
+		service: TtsServiceApi,
+		readingTarget: Element,
+	): () => void {
 		clearHighlightTargetResolverProvider();
 		const provider = () => ({
 			context: {
@@ -567,9 +568,9 @@
 			},
 			resolver: regionScopeContext?.ttsHighlightTargetResolver || null,
 		});
-		highlightTargetResolverProviderDisposer =
-			ttsService?.setHighlightTargetResolverProvider(provider) ?? null;
-		return highlightTargetResolverProviderDisposer;
+		const disposer = service.setHighlightTargetResolverProvider(provider);
+		highlightTargetResolverProviderDisposer = disposer;
+		return disposer;
 	}
 
 	function clearHighlightTargetResolverProvider(
@@ -581,15 +582,15 @@
 		}
 	}
 
-	function shouldRetainHighlightTargetResolverProvider(): boolean {
-		if (!ownsRun()) return false;
-		const state = String(ttsService?.getState() || '');
+	function shouldRetainHighlightTargetResolverProvider(service: TtsServiceApi): boolean {
+		if (service.getRunOwner() !== instanceId) return false;
+		const state = String(service.getState());
 		return state === 'playing' || state === 'paused' || state === 'loading';
 	}
 
 	function handlePlaybackStartFailure(
 		error: unknown,
-		resolverDisposer: (() => void) | null,
+		resolverDisposer: () => void,
 	): void {
 		const hadPanelFocus = panelHasFocus();
 		resetLocalPlaybackUi(
@@ -637,7 +638,7 @@
 		controlsVisible = true;
 		playbackStartInFlight = true;
 		statusMessage = interfaceI18n.t('tools.textToSpeech.inline.starting');
-		const resolverDisposer = syncHighlightTargetResolverProvider(readingTarget);
+		const resolverDisposer = syncHighlightTargetResolverProvider(service, readingTarget);
 		let read: Promise<void>;
 		try {
 			read = service.speak(readingTarget, {
@@ -668,7 +669,7 @@
 			})
 			.finally(() => {
 				unsubscribe();
-				if (!shouldRetainHighlightTargetResolverProvider()) {
+				if (!shouldRetainHighlightTargetResolverProvider(service)) {
 					clearHighlightTargetResolverProvider(resolverDisposer);
 				}
 			});

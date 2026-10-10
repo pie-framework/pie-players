@@ -172,7 +172,9 @@ fetch URL-based audio and word mark assets with origin/SSRF protections.
 A pause or stop holds from the moment a read starts loading. `pause()` while the
 read resolves its content or waits for audio holds it: the audio starts paused
 when it arrives, and a `resume()` before then returns the read to loading. `stop()`
-ends a read in any state. Each provider holds a pause that lands before its audio
+ends a read in any state and releases its run owner, which closes an open
+`<pie-tool-tts-inline>` panel; a read that ends on its own keeps its owner and
+the panel. Each provider holds a pause that lands before its audio
 starts, which `ITTSProviderImplementation.pause` requires.
 
 The media handoff counts a loading read as speaking: `pauseTtsForMediaAudio`

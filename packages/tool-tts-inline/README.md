@@ -15,7 +15,7 @@ focuses on the inline custom element API.
 - Play/pause trigger that opens the expanded panel when reading starts
 - Expanded controls: configurable Speed options, Rewind, Fast-forward, Stop
 - Play button switches to Pause while reading
-- Panel remains open while reading and closes on Stop
+- Panel stays open while reading and after a read ends on its own; it closes on Stop or when the host calls `TTSService.stop()`
 - Arrow-key navigation within the controls toolbar
 - Takes its services from the toolkit runtime context and its reading scope from the enclosing item or passage shell
 - Integrates with `TTSService` for QTI 3.0 catalog-based TTS

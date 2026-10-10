@@ -47,7 +47,6 @@ function stubProvider(implementation: string): ToolProviderApi {
 		requiresAuth: false,
 		initialize: async () => undefined,
 		createInstance: async () => ({}),
-		getCapabilities: () => ({}) as never,
 		isReady: () => true,
 		destroy: () => undefined,
 	} as unknown as ToolProviderApi;

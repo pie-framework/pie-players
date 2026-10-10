@@ -6,9 +6,7 @@
 .
   type ITTSProvider
   type ITTSProviderImplementation
-  type StandardTTSConfig
   type TTSConfig
-  type TTSConfigExtensions
   type TTSProviderCapabilities
   type TTSProviderOptions
   type TTSSpeechSegment

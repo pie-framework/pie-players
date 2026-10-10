@@ -48,7 +48,6 @@ export function createFailingAuthProviderDescriptor(
 			requiresAuth: true,
 			initialize: async () => undefined,
 			createInstance: async () => ({}),
-			getCapabilities: () => ({}) as never,
 			isReady: () => true,
 			destroy: () => undefined,
 		}),

@@ -129,7 +129,6 @@ describe("ToolkitCoordinator tool provider ids", () => {
 							});
 						},
 						createInstance: async () => ({}),
-						getCapabilities: () => ({}) as never,
 						isReady: () => true,
 						destroy: () => undefined,
 					}),

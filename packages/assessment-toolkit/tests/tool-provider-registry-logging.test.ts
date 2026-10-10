@@ -39,12 +39,6 @@ const provider = (): ToolProviderApi =>
 		requiresAuth: false,
 		initialize: async () => {},
 		createInstance: async () => ({}),
-		getCapabilities: () => ({
-			supportsOffline: true,
-			requiresAuth: false,
-			maxInstances: 1,
-			features: {},
-		}),
 		isReady: () => true,
 		destroy: () => {},
 	}) as ToolProviderApi;

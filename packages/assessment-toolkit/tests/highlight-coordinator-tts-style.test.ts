@@ -372,7 +372,7 @@ describe("HighlightCoordinator TTS style contrast", () => {
 			const range = document.createRange();
 			range.selectNodeContents(math!);
 
-			coordinator.highlightRange(range, "tts-word" as any);
+			coordinator.highlightTTSWord([range]);
 
 			// The word layer must never paint the whole equation: escalating a
 			// multi-node word range to the <mjx-container> is the whole-expression

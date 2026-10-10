@@ -215,6 +215,25 @@ Host R's `assessment-id` mounts and vertical-subpath import were moved to
 `runtime.assessmentId` and the root entry in its repository the same day. No host
 names any other removed surface. Row verification dates are unchanged.
 
+On 2026-10-09 `TTSService.stop()` started closing an open `<pie-tool-tts-inline>`
+panel: a stop releases the read's owner, and the inline tool closes when its read
+loses its owner. A read that ends on its own keeps the owner and the panel.
+`requestControlHandoff` and its handoff event are removed. The TTS contracts lost
+the surfaces nothing reads: provider `isPlaying`, `isPaused`, `providerName` and
+`version`; the `TTSProviderCapabilities` fields other than
+`supportsWordBoundary`, `defaultHighlightMode`, `supportsSSML` and
+`maxTextLength`; `ToolProviderApi.getCapabilities` and
+`ToolProviderCapabilities`; `StandardTTSConfig` and `TTSConfigExtensions`, folded
+into `TTSConfig`; the `TtsServiceApi` state getters and wiring methods;
+`HighlightCoordinatorApi.highlightRange`, `isSupported` and `clearHighlights`,
+replaced by `clearTTSWord`; and the `ensureTTSReady` argument.
+`mathTokenHighlighting` moved from `TTSConfig` to the toolkit's TTS config.
+Checked against the checkouts of Hosts A, M, P, R and V, each scan reaching
+`@pie-players` imports: no host names a removed surface or implements a TTS
+provider. Host A calls `ttsService.stop()` before navigation and when hiding the
+section player, so an inline panel open at that point now closes. Row
+verification dates are unchanged.
+
 The 2026-09-17 session-commit change (PIE-1058) was checked against the
 recorded rows rather than re-derived from the checkouts. It renames and removes
 nothing: `pie-item-player` gains one opt-in property, `session-snapshot`, one

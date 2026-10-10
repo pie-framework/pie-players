@@ -82,8 +82,6 @@ export async function applyStoredSectionDemoTtsSettings(args: {
 		"textToSpeech",
 		buildCoordinatorUpdate(stored),
 	);
-	await args.coordinator.ensureTTSReady(
-		args.coordinator.getToolConfig("textToSpeech") ?? undefined,
-	);
+	await args.coordinator.ensureTTSReady();
 	return true;
 }

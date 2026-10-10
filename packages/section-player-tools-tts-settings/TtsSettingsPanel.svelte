@@ -1433,9 +1433,8 @@ function normalizePreviewSpeechMarkOffsets(
 			highlightTTSWordElement: ignore,
 			highlightTTSSentence: ignore,
 			highlightTTSSentenceElements: ignore,
-			highlightRange: ignore,
 			clearTTS: ignore,
-			clearHighlights: ignore,
+			clearTTSWord: ignore,
 		} as unknown as Parameters<TTSService["setHighlightCoordinator"]>[0];
 	}
 
@@ -1740,9 +1739,7 @@ function normalizePreviewSpeechMarkOffsets(
 				});
 				persistSettings({ ...next, providerOptions: undefined });
 			}
-			await toolkitCoordinator?.ensureTTSReady?.(
-				toolkitCoordinator?.getToolConfig?.("textToSpeech"),
-			);
+			await toolkitCoordinator?.ensureTTSReady?.();
 			if (isBuiltInTab(activeTab)) {
 				applyMessage = `Applied ${activeTab} TTS settings.`;
 			}

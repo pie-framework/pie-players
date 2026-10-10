@@ -196,7 +196,7 @@ describe("ServerTTSProvider", () => {
 		// The first element reports its error after the second speak took over.
 		firstAudio?.onerror?.(new Event("error"));
 		await expect(first).resolves.toBeUndefined();
-		expect(impl.isPlaying()).toBe(true);
+		expect((impl as any).pausedState).toBe(false);
 		expect((impl as any).currentAudio).toBe(secondAudio);
 
 		secondAudio?.onended?.();
@@ -747,7 +747,7 @@ describe("ServerTTSProvider", () => {
 
 			expect(MockAudio.instances[0]?.paused).toBe(true);
 			expect(starts).toEqual([]);
-			expect(impl.isPaused()).toBe(true);
+			expect((impl as any).pausedState).toBe(true);
 
 			impl.resume();
 			await speaking;

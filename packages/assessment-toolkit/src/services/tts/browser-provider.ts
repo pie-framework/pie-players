@@ -47,9 +47,9 @@ const PORTABLE_PROVIDER_OPTIONS = [
  * starts it with this.
  */
 export const browserFallbackConfig = (
-	config: Partial<TTSConfig>,
-): Partial<TTSConfig> => {
-	const fallback: Partial<TTSConfig> = {};
+	config: Partial<ToolkitTTSConfig>,
+): Partial<ToolkitTTSConfig> => {
+	const fallback: Partial<ToolkitTTSConfig> = {};
 	if (config.rate !== undefined) fallback.rate = config.rate;
 	if (config.pitch !== undefined) fallback.pitch = config.pitch;
 	if (config.mathTokenHighlighting !== undefined) {
@@ -238,8 +238,6 @@ const shouldAssignBrowserVoice = (voice: SpeechSynthesisVoice): boolean =>
  */
 export class BrowserTTSProvider implements ITTSProvider {
 	readonly providerId = "browser";
-	readonly providerName = "Browser Speech Synthesis";
-	readonly version = "1.0.0";
 
 	async initialize(config: TTSConfig): Promise<ITTSProviderImplementation> {
 		// SSR guard
@@ -265,14 +263,9 @@ export class BrowserTTSProvider implements ITTSProvider {
 
 	getCapabilities(): TTSProviderCapabilities {
 		return {
-			supportsPause: true,
-			supportsResume: true,
 			supportsWordBoundary: true,
 			// Boundary events depend on the voice: several network voices send none.
 			defaultHighlightMode: "sentence",
-			supportsVoiceSelection: true,
-			supportsRateControl: true,
-			supportsPitchControl: true,
 			// The Web Speech API voices plain text only; SSML tags are read aloud.
 			supportsSSML: false,
 		};
@@ -742,14 +735,6 @@ class BrowserTTSProviderImpl implements ITTSProviderImplementation {
 		this._isPlaying = false;
 		this._isPaused = false;
 		this.releaseHold();
-	}
-
-	isPlaying(): boolean {
-		return this._isPlaying && !this._isPaused;
-	}
-
-	isPaused(): boolean {
-		return this._isPaused;
 	}
 
 	/**

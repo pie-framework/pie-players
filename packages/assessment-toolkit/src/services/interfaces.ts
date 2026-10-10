@@ -14,7 +14,6 @@ import type {
 	SectionControllerSessionState,
 } from "@pie-players/pie-players-shared/types";
 import type {
-	AccessibilityCatalogResolver,
 	CatalogChangeListener,
 	CatalogLookupContext,
 	CatalogLookupOptions,
@@ -28,11 +27,7 @@ import type { CatalogOwnerContext } from "./catalog-owner.js";
 import type { FrameworkErrorListener } from "./framework-error-bus.js";
 import type { FrameworkErrorModel } from "./framework-error.js";
 import type { ToolFailurePhase } from "./tool-failure.js";
-import type {
-	Annotation,
-	HighlightColor,
-	HighlightType,
-} from "./HighlightCoordinator.js";
+import type { Annotation, HighlightColor } from "./HighlightCoordinator.js";
 import type { SerializedRange } from "./RangeSerializer.js";
 import type {
 	SectionControllerHandle,
@@ -43,7 +38,7 @@ import type {
 } from "./ToolkitCoordinator.js";
 import type { ElementIdComponents } from "./ElementToolStateStore.js";
 import type { ZIndexLayer } from "./ToolCoordinator.js";
-import type { PlaybackState, TTSConfig } from "./TTSService.js";
+import type { PlaybackState } from "./TTSService.js";
 import type { TTSHighlightTargetResolverProvider } from "./tts/highlight-target-resolver.js";
 import type {
 	TextToSpeechToolProviderConfig,
@@ -68,10 +63,7 @@ import type {
 	ItemSettings,
 	ToolParametersFor,
 } from "@pie-players/pie-players-shared/types";
-import type {
-	ITTSProvider,
-	TTSProviderCapabilities,
-} from "@pie-players/pie-tts";
+import type { TTSConfig } from "@pie-players/pie-tts";
 import type {
 	ResolvedToolContext,
 	ToolContextResolverContext,
@@ -88,15 +80,6 @@ export type { I18nServiceApi };
  * Manages content highlighting for TTS, annotations, and selections.
  */
 export interface HighlightCoordinatorApi {
-	/**
-	 * Highlight a text range
-	 */
-	highlightRange(
-		range: Range,
-		type: HighlightType,
-		color: HighlightColor,
-	): void;
-
 	/**
 	 * Highlight the word being read (temporary): one range per tree the word
 	 * spans, all painted, so a word split across inline elements highlights
@@ -132,19 +115,9 @@ export interface HighlightCoordinatorApi {
 	clearTTS(): void;
 
 	/**
-	 * Clear highlights of a specific type
+	 * Clear the TTS word highlight, keeping the sentence highlight
 	 */
-	clearHighlights(type: HighlightType): void;
-
-	/**
-	 * Check if highlighting is supported in current environment
-	 */
-	isSupported(): boolean;
-
-	/**
-	 * Update TTS highlight style dynamically
-	 */
-	updateTTSHighlightStyle(color: string, opacity: number): void;
+	clearTTSWord(): void;
 
 	/**
 	 * Record a learner annotation over a range.
@@ -330,14 +303,6 @@ export interface SpeakOptions {
  */
 export interface TtsServiceApi {
 	/**
-	 * Initialize TTS with a provider
-	 */
-	initialize(
-		provider: ITTSProvider,
-		config?: Partial<TTSConfig>,
-	): Promise<void>;
-
-	/**
 	 * Read `target` aloud: a range reads the text it selects, an element its
 	 * content. A node with a spoken card that the target holds whole reads its
 	 * card, and math reads as math speech. Content marked not-to-be-spoken is
@@ -357,7 +322,8 @@ export interface TtsServiceApi {
 	resume(): void;
 
 	/**
-	 * Stop playback
+	 * Stop playback and release the run owner. A read that ends on its own
+	 * keeps its owner.
 	 */
 	stop(): void;
 
@@ -366,14 +332,6 @@ export interface TtsServiceApi {
 	 * service cannot speak.
 	 */
 	dispose(): void;
-
-	/**
-	 * Request active TTS controls to hand off/deactivate their UI state.
-	 *
-	 * This is an orchestration hint for TTS tool chrome and does not replace
-	 * playback controls such as stop/pause/resume.
-	 */
-	requestControlHandoff(): void;
 
 	/**
 	 * Seek forward by sentence units
@@ -386,41 +344,22 @@ export interface TtsServiceApi {
 	seekBackward(units?: number): Promise<void>;
 
 	/**
-	 * Check if currently playing
-	 */
-	isPlaying(): boolean;
-
-	/**
-	 * Check if paused
-	 */
-	isPaused(): boolean;
-
-	/**
 	 * Get current playback state
 	 */
 	getState(): PlaybackState;
 
 	/**
-	 * The `ownerId` the latest read started with, or null when it named none or
-	 * nothing has been read. A new read announces itself through
-	 * {@link onStateChange} with `loading`, so a listener sees the owner change.
+	 * The `ownerId` the latest read started with, or null when it named none,
+	 * nothing has been read or {@link stop} released it. A new read announces
+	 * itself through {@link onStateChange} with `loading`, and a stop that
+	 * releases an owner announces `idle`, so a listener sees the owner change.
 	 */
 	getRunOwner(): string | null;
-
-	/**
-	 * Get currently speaking text
-	 */
-	getCurrentText(): string | null;
 
 	/**
 	 * Subscribe to state changes. Returns the function that unsubscribes.
 	 */
 	onStateChange(callback: (state: PlaybackState) => void): () => void;
-
-	/**
-	 * Get capabilities of current provider
-	 */
-	getCapabilities(): TTSProviderCapabilities | null;
 
 	/**
 	 * Update TTS settings dynamically (rate, pitch, voice)
@@ -433,21 +372,11 @@ export interface TtsServiceApi {
 	setPlaybackRate(rate: number): Promise<void>;
 
 	/**
-	 * Set highlight coordinator for word highlighting
-	 */
-	setHighlightCoordinator(coordinator: HighlightCoordinatorApi): void;
-
-	/**
 	 * Set a late-bound provider for optional host TTS highlight target remapping.
 	 */
 	setHighlightTargetResolverProvider(
 		provider: TTSHighlightTargetResolverProvider | null,
 	): () => void;
-
-	/**
-	 * Set accessibility catalog resolver for spoken content
-	 */
-	setCatalogResolver(resolver: AccessibilityCatalogResolver): void;
 }
 
 /**
@@ -662,9 +591,9 @@ export interface ToolkitCoordinatorApi {
 	readonly toolProviderRegistry: ToolProviderRegistry;
 
 	/**
-	 * Ensure TTS service is initialized and ready.
+	 * Ensure the TTS service is initialized from the `textToSpeech` tool config.
 	 */
-	ensureTTSReady(config?: Record<string, unknown>): Promise<void>;
+	ensureTTSReady(): Promise<void>;
 
 	/**
 	 * Ensure a tool's provider is initialized and ready. Providers register under

@@ -56,19 +56,11 @@ class MockTTSImpl implements ITTSProviderImplementation {
 	pause(): void {}
 	resume(): void {}
 	stop(): void {}
-	isPlaying(): boolean {
-		return false;
-	}
-	isPaused(): boolean {
-		return false;
-	}
 	updateSettings(): void {}
 }
 
 class MockTTSProvider implements ITTSProvider {
 	readonly providerId = "mock";
-	readonly providerName = "Mock Provider";
-	readonly version = "1.0.0";
 
 	constructor(private impl: ITTSProviderImplementation) {}
 
@@ -77,12 +69,7 @@ class MockTTSProvider implements ITTSProvider {
 	}
 	getCapabilities(): TTSProviderCapabilities {
 		return {
-			supportsPause: true,
-			supportsResume: true,
 			supportsWordBoundary: true,
-			supportsVoiceSelection: true,
-			supportsRateControl: true,
-			supportsPitchControl: true,
 		};
 	}
 	destroy(): void {}
@@ -254,8 +241,6 @@ describe("TTSService catalog speech composition", () => {
 				sentences.push(ranges.map((r) => r.toString()).join(""));
 			},
 			clearTTS: () => {},
-			isSupported: () => true,
-			updateTTSHighlightStyle: () => {},
 		} as any);
 
 		await service.speak(range, { contentRoot: root });
@@ -298,8 +283,6 @@ describe("TTSService catalog speech composition", () => {
 			},
 			highlightTTSSentence: () => {},
 			clearTTS: () => {},
-			isSupported: () => true,
-			updateTTSHighlightStyle: () => {},
 		} as any);
 
 		await service.speak(range, { contentRoot: root });
@@ -471,8 +454,6 @@ describe("TTSService catalog speech composition", () => {
 				);
 			},
 			clearTTS: () => {},
-			isSupported: () => true,
-			updateTTSHighlightStyle: () => {},
 		} as any);
 
 		await service.speak(root, { language: "en-US" });
@@ -535,9 +516,7 @@ describe("TTSService catalog speech composition", () => {
 			},
 			highlightTTSSentence: () => {},
 			clearTTS: () => {},
-			clearHighlights: () => {},
-			isSupported: () => true,
-			updateTTSHighlightStyle: () => {},
+			clearTTSWord: () => {},
 		} as any);
 
 		try {
@@ -579,8 +558,6 @@ describe("TTSService catalog speech composition", () => {
 			},
 			highlightTTSSentence: () => {},
 			clearTTS: () => {},
-			isSupported: () => true,
-			updateTTSHighlightStyle: () => {},
 		} as any);
 
 		await service.speak(root, { language: "en-US" });
@@ -616,18 +593,13 @@ describe("TTSService catalog speech composition", () => {
 			highlightTTSWord: (ranges: Range[]) => {
 				highlightedWords.push(ranges.join(""));
 			},
-			highlightRange: (range: Range) => {
-				highlightedRanges.push(range.toString());
-			},
 			// Whole-expression fallbacks paint the element itself, not a range.
 			highlightTTSWordElement: (element: Element) => {
 				highlightedRanges.push(element.textContent || "");
 			},
 			highlightTTSSentence: () => {},
-			clearHighlights: () => {},
+			clearTTSWord: () => {},
 			clearTTS: () => {},
-			isSupported: () => true,
-			updateTTSHighlightStyle: () => {},
 		} as any);
 
 		await service.speak(root, { language: "en-US" });
@@ -669,18 +641,13 @@ describe("TTSService catalog speech composition", () => {
 			highlightTTSWord: (ranges: Range[]) => {
 				highlightedWords.push(ranges.join(""));
 			},
-			highlightRange: (range: Range) => {
-				highlightedWords.push(range.toString());
-			},
 			highlightTTSSentence: (ranges: Range[]) => {
 				sentenceHighlights.push(
 					ranges.map((range) => range.toString()).join("|"),
 				);
 			},
-			clearHighlights: () => {},
+			clearTTSWord: () => {},
 			clearTTS: () => {},
-			isSupported: () => true,
-			updateTTSHighlightStyle: () => {},
 		} as any);
 
 		await service.speak(root, { language: "en-US" });
@@ -721,14 +688,9 @@ describe("TTSService catalog speech composition", () => {
 			highlightTTSWord: (ranges: Range[]) => {
 				highlightedWords.push(ranges.join(""));
 			},
-			highlightRange: (range: Range) => {
-				highlightedWords.push(range.toString());
-			},
 			highlightTTSSentence: () => {},
-			clearHighlights: () => {},
+			clearTTSWord: () => {},
 			clearTTS: () => {},
-			isSupported: () => true,
-			updateTTSHighlightStyle: () => {},
 		} as any);
 
 		await service.speak(root, { language: "en-US" });
@@ -783,9 +745,6 @@ describe("TTSService catalog speech composition", () => {
 			highlightTTSWord: (ranges: Range[]) => {
 				highlightedWords.push(ranges.join(""));
 			},
-			highlightRange: (range: Range) => {
-				highlightedWords.push(range.toString());
-			},
 			// Whole-expression fallbacks paint the element itself, not a range.
 			highlightTTSWordElement: (element: Element) => {
 				highlightedWords.push(element.textContent || "");
@@ -797,10 +756,8 @@ describe("TTSService catalog speech composition", () => {
 						.join("|"),
 				);
 			},
-			clearHighlights: () => {},
+			clearTTSWord: () => {},
 			clearTTS: () => {},
-			isSupported: () => true,
-			updateTTSHighlightStyle: () => {},
 		} as any);
 
 		await service.speak(root, { language: "en-US" });
@@ -856,8 +813,6 @@ describe("TTSService catalog speech composition", () => {
 				);
 			},
 			clearTTS: () => {},
-			isSupported: () => true,
-			updateTTSHighlightStyle: () => {},
 		} as any);
 
 		await service.speak(root, { language: "en-US" });
@@ -900,9 +855,6 @@ describe("TTSService catalog speech composition", () => {
 		const sentenceHighlights: string[] = [];
 		service.setHighlightCoordinator({
 			highlightTTSWord: () => {},
-			highlightRange: (range: Range, type: unknown) => {
-				if (String(type) === "tts-word") wordRanges.push(range.toString());
-			},
 			// Low-confidence math falls back to painting the whole formula element
 			// at the word layer (no text node to range over).
 			highlightTTSWordElement: (element: Element) => {
@@ -913,10 +865,8 @@ describe("TTSService catalog speech composition", () => {
 					ranges.map((range) => range.toString()).join("|"),
 				);
 			},
-			clearHighlights: () => {},
+			clearTTSWord: () => {},
 			clearTTS: () => {},
-			isSupported: () => true,
-			updateTTSHighlightStyle: () => {},
 		} as any);
 
 		await service.speak(root, { language: "en-US" });
@@ -962,10 +912,8 @@ describe("TTSService catalog speech composition", () => {
 					ranges.map((range) => range.toString()).join("|"),
 				);
 			},
-			clearHighlights: () => {},
+			clearTTSWord: () => {},
 			clearTTS: () => {},
-			isSupported: () => true,
-			updateTTSHighlightStyle: () => {},
 		} as any);
 
 		await service.speak(root, { language: "en-US" });
@@ -998,8 +946,6 @@ describe("TTSService catalog speech composition", () => {
 			highlightTTSWord: () => {},
 			highlightTTSSentence: () => {},
 			clearTTS: () => {},
-			isSupported: () => true,
-			updateTTSHighlightStyle: () => {},
 		} as any);
 
 		await expect(service.speak(root, { language: "en-US" })).rejects.toThrow(
@@ -1029,8 +975,6 @@ describe("TTSService catalog speech composition", () => {
 			highlightTTSWord: () => {},
 			highlightTTSSentence: () => {},
 			clearTTS: () => {},
-			isSupported: () => true,
-			updateTTSHighlightStyle: () => {},
 		} as any);
 
 		const speakPromise = service.speak(root, { language: "en-US" });
@@ -1062,8 +1006,6 @@ function noopHighlightCoordinator() {
 		highlightTTSWord: () => {},
 		highlightTTSSentence: () => {},
 		clearTTS: () => {},
-		isSupported: () => true,
-		updateTTSHighlightStyle: () => {},
 	} as any;
 }
 

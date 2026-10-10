@@ -201,10 +201,7 @@ export class PollyServerProvider extends BaseTTSProvider {
 
 		try {
 			// Create Polly client (fast - no API calls)
-			this.client = new PollyClient({
-				region: config.region,
-				credentials: config.credentials,
-			});
+			this.client = this.createClient(config);
 
 			this.initialized = true;
 			// NOTE: We do NOT call getVoices() here - that's an explicit secondary operation
@@ -216,6 +213,14 @@ export class PollyServerProvider extends BaseTTSProvider {
 				this.providerId,
 			);
 		}
+	}
+
+	/** The AWS client every request goes through; a test subclass supplies a fake. */
+	protected createClient(config: PollyProviderConfig): PollyClient {
+		return new PollyClient({
+			region: config.region,
+			credentials: config.credentials,
+		});
 	}
 
 	/**

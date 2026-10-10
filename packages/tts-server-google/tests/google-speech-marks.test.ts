@@ -1,15 +1,12 @@
 import { describe, expect, it } from "vitest";
 
-import { GoogleCloudTTSProvider } from "../src/GoogleCloudTTSProvider.js";
+import { googleWithClient } from "./fake-google-client.js";
 
 // Answers a synthesis request with a timepoint for every mark it carries, and
 // records the SSML it was sent.
 const synthesize = async (text: string) => {
-	const provider = new GoogleCloudTTSProvider();
-	await provider.initialize({ projectId: "test", credentials: { apiKey: "test" } });
 	const sent: string[] = [];
-	// Stands in for the Google client, so no request leaves the test.
-	(provider as unknown as { client: unknown }).client = {
+	const provider = googleWithClient({
 		synthesizeSpeech: async (request: { input: { ssml?: string } }) => {
 			const ssml = request.input.ssml ?? "";
 			sent.push(ssml);
@@ -18,7 +15,8 @@ const synthesize = async (text: string) => {
 			);
 			return [{ audioContent: new Uint8Array([1]), timepoints }];
 		},
-	};
+	});
+	await provider.initialize({ projectId: "test", credentials: { apiKey: "test" } });
 	const response = await provider.synthesize({
 		text,
 		voice: "es-US-Wavenet-A",

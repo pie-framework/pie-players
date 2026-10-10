@@ -141,6 +141,27 @@ describe("ServerTTSProvider", () => {
 		expect(starts).toEqual(["start"]);
 	});
 
+	test("reports at playback start whether the response sends word boundaries", async () => {
+		let marks: unknown[] = [];
+		globalThis.fetch = vi.fn(async () =>
+			createJSONResponse({ audio: btoa("audio-bytes"), speechMarks: marks }),
+		) as unknown as typeof fetch;
+		const provider = new ServerTTSProvider();
+		const impl = await provider.initialize({ apiEndpoint: "/api/tts" } as any);
+		const starts: unknown[] = [];
+		impl.onPlaybackStart = (playback) => starts.push(playback);
+
+		await impl.speak("hello");
+		marks = [{ time: 0, type: "word", start: 0, end: 5, value: "hello" }];
+		await impl.speak("hello");
+
+		expect(starts).toEqual([
+			{ wordBoundaries: false },
+			{ wordBoundaries: true },
+		]);
+		expect(provider.getCapabilities().supportsWordBoundary).toBe(true);
+	});
+
 	test("reports playback start when the audio sounds, not when play is requested", async () => {
 		globalThis.fetch = vi.fn(async () =>
 			createJSONResponse({ audio: btoa("audio-bytes"), speechMarks: [] }),

@@ -1,21 +1,19 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { PollyServerProvider } from "../src/PollyServerProvider.js";
+import { pollyWithClient } from "./fake-polly-client.js";
 
 const synthesizeSsml = async (enableLogging?: boolean): Promise<void> => {
-	const provider = new PollyServerProvider();
+	const provider = pollyWithClient({
+		send: async () => ({
+			AudioStream: new Uint8Array([1]),
+			ContentType: "audio/mpeg",
+		}),
+	});
 	await provider.initialize({
 		region: "us-east-1",
 		credentials: { accessKeyId: "test", secretAccessKey: "test" },
 		enableLogging,
 	});
-	// Stands in for the AWS client, so no request leaves the test.
-	(provider as unknown as { client: unknown }).client = {
-		send: async () => ({
-			AudioStream: new Uint8Array([1]),
-			ContentType: "audio/mpeg",
-		}),
-	};
 	await provider.synthesize({
 		text: "<speak>Hello</speak>",
 		includeSpeechMarks: false,

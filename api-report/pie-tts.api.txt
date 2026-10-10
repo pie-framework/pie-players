@@ -8,6 +8,7 @@
   type ITTSProviderImplementation
   type SpeedRateBucket
   type TTSConfig
+  type TTSPlaybackStart
   type TTSProviderCapabilities
   type TTSProviderOptions
   type TTSSpeechSegment

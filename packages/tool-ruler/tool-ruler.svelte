@@ -66,9 +66,17 @@
 
 	let currentRuler = $derived(unit === 'inches' ? rulerInches : rulerCm);
 
+	// One timer for the live region, so an earlier announcement's clear cannot
+	// blank a later one.
+	let announceTimer: ReturnType<typeof setTimeout> | null = null;
+
 	function announce(message: string) {
+		if (announceTimer !== null) clearTimeout(announceTimer);
 		announceText = message;
-		setTimeout(() => announceText = '', 1000);
+		announceTimer = setTimeout(() => {
+			announceText = '';
+			announceTimer = null;
+		}, 1000);
 	}
 
 	function setUnit(next: 'inches' | 'cm') {
@@ -107,12 +115,13 @@
 	// Each reveal mounts a fresh panel centred by its stylesheet, so the placement
 	// starts over with it.
 	$effect(() => {
-		if (visible && containerEl && isBrowser) {
-			// Wait for the next tick to ensure DOM is updated
-			setTimeout(() => placement.show(), 0);
-		} else {
+		if (!visible || !containerEl || !isBrowser) {
 			placement.reset();
+			return;
 		}
+		// Wait for the next tick to ensure DOM is updated
+		const timer = setTimeout(() => placement.show(), 0);
+		return () => clearTimeout(timer);
 	});
 
 	// Re-registers when a republished context brings a new coordinator.
@@ -121,6 +130,7 @@
 	onMount(() => {
 		const disconnect = placement.connect();
 		return () => {
+			if (announceTimer !== null) clearTimeout(announceTimer);
 			disconnect();
 			registration.release();
 		};
@@ -136,9 +146,9 @@
 	// Auto-focus when tool becomes visible. `preventScroll` so revealing the
 	// tool cannot scroll the pane it sits in.
 	$effect(() => {
-		if (visible && containerEl) {
-			setTimeout(() => containerEl?.focus({ preventScroll: true }), 100);
-		}
+		if (!visible || !containerEl) return;
+		const timer = setTimeout(() => containerEl?.focus({ preventScroll: true }), 100);
+		return () => clearTimeout(timer);
 	});
 </script>
 

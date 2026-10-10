@@ -68,6 +68,17 @@
 />
 
 <script lang="ts">
+	// <pie-item-player> loads an item's PIE elements under the iife, esm or
+	// preloaded strategy and owns the learner session: `ItemController` holds it,
+	// and element changes reach the host as `session-changed`. Backend delivery
+	// and authoring calls go through the orchestrator in ./backend/.
+	//
+	// Layout: props; runtime-support probing; state and the teardown commit; the
+	// orchestrator and session controller; renderer keys and style scope; config
+	// normalization; locale and heading level; the loadConfig pipeline; effects
+	// (load, session, styles, instrumentation); event dispatch and host session
+	// projection; session snapshots and page-lifecycle commits; public methods and
+	// model updates; element session forwarding.
 	import { coerceBooleanAttributes } from "@pie-players/pie-players-shared/ui/attribute-coercion";
 	import type {
 		ConfigEntity,
@@ -259,16 +270,17 @@
 	const loaderRetrySignature = $derived.by(() =>
 		JSON.stringify(loaderConfig?.iifeBundleRetry || {}),
 	);
+	type RuntimeSupportView = "delivery" | "author" | "print";
+	/** The `runtime-support` module an element package may publish next to its ESM build. */
+	type RuntimeSupportManifest = {
+		schemaVersion?: number;
+		supports?: Partial<
+			Record<"esm" | "iife", Partial<Record<RuntimeSupportView, boolean>>>
+		>;
+	};
+
 	const RUNTIME_SUPPORT_NEGATIVE_CACHE_MS = 30_000;
-	const runtimeSupportCache = new Map<
-		string,
-		{
-			schemaVersion?: number;
-			supports?: Partial<
-				Record<"esm" | "iife", Partial<Record<"delivery" | "author" | "print", boolean>>>
-			>;
-		}
-	>();
+	const runtimeSupportCache = new Map<string, RuntimeSupportManifest>();
 	const runtimeSupportMissingCache = new Map<string, number>();
 
 	function normalizeRuntimeSupportCheck(
@@ -289,13 +301,9 @@
 	}
 
 	function isStrategySupportedForView(
-		runtimeSupport: {
-			supports?: Partial<
-				Record<"esm" | "iife", Partial<Record<"delivery" | "author" | "print", boolean>>>
-			>;
-		},
+		runtimeSupport: RuntimeSupportManifest,
 		strategy: "esm" | "iife",
-		view: "delivery" | "author" | "print",
+		view: RuntimeSupportView,
 	): boolean {
 		const strategyMap = runtimeSupport.supports?.[strategy];
 		if (!strategyMap) return true;
@@ -317,24 +325,15 @@
 	async function resolveRuntimeSupportForPackage(
 		packageVersion: string,
 		mode: "off" | "on",
-	): Promise<
-		| {
-				schemaVersion?: number;
-				supports?: Partial<
-					Record<"esm" | "iife", Partial<Record<"delivery" | "author" | "print", boolean>>>
-				>;
-		  }
-		| undefined
-	> {
+	): Promise<RuntimeSupportManifest | undefined> {
 		if (mode !== "on") {
 			return undefined;
 		}
-		const key = packageVersion;
-		const cached = runtimeSupportCache.get(key);
+		const cached = runtimeSupportCache.get(packageVersion);
 		if (cached) {
 			return cached;
 		}
-		const missingAt = runtimeSupportMissingCache.get(key);
+		const missingAt = runtimeSupportMissingCache.get(packageVersion);
 		if (missingAt && Date.now() - missingAt < RUNTIME_SUPPORT_NEGATIVE_CACHE_MS) {
 			return undefined;
 		}
@@ -343,19 +342,17 @@
 			return undefined;
 		}
 		try {
-			// @vite-ignore
 			const module = await import(/* webpackIgnore: true */ /* @vite-ignore */ url);
 			const runtimeSupport = module.default || module.runtimeSupport || module;
 			if (!runtimeSupport || typeof runtimeSupport !== "object") {
 				throw new Error(`Invalid runtime-support export for ${packageVersion}`);
 			}
-			runtimeSupportCache.set(key, runtimeSupport);
-			runtimeSupportMissingCache.delete(key);
+			runtimeSupportCache.set(packageVersion, runtimeSupport);
+			runtimeSupportMissingCache.delete(packageVersion);
 			return runtimeSupport;
 		} catch (error) {
 			if (classifyRuntimeSupportMissing(error)) {
-				runtimeSupportMissingCache.set(key, Date.now());
-				return undefined;
+				runtimeSupportMissingCache.set(packageVersion, Date.now());
 			}
 			return undefined;
 		}
@@ -363,7 +360,7 @@
 
 	async function collectRuntimeSupportHints(
 		elements: Record<string, string>,
-		view: "delivery" | "author" | "print",
+		view: RuntimeSupportView,
 		mode: "off" | "on",
 	): Promise<{ unsupportedPackages: string[] }> {
 		if (mode !== "on") return { unsupportedPackages: [] };
@@ -572,8 +569,7 @@
 	}
 
 	const bundleBuildWarning = $derived.by(() => {
-		const retryState = (bundleRetryStatus as { state?: string } | null)?.state;
-		if (!bundleRetryStatus || retryState !== "retrying") return null;
+		if (bundleRetryStatus?.state !== "retrying") return null;
 		const elapsedSeconds = Math.max(
 			1,
 			Math.ceil(bundleRetryStatus.elapsedMs / 1000),
@@ -688,7 +684,8 @@
 	}
 
 	const rendererSession = $derived.by(() => {
-		const _rev = sessionRevision;
+		// `ItemController` is not reactive; `sessionRevision` is the change signal.
+		void sessionRevision;
 		const data = !sessionController
 			? normalizeItemSessionContainer(parseSessionProp(effectiveSession)).data
 			: sessionController.getSession().data;
@@ -827,27 +824,6 @@
 	}
 
 	/**
-	 * `baseHeadingLevel` / `includeSrHeading` are host surface, not a transform
-	 * this player performs.
-	 *
-	 * A PIE element resolves them itself, by walking up to the nearest
-	 * `pie-player` / `pie-item-player` and reading the property, falling back to
-	 * the `base-heading-level` / `include-sr-heading` attribute. The element owns
-	 * the outline it emits: it places its own visually-hidden item heading at
-	 * `baseHeadingLevel` and nests authored `data-heading` content one level
-	 * below, so `baseHeadingLevel: 2` yields `h2` for the item heading and
-	 * `h3`/`h4` for `heading1`/`heading2`. `baseHeadingLevel` names the level the
-	 * item's heading occupies, not the level the element emits: content nests
-	 * below it either way, so a host suppressing the item heading has to be
-	 * emitting its own heading there.
-	 *
-	 * `includeSrHeading` has a `true` default, so the attribute cannot express
-	 * "off" under HTML boolean-attribute semantics — presence means on. Hosts
-	 * suppress the heading through the property, which reflection then clears.
-	 *
-	 * This player validates and reflects; it does not rewrite markup.
-	 */
-	/**
 	 * Interface locale for this player's own UI. Owned here rather than resolved from
 	 * a context: an item player is often the outermost element on the page, with no
 	 * toolkit above it to publish one.
@@ -879,6 +855,27 @@
 		(void interfaceI18nVersion, interfaceI18n),
 	);
 
+	/**
+	 * `baseHeadingLevel` / `includeSrHeading` are host surface, not a transform
+	 * this player performs.
+	 *
+	 * A PIE element resolves them itself, by walking up to the nearest
+	 * `pie-player` / `pie-item-player` and reading the property, falling back to
+	 * the `base-heading-level` / `include-sr-heading` attribute. The element owns
+	 * the outline it emits: it places its own visually-hidden item heading at
+	 * `baseHeadingLevel` and nests authored `data-heading` content one level
+	 * below, so `baseHeadingLevel: 2` yields `h2` for the item heading and
+	 * `h3`/`h4` for `heading1`/`heading2`. `baseHeadingLevel` names the level the
+	 * item's heading occupies, not the level the element emits: content nests
+	 * below it either way, so a host suppressing the item heading has to be
+	 * emitting its own heading there.
+	 *
+	 * `includeSrHeading` has a `true` default, so the attribute cannot express
+	 * "off" under HTML boolean-attribute semantics — presence means on. Hosts
+	 * suppress the heading through the property, which reflection then clears.
+	 *
+	 * This player validates and reflects; it does not rewrite markup.
+	 */
 	const resolvedBaseHeadingLevel = $derived.by(() => {
 		if (
 			typeof baseHeadingLevel === "number" &&
@@ -893,22 +890,17 @@
 
 	// ─── loadConfig pipeline ─────────────────────────────────────────────────
 	//
-	// The pipeline is a sequence of pure transforms over `(config, env,
-	// strategy, loaderOptions)` producing `(resolvedConfig | error)`.
+	//     parse → validate (assertPieConfigContract, then contract warnings)
+	//       → prepareConfigEntity (preloaded version alignment, autoplay
+	//         override, makeUniqueTags) → assertElementPackagesAllowed
+	//       → collectRuntimeSupportHints (esm) → initializeMathRendering (iife)
+	//       → preloaded: defineAuthoredPreloadedTags + assertRegistered
+	//         | iife, esm: ensureRegistered
+	//       → commit itemConfig
 	//
-	//     parse → validate → normalizePreloaded → makeUniqueTags
-	//       → collectRuntimeSupportHints → initializeMathRendering (iife)
-	//       → (preloaded: assertRegistered | iife|esm: ensureRegistered)
-	//       → setItemConfig
-	//
-	// The deep ElementLoader primitive owns registration truth end-to-end
-	// and deduplicates concurrent identical requests, so this function no
-	// longer needs:
-	//   - an `isProcessing` guard (the primitive already deduplicates)
-	//   - an `allowPreloadedFallbackLoad` escape hatch (preloaded means
-	//     "host pre-registered; assert loudly or throw")
-	//   - a manual "all elements already registered" shortcut (the primitive
-	//     short-circuits when every tag is in `customElements` already)
+	// ElementLoader owns registration: it dedupes concurrent identical requests
+	// and short-circuits when every tag is already defined. Under preloaded the
+	// host registered the elements, so the player asserts and never loads.
 
 	// A delivery backend serves server-processed models, so it implies hosted
 	// unless the host says otherwise.
@@ -957,10 +949,7 @@
 
 	function buildEsmBackendConfig(view: string): EsmBackendConfig {
 		const moduleResolution =
-			(loaderOptions as Record<string, unknown> | undefined)
-				?.moduleResolution === "import-map"
-				? "import-map"
-				: "url";
+			loaderOptions?.moduleResolution === "import-map" ? "import-map" : "url";
 		return {
 			kind: "esm",
 			cdnBaseUrl: resolvedEsmCdnUrl,
@@ -1024,12 +1013,13 @@
 			return true;
 		};
 
+		lastProcessedConfigSignature = configSignature;
+		lastProcessedStrategy = normalizedStrategy;
+		lastProcessedMode = resolvedMode;
+		lastProcessedLoaderRetrySignature = loaderRetrySignature;
+		lastProcessedLoaderOptionsSignature = loaderOptionsSignature;
+
 		if (!currentConfig) {
-			lastProcessedConfigSignature = configSignature;
-			lastProcessedStrategy = normalizedStrategy;
-			lastProcessedMode = resolvedMode;
-			lastProcessedLoaderRetrySignature = loaderRetrySignature;
-			lastProcessedLoaderOptionsSignature = loaderOptionsSignature;
 			commitIfCurrent(() => {
 				itemConfig = null;
 				passageConfig = null;
@@ -1041,11 +1031,6 @@
 			return true;
 		}
 
-		lastProcessedConfigSignature = configSignature;
-		lastProcessedStrategy = normalizedStrategy;
-		lastProcessedMode = resolvedMode;
-		lastProcessedLoaderRetrySignature = loaderRetrySignature;
-		lastProcessedLoaderOptionsSignature = loaderOptionsSignature;
 		commitIfCurrent(() => {
 			loading = true;
 			error = null;
@@ -1067,14 +1052,7 @@
 			] as const) {
 				if (!cfg) continue;
 				assertPieConfigContract(cfg);
-				const contractValidation = validatePieConfigContract(cfg);
-				const contractWarnings = (
-					contractValidation as unknown as { warnings?: unknown }
-				).warnings;
-				const warnings = Array.isArray(contractWarnings)
-					? contractWarnings.filter((entry): entry is string => typeof entry === "string")
-					: [];
-				for (const warning of warnings) {
+				for (const warning of validatePieConfigContract(cfg).warnings) {
 					logger.warn(`[pie-item-player] ${label}: ${warning}`);
 				}
 			}
@@ -1085,7 +1063,7 @@
 				? prepareConfigEntity(normalizedInput.passage)
 				: null;
 			const runtimeSupportCheck = normalizeRuntimeSupportCheck(
-				(loaderOptions as UnifiedLoaderOptions | undefined)?.runtimeSupportCheck,
+				loaderOptions?.runtimeSupportCheck,
 				"off",
 			);
 			const effectiveRuntimeSupportCheck = shouldProbeRuntimeSupport(
@@ -1105,7 +1083,7 @@
 			);
 			const runtimeSupportHints = await collectRuntimeSupportHints(
 				elementMap,
-				runtimeSupportView as "delivery" | "author" | "print",
+				runtimeSupportView as RuntimeSupportView,
 				effectiveRuntimeSupportCheck,
 			);
 			if (!isCurrentLoadRequest(requestToken)) return false;
@@ -1316,9 +1294,8 @@
 		};
 	});
 
-	// Same wiring the section, toolkit and assessment players already have. The
-	// item player previously resolved an instrumentation provider only to hand it
-	// to the loader, so nothing it emitted itself reached telemetry.
+	// Reports the player's own events to the instrumentation provider, through the
+	// same bridge the section, toolkit and assessment players attach.
 	$effect(() => {
 		if (!hostElement) return;
 		const localHost = hostElement;
@@ -1380,8 +1357,10 @@
 			bubbles: true,
 			composed: true,
 		});
-		// Dispatch from the custom element host so direct listeners on <pie-item-player>
-		// receive updates (item-demos attaches listeners on the element itself).
+		// Bubbling and composed from the inner root div, so listeners on
+		// <pie-item-player> receive it. During the teardown commit
+		// `playerEventTarget` is the custom element, since the div may already be
+		// detached.
 		(playerEventTarget ?? hostElement)?.dispatchEvent(newEvent);
 	};
 
@@ -1547,10 +1526,21 @@
 		return () => localHost.removeEventListener("focusout", onFocusOut);
 	});
 
+	function refreshMountedElements(config: ConfigEntity): void {
+		void updatePieElements(
+			config,
+			rendererSession,
+			parseEnvValue(env),
+			hostElement ?? undefined,
+			handleElementSessionUpdate,
+			resolveBundleType(),
+		);
+	}
+
 	/**
-	* The DOM half of a delivery model refresh: the orchestrator decides whether
-	* a result still applies, this commits it to the rendered elements.
-	*/
+	 * The DOM half of a delivery model refresh: the orchestrator decides whether
+	 * a result still applies, this commits it to the rendered elements.
+	 */
 	async function applyRefreshedBackendConfigs(
 		refresh: DeliveryModelRefreshConfigResult,
 	): Promise<void> {
@@ -1558,24 +1548,10 @@
 		passageConfig = refresh.passageConfig;
 		await tick();
 		if (refresh.itemChanged && itemConfig) {
-			void updatePieElements(
-				itemConfig,
-				rendererSession,
-				parseEnvValue(env),
-				hostElement ?? undefined,
-				handleElementSessionUpdate,
-				resolveBundleType(),
-			);
+			refreshMountedElements(itemConfig);
 		}
 		if (refresh.passageChanged && passageConfig) {
-			void updatePieElements(
-				passageConfig,
-				rendererSession,
-				parseEnvValue(env),
-				hostElement ?? undefined,
-				handleElementSessionUpdate,
-				resolveBundleType(),
-			);
+			refreshMountedElements(passageConfig);
 		}
 	}
 
@@ -1583,13 +1559,6 @@
 		return backendOrchestrator.load(scope);
 	}
 
-	/**
-	 * Commit every mounted element's pending `session-changed` now.
-	 *
-	 * For a host that unmounts the player itself: called while the player is
-	 * still in the document, the events reach a `document`-level listener, which
-	 * the player's own teardown cannot do.
-	 */
 	/**
 	 * The snapshot offered by `session-snapshot-available`, if one was found.
 	 *
@@ -1600,6 +1569,13 @@
 		return pendingSessionSnapshot;
 	}
 
+	/**
+	 * Commit every mounted element's pending `session-changed` now.
+	 *
+	 * For a host that unmounts the player itself: called while the player is
+	 * still in the document, the events reach a `document`-level listener, which
+	 * the player's own teardown cannot do.
+	 */
 	export function commitPendingElementSessions(): void {
 		commitPendingSessions(hostElement, { reason: "teardown", logger });
 	}

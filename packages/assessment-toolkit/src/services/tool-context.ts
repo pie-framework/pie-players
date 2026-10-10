@@ -194,6 +194,16 @@ function normalizeModels(modelsRaw: unknown): unknown[] {
 	return [];
 }
 
+/** The model in a config's `models` whose `id` is `elementId`, if any. */
+function findElementModel(modelsRaw: unknown, elementId: string): unknown {
+	return normalizeModels(modelsRaw).find(
+		(candidate) =>
+			!!candidate &&
+			typeof candidate === "object" &&
+			(candidate as Record<string, unknown>).id === elementId,
+	);
+}
+
 /**
  * Push every string a model carries, one level into its arrays of objects.
  *
@@ -242,8 +252,7 @@ function collectElementsText(
  *
  * `transform` decides what the caller gets. {@link extractTextContent} strips
  * tags, which is right for prose keyword matching and wrong for structural
- * matching: a MathML item's only math signal *is* the `<math>` tag, and stripping
- * first left `hasMathContent`'s MathML pattern unreachable.
+ * matching: a MathML item's only math signal *is* the `<math>` tag.
  */
 function extractContent(
 	context: ToolContext,
@@ -264,13 +273,7 @@ function extractContent(
 
 		// Model data keyed by this element id: in many items the math is in
 		// `model.prompt`/labels rather than in `elements[elementId]`.
-		const model = normalizeModels(config.models).find(
-			(candidate) =>
-				!!candidate &&
-				typeof candidate === "object" &&
-				(candidate as Record<string, unknown>).id === context.elementId,
-		);
-		collectModelText(model, push);
+		collectModelText(findElementModel(config.models, context.elementId), push);
 
 		return joined();
 	}
@@ -335,15 +338,10 @@ function extractMarkupContent(context: ToolContext): string {
 }
 
 /**
- * Helper to check if context contains mathematical content
- * (Basic heuristic - can be overridden by tools)
- */
-/**
  * Chemical element symbols.
  *
  * A real set rather than `[A-Z][a-z]?`: that shape matches "It", "In", "He" and
- * "A", which is why the science gate used to answer `true` for any prose that
- * began a sentence.
+ * "A", so any prose beginning a sentence would read as science.
  */
 const ELEMENT_SYMBOLS = new Set([
 	"H", "He", "Li", "Be", "B", "C", "N", "O", "F", "Ne", "Na", "Mg", "Al", "Si",
@@ -396,9 +394,13 @@ function hasChemicalFormula(text: string): boolean {
 	return false;
 }
 
+/**
+ * Helper to check if context contains mathematical content
+ * (Basic heuristic - can be overridden by tools)
+ */
 export function hasMathContent(context: ToolContext): boolean {
-	// Structural signals live in the markup: stripping tags first is what left the
-	// MathML pattern unable to match anything at all.
+	// Structural signals live in the markup, so they match before tags are
+	// stripped.
 	const markup = extractMarkupContent(context);
 	const structuralIndicators = [
 		/<math[>\s]/i, // MathML
@@ -409,11 +411,10 @@ export function hasMathContent(context: ToolContext): boolean {
 	if (structuralIndicators.some((pattern) => pattern.test(markup))) return true;
 
 	const text = extractTextContent(context);
-	// No bare-operator pattern. `/[+\-*/=<>≤≥∑∫√π]/` matched any hyphen or slash,
-	// so "well-known" and "and/or" made every item mathematical and this predicate
-	// answered `true` for essentially all content — a gate that does not gate. An
-	// operator counts only with operands around it, or when the character has no
-	// prose reading at all.
+	// No bare-operator pattern: a lone hyphen or slash matches "well-known" and
+	// "and/or", which would make nearly every item mathematical. An operator
+	// counts only with operands around it, or when the character has no prose
+	// reading at all.
 	const textIndicators = [
 		/[≤≥≠±×÷∑∫√∞π]/, // Symbols with no prose reading
 		/\d+\s*[+\-*/×÷=]\s*\d+/, // Simple arithmetic
@@ -459,38 +460,26 @@ export function hasChoiceInteraction(context: ToolContext): boolean {
 		const config = context.item.config;
 		if (!config?.models) return false;
 
-		// Find model for this element
-		const models = Array.isArray(config.models)
-			? config.models
-			: Object.values(config.models as Record<string, unknown>);
-		const model = models.find(
-			(m: any) => m && typeof m === "object" && m.id === context.elementId,
-		);
+		const model = findElementModel(config.models, context.elementId);
 		if (!model) return false;
 
-		const type = (model as any).element || "";
+		const type = (model as { element?: string }).element || "";
 		return isChoiceElement(type, config.elements);
 	}
 
 	if (isItemContext(context)) {
 		const config = context.item.config;
-		const modelsRaw = config?.models;
-		const models = Array.isArray(modelsRaw)
-			? modelsRaw
-			: modelsRaw && typeof modelsRaw === "object"
-				? Object.values(modelsRaw as Record<string, unknown>)
-				: [];
-		return models.some((m: any) => {
-			if (!m || typeof m !== "object") return false;
-			const type = m.element || "";
+		return normalizeModels(config?.models).some((candidate) => {
+			if (!candidate || typeof candidate !== "object") return false;
+			const model = candidate as { element?: string; choices?: unknown };
+			const type = model.element || "";
 			// A model that names its element has answered the question, whichever way
-			// the answer falls. `choices` is carried by interactions that are not
-			// choice interactions at all — `placement-ordering`, `categorize` and
-			// `drag-in-the-blank` each hold their draggables there — so reading it on
-			// a named model showed the answer eliminator on items where the tool does
-			// nothing. The heuristic remains for configs that name no element.
+			// the answer falls: `placement-ordering`, `categorize` and
+			// `drag-in-the-blank` each hold their draggables in `choices` without
+			// being choice interactions. The `choices` heuristic remains for configs
+			// that name no element.
 			if (type) return isChoiceElement(type, config?.elements);
-			return Array.isArray(m.choices) && m.choices.length > 0;
+			return Array.isArray(model.choices) && model.choices.length > 0;
 		});
 	}
 
@@ -524,9 +513,6 @@ export function hasSpokenContent(context: ToolContext): boolean {
 export function hasScienceContent(context: ToolContext): boolean {
 	const text = extractTextContent(context);
 
-	// The element-symbol pattern used to be `/\b[A-Z][a-z]?\d*\b/`, which matches
-	// any one- or two-letter capitalised word: "It", "In", "A", "No". Every item
-	// beginning a sentence with one read as science.
 	if (hasChemicalFormula(text)) return true;
 	if (/[A-Z][a-z]?[\u2080-\u2089]/.test(text)) return true; // Subscripted: H₂O, CO₂
 

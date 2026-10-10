@@ -28,7 +28,7 @@
   - OR can be "always-on" via student profile (alwaysOn prop)
 
   **Features:**
-  - Modern CSS Custom Highlight API (zero DOM mutation, 10-15x faster)
+  - CSS Custom Highlight API, so struck text keeps its DOM nodes
   - Generic adapter pattern (works with multiple-choice, EBSR, inline-dropdown)
   - Strikethrough visual (WCAG 2.2 AA compliant, best for accessibility)
   - Eliminations persist across question navigation through the toolkit's element tool state store
@@ -55,7 +55,6 @@
 	import { untrack } from 'svelte';
 	import { AnswerEliminatorCore, type ElementStateKeys } from './answer-eliminator-core.js';
 
-	// Props
 	let {
 		visible = false,
 		strategy = 'strikethrough' as 'strikethrough' | 'mask',
@@ -70,7 +69,6 @@
 		elementStateKeys?: ElementStateKeys;
 	} = $props();
 
-	// State
 	let contextHostElement = $state<HTMLElement | null>(null);
 	let runtimeContext = $state<AssessmentToolkitRuntimeContext | null>(null);
 	let shellContext = $state<AssessmentToolkitShellContext | null>(null);

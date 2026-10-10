@@ -23,8 +23,6 @@
 
 <script lang="ts">
 	import { coerceBooleanAttributes } from '@pie-players/pie-players-shared/ui/attribute-coercion';
-	const browser = typeof window !== "undefined";
-
 	import {
 		connectToolRuntimeContext,
 		createToolCoordinatorRegistration,
@@ -43,6 +41,8 @@
 	import { createFocusTrap } from '@pie-players/pie-players-shared';
 	import { onMount, untrack } from 'svelte';
 	import { resolveInterfaceI18n } from '@pie-players/pie-players-shared/i18n/provider';
+
+	const isBrowser = typeof window !== 'undefined';
 
 	let {
 		visible = false,
@@ -117,7 +117,6 @@
 	// The requested id remains stable even when its custom registration is absent.
 	let requestedScheme = $state('default');
 
-	// Dropdown state
 	let dropdownOpen = $state(false);
 
 	// Focus trap cleanup function (plain variable, not reactive)
@@ -127,12 +126,10 @@
 	// under the attempt: a value kept for the device would carry one learner's
 	// scheme over the scheme the host derives for the next.
 	function applyColorScheme(schemeId: string) {
-		if (!browser) return;
+		if (!isBrowser) return;
 		applyPieColorScheme(schemeId, { from: contextHostElement, persistenceKey: null });
 	}
 
-	// Select scheme and close the tool
-	// Automatically closes the modal after selection for better UX
 	function selectScheme(schemeId: string) {
 		requestedScheme = schemeId;
 		dropdownOpen = false;
@@ -144,7 +141,6 @@
 		coordinator?.hideTool(toolId);
 	}
 
-	// Toggle dropdown
 	function toggleDropdown() {
 		dropdownOpen = !dropdownOpen;
 	}
@@ -173,7 +169,6 @@
 			: availableSchemes
 	);
 
-	// Handle escape key
 	function handleKeyDown(e: KeyboardEvent) {
 		if (e.key === 'Escape') {
 			if (dropdownOpen) {
@@ -183,9 +178,8 @@
 				queueMicrotask(() => dropdownTriggerEl?.focus());
 			}
 		} else if (dropdownOpen && (e.key === 'ArrowDown' || e.key === 'ArrowUp')) {
-			// Handle arrow key navigation in dropdown
 			e.preventDefault();
-			const options = containerEl?.querySelectorAll('.pie-tool-color-scheme__option:not([disabled])') as NodeListOf<HTMLButtonElement>;
+			const options = containerEl?.querySelectorAll<HTMLButtonElement>('.pie-tool-color-scheme__option:not([disabled])');
 			if (!options || options.length === 0) return;
 
 			const currentIndex = Array.from(options).findIndex(opt => opt === e.composedPath()[0]);
@@ -204,7 +198,7 @@
 	// The attempt's recorded choice wins over the host's scheme; without one the
 	// picker shows what the theme host has.
 	$effect(() => {
-		if (!browser) return;
+		if (!isBrowser) return;
 		const key = stateKey;
 		const recorded = key ? elementToolStateStore?.getState(key, toolId) : undefined;
 		untrack(() => {
@@ -244,8 +238,9 @@
 
 	onMount(() => {
 		const stopObservingColorSchemes = observePieColorSchemes((snapshot) => {
-			const focusedOption = containerEl?.getRootNode() instanceof ShadowRoot
-				? (containerEl.getRootNode() as ShadowRoot).activeElement?.closest('.pie-tool-color-scheme__option')
+			const root = containerEl?.getRootNode();
+			const focusedOption = root instanceof ShadowRoot
+				? root.activeElement?.closest('.pie-tool-color-scheme__option')
 				: null;
 			const focusedSchemeId = focusedOption?.getAttribute('data-scheme-id');
 			colorSchemeSnapshot = snapshot;
@@ -257,7 +252,6 @@
 			}
 		});
 
-		// Click outside handler
 		function handleClickOutside(e: MouseEvent) {
 			if (!dropdownOpen) return;
 			const clickPath = e.composedPath();

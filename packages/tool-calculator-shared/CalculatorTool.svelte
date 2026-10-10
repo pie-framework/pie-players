@@ -134,13 +134,16 @@
 		mountKey: string,
 		mountElement: HTMLDivElement,
 	): Promise<void> {
+		// A newer mount, a hide or a detach makes this mount's result unwanted.
+		const superseded = () =>
+			generation !== mountGeneration || !visible || !mountElement.isConnected;
 		isInitializing = true;
 		initializationError = null;
 		try {
 			if (!toolkitCoordinator) throw new Error('Calculator provider registry is unavailable');
 			const toolProvider = await toolkitCoordinator.ensureProviderReady(baseToolId);
 			const calculatorProvider = await toolProvider.createInstance();
-			if (generation !== mountGeneration || !visible || !mountElement.isConnected) {
+			if (superseded()) {
 				mountElement.remove();
 				return;
 			}
@@ -150,7 +153,7 @@
 				mountElement,
 				calculatorConfig,
 			);
-			if (generation !== mountGeneration || !visible || !mountElement.isConnected) {
+			if (superseded()) {
 				instance.destroy();
 				mountElement.remove();
 				return;
@@ -322,11 +325,10 @@
 		min-width: 100%;
 		min-height: 100%;
 		/*
-		 * `--pie-white`, not the literal. The token inverts by design (#ffffff light,
-		 * #000000 dark, redefined per colour scheme), so a hardcoded white showed
-		 * through as a white plate behind a dark calculator the moment a provider's own
-		 * surface stopped being opaque — and under a PNP colour scheme it was simply
-		 * the wrong colour.
+		 * `--pie-white` inverts by design (#ffffff light, #000000 dark, redefined per
+		 * colour scheme), so this backing matches the scheme wherever a provider's own
+		 * surface is not opaque. A hardcoded white shows as a white plate behind a dark
+		 * calculator.
 		 */
 		background: var(--pie-white, white);
 		overflow: hidden;

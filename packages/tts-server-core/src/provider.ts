@@ -184,7 +184,7 @@ export abstract class BaseTTSProvider implements ITTSServerProvider {
 
 	/**
 	 * Ensure provider is initialized before operations
-	 * @throws {TTSError} If provider not initialized
+	 * @throws {Error} If provider not initialized
 	 */
 	protected ensureInitialized(): void {
 		if (!this.initialized) {
@@ -283,7 +283,7 @@ export abstract class BaseTTSProvider implements ITTSServerProvider {
 
 	/**
 	 * Validate synthesis request
-	 * @throws {TTSError} If request is invalid
+	 * @throws {Error} If request is invalid
 	 */
 	protected validateRequest(
 		request: SynthesizeRequest,

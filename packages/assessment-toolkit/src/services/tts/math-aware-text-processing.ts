@@ -132,7 +132,6 @@ const resolveTextChunkSourceElement = (
 	root: Element,
 ): Element => {
 	let current = flatTreeParentElement(textNode);
-	let best: Element | null = null;
 	while (current && current !== root) {
 		const role = (current.getAttribute("role") || "").toLowerCase();
 		const tagName = current.tagName.toUpperCase();
@@ -140,12 +139,11 @@ const resolveTextChunkSourceElement = (
 			TEXT_CHUNK_SOURCE_TAGS.has(tagName) ||
 			TEXT_CHUNK_SOURCE_ROLES.has(role)
 		) {
-			best = current;
-			break;
+			return current;
 		}
 		current = flatTreeParentElement(current);
 	}
-	return best || root;
+	return root;
 };
 
 const hasMathCandidate = (element: Element): boolean =>
@@ -249,13 +247,12 @@ const appendCollectedText = (
 	for (let i = 0; i < collected.text.length; i++) {
 		const character = collected.text[i];
 		const isWhitespace = /\s/.test(character);
-		const mapping = collected.map.get(i) || null;
-		const syntheticNode = mapping?.node || acc.lastMapped?.node || null;
-		const syntheticOffset = mapping?.offset ?? acc.lastMapped?.offset ?? 0;
-		const normalizedMapping = mapping
+		const mapping = collected.map.get(i);
+		// An unmapped character borrows the last mapped position.
+		const characterMapping = mapping
 			? { node: mapping.node, offset: mapping.offset }
-			: syntheticNode
-				? { node: syntheticNode, offset: syntheticOffset }
+			: acc.lastMapped
+				? { node: acc.lastMapped.node, offset: acc.lastMapped.offset }
 				: null;
 		if (acc.inLeadingWhitespace) {
 			if (isWhitespace) continue;
@@ -263,28 +260,16 @@ const appendCollectedText = (
 		}
 		if (isWhitespace) {
 			if (!acc.lastCharWasWhitespace) {
-				appendCharacter(acc, " ", normalizedMapping);
+				appendCharacter(acc, " ", characterMapping);
 			}
 			acc.lastCharWasWhitespace = true;
 			continue;
 		}
 		if (i === 0 && shouldInsertBoundarySpace(acc, character)) {
-			appendCharacter(acc, " ", normalizedMapping);
+			appendCharacter(acc, " ", characterMapping);
 		}
-		appendCharacter(acc, character, normalizedMapping);
+		appendCharacter(acc, character, characterMapping);
 		acc.lastCharWasWhitespace = false;
-		if (mapping) {
-			acc.map.set(acc.position - 1, {
-				node: mapping.node,
-				offset: mapping.offset,
-			});
-			acc.lastMapped = { node: mapping.node, offset: mapping.offset };
-		} else if (syntheticNode) {
-			acc.map.set(acc.position - 1, {
-				node: syntheticNode,
-				offset: syntheticOffset,
-			});
-		}
 	}
 };
 
@@ -486,9 +471,6 @@ const collectMathAware = (
 	trimTrailingWhitespace(acc);
 	flushTextChunk();
 	const visibleText = acc.chars.join("");
-	while (acc.map.has(visibleText.length)) {
-		acc.map.delete(visibleText.length);
-	}
 	return {
 		visibleText,
 		map: acc.map,

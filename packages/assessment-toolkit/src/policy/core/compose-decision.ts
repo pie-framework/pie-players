@@ -127,7 +127,7 @@ export function composeDecision(
 		return true;
 	});
 
-	// Step 3 — Host whitelist (only when non-empty).
+	// Step 3 — Host allowlist (only when non-empty).
 	if (allowed.length > 0) {
 		const allowedSet = new Set(allowed);
 		candidates = candidates.filter((toolId) => {
@@ -209,9 +209,8 @@ export function composeDecision(
 		}
 
 		// 5a — remove PNP/profile-blocked tools from the candidate set.
-		candidates = candidates.filter((toolId) => {
-			return !pnpPolicyResult!.blockedToolIds.has(toolId);
-		});
+		const { blockedToolIds } = pnpPolicyResult;
+		candidates = candidates.filter((toolId) => !blockedToolIds.has(toolId));
 
 		// 5b — surface requiredToolBlocked diagnostics ONLY for
 		// PNP/profile-mandated tools that the host removed (i.e., the tool was
@@ -419,10 +418,10 @@ function detectHostRemovalGate(
 			hostValue: Array.from(args.blocked),
 		};
 	}
-	// Defensive: `removedByHost` is true at the call site (the tool is
-	// in `mandates` but not in `postHostCandidates`), so one of
-	// the four gates above MUST have fired. If none did, the host
-	// pipeline has a bug; surface a best-effort rather than throwing.
+	// Defensive: at the call site the tool is in `mandates` but not in
+	// `postHostCandidates`, so one of the four gates above MUST have
+	// fired. If none did, the host pipeline has a bug; surface a
+	// best-effort rather than throwing.
 	return { hostRule: "placement-missing", hostValue: args.allTools };
 }
 

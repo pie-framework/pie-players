@@ -6,6 +6,7 @@
 	import type { I18nProvider } from "@pie-players/pie-players-shared/i18n/types";
 	import { resolveInterfaceI18n } from "@pie-players/pie-players-shared/i18n/provider";
 	import {
+		PANEL_MIN_ON_SCREEN_HEIGHT,
 		claimNextFloatingPanelZIndex,
 		computePanelSizeFromViewport,
 		createFloatingPanelPointerController,
@@ -75,9 +76,7 @@
 		},
 		minWidth: untrack(() => minWidth),
 		minHeight: untrack(() => minHeight),
-		onFocus: () => {
-			panelZIndex = claimNextFloatingPanelZIndex();
-		},
+		onFocus: bringToFront,
 	});
 
 	function bringToFront(): void {
@@ -109,8 +108,7 @@
 		const width = Math.max(minWidth, Math.min(viewportWidth, state.width));
 		const height = Math.max(minHeight, Math.min(viewportHeight, state.height));
 		const maxX = Math.max(0, viewportWidth - width);
-		// Keep restore bounds aligned with drag bounds in floating-panel pointer controller.
-		const maxY = Math.max(0, viewportHeight - 100);
+		const maxY = Math.max(0, viewportHeight - PANEL_MIN_ON_SCREEN_HEIGHT);
 		return {
 			x: Math.max(0, Math.min(maxX, state.x)),
 			y: Math.max(0, Math.min(maxY, state.y)),

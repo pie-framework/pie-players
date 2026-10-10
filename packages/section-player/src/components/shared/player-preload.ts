@@ -1,28 +1,17 @@
 /**
  * Section-player element warmup pipeline.
  *
- * This module is the functional pipeline that replaced the old stateful
- * orchestrator. The previous implementation carried three pieces of
- * reactive state (`elementsLoaded`, `preloadRunToken`, `lastPreloadSignature`)
- * inside `SectionItemsPane.svelte` and a second state machine here
- * (`PlayerPreloadState`, `createPlayerPreloadStateSetter`). The combination
- * produced the sporadic "missing tags" section-swap race: when the host
- * swapped sections under a live pane, the template re-rendered with new
- * items while a cached `elementsLoaded = true` was still in scope, so items
- * mounted with a false pre-registration claim.
+ * `ElementLoader` in `players-shared` owns element registration and dedupes
+ * concurrent identical requests. This module:
  *
- * The deep `ElementLoader` primitive in `players-shared` now owns
- * registration truth end-to-end. The section-player's remaining job is
- * narrowly:
- *
- *   1. Validate the PIE config contract for every renderable.
- *   2. Translate the host's player props into an ElementLoader backend
+ *   1. Validates the PIE config contract for every renderable.
+ *   2. Translates the host's player props into an ElementLoader backend
  *      config (IIFE or ESM).
- *   3. Hand the aggregated elements to `ensureRegistered` for pre-warming.
+ *   3. Pre-warms the aggregate element set with `ensureRegistered`, or asserts
+ *      its registration under `strategy="preloaded"`.
  *
- * No retries, no signatures, no tokens. The primitive deduplicates
- * concurrent identical requests by itself, so the old retry + signature
- * bookkeeping has no role to play here.
+ * It also shapes the `element-preload-retry` and `element-preload-error`
+ * telemetry details.
  */
 
 import {
@@ -139,13 +128,10 @@ function getLoaderView(
 }
 
 /**
- * Stable string signature of a list of renderables, used as a react-key
- * hint for the composition snapshot plumbed through the layout tree.
- *
- * The signature is *not* used for preload dedup anymore — the deep
- * `ElementLoader` primitive handles that internally. It is retained only
- * because downstream template props still pass a string identifier
- * through the customElement boundary.
+ * Stable string signature of a list of renderables: id, version and element
+ * set of each entry's `entity`. The layout composition snapshot carries it,
+ * and the kernel matches the items pane's warmup report against it, so a
+ * report counts only for the composition it was made for.
  */
 export function getRenderablesSignature(renderables: unknown[]): string {
 	const createElementsSignature = (entity: Record<string, unknown>): string => {
@@ -194,17 +180,18 @@ export function toErrorMessage(error: unknown): string {
 	return String(error);
 }
 
+function renderableLabel(renderable: ItemEntity, index: number): string {
+	const id = renderable?.id;
+	return typeof id === "string" ? id : `renderable-${index}`;
+}
+
 function validateRenderableConfigContracts(renderables: ItemEntity[]): void {
 	for (const [index, renderable] of renderables.entries()) {
 		try {
 			assertPieConfigContract(renderable?.config);
 		} catch (error) {
-			const id =
-				typeof (renderable as { id?: unknown })?.id === "string"
-					? (renderable as { id: string }).id
-					: `renderable-${index}`;
 			const message = toErrorMessage(error);
-			throw new Error(`${id}: ${message}`);
+			throw new Error(`${renderableLabel(renderable, index)}: ${message}`);
 		}
 	}
 }
@@ -214,18 +201,8 @@ function logRenderableConfigWarnings(
 	logger: ReturnType<typeof createPieLogger>,
 ): void {
 	for (const [index, renderable] of renderables.entries()) {
-		const id =
-			typeof (renderable as { id?: unknown })?.id === "string"
-				? (renderable as { id: string }).id
-				: `renderable-${index}`;
-		const result = validatePieConfigContract(renderable?.config);
-		const maybeWarnings = (result as unknown as { warnings?: unknown })
-			.warnings;
-		const warnings = Array.isArray(maybeWarnings)
-			? maybeWarnings.filter(
-					(entry): entry is string => typeof entry === "string",
-				)
-			: [];
+		const id = renderableLabel(renderable, index);
+		const { warnings } = validatePieConfigContract(renderable?.config);
 		for (const warning of warnings) {
 			logger.warn(
 				formatElementLoadError("validate-config", `${id}: ${warning}`),

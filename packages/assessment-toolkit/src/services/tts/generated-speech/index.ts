@@ -1,5 +1,5 @@
 /**
- * Generated-speech module (PIE-623): runtime speech composition for math items
+ * Generated-speech module: runtime speech composition for math items
  * that ship without authored SSML / `accessibilityCatalogs`.
  *
  * Layering:

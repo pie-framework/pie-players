@@ -196,7 +196,6 @@ export const calculatorToolRegistration: ToolRegistration = {
 	 * (MathML, LaTeX, arithmetic markers).
 	 */
 	isVisibleInContext(context: ToolContext): boolean {
-		// Show only when math is present in item content.
 		return hasMathContent(context);
 	},
 
@@ -246,8 +245,7 @@ export const calculatorToolRegistration: ToolRegistration = {
 			icon: typeof this.icon === "function" ? this.icon(context) : this.icon,
 			// Routes this button through <nds-icon-button> where the host enables NDS
 			// icons. Declared here because which capabilities render in the host's
-			// design system is a composition decision; the toolbar used to map it from
-			// the `calculator` toolId, which put a capability name in the generic core.
+			// design system is a composition decision.
 			faIconName: "calculator",
 			disabled: false,
 			// The name stays put across open and closed. The toolbar mirrors
@@ -340,10 +338,9 @@ export const calculatorToolRegistration: ToolRegistration = {
 				const active = toolbarContext.isToolVisible(this.toolId);
 				button.active = active;
 				button.label = displayName;
-				// Static across the toggle. The previous `Close ${name.toLowerCase()}`
-				// was a hardcoded English template built by lowercasing a localized
-				// noun — "Close rekenmachine" under nl-NL — and it is the state
-				// `aria-pressed` already carries.
+				// Static across the toggle: `aria-pressed` carries the state, and a
+				// "Close …" template built from a localized noun mixes languages
+				// ("Close rekenmachine" under nl-NL).
 				button.ariaLabel = displayName;
 				button.tooltip = displayName;
 				if (lastVisibleState !== active) {

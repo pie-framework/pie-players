@@ -30,13 +30,10 @@
 	import { onMount } from 'svelte';
 	import protractorSvg from './protractor.svg';
 
-	// Props
 	let { visible = false, toolId = 'protractor' }: { visible?: boolean; toolId?: string } = $props();
 
-	// Check if running in browser
 	const isBrowser = typeof window !== 'undefined';
 
-	// State
 	let containerEl = $state<HTMLDivElement | undefined>();
 	let runtimeContext = $state<AssessmentToolkitRuntimeContext | null>(null);
 	const coordinator = $derived(

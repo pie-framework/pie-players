@@ -743,9 +743,9 @@ table.KdsTable02 > tbody > tr > td {
 	margin-top: 0;
 }
 
-/* Spacing and inheritance only: `font-weight: 500` used to sit here and flatten
-   every authored heading to lighter-than-bold, weakening the visual hierarchy
-   a screen-reader user gets from the heading level. */
+/* Spacing and inheritance only: a `font-weight` here flattens every authored
+   heading to lighter-than-bold, weakening the visual hierarchy a
+   screen-reader user gets from the heading level. */
 :where([data-pie-content]) .h1,
 :where([data-pie-content]) .h2,
 :where([data-pie-content]) .h3,

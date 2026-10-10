@@ -25,7 +25,7 @@ export interface ResolveMathSpeechOptions {
 	mathSpeech?: SREMathSpeechOptions;
 	/**
 	 * Also produce SRE's SSML rendering (markup: "ssml") for the equation, for
-	 * the runtime generated-SSML path (PIE-623). Only populated when the input
+	 * the runtime generated-SSML path. Only populated when the input
 	 * is a single math chunk and SRE succeeds. The plain `speechText` is always
 	 * computed with markup: "none" so the plain path is unaffected.
 	 */
@@ -57,6 +57,9 @@ export interface ResolvedMathSpeech {
 	ssml?: string;
 }
 
+// SRE configures one global engine, so each setupEngine + toSpeech pair runs to
+// completion before the next starts; concurrent reads would otherwise speak
+// under each other's settings.
 let sreOperationQueue: Promise<unknown> = Promise.resolve();
 
 const normalizeLocale = (language?: string): string =>

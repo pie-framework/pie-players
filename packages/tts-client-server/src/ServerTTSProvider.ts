@@ -4,6 +4,13 @@
  * Provides high-quality TTS by calling a server-side API that uses
  * providers like AWS Polly, Google Cloud TTS, etc.
  * Returns audio with precise word-level timing (speech marks).
+ *
+ * Layout: config types; the asset-URL and auth helpers that guard fetches of
+ * server-returned URLs; wire types; mode resolvers; the `pie` and `custom`
+ * transport adapters (`ADAPTERS`); `ServerTTSProviderImpl`, which owns one
+ * playback (synthesis, audio element, word highlighting); and
+ * `ServerTTSProvider`, which picks the adapter, runs the optional endpoint probe
+ * and hands out implementations.
  */
 
 import type {
@@ -30,6 +37,14 @@ const logger = createPieLogger("server-tts-provider", isTtsDebugEnabled);
 
 // Telemetry names the tool by its canonical id, as the toolkit does.
 const TOOL_ID = "textToSpeech";
+
+// Word-highlight polling period; `startWordHighlighting` gives the reasons.
+const HIGHLIGHT_INTERVAL_MS = 50;
+// How long the endpoint probe waits before reporting the server unreachable.
+const ENDPOINT_PROBE_TIMEOUT_MS = 5000;
+// Debug-log previews of an error body and of the text under synthesis.
+const RAW_BODY_PREVIEW_LENGTH = 500;
+const TEXT_PREVIEW_LENGTH = 120;
 
 /**
  * The provider options the server provider reads. `contentLanguage`, set per
@@ -278,6 +293,18 @@ const getTelemetryReporter = (
 	return typeof reporter === "function" ? reporter : undefined;
 };
 
+/** The payload of a `pie-tool-backend-call-*` telemetry event. */
+const backendTelemetry = (
+	config: ServerTTSProviderConfig,
+	operation: string,
+	extra?: Record<string, unknown>,
+): Record<string, unknown> => ({
+	toolId: TOOL_ID,
+	backend: config.provider || "server",
+	operation,
+	...extra,
+});
+
 /**
  * Word timing from speech marks
  */
@@ -289,19 +316,21 @@ interface WordTiming {
 	word: string;
 }
 
+interface WireSpeechMark {
+	time: number;
+	type: string;
+	start: number;
+	end: number;
+	value: string;
+}
+
 /**
  * Server API response for synthesis
  */
 interface SynthesizeAPIResponse {
 	audio: string; // Base64 encoded audio
 	contentType: string;
-	speechMarks: Array<{
-		time: number;
-		type: string;
-		start: number;
-		end: number;
-		value: string;
-	}>;
+	speechMarks: WireSpeechMark[];
 	metadata: {
 		providerId: string;
 		voice: string;
@@ -336,13 +365,7 @@ type NormalizedAudioSource =
 
 interface NormalizedSynthesisResult {
 	audio: NormalizedAudioSource;
-	speechMarks: Array<{
-		time: number;
-		type: string;
-		start: number;
-		end: number;
-		value: string;
-	}>;
+	speechMarks: WireSpeechMark[];
 }
 
 interface TransportAdapter {
@@ -665,16 +688,13 @@ class ServerTTSProviderImpl implements ITTSProviderImplementation {
 	}
 
 	async speak(text: string): Promise<void> {
-		// Stop any current playback
 		this.stop();
 
-		// Reset intentionally stopped flag for new playback
 		this.intentionallyStopped = false;
 		const runId = ++this.synthesisRunId;
 		const synthesisController = new AbortController();
 		this.activeSynthesisController = synthesisController;
 
-		// Call server API to synthesize speech
 		let synthesized: { audioUrl: string; wordTimings: WordTiming[] };
 		try {
 			synthesized = await this.synthesizeSpeech(
@@ -703,11 +723,9 @@ class ServerTTSProviderImpl implements ITTSProviderImplementation {
 		this.highlightCursor = -1;
 
 		return new Promise((resolve, reject) => {
-			// Create audio element
 			const audio = new Audio(audioUrl);
 			this.currentAudio = audio;
 
-			// Apply volume from config
 			if (this.config.volume !== undefined) {
 				audio.volume = Math.max(0, Math.min(1, this.config.volume));
 			}
@@ -730,7 +748,6 @@ class ServerTTSProviderImpl implements ITTSProviderImplementation {
 					logger.warn("playback-start callback failed:", error);
 				}
 
-				// Start word highlighting
 				if (this.onWordBoundary && this.wordTimings.length > 0) {
 					this.startWordHighlighting();
 				}
@@ -784,17 +801,15 @@ class ServerTTSProviderImpl implements ITTSProviderImplementation {
 		runId: number,
 	): Promise<{ audioUrl: string; wordTimings: WordTiming[] }> {
 		const synthStartedAt = Date.now();
-		await this.emitTelemetry("pie-tool-backend-call-start", {
-			toolId: TOOL_ID,
-			backend: this.config.provider || "server",
-			operation: "synthesize-speech",
-		});
+		await this.emitTelemetry(
+			"pie-tool-backend-call-start",
+			backendTelemetry(this.config, "synthesize-speech"),
+		);
 		const headers: Record<string, string> = {
 			"Content-Type": "application/json",
 			...this.config.headers,
 		};
 
-		// Add authentication if provided
 		if (this.config.authToken) {
 			headers["Authorization"] = `Bearer ${this.config.authToken}`;
 		}
@@ -812,14 +827,14 @@ class ServerTTSProviderImpl implements ITTSProviderImplementation {
 				});
 			} catch (error) {
 				if (signal.aborted) throw error;
-				await this.emitTelemetry("pie-tool-backend-call-error", {
-					toolId: TOOL_ID,
-					backend: this.config.provider || "server",
-					operation: "synthesize-speech",
-					duration: Date.now() - synthStartedAt,
-					errorType: "TTSBackendNetworkError",
-					message: error instanceof Error ? error.message : String(error),
-				});
+				await this.emitTelemetry(
+					"pie-tool-backend-call-error",
+					backendTelemetry(this.config, "synthesize-speech", {
+						duration: Date.now() - synthStartedAt,
+						errorType: "TTSBackendNetworkError",
+						message: error instanceof Error ? error.message : String(error),
+					}),
+				);
 				throw error;
 			}
 		})();
@@ -844,7 +859,7 @@ class ServerTTSProviderImpl implements ITTSProviderImplementation {
 					// itself stays behind the debug gate; the length above is what says
 					// a body arrived and was not JSON.
 					logger.debug("non-OK response body", {
-						rawBodyPreview: rawBody.slice(0, 500),
+						rawBodyPreview: rawBody.slice(0, RAW_BODY_PREVIEW_LENGTH),
 					});
 				}
 			}
@@ -854,15 +869,15 @@ class ServerTTSProviderImpl implements ITTSProviderImplementation {
 					? (errorData.error as { message: string }).message
 					: undefined) ||
 				`Server returned ${response.status}`;
-			await this.emitTelemetry("pie-tool-backend-call-error", {
-				toolId: TOOL_ID,
-				backend: this.config.provider || "server",
-				operation: "synthesize-speech",
-				duration: Date.now() - synthStartedAt,
-				statusCode: response.status,
-				errorType: "TTSBackendRequestError",
-				message: errorMessage,
-			});
+			await this.emitTelemetry(
+				"pie-tool-backend-call-error",
+				backendTelemetry(this.config, "synthesize-speech", {
+					duration: Date.now() - synthStartedAt,
+					statusCode: response.status,
+					errorType: "TTSBackendRequestError",
+					message: errorMessage,
+				}),
+			);
 			logger.error("synthesize request failed", {
 				status: response.status,
 				url: synthUrl,
@@ -874,7 +889,10 @@ class ServerTTSProviderImpl implements ITTSProviderImplementation {
 			// can echo it, so both stay behind the debug gate. `errorMessage` above is
 			// thrown to the caller regardless, and `textLength` is what correlates a
 			// failure with a payload without publishing what the learner is reading.
-			const textPreview = text.replace(/\s+/g, " ").trim().slice(0, 120);
+			const textPreview = text
+				.replace(/\s+/g, " ")
+				.trim()
+				.slice(0, TEXT_PREVIEW_LENGTH);
 			logger.debug("synthesize request failed for text", {
 				responseBody: errorData,
 				textPreview:
@@ -903,22 +921,21 @@ class ServerTTSProviderImpl implements ITTSProviderImplementation {
 		} else {
 			const audioAssetUrl = normalized.audio.url;
 			const assetFetchStartedAt = Date.now();
-			await this.emitTelemetry("pie-tool-backend-call-start", {
-				toolId: TOOL_ID,
-				backend: this.config.provider || "server",
-				operation: "fetch-synthesized-audio-asset",
-			});
+			await this.emitTelemetry(
+				"pie-tool-backend-call-start",
+				backendTelemetry(this.config, "fetch-synthesized-audio-asset"),
+			);
 			const assetHeaders = assetFetchHeaders(headers, this.config);
 			const parsedAssetUrl = parseAssetUrl(audioAssetUrl, this.config);
 			if (parsedAssetUrl === null) {
-				await this.emitTelemetry("pie-tool-backend-call-error", {
-					toolId: TOOL_ID,
-					backend: this.config.provider || "server",
-					operation: "fetch-synthesized-audio-asset",
-					duration: Date.now() - assetFetchStartedAt,
-					errorType: "TTSAssetInvalidUrl",
-					message: "TTS asset URL rejected (non-http(s) or malformed)",
-				});
+				await this.emitTelemetry(
+					"pie-tool-backend-call-error",
+					backendTelemetry(this.config, "fetch-synthesized-audio-asset", {
+						duration: Date.now() - assetFetchStartedAt,
+						errorType: "TTSAssetInvalidUrl",
+						message: "TTS asset URL rejected (non-http(s) or malformed)",
+					}),
+				);
 				throw new Error("TTS asset URL rejected (non-http(s) or malformed)");
 			}
 			const assetTrusted = isOriginTrustedForAuth(parsedAssetUrl, this.config);
@@ -935,49 +952,48 @@ class ServerTTSProviderImpl implements ITTSProviderImplementation {
 					});
 				} catch (error) {
 					if (signal.aborted) throw error;
-					await this.emitTelemetry("pie-tool-backend-call-error", {
-						toolId: TOOL_ID,
-						backend: this.config.provider || "server",
-						operation: "fetch-synthesized-audio-asset",
-						duration: Date.now() - assetFetchStartedAt,
-						errorType: "TTSAssetNetworkError",
-						message: error instanceof Error ? error.message : String(error),
-					});
+					await this.emitTelemetry(
+						"pie-tool-backend-call-error",
+						backendTelemetry(this.config, "fetch-synthesized-audio-asset", {
+							duration: Date.now() - assetFetchStartedAt,
+							errorType: "TTSAssetNetworkError",
+							message: error instanceof Error ? error.message : String(error),
+						}),
+					);
 					throw error;
 				}
 			})();
 			if (!audioResponse.ok) {
-				await this.emitTelemetry("pie-tool-backend-call-error", {
-					toolId: TOOL_ID,
-					backend: this.config.provider || "server",
-					operation: "fetch-synthesized-audio-asset",
-					duration: Date.now() - assetFetchStartedAt,
-					statusCode: audioResponse.status,
-					errorType: "TTSAssetFetchError",
-					message: `Failed to download synthesized audio (${audioResponse.status})`,
-				});
+				await this.emitTelemetry(
+					"pie-tool-backend-call-error",
+					backendTelemetry(this.config, "fetch-synthesized-audio-asset", {
+						duration: Date.now() - assetFetchStartedAt,
+						statusCode: audioResponse.status,
+						errorType: "TTSAssetFetchError",
+						message: `Failed to download synthesized audio (${audioResponse.status})`,
+					}),
+				);
 				throw new Error(
 					`Failed to download synthesized audio (${audioResponse.status})`,
 				);
 			}
 			audioBlob = await audioResponse.blob();
-			await this.emitTelemetry("pie-tool-backend-call-success", {
-				toolId: TOOL_ID,
-				backend: this.config.provider || "server",
-				operation: "fetch-synthesized-audio-asset",
-				duration: Date.now() - assetFetchStartedAt,
-			});
+			await this.emitTelemetry(
+				"pie-tool-backend-call-success",
+				backendTelemetry(this.config, "fetch-synthesized-audio-asset", {
+					duration: Date.now() - assetFetchStartedAt,
+				}),
+			);
 		}
 		const audioUrl = URL.createObjectURL(audioBlob);
 
-		// Convert speech marks to word timings
 		const wordTimings = this.parseSpeechMarks(normalized.speechMarks);
-		await this.emitTelemetry("pie-tool-backend-call-success", {
-			toolId: TOOL_ID,
-			backend: this.config.provider || "server",
-			operation: "synthesize-speech",
-			duration: Date.now() - synthStartedAt,
-		});
+		await this.emitTelemetry(
+			"pie-tool-backend-call-success",
+			backendTelemetry(this.config, "synthesize-speech", {
+				duration: Date.now() - synthStartedAt,
+			}),
+		);
 
 		return { audioUrl, wordTimings };
 	}
@@ -1079,7 +1095,7 @@ class ServerTTSProviderImpl implements ITTSProviderImplementation {
 				currentTimeMs,
 			});
 			this.onWordBoundary?.(timing.word, timing.charIndex, timing.length);
-		}, 50);
+		}, HIGHLIGHT_INTERVAL_MS);
 	}
 
 	/**
@@ -1174,13 +1190,12 @@ class ServerTTSProviderImpl implements ITTSProviderImplementation {
 	}
 
 	/**
-	 * Update settings dynamically (rate, pitch, voice)
-	 * Note: Server-side synthesis bakes rate, pitch, and voice into the audio and
-	 * speech marks. Settings updates are stored for the next synthesis; active
-	 * speed changes are handled by TTSService replaying from the current segment.
+	 * Store rate, pitch, voice and the per-speak language for the next
+	 * synthesis. Server-side synthesis bakes them into the audio and speech
+	 * marks, so an active speed change is TTSService's job: it replays from the
+	 * current segment.
 	 */
 	updateSettings(settings: Partial<ServerTTSProviderConfig>): void {
-		// Update config
 		if (settings.rate !== undefined) {
 			this.config.rate = settings.rate;
 			this.config.providerOptions = {
@@ -1189,11 +1204,9 @@ class ServerTTSProviderImpl implements ITTSProviderImplementation {
 			};
 		}
 		if (settings.pitch !== undefined) {
-			// Server-side pitch is baked into audio, so this only affects next speak()
 			this.config.pitch = settings.pitch;
 		}
 		if (settings.voice !== undefined) {
-			// Voice change requires resynthesis, affects next speak()
 			this.config.voice = settings.voice;
 		}
 		// Only the per-speak language: the toolkit's other options would replace
@@ -1255,31 +1268,30 @@ export class ServerTTSProvider implements ITTSProvider {
 		const validationMode = resolveValidationMode(serverConfig);
 		if (validationMode !== "none") {
 			const validationStartedAt = Date.now();
-			await this.emitTelemetry("pie-tool-backend-call-start", {
-				toolId: TOOL_ID,
-				backend: serverConfig.provider || "server",
-				operation: "validate-endpoint",
-			});
+			await this.emitTelemetry(
+				"pie-tool-backend-call-start",
+				backendTelemetry(serverConfig, "validate-endpoint"),
+			);
 			const available = await this.testAPIAvailability(validationMode);
 			if (!available) {
-				await this.emitTelemetry("pie-tool-backend-call-error", {
-					toolId: TOOL_ID,
-					backend: serverConfig.provider || "server",
-					operation: "validate-endpoint",
-					duration: Date.now() - validationStartedAt,
-					errorType: "TTSEndpointValidationError",
-					message: `Server TTS API not available at ${serverConfig.apiEndpoint}`,
-				});
+				await this.emitTelemetry(
+					"pie-tool-backend-call-error",
+					backendTelemetry(serverConfig, "validate-endpoint", {
+						duration: Date.now() - validationStartedAt,
+						errorType: "TTSEndpointValidationError",
+						message: `Server TTS API not available at ${serverConfig.apiEndpoint}`,
+					}),
+				);
 				throw new Error(
 					`Server TTS API not available at ${serverConfig.apiEndpoint}`,
 				);
 			}
-			await this.emitTelemetry("pie-tool-backend-call-success", {
-				toolId: TOOL_ID,
-				backend: serverConfig.provider || "server",
-				operation: "validate-endpoint",
-				duration: Date.now() - validationStartedAt,
-			});
+			await this.emitTelemetry(
+				"pie-tool-backend-call-success",
+				backendTelemetry(serverConfig, "validate-endpoint", {
+					duration: Date.now() - validationStartedAt,
+				}),
+			);
 		}
 
 		return new ServerTTSProviderImpl(serverConfig, this.adapter);
@@ -1302,9 +1314,11 @@ export class ServerTTSProvider implements ITTSProvider {
 				headers["Authorization"] = `Bearer ${this.config.authToken}`;
 			}
 
-			// Create abort controller for timeout
 			const controller = new AbortController();
-			const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
+			const timeoutId = setTimeout(
+				() => controller.abort(),
+				ENDPOINT_PROBE_TIMEOUT_MS,
+			);
 
 			const validationUrls =
 				mode === "voices"

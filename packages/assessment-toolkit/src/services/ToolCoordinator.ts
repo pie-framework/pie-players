@@ -8,8 +8,6 @@
  * coordinator's alone: an element bound to a tool (`registerTool` with an
  * element, or `updateToolElement`) takes a z-index in the tool's layer and comes
  * to the front of that layer when shown or pressed.
- *
- * Part of PIE Assessment Toolkit.
  */
 
 import {
@@ -103,13 +101,8 @@ export class ToolCoordinator implements ToolCoordinatorApi {
 	/**
 	 * Register a tool with the coordinator. Registering a known id keeps its
 	 * on/off state and takes the name, the element when one is given, and the
-	 * layer when none was declared before.
-	 *
-	 * @param id Unique tool identifier
-	 * @param name Display name
-	 * @param element DOM element to stack (optional)
-	 * @param layer Z-index layer. Without one the tool stacks on TOOL until a
-	 * registration names one.
+	 * layer when none was declared before. Without a `layer` the tool stacks on
+	 * TOOL until a registration names one.
 	 */
 	registerTool(
 		id: string,
@@ -157,8 +150,6 @@ export class ToolCoordinator implements ToolCoordinatorApi {
 	 * Unregister a tool's element binding, keeping its on/off state so a
 	 * re-registration of the same id (an item re-render) restores it. Use
 	 * {@link releaseTool} on genuine teardown.
-	 *
-	 * @param id Tool identifier
 	 */
 	unregisterTool(id: string): void {
 		const entry = this.tools.get(id);
@@ -171,8 +162,6 @@ export class ToolCoordinator implements ToolCoordinatorApi {
 	 * Fully release a tool: unregister its element binding and discard its
 	 * on/off state. Call this on genuine teardown (leaving the item or section
 	 * that owns the tool).
-	 *
-	 * @param id Tool identifier
 	 */
 	releaseTool(id: string): void {
 		const entry = this.tools.get(id);
@@ -182,11 +171,6 @@ export class ToolCoordinator implements ToolCoordinatorApi {
 		if (entry.isVisible) this.notifyListeners();
 	}
 
-	/**
-	 * Show a tool
-	 *
-	 * @param id Tool identifier
-	 */
 	showTool(id: string): void {
 		const entry = this.tools.get(id);
 		if (!entry) {
@@ -197,11 +181,6 @@ export class ToolCoordinator implements ToolCoordinatorApi {
 		this.setVisible(entry, true);
 	}
 
-	/**
-	 * Hide a tool
-	 *
-	 * @param id Tool identifier
-	 */
 	hideTool(id: string): void {
 		const entry = this.tools.get(id);
 		if (!entry) {
@@ -211,11 +190,6 @@ export class ToolCoordinator implements ToolCoordinatorApi {
 		this.setVisible(entry, false);
 	}
 
-	/**
-	 * Toggle tool visibility
-	 *
-	 * @param id Tool identifier
-	 */
 	toggleTool(id: string): void {
 		const entry = this.tools.get(id);
 		if (!entry) {
@@ -229,11 +203,6 @@ export class ToolCoordinator implements ToolCoordinatorApi {
 		}
 	}
 
-	/**
-	 * Check if tool is visible
-	 *
-	 * @param id Tool identifier
-	 */
 	isToolVisible(id: string): boolean {
 		return this.tools.get(id)?.isVisible ?? false;
 	}
@@ -241,8 +210,6 @@ export class ToolCoordinator implements ToolCoordinatorApi {
 	/**
 	 * Bring a bound element to the front of its tool's layer. An element no tool
 	 * is bound to is left alone.
-	 *
-	 * @param element DOM element to bring forward
 	 */
 	bringToFront(element: HTMLElement): void {
 		const entry = Array.from(this.tools.values()).find(
@@ -314,9 +281,6 @@ export class ToolCoordinator implements ToolCoordinatorApi {
 	 * The outermost element stacks: binding an element inside the bound one keeps
 	 * the binding, so a tool rendered inside a toolbar's floating window stacks
 	 * by that window whichever binds first.
-	 *
-	 * @param id Tool identifier
-	 * @param element New DOM element
 	 */
 	updateToolElement(id: string, element: HTMLElement): void {
 		const entry = this.tools.get(id);
@@ -351,11 +315,7 @@ export class ToolCoordinator implements ToolCoordinatorApi {
 		if (changed) this.notifyListeners();
 	}
 
-	/**
-	 * State of a tool an element registration holds.
-	 *
-	 * @param id Tool identifier
-	 */
+	/** State of a tool an element registration holds. */
 	getToolState(id: string): ToolState | undefined {
 		const entry = this.tools.get(id);
 		return entry?.registered ? toToolState(entry) : undefined;

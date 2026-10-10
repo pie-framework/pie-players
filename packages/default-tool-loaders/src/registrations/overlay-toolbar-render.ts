@@ -2,18 +2,15 @@
  * The `renderToolbar` shape shared by every packaged capability that puts one
  * overlay behind one toolbar button.
  *
- * Seven registrations had this inline. What actually varies between them is the
- * two options below and nothing else: whether the overlay paints its own chrome
- * or takes a draggable window, and that window's size. Everything else — the visibility
- * binding, the button, the component-override lookup, the `tool-id` attribute, the
- * sync — was identical, which is why one rule landing in three spellings was
- * possible: the shell title was `resolveToolRegistrationName` in two files,
- * `displayName` in a third and a raw `t(key)` in a fourth.
+ * What varies between capabilities is the two options below: whether the overlay
+ * paints its own chrome or takes a draggable window, and that window's size. The
+ * visibility binding, the button, the component-override lookup, the `tool-id`
+ * attribute and the sync are shared, so the shell title has one spelling.
  *
- * Catalog keys are derived from `toolId`, which held at all seven sites:
- * `tools.<toolId>.buttonA11y` and `tools.<toolId>.tooltip`. A capability needing a
- * different prefix — the dictionary variants, which compose several capabilities
- * off one element — keeps its own renderer.
+ * Catalog keys are derived from `toolId`: `tools.<toolId>.buttonA11y` and
+ * `tools.<toolId>.tooltip`. A capability needing a different prefix — the
+ * dictionary variants, which compose several capabilities off one element —
+ * keeps its own renderer.
  */
 
 import type { MessageKey } from "@pie-players/pie-players-shared/i18n/types";

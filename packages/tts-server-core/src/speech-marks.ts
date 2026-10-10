@@ -51,6 +51,9 @@ const parseWordMarksJsonl = (raw: string): SpeechMark[] => {
 	return sortWordMarks(marks);
 };
 
+// Some services report mark times in seconds. A timeline too short or too
+// tightly spaced to be milliseconds (max under 100 across more than 3 marks, or
+// a median gap under 10) is read as seconds and scaled to ms.
 const normalizeMarkTimeUnits = (marks: SpeechMark[]): SpeechMark[] => {
 	if (marks.length < 2) return marks;
 	const times = marks.map((mark) => mark.time).filter((time) => time >= 0);

@@ -145,6 +145,8 @@ export async function generateHashedCacheKey(
 	return keyParts.join(":");
 }
 
+const DEFAULT_TTL_SECONDS = 24 * 60 * 60;
+
 /**
  * In-memory LRU cache, for development and testing only
  *
@@ -183,7 +185,6 @@ export class MemoryCache implements ITTSCache {
 			return null;
 		}
 
-		// Check expiration
 		if (Date.now() > entry.expires) {
 			this.cache.delete(key);
 			this.misses++;
@@ -207,7 +208,7 @@ export class MemoryCache implements ITTSCache {
 	async set(
 		key: string,
 		value: SynthesizeResponse,
-		ttl = 86400,
+		ttl = DEFAULT_TTL_SECONDS,
 	): Promise<void> {
 		// Overwriting a key re-inserts it at the end of the order rather than
 		// updating it in place, and frees its slot so no live entry is evicted.
@@ -249,7 +250,6 @@ export class MemoryCache implements ITTSCache {
 		const entry = this.cache.get(key);
 		if (!entry) return false;
 
-		// Check expiration
 		if (Date.now() > entry.expires) {
 			this.cache.delete(key);
 			return false;

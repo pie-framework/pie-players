@@ -1,18 +1,12 @@
 /**
- * ElementToolStateStore - Manages element-level ephemeral tool state
+ * ElementToolStateStore: ephemeral UI tool state (answer eliminations, flags and
+ * the like), kept out of the session data sent to the server for scoring.
  *
- * Provides centralized storage for UI tool state (answer eliminations, flags, etc.)
- * that should NOT be sent to the server for scoring. Each element is uniquely identified
- * across the entire assessment using composite keys.
- *
- * Key features:
- * - Element-level granularity (not item-level)
- * - Composite keys for global uniqueness:
- *   `assessmentId:sectionId:attemptId:itemId:elementId`
- * - Per-attempt state: two attempts at one section never share a key
- * - Reactive subscriptions
- * - Optional persistence callback integration
- * - Generic solution for any tool
+ * State is keyed by a composite global element id,
+ * `assessmentId:sectionId:attemptId:itemId:elementId`, unique across the
+ * assessment and per attempt: two attempts at one section never share a key.
+ * Subscribers see every change, and an optional persistence callback
+ * (`setOnStateChange`) receives the serialized state.
  */
 
 /**
@@ -85,10 +79,6 @@ export class ElementToolStateStore {
 	/**
 	 * Sets tool state for a specific element.
 	 * Notifies all subscribers and triggers persistence callback.
-	 *
-	 * @param globalElementId Composite key identifying the element
-	 * @param toolId Tool identifier (e.g., 'answerEliminator', 'flagging')
-	 * @param state Tool-specific state object
 	 */
 	setState(globalElementId: string, toolId: string, state: unknown): void {
 		let elementState = this.elementStates.get(globalElementId);
@@ -101,23 +91,12 @@ export class ElementToolStateStore {
 		this._notifyStateChange();
 	}
 
-	/**
-	 * Gets tool state for a specific element.
-	 *
-	 * @param globalElementId Composite key identifying the element
-	 * @param toolId Tool identifier
-	 * @returns Tool state or undefined if not found
-	 */
+	/** One tool's state for an element, or `undefined` when none is set. */
 	getState(globalElementId: string, toolId: string): unknown {
 		return this.elementStates.get(globalElementId)?.get(toolId);
 	}
 
-	/**
-	 * Gets all tool states for a specific element.
-	 *
-	 * @param globalElementId Composite key identifying the element
-	 * @returns Object with tool states keyed by toolId
-	 */
+	/** Every tool's state for an element, keyed by toolId. */
 	getElementState(globalElementId: string): Record<string, unknown> {
 		const elementState = this.elementStates.get(globalElementId);
 		if (!elementState) return {};
@@ -125,10 +104,8 @@ export class ElementToolStateStore {
 	}
 
 	/**
-	 * Gets all tool states for all elements.
-	 * Used for persistence and debugging.
-	 *
-	 * @returns Nested object: { globalElementId: { toolId: state } }
+	 * All state as `{ globalElementId: { toolId: state } }`, for persistence and
+	 * debugging.
 	 */
 	getAllState(): Record<string, Record<string, unknown>> {
 		const result: Record<string, Record<string, unknown>> = {};
@@ -141,10 +118,8 @@ export class ElementToolStateStore {
 	/**
 	 * Subscribes to state changes.
 	 * Callback is invoked whenever any element's tool state changes, including
-	 * a `loadState` restore, with a copy of the state that it may keep.
-	 *
-	 * @param callback Function to call on state changes
-	 * @returns Unsubscribe function
+	 * a `loadState` restore, with a copy of the state that it may keep. Returns
+	 * the unsubscribe function.
 	 */
 	subscribe(
 		callback: (state: Map<string, Map<string, unknown>>) => void,
@@ -173,8 +148,6 @@ export class ElementToolStateStore {
 	/**
 	 * Sets a callback to be invoked on state changes for persistence integration.
 	 * Used by demo/app layer to persist tool state to localStorage or server.
-	 *
-	 * @param callback Function to call with serialized state on changes
 	 */
 	setOnStateChange(
 		callback: (state: Record<string, Record<string, unknown>>) => void,
@@ -195,8 +168,6 @@ export class ElementToolStateStore {
 	 * Loads tool state from serialized format.
 	 * Used to restore state from localStorage or server. Subscribers are
 	 * notified; the persistence callback is not, so a restore never writes back.
-	 *
-	 * @param state Serialized state object
 	 */
 	loadState(state: Record<string, Record<string, unknown>>): void {
 		this.elementStates.clear();
@@ -207,11 +178,7 @@ export class ElementToolStateStore {
 		this._notifyListeners();
 	}
 
-	/**
-	 * Clears all tool state for a specific element.
-	 *
-	 * @param globalElementId Composite key identifying the element
-	 */
+	/** Clears all tool state for a specific element. */
 	clearElement(globalElementId: string): void {
 		this.elementStates.delete(globalElementId);
 		this._notifyListeners();
@@ -221,8 +188,6 @@ export class ElementToolStateStore {
 	/**
 	 * Clears state for a specific tool across all elements.
 	 * Useful when disabling a tool globally.
-	 *
-	 * @param toolId Tool identifier
 	 */
 	clearTool(toolId: string): void {
 		for (const elementState of this.elementStates.values()) {
@@ -235,9 +200,6 @@ export class ElementToolStateStore {
 	/**
 	 * Clears all tool state for a specific section, across its attempts.
 	 * Useful when unmounting/disposing a section.
-	 *
-	 * @param assessmentId Assessment identifier
-	 * @param sectionId Section identifier
 	 */
 	clearSection(assessmentId: string, sectionId: string): void {
 		const prefix = `${escapeIdPart(assessmentId)}:${escapeIdPart(sectionId)}:`;

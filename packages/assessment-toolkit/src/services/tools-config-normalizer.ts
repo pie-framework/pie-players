@@ -231,6 +231,10 @@ function assertProvidersConfig(value: unknown): ToolProvidersConfig {
 	return normalized;
 }
 
+/**
+ * Tool ids trimmed, with empty ones dropped and duplicates removed in
+ * first-seen order. Throws on a non-string entry.
+ */
 export function normalizeToolList(
 	toolIds: string[] | undefined | null,
 ): string[] {
@@ -270,6 +274,22 @@ function assertPnpEnforcement(
 	);
 }
 
+/** A placement level's tool ids, or the level's default when it names none. */
+function normalizePlacementLevel(
+	placement: ToolPlacementConfig | undefined,
+	level: ToolPlacementLevel,
+): string[] {
+	const toolIds = normalizeToolList(
+		assertStringArray(placement?.[level], `placement.${level}`),
+	);
+	return toolIds.length ? toolIds : [...DEFAULT_PLACEMENT[level]];
+}
+
+/**
+ * Check a host's tools config shape, throwing at the first malformed field, and
+ * return it canonical: tool lists trimmed and deduplicated, and every placement
+ * level that names no tool filled with its default.
+ */
 export function normalizeToolsConfig(
 	input?: ToolsConfigInput | null,
 ): CanonicalToolsConfig {
@@ -296,27 +316,9 @@ export function normalizeToolsConfig(
 			),
 		},
 		placement: {
-			section: normalizeToolList(
-				assertStringArray(placement?.section, "placement.section"),
-			).length
-				? normalizeToolList(
-						assertStringArray(placement?.section, "placement.section"),
-					)
-				: [...DEFAULT_PLACEMENT.section],
-			item: normalizeToolList(
-				assertStringArray(placement?.item, "placement.item"),
-			).length
-				? normalizeToolList(
-						assertStringArray(placement?.item, "placement.item"),
-					)
-				: [...DEFAULT_PLACEMENT.item],
-			passage: normalizeToolList(
-				assertStringArray(placement?.passage, "placement.passage"),
-			).length
-				? normalizeToolList(
-						assertStringArray(placement?.passage, "placement.passage"),
-					)
-				: [...DEFAULT_PLACEMENT.passage],
+			section: normalizePlacementLevel(placement, "section"),
+			item: normalizePlacementLevel(placement, "item"),
+			passage: normalizePlacementLevel(placement, "passage"),
 		},
 		providers,
 	};

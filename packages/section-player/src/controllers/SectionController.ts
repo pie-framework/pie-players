@@ -139,9 +139,19 @@ const logger = createPieLogger("section-controller", () =>
 	isGlobalDebugEnabled(),
 );
 
+function sectionIdentifierOf(
+	input: SectionControllerInput | null | undefined,
+): string | undefined {
+	return input?.section?.identifier || input?.sectionId || undefined;
+}
+
+/**
+ * Owns aggregate section state: item sessions and navigation, the renderable
+ * lifecycle, completion, formative delivery, and timed-media cue state with its
+ * Media Time Source port. Item-level controllers share contracts with it but
+ * are not composed here.
+ */
 export class SectionController implements SectionControllerHandle {
-	// SectionController intentionally owns aggregate section state only.
-	// Item-level controllers may share contracts, but are not composed here.
 	private readonly contentService = new SectionContentService();
 	private readonly sessionService = new SectionSessionService();
 	private readonly itemNavigationService = new SectionItemNavigationService();
@@ -253,10 +263,7 @@ export class SectionController implements SectionControllerHandle {
 	public async initialize(input?: unknown): Promise<void> {
 		const typedInput = input as SectionControllerInput | undefined;
 		if (!typedInput) return;
-		const previousSectionId =
-			this.state.input?.section?.identifier ||
-			this.state.input?.sectionId ||
-			undefined;
+		const previousSectionId = sectionIdentifierOf(this.state.input);
 
 		const content = this.contentService.build(
 			typedInput.section,
@@ -281,8 +288,7 @@ export class SectionController implements SectionControllerHandle {
 			},
 			testAttemptSession: sessionState.testAttemptSession,
 		};
-		const currentSectionId =
-			typedInput.section?.identifier || typedInput.sectionId || undefined;
+		const currentSectionId = sectionIdentifierOf(typedInput);
 		const sectionIdentityChanged = previousSectionId !== currentSectionId;
 		// Lifecycle tracking is wiped only when the section identity changes.
 		// A same-section `updateInput` (the binding always passes
@@ -409,10 +415,7 @@ export class SectionController implements SectionControllerHandle {
 		isPageMode: boolean;
 	} {
 		return {
-			sectionId:
-				this.state.input?.section?.identifier ||
-				this.state.input?.sectionId ||
-				"",
+			sectionId: sectionIdentifierOf(this.state.input) ?? "",
 			itemCount: this.state.viewModel.items.length,
 			passageCount: this.state.viewModel.passages.length,
 			isPageMode: this.state.viewModel.isPageMode,
@@ -1166,6 +1169,10 @@ export class SectionController implements SectionControllerHandle {
 		this.advanceTimedMedia({ kind: "delivery-changed" });
 	}
 
+	// ------------------------------------------------------------------
+	// Runtime state, item sessions and navigation
+	// ------------------------------------------------------------------
+
 	/**
 	 * Runtime/debugger shape scoped to the current section.
 	 * Use this for widgets that need a section-scoped live snapshot (debug panels, diagnostics).
@@ -1198,15 +1205,9 @@ export class SectionController implements SectionControllerHandle {
 			itemSessions[canonicalId] = sessionValue;
 		}
 
-		const loadedRenderables: SectionAttemptSessionSlice["loadedRenderables"] =
-			this.collectLoadedRenderableSnapshot();
-
 		const runtimeState: SectionAttemptSessionSlice = {
 			sectionId: this.state.input?.sectionId || "",
-			sectionIdentifier:
-				this.state.input?.section?.identifier ||
-				this.state.input?.sectionId ||
-				undefined,
+			sectionIdentifier: sectionIdentifierOf(this.state.input),
 			currentItemIndex: this.state.viewModel.currentItemIndex,
 			currentItemId,
 			itemIdentifiers,
@@ -1218,30 +1219,19 @@ export class SectionController implements SectionControllerHandle {
 			itemsComplete: this.sectionItemsComplete,
 			completedCount: this.completedCount,
 			totalItems: this.totalItems,
-			loadedRenderables,
+			loadedRenderables: this.collectLoadedRenderableSnapshot(),
 		};
 		return runtimeState;
 	}
 
 	/**
-	 * Snapshot of currently-loaded renderables in registration order.
-	 *
-	 * Walks `trackedRenderables` (preserves insertion order) and emits an entry
-	 * for each entry whose key is in `loadedRenderableKeys`. Used by the
-	 * coordinator to replay `content-loaded` events to subscribers that
-	 * attach after a renderable has finished loading.
+	 * Loaded renderables in registration order, which `trackedRenderables`
+	 * preserves. The coordinator replays `content-loaded` from this to
+	 * subscribers that attach after a renderable has finished loading.
 	 */
-	private collectLoadedRenderableSnapshot(): ReadonlyArray<{
-		itemId: string;
-		canonicalItemId: string;
-		contentKind: "item" | "passage" | "rubric" | "unknown";
-	}> {
+	private collectLoadedRenderableSnapshot(): ReadonlyArray<TrackedRenderable> {
 		if (this.loadedRenderableKeys.size === 0) return [];
-		const snapshot: Array<{
-			itemId: string;
-			canonicalItemId: string;
-			contentKind: "item" | "passage" | "rubric" | "unknown";
-		}> = [];
+		const snapshot: TrackedRenderable[] = [];
 		for (const [key, tracked] of this.trackedRenderables) {
 			if (!this.loadedRenderableKeys.has(key)) continue;
 			snapshot.push({
@@ -1427,6 +1417,10 @@ export class SectionController implements SectionControllerHandle {
 		return result;
 	}
 
+	// ------------------------------------------------------------------
+	// Renderable lifecycle and completion
+	// ------------------------------------------------------------------
+
 	public handleContentRegistered(args: {
 		itemId: string;
 		canonicalItemId?: string;
@@ -1593,7 +1587,7 @@ export class SectionController implements SectionControllerHandle {
 		const value = String(raw || "").toLowerCase();
 		if (value === "item" || value.includes("assessment-item")) return "item";
 		if (value === "passage") return "passage";
-		if (value === "rubric" || value.includes("rubric")) return "rubric";
+		if (value.includes("rubric")) return "rubric";
 		return "unknown";
 	}
 
@@ -1743,11 +1737,11 @@ export class SectionController implements SectionControllerHandle {
 		const totalLoaded = this.loadedRenderableKeys.size;
 		this.totalRegistered = totalRegistered;
 		this.totalLoaded = totalLoaded;
-		let nextLoaded = totalRegistered > 0;
-		for (const key of this.trackedRenderables.keys()) {
-			if (!nextLoaded) break;
-			nextLoaded = this.loadedRenderableKeys.has(key);
-		}
+		const nextLoaded =
+			totalRegistered > 0 &&
+			Array.from(this.trackedRenderables.keys()).every((key) =>
+				this.loadedRenderableKeys.has(key),
+			);
 		if (nextLoaded === this.sectionLoadingComplete) return;
 		this.sectionLoadingComplete = nextLoaded;
 		if (!nextLoaded) return;
@@ -1762,6 +1756,10 @@ export class SectionController implements SectionControllerHandle {
 		this.armMediaAttachWatch();
 		void this.replayPendingAppliedSession();
 	}
+
+	// ------------------------------------------------------------------
+	// Session apply
+	// ------------------------------------------------------------------
 
 	private async replayPendingAppliedSession(): Promise<void> {
 		const pending = this.pendingApplyReplay;
@@ -1844,46 +1842,43 @@ export class SectionController implements SectionControllerHandle {
 		};
 	}
 
+	/**
+	 * Accepts a canonical entry (an `itemIdentifier` plus a `session` object) or
+	 * a bare one: `{ session, complete? }`, or the item session itself.
+	 */
 	private normalizeItemSessionEntry(
 		itemIdentifier: string,
 		entry: unknown,
 	): TestAttemptSession["itemSessions"][string] | null {
 		if (!entry || typeof entry !== "object") return null;
 		const candidate = entry as Record<string, unknown>;
-		const typedCandidate = candidate as {
-			itemIdentifier?: unknown;
-			attemptCount?: unknown;
-			isCompleted?: unknown;
-			session?: unknown;
-			complete?: unknown;
-		};
 		const hasCanonicalShape =
-			typeof typedCandidate.itemIdentifier === "string" &&
-			typedCandidate.session &&
-			typeof typedCandidate.session === "object";
+			typeof candidate.itemIdentifier === "string" &&
+			candidate.session &&
+			typeof candidate.session === "object";
 		if (hasCanonicalShape) {
 			return {
 				itemIdentifier,
 				attemptCount:
-					typeof typedCandidate.attemptCount === "number" &&
-					Number.isFinite(typedCandidate.attemptCount)
-						? typedCandidate.attemptCount
+					typeof candidate.attemptCount === "number" &&
+					Number.isFinite(candidate.attemptCount)
+						? candidate.attemptCount
 						: 1,
-				isCompleted: Boolean(typedCandidate.isCompleted),
-				session: typedCandidate.session as Record<string, unknown>,
+				isCompleted: Boolean(candidate.isCompleted),
+				session: candidate.session as Record<string, unknown>,
 			};
 		}
 		const rawSession =
-			typedCandidate.session && typeof typedCandidate.session === "object"
-				? (typedCandidate.session as Record<string, unknown>)
+			candidate.session && typeof candidate.session === "object"
+				? (candidate.session as Record<string, unknown>)
 				: candidate;
 		return {
 			itemIdentifier,
 			attemptCount: 1,
 			isCompleted:
-				typeof typedCandidate.complete === "boolean"
-					? typedCandidate.complete
-					: Boolean((rawSession as { complete?: unknown }).complete),
+				typeof candidate.complete === "boolean"
+					? candidate.complete
+					: Boolean(rawSession.complete),
 			session: rawSession,
 		};
 	}

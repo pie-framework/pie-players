@@ -1,15 +1,13 @@
 import { ContextRequestEvent } from "./events.js";
-import type { UnknownContext } from "./types.js";
-
-type ContextCallback = (value: unknown, unsubscribe?: () => void) => void;
+import type { ContextCallback, UnknownContext } from "./types.js";
 
 interface PendingRequest {
 	requestorRef: WeakRef<Element>;
-	callbackRef: WeakRef<ContextCallback>;
+	callbackRef: WeakRef<ContextCallback<unknown>>;
 }
 
 interface PendingContext {
-	callbacks: WeakMap<Element, WeakSet<ContextCallback>>;
+	callbacks: WeakMap<Element, WeakSet<ContextCallback<unknown>>>;
 	requests: PendingRequest[];
 }
 
@@ -80,16 +78,16 @@ export class ContextRoot {
 		let pending = this.pendingByContext.get(request.context);
 		if (!pending) {
 			pending = {
-				callbacks: new WeakMap<Element, WeakSet<ContextCallback>>(),
+				callbacks: new WeakMap<Element, WeakSet<ContextCallback<unknown>>>(),
 				requests: [],
 			};
 			this.pendingByContext.set(request.context, pending);
 		}
 
-		const callback = request.callback as ContextCallback;
+		const callback = request.callback as ContextCallback<unknown>;
 		let seenForRequestor = pending.callbacks.get(requestor);
 		if (!seenForRequestor) {
-			seenForRequestor = new WeakSet<ContextCallback>();
+			seenForRequestor = new WeakSet<ContextCallback<unknown>>();
 			pending.callbacks.set(requestor, seenForRequestor);
 		}
 		if (seenForRequestor.has(callback)) return;

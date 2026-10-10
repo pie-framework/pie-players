@@ -1,3 +1,14 @@
+/**
+ * SchoolCity server-side TTS provider
+ *
+ * The service answers a signed synthesis POST with two asset URLs, one for the
+ * audio and one for its speech marks. Every returned URL passes the asset
+ * policy in this module (scheme, cloud-metadata and private-host checks, the
+ * origin allow-list, redirects followed by hand) before it is fetched, since
+ * the URLs come from upstream and the fetch runs server-side.
+ * @module @pie-players/tts-server-sc
+ */
+
 import { SignJWT } from "jose";
 import { getDomain } from "tldts";
 
@@ -9,6 +20,7 @@ import {
 	resolveTTSErrorCodeForHttpStatus,
 	type ServerProviderCapabilities,
 	type SpeechMark,
+	type SpeedRateBucket,
 	type SynthesizeRequest,
 	type SynthesizeResponse,
 	TTSError,
@@ -19,11 +31,9 @@ import {
 
 import { schoolCityVoices } from "./sc-voices.js";
 
-type SchoolCitySpeedRate = "slow" | "medium" | "fast";
-
 type SchoolCitySynthesizeRequest = {
 	text: string;
-	speedRate: SchoolCitySpeedRate;
+	speedRate: SpeedRateBucket;
 	lang_id: string;
 	cache: boolean;
 	voice?: string;
@@ -39,12 +49,16 @@ type SchoolCitySynthesizeResponse = {
 type FetchLike = typeof fetch;
 
 export interface SchoolCityProviderConfig extends TTSServerConfig {
+	/** The synthesis endpoint, POSTed to directly; also anchors the default asset policy. */
 	baseUrl: string;
+	/** Secret that signs the HS256 bearer JWT sent with each request. */
 	apiKey: string;
+	/** The JWT `iss` claim. */
 	issuer: string;
 	defaultLanguage?: string;
-	defaultSpeedRate?: SchoolCitySpeedRate;
+	defaultSpeedRate?: SpeedRateBucket;
 	defaultCache?: boolean;
+	/** Abort timeout, applied to the synthesis call with its marks fetch and again to the audio fetch. */
 	requestTimeoutMs?: number;
 	fetchImpl?: FetchLike;
 	/**
@@ -89,14 +103,17 @@ export interface SchoolCityProviderConfig extends TTSServerConfig {
 	maxAssetRedirects?: number;
 }
 
+/** One synthesis as the service returns it, with the speech marks already fetched. */
 export interface SchoolCitySynthesizeAssetsResult {
+	/** URL of the synthesized audio. */
 	audioContent: string;
+	/** URL of the speech-marks document. */
 	word: string;
 	speechMarks: SpeechMark[];
 }
 
 const DEFAULT_LANGUAGE = "en-US";
-const DEFAULT_SPEED_RATE: SchoolCitySpeedRate = "medium";
+const DEFAULT_SPEED_RATE: SpeedRateBucket = "medium";
 const DEFAULT_CACHE = true;
 const DEFAULT_REQUEST_TIMEOUT_MS = 15000;
 const DEFAULT_MAX_ASSET_REDIRECTS = 2;
@@ -412,13 +429,9 @@ const normalizeEndpoint = (value: string): string => value.replace(/\/+$/, "");
 
 const toSpeedRate = (
 	request: SynthesizeRequest,
-	fallback: SchoolCitySpeedRate,
-): SchoolCitySpeedRate => {
-	const providerOptions = (request.providerOptions || {}) as Record<
-		string,
-		unknown
-	>;
-	const explicit = providerOptions.speedRate;
+	fallback: SpeedRateBucket,
+): SpeedRateBucket => {
+	const explicit = request.providerOptions?.speedRate;
 	if (explicit === "slow" || explicit === "medium" || explicit === "fast") {
 		return explicit;
 	}
@@ -426,15 +439,9 @@ const toSpeedRate = (
 };
 
 const toLanguage = (request: SynthesizeRequest, fallback: string): string => {
-	const providerOptions = (request.providerOptions || {}) as Record<
-		string,
-		unknown
-	>;
-	if (
-		typeof providerOptions.lang_id === "string" &&
-		providerOptions.lang_id.trim()
-	) {
-		return providerOptions.lang_id.trim();
+	const langId = request.providerOptions?.lang_id;
+	if (typeof langId === "string" && langId.trim()) {
+		return langId.trim();
 	}
 	if (typeof request.language === "string" && request.language.trim()) {
 		return request.language.trim();
@@ -446,14 +453,8 @@ const toCacheFlag = (
 	request: SynthesizeRequest,
 	fallback: boolean,
 ): boolean => {
-	const providerOptions = (request.providerOptions || {}) as Record<
-		string,
-		unknown
-	>;
-	if (typeof providerOptions.cache === "boolean") {
-		return providerOptions.cache;
-	}
-	return fallback;
+	const cache = request.providerOptions?.cache;
+	return typeof cache === "boolean" ? cache : fallback;
 };
 
 /**
@@ -469,7 +470,6 @@ const normalizeTextForSchoolCity = (input: string): string => {
 	return withoutOpen.replace(/<\/speak>\s*$/i, "").trim();
 };
 
-
 export class SchoolCityServerProvider extends BaseTTSProvider {
 	readonly providerId = "schoolcity-tts";
 	readonly providerName = "SchoolCity TTS";
@@ -483,6 +483,10 @@ export class SchoolCityServerProvider extends BaseTTSProvider {
 	private defaultCache = DEFAULT_CACHE;
 	private requestTimeoutMs = DEFAULT_REQUEST_TIMEOUT_MS;
 	private fetchImpl: FetchLike = fetch;
+
+	private get schoolCityConfig(): SchoolCityProviderConfig {
+		return this.config as SchoolCityProviderConfig;
+	}
 
 	async initialize(config: SchoolCityProviderConfig): Promise<void> {
 		if (!config.baseUrl?.trim()) {
@@ -559,6 +563,11 @@ export class SchoolCityServerProvider extends BaseTTSProvider {
 		};
 	}
 
+	/**
+	 * Run one synthesis and return the service's asset URLs, with the speech
+	 * marks fetched and normalized unless the request opts out. `synthesize`
+	 * builds on this and also downloads the audio.
+	 */
 	public async synthesizeWithAssets(
 		request: SynthesizeRequest,
 	): Promise<SchoolCitySynthesizeAssetsResult> {
@@ -638,12 +647,12 @@ export class SchoolCityServerProvider extends BaseTTSProvider {
 			if (request.includeSpeechMarks !== false) {
 				const marksUrl = validateAssetUrl(
 					word,
-					this.config as SchoolCityProviderConfig,
+					this.schoolCityConfig,
 					this.baseUrl,
 				);
 				const marksResponse = await fetchAssetWithManualRedirects(
 					marksUrl,
-					this.config as SchoolCityProviderConfig,
+					this.schoolCityConfig,
 					this.baseUrl,
 					this.fetchImpl,
 					{ signal: timeout.signal },
@@ -688,7 +697,7 @@ export class SchoolCityServerProvider extends BaseTTSProvider {
 			await this.synthesizeWithAssets(request);
 		const audioUrl = validateAssetUrl(
 			audioContent,
-			this.config as SchoolCityProviderConfig,
+			this.schoolCityConfig,
 			this.baseUrl,
 		);
 		const audioTimeout = this.withTimeout();
@@ -696,7 +705,7 @@ export class SchoolCityServerProvider extends BaseTTSProvider {
 		try {
 			audioResponse = await fetchAssetWithManualRedirects(
 				audioUrl,
-				this.config as SchoolCityProviderConfig,
+				this.schoolCityConfig,
 				this.baseUrl,
 				this.fetchImpl,
 				{ signal: audioTimeout.signal },
@@ -733,9 +742,8 @@ export class SchoolCityServerProvider extends BaseTTSProvider {
 	 * The service's locale roster, from the table it reads itself.
 	 *
 	 * Not a network call: the service has no voice or locale endpoint to ask, so
-	 * `sc-voices.ts` transcribes the map behind `POST /` instead. Returning `[]`,
-	 * as this did, left the 29 locales reachable only by a caller that already
-	 * knew a `lang_id` to hardcode.
+	 * `sc-voices.ts` transcribes the map behind `POST /` instead, letting callers
+	 * discover its locales without hardcoding a `lang_id`.
 	 */
 	async getVoices(options?: GetVoicesOptions): Promise<Voice[]> {
 		this.ensureInitialized();

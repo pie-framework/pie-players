@@ -307,8 +307,8 @@ await (async function initializePieItemPlayerStatic() {
     throw lastError;
   };
 
-  // Parity with @pie-framework/pie-fixed-player-static, whose load signal Star
-  // and Quiz Engine listen for: the same event name on \`document\`, the same
+  // Parity with @pie-framework/pie-fixed-player-static, whose load signal hosts
+  // listen for: the same event name on \`document\`, the same
   // detail strings, the same performance mark, and the same global flag for a
   // host that initializes after the player and misses the dispatch.
   const announceLoadState = (state) => {
@@ -571,8 +571,9 @@ export async function buildPreloadedPlayerStaticPackage(
 		);
 	}
 
-	// If iteration isn't provided, choose a safe default for publishing flows by finding the next available iteration on npm.
-	// For local-only builds (no iteration passed from the CLI), we keep the historical behavior (iteration=1, outputDir=local).
+	// A publish flow (`PIE_PRELOADED_PLAYER_AUTO_ITERATION`) without an iteration
+	// takes the next one free on npm. A local build without one is versioned as
+	// iteration 1 and writes to `local-builds/local`.
 	if (
 		!config.iteration &&
 		process.env.PIE_PRELOADED_PLAYER_AUTO_ITERATION === "true"

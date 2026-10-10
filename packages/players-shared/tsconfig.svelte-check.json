@@ -1,0 +1,13 @@
+{
+	"extends": "./tsconfig.json",
+	"compilerOptions": {
+		// The overlay-placement components import this package by name. Resolve
+		// it to source so the check needs no prior build of `dist`.
+		"paths": {
+			"@pie-players/pie-players-shared": ["./src/index.ts"],
+			"@pie-players/pie-players-shared/*": ["./src/*"]
+		}
+	},
+	"include": ["src/**/*.ts", "src/**/*.d.ts", "src/**/*.svelte"],
+	"exclude": ["node_modules", "dist", "src/i18n/scripts/**"]
+}

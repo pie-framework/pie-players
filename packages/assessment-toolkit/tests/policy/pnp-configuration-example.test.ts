@@ -77,8 +77,11 @@ describe("PNP_CONFIGURATION.md complete example", () => {
 				scope: { level: "passage", scopeId: "passage-1" },
 			});
 
+			expect(
+				coordinator.getPolicyInputs().diagnostics.map((d) => [d.code, d.toolId]),
+			).toEqual([["tool-policy.unknownSupportId", "magnification"]]);
 			expect(reported.map((d) => [d.code, d.level, d.toolId])).toEqual([
-				["tool-policy.unknownSupportId", "item", "magnification"],
+				["tool-policy.unknownSupportId", undefined, "magnification"],
 				["tool-policy.itemSettingNotApplied", "passage", "textToSpeech"],
 			]);
 		} finally {

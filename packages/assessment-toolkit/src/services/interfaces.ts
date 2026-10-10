@@ -817,8 +817,9 @@ export interface ToolkitCoordinatorApi {
 	 * Subscribe to the policy diagnostics the coordinator reports: the ones it
 	 * logs as console warnings, once per code, tool and item. A new listener is
 	 * first handed every diagnostic already reported. A change to the bound
-	 * policy inputs or to PNP enforcement clears the record, so a conflict that
-	 * survives the change is reported again once.
+	 * policy inputs or to PNP enforcement clears the record, and so does a tool
+	 * registration that makes a named support id known or unknown, so a conflict
+	 * that survives the change is reported again once.
 	 */
 	onPolicyDiagnostic(
 		listener: (diagnostic: ToolPolicyDiagnostic) => void,

@@ -22,10 +22,7 @@
  */
 
 import type { PnpPolicyResult } from "../sources/PnpPolicySource.js";
-import {
-	overrideBlockedDiagnostic,
-	unknownSupportIdDiagnostic,
-} from "./compose-decision.js";
+import { overrideBlockedDiagnostic } from "./compose-decision.js";
 import type { ToolPolicyDiagnostic } from "./decision-types.js";
 import type {
 	PnpPolicySourceRule,
@@ -93,9 +90,10 @@ export interface FeaturePolicyDecision<P = Record<string, unknown>> {
 	 */
 	parameters?: P;
 	/**
-	 * Conflicts found while deciding: a `tool-policy.unknownSupportId` for each
-	 * id the bound inputs name that no tool is registered under. Empty on a host
-	 * denial, which consults no policy source.
+	 * Conflicts found while deciding: a `tool-policy.overrideBlocked` for a
+	 * granting override the decision withdrew. Empty on a host denial, which
+	 * consults no policy source. An id no tool is registered under describes the
+	 * inputs, so it is reported on the engine inputs' `diagnostics`.
 	 */
 	diagnostics: ToolPolicyDiagnostic[];
 }
@@ -201,13 +199,8 @@ export function interpretFeatureResult<P>(
 		required: Boolean(flags?.required),
 		parameters,
 		assessmentBound: context.assessmentBound,
-		diagnostics: [
-			...Array.from(result.unmappedSupportIds, ([supportId, origins]) =>
-				unknownSupportIdDiagnostic(supportId, origins),
-			),
-			...Array.from(result.blockedOverrides, ([toolId, rule]) =>
-				overrideBlockedDiagnostic(toolId, rule),
-			),
-		],
+		diagnostics: Array.from(result.blockedOverrides, ([toolId, rule]) =>
+			overrideBlockedDiagnostic(toolId, rule),
+		),
 	};
 }

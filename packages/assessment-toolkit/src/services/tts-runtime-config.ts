@@ -154,6 +154,12 @@ const toRecord = (value: unknown): Record<string, unknown> =>
 const withDefault = <T>(value: T | undefined, fallback: T): T =>
 	value === undefined ? fallback : value;
 
+/** A custom server provider speaks the custom transport, as `ServerTTSProvider` does on its own. */
+const defaultTransportMode = (config: TTSRuntimeSettings): "pie" | "custom" =>
+	resolveTTSBackend(config) === "server" && config.serverProvider === "custom"
+		? "custom"
+		: "pie";
+
 const normalizeTTSLayoutMode = (value: unknown): TTSLayoutMode =>
 	typeof value === "string" &&
 	VALID_TTS_LAYOUT_MODES.has(value as TTSLayoutMode)
@@ -334,7 +340,10 @@ const applyRuntimeDefaults = (
 	const withServerDefaults: ResolvedTTSRuntimeSettings = {
 		...withLayoutDefaults,
 		apiEndpoint: withDefault(withLayoutDefaults.apiEndpoint, "/api/tts"),
-		transportMode: withDefault(withLayoutDefaults.transportMode, "pie"),
+		transportMode: withDefault(
+			withLayoutDefaults.transportMode,
+			defaultTransportMode(config),
+		),
 		endpointValidationMode: withDefault(
 			withLayoutDefaults.endpointValidationMode,
 			"voices",
@@ -416,8 +425,7 @@ export const buildRuntimeTTSConfig = (
 	const runtimeProvider =
 		resolveTTSBackend(config) === "server" ? config.serverProvider : undefined;
 	const polly = runtimeProvider === "polly";
-	const transportMode =
-		config.transportMode || (runtimeProvider === "custom" ? "custom" : "pie");
+	const transportMode = config.transportMode || defaultTransportMode(config);
 	const mathSpeech = normalizeSREMathSpeechOptions(config.mathSpeech);
 	const runtimeConfig: RuntimeTTSConfig = {
 		voice: config.defaultVoice,

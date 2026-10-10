@@ -787,7 +787,7 @@ tools: {
 By default, server-backed TTS resolves:
 
 - `apiEndpoint: '/api/tts'`
-- `transportMode: 'pie'`
+- `transportMode: 'custom'` for `serverProvider: 'custom'`, else `'pie'`
 - `endpointValidationMode: 'voices'`, so the provider reads the voices route
   before it reports ready; `'none'` skips the probe
 
@@ -987,7 +987,7 @@ The persistence strategy works with the same `SectionControllerSessionState` sha
 - **HighlightCoordinator**: Separate highlight layers for TTS (temporary) and annotations (persistent)
 - **TTSService**: Text-to-speech with QTI 3.0 catalog support
 - **AccessibilityCatalogResolver**: QTI 3.0 accessibility catalog management
-- **SSMLExtractor**: Automatic extraction of embedded `<speak>` tags
+- **SSMLExtractor**: Extraction of embedded `<speak>` tags into `config.extractedCatalogs`, run by a host's preprocessing step
 
 ### ✅ PNP Support Ids
 
@@ -999,7 +999,7 @@ The toolkit integrates seamlessly with the **PIE Section Player**:
 
 - **Primary Interface**: Section player is the main integration point
 - **Default Coordinator**: Creates ToolkitCoordinator automatically if not provided
-- **Automatic SSML Extraction**: Extracts embedded `<speak>` tags from passages and items
+- **Extracted SSML Catalogs**: Registers the `config.extractedCatalogs` that `SSMLExtractor` preprocessing writes onto passages and items
 - **Catalog Lifecycle**: Manages item-level catalogs automatically
 - **Service Coordination**: All toolkit services work together automatically
 

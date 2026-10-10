@@ -56,7 +56,7 @@ const result = await provider.synthesize({
 
 console.log('Audio:', result.audio); // Buffer
 console.log('Speech marks:', result.speechMarks); // Array of word timings
-console.log('Duration:', result.metadata.duration, 'seconds');
+console.log('Synthesis time:', result.metadata.duration, 'seconds');
 ```
 
 ### List Available Voices

@@ -19,7 +19,7 @@
 	},
 	"devDependencies": {
 		"@sveltejs/adapter-node": "^6.0.0",
-		"@sveltejs/kit": "^3.0.0",
+		"@sveltejs/kit": "^3.0.1",
 		"@sveltejs/vite-plugin-svelte": "^7.3.1",
 		"@types/node": "^26.6.4",
 		"svelte": "^5.57.1",

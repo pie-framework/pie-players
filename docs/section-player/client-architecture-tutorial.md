@@ -12,9 +12,9 @@ PIE elements and the item player are the foundation of PIE's rendering stack. Th
 
 But step back and look at what a real assessment screen looks like in practice:
 
-![A section as students see it — passage, items, tools, accommodations, and navigation composed into a single view](../img/schoolcity-1.png)
+![A section as students see it — passage, items, item tools, and a section toolbar composed into a single view](../img/section-player-composition.png)
 
-There's a reading passage on the left paired with questions on the right. There are page-level navigation controls. Each item has its own controls — text-to-speech playback, flagging, notes. A toolbar at the bottom offers section-wide tools: calculator, graph, periodic table, protractor, line reader, ruler. Accommodation controls at the top manage audio, translation, contrast, and fullscreen mode. All of this needs coordination, shared state, and a coherent lifecycle.
+There's a reading passage on the left paired with questions on the right. Each card has its own controls — read-aloud, calculator, answer eliminator. A toolbar on the right edge offers section-wide tools: color scheme, graph, periodic table, line reader, ruler, protractor, and dictionaries. A production host adds page navigation, flagging, notes, and accommodation settings around it. All of this needs coordination, shared state, and a coherent lifecycle.
 
 Every team that builds beyond the item player level ends up rebuilding some version of this composition. The section player and assessment toolkit exist to provide that layer as a ready-made, well-tested foundation — so integration teams can focus on their product's unique concerns rather than re-solving passage-item layout, tool coordination, session persistence, and accessibility plumbing.
 

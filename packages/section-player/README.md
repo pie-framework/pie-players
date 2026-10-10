@@ -44,7 +44,9 @@ The entries are bundler-only: they import `@pie-players/pie-item-player`,
 `@pie-players/pie-default-tool-loaders` and `speech-rule-engine`, with the
 engine's JSON locale tables, by bare specifier and without import attributes.
 Items render through the host's one `@pie-players/pie-item-player`, which this
-package depends on at its own version.
+package depends on at its own version. A host without a bundler loads the
+self-contained `./browser` build instead
+([CDN usage](../../docs/setup/cdn_usage.md#section-player-browser-build)).
 
 ## SectionController
 

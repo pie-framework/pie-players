@@ -28,17 +28,16 @@ type DeliverySaveIdentity = {
 	itemId?: string;
 	sessionId?: string;
 	assignmentId?: string;
-	/**
-	 * The session as it stood when the save was scheduled or flushed.
-	 *
-	 * A queued save runs at least a microtask later, behind whatever is already
-	 * in flight. Reading the container at execution time instead files the
-	 * session the player holds by then under these ids, which on a
-	 * `backend.delivery` repoint is the incoming item's session under the
-	 * outgoing item's ids.
-	 */
-	session?: BackendSessionContainer;
 };
+
+/**
+ * A request that writes the session, with the session as it stood at the call.
+ * A queued write runs behind whatever is already in flight; reading the
+ * container then would file the session the player holds by that time under
+ * these ids, which on a `backend.delivery` repoint is the incoming item's
+ * session under the outgoing item's ids.
+ */
+type SessionWrite = DeliverySaveIdentity & { session: BackendSessionContainer };
 import {
 	getAuthoringBackend,
 	getAuthoringBackendLoadSignature,
@@ -116,9 +115,9 @@ export type BackendOrchestrator = {
 	saveSession: (options?: { keepalive?: boolean }) => Promise<void>;
 	/**
 	 * Run a scheduled autosave now instead of waiting out its debounce, and
-	 * resend a failed autosave once. Called at a teardown seam and on the page
-	 * going hidden, where the alternative is dropping the save. `keepalive`
-	 * lets the request outlive the document.
+	 * resend the last failed session write once. Called at a teardown seam and
+	 * on the page going hidden, where the alternative is dropping the save.
+	 * `keepalive` lets the request outlive the document.
 	 */
 	flushPendingSave: (options?: { keepalive?: boolean }) => void;
 	score: (options?: BackendScoreOptions) => Promise<unknown>;
@@ -168,19 +167,19 @@ export function createBackendOrchestrator(
 	let lastAppliedSessionReplacementRevision = 0;
 	let loadSignature = "";
 	let saveTimer: ReturnType<typeof setTimeout> | null = null;
-	let saveQueue: Promise<void> = Promise.resolve();
+	let writeQueue: Promise<void> = Promise.resolve();
 	// The delivery identity a scheduled autosave belongs to. A flush writes
 	// against this rather than against whatever `backend.delivery` holds when it
 	// runs: a host repointing to the next item inside the debounce would
 	// otherwise file the outgoing learner's session under the incoming ids.
 	let pendingSaveIdentity: DeliverySaveIdentity | null = null;
-	// The last autosave that failed with no newer save queued for its ids. A
-	// later change re-saves the whole session anyway; this covers the learner who
+	// The last write that failed with no newer write queued for its ids. A later
+	// change re-saves the whole session anyway; this covers the learner who
 	// changes nothing more, so the next flush sends it once more.
-	let failedAutosave: DeliverySaveIdentity | null = null;
-	let saveSequence = 0;
-	// Per delivery target, the sequence number of the newest save queued for it.
-	const latestSaveByTarget = new Map<string, number>();
+	let failedWrite: SessionWrite | null = null;
+	let writeSequence = 0;
+	// Per delivery target, the sequence number of the newest write queued for it.
+	const latestWriteByTarget = new Map<string, number>();
 	let configGeneration = 0;
 	let modelRefreshSignature = "";
 	let configOverrideScope: "delivery" | "authoring" | null = null;
@@ -371,19 +370,23 @@ export function createBackendOrchestrator(
 		if (configOverrideScope === "authoring") return;
 		const delivery = getDeliveryBackend(backend)!;
 		const envAtStart = deps.getEnv();
-		const sessionContainer = sessionContainerFor(delivery.sessionId);
-		const sessionSignatureAtStart = stableStringifyForKey(sessionContainer);
+		const write = captureSessionWrite();
+		const sessionSignatureAtStart = stableStringifyForKey(write.session);
+		const models = modelIdentitiesFor(deps.getItemConfig());
+		const passageModels = modelIdentitiesFor(deps.getPassageConfig());
 		let result: BackendDeliveryModelResult;
 		try {
-			result = await modelFromDeliveryBackend(backend, {
-				itemId: delivery.itemId,
-				sessionId: delivery.sessionId,
-				assignmentId: delivery.assignmentId,
-				session: sessionContainer,
-				env: envAtStart,
-				models: modelIdentitiesFor(deps.getItemConfig()),
-				passageModels: modelIdentitiesFor(deps.getPassageConfig()),
-			});
+			result = await enqueueSessionWrite(write, () =>
+				modelFromDeliveryBackend(backend, {
+					itemId: write.itemId,
+					sessionId: write.sessionId,
+					assignmentId: write.assignmentId,
+					session: write.session,
+					env: envAtStart,
+					models,
+					passageModels,
+				}),
+			);
 		} catch (errorValue) {
 			if (!isCurrentModelRefreshRequest(requestToken)) return;
 			throw errorValue;
@@ -420,122 +423,146 @@ export function createBackendOrchestrator(
 		});
 	}
 
-	async function persistCurrentSession(
-		options?: {
-			keepalive?: boolean;
-		},
+	/**
+	 * The ids a write is filed under and the session it carries, both fixed at
+	 * the call. The session is copied: the player's container shares the live
+	 * objects elements mutate in place.
+	 */
+	function captureSessionWrite(
 		identity?: DeliverySaveIdentity | null,
-	): Promise<void> {
-		const backend = deps.getBackend();
-		if (!backend || !getDeliveryBackend(backend)) {
-			throw new Error("backend.delivery is not configured.");
-		}
-		const delivery = getDeliveryBackend(backend)!;
+	): SessionWrite {
+		const delivery = getDeliveryBackend(deps.getBackend() ?? {});
 		const target = identity ?? {
-			itemId: delivery.itemId,
-			sessionId: delivery.sessionId,
-			assignmentId: delivery.assignmentId,
+			itemId: delivery?.itemId,
+			sessionId: delivery?.sessionId,
+			assignmentId: delivery?.assignmentId,
 		};
-		const sessionContainer =
-			target.session ?? sessionContainerFor(target.sessionId);
-		await saveToDeliveryBackend(
-			backend,
-			{
-				itemId: target.itemId,
-				sessionId: target.sessionId,
-				assignmentId: target.assignmentId,
-				session: sessionContainer,
-				env: deps.getEnv(),
-			},
-			options,
-		);
-		dispatchBackendEvent("backend-session-saved", {
-			scope: "delivery",
-			operation: "saveSession",
-			sessionId: sessionContainer.id,
-			session: sessionContainer,
-		});
+		return {
+			itemId: target.itemId,
+			sessionId: target.sessionId,
+			assignmentId: target.assignmentId,
+			session: cloneForBackend(sessionContainerFor(target.sessionId)),
+		};
 	}
 
-	function saveTargetKey(identity?: DeliverySaveIdentity | null): string {
-		const target =
-			identity ?? getDeliveryBackend(deps.getBackend() ?? {}) ?? {};
+	function saveTargetKey(identity: DeliverySaveIdentity): string {
 		return stableStringifyForKey([
-			target.itemId,
-			target.sessionId,
-			target.assignmentId,
+			identity.itemId,
+			identity.sessionId,
+			identity.assignmentId,
 		]);
 	}
 
-	async function saveSession(
-		options?: {
-			keepalive?: boolean;
-		},
-		identity?: DeliverySaveIdentity | null,
-	): Promise<void> {
-		const targetKey = saveTargetKey(identity);
-		const sequence = (saveSequence += 1);
-		latestSaveByTarget.set(targetKey, sequence);
-		if (failedAutosave && saveTargetKey(failedAutosave) === targetKey) {
-			failedAutosave = null;
+	/**
+	 * Save, model and score each write the session they carry, so they share one
+	 * queue: a request starts once the ones before it settle, and a slower older
+	 * write can never land after a newer one. A failed write rejects only its own
+	 * caller; when no newer write for its ids is queued by then, its session is
+	 * kept for one resend at the next flush.
+	 */
+	function enqueueSessionWrite<T>(
+		write: SessionWrite,
+		send: () => Promise<T>,
+		isResend = false,
+	): Promise<T> {
+		const targetKey = saveTargetKey(write);
+		const sequence = (writeSequence += 1);
+		latestWriteByTarget.set(targetKey, sequence);
+		if (failedWrite && saveTargetKey(failedWrite) === targetKey) {
+			failedWrite = null;
 		}
-		const nextSave = saveQueue
-			.catch(() => undefined)
-			.then(() => persistCurrentSession(options, identity));
-		saveQueue = nextSave;
-		return nextSave;
+		const run = writeQueue.then(send);
+		writeQueue = run.then(
+			() => undefined,
+			() => undefined,
+		);
+		if (!isResend) {
+			run.catch(() => {
+				if (latestWriteByTarget.get(targetKey) === sequence) {
+					failedWrite = write;
+				}
+			});
+		}
+		return run;
 	}
 
-	/**
-	 * An autosave the player issued itself, so nobody awaits it. A failure is
-	 * reported, and kept for one retry at the next flush unless a newer save for
-	 * the same ids is already queued. A retry that fails is only reported.
-	 */
-	function sendAutosave(
-		identity: DeliverySaveIdentity,
+	function sendSave(
+		write: SessionWrite,
 		options?: { keepalive?: boolean },
-		isRetry = false,
+		isResend = false,
+	): Promise<void> {
+		const backend = deps.getBackend();
+		if (!backend || !getDeliveryBackend(backend)) {
+			return Promise.reject(new Error("backend.delivery is not configured."));
+		}
+		const env = deps.getEnv();
+		return enqueueSessionWrite(
+			write,
+			async () => {
+				await saveToDeliveryBackend(
+					backend,
+					{
+						itemId: write.itemId,
+						sessionId: write.sessionId,
+						assignmentId: write.assignmentId,
+						session: write.session,
+						env,
+					},
+					options,
+				);
+				dispatchBackendEvent("backend-session-saved", {
+					scope: "delivery",
+					operation: "saveSession",
+					sessionId: write.session.id,
+					session: write.session,
+				});
+			},
+			isResend,
+		);
+	}
+
+	function saveSession(options?: { keepalive?: boolean }): Promise<void> {
+		return sendSave(captureSessionWrite(), options);
+	}
+
+	/** An autosave the player issued itself, so nobody awaits it: a failure is reported. */
+	function sendAutosave(
+		write: SessionWrite,
+		options?: { keepalive?: boolean },
+		isResend = false,
 	): void {
-		const targetKey = saveTargetKey(identity);
-		const save = saveSession(options, identity);
-		const sequence = latestSaveByTarget.get(targetKey);
-		void save.catch((errorValue) => {
+		void sendSave(write, options, isResend).catch((errorValue) => {
 			reportBackendError("saveSession", errorValue);
-			if (isRetry) return;
-			if (latestSaveByTarget.get(targetKey) === sequence) {
-				failedAutosave = identity;
-			}
 		});
 	}
 
 	/**
 	 * Send a scheduled autosave now, under the identity it was scheduled for,
-	 * and resend the last failed autosave once, unless the scheduled one
-	 * replaces it.
+	 * and resend the last failed write once, unless the scheduled save replaces
+	 * it.
 	 *
 	 * Called when the page is going away and when the host repoints
 	 * `backend.delivery`, which are the two ways a debounced save is otherwise
 	 * dropped.
 	 */
 	function flushPendingSave(options?: { keepalive?: boolean }): void {
-		const retry = failedAutosave;
-		failedAutosave = null;
+		const resend = failedWrite;
+		failedWrite = null;
 		const pending = saveTimer ? pendingSaveIdentity : null;
-		if (
-			retry &&
-			!(pending && saveTargetKey(pending) === saveTargetKey(retry))
-		) {
-			sendAutosave(retry, options, true);
+		if (saveTimer) {
+			clearTimeout(saveTimer);
+			saveTimer = null;
+			pendingSaveIdentity = null;
 		}
-		if (!saveTimer) return;
-		clearTimeout(saveTimer);
-		saveTimer = null;
-		pendingSaveIdentity = null;
-		if (!pending) return;
-		sendAutosave(
-			{ ...pending, session: sessionContainerFor(pending.sessionId) },
-			options,
-		);
+		if (
+			resend &&
+			!(pending && saveTargetKey(pending) === saveTargetKey(resend))
+		) {
+			sendAutosave(resend, options, true);
+		}
+		if (pending) {
+			sendAutosave(captureSessionWrite(pending), options);
+		}
 	}
 
 	async function score(options?: BackendScoreOptions): Promise<unknown> {
@@ -543,23 +570,25 @@ export function createBackendOrchestrator(
 		if (!backend || !getDeliveryBackend(backend)) {
 			throw new Error("backend.delivery is not configured.");
 		}
-		const delivery = getDeliveryBackend(backend)!;
-		const sessionContainer = sessionContainerFor(delivery.sessionId);
-		const result = await scoreWithDeliveryBackend(
-			backend,
-			{
-				itemId: delivery.itemId,
-				sessionId: delivery.sessionId,
-				assignmentId: delivery.assignmentId,
-				session: sessionContainer,
-				env: deps.getEnv(),
-			},
-			options,
+		const write = captureSessionWrite();
+		const env = deps.getEnv();
+		const result = await enqueueSessionWrite(write, () =>
+			scoreWithDeliveryBackend(
+				backend,
+				{
+					itemId: write.itemId,
+					sessionId: write.sessionId,
+					assignmentId: write.assignmentId,
+					session: write.session,
+					env,
+				},
+				options,
+			),
 		);
 		dispatchBackendEvent("backend-score-complete", {
 			scope: "delivery",
 			operation: "score",
-			sessionId: sessionContainer.id,
+			sessionId: write.session.id,
 			score: result,
 		});
 		return result;
@@ -653,10 +682,7 @@ export function createBackendOrchestrator(
 			) {
 				return;
 			}
-			sendAutosave({
-				...saveIdentity,
-				session: sessionContainerFor(saveIdentity.sessionId),
-			});
+			sendAutosave(captureSessionWrite(saveIdentity));
 		}, autosave.debounceMs);
 	}
 

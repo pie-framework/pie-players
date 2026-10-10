@@ -4,4 +4,9 @@
 @pie-players/pie-tool-dictionary
 
 .
+  type DictionaryEntry
+  type DictionaryLookup
+  type DictionaryLookupRequest
+  type DictionaryLookupResult
+  type DictionarySense
   default

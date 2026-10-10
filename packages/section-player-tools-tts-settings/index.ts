@@ -3,7 +3,15 @@
  *
  * Importing this package registers `<pie-section-player-tools-tts-settings>`.
  * The build entry is the component, so this file is the type entry alone and
- * declares nothing: a runtime export here would not exist in the built bundle.
+ * exports types only: a runtime export here would not exist in the built bundle.
  */
 
-export type {};
+export type {
+	CustomProviderContext,
+	CustomProviderDescriptor,
+	CustomProviderPreviewResult,
+	PreviewMode,
+	PreviewSpeechMark,
+	ProviderApplyResult,
+	ProviderAvailabilityResult,
+} from "./types.js";

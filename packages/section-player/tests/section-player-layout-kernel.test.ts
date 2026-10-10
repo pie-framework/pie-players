@@ -29,6 +29,9 @@ Object.assign(window, {
 });
 
 await import("../src/components/section-player-vertical-element.js");
+const { connectSectionPlayerLayoutContext } = await import(
+	"../src/components/shared/section-player-layout-context.js"
+);
 
 afterEach(() => {
 	document.body.replaceChildren();
@@ -53,13 +56,20 @@ async function until(condition: () => boolean, message: string): Promise<void> {
 	}
 }
 
-function findToolkit(root: ParentNode): Element | null {
+function findElement(root: ParentNode, localName: string): Element | null {
 	for (const element of Array.from(root.querySelectorAll("*"))) {
-		if (element.localName === "pie-assessment-toolkit") return element;
-		const nested = element.shadowRoot && findToolkit(element.shadowRoot);
+		if (element.localName === localName) return element;
+		const nested = element.shadowRoot && findElement(element.shadowRoot, localName);
 		if (nested) return nested;
 	}
 	return null;
+}
+
+const findToolkit = (root: ParentNode) =>
+	findElement(root, "pie-assessment-toolkit");
+
+async function tasks(count: number): Promise<void> {
+	for (let task = 0; task < count; task += 1) await nextTask();
 }
 
 /**
@@ -67,7 +77,10 @@ function findToolkit(root: ParentNode): Element | null {
  * as `<stage>:<status>`, `section-ready` as `section-ready:<sectionId>`,
  * `toolkit-ready` and loading completion as `loading-complete`.
  */
-async function mountPlayer() {
+async function mountPlayer({
+	runtime = { assessmentId: "kernel" } as Record<string, unknown>,
+	initial = section("s1") as unknown,
+} = {}) {
 	const player = document.createElement(
 		"pie-section-player-vertical",
 	) as LayoutElement;
@@ -84,10 +97,10 @@ async function mountPlayer() {
 		events.push("loading-complete"),
 	);
 	player.setAttribute("attempt-id", "a1");
-	player.runtime = { assessmentId: "kernel" };
-	player.section = section("s1");
+	player.runtime = runtime;
+	player.section = initial;
 	document.body.appendChild(player);
-	await until(() => events.includes("loading-complete"), "s1 loading-complete");
+	await until(() => events.includes("loading-complete"), "loading-complete");
 	const toolkit = findToolkit(player);
 	if (!toolkit) throw new Error("the player's toolkit was not found");
 	return { player, toolkit, events };
@@ -142,6 +155,23 @@ describe("section-player layout kernel", () => {
 		expect(await switchTo(player, events, "s2")).toEqual(SWITCH_TO_S2);
 	});
 
+	// The toolkit's own coordinator is named after the section when no
+	// assessment id is set, which the section's id must not follow.
+	test("a section with no identifier and no assessment id runs under the fallback id", async () => {
+		const { events } = await mountPlayer({
+			runtime: {},
+			initial: { assessmentItemRefs: [] },
+		});
+		expect(events).toEqual([
+			"composed:entered",
+			"toolkit-ready",
+			"engine-ready:entered",
+			"section-ready:section-default",
+			"interactive:entered",
+			"loading-complete",
+		]);
+	});
+
 	test("a section-ready ahead of its section's roll advances that section at the roll", async () => {
 		const { player, toolkit, events } = await mountPlayer();
 		const controller = await player.waitForSectionController(1_000);
@@ -160,6 +190,49 @@ describe("section-player layout kernel", () => {
 			"composed:entered",
 			"engine-ready:entered",
 		]);
+	});
+
+	test("only a section-ready for the current section, with its controller, readies it", async () => {
+		const { player, toolkit, events } = await mountPlayer();
+		const controller = await player.waitForSectionController(1_000);
+		// The toolkit's own section-ready for s2 is held back, so the test decides
+		// which ones the layout hears.
+		const sent = new WeakSet<Event>();
+		toolkit.parentNode?.addEventListener(
+			"section-ready",
+			(event) => {
+				if (!sent.has(event)) event.stopImmediatePropagation();
+			},
+			true,
+		);
+		const sendSectionReady = (detail: Record<string, unknown>) => {
+			const event = new CustomEvent("section-ready", {
+				bubbles: true,
+				composed: true,
+				detail,
+			});
+			sent.add(event);
+			toolkit.dispatchEvent(event);
+		};
+		// Ahead of the roll, so s2 reaches engine-ready without being ready.
+		sendSectionReady({ sectionId: "s2", attemptId: "a1", controller });
+		const from = events.length;
+		player.section = section("s2");
+		await until(
+			() => after(events, from).includes("engine-ready:entered"),
+			"s2 engine-ready",
+		);
+
+		sendSectionReady({ sectionId: "s1", attemptId: "a1", controller });
+		sendSectionReady({ sectionId: "s2", attemptId: "a1" });
+		await tasks(10);
+		expect(after(events, from)).not.toContain("interactive:entered");
+
+		sendSectionReady({ sectionId: "s2", attemptId: "a1", controller });
+		await until(
+			() => after(events, from).includes("loading-complete"),
+			"s2 loading-complete",
+		);
 	});
 
 	test("reading the controller during a switch leaves the stage chain where it is", async () => {
@@ -215,6 +288,80 @@ describe("section-player layout kernel", () => {
 		const { player, toolkit, events } = await mountPlayer();
 		onComposed(player, () => toolkit.dispatchEvent(cohortFailure("s1")));
 		expect(await switchTo(player, events, "s2")).toEqual(SWITCH_TO_S2);
+	});
+
+	const runtimeFailure = () =>
+		new CustomEvent("framework-error", {
+			bubbles: true,
+			composed: true,
+			detail: {
+				kind: "section-controller-init",
+				severity: "error",
+				source: "section-player-layout-kernel-test",
+				message: "The runtime failed",
+				details: [],
+				recoverable: false,
+				scope: "runtime",
+			},
+		});
+
+	test("a failure from a toolkit nested in the section leaves its stage chain alone", async () => {
+		const { player, toolkit, events } = await mountPlayer();
+		const nested = document.createElement("pie-assessment-toolkit");
+		nested.setAttribute("isolation", "force");
+		toolkit.appendChild(nested);
+		onComposed(player, () => nested.dispatchEvent(runtimeFailure()));
+		expect(await switchTo(player, events, "s2")).toEqual(SWITCH_TO_S2);
+	});
+
+	test("a failure from the section's own content fails its stage chain", async () => {
+		const { player, toolkit, events } = await mountPlayer();
+		const content = toolkit.appendChild(document.createElement("div"));
+		const from = events.length;
+		onComposed(player, () => content.dispatchEvent(runtimeFailure()));
+		player.section = section("s2");
+		await until(
+			() => after(events, from).some((entry) => entry.endsWith(":failed")),
+			"s2 failed",
+		);
+		expect(after(events, from)).not.toContain("interactive:entered");
+	});
+
+	test("the items pane's preload reports reach the document from the layout", async () => {
+		const { player } = await mountPlayer();
+		const pane = findElement(player, "pie-section-player-items-pane") as HTMLElement;
+		const reached: Array<[string, boolean, unknown]> = [];
+		const record = (event: Event) =>
+			reached.push([
+				event.type,
+				event.target === player,
+				(event as CustomEvent).detail.sectionId,
+			]);
+		document.addEventListener("element-preload-retry", record);
+		document.addEventListener("element-preload-error", record);
+		let layout: Parameters<
+			Parameters<typeof connectSectionPlayerLayoutContext>[1]
+		>[0] | null = null;
+		const disconnect = connectSectionPlayerLayoutContext(pane, (value) => {
+			layout = value;
+		});
+		await until(() => layout !== null, "the layout context");
+		layout!.reportPreloadRetry(pane, {
+			componentTag: "pie-section-player-items-pane",
+			attempt: 1,
+		} as never);
+		layout!.reportPreloadError(pane, {
+			componentTag: "pie-section-player-items-pane",
+			stage: "warmup",
+			error: "failed",
+		} as never);
+		disconnect();
+		document.removeEventListener("element-preload-retry", record);
+		document.removeEventListener("element-preload-error", record);
+		expect(reached).toEqual([
+			["element-preload-retry", true, "s1"],
+			["element-preload-error", true, "s1"],
+		]);
 	});
 
 	test("a failure reported for the incoming section fails its stage chain", async () => {

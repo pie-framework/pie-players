@@ -1277,8 +1277,11 @@ const DEFAULT_ENV = {
 	const effectiveAssessmentId = $derived(
 		assessmentId || effectiveCoordinator?.assessmentId || "",
 	);
+	// Keyed by the configured `assessment-id` alone, the input the section
+	// player's kernel keys its cohort by: a coordinator's id can be one the
+	// toolkit made up, or one only an outer toolkit knows.
 	const effectiveSectionId = $derived(
-		resolveSectionId({ sectionId, section, assessmentId: effectiveAssessmentId }),
+		resolveSectionId({ sectionId, section, assessmentId }),
 	);
 	const effectiveEnv = $derived.by(() => normalizeEnv(env));
 	const effectiveSectionView = $derived.by(() => resolveSectionViewFromEnv(effectiveEnv));

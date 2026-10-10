@@ -152,12 +152,6 @@
 		contentMaxWidths.withPassagePx,
 	);
 
-	const layoutElement = $host();
-	const forwardPreloadRetry = (detail: Record<string, unknown>) =>
-		layoutElement.dispatchEvent(new CustomEvent("element-preload-retry", { detail }));
-	const forwardPreloadError = (detail: Record<string, unknown>) =>
-		layoutElement.dispatchEvent(new CustomEvent("element-preload-error", { detail }));
-
 	export function getSnapshot(): SectionPlayerSnapshot | null {
 		return kernelRef?.getSnapshot?.() ?? null;
 	}
@@ -230,8 +224,6 @@
 	{policies}
 	{hooks}
 	{toolConfigStrictness}
-	onElementPreloadRetry={forwardPreloadRetry}
-	onElementPreloadError={forwardPreloadError}
 	sourceCe="pie-section-player-vertical"
 	host={hostElement}
 	playerActionConfig={{

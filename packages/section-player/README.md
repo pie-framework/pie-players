@@ -1057,6 +1057,10 @@ bubbling and composed):
   layout CE and `document`; errors from a coordinator the host passes as
   `runtime.coordinator` arrive the same way.
   `tests/section-player-event-delivery.spec.ts` pins these counts.
+- `element-preload-retry` and `element-preload-error` — the items pane's
+  element pre-warm retries and failures, with the section's `assessmentId`,
+  `sectionId` and `attemptId`, bubbling and composed. A failure also arrives as
+  an `element-preload` `framework-error`.
 
 Callbacks on `runtime`:
 

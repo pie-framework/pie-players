@@ -4,6 +4,7 @@
 		isGlobalDebugEnabled,
 	} from "@pie-players/pie-players-shared";
 	import {
+		dispatchCrossBoundaryEvent,
 		toFrameworkErrorModel,
 		type ToolRegistry,
 		type ToolbarItem,
@@ -105,14 +106,6 @@
 		} satisfies PlayerActionConfig,
 		policies = DEFAULT_SECTION_PLAYER_POLICIES as Partial<SectionPlayerPolicies>,
 		hooks = undefined as SectionPlayerHostHooks | undefined,
-		// The active items pane's preload retries and failures, with the
-		// section's identity added. The layout element dispatches them on its host.
-		onElementPreloadRetry = undefined as
-			| ((detail: Record<string, unknown>) => void)
-			| undefined,
-		onElementPreloadError = undefined as
-			| ((detail: Record<string, unknown>) => void)
-			| undefined,
 		// `sourceCe` is the host layout CE's tag name (without the
 		// `--version-<encoded>` suffix) used to label `pie-stage-change`
 		// emissions and the items pane's preload reports. Each layout CE that
@@ -238,6 +231,7 @@
 				})
 			: "",
 	);
+	const currentCohort = () => makeCohort({ sectionId: cohortSectionId, attemptId });
 	const effectiveToolsConfig = $derived(runtimeState.effectiveToolsConfig);
 	const defaultToolRegistry = createPackagedToolRegistry();
 	const effectiveToolRegistry = $derived(toolRegistry ?? defaultToolRegistry);
@@ -352,12 +346,16 @@
 		};
 	}
 
-	function handleItemsPanePreloadRetry(
+	// The active items pane's preload retries and failures go out on the layout
+	// host with the section's identity added, bubbling and composed like the
+	// player's other events.
+	function dispatchPreloadEvent(
+		type: "element-preload-retry" | "element-preload-error",
 		pane: Element,
-		detail: ElementPreloadRetryDetail,
+		detail: ElementPreloadRetryDetail | ElementPreloadErrorDetail,
 	) {
-		if (!isActiveItemsPane(pane)) return;
-		onElementPreloadRetry?.({
+		if (!host || !isActiveItemsPane(pane)) return;
+		dispatchCrossBoundaryEvent(host, type, {
 			...detail,
 			assessmentId: effectiveRuntime.assessmentId,
 			sectionId: cohortSectionId,
@@ -365,17 +363,18 @@
 		});
 	}
 
+	function handleItemsPanePreloadRetry(
+		pane: Element,
+		detail: ElementPreloadRetryDetail,
+	) {
+		dispatchPreloadEvent("element-preload-retry", pane, detail);
+	}
+
 	function handleItemsPanePreloadError(
 		pane: Element,
 		detail: ElementPreloadErrorDetail,
 	) {
-		if (!isActiveItemsPane(pane)) return;
-		onElementPreloadError?.({
-			...detail,
-			assessmentId: effectiveRuntime.assessmentId,
-			sectionId: cohortSectionId,
-			attemptId: attemptId || undefined,
-		});
+		dispatchPreloadEvent("element-preload-error", pane, detail);
 	}
 
 	// The coordinator of the toolkit this layout renders, from its `toolkit-ready`.
@@ -384,10 +383,10 @@
 	/**
 	 * The toolkit's `section-ready` carries the section's controller and cohort,
 	 * which advance that cohort's stage chain past `booting-section`. One without
-	 * a controller leaves the chain where it is and reports it.
+	 * a controller leaves the chain and the section's readiness where they are,
+	 * and reports it.
 	 */
 	function handleSectionReady(event: Event) {
-		sectionReady = true;
 		const detail = (
 			event as CustomEvent<{
 				sectionId?: string;
@@ -416,6 +415,8 @@
 			return;
 		}
 		readyController = { cohort, controller: detail.controller };
+		// Readies only the current cohort, whose composition the kernel now holds.
+		if (cohortsEqual(cohort, currentCohort())) sectionReady = true;
 		resolveReadyController();
 	}
 
@@ -455,7 +456,7 @@
 			frameworkErrorLatch,
 			detail,
 			toolkitCoordinator,
-			makeCohort({ sectionId: cohortSectionId, attemptId }),
+			currentCohort(),
 		);
 	}
 
@@ -498,8 +499,10 @@
 		return navigateTo(navigation.currentIndex - 1);
 	}
 
-	// Reads only: the stage chain advances on the toolkit's `toolkit-ready`, and a
-	// read during a section switch can return the outgoing section's controller.
+	// Reads only: the stage chain advances on the toolkit's `section-ready`. The
+	// base element looks the controller up by the incoming section's id, so a
+	// read during a section switch returns null, or on a revisit the incoming
+	// section's cached controller.
 	export function getSectionController(): SectionControllerHandle | null {
 		return scaffoldRef?.getSectionController?.() || null;
 	}
@@ -611,7 +614,7 @@
 			if (!host) return;
 			engine.attachHost({ host, sourceCe });
 
-			const nextCohort = makeCohort({ sectionId: cohortSectionId, attemptId });
+			const nextCohort = currentCohort();
 			const itemCount = items.length;
 
 			if (!cohortsEqual(lastCohort, nextCohort)) {

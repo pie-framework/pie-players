@@ -138,12 +138,6 @@
 		return kernelRef?.getSectionController?.() || null;
 	}
 
-	const layoutElement = $host();
-	const forwardPreloadRetry = (detail: Record<string, unknown>) =>
-		layoutElement.dispatchEvent(new CustomEvent("element-preload-retry", { detail }));
-	const forwardPreloadError = (detail: Record<string, unknown>) =>
-		layoutElement.dispatchEvent(new CustomEvent("element-preload-error", { detail }));
-
 	// A host that places its own panes as children gets its layout; one that
 	// gives the element none gets the stock one.
 	$effect(() => {
@@ -220,8 +214,6 @@
 	{toolConfigStrictness}
 	sourceCe="pie-section-player-kernel-host"
 	host={hostElement}
-	onElementPreloadRetry={forwardPreloadRetry}
-	onElementPreloadError={forwardPreloadError}
 >
 	<slot></slot>
 </SectionPlayerLayoutKernel>

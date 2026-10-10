@@ -115,9 +115,10 @@ export type BackendOrchestrator = {
 	load: (scope?: "delivery" | "authoring") => Promise<void>;
 	saveSession: (options?: { keepalive?: boolean }) => Promise<void>;
 	/**
-	 * Run a scheduled autosave now instead of waiting out its debounce. Called
-	 * at a teardown seam and on the page going hidden, where the alternative is
-	 * dropping the save. `keepalive` lets the request outlive the document.
+	 * Run a scheduled autosave now instead of waiting out its debounce, and
+	 * resend a failed autosave once. Called at a teardown seam and on the page
+	 * going hidden, where the alternative is dropping the save. `keepalive`
+	 * lets the request outlive the document.
 	 */
 	flushPendingSave: (options?: { keepalive?: boolean }) => void;
 	score: (options?: BackendScoreOptions) => Promise<unknown>;
@@ -173,6 +174,13 @@ export function createBackendOrchestrator(
 	// runs: a host repointing to the next item inside the debounce would
 	// otherwise file the outgoing learner's session under the incoming ids.
 	let pendingSaveIdentity: DeliverySaveIdentity | null = null;
+	// The last autosave that failed with no newer save queued for its ids. A
+	// later change re-saves the whole session anyway; this covers the learner who
+	// changes nothing more, so the next flush sends it once more.
+	let failedAutosave: DeliverySaveIdentity | null = null;
+	let saveSequence = 0;
+	// Per delivery target, the sequence number of the newest save queued for it.
+	const latestSaveByTarget = new Map<string, number>();
 	let configGeneration = 0;
 	let modelRefreshSignature = "";
 	let configOverrideScope: "delivery" | "authoring" | null = null;
@@ -449,12 +457,28 @@ export function createBackendOrchestrator(
 		});
 	}
 
+	function saveTargetKey(identity?: DeliverySaveIdentity | null): string {
+		const target =
+			identity ?? getDeliveryBackend(deps.getBackend() ?? {}) ?? {};
+		return stableStringifyForKey([
+			target.itemId,
+			target.sessionId,
+			target.assignmentId,
+		]);
+	}
+
 	async function saveSession(
 		options?: {
 			keepalive?: boolean;
 		},
 		identity?: DeliverySaveIdentity | null,
 	): Promise<void> {
+		const targetKey = saveTargetKey(identity);
+		const sequence = (saveSequence += 1);
+		latestSaveByTarget.set(targetKey, sequence);
+		if (failedAutosave && saveTargetKey(failedAutosave) === targetKey) {
+			failedAutosave = null;
+		}
 		const nextSave = saveQueue
 			.catch(() => undefined)
 			.then(() => persistCurrentSession(options, identity));
@@ -463,24 +487,55 @@ export function createBackendOrchestrator(
 	}
 
 	/**
-	 * Send a scheduled autosave now, under the identity it was scheduled for.
+	 * An autosave the player issued itself, so nobody awaits it. A failure is
+	 * reported, and kept for one retry at the next flush unless a newer save for
+	 * the same ids is already queued. A retry that fails is only reported.
+	 */
+	function sendAutosave(
+		identity: DeliverySaveIdentity,
+		options?: { keepalive?: boolean },
+		isRetry = false,
+	): void {
+		const targetKey = saveTargetKey(identity);
+		const save = saveSession(options, identity);
+		const sequence = latestSaveByTarget.get(targetKey);
+		void save.catch((errorValue) => {
+			reportBackendError("saveSession", errorValue);
+			if (isRetry) return;
+			if (latestSaveByTarget.get(targetKey) === sequence) {
+				failedAutosave = identity;
+			}
+		});
+	}
+
+	/**
+	 * Send a scheduled autosave now, under the identity it was scheduled for,
+	 * and resend the last failed autosave once, unless the scheduled one
+	 * replaces it.
 	 *
 	 * Called when the page is going away and when the host repoints
 	 * `backend.delivery`, which are the two ways a debounced save is otherwise
 	 * dropped.
 	 */
 	function flushPendingSave(options?: { keepalive?: boolean }): void {
+		const retry = failedAutosave;
+		failedAutosave = null;
+		const pending = saveTimer ? pendingSaveIdentity : null;
+		if (
+			retry &&
+			!(pending && saveTargetKey(pending) === saveTargetKey(retry))
+		) {
+			sendAutosave(retry, options, true);
+		}
 		if (!saveTimer) return;
 		clearTimeout(saveTimer);
 		saveTimer = null;
-		const pending = pendingSaveIdentity;
 		pendingSaveIdentity = null;
-		const identity = pending
-			? { ...pending, session: sessionContainerFor(pending.sessionId) }
-			: null;
-		void saveSession(options, identity).catch((errorValue) => {
-			reportBackendError("saveSession", errorValue);
-		});
+		if (!pending) return;
+		sendAutosave(
+			{ ...pending, session: sessionContainerFor(pending.sessionId) },
+			options,
+		);
 	}
 
 	async function score(options?: BackendScoreOptions): Promise<unknown> {
@@ -598,8 +653,9 @@ export function createBackendOrchestrator(
 			) {
 				return;
 			}
-			void saveSession(undefined, saveIdentity).catch((errorValue) => {
-				reportBackendError("saveSession", errorValue);
+			sendAutosave({
+				...saveIdentity,
+				session: sessionContainerFor(saveIdentity.sessionId),
 			});
 		}, autosave.debounceMs);
 	}

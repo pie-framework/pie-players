@@ -31,8 +31,6 @@ player.backend = {
 };
 ```
 
-The `endpoints` shown are the defaults; a host sets only the paths it changes.
-
 Existing delivery inputs stay where they are: `env`, `strategy`,
 `loaderOptions`, `renderStimulus`, styling props, `config`,
 and `session` are not duplicated under `backend.delivery`.
@@ -174,7 +172,9 @@ Save session, answered with an empty 201 that resolves `saveSession()` to
   ],
   "env": { "mode": "gather", "role": "student" },
   "itemId": "item-1",
-  "assignmentId": "assignment-1"
+  "assignmentId": "assignment-1",
+  "models": [{ "id": "q1", "element": "multiple-choice--version-1-2-3" }],
+  "passageModels": []
 }
 ```
 

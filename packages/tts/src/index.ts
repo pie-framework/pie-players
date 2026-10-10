@@ -8,6 +8,7 @@
 export type {
 	ITTSProvider,
 	ITTSProviderImplementation,
+	SpeedRateBucket,
 	TTSSpeechSegment,
 	TTSConfig,
 	TTSProviderCapabilities,

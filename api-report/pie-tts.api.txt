@@ -6,6 +6,7 @@
 .
   type ITTSProvider
   type ITTSProviderImplementation
+  type SpeedRateBucket
   type TTSConfig
   type TTSProviderCapabilities
   type TTSProviderOptions

@@ -14,14 +14,13 @@ import { hasSpokenContent } from "@pie-players/pie-assessment-toolkit/tools/regi
 import {
 	createScopedToolId,
 	createToolElement,
+	TOOL_ACTIVE_CHANGE_EVENT,
 } from "@pie-players/pie-assessment-toolkit/tools/registration";
 import {
 	buildRuntimeTTSConfig,
-	normalizeTTSLayoutMode,
 	normalizeTTSSpeedControlOptions,
 	type NormalizedTTSSpeedOption,
 	resolveTTSHostToolbarLayout,
-	resolveTTSLayoutMode,
 	resolveTTSRuntimeSettings,
 } from "@pie-players/pie-assessment-toolkit/tools/registration";
 import { TTSToolProvider } from "@pie-players/pie-assessment-toolkit/tools/registration";
@@ -31,8 +30,6 @@ import { resolveOverlayElement } from "./overlay-element-cache.js";
 // and a bundler building the toolkit alone has nothing to resolve.
 const loadServerTTSProvider = async () =>
 	(await import("@pie-players/tts-client-server")).ServerTTSProvider;
-
-export const TOOL_ACTIVE_CHANGE_EVENT = "pie-tool-active-change";
 
 /**
  * Text-to-Speech tool registration
@@ -70,11 +67,6 @@ export const ttsToolRegistration: ToolRegistration = {
 		const normalizedConfig: Record<string, unknown> = {
 			...(config as Record<string, unknown>),
 		};
-		if ("layoutMode" in normalizedConfig) {
-			normalizedConfig.layoutMode = normalizeTTSLayoutMode(
-				normalizedConfig.layoutMode,
-			);
-		}
 		if ("speedOptions" in normalizedConfig) {
 			normalizedConfig.speedOptions = normalizeTTSSpeedControlOptions(
 				normalizedConfig.speedOptions,
@@ -108,17 +100,15 @@ export const ttsToolRegistration: ToolRegistration = {
 			const runtimeSettings = resolveRuntimeSettings();
 			return normalizeTTSSpeedControlOptions(runtimeSettings.speedOptions);
 		};
-		const resolveLayoutMode = () =>
-			resolveTTSLayoutMode(resolveRuntimeSettings());
-		const resolveHostLayout = () =>
-			resolveTTSHostToolbarLayout(resolveRuntimeSettings());
 		const fullToolId = createScopedToolId(
 			this.toolId,
 			toolbarContext.scope.level,
 			toolbarContext.scope.scopeId,
 		);
-		// Only a language the toolbar or its host named: unnamed, the control resolves
-		// markup `lang`, and the browser voice follows the browser's language.
+		// Only a language the toolbar or its host named. Unnamed, the control names
+		// the toolkit's `content-language`; markup `lang` wins over both, and a read
+		// naming none uses the host's locale, else en-US, with a browser voice for
+		// the browser's language.
 		const applyContentLanguage = (element: HTMLElement) => {
 			if (toolbarContext.language) {
 				element.setAttribute("language", toolbarContext.language);
@@ -151,13 +141,13 @@ export const ttsToolRegistration: ToolRegistration = {
 			);
 			applyContentLanguage(element);
 			element.setAttribute("size", resolveControlSize());
-			element.setAttribute("layout-mode", resolveLayoutMode());
+			element.setAttribute("layout-mode", resolveRuntimeSettings().layoutMode);
 			element.speedOptions = resolveElementSpeedOptions();
 			element.showSingleSpeedOption =
 				resolveRuntimeSettings().showSingleSpeedOption === true;
 		};
 		applyAttributes();
-		const hostLayout = resolveHostLayout();
+		const hostLayout = resolveTTSHostToolbarLayout(resolveRuntimeSettings());
 
 		return {
 			toolId: this.toolId,
@@ -165,7 +155,7 @@ export const ttsToolRegistration: ToolRegistration = {
 			elements: [
 				{
 					element,
-					mount: hostLayout.mount,
+					mount: "before-buttons",
 					layoutHints: {
 						controlsRow: {
 							reserveSpace: hostLayout.controlsRow.reserveSpace,

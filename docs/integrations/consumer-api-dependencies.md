@@ -234,6 +234,21 @@ provider. Host A calls `ttsService.stop()` before navigation and when hiding the
 section player, so an inline panel open at that point now closes. Row
 verification dates are unchanged.
 
+Also on 2026-10-09 `validateEndpoint` left the TTS settings and the server
+provider's config: `endpointValidationMode` alone picks the probe, `none` when
+unset on the provider and `voices` on a toolkit `server` backend, so a host
+setting neither probes as before. `resolveTTSRuntimeSettings` resolves
+`layoutMode`, which removes `resolveTTSLayoutMode` and `normalizeTTSLayoutMode`,
+and `TTSHostToolbarLayout` lost its constant `mount`. `speedRate` is typed by
+`SpeedRateBucket` from `pie-tts`, the custom transport's `providerOptions` keys
+are typed under an index signature, and `TOOL_ACTIVE_CHANGE_EVENT` names the
+tool active-change event on `tools/registration`. Checked against the checkouts
+of Hosts A, M, P, R and V, each scan reaching `@pie-players` imports, and Host
+A's and Host P's feature branches: no host names a removed surface. Hosts A and R
+set `endpointValidationMode: "none"` and `speedRate: "medium"`, both still valid,
+and Host R's `providerOptions` still type-check. Row verification dates are
+unchanged.
+
 The 2026-09-17 session-commit change (PIE-1058) was checked against the
 recorded rows rather than re-derived from the checkouts. It renames and removes
 nothing: `pie-item-player` gains one opt-in property, `session-snapshot`, one

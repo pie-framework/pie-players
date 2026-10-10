@@ -296,13 +296,6 @@ type PreviewSpeechMark = { time: number; start: number; end: number; value?: str
 			'<speak>This is a <prosody rate="95%">Google Cloud SSML sample</prosody>. <break time="250ms"/> The preview preserves authored SSML.</speak>'
 	};
 	const BUILT_IN_TABS: BuiltInBackendTab[] = ["browser", "polly", "google"];
-const TTS_LAYOUT_MODES: readonly TTSLayoutMode[] = [
-	"reserved-row",
-	"expanding-row",
-	"floating-overlay",
-	"left-aligned",
-];
-
 const previewLogger = createPieLogger("pie-tts-preview", isTtsDebugEnabled);
 
 function debugPreview(event: string, payload?: Record<string, unknown>): void {
@@ -328,12 +321,6 @@ function browserVoiceLabel(voice: DemoVoice): string {
 function browserVoiceIdentity(voice: DemoVoice): string {
 	return voice.id || voice.name || "";
 }
-
-	function normalizeLayoutMode(value: unknown): TTSLayoutMode {
-		return TTS_LAYOUT_MODES.includes(value as TTSLayoutMode)
-			? (value as TTSLayoutMode)
-			: "left-aligned";
-	}
 
 	function resetInlineSpeedOptionsToDefaults(): void {
 		speedOptionsText = formatTTSSpeedOptionsAsText(INLINE_SPEED_DEFAULT_RATES);
@@ -625,11 +612,11 @@ function browserVoiceIdentity(voice: DemoVoice): string {
 						? "standard"
 						: "neural";
 		const sourceProviderOptions = (source?.providerOptions || {}) as Record<string, unknown>;
-		layoutMode = normalizeLayoutMode(source?.layoutMode);
 		mathTokenHighlighting = source?.mathTokenHighlighting !== false;
 		const runtimeForSpeed = resolveTTSRuntimeSettings(
 			source && typeof source === "object" ? (source as Record<string, unknown>) : undefined,
 		);
+		layoutMode = runtimeForSpeed.layoutMode;
 		preservedObjectSpeedOptions = undefined;
 		preservedObjectSpeedOptionsText = "";
 		if (runtimeForSpeed.speedOptions === undefined) {
@@ -1576,7 +1563,6 @@ function normalizePreviewSpeechMarkOffsets(
 		endpointMode: undefined,
 		endpointValidationMode: undefined,
 		includeAuthOnAssetFetch: undefined,
-		validateEndpoint: undefined,
 		cache: undefined,
 		speedRate: undefined,
 		lang_id: undefined,

@@ -353,6 +353,36 @@ describe("ServerTTSProvider", () => {
 		expect(synthBody.langId).toBe("es-MX");
 	});
 
+	test("sends a speedRate bucket on the custom transport, deriving one from rate for any other value", async () => {
+		const fetchMock = vi.fn(async (input: RequestInfo | URL) =>
+			String(input) === "https://tts.custom.example/v1"
+				? createJSONResponse({
+						audioContent: "https://tts.custom.example/audio.mp3",
+						speechMarks: [],
+					})
+				: new Response(new Blob(["mp3-bytes"]), { status: 200 }),
+		);
+		globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+		const sentSpeedRate = async (speedRate: unknown) => {
+			fetchMock.mockClear();
+			const impl = await new ServerTTSProvider().initialize({
+				apiEndpoint: "https://tts.custom.example/v1",
+				transportMode: "custom",
+				endpointMode: "rootPost",
+				rate: 0.8,
+				providerOptions: { speedRate },
+			} as any);
+			await impl.speak("Read");
+			const options = fetchMock.mock.calls[0]?.[1] as RequestInit;
+			return JSON.parse(String(options.body)).speedRate;
+		};
+
+		expect(await sentSpeedRate("fast")).toBe("fast");
+		expect(await sentSpeedRate("normal")).toBe("slow");
+		expect(await sentSpeedRate(undefined)).toBe("slow");
+	});
+
 	test("sends the language a speak names on the custom transport, then the configured one again", async () => {
 		const fetchMock = vi.fn(async (input: RequestInfo | URL) =>
 			String(input) === "https://tts.custom.example/v1"
@@ -684,7 +714,7 @@ describe("ServerTTSProvider", () => {
 		const provider = new ServerTTSProvider();
 		const impl = await provider.initialize({
 			apiEndpoint: "/api/tts",
-			validateEndpoint: true,
+			endpointValidationMode: "voices",
 			providerOptions: {
 				__pieTelemetry: (
 					eventName: string,
@@ -787,6 +817,37 @@ describe("ServerTTSProvider", () => {
 		});
 	});
 
+	test("probes nothing at initialize unless endpointValidationMode names a probe", async () => {
+		const fetchMock = vi.fn(async () => createJSONResponse({ voices: [] }, 200));
+		globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+		for (const config of [
+			{ apiEndpoint: "/api/tts", provider: "polly" },
+			{ apiEndpoint: "/api/tts", transportMode: "custom" },
+			{ apiEndpoint: "/api/tts", endpointValidationMode: "none" },
+		]) {
+			await new ServerTTSProvider().initialize(config as any);
+		}
+
+		expect(fetchMock).not.toHaveBeenCalled();
+	});
+
+	test("probes the synthesis endpoint for endpointValidationMode endpoint", async () => {
+		const fetchMock = vi.fn(async () => new Response(null, { status: 405 }));
+		globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+		await new ServerTTSProvider().initialize({
+			apiEndpoint: "/api/tts",
+			endpointValidationMode: "endpoint",
+		} as any);
+
+		expect(fetchMock).toHaveBeenCalledTimes(1);
+		expect(String(fetchMock.mock.calls[0]?.[0])).toBe("/api/tts/synthesize");
+		expect((fetchMock.mock.calls[0] as unknown[])?.[1]).toMatchObject({
+			method: "OPTIONS",
+		});
+	});
+
 	test("validates provider-specific voices endpoint for Polly", async () => {
 		const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
 			const url = String(input);
@@ -801,7 +862,6 @@ describe("ServerTTSProvider", () => {
 		await provider.initialize({
 			apiEndpoint: "/api/tts",
 			provider: "polly",
-			validateEndpoint: true,
 			endpointValidationMode: "voices",
 		} as any);
 
@@ -823,7 +883,6 @@ describe("ServerTTSProvider", () => {
 		await provider.initialize({
 			apiEndpoint: "/api/tts",
 			provider: "google",
-			validateEndpoint: true,
 			endpointValidationMode: "voices",
 		} as any);
 
@@ -845,7 +904,6 @@ describe("ServerTTSProvider", () => {
 		await provider.initialize({
 			apiEndpoint: "/api/tts",
 			provider: "polly",
-			validateEndpoint: true,
 			endpointValidationMode: "voices",
 		} as any);
 
@@ -866,8 +924,7 @@ describe("ServerTTSProvider", () => {
 			provider.initialize({
 				apiEndpoint: "/api/tts",
 				provider: "google",
-				validateEndpoint: true,
-				endpointValidationMode: "voices",
+					endpointValidationMode: "voices",
 			} as any),
 		).rejects.toThrow();
 		expect(fetchMock).toHaveBeenCalledTimes(1);

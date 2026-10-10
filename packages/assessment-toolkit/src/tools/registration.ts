@@ -107,11 +107,13 @@ export type {
 } from "./tool-tag-map.js";
 export { createToolElement, resolveToolTag } from "./tool-tag-map.js";
 
-// Toolbar button/overlay wiring shared by every toolbar-toggle registration.
+// Toolbar button/overlay wiring shared by every toolbar-toggle registration,
+// and the event a tool element announces its own active state with.
 export {
 	applyOverlaySurface,
 	createScopedVisibilityBinding,
 	syncButtonAndOverlayVisibility,
+	TOOL_ACTIVE_CHANGE_EVENT,
 } from "./registrations/toolbar-registration-helpers.js";
 
 // The coordinator a registration reaches through its render context, and the
@@ -194,11 +196,9 @@ export type {
 export {
 	buildRuntimeTTSConfig,
 	formatTTSSpeedOptionsAsText,
-	normalizeTTSLayoutMode,
 	normalizeTTSSpeedControlOptions,
 	parseTTSSpeedOptionsFromText,
 	resolveTTSHostToolbarLayout,
-	resolveTTSLayoutMode,
 	resolveTTSRuntimeSettings,
 } from "../services/tts-runtime-config.js";
 

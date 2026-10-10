@@ -222,7 +222,7 @@ const coordinator = new ToolkitCoordinator({
 });
 ```
 
-`layoutMode` is configured directly on `tools.providers.textToSpeech`. When omitted, the toolkit and a standalone `<pie-tool-tts-inline>` both use **`left-aligned`**. Supported values are:
+`layoutMode` is configured directly on `tools.providers.textToSpeech`. When omitted, the toolkit and a standalone `<pie-tool-tts-inline>` both use **`left-aligned`**, which the toolkit also uses for a value outside this list. Supported values are:
 
 - `reserved-row`
 - `expanding-row`

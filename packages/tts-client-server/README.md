@@ -181,8 +181,7 @@ interface ServerTTSProviderConfig {
   provider?: string;          // Server provider ('polly', 'google', etc.)
   transportMode?: 'pie' | 'custom';
   endpointMode?: 'synthesizePath' | 'rootPost';
-  endpointValidationMode?: 'voices' | 'endpoint' | 'none';
-  validateEndpoint?: boolean; // Probe the endpoint during initialize()
+  endpointValidationMode?: 'voices' | 'endpoint' | 'none'; // Probe run by initialize(); default 'none'
   authToken?: string;         // JWT or API key
   includeAuthOnAssetFetch?: boolean;
   assetOrigins?: string[];    // Trusted origins for Authorization header

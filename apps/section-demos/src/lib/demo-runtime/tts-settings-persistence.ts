@@ -63,7 +63,6 @@ function buildCoordinatorUpdate({
 		endpointMode: undefined,
 		endpointValidationMode: undefined,
 		includeAuthOnAssetFetch: undefined,
-		validateEndpoint: undefined,
 		cache: undefined,
 		speedRate: undefined,
 		lang_id: undefined,

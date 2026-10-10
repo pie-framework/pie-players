@@ -1,3 +1,4 @@
+import type { SpeedRateBucket } from "@pie-players/pie-tts";
 import type {
 	TextToSpeechToolProviderConfig,
 	ToolProviderConfig,
@@ -22,7 +23,6 @@ const VALID_TTS_LAYOUT_MODES = new Set<TTSLayoutMode>([
 ]);
 
 export interface TTSHostToolbarLayout {
-	mount: "before-buttons";
 	controlsRow: {
 		reserveSpace: boolean;
 		expandWhenToolActive: boolean;
@@ -73,6 +73,11 @@ export interface TTSRuntimeSettings {
 	language?: string;
 	transportMode?: "pie" | "custom";
 	endpointMode?: "synthesizePath" | "rootPost";
+	/**
+	 * The probe the server provider runs before it reports ready: `voices` reads
+	 * the voices route, `endpoint` sends OPTIONS to the synthesis route, `none`
+	 * probes nothing. Defaults to `voices` on a `server` backend.
+	 */
 	endpointValidationMode?: "voices" | "endpoint" | "none";
 	includeAuthOnAssetFetch?: boolean;
 	/** Origins trusted with the `Authorization` header on asset fetches. */
@@ -81,9 +86,13 @@ export interface TTSRuntimeSettings {
 	credentials?: "omit" | "same-origin" | "include";
 	/** Headers sent with every request to the TTS server. */
 	headers?: Record<string, string>;
-	validateEndpoint?: boolean;
+	/** Server-side caching, sent on the `custom` transport. */
 	cache?: boolean;
-	speedRate?: "slow" | "medium" | "fast";
+	/**
+	 * Speed bucket sent on the `custom` transport; derived from `rate` when
+	 * unset.
+	 */
+	speedRate?: SpeedRateBucket;
 	/**
 	 * The custom transport's locale, sent on every read in place of the content
 	 * language. Where markup and the tool name no language it is also the read's
@@ -123,9 +132,21 @@ export interface TTSRuntimeSettings {
 	/**
 	 * Options passed through to the provider. The fields derived from the
 	 * settings above, such as `locale` and the Polly engine, win over these.
+	 * The `custom` transport reads the three typed keys; the settings of the
+	 * same names win over them.
 	 */
-	providerOptions?: Record<string, unknown>;
+	providerOptions?: {
+		speedRate?: SpeedRateBucket;
+		lang_id?: string;
+		cache?: boolean;
+		[option: string]: unknown;
+	};
 }
+
+/** Runtime settings with defaults applied: the layout mode is always known. */
+type ResolvedTTSRuntimeSettings = TTSRuntimeSettings & {
+	layoutMode: TTSLayoutMode;
+};
 
 const toRecord = (value: unknown): Record<string, unknown> =>
 	value && typeof value === "object" ? (value as Record<string, unknown>) : {};
@@ -133,14 +154,11 @@ const toRecord = (value: unknown): Record<string, unknown> =>
 const withDefault = <T>(value: T | undefined, fallback: T): T =>
 	value === undefined ? fallback : value;
 
-export const normalizeTTSLayoutMode = (
-	value: unknown,
-	fallback: TTSLayoutMode = "left-aligned",
-): TTSLayoutMode =>
+const normalizeTTSLayoutMode = (value: unknown): TTSLayoutMode =>
 	typeof value === "string" &&
 	VALID_TTS_LAYOUT_MODES.has(value as TTSLayoutMode)
 		? (value as TTSLayoutMode)
-		: fallback;
+		: "left-aligned";
 
 const DEFAULT_TTS_SPEED_CONTROL_OPTIONS = Object.freeze([
 	{ rate: 0.8, label: "Slow", ariaLabel: "Slow speed" },
@@ -306,14 +324,14 @@ export const parseTTSSpeedOptionsFromText = (text: string): number[] => {
 
 const applyRuntimeDefaults = (
 	config: TTSRuntimeSettings,
-): TTSRuntimeSettings => {
-	const withLayoutDefaults: TTSRuntimeSettings = {
+): ResolvedTTSRuntimeSettings => {
+	const withLayoutDefaults: ResolvedTTSRuntimeSettings = {
 		...config,
 		layoutMode: normalizeTTSLayoutMode(config.layoutMode),
 	};
 	if (config.backend !== "server") return withLayoutDefaults;
 
-	const withServerDefaults: TTSRuntimeSettings = {
+	const withServerDefaults: ResolvedTTSRuntimeSettings = {
 		...withLayoutDefaults,
 		apiEndpoint: withDefault(withLayoutDefaults.apiEndpoint, "/api/tts"),
 		transportMode: withDefault(withLayoutDefaults.transportMode, "pie"),
@@ -321,7 +339,6 @@ const applyRuntimeDefaults = (
 			withLayoutDefaults.endpointValidationMode,
 			"voices",
 		),
-		validateEndpoint: withDefault(withLayoutDefaults.validateEndpoint, true),
 		includeAuthOnAssetFetch: withDefault(
 			withLayoutDefaults.includeAuthOnAssetFetch,
 			false,
@@ -347,8 +364,9 @@ const applyRuntimeDefaults = (
 
 /**
  * The runtime settings of a `textToSpeech` provider entry: its top-level keys
- * with defaults applied. `enabled` and the runtime `provider` object belong to
- * the tool registration and are dropped.
+ * with defaults applied, an unknown `layoutMode` resolved to `left-aligned`.
+ * `enabled` and the runtime `provider` object belong to the tool registration
+ * and are dropped.
  */
 export const resolveTTSRuntimeSettings = (
 	config:
@@ -356,7 +374,7 @@ export const resolveTTSRuntimeSettings = (
 		| ToolProviderConfig
 		| TTSRuntimeSettings
 		| undefined,
-): TTSRuntimeSettings => {
+): TTSRuntimeSettings & { layoutMode: TTSLayoutMode } => {
 	const {
 		enabled: _enabled,
 		provider: _provider,
@@ -388,7 +406,6 @@ export type RuntimeTTSConfig = Pick<
 		| "assetOrigins"
 		| "credentials"
 		| "headers"
-		| "validateEndpoint"
 	> & {
 		provider?: TTSRuntimeSettings["serverProvider"];
 	};
@@ -447,7 +464,6 @@ export const buildRuntimeTTSConfig = (
 		assetOrigins: config.assetOrigins,
 		credentials: config.credentials,
 		headers: config.headers,
-		validateEndpoint: config.validateEndpoint,
 		// Toolkit-level highlight setting carried through the config channel
 		// (like apiEndpoint/transportMode); consumed by the highlight pipeline,
 		// ignored by providers. Only forwarded when set so the pipeline default
@@ -471,18 +487,13 @@ export const buildRuntimeTTSConfig = (
 	>;
 };
 
-export const resolveTTSLayoutMode = (
-	config: TTSRuntimeSettings,
-): TTSLayoutMode => normalizeTTSLayoutMode(config.layoutMode);
-
+/** The toolbar layout hints for the layout mode of resolved settings. */
 export const resolveTTSHostToolbarLayout = (
-	config: TTSRuntimeSettings,
+	config: { layoutMode: TTSLayoutMode },
 ): TTSHostToolbarLayout => {
-	const layoutMode = resolveTTSLayoutMode(config);
-	switch (layoutMode) {
+	switch (config.layoutMode) {
 		case "reserved-row":
 			return {
-				mount: "before-buttons",
 				controlsRow: {
 					reserveSpace: true,
 					expandWhenToolActive: false,
@@ -493,7 +504,6 @@ export const resolveTTSHostToolbarLayout = (
 			};
 		case "expanding-row":
 			return {
-				mount: "before-buttons",
 				controlsRow: {
 					reserveSpace: false,
 					expandWhenToolActive: true,
@@ -504,7 +514,6 @@ export const resolveTTSHostToolbarLayout = (
 			};
 		case "floating-overlay":
 			return {
-				mount: "before-buttons",
 				controlsRow: {
 					reserveSpace: false,
 					expandWhenToolActive: false,
@@ -516,7 +525,6 @@ export const resolveTTSHostToolbarLayout = (
 		case "left-aligned":
 		default:
 			return {
-				mount: "before-buttons",
 				controlsRow: {
 					reserveSpace: false,
 					expandWhenToolActive: false,

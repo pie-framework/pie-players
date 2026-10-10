@@ -2,11 +2,9 @@ import { describe, expect, test } from "bun:test";
 import {
 	buildRuntimeTTSConfig,
 	formatTTSSpeedOptionsAsText,
-	normalizeTTSLayoutMode,
 	normalizeTTSSpeedControlOptions,
 	parseTTSSpeedOptionsFromText,
 	resolveTTSHostToolbarLayout,
-	resolveTTSLayoutMode,
 	resolveTTSRuntimeSettings,
 } from "@pie-players/pie-assessment-toolkit/tools/registration";
 import { ttsToolRegistration } from "../src/registrations/tts.js";
@@ -29,7 +27,6 @@ describe("tts-runtime-config defaults", () => {
 			language: "en-US",
 			transportMode: "pie",
 			endpointValidationMode: "voices",
-			validateEndpoint: true,
 			includeAuthOnAssetFetch: false,
 		});
 		expect(runtimeConfig.providerOptions).toMatchObject({
@@ -141,7 +138,6 @@ describe("tts-runtime-config defaults", () => {
 			language: "en-US",
 			transportMode: "pie",
 			endpointValidationMode: "voices",
-			validateEndpoint: true,
 			includeAuthOnAssetFetch: false,
 		});
 		expect(runtimeConfig.providerOptions).toMatchObject({
@@ -163,7 +159,6 @@ describe("tts-runtime-config defaults", () => {
 			speechMarksMode: "word",
 			transportMode: "custom",
 			endpointValidationMode: "none",
-			validateEndpoint: false,
 			includeAuthOnAssetFetch: true,
 		});
 		const runtimeConfig = buildRuntimeTTSConfig(settings);
@@ -176,7 +171,6 @@ describe("tts-runtime-config defaults", () => {
 			language: "es-ES",
 			transportMode: "custom",
 			endpointValidationMode: "none",
-			validateEndpoint: false,
 			includeAuthOnAssetFetch: true,
 		});
 		expect(runtimeConfig.providerOptions).toMatchObject({
@@ -208,9 +202,8 @@ describe("tts-runtime-config defaults", () => {
 			enabled: true,
 			backend: "browser",
 		} as any);
-		expect(resolveTTSLayoutMode(settings)).toBe("left-aligned");
+		expect(settings.layoutMode).toBe("left-aligned");
 		expect(resolveTTSHostToolbarLayout(settings)).toEqual({
-			mount: "before-buttons",
 			controlsRow: {
 				reserveSpace: false,
 				expandWhenToolActive: false,
@@ -233,7 +226,6 @@ describe("tts-runtime-config defaults", () => {
 			layoutMode: "left-aligned",
 		} as any);
 		expect(resolveTTSHostToolbarLayout(floating)).toEqual({
-			mount: "before-buttons",
 			controlsRow: {
 				reserveSpace: false,
 				expandWhenToolActive: false,
@@ -243,7 +235,6 @@ describe("tts-runtime-config defaults", () => {
 			},
 		});
 		expect(resolveTTSHostToolbarLayout(left)).toEqual({
-			mount: "before-buttons",
 			controlsRow: {
 				reserveSpace: false,
 				expandWhenToolActive: false,
@@ -254,11 +245,13 @@ describe("tts-runtime-config defaults", () => {
 		});
 	});
 
-	test("normalizes invalid layout modes to left-aligned", () => {
-		expect(normalizeTTSLayoutMode("not-a-layout")).toBe("left-aligned");
+	test("resolves an invalid layout mode to left-aligned", () => {
 		expect(
-			resolveTTSLayoutMode({ layoutMode: "not-a-layout" as any } as any),
+			resolveTTSRuntimeSettings({ layoutMode: "not-a-layout" as any }).layoutMode,
 		).toBe("left-aligned");
+		expect(
+			resolveTTSRuntimeSettings({ layoutMode: "expanding-row" }).layoutMode,
+		).toBe("expanding-row");
 	});
 });
 

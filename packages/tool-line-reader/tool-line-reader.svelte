@@ -105,9 +105,17 @@ import { onMount, untrack } from 'svelte';
 		});
 	});
 
+	// One timer for the live region, so an earlier announcement's clear cannot
+	// blank a later one.
+	let announceTimer: ReturnType<typeof setTimeout> | null = null;
+
 	function announce(message: string) {
+		if (announceTimer !== null) clearTimeout(announceTimer);
 		announceText = message;
-		setTimeout(() => announceText = '', 1000);
+		announceTimer = setTimeout(() => {
+			announceText = '';
+			announceTimer = null;
+		}, 1000);
 	}
 
 	function clampPaneHeight(value: number) {
@@ -443,6 +451,7 @@ import { onMount, untrack } from 'svelte';
 
 	onMount(() => {
 		return () => {
+			if (announceTimer !== null) clearTimeout(announceTimer);
 			gesture.release();
 			registration.release();
 		};

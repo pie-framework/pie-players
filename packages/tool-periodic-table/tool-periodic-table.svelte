@@ -167,7 +167,7 @@
 		lang={interfaceI18n.getLocale()}
 		dir={interfaceI18n.getDirection?.() ?? 'ltr'}
 		aria-label={interfaceI18n.t('tools.periodicTable.toolA11y')}
-		data-tool-id={toolId}
+		data-pie-tool-id={toolId}
 	>
 		<!-- Content wrapper -->
 		<div class="pie-tool-periodic-table__content">

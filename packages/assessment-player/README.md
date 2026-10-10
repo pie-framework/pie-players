@@ -159,10 +159,8 @@ host.hooks = {
 };
 ```
 
-Component registration entrypoints:
-
-- `@pie-players/pie-assessment-player/components/assessment-player-default-element`
-- `@pie-players/pie-assessment-player/components/assessment-player-shell-element`
+Component registration entrypoint:
+`@pie-players/pie-assessment-player/components/assessment-player-default-element`.
 
 ## Instrumentation and observability
 

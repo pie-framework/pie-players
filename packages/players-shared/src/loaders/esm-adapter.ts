@@ -40,6 +40,7 @@ import {
 } from "./element-loader-types.js";
 import { isExactSemver } from "./element-package-policy.js";
 import { forwardMathjaxEvents } from "./mathjax-events.js";
+import { isPlainRecord } from "../object/index.js";
 
 /** View configuration: how a PIE package's subpath maps to a tag suffix. */
 export type ViewConfig = {
@@ -1406,10 +1407,6 @@ const BROWSER_VIEW_PATH =
 const BARE_SPECIFIER =
 	/^(?:@[A-Za-z0-9_-][A-Za-z0-9._-]*\/)?[A-Za-z0-9_-][A-Za-z0-9._-]*(?:\/[A-Za-z0-9_-][A-Za-z0-9._-]*)*$/;
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-
 /**
  * A package's `pie.browserEditorRuntime`: `undefined` when it declares none,
  * `null` when the declaration is malformed.
@@ -1419,7 +1416,7 @@ function readEditorRuntimeDeclaration(
 ): EditorRuntimeDeclaration | null | undefined {
 	const declared = metadata?.pie?.browserEditorRuntime;
 	if (declared === undefined) return undefined;
-	if (!isRecord(declared) || !isRecord(declared.views)) return null;
+	if (!isPlainRecord(declared) || !isPlainRecord(declared.views)) return null;
 	const { name, version } = declared;
 	if (typeof name !== "string" || !PACKAGE_NAME.test(name)) return null;
 	if (typeof version !== "string" || !isExactSemver(version)) return null;
@@ -1447,7 +1444,7 @@ function readBrowserModules(
 	metadata: PackageMetadata,
 ): Record<string, string> | null {
 	const declared = metadata.pie?.browserModules;
-	if (!isRecord(declared)) return null;
+	if (!isPlainRecord(declared)) return null;
 	const modules = Object.entries(declared);
 	const valid =
 		modules.length > 0 &&

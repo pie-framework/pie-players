@@ -56,7 +56,7 @@ interface CoordinatorWithTtsService {
 	reportFrameworkError?: (model: FrameworkErrorModel) => void;
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
+function isObjectLike(value: unknown): value is Record<string, unknown> {
 	return Boolean(value) && typeof value === "object";
 }
 
@@ -69,7 +69,7 @@ function sameContent(a: unknown, b: unknown): boolean {
 		}
 		return a.every((entry, index) => sameContent(entry, b[index]));
 	}
-	if (!isRecord(a) || !isRecord(b)) return false;
+	if (!isObjectLike(a) || !isObjectLike(b)) return false;
 	const keys = new Set([...Object.keys(a), ...Object.keys(b)]);
 	for (const key of keys) {
 		if (!sameContent(a[key], b[key])) return false;

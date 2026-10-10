@@ -10,6 +10,7 @@ import { createPieLogger, isGlobalDebugEnabled } from "./logger.js";
 import { findPieController } from "./scoring.js";
 import type { AuthoringEnv, ConfigureElement } from "./types.js";
 import { parsePackageName } from "./utils.js";
+import { isPlainRecord } from "../object/index.js";
 
 const logger = createPieLogger("authoring", () => isGlobalDebugEnabled());
 
@@ -34,10 +35,6 @@ export type AuthoringMediaHandlers = {
 	onDeleteSound?: (src: string, done: (err?: Error) => void) => void;
 };
 
-function isRecord(value: unknown): value is RecordValue {
-	return !!value && typeof value === "object" && !Array.isArray(value);
-}
-
 function packageNameWithoutVersion(packageSpec: string): string {
 	try {
 		return parsePackageName(packageSpec).name;
@@ -52,7 +49,7 @@ function packageBaseName(packageName: string): string {
 }
 
 function lookupOwn(source: unknown, keys: string[]): unknown {
-	if (!isRecord(source)) return undefined;
+	if (!isPlainRecord(source)) return undefined;
 	for (const key of keys) {
 		if (Object.hasOwn(source, key)) {
 			return source[key];
@@ -68,7 +65,7 @@ function mergeConfiguration(
 	if (authoringConfig === undefined) {
 		return deliveryConfig ?? {};
 	}
-	if (isRecord(deliveryConfig) && isRecord(authoringConfig)) {
+	if (isPlainRecord(deliveryConfig) && isPlainRecord(authoringConfig)) {
 		return {
 			...deliveryConfig,
 			...authoringConfig,
@@ -192,8 +189,8 @@ function resolveValidationController(
 // A controller's `validate` returns a field → message map. ebsr returns one map
 // per part, so an empty ebsr result is `{ partA: {}, partB: {} }`.
 function hasValidationErrors(errors: unknown): boolean {
-	if (!isRecord(errors)) return false;
-	if (isRecord(errors.partA) && isRecord(errors.partB)) {
+	if (!isPlainRecord(errors)) return false;
+	if (isPlainRecord(errors.partA) && isPlainRecord(errors.partB)) {
 		return (
 			Object.keys(errors.partA).length > 0 ||
 			Object.keys(errors.partB).length > 0

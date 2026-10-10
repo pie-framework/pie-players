@@ -262,7 +262,7 @@
 			class="pie-tool-calculator notranslate"
 			class:pie-tool-calculator--attributed={attribution !== null}
 			role="region"
-			data-tool-id={toolId}
+			data-pie-tool-id={toolId}
 			tabindex="-1"
 			lang={interfaceI18n.getLocale()}
 			dir={interfaceI18n.getDirection?.() ?? 'ltr'}

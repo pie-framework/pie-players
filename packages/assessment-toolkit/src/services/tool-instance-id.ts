@@ -6,8 +6,7 @@ const DEFAULT_TOOL_SCOPE_LEVELS = [
 	"rubric",
 ] as const;
 
-export type BuiltinToolScopeLevel = (typeof DEFAULT_TOOL_SCOPE_LEVELS)[number];
-export type ToolScopeLevel = BuiltinToolScopeLevel | (string & {});
+export type ToolScopeLevel = (typeof DEFAULT_TOOL_SCOPE_LEVELS)[number];
 
 export interface ParsedToolInstanceId {
 	baseToolId: string;

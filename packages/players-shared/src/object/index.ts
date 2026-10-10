@@ -42,3 +42,12 @@ export const cloneDeep = <T>(value: T): T => {
 	}
 	return copy;
 };
+
+/**
+ * A non-null object that is not an array. The prototype is not checked, so
+ * class instances pass.
+ */
+export const isPlainRecord = (
+	value: unknown,
+): value is Record<string, unknown> =>
+	typeof value === "object" && value !== null && !Array.isArray(value);

@@ -5,6 +5,7 @@ import {
 	type CanonicalItemSessionContainer,
 	type SessionCommitReason,
 } from "@pie-players/pie-players-shared";
+import { isPlainRecord } from "@pie-players/pie-players-shared/object";
 
 export type SessionChangedForwardingResult =
 	| { action: "ignore" }
@@ -17,16 +18,12 @@ export type SessionChangedForwardingResult =
 			signature: string;
 	  };
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return !!value && typeof value === "object" && !Array.isArray(value);
-}
-
 function hasExplicitResponseField(value: unknown): boolean {
 	if (value == null) return false;
 	if (Array.isArray(value)) {
 		return value.some((entry) => hasExplicitResponseField(entry));
 	}
-	if (!isRecord(value)) return false;
+	if (!isPlainRecord(value)) return false;
 	for (const [key, nested] of Object.entries(value)) {
 		if (key === "value") return true;
 		if (hasExplicitResponseField(nested)) return true;
@@ -63,7 +60,7 @@ function withCommittedSession(
 	detail: unknown,
 	target: EventTarget | null | undefined,
 ): unknown {
-	if (!isRecord(detail) || "session" in detail) return detail;
+	if (!isPlainRecord(detail) || "session" in detail) return detail;
 	let session: unknown;
 	try {
 		session = (target as { session?: unknown } | null | undefined)?.session;
@@ -71,7 +68,7 @@ function withCommittedSession(
 		// A getter that throws leaves the detail as it came.
 		return detail;
 	}
-	if (!isRecord(session)) return detail;
+	if (!isPlainRecord(session)) return detail;
 	let copy: unknown;
 	try {
 		copy = JSON.parse(JSON.stringify(session));
@@ -105,7 +102,7 @@ export function asCommittedDetail(
 	const enriched = withCommittedSession(detail, target);
 	// A synthesized commit builds its own reason in; only the element-owned path
 	// arrives without one.
-	if (!isRecord(enriched) || "sessionCommitReason" in enriched) return enriched;
+	if (!isPlainRecord(enriched) || "sessionCommitReason" in enriched) return enriched;
 	return { ...enriched, sessionCommitReason: reason };
 }
 
@@ -115,7 +112,7 @@ export function resolveSessionChangedForwarding(args: {
 	detail: unknown;
 	itemId: string;
 }): SessionChangedForwardingResult {
-	const detailObj = isRecord(args.detail) ? args.detail : null;
+	const detailObj = isPlainRecord(args.detail) ? args.detail : null;
 	if (!detailObj) return { action: "ignore" };
 	if (
 		!("session" in detailObj) &&
@@ -162,7 +159,7 @@ function elementEntry(
 	elementId: unknown,
 ): Record<string, unknown> | undefined {
 	if (!session || !Array.isArray(session.data)) return undefined;
-	const entries = session.data.filter(isRecord);
+	const entries = session.data.filter(isPlainRecord);
 	if (typeof elementId === "string" && elementId) {
 		return entries.find((entry) => entry.id === elementId);
 	}

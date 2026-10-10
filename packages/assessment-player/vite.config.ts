@@ -48,8 +48,6 @@ export default defineConfig({
 		rollupOptions: {
 			external: [
 				"@pie-players/pie-assessment-toolkit",
-				"@pie-players/pie-players-shared",
-				"@pie-players/pie-players-shared/types",
 				"@pie-players/pie-section-player",
 			],
 			output: {

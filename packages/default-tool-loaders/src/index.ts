@@ -28,6 +28,7 @@ export {
 	AUDIO_TRANSCRIPT_REGION_CLASS,
 	AUDIO_TRANSCRIPT_REGION_LABEL,
 	audioTranscriptRegistration,
+	CONTENT_LEAD_SURFACE,
 	resolveAudioTranscript,
 	type ResolvedAudioTranscript,
 } from "./registrations/audio-transcript.js";

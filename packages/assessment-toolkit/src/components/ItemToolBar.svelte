@@ -86,7 +86,7 @@
 	import { parseToolList } from '../services/tools-config-normalizer.js';
 	import { PENDING_INPUT_WARNING_DELAY_MS, warnOncePerDocument } from '../runtime/page-warnings.js';
 	import { resolveFallbackToolIcon } from '../services/tool-icons.js';
-	import { createScopedToolId } from '../services/tool-instance-id.js';
+	import { createScopedToolId, type ToolScopeLevel } from '../services/tool-instance-id.js';
 	import type { ToolCoordinatorApi } from '../services/interfaces.js';
 	import type {
 		AssessmentItemRef,
@@ -94,7 +94,7 @@
 		ItemEntity,
 		ToolParametersFor
 	} from '@pie-players/pie-players-shared/types';
-	import type { ElementToolContext, ItemToolContext, ToolLevel, ToolContext } from '../services/tool-context.js';
+	import type { ElementToolContext, ItemToolContext, ToolContext } from '../services/tool-context.js';
 	import type { ToolPolicyDecision } from '../policy/engine.js';
 	import { createDecidedToolsTracker } from '../services/toolbar-decided-tools.js';
 	// Side-effect import: registers <nds-icon-button>. Single vendored source of
@@ -286,7 +286,7 @@
 
 	// Props
 	let {
-		level = 'item' as ToolLevel,
+		level = 'item' as ToolScopeLevel,
 		scopeId = '',
 		itemId = '',
 		sectionId = '',
@@ -307,7 +307,7 @@
 		size = 'md' as 'sm' | 'md' | 'lg',
 		language = ''
 	}: {
-		level?: ToolLevel;
+		level?: ToolScopeLevel;
 		scopeId?: string;
 		itemId?: string;
 		sectionId?: string;
@@ -414,7 +414,7 @@
 	const effectiveCanonicalItemId = $derived(shellContext?.canonicalItemId || effectiveItemId);
 	const effectiveSectionId = $derived(sectionId || runtimeContext?.sectionId || '');
 	const effectiveContentKind = $derived(contentKind || shellContext?.contentKind || (level === 'section' ? 'section' : 'assessment-item'));
-	const effectiveLevel = $derived.by((): ToolLevel => {
+	const effectiveLevel = $derived.by((): ToolScopeLevel => {
 		if (level && level !== 'item') return level;
 		if (effectiveContentKind === 'rubric-block-stimulus') return 'passage';
 		return 'item';

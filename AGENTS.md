@@ -123,6 +123,11 @@ when one literal tag is defined in two files.
   `bun run check:api-report` fails when an entry's exports change until
   `bun run api-report` regenerates the report, so every surface change is a reviewed
   diff in the report.
+- Each published package that registers an element commits a `custom-elements.json`.
+  `bun run custom-elements-manifest` regenerates it, and
+  `bun run check:custom-elements-manifest` fails on a stale one or on an event, slot
+  or part the element's doc comment leaves out (`@fires`, `@slot`, `@csspart`; the
+  `ce-package-packaging` skill has the format).
 
 Before finalizing a custom-element packaging or consumer-boundary change, run
 `bun run check:source-exports`, `bun run check:consumer-boundaries` and

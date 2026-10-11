@@ -31,8 +31,10 @@
 		"./font-sizes.css": "./dist/font-sizes.css",
 		"./components.css": "./dist/components.css"
 	},
+	"customElements": "custom-elements.json",
 	"files": [
 		"dist",
+		"custom-elements.json",
 		"README.md"
 	],
 	"scripts": {

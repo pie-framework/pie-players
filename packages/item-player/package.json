@@ -30,8 +30,10 @@
 			"import": "./dist/components/item-session-debugger-element.js"
 		}
 	},
+	"customElements": "custom-elements.json",
 	"files": [
-		"dist"
+		"dist",
+		"custom-elements.json"
 	],
 	"scripts": {
 		"build": "vite build",

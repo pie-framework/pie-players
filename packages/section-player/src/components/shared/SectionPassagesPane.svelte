@@ -6,6 +6,11 @@
 	}}
 />
 
+<!--
+@component
+Passages pane of a section player: renders the passage cards of the current section, the timed-media stimulus first, with a loading message until the section's elements load. It takes no attributes or properties: it reads the section player it sits in from a context the kernel publishes, so it renders at any depth below one and renders nothing outside one. Only the first connected passages pane of a section player renders.
+-->
+
 <script lang="ts">
 	import "../section-player-passage-card-element.js";
 	import type { ToolbarItem } from "@pie-players/pie-assessment-toolkit";

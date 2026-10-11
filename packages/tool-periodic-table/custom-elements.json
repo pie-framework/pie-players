@@ -1,0 +1,68 @@
+{
+	"schemaVersion": "2.1.0",
+	"modules": [
+		{
+			"kind": "javascript-module",
+			"path": "dist/tool-periodic-table.js",
+			"declarations": [
+				{
+					"kind": "class",
+					"description": "Periodic table reference panel: all 118 elements in their table positions, colour-coded by category, with a detail panel for the selected element's symbol, name, atomic mass and number, electron configuration and phase. Category badges filter the table by de-emphasising the other elements. The host shows it with `visible`; the toolkit runtime context supplies its interface locale.",
+					"name": "ToolPeriodicTable",
+					"tagName": "pie-tool-periodic-table",
+					"customElement": true,
+					"members": [
+						{
+							"kind": "field",
+							"name": "visible",
+							"type": {
+								"text": "boolean"
+							},
+							"default": "false",
+							"attribute": "visible"
+						},
+						{
+							"kind": "field",
+							"name": "toolId",
+							"type": {
+								"text": "string"
+							},
+							"default": "'periodicTable'",
+							"attribute": "tool-id"
+						}
+					],
+					"attributes": [
+						{
+							"name": "visible",
+							"type": {
+								"text": "boolean"
+							},
+							"default": "false",
+							"fieldName": "visible"
+						},
+						{
+							"name": "tool-id",
+							"type": {
+								"text": "string"
+							},
+							"default": "'periodicTable'",
+							"fieldName": "toolId"
+						}
+					],
+					"x-pie": {
+						"shadow": "open"
+					}
+				}
+			],
+			"exports": [
+				{
+					"kind": "custom-element-definition",
+					"name": "pie-tool-periodic-table",
+					"declaration": {
+						"name": "ToolPeriodicTable"
+					}
+				}
+			]
+		}
+	]
+}

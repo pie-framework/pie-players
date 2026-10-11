@@ -1,0 +1,127 @@
+{
+	"schemaVersion": "2.1.0",
+	"modules": [
+		{
+			"kind": "javascript-module",
+			"path": "dist/tool-answer-eliminator.js",
+			"declarations": [
+				{
+					"kind": "class",
+					"description": "Process-of-elimination tool for the item in its enclosing `<pie-item-scope>`: it adds a toggle beside each multiple-choice, EBSR and inline-dropdown choice that strikes the choice through or masks it, per `strategy`. It renders nothing of its own and is active while `visible` or `always-on` is set. Eliminations persist in the runtime context's element tool state store, under the key `elementStateKeys` gives each PIE element.",
+					"name": "ToolAnswerEliminator",
+					"tagName": "pie-tool-answer-eliminator",
+					"customElement": true,
+					"members": [
+						{
+							"kind": "field",
+							"name": "visible",
+							"type": {
+								"text": "boolean"
+							},
+							"default": "false",
+							"attribute": "visible"
+						},
+						{
+							"kind": "field",
+							"name": "strategy",
+							"type": {
+								"text": "'strikethrough' | 'mask'"
+							},
+							"default": "'strikethrough'",
+							"attribute": "strategy"
+						},
+						{
+							"kind": "field",
+							"name": "alwaysOn",
+							"type": {
+								"text": "boolean"
+							},
+							"default": "false",
+							"attribute": "always-on"
+						},
+						{
+							"kind": "field",
+							"name": "buttonAlignment",
+							"type": {
+								"text": "'left' | 'right' | 'inline'"
+							},
+							"default": "'right'",
+							"attribute": "button-alignment"
+						},
+						{
+							"kind": "field",
+							"name": "elementStateKeys",
+							"type": {
+								"text": "ElementStateKeys"
+							},
+							"default": "{}",
+							"description": "Store key per PIE element, by model id (JS property only)",
+							"attribute": "elementstatekeys"
+						}
+					],
+					"attributes": [
+						{
+							"name": "visible",
+							"type": {
+								"text": "boolean"
+							},
+							"default": "false",
+							"fieldName": "visible"
+						},
+						{
+							"name": "strategy",
+							"type": {
+								"text": "string"
+							},
+							"default": "'strikethrough'",
+							"fieldName": "strategy"
+						},
+						{
+							"name": "always-on",
+							"type": {
+								"text": "boolean"
+							},
+							"default": "false",
+							"fieldName": "alwaysOn"
+						},
+						{
+							"name": "button-alignment",
+							"type": {
+								"text": "string"
+							},
+							"default": "'right'",
+							"fieldName": "buttonAlignment"
+						},
+						{
+							"name": "elementstatekeys",
+							"type": {
+								"text": "ElementStateKeys"
+							},
+							"default": "{}",
+							"description": "Store key per PIE element, by model id (JS property only)",
+							"fieldName": "elementStateKeys"
+						}
+					],
+					"cssProperties": [
+						{
+							"name": "--pie-answer-eliminator-strike-color",
+							"description": "Single colour for every part of an elimination: the text line-through, the diagonals over an image, and the line or diagonals over rendered math, so one choice reads as one treatment. Must fall back through canonical --pie-incorrect so a host that themes only the canonical feedback tokens still gets a coherent strike."
+						}
+					],
+					"x-pie": {
+						"shadow": "open"
+					}
+				}
+			],
+			"exports": [
+				{
+					"kind": "custom-element-definition",
+					"name": "pie-tool-answer-eliminator",
+					"declaration": {
+						"name": "ToolAnswerEliminator"
+					}
+				}
+			]
+		}
+	]
+}

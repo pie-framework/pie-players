@@ -14,6 +14,13 @@
 	}}
 />
 
+<!--
+@component
+Developer panel for the section player demos that shows how the toolkit coordinator's tool policy resolves for a section: the PNP determination, resolved tools, provenance, policy diagnostics, per-tool decision trails and the active PNP profile, all as JSON. A host gives it `toolkitCoordinator`, `sectionData` and `role-type`; with `editable` it adds a tools editor that toggles placement per level, provider enablement, PNP supports and prohibitions on the bound assessment's profile, and PNP enforcement, writing each change through the coordinator.
+
+@fires {CustomEvent<null>} close - When the panel's close button is pressed.
+-->
+
 <script lang="ts">
 	import { coerceBooleanAttributes } from '@pie-players/pie-players-shared/ui/attribute-coercion';
 	import {

@@ -80,6 +80,31 @@ function sameContent(a: unknown, b: unknown): boolean {
 const DEFAULT_SECTION_TAG = "pie-section-player-splitpane";
 const VERTICAL_SECTION_TAG = "pie-section-player-vertical";
 
+/**
+ * Reference multi-section assessment player. A host gives it an `assessment`
+ * definition and `assessment-id`, optionally with `attempt-id`, `session` and
+ * `hooks`; it creates an `AssessmentController` for the attempt, mounts the
+ * current section in a split-pane or vertical section player, and renders the
+ * section position with Back and Next controls.
+ *
+ * @fires {CustomEvent<{ controller: AssessmentControllerHandle }>} assessment-controller-ready -
+ *   When the controller has initialized and hydrated the attempt.
+ * @fires {CustomEvent<AssessmentNavigationRequestedDetail>} assessment-navigation-requested -
+ *   Before Back, Next or a navigate method moves to another section, cancelable
+ *   to stay.
+ * @fires {CustomEvent<AssessmentRouteChangedDetail>} assessment-route-changed -
+ *   When the current section changes.
+ * @fires {CustomEvent<{ type: "assessment-session-applied"; timestamp: number }>} assessment-session-applied -
+ *   When hydration applies a persisted or assigned session.
+ * @fires {CustomEvent<{ type: "assessment-session-changed"; timestamp: number }>} assessment-session-changed -
+ *   When navigation or a section snapshot changes the assessment session.
+ * @fires {CustomEvent<AssessmentProgressChangedDetail>} assessment-progress-changed -
+ *   When the visited-section count changes.
+ * @fires {CustomEvent<AssessmentSubmissionStateChangedDetail>} assessment-submission-state-changed -
+ *   When `submit()` records the submission state.
+ * @fires {CustomEvent<{ error: unknown }>} assessment-error - When the attempt
+ *   fails to load, a ready hook rejects, or a section fails to load or restore.
+ */
 export class AssessmentPlayerDefaultElement
 	extends HTMLElement
 	implements AssessmentPlayerRuntimeHostContract

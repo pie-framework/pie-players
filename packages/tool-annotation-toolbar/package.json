@@ -27,8 +27,10 @@
 			"import": "./dist/tool-annotation-toolbar.js"
 		}
 	},
+	"customElements": "custom-elements.json",
 	"files": [
 		"dist",
+		"custom-elements.json",
 		"package.json",
 		"README.md"
 	],

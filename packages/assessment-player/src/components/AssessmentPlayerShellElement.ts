@@ -1,5 +1,12 @@
 import { coerceBooleanLike } from "@pie-players/pie-players-shared";
 
+/**
+ * Layout scaffold for a host-composed assessment: a two-row grid with a
+ * navigation row, omitted when `show-navigation` is false, above a body row.
+ * It renders into its light DOM and replaces its children with that grid on
+ * connect and on every `show-navigation` change, so host content never reaches
+ * either row.
+ */
 export class AssessmentPlayerShellElement extends HTMLElement {
 	static get observedAttributes() {
 		return ["show-navigation"];

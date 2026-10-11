@@ -13,6 +13,18 @@
 	}}
 />
 
+<!--
+@component
+Read-aloud trigger for an item or passage header inside `<pie-item-scope>` or
+`<pie-passage-shell>`: play/pause opens a panel of speed, rewind, fast-forward
+and stop controls. It reads the shell's content region through the TTS service
+in the toolkit runtime context, passing `catalog-id` so the service can speak
+authored SSML from the accessibility catalogs. Its controls stay disabled until
+the runtime context supplies a TTS service.
+
+@fires {CustomEvent<{ active: boolean }>} pie-tool-active-change - When its panel opens or closes.
+-->
+
 <script lang="ts">
 	import { coerceBooleanAttributes } from '@pie-players/pie-players-shared/ui/attribute-coercion';
 	import {

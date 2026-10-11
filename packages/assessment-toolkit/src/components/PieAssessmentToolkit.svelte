@@ -54,6 +54,21 @@
 	}}
 />
 
+<!--
+@component
+The toolkit's runtime element: it holds a `ToolkitCoordinator` and provides its tools, policy and services to the toolbars, item scopes and item players inside it, with or without a bound section. A host gives it tool configuration, an `assessment` carrying the personal needs profile, and optionally a `section` to bind, its own `coordinator` or a `toolRegistry`. It builds its coordinator from those inputs unless one is passed or an outer toolkit's is inherited.
+
+@fires {CustomEvent<FrameworkErrorModel>} framework-error - For each framework error the runtime reports; a non-recoverable bootstrap error also shows an error banner in place of the slotted content.
+@fires {CustomEvent<{ composition: unknown; version: number }>} composition-changed - When the bound section's composition changes revision, with a version that increases on each change.
+@fires {CustomEvent<{ itemId: string; canonicalItemId: string; sourceRuntimeId: string } & Record<string, unknown>>} session-changed - When an item's session in the bound section changes, carrying the section's canonical session detail for that item.
+@fires {CustomEvent<{ runtimeId: string; parentRuntimeId: string | null }>} runtime-owned - When the toolkit starts running its own coordinator.
+@fires {CustomEvent<{ runtimeId: string; parentRuntimeId: string | null }>} runtime-inherited - When the toolkit adopts an outer toolkit's coordinator, named by `parentRuntimeId`.
+@fires {CustomEvent<{ runtimeId: string; coordinator: ToolkitCoordinator; ownership: "owned" | "inherited" }>} runtime-ready - Once per coordinator, with or without a section, from which point a host can drive it.
+@fires {CustomEvent<{ runtimeId: string; assessmentId: string; sectionId: string; itemPlayer: ItemPlayerConfig; coordinator: ToolkitCoordinator }>} toolkit-ready - For every section the toolkit initializes, once its section controller resolves.
+@fires {CustomEvent<{ sectionId: string; attemptId: string; controller: unknown }>} section-ready - Right after `toolkit-ready`, with the section's controller or null.
+@slot - The content the toolkit serves: toolbars, item scopes and item players, or a section player's layout.
+-->
+
 <script lang="ts">
 	import { coerceBooleanAttributes } from "@pie-players/pie-players-shared/ui/attribute-coercion";
 	import { untrack } from "svelte";

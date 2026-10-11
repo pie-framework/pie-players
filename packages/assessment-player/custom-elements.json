@@ -1,0 +1,511 @@
+{
+	"schemaVersion": "2.1.0",
+	"modules": [
+		{
+			"kind": "javascript-module",
+			"path": "dist/pie-assessment-player.js",
+			"declarations": [
+				{
+					"kind": "class",
+					"description": "Reference multi-section assessment player. A host gives it an `assessment` definition and `assessment-id`, optionally with `attempt-id`, `session` and `hooks`; it creates an `AssessmentController` for the attempt, mounts the current section in a split-pane or vertical section player, and renders the section position with Back and Next controls.",
+					"name": "AssessmentPlayerDefaultElement",
+					"tagName": "pie-assessment-player-default",
+					"customElement": true,
+					"superclass": {
+						"name": "HTMLElement"
+					},
+					"members": [
+						{
+							"kind": "field",
+							"name": "assessmentId",
+							"type": {
+								"text": "string"
+							},
+							"attribute": "assessment-id"
+						},
+						{
+							"kind": "field",
+							"name": "attemptId",
+							"type": {
+								"text": "string"
+							},
+							"attribute": "attempt-id"
+						},
+						{
+							"kind": "field",
+							"name": "assessment",
+							"type": {
+								"text": "AssessmentDefinition | null"
+							}
+						},
+						{
+							"kind": "field",
+							"name": "hooks",
+							"type": {
+								"text": "AssessmentPlayerHooks | null"
+							}
+						},
+						{
+							"kind": "field",
+							"name": "session",
+							"type": {
+								"text": "AssessmentSession | null"
+							},
+							"description": "Before a controller is ready, the assigned session; after, a copy of the controller's."
+						},
+						{
+							"kind": "field",
+							"name": "locale",
+							"type": {
+								"text": "string"
+							},
+							"attribute": "locale"
+						},
+						{
+							"kind": "field",
+							"name": "env",
+							"type": {
+								"text": "Env | null"
+							}
+						},
+						{
+							"kind": "field",
+							"name": "coordinator",
+							"type": {
+								"text": "unknown"
+							}
+						},
+						{
+							"kind": "field",
+							"name": "showNavigation",
+							"type": {
+								"text": "boolean | string | null | undefined"
+							},
+							"attribute": "show-navigation"
+						},
+						{
+							"kind": "field",
+							"name": "sectionPlayerLayout",
+							"type": {
+								"text": "\"splitpane\" | \"vertical\""
+							},
+							"attribute": "section-player-layout"
+						},
+						{
+							"kind": "field",
+							"name": "playerType",
+							"type": {
+								"text": "\"iife\" | \"esm\" | \"preloaded\""
+							},
+							"attribute": "player-type"
+						},
+						{
+							"kind": "field",
+							"name": "debug",
+							"type": {
+								"text": "boolean | string | null | undefined"
+							},
+							"attribute": "debug"
+						},
+						{
+							"kind": "field",
+							"name": "sectionPlayerRuntime",
+							"type": {
+								"text": "AssessmentPlayerRuntimeConfig[\"sectionPlayerRuntime\"]"
+							}
+						},
+						{
+							"kind": "method",
+							"name": "getSnapshot",
+							"return": {
+								"type": {
+									"text": "AssessmentPlayerSnapshot"
+								}
+							}
+						},
+						{
+							"kind": "method",
+							"name": "selectNavigation"
+						},
+						{
+							"kind": "method",
+							"name": "selectReadiness"
+						},
+						{
+							"kind": "method",
+							"name": "selectProgress",
+							"return": {
+								"type": {
+									"text": "AssessmentPlayerProgressSnapshot"
+								}
+							}
+						},
+						{
+							"kind": "method",
+							"name": "navigateTo",
+							"parameters": [
+								{
+									"name": "indexOrIdentifier",
+									"type": {
+										"text": "number | string"
+									}
+								}
+							],
+							"return": {
+								"type": {
+									"text": "boolean"
+								}
+							}
+						},
+						{
+							"kind": "method",
+							"name": "navigateNext",
+							"return": {
+								"type": {
+									"text": "boolean"
+								}
+							}
+						},
+						{
+							"kind": "method",
+							"name": "navigatePrevious",
+							"return": {
+								"type": {
+									"text": "boolean"
+								}
+							}
+						},
+						{
+							"kind": "method",
+							"name": "getAssessmentController",
+							"return": {
+								"type": {
+									"text": "AssessmentControllerHandle | null"
+								}
+							}
+						},
+						{
+							"kind": "method",
+							"name": "waitForAssessmentController",
+							"parameters": [
+								{
+									"name": "timeoutMs",
+									"type": {
+										"text": "number"
+									},
+									"optional": true,
+									"default": "5000"
+								}
+							]
+						}
+					],
+					"attributes": [
+						{
+							"name": "assessment-id",
+							"type": {
+								"text": "string"
+							},
+							"fieldName": "assessmentId"
+						},
+						{
+							"name": "attempt-id",
+							"type": {
+								"text": "string"
+							},
+							"fieldName": "attemptId"
+						},
+						{
+							"name": "show-navigation",
+							"type": {
+								"text": "boolean | string | null | undefined"
+							},
+							"fieldName": "showNavigation"
+						},
+						{
+							"name": "section-player-layout",
+							"type": {
+								"text": "\"splitpane\" | \"vertical\""
+							},
+							"fieldName": "sectionPlayerLayout"
+						},
+						{
+							"name": "player-type",
+							"type": {
+								"text": "\"iife\" | \"esm\" | \"preloaded\""
+							},
+							"fieldName": "playerType"
+						},
+						{
+							"name": "debug",
+							"type": {
+								"text": "boolean | string | null | undefined"
+							},
+							"fieldName": "debug"
+						},
+						{
+							"name": "locale",
+							"type": {
+								"text": "string"
+							},
+							"fieldName": "locale"
+						}
+					],
+					"events": [
+						{
+							"name": "assessment-controller-ready",
+							"type": {
+								"text": "CustomEvent<{ controller: AssessmentControllerHandle }>"
+							},
+							"description": "When the controller has initialized and hydrated the attempt."
+						},
+						{
+							"name": "assessment-navigation-requested",
+							"type": {
+								"text": "CustomEvent<AssessmentNavigationRequestedDetail>"
+							},
+							"description": "Before Back, Next or a navigate method moves to another section, cancelable to stay."
+						},
+						{
+							"name": "assessment-route-changed",
+							"type": {
+								"text": "CustomEvent<AssessmentRouteChangedDetail>"
+							},
+							"description": "When the current section changes."
+						},
+						{
+							"name": "assessment-session-applied",
+							"type": {
+								"text": "CustomEvent<{ type: \"assessment-session-applied\"; timestamp: number }>"
+							},
+							"description": "When hydration applies a persisted or assigned session."
+						},
+						{
+							"name": "assessment-session-changed",
+							"type": {
+								"text": "CustomEvent<{ type: \"assessment-session-changed\"; timestamp: number }>"
+							},
+							"description": "When navigation or a section snapshot changes the assessment session."
+						},
+						{
+							"name": "assessment-progress-changed",
+							"type": {
+								"text": "CustomEvent<AssessmentProgressChangedDetail>"
+							},
+							"description": "When the visited-section count changes."
+						},
+						{
+							"name": "assessment-submission-state-changed",
+							"type": {
+								"text": "CustomEvent<AssessmentSubmissionStateChangedDetail>"
+							},
+							"description": "When `submit()` records the submission state."
+						},
+						{
+							"name": "assessment-error",
+							"type": {
+								"text": "CustomEvent<{ error: unknown }>"
+							},
+							"description": "When the attempt fails to load, a ready hook rejects, or a section fails to load or restore."
+						}
+					],
+					"x-pie": {
+						"shadow": "none"
+					}
+				},
+				{
+					"kind": "class",
+					"description": "Layout scaffold for a host-composed assessment: a two-row grid with a navigation row, omitted when `show-navigation` is false, above a body row. It renders into its light DOM and replaces its children with that grid on connect and on every `show-navigation` change, so host content never reaches either row.",
+					"name": "AssessmentPlayerShellElement",
+					"tagName": "pie-assessment-player-shell",
+					"customElement": true,
+					"superclass": {
+						"name": "HTMLElement"
+					},
+					"members": [
+						{
+							"kind": "field",
+							"name": "showNavigation",
+							"type": {
+								"text": "boolean | string | null | undefined"
+							},
+							"default": "true",
+							"attribute": "show-navigation"
+						}
+					],
+					"attributes": [
+						{
+							"name": "show-navigation",
+							"type": {
+								"text": "boolean | string | null | undefined"
+							},
+							"fieldName": "showNavigation"
+						}
+					],
+					"x-pie": {
+						"shadow": "none"
+					}
+				}
+			],
+			"exports": [
+				{
+					"kind": "custom-element-definition",
+					"name": "pie-assessment-player-default",
+					"declaration": {
+						"name": "AssessmentPlayerDefaultElement"
+					}
+				},
+				{
+					"kind": "custom-element-definition",
+					"name": "pie-assessment-player-shell",
+					"declaration": {
+						"name": "AssessmentPlayerShellElement"
+					}
+				},
+				{
+					"kind": "custom-element-definition",
+					"name": "pie-assessment-toolkit",
+					"declaration": {
+						"name": "PieAssessmentToolkit",
+						"module": "dist/components/pie-assessment-toolkit-element.js",
+						"package": "@pie-players/pie-assessment-toolkit"
+					}
+				},
+				{
+					"kind": "custom-element-definition",
+					"name": "pie-item-player",
+					"declaration": {
+						"name": "PieItemPlayer",
+						"module": "dist/pie-item-player.js",
+						"package": "@pie-players/pie-item-player"
+					}
+				},
+				{
+					"kind": "custom-element-definition",
+					"name": "pie-item-scope",
+					"declaration": {
+						"name": "ItemScope",
+						"module": "dist/components/item-scope-element.js",
+						"package": "@pie-players/pie-assessment-toolkit"
+					}
+				},
+				{
+					"kind": "custom-element-definition",
+					"name": "pie-item-toolbar",
+					"declaration": {
+						"name": "ItemToolBar",
+						"module": "dist/components/item-toolbar-element.js",
+						"package": "@pie-players/pie-assessment-toolkit"
+					}
+				},
+				{
+					"kind": "custom-element-definition",
+					"name": "pie-passage-shell",
+					"declaration": {
+						"name": "PassageShellElement",
+						"module": "dist/pie-section-player.js",
+						"package": "@pie-players/pie-section-player"
+					}
+				},
+				{
+					"kind": "custom-element-definition",
+					"name": "pie-section-player-base",
+					"declaration": {
+						"name": "PieSectionPlayerBaseElement",
+						"module": "dist/pie-section-player.js",
+						"package": "@pie-players/pie-section-player"
+					}
+				},
+				{
+					"kind": "custom-element-definition",
+					"name": "pie-section-player-item-card",
+					"declaration": {
+						"name": "SectionItemCard",
+						"module": "dist/pie-section-player.js",
+						"package": "@pie-players/pie-section-player"
+					}
+				},
+				{
+					"kind": "custom-element-definition",
+					"name": "pie-section-player-items-pane",
+					"declaration": {
+						"name": "SectionItemsPane",
+						"module": "dist/pie-section-player.js",
+						"package": "@pie-players/pie-section-player"
+					}
+				},
+				{
+					"kind": "custom-element-definition",
+					"name": "pie-section-player-kernel-host",
+					"declaration": {
+						"name": "PieSectionPlayerKernelHostElement",
+						"module": "dist/pie-section-player.js",
+						"package": "@pie-players/pie-section-player"
+					}
+				},
+				{
+					"kind": "custom-element-definition",
+					"name": "pie-section-player-passage-card",
+					"declaration": {
+						"name": "SectionPassageCard",
+						"module": "dist/pie-section-player.js",
+						"package": "@pie-players/pie-section-player"
+					}
+				},
+				{
+					"kind": "custom-element-definition",
+					"name": "pie-section-player-passages-pane",
+					"declaration": {
+						"name": "SectionPassagesPane",
+						"module": "dist/pie-section-player.js",
+						"package": "@pie-players/pie-section-player"
+					}
+				},
+				{
+					"kind": "custom-element-definition",
+					"name": "pie-section-player-shell",
+					"declaration": {
+						"name": "SectionPlayerShell",
+						"module": "dist/pie-section-player.js",
+						"package": "@pie-players/pie-section-player"
+					}
+				},
+				{
+					"kind": "custom-element-definition",
+					"name": "pie-section-player-splitpane",
+					"declaration": {
+						"name": "PieSectionPlayerSplitPaneElement",
+						"module": "dist/pie-section-player.js",
+						"package": "@pie-players/pie-section-player"
+					}
+				},
+				{
+					"kind": "custom-element-definition",
+					"name": "pie-section-player-tabbed",
+					"declaration": {
+						"name": "PieSectionPlayerTabbedElement",
+						"module": "dist/pie-section-player.js",
+						"package": "@pie-players/pie-section-player"
+					}
+				},
+				{
+					"kind": "custom-element-definition",
+					"name": "pie-section-player-vertical",
+					"declaration": {
+						"name": "PieSectionPlayerVerticalElement",
+						"module": "dist/pie-section-player.js",
+						"package": "@pie-players/pie-section-player"
+					}
+				},
+				{
+					"kind": "custom-element-definition",
+					"name": "pie-section-toolbar",
+					"declaration": {
+						"name": "SectionToolBar",
+						"module": "dist/components/section-toolbar-element.js",
+						"package": "@pie-players/pie-assessment-toolkit"
+					}
+				}
+			]
+		}
+	]
+}

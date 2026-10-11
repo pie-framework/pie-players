@@ -14,6 +14,13 @@
 	}}
 />
 
+<!--
+@component
+Developer panel for the section player demos that lists the instrumentation records `DebugPanelInstrumentationProvider` emits on the page: events, errors, metrics, user context and global attributes. It needs no host wiring beyond the optional `max-records` and `max-records-by-kind` caps; it replays the page's buffered records on mount and renders a draggable floating panel with a kind filter, pause and clear controls, and the selected record's attributes as JSON.
+
+@fires {CustomEvent<null>} close - When the panel's close button is pressed.
+-->
+
 <script lang="ts">
 	import {
 		type AssessmentToolkitRuntimeContext,

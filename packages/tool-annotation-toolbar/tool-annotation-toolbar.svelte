@@ -10,6 +10,16 @@
 	}}
 />
 
+<!--
+@component
+Toolbar that appears at a text selection, offering four highlight colours,
+underline, read-aloud, removal, clear-all and the host's `selectionActions`.
+Annotations are drawn through the runtime context's highlight coordinator and
+recorded per section and attempt in its element tool state store; read-aloud
+uses the context's TTS service. Under `<pie-assessment-toolkit>` the
+capability's registration supplies `enabled` and `selectionActions`.
+-->
+
 <script lang="ts">
 	import { coerceBooleanAttributes } from '@pie-players/pie-players-shared/ui/attribute-coercion';
 	import { tick, untrack } from 'svelte';

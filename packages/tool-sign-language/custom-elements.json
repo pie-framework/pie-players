@@ -1,0 +1,82 @@
+{
+	"schemaVersion": "2.1.0",
+	"modules": [
+		{
+			"kind": "javascript-module",
+			"path": "dist/tool-sign-language.js",
+			"declarations": [
+				{
+					"kind": "class",
+					"description": "Signed translation of one item or passage, shown in the host's content-media surface. The sign-language registration's `renderSurface` mounts it and sets `media` to a resolved catalog card; it plays that recording muted with native controls, held to the card's authored time slice, under a caption naming the sign language. Its playback and read-aloud through the toolkit runtime context's TTS service pause each other.",
+					"name": "SignLanguageMediaRegion",
+					"tagName": "pie-tool-sign-language",
+					"customElement": true,
+					"members": [
+						{
+							"kind": "field",
+							"name": "media",
+							"type": {
+								"text": "ResolvedSignLanguageAlternate | null"
+							},
+							"default": "null",
+							"attribute": "media"
+						},
+						{
+							"kind": "field",
+							"name": "i18n",
+							"type": {
+								"text": "I18nProvider"
+							},
+							"description": "Interface-locale provider, supplied by the host surface. Absent, the English-only default names the language rather than leaking a key.",
+							"attribute": "i18n"
+						}
+					],
+					"attributes": [
+						{
+							"name": "media",
+							"type": {
+								"text": "ResolvedSignLanguageAlternate | null"
+							},
+							"default": "null",
+							"fieldName": "media"
+						},
+						{
+							"name": "i18n",
+							"type": {
+								"text": "string"
+							},
+							"description": "Interface-locale provider, supplied by the host surface. Absent, the English-only default names the language rather than leaking a key.",
+							"fieldName": "i18n"
+						}
+					],
+					"cssProperties": [
+						{
+							"name": "--pie-section-player-item-media-aspect-ratio",
+							"description": "Public sizing hook for the item card media region; defaults to 3 / 4 because signed content needs height for hands and face. Geometry-only, but hosts must keep signing legible when overriding."
+						},
+						{
+							"name": "--pie-section-player-item-media-max-height",
+							"description": "Public ceiling for the item card media region; defaults to 60vh so a tall recording cannot push question content off screen. Geometry-only."
+						},
+						{
+							"name": "--pie-section-player-item-media-min-height",
+							"description": "Public legibility floor for the item card media region; defaults to 220px so a narrow content column cannot crush signed content. Geometry-only."
+						}
+					],
+					"x-pie": {
+						"shadow": "open"
+					}
+				}
+			],
+			"exports": [
+				{
+					"kind": "custom-element-definition",
+					"name": "pie-tool-sign-language",
+					"declaration": {
+						"name": "SignLanguageMediaRegion"
+					}
+				}
+			]
+		}
+	]
+}

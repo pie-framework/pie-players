@@ -24,6 +24,11 @@
 />
 
 <!--
+@component
+The toolbar for an item, passage or section, rendering a button for each tool the enclosing toolkit's coordinator places at its `level` and the tool's own visibility and applicability checks keep, plus the host's own `hostButtons`. It takes the item and its id from the enclosing `<pie-item-scope>` and the tool registry from the toolkit, either of which a host can override on the toolbar. Its tools act on the scope, or on the element `scopeElement` names.
+-->
+
+<!--
   ItemToolBar - Inline toolbar for item/passage headers
 
   Button visibility is always registry-driven:

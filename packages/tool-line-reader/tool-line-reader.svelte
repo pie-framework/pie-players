@@ -10,6 +10,16 @@
 	}}
 />
 
+<!--
+@component
+Reading-guide overlay: a transparent reading window inside an obscuring frame
+that the student drags over text, with controls on the frame to resize the
+window, resize the frame and close. The host shows it with `visible`; inside a
+toolkit runtime context it registers `tool-id` with the tool coordinator on the
+tool layer, and the close control hides it there. Arrow keys move it, `+` and
+`-` resize the window, and Escape closes it.
+-->
+
 <script lang="ts">
 	import { coerceBooleanAttributes } from '@pie-players/pie-players-shared/ui/attribute-coercion';
 	

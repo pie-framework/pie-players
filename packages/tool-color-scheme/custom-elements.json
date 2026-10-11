@@ -1,0 +1,77 @@
+{
+	"schemaVersion": "2.1.0",
+	"modules": [
+		{
+			"kind": "javascript-module",
+			"path": "dist/tool-color-scheme.js",
+			"declarations": [
+				{
+					"kind": "class",
+					"description": "Colour scheme picker: a dropdown of the schemes registered with `@pie-players/pie-theme`, each with a preview, that applies the chosen scheme to the nearest `<pie-theme>`. The choice is recorded per section and attempt in the runtime context's element tool state store and reapplied when the tool mounts again in that attempt. The host shows it with `visible`; it registers `tool-id` with the tool coordinator on the modal layer, traps focus while open, and hides itself there once a scheme is chosen.",
+					"name": "ToolColorScheme",
+					"tagName": "pie-tool-theme",
+					"customElement": true,
+					"members": [
+						{
+							"kind": "field",
+							"name": "visible",
+							"type": {
+								"text": "boolean"
+							},
+							"default": "false",
+							"attribute": "visible"
+						},
+						{
+							"kind": "field",
+							"name": "toolId",
+							"type": {
+								"text": "string"
+							},
+							"default": "'theme'",
+							"attribute": "tool-id"
+						}
+					],
+					"attributes": [
+						{
+							"name": "visible",
+							"type": {
+								"text": "boolean"
+							},
+							"default": "false",
+							"fieldName": "visible"
+						},
+						{
+							"name": "tool-id",
+							"type": {
+								"text": "string"
+							},
+							"default": "'theme'",
+							"fieldName": "toolId"
+						}
+					],
+					"x-pie": {
+						"shadow": "open"
+					}
+				}
+			],
+			"exports": [
+				{
+					"kind": "custom-element-definition",
+					"name": "pie-theme",
+					"declaration": {
+						"name": "PieThemeElement",
+						"module": "dist/index.js",
+						"package": "@pie-players/pie-theme"
+					}
+				},
+				{
+					"kind": "custom-element-definition",
+					"name": "pie-tool-theme",
+					"declaration": {
+						"name": "ToolColorScheme"
+					}
+				}
+			]
+		}
+	]
+}

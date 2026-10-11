@@ -502,7 +502,7 @@ export async function POST(request: Request) {
 ## Cost Optimization
 
 1. **Cache frequently used phrases** - Store audio for common text
-2. **Use standard voices when possible** - $4/1M vs $16/1M for neural
+2. **Use standard voices when possible** - rates per voice type: [Cloud Text-to-Speech pricing](https://cloud.google.com/text-to-speech/pricing)
 3. **Batch requests** - Group multiple synthesis requests when feasible
 4. **Monitor usage** - Set up billing alerts in Google Cloud Console
 

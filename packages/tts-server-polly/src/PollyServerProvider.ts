@@ -144,7 +144,6 @@ async function readResponseBody(stream: object): Promise<Buffer> {
  * Features:
  * - Native speech marks support (millisecond precision)
  * - Neural and standard voices
- * - 25+ languages
  * - Full SSML support
  * - Parallel audio + speech marks requests
  */
@@ -482,9 +481,6 @@ export class PollyServerProvider extends BaseTTSProvider {
 					supportedSpeechMarkTypes: ["word", "sentence", "ssml"],
 					supportsLexicons: false, // Not yet implemented
 					awsSSMLExtensions: true, // <amazon:effect>, <amazon:domain>, <amazon:auto-breaths>
-					neuralVoicesCount: 30,
-					standardVoicesCount: 30,
-					languagesCount: 25,
 				},
 			},
 		};

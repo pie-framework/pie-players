@@ -654,8 +654,6 @@ export class GoogleCloudTTSProvider extends BaseTTSProvider {
 				// Google Cloud-specific features
 				providerSpecific: {
 					voiceTypes: ["standard", "wavenet", "studio"],
-					voicesCount: 200, // ~200+ voices available
-					languagesCount: 50, // 50+ languages supported
 					supportsAudioProfiles: true, // Audio device profiles
 					supportsEffects: false, // No built-in effects
 					supportsEmotions: false, // No emotion control

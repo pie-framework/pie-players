@@ -278,7 +278,7 @@ So: publish one scalar from the player, resolve it property-first then
 attribute-then-default, and carry a change signal in the same change that adds
 the value. For our own packages the mechanism is `@pie-players/pie-context`; for
 PIE elements — third-party, independently versioned, fetched at runtime from a
-bundle service — it is a property with a reflected attribute and a
+bundle host — it is a property with a reflected attribute and a
 `MutationObserver`, exactly as `baseHeadingLevel` works today. The graceful
 default is English with no publisher present, which is what keeps elements
 working in authoring previews, authoring harnesses and `print-player`.

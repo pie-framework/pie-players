@@ -25,7 +25,7 @@ These are replaced by a single `<pie-item-player>` element with a `mode` attribu
 
 ## Loading strategies
 
-The legacy player loaded IIFE bundles from the PIE build service exclusively, using script tag injection and `window.pie` for element registration.
+The legacy player loaded IIFE bundles from the bundle host exclusively, using script tag injection and `window.pie` for element registration.
 
 The new player supports three strategies via the `strategy` attribute:
 

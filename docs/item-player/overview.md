@@ -33,7 +33,7 @@ All loader, controller, and type code lives in `@pie-players/pie-players-shared`
 
 **ElementLoader primitive** (`players-shared/src/loaders/element-loader.ts`) -- The single entry point for registering PIE custom elements. Exposes `ensureRegistered(elements, { backend, ... })` (async, truthful-promise contract: resolves iff every requested tag is in `customElements`) and `assertRegistered(tags)` (sync, throws `ElementAssertionError` naming each missing tag and the tags its package is registered as). The primitive owns the post-load `customElements.whenDefined` verification pass; backends cannot silently under-register.
 
-**IIFE backend** (`players-shared/src/loaders/iife-adapter.ts`) -- Loads IIFE bundles from a bundle host by injecting `<script>` tags. Supports bundle types `player` (elements only, hosted mode), `clientPlayer` (elements + controllers), and `editor` (authoring elements). Registers loaded elements in the global `window.PIE_REGISTRY`. Includes a configurable retry policy (`bundleRetry`, `onBundleRetryStatus`) for the bundle service's "still building" lifecycle.
+**IIFE backend** (`players-shared/src/loaders/iife-adapter.ts`) -- Loads IIFE bundles from a bundle host by injecting `<script>` tags. Supports bundle types `player` (elements only, hosted mode), `clientPlayer` (elements + controllers), and `editor` (authoring elements). Registers loaded elements in the global `window.PIE_REGISTRY`. Includes a configurable retry policy (`bundleRetry`, `onBundleRetryStatus`) for the bundle host's "still building" lifecycle.
 
 **ESM backend** (`players-shared/src/loaders/esm-adapter.ts`) -- Loads the
 static browser ESM package surface defined by the producer-side

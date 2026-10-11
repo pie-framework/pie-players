@@ -218,7 +218,7 @@ function logRenderableConfigWarnings(
  *
  * `onBundleRetryStatus` is wired through to `IifeBackendConfig` for IIFE
  * strategy so hosts can render "bundle still building" UI while the
- * adapter polls the bundle service. ESM ignores it.
+ * adapter polls the bundle host. ESM ignores it.
  */
 export function buildBackendConfigFromProps(args: {
 	strategy: string;

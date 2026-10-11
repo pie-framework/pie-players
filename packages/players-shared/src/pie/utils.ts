@@ -10,7 +10,7 @@ import type { LoadPieElementsOptions } from "./types.js";
 /**
  * Characters an element package spec may carry into a bundle path unescaped.
  *
- * `@` and `/` are in the set because the build service route is
+ * `@` and `/` are in the set because the bundle host's route is
  * `<host>/<spec>+<spec>.../<bundleType>`, and a scoped spec
  * (`@pie-element/multiple-choice@9.9.1`) spans path segments inside it —
  * escaping either yields a path the service does not match. The rest is the
@@ -24,7 +24,7 @@ const BUNDLE_PATH_LITERAL_CHARS = /[^A-Za-z0-9\-._~@/]/gu;
 const DOT_SEGMENTS = new Set([".", ".."]);
 
 /**
- * Percent-encode one element package spec for a build-service bundle path.
+ * Percent-encode one element package spec for a bundle host path.
  *
  * `config.elements` is authored content, so a spec must not be able to
  * restructure the URL. Escaping everything outside
@@ -32,7 +32,7 @@ const DOT_SEGMENTS = new Set([".", ".."]);
  * the path at a fragment, `?` no longer turns the remainder into a query
  * string (which in `buildBundleUrl` also swallowed the real `?elements=`
  * parameter), `\` is no longer normalized to `/` by the URL parser, `%` can
- * no longer smuggle an escape the build service decodes back into a
+ * no longer smuggle an escape the bundle host decodes back into a
  * separator, and an in-spec `+` becomes `%2B` instead of a phantom package
  * boundary.
  *
@@ -70,7 +70,7 @@ export const encodeElementPackageSpecs = (specs: Iterable<string>): string =>
 	Array.from(specs, encodeElementPackageSpec).join("+");
 
 /**
- * Build URL for fetching PIE element bundles from build service
+ * Build URL for fetching PIE element bundles from the bundle host
  */
 export const getPieElementBundlesUrl = (
 	config: ConfigEntity,

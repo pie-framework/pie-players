@@ -75,7 +75,7 @@ Item players are Web Components that render individual PIE assessment items. The
 **Purpose**: Load PIE elements dynamically from IIFE bundles.
 
 **Architecture**:
-- Fetches IIFE bundles from PIE build service (PITS) or CDN
+- Fetches IIFE bundles from a bundle host or CDN
 - Executes IIFE to register elements globally in window
 - Renders item markup with registered custom elements
 - Initializes models via PIE controllers
@@ -83,7 +83,7 @@ Item players are Web Components that render individual PIE assessment items. The
 **Use Cases**:
 - Migration path from `@pie-framework/pie-player-components`
 - Support for deployed PIE content that uses IIFE bundles
-- Dynamic element loading from PIE build service or CDN
+- Dynamic element loading from a bundle host or CDN
 
 **Key Features**:
 - Dynamic bundle loading from PITS (prod/stage/dev environments)

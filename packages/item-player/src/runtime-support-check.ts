@@ -3,8 +3,8 @@ export type RuntimeSupportCheckMode = "off" | "on";
 
 /**
  * Runtime-support metadata describes the ESM builds a package publishes, so
- * only the esm strategy probes it. The iife strategy loads bundles the PIE
- * build service assembles, and the preloaded strategy loads nothing.
+ * only the esm strategy probes it. The iife strategy loads bundles the bundle
+ * host assembles, and the preloaded strategy loads nothing.
  */
 export function shouldProbeRuntimeSupport(
 	strategy: RuntimeSupportStrategy,

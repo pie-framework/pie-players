@@ -73,7 +73,7 @@ a title plus two levels of authored sub-headings. Publishing one number means th
 player knows none of that.
 
 **The consumer set is open.** PIE element bundles are third-party, versioned
-independently, and fetched at runtime from a bundle service. A push channel needs
+independently, and fetched at runtime from a bundle host. A push channel needs
 a container release for every new consumer; a pull channel needs none.
 
 **Resolvers must work with no container.** The same elements run in authoring

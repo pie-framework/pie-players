@@ -115,7 +115,12 @@ const POLLY_RATE_LIMIT_EXCEPTIONS = new Set([
 	"ServiceQuotaExceededException",
 ]);
 
-const DEFAULT_SAMPLE_RATE_HERTZ = 24000;
+/** Polly takes 8000 and 16000 Hz for pcm, and also 22050 and 24000 for mp3 and ogg_vorbis. */
+const DEFAULT_SAMPLE_RATE_HERTZ = {
+	mp3: 24000,
+	ogg_vorbis: 24000,
+	pcm: 16000,
+} as const;
 
 /** Collects a Polly response body (`AudioStream`) into one buffer. */
 async function readResponseBody(stream: object): Promise<Buffer> {
@@ -304,14 +309,17 @@ export class PollyServerProvider extends BaseTTSProvider {
 			POLLY_SSML_TAGS,
 		);
 		const textType = isSsml ? "ssml" : "text";
+		const outputFormat = this.resolveOutputFormat(request);
 
 		const command = new SynthesizeSpeechCommand({
 			Engine: this.resolveEngine(),
-			OutputFormat: this.resolveOutputFormat(request),
+			OutputFormat: outputFormat,
 			Text: text,
 			TextType: textType,
 			VoiceId: voice as VoiceId,
-			SampleRate: String(request.sampleRate || DEFAULT_SAMPLE_RATE_HERTZ),
+			SampleRate: String(
+				request.sampleRate || DEFAULT_SAMPLE_RATE_HERTZ[outputFormat],
+			),
 		});
 
 		const response = await this.client.send(command);

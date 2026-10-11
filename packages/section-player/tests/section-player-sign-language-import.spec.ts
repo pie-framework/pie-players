@@ -1,7 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 
 /**
- * PIE-881 integration proof: Learnosity → pie-api-aws transform → PIE item →
+ * Integration proof: Learnosity → PIE API service transform → PIE item →
  * pie-players render.
  *
  * The sibling spec (`section-player-sign-language-region.spec.ts`) proves the
@@ -14,8 +14,8 @@ import { expect, test, type Page } from "@playwright/test";
  *
  * The source Learnosity item is synthetic and its signing clip is a public-domain
  * CDC recording, so both the fixture and this spec can be committed. The same
- * transform is covered against a real bank item in pie-api-aws, where the item
- * content can stay.
+ * transform is covered against a real bank item in the PIE API service, where
+ * the item content can stay.
  *
  * Four properties of the import are load bearing and each is checked:
  *   1. the signing video is carried as a catalog card, docked to the item;
@@ -69,7 +69,7 @@ function mediaRegion(page: Page) {
 	return itemCard(page).locator('[data-region="media"]');
 }
 
-test.describe("PIE-881 — imported Learnosity ASL item", () => {
+test.describe("imported Learnosity ASL item", () => {
 	test("renders the signed alternate the importer wrote", async ({ page }) => {
 		await gotoDemo(page, GRANTED_PATH);
 		const region = mediaRegion(page);
@@ -81,7 +81,7 @@ test.describe("PIE-881 — imported Learnosity ASL item", () => {
 		await expect(video.locator("source")).toHaveAttribute("src", VIDEO_URL);
 
 		await itemCard(page).screenshot({
-			path: "test-results/pie881-imported-asl-render.png",
+			path: "test-results/sign-language-import-render.png",
 		});
 	});
 

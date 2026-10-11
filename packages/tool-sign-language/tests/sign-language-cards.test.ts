@@ -204,7 +204,7 @@ describe("sign-language card payload validation", () => {
 	});
 
 	test("does not honour the withdrawn `signLanguage` key", () => {
-		// `pie-elements-ng` (PIE-879) and the `pie-api-aws` importer (PIE-881) briefly
+		// `pie-elements-ng` and the PIE API service's Learnosity importer briefly
 		// wrote the payload under `signLanguage`, and this function accepted both
 		// names. Both producers now emit `payload` and the alias is gone: one fact
 		// under two names is what let a card render on the resolution path and read

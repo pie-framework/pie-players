@@ -138,9 +138,10 @@ const authoredCardItem = {
 	},
 };
 
-// --- PIE-881 integration proof, committed ------------------------------------
-// Not authored here: the verbatim output of pie-api-aws' `mapLearnosityItemToPieItem`
-// for `packages/transform/test/items/asl-signlanguage-synthetic-ly.json`. Retyping
+// --- Learnosity import proof, committed --------------------------------------
+// Not authored here: the verbatim output of the PIE API service's
+// `mapLearnosityItemToPieItem` for
+// `packages/transform/test/items/asl-signlanguage-synthetic-ly.json`. Retyping
 // it by hand would prove only that we can write the shape we believe the importer
 // writes, which is the belief under test.
 //
@@ -168,12 +169,13 @@ const importedDemoItemRef = {
 	},
 } as NonNullable<AssessmentSection["assessmentItemRefs"]>[number];
 
-// --- PIE-881 integration proof against a real bank item, present only locally -
-// The unmodified output of pie-api-aws' ly-pie transform for a real ASL item
-// (Learnosity reference 88b0df8a-…_v2.0, KAS dbid 46807582): a model-level
-// `accessibilityCatalogs` sign-language card, the signing video removed from the
-// prompt, and a `data-catalog-idref` docking node in its place. Imported verbatim
-// rather than retyped, so what renders is exactly what the importer writes.
+// --- Learnosity import proof against a real bank item, present only locally ---
+// The unmodified output of the PIE API service's Learnosity transform for a real
+// ASL item (Learnosity reference 88b0df8a-…_v2.0, KAS dbid 46807582): a
+// model-level `accessibilityCatalogs` sign-language card, the signing video
+// removed from the prompt, and a `data-catalog-idref` docking node in its place.
+// Imported verbatim rather than retyped, so what renders is exactly what the
+// importer writes.
 //
 // That item carries live secure content and its correct answer, so it is
 // gitignored and absent from a clean checkout. Hence a glob rather than a static
@@ -192,7 +194,7 @@ const importedItemRefs = Object.values(importedAslModules).map(
 			...item,
 			baseId: item.id,
 			version: { major: 1, minor: 0, patch: 0 },
-			name: "PIE-881: imported from Learnosity",
+			name: "Imported from Learnosity (bank item)",
 		},
 	}),
 ) as NonNullable<AssessmentSection["assessmentItemRefs"]>;

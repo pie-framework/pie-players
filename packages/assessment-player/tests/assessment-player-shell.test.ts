@@ -6,6 +6,7 @@
 
 import { GlobalRegistrator } from "@happy-dom/global-registrator";
 import { afterEach, describe, expect, test } from "bun:test";
+import type { AssessmentPlayerShellElement } from "../src/components/AssessmentPlayerShellElement.js";
 
 // bun runs every test file in one process, and custom element definitions
 // cannot be removed, so the DOM stays registered for the process.
@@ -17,8 +18,14 @@ afterEach(() => {
 	document.body.replaceChildren();
 });
 
+function createShell() {
+	return document.createElement(
+		"pie-assessment-player-shell",
+	) as AssessmentPlayerShellElement;
+}
+
 function mountShell(attributes: Record<string, string> = {}) {
-	const shell = document.createElement("pie-assessment-player-shell");
+	const shell = createShell();
 	for (const [name, value] of Object.entries(attributes)) {
 		shell.setAttribute(name, value);
 	}
@@ -65,6 +72,30 @@ describe("pie-assessment-player-shell", () => {
 			navigation,
 		]);
 		expect(slot(shell)?.assignedElements()).toEqual([section]);
+	});
+
+	test("re-renders when the showNavigation property changes", () => {
+		const { shell, navigation, section } = mountShell();
+
+		shell.showNavigation = false;
+
+		expect(slot(shell, "navigation")).toBeNull();
+		expect(slot(shell)?.assignedElements()).toEqual([section]);
+
+		shell.showNavigation = true;
+
+		expect(slot(shell, "navigation")?.assignedElements()).toEqual([
+			navigation,
+		]);
+	});
+
+	test("takes the last of the attribute and property set before connect", () => {
+		const shell = createShell();
+		shell.setAttribute("show-navigation", "true");
+		shell.showNavigation = false;
+		document.body.appendChild(shell);
+
+		expect(slot(shell, "navigation")).toBeNull();
 	});
 
 	test("styles its host from the shadow root", () => {

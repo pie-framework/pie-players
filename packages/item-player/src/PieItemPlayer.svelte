@@ -67,6 +67,27 @@
 	}}
 />
 
+<!--
+@component
+The PIE item player: it loads an item's PIE elements under the `iife`, `esm` or `preloaded` strategy and renders the item for delivery, evaluation or authoring as `mode` selects. A host gives it the item `config`, the learner `session` and `env`; the player owns the session from there and reports each change as `session-changed`. An optional `backend` routes delivery loads, saves and scoring, and authoring loads and saves, through the player's backend orchestrator.
+
+@fires {CustomEvent<null>} load-complete - Once the item's PIE elements have loaded and rendered and the math in its markup is typeset, waiting at most two seconds for the math.
+@fires {CustomEvent<{ complete: boolean; component: string; elementId?: string; session: { id: string; data: unknown[] } | null; intent?: "metadata-only"; sessionCommitReason?: "teardown" | "navigate" | "page-hidden" }>} session-changed - When an element's session or completion changes, and as a commit at a teardown, navigation or page-hidden seam.
+@fires {CustomEvent<PieItemPlayerErrorDetail>} player-error - When loading, an update or a controller fails; `recoverable` is false when the player has no item to show.
+@fires {CustomEvent<{ update: unknown; reset: boolean }>} model-updated - In authoring, when a configure element updates its model.
+@fires {CustomEvent<{ models: unknown[]; configuration: unknown }>} model-loaded - In authoring, once per renderer initialization, after the configure elements receive their models and configuration.
+@fires {CustomEvent<{ itemId?: string; mode?: string; role?: string; bundleType?: string; populatedCount: number; elements: string[] }>} correct-responses-populated - When correct responses were written into the session, so a host can detect a population it did not ask for.
+@fires {CustomEvent<{ state: "retrying" | "completed" | "timeout" | "cancelled"; url: string; attempt: number; elapsedMs: number; timeoutMs: number; retryDelayMs?: number; reason?: string }>} bundle-retry-status - Under the `iife` strategy, as a bundle request is retried, completes, times out or is cancelled.
+@fires {CustomEvent<{ key: string; session: unknown; timestamp: number }>} session-snapshot-available - On load, when `session-snapshot` is enabled and device storage holds a snapshot for this sitting; the player never applies it.
+@fires {CustomEvent<{ scope: "delivery"; operation: "load"; metadata: Record<string, unknown>; session: unknown } | { scope: "authoring"; operation: "load"; contentId?: string; metadata: Record<string, unknown>; config: unknown }>} backend-load-complete - After the backend loads the delivery config and session, or the authoring content.
+@fires {CustomEvent<{ scope: "delivery"; operation: "model"; metadata: Record<string, unknown> }>} backend-model-complete - After the delivery backend refreshes the item's models.
+@fires {CustomEvent<{ scope: "delivery"; operation: "saveSession"; sessionId: string; session: unknown }>} backend-session-saved - After `saveSession()` or an autosave persists the session, which also clears the device snapshot.
+@fires {CustomEvent<{ scope: "delivery"; operation: "score"; sessionId: string; score: unknown }>} backend-score-complete - After a server-backed `score()` completes.
+@fires {CustomEvent<{ scope: "authoring"; operation: "saveContent"; contentId: string }>} backend-content-saved - After the authoring backend saves the item's content.
+@fires {CustomEvent<{ scope: "authoring"; operation: "releaseContent"; contentId: string }>} backend-content-released - After the authoring backend releases the item's content.
+@fires {CustomEvent<{ scope: "delivery"; operation: "load" | "model" | "saveSession"; message: string; error: unknown }>} backend-error - When a delivery load, model refresh or autosave the player started itself fails; a host's own `saveSession()` or `score()` call rejects instead.
+-->
+
 <script lang="ts">
 	// <pie-item-player> loads an item's PIE elements under the iife, esm or
 	// preloaded strategy and owns the learner session: `ItemController` holds it,
@@ -1688,7 +1709,7 @@
 
 	// An element controller persisted derived, non-response state (e.g. a shuffled
 	// choice order). Write it back to the authoritative session so future prop
-	// updates/remounts reuse it instead of regenerating it (PIE-631), and project it
+	// updates/remounts reuse it instead of regenerating it, and project it
 	// onto the host's container. It dispatches no event of its own, as under the
 	// legacy player, which gave controllers no `updateSession`: the next
 	// `session-changed` carries it, with the announcing element's own `complete`.

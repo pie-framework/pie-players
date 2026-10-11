@@ -85,6 +85,9 @@ const run = () => {
 		);
 
 		collectExportTargets(pkg.exports, declaredTargets);
+		if (typeof pkg.customElements === "string") {
+			declaredTargets.add(pkg.customElements.replace(/^\.\//, ""));
+		}
 
 		let packedFiles;
 		try {

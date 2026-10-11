@@ -1,0 +1,1315 @@
+{
+	"schemaVersion": "2.1.0",
+	"modules": [
+		{
+			"kind": "javascript-module",
+			"path": "dist/components/item-scope-element.js",
+			"declarations": [
+				{
+					"kind": "class",
+					"description": "An item's scope for the toolkit's tools, in a section player's card or around a host's own item player. A host gives it the item, its `item-id` and its policy `settings`; the toolbars and tools inside take the item from it and act on it, and it registers the item with the enclosing `<pie-assessment-toolkit>`, which files the item's accessibility catalogs. In a toolkit that holds a section it is also the item's channel to that toolkit; otherwise the item player's events pass through unchanged.",
+					"name": "ItemScope",
+					"tagName": "pie-item-scope",
+					"customElement": true,
+					"members": [
+						{
+							"kind": "field",
+							"name": "itemId",
+							"type": {
+								"text": "string"
+							},
+							"default": "\"\"",
+							"attribute": "item-id"
+						},
+						{
+							"kind": "field",
+							"name": "canonicalItemId",
+							"type": {
+								"text": "string"
+							},
+							"default": "\"\"",
+							"attribute": "canonical-item-id"
+						},
+						{
+							"kind": "field",
+							"name": "contentKind",
+							"type": {
+								"text": "string"
+							},
+							"default": "\"assessment-item\"",
+							"attribute": "content-kind"
+						},
+						{
+							"kind": "field",
+							"name": "regionPolicy",
+							"type": {
+								"text": "string"
+							},
+							"default": "\"default\"",
+							"attribute": "region-policy"
+						},
+						{
+							"kind": "field",
+							"name": "scopeElement",
+							"type": {
+								"text": "HTMLElement | null"
+							},
+							"default": "null",
+							"attribute": "scopeelement"
+						},
+						{
+							"kind": "field",
+							"name": "ttsHighlightTargetResolver",
+							"type": {
+								"text": "TTSHighlightTargetResolver | null"
+							},
+							"default": "null",
+							"attribute": "ttshighlighttargetresolver"
+						},
+						{
+							"kind": "field",
+							"name": "item",
+							"type": {
+								"text": "object"
+							},
+							"default": "null",
+							"attribute": "item"
+						},
+						{
+							"kind": "field",
+							"name": "settings",
+							"type": {
+								"text": "ItemSettings | null"
+							},
+							"default": "null",
+							"attribute": "settings"
+						}
+					],
+					"attributes": [
+						{
+							"name": "item-id",
+							"type": {
+								"text": "string"
+							},
+							"default": "\"\"",
+							"fieldName": "itemId"
+						},
+						{
+							"name": "canonical-item-id",
+							"type": {
+								"text": "string"
+							},
+							"default": "\"\"",
+							"fieldName": "canonicalItemId"
+						},
+						{
+							"name": "content-kind",
+							"type": {
+								"text": "string"
+							},
+							"default": "\"assessment-item\"",
+							"fieldName": "contentKind"
+						},
+						{
+							"name": "region-policy",
+							"type": {
+								"text": "string"
+							},
+							"default": "\"default\"",
+							"fieldName": "regionPolicy"
+						},
+						{
+							"name": "scopeelement",
+							"type": {
+								"text": "HTMLElement | null"
+							},
+							"default": "null",
+							"fieldName": "scopeElement"
+						},
+						{
+							"name": "ttshighlighttargetresolver",
+							"type": {
+								"text": "TTSHighlightTargetResolver | null"
+							},
+							"default": "null",
+							"fieldName": "ttsHighlightTargetResolver"
+						},
+						{
+							"name": "item",
+							"type": {
+								"text": "object"
+							},
+							"default": "null",
+							"fieldName": "item"
+						},
+						{
+							"name": "settings",
+							"type": {
+								"text": "ItemSettings | null"
+							},
+							"default": "null",
+							"fieldName": "settings"
+						}
+					],
+					"events": [
+						{
+							"name": "pie-register",
+							"type": {
+								"text": "CustomEvent<{ kind: \"item\"; itemId: string; canonicalItemId: string; contentKind: string; item: unknown; settings?: { requiredTools?: string[]; restrictedTools?: string[]; toolParameters?: Record<string, unknown> }; element: HTMLElement; runtimeId: string }>"
+							},
+							"description": "Registration handshake, once a toolkit has answered the scope and again when the item's identity, settings or catalogs change; the toolkit whose `runtimeId` it carries claims it and stops its propagation."
+						},
+						{
+							"name": "pie-unregister",
+							"type": {
+								"text": "CustomEvent<{ kind: \"item\"; itemId: string; canonicalItemId: string; contentKind: string; item: unknown; settings?: { requiredTools?: string[]; restrictedTools?: string[]; toolParameters?: Record<string, unknown> }; element: HTMLElement; runtimeId: string }>"
+							},
+							"description": "Retires the registration when the scope tears down, loses its item id or moves to another toolkit; claimed like `pie-register`."
+						},
+						{
+							"name": "item-session-changed",
+							"type": {
+								"text": "CustomEvent<{ itemId: string; canonicalItemId: string; session: unknown; sessionCommitReason?: \"teardown\" | \"navigate\" | \"page-hidden\" }>"
+							},
+							"description": "In a toolkit that holds a section, when the item player reports a response change; the player's own `session-changed` stops at the scope."
+						},
+						{
+							"name": "pie-item-session-changed",
+							"type": {
+								"text": "CustomEvent<{ itemId: string; session: unknown; runtimeId: string }>"
+							},
+							"description": "Internal channel event, in a toolkit that holds a section, for each distinct session change the item player reports, metadata-only ones included; claimed by the toolkit."
+						},
+						{
+							"name": "pie-content-loaded",
+							"type": {
+								"text": "CustomEvent<{ itemId: string; canonicalItemId: string; contentKind: string; detail: unknown; runtimeId: string }>"
+							},
+							"description": "Internal channel event when the item player reports `load-complete`; claimed by the toolkit."
+						},
+						{
+							"name": "pie-item-player-error",
+							"type": {
+								"text": "CustomEvent<{ itemId: string; canonicalItemId: string; contentKind: string; error: unknown; runtimeId: string }>"
+							},
+							"description": "Internal channel event when the item player reports `player-error`; claimed by the toolkit."
+						}
+					],
+					"slots": [
+						{
+							"name": "",
+							"description": "The item's content: its toolbar and a `[data-region=\"content\"]` region holding the item player."
+						}
+					],
+					"x-pie": {
+						"shadow": "open"
+					}
+				}
+			],
+			"exports": [
+				{
+					"kind": "custom-element-definition",
+					"name": "pie-item-scope",
+					"declaration": {
+						"name": "ItemScope"
+					}
+				}
+			]
+		},
+		{
+			"kind": "javascript-module",
+			"path": "dist/components/item-toolbar-element.js",
+			"declarations": [
+				{
+					"kind": "class",
+					"description": "The toolbar for an item, passage or section, rendering a button for each tool the enclosing toolkit's coordinator places at its `level` and the tool's own visibility and applicability checks keep, plus the host's own `hostButtons`. It takes the item and its id from the enclosing `<pie-item-scope>` and the tool registry from the toolkit, either of which a host can override on the toolbar. Its tools act on the scope, or on the element `scopeElement` names.",
+					"name": "ItemToolBar",
+					"tagName": "pie-item-toolbar",
+					"customElement": true,
+					"members": [
+						{
+							"kind": "field",
+							"name": "level",
+							"type": {
+								"text": "ToolScopeLevel"
+							},
+							"default": "'item'",
+							"attribute": "level"
+						},
+						{
+							"kind": "field",
+							"name": "scopeId",
+							"type": {
+								"text": "string"
+							},
+							"default": "''",
+							"attribute": "scope-id"
+						},
+						{
+							"kind": "field",
+							"name": "itemId",
+							"type": {
+								"text": "string"
+							},
+							"default": "''",
+							"attribute": "item-id"
+						},
+						{
+							"kind": "field",
+							"name": "sectionId",
+							"type": {
+								"text": "string"
+							},
+							"default": "''",
+							"attribute": "section-id"
+						},
+						{
+							"kind": "field",
+							"name": "catalogId",
+							"type": {
+								"text": "string"
+							},
+							"default": "''",
+							"attribute": "catalog-id"
+						},
+						{
+							"kind": "field",
+							"name": "tools",
+							"type": {
+								"text": "string"
+							},
+							"default": "''",
+							"description": "No capability default: this package holds no capability set, so naming one here would be the composition layer's decision made in the generic core. Every in-repo mount passes `tools` explicitly; a standalone host with no coordinator and no `tools` renders no buttons, which is the same honest answer `fallbackToolRegistry` gives.",
+							"attribute": "tools"
+						},
+						{
+							"kind": "field",
+							"name": "contentKind",
+							"type": {
+								"text": "string"
+							},
+							"default": "'assessment-item'",
+							"attribute": "content-kind"
+						},
+						{
+							"kind": "field",
+							"name": "position",
+							"type": {
+								"text": "'top' | 'right' | 'bottom' | 'left' | 'none'"
+							},
+							"default": "'bottom'",
+							"attribute": "position"
+						},
+						{
+							"kind": "field",
+							"name": "scopeElement",
+							"type": {
+								"text": "HTMLElement | null"
+							},
+							"default": "null",
+							"description": "Local runtime contracts (passed as JS properties, not attributes)",
+							"attribute": "scopeelement"
+						},
+						{
+							"kind": "field",
+							"name": "toolRegistry",
+							"type": {
+								"text": "ToolRegistry | null"
+							},
+							"default": "null",
+							"attribute": "toolregistry"
+						},
+						{
+							"kind": "field",
+							"name": "item",
+							"type": {
+								"text": "ItemEntity | null"
+							},
+							"default": "null",
+							"attribute": "item"
+						},
+						{
+							"kind": "field",
+							"name": "hostButtons",
+							"type": {
+								"text": "ToolbarItem[]"
+							},
+							"default": "[]",
+							"attribute": "hostbuttons"
+						},
+						{
+							"kind": "field",
+							"name": "class",
+							"type": {
+								"text": "string"
+							},
+							"default": "''",
+							"attribute": "class"
+						},
+						{
+							"kind": "field",
+							"name": "size",
+							"type": {
+								"text": "'sm' | 'md' | 'lg'"
+							},
+							"default": "'md'",
+							"attribute": "size"
+						},
+						{
+							"kind": "field",
+							"name": "language",
+							"type": {
+								"text": "string"
+							},
+							"default": "''",
+							"attribute": "language"
+						}
+					],
+					"attributes": [
+						{
+							"name": "level",
+							"type": {
+								"text": "string"
+							},
+							"default": "'item'",
+							"fieldName": "level"
+						},
+						{
+							"name": "scope-id",
+							"type": {
+								"text": "string"
+							},
+							"default": "''",
+							"fieldName": "scopeId"
+						},
+						{
+							"name": "item-id",
+							"type": {
+								"text": "string"
+							},
+							"default": "''",
+							"fieldName": "itemId"
+						},
+						{
+							"name": "section-id",
+							"type": {
+								"text": "string"
+							},
+							"default": "''",
+							"fieldName": "sectionId"
+						},
+						{
+							"name": "catalog-id",
+							"type": {
+								"text": "string"
+							},
+							"default": "''",
+							"fieldName": "catalogId"
+						},
+						{
+							"name": "tools",
+							"type": {
+								"text": "string"
+							},
+							"default": "''",
+							"description": "No capability default: this package holds no capability set, so naming one here would be the composition layer's decision made in the generic core. Every in-repo mount passes `tools` explicitly; a standalone host with no coordinator and no `tools` renders no buttons, which is the same honest answer `fallbackToolRegistry` gives.",
+							"fieldName": "tools"
+						},
+						{
+							"name": "content-kind",
+							"type": {
+								"text": "string"
+							},
+							"default": "'assessment-item'",
+							"fieldName": "contentKind"
+						},
+						{
+							"name": "position",
+							"type": {
+								"text": "string"
+							},
+							"default": "'bottom'",
+							"fieldName": "position"
+						},
+						{
+							"name": "scopeelement",
+							"type": {
+								"text": "HTMLElement | null"
+							},
+							"default": "null",
+							"description": "Local runtime contracts (passed as JS properties, not attributes)",
+							"fieldName": "scopeElement"
+						},
+						{
+							"name": "toolregistry",
+							"type": {
+								"text": "ToolRegistry | null"
+							},
+							"default": "null",
+							"fieldName": "toolRegistry"
+						},
+						{
+							"name": "item",
+							"type": {
+								"text": "ItemEntity | null"
+							},
+							"default": "null",
+							"fieldName": "item"
+						},
+						{
+							"name": "hostbuttons",
+							"type": {
+								"text": "ToolbarItem[]"
+							},
+							"default": "[]",
+							"fieldName": "hostButtons"
+						},
+						{
+							"name": "class",
+							"type": {
+								"text": "string"
+							},
+							"default": "''",
+							"fieldName": "class"
+						},
+						{
+							"name": "size",
+							"type": {
+								"text": "string"
+							},
+							"default": "'md'",
+							"fieldName": "size"
+						},
+						{
+							"name": "language",
+							"type": {
+								"text": "string"
+							},
+							"default": "''",
+							"fieldName": "language"
+						}
+					],
+					"cssProperties": [
+						{
+							"name": "--pie-section-player-card-header-background",
+							"description": "Public card header background hook; defaults to transparent and hosts must preserve contrast with card header content."
+						}
+					],
+					"x-pie": {
+						"shadow": "open"
+					}
+				}
+			],
+			"exports": [
+				{
+					"kind": "custom-element-definition",
+					"name": "pie-item-toolbar",
+					"declaration": {
+						"name": "ItemToolBar"
+					}
+				}
+			]
+		},
+		{
+			"kind": "javascript-module",
+			"path": "dist/components/pie-assessment-toolkit-element.js",
+			"declarations": [
+				{
+					"kind": "class",
+					"description": "The toolkit's runtime element: it holds a `ToolkitCoordinator` and provides its tools, policy and services to the toolbars, item scopes and item players inside it, with or without a bound section. A host gives it tool configuration, an `assessment` carrying the personal needs profile, and optionally a `section` to bind, its own `coordinator` or a `toolRegistry`. It builds its coordinator from those inputs unless one is passed or an outer toolkit's is inherited.",
+					"name": "PieAssessmentToolkit",
+					"tagName": "pie-assessment-toolkit",
+					"customElement": true,
+					"members": [
+						{
+							"kind": "field",
+							"name": "assessmentId",
+							"type": {
+								"text": "string"
+							},
+							"default": "\"\"",
+							"attribute": "assessment-id"
+						},
+						{
+							"kind": "field",
+							"name": "section",
+							"type": {
+								"text": "object"
+							},
+							"default": "null",
+							"attribute": "section"
+						},
+						{
+							"kind": "field",
+							"name": "sectionId",
+							"type": {
+								"text": "string"
+							},
+							"default": "\"\"",
+							"attribute": "section-id"
+						},
+						{
+							"kind": "field",
+							"name": "attemptId",
+							"type": {
+								"text": "string"
+							},
+							"default": "\"\"",
+							"attribute": "attempt-id"
+						},
+						{
+							"kind": "field",
+							"name": "env",
+							"type": {
+								"text": "object"
+							},
+							"default": "{}",
+							"attribute": "env"
+						},
+						{
+							"kind": "field",
+							"name": "ndsIcons",
+							"type": {
+								"text": "boolean"
+							},
+							"default": "false",
+							"description": "Presentation flag surfaced onto the runtime context. Consumers render the vendored <nds-icon-button> only when this is explicitly `true`; otherwise they use plain <button>s. Defaults to `false` (opt-in).",
+							"attribute": "nds-icons"
+						},
+						{
+							"kind": "field",
+							"name": "locale",
+							"type": {
+								"text": "string"
+							},
+							"default": "\"\"",
+							"description": "Interface locale, published onto the runtime context so every tool resolves the same provider. `type: \"String\"` because hosts pass attribute values as strings and a BCP-47 tag is one; POSIX (`nl_NL`) and bare (`nl`) forms both resolve.",
+							"attribute": "locale"
+						},
+						{
+							"kind": "field",
+							"name": "contentLanguage",
+							"type": {
+								"text": "string"
+							},
+							"default": "\"\"",
+							"description": "Content language, published onto the runtime context for read-aloud and catalog lookups. Markup `lang` inside a shell wins over it.",
+							"attribute": "content-language"
+						},
+						{
+							"kind": "field",
+							"name": "lazyInit",
+							"type": {
+								"text": "boolean"
+							},
+							"default": "false",
+							"attribute": "lazy-init"
+						},
+						{
+							"kind": "field",
+							"name": "toolConfigStrictness",
+							"type": {
+								"text": "ToolConfigStrictness"
+							},
+							"default": "\"error\"",
+							"attribute": "tool-config-strictness"
+						},
+						{
+							"kind": "field",
+							"name": "tools",
+							"type": {
+								"text": "object"
+							},
+							"default": "{}",
+							"attribute": "tools"
+						},
+						{
+							"kind": "field",
+							"name": "toolContextResolvers",
+							"type": {
+								"text": "Record<string, unknown> | null"
+							},
+							"default": "null",
+							"attribute": "toolcontextresolvers"
+						},
+						{
+							"kind": "field",
+							"name": "enabledTools",
+							"type": {
+								"text": "string"
+							},
+							"default": "\"\"",
+							"attribute": "enabled-tools"
+						},
+						{
+							"kind": "field",
+							"name": "toolRegistry",
+							"type": {
+								"text": "ToolRegistry | null"
+							},
+							"default": "null",
+							"attribute": "toolregistry"
+						},
+						{
+							"kind": "field",
+							"name": "accessibility",
+							"type": {
+								"text": "object"
+							},
+							"default": "{}",
+							"attribute": "accessibility"
+						},
+						{
+							"kind": "field",
+							"name": "player",
+							"type": {
+								"text": "HostItemPlayerInput"
+							},
+							"default": "null",
+							"attribute": "player"
+						},
+						{
+							"kind": "field",
+							"name": "playerType",
+							"type": {
+								"text": "ItemPlayerType | \"\""
+							},
+							"default": "\"\"",
+							"attribute": "player-type"
+						},
+						{
+							"kind": "field",
+							"name": "coordinator",
+							"type": {
+								"text": "ToolkitCoordinator | null"
+							},
+							"default": "null",
+							"attribute": "coordinator"
+						},
+						{
+							"kind": "field",
+							"name": "createSectionController",
+							"type": {
+								"text": "null | (() => unknown)"
+							},
+							"default": "null",
+							"attribute": "createsectioncontroller"
+						},
+						{
+							"kind": "field",
+							"name": "onFrameworkError",
+							"type": {
+								"text": "null | ((errorModel: FrameworkErrorModel) => void)"
+							},
+							"default": "null",
+							"attribute": "onframeworkerror"
+						},
+						{
+							"kind": "field",
+							"name": "errorRenderer",
+							"type": {
+								"text": "null | ((errorModel: FrameworkErrorModel) => { title?: string; details?: string[]; })"
+							},
+							"default": "null",
+							"attribute": "errorrenderer"
+						},
+						{
+							"kind": "field",
+							"name": "assessment",
+							"type": {
+								"text": "AssessmentEntity | null"
+							},
+							"default": "null",
+							"description": "The assessment whose profile and settings tool policy reads, forwarded to the coordinator this toolkit owns. The enforcement override is `tools.pnpEnforcement`.",
+							"attribute": "assessment"
+						},
+						{
+							"kind": "field",
+							"name": "isolation",
+							"type": {
+								"text": "string"
+							},
+							"default": "\"inherit\"",
+							"description": "`\"inherit\"` (the default) or `\"force\"`, as an attribute or a property; section-player layouts set the property from `runtime.isolation`. `type: \"String\"` because an observed attribute of type `Object` is JSON-parsed, and `isolation=\"force\"` would throw.",
+							"attribute": "isolation"
+						},
+						{
+							"kind": "field",
+							"name": "session",
+							"type": {
+								"text": "SectionControllerSessionState | null"
+							},
+							"default": "null",
+							"description": "JS-only prop. Section-player layouts forward their `session` through this property. The controller created for `section` applies it in place of hydrating from the persistence strategy; a later value is applied to the live controller unless it equals the current session.",
+							"attribute": "session"
+						},
+						{
+							"kind": "method",
+							"name": "waitUntilReady",
+							"return": {
+								"type": {
+									"text": "Promise<void>"
+								}
+							}
+						},
+						{
+							"kind": "method",
+							"name": "setHooks",
+							"parameters": [
+								{
+									"name": "hooks",
+									"type": {
+										"text": "Record<string, unknown>"
+									}
+								}
+							],
+							"return": {
+								"type": {
+									"text": "void"
+								}
+							}
+						},
+						{
+							"kind": "method",
+							"name": "navigateToItem",
+							"parameters": [
+								{
+									"name": "index",
+									"type": {
+										"text": "number"
+									}
+								}
+							],
+							"return": {
+								"type": {
+									"text": "unknown"
+								}
+							}
+						},
+						{
+							"kind": "method",
+							"name": "getCompositionModel",
+							"return": {
+								"type": {
+									"text": "unknown"
+								}
+							}
+						},
+						{
+							"kind": "method",
+							"name": "getItemPlayerConfig",
+							"return": {
+								"type": {
+									"text": "ItemPlayerConfig"
+								}
+							}
+						},
+						{
+							"kind": "method",
+							"name": "persist",
+							"return": {
+								"type": {
+									"text": "Promise<void>"
+								}
+							}
+						},
+						{
+							"kind": "method",
+							"name": "hydrate",
+							"return": {
+								"type": {
+									"text": "Promise<void>"
+								}
+							}
+						}
+					],
+					"attributes": [
+						{
+							"name": "assessment-id",
+							"type": {
+								"text": "string"
+							},
+							"default": "\"\"",
+							"fieldName": "assessmentId"
+						},
+						{
+							"name": "section",
+							"type": {
+								"text": "object"
+							},
+							"default": "null",
+							"fieldName": "section"
+						},
+						{
+							"name": "section-id",
+							"type": {
+								"text": "string"
+							},
+							"default": "\"\"",
+							"fieldName": "sectionId"
+						},
+						{
+							"name": "attempt-id",
+							"type": {
+								"text": "string"
+							},
+							"default": "\"\"",
+							"fieldName": "attemptId"
+						},
+						{
+							"name": "env",
+							"type": {
+								"text": "object"
+							},
+							"default": "{}",
+							"fieldName": "env"
+						},
+						{
+							"name": "nds-icons",
+							"type": {
+								"text": "boolean"
+							},
+							"default": "false",
+							"description": "Presentation flag surfaced onto the runtime context. Consumers render the vendored <nds-icon-button> only when this is explicitly `true`; otherwise they use plain <button>s. Defaults to `false` (opt-in).",
+							"fieldName": "ndsIcons"
+						},
+						{
+							"name": "locale",
+							"type": {
+								"text": "string"
+							},
+							"default": "\"\"",
+							"description": "Interface locale, published onto the runtime context so every tool resolves the same provider. `type: \"String\"` because hosts pass attribute values as strings and a BCP-47 tag is one; POSIX (`nl_NL`) and bare (`nl`) forms both resolve.",
+							"fieldName": "locale"
+						},
+						{
+							"name": "content-language",
+							"type": {
+								"text": "string"
+							},
+							"default": "\"\"",
+							"description": "Content language, published onto the runtime context for read-aloud and catalog lookups. Markup `lang` inside a shell wins over it.",
+							"fieldName": "contentLanguage"
+						},
+						{
+							"name": "lazy-init",
+							"type": {
+								"text": "boolean"
+							},
+							"default": "false",
+							"fieldName": "lazyInit"
+						},
+						{
+							"name": "tool-config-strictness",
+							"type": {
+								"text": "string"
+							},
+							"default": "\"error\"",
+							"fieldName": "toolConfigStrictness"
+						},
+						{
+							"name": "tools",
+							"type": {
+								"text": "object"
+							},
+							"default": "{}",
+							"fieldName": "tools"
+						},
+						{
+							"name": "toolcontextresolvers",
+							"type": {
+								"text": "Record<string, unknown> | null"
+							},
+							"default": "null",
+							"fieldName": "toolContextResolvers"
+						},
+						{
+							"name": "enabled-tools",
+							"type": {
+								"text": "string"
+							},
+							"default": "\"\"",
+							"fieldName": "enabledTools"
+						},
+						{
+							"name": "toolregistry",
+							"type": {
+								"text": "ToolRegistry | null"
+							},
+							"default": "null",
+							"fieldName": "toolRegistry"
+						},
+						{
+							"name": "accessibility",
+							"type": {
+								"text": "object"
+							},
+							"default": "{}",
+							"fieldName": "accessibility"
+						},
+						{
+							"name": "player",
+							"type": {
+								"text": "HostItemPlayerInput"
+							},
+							"default": "null",
+							"fieldName": "player"
+						},
+						{
+							"name": "player-type",
+							"type": {
+								"text": "string"
+							},
+							"default": "\"\"",
+							"fieldName": "playerType"
+						},
+						{
+							"name": "coordinator",
+							"type": {
+								"text": "ToolkitCoordinator | null"
+							},
+							"default": "null",
+							"fieldName": "coordinator"
+						},
+						{
+							"name": "createsectioncontroller",
+							"type": {
+								"text": "null | (() => unknown)"
+							},
+							"default": "null",
+							"fieldName": "createSectionController"
+						},
+						{
+							"name": "onframeworkerror",
+							"type": {
+								"text": "null | ((errorModel: FrameworkErrorModel) => void)"
+							},
+							"default": "null",
+							"fieldName": "onFrameworkError"
+						},
+						{
+							"name": "errorrenderer",
+							"type": {
+								"text": "null | ((errorModel: FrameworkErrorModel) => { title?: string; details?: string[]; })"
+							},
+							"default": "null",
+							"fieldName": "errorRenderer"
+						},
+						{
+							"name": "assessment",
+							"type": {
+								"text": "AssessmentEntity | null"
+							},
+							"default": "null",
+							"description": "The assessment whose profile and settings tool policy reads, forwarded to the coordinator this toolkit owns. The enforcement override is `tools.pnpEnforcement`.",
+							"fieldName": "assessment"
+						},
+						{
+							"name": "isolation",
+							"type": {
+								"text": "string"
+							},
+							"default": "\"inherit\"",
+							"description": "`\"inherit\"` (the default) or `\"force\"`, as an attribute or a property; section-player layouts set the property from `runtime.isolation`. `type: \"String\"` because an observed attribute of type `Object` is JSON-parsed, and `isolation=\"force\"` would throw.",
+							"fieldName": "isolation"
+						},
+						{
+							"name": "session",
+							"type": {
+								"text": "SectionControllerSessionState | null"
+							},
+							"default": "null",
+							"description": "JS-only prop. Section-player layouts forward their `session` through this property. The controller created for `section` applies it in place of hydrating from the persistence strategy; a later value is applied to the live controller unless it equals the current session.",
+							"fieldName": "session"
+						}
+					],
+					"events": [
+						{
+							"name": "framework-error",
+							"type": {
+								"text": "CustomEvent<FrameworkErrorModel>"
+							},
+							"description": "For each framework error the runtime reports; a non-recoverable bootstrap error also shows an error banner in place of the slotted content."
+						},
+						{
+							"name": "composition-changed",
+							"type": {
+								"text": "CustomEvent<{ composition: unknown; version: number }>"
+							},
+							"description": "When the bound section's composition changes revision, with a version that increases on each change."
+						},
+						{
+							"name": "session-changed",
+							"type": {
+								"text": "CustomEvent<{ itemId: string; canonicalItemId: string; sourceRuntimeId: string } & Record<string, unknown>>"
+							},
+							"description": "When an item's session in the bound section changes, carrying the section's canonical session detail for that item."
+						},
+						{
+							"name": "runtime-owned",
+							"type": {
+								"text": "CustomEvent<{ runtimeId: string; parentRuntimeId: string | null }>"
+							},
+							"description": "When the toolkit starts running its own coordinator."
+						},
+						{
+							"name": "runtime-inherited",
+							"type": {
+								"text": "CustomEvent<{ runtimeId: string; parentRuntimeId: string | null }>"
+							},
+							"description": "When the toolkit adopts an outer toolkit's coordinator, named by `parentRuntimeId`."
+						},
+						{
+							"name": "runtime-ready",
+							"type": {
+								"text": "CustomEvent<{ runtimeId: string; coordinator: ToolkitCoordinator; ownership: \"owned\" | \"inherited\" }>"
+							},
+							"description": "Once per coordinator, with or without a section, from which point a host can drive it."
+						},
+						{
+							"name": "toolkit-ready",
+							"type": {
+								"text": "CustomEvent<{ runtimeId: string; assessmentId: string; sectionId: string; itemPlayer: ItemPlayerConfig; coordinator: ToolkitCoordinator }>"
+							},
+							"description": "For every section the toolkit initializes, once its section controller resolves."
+						},
+						{
+							"name": "section-ready",
+							"type": {
+								"text": "CustomEvent<{ sectionId: string; attemptId: string; controller: unknown }>"
+							},
+							"description": "Right after `toolkit-ready`, with the section's controller or null."
+						}
+					],
+					"slots": [
+						{
+							"name": "",
+							"description": "The content the toolkit serves: toolbars, item scopes and item players, or a section player's layout."
+						}
+					],
+					"cssProperties": [
+						{
+							"name": "--pie-annotation-underline",
+							"description": "Colour of the student annotation underline on a light page, default #4221d5. Deliberately does not fall through --pie-primary: a theme accent is chosen against one background and is illegible on the other, and a var() fallback could never override a host-set --pie-primary anyway. Paired with --pie-annotation-underline-dark, which HighlightCoordinator selects via [data-theme] rather than prefers-color-scheme. The data-color-scheme accessibility palettes set both to their own --pie-primary, because [data-theme] reports what the page declares rather than which scheme is active. Hosts overriding it must keep 3:1 against the content background (WCAG 2.2 SC 1.4.11)."
+						},
+						{
+							"name": "--pie-annotation-underline-dark",
+							"description": "Colour of the student annotation underline on a dark page, default #9c89ec. The dark half of the pair described under --pie-annotation-underline; kept a separate token so overriding one state never silently moves the other. Hosts overriding it must keep 3:1 against the content background (WCAG 2.2 SC 1.4.11)."
+						},
+						{
+							"name": "--pie-tts-line-highlight",
+							"description": "Line-granularity reading highlight. HighlightCoordinator derives a value from the resolved theme and writes it inline on the document element, so a host declaration wins only with !important. Falls back through --pie-tts-sentence-highlight, then --pie-missing at 38%."
+						},
+						{
+							"name": "--pie-tts-sentence-highlight",
+							"description": "Sentence-granularity reading highlight, and the fallback for --pie-tts-line-highlight. HighlightCoordinator derives a value from the resolved theme and writes it inline on the document element, so a host declaration wins only with !important. Falls back to --pie-missing at 38%."
+						},
+						{
+							"name": "--pie-tts-word-highlight",
+							"description": "Current-word reading highlight. HighlightCoordinator derives a value from the resolved theme and writes it inline on the document element, so a host declaration wins only with !important. Falls back to --pie-missing at 68%."
+						},
+						{
+							"name": "--pie-tts-word-shadow",
+							"description": "Text shadow carrying the current word over a saturated highlight. HighlightCoordinator derives a value from the resolved theme and writes it inline on the document element, so a host declaration wins only with !important. Falls back to --pie-text at 35%."
+						},
+						{
+							"name": "--pie-tts-word-underline",
+							"description": "Underline on the current word, the non-colour cue for schemes where the highlight hue washes out. HighlightCoordinator derives a value from the resolved theme and writes it inline on the document element, so a host declaration wins only with !important. Falls back to --pie-text at 70%."
+						}
+					],
+					"x-pie": {
+						"shadow": "open"
+					}
+				}
+			],
+			"exports": [
+				{
+					"kind": "custom-element-definition",
+					"name": "pie-assessment-toolkit",
+					"declaration": {
+						"name": "PieAssessmentToolkit"
+					}
+				}
+			]
+		},
+		{
+			"kind": "javascript-module",
+			"path": "dist/components/section-toolbar-element.js",
+			"declarations": [
+				{
+					"kind": "class",
+					"description": "A section-level toolbar: a `<pie-item-toolbar>` at level `section`, scoped to the section a host names in `section-id`, rendering the tools in `enabled-tools` plus any `hostButtons`. The enclosing toolkit's coordinator drives the personal needs profile inputs through its policy engine, so the toolbar resolves none of them itself.",
+					"name": "SectionToolBar",
+					"tagName": "pie-section-toolbar",
+					"customElement": true,
+					"members": [
+						{
+							"kind": "field",
+							"name": "enabledTools",
+							"type": {
+								"text": "string"
+							},
+							"default": "\"\"",
+							"attribute": "enabled-tools"
+						},
+						{
+							"kind": "field",
+							"name": "position",
+							"type": {
+								"text": "string"
+							},
+							"default": "\"bottom\"",
+							"attribute": "position"
+						},
+						{
+							"kind": "field",
+							"name": "sectionId",
+							"type": {
+								"text": "string"
+							},
+							"default": "\"\"",
+							"attribute": "section-id"
+						},
+						{
+							"kind": "field",
+							"name": "size",
+							"type": {
+								"text": "\"sm\" | \"md\" | \"lg\""
+							},
+							"default": "\"md\"",
+							"attribute": "size"
+						},
+						{
+							"kind": "field",
+							"name": "language",
+							"type": {
+								"text": "string"
+							},
+							"default": "\"\"",
+							"attribute": "language"
+						},
+						{
+							"kind": "field",
+							"name": "toolRegistry",
+							"type": {
+								"text": "ToolRegistry | null"
+							},
+							"default": "null",
+							"attribute": "toolregistry"
+						},
+						{
+							"kind": "field",
+							"name": "item",
+							"type": {
+								"text": "ItemEntity | null"
+							},
+							"default": "null",
+							"attribute": "item"
+						},
+						{
+							"kind": "field",
+							"name": "hostButtons",
+							"type": {
+								"text": "ToolbarItem[]"
+							},
+							"default": "[]",
+							"attribute": "hostbuttons"
+						}
+					],
+					"attributes": [
+						{
+							"name": "enabled-tools",
+							"type": {
+								"text": "string"
+							},
+							"default": "\"\"",
+							"fieldName": "enabledTools"
+						},
+						{
+							"name": "position",
+							"type": {
+								"text": "string"
+							},
+							"default": "\"bottom\"",
+							"fieldName": "position"
+						},
+						{
+							"name": "section-id",
+							"type": {
+								"text": "string"
+							},
+							"default": "\"\"",
+							"fieldName": "sectionId"
+						},
+						{
+							"name": "size",
+							"type": {
+								"text": "string"
+							},
+							"default": "\"md\"",
+							"fieldName": "size"
+						},
+						{
+							"name": "language",
+							"type": {
+								"text": "string"
+							},
+							"default": "\"\"",
+							"fieldName": "language"
+						},
+						{
+							"name": "toolregistry",
+							"type": {
+								"text": "ToolRegistry | null"
+							},
+							"default": "null",
+							"fieldName": "toolRegistry"
+						},
+						{
+							"name": "item",
+							"type": {
+								"text": "ItemEntity | null"
+							},
+							"default": "null",
+							"fieldName": "item"
+						},
+						{
+							"name": "hostbuttons",
+							"type": {
+								"text": "ToolbarItem[]"
+							},
+							"default": "[]",
+							"fieldName": "hostButtons"
+						}
+					],
+					"cssProperties": [
+						{
+							"name": "--pie-section-player-card-header-background",
+							"description": "Public card header background hook; defaults to transparent and hosts must preserve contrast with card header content."
+						}
+					],
+					"x-pie": {
+						"shadow": "open"
+					}
+				}
+			],
+			"exports": [
+				{
+					"kind": "custom-element-definition",
+					"name": "pie-item-toolbar",
+					"declaration": {
+						"name": "ItemToolBar",
+						"module": "dist/components/item-toolbar-element.js"
+					}
+				},
+				{
+					"kind": "custom-element-definition",
+					"name": "pie-section-toolbar",
+					"declaration": {
+						"name": "SectionToolBar"
+					}
+				}
+			]
+		}
+	]
+}

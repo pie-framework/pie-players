@@ -27,6 +27,11 @@ on:
         required: false
         type: boolean
         default: false
+      base:
+        description: "Commit to diff against when publishAll is off (default: the head commit's first parent)"
+        required: false
+        type: string
+        default: ""
       publish_auth:
         description: "Publish auth mode"
         required: false
@@ -178,13 +183,20 @@ jobs:
           NODE_AUTH_TOKEN: ${{ env.PUBLISH_NODE_AUTH_TOKEN }}
         run: node scripts/check-npm-auth.mjs
 
+      # A dispatch has no `github.event.before`, so it diffs from the `base` input. The
+      # input is free text and the script interpolates it into a shell command, so it
+      # reaches the script only as a resolved SHA.
       - name: Publish preloaded packages
         env:
           NPM_TOKEN: ${{ env.PUBLISH_NPM_TOKEN }}
           NODE_AUTH_TOKEN: ${{ env.PUBLISH_NODE_AUTH_TOKEN }}
+          BASE_INPUT: ${{ inputs.base }}
         run: |
           if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ inputs.publishAll }}" = "true" ]; then
             bun scripts/preloaded-player/publish-changed.mjs --all
+          elif [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            base="$(git rev-parse --verify --end-of-options "${BASE_INPUT:-${{ github.sha }}^}^{commit}")"
+            bun scripts/preloaded-player/publish-changed.mjs --base "$base" --head "${{ github.sha }}"
           else
             bun scripts/preloaded-player/publish-changed.mjs --base "${{ github.event.before }}" --head "${{ github.sha }}"
           fi

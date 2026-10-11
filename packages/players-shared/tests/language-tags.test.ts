@@ -4,6 +4,7 @@ import {
 	languageTagLookupSequence,
 	languageTagsEqual,
 	normalizeLanguageTag,
+	toLanguageTag,
 } from "../src/i18n/language-tags.js";
 
 describe("normalizeLanguageTag", () => {
@@ -21,6 +22,19 @@ describe("normalizeLanguageTag", () => {
 		expect(normalizeLanguageTag(undefined)).toBe("");
 		expect(normalizeLanguageTag(null)).toBe("");
 		expect(normalizeLanguageTag("   ")).toBe("");
+	});
+});
+
+describe("toLanguageTag", () => {
+	it("rewrites POSIX separators and keeps the authored case", () => {
+		expect(toLanguageTag("es_ES")).toBe("es-ES");
+		expect(toLanguageTag(" es-ES ")).toBe("es-ES");
+	});
+
+	it("treats nullish and blank input as no declared language", () => {
+		expect(toLanguageTag(undefined)).toBe("");
+		expect(toLanguageTag(null)).toBe("");
+		expect(toLanguageTag("   ")).toBe("");
 	});
 });
 

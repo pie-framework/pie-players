@@ -28,8 +28,10 @@
 			"import": "./dist/tool-calculator-inline.js"
 		}
 	},
+	"customElements": "custom-elements.json",
 	"files": [
-		"dist"
+		"dist",
+		"custom-elements.json"
 	],
 	"license": "MIT",
 	"unpkg": "./dist/tool-calculator-inline.js",

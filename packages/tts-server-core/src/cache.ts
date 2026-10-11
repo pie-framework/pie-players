@@ -156,9 +156,8 @@ const DEFAULT_TTL_SECONDS = 24 * 60 * 60;
  * one. Expiry is checked on every read, and an expired entry is dropped ahead of
  * a live one when the cache is at capacity.
  *
- * A production host supplies its own `ITTSCache` over shared storage — Redis is
- * the pattern sketched in
- * `packages/tts-server-polly/examples/sveltekit/synthesize-server.ts`. This
+ * A production host supplies its own `ITTSCache` over shared storage; Step 5 of
+ * `packages/tts-server-polly/examples/INTEGRATION-GUIDE.md` sketches Redis. This
  * class holds audio buffers in one process's heap, so it is lost on restart and
  * every replica of a scaled deployment synthesizes the same passage into its own
  * copy. Its eviction scan is `O(maxSize)` on an insertion at capacity, which the

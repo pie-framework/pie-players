@@ -1,0 +1,82 @@
+{
+	"schemaVersion": "2.1.0",
+	"modules": [
+		{
+			"kind": "javascript-module",
+			"path": "dist/tool-line-reader.js",
+			"declarations": [
+				{
+					"kind": "class",
+					"description": "Reading-guide overlay: a transparent reading window inside an obscuring frame that the student drags over text, with controls on the frame to resize the window, resize the frame and close. The host shows it with `visible`; inside a toolkit runtime context it registers `tool-id` with the tool coordinator on the tool layer, and the close control hides it there. Arrow keys move it, `+` and `-` resize the window, and Escape closes it.",
+					"name": "ToolLineReader",
+					"tagName": "pie-tool-line-reader",
+					"customElement": true,
+					"members": [
+						{
+							"kind": "field",
+							"name": "visible",
+							"type": {
+								"text": "boolean"
+							},
+							"default": "false",
+							"attribute": "visible"
+						},
+						{
+							"kind": "field",
+							"name": "toolId",
+							"type": {
+								"text": "string"
+							},
+							"default": "'lineReader'",
+							"attribute": "tool-id"
+						}
+					],
+					"attributes": [
+						{
+							"name": "visible",
+							"type": {
+								"text": "boolean"
+							},
+							"default": "false",
+							"fieldName": "visible"
+						},
+						{
+							"name": "tool-id",
+							"type": {
+								"text": "string"
+							},
+							"default": "'lineReader'",
+							"fieldName": "toolId"
+						}
+					],
+					"cssProperties": [
+						{
+							"name": "--pie-tool-line-reader-control-color",
+							"description": "Glyph colour of the line reader's close and resize controls. Registered as the required companion to --pie-tool-line-reader-frame-color rather than as a hook worth setting on its own: the controls sit on the frame, so this is paired with the fill and not with the page, and the #fff default only holds while the fill stays dark. A host that sets a light fill must set this too. Does not fall through --pie-text or the canonical button tokens, which track the page rather than the scrim the glyphs are drawn on. Must keep 3:1 against the resolved fill (WCAG 2.2 SC 1.4.11); the controls are fully opaque regardless of --pie-tool-line-reader-frame-opacity, so the fill alone determines the ratio."
+						},
+						{
+							"name": "--pie-tool-line-reader-frame-color",
+							"description": "Fill of the line reader's obscuring frame, configured per deployment alongside --pie-tool-line-reader-frame-opacity. Deliberately does not fall through --pie-text or any canonical surface token, and deliberately does not follow data-color-scheme: masking works by collapsing the contrast of whatever it covers, and an ink-coloured scrim defeats that on its own scheme -- a yellow scrim over yellow-on-blue text hides nothing, and a white one glares in a dark scheme the reader chose to avoid glare. The #000 default dims in both directions instead, dropping covered text from 6.2-21:1 to 1.36-1.66:1 across the ten built-in schemes. A host overriding it owns that verification for every scheme it ships, and must set --pie-tool-line-reader-control-color with it when picking a light fill, because the control glyphs default to white to pair with the dark scrim."
+						},
+						{
+							"name": "--pie-tool-line-reader-frame-opacity",
+							"description": "Masking strength of the line reader's obscuring frame. A programme-level decision rather than a student one -- it sets how much surrounding context a test taker can still see -- so it is configured per deployment and the tool exposes no in-session control for it. Read as var() with a 0.8 default and never written inline by the component, so a host declaration wins without !important. Does not fall through any canonical token: this is unitless masking strength, not a palette value. Lowering it weakens the masking the tool exists to provide and invalidates the contrast figures recorded for --pie-tool-line-reader-frame-color, which were measured at the 0.8 default."
+						}
+					],
+					"x-pie": {
+						"shadow": "open"
+					}
+				}
+			],
+			"exports": [
+				{
+					"kind": "custom-element-definition",
+					"name": "pie-tool-line-reader",
+					"declaration": {
+						"name": "ToolLineReader"
+					}
+				}
+			]
+		}
+	]
+}

@@ -26,8 +26,10 @@
 			"import": "./dist/tool-line-reader.js"
 		}
 	},
+	"customElements": "custom-elements.json",
 	"files": [
 		"dist",
+		"custom-elements.json",
 		"package.json"
 	],
 	"license": "MIT",

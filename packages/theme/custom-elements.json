@@ -1,0 +1,340 @@
+{
+	"schemaVersion": "2.1.0",
+	"modules": [
+		{
+			"kind": "javascript-module",
+			"path": "dist/index.js",
+			"declarations": [
+				{
+					"kind": "class",
+					"description": "Themes PIE content by resolving the `--pie-*` tokens and writing them inline, with `data-theme`, `data-color-scheme` and `color-scheme`, on its target: itself under `scope=\"self\"`, `documentElement` under `scope=\"document\"`. Layers apply in order base theme, provider adapter output, registered color scheme, then `variables`, and the element re-resolves when the OS color scheme (under `theme=\"auto\"`), the provider registry or the scheme catalog changes. It renders nothing of its own and defaults to `display: contents`.",
+					"name": "PieThemeElement",
+					"tagName": "pie-theme",
+					"customElement": true,
+					"members": [
+						{
+							"kind": "field",
+							"name": "theme",
+							"type": {
+								"text": "ThemeMode"
+							},
+							"description": "Base theme: `light` (default), `dark`, or `auto` to follow `prefers-color-scheme`; another attribute value, such as a DaisyUI theme name, becomes `data-theme` over the light base.",
+							"attribute": "theme"
+						},
+						{
+							"kind": "field",
+							"name": "scope",
+							"type": {
+								"text": "ThemeScope"
+							},
+							"description": "Write target: `self` (default) for this element, or `document` for `documentElement`, where the most recently connected or changed document-scoped `<pie-theme>` is active.",
+							"attribute": "scope"
+						},
+						{
+							"kind": "field",
+							"name": "variables",
+							"type": {
+								"text": "ThemeVariables"
+							},
+							"description": "Explicit overrides, the last layer: `--*` keys with string or finite-number values, mirrored to the `variables` attribute as JSON.",
+							"attribute": "variables"
+						},
+						{
+							"kind": "field",
+							"name": "provider",
+							"type": {
+								"text": "string"
+							},
+							"description": "Provider adapter to read host tokens through: a registered adapter id, `auto` (default) for the first registered adapter that can read the target, or `none`.",
+							"attribute": "provider"
+						},
+						{
+							"kind": "field",
+							"name": "scheme",
+							"type": {
+								"text": "string"
+							},
+							"description": "Requested color scheme id; `default` (default) applies none, and an id not yet registered is kept and applies once a matching scheme registers.",
+							"attribute": "scheme"
+						}
+					],
+					"attributes": [
+						{
+							"name": "theme",
+							"type": {
+								"text": "ThemeMode"
+							},
+							"description": "Base theme: `light` (default), `dark`, or `auto` to follow `prefers-color-scheme`; another attribute value, such as a DaisyUI theme name, becomes `data-theme` over the light base.",
+							"fieldName": "theme"
+						},
+						{
+							"name": "scope",
+							"type": {
+								"text": "ThemeScope"
+							},
+							"description": "Write target: `self` (default) for this element, or `document` for `documentElement`, where the most recently connected or changed document-scoped `<pie-theme>` is active.",
+							"fieldName": "scope"
+						},
+						{
+							"name": "provider",
+							"type": {
+								"text": "string"
+							},
+							"description": "Provider adapter to read host tokens through: a registered adapter id, `auto` (default) for the first registered adapter that can read the target, or `none`.",
+							"fieldName": "provider"
+						},
+						{
+							"name": "scheme",
+							"type": {
+								"text": "string"
+							},
+							"description": "Requested color scheme id; `default` (default) applies none, and an id not yet registered is kept and applies once a matching scheme registers.",
+							"fieldName": "scheme"
+						},
+						{
+							"name": "variables",
+							"type": {
+								"text": "ThemeVariables"
+							},
+							"description": "Explicit overrides, the last layer: `--*` keys with string or finite-number values, mirrored to the `variables` attribute as JSON.",
+							"fieldName": "variables"
+						}
+					],
+					"cssProperties": [
+						{
+							"name": "--pie-background",
+							"description": "Canonical page or component surface background token; component hooks may fall back through this token."
+						},
+						{
+							"name": "--pie-background-dark",
+							"description": "Canonical darker surface token for layered or recessed UI."
+						},
+						{
+							"name": "--pie-black",
+							"description": "Canonical neutral token that may invert in high-contrast schemes."
+						},
+						{
+							"name": "--pie-blue-grey-100",
+							"description": "Canonical blue-grey scale token for legacy neutral UI surfaces."
+						},
+						{
+							"name": "--pie-blue-grey-300",
+							"description": "Canonical blue-grey scale token for legacy neutral UI surfaces."
+						},
+						{
+							"name": "--pie-blue-grey-600",
+							"description": "Canonical blue-grey scale token for legacy neutral UI surfaces."
+						},
+						{
+							"name": "--pie-blue-grey-900",
+							"description": "Canonical blue-grey scale token for legacy neutral UI surfaces."
+						},
+						{
+							"name": "--pie-border",
+							"description": "Canonical border token for ordinary UI component outlines."
+						},
+						{
+							"name": "--pie-border-dark",
+							"description": "Canonical stronger border token for emphasized boundaries."
+						},
+						{
+							"name": "--pie-border-gray",
+							"description": "Canonical gray border token retained for existing neutral UI fallbacks."
+						},
+						{
+							"name": "--pie-border-light",
+							"description": "Canonical lighter border token for subtle boundaries."
+						},
+						{
+							"name": "--pie-button-active-bg",
+							"description": "Canonical active background for ordinary button controls; local trigger states should use component-scoped hooks when needed."
+						},
+						{
+							"name": "--pie-button-bg",
+							"description": "Canonical ordinary button background token."
+						},
+						{
+							"name": "--pie-button-border",
+							"description": "Canonical ordinary button border token."
+						},
+						{
+							"name": "--pie-button-color",
+							"description": "Canonical ordinary button foreground token."
+						},
+						{
+							"name": "--pie-button-focus-outline",
+							"description": "Canonical focus outline token for ordinary button controls."
+						},
+						{
+							"name": "--pie-button-hover-bg",
+							"description": "Canonical ordinary button hover background token."
+						},
+						{
+							"name": "--pie-button-hover-border",
+							"description": "Canonical ordinary button hover border token."
+						},
+						{
+							"name": "--pie-button-hover-color",
+							"description": "Canonical ordinary button hover foreground token."
+						},
+						{
+							"name": "--pie-content-emphasis",
+							"description": "Red emphasis inside authored content (.content-emphasis). Mapped from the DaisyUI error slot through the legible correction, so it clears 4.5:1 against the page on every shipped theme; a bare red does not."
+						},
+						{
+							"name": "--pie-correct",
+							"description": "Canonical correct feedback token; do not reuse for unrelated decorative chrome."
+						},
+						{
+							"name": "--pie-correct-icon",
+							"description": "Canonical correct feedback icon token."
+						},
+						{
+							"name": "--pie-correct-secondary",
+							"description": "Canonical secondary correct feedback surface token."
+						},
+						{
+							"name": "--pie-correct-tertiary",
+							"description": "Canonical tertiary correct feedback token."
+						},
+						{
+							"name": "--pie-disabled",
+							"description": "Canonical disabled-state foreground token."
+						},
+						{
+							"name": "--pie-disabled-secondary",
+							"description": "Canonical secondary disabled-state token."
+						},
+						{
+							"name": "--pie-disabled-text",
+							"description": "Canonical foreground for text that is disabled but still has to be read - a non-editable label rather than a control - held to the 4.5:1 text minimum against --pie-background rather than the 3:1 --pie-disabled answers to as a state fill. Must fall back through canonical --pie-text so a host that themes only the canonical text token gets full contrast rather than an unreadable literal."
+						},
+						{
+							"name": "--pie-dropdown-background",
+							"description": "Canonical dropdown or menu surface token."
+						},
+						{
+							"name": "--pie-faded-primary",
+							"description": "Canonical low-emphasis primary-action token."
+						},
+						{
+							"name": "--pie-fixed-hue-collapse",
+							"description": "Share, as a percentage, by which a component's own fixed hues collapse into the palette's surface and ink. Not a colour: a component mixes its fixed value towards --pie-background-dark and --pie-text by this share, so 0% keeps the hue exactly as authored and 100% removes it. Base Themes set 0%; every colour scheme sets 100%, because a two-colour palette is a promise a fixed hue breaks -- the periodic table's category fills are the first consumer. A palette that keeps hue encodings must set 0% explicitly; a registered custom scheme that says nothing collapses them."
+						},
+						{
+							"name": "--pie-focus-checked",
+							"description": "Canonical focus background token for checked controls."
+						},
+						{
+							"name": "--pie-focus-checked-border",
+							"description": "Canonical focus border token for checked controls."
+						},
+						{
+							"name": "--pie-focus-ring-color",
+							"description": "Legacy authored-content focus alias retained for image/table scroll wrappers; implementations must fall back through --pie-focus-outline and --pie-button-focus-outline."
+						},
+						{
+							"name": "--pie-focus-unchecked",
+							"description": "Canonical focus background token for unchecked controls."
+						},
+						{
+							"name": "--pie-focus-unchecked-border",
+							"description": "Canonical focus border token for unchecked controls."
+						},
+						{
+							"name": "--pie-font-scale",
+							"description": "Canonical font scaling token used by PIE theme font-size utilities."
+						},
+						{
+							"name": "--pie-incorrect",
+							"description": "Canonical incorrect feedback token; do not reuse for unrelated decorative chrome."
+						},
+						{
+							"name": "--pie-incorrect-icon",
+							"description": "Canonical incorrect feedback icon token."
+						},
+						{
+							"name": "--pie-incorrect-secondary",
+							"description": "Canonical secondary incorrect feedback surface token."
+						},
+						{
+							"name": "--pie-missing",
+							"description": "Canonical missing-response feedback token."
+						},
+						{
+							"name": "--pie-missing-icon",
+							"description": "Canonical missing-response icon token."
+						},
+						{
+							"name": "--pie-primary",
+							"description": "Canonical primary action/selected color; component-local active states should use scoped hooks when host ergonomics require it."
+						},
+						{
+							"name": "--pie-primary-dark",
+							"description": "Canonical darker primary action token used for hover/emphasis fallbacks."
+						},
+						{
+							"name": "--pie-primary-light",
+							"description": "Canonical lighter primary action token used for low-emphasis action surfaces."
+						},
+						{
+							"name": "--pie-secondary",
+							"description": "Canonical secondary action token."
+						},
+						{
+							"name": "--pie-secondary-background",
+							"description": "Canonical secondary surface background token."
+						},
+						{
+							"name": "--pie-secondary-dark",
+							"description": "Canonical darker secondary action token."
+						},
+						{
+							"name": "--pie-secondary-light",
+							"description": "Canonical lighter secondary action token."
+						},
+						{
+							"name": "--pie-surface",
+							"description": "Canonical raised-surface token for answer pools and tool panels, with text and focus contrast against the active palette."
+						},
+						{
+							"name": "--pie-tertiary",
+							"description": "Canonical tertiary action token."
+						},
+						{
+							"name": "--pie-tertiary-light",
+							"description": "Canonical lighter tertiary action token."
+						},
+						{
+							"name": "--pie-text",
+							"description": "Canonical foreground text token."
+						},
+						{
+							"name": "--pie-white",
+							"description": "Canonical neutral token that may invert in high-contrast schemes."
+						}
+					],
+					"x-pie": {
+						"shadow": "none"
+					}
+				}
+			],
+			"exports": [
+				{
+					"kind": "custom-element-definition",
+					"name": "pie-theme",
+					"declaration": {
+						"name": "PieThemeElement"
+					}
+				},
+				{
+					"kind": "js",
+					"name": "PieThemeElement",
+					"declaration": {
+						"name": "PieThemeElement"
+					}
+				}
+			]
+		}
+	]
+}

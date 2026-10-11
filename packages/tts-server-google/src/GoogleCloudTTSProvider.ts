@@ -157,7 +157,7 @@ const decodeSSMLText = (text: string): string =>
  * Features:
  * - Speech marks support via SSML mark injection (millisecond precision)
  * - WaveNet (neural), Standard, and Studio voice types
- * - 200+ voices across 50+ languages
+ * - Voices across many languages, listed by `getVoices`
  * - Full SSML support
  * - Single API call for audio + speech marks
  */
@@ -645,7 +645,7 @@ export class GoogleCloudTTSProvider extends BaseTTSProvider {
 				supportsPitch: this.voiceType !== "studio", // Via SSML <prosody pitch>; Studio voices lack it
 				supportsRate: true, // ✅ Via SSML <prosody rate>
 				supportsVolume: false, // ❌ Not supported (handle client-side)
-				supportsMultipleVoices: true, // ✅ 200+ voices across 50+ languages
+				supportsMultipleVoices: true, // ✅ Listed by getVoices
 				maxTextLength: 5000, // Google Cloud TTS limit per request
 			},
 
@@ -658,8 +658,6 @@ export class GoogleCloudTTSProvider extends BaseTTSProvider {
 				// Google Cloud-specific features
 				providerSpecific: {
 					voiceTypes: ["standard", "wavenet", "studio"],
-					voicesCount: 200, // ~200+ voices available
-					languagesCount: 50, // 50+ languages supported
 					supportsAudioProfiles: true, // Audio device profiles
 					supportsEffects: false, // No built-in effects
 					supportsEmotions: false, // No emotion control

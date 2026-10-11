@@ -46,8 +46,10 @@
 			"import": "./dist/item-section/index.js"
 		}
 	},
+	"customElements": "custom-elements.json",
 	"files": [
-		"dist"
+		"dist",
+		"custom-elements.json"
 	],
 	"scripts": {
 		"build": "vite build && vite build --config vite.config.browser.ts",

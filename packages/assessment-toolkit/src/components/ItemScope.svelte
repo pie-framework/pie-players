@@ -15,6 +15,19 @@
 	}}
 />
 
+<!--
+@component
+An item's scope for the toolkit's tools, in a section player's card or around a host's own item player. A host gives it the item, its `item-id` and its policy `settings`; the toolbars and tools inside take the item from it and act on it, and it registers the item with the enclosing `<pie-assessment-toolkit>`, which files the item's accessibility catalogs. In a toolkit that holds a section it is also the item's channel to that toolkit; otherwise the item player's events pass through unchanged.
+
+@fires {CustomEvent<{ kind: "item"; itemId: string; canonicalItemId: string; contentKind: string; item: unknown; settings?: { requiredTools?: string[]; restrictedTools?: string[]; toolParameters?: Record<string, unknown> }; element: HTMLElement; runtimeId: string }>} pie-register - Registration handshake, once a toolkit has answered the scope and again when the item's identity, settings or catalogs change; the toolkit whose `runtimeId` it carries claims it and stops its propagation.
+@fires {CustomEvent<{ kind: "item"; itemId: string; canonicalItemId: string; contentKind: string; item: unknown; settings?: { requiredTools?: string[]; restrictedTools?: string[]; toolParameters?: Record<string, unknown> }; element: HTMLElement; runtimeId: string }>} pie-unregister - Retires the registration when the scope tears down, loses its item id or moves to another toolkit; claimed like `pie-register`.
+@fires {CustomEvent<{ itemId: string; canonicalItemId: string; session: unknown; sessionCommitReason?: "teardown" | "navigate" | "page-hidden" }>} item-session-changed - In a toolkit that holds a section, when the item player reports a response change; the player's own `session-changed` stops at the scope.
+@fires {CustomEvent<{ itemId: string; session: unknown; runtimeId: string }>} pie-item-session-changed - Internal channel event, in a toolkit that holds a section, for each distinct session change the item player reports, metadata-only ones included; claimed by the toolkit.
+@fires {CustomEvent<{ itemId: string; canonicalItemId: string; contentKind: string; detail: unknown; runtimeId: string }>} pie-content-loaded - Internal channel event when the item player reports `load-complete`; claimed by the toolkit.
+@fires {CustomEvent<{ itemId: string; canonicalItemId: string; contentKind: string; error: unknown; runtimeId: string }>} pie-item-player-error - Internal channel event when the item player reports `player-error`; claimed by the toolkit.
+@slot - The item's content: its toolbar and a `[data-region="content"]` region holding the item player.
+-->
+
 <script lang="ts">
 	/**
 	 * An item's scope for the toolkit's tools, in a section player's card or around

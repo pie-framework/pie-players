@@ -1,0 +1,68 @@
+{
+	"schemaVersion": "2.1.0",
+	"modules": [
+		{
+			"kind": "javascript-module",
+			"path": "dist/tool-protractor.js",
+			"declarations": [
+				{
+					"kind": "class",
+					"description": "Draggable, rotatable protractor overlay with two opposing 0-180 degree scales, for measuring angles in item content. The host shows it with `visible`; inside a toolkit runtime context it registers `tool-id` with the tool coordinator on the tool layer, which brings it to the front when pressed. Arrow keys move it, Shift+Arrow and PageUp/PageDown rotate it about its vertex, and tap controls shown while it has focus move and turn it without dragging.",
+					"name": "ToolProtractor",
+					"tagName": "pie-tool-protractor",
+					"customElement": true,
+					"members": [
+						{
+							"kind": "field",
+							"name": "visible",
+							"type": {
+								"text": "boolean"
+							},
+							"default": "false",
+							"attribute": "visible"
+						},
+						{
+							"kind": "field",
+							"name": "toolId",
+							"type": {
+								"text": "string"
+							},
+							"default": "'protractor'",
+							"attribute": "tool-id"
+						}
+					],
+					"attributes": [
+						{
+							"name": "visible",
+							"type": {
+								"text": "boolean"
+							},
+							"default": "false",
+							"fieldName": "visible"
+						},
+						{
+							"name": "tool-id",
+							"type": {
+								"text": "string"
+							},
+							"default": "'protractor'",
+							"fieldName": "toolId"
+						}
+					],
+					"x-pie": {
+						"shadow": "open"
+					}
+				}
+			],
+			"exports": [
+				{
+					"kind": "custom-element-definition",
+					"name": "pie-tool-protractor",
+					"declaration": {
+						"name": "ToolProtractor"
+					}
+				}
+			]
+		}
+	]
+}

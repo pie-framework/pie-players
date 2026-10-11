@@ -1,0 +1,111 @@
+{
+	"schemaVersion": "2.1.0",
+	"modules": [
+		{
+			"kind": "javascript-module",
+			"path": "dist/section-player-tools-instrumentation-debugger.js",
+			"declarations": [
+				{
+					"kind": "class",
+					"description": "Developer panel for the section player demos that lists the instrumentation records `DebugPanelInstrumentationProvider` emits on the page: events, errors, metrics, user context and global attributes. It needs no host wiring beyond the optional `max-records` and `max-records-by-kind` caps; it replays the page's buffered records on mount and renders a draggable floating panel with a kind filter, pause and clear controls, and the selected record's attributes as JSON.",
+					"name": "InstrumentationPanel",
+					"tagName": "pie-section-player-tools-instrumentation-debugger",
+					"customElement": true,
+					"members": [
+						{
+							"kind": "field",
+							"name": "maxRecords",
+							"type": {
+								"text": "number"
+							},
+							"default": "DEFAULT_MAX_RECORDS",
+							"attribute": "max-records"
+						},
+						{
+							"kind": "field",
+							"name": "maxRecordsByKind",
+							"type": {
+								"text": "RecordLimitOverrides"
+							},
+							"default": "{}",
+							"attribute": "max-records-by-kind"
+						},
+						{
+							"kind": "field",
+							"name": "persistenceScope",
+							"type": {
+								"text": "string"
+							},
+							"default": "\"\"",
+							"attribute": "persistence-scope"
+						},
+						{
+							"kind": "field",
+							"name": "persistencePanelId",
+							"type": {
+								"text": "string"
+							},
+							"default": "\"instrumentation-events\"",
+							"attribute": "persistence-panel-id"
+						}
+					],
+					"attributes": [
+						{
+							"name": "max-records",
+							"type": {
+								"text": "number"
+							},
+							"default": "DEFAULT_MAX_RECORDS",
+							"fieldName": "maxRecords"
+						},
+						{
+							"name": "max-records-by-kind",
+							"type": {
+								"text": "RecordLimitOverrides"
+							},
+							"default": "{}",
+							"fieldName": "maxRecordsByKind"
+						},
+						{
+							"name": "persistence-scope",
+							"type": {
+								"text": "string"
+							},
+							"default": "\"\"",
+							"fieldName": "persistenceScope"
+						},
+						{
+							"name": "persistence-panel-id",
+							"type": {
+								"text": "string"
+							},
+							"default": "\"instrumentation-events\"",
+							"fieldName": "persistencePanelId"
+						}
+					],
+					"events": [
+						{
+							"name": "close",
+							"type": {
+								"text": "CustomEvent<null>"
+							},
+							"description": "When the panel's close button is pressed."
+						}
+					],
+					"x-pie": {
+						"shadow": "open"
+					}
+				}
+			],
+			"exports": [
+				{
+					"kind": "custom-element-definition",
+					"name": "pie-section-player-tools-instrumentation-debugger",
+					"declaration": {
+						"name": "InstrumentationPanel"
+					}
+				}
+			]
+		}
+	]
+}

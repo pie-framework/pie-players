@@ -35,6 +35,13 @@
 	}}
 />
 
+<!--
+@component
+Item card of a section player: renders an item's heading, `<pie-item-toolbar>` and item player inside `<pie-item-scope>`, with a check-answer control when formative delivery is on. The items pane renders one per item and sets its properties.
+
+@fires {CustomEvent<InternalFormativeActionDetail>} pie-formative-action - When the learner presses the check-answer or try-again control, carrying the item player's `provideScore()` outcomes on a check.
+-->
+
 <script lang="ts">
 	import { coerceBooleanAttributes } from "@pie-players/pie-players-shared/ui/attribute-coercion";
 	import { onMount, untrack } from "svelte";

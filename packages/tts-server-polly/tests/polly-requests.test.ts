@@ -1,3 +1,4 @@
+import { TTSError, TTSErrorCode } from "@pie-players/tts-server-core";
 import { describe, expect, it } from "vitest";
 
 import { pollyWithClient } from "./fake-polly-client.js";
@@ -144,9 +145,13 @@ describe("Polly pitch", () => {
 		const { client, sent } = textRecordingClient();
 		const provider = await withEngine(client, "standard");
 
-		await expect(provider.synthesize({ text: "Hello", pitch: 5 })).rejects.toThrow(
-			"Pitch must be between 0 and 2",
-		);
+		const rejected = provider.synthesize({ text: "Hello", pitch: 5 });
+		await expect(rejected).rejects.toBeInstanceOf(TTSError);
+		await expect(rejected).rejects.toMatchObject({
+			code: TTSErrorCode.INVALID_REQUEST,
+			message: "Pitch must be between 0 and 2",
+			providerId: "aws-polly",
+		});
 		expect(sent).toEqual([]);
 	});
 });
@@ -176,9 +181,65 @@ describe("Polly rate", () => {
 		const { client, sent } = textRecordingClient();
 		const provider = await withEngine(client, "neural");
 
-		await expect(
-			provider.synthesize({ text: "Hello", rate: 4.5 }),
-		).rejects.toThrow("Rate must be between 0.25 and 4.0");
+		const rejected = provider.synthesize({ text: "Hello", rate: 4.5 });
+		await expect(rejected).rejects.toBeInstanceOf(TTSError);
+		await expect(rejected).rejects.toMatchObject({
+			code: TTSErrorCode.INVALID_REQUEST,
+			message: "Rate must be between 0.25 and 4.0",
+			providerId: "aws-polly",
+		});
 		expect(sent).toEqual([]);
+	});
+});
+
+// Records the output format and sample rate of each request.
+const sampleRateRecordingClient = () => {
+	const sent: { OutputFormat: string; SampleRate?: string }[] = [];
+	const client = {
+		send: async (command: {
+			input: { OutputFormat: string; SampleRate?: string };
+		}) => {
+			const { OutputFormat, SampleRate } = command.input;
+			sent.push({ OutputFormat, SampleRate });
+			return OutputFormat === "json"
+				? {}
+				: { AudioStream: new Uint8Array([1]), ContentType: "audio/pcm" };
+		},
+	};
+	return { client, sent };
+};
+
+describe("Polly sample rate", () => {
+	it("defaults pcm to 16000 Hz and sends an explicit rate as it is", async () => {
+		const { client, sent } = sampleRateRecordingClient();
+		const provider = await initialized(client);
+
+		await provider.synthesize({
+			text: "Hello",
+			format: "pcm",
+			includeSpeechMarks: false,
+		});
+		await provider.synthesize({
+			text: "Hello",
+			format: "pcm",
+			sampleRate: 8000,
+			includeSpeechMarks: false,
+		});
+
+		expect(sent).toEqual([
+			{ OutputFormat: "pcm", SampleRate: "16000" },
+			{ OutputFormat: "pcm", SampleRate: "8000" },
+		]);
+	});
+
+	it("defaults mp3 to 24000 Hz and sends the speech marks request no sample rate", async () => {
+		const { client, sent } = sampleRateRecordingClient();
+		const provider = await initialized(client);
+
+		await provider.synthesize({ text: "Hello" });
+
+		expect(sent).toHaveLength(2);
+		expect(sent).toContainEqual({ OutputFormat: "mp3", SampleRate: "24000" });
+		expect(sent).toContainEqual({ OutputFormat: "json", SampleRate: undefined });
 	});
 });

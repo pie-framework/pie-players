@@ -1,0 +1,129 @@
+{
+	"schemaVersion": "2.1.0",
+	"modules": [
+		{
+			"kind": "javascript-module",
+			"path": "dist/calculator-element.js",
+			"declarations": [
+				{
+					"kind": "class",
+					"description": "Calculator panel, rendered into its light DOM. The toolkit coordinator in the runtime context supplies the calculator provider registered under the base of `tool-id`; the panel mounts a `calculator-type` calculator from it, limited to `available-types`, with `calculatorConfig` as the provider's options. The host shows it with `visible`; the panel shows a loading or error message until the calculator mounts, then the provider's attribution link when it declares one.",
+					"name": "CalculatorElement",
+					"tagName": "pie-tool-calculator",
+					"customElement": true,
+					"members": [
+						{
+							"kind": "field",
+							"name": "visible",
+							"type": {
+								"text": "boolean"
+							},
+							"default": "false",
+							"attribute": "visible"
+						},
+						{
+							"kind": "field",
+							"name": "toolId",
+							"type": {
+								"text": "string"
+							},
+							"default": "'calculator'",
+							"attribute": "tool-id"
+						},
+						{
+							"kind": "field",
+							"name": "calculatorType",
+							"type": {
+								"text": "CalculatorType"
+							},
+							"default": "'basic'",
+							"attribute": "calculator-type"
+						},
+						{
+							"kind": "field",
+							"name": "availableTypes",
+							"type": {
+								"text": "CalculatorType[] | string"
+							},
+							"default": "['basic', 'scientific', 'graphing']",
+							"attribute": "available-types"
+						},
+						{
+							"kind": "field",
+							"name": "calculatorConfig",
+							"type": {
+								"text": "CalculatorProviderConfig"
+							},
+							"default": "{}",
+							"attribute": "calculatorconfig"
+						}
+					],
+					"attributes": [
+						{
+							"name": "visible",
+							"type": {
+								"text": "boolean"
+							},
+							"default": "false",
+							"fieldName": "visible"
+						},
+						{
+							"name": "tool-id",
+							"type": {
+								"text": "string"
+							},
+							"default": "'calculator'",
+							"fieldName": "toolId"
+						},
+						{
+							"name": "calculator-type",
+							"type": {
+								"text": "string"
+							},
+							"default": "'basic'",
+							"fieldName": "calculatorType"
+						},
+						{
+							"name": "available-types",
+							"type": {
+								"text": "CalculatorType[] | string"
+							},
+							"default": "['basic', 'scientific', 'graphing']",
+							"fieldName": "availableTypes"
+						},
+						{
+							"name": "calculatorconfig",
+							"type": {
+								"text": "CalculatorProviderConfig"
+							},
+							"default": "{}",
+							"fieldName": "calculatorConfig"
+						}
+					],
+					"x-pie": {
+						"shadow": "none",
+						"classes": [
+							"pie-tool-calculator",
+							"pie-tool-calculator--attributed",
+							"pie-tool-calculator__attribution",
+							"pie-tool-calculator__container",
+							"pie-tool-calculator__context-host",
+							"pie-tool-calculator__error-details",
+							"pie-tool-calculator__loading",
+							"pie-tool-calculator__loading--error"
+						]
+					}
+				}
+			],
+			"exports": [
+				{
+					"kind": "custom-element-definition",
+					"name": "pie-tool-calculator",
+					"declaration": {
+						"name": "CalculatorElement"
+					}
+				}
+			]
+		}
+	]
+}

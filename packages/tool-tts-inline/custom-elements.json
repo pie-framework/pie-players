@@ -1,0 +1,144 @@
+{
+	"schemaVersion": "2.1.0",
+	"modules": [
+		{
+			"kind": "javascript-module",
+			"path": "dist/tool-tts-inline.js",
+			"declarations": [
+				{
+					"kind": "class",
+					"description": "Read-aloud trigger for an item or passage header inside `<pie-item-scope>` or `<pie-passage-shell>`: play/pause opens a panel of speed, rewind, fast-forward and stop controls. It reads the shell's content region through the TTS service in the toolkit runtime context, passing `catalog-id` so the service can speak authored SSML from the accessibility catalogs. Its controls stay disabled until the runtime context supplies a TTS service.",
+					"name": "ToolTtsInline",
+					"tagName": "pie-tool-tts-inline",
+					"customElement": true,
+					"members": [
+						{
+							"kind": "field",
+							"name": "catalogId",
+							"type": {
+								"text": "string"
+							},
+							"default": "''",
+							"attribute": "catalog-id"
+						},
+						{
+							"kind": "field",
+							"name": "size",
+							"type": {
+								"text": "'sm' | 'md' | 'lg'"
+							},
+							"default": "'md'",
+							"attribute": "size"
+						},
+						{
+							"kind": "field",
+							"name": "speedOptions",
+							"type": {
+								"text": "TTSSpeedOption[]"
+							},
+							"attribute": "speed-options"
+						},
+						{
+							"kind": "field",
+							"name": "showSingleSpeedOption",
+							"type": {
+								"text": "boolean"
+							},
+							"default": "false",
+							"attribute": "show-single-speed-option"
+						},
+						{
+							"kind": "field",
+							"name": "layoutMode",
+							"type": {
+								"text": "TTSLayoutMode"
+							},
+							"default": "'left-aligned'",
+							"attribute": "layout-mode"
+						}
+					],
+					"attributes": [
+						{
+							"name": "catalog-id",
+							"type": {
+								"text": "string"
+							},
+							"default": "''",
+							"fieldName": "catalogId"
+						},
+						{
+							"name": "size",
+							"type": {
+								"text": "string"
+							},
+							"default": "'md'",
+							"fieldName": "size"
+						},
+						{
+							"name": "speed-options",
+							"type": {
+								"text": "TTSSpeedOption[]"
+							},
+							"fieldName": "speedOptions"
+						},
+						{
+							"name": "show-single-speed-option",
+							"type": {
+								"text": "boolean"
+							},
+							"default": "false",
+							"fieldName": "showSingleSpeedOption"
+						},
+						{
+							"name": "layout-mode",
+							"type": {
+								"text": "string"
+							},
+							"default": "'left-aligned'",
+							"fieldName": "layoutMode"
+						}
+					],
+					"events": [
+						{
+							"name": "pie-tool-active-change",
+							"type": {
+								"text": "CustomEvent<{ active: boolean }>"
+							},
+							"description": "When its panel opens or closes."
+						}
+					],
+					"cssProperties": [
+						{
+							"name": "--pie-button-background-color",
+							"description": "Compatibility alias retained for TTS inline button backgrounds; implementations must fall back through canonical --pie-button-bg before broad surface tokens."
+						},
+						{
+							"name": "--pie-tool-trigger-active-background",
+							"description": "Component trigger active/open background hook; falls back through existing semantic tokens and must preserve WCAG contrast when overridden by hosts."
+						},
+						{
+							"name": "--pie-tool-trigger-active-border-color",
+							"description": "Component trigger active/open border hook; falls back through existing semantic tokens."
+						},
+						{
+							"name": "--pie-tool-trigger-active-color",
+							"description": "Component trigger active/open foreground hook; hosts are responsible for preserving contrast with the active trigger background."
+						}
+					],
+					"x-pie": {
+						"shadow": "open"
+					}
+				}
+			],
+			"exports": [
+				{
+					"kind": "custom-element-definition",
+					"name": "pie-tool-tts-inline",
+					"declaration": {
+						"name": "ToolTtsInline"
+					}
+				}
+			]
+		}
+	]
+}

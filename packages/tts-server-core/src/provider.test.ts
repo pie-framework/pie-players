@@ -165,36 +165,41 @@ describe("BaseTTSProvider request validation", () => {
 		}
 	});
 
-	it("rejects an over-long text as TEXT_TOO_LONG", () => {
-		const err = thrown(() =>
-			provider.validateRequestPublic({ text: "a".repeat(3001) }),
-		);
+	const rejection = (request: SynthesizeRequest) => {
+		try {
+			provider.validateRequestPublic(request);
+		} catch (error) {
+			expect(error).toBeInstanceOf(TTSError);
+			const { code, message, providerId } = error as TTSError;
+			return { code, message, providerId };
+		}
+		throw new Error("expected the request to be rejected");
+	};
 
-		expect(err).toBeInstanceOf(TTSError);
-		expect(err).toMatchObject({
+	it("rejects text over the maximum length as TEXT_TOO_LONG", () => {
+		expect(rejection({ text: "a".repeat(3001) })).toEqual({
 			code: TTSErrorCode.TEXT_TOO_LONG,
 			message: "Text length (3001) exceeds maximum (3000)",
 			providerId: "test",
 		});
 	});
 
-	it("rejects every other invalid request as INVALID_REQUEST", () => {
-		const requests: SynthesizeRequest[] = [
-			{ text: " " },
-			{ text: "hi", format: "wav" },
-			{ text: "hi", rate: 5 },
-			{ text: "hi", pitch: 3 },
-			{ text: "hi", volume: 2 },
-		];
-		for (const request of requests) {
-			const err = thrown(() => provider.validateRequestPublic(request));
-
-			expect(err).toBeInstanceOf(TTSError);
-			expect(err).toMatchObject({
-				code: TTSErrorCode.INVALID_REQUEST,
-				providerId: "test",
-			});
-		}
+	it.each<[string, SynthesizeRequest, string]>([
+		["blank text", { text: "  " }, "Text is required and cannot be empty"],
+		[
+			"an unsupported format",
+			{ text: "hi", format: "ogg" },
+			"Format 'ogg' not supported. Supported formats: mp3",
+		],
+		["a rate over 4", { text: "hi", rate: 4.5 }, "Rate must be between 0.25 and 4.0"],
+		["a pitch over 2", { text: "hi", pitch: 2.5 }, "Pitch must be between 0 and 2"],
+		["a volume over 1", { text: "hi", volume: 1.5 }, "Volume must be between 0 and 1"],
+	])("rejects %s as INVALID_REQUEST", (_, request, message) => {
+		expect(rejection(request)).toEqual({
+			code: TTSErrorCode.INVALID_REQUEST,
+			message,
+			providerId: "test",
+		});
 	});
 });
 

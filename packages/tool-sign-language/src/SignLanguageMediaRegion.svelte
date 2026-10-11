@@ -8,6 +8,16 @@
 	}}
 />
 
+<!--
+@component
+Signed translation of one item or passage, shown in the host's content-media
+surface. The sign-language registration's `renderSurface` mounts it and sets
+`media` to a resolved catalog card; it plays that recording muted with native
+controls, held to the card's authored time slice, under a caption naming the
+sign language. Its playback and read-aloud through the toolkit runtime context's
+TTS service pause each other.
+-->
+
 <script lang="ts">
 	/**
 	 * Renders one resolved sign-language catalog card in a host-provided region.

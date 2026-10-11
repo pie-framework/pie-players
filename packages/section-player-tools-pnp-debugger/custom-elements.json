@@ -1,0 +1,158 @@
+{
+	"schemaVersion": "2.1.0",
+	"modules": [
+		{
+			"kind": "javascript-module",
+			"path": "dist/section-player-tools-pnp-debugger.js",
+			"declarations": [
+				{
+					"kind": "class",
+					"description": "Developer panel for the section player demos that shows how the toolkit coordinator's tool policy resolves for a section: the PNP determination, resolved tools, provenance, policy diagnostics, per-tool decision trails and the active PNP profile, all as JSON. A host gives it `toolkitCoordinator`, `sectionData` and `role-type`; with `editable` it adds a tools editor that toggles placement per level, provider enablement, PNP supports and prohibitions on the bound assessment's profile, and PNP enforcement, writing each change through the coordinator.",
+					"name": "PnpPanel",
+					"tagName": "pie-section-player-tools-pnp-debugger",
+					"customElement": true,
+					"members": [
+						{
+							"kind": "field",
+							"name": "sectionData",
+							"type": {
+								"text": "any"
+							},
+							"attribute": "section-data"
+						},
+						{
+							"kind": "field",
+							"name": "roleType",
+							"type": {
+								"text": "'candidate' | 'scorer'"
+							},
+							"attribute": "role-type"
+						},
+						{
+							"kind": "field",
+							"name": "editable",
+							"type": {
+								"text": "boolean"
+							},
+							"default": "false",
+							"attribute": "editable"
+						},
+						{
+							"kind": "field",
+							"name": "toolkitCoordinator",
+							"type": {
+								"text": "any"
+							},
+							"default": "null",
+							"attribute": "toolkit-coordinator"
+						},
+						{
+							"kind": "field",
+							"name": "persistenceScope",
+							"type": {
+								"text": "string"
+							},
+							"default": "\"\"",
+							"attribute": "persistence-scope"
+						},
+						{
+							"kind": "field",
+							"name": "persistencePanelId",
+							"type": {
+								"text": "string"
+							},
+							"default": "\"pnp-debugger\"",
+							"attribute": "persistence-panel-id"
+						}
+					],
+					"attributes": [
+						{
+							"name": "section-data",
+							"type": {
+								"text": "any"
+							},
+							"fieldName": "sectionData"
+						},
+						{
+							"name": "role-type",
+							"type": {
+								"text": "string"
+							},
+							"fieldName": "roleType"
+						},
+						{
+							"name": "editable",
+							"type": {
+								"text": "boolean"
+							},
+							"default": "false",
+							"fieldName": "editable"
+						},
+						{
+							"name": "toolkit-coordinator",
+							"type": {
+								"text": "any"
+							},
+							"default": "null",
+							"fieldName": "toolkitCoordinator"
+						},
+						{
+							"name": "persistence-scope",
+							"type": {
+								"text": "string"
+							},
+							"default": "\"\"",
+							"fieldName": "persistenceScope"
+						},
+						{
+							"name": "persistence-panel-id",
+							"type": {
+								"text": "string"
+							},
+							"default": "\"pnp-debugger\"",
+							"fieldName": "persistencePanelId"
+						}
+					],
+					"events": [
+						{
+							"name": "close",
+							"type": {
+								"text": "CustomEvent<null>"
+							},
+							"description": "When the panel's close button is pressed."
+						}
+					],
+					"x-pie": {
+						"shadow": "none",
+						"classes": [
+							"pie-section-player-tools-pnp-debugger__button-row",
+							"pie-section-player-tools-pnp-debugger__card",
+							"pie-section-player-tools-pnp-debugger__card--warning",
+							"pie-section-player-tools-pnp-debugger__card-pre",
+							"pie-section-player-tools-pnp-debugger__card-text",
+							"pie-section-player-tools-pnp-debugger__card-title",
+							"pie-section-player-tools-pnp-debugger__content",
+							"pie-section-player-tools-pnp-debugger__field",
+							"pie-section-player-tools-pnp-debugger__icon-sm",
+							"pie-section-player-tools-pnp-debugger__muted",
+							"pie-section-player-tools-pnp-debugger__pill",
+							"pie-section-player-tools-pnp-debugger__tool-heading",
+							"pie-section-player-tools-pnp-debugger__tool-name",
+							"pie-section-player-tools-pnp-debugger__tool-table",
+							"pie-section-player-tools-pnp-debugger__toolbar"
+						]
+					}
+				}
+			],
+			"exports": [
+				{
+					"kind": "custom-element-definition",
+					"name": "pie-section-player-tools-pnp-debugger",
+					"declaration": {
+						"name": "PnpPanel"
+					}
+				}
+			]
+		}
+	]
+}

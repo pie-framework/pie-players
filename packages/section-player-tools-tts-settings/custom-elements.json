@@ -1,0 +1,137 @@
+{
+	"schemaVersion": "2.1.0",
+	"modules": [
+		{
+			"kind": "javascript-module",
+			"path": "dist/section-player-tools-tts-settings.js",
+			"declarations": [
+				{
+					"kind": "class",
+					"description": "Developer dialog for the section player demos that configures the toolkit's text-to-speech tool: the provider (browser, Polly, Google or a host's `customProviders` tabs), its voice and options, the toolbar layout and inline speed buttons, with a voice preview. A host gives it `toolkitCoordinator` and, for server providers, the `api-endpoint` that serves voices and synthesis. Apply writes the `textToSpeech` tool config through the coordinator, stores it in localStorage under `storage-key`, and fires `close` once the coordinator's `ensureTTSReady()` resolves; a failure stays in the dialog as an error.",
+					"name": "TtsSettingsPanel",
+					"tagName": "pie-section-player-tools-tts-settings",
+					"customElement": true,
+					"members": [
+						{
+							"kind": "field",
+							"name": "toolkitCoordinator",
+							"type": {
+								"text": "ToolkitCoordinatorApi | null"
+							},
+							"default": "null",
+							"attribute": "toolkitcoordinator"
+						},
+						{
+							"kind": "field",
+							"name": "apiEndpoint",
+							"type": {
+								"text": "string"
+							},
+							"default": "DEFAULT_API_ENDPOINT",
+							"attribute": "api-endpoint"
+						},
+						{
+							"kind": "field",
+							"name": "storageKey",
+							"type": {
+								"text": "string"
+							},
+							"default": "DEFAULT_STORAGE_KEY",
+							"attribute": "storage-key"
+						},
+						{
+							"kind": "field",
+							"name": "customProviders",
+							"type": {
+								"text": "CustomProviderDescriptor[]"
+							},
+							"default": "[]",
+							"attribute": "customproviders"
+						}
+					],
+					"attributes": [
+						{
+							"name": "toolkitcoordinator",
+							"type": {
+								"text": "string"
+							},
+							"default": "null",
+							"fieldName": "toolkitCoordinator"
+						},
+						{
+							"name": "api-endpoint",
+							"type": {
+								"text": "string"
+							},
+							"default": "DEFAULT_API_ENDPOINT",
+							"fieldName": "apiEndpoint"
+						},
+						{
+							"name": "storage-key",
+							"type": {
+								"text": "string"
+							},
+							"default": "DEFAULT_STORAGE_KEY",
+							"fieldName": "storageKey"
+						},
+						{
+							"name": "customproviders",
+							"type": {
+								"text": "string"
+							},
+							"default": "[]",
+							"fieldName": "customProviders"
+						}
+					],
+					"events": [
+						{
+							"name": "close",
+							"type": {
+								"text": "CustomEvent<null>"
+							},
+							"description": "When the dialog is dismissed by its close buttons or Escape, or after Apply succeeds."
+						}
+					],
+					"x-pie": {
+						"shadow": "none",
+						"classes": [
+							"pie-tts-actions",
+							"pie-tts-browser-auto-voice",
+							"pie-tts-custom-provider-header",
+							"pie-tts-dialog",
+							"pie-tts-dialog-backdrop",
+							"pie-tts-dialog-close-icon",
+							"pie-tts-dialog-header",
+							"pie-tts-dialog-title",
+							"pie-tts-error",
+							"pie-tts-field",
+							"pie-tts-fieldset",
+							"pie-tts-grid-3",
+							"pie-tts-label",
+							"pie-tts-ok",
+							"pie-tts-preview-active",
+							"pie-tts-preview-block",
+							"pie-tts-preview-header",
+							"pie-tts-preview-input",
+							"pie-tts-preview-row",
+							"pie-tts-preview-title",
+							"pie-tts-preview-track",
+							"pie-tts-status",
+							"pie-tts-tabs",
+							"pie-tts-toggle-row"
+						]
+					}
+				}
+			],
+			"exports": [
+				{
+					"kind": "custom-element-definition",
+					"name": "pie-section-player-tools-tts-settings",
+					"declaration": {
+						"name": "TtsSettingsPanel"
+					}
+				}
+			]
+		}
+	]
+}

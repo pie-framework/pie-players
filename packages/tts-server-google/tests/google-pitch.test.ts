@@ -1,3 +1,4 @@
+import { TTSError, TTSErrorCode } from "@pie-players/tts-server-core";
 import { describe, expect, it } from "vitest";
 
 import { googleWithClient } from "./fake-google-client.js";
@@ -52,9 +53,17 @@ describe("Google pitch", () => {
 	it("rejects a pitch outside 0 to 2 before calling Google", async () => {
 		const { provider, sent } = await recordingProvider();
 
-		await expect(
-			provider.synthesize({ text: "Hello", voice: "en-US-Wavenet-A", pitch: -5 }),
-		).rejects.toThrow("Pitch must be between 0 and 2");
+		const rejected = provider.synthesize({
+			text: "Hello",
+			voice: "en-US-Wavenet-A",
+			pitch: -5,
+		});
+		await expect(rejected).rejects.toBeInstanceOf(TTSError);
+		await expect(rejected).rejects.toMatchObject({
+			code: TTSErrorCode.INVALID_REQUEST,
+			message: "Pitch must be between 0 and 2",
+			providerId: "google-cloud-tts",
+		});
 		expect(sent).toEqual([]);
 	});
 });

@@ -1,13 +1,15 @@
 import { describe, expect, it } from "vitest";
 
 import { BaseTTSProvider } from "./provider.js";
-import type {
-	GetVoicesOptions,
-	ServerProviderCapabilities,
-	SynthesizeRequest,
-	SynthesizeResponse,
-	TTSServerConfig,
-	Voice,
+import {
+	type GetVoicesOptions,
+	type ServerProviderCapabilities,
+	type SynthesizeRequest,
+	type SynthesizeResponse,
+	TTSError,
+	TTSErrorCode,
+	type TTSServerConfig,
+	type Voice,
 } from "./types.js";
 
 class TestProvider extends BaseTTSProvider {
@@ -147,6 +149,43 @@ describe("BaseTTSProvider request validation", () => {
 		for (const pitch of [-0.01, 2.01, -5, 5, -20, 20]) {
 			expect(validate(pitch)).toThrow("Pitch must be between 0 and 2");
 		}
+	});
+
+	const rejection = (request: SynthesizeRequest) => {
+		try {
+			provider.validateRequestPublic(request);
+		} catch (error) {
+			expect(error).toBeInstanceOf(TTSError);
+			const { code, message, providerId } = error as TTSError;
+			return { code, message, providerId };
+		}
+		throw new Error("expected the request to be rejected");
+	};
+
+	it("rejects text over the maximum length as TEXT_TOO_LONG", () => {
+		expect(rejection({ text: "a".repeat(3001) })).toEqual({
+			code: TTSErrorCode.TEXT_TOO_LONG,
+			message: "Text length (3001) exceeds maximum (3000)",
+			providerId: "test",
+		});
+	});
+
+	it.each<[string, SynthesizeRequest, string]>([
+		["blank text", { text: "  " }, "Text is required and cannot be empty"],
+		[
+			"an unsupported format",
+			{ text: "hi", format: "ogg" },
+			"Format 'ogg' not supported. Supported formats: mp3",
+		],
+		["a rate over 4", { text: "hi", rate: 4.5 }, "Rate must be between 0.25 and 4.0"],
+		["a pitch over 2", { text: "hi", pitch: 2.5 }, "Pitch must be between 0 and 2"],
+		["a volume over 1", { text: "hi", volume: 1.5 }, "Volume must be between 0 and 1"],
+	])("rejects %s as INVALID_REQUEST", (_, request, message) => {
+		expect(rejection(request)).toEqual({
+			code: TTSErrorCode.INVALID_REQUEST,
+			message,
+			providerId: "test",
+		});
 	});
 });
 

@@ -772,7 +772,7 @@
 {/if}
 
 <style>
-	:host {
+	:global(pie-section-player-items-pane) {
 		display: flex;
 		flex-direction: column;
 		gap: 1rem;

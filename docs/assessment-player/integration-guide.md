@@ -529,10 +529,11 @@ renders its own chrome and calls the element's navigation methods; it then also
 announces the section change, which the element announces only when focus was
 inside it ([Navigation chrome](../../packages/assessment-player/README.md#navigation-chrome)).
 
-`<pie-assessment-player-shell>` deletes the children a host gives it and cannot
-compose custom chrome ([Shell element](../../packages/assessment-player/README.md#shell-element)).
 A host that needs timers, progress bars or workflow buttons around the section
-builds its player from the toolkit helpers, as above.
+builds its player from the toolkit helpers, as above, and can lay it out in
+`<pie-assessment-player-shell>`, a scaffold with a `navigation` slot and a body
+slot that carries no controller
+([Shell element](../../packages/assessment-player/README.md#shell-element)).
 
 ## Attempt reset
 

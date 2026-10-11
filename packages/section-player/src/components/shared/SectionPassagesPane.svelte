@@ -119,7 +119,7 @@
 {/if}
 
 <style>
-	:host {
+	:global(pie-section-player-passages-pane) {
 		display: flex;
 		flex-direction: column;
 		gap: 1rem;

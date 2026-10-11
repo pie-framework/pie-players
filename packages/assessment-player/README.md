@@ -39,7 +39,7 @@ the bundler entry.
 | Element | Role |
 | --- | --- |
 | `pie-assessment-player-default` | Runs an assessment's sections one at a time in a section player, with a position label and Back and Next buttons |
-| `pie-assessment-player-shell` | A layout frame with a `navigation` slot; it deletes its children ([Shell element](#shell-element)) |
+| `pie-assessment-player-shell` | A layout frame: a `navigation` slot above a default slot, filled by the host ([Shell element](#shell-element)) |
 
 ## Usage
 
@@ -460,11 +460,24 @@ Version pins, element sets, MathJax assets and TypeScript setup are in
 
 ## Shell element
 
-`pie-assessment-player-shell` takes a `show-navigation` attribute and renders a
-`navigation` slot and a default slot. It has no shadow root and clears its
-content on every render, so it deletes any children a host gives it, and its
-light-DOM slots project nothing. It is unusable for composition as published. A
-host that needs its own chrome builds it around a section player, as
+`pie-assessment-player-shell` is a layout scaffold for a host that supplies its
+own chrome: a `navigation` slot above a default slot that fills the remaining
+height. The scaffold renders in an open shadow root and the host's children stay
+in light DOM, so document styles reach them. `show-navigation="false"` drops the
+navigation slot; its children stay in place but unrendered.
+
+```html
+<pie-assessment-player-shell>
+  <div slot="navigation">
+    <my-assessment-nav></my-assessment-nav>
+  </div>
+  <pie-section-player-splitpane></pie-section-player-splitpane>
+  <my-timer-widget></my-timer-widget>
+</pie-assessment-player-shell>
+```
+
+The shell has no controller. The host mounts the section player, wires
+navigation and drives persistence, as
 [Building a Multi-Section Player](../../docs/assessment-player/integration-guide.md)
 does.
 

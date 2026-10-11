@@ -718,7 +718,7 @@ Assessment-player mirrors section-player's approach:
 
 ### Shell element for custom composition
 
-For hosts that need full control over the assessment chrome (custom navigation, progress bars, timers, workflow buttons), the shell element provides named slots:
+For hosts that need full control over the assessment chrome (custom navigation, progress bars, timers, workflow buttons), the shell element provides two slots: `navigation`, rendered above the body, and the default slot, which fills the remaining height. The shell renders its scaffold in an open shadow root; the host's children stay in light DOM, so document styles reach them. `show-navigation="false"` drops the navigation slot, leaving its children in place but unrendered.
 
 ```html
 <pie-assessment-player-shell>

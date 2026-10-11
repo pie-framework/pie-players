@@ -1,11 +1,14 @@
 import { coerceBooleanLike } from "@pie-players/pie-players-shared";
 
 /**
- * Layout scaffold for a host-composed assessment: a two-row grid with a
- * navigation row, omitted when `show-navigation` is false, above a body row.
- * It renders into its light DOM and replaces its children with that grid on
- * connect and on every `show-navigation` change, so host content never reaches
- * either row.
+ * Layout scaffold for a host-composed assessment: host navigation above a body
+ * that fills the remaining height. The scaffold renders in an open shadow root
+ * and the host's children stay in its light DOM, where document styles reach
+ * them, projecting into the slots.
+ *
+ * @slot navigation - Assessment navigation above the body; not rendered while
+ *   `show-navigation` is false.
+ * @slot - The body: the host's section player and any other assessment UI.
  */
 export class AssessmentPlayerShellElement extends HTMLElement {
 	static get observedAttributes() {
@@ -13,6 +16,11 @@ export class AssessmentPlayerShellElement extends HTMLElement {
 	}
 
 	showNavigation: boolean | string | null | undefined = true;
+
+	constructor() {
+		super();
+		this.attachShadow({ mode: "open" });
+	}
 
 	connectedCallback() {
 		this.showNavigation =
@@ -31,7 +39,6 @@ export class AssessmentPlayerShellElement extends HTMLElement {
 
 	private render() {
 		const showNavigation = coerceBooleanLike(this.showNavigation, true);
-		this.innerHTML = "";
 		const style = document.createElement("style");
 		style.textContent = `
 			:host {
@@ -40,13 +47,14 @@ export class AssessmentPlayerShellElement extends HTMLElement {
 				min-height: 0;
 			}
 			.pie-assessment-player-shell {
-				display: grid;
-				grid-template-rows: auto minmax(0, 1fr);
+				display: flex;
+				flex-direction: column;
 				height: 100%;
 				min-height: 0;
 				gap: 0.5rem;
 			}
 			.pie-assessment-player-shell__body {
+				flex: 1 1 0;
 				min-height: 0;
 				overflow: hidden;
 			}
@@ -63,7 +71,6 @@ export class AssessmentPlayerShellElement extends HTMLElement {
 		const defaultSlot = document.createElement("slot");
 		body.appendChild(defaultSlot);
 		root.appendChild(body);
-		this.appendChild(style);
-		this.appendChild(root);
+		this.shadowRoot?.replaceChildren(style, root);
 	}
 }

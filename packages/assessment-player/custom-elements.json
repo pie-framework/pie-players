@@ -314,7 +314,7 @@
 				},
 				{
 					"kind": "class",
-					"description": "Layout scaffold for a host-composed assessment: a two-row grid with a navigation row, omitted when `show-navigation` is false, above a body row. It renders into its light DOM and replaces its children with that grid on connect and on every `show-navigation` change, so host content never reaches either row.",
+					"description": "Layout scaffold for a host-composed assessment: host navigation above a body that fills the remaining height. The scaffold renders in an open shadow root and the host's children stay in its light DOM, where document styles reach them, projecting into the slots.",
 					"name": "AssessmentPlayerShellElement",
 					"tagName": "pie-assessment-player-shell",
 					"customElement": true,
@@ -341,8 +341,18 @@
 							"fieldName": "showNavigation"
 						}
 					],
+					"slots": [
+						{
+							"name": "",
+							"description": "The body: the host's section player and any other assessment UI."
+						},
+						{
+							"name": "navigation",
+							"description": "Assessment navigation above the body; not rendered while `show-navigation` is false."
+						}
+					],
 					"x-pie": {
-						"shadow": "none"
+						"shadow": "open"
 					}
 				}
 			],

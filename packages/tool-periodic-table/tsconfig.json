@@ -10,6 +10,7 @@
 	},
 	"include": [
 		"index.ts",
+		"categories.ts",
 		"tool-periodic-table.svelte",
 		"periodic-table-data.json"
 	],

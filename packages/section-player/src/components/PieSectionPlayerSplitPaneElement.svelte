@@ -489,15 +489,6 @@
 </SectionPlayerLayoutKernel>
 
 <style>
-	:host {
-		display: block;
-		width: 100%;
-		height: 100%;
-		min-height: 0;
-		max-height: 100%;
-		overflow: hidden;
-	}
-
 	.pie-section-player-split-frame {
 		width: 100%;
 		max-width: var(--pie-section-player-layout-max-width, none);

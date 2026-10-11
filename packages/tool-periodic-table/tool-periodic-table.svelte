@@ -25,6 +25,7 @@
 		dynamicMessageKey,
 		resolveInterfaceI18n,
 	} from '@pie-players/pie-players-shared/i18n/provider';
+	import { categorySlug, normalizeCategory } from './categories.js';
 
 	// Shape of an entry in periodic-table-data.json
 	interface Element {
@@ -64,40 +65,10 @@
 	let selectedElement = $state<Element | null>(allElements[0] || null); // Initialize with Hydrogen
 	let selectedCategory = $state<string>('All');
 
-	function normalizeCategory(category: string): string {
-		const lower = category.toLowerCase();
-		if (lower.indexOf('unknown') !== -1) {
-			return 'Unknown';
-		}
-		// Map common category names to standard format
-		const mappings: Record<string, string> = {
-			'alkali metal': 'Alkali Metal',
-			'alkaline earth': 'Alkaline Earth Metal',
-			'alkaline earth metal': 'Alkaline Earth Metal',
-			'transition metal': 'Transition Metal',
-			'post-transition metal': 'Post-transition Metal',
-			'metalloid': 'Metalloid',
-			'nonmetal': 'Diatomic Nonmetal',
-			'polyatomic nonmetal': 'Polyatomic Nonmetal',
-			'diatomic nonmetal': 'Diatomic Nonmetal',
-			'halogen': 'Diatomic Nonmetal', // Halogens are diatomic nonmetals
-			'noble gas': 'Noble Gas',
-			'lanthanide': 'Lanthanide',
-			'actinide': 'Actinide',
-			'metal': 'Post-transition Metal' // Some elements might just be 'metal'
-		};
-		return mappings[lower] || category;
-	}
-
-	// Suffix of the `__category--*` class for a normalized category.
-	function categorySlug(category: string): string {
-		return category.replace(' ', '-').toLowerCase();
-	}
-
 	/**
 	 * Category name in the interface locale.
 	 *
-	 * The normalized names above are canonical ids — they drive CSS classes and
+	 * The names `normalizeCategory` returns are canonical ids — they drive CSS classes and
 	 * filtering — so display goes through the catalog rather than through the id.
 	 * An id the catalog does not carry falls back to the title-cased id, which is
 	 * what a host-supplied data file with a new category gets.
@@ -625,7 +596,6 @@
 	 */
 	.pie-tool-periodic-table__category--alkali-metal,
 	.pie-tool-periodic-table__category--alkaline-earth-metal,
-	.pie-tool-periodic-table__category--alkaline-earth,
 	.pie-tool-periodic-table__category--lanthanide,
 	.pie-tool-periodic-table__category--actinide,
 	.pie-tool-periodic-table__category--transition-metal,
@@ -667,14 +637,6 @@
 			var(--pie-background-dark, #f5f5f5) var(--pie-fixed-hue-collapse, 0%),
 			#ffdc8a
 		);
-	}
-
-	.pie-tool-periodic-table__category--alkaline-earth {
-		background-color: color-mix(
-			in srgb,
-			var(--pie-background-dark, #f5f5f5) var(--pie-fixed-hue-collapse, 0%),
-			#ffdc8a
-		); /* Also handle without "-metal" suffix */
 	}
 
 	.pie-tool-periodic-table__category--lanthanide {

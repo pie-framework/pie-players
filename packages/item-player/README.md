@@ -323,7 +323,10 @@ These are set via JavaScript, not HTML attributes.
 - `backend-session-saved`: emitted after `saveSession()` or delivery autosave
   persists successfully.
 - `backend-score-complete`: emitted after server-backed `score()` completes.
-- `backend-error`: emitted when backend load/save/score fails.
+- `backend-error`: `{ scope: "delivery", operation, message, error }`, where
+  `operation` is `"load" | "model" | "saveSession"`. Emitted when a delivery
+  load, model refresh or autosave the player started itself fails. A host's own
+  `saveSession()` or `score()` call rejects instead.
 - `session-snapshot-available`: `{ key, session, timestamp }`. Emitted on load
   when `session-snapshot` is enabled and device storage holds a snapshot for
   this sitting. The player never applies it; the host decides. Also readable

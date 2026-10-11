@@ -231,7 +231,12 @@ test.each(["built", "unbuilt"])("%s", async (name) => {
 });
 
 describe("test runner wiring", () => {
-	const packages = workspacePackages();
+	// Walked once, at collection, where no test timeout applies: under disk
+	// contention the walk alone outruns bun's 5 s default.
+	const packages = workspacePackages().map((entry) => ({
+		...entry,
+		testFiles: findFiles(entry.dir, /\.(spec|test)\.(ts|js|mjs)$/),
+	}));
 
 	test("every package running bun test preloads the source map", () => {
 		const root = Bun.TOML.parse(
@@ -240,7 +245,7 @@ describe("test runner wiring", () => {
 		expect(root.test.preload).toContain(`./${PRELOAD}`);
 
 		const checked = [];
-		for (const { name, dir, manifest } of packages) {
+		for (const { name, dir, manifest, testFiles } of packages) {
 			if (!manifest.scripts?.test?.includes("bun test")) continue;
 			checked.push(name);
 			const bunfigPath = path.join(dir, "bunfig.toml");
@@ -252,7 +257,7 @@ describe("test runner wiring", () => {
 				name,
 				preload: expect.arrayContaining([preload]),
 			});
-			if (findFiles(dir, /\.spec\.ts$/).length > 0) {
+			if (testFiles.some((file) => file.endsWith(".spec.ts"))) {
 				expect({ name, ignored: bunfig.test?.pathIgnorePatterns }).toEqual({
 					name,
 					ignored: ["**/*.spec.ts"],
@@ -265,24 +270,25 @@ describe("test runner wiring", () => {
 
 	test("a unit test imports its package's build only when the test script builds first", () => {
 		const offenders = [];
-		for (const { name, dir, manifest } of packages) {
+		for (const { name, dir, manifest, testFiles } of packages) {
 			const script = manifest.scripts?.test ?? "";
 			if (!script.includes("bun test") || script.includes("build")) continue;
-			for (const file of findFiles(dir, /\.test\.(ts|js|mjs)$/)) {
+			for (const file of testFiles) {
+				if (!/\.test\.(ts|js|mjs)$/.test(file)) continue;
 				if (/["'`](\.\.\/)+dist\//.test(readFileSync(file, "utf8"))) {
 					offenders.push(`${name}: ${path.relative(dir, file)}`);
 				}
 			}
 		}
 		expect(offenders).toEqual([]);
-	});
+	}, 30_000);
 
 	test("every Vitest package with tests and a workspace sibling uses the Vite adapter", () => {
 		const checked = [];
-		for (const { name, dir, manifest } of packages) {
+		for (const { name, dir, manifest, testFiles } of packages) {
 			if (!manifest.scripts?.test?.includes("vitest")) continue;
 			if (!declaresSibling(manifest)) continue;
-			if (findFiles(dir, /\.test\.ts$/).length === 0) continue;
+			if (!testFiles.some((file) => file.endsWith(".test.ts"))) continue;
 			checked.push(name);
 			const configPath = path.join(dir, "vitest.config.ts");
 			const config = existsSync(configPath)

@@ -86,9 +86,9 @@ default audio-asset policy with an exact-origin allow-list. See
 
 ### Redis caching
 
-Nothing in this repository reads `REDIS_URL`. The Polly SvelteKit example
-(`packages/tts-server-polly/examples/sveltekit/synthesize-server.ts`) carries a
-commented-out Redis cache for synthesis results that a deployment can adapt.
+Nothing in this repository reads `REDIS_URL`. Step 5 of the
+[Polly integration guide](../../packages/tts-server-polly/examples/INTEGRATION-GUIDE.md#step-5-add-redis-caching-optional)
+sketches a Redis cache for synthesis results that a deployment can adapt.
 
 ## How It Works
 

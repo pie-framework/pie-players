@@ -60,7 +60,7 @@ export interface PollyProviderConfig extends TTSServerConfig {
 	 *
 	 * @extension AWS Polly-specific
 	 * @default 'neural'
-	 * @note Neural: $16/1M chars, Standard: $4/1M chars
+	 * @see https://aws.amazon.com/polly/pricing/
 	 */
 	engine?: "neural" | "standard";
 

@@ -112,7 +112,7 @@ describe("audio transcript content resolution", () => {
 		];
 		expect(
 			resolveAudioTranscript(dependencyContext(cards, false))?.language,
-		).toBe("es-es");
+		).toBe("es-ES");
 	});
 
 	it("prefers an always card over an accommodation card found earlier", () => {

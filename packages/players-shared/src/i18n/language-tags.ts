@@ -22,8 +22,8 @@
  *
  * Converts POSIX underscores to hyphens, strips a POSIX charset or modifier
  * suffix (`es_ES.UTF-8`, `es_ES@euro`), and lowercases. Lowercasing rather than
- * applying BCP-47 display casing makes the output a comparison key, and it is
- * still a valid `lang` value: BCP-47 subtags are case-insensitive.
+ * applying BCP-47 display casing is intentional — this output is a comparison
+ * key, not something to render. `toLanguageTag` is the form to render.
  *
  * Returns an empty string for nullish or blank input, which callers read as
  * "this card declares no language".
@@ -33,6 +33,17 @@ export function normalizeLanguageTag(tag: string | null | undefined): string {
 	const separatorsUnified = tag.trim().replace(/_/g, "-");
 	const withoutPosixSuffix = separatorsUnified.split(/[.@]/)[0];
 	return withoutPosixSuffix.toLowerCase();
+}
+
+/**
+ * A tag in BCP-47 syntax with its authored casing kept: POSIX underscores become
+ * hyphens, so `es_ES` renders as `es-ES`. The form for a `lang` attribute or a
+ * platform locale API.
+ *
+ * Returns an empty string for nullish or blank input.
+ */
+export function toLanguageTag(tag: string | null | undefined): string {
+	return tag ? tag.trim().replace(/_/g, "-") : "";
 }
 
 /**

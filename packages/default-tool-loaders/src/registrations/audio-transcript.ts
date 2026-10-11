@@ -42,7 +42,7 @@ import type {
 	ToolSurfaceRenderContext,
 	ToolSurfaceRenderResult,
 } from "@pie-players/pie-assessment-toolkit/tools/registration";
-import { normalizeLanguageTag } from "@pie-players/pie-players-shared/i18n/language-tags";
+import { toLanguageTag } from "@pie-players/pie-players-shared/i18n/language-tags";
 
 /** QTI 3.0 / AfA support id gating an audio transcript. */
 export const AUDIO_TRANSCRIPT_FEATURE_ID = "transcript";
@@ -95,7 +95,7 @@ const cardText = (card: TranscriptCardLike): string =>
 // The Learnosity transform emits POSIX `es_ES`, which `lang` does not accept.
 const cardLanguage = (card: TranscriptCardLike): string | undefined =>
 	typeof card.language === "string"
-		? normalizeLanguageTag(card.language) || undefined
+		? toLanguageTag(card.language) || undefined
 		: undefined;
 
 /**

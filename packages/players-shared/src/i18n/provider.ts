@@ -13,6 +13,7 @@
 import {
 	findBestLanguageMatch,
 	normalizeLanguageTag,
+	toLanguageTag,
 } from "./language-tags.js";
 import enUS from "./messages/en-US.js";
 import type {
@@ -146,7 +147,7 @@ export class SimpleI18n implements I18nServiceApi {
 
 	constructor(config: I18nConfig = {}) {
 		this.config = { ...config };
-		this.fallbackLocale = normalizeTag(config.fallbackLocale) || DEFAULT_LOCALE;
+		this.fallbackLocale = toLanguageTag(config.fallbackLocale) || DEFAULT_LOCALE;
 		this.catalogs = new Map([[DEFAULT_LOCALE, enUS as MessageCatalog]]);
 		this.customMessages = { ...(config.customMessages ?? {}) };
 		this.loading = new Map();
@@ -188,7 +189,7 @@ export class SimpleI18n implements I18nServiceApi {
 			// A locale we ship no catalog for is legitimate: the host may have
 			// supplied its own messages for it. Honour the tag and let the
 			// fallback chain cover whatever those messages omit.
-			this.locale = normalizeTag(locale) || DEFAULT_LOCALE;
+			this.locale = toLanguageTag(locale) || DEFAULT_LOCALE;
 			this.notify();
 			return;
 		}
@@ -285,7 +286,7 @@ export class SimpleI18n implements I18nServiceApi {
 	 * a catalog.
 	 */
 	addCustomMessages(locale: string, messages: MessageCatalog): void {
-		const tag = normalizeTag(locale);
+		const tag = toLanguageTag(locale);
 		this.customMessages[tag] = deepMerge(
 			this.customMessages[tag] ?? {},
 			messages,
@@ -302,7 +303,7 @@ export class SimpleI18n implements I18nServiceApi {
 	 * locales: the locale is per-view, the catalogs are per-provider.
 	 */
 	withLocale(locale: LocaleCode): I18nServiceApi {
-		const resolved = this.resolveLocaleTag(locale) ?? normalizeTag(locale);
+		const resolved = this.resolveLocaleTag(locale) ?? toLanguageTag(locale);
 		if (resolved === this.locale) return this;
 
 		const view = new SimpleI18n({ ...this.config, locale: resolved });
@@ -419,10 +420,6 @@ export class SimpleI18n implements I18nServiceApi {
 	private notify(): void {
 		for (const listener of this.listeners) listener();
 	}
-}
-
-function normalizeTag(locale: LocaleCode | undefined): string {
-	return locale ? locale.trim().replace(/_/g, "-") : "";
 }
 
 function readPath(

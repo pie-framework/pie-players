@@ -3,12 +3,14 @@
  * @module @pie-players/tts-server-core
  */
 
-import type {
-	GetVoicesOptions,
-	ServerProviderCapabilities,
-	SynthesizeRequest,
-	SynthesizeResponse,
-	Voice,
+import {
+	type GetVoicesOptions,
+	type ServerProviderCapabilities,
+	type SynthesizeRequest,
+	type SynthesizeResponse,
+	TTSError,
+	TTSErrorCode,
+	type Voice,
 } from "./types.js";
 
 /**
@@ -184,11 +186,16 @@ export abstract class BaseTTSProvider implements ITTSServerProvider {
 
 	/**
 	 * Ensure provider is initialized before operations
-	 * @throws {Error} If provider not initialized
+	 * @throws {TTSError} `INITIALIZATION_ERROR` if provider not initialized
 	 */
 	protected ensureInitialized(): void {
 		if (!this.initialized) {
-			throw new Error(`Provider ${this.providerId} not initialized`);
+			throw new TTSError(
+				TTSErrorCode.INITIALIZATION_ERROR,
+				`Provider ${this.providerId} not initialized`,
+				undefined,
+				this.providerId,
+			);
 		}
 	}
 
@@ -282,19 +289,21 @@ export abstract class BaseTTSProvider implements ITTSServerProvider {
 
 	/**
 	 * Validate synthesis request
-	 * @throws {Error} If request is invalid
+	 * @throws {TTSError} `TEXT_TOO_LONG` if the text exceeds `maxTextLength`,
+	 * `INVALID_REQUEST` if the request is otherwise invalid
 	 */
 	protected validateRequest(
 		request: SynthesizeRequest,
 		capabilities: ServerProviderCapabilities,
 	): void {
 		if (!request.text || request.text.trim().length === 0) {
-			throw new Error("Text is required and cannot be empty");
+			throw this.rejectRequest("Text is required and cannot be empty");
 		}
 
 		if (request.text.length > capabilities.standard.maxTextLength) {
-			throw new Error(
+			throw this.rejectRequest(
 				`Text length (${request.text.length}) exceeds maximum (${capabilities.standard.maxTextLength})`,
+				TTSErrorCode.TEXT_TOO_LONG,
 			);
 		}
 
@@ -302,7 +311,7 @@ export abstract class BaseTTSProvider implements ITTSServerProvider {
 			request.format &&
 			!capabilities.extensions.supportedFormats.includes(request.format)
 		) {
-			throw new Error(
+			throw this.rejectRequest(
 				`Format '${request.format}' not supported. Supported formats: ${capabilities.extensions.supportedFormats.join(", ")}`,
 			);
 		}
@@ -311,21 +320,28 @@ export abstract class BaseTTSProvider implements ITTSServerProvider {
 			request.rate !== undefined &&
 			(request.rate < 0.25 || request.rate > 4.0)
 		) {
-			throw new Error("Rate must be between 0.25 and 4.0");
+			throw this.rejectRequest("Rate must be between 0.25 and 4.0");
 		}
 
 		if (
 			request.pitch !== undefined &&
 			(request.pitch < 0 || request.pitch > 2)
 		) {
-			throw new Error("Pitch must be between 0 and 2");
+			throw this.rejectRequest("Pitch must be between 0 and 2");
 		}
 
 		if (
 			request.volume !== undefined &&
 			(request.volume < 0 || request.volume > 1)
 		) {
-			throw new Error("Volume must be between 0 and 1");
+			throw this.rejectRequest("Volume must be between 0 and 1");
 		}
+	}
+
+	private rejectRequest(
+		message: string,
+		code: TTSErrorCode = TTSErrorCode.INVALID_REQUEST,
+	): TTSError {
+		return new TTSError(code, message, undefined, this.providerId);
 	}
 }

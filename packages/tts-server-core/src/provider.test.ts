@@ -1,13 +1,15 @@
 import { describe, expect, it } from "vitest";
 
 import { BaseTTSProvider } from "./provider.js";
-import type {
-	GetVoicesOptions,
-	ServerProviderCapabilities,
-	SynthesizeRequest,
-	SynthesizeResponse,
-	TTSServerConfig,
-	Voice,
+import {
+	type GetVoicesOptions,
+	type ServerProviderCapabilities,
+	type SynthesizeRequest,
+	type SynthesizeResponse,
+	TTSError,
+	TTSErrorCode,
+	type TTSServerConfig,
+	type Voice,
 } from "./types.js";
 
 class TestProvider extends BaseTTSProvider {
@@ -44,6 +46,10 @@ class TestProvider extends BaseTTSProvider {
 		return this.escapeSSML(text);
 	}
 
+	ensureInitializedPublic(): void {
+		this.ensureInitialized();
+	}
+
 	validateRequestPublic(request: SynthesizeRequest): void {
 		this.validateRequest(request, {
 			standard: {
@@ -62,6 +68,16 @@ class TestProvider extends BaseTTSProvider {
 		});
 	}
 }
+
+/** What `fn` throws; fails the test when it returns. */
+const thrown = (fn: () => void): unknown => {
+	try {
+		fn();
+	} catch (err) {
+		return err;
+	}
+	throw new Error("expected a throw");
+};
 
 describe("BaseTTSProvider prosody helpers", () => {
 	const provider = new TestProvider();
@@ -147,6 +163,55 @@ describe("BaseTTSProvider request validation", () => {
 		for (const pitch of [-0.01, 2.01, -5, 5, -20, 20]) {
 			expect(validate(pitch)).toThrow("Pitch must be between 0 and 2");
 		}
+	});
+
+	it("rejects an over-long text as TEXT_TOO_LONG", () => {
+		const err = thrown(() =>
+			provider.validateRequestPublic({ text: "a".repeat(3001) }),
+		);
+
+		expect(err).toBeInstanceOf(TTSError);
+		expect(err).toMatchObject({
+			code: TTSErrorCode.TEXT_TOO_LONG,
+			message: "Text length (3001) exceeds maximum (3000)",
+			providerId: "test",
+		});
+	});
+
+	it("rejects every other invalid request as INVALID_REQUEST", () => {
+		const requests: SynthesizeRequest[] = [
+			{ text: " " },
+			{ text: "hi", format: "wav" },
+			{ text: "hi", rate: 5 },
+			{ text: "hi", pitch: 3 },
+			{ text: "hi", volume: 2 },
+		];
+		for (const request of requests) {
+			const err = thrown(() => provider.validateRequestPublic(request));
+
+			expect(err).toBeInstanceOf(TTSError);
+			expect(err).toMatchObject({
+				code: TTSErrorCode.INVALID_REQUEST,
+				providerId: "test",
+			});
+		}
+	});
+});
+
+describe("BaseTTSProvider initialization guard", () => {
+	it("rejects use before initialize as INITIALIZATION_ERROR", async () => {
+		const provider = new TestProvider();
+		const err = thrown(() => provider.ensureInitializedPublic());
+
+		expect(err).toBeInstanceOf(TTSError);
+		expect(err).toMatchObject({
+			code: TTSErrorCode.INITIALIZATION_ERROR,
+			message: "Provider test not initialized",
+			providerId: "test",
+		});
+
+		await provider.initialize({});
+		expect(() => provider.ensureInitializedPublic()).not.toThrow();
 	});
 });
 

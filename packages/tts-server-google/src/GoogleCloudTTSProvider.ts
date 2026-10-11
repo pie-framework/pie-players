@@ -306,7 +306,11 @@ export class GoogleCloudTTSProvider extends BaseTTSProvider {
 				request.includeSpeechMarks !== false &&
 				this.isStudioMarkUnsupportedError(error)
 			) {
-				return respond(await this.synthesizeAudio(request, voice, true), []);
+				try {
+					return respond(await this.synthesizeAudio(request, voice, true), []);
+				} catch (fallbackError) {
+					throw this.mapGoogleErrorToTTSError(fallbackError);
+				}
 			}
 			throw this.mapGoogleErrorToTTSError(error);
 		}

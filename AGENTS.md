@@ -1,7 +1,7 @@
 # Agent Instructions
 
 This file is the single project guidance entry point for agent tools: the project
-brief, the canonical rules, and the inventory of project skills and commands. Any
+brief, the canonical rules, and the inventory of project skills. Any
 harness that needs project rules reads it. One that cannot gets a pointer file,
 never a copy in `.cursor/rules`, `.github/copilot-instructions.md`, `GEMINI.md` or
 an equivalent, because copies drift silently until two agents give contradictory
@@ -326,8 +326,8 @@ any published version, every package in the suite carries the same version. The
 
 A change made only of documentation gets no Jira ticket and no branch or pull request
 of its own. `scripts/lib/change-scope.mjs` defines documentation: Markdown and images
-under `docs/`, Markdown at the root, and `.claude/`. Package READMEs and changesets
-are not documentation.
+under `docs/` and `.agents/`, Markdown at the root, and `.claude/`. Package READMEs and
+changesets are not documentation.
 
 - Commit it to `develop` and push. The pre-push gate runs only `check:docs` for such a
   push. `develop` requires status checks, so a direct push needs a maintainer who can
@@ -521,15 +521,13 @@ path is never reached. The protection holds only while the hooks carry the
 `.lefthookrc` (a8ab15a0). Repair after one with `bun run prepare` from the main
 checkout, which is also what to run after editing `.lefthookrc` or `lefthook.yml`.
 
-## Skills And Commands
+## Skills
 
-Canonical project skills and commands live in `.claude/skills/` and
-`.claude/commands/`. Do not duplicate them into other harnesses' files or replace them
-with symlinks. A procedure that a person or another harness would also need belongs in
-`docs/`, with the skill as a thin wrapper over it; `consumer-dependency-audit` is the
-pattern.
-
-Skills:
+Canonical project skills live in `.agents/skills/`; each `.claude/skills/<name>/SKILL.md`
+carries only the frontmatter Claude Code discovers it by and a pointer to the record. Do
+not copy them into other harnesses' files or replace them with symlinks. A procedure
+that a person or a harness without skills would also need belongs in `docs/`, with the
+skill as a thin wrapper over it; `consumer-dependency-audit` is the pattern.
 
 - `accessibility-reviewer-assessments` — WCAG 2.2 AA and assessment-specific
   accessibility review of test-taking interfaces.
@@ -540,15 +538,11 @@ Skills:
 - `consumer-dependency-audit` — refreshes the consumer pad, or checks a proposed
   public-surface change against it; a wrapper over
   `docs/integrations/consumer-api-dependencies-maintenance.md`, which owns the
-  procedure.
+  procedure. In Claude Code,
+  `/consumer-dependency-audit [consumer-label | surface | "add <shape>"]` scopes the
+  run to one consumer, one surface, or adding a consumer.
 - `releases-and-changesets` — changesets and release preparation under fixed
   lockstep versioning.
-
-Commands:
-
-- `/consumer-dependency-audit [consumer-label | surface | "add <shape>"]` — runs the
-  `consumer-dependency-audit` skill: a full refresh with no argument, otherwise one
-  consumer label, one surface, or adding a consumer by integration shape.
 
 ## Monorepo Map
 

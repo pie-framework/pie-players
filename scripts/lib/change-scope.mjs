@@ -6,8 +6,8 @@
  * counts as documentation only when nothing but `check:docs` reads it, so a change made of
  * such paths cannot fail a build, a test, a lint or a type check:
  *
- * - Markdown and images under `docs/`. Its JSON, YAML and HTML stay code: `biome lint`
- *   reads them.
+ * - Markdown and images under `docs/` and `.agents/`. Their JSON, YAML and HTML stay
+ *   code: `biome lint` reads them.
  * - Markdown at the repository root. Package READMEs are not documentation here: they ship
  *   in the tarballs, and package tests read some of them.
  * - Everything under `.claude/`, which biome excludes and no check reads.
@@ -15,7 +15,7 @@
  * `.changeset/` is not documentation: a changeset is release input.
  */
 
-const DOCS_FILE = /^docs\/.+\.(md|png|jpe?g|gif|svg|webp)$/i;
+const DOCS_FILE = /^(docs|\.agents)\/.+\.(md|png|jpe?g|gif|svg|webp)$/i;
 const ROOT_MARKDOWN = /^[^/]+\.md$/i;
 
 /** The paths Cortex's browser suite depends on, so a pull request touching one runs it. */

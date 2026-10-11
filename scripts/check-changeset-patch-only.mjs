@@ -6,7 +6,7 @@
  *
  * The repo's release policy is **patch-only / lockstep** (see
  * `AGENTS.md` "Release Version Alignment" and
- * `.claude/skills/releases-and-changesets/SKILL.md`):
+ * `.agents/skills/releases-and-changesets/SKILL.md`):
  *
  *   - Every release publishes every publishable @pie-players/* package.
  *   - Every release is a `patch` bump — even for breaking changes — while

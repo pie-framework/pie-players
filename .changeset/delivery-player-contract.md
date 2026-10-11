@@ -4,10 +4,10 @@
 "@pie-players/pie-assessment-player": patch
 ---
 
-The built-in delivery client follows pie-api-aws's player contract. It stamps
-each request with `x-date`, sends `overrides` only when the map has entries,
-names the session rather than the item in a session model request, and rejects
-with pie-api-aws's error detail. pie-api-aws's flat model response, under
+The built-in delivery client follows the PIE API service's player contract. It
+stamps each request with `x-date`, sends `overrides` only when the map has
+entries, names the session rather than the item in a session model request, and
+rejects with the service's error detail. Its flat model response, under
 authored tags, now refreshes item and passage models.
 
 This breaks three things. `backend.authoring` drops `provider`, `baseUrl`,

@@ -8,6 +8,7 @@ import {
 	buildPreloadedPlayerStaticPackage,
 	type ElementSet,
 	parseElementsInput,
+	publishDistTag,
 	readElementSet,
 	readSpeechLocales,
 } from "../../utils/pie-packages/preloaded-static.js";
@@ -53,7 +54,7 @@ export default class PreloadedPlayerBuildPackage extends Command {
 		}),
 		publishTag: Flags.string({
 			description:
-				"npm dist-tag for publish. Defaults to the config file's set name, or 'latest' for the config that sets \"latest\": true.",
+				"npm dist-tag for publish. Defaults to the config file's set name, or 'latest' for the config that sets \"latest\": true; a prerelease loader publishes under its prerelease id instead, or '<set>-<id>'.",
 		}),
 		speechLocales: Flags.string({
 			description:
@@ -184,7 +185,7 @@ export default class PreloadedPlayerBuildPackage extends Command {
 			delete process.env.PIE_PRELOADED_PLAYER_AUTO_ITERATION;
 		}
 
-		const { outputDir, version } = await this.buildPackage({
+		const { outputDir, version, loaderVersion } = await this.buildPackage({
 			elements: elementsArray,
 			elementTags: Object.fromEntries(
 				elements.filter((element) => element.tag).map((element) => [element.package, element.tag!]),
@@ -201,7 +202,7 @@ export default class PreloadedPlayerBuildPackage extends Command {
 		this.log(`   Output: ${outputDir}\n`);
 
 		if (elementSet) {
-			const cmd = this.buildPublishCommand(flags.publishTag ?? elementSet.distTag);
+			const cmd = this.buildPublishCommand(flags.publishTag ?? publishDistTag(elementSet, loaderVersion));
 			if (flags.dryRun) {
 				this.log(`[DRY RUN] Would run: ${cmd}`);
 				this.log(`[DRY RUN] In directory: ${outputDir}`);

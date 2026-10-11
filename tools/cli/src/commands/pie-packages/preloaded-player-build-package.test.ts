@@ -32,9 +32,15 @@ class TestCommand extends PreloadedPlayerBuildPackage {
 		return { name: "star-0326-ng", distTag: "latest" };
 	}
 
+	public loaderVersion = "0.3.75";
+
 	protected override async buildPackage(): Promise<any> {
 		this.buildCalls += 1;
-		return { outputDir: "/tmp/out", version: "1.0.0-abc1234.1" };
+		return {
+			outputDir: "/tmp/out",
+			version: `${this.loaderVersion}-star-0326-ng.1`,
+			loaderVersion: this.loaderVersion,
+		};
 	}
 
 	protected override publish(): string {
@@ -65,6 +71,18 @@ describe("preloaded-player-build-package command", () => {
 		expect(command.buildCalls).toBe(1);
 		expect(command.publishCalls).toBe(0);
 		expect(command.logs.some((line) => line.endsWith("--tag latest"))).toBe(true);
+	});
+
+	test("publishes a prerelease loader's build under the prerelease id", async () => {
+		const command = new TestCommand([], {} as any);
+		command.loaderVersion = "1.0.0-beta.0";
+		command.flags = {
+			elementsFile: "configs/preloaded-player/star-0326-ng.json",
+			publish: true,
+			dryRun: true,
+		};
+		await command.run();
+		expect(command.logs.some((line) => line.endsWith("--tag beta"))).toBe(true);
 	});
 
 	test("refuses to publish a build that has no config file to name it", async () => {

@@ -12,6 +12,7 @@ import {
 	generateIndex,
 	minifyPlayerModules,
 	parseElementsInput,
+	publishDistTag,
 	readElementSet,
 	readSpeechLocales,
 } from "./preloaded-static.js";
@@ -66,6 +67,20 @@ describe("preloaded static utilities", () => {
 			elements: [{ package: "@pie-element/multiple-choice", version: "13.4.4" }],
 		});
 		expect(await readElementSet(file)).toEqual({ name: "star-0326", distTag: "latest" });
+	});
+
+	test("publishDistTag keeps a stable loader on the set's tag", () => {
+		expect(publishDistTag({ name: "star-0326", distTag: "latest" }, "0.3.75")).toBe("latest");
+		expect(publishDistTag({ name: "knowledge-checks", distTag: "knowledge-checks" }, "0.3.75")).toBe(
+			"knowledge-checks",
+		);
+	});
+
+	test("publishDistTag moves a prerelease loader off latest and the set tags", () => {
+		expect(publishDistTag({ name: "star-0326", distTag: "latest" }, "1.0.0-beta.2")).toBe("beta");
+		expect(
+			publishDistTag({ name: "knowledge-checks", distTag: "knowledge-checks" }, "1.0.0-beta.2"),
+		).toBe("knowledge-checks-beta");
 	});
 
 	test("readElementSet rejects a file name that cannot be a prerelease identifier", async () => {

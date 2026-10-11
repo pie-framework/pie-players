@@ -450,8 +450,8 @@ locale.
 
 1. ~~**BCP-47 resolution.**~~ **Done.**
    `@pie-players/pie-players-shared/i18n/language-tags` provides
-   `normalizeLanguageTag`, `languageTagsEqual`, `languageTagLookupSequence` and
-   `findBestLanguageMatch` — a pure module with no locale data and no DOM, kept
+   `normalizeLanguageTag`, `toLanguageTag`, `languageTagsEqual`,
+   `languageTagLookupSequence` and `findBestLanguageMatch` — a pure module with no locale data and no DOM, kept
    out of `./i18n` so importing it does not pull the eagerly-bundled English
    catalog. The catalog resolver now expands each requested tag into its RFC 4647
    lookup sequence instead of comparing with `===`, and `getAllAlternatives` keys

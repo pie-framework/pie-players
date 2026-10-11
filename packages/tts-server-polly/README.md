@@ -118,7 +118,7 @@ AWS_SECRET_ACCESS_KEY=your_secret_key
 | Speech Marks | Native |
 | SSML | Polly's supported subset |
 | Pitch Control | SSML; standard engine only |
-| Rate Control | SSML |
+| Rate Control | SSML; up to 2× |
 | Volume Control | Client-side |
 | Max Text Length | 3000 chars |
 | Audio Formats | MP3, OGG Vorbis, PCM |

@@ -118,9 +118,9 @@ if (!cached) {
 process's heap — 100 entries by default, evicting the least recently used entry,
 with expired entries dropped ahead of live ones — so it is lost on restart and
 every replica of a scaled deployment synthesizes the same passage into its own
-copy. A production host implements `ITTSCache` over shared storage;
-[`tts-server-polly/examples/sveltekit/synthesize-server.ts`](../tts-server-polly/examples/sveltekit/synthesize-server.ts)
-sketches the Redis shape.
+copy. A production host implements `ITTSCache` over shared storage; Step 5 of the
+[Polly integration guide](../tts-server-polly/examples/INTEGRATION-GUIDE.md#step-5-add-redis-caching-optional)
+sketches Redis.
 
 ## API Reference
 

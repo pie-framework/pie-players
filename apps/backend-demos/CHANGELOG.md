@@ -1,5 +1,56 @@
 # @pie-players/backend-demos
 
+## 0.1.33
+
+### Patch Changes
+
+- Updated dependencies [faf16b9]
+- Updated dependencies [aa9e608]
+- Updated dependencies [3f3eb08]
+- Updated dependencies [7cf309e]
+- Updated dependencies [7400511]
+- Updated dependencies [14e53c9]
+- Updated dependencies [53940c9]
+- Updated dependencies [6b26e88]
+- Updated dependencies [f5465e5]
+- Updated dependencies [8edca42]
+- Updated dependencies [c6b509c]
+- Updated dependencies [6ee4cb8]
+- Updated dependencies [1025fba]
+- Updated dependencies [296055c]
+- Updated dependencies [6f57b31]
+- Updated dependencies [ad05203]
+- Updated dependencies [240f300]
+- Updated dependencies [4e9913f]
+- Updated dependencies [880bb53]
+- Updated dependencies [cdc3dd7]
+- Updated dependencies [dcc7375]
+- Updated dependencies [b1a8561]
+- Updated dependencies [b2945cd]
+- Updated dependencies [7c162ea]
+- Updated dependencies [78491f2]
+- Updated dependencies [0e00095]
+- Updated dependencies [7aeddb9]
+- Updated dependencies [3725209]
+- Updated dependencies [3ac0028]
+- Updated dependencies [d7c46ac]
+- Updated dependencies [bb9c165]
+- Updated dependencies [1ec8e34]
+- Updated dependencies [d89f462]
+- Updated dependencies [cb93fdd]
+- Updated dependencies [8122e1e]
+- Updated dependencies [bcba901]
+- Updated dependencies [f80f159]
+- Updated dependencies [8d94ae3]
+- Updated dependencies [d9f56e8]
+- Updated dependencies [5b15d5c]
+- Updated dependencies [4e9f832]
+- Updated dependencies [55d97fd]
+  - @pie-players/pie-item-player@0.3.75
+  - @pie-players/pie-section-player@0.3.75
+  - @pie-players/pie-players-shared@0.3.75
+  - @pie-players/demo-ui@0.1.2
+
 ## 0.1.32
 
 ### Patch Changes

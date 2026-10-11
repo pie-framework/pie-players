@@ -38,16 +38,14 @@ const passageConfig = {
 };
 
 describe("delivery backend model refresh helpers", () => {
-	test("normalizes array model refresh results as item models", () => {
-		const result = normalizeDeliveryModelResult([
+	test("offers an array model refresh result to item and passage configs", () => {
+		const models = [
 			{ id: "item-model", element: "multiple-choice", prompt: "Updated" },
-		]);
+		];
 
-		expect(result).toEqual({
-			models: [
-				{ id: "item-model", element: "multiple-choice", prompt: "Updated" },
-			],
-			passageModels: undefined,
+		expect(normalizeDeliveryModelResult(models)).toEqual({
+			models,
+			passageModels: models,
 			metadata: undefined,
 		});
 	});
@@ -167,30 +165,40 @@ describe("delivery backend model refresh helpers", () => {
 		});
 	});
 
-	test("rejects unversioned incoming element tags for versioned current models", () => {
+	test("matches the authored tag of a versioned current model", () => {
 		const refreshed = applyDeliveryModelResultToConfigs({
 			itemConfig: versionedConfig,
 			passageConfig,
 			result: {
 				models: [
-					{
-						id: "item-model",
-						element: "multiple-choice",
-						prompt: "Should not apply",
-					},
+					{ id: "item-model", element: "multiple-choice", prompt: "Applied" },
 				],
 				passageModels: [
-					{
-						id: "passage-model",
-						element: "pie-passage",
-						text: "Should not apply",
-					},
+					{ id: "passage-model", element: "pie-passage", text: "Applied" },
 				],
 			},
 		});
 
+		expect(refreshed.itemConfig?.models[0]).toEqual({
+			id: "item-model",
+			element: "multiple-choice--version-11-4-0",
+			prompt: "Applied",
+		});
+		expect(refreshed.passageConfig?.models[0]).toEqual({
+			id: "passage-model",
+			element: "pie-passage--version-1-2-3",
+			text: "Applied",
+		});
+	});
+
+	test("rejects an authored tag naming a different element", () => {
+		const refreshed = applyDeliveryModelResultToConfigs({
+			itemConfig: versionedConfig,
+			passageConfig: null,
+			result: [{ id: "item-model", element: "pie-passage", prompt: "No" }],
+		});
+
 		expect(refreshed.itemConfig).toEqual(versionedConfig);
-		expect(refreshed.passageConfig).toEqual(passageConfig);
 		expect(refreshed.changed).toBe(false);
 	});
 

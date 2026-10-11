@@ -1,6 +1,6 @@
 {
 	"name": "@pie-players/backend-demos",
-	"version": "0.1.32",
+	"version": "0.1.33",
 	"description": "Backend integration demos for PIE players",
 	"type": "module",
 	"private": true,
@@ -19,7 +19,7 @@
 	},
 	"devDependencies": {
 		"@sveltejs/adapter-node": "^6.0.0",
-		"@sveltejs/kit": "^3.0.0",
+		"@sveltejs/kit": "^3.0.1",
 		"@sveltejs/vite-plugin-svelte": "^7.3.1",
 		"@tailwindcss/vite": "^4.3.3",
 		"@types/bun": "^1.4.2",

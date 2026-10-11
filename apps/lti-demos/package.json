@@ -1,6 +1,6 @@
 {
 	"name": "@pie-players/lti-demos",
-	"version": "0.1.36",
+	"version": "0.1.37",
 	"description": "LTI host integration demos for PIE Players",
 	"type": "module",
 	"private": true,
@@ -19,7 +19,7 @@
 	},
 	"devDependencies": {
 		"@sveltejs/adapter-node": "^6.0.0",
-		"@sveltejs/kit": "^3.0.0",
+		"@sveltejs/kit": "^3.0.1",
 		"@sveltejs/vite-plugin-svelte": "^7.3.1",
 		"@types/node": "^26.6.4",
 		"svelte": "^5.57.1",

@@ -1,5 +1,115 @@
 # @pie-players/pie-item-player
 
+## 0.3.75
+
+### Patch Changes
+
+- faf16b9: `components.css` no longer styles layout tables: a `.table` marked `.table-no-border` or `role="presentation"` gets no grid, full width or cell padding, so migrated items Host P renders lay out as they did under the legacy player, without a rule above the first row or tiles pushed apart. Bordered data tables keep the grid.
+- aa9e608: A `.table.lrn_width_auto` in `components.css` sizes to its content again (PD-194). Migrated content Host P renders carries the class.
+- 7cf309e: An image in sanitized markup that the host's stylesheet lays out as a block, such as under an `img { display: block }` reset, gets the `pie-image-scroll-block` wrapper once rendered, so no gap opens below it.
+- 7400511: The `.pie-image-scroll` wrapper is inline-block, so images keep their place in a line of text or a row of images instead of each taking a line of its own. An image an element lays out as a block keeps a block wrapper, so no gap opens below it. An image wider than its column still scrolls.
+- 14e53c9: `load-complete` waits for the item's elements to render, within the same
+  two-second bound as the markup's math. It went out after the models were
+  assigned and 60–110ms before the elements drew, so a host that reveals the item
+  on it showed a half-drawn item and read its render time low. An element still
+  empty once the player's DOM has been quiet for 200ms, such as a rubric shown to
+  a student, counts as rendering nothing.
+  
+  Hosts P and M gate on `load-complete`, and the section player's `content-loaded`
+  and `pie-loading-complete`, which Host A counts, follow it: they now arrive once
+  the elements have rendered, and up to 200ms later for an item holding an
+  element that renders nothing.
+- 6b26e88: `load-complete` waits for the math in an item's and a passage's own markup to be
+  typeset, for at most two seconds. It went out before that typeset started, so a
+  host that reveals the item on it could show the markup's TeX raw for a moment,
+  then typeset at a different scale from the elements' math, shifting the layout.
+  A renderer that is torn down while it waits no longer emits `load-complete`.
+  
+  Hosts P and M gate on `load-complete`, and the section player's `content-loaded`
+  and `pie-loading-complete`, which Host A counts, follow it: for an item whose
+  markup holds math they now arrive once that math is typeset.
+- 8edca42: A host that hands a mounted player a session with a different id, as a section card keyed by item id does when the next section shows the same item, no longer has the outgoing element's pending response written into the incoming session: the response is committed with the session it was given for first. An empty session with a new id now replaces the previous attempt's responses instead of being ignored, so a new attempt on the same item starts unanswered.
+- 1025fba: `registerPreloadedElements` takes math asset options as a second argument,
+  `{ math: { assetRoot, assetUrls, speechPath, speechLocales } }`, and writes them
+  to `window["@pie-lib/math-rendering@2"].opts`, where every copy of
+  `@pie-element/shared-math-rendering-mathjax` from 0.1.3 reads them as it starts
+  MathJax. A host that registers elements it bundles itself, or bundles the
+  adapter's npm build, sets `assetRoot`, an npm root serving MathJax's files, or
+  lists each file's URL in `assetUrls`: without either, the browser build renders
+  without web fonts and speech and the npm build loads no MathJax. Under `esm` the
+  item player's own MathJax, now adapter 0.1.3, loads its files from the element
+  CDN's npm root. Under `preloaded` the item player forwards the adapter's
+  `pie-mathjax-no-asset-root` and `pie-mathjax-version-conflict` events to
+  instrumentation when `trackPageActions` is on.
+  
+  Generated preloaded packages carry MathJax inside their element and player
+  chunks and list each font and speech file under `dist/mathjax/npm/` in
+  `assetUrls` by `new URL(…, import.meta.url)`, so every file loads from the
+  package's own server, or from the host's build output when a host bundler
+  processes the entry. Speech ships in English; a build config's `speechLocales`
+  ships more. The generator takes elements on adapter 0.1.3 or later and no longer
+  ships `dist/mathjax/load.js` or a page MathJax.
+  
+  Hosts P and R load generated packages: a set config pinning elements on an
+  earlier adapter stops building until it moves, and packages already published are
+  unchanged. Host M registers no math options, so the player's own markup math
+  renders without web fonts or speech once it takes this release. Hosts V and A run
+  `iife` and see no change.
+- 296055c: `registerPreloadedElements` takes `math.inTabOrder`, a boolean it writes to `window["@pie-lib/math-rendering@2"].opts.inTabOrder`. With `true`, copies of `@pie-element/shared-math-rendering-mathjax` that read it put typeset math in the keyboard tab order as they start MathJax; unset, math stays out of it.
+- ad05203: Remove deprecated surfaces.
+  
+  - `pie-item-player` drops `customClassname`, `bundleHost`, `bundleEndpoints`, `disableBundler` and `reFetchBundle`; use `customClassName`, `loaderOptions.bundleHost` and `strategy="preloaded"`.
+  - `pie-item-player` drops `updateElementModel()`; reassign `config` instead.
+  - `scorePieItem` drops `outcomeArguments` and always calls `outcome(model, session, env)`.
+  - The backend client no longer strips a trailing `/api` from `baseUrl`; pass the origin.
+  - The Desmos provider throws at initialization without an `apiKey` or `proxyEndpoint` instead of requesting the unkeyed script.
+  - `tools.providers.tts` reports `tools.unknownProviderKey`; the `tools.removedProviderKey` diagnostic is gone.
+- 880bb53: Under a color scheme, `components.css` overrides the colours authored into
+  content that PIE elements mark (PIE-1119): ink and borders take the scheme's
+  text and border colours, a near-white fill turns transparent, and any other fill
+  inverts to the scheme's ink with its content in the scheme's page colour. The
+  default theme keeps authored colours. Host R, the one host that sets a scheme,
+  sees authored colours follow it; a host whose own scoped copy sits inside the
+  scheme root gets the same, one whose scheme root is outside its scope does not.
+- 3725209: The `.table` grid rules (`.table`, `.table-bordered`, `thead`, `tbody + tbody`)
+  in `components.css` now paint `--pie-text`, where they used a 15% mix of it.
+  The mix measured 1.41:1 on white, short of the 3:1 SC 1.4.11 requires for a
+  grid rule against the page. `--pie-text` is held to 4.5:1 against the page, so
+  the rules clear 3:1 on every theme and scheme. Authored tables using these
+  classes show text-coloured rules where they showed faint grey ones. Under a
+  color scheme, the rules around a filled cell the scheme inverts take its page
+  colour, so adjacent filled header cells stay apart.
+  
+  Consumer impact: Host V loads its own copy, scoped to its item container. Its
+  item tables get the stronger rules once it upgrades `pie-theme`; until then they
+  keep the fixed `#dee2e6` grey used before 0.3.66.
+- d9f56e8: The toolkit root exports 185 names instead of 326: the names only tool packages use moved to `./tools/registration`, and the names nothing imports are removed, among them the backend activity-session adapters, the item loader and the session-storage helpers. The TypeScript examples in the READMEs match the current API.
+- Updated dependencies [7cf309e]
+- Updated dependencies [7400511]
+- Updated dependencies [14e53c9]
+- Updated dependencies [53940c9]
+- Updated dependencies [6b26e88]
+- Updated dependencies [f5465e5]
+- Updated dependencies [8edca42]
+- Updated dependencies [c6b509c]
+- Updated dependencies [1025fba]
+- Updated dependencies [296055c]
+- Updated dependencies [6f57b31]
+- Updated dependencies [ad05203]
+- Updated dependencies [4e9913f]
+- Updated dependencies [cdc3dd7]
+- Updated dependencies [dcc7375]
+- Updated dependencies [78491f2]
+- Updated dependencies [7aeddb9]
+- Updated dependencies [3ac0028]
+- Updated dependencies [d7c46ac]
+- Updated dependencies [1ec8e34]
+- Updated dependencies [8122e1e]
+- Updated dependencies [bcba901]
+- Updated dependencies [d9f56e8]
+- Updated dependencies [55d97fd]
+  - @pie-players/pie-players-shared@0.3.75
+
 ## 0.3.74
 
 ### Patch Changes

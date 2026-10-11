@@ -1,6 +1,7 @@
 import type { ConfigEntity, PieModel } from "@pie-players/pie-players-shared";
-import type { BackendDeliveryModelResult } from "./types.js";
 import { isPlainRecord } from "@pie-players/pie-players-shared/object";
+import { parseVersionedTagName } from "@pie-players/pie-players-shared/pie/tag-names";
+import type { BackendDeliveryModelResult } from "./types.js";
 
 export type NormalizedDeliveryModelResult = {
 	models?: Array<Record<string, unknown>>;
@@ -28,13 +29,26 @@ function isBackendModel(value: unknown): value is Record<string, unknown> & {
 	);
 }
 
+/**
+ * A versioned incoming tag must equal the current one. An unversioned tag is
+ * the authored name pie-api-aws answers with, so it matches the current model
+ * whose runtime tag carries that name plus a version suffix.
+ */
 function sameModelIdentity(
 	currentModel: PieModel,
 	incomingModel: Record<string, unknown> & { id: string; element: string },
 ): boolean {
+	if (currentModel.id !== incomingModel.id) return false;
+	if (currentModel.element === incomingModel.element) return true;
+	if (
+		parseVersionedTagName(incomingModel.element).existingEncodedVersion !==
+		undefined
+	) {
+		return false;
+	}
 	return (
-		currentModel.id === incomingModel.id &&
-		currentModel.element === incomingModel.element
+		parseVersionedTagName(currentModel.element).baseName ===
+		incomingModel.element
 	);
 }
 
@@ -70,13 +84,17 @@ function mergeModelsForConfig(
 	};
 }
 
+/**
+ * An array result is pie-api-aws's flat list: item models, then passage
+ * models. Each config takes the entries whose identity it holds.
+ */
 export function normalizeDeliveryModelResult(
 	result: BackendDeliveryModelResult,
 ): NormalizedDeliveryModelResult {
 	if (Array.isArray(result)) {
 		return {
 			models: result,
-			passageModels: undefined,
+			passageModels: result,
 			metadata: undefined,
 		};
 	}

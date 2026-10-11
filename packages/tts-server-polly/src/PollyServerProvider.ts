@@ -87,6 +87,9 @@ export interface PollyProviderConfig extends TTSServerConfig {
  */
 const POLLY_SSML_TAGS = ["<amazon:", "<aws-"];
 
+/** Polly's `<prosody rate>` runs 20–200%. */
+const POLLY_MAX_RATE = 2;
+
 /**
  * AWS SDK exception names (`error.name`) that mean the request itself was
  * invalid or unsupported, as opposed to a transient/provider-side failure.
@@ -268,11 +271,19 @@ export class PollyServerProvider extends BaseTTSProvider {
 		}
 	}
 
-	/** Neural voices take `<prosody>` rate and volume but not pitch. */
+	/**
+	 * Neural voices take `<prosody>` rate and volume but not pitch. Polly's
+	 * rate runs 20–200%, so a faster request speaks at 200%.
+	 */
 	protected override buildProsodyAttrs(request: SynthesizeRequest): string {
-		return super.buildProsodyAttrs(
-			this.engine === "neural" ? { ...request, pitch: undefined } : request,
-		);
+		return super.buildProsodyAttrs({
+			...request,
+			rate:
+				request.rate === undefined
+					? undefined
+					: Math.min(request.rate, POLLY_MAX_RATE),
+			pitch: this.engine === "neural" ? undefined : request.pitch,
+		});
 	}
 
 	/**

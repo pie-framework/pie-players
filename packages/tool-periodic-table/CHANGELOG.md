@@ -1,5 +1,63 @@
 # @pie-players/pie-tool-periodic-table
 
+## 0.3.75
+
+### Patch Changes
+
+- d9f56e8: The toolkit root exports 185 names instead of 326: the names only tool packages use moved to `./tools/registration`, and the names nothing imports are removed, among them the backend activity-session adapters, the item loader and the session-storage helpers. The TypeScript examples in the READMEs match the current API.
+- Updated dependencies [d58f703]
+- Updated dependencies [3f3eb08]
+- Updated dependencies [7cf309e]
+- Updated dependencies [7400511]
+- Updated dependencies [14e53c9]
+- Updated dependencies [53940c9]
+- Updated dependencies [6b26e88]
+- Updated dependencies [f5465e5]
+- Updated dependencies [8edca42]
+- Updated dependencies [c6b509c]
+- Updated dependencies [6ee4cb8]
+- Updated dependencies [1025fba]
+- Updated dependencies [db280dd]
+- Updated dependencies [296055c]
+- Updated dependencies [6f57b31]
+- Updated dependencies [ad05203]
+- Updated dependencies [240f300]
+- Updated dependencies [4e9913f]
+- Updated dependencies [cdc3dd7]
+- Updated dependencies [dcc7375]
+- Updated dependencies [7c162ea]
+- Updated dependencies [78491f2]
+- Updated dependencies [0e00095]
+- Updated dependencies [7aeddb9]
+- Updated dependencies [d36dbae]
+- Updated dependencies [57a8d50]
+- Updated dependencies [3ac0028]
+- Updated dependencies [3ac0028]
+- Updated dependencies [d7c46ac]
+- Updated dependencies [bb9c165]
+- Updated dependencies [699f1c6]
+- Updated dependencies [d2de576]
+- Updated dependencies [1ec8e34]
+- Updated dependencies [d89f462]
+- Updated dependencies [cb93fdd]
+- Updated dependencies [cf199c9]
+- Updated dependencies [8122e1e]
+- Updated dependencies [bcba901]
+- Updated dependencies [c5634aa]
+- Updated dependencies [f80f159]
+- Updated dependencies [36e2770]
+- Updated dependencies [9464e2b]
+- Updated dependencies [8d94ae3]
+- Updated dependencies [d9f56e8]
+- Updated dependencies [5b15d5c]
+- Updated dependencies [4e9f832]
+- Updated dependencies [ccc2765]
+- Updated dependencies [fbd4570]
+- Updated dependencies [55d97fd]
+- Updated dependencies [4d94e9c]
+  - @pie-players/pie-assessment-toolkit@0.3.75
+  - @pie-players/pie-players-shared@0.3.75
+
 ## 0.3.74
 
 ### Patch Changes

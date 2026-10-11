@@ -1,5 +1,39 @@
 # @pie-players/pie-theme
 
+## 0.3.75
+
+### Patch Changes
+
+- faf16b9: `components.css` no longer styles layout tables: a `.table` marked `.table-no-border` or `role="presentation"` gets no grid, full width or cell padding, so migrated items Host P renders lay out as they did under the legacy player, without a rule above the first row or tiles pushed apart. Bordered data tables keep the grid.
+- aa9e608: A `.table.lrn_width_auto` in `components.css` sizes to its content again (PD-194). Migrated content Host P renders carries the class.
+- 7400511: The `.pie-image-scroll` wrapper is inline-block, so images keep their place in a line of text or a row of images instead of each taking a line of its own. An image an element lays out as a block keeps a block wrapper, so no gap opens below it. An image wider than its column still scrolls.
+- c6b509c: Each section-player input has one tier: `nds-icons`, `locale` and `tool-config-strictness` are layout attributes only, and `assessmentId`, `onFrameworkError`, `onStageChange`, `onLoadingComplete` and tool config are `runtime` keys only, so a host that sets `assessment-id` or a callback property on a layout element moves it into `runtime`. The toolkit's `pnp-enforcement` attribute is gone; set `tools.pnpEnforcement`. Layout elements drop `selectComposition`, `selectNavigation`, `selectReadiness` and the readiness-phase types; read `getSnapshot()` and listen for `pie-stage-change`. The section player's entries are the root, `./browser`, the splitpane component subpath, `./contracts/runtime-host-contract`, `./contracts/host-hooks`, `./policies` and `./item-section`; a host importing another component subpath imports the root. The layout-contract constants, `SECTION_PLAYER_PUBLIC_EVENTS`, `isPreloadEnabled` and `isTelemetryEnabled` are removed; read `resolveSectionPlayerPolicies(policies)`. The toolkit's `./runtime/engine` no longer exports `createReadinessDetail`, `resolveOnFrameworkError`, `DEFAULT_ASSESSMENT_ID` or `EffectiveRuntime`.
+  
+  `ToolkitCoordinatorApi` drops `getServiceBundle`, `getInitStatus`, `isToolEnabled`, `registerToolContextResolver` and `setToolContextResolvers`, and the toolkit element drops `getServiceBundle()`; read the coordinator's service properties, `isReady()` and `getToolConfig()`, and pass resolvers as `runtime.toolContextResolvers`. A host-supplied coordinator must implement `onReadyChange`. `ToolkitInitStatus` and `ToolkitServiceBundle` are removed. `createEmptyPersonalNeedsProfile` moves to `@pie-players/pie-default-tool-loaders`, which drops `registerPackagedTools`, `registerDefaultToolModuleLoaders`, `PACKAGED_TOOL_ORDER`, `PACKAGED_TOOL_PLACEMENT`, `UNIVERSAL_SUPPORTS_PRESET` and the re-exported `ToolModuleLoader`. The policy source-tag types, `ToolPolicyEntry.sources` and `ToolPolicyDiagnostic.source` are removed; a decision's `rule` and a diagnostic's `details` carry attribution, and `"tts"` is no longer special-cased as a tool id. A profile's `prohibitedSupports` now outranks item and district requirements, so PNP precedence is one order: district block, `false` override, item restriction, prohibition, `true` override, item requirement, district requirement, profile support. `stimulusRefs` is removed from the shared types, and `toolConfigs` and `toolParameters` are object-valued records. `@pie-players/pie-tool-calculator-shared` drops its root entry; import `/calculator-element`. The PNP debugger and TTS settings panels dispatch `close` from the host element, without bubbling.
+  
+  Text-to-speech names a server provider one way: `backend: "server"` with `serverProvider: "polly" | "google" | "custom"`, so a host setting `backend: "polly"` or `"google"` moves the name to `serverProvider`, and a string `provider` is rejected. Keys nested under `settings` are no longer read; move them, `mathSpeech` included, to the top level. `TextToSpeechToolProviderConfig` is closed and exported in place of `ToolConfig` and `TTSToolConfig`. `TTSFeature` and `ITTSProvider.supportsFeature` are removed; a custom provider deletes the method. `DEFAULT_TTS_SPEED_OPTIONS`, `normalizeTTSSpeedOptions`, `resolveRuntimeProvider`, `resolveTTSBackend`, `resolveTransportMode` and `BrowserVoiceTraits` leave `./tools/registration`. `TtsServiceApi.onStateChange(callback)` returns its unsubscribe function and `offStateChange` is removed, and `bindTtsAudioHandoff` drops `listenerId`. A custom highlight coordinator implements `highlightTTSWordElement` and `highlightTTSSentenceElements`; `clearAll` leaves the interface. `TTSService.initialize` rejects when its provider fails to start, and the coordinator owns the browser fallback, reported as `pie-tool-init-fallback`. `<pie-tool-tts-inline>` defaults `layoutMode` to `left-aligned`, and reads `--pie-button-border` and `--pie-button-hover-bg` in place of `--pie-button-border-color` and `--pie-button-hover-background-color`. The annotation toolbar offers read-aloud only when a toolbar hosts `textToSpeech`. `--pie-background-light` leaves the theme token registry, the assessment player's navigation reads `--pie-background` in its place, and the dictionary and picture-dictionary panels read `--pie-secondary-background`. `PieThemeTokenScope` drops `"unsupported"` and `PieThemeTokenStatus` drops `"intentional-gap"`, which no entry uses.
+- 240f300: `<pie-item-shell>` is removed. Section-player item cards render `<pie-item-scope>`, the toolkit's item element, which now takes `region-policy`; `data-pie-shell-root="item"` and the card's classes are unchanged, so a host selecting the tag selects `pie-item-scope` instead. The theme's font-size rules scale `pie-item-scope`, around a host's own item player too.
+- 880bb53: Under a color scheme, `components.css` overrides the colours authored into
+  content that PIE elements mark (PIE-1119): ink and borders take the scheme's
+  text and border colours, a near-white fill turns transparent, and any other fill
+  inverts to the scheme's ink with its content in the scheme's page colour. The
+  default theme keeps authored colours. Host R, the one host that sets a scheme,
+  sees authored colours follow it; a host whose own scoped copy sits inside the
+  scheme root gets the same, one whose scheme root is outside its scope does not.
+- 3725209: The `.table` grid rules (`.table`, `.table-bordered`, `thead`, `tbody + tbody`)
+  in `components.css` now paint `--pie-text`, where they used a 15% mix of it.
+  The mix measured 1.41:1 on white, short of the 3:1 SC 1.4.11 requires for a
+  grid rule against the page. `--pie-text` is held to 4.5:1 against the page, so
+  the rules clear 3:1 on every theme and scheme. Authored tables using these
+  classes show text-coloured rules where they showed faint grey ones. Under a
+  color scheme, the rules around a filled cell the scheme inverts take its page
+  colour, so adjacent filled header cells stay apart.
+  
+  Consumer impact: Host V loads its own copy, scoped to its item container. Its
+  item tables get the stronger rules once it upgrades `pie-theme`; until then they
+  keep the fixed `#dee2e6` grey used before 0.3.66.
+- d9f56e8: The toolkit root exports 185 names instead of 326: the names only tool packages use moved to `./tools/registration`, and the names nothing imports are removed, among them the backend activity-session adapters, the item loader and the session-storage helpers. The TypeScript examples in the READMEs match the current API.
+
 ## 0.3.74
 
 ### Patch Changes

@@ -693,7 +693,6 @@ export class AssessmentPlayerDefaultElement
 			sectionPlayerRuntime: this.sectionPlayerRuntime,
 			playerType: this.playerType,
 			assessmentId: this.assessmentId || undefined,
-			attemptId: this.attemptId || undefined,
 			env: this.env as Record<string, unknown> | null,
 			coordinator: this.coordinator,
 		}) as Record<string, unknown>;

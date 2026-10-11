@@ -131,7 +131,8 @@ lists the variables the demo routes read and the IAM role setup for production.
 - **SSML and prosody.** Text containing SSML tags, Polly's `<amazon:…>` and
   `<aws-…>` extensions included, goes to Polly unchanged. Plain text with a
   `rate` or `pitch` other than 1 is escaped and wrapped in `<speak><prosody>`,
-  so the two apply to plain text only. The neural engine drops `pitch`.
+  so the two apply to plain text only. A `rate` above 2 speaks at 2, Polly's
+  200% ceiling. The neural engine drops `pitch`.
 
 ### Voice Selection
 
@@ -147,7 +148,7 @@ section has the matching rules.
 | Speech Marks | Word, sentence and SSML marks |
 | SSML | Polly's supported subset |
 | Pitch Control | Standard engine only; plain text |
-| Rate Control | Plain text, through `<prosody>` |
+| Rate Control | Plain text, through `<prosody>`; up to 2× |
 | Volume Control | Not supported |
 | Max Text Length | 3000 characters |
 | Audio Formats | MP3, Ogg Vorbis, PCM |

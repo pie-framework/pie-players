@@ -1,5 +1,13 @@
 # @pie-players/pie-calculator-cortex
 
+## 0.3.75
+
+### Patch Changes
+
+- d9f56e8: The toolkit root exports 185 names instead of 326: the names only tool packages use moved to `./tools/registration`, and the names nothing imports are removed, among them the backend activity-session adapters, the item loader and the session-storage helpers. The TypeScript examples in the READMEs match the current API.
+- Updated dependencies [bcba901]
+  - @pie-players/pie-calculator@0.3.75
+
 ## 0.3.74
 
 ### Patch Changes

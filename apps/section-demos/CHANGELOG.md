@@ -1,5 +1,96 @@
 # @pie-players/section-demos
 
+## 0.1.88
+
+### Patch Changes
+
+- Updated dependencies [d58f703]
+- Updated dependencies [363a8d9]
+- Updated dependencies [faf16b9]
+- Updated dependencies [aa9e608]
+- Updated dependencies [7632e52]
+- Updated dependencies [3f3eb08]
+- Updated dependencies [7cf309e]
+- Updated dependencies [7400511]
+- Updated dependencies [14e53c9]
+- Updated dependencies [53940c9]
+- Updated dependencies [6b26e88]
+- Updated dependencies [f5465e5]
+- Updated dependencies [8edca42]
+- Updated dependencies [c6b509c]
+- Updated dependencies [6ee4cb8]
+- Updated dependencies [1025fba]
+- Updated dependencies [db280dd]
+- Updated dependencies [296055c]
+- Updated dependencies [6f57b31]
+- Updated dependencies [ad05203]
+- Updated dependencies [240f300]
+- Updated dependencies [4e9913f]
+- Updated dependencies [880bb53]
+- Updated dependencies [cdc3dd7]
+- Updated dependencies [dcc7375]
+- Updated dependencies [b1a8561]
+- Updated dependencies [b2945cd]
+- Updated dependencies [7c162ea]
+- Updated dependencies [78491f2]
+- Updated dependencies [0e00095]
+- Updated dependencies [7aeddb9]
+- Updated dependencies [d36dbae]
+- Updated dependencies [3725209]
+- Updated dependencies [57a8d50]
+- Updated dependencies [3ac0028]
+- Updated dependencies [3ac0028]
+- Updated dependencies [d7c46ac]
+- Updated dependencies [bb9c165]
+- Updated dependencies [699f1c6]
+- Updated dependencies [d2de576]
+- Updated dependencies [1ec8e34]
+- Updated dependencies [d89f462]
+- Updated dependencies [cb93fdd]
+- Updated dependencies [cf199c9]
+- Updated dependencies [8122e1e]
+- Updated dependencies [bcba901]
+- Updated dependencies [c5634aa]
+- Updated dependencies [f80f159]
+- Updated dependencies [36e2770]
+- Updated dependencies [9464e2b]
+- Updated dependencies [8d94ae3]
+- Updated dependencies [d9f56e8]
+- Updated dependencies [5b15d5c]
+- Updated dependencies [4e9f832]
+- Updated dependencies [ccc2765]
+- Updated dependencies [fbd4570]
+- Updated dependencies [55d97fd]
+- Updated dependencies [4d94e9c]
+  - @pie-players/pie-assessment-toolkit@0.3.75
+  - @pie-players/pie-tool-annotation-toolbar@0.3.75
+  - @pie-players/pie-tool-tts-inline@0.3.75
+  - @pie-players/pie-default-tool-loaders@0.3.75
+  - @pie-players/pie-theme@0.3.75
+  - @pie-players/pie-item-player@0.3.75
+  - @pie-players/pie-print-player@0.3.75
+  - @pie-players/pie-section-player@0.3.75
+  - @pie-players/tts-client-server@0.3.75
+  - @pie-players/pie-players-shared@0.3.75
+  - @pie-players/pie-section-player-tools-pnp-debugger@0.3.75
+  - @pie-players/pie-section-player-tools-tts-settings@0.3.75
+  - @pie-players/pie-tool-sign-language@0.3.75
+  - @pie-players/pie-tool-dictionary@0.3.75
+  - @pie-players/pie-tool-picture-dictionary@0.3.75
+  - @pie-players/pie-section-player-tools-event-debugger@0.3.75
+  - @pie-players/pie-section-player-tools-instrumentation-debugger@0.3.75
+  - @pie-players/pie-section-player-tools-session-debugger@0.3.75
+  - @pie-players/pie-context@0.3.75
+  - @pie-players/pie-calculator-geogebra@0.3.75
+  - @pie-players/pie-section-player-tools-shared@0.3.75
+  - @pie-players/pie-tool-answer-eliminator@0.3.75
+  - @pie-players/tts-server-core@0.3.75
+  - @pie-players/tts-server-polly@0.3.75
+  - @pie-players/pie-tool-calculator-desmos@0.3.75
+  - @pie-players/tts-server-google@0.3.75
+  - @pie-players/demo-ui@0.1.2
+  - @pie-players/tts-server-sc@0.3.75
+
 ## 0.1.87
 
 ### Patch Changes

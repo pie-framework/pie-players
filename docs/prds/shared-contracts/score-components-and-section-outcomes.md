@@ -1,35 +1,23 @@
 # Score Components And Section Outcomes
 
-Status: Draft
+Status: Draft, 2026-06-25
+
+Not implemented and not scheduled. [Framework-completing work](../../architecture/framework-completing-work.md#classification) ranks the related cross-section mastery rollup separately.
 
 Owner: PIE Players maintainers
 
 Related architecture:
 
 - [P0 shared contracts](../../architecture/shared-contracts-p0.md)
-
-**Partly answered at the item and section layer, 2026-08-15.** The [formative
-delivery contract](../formative-delivery-contract.md) is `Accepted` and ships an
-item-level aggregation plus a section rollup for one purpose: deciding whether a
-learner mastered an item. It settles three things this PRD had open — the
-aggregation follows the persisted API path's documented policy (single outcome
-direct, multiple averaged as normalized fractions), a not-auto-scorable item is
-`unknown` rather than zero, and the rollup excludes `unknown` from its
-denominator instead of asserting correctness it cannot know.
-
-It does not answer this PRD. `FormativeTryOutcome` carries no provenance and no
-authority — it is always browser-derived preview — there is no
-`InteractionSourceRef`, no manual or external state, and no assessment-level
-projection. Treat the formative rollup as one concrete consumer whose semantics
-the general `ScoreComponent` must be able to express, not as a replacement for
-it: a projection that cannot represent "excluded because not scorable" would be a
-regression against something already shipped.
+- [Scoring and rubrics](../../item-player/scoring-and-rubrics.md)
 
 ## Problem
 
 PIE already has leaf scoring primitives, item session updates, section completion state, and assessment session snapshots. What is missing is a host-consumable projection that can explain how leaf outcomes contribute to item, section, and assessment outcomes without changing element-owned scoring or treating completion as correctness.
 
 Without this contract, hosts and standards adapters must infer score authority, denominator policy, manual-score state, and aggregation behavior from package-specific session shapes.
+
+The [formative delivery contract](../formative-delivery-contract.md) (`Accepted`) ships an item-level aggregation and a section rollup for one purpose: deciding whether a learner mastered an item. It settles three rules this contract inherits: aggregation follows the [persisted API scoring](../../item-player/scoring-and-rubrics.md#persisted-api-scoring) policy (a single outcome counts directly, several are averaged as normalized fractions); an item that cannot be auto-scored is `unknown`, never zero; and the rollup leaves items whose last outcome is `unknown` out of its denominator instead of asserting correctness it cannot know. It carries none of what this contract adds: `FormativeTryOutcome` has no provenance and no authority, since it is always a browser-derived preview, and the formative layer has no source reference, no manual or external state and no assessment-level projection. The formative rollup is one concrete consumer whose semantics `ScoreComponent` must be able to express: a projection that cannot represent "excluded because not scorable" would regress against shipped behavior.
 
 ## Goals
 
@@ -55,6 +43,8 @@ Without this contract, hosts and standards adapters must infer score authority, 
 - Runtime environment: browser, Node-safe, and adapter-only.
 
 Controller methods or helper functions that compute projections may live in `assessment-toolkit` or player packages, but the public data shape should have one canonical type home.
+
+The session shapes a projection reads are already canonical in that package: `AssessmentSession` lives in `@pie-players/pie-players-shared/types`, and the `@pie-players/pie-assessment-toolkit` root re-exports it.
 
 ## Contract Shape
 
@@ -94,6 +84,8 @@ interface OutcomeProjection {
   completion?: CompletionProjection;
 }
 ```
+
+`InteractionSourceRef` is the source-reference sketch from the Draft [interaction event contract](./interaction-event-contract.md#contract-shape); no such type exists in code.
 
 Completion projections should include source, authority, and terminal/provisional state. They must not imply correctness unless a score projection explicitly does so.
 
@@ -146,7 +138,7 @@ This PRD has no direct UI change. Score and completion projections should preser
 
 This PRD should produce adapter-friendly data for QTI/PCI, LTI, xAPI, and Caliper. It does not claim standards conformance.
 
-QTI outcome mapping belongs in `../pie-qti` and should consume the accepted score projection rather than redefining score authority or denominator policy.
+QTI outcome mapping belongs in [pie-qti](https://github.com/pie-framework/pie-qti) and should consume the accepted score projection rather than redefining score authority or denominator policy.
 
 ## Test Plan
 
@@ -165,13 +157,7 @@ bun run typecheck
 bun run test
 ```
 
-For custom-element or export-boundary changes, also run:
-
-```sh
-bun run check:source-exports
-bun run check:consumer-boundaries
-bun run check:custom-elements
-```
+For custom-element, export-boundary, toolkit-core or player changes, also run the [high-value checks](../../../AGENTS.md#high-value-checks). Playwright-backed tests run outside the sandbox; see [Playwright and sandboxed execution](../../../AGENTS.md#playwright-and-sandboxed-execution).
 
 ## Rollout And Release Notes
 
@@ -184,5 +170,4 @@ bun run check:custom-elements
 
 - Should `@pie-players/pie-players-shared` be the canonical type home?
 - Should section score projections be controller methods, helper functions, host adapters, or a separate package?
-- Resolved: `AssessmentSession` is canonical in `@pie-players/pie-players-shared/types`, and the `@pie-players/pie-assessment-toolkit` root re-exports it.
 - Which aggregation defaults, if any, should PIE provide?

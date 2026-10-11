@@ -1,240 +1,229 @@
-# Publishing Contract
+# Releasing
 
-This repository publishes multiple workspace packages to npm. To keep releases
-predictable for external consumers, publishing is gated by metadata and artifact
-validation checks.
+This page is for maintainers: how the `@pie-players/*` packages are versioned,
+gated and published to npm, and how to recover a release that failed partway.
+What a version means for a host is in
+[Versioning and stability](../install/versioning.md); the package list is in
+[Publishable packages](./publishable_packages.md).
 
-## Versioning model
+## Release sequence
 
-The monorepo uses Changesets **fixed versioning** for all publishable
-`@pie-players/*` packages:
+CI is the release path. [Manual publishing (local)](#manual-publishing-local)
+runs the same steps from a checkout.
 
-- all publishable packages move in a lockstep release train
-- all publishable packages share one version at publish time
-- source manifests keep internal references as `workspace:*`
-- publish rewrites workspace refs to concrete versions, then restores manifests
+1. Changes merge into `develop`, each with a `patch` changeset in
+   `.changeset/`.
+2. A promotion PR merges `develop` into `master`.
+3. The push to `master` runs `.github/workflows/release.yml`. With changesets
+   present, `changesets/action` runs `bun run version` and opens or updates the
+   `chore(release): version packages [skip-heavy-ci]` PR. With neither
+   changesets nor a version bump, the workflow first writes a temporary
+   changeset declaring `patch` for every package
+   (`scripts/create-temporary-release-changeset.mjs`), so the PR opens anyway.
+   It writes none while npm does not yet have the current version, so a merge
+   cannot stack a second bump on an unpublished release.
+4. Merging the version PR pushes the version bump to `master`. The workflow
+   builds, runs `check:custom-elements`, `check:fixed-versioning` and
+   `bun run verify:publish`, resolves npm auth
+   ([How CI authenticates to npm](#how-ci-authenticates-to-npm)), and publishes
+   with `bun run release`.
+5. After a publish, the workflow creates the GitHub Release `v<version>`, runs
+   the [post-publish checks](#post-publish-checks), and opens a `master` →
+   `develop` back-merge PR. Merge it
+   ([Back-merge to develop](#back-merge-to-develop)).
 
-### Why fixed (lockstep) versioning
+`release.yml` runs only on `master` pushes that touch `.changeset/`,
+`packages/`, `tools/`, `package.json`, `bun.lock`, `turbo.json`,
+`tsconfig*.json` or the workflow file, so a docs-only merge releases nothing.
+`@pie-players/pie-preloaded-player` has its own workflow and version scheme
+([Preloaded player CI/CD](../../configs/preloaded-player/README.md#cicd)).
 
-Publishable packages in this repo form a single cohesive player framework
-(players, tools, TTS servers, theming, toolkits). Internal contracts cross
-package boundaries — element registration, theme tokens, tool coordination,
-session shape — so consumers almost always adopt the suite as a whole.
+## Release labels
 
-Fixed versioning gives consumers two guarantees:
-
-1. **One version per upgrade.** Pick a version, bump every `@pie-players/*`
-   dependency to it. There is no compatibility matrix to reason about across
-   `@pie-players/*` packages.
-2. **Tested together.** Packages that publish at the same version are designed
-   and tested as a unit at that version.
-
-The cost is that releases bump **every** publishable package — including ones
-whose source did not change in that release — so some churn is unavoidable on
-every release PR. This is expected and enforced.
-
-### Consequences for release preparation
-
-- Every release/versioning step must cover **all** publishable packages. Do not
-  prepare a release bump scoped to only the changed packages; that would break
-  the lockstep invariant. See [`AGENTS.md`](../../AGENTS.md).
-- While the project remains on the pre-1.0 `0.x.y` line, every release is a
-  `patch` bump across every publishable package, even when a change is
-  breaking. Document breaking changes clearly in the changeset body, but do not
-  author `minor` or `major` changesets unless the maintainer explicitly updates
-  the release policy.
-- Changesets' `fixed` block in
-  [`../../.changeset/config.json`](../../.changeset/config.json) is the source
-  of truth for which packages are in the lockstep set. New publishable packages
-  must be added there.
-- `scripts/check-fixed-versioning.mjs` (run via `bun run verify:publish`) is the
-  invariant check that fails CI if versions drift.
-
-## Required package metadata (publishable workspaces)
-
-For every non-private workspace package in `packages/*`:
-
-- `publishConfig.access` must be `public`
-- `license` must be present
-- `homepage` must be present
-- `bugs` must be present (`string` URL or object with `url`)
-- `repository.directory` must match workspace location
-- `files` must be present and non-empty
-- `exports` or (`main` + `types`) must be present
-- `engines.node` must be present
-- `sideEffects` must be explicitly set
-
-Policy and validator:
-
-- `scripts/publish-policy.json`
-- `scripts/check-package-metadata.mjs`
-- `docs/setup/publishable_packages.md` (current package inventory)
-
-## Local preflight before opening/merging a release
-
-Run:
+A release label is an annotated git tag on the current commit whose message
+lists every public workspace package at its version. It marks a coordinated
+release wave alongside the `v<version>` GitHub Release.
 
 ```bash
-bun run verify:publish
+bun run release:label                # tag <checkout directory name>-YYYY.MM.DD
+bun run release:label -- --label players-2026.02
+bun run release:label -- --dry-run   # print the tag message, create nothing
+bun run release:label:push           # create the tag and push it to origin
 ```
 
-`verify:publish` executes:
+The default prefix is the checkout directory's name (`pie-players` in a
+standard clone); `--prefix` replaces it. The script fails if the tag exists.
 
-- package build
-- patch-only changeset guard (`scripts/check-changeset-patch-only.mjs`)
-- fixed-versioning invariants (`scripts/check-fixed-versioning.mjs`)
-- metadata policy validation
-- Svelte runtime dependency policy (`scripts/check-svelte-runtime-deps.mjs`)
-- custom-element contract checks (`check:custom-elements`, `check:custom-elements:dist`,
-  `check:ce-define-safety`)
-- `publint` package surface checks
-- ATTW type-surface checks (`scripts/check-attw.mjs`)
-- published declarations free of `svelte` (`scripts/check-svelte-type-imports.mjs`)
-- real-tarball pack integrity (`scripts/check-pack-integrity.mjs --real-pack`)
-- dependency declaration checks (`scripts/check-deps.mjs`)
-- cross-package subpath declarations (`scripts/check-undeclared-subpaths.mjs`)
-- app import boundary checks (`scripts/check-consumer-boundaries.mjs`)
-- Svelte peer dependency policy (`scripts/check-ce-consumer-contract.mjs`)
-- Node consumer import boundary checks (`scripts/check-node-consumer-imports.mjs`)
-- built bundle shape and player/tool boundary checks (`check:bundle-safety`)
-- math-rendering-module version alignment (`scripts/check-math-rendering-version.mjs`)
-- toolkit core boundary checks (`check:engine-core-purity`,
-  `check:speech-composition-purity`, `check:capability-neutrality`)
-- `scripts/` unit tests (`check:scripts`)
+## Versioning policy
 
-## Dist-only publish surface
+Every publishable package releases at one shared version. The Changesets
+`fixed` block in [`.changeset/config.json`](../../.changeset/config.json)
+defines the set: add a new publishable package to it in the same change, and
+never remove one to unblock a release.
 
-Publishable packages expose generated `dist` artifacts as their public API. Package
-`exports`, `main`, `module`, `types`, CDN fields, and packed source-bearing files
-must not point at raw source paths such as `src`, root `.ts`/`.tsx`, `.svelte`,
-`.svelte.ts`, or `development` conditions that resolve to source.
+- Every release bumps every package in the set, including packages whose source
+  did not change, so each version PR touches every manifest and changelog.
+- On the pre-1.0 `0.x.y` line every release is a `patch` bump, breaking changes
+  included; the changeset body documents the break.
+  `check:changeset-patch-only` rejects any pending `minor` or `major`
+  changeset. Only an explicit maintainer decision changes this policy.
+- Source manifests keep internal dependencies as `workspace:*`. Publishing
+  rewrites each to the exact version being released, then restores the
+  manifests (`bun run restore:workspace-ranges`).
+- `check:fixed-versioning` (`scripts/check-fixed-versioning.mjs`) fails when
+  local versions diverge, when an internal dependency is not `workspace:*`, or
+  when the local version would skip a patch version on npm.
 
-Debuggability is provided by generated sourcemaps, not by importable source files.
-`bun run check:sourcemaps` rejects packed `.js.map` files that reference source
-files missing from the npm tarball unless the map embeds source content.
+## Required package metadata
 
-No published declaration imports `svelte`: hosts install no Svelte, and
-TypeScript loads every declaration a type entry reaches. vite-plugin-dts
-declares a `.svelte` file as a stub re-exporting `SvelteComponent` from
-`svelte`, so a package leaves `.svelte` files out of its dts `include` and
-declares any component it exports without Svelte. A package whose bundle entry
-is a component also leaves off `insertTypesEntry`, which derives the types entry
-from that component, and ships an `index.ts` types entry instead.
+Every non-private workspace package in `packages/*` declares:
 
-The common gates are:
+- `publishConfig.access`: `public`
+- `license`, `homepage`, and `bugs` (a URL string or an object with `url`)
+- `repository.url` in the canonical
+  `git+https://github.com/pie-framework/pie-players.git` form, and
+  `repository.directory` matching the workspace location
+- a non-empty `files`
+- `exports`, or `main` and `types`
+- `engines.node`
+- an explicit `sideEffects`
 
-- `bun run check:publish-surface`
-- `bun run check:sourcemaps`
-- `bun run check:svelte-type-imports`, after a build: every declaration a type
-  entry reaches, and every one the package ships
+`scripts/publish-policy.json` holds the policy and
+`scripts/check-package-metadata.mjs` validates it.
+
+## Publish gates
+
+`bun run verify:publish` is the full gate. It builds first, CI runs it before
+every publish, and the local publish runs it after the version bump. Run it
+before opening or merging a release.
+
+| Concern | Checks |
+| --- | --- |
+| Version policy | `check:changeset-patch-only`, `check:fixed-versioning` |
+| Manifests and dependencies | `check:package-metadata`, `check:svelte-runtime-deps`, `check:ce-consumer-contract` (Svelte peer policy), `check:deps`, `check:undeclared-subpaths` (cross-package imports name declared exports), `check:math-rendering-version` (one `@pie-lib/math-rendering-module` version) |
+| Custom elements | `check:custom-elements`, `check:custom-elements:dist`, `check:ce-define-safety` |
+| Published surface | `check:publint`, `check:types-publish` (ATTW), `check:svelte-type-imports` (no declaration reaches `svelte`), `check:pack-integrity:real` (real tarballs) |
+| Consumer boundaries | `check:consumer-boundaries` (app imports), `check:node-consumer-imports` (Node-safe entry points), `check:bundle-safety` (bundle shape, player and tool boundaries) |
+| Toolkit core | `check:engine-core-purity`, `check:speech-composition-purity`, `check:capability-neutrality` |
+| Scripts | `check:scripts` (unit tests for `scripts/`) |
+
+`check:publish-surface` and `check:sourcemaps` run on their own. The dist-only
+rules they enforce are in
+[Library packaging strategy](./library-packaging-strategy.md#dist-only-publish-surface).
 
 ## Release intent in CI
 
-The release workflow enforces explicit intent:
+A push to `master` takes one of two paths:
 
-- Push-driven runs rely on release evidence:
-  - `.changeset/*.md` files for release PR creation
-  - package/changelog version bumps for publish runs
-- Manual runs (`workflow_dispatch`) require `release_intent`:
-  - `version-pr` (requires changesets)
-  - `publish` (requires version bump/changelog evidence by default)
-  - `publish` + `force_publish=true` (manual recovery mode for rerunning a failed publish from `master`)
+- **Version PR**: changesets are present, or there are neither changesets nor a
+  version bump (the temporary changeset then covers every package).
+- **Publish**: the push changes the `version` field of a non-private manifest
+  under `packages/` or `tools/`, which merging the version PR does. Other
+  manifest edits do not count.
+
+A manual run (Actions → Release → Run workflow) states its intent:
+
+| `release_intent` | Requires |
+| --- | --- |
+| `version-pr` (default) | at least one changeset in the commit |
+| `publish` | a version bump, or `force_publish: true` |
+
+`publish_auth` selects the npm auth mode
+([Auth mode resolution](#auth-mode-resolution)).
 
 ### Manual publish recovery
 
-If a publish failed for transient reasons (registry outage, webhook issue, etc.) and
-your fixes are already in `master`, rerun the release workflow manually:
+If a publish failed for a transient reason (a registry outage, a network
+failure) and the fixes are on `master`, rerun the workflow: Actions → Release →
+Run workflow, branch `master`, `release_intent` `publish`, `force_publish`
+`true`. `force_publish` skips only the version-bump detection; every gate still
+runs, and a manual publish also runs `bun run test`.
 
-1. Open **Actions → Release → Run workflow**
-2. Branch: `master`
-3. `release_intent`: `publish`
-4. `force_publish`: `true`
+### Partial publish
 
-This bypasses version-bump detection checks for that manual run while keeping normal
-push-driven safety checks in place.
-
-#### When the previous publish only partly succeeded
-
-Fixed versioning means npm authenticates the run as a whole, so a run that loses auth
-partway leaves the registry split: the packages that made it sit at the version being
-released, the rest stay a patch behind. Rerunning the manual publish above is the repair —
-`changeset publish` skips the versions that already landed.
-
-`check:fixed-versioning` recognises that one split and reports it rather than failing:
+A run that loses npm auth partway leaves the registry split: the packages that
+made it are at the version being released, the rest one patch behind.
+Rerunning the manual publish repairs it, since `changeset publish` skips the
+versions that already landed. `check:fixed-versioning` recognizes that one
+split and reports it without failing:
 
 ```
-[check-fixed-versioning] Completing a partial publish of 0.3.61. 1 package(s) already
-published it (@pie-players/pie-theme) and 35 are still one patch behind ...
+[check-fixed-versioning] Completing a partial publish of x.y.z. 1 package(s) already
+published it (@pie-players/pie-theme) and 39 are still one patch behind ...
 ```
 
-It stays fatal for any other multi-version state, because republishing will not reconcile
-drift — only an unfinished publish of the *local* version is recoverable this way. Do not
-reach for `SKIP_NPM_VERSION_SEQUENCE_CHECK=1` to get past a split: that also disables the
-patch-sequence and version-skip checks, which are what stop a release from silently
-skipping a version.
+Every other multi-version state stays fatal, because republishing does not
+reconcile drift. Do not set `SKIP_NPM_VERSION_SEQUENCE_CHECK=1` to get past a
+split: it also disables the patch-sequence and version-skip checks that stop a
+release from skipping a version.
 
-Do not try to fix a split by unpublishing the package that succeeded. npm refuses to
-republish a version number once it has been unpublished, so removing it makes that version
-permanently unreachable for that package and forces the whole group forward anyway.
+Do not unpublish the packages that succeeded. npm never accepts a version
+number again once it is unpublished, so that version becomes unreachable for
+the package and the whole group has to move forward.
 
-Publish-path runs execute the full `bun run verify:publish` gate before
-`changesets/action` can publish.
+## Back-merge to develop
 
-### Back-merge to develop
+The release commit exists only on `master`: `changesets/action` bumps the
+manifests, writes the `CHANGELOG.md` entries and deletes the consumed
+changesets there. After a publish, `release.yml` opens a `master` → `develop`
+PR titled `chore(release): back-merge <version> into develop`. Merge it.
 
-A release commit exists only on `master`: `changesets/action` bumps the manifests, assembles the
-`CHANGELOG.md` files, and deletes the consumed changesets there. After a successful publish
-`release.yml` opens a `master` → `develop` PR to return it. Merge it.
+Until it merges, `develop` keeps the version of the previous back-merge.
+`bootstrap-package` reads the group version from the branch it runs on, so a
+package bootstrapped from that `develop` publishes below the group
+([Bootstrap version](#bootstrap-version)).
 
-Deferring it leaves the manifests on `develop` at whatever version the last back-merge set, and
-`bootstrap-package` reads the group version from the branch it runs on — so the next new package
-is published far below the group and `check-fixed-versioning` blocks the following release.
-`@pie-players/pie-tool-sign-language` was published at 0.3.50 against a group at 0.3.64 this way.
+The workflow opens a PR because the merge can conflict where `develop` and the
+release both appended to a `CHANGELOG.md`: take both sides, release entry
+first. The step is idempotent: it reuses an open back-merge PR, and skips when
+`develop` already contains `master`. It cannot fail a release, and it runs
+under `!cancelled()`, so a failing post-publish check fails the run without
+skipping the back-merge.
 
-A PR rather than an automatic push, because the merge can conflict where `develop` and the release
-both appended to a `CHANGELOG.md`. Take both sides, release entry first. The step is idempotent: it
-reuses an open back-merge PR instead of opening a second, and skips when `develop` already contains
-`master`. It cannot fail a release — a publish that succeeded is not reported as failed over its
-follow-up bookkeeping — and it runs under `!cancelled()`, so a failing post-publish check fails the
-run without taking the back-merge with it. 0.3.70 lost its back-merge that way before the guard
-existed.
+## Post-publish checks
 
-After publish, CI also validates internal dependency closure in the registry:
+After a publish, `release.yml` verifies the registry:
 
-- `scripts/check-published-closure.mjs`
-- confirms published `@pie-players/*` packages only reference resolvable internal versions
-- fails if any `workspace:*` leak or unresolved internal dependency is detected
+- `scripts/check-published-closure.mjs` confirms that every published
+  `@pie-players/*` package references only internal versions that resolve, and
+  fails on a leaked `workspace:*` range.
+- `scripts/check-provenance.mjs` confirms that every package carries a
+  provenance attestation
+  ([Verifying a release used OIDC](#verifying-a-release-used-oidc)). It is
+  advisory on token runs.
 
 ### Registry propagation
 
-Both post-publish checks read the registry in the same job that published to it, and npm serves
-reads from replicas that lag the write. `scripts/lib/registry-propagation.mjs` is the shared retry
-policy: five attempts per lookup with exponential backoff from 3s, under one 240s deadline measured
-from the first attempt across the whole run. Only E404 and ETARGET retry, so an authorization
-failure still fails immediately.
+Both checks read the registry in the job that just published to it, and npm
+serves reads from replicas that lag the write.
+`scripts/lib/registry-propagation.mjs` is their shared retry policy: five
+attempts per lookup with exponential backoff from 3 s, under one 240 s deadline
+for the whole run. Only E404 and ETARGET retry, so an authorization failure
+fails at once.
 
-The deadline is shared rather than per-package deliberately. Versioning is fixed, so a real partial
-release fails for every package in the group at once; a per-package budget would turn that into a step running
-for the better part of an hour. Once the deadline passes, the remaining packages fail fast and the
-error names which bound was hit — `PIE_REGISTRY_PROPAGATION_DEADLINE_SECONDS` widens it for a rerun
-when npm is having a slow day.
+The deadline is shared because versioning is fixed: a real partial release
+fails every package in the group at once, and a per-package budget would keep
+the step running for most of an hour. Past the deadline the remaining packages
+fail fast, and the error names the bound that was hit.
+`PIE_REGISTRY_PROPAGATION_DEADLINE_SECONDS` widens it for a rerun.
 
 ## How CI authenticates to npm
 
-CI publishes via **OIDC trusted publishing**: GitHub mints a short-lived id-token for the
-workflow run, and npm exchanges it for publish rights. No long-lived npm credential lives
-in the repository, and npm generates a provenance attestation for every package it
-publishes this way.
+Both publishing workflows, `release.yml` and `publish-preloaded-player.yml`,
+publish with an npm token or by OIDC trusted publishing. Under OIDC, GitHub
+mints a short-lived id-token for the run and npm exchanges it for publish
+rights: no long-lived credential is stored, and npm attaches a provenance
+attestation to every package it publishes.
 
-Driver: per npm's 2026-07-08 changelog, tokens that bypass 2FA lose the ability to change
-trusted publishing configuration from early August 2026, and lose direct publishing
-capability around January 2027. A personal token also expires unnoticed and silently
-breaks releases.
+OIDC is the target mode. npm no longer lets a token that bypasses 2FA change
+trusted-publishing configuration, and plans to withdraw its publish capability
+around January 2027 (npm changelog, 2026-07-08). A token can also expire
+unnoticed and break a release.
 
 ### Auth mode resolution
 
-Both publishing workflows (`release.yml` and `publish-preloaded-player.yml`) resolve an
-auth mode before publishing:
+Each publish run resolves an auth mode before publishing. Push-triggered runs
+use `auto`.
 
 | `publish_auth` input | Result |
 | --- | --- |
@@ -242,38 +231,46 @@ auth mode before publishing:
 | `token` | token; fails fast if `NPM_TOKEN` is absent |
 | `oidc` | oidc |
 
-Because `auto` prefers a token when one is present, **the cutover is a secret deletion,
-not a workflow edit**. While `NPM_TOKEN` exists the repo keeps publishing via token.
+The repository publishes by token for as long as the `NPM_TOKEN` secret
+exists. Deleting the secret is the cutover to OIDC; no workflow edit is needed.
 
 ### Token mode
 
-The `token` mode and local publishing use an npm token with publish rights on the
-`@pie-players` scope: CI reads it from the `NPM_TOKEN` repository secret (Settings →
-Secrets and variables → Actions), local runs from `NPM_TOKEN` in the repo's `.env`
-([Manual publishing](#manual-publishing-local)).
-`npm org ls pie-players --registry=https://registry.npmjs.org/` lists the accounts with
-access. To rotate, generate a replacement on npmjs.com, update the secret and `.env`, then
-revoke the old token. Revoke a leaked token first, then replace it and review recent
-publishes.
+The `token` mode and local publishing use an npm token with publish rights on
+the `@pie-players` scope: CI reads it from the `NPM_TOKEN` repository secret
+(Settings → Secrets and variables → Actions), local runs from `NPM_TOKEN` in
+the repo's `.env` ([Manual publishing](#manual-publishing-local)).
+`npm org ls pie-players --registry=https://registry.npmjs.org/` lists the
+accounts with access. To rotate, generate a replacement on npmjs.com, update
+the secret and `.env`, then revoke the old token. Revoke a leaked token first,
+then replace it and review recent publishes.
+
+On token-mode publish runs, `scripts/check-npm-auth.mjs` runs before the
+publish step. npm reports an expired or revoked token as `E404` on publish,
+which reads like a missing package; the check names the credential problem
+before any package publishes.
 
 ### Requirements the workflows satisfy
 
 - `permissions: id-token: write` on the publishing job.
-- npm >= 11.5.1. The Node pinned in `.nvmrc` (22.16.0) bundles npm 10.9.2, which predates
-  OIDC support, so both workflows upgrade npm in-job and assert the resolved version.
-- `repository.url` in the canonical `git+https://github.com/pie-framework/pie-players.git`
-  form in every publishable manifest. npm compares this against the repository it publishes
-  from when generating provenance. `check:package-metadata` enforces it.
-- No `_authToken` line in the runner's `.npmrc` on an OIDC run. `actions/setup-node` runs
-  with `registry-url`, so it writes `//registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}`.
-  Under OIDC there is no token, so that line expands to an *empty* credential and npm
-  attempts token auth instead of falling through to trusted publishing. The OIDC step
-  strips it. This is the failure mode to suspect when the workflow looks correct but
-  publish still reports an auth error.
+- npm >= 11.5.1. The Node.js version pinned in `.nvmrc` (22.16.0) bundles npm
+  10.9.2, which predates OIDC support, so both workflows upgrade npm in the job
+  and assert the resolved version.
+- The canonical `repository.url` in every publishable manifest
+  ([Required package metadata](#required-package-metadata)). npm compares it
+  with the repository it publishes from when generating provenance.
+- No `_authToken` line in the runner's `.npmrc` on an OIDC run.
+  `actions/setup-node` runs with `registry-url`, so it writes
+  `//registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}`. Under OIDC there is no
+  token, so that line expands to an *empty* credential and npm attempts token
+  auth instead of falling through to trusted publishing. The OIDC step strips
+  it. Suspect this line when the workflow looks correct and publish still
+  reports an auth error.
 
 ### Trusted publisher configuration
 
-One-time, per package, from a local terminal:
+A trusted-publisher record on npm names the workflow file allowed to publish a
+package by OIDC. Configure it once per package, from a local terminal:
 
 ```bash
 npm login
@@ -284,39 +281,37 @@ bun run trusted-publishers -- --apply                       # all packages
 bun run trusted-publishers -- --verify
 ```
 
-Notes:
+- `npm trust` needs npm >= 12. The script bootstraps npm 12 into a temp prefix
+  and leaves your global npm alone, because npm 12 changes install-time
+  defaults.
+- Every `npm trust` operation is 2FA-protected and npm does not reuse the
+  authentication between invocations, so expect an OTP prompt per package, for
+  reads as well as writes. The script refuses to run in CI for this reason.
+- `npm trust github --dry-run` exits 0 even for a package that does not exist,
+  so a clean dry run proves only that the arguments are well-formed.
+  `--apply --only <pkg>` is the real rehearsal.
+- npm permits one trusted publisher per package, so re-applying to a
+  configured package fails. Confirm with `--verify`.
+- A record attaches only to a package the registry already has: `--apply` on a
+  never-published name fails with `E404 Package not found`, and that package
+  needs `bun run bootstrap-package` first
+  ([Adding a publishable package](#adding-a-publishable-package)).
+- `@pie-players/pie-preloaded-player` is registered against
+  `publish-preloaded-player.yml`, every other package against `release.yml`.
+- Each confirmed claim is written to `scripts/trusted-publishers.json` as the
+  run proceeds, so an interrupted run keeps the OTPs already paid for. Commit
+  that file: `check:trusted-publishers` reads it, and an uncommitted ledger
+  fails the check for packages you have just claimed.
 
-- Requires npm >= 12 for `npm trust`. The script bootstraps npm 12 into a temp prefix
-  rather than upgrading your global npm, because npm 12 changes install-time defaults.
-- Every `npm trust` operation is 2FA-protected and npm does not reuse the authentication
-  between invocations, so expect **an OTP prompt per package**, for reads as well as
-  writes. This is why the script refuses to run in CI.
-- `npm trust github --dry-run` exits 0 even for a package that does not exist, so a clean
-  dry run proves the arguments are well-formed and nothing more. Use `--apply --only <pkg>`
-  as the real rehearsal.
-- npm permits only **one** trusted publisher per package, so re-applying to an
-  already-configured package fails. That is expected; confirm with `--verify`.
-- A record attaches only to a package the registry already has. `--apply` on a name that has
-  never been published fails with `E404 Package not found`; that package needs
-  `bun run bootstrap-package` first (see *Adding a publishable package later*).
-- The record names a specific workflow file. `@pie-players/pie-preloaded-player` is
-  registered against `publish-preloaded-player.yml`; everything else against `release.yml`.
-- Each confirmed claim is recorded in `scripts/trusted-publishers.json`, written per package
-  as the run proceeds so an interrupted run does not discard the OTPs already paid for.
-  **Commit that file** — `check-trusted-publishers.mjs` reads it, so an uncommitted ledger
-  fails the check for packages you have in fact just claimed.
+### Adding a publishable package
 
-### Adding a publishable package later
+A new package needs one interactive first publish before a release can publish
+it. A release authenticates by OIDC, which needs a trusted-publisher record per
+package, and npm attaches a record only to a name the registry already has.
 
-A new package needs one interactive first publish before the release workflow can ever publish
-it, because trusted publishing is circular for a name that does not exist:
-
-- A release authenticates by OIDC, which requires a trusted-publisher record per package.
-- `npm trust github` attaches a record to a package **on the registry**. For a name npm has
-  never seen it fails with `E404 Package not found`.
-
-`bun run bootstrap-package` is that first publish. One package per run, from the repository
-root, with an npm session (`npm login`) that holds publish rights on the scope:
+`bun run bootstrap-package` is that first publish. Run it for one package, from
+the repository root, with an npm session (`npm login`) that holds publish
+rights on the scope:
 
 ```bash
 bun run bootstrap-package -- --only @pie-players/<new-package> --dry-run
@@ -324,169 +319,148 @@ bun run bootstrap-package -- --only @pie-players/<new-package>
 git add scripts/trusted-publishers.json   # the claim ledger is part of the change
 ```
 
-It preflights everything reversible before anything irreversible — the package is publishable
-and in the fixed group, the group version is uniform, npm has never seen the name, every
-`workspace:` range resolves to a version that is actually published, and you are logged in —
-then builds, resolves the manifest's workspace ranges the way a release does, shows the exact
-tarball, publishes, restores the manifest, and delegates the claim to
-`configure-trusted-publishers.mjs` so the `npm trust` call and the ledger have one owner.
-Expect two OTP prompts: one for the publish, one for the claim.
+The script checks everything reversible before anything irreversible: the
+package is publishable and in the fixed group, the group version is uniform,
+npm has never seen the name, every `workspace:` range resolves to a published
+version, and you are logged in. It then builds, resolves the workspace ranges
+the way a release does, shows the exact tarball, publishes, restores the
+manifest, and delegates the claim to `configure-trusted-publishers.mjs`, so the
+`npm trust` call and the ledger have one owner. Expect two OTP prompts: one for
+the publish, one for the claim.
 
-Two constraints the script enforces rather than explains at the prompt:
+- **One package per run.** A first publish is irreversible (npm allows
+  unpublishing only within 72 hours and never reuses a name/version pair), so a
+  batch that failed halfway would leave a partial set of new names on the
+  registry.
+- **Every dependency's group version must already be published.** A first
+  publish resolves `workspace:*` against the branch's group version; pinning an
+  unpublished sibling produces a package that resolves for nobody, and the
+  failure surfaces at a consumer's install.
 
-- **One package per run.** A first publish is irreversible — npm allows unpublishing only
-  within 72 hours and never permits reusing a name/version pair — so a batch that failed
-  halfway would leave a partial set of new names on the registry.
-- **The group version must already be published for every dependency.** A first publish from
-  a long-lived branch resolves `workspace:*` against that branch's group version, which can be
-  behind what was ever released; pinning an unpublished sibling produces a package that
-  resolves for nobody, and the failure surfaces at a consumer's install.
+After the bootstrap the package is ordinary: add a changeset and merge, and the
+next release publishes it with the rest of the group. Renaming a publishable
+package counts as adding one, because the new name needs its own record.
 
-After the bootstrap the package is ordinary: add a changeset, merge, and the release publishes
-it with the rest of the group over OIDC at the next group version.
+#### Bootstrap version
 
-The bootstrap version is usually **not** the published group version, because `bootstrap-package`
-reads it from the branch it runs on and release bumps land only on `master`. A bootstrap from
-`develop` therefore publishes whatever version the last back-merge left there —
-`@pie-players/pie-tool-sign-language` went out at 0.3.50 against a group published at 0.3.64.
-`check-fixed-versioning` tolerates that gap for a package whose entire release history is one
-version below the group, and reports the packages it excused. The discriminant is release
-history, not distance: a package that published repeatedly and then fell behind is drift, and
-still fails. The newcomer joins the group at the next release version rather than stepping
-through the versions it missed.
+The bootstrap publishes the version on the branch it runs on, and release
+bumps land only on `master`, so a bootstrap from `develop` publishes whatever
+version the last back-merge left there. `check:fixed-versioning` tolerates the
+gap for a package whose entire release history is one version below the group,
+and reports the packages it excused. The discriminant is release history: a
+package that published repeatedly and then fell behind is drift, and still
+fails. The newcomer joins the group at the next release version.
 
-Versioning is fixed, so a release authenticates the run as a whole. A package with no record
-fails with `ENEEDAUTH` while its siblings succeed, leaving the registry split across two
-versions and git holding a version that was never fully published.
-`bun run check:trusted-publishers` is the guard: it asserts that every package a release would
-publish has a recorded claim, and routes each missing one to the command that can actually fix
-it — `bootstrap-package` for a name the registry does not have, `trusted-publishers -- --apply`
-for one it does. It runs in `release.yml` ahead of the version bump (oidc mode, publish runs
-only), so a forgotten claim fails the release *before* changesets commits bumped versions
-instead of halfway through publishing.
+### Trusted-publisher claim check
 
-It is deliberately **not** part of `verify:publish`. Trusted-publisher records only matter
-when the run authenticates by OIDC, and `verify:publish` cannot know whether it will:
-`release.yml` runs it *before* the auth mode is resolved, and `release:with-version` is a
-token-based local publish path where the records are irrelevant. Including it there failed
-token-mode publishes over records they never needed. Run it directly when preparing a claim.
+A package without a record fails with `ENEEDAUTH` while its siblings publish,
+which splits the registry across two versions and leaves git holding a version
+that was never fully published. `bun run check:trusted-publishers` asserts that
+every package a release would publish has a recorded claim, and routes each
+missing one to the command that fixes it: `bootstrap-package` for a name the
+registry does not have, `trusted-publishers -- --apply` for one it does.
+`release.yml` runs it on OIDC publish runs, before the publish step.
 
-The check is fatal only for the packages `release.yml` publishes. Not every publishable
-package ships on the release path — `@pie-players/pie-preloaded-player` is published by
-`publish-preloaded-player.yml` on its own version scheme — and a release must not be blocked
-by a package it never touches. Gaps outside that scope are printed as
-`note (other workflow)` so they stay visible to whoever owns that workflow. Use
-`bun ./scripts/check-trusted-publishers.mjs --all` to make every package fatal, which is the
-right check to run before publishing the preloaded player.
+It stays out of `verify:publish`, because records matter only when a run
+authenticates by OIDC: `release.yml` runs `verify:publish` before resolving the
+auth mode, and `release:with-version` publishes by token. Run it directly when
+preparing a claim.
 
-Renaming a publishable package counts as adding one: the new name needs its own record.
+The check is fatal only for the packages `release.yml` publishes, and prints
+gaps elsewhere as `note (other workflow)`.
+`bun ./scripts/check-trusted-publishers.mjs --all` makes every package fatal;
+run it before publishing the preloaded player.
 
-Why a committed ledger rather than asking npm directly: every `npm trust` read is
-2FA-protected, so nothing on a runner can query which packages have records. The ledger
-proves the claim step was carried out; it does not prove npm's current state. A revoked
-record, or an entry someone hand-wrote, passes this check and still fails the publish.
-`--verify` is the live check, and `check:provenance` is the after-the-fact one.
+The check reads the committed ledger because every `npm trust` read is
+2FA-protected, so nothing on a runner can ask npm which packages have records.
+The ledger proves the claim step ran; it does not prove npm's current state. A
+revoked record, or a hand-written entry, passes the check and still fails the
+publish. `--verify` is the live check and `check:provenance` the
+after-the-fact one.
 
-### Verifying a release actually used OIDC
+### Verifying a release used OIDC
 
-The registry does not expose trusted-publisher configuration, so provenance attestations
-are the only external signal:
+The registry does not expose trusted-publisher configuration, so provenance
+attestations are the only external signal:
 
 ```bash
-bun run check:provenance 0.4.0
+bun run check:provenance x.y.z   # without an argument: the workspace version
 ```
 
-It distinguishes published-without-provenance (missing or misconfigured trusted publisher,
-or a token fallback) from not-published-at-all (partial release — versioning is fixed, so
-all packages should move together). `release.yml` runs this after every publish.
-
-### Pre-flight credential check (token mode)
-
-`scripts/check-npm-auth.mjs` runs in the release workflow **before** the version bump,
-gated to token mode and publish runs. npm surfaces an expired or revoked token as `E404` on
-publish, which reads like a missing package — and by then changesets has already committed
-the bumped versions, leaving a version in git that was never published. OIDC has no
-credential to check, hence the gate.
+It tells published-without-provenance (a missing or misconfigured trusted
+publisher, or a token fallback) apart from not-published-at-all (a partial
+release). The preloaded player has no group version; check one of its builds
+with `npm view @pie-players/pie-preloaded-player@<version> dist.attestations`.
 
 ## Common remediation
 
-- Metadata failures: update package `package.json` fields listed in the error.
-- `publint` failures: align `exports`, `types`, and packed files with published
-  entry points.
-- ATTW failures: fix the type entrypoints or their resolution.
-- Pack integrity failures (`check:pack-integrity:real`): include every declared
+- Metadata failures: update the `package.json` fields the error lists.
+- `publint` failures: align `exports`, `types` and packed files with the
+  published entry points.
+- ATTW failures: fix the type entry points or their resolution.
+- Pack-integrity failures (`check:pack-integrity:real`): include every declared
   export target in `files` and produce it in the build.
-- Fixed-versioning failures:
-  - ensure all publishable package versions are identical after `bun run version`
-  - ensure internal `@pie-players/*` deps remain `workspace:*` in source manifests
-
-## Local release retry (without re-bumping versions)
-
-If `bun run release:with-version` fails after `bun run version` has already updated
-`package.json` and `CHANGELOG.md` files, do not rerun `release:with-version`.
-Rerunning it creates another temporary changeset and bumps versions again.
-
-Retry from the post-version steps instead:
-
-```bash
-bun run check:npm-auth && SKIP_NPM_VERSION_SEQUENCE_CHECK=1 bun run verify:publish && bun run test && bun run release && bun run restore:workspace-ranges
-```
-
-Use `SKIP_NPM_VERSION_SEQUENCE_CHECK=1` for recovery runs when
-`check-fixed-versioning` fails with npm `E404` for a package being published for
-the first time (for example `npm view @pie-players/<pkg> version` returning not
-found).
+- Fixed-versioning failures: confirm every publishable package has the same
+  version after `bun run version`, and that internal `@pie-players/*`
+  dependencies stay `workspace:*` in source manifests.
 
 ## Manual publishing (local)
 
-Local publishing always uses the codebase and branch currently checked out.
-Before running the publish command, confirm `git branch --show-current` and
-`git status --short`; do not switch to `master`, `main`, `develop`, or the
-GitHub workflow unless that is explicitly requested.
-
-The canonical local-publish command is:
+`release:with-version` is the local publish command. `bun run release` alone
+skips the version bump and the gates, and `npm publish` does not resolve
+`workspace:*` ranges, so run neither directly.
 
 ```bash
 bun run release:with-version
 ```
 
-`release:with-version` runs the entire CI release path locally, in order:
+It runs the CI release path in order:
 
-1. `scripts/create-temporary-release-changeset.mjs` — writes a temporary
-   `.changeset/temporary-release-all-packages.md` declaring `patch` for every
-   publishable package, so the lockstep set is always covered (existing
-   author-written changesets coexist with this temporary one and may upgrade
-   the bump for some / all packages).
-2. `bun run version` — applies all changesets to `package.json` and
+1. `bun run check:changeset-patch-only`: rejects a pending `minor` or `major`
+   changeset.
+2. `scripts/create-temporary-release-changeset.mjs`: writes
+   `.changeset/temporary-release-all-packages.md`, declaring `patch` for every
+   publishable package, so the lockstep set is always covered. Author
+   changesets apply alongside it. It writes nothing while npm does not yet have
+   the local version.
+3. `bun run version`: applies the changesets to the `package.json` and
    `CHANGELOG.md` files.
-3. `bun run restore:workspace-ranges` — keeps source manifests on
-   `workspace:*` after `version`.
-4. `bun run check:npm-auth` — fails fast if the NPM token in `.env` is
-   missing/expired or `@pie-players` access is unavailable.
-5. `bun run verify:publish` — full publish gate (build + every `check:*`).
-6. `bun run test` — workspace test suites.
-7. `bun run release` — `dotenvx run -f .env` wrapper around build +
-   `changeset publish` (with workspace ranges resolved). This does **not**
-   publish the preloaded-player bundle; see `docs/preloaded-player/readme.md`.
-   That generated package is transitional: hosts move to pie-elements-ng
-   packages installed from npm, all from one release with exact pins, and
-   registered as ESM with `registerPreloadedElements`
-   ([Registering elements from npm](../item-player/loading-strategies.md#registering-elements-from-npm)).
-8. `bun run restore:workspace-ranges` — restore `workspace:*` ranges in
-   source manifests.
+4. `bun run restore:workspace-ranges`: keeps source manifests on `workspace:*`.
+5. `bun run check:npm-auth`: fails fast if the token in `.env` is missing or
+   expired, or `@pie-players` access is unavailable.
+6. `bun run verify:publish`: the full [publish gate](#publish-gates).
+7. `bun run test`: the workspace test suites.
+8. `bun run release`: builds, then runs `changeset publish` with workspace
+   ranges resolved, under `dotenvx run -f .env`. It does not publish
+   `@pie-players/pie-preloaded-player`.
+9. `bun run restore:workspace-ranges`: restores `workspace:*` in source
+   manifests.
 
-NPM authentication: the repo's `.env` file holds the `NPM_TOKEN` for
-`@pie-players` publish access. Both `check:npm-auth` and `release` load it via
-`dotenvx run -f .env`. No separate `npm login` is needed.
-
-If you hit errors like:
+The repo's `.env` holds the `NPM_TOKEN` with `@pie-players` publish access.
+`check:npm-auth` and `release` load it through `dotenvx run -f .env`, so no
+`npm login` is needed. On errors such as:
 
 - `npm notice Access token expired or revoked`
 - `E404 Not Found - PUT https://registry.npmjs.org/@pie-players%2f...`
 
-verify the token in `.env` is still valid (or re-auth and update `.env`):
+check that the token in `.env` is still valid, or re-authenticate and update
+`.env`:
 
 ```bash
 npm whoami --registry=https://registry.npmjs.org/
 npm org ls pie-players --registry=https://registry.npmjs.org/
 ```
+
+### Retrying a failed local release
+
+Once `bun run version` has changed the manifests, do not rerun
+`release:with-version`: the temporary-changeset step compares the local version
+with npm, and after a partial publish it can find them equal and bump again.
+Retry from the post-version steps:
+
+```bash
+bun run check:npm-auth && bun run verify:publish && bun run test && bun run release && bun run restore:workspace-ranges
+```
+
+`check:fixed-versioning` treats a package npm has never seen as joining at the
+lockstep version, so a first-time package needs no override.

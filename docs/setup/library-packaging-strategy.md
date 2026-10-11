@@ -1,44 +1,55 @@
-# Library Packaging Strategy (NodeJS Reliability First)
+# Library Packaging Strategy
 
-This document captures the current packaging contract for `@pie-players/*`
-packages that need to behave predictably in NodeJS and app-bundler
-`node_modules` workflows.
+This is the packaging design record for contributors: how the `@pie-players/*`
+packages are built and published, the constraint behind each rule, and the
+release gate that enforces it. Hosts choosing what to install read
+[Packages and entry points](../install/packages.md).
 
-## Problem Summary
+## Problem
 
-Current player packages (notably `pie-section-player` and `pie-item-player`) are
-published as chunked ESM with internal dynamic imports and hashed chunk names.
-That works, but can be fragile when consumed through third-party optimizer layers
-(`optimizeDeps`, prebundlers, lockfile churn, stale cache state).
+The player packages shipped as chunked ESM with internal dynamic imports and
+chunk names that changed between equivalent builds. Hosts that ran them through
+an optimizer layer (Vite's `optimizeDeps`, other prebundlers), or hit lockfile
+churn or a stale cache, failed without a source change of their own: runtime
+errors named missing `node_modules/.vite/deps/module-*.js` files, and only
+clearing caches and restarting the dev server recovered. A library cannot make
+that recovery part of its contract.
 
-Observed symptom class:
+## Goals
 
-- host app starts failing without source changes
-- runtime errors point to missing `node_modules/.vite/deps/module-*.js` URLs
-- consumers must clear caches/restart dev servers to recover
+1. A host never clears a cache to recover from a PIE rebuild or upgrade.
+2. Every published entry point is declared in `exports` and keeps its file name
+   from one build to the next.
+3. Node-safe entry points are declared and tested apart from browser-only ones.
+4. A package that must load without a bundler ships that build as a public,
+   tested export (`@pie-players/pie-section-player/browser`).
+5. Custom-element registration is race-safe under HMR and concurrent import
+   paths.
 
-That recovery path is not an acceptable library contract.
+## Artifact model
 
-## Packaging Goals
+Each package publishes one ESM build, for bundlers and Node.js module
+resolution, behind its `.` export and subpaths.
 
-1. Consumer apps should not need cache-clearing rituals.
-2. Published entrypoints must be stable and explicit.
-3. Browser-only packages are clearly separated from Node-safe packages.
-4. A package that ships a no-bundler browser entry documents and tests it as a public export (`@pie-players/pie-section-player/browser`).
-5. Custom-element registration must be race-safe under HMR/concurrent import paths.
+The section player adds a second build behind `./browser`, for pages without a
+bundler. `vite.config.browser.ts` builds the npm entry again with nothing
+external, plus the tool-registry exports `src/browser.ts` adds
+(`createPackagedToolRegistry`, `DEFAULT_TOOL_MODULE_LOADERS`), into
+`dist/browser/`. It has its own config and output directory, so the npm build
+is unaffected. It is an application build because library mode inlines every
+asset as a `data:` URL, and Chromium refuses a module worker from a `data:` URL
+as large as the Cortex calculator's 4.3 MB worker script. Its chunks stay split,
+so each lazily loaded tool downloads on first use.
 
-## Artifact Model
+The section player's npm build leaves the item player, the default tool loaders
+and `speech-rule-engine` external. The host's one item player defines
+`<pie-item-player>` and installs the math renderer for every player on the
+page, and every PIE bundle shares the host's one copy of `speech-rule-engine`
+and its locale tables.
 
-Publish one reliable default artifact model:
+## Export surface
 
-1. **Bundler/Node-consumer default entry (`.` export)**
-   - ESM intended for app bundlers and NodeJS module resolution.
-   - Deterministic filenames for emitted files.
-   - Avoid hidden internal chunk renaming across equivalent builds.
-
-## Export Surface
-
-For package `@pie-players/pie-section-player`, exports follow this shape:
+The section player's complete `exports` map:
 
 ```json
 {
@@ -54,82 +65,136 @@ For package `@pie-players/pie-section-player`, exports follow this shape:
     "./components/section-player-splitpane-element": {
       "types": "./dist/pie-section-player.d.ts",
       "import": "./dist/pie-section-player.js"
+    },
+    "./contracts/runtime-host-contract": {
+      "types": "./dist/contracts/runtime-host-contract.d.ts",
+      "import": "./dist/contracts/runtime-host-contract.js"
+    },
+    "./contracts/host-hooks": {
+      "types": "./dist/contracts/host-hooks.d.ts",
+      "import": "./dist/contracts/host-hooks.js"
+    },
+    "./policies": {
+      "types": "./dist/policies/index.d.ts",
+      "import": "./dist/policies/index.js"
+    },
+    "./item-section": {
+      "types": "./dist/item-section/index.d.ts",
+      "import": "./dist/item-section/index.js"
     }
   }
 }
 ```
 
-Notes:
+A component subpath maps to a documented entry file. Each contract subpath
+(`./contracts/*`, `./policies`, `./item-section`) is its own Vite entry, so
+importing one loads no custom element and runs in Node.js.
 
-- Keep component subpaths mapped to documented stable entries only.
-- Do not expose private internal chunk files as part of contract.
+`scripts/publish-policy.json` lists the Node-safe entry points under
+`nodeConsumerImportTargets.nodeSafe` and the browser-only roots under
+`browserOnly`. [Packages and entry points](../install/packages.md#entry-points)
+gives hosts the same split.
 
-## Build Output Guidance
+## Chunk names
 
-### Bundler variant
+The item player and section player name entry files `[name].js` and each chunk
+with `chunkFileNamesFromSource` (`packages/players-shared/chunk-file-names.ts`):
+`chunks/<name>-<hash>.js`, where the hash is the first eight hex digits of a
+SHA-1 of the chunk's source key. The key is the path of the module the chunk
+starts from, cut at `node_modules/` (kept as `npm/`) or at `src/`, or taken
+relative to the workspace root for a module elsewhere in the workspace. A chunk
+keeps its name from one build to the next, and no checkout path reaches the
+name, because turbo's cache restores a build into whichever worktree asks for
+it. The name follows the source path and not the content, so two versions can
+ship different files under one chunk name: a self-hosted copy of the browser
+build needs one directory per version.
 
-- Keep ESM output.
-- Prefer deterministic output naming, for example:
-  - `entryFileNames: "[name].js"`
-  - `chunkFileNames: "chunks/[name].js"`
-- Keep sourcemaps optional by release mode.
-- Avoid hashing for published library internals unless strictly required.
+Other packages that split chunks keep Vite's content-hashed default,
+`[name]-[hash].js`.
 
-### Browser entry
+Chunks are internal. `check:pack-integrity:real` fails a release in which an
+export target has a hash-only or hashed-suffix file name, so no export points at
+a chunk.
 
-- A self-contained browser entry is a named export (`./browser`), documented and
-  covered by tests, as the section player's is.
+## Dist-only publish surface
 
-## Versioning and Compatibility
+Packages publish generated `dist` files as their public API. `exports`, `main`,
+`module`, `types`, `unpkg` and `jsdelivr` point inside `dist/`, never at `src`,
+a non-declaration `.ts` or `.tsx` file, or a `.svelte` or `.svelte.ts` file, and
+no export carries a `development` or `svelte` condition. `check:publish-surface`
+checks each manifest and its `npm pack` file list for:
 
-- Keep current fixed-versioning policy across publishable packages.
+- no `development` or `svelte` export condition;
+- no export that `forbiddenPublicExports` in `scripts/publish-policy.json`
+  lists for the package;
+- no `src`, `.svelte` or non-declaration TypeScript path in `files`;
+- no package-level `svelte` field, and no Svelte peer or optional dependency;
+- every target inside `dist/`;
+- packed files limited to `dist/`, declared `bin` files, `package.json`,
+  README, LICENSE and CHANGELOG, an oclif manifest, and static assets.
 
-## Consumer Guidance (current scope)
+Debugging needs no importable source. No package ships sourcemaps today, and
+`check:sourcemaps` rejects a packed map that references a source file missing
+from the tarball unless the map embeds that source's content.
 
-- Default recommendation for app bundlers:
-  - `import "@pie-players/pie-section-player";`
-- NodeJS service recommendation:
-  - import only Node-safe packages (for example `@pie-players/pie-assessment-toolkit`, `@pie-players/pie-context`, `@pie-players/pie-players-shared`)
-- Browser-only packages (`pie-item-player`, `pie-section-player`) must stay out of plain Node runtime imports.
-- The npm entries of `pie-section-player` and `pie-assessment-player` are
-  bundler-only. They import PIE packages and `speech-rule-engine` by bare
-  specifier, and the section player imports the engine's JSON locale tables
-  without import attributes, so a host loads them through a bundler that
-  resolves both. A host without a bundler loads the section player's `./browser`
-  export, `dist/browser/pie-section-player.js`: it is self-contained, needs no
-  import map, and loads tools as chunks on first use
-  ([CDN usage](./cdn_usage.md#section-player-browser-build)).
-- `pie-item-player` is the one player whose root entry imports no bare
-  specifier; it loads raw from a CDN through `<script type="module">`.
-- TypeScript hosts resolve these packages with `moduleResolution` `bundler`,
-  `node16` or `nodenext`. `node10`, spelled `node` in a tsconfig, is not
-  supported: it ignores `exports`, through which these packages publish their
-  subpaths, so a declaration that imports one fails with TS2307 under
-  `skipLibCheck: false`. TypeScript 6.0 deprecates `node10` and 7.0 removes it,
-  so the packages carry no `typesVersions` fallback for it.
+Hosts install no Svelte. A package that uses Svelte lists it as a dev
+dependency and bundles it into each browser entry point: `check:svelte-runtime-deps` rejects `svelte` in `dependencies` or
+`optionalDependencies`, and `check:ce-consumer-contract` rejects a Svelte peer
+dependency; neither has an exception today. No published declaration imports
+`svelte` either, because TypeScript loads every declaration a type entry
+reaches. vite-plugin-dts declares a `.svelte` file as a stub re-exporting
+`SvelteComponent` from `svelte`, so a package leaves `.svelte` files out of its
+dts `include` and declares any component it exports without Svelte. A package
+whose bundle entry is a component also leaves off `insertTypesEntry`, which
+derives the types entry from that component, and ships an `index.ts` types
+entry instead. `check:svelte-type-imports`, run after a build, checks every
+declaration a type entry reaches and every one the package ships.
 
-## Publish Gates
+`speech-rule-engine` is pinned to one exact version (`pinnedRuntimeDependencies`
+in `scripts/publish-policy.json`, enforced by `check:package-metadata`), so
+every PIE bundle a host loads resolves the same copy and the same locale-table
+paths.
 
-Release checks validate Node reliability:
+## Custom-element registration
 
-1. **Tarball contract check**
-   - ensure all declared export targets exist in packed tarball
-2. **Node consumer smoke**
-   - import selected package specifiers from `node_modules` in plain Node
-   - verify browser-only package boundaries still fail as expected
-3. **No hidden-hash contract drift**
-   - fail build if exported paths unexpectedly include random hash-only filenames
-4. **Custom-element define safety**
-   - fail build if source files use direct `customElements.define(...)` outside approved wrappers
-   - require shared race-safe registration helper for hand-written registration code
-5. **Type resolution in the supported modes**
-   - `check:types-publish` runs ATTW over every packed package and fails on a non-CSS entry that does not resolve with types under `node16` or `bundler`; `node10` results are ignored
-   - `check:undeclared-subpaths` holds every cross-package import to a subpath the owning package exports
+Hand-written registration goes through `defineCustomElementSafely`
+(`packages/players-shared/src/pie/custom-element-define.ts`). A second define
+of a tag returns `already-defined`, and the first definition stays in force, so
+HMR and two import paths to one element do not throw.
+`check:ce-define-safety` fails on a direct `customElements.define(` outside an
+allowlist of files and on a literal tag defined in more than one file.
 
-## Decision Record
+## Type resolution
 
-Why this direction:
+Type declarations resolve under TypeScript's `node16`, `nodenext` and `bundler`
+modes. `node10`, spelled `node` in a tsconfig, is unsupported: it ignores
+`exports`, through which the packages publish every subpath. TypeScript 6.0
+deprecates `node10` and 7.0 removes it, so the packages carry no
+`typesVersions` fallback. `check:types-publish` runs Are the Types Wrong
+(`scripts/check-attw.mjs`) over every packed package and fails on a non-CSS
+entry that does not resolve with types under `node16` or `bundler`; it ignores
+`node10` results and CSS entries, which ATTW cannot model.
+`check:undeclared-subpaths` holds every cross-package import to a subpath the
+owning package exports.
 
-- preserves efficiency for standard bundler consumers
-- prioritizes reliable NodeJS imports from published package contracts
-- aligns package contract with common JS library publishing patterns
+## Release gates
+
+| Rule | Gate |
+| --- | --- |
+| Every export target exists in the packed tarball and has a stable file name | `check:pack-integrity:real` |
+| Node-safe entry points import in Node.js from installed tarballs; the browser-only roots fail on a browser global | `check:node-consumer-imports` |
+| Dist-only surface | `check:publish-surface`, `check:sourcemaps` |
+| No Svelte for hosts | `check:svelte-runtime-deps`, `check:ce-consumer-contract`, `check:svelte-type-imports` |
+| One `speech-rule-engine` version | `check:package-metadata` |
+| Race-safe registration | `check:ce-define-safety` |
+| Types resolve in the supported modes | `check:types-publish`, `check:undeclared-subpaths` |
+
+[Releasing](./publishing.md#publish-gates) lists every gate and when it runs.
+
+## Decision
+
+One ESM build per package with stable entry names and source-derived chunk
+names, plus a self-contained build where a package must load without a bundler.
+Standard bundler hosts keep code splitting, Node.js imports of the published
+contracts stay reliable, and the package layout follows common JavaScript
+library publishing.

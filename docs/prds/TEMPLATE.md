@@ -1,10 +1,16 @@
 # PRD Title
 
-Status: Draft
+Status: Draft, YYYY-MM-DD
 
 Owner:
 
 Related architecture:
+
+The status line is the first line after the title: one word from the
+[status vocabulary](./README.md#status-vocabulary) and the date the PRD entered
+that status. A contract spanning repos adds an implementation-status paragraph
+directly beneath it that names, per repo, what has landed and what is
+outstanding.
 
 ## Problem
 
@@ -34,7 +40,8 @@ parallel types.
 
 Document the proposed TypeScript types, events, properties, methods, or wire
 fields. Include enough detail for a reviewer to verify compatibility and test
-coverage.
+coverage. A proposed shape carries the sketch label below; an `Accepted` PRD
+shows the shipped signatures without it.
 
 ```ts
 // Documentation sketch only.
@@ -100,17 +107,8 @@ runtime change, say so explicitly.
 ## Standards Or Adapter Impact
 
 State whether this PRD produces adapter-friendly data for QTI/PCI, LTI, xAPI,
-or Caliper.
-
-Default rule: do not claim standards conformance unless this PRD scopes a
-concrete adapter and validation suite.
-
-Adapter ownership guidance:
-
-- QTI/PCI adapters belong in `../pie-qti`.
-- LTI, xAPI, and Caliper adapters may become separate `@pie-players/*` packages
-  after the shared projection contracts exist.
-- SCORM is out of scope for this planning track.
+or Caliper, and which adapter consumes it. Adapter ownership and the
+conformance rule are in the [PRD ground rules](./README.md#ground-rules).
 
 ## Test Plan
 
@@ -128,15 +126,10 @@ bun run typecheck
 bun run test
 ```
 
-For custom-element or export-boundary changes, also run:
-
-```sh
-bun run check:source-exports
-bun run check:consumer-boundaries
-bun run check:custom-elements
-```
-
-For Playwright-backed tests, run outside the sandbox.
+For custom-element, export-boundary, toolkit-core or player changes, also run
+the [high-value checks](../../AGENTS.md#high-value-checks). Playwright-backed
+tests run outside the sandbox; see
+[Playwright and sandboxed execution](../../AGENTS.md#playwright-and-sandboxed-execution).
 
 ## Rollout And Release Notes
 

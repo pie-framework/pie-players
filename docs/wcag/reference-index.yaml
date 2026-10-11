@@ -76,6 +76,31 @@ criteria:
     level: A
     url: "https://www.w3.org/WAI/WCAG22/Understanding/non-text-content"
     tags: [images, icons, diagrams, math, media]
+  - id: "1.2.1"
+    title: "Audio-only and Video-only (Prerecorded)"
+    level: A
+    url: "https://www.w3.org/WAI/WCAG22/Understanding/audio-only-and-video-only-prerecorded"
+    tags: [media, audio, transcript, sign-language]
+  - id: "1.2.2"
+    title: "Captions (Prerecorded)"
+    level: A
+    url: "https://www.w3.org/WAI/WCAG22/Understanding/captions-prerecorded"
+    tags: [media, video, captions, timed-media]
+  - id: "1.2.3"
+    title: "Audio Description or Media Alternative (Prerecorded)"
+    level: A
+    url: "https://www.w3.org/WAI/WCAG22/Understanding/audio-description-or-media-alternative-prerecorded"
+    tags: [media, video, audio-description]
+  - id: "1.2.5"
+    title: "Audio Description (Prerecorded)"
+    level: AA
+    url: "https://www.w3.org/WAI/WCAG22/Understanding/audio-description-prerecorded"
+    tags: [media, video, audio-description]
+  - id: "1.2.6"
+    title: "Sign Language (Prerecorded)"
+    level: AAA
+    url: "https://www.w3.org/WAI/WCAG22/Understanding/sign-language-prerecorded"
+    tags: [media, sign-language]
   - id: "1.3.1"
     title: "Info and Relationships"
     level: A
@@ -86,11 +111,31 @@ criteria:
     level: A
     url: "https://www.w3.org/WAI/WCAG22/Understanding/meaningful-sequence"
     tags: [reading-order, shadow-dom, dynamic-content]
+  - id: "1.3.3"
+    title: "Sensory Characteristics"
+    level: A
+    url: "https://www.w3.org/WAI/WCAG22/Understanding/sensory-characteristics"
+    tags: [instructions, position, color, shape]
+  - id: "1.4.1"
+    title: "Use of Color"
+    level: A
+    url: "https://www.w3.org/WAI/WCAG22/Understanding/use-of-color"
+    tags: [color, state, correctness, selection]
+  - id: "1.4.2"
+    title: "Audio Control"
+    level: A
+    url: "https://www.w3.org/WAI/WCAG22/Understanding/audio-control"
+    tags: [audio, autoplay, media]
   - id: "1.4.3"
     title: "Contrast (Minimum)"
     level: AA
     url: "https://www.w3.org/WAI/WCAG22/Understanding/contrast-minimum"
     tags: [text, theme, chrome]
+  - id: "1.4.4"
+    title: "Resize Text"
+    level: AA
+    url: "https://www.w3.org/WAI/WCAG22/Understanding/resize-text"
+    tags: [zoom, text, tool-panels]
   - id: "1.4.10"
     title: "Reflow"
     level: AA
@@ -101,6 +146,16 @@ criteria:
     level: AA
     url: "https://www.w3.org/WAI/WCAG22/Understanding/non-text-contrast"
     tags: [icons, borders, separators, handles, focus]
+  - id: "1.4.12"
+    title: "Text Spacing"
+    level: AA
+    url: "https://www.w3.org/WAI/WCAG22/Understanding/text-spacing"
+    tags: [text, spacing, tool-panels, dense-layouts]
+  - id: "1.4.13"
+    title: "Content on Hover or Focus"
+    level: AA
+    url: "https://www.w3.org/WAI/WCAG22/Understanding/content-on-hover-or-focus"
+    tags: [tooltips, popovers, hover, focus]
   - id: "2.1.1"
     title: "Keyboard"
     level: A
@@ -111,6 +166,21 @@ criteria:
     level: A
     url: "https://www.w3.org/WAI/WCAG22/Understanding/no-keyboard-trap"
     tags: [dialogs, overlays, tool-shells]
+  - id: "2.1.4"
+    title: "Character Key Shortcuts"
+    level: A
+    url: "https://www.w3.org/WAI/WCAG22/Understanding/character-key-shortcuts"
+    tags: [keyboard, shortcuts]
+  - id: "2.2.1"
+    title: "Timing Adjustable"
+    level: A
+    url: "https://www.w3.org/WAI/WCAG22/Understanding/timing-adjustable"
+    tags: [timing, host-experience]
+  - id: "2.2.2"
+    title: "Pause, Stop, Hide"
+    level: A
+    url: "https://www.w3.org/WAI/WCAG22/Understanding/pause-stop-hide"
+    tags: [motion, autoplay, media, animation]
   - id: "2.4.1"
     title: "Bypass Blocks"
     level: A
@@ -121,6 +191,11 @@ criteria:
     level: A
     url: "https://www.w3.org/WAI/WCAG22/Understanding/focus-order"
     tags: [focus, overlays, panes, injected-controls]
+  - id: "2.4.6"
+    title: "Headings and Labels"
+    level: AA
+    url: "https://www.w3.org/WAI/WCAG22/Understanding/headings-and-labels"
+    tags: [headings, labels, dialogs, controls]
   - id: "2.4.7"
     title: "Focus Visible"
     level: AA
@@ -233,10 +308,54 @@ project-surfaces:
     tags: [landmarks, layout, split-pane, repeated-cards]
     docs:
       - "./project-surface-map.md"
-      - "../section-player/client-architecture-tutorial.md"
+      - "../section-player/integration-guide.md"
       - "../../packages/section-player/README.md"
   - id: tools
     tags: [tts, line-reader, annotation, calculator, ruler, protractor, graph, periodic-table]
     docs:
       - "./project-surface-map.md"
       - "../tools-and-accomodations/architecture.md"
+      - "../accessibility/tts-deep-dive.md"
+  - id: item-player
+    tags: [single-item, response-controls, session-events]
+    docs:
+      - "./project-surface-map.md"
+      - "../item-player/overview.md"
+      - "../../packages/item-player/README.md"
+  - id: assessment-player
+    tags: [navigation, landmarks, reflow, zoom]
+    docs:
+      - "./project-surface-map.md"
+      - "../../packages/assessment-player/README.md"
+  - id: print-player
+    tags: [print, alternates, structure]
+    docs:
+      - "./project-surface-map.md"
+      - "../../packages/print-player/README.md"
+  - id: timed-media
+    tags: [video, captions, media-controls, cues]
+    docs:
+      - "./project-surface-map.md"
+      - "../../packages/section-player/README.md"
+      - "../architecture/timed-media-section.md"
+  - id: audio-and-transcripts
+    tags: [recorded-audio, transcript, autoplay, audio-control]
+    docs:
+      - "./project-surface-map.md"
+      - "../prds/audio-accommodations.md"
+      - "../accessibility/accessibility-catalogs-integration-guide.md"
+  - id: sign-language
+    tags: [video, sign-language, playback-controls]
+    docs:
+      - "./project-surface-map.md"
+      - "../prds/sign-language-asl-support.md"
+  - id: theme
+    tags: [contrast, color-schemes, focus-indicators]
+    docs:
+      - "./project-surface-map.md"
+      - "../theming/how-theming-works.md"
+  - id: dictation
+    tags: [dictation, label-in-name, assistive-technology]
+    docs:
+      - "./project-surface-map.md"
+      - "../tools-and-accomodations/non-embedded-dictation.md"

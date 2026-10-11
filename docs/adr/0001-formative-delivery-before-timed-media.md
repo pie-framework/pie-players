@@ -4,6 +4,9 @@ Status: Accepted, 2026-08-15
 
 Owner: PIE Players maintainers
 
+Read with: [Update, 2026-09-27](#update-2026-09-27), which supersedes the Outcome on
+where cue and playback policy lives.
+
 ## Decision
 
 Formative delivery — Try state, feedback reveal, mastery rollup — is built and
@@ -41,12 +44,12 @@ evaluation machinery.
 
 ## Trade-off
 
-A deliberate trade: the more demonstrable feature waits. A video timeline with
-questions appearing at cues is legible to a stakeholder in seconds, where
-check-answer-and-retry is not. The formative work is independently shippable and
-needs no media, so the cost is demo impact rather than delivered value — and if
-the demo audience specifically needs video-linked assessment, that is an audience
-fact that would reverse this order and nothing else about the design.
+A deliberate trade: the more visible feature waits. A video timeline with
+questions appearing at cues shows its value at a glance, where
+check-answer-and-retry does not. The formative work is independently shippable and
+needs no media, so the cost is visibility rather than delivered value. A delivery
+that needs video-linked assessment first would reverse this order and nothing else
+about the design.
 
 ## Consequences
 
@@ -60,9 +63,9 @@ fact that would reverse this order and nothing else about the design.
   — including `"unknown"` for a not-auto-scorable item — are the conditions a cue
   can be authored against, which is why they are settled here rather than in the
   timed-media PRD.
-- The timed-media PRD's remaining blocking decisions (where the section flavor
-  attaches, where cue and playback policy runs) are unaffected by this record and
-  stay open.
+- The timed-media PRD's remaining blocking decisions (where a timed-media section
+  attaches to delivery, where cue and playback policy runs) are unaffected by this
+  record and stay open.
 
 ## Outcome, 2026-08-15
 
@@ -73,12 +76,12 @@ policy names `correct` over state that is already there, which is the whole poin
 of this ordering.
 
 One thing in **Consequences** above reads differently now, and the record keeps
-both: cue and playback policy ownership was taken to ride on where the section
-flavor attaches. It does not. `assessment-toolkit` sits beneath the standalone
+both: cue and playback policy ownership was taken to ride on where a timed-media
+section attaches to delivery. It does not. `assessment-toolkit` sits beneath the standalone
 section-player path as well as beneath assessment-player — the formative Try round
 trip runs controller → `SectionControllerBinding` → `PieAssessmentToolkit` →
 composition republish, with no assessment-player in it — so `ToolPolicyEngine` can
-own cue and playback policy whichever player mounts the section. Where the flavor
+own cue and playback policy whichever player mounts the section. Where the section
 attaches was then decided the same day — the existing layouts on the standalone
 path, no new element — which moved that PRD to `Ready`.
 
@@ -89,10 +92,13 @@ holds only for an unhosted player. Since adc3da63 (2026-09-25) a hosted player �
 `hosted` set to `true`, or an enabled `backend.delivery` with `hosted` unset —
 runs no element controllers, so `provideScore()` returns `undefined` for every
 model, every Try lands on `"unknown"`, and a correctness gate follows its
-`onUnknownCorrectness`.
+`onUnknownCorrectness`. The formative contract's
+[Correctness derivation](../prds/formative-delivery-contract.md#correctness-derivation)
+and the item player's [Delivery Contract](../item-player/backend-support.md#delivery-contract)
+own the behavior.
 
 Cue and playback policy did not go to `ToolPolicyEngine`. It lives in
 `@pie-players/pie-players-shared/timed-media`, with the live state in
-`SectionController`; the timed-media contract's [Implementation
-Record](../prds/timed-media-section-contract.md#implementation-record-2026-08-17)
+`SectionController`; the timed-media contract's [Package And Export
+Ownership](../prds/timed-media-section-contract.md#package-and-export-ownership)
 gives the reason.

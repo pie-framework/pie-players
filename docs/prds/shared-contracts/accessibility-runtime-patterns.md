@@ -1,6 +1,8 @@
 # Accessibility Runtime Patterns
 
-Status: Draft
+Status: Draft, 2026-06-25
+
+Not implemented and not scheduled. Timed media and sign language shipped their own runtime accessibility behavior without it; the one rule they share, the read-aloud and media audio handoff, is a toolkit service (see [Contract Shape](#contract-shape)).
 
 Owner: PIE Players maintainers
 
@@ -54,7 +56,9 @@ This PRD is primarily a behavioral contract. Future implementation PRDs should c
 - seek/navigation restriction rules with accommodation override behavior;
 - high-contrast, zoom, and reduced-motion expectations;
 - non-video alternatives where video itself is not an accessible source;
-- **alternate-representation coexistence**: when an accommodation renders content in another language or modality, the original content stays visible and usable rather than being replaced. Sign language is the driving case — deaf learners typically use ASL and written English together, so a signed prompt translation must appear alongside the English prompt, not instead of it. See [`../sign-language-asl-support.md`](../sign-language-asl-support.md).
+- **alternate-representation coexistence**: when an accommodation renders content in another language or modality, the original content stays visible and usable rather than being replaced. Sign language is the driving case — deaf learners typically use ASL and written English together, so a signed prompt translation must appear alongside the English prompt, not instead of it. See [Sign language (ASL) support](../sign-language-asl-support.md).
+
+The TTS/media handoff is the one rule shared in code. Read-aloud and media audio never play at once: the action the learner just took wins, starting one pauses the other, and neither resumes what it silenced. `bindTtsAudioHandoff` and `pauseTtsForMediaAudio` in `@pie-players/pie-assessment-toolkit/tools/registration` state the rule once for every media surface, today the signing region and a timed-media stimulus.
 
 One framing rule for accommodation work under this PRD: WCAG 2.2 AA is the baseline, and some accommodations sit outside it entirely. Sign language appears in WCAG only at SC 1.2.6, Level AAA, scoped to prerecorded audio in synchronized media, so signing a text prompt is not an AA obligation at all. Accommodations are driven by assessment policy and 1EdTech Elevated Accessibility expectations; AA conformance is never evidence that an accommodation is covered.
 
@@ -69,7 +73,7 @@ interface RuntimeAccessibilityHandoff {
 }
 ```
 
-This sketch is not a final API recommendation. The accepted PRD should decide whether a shared type is useful or whether these stay as behavioral acceptance criteria.
+This sketch is not a final API recommendation, and `InteractionSourceRef` is itself a sketch in the Draft [interaction event contract](./interaction-event-contract.md#contract-shape). The accepted PRD should decide whether a shared type is useful or whether these stay as behavioral acceptance criteria.
 
 ## Compatibility
 
@@ -100,7 +104,7 @@ Hosts own:
 
 This PRD does not define persisted or wire-facing data unless a future implementation PRD ratifies accessibility event or handoff types.
 
-If such types are introduced, they must include versioning, validation ownership, unknown-version behavior, and fixtures through the interaction event projection contract.
+If such types are introduced, they must include versioning, validation ownership, unknown-version behavior, and fixtures through the [interaction event projection contract](./interaction-event-contract.md).
 
 ## Accessibility
 
@@ -138,15 +142,7 @@ bun run typecheck
 bun run test
 ```
 
-For Playwright-backed accessibility tests, run outside the sandbox.
-
-For custom-element or export-boundary changes, also run:
-
-```sh
-bun run check:source-exports
-bun run check:consumer-boundaries
-bun run check:custom-elements
-```
+For custom-element, export-boundary, toolkit-core or player changes, also run the [high-value checks](../../../AGENTS.md#high-value-checks). Playwright-backed tests run outside the sandbox; see [Playwright and sandboxed execution](../../../AGENTS.md#playwright-and-sandboxed-execution).
 
 ## Rollout And Release Notes
 
@@ -159,7 +155,6 @@ bun run check:custom-elements
 
 - Which patterns belong in toolkit services versus section-player variants?
 - Should there be a shared handoff type, or should this remain a behavioral PRD consumed by implementation tests?
-- What manual assistive technology review matrix is required for timed-media MVP?
+- What manual assistive technology review matrix must a consuming implementation pass? Timed media shipped without one.
 - How should accommodation overrides interact with seek locks, forced pauses, and branch restrictions?
-- What is the arbitration rule when two audio/visual language channels compete — TTS speaking a prompt while a signing video plays the same prompt? One must yield; which, and does the learner choose?
 - How do content-node-scoped accommodations (signing, line reader, highlighter) coexist when they target the same node?

@@ -1,14 +1,8 @@
 # PIE Assessment Tools & Accommodations Architecture
 
----
+This document describes how the PIE (Portable Interactions and Elements) assessment toolkit delivers tools and accommodations to students during online assessments: its principles, the capability model, tool scope and instance ids, and the shared services behind them. It is for engineers evaluating or extending the toolkit. Host integrators configuring tools start with [Configuring Tools](./tool_provider_system.md); tool authors start with the [tool registry reference](../../packages/assessment-toolkit/docs/TOOL_REGISTRY.md), which is authoritative for registrations.
 
-## Executive Summary
-
-This document describes the architecture of the PIE assessment tools and accommodations system—a flexible, extensible toolkit that provides students with accessibility tools and accommodations during online assessments. The system supports essential accommodations such as text-to-speech, highlighting, calculators, rulers, and other assistive tools while aiming for WCAG 2.2 AA adherence.
-
-The architecture leverages modern web standards (CSS Custom Highlight API, Web Components) to provide a framework-agnostic solution that integrates seamlessly with PIE-based assessment platforms.
-
-> **Note:** For the authoritative tool registry reference, see `packages/assessment-toolkit/docs/TOOL_REGISTRY.md`.
+The system supports accommodations such as text-to-speech, highlighting, calculators and rulers, and targets WCAG 2.2 AA. It is built on web standards (the CSS Custom Highlight API and custom elements), so a host in any framework can embed it.
 
 See also:
 
@@ -25,10 +19,14 @@ See also:
 3. [Component Architecture](#component-architecture)
 4. [Tool Invocation](#tool-invocation)
 5. [What Counts As A Tool](#what-counts-as-a-tool)
-6. [Core Services](#core-services)
-7. [Integration Patterns](#integration-patterns)
-8. [Technology Stack](#technology-stack)
-9. [Accessibility & Accommodations](#accessibility--accommodations)
+6. [Capability Ownership Layers](#capability-ownership-layers)
+7. [Tool Scope Architecture](#tool-scope-architecture-placement--scoped-ids)
+8. [Core Services](#core-services)
+9. [Integration Patterns](#integration-patterns)
+10. [Technology Stack](#technology-stack)
+11. [Accessibility & Accommodations](#accessibility--accommodations)
+12. [Architecture Decisions](#architecture-decisions)
+13. [References](#references)
 
 ---
 
@@ -50,7 +48,7 @@ The architecture leverages native browser APIs that are now widely supported, re
 - **Web Speech API** - Browser-native text-to-speech
 - **CSS Container Queries** - Responsive tool layouts
 
-**Benefit:** Better performance, reduced bundle size, improved accessibility, and future-proof implementation.
+**Benefit:** Better performance, reduced bundle size and improved accessibility.
 
 ### Framework Agnostic
 
@@ -66,7 +64,7 @@ Tools never modify PIE item content DOM directly. Visual effects use modern brow
 
 ### Accessibility First
 
-WCAG 2.2 AA adherence is the primary requirement. All tools support keyboard navigation and screen reader compatibility. The system supports accommodations required by IEP and 504 plans.
+WCAG 2.2 AA is the target. Tools are operated through native controls or their own keyboard handlers, and automated browser tests cover keyboard paths and axe rules; no manual screen-reader pass has validated them yet ([deferred accessibility issues](../wcag/deferred-issues.md)). Tool policy grants tools from the student's personal needs profile, where a program records the accommodations an IEP or 504 plan requires.
 
 **Legal Context:** Public education agencies are covered by Section 504 of the Rehabilitation Act and Title II of the ADA; Section 508 governs federal agencies' own ICT. WCAG is the technical standard these obligations are measured against.
 
@@ -102,7 +100,7 @@ The PIE Assessment Tools system provides:
 **Out of Scope:**
 - Assessment content authoring
 - Item response validation
-- Session management and timing
+- Session persistence and timing: the host owns backend I/O, and the toolkit's [Test Attempt Session](../../packages/assessment-toolkit/README.md#test-attempt-session) is a shape the host maps its attempt data to and from
 - Score reporting
 
 ---
@@ -111,8 +109,8 @@ The PIE Assessment Tools system provides:
 
 ### High-Level Components
 
-**Section Player Container** (Primary Interface)
-- Renders QTI 3.0 sections with passages and items
+**Section player** (`pie-section-player-splitpane`, `pie-section-player-vertical`, `pie-section-player-tabbed`)
+- Renders a section's passages and items
 - Registers authored catalogs and preprocessed `extractedCatalogs`
 - Manages accessibility catalog lifecycle
 - Integrates toolkit services (TTS, tools, highlighting)
@@ -157,31 +155,35 @@ A capability declares how it is invoked, as `ToolActivation`:
 
 Activation is orthogonal to placement, to eligibility, and to whether the capability needs authored content. See [What Counts As A Tool](#what-counts-as-a-tool).
 
-### No capability depends on a gateway for its only input
+### Gateway independence
 
-A gateway hands the learner's selection to a capability through `ToolkitCoordinator.requestTool`. That is a shortcut onto a capability that is reachable without it, never the capability's only door.
+A selection gateway is a capability that appears over the learner's text selection and offers actions on it. It hands the selection to a capability through `ToolkitCoordinator.requestTool`, as a shortcut onto a capability that is reachable without it. No capability depends on a gateway for its only input.
 
-The constraint is a browser fact, not a preference. Chromium will not extend a selection with Shift+Arrow in non-editable content unless caret browsing is on — an OS-level toggle absent on mobile — so a sighted keyboard-only learner cannot originate a text selection at all. A capability reachable only through a selection is unreachable for them, which is WCAG 2.2 SC 2.1.1. This was measured against a live passage: twelve Shift+ArrowRight presses leave the selection empty.
+The constraint is a browser fact. Chromium will not extend a selection with Shift+Arrow in non-editable content unless caret browsing is on, an OS-level toggle absent on mobile, so a sighted keyboard-only learner cannot originate a text selection at all. A capability reachable only through a selection is unreachable for them, which fails WCAG 2.2 SC 2.1.1.
 
-Both dictionaries therefore carry a toolbar button and their own term field, and treat an incoming `term` as one of two equal entry points. A capability designed the other way round — receiving text from a gateway and offering no input of its own — cannot be made keyboard accessible by any amount of work inside the gateway.
+Both dictionaries therefore carry a toolbar button and their own term field, and treat an incoming `term` as one of two equal entry points. A capability that receives text from a gateway and offers no input of its own cannot be made keyboard accessible by any amount of work inside the gateway.
 
-### Where selection actions are paired to capabilities
+### Selection-action pairing
 
-Three layers, and the split is what keeps each of them able to change alone:
+Three layers, each able to change alone:
 
 - The **gateway** renders the actions it is handed (`ToolSelectionAction`) and knows nothing about what they do.
 - The **capability** exposes a term or equivalent input and knows nothing about selections.
 - The **composition layer** (`@pie-players/pie-default-tool-loaders`) names both and pairs them.
 
-Core names no capability, so a highlighter cannot name a dictionary. A host can contribute an action for a capability PIE does not ship, and an action whose capability no toolbar hosts is absent rather than present and inert.
+Core names no capability, so the annotation toolbar cannot name a dictionary. A host can contribute an action for a capability PIE does not ship, and an action whose capability no toolbar hosts is left out.
 
-`requestTool` resolves as a claim rather than a broadcast: one target answers, the first toolbar that currently hosts the capability. A broadcast would open a panel in every toolbar whose scope contains the selection, which in a section player is the item card's toolbar and the section's both.
+`requestTool` resolves as a claim rather than a broadcast: one target answers, the first toolbar that currently hosts the capability. A broadcast would open a panel in every toolbar whose scope contains the selection, which in a section player is both the item card's toolbar and the section's.
 
-Resolution prefers section scope, the level at which a whole section shares one instance, and falls back to any level that hosts the capability. Naming a level in the request instead makes it a constraint, honoured strictly. The fallback is what keeps a placement decision from silently removing the affordance: a host that places a capability at item scope only would otherwise see it granted, hosted and visible with no action on the selection, and matching a level in the gateway to a placement made elsewhere is a step it has no reason to expect. At item and passage scope a section holds one target per card, and the first registered one claims the request — a requester that needs a particular card's instance cannot express that. Measured rather than assumed: the shipped gateway does not need to. The strip is a section-scoped singleton that raises on passage selections, so the selection belongs to no card, and what a request opens is a floating shell positioned by the toolbar rather than anything rendered inside a card. Which card's toolbar owns the instance is therefore invisible to the learner.
+Resolution prefers section scope, the level at which a whole section shares one instance, and falls back to any level that hosts the capability. A request that names a level makes it a constraint, honored strictly.
 
-`params` are reapplied on every sync, so a request carries an identity as well as its payload. Without one a capability cannot tell a re-render from a fresh ask, and both plausible substitutes fail: keying on the payload means asking twice for the same thing does nothing, and keying on what the capability last did with it means every re-render overrides work the learner has done since. An identity is optional in the seam, and a request without one falls back to the payload — the best available identity for a host that assigns a capability's property directly and mints nothing.
+The fallback keeps a placement decision from silently removing the affordance. A host that places a capability at item scope only would otherwise see it granted, hosted and visible, with no action on the selection; matching a level in the gateway to a placement made elsewhere is a step it has no reason to expect.
 
-Asking twice for the same thing is currently unreachable through the shipped gateway: the strip does not raise on a word already selected once in the session, so a second identical request has no origin. The fallback still earns its place, because it is what a host assigning a property directly gets, and because the limit is the gateway's and may lift.
+At item and passage scope a section holds one target per card, and the first registered one claims the request, so a requester cannot ask for a particular card's instance. The shipped gateway has no need to. The strip is a section-scoped singleton that raises on passage selections, so the selection belongs to no card, and a request opens a floating shell that the toolbar positions outside any card. Which card's toolbar owns the instance is invisible to the learner.
+
+The request's `params` are reapplied on every sync, so a request carries an identity as well as its payload. Without one a capability cannot tell a re-render from a fresh ask. Keying on the payload instead means asking twice for the same thing does nothing; keying on what the capability last did with it means every re-render overrides work the learner has done since. The identity is optional, and a request without one falls back to the payload, the best available identity for a host that assigns a capability's property directly and mints none.
+
+The shipped gateway never asks twice for the same thing: the strip does not raise on a word already selected once in the session. The payload fallback serves a host that assigns a property directly, and covers the gateway if that limit lifts.
 
 ### Testing
 
@@ -191,23 +193,23 @@ Each layer is testable without the others: a capability against its own input, a
 
 ## What Counts As A Tool
 
-A tool in this codebase is a **policy-addressable capability**: something a `toolId` names so district, test-administration, item and student policy can decide whether it is available. `PnpPolicyDecisionEvent` calls the same id a `featureId`.
+A tool in this codebase is a **policy-addressable capability**: something a `toolId` names so district, test-administration, item and student policy can decide whether it is available. That id is the tool's support id; `PnpPolicyDecisionEvent` carries it as `featureId`.
 
-Registry membership therefore does *not* imply anything about three independent properties that are easy to conflate with it.
+Registry membership implies nothing about three independent properties.
 
-**1. Who may enable it (eligibility).** The assessment domain distinguishes *universal features* available to every student (highlighter, zoom, line reader), *designated supports* an educator indicates a need for (masking, color contrast, often TTS), and *accommodations* requiring a documented need such as an IEP or 504 (braille, ASL, scribe). This is the CCSSO / Smarter Balanced framing.
+**1. Who may enable it (eligibility).** The assessment domain distinguishes *universal features* available to every student (highlighting, zoom, line reader), *designated supports* an educator indicates a need for (masking, color contrast, often TTS), and *accommodations* requiring a documented need such as an IEP or 504 plan (braille, ASL, scribe). This is the framing of the CCSSO accessibility manual.
 
-**Eligibility does not belong in a tool registration.** It is a property of the program, not of the capability: TTS is a universal tool in one program and a documented accommodation in another. It belongs in policy configuration, where the district and test-administration levels already live. `PnpPolicySource`'s precedence rules (`district-block`, `test-admin-override`, `item-restriction`, `pnp-prohibited`, `item-requirement`, `district-requirement`, `pnp-support`) are the right home.
+**Eligibility does not belong in a tool registration.** It is a property of the program: TTS is a universal tool in one program and a documented accommodation in another. It belongs in policy configuration, where the district and test-administration levels already live, and `PnpPolicySource`'s precedence rules (`district-block`, `test-admin-override`, `item-restriction`, `pnp-prohibited`, `item-requirement`, `district-requirement`, `pnp-support`) carry it.
 
-**2. Whether it needs authored content.** A calculator works on any item. A highlighter works on any item. ASL needs a signing video authored for *that specific content*; braille needs a transcription; authored-SSML speech needs `<speak>` in that item. For these, availability is a function of the content as well as the student, and an affordance offered where no content exists is a dead affordance.
+**2. Whether it needs authored content.** A calculator or a highlighter works on any item. ASL needs a signing video authored for *that specific content*; braille needs a transcription; authored-SSML speech needs `<speak>` in that item. For these, availability is a function of the content as well as the student, and an affordance offered where no content exists is a dead affordance.
 
-Unlike eligibility, this **is** intrinsic to the capability and belongs with it. AfA 3.0 formalizes it as the resource half of a matching pair — PNP describes learner needs, [DRD](https://www.imsglobal.org/accessibility/afav3p0pd/AfAv3p0_SpecPrimer_v1p0pd.html) describes what a resource offers. QTI 3 approximates DRD in-band: the presence of a catalog card *is* the resource-side declaration. PIE does the QTI version, so "is there a matching catalog card" is our DRD check.
+Unlike eligibility, this **is** intrinsic to the capability and belongs with it. AfA (IMS Access for All) 3.0 formalizes it as the resource half of a matching pair: the PNP (Personal Needs and Preferences) describes learner needs, and the [DRD](https://www.imsglobal.org/accessibility/afav3p0pd/AfAv3p0_SpecPrimer_v1p0pd.html) (Digital Resource Description) describes what a resource offers. QTI 3 approximates DRD in-band, where the presence of a catalog card *is* the resource-side declaration. PIE follows QTI, so a matching catalog card is its DRD check.
 
 **3. Where it renders.** Toolbar-invoked overlay, in-content transform, or its own layout region. Covered by [Tool Scope Architecture](#tool-scope-architecture-placement--scoped-ids) below and independent of the other two. Also separate from how it is invoked, in [Tool Invocation](#tool-invocation) above — a capability's activation, its placement, its eligibility, and its content dependency are four orthogonal things.
 
 ### How The Standards Treat This
 
-Neither reference point draws the tool-versus-accommodation line, and how each declines to is informative.
+Neither reference point draws the tool-versus-accommodation line.
 
 **AfA / PNP 3.0 refuses it deliberately.** On-screen calculators and dictionaries sit at the same structural level as captions and sign language; all are features a user may request. The [PNP information model](https://www.imsglobal.org/spec/afa/v3p0/info) contains no eligibility criteria and no authorization levels at all — who may grant a support is out of scope by design, left to policy frameworks above the spec.
 
@@ -215,17 +217,19 @@ Neither reference point draws the tool-versus-accommodation line, and how each d
 
 ### Consequence For PIE
 
-The shape here is already right and is closer to the standards than it looks: an AfA-shaped, eligibility-free `supports` list (`PersonalNeedsProfile.supports`, naming capabilities by `toolId`), plus a policy engine supplying the tiering AfA omits.
+PIE matches both: an AfA-shaped, eligibility-free `supports` list (`PersonalNeedsProfile.supports`, naming capabilities by `toolId`), plus a policy engine supplying the tiering AfA omits.
 
-So **accommodations are not a separate kind of thing in this architecture.** They get a feature id like everything else, their eligibility comes from policy configuration, and their content dependency is checked by catalog resolution. Sign language is the worked example: it takes a feature id so it inherits the eight-level precedence, declares a content dependency so it is absent when an item carries no card, and renders as its own section-player region rather than a toolbar surface — three independent answers, none of which follow from the other two. See [`../prds/sign-language-asl-support.md`](../prds/sign-language-asl-support.md).
+**Accommodations are tools like any other.** They get a support id, their eligibility comes from policy configuration, and catalog resolution checks their content dependency. Sign language is the worked example: its support id gives it the eight-level precedence, its content dependency keeps it absent when an item carries no card, and it renders as its own section-player region with no toolbar surface. None of the three answers follows from the other two. See [`../prds/sign-language-asl-support.md`](../prds/sign-language-asl-support.md).
 
-Two mechanisms carry this:
+Two mechanisms carry this.
 
-**Decisions without a placement.** `decide(...)` answers "should this tool appear in *this* toolbar," which is the wrong question for a capability that has no toolbar surface — the answer comes back absent because nothing placed it, not because policy refused. `ToolPolicyEngine.decideFeature(featureId)` (exposed as `ToolkitCoordinator.decideFeaturePolicy(featureId)`) resolves one feature id through the same eight levels, independent of placement. It delegates to `PnpPolicySource.resolveFeature(...)`, which reuses the existing rule evaluation rather than restating the precedence, so the two paths cannot drift. It does not consult `pnpEnforcement`: that flag governs whether profile policy *refines* an otherwise-visible tool set, and a capability with no placement has no unrefined baseline to fall back to, so honouring the flag would make the accommodation permanently unavailable rather than merely unrefined.
+**Decisions without a placement.** `decideToolPolicy(...)` answers "should this tool appear in *this* toolbar". For a capability with no toolbar surface that answer is always absent, because nothing placed it. `ToolPolicyEngine.decideFeature(featureId)`, exposed as `ToolkitCoordinator.decideFeaturePolicy(featureId)`, resolves one support id through the same eight levels, independent of placement. It delegates to `PnpPolicySource.resolveFeature(...)`, which reuses the existing rule evaluation, so the two paths cannot drift.
 
-**Eligibility tier is configuration.** The core ships no default profile; `createEmptyPersonalNeedsProfile()` in `@pie-players/pie-default-tool-loaders` grants nothing. A default derived from registered support ids was implemented and removed: it read registration, which means policy-addressable, as universal eligibility, and granted accommodation-tier capabilities to every learner of a host that supplied no profile.
+`decideFeature` does not consult `pnpEnforcement`. That flag governs whether profile policy *refines* an otherwise-visible tool set, and a capability with no placement has no unrefined baseline to fall back to: honoring the flag would make the accommodation permanently unavailable.
 
-Tiering belongs where the district and test-administration levels already live, because it is a property of the program rather than of the capability: TTS is a universal feature in one program and a documented accommodation in another. `@pie-players/pie-default-tool-loaders` ships today's universal set as `createUniversalPersonalNeedsProfile()` — data a host adopts, extends or replaces. What does belong on a registration is the content dependency, `requiresAuthoredContent`: signing needs an authored catalog card, braille a transcription. That is the resource half of AfA's PNP/DRD pair, it is intrinsic to the capability, and declaring it keeps a content-dependent accommodation out of a wholesale grant structurally rather than by name.
+**Eligibility tier is configuration.** The core ships no default profile, and `createEmptyPersonalNeedsProfile()` in `@pie-players/pie-default-tool-loaders` grants nothing. Registration means policy-addressable and never universal eligibility: a default derived from registered support ids would grant accommodation-tier capabilities to every learner of a host that supplies no profile.
+
+`@pie-players/pie-default-tool-loaders` ships today's universal set as `createUniversalPersonalNeedsProfile()`, data a host adopts, extends or replaces. What does belong on a registration is the content dependency, `requiresAuthoredContent`: signing needs an authored catalog card, braille a transcription. That is the resource half of AfA's PNP/DRD pair, and declaring it keeps a content-dependent accommodation out of a wholesale grant by structure, with no list of names.
 
 ---
 
@@ -235,14 +239,14 @@ Four layers, and which one a piece of code belongs to is decided by whether it n
 
 | Layer | Package | Knows |
 | --- | --- | --- |
-| Core | `assessment-toolkit` | `featureId`, placement levels, activation kinds, precedence, the registration contract. **No capability ids.** |
+| Core | `assessment-toolkit` | Support ids as opaque strings, placement levels, activation kinds, precedence, the registration contract. **No capability ids.** |
 | Capability | `tool-*` | One capability: its registration, its content resolver, its element |
 | Composition | `default-tool-loaders` | Which capabilities a deployment has, their tags, placement presets, universal supports, module loaders |
 | Renderer | `section-player`, `item-player`, toolbars | Surfaces and layout. Asks the registry what to mount |
 
 `bun run check:capability-neutrality` fails when a capability id or a `pie-tool-*` tag appears in core. A renderer is held to the same rule by its own source-boundary tests, because a renderer that names one is the same defect one layer up: it means a host cannot contribute that kind of capability without a PR here.
 
-The rule this encodes: **a capability id may only appear in the layer that is a decision about capabilities.** Core naming one turns a deployment choice into a code change. That happened three ways at once — the packaged registry was core's fallback for an absent one, the default profile was derived from registry membership, and two renderers named the specific capability they mounted — and each had to be undone before a host could contribute anything.
+The rule this encodes: **a capability id may only appear in the layer that is a decision about capabilities.** Core naming one turns a deployment choice into a code change. So core has no packaged registry to fall back on when a host passes none, derives no default profile from registry membership, and no renderer names the capability it mounts.
 
 Within the composition layer, PIE's packaged set is authored through one
 **Packaged Capability Composition**. A capability entry binds its registration
@@ -251,7 +255,7 @@ and order in the shipped placement presets, its toolbar order, and an explicit
 flag for whether this program treats it as universal. The familiar root exports
 — `PACKAGED_TOOL_REGISTRATIONS`, tag and loader maps, placement/order constants,
 the universal preset, and `createPackagedToolRegistry()` — are projections of
-that module rather than independent catalogues. Universal policy remains
+that module rather than independent catalogs. Universal policy remains
 explicit data: the composition rejects a universal content-dependent capability
 but never infers eligibility from registry membership.
 
@@ -275,13 +279,15 @@ snapshot containing only `mountable` and `occupied`. The module owns registry,
 policy, and catalog observation; eligibility; structural comparison; lazy
 loading; ordered DOM reconciliation; synchronization; diagnostics; and
 teardown. Deleting it would put the same lifecycle back into all three
-adapters, which is why this seam earns its place.
+adapters.
 
-Availability at a surface is grant **and** content: `decideFeaturePolicy(supportId)`, then `requiresAuthoredContent.resolve(...)`, then `renderSurface`. Neither half implies the other, which is what keeps a learner with an accommodation from seeing a dead affordance on the items that carry no resource. The catalog resolver owns entity/model traversal and owner-filtered observation; `resolve` receives only the immutable cards visible to that owner, not the raw entity plus resolver plus a separately assembled context.
+Availability at a surface is grant **and** content: `decideFeaturePolicy(supportId)`, then `requiresAuthoredContent.resolve(...)`, then `renderSurface`. Neither half implies the other, which keeps a learner with an accommodation from seeing a dead affordance on the items that carry no resource. The catalog resolver owns entity and model traversal and owner-filtered observation; `resolve` receives only the immutable cards visible to that owner.
 
 Two constraints follow. A `region` capability is gated on the feature question and never the placement question — placing one is a `tools.unplaceableActivation` error, so the placement question has no answer to give. And a content dependency resolves against an item model or a passage, never a section, because a DRD resource pairs with content rather than with a container: a section-scoped surface declines a capability that declares one.
 
-The host's off switch for a `region` capability is therefore `tools.policy.blocked`, which names capabilities rather than placements. `decideFeature(...)` applies it, and `tools.policy.allowed` as an allow-list, before any policy source is consulted; the denial reports `rule: "host-blocked"` / `"host-allowlist"` at precedence 0, the same vocabulary `composeDecision(...)` records. `provider-disabled` and `placement-membership` stay out of the feature path, both being statements about a toolbar the capability was never on. A host denial outranks `resolvesWithoutGrant`: that flag lets a content-dependent capability answer from the content when policy granted nobody — an authored `visibility: "always"` transcript is not an accommodation — while a blocklist entry says the capability has no place in this delivery, which the content does not get to reopen.
+The host's off switch for a `region` capability is therefore `tools.policy.blocked`, which names capabilities rather than placements. `decideFeature(...)` applies it, and `tools.policy.allowed` as an allow-list, before any policy source is consulted; the denial reports `rule: "host-blocked"` / `"host-allowlist"` at precedence 0, the same vocabulary `composeDecision(...)` records. `provider-disabled` and `placement-membership` stay out of the feature path, both being statements about a toolbar the capability was never on.
+
+A host denial outranks `resolvesWithoutGrant`. That flag lets a content-dependent capability answer from the content when policy granted nobody, since an authored `visibility: "always"` transcript is not an accommodation. A blocklist entry says the capability has no place in this delivery, and the content does not get to reopen it.
 
 The host observes successful `ToolRegistry` mutations. Registering a capability
 adds it in registration order; unregistering or clearing destroys it; overriding
@@ -298,9 +304,9 @@ Recoverable warnings remain observable through events and hooks but do not set
 section readiness to `error`; nonrecoverable framework errors retain the
 existing blocking behavior.
 
-`@pie-players/pie-tool-sign-language` is the worked example. It is deliberately absent from `createPackagedToolRegistry`, because a content-dependent accommodation is opt-in, so a host installs and registers it exactly as it would one of its own. `packages/assessment-toolkit/docs/TOOL_REGISTRY.md` carries both contracts.
+`@pie-players/pie-tool-sign-language` is the worked example. It is deliberately absent from `createPackagedToolRegistry`, because a content-dependent accommodation is opt-in, so a host installs and registers it exactly as it would one of its own. The [tool registry reference](../../packages/assessment-toolkit/docs/TOOL_REGISTRY.md#host-surfaces) carries both contracts.
 
-Host surfaces are one instance of a broader pattern: a fact only the container knows, published for whichever descendant needs it rather than pushed to a known list of consumers. `renderSurface(context)` publishes, the capability resolves, and `sync(context)` is the change signal — which it lacked until it was found to be re-applying the values the host already had. [`../architecture/composition-context.md`](../architecture/composition-context.md) states the pattern and the invariants that failure violated.
+Host surfaces are one instance of a broader pattern: a fact only the container knows, published for whichever descendant needs it rather than pushed to a known list of consumers. `renderSurface(context)` publishes, the capability resolves, and `sync(context)` is the change signal. [`../architecture/composition-context.md`](../architecture/composition-context.md) states the pattern and its invariants.
 
 ---
 
@@ -308,29 +314,29 @@ Host surfaces are one instance of a broader pattern: a fact only the container k
 
 Independently of how a capability is invoked, tools are categorized by their **scope and lifecycle** within an assessment:
 
+![Item and section tool instances over one navigation: when section s1 opens, every item card mounts its own toolbar, so answerEliminator:item:q1 and answerEliminator:item:q2 exist beside graph:section:s1; moving to q2 creates or releases nothing; when s2 opens, the s1 cards release their tools and the section toolbar re-scopes to graph:section:s2; back on s1 the tool elements are new and closed, eliminations come back from the coordinator's tool-state store, and graph points start over](../img/tools-scope-lifecycle.excalidraw.svg)
+
 ### Item-Level Tools
 
-Tools that operate within the context of a specific question/item:
-
-![Lifecycle comparison of item-level tools versus section-level floating tools](../img/tool-scope-lifecycle-item-vs-section-1-1773125405780.jpg)
-
-**Lifecycle:**
-- See diagram above for creation, teardown, and state-restore flow.
+Tools placed at item level work within one item card:
 
 **Characteristics:**
-- **Instance per item**: Each question has its own tool instances
-- **DOM-scoped**: Tools query/interact with specific item's DOM subtree
-- **State isolation**: Tool state tracked per-item (Q5 eliminations ≠ Q6 eliminations)
-- **UI integration**: Rendered inline in question headers/toolbars
-- **Compact footprint**: Small buttons appropriate for inline placement
+- **One instance per card**: each card's toolbar holds its own instance, such as `answerEliminator:item:q5`
+- **DOM-scoped**: the tool queries and acts on its card's content region
+- **State isolation**: tool state is tracked per item and element (Q5 eliminations ≠ Q6 eliminations)
+- **UI integration**: buttons in the card's header toolbar
+- **Compact footprint**: small buttons suited to inline placement
 
 **Examples:**
-- **TTS (tool-tts-inline)**: Reads this question's text (not other questions)
-- **Answer Eliminator**: Strikes through choices for this item only
-- **Highlighter**: Highlights within this item's text
-- **Calculator**: Opens a floating panel scoped to this item
+- **Text-to-speech** (`textToSpeech`, rendered by `<pie-tool-tts-inline>`): reads this item's text
+- **Answer eliminator** (`answerEliminator`): strikes through choices for this item only
+- **Annotation toolbar** (`annotationToolbar`): highlights within this item's text; one strip serves the whole section (see [Selection-Gateway Runtime Model](#selection-gateway-runtime-model))
+- **Calculator** (`calculator`, item-only): opens a draggable window scoped to this item
 
 **State Management:**
+
+The coordinator's `ElementToolStateStore` holds what a tool writes to it, keyed per element and attempt. Only three tools write there: the answer eliminator (eliminations), the annotation toolbar (highlights) and the color-scheme tool (`theme`, the learner's scheme). Other state, such as whether a tool is open, lives in the tool element and starts over when the element is created.
+
 ```typescript
 // State stored with item-specific ID
 elementToolStateStore.setState(
@@ -339,78 +345,41 @@ elementToolStateStore.setState(
   { eliminatedChoices: ['choice-b', 'choice-d'] }
 );
 
-// When user returns to Q5, state is restored
+// When the learner comes back to this section, the eliminator reads it back
 const state = elementToolStateStore.getState('assessment:section-1:attempt-1:question-5:mc1', 'answerEliminator');
 // { eliminatedChoices: ['choice-b', 'choice-d'] }
 ```
 
-### Section-Level Floating Tools
+### Section-Level Tools
 
-Tools that float above the entire assessment and persist across navigation:
-
-**Lifecycle:**
-- See diagram above for persistent section-level lifecycle behavior.
+Tools placed at section level sit on the section toolbar and serve every item in the section:
 
 **Characteristics:**
-- **Single instance per section**: One graph, one periodic table, etc. for entire section
-- **Global scope**: Not bound to specific item's DOM
-- **Persistent state**: Graph points and lines, tool positions maintained
-- **UI pattern**: Draggable floating panels/overlays with z-index management
-- **Rich UI**: Full-featured interfaces (can be large, user controls positioning)
+- **One instance per section**: such as `graph:section:section-1`
+- **Global scope**: not bound to one item's DOM
+- **Element state**: the graph's points and lines last while the section is open
+- **UI pattern**: floating windows with z-index management. Item-level window tools, such as the calculator and the dictionaries, use the same draggable windows.
 
 **Examples:**
-- **Graph**: Plot points and lines on a coordinate plane, reference throughout test
-- **Periodic Table**: Reference material available anytime
-- **Protractor**: Measure angles in diagrams across items
-- **Ruler**: Measure lengths in diagrams across items
-- **Line Reader**: Reading guide overlay across all content
-- **Theme**: High-contrast mode affects all content
+- **Graph** (`graph`): plot points and lines on a coordinate plane, for reference across the section
+- **Periodic table** (`periodicTable`): reference material
+- **Protractor** (`protractor`) and **ruler** (`ruler`): measure angles and lengths in diagrams
+- **Line reader** (`lineReader`): reading guide overlay
+- **Color-scheme tool** (`theme`): applies a color scheme, such as high contrast, to all content
 
-**State Management:**
+Every example except the color-scheme tool also supports item placement, and the line reader passage and rubric placement as well. The color-scheme tool supports assessment and section placement.
 
-A section-level tool keeps its state in its own element; the graph's points and lines are component state. That state lasts while the section toolbar keeps the element mounted. A policy change re-renders the toolbar and swaps in a fresh element, whose state starts over, with one exception: an item's settings registering or withdrawing, as items mount and unmount, re-decides every toolbar but re-renders only a toolbar whose tools it changed, which is that item's own.
+**Element reuse:**
+
+A section-level tool keeps its state in its own element; the graph's points and lines are component state. Every packaged window tool reuses one element per coordinator and scoped id, so a policy change that re-renders the toolbar keeps that state; the element is recreated only if the cached one was disconnected. A registration that creates its element on every render starts over on each re-render. An item's settings registering or withdrawing re-renders only the toolbars whose tools it changed.
 
 ### Configuration in ToolkitCoordinator
 
-The configuration structure reflects this scope distinction via `tools.placement` and `tools.providers`:
-
-```typescript
-import { createPackagedToolRegistry } from '@pie-players/pie-default-tool-loaders';
-
-const toolRegistry = createPackagedToolRegistry();
-const coordinator = new ToolkitCoordinator({
-  assessmentId: 'math-exam',
-  toolRegistry,
-  tools: {
-    placement: {
-      item: ['calculator', 'textToSpeech', 'answerEliminator'],
-      passage: ['textToSpeech'],
-      section: ['graph', 'periodicTable', 'protractor', 'lineReader', 'ruler', 'theme']
-    },
-    providers: {
-      calculator: {
-        enabled: true,
-        provider: {
-          runtime: {
-            authFetcher: async () => {
-              const res = await fetch('/api/tools/desmos/auth');
-              return res.json();
-            }
-          }
-        }
-      },
-      textToSpeech: {
-        enabled: true,
-        backend: 'browser'
-      }
-    }
-  }
-});
-```
+`tools.placement` carries the scope distinction: each tool id is listed under the level it shows at (`section`, `item`, `passage`), and `tools.providers` carries its runtime configuration. [Configuring Tools](./tool_provider_system.md#basic-integration) gives a complete configuration, and [Calculator With Host Auth](./tool_provider_system.md#calculator-with-host-auth) the calculator's key.
 
 ### Canonical Tool Resolution Flow
 
-![Tool resolution from policy through host context](../img/tool-resolution-pnp-host-context-clean-1-1778688163577.jpg)
+![Six gates between a placed tool and its button: placement, the policy decision, the tool registry, a host resolver or the registry's context checks, toolbar activation, then the button and tool element; a tool that fails a gate gets no button, and its provider and backend start on first use, or at readiness for text-to-speech](../img/tools-resolution.excalidraw.svg)
 
 [Runtime Tool Context Resolvers](./tool_provider_system.md#runtime-tool-context-resolvers)
 gives the resolution order and what a host resolver may change.
@@ -424,34 +393,33 @@ Tool instances use a scoped ID format:
 ```
 
 Examples:
-- `calculator:item:item-12`
+- `calculator:item:q1`
 - `graph:section:section-1`
 - `textToSpeech:passage:passage-2`
-- `annotationToolbar:rubric:rb-5`
 
-Supported built-in levels include `assessment`, `section`, `item`, `passage`, and `rubric`.
-The runtime can register additional levels if your product needs custom scopes.
+The scope levels are fixed: `assessment`, `section`, `item`, `passage` and `rubric`. `createScopedToolId` throws on any other. The toolbars the players render scope their ids at `section`, `item` or `passage`, and a rubric block's toolbar scopes at `passage`.
 
-### Why This Separation Matters
+### Lifetimes and Scope Consequences
 
-**1. Different Lifecycle Management**
-- Item tools created/destroyed per navigation event
-- Floating tools initialized once, persist throughout section
+**1. Lifetimes**
+- All item cards of a section stay mounted, so moving between items creates and releases nothing.
+- An item card's tools are released when the card unmounts, at a section change.
+- Section tools re-scope at a section change, to the new section's id; their element state starts over.
+- Only eliminations, highlights and the color-scheme choice survive a section change, through the tool-state store. Open state and graph points are not restored.
 
-**2. Different Service Requirements**
-- Any tool may declare provider/runtime hooks (auth, backend request bridge, host events)
-- Item tools typically use simpler built-in services
+**2. Service Requirements**
+- Any tool, at any level, may declare provider and runtime hooks (auth, backend request bridge, host events).
 
-**3. Different UI Patterns**
-- Item tools: compact inline buttons (limited space in question headers)
-- Floating tools: rich draggable panels (full-featured interfaces)
-- Floating shell host notifies optional tool hooks (`onHostedMount`, `onHostedResize`, `onHostedUnmount`)
+**3. UI Patterns**
+- Item tools: compact buttons in the card header
+- Window tools at any level: draggable windows
+- The floating shell host notifies optional tool hooks (`onHostedMount`, `onHostedResize`, `onHostedUnmount`)
 
-**4. Different State Models**
-- Item tools: state per-question (which answers eliminated for Q5)
-- Floating tools: one state for the section (graph points and lines)
+**4. State Models**
+- Item tools: state per item (which answers are eliminated for Q5)
+- Section tools: one state for the section (graph points and lines)
 
-**5. Different PNP Mapping**
+**5. PNP Mapping**
 - A profile grants a tool by its `toolId`, which is its support id; placement sets the level the tool shows at
 - Example: `answerEliminator`, placed at item level
 - Example: `graph`, placed at section level
@@ -462,49 +430,28 @@ The runtime can register additional levels if your product needs custom scopes.
 **Section Player Rendering:**
 
 ```svelte
-<!-- Toolbars take the tool coordinator and TTS service from the enclosing toolkit -->
+<!-- One coordinator serves every toolbar under the toolkit -->
 <pie-assessment-toolkit {coordinator}>
-  <!-- Section-level: One toolbar for all questions -->
-  <pie-section-toolbar {toolRegistry} />
+  <!-- Section level: one toolbar for the whole section -->
+  <pie-section-toolbar section-id={section.id} />
 
-  <!-- Item-level: New toolbar instance per question -->
+  <!-- Item level: each card renders a scope, its toolbar and its content region -->
   {#each items as item}
-    <div class="item-container">
-      <!-- Question header with item-scoped tools; placement decides the buttons -->
-      <pie-item-toolbar
-        item-id={item.id}
-        {item}
-        {toolRegistry}
-        scopeElement={itemElement}
-      />
+    <pie-item-scope item-id={item.id} {item}>
+      <!-- Placement decides the buttons. The scope supplies the item, its id and
+           the element the tools act on; the registry comes from the coordinator. -->
+      <pie-item-toolbar />
 
-      <!-- Question content -->
-      <pie-item-player config={item.config} />
-    </div>
+      <!-- textToSpeech reads this region first -->
+      <div data-region="content">
+        <pie-item-player config={item.config} />
+      </div>
+    </pie-item-scope>
   {/each}
 </pie-assessment-toolkit>
 ```
 
-Each toolbar mounts the elements of its floating tools, such as `pie-tool-graph` and `pie-tool-calculator`, in toolbar-hosted windows.
-
-### Architecture Decision: Why Two Categories?
-
-This separation emerged from real-world assessment platform analysis and reflects natural tool usage patterns:
-
-**Educational Context:**
-- Students need **contextual tools** (TTS, eliminator) that change per-question
-- Students need **utility tools** (graph, ruler) that remain available throughout
-
-**Technical Benefits:**
-- Clear lifecycle boundaries (when to create/destroy)
-- Appropriate state management (per-item vs global)
-- Natural UI patterns (inline vs floating)
-- Simplified PNP resolution (features map to correct scope)
-
-**User Experience:**
-- Intuitive: contextual tools are scoped to their context
-- Predictable: utility tools remain accessible and maintain state
-- Efficient: compact inline tools don't clutter screen, floating tools can be positioned as needed
+Each toolbar mounts the elements of its floating tools, such as `pie-tool-graph` and `pie-tool-calculator`, in toolbar-hosted windows. A toolbar's own `item`, `item-id`, `scopeElement` and `toolRegistry` override what it takes from the scope and the coordinator.
 
 ---
 
@@ -527,7 +474,7 @@ A tool's own registration names its layer. A toolbar registers the tool when it 
 ```
 0-999:     PIE content and player chrome (BASE)
 1000-1999: Floating tools and their windows: calculator, graph, ruler, protractor, line reader (TOOL)
-2000-2999: Modal tool surfaces: the theme picker (MODAL)
+2000-2999: Modal tool surfaces, such as the color-scheme tool's picker (MODAL)
 3000-3999: Drag handles and resize controls (CONTROL)
 4000-4999: TTS and annotation highlights (HIGHLIGHT)
 ```
@@ -545,9 +492,7 @@ A tool's own registration names its layer. A toolbar registers the tool when it 
 
 **Purpose:** Manages text highlighting for TTS and annotations using CSS Custom Highlight API.
 
-**The Problem:** Both TTS (temporary word highlighting) and student annotations (persistent highlighting) need to highlight text simultaneously without interfering.
-
-**The Solution:** HighlightCoordinator manages separate highlight registries for TTS vs annotations, using the browser's native CSS Custom Highlight API.
+TTS (temporary word and sentence highlights) and student annotations (persistent highlights) show at the same time, so HighlightCoordinator keeps a separate highlight registry for each, through the browser's CSS Custom Highlight API.
 
 **Key Methods:**
 ```typescript
@@ -576,25 +521,13 @@ const highlight = new Highlight(range);
 CSS.highlights.set('highlight-name', highlight);
 ```
 
-**Benefits vs Traditional Approach:**
-- Zero DOM mutation (preserves React/Vue/Svelte virtual DOM)
-- Framework-compatible
-- Screen reader friendly (text structure unchanged)
-- Multiple highlights overlap gracefully
-- Better performance
-- No security risks (no innerHTML)
+Highlights overlap without changing the text structure; [CSS Custom Highlight API](#css-custom-highlight-api) under Architecture Decisions gives the reasoning.
 
 **Browser Support:** Graceful degradation for older browsers.
 
 ### TTS Service
 
 **Purpose:** Text-to-speech with word highlighting synchronization; one instance per ToolkitCoordinator, shared by every tool under it.
-
-**Why TTS Matters:**
-- Primary accommodation for students with reading disabilities
-- Supports English Language Learners
-- Required by IEP/504 plans
-- Must work reliably across all content types
 
 **Capabilities:**
 - Read full question or selected text
@@ -627,14 +560,14 @@ Yellow highlight with underline (::highlight CSS)
 
 **Multi-Level TTS Entry Points:**
 
-- **Content-Level TTS** (`tool-tts-inline`): Speaker icons in passage/item headers pass catalog context and a live content element, allowing `TTSService` to resolve `data-catalog-idref` regions.
+- **Content-Level TTS** (`textToSpeech`, rendered by `<pie-tool-tts-inline>`): Speaker icons in passage/item headers pass catalog context and a live content element, allowing `TTSService` to resolve `data-catalog-idref` regions.
 - **Annotation toolbar read-aloud**: Passes the selection's range to `speak`, with the catalog context of the shell holding it. A `data-catalog-idref` region the selection holds whole reads its spoken card; part of one reads as the selected visible text.
 
 **Read-aloud suppression:** `data-tts-suppress` on a content element marks it never-spoken, for items where reading is the construct (decoding, spelling). It is enforced in *every* entry point above — including the selection path, which filters the `Range` because it never walks the DOM — and it overrides both an authored `spoken` card and the learner's PNP entitlement. Speech-only by decision: braille preserves orthography where speech destroys it, and for signing the deciding fact lives in the recording rather than the markup. See [Accessibility Catalogs Integration Guide](../accessibility/accessibility-catalogs-integration-guide.md#suppressing-read-aloud).
 
 **Recorded audio:** a `spoken` card may carry an audio file instead of a script, which QTI treats as the same support rather than a separate accommodation. The clip plays in the composed chunk sequence, the docked node highlights as a block for its duration since a recording emits no word boundaries, and a clip that will not play degrades to the node's script. See [Recorded Audio as a Spoken Alternate](../accessibility/accessibility-catalogs-integration-guide.md#recorded-audio-as-a-spoken-alternate).
 
-**Design Decision:** Every TTS entry point under a ToolkitCoordinator speaks through its one TTS service, so two entry points never play at once. Catalog resolution is shared by every entry point: tts-inline resolves cards for the region it reads, selection read-aloud for the regions a selection holds whole.
+**Design Decision:** Every TTS entry point under a ToolkitCoordinator speaks through its one TTS service, so two entry points never play at once. Catalog resolution is shared by every entry point: the inline TTS tool resolves cards for the region it reads, selection read-aloud for the regions a selection holds whole.
 
 ---
 
@@ -643,29 +576,12 @@ Yellow highlight with underline (::highlight CSS)
 ### Tool Registration Pattern
 
 A tool element registers with the ToolCoordinator in its runtime context through
-`createToolCoordinatorRegistration`, then hands the coordinator its element once
-it renders:
-
-```typescript
-import {
-  createToolCoordinatorRegistration,
-  ZIndexLayer,
-} from "@pie-players/pie-assessment-toolkit/tools/registration";
-
-const registration = createToolCoordinatorRegistration("Line Reader", ZIndexLayer.TOOL);
-
-// Re-registers when a republished context brings a new coordinator.
-$effect(() => registration.sync(coordinator, toolId));
-$effect(() => {
-  if (coordinator && containerEl && toolId) {
-    coordinator.updateToolElement(toolId, containerEl);
-  }
-});
-onDestroy(() => registration.release());
-```
-
+`createToolCoordinatorRegistration`, re-registers when a republished context
+brings a new coordinator, and hands the coordinator its element once it renders.
 `release` unregisters from the coordinator the registration was made against,
-which is not necessarily the one currently in context.
+which is not necessarily the one currently in context. The
+[ToolCoordinator API](../../packages/assessment-toolkit/README.md#toolcoordinator)
+gives the code.
 
 ### Text Selection Pattern
 
@@ -693,7 +609,7 @@ Tool receives event and displays with data
 
 ### Selection-Gateway Runtime Model
 
-`annotationToolbar` is treated as a section-scoped singleton gateway, not a per-item toggle button:
+`annotationToolbar` runs as one section-scoped singleton gateway, whichever toolbars carry its button:
 
 - Mounted once per section runtime
 - Activated by text selection events in content
@@ -701,15 +617,11 @@ Tool receives event and displays with data
 - Renders `ToolSelectionAction` entries supplied by whoever composes it, and calls `requestTool` through them. The composition layer pairs those to the dictionary and picture dictionary; the gateway names neither.
 - Latches itself down after a completed action, because the selection survives on purpose and opening a panel fires `selectionchange` — without the latch the strip returns over the panel it just opened. Escape and focus leaving do not latch; Shift+F10 clears one.
 
-Enable/disable uses canonical tool config and follows standard precedence:
-
-1. Provider flag (`tools.providers.annotationToolbar.enabled !== false`)
-2. Placement/policy resolution (`tools.placement` + `tools.policy`)
-3. PNP allowance when applicable
+Whether it shows follows the standard decision order: placement, the provider's `enabled` flag, the allow and block lists, custom policy sources and the profile, then any host resolver. [Runtime Tool Context Resolvers](./tool_provider_system.md#runtime-tool-context-resolvers) gives the full order.
 
 ### State Persistence Pattern
 
-Tools write state to the coordinator's `ElementToolStateStore`, keyed `assessmentId:sectionId:attemptId:itemId:elementId`, so each attempt keeps its own. The answer eliminator writes per element; the annotation toolbar writes per item, or per section when it sits outside an item, leaving the trailing parts empty; the theme picker writes the learner's scheme per section and attempt. The host persists the store through two coordinator hooks:
+Tools write state to the coordinator's `ElementToolStateStore`, keyed `assessmentId:sectionId:attemptId:itemId:elementId`, so each attempt keeps its own. The answer eliminator writes per element; the annotation toolbar writes per item, or per section when it sits outside an item, leaving the trailing parts empty; the color-scheme tool (`theme`) writes the learner's scheme per section and attempt. The host persists the store through two coordinator hooks:
 
 ```typescript
 const coordinator = new ToolkitCoordinator({
@@ -790,8 +702,9 @@ Tools otherwise read the content itself. Relevance checks read the item's author
   toolkit's lifecycle surface do not import a vendor. The calculator toolbar
   registration in `@pie-players/pie-default-tool-loaders` imports all three
   provider adapters and selects one by `provider.id`.
-- Desmos remains the no-configuration default for compatibility and supports
-  basic, scientific, and graphing modes.
+- Desmos is the default when no `provider.id` is set and supports basic,
+  scientific, and graphing modes. It needs an application key; see
+  [Calculator With Host Auth](./tool_provider_system.md#calculator-with-host-auth).
 - GeoGebra is selected explicitly with `provider.id =
   "calculator-geogebra"`; it supports scientific and graphing apps and maps a
   basic request to scientific.
@@ -811,8 +724,7 @@ Tools otherwise read the content itself. Relevance checks read the item's author
 
 **Key API Support:**
 - CSS Custom Highlight API: Chrome 105+, Safari 17.2+, Firefox 140+
-- Web Components: Universal support
-- Web Speech API: Universal support
+- Custom elements and Web Speech synthesis (`speechSynthesis`): every target browser
 - CSS Container Queries: Chrome 105+, Safari 16+, Firefox 110+
 
 **Fallback Strategy:** Graceful degradation for highlighting (features work, visuals may be limited)
@@ -830,18 +742,18 @@ Known gaps against it are listed in [deferred issues](../wcag/deferred-issues.md
 
 **Text-to-Speech**
 - Reads question, passage, or selection
-- Word highlighting synchronized with audio
+- Highlighting synchronized with audio: by sentence on browser voices, by word on server voices that return speech marks
 - Speed and voice control
 - Pause/resume capability
 
 **Visual Accommodations**
 - Color scheme adjustment (high contrast)
-- Text highlighting (4 colors)
+- Text highlighting in four colors, and underline
 - Line reader (focus/masking)
 
 **Calculation Support**
 - Basic, scientific, graphing calculators
-- History and memory functions
+- Calculation history in the bundled Cortex calculator
 
 **Measurement Tools**
 - Ruler (metric/imperial)
@@ -850,13 +762,15 @@ Known gaps against it are listed in [deferred issues](../wcag/deferred-issues.md
 
 ### Configuration Precedence
 
-Policy merges district, test-administration, item and learner-profile inputs through eight precedence levels; [TOOL_REGISTRY.md](../../packages/assessment-toolkit/docs/TOOL_REGISTRY.md) lists them.
+Policy merges district, test-administration, item and learner-profile inputs through eight precedence levels; the [PNP configuration guide](../../packages/assessment-toolkit/docs/PNP_CONFIGURATION.md#precedence) lists them with their rule ids.
 
 ---
 
 ## Architecture Decisions
 
-### Why CSS Custom Highlight API?
+### CSS Custom Highlight API
+
+Highlights are drawn through the CSS Custom Highlight API. The alternative is wrapping text in markup:
 
 **DOM-Mutation Highlighting Pattern:**
 ```html
@@ -870,7 +784,7 @@ Policy merges district, test-administration, item and learner-profile inputs thr
 - Interferes with screen readers
 - Complex serialization
 
-**Modern Approach (PIE):**
+**PIE's approach:**
 ```typescript
 const highlight = new Highlight(range);
 CSS.highlights.set('annotation-yellow', highlight);
@@ -883,7 +797,7 @@ CSS.highlights.set('annotation-yellow', highlight);
 - Better performance
 - Simpler code
 
-### Why One Service Instance Per Coordinator?
+### One Service Instance Per Coordinator
 
 **ToolCoordinator, TTS Service and HighlightCoordinator have one instance per ToolkitCoordinator, shared by every tool under it.**
 
@@ -894,9 +808,9 @@ CSS.highlights.set('annotation-yellow', highlight);
 - Easier testing (one instance to mock)
 - Matches the coordinator's lifecycle
 
-### Why Declared Activation Rather Than A Dependency Hierarchy?
+### Declared Activation
 
-A capability declares its activation and keeps its own input. A three-tier model with a gateway-dependent tier was retired: it made a capability's keyboard accessibility a property of the gateway, and no gateway can supply that, because a sighted keyboard-only learner cannot originate a text selection in non-editable content.
+A capability declares its activation and keeps its own input. The alternative, a dependency hierarchy with a tier of capabilities that depend on the gateway, makes a capability's keyboard accessibility a property of the gateway. No gateway can supply that, because a sighted keyboard-only learner cannot originate a text selection in non-editable content.
 
 **Rationale:** activation says how a capability is invoked and nothing about what it depends on. A selection is one way in, added by the composition layer; the capability keeps its own input and stays reachable when no gateway is granted.
 
@@ -906,29 +820,18 @@ A capability declares its activation and keeps its own input. A three-tier model
 - A host can pair its own capability to the gateway without changing either
 - Each layer is testable alone
 
-### Why Web Components?
+### Web Components
 
 **Rationale:**
 - Framework-agnostic (works with React, Vue, Angular, vanilla JS)
 - Native browser standard
 - No build-time dependencies for consumers
 - Clean public API surface
-- Future-proof
 
 **Trade-offs:**
 - Slightly larger than pure Svelte (but still small)
 - Tool elements use open shadow roots; the three floating calculator elements (Desmos, GeoGebra, Cortex) render without one
 - Requires compilation step (handled by Svelte)
-
----
-
-## Conclusion
-
-The PIE Assessment Tools & Accommodations architecture provides a modern, scalable foundation for assistive technology in online assessments. By leveraging native browser APIs and Web Components, the system achieves framework independence while maintaining excellent performance and accessibility.
-
-Declared activation, per-coordinator services, and zero DOM mutation design enable a clean separation of concerns that simplifies development, testing, and maintenance.
-
-The architecture is production-ready for core functionality, with clear paths for enhancement as needed.
 
 ---
 
@@ -944,7 +847,7 @@ The architecture is production-ready for core functionality, with clear paths fo
 ### Legal & Compliance
 
 - [Section 508 Standards](https://www.section508.gov/)
-- [Section 504 Rehabilitation Act](https://www2.ed.gov/about/offices/list/ocr/504faq.html)
+- [Section 504 FAQ (U.S. Department of Education)](https://www.ed.gov/laws-and-policy/civil-rights-laws/disability-discrimination/frequently-asked-questions-disability-discrimination)
 
 ### Implementation
 

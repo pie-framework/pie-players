@@ -1,30 +1,30 @@
-# Tool Provider System
+# Configuring Tools
 
-This guide describes the current tool-provider integration model for `pie-players`.
-
-For the authoritative registry details, see `packages/assessment-toolkit/docs/TOOL_REGISTRY.md`.
+This guide is for host integrators. It shows how to configure tools on a `ToolkitCoordinator`: placement, provider configuration, host resolvers, and the boundary to the section player. The [tool registry reference](../../packages/assessment-toolkit/docs/TOOL_REGISTRY.md) is authoritative for tool registrations.
 
 ## Overview
 
 The tool-provider system is centered on `ToolkitCoordinator`.
 
-- The host creates one `ToolkitCoordinator` for the assessment surface.
+- One `ToolkitCoordinator` serves the assessment surface. The toolkit builds its own from its element inputs when none is passed; a host that needs more constructs one and passes it, on a section player as `runtime.coordinator`.
 - Tool placement lives under `tools.placement`.
 - Tool-specific runtime config lives under `tools.providers`.
-- The section player receives the coordinator as `runtime.coordinator`.
-- Item- and passage-level tool rendering is derived from the section-player runtime, not wired manually per card.
+- In a section player, item- and passage-level toolbars come from the section-player runtime, and the host wires nothing per card.
+- Without a section player, the host places a `<pie-item-scope>` and a `<pie-item-toolbar>` per item inside `<pie-assessment-toolkit>`; see [Without a Section Player](../../packages/assessment-toolkit/README.md#without-a-section-player).
 
 Use this document together with:
 
 - [`../architecture/architecture.md`](../architecture/architecture.md)
-- [`../section-player/client-architecture-tutorial.md`](../section-player/client-architecture-tutorial.md)
+- [`../section-player/integration-guide.md`](../section-player/integration-guide.md)
 - [`./tool_host_contract.md`](./tool_host_contract.md)
 
 ## Core Model
 
+The host-facing shape, exported as `ToolsConfigInput`. Every part is optional; a placement level left out places nothing. `CanonicalToolsConfig` is the normalized form the coordinator holds.
+
 ```ts
-type CanonicalToolsConfig = {
-  placement: {
+type ToolsConfigInput = {
+  placement?: {
     section?: string[];
     item?: string[];
     passage?: string[];
@@ -44,7 +44,7 @@ type CanonicalToolsConfig = {
           subscribe?: (
             eventName: string,
             handler: (payload: unknown) => void,
-          ) => (() => void) | void;
+          ) => (() => void) | undefined;
         };
       };
     }
@@ -53,8 +53,13 @@ type CanonicalToolsConfig = {
     allowed?: string[];
     blocked?: string[];
   };
+  pnpEnforcement?: "on" | "off";
 };
 ```
+
+Two provider entries are closed to the keys their tool reads, so a misplaced key fails to compile. `tools.providers.textToSpeech` takes its runtime settings (`backend`, `layoutMode`, `speedOptions` and the rest) at its top level, beside `enabled` and `provider`, and reads no `settings`. `tools.providers.calculator` takes `settings`, `restrictedMode`, `locale`, `theme`, `enabled` and `provider`.
+
+`pnpEnforcement` sets whether toolbar decisions apply the learner's Personal Needs and Preferences (PNP) profile: `"on"`, `"off"`, or left out for auto-mode. Auto-mode applies it when the bound assessment carries profile policy or, for a decision scoped to an item, when that item's settings require or restrict a tool. [PNP configuration](../../packages/assessment-toolkit/docs/PNP_CONFIGURATION.md) covers the profile.
 
 ### Canonical tool IDs
 
@@ -104,6 +109,8 @@ const coordinator = new ToolkitCoordinator({
       textToSpeech: {
         backend: "browser",
       },
+      // Desmos, the default calculator, needs an application key:
+      // see "Calculator With Host Auth" below.
       calculator: {
         enabled: true,
       },
@@ -111,9 +118,7 @@ const coordinator = new ToolkitCoordinator({
   },
 });
 
-const sectionPlayer = document.querySelector(
-  "pie-section-player-splitpane",
-) as any;
+const sectionPlayer = document.querySelector("pie-section-player-splitpane");
 
 sectionPlayer.runtime = { coordinator };
 sectionPlayer.section = section;
@@ -127,7 +132,7 @@ The same coordinator can be reused across section-player instances for a shared 
 - `item` tools render in each item card.
 - `passage` tools render in each passage card.
 - Tools omitted from placement are not shown, even if provider config exists.
-- Placement overrides from layout props are normalized on top of the runtime config.
+- Placement a layout element receives as a property is normalized on top of the runtime config.
 
 ## Runtime Tool Context Resolvers
 
@@ -242,9 +247,11 @@ providers: {
 }
 ```
 
-The `@pie-players/pie-section-player-tools-tts-settings` package is optional and only provides a runtime settings dialog UI. Hosts do not need that package to use TTS layout modes.
+The optional `@pie-players/pie-section-player-tools-tts-settings` package provides a runtime settings dialog; layout modes work without it.
 
-`speedOptions` (inline toolbar playback-speed choices) is set at the top level of `tools.providers.textToSpeech`, beside `layoutMode`; the TTS tool reads no `settings` object. Defaults render as `Slow`, `Normal`, and `Fast`, with `Normal` mapped to `1.0×` and selected by default. A non-empty config that omits `1` gets a synthesized visible `Normal` choice while preserving host-provided option order; an explicit empty array hides speed controls and resets playback speed to `1.0`. The optional TTS settings dialog edits both `layoutMode` and `speedOptions` in one global toolbar section.
+`speedOptions` sets the inline toolbar's playback-speed choices, at the top level of `tools.providers.textToSpeech` beside `layoutMode`. The defaults are `Slow`, `Normal` and `Fast`, with `Normal` at `1.0×` and selected. A non-empty list that omits `1` gets a visible `Normal` choice added, in the host's order. An empty array hides the speed controls and resets playback speed to `1.0`.
+
+The optional TTS settings dialog edits `layoutMode` and `speedOptions` in one global toolbar section.
 
 ### Calculator With Host Auth
 
@@ -271,6 +278,16 @@ const coordinator = new ToolkitCoordinator({
   },
 });
 ```
+
+The default calculator is Desmos, and its adapter refuses to initialize without an application key unless `window.Desmos` is already loaded. It takes the key from one of three places:
+
+| Source | Behavior |
+|---|---|
+| `provider.runtime.authFetcher` | Host function returning `{ apiKey }`; the toolkit merges the result into the provider's initialization. |
+| `provider.init.proxyEndpoint` | Host URL the adapter fetches at initialization; the response body is `{ apiKey }`. |
+| `provider.init.apiKey` | The key inline, for development. |
+
+`provider.id: "calculator-cortex"` selects a calculator that needs no key; see the [Cortex calculator README](../../packages/calculator-cortex/README.md).
 
 ## Host Responsibilities
 
@@ -305,15 +322,14 @@ The public layout custom elements are:
 - `pie-section-player-vertical`
 - `pie-section-player-tabbed`
 
-Prefer those elements and `runtime.coordinator` over older orchestration patterns.
-
 ## Advanced Host Access
 
-Hosts that need direct access to runtime events or controller state should subscribe through the coordinator or section controller rather than coupling to internal component details.
+Hosts that need runtime events or controller state subscribe through the coordinator or the section controller; component internals are no contract.
 
 ```ts
 // Subscribe after the first `getOrCreateSectionController(...)` resolves.
-// The listener follows the toolkit's active section cohort across navigation.
+// The listener follows the toolkit's active cohort, the (sectionId, attemptId)
+// pair, across navigation.
 const unsubscribeItem = coordinator.subscribeItemEvents({
   listener: (event) => {
     console.log("item event", event);
@@ -327,7 +343,7 @@ const unsubscribeSection = coordinator.subscribeSectionLifecycleEvents({
 });
 ```
 
-See [`../section-player/client-architecture-tutorial.md`](../section-player/client-architecture-tutorial.md) for the current controller and host-integration patterns.
+See [`../section-player/integration-guide.md`](../section-player/integration-guide.md) for the current controller and host-integration patterns.
 
 ## Backend Notes
 
@@ -341,16 +357,16 @@ Typical examples:
 
 Those endpoint names are host-owned. The tool system only requires that the configured provider runtime functions return the data the provider expects.
 
-For Desmos, an `authFetcher` returning `{ apiKey }` keeps the application key
-out of source and static bundles; it does not hide the key from the browser's
-required `calculator.js` request. Calculator composition has no implicit
-endpoint and no script-proxy/self-hosting path. Use a key and Trial/Commercial
-tier licensed for the application, and proxy or self-host Desmos only when a
-partner agreement grants that right.
+For Desmos, `authFetcher` and `proxyEndpoint` keep the application key out of
+source and static bundles. The browser still sees it: the adapter loads
+`calculator.js` from desmos.com with the key in the script URL. Calculator
+composition has no implicit endpoint and always loads that script from Desmos;
+`proxyEndpoint` serves only the key. Use a key on a Trial or Commercial tier
+licensed for the application. Proxying or self-hosting the Desmos script needs a
+partner agreement that grants it.
 
 The calculator capability defaults to `calculator-desmos` when no provider id
-is configured. The adapter needs an application key and refuses to initialize
-without one. Select the separate GeoGebra suite explicitly:
+is configured. Select the GeoGebra suite explicitly:
 
 ```ts
 calculator: {
@@ -376,5 +392,8 @@ For the production security contract these endpoints must meet
 
 - [`./architecture.md`](./architecture.md)
 - [`./tool_host_contract.md`](./tool_host_contract.md)
-- [`../section-player/client-architecture-tutorial.md`](../section-player/client-architecture-tutorial.md)
+- [`../section-player/integration-guide.md`](../section-player/integration-guide.md)
 - [`../../packages/section-player/README.md`](../../packages/section-player/README.md)
+- [`../../packages/assessment-toolkit/README.md`](../../packages/assessment-toolkit/README.md)
+- [`../../packages/assessment-toolkit/docs/TOOL_REGISTRY.md`](../../packages/assessment-toolkit/docs/TOOL_REGISTRY.md)
+- [`../../packages/default-tool-loaders/src/calculator-providers/README.md`](../../packages/default-tool-loaders/src/calculator-providers/README.md)

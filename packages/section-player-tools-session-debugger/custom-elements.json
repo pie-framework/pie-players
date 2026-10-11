@@ -1,0 +1,141 @@
+{
+	"schemaVersion": "2.1.0",
+	"modules": [
+		{
+			"kind": "javascript-module",
+			"path": "dist/section-player-tools-session-debugger.js",
+			"declarations": [
+				{
+					"kind": "class",
+					"description": "Developer panel for the section player demos that shows the session state of one section attempt as JSON: current item, visited items, loading and completion counts, the last changed item and every item session. A host gives it `toolkitCoordinator` and the `section-id` and `attempt-id` to follow; it reads the section controller through the coordinator and refreshes the snapshot on each item or section event.",
+					"name": "SectionSessionPanel",
+					"tagName": "pie-section-player-tools-session-debugger",
+					"customElement": true,
+					"members": [
+						{
+							"kind": "field",
+							"name": "toolkitCoordinator",
+							"type": {
+								"text": "ToolkitCoordinatorLike | null"
+							},
+							"default": "null",
+							"attribute": "toolkit-coordinator"
+						},
+						{
+							"kind": "field",
+							"name": "sectionId",
+							"type": {
+								"text": "string"
+							},
+							"default": "''",
+							"attribute": "section-id"
+						},
+						{
+							"kind": "field",
+							"name": "attemptId",
+							"type": {
+								"text": "string"
+							},
+							"attribute": "attempt-id"
+						},
+						{
+							"kind": "field",
+							"name": "persistenceScope",
+							"type": {
+								"text": "string"
+							},
+							"default": "\"\"",
+							"attribute": "persistence-scope"
+						},
+						{
+							"kind": "field",
+							"name": "persistencePanelId",
+							"type": {
+								"text": "string"
+							},
+							"default": "\"session-debugger\"",
+							"attribute": "persistence-panel-id"
+						}
+					],
+					"attributes": [
+						{
+							"name": "toolkit-coordinator",
+							"type": {
+								"text": "ToolkitCoordinatorLike | null"
+							},
+							"default": "null",
+							"fieldName": "toolkitCoordinator"
+						},
+						{
+							"name": "section-id",
+							"type": {
+								"text": "string"
+							},
+							"default": "''",
+							"fieldName": "sectionId"
+						},
+						{
+							"name": "attempt-id",
+							"type": {
+								"text": "string"
+							},
+							"fieldName": "attemptId"
+						},
+						{
+							"name": "persistence-scope",
+							"type": {
+								"text": "string"
+							},
+							"default": "\"\"",
+							"fieldName": "persistenceScope"
+						},
+						{
+							"name": "persistence-panel-id",
+							"type": {
+								"text": "string"
+							},
+							"default": "\"session-debugger\"",
+							"fieldName": "persistencePanelId"
+						}
+					],
+					"events": [
+						{
+							"name": "close",
+							"type": {
+								"text": "CustomEvent<null>"
+							},
+							"description": "When the panel's close button is pressed."
+						}
+					],
+					"x-pie": {
+						"shadow": "none",
+						"classes": [
+							"pie-section-player-tools-session-debugger__alert",
+							"pie-section-player-tools-session-debugger__alert--info",
+							"pie-section-player-tools-session-debugger__alert--warning",
+							"pie-section-player-tools-session-debugger__card",
+							"pie-section-player-tools-session-debugger__card-pre",
+							"pie-section-player-tools-session-debugger__card-region",
+							"pie-section-player-tools-session-debugger__card-title",
+							"pie-section-player-tools-session-debugger__content",
+							"pie-section-player-tools-session-debugger__heading",
+							"pie-section-player-tools-session-debugger__icon-md",
+							"pie-section-player-tools-session-debugger__icon-sm",
+							"pie-section-player-tools-session-debugger__section-intro",
+							"pie-section-player-tools-session-debugger__text-xs"
+						]
+					}
+				}
+			],
+			"exports": [
+				{
+					"kind": "custom-element-definition",
+					"name": "pie-section-player-tools-session-debugger",
+					"declaration": {
+						"name": "SectionSessionPanel"
+					}
+				}
+			]
+		}
+	]
+}

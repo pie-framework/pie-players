@@ -1,0 +1,187 @@
+{
+	"schemaVersion": "2.1.0",
+	"modules": [
+		{
+			"kind": "javascript-module",
+			"path": "dist/tool-picture-dictionary.js",
+			"declarations": [
+				{
+					"kind": "class",
+					"description": "Picture dictionary panel body: a word-or-phrase field and the pictures found for it, each with its caption, or else the searched word, as alt text. Lookup is host-supplied, through a `lookup` function or a POST to `endpoint`, and a picture whose URL is not https, protocol-relative or same-origin is dropped. The toolbar shell that mounts it owns `visible` and the floating chrome, and a `term` set from a text selection opens the panel already searched.",
+					"name": "ToolPictureDictionary",
+					"tagName": "pie-tool-picture-dictionary",
+					"customElement": true,
+					"members": [
+						{
+							"kind": "field",
+							"name": "visible",
+							"type": {
+								"text": "boolean"
+							},
+							"default": "false",
+							"attribute": "visible"
+						},
+						{
+							"kind": "field",
+							"name": "toolId",
+							"type": {
+								"text": "string"
+							},
+							"default": "'pictureDictionary'",
+							"attribute": "tool-id"
+						},
+						{
+							"kind": "field",
+							"name": "term",
+							"type": {
+								"text": "string"
+							},
+							"default": "''",
+							"attribute": "term"
+						},
+						{
+							"kind": "field",
+							"name": "termRequestId",
+							"type": {
+								"text": "string | number"
+							},
+							"description": "Identity of the current `term`, changing once per time it was asked for. Optional: a host assigning `term` directly need not mint one, and the panel falls back to the term itself. What it buys is a learner selecting the same word twice — a second request for `cat` has a new id, so it re-runs, where an unchanged `term` alone looks like a re-render.",
+							"attribute": "termrequestid"
+						},
+						{
+							"kind": "field",
+							"name": "endpoint",
+							"type": {
+								"text": "string"
+							},
+							"default": "''",
+							"attribute": "endpoint"
+						},
+						{
+							"kind": "field",
+							"name": "language",
+							"type": {
+								"text": "string"
+							},
+							"default": "''",
+							"attribute": "language"
+						},
+						{
+							"kind": "field",
+							"name": "lookup",
+							"type": {
+								"text": "PictureLookup"
+							},
+							"description": "Host-supplied resolver, preferred over `endpoint`.",
+							"attribute": "lookup"
+						},
+						{
+							"kind": "field",
+							"name": "headers",
+							"type": {
+								"text": "() => Promise<Record<string, string>> | Record<string, string>"
+							},
+							"description": "Extra request headers for the `endpoint` path, read per request so a short-lived token is fetched fresh. Only for a host whose route is not authorised by the assessment's own session, which is called `same-origin` by default.",
+							"attribute": "headers"
+						},
+						{
+							"kind": "field",
+							"name": "credentials",
+							"type": {
+								"text": "RequestCredentials"
+							},
+							"description": "Overrides the `same-origin` default for the `endpoint` path.",
+							"attribute": "credentials"
+						}
+					],
+					"attributes": [
+						{
+							"name": "visible",
+							"type": {
+								"text": "boolean"
+							},
+							"default": "false",
+							"fieldName": "visible"
+						},
+						{
+							"name": "tool-id",
+							"type": {
+								"text": "string"
+							},
+							"default": "'pictureDictionary'",
+							"fieldName": "toolId"
+						},
+						{
+							"name": "term",
+							"type": {
+								"text": "string"
+							},
+							"default": "''",
+							"fieldName": "term"
+						},
+						{
+							"name": "termrequestid",
+							"type": {
+								"text": "string"
+							},
+							"description": "Identity of the current `term`, changing once per time it was asked for. Optional: a host assigning `term` directly need not mint one, and the panel falls back to the term itself. What it buys is a learner selecting the same word twice — a second request for `cat` has a new id, so it re-runs, where an unchanged `term` alone looks like a re-render.",
+							"fieldName": "termRequestId"
+						},
+						{
+							"name": "endpoint",
+							"type": {
+								"text": "string"
+							},
+							"default": "''",
+							"fieldName": "endpoint"
+						},
+						{
+							"name": "language",
+							"type": {
+								"text": "string"
+							},
+							"default": "''",
+							"fieldName": "language"
+						},
+						{
+							"name": "lookup",
+							"type": {
+								"text": "string"
+							},
+							"description": "Host-supplied resolver, preferred over `endpoint`.",
+							"fieldName": "lookup"
+						},
+						{
+							"name": "headers",
+							"type": {
+								"text": "string"
+							},
+							"description": "Extra request headers for the `endpoint` path, read per request so a short-lived token is fetched fresh. Only for a host whose route is not authorised by the assessment's own session, which is called `same-origin` by default.",
+							"fieldName": "headers"
+						},
+						{
+							"name": "credentials",
+							"type": {
+								"text": "string"
+							},
+							"description": "Overrides the `same-origin` default for the `endpoint` path.",
+							"fieldName": "credentials"
+						}
+					],
+					"x-pie": {
+						"shadow": "open"
+					}
+				}
+			],
+			"exports": [
+				{
+					"kind": "custom-element-definition",
+					"name": "pie-tool-picture-dictionary",
+					"declaration": {
+						"name": "ToolPictureDictionary"
+					}
+				}
+			]
+		}
+	]
+}

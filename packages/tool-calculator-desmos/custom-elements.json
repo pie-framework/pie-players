@@ -1,0 +1,21 @@
+{
+	"schemaVersion": "2.1.0",
+	"modules": [
+		{
+			"kind": "javascript-module",
+			"path": "dist/pie-tool-calculator.js",
+			"declarations": [],
+			"exports": [
+				{
+					"kind": "custom-element-definition",
+					"name": "pie-tool-calculator",
+					"declaration": {
+						"name": "CalculatorElement",
+						"module": "dist/calculator-element.js",
+						"package": "@pie-players/pie-tool-calculator-shared"
+					}
+				}
+			]
+		}
+	]
+}

@@ -10,6 +10,16 @@
 	}}
 />
 
+<!--
+@component
+Draggable, rotatable ruler overlay with an inch and a centimetre scale. The host
+shows it with `visible`; inside a toolkit runtime context it registers `tool-id`
+with the tool coordinator on the tool layer, which brings it to the front when
+pressed. Arrow keys move it, Shift+Arrow and PageUp/PageDown rotate it, U
+switches units, and tap controls shown while it has focus move and turn it
+without dragging.
+-->
+
 <script lang="ts">
 	import { coerceBooleanAttributes } from '@pie-players/pie-players-shared/ui/attribute-coercion';
 	import {

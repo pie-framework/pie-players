@@ -14,6 +14,17 @@
 	}}
 />
 
+<!--
+@component
+Shell around a passage in a section player: it publishes the passage's identity and region to the tools inside it, registers the passage with the toolkit it sits in, and forwards the passage player's load and error events to that toolkit. The passage card renders it, naming the passage through `item-id`, `content-kind` and `item`.
+
+@fires {CustomEvent<{ kind: "passage"; itemId: string; canonicalItemId?: string; contentKind?: string; item?: unknown; element: HTMLElement; runtimeId?: string }>} pie-register - When the shell registers its passage with the toolkit it sits in.
+@fires {CustomEvent<{ kind: "passage"; itemId: string; canonicalItemId?: string; contentKind?: string; item?: unknown; element: HTMLElement; runtimeId?: string }>} pie-unregister - When the shell retires its passage's registration.
+@fires {CustomEvent<{ itemId: string; canonicalItemId?: string; contentKind?: string; detail?: unknown; runtimeId: string }>} pie-content-loaded - When the passage player reports `load-complete`.
+@fires {CustomEvent<{ itemId: string; canonicalItemId?: string; contentKind?: string; error: unknown; runtimeId: string }>} pie-item-player-error - When the passage player reports `player-error`.
+@slot - The passage card's header, toolbar and passage player.
+-->
+
 <script lang="ts">
 	import {
 		createShellScope,

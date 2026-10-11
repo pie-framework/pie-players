@@ -15,6 +15,16 @@
 	}}
 />
 
+<!--
+@component
+Process-of-elimination tool for the item in its enclosing `<pie-item-scope>`: it
+adds a toggle beside each multiple-choice, EBSR and inline-dropdown choice that
+strikes the choice through or masks it, per `strategy`. It renders nothing of
+its own and is active while `visible` or `always-on` is set. Eliminations
+persist in the runtime context's element tool state store, under the key
+`elementStateKeys` gives each PIE element.
+-->
+
 <!-- Answer Eliminator Tool - Process-of-Elimination Support (Inline Toggle Mode)
 
   Allows students to mark answer choices as "eliminated" during test-taking,

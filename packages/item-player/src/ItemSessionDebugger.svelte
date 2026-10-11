@@ -15,6 +15,13 @@
 	}}
 />
 
+<!--
+@component
+A floating, draggable debug panel for one item player: a host passes it the player's `config`, `session`, `env` and `score`, and it shows the live session and environment and the models filtered through each element's controller. With `hosted` set it runs no controller over the models, matching a hosted player.
+
+@fires {CustomEvent<null>} close - When the panel's close button is pressed; the panel stays until the host removes it.
+-->
+
 <script lang="ts">
 	import { coerceBooleanAttributes } from "@pie-players/pie-players-shared/ui/attribute-coercion";
 	// Content styles are installed by this component's entry point, not imported

@@ -1,0 +1,160 @@
+{
+	"schemaVersion": "2.1.0",
+	"modules": [
+		{
+			"kind": "javascript-module",
+			"path": "dist/section-player-tools-event-debugger.js",
+			"declarations": [
+				{
+					"kind": "class",
+					"description": "Developer panel for the section player demos that logs the item and section events the toolkit coordinator broadcasts for the active section. A host gives it `toolkitCoordinator` and the `section-id` and `attempt-id` to follow; it renders a draggable floating panel listing each event with its item, intent and duplicate count, filtered by item or section level, with pause and clear controls and the selected event's payload as JSON.",
+					"name": "EventPanel",
+					"tagName": "pie-section-player-tools-event-debugger",
+					"customElement": true,
+					"members": [
+						{
+							"kind": "field",
+							"name": "maxEvents",
+							"type": {
+								"text": "number"
+							},
+							"default": "200",
+							"attribute": "max-events"
+						},
+						{
+							"kind": "field",
+							"name": "maxEventsByLevel",
+							"type": {
+								"text": "EventLimitOverrides"
+							},
+							"default": "{}",
+							"attribute": "max-events-by-level"
+						},
+						{
+							"kind": "field",
+							"name": "toolkitCoordinator",
+							"type": {
+								"text": "ToolkitCoordinatorLike | null"
+							},
+							"default": "null",
+							"attribute": "toolkit-coordinator"
+						},
+						{
+							"kind": "field",
+							"name": "sectionId",
+							"type": {
+								"text": "string"
+							},
+							"default": "\"\"",
+							"attribute": "section-id"
+						},
+						{
+							"kind": "field",
+							"name": "attemptId",
+							"type": {
+								"text": "string"
+							},
+							"attribute": "attempt-id"
+						},
+						{
+							"kind": "field",
+							"name": "persistenceScope",
+							"type": {
+								"text": "string"
+							},
+							"default": "\"\"",
+							"attribute": "persistence-scope"
+						},
+						{
+							"kind": "field",
+							"name": "persistencePanelId",
+							"type": {
+								"text": "string"
+							},
+							"default": "\"controller-events\"",
+							"attribute": "persistence-panel-id"
+						}
+					],
+					"attributes": [
+						{
+							"name": "max-events",
+							"type": {
+								"text": "number"
+							},
+							"default": "200",
+							"fieldName": "maxEvents"
+						},
+						{
+							"name": "max-events-by-level",
+							"type": {
+								"text": "EventLimitOverrides"
+							},
+							"default": "{}",
+							"fieldName": "maxEventsByLevel"
+						},
+						{
+							"name": "toolkit-coordinator",
+							"type": {
+								"text": "ToolkitCoordinatorLike | null"
+							},
+							"default": "null",
+							"fieldName": "toolkitCoordinator"
+						},
+						{
+							"name": "section-id",
+							"type": {
+								"text": "string"
+							},
+							"default": "\"\"",
+							"fieldName": "sectionId"
+						},
+						{
+							"name": "attempt-id",
+							"type": {
+								"text": "string"
+							},
+							"fieldName": "attemptId"
+						},
+						{
+							"name": "persistence-scope",
+							"type": {
+								"text": "string"
+							},
+							"default": "\"\"",
+							"fieldName": "persistenceScope"
+						},
+						{
+							"name": "persistence-panel-id",
+							"type": {
+								"text": "string"
+							},
+							"default": "\"controller-events\"",
+							"fieldName": "persistencePanelId"
+						}
+					],
+					"events": [
+						{
+							"name": "close",
+							"type": {
+								"text": "CustomEvent<null>"
+							},
+							"description": "When the panel's close button is pressed."
+						}
+					],
+					"x-pie": {
+						"shadow": "open"
+					}
+				}
+			],
+			"exports": [
+				{
+					"kind": "custom-element-definition",
+					"name": "pie-section-player-tools-event-debugger",
+					"declaration": {
+						"name": "EventPanel"
+					}
+				}
+			]
+		}
+	]
+}

@@ -110,6 +110,33 @@ describe("tool-context helpers", () => {
 			});
 		}
 
+		// A percentage counts when it is applied to a quantity.
+		for (const markup of [
+			"<div>What is 20% of 50?</div>",
+			"<div>Find 15% of $80.</div>",
+			"<div>¿Cuánto es el 20% de 50?</div>",
+			"<div>A $40 jacket is on sale for 25% off. What does it cost?</div>",
+			"<div>Show that 25% = 0.25.</div>",
+			"<div>Is 45% > 40%?</div>",
+		]) {
+			test(`fires: ${markup.slice(5, 45)}`, () => {
+				expect(hasMathContent(item({ markup }))).toBe(true);
+			});
+		}
+
+		// Statistics in prose, which the old percentage pattern read as
+		// mathematical.
+		for (const markup of [
+			"<div>About 40% of voters stayed home.</div>",
+			"<div>Nearly 70% of Earth's surface is water.</div>",
+			"<div>Unemployment rose from 5% to 8% in 2009.</div>",
+			"<div>Only 12% of the 300 students agreed.</div>",
+		]) {
+			test(`stays quiet: ${markup.slice(5, 45)}`, () => {
+				expect(hasMathContent(item({ markup }))).toBe(false);
+			});
+		}
+
 		// The MathML pattern was unreachable: extraction stripped tags before the
 		// predicate ran, so an item whose only math signal is the element matched
 		// nothing. It is now tested against the markup view.

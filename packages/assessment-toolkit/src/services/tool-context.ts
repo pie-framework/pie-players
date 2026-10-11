@@ -429,6 +429,27 @@ function hasSpacedSubtraction(text: string): boolean {
 	});
 }
 
+const PERCENTAGE = /\d\s*%/;
+
+/** A percentage taken of a number: `20% of 50`, `15% of $80`, `el 20% de 50`. */
+const PERCENTAGE_OF_NUMBER = /\d\s*%\s+(?:of|de|van)\s+[$€£]?\s?\d/i;
+
+/** A money amount: `$40`, `€ 12`, `12,50 €`. */
+const MONEY = /[$€£]\s?\d|\d\s?[€£]/;
+
+/**
+ * Whether the text applies a percentage to a quantity.
+ *
+ * A percentage on its own is a statistic in prose — "40% of voters", "70% of
+ * Earth's surface" — so it counts when taken of a number or when the text
+ * carries a money amount, as discount, tax and interest problems do. Beside an
+ * operator (`25% = 0.25`) it is caught with the operator.
+ */
+function hasAppliedPercentage(text: string): boolean {
+	if (PERCENTAGE_OF_NUMBER.test(text)) return true;
+	return PERCENTAGE.test(text) && MONEY.test(text);
+}
+
 /**
  * Helper to check if context contains mathematical content
  * (Basic heuristic - can be overridden by tools)
@@ -450,19 +471,20 @@ export function hasMathContent(context: ToolContext): boolean {
 	// "and/or", which would make nearly every item mathematical. An operator
 	// counts only with operands around it, or when the character has no prose
 	// reading at all. Hyphens and slashes between numbers also write dates and
-	// ranges, so they have their own predicates below.
+	// ranges, and a percentage alone is a statistic, so those have their own
+	// predicates below. An operand may carry a percent sign (`25% = 0.25`).
 	const textIndicators = [
 		/[≤≥≠±×÷∑∫√∞π]/, // Symbols with no prose reading
-		/\d\s*[+*×÷=−]\s*\d/, // Operators with no date or range reading
+		/\d\s*%?\s*[+*×÷=−]\s*\d/, // Operators with no date or range reading
 		/\d\s*[-/]\s*\d[\d.,]*\s*=|=\s*\d[\d.,]*\s*[-/]\s*\d/, // Hyphen or slash in an equation
-		/\d\s*[<>]\s*\d/, // Numeric comparison
-		/\b\d+(?:\.\d+)?\s*%/, // Percentages
+		/\d\s*%?\s*[<>]\s*\d/, // Numeric comparison
 		/\^\s*\d/, // Exponents
 	];
 	return (
 		textIndicators.some((pattern) => pattern.test(text)) ||
 		hasFraction(text) ||
-		hasSpacedSubtraction(text)
+		hasSpacedSubtraction(text) ||
+		hasAppliedPercentage(text)
 	);
 }
 

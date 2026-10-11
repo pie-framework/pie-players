@@ -371,8 +371,10 @@ hands that to whoever probes the endpoint.
 | `INVALID_PROVIDER`, and any error that is not a `TTSError` | 500 | Text-to-speech is unavailable. |
 
 Polly reports a missing credential chain and a network failure as
-`PROVIDER_ERROR`. Request validation and the guards raise their own 400 and 503
-before the provider is called. `STATUS_BY_CODE` is a `Record` over
+`PROVIDER_ERROR`, and a request outside its limits (blank or over-length text,
+an unsupported format, a rate or pitch out of range) as `TEXT_TOO_LONG` or
+`INVALID_REQUEST`. The guards and the routes' type checks on the body raise
+their own 503 and 400 before the provider is called. `STATUS_BY_CODE` is a `Record` over
 `TTSErrorCode`, so a code added to `@pie-players/tts-server-core` fails the type
 check until it is mapped.
 
@@ -457,7 +459,7 @@ echo $AWS_REGION
 echo $AWS_ACCESS_KEY_ID
 ```
 
-### Error: "Text too long"
+### Error: "Text length (…) exceeds maximum (3000)"
 
 AWS Polly limit is 3000 characters. Split longer text:
 

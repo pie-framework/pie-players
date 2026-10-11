@@ -160,10 +160,8 @@ const isBoolean: Guard<boolean> = (value): value is boolean =>
 	typeof value === "boolean";
 const isPositiveInteger: Guard<number> = (value): value is number =>
 	Number.isInteger(value) && (value as number) > 0;
-const isNumberIn =
-	(min: number, max: number): Guard<number> =>
-	(value): value is number =>
-		typeof value === "number" && value >= min && value <= max;
+const isNumber: Guard<number> = (value): value is number =>
+	typeof value === "number";
 const isOneOf =
 	<T extends string>(allowed: readonly T[]): Guard<T> =>
 	(value): value is T =>
@@ -188,20 +186,17 @@ function field<T>(
 const SPEECH_MARK_TYPES = ["word", "sentence", "ssml"] as const;
 
 /**
- * The request Polly is asked for, checked against the provider's own limits.
- * The provider repeats these checks, but its rejections are plain errors, which
- * `failOpaquely` cannot tell from a fault.
+ * The request Polly is asked for, each body field checked for its type. The
+ * provider enforces its own limits and rejects with a `TTSError` that
+ * `failOpaquely` answers with a 400; `format` is read against the provider's
+ * formats because that is what types it.
  */
 function readSynthesizeRequest(
 	body: Record<string, unknown>,
 	capabilities: ServerProviderCapabilities,
 ): SynthesizeRequest {
 	const text = field(body, "text", isString);
-	if (!text?.trim()) throw error(400, "Text is required");
-	const { maxTextLength } = capabilities.standard;
-	if (text.length > maxTextLength) {
-		throw error(400, `Text too long (max ${maxTextLength} characters)`);
-	}
+	if (text === undefined) throw error(400, "Text is required");
 
 	const speechMarkTypes = field(
 		body,
@@ -213,8 +208,8 @@ function readSynthesizeRequest(
 		text,
 		voice: field(body, "voice", isString),
 		language: field(body, "language", isString),
-		rate: field(body, "rate", isNumberIn(0.25, 4)),
-		pitch: field(body, "pitch", isNumberIn(0, 2)),
+		rate: field(body, "rate", isNumber),
+		pitch: field(body, "pitch", isNumber),
 		format: field(
 			body,
 			"format",

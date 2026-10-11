@@ -1709,7 +1709,7 @@ The PIE item player: it loads an item's PIE elements under the `iife`, `esm` or 
 
 	// An element controller persisted derived, non-response state (e.g. a shuffled
 	// choice order). Write it back to the authoritative session so future prop
-	// updates/remounts reuse it instead of regenerating it (PIE-631), and project it
+	// updates/remounts reuse it instead of regenerating it, and project it
 	// onto the host's container. It dispatches no event of its own, as under the
 	// legacy player, which gave controllers no `updateSession`: the next
 	// `session-changed` carries it, with the announcing element's own `complete`.

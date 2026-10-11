@@ -494,15 +494,12 @@ export interface SignLanguageCardPayload {
 	 * signed alternate is LSM, not ASL, so this must never be inferred from the
 	 * item or assessment content language.
 	 *
-	 * Optional, and redundant when it equals the card's `language`. The card's
-	 * `language` is QTI's `xml:lang` on the card entry and is the only field
-	 * catalog resolution selects on — it decides *which* card is returned, before
-	 * anything knows the card is a signing card. This one is read after
-	 * resolution, to name the language in the region's accessible label and to
-	 * refuse a card in a sign language the learner did not ask for. Author it only
-	 * where the two genuinely differ, which is a card tagged with the item's
-	 * content language (`language: "en-US"`, `signLang: "ase"`) so that resolution
-	 * reaches it by the default-language rung.
+	 * Optional: when absent, the card's `language` stands in, so author it only
+	 * where the two differ. The sign-language tool reads every signing card in
+	 * the owner's scope and selects on this value: a card in the requested sign
+	 * language wins, a card naming no language is the fallback, and a card in
+	 * another sign language is never shown. It also names the language in the
+	 * region's accessible label.
 	 */
 	signLang?: string;
 	media: MediaAssetRef;
@@ -551,13 +548,13 @@ export type CatalogCardPayload =
  * one of `content` or `payload`.
  *
  * One generic `payload` slot, not a field per accommodation. This is the shape
- * `pie-elements-ng` (PIE-879) and the `pie-api-aws` Learnosity importer
- * (PIE-881) restate structurally; all three read the same authored JSON and none
- * of them takes a package dependency on the others, so keeping the declarations
- * identical is the only thing holding interop together; a `signLanguage` input
- * alias, folded in on the resolution path but not the enumeration path, once
- * had an imported card render its signing video while reporting no signed
- * alternate. Both producers now emit `payload`.
+ * `pie-elements-ng` and the PIE API service's Learnosity importer restate
+ * structurally; all three read the same authored JSON and none of them takes a
+ * package dependency on the others, so keeping the declarations identical is
+ * the only thing holding interop together; a `signLanguage` input alias, folded
+ * in on the resolution path but not the enumeration path, once had an imported
+ * card render its signing video while reporting no signed alternate. Both
+ * producers now emit `payload`.
  */
 export interface CatalogCard {
 	catalog: string; // 'spoken', 'sign-language', 'braille', etc.

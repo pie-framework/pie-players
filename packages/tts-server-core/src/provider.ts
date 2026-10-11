@@ -3,12 +3,14 @@
  * @module @pie-players/tts-server-core
  */
 
-import type {
-	GetVoicesOptions,
-	ServerProviderCapabilities,
-	SynthesizeRequest,
-	SynthesizeResponse,
-	Voice,
+import {
+	type GetVoicesOptions,
+	type ServerProviderCapabilities,
+	type SynthesizeRequest,
+	type SynthesizeResponse,
+	TTSError,
+	TTSErrorCode,
+	type Voice,
 } from "./types.js";
 
 /**
@@ -282,19 +284,24 @@ export abstract class BaseTTSProvider implements ITTSServerProvider {
 
 	/**
 	 * Validate synthesis request
-	 * @throws {Error} If request is invalid
+	 * @throws {TTSError} `TEXT_TOO_LONG` for text over `maxTextLength`,
+	 * `INVALID_REQUEST` for any other rejection
 	 */
 	protected validateRequest(
 		request: SynthesizeRequest,
 		capabilities: ServerProviderCapabilities,
 	): void {
+		const invalid = (message: string, code = TTSErrorCode.INVALID_REQUEST) =>
+			new TTSError(code, message, undefined, this.providerId);
+
 		if (!request.text || request.text.trim().length === 0) {
-			throw new Error("Text is required and cannot be empty");
+			throw invalid("Text is required and cannot be empty");
 		}
 
 		if (request.text.length > capabilities.standard.maxTextLength) {
-			throw new Error(
+			throw invalid(
 				`Text length (${request.text.length}) exceeds maximum (${capabilities.standard.maxTextLength})`,
+				TTSErrorCode.TEXT_TOO_LONG,
 			);
 		}
 
@@ -302,7 +309,7 @@ export abstract class BaseTTSProvider implements ITTSServerProvider {
 			request.format &&
 			!capabilities.extensions.supportedFormats.includes(request.format)
 		) {
-			throw new Error(
+			throw invalid(
 				`Format '${request.format}' not supported. Supported formats: ${capabilities.extensions.supportedFormats.join(", ")}`,
 			);
 		}
@@ -311,21 +318,21 @@ export abstract class BaseTTSProvider implements ITTSServerProvider {
 			request.rate !== undefined &&
 			(request.rate < 0.25 || request.rate > 4.0)
 		) {
-			throw new Error("Rate must be between 0.25 and 4.0");
+			throw invalid("Rate must be between 0.25 and 4.0");
 		}
 
 		if (
 			request.pitch !== undefined &&
 			(request.pitch < 0 || request.pitch > 2)
 		) {
-			throw new Error("Pitch must be between 0 and 2");
+			throw invalid("Pitch must be between 0 and 2");
 		}
 
 		if (
 			request.volume !== undefined &&
 			(request.volume < 0 || request.volume > 1)
 		) {
-			throw new Error("Volume must be between 0 and 1");
+			throw invalid("Volume must be between 0 and 1");
 		}
 	}
 }

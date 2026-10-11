@@ -779,7 +779,7 @@ Items pane of a section player: renders the item cards of the current compositio
 {/if}
 
 <style>
-	:host {
+	:global(pie-section-player-items-pane) {
 		display: flex;
 		flex-direction: column;
 		gap: 1rem;

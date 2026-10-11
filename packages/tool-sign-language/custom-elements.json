@@ -20,15 +20,6 @@
 							},
 							"default": "null",
 							"attribute": "media"
-						},
-						{
-							"kind": "field",
-							"name": "i18n",
-							"type": {
-								"text": "I18nProvider"
-							},
-							"description": "Interface-locale provider, supplied by the host surface. Absent, the English-only default names the language rather than leaking a key.",
-							"attribute": "i18n"
 						}
 					],
 					"attributes": [
@@ -39,14 +30,6 @@
 							},
 							"default": "null",
 							"fieldName": "media"
-						},
-						{
-							"name": "i18n",
-							"type": {
-								"text": "string"
-							},
-							"description": "Interface-locale provider, supplied by the host surface. Absent, the English-only default names the language rather than leaking a key.",
-							"fieldName": "i18n"
 						}
 					],
 					"cssProperties": [

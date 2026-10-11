@@ -394,6 +394,62 @@ function hasChemicalFormula(text: string): boolean {
 	return false;
 }
 
+/** Numbers joined by slashes: `3/4`, `12 / 4`, `10/10/2026`. */
+const SLASH_RUN = /\d+(?:\s*\/\s*\d+)+/g;
+
+/** Numbers joined by hyphens spaced on both sides: `15 - 7`, `1809 - 1865`. */
+const SPACED_HYPHEN_RUN = /\d+(?:[.,]\d+)*(?:\s+-\s+\d+(?:[.,]\d+)*)+/g;
+
+/**
+ * Whether the text holds a fraction or a division: exactly one slash between
+ * two numbers. A second slash makes the run a date — `10/10/2026`, `2026/10/10`.
+ */
+function hasFraction(text: string): boolean {
+	return (text.match(SLASH_RUN) ?? []).some(
+		(run) => run.split("/").length === 2,
+	);
+}
+
+/**
+ * Whether the text holds a subtraction written with a hyphen.
+ *
+ * Between numbers a hyphen is mostly a range, a date or an identifier:
+ * `1990-2000`, `2025-26`, `2026-10-10`, `555-1234`. On its own it counts as
+ * minus only when spaced on both sides, and then only where the numbers fail to
+ * ascend, since a range runs low to high: `15 - 7` counts, `1809 - 1865` does
+ * not. The trade is that `3 - 5` on its own reads as a range; with an equals
+ * sign next to it, it is caught as an equation.
+ */
+function hasSpacedSubtraction(text: string): boolean {
+	return (text.match(SPACED_HYPHEN_RUN) ?? []).some((run) => {
+		const values = run
+			.split(/\s+-\s+/)
+			.map((value) => Number(value.replace(/,/g, "")));
+		return values.some((value, index) => index > 0 && value <= values[index - 1]);
+	});
+}
+
+const PERCENTAGE = /\d\s*%/;
+
+/** A percentage taken of a number: `20% of 50`, `15% of $80`, `el 20% de 50`. */
+const PERCENTAGE_OF_NUMBER = /\d\s*%\s+(?:of|de|van)\s+[$€£]?\s?\d/i;
+
+/** A money amount: `$40`, `€ 12`, `12,50 €`. */
+const MONEY = /[$€£]\s?\d|\d\s?[€£]/;
+
+/**
+ * Whether the text applies a percentage to a quantity.
+ *
+ * A percentage on its own is a statistic in prose — "40% of voters", "70% of
+ * Earth's surface" — so it counts when taken of a number or when the text
+ * carries a money amount, as discount, tax and interest problems do. Beside an
+ * operator (`25% = 0.25`) it is caught with the operator.
+ */
+function hasAppliedPercentage(text: string): boolean {
+	if (PERCENTAGE_OF_NUMBER.test(text)) return true;
+	return PERCENTAGE.test(text) && MONEY.test(text);
+}
+
 /**
  * Helper to check if context contains mathematical content
  * (Basic heuristic - can be overridden by tools)
@@ -414,16 +470,22 @@ export function hasMathContent(context: ToolContext): boolean {
 	// No bare-operator pattern: a lone hyphen or slash matches "well-known" and
 	// "and/or", which would make nearly every item mathematical. An operator
 	// counts only with operands around it, or when the character has no prose
-	// reading at all.
+	// reading at all. Hyphens and slashes between numbers also write dates and
+	// ranges, and a percentage alone is a statistic, so those have their own
+	// predicates below. An operand may carry a percent sign (`25% = 0.25`).
 	const textIndicators = [
 		/[≤≥≠±×÷∑∫√∞π]/, // Symbols with no prose reading
-		/\d+\s*[+\-*/×÷=]\s*\d+/, // Simple arithmetic
-		/\d\s*[<>]\s*\d/, // Numeric comparison
-		/\b\d+\s*\/\s*\d+\b/, // Fractions
-		/\b\d+(?:\.\d+)?\s*%/, // Percentages
+		/\d\s*%?\s*[+*×÷=−]\s*\d/, // Operators with no date or range reading
+		/\d\s*[-/]\s*\d[\d.,]*\s*=|=\s*\d[\d.,]*\s*[-/]\s*\d/, // Hyphen or slash in an equation
+		/\d\s*%?\s*[<>]\s*\d/, // Numeric comparison
 		/\^\s*\d/, // Exponents
 	];
-	return textIndicators.some((pattern) => pattern.test(text));
+	return (
+		textIndicators.some((pattern) => pattern.test(text)) ||
+		hasFraction(text) ||
+		hasSpacedSubtraction(text) ||
+		hasAppliedPercentage(text)
+	);
 }
 
 const CHOICE_INTERACTION_ELEMENTS = new Set([

@@ -259,15 +259,6 @@ Section player layout that renders a section's passages above its items in one c
 </SectionPlayerLayoutKernel>
 
 <style>
-	:host {
-		display: block;
-		width: 100%;
-		height: 100%;
-		min-height: 0;
-		max-height: 100%;
-		overflow: hidden;
-	}
-
 	.pie-section-player-observability-anchor {
 		display: none;
 	}

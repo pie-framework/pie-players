@@ -124,7 +124,7 @@ Passages pane of a section player: renders the passage cards of the current sect
 {/if}
 
 <style>
-	:host {
+	:global(pie-section-player-passages-pane) {
 		display: flex;
 		flex-direction: column;
 		gap: 1rem;

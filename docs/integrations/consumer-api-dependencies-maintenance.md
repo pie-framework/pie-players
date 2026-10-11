@@ -5,11 +5,11 @@ the record of which `@pie-players` surfaces downstream host applications touch
 and which of those break silently.
 
 This file is the authority on the procedure, for any agent harness or for a
-person doing it by hand. Claude Code additionally ships
-[`.claude/skills/consumer-dependency-audit/SKILL.md`](../../.claude/skills/consumer-dependency-audit/SKILL.md)
-and a `/consumer-dependency-audit` command, which trigger on their own and then
-follow this file — they add discovery, not rules. Other harnesses reach this
-through [`AGENTS.md`](../../AGENTS.md).
+person doing it by hand. The
+[`consumer-dependency-audit`](../../.agents/skills/consumer-dependency-audit/SKILL.md)
+skill triggers on its own and then follows this file — it adds discovery, not
+rules. Claude Code invokes it as `/consumer-dependency-audit`; a harness without
+skills reaches this through [`AGENTS.md`](../../AGENTS.md).
 
 The pad exists to answer one question — *if I change this, who breaks?* — so
 every edit either sharpens that answer or comes out.
@@ -54,6 +54,21 @@ repository's surface.
 When a finding can only be stated by naming something on the forbidden list,
 state the shape instead: "the host maps four `TTSErrorCode` members onto HTTP
 statuses" rather than the route, the service, or the ticket.
+
+## Scope of a run
+
+- **Full refresh**, when no scope is given: re-derive every consumer, rewrite the
+  pad and advance its verified date.
+- **One consumer**, named by its label: re-derive that consumer only. Leave the
+  other rows and their verification dates alone, and do not advance the pad's
+  date.
+- **One surface** (a tag, attribute, event, export path, token or method name):
+  answer *who consumes this, and does it break silently?* from the pad plus a
+  targeted search of the resolved checkouts, and stop. Edit the pad only if the
+  check contradicts a row.
+- **A new consumer**, named by its integration shape: ask for its checkout path,
+  derive its surface from scratch, give it the next free label, and record the
+  label-to-path mapping in `.claude/consumer-checkouts.local.json` only.
 
 ## Step 1 — Locate the consumer checkouts
 

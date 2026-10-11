@@ -14,6 +14,7 @@ describe("isDocumentationPath", () => {
 		"docs/adr/0003-elements-read-accessibility-settings-from-a-host-neutral-context.md",
 		"docs/img/architecture.png",
 		"docs/tools-and-accomodations/assets/schoolcity-gap-analysis/gap.jpg",
+		".agents/skills/releases-and-changesets/SKILL.md",
 		".claude/skills/releases-and-changesets/SKILL.md",
 		".claude/launch.json",
 	])("%s is documentation", (path) => {
@@ -29,6 +30,7 @@ describe("isDocumentationPath", () => {
 		"docs/accessibility/aws-polly-iam-policy.json",
 		"docs/item-player/pie-item-player-vs-legacy.html",
 		"docs/wcag/reference-index.yaml",
+		".agents/skills/consumer-dependency-audit/fixtures.json",
 		// The docs site is code.
 		"apps/docs/src/routes/+page.svelte",
 		"package.json",

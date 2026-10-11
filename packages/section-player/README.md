@@ -363,7 +363,7 @@ The layout elements (`pie-section-player-splitpane`,
 - `assessment` (object, JS property only): the `AssessmentEntity` whose `personalNeedsProfile` and `settings` tool policy reads, forwarded to the coordinator the player builds. A coordinator passed in `runtime` is the host's to bind with `updateAssessment`. A section's own `personalNeedsProfile` is not read, and the player warns once when it finds one
 - `debug` (boolean-like): verbose debug logging control (`"true"` enables, `"false"`/`"0"` disables)
 - `toolbar-position` (string): `top|right|bottom|left|none`
-- `narrow-layout-breakpoint` (number, optional): viewport width in px below which the layout collapses (split pane: single column; vertical: toolbar moves to top). Clamped to 400–2000; default 1100.
+- `narrow-layout-breakpoint` (number, optional): viewport width in px below which every layout moves its toolbar to the top, and split pane also stacks into one column. Clamped to 400–2000; default 1100.
 - `content-max-width-no-passage` (number, optional): max width in px when no passages exist. Clamped to 320–2200. Unset by default (layout uses available width).
 - `content-max-width-with-passage` (number, optional): max width in px when passages are present. Clamped to 320–2200. Unset by default (layout uses available width).
 - `split-pane-min-region-width` (number, optional): splitpane minimum pane width in px. Clamped to 160–1200. Unset by default (split bounds stay at 20–80). Splitpane only.
@@ -379,7 +379,7 @@ The layout elements (`pie-section-player-splitpane`,
 - Host extension props (JS properties only): `toolRegistry`, `sectionHostButtons`, `itemHostButtons`, `passageHostButtons`, `hooks`
 
 When the viewport is no wider than `narrow-layout-breakpoint` (default 1100px),
-splitpane and vertical layout hosts normalize section toolbar placement to `top`.
+the splitpane, vertical and tabbed layout hosts normalize section toolbar placement to `top`.
 This includes `left`, `right`, `bottom`, and `none` values. Separately, the shell
 moves a `left` or `right` toolbar to `top` at a fixed 1100px, so with a smaller
 breakpoint side toolbars still move to the top from 1100px down.

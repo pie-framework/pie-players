@@ -1,7 +1,7 @@
 /**
  * Minimal, frontend-safe defaults for PIE build service URLs.
  *
- * In PIEOneer, these come from `$env/dynamic/public`. In `pie-players` we avoid
+ * A SvelteKit host reads these from `$env/dynamic/public`. `pie-players` avoids
  * SvelteKit env dependencies so this can be consumed by any bundler.
  */
 

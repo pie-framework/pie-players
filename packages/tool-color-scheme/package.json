@@ -18,8 +18,7 @@
 		"theme",
 		"color-scheme",
 		"accessibility",
-		"wcag",
-		"learnosity"
+		"wcag"
 	],
 	"main": "./dist/tool-color-scheme.js",
 	"exports": {

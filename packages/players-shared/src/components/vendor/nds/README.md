@@ -22,9 +22,9 @@ lands, so it never leaks into a consumer's own dependency set.
 
 | Field | Value |
 | --- | --- |
-| Upstream repo | `git@github.com:RenaissancePlace/nextComponentLibrary.git` |
+| Upstream | NDS component library |
 | Source file | `web-components/src/components/icon-button/nds-icon-button.ts` |
-| Last sync commit | `1c728d3` (`feat(UX-2319): add new components…`) |
+| Last sync commit | `1c728d3` |
 | Bundler | Vite 7 in lib mode, ES output, single-file (Lit inlined) |
 
 ## Why a vendored bundle, not an npm dep
@@ -79,9 +79,8 @@ Consuming bundlers treat this module per their own externals config:
 
 When a newer `nds-icon-button` is needed:
 
-1. Pull the latest `nextComponentLibrary` next to this repo (sibling checkout:
-   `../../nextComponentLibrary`).
-2. From `nextComponentLibrary/web-components/`, `bun install`.
+1. Check out the latest NDS component library source.
+2. From its `web-components/` directory, `bun install`.
 3. Build a self-contained ESM bundle (no shared chunks) — the upstream
    `vite.bundle.config.js` splits Lit into a `property.js` chunk, which would
    break the single-file copy here. Use this one-shot config instead:

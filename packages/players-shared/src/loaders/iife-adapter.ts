@@ -1,7 +1,7 @@
 /**
  * IIFE backend adapter for the ElementLoader primitive.
  *
- * Loads PIE elements from IIFE bundles served by the PIE build service,
+ * Loads PIE elements from IIFE bundles served by the bundle host,
  * then registers them with `customElements`. On any per-tag failure
  * (missing package, non-constructor element class, define failure),
  * throws `AdapterFailure` with a structured `reasons` map that the
@@ -64,7 +64,7 @@ export type IifeBundleRetryStatus = {
 
 export type IifeBackendConfig = {
 	kind: "iife";
-	/** Base URL for the PIE bundle service. */
+	/** Base URL of the bundle host. */
 	bundleHost: string;
 	/** Bundle variant to request (player / client-player / editor). */
 	bundleType?: BundleType;
@@ -77,7 +77,7 @@ export type IifeBackendConfig = {
 	/**
 	 * Retry policy for transient bundle load failures.
 	 *
-	 * When the bundle service is building a bundle on demand, the first
+	 * When the bundle host is building a bundle on demand, the first
 	 * few `<script src>` requests can fail. This policy polls until the
 	 * bundle is available or `timeoutMs` elapses. Default matches
 	 * `DEFAULT_IIFE_BUNDLE_RETRY_CONFIG`.
@@ -187,7 +187,7 @@ export function createIifeBackend(config: IifeBackendConfig): IifeBackend {
 	/**
 	 * Wrap the single-shot script loader with poll-until-ready retry.
 	 *
-	 * The PIE bundle service may return a transient failure while it
+	 * The bundle host may return a transient failure while it
 	 * builds a bundle on demand. Retry with fixed-interval polling until
 	 * the bundle is ready or the cumulative deadline elapses. Emits
 	 * retry lifecycle events to the host via `onBundleRetryStatus` and to

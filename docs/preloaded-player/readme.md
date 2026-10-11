@@ -361,7 +361,10 @@ either race this one for the same version or publish without provenance, so:
 - otherwise rebuilds only the configs whose own JSON file changed.
 
 To publish every config regardless of what changed, run the workflow
-manually with `publishAll=true` (`publish-changed.mjs --all`).
+manually with `publishAll=true` (`publish-changed.mjs --all`). A manual run
+without it applies the same rules to the diff from the `base` input to the
+dispatched commit; `base` defaults to that commit's first parent, which on
+`master` is the previous tip.
 
 Authentication mirrors `release.yml`: `auto` resolves to token auth while the
 `NPM_TOKEN` secret exists and to OIDC trusted publishing once it is deleted.

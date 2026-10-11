@@ -1,5 +1,13 @@
 # @pie-players/tts-server-sc
 
+## 0.3.75
+
+### Patch Changes
+
+- Updated dependencies [d9f56e8]
+- Updated dependencies [fbd4570]
+  - @pie-players/tts-server-core@0.3.75
+
 ## 0.3.74
 
 ### Patch Changes

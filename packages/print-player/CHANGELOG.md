@@ -1,5 +1,89 @@
 # @pie-players/pie-print-player
 
+## 0.3.75
+
+### Patch Changes
+
+- faf16b9: `components.css` no longer styles layout tables: a `.table` marked `.table-no-border` or `role="presentation"` gets no grid, full width or cell padding, so migrated items Host P renders lay out as they did under the legacy player, without a rule above the first row or tiles pushed apart. Bordered data tables keep the grid.
+- aa9e608: A `.table.lrn_width_auto` in `components.css` sizes to its content again (PD-194). Migrated content Host P renders carries the class.
+- 7cf309e: An image in sanitized markup that the host's stylesheet lays out as a block, such as under an `img { display: block }` reset, gets the `pie-image-scroll-block` wrapper once rendered, so no gap opens below it.
+- 7400511: The `.pie-image-scroll` wrapper is inline-block, so images keep their place in a line of text or a row of images instead of each taking a line of its own. An image an element lays out as a block keeps a block wrapper, so no gap opens below it. An image wider than its column still scrolls.
+- 880bb53: Under a color scheme, `components.css` overrides the colours authored into
+  content that PIE elements mark (PIE-1119): ink and borders take the scheme's
+  text and border colours, a near-white fill turns transparent, and any other fill
+  inverts to the scheme's ink with its content in the scheme's page colour. The
+  default theme keeps authored colours. Host R, the one host that sets a scheme,
+  sees authored colours follow it; a host whose own scoped copy sits inside the
+  scheme root gets the same, one whose scheme root is outside its scope does not.
+- d36dbae: A tool's PNP support id is its tool id. `ToolRegistration.pnpSupportIds`, `ToolRegistry.getToolsByPNPSupport` and `generatePNPSupportsFromTools`, and the dictionary factories' `pnpSupportIds` option are gone, so a profile, district policy or item setting names a tool by `toolId`: `lineReader` for `readingMask`, `annotationToolbar` for `highlighting`, `answerEliminator` for `answerMasking`, `theme` for `colorContrast`, `dictionarySpanish` for `spanishDictionary`. Any other id still produces `tool-policy.unknownSupportId`. `createUniversalPersonalNeedsProfile()` grants tool ids. The render context, the content-dependency context and `resolveContentCapabilities` results drop `featureId`; `granted` tells an accommodation from authored presentation.
+- 3725209: The `.table` grid rules (`.table`, `.table-bordered`, `thead`, `tbody + tbody`)
+  in `components.css` now paint `--pie-text`, where they used a 15% mix of it.
+  The mix measured 1.41:1 on white, short of the 3:1 SC 1.4.11 requires for a
+  grid rule against the page. `--pie-text` is held to 4.5:1 against the page, so
+  the rules clear 3:1 on every theme and scheme. Authored tables using these
+  classes show text-coloured rules where they showed faint grey ones. Under a
+  color scheme, the rules around a filled cell the scheme inverts take its page
+  colour, so adjacent filled header cells stay apart.
+  
+  Consumer impact: Host V loads its own copy, scoped to its item container. Its
+  item tables get the stronger rules once it upgrades `pie-theme`; until then they
+  keep the fixed `#dee2e6` grey used before 0.3.66.
+- d89f462: An item's policy settings now arrive through its `<pie-item-scope>` `settings` property, which the section player fills from each item ref, and govern only that item's own toolbar and content features; a section- or assessment-level toolbar reports a tool an item restricts or requires with `tool-policy.itemSettingNotApplied`. The toolkit's `currentItemRef` property and `ToolkitCoordinator.updateCurrentItemRef` are removed: set `settings` on the item's scope, or call `registerItemSettings`, instead.
+- 8d94ae3: The toolkit's `./runtime/internal` and `./policy/internal` entries are removed, and `./tools/internal` is renamed `./tools/registration`, a stable entry for writing and rendering a `ToolRegistration`; `./runtime/engine` now carries the engine's input vocabulary, and the root carries the shell event bridge. The provider registry's `ToolProviderConfig` is renamed `ToolProviderRegistration`.
+- d9f56e8: The toolkit root exports 185 names instead of 326: the names only tool packages use moved to `./tools/registration`, and the names nothing imports are removed, among them the backend activity-session adapters, the item loader and the session-storage helpers. The TypeScript examples in the READMEs match the current API.
+- Updated dependencies [d58f703]
+- Updated dependencies [3f3eb08]
+- Updated dependencies [7cf309e]
+- Updated dependencies [7400511]
+- Updated dependencies [14e53c9]
+- Updated dependencies [53940c9]
+- Updated dependencies [6b26e88]
+- Updated dependencies [f5465e5]
+- Updated dependencies [8edca42]
+- Updated dependencies [c6b509c]
+- Updated dependencies [6ee4cb8]
+- Updated dependencies [1025fba]
+- Updated dependencies [db280dd]
+- Updated dependencies [296055c]
+- Updated dependencies [6f57b31]
+- Updated dependencies [ad05203]
+- Updated dependencies [240f300]
+- Updated dependencies [4e9913f]
+- Updated dependencies [cdc3dd7]
+- Updated dependencies [dcc7375]
+- Updated dependencies [7c162ea]
+- Updated dependencies [78491f2]
+- Updated dependencies [0e00095]
+- Updated dependencies [7aeddb9]
+- Updated dependencies [d36dbae]
+- Updated dependencies [57a8d50]
+- Updated dependencies [3ac0028]
+- Updated dependencies [3ac0028]
+- Updated dependencies [d7c46ac]
+- Updated dependencies [bb9c165]
+- Updated dependencies [699f1c6]
+- Updated dependencies [d2de576]
+- Updated dependencies [1ec8e34]
+- Updated dependencies [d89f462]
+- Updated dependencies [cb93fdd]
+- Updated dependencies [cf199c9]
+- Updated dependencies [8122e1e]
+- Updated dependencies [bcba901]
+- Updated dependencies [c5634aa]
+- Updated dependencies [f80f159]
+- Updated dependencies [36e2770]
+- Updated dependencies [9464e2b]
+- Updated dependencies [8d94ae3]
+- Updated dependencies [d9f56e8]
+- Updated dependencies [5b15d5c]
+- Updated dependencies [4e9f832]
+- Updated dependencies [ccc2765]
+- Updated dependencies [fbd4570]
+- Updated dependencies [55d97fd]
+- Updated dependencies [4d94e9c]
+  - @pie-players/pie-assessment-toolkit@0.3.75
+  - @pie-players/pie-players-shared@0.3.75
+
 ## 0.3.74
 
 ### Patch Changes

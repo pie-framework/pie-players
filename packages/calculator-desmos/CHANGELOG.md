@@ -1,5 +1,21 @@
 # @pie-players/pie-calculator-desmos
 
+## 0.3.75
+
+### Patch Changes
+
+- ad05203: Remove deprecated surfaces.
+  
+  - `pie-item-player` drops `customClassname`, `bundleHost`, `bundleEndpoints`, `disableBundler` and `reFetchBundle`; use `customClassName`, `loaderOptions.bundleHost` and `strategy="preloaded"`.
+  - `pie-item-player` drops `updateElementModel()`; reassign `config` instead.
+  - `scorePieItem` drops `outcomeArguments` and always calls `outcome(model, session, env)`.
+  - The backend client no longer strips a trailing `/api` from `baseUrl`; pass the origin.
+  - The Desmos provider throws at initialization without an `apiKey` or `proxyEndpoint` instead of requesting the unkeyed script.
+  - `tools.providers.tts` reports `tools.unknownProviderKey`; the `tools.removedProviderKey` diagnostic is gone.
+- d9f56e8: The toolkit root exports 185 names instead of 326: the names only tool packages use moved to `./tools/registration`, and the names nothing imports are removed, among them the backend activity-session adapters, the item loader and the session-storage helpers. The TypeScript examples in the READMEs match the current API.
+- Updated dependencies [bcba901]
+  - @pie-players/pie-calculator@0.3.75
+
 ## 0.3.74
 
 ### Patch Changes

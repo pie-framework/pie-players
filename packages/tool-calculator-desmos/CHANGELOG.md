@@ -1,5 +1,21 @@
 # @pie-players/pie-tool-calculator
 
+## 0.3.75
+
+### Patch Changes
+
+- 5b15d5c: Tool elements read the toolkit's services from the runtime context only, so the calculator, annotation toolbar, answer eliminator and sign-language elements drop their coordinator, service and `providerId` properties. Providers register under their tool's id (`calculator`, `textToSpeech`), and the toolkit reports a tool by that id as `toolId` only: lifecycle hooks pass it as their first argument, `ToolkitErrorContext.providerId` becomes `toolId`, and `ProviderLifecycleContext.providerId`, `ToolConfigDiagnostic.providerId` and the `providerId` telemetry repeated beside `toolId` are removed. `ToolProviderApi.providerId`, `getProviderId`, `resolveToolProviderId`, `ToolkitCoordinator.getToolProvider` and `AnswerEliminatorToolConfig` are removed, and `sanitizeConfig` / `validateConfig` move from the provider descriptor to `ToolRegistration`.
+- Updated dependencies [c6b509c]
+- Updated dependencies [240f300]
+- Updated dependencies [57a8d50]
+- Updated dependencies [bcba901]
+- Updated dependencies [36e2770]
+- Updated dependencies [d9f56e8]
+- Updated dependencies [5b15d5c]
+- Updated dependencies [4e9f832]
+  - @pie-players/pie-tool-calculator-shared@0.3.75
+  - @pie-players/pie-calculator@0.3.75
+
 ## 0.3.74
 
 ### Patch Changes

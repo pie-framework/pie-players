@@ -4,9 +4,10 @@
  * A cohort (one section and attempt) moves through `composed`,
  * `engine-ready`, `interactive` and `disposed`, in that order. The section
  * runtime engine in `@pie-players/pie-assessment-toolkit` is the only emitter;
- * it dispatches the event on the layout element. `pie-loading-complete`
- * reports that every item loaded and is not a stage. `readiness.mode =
- * "strict"` only delays `interactive`.
+ * it dispatches the event on the layout element. `pie-loading-complete` is
+ * not a stage; it fires once per cohort when the section controller is ready
+ * and the element pre-warm has resolved. `readiness.mode = "strict"` only
+ * delays `interactive`.
  *
  * `status` is `entered`, or `failed` for the stage a non-recoverable
  * framework error stopped the chain at, with `skipped` for each later stage

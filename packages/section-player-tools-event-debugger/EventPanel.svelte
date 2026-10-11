@@ -47,11 +47,11 @@
 		totalItems?: number;
 	} | null;
 	type ToolkitCoordinatorLike = {
-		// Phase D (>=0.3.35): subscribe* helpers follow the toolkit's
-		// active section cohort automatically and do not accept
-		// sectionId / attemptId arguments. The debugger keeps `sectionId`
-		// + `attemptId` in the shared subscription manager purely to gate
-		// same-target re-subscribe — it does not pass them to the coordinator.
+		// The subscribe* helpers follow the toolkit's active section cohort
+		// automatically and do not accept sectionId / attemptId arguments. The
+		// debugger keeps `sectionId` + `attemptId` in the shared subscription
+		// manager purely to gate same-target re-subscribe — it does not pass
+		// them to the coordinator.
 		subscribeItemEvents?: (args: {
 			listener: (event: ControllerEvent) => void;
 		}) => () => void;

@@ -125,7 +125,7 @@ export class MyTTSProvider extends BaseTTSProvider {
 | Helper | Behavior |
 |--------|----------|
 | `ensureInitialized()` | Throws a plain `Error` before `initialize` has run |
-| `validateRequest(request, capabilities)` | Throws a plain `Error` for empty text, text over `maxTextLength`, a `format` outside `supportedFormats`, `rate` outside 0.25–4.0, `pitch` outside 0–2 or `volume` outside 0–1 |
+| `validateRequest(request, capabilities)` | Rejects with a `TTSError` carrying the provider id: `TEXT_TOO_LONG` for text over `maxTextLength`, `INVALID_REQUEST` for empty text, a `format` outside `supportedFormats`, `rate` outside 0.25–4.0, `pitch` outside 0–2 or `volume` outside 0–1 |
 | `resolveRequestVoice(request, defaultVoice, prefer?)` | Picks the voice for a request; see [Voice Resolution](#voice-resolution) |
 | `detectSSML(text, extraTags?)` | True when the text contains `<speak`, `<prosody`, `<emphasis`, `<break`, `<phoneme`, `<say-as`, `<mark` or one of the provider's extra tags |
 | `escapeSSML(text)` | Escapes `&`, `<`, `>`, `"` and `'` |
@@ -224,8 +224,8 @@ Two utilities bring vendor offsets to this format:
 
 | `TTSErrorCode` | Meaning |
 |----------------|---------|
-| `INVALID_REQUEST` | The vendor rejected the request's input |
-| `TEXT_TOO_LONG` | The vendor rejected the text's length |
+| `INVALID_REQUEST` | `validateRequest` or the vendor rejected the request's input |
+| `TEXT_TOO_LONG` | `validateRequest` or the vendor rejected the text's length |
 | `AUTHENTICATION_ERROR` | Credentials missing, invalid or not permitted |
 | `RATE_LIMIT_EXCEEDED` | Throttled or over quota |
 | `INITIALIZATION_ERROR` | `initialize` failed |

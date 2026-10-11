@@ -126,8 +126,10 @@ lists the variables the demo routes read and the IAM role setup for production.
 - **Engine.** The engine is set at `initialize`, and a request cannot change it.
   A host that offers both engines runs one instance per engine.
 - **Output.** `format: 'ogg'` returns Ogg Vorbis, `'pcm'` returns PCM, and
-  anything else MP3; `'wav'` fails validation. `sampleRate` defaults to 24000 Hz.
-  `contentType` is the one Polly reports, `audio/mpeg` when it reports none.
+  anything else MP3; `'wav'` fails validation. `sampleRate` defaults to 24000 Hz
+  for MP3 and Ogg Vorbis and to 16000 Hz for PCM, which Polly takes only at 8000
+  or 16000. `contentType` is the one Polly reports, `audio/mpeg` when it reports
+  none.
 - **SSML and prosody.** Text containing SSML tags, Polly's `<amazon:…>` and
   `<aws-…>` extensions included, goes to Polly unchanged. Plain text with a
   `rate` or `pitch` other than 1 is escaped and wrapped in `<speak><prosody>`,
@@ -152,7 +154,7 @@ section has the matching rules.
 | Volume Control | Not supported |
 | Max Text Length | 3000 characters |
 | Audio Formats | MP3, Ogg Vorbis, PCM |
-| Sample Rate | Per request (default 24000 Hz) |
+| Sample Rate | Per request (default 24000 Hz, 16000 Hz for PCM) |
 
 ## Cost
 
@@ -193,9 +195,10 @@ AWS failures from `synthesize` and `getVoices` arrive as a `TTSError`:
 | HTTP 401 or 403 | `AUTHENTICATION_ERROR` |
 | Anything else | `PROVIDER_ERROR` |
 
-Request validation runs before any AWS call and throws a plain `Error`: empty
-text, text over 3000 characters, an unsupported format, or a rate or pitch out
-of range. A call before `initialize` throws a plain `Error` too.
+Request validation runs before any AWS call and rejects with a `TTSError`:
+`TEXT_TOO_LONG` for text over 3000 characters, `INVALID_REQUEST` for empty text,
+an unsupported format, or a rate or pitch out of range. A call before
+`initialize` throws a plain `Error`.
 
 ## AWS IAM Permissions
 

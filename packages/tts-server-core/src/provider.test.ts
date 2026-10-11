@@ -46,6 +46,10 @@ class TestProvider extends BaseTTSProvider {
 		return this.escapeSSML(text);
 	}
 
+	ensureInitializedPublic(): void {
+		this.ensureInitialized();
+	}
+
 	validateRequestPublic(request: SynthesizeRequest): void {
 		this.validateRequest(request, {
 			standard: {
@@ -64,6 +68,16 @@ class TestProvider extends BaseTTSProvider {
 		});
 	}
 }
+
+/** What `fn` throws; fails the test when it returns. */
+const thrown = (fn: () => void): unknown => {
+	try {
+		fn();
+	} catch (err) {
+		return err;
+	}
+	throw new Error("expected a throw");
+};
 
 describe("BaseTTSProvider prosody helpers", () => {
 	const provider = new TestProvider();
@@ -186,6 +200,23 @@ describe("BaseTTSProvider request validation", () => {
 			message,
 			providerId: "test",
 		});
+	});
+});
+
+describe("BaseTTSProvider initialization guard", () => {
+	it("rejects use before initialize as INITIALIZATION_ERROR", async () => {
+		const provider = new TestProvider();
+		const err = thrown(() => provider.ensureInitializedPublic());
+
+		expect(err).toBeInstanceOf(TTSError);
+		expect(err).toMatchObject({
+			code: TTSErrorCode.INITIALIZATION_ERROR,
+			message: "Provider test not initialized",
+			providerId: "test",
+		});
+
+		await provider.initialize({});
+		expect(() => provider.ensureInitializedPublic()).not.toThrow();
 	});
 });
 

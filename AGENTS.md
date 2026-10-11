@@ -305,7 +305,9 @@ any published version, every package in the suite carries the same version. The
   even for breaking changes on the pre-1.0 line. Author every changeset entry as
   `patch`; a pending `minor` or `major` changeset is a release blocker.
   `bun run check:changeset-patch-only` enforces this in `verify:pre-commit`,
-  `verify:local-pr` and `release:with-version`.
+  `verify:local-pr` and `release:with-version`. The one exception is the `major`
+  changeset that opens the 1.0 prerelease line
+  ([Prerelease lines](docs/setup/publishing.md#prerelease-lines)).
 - Release and versioning steps cover all publishable packages; never scope a bump to
   the packages you changed. `bun run check:fixed-versioning` fails on version drift in
   `verify:publish` and the release workflow.

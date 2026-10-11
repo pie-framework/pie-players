@@ -49,6 +49,12 @@ lockstep invariant already keeps consumers aligned.
   stray `major` upgrades the whole suite.
 - Document breaking changes in the changeset body (so consumers see them
   in the assembled `CHANGELOG.md`), but ship them under a `patch` bump.
+- The one exception opens the 1.0 prerelease line: a single `major`
+  changeset across the `fixed` block, landed with `.changeset/pre.json`
+  from `bunx changeset pre enter beta`. The guard admits it only while
+  `pre.json` is in `pre` mode and the group is on `0.x`. Every entry after
+  it is `patch` again, and advances the counter (`1.0.0-beta.1`, ...).
+  Procedure: [`docs/setup/publishing.md#prerelease-lines`](../../../docs/setup/publishing.md#prerelease-lines).
 
 ## Authoring a changeset
 
@@ -131,6 +137,7 @@ When adding a new package under `packages/*` that ships to npm:
   the maintainer rewrites
   [`AGENTS.md`](../../../AGENTS.md) "Release Version Alignment".
   Even breaking changes ship as `patch` on the `0.x.y` line.
+  The prerelease line's opening `major` is the only exception.
 - Prepare release bumps for only a subset of changed packages. "Only
   package X changed, so only bump X" is the wrong framing for this repo —
   every publishable package gets the new version regardless of whether

@@ -49,7 +49,9 @@ sort the same way.
 ### Dist-tags
 
 The set configured as `latest` publishes under `latest`; a set configured
-without it publishes under its own name. `next` points to a build from the
+without it publishes under its own name. A build on a prerelease item player,
+such as `1.0.0-beta.0`, publishes under the prerelease id instead: `beta`, or
+`<set>-beta` for a set without `latest`. `next` points to a build from the
 earlier scheme and no longer moves. A dist-tag moves on every publish of its
 set, so a host resolves it once and pins the result:
 `npm install --save-exact @pie-players/pie-preloaded-player@latest` records the

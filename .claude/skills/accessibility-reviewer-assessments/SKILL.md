@@ -221,13 +221,13 @@ Educational assessment components have unique accessibility requirements beyond 
 #### 2.4 Navigable (Level A/AA)
 
 - [ ] **2.4.1** (Level A): Bypass blocks (skip links to main content)
-- [ ] **2.4.2** (Level A): Components have descriptive labels/ARIA names
+- [ ] **2.4.2** (Level A): The page has a title describing its topic or purpose
 - [ ] **2.4.3** (Level A): Focus order is logical and intuitive
 - [ ] **2.4.4** (Level A): Link purpose clear from link text or context
 - [ ] **2.4.6** (Level AA): Headings and labels are descriptive
-- [ ] **2.4.7** (Level AA): Focus indicator is visible (2px minimum, 3:1 contrast)
+- [ ] **2.4.7** (Level AA): Focus indicator is visible, at 3:1 against adjacent colours (1.4.11)
 - [ ] **2.4.11** (Level AA, New in 2.2): Focus not obscured by other content
-- [ ] **2.4.13** (Level AA, New in 2.2): Focus appearance has minimum 2px perimeter, 3:1 contrast
+- [ ] **2.4.13** (Level AAA, New in 2.2): Focus indicator at least a 2 CSS px perimeter, at 3:1 between focused and unfocused states
 - [ ] **Component context**: Focus styles work in both shadow and light DOM
 
 **Example Issues to Catch:**

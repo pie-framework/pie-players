@@ -42,6 +42,7 @@ import type {
 	ToolSurfaceRenderContext,
 	ToolSurfaceRenderResult,
 } from "@pie-players/pie-assessment-toolkit/tools/registration";
+import { normalizeLanguageTag } from "@pie-players/pie-players-shared/i18n/language-tags";
 
 /** QTI 3.0 / AfA support id gating an audio transcript. */
 export const AUDIO_TRANSCRIPT_FEATURE_ID = "transcript";
@@ -60,6 +61,7 @@ const ALWAYS_VISIBLE = "always";
 export interface ResolvedAudioTranscript {
 	catalogId: string;
 	text: string;
+	/** BCP 47, as the region's `lang` takes it, whatever syntax the card used. */
 	language?: string;
 	/** True when the card declares itself authored presentation. */
 	always: boolean;
@@ -90,6 +92,12 @@ const isAlwaysVisible = (card: TranscriptCardLike): boolean =>
 const cardText = (card: TranscriptCardLike): string =>
 	typeof card.content === "string" ? card.content.trim() : "";
 
+// The Learnosity transform emits POSIX `es_ES`, which `lang` does not accept.
+const cardLanguage = (card: TranscriptCardLike): string | undefined =>
+	typeof card.language === "string"
+		? normalizeLanguageTag(card.language) || undefined
+		: undefined;
+
 /**
  * The transcript an entity carries, or `null`.
  *
@@ -118,7 +126,7 @@ export function resolveAudioTranscript(
 		const resolved: ResolvedAudioTranscript = {
 			catalogId,
 			text,
-			language: typeof card.language === "string" ? card.language : undefined,
+			language: cardLanguage(card),
 			always: isAlwaysVisible(card),
 		};
 		// An `always` card answers whether or not policy granted anything, so it

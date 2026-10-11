@@ -22,8 +22,8 @@
  *
  * Converts POSIX underscores to hyphens, strips a POSIX charset or modifier
  * suffix (`es_ES.UTF-8`, `es_ES@euro`), and lowercases. Lowercasing rather than
- * applying BCP-47 display casing is intentional — this output is a comparison
- * key, not something to render.
+ * applying BCP-47 display casing makes the output a comparison key, and it is
+ * still a valid `lang` value: BCP-47 subtags are case-insensitive.
  *
  * Returns an empty string for nullish or blank input, which callers read as
  * "this card declares no language".

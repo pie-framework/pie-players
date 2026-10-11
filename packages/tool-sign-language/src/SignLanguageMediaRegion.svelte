@@ -18,7 +18,8 @@
 	 * The host mounts this through the registration's `renderSurface` and hands it
 	 * a resolved card; it does no resolution of its own, so a card that reaches
 	 * here is already known to be playable and already known to be one the learner
-	 * is eligible for. Read-aloud comes from the toolkit runtime context.
+	 * is eligible for. Read-aloud and the interface locale come from the toolkit
+	 * runtime context.
 	 */
 	import {
 		bindTtsAudioHandoff,
@@ -32,20 +33,11 @@
 	} from "@pie-players/pie-players-shared/media";
 	import type { MediaSource } from "@pie-players/pie-players-shared/types";
 	import { describeSignLanguage } from "./sign-language-cards.js";
-	import type { I18nProvider } from "@pie-players/pie-players-shared/i18n/types";
 	import { resolveInterfaceI18n } from "@pie-players/pie-players-shared/i18n/provider";
 	import type { ResolvedSignLanguageAlternate } from "./sign-language-content.js";
 
-	let {
-		media = null as ResolvedSignLanguageAlternate | null,
-		i18n = undefined as I18nProvider | undefined,
-	} = $props<{
+	let { media = null as ResolvedSignLanguageAlternate | null } = $props<{
 		media?: ResolvedSignLanguageAlternate | null;
-		/**
-		 * Interface-locale provider, supplied by the host surface. Absent, the
-		 * English-only default names the language rather than leaking a key.
-		 */
-		i18n?: I18nProvider;
 	}>();
 
 	let videoElement = $state<HTMLVideoElement | null>(null);
@@ -54,13 +46,18 @@
 	// Signing playback and read-aloud must not run at once; the service is what
 	// pauses the other one.
 	const ttsService = $derived(runtimeContext?.ttsService ?? null);
+	// Outside a toolkit this is the English-only default, which names the
+	// language rather than leaking a key.
+	const interfaceI18n = $derived(resolveInterfaceI18n(runtimeContext));
 
-	const languageName = $derived(describeSignLanguage(media?.signLang, i18n));
+	const languageName = $derived(
+		describeSignLanguage(media?.signLang, interfaceI18n),
+	);
 	// The label names the language rather than saying "video": "American Sign
 	// Language" tells a learner what this is; "video" does not.
 	const accessibleLabel = $derived(
 		media?.label ||
-			resolveInterfaceI18n({ i18n }).t('tools.signLanguage.regionA11y', { language: languageName }),
+			interfaceI18n.t('tools.signLanguage.regionA11y', { language: languageName }),
 	);
 	const sources = $derived(
 		(media?.sources ?? []).map((source: MediaSource) => ({

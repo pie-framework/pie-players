@@ -1,4 +1,6 @@
 import { describe, expect, test } from "bun:test";
+import { categorySlug, normalizeCategory } from "../categories.ts";
+import data from "../periodic-table-data.json";
 
 const source = await Bun.file(
 	new URL("../tool-periodic-table.svelte", import.meta.url),
@@ -9,7 +11,6 @@ const collapsed = styleSource.replace(/\s+/g, " ");
 /** The authored category palette, in the order the stylesheet declares it. */
 const AUTHORED_FILLS = [
 	"#ff9e9e",
-	"#ffdc8a",
 	"#ffdc8a",
 	"#f9a8d4",
 	"#e0aaff",
@@ -157,5 +158,41 @@ describe("periodic table category encoding", () => {
 		// Full-strength ink on the tightest built-in pairing still clears AA.
 		expect(contrastRatio("#4a4a4a", "#dcdcdc")).toBeGreaterThanOrEqual(4.5);
 		expect(contrastRatio("#8e2464", "#b8dcc3")).toBeGreaterThanOrEqual(4.5);
+	});
+});
+
+describe("periodic table category classes", () => {
+	test("every space in a category becomes a hyphen", () => {
+		// `replace(" ", "-")` stopped at the first space, so Alkaline Earth Metal
+		// rendered the classes `__category--alkaline-earth` and `metal`.
+		expect(categorySlug("Alkaline Earth Metal")).toBe("alkaline-earth-metal");
+		expect(categorySlug(" Noble  Gas ")).toBe("noble-gas");
+	});
+
+	test("every category in the data keys a fill and the pinned ink", () => {
+		const beforeInk = collapsed.slice(
+			0,
+			collapsed.indexOf(`color: color-mix( in srgb, var(--pie-text, ${PINNED_INK})`),
+		);
+		const inkSelectors = beforeInk
+			.slice(beforeInk.lastIndexOf("*/") + 2, beforeInk.lastIndexOf("{"))
+			.split(",")
+			.map((selector) => selector.trim());
+		const slugs = new Set(
+			data.elements.map((element) =>
+				categorySlug(normalizeCategory(element.category)),
+			),
+		);
+
+		expect(slugs.size).toBeGreaterThan(1);
+		for (const slug of slugs) {
+			expect(slug, slug).toMatch(/^[a-z-]+$/);
+			expect(collapsed, slug).toContain(
+				`.pie-tool-periodic-table__category--${slug} {`,
+			);
+			expect(inkSelectors, slug).toContain(
+				`.pie-tool-periodic-table__category--${slug}`,
+			);
+		}
 	});
 });

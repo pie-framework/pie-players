@@ -523,14 +523,10 @@
 						const session = context.session as
 							| { id?: string; data?: unknown[] }
 							| undefined;
-						const options = context.options as
-							| { disablePartialScoring?: boolean }
-							| undefined;
 						return recordBackendTraffic("score", "/api/player/score", {
 							sessionId: session?.id || context.sessionId,
 							data: Array.isArray(session?.data) ? session.data : [],
 							env: context.env,
-							disablePartialScoring: options?.disablePartialScoring,
 						});
 					},
 				},

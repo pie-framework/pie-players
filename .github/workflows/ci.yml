@@ -158,6 +158,9 @@ jobs:
           - name: print-player-sanitizer
             command: test:e2e:print-player
             browsers: chromium
+          - name: backend-demo
+            command: test:e2e:backend-demo
+            browsers: chromium
     steps:
       - name: Checkout
         if: env.RUN_HEAVY == 'true'

@@ -1,5 +1,4 @@
 import type {
-	BackendAuthConfig,
 	BackendAuthoringConfig,
 	BackendAuthoringIdentity,
 	BackendAuthoringLoadResult,
@@ -29,24 +28,15 @@ export function getAuthoringBackend(
 	return authoring;
 }
 
-export function getAuthoringBackendAuth(
-	backend: BackendConfig | null | undefined,
-): BackendAuthConfig | undefined {
-	return getAuthoringBackend(backend)?.auth ?? backend?.auth;
-}
-
 export function getAuthoringBackendLoadSignature(
 	backend: BackendConfig | null | undefined,
 ): string {
 	const authoring = getAuthoringBackend(backend);
 	if (!authoring) return "";
 	return JSON.stringify({
-		provider: authoring.provider ?? (authoring.client ? "custom" : "pie-api"),
-		baseUrl: authoring.baseUrl ?? "",
 		contentId: authoring.contentId ?? "",
 		collectionId: authoring.collectionId ?? "",
 		hasClientLoad: typeof authoring.client?.load === "function",
-		endpoint: authoring.endpoints?.load ?? null,
 	});
 }
 
@@ -60,13 +50,6 @@ function resolveIdentity(
 	};
 }
 
-function usesCustomAuthoringClient(authoring: BackendAuthoringConfig): boolean {
-	return (
-		authoring.provider === "custom" ||
-		(!!authoring.client && authoring.provider !== "pie-api")
-	);
-}
-
 export async function loadFromAuthoringBackend(
 	backend: BackendConfig,
 	env: unknown,
@@ -75,17 +58,10 @@ export async function loadFromAuthoringBackend(
 	if (!authoring) {
 		throw new Error("Authoring backend is not configured.");
 	}
-	if (typeof authoring.client?.load === "function") {
-		return authoring.client.load({
-			...resolveIdentity(authoring),
-			env,
-		});
-	}
-	if (usesCustomAuthoringClient(authoring)) {
+	if (typeof authoring.client?.load !== "function") {
 		throw new Error("backend.authoring.client.load is not configured.");
 	}
-	const { callPieApiAuthoringLoad } = await import("./pie-api-client.js");
-	return callPieApiAuthoringLoad(authoring, backend.auth, {
+	return authoring.client.load({
 		...resolveIdentity(authoring),
 		env,
 	});
@@ -105,16 +81,10 @@ export async function saveContentToAuthoringBackend(
 		env: context.env,
 		options: context.options,
 	};
-	if (typeof authoring.client?.saveContent === "function") {
-		return authoring.client.saveContent(saveContext);
-	}
-	if (usesCustomAuthoringClient(authoring)) {
+	if (typeof authoring.client?.saveContent !== "function") {
 		throw new Error("backend.authoring.client.saveContent is not configured.");
 	}
-	const { callPieApiAuthoringSaveContent } = await import(
-		"./pie-api-client.js"
-	);
-	return callPieApiAuthoringSaveContent(authoring, backend.auth, saveContext);
+	return authoring.client.saveContent(saveContext);
 }
 
 export async function releaseContentFromAuthoringBackend(
@@ -130,20 +100,10 @@ export async function releaseContentFromAuthoringBackend(
 		env: context.env,
 		options: context.options,
 	};
-	if (typeof authoring.client?.releaseContent === "function") {
-		return authoring.client.releaseContent(releaseContext);
-	}
-	if (usesCustomAuthoringClient(authoring)) {
+	if (typeof authoring.client?.releaseContent !== "function") {
 		throw new Error(
 			"backend.authoring.client.releaseContent is not configured.",
 		);
 	}
-	const { callPieApiAuthoringReleaseContent } = await import(
-		"./pie-api-client.js"
-	);
-	return callPieApiAuthoringReleaseContent(
-		authoring,
-		backend.auth,
-		releaseContext,
-	);
+	return authoring.client.releaseContent(releaseContext);
 }

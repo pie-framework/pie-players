@@ -33,19 +33,6 @@ instead of that raw config. This demo therefore runs:
 The save endpoint remains intentionally simple: it persists the current session
 data and returns the saved session.
 
-## Authoring Routes
-
-The app also exposes focused `backend.authoring` JSON routes:
-
-- `POST /api/authoring/load`
-- `POST /api/authoring/save`
-- `POST /api/authoring/release`
-
-These routes are small BFF examples covering load, save and release only. Load
-returns editable item config from the demo datastore, save persists
-that config back into the same SQLite database, and release returns the same
-loadable `contentId` with demo release metadata.
-
 The canonical demo command list lives in
 [`../../docs/setup/demo_system.md`](../../docs/setup/demo_system.md). Run this
 demo from the monorepo root:

@@ -23,21 +23,13 @@ player.backend = {
   },
   delivery: {
     enabled: true,
-    provider: "pie-api",
+    baseUrl: pieApiUrl,
     itemId: "item-1",
     sessionId: "session-1",
     autosave: { enabled: true, debounceMs: 250 },
-    endpoints: {
-      load: "/api/player/load",
-      saveSession: "/api/player/save",
-      model: "/api/player/model",
-      score: "/api/player/score",
-    },
   },
 };
 ```
-
-The `endpoints` shown are the defaults; a host sets only the paths it changes.
 
 Existing delivery inputs stay where they are: `env`, `strategy`,
 `loaderOptions`, `renderStimulus`, styling props, `config`,
@@ -51,7 +43,7 @@ Delivery and authoring server support live under `backend.delivery` and
 
 ## Authentication
 
-The built-in JSON clients support bearer tokens through shared `backend.auth`:
+The built-in delivery client sends a bearer token from shared `backend.auth`:
 
 ```ts
 player.backend = {
@@ -60,15 +52,14 @@ player.backend = {
     // or:
     getToken: async () => await fetchJwtForCurrentUser(),
   },
-  delivery: { enabled: true, baseUrl: bffUrl },
-  authoring: { enabled: true, baseUrl: bffUrl },
+  delivery: { enabled: true, baseUrl: pieApiUrl },
 };
 ```
 
-`backend.delivery.auth` and `backend.authoring.auth` override shared auth for
-that scope. Hosts with cookie credentials, GraphQL, signed requests, or custom
-JWT refresh behavior can provide `backend.delivery.client` or
-`backend.authoring.client` instead of using the built-in fetch client.
+`backend.delivery.auth` overrides shared auth for delivery. Hosts with cookie
+credentials, signed requests, or custom JWT refresh behavior provide
+`backend.delivery.client` instead of using the built-in fetch client. Authoring
+has no built-in client; see [Authoring Contract](#authoring-contract).
 
 ## Delivery Contract
 
@@ -119,6 +110,122 @@ per model; that includes a player with `backend.delivery` enabled and `hosted`
 unset. `score()` delegates to the configured backend and returns whatever the
 backend's scoring contract returns.
 
+### pie-api-aws Wire Contract
+
+The built-in `pie-api` client speaks pie-api-aws's player routes, which
+`<pie-api-player>` from pie-api-components also calls. `baseUrl` is the API
+origin and each default path carries `/api` (`/api/player/load|save|model|score`);
+a path in `endpoints` is appended to `baseUrl` as given.
+
+Every request is a JSON `POST` with `authorization: Bearer <token>` and
+`x-date`, the client's clock in epoch milliseconds. pie-api-aws stamps a
+request's session events from `x-date`, so they keep call order when requests
+overtake each other. `overrides` comes from `backend.delivery.options.overrides`
+and is sent only when it has entries: pie-api-aws answers 401 to any `overrides`
+value, an empty map included, from a token without the `overrides` scope.
+
+A failed request rejects with pie-api-aws's `error` detail, or with the API
+gateway's `message` when only that is present.
+
+Load:
+
+```json
+{
+  "itemId": "item-1",
+  "sessionId": "item-session-1",
+  "assignmentId": "assignment-1",
+  "env": { "mode": "gather", "role": "student" }
+}
+```
+
+The load response must include an item config under `config`, `item`, or
+`item.config`, or pie-api-aws's `item: { pie, passage }`, plus an optional
+session:
+
+```json
+{
+  "item": {
+    "markup": "<multiple-choice id=\"q1\"></multiple-choice>",
+    "elements": {
+      "multiple-choice": "@pie-element/multiple-choice@1.2.3"
+    },
+    "models": [
+      { "id": "q1", "element": "multiple-choice", "prompt": "Pick one" }
+    ]
+  },
+  "session": { "id": "item-session-1", "data": [] }
+}
+```
+
+Save session, answered with an empty 201 that resolves `saveSession()` to
+`null`:
+
+```json
+{
+  "sessionId": "item-session-1",
+  "data": [
+    {
+      "id": "q1",
+      "element": "multiple-choice--version-1-2-3",
+      "value": ["a"]
+    }
+  ],
+  "env": { "mode": "gather", "role": "student" },
+  "itemId": "item-1",
+  "assignmentId": "assignment-1",
+  "models": [{ "id": "q1", "element": "multiple-choice--version-1-2-3" }],
+  "passageModels": []
+}
+```
+
+Model refresh names the session when there is one. pie-api-aws then records
+`data` on that session before modelling it:
+
+```json
+{
+  "sessionId": "item-session-1",
+  "data": [],
+  "env": { "mode": "gather", "role": "student" },
+  "models": [{ "id": "q1", "element": "multiple-choice--version-1-2-3" }],
+  "passageModels": [
+    { "id": "passage-1", "element": "pie-passage--version-4-5-6" }
+  ]
+}
+```
+
+Without a session it sends `itemId` and `assignmentId` instead, and pie-api-aws
+models the item fresh, ignoring `data` and recording nothing.
+
+`models` and `passageModels` carry the current model identities after the
+player has applied `makeUniqueTags`. pie-api-aws answers with one flat model
+array under authored tags (`"multiple-choice"`); a backend may instead answer
+`{ models, passageModels }`. An incoming model updates the current model with
+the same `id` when its `element` is either the current runtime tag or that
+tag's authored base. A model naming another element is ignored, and a flat array
+applies to item and passage models alike.
+
+Score sends the session with any `player.score(options)` fields; `skipCached:
+true` makes pie-api-aws evaluate again instead of answering from its cache.
+Partial scoring follows `env.partialScoring`. The response is pie-api-aws's
+`SessionScore`, `{ max, points, partialScoring, type }`, returned as sent:
+
+```json
+{
+  "skipCached": true,
+  "sessionId": "item-session-1",
+  "data": [
+    {
+      "id": "q1",
+      "element": "multiple-choice--version-1-2-3",
+      "value": ["a"]
+    }
+  ],
+  "env": { "mode": "gather", "role": "student", "partialScoring": false },
+  "itemId": "item-1",
+  "assignmentId": "assignment-1"
+}
+```
+
 ## Why Model And Score Belong On The Backend
 
 In production and other non-trivial deployments, backend delivery does more than
@@ -149,7 +256,7 @@ sectionPlayer.runtime = {
       delivery: {
         enabled: true,
         baseUrl: bffUrl,
-        assignmentId: playerSessionId,
+        assignmentId,
       },
     },
   },
@@ -160,9 +267,9 @@ Section-player treats `backend.delivery.itemId` and `sessionId` as per-item
 delivery identity. It derives them from `canonicalItemId || item.id` and the
 item session before forwarding `backend` to each embedded item player. Static
 delivery fields such as `baseUrl`, `auth`, `endpoints`, `assignmentId`, and
-`autosave` are preserved. Use `assignmentId` for shared attempt/player identity.
-Use `runtime.player.resolveBackend` only when the backend needs custom per-item
-identity mapping.
+`autosave` are preserved. Set `assignmentId` to the backend assignment the items
+are delivered under. Use `runtime.player.resolveBackend` only when the backend
+needs custom per-item identity mapping.
 
 Nested item players auto-load from the derived `backend.delivery` config. Hosts
 should not query nested item players and call `loadFromBackend()` one by one.
@@ -212,13 +319,13 @@ assessmentPlayer.sectionPlayerRuntime = {
 };
 ```
 
-Assessment-player passes `sectionPlayerRuntime.player.backend` to the nested
-section-player. If `backend.delivery.assignmentId` is absent, assessment-player
-defaults it from the assessment `attempt-id` on a cloned runtime object. Explicit
-host values, including an intentionally empty string, are preserved. Assessment
-attempt/session persistence stays on assessment hooks such as
-`createAssessmentSessionPersistence`; it is not routed through item
-`backend.delivery`.
+Assessment-player passes a clone of `sectionPlayerRuntime.player.backend` to the
+nested section-player. The assessment `attempt-id` is not a backend assignment,
+so it is never copied into `backend.delivery.assignmentId`: pie-api-aws answers
+404 to an assignment it does not hold. A host that delivers under an assignment
+sets `assignmentId` itself. Assessment attempt/session persistence stays on
+assessment hooks such as `createAssessmentSessionPersistence`; it is not routed
+through item `backend.delivery`.
 
 ### Assessment Session Persistence And Submission
 
@@ -248,40 +355,20 @@ Authoring backends load, save, and release editable item config. This is
 separate from delivery because authoring works with draft content identity rather
 than item-session identity.
 
+Authoring has no built-in transport: pie-api-aws serves it over GraphQL, so each
+of `load`, `saveContent`, and `releaseContent` runs through the host's
+`backend.authoring.client`, and an operation the client lacks rejects with
+`backend.authoring.client.<operation> is not configured.` A config with only
+`media` stays valid for hosts that load content themselves.
+
 ```ts
 player.mode = "author";
 player.authoringBackend = "required";
 player.backend = {
-  auth: { getToken: fetchJwtForCurrentUser },
   authoring: {
     enabled: true,
-    baseUrl: bffUrl,
-    contentId: "item-1@draft",
+    contentId: "item-1@1.2.0-draft.1",
     collectionId: "collection-1",
-    endpoints: {
-      load: "/api/authoring/load",
-      saveContent: "/api/authoring/save",
-      releaseContent: "/api/authoring/release",
-    },
-    media: {
-      onInsertImage: async (done) => done("https://cdn.example/image.png"),
-    },
-  },
-};
-
-await player.loadFromBackend("authoring");
-const saveResult = await player.saveContent({ preReleaseType: "prerelease" });
-const releaseResult = await player.releaseContent({ releaseType: "release" });
-```
-
-Custom clients receive the same identity and env context as the built-in JSON
-client:
-
-```ts
-player.backend = {
-  authoring: {
-    enabled: true,
-    contentId: "item-1@draft",
     client: {
       load: async ({ contentId, collectionId, env }) => ({
         contentId,
@@ -294,9 +381,95 @@ player.backend = {
         return await releaseDraft({ contentId, collectionId, env, options });
       },
     },
+    media: {
+      onInsertImage: async (done) => done("https://cdn.example/image.png"),
+    },
+  },
+};
+
+await player.loadFromBackend("authoring");
+const saveResult = await player.saveContent({ preReleaseType: "prerelease" });
+const releaseResult = await player.releaseContent({ releaseType: "release" });
+```
+
+### pie-api-aws Authoring Adapter
+
+A client for pie-api-aws calls the `item`, `saveItem`, and `releaseItem`
+operations on `<api origin>/graphql`, as `<pie-api-author>` from
+pie-api-components does. A `VersionedID` is the string `id@version`, and the
+`version` pie-api-aws returns is an object, so the adapter formats it back:
+
+```ts
+type SemVer = {
+  major: number;
+  minor: number;
+  patch: number;
+  prerelease?: { tag?: string; version?: number } | null;
+};
+
+const VERSION = "version { major minor patch prerelease }";
+
+async function gql(query: string, variables: Record<string, unknown>) {
+  const response = await fetch(`${pieApiUrl}/graphql`, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      authorization: `Bearer ${await fetchJwtForCurrentUser()}`,
+    },
+    body: JSON.stringify({ query, variables }),
+  });
+  const { data, errors } = await response.json();
+  if (errors?.length) throw new Error(errors[0].message);
+  return data;
+}
+
+function versionedId(item: { id: string; version: SemVer }): string {
+  const { major, minor, patch, prerelease } = item.version;
+  const pre = prerelease?.tag
+    ? `-${prerelease.tag}${typeof prerelease.version === "number" ? `.${prerelease.version}` : ""}`
+    : "";
+  return `${item.id}@${major}.${minor}.${patch}${pre}`;
+}
+
+player.backend = {
+  authoring: {
+    enabled: true,
+    contentId: "item-1@1.2.0-draft.1",
+    client: {
+      load: async ({ contentId }) => {
+        const { item } = await gql(
+          `query ($vId: VersionedID!) { item(vId: $vId) { id config ${VERSION} } }`,
+          { vId: contentId },
+        );
+        return { contentId: versionedId(item), config: item.config };
+      },
+      saveContent: async ({ contentId, collectionId, config, options }) => {
+        const { saveItem } = await gql(
+          `mutation ($input: SaveItemInput!) { saveItem(input: $input) { id ${VERSION} } }`,
+          {
+            input: {
+              item: { id: contentId?.split("@")[0], config },
+              collectionIds: collectionId ? [collectionId] : undefined,
+              releaseType: options?.preReleaseType ?? undefined,
+            },
+          },
+        );
+        return { contentId: versionedId(saveItem) };
+      },
+      releaseContent: async ({ contentId }) => {
+        const { releaseItem } = await gql(
+          `mutation ($vId: VersionedID!) { releaseItem(vId: $vId) { id ${VERSION} } }`,
+          { vId: contentId },
+        );
+        return { contentId: versionedId(releaseItem) };
+      },
+    },
   },
 };
 ```
+
+`saveItem` always writes a new version, a prerelease unless `releaseType` says
+otherwise, and `releaseItem` accepts only a prerelease version.
 
 Authoring media callbacks can be provided either as the existing top-level
 `onInsertImage` / `onDeleteImage` / `onInsertSound` / `onDeleteSound` props or
@@ -307,38 +480,28 @@ under `backend.authoring.media`. Top-level props win when both are present.
 | Concern | Configure at | Status and purpose |
 | --- | --- | --- |
 | Item delivery | `<pie-item-player>.backend.delivery` or `runtime.player.backend.delivery` | Implemented. Item config/session/model/score through server-side controllers. |
-| Item authoring | `<pie-item-player>.backend.authoring` | Implemented. Draft content load/save/release and authoring media callbacks. |
+| Item authoring | `<pie-item-player>.backend.authoring` | Implemented through a host `client`. Draft content load/save/release and authoring media callbacks. |
 | Section session persistence | `ToolkitCoordinatorHooks.createSectionSessionPersistence` | Implemented. Hydrate/persist/clear `SectionControllerSessionState`; no `runtime.backend.section` alias is planned. |
 | Assessment session persistence | `AssessmentPlayerHooks.createAssessmentSessionPersistence` | Implemented. Hydrate/persist/clear `AssessmentSession`; no `backend.assessment` alias is planned. |
-| Assessment finalization | Future dedicated submission strategy | Not implemented. Authoritative submit/idempotency/receipt semantics, separate from ordinary snapshot persistence. |
-| Section or assessment definition loading | Host-provided inputs; possible future definition-source interfaces | Player-initiated loading is not implemented. Do not combine content loading with session persistence by default. |
+| Assessment finalization | Future dedicated submission strategy | Not implemented. Authoritative submit/idempotency/receipt semantics, separate from ordinary snapshot persistence; see the draft [Assessment Authoritative Submission](../prds/assessment-authoritative-submission.md) PRD. |
+| Section or assessment definition loading | Host-provided inputs; possible future definition-source interfaces | Player-initiated loading is not implemented; add it only if it removes repeated host orchestration. Do not combine content loading with session persistence by default. |
 | Tool provider backends | Assessment toolkit/tool config | Implemented per provider. TTS, Desmos, and other tool-specific services. |
 | Element-loader backend | `loaderConfig` / `loaderOptions` | Implemented. Player/element bundle loading, separate from item delivery. |
 
 ## Remaining Front-End Contract Gaps
 
-The remaining work is not a generic backend namespace. It is a small set of
-lifecycle guarantees at existing or narrowly defined seams:
+Besides finalization and definition loading, listed above, the remaining work is
+a small set of lifecycle guarantees at existing seams:
 
-1. **Authoritative assessment finalization.** Keep ordinary snapshot persistence
-   on `AssessmentSessionPersistenceStrategy`, but give a host one terminal
-   submission operation with idempotency and a typed receipt. See the draft
-   [Assessment Authoritative Submission](../prds/assessment-authoritative-submission.md)
-   PRD.
-2. **Persistence ordering and observability.** Specify whether repeated
+1. **Persistence ordering and observability.** Specify whether repeated
    `persist()` calls serialize or coalesce, prevent an older completion from
    becoming the apparent latest save, and expose enough state for host chrome to
    report a recoverable failure. This should deepen the existing controller
    interfaces rather than add another adapter namespace.
-3. **Reset parity.** Both persistence strategies already permit
+2. **Reset parity.** Both persistence strategies already permit
    `clearSession?()`, but controller-level reset/clear behavior and its events are
    not uniform or prominent.
-4. **Definition loading, only if consumer pressure requires it.** A host can
-   already fetch section and assessment definitions before assigning player
-   inputs. Add a definition-source interface only if player-owned loading removes
-   repeated host orchestration; do not add it merely for symmetry with item
-   delivery.
-5. **Integrated evidence.** Add one demo/test that exercises assessment
+3. **Integrated evidence.** Add one demo/test that exercises assessment
    persistence, section persistence, derived item delivery, and final submission
    together so ownership and duplicate-save behavior are observable.
 
@@ -346,140 +509,6 @@ Backends continue to own durable storage, authorization, conflict policy,
 retention, reporting, and workflow. PIE owns the browser lifecycle, canonical
 session snapshots, operation ordering, and observable state at its controller
 interfaces.
-
-## Endpoint Payloads
-
-The built-in `pie-api` client sends JSON requests with these shapes.
-
-They target the `<pie-api-player>` routes. `baseUrl` is the origin and each
-path carries `/api` (`/api/player/load|save|model|score`); a path in
-`endpoints` is appended to `baseUrl` as given. Load takes `{ itemId, sessionId,
-assignmentId, env, overrides? }`; save sends `{ itemId, sessionId,
-assignmentId, data, env, models, passageModels }`.
-
-Load:
-
-```json
-{
-  "itemId": "item-1",
-  "sessionId": "item-session-1",
-  "assignmentId": "attempt-1",
-  "env": { "mode": "gather", "role": "student" }
-}
-```
-
-The load response must include an item config under `config`, `item`, or
-`item.config`, plus an optional session:
-
-```json
-{
-  "item": {
-    "markup": "<multiple-choice id=\"q1\"></multiple-choice>",
-    "elements": {
-      "multiple-choice": "@pie-element/multiple-choice@1.2.3"
-    },
-    "models": [
-      { "id": "q1", "element": "multiple-choice", "prompt": "Pick one" }
-    ]
-  },
-  "session": { "id": "item-session-1", "data": [] },
-  "metadata": { "source": "host-bff" }
-}
-```
-
-Save session:
-
-```json
-{
-  "sessionId": "item-session-1",
-  "data": [
-    {
-      "id": "q1",
-      "element": "multiple-choice--version-1-2-3",
-      "value": ["a"]
-    }
-  ],
-  "env": { "mode": "gather", "role": "student" },
-  "itemId": "item-1",
-  "assignmentId": "attempt-1",
-  "models": [{ "id": "q1", "element": "multiple-choice--version-1-2-3" }],
-  "passageModels": []
-}
-```
-
-Model refresh:
-
-```json
-{
-  "sessionId": "item-session-1",
-  "data": [],
-  "env": { "mode": "gather", "role": "student" },
-  "itemId": "item-1",
-  "assignmentId": "attempt-1",
-  "models": [{ "id": "q1", "element": "multiple-choice--version-1-2-3" }],
-  "passageModels": [
-    { "id": "passage-1", "element": "pie-passage--version-4-5-6" }
-  ]
-}
-```
-
-`models` and `passageModels` carry the exact current model identities after the
-player has applied `makeUniqueTags`. Model refresh responses must use the same
-`id` and full versioned `element` tag to update an existing model. Responses
-that return a base tag such as `"multiple-choice"` for a rendered
-`"multiple-choice--version-1-2-3"` model are ignored.
-
-Score:
-
-```json
-{
-  "sessionId": "item-session-1",
-  "data": [
-    {
-      "id": "q1",
-      "element": "multiple-choice--version-1-2-3",
-      "value": ["a"]
-    }
-  ],
-  "env": { "mode": "gather", "role": "student" },
-  "itemId": "item-1",
-  "assignmentId": "attempt-1",
-  "disablePartialScoring": true
-}
-```
-
-Authoring load:
-
-```json
-{
-  "contentId": "item-1@draft",
-  "collectionId": "collection-1",
-  "env": { "mode": "author", "role": "instructor" }
-}
-```
-
-Authoring save:
-
-```json
-{
-  "contentId": "item-1@draft",
-  "collectionId": "collection-1",
-  "config": { "id": "item-1", "markup": "...", "elements": {}, "models": [] },
-  "env": { "mode": "author", "role": "instructor" },
-  "options": { "preReleaseType": "prerelease" }
-}
-```
-
-Authoring release:
-
-```json
-{
-  "contentId": "item-1@draft.1",
-  "collectionId": "collection-1",
-  "env": { "mode": "author", "role": "instructor" },
-  "options": { "releaseType": "release" }
-}
-```
 
 ## Events
 
@@ -498,7 +527,6 @@ their current behavior.
 
 ## Demo
 
-See [../../apps/backend-demos](../../apps/backend-demos) for focused delivery
-and authoring demos with simplified `/api/player/*` and `/api/authoring/*`
-endpoints, a SQLite datastore, and backend controller `model()` / `outcome()`
-execution.
+See [../../apps/backend-demos](../../apps/backend-demos) for a focused delivery
+demo with simplified `/api/player/*` endpoints, a SQLite datastore, and backend
+controller `model()` / `outcome()` execution.

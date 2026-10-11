@@ -245,7 +245,7 @@ test.describe("assessment player smoke", () => {
 		});
 	});
 
-	test("defaults nested item backend assignmentId from assessment attempt id", async ({
+	test("leaves nested item backend loads without an assignment id from the attempt id", async ({
 		page,
 	}) => {
 		await page.goto(`${DEMO_PATH}?attemptId=backend-attempt-1`, {
@@ -311,17 +311,10 @@ test.describe("assessment player smoke", () => {
 			};
 		});
 		expect(backendState.attemptId).not.toBe("");
-		expect(backendState.loadContexts).toEqual(
-			expect.arrayContaining([
-				expect.objectContaining({
-					assignmentId: backendState.attemptId,
-				}),
-			]),
-		);
 		expect(
 			backendState.loadContexts.every(
 				(context: { assignmentId?: string; itemId?: string }) =>
-					context.assignmentId === backendState.attemptId &&
+					context.assignmentId === undefined &&
 					typeof context.itemId === "string" &&
 					context.itemId.length > 0,
 			),

@@ -74,6 +74,42 @@ describe("tool-context helpers", () => {
 			});
 		}
 
+		// Hyphens and slashes that still read as arithmetic once dates and ranges
+		// are ruled out.
+		for (const markup of [
+			"<div>What is 15 - 7?</div>",
+			"<div>What is 1,000 - 250?</div>",
+			"<div>Find 12-5 = ?</div>",
+			"<div>What is 3 - 5 = ?</div>",
+			"<div>Let x = 12-5.</div>",
+			"<div>Compute 12 − 5.</div>",
+			"<div>Multiply 6 * 7.</div>",
+			"<div>Shade 2/3 of the rectangle.</div>",
+			"<div>Simplify 1/2 - 1/4.</div>",
+			"<div>Divide 12 / 4.</div>",
+		]) {
+			test(`fires: ${markup.slice(5, 45)}`, () => {
+				expect(hasMathContent(item({ markup }))).toBe(true);
+			});
+		}
+
+		// Dates and ranges that the old arithmetic and fraction patterns read as
+		// mathematical, so reading items with a date offered a calculator.
+		for (const markup of [
+			"<div>The letter is dated 10/10/2026.</div>",
+			"<div>The archive filed it under 2026/10/10.</div>",
+			"<div>The town met on 2026-10-10 and again on 10-10-2026.</div>",
+			"<div>The project ran from 1990-2000.</div>",
+			"<div>Lincoln (1809 - 1865) led the nation.</div>",
+			"<div>During the 2025-26 school year, the club grew.</div>",
+			"<div>Read pages 12 - 15 for homework.</div>",
+			"<div>Call 555-1234 for details.</div>",
+		]) {
+			test(`stays quiet: ${markup.slice(5, 45)}`, () => {
+				expect(hasMathContent(item({ markup }))).toBe(false);
+			});
+		}
+
 		// The MathML pattern was unreachable: extraction stripped tags before the
 		// predicate ran, so an item whose only math signal is the element matched
 		// nothing. It is now tested against the markup view.

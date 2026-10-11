@@ -1,22 +1,16 @@
 # @pie-players/tts-server-core
 
-Core types, interfaces, and utilities for server-side Text-to-Speech (TTS) providers.
+The shared contract for server-side text-to-speech (TTS) providers: the provider
+interface and base class, the request, response and speech-mark types, the error
+codes, a cache interface and the speech-mark utilities. It is for developers
+writing a provider, and for host developers whose TTS routes call the bundled
+ones: [AWS Polly](../tts-server-polly/README.md),
+[Google Cloud](../tts-server-google/README.md) and the
+[SC adapter](../tts-server-sc/README.md).
+[TTS Architecture](../../docs/accessibility/tts-architecture.md) covers the
+browser and server flow across packages.
 
-For the cross-package TTS architecture and browser/server flow, see
-[TTS Architecture](../../docs/accessibility/tts-architecture.md). This README
-focuses on the shared server-provider contracts.
-
-## Overview
-
-This package provides the foundation for building server-side TTS providers that return audio with precise word-level timing metadata (speech marks) for synchronized highlighting.
-
-## Features
-
-- **Provider Interface** - Standard interface for all TTS providers
-- **Speech Marks** - Unified format for word-level timing across providers
-- **Caching** - Interface and utilities for caching synthesis results
-- **Type Safety** - Full TypeScript support with comprehensive types
-- **Utilities** - Helper functions for speech marks manipulation
+The package runs on Node.js 20 or later.
 
 ## Installation
 
@@ -24,13 +18,32 @@ This package provides the foundation for building server-side TTS providers that
 npm install @pie-players/tts-server-core
 ```
 
-## Usage
+## Provider Contract
+
+`ITTSServerProvider` is the interface a route calls; `BaseTTSProvider`
+implements its shared parts.
+
+| Member | Contract |
+|--------|----------|
+| `providerId`, `providerName`, `version` | Identity; `providerId` appears in `metadata`, cache keys and errors |
+| `initialize(config)` | Validates the config and creates the vendor client. The bundled providers make no network call here; a failure throws `INITIALIZATION_ERROR` |
+| `synthesize(request)` | Returns audio, speech marks and metadata |
+| `getVoices(options?)` | Lists voices, filtered by language, gender and quality |
+| `getCapabilities()` | Synchronous feature flags and limits |
+| `destroy()` | Clears the provider's state; the base class resets `initialized`, the config and the cached voice listing |
+
+`TTSServerConfig` is an open record; each provider declares its own config type.
+Vendor failures throw a [`TTSError`](#errors) with a code, so a route can map
+them to statuses. Request validation and a call before `initialize` throw a plain
+`Error`.
 
 ### Implementing a Provider
 
 ```typescript
 import {
   BaseTTSProvider,
+  TTSError,
+  TTSErrorCode,
   type ServerProviderCapabilities,
   type SynthesizeRequest,
   type SynthesizeResponse,
@@ -50,23 +63,35 @@ export class MyTTSProvider extends BaseTTSProvider {
 
   async synthesize(request: SynthesizeRequest): Promise<SynthesizeResponse> {
     this.ensureInitialized();
+    this.validateRequest(request, this.getCapabilities());
 
-    // Your synthesis logic here
-    const audio = await myEngine.synthesize(request.text);
+    const voice = await this.resolveRequestVoice(request, 'default');
+    const started = Date.now();
 
-    return {
-      audio,
-      contentType: 'audio/mpeg',
-      // An engine without word timings returns none
-      speechMarks: [],
-      metadata: {
-        providerId: this.providerId,
-        voice: request.voice || 'default',
-        duration: 0,
-        charCount: request.text.length,
-        cached: false,
-      },
-    };
+    try {
+      const audio = await myEngine.synthesize(request.text, voice);
+
+      return {
+        audio,
+        contentType: 'audio/mpeg',
+        // An engine without word timings returns none.
+        speechMarks: [],
+        metadata: {
+          providerId: this.providerId,
+          voice,
+          duration: (Date.now() - started) / 1000,
+          charCount: request.text.length,
+          cached: false,
+        },
+      };
+    } catch (err) {
+      throw new TTSError(
+        TTSErrorCode.PROVIDER_ERROR,
+        `My TTS error: ${err instanceof Error ? err.message : String(err)}`,
+        { error: err },
+        this.providerId,
+      );
+    }
   }
 
   async getVoices(): Promise<Voice[]> {
@@ -93,85 +118,172 @@ export class MyTTSProvider extends BaseTTSProvider {
 }
 ```
 
-### Using Cache
+## Base Class Helpers
 
-```typescript
-import { MemoryCache, generateHashedCacheKey } from '@pie-players/tts-server-core';
+`BaseTTSProvider` gives subclasses these protected helpers:
 
-const cache = new MemoryCache();
+| Helper | Behavior |
+|--------|----------|
+| `ensureInitialized()` | Throws a plain `Error` before `initialize` has run |
+| `validateRequest(request, capabilities)` | Throws a plain `Error` for empty text, text over `maxTextLength`, a `format` outside `supportedFormats`, `rate` outside 0.25–4.0, `pitch` outside 0–2 or `volume` outside 0–1 |
+| `resolveRequestVoice(request, defaultVoice, prefer?)` | Picks the voice for a request; see [Voice Resolution](#voice-resolution) |
+| `detectSSML(text, extraTags?)` | True when the text contains `<speak`, `<prosody`, `<emphasis`, `<break`, `<phoneme`, `<say-as`, `<mark` or one of the provider's extra tags |
+| `escapeSSML(text)` | Escapes `&`, `<`, `>`, `"` and `'` |
+| `buildProsodyAttrs(request)` | `rate` as `rate="N%"` and `pitch` as a signed relative percentage (1.2 is `+20%`); a value of 1, or none, adds nothing |
+| `applyProsody(text, request, extraSsmlTags?)` | Returns SSML input unchanged; wraps plain text in `<speak><prosody>` with the escaped text when `buildProsodyAttrs` has attributes; otherwise returns the text as is. The result says whether it is SSML |
 
-// Generate cache key
-const cacheKey = await generateHashedCacheKey({
-  providerId: 'my-tts',
-  text: 'Hello world',
-  voice: 'default',
-});
+### Voice Resolution
 
-// Check cache, and store a fresh result for 24 hours
-const cached = await cache.get(cacheKey);
-if (!cached) {
-  await cache.set(cacheKey, await provider.synthesize(request), 86400);
-}
-```
+`resolveRequestVoice` gives every provider the same rules:
 
-`MemoryCache` is for development and testing. It is a bounded LRU over one
-process's heap — 100 entries by default, evicting the least recently used entry,
-with expired entries dropped ahead of live ones — so it is lost on restart and
-every replica of a scaled deployment synthesizes the same passage into its own
-copy. A production host implements `ITTSCache` over shared storage;
-[`tts-server-polly/examples/sveltekit/synthesize-server.ts`](../tts-server-polly/examples/sveltekit/synthesize-server.ts)
-sketches the Redis shape.
+1. A request's `voice` wins.
+2. Without a `language`, the result is `defaultVoice`.
+3. Otherwise the provider's `getVoices()` listing is fetched once per instance
+   and reused. A failed listing returns `defaultVoice` and is retried on the
+   next request.
+4. Candidates are the voices whose language code matches the request's tag
+   exactly, ignoring case; with none, those that share its primary subtag
+   (`es` for `es-MX`).
+5. `defaultVoice` wins when it is a candidate. Otherwise the first candidate
+   `prefer` accepts, else the first candidate; with no candidate at all,
+   `defaultVoice`.
 
-## API Reference
+## Requests and Responses
 
-### Types
+`SynthesizeRequest` combines the standard parameters (`StandardTTSParameters`,
+`text` through `volume`) with the provider extensions (`TTSProviderExtensions`):
 
-- `SpeechMark` - Word timing information
-- `SynthesizeRequest` - Synthesis request parameters
-- `SynthesizeResponse` - Synthesis result with audio and marks
-- `Voice` - Voice definition
-- `ServerProviderCapabilities` - Provider feature flags
+| Field | Meaning |
+|-------|---------|
+| `text` | Plain text or SSML |
+| `voice` | Provider voice id |
+| `language` | BCP 47 tag, such as `en-US` |
+| `rate` | Speed multiplier, 0.25–4.0, default 1 |
+| `pitch` | Pitch multiplier, 0–2, default 1 |
+| `volume` | 0–1, default 1 |
+| `format` | `mp3`, `wav`, `ogg` or `pcm`, as the provider's `supportedFormats` allow |
+| `sampleRate` | Hz |
+| `includeSpeechMarks` | Word timings; on unless `false` |
+| `providerOptions` | Provider-specific options, such as Polly's `speechMarkTypes` |
 
-### Interfaces
+`SynthesizeResponse` carries `audio` (`SynthesizedAudioBytes`, a Node.js
+`Buffer` from the bundled providers, or a base64 string), `contentType`,
+`speechMarks` and `metadata` (`SynthesizeMetadata`): `providerId`, `voice`,
+`duration`, `charCount`, `cached` and an optional `timestamp`. `duration` is
+the seconds the provider took to synthesize; the audio's length is not
+reported.
 
-- `ITTSServerProvider` - Provider interface
-- `ITTSCache` - Cache interface
+`getVoices` returns `Voice` records: `id`, `name`, `language` (the language's
+name), `languageCode`, `gender`, `quality` (`standard`, `premium` or `neural`),
+`supportedFeatures` (`VoiceFeatures`: SSML, emotions, styles) and
+`providerMetadata`. `GetVoicesOptions` filters on `language`, `quality` and
+`gender`.
 
-### Classes
+`ServerProviderCapabilities` splits into `standard` (SSML, pitch, rate, volume,
+multiple voices, `maxTextLength`) and `extensions` (`supportsSpeechMarks`,
+`supportedFormats`, `supportsSampleRate`, an open `providerSpecific` record).
 
-- `BaseTTSProvider` - Abstract base class for providers
-- `MemoryCache` - Bounded in-memory LRU cache, for development and testing
-- `TTSError` - Structured error class
+## Speech Marks
 
-### Functions
-
-- `normalizeSpeechMarks()` - Parse a JSONL word-mark response, normalize time units, anchor offsets to the request text and clamp ranges
-- `anchorSpeechMarks()` - Re-derive each mark's `start`/`end` from where its `value` occurs in the request text
-- `resolveSpeedRateBucket()` - Bucket a rate multiplier into `slow` (at most 0.95), `fast` (at least 1.5) or the fallback (default `medium`)
-- `resolveTTSErrorCodeForHttpStatus()` - Map an HTTP status to the closest `TTSErrorCode`, for REST-backed providers
-- `generateHashedCacheKey()` - Create a short cache key by hashing the key components
-
-## Speech Marks Format
-
-All providers return speech marks in this unified format:
+All providers return speech marks in one format:
 
 ```typescript
 interface SpeechMark {
-  time: number;      // Milliseconds from audio start
+  time: number;      // milliseconds from audio start
   type: 'word' | 'sentence' | 'ssml';
-  start: number;     // Character index (inclusive)
-  end: number;       // Character index (exclusive)
-  value: string;     // The word text
+  start: number;     // UTF-16 index into the request text (inclusive)
+  end: number;       // UTF-16 index into the request text (exclusive)
+  value: string;     // the word or text
 }
 ```
 
-Example:
 ```json
 [
   { "time": 0, "type": "word", "start": 0, "end": 5, "value": "Hello" },
   { "time": 340, "type": "word", "start": 6, "end": 11, "value": "world" }
 ]
 ```
+
+Two utilities bring vendor offsets to this format:
+
+- `anchorSpeechMarks(marks, requestText)` re-derives `start` and `end` from
+  where each mark's `value` occurs in the request text, in time order and per
+  mark type. A mark whose value is not found near its predicted offset keeps
+  that offset. It is idempotent on offsets that already index the text. Polly
+  uses it to convert UTF-8 byte offsets, and `ServerTTSProvider` applies it to
+  every PIE-transport response.
+- `normalizeSpeechMarks(raw, requestText)` parses a JSONL word-mark response
+  (one mark object per line), keeps word marks, converts a timeline in seconds
+  to milliseconds, anchors the offsets and clamps them to the text. The SC
+  adapter and the custom transport of `ServerTTSProvider` use it.
+
+## Errors
+
+`TTSError(code, message, details?, providerId?)` is the structured error;
+`toJSON()` returns `{ error: { code, message, details, provider } }`.
+
+| `TTSErrorCode` | Meaning |
+|----------------|---------|
+| `INVALID_REQUEST` | The vendor rejected the request's input |
+| `TEXT_TOO_LONG` | The vendor rejected the text's length |
+| `AUTHENTICATION_ERROR` | Credentials missing, invalid or not permitted |
+| `RATE_LIMIT_EXCEEDED` | Throttled or over quota |
+| `INITIALIZATION_ERROR` | `initialize` failed |
+| `PROVIDER_ERROR` | Any other vendor failure |
+| `INVALID_VOICE`, `INVALID_PROVIDER`, `NETWORK_ERROR` | Defined for provider and route authors; no package in this repository raises them |
+
+`resolveTTSErrorCodeForHttpStatus(status)` maps an HTTP status for a provider
+over a REST API: 401 and 403 to `AUTHENTICATION_ERROR`, 429 to
+`RATE_LIMIT_EXCEEDED`, 400 to `INVALID_REQUEST`, anything else to
+`PROVIDER_ERROR`.
+
+## Caching
+
+`ITTSCache` is the cache interface: `get`, `set(key, value, ttlSeconds?)`,
+`has`, `delete`, `clear` and an optional `getStats` returning `CacheStats` (hits,
+misses, hit rate, key count).
+
+```typescript
+import { MemoryCache, generateHashedCacheKey } from '@pie-players/tts-server-core';
+
+const cache = new MemoryCache();
+
+const cacheKey = await generateHashedCacheKey({
+  providerId: 'my-tts',
+  text: 'Hello world',
+  voice: 'default',
+});
+
+// Serve a hit; otherwise synthesize and store the result for 24 hours.
+const result =
+  (await cache.get(cacheKey)) ?? (await provider.synthesize(request));
+if (!result.metadata.cached) {
+  await cache.set(cacheKey, result, 86400);
+}
+```
+
+`generateHashedCacheKey` takes `CacheKeyComponents` and returns
+`tts:<providerId>:<voice>:<language>:<rate>:<format>:<sha256 of text>`, with
+`language` empty, `rate` 1.00 (two decimals) and `format` `mp3` when unset. A
+route whose output varies with more fields appends them; the Polly integration
+guide's [caching step](../tts-server-polly/examples/INTEGRATION-GUIDE.md#step-5-add-redis-caching-optional)
+adds engine, sample rate and speech-mark types and stores responses in Redis.
+
+`MemoryCache` is a bounded LRU in one process's heap, for development and
+testing. It holds 100 entries by default (the constructor's `maxSize`), keeps
+entries for 24 hours unless `set` gives a TTL, and marks a hit's
+`metadata.cached` true. An insertion at capacity scans every entry, dropping
+expired ones first, then the least recently used. The cache is lost on restart,
+and each replica of a scaled deployment fills its own; a production host
+implements `ITTSCache` over shared storage.
+
+## Rate Buckets
+
+`resolveSpeedRateBucket(rate, fallback = 'medium')` maps a rate multiplier to a
+`SpeedRateBucket`, the three-value speed some backends take in place of a
+continuous rate: at most 0.95 is `slow`, at least 1.5 is `fast`, anything
+between is `fallback`. The custom transport of `ServerTTSProvider` derives its
+`speedRate` field with it unless the host sets a bucket.
 
 ## License
 

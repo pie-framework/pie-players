@@ -36,12 +36,12 @@ consistent monorepo startup behavior.
 - **Framework:** SvelteKit with `@sveltejs/adapter-node`
 - **Styling:** Tailwind CSS v4 + DaisyUI v5
 - **Player:** PIE Section Player (QTI 3.0)
-- **Elements:** PITS bundles under `iife`, jsDelivr (`https://cdn.jsdelivr.net/npm`) under `esm`, the installed pie-elements-ng packages under `preloaded`
+- **Elements:** bundle-host bundles under `iife`, jsDelivr (`https://cdn.jsdelivr.net/npm`) under `esm`, the installed pie-elements-ng packages under `preloaded`
 
 ### Element Loading
-`?player=esm` loads each element's browser build from jsDelivr. npm `latest` of `@pie-element/*` is the legacy line, which ships no browser ESM, so under esm the demos rewrite content to the pie-elements-ng versions [`demo-ui`](../demo-ui/package.json) installs. demo-ui depends on each package at the `next` dist-tag, where pie-elements-ng publishes; `bun.lock` pins the versions, and `bun update` in `apps/demo-ui` moves them together to the newest release. `bun run dev:section:cdn` loads them from a local pie-elements-ng build instead; see [demo workspace resolution](../../docs/development/demo-workspace-resolution.md).
+`?player=esm` loads each element's browser build from jsDelivr. npm `latest` of `@pie-element/*` is the legacy line, which ships no browser ESM, so under esm the demos rewrite content to the pie-elements-ng versions [`demo-ui`](../demo-ui/package.json) installs. demo-ui depends on each package at the `next` dist-tag, where pie-elements-ng publishes; `bun.lock` pins the versions, and `bun update` in `apps/demo-ui` moves them together to the newest release. `bun run dev:section:cdn` loads them from a local pie-elements-ng build instead; see [local ESM CDN](../../docs/setup/demo_system.md#local-esm-cdn).
 
-`?player=preloaded` is the ESM builds as a host bundles them: before the player mounts, the page imports each element's `./browser/delivery` and `./browser/controller` from those installed packages and registers them through `registerPreloadedElements`, with jsDelivr as MathJax's [asset root](../../docs/item-player/loading-strategies.md#mathjax-assets), and the players load no element code. The players align each authored version to the installed one. The `preloaded-npm-elements` demo does the same with static imports of its own dependencies, as a host's page is written.
+`?player=preloaded` is the ESM builds as a host bundles them: before the player mounts, the page imports each element's `./browser/delivery` and `./browser/controller` from those installed packages and registers them through `registerPreloadedElements`, with jsDelivr as MathJax's [asset root](../../docs/item-player/math-rendering.md#mathjax-assets), and the players load no element code. The players align each authored version to the installed one. The `preloaded-npm-elements` demo does the same with static imports of its own dependencies, as a host's page is written.
 
 ## For Developers
 
@@ -111,7 +111,7 @@ This keeps upstream auth/signing material server-side.
 
 Positioning notes:
 
-- SchoolCity is used here as an example of a host-owned TTS API.
+- SC is used here as an example of a host-owned TTS API.
 - This is a demo-host integration pattern (custom provider + proxy route), not a toolkit default.
 - The custom provider appears in the TTS settings panel as the `demo-custom-provider` tab,
   showing how to plug in backend-specific preview/apply behavior without changing toolkit defaults.

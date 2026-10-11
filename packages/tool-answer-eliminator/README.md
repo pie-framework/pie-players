@@ -7,7 +7,7 @@ Test-taking strategy tool that allows students to eliminate answer choices they 
 - **Element-Level State**: Answer eliminations tracked per PIE element (not per item)
 - **Visual Feedback**: Strikethrough styling for eliminated choices
 - **Global Uniqueness**: Uses composite keys for state management across sections
-- **Ephemeral State**: State is client-only, separate from PIE session data
+- **Separate from session data**: Eliminations never enter the PIE session; the coordinator's `saveToolState` hook persists them ([Persistence Integration](#persistence-integration))
 - **ElementToolStateStore Integration**: Works with Assessment Toolkit's state management
 
 ## Installation
@@ -131,11 +131,11 @@ Items can contain **multiple interactive elements** whose choice ids repeat (two
 
 ## State Management
 
-### Ephemeral vs Persistent State
+### Tool state and session data
 
-The answer eliminator stores state in **ElementToolStateStore** (ephemeral, client-only):
+The answer eliminator stores eliminations in the toolkit's **ElementToolStateStore**, apart from the PIE session. They leave the browser only through the coordinator's `saveToolState` hook.
 
-**Tool State (Ephemeral - NOT sent to server):**
+**Tool state (not part of the session, never scored):**
 ```typescript
 {
   "demo:section-1:attempt-1:question-1:mc1": {
@@ -215,16 +215,16 @@ MathJax-rendered math needs its own mark for the same reason. MathJax's CHTML ou
 
 | expression | mark | `data-pie-answer-eliminator-math-strike` |
 | --- | --- | --- |
-| single row of symbols | centred line-through, as the prose gets | `line` |
+| single row of symbols | centered line-through, as the prose gets | `line` |
 | contains a fraction bar or table rule | diagonals, as an eliminated image gets | `cross` |
 
-A centred line on a fraction lands on the math axis — exactly where the fraction bar already sits — so it reads as a recoloured bar rather than an elimination. The split is structural (`mjx-mfrac`, `mjx-mtable`), not height-based: an inline `a/b` is only 1.16× its font size, indistinguishable in height from a radical or a parenthesised row, yet it is precisely the colliding case. Radicals and stacked limits keep the line, since their bars sit at the top or the strike simply crosses the base.
+A centered line on a fraction lands on the math axis — exactly where the fraction bar already sits — so it reads as a recolored bar rather than an elimination. The split is structural (`mjx-mfrac`, `mjx-mtable`), not height-based: an inline `a/b` is only 1.16× its font size, indistinguishable in height from a radical or a parenthesised row, yet it is precisely the colliding case. Radicals and stacked limits keep the line, since their bars sit at the top or the strike simply crosses the base.
 
 The inner `mjx-math` box is the paint target, not the container: for inline math `mjx-container` is `display: inline`, so its rect is the surrounding line box while the expression itself overflows it — a fraction sticks out several pixels above and below.
 
 Only MathJax containers are marked: natively rendered MathML keeps real text in `mi`/`mn`/`mo`, so the highlight already strikes every token there.
 
-All three treatments — the text line-through, the diagonals over an image, the line over math — are drawn in one colour, `--pie-answer-eliminator-strike-color` (a registered `component-public` token, defaulting to `--pie-incorrect`), so a choice mixing prose, pictures, and math reads as a single strike and can be restyled from one place.
+All three treatments — the text line-through, the diagonals over an image, the line over math — are drawn in one color, `--pie-answer-eliminator-strike-color` (a registered `component-public` token, defaulting to `--pie-incorrect`), so a choice mixing prose, pictures, and math reads as a single strike and can be restyled from one place.
 
 For browsers without the Highlight API, each strategy falls back to a class on the choice container. Either way the eliminated choice also receives ARIA hooks (`data-pie-answer-eliminated`, plus `aria-disabled`/`aria-hidden` and an offscreen "(eliminated)" announcement) for assistive technology.
 
@@ -271,7 +271,7 @@ See the [section-demos](../../apps/section-demos/) for complete examples:
 
 ## Related Documentation
 
-- [ToolkitCoordinator Architecture](../../docs/architecture/architecture.md#toolkitcoordinator-centralized-service-management) - Element-level state design
+- [Assessment toolkit architecture](../../docs/architecture/architecture.md#assessment-toolkit): the coordinator and element-level tool state
 - [Assessment Toolkit README](../assessment-toolkit/README.md) - Toolkit overview
 - [Section Player README](../section-player/README.md) - Integration guide
 

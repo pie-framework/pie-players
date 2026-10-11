@@ -54,7 +54,7 @@ The controls select the **next strategy write**, then reset to normal:
   buttons. A held write does not touch the saved snapshot; it rejects after
   60 seconds if left alone.
 - **Reject before commit:** return HTTP 503 without replacing saved state.
-- **Commit, then fail acknowledgement:** commit but return HTTP 504, modeling
+- **Commit, then fail acknowledgment:** commit but return HTTP 504, modeling
   an intermediary failure after storage accepted the write. Reading the attempt
   reveals the commit; a failed response alone cannot determine whether it saved.
 
@@ -79,7 +79,7 @@ The two R2 scenarios:
 existing assessment-player suite and the local pre-push/CI gates. Every test uses
 a unique attempt, reads actual HTTP/SQLite results, and deletes its own rows.
 It covers answer/navigation/reload with browser storage cleared, attempt
-isolation, manual release and keyboard access at 320px, failed acknowledgement,
+isolation, manual release and keyboard access at 320px, failed acknowledgment,
 and the two R2 invariants. JSON observations are attached to the test report.
 Fault controls and pending HTTP requests are scoped to one running demo server;
 this does not test process-crash recovery or competing production writers.

@@ -1,19 +1,19 @@
 # @pie-players/pie-section-player-tools-tts-settings
 
-Reusable TTS settings development panel for section-player consumers.
+`<pie-section-player-tools-tts-settings>` is a development panel for choosing and
+previewing a text-to-speech (TTS) provider and voice, then applying the result to
+the toolkit's `textToSpeech` tool config. It is a debugging tool for
+section-player integrations, outside learner-facing delivery; `apps/section-demos`
+mounts it in its debug overlays. It renders as a modal dialog without a shadow
+root, with Browser, Polly and Google tabs plus any custom provider tabs.
 
-This package follows the same integration model as the other `section-player-tools-*` panels:
+## Usage
 
-- side-effect import to register a custom element
-- render the element tag where your app manages debug overlays
-
-## Install and register
+Importing the package registers the custom element:
 
 ```ts
 import "@pie-players/pie-section-player-tools-tts-settings";
 ```
-
-## Render
 
 ```svelte
 <pie-section-player-tools-tts-settings
@@ -24,7 +24,8 @@ import "@pie-players/pie-section-player-tools-tts-settings";
 
 ## Routes and coordinator
 
-The panel calls these routes under `apiEndpoint`:
+The panel calls these routes under `apiEndpoint`, which the section demos'
+[API routes](../../apps/section-demos/src/routes/api/README.md) implement:
 
 - `GET {base}/polly/voices`
 - `GET {base}/google/voices`
@@ -38,11 +39,11 @@ and applies settings through the toolkit coordinator:
 
 ## Custom element API
 
-### Attributes / props
+### Attributes and properties
 
 - `toolkitCoordinator` (property): assessment toolkit coordinator instance
 - `apiEndpoint` (`api-endpoint`, default `/api/tts`): base endpoint for voice/synthesis routes
-- `storageKey` (`storage-key`, default `pie:section-player-tools:tts-settings`): localStorage key
+- `storageKey` (`storage-key`, default `pie:section-player-tools:tts-settings`): `localStorage` key under which the panel keeps the settings it last applied
 - `customProviders` (property, optional): additional provider tabs
 
 ### Events

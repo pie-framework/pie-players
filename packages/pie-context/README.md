@@ -2,8 +2,15 @@
 
 Framework-agnostic Context Protocol helpers for PIE web components.
 
-This package implements the Web Components community `context-request` protocol
+This package implements the Web Components community
+[`context-request` protocol](https://github.com/webcomponents-cg/community-protocols/blob/main/proposals/context.md)
 so orchestration/runtime dependencies can be shared without prop drilling.
+
+A tool, PIE element or player component needs it to read a fact only its
+container knows, such as its heading depth, the width its layout gives it or
+the toolkit coordinator, or to publish such a fact to its descendants. Which
+facts the players publish, and how a descendant resolves them, is in
+[Composition context](../../docs/architecture/composition-context.md).
 
 ## Included APIs
 

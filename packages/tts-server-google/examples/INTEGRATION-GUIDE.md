@@ -1,477 +1,350 @@
 # Google Cloud TTS Integration Guide
 
-This guide shows how to integrate the Google Cloud Text-to-Speech provider into your server-side application.
+This integration guide builds the server half of server-backed text-to-speech
+(TTS) on Google Cloud: the routes that `@pie-players/tts-client-server` calls on
+its PIE transport, backed by `@pie-players/tts-server-google`. It is for host
+developers adding read-aloud with word highlighting, and covers SvelteKit,
+Express and the Next.js App Router.
 
-For the shared TTS architecture and package roles, see
-[TTS Architecture](../../../docs/accessibility/tts-architecture.md). This guide
-is the Google Cloud-specific server integration path.
+The [AWS Polly integration guide](../../tts-server-polly/examples/INTEGRATION-GUIDE.md)
+owns what the two providers share: the auth and rate-limit guards, the security
+model and the response cache. The provider's configuration and behavior are in
+the [package README](../README.md); the package layering and provider fallback,
+in [TTS Architecture](../../../docs/accessibility/tts-architecture.md).
 
 ## Prerequisites
 
-1. **Google Cloud Project**: Create a project at [console.cloud.google.com](https://console.cloud.google.com)
-2. **Enable Text-to-Speech API**: Go to APIs & Services → Enable "Cloud Text-to-Speech API"
-3. **Authentication**: Set up one of the authentication methods below
+A Google Cloud project with billing and the Cloud Text-to-Speech API enabled, as
+Google's [setup page](https://docs.cloud.google.com/text-to-speech/docs/get-started)
+describes.
 
 ## Authentication Setup
 
-### Option 1: Service Account (Recommended for Production)
+The routes below pick a method from the environment. The README's
+[authentication methods](../README.md#authentication-methods) list every shape
+`credentials` takes.
 
-1. Go to IAM & Admin → Service Accounts
-2. Create a service account
-3. Grant the role: "Cloud Text-to-Speech User"
-4. Create and download a JSON key file
-
-```typescript
-import { GoogleCloudTTSProvider } from '@pie-players/tts-server-google';
-
-const provider = new GoogleCloudTTSProvider();
-
-await provider.initialize({
-  projectId: 'your-project-id',
-  credentials: './config/service-account.json',
-  voiceType: 'wavenet',
-});
-```
-
-### Option 2: API Key (Simple but Less Secure)
-
-1. Go to APIs & Services → Credentials
-2. Create credentials → API Key
-3. Restrict the key to "Cloud Text-to-Speech API"
-
-```typescript
-await provider.initialize({
-  projectId: 'your-project-id',
-  credentials: {
-    apiKey: process.env.GOOGLE_TTS_API_KEY!,
-  },
-});
-```
-
-### Option 3: Application Default Credentials (Local Development)
-
-1. Install Google Cloud SDK
-2. Run: `gcloud auth application-default login`
-
-```typescript
-await provider.initialize({
-  projectId: 'your-project-id',
-  // No credentials needed - uses ADC
-});
-```
+- **Service account (production).** In IAM & Admin → Service Accounts, create a
+  service account and download a JSON key. `GOOGLE_APPLICATION_CREDENTIALS`
+  names the key file.
+- **API key.** In APIs & Services → Credentials, create an API key and restrict
+  it to the Cloud Text-to-Speech API. `GOOGLE_API_KEY` holds it.
+- **Application Default Credentials (local development).** With neither
+  variable set, the provider uses ADC: `gcloud auth application-default login`
+  on a workstation, the attached service account on Google Cloud.
 
 ## SvelteKit Integration
 
-### 1. Install Dependencies
+### 1. Install Packages
 
 ```bash
-npm install @pie-players/tts-server-google
+npm install @pie-players/tts-server-core @pie-players/tts-server-google @pie-players/tts-client-server
 ```
 
-### 2. Create TTS API Route
+### 2. Configure Environment Variables
 
-**File: `src/routes/api/tts/synthesize/+server.ts`**
+```bash
+GOOGLE_CLOUD_PROJECT=your-project-id
 
-> **Note:** In SvelteKit, use `import { env } from '$env/static/private'` instead of `process.env` for server-side environment variables. The examples below use `process.env` for framework-agnostic readability.
+# One of the two, or neither for Application Default Credentials:
+GOOGLE_APPLICATION_CREDENTIALS=/path/to/service-account.json
+# GOOGLE_API_KEY=AIza...
+```
+
+Keep `.env`, `.env.local` and the key file out of version control.
+
+### 3. Create the Provider Module
+
+The routes share one provider instance. The module reads `process.env`, so the
+Express and Next.js routes below reuse it; in SvelteKit, `env` from
+`$env/dynamic/private` replaces it, since `$env/static/private` cannot import
+variables a deployment leaves unset.
+
+Create **`src/lib/server/google-tts.ts`**:
 
 ```typescript
 import { GoogleCloudTTSProvider } from '@pie-players/tts-server-google';
-import { json } from '@sveltejs/kit';
-import type { RequestHandler } from './$types';
 
-// Initialize provider once (singleton pattern)
-let ttsProvider: GoogleCloudTTSProvider | null = null;
+let provider: GoogleCloudTTSProvider | null = null;
 
-async function getTTSProvider() {
-  if (!ttsProvider) {
-    ttsProvider = new GoogleCloudTTSProvider();
-    await ttsProvider.initialize({
-      projectId: process.env.GOOGLE_CLOUD_PROJECT!,
-      credentials: process.env.GOOGLE_APPLICATION_CREDENTIALS,
-      voiceType: 'wavenet',
-      defaultVoice: 'en-US-Wavenet-A',
-    });
-  }
-  return ttsProvider;
+export async function getGoogleProvider(): Promise<GoogleCloudTTSProvider> {
+  if (provider) return provider;
+
+  const apiKey = process.env.GOOGLE_API_KEY;
+  const next = new GoogleCloudTTSProvider();
+  await next.initialize({
+    projectId: process.env.GOOGLE_CLOUD_PROJECT!,
+    // An API key, else a key file; with neither, Application Default Credentials.
+    credentials: apiKey ? { apiKey } : process.env.GOOGLE_APPLICATION_CREDENTIALS,
+    voiceType: 'wavenet',
+    defaultVoice: 'en-US-Wavenet-A',
+  });
+  provider = next;
+  return provider;
 }
+```
 
-export const POST: RequestHandler = async ({ request }) => {
+The routes also call the guards in `src/lib/server/tts-guards.ts`. Create that
+module as the Polly guide's [shared guards](../../tts-server-polly/examples/INTEGRATION-GUIDE.md#shared-guards-required)
+section shows; it is provider-neutral. Every route reaches Google on every
+request, so without the guards it is an open, unmetered proxy to your Google
+Cloud project.
+
+### 4. Create the Synthesize Route
+
+With `serverProvider: 'google'`, the client sends the text, voice, language and
+rate, and a `sampleRate` when the host's `providerOptions` set one. The route
+forwards those. The output encoding is the provider's `audioEncoding`, so the
+route ignores `format`.
+
+Create **`src/routes/api/tts/synthesize/+server.ts`**:
+
+```typescript
+import { json, error, isHttpError } from '@sveltejs/kit';
+import type { RequestHandler } from './$types';
+import { getGoogleProvider } from '$lib/server/google-tts';
+import {
+  requireAuthenticatedCaller,
+  enforceRateLimit,
+  failOpaquely,
+} from '$lib/server/tts-guards';
+
+export const POST: RequestHandler = async (event) => {
   try {
-    const { text, voice, includeSpeechMarks } = await request.json();
+    // Guards first: reject before spending anything on the request.
+    await requireAuthenticatedCaller(event);
+    await enforceRateLimit(event);
 
-    const provider = await getTTSProvider();
-
-    const result = await provider.synthesize({
+    const {
       text,
       voice,
-      includeSpeechMarks: includeSpeechMarks ?? true,
+      language,
+      rate,
+      sampleRate,
+      includeSpeechMarks = true,
+    } = await event.request.json();
+
+    if (!text || typeof text !== 'string') {
+      throw error(400, { message: 'Text is required' });
+    }
+
+    if (text.length > 3000) {
+      throw error(400, { message: 'Text too long (max 3000 characters)' });
+    }
+
+    const google = await getGoogleProvider();
+    const result = await google.synthesize({
+      text,
+      // Unset, the provider picks a voice for `language`, else its defaultVoice.
+      voice,
+      language,
+      rate,
+      sampleRate,
+      includeSpeechMarks,
     });
 
-    // Convert audio buffer to base64 for JSON response
-    const audioBase64 =
-      result.audio instanceof Buffer ? result.audio.toString('base64') : result.audio;
-
     return json({
-      audio: audioBase64,
+      audio: result.audio instanceof Buffer ? result.audio.toString('base64') : result.audio,
       contentType: result.contentType,
       speechMarks: result.speechMarks,
       metadata: result.metadata,
     });
-  } catch (error) {
-    console.error('TTS synthesis failed:', error);
-    return json(
-      { error: error instanceof Error ? error.message : 'TTS synthesis failed' },
-      { status: 500 }
-    );
+  } catch (err) {
+    // Statuses raised above (the guards, request validation) are already
+    // client-safe and pass through unchanged.
+    if (isHttpError(err)) throw err;
+
+    failOpaquely('Synthesis error', err);
   }
 };
 ```
 
-### 3. Create Voices API Route
+The 3000-character cap matches what `ServerTTSProvider` declares; the toolkit
+splits longer reads to fit.
 
-**File: `src/routes/api/tts/voices/+server.ts`**
+### 5. Create the Voices Route
+
+The client's readiness probe tries `/api/tts/google/voices` and falls back to
+`/api/tts/voices` on a 404. A host with Google alone puts the route at
+`voices/`; a host serving Polly and Google puts each provider's route under its
+own path and dispatches synthesis on the request's `provider` field.
+
+Create **`src/routes/api/tts/voices/+server.ts`**:
 
 ```typescript
-import { GoogleCloudTTSProvider } from '@pie-players/tts-server-google';
-import { json } from '@sveltejs/kit';
+import { json, isHttpError } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
+import { getGoogleProvider } from '$lib/server/google-tts';
+import {
+  requireAuthenticatedCaller,
+  enforceRateLimit,
+  failOpaquely,
+} from '$lib/server/tts-guards';
 
-let ttsProvider: GoogleCloudTTSProvider | null = null;
-
-async function getTTSProvider() {
-  if (!ttsProvider) {
-    ttsProvider = new GoogleCloudTTSProvider();
-    await ttsProvider.initialize({
-      projectId: process.env.GOOGLE_CLOUD_PROJECT!,
-      credentials: process.env.GOOGLE_APPLICATION_CREDENTIALS,
-      voiceType: 'wavenet',
-    });
-  }
-  return ttsProvider;
-}
-
-export const GET: RequestHandler = async ({ url }) => {
+export const GET: RequestHandler = async (event) => {
   try {
-    const language = url.searchParams.get('language') || undefined;
-    const gender = url.searchParams.get('gender') as 'male' | 'female' | 'neutral' | undefined;
+    // Guards first: reject before spending anything on the request.
+    await requireAuthenticatedCaller(event);
+    await enforceRateLimit(event);
 
-    const provider = await getTTSProvider();
+    const params = event.url.searchParams;
+    const language = params.get('language') || undefined;
+    const gender = (params.get('gender') || undefined) as 'male' | 'female' | 'neutral' | undefined;
+    const quality = (params.get('quality') || undefined) as
+      | 'standard'
+      | 'premium'
+      | 'neural'
+      | undefined;
 
-    const voices = await provider.getVoices({ language, gender });
+    const google = await getGoogleProvider();
+    const voices = await google.getVoices({ language, gender, quality });
 
     return json({ voices });
-  } catch (error) {
-    console.error('Failed to fetch voices:', error);
-    return json(
-      { error: error instanceof Error ? error.message : 'Failed to fetch voices' },
-      { status: 500 }
-    );
+  } catch (err) {
+    // Statuses raised above (the guards) are already client-safe.
+    if (isHttpError(err)) throw err;
+
+    failOpaquely('Get voices error', err);
   }
 };
 ```
 
-### 4. Environment Variables
+### 6. Configure the Client
 
-**File: `.env`**
-
-```bash
-# Google Cloud Configuration
-GOOGLE_CLOUD_PROJECT=your-project-id
-GOOGLE_APPLICATION_CREDENTIALS=/path/to/service-account.json
-
-# Or use API key
-# GOOGLE_TTS_API_KEY=AIza...
-```
-
-### 5. Client-Side Usage
-
-**File: `src/lib/tts-client.ts`**
+With the toolkit, server TTS on Google is one provider entry:
 
 ```typescript
-export interface TTSResult {
-  audio: string; // Base64 encoded
-  contentType: string;
-  speechMarks: Array<{
-    time: number;
-    type: string;
-    start: number;
-    end: number;
-    value: string;
-  }>;
-  metadata: {
-    providerId: string;
-    voice: string;
-    duration: number;
-  };
-}
-
-export async function synthesizeSpeech(
-  text: string,
-  voice?: string
-): Promise<TTSResult> {
-  const response = await fetch('/api/tts/synthesize', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ text, voice, includeSpeechMarks: true }),
-  });
-
-  if (!response.ok) {
-    throw new Error(`TTS failed: ${response.statusText}`);
-  }
-
-  return response.json();
-}
-
-export async function playAudio(result: TTSResult): Promise<void> {
-  // Convert base64 to blob
-  const audioData = atob(result.audio);
-  const audioArray = new Uint8Array(audioData.length);
-  for (let i = 0; i < audioData.length; i++) {
-    audioArray[i] = audioData.charCodeAt(i);
-  }
-  const blob = new Blob([audioArray], { type: result.contentType });
-
-  // Play audio
-  const url = URL.createObjectURL(blob);
-  const audio = new Audio(url);
-  await audio.play();
-
-  // Clean up
-  audio.onended = () => URL.revokeObjectURL(url);
-}
-
-export async function getVoices(language?: string) {
-  const params = new URLSearchParams();
-  if (language) params.set('language', language);
-
-  const response = await fetch(`/api/tts/voices?${params}`);
-  const { voices } = await response.json();
-  return voices;
+tools: {
+  providers: {
+    textToSpeech: {
+      enabled: true,
+      backend: 'server',
+      serverProvider: 'google',
+    },
+  },
 }
 ```
 
-**File: `src/routes/+page.svelte`**
+The Polly guide's [client step](../../tts-server-polly/examples/INTEGRATION-GUIDE.md#step-4-configure-the-client)
+covers the defaults this entry relies on and a host without the toolkit.
 
-```svelte
-<script lang="ts">
-  import { synthesizeSpeech, playAudio, getVoices } from '$lib/tts-client';
-  import { onMount } from 'svelte';
+## Other Frameworks
 
-  let text = 'Hello world, this is Google Cloud Text to Speech!';
-  let voice = 'en-US-Wavenet-A';
-  let voices: any[] = [];
-  let speechMarks: any[] = [];
-  let isPlaying = false;
+Express and Next.js reuse `src/lib/server/google-tts.ts` from step 3 and need the
+same guards: an auth check and a rate limit ahead of every TTS route, and a catch
+that logs the provider error and returns a fixed message. One helper maps the
+provider's error codes to statuses, as `failOpaquely` does in SvelteKit.
 
-  onMount(async () => {
-    voices = await getVoices('en-US');
-  });
+Create **`src/lib/server/tts-status.ts`**:
 
-  async function handleSpeak() {
-    try {
-      isPlaying = true;
-      const result = await synthesizeSpeech(text, voice);
-      speechMarks = result.speechMarks;
-      await playAudio(result);
-    } catch (error) {
-      console.error('Speech failed:', error);
-      alert('Speech synthesis failed');
-    } finally {
-      isPlaying = false;
-    }
+```typescript
+import { TTSError, TTSErrorCode } from '@pie-players/tts-server-core';
+
+/** The HTTP status for a provider failure; the message stays in the server log. */
+export function statusForTTSFailure(err: unknown): number {
+  const code = err instanceof TTSError ? err.code : undefined;
+  if (code === TTSErrorCode.RATE_LIMIT_EXCEEDED) return 429;
+  if (code === TTSErrorCode.AUTHENTICATION_ERROR || code === TTSErrorCode.INITIALIZATION_ERROR) {
+    return 503;
   }
-</script>
-
-<div class="container">
-  <h1>Google Cloud TTS Demo</h1>
-
-  <div class="controls">
-    <label>
-      Text to speak:
-      <textarea bind:value={text} rows="4"></textarea>
-    </label>
-
-    <label>
-      Voice:
-      <select bind:value={voice}>
-        {#each voices as v}
-          <option value={v.id}>{v.name} ({v.gender})</option>
-        {/each}
-      </select>
-    </label>
-
-    <button onclick={handleSpeak} disabled={isPlaying}>
-      {isPlaying ? 'Speaking...' : 'Speak'}
-    </button>
-  </div>
-
-  {#if speechMarks.length > 0}
-    <div class="speech-marks">
-      <h2>Speech Marks</h2>
-      <ul>
-        {#each speechMarks as mark}
-          <li>
-            {mark.value} ({mark.time}ms)
-          </li>
-        {/each}
-      </ul>
-    </div>
-  {/if}
-</div>
-
-<style>
-  .container {
-    max-width: 800px;
-    margin: 2rem auto;
-    padding: 2rem;
-  }
-
-  .controls {
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
-  }
-
-  textarea {
-    width: 100%;
-    padding: 0.5rem;
-    font-family: inherit;
-  }
-
-  select {
-    width: 100%;
-    padding: 0.5rem;
-  }
-
-  button {
-    padding: 0.75rem 1.5rem;
-    background: #4285f4;
-    color: white;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 1rem;
-  }
-
-  button:disabled {
-    background: #ccc;
-    cursor: not-allowed;
-  }
-
-  .speech-marks {
-    margin-top: 2rem;
-    padding: 1rem;
-    background: #f5f5f5;
-    border-radius: 4px;
-  }
-
-  .speech-marks ul {
-    list-style: none;
-    padding: 0;
-  }
-
-  .speech-marks li {
-    padding: 0.25rem;
-    font-family: monospace;
-  }
-</style>
+  if (code === TTSErrorCode.INVALID_REQUEST || code === TTSErrorCode.TEXT_TOO_LONG) return 400;
+  return 500;
+}
 ```
 
-## Express.js Integration
+### Express
 
 ```typescript
 import express from 'express';
-import { GoogleCloudTTSProvider } from '@pie-players/tts-server-google';
+import { getGoogleProvider } from './lib/server/google-tts';
+import { statusForTTSFailure } from './lib/server/tts-status';
 
 const app = express();
 app.use(express.json());
+// Mount your auth and rate-limit middleware on /api/tts before these routes.
 
-// Initialize provider
-const ttsProvider = new GoogleCloudTTSProvider();
-await ttsProvider.initialize({
-  projectId: process.env.GOOGLE_CLOUD_PROJECT!,
-  credentials: process.env.GOOGLE_APPLICATION_CREDENTIALS,
-  voiceType: 'wavenet',
-});
-
-// Synthesize endpoint
 app.post('/api/tts/synthesize', async (req, res) => {
-  try {
-    const { text, voice, includeSpeechMarks } = req.body;
+  const { text, voice, language, rate, sampleRate, includeSpeechMarks = true } = req.body;
 
-    const result = await ttsProvider.synthesize({
+  if (!text || typeof text !== 'string' || text.length > 3000) {
+    res.status(400).json({ error: 'Text is required (max 3000 characters)' });
+    return;
+  }
+
+  try {
+    const google = await getGoogleProvider();
+    const result = await google.synthesize({
       text,
       voice,
-      includeSpeechMarks: includeSpeechMarks ?? true,
+      language,
+      rate,
+      sampleRate,
+      includeSpeechMarks,
     });
 
-    // Return audio as buffer
     res.json({
       audio: result.audio instanceof Buffer ? result.audio.toString('base64') : result.audio,
       contentType: result.contentType,
       speechMarks: result.speechMarks,
       metadata: result.metadata,
     });
-  } catch (error) {
-    console.error('TTS synthesis failed:', error);
-    res.status(500).json({ error: 'TTS synthesis failed' });
+  } catch (err) {
+    console.error('[TTS API] Synthesis error:', err);
+    res.status(statusForTTSFailure(err)).json({ error: 'Text-to-speech is unavailable.' });
   }
 });
 
-// Voices endpoint
 app.get('/api/tts/voices', async (req, res) => {
   try {
-    const { language, gender } = req.query;
-
-    const voices = await ttsProvider.getVoices({
-      language: language as string,
-      gender: gender as 'male' | 'female' | 'neutral',
+    const google = await getGoogleProvider();
+    const voices = await google.getVoices({
+      language: typeof req.query.language === 'string' ? req.query.language : undefined,
+      gender: req.query.gender as 'male' | 'female' | 'neutral' | undefined,
+      quality: req.query.quality as 'standard' | 'premium' | 'neural' | undefined,
     });
 
     res.json({ voices });
-  } catch (error) {
-    console.error('Failed to fetch voices:', error);
-    res.status(500).json({ error: 'Failed to fetch voices' });
+  } catch (err) {
+    console.error('[TTS API] Get voices error:', err);
+    res.status(statusForTTSFailure(err)).json({ error: 'Text-to-speech is unavailable.' });
   }
 });
 
-app.listen(3000, () => {
-  console.log('Server running on http://localhost:3000');
-});
+app.listen(3000);
 ```
 
-## Next.js App Router Integration
+### Next.js App Router
 
-**File: `app/api/tts/synthesize/route.ts`**
+Create **`app/api/tts/synthesize/route.ts`**; the voices route follows the same
+pattern with `GET`.
 
 ```typescript
-import { GoogleCloudTTSProvider } from '@pie-players/tts-server-google';
 import { NextResponse } from 'next/server';
-
-let ttsProvider: GoogleCloudTTSProvider | null = null;
-
-async function getTTSProvider() {
-  if (!ttsProvider) {
-    ttsProvider = new GoogleCloudTTSProvider();
-    await ttsProvider.initialize({
-      projectId: process.env.GOOGLE_CLOUD_PROJECT!,
-      credentials: process.env.GOOGLE_APPLICATION_CREDENTIALS,
-      voiceType: 'wavenet',
-    });
-  }
-  return ttsProvider;
-}
+import { getGoogleProvider } from '@/lib/server/google-tts';
+import { statusForTTSFailure } from '@/lib/server/tts-status';
 
 export async function POST(request: Request) {
+  // Run your auth check and rate limit here, or in middleware.ts.
+
+  const { text, voice, language, rate, sampleRate, includeSpeechMarks = true } =
+    await request.json();
+
+  if (!text || typeof text !== 'string' || text.length > 3000) {
+    return NextResponse.json(
+      { error: 'Text is required (max 3000 characters)' },
+      { status: 400 },
+    );
+  }
+
   try {
-    const { text, voice, includeSpeechMarks } = await request.json();
-
-    const provider = await getTTSProvider();
-
-    const result = await provider.synthesize({
+    const google = await getGoogleProvider();
+    const result = await google.synthesize({
       text,
       voice,
-      includeSpeechMarks: includeSpeechMarks ?? true,
+      language,
+      rate,
+      sampleRate,
+      includeSpeechMarks,
     });
 
     return NextResponse.json({
@@ -480,60 +353,68 @@ export async function POST(request: Request) {
       speechMarks: result.speechMarks,
       metadata: result.metadata,
     });
-  } catch (error) {
-    console.error('TTS synthesis failed:', error);
+  } catch (err) {
+    console.error('[TTS API] Synthesis error:', err);
     return NextResponse.json(
-      { error: 'TTS synthesis failed' },
-      { status: 500 }
+      { error: 'Text-to-speech is unavailable.' },
+      { status: statusForTTSFailure(err) },
     );
   }
 }
 ```
 
-## Security Best Practices
+## Security
 
-1. **Never expose API keys in client code** - Always use server-side endpoints
-2. **Restrict API keys** - Limit to specific APIs and IP addresses
-3. **Use service accounts in production** - More secure than API keys
-4. **Rate limiting** - Implement rate limiting to prevent abuse
-5. **Cache results** - Cache TTS output to reduce API calls and costs
-6. **Validate input** - Sanitize and validate user input before synthesis
+The Polly guide's [security considerations](../../tts-server-polly/examples/INTEGRATION-GUIDE.md#security-considerations)
+apply unchanged: guarded routes, opaque error responses, and credentials held on
+the server only. On Google:
+
+- Production uses a service account, whose access IAM grants and revokes.
+- An API key is restricted to the Cloud Text-to-Speech API and, where the server
+  has fixed egress addresses, to those addresses.
+- The JSON key file is a secret: it stays out of the repository and the client
+  bundle, and a platform secret store holds it where one exists.
 
 ## Cost Optimization
 
-1. **Cache frequently used phrases** - Store audio for common text
-2. **Use standard voices when possible** - $4/1M vs $16/1M for neural
-3. **Batch requests** - Group multiple synthesis requests when feasible
-4. **Monitor usage** - Set up billing alerts in Google Cloud Console
+Google bills by characters synthesized, at rates that differ by voice type:
+<https://cloud.google.com/text-to-speech/pricing>. One request returns the
+audio and the speech marks.
+
+- **Cache.** The Polly guide's [response cache](../../tts-server-polly/examples/INTEGRATION-GUIDE.md#step-5-add-redis-caching-optional)
+  works for Google with `providerId: 'google-cloud-tts'` in the key.
+- **Voice type.** The rate follows the voice that synthesizes: the request's
+  `voice`, else the one [voice resolution](../../tts-server-core/README.md#voice-resolution)
+  picks from `defaultVoice` and `voiceType`.
+- **Billing alerts.** Budgets and alerts in the Google Cloud console bound an
+  unexpected spend.
 
 ## Troubleshooting
 
-### Authentication Errors
+The routes log the provider's error, Google's message included, before returning
+a fixed one, so the server log carries the cause.
 
-```
-Error: Google Cloud authentication failed
-```
+### 503 from Every Request
 
-**Solution**: Verify your credentials are correct and the service account has the "Cloud Text-to-Speech User" role.
+The guard stubs reject every request until they are implemented. After that, a
+503 is an `INITIALIZATION_ERROR`, for an unset `GOOGLE_CLOUD_PROJECT`, or an
+`AUTHENTICATION_ERROR`: Google answered `PERMISSION_DENIED`. Check the key or
+service account, that the project has the Cloud Text-to-Speech API enabled, and
+that billing is active.
 
-### Rate Limit Exceeded
+### 500 from Synthesis
 
-```
-Error: Google Cloud rate limit exceeded
-```
+Any other Google failure arrives as `PROVIDER_ERROR`, a response without audio
+(`No audio content received from Google Cloud TTS`) and missing Application
+Default Credentials among them. Check the credentials, the API and billing as
+above.
 
-**Solution**: Implement exponential backoff and request rate limiting. Consider increasing your quota in Google Cloud Console.
+### 429 Rate Limit
 
-### No Audio Content
+Google answered `RESOURCE_EXHAUSTED`. Retry with backoff, cache repeat reads, or
+raise the project's quota in the Google Cloud console.
 
-```
-Error: No audio content received from Google Cloud TTS
-```
+### No Word Highlighting
 
-**Solution**: Check that your project has the Text-to-Speech API enabled and your billing is active.
-
-## Support
-
-For issues specific to this package, please file an issue on GitHub.
-
-For Google Cloud TTS API issues, see the [official documentation](https://cloud.google.com/text-to-speech/docs).
+Studio voices take no `<mark>` tags, so the provider returns no speech marks for
+them. Use a WaveNet or Standard voice where highlighting matters.

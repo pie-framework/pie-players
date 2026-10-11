@@ -1,7 +1,9 @@
 # @pie-players/pie-calculator
 
-Provider-neutral calculator contracts for PIE Players. This package has no UI
-or vendor implementation code.
+The provider-neutral calculator contract for PIE Players: the types a calculator
+adapter implements and the toolkit's calculator tool consumes. Adapter authors
+implement it; hosts that use the toolkit's calculator never import it directly.
+The package is types only, with no UI or vendor code.
 
 ## Installation
 
@@ -9,22 +11,11 @@ or vendor implementation code.
 bun add @pie-players/pie-calculator
 ```
 
-## Contract
+## Usage
 
-The package exports:
-
-- `CalculatorProvider`, the factory and capability contract implemented by a
-  calculator adapter;
-- `Calculator`, the lifecycle, value, state, resize, and focus contract for one
-  mounted calculator;
-- `CalculatorProviderInit`, the provider-level credential and instrumentation
-  surface;
-- `CalculatorProviderConfig`, whose `settings` object is interpreted by the
-  selected implementation; and
-- `CalculatorType`, with `basic`, `scientific`, and `graphing` modes.
-
-Provider-specific settings belong to the provider package. Generic code passes
-them through without importing or naming Desmos, GeoGebra, or another vendor.
+A provider creates calculators of the types it supports into a container
+element. Provider-specific settings belong to the adapter package; generic code
+passes `settings` through without importing or naming a vendor.
 
 ```ts
 import type {
@@ -76,14 +67,51 @@ export class MyCalculatorProvider implements CalculatorProvider {
 }
 ```
 
+## Configuration
+
+A provider takes configuration at two levels:
+
+- `CalculatorProviderInit`, once per provider in `initialize()`: `apiKey`,
+  `proxyEndpoint` and `onTelemetry(eventName, payload)`. An adapter narrows it
+  to the fields it honors.
+- `CalculatorProviderConfig`, per calculator in `createCalculator()`:
+  `settings` (interpreted by the adapter), `restrictedMode`, `locale` and
+  `theme` (`"light"`, `"dark"` or `"auto"`). An adapter documents which of
+  these it applies.
+
+A provider may declare `attribution: { label, href }`; the toolkit's calculator
+tool renders it as a link beside the calculator.
+
+## Exports
+
+All exports are types.
+
+| Export | Contract |
+| --- | --- |
+| `CalculatorProvider` | Factory and capability contract an adapter implements: identity, `supportedTypes`, `initialize`, `createCalculator`, `supportsType`, `getCapabilities`, `destroy`. |
+| `Calculator` | One mounted calculator: `getValue`, `setValue`, `clear`, `exportState`, `importState`, `destroy`, and optionally `getHistory`, `clearHistory`, `evaluate`, `resize`, `focus`. |
+| `CalculatorProviderInit` | Provider-level credentials and telemetry. |
+| `CalculatorProviderConfig` | Per-calculator settings, restricted mode, locale and theme. |
+| `CalculatorProviderCapabilities` | History, graphing, expression and export support, `maxPrecision`, `inputMethods`. |
+| `CalculatorState` | Serialized state: `type`, `provider`, `value`, optional `history` and adapter-owned `providerState`. |
+| `CalculationHistoryEntry` | One history entry: `expression`, `result`, `timestamp`. |
+| `CalculatorType` | `"basic"`, `"scientific"` or `"graphing"`. |
+
+The toolkit's `<pie-tool-calculator>` does not persist calculator state;
+`exportState` and `importState` serve hosts that drive an adapter directly.
+
 ## Implementations
 
-- `@pie-players/pie-calculator-cortex`
-- `@pie-players/pie-calculator-desmos`
-- `@pie-players/pie-calculator-geogebra`
+| Package | Provider | Key |
+| --- | --- | --- |
+| [`@pie-players/pie-calculator-cortex`](../calculator-cortex/README.md) | Bundled MathLive, CortexJS Compute Engine and JSXGraph | None |
+| [`@pie-players/pie-calculator-desmos`](../calculator-desmos/README.md) | Desmos, loaded from desmos.com | Required |
+| [`@pie-players/pie-calculator-geogebra`](../calculator-geogebra/README.md) | GeoGebra, loaded from geogebra.org | None |
 
-Each implementation and its underlying calculator product has its own package
-and licensing boundary. No vendor library is bundled by this contract package.
+Each adapter and its calculator product has its own package and licensing
+boundary; this package bundles no vendor library. The toolkit selects among
+them by `provider.id`; see
+[Calculator providers](../default-tool-loaders/README.md#calculator-providers).
 
 ## License
 

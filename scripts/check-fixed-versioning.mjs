@@ -6,6 +6,7 @@ import path from "node:path";
 
 import {
 	classifyPublishedSequence,
+	highestTaggedVersion,
 	parseSemver,
 } from "./lib/fixed-versioning.mjs";
 
@@ -60,20 +61,16 @@ const fail = (message) => {
 /** Sentinel for a package that exists here but has never been published. */
 const UNPUBLISHED = Symbol("unpublished");
 
+/** The version a package's releases continue from: its highest dist-tag (`highestTaggedVersion`). */
 const fetchPublishedVersion = (pkgName) => {
 	try {
-		const out = execSync(`npm view "${pkgName}" version --json`, {
+		const out = execSync(`npm view "${pkgName}" dist-tags --json`, {
 			cwd: ROOT,
 			stdio: "pipe",
 		})
 			.toString("utf8")
 			.trim();
-		const parsed = JSON.parse(out);
-		if (typeof parsed === "string") return parsed;
-		if (Array.isArray(parsed) && parsed.length > 0) {
-			return String(parsed[parsed.length - 1]);
-		}
-		return null;
+		return highestTaggedVersion(JSON.parse(out));
 	} catch (error) {
 		const detail = error.stderr?.toString()?.trim() || error.message || "";
 		// A package added in this change has nothing on npm yet, which is not a

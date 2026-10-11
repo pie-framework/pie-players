@@ -54,8 +54,10 @@
 			"import": "./dist/policy/engine.js"
 		}
 	},
+	"customElements": "custom-elements.json",
 	"files": [
 		"dist",
+		"custom-elements.json",
 		"README.md"
 	],
 	"scripts": {

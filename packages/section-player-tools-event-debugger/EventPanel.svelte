@@ -17,6 +17,13 @@
 	}}
 />
 
+<!--
+@component
+Developer panel for the section player demos that logs the item and section events the toolkit coordinator broadcasts for the active section. A host gives it `toolkitCoordinator` and the `section-id` and `attempt-id` to follow; it renders a draggable floating panel listing each event with its item, intent and duplicate count, filtered by item or section level, with pause and clear controls and the selected event's payload as JSON.
+
+@fires {CustomEvent<null>} close - When the panel's close button is pressed.
+-->
+
 <script lang="ts">
 	import {
 		type AssessmentToolkitRuntimeContext,

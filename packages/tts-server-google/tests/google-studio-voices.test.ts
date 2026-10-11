@@ -1,3 +1,4 @@
+import { TTSError, TTSErrorCode } from "@pie-players/tts-server-core";
 import { describe, expect, it } from "vitest";
 
 import { googleWithClient } from "./fake-google-client.js";
@@ -71,6 +72,34 @@ describe("Google Studio voices", () => {
 			false,
 		]);
 		expect(sent[1].input).toEqual({ text: "Hello world" });
+	});
+
+	it("report a failed retry as a TTSError carrying Google's code", async () => {
+		const sent: SentRequest[] = [];
+		const client = {
+			synthesizeSpeech: async (request: SentRequest) => {
+				sent.push(request);
+				throw request.enableTimePointing
+					? new Error(
+							"3 INVALID_ARGUMENT: <mark> is not currently supported for Studio voices.",
+						)
+					: Object.assign(new Error("8 RESOURCE_EXHAUSTED: Quota exceeded"), {
+							code: 8,
+						});
+			},
+		};
+		const provider = await initialized(client);
+
+		const err = await provider
+			.synthesize({ text: "Hello world", voice: "en-US-Neural2-A" })
+			.catch((e: unknown) => e);
+
+		expect(sent).toHaveLength(2);
+		expect(err).toBeInstanceOf(TTSError);
+		expect(err).toMatchObject({
+			code: TTSErrorCode.RATE_LIMIT_EXCEEDED,
+			providerId: "google-cloud-tts",
+		});
 	});
 });
 

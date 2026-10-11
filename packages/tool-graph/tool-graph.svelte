@@ -10,6 +10,15 @@
 	}}
 />
 
+<!--
+@component
+Coordinate-grid graphing tool: the student places points, joins them with lines,
+drags points in select mode and removes them in delete mode, and sets the grid's
+opacity with a slider. The host shows it with `visible`; the toolkit runtime
+context supplies its interface locale. On the focused grid, arrow keys move a
+cursor along the minor grid and Enter or Space applies the current mode at it.
+-->
+
 <script lang="ts">
 	import { coerceBooleanAttributes } from '@pie-players/pie-players-shared/ui/attribute-coercion';
 

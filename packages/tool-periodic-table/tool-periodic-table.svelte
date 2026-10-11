@@ -10,6 +10,15 @@
 	}}
 />
 
+<!--
+@component
+Periodic table reference panel: all 118 elements in their table positions,
+colour-coded by category, with a detail panel for the selected element's symbol,
+name, atomic mass and number, electron configuration and phase. Category badges
+filter the table by de-emphasising the other elements. The host shows it with
+`visible`; the toolkit runtime context supplies its interface locale.
+-->
+
 <script lang="ts">
 	import { coerceBooleanAttributes } from '@pie-players/pie-players-shared/ui/attribute-coercion';
 

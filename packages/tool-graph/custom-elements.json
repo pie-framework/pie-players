@@ -1,0 +1,68 @@
+{
+	"schemaVersion": "2.1.0",
+	"modules": [
+		{
+			"kind": "javascript-module",
+			"path": "dist/tool-graph.js",
+			"declarations": [
+				{
+					"kind": "class",
+					"description": "Coordinate-grid graphing tool: the student places points, joins them with lines, drags points in select mode and removes them in delete mode, and sets the grid's opacity with a slider. The host shows it with `visible`; the toolkit runtime context supplies its interface locale. On the focused grid, arrow keys move a cursor along the minor grid and Enter or Space applies the current mode at it.",
+					"name": "ToolGraph",
+					"tagName": "pie-tool-graph",
+					"customElement": true,
+					"members": [
+						{
+							"kind": "field",
+							"name": "visible",
+							"type": {
+								"text": "boolean"
+							},
+							"default": "false",
+							"attribute": "visible"
+						},
+						{
+							"kind": "field",
+							"name": "toolId",
+							"type": {
+								"text": "string"
+							},
+							"default": "'graph'",
+							"attribute": "tool-id"
+						}
+					],
+					"attributes": [
+						{
+							"name": "visible",
+							"type": {
+								"text": "boolean"
+							},
+							"default": "false",
+							"fieldName": "visible"
+						},
+						{
+							"name": "tool-id",
+							"type": {
+								"text": "string"
+							},
+							"default": "'graph'",
+							"fieldName": "toolId"
+						}
+					],
+					"x-pie": {
+						"shadow": "open"
+					}
+				}
+			],
+			"exports": [
+				{
+					"kind": "custom-element-definition",
+					"name": "pie-tool-graph",
+					"declaration": {
+						"name": "ToolGraph"
+					}
+				}
+			]
+		}
+	]
+}

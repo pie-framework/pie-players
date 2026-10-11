@@ -14,8 +14,10 @@
 			"import": "./dist/print-player.js"
 		}
 	},
+	"customElements": "custom-elements.json",
 	"files": [
-		"dist"
+		"dist",
+		"custom-elements.json"
 	],
 	"scripts": {
 		"build": "bun x vite build && bun x tsc --emitDeclarationOnly",

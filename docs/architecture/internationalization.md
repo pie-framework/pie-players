@@ -259,8 +259,8 @@ content-localization model, because all of them need it, and three codebases had
 hand-written mapping tables in its place.
 
 `@pie-players/pie-players-shared/i18n/language-tags` provides
-`normalizeLanguageTag`, `languageTagsEqual`, `languageTagLookupSequence` and
-`findBestLanguageMatch`. It replaces exact comparison with RFC 4647 lookup,
+`normalizeLanguageTag`, `toLanguageTag`, `languageTagsEqual`,
+`languageTagLookupSequence` and `findBestLanguageMatch`. It replaces exact comparison with RFC 4647 lookup,
 normalizes POSIX `es_ES` to `es-ES`, and gives `es-MX` → `es` → default a defined
 answer. The catalog resolver expands each requested tag into its lookup sequence,
 and `getAllAlternatives` keys on the normalized tag, so two spellings of one

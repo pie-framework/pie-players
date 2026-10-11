@@ -40,17 +40,35 @@ bun add @pie-players/tts-server-core @pie-players/tts-server-polly @pie-players/
 
 ## Step 2: Configure Environment Variables
 
+Create or update `.env`:
+
 ```bash
+# AWS Polly
 AWS_REGION=us-east-1
-# Access keys for local development; production uses an IAM role instead.
+
+# Optional: an access key pair. Leave both unset to use the AWS SDK's default
+# credential chain instead.
 AWS_ACCESS_KEY_ID=your_access_key_id
 AWS_SECRET_ACCESS_KEY=your_secret_access_key
-# Temporary credentials (AWS SSO, an assumed role) also need:
-# AWS_SESSION_TOKEN=...
+# Optional: set alongside the pair when it is temporary
+AWS_SESSION_TOKEN=
 
 # Optional: Redis for caching (Step 5)
 REDIS_URL=redis://localhost:6379
 ```
+
+The routes pass credentials to Polly only when both `AWS_ACCESS_KEY_ID` and
+`AWS_SECRET_ACCESS_KEY` are set, with `AWS_SESSION_TOKEN` when it is set too. One
+of the pair alone is ignored. Without the pair the provider gets no credentials,
+and the AWS SDK resolves them through its
+[default credential chain](https://docs.aws.amazon.com/sdk-for-javascript/v3/developer-guide/setting-credentials-node.html),
+which tries environment variables, SSO and shared profiles before the IAM role of
+the container or instance.
+
+The routes read `process.env`. A `.env` file reaches SvelteKit's `$env/*` modules
+and never `process.env`, so in a SvelteKit app replace `process.env` with `env`
+from `$env/dynamic/private`. Use the dynamic module because `$env/static/private`
+fails the build when a variable it imports is unset, and these are optional.
 
 The [setup guide](../../../docs/accessibility/aws-polly-setup-guide.md) creates
 the IAM user, its minimal policy and the keys. Keep `.env` and `.env.local` out
@@ -58,242 +76,82 @@ of version control.
 
 ## Step 3: Create SvelteKit API Routes
 
-The routes share two server modules: one holds the Polly providers, the other the
-guards every TTS route calls. The examples read `process.env` so they work in
-any framework; in SvelteKit, `env` from `$env/dynamic/private` replaces it, since
-`$env/static/private` cannot import the key variables an IAM-role deployment
-leaves unset.
+### Copy the Routes
 
-### Polly Provider
+| Copy | To |
+|---|---|
+| [`sveltekit/synthesize-server.ts`](sveltekit/synthesize-server.ts) | `src/routes/api/tts/synthesize/+server.ts` |
+| [`sveltekit/voices-server.ts`](sveltekit/voices-server.ts) | `src/routes/api/tts/voices/+server.ts` |
 
-Create **`src/lib/server/polly.ts`**:
+Each file is self-contained. With both in one app, move everything above the
+handler into `src/lib/server/tts.ts` and import it from both routes: the guards,
+the status mapping, the credentials and the provider map. The guards then have
+one implementation, and the routes share one provider per engine.
 
-```typescript
-import { PollyServerProvider } from '@pie-players/tts-server-polly';
-
-type PollyEngine = 'neural' | 'standard';
-
-// The engine is fixed per provider instance, so there is one per engine.
-const providers = new Map<PollyEngine, PollyServerProvider>();
-
-export async function getPollyProvider(
-  engine: PollyEngine = 'neural',
-): Promise<PollyServerProvider> {
-  const existing = providers.get(engine);
-  if (existing) return existing;
-
-  const accessKeyId = process.env.AWS_ACCESS_KEY_ID;
-  const secretAccessKey = process.env.AWS_SECRET_ACCESS_KEY;
-
-  const provider = new PollyServerProvider();
-  await provider.initialize({
-    region: process.env.AWS_REGION || 'us-east-1',
-    // Without keys, the AWS SDK default credential chain applies (an IAM role).
-    credentials:
-      accessKeyId && secretAccessKey
-        ? { accessKeyId, secretAccessKey, sessionToken: process.env.AWS_SESSION_TOKEN }
-        : undefined,
-    engine,
-    defaultVoice: 'Joanna',
-  });
-  providers.set(engine, provider);
-  return provider;
-}
-```
-
-### Shared Guards (required)
+### Guards (required)
 
 Both routes reach AWS on every request. Without an auth check and a rate limit
 they are open, unmetered proxies to your Polly account: whoever can reach the URL
 spends your budget, and the 3000-character cap bounds one request rather than the
-number of them. Put both guards in one module and call them from every TTS route.
+number of them. `requireAuthenticatedCaller` and `enforceRateLimit` reject every
+request with a 503 until you replace their bodies; keep their call sites.
+[Authentication](#authentication-required) and
+[Rate Limiting](#rate-limiting-required) sketch implementations.
 
-Create **`src/lib/server/tts-guards.ts`**:
+### Synthesize Request
 
-```typescript
-import { error } from '@sveltejs/kit';
-import type { RequestEvent } from '@sveltejs/kit';
-import { TTSError, TTSErrorCode } from '@pie-players/tts-server-core';
+`POST /api/tts/synthesize` takes a JSON object, the body `ServerTTSProvider` sends
+on its default `pie` transport. The client takes `engine` from its config, and
+`format`, `sampleRate` and `speechMarkTypes` from its `providerOptions`.
 
-/** The only failure detail a caller ever receives. */
-export const OPAQUE_FAILURE = 'Text-to-speech is unavailable.';
+Only `text` is required. A field of the wrong type or out of range is a 400 before
+anything reaches AWS, and `null` counts as absent.
 
-/**
- * Reject callers your app has not authenticated.
- *
- * Replace the body with your real check; do not delete the function or its call
- * sites. It fails closed so a copied route cannot ship open by accident.
- */
-export async function requireAuthenticatedCaller(event: RequestEvent): Promise<void> {
-  // Your check, e.g. against what hooks.server.ts left on event.locals:
-  //   if (event.locals.session) return;
-  console.error(
-    '[TTS API] requireAuthenticatedCaller is not implemented, rejecting',
-    event.url.pathname,
-  );
-  throw error(503, { message: OPAQUE_FAILURE });
-}
+| Field | Accepts | Polly receives |
+|---|---|---|
+| `text` | 1–3000 characters | the text, as SSML when it contains SSML tags |
+| `voice` | a Polly voice id, e.g. `Joanna` | that voice; without one, a voice for `language`, else `Joanna` |
+| `language` | a BCP 47 tag, e.g. `es-US` | nothing directly: it picks the voice when `voice` is absent |
+| `engine` | `neural` (default), `standard` | the engine, through the provider initialized for it |
+| `rate` | 0.25–4 | `<prosody rate>` around plain text, capped at Polly's 200% |
+| `pitch` | 0–2 | `<prosody pitch>` around plain text, on the standard engine only |
+| `format` | `mp3` (default), `ogg`, `pcm` | `OutputFormat` |
+| `sampleRate` | a positive integer, in Hz | `SampleRate`, default 24000; `pcm` takes only 8000 and 16000 |
+| `includeSpeechMarks` | boolean, default `true` | a second request, for the speech marks |
+| `speechMarkTypes` | a list of `word`, `sentence`, `ssml` | `SpeechMarkTypes`, default `["word"]` |
 
-/**
- * Reject callers who have spent their quota.
- *
- * Replace the body with your real limiter; do not delete the function or its
- * call sites. Rate limiting is what bounds the cost of a shared or leaked
- * credential.
- */
-export async function enforceRateLimit(event: RequestEvent): Promise<void> {
-  // Your limiter, keyed on caller identity where you have it:
-  //   const key = event.locals.session?.userId ?? event.getClientAddress();
-  //   if (await limiter.take(key)) return;
-  console.error(
-    '[TTS API] enforceRateLimit is not implemented, rejecting',
-    event.url.pathname,
-  );
-  throw error(503, { message: OPAQUE_FAILURE });
-}
+`provider` is accepted and ignored, since the route serves only Polly. `volume`
+is not read: the provider has no volume control (`supportsVolume: false`).
 
-/**
- * Log the failure and raise a client-safe one in its place.
- *
- * Vendor error strings can carry region, ARN and credential-shape detail, so the
- * detail stays in the server log and the caller learns only the status. The
- * provider reports every vendor failure as a TTSError with a code.
- */
-export function failOpaquely(context: string, err: unknown): never {
-  console.error(`[TTS API] ${context}:`, err);
+The response:
 
-  const code = err instanceof TTSError ? err.code : undefined;
-
-  if (code === TTSErrorCode.RATE_LIMIT_EXCEEDED) {
-    throw error(429, { message: 'Text-to-speech is busy. Please try again shortly.' });
+```json
+{
+  "audio": "<base64>",
+  "contentType": "audio/mpeg",
+  "speechMarks": [{ "time": 0, "type": "word", "start": 0, "end": 5, "value": "Hello" }],
+  "metadata": {
+    "providerId": "aws-polly",
+    "voice": "Joanna",
+    "duration": 0.41,
+    "charCount": 11,
+    "cached": false,
+    "timestamp": "2026-10-10T12:00:00.000Z"
   }
-
-  if (code === TTSErrorCode.AUTHENTICATION_ERROR || code === TTSErrorCode.INITIALIZATION_ERROR) {
-    throw error(503, { message: OPAQUE_FAILURE });
-  }
-
-  if (code === TTSErrorCode.INVALID_REQUEST || code === TTSErrorCode.TEXT_TOO_LONG) {
-    throw error(400, { message: 'Text-to-speech could not read this request.' });
-  }
-
-  throw error(500, { message: OPAQUE_FAILURE });
 }
 ```
 
-The standalone files under `sveltekit/` inline the guards instead, so that each
-stays a single self-contained copy.
+### Voices Request
 
-### Synthesize Endpoint
+`GET /api/tts/voices` returns `{ "voices": [...] }`. Its query parameters are
+optional; an empty one counts as absent, and a value outside the list is a 400.
 
-Create **`src/routes/api/tts/synthesize/+server.ts`**. It forwards every field
-the client sends: with `serverProvider: 'polly'` the toolkit sends `engine`,
-`format`, `sampleRate` and `speechMarkTypes` (word and sentence marks by
-default) alongside the text, voice, language and rate.
-
-```typescript
-import { json, error, isHttpError } from '@sveltejs/kit';
-import type { RequestHandler } from './$types';
-import { getPollyProvider } from '$lib/server/polly';
-import {
-  requireAuthenticatedCaller,
-  enforceRateLimit,
-  failOpaquely,
-} from '$lib/server/tts-guards';
-
-export const POST: RequestHandler = async (event) => {
-  try {
-    // Guards first: reject before spending anything on the request.
-    await requireAuthenticatedCaller(event);
-    await enforceRateLimit(event);
-
-    const {
-      text,
-      voice,
-      language,
-      rate,
-      engine,
-      format,
-      sampleRate,
-      speechMarkTypes,
-      includeSpeechMarks = true,
-    } = await event.request.json();
-
-    if (!text || typeof text !== 'string') {
-      throw error(400, { message: 'Text is required' });
-    }
-
-    if (text.length > 3000) {
-      throw error(400, { message: 'Text too long (max 3000 characters)' });
-    }
-
-    const polly = await getPollyProvider(engine === 'standard' ? 'standard' : 'neural');
-    const result = await polly.synthesize({
-      text,
-      // Unset, the provider picks a voice for `language`, else its defaultVoice.
-      voice,
-      language,
-      rate,
-      format,
-      sampleRate,
-      includeSpeechMarks,
-      providerOptions: Array.isArray(speechMarkTypes) ? { speechMarkTypes } : undefined,
-    });
-
-    return json({
-      audio: result.audio instanceof Buffer ? result.audio.toString('base64') : result.audio,
-      contentType: result.contentType,
-      speechMarks: result.speechMarks,
-      metadata: result.metadata,
-    });
-  } catch (err) {
-    // Statuses raised above (the guards, request validation) are already
-    // client-safe and pass through unchanged.
-    if (isHttpError(err)) throw err;
-
-    failOpaquely('Synthesis error', err);
-  }
-};
-```
-
-### Voices Endpoint
-
-Create **`src/routes/api/tts/voices/+server.ts`**. The client's probe tries
-`/api/tts/polly/voices` first and falls back to `/api/tts/voices` on a 404, so
-either path works. The route returns the configured engine's voices.
-
-```typescript
-import { json, isHttpError } from '@sveltejs/kit';
-import type { RequestHandler } from './$types';
-import { getPollyProvider } from '$lib/server/polly';
-import {
-  requireAuthenticatedCaller,
-  enforceRateLimit,
-  failOpaquely,
-} from '$lib/server/tts-guards';
-
-export const GET: RequestHandler = async (event) => {
-  try {
-    // Guards first: reject before spending anything on the request.
-    await requireAuthenticatedCaller(event);
-    await enforceRateLimit(event);
-
-    const params = event.url.searchParams;
-    const language = params.get('language') || undefined;
-    const gender = (params.get('gender') || undefined) as 'male' | 'female' | 'neutral' | undefined;
-    const quality = (params.get('quality') || undefined) as 'standard' | 'neural' | undefined;
-
-    const polly = await getPollyProvider();
-    const voices = await polly.getVoices({ language, gender, quality });
-
-    return json({ voices });
-  } catch (err) {
-    // Statuses raised above (the guards) are already client-safe.
-    if (isHttpError(err)) throw err;
-
-    failOpaquely('Get voices error', err);
-  }
-};
-```
+| Parameter | Accepts | Effect |
+|---|---|---|
+| `engine` | `neural` (default), `standard` | lists that engine's voices |
+| `language` | a Polly language code, e.g. `en-US` | Polly's `LanguageCode` filter |
+| `gender` | `male`, `female`, `neutral` | keeps voices of that gender |
+| `quality` | `standard`, `premium`, `neural` | keeps voices whose `quality` matches; every voice carries its engine's name there, so this keeps all or none |
 
 ## Step 4: Configure the Client
 
@@ -321,131 +179,80 @@ covers provider configuration in general. A host without the toolkit constructs
 ## Step 5: Add Redis Caching (Optional)
 
 A cache in front of Polly answers repeat reads of the same text without a
-synthesis call. `generateHashedCacheKey` from `@pie-players/tts-server-core`
-builds the key from the provider id, voice, language, rate, format and a SHA-256
-hash of the text:
-
-```
-tts:aws-polly:Joanna:en-US:1.00:mp3:<sha256-hash-of-text>
-```
-
-The route below appends the other request fields that change the response:
-engine, sample rate and speech-mark types. A single-process host can use
-`MemoryCache` from the same package; each replica keeps its own copy.
+synthesis call. A single-process host can use `MemoryCache` from
+`@pie-players/tts-server-core`; each replica keeps its own copy, so a scaled
+deployment shares one cache through Redis.
 
 ```bash
 bun add ioredis
 ```
 
-Replace the synthesize route with:
+Add this to the copied synthesize route, and in `POST` replace the
+`polly.synthesize` call and the `return json(...)` after it with
+`return json(await synthesizeCached(polly, engine, request));`.
 
 ```typescript
-import { json, error, isHttpError } from '@sveltejs/kit';
-import type { RequestHandler } from './$types';
-import { generateHashedCacheKey } from '@pie-players/tts-server-core';
-import { getPollyProvider } from '$lib/server/polly';
 import {
-  requireAuthenticatedCaller,
-  enforceRateLimit,
-  failOpaquely,
-} from '$lib/server/tts-guards';
+  generateHashedCacheKey,
+  type SynthesizeRequest,
+} from '@pie-players/tts-server-core';
+import type { PollyServerProvider } from '@pie-players/tts-server-polly';
 import Redis from 'ioredis';
 
 const redis = process.env.REDIS_URL ? new Redis(process.env.REDIS_URL) : null;
 const CACHE_TTL_SECONDS = 24 * 60 * 60;
 
-export const POST: RequestHandler = async (event) => {
-  try {
-    // Guards first: reject before spending anything on the request.
-    await requireAuthenticatedCaller(event);
-    await enforceRateLimit(event);
+/** The response body, from Redis when an identical request was served before. */
+async function synthesizeCached(
+  polly: PollyServerProvider,
+  engine: string,
+  request: SynthesizeRequest,
+) {
+  // The text slot hashes the whole request, so the fields the other slots do
+  // not name (pitch, sample rate, speech mark types) still change the key.
+  const cacheKey = await generateHashedCacheKey({
+    providerId: `aws-polly:${engine}`,
+    text: JSON.stringify(request),
+    voice: request.voice || 'default',
+    language: request.language,
+    rate: request.rate,
+    format: request.format,
+  });
 
-    const {
-      text,
-      voice,
-      language,
-      rate,
-      engine: requestedEngine,
-      format,
-      sampleRate,
-      speechMarkTypes,
-      includeSpeechMarks = true,
-    } = await event.request.json();
-
-    if (!text || typeof text !== 'string') {
-      throw error(400, { message: 'Text is required' });
-    }
-
-    if (text.length > 3000) {
-      throw error(400, { message: 'Text too long (max 3000 characters)' });
-    }
-
-    const engine = requestedEngine === 'standard' ? 'standard' : 'neural';
-    const markTypes: string[] | undefined = Array.isArray(speechMarkTypes)
-      ? speechMarkTypes
-      : undefined;
-    const marks = includeSpeechMarks ? (markTypes ?? ['word']).join('+') : 'none';
-
-    const baseKey = await generateHashedCacheKey({
-      providerId: 'aws-polly',
-      text,
-      voice: voice ?? '',
-      language,
-      rate,
-      format,
-    });
-    const cacheKey = `${baseKey}:${engine}:${sampleRate ?? 24000}:${marks}`;
-
-    if (redis) {
-      try {
-        const cached = await redis.get(cacheKey);
-        if (cached) {
-          const response = JSON.parse(cached);
-          response.metadata.cached = true;
-          return json(response);
-        }
-      } catch (cacheError) {
-        // A cache failure costs a synthesis call, never the read.
-        console.warn('[TTS API] Cache read error:', cacheError);
-      }
-    }
-
-    const polly = await getPollyProvider(engine);
-    const result = await polly.synthesize({
-      text,
-      voice,
-      language,
-      rate,
-      format,
-      sampleRate,
-      includeSpeechMarks,
-      providerOptions: markTypes ? { speechMarkTypes: markTypes } : undefined,
-    });
-
-    const response = {
-      audio: result.audio instanceof Buffer ? result.audio.toString('base64') : result.audio,
-      contentType: result.contentType,
-      speechMarks: result.speechMarks,
-      metadata: result.metadata,
-    };
-
-    if (redis) {
-      try {
-        await redis.setex(cacheKey, CACHE_TTL_SECONDS, JSON.stringify(response));
-      } catch (cacheError) {
-        console.warn('[TTS API] Cache write error:', cacheError);
-      }
-    }
-
-    return json(response);
-  } catch (err) {
-    // Statuses raised above (the guards, request validation) are already
-    // client-safe and pass through unchanged.
-    if (isHttpError(err)) throw err;
-
-    failOpaquely('Synthesis error', err);
+  // A cache failure is logged and falls through to Polly.
+  const cached = await redis?.get(cacheKey).catch((cacheError) => {
+    console.warn('[TTS API] Cache read error:', cacheError);
+    return null;
+  });
+  if (cached) {
+    const response = JSON.parse(cached);
+    return { ...response, metadata: { ...response.metadata, cached: true } };
   }
-};
+
+  const result = await polly.synthesize(request);
+  const response = {
+    audio:
+      typeof result.audio === 'string'
+        ? result.audio
+        : result.audio.toString('base64'),
+    contentType: result.contentType,
+    speechMarks: result.speechMarks,
+    metadata: result.metadata,
+  };
+
+  await redis
+    ?.setex(cacheKey, CACHE_TTL_SECONDS, JSON.stringify(response))
+    .catch((cacheError) => console.warn('[TTS API] Cache write error:', cacheError));
+  return response;
+}
+```
+
+The cache key has the form below. The readable slots name the engine, voice,
+language, rate and format; two requests share a key only when every field
+matches, since the hash covers the whole request.
+
+```
+tts:aws-polly:neural:Joanna:en-US:1.00:mp3:<sha256-hash-of-request>
 ```
 
 ## Step 6: Test the Integration
@@ -459,7 +266,7 @@ curl -X POST http://localhost:5173/api/tts/synthesize \
   -H "Authorization: Bearer <token>" \
   -d '{"text": "Hello world", "voice": "Joanna"}'
 
-curl -H "Authorization: Bearer <token>" http://localhost:5173/api/tts/voices
+curl -H "Authorization: Bearer <token>" "http://localhost:5173/api/tts/voices?language=en-US"
 ```
 
 A working synthesize route returns `audio`, `contentType`, `speechMarks` and
@@ -469,19 +276,35 @@ A working synthesize route returns `audio`, `contentType`, `speechMarks` and
 
 ### Credentials
 
-AWS credentials stay on the server; neither route returns them. Production runs
-on an IAM role with no keys in the environment, as the setup guide's
-[Production Deployment](../../../docs/accessibility/aws-polly-setup-guide.md#production-deployment)
-section describes; `getPollyProvider` passes no credentials when the keys are
-unset, so the AWS SDK default credential chain picks up the role.
+- AWS credentials stay on the server; the browser never sees them.
+- In production, leave the key pair unset and give the container or instance an
+  IAM role: the routes then pass no credentials, and the SDK's default chain
+  finds the role.
+- An access key pair in the environment is for local development and for hosts
+  without a role.
 
 ### Error Responses
 
-Return a status and a generic message; keep the detail in the server log. AWS SDK
-error strings can name the region, an ARN, or the shape of the credential that
-failed, so forwarding `err.message` to the caller hands that to whoever is
-probing the endpoint. `failOpaquely` in Step 3 maps the provider's `TTSErrorCode`
-to a status and is the only place that mapping lives.
+The provider reports every AWS failure as a `TTSError`, and the routes pick the
+status by its `code`. The body carries a fixed message per status, and the error
+itself goes to the server log: AWS SDK error strings can name the region, an
+ARN, or the shape of the credential that failed, so forwarding `err.message`
+hands that to whoever probes the endpoint.
+
+| `TTSErrorCode` | Status | `message` |
+|---|---|---|
+| `INVALID_REQUEST`, `INVALID_VOICE`, `TEXT_TOO_LONG` | 400 | Text-to-speech cannot read this request. |
+| `RATE_LIMIT_EXCEEDED` | 429 | Text-to-speech is busy. Please try again shortly. |
+| `AUTHENTICATION_ERROR`, `INITIALIZATION_ERROR`, `NETWORK_ERROR`, `PROVIDER_ERROR` | 503 | Text-to-speech is unavailable. |
+| `INVALID_PROVIDER`, and any error that is not a `TTSError` | 500 | Text-to-speech is unavailable. |
+
+Polly reports a missing credential chain and a network failure as
+`PROVIDER_ERROR`, and a request outside its limits (blank or over-length text,
+an unsupported format, a rate or pitch out of range) as `TEXT_TOO_LONG` or
+`INVALID_REQUEST`. The guards and the routes' type checks on the body raise
+their own 503 and 400 before the provider is called. `STATUS_BY_CODE` is a `Record` over
+`TTSErrorCode`, so a code added to `@pie-players/tts-server-core` fails the type
+check until it is mapped.
 
 ### Authentication (required)
 
@@ -517,7 +340,7 @@ one, and on the client address where it does not. This is what
 `enforceRateLimit` in Step 3 delegates to:
 
 ```typescript
-// src/lib/server/tts-guards.ts
+// src/lib/server/tts.ts
 import { error } from '@sveltejs/kit';
 import type { RequestEvent } from '@sveltejs/kit';
 import { rateLimit } from '$lib/server/rate-limiter';
@@ -531,7 +354,7 @@ export async function enforceRateLimit(event: RequestEvent): Promise<void> {
   });
 
   if (!allowed) {
-    throw error(429, { message: 'Rate limit exceeded' });
+    throw error(429, 'Rate limit exceeded');
   }
 }
 ```
@@ -551,9 +374,14 @@ section covers usage monitoring.
 ### 503 from Every Request
 
 The server log names the cause. `requireAuthenticatedCaller is not implemented`
-or `enforceRateLimit is not implemented` means the Step 3 stubs are still in
-place. A `TTSError` with `AUTHENTICATION_ERROR` or `INITIALIZATION_ERROR` means
-the region or credentials are missing or rejected; the setup guide's
+or `enforceRateLimit is not implemented` means the guard stubs are still in
+place. A `CredentialsProviderError` means neither an access key pair nor the
+SDK's default chain supplied credentials: set both `AWS_ACCESS_KEY_ID` and
+`AWS_SECRET_ACCESS_KEY`, since one alone is ignored, or configure a profile or
+role the SDK can find. In a SvelteKit app, check that the routes read
+`$env/dynamic/private` ([Step 2](#step-2-configure-environment-variables)): a
+`.env` file never reaches `process.env`. The other `TTSErrorCode` values that
+map to 503 are in [Error Responses](#error-responses); the setup guide's
 [Troubleshooting](../../../docs/accessibility/aws-polly-setup-guide.md#troubleshooting)
 section covers each AWS error.
 
@@ -573,9 +401,8 @@ splits its own text.
 ### Empty Speech Marks
 
 The request sent `includeSpeechMarks: false`, which skips the marks request.
-Missing sentence marks mean `speechMarkTypes` was not forwarded: without
-`providerOptions.speechMarkTypes`, as Step 3 passes it, Polly returns word marks
-only.
+Missing sentence marks mean `speechMarkTypes` did not reach the route: without
+it Polly returns word marks only.
 
 ### Redis Connection Errors
 

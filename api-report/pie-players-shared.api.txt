@@ -362,6 +362,7 @@
   localeDirection
   normalizeLanguageTag
   resolveInterfaceI18n
+  toLanguageTag
 
 ./i18n/catalogs
   BUNDLED_LOCALES
@@ -372,6 +373,7 @@
   languageTagLookupSequence
   languageTagsEqual
   normalizeLanguageTag
+  toLanguageTag
 
 ./i18n/provider
   DEFAULT_LOCALE

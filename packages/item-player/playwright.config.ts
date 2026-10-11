@@ -1,6 +1,7 @@
 import { defineConfig, devices } from "@playwright/test";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { viteListeningOn } from "../../scripts/lib/playwright-web-server.mjs";
 
 const configDir = dirname(fileURLToPath(import.meta.url));
 const itemDemosCwd = resolve(configDir, "../../apps/item-demos");
@@ -34,8 +35,7 @@ export default defineConfig({
 	},
 	webServer: {
 		command: webServerCommand,
-		url: baseURL,
-		reuseExistingServer: false,
+		wait: viteListeningOn(baseURL),
 		timeout: 120_000,
 		// Suppress vite's dev-only crash overlay so it can't intercept clicks
 		// when something throws unhandled (e.g. lazy-loaded module errors).

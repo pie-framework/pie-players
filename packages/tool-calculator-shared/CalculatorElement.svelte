@@ -12,6 +12,16 @@
 	}}
 />
 
+<!--
+@component
+Calculator panel, rendered into its light DOM. The toolkit coordinator in the
+runtime context supplies the calculator provider registered under the base of
+`tool-id`; the panel mounts a `calculator-type` calculator from it, limited to
+`available-types`, with `calculatorConfig` as the provider's options. The host
+shows it with `visible`; the panel shows a loading or error message until the
+calculator mounts, then the provider's attribution link when it declares one.
+-->
+
 <script module lang="ts">
 	/** Registration metadata consumed by the package's guarded CE entry. */
 	export const registration = { tag: 'pie-tool-calculator' } as const;

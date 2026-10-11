@@ -186,11 +186,16 @@ export abstract class BaseTTSProvider implements ITTSServerProvider {
 
 	/**
 	 * Ensure provider is initialized before operations
-	 * @throws {Error} If provider not initialized
+	 * @throws {TTSError} `INITIALIZATION_ERROR` if provider not initialized
 	 */
 	protected ensureInitialized(): void {
 		if (!this.initialized) {
-			throw new Error(`Provider ${this.providerId} not initialized`);
+			throw new TTSError(
+				TTSErrorCode.INITIALIZATION_ERROR,
+				`Provider ${this.providerId} not initialized`,
+				undefined,
+				this.providerId,
+			);
 		}
 	}
 

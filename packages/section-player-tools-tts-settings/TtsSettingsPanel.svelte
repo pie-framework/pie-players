@@ -10,6 +10,13 @@
 	}}
 />
 
+<!--
+@component
+Developer dialog for the section player demos that configures the toolkit's text-to-speech tool: the provider (browser, Polly, Google or a host's `customProviders` tabs), its voice and options, the toolbar layout and inline speed buttons, with a voice preview. A host gives it `toolkitCoordinator` and, for server providers, the `api-endpoint` that serves voices and synthesis. Apply writes the `textToSpeech` tool config through the coordinator, stores it in localStorage under `storage-key`, and fires `close` once the coordinator's `ensureTTSReady()` resolves; a failure stays in the dialog as an error.
+
+@fires {CustomEvent<null>} close - When the dialog is dismissed by its close buttons or Escape, or after Apply succeeds.
+-->
+
 <script lang="ts">
 	import {
 		type AssessmentToolkitRuntimeContext,

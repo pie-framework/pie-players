@@ -295,7 +295,8 @@ try {
 Every `getVoices` failure is a `PROVIDER_ERROR`. Request validation runs before
 any Google call and rejects with a `TTSError`: `TEXT_TOO_LONG` for text over
 5000 characters, `INVALID_REQUEST` for empty text, an unsupported format, or a
-rate or pitch out of range. A call before `initialize` throws a plain `Error`.
+rate or pitch out of range. A call before `initialize` throws a `TTSError` with
+`INITIALIZATION_ERROR`.
 
 ## Advanced Configuration
 

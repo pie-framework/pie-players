@@ -86,6 +86,28 @@ Rules:
   `?customElement` imports are rejected by
   `bun run check:custom-elements:dist`, which reads the built `dist`.
 
+## Custom elements manifest
+
+Every published package that registers an element ships a committed
+`custom-elements.json` (schema 2.1.0), declared by `"customElements":
+"custom-elements.json"` and listed in `files`.
+`bun run custom-elements-manifest` regenerates it from source;
+`bun run check:custom-elements-manifest` fails on a stale manifest or a
+package.json that does not match.
+
+Attributes, properties and methods come from the code. The element's own doc
+comment carries the rest: a `<!-- @component -->` comment after
+`<svelte:options>`, or a JSDoc block above the class, with a description and
+`@fires {CustomEvent<Detail>} name - …`, `@slot [name] - …` and
+`@csspart name - …` tags. The check fails on an event the element dispatches,
+a slot or a part it renders that the comment does not document. It cannot
+see events that bubble out of an element the component renders: document
+those a host listens for on this element too, as the section-player layouts do
+for the toolkit's events. CSS custom
+properties come from `component-public` tokens in
+`packages/theme/src/token-registry.json`, never from a doc tag. A light-DOM
+element lists its `pie-*` classes under `x-pie.classes`.
+
 ## Adding a new publishable package
 
 When the package will be published to npm:
@@ -95,7 +117,9 @@ When the package will be published to npm:
    same change**.
 2. Register the package's `exports` entries pointing at `dist/`.
 3. Add or update a `*-element.ts` registration entry per CE.
-4. Author a changeset (default `patch`) — see the
+4. Run `bun run custom-elements-manifest` and add the `customElements` field
+   and `files` entry it asks for.
+5. Author a changeset (default `patch`) — see the
    `releases-and-changesets` skill.
 
 A publishable package outside the `fixed` block silently breaks the
@@ -121,6 +145,7 @@ bun run check:source-exports
 bun run check:consumer-boundaries
 bun run check:custom-elements
 bun run check:custom-elements:dist
+bun run check:custom-elements-manifest
 bun run check:svelte-runtime-deps
 bun run check:svelte-type-imports
 bun run check:ce-define-safety

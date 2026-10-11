@@ -10,6 +10,17 @@
 	}}
 />
 
+<!--
+@component
+Colour scheme picker: a dropdown of the schemes registered with
+`@pie-players/pie-theme`, each with a preview, that applies the chosen scheme to
+the nearest `<pie-theme>`. The choice is recorded per section and attempt in the
+runtime context's element tool state store and reapplied when the tool mounts
+again in that attempt. The host shows it with `visible`; it registers `tool-id`
+with the tool coordinator on the modal layer, traps focus while open, and hides
+itself there once a scheme is chosen.
+-->
+
 <!-- ToolColorScheme - WCAG Color Scheme Selection Tool
 
   Provides accessible color scheme options for users who need

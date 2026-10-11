@@ -6,6 +6,13 @@
 	}}
 />
 
+<!--
+@component
+Items pane of a section player: renders the item cards of the current composition and runs the section's element pre-warm. It takes no attributes or properties: it reads the section player it sits in from a context the kernel publishes, so it renders at any depth below one and renders nothing outside one. Only the first connected items pane of a section player renders.
+
+@fires {CustomEvent<FrameworkErrorModel>} framework-error - When the element pre-warm fails and the section player has no toolkit coordinator to report it through.
+-->
+
 <script lang="ts">
 	import { onMount, untrack } from "svelte";
 	import type {

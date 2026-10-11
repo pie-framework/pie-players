@@ -16,9 +16,8 @@
 />
 
 <!--
-  SectionToolBar - Thin wrapper around `<pie-item-toolbar>` for
-  section-level placement. The toolkit coordinator drives PNP/profile inputs
-  via its policy engine, so toolbars do not resolve them locally.
+@component
+A section-level toolbar: a `<pie-item-toolbar>` at level `section`, scoped to the section a host names in `section-id`, rendering the tools in `enabled-tools` plus any `hostButtons`. The enclosing toolkit's coordinator drives the personal needs profile inputs through its policy engine, so the toolbar resolves none of them itself.
 -->
 <script lang="ts">
 	import "./item-toolbar-element.js";

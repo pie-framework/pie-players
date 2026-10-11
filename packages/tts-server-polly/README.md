@@ -25,15 +25,22 @@ npm install @pie-players/tts-server-polly
 ```typescript
 import { PollyServerProvider } from '@pie-players/tts-server-polly';
 
+const { AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_SESSION_TOKEN } = process.env;
+
 const provider = new PollyServerProvider();
 
 await provider.initialize({
   region: 'us-east-1',
-  // Omit credentials to use the AWS SDK default credential chain (an IAM role).
-  credentials: {
-    accessKeyId: process.env.AWS_ACCESS_KEY_ID!,
-    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,
-  },
+  // Explicit keys only when both are set; otherwise the AWS SDK default
+  // credential chain resolves them (IAM role, SSO, shared profile).
+  credentials:
+    AWS_ACCESS_KEY_ID && AWS_SECRET_ACCESS_KEY
+      ? {
+          accessKeyId: AWS_ACCESS_KEY_ID,
+          secretAccessKey: AWS_SECRET_ACCESS_KEY,
+          sessionToken: AWS_SESSION_TOKEN || undefined,
+        }
+      : undefined,
   engine: 'neural', // or 'standard'
   defaultVoice: 'Joanna',
 });
@@ -198,7 +205,7 @@ AWS failures from `synthesize` and `getVoices` arrive as a `TTSError`:
 Request validation runs before any AWS call and rejects with a `TTSError`:
 `TEXT_TOO_LONG` for text over 3000 characters, `INVALID_REQUEST` for empty text,
 an unsupported format, or a rate or pitch out of range. A call before
-`initialize` throws a plain `Error`.
+`initialize` throws a `TTSError` with `INITIALIZATION_ERROR`.
 
 ## AWS IAM Permissions
 

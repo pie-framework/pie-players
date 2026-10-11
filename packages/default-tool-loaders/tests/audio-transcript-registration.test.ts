@@ -101,6 +101,20 @@ describe("audio transcript content resolution", () => {
 		expect(resolveAudioTranscript(dependencyContext(cards, true))).toBeNull();
 	});
 
+	it("reports a POSIX card language as a BCP 47 tag", () => {
+		const cards: CatalogCard[] = [
+			{
+				catalog: "transcript",
+				content: "el texto",
+				language: "es_ES",
+				visibility: "always",
+			},
+		];
+		expect(
+			resolveAudioTranscript(dependencyContext(cards, false))?.language,
+		).toBe("es-ES");
+	});
+
 	it("prefers an always card over an accommodation card found earlier", () => {
 		const cards: CatalogCard[] = [
 			{ catalog: "transcript", content: "gated", visibility: "onGrant" },

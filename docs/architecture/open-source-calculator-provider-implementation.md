@@ -1,17 +1,24 @@
 # Open-Source Calculator Provider Implementation Specification
 
-Status: Implemented
+Status: Implemented, 2026-08-26
 
 Related PRD:
 [`../prds/open-source-calculator-provider.md`](../prds/open-source-calculator-provider.md)
 
 ## Purpose
 
-This document records the module boundaries, runtime ownership, worker
+This specification records the module boundaries, runtime ownership, worker
 protocol and state flow of the Cortex provider behind the provider-neutral
-calculator contract.
+calculator contract. It is for contributors changing
+`@pie-players/pie-calculator-cortex`. The
+[package README](../../packages/calculator-cortex/README.md) is the host
+reference: settings, limits, restricted mode, errors, telemetry, state,
+theming, the keypad and localization. The
+[PRD](../prds/open-source-calculator-provider.md) records the product
+requirements behind them.
 
-The implementation is a deep provider module. Hosts see the existing
+The implementation is a deep provider module: a small public surface over a large
+internal implementation. Hosts see the existing
 `CalculatorProvider`/`Calculator` seam plus typed Cortex configuration and state.
 MathLive, Compute Engine, JSXGraph, worker scheduling, graph sampling, and the
 MathLive settings lease remain internal details.
@@ -54,8 +61,9 @@ MathLive settings lease remain internal details.
     CortexToolProvider registration adapter and lazy loading
 
 @pie-players/pie-tool-calculator-shared
-    generic shell and inline shell, registered as <pie-tool-calculator> and
-    <pie-tool-calculator-inline> for every provider
+    generic shell, registered as <pie-tool-calculator> for every provider,
+    and the inline shell that pie-tool-calculator-inline-desmos registers
+    as <pie-tool-calculator-inline>
 ```
 
 ### Public packages
@@ -67,52 +75,32 @@ joins the fixed Changesets release block.
 
 Cortex has no element of its own. `provider.id = "calculator-cortex"` in
 `tools.providers.calculator` selects it, and the generic element mounts it under
-the `calculator` tool id. Provider-specific wrapper packages were removed: they
-differed from the generic element only in tag name.
+the `calculator` tool id. One element serves every provider, so the Cortex and
+GeoGebra wrapper packages, which differed from the generic element only in tag
+name, are gone (4e9f8324). Two Desmos-named packages remain as compatibility
+entries: `@pie-players/pie-tool-calculator-desmos` registers the generic
+`<pie-tool-calculator>` from `@pie-players/pie-tool-calculator-shared`, and
+`@pie-players/pie-tool-calculator-inline-desmos` registers
+`<pie-tool-calculator-inline>` over the shared inline surface.
 
-### Existing packages changed
+### Loader composition
 
-- `@pie-players/pie-default-tool-loaders` adds `CortexToolProvider`, following
-  the final GeoGebra adapter shape and lazy-importing
-  `@pie-players/pie-calculator-cortex`, which it declares as a dependency. It
-  recognizes `"calculator-cortex"`, maps it to the Cortex adapter, and preserves
-  `"calculator-desmos"` as the omission default.
-- `@pie-players/pie-tool-calculator-shared` gains a provider-neutral
-  registration entry for the generic `<pie-tool-calculator>` element.
-- The packaged calculator module loader imports that neutral registration entry
-  instead of importing the Desmos-named direct tool package merely to define
-  the generic tag.
+- `@pie-players/pie-default-tool-loaders` holds `CortexToolProvider`, a lazy
+  calculator adapter like the GeoGebra one, which imports
+  `@pie-players/pie-calculator-cortex` on first use and declares it as a
+  dependency. The loader recognizes `"calculator-desmos"`,
+  `"calculator-geogebra"` and `"calculator-cortex"`, and `"calculator-desmos"` is
+  the default when none is named.
+- The packaged capability composition defines `<pie-tool-calculator>` from the
+  provider-neutral `@pie-players/pie-tool-calculator-shared/calculator-element`
+  entry, so no Desmos-named package is loaded to define the generic tag.
 
 ## Provider Module Design
 
-Source layout of `packages/calculator-cortex/src/`:
-
-```text
-index.ts
-cortex-provider.ts
-runtime.ts
-calculator-controller.ts
-settings.ts
-localization.ts
-function-policy.ts
-state-codec.ts
-errors.ts
-types.ts
-evaluation-client.ts
-evaluation-engine.ts
-evaluation-worker.ts
-module-worker.ts
-worker-protocol.ts
-mathlive-runtime.ts
-mathlive-browser.d.ts
-CalculatorView.svelte
-MathFieldInput.svelte
-Keypad.svelte
-keypad-layouts.ts
-GraphView.svelte
-Icon.svelte
-icons.ts
-```
+Source lives in `packages/calculator-cortex/src/`. The modules below each own a
+boundary; the Svelte view, keypad and graph components are covered under
+[UI And Accessibility Structure](#ui-and-accessibility-structure) and
+[Graph Sampling And Rendering](#graph-sampling-and-rendering).
 
 ### `cortex-provider.ts`
 
@@ -329,13 +317,14 @@ The protocol is internal but versioned so stale chunks fail closed with
 - Allow a new worker 20 s to post `ready`. Past that, terminate it and reject
   outstanding requests with `worker-unavailable`; the next request creates a
   fresh worker.
-- Superseded graph requests are logically cancelled by generation. Their
+- Superseded graph requests are logically canceled by generation. Their
   responses are ignored even if the worker finishes them.
 - Destroy rejects pending requests, removes listeners, and terminates the
   instance worker.
 
-The 100-2,000 ms host setting is validated before crossing the worker boundary.
-The worker applies the same hard range and does not trust the request.
+The `evaluationTimeLimitMs` host setting (100-2,000 ms, default 1,000) is
+validated before crossing the worker boundary. The worker applies the same hard
+range and does not trust the request.
 
 ## Graph Sampling And Rendering
 
@@ -367,8 +356,8 @@ idempotent.
 
 Keyboard trace selects one visible series and moves along its latest sampled
 points. It exposes labeled previous/next controls and announces expression, x,
-and y. It is an alternative representation, not a claim that JSXGraph's canvas
-or SVG output alone is accessible.
+and y. It is an alternative representation; JSXGraph's canvas or SVG output is
+not accessible on its own.
 
 ## MathLive Settings Ownership
 
@@ -419,8 +408,10 @@ It provides:
 
 The theme interface uses canonical semantic tokens for all ordinary surfaces,
 text, controls, focus, primary actions, and error feedback. The only
-calculator-specific public tokens are the six graph-series colors, because PIE
-has no canonical data-series palette. The renderer resolves those values from
+calculator-specific public tokens are the six graph-series colors,
+`--pie-calculator-series-1` through `--pie-calculator-series-6`, because PIE has no
+canonical data-series palette; the
+[package README](../../packages/calculator-cortex/README.md) documents them. The renderer resolves those values from
 computed styles before giving JSXGraph numeric series attributes, keeping the
 DOM swatch and plotted curve in sync. `theme: "auto"` follows
 `prefers-color-scheme`; explicit light and dark modes install accessible local
@@ -482,9 +473,6 @@ to recognize MathLive, Compute Engine, JSXGraph, or worker-native error shapes.
   demo and tests run successfully with outbound requests blocked.
 - Preserve upstream copyright and license notices in published artifacts and
   repository attribution documentation.
-- Before implementation locks versions, re-check the official license file for
-  every dependency and transitive asset. Record the exact selected versions and
-  license identifiers in the changeset/PR evidence.
 - Run a production build and inspect emitted URLs so no dependency default
   points at a CDN.
 

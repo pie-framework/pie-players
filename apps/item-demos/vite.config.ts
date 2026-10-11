@@ -3,7 +3,7 @@ import { vitePreprocess } from "@sveltejs/vite-plugin-svelte";
 
 /**
  * Resolves `@pie-players/*` via package `exports` → `dist/` (no Vite alias table).
- * Same dist-first contract as section-demos; see docs/development/demo-workspace-resolution.md
+ * Same dist-first contract as section-demos; see docs/setup/demo_system.md#package-resolution
  */
 import { sveltekit } from "@sveltejs/kit/vite";
 import tailwindcss from "@tailwindcss/vite";

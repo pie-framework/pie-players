@@ -1,9 +1,10 @@
 # Safe Custom Tool Configuration
 
-`createToolsConfig()`, strictness, and the per-tool `sanitizeConfig` and
-`validateConfig` hooks are documented in the
-[assessment toolkit README](../../packages/assessment-toolkit/README.md#safe-custom-tool-configuration).
-This page covers the two section-player concerns beside them.
+This page is for section-player hosts that register custom tools. `createToolsConfig()`,
+strictness, and the per-tool `sanitizeConfig` and `validateConfig` hooks are
+documented in the
+[assessment toolkit README](../../packages/assessment-toolkit/README.md#safe-custom-tool-configuration);
+this page covers the two section-player concerns beside them.
 
 ## Registry on the layout
 
@@ -17,9 +18,14 @@ layout.runtime = { ...(layout.runtime ?? {}), coordinator };
 layout.toolRegistry = registry;
 ```
 
-## Overlay safety in section-player
+## Tool id validation
 
-`enabled-tools` (the section-toolbar override) is normalized in section-player and validated in toolkit initialization. Per-region placement is configured directly on `tools.placement.{item,passage}` (or `runtime.tools.placement.{item,passage}`) and validated through the same path; `item-toolbar-tools` / `passage-toolbar-tools` aliases are not supported. Invalid IDs in any of these surfaces produce diagnostics (or throw in strict `error`).
+`enabled-tools`, the section-toolbar override, is normalized in the section
+player and validated when the toolkit initializes. Item and passage placement
+lives on `tools.placement.item` and `tools.placement.passage` (on a section
+player, `runtime.tools.placement`) and is validated on the same path. Invalid
+ids in any of them produce diagnostics, or throw under
+`toolConfigStrictness: "error"`.
 
 ## Related docs
 

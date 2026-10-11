@@ -1,81 +1,66 @@
-# pie-players
+# PIE Players
 
-PIE players and assessment toolkit with Bun + TypeScript + Svelte 5.
+Players, an assessment toolkit and accessibility tools for [PIE](https://pie-framework.org) (Portable Interactions and Elements) assessment content. Every player is a custom element, so it runs in any web page, with any framework or none.
 
-PIE Players ships building blocks: the item and section players, the assessment
-toolkit, tools and theme. Hosts assemble their own production assessment
-players from them; `packages/assessment-player` is a basic reference player for
-examples ([product scope](docs/architecture/architecture.md#product-scope)).
+- **Item player** renders one PIE item, for delivery or authoring.
+- **Section player** composes the items and passages of one section, with layouts, toolbars and section session state.
+- **Assessment toolkit** coordinates tools, accommodations, text-to-speech, highlighting and accessibility catalogs, and resolves which tools each learner receives.
+- **Tools**: calculators, ruler, protractor, line reader, answer eliminator, highlighter, dictionaries, color schemes, sign language video and more.
+- **Print player** renders items for paper and answer keys; **theme** carries design tokens and color schemes.
 
-**Docs app**: `apps/docs`
-**Examples app**: `apps/section-demos`
+The PIE elements these players render, the question types and passages, come from [pie-elements-ng](https://github.com/pie-framework/pie-elements-ng). Hosts assemble their production assessment players from these building blocks; `@pie-players/pie-assessment-player` is a reference assembly ([product scope](docs/architecture/architecture.md#product-scope)).
 
-## Quick Start
+![PIE Players building blocks: the host embeds the item, section, print or reference assessment player; the assessment toolkit configures them and places tools; every player renders PIE elements](docs/img/building-blocks.excalidraw.svg)
 
-```bash
-bun install
-bun run dev:section -- --rebuild   # First section-demo run (builds package dist outputs)
-bun run dev:section                # Section demos (daily run)
-bun run dev:docs                   # Docs site
-```
-
-## Development
+## Quick start
 
 ```bash
-bun run dev      # Section demos (same as dev:section)
-bun run build    # Build publishable packages (excludes apps and tools)
-bun run typecheck
-bun run test
-bun run format   # Reformat every file with Biome (CI gates on biome lint only)
+npm install @pie-players/pie-item-player
 ```
 
-Requires Bun 1.3.11 and Node 22.16 (`.nvmrc`); `bun run dev` serves section-demos on port 5300.
+Or, without a build step:
 
-Demo apps resolve publishable packages through **`dist/`** (and section-demos uses explicit Vite aliases for many tools). See [Demo workspace resolution](docs/development/demo-workspace-resolution.md).
-
-## Consumer Import Rules
-
-When consuming PIE web components from apps or other packages:
-
-- Import custom-element registration entrypoints (for example `@pie-players/pie-assessment-toolkit/components/item-toolbar-element`), not raw package `.svelte` component files.
-- Do not import package source paths like `@pie-players/<pkg>/src/...` from consumers.
-- Do not use cross-package `?customElement` imports.
-- Keep runtime package exports pointing to built `dist` artifacts.
-- Type-check with `moduleResolution` `bundler`, `node16` or `nodenext`. `node10` (`node`) ignores `exports` and cannot resolve the subpaths these packages publish; see [Library Packaging Strategy](docs/setup/library-packaging-strategy.md#consumer-guidance-current-scope).
-
-Boundary checks:
-
-```bash
-bun run check:source-exports
-bun run check:consumer-boundaries
-bun run check:custom-elements
+```html
+<script
+  type="module"
+  src="https://cdn.jsdelivr.net/npm/@pie-players/pie-item-player@x.y.z/dist/pie-item-player.js"
+></script>
+<pie-item-player id="player"></pie-item-player>
 ```
 
-## Versioning and releases
-
-Every publishable `@pie-players/*` package releases at one fixed (lockstep) version. Releases go out from CI through Changesets; the release flow, auth modes and local retry steps are in [Publishing Contract](docs/setup/publishing.md).
-
-## Release Labels
-
-Use release labels to tag a coordinated release wave.
-
-```bash
-bun run release:label                # Create annotated tag (default: pie-players-YYYY.MM.DD)
-bun run release:label -- --label players-2026.02
-bun run release:label:push           # Create and push tag to origin
-```
-
-## Packages
-
-The publishable packages are listed in [Publishable packages](docs/setup/publishable_packages.md), which `check:docs:publishable-packages` keeps in step with the workspace.
+[Getting started](docs/getting-started.md) renders an item, saves the learner's response and scores it.
 
 ## Documentation
 
-- [Architecture](docs/architecture/architecture.md)
-- [Item Player Overview](docs/item-player/overview.md)
-- [Launching from LTI](docs/integrations/lti.md)
-- [Publishing Contract](docs/setup/publishing.md)
-- [Docs Index](docs/readme.md)
+| Guide | Covers |
+| --- | --- |
+| [Getting started](docs/getting-started.md) | A first item in a page |
+| [Installing](docs/install/packages.md) | Packages, entry points, versions and pinning |
+| [Architecture](docs/architecture/architecture.md) | How the players, toolkit, tools and elements fit together |
+| [Item player](docs/item-player/overview.md) | Loading strategies, modes, sessions, scoring |
+| [Section player](docs/section-player/integration-guide.md) | Sections, layouts, navigation, persistence |
+| [Assessment toolkit](packages/assessment-toolkit/README.md) | Tools, accommodations and tool policy |
+| [Accessibility](docs/accessibility/README.md) | Text-to-speech, accessibility catalogs, WCAG |
+| [Theming](docs/theming/how-theming-works.md) | Design tokens and color schemes |
+| [Security](docs/security/readme.md) | Answer keys, hosted mode, trust boundaries |
+| [All documentation](docs/readme.md) | The full index |
+
+## Packages
+
+The `@pie-players/*` packages release together under one version number, written `x.y.z` in these docs; the preloaded player is versioned on its own. [Packages and entry points](docs/install/packages.md) lists every package and what it needs, and [versioning](docs/install/versioning.md) covers pinning and stability.
+
+## Contributing
+
+The packages are built with Bun, TypeScript and Svelte 5. Each custom-element package bundles its UI runtime (Svelte 5; Lit for the print player), so hosts install no framework.
+
+```bash
+bun install
+bun run dev:section -- --rebuild   # first run: builds package dist outputs
+bun run dev:section                # section demos
+bun run test
+```
+
+Contributors need Bun 1.3.11 and Node 22.16 (`.nvmrc`); the [demo system](docs/setup/demo_system.md#prerequisites) lists the rest of the toolchain. [Environment setup](docs/setup/environment-setup.md) covers the demos' environment variables and [releasing](docs/setup/publishing.md) the release workflow.
 
 ## License
 

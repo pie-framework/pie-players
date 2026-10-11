@@ -260,7 +260,7 @@ backend fails to start. The Google voice-type and gender filters stay in panel
 storage and leave the applied config, and the Polly `engine`, `sampleRate` and
 `format` apply at the config's top level alone. Checked against the checkouts of
 Hosts A, M, P, R and V, each scan reaching `@pie-players` imports, and Host A's
-and Host P's feature branches: only Host R mounts the panel. Its SchoolCity entry
+and Host P's feature branches: only Host R mounts the panel. Its SC entry
 still sets `mode` and an apply `message`, which the panel ignores, and builds the
 entry untyped, so nothing fails to compile; importing the type would make both
 excess properties. Row verification dates are unchanged.
@@ -1010,7 +1010,7 @@ that token keeps PIE's default.
 It registers through its own bundled copy of `pie-theme`, while `<pie-theme>` is
 defined by whichever copy loads first. On its vendored build each copy keeps a
 private registry, so an earlier PIE remote on the same page leaves Host M on
-default colours. The page-wide registry of 2026-10-02 removes that once every
+default colors. The page-wide registry of 2026-10-02 removes that once every
 copy on the page carries it.
 
 ### Internal layout CEs as style selectors (Host A)
@@ -1630,7 +1630,7 @@ Verified against the checkout on 2026-09-25.
 
 Host A type-checks with TypeScript's `node10` resolution, which this repository
 does not support (see
-[Library Packaging Strategy](../setup/library-packaging-strategy.md#consumer-guidance-current-scope)),
+[TypeScript](../install/packages.md#typescript)),
 and leaves `skipLibCheck` at its default, `false`, so every `@pie-players`
 declaration its program loads is checked. That program loads `pie-theme`'s root
 declarations and nothing else: the `pie-section-player` component subpath is a
@@ -1701,7 +1701,7 @@ item-player's 0.3.61 changelog shows only a lockstep dependency bump while that
 release's tree already contained the installing code. Version comparisons here
 use 0.3.61 as the threshold; a host reading only the changelog will over-pin
 to 0.3.62. The player installs nothing when the host already loads a copy,
-recognised by the `--pie-content-styles` sentinel even inside `@scope`, and
+recognized by the `--pie-content-styles` sentinel even inside `@scope`, and
 removes its own copy when the host's lands later. The explicit opt-out is
 `data-pie-content-styles="host"` on `<html>`; `auditContentStyles` warns once per
 page when a host sets it and then loads nothing.
@@ -1753,7 +1753,7 @@ and it was restored on 2026-10-06. Also gone from the
 heading reset is `font-weight: 500`, so authored headings render at the browser's
 weight; hosts V and A both load this stylesheet and will see that.
 
-Separately from delivery, the stylesheet's own colours now resolve through
+Separately from delivery, the stylesheet's own colors now resolve through
 canonical tokens. For a host on the base light theme the values are the ones it
 already rendered, with one visible exception: legacy `kds-*` table headers take
 `--pie-background-dark`, so their fill lightens from `#d3d3d3` to `#ecedf1`.
@@ -2157,7 +2157,7 @@ repo.
   fork is now four capabilities behind at section level — the two dictionaries and
   their Spanish variants — which is why that host serves a dictionary endpoint
   and never shows a dictionary panel. Its item and passage lists still match. The
-  last surviving instance of the forking pattern its colour schemes used to share.
+  last surviving instance of the forking pattern its color schemes used to share.
 - Host R declares four `@pie-players` packages it imports nowhere:
   `pie-calculator-desmos`, `pie-tool-text-to-speech`,
   `pie-section-player-tools-shared`, `tts-client-server`. The packaged registry
@@ -2194,7 +2194,7 @@ repo.
   `pie-theme`, which both packages declare from that release too. The types are
   identical, so the local entries become redundant without conflicting.
 - Host M's comment on registering its provider says an earlier PIE remote leaves
-  it on default colours. True on its vendored build, stale once every
+  it on default colors. True on its vendored build, stale once every
   `pie-theme` copy on the page carries the page-wide registry.
 
 ## Refresh procedure

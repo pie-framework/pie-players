@@ -153,7 +153,7 @@ From ADR 0003, for every host and element:
   settings that change the model.
 - The mapping from a profile to support ids lives in the host, which resolves it
   through the toolkit's policy precedence. An element maps a fixed support id to a
-  fixed behaviour, because item configs pin element versions and a rule inside an
+  fixed behavior, because item configs pin element versions and a rule inside an
   element is frozen into each of them.
 - The context value only grows: fields are added, never removed or redefined.
   Consumers ignore support ids they do not recognize, and an unanswered request
@@ -309,11 +309,12 @@ version. The source of truth is the `fixed` block in `.changeset/config.json`.
 - Use `bun run release:with-version` for local publishing. Do not run
   `npm publish` or `bun run release` directly.
 - Local publishing uses the current checkout and branch unless the user
-  explicitly asks to switch or use a workflow.
+  explicitly asks to switch or use a workflow. Confirm `git branch --show-current`
+  and `git status --short` before running the publish command.
 - NPM auth is loaded from `.env` via `dotenvx`; no separate `npm login` is
   needed when `.env` contains a valid token.
 - If a release fails after `bun run version` mutates package files, do not rerun
-  `release:with-version`; follow `docs/setup/publishing.md`.
+  `release:with-version`; follow `docs/setup/publishing.md#retrying-a-failed-local-release`.
 - Because release verification can trigger Playwright, invoke local publish with
   `required_permissions: ["all"]`.
 
@@ -608,7 +609,7 @@ apps need nothing: SvelteKit generates it into `node_modules/$app/tsconfig.json`
   module loaders. The only place a packaged capability set is named.
 - `packages/players-shared` - shared utilities, sanitizer, and PIE config.
 - `packages/pie-context` - shared runtime context.
-- `packages/theme` - theme token contract, `<pie-theme>`, colour schemes, and the
+- `packages/theme` - theme token contract, `<pie-theme>`, color schemes, and the
   DaisyUI provider adapter.
 - `packages/tool-*` and `packages/section-player-tools-*` - runtime tools.
 - `packages/tts*` - TTS client and server packages.

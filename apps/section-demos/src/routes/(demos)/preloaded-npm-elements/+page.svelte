@@ -182,7 +182,7 @@
 	}
 
 	/**
-	 * Remount-and-hydrate, as docs/assessment-player/client-architecture-tutorial.md
+	 * Remount-and-hydrate, as docs/assessment-player/integration-guide.md
 	 * orders a section transition: persist the section being left, then replace
 	 * its player. Changing `section-id` and `section` on a mounted player does
 	 * not rebuild it.

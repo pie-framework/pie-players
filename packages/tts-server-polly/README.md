@@ -1,21 +1,16 @@
 # @pie-players/tts-server-polly
 
-AWS Polly provider for server-side text-to-speech with native speech marks support.
+`PollyServerProvider`, the AWS Polly provider for server-side text-to-speech
+(TTS), built on `@pie-players/tts-server-core`. It returns audio together with
+Polly's speech marks, the word timings that drive read-aloud highlighting in the
+browser. This README covers the provider's configuration and behavior for
+developers writing a host's TTS routes. The
+[integration guide](./examples/INTEGRATION-GUIDE.md) builds those routes in
+SvelteKit; the [AWS Polly setup guide](../../docs/accessibility/aws-polly-setup-guide.md)
+covers credentials and the IAM policy; [TTS Architecture](../../docs/accessibility/tts-architecture.md)
+covers the browser and server flow across packages.
 
-For the cross-package TTS architecture and browser/server flow, see
-[TTS Architecture](../../docs/accessibility/tts-architecture.md). This README
-focuses on AWS Polly-specific provider configuration and behavior.
-
-## Overview
-
-This package provides a server-side TTS provider that uses AWS Polly to generate high-quality neural speech with millisecond-precise word timing through speech marks.
-
-## Features
-
-- **Native Speech Marks** - Millisecond-accurate word timing from AWS Polly
-- **Neural Voices** - High-quality neural TTS (default) or standard voices
-- **SSML** - Polly's supported subset
-- **Parallel Requests** - Audio and speech marks fetched simultaneously
+The package runs on Node.js 20 or later.
 
 ## Installation
 
@@ -34,6 +29,7 @@ const provider = new PollyServerProvider();
 
 await provider.initialize({
   region: 'us-east-1',
+  // Omit credentials to use the AWS SDK default credential chain (an IAM role).
   credentials: {
     accessKeyId: process.env.AWS_ACCESS_KEY_ID!,
     secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,
@@ -43,24 +39,27 @@ await provider.initialize({
 });
 ```
 
+`initialize` validates the config and creates the Polly client without calling
+AWS. A missing `region` throws a `TTSError` with `INITIALIZATION_ERROR`.
+
 ### Synthesize Speech
 
 ```typescript
 const result = await provider.synthesize({
   text: 'Hello world, this is a test of AWS Polly text to speech.',
-  voice: 'Joanna', // Optional, uses defaultVoice if not specified
+  voice: 'Joanna', // optional; see Voice Selection
   includeSpeechMarks: true,
 });
 
 console.log('Audio:', result.audio); // Buffer
-console.log('Speech marks:', result.speechMarks); // Array of word timings
+console.log('Speech marks:', result.speechMarks); // word timings
 console.log('Synthesis time:', result.metadata.duration, 'seconds');
 ```
 
 ### List Available Voices
 
 ```typescript
-// Get all neural voices
+// Voices for the configured engine
 const voices = await provider.getVoices();
 
 // Filter by language
@@ -69,6 +68,11 @@ const spanishVoices = await provider.getVoices({ language: 'es-ES' });
 // Filter by gender
 const femaleVoices = await provider.getVoices({ gender: 'female' });
 ```
+
+`getVoices` asks Polly for the configured engine's voices, in the requested
+language when one is given, and filters by gender and quality locally. Each
+voice's `providerMetadata` carries Polly's `supportedEngines` and
+`additionalLanguageCodes`.
 
 ### Speech Marks Example
 
@@ -85,6 +89,10 @@ const result = await provider.synthesize({
 // ]
 ```
 
+`time` is milliseconds into the audio. `start` and `end` are UTF-16 indexes into
+the request text, end exclusive; the provider re-anchors Polly's UTF-8 byte
+offsets to them.
+
 ## Configuration
 
 ### PollyProviderConfig
@@ -92,36 +100,59 @@ const result = await provider.synthesize({
 ```typescript
 interface PollyProviderConfig {
   region: string;                    // AWS region (required)
-  credentials?: {                    // AWS credentials (optional if using IAM)
+  credentials?: {                    // omitted: AWS SDK default credential chain
     accessKeyId: string;
     secretAccessKey: string;
     sessionToken?: string;
   };
-  engine?: 'neural' | 'standard';   // Voice engine (default: 'neural')
-  defaultVoice?: string;             // Default voice ID (default: 'Joanna')
-  enableLogging?: boolean;           // Debug logging (default: false)
+  engine?: 'neural' | 'standard';   // fixed per instance (default: 'neural')
+  defaultVoice?: string;             // default: 'Joanna'
+  enableLogging?: boolean;           // log SSML detection (default: false)
 }
 ```
 
-### Environment Variables
+The provider reads no environment variables; the host passes region and
+credentials in. The [setup guide](../../docs/accessibility/aws-polly-setup-guide.md)
+lists the variables the demo routes read and the IAM role setup for production.
 
-```bash
-AWS_REGION=us-east-1
-AWS_ACCESS_KEY_ID=your_key_id
-AWS_SECRET_ACCESS_KEY=your_secret_key
-```
+## Synthesis Behavior
+
+- **Requests.** Each synthesis sends two SynthesizeSpeech requests in parallel,
+  one for the audio and one for the speech marks. `includeSpeechMarks: false`
+  skips the second.
+- **Speech-mark types.** `providerOptions.speechMarkTypes` selects among `word`,
+  `sentence` and `ssml`. Without it, or when it names none of them, Polly returns
+  word marks.
+- **Engine.** The engine is set at `initialize`, and a request cannot change it.
+  A host that offers both engines runs one instance per engine.
+- **Output.** `format: 'ogg'` returns Ogg Vorbis, `'pcm'` returns PCM, and
+  anything else MP3; `'wav'` fails validation. `sampleRate` defaults to 24000 Hz.
+  `contentType` is the one Polly reports, `audio/mpeg` when it reports none.
+- **SSML and prosody.** Text containing SSML tags, Polly's `<amazon:…>` and
+  `<aws-…>` extensions included, goes to Polly unchanged. Plain text with a
+  `rate` or `pitch` other than 1 is escaped and wrapped in `<speak><prosody>`,
+  so the two apply to plain text only. A `rate` above 2 speaks at 2, Polly's
+  200% ceiling. The neural engine drops `pitch`.
+
+### Voice Selection
+
+A request's `voice` wins. Without one, the provider picks a voice for the
+request's `language` from the engine's voice listing and falls back to
+`defaultVoice`; the core README's [voice resolution](../tts-server-core/README.md#voice-resolution)
+section has the matching rules.
 
 ## Capabilities
 
 | Feature | Support |
 |---------|---------|
-| Speech Marks | Native |
+| Speech Marks | Word, sentence and SSML marks |
 | SSML | Polly's supported subset |
-| Pitch Control | SSML; standard engine only |
-| Rate Control | SSML; up to 2× |
-| Volume Control | Client-side |
-| Max Text Length | 3000 chars |
-| Audio Formats | MP3, OGG Vorbis, PCM |
+| Pitch Control | Standard engine only; plain text |
+| Rate Control | Plain text, through `<prosody>`; up to 2× |
+| Volume Control | Not supported |
+| Max Text Length | 3000 characters |
+| Audio Formats | MP3, Ogg Vorbis, PCM |
+| Sample Rate | Per request (default 24000 Hz) |
 
 ## Cost
 
@@ -129,19 +160,12 @@ Polly bills each SynthesizeSpeech request by characters; a synthesis with speech
 marks makes two (audio and marks). Current rates:
 <https://aws.amazon.com/polly/pricing/>
 
-## Supported Voices
+## Voices
 
-Popular voices include:
-
-- **English (US):** Joanna, Matthew, Ivy, Kendra, Joey
-- **English (UK):** Amy, Brian, Emma
-- **Spanish:** Lucia, Conchita, Enrique
-- **French:** Celine, Mathieu
-- **German:** Marlene, Hans
-- **Italian:** Carla, Giorgio
-- **Portuguese:** Vitoria, Ricardo
-
-Use `getVoices()` for complete list.
+Polly's [voice list](https://docs.aws.amazon.com/polly/latest/dg/available-voices.html)
+names each voice and the engines it supports; `getVoices()` returns the voices
+available to the configured engine. A voice the engine does not support fails
+with `INVALID_REQUEST`.
 
 ## Error Handling
 
@@ -158,6 +182,20 @@ try {
   }
 }
 ```
+
+AWS failures from `synthesize` and `getVoices` arrive as a `TTSError`:
+
+| AWS failure | `TTSErrorCode` |
+|-------------|----------------|
+| `TextLengthExceededException` | `TEXT_TOO_LONG` |
+| Invalid SSML, sample rate, language, engine, speech-mark, lexicon or S3/SNS input; `ValidationException` | `INVALID_REQUEST` |
+| `ThrottlingException`, `ServiceQuotaExceededException`, HTTP 429 | `RATE_LIMIT_EXCEEDED` |
+| HTTP 401 or 403 | `AUTHENTICATION_ERROR` |
+| Anything else | `PROVIDER_ERROR` |
+
+Request validation runs before any AWS call and throws a plain `Error`: empty
+text, text over 3000 characters, an unsupported format, or a rate or pitch out
+of range. A call before `initialize` throws a plain `Error` too.
 
 ## AWS IAM Permissions
 

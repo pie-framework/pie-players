@@ -1,51 +1,21 @@
 # Interaction Event Contract
 
-Status: Draft
+Status: Draft, 2026-06-25
+
+Not implemented and not scheduled. [Framework-completing work](../../architecture/framework-completing-work.md#classification) ranks the interaction event projection among the unbuilt framework-completing capabilities.
 
 Owner: PIE Players maintainers
 
 Related architecture:
 
 - [P0 shared contracts](../../architecture/shared-contracts-p0.md)
-
-## Standing Implementation
-
-An instrumentation path shipped ahead of this contract and occupies part of its
-ground. Read this PRD against it rather than as a greenfield design; the
-[timed-media note](../../architecture/timed-media-section.md#pre-implementation-state)
-overstates the overlap as "typed events", corrected here 2026-08-15.
-
-What exists:
-
-- `players-shared/src/instrumentation/` — an `InstrumentationProvider` interface
-  over `trackError` / `trackEvent` / `trackMetric` plus optional user and global
-  attributes, with New Relic, Console, DebugPanel and Composite providers, a
-  buffered debug-record stream, and config-level `enabled`, `debug`,
-  `sampleRate`, error/event filters and an attribute transformer.
-- `players-shared/src/pie/instrumentation-event-map.ts` — declarative
-  source-event → telemetry-event **name** mappings for the toolkit, section and
-  assessment surfaces, consumed by `instrumentation-event-bridge.ts`.
-
-What does not exist, and is what this PRD still owns: the projection envelope —
-schema version, event id, discriminated type, `InteractionSourceRef`,
-`state` / `analytics` / `debug` category, causality links — and typed payload
-families. The shipped path forwards a renamed event with loose attributes; it
-carries no source-reference shape and no versioning, so an adapter cannot map it
-to xAPI, Caliper or QTI without inferring identity.
-
-Two consequences for the questions below. Ownership is no longer fully open:
-`@pie-players/pie-players-shared` already owns both the provider interface and
-the name map, so a projection type that lives elsewhere splits the vocabulary
-across two packages. And the first accepted version has to say whether the
-projection wraps the bridge — the bridge becoming one provider-facing consumer of
-projections — or sits beside it, because two host-facing event surfaces with
-different identity models is the outcome to avoid.
+- [Instrumentation providers](../../architecture/instrumentation-providers.md)
 
 ## Problem
 
 Hosts and standards adapters need a stable way to observe learner interaction, media progress, branching decisions, tool usage, and process traces without replacing the runtime events that PIE elements and players already emit.
 
-Today the canonical runtime events are useful for player orchestration, but hosts that need analytics, replay/debug, xAPI/Caliper mapping, or audit traces must infer source identity and event meaning from several package-specific surfaces.
+The [instrumentation providers](../../architecture/instrumentation-providers.md) already forward toolkit telemetry and a fixed set of public DOM events to a host-supplied `InstrumentationProvider`; `attachInstrumentationEventBridge` renames the DOM events through `instrumentation-event-map.ts`. Each forwarded event is a name with loose attributes: it carries no source-reference shape and no version. A host that needs analytics, replay/debug, xAPI/Caliper mapping, or audit traces therefore infers source identity and event meaning from several package-specific surfaces, and an adapter cannot map an event to xAPI, Caliper or QTI without that inference. This contract owns what the instrumentation path lacks: the projection envelope (schema version, event id, discriminated type, source reference, `state` / `analytics` / `debug` category, causality links) and typed payload families.
 
 ## Goals
 
@@ -65,9 +35,9 @@ Today the canonical runtime events are useful for player orchestration, but host
 
 ## Package And Export Ownership
 
-- Owning package: open question; likely `@pie-players/pie-players-shared` if the contract is runtime-neutral, or `@pie-players/pie-assessment-toolkit` if projection helpers depend on controller state.
+- Owning package: open, leaning `@pie-players/pie-players-shared`. It already owns the provider interface and the event name map, so projection types in another package would split one vocabulary across two packages. `@pie-players/pie-assessment-toolkit` is the alternative for projection helpers that depend on controller state.
 - Public export path: open question; candidate shape is an explicit projection export such as `<owner>/event-projection`.
-- Consuming packages or apps: `section-player`, `assessment-player`, future adapter packages, demo hosts, and `../pie-qti` adapter work.
+- Consuming packages or apps: `section-player`, `assessment-player`, future adapter packages, demo hosts, and adapter work in [pie-qti](https://github.com/pie-framework/pie-qti).
 - Runtime environment: browser and adapter-only; core projection types should be Node-safe.
 
 If implementation introduces helper functions as well as types, this PRD should choose whether helpers live with the types or in player-specific adapter packages.
@@ -171,13 +141,13 @@ Migration behavior is additive. A future version must not reinterpret existing e
 
 ## Accessibility
 
-This PRD does not directly change UI. Event families that describe focus handoff, cue announcements, media state, or error states should carry enough source and state data for hosts to audit accessibility behavior, but the runtime behavior belongs to the accessibility runtime patterns PRD and implementation PRDs.
+This PRD does not directly change UI. Event families that describe focus handoff, cue announcements, media state, or error states should carry enough source and state data for hosts to audit accessibility behavior, but the runtime behavior belongs to the [accessibility runtime patterns](./accessibility-runtime-patterns.md) PRD and implementation PRDs.
 
 ## Standards Or Adapter Impact
 
 This contract is intended to be consumed by QTI/PCI, xAPI, and Caliper adapters. It does not claim conformance with any standard.
 
-QTI/PCI mapping belongs in `../pie-qti` after projection types exist. xAPI and Caliper may become separate adapter packages after this contract is accepted and tested.
+QTI/PCI mapping belongs in [pie-qti](https://github.com/pie-framework/pie-qti) after projection types exist. xAPI and Caliper may become separate adapter packages after this contract is accepted and tested.
 
 ## Test Plan
 
@@ -196,13 +166,7 @@ bun run typecheck
 bun run test
 ```
 
-For custom-element or export-boundary changes, also run:
-
-```sh
-bun run check:source-exports
-bun run check:consumer-boundaries
-bun run check:custom-elements
-```
+For custom-element, export-boundary, toolkit-core or player changes, also run the [high-value checks](../../../AGENTS.md#high-value-checks). Playwright-backed tests run outside the sandbox; see [Playwright and sandboxed execution](../../../AGENTS.md#playwright-and-sandboxed-execution).
 
 ## Rollout And Release Notes
 
@@ -214,6 +178,7 @@ bun run check:custom-elements
 ## Open Questions
 
 - Which package owns the public projection types?
+- Does the projection wrap the event bridge, making the bridge one provider-facing consumer of projections, or sit beside it? The first accepted version decides, because two host-facing event surfaces with different identity models are the outcome to avoid.
 - Are projection helpers part of the first implementation, or does this PRD only ratify TypeScript types and fixtures?
 - Which event families are required for the first accepted version: item/session, section/completion, media/cue, tool, branch/process, or all of them?
 - Should timestamps use `number` epoch milliseconds, ISO strings, or a typed clock source?

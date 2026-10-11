@@ -30,14 +30,22 @@ npm install @pie-players/tts-server-polly
 ```typescript
 import { PollyServerProvider } from '@pie-players/tts-server-polly';
 
+const { AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_SESSION_TOKEN } = process.env;
+
 const provider = new PollyServerProvider();
 
 await provider.initialize({
   region: 'us-east-1',
-  credentials: {
-    accessKeyId: process.env.AWS_ACCESS_KEY_ID!,
-    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,
-  },
+  // Explicit keys only when both are set; otherwise the AWS SDK default
+  // credential chain resolves them (IAM role, SSO, shared profile).
+  credentials:
+    AWS_ACCESS_KEY_ID && AWS_SECRET_ACCESS_KEY
+      ? {
+          accessKeyId: AWS_ACCESS_KEY_ID,
+          secretAccessKey: AWS_SECRET_ACCESS_KEY,
+          sessionToken: AWS_SESSION_TOKEN || undefined,
+        }
+      : undefined,
   engine: 'neural', // or 'standard'
   defaultVoice: 'Joanna',
 });

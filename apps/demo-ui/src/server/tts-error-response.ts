@@ -15,6 +15,8 @@
  * mapper and one sentinel, imported by both.
  */
 
+import { TTSError, TTSErrorCode } from "@pie-players/tts-server-core";
+
 /**
  * Thrown when a demo TTS provider's credentials are simply absent.
  *
@@ -39,50 +41,55 @@ const fault = (status: number, message: string): TtsFailure => ({
 	logAsFault: true,
 });
 
+const UNEXPECTED = fault(
+	500,
+	"Text-to-speech service encountered an unexpected error.",
+);
+const UNREADABLE_REQUEST = fault(
+	400,
+	"Text-to-speech service cannot process this request.",
+);
+
+/**
+ * The answer for each `TTSErrorCode`. A `Record` over the enum, so a code added
+ * to `@pie-players/tts-server-core` fails the type check here until it is
+ * mapped.
+ */
+const FAILURE_BY_CODE: Record<TTSErrorCode, TtsFailure> = {
+	[TTSErrorCode.INVALID_REQUEST]: UNREADABLE_REQUEST,
+	[TTSErrorCode.INVALID_VOICE]: UNREADABLE_REQUEST,
+	[TTSErrorCode.TEXT_TOO_LONG]: UNREADABLE_REQUEST,
+	[TTSErrorCode.RATE_LIMIT_EXCEEDED]: fault(
+		429,
+		"Text-to-speech service is temporarily busy. Please try again in a moment.",
+	),
+	[TTSErrorCode.AUTHENTICATION_ERROR]: fault(
+		503,
+		"Text-to-speech service authentication failed.",
+	),
+	[TTSErrorCode.INITIALIZATION_ERROR]: fault(
+		503,
+		"Text-to-speech service is not configured.",
+	),
+	[TTSErrorCode.NETWORK_ERROR]: fault(
+		503,
+		"Text-to-speech service is temporarily unavailable.",
+	),
+	[TTSErrorCode.PROVIDER_ERROR]: fault(
+		503,
+		"Text-to-speech service encountered an error. Please try again later.",
+	),
+	[TTSErrorCode.INVALID_PROVIDER]: UNEXPECTED,
+};
+
+/**
+ * The providers report every vendor failure as a `TTSError`, so its code picks
+ * the answer. Anything else is the route's own fault, or a provider throwing
+ * outside its vendor calls, and answers 500.
+ */
 export function mapTtsFailure(err: unknown): TtsFailure {
 	if (err instanceof TtsNotConfiguredError) {
 		return { status: 503, message: err.message, logAsFault: false };
 	}
-
-	const detail = err instanceof Error ? err.message : "";
-
-	// Matched case-insensitively and on the singular stem: a real SDK failure says
-	// "Resolved credential object is not valid for arn:aws:iam::…", which
-	// `includes("credentials")` misses. Credentials are tested before the vendor
-	// catch-all so an ARN in the message cannot claim the error first.
-	if (
-		/\bcredential|not configured|CredentialsProviderError|UnrecognizedClientException|ExpiredToken|AccessDenied/i.test(
-			detail,
-		)
-	) {
-		return fault(503, "Text-to-speech service is not configured.");
-	}
-
-	if (/InvalidSignature|SignatureDoesNotMatch/i.test(detail)) {
-		return fault(503, "Text-to-speech service authentication failed.");
-	}
-
-	if (/Throttling|TooManyRequests|Rate exceeded/i.test(detail)) {
-		return fault(
-			429,
-			"Text-to-speech service is temporarily busy. Please try again in a moment.",
-		);
-	}
-
-	if (
-		/NetworkingError|ENOTFOUND|ETIMEDOUT|ECONNREFUSED|ECONNRESET/i.test(detail)
-	) {
-		return fault(503, "Text-to-speech service is temporarily unavailable.");
-	}
-
-	// Word-bounded so "flaws"/"laws" cannot match, and case-insensitive so a
-	// lowercase "aws" in an ARN or endpoint host does.
-	if (/\b(aws|polly|google)\b/i.test(detail)) {
-		return fault(
-			503,
-			"Text-to-speech service encountered an error. Please try again later.",
-		);
-	}
-
-	return fault(500, "Text-to-speech service encountered an unexpected error.");
+	return (err instanceof TTSError && FAILURE_BY_CODE[err.code]) || UNEXPECTED;
 }

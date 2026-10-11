@@ -1,25 +1,31 @@
 # Instrumentation Providers
 
-Status: Design note. Shipped today: the `InstrumentationProvider` contract,
-`BaseInstrumentationProvider`, the New Relic, console, debug-panel and
-composite adapters, probed readiness, the one default factory,
-[provider resolution](#provider-resolution) and the
-[operational events](#operational-events);
-[`architecture.md`](./architecture.md#instrumentation--observability) owns the
-per-layer event ownership model. Not
-implemented: agent detection, the conformance suite, central attribute naming,
-and buffering. The DataDog and OpenTelemetry adapters
-described here are untested examples of host-owned adapters, not products PIE
-ships. Correct this note or mark it historical when the built system diverges.
+Status: Active
+
+Shipped: the `InstrumentationProvider` contract, `BaseInstrumentationProvider`,
+the New Relic, console, debug-panel and composite adapters, probed readiness, the
+one default factory, [provider resolution](#provider-resolution) and the
+[operational events](#operational-events). Designed and not built: agent
+detection, the conformance suite, central attribute naming and buffering; the
+[implementation plan](./instrumentation-providers-implementation-plan.md)
+sequences them. The DataDog and OpenTelemetry adapters described here are
+examples of host-owned adapters, and PIE ships neither.
+[`architecture.md`](./architecture.md#instrumentation) owns the
+per-layer event ownership model.
 
 Owner: PIE Players maintainers
 
 Related:
 
-- [Instrumentation and observability](./architecture.md#instrumentation--observability)
+- [Architecture: Instrumentation](./architecture.md#instrumentation)
 - [Instrumentation providers implementation plan](./instrumentation-providers-implementation-plan.md)
 - [ADR 0002: provider contracts are not parameterized by config](../adr/0002-provider-contracts-are-not-parameterized-by-config.md)
 - [Consumer API dependencies](../integrations/consumer-api-dependencies.md)
+
+This note is the design record for how PIE emits telemetry. It is for
+contributors changing the instrumentation module; a host wiring a provider needs
+only [Provider resolution](#provider-resolution) and
+[Operational events](#operational-events).
 
 PIE emits telemetry through `InstrumentationProvider` and owns no backend. The
 host owns the agent, the credentials, the sampling policy and the bill. An
@@ -28,10 +34,11 @@ initializes one, or holds a dependency on one.
 
 ## Scope
 
-PIE ships one adapter, for New Relic, because two of the hosts embedding PIE
-today have that agent on their pages. The contract and probed readiness ship
-with it. Central attribute naming and detection restricted to that one agent
-are designed here and not built.
+PIE ships one vendor adapter, for New Relic, because two of the hosts embedding
+PIE today have that agent on their pages; the console, debug-panel and composite
+adapters are vendor-neutral. The contract and probed readiness ship with it.
+Central attribute naming and detection restricted to that one agent are designed
+here and not built.
 
 DataDog and OpenTelemetry stay unshipped. The design exercises them through a
 conformance suite in `packages/players-shared/tests` that runs the contract's
@@ -43,9 +50,9 @@ the documentation points at. A published adapter is a standing commitment to a
 vendor SDK's drift; the contract is the thing that needed proving, and a test
 proves it without taking the commitment on.
 
-The ownership boundary makes that the honest shape. Host-owns-the-agent already
-assigns the adapter to whoever owns the agent, so a DataDog adapter is host code
-by construction and the fixture is a worked example of code a host writes.
+The ownership boundary already assigns the adapter to whoever owns the agent, so
+a DataDog adapter is host code by construction and the fixture is a worked
+example of code a host writes.
 
 ## Ownership boundary
 
@@ -67,36 +74,29 @@ already carries it.
 
 ## Consumer position
 
-No external host imports any part of this module.
+The [consumer API dependencies](../integrations/consumer-api-dependencies.md)
+record owns each host's dependency rows and pins; this section records what bears
+on the design. No external host imports any part of this module.
 `CompositeInstrumentationProvider`, `NewRelicInstrumentationProvider` and
-`DebugPanelInstrumentationProvider` have exactly one consumer, Host R, recorded
-under Programmatic API in
-[`consumer-api-dependencies.md`](../integrations/consumer-api-dependencies.md).
-That host is internally controlled, so under the downstream-consumer rule in
-`AGENTS.md` it is not a constraint: it gets fixed in the same push. Host A,
-scanned on 2026-09-18, sets `trackPageActions` nowhere, names
-`instrumentationProvider` nowhere, and imports nothing from the module.
+`DebugPanelInstrumentationProvider` have one consumer, Host R, recorded there under
+Programmatic API. That host is internally controlled, so it is no constraint: a
+break is fixed in the same change.
 
-The implicit default that detection replaces — `trackPageActions: true` with no
-provider named — has one consumer, Host P, which is client-facing and whose
-loader configuration the pad records. Its `@pie-players` path renders through
-the preloaded `pie-item-player`, where the implicit default sends New Relic a
-`pie-resource-load` page action per tracked resource, retry and error page
-actions and a `noticeError` per failure from the resource monitor, and a
-`noticeError` per item-player runtime error. It sends whenever the agent is on
-the page at the moment it tracks, as described under probed readiness. That
-host's own page loads no agent, so the agent comes from an outer page, as it
-does for Host A, and either order is possible.
-
-The predecessor player on that host's main line never receives its loader
-configuration: the host binds it there as a property named `loader-config`, and
-that element reads `loaderConfig`. PIE resource telemetry therefore first reaches
-that host's account through `pie-item-player`.
+The implicit default that detection replaces, `trackPageActions: true` with no
+provider named, has one consumer, Host P, which is client-facing. Its
+`@pie-players` path renders through the preloaded `pie-item-player`, where the
+implicit default sends New Relic a `pie-resource-load` page action per tracked
+resource, retry and error page actions and a `noticeError` per failure from the
+resource monitor, and a `noticeError` per item-player runtime error. It sends
+whenever the agent is on the page at the moment it tracks, as described under
+[Probed readiness](#probed-readiness). The agent there comes from an outer page,
+so either order is possible, and PIE resource telemetry first reaches that host's
+account through `pie-item-player`.
 
 That puts what the default sends in a client's account, and three parts of this
-design change it. Probed readiness, shipped, made the default send from the
-agent's arrival on, which adds volume on pages whose agent arrives after the
-player starts; buffering adds what it tracked before it arrived. Central
+design change it. Probed readiness, which has shipped, makes the default send
+from the agent's arrival on, which adds volume on pages whose agent arrives after
+the player starts; buffering adds what it tracked before it arrived. Central
 attribute naming renames every key the account receives, which is free until
 that host's `@pie-players` rollout goes live and breaks any query on those keys
 after. Detection binds the adapter the default already constructs there, and
@@ -105,9 +105,8 @@ neither changes what that host receives. The emission gate does not apply,
 because that host asked for telemetry, and each change reaches it when it moves
 its exact pin.
 
-Renaming is available and declined. The existing export names are accurate and
-nothing in the design argues for new ones, so they stay; the freedom is recorded
-because the opposite assumption would narrow the design on behalf of nobody.
+The existing export names stay. They are accurate and nothing in the design
+argues for new ones, though no external consumer would block a rename.
 
 ## Probed readiness
 
@@ -121,10 +120,10 @@ sets `initialized` in `initialize()` whether or not the agent is there. Both
 the shape probe described under agent detection, which no package entry point
 exports. A provider initialized before the agent boots therefore sends from the
 agent's arrival on; what it tracked earlier is dropped until buffering lands. The
-topology this serves — the agent injected by an outer page at a time neither
-side predicts — is the topology of the host most likely to enable tracking. It
-replaced a latch in `initialize()` that left instrumentation dead for the life of
-any page whose agent booted after the first player resolved.
+topology this serves, the agent injected by an outer page at a time neither side
+predicts, is the topology of the host most likely to enable tracking. A latch in
+`initialize()` is the alternative, and it leaves instrumentation dead for the life
+of any page whose agent boots after the first player resolves.
 
 ## Agent detection
 
@@ -132,10 +131,9 @@ Detection answers which sink. `trackPageActions` answers whether anything is
 sent, and stays the only switch that does.
 
 A probe tests the callable shape, never a name's truthiness. `window.NREUM` is
-the New Relic agent's primary global and `window.newrelic` an alias assigned onto
-the same object — `gm.NREUM || (gm.NREUM = {}), void 0 === gm.newrelic &&
-(gm.newrelic = gm.NREUM)` in the 1.274 loader — and the standard install snippet
-creates `NREUM` as a configuration container before any agent code runs.
+the New Relic agent's primary global and `window.newrelic` an alias the loader
+assigns onto the same object, and the standard install snippet creates `NREUM` as
+a configuration container before any agent code runs.
 Presence proves a New Relic agent is intended, not that its API is attached.
 `typeof handle.noticeError === "function" && typeof handle.addPageAction ===
 "function"`, over both names, is the whole probe. It is also name-agnostic in the
@@ -178,51 +176,38 @@ Enabling detection must not cause a host that has not asked for telemetry to
 start populating its observability account.
 
 The constraint is the release model. Every release is a `patch` under the
-fixed-version policy, and Host A and Host R both track the `0.3.x` line through
-caret ranges, so a published behavior change reaches them on their next install
-with no code change on their side; Host V pins an exact patch and upgrades
-deliberately. A default that detected an agent and began sending would put
-unbudgeted event volume into a client's account through a patch bump.
+fixed-version policy, so a published behavior change reaches a host on a caret
+range on its next install with no code change on its side, while a host on an
+exact pin takes it when it moves the pin; the
+[consumer API dependencies](../integrations/consumer-api-dependencies.md) record
+lists each host's range or pin. A default that detected an agent and began
+sending would put unbudgeted event volume into a client's account through a patch
+bump.
 
-## Host A's telemetry topology
+## Host-built telemetry
 
-Verified against that host's checkout on 2026-09-18 by a scan over 119 source,
-template and manifest files. It consumes nothing from this module and builds its
-own New Relic service instead, reconstructing by hand the numbers PIE is in a
-position to report directly: it subscribes to PIE's `content-loaded` events,
-separates the passage completion from the item completion so one section cannot
-count twice, measures against a `performance` mark its own launch emits, and
-publishes page actions under its own attribute prefix. One derived duration also
-goes to its own backend for durable storage.
-[`consumer-api-dependencies.md`](../integrations/consumer-api-dependencies.md)
-owns that host's dependency rows; this section records only what bears on the
-design, and its scan predates the pad's own next refresh.
+A host can build its own New Relic service beside PIE, deriving load timings from
+PIE's public `content-loaded` events and its own launch marks and publishing them
+under its own attribute prefix. Three consequences follow for this design.
 
-Three consequences.
+**PIE's load-path events are a second measurement of a quantity such a host
+already derives.** The host measures from outside the boundary, including its own
+bootstrap; PIE measures from inside. Both are legitimate and they will not agree.
+PIE's events are named and documented as what PIE observed, which keeps the two
+from reading as one metric that disagrees with itself.
 
-**PIE's load-path events are a second measurement of a quantity that host
-already derives.** Its numbers are taken from outside the boundary and include
-its own bootstrap; PIE's would be taken from inside. Both are legitimate and they
-will not agree. PIE's events are named and documented as what PIE observed, which
-is what keeps the two from reading as one metric that disagrees with itself.
+**A sink is not always an observability backend.** A load time that feeds
+reporting cannot live only in a telemetry account, so a host may route it to
+durable storage. The contract has no notion of a durable sink, and an adapter
+that posts to a host endpoint satisfies it, host-implemented like every adapter
+but one.
 
-**A sink is not always an observability backend.** That host routes one derived
-number to durable storage, because a load time that feeds reporting cannot live
-only in a telemetry account. The contract has no notion of a durable sink, and an
-adapter that posts to a host endpoint satisfies it. Host-implemented, like every
-adapter but one.
-
-**Its service latches the handle the way PIE's adapter did before probed
-readiness.** It captures the global once during configuration and every method
-no-ops while that field is falsy. Its own page loads no agent, so the agent
-arrives from an outer page neither repository controls. The same page gave the
-same defect two independent chances to silence telemetry; probing removed PIE's.
-
-Under this design that host opts in by setting `trackPageActions: true` and
-constructing nothing. Detection finds the agent, and PIE's events inherit the
-global custom attributes its service has already set, because New Relic applies
-custom attributes to every subsequent page action. The correlation comes for
-free, and the two attribute prefixes coexist without collision.
+**Opting in takes one boolean.** Under this design such a host sets
+`trackPageActions: true` and constructs nothing. Detection finds the agent, and
+PIE's events inherit the global custom attributes the host's own service has set,
+because New Relic applies custom attributes to every subsequent page action. The
+correlation comes for free, and the two attribute prefixes coexist without
+collision.
 
 ## One default factory
 
@@ -265,7 +250,9 @@ name ending in `-error`, or a payload carrying `errorType`, also goes to
 
 | Events | Emitted by |
 | --- | --- |
-| `pie-toolkit-coordinator-ready`, `pie-toolkit-provider-registered`, `pie-toolkit-provider-ready`, `pie-toolkit-tool-state-loaded`, `pie-toolkit-tool-config-updated`, `pie-toolkit-section-controller-ready`, `pie-toolkit-section-controller-disposed` | `ToolkitCoordinator` |
+| `pie-toolkit-coordinator-ready`, `pie-toolkit-section-controller-ready`, `pie-toolkit-section-controller-disposed` | `ToolkitCoordinator` |
+| `pie-toolkit-provider-registered`, `pie-toolkit-provider-ready` | `ToolkitCoordinator` |
+| `pie-toolkit-tool-state-loaded`, `pie-toolkit-tool-config-updated` | `ToolkitCoordinator` |
 | `pie-toolkit-tts-init-start\|success\|error`, `pie-tool-init-fallback` | `ToolkitCoordinator` |
 | `pie-tool-init-start\|success\|error` | `ToolkitCoordinator` and `ToolProviderRegistry` |
 | `pie-tool-backend-call-start\|success\|error` | `ToolProviderRegistry`, the Desmos provider, the server TTS provider |
@@ -320,7 +307,7 @@ part of the OTel JS stack, which the design inherits once rather than per vendor
 `metric:`-prefixed event name with `metricValue` and `metricName` in the bag.
 The console adapter overrides it to format the log line, and the composite
 adapter fans it out to its providers. Two of the three candidate backends cannot
-express a metric: the New Relic browser agent at 1.274 exposes `noticeError`,
+express a metric: the New Relic browser agent exposes `noticeError`,
 `addPageAction`, `setCustomAttribute`, `setUserId`, `interaction` and
 `addToTrace` with no metric primitive, and DataDog RUM's `addAction` is the same
 shape. Only OTel has counters and histograms. The method has no production
@@ -346,7 +333,7 @@ no-op rather than a type error. The same trade the toolkit's host-supplied TTS
 **Product analytics stays out.** Amplitude, Segment and GA4 are reachable through
 the same contract and are excluded: this is an operational telemetry surface, and
 routing learner behavior through it would blur the per-layer event ownership that
-[`architecture.md`](./architecture.md#ownership-model-no-semantic-overlap)
+[`architecture.md`](./architecture.md#instrumentation)
 defines.
 
 ## Buffering
@@ -358,7 +345,7 @@ likely to fire before a deferred agent is up. A bounded ring buffer in the base
 class, flushed on the first successful readiness probe, turns silent loss into a
 delayed send. Sampling applies at enqueue so the buffer cannot distort the rate.
 
-Backdating is the flush's one subtlety. `newrelic.addPageAction` and
+A flush backdates through the attributes. `newrelic.addPageAction` and
 `DD_RUM.addAction` both stamp at call time, so flushed records land at the flush
 instant. `trackEvent` already writes an ISO `timestamp` into the attribute bag
 before delegating, so event time survives in the attributes and queries read it

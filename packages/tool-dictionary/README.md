@@ -6,7 +6,7 @@ Dictionary panel for the PIE assessment player. Registers
 ## Lookup is host-supplied
 
 PIE ships no dictionary endpoint. The corpus behind a dictionary is licensed per
-programme, so a default here would bake one deployment into the package.
+program, so a default here would bake one deployment into the package.
 [Dictionary Languages And Services](../../docs/tools-and-accomodations/dictionary-languages-and-services.md) records where service selection, credentials and the lookup language sit.
 
 Two ways to supply one, in precedence order:
@@ -29,7 +29,7 @@ that silently fails.
 
 ### Request
 
-`POST` with `{ keyword, language?, max? }`. `keyword` is normalised before it is
+`POST` with `{ keyword, language?, max? }`. `keyword` is normalized before it is
 sent: whitespace collapsed, surrounding punctuation stripped, internal hyphens and
 apostrophes kept. A selection longer than four words is refused without a request.
 
@@ -57,7 +57,7 @@ told their word is not real when the network is down.
 
 The endpoint is called `same-origin`, so a route already behind the assessment's own
 session answers with no further configuration — naming the endpoint is the whole
-setup. A host authorising some other way passes a `headers` function, read per request
+setup. A host authorizing some other way passes a `headers` function, read per request
 so a short-lived token is fetched fresh rather than captured at mount, and one that
 wants no ambient credentials at all passes `credentials: "omit"`. Both are properties
 rather than attributes, and both are optional.
@@ -78,7 +78,7 @@ The two entry points have to coexist within one open panel, which is what
 `termRequestId` is for. A requested term is reapplied on every sync, so the term alone
 cannot distinguish a re-render from a fresh ask: without an id, reopening the panel
 re-searches the term that opened it and discards whatever the learner typed since. A
-host setting `term` directly can leave the id unset and gets term-identity behaviour,
+host setting `term` directly can leave the id unset and gets term-identity behavior,
 which is enough to stop a re-render re-issuing.
 
 ## Properties

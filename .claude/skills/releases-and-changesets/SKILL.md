@@ -19,9 +19,8 @@ Enforcement scripts:
   (`bun run check:fixed-versioning`, also wired into `verify:publish`) —
   fails if publishable package versions diverge or skip a patch step from
   the published baseline.
-Consumer-facing docs:
-[`docs/setup/publishing.md`](../../../docs/setup/publishing.md) and the
-"Versioning Policy" section in [`README.md`](../../../README.md).
+Consumer-facing docs: [`docs/install/versioning.md`](../../../docs/install/versioning.md).
+Release workflow: [`docs/setup/publishing.md`](../../../docs/setup/publishing.md).
 
 ## Policy in one paragraph
 

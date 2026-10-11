@@ -1,41 +1,44 @@
 # Loading Strategies
 
-`<pie-item-player>` supports three loading strategies, set via the `strategy` attribute. All strategies route through the `ElementLoader` primitive (`@pie-players/pie-players-shared/loaders`); the strategy selects which backend the primitive uses (or, for `preloaded`, asserts that no backend is needed):
+How `<pie-item-player>` gets PIE elements onto the page: the three loading
+strategies, the `loaderOptions` that configure them, and how a host registers
+elements it installs from npm. For hosts that choose or configure a strategy.
+[Getting started](../getting-started.md) renders a first item, and
+[Math rendering](./math-rendering.md) covers what each strategy means for
+MathJax.
 
-| Strategy | Backend | Source | Best for |
+The `strategy` attribute selects the strategy. Every strategy goes through the
+`ElementLoader` primitive (`@pie-players/pie-players-shared/loaders`), which
+hands the load to an adapter; `preloaded` uses none and asserts that the
+elements are already registered.
+
+| Strategy | Adapter | Source | Best for |
 | -------- | ------- | ------ | -------- |
-| `iife` | IIFE backend | Bundle host (script injection) | Production deployments using PIE bundle infrastructure |
-| `esm` | ESM backend | ESM CDN (URL or import-map resolution) | Modern ESM-compatible element packages |
+| `iife` | IIFE adapter | IIFE bundles from the bundle host, injected as `<script>` tags | Production deployments that use the bundle host |
+| `esm` | ESM adapter | Browser ESM builds from an npm CDN, by URL or import map | Element packages that publish browser ESM builds |
 | `preloaded` | _none_ (uses `assertRegistered`) | Elements the host registers | Section-level preloading, static builds, offline use |
 
-## Standalone usage
+![Item player strategies: iife loads bundles from the bundle host, esm imports browser builds from an ESM CDN, preloaded asserts elements the host registered; each defines versioned custom elements](../img/item-player-strategies.excalidraw.svg)
 
-```html
-<script type="module" src="https://cdn.jsdelivr.net/npm/@pie-players/pie-item-player/dist/pie-item-player.js"></script>
-
-<pie-item-player
-  strategy="iife"
-  config='{"elements":{"my-el":"my-el@1.0.0"},"models":[{"id":"1","element":"my-el"}],"markup":"<my-el id=\"1\"></my-el>"}'
-  env='{"mode":"gather","role":"student"}'
-  session='{"id":"s1","data":[]}'
-></pie-item-player>
-
-<script>
-  const player = document.querySelector("pie-item-player");
-  player.addEventListener("session-changed", (e) => {
-    console.log("Session updated:", e.detail.session);
-  });
-</script>
-```
+The bundle host is the server that builds IIFE bundles of the element packages
+an item names, and serves them. Element packages publish under the
+`@pie-element/*` scope from two repositories:
+[pie-elements](https://github.com/pie-framework/pie-elements), the legacy one,
+whose packages load only as IIFE bundles, and
+[pie-elements-ng](https://github.com/pie-framework/pie-elements-ng), whose
+packages serve all three strategies. Its
+[PIE element contract](https://github.com/pie-framework/pie-elements-ng/blob/develop/docs/PIE_ELEMENT_CONTRACT.md)
+defines what an element package publishes; this page covers how the player
+consumes it.
 
 ## `loaderOptions`
 
-Strategy-specific options are set via the `loaderOptions` property (not attribute):
+`loaderOptions` is a JavaScript property with no attribute form:
 
 ```ts
 const player = document.querySelector("pie-item-player");
 player.loaderOptions = {
-  bundleHost: "https://proxy.pie-api.com/bundles",
+  bundleHost: "https://proxy.pie-api.com/bundles/",
   esmCdnUrl: "https://cdn.jsdelivr.net/npm",
   esmCdnProvider: "jsdelivr",
   moduleResolution: "url",
@@ -47,55 +50,86 @@ player.loaderOptions = {
 
 | Option | Used by | Default | Description |
 | ------ | ------- | ------- | ----------- |
-| `bundleHost` | `iife` | `https://proxy.pie-api.com/bundles/` | Base URL for IIFE bundle downloads |
-| `esmCdnUrl` | `esm` | `https://cdn.jsdelivr.net/npm` | Base URL for ESM module resolution |
-| `esmCdnProvider` | `esm` | inferred from `esmCdnUrl` | CDN route strategy. Use `"jsdelivr"`, `"esm.sh"`, or a provider object with package and shared-dependency URL builders |
-| `moduleResolution` | `esm` | `"url"` | Module resolution mode: `"url"` (fully-qualified CDN imports) or `"import-map"` |
-| `view` | `esm` | resolved from `env.mode` | ESM view: `"delivery"`, `"author"`, or `"print"` |
+| `bundleHost` | `iife` | `https://proxy.pie-api.com/bundles/` | Base URL of the bundle host |
+| `esmCdnUrl` | `esm` | `https://cdn.jsdelivr.net/npm` | Base URL of the npm CDN the ESM adapter loads from |
+| `esmCdnProvider` | `esm` | `"esm.sh"` when `esmCdnUrl` contains `esm.sh`, otherwise `"jsdelivr"` | URL layout of that CDN: `"jsdelivr"`, `"esm.sh"`, another name for a CDN with jsDelivr's layout, or a provider object ([ESM CDN providers](#esm-cdn-providers)) |
+| `moduleResolution` | `esm` | `"url"` | `"url"` imports fully qualified CDN URLs; `"import-map"` imports bare specifiers through an import map |
+| `view` | `esm` | `"author"` when `mode="author"`, otherwise `"delivery"` | ESM view: `"delivery"`, `"author"`, or `"print"` |
 | `loadControllers` | `esm` | `true`; `false` for a hosted player outside author mode | Whether to load PIE controllers alongside elements. A player is hosted when `hosted` is set or `backend.delivery` is enabled, and a hosted player resolves no controller. The section pre-warm resolves the default the same way |
-| `runtimeSupportCheck` | `esm` | `"off"` | When `"on"`, reads each package's optional `./runtime-support` metadata through `esmCdnProvider` and surfaces unsupported view hints before loading |
+| `runtimeSupportCheck` | `esm` | `"off"` | `"on"` reads each package's optional `./runtime-support` module before loading; a failed load's error then names the packages that declare the view unsupported |
+| `elementPackagePolicy` | all | unset | `{ allowedPackages, requireExactVersions? }`. Limits the `config.elements` packages that may load to exact names or `name@version` specs, and with `requireExactVersions` (default `true`) rejects ranges, tags and build metadata. For `config.elements` that is not fully trusted host input; see [Escape hatches](../security/readme.md#escape-hatches) |
 
 ## Strategy details
 
 ### `strategy="iife"`
 
-Loads IIFE bundles from the bundle host by injecting `<script>` tags into the document. The bundle type depends on the player's mode:
+The IIFE adapter loads bundles from the bundle host by injecting `<script>`
+tags. The bundle host builds each bundle from the npm releases of the packages
+the item names, through their `/controller`, `/configure`, `/author` and
+`/print` exports
+([IIFE](https://github.com/pie-framework/pie-elements-ng/blob/develop/docs/PIE_ELEMENT_CONTRACT.md#iife)
+in the contract). The player's mode and `hosted` pick the bundle:
 
-- `mode="view"` + `hosted=false` → `clientPlayer` bundle (elements + controllers)
-- `mode="view"` + `hosted=true` → `player` bundle (elements only; controllers provided by host)
-- `mode="author"` → `editor` bundle (authoring config elements)
+| Player | Bundle | Contents |
+| ------ | ------ | -------- |
+| `mode="view"`, not hosted | `client-player.js` | Elements and controllers |
+| `mode="view"`, hosted | `player.js` | Elements only; the host's server runs the controllers |
+| `mode="author"` | `editor.js` | Configure (authoring) elements and controllers |
 
-`clientPlayer` bundles carry the controllers, so the answer key and the scoring logic run in the learner's browser. That is the default: `hosted` is false unless the host sets it or enables `backend.delivery`. See [`../security/readme.md`](../security/readme.md#delivery-integrity) for what a proctored delivery has to do instead, and for the CSP each strategy needs.
+`client-player.js` carries the controllers, so the answer key and the scoring
+logic run in the learner's browser. That is the default: `hosted` is false
+unless the host sets it or enables `backend.delivery`.
+[Delivery integrity](../security/readme.md#delivery-integrity) covers what a
+proctored delivery does instead, and the security page gives the CSP each
+strategy needs.
 
-After loading, elements are registered in `window.PIE_REGISTRY` and defined as custom elements with versioned tag names (e.g. `multiple-choice--version-9-9-1`).
+After loading, elements are registered in `window.PIE_REGISTRY` and defined as
+custom elements with versioned tag names (e.g. `multiple-choice--version-14-0-3`).
 
-IIFE bundles resolve `@pie-lib/math-rendering` to `window["@pie-lib/math-rendering"]`, so the player installs its MathJax renderer there before the first bundle loads. A host that wants the MathJax module fetched sooner calls `ensureItemPlayerMathRenderingReady()` from `@pie-players/pie-item-player` at startup. A host that loads IIFE element bundles itself, outside the player, awaits `ensureItemPlayerMathRenderingReady()` before the first bundle evaluates, because the bundle reads the renderer as it evaluates; `@pie-players/pie-item-player/preloaded` exports it without defining the player. A renderer already on `window` stays.
+IIFE bundles resolve `@pie-lib/math-rendering` to
+`window["@pie-lib/math-rendering"]`, so the player installs its MathJax renderer
+there before the first bundle loads. A renderer already on `window` stays.
+
+- A host that wants the MathJax module fetched sooner calls
+  `ensureItemPlayerMathRenderingReady()` from `@pie-players/pie-item-player` at
+  startup.
+- A host that loads IIFE element bundles itself, outside the player, awaits
+  `ensureItemPlayerMathRenderingReady()` before the first bundle evaluates,
+  because the bundle reads the renderer as it evaluates.
+  `@pie-players/pie-item-player/preloaded` exports it without defining the
+  player.
 
 ```ts
 player.strategy = "iife";
 player.loaderOptions = {
-  bundleHost: "https://proxy.pie-api.com/bundles",
+  bundleHost: "https://proxy.pie-api.com/bundles/",
 };
 ```
 
 ### `strategy="esm"`
 
-Loads ESM modules from a CDN with dynamic `import()`. By default, the player imports fully-qualified CDN URLs (`moduleResolution: "url"`), which avoids one-time import-map staleness across repeated loads. You can still opt into import-map mode with `moduleResolution: "import-map"`.
+The ESM adapter imports each element's browser ESM build from an npm CDN, as the
+contract's
+[Browser ESM Packaging](https://github.com/pie-framework/pie-elements-ng/blob/develop/docs/PIE_ELEMENT_CONTRACT.md#browser-esm-packaging)
+defines it. For an element such as `@pie-element/multiple-choice@13.2.2` it
+loads these files of the package:
 
-The ESM loader consumes the static browser ESM package surface defined by the
-producer-side `pie-elements-ng` package contract.
-For an item element such as `@pie-element/multiple-choice@13.2.2`, it loads
-published files like:
+- `dist/browser/delivery/index.js` in the `delivery` view
+- `dist/browser/author/index.js` in the `author` view, defined under the base
+  tag plus `-config`
+- `dist/browser/print/index.js` in the `print` view, under the base tag plus
+  `-print`
+- `dist/browser/controller/index.js` when `loadControllers` is on
 
-- `dist/browser/delivery/index.js` for delivery mode
-- `dist/browser/author/index.js` for authoring mode
-- `dist/browser/controller/index.js` when `loadControllers` is enabled
+The `author` and `print` views fall back to the delivery module when theirs
+fails to load. The player imports the files as published, without jsDelivr's
+`+esm` transform. A package version without browser ESM builds, such as a
+legacy pie-elements release, fails to load under `esm`.
 
-The player does not transform element package entrypoints through jsDelivr
-`+esm`. Shared browser singletons such as React are resolved from exact
-`pie.browserSharedDependencies` metadata in the element package's
-`package.json`; dependency and peer-dependency ranges are install metadata, not
-runtime fallback contracts.
+By default the adapter imports each module by its full CDN URL
+(`moduleResolution: "url"`). `moduleResolution: "import-map"` imports bare
+specifiers through an import map instead, which names each package once per
+page, so a later load that requests another version of a mapped package fails.
 
 ```ts
 player.strategy = "esm";
@@ -108,17 +142,86 @@ player.loaderOptions = {
 };
 ```
 
-The view defaults to `"delivery"` unless `mode="author"` (which resolves to `"author"`), or explicitly overridden via `loaderOptions.view`.
+ESM element builds bring their own MathJax, so under `esm` the player installs
+no math renderer and never fetches its MathJax 3 module
+([Math rendering](./math-rendering.md#renderers-by-strategy)).
 
-In both modes the player injects an import map for the shared dependencies. Firefox applies one import map per page, and only before the page's first module load, so it rejects the player's map on a page that loaded a module first, and any map after the first. The player detects a rejected map by importing one of its specifiers, and from then on loads that page's elements through es-module-shims in shim mode, which `@pie-players/pie-players-shared` bundles and loads only on such a page. Browsers that apply the map load natively. A page that runs its own es-module-shims must run it in shim mode; the player reuses that instance, and fails the load with an error naming the cause when it runs in polyfill mode. The CSP base policy in [`../security/readme.md`](../security/readme.md#content-security-policy) covers both paths.
+#### Shared dependencies
+
+React and React DOM are page singletons. An element package that uses either
+declares the exact version it was built against in its `package.json`, under
+`pie.browserSharedDependencies`; a missing or inexact declaration fails the
+load. Dependency and peer-dependency ranges are install metadata, and the
+player does not read them as a runtime fallback. The adapter maps one version of
+each in an import map it adds to the page, in both resolution modes.
+
+When elements declare different versions within one major, the adapter selects
+the highest and reports the conflict: a `[pie-esm]` console warning and, with
+`loaderConfig.trackPageActions` on and an instrumentation provider set, a
+`pie-esm-shared-dependency-conflict` event. Different majors fail the load.
+Once the map is on the page its versions are fixed, so a later load that
+declares a higher version fails too. A failure logs a `[pie-esm]` console error
+and reports an `EsmSharedDependencyError` to instrumentation.
+
+Import maps are required: in a browser without them, a load that has a
+dependency to map fails.
+
+#### Browsers that reject late import maps
+
+Firefox applies one import map per page, and only before the page's first module
+load, so it rejects the player's map on a page that loaded a module first, and
+any map after the first. The adapter detects a rejected map by importing one of
+its specifiers. From then on it loads that page's elements through
+es-module-shims, an import-map polyfill that `@pie-players/pie-players-shared`
+bundles and loads only on such a page. The adapter runs it in shim mode, in
+which es-module-shims resolves imports itself from the maps handed to it, so a
+map the browser rejected still applies. Browsers that apply the map load
+natively.
+
+A page that runs its own es-module-shims keeps that instance, which must run in
+shim mode: es-module-shims takes maps from a script only in shim mode, so an
+instance in polyfill mode, its default, fails the load with an error that says
+so. The [CSP base policy](../security/readme.md#content-security-policy) covers
+both paths.
 
 #### Shared editor runtime
 
-A package that declares `pie.browserEditorRuntime` also publishes, for each view its `views` names, a variant that imports Tiptap and ProseMirror from a shared runtime package instead of bundling them. Under `moduleResolution: "url"` the player loads that variant, `dist/browser/<views[view]>/index.js`, and adds the runtime's `pie.browserModules` to the import map, each at `dist/browser/<module>/index.js` of the runtime package on the same CDN, so every editor on the page runs one engine. A view `views` does not name loads its `./browser/*` module, and so does every package under `moduleResolution: "import-map"` or without the declaration.
+The rich-text editors in element packages run on Tiptap and ProseMirror. A
+package that declares `pie.browserEditorRuntime` also publishes, for each view
+its `views` names, a variant that imports them from a shared runtime package
+instead of bundling them, so every editor on the page runs one engine. Under
+`moduleResolution: "url"` the player loads that variant,
+`dist/browser/<views[view]>/index.js`, and adds the runtime's
+`pie.browserModules` to the import map, each at `dist/browser/<module>/index.js`
+of the runtime package on the same CDN. A view `views` does not name loads its
+`./browser/*` module, and so does every package under
+`moduleResolution: "import-map"` or without the declaration.
 
-The runtime is a page singleton. The first load that needs it maps the highest version among the packages it loads and records it as `data-pie-editor-runtime` on the import map script; later loads on the page, from any player, use that version. It serves a package that declares the same runtime at a version in its caret range at or below its own: the same major, and below 1.0.0 the same minor. A lower version it serves is reported as a resolved shared-dependency conflict, as React is. A package it cannot serve loads `./browser/*` and is reported the same way: a `[pie-esm]` console warning and, with instrumentation, a `pie-esm-shared-dependency-conflict` event. The player also loads `./browser/*` and reports it when the runtime's `package.json`, its modules or the variant fail to load, when the page already maps one of the runtime's specifiers, and in a browser without import maps.
+The runtime is a page singleton. The first load that needs it maps the highest
+version among the packages it loads and records it as `data-pie-editor-runtime`
+on the import map script; later loads on the page, from any player, use that
+version. It serves a package that declares the same runtime at a version in its
+caret range at or below its own: the same major, and below 1.0.0 the same
+minor. Serving a package that declared a lower version is reported as a resolved
+[shared-dependency](#shared-dependencies) conflict, as for React.
 
-ESM element builds bring their own math rendering, so the player installs no renderer and never fetches its MathJax module. An ESM element still uses a renderer the host installs on `window["@pie-lib/math-rendering"]`, and so does the player for the math in the item's own markup ([below](#item-markup-math)).
+The player loads a package's `./browser/*` modules instead, and reports it the
+same way, when:
+
+- the runtime cannot serve the package
+- the runtime's `package.json`, its modules or the variant fail to load
+- the page already maps one of the runtime's specifiers
+- the browser has no import maps
+
+The `./browser/*` modules are self-contained, so none of these fails the load.
+
+#### ESM CDN providers
+
+`esmCdnProvider` names the URL layout of the CDN at `esmCdnUrl`. jsDelivr's is
+the default: package files at `<esmCdnUrl>/<package>@<version>/<path>`, and
+shared dependencies at `<esmCdnUrl>/<dependency>@<version>/+esm`. Every provider
+name other than `"esm.sh"` selects that layout, so a mirror that serves it
+passes its own name and URL.
 
 For esm.sh, pass both the provider name and base URL:
 
@@ -132,9 +235,26 @@ player.loaderOptions = {
 With this provider, PIE package artifacts are fetched from `raw.esm.sh` while
 shared browser dependencies are fetched from `esm.sh`.
 
+A CDN with another layout takes a provider object: a `name` and the URL builders
+`packageJsonUrl(pkg)`, `browserViewUrl(pkg, view)`, `browserControllerUrl(pkg)`
+and `sharedDependencyUrl(dep, version, subpath?)`, plus an optional
+`runtimeSupportUrl(pkg)`. Under `esm` the item player's own MathJax takes the
+provider's npm root as its asset root when the page sets none
+([MathJax assets](./math-rendering.md#mathjax-assets)).
+
 ### `strategy="preloaded"`
 
-The player assumes all required PIE custom elements are already defined in the browser and loads nothing. The host installs the pie-elements-ng packages it needs as npm dependencies, its own build bundles their ESM builds, and it registers them with `registerPreloadedElements` ([below](#registering-elements-from-npm)) before the player renders. Preloaded is ESM only, because the elements are resolved at the host's build time; IIFE bundles are the runtime-loaded `iife` strategy.
+The player assumes all required PIE custom elements are already defined in the
+browser and loads nothing. The host installs the pie-elements-ng packages it
+needs as npm dependencies, its own build bundles their ESM builds, and it
+registers them with `registerPreloadedElements`
+([below](#registering-elements-from-npm)) before the player renders. Preloaded
+is ESM only, because the elements are resolved at the host's build time; IIFE
+bundles are the runtime-loaded `iife` strategy. Preloaded needs no package
+format of its own: element modules export classes without registering tags, so
+one build serves every strategy
+([Preloaded](https://github.com/pie-framework/pie-elements-ng/blob/develop/docs/PIE_ELEMENT_CONTRACT.md#preloaded)
+in the contract).
 
 ```html
 <pie-item-player
@@ -143,13 +263,35 @@ The player assumes all required PIE custom elements are already defined in the b
 ></pie-item-player>
 ```
 
-Registration records each package's version in `window.PIE_PRELOADED_ELEMENTS`. The player replaces every authored spec of a recorded package with that version on its runtime copy of the config. Content can author a package under another base tag than the one it is registered under, so the player then defines each resulting versioned tag the page lacks from the element registered for the same package spec, with that registration's controller and bundle type (`defineAuthoredPreloadedTags`), and calls `assertRegistered` from the `ElementLoader` primitive for the versioned tags. A tag whose package spec the page did not register stays undefined and throws `ElementAssertionError`, naming each missing tag and the tags its package is registered as; there is no fall-back to bundle fetching.
+Registration records each package's version in `window.PIE_PRELOADED_ELEMENTS`.
+Before rendering, the player:
 
-The player installs no math renderer under `preloaded`, as under `esm`: the elements start MathJax 4 themselves, on `window.MathJax` or as a copy of their own ([below](#one-mathjax-version-per-page)). A bundled copy has no npm root of its own, so the host passes the [MathJax asset root](#mathjax-assets) when it registers the elements.
+1. Replaces every authored spec of a recorded package with that version, on its
+   runtime copy of the config.
+2. Defines each resulting versioned tag the page lacks from the element
+   registered for the same package spec, with that registration's controller
+   and bundle type (`defineAuthoredPreloadedTags`). Content can author a package
+   under another base tag than the one it is registered under, and this step
+   renders it.
+3. Calls `assertRegistered` from the `ElementLoader` primitive for the versioned
+   tags. A tag whose package spec the page did not register stays undefined and
+   throws `ElementAssertionError`, naming each missing tag and the tags its
+   package is registered as; there is no fall-back to bundle fetching.
+
+The player installs no math renderer under `preloaded`, as under `esm`: the
+elements start MathJax 4 themselves, on `window.MathJax` or as a copy of their
+own ([One MathJax version per page](./math-rendering.md#one-mathjax-version-per-page)).
+A bundled copy has no npm root of its own, so the host passes the
+[MathJax asset root](./math-rendering.md#mathjax-assets) when it registers the
+elements.
 
 ### Registering elements from npm
 
-A host that installs element packages registers them with `registerPreloadedElements` from `@pie-players/pie-item-player/preloaded`, before the player renders. That entry defines no element and installs no stylesheet. It ships in `@pie-players/pie-item-player`, so the host declares that package and the element packages alone:
+A host that installs element packages registers them with
+`registerPreloadedElements` from `@pie-players/pie-item-player/preloaded`,
+before the player renders. That entry defines no element and installs no
+stylesheet. It ships in `@pie-players/pie-item-player`, so the host declares that
+package and the element packages alone:
 
 ```ts
 import { registerPreloadedElements } from "@pie-players/pie-item-player/preloaded";
@@ -172,89 +314,88 @@ registerPreloadedElements(
 await import("@pie-players/pie-item-player");
 ```
 
-- `tag` is the base tag to register. The element registers under its versioned form, which encodes the version: 13.4.0-next.15 registers as `pie-element-multiple-choice--version-13-4-0-next-15`. Content that authors the package under another base tag, such as `multiple-choice`, renders through the versioned tag the player defines from this registration.
-- `version` is the installed version, exact; a range throws. Reading it from the host's own exact pin, as above, keeps it equal to the installed package. npm saves a caret range unless the install passes `--save-exact`, and a fresh install can resolve one to another release line: `^13.4.0-next.15` resolves to the legacy `13.4.4`, which has no `./browser/*` modules.
-- Install every pie-elements-ng package from one release, in one `npm install --save-exact` from the same dist-tag, and upgrade them together. Elements whose `./browser/*` builds typeset on `window.MathJax` share the MathJax the first of them loads, in the build and configuration of that element's release. Releases change both, so in a mixed set an element can typeset with a MathJax it was not built for: `@pie-element/multiple-choice` 13.4.0-next.15 loads a build without MathML input, 13.4.0-next.16 one with it. Elements that bundle their own MathJax ([below](#one-mathjax-version-per-page)) share none.
-- A package registers at one version per page, because the players align every authored version of a package to the registered one. Registering a second version throws.
-- `element` is the package's `./browser/delivery` module: `./browser/*` is the npm entry because it resolves React from the element package, so a host does not switch to `./delivery`. Only `@pie-element/*` builds from pie-elements-ng publish `./browser/delivery` and `./browser/controller`.
-- `controller` is the package's `./browser/controller` module. A player that is not hosted runs its `model()` in the browser and warns once per tag registered without one. A hosted player renders server-processed models and needs none.
-- `math` sets where the elements' MathJax loads its fonts and speech data from, and whether math is in the tab order ([MathJax assets](#mathjax-assets)). Elements on adapter 0.1.3 or later render without web fonts and speech when neither it nor the page gives a root or the files' URLs.
-- The call is synchronous and validates every entry, and `math`, before registering any. A tag that is already defined keeps its definition.
-- Under TypeScript, the `package.json` import needs `resolveJsonModule`, and a package version that ships no declarations for `./browser/*` needs a `declare module` shim for those subpaths.
+- `tag` is the base tag to register. The element registers under its versioned
+  form, which encodes the version: 13.4.0-next.15 registers as
+  `pie-element-multiple-choice--version-13-4-0-next-15`. Content that authors
+  the package under another base tag, such as `multiple-choice`, renders through
+  the versioned tag the player defines from this registration.
+- `version` is the installed version, exact; a range throws. Reading it from the
+  host's own exact pin, as above, keeps it equal to the installed package. npm
+  saves a caret range unless the install passes `--save-exact`, and because both
+  repositories publish under `@pie-element/*`, a fresh install can resolve one
+  to another release line: `^13.4.0-next.15` resolves to the legacy `13.4.4`,
+  which has no `./browser/*` modules.
+- Install every pie-elements-ng package from one release, in one
+  `npm install --save-exact` from the same dist-tag, and upgrade them together.
+  Elements whose `./browser/*` builds typeset on `window.MathJax` share the
+  MathJax the first of them loads, in the build and configuration of that
+  element's release. Releases change both, so in a mixed set an element can
+  typeset with a MathJax it was not built for: `@pie-element/multiple-choice`
+  13.4.0-next.15 loads a build without MathML input, 13.4.0-next.16 one with it.
+  Elements that bundle their own MathJax
+  ([One MathJax version per page](./math-rendering.md#one-mathjax-version-per-page))
+  share none.
+- A package registers at one version per page, because the players align every
+  authored version of a package to the registered one. Registering a second
+  version throws.
+- `element` is the package's `./browser/delivery` module: `./browser/*` is the
+  npm entry because it resolves React from the element package, so a host does
+  not switch to `./delivery`. Only `@pie-element/*` builds from pie-elements-ng
+  publish `./browser/delivery` and `./browser/controller`.
+- `controller` is the package's `./browser/controller` module. A player that is
+  not hosted runs its `model()` in the browser and warns once per tag registered
+  without one. A hosted player renders server-processed models and needs none.
+- `math` sets where the elements' MathJax loads its fonts and speech data from,
+  and whether math is in the tab order
+  ([MathJax assets](./math-rendering.md#mathjax-assets)). Elements on adapter
+  0.1.3 or later render without web fonts and speech when neither it nor the
+  page gives a root or the files' URLs.
+- The call is synchronous and validates every entry, and `math`, before
+  registering any. A tag that is already defined keeps its definition.
+- Under TypeScript, the `package.json` import needs `resolveJsonModule`, and a
+  package version that ships no declarations for `./browser/*` needs a
+  `declare module` shim for those subpaths.
 
 ### Preloaded player builds
 
-Generated `@pie-players/pie-preloaded-player` builds bundle a fixed set of pie-elements-ng elements from their ESM browser builds together with the item player, MathJax 4 inside their chunks, and ship the fonts and speech data that MathJax loads. The entry names each of those files by `new URL(…, import.meta.url)`, so every request goes to the server the package is on, or to the host's own build output when the host's bundler processes the entry; nothing loads from the bundle service or a CDN, and the entry installs no `window["@pie-lib/math-rendering"]` renderer. The generator takes elements on `@pie-element/shared-math-rendering-mathjax` 0.1.3 or later. Speech ships in English; a config's `speechLocales` ships more. They stay published for hosts that have not moved to npm registration; a new integration registers ESM builds instead. A build published before the generator moved to ESM elements carries a PITS IIFE bundle of its elements, and its entry installs the MathJax 3 renderer that bundle reads ([below](#one-mathjax-version-per-page)).
-
-The `configs/preloaded-player/` directory contains JSON manifests that define predefined sets of PIE elements to bundle into a single `@pie-players/pie-preloaded-player` package. This package registers all listed elements at import time through `registerPreloadedElements`, without controllers, so a hosted `<pie-item-player strategy="preloaded">` renders them without fetching bundles. See [`docs/preloaded-player/readme.md`](../preloaded-player/readme.md).
-
-Build a preloaded bundle locally:
-
-```bash
-bun run cli pie-packages:preloaded-player-build-package \
-  --elementsFile configs/preloaded-player/<name>.json
-```
-
-CI publishes preloaded-player variants via `.github/workflows/publish-preloaded-player.yml`.
+Generated `@pie-players/pie-preloaded-player` builds bundle a fixed set of
+pie-elements-ng elements with the item player and the MathJax files they load,
+and register the elements at import, without controllers, so a hosted
+`<pie-item-player strategy="preloaded">` renders them without fetching. They
+are transitional: a new integration registers ESM builds itself, as above.
+[Preloaded player](../preloaded-player/readme.md) covers installing and
+upgrading them.
 
 ## Load completion
 
-`load-complete` goes out once the item's and passage's elements have rendered and the first [markup math](#item-markup-math) pass is done, for at most two seconds together, so a host that reveals the item on it shows it drawn; a render or typeset that outlasts the bound holds it no further. An element has rendered once it holds content, and so has every custom element it painted, as an `ebsr` paints its parts. No element event marks a render in both element generations, so the player reads the DOM: an element still empty once the player's subtree has had no mutation for 200ms counts as rendering nothing, as a rubric does for a student, and a tag no bundle has defined is not waited for. In author mode it waits for neither.
+`load-complete` goes out once the item's and passage's elements have rendered
+and the first [markup math](./math-rendering.md#item-markup-math) pass is done,
+so a host that reveals the item on it shows it drawn. The wait is bounded at two
+seconds in total: a render or typeset that outlasts the bound holds the event no
+further. In author mode the player waits for neither.
 
-## Item markup math
-
-Each element typesets the math in its own subtree. The player typesets the math in the rest of the item and passage markup, handing a renderer only the parts that hold math and no element, so no element's content is typeset twice. It does so once the elements are initialized and again when a markup block is replaced, and [`load-complete`](#load-completion) waits for the first pass, so a host that reveals the item on it shows the markup's math typeset. The renderer is the page's, `window["@pie-lib/math-rendering"]`: under `iife` the one the player installs, under `esm` and `preloaded` one the host installs, which ESM elements render with as well. On a page without one the player typesets the markup on a MathJax 4.1.3 of its own, the browser build of `@pie-element/shared-math-rendering-mathjax` that ESM elements bundle, imported on the first markup that holds math. Like the elements' copies, it neither reads nor writes `window.MathJax` or the page renderer, and loads its fonts and speech data as [MathJax assets](#mathjax-assets) sets out.
+An element has rendered once it holds content, and so has every custom element
+it painted, as an `ebsr` paints its parts. No element event marks a render in
+both pie-elements and pie-elements-ng builds, so the player reads the DOM: an
+element still empty once the player's subtree has had no mutation for 200ms
+counts as rendering nothing, as a rubric does for a student, and a tag no bundle
+has defined is not waited for.
 
 ## MathJax assets
 
-Copies of `@pie-element/shared-math-rendering-mathjax` from 0.1.3, in the elements and in the player's own MathJax, load MathJax's fonts and speech data as math renders, and on the adapter's npm build MathJax itself. No build names a CDN host. A copy loads each file from:
-
-1. Its URL in `window["@pie-lib/math-rendering@2"].opts.assetUrls`, keyed by npm path, such as `@mathjax/mathjax-newcm-font@4.1.3/chtml/woff2/mjx-ncm-n.woff2`. The browser build reads it.
-2. Otherwise the asset root, an npm root: a URL under which `<package>@<version>/<path>` serves that file of the package. A copy takes the first of `opts.assetRoot`; for the player's own MathJax under `esm`, the npm root of the element CDN (`esmCdnUrl` for jsDelivr, `https://raw.esm.sh` for esm.sh, the root of a provider object's `packageJsonUrl` layout when it has one); and the npm root of the URL the copy loaded from.
-
-Under `esm` the files come from the CDN the elements load from, with no configuration. A generated preloaded-player build lists every file it ships in `assetUrls`, each by `new URL("./mathjax/npm/…", import.meta.url)`, so it needs no root and a host bundler emits the files ([Preloaded player builds](#preloaded-player-builds)). A host that registers ESM builds it bundles itself passes the files' location through `registerPreloadedElements`:
-
-```ts
-registerPreloadedElements(entries, {
-  math: {
-    assetRoot: "https://assets.example.com/npm",
-    speechLocales: ["en", "es"],
-  },
-});
-```
-
-- `assetRoot` is the npm root. A self-hosted one serves the files [Math Rendering in pie-elements-ng](https://github.com/pie-framework/pie-elements-ng/blob/develop/docs/MATH-RENDERING.md#assets) lists, for the packages the adapter's `pie.assetPackages` names. A relative URL resolves against the page.
-- `assetUrls` maps npm paths to the URLs of those files, a string or a `URL` each; the files it does not list load from the root.
-- `speechPath` is the directory of `speech-worker.js` and its `mathmaps/`, by default `mathjax@<version>/sre` under the root. A directory of its own serves locales SRE does not ship.
-- `speechLocales` are the locales the speech language menu lists, as ids or as ids mapped to their labels; by default every locale SRE ships. List only those that can load.
-- `inTabOrder: true` puts typeset math in the keyboard tab order, a tab stop on each expression, for the MathJax menu's setting and its explorer; unset or `false`, math stays out of it. It takes effect at a copy's first math load: a copy reads it as it starts MathJax, so a later change reaches only copies that have not started. A host that loads a generated preloaded-player build, whose entry registers its elements itself, sets `opts.inTabOrder` on the page before the entry evaluates, and the entry's registration keeps it. The `iife` strategy's MathJax 3 renderer, and a MathJax the host loads and configures itself, keep their own configuration and ignore it. Adapter 0.1.4 and earlier ignore it.
-
-The call writes the options it is given, adds its `assetUrls` to those the page lists, and keeps the page options it leaves unset. A host without the players sets the same page options before the first element renders. With neither a root nor the fonts' URLs a copy warns once and dispatches `pie-mathjax-no-asset-root` on `window`: the browser build renders without web fonts and speech, and the npm build loads no MathJax. Players with `trackPageActions` on forward the event to instrumentation once per provider. Copies up to adapter 0.1.2 ignore the options and load from jsDelivr. The origins these files add to a Content-Security-Policy are in [security](../security/readme.md#content-security-policy).
+Where the elements' MathJax loads its fonts and speech data from, and how a host
+sets it, is in [Math rendering](./math-rendering.md#mathjax-assets).
 
 ## One MathJax version per page
 
-The page's `window.MathJax` holds one MathJax major version, and which builds typeset on it decides what a page can combine. These builds, page-global below, typeset on `window.MathJax`:
-
-- The `iife` strategy's renderer, MathJax 3.2.2, and the same renderer in a `@pie-players/pie-preloaded-player` build that carries an IIFE bundle (`pie-elements-bundle-<hash>.js` beside `math-rendering.js`).
-- ESM element builds whose `@pie-element/shared-math-rendering-mathjax` is 0.1.1 or earlier. They load MathJax 4.1.3 into `window.MathJax`, or typeset with the MathJax the page already has.
-- A host's own MathJax.
-
-ESM element builds whose adapter is 0.1.2-next.20261003161149 or later bundle a MathJax 4.1.3 private to the module: it neither reads nor writes `window.MathJax`, and every element package on the page starts its own copy, with its own `<style id="PIE-MJX-CHTML-styles-<n>">`. From 0.1.3 each copy loads its files from the [asset root](#mathjax-assets). An element pins its adapter exactly in its `package.json`; `@pie-element/multiple-choice` 14.0.0 pins 0.1.1. `esm` loads the build of the version the item names, `preloaded` runs the builds the host installed, and a generated preloaded-player build that bundles ESM builds carries the versions its manifest lists. [Math Rendering in pie-elements-ng](https://github.com/pie-framework/pie-elements-ng/blob/develop/docs/MATH-RENDERING.md#builds) describes both adapter builds.
-
-ESM builds run MathJax 4 because MathJax 3 ships no ES modules and depends on the `window.MathJax` global; its last release is 3.2.2, from June 2022, and npm marks `mathjax-full` deprecated in favour of `@mathjax/src`. MathJax 3 and MathJax 4 on `window.MathJax` together is unsupported: an `iife` item player next to `esm` or `preloaded` elements that typeset on the page global, or a host's own MathJax 3 next to them. The player still attempts to render such a page and guarantees nothing about the result. Elements with their own MathJax run beside a host's MathJax 3 that typesets only its own content. Observed in Chromium, with the builds each observation applies to:
-
-- An `iife` item loaded after MathJax 4 fails at its math-rendering step with `MathJax.loader.preLoad is not a function`, so the whole item fails to load. Page-global builds only; a bundled MathJax leaves `window.MathJax` unset.
-- MathJax 3 loaded after MathJax 4 overflows the stack during its startup, and later math stays untypeset. Page-global builds only; MathJax 3 loaded after a bundled MathJax starts and typesets normally.
-- ESM elements on a page that already runs MathJax 3 typeset with that MathJax and its configuration, so PIE's macros such as `\longdiv` render as errors. Page-global builds only; a bundled MathJax typesets with its own configuration and macros.
-- Page-global and bundled ESM builds alike hand their math to a renderer on `window["@pie-lib/math-rendering"]` when the page has one. After an `iife` item player installs its MathJax 3 renderer there, ESM elements typeset through it, which carries the macros, so an element with its own MathJax typesets with MathJax 3 on that page.
-- MathJax 3 typesetting the page after ESM math rendered typesets MathJax 4's hidden MathML again, so formulas show twice. Page-global and bundled builds alike: the hidden MathML is in the page's DOM either way.
-- MathJax 3 writes its styles to `<style id="MJX-CHTML-styles">`, and so does the MathJax 4 that adapters 0.1.1-next.4 and earlier load; with those, the version that renders second removes the other's stylesheet, and math the first one rendered loses its layout. Later adapters write to their own stylesheet, `PIE-MJX-CHTML-styles` on the page global and `PIE-MJX-CHTML-styles-<n>` bundled, which MathJax 3 leaves in place. MathJax 3's stylesheet still matches the `mjx-*` elements of both and tightens their spacing, and the adapter reports it as `foreign-output-stylesheet`.
-
-A host that runs MathJax 3 for its own content keeps PIE on `iife`, or uses element builds with their own MathJax and typesets only its own containers.
+Which MathJax builds can share a page, and how a mixed page fails, is in
+[Math rendering](./math-rendering.md#one-mathjax-version-per-page).
 
 ## Section player integration
 
-The section player renders each item via `<pie-item-player>`. Hosts select the strategy through `runtime.playerType` on the section-player element, which maps directly onto the item player's `strategy`:
+The section player renders each item via `<pie-item-player>`. Hosts select the
+strategy through `runtime.playerType` on the section-player element, which maps
+directly onto the item player's `strategy` and defaults to `iife`:
 
 | `runtime.playerType` | Item player `strategy` |
 | -------------------- | ---------------------- |
@@ -267,14 +408,17 @@ const player = document.querySelector("pie-section-player-splitpane");
 player.runtime = { playerType: "preloaded" };
 ```
 
-`player-type` carries the resolved value internally — `PieSectionPlayerBaseElement` to `<pie-assessment-toolkit>` to the item player — and is not an attribute on `<pie-section-player-splitpane>` or `<pie-section-player-vertical>`. `<pie-assessment-player-default>` accepts a `player-type` attribute, and maps it onto the section player's `runtime.playerType`.
+The layout elements `<pie-section-player-splitpane>`,
+`<pie-section-player-vertical>` and `<pie-section-player-tabbed>` have no
+`player-type` attribute: they hand the resolved value through
+`<pie-assessment-toolkit>` to each item player. `<pie-assessment-player-default>`
+accepts a `player-type` attribute and maps it onto the section player's
+`runtime.playerType`.
 
-In the demo apps, use query parameters to switch strategies:
-
-- `?player=iife`
-- `?player=esm`
-- `?player=preloaded`
+The demo apps switch strategy with a query parameter: `?player=iife`,
+`?player=esm` or `?player=preloaded`.
 
 ## Invalid strategy fallback
 
-If an unrecognized value is passed to `strategy`, the player normalizes it to `"iife"` via `normalizeItemPlayerStrategy()`.
+The player normalizes an unrecognized `strategy` value to `"iife"`
+(`normalizeItemPlayerStrategy()`).

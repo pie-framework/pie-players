@@ -1,20 +1,22 @@
 # Assessment Authoritative Submission
 
-Status: Draft
+Status: Draft, 2026-08-26
+
+Not scheduled: its priority follows the reference assessment player's
+([framework-completing work](../architecture/framework-completing-work.md#decisions-that-need-host-evidence)).
 
 Owner: `@pie-players/pie-assessment-player`
 
 Scope: the reference assessment player only
 ([product scope](../architecture/architecture.md#product-scope)). Production
 assessment players are host-built and submit through their own backend, so this
-contract binds no building block and its priority follows the reference
-player's. A part a custom player would also need, such as the failure
-vocabulary, belongs in a building block if it is ever built.
+contract binds no building block. A part a custom player would also need, such
+as the failure vocabulary, belongs in a building block if it is ever built.
 
 Related architecture:
 
 - [Backend support](../item-player/backend-support.md)
-- [Assessment player client architecture](../assessment-player/client-architecture-tutorial.md)
+- [Building a multi-section player](../assessment-player/integration-guide.md)
 - [Framework-completing and product-completing work](../architecture/framework-completing-work.md)
 - [Consumer API dependencies](../integrations/consumer-api-dependencies.md)
 
@@ -22,7 +24,10 @@ Related architecture:
 
 `AssessmentController.submit()` saves the final `AssessmentSession` through
 `AssessmentSessionPersistenceStrategy`, and only after that save succeeds marks
-the controller submitted and emits `assessment-submission-state-changed`. That is
+the controller submitted and emits `assessment-submission-state-changed`. Saves
+run one at a time in call order, so an older write never lands after a newer
+one. A failed save reaches `hooks.onError` with phase `session-save` and fails
+only its own caller: `submit()` then rejects, and `persist()` resolves. That is
 enough for local lifecycle state, but it cannot represent a backend that must
 finalize an attempt exactly once, reject a conflict, return an authoritative
 receipt, or recover after an indeterminate request.
@@ -48,7 +53,10 @@ operation at the assessment-controller seam.
 ## Non-Goals
 
 - No built-in REST, GraphQL, LTI, QTI, xAPI, or Caliper client.
-- No assessment or section definition loading.
+- No assessment or section definition loading. A host fetches definitions before
+  assigning player inputs; a definition-source interface is added only if
+  player-owned loading removes repeated host orchestration, and never for
+  symmetry with item delivery.
 - No gradebook, reporting, authorization, proctoring, or workflow implementation.
 - No server conflict-resolution policy; PIE reports typed outcomes and leaves the
   decision to the host adapter.
@@ -73,9 +81,8 @@ consumer redefines them.
 
 ## Contract Shape
 
-Documentation sketch:
-
 ```ts
+// Documentation sketch only.
 export interface AssessmentSubmissionContext
   extends AssessmentSessionPersistenceContext {
   idempotencyKey: string;
@@ -137,13 +144,14 @@ export type AssessmentSubmissionState =
     };
 ```
 
-The exact failure representation may use a discriminated result instead of a
-class; review should choose one canonical path, not support both.
+Failures may instead be a discriminated result (see Open Questions); review
+chooses one canonical path, and only that one ships.
 
 ### Submission sequence
 
 1. Synchronize the current section snapshot into the assessment session.
-2. Persist the final pre-submission snapshot through the existing strategy.
+2. Persist the final pre-submission snapshot through the existing strategy, in
+   the same call-order queue as every other save.
 3. Generate one idempotency key for this logical submission and retain it for
    retries during the controller lifetime.
 4. Enter `submitting` and emit one submission-state event.
@@ -157,9 +165,8 @@ Concurrent `submit()` calls while one call is in flight return the same promise.
 A call after success returns the accepted receipt without invoking the adapter
 again. A call after failure retries with the same idempotency key.
 
-When no host strategy is supplied, the default strategy preserves current
-behavior: final persistence succeeds with a locally generated receipt. This is
-an evolution of the existing assessment-player interface, not a legacy alias.
+When no host strategy is supplied, the default strategy keeps current behavior:
+final persistence succeeds with a locally generated receipt.
 
 ## Compatibility
 
@@ -170,17 +177,26 @@ assigning `Promise<void>` may require an update. The event name
 `assessment-submission-state-changed` remains canonical, but its typed payload
 must grow additively to expose status, failure kind, idempotency key, and receipt.
 Event `bubbles`/`composed` behavior and emission cardinality must be checked
-against current code and the consumer dependency pad before implementation.
+against current code and the
+[consumer API dependencies record](../integrations/consumer-api-dependencies.md)
+before implementation.
 
 The PRD does not touch versioned PIE tags, contract IDs, item-player properties,
 item events, or section session shapes. It does affect assessment submission and
-host-facing runtime state, so implementation must update the consumer dependency
-pad or record the required verified no-row-change rationale.
+host-facing runtime state, so implementation updates the consumer API
+dependencies record or records the verified no-row-change trailer its
+[maintenance procedure](../integrations/consumer-api-dependencies-maintenance.md#enforcement)
+requires.
 
 No compatibility shim, duplicate submit method, or `backend.assessment` bridge is
 introduced.
 
 ## Data Ownership And Host Responsibilities
+
+PIE owns the browser lifecycle, canonical session snapshots, operation ordering
+and observable state at its controller interfaces; backends own durable storage,
+authorization, conflict policy, retention, reporting and workflow. For
+submission:
 
 PIE owns:
 
@@ -251,21 +267,18 @@ Required persistent evidence:
   submitted assessment session.
 - Demo-backed Playwright coverage for disabled-during-submit, success
   announcement, recoverable failure, keyboard retry, and no duplicate request.
+- One integrated demo and test that exercise assessment persistence, section
+  persistence, derived item delivery and final submission in one attempt, so
+  ownership and duplicate saves are observable. The assessment demos'
+  persistence lab (`assessment-persistence-lab.spec.ts`) covers assessment
+  saves, their ordering and a rejected submission over HTTP, and wires no
+  section persistence or item backend delivery.
 - Consumer-impact verification for `submit()` and submission event payloads.
 
-Commands:
-
-```sh
-bun run typecheck
-bun run test
-bun run check:source-exports
-bun run check:consumer-boundaries
-bun run check:custom-elements
-bun run check:capability-neutrality
-bun run check:player-tool-boundaries
-```
-
-Playwright-backed tests run outside the sandbox.
+Commands: `bun run typecheck`, `bun run test`, and the
+[high-value checks](../../AGENTS.md#high-value-checks) for a player change.
+Playwright-backed tests run outside the sandbox; see
+[Playwright and sandboxed execution](../../AGENTS.md#playwright-and-sandboxed-execution).
 
 ## Rollout And Release Notes
 
@@ -274,7 +287,8 @@ Playwright-backed tests run outside the sandbox.
   existing `await submit()` callers need no behavioral change when using the
   default strategy.
 - Documentation updates: assessment-player client tutorial, backend support,
-  assessment demo, LTI integration, and consumer dependency pad as required.
+  assessment demo, LTI integration, and the consumer API dependencies record as
+  required.
 - Release risk: medium. The default preserves current persistence-only behavior,
   but event ordering and failed-submit state become explicit public contracts.
 
@@ -287,5 +301,14 @@ Playwright-backed tests run outside the sandbox.
   store local submitted state, or is the receipt sufficient runtime truth?
 - Which existing DOM event carries the richer state, and what are its current
   `bubbles`, `composed`, payload, and cardinality contracts?
-- Should reset clear an accepted submission receipt, or must a submitted
-  controller reject reset unless a separate host workflow authorizes it?
+- Save-failure observability: a failed `persist()` reaches the host only through
+  `hooks.onError`, and the controller exposes no save state from which host
+  chrome can report a recoverable failure. Does submission state cover it, or
+  does the controller need a save state of its own, deepened on the existing
+  interfaces rather than a new adapter namespace?
+- Reset parity: both persistence strategies declare `clearSession?()`, but the
+  assessment controller never calls its strategy's, and the toolkit coordinator
+  calls the section strategy's only when it disposes a controller with
+  `clearPersistence`. Neither layer has a reset operation with events. Should
+  reset clear an accepted submission receipt, or must a submitted controller
+  reject reset unless a separate host workflow authorizes it?

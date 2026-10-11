@@ -1,17 +1,23 @@
 # Publishable Packages Inventory
 
-This file lists all non-private workspace packages currently considered publishable by the repository release checks.
+This is the maintainers' list of the `@pie-players/*` packages in the lockstep
+release set, which release together at one version. The `fixed` block in
+`.changeset/config.json` is the source of truth for membership; the list below
+repeats it in the same order, and `check:docs:publishable-packages` fails when
+the two differ. Hosts choosing what to install read
+[Packages and entry points](../install/packages.md), which groups the packages
+by job and entry point.
 
-Source of truth for lockstep release membership:
+Before a release, `check:pack-integrity:real` (`scripts/check-pack-integrity.mjs`,
+run by `verify:publish`) checks every package's packed tarball. Releases are
+patch-only while the packages are on `0.x.y`
+([versioning policy](./publishing.md#versioning-policy)).
 
-- `.changeset/config.json`
-
-Release validation checks package artifacts with `scripts/check-pack-integrity.mjs`
-(`check:pack-integrity:real`, run by `verify:publish`).
-
-All packages in this inventory participate in the fixed lockstep release set.
-While the project remains on the pre-1.0 `0.x.y` line, releases are patch-only;
-see [`publishing.md`](./publishing.md) for the full policy.
+`@pie-players/pie-tool-theme` is the color-scheme tool (`theme`).
+`@pie-players/pie-preloaded-player` is the one published package outside this
+set: `publish-preloaded-player.yml` publishes it, versioned
+`<loaderVersion>-<set>.<iteration>`
+([version scheme](../preloaded-player/readme.md#version-scheme)).
 
 Publishable packages:
 

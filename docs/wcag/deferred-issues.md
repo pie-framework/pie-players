@@ -1,7 +1,8 @@
 # Deferred Accessibility Issues
 
-This document tracks confirmed accessibility issues and evidence gaps that still
-need follow-up.
+This document tracks the confirmed accessibility issues and evidence gaps in
+pie-players that still need follow-up, for contributors deciding what to fix
+next. It is not exhaustive.
 
 ## Source Classification
 
@@ -15,19 +16,48 @@ need follow-up.
 
 ## Active Product Issues
 
-| ID | Surface | WCAG | Severity | Current behavior / evidence | Suggested fix direction | Intended verification |
-| --- | --- | --- | --- | --- | --- | --- |
-| `a11y-006` | Item-player delivery baseline blocked upstream | [4.1.2 Name, Role, Value](https://www.w3.org/WAI/WCAG22/Understanding/name-role-value) | Medium | The delivery-item axe baseline for `pie-item-player` still needs a known blocker for `aria-allowed-attr` on the rendered multiple-choice surface. The underlying issue originates in `pie-elements-ng`, not in `pie-players`. | Fix the invalid ARIA at the PIE element source, then remove the `aria-allowed-attr` allowlist from the player-scoped baseline. | Keep `packages/item-player/tests/item-player-multiple-choice.spec.ts` scoped to `pie-item-player` and retire the allowlist once the upstream fix lands. |
-| `a11y-009` | Assessment-player integrated baseline blocked by upstream item markup | [4.1.2 Name, Role, Value](https://www.w3.org/WAI/WCAG22/Understanding/name-role-value) | Medium | The `pie-assessment-player-default` critical-flow axe baseline exposes the same `aria-allowed-attr` issue through nested multiple-choice item markup (`aria-checked` on unsupported element role). | Fix upstream item markup, then remove the assessment-player baseline allowlist. | Maintain `packages/assessment-player/tests/assessment-player-smoke.spec.ts` baseline assertion and retire the allowlist after upstream fix verification. |
+### `a11y-006`: Item Player Delivery Baseline
+
+- **WCAG**: [4.1.2 Name, Role, Value](https://www.w3.org/WAI/WCAG22/Understanding/name-role-value)
+- **Severity**: Medium
+- **Surface**: `pie-item-player` rendering a multiple-choice item
+- **Evidence**: the delivery-item axe baseline allowlists `aria-allowed-attr` on
+  the rendered multiple-choice surface. The invalid ARIA comes from the element
+  in [pie-elements-ng](https://github.com/pie-framework/pie-elements-ng).
+- **Fix direction**: fix the ARIA in the element source, then remove the
+  allowlist from the player-scoped baseline.
+- **Verification**: `packages/item-player/tests/item-player-multiple-choice.spec.ts`
+  stays scoped to `pie-item-player`; its allowlist is retired once the upstream
+  fix lands.
+
+### `a11y-009`: Assessment Player Integrated Baseline
+
+- **WCAG**: [4.1.2 Name, Role, Value](https://www.w3.org/WAI/WCAG22/Understanding/name-role-value)
+- **Severity**: Medium
+- **Surface**: `pie-assessment-player-default` critical flow
+- **Evidence**: the critical-flow axe baseline shows the same `aria-allowed-attr`
+  issue through nested multiple-choice item markup (`aria-checked` on an element
+  whose role does not support it).
+- **Fix direction**: fix the upstream item markup, then remove the
+  assessment-player baseline allowlist.
+- **Verification**: `packages/assessment-player/tests/assessment-player-smoke.spec.ts`
+  keeps its baseline assertion; the allowlist is retired after the upstream fix is
+  verified.
 
 ## Active Evidence Gaps
 
-| ID | Surface | Type | Current behavior / evidence | Suggested fix direction | Intended verification |
-| --- | --- | --- | --- | --- | --- |
-| `a11y-005` | Manual assistive technology validation | Supporting evidence gap | Current evidence is strong for code review and Playwright coverage, but VoiceOver/NVDA/JAWS validation is still missing for live announcements, dialog behavior, and reading mode interactions. | Run a manual AT pass using `docs/wcag/evaluation-method.md`. | Manual pass first; automate only the parts that can be checked reliably in browser tests. |
+### `a11y-005`: Manual Assistive Technology Validation
 
-## Notes
+- **Type**: supporting evidence gap
+- **Evidence**: code review and Playwright coverage exist; no manual VoiceOver,
+  NVDA or JAWS pass has covered live announcements, dialog behavior or
+  reading-mode interactions.
+- **Fix direction**: a manual assistive-technology pass following
+  [`evaluation-method.md`](./evaluation-method.md).
+- **Verification**: the manual pass comes first; browser tests then automate the
+  parts they can check reliably.
 
-- This file is an active issue tracker, not a claim that the deferred issues are
-  the only remaining accessibility concerns.
-- Use [`evaluation-method.md`](./evaluation-method.md) and [`project-surface-map.md`](./project-surface-map.md) when deciding what to tackle next.
+## Next Work
+
+[`evaluation-method.md`](./evaluation-method.md) and
+[`project-surface-map.md`](./project-surface-map.md) guide what to tackle next.

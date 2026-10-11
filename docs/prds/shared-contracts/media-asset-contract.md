@@ -1,6 +1,6 @@
 # Media Asset Contract
 
-Status: Accepted, 2026-08-09. The media vocabulary in [Contract Shape](#contract-shape) matches the shipped types in `@pie-players/pie-players-shared/types` field for field. The [Open Questions](#open-questions) are possible policy extensions — which fields a given consumer requires, whether duration is authoritative, and whether rights metadata is in scope — rather than unfinished parts of the accepted contract.
+Status: Accepted, 2026-08-09
 
 Owner: PIE Players maintainers
 
@@ -10,11 +10,13 @@ Related architecture:
 - [Timed media section architecture](../../architecture/timed-media-section.md)
 - [Sign language (ASL) support](../sign-language-asl-support.md)
 
+Integrator guide: [Media Validation](../../../packages/players-shared/README.md#media-validation) in the players-shared README.
+
 ## Problem
 
-Timed-media assessment, future audio/video stimulus work, and standards adapters need a shared vocabulary for stimulus media. Today media fields would likely be invented separately by element models, section profiles, and QTI mappings, which risks lossy transforms and inconsistent accessibility requirements.
+Before this contract, timed media, audio and video stimulus work, and standards adapters had no shared vocabulary for stimulus media, so element models, section profiles and QTI mappings would each have invented media fields, with lossy transforms and inconsistent accessibility requirements between them.
 
-PIE needs enough media metadata to render accessible stimulus media and coordinate section behavior without becoming a media repository or asset-management platform.
+The contract carries enough media metadata to render accessible stimulus media and coordinate section behavior, without making PIE a media repository or asset-management platform.
 
 ## Goals
 
@@ -34,16 +36,16 @@ PIE needs enough media metadata to render accessible stimulus media and coordina
 
 ## Package And Export Ownership
 
-- Owning package: `@pie-players/pie-players-shared` (types at `packages/players-shared/src/types/index.ts`, validation helpers at `packages/players-shared/src/media/index.ts`).
-- Public export path: `@pie-players/pie-players-shared/types` for the types, a subpath already in the package's `exports` map. The earlier `<owner>/media` candidate was not taken for the types: they sit beside the catalog and section types that reference them, and a second subpath would split one vocabulary across two entry points. `@pie-players/pie-players-shared/media`, added 2026-09-23, exports the validation and fragment helpers and no types, so an element can validate authored media without importing the toolkit; the toolkit root re-exports them.
-- Consuming packages or apps: `assessment-toolkit` (spoken-audio catalog cards), `tool-sign-language` (sign-language catalog cards), `players-shared/timed-media` (cue ranges), `section-player` (the per-item media region), timed-media section-player PRDs, `assessment-player`, `pie-elements-ng` `video-stimulus`, the `pie-api-aws` Learnosity importer as a producer, and `../pie-qti` adapters.
+- Owning package: `@pie-players/pie-players-shared` (types in `packages/players-shared/src/types/index.ts`, validation helpers in `packages/players-shared/src/media/index.ts`).
+- Public export path: `@pie-players/pie-players-shared/types` for the types, beside the catalog and section types that reference them, since a second subpath would split one vocabulary across two entry points. `@pie-players/pie-players-shared/media` exports the validation and fragment helpers and no types, and runs nothing at import time, so a tool or element validates authored media without importing the toolkit.
+- Consuming packages: `assessment-toolkit` (spoken-audio catalog cards, which the TTS service plays), `tool-sign-language` (sign-language catalog cards), `players-shared/timed-media` (cue ranges) and `section-player` (the per-item media region). In pie-elements-ng, `video-stimulus` reads the vocabulary through a mirror in `@pie-element/shared-types`, because elements take no player-package dependency. The PIE API service's Learnosity importer writes sign-language cards in it. QTI adapters in [pie-qti](https://github.com/pie-framework/pie-qti) do not consume it yet.
 - Runtime environment: browser, Node-safe, custom element, and adapter-only.
 
-The contract should stay data-only. Rendering APIs belong to element or player implementation PRDs.
+The contract stays data-only. Rendering APIs belong to element or player implementation PRDs.
 
 ## Contract Shape
 
-These names are ratified. The block below mirrors `packages/players-shared/src/types/index.ts` field for field, including `MediaSource.bitrate`, which no consumer reads yet; it is kept because dropping it later is additive-compatible and adding it later to a published type is not.
+The block below mirrors `packages/players-shared/src/types/index.ts` field for field, including `MediaSource.bitrate`, which no player or element rendering code reads; removing a field from the published type would be a breaking change.
 
 ```ts
 type MediaKind = "image" | "audio" | "video" | "other";
@@ -92,11 +94,13 @@ interface MediaFragmentRange {
 }
 ```
 
-`MediaFragmentRange` is carried **beside** the asset by whatever references it, never inside `MediaAssetRef` or `MediaSource`: a range describes one *use* of a recording, and the same recording is meant to serve several content nodes. `SignLanguageCardPayload.fragment` and `SpokenAudioCardPayload.fragment` hold it today; timed-media cue ranges take the same position.
+`TranscriptRef` carries `src`, `html` and `plainText` as independent optional fields, because the three serve different callers — an external reference for a host-hosted transcript, inline HTML for authored markup, plain text for adapters and non-visual consumers — and a union would force a caller holding two of them to drop one. No precedence rule between them is defined here; a consumer rendering a transcript picks and documents its own.
 
-The range carries no playback semantics, and consumers must not add any to it. The two shipped consumers read it as "play only this slice," and **the player enforces both bounds itself**: `applyMediaFragment` writes a Media Fragments URI, but that is a hint only — browsers honour the start offset inconsistently, so the signing region seeks explicitly on `loadedmetadata` (forward only, so it never fights a learner who already scrubbed), and they vary on the end bound, so it pauses on `timeupdate`. A timed-media cue would read the same shape as "the window in which this cue is active," which is not a slice to play at all. Each consumer states what its range means; nothing gets a `mode` discriminant and nothing forks the type.
+`MediaFragmentRange` is carried **beside** the asset by whatever references it, never inside `MediaAssetRef` or `MediaSource`: a range describes one *use* of a recording, and the same recording is meant to serve several content nodes. `SignLanguageCardPayload.fragment`, `SpokenAudioCardPayload.fragment` and timed-media cue ranges all hold it in that position.
 
-Which fields are required is declared per consumer rather than at the type level — see [Second Carrier](#second-carrier-accessibility-catalog-cards). Which accessibility fields are required by policy rather than by schema stays open, and is a policy question that does not move a field.
+The range carries no playback semantics, and consumers must not add any to it; each consumer states what its range means. The two catalog-card consumers read it as "play only this slice" and enforce both bounds through `enforceMediaFragment`, because browsers honor neither bound of the Media Fragments URI that `applyMediaFragment` writes reliably. It seeks forward to the start once metadata loads and checks the end on `timeupdate` and a 100 ms poll; the caller picks the end action, so the signing region pauses and recorded TTS audio ends the clip so the next chunk plays. A timed-media cue reads the same shape as the window in which the cue is active, which is not a slice to play. Nothing gets a `mode` discriminant and nothing forks the type.
+
+Which fields are required is declared per consumer rather than at the type level — see [Catalog-Card Carriers](#catalog-card-carriers). Which accessibility fields are required by policy rather than by schema stays open, and is a policy question that does not move a field.
 
 ## Compatibility
 
@@ -111,7 +115,7 @@ No generic media metadata bag should be added to section sessions. Timed-media s
 PIE owns:
 
 - media metadata vocabulary;
-- validation for data shape if exported publicly;
+- data-shape validation, exported from `@pie-players/pie-players-shared/media`;
 - accessibility expectations that player/element PRDs consume.
 
 Hosts own:
@@ -134,11 +138,13 @@ Media asset references are persisted or wire-facing data and require:
 - unknown-version rejection for runtime rendering;
 - fixtures for image, audio, video, captions, subtitles, transcripts, poster, and missing-duration cases.
 
-URLs should be treated as opaque host-owned references. PIE should not infer authorization or retention semantics from URL shape.
+URLs are opaque host-owned references. PIE infers no authorization or retention semantics from URL shape.
+
+`MediaAssetRef.version: 1` is a required literal, so a future revision has somewhere to go. Bumping it to `2` obliges every consumer to accept both versions for as long as any producer emits `1`, and the PIE API service's Learnosity importer already emits `1`.
 
 ## Accessibility
 
-The contract should support:
+The contract supports:
 
 - captions and subtitles, preferably WebVTT for browser playback;
 - transcript references or inline transcript text;
@@ -151,9 +157,29 @@ Player and element PRDs must define when captions/transcripts are required by po
 
 ## Standards Or Adapter Impact
 
-This contract should provide adapter-friendly data for QTI/PCI, xAPI, and Caliper media statements. It does not claim conformance.
+This contract provides adapter-friendly data for QTI/PCI, xAPI, and Caliper media statements. It does not claim conformance.
 
-QTI media/stimulus mapping belongs in `../pie-qti`. The QTI adapter must document any lossy mapping from this media contract into QTI media or package constructs.
+QTI media/stimulus mapping belongs in [pie-qti](https://github.com/pie-framework/pie-qti). The QTI adapter must document any lossy mapping from this media contract into QTI media or package constructs.
+
+## Catalog-Card Carriers
+
+Accessibility catalogs carry media too: a `sign-language` catalog card is a video docked to a content node. `CatalogCard` originally carried only a required `content` string, so such a card could hold only a bare URL, with no second source, MIME type or poster. `content` is now optional, and the structured `CatalogCard.payload` is this contract, so the catalog model grows no parallel set of media fields. `SignLanguageCardPayload` wraps a `MediaAssetRef` rather than restating media fields, and `SpokenAudioCardPayload`, recorded audio as a `spoken` alternate, wraps a `MediaAssetRef` of `kind: "audio"`; both carry the optional range as `fragment`. The second payload carried a second media kind and a second accommodation without a field change. See [`../sign-language-asl-support.md`](../sign-language-asl-support.md).
+
+The shared validation layer, now `@pie-players/pie-players-shared/media`, was extracted when the second consumer arrived, because two copies of a URL allow-list drift apart on security fixes. Every pie-players consumer validates authored media through it. `video-stimulus` keeps a copy of `isSafeMediaSrc` and `normalizeMediaSources` in pie-elements-ng, held to parity by its tests, so a rule change lands in both repositories.
+
+Two rules bind every consumer:
+
+- Each **consumer declares its required subset**; the type does not make every field optional, since a type where nothing is required stops catching anything. For signing: sources and language required, poster and duration not applicable, and `tracks`/`transcript` actively meaningless, since captions on a signing video would be the English text already on screen.
+- A **time range within** an asset is part of the vocabulary, because QTI 3 expresses signing time slices with Media Fragments URIs so one recording can serve several content nodes, and timed media needs the same primitive for cue ranges.
+
+## Ratification
+
+Ratified 2026-08-09 against the timed-media consumer's proposed shapes, `VideoStimulusModel` and `timedMedia.media` in [`../../architecture/timed-media-section.md`](../../architecture/timed-media-section.md), before the first release that published the types; from that release on, revising a field is a breaking change for consumers outside this repo. Signing had landed its media code first, so the check confirmed a vocabulary already in code. It found no field change:
+
+- **A cue range fits `MediaFragmentRange`** in both cue forms: a point cue is `{ startSeconds }` with the end omitted, and a ranged cue carries both. A cue references the section's shared stimulus and its range describes that cue's use of it, the same beside-the-asset position the card payloads use.
+- **A stimulus needs nothing `MediaAssetRef` lacks.** Every field of the proposed `VideoStimulusModel` maps onto a shipped one: `sources`, `poster`, `captions` onto the wider `tracks`, `transcript`, and `accessibilityLabel` onto `label`/`description`. `VideoStimulusModel.element` does not map and should not: a versioned PIE tag name belongs to the element model, not to media metadata.
+
+So `video-stimulus` inherits this vocabulary rather than extending it, and the [timed-media section contract](../timed-media-section-contract.md) states what its cue ranges mean.
 
 ## Test Plan
 
@@ -163,18 +189,18 @@ Required test coverage:
 - fixtures for multiple sources with MIME types;
 - captions/subtitles/transcript fixtures;
 - validation tests for required fields per media kind;
-- adapter round-trip fixtures once `../pie-qti` consumes this contract;
+- adapter round-trip fixtures once [pie-qti](https://github.com/pie-framework/pie-qti) consumes this contract;
 - accessibility review evidence for any runtime UI that consumes the contract.
 
-What the two shipped consumers already cover, as of ratification: `sign-language-cards.test.ts` and `spoken-audio-cards.test.ts` exercise payload validation and the `content`-versus-`payload` rule, including rejection of an unsafe source scheme. `accessibility-catalog-card-forms.test.ts` covers something adjacent but distinct — form preference between a script card and a recording of it on the same node — not the payload shape. `sign-language-content.test.ts` covers owner-snapshot discovery and strict sign-language matching; `card-media-region.test.ts` covers the host's region sizing, while `tool-surface-host.test.ts` covers the shared surface lifecycle. Signing plays end to end in a browser under two specs, `section-player-sign-language-region.spec.ts` and `pie881-imported-asl-integration.spec.ts`, the second one on imported footage.
+What the shipped consumers cover: `sign-language-cards.test.ts` and `spoken-audio-cards.test.ts` exercise payload validation and the `content`-versus-`payload` rule, including rejection of an unsafe source scheme, and the sign-language tests resolve a multi-source card in authored order. `tts-recorded-audio.test.ts` covers fragment application and the start seek for recorded audio. `accessibility-catalog-card-forms.test.ts` covers something adjacent but distinct — form preference between a script card and a recording of it on the same node — not the payload shape. `sign-language-content.test.ts` covers owner-snapshot discovery and strict sign-language matching; `card-media-region.test.ts` covers the host's region sizing, while `tool-surface-host.test.ts` covers the shared surface lifecycle. Signing plays end to end in a browser under two specs, `section-player-sign-language-region.spec.ts` and `pie881-imported-asl-integration.spec.ts`, the second one on imported footage.
 
-Five gaps follow, and they are the coverage a third consumer would otherwise discover:
+Coverage gaps:
 
-- **`@pie-players/pie-players-shared/media` has no direct test of its validators.** Its one test file covers `applyMediaFragment`. It is the shared validation layer — scheme allow-list, source normalization, dedupe by `src`, fragment normalization — reached only through its three callers: the two card validators and the timed-media cue validation, which uses only fragment normalization. A rule none of them exercises is untested. It is also the security-relevant file of the set.
-- **Multi-source payloads are untested.** Every fixture in both consumers carries a single source, so `normalizeMediaSources`' dedupe-by-`src` path and any encoding negotiation are unexercised. Dedupe is not cosmetic: a duplicate `src` would throw Svelte's duplicate-key error in the region's `{#each}` and take the region down rather than degrade.
-- **`tracks` and `transcript` are untested, because neither shipped consumer uses them.** Meaningless for signing, unused for recorded audio, so the first real exercise is `video-stimulus`. Their shape is ratified on inspection, not on use.
-- **`bitrate`, `thumbnail` and `durationSeconds` are unread by any consumer.**
-- **`kind` validation is asymmetric.** `spoken-audio-cards.ts` rejects a card whose `media.kind` is not `"audio"` and reports why; `sign-language-cards.ts` does not check `kind` at all, so a card declaring `kind: "audio"` with a video URL renders in the signing region. Not a field change and not urgent — signing cards come from an importer that always writes `"video"` — but a third consumer should not read the shipped pair as a consistent precedent for how strictly to treat `kind`.
+- **`@pie-players/pie-players-shared/media` has no direct test of its validators.** Its one test file covers `applyMediaFragment`. The scheme allow-list, source normalization, dedupe by `src` and fragment normalization are reached only through their callers: the two card validators and the timed-media cue validation, which uses only fragment normalization. A rule none of them exercises is untested, and this is the security-relevant file of the set.
+- **Source dedupe is untested.** No test fixture repeats a `src`, so the dedupe path of `normalizeMediaSources` is unexercised. The signing region keys its `{#each}` by `src`, so a duplicate would throw Svelte's duplicate-key error and take the region down.
+- **`tracks` and `transcript` have no consumer or test in this repo.** They are meaningless for signing and unused for recorded audio. `video-stimulus` reads both in pie-elements-ng through its mirrored types; here their shape is ratified on inspection.
+- **No player or element rendering code reads `bitrate`, `thumbnail` or `durationSeconds`.**
+- **`kind` validation is asymmetric.** `spoken-audio-cards.ts` rejects a card whose `media.kind` is not `"audio"` and reports why; `sign-language-cards.ts` does not check `kind`, so a card declaring `kind: "audio"` with a video URL renders in the signing region. Signing cards come from an importer that always writes `"video"`, so nothing live hits it, but a new consumer should not take the pair as precedent for how strictly to check `kind`.
 
 Commands:
 
@@ -183,72 +209,19 @@ bun run typecheck
 bun run test
 ```
 
-For custom-element or export-boundary changes, also run:
-
-```sh
-bun run check:source-exports
-bun run check:consumer-boundaries
-bun run check:custom-elements
-```
+For custom-element or export-boundary changes, also run the [high-value checks](../../../AGENTS.md#high-value-checks). Playwright-backed tests run outside the sandbox; see [Playwright and sandboxed execution](../../../AGENTS.md#playwright-and-sandboxed-execution).
 
 ## Rollout And Release Notes
 
-- Changeset required: yes. The exports exist and the next release publishes them.
+- Changeset required: yes. The types first published in `@pie-players/pie-players-shared` 0.3.64.
 - Migration notes: additive metadata contract; existing item and section models remain valid.
-- Documentation updates: timed-media, video-stimulus, and QTI adapter PRDs should link to this contract.
+- Documentation updates: the timed-media, sign-language and audio-accommodations PRDs and the players-shared README link this contract.
 - Release risk: medium, mainly around accessibility metadata and URL/privacy expectations.
-
-**These types become public API at the next release.** They are reachable through the `@pie-players/pie-players-shared/types` subpath in the package's `exports` map, so the release that first publishes them converts every field above from a branch-local decision into an external surface. Revising one after that costs a breaking change to consumers outside this repo rather than an edit; the [ratification](#ratification-2026-08-09) is timed to that boundary for exactly this reason.
-
-`MediaAssetRef.version: 1` is a required literal and gives a future revision somewhere to go, so the exposure is bounded rather than absent. It is not a reason to defer review: bumping to `2` obliges every consumer to accept both versions for as long as any producer emits `1`, and the `pie-api-aws` Learnosity importer is already a producer.
-
-## Second Carrier: Accessibility Catalog Cards
-
-Stimulus media is not the only media path. Accessibility catalogs carry media too — a `sign-language` catalog card is a video docked to a content node — and originally `CatalogCard` carried only a required `content` string, so such a card could only ever hold a bare URL: no multiple sources, no MIME types, no poster. (It could always name a `language`; what it could not express was the media itself.) The sign-language work made `content` optional and added the structured payload described below.
-
-This contract is the payload for those cards rather than letting the catalog model grow a parallel set of media fields. **This half shipped ahead of the rest of the contract**: the sign-language work landed `MediaAssetRef`, `MediaSource`, `TextTrackRef`, `TranscriptRef` and `MediaFragmentRange` in `@pie-players/pie-players-shared/types`, with `CatalogCard.payload` as their first consumer — so the vocabulary a later timed-media consumer inherits is fixed in code, not merely proposed here. See [`../sign-language-asl-support.md`](../sign-language-asl-support.md).
-
-Two catalog consumers ship, not one. `SpokenAudioCardPayload` — recorded audio as a `spoken` alternate — wraps a `MediaAssetRef` of `kind: "audio"` plus an optional range, in the same position `SignLanguageCardPayload` uses. That is the vocabulary's first independent test, and it passed without a field change: the same shape carried a second media kind and a second accommodation. It also produced the shared validation layer this contract implies but does not specify, now `@pie-players/pie-players-shared/media` — source-scheme allow-list, source normalization, dedupe by `src`, fragment normalization — extracted when the second consumer arrived, because two copies of a URL allow-list is one copy that gets a security fix and one that does not. Any third consumer, `video-stimulus` included, uses it rather than validating authored URLs again.
-
-Two consequences for this contract:
-
-- `MediaAssetRef` must be usable for a short, single-purpose clip, not only for a section-scale stimulus. Resolve that by having each **consumer declare its required subset**, not by making every field optional at the type level — a type where nothing is required stops catching anything. For signing: sources and language required, poster and duration not applicable, and `tracks`/`transcript` actively meaningless, since captions on a signing video would be the English text already on screen.
-- Catalog cards need a **time range within** an asset, because QTI 3 expresses signing time slices with Media Fragments URIs so one recording can serve several content nodes. Timed media needs the same primitive for cue ranges. Design it once, now — see the sequencing note below.
-
-### Sequencing: Two Concurrent Consumers
-
-Updated 2026-08-07. Timed media and sign-language support are both expected to start soon, possibly in parallel. That changes this contract's position: it is no longer a contract with one prospective consumer but a **blocker for two concurrent ones**.
-
-Two implications. Design `MediaAssetRef` against both consumers from the start rather than letting whichever moves first shape it and the other adapt — a contract with two concrete consumers gets designed better than one designed in the abstract, but only if both are at the table. And land it before either side writes media-handling code, or the result is two media vocabularies and a merge later.
-
-This promotes `media-asset-contract` from third in the [shared-contracts review sequence](./README.md) to first.
-
-**The second instruction was not followed, and this ratification is the recovery.** Signing wrote media-handling code first and the contract trailed it. The intended failure did not occur — the vocabulary was designed against both consumers even though only one exercised it, and the [ratification check](#ratification-2026-08-09) below found nothing the timed-media side needs changed. Recorded because the near miss was luck-adjacent: the same sequence with a less careful first consumer produces the two-vocabularies outcome this section warned about. The remaining exposure is narrower and real — see the release note in [Rollout And Release Notes](#rollout-and-release-notes).
-
-### Ratification, 2026-08-09
-
-Ratified against the timed-media consumer before the release that first publishes these types, which is the last point at which a change is free. The timed-media side is still unbuilt, so its input came from its own proposed shapes: `VideoStimulusModel` and `timedMedia.media` in [`../../architecture/timed-media-section.md`](../../architecture/timed-media-section.md), and the `cues[].startTime` sketch beside them.
-
-Two questions, both settled without a field change:
-
-- **Does a cue range fit `MediaFragmentRange`?** Yes, in both cue forms the architecture note describes. A point cue is `{ startSeconds }` with the end omitted; a ranged cue carries both. The note's `startTime` becomes `startSeconds`, a rename inside an unratified proposal and therefore free. The position is also right for cues without argument: a cue references the section's shared stimulus and the range describes that cue's use of it, which is exactly the beside-the-asset rule the signing consumer established. What differs is meaning, not shape, and [Contract Shape](#contract-shape) now says the type carries no playback semantics so both readings stay legitimate.
-- **Does a stimulus need anything `MediaAssetRef` lacks?** No. Every field of the proposed `VideoStimulusModel` maps onto a shipped one — `sources`, `poster`, `captions` onto the wider `tracks`, `transcript`, and `accessibilityLabel` onto `label`/`description`. `MediaKind` was already `image | audio | video | other` rather than video-shaped, which the spoken-audio consumer has now exercised. `VideoStimulusModel.element` does not map and should not: a versioned PIE tag name belongs to the element model, not to media metadata.
-
-So `video-stimulus` inherits this vocabulary rather than extending it, and the timed-media section contract's remaining media work is to name what its cue ranges *mean*, not to define how a range is spelled.
 
 ## Open Questions
 
-None of these moves a field or a field position, which is why they do not hold up publication.
+None of these moves a field or a field position.
 
-- Which media fields are schema-required versus policy-required, per consumer. Signing and spoken audio have each declared their subset in code; `video-stimulus` will declare its own, and captions/transcript are the fields most likely to be policy-required there rather than schema-required.
-- Should duration be authoritative, advisory, or always derived by runtime media loading when possible? Both shipped consumers ignore `durationSeconds` and read duration off the media element, which is evidence for advisory but not a decision.
+- Which media fields are schema-required versus policy-required, per consumer. Signing and spoken audio declare their subsets in code; captions and transcript are the fields most likely to be policy-required for stimulus video rather than schema-required.
+- Should duration be authoritative, advisory, or always derived by runtime media loading when possible? Both card consumers ignore `durationSeconds` and read duration off the media element, which is evidence for advisory but not a decision.
 - Does rights/license metadata belong in this contract or host-only metadata?
-
-Three questions are answered and recorded rather than left open. The first two were settled by the shipped signing consumer (2026-08-08):
-
-- **Where a time range lives.** Not in `MediaSource` and not in `MediaAssetRef`: a range is a property of *this use* of an asset, not of the asset or of one encoding of it, and the same recording is meant to serve several content nodes. It is a separate `MediaFragmentRange { startSeconds, endSeconds? }` carried beside the asset by whatever references it — `SignLanguageCardPayload.fragment` today. Timed-media cue ranges should reuse the type in the same position rather than nesting it inside the asset. Corrected 2026-08-09 against the shipped region: the Media Fragments URI is written but treated as a hint for *both* bounds, not just the end. Browsers honour the start offset inconsistently too, so the player seeks explicitly once metadata loads and pauses on `timeupdate` at the end — an earlier reading of this line credited the URI with the start offset.
-- **Whether `MediaAssetRef` is the signing card payload.** Yes — `SignLanguageCardPayload` wraps it rather than restating media fields, and the required subset is declared per consumer as described above.
-
-And the third by the shipped shape itself:
-
-- **Which transcript forms are allowed.** All three. `TranscriptRef` carries `src`, `html` and `plainText` as independent optional fields, because the three serve different callers — an external reference for a host-hosted transcript, inline HTML for authored markup, plain text for adapters and non-visual consumers — and a union would force a caller holding two of them to drop one. No precedence rule between them is defined here; a consumer rendering a transcript picks and documents its own.

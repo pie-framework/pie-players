@@ -1,22 +1,30 @@
 # Toolkit Tool Host Contract
 
-This contract defines the minimum runtime guarantees between host components
-(`pie-assessment-toolkit`, section players, shells) and toolkit-managed tools.
+This reference sets out the runtime guarantees between the host components
+(`<pie-assessment-toolkit>`, section players and shells) and toolkit-managed
+tools. Its first part is for tool authors: contexts, provider start, events,
+initialization, shell scope and the scope root. The last two parts are for
+hosts: item metadata through host resolvers, and the security and licensing
+obligations of the backend endpoints tool providers call.
 
 ## Scope
 
 - Applies to all toolkit-managed tools (`pie-tool-*`).
-- Applies to shell-aware tools (item/passage/region-scoped tools).
-- Does not change item player internals.
+- Applies to shell-aware tools. A shell is the element that publishes one piece
+  of content's scope to its tools: `<pie-item-scope>` for an item,
+  `<pie-passage-shell>` for a passage. A shell-aware tool acts on the item,
+  passage or region its shell publishes.
+- Item player internals are unaffected.
 
 ## Required Contexts
 
-- A runtime tool consumes `assessmentToolkitRuntimeContext` when it reads
-  something from it — a coordinator, the TTS service, the catalog resolver, the
-  `ndsIcons` flag. Connecting is a pure read: no host-side registration, and
-  nothing the toolkit counts. A tool that connects and discards the value buys a
-  retry timer and nothing else, so a tool taking everything it needs through the
-  params seam does not connect.
+- A runtime tool connects to `assessmentToolkitRuntimeContext` when it reads
+  something from it: a coordinator, the TTS service, the catalog resolver, the
+  `ndsIcons` flag. Connecting is a pure read, with no host-side registration and
+  nothing the toolkit counts. A connection whose value the tool discards only
+  leaves a pending subscription behind, so a tool that receives everything it
+  needs from its registration (element properties and render params) does not
+  connect.
 - The runtime context is the one channel to the toolkit's services. A tool
   element declares no prop carrying a coordinator, the TTS service, the
   highlight coordinator, the catalog resolver or the element tool state store,
@@ -34,9 +42,9 @@ Use contract helpers exported from
 - `connectToolShellContext(host, onValue)`
 - `connectToolRegionScopeContext(host, onValue)`
 
-These helpers subscribe, so a provider that registers late answers through the
-document's context root, which replays the request when the provider announces
-itself.
+These helpers subscribe. A context provider (the toolkit or shell that answers
+the request) that registers late answers through the document's context root,
+which replays the request when the provider announces itself.
 
 ## Event Semantics
 
@@ -52,25 +60,30 @@ Use `dispatchCrossBoundaryEvent(target, name, detail)` from the
 
 Tools must tolerate delayed context arrival and context re-binding:
 
-- tool can mount before provider exists
-- tool reconnects when provider becomes available
-- tool cleans up subscriptions on unmount
+- a tool can mount before its context provider exists
+- a tool reconnects when the context provider becomes available
+- a tool cleans up its subscriptions on unmount
 
 ## Shell Scope
 
-A shell publishes the content it holds: its identity as
-`assessmentToolkitShellContext`, the region its tools act on as
-`assessmentToolkitRegionScopeContext`, and a `pie-register` the toolkit files
-the content's accessibility catalogs under. `<pie-item-scope>` publishes it for
-an item, in a section player's card or around a plain item player, and
-`<pie-passage-shell>` for a passage, both through `createShellScope`.
-A shell registers once `assessmentToolkitHostRuntimeContext` answers, so a
-shell may mount before its toolkit. The registration carries the answering
-toolkit's `runtimeId`, and a toolkit claims an event carrying a `runtimeId` only
-when the id is its own; one without falls back to the runtime its target
-resolves. A nearer toolkit answering later moves the registration: the old
-toolkit gets a `pie-unregister` addressed to its id. `send(type, detail)`
-addresses any other shell event the same way, holding up to 50 until a toolkit
+A shell publishes the content it holds in three ways:
+
+- its identity, as `assessmentToolkitShellContext`
+- the region its tools act on, as `assessmentToolkitRegionScopeContext`
+- a `pie-register` event, under which the toolkit files the content's
+  accessibility catalogs
+
+`<pie-item-scope>` does this for an item, in a section player's card or around a
+plain item player, and `<pie-passage-shell>` for a passage. Both build on
+`createShellScope`.
+
+A shell registers once `assessmentToolkitHostRuntimeContext` answers, so it may
+mount before its toolkit. The registration carries the answering toolkit's
+`runtimeId`. A toolkit claims an event carrying a `runtimeId` only when the id
+is its own; an event without one goes to the runtime its target resolves. When a
+nearer toolkit answers later, the registration moves, and the old toolkit
+receives a `pie-unregister` addressed to its id. `send(type, detail)` addresses
+every other shell event the same way and holds up to 50 events until a toolkit
 answers.
 
 Inside a shell, `data-region="content"` marks the content tools read and
@@ -92,10 +105,10 @@ language it knows and nothing more;
 [TTS language](../architecture/internationalization.md#tts-language) sets out
 the precedence and what each transport does with it.
 
-## Host / Overlay Root Contract
+## Scope Root Resolution
 
-Tools must not infer runtime scope from `parentElement` chains. Host/root
-elements should be explicit inputs or context-derived values.
+Tools must not infer runtime scope from `parentElement` chains. The root element
+a tool acts on is an explicit input or a context-derived value.
 
 Allowed root sources:
 
@@ -105,14 +118,11 @@ Allowed root sources:
 
 ## Item Metadata And Render Context
 
-Hosts that need content-specific tool behavior should register
-`toolContextResolvers`, not override packaged tool registrations. Section
-player hosts usually supply them on `runtime.toolContextResolvers`; direct
-toolkit consumers may pass the same map to `ToolkitCoordinator` or the
-`<pie-assessment-toolkit>` JS property. A resolver runs only after the framework
-has applied placement, provider config, host policy, and PNP/profile gates. It
-may hide a surviving tool for the current scope or attach render params for the
-tool to consume.
+Content-specific tool behavior comes from host `toolContextResolvers`, which
+run after placement, provider config, host policy and the profile gates, and may
+hide a surviving tool or attach render params to it. [Runtime tool context
+resolvers](./tool_provider_system.md#runtime-tool-context-resolvers) covers
+where hosts register them and the order they run in.
 
 For calculators, the resolver params are:
 
@@ -127,11 +137,10 @@ The packaged calculator reads these values through
 `toolbarContext.getToolRenderParams("calculator")` and applies them to the
 toolbar button plus calculator element. Beneath them sits the calculator's
 policy parameter `type`, read through `toolbarContext.getToolParameters("calculator")`
-from item `toolParameters` then assessment `settings.toolParameters.calculator`,
-whether or not a grant admits the tool. With neither it opens basic, offers all
-three types and names itself "Calculator". Content metadata therefore stays in
-host code, while PNP/profile restrictions remain framework-owned and higher
-precedence.
+from item `toolParameters`, then assessment `settings.toolParameters.calculator`,
+whether or not a grant admits the tool. With neither, it opens basic, offers all
+three types and names itself "Calculator". Content metadata stays in host code;
+profile restrictions stay framework-owned and take precedence.
 
 A host rule beyond the parameter reads the same parameters through
 `decideFeaturePolicy("calculator")`. This one hides the button without a grant
@@ -164,9 +173,8 @@ const toolContextResolvers = {
 
 Resolvers re-run on every policy change, so rebinding the assessment with a
 changed profile or calculator config updates the button and an open calculator
-in place. The
-`calculator-pnp` section demo composes exactly this around one item with no
-section player.
+in place. The [`calculator-pnp` section demo](../../apps/section-demos/src/routes/%28demos%29/calculator-pnp/+page.svelte)
+composes this resolver around one item with no section player.
 
 ## Backend Endpoints for Tool Providers
 
@@ -189,12 +197,14 @@ Any `/api/...` route referenced by a toolkit provider must be:
 
 ### Auth surfaces the framework exposes
 
-- **`authFetcher`** — optional provider runtime hook, typed as
-  `() => Promise<Partial<TConfig>>`. Called during provider initialization
-  in `ToolProviderRegistry`; the return value is merged into the provider
-  config before `initialize()`. Calculator composition does not invent an
-  endpoint; a host that chooses runtime delivery supplies this hook explicitly.
-  See
+- **`authFetcher`** — optional host function at
+  `tools.providers.<toolId>.provider.runtime.authFetcher`, typed
+  `() => Promise<Record<string, unknown>>`. `ToolProviderRegistry` calls it
+  while initializing a provider that requires auth and merges the result into
+  the provider config before `initialize()`. Calculator composition invents no
+  endpoint; a host that delivers the key at runtime supplies this hook, or the
+  Desmos adapter's `provider.init.proxyEndpoint`, a URL it fetches for
+  `{ apiKey }`. See
   [`packages/default-tool-loaders/src/registrations/calculator.ts`](../../packages/default-tool-loaders/src/registrations/calculator.ts).
 - **`authToken` + `apiEndpoint`** — `ServerTTSProvider` configuration. The
   token is sent as `Authorization: Bearer <token>` on synthesis requests.
@@ -208,7 +218,7 @@ Any `/api/...` route referenced by a toolkit provider must be:
   provider-backend security the framework enforces directly. See
   [`packages/tts-client-server/src/ServerTTSProvider.ts`](../../packages/tts-client-server/src/ServerTTSProvider.ts).
 
-### Production-recommended patterns
+### Production patterns
 
 - **Calculator (Desmos).** Loading from `desmos.com` requires an API key licensed
   for the application. Desmos's documented integration places that key in the
@@ -216,9 +226,10 @@ Any `/api/...` route referenced by a toolkit provider must be:
   static bundles but cannot keep it secret from an authorized browser user. A
   host-provided endpoint must require the assessment session, return
   `Cache-Control: private, no-store`, and issue only the key assigned to that
-  application. The framework has no script-proxy path: Desmos documents
-  self-hosting as a partner option, so copying, caching, proxying, or self-hosting
-  the vendor script requires rights in the application's Desmos agreement. The
+  application. `proxyEndpoint` delivers only the key; the framework has no
+  script-proxy path. Desmos documents self-hosting as a partner option, so
+  copying, caching, proxying or self-hosting the vendor script requires rights
+  in the application's Desmos agreement. The
   Trial Tier is limited to personal non-commercial use or a 90-day internal
   evaluation; production end-user and internal business use require the
   Commercial Tier unless a separate written agreement applies.
@@ -241,21 +252,20 @@ Any `/api/...` route referenced by a toolkit provider must be:
   credentials via environment variables or IAM roles (never returned to
   the client). Explicitly set `assetOrigins` on the client provider to
   the set of CDN origins your TTS server legitimately returns asset URLs
-  for; the default covers same-origin only. For a reference
-  server-side allow-list the same shape is implemented for SchoolCity
-  via `TTS_SCHOOLCITY_ASSET_ORIGINS` — see
+  for; the default covers same-origin only. The section demos' custom-transport
+  route implements the same allow-list on the server side; see
   [`apps/section-demos/src/routes/api/README.md`](../../apps/section-demos/src/routes/api/README.md).
 - **New or custom providers.** Anything that adds an `authFetcher` or
   `apiEndpoint` inherits this contract. If the provider follows URLs
   returned by its backend, it must replicate the same origin-based
   header-scrubbing that `ServerTTSProvider` does.
 
-### What's at risk if this is missed
+### Failure modes
 
 - Unauthenticated `/api/tools/desmos/auth` in production → an application API
   key delivered to callers who are not authorized to use the licensed
-  application. Runtime delivery is access control and static-bundle hygiene, not
-  a way to make the browser-loaded key secret.
+  application. Runtime delivery provides access control and keeps the key out of
+  static bundles; the browser-loaded key stays visible.
 - Unauthenticated `/api/tts/synthesize` → anyone on the internet can
   consume the host's Polly / Google credits; also a content-generation
   abuse surface (arbitrary text pushed through the TTS pipeline).
@@ -268,20 +278,18 @@ Any `/api/...` route referenced by a toolkit provider must be:
   cross-origin endpoint must answer with `Access-Control-Allow-Credentials` and
   an exact origin.
 - Server-only vendor credentials in client bundles or client-side config →
-  permanent leak via the shipped JavaScript; again, rotation is the only
+  permanent leak via the shipped JavaScript; rotation is the only
   remediation. This does not describe Desmos's application key, which its
   documented browser integration requires in the script URL.
 
-### Demo endpoints are not production-grade
+### Demo endpoints
 
-The routes in `apps/section-demos/src/routes/api/` are intentionally
-unauthenticated and exist for local development and e2e specs. In
-particular, `GET /api/tools/desmos/auth` returns the configured
-`DESMOS_API_KEY` with no session check. When it is absent, the route returns
-`{ apiKey: null }` and the calculator cannot load. Do not copy this route
-verbatim into a production deployment — use it only as a shape reference,
-require the host's auth middleware, and use a key/tier licensed for the deployed
-application.
+The routes in `apps/section-demos/src/routes/api/` are unauthenticated and serve
+local development and e2e specs only. `GET /api/tools/desmos/auth` returns the
+configured `DESMOS_API_KEY` with no session check; without one it returns
+`{ apiKey: null }` and the calculator cannot load. A production deployment uses
+the route only as a shape reference, puts it behind the host's auth middleware,
+and uses a key and tier licensed for the deployed application.
 
 ### Related documentation
 

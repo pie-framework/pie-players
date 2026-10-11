@@ -1,146 +1,116 @@
 # Interface locale adoption
 
-Status: `Implemented` — design record for the interface locale, rollout slices 3
-and 4 of [`internationalization.md`](./internationalization.md).
+Status: Implemented. This is the design record for the interface locale, rollout
+slices 3 and 4 of [`internationalization.md`](./internationalization.md).
 
-This plan covers **interface locale** only: the strings the packages in this
-repository render themselves — toolbar labels, tool panels, player status and
-error text, `aria-label`s, debug-panel chrome. Content language and in-item
-alternates are separate concerns on separate channels and are out of scope; see
-`internationalization.md` for why the three are not one.
+This record covers **interface locale** only: the strings the packages in this
+repository render themselves, such as toolbar labels, tool panels, player status
+and error text, `aria-label`s and debug-panel chrome. It is for contributors
+changing the i18n layer. Content language and in-item alternates are separate
+concerns on separate channels; [`internationalization.md`](./internationalization.md)
+sets out why the three are separate. The
+[players-shared i18n README](../../packages/players-shared/src/i18n/README.md) is
+the usage guide for hosts and component authors.
 
-The reference is `pie-qti`, whose optional-provider shape this adopts and whose
-three known defects it does not.
+[pie-qti](https://github.com/pie-framework/pie-qti) is the reference. PIE takes its
+BCP-47 catalog names and its per-locale views, and avoids its reload on locale
+change, its published loader that only a Vite build can evaluate, and its hardcoded
+`one`/`other` plurals.
 
 ## Scope
 
-184 user-visible strings across 31 Svelte components, plus 12 tool display names
-and 11 tool descriptions in `default-tool-loaders`. By owner:
+Every string a player, the assessment toolkit, a tool or a debug panel renders
+itself is keyed: the section and item player chrome, the toolbar and tool-shell
+chrome, each tool's own UI and announcements, the debug panels, and the tool
+display names and descriptions in `default-tool-loaders`.
 
-| Package | Strings | Surface |
-|---|---|---|
-| `section-player-tools-tts-settings` | 40 | TTS settings panel |
-| `section-player-tools-pnp-debugger` | 17 | PNP panel |
-| `item-player` | 13 | session debugger, config error |
-| `tool-text-to-speech` | 12 | TTS window |
-| `section-player-tools-event-debugger` | 11 | event panel |
-| `tool-annotation-toolbar` | 10 | annotation toolbar |
-| `section-player-tools-shared` | 14 | panel chrome, toggles, session DB |
-| `tool-ruler`, `tool-periodic-table` | 8 each | tool chrome |
-| `tool-tts-inline`, `tool-line-reader` | 5 each | inline controls, overlay |
-| `section-player-tools-*-debugger` (2 more) | 10 | instrumentation, session |
-| `section-player` | 12 | tabs, pane labels, loading, passage title, formative controls |
-| `tool-graph`, `tool-protractor`, `tool-calculator-desmos`, `tool-color-scheme` | 11 | tool chrome |
-| `players-shared` | 6 | preview toggle, error banners, settings panel |
-| `assessment-toolkit` | 1 | toolbar group label |
-| `default-tool-loaders` | 23 | `ToolRegistration.name` / `.description` |
+Developer-facing diagnostics stay in English and out of the catalog: the remaining
+`scan-hardcoded` findings are overwhelmingly `throw new Error` messages, log
+strings, DOM tag names and CSS identifiers, and the scanner stays advisory.
 
-Out of scope, deliberately: the remaining `scan-hardcoded` findings, which are
-overwhelmingly `throw new Error` messages, log strings, DOM tag names and CSS
-identifiers. Developer-facing diagnostics stay in English. The scanner keeps its
-current advisory role rather than becoming a gate.
-
-Also deliberately unlocalized: TTS preview sample text. It is handed to the voice
-under test, so its language follows that voice, not the interface locale — Dutch
-chrome previewing an English voice must still send English.
+TTS preview sample text is unlocalized too. It is handed to the voice under test,
+so its language follows that voice: Dutch chrome previewing an English voice still
+sends English.
 
 ## English output
 
-Keying a string must not change it. Fixed lockstep patch-only versioning puts a
-reworded label into a host's live delivery on their next install with no signal on
-their side, and the strings this pass touches are largely accessible names and
-live-region announcements, where a host may be asserting exact text. Every
-English value in the adoption commit therefore reproduces the literal it replaced
-byte for byte, including its punctuation and its flaws, so that any text change is
-visible as a text change rather than arriving inside an i18n refactor.
+Keying a string does not change it. Fixed lockstep patch-only versioning puts a
+reworded label into a host's live delivery on its next install with no signal on
+its side, and the strings this work touched are largely accessible names and
+live-region announcements, where a host may assert exact text. Every English value
+in the adoption commit therefore reproduced the literal it replaced byte for byte,
+including its punctuation and its flaws, so that a text change shows up as a text
+change and never inside an i18n refactor.
 
-The hold covers the refactor. A follow-up released it: commit `67f286ce` records
-the before and after of sixteen
-reworded strings and of the nine toolbar button accessible names. `Graph Tool -
-Draw points…`, `applying`'s three ASCII dots and `tools.protractor.toolA11y`'s
-`Current rotation displayed via Moveable.js` are gone. The button names now follow
-one rule: the accessible name contains the button's visible tooltip verbatim, per
-WCAG 2.5.3 Label in Name, and encodes no action, because `aria-pressed` already
-carries the toggle state.
+Rewording followed separately, in `67f286ce`. The toolbar button names follow one
+rule since: the accessible name contains the button's visible tooltip verbatim, per
+WCAG 2.5.3 Label in Name, and encodes no action, because `aria-pressed` carries the
+toggle state.
 
-One consequence for the key set survives both passes. Interpolation cannot be used
-to assemble a string a language inflects, so a unit name that appears both as a
-button label and inside a sentence needs one key per form: `tools.ruler` carries
-Title Case for the button and a lowercase in-sentence form for the announcement,
-the accessible name and the image alt. A third, abbreviated form existed for as
-long as the byte-identical hold did, because the pre-adoption code spliced the raw
-`'inches' | 'cm'` state token into two strings a screen reader speaks; the cleanup
-removed it. And a translation is not obliged to reproduce an English flaw: `nl-NL`
-rendered the protractor's help without the Moveable.js clause from the start.
+Interpolation cannot assemble a string a language inflects, so a unit name that
+appears both as a button label and inside a sentence takes one key per form:
+`tools.ruler` carries Title Case for the button and a lowercase in-sentence form
+for the announcement, the accessible name and the image alt. A translation is not
+obliged to reproduce an English flaw.
 
 ## Decisions
 
-**One provider, in `players-shared`, not a new package.** `players-shared` is
-already a runtime dependency of every tool and player, is already on the publish
-policy's `nodeSafe` list, and already owns `i18n/language-tags`. Another package
-would mean a Changesets `fixed` entry, build wiring, and a dependency edit in 30
-packages to deliver one interface and one catalog.
+**One provider, in `players-shared`.** `players-shared` is already a runtime
+dependency of every tool and player, is on the publish policy's `nodeSafe` list,
+and owns `i18n/language-tags`. A new package would mean a Changesets `fixed` entry,
+build wiring and a dependency edit in 30 packages to deliver one interface and one
+catalog.
 
-**The existing `SimpleI18n` is rewritten, not supplemented.** It and
-`I18nService` are the two implementations `internationalization.md` records as
-having drifted; adding a third alongside them repeats the mistake that produced
-the second. `SimpleI18n` keeps its name and its `I18nServiceApi` surface; the toolkit's
-`I18nService` wrapper, constructed nowhere, was removed.
+**One implementation, `SimpleI18n`, rewritten in place.** The layer it replaced had
+two implementations that had drifted apart, `SimpleI18n` and the toolkit's
+`I18nService` wrapper; a third beside them would repeat that. `SimpleI18n` keeps
+its name and its `I18nServiceApi` surface, and the wrapper is gone.
 
-**Catalogs become TypeScript modules, not JSON.** Two consequences. The English
-catalog's shape generates the `MessageKey` union, so a mistyped key is a compile
-error rather than a key rendered on screen — which is most of what
-`check-coverage` exists to catch after the fact. And `tsc` compiles a `.ts`
-catalog to real JS, removing the `with { type: "json" }` import-attribute hazard
-that already broke every non-English locale once under Node's ESM loader.
+**Catalogs are TypeScript modules.** The English catalog's shape generates the
+`MessageKey` union, so a mistyped key is a compile error instead of a key rendered
+on screen, which is most of what `check-coverage` would otherwise catch after the
+fact. And `tsc` compiles a `.ts` catalog to real JavaScript, so no catalog import
+needs the `with { type: "json" }` attribute Node's ESM loader requires; the JSON
+catalogs of the replaced layer lacked it on every non-English locale and could not
+load under Node.js.
 
-`MessageKeyInput` is that union plus `DynamicMessageKey`, a branded string
-produced only by `dynamicMessageKey()`. Two call sites need it: a periodic-table
-element category, which a host data file can extend beyond what the catalog
-enumerates, and `ToolRegistration.nameKey`, which a host authors against its own
-catalog. Both pair it with `hasKey` so a miss falls back to a literal instead of
-rendering a key. An open `MessageKey | (string & {})` was implemented first and is
-the wrong shape: it makes every mistyped literal assignable, which is exactly the
-failure the union exists to prevent.
+`MessageKeyInput` is that union plus `DynamicMessageKey`, a branded string produced
+only by `dynamicMessageKey()`. Two call sites need it: a periodic-table element
+category, which a host data file can extend beyond what the catalog enumerates, and
+`ToolRegistration.nameKey`, which a host authors against its own catalog. Both pair
+it with `hasKey`, so a miss falls back to a literal instead of rendering a key. The
+union stays closed: an open `MessageKey | (string & {})` makes every mistyped
+literal assignable, which is the failure the union exists to prevent.
 
-**Catalogs are keyed by full BCP-47 tag.** `en-US` and `nl-NL`, replacing the earlier
-bare `en`/`es`/`zh`/`ar`. This matches `pie-qti`'s
-catalog names, matches what AfA PNP and QTI declare, and makes the POSIX forms a
-host actually sends (`nl_NL`) resolvable. `findBestLanguageMatch` from
-`i18n/language-tags` does the resolution, so `nl`, `nl_NL`, `nl-NL` and `NL-nl`
-all land on `nl-NL` without a mapping table. Nothing consumed
-`getAvailableLocales()`, so the rename broke no caller.
+**Catalogs are keyed by full BCP-47 tag**, `en-US` and `nl-NL`. That matches
+pie-qti's catalog names and what AfA PNP and QTI declare, and makes the POSIX forms
+a host sends (`nl_NL`) resolvable. `findBestLanguageMatch` from
+`i18n/language-tags` does the resolution, so `nl`, `nl_NL`, `nl-NL` and `NL-nl` all
+land on `nl-NL` without a mapping table.
 
-**English is the single source; there are no inline English fallbacks.**
-`pie-qti` put an English literal at each of 153 call sites, which makes the i18n
-runtime fully erasable and costs a bespoke scanner to police the drift between
-literal and catalog. The opposite trade is correct here because a provider always
-exists: `players-shared` exports a module-level default whose English catalog is
-statically bundled, so `t()` never returns a bare key even with no host, no
-player and no context. The catalog is 5.4 KB — smaller than any tool's own
-dependencies.
+**English is the single source, with no inline English fallbacks.** pie-qti puts
+an English literal at each call site, which makes its i18n runtime fully erasable
+and costs a bespoke scanner to police drift between literal and catalog. The
+opposite trade fits here because a provider always exists: `players-shared`
+exports a module-level default whose English catalog is statically bundled, so
+`t()` never returns a bare key, even with no host, no player and no context.
 
 **Locale catalogs never enter a tool bundle.** Most tool bundles import
-`players-shared` from the host; the item player, the print player and the
-dictionary tools set `external: []` and inline everything they reach. The
-module split enforces the boundary either way:
-
-| Module | Contents | Imported by |
-|---|---|---|
-| `i18n/types.ts` | `I18nProvider`, `MessageKey`, `LocaleCode` | tools, as `import type` — fully erased |
-| `i18n/messages/en-US.ts` | English catalog | `provider.ts` only |
-| `i18n/provider.ts` | `SimpleI18n`, `getDefaultI18n()`, `resolveInterfaceI18n()`, `dynamicMessageKey()` | tools, for the graceful default |
-| `i18n/catalogs.ts` | dynamic loader map for every non-English locale | players only |
-| `i18n/index.ts` | `createPieI18n()` wiring provider to catalogs | players only |
-
-A tool that reads a provider off the runtime context pulls in the interface (a
-type), and the English fallback (5.4 KB). It never sees `catalogs.ts`, so no
-locale chunk is emitted into its `dist`.
+`players-shared` from the host. The item player and the section player's browser
+build set `external: []`, and the print player declares no externals, so each
+inlines everything it reaches. The module split enforces the boundary either way:
+tools import the types as `import type` and the English default from `provider`,
+and only players import the dynamic loader map in `catalogs` and the
+`createPieI18n()` wiring in `i18n`. A tool therefore pulls in the interface and the
+English fallback and never sees `catalogs`, so no locale chunk is emitted into its
+`dist`. The README's [Module layout](../../packages/players-shared/src/i18n/README.md#module-layout)
+lists each module.
 
 **Interface locale is a composition context, set by one element attribute.** The
 deployment picks the interface language; no tool and no element can know it.
-[`composition-context.md`](./composition-context.md) gives the mechanism, and
-`ndsIcons` is the working precedent for a scalar travelling this exact path:
+[`composition-context.md`](./composition-context.md) gives the mechanism, and the
+section player's `nds-icons` attribute (`ndsIcons`), which opts toolbar buttons into
+icon buttons, is the working precedent for a scalar traveling this exact path:
 
 ```
 locale attribute ?? "en-US"
@@ -155,48 +125,64 @@ context carry one.
 `resolveInterfaceI18n` is the only implementation of the resolution, and every
 consumer goes through it. It returns a fresh facade per call, so a `$derived`
 reading it re-renders on the republish, and it maps a missing publisher to the
-English-only default — which is what lets `ToolbarContext.i18n` and
-`ToolSurfaceServices.i18n` be required rather than optional. Optional fields were
-tried first and are the wrong shape: they push the no-publisher fallback onto each
-consumer, and two of the three that grew reached for the default provider directly
-and so never saw a locale change. A registration now reads `toolbarContext.i18n`
-and cannot get this wrong.
+English-only default. That lets `ToolbarContext.i18n` and `ToolSurfaceServices.i18n`
+be required. An optional field pushes the no-publisher fallback onto each consumer,
+and consumers then reach for the default provider directly and miss locale changes,
+as two of the first three did. A registration reads `toolbarContext.i18n` and
+cannot get this wrong.
 
-**The graceful default is `en-US`, not `navigator.language`.** Under fixed
-lockstep patch-only versioning across every published package, any change that alters a
-rendered string reaches live delivery on a host's next install with no build
-signal on their side. Detecting the browser locale would silently switch a
-Dutch-configured laptop's assessment chrome to Dutch. `detectBrowserLocale()`
-stays exported for a host that wants it, and nothing calls it by default.
+**The graceful default is `en-US`.** Under fixed lockstep patch-only versioning
+across every published package, a change that alters a rendered string reaches
+live delivery on a host's next install with no build signal on its side. Detecting
+the browser locale would silently switch a Dutch-configured laptop's assessment
+chrome to Dutch. `detectBrowserLocale()` stays exported for a host that wants it,
+and nothing calls it by default.
 
 **`lang` and `dir` go on the chrome subtree, never on
-`document.documentElement`.** The pre-adoption `SimpleI18n.applyDOMDirection()`
-stamped the document root, which an embedded player has no business writing. Each localized
-custom element stamps its own host instead, so RTL chrome works inside an LTR
-page and two players on one page can differ. `direction` derives from
-`Intl.Locale.prototype.textInfo` with an RTL primary-subtag set as fallback,
-replacing the old four-entry list.
+`document.documentElement`.** An embedded player has no business writing the
+document root. Each localized custom element stamps its own host, so RTL chrome
+works inside an LTR page and two players on one page can differ. `direction`
+derives from `Intl.Locale.prototype.textInfo`, with an RTL primary-subtag set as
+fallback.
 
 **Tool display names gain key fields; the required strings stay.**
-`ToolRegistration.name` and `.description` are host-facing required API and
-`check:capability-neutrality` forbids core from naming a capability id. Adding
-optional `nameKey` and `descriptionKey` resolves both: the keys are supplied by
-`default-tool-loaders`, which is already documented as the only place a packaged
-capability set is named, and the toolbar prefers the key when a provider is
-present and falls back to `name` when it is not. Core never learns a capability
-id, and a host that implements `ToolRegistration` by hand keeps working
-unchanged. The `tools.*` catalog namespace lives in `players-shared`, outside the
-neutrality gate's scoped file list.
+`ToolRegistration.name` and `.description` are host-facing required API, and
+`check:capability-neutrality` forbids core from naming a capability id. Optional
+`nameKey` and `descriptionKey` resolve both: `default-tool-loaders`, already the
+only place a packaged capability set is named, supplies the keys, and the toolbar
+prefers the key when a provider is present and falls back to `name` when it is
+not. Core never learns a capability id, and a host that implements
+`ToolRegistration` by hand keeps working. The `tools.*` catalog namespace lives in
+`players-shared`, outside the neutrality gate's scoped file list.
 
-**Per-locale views over one provider.** `withLocale(tag)` returns a view sharing
-catalogs, loaded-locale bookkeeping and custom messages by reference. Two
+**Per-locale views over one provider.** `withLocale(tag)` returns a view that
+shares catalogs, loaded-locale bookkeeping and custom messages by reference. Two
 players on one page can render different interface locales without either mutating
-the other, and no catalog is parsed twice. Taken from `pie-qti`.
+the other, and no catalog is parsed twice. The design comes from pie-qti.
 
-**No `window.location.reload()` on locale change.** `pie-qti` reloads, which buys
+**No `window.location.reload()` on locale change.** pie-qti reloads, which buys
 real simplicity. Here the provider already has `subscribe()`, components are
 Svelte 5, and a reload in an embedded assessment player would discard in-progress
 session state.
+
+**Tool windows resolve the same context as the chrome around them.** A tool the
+toolbar gives a window (graph, periodic table, the color-scheme tool (`theme`),
+calculator, the two dictionaries) mounts at `document.body`, which keeps it clear of
+the player's overflow and stacking contexts. That puts it outside the published
+context's subtree: a context request bubbles to `body` and the tool falls back to
+the English-only default. `ItemToolBar` therefore hosts a second `ContextProvider`
+on the shell element, carrying the value it consumes itself and re-setting it on
+each republish, so a shelled tool resolves the same runtime context as the chrome
+around it, coordinators and services as much as `i18n`. Anything else that mounts
+a player-owned surface outside the player's DOM needs the same treatment. Walking a
+stored reference into the detached subtree is the alternative, and it reaches one
+service instead of the context and goes stale on the next republish.
+
+The window's own chrome is imperative DOM, with no reactive read to invalidate, so
+its labels are re-read from the catalog on every shell update. That covers a locale
+change under a live window and the first catalog import landing after the window
+was built. A window's title resolves through `ToolRegistration.nameKey`, falling
+back to `name`.
 
 ## Key namespace
 
@@ -210,133 +196,57 @@ Five namespaces, one module per locale:
   `description` for the registration keys.
 - `debug.*` — developer panel chrome.
 
-`plurals` are nested objects with CLDR category keys (`one`, `other`, and
-whatever else the locale needs); `Intl.PluralRules` selects the category, so
-Arabic's `zero`/`two`/`few`/`many` are reachable; the pre-adoption layer reached
-none of them, because `pie-qti` hardcodes a one/other split and the old
-`SimpleI18n` fell back to one when `Intl` was missing.
+Plural groups are objects of CLDR category keys selected by `Intl.PluralRules`, so
+Arabic's `zero`, `two`, `few` and `many` are reachable. The README's
+[Adding a key](../../packages/players-shared/src/i18n/README.md#adding-a-key) holds
+the catalog conventions.
 
 ## Locale set and coverage policy
 
-`en-US` and `nl-NL`, both complete. `nl-NL` is the audit language and gets every
-key.
+`en-US` and `nl-NL` ship, both complete. `nl-NL` is the audit language and gets
+every key.
 
-**The pre-adoption `es`/`zh`/`ar` catalogs are deleted, not re-keyed.** Three
-findings, each sufficient on its own:
+The replaced layer's `es`, `zh` and `ar` catalogs were deleted, not re-keyed, for
+three reasons, each sufficient alone:
 
-- Their reference was fiction. The four old catalogs held 142 keys each with
-  genuine cross-locale parity — es/zh/ar matched `en` exactly, and the old
-  coverage check passed truthfully — but 76 of those 142 (54%) named UI this
-  codebase does not render: a section-builder with drag-and-drop
-  (`section.drop_zone`, `section.unassigned_instruction`), an assessment shell
-  with a student name and fullscreen controls, 25 Desmos internals
-  (`calculator.mathprint`, `calculator.sliders`) that Desmos localizes itself, and
-  the colour-scheme names the theme registry owns. Meanwhile the strings actually
-  on screen — formative feedback, `Passage`, `Try again`, the sign-language names
-  — had no keys at all. A re-key found a current home for 66 of 142.
-- Only English could ever load. `dist/i18n/loader.js` carried
-  `with { type: "json" }` on the three static English imports and on none of the
-  dynamic locale imports, so every non-English locale threw
-  `ERR_IMPORT_ATTRIBUTE_MISSING` under Node's ESM loader, reported by the
-  surrounding `catch` as "Translation files not found" while the files sat in
-  `dist`. `players-shared` is on the publish policy's `nodeSafe` list, so that
-  was a conformance break in every published version through `0.3.67`.
-- Nothing read any of it: zero call sites in this repository and none in any of
-  the three consumer checkouts.
+- They were harvested from a design instead of from call sites: over half their
+  keys named UI this codebase does not render, while strings on screen, such as
+  formative feedback, `Passage`, `Try again` and the sign-language names, had no
+  keys.
+- No published version could load them under Node.js, for the import-attribute
+  reason under [Decisions](#decisions).
+- Nothing read them.
 
 Machine-filling the gap was the alternative and is worse: it ships strings nobody
-has read, to learners, under a number that again certifies nothing.
+has read, to learners, under a coverage number that certifies nothing.
 
-`check-coverage` keeps a two-tier report — complete locales must be at 100% or
-the check fails, carried locales report without gating — with `CARRIED_LOCALES`
-empty. The tier is for a locale mid-translation, not for a catalog nobody is
-translating. That is the baseline `internationalization.md` names as the
-precondition for wiring i18n checks into CI.
+`check-coverage` keeps two tiers. A complete locale must be at 100% or the check
+fails; a carried locale reports without gating. `CARRIED_LOCALES` is empty: the
+tier is for a locale mid-translation, not for a catalog nobody is translating.
+`check:i18n-coverage` runs in the pre-commit and CI gates.
 
 ## Adoption pattern
 
-Every localized component follows one shape. In a tool:
+A component resolves the provider off the toolkit runtime context with
+`connectToolRuntimeContext`, falls back to `getDefaultI18n()`, reads strings
+through `$derived`, and stamps `lang` and `dir` on its own host; a player
+constructs the provider with `createPieI18n()` and publishes it on the
+`AssessmentToolkitRuntimeContext`. The README's
+[For a component in this repository](../../packages/players-shared/src/i18n/README.md#for-a-component-in-this-repository)
+gives the snippet. The `$derived` read is load-bearing: a plain
+`const label = i18n.t(…)` reads once and never updates when the locale moves, the
+same class of failure as a composition context without a change signal.
 
-```svelte
-<script lang="ts">
-  import type { I18nProvider } from "@pie-players/pie-players-shared/i18n/types";
-  import { getDefaultI18n } from "@pie-players/pie-players-shared/i18n/provider";
-  import { connectToolRuntimeContext } from "@pie-players/pie-assessment-toolkit";
+The closed `MessageKey` union catches an undefined key in a component only where
+`svelte-check` runs, so a package carrying `.svelte` files needs a `check` script
+that runs it.
 
-  let runtimeContext = $state<AssessmentToolkitRuntimeContext | null>(null);
-  const i18n = $derived<I18nProvider>(runtimeContext?.i18n ?? getDefaultI18n());
-  const t = $derived({
-    close: i18n.t("common.close"),
-    unit: (unit: string) => i18n.t("tools.ruler.switchedTo", { unit }),
-  });
-</script>
+## Out of scope
 
-<div lang={i18n.getLocale()} dir={i18n.getDirection()}>
-  <button aria-label={t.close}>…</button>
-</div>
-```
-
-The `$derived` wrapper is load-bearing: a plain `const label = i18n.t(…)` reads
-once and never updates when the locale moves, which is the same class of failure
-as a composition context without a change signal.
-
-In a player, the provider is constructed rather than resolved, and published:
-
-```ts
-const i18n = createPieI18n({ locale: resolvedLocale });
-// … reaches tools through AssessmentToolkitRuntimeContext
-```
-
-### Tool windows
-
-A tool the toolbar gives a window — graph, periodic table, theme, calculator, the
-two dictionaries — mounts at `document.body`, which is what keeps it clear of the
-player's overflow and stacking contexts. It is therefore outside the published
-context's subtree, and the pull pattern above resolves nothing there: the request
-bubbles to `body` and the tool falls back to the English-only default.
-
-`ItemToolBar` closes that by hosting a second `ContextProvider` on the shell
-element, carrying the value it consumes itself and re-setting it on each
-republish. A shelled tool then resolves the same runtime context as the chrome
-around it — coordinators and services as much as `i18n`. Anything else that
-mounts a player-owned surface outside the player's DOM needs the same treatment;
-the alternative, walking a stored reference into the detached subtree, reaches one
-service rather than the context and goes stale on the next republish.
-
-The window's own chrome is imperative DOM, so it has no reactive read to
-invalidate. Its labels are re-read from the catalog on every shell update, which
-covers both a locale change under a live window and the first catalog import
-landing after the window was built. A window's title resolves through
-`ToolRegistration.nameKey`, not the raw `name` field.
-
-## svelte-check coverage
-
-Nineteen packages carrying `.svelte` files had no `check` script, so `turbo check`
-never ran `svelte-check` over any tool package. `SessionDbPanel` took an `i18n`
-prop it never destructured from `$props()`, a `ReferenceError` at render that
-passed `verify:ci-lint-typecheck` and was caught only by an e2e spec clicking a
-button inside that panel.
-
-All nineteen now run `check`, taking gate coverage from 9 packages to 28. Seven
-held 31 errors:
-
-- Ten were this pass's own. `tool-annotation-toolbar` declared `interfaceI18n`
-  after the `HIGHLIGHT_COLORS` list that reads it, four labels' worth; and
-  `TtsSettingsPanel` called `debug.tts.any`, a key no catalog defines, which the
-  closed `MessageKey` union caught once the package was read.
-- The rest predated this work. `moveable` ships CJS with ESM-shaped declarations
-  and no `exports` map, so under `NodeNext` its default import resolves to the
-  module namespace; the ruler and protractor now describe the slice of its
-  surface they use. `*.svg` imports needed `vite/client` in `types`. The periodic
-  table's JSON import needed the `type: "json"` attribute `NodeNext` requires, the
-  omission that broke every non-English locale in the replaced layer. And
-  `tool-tts-inline` needed a `tsconfig.svelte-check.json` mapping
-  `ui/use-zoom-compensation` to source; the zoom helper and both aliases were
-  removed in 8acbbd40 (PR #375).
-
-## What this does not do
-
-Content language, `Env.locale`, `lang`/`dir` on the *content* subtree, catalog
-cards, parameterized PNP, and TTS voice selection from the resolved language are
-slices 2, 5 and 6 in `internationalization.md`. None of them is blocked by this
-work, and this work is not blocked by an authoring host emitting a locale.
+Content language for elements (`Env.locale`, `lang` and `dir` on the *content*
+subtree), language catalog cards with parameterized PNP, and the remaining tool and
+accommodation locale work are slices 2, 5 and 6 in
+[`internationalization.md`](./internationalization.md#rollout). Read-aloud's content
+language has shipped separately; [TTS language](./internationalization.md#tts-language)
+is its contract. None of these is blocked by this work, and this work is not
+blocked by an authoring host emitting a locale.

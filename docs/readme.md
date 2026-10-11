@@ -1,123 +1,126 @@
-# Documentation Index
+# Documentation
 
-This folder contains the maintained documentation set for `pie-players`. The
-focus is on current public APIs, runtime boundaries, integration patterns, and
-contract decisions. Completed implementation plans are excluded unless they are
-accepted PRDs or ADRs retained as current contract and decision references; see
-[`prds/README.md`](./prds/README.md#retention-and-cleanup).
+The documentation is grouped by reader. Evaluating PIE Players starts at
+[Overview](#overview); embedding the players in a product starts at
+[Getting started](#getting-started) and continues through the integration
+sections; writing a tool, a provider or an element starts at
+[Extending](#extending); working on this repository starts at
+[Contributing](#contributing). [Design records](#design-records) hold the
+decisions behind the current contracts, including implemented ones, under the
+[retention rule](./prds/README.md#retention-and-cleanup).
 
-## Start Here
+## Overview
 
-- Section demo onboarding (canonical local flow):
-  1. `bun install`
-  2. `bun run dev:section -- --rebuild` (first run)
-  3. `bun run dev:section` (daily run)
-- Packaging boundary contract (Node-safe vs browser-only packages):
-  - [`setup/library-packaging-strategy.md`](./setup/library-packaging-strategy.md)
-- [`why-a-new-project.md`](./why-a-new-project.md) - What PIE Players covers, what changed from `pie-player-components`, and which layer a host adopts
-- [`item-player/overview.md`](./item-player/overview.md) - Core item-player architecture and standalone usage
-- [`section-player/client-architecture-tutorial.md`](./section-player/client-architecture-tutorial.md) - Section-player and assessment-toolkit integration guide
-- [`../packages/section-player/README.md`](../packages/section-player/README.md) - Current public section-player API and host-facing patterns
-- [`../packages/item-player/README.md`](../packages/item-player/README.md) - Current item-player API reference
+- [Architecture](./architecture/architecture.md): system context, building blocks, packages, sessions, the security model and the integration patterns
+- [The case for a new player project](./why-a-new-project.md): what PIE Players changes from `@pie-framework/pie-player-components`, and which layer a host adopts
+- [Domain language](../CONTEXT.md): the shared vocabulary for items, sections, sessions, tools and accommodations
+- [Security](./security/readme.md): where answer keys travel, hosted mode, the sanitizers' guarantees and the obligations a host keeps
+- [WCAG 2.2 AA baseline](./wcag/wcag-2.2-aa-baseline.md) and [deferred issues](./wcag/deferred-issues.md): the conformance target and the confirmed gaps
 
-## Architecture
+## Getting started
 
-- [`architecture/architecture.md`](./architecture/architecture.md) - System-level architecture across item player, section player, and toolkit
-- [`architecture/developer_patterns.md`](./architecture/developer_patterns.md) - Project implementation patterns and boundary guidance
-- [`architecture/composition-context.md`](./architecture/composition-context.md) - How container-owned facts (heading depth, arbitration, scope) reach the descendants that need them
-- [`adr/`](./adr/) - Decision records for choices that span PRDs: sequencing, rejected alternatives, trade-offs
-- [`prds/README.md`](./prds/README.md) - Every PRD with its status, and the retention rule
-- [`architecture/domain-language.md`](./architecture/domain-language.md) - Format and admission rules for the root `CONTEXT.md` domain glossary
-- [`architecture/framework-completing-work.md`](./architecture/framework-completing-work.md) - The scope discriminant: what must live in PIE versus a host, and the evidence required before scheduling it
-- [`architecture/shared-contracts-p0.md`](./architecture/shared-contracts-p0.md) - Pre-PRD architecture proposal for shared event, session, scoring, media, evidence, and adapter contracts
-- [`architecture/internationalization.md`](./architecture/internationalization.md) - Interface locale, content language, and in-item language alternates as three separate concerns
-- [`architecture/i18n-interface-locale-adoption.md`](./architecture/i18n-interface-locale-adoption.md) - Design record for the interface-locale contract
-- [`architecture/timed-media-section.md`](./architecture/timed-media-section.md) - Design direction behind the timed-media section contract (implemented 2026-08-17)
-- [`architecture/instrumentation-providers.md`](./architecture/instrumentation-providers.md) - Provider resolution, the operational events PIE sends, provider readiness, and the design for New Relic agent detection and a vendor-neutral conformance suite
-- [`architecture/instrumentation-providers-implementation-plan.md`](./architecture/instrumentation-providers-implementation-plan.md) - Slices, evidence gates, and release rules for that work
-- [`architecture/open-source-calculator-provider-implementation.md`](./architecture/open-source-calculator-provider-implementation.md) - Implementation spec for the Cortex calculator provider
+- [An item](./getting-started.md): render one item, save the response, score it
+- [A section with tools](./getting-started-section.md): a passage and items in a layout, with the packaged tools, a learner profile and a saved section session
 
-## Item Player
+## Installing and loading
 
-- [`item-player/overview.md`](./item-player/overview.md) - Architecture and runtime behavior
-- [`item-player/loading-strategies.md`](./item-player/loading-strategies.md) - IIFE, ESM, and preloaded loading strategies
-- [`item-player/scoring-and-rubrics.md`](./item-player/scoring-and-rubrics.md) - Item scoring, multi-element aggregation, EBSR, and rubric/manual-scoring behavior
-- [`item-player/backend-support.md`](./item-player/backend-support.md) - JS-only namespace for loading and persisting the item player's config, session and env
-- [`prds/formative-delivery-contract.md`](./prds/formative-delivery-contract.md) - PRD for check-answer delivery: Try state, feedback reveal as a per-item `env` projection, and section mastery over the client-side scoring path
-- [`item-player/migration-from-pie-player-components.md`](./item-player/migration-from-pie-player-components.md) - Migration from `@pie-framework/pie-player-components`
-- [`preloaded-player/readme.md`](./preloaded-player/readme.md) - Generated preloaded-player builds (transitional)
+- [Packages and entry points](./install/packages.md): every package by job, which entry points run in Node.js, raw in a browser or through a bundler, and the TypeScript settings
+- [Versioning and stability](./install/versioning.md): lockstep versions, pinning, dist-tags and the public surface
+- [Loading from a CDN](./install/cdn.md): the browser builds, pinning and Content Security Policy for a page without a build step
+- [Loading strategies](./item-player/loading-strategies.md): where element code comes from under `iife`, `esm` and `preloaded`
+- [Math rendering](./item-player/math-rendering.md): MathJax under each strategy, its assets, and one MathJax version per page
+- [Preloaded player](./preloaded-player/readme.md): the generated package that bundles a fixed element set with the item player
 
-## Section Player
+## Item player
 
-- [`section-player/client-architecture-tutorial.md`](./section-player/client-architecture-tutorial.md) - Production-oriented integration and controller patterns
-- [`section-player/controller-boundaries.md`](./section-player/controller-boundaries.md) - Section state `SectionController` owns, and what the custom elements only adapt
-- [`../packages/section-player/ARCHITECTURE.md`](../packages/section-player/ARCHITECTURE.md) - Package architecture and layout authoring boundaries
+- [Item player README](../packages/item-player/README.md): attributes, properties, methods, events and exports
+- [Item player architecture](./item-player/overview.md): internal structure, modes and the session lifecycle
+- [Scoring and rubrics](./item-player/scoring-and-rubrics.md): browser and server scoring, multi-element items, EBSR, rubrics and manual scoring
+- [Backend support](./item-player/backend-support.md): the `backend` property, which loads config and sessions, saves sessions and scores through a server
+- [Migrating from the legacy PIE players](./item-player/migration-from-pie-player-components.md): `pie-player-components` mapped property by property and event by event
+- [Print player README](../packages/print-player/README.md): worksheets and answer keys from the elements' print views
 
-## Assessment Player
+## Section player
 
-Production assessment players are host-built from the section player and toolkit; the assessment player is a reference assembly ([product scope](./architecture/architecture.md#product-scope)).
+- [Section player README](../packages/section-player/README.md): the layout elements, inputs, host methods, events and readiness
+- [Integration guide](./section-player/integration-guide.md): the coordinator, the section controller, tool placement and persistence in a production integration
+- [Custom layouts](./section-player/custom-layouts.md): arranging items and passages with `<pie-section-player-kernel-host>` and the panes
+- [Formative delivery](./section-player/formative-delivery.md): check-answer delivery, tries, feedback reveal and section mastery
+- [Timed media](../packages/section-player/README.md#timed-media): section-level media that reveals items at cue points
 
-- [`assessment-player/client-architecture-tutorial.md`](./assessment-player/client-architecture-tutorial.md) - How the reference assessment player assembles the building blocks, and the patterns a custom multi-section player reuses
+## Multi-section assessments
 
-## Integrations
+Production assessment players are host-built from the section player and the
+toolkit; the assessment player is a reference assembly
+([product scope](./architecture/architecture.md#product-scope)).
 
-- [`integrations/lti.md`](./integrations/lti.md) - Launching players from an LTI tool host after protocol validation
-- [`integrations/consumer-api-dependencies.md`](./integrations/consumer-api-dependencies.md) - Which surfaces downstream hosts actually depend on, and which break silently
-- [`integrations/consumer-api-dependencies-maintenance.md`](./integrations/consumer-api-dependencies-maintenance.md) - Harness-neutral procedure for refreshing that pad
+- [Building a multi-section player](./assessment-player/integration-guide.md): the assessment-session helpers, persistence and navigation, with the reference player as the worked example
+- [Assessment player README](../packages/assessment-player/README.md): the reference element's inputs, events and hooks
 
-## Security
+## Tools and accommodations
 
-- [`security/readme.md`](./security/readme.md) - Trust boundary for authored content, what the sanitizers guarantee, the limits they accept, and the host obligations PIE cannot enforce (CSP, `allowed-style-origins`, delivery integrity)
+- [Tools and accommodations](./tools-and-accomodations/architecture.md): placement, scopes, the policy ladder and learner profiles
+- [Assessment toolkit README](../packages/assessment-toolkit/README.md): `ToolkitCoordinator`, its services, `<pie-assessment-toolkit>` and `<pie-item-scope>`
+- [Configuring tools](./tools-and-accomodations/tool_provider_system.md): placement, provider configuration, host resolvers and the section player boundary
+- [PNP configuration](../packages/assessment-toolkit/docs/PNP_CONFIGURATION.md): learner profiles and how they grant and withdraw tools
+- [Default tool loaders](../packages/default-tool-loaders/README.md): the packaged tool set, calculator providers and the tools a program grants to everyone
+- [Safe custom tool configuration](./tools-and-accomodations/safe-custom-tool-config.md): validating and sanitizing a custom tool's configuration
+- [Framework-owned error handling](./tools-and-accomodations/framework-owned-error-handling.md): how configuration and initialization failures reach the host
+- [Dictionary languages and services](./tools-and-accomodations/dictionary-languages-and-services.md): which service answers a lookup, and offering more than one language
+- [Non-embedded dictation](./tools-and-accomodations/non-embedded-dictation.md): platform dictation into PIE response surfaces
+- [Sign language](../packages/tool-sign-language/README.md): the sign-language video accommodation
 
-## Theming
+## Accessibility and read-aloud
 
-- [`theming/how-theming-works.md`](./theming/how-theming-works.md) - How `<pie-theme>` resolves tokens and writes them, why a host stylesheet cannot override them, and how a host carries an accommodation into its own chrome
-- [`../packages/theme/README.md`](../packages/theme/README.md) - Element attributes, runtime API, registered custom schemes, and the token registry
-- [`prds/pie-727-broad-theming-contract.md`](./prds/pie-727-broad-theming-contract.md) - PRD for the broad theming contract
-- [`architecture/pie-727-theme-token-inventory.md`](./architecture/pie-727-theme-token-inventory.md) - Token admission rule and the inventory behind the registry
-- [`architecture/pie-727-theming-wcag-matrix.md`](./architecture/pie-727-theming-wcag-matrix.md) - Per-surface WCAG coverage for theming
+- [Accessibility](./accessibility/README.md): which accessibility document answers which need
+- [Accessibility catalogs quick start](./accessibility/accessibility-catalogs-quick-start.md), [integration guide](./accessibility/accessibility-catalogs-integration-guide.md) and [catalogs with TTS](./accessibility/accessibility-catalogs-tts-integration.md): authored spoken text, audio, sign-language video and braille
+- [TTS deep dive](./accessibility/tts-deep-dive.md): provider selection, authored and generated speech, playback and highlighting
+- [TTS architecture](./accessibility/tts-architecture.md): the TTS packages, where each runs, and how the providers compare
+- [TTS authoring guide](./accessibility/tts-authoring-guide.md): writing spoken alternatives, for item authors
+- [TTS packages](../packages/tts/README.md): the provider contract, the [server-backed client](../packages/tts-client-server/README.md), the server providers ([core](../packages/tts-server-core/README.md), [Polly](../packages/tts-server-polly/README.md), [Google](../packages/tts-server-google/README.md), [SC adapter](../packages/tts-server-sc/README.md)) and [inline read-aloud](../packages/tool-tts-inline/README.md)
+- [AWS Polly setup](./accessibility/aws-polly-setup-guide.md): credentials and voices for the Polly server provider
 
-## Accessibility And TTS
+## Theming, language and operations
 
-- [`accessibility/README.md`](./accessibility/README.md) - Which accessibility doc answers which need
-- [`accessibility/accessibility-catalogs-quick-start.md`](./accessibility/accessibility-catalogs-quick-start.md) - Quick start for accessibility catalogs
-- [`accessibility/accessibility-catalogs-integration-guide.md`](./accessibility/accessibility-catalogs-integration-guide.md) - Runtime integration patterns for catalogs
-- [`accessibility/accessibility-catalogs-tts-integration.md`](./accessibility/accessibility-catalogs-tts-integration.md) - How catalogs connect to TTS flows
-- [`accessibility/tts-architecture.md`](./accessibility/tts-architecture.md) - TTS system architecture and provider model
-- [`accessibility/tts-deep-dive.md`](./accessibility/tts-deep-dive.md) - End-to-end TTS runtime: provider selection, authored and generated speech, playback and highlighting
-- [`accessibility/tts-authoring-guide.md`](./accessibility/tts-authoring-guide.md) - Authoring guidance for spoken alternatives
-- [`accessibility/aws-polly-setup-guide.md`](./accessibility/aws-polly-setup-guide.md) - AWS Polly setup
-- [`prds/sign-language-asl-support.md`](./prds/sign-language-asl-support.md) - PRD for sign-language (ASL) delivery; section-player renders `sign-language` catalogs in a per-item media region, gated on the `signLanguage` PNP support
-- [`prds/audio-accommodations.md`](./prds/audio-accommodations.md) - PRD for the audio transcript accommodation and autoplay control; retires a pre-toolkit CSS-class gate by transforming imported content into catalog cards in the content import pipeline
+- [How theming works](./theming/how-theming-works.md): how `<pie-theme>` resolves tokens and writes them, and how a host carries an accommodation into its own chrome
+- [Theme README](../packages/theme/README.md): attributes, runtime API, custom schemes and the token registry
+- [Interface strings](../packages/players-shared/src/i18n/README.md): setting the interface locale and supplying message catalogs
+- [Instrumentation providers](./architecture/instrumentation-providers.md): provider resolution and the events PIE sends
+- [LTI](./integrations/lti.md): launching players from an LTI tool after protocol validation
 
-## WCAG Reference
+## Extending
 
-- [`wcag/readme.md`](./wcag/readme.md) - WCAG reference library entry point
-- [`wcag/official-sources.md`](./wcag/official-sources.md) - Verified W3C/WAI source list
-- [`wcag/wcag-2.2-aa-baseline.md`](./wcag/wcag-2.2-aa-baseline.md) - High-signal criteria for this repo
-- [`wcag/evaluation-method.md`](./wcag/evaluation-method.md) - Review workflow and evidence expectations
-- [`wcag/patterns-and-widgets.md`](./wcag/patterns-and-widgets.md) - Widget and interaction guidance
-- [`wcag/project-surface-map.md`](./wcag/project-surface-map.md) - Surface-to-criteria map across the project
-- [`wcag/agent-reference.md`](./wcag/agent-reference.md) - Compact AI-agent lookup
-- [`wcag/deferred-issues.md`](./wcag/deferred-issues.md) - Confirmed accessibility issues and evidence gaps awaiting follow-up
+- [Tool registry](../packages/assessment-toolkit/docs/TOOL_REGISTRY.md): registering a tool, its host surfaces and its content dependencies
+- [Tool host contract](./tools-and-accomodations/tool_host_contract.md): the runtime guarantees between a tool and its host
+- [TTS provider contracts](../packages/tts/README.md) and [calculator provider contracts](../packages/calculator/README.md): the interfaces a custom provider implements; the [calculator adapters](../packages/default-tool-loaders/src/calculator-providers/README.md) are the packaged implementations
+- [Shared player runtime](../packages/players-shared/README.md): the element loaders, formative delivery, timed media and media validation the players share
+- [Context protocol](../packages/pie-context/README.md), [composition context](./architecture/composition-context.md) and [ADR 0003](./adr/0003-elements-read-accessibility-settings-from-a-host-neutral-context.md): how elements read settings from their container
+- [Patterns and widgets](./wcag/patterns-and-widgets.md): accessible interaction patterns for tool and element UI
+- [Element contract](https://github.com/pie-framework/pie-elements-ng/blob/develop/docs/PIE_ELEMENT_CONTRACT.md): the shape of a PIE element package, in pie-elements-ng
 
-## Tools And Accommodations
+## Contributing
 
-- [`tools-and-accomodations/architecture.md`](./tools-and-accomodations/architecture.md) - Overall tools and accommodations architecture
-- [`tools-and-accomodations/tool_provider_system.md`](./tools-and-accomodations/tool_provider_system.md) - Tool provider configuration and integration patterns
-- [`tools-and-accomodations/tool_host_contract.md`](./tools-and-accomodations/tool_host_contract.md) - Host and tool runtime contract
-- [`tools-and-accomodations/safe-custom-tool-config.md`](./tools-and-accomodations/safe-custom-tool-config.md) - Safe host-side custom tool configuration patterns
-- [`tools-and-accomodations/dictionary-languages-and-services.md`](./tools-and-accomodations/dictionary-languages-and-services.md) - Which service answers a lookup, and offering more than one dictionary language
-- [`tools-and-accomodations/framework-owned-error-handling.md`](./tools-and-accomodations/framework-owned-error-handling.md) - Error handling the framework owns for tool configuration and toolkit initialization
-- [`tools-and-accomodations/non-embedded-dictation.md`](./tools-and-accomodations/non-embedded-dictation.md) - Platform dictation into PIE response surfaces
+- [Demo system](./setup/demo_system.md): prerequisites, the demo apps and their commands, and how they resolve `@pie-players/*`
+- [Environment setup](./setup/environment-setup.md): the demo apps' environment variables
+- [Developer patterns](./architecture/developer_patterns.md): state, events, theming, DOM use and test stability in this codebase
+- [Section player architecture](../packages/section-player/ARCHITECTURE.md): the section player's internals
+- [Releasing](./setup/publishing.md), [publishable packages](./setup/publishable_packages.md) and [library packaging](./setup/library-packaging-strategy.md): the release workflow, the package inventory and the packaging rules
+- [Preloaded player builds](../configs/preloaded-player/README.md): set configs, versions, local builds and the workflow that publishes them
+- [Calculator test corpora](./development/calculator-external-test-corpora.md): calculator test data CI does not ship
+- [Domain language rules](./architecture/domain-language.md): how terms enter `CONTEXT.md`
+- WCAG library: [readme](./wcag/readme.md), [official sources](./wcag/official-sources.md), [evaluation method](./wcag/evaluation-method.md), [project surface map](./wcag/project-surface-map.md), [agent reference](./wcag/agent-reference.md) and the [theming WCAG matrix](./architecture/pie-727-theming-wcag-matrix.md)
+- [Consumer dependency pad](./integrations/consumer-api-dependencies.md) and its [maintenance procedure](./integrations/consumer-api-dependencies-maintenance.md): which surfaces downstream hosts depend on
+- [Theme token inventory](./architecture/pie-727-theme-token-inventory.md): the token admission rule and the inventory behind the registry
 
-## Setup And Publishing
+## Design records
 
-- [`development/demo-workspace-resolution.md`](./development/demo-workspace-resolution.md) - How demo apps resolve `@pie-players/*` (`dist/` and Vite aliases)
-- [`development/calculator-external-test-corpora.md`](./development/calculator-external-test-corpora.md) - Calculator test data that CI does not ship: the on-demand GSM8K corpus, and the open-source suites mined for cases
-- [`setup/environment-setup.md`](./setup/environment-setup.md) - Local environment setup
-- [`setup/demo_system.md`](./setup/demo_system.md) - Canonical root demo commands and run orchestration
-- [`setup/publishing.md`](./setup/publishing.md) - Publishing workflow and CI npm auth, including the [token mode](./setup/publishing.md#token-mode)
-- [`setup/publishable_packages.md`](./setup/publishable_packages.md) - Publishable package inventory
-- [`setup/library-packaging-strategy.md`](./setup/library-packaging-strategy.md) - Packaging strategy for bundler reliability and runtime boundary contracts
-- [`setup/cdn_usage.md`](./setup/cdn_usage.md) - CDN and loader usage
+- [Architecture decision records](./adr/README.md): choices that span PRDs
+- [PRDs](./prds/README.md): every PRD with its status, including the [shared contracts](./prds/shared-contracts/README.md)
+- [Product-completing work](./architecture/framework-completing-work.md): what lives in PIE and what a host builds, and the evidence required before scheduling it
+- [Internationalization](./architecture/internationalization.md) and [interface-locale adoption](./architecture/i18n-interface-locale-adoption.md): interface locale, content language and in-item alternates
+- [Instrumentation providers implementation plan](./architecture/instrumentation-providers-implementation-plan.md)
+- [Open-source calculator provider](./prds/open-source-calculator-provider.md) and its [implementation specification](./architecture/open-source-calculator-provider-implementation.md): the Cortex provider
+- [Scoring design notes](./architecture/scoring-design-notes.md): why scoring is split between browser and server
+- [Shared contracts proposal](./architecture/shared-contracts-p0.md): event, session, scoring, media and evidence contracts
+- [Timed-media section](./architecture/timed-media-section.md): the design behind the [timed-media section contract](./prds/timed-media-section-contract.md)
+- [Theming contract](./prds/pie-727-broad-theming-contract.md)

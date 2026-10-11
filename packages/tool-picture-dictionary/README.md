@@ -24,7 +24,7 @@ element.lookup = async ({ keyword, language, max }, signal) => ({
 With neither, the panel says no service is configured.
 
 The endpoint is called `same-origin`, so a route already behind the assessment's own
-session answers with no further configuration. A host authorising some other way
+session answers with no further configuration. A host authorizing some other way
 passes a `headers` function, read per request so a short-lived token is fetched fresh;
 one that wants no ambient credentials passes `credentials: "omit"`. Both are optional
 properties.
@@ -32,7 +32,7 @@ properties.
 ### Request
 
 `POST` with `{ keyword, language?, max? }` — the shape a picture-dictionary service
-is expected to accept. `keyword` is normalised before it is sent, and a selection
+is expected to accept. `keyword` is normalized before it is sent, and a selection
 longer than four words is refused without a request.
 
 ### Response

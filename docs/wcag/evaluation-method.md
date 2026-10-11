@@ -1,8 +1,9 @@
 # Evaluation Method
 
-This document describes the project's accepted WCAG evaluation method.
-
-It is based on official WAI evaluation guidance, adapted for a component-library repo with demo apps and local evals.
+This document is the project's WCAG evaluation method, for contributors
+reviewing a change, a package or a feature area for accessibility. It adapts
+official WAI evaluation guidance to a component library with demo apps and
+local evals.
 
 ## Source Classification
 
@@ -13,14 +14,11 @@ It is based on official WAI evaluation guidance, adapted for a component-library
   - [WCAG-EM Overview](https://www.w3.org/WAI/test-evaluate/conformance/wcag-em/)
 - **Project guidance**: the rest of this document
 
-## What Counts As A Credible WCAG Evaluation
+## Credible Evaluation
 
-WAI's evaluation guidance is explicit about two important points:
-
-- automated tools help, but they are not enough to determine conformance
-- knowledgeable human evaluation is required
-
-In this repo, that means a credible review combines:
+WAI's evaluation guidance holds that automated tools cannot determine
+conformance and that knowledgeable human evaluation is required. A credible
+review here combines:
 
 1. automated checks
 2. keyboard and focus testing
@@ -30,31 +28,30 @@ In this repo, that means a credible review combines:
 
 ## Evaluation Levels
 
-Use the smallest level that matches the task.
+A review uses the smallest level that matches the task.
 
-### Level 1: quick checks
+### Level 1: Quick Checks
 
-Use this for early implementation review or low-risk changes.
+For early implementation review or low-risk changes:
 
 - Run an automated scan where available.
 - Do a short keyboard pass.
 - Check obvious headings, landmarks, labels, contrast, and focus visibility.
 - Use [Easy Checks](https://www.w3.org/WAI/test-evaluate/preliminary/) as the starting frame.
 
-### Level 2: component review
+### Level 2: Component Review
 
-Use this for a package, tool, or feature before calling it accessibility-ready.
+For a package, tool or feature before calling it accessibility-ready:
 
 - Review the component against the relevant criteria in [`wcag-2.2-aa-baseline.md`](./wcag-2.2-aa-baseline.md).
 - Review the relevant widget guidance in [`patterns-and-widgets.md`](./patterns-and-widgets.md).
 - Test keyboard, focus order, focus restoration, live announcements, and visible focus.
 - Check both rendered UI behavior and code-level semantics.
 
-### Level 3: conformance-style audit
+### Level 3: Conformance-Style Audit
 
-Use this for a thorough review of a feature area such as `assessment-toolkit` or `section-player`.
-
-Follow the WCAG-EM-style sequence:
+For a thorough review of a feature area such as `assessment-toolkit` or
+`section-player`, the WCAG-EM sequence applies:
 
 1. Define scope.
 2. Explore the surfaces and identify critical functionality.
@@ -62,13 +59,13 @@ Follow the WCAG-EM-style sequence:
 4. Evaluate the sample with automated and manual methods.
 5. Record findings by WCAG criterion and severity.
 
-For the official methodology frame, use [WCAG-EM Overview](https://www.w3.org/WAI/test-evaluate/conformance/wcag-em/).
+[WCAG-EM Overview](https://www.w3.org/WAI/test-evaluate/conformance/wcag-em/) is the official methodology.
 
 ## Repo-Specific Workflow
 
-### 1. Define scope
+### 1. Scope
 
-Decide whether the review is about:
+The review covers one of:
 
 - a single tool
 - a shared UI pattern
@@ -79,52 +76,57 @@ For package- and feature-level work, scope is usually centered on:
 
 - `packages/assessment-toolkit`
 - `packages/section-player`
+- `packages/item-player`
+- `packages/assessment-player`
 - `packages/players-shared`
 - individual `packages/tool-*`
 - `apps/section-demos`
 - `apps/item-demos`
+- `apps/assessment-demos`
 
-### 2. Identify representative surfaces
+### 2. Representative Surfaces
 
-Use project docs and demos to pick the right review surface:
+The [project surface map](./project-surface-map.md) names the criteria per
+surface. These docs describe the surfaces:
 
 - [`../tools-and-accomodations/architecture.md`](../tools-and-accomodations/architecture.md)
-- [`../section-player/client-architecture-tutorial.md`](../section-player/client-architecture-tutorial.md)
+- [`../section-player/integration-guide.md`](../section-player/integration-guide.md)
 - [`../../packages/section-player/README.md`](../../packages/section-player/README.md)
 
-Use demo apps to exercise integrated behavior:
+The demo apps exercise integrated behavior:
 
 - `apps/section-demos`
 - `apps/item-demos`
+- `apps/assessment-demos`
 
-### 3. Gather supporting automated evidence
+### 3. Automated Evidence
 
-Use existing test harnesses as supporting evidence, not as proof of conformance.
+Test harnesses supply evidence; a passing axe scan does not establish WCAG
+conformance. The harnesses are the root `package.json` e2e scripts and the
+Playwright specs under `packages/section-player/tests`,
+`packages/item-player/tests` and `packages/assessment-player/tests`.
 
-Relevant repo references:
+Root CI runs lint, typecheck and the package rules, the build, a critical
+Playwright e2e matrix (assessment player, item player, players-shared and print
+player) and the sharded section-player e2e suite; the accessibility specs among
+them run axe scans. The root pre-push hook runs the full local gate
+(`verify:pre-push`, which is `bun run verify:local-pr`) when a push carries new
+commits.
 
-- `package.json` e2e scripts at the repo root
-- Playwright coverage under `packages/section-player/tests` and `packages/item-player/tests`
+### 3.1 Critical Automated Baseline
 
-Project rule:
-
-- passing an axe scan does **not** equal WCAG conformance
-
-Automated checks are evidence inputs, not the final conclusion.
-
-### 3.1 Run the critical automated baseline
-
-From repo root:
+From the repo root:
 
 ```bash
 bun run test:e2e:a11y:critical
 ```
 
-This command runs the current critical accessibility subset across section, item, and assessment player flows.
+This runs the critical accessibility subset across section, item and assessment
+player flows.
 
-### 3.2 Run targeted route/surface suites when changing chrome, shells, or layout
+### 3.2 Targeted Surface Suites
 
-From repo root:
+A change to chrome, shells or layout also runs these, from the repo root:
 
 ```bash
 export SECTION_DEMOS_PORT=$(bun ./scripts/get-free-port.mjs 5300)
@@ -143,7 +145,7 @@ bunx playwright test \
   --config packages/item-player/playwright.config.ts
 ```
 
-When custom-element boundaries are touched, also run:
+A change that touches custom-element boundaries also runs:
 
 ```bash
 bun run check:source-exports
@@ -151,9 +153,9 @@ bun run check:consumer-boundaries
 bun run check:custom-elements
 ```
 
-### 4. Run the manual passes
+### 4. Manual Passes
 
-#### Keyboard and focus pass
+#### Keyboard and Focus Pass
 
 Check:
 
@@ -163,7 +165,7 @@ Check:
 - open and close behavior returns focus appropriately
 - floating tools and dialogs do not obscure the current focus target
 
-#### Screen reader pass
+#### Screen Reader Pass
 
 Check:
 
@@ -173,20 +175,21 @@ Check:
 - dialogs and overlays announce themselves correctly
 - math, TTS, and selection-based features remain understandable
 
-#### Visual pass
+#### Visual Pass
 
 Check:
 
 - contrast
 - non-text contrast
-- 200% zoom
-- narrow-width reflow
+- 200% zoom with text resizing (1.4.4)
+- 400% zoom reflow (1.4.10); the control-sizing e2e specs run both factors
+- narrow-width reflow at 320 CSS px
 - visible focus
 - target size for compact controls and handles
 
-### 5. Record findings
+### 5. Findings
 
-Findings should be recorded with:
+Each finding records:
 
 - WCAG criterion ID and title
 - severity
@@ -195,9 +198,7 @@ Findings should be recorded with:
 - why the issue matters to users
 - suggested fix direction
 
-## Recommended Finding Format
-
-Use this shape consistently:
+## Finding Format
 
 ```md
 - **WCAG**: 2.4.3 Focus Order (Level A)
@@ -210,9 +211,7 @@ Use this shape consistently:
 
 ## Common Evaluation Mistakes
 
-Avoid these shortcuts:
-
-- declaring compliance based on axe or Lighthouse alone
+- declaring conformance based on axe or Lighthouse alone
 - reviewing only one browser and no assistive technology
 - checking only one visual theme
 - checking static markup but not dynamic state changes
@@ -230,4 +229,5 @@ This repo mixes:
 - split-pane layouts
 - assessment-specific interaction patterns
 
-Because of that, code review and runtime behavior review both matter. A valid evaluation here must inspect rendered semantics and user interaction, not only source code or only browser automation.
+A valid evaluation therefore inspects rendered semantics and user interaction
+in addition to source code and browser automation.

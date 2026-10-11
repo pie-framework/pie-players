@@ -1,208 +1,228 @@
 # Timed Media Section Contract
 
-Status: Accepted, 2026-08-17.
+Status: Accepted, 2026-08-17
+
+Implementation status: shipped in pie-players. Types, validation and the cue
+reduction live in `@pie-players/pie-players-shared/timed-media`; live state and
+the Media Time Source port live in `@pie-players/pie-section-player`. Captions
+end to end and score projection remain open; see [Open Questions](#open-questions).
 
 Owner: PIE Players maintainers
 
-Tracking: not tracked in an issue tracker by design. This PRD's `Status:` line is the record. Revalidated against `develop` on 2026-08-05 and 2026-08-15; see [Pre-implementation State](../architecture/timed-media-section.md#pre-implementation-state) in the architecture note for what moved underneath the draft. Nothing here is blocked on a ticket.
+This PRD defines the Timed-Media Section: a section whose shared media timeline
+decides when its items are delivered, through cues over a media stimulus, a
+playback policy, a session slice and gates on formative state. It is for
+maintainers of the section player and the shared types, and for adapter authors
+mapping the shape to other formats. Terms follow the
+[timed media language](../../CONTEXT.md#timed-media-language).
 
-Sequenced behind formative delivery, 2026-08-15. [ADR 0001](../adr/0001-formative-delivery-before-timed-media.md) records the decision and its reason: a cue's interesting gate condition is "answered correctly", which needs a per-item evaluation seam PIE did not have, so building cues first would force `responded` as the only expressible condition and then revise a shipped section slice. The [formative delivery contract](./formative-delivery-contract.md) supplies that seam — Try state, per-item feedback reveal, and the four-valued `FormativeCorrectness` this PRD's cue policy names as gate conditions. That work merged on 2026-08-15 and was first published in `@pie-players/pie-players-shared` 0.3.68, so `FormativeCorrectness` is a real exported type and the per-item `env` seam exists: a cue policy can name `correct` rather than settling for `responded`.
-
-Every prerequisite this PRD inherits is satisfied: the [media asset contract](./shared-contracts/media-asset-contract.md) is `Accepted` and its types are shipped, `@pie-players/pie-players-shared/media` owns media validation, and the [theming contract](./pie-727-broad-theming-contract.md) is `Accepted` so media controls have a palette. The questions left in [Open Questions](#open-questions) were implementation-time choices, not contract gates.
-
-Cue and playback policy ownership does not ride on it, contrary to the earlier reading here. `assessment-toolkit` sits beneath the standalone path as well as beneath assessment-player: formative delivery's Try round trip runs controller → `SectionControllerBinding` → `PieAssessmentToolkit` → composition republish, with no assessment-player in it. So `ToolPolicyEngine` can own cue and playback policy whichever player mounts the section, and that choice can be taken on its own merits. The architecture note's layer-ownership table was re-derived against the engine on 2026-08-15. On those merits cue policy went to `@pie-players/pie-players-shared/timed-media` instead; see the [Implementation Record](#implementation-record-2026-08-17).
+Timed media is sequenced behind formative delivery
+([ADR 0001](../adr/0001-formative-delivery-before-timed-media.md)), because a
+correctness gate needs the per-item evaluation seam and the `FormativeCorrectness`
+values that the [formative delivery contract](./formative-delivery-contract.md)
+supplies.
 
 Related architecture:
 
 - [Timed media section architecture](../architecture/timed-media-section.md)
 - [P0 shared contracts](../architecture/shared-contracts-p0.md)
-- [Media asset contract](./shared-contracts/media-asset-contract.md) — prerequisite, satisfied 2026-08-09; see below
+- [Media asset contract](./shared-contracts/media-asset-contract.md) — the range type and media validation this contract reuses
 - [Interaction event contract](./shared-contracts/interaction-event-contract.md)
 - [Score components and section outcomes](./shared-contracts/score-components-and-section-outcomes.md)
 - [Accessibility runtime patterns](./shared-contracts/accessibility-runtime-patterns.md)
-- [Formative delivery contract](./formative-delivery-contract.md) — prerequisite; supplies the state a cue gate condition names
+- [Formative delivery contract](./formative-delivery-contract.md) — supplies the state a gate condition names
 - [Formative delivery before timed media](../adr/0001-formative-delivery-before-timed-media.md) — the sequencing record
-- [Sign language (ASL) support](./sign-language-asl-support.md) — sibling media contract, deliberately out of scope here
+- [Sign language (ASL) support](./sign-language-asl-support.md) — sibling media contract, out of scope here
+
+Integrator guide: [Timed media](../../packages/section-player/README.md#timed-media)
+in the section player README.
 
 ## Problem
 
-Video-linked assessment is a high-value gap because it combines shared media stimulus, timestamp cues, normal PIE child items, playback policy, completion, and score aggregation. The architecture should be implemented as section-level composition, not as one opaque element or a full assessment-player replacement.
-
-This PRD defines the section contract that the existing section-player layouts, `video-stimulus`, and future adapters align around.
+PIE could not deliver items against a shared media timeline. An assessment that
+cues questions from a video combines a media stimulus, cues on its timeline,
+ordinary PIE child items, playback policy, completion and score aggregation. It
+is built as section-level composition: one opaque element would hide the child
+items, sessions and outcomes, and a replacement assessment player would duplicate
+delivery the section player already does.
 
 ## Goals
 
-- Define timed media as a section flavor with normal child item refs and normal child item sessions.
-- Keep `video-stimulus` responsible for media rendering and playback APIs only.
-- Define cue metadata, cue policy, playback policy, media/cue session state, and section completion behavior.
-- Preserve existing section item-session behavior while adding a named typed `timedMedia` section slice.
-- Provide adapter-friendly events and outcome projections by consuming shared contracts.
+- Define timed media as a section flavor with ordinary child item refs and child
+  item sessions.
+- Keep `video-stimulus` to media rendering. The section reaches the `<video>` it
+  mounts through the native Media Time Source adapter; the element exposes no
+  playback API.
+- Define cue metadata, cue policy, playback policy, the media and cue session
+  slice, and section completion.
+- Keep existing section item-session behavior while adding a typed `timedMedia`
+  section slice.
+- Give adapters events and outcome projections built on the shared contracts.
 
 ## Non-Goals
 
-- No item bank, media repository, catalog, workflow, rostering, scheduling, gradebook, backend reporting, or durable attempt store.
-- No opaque PCI/custom-item wrapper that hides normal child item/session/outcome structure.
+- No item bank, media repository, catalog, workflow, rostering, scheduling,
+  gradebook, backend reporting or durable attempt store.
+- No opaque PCI or custom-item wrapper that hides child item, session and outcome
+  structure.
 - No cue-to-question orchestration inside `video-stimulus`.
 - No generic `profileState` bag for section behavior.
-- No composition authoring UI in this PRD; that is a future PRD for cue timelines, item bindings, preview, and policy editing.
-- No final QTI profile or conformance claim; QTI mapping belongs in `pie-qti` after this contract is reviewed.
-- No sign-language/ASL delivery as a section flavor. Section-player still hosts signing at runtime — through the existing accessibility-catalog rail, since the resolver lives in `assessment-toolkit` and section-player already consumes it — but not through `sectionType` or a specialized layout. Signed alternate representations are item-level, learner-triggered, and gate nothing; see [`./sign-language-asl-support.md`](./sign-language-asl-support.md). The two contracts should share the media asset contract and, if both land, time-ranged playback.
-
-## Prerequisite: Media Asset Contract
-
-Noted 2026-08-07. Sign-language support is starting around the same time as this work, and both consume [`media-asset-contract`](./shared-contracts/media-asset-contract.md). That contract should be reviewed and landed **before** either side writes media-handling code, and designed against both consumers rather than shaped by whichever moves first — otherwise the result is two media vocabularies in one codebase and a merge later.
-
-The specific piece both need is a time range within an asset: Media Fragments for signing, where one recording serves several content nodes, and cue ranges here. Same primitive, two callers, so it gets designed once in the shared contract rather than twice.
-
-Updated 2026-08-08: signing moved first, so the vocabulary now exists in code — `MediaAssetRef`, `MediaSource`, `TextTrackRef`, `TranscriptRef` and `MediaFragmentRange` in `@pie-players/pie-players-shared/types`. That changes this prerequisite rather than removing it. Cue ranges should reuse `MediaFragmentRange` in the same position it holds for signing (beside the asset, not inside it — a range describes a *use* of an asset, not the asset), and anything this contract needs that the shipped types lack should extend them. What must not happen is a second media vocabulary growing beside the first because this side found the first one inconvenient.
-
-**Satisfied 2026-08-09.** `media-asset-contract` is `Accepted`, ratified against this workstream's proposed shapes before the release that first published the types. Cue ranges fit `MediaFragmentRange` in both forms — a point cue omits `endSeconds`, a ranged cue carries it — and nothing a stimulus needs is missing from `MediaAssetRef`, so `video-stimulus` inherits the vocabulary rather than extending it. The `cues[].startTime` name in the architecture note becomes `startSeconds` to match.
-
-What this leaves for this PRD is narrower than a media contract and must not be skipped as though the ratification covered it: **cue-range semantics**. `MediaFragmentRange` deliberately carries no playback meaning. The two shipped consumers read it as "play only this slice," with the player enforcing both bounds itself — a Media Fragments URI is written but honoured inconsistently at both ends, so the region seeks explicitly once metadata loads and pauses on `timeupdate`. A cue range means "the window during which this cue is active," which is not a slice to play and does not imply seeking. This PRD states that meaning for cues; it does not add a discriminant to the range type or fork it.
-
-Two media-handling facts also arrive as constraints rather than choices. Authored media URLs are validated by `@pie-players/pie-players-shared/media` — scheme allow-list, source normalization, dedupe by `src`, fragment normalization — and `video-stimulus` consumes it rather than writing a second allow-list. And `MediaAssetRef.version: 1` is a required literal, so anything this contract emits carries it.
+- No composition authoring UI. A separate PRD covers cue timelines, item
+  bindings, preview and policy editing; [Composition Authoring](#composition-authoring)
+  records the decisions it inherits.
+- No QTI profile or conformance claim; QTI mapping belongs in `pie-qti`.
+- No sign-language delivery as a section flavor. The section player hosts signing
+  through the accessibility-catalog rail, never through `sectionType` or a
+  specialized layout, and signed alternates are item-level and gate nothing
+  ([sign language support](./sign-language-asl-support.md)). Both contracts
+  share `MediaFragmentRange`.
 
 ## Media Representation
 
-Decided 2026-08-15. The stimulus is a passage: a `RubricBlock` with
-`class: "stimulus"` whose `passage` config mounts the media element. `timedMedia`
-carries no media payload — it carries the cue timeline, the playback policy, and a
-required `stimulusRef` naming which renderable is the time source.
+The stimulus is a passage: a `RubricBlock` with `class: "stimulus"` whose
+`passage` config mounts the media element. `timedMedia` carries no media payload.
+It carries the cue timeline, the playback policy and a required `stimulusRef`
+naming the renderable that supplies the time source.
 
-Three reasons, in the order they decide it. A passage is a **Catalog Owner**, and a
-`timedMedia.media` blob is not: `PassageEntity.accessibilityCatalogs` exists, and
-captions, transcripts and signed alternates already resolve through the
-accessibility-catalog rail. Video is the worst content type to strip of that owner,
-since captions are not optional on it the way they are on a text passage, and the
-alternative is a second representation of alternates the catalog rail already
-models. The route also already works: `SectionRenderable` is
-`{ flavor, entity: ConfigContainerEntity }`, so every renderable is a PIE config
-rendered through the item-player, and `SectionContentService` already normalizes
-`class: "stimulus"` blocks with a passage into the section's passage map. No new
-`class` value, no new shell, no widened field. And `passageVId` gives cross-section
-reuse of a stimulus for free, where cues can never be reused with it — they name
-this section's `itemRefs` — so the media and the timeline separate cleanly rather
-than sharing one placement decision.
+A passage, for three reasons:
 
-`stimulusRef` is required, not a convenience. A section may legitimately hold a
-video stimulus and a text stimulus at once — an intro or summary passage beside the
-media — because `rubricBlocks` is a list and every `class: "stimulus"` entry becomes
-a renderable. An item reaches the video through `cue.itemRefs` and keeps its own
-single `ItemEntity.passage` slot for the text, so the two associations never
-compete; the cost is that "which renderable is the time source" is ambiguous by
-construction. Resolution is validated: `stimulusRef` must name a renderable in this
-section, and that renderable must expose a time source. A section carrying cues
-without a resolvable `stimulusRef` is malformed and fails loudly, because the
-alternative is cues that silently never fire.
+- **Catalog ownership.** A passage is a Catalog Owner
+  (`PassageEntity.accessibilityCatalogs`), so transcripts and signed alternates
+  resolve through the accessibility-catalog rail. A `timedMedia.media` blob would
+  strip video, the content type that most needs alternates, of that owner and
+  require a second representation of alternates.
+- **One content path.** `SectionRenderable` is
+  `{ flavor, entity: ConfigContainerEntity }`, so every renderable is a PIE config
+  rendered through the item player, and `SectionContentService` already
+  normalizes `class: "stimulus"` blocks with a passage into the section's passage
+  map. No new `class` value, shell or field.
+- **Reuse.** `passageVId` reuses a stimulus across sections. Cues name this
+  section's `itemRefs` and are never reusable, so the media and the timeline
+  separate cleanly.
 
-The trade, stated as one: this buys a single content-resolution path and keeps media
-inside the catalog model, at the cost of "exactly one time source per section" being
-a validation rule rather than a type invariant. `timedMedia.media` would have made
-it a type invariant and made video the only content in PIE that is not a config
-container.
+`stimulusRef` is required because a section may hold a video stimulus and a text
+stimulus at once, such as an intro or summary passage beside the media, and every
+`class: "stimulus"` entry becomes a renderable. An item reaches the video through
+`cue.itemRefs` and keeps its own `ItemEntity.passage` slot for text, so the two
+associations never compete. Validation resolves the ambiguity: `stimulusRef`
+must name a renderable in the section, and that renderable must expose a time
+source ([Failure Handling](#failure-handling)).
 
-Placement is deferred and is a layout concern, not a data one. `stimulusRef` names
-what goes in the media region and every other passage falls through to the normal
-passage rail; the splitpane's "passages share a pane" rule is that layout's, not a
-universal one. A dedicated timed-media layout owns its own placement.
+A deliberate trade: one content-resolution path and media inside the catalog
+model, at the cost of "exactly one time source per section" being a validation
+rule rather than a type invariant. `timedMedia.media` would have made it a type
+invariant and made video the only content in PIE that is not a config container.
+
+Placement is a layout concern. The passages pane renders the stimulus first and
+every other passage after it ([Delivery Attachment](#delivery-attachment)); the
+splitpane's rule that passages share a pane is that layout's own, and a dedicated
+timed-media layout would own its placement.
 
 ## Delivery Attachment
 
-Decided 2026-08-15. Timed media targets the existing section-player layouts on the
-standalone path: the host mounts the layout tag, as every integration that renders a
-section already does. `assessment-player` gains no `sectionType`-driven renderer
-dispatch — when this was decided `sectionType` occurred nowhere in `packages/`, no
-integration renders a section through assessment-player, and dispatch would be
-selection machinery with no caller. `sectionType` now exists as a data
-discriminator that `SectionController` reads; `assessment-player` still dispatches
-on nothing.
+Timed media targets the existing section-player layouts on the standalone path:
+the host mounts the layout tag, as every integration that renders a section
+already does. `sectionType` is a data discriminator that `SectionController`
+reads; nothing selects a renderer from it. The assessment player mounts the
+splitpane or vertical layout per its `sectionPlayerLayout` attribute and
+dispatches on no section data, and `sectionType`-driven dispatch there would be
+selection machinery with no caller.
 
-No new custom element is required and none is added here. A stimulus passage already
-renders in every layout: `SectionContentService` normalizes a `class: "stimulus"`
-block with a passage into the section's passage list, and `SectionPassagesPane` maps
-over it. The splitpane's two-pane frame is already the timed-media geometry — media
-in one pane, the cued item in the other — so this contract's delivery surface is
-content plus runtime, not a new tag, and it stays off the consumer dependency pad.
+No custom element is added. A stimulus passage renders in every layout:
+`SectionContentService` normalizes the block into the section's passage list and
+`SectionPassagesPane` renders it. The splitpane's two panes are the timed-media
+geometry, media in one and the cued item in the other, so the delivery surface is
+content plus runtime: no new tag, and nothing to add to the
+[consumer API dependencies](../integrations/consumer-api-dependencies.md) record.
 
-Cue-driven progression reuses `navigateToItem` and the composition republish every
-layout re-renders against; a gate's visible state reuses the polite status region
-the item card gained with formative delivery. Neither is a layout change.
+Cue-driven reveals reuse the composition republish every layout renders against.
+The items pane carries a polite status line that announces reveals, a held gate
+and its release, and a gate that holds playback moves focus to the card it waits
+on. A plain reveal leaves focus alone, because moving focus mid-playback is the
+change of context WCAG 3.2.1 rules out.
 
-One optional layout input is added, and only for a section carrying a media stimulus
-*and* another passage: the passages pane accepts a pinned passage id, fed from
-`stimulusRef`, so the media holds position while other passages scroll. Absent, the
-pane renders exactly as it does today. That additive default is what keeps current
-section-player users unaffected — by construction rather than by care at each call
-site — and DOM order inside the pane changes only when the input is set.
+The passages pane takes the composition model and renders the stimulus first
+without pinning it. Sticky placement needs `scroll-padding-top` on a scroll
+container the pane does not own, and without it a focused control in a passage
+scrolling under the media is obscured (WCAG 2.4.11). Pinning stays with a
+dedicated layout.
 
-A dedicated video-first layout — full-bleed media, controls beneath it, the item
-below rather than beside — stays available as later presentation work. It closes no
-capability gap, so it follows a working cue engine rather than gating one.
+A video-first layout, with full-bleed media, controls beneath and the item below,
+is later presentation work. It closes no capability gap.
 
 ## Package And Export Ownership
 
-- Owning package: `@pie-players/pie-players-shared` (source at `packages/players-shared`) for timed-media section data types, alongside the existing `AssessmentSection` and `RubricBlock` definitions. It is the one canonical type home for `sectionType`, `timedMedia`, cues, and the timed-media session slice.
-- Runtime home: `@pie-players/pie-players-shared/timed-media` owns validation and the cue reduction. `SectionController` in `section-player` owns the live state and the Media Time Source port, and the layouts read the projection it resolves with `resolveTimedMediaProjection`. `@pie-players/pie-assessment-toolkit` arbitrates the TTS/media handoff through `pauseMediaForCompetingAudio()` on the controller and the controller's `timed-media-audio-started` event. `ToolPolicyEngine` was the leading candidate for cue and playback policy and was not taken; the [Implementation Record](#implementation-record-2026-08-17) gives the reason.
-- Public export path: `@pie-players/pie-players-shared/timed-media` for the cue, policy and session-slice types, validation, the reduction, the projection, and the Media Time Source port. `TimedMediaSectionData`, the authored half, is also exported beside `AssessmentSection` from the package root and `/types`.
-- Consuming packages or apps: `section-player`, `assessment-player`, `assessment-toolkit`, `apps/section-demos`, `apps/assessment-demos`, `pie-elements-ng` `video-stimulus`, and `pie-qti` adapters.
-- Runtime environment: browser and custom element; data types should be Node-safe for adapters.
+- Owning package: `@pie-players/pie-players-shared` (source at
+  `packages/players-shared`), the one type home for `sectionType`, `timedMedia`,
+  cues and the session slice, beside `AssessmentSection` and `RubricBlock`.
+- Runtime home: `@pie-players/pie-players-shared/timed-media` owns validation
+  (`normalizeTimedMediaSectionData`), the cue reduction (`reduceTimedMediaState`)
+  and the projection (`resolveTimedMediaProjection`). `SectionController` owns the
+  live state and the Media Time Source port, and layouts read the projection from
+  `compositionModel.timedMedia`. `@pie-players/pie-assessment-toolkit` arbitrates
+  the [read-aloud handoff](#read-aloud-handoff).
+- Cue and playback policy stay out of `ToolPolicyEngine`. Its decision domain is
+  tool eligibility, a placement level and scope in, `visibleTools` out, several
+  `PolicySource`s merged with provenance. A cue decision is a reduction over media
+  time and delivery state with one authored source, so provenance buys nothing and
+  the capability-neutral core would gain a second unrelated domain. A layout is
+  the wrong home too, because every layout hosting timed media would re-implement
+  the reduction. Formative delivery splits its policy the same way.
+- Public export path: `@pie-players/pie-players-shared/timed-media` for the cue,
+  policy and session-slice types, validation, the reduction, the projection and
+  the port. `TimedMediaSectionData`, the authored half, is also exported beside
+  `AssessmentSection` from the package root and `/types`.
+- Consuming packages or apps: `section-player`, `assessment-player`,
+  `assessment-toolkit`, `apps/section-demos`, `apps/assessment-demos`,
+  pie-elements-ng `video-stimulus`, and pie-qti adapters.
+- Runtime environment: browser and custom element; the data types are Node-safe
+  for adapters.
 
 ## Contract Shape
 
-These names are the shipped ones. The section shape extends existing section data additively.
-
-Documentation sketch only:
+The section shape extends `AssessmentSection` additively.
 
 ```ts
-interface TimedMediaCue {
-  identifier: string;
-  /**
-   * The window in which this cue is active, reusing the ratified range type. A
-   * point cue omits `endSeconds`. It sits beside the asset rather than inside
-   * `MediaAssetRef` because a range describes a *use* of an asset; here that use
-   * is activation, not a slice to play, so it implies no seeking.
-   */
-  range: MediaFragmentRange;
-  itemRefs: string[];
-  policy: {
-    activation: "reveal" | "gate" | "metadata";
-    /**
-     * For `activation: "gate"`, the condition over formative state that
-     * releases playback. Named from the shipped formative vocabulary rather
-     * than defined here; `"responded"` is the response-only case the earlier
-     * `pause-and-require-response` sketch meant.
-     */
-    releaseOn?: "responded" | "correct" | "partial-or-better";
-    /** What a gate does when the item cannot be auto-scored. */
-    onUnknownCorrectness?: "release" | "hold";
-  };
+interface TimedMediaCuePolicy {
+  activation: "reveal" | "gate" | "metadata";
+  /** Required for `activation: "gate"`; ignored otherwise. */
+  releaseOn?: "responded" | "correct" | "partial-or-better";
+  /** Required when `releaseOn` names correctness; ignored otherwise. */
+  onUnknownCorrectness?: "release" | "hold";
 }
 
-/** Additive fields on the existing `AssessmentSection`. */
+interface TimedMediaCue {
+  identifier: string;
+  /** The window in which the cue is active. A point cue omits `endSeconds`. */
+  range: MediaFragmentRange;
+  /** Identifiers of this section's `assessmentItemRefs`. */
+  itemRefs: string[];
+  policy: TimedMediaCuePolicy;
+}
+
+interface TimedMediaPlaybackPolicy {
+  allowSeekAhead: boolean;
+  pauseOnRequiredCue: boolean;
+  requireMediaCompletion: boolean;
+}
+
+interface TimedMediaScoringPolicy {
+  strategy: "sum-child-outcomes" | "average-child-outcomes" | "host-defined";
+}
+
+interface TimedMediaSectionData {
+  /** The rubric block identifier or passage id of the stimulus renderable. */
+  stimulusRef: string;
+  cues: TimedMediaCue[];
+  playbackPolicy: TimedMediaPlaybackPolicy;
+  scoringPolicy?: TimedMediaScoringPolicy;
+}
+
+/** Additive fields on `AssessmentSection`. */
 interface AssessmentSection {
   sectionType?: "timed-media";
   /** Ignored unless `sectionType` is `"timed-media"`. */
   timedMedia?: TimedMediaSectionData;
-}
-
-interface TimedMediaSectionData {
-  /**
-   * The renderable that supplies the time source, authored as a
-   * `class: "stimulus"` rubric block whose passage config mounts the media
-   * element. Required, and validated to resolve within this section — see
-   * [Media Representation](#media-representation). No media payload lives
-   * here; the passage owns the asset and its accessibility catalogs.
-   */
-  stimulusRef: string;
-  cues: TimedMediaCue[];
-  playbackPolicy: {
-    allowSeekAhead: boolean;
-    pauseOnRequiredCue: boolean;
-    requireMediaCompletion: boolean;
-  };
-  scoringPolicy?: {
-    strategy: "sum-child-outcomes" | "average-child-outcomes" | "host-defined";
-  };
 }
 
 interface TimedMediaSectionSessionSlice {
@@ -218,23 +238,214 @@ interface TimedMediaSectionSessionSlice {
 }
 ```
 
-The existing section snapshot remains the base. The named `timedMedia` slice must define merge and replace behavior explicitly.
+`MediaFragmentRange` comes from the media asset contract and sits beside the
+asset, because a range describes a use of an asset. For a cue that use is
+activation: the range is the window in which the cue is active and implies no
+seeking. A sign-language card reads the same type as a slice to play, with the
+player enforcing both bounds; the type carries no discriminant for the two
+readings.
+
+When `playbackPolicy` is absent, validation applies the restrictive defaults:
+`allowSeekAhead: false`, `pauseOnRequiredCue: true`,
+`requireMediaCompletion: false`. A section that omitted the block reads as one
+that wanted sequencing, and the permissive reading would deliver an unsequenced
+video. `pauseOnRequiredCue: false` turns every gate into a reveal, and
+`requireMediaCompletion` decides whether aggregate completion needs the media to
+have ended.
+
+Authored media URLs follow the media asset contract's rules: scheme allow-list,
+source normalization, dedupe by `src` and fragment normalization, owned by
+`@pie-players/pie-players-shared/media`. `video-stimulus` carries its own copy of
+the URL and source rules, because elements take no dependency on a player
+package, and holds parity with tests. `MediaAssetRef.version: 1` is a required
+literal.
+
+### Media Time Source
+
+The section reaches media only through a Media Time Source, a port shaped after
+`HTMLMediaElement`:
+
+```ts
+interface MediaTimeSourceCapabilities {
+  canPause: boolean;
+  canRestrictSeeking: boolean;
+}
+
+interface MediaTimeSource {
+  readonly currentTime: number;
+  /** `NaN` until metadata loads, as on the element. */
+  readonly duration: number;
+  readonly paused: boolean;
+  readonly seekable: MediaTimeRanges | null;
+  readonly capabilities: MediaTimeSourceCapabilities;
+  play(): Promise<void> | void;
+  pause(): void;
+  seekTo(seconds: number): void;
+  /** Notifications are `time`, `seek`, `play`, `pause` and `ended`, each with `currentTime`. */
+  subscribe(listener: (notification: MediaTimeSourceNotification) => void): () => void;
+}
+```
+
+Seeking is `seekTo(seconds)` rather than a writable `currentTime`, so a source
+that cannot seek has a way to say so. That and `capabilities` are the port's only
+departures from the element. `createMediaElementTimeSource` adapts a native
+element with both capabilities.
+
+The stimulus card finds the media element its passage mounted and attaches the
+native adapter with `origin: "native-adapter"` and its `renderableId`; a host
+with its own player attaches its port with no renderable. Two precedence rules
+apply:
+
+- A host-attached port outranks the card's native adapter on attach and on
+  detach. The card re-runs discovery whenever its content re-renders, so without
+  the rule a host's third-party player would be replaced mid-session and the
+  capabilities would flip back to `canPause: true`.
+- A native adapter counts only from the resolved stimulus renderable, since a
+  section may hold a second video passage.
+
+Where the attached source reports `canPause: false` or
+`canRestrictSeeking: false`, the matching policy is advisory: cues still fire and
+state is still recorded, the projection reports `enforcement: "advisory"`, and a
+recoverable `timed-media` framework warning names the policy. An author cannot
+require enforcement and fail closed, because that would block delivery on a media
+capability probe, against the **Tool Surface Failure** rule in
+[CONTEXT.md](../../CONTEXT.md).
+
+### Cue Behavior
+
+- A cue is reached when playback passes its start, and stays reached. Visits and
+  reveals are monotonic, so seeking back withdraws nothing, and seeking past a
+  gate still trips it.
+- `reveal` shows its items and completes on activation. `gate` also holds
+  playback until every item it names satisfies `releaseOn`, and a released gate
+  stays released when a retry lowers correctness. `metadata` records state and
+  reveals nothing.
+- A `metadata` cue's items are not sequenced. The projection separates
+  `sequencedItemIds` (named by a `reveal` or `gate` cue) from `revealedItemIds`,
+  and a layout reads the first to decide what is pending, so an item only a
+  metadata cue names is delivered normally. Only a metadata cue may name no items.
+- `responded` reads item completion, so it works in a section that does not
+  deliver formatively. A correctness gate requires the items it names to deliver
+  formatively with unlimited Tries, and validation refuses anything else with
+  `gate-requires-unlimited-tries` naming the item refs: a gate on `correct`
+  releases only while the learner has a Try to spend, and a forced reveal is not a
+  correct answer.
+- `onUnknownCorrectness` is required on a correctness gate, with no default. Both
+  readings are defensible and each silent default is wrong somewhere: one traps a
+  learner behind an item nothing can score, the other waves the checkpoint
+  through.
+- Every item a gate names must satisfy `releaseOn`. A split between must-answer
+  and optional items is two cues at one timestamp, a gate over the first set and a
+  reveal over the second; both activate in the same pass and only the gate holds.
+  Reusing `required: false` on the item ref was rejected, because it means
+  "counts toward completion" and would change gate behavior for an author who set
+  it for that reason.
+- Playback never resumes on its own when a gate releases; the learner presses
+  play. Resuming would start audio nobody asked for over the release announcement
+  and fight a learner still reading feedback.
+- A cued item's card is mounted and hidden until its cue fires. Mounting on
+  activation would rebuild the item player on every seek backwards and churn shell
+  registration, loading accounting and preload warmup; the cost is a pending item
+  laying out while hidden.
+- Cue state joins the composition revision key through
+  `timedMediaProjectionSignature`, which the controller's change event and the
+  toolkit's composition key share. The current position does not join it: it
+  moves about four times a second and nothing renders it. The furthest position
+  joins in 10-second buckets, so progress persists between cues minutes apart.
+
+### Seeking
+
+`allowSeekAhead: false` clamps a forward seek past `maxPositionSeconds`. The
+slice persists that position, because deriving it would hand the learner the
+whole timeline back after a reload, and a restored position seeks a freshly
+attached source forward. The clamp allows a 0.5-second tolerance
+(`SEEK_AHEAD_TOLERANCE_SECONDS`), because `timeupdate` lags playback by up to a
+quarter second and a learner nudging the scrubber where they already are should
+not be fought.
+
+### Read-Aloud Handoff
+
+Read-aloud and media audio never overlap, and the last action wins: starting
+read-aloud pauses media, and starting media pauses read-aloud. The toolkit
+arbitrates, as the only layer holding both the TTS service and the section. The
+controller supplies `pauseMediaForCompetingAudio()`, which returns `false` when
+the port cannot pause, and emits `timed-media-audio-started` when media audio
+resumes. Neither direction resumes what it silenced.
+
+A source without `canPause` cannot yield, and read-aloud proceeds over it:
+withholding an accommodation to protect a policy the port already reported it
+cannot keep is the worse failure. Media with no audio still pauses read-aloud,
+because `HTMLMediaElement` exposes no portable signal for a silent track. A
+deliberate trade: one unnecessary pause the learner undoes with one press,
+against overlapping speech.
+
+### Failure Handling
+
+A `timedMedia` block that fails validation reports a non-recoverable
+`timed-media` framework error, so readiness latches error and the author sees it,
+and the section then delivers as an ordinary section with every item visible.
+Refusing to deliver would turn an authoring slip into an outage. The codes are
+`TimedMediaValidationError.code`: `missing-stimulus-ref`,
+`unresolved-stimulus-ref`, `no-cues`, `duplicate-cue-identifier`,
+`invalid-cue-identifier`, `invalid-cue-range`, `invalid-cue-activation`,
+`unknown-item-ref`, `missing-item-refs`, `missing-release-condition`,
+`missing-unknown-correctness`, `gate-requires-unlimited-tries`,
+`invalid-playback-policy` and `invalid-scoring-policy`.
+
+Whether a stimulus exposes a time source is only half knowable from data: the
+passage's element bundle decides whether and when it mounts media. Validation
+resolves `stimulusRef`, and a watch armed when the section's content has loaded
+reports `stimulus-exposes-no-time-source` if no source has attached five seconds
+later. The section then drops the timeline and delivers every item, because the
+failure is a pane of questions no cue can reveal.
+
+### Completion And Scoring
+
+`aggregateComplete` keeps three facts separate: every required cue complete,
+every item complete, and, where `requireMediaCompletion` holds, the media played
+to its end. It is independent of mastery.
+
+`scoringPolicy` is validated, persisted and carried to the host unchanged. PIE
+derives no aggregate outcome from it, and a section that omits it gets none.
+Validation refuses a weighted strategy, because no weight is authorable on a cue,
+an item ref or the section; where weights live belongs to the score components
+contract, and a host holding its own weights uses `host-defined`.
+
+### Print
+
+A printed timed-media section prints every cued item revealed: a page has no
+timeline, and items no cue can fire leave a blank page. This binds section
+printing when it is built; `pie-print-player` takes a single item config and has
+no section awareness.
+
+### Composition Authoring
+
+Decisions the composition authoring PRD inherits:
+
+- The authored artifact is `timedMedia`. No QTI representation of cue-gated
+  delivery exists, so authoring into QTI would invent those semantics in the
+  editor; QTI stays an export concern in `pie-qti`.
+- The editor requires the stimulus media resolvable to a playable URL, because
+  scrubbing against the real clip is the value. `MediaAssetRef` carries the
+  reference, and a playable one is a prerequisite on the host's asset pipeline.
+- The surface is built in the authoring application that already owns item and
+  passage authoring and already assembles and previews an `AssessmentSection`; a
+  new pie-players package would have to grow item and passage authoring from
+  nothing. The architecture note's
+  [Authoring Model](../architecture/timed-media-section.md#authoring-model)
+  enumerates the surface. The PRD lives in this repository, beside this contract,
+  and sets the MVP.
 
 ## Compatibility
 
-This PRD extends `section-player` behavior additively. It must not change:
+This PRD extends section-player behavior additively. It does not change:
 
-- PIE element runtime/controller contracts;
-- `pie-item-player` properties, events, or imperative APIs;
-- normal child item session propagation;
-- existing section-player layouts unless they opt into timed-media behavior;
-- assessment-player routing except for additive renderer selection.
-
-"Additive renderer selection" understates the work as of 2026-08-05: assessment-player has no data-driven renderer selection to extend. `AssessmentPlayerDefaultElement` takes a hardcoded `sectionPlayerLayout: "splitpane" | "vertical"` attribute and imports only those two layouts, and nothing dispatches on section data. Either this PRD scopes that dispatch as new machinery, or timed media targets the standalone `section-player` path where the host selects the tag directly.
-
-The timed-media slice must not become a generic profile bag. Unknown hosts must follow the slice behavior ratified by this PRD, not invent alias maps, fallback normalizers, or duplicate dispatch paths.
-
-Element source references and child item markup must preserve versioned PIE tag names and contract attributes unchanged.
+- PIE element runtime and controller contracts;
+- `pie-item-player` properties, events or imperative APIs;
+- child item session propagation;
+- delivery of a section without `sectionType`, which gets no projection, no slice
+  and no cue behavior;
+- assessment-player routing.
 
 ## Data Ownership And Host Responsibilities
 
@@ -242,62 +453,93 @@ PIE owns:
 
 - timed-media section data vocabulary;
 - cue and playback policy semantics;
-- media/cue session slice behavior;
-- section-player orchestration of media, cues, child item reveal, and completion;
+- media and cue session slice behavior;
+- section-player orchestration of media, cues, child item reveal and completion;
 - adapter-friendly projections derived from shared contracts.
 
 Hosts own:
 
-- media hosting, signed URLs, CDN, CSP, authorization, retention, and privacy;
+- media hosting, signed URLs, CDN, CSP, authorization, retention and privacy;
 - durable attempt persistence;
-- item lookup/storage;
-- product workflow, scheduling, gradebooks, and reporting;
+- item lookup and storage;
+- product workflow, scheduling, gradebooks and reporting;
 - composition authoring unless a future PIE package explicitly scopes it.
 
 ## Serialization And Versioning
 
-The timed-media section data and session slice are persisted or wire-facing data and require:
-
-- `version: 1` on the `timedMedia` session slice;
-- validation by the owning package;
-- replace semantics for host-provided section data;
-- merge semantics for runtime session updates;
-- hydrate behavior from persisted section snapshots;
-- unknown-version rejection for runtime delivery;
-- unknown-host behavior: reject unknown `timedMedia.version` and do not round-trip untyped timed-media state.
-
-Round-trip fixtures must cover media progress, cue visits, cue completion, active cue, aggregate completion, and child item sessions.
+- Authored `timedMedia` carries no version. `normalizeTimedMediaSectionData`
+  validates it whenever the section is built.
+- The session slice carries `version: 1` and persists in
+  `SectionControllerSessionState.timedMedia`, extending the section snapshot as
+  the formative slice does. It hydrates with the rest of the snapshot.
+- `normalizeTimedMediaSectionSlice` rejects an unknown version whole: delivery
+  restarts from clean cue state and item sessions survive. An absent slice reads
+  like a snapshot from before timed media.
+- On hydrate, cue identifiers the section no longer holds are dropped, a
+  completed cue never visited is discarded, `maxPositionSeconds` is never restored
+  below `mediaCurrentTime`, and a section without timed media restores nothing.
+- A readable incoming slice replaces the live one in both `applySession` modes,
+  since cue state is section-scoped and has no per-key entries to merge. A
+  `replace` without a readable slice clears cue state; a `merge` without one
+  leaves it.
+- Hosts never round-trip untyped timed-media state.
 
 ## Accessibility
 
-Timed-media delivery must satisfy WCAG 2.2 AA and consume the accessibility runtime patterns PRD:
+Timed-media delivery must satisfy WCAG 2.2 AA and consume the accessibility
+runtime patterns PRD:
 
-- all media controls are keyboard accessible and labelled;
+- all media controls are keyboard accessible and labeled;
 - cue activation is announced to assistive technology;
 - focus moves predictably when playback pauses and an item appears;
 - captions and transcripts remain available during cue-linked questions;
-- overlays must not obscure captions, transcripts, controls, or essential media;
-- seek locks must not trap keyboard or assistive-technology users;
-- TTS/media handoff rules prevent overlapping speech and media audio;
-- high-contrast, zoom, touch, and reduced-motion behavior must be verified.
+- overlays must not obscure captions, transcripts, controls or essential media;
+- an enforced seek restriction must not trap keyboard or assistive-technology
+  users;
+- the read-aloud handoff prevents overlapping speech and media audio;
+- high-contrast, zoom, touch and reduced-motion behavior must be verified.
 
 ## Standards Or Adapter Impact
 
-This PRD produces adapter-friendly data for QTI/PCI, xAPI, and Caliper. It does not claim standards conformance.
+This PRD produces adapter-friendly data for QTI/PCI, xAPI and Caliper. It does
+not claim standards conformance.
 
-QTI import/export profile work belongs in `pie-qti` after this contract and its shared dependencies are reviewed. Opaque PCI wrapping of the whole timed-media experience is rejected because it hides normal child item/session/outcome structure.
+QTI import and export profile work belongs in `pie-qti`. Opaque PCI wrapping of
+the whole timed-media experience is rejected because it hides child item,
+session and outcome structure.
 
 ## Test Plan
 
-Required test coverage:
+- `packages/players-shared/tests/timed-media-policy.test.ts`: validation,
+  covering the restrictive defaults, `stimulusRef` resolution, cue shape errors,
+  `onUnknownCorrectness`, the Try-budget refusal and scoring strategies.
+- `packages/players-shared/tests/timed-media-state.test.ts`: the reduction,
+  covering activation, gate conditions, a released gate staying released, the
+  gate-and-reveal split, seeking past a gate, the seek clamp and its tolerance,
+  aggregate completion, capability degradation, metadata cues and the projection
+  signature.
+- `packages/players-shared/tests/timed-media-session.test.ts`: the slice round
+  trip, unknown-version rejection and hydrate filtering.
+- `packages/players-shared/tests/timed-media-port.test.ts`: the native adapter.
+- `packages/section-player/tests/section-controller-timed-media.test.ts`: the
+  controller, covering stimulus resolution, attach and reveal, emitting on cue
+  state only, gates, no auto-resume, degradation, the seek clamp through the port,
+  completion, the session round trip, the unknown-version restart, a non-stimulus
+  adapter ignored, the missing time source, both read-aloud halves and the
+  Try-budget refusal.
+- `packages/section-player/tests/section-player-timed-media.spec.ts`: in the
+  browser, a cue firing at its range, a gate pausing playback, moving focus and
+  announcing why, release on a correct answer without resuming, and advisory
+  degradation on a source that cannot pause.
+- `packages/section-player/tests/section-player-video-stimulus-package.spec.ts`:
+  opt-in (`PIE_VIDEO_STIMULUS_PACKAGE_E2E=1`, with a sibling pie-elements-ng
+  checkout), the packed `video-stimulus` rendering its source, captions track and
+  transcript, and two cues revealing questions under real playback.
 
-- contract fixtures for timed-media section data;
-- session slice merge, replace, hydrate, persist, and round-trip tests;
-- cue activation tests for reveal, gate, metadata, and multi-item cues;
-- child item session propagation tests proving existing item sessions remain the source for responses;
-- completion tests that separate media completion, cue completion, child item completion, and aggregate completion;
-- score projection tests using the shared score/outcome contract;
-- accessibility tests for keyboard controls, focus handoff, announcements, captions/transcripts, TTS/media handoff, and seek restrictions.
+Gaps: no test that a host-attached port outranks the native adapter, no
+toolkit-level test of the read-aloud arbitration, and no score projection
+coverage ([Open Questions](#open-questions)). The remaining accessibility
+requirements need manual verification.
 
 Commands:
 
@@ -313,226 +555,30 @@ Playwright-backed tests must run outside the sandbox.
 
 ## Rollout And Release Notes
 
-- Changeset required: yes, when public exports or player variants are added.
-- Migration notes: additive section flavor; existing sections and layouts remain valid.
-- Documentation updates: section-player docs, timed-media demos, `pie-elements-ng` `video-stimulus` PRD, and `pie-qti` adapter PRDs.
-- Release risk: high, because media playback, focus, completion, and score aggregation are user-visible and cross-package.
-
-## Implementation Record, 2026-08-17
-
-Built on branch `feat/timed-media-section-contract`. Every choice below was an
-implementation-time question this contract left open or did not foresee; each is
-recorded with the reason, because the reasons are what a later revision needs.
-
-**Cue and playback policy live in a pure module, not in the policy engine and not
-in a layout.** `@pie-players/pie-players-shared/timed-media` owns validation and the
-cue reduction; `SectionController` owns the live state and the port;
-`resolveTimedMediaProjection` is what layouts read. `ToolPolicyEngine` was the
-leading candidate in [Package And Export Ownership](#package-and-export-ownership)
-and was not taken: its decision domain is tool eligibility — a placement level and
-scope in, `visibleTools` out, several `PolicySource`s merged with provenance —
-while a cue decision is a reduction over media time and delivery state with exactly
-one authored source, so provenance buys nothing and the capability-neutral core
-gains a second unrelated domain. A layout was rejected because every layout hosting
-timed media would re-implement the reduction, untestably. Formative delivery had
-already answered the same question the same way, which is the precedent that
-settles it rather than a fresh argument.
-
-**Cue state joins the composition revision key; media position does not.** The
-first half is the failure formative delivery documented and this work hit anyway: a
-cue firing changes neither the renderables nor the item sessions, so the emit is
-coalesced away and the controller holds cue state no card sees. The second half is
-new: `timeupdate` fires about four times a second and nothing renders the clock, so
-folding position in would re-diff every mounted item player on a timer. Position is
-recorded in the session slice and surfaces only through the cue transitions it
-causes.
-
-**A cue-gated card is mounted and hidden, not mounted on the cue.** Mounting on
-activation would tear an item player down and rebuild it on every seek backwards,
-and it churns shell registration, the section's loading accounting and the preload
-warmup signature. The cost is that a pending item player lays out inside
-`display: none` until revealed, which is the cheaper failure.
-
-**`onUnknownCorrectness` is required on a correctness gate, not defaulted.** The
-contract said it must never default to treating `unknown` as incorrect; the
-implementation goes further and refuses to guess in either direction, because both
-readings are defensible and each silent choice is wrong somewhere — one traps a
-learner behind an item nothing can score, the other waves through the checkpoint the
-author wrote.
-
-**A correctness gate over a finite Try budget is a validation error.** Not
-foreseen by this contract. A gate on `correct` releases only while the learner still
-has a Try to spend, so over an item with `maxTries: 1` — the built-in default — the
-gate becomes unpassable the moment the budget runs out, and over an item that does
-not deliver formatively there is never a Try at all. Nothing the learner can do
-releases playback, and no host action does either, because a forced reveal is not a
-correct answer. Releasing on an exhausted budget was considered and rejected: it
-delivers the opposite of what the author wrote. So the section is refused with
-`gate-requires-unlimited-tries` naming the offending item refs.
-
-**A malformed `timedMedia` reports and delivers as an ordinary section.** The
-framework error is non-recoverable, so readiness latches error and the author cannot
-miss it, while the learner still gets the content with every item visible. The
-alternative — refusing to deliver — makes an authoring slip a total outage.
-
-**A stimulus that exposes no time source takes the same path, reported at
-runtime.** [Media Representation](#media-representation) requires the renderable
-`stimulusRef` names to expose a time source. Only the first half of that is
-statically knowable: a passage is a PIE config and its element bundle decides
-whether and when it mounts media, so validation resolves the ref and a clock reports
-the rest. The watch is armed when the section's content has loaded and fires five
-seconds later if no source has attached, at which point the timeline is dropped, the
-section delivers every item, and `stimulus-exposes-no-time-source` names the
-renderable. Reported rather than left alone because the failure is not a timeline
-that fires late — it is a pane of questions no cue can ever reveal.
-
-**A `metadata` cue's items stay ordinary items.** The cue shape carries `itemRefs`
-for every activation, and metadata records state and reveals nothing, so the items
-it names are not sequenced: the projection separates `sequencedItemIds` from
-`revealedItemIds` and a layout reads the first to decide what is pending. One
-predicate for both, because a cue counted as sequencing but never as revealing hides
-its items for the whole section.
-
-**Playback is never auto-resumed when a gate releases.** The learner presses play.
-Resuming would start audio nobody asked for, on top of the announcement that the
-gate released, and it would fight both the reduced-motion posture and a learner
-still reading feedback.
-
-**The TTS/media handoff is arbitrated in the toolkit, on a last-action-wins rule.**
-Starting read-aloud silences media; starting media pauses read-aloud. Neither side
-can decide this alone — the section owns the port and no policy over speech, the TTS
-service owns speech and knows nothing of a stimulus — so the toolkit, the only layer
-holding both, owns the policy and the two packages expose one half each:
-`pauseMediaForCompetingAudio()` on the controller, and a `timed-media-audio-started`
-event when media audio resumes. Neither direction resumes what it silenced, for the
-reason above. A source reporting no `canPause` cannot yield, and read-aloud proceeds
-over it: withholding an accommodation to protect a policy the port already said it
-cannot keep is the worse failure, and the gap is already reported at attach.
-
-Media that carries no audio still pauses read-aloud, because no portable signal
-distinguishes a silent track from a narrated one — `HTMLMediaElement` exposes none,
-so the port cannot either. A deliberate trade: one unnecessary pause the learner
-undoes with one press, against overlapping speech, which is the accessibility
-failure.
-
-**Seeking is `seekTo(seconds)` on the port rather than a writable `currentTime`.**
-A writable property gives a source that cannot seek no way to say so, and
-`canRestrictSeeking` needs somewhere to live. This is the one place the port
-deliberately departs from the `HTMLMediaElement` shape, along with `capabilities`,
-which the element has no equivalent for.
-
-**A host-attached port outranks the stimulus card's native adapter, on attach and
-on detach.** Discovered in the browser: the card re-runs its discovery whenever its
-content re-renders, so without a precedence rule a host that wired a third-party
-player had it silently replaced by the native element mid-session — and the
-capabilities flipped back to `canPause: true` with it, which is exactly the
-"appears to enforce" failure this contract exists to prevent. The registration event
-carries an `origin`, and a `native-adapter` attach or detach is ignored while a
-host-owned source is live.
-
-**Enforcement of `allowSeekAhead: false` needs a persisted furthest position.**
-`maxPositionSeconds` joins the session slice sketch in [Contract
-Shape](#contract-shape). Deriving it would hand the learner the whole timeline back
-after a reload. A forward seek is clamped with a 0.5s tolerance, because
-`timeupdate` lags real playback by up to a quarter second and clamping at exactly the
-recorded value fights a learner nudging the scrubber where they already are.
-
-**Seeking past a gate still trips it.** A cue is reached when playback passes its
-start and stays reached, so a learner permitted to seek ahead cannot jump over a
-checkpoint. A gate that can be skipped is not a gate.
-
-**The restrictive playback defaults apply when `playbackPolicy` is absent.** A
-section that forgot the block reads as one that wanted sequencing, and the permissive
-reading would silently deliver an unsequenced video.
-
-**Fail-closed enforcement stays out.** The contract asked whether an author may
-require enforcement and fail closed instead of degrading. No: degradation is always
-advisory plus a recoverable warning. Failing closed means blocking delivery on a
-media capability probe, which contradicts the **Tool Surface Failure** posture in
-[`../../CONTEXT.md`](../../CONTEXT.md), and no author has asked for it. Recorded as
-a decision rather than an omission.
-
-**No scoring default, and no weighted strategy.** `scoringPolicy` is validated and
-persisted; PIE derives no aggregate outcome from it, and a section that omits it is
-not silently assigned one. `aggregateComplete` deliberately keeps three facts
-separate — required cues, item completion, and media completion where the policy
-requires it. `weighted-child-outcomes` was dropped from the strategy union before
-release: no weight is authorable on a cue, an item ref or the section, so the entry
-named a capability PIE does not have. Where weights live is the score contract's
-question, and a host that already holds its own weights says `host-defined`.
-
-**A gate may not name a subset of its cue's items, because two cues already say
-it.** Every item a gate names must satisfy `releaseOn`. A split between must-answer
-and optional items is authored as two cues at one timestamp — a gate over the first
-set, a reveal over the second — which the reduction already delivers: every reached
-cue activates in the same pass, the reveal completes immediately, and only the gate
-holds. Rejected alternative: reusing `required: false` on the item ref, which today
-means "counts toward completion" and would silently change gate behaviour for an
-author who set it for a completion reason.
-
-**Composition authoring is PIE-native, needs the media resolvable, and is built in
-a separate authoring application.** Three decisions for the future authoring PRD, which this one does not
-write. The authored artifact is `timedMedia` itself, not QTI-with-cues: no QTI
-representation of cue-gated delivery exists, so authoring into QTI would make the
-authoring surface the place those semantics are invented and leave the conversion
-preserving what the source never stated. QTI stays an export concern in `pie-qti`.
-The editor requires the stimulus media resolvable to a playable URL while authoring,
-because scrubbing against the real clip is the value and timestamps typed blind
-against an absent asset are the hand-writing this surface exists to replace —
-`MediaAssetRef` already carries the reference, and supplying a playable one is a
-prerequisite on the host's asset pipeline rather than work this surface does. The
-surface is built in the authoring application that already owns item and passage
-authoring and already assembles and previews an `AssessmentSection`; a new `pie-players` package
-would have to grow item and passage authoring from nothing to invoke them, which
-[Authoring Model](../architecture/timed-media-section.md#authoring-model) assigns
-elsewhere. The PRD lives here, beside this contract and the shared contracts it
-depends on. Condition on the location: that application is pre-production,
-single-developer and has no issue tracking, so that gap is closed before the work
-starts.
-
-What the MVP contains is that PRD's to set. The architecture note's Authoring Model
-already enumerates the surface — cue points, cue-to-item bindings, playback and
-scoring policy, timeline preview — and asking this contract for the minimum was
-asking it to do another PRD's work, which is why the question is retired here rather
-than answered.
-
-**A printed timed-media section prints every cued item revealed.** Recorded for
-whoever builds section printing, which does not exist — `pie-print-player` takes a
-single PIE item config and has no section awareness, so nothing in the shipped path
-can reach this. A printed page has no timeline, and a page of items no cue can fire
-is a blank page: the same reasoning that makes a stimulus with no time source
-deliver every item.
-
-**A host-supplied port outranks a renderable's, and a renderable's only counts for
-the stimulus.** `attachMediaTimeSource` takes the `renderableId` the source was
-found in and ignores a `native-adapter` attach from anything but the resolved
-stimulus, because a section may legitimately hold a second video passage and
-"exactly one time source per section" is a validation rule rather than a type
-invariant. A host names no renderable and is taken at its word.
-
-**The passages pane takes the composition model, not the pinned passage id
-[Delivery Attachment](#delivery-attachment) sketched.** Its sibling pane already
-takes the whole model, and narrowing this one moves the stimulus-id derivation to
-four call sites. The pane renders the stimulus first and does not pin it: sticky
-placement needs `scroll-padding-top` on a scroll container the pane does not own, and
-without that a focused control in a passage scrolling under it is obscured (WCAG
-2.4.11). Ordering delivers the intent; pinning stays with the dedicated layout this
-contract already assigns placement to.
-
-Delivered surface, tests and demo: see the changeset
-`timed-media-sections-reach-media-through-a-port`, the `timed-media` route in
-`apps/section-demos`, and `section-player-timed-media.spec.ts`.
+- Changeset: changes to the public timed-media exports or section-player
+  behavior carry one.
+- Migration notes: none. The section flavor is additive, and existing sections
+  and layouts remain valid.
+- Documentation: the section player README's
+  [Timed media](../../packages/section-player/README.md#timed-media) section, the
+  `timed-media` route in `apps/section-demos`, and the `video-stimulus` and
+  pie-qti adapter documentation in their own repositories.
+- Release risk: high, because media playback, focus, completion and score
+  aggregation are user-visible and cross-package.
 
 ## Open Questions
 
-Six questions closed with the implementation above: type ownership and policy
-placement, where an unenforceable policy reports itself and whether an author may
-fail closed, whether the slice extends the existing snapshot (it does, as the
-formative slice does), and scoring defaults (none). Three more closed on 2026-08-17
-and are recorded above rather than here: print behaviour, whether a gate may name a
-subset of its cue's items, and who owns composition authoring.
-
-Still open:
-
-- Captions and transcripts are unexercised end to end, and nothing in PIE handles a caption track: there is no `<track>` or `textTracks` handling in any package, so "captions remain available during cue-linked questions" rests entirely on `<track>` surviving inside the stimulus passage's markup, which the demo's `<video>` and `<source>` do but which is untested for `<track>` itself. The fixture is the narrated public-domain source evaluated for the demo (NASA SVS 11054, which ships a real WebVTT file), added as a second demo route rather than replacing the silent clip: a narrated clip *requires* captions under 1.2.2, where the silent one is satisfied by the text alternative the demo already carries, so replacing it would trade a met obligation for an unmet one. Coverage is bounded to two claims — `<track>` survives the passage markup and the browser exposes the captions control, and a gate overlay does not cover the caption region.
-- No score-projection coverage. `scoringPolicy` is validated, persisted and carried to the host unchanged for each of its three strategies; PIE derives no aggregate from any of them, so there is no projection to assert. The type home — `ScoreComponent` / `OutcomeProjection` — is an open question in [score components and section outcomes](./shared-contracts/score-components-and-section-outcomes.md), which is still `Draft`, and deriving here would settle that export decision from inside a section feature. The coverage arrives with the first derivation. Weights are that contract's to place, which is why the weighted strategy is not in this one.
+- **Captions end to end.** pie-players handles no caption track itself; captions
+  ride on the stimulus element. The packaged `video-stimulus` renders
+  `MediaAssetRef.tracks` as `<track>`, and the opt-in package spec asserts it.
+  Unasserted: that the browser exposes the captions control, that gate state
+  never covers the captions, and `<track>` inside authored passage markup, which
+  is the host-supplied video path. A narrated clip requires captions under WCAG
+  1.2.2, and the narrated public-domain NASA SVS 11054 excerpt, which ships a
+  WebVTT file, is the candidate fixture for that path.
+- **Score projection.** `scoringPolicy` reaches the host unchanged and PIE derives
+  no aggregate, so there is no projection to assert. The type home
+  (`ScoreComponent` / `OutcomeProjection`) is open in the Draft
+  [score components and section outcomes](./shared-contracts/score-components-and-section-outcomes.md)
+  contract, and deriving here would settle that export decision from inside a
+  section feature. Coverage arrives with the first derivation.

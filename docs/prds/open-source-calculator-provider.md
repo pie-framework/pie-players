@@ -1,30 +1,44 @@
 # Open-Source Calculator Provider
 
-Status: Accepted
+Status: Accepted, 2026-08-26
 
-Owner: `@pie-players/pie-calculator-cortex`
+Implementation status: shipped in pie-players as `@pie-players/pie-calculator-cortex`,
+selected through the `calculator-cortex` registration in
+`@pie-players/pie-default-tool-loaders`.
+
+Owner: PIE Players maintainers
+
+This PRD defines the Cortex calculator provider, a self-hosted basic, scientific
+and graphing calculator behind the provider-neutral calculator seam: its
+settings, defaults and hard limits, restricted mode, expression capability and
+persisted state. It is for maintainers of the package; the
+[package README](../../packages/calculator-cortex/README.md) is the host
+reference for configuring it. The
+[implementation specification](../architecture/open-source-calculator-provider-implementation.md)
+owns the module boundaries, the worker protocol and the failure model.
 
 Related architecture:
 
-- [`../architecture/open-source-calculator-provider-implementation.md`](../architecture/open-source-calculator-provider-implementation.md)
-- [`../tools-and-accomodations/tool_provider_system.md`](../tools-and-accomodations/tool_provider_system.md)
-- [`../tools-and-accomodations/tool_host_contract.md`](../tools-and-accomodations/tool_host_contract.md)
+- [Open-source calculator provider implementation](../architecture/open-source-calculator-provider-implementation.md)
+- [Tool provider system](../tools-and-accomodations/tool_provider_system.md)
+- [Tool host contract](../tools-and-accomodations/tool_host_contract.md)
+
+Integrator guide: the
+[`@pie-players/pie-calculator-cortex` README](../../packages/calculator-cortex/README.md).
 
 ## Problem
 
-PIE Players can deliver calculators through vendor-backed providers, but it does
-not yet own a fully bundled, auditable calculator implementation. Deployments
-that require offline delivery, control over assessment restrictions, or an
-implementation composed entirely from open-source dependencies still have to
-choose a third-party calculator runtime with its own delivery and licensing
-constraints.
+PIE Players delivered calculators only through vendor-backed providers and owned
+no bundled, auditable calculator. Deployments that required offline delivery,
+control over assessment restrictions, or an implementation built entirely from
+open-source dependencies had to choose a third-party calculator runtime with its
+own delivery and licensing constraints.
 
-PIE needs an additive calculator provider that is self-hosted, works through the
-existing provider-neutral calculator seam, and supports basic, scientific, and
-focused graphing use cases without attempting immediate feature parity with
-Desmos or GeoGebra.
+The Cortex provider is additive and self-hosted, and plugs into the existing
+provider-neutral calculator seam. It covers basic, scientific and focused
+graphing use cases, without feature parity with Desmos or GeoGebra.
 
-The implementation is based on:
+It is built on:
 
 - [MathLive](https://github.com/arnog/mathlive) for accessible mathematical
   input; the mode-specific keypad is the package's own.
@@ -33,8 +47,9 @@ The implementation is based on:
 - [JSXGraph](https://jsxgraph.org/home/) for the graph viewport and rendered
   series.
 
-These dependencies are bundled by PIE. No runtime API key, vendor service, CDN,
-or network connection is required.
+PIE bundles all three, so no runtime API key, vendor service, CDN or network
+connection is required. The package's `package.json` pins them and its
+`LICENSE.md` carries their notices.
 
 ## Goals
 
@@ -256,22 +271,26 @@ nonessential MathLive context-menu actions and cannot be relaxed by
 allowlist for the selected calculator type; it cannot grant functions that the
 type does not support.
 
-`CalculatorProviderConfig.locale` configures visible labels, MathLive locale,
-the keypad's and MathLive's decimal separator, locale-aware graph numbers, the
-decimal separator in a displayed answer and in the history tape, and the default
-writing direction. One resolver serves all of them, so a tapped key, a typed
-character and an answer read back agree: an `nl-NL` calculator whose keypad
-writes `1,5` answers `1,5`. The package ships complete English and Dutch
-catalogs, selects them by primary language, and falls back to English for other
-locales. `settings.messages` is a typed partial override for every visible
-label, accessible name, status, and recoverable error; omitted keys retain the
-selected catalog value. `settings.direction` may override automatic `ltr`/`rtl`
-resolution for host policy. Validation, serialized state, `getResult` and the
-history entries a host reads use a locale-independent canonical numeric
-representation, so changing locale does not reinterpret persisted calculations;
-the locale separator is applied at the display boundary only, and as a separator
-swap rather than a reformat, so a host's `displayPrecision` and the exponential
-form of a large or small answer survive it.
+`CalculatorProviderConfig.locale` configures visible labels, the MathLive
+locale, the keypad's and MathLive's decimal separator, locale-aware graph
+numbers, the decimal separator in a displayed answer and in the history tape, and
+the default writing direction. One resolver serves all of them, so a tapped key,
+a typed character and an answer read back agree: an `nl-NL` calculator whose
+keypad writes `1,5` answers `1,5`.
+
+- **Catalogs.** The package ships complete English and Dutch catalogs, selects
+  one by primary language, and falls back to English for other locales.
+  `settings.messages` is a typed partial override for every visible label,
+  accessible name, status and recoverable error; omitted keys keep the selected
+  catalog value.
+- **Direction.** `settings.direction` overrides the automatic `ltr`/`rtl`
+  resolution for host policy.
+- **Canonical numbers.** Validation, serialized state, `getResult` and the
+  history entries a host reads use a locale-independent canonical numeric
+  representation, so changing locale does not reinterpret persisted
+  calculations. The locale separator is applied at the display boundary only, as
+  a separator swap rather than a reformat, so a host's `displayPrecision` and the
+  exponential form of a large or small answer survive it.
 
 ### Expression capability
 
@@ -286,15 +305,13 @@ trigonometric and inverse-trigonometric functions, absolute value, factorial,
 the constants `pi` and `e`, and scientific notation. Trigonometric input and
 results honor the configured angle mode.
 
-Logarithms carry three capabilities, not two. `natural-log` is base e and
-`common-log` is base 10; `log-base-n` is every other base, and it is separate
-because it could not otherwise be declined. The Compute Engine parses
-`\log_{3}(9)` as `["Log", 9, 3]`, the same operator that carries base 10, so an
-arbitrary base was admitted by `common-log` and a host granting log base 10 had
-no way to refuse it. Base 2 is spelled differently again -- `\log_{2}(8)` is
-`["Lb", 8]` -- and was refused outright while every other base answered. All
-three are in the default scientific and graphing sets, matching the reference
-implementations; basic mode has none of them.
+Logarithms are three capabilities: `natural-log` is base e, `common-log` is
+base 10, and `log-base-n` is every other base, base 2 included. An arbitrary
+base is its own capability so that a host granting base 10 can refuse it: the
+Compute Engine parses `\log_{3}(9)` as the same `Log` operator that carries base
+10, and spells base 2 as `Lb`. All three are in the default scientific and
+graphing sets, matching the reference implementations; basic mode has none of
+them.
 
 The factorial is the Gamma continuation off the integers: `2.5!` answers
 `3.32335097`, where a handheld raises a domain error. Desmos answers the same,
@@ -340,7 +357,7 @@ history, serialized state, or graph coordinates entered by a learner.
 
 ## Compatibility
 
-This PRD adds a calculator provider and custom elements but does not change PIE
+The provider is additive and defines no custom element. It does not change PIE
 element content contracts, versioned `pie-*--version-*` tags, contract
 identifiers, player session state, assessment submission, or `pie-item-player`
 methods and events.
@@ -358,10 +375,9 @@ methods and events.
 - Do not synthesize, prefix, slug, or otherwise mutate contract identifiers.
 - Do not add a compatibility shim or a cross-provider state bridge.
 
-The implementation must review and, if necessary, refresh
-[`../integrations/consumer-api-dependencies.md`](../integrations/consumer-api-dependencies.md)
-because provider selection and the scoped calculator ID are externally observed
-surfaces.
+Provider selection and the scoped calculator ID are externally observed
+surfaces, recorded in
+[consumer API dependencies](../integrations/consumer-api-dependencies.md).
 
 ## Data Ownership And Host Responsibilities
 
@@ -467,11 +483,15 @@ The implementation must meet WCAG 2.2 Level AA and provide:
   preferences.
 - Usable layouts at 200% browser zoom and 320 CSS-pixel width.
 
-`theme: "auto"` follows the user's color-scheme preference. Light and dark
-defaults use canonical PIE semantic tokens. Hosts may override the six
-`--pie-calculator-series-*` graph colors; line style remains the redundant
-non-color cue and custom colors retain the host's contrast obligation. RTL uses
-the same DOM and logical CSS properties rather than a separate layout.
+The color theme comes from the generic `CalculatorProviderConfig.theme`:
+`"light"`, `"dark"` or `"auto"`, the default, which follows the operating
+system's `prefers-color-scheme`. The package's light and dark defaults are
+fallbacks beneath canonical PIE semantic tokens, so a host theme or a PIE color
+scheme overrides them. Hosts may override the six graph colors,
+`--pie-calculator-series-1` to `--pie-calculator-series-6`; line style remains
+the redundant non-color cue, and custom colors carry the host's contrast
+obligation. RTL uses the same DOM and logical CSS properties rather than a
+separate layout.
 
 Automated axe coverage is required, but it does not replace manual keyboard and
 screen-reader evidence for MathLive input, the virtual keyboard, result
@@ -508,7 +528,7 @@ Unit and contract coverage must include:
 - Automated accessibility checks and manual evidence for keyboard-only and
   screen-reader flows in all three modes.
 
-Implementation gates:
+Commands:
 
 ```sh
 bun run typecheck
@@ -525,26 +545,16 @@ Playwright-backed tests and the full local PR gate run outside the sandbox.
 
 ## Rollout And Release Notes
 
-- Changeset required: yes; every entry is a patch bump under the repository's
-  fixed-version policy.
-- New publishable packages must be added to the Changesets `fixed` block in the
-  same implementation change.
+- Changeset: changes to the public settings, error or state types carry one.
 - Migration notes: none. Provider selection is additive and Desmos remains the
   default.
-- Documentation updates: calculator setup, provider selection, restrictions,
-  state, dependency attribution, and local demo coverage.
-- Release risk: medium. The provider is additive, but introduces three bundled
+- Documentation: the package README covers the isolated demos, localization,
+  the keypad, panel fitting and theming. Settings, defaults and hard limits,
+  restricted mode and the state schema are documented in this PRD only.
+- Release risk: medium. The provider is additive, but brings three bundled
   browser libraries, a worker boundary, a lease over MathLive's page-wide
   settings, and a persisted provider-state schema.
-- Implementation followed the GeoGebra provider suite, which landed on
-  2026-08-26 (8bb668b0) ahead of the Cortex suite (787ad8ff).
 
 ## Open Questions
 
-None open. The pre-implementation revalidation items are settled in place: the
-post-GeoGebra seams in [Package And Export Ownership](#package-and-export-ownership),
-where the calculator adapters have lived in
-`@pie-players/pie-default-tool-loaders` since 498f9376; the dependency pins in
-the package's `package.json` and their notices in its `LICENSE.md`; and the
-palette as the six `--pie-calculator-series-1` to `--pie-calculator-series-6`
-tokens described under [Accessibility](#accessibility).
+None.

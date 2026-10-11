@@ -56,7 +56,7 @@ toggles the tool in the coordinator and its sync sets `visible`.
 - The cursor changes to indicate draggability
 
 ### Rotating
-- Drag the handle above the protractor to turn it about its vertex, the centre of its baseline
+- Drag the handle above the protractor to turn it about its vertex, the center of its baseline
 - Shift+Arrow keys rotate it 5 degrees per press; PageUp/PageDown rotate it 1 degree
 - The tap controls' turn buttons rotate it 5 or 1 degrees either way
 - Useful for aligning with different angles in diagrams
@@ -95,7 +95,7 @@ and `createPointerRotateController` in `@pie-players/pie-players-shared`.
 
 ### State Management
 
-- Placement: an offset from the centred position and a rotation about the
+- Placement: an offset from the centered position and a rotation about the
   vertex, held by the component and written to its CSS `transform` by
   `applyPlacement`, which pointer, keyboard and tap controls all go through
 - The tap controls sit past the protractor's baseline edge, counter-rotated to

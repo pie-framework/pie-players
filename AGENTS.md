@@ -165,7 +165,7 @@ From ADR 0003, for every host and element:
   through that context; `env` keeps the settings that change the model.
 - The mapping from a profile to support ids lives in the host, which resolves it
   through the toolkit's policy precedence. An element maps a fixed support id to a
-  fixed behaviour, because item configs pin element versions and a rule inside an
+  fixed behavior, because item configs pin element versions and a rule inside an
   element is frozen into each of them.
 - The context value only grows: fields are added, never removed or redefined.
   Consumers ignore support ids they do not recognize, and an unanswered request means
@@ -313,10 +313,12 @@ any published version, every package in the suite carries the same version. The
   the same change, and no package leaves the block to unblock a release.
 - Publish locally with `bun run release:with-version`, never `npm publish` or
   `bun run release` directly. It publishes from the current checkout and branch
-  unless the user explicitly asks to switch or use a workflow, and loads npm auth from
+  unless the user explicitly asks to switch or use a workflow, so confirm
+  `git branch --show-current` and `git status --short` first. It loads npm auth from
   `.env` through `dotenvx`, so a valid token there needs no `npm login`.
 - If a release fails after `bun run version` has mutated package files, do not rerun
-  `release:with-version`; follow the local retry in `docs/setup/publishing.md`.
+  `release:with-version`; follow
+  [Retrying a failed local release](docs/setup/publishing.md#retrying-a-failed-local-release).
 - Release verification can trigger Playwright, so a local publish runs outside the
   agent sandbox ([Playwright And Sandboxed Execution](#playwright-and-sandboxed-execution)).
 
@@ -567,7 +569,7 @@ Commands:
   The only place a packaged capability set is named.
 - `packages/players-shared` - shared utilities, sanitizer, and PIE config.
 - `packages/pie-context` - shared runtime context.
-- `packages/theme` - theme token contract, `<pie-theme>`, colour schemes, and the
+- `packages/theme` - theme token contract, `<pie-theme>`, color schemes, and the
   DaisyUI provider adapter.
 - `packages/calculator` - calculator provider contract; `packages/calculator-cortex`,
   `calculator-desmos` and `calculator-geogebra` are its providers.

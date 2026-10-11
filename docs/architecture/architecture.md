@@ -1,551 +1,191 @@
-# PIE Players - High-Level Architecture
+# PIE Players architecture
 
-<!-- markdownlint-disable MD012 MD032 MD060 -->
+PIE Players renders PIE (Portable Interactions and Elements) assessment content in the browser. A PIE item is HTML markup plus one model per interaction, and each interaction is a PIE element: a custom element published from [pie-elements-ng](https://github.com/pie-framework/pie-elements-ng). This repository supplies the players that load and render those elements, the assessment toolkit that coordinates tools and accommodations around them, the tools themselves, a print player and a theme. Every player is a custom element that bundles its UI runtime, so it runs in any page, with any framework or none.
 
----
+## Product scope
 
-## Executive Summary
+PIE Players ships building blocks, and each host assembles its production assessment player from them. The building blocks are the item player, the section player and its layouts, the assessment toolkit (coordinator, tool policy, text-to-speech, accessibility catalogs, assessment-session helpers), the tools and their default loaders, the print player and the theme, each with seams for persistence and delivery. PIE ships no backend, content store, identity or durable attempt store, and navigation, timing, persistence and submission policy differ per product, so the multi-section shell is [product-completing work](./framework-completing-work.md) that each host builds.
 
-The **PIE Players** project provides the building blocks for rendering and delivering Platform for Interactive Education (PIE) assessment content: an **item player** for individual questions, a **section player** that composes items and passages into a section screen, and an **assessment toolkit** that coordinates tools, accommodations, TTS and assessment-session state.
+`@pie-players/pie-assessment-player` and `apps/assessment-demos` are a reference assembly: a basic multi-section player and the demos around it. They use only the building blocks' public exports, so a custom player can reproduce anything they do; `AssessmentController` is not exported and serves as a pattern to read. The reference assembly changes without a compatibility period and waits for no host evidence.
 
-Built with Bun, TypeScript, and Svelte 5, the architecture leverages modern web standards (Web Components, CSS Custom Highlight API) while maintaining framework independence and support for deployed PIE content.
+The building blocks carry the production bar: compatibility across hosts and host evidence for contract choices. A gap a custom player hits in a building block outranks the same gap in the reference player, and behavior the reference player needs that a custom player would also need lands in a building block, where every host gets it.
 
-### Product Scope
+## System context
 
-PIE Players ships building blocks, and production assessment players are assembled from them by the host. The building blocks are the item player, the section player and its layouts, the assessment toolkit (coordinator, tools, catalogs, TTS, assessment-session helpers), theme, tools, the print player and the default tool loaders, each with its persistence and delivery seams. PIE ships no backend, CMS, identity or durable attempt store, and navigation, timing, persistence and submission policy differ per product, so the multi-section shell is [product-completing](./framework-completing-work.md) work that each host builds.
+![System context: authors and students use the host application, which embeds the PIE players and passes them item config, session and policy; the players load element code from the bundle host, an ESM CDN or the host build, and optionally call a TTS server and the PIE API service](../img/system-context.excalidraw.svg)
 
-`@pie-players/pie-assessment-player` and `apps/assessment-demos` are a reference assembly of those blocks: a basic multi-section player and the demos around it, for reference and examples. They are assembled only from the building blocks' public exports, so a custom player can reproduce anything they do; `AssessmentController` is not exported and serves as a pattern to read. They change without a compatibility period and wait for no host evidence.
+The host application owns the page, the content and the learner record. It embeds a player, sets its item config, environment, session and tool policy, and stores the sessions the player reports. The player's `strategy` decides where element code comes from:
 
-The building blocks carry the production bar: compatibility, the [consumer dependency pad](../integrations/consumer-api-dependencies.md), and host evidence for contract choices. Two consequences for priority:
+- **The PIE bundle host** (`proxy.pie-api.com/bundles`) builds and serves IIFE bundles for any published element version: the default `iife` strategy.
+- **An npm CDN**, jsDelivr by default or esm.sh, serves the browser ESM builds that pie-elements-ng publishes: `esm`.
+- **The host's own build** bundles the elements, and the player fetches none: `preloaded`.
 
-- A gap a custom player hits in a building block outranks the same gap in the reference player.
-- Behavior the reference player needs that a custom player would also need lands in a building block, where every host gets it.
+Two servers are optional. A text-to-speech server, run by the host from the `@pie-players/tts-server-*` packages, supplies speech and word timings for server voices. The item player's `backend` property connects delivery and authoring to a server that loads item config and sessions, saves sessions and scores responses; its built-in JSON client targets the PIE API service, and a host supplies its own `client` for any other backend ([backend support](../item-player/backend-support.md)).
 
-### Key Capabilities
+## Building blocks
 
-- **Multiple Player Strategies**: IIFE, ESM, and preloaded (host-bundled ESM) delivery
-- **Unified Authoring & Delivery**: Single players support both student/teacher delivery views and authoring/configuration modes
-- **Assessment Toolkit**: Composable services for tools, accommodations and assessment-session state, from which hosts assemble full test delivery
-- **Accessibility First**: WCAG 2.2 AA compliance, IEP/504 accommodation support
-- **Framework Agnostic**: Web Components work with any JavaScript framework
+![PIE Players building blocks: the host embeds the item, section, print or reference assessment player; the assessment toolkit configures them and places tools; every player renders PIE elements](../img/building-blocks.excalidraw.svg)
 
----
+| Building block | Custom elements | Responsibility |
+| --- | --- | --- |
+| Item player | `<pie-item-player>` | One item for delivery, evaluation or authoring: loads its elements, keeps its session, scores it |
+| Section player | `<pie-section-player-splitpane>`, `-vertical`, `-tabbed`, `-kernel-host` | One section: passages and items in a layout, item and passage toolbars, navigation within the section, section session state |
+| Assessment toolkit | `<pie-assessment-toolkit>`, `<pie-item-scope>`, `<pie-item-toolbar>`, `<pie-section-toolbar>` | A coordinator, shared across an assessment's sections when the host supplies one and created per toolkit element otherwise: tool policy, placement and stacking, text-to-speech, highlights, accessibility catalogs, tool state |
+| Tools | `<pie-tool-*>` | Calculators, ruler, protractor, line reader, answer eliminator, annotation, dictionaries, graph, periodic table, color schemes, sign language video, inline read-aloud |
+| Print player | `<pie-print>` | Items for paper and answer keys, from the elements' print views |
+| Theme | `<pie-theme>` | Design tokens and color schemes |
+| Assessment player | `<pie-assessment-player-default>` | The reference assembly: sections in order, navigation, progress, submission |
 
-## Table of Contents
+## Packages
 
-1. [System Overview](#system-overview)
-2. [Item Players](#item-players)
-3. [Assessment Toolkit](#assessment-toolkit)
-4. [Tools & Accommodations](#tools--accommodations)
-5. [Technology Stack](#technology-stack)
-6. [Integration Patterns](#integration-patterns)
-7. [Instrumentation & Observability](#instrumentation--observability)
-8. [References](#references)
+![The @pie-players packages: four players, the assessment toolkit and tool composition, 15 tool packages, calculator and TTS providers, server-side TTS, and the shared runtime, theme, context and provider contracts they depend on](../img/package-map.excalidraw.svg)
 
----
+The repository publishes 40 packages under `@pie-players/` released together at one version, so a host picks one version and upgrades everything at once; the preloaded player, built per element set, is versioned on its own ([versioning](../install/versioning.md)). A host installs the player it embeds and gets the rest through its dependencies: the item player needs only `pie-players-shared` (element loaders, markup sanitization, interface strings, shared types); the section player brings the item player, the assessment toolkit and the packaged tools through `pie-default-tool-loaders`; the assessment player brings the section player. The calculator and TTS providers implement the contracts in `pie-calculator` and `pie-tts`, the `tts-server-*` packages run on the host's server, and the `pie-section-player-tools-*` packages are developer panels for events, sessions, tool policy, instrumentation and TTS settings. [Packages and entry points](../install/packages.md) lists every package and which entry points run in Node.js, raw in a browser or through a bundler.
 
-## System Overview
+## Elements
 
-### Architectural Layers
+![An @pie-element package: a delivery view, an author view, a controller and an optional print view, each a package export; the item player sets model and session on the delivery view and model and configuration on the author view, and calls the controller; the print player renders print views](../img/element-package.excalidraw.svg)
 
-The PIE Players architecture consists of three major areas organized into logical layers:
+An item config has three parts. `elements` maps each tag in the markup to an exact element package version, `models` holds one model per interaction, and `markup` places the interactions in HTML. The player loads each package version and registers its views under a versioned tag such as `multiple-choice--version-14-0-3`, so two versions of one element can share a page.
 
-![Architectural Layers](../img/architectural-layers.png)
+The player sets `model` and `session` on each delivery element and listens for its `session-changed`. In author mode it renders `<tag>-config` with `model` and `configuration`, and re-emits the element's `model.updated` as `model-updated`. Controllers are plain functions: `model()` derives the view model the element renders for the current `env`, and `outcome()` scores a session. `env.mode` is `gather` (take responses), `view` (read-only) or `evaluate` (marked); `env.role` is `student` or `instructor`. The [element contract](https://github.com/pie-framework/pie-elements-ng/blob/develop/docs/PIE_ELEMENT_CONTRACT.md) defines the package shape.
 
-**Layer 1: Content Rendering** - Item players that render individual PIE assessment items
-**Layer 2: Orchestration** - Section player and assessment toolkit services that coordinate full assessments
-**Layer 3: Tools & Accommodations** - Accessibility tools and test-taking accommodations
+## Item player
 
-### Component Organization
+![Item player strategies: iife loads bundles from the bundle host, esm imports browser builds from an ESM CDN, preloaded asserts elements the host registered; each defines versioned custom elements](../img/item-player-strategies.excalidraw.svg)
 
-![Component Organization](../img/component-organization.png)
+The `strategy` attribute picks where element code comes from: `iife` (the default) loads IIFE bundles of any published element version from the PIE bundle host, or from the host `loaderOptions.bundleHost` names; `esm` imports the browser ESM builds pie-elements-ng publishes from an npm CDN; `preloaded` checks that the host bundled and registered the elements with `registerPreloadedElements`, and fetches nothing.
 
----
+`esm` imports element modules by full CDN URL (`moduleResolution: "url"`, the default) or through generated import-map entries (`"import-map"`); in both modes the player injects an import map for shared dependencies such as React. Each strategy loads one view per element: `delivery`, `author` or `print`. [Loading strategies](../item-player/loading-strategies.md) compares the three, and [math rendering](../item-player/math-rendering.md) covers MathJax under each.
 
-## Item Players
+The player owns the item session: `{ id, data }`, with one `data` entry per element. It emits `load-complete` when the item is ready, `session-changed` with the whole session when a response changes, and `player-error` on failure. `provideScore()` runs the element controllers in the browser; `score()` asks the delivery backend. `mode="author"` renders the same item's authoring views. The [item player overview](../item-player/overview.md) covers the API, and [scoring and rubrics](../item-player/scoring-and-rubrics.md) covers scoring.
 
-Item players are Web Components that render individual PIE assessment items. They handle element loading, model transformation, and session management.
+### Print player
 
-### Player Types
+`<pie-print>` renders an item for paper. It loads each element's print view through the shared ESM loader, replaces the interactive tags in the markup with print tags under generated names, and renders a student worksheet or, for the `instructor` role, an answer key. Print views are optional: 12 of the 31 pie-elements-ng packages publish one. The print player is built with Lit 3 ([print player](../../packages/print-player/README.md)).
 
-![Comparison of PIE item player strategies and runtime loading patterns](../img/item-player-strategies-overview-1-1773125329480.jpg)
+## Section player
 
-#### 1. IIFE Strategy (`<pie-item-player strategy="iife">`)
+![Section player structure: the host places one layout element, split pane, vertical, tabbed or kernel host, passes it runtime, section and attempt id, and receives toolkit-ready, session-changed and pie-loading-complete; every layout renders the assessment toolkit with its coordinator, the passages and items panes, passage and item cards with their toolbars and item players, and the section toolbar; the item players render PIE elements](../img/section-layers.excalidraw.svg)
 
-**Purpose**: Load PIE elements dynamically from IIFE bundles.
+A section is a set of passages and items with its own navigation and session. The section player renders one in a layout: `<pie-section-player-splitpane>` puts passages beside items, `-vertical` above them, and `-tabbed` in tabs, while `<pie-section-player-kernel-host>` runs the section and leaves the arrangement to the host, which places the passages and items panes in its own markup ([custom layouts](../section-player/custom-layouts.md)). All four render the same panes, cards and toolbars, and every item renders in a `<pie-item-player>`.
 
-**Architecture**:
-- Fetches IIFE bundles from PIE build service (PITS) or CDN
-- Executes IIFE to register elements globally in window
-- Renders item markup with registered custom elements
-- Initializes models via PIE controllers
+Before items mount, the section player validates every item config, aggregates the element versions of all its items and passages, and loads each version once; a failure keeps the items unmounted and reports one section-level error. Every layout runs inside an assessment toolkit: the host passes its own `ToolkitCoordinator` as `runtime.coordinator`, or the layout builds one from `runtime`. A `SectionController` per section and attempt keeps the section session (current item, visited items, item sessions). `@pie-players/pie-section-player/item-section` wraps a single item config as a one-item section. The [section player integration guide](../section-player/integration-guide.md) walks through an integration.
 
-**Use Cases**:
-- Migration path from `@pie-framework/pie-player-components`
-- Support for deployed PIE content that uses IIFE bundles
-- Dynamic element loading from PIE build service or CDN
+## Assessment toolkit
 
-**Key Features**:
-- Dynamic bundle loading from PITS (prod/stage/dev environments)
-- CDN support with bundle hash
-- Hosted mode (server-side vs client-side controllers)
+![ToolkitCoordinator: the host constructs one per assessment from a tool registry and hands it to the section player layouts or pie-assessment-toolkit; it owns the tool coordinator, highlight coordinator, TTS service, catalog resolver, element tool state store and tool provider registry, and holds the tool policy engine privately](../img/toolkit-coordinator.excalidraw.svg)
 
----
+The toolkit gives every tool on an assessment screen one runtime model. A host constructs one `ToolkitCoordinator` per assessment, from a tool registry (`createPackagedToolRegistry()` or its own) and the assessment's tool configuration, and hands it to the section player as `runtime.coordinator` or to `<pie-assessment-toolkit>`. Given none, `<pie-assessment-toolkit>`, which every section layout renders, builds one from its inputs, without hooks. The coordinator owns six services as public properties:
 
-#### 2. ESM Strategy (`<pie-item-player strategy="esm">`)
+| Service | Property | Responsibility |
+| --- | --- | --- |
+| `ToolCoordinator` | `toolCoordinator` | Tool visibility and z-index layers |
+| `HighlightCoordinator` | `highlightCoordinator` | Read-aloud word highlights and annotations, drawn with the CSS Custom Highlight API without changing the DOM |
+| `TTSService` | `ttsService` | Read-aloud with browser or server voices, synchronized with highlights |
+| `AccessibilityCatalogResolver` | `catalogResolver` | QTI 3.0 accessibility catalogs: spoken text, audio, sign language video, braille |
+| `ElementToolStateStore` | `elementToolStateStore` | Tool state per PIE element, such as answer eliminations, kept out of the item session |
+| `ToolProviderRegistry` | `toolProviderRegistry` | Lazy initialization and authentication of the providers behind tools, such as calculator and TTS backends |
 
-**Purpose**: Load PIE elements from modern ESM packages with view-based architecture.
+The coordinator holds its `ToolPolicyEngine` privately and answers policy questions through `decideToolPolicy(...)` and `decideFeaturePolicy(...)`; `@pie-players/pie-assessment-toolkit/policy/engine` exports the engine itself. The [assessment toolkit README](../../packages/assessment-toolkit/README.md) documents the API.
 
-**Architecture**:
-- Imports fully-qualified CDN URLs by default (`moduleResolution: "url"`); `moduleResolution: "import-map"` generates an import map instead
-- Uses native dynamic import() for package loading
-- Loads one view per element: `delivery`, `author` or `print`
-- A view that fails to import falls back to the view its config names; `author` and `print` fall back to `delivery`
+`ToolCoordinator` stacks tool surfaces in fixed z-index layers: 0–999 for PIE content and player chrome, 1000–1999 for floating tools and their windows (the default for every tool), 2000–2999 for modal tool surfaces, 3000–3999 for drag and resize handles, and 4000–4999 for highlight infrastructure. `ElementToolStateStore` keys state as `assessmentId:sectionId:attemptId:itemId:elementId`, each part escaped (`%` as `%25`, `:` as `%3A`), so two attempts at one section never share a key. The store lives in memory, and a host persists it through the coordinator's `loadToolState` and `saveToolState` hooks.
 
-**Use Cases**:
-- Modern browsers with native ESM support
-- Smaller downloads than IIFE bundles
+### Tool policy
 
-**View System**:
+![Tool policy precedence: eight rungs from district block to PNP support; the first rung that applies decides whether a placed tool is withdrawn or granted, and the result is a ToolPolicyDecision](../img/tool-policy-precedence.excalidraw.svg)
 
-The ESM loader maps each view to an ESM subpath export of the element package.
+Placement and policy are separate steps. The host places tools at section, passage and item level (`tools.placement`); the policy engine then decides which placed tools a learner receives, from district settings, test-administration settings, item settings and the learner's Personal Needs and Preferences (PNP) profile, which follows [AfA PNP 3.0](https://www.imsglobal.org/spec/afa/v3p0/info). A PNP support id is the id of the tool it grants. A grant protects a placed tool from relevance filtering and carries its settings; it never places a tool. Host gates apply first: a disabled provider, `tools.policy.allowed` and `tools.policy.blocked` remove tools before the ladder runs, and policy sources a host registers with `registerPolicySource` can only narrow its result. On the ladder, the first rung that applies decides:
 
-**Built-in views** (`BUILT_IN_VIEWS` in `packages/players-shared/src/loaders/esm-adapter.ts`):
-- `delivery` - Standard student/teacher interaction (root export)
-- `author` - Configuration UI (`/author` export)
-- `print` - Print views (`/print` export)
-
-**Custom views**: the ESM adapter accepts any view name with a `viewConfig` naming its subpath, tag suffix and fallback. No element package publishes a custom view, and `<pie-item-player>` forwards only `loaderOptions.view`, so a custom view is reachable only through the adapter directly.
-
-**Benefits**:
-- Every view of an element shares one controller
-- Scoring is the same whichever view renders the item
-
----
-
-#### 3. Preloaded Strategy (`<pie-item-player strategy="preloaded">`)
-
-**Purpose**: Elements resolved at the host's build time, with no runtime element loading.
-
-**Architecture**:
-- The host installs pie-elements-ng packages as npm dependencies, all from one release, and its build bundles their ESM builds. Each inlines every library except React. Elements whose builds typeset on `window.MathJax` share the MathJax the first of them loads, so a set from one release typesets with the MathJax its elements were built for; elements that bundle their own MathJax share none ([One MathJax version per page](../item-player/loading-strategies.md#one-mathjax-version-per-page))
-- The host registers them with `registerPreloadedElements` before the player renders, with the [asset root](../item-player/loading-strategies.md#mathjax-assets) MathJax loads its fonts and speech from, and the player asserts they are registered
-- ESM only: runtime-loaded IIFE bundles are the `iife` strategy
-
-**Use Cases**:
-- Hosts that fix their element set and versions at build time
-- Offline and test environments
-
-Generated `@pie-players/pie-preloaded-player` builds predate npm registration and stay published for hosts that have not moved. Builds from the current generator bundle ESM elements; earlier ones carry a PITS IIFE bundle. See [docs/preloaded-player/readme.md](../preloaded-player/readme.md).
-
----
-
-#### 4. Print Player (`<pie-print>`)
-
-**Purpose**: Render complete assessment items for print (paper tests, answer keys, PDF export).
-
-**Architecture**:
-- Loads print modules from CDN
-- Transforms markup (replaces interactive tags with print tags)
-- Role-based rendering (student worksheets vs instructor answer keys)
-- Hash-based element naming to avoid conflicts
-
-**Use Cases**:
-- Paper-based assessments
-- Teacher answer keys with rationales
-- PDF exports for archival/compliance
-- Print previews in content authoring systems
-
-See: [packages/print-player/README.md](../../packages/print-player/README.md)
-
----
-
-### Player Comparison
-
-| Feature             | IIFE Strategy | ESM Strategy | Preloaded    | Print Player |
-| ------------------- | ------------- | ----------- | ------------ | ------------ |
-| **Bundle Format**   | IIFE          | ESM         | ESM (host)   | ESM          |
-| **Loading**         | Dynamic       | Dynamic     | Static       | Dynamic      |
-| **Browser Support** | All           | Modern      | Modern       | Modern       |
-| **Bundle Size**     | Large         | Small       | Smallest     | Small        |
-| **Performance**     | Medium        | Medium      | Fast         | Fast         |
-| **Interactivity**   | Yes           | Yes         | Yes          | No (static)  |
-| **Use Case**        | IIFE bundles  | Modern apps | Build-time   | Print/PDF    |
-
----
-
-### Element Loading Optimization
-
-The section player implements **element aggregation** to eliminate duplicate bundle loads when multiple items use the same PIE elements.
-
-**Problem**: Without aggregation, each item loads elements independently, causing duplicate network requests.
-
-**Solution**: Aggregate elements from all items and load once:
-- Section player analyzes all items upfront
-- Creates element loader (IIFE or ESM)
-- Loads all unique elements in one operation
-- Items initialize from pre-loaded registry
-
-**Architecture**: `aggregateElements(items)` collects the section's elements into one map keyed by versioned tag and throws when one tag maps to two package specs. `ensureRegistered(elements, { backend })` loads that map through the IIFE or ESM adapter and resolves once every tag is registered.
-
-See: `@pie-players/pie-players-shared/loaders` for implementation details.
-
----
-
-### Unified Authoring & Delivery
-
-All players support both **delivery** (student/teacher views) and **authoring** (configuration) modes in a single package.
-
-**Benefits**:
-- Single package to install and maintain
-- Consistent API across modes
-- Easier version management
-- Reduced bundle duplication
-
-**Mode Switching**: Players accept a `mode` attribute/property that switches between delivery and authoring views, loading the appropriate element view variant.
-
----
-
-## Assessment Toolkit
-
-The **Assessment Toolkit** provides composable services for coordinating tools, accommodations, and full test delivery. It's designed as a **toolkit, not a framework** — products use only what they need.
-
-### Core Principles
-
-1. **Composable Services** - Import only what you need
-2. **No Framework Lock-in** - Works with any JavaScript framework
-3. **Product Control** - Products control navigation, layout and backend. Session persistence defaults to `localStorage` at the section layer and at the assessment layer, stored per attempt id and inactive without one, and a product replaces either through its persistence hook (`createSectionSessionPersistence` on the coordinator, `createAssessmentSessionPersistence` on the assessment player)
-4. **Standard Contracts** - Well-defined event types for component communication
-5. **AfA PNP 3.0 Profiles** - A student's Personal Needs Profile follows AfA PNP 3.0; district, test-administration and item settings are PIE extensions
-6. **Section Player Integration** - Toolkit services integrate seamlessly with the section player
-
-### Primary Interface: Section Splitpane Player
-
-The splitpane custom element from `@pie-players/pie-section-player` is the primary container/interface for integrating assessment toolkit services. It takes them through one `ToolkitCoordinator`, set as `runtime.coordinator`, and builds a default coordinator when none is given; no layout element accepts services one by one. Through that coordinator it:
-
-- Manages accessibility catalog lifecycle (add on load, clear on navigation)
-- Registers the SSML catalogs a preprocessing step extracted from embedded `<speak>` tags into `config.extractedCatalogs`; the player runs no extraction itself
-- Renders TTS tools inline in passage/item headers
-- Resolves item-level catalogs ahead of assessment-level ones; within an item, a catalog id authored on the item wins over the same id in `config.extractedCatalogs`
-- Coordinates z-index layering for tools
-- Synchronizes text highlighting with TTS playback
-
-**Integration Pattern**: Products construct one `ToolkitCoordinator` and set it as `runtime.coordinator` on `pie-section-player-splitpane`. The player handles the rest automatically.
-
-See: [TOOL_PROVIDER_SYSTEM](../tools-and-accomodations/tool_provider_system.md) for integration details.
-
----
-
-### QTI-Inspired Features
-
-The toolkit uses **QTI-inspired** patterns for industry-standard assessment delivery workflows.
-
-This approach is intentional:
-- It avoids reinventing established assessment patterns.
-- It is easier to understand for teams already familiar with QTI concepts.
-- It makes PIE↔QTI conversion easier (for example via `pie-qti`).
-
-#### Implemented Features
-
-**1. Personal Needs Profile (PNP)** - Student accommodations and IEP/504 support
-
-Applies AfA PNP 3.0 support ids to placed PIE tools, where a support id is the tool id it grants. A grant protects a placed tool from relevance filtering and carries its settings; it never places a tool. Precedence hierarchy:
-1. District block (absolute veto) - highest priority
-2. Test administration withdrawal (`toolOverrides` set to `false`)
-3. Item restriction (per-item block)
+1. District block, an absolute veto
+2. Test-administration withdrawal (`toolOverrides` set to `false`)
+3. Item restriction
 4. PNP prohibition (`prohibitedSupports`)
-5. Test administration grant (`toolOverrides` set to `true`)
-6. Item requirement (forces enable)
+5. Test-administration grant (`toolOverrides` set to `true`)
+6. Item requirement
 7. District requirement
-8. PNP supports (student needs)
+8. PNP support
 
-A restriction or prohibition that withdraws a tool a `true` override grants raises `tool-policy.overrideBlocked`. Rungs 3 and 6 apply to the decisions scoped to an item, its own item-level toolbar and its content's features, with the settings its `<pie-item-scope>` registers. A section-, assessment- or passage-level toolbar skips them and raises `tool-policy.itemSettingNotApplied` for each tool on it that a mounted item restricts or requires.
+Rungs 3 and 6 apply only to decisions scoped to an item (its item toolbar and its content's features), with that item's `restrictedTools` and `requiredTools`. A section, passage or assessment toolbar skips them and raises `tool-policy.itemSettingNotApplied` for each tool on it that a mounted item restricts or requires. A restriction or prohibition that withdraws a tool a `true` override grants raises `tool-policy.overrideBlocked`. [Tools and accommodations](../tools-and-accomodations/architecture.md) sets out the full model, and [PNP configuration](../../packages/assessment-toolkit/docs/PNP_CONFIGURATION.md#precedence) gives each rung's field.
 
-#### Typed Only
+The assessment model follows QTI 3.0 where the two meet: PNP profiles, accessibility catalogs and the assessment and section structure. The assessment type also carries QTI 3.0 `contextDeclarations`, and the assessment session a `contextVariables` slot; no player or toolkit service reads either, so neither reaches an item.
 
-**Context Declarations** - The assessment type carries QTI 3.0 `contextDeclarations` and the assessment session a `contextVariables` slot. No player or toolkit service reads either, so neither reaches an item.
+### Tools
 
-#### Benefits
+`createPackagedToolRegistry()` from `@pie-players/pie-default-tool-loaders` registers 15 tools: text-to-speech, calculator (Desmos, GeoGebra, or the bundled open-source Cortex, which needs no key), ruler, protractor, line reader, answer eliminator, annotation toolbar, the color-scheme tool (`theme`), graph, periodic table, English and Spanish dictionaries and picture dictionaries, and the audio transcript, a content region without a toolbar button. Sign language video ships as its own package that a deployment registers. A host can assemble its own registry from the same registrations. [Tool registry](../../packages/assessment-toolkit/docs/TOOL_REGISTRY.md) and [calculator providers](../../packages/default-tool-loaders/src/calculator-providers/README.md) cover tool development.
 
-- **QTI-Inspired Model**: Reuses QTI 3.0 concepts while remaining PIE-oriented
-- **Easy Integration**: One-line initialization for QTI-inspired toolkit services
-- **Third-Party Friendly**: All services work independently
+### Text-to-speech and accessibility catalogs
 
----
+`TTSService` reads content aloud through the active provider. `BrowserTTSProvider` uses the platform's voices through the Web Speech API; `ServerTTSProvider` (`@pie-players/tts-client-server`) plays audio and speech marks from a host-run server built on `tts-server-polly`, `tts-server-google` or `tts-server-sc`. Before speaking, the service asks the `AccessibilityCatalogResolver` for an authored spoken alternative. An item's own catalogs win over the catalogs a preprocessing step extracted from embedded SSML (`config.extractedCatalogs`; the players extract nothing themselves), and item-level catalogs win over assessment-level ones. The `HighlightCoordinator` highlights what is being spoken: the sentence by default with browser voices, the word with server voices, which carry word timings. [TTS architecture](../accessibility/tts-architecture.md) has the detail.
 
-### ToolkitCoordinator: Centralized Service Management
+## Sessions and persistence
 
-The **ToolkitCoordinator** is a centralized orchestrator for all PIE Assessment Toolkit services, providing a single entry point for initialization, configuration, and service management.
+Each layer owns the session it produces, and the host owns durable storage.
 
-![ToolkitCoordinator orchestration of toolkit services and section player integration](../img/toolkit-coordinator-orchestration-1-1773125329715.jpg)
+| Layer | Session | Owner | Persistence |
+| --- | --- | --- | --- |
+| Item | `{ id, data }`, one entry per element | `<pie-item-player>` | `session-changed` to the host; optional autosave through the delivery backend |
+| Section | Current item, visited items, item sessions | `SectionController`, one per section and attempt | Restored through the layout's `session` property and saved by the host on `session-changed` or from `getSession()`; or a persistence strategy, set with the controller's `configureSessionPersistence` or a host-built coordinator's `createSectionSessionPersistence` hook |
+| Assessment | Section sessions and the current position | The host, with `createNewAssessmentSession`, `upsertSectionSession` and `setCurrentSectionPosition` | The host's backend; the reference player's `createAssessmentSessionPersistence` hook |
 
-**Problem Solved**: Before ToolkitCoordinator, applications had to manage multiple independent services (TTSService, ToolCoordinator, HighlightCoordinator, AccessibilityCatalogResolver, ElementToolStateStore), wire them together, and pass all separately to the player.
+The section and assessment layers default to `localStorage`, keyed per attempt and inactive without an attempt id. That restores an attempt on the same device and nothing more; a host replaces it through the hook or the controller's strategy. Element tool state stays out of these sessions.
 
-**Solution**: Single coordinator that owns all services as public properties. Products initialize one coordinator with configuration and pass it to the section player.
+## Security model
 
-**Benefits**:
-- Single initialization point
-- Centralized configuration
-- Services owned by coordinator
-- Tool state management included
-- Sensible defaults (section player creates default coordinator if not provided)
+![Where the controller runs: by default the authored model, answer key included, reaches the browser and the player runs the controller there; in hosted delivery a controller on the host's server sends only view models](../img/element-controller-flow.excalidraw.svg)
 
-**Architecture**: The coordinator owns the services below and provides convenience methods for tool configuration and state management. Six are public properties: `toolCoordinator`, `highlightCoordinator`, `ttsService`, `catalogResolver`, `elementToolStateStore` and `toolProviderRegistry`. The `ToolPolicyEngine` is private; hosts reach it through `decideToolPolicy(...)` and `decideFeaturePolicy(...)`.
+By default the whole item config reaches the browser, answer keys included, and the element controllers run there. That fits practice and formative delivery. Graded delivery needs three things together:
 
-See: [packages/assessment-toolkit/README.md](../../packages/assessment-toolkit/README.md) for API details.
+- **Hosted mode** (`hosted`, or a delivery backend): the player loads elements without their controllers and renders the view models a server computes.
+- **Stripped models**: the host removes answer keys and rationales from the models on its server, because the players pass models through as they receive them.
+- **Host-computed outcomes**: the host's backend scores the response.
 
----
+`env.role` and `env.mode` shape what an element shows and are no security boundary. [Security](../security/readme.md) sets out the trust boundaries.
 
-### Toolkit Services
+## Theming and internationalization
 
-The coordinator's services work together:
+`<pie-theme>` computes PIE's `--pie-*` color tokens for the active color scheme and writes them onto itself, or onto the document element with `scope="document"`, from which they inherit into item content and player chrome, shadow DOM included. `@pie-players/pie-theme/token-registry.json` lists every registered token with its owner, scope and scheme participation; a token is registered when a host sets it. [How theming works](../theming/how-theming-works.md).
 
-#### 1. ToolCoordinator
+Interface strings (toolbar labels, tool panels, status and error text, `aria-label`s) come from message catalogs in `@pie-players/pie-players-shared`, in `en-US` and `nl-NL`. A host sets the `locale` attribute on a player, a section layout or `<pie-assessment-toolkit>`; unset, the players render English and never detect the locale from the browser. Content language and in-item alternates are separate concerns ([internationalization](./internationalization.md)).
 
-**Purpose**: Central service managing tool visibility and z-index layering.
+## Accessibility
 
-**Architecture**: Maintains tool registry with visibility state and manages z-index layers:
-- 0-999: PIE content and player chrome
-- 1000-1999: Floating tools and their windows (the default layer for every registered tool)
-- 2000-2999: Modal tool surfaces
-- 3000-3999: Tool control handles (drag, resize)
-- 4000-4999: Highlight infrastructure (TTS, annotations)
+The players and tools target WCAG 2.2 AA. The [WCAG 2.2 AA baseline](../wcag/wcag-2.2-aa-baseline.md) maps the criteria that matter for players, floating tools, dialogs and assessment layouts, and the item, section and assessment player end-to-end suites run axe checks against their demos. [Accessibility](../accessibility/README.md) covers text-to-speech, catalogs and accommodations.
 
----
+## Instrumentation
 
-#### 2. HighlightCoordinator
+Every layer reports through one provider-agnostic `InstrumentationProvider` contract, in three streams:
 
-**Purpose**: Manages text highlighting for TTS and annotations using CSS Custom Highlight API.
+- **Toolkit telemetry** (`pie-toolkit-*`, `pie-tool-*`): coordinator and provider readiness, tool state and configuration, section controller lifecycle, text-to-speech initialization and playback, and tool initialization, backend calls and library loads, forwarded by `<pie-assessment-toolkit>`.
+- **Bridged public events** (`pie-toolkit-*`, `pie-section-*`, `pie-item-*`, `pie-assessment-*`): each layer maps a fixed set of its own DOM events, so no event reaches a provider twice. The item player maps only `correct-responses-populated`, which keeps the learner responses in `session-changed` away from telemetry unless the host forwards them, and reports runtime errors through `trackError`.
+- **Loader and resource events**, sent when `trackPageActions` is on: resource loads and retries, bundle retries, and shared-dependency and MathJax conflicts.
 
-**Problem Solved**: Both TTS (temporary word highlighting) and student annotations (persistent highlighting) need to highlight text simultaneously without interfering.
+PIE ships a New Relic adapter and console, debug-panel and composite providers, so production telemetry and a debug panel can receive the same events; a host writes its own adapter for any other agent. [Instrumentation providers](./instrumentation-providers.md) lists every event and how an unset or invalid provider resolves.
 
-**Technology**: CSS Custom Highlight API (Chrome 105+, Safari 17.2+, Firefox 128+)
+## Technology
 
-**Benefits**:
-- Zero DOM mutation (preserves framework virtual DOM)
-- Framework-compatible
-- Screen reader friendly
-- Multiple highlights overlap gracefully
-- Better performance
+- **Custom elements** built with Svelte 5, each bundling its runtime; the print player uses Lit 3.
+- **TypeScript** throughout, with Bun for installs, scripts and unit tests, Turbo for monorepo tasks, Vite for builds, Biome for linting, Playwright for end-to-end tests and Changesets for the lockstep release.
+- **Web platform**: custom elements, ES modules and import maps, the CSS Custom Highlight API and the Web Speech API, in evergreen browsers.
 
----
+## Integration patterns
 
-#### 3. TTSService
+| Pattern | Assembly | Fits |
+| --- | --- | --- |
+| Item player | `<pie-item-player>` alone | One item in a page: authoring, previews, practice |
+| Item player with toolkit | `<pie-assessment-toolkit>` around a `<pie-item-scope>` per item, with `<pie-item-toolbar>` | Items rendered one at a time, with tools and accommodations |
+| Section player | A layout element with `runtime` and `section` | A section screen: passages, items, section tools, section session |
+| Custom assessment player | Section players, one coordinator per assessment, the assessment-session helpers | Multi-section delivery with the host's routing, persistence and submission |
 
-**Purpose**: Text-to-speech service with word highlighting synchronization.
+![Item player with the toolkit: the host builds a pie-assessment-toolkit containing a pie-item-scope per item, each with an item toolbar and a content region holding the item player; the toolkit builds the coordinator from its properties and the scope registers the item and its settings](../img/toolkit-item-scope.excalidraw.svg)
 
-**Architecture**:
-- Provider-based: `BrowserTTSProvider` (Web Speech) and `ServerTTSProvider` over the `tts-server-polly`, `tts-server-google` and `tts-server-sc` backends (`backend: "server"` plus `serverProvider`)
-- Integrates with HighlightCoordinator for synchronized highlighting
-- Works with AccessibilityCatalogResolver for QTI 3.0 catalog support
+Without a section player, per-item inputs ride on `<pie-item-scope>`: it registers the item and its settings with the coordinator that `<pie-assessment-toolkit>` builds from its properties, and the item player's events pass through it unchanged ([without a section player](../../packages/assessment-toolkit/README.md#without-a-section-player)). A custom assessment player mounts a section player per section with the assessment's coordinator, keeps the attempt in an `AssessmentSession`, and persists through the coordinator's hook or its own snapshot against the host backend. The [multi-section player guide](../assessment-player/integration-guide.md) builds one from the toolkit's assessment-session helpers, with `@pie-players/pie-assessment-player` as the reference assembly.
 
-**Key Features**:
-- Read full question or selected text
-- Pause, resume, stop playback
-- Word-level highlighting synchronized with audio
-- Voice selection and speed control
-- State management (playing, paused, stopped)
+## Related documentation
 
----
-
-#### 4. AccessibilityCatalogResolver
-
-**Purpose**: QTI 3.0 accessibility catalog resolution for authored and preprocessed alternatives.
-
-**Architecture**:
-- Resolves an item's authored catalogs ahead of its `config.extractedCatalogs` (the first registration of an id wins), and item-level catalogs ahead of assessment-level ones
-- Supports pre-recorded audio, sign language videos, braille
-- Integrates with section player runtime registration; `config.extractedCatalogs`
-  are registered when a preprocessing/import step has produced them
-
----
-
-#### 5. ElementToolStateStore
-
-**Purpose**: Manages element-level ephemeral tool state using globally unique composite keys.
-
-**Architecture**: Uses composite key format `${assessmentId}:${sectionId}:${attemptId}:${itemId}:${elementId}`, each part escaped (`%`→`%25`, `:`→`%3A`), so keys stay unique across sections and attempts.
-
-**State Separation**: Tool state (ephemeral, client-only) is separate from PIE session data (persistent, sent to server for scoring).
-
----
-
-#### 6. ToolProviderRegistry
-
-**Purpose**: Registers, initializes and authenticates the providers behind tools such as the calculator and TTS backends, lazily by default.
-
-**Architecture**: The coordinator registers providers from its `toolRegistry`'s registrations, so a tool's provider exists only when the registry that built the coordinator carries the tool.
-
----
-
-#### 7. ToolPolicyEngine
-
-**Purpose**: Tool decisions from the AfA PNP 3.0 Personal Needs Profile (PNP), host policy, provider and placement, with precedence hierarchy.
-
-**Architecture**: Resolves tool availability through policy sources, granting each tool by its tool id and returning canonical `ToolPolicyDecision` results. The coordinator holds it privately and answers through `decideToolPolicy(...)` and `decideFeaturePolicy(...)`.
-
----
-
-## Tools & Accommodations
-
-`createPackagedToolRegistry()` from `@pie-players/pie-default-tool-loaders` registers 15 **accessibility accommodations** and **assessment tools**, implemented as Web Components and coordinated via shared services. Further capabilities, such as sign language, ship as separate packages a deployment registers.
-
-**Packaged Tools**:
-- Text-to-Speech (TTS)
-- Calculator (Desmos, GeoGebra, or the bundled open-source Cortex)
-- Ruler & Protractor
-- Line Reader
-- Answer Eliminator
-- Highlighter and annotations
-- Theme (color schemes and contrast)
-- Graph and Periodic Table
-- Dictionaries and picture dictionaries, English and Spanish
-- Audio transcript (a content region, no toolbar button)
-
-**Coordination**: Tools register with ToolCoordinator for z-index management, use HighlightCoordinator for text highlighting, and integrate with TTSService for read-aloud functionality.
-
-**Canonical Documentation**:
-- [Tools & Accommodations Architecture](../tools-and-accomodations/architecture.md)
-- [Tool Development & Integration](../../packages/assessment-toolkit/docs/TOOL_REGISTRY.md)
-- [Calculator Providers](../../packages/default-tool-loaders/src/calculator-providers/README.md)
-
----
-
-## Technology Stack
-
-### Core Technologies
-
-- **Bun** - Fast all-in-one toolkit (package manager, bundler, runtime)
-- **TypeScript** - Type-safe development with enhanced IDE support
-- **Svelte 5** - Reactive UI framework with runes, compiles to efficient vanilla JavaScript
-- **Turbo** - High-performance build system for monorepo task orchestration
-- **Vite** - Lightning-fast dev server with HMR
-
-### Web Standards
-
-- **Web Components (Custom Elements)** - Framework-agnostic standard with native browser support
-- **CSS Custom Highlight API** - Native highlighting without DOM mutation
-- **Web Speech API** - Browser-native text-to-speech with word boundary events
-- **CSS Container Queries** - Component-level responsive design
-
-### Supporting Libraries
-
-- **Desmos API** and **GeoGebra** - Hosted calculator integrations; the Cortex calculator is bundled and needs no key
-
-### Browser Support
-
-- **Target**: Modern evergreen browsers
-- **Fallback Strategy**: Graceful degradation for advanced features
-
----
-
-## Integration Patterns
-
-### Pattern 1: Standalone Item Player
-
-Use a single item player for rendering individual questions. Suitable for embedding single questions in content management systems or learning platforms.
-
-**Players**: IIFE, ESM, or preloaded strategy
-**Complexity**: Low
-**Use Case**: Single question rendering
-
----
-
-### Pattern 2: Item Player + Toolkit
-
-Wrap item players in `<pie-assessment-toolkit>`, with a `<pie-item-scope>` per item and `<pie-item-toolbar>` for its tools. Suits hosts that render items one at a time and need tools and accommodations without a section player; see [Without a Section Player](../../packages/assessment-toolkit/README.md#without-a-section-player).
-
-**Architecture**: Toolkit coordinator scoped by `<pie-item-scope>`; per-item inputs ride on the scope
-**Complexity**: Medium
-**Use Case**: Simple assessments with basic tools
-
----
-
-### Pattern 3: Section Player with Toolkit
-
-Use section player with full assessment toolkit for complete section delivery using QTI-inspired structures. This is the recommended pattern for production assessments.
-
-**Architecture**:
-1. Construct one `ToolkitCoordinator`, which owns the toolkit services
-2. Set it as the section player's `runtime.coordinator`
-3. Section player handles catalog lifecycle, TTS tools, and service coordination;
-   embedded SSML extraction must happen before render if that authoring style is used
-
-**Complexity**: Medium
-**Use Case**: Production assessments with full accessibility support
-
-**See**: [TOOL_HOST_CONTRACT](../tools-and-accomodations/tool_host_contract.md) for runtime host/tool examples.
-
----
-
-### Pattern 4: Custom Assessment Player
-
-This is how production multi-section players are built (see [Product Scope](#product-scope)). The host owns routing between sections, attempt identity, persistence and submission; PIE supplies everything below that.
-
-**Architecture**:
-1. Mount a section player per section, with one `ToolkitCoordinator` per attempt as its `runtime.coordinator`
-2. Keep the attempt in an `AssessmentSession`, maintained with the toolkit's `createNewAssessmentSession`, `upsertSectionSession` and `setCurrentSectionPosition`
-3. Persist through the coordinator's `createSectionSessionPersistence` hook or the host's own aggregate snapshot, against the host backend
-
-**Complexity**: High
-**Use Case**: Production multi-section delivery
-**Reference**: `@pie-players/pie-assessment-player` assembles this pattern; its [client architecture guide](../assessment-player/client-architecture-tutorial.md) walks through it
-
----
-
-## Instrumentation & Observability
-
-Instrumentation across players is intentionally provider-agnostic and built on
-`InstrumentationProvider` contracts rather than backend-specific APIs.
-
-### Provider Semantics
-
-- How an unset, `null` or invalid provider resolves is set out in [Instrumentation providers](./instrumentation-providers.md#provider-resolution).
-- Existing `item-player` behavior is the compatibility anchor.
-- For local debugging, you can compose providers (for example New Relic + debug panel) by using a fan-out provider rather than replacing production telemetry.
-- Debug panel parity rule: production-bound events are preserved as events (same filtering/sampling pipeline), and debug-only metric rows are additive.
-
-### Ownership Model (No Semantic Overlap)
-
-- **Toolkit layer** owns toolkit lifecycle stream (for example `pie-toolkit-*`).
-- **Section layer** owns section runtime/public stream (for example `pie-section-*`).
-- **Assessment layer** owns assessment orchestration stream (for example `pie-assessment-*`).
-- **Tool/backend layer** (via toolkit telemetry forwarding) owns operational stream for tool init/backend/library calls (for example `pie-tool-init-*`, `pie-tool-backend-call-*`, `pie-tool-library-load-*`); [Instrumentation providers](./instrumentation-providers.md#operational-events) lists every event.
-
-Bridge dedupe exists as a safety net for accidental duplicate dispatch paths,
-but correctness is ownership-first by design.
-
-### Detailed Integration Guides
-
-- [Section Player Client Architecture](../section-player/client-architecture-tutorial.md)
-- [Assessment Player Client Architecture](../assessment-player/client-architecture-tutorial.md)
-- [Assessment Toolkit README](../../packages/assessment-toolkit/README.md)
-
----
-
-## References
-
-### Architecture Documentation
-
-- [Tools & Accommodations Architecture](../tools-and-accomodations/architecture.md) - Tools system design
-
-### Package Documentation
-
-- [Assessment Toolkit README](../../packages/assessment-toolkit/README.md) - Toolkit usage and QTI 3.0 examples
-- [Section Player README](../../packages/section-player/README.md) - Complete section player API
-- [Tool Provider System](../tools-and-accomodations/tool_provider_system.md) - Service integration details
-- [Tools README](../../packages/assessment-toolkit/docs/TOOL_REGISTRY.md) - Tool development guide
-
-### Standards & Specifications
-
-- [WCAG 2.2 Guidelines](https://www.w3.org/WAI/WCAG22/quickref/)
-- [QTI Specification](http://www.imsglobal.org/question/index.html)
-- [CSS Custom Highlight API](https://developer.mozilla.org/en-US/docs/Web/API/CSS_Custom_Highlight_API)
-- [Web Components](https://developer.mozilla.org/en-US/docs/Web/API/Web_components)
-- [Web Speech API](https://developer.mozilla.org/en-US/docs/Web/API/Web_Speech_API)
-
-### PIE Framework
-
-- [PIE Documentation](https://pie-api.readme.io/)
-- [PIE Elements](https://github.com/pie-framework/pie-elements)
-- [PIE Examples](https://github.com/pie-framework/pie-examples)
+- [Getting started](../getting-started.md): a first item in a page
+- [The case for a new player project](../why-a-new-project.md): what PIE Players changes from the legacy player
+- [Domain language](../../CONTEXT.md): the shared vocabulary
+- [All documentation](../readme.md)
+- Standards: [QTI 3.0](https://www.imsglobal.org/spec/qti/v3p0), [AfA PNP 3.0](https://www.imsglobal.org/spec/afa/v3p0/info), [WCAG 2.2](https://www.w3.org/WAI/WCAG22/quickref/), [CSS Custom Highlight API](https://developer.mozilla.org/en-US/docs/Web/API/CSS_Custom_Highlight_API), [Web Speech API](https://developer.mozilla.org/en-US/docs/Web/API/Web_Speech_API)
+- PIE: [pie-framework.org](https://pie-framework.org), [pie-elements-ng](https://github.com/pie-framework/pie-elements-ng), [element demos](https://elements.pie-framework.org)

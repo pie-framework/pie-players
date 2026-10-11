@@ -1,10 +1,15 @@
 # 0003 — Elements read accessibility settings from a host-neutral context
 
-Status: Accepted, 2026-10-02. The accessibility review of 2026-10-05 kept `mathml` for every
-student, so the context has no consumer yet and no code ships. **Decision** is the contract the
-first consumer ships with; **Math accessibility** records the review's outcome.
+Status: Accepted, 2026-10-02
+
+An accessibility review on 2026-10-05 kept `mathml` for every student, so the context has no
+consumer yet and no code ships. **Decision** is the contract the first consumer ships with; **Math
+accessibility** records the review's outcome.
 
 Owner: PIE Players maintainers
+
+Read with: [Update, 2026-10-09](#update-2026-10-09), which corrects the precedence count, the
+answer with no assessment bound, and the value shape the first consumer ships.
 
 ## Decision
 
@@ -35,14 +40,15 @@ one configuration and requests nothing.
 
 Item configs name element versions and preloaded builds fix them, so an element version that reads
 this context stays in delivery, reading the shape it shipped with, long after providers change. A
-rule inside an element that maps a profile to behaviour is frozen into every pinned version of it.
+rule inside an element that maps a profile to behavior is frozen into every pinned version of it.
 The mapping therefore lives with the host, beside the policy it depends on, and the value only
 grows.
 
 Every element bundles its own copy of shared modules, so the key must be equal across copies.
 `Symbol.for` returns the registered symbol for its name, and `ContextProvider` matches a request by
-`event.context === key` without checking the event's class (`packages/pie-context/src/provider.ts:100`),
-so a request from any copy matches.
+`event.context === key` without checking the event's class (`handleContextRequest` and
+`handleContextProvider` in `packages/pie-context/src/provider.ts`), so a request from any copy
+matches.
 
 ## Supporting reasons
 
@@ -64,9 +70,8 @@ granted, required or blocked by the same rules as every other support.
 
 ## Rejected alternatives
 
-- **PIE `env`.** `env` is controller input; `number-line`'s controller reads
-  `env.accessibility.colorContrast` (pie-elements-ng
-  `packages/elements-react/number-line/src/controller/index.ts:363`). It shapes the model, never
+- **PIE `env`.** `env` is controller input; the pie-elements-ng `number-line` controller's
+  `model()` reads `env.accessibility.colorContrast`. It shapes the model, never
   reaches DOM-side modules such as math rendering, and a change re-runs every controller. A
   setting that changes the model stays on `env`; a setting that changes rendering comes from this
   context.
@@ -88,11 +93,19 @@ Language preferences are parameterized by language, which is why `language` is a
 
 ## Math accessibility
 
+This section records decisions. The current behavior is in the item player's
+[Math rendering](../item-player/math-rendering.md), the adapter side in pie-elements-ng's
+[Math Rendering](https://github.com/pie-framework/pie-elements-ng/blob/develop/docs/MATH-RENDERING.md#accessibility),
+and the speech worker's page-policy needs in the
+[Content-Security-Policy](../security/readme.md#content-security-policy) notes.
+
 MathJax's accessibility settings belong to one MathJax instance, and a page runs several. The
 adapter's browser build (the `pie-browser-esm` condition) bundles a private MathJax 4.1.3 into each
-element build (pie-elements-ng#277, 2026-10-03), shared by every instance of that element on the
-page. The item player holds one more for markup math when the page installed no renderer
-(pie-players#568, #573). The adapter's npm build runs on the page's `window.MathJax`, which it
+element build ([pie-elements-ng#277](https://github.com/pie-framework/pie-elements-ng/pull/277)),
+shared by every instance of that element on the page. The item player holds one more for markup
+math when the page installed no renderer
+([pie-players#568](https://github.com/pie-framework/pie-players/pull/568),
+[#573](https://github.com/pie-framework/pie-players/pull/573)). The adapter's npm build runs on the page's `window.MathJax`, which it
 loads once per page or takes as the page configured it. Math the adapter delegates to a page
 renderer, the IIFE player's MathJax 3 or one a host installs with `setMathRenderer`, renders under
 that renderer's settings.
@@ -104,7 +117,7 @@ that renderer's settings.
 | `speech` with braille | Speech plus a generated braille label | From the student's menu, Nemeth only; UEB is an open PR, [mathjax/MathJax-src#1512](https://github.com/mathjax/MathJax-src/pull/1512) |
 | `explore` | Speech plus keyboard navigation through the expression's structure | From the student's menu; menu-settings `inTabOrder` is ignored with speech on, so the adapter sets `options.a11y.inTabOrder: false` and the math stays out of the tab order |
 
-The review of 2026-10-05 decided:
+The review decided:
 
 1. **Modes and the default.** `mathml` is the only mode and the default. The adapter's menu
    settings are `assistiveMml: true`, `enrich: false` and `inTabOrder: false`, so no speech web
@@ -146,7 +159,7 @@ Preconditions for any mode beyond `mathml`:
   start, so math goes on rendering without them (`speech-worker.ts`); a mode that enables
   enrichment inherits that fallback.
 - **Cost.** Enrichment raised typeset time about twentyfold, from 71 ms to 1486 ms, in the MathJax
-  4 audit of 2026-10-02.
+  4 audit.
 
 ## Consequences
 

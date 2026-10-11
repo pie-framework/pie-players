@@ -9,7 +9,7 @@ This directory contains SvelteKit API routes used by section demos for developme
 **Routes**:
 
 - `POST /api/tts/synthesize` - Synthesize speech from text
-- `POST /api/tts/sc` - Proxy SchoolCity-style custom transport synthesis
+- `POST /api/tts/sc` - Proxy custom transport synthesis to the SC TTS service
 - `GET /api/tts/sc/voices` - List the voices `/api/tts/sc` offers; reads no credentials
 - `GET /api/tts/voices` - Get available voices
 - `GET /api/tts/polly/voices` - Get AWS Polly voices
@@ -65,7 +65,7 @@ calculator cannot load.
 - `GET /api/tools/picture-dictionary/glyph/[slug]` - Serve one generated demo picture
 
 A fixed word list and generated SVG glyphs, sized for the words in the demo passages.
-PIE ships no dictionary endpoint — the corpus behind one is licensed per programme — so
+PIE ships no dictionary endpoint — the corpus behind one is licensed per program — so
 these exist to give the packaged tools something to answer with locally, and are not a
 reference implementation of a real corpus.
 

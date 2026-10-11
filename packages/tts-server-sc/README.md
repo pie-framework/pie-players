@@ -1,28 +1,24 @@
 # @pie-players/tts-server-sc
 
-SchoolCity-backed server-side TTS provider for PIE projects.
-
-For the cross-package TTS architecture and browser/server flow, see
-[TTS Architecture](../../docs/accessibility/tts-architecture.md). This README
-focuses on the SchoolCity-backed reference provider and its SSRF defenses.
-
-This package is a reference implementation for custom server-side TTS
-integrations, using SchoolCity's TTS service. It demonstrates a reusable
-"custom backend adapter" pattern you can apply to your own TTS service.
+The SC adapter: a reference server-side TTS provider for a custom transport
+whose service returns audio and speech-mark URLs. It demonstrates the custom
+backend adapter pattern a host applies to its own TTS service. This README
+covers its configuration and its SSRF defenses;
+[TTS architecture](../../docs/accessibility/tts-architecture.md) covers the
+browser and server flow across the TTS packages.
 
 ## What it does
 
-- Signs short-lived JWT credentials for SchoolCity TTS.
-- Calls SchoolCity synthesis endpoint.
+- Signs short-lived JWT credentials for the SC TTS service.
+- Calls the service's synthesis endpoint.
 - Fetches and normalizes word marks.
-- Rebases offsets so marks align to original request text.
-- Exposes a provider API compatible with the `@pie-players/tts-server-*` pattern.
+- Rebases offsets so marks align to the original request text.
+- Exposes the provider API the `@pie-players/tts-server-*` packages share.
 
 ## Positioning
 
-- `@pie-players/tts-server-sc` is a host/server integration package.
-- It is not a toolkit default option by itself.
-- Toolkit defaults remain browser-backed until a host app explicitly configures server/custom TTS.
+- A host or server integration package; the toolkit never selects it by default.
+- Toolkit defaults stay browser-backed until a host configures server TTS.
 
 ## Install
 
@@ -32,7 +28,7 @@ bun add @pie-players/tts-server-sc
 
 ## Required configuration
 
-- `baseUrl`: SchoolCity TTS endpoint
+- `baseUrl`: the SC TTS service endpoint
 - `apiKey`: signing key used to mint bearer JWT
 - `issuer`: JWT `iss` claim
 
@@ -55,7 +51,7 @@ deployment (e.g. `baseUrl = https://tts.example.com` permits
 provider up to arbitrary external hosts. The registrable domain is computed
 via the Public Suffix List (`tldts`), so it is correct for multi-label TLDs
 (`.co.uk`, `.com.au`, etc.). If `baseUrl` is an IP literal or a hostname
-without a recognised public suffix, the provider falls back to strict
+without a recognized public suffix, the provider falls back to strict
 single-origin behavior.
 
 ### Explicit (recommended for production): exact-origin allow-list
@@ -196,13 +192,12 @@ schoolCityVoices({ gender: "male" });
 isSupportedSchoolCityLanguage("es-419"); // false
 ```
 
-Check the locale before synthesizing. An unrecognized `lang_id` is not an error
-upstream — the service rewrites it to `en-US` and returns English audio, so an
-unserved locale fails silently rather than loudly.
+Check the locale before synthesizing. The service rewrites an unrecognized
+`lang_id` to `en-US` and returns English audio with no error.
 
 ## Asset-shaped responses
 
-If you need to return the SchoolCity-style response shape (`audioContent`, `word`) while reusing provider logic:
+To return the service's own response shape (`audioContent`, `word`) while reusing the provider logic:
 
 ```ts
 const assets = await provider.synthesizeWithAssets({

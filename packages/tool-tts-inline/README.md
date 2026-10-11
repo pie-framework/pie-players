@@ -220,9 +220,9 @@ indication — so these defaults do not introduce one. Hosts remain responsible 
 maintaining WCAG AA foreground/background contrast when overriding active trigger
 colors.
 
-### Overlay panel colours
+### Overlay panel colors
 
-The floating and left-aligned panels take their colour from the active theme.
+The floating and left-aligned panels take their color from the active theme.
 Each surface resolves a component-scoped hook first, then a canonical token,
 then a literal that only applies when no theme is loaded:
 
@@ -250,7 +250,7 @@ speed chip, which defaults through it.
 
 Foregrounds default through `--pie-button-color` (DaisyUI `base-content`) rather
 than `--pie-primary` or `--pie-tertiary`: those are direct mappings of DaisyUI
-slots chosen to pair with their own `-content` colour, so an accent glyph taken
+slots chosen to pair with their own `-content` color, so an accent glyph taken
 from either falls under 3:1 against the card in 11 of the 35 shipped themes.
 Selection reads from the chip fill and the bolder weight instead of from hue.
 

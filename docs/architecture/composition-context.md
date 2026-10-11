@@ -13,6 +13,9 @@ container can, and only the container.
 The pattern: the container **publishes** the fact, and any descendant that needs
 it **resolves** it. Resolution is pull, not push.
 
+This page is for authors of tools, PIE elements and player components that need
+a fact only their container knows.
+
 ## The class of problem
 
 Heading depth is the worked example in this document, but the class is wide. Each
@@ -50,7 +53,7 @@ published context without one is read exactly once.
 what lets the same component render inside our players, inside an authoring
 host, and in a bare page.
 
-## Why pull rather than push
+## Pull resolution
 
 The alternative is to push the fact down the data pipeline the container already
 uses for content. In this repo that pipeline is narrow and deliberate — the
@@ -64,7 +67,7 @@ element.session = elementSession;
 ```
 
 `model` is authored content, filtered by the item's own controller. Pushing
-composition context through it fails on four counts, and the four generalise:
+composition context through it fails on four counts, and the four generalize:
 
 **The publisher does not know its consumers.** For heading depth the player would
 have to know that an EBSR emits a two-part heading plus optional part labels,
@@ -72,9 +75,11 @@ that a multiple-choice item emits one item-type heading, and that a passage emit
 a title plus two levels of authored sub-headings. Publishing one number means the
 player knows none of that.
 
-**The consumer set is open.** PIE element bundles are third-party, versioned
-independently, and fetched at runtime from a bundle service. A push channel needs
-a container release for every new consumer; a pull channel needs none.
+**The consumer set is open.** PIE element bundles are third-party and release
+independently of the player under every loading strategy: fetched at runtime from
+a bundle host (`iife`) or a CDN (`esm`), or bundled by the host (`preloaded`). A
+push channel needs a container release for every new consumer; a pull channel
+needs none.
 
 **Resolvers must work with no container.** The same elements run in authoring
 previews, in authoring harnesses, and in `print-player`, which never mounts a
@@ -197,13 +202,12 @@ Three defects, all one cause — a composition context that was never published:
    item type as a sibling of the question rather than a description of it.
 2. **Flat passage structure.** The passage title sat at the level of its own
    group label.
-3. **Authored headings inert.** `data-heading` markup is only promoted to heading
-   elements once a level is published. Nothing published one, so semantic
-   headings inside passages and prompts produced paragraphs in every shipped host.
-
-The third was a shipped feature that authored content already relied on, and it
-failed with no error, warning or failing test: a composition context with no
-publisher does not announce itself.
+3. **Authored headings inert.** `data-heading` markup, a shipped feature that
+   authored content relied on, is only promoted to heading elements once a level
+   is published. Nothing published one, so semantic headings inside passages and
+   prompts produced paragraphs in every shipped host, with no error, warning or
+   failing test: a composition context with no publisher does not announce
+   itself.
 
 ### Beyond screen readers
 
@@ -228,8 +232,9 @@ When you find a fact that only the container knows:
    decide where it sits.
 
 `@pie-players/pie-context` is the mechanism — a typed context protocol with real
-subscription. See [`developer_patterns.md`](./developer_patterns.md) under CE
-Communication Patterns. PIE elements are to use the same protocol
+subscription. See
+[custom element communication](./developer_patterns.md#custom-element-communication)
+in the developer patterns. PIE elements are to use the same protocol
 ([ADR 0003](../adr/0003-elements-read-accessibility-settings-from-a-host-neutral-context.md),
 which waits for its first consumer): an element requests a `Symbol.for` key with `subscribe: true`, needs no context
 root of its own, and reads an unanswered request as the host providing nothing,
@@ -240,6 +245,6 @@ invariants do not.
 
 ## References
 
-- [`developer_patterns.md`](./developer_patterns.md) — CE communication mechanisms
+- [`developer_patterns.md`](./developer_patterns.md) — custom element communication mechanisms
 - [`../tools-and-accomodations/architecture.md`](../tools-and-accomodations/architecture.md)
   — host surfaces, the same pattern applied to tool capabilities

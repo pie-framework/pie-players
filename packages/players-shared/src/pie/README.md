@@ -1,6 +1,9 @@
 # PIE Utilities Module
 
-Modular, tree-shakeable utilities for PIE (Portable Item Editor) element loading and management.
+Utilities for loading PIE elements and binding them to their models and
+sessions, exported as `@pie-players/pie-players-shared/pie`. PIE stands for
+Portable Interactions and Elements. For maintainers of the player packages, and
+for hosts that drive PIE elements without a player.
 
 ## Module Structure
 
@@ -20,46 +23,31 @@ pie/
 └── README.md         - This file
 ```
 
-## Usage
+## Imports
 
-### For Maximum Tree-Shaking (Recommended)
-
-Import directly from specific modules:
-
-```typescript
-// Only types (zero runtime code)
-import { BundleType } from './types';
-import type { LoadPieElementsOptions } from './types';
-
-// Config utilities
-import { makeUniqueTags } from './config';
-
-// Initialization
-import { initializePiesFromLoadedBundle } from './initialization';
-
-// Updates
-import { updatePieElements } from './updates';
-```
-
-**Benefits**:
-
-- Bundler only includes the modules you actually use
-- Better code splitting
-- 15-20% smaller bundle sizes
-
-### Barrel Import (Convenience)
-
-Import from barrel export:
+Other packages import the barrel, `@pie-players/pie-players-shared/pie`; the
+only other `pie/*` path the package exports is `pie/tag-names`. The barrel is
+tree-shakeable, because the package declares no side effects outside its
+vendored icon button bundle:
 
 ```typescript
-import { 
-  BundleType, 
-  makeUniqueTags, 
-  initializePiesFromLoadedBundle 
-} from './index';
+import {
+  BundleType,
+  makeUniqueTags,
+  initializePiesFromLoadedBundle,
+} from "@pie-players/pie-players-shared/pie";
 ```
 
-**Trade-off**: May include slightly more code than necessary, but still tree-shakeable.
+Code inside `@pie-players/pie-players-shared` imports the module that defines a
+name, which keeps the dependency graph below explicit:
+
+```typescript
+import { BundleType } from "./types.js";
+import type { LoadPieElementsOptions } from "./types.js";
+import { makeUniqueTags } from "./config.js";
+import { initializePiesFromLoadedBundle } from "./initialization.js";
+import { updatePieElements } from "./updates.js";
+```
 
 ## Module Dependencies
 
@@ -77,7 +65,7 @@ types.ts (no dependencies)
       └─ initialization.ts ← registry.ts, utils.ts, updates.ts, initialize-element.ts
 ```
 
-**Design principle**: Unidirectional dependencies, no circular imports.
+Dependencies run one way, and no module imports another in a cycle.
 
 ## Key Concepts
 
@@ -92,10 +80,14 @@ enum BundleType {
 }
 ```
 
-- **`player.js`**: Server-side controller processing, client receives pre-filtered models
-- **`client-player.js`**: Client-side controller processing for development
-- **`editor.js`**: Authoring UI (not used by players)
-- **`esm`**: Registry entries the ESM loader writes; it loads each element's browser modules directly, with no bundle file
+- **`player.js`**: elements only. The host's server runs the controllers and
+  sends processed models; the item player loads it when hosted.
+- **`client-player.js`**: elements and controllers, so the controllers run in
+  the browser. The item player's default in `mode="view"`.
+- **`editor.js`**: configure (authoring) elements and controllers, for
+  `mode="author"`.
+- **`esm`**: registry entries the ESM adapter writes; it loads each element's
+  browser modules directly, with no bundle file.
 
 ### Registry
 
@@ -103,12 +95,12 @@ The PIE registry (`window.PIE_REGISTRY`) tracks all loaded PIE elements:
 
 ```typescript
 interface Entry {
-  package: string;        // e.g., "@pie-element/multiple-choice@9.9.1"
+  package: string;        // e.g., "@pie-element/multiple-choice@14.0.3"
   status: Status;         // 'loading' | 'loaded'
-  tagName: string;        // e.g., "multiple-choice--version-9-9-1"
-  controller?: PieController;  // May be null for player.js bundles
-  config?: Element;
-  element?: Element;
+  tagName: string;        // e.g., "multiple-choice--version-14-0-3"
+  controller?: PieController;  // Absent for player.js bundles
+  config?: any;           // Constructor or metadata, depending on the adapter
+  element?: any;
   bundleType?: BundleType;
 }
 ```
@@ -119,27 +111,25 @@ PIE uses versioned tag names to allow multiple versions side-by-side:
 
 ```typescript
 // Input: <multiple-choice id="1"></multiple-choice>
-// Output: <multiple-choice--version-9-9-1 id="1"></multiple-choice--version-9-9-1>
+// Output: <multiple-choice--version-14-0-3 id="1"></multiple-choice--version-14-0-3>
 ```
 
-This is necessary because custom elements can't be redefined once registered.
-`parseVersionedTagName` from `pie/tag-names` splits a runtime tag back into its
-base name and encoded version, so code that matches an element by tag compares
-`baseName`.
+A custom element cannot be redefined once registered, so each version gets a
+tag of its own. `parseVersionedTagName` from `pie/tag-names` splits a runtime
+tag back into its base name and encoded version, so code that matches an
+element by tag compares `baseName`.
 
 ## Custom Element Tag Validation
 
-Dynamic registration paths now validate custom element names before calling
-`customElements.define(...)`.
+Dynamic registration paths validate a custom element name before calling
+`customElements.define(...)`. A valid name:
 
-Validation rules:
+- contains at least one hyphen (`-`)
+- is lowercase
+- starts with a letter and holds only letters, digits, `.`, `_` and `-`
+- is not a reserved HTML name
 
-- must contain at least one hyphen (`-`)
-- must be lowercase
-- must match allowed custom element name format
-- must not use reserved HTML names
-
-Reserved names rejected by the validator:
+The reserved names:
 
 - `annotation-xml`
 - `color-profile`
@@ -150,13 +140,13 @@ Reserved names rejected by the validator:
 - `font-face-name`
 - `missing-glyph`
 
-This set is taken from the HTML Custom Elements specification's reserved-name
-list (names that are explicitly disallowed for autonomous custom elements).
+These are the names the HTML specification disallows for autonomous custom
+elements.
 
-Use helpers from `pie/tag-names`:
+The helpers are in `pie/tag-names`, and the barrel re-exports them:
 
 ```typescript
-import { validateCustomElementTag, toViewTag } from "@pie-players/pie-players-shared/pie";
+import { validateCustomElementTag, toViewTag } from "@pie-players/pie-players-shared/pie/tag-names";
 
 const baseTag = validateCustomElementTag("multiple-choice");
 const authorTag = toViewTag(baseTag, "author"); // multiple-choice-config
@@ -164,43 +154,36 @@ const authorTag = toViewTag(baseTag, "author"); // multiple-choice-config
 
 ## Logging
 
-Simple logging with debug mode:
+`createPieLogger(namespace, debugEnabled)` prefixes each line with the namespace.
+`debugEnabled` is a function, read on every `debug` call; `info`, `warn` and
+`error` always log:
 
 ```typescript
-import { createPieLogger } from './logger';
+import { createPieLogger, isGlobalDebugEnabled } from "./logger.js";
 
-// Create logger
-const logger = createPieLogger('my-component', debug);
+const logger = createPieLogger("my-component", isGlobalDebugEnabled);
 
-// Use log levels (debug only shown if debug=true)
-logger.debug('Detailed info', data);    // Debug only
-logger.info('✅ Success message');       // Always shown
-logger.warn('⚠️ Warning');               // Always shown
-logger.error('❌ Error', error);         // Always shown
+logger.debug("Detailed info", data); // Only while the debug flag is on
+logger.info("Loaded");
+logger.warn("Retrying");
+logger.error("Load failed", error);
 ```
 
-**Player tags** accept a `debug` prop:
-
-```html
-<pie-item-player strategy="preloaded" debug={true} config={...} />
-```
-
-**Runtime debugging** via global flag:
+`isGlobalDebugEnabled()` reads `window.PIE_DEBUG`. The shared modules, the
+section player and the assessment toolkit log debug output while it is `true`,
+so setting it in the browser console turns them on:
 
 ```javascript
-window.PIE_DEBUG = true;  // In browser console
+window.PIE_DEBUG = true;
 ```
 
-Disable runtime debug logging:
-
-```javascript
-window.PIE_DEBUG = false;
-```
-
-For `pie-item-player`, you can also disable per instance with:
+`<pie-item-player>` logs debug output when its `debug` attribute holds any value
+other than `false`, `0` or the empty string. It writes the result to
+`window.PIE_DEBUG`, so one player's `debug` attribute turns the page's other PIE
+loggers on or off:
 
 ```html
-<pie-item-player debug="false" />
+<pie-item-player strategy="preloaded" debug="true"></pie-item-player>
 ```
 
 ## Common Tasks
@@ -221,8 +204,8 @@ await loadPieModule(config, session, {
 
 The returned promise rejects, naming the bundle URL, when the script fails to
 load, when the deadline elapses, when the script runs without populating
-`window.pie`, or when element registration throws. Handle it — an unhandled
-rejection is the only signal a host gets that its elements will never arrive.
+`window.pie`, or when element registration throws. The rejection is the only
+signal that the elements will never arrive, so the caller handles it.
 
 ### Load PIE Bundle from String
 
@@ -254,11 +237,10 @@ const release = observePieElements(container, () => ({ config, session, env }));
 release();
 ```
 
-The callback is read when an element arrives, not when the registration is
-made, so a caller that recomputes its session or env on render still binds a
-late element against current state. Several registrations may share one
-container — an item player registers its item config and its passage config —
-and each gets its own release.
+The callback is read when an element arrives, so a caller that recomputes its
+session or env on render binds a late element against current state. Several
+registrations may share one container (an item player registers its item config
+and its passage config), and each gets its own release.
 
 ### Update PIE Elements
 
@@ -281,8 +263,8 @@ const transformedItem = makeUniqueTags({ config: item.config });
 ```typescript
 import { findPieController } from './scoring';
 
-const controller = findPieController('multiple-choice--version-9-9-1');
+const controller = findPieController('multiple-choice--version-14-0-3');
 if (controller) {
-  const outcome = await controller.outcome(session, env);
+  const outcome = await controller.outcome(model, session, env);
 }
 ```

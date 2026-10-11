@@ -3,12 +3,13 @@
 <!-- markdownlint-disable MD013 MD022 MD031 MD032 MD036 MD040 -->
 
 This document explains how text-to-speech (TTS) works across PIE Players at
-runtime. It is intended for engineers who need the whole flow, from the button a
-student presses through provider selection, authored spoken content, generated
-Math speech, playback, and highlighting.
+runtime. It is for host integrators and contributors who need the whole flow,
+from the button a student presses through provider selection, authored spoken
+content, generated Math speech, playback, and highlighting.
 
-For package-level API reference, see [TTS Architecture](./tts-architecture.md).
-For authoring patterns, see [TTS Authoring Guide](./tts-authoring-guide.md).
+For the packages, their dependencies and the provider comparison, see
+[TTS Architecture](./tts-architecture.md). For authoring patterns, see
+[TTS Authoring Guide](./tts-authoring-guide.md).
 
 ## Mental Model
 
@@ -20,21 +21,20 @@ TTS has four jobs, owned by different layers:
 4. Word boundaries or speech marks are mapped back to the visible DOM for
    highlighting.
 
-The key point is that the UI does not synthesize speech itself. The inline tool
-finds a reading target and calls the shared `TTSService`. `TTSService` then
-chooses between authored spoken catalogs, generated Math speech, or plain visible
-text.
+The UI does not synthesize speech itself. The inline tool finds a reading target
+and calls the shared `TTSService`, which chooses between authored spoken
+catalogs, generated Math speech and plain visible text.
 
-![PIE TTS architecture overview](./assets/tts/tts-architecture-overview-1-1780170583240.jpg)
+![Text-to-speech architecture: the inline TTS tool and the annotation toolbar call TTSService inside the toolkit coordinator; TTSService looks spoken cards up in AccessibilityCatalogResolver, speaks through the active provider, browser or server with a fallback to the browser, and highlights words through HighlightCoordinator; the server provider posts text to a host-run TTS server whose Polly, Google Cloud and SC adapters extend BaseTTSProvider and return audio with speech marks](../img/tts-architecture.excalidraw.svg)
 
 ## Packages And Ownership
 
-`@pie-players/pie-tts` is the contract package. It defines the provider factory
-and playback interfaces, configuration types, feature flags, capabilities, and
-speech segment shape. It has no UI ownership.
+[`@pie-players/pie-tts`](../../packages/tts/README.md) is the contract package.
+It defines the provider factory and playback interfaces, configuration types,
+feature flags, capabilities, and speech segment shape. It has no UI ownership.
 
-`@pie-players/pie-assessment-toolkit` owns the runtime orchestration. The main
-classes are:
+[`@pie-players/pie-assessment-toolkit`](../../packages/assessment-toolkit/README.md)
+owns the runtime orchestration. The main classes are:
 
 - `ToolkitCoordinator`, which creates shared services and registers tool
   providers.
@@ -47,18 +47,23 @@ classes are:
   assessment, passage, item, and model catalogs.
 - `HighlightCoordinator`, which receives TTS highlight updates.
 
-`@pie-players/pie-tool-tts-inline` is the runtime UI. It renders the
+[`@pie-players/pie-tool-tts-inline`](../../packages/tool-tts-inline/README.md)
+is the runtime UI. It renders the
 play/pause controls in item and passage toolbars, finds the readable content
 region, and passes it to `ttsService.speak(...)`. The annotation toolbar's
 read-aloud passes the selection's range to the same entry.
 
-`@pie-players/tts-client-server` provides `ServerTTSProvider`, the browser-side
-bridge to a host TTS API. It plays the returned audio in an `HTMLAudioElement`
-and turns speech marks into boundary callbacks.
+[`@pie-players/tts-client-server`](../../packages/tts-client-server/README.md)
+provides `ServerTTSProvider`, the browser-side bridge to a host TTS API. It plays
+the returned audio in an `HTMLAudioElement` and turns speech marks into boundary
+callbacks.
 
 The `tts-server-*` packages are server-side helpers for host applications:
-`tts-server-core`, `tts-server-polly`, `tts-server-google`, and `tts-server-sc`.
-They do not run in the browser. A host API route wires them to the browser-side
+[`tts-server-core`](../../packages/tts-server-core/README.md),
+[`tts-server-polly`](../../packages/tts-server-polly/README.md),
+[`tts-server-google`](../../packages/tts-server-google/README.md), and
+[`tts-server-sc`](../../packages/tts-server-sc/README.md), the SC adapter. They
+do not run in the browser. A host API route wires them to the browser-side
 `ServerTTSProvider`.
 
 ## Provider Setup
@@ -87,16 +92,21 @@ in the TTS registration of `@pie-players/pie-default-tool-loaders`, which passes
 it to `TTSToolProvider` as its `loadServerProvider` option. Browser-only
 deployments never load that package, and the toolkit never names it.
 
-If server-backed initialization fails, the toolkit coordinator falls back to browser TTS.
-Browser TTS is the resilience path because it uses the platform Web Speech API
-and does not require a network service.
+If server-backed initialization fails, the toolkit coordinator falls back to
+browser TTS and reports `pie-tool-init-fallback`. Browser TTS is the resilience
+path because it uses the platform Web Speech API and does not require a network
+service; server-backed TTS is the choice when reads need the same voices on
+every device, SSML or speech marks. The host sets the backend through
+`tools.providers.textToSpeech`; the toolkit README's
+[Minimal Server-Backed TTS Config](../../packages/assessment-toolkit/README.md#minimal-server-backed-tts-config)
+lists the keys and defaults.
 
 ## Simple Happy Path
 
 This is the simplest useful path: no authored spoken catalogs and no special Math
 generation. The system reads visible text with the active provider.
 
-![Simple TTS happy path](./assets/tts/tts-simple-happy-path-1-1780169699734.jpg)
+![Simple path: the student clicks play, the inline TTS tool passes its content region to TTSService, the toolkit coordinator creates and initializes the provider on first use, TTSService speaks the visible text through the active provider, and each word boundary becomes a highlightTTSWord call; in sentence mode, the browser default, each sentence is highlighted and no words](../img/tts-simple-path.excalidraw.svg)
 
 ### Simple Path Walkthrough
 
@@ -106,7 +116,8 @@ generation. The system reads visible text with the active provider.
 3. `pie-tool-tts-inline` resolves the reading target. It prefers the nearest
    `[data-region='content']` inside the current shell scope and falls back to the
    shell element itself.
-4. The tool sets the shared `HighlightCoordinator` on `TTSService` and calls:
+4. The tool calls the shared `TTSService`, whose `HighlightCoordinator`
+   `ToolkitCoordinator` attached at construction:
 
    ```ts
    ttsService.speak(readingTarget, {
@@ -120,9 +131,11 @@ generation. The system reads visible text with the active provider.
    markup as [TTS language](../architecture/internationalization.md#tts-language)
    sets out.
 
-5. Before playback, `ToolkitCoordinator.ensureTTSReady()` makes sure a provider
-   exists. The registry initializes `TTSToolProvider`, which chooses browser or
-   server-backed TTS from host config.
+5. A speak that finds no provider waits on the service's readiness gate, which
+   calls `ToolkitCoordinator.ensureTTSReady()`. The registry initializes
+   `TTSToolProvider`, which chooses browser or server-backed TTS from host
+   config. When TTS starts eagerly or the policy grants `textToSpeech`,
+   coordinator readiness already waits for it.
 6. `TTSService.speak()` collects the target's visible text, math included,
    normalizes it and calls `resolveSpeechContent(...)`.
 7. If no authored spoken catalog applies and no generated speech is needed,
@@ -165,9 +178,12 @@ The server-backed provider uses a host API:
 TTSService -> ServerTTSProvider -> /api/tts/synthesize -> server provider
 ```
 
-For the standard PIE transport, the host route returns audio plus speech marks.
-For custom transports such as SchoolCity-style integrations, the provider can
-fetch URL-based audio and word mark assets with origin/SSRF protections.
+That is the `pie` transport, which posts to `${apiEndpoint}/synthesize` and
+gets audio plus speech marks back inline. The `custom` transport posts to the
+`apiEndpoint` root and fetches the URL-based audio and word-mark assets the
+response names, with origin and SSRF protections; the SC adapter,
+`@pie-players/tts-server-sc`, is the reference server for it. `endpointMode`
+overrides either default.
 
 Server reads highlight words, and a response that carries no speech marks
 highlights the sentence it voices instead. The choice is per response, so an
@@ -184,10 +200,34 @@ ends a read in any state and releases its run owner, which closes an open
 the panel. Each provider holds a pause that lands before its audio
 starts, which `ITTSProviderImplementation.pause` requires.
 
-The media handoff counts a loading read as speaking: `pauseTtsForMediaAudio`
-pauses a read that is loading or playing when the learner starts media, and
-`bindTtsAudioHandoff` pauses the media when the service enters either state. One
-predicate serves both halves.
+Read-aloud and media audio never play at once, and the learner's latest action
+wins. A media surface uses two helpers from
+`@pie-players/pie-assessment-toolkit/tools/registration`:
+`bindTtsAudioHandoff({ ttsService, silence })` calls `silence` whenever the
+service starts loading or playing and returns its teardown, and
+`pauseTtsForMediaAudio(ttsService)` pauses a read that is loading or playing
+when the learner starts media. Both count a loading read as speaking, through
+one predicate, and neither resumes what it silenced.
+
+### Highlight Target Remapping
+
+A host whose rendered content differs from the text it speaks remaps highlight
+targets with a `TTSHighlightTargetResolver`, set as the
+`ttsHighlightTargetResolver` property on `<pie-item-scope>` or
+`<pie-passage-shell>`. While the inline tool reads that scope, it hands the
+resolver to `TTSService` with a `TTSHighlightContext`: the scope element, the
+item ids, the content kind and the region policy. Both methods are optional:
+
+- `resolveWordRange(range, context)` returns the `Range` to paint for a word.
+- `resolveSentenceRanges(ranges, context)` returns the `Range` or `HTMLElement`
+  targets for a sentence.
+
+PIE keeps painting and cleanup. The seam fails open: a null result, a target
+outside the scope element or a throw keeps the native targets, and one bad
+sentence entry keeps all the native sentence ranges. The types are exported from
+`@pie-players/pie-assessment-toolkit`; the
+[TTS highlight target resolver PRD](../prds/tts-highlight-target-resolver.md)
+holds the contract.
 
 ### Debug Logging
 
@@ -210,17 +250,20 @@ and leaves playback already running alone. For the rest, the
 2. If the target contains `data-catalog-idref` regions, compose speech chunks
    from those catalogs plus visible interstitial text. A range composes only the
    regions it holds whole, and its interstitial text is the selected text.
-3. A range with no such region speaks its selected text.
-4. If the target contains Math or Math-like markup, generate speech from the DOM
-   with Speech Rule Engine.
+3. If the target contains Math or Math-like markup, generate speech from the DOM
+   with Speech Rule Engine. A range reads an equation as math only when it holds
+   the whole equation; part of one reads as the selected text.
+4. A range with no such region and no whole equation speaks its selected text.
 5. Otherwise, speak its normalized visible text.
-
-That priority is the backbone for the rest of this document.
 
 ## Authored Content-Provided TTS
 
 Content-provided TTS means the content itself supplies the spoken alternative.
-In this project, the runtime shape is QTI/APIP-style accessibility catalogs:
+The runtime shape is the accessibility catalog, adapted from the catalogs of
+1EdTech's QTI (Question and Test Interoperability) 3.0, which took them over
+from APIP (Accessible Portable Item Protocol); the
+[catalogs integration guide](./accessibility-catalogs-integration-guide.md)
+owns the data model:
 
 ```ts
 interface AccessibilityCatalog {
@@ -236,10 +279,12 @@ interface CatalogCard {
 }
 ```
 
-A card carries either `content` or `payload`, decided by `catalog`. TTS only ever
-reads the string form: a resolved card with no `content` (a `sign-language` card,
-for instance) is treated as no catalog at all, and resolution continues with the
-next step of the priority above rather than speaking an empty string.
+A card carries either `content` or `payload`, decided by `catalog`. A named
+`catalogId` reads only the string form: a resolved card with no `content` (a
+`sign-language` card, for instance) is treated as no catalog at all, and
+resolution continues with the next step of the priority above rather than
+speaking an empty string. A `data-catalog-idref` region also plays a `spoken`
+card's `payload` recording, with the region's script card as its fallback.
 
 Visible markup points to catalog entries with `data-catalog-idref`:
 
@@ -249,10 +294,7 @@ Visible markup points to catalog entries with `data-catalog-idref`:
 </span>
 ```
 
-The runtime attribute is `data-catalog-idref`. Older examples that use
-`data-catalog-id` are stale for this code path.
-
-![Authored content-provided TTS](./assets/tts/tts-authored-content-path-1-1780169699810.jpg)
+![Authored speech: a content root with two data-catalog-idref regions becomes five speech chunks in DOM order, the text, the prompt card's script, the text, the choice card's recording with its script as fallback, and the text; the active provider speaks the text and scripts, and the recording plays in an audio element with its region highlighted, falling back to its script when it cannot play](../img/tts-authored-content-path.excalidraw.svg)
 
 ### Where Catalogs Can Live
 
@@ -269,6 +311,8 @@ with a passage context. Item and model catalogs are registered with item/model
 context. This lets different content owners reuse catalog identifiers without
 turning every catalog id into a global key.
 
+![Catalog filing and lookup: items and passages send pie-register to the toolkit element, which files their catalogs by owner; the toolkit configuration fills the assessment-level catalogs at construction; TTSService looks a spoken card up by the exact owner, the one compatible owner, item-level catalogs and then assessment-level catalogs, and content surfaces read one owner's snapshot; registration and readers build the owner context with catalogOwnerContextFor](../img/catalog-registration.excalidraw.svg)
+
 ### Authored Catalog Walkthrough
 
 1. The assessment, passage, item, or model data includes `accessibilityCatalogs`.
@@ -277,26 +321,33 @@ turning every catalog id into a global key.
 2. Visible markup includes elements whose `data-catalog-idref` matches catalog
    identifiers.
 3. When an item scope or passage shell mounts and finds its toolkit, it
-   dispatches registration details.
-4. The toolkit calls `AccessibilityCatalogResolver.registerOwner(...)` once for
-   the mounted entity.
+   dispatches `pie-register` with its registration details.
+4. `<pie-assessment-toolkit>` calls
+   `AccessibilityCatalogResolver.registerOwner(...)` once for the mounted
+   entity, its **Catalog Owner**.
 5. The resolver walks entity-root, `config.extractedCatalogs`, and model catalogs
-   and stores them under the scoped owner as one transaction.
+   and stores them under that owner as one transaction. Content surfaces read
+   the owner's cards through `forOwner(...)`, a **Catalog Owner View** that
+   supplies immutable **Catalog Owner Snapshots**.
 6. The student clicks play in `pie-tool-tts-inline`.
 7. The inline tool passes its reading target and `catalogContext` to
    `TTSService.speak(...)`.
 8. `TTSService` first tries an explicit `catalogId`, if one was provided.
 9. If that does not resolve, `TTSService` walks the target and looks for
    `data-catalog-idref`.
-10. Each matching element becomes a speech chunk using the authored catalog
-    content. Text between catalog-marked regions becomes plain speech chunks.
-11. Playback runs chunk by chunk through the active provider.
-12. Highlighting uses alignment between spoken SSML text and visible DOM. If the
-    SSML contains semantics that cannot be mapped reliably, such as `<audio>` or
-    complex `<phoneme>` behavior, highlighting can fall back to the containing
-    region instead of word-by-word highlighting.
+10. Each matching element becomes a speech chunk from its authored card: a
+    recording when a `spoken` card carries one, its script otherwise. Text
+    between catalog-marked regions becomes plain speech chunks.
+11. Playback runs chunk by chunk. Scripts and text go through the active
+    provider; a recording plays in an `<audio>` element, and a recording that
+    cannot play falls back to its script.
+12. A recording highlights its region as a block for its duration, since it
+    reports no word boundaries. A script highlights its region, and its words
+    only in word mode and when its SSML aligns with the visible DOM; SSML that
+    cannot be mapped reliably, such as `<audio>` or complex `<phoneme>`
+    behavior, keeps the region highlight.
 
-### Why Explicit `catalogId` Is Not The Whole Story
+### Explicit `catalogId` and DOM Composition
 
 The inline tool may pass a `catalogId` such as an item or passage id. That id
 does not necessarily match each fine-grained spoken catalog id inside the
@@ -304,23 +355,20 @@ content. For multi-region content, the important path is often DOM composition:
 `TTSService` walks the reading target and resolves each `data-catalog-idref`
 region.
 
-### About Embedded `<speak>`
+### Embedded `<speak>`
 
-`SSMLExtractor` exists and can convert embedded `<speak>` markup into cleaned
-content plus `extractedCatalogs`. The runtime registration code will register
-`config.extractedCatalogs` if they are already present.
-
-The current production runtime path documented here does not automatically call
-`SSMLExtractor` during shell registration. Treat embedded extraction as a
-preprocessing/integration capability unless the render path you are using
-explicitly invokes it.
+`SSMLExtractor` converts embedded `<speak>` markup into cleaned content plus
+`extractedCatalogs`. No player or shell calls it: extraction is a preprocessing
+step the host runs, and registration files `config.extractedCatalogs` when they
+are present.
 
 ## On-The-Fly Generated Math TTS
 
 Generated Math TTS is the fallback for content that has Math in the DOM but no
 matching authored spoken catalog. It turns rendered Math into speech at runtime.
+Every speak reads a live DOM target, so this path applies to every caller.
 
-![On-the-fly generated Math TTS](./assets/tts/tts-generated-math-path-1-1780169697662.jpg)
+![Generated math speech: the math-aware walk finds each equation and its MathML, speech-rule-engine turns the MathML into speech, the speech chunk carries SSML with a plain fallback when the provider supports SSML, the active provider speaks it, and each spoken token is highlighted on its glyph; side boxes give what happens instead, prose read by sentence, partial selections read as text, the visible text when the engine fails, plain speech when the provider rejects SSML, and a whole-expression highlight](../img/tts-generated-math-path.excalidraw.svg)
 
 ### Generated Math Walkthrough
 
@@ -342,15 +390,25 @@ matching authored spoken catalog. It turns rendered Math into speech at runtime.
     request SRE SSML.
 11. `TTSService` checks provider capabilities:
     - browser TTS always gets plain speech
-    - Polly/Google-style server providers can get SSML
-    - custom transports stay plain unless they report reliable SSML support
+    - the server provider gets SSML on the `pie` transport with `polly` (the
+      default) or `google`
+    - the `custom` transport always gets plain speech, since the client never
+      reports SSML support for it
 12. Generated Math chunks carry a plain fallback. If an SSML-capable provider
     rejects a generated SSML chunk, playback retries that chunk with plain
     speech.
-13. Boundary callbacks feed the highlight pipeline. Math highlighting maps
-    spoken boundaries back to MathJax/native Math tokens only when the mapping is
-    reliable. Otherwise the full expression or nearest readable region is
-    highlighted.
+13. Boundary callbacks feed the highlight pipeline, which decides each
+    equation's highlight mode once, for the whole read:
+    - **Token mode** paints the token each boundary maps to on the MathJax or
+      native Math glyphs. Before the first token resolves the surrounding
+      region is highlighted, and a boundary that maps to no token, such as a
+      pause, holds the last token. A token-mode equation never paints the whole
+      expression.
+    - **Expression mode** highlights the equation as one block. It applies to
+      MathJax equations whose rendering breaks one-to-one correspondence with
+      the source MathML tokens, such as fractions, roots, tables and under or
+      over scripts, and to every equation when the TTS config sets
+      `mathTokenHighlighting: false`.
 
 ### What SRE Receives
 
@@ -379,15 +437,15 @@ pause logic; SSML is applied per playback chunk.
 
 ### Math In Control Names
 
-Browsers leave MathML out of a name computed from content, so a choice labelled
+Browsers leave MathML out of a name computed from content, so a choice labeled
 with 4/12 is named "4 12". The toolkit labels each `mjx-container` inside a
 control (a `label`, `button`, `summary` or link, or an element with a control
 role such as `radio` or `option`) with SRE's speech, and the browser puts that
 `aria-label` in the control's name. `PieAssessmentToolkit` observes each
 registered item and passage shell, so a container MathJax replaces, as a menu
-rerender does, is labelled again. The label replaces the elements' own English
+rerender does, is labeled again. The label replaces the elements' own English
 one and stays when SRE cannot speak the math. Math outside controls stays
-unlabelled, so screen readers keep navigating its MathML.
+unlabeled, so screen readers keep navigating its MathML.
 
 Names read ClearSpeak in English and MathSpeak elsewhere, in the language of
 the nearest `lang` attribute, English without one. ClearSpeak reads fractions
@@ -403,23 +461,8 @@ no toolkit and keep the elements' labels.
 | Scenario | Trigger | Spoken Source | Provider Payload | Highlighting |
 | --- | --- | --- | --- | --- |
 | Simple happy path | No matching catalog and no generated Math needed | normalized visible text | plain text | word boundaries against visible text; sentences on the browser provider unless `highlightMode` is `"word"` |
-| Authored content-provided TTS | explicit catalog or `data-catalog-idref` regions | `spoken` catalog card content | SSML or plain catalog content | aligned to visible DOM, with region fallback for complex SSML |
-| On-the-fly Math TTS | the target contains Math and no authored speech wins | SRE generated Math speech plus visible prose | plain or SSML per provider capability | math-aware token mapping, with expression fallback |
-
-## Current-State Notes
-
-- `pie-tool-tts-inline` is the toolbar UI path.
-- `data-catalog-idref` is the runtime catalog reference attribute.
-- `SSMLExtractor` is available, and `extractedCatalogs` are registered when
-  present, but automatic extraction is not part of the shell registration path
-  described here.
-- Browser TTS is the always-available fallback, but it is not SSML-capable.
-- Server-backed TTS is preferred when high-quality voices, SSML, and speech marks
-  are required.
-- Every speak reads a live DOM target, so the DOM-aware Math path applies to
-  every caller.
-- The highlight pipeline is intentionally conservative around Math. It prefers a
-  stable expression-level highlight over a wrong token-level highlight.
+| Authored content-provided TTS | explicit catalog or `data-catalog-idref` regions | `spoken` card: its script, or its recording in a region | SSML or plain script; a recording plays in `<audio>` | the region; a script's words in word mode when its SSML aligns |
+| On-the-fly Math TTS | the target contains Math and no authored speech wins | SRE generated Math speech plus visible prose | plain or SSML per provider capability | per equation, token by token or the whole expression |
 
 ## File Map
 

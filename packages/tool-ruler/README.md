@@ -6,7 +6,7 @@ A draggable and rotatable ruler measurement tool for PIE assessment players.
 
 - **Draggable**: Drag anywhere on the ruler, with a mouse, pen or finger, to move it.
   It may overhang the card it opens on, but keeps 100px inside it.
-- **Rotatable**: Drag the handle above the ruler to turn it about its centre, or use
+- **Rotatable**: Drag the handle above the ruler to turn it about its center, or use
   the keyboard shortcuts
 - **Tap controls**: While the ruler has focus, a strip below it moves it 10px and
   turns it 5° or 1° a press, so it can be placed without dragging

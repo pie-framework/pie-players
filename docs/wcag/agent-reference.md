@@ -1,14 +1,13 @@
 # Agent Reference
 
-This file is a compact retrieval-oriented reference for AI agents working in this repo.
-
-Use it before making accessibility claims or drafting WCAG findings.
+This file is a compact reference for AI agents working in pie-players, read
+before making accessibility claims or drafting WCAG findings.
 
 ## Hard Rules
 
 - If a claim is not backed by an official W3C/WAI URL, do not state it as a WCAG fact.
 - Prefer citing the official source directly instead of paraphrasing uncertain details.
-- Do not treat passing automation as proof of compliance.
+- Do not treat passing automation as proof of conformance.
 - Distinguish `Normative standard`, `Official supporting guidance`, and `Project guidance`.
 
 ## First Sources To Reach For
@@ -34,8 +33,8 @@ Use it before making accessibility claims or drafting WCAG findings.
 | label, accessible name, icon button | [Names and Descriptions](https://www.w3.org/WAI/ARIA/apg/practices/names-and-descriptions/) | stable names, label-in-name, `aria-label` vs visible label, duplicate or vague names |
 | keyboard-only, tab order, roving focus | [Developing a Keyboard Interface](https://www.w3.org/WAI/ARIA/apg/practices/keyboard-interface/) | predictable focus movement, tab stops, key conflicts, no traps |
 | announcements, live region, saved, speaking, activated | [WCAG 4.1.3](https://www.w3.org/WAI/WCAG22/Understanding/status-messages) | whether status is announced without moving focus |
-| focus hidden, overlay covers focus, sticky UI | [WCAG 2.4.11](https://www.w3.org/WAI/WCAG22/Understanding/focus-not-obscured-minimum), [WCAG 2.4.13](https://www.w3.org/WAI/WCAG22/Understanding/focus-appearance) | whether focused element remains visible and indicator is strong enough |
-| drag only, resize only, move only | [WCAG 2.5.7](https://www.w3.org/WAI/WCAG22/Understanding/dragging-movements), [WCAG 2.1.1](https://www.w3.org/WAI/WCAG22/Understanding/keyboard) | keyboard or single-pointer alternative |
+| focus hidden, overlay covers focus, sticky UI | [WCAG 2.4.11](https://www.w3.org/WAI/WCAG22/Understanding/focus-not-obscured-minimum), [WCAG 2.4.13](https://www.w3.org/WAI/WCAG22/Understanding/focus-appearance) | whether the focused element remains visible and the indicator meets 2.4.13's area and contrast |
+| drag only, resize only, move only | [WCAG 2.5.7](https://www.w3.org/WAI/WCAG22/Understanding/dragging-movements), [WCAG 2.1.1](https://www.w3.org/WAI/WCAG22/Understanding/keyboard) | a single-pointer alternative that does not drag (2.5.7) and keyboard operation (2.1.1) |
 | tiny button, resize handle, close icon | [WCAG 2.5.8](https://www.w3.org/WAI/WCAG22/Understanding/target-size-minimum) | minimum target size and spacing |
 | color-only state, low-contrast chrome | [WCAG 1.4.1](https://www.w3.org/WAI/WCAG22/Understanding/use-of-color), [WCAG 1.4.3](https://www.w3.org/WAI/WCAG22/Understanding/contrast-minimum), [WCAG 1.4.11](https://www.w3.org/WAI/WCAG22/Understanding/non-text-contrast) | text and non-text contrast, non-color cues |
 
@@ -47,6 +46,8 @@ Use these local docs before exploring the entire codebase:
 - [`wcag-2.2-aa-baseline.md`](./wcag-2.2-aa-baseline.md)
 - [`patterns-and-widgets.md`](./patterns-and-widgets.md)
 - [`project-surface-map.md`](./project-surface-map.md)
+- [`evaluation-method.md`](./evaluation-method.md)
+- [`deferred-issues.md`](./deferred-issues.md)
 
 ## Reporting Rule
 

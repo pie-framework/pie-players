@@ -21,6 +21,6 @@ Common command families:
 
 ## Related Documentation
 
-- [Preloaded player workflow](../../docs/preloaded-player/readme.md)
+- [Preloaded player](../../docs/preloaded-player/readme.md) and its [builds and CI/CD](../../configs/preloaded-player/README.md)
 - [Local packaging strategy](../../docs/setup/library-packaging-strategy.md)
-- [Publishing contract](../../docs/setup/publishing.md)
+- [Releasing](../../docs/setup/publishing.md)

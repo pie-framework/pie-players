@@ -145,7 +145,7 @@ Educational assessment components have unique accessibility requirements beyond 
   height: 30px;
 }
 
-/* ✅ WCAG 2.2 minimum: 44×44px */
+/* ✅ Meets 2.5.8 (AA, 24×24 minimum) and 2.5.5 (AAA, 44×44) */
 .drag-handle {
   width: 44px;
   height: 44px;
@@ -258,7 +258,7 @@ Educational assessment components have unique accessibility requirements beyond 
 #### 2.5 Input Modalities (Level A/AA)
 
 - [ ] **2.5.1** (Level A): Pointer gestures have keyboard/single-pointer alternatives
-- [ ] **2.5.2** (Level A): Touch targets at least 44×44 CSS pixels (with exceptions)
+- [ ] **2.5.2** (Level A): Pointer actions complete on the up-event, or can be aborted or undone
 - [ ] **2.5.3** (Level A): Labels match accessible names
 - [ ] **2.5.4** (Level A): Motion actuation can be disabled
 - [ ] **2.5.7** (Level AA, New in 2.2): Dragging movements have single-pointer alternative
@@ -270,7 +270,7 @@ Educational assessment components have unique accessibility requirements beyond 
 <!-- ❌ Touch target too small: 20×20px -->
 <button style="width: 20px; height: 20px;">×</button>
 
-<!-- ✅ WCAG 2.2 compliant: 44×44px -->
+<!-- ✅ Meets 2.5.8 (AA, 24×24 minimum) and 2.5.5 (AAA, 44×44) -->
 <button style="width: 44px; height: 44px;" aria-label="Close">×</button>
 
 <!-- ❌ Drag-only interaction -->
@@ -548,7 +548,7 @@ When conducting an accessibility review:
    - Test with color blindness simulators
 
 4. **Touch Target Audit**
-   - Verify all interactive elements are at least 44×44px
+   - Verify every interactive element is at least 24×24 CSS px, or spaced so a 24px circle on each overlaps no other target (2.5.8)
    - Check spacing between adjacent targets
 
 5. **Code Review**

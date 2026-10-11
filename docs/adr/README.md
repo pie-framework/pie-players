@@ -10,23 +10,32 @@ ask "why not the obvious thing?" and have nowhere to look.
 
 Records are append-only. A superseded record keeps its number, gains a
 `Superseded by` line, and is not edited into agreement with the newer one — the
-sequence is the value.
+sequence is the value. A record that reality later corrects in part gains a dated
+`Update` section, and a `Read with:` line under its status names each update and
+what it changes, so a reader who stops early still learns the body is not the
+whole record.
 
 Numbering is sequential from `0001`. The filename is
 `NNNN-<kebab-case-decision>.md`.
 
 ## Record shape
 
-`0001` and `0002` set the shape: a numbered title, then `Decision`, `Constraint`,
-`Supporting reason`, `Trade-off`, `Consequences`, and a dated `History` or
-`Outcome` section once reality reports back on the decision. A section that
-carries nothing is dropped.
+A record opens with a numbered title, a `Status: <word>, YYYY-MM-DD` line in the
+[PRD status vocabulary](../prds/README.md#status-vocabulary), an `Owner:` line and
+any `Read with:` line. The body sections, in order, are `Decision`, `Constraint`,
+`Supporting reason` (or `Supporting reasons`), `Rejected alternatives`,
+`Trade-off`, `Consequences`, a dated `History` or `Outcome` section once reality
+reports back on the decision, and dated `Update` sections after that. A section
+that carries nothing is dropped.
 
 ## What qualifies
 
-- **Architectural shape.** "Assessment delivery is composed from
-  assessment-player plus section-player runtimes, not a separate copied runtime
-  stack."
+The quoted decisions below illustrate each kind. They are examples, and most have
+no record of their own.
+
+- **Architectural shape.** "Hosts compose delivery from the section player and the
+  assessment toolkit; the assessment player is a reference assembly over the same
+  runtimes, not a separate copied runtime stack."
 - **Integration patterns between contracts.** "Tool policy decisions flow
   through the assessment toolkit contract rather than direct tool-package
   imports."
@@ -40,9 +49,8 @@ carries nothing is dropped.
 - **Deliberate deviations from the obvious path.** "We keep versioned
   `pie-*--version-*` tags in authored markup because custom elements cannot be
   redefined." Anything a reasonable reader might otherwise simplify away.
-- **Constraints not visible in the code.** "Playwright must run outside a
-  default agent tool sandbox." "All publishable packages release in lockstep as
-  patch bumps."
+- **Constraints not visible in the code.** "All publishable packages release in
+  lockstep as patch bumps."
 - **Rejected alternatives whose rejection is non-obvious.** Normalizing model
   IDs, importing package source from a consumer, splitting package versions
   independently — record why each lost.
@@ -50,5 +58,5 @@ carries nothing is dropped.
 ## Records
 
 - [`0001-formative-delivery-before-timed-media.md`](./0001-formative-delivery-before-timed-media.md) — formative delivery ships before timed media, so cue policy composes with Try state instead of inventing a weaker gate
-- [`0002-provider-contracts-are-not-parameterized-by-config.md`](./0002-provider-contracts-are-not-parameterized-by-config.md) — a config type parameter in argument position is neutralized by method bivariance, so provider contracts take none and adapters narrow in their own class signature
-- [`0003-elements-read-accessibility-settings-from-a-host-neutral-context.md`](./0003-elements-read-accessibility-settings-from-a-host-neutral-context.md) — elements request the student's accessibility settings through a `context-request` context any host can provide, so no element depends on the toolkit and the profile-to-behaviour mapping stays with the host; the accessibility review kept `mathml` for every student, so the contract waits for its first consumer
+- [`0002-provider-contracts-are-not-parameterized-by-config.md`](./0002-provider-contracts-are-not-parameterized-by-config.md) — a config type parameter in argument position is neutralized by method bivariance, so provider contracts take none and adapters narrow in their own method signatures
+- [`0003-elements-read-accessibility-settings-from-a-host-neutral-context.md`](./0003-elements-read-accessibility-settings-from-a-host-neutral-context.md) — elements request the student's accessibility settings through a `context-request` context any host can provide, so no element depends on the toolkit

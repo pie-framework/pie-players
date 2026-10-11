@@ -1,6 +1,8 @@
 # Branching And Process Events
 
-Status: Draft
+Status: Draft, 2026-06-25
+
+Not implemented and not scheduled. [Framework-completing work](../../architecture/framework-completing-work.md#classification) ranks process and branching vocabulary among the unbuilt framework-completing capabilities.
 
 Owner: PIE Players maintainers
 
@@ -14,10 +16,12 @@ Branching scenarios, role-play, simulations, process-capture workflows, replay/d
 
 Without a shared contract, future section variants and adapters are likely to invent incompatible branch identifiers, path state, and event semantics.
 
+Adaptive and branching delivery inside one section is the concrete case. A host branches today by remount-and-hydrate: it snapshots the session, sets a revised section and re-hydrates, and the section controller keeps state for the items both sections contain. Each step costs a full section mount, losing focus, scroll and any element-local state the session does not carry, and the session records no decision or path: a replay or an adapter sees which items were visited, not why. In-place branching without a remount needs the vocabulary below ([adaptive selection](../../architecture/framework-completing-work.md#adaptive-selection)).
+
 ## Goals
 
 - Define additive process vocabulary that can be used by branching, simulations, replay/debug, and standards adapters.
-- Build on the interaction event projection contract instead of replacing existing runtime events.
+- Build on the [interaction event projection contract](./interaction-event-contract.md) instead of replacing existing runtime events.
 - Define how branch and process source references connect to assessment, section, item, element, and evidence sources.
 - Make resumability and externally graded outcome references explicit.
 - Require every section slice that persists process state to define typed merge, replace, hydrate, persist, and unknown-host behavior.
@@ -78,7 +82,7 @@ interface ResumabilityMarker {
 
 Branching and process event payloads should be typed event families consumed by the interaction event projection contract.
 
-Named section slices, when introduced later, must define:
+Two named section slices have shipped without process state: `formative` ([formative delivery contract](../formative-delivery-contract.md#serialization-and-versioning)) and `timedMedia` ([timed-media section contract](../timed-media-section-contract.md#serialization-and-versioning)), each with its own version and unknown-version rule. A slice that persists process state must define:
 
 - key name;
 - owning PRD;
@@ -142,7 +146,7 @@ This PRD only defines projection and state vocabulary; it does not implement UI 
 
 This contract is intended to support adapter-friendly xAPI/Caliper process statements and QTI profile/extensions. It does not claim conformance.
 
-SCORM remains out of scope for this planning track.
+SCORM is out of scope for the shared contracts.
 
 ## Test Plan
 
@@ -160,13 +164,7 @@ bun run typecheck
 bun run test
 ```
 
-For custom-element or export-boundary changes, also run:
-
-```sh
-bun run check:source-exports
-bun run check:consumer-boundaries
-bun run check:custom-elements
-```
+For custom-element, export-boundary, toolkit-core or player changes, also run the [high-value checks](../../../AGENTS.md#high-value-checks). Playwright-backed tests run outside the sandbox; see [Playwright and sandboxed execution](../../../AGENTS.md#playwright-and-sandboxed-execution).
 
 ## Rollout And Release Notes
 
@@ -180,4 +178,4 @@ bun run check:custom-elements
 - Which package owns process event types?
 - Should branching and simulation share one process vocabulary or define separate payload families with a common base?
 - What is the minimum resumability marker that is useful without implying PIE-owned durable storage?
-- Which first section slice should ratify these rules: timed media, branching, or simulation?
+- Which first process slice should ratify these rules: branching or simulation?

@@ -1,8 +1,10 @@
 # Framework-Owned Error Handling
 
-`pie-players` owns baseline error handling for tools configuration and toolkit
-runtime initialization. Hosts need no `try/catch` around section-player or
-toolkit bootstrapping to avoid a blank UI.
+This reference is for host integrators. It sets out how the framework reports
+errors from tools configuration and toolkit runtime: the error model, which errors
+are recoverable, how they propagate through the section-player wrappers, and the
+host extension points. `pie-players` owns baseline error handling, so hosts need
+no `try/catch` around section-player or toolkit bootstrapping to avoid a blank UI.
 
 By default the framework:
 
@@ -48,9 +50,9 @@ them through the same framework model.
   `tts-init`) still fire the canonical event/prop but keep the default
   slot active.
 
-### Error kind mapping note
+### Coordinator construction failures
 
-During owned coordinator construction, failures surface as:
+When the toolkit constructs its own coordinator, failures surface as:
 
 - `kind: "coordinator-init"`
 - `source: "pie-assessment-toolkit"`
@@ -60,29 +62,28 @@ coordinator. The console details still include tool-config diagnostics (for
 example, `[tool-config-validation:ToolkitCoordinator.init] ...`), but host logic
 should not assume startup tool validation always emits `kind: "tool-config"`.
 
-### Recoverable behavior note
+### Recoverable errors
 
-Recoverable framework errors are logged and emitted through
-`framework-error` but do not trigger the built-in fatal fallback
-panel or move section readiness to `error`. The default slot remains active when
-`recoverable === true`. Tool Surface Host failures use `kind: "tool-surface"`,
-`severity: "warning"`, and `recoverable: true`: one optional capability may be
-omitted or keep its last working element while the assessment and other
-capabilities continue.
-A toolbar that cannot load a tool's module reports `kind: "tool-module-load"`
-once per tool and withholds the tool. It follows the tool start-failure policy:
-recoverable unless policy grants the tool, and reported again as fatal if a
-later policy change grants it. A toolbar tool counts a grant only where PNP
-enforcement is on, so `pnpEnforcement: "off"` keeps its failures recoverable; a
-region feature's grant counts whatever the enforcement, as its decisions do. A provider that fails to register
-(`provider-register`) follows the same policy. A failed tool-state load or save
-(`tool-state-load`, `tool-state-save`) and a section controller that fails to
-dispose (`section-controller-dispose`) are recoverable: the coordinator carries on
-without the state, and the next section gets a fresh controller.
-A toolkit whose section binding or owned coordinator fails to dispose reports
-`runtime-dispose`, and an interface-locale catalog that fails to load reports
-`i18n-locale-load`. Both are recoverable; after a failed locale load every string
-resolves through the English fallback.
+A recoverable error (`recoverable === true`) is logged and emitted through
+`framework-error`, but it neither renders the fatal fallback panel nor moves
+section readiness to `error`, and the default slot stays active. No host action is
+required; a host that wants to surface one listens to `framework-error`.
+
+| Kind | Raised when | Recoverable | Effect |
+| --- | --- | --- | --- |
+| `tool-surface` | a tool surface host, the toolkit's mount for a capability's host surface, fails (`severity: "warning"`) | yes | the capability is omitted or keeps its last working element; the assessment and other capabilities continue |
+| `tool-module-load` | a toolbar cannot load a tool's module; reported once per tool | unless policy grants the tool; reported again as fatal when a later policy change grants it | the tool is withheld |
+| `provider-register` | a tool's provider fails to register | as `tool-module-load` | a console warning |
+| `tool-state-load`, `tool-state-save` | the coordinator's tool-state load or save fails | yes | the coordinator carries on without the state |
+| `section-controller-dispose` | a section controller fails to dispose | yes | the next section gets a fresh controller |
+| `runtime-dispose` | the toolkit's section binding or owned coordinator fails to dispose | yes | none |
+| `i18n-locale-load` | an interface-locale catalog fails to load | yes | every string resolves through the English fallback |
+
+`tool-module-load` and `provider-register` follow the tool start-failure policy.
+A toolbar tool counts a grant only where enforcement of the learner's Personal
+Needs Profile (PNP) is on, so
+`pnpEnforcement: "off"` keeps its failures recoverable; a region feature's grant
+counts whatever the enforcement, as its decisions do.
 
 A tool that fails after it started reports through the coordinator's
 `reportToolFailure(toolId, phase, error)`, once per tool and phase, and is
@@ -111,18 +112,17 @@ down through `effectiveRuntime → pie-section-player-base →
 pie-assessment-toolkit`, which is the single delivery point — there is
 no double-firing across wrapper layers.
 
-Hosts can also subscribe to the package-internal bus directly via
-`ToolkitCoordinator.subscribeFrameworkErrors(listener)` when they need
-to observe framework errors without going through the DOM.
+A host that observes framework errors without the DOM subscribes to the
+coordinator's error bus with the public
+`ToolkitCoordinator.subscribeFrameworkErrors(listener)`.
 
 ---
 
-## Validation pass ownership
+## Validation ownership
 
-Section-player runtime tools overlay resolution preserves the host-provided
-shape, and strict validation runs during toolkit initialization.
-`resolveToolsConfig` does not throw on an invalid overlay or runtime tool ID; the
-toolkit reports it when it builds its coordinator.
+The runtime resolver (`resolveToolsConfig`) copies `runtime.tools` in its
+host-provided shape and throws on nothing. Strict validation runs when the toolkit
+builds its coordinator, which reports an invalid tool id there.
 
 ---
 
@@ -170,9 +170,9 @@ Section-player and toolkit instrumentation bridges emit:
 
 For baseline safety:
 
-- pass your runtime/tools config normally
-- keep `toolConfigStrictness` as desired (`error`, `warn`, `off`)
-- do not add host-level try/catch solely for bootstrap failure UX
+- pass the runtime and tools config as usual
+- set `toolConfigStrictness` (`error`, the default, `warn` or `off`)
+- add no host-level `try/catch` for bootstrap failure UX
 
 For optional host-specific behavior:
 

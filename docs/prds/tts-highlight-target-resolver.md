@@ -1,37 +1,35 @@
 # TTS Highlight Target Resolver
 
-Status: Accepted
+Status: Accepted, 2026-06-25
+
+Implementation status: shipped in pie-players. pie-qti, the first host with a
+non-identity resolver, adopts it in its own repository.
 
 Owner: PIE Players maintainers
 
-Implemented in 905080d4 (2026-06-25) and kept as the current contract reference.
-`@pie-players/pie-assessment-toolkit` owns it at
-`src/services/tts/highlight-target-resolver.ts` and exports
-`TTSHighlightContext`, `TTSHighlightTargetResolver`,
-`TTSHighlightTargetResolverRuntime` and `TTSHighlightTargetResolverProvider`
-from the package root. The interfaces in [Proposed Contract](#proposed-contract)
-shipped field for field; the ingress did not, and the three questions this PRD
-left open are answered in [Resolved Decisions](#resolved-decisions). The
-downstream `pie-qti` migration in [Migration
-Requirements](#migration-requirements) is not verifiable from this repo.
+This PRD defines the runtime seam through which a host remaps the DOM range a
+TTS speech mark produced to the text the learner sees, while PIE Players keeps
+painting and cleanup. It is for hosts that render projected or transformed
+content and for maintainers of the TTS pipeline, and it is the only reference
+for the seam.
 
 Related architecture:
 
+- [TTS architecture](../accessibility/tts-architecture.md)
 - [P0 shared contracts](../architecture/shared-contracts-p0.md)
 - [Accessibility runtime patterns](./shared-contracts/accessibility-runtime-patterns.md)
 
 ## Problem
 
-Text-to-speech highlighting is currently too tightly coupled to the native DOM
-range that produced each speech mark. That works for ordinary visible text, but
-breaks for projected or transformed content where the spoken range is not the
-same node users see on screen.
+TTS highlighting painted the native DOM range each speech mark produced. For
+ordinary visible text that range is the text on screen; for projected or
+transformed content it is not, because the spoken text and the visible node
+differ.
 
-The immediate downstream pressure is QTI section rendering, where readable TTS
-projection can differ from visible interaction markup. `pie-qti` can map the
-projection back to visible content, but today that requires monkey-patching
-private `HighlightCoordinator` methods and maintaining local fallback highlight
-state outside the PIE Players cleanup lifecycle.
+QTI section rendering in `pie-qti` hit this first: its readable TTS projection
+differs from the visible interaction markup. Mapping the projection back to
+visible content meant monkey-patching private `HighlightCoordinator` methods and
+keeping fallback highlight state outside the PIE Players cleanup lifecycle.
 
 ## Goals
 
@@ -41,11 +39,9 @@ state outside the PIE Players cleanup lifecycle.
 - Let host packages map spoken browser `Range` targets to visible `Range` or
   `HTMLElement` targets without importing or patching private coordinator
   internals.
-- Keep QTI-specific projection extraction and mapping in `pie-qti`, not in
-  PIE Players.
+- Keep QTI-specific projection extraction and mapping in `pie-qti`.
 - Keep highlight painting, clearing, and lifecycle cleanup owned by PIE Players.
-- Establish enough tests and release gates to migrate `pie-qti` away from its
-  private highlight fallback.
+- Give `pie-qti` a supported seam in place of its private highlight fallback.
 
 ## Non-Goals
 
@@ -53,26 +49,31 @@ state outside the PIE Players cleanup lifecycle.
   Players.
 - No persisted model, session, assessment, tool configuration, or wire-schema
   changes.
-- No new readable-content schema in this pass.
+- No new readable-content schema.
 - No replacement of existing TTS speech mark generation.
 - No export of `HighlightCoordinator` as a public API.
-- No compatibility layer for arbitrary older toolkit internals. Compatibility is
-  limited to preserving current TTS behavior for consumers that do not provide a
+- No compatibility layer for older toolkit internals. Compatibility is limited
+  to preserving current TTS behavior for consumers that do not provide a
   resolver.
 
 ## Package And Export Ownership
 
-Owning package: `@pie-players/pie-assessment-toolkit`.
+Owning package: `@pie-players/pie-assessment-toolkit`, in
+`src/services/tts/highlight-target-resolver.ts`.
 
-Public type exports: the package root, `@pie-players/pie-assessment-toolkit`,
-exports all four types; no subpath was added (see
-[Resolved Decisions](#resolved-decisions)).
+Public type exports: the package root exports `TTSHighlightContext`,
+`TTSHighlightTargetResolver`, `TTSHighlightTargetResolverRuntime` and
+`TTSHighlightTargetResolverProvider`. There is no subpath, because the root is
+the narrowest existing public path and a `services/` subpath would publish a
+directory whose other contents are internal.
 
 Consuming packages or apps:
 
-- `@pie-players/pie-section-player` and section-player variants that create
-  toolkit regions and TTS tools.
-- `@pie-players/pie-tool-tts-inline` or the current inline TTS wiring package.
+- `@pie-players/pie-assessment-toolkit` (`<pie-item-scope>`) and
+  `@pie-players/pie-section-player` (`<pie-passage-shell>`), which carry a
+  host's resolver into the region scope context.
+- `@pie-players/pie-tool-tts-inline`, which installs the provider on the TTS
+  service.
 - `pie-qti`, as the first non-identity resolver consumer.
 - Future hosts with projected, virtualized, or shadow-DOM-backed visible text.
 
@@ -80,10 +81,7 @@ The resolver is runtime-only. It must not be placed in serialized tool config,
 `QtiSectionToolConfig.provider`, item models, sessions, assessment state, or
 published QTI data.
 
-## Proposed Contract
-
-The implementation should add a small resolver contract around browser-native
-highlight targets:
+## Contract
 
 ```ts
 export interface TTSHighlightContext {
@@ -106,108 +104,103 @@ export interface TTSHighlightTargetResolver {
     context: TTSHighlightContext,
   ): Array<Range | HTMLElement> | null | undefined;
 }
+
+export interface TTSHighlightTargetResolverRuntime {
+  context: TTSHighlightContext;
+  resolver?: TTSHighlightTargetResolver | null;
+}
+
+/** Read at every highlight; a throw counts as no resolver. */
+export type TTSHighlightTargetResolverProvider = () =>
+  | TTSHighlightTargetResolverRuntime
+  | null
+  | undefined;
 ```
 
-The preferred runtime ingress is `assessmentToolkitRegionScopeContext`, because
-it already represents the active section/tool DOM scope. If implementation
-inspection shows a different toolkit-owned runtime context is the established
-place for active tool scope, use that context and document the reason in the
-implementation PR.
+The identity fields come from the enclosing shell: `kind` is `"item"` or
+`"passage"`, and `itemId`, `canonicalItemId`, `contentKind` and `regionPolicy`
+mirror the `<pie-item-scope>` or `<pie-passage-shell>` properties of the same
+names (`regionPolicy` defaults to `"default"`).
 
-Resolver behavior:
+### Ingress
 
-- The resolver pipeline always runs. Its default implementation is identity:
-  word ranges return the native word `Range`, and sentence ranges return the
-  native sentence `Range[]`.
-- A host-provided resolver may override target selection for a word or sentence
-  before PIE Players paints it.
-- Missing host resolver means the default identity resolver is used.
-- Missing host resolver method means the default identity resolver is used for
-  that highlight kind.
-- Returning `undefined` or `null` means skip host remapping and continue with
-  the default identity target.
-- Throwing must fail open: catch the error, continue with the default identity
-  target, and avoid breaking TTS playback.
-- Returned targets must be validated enough to avoid painting detached or
-  obviously out-of-scope content.
-- Resolver lookup must be late-bound from the active runtime context so a
-  coordinator created before mount can see a resolver after `scopeElement`
-  becomes available or changes after rerender.
+`TTSService.setHighlightTargetResolverProvider(provider)` takes a provider and
+returns a disposer. The service calls the provider at every highlight, so a
+service constructed before mount sees a resolver that appears later or changes
+on rerender. The provider hands over context and resolver together; the service
+reads no runtime context of its own. A disposer clears only the provider it
+installed, so an older disposer cannot remove a newer provider, and stopping
+playback leaves an installed provider in place.
+
+Custom-element hosts set the `ttsHighlightTargetResolver` property on
+`<pie-item-scope>` or `<pie-passage-shell>`. The shell carries it into
+`assessmentToolkitRegionScopeContext`, and `pie-tool-tts-inline` installs a
+provider for each read that returns the scope's resolver with a context built
+from the scope element and the shell's identity. The tool disposes
+that provider when the read ends or the tool unmounts.
+
+### Resolution
+
+- The resolver pipeline always runs. Its default is identity: a word returns
+  its native `Range`, and a sentence returns its native `Range[]`.
+- A missing provider, a provider that returns `null` or throws, a missing
+  resolver, or a missing method for the highlight kind uses the identity
+  target.
+- A method that returns `null` or `undefined` keeps the identity target.
+- A method that throws fails open: the error is caught, the identity target is
+  painted, and playback continues.
+
+### Validation
+
+The scope is `context.scopeElement`, falling back to the content element being
+read; an absent scope accepts every target. A range is in scope when both of
+its boundary elements are inside the scope, including across shadow roots.
+
+- A word target that is out of scope, detached, or not a `Range` falls back to
+  its native range.
+- One sentence entry that is out of scope or neither a `Range` nor an
+  `HTMLElement` returns the whole set to native ranges, because a partially
+  remapped sentence paints two highlights for one utterance.
 
 ## Runtime Flow
 
-```mermaid
-flowchart LR
-  speechMark["TTS speech mark"] --> nativeRange["Native Range"]
-  nativeRange --> contextLookup["Late-bound runtime context lookup"]
-  contextLookup --> resolverPipeline["Resolver pipeline"]
-  resolverPipeline --> defaultResolver["Default identity resolver"]
-  resolverPipeline --> hostResolver["Optional host resolver"]
-  hostResolver -->|"valid remap"| visibleTarget["Visible Range or Element"]
-  hostResolver -->|"missing, null, invalid, or throws"| defaultResolver
-  defaultResolver --> nativeTarget["Native target"]
-  nativeTarget --> painter["PIE Players painter"]
-  visibleTarget --> painter
-  painter --> cleanup["PIE Players cleanup lifecycle"]
-```
+![Highlight target resolution: a TTS speech mark gives a native range, the late-bound region scope context is read at every highlight, and the resolver pipeline in TTSService runs an optional host resolver set on the item scope or passage shell; a valid remap inside the scope gives a visible Range or HTMLElement, and a missing, null, invalid or throwing resolver falls back to the default identity resolver; HighlightCoordinator paints either target and clears it on the next highlight, seek, stop, end or error](../img/design-tts-highlight-resolver.excalidraw.svg)
 
 PIE Players owns the full resolver, painter, and cleanup pipeline. The custom
 resolver overrides only target selection; it does not replace the default
 identity behavior, painting, or cleanup.
 
-## Painting And Cleanup Requirements
+## Painting And Cleanup
 
-PIE Players must support every target type allowed by the resolver contract:
+`HighlightCoordinator` paints every target type the contract allows, with no
+separate painter:
 
-- `Range` word and sentence targets use the existing range highlight path when
-  available.
-- `HTMLElement` sentence or block targets use toolkit-owned element marking and
-  cleanup.
-- If browser compatibility requires fallback overlays for a supported target,
-  those overlays are created and cleared by PIE Players.
+- `Range` targets paint through the CSS Custom Highlight API. Where the
+  Highlight API is unsupported, no highlight paints.
+- `HTMLElement` sentence targets are marked with
+  `data-pie-tts-sentence-element` and cleared on the same path as range
+  targets.
+- A sentence set mixing ranges and elements paints as ranges, each element
+  selected by its contents.
+- A range over replaced content escalates to an element target, since a range
+  highlight does not render there: SVG, images, canvas and `role="img"` for
+  words and sentences, plus `math` and `mjx-container` for sentences. Math words
+  are tracked per token in the highlight pipeline.
 
-Cleanup must run when:
+A painted target clears on the next highlight, on seek, and when playback
+stops, ends or errors. Section navigation in the assessment player stops TTS,
+which clears through the stop path. Unmounting the TTS tool disposes its
+provider without clearing a painted target, and a target that becomes invalid
+after it is painted stays until one of those triggers.
 
-- a word highlight advances;
-- sentence highlighting changes;
-- TTS stops, ends, or errors;
-- the TTS tool unmounts;
-- the active region scope changes;
-- the resolver target becomes invalid.
-
-`pie-qti` must not keep separate TTS overlay painters, mutate
-`ttsSentenceElementHighlights`, or maintain `__qtiSection*` highlight state
-after adopting this API.
-
-## Migration Requirements
-
-`pie-qti` should replace its current highlight monkey-patch with a
-`TTSHighlightTargetResolver` installed through runtime region context.
-
-The resolver may reuse existing QTI readable-projection and
-projection-to-visible mapping helpers, but QTI-specific logic must remain in
-`pie-qti`.
-
-After migration, `pie-qti` must not:
-
-- assign to `highlightCoordinator.highlightTTSWord`;
-- assign to `highlightCoordinator.highlightTTSSentence`;
-- assign to `highlightCoordinator.clearTTSWord`;
-- assign to `highlightCoordinator.clearTTS`;
-- access `(coordinator as any).highlightCoordinator`;
-- mutate `ttsSentenceElementHighlights`;
-- depend on `data-pie-qti-tts-word-range-fallback` as the acceptance signal.
-
-`pie-qti` must raise its minimum `@pie-players/*` dependency floor to the first
-fixed lockstep version that contains the resolver. If older packages can still
-be resolved through lockfiles or overrides during a transition, the downstream
-PR must either feature-detect the resolver temporarily or clearly document that
-the new version floor is required.
+A host that adopts the resolver keeps no TTS overlay painter of its own and does
+not touch `HighlightCoordinator` internals, `ttsSentenceElementHighlights` or
+any parallel highlight state.
 
 ## Compatibility
 
-This is an additive API. Consumers that do not provide a resolver must see the
-same TTS highlight behavior they have today.
+This is an additive API. Consumers that do not provide a resolver see the same
+TTS highlight behavior as before it.
 
 The resolver must not alter PIE element tag names, IDs, model IDs, session IDs,
 slots, `data-*`, `aria-*`, `pie-*`, `config-*`, or `context-*` attributes.
@@ -216,8 +209,7 @@ No persisted data migration is required because the resolver is runtime-only.
 
 ## Accessibility
 
-The implementation is accessibility-sensitive because TTS highlighting is a
-visible reading aid and may be used with other accommodations.
+TTS highlighting is a visible reading aid used alongside other accommodations.
 
 Acceptance criteria:
 
@@ -225,43 +217,39 @@ Acceptance criteria:
   expectations as current TTS highlights.
 - Highlight remapping must not obscure captions, transcripts, media controls,
   or essential item content.
-- TTS playback must continue when resolver logic fails.
+- TTS playback continues when resolver logic fails.
 - Keyboard and screen-reader operation of the TTS tool must not regress.
-- Manual review should cover at least one remapped-content scenario where the
-  spoken projection differs from visible content.
+- Manual review covers at least one remapped-content scenario where the spoken
+  projection differs from visible content.
 
 ## Test Plan
 
-Upstream PIE Players tests must cover:
+`packages/assessment-toolkit/tests/tts-service-highlight-target-resolver.test.ts`
+covers:
 
-- identity resolver behavior for existing word highlighting;
-- identity resolver behavior for existing sentence highlighting;
-- word resolver remapping from native `Range` to visible `Range`;
-- sentence resolver remapping from native `Range[]` to visible `HTMLElement`
-  blocks;
-- resolver errors falling open to native highlighting;
-- late-bound resolver lookup when `scopeElement` starts `null` and appears
-  after mount;
-- resolver updates after region rerender;
-- clearing on word advance, sentence change, stop/end/error, unmount, and scope
-  rerender.
+- the public types and a late-bound provider;
+- identity behavior for word and sentence highlighting;
+- a word spanning text nodes;
+- word remapping from a native `Range` to a visible `Range`;
+- sentence remapping from native `Range[]` to visible `HTMLElement` blocks,
+  including sentence tracking with word boundaries;
+- a throwing resolver failing open to native highlighting;
+- a detached range rejected to its native target;
+- the latest context read after a scope change;
+- an older disposer leaving a newer provider in place;
+- a host provider kept across an external stop.
 
-An upstream integration test should prove propagation through the public runtime
-surface:
+`packages/tool-tts-inline/tests/tool-tts-inline-run-owner.test.ts` covers the
+tool dropping its provider when another read takes over.
+
+The section-player Playwright spec `section-player-tts-ssml.spec.ts` proves
+propagation through the public runtime surface:
 
 ```text
-host runtime context -> toolbar/tool registration -> inline TTS wiring ->
+ttsHighlightTargetResolver on pie-item-scope / pie-passage-shell ->
+region scope context -> pie-tool-tts-inline setHighlightTargetResolverProvider ->
 TTS service/highlight coordinator -> painted highlight target
 ```
-
-Downstream `pie-qti` tests must cover:
-
-- visible TTS highlighting through the upstream resolver API;
-- no duplicate QTI fallback overlays;
-- no remaining private coordinator method replacement or private highlight
-  state mutation;
-- section-player unit, Svelte, and Playwright TTS tracking checks relevant to
-  the migrated code.
 
 Commands:
 
@@ -277,46 +265,9 @@ For Playwright-backed TTS checks, run outside the sandbox.
 
 ## Rollout And Release Notes
 
-- Changeset required: yes, because this adds public TypeScript/runtime surface.
-- Release bump: patch, following the repository lockstep release policy.
-- Release verification must cover all publishable `@pie-players/*` packages in
-  the fixed version set.
-- `pie-qti` migration should verify once against the published or locally packed
-  fixed version set, without local source linking.
-
-Release notes should describe this as an additive TTS highlight target resolver
-for projected or transformed content. They should not describe it as a
-QTI-specific API.
-
-## Resolved Decisions
-
-**The package root owns the types.** `@pie-players/pie-assessment-toolkit`
-re-exports all four from `index.ts`; no subpath was added, because the narrowest
-existing public path is the root and a `services/` subpath would publish a
-directory whose other contents are internal.
-
-**Ingress is a late-bound provider callback, not a runtime context read.**
-`TTSService.setHighlightTargetResolverProvider(provider)` takes a thunk
-returning `TTSHighlightTargetResolverRuntime` — context and resolver together —
-and returns its own disposer; the service calls it per highlight, so a
-coordinator constructed before mount sees a resolver that appears later or
-changes on rerender. `assessmentToolkitRegionScopeContext`, this PRD's preferred
-ingress, would have coupled resolver lookup to region scope while the provider
-owns the context it hands over. Custom-element hosts reach the same seam through
-the `ttsHighlightTargetResolver` property on `pie-item-scope` and
-`pie-passage-shell`, forwarded through toolkit context. When the provider throws
-or the context is absent, `scopeElement` falls back to the service's current
-content element.
-
-**Element targets are painted by `HighlightCoordinator`, not by a new painter.**
-The coordinator gained element marking and cleanup over
-`ttsSentenceElementHighlights`, so `Range` and `HTMLElement` sentence targets
-share one clearing path.
-
-**Validation is scope containment.** A target is accepted when both of its
-boundary elements sit inside `context.scopeElement`, falling back to the
-service's current content element; an absent scope accepts everything. A word
-target that fails falls back to its native range. One failing target in a
-sentence set rejects the whole set back to native ranges, because a partially
-remapped sentence paints two highlights for one utterance. Resolver throws fail
-open at both call sites.
+- Changeset required: yes, a patch under the repository's lockstep release
+  policy, because this adds public TypeScript and runtime surface.
+- Release notes describe this as an additive TTS highlight target resolver for
+  projected or transformed content, without QTI-specific framing.
+- `pie-qti` verifies its adoption against a published or locally packed fixed
+  version set, without local source linking.

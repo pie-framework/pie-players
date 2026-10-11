@@ -4,7 +4,7 @@
   854x480 slide-deck lesson on the water cycle, generated in this repository by
   [`../../../scripts/generate-timed-media-sample.mjs`](../../../scripts/generate-timed-media-sample.mjs)
   — a canvas animation recorded through `MediaRecorder`. No third-party content
-  and no licence to track.
+  and no license to track.
 
 ## Why a generated deck rather than real course footage
 
@@ -17,7 +17,7 @@ trust.
 
 Public-domain alternatives were built and compared before this one was chosen —
 NASA Goddard SVS 11054 (`Earth's Water Cycle`, narrated, with a real WebVTT
-caption file) and SVS 10884 (a global precipitation visualisation). Both are
+caption file) and SVS 10884 (a global precipitation visualization). Both are
 genuine course-grade material and both lost on the same point: nothing visible in
 the frame answers the cue's question, so the demo stops demonstrating the
 contract. The narrated NASA excerpt remains the right source for a later demo

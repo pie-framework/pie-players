@@ -4,48 +4,38 @@ Status: Accepted, 2026-08-15
 
 Owner: PIE Players maintainers
 
-Tracking: not tracked in an issue tracker by design. This PRD's `Status:` line is
-the record.
-
 Related architecture:
 
 - [Formative delivery before timed media](../adr/0001-formative-delivery-before-timed-media.md) — the sequencing decision this PRD implements
+- [Formative delivery language](../../CONTEXT.md#formative-delivery-language) — the glossary for Try, Feedback Reveal, Forced Reveal and Mastery
 - [Timed media section](../architecture/timed-media-section.md) — the first downstream consumer of Try state
 - [P0 shared contracts](../architecture/shared-contracts-p0.md)
 - [Score components and section outcomes](./shared-contracts/score-components-and-section-outcomes.md) — the wider projection this PRD partially satisfies
 - [Timed media section contract](./timed-media-section-contract.md) — cue gate conditions compose with the state defined here
 
+Integrator guide: [Formative delivery](../section-player/formative-delivery.md)
+in the section player README.
+
 ## Problem
 
-PIE can score an item in the browser and cannot deliver a formative item. The
-scoring half already ships: `scorePieItem(...)` in
+Before this contract, PIE could score an item in the browser and could not
+deliver one formatively. `scorePieItem(...)` in
 `packages/players-shared/src/pie/scoring.ts` calls each element controller's
 `outcome(model, session, env)` under `mode: "evaluate"`, and
-`pie-item-player.provideScore()` exposes that imperatively. What is missing is
-the delivery state around it — how many times a learner may submit one item, when
-its feedback becomes visible, and how a section reports how much was mastered.
+`pie-item-player.provideScore()` exposes that imperatively. The delivery state
+around it was missing, and all of it belongs to the section layer:
 
-**Scope, 2026-09-27.** Browser scoring needs an unhosted player. Since adc3da63
-(2026-09-25), a hosted player — `hosted` set to `true`, or an enabled
-`backend.delivery` with `hosted` unset — runs no element controllers, so
-`provideScore()` returns `undefined` for every model and every Try lands on
-`"unknown"`.
-
-The three gaps are all at the section layer:
-
-- **No Try state.** `TestAttemptItemSession` carries `attemptCount`, but that
-  counts distinct `pieSessionId` values — a session-realization counter that
-  increments when the underlying PIE session is replaced. Nothing records that a
+- **Try state.** `TestAttemptItemSession.attemptCount` counts distinct
+  `pieSessionId` values, a session-realization counter. Nothing recorded that a
   learner submitted an answer for checking, or what came back.
-- **No per-item mode.** `PieSectionPlayerBaseElement` derives one section-wide
-  `env` and hands the same object to every card. Revealing feedback on one item
-  while its neighbours stay editable has no seam.
-- **No mastery rollup.** `SectionController` rolls up completion and stops there,
-  which is correct — completion is not correctness — and leaves correctness
-  unrolled.
+- **A per-item mode.** `PieSectionPlayerBaseElement` derived one section-wide
+  `env` and handed it to every card, so feedback could not be revealed on one
+  item while its neighbors stayed editable.
+- **A mastery rollup.** `SectionController` rolled up completion, which is
+  distinct from correctness, and nothing rolled up correctness.
 
-Without this contract every host that wants check-answer delivery reimplements
-try counting, feedback gating, and rollup against internal session shapes.
+Every host that wanted check-answer delivery reimplemented try counting,
+feedback gating and rollup against internal session shapes.
 
 ## Goals
 
@@ -65,21 +55,24 @@ try counting, feedback gating, and rollup against internal session shapes.
 
 - No branching or adaptive item selection. Making the next thing shown depend on
   correctness is [`branching-and-process-events`](./shared-contracts/branching-and-process-events.md)
-  ground; Try state is its prerequisite and is deliberately shipped first and
-  alone.
+  ground; Try state is its prerequisite and shipped first and alone.
 - No new evaluation machinery. `provideScore()` and `scorePieItem(...)` are
   consumed unchanged; neither is replaced, wrapped, or re-implemented.
 - No server-authoritative scoring, durable persistence, gradebook, or reporting.
 - No manual scoring, rubric review, or scorer identity.
-- No assessment-level mastery across sections. `assessment-player` is untouched.
+- No assessment-level mastery across sections; `assessment-player` is untouched.
+  The cross-section rollup is listed, with the two denominator rules it
+  inherits, in [framework-completing work](../architecture/framework-completing-work.md#classification).
 - No per-element Try state. A Try is item-scoped even when an item holds several
   interactions.
 - No feedback UI. PIE selects the render mode; what an element draws in that mode
   is the element's contract.
-- No timed-media cue gating. This PRD is the substrate that one is built on.
+- No timed-media cue gating. The
+  [timed media section contract](./timed-media-section-contract.md) builds its
+  correctness gates on this state.
 - No QTI conformance claim, and no adapter. The vocabulary is mapped to QTI 3
-  below so `pie-qti` can consume it losslessly; that is not the same as
-  conforming.
+  below so [pie-qti](https://github.com/pie-framework/pie-qti) can consume it
+  losslessly; that is not the same as conforming.
 
 ## Package And Export Ownership
 
@@ -97,8 +90,10 @@ try counting, feedback gating, and rollup against internal session shapes.
   completion would put two rollups over one item set in two packages.
   `@pie-players/pie-assessment-toolkit` owns only the contract interface and the
   event route, matching how it already treats item sessions.
-- Consuming packages or apps: `section-player`, `assessment-toolkit`,
-  `apps/section-demos`, future timed-media layouts, `pie-qti` adapters.
+- Consuming packages or apps: `section-player`, including the timed-media cue
+  gates; `assessment-toolkit`; `apps/section-demos`. A
+  [pie-qti](https://github.com/pie-framework/pie-qti) adapter is the intended
+  standards consumer.
 - Runtime environment: the `formative` module is pure and Node-safe — no DOM, no
   timers, no element registry. Everything that touches the DOM stays in
   `section-player`.
@@ -108,6 +103,8 @@ QTI adapter can import without pulling in a player.
 
 ## Contract Shape
 
+Terms follow the [formative delivery glossary](../../CONTEXT.md#formative-delivery-language).
+
 ### Authored policy
 
 ```ts
@@ -116,7 +113,7 @@ export type FormativeFeedbackReveal = "none" | "correctness" | "solution";
 export type FormativeRevealTiming = "on-try" | "on-final-try";
 
 export interface FormativeDeliveryPolicy {
-  /** Absent or `false` leaves delivery exactly as it is today. */
+  /** Absent or `false`: no control, no projection, no state. */
   enabled?: boolean;
   /** Default 1. `"unlimited"` for practice. */
   maxTries?: FormativeTryLimit;
@@ -197,7 +194,14 @@ already documents in [`../item-player/scoring-and-rubrics.md`](../item-player/sc
 `correctness` is `"correct"` at full credit, `"incorrect"` at zero, `"partial"`
 between, `"unknown"` when nothing scored. An item holding a rubric element, or
 any element whose controller has no `outcome`, lands on `"unknown"` — the same
-condition the API path reports as "no manual score available".
+condition the API path reports as "no manual score available". Correctness is
+derived from element controllers, which own it, and never authored: no
+`correctResponse` field exists anywhere in this contract.
+
+Browser scoring needs an unhosted player. A hosted player (`hosted: true`, or an
+enabled `backend.delivery` with `hosted` unset) loads no element controllers, so
+`provideScore()` returns an empty slot for every model and every Try records
+`"unknown"`.
 
 `elementOutcomes` retains the per-element outcomes verbatim, for a host rendering
 its own feedback rather than the element's evaluate-mode rendering. Empty slots
@@ -225,6 +229,10 @@ that item alone:
 | `"none"` | none | the Try is recorded, nothing is revealed |
 | `"correctness"` | `mode: "evaluate"`, `role: "student"` | the element renders its own correctness feedback |
 | `"solution"` | `mode: "evaluate"`, `role: "instructor"` | the element additionally renders the authored correct response |
+
+The section env stays section-wide and the projection is per item, derived from
+formative state at the one point item params are built. A per-item env in the
+runtime config would make every layout carry an env-resolution order.
 
 PIE guarantees the mode and role it projects, not what a given element draws in
 them. `env.role` has never been an authorization boundary — it selects a
@@ -262,7 +270,7 @@ package, alongside the other card strings.
 export interface FormativeMasteryRollup {
   version: 1;
   totalItems: number;
-  /** Items with a derivable outcome. `"unknown"` items are excluded. */
+  /** Total minus items whose last outcome was `"unknown"`; an untried item counts. */
   scorableItems: number;
   masteredItems: number;
   triedItems: number;
@@ -273,8 +281,10 @@ export interface FormativeMasteryRollup {
 ```
 
 `complete` is `masteredItems === scorableItems && scorableItems > 0`. An item
-that cannot be auto-scored is excluded from the denominator rather than counted
-wrong, which keeps this rollup from asserting correctness it cannot know.
+whose last outcome is `"unknown"` is excluded from the denominator rather than
+counted wrong, because counting a rubric item as incorrect would report a false
+negative to a gradebook. An untried item stays in the denominator, since nothing
+yet says it cannot be scored, so one correct answer does not complete a section.
 `scorableItems === 0` yields `complete: false`, never vacuous mastery.
 
 ### Controller surface
@@ -324,12 +334,11 @@ The projection joins `SectionCompositionModel`, so it reaches layouts through
 the `composition-changed` republish the runtime already performs on every
 controller event. No new host-facing event channel is added.
 
-One thing that republish needed: the toolkit coalesces composition emits behind a
-revision key over section id, current item, renderables and item sessions.
-Recording a Try changes none of those, so formative state joins that key.
-Without it the controller holds correct state and the card never learns its
-feedback was revealed — the failure is invisible to every unit test, which is why
-the browser coverage below is not optional.
+The toolkit coalesces composition emits behind a revision key over section id,
+current item, renderables and item sessions. Recording a Try changes none of
+those, so formative state is part of the key. Without it the controller holds
+correct state and the card never learns its feedback was revealed, a failure no
+unit test observes; the browser coverage in the Test Plan pins it.
 
 Three controller events join the existing union:
 
@@ -350,8 +359,11 @@ emits it: showing an answer is not answering.
 
 ### Learner action route
 
-The card owns the control and the item player node, so it is the only place that
-can call `provideScore()`. It reports the result rather than interpreting it:
+The control lives in the item card. A toolkit capability cannot reach
+`provideScore()` on the item player without a new bridge, and formative delivery
+is delivery semantics rather than an accommodation or tool. The card owns the
+control and the item player node, so it is the only place that can call
+`provideScore()`. It reports the result rather than interpreting it:
 
 ```
 card → pie-formative-action (cross-boundary DOM event)
@@ -367,9 +379,9 @@ take; nothing new is invented for it.
 
 ## Compatibility
 
-Additive throughout. A section without `formative` renders exactly as it does
-today: the resolved policy is disabled, no projection is produced, no control is
-rendered, and no env override is applied.
+Additive throughout. A section without `formative` delivers unchanged: the
+resolved policy is disabled, no projection is produced, no control is rendered,
+and no env projection is applied.
 
 This PRD does not change:
 
@@ -439,30 +451,31 @@ slice beside valid item sessions.
 
 The control is the only new user-facing surface, and it must satisfy WCAG 2.2 AA:
 
-- native `<button>`, in tab order, labelled with its action rather than the item;
+- native `<button>`, in tab order, labeled with its action rather than the item;
 - the outcome is announced through a polite live region that is present in the
   DOM before it has content, so the announcement is not lost (4.1.3);
 - focus stays on the control across a check. Feedback appears above it and
   moving focus there would steal it mid-task; the live region carries the
   result instead. The control is therefore never disabled while a check is in
-  flight: disabling the focused element moves focus to the document body, so a
-  keyboard learner who pressed Enter had to tab back to a control whose label had
-  changed under them. `aria-busy` states the same thing without leaving the
+  flight: disabling the focused element moves focus to the document body, and a
+  keyboard learner who pressed Enter would have to tab back to a control whose
+  label had changed. `aria-busy` states the same thing without leaving the
   accessibility tree, and re-entry is dropped by the handler and by the reducer;
-- correctness is never colour alone — the announcement and the visible status
+- correctness is never color alone — the announcement and the visible status
   both carry text (1.4.1);
 - when tries are spent the control is removed rather than disabled, so no
   focusable element is left without an accessible explanation;
 - the control is at least 24×24 CSS pixels (2.5.8) and paints only from `--pie-*`
-  tokens, so it follows every base theme and colour scheme;
+  tokens, so it follows every base theme and color scheme;
 - reveal changes the item to read-only through `mode: "evaluate"`. That is an
   element-owned rendering, and an element that leaves inputs enabled in evaluate
   mode is an element defect, not something the section compensates for.
 
 ## Standards Or Adapter Impact
 
-The vocabulary is deliberately mappable onto QTI 3 so `pie-qti` inherits it
-rather than reinterpreting it:
+The vocabulary is mappable onto QTI 3 so
+[pie-qti](https://github.com/pie-framework/pie-qti) inherits it rather than
+reinterpreting it:
 
 | PIE | QTI 3 |
 | --- | --- |
@@ -480,7 +493,7 @@ unambiguous and maps cleanly.
 
 QTI's `allow-comment`, `allow-skipping`, and `validate-responses` are not
 represented. There is no candidate-comment surface, no skip gate, and no
-response-validation step to honour them with, and declaring fields PIE ignores
+response-validation step to honor them with, and declaring fields PIE ignores
 is worse than omitting them.
 
 No conformance is claimed. The mapping table is for the adapter's benefit; the
@@ -504,74 +517,32 @@ adapter and its validation suite do not exist.
 - `SectionController`: try recorded and event emitted, mastery event on change
   only, projection present in the composition model, disabled sections producing
   no projection.
-- View state: per-item env override applied to the revealed item only, section
-  env unchanged for its neighbours, override withdrawn on retry.
+- View state: per-item env projection applied to the revealed item only, section
+  env unchanged for its neighbors, projection withdrawn on retry.
 - Browser, against a real item player and the internal event route: the control
   renders only where the policy is enabled; a check reveals correctness on that
-  item alone while its neighbours stay at the section env; a retry reopens it; a
+  item alone while its neighbors stay at the section env; a retry reopens it; a
   single-try item loses its control; `feedback: "solution"` projects the
   instructor role; `on-final-try` records a Try and reveals nothing until the
   last; the status region is polite and present before it has content; the
   control is operable by keyboard and keeps focus across a check; the mastery
   rollup reflects the Tries taken.
 
-Commands:
+The pure module is covered by `packages/players-shared/tests/formative-*.test.ts`,
+the controller and view state by `section-controller-formative.test.ts` and
+`section-player-formative-env.test.ts` in `packages/section-player/tests/`, and
+the browser cases by `section-player-formative-delivery.spec.ts` beside them.
+Run `bun run typecheck`, `bun run test` and the
+[high-value checks](../../AGENTS.md#high-value-checks); Playwright-backed tests
+run outside the sandbox
+([Playwright and sandboxed execution](../../AGENTS.md#playwright-and-sandboxed-execution)).
 
-```sh
-bun run typecheck
-bun run test
-bun run check:source-exports
-bun run check:consumer-boundaries
-bun run check:custom-elements
-bun run check:capability-neutrality
-bun run check:player-tool-boundaries
-```
+## Rollout And Release Notes
 
-Playwright-backed coverage runs outside the sandbox.
-
-## Rollout And Release Record
-
-Accepted on 2026-08-15. The change was additive and gated behind
-`formative.enabled`; existing content remained unaffected. The implementation
-included the required package changeset, public documentation, demo coverage,
-and persisted-session coverage.
-
-## Resolved Decisions
-
-- **Try, not attempt.** See the QTI mapping above for why.
-- **Section env stays section-wide; the override is per item.** The alternative
-  — a per-item env in the runtime config — would make every layout carry an
-  env-resolution order. The override is derived from formative state at the one
-  point item params are built.
-- **Correctness is derived, never authored.** No `correctResponse` field is
-  added anywhere. Correctness comes from element controllers, which already own
-  it.
-- **Mastery excludes what it cannot score.** Counting a rubric item as incorrect
-  would report a false negative to a gradebook.
-- **The control lives in the item card, not in a capability.** A capability
-  cannot reach `provideScore()` on the item player without a new bridge, and
-  formative delivery is delivery semantics rather than an accommodation or tool.
-
-## Sequenced Next
-
-**Mastery reaches `assessment-player` as a cross-section rollup**, and it does
-not wait for [`score-components-and-section-outcomes`](./shared-contracts/score-components-and-section-outcomes.md).
-Summing section rollups needs no score authority, no provenance and no manual
-state, which are that PRD's hard open questions; blocking on them would trade a
-week of arithmetic for a Draft.
-
-`AssessmentSession` has one home, `@pie-players/pie-players-shared/types`, so a
-mastery rollup is added there (see
-[framework-completing work](../architecture/framework-completing-work.md)).
-`assessment-player` also has no data-driven renderer selection and no consumer,
-so a cross-section rollup lands there with no host to validate it against, which
-does not defer it.
-
-Two things this contract already settled that the assessment rollup must not
-re-decide: `unknown` items leave the denominator rather than scoring zero, and
-`scorableItems === 0` is never vacuously complete. A cross-section rollup that
-sums `masteredItems` and `scorableItems` inherits both.
+Additive and gated behind `formative.enabled`, so existing content is
+unaffected and no host migrates. Integrator usage is in the section player's
+[Formative delivery](../section-player/formative-delivery.md).
 
 ## Open Questions
 
-None outstanding.
+None.

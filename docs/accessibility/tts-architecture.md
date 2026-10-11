@@ -2,154 +2,128 @@
 
 <!-- markdownlint-disable MD022 MD031 MD032 MD036 MD040 -->
 
-## Overview
+This document covers the text-to-speech (TTS) packages: where each runs, what it
+depends on, how the providers compare and how word highlighting aligns speech
+with the page. It is for host integrators choosing a provider and for
+contributors working across the TTS packages. The
+[TTS deep dive](./tts-deep-dive.md) owns the runtime flow, from the toolbar
+button to the highlighted word; each package README owns that package's API and
+setup.
 
-The PIE Players TTS (Text-to-Speech) system is layered: a zero-dependency interface package, a browser provider built into the toolkit, and pluggable server-backed providers.
-
-See also:
-
-- [`./tts-deep-dive.md`](./tts-deep-dive.md) for a full runtime walkthrough with
-  diagrams
-- [`../wcag/readme.md`](../wcag/readme.md) for the WCAG reference library
-- [`../wcag/wcag-2.2-aa-baseline.md`](../wcag/wcag-2.2-aa-baseline.md) for the criteria most likely to affect TTS work
-- [`../wcag/evaluation-method.md`](../wcag/evaluation-method.md) for evaluation guidance
-
-This document is the source of truth for cross-package TTS architecture. Package
-READMEs document package-specific APIs, configuration, and provider setup.
+For accessibility review, the [WCAG reference library](../wcag/readme.md) lists
+the [criteria most likely to affect TTS work](../wcag/wcag-2.2-aa-baseline.md)
+and the [evaluation method](../wcag/evaluation-method.md).
 
 ## Package Structure
 
-### 1. @pie-players/pie-tts
+TTS is layered: a dependency-free contract package, a browser provider built
+into the toolkit, and server-backed providers a host adds.
 
-**Purpose:** Core TTS interfaces and types - Pure TypeScript with **zero dependencies**.
+### @pie-players/pie-tts
 
-**Contains:**
-- `ITTSProvider` - Provider factory interface
-- `ITTSProviderImplementation` - Playback implementation interface
-- `TTSProviderCapabilities` - Feature support descriptor
-- `TTSConfig` - Configuration types
+The contracts a provider implements, in pure TypeScript with no dependencies and
+no UI framework ([README](../../packages/tts/README.md)):
 
-**Dependencies:** None
+- `ITTSProvider`: the provider factory
+- `ITTSProviderImplementation`: playback
+- `TTSProviderCapabilities`: the features a provider supports
+- `TTSConfig`: configuration
 
-**Use Case:**
-- Building custom TTS providers
-- Type-safe TTS integration
-- Framework-agnostic implementations
+A custom provider builds on this package alone.
 
-### 2. @pie-players/pie-assessment-toolkit
+### @pie-players/pie-assessment-toolkit
 
-**Purpose:** Assessment runtime with built-in browser TTS fallback.
+The assessment runtime, with the browser provider built in
+([README](../../packages/assessment-toolkit/README.md)):
 
-**Contains:**
-- `TTSService` - Main TTS orchestrator (state + provider wiring)
-- `services/tts/text-processing.ts` - provider-agnostic visible-text extraction, normalization, and DOM mapping
-- `BrowserTTSProvider` - Web Speech API adapter (always available)
-- `AccessibilityCatalogResolver` - QTI 3.0 catalog management
-- `SSMLExtractor` - Utility for converting embedded `<speak>` markup into catalogs
-- Playback state management
+- `TTSService`: resolves what to speak, owns playback state, calls the provider
+  and coordinates highlighting through `HighlightCoordinator`
+- `services/tts/text-processing.ts`: provider-neutral visible-text extraction,
+  normalization and DOM mapping
+- `BrowserTTSProvider`: the Web Speech API adapter
+- `AccessibilityCatalogResolver`: looks up accessibility catalogs, including
+  authored spoken alternatives, by the content that owns them
+- `SSMLExtractor`: converts embedded `<speak>` markup into catalogs
 
-**Dependencies:**
-- `@pie-players/pie-tts` (provider interfaces)
-- `@pie-players/pie-players-shared` (UI components, i18n)
-- `@pie-players/pie-calculator` and `@pie-players/pie-context`
-- `speech-rule-engine` (MathML speech)
+It re-exports the provider types from `@pie-players/pie-tts` (`ITTSProvider`,
+`ITTSProviderImplementation`, `TTSConfig`, `TTSSpeechSegment` and
+`TTSProviderCapabilities`), speaks authored SSML from accessibility catalogs
+that visible markup references with `data-catalog-idref`, and generates math
+speech from rendered MathML with Speech Rule Engine. Its TTS dependencies are
+`@pie-players/pie-tts`, `@pie-players/pie-players-shared` (UI components and
+i18n) and `speech-rule-engine`.
 
-**TTS Features:**
-- Re-exports the provider types from `tts`: `ITTSProvider`, `ITTSProviderImplementation`, `TTSConfig`, `TTSSpeechSegment` and `TTSProviderCapabilities`
-- Includes `BrowserTTSProvider` as the default fallback, available wherever the browser implements the Speech Synthesis API
-- Integrates with QTI 3.0 accessibility catalogs
-- **Authored SSML/catalog support** through accessibility catalogs and
-  `data-catalog-idref`
-- **Automatic math speech generation** from rendered MathML via Speech Rule Engine
-- Coordinates with HighlightCoordinator for word highlighting
+### Server-Backed TTS
 
-### 3. Server-Side TTS Architecture
-
-The server-side architecture splits TTS into server-side and client-side components for better security and reliability.
+Server-backed TTS splits synthesis between a server the host runs and a browser
+client, so provider credentials stay on the server.
 
 #### Server-Side Packages (Node.js)
 
-**@pie-players/tts-server-core**
-- Core interfaces for server-side providers
-- Speech marks utilities and types
-- Caching interface
-- Base provider class
-
-**@pie-players/tts-server-polly**
-- AWS Polly implementation for Node.js
-- Native speech marks support (millisecond-precise)
-- Parallel audio + marks requests
-- SSML (Polly's supported subset)
-
-**@pie-players/tts-server-google**
-- Google Cloud Text-to-Speech implementation for Node.js
-- Speech marks via SSML mark injection and timepoints
-- Supports Google authentication modes documented in the package README
-
-**@pie-players/tts-server-sc**
-- SchoolCity-backed reference implementation for custom server-side providers
-- Normalizes word marks returned by the SchoolCity service
-- Includes asset URL allow-listing and SSRF defenses
+- [`@pie-players/tts-server-core`](../../packages/tts-server-core/README.md):
+  the server provider interfaces, speech-mark utilities and types, a caching
+  interface and the `BaseTTSProvider` class the adapters extend.
+- [`@pie-players/tts-server-polly`](../../packages/tts-server-polly/README.md):
+  AWS Polly. Native word speech marks at millisecond precision, audio and marks
+  requested in parallel, and Polly's SSML subset.
+- [`@pie-players/tts-server-google`](../../packages/tts-server-google/README.md):
+  Google Cloud Text-to-Speech. Speech marks from SSML mark injection and
+  timepoints; the README covers the authentication modes.
+- [`@pie-players/tts-server-sc`](../../packages/tts-server-sc/README.md): the SC
+  adapter, a reference adapter for a custom transport whose service returns
+  audio and speech-mark URLs. It normalizes the word marks the service returns
+  and allow-lists asset URLs against SSRF.
 
 #### Client-Side Package (Browser)
 
-**@pie-players/tts-client-server**
-- Calls server API for synthesis
-- Supports transport adapters (`pie`, `custom`)
-- Receives inline audio/marks or URL-based assets, then normalizes playback
-- 50ms polling-based highlighting
-- HTMLAudioElement playback
+[`@pie-players/tts-client-server`](../../packages/tts-client-server/README.md)
+provides `ServerTTSProvider`. It posts text to the host's synthesis API over the
+`pie` or `custom` transport, receives inline or URL-based audio and speech marks,
+plays the audio in an `HTMLAudioElement` and polls playback every 50ms to report
+the current word.
 
-#### Integration
+A host API route connects the client to a server adapter. With the `pie`
+transport:
 
-SvelteKit API routes connect the pieces:
 ```
 Browser → ServerTTSProvider → /api/tts/synthesize → PollyServerProvider → AWS Polly
 ```
 
-Custom backend integrations can use:
+With the `custom` transport:
+
 ```
 Browser → ServerTTSProvider (custom transport) → Custom root POST API
 ```
 
-See [Server-Side TTS Integration Guide](../../packages/tts-server-polly/examples/INTEGRATION-GUIDE.md) for setup instructions.
+The
+[`@pie-players/tts-server-polly` integration guide](../../packages/tts-server-polly/examples/INTEGRATION-GUIDE.md)
+builds SvelteKit routes for Polly.
 
 ## Architecture Diagram
 
-```
-┌─────────────────────────────────────────────────────────┐
-│  @pie-players/pie-tts                              │
-│  (Pure TypeScript interfaces - no dependencies)         │
-│                                                           │
-│  - ITTSProvider                                          │
-│  - ITTSProviderImplementation                           │
-│  - TTSProviderCapabilities                              │
-│  - TTSConfig                                             │
-└─────────────────────────────────────────────────────────┘
-                           ▲
-                           │ depends on
-          ┌────────────────┴────────────────┐
-          │                                  │
-┌─────────┴─────────────────┐  ┌────────────┴───────────────┐
-│ assessment-toolkit        │  │ @pie-players/tts-client-server │
-│                           │  │                             │
-│ - TTSService              │  │ - ServerTTSProvider         │
-│ - BrowserTTSProvider      │  │ - Server API integration    │
-│   (built-in fallback)     │  │ - Speech-mark highlighting  │
-│ - Catalog integration     │  │ - Server-side SSML          │
-│ - State management        │  │                             │
-└───────────────────────────┘  └─────────────────────────────┘
-          │                                  │
-          └────────────────┬─────────────────┘
-                           ▼
-                    Application Code
-```
+![TTS packages by where they run: in the browser the default tool loaders import the inline TTS tool and ServerTTSProvider, the tool depends on the assessment toolkit, and the toolkit and ServerTTSProvider depend on the pie-tts contracts; on the host-run TTS server the Polly, Google Cloud and SC adapters build on tts-server-core, whose speech-mark helpers ServerTTSProvider also uses](../img/tts-packages.excalidraw.svg)
 
-## Fallback Strategy
+## Provider Selection and Fallback
 
-The assessment toolkit **always includes** `BrowserTTSProvider` as a built-in fallback. It needs no server and no configuration. It fails to initialize where the browser has no Speech Synthesis API, and it speaks only in the voices the device has installed.
+Hosts configure TTS through the toolkit's `tools.providers.textToSpeech`:
+`backend: 'browser'`, or `backend: 'server'` with `serverProvider` `polly`,
+`google` or `custom`. The
+[minimal server-backed config](../../packages/assessment-toolkit/README.md#minimal-server-backed-tts-config)
+defaults `apiEndpoint` to `/api/tts` and derives the transport from
+`serverProvider`, so host config stays small.
 
-### Recommended Pattern
+The toolkit always includes `BrowserTTSProvider`. It needs no server and no
+configuration. It fails to initialize where the browser has no Speech Synthesis
+API, and it speaks only in the voices the device has installed.
+
+The toolkit coordinator owns fallback: when a server-backed provider fails to
+initialize, it re-initializes TTS on the browser backend and reports
+`pie-tool-init-fallback`
+([Browser Fallback](../../packages/assessment-toolkit/README.md#browser-fallback)).
+A read that fails after initialization rejects without switching provider.
+
+A host that drives `TTSService` without the coordinator initializes the provider
+itself and owns fallback:
 
 ```typescript
 import { TTSService } from '@pie-players/pie-assessment-toolkit';
@@ -160,9 +134,7 @@ import {
 
 const ttsService = new TTSService();
 
-// Server-side TTS (preferred for production). `initialize` rejects when the
-// provider fails to start; falling back to browser speech is the toolkit
-// coordinator's job.
+// `initialize` rejects when the provider fails to start.
 const serverConfig: ServerTTSProviderConfig = {
   apiEndpoint: '/api/tts',
   provider: 'polly',
@@ -171,87 +143,39 @@ const serverConfig: ServerTTSProviderConfig = {
 await ttsService.initialize(new ServerTTSProvider(), serverConfig);
 ```
 
-When using toolkit `tools.providers.textToSpeech` configuration (instead of initializing
-`ServerTTSProvider` directly), server-backed defaults can be applied for common
-cases (for example `apiEndpoint: '/api/tts'` and `transportMode: 'pie'`), so
-host config can stay minimal.
-
-## Design Principles
-
-### 1. **No UI Dependencies in Core**
-The `tts` package has **zero dependencies** and no UI framework requirements. This ensures:
-- Framework-agnostic implementations
-- Minimal bundle size
-- Easy testing
-- Reusability across different contexts
-
-### 2. **Pluggable Architecture**
-All TTS providers implement the same interfaces, allowing:
-- Runtime provider switching
-- Graceful fallbacks
-- Custom provider implementations
-- A/B testing different providers
-
-### 3. **Built-in Fallback**
-Browser TTS is built into the toolkit, giving:
-- Offline capability, with no server
-- Zero additional configuration
-- Immediate availability during development
-
-### 4. **Optional High-Quality Providers**
-Premium providers like Polly are separate packages:
-- Pay for what you use (cost consideration)
-- Smaller bundles for basic use cases
-- Easy to add/remove based on requirements
-- Independent versioning and updates
-
 ## Provider Comparison
 
-| Feature | Browser TTS | Server TTS (Polly) |
-| ------- | ----------- | ------------------ |
-| **Highlighting** | Sentence-level by default | Word-level from speech marks |
-| **SSML** | None: tags are stripped and the text is read plainly | Polly's supported subset |
-| **Voices** | Those installed on the device | Polly's, the same on every device |
-| **Server** | None | A synthesis endpoint the host runs; credentials stay on it |
-| **Text per request** | No limit declared | 3000 characters; the toolkit splits longer text |
-| **Requests per read** | None | Two SynthesizeSpeech calls (audio and speech marks) |
+| Feature | Browser TTS | Server, Polly | Server, Google Cloud | Server, custom transport (SC adapter) |
+| ------- | ----------- | ------------- | -------------------- | ------------------------------------- |
+| **Highlighting** | Sentence-level by default | Word-level from speech marks | Word-level from SSML marks and timepoints | Word-level from the speech marks the service returns |
+| **Generated math** | Plain text | SSML | SSML | Plain text |
+| **Authored SSML** | Voiced as its spoken text | Polly's supported subset | Google's SSML | Passed to the service |
+| **Voices** | Those installed on the device | Polly's, the same on every device | Google's, the same on every device | The service's |
+| **Server** | None | A synthesis endpoint the host runs; credentials stay on it | Same | Same |
+| **Text per request** | No limit declared | 3000 characters; the toolkit splits longer text | Same | Same |
+| **Requests per read** | None | Two SynthesizeSpeech calls (audio and speech marks) | One SynthesizeSpeech call | One synthesis call, then fetches of the returned audio and speech-mark URLs |
+
+On every server column, a response without speech marks highlights its
+sentence. The [TTS authoring guide](./tts-authoring-guide.md#ssml-provider-support)
+owns the per-provider SSML detail.
 
 ## Word Highlighting Architecture
 
-### Critical Implementation Details
+### Text Alignment
 
-**IMPORTANT:** Word highlighting requires precise text alignment between:
-1. The text sent to TTS (spoken text)
-2. The text in the DOM (visual text)
-3. The speech marks returned by the provider
-
-#### Text Normalization Requirements
-
-All three texts MUST be normalized identically:
+Word highlighting rests on one invariant: the spoken text, the visible DOM text
+and the provider's speech-mark offsets share one coordinate system. `TTSService`
+normalizes the spoken text and the visible text the same way:
 
 ```typescript
 const normalizedText = rawText.trim().replace(/\s+/g, ' ');
 ```
 
-This normalization:
+Normalization trims leading and trailing whitespace and collapses each run of
+spaces, tabs and newlines to one space, so a character position in the spoken
+text is the same position in the visible text.
 
-- Removes leading/trailing whitespace
-- Collapses multiple spaces/tabs/newlines into single spaces
-- Ensures character positions align between spoken text and DOM
-
-Math content is a special case. When PIE finds MathML in the read target, it converts that MathML to natural-language speech before provider playback and builds a math alignment plan for speech-mark highlighting. The alignment plan tokenizes the visible MathML structure, tokenizes the spoken/SSML source, normalizes provider boundary offsets, and only emits word-level targets when the boundary maps to a visible MathML token with very high local confidence.
-
-When that confidence is not available, PIE deliberately falls back to the smallest reliable visible target:
-
-1. exact token/operator target when mapping is safe
-2. MathML subtree or full formula target when token mapping is ambiguous
-3. surrounding TTS region when no smaller target is reliable
-
-This conservative fallback is intentional. A full formula highlight is preferable to a visibly wrong word highlight, stale highlight, or lagging boundary. Provider speech marks are treated as evidence, not as truth by assumption, because Polly/SchoolCity/browser boundaries may report raw SSML offsets, normalized spoken-text offsets, or provider-specific mark positions.
-
-#### Why Normalization is Critical
-
-JSON content often contains formatting whitespace:
+Item JSON often carries formatting whitespace:
 
 ```json
 {
@@ -259,17 +183,33 @@ JSON content often contains formatting whitespace:
 }
 ```
 
-Without normalization:
-- **Spoken text**: 100 chars (normalized by TTS provider)
-- **DOM text**: 150 chars (includes whitespace)
-- **Result**: Speech marks at position 50 highlight wrong word
+Unnormalized, that prompt is 150 DOM characters against 100 spoken ones, and a
+speech mark at position 50 highlights the wrong word. Normalized, both are 100
+characters and the marks align.
 
-With normalization:
-- **Spoken text**: 100 chars (normalized)
-- **DOM text**: 100 chars (normalized)
-- **Result**: Speech marks align perfectly
+### Math Alignment
 
-#### Implementation in TTSService
+When PIE finds MathML in the read target, it converts the MathML to
+natural-language speech before playback and builds a math alignment plan for
+speech-mark highlighting. The plan tokenizes the visible MathML structure and
+the spoken or SSML source, normalizes provider boundary offsets, and emits a
+word-level target only when a boundary maps to a visible MathML token with very
+high local confidence.
+
+Without that confidence, PIE falls back to the smallest reliable visible target:
+
+1. the exact token or operator, when the mapping is safe
+2. the MathML subtree or whole formula, when token mapping is ambiguous
+3. the surrounding TTS region, when no smaller target is reliable
+
+A whole-formula highlight is preferable to a visibly wrong, stale or lagging
+word highlight. Speech marks are evidence the plan checks, because Polly, the SC
+adapter and the browser may report raw SSML offsets, normalized spoken-text
+offsets or provider-specific mark positions. The deep dive's
+[generated math walkthrough](./tts-deep-dive.md#generated-math-walkthrough)
+covers when an equation highlights by token and when by expression.
+
+### Position Mapping in TTSService
 
 `TTSService.buildPositionMap()` walks the content's flat tree, open shadow roots
 included, with the text core's `collectVisibleTextAndMap`. It normalizes the
@@ -279,39 +219,45 @@ position to its `{text node, offset}`.
 A word boundary resolves through that map to one range over the word's
 characters, spanning every text node the word covers, or one range per tree when
 it crosses a shadow boundary. `HighlightCoordinator.highlightTTSWord(ranges)`
-paints them; it is the one word-highlight call. Adjacent alphanumeric text nodes
-gain a space in the visible text, so a word an author split across inline
-elements is read as two ("Mis sissippi"): a deliberate trade, keeping words in
-neighbouring elements from running together at the cost of that split.
+paints them; it is the one word-highlight call.
 
-#### Implementation in TTS Tools
+Adjacent alphanumeric text nodes gain a space in the visible text, so a word an
+author split across inline elements is read as two ("Mis sissippi"). A
+deliberate trade: words in neighboring elements never run together, at the cost
+of that split.
 
-TTS tools pass the DOM they read, an element or a range, to `speak()`, so every read takes one normalization path.
+### TTS Tools
 
-#### Common Pitfalls
+TTS tools pass the DOM they read, an element or a range, to `speak()`, so every
+read takes one normalization path.
 
-1. **Bypassing `TTSService` normalization path** - custom pre-normalization can desync offsets
-2. **Extracting text from one element, highlighting in another** - Text content differs
-3. **Speech marks in wrong coordinate system** - Server returns trimmed positions, must match
+### Common Pitfalls
 
-#### Testing Checklist
+1. **Bypassing the `TTSService` normalization path**: custom pre-normalization
+   desynchronizes offsets.
+2. **Extracting text from one element and highlighting another**: the two texts
+   differ.
+3. **Speech marks in another coordinate system**: the server must return
+   positions in the trimmed text.
 
-When implementing TTS highlighting:
+### Alignment Checks
 
-1. With `PIE_TTS_DEBUG=1` or `globalThis.__PIE_TTS_DEBUG__ = true`, check the
-   console: `[tts-service] Text comparison: { match: true }`
-2. Verify: `mapLengthMatchesSpoken: true`
-3. Test with content containing lots of whitespace
-4. Verify words highlight at correct positions, not ahead/behind
-5. Check that highlighted text matches the spoken word
+With [debug logging](./tts-deep-dive.md#debug-logging) on, the console's
+`[tts-service] Text comparison` line reports `match: true` and the position-map
+line `mapLengthMatchesSpoken: true` when spoken and visible text align. Read
+content with heavy whitespace and confirm each highlighted word is the spoken
+word, neither ahead nor behind.
 
-## Segmenter + Fallback Policy
+## Segmenter and Fallback Policy
 
-- Browser adapter sentence chunking uses `Intl.Segmenter` (`granularity: "sentence"`) when available.
+- Browser sentence chunking uses `Intl.Segmenter` (`granularity: "sentence"`)
+  where available, and a regular expression elsewhere.
 - Browser highlighting defaults to sentence-level for stability.
-- Server-backed providers that return speech marks keep word-level highlighting; a response without marks highlights its sentence, word mode included.
-- Fallback behavior remains regex-based for environments without `Intl.Segmenter`.
-- Locale is threaded through TTS settings into both text-processing and browser segmentation.
+- Server-backed providers that return speech marks keep word-level
+  highlighting; a response without marks highlights its sentence, word mode
+  included.
+- Locale is threaded through TTS settings into both text processing and browser
+  segmentation.
 
 ## Creating Custom Providers
 

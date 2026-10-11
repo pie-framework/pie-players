@@ -1,18 +1,17 @@
-# TTS Server API Integration Guide
+# AWS Polly Integration Guide
 
-This guide shows how to integrate the server-side TTS with speech marks into your SvelteKit application.
+This integration guide builds the server half of server-backed text-to-speech
+(TTS) in a SvelteKit host: the routes that `@pie-players/tts-client-server`
+calls on its PIE transport, backed by AWS Polly through
+`@pie-players/tts-server-polly`. It is for host developers adding read-aloud
+with word highlighting.
 
-For the shared TTS architecture and package roles, see
-[TTS Architecture](../../../docs/accessibility/tts-architecture.md). This guide
-is the Polly-specific SvelteKit integration path.
-
-## Overview
-
-The integration has three parts:
-
-1. **Server-side packages** - Handle AWS Polly API calls
-2. **SvelteKit API routes** - Expose TTS endpoints
-3. **Client-side provider** - Call API from browser
+The package layering and provider fallback are in
+[TTS Architecture](../../../docs/accessibility/tts-architecture.md); the client
+provider and its request and response shapes, in the
+[`@pie-players/tts-client-server` README](../../tts-client-server/README.md).
+The [AWS Polly setup guide](../../../docs/accessibility/aws-polly-setup-guide.md)
+owns the AWS side: the IAM policy, access keys and production roles.
 
 ## Architecture
 
@@ -28,17 +27,15 @@ PollyServerProvider (@pie-players/tts-server-polly)
 AWS Polly API (audio + speech marks)
 ```
 
+The synthesize route returns base64 audio with the speech marks inline. A voices
+route answers the client's readiness probe, which runs before the toolkit
+reports server TTS ready; when the probe fails, the toolkit falls back to
+browser TTS.
+
 ## Step 1: Install Packages
 
 ```bash
-cd your-sveltekit-app
-
-# Install server-side packages
-bun add @pie-players/tts-server-core
-bun add @pie-players/tts-server-polly
-
-# Install client-side provider
-bun add @pie-players/tts-client-server
+bun add @pie-players/tts-server-core @pie-players/tts-server-polly @pie-players/tts-client-server
 ```
 
 ## Step 2: Configure Environment Variables
@@ -56,7 +53,7 @@ AWS_SECRET_ACCESS_KEY=your_secret_access_key
 # Optional: set alongside the pair when it is temporary
 AWS_SESSION_TOKEN=
 
-# Optional: Redis for caching
+# Optional: Redis for caching (Step 5)
 REDIS_URL=redis://localhost:6379
 ```
 
@@ -73,12 +70,9 @@ and never `process.env`, so in a SvelteKit app replace `process.env` with `env`
 from `$env/dynamic/private`. Use the dynamic module because `$env/static/private`
 fails the build when a variable it imports is unset, and these are optional.
 
-**Important:** Never commit `.env` to git. Add to `.gitignore`:
-
-```
-.env
-.env.local
-```
+The [setup guide](../../../docs/accessibility/aws-polly-setup-guide.md) creates
+the IAM user, its minimal policy and the keys. Keep `.env` and `.env.local` out
+of version control.
 
 ## Step 3: Create SvelteKit API Routes
 
@@ -159,77 +153,39 @@ optional; an empty one counts as absent, and a value outside the list is a 400.
 | `gender` | `male`, `female`, `neutral` | keeps voices of that gender |
 | `quality` | `standard`, `premium`, `neural` | keeps voices whose `quality` matches; every voice carries its engine's name there, so this keeps all or none |
 
-## Step 4: Use in Client Code
+## Step 4: Configure the Client
 
-### Basic Usage
+With the toolkit, server TTS is one provider entry:
 
 ```typescript
-import {
-  ServerTTSProvider,
-  type ServerTTSProviderConfig,
-} from '@pie-players/tts-client-server';
-import { TTSService } from '@pie-players/pie-assessment-toolkit';
-
-// Initialize TTS service with server provider
-const provider = new ServerTTSProvider();
-const ttsService = new TTSService();
-const config: ServerTTSProviderConfig = {
-  apiEndpoint: '/api/tts',
-  provider: 'polly',
-  voice: 'Joanna',
-  language: 'en-US',
-  rate: 1.0,
-};
-
-await ttsService.initialize(provider, config);
-
-// Speak an element's content with word highlighting
-await ttsService.speak(document.getElementById('content'));
+tools: {
+  providers: {
+    textToSpeech: {
+      enabled: true,
+      backend: 'server',
+      serverProvider: 'polly',
+    },
+  },
+}
 ```
 
-### With Svelte Component
-
-```svelte
-<script lang="ts">
-  import { ServerTTSProvider } from '@pie-players/tts-client-server';
-  import { TTSService } from '@pie-players/pie-assessment-toolkit';
-  import { onMount } from 'svelte';
-
-  let ttsService: TTSService;
-  let contentElement: HTMLElement;
-
-  onMount(async () => {
-    const provider = new ServerTTSProvider();
-    ttsService = new TTSService();
-
-    await ttsService.initialize(provider, {
-      apiEndpoint: '/api/tts',
-      provider: 'polly',
-      voice: 'Joanna',
-    });
-  });
-
-  async function handleSpeak() {
-    await ttsService.speak(contentElement);
-  }
-</script>
-
-<div bind:this={contentElement}>
-  <p>Hello world, this is a test of text to speech.</p>
-</div>
-
-<button onclick={handleSpeak}>Speak</button>
-```
+Its defaults, `apiEndpoint: '/api/tts'` and the voices probe, match the routes
+above; [Minimal Server-Backed TTS Config](../../assessment-toolkit/README.md#minimal-server-backed-tts-config)
+lists them, and [Configuring Tools](../../../docs/tools-and-accomodations/tool_provider_system.md)
+covers provider configuration in general. A host without the toolkit constructs
+`ServerTTSProvider` directly, as the
+[client README](../../tts-client-server/README.md#basic-setup) shows.
 
 ## Step 5: Add Redis Caching (Optional)
 
-### Install Redis
+A cache in front of Polly answers repeat reads of the same text without a
+synthesis call. A single-process host can use `MemoryCache` from
+`@pie-players/tts-server-core`; each replica keeps its own copy, so a scaled
+deployment shares one cache through Redis.
 
 ```bash
 bun add ioredis
 ```
-
-### Cache in the Synthesize Route
 
 Add this to the copied synthesize route, and in `POST` replace the
 `polly.synthesize` call and the `return json(...)` after it with
@@ -291,58 +247,30 @@ async function synthesizeCached(
 }
 ```
 
-## Step 6: Test the Integration
-
-### Test API Endpoints
-
-Both routes answer 503 until the guards are implemented.
-
-```bash
-# Test synthesize endpoint
-curl -X POST http://localhost:5173/api/tts/synthesize \
-  -H "Content-Type: application/json" \
-  -d '{"text": "Hello world", "voice": "Joanna"}'
-
-# Test voices endpoint
-curl "http://localhost:5173/api/tts/voices?language=en-US"
-```
-
-### Test in Browser
-
-```typescript
-// In browser console
-const response = await fetch('/api/tts/synthesize', {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({
-    text: 'Hello world, this is a test.',
-    voice: 'Joanna',
-  }),
-});
-
-const data = await response.json();
-console.log('Speech marks:', data.speechMarks);
-console.log('Metadata:', data.metadata);
-```
-
-## Redis Caching Benefits
-
-With Redis caching enabled:
-
-- **First request:** Full Polly API call (~300-500ms)
-- **Cached requests:** Redis retrieval (~10-20ms)
-- **Cost savings:** 80-90% reduction in Polly API calls
-- **TTL:** 24 hours (configurable)
-
-### Cache Key Format
+The cache key has the form below. The readable slots name the engine, voice,
+language, rate and format; two requests share a key only when every field
+matches, since the hash covers the whole request.
 
 ```
 tts:aws-polly:neural:Joanna:en-US:1.00:mp3:<sha256-hash-of-request>
 ```
 
-The readable slots name the engine, voice, language, rate and format; two
-requests share a key only when every field matches, since the hash covers the
-whole request.
+## Step 6: Test the Integration
+
+The guard stubs from Step 3 answer 503 until you implement them. With the guards
+in place, send whatever credential they check:
+
+```bash
+curl -X POST http://localhost:5173/api/tts/synthesize \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <token>" \
+  -d '{"text": "Hello world", "voice": "Joanna"}'
+
+curl -H "Authorization: Bearer <token>" "http://localhost:5173/api/tts/voices?language=en-US"
+```
+
+A working synthesize route returns `audio`, `contentType`, `speechMarks` and
+`metadata`.
 
 ## Security Considerations
 
@@ -433,69 +361,53 @@ export async function enforceRateLimit(event: RequestEvent): Promise<void> {
 
 ## Cost Optimization
 
-Polly bills per character, at a different rate for each engine; see
-[Amazon Polly pricing](https://aws.amazon.com/polly/pricing/). A response served
-from the cache costs nothing.
-
-### Optimization Tips
-
-1. **Use Redis caching** - 24-hour TTL captures repeated content
-2. **Standard voices for development** - Switch to neural for production
-3. **Monitor usage** - Track API calls and cache hit rates
-4. **Pre-generate common content** - Cache frequently used passages
+Polly bills each SynthesizeSpeech request by characters
+([current rates](https://aws.amazon.com/polly/pricing/)). A read with speech marks
+makes two requests, one for the audio and one for the marks, and standard voices
+bill at a lower rate than neural ones. The cache in Step 5 removes repeat
+synthesis of the same text; the setup guide's
+[Cost Management](../../../docs/accessibility/aws-polly-setup-guide.md#cost-management)
+section covers usage monitoring.
 
 ## Troubleshooting
 
-### Error: `CredentialsProviderError` in the server log
+### 503 from Every Request
 
-The route answered 503 because neither an access key pair nor the default chain
-supplied credentials. Set both `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY`,
-since one alone is ignored, or configure a profile or role the SDK can find. In a
-SvelteKit app, check that the routes read `$env/dynamic/private` (Step 2): a
-`.env` file never reaches `process.env`.
+The server log names the cause. `requireAuthenticatedCaller is not implemented`
+or `enforceRateLimit is not implemented` means the guard stubs are still in
+place. A `CredentialsProviderError` means neither an access key pair nor the
+SDK's default chain supplied credentials: set both `AWS_ACCESS_KEY_ID` and
+`AWS_SECRET_ACCESS_KEY`, since one alone is ignored, or configure a profile or
+role the SDK can find. In a SvelteKit app, check that the routes read
+`$env/dynamic/private` ([Step 2](#step-2-configure-environment-variables)): a
+`.env` file never reaches `process.env`. The other `TTSErrorCode` values that
+map to 503 are in [Error Responses](#error-responses); the setup guide's
+[Troubleshooting](../../../docs/accessibility/aws-polly-setup-guide.md#troubleshooting)
+section covers each AWS error.
 
-```bash
-echo $AWS_REGION
-echo $AWS_ACCESS_KEY_ID
-```
+### Browser Voice Instead of Polly
 
-### Error: "Text length (…) exceeds maximum (3000)"
+The toolkit fell back to browser TTS because the voices probe failed: neither
+`/api/tts/polly/voices` nor `/api/tts/voices` answered with a success status
+within the probe's five-second timeout.
 
-AWS Polly limit is 3000 characters. Split longer text:
+### Text Too Long
 
-```typescript
-function splitText(text: string, maxLength = 2500): string[] {
-  const sentences = text.split(/(?<=[.!?])\s+/);
-  const chunks: string[] = [];
-  let currentChunk = '';
+Polly accepts 3000 characters per request, and the route rejects longer text
+with 400. `ServerTTSProvider` reports the same limit, and the toolkit splits a
+longer read into pieces that fit. A caller that posts to the route directly
+splits its own text.
 
-  for (const sentence of sentences) {
-    if (currentChunk.length + sentence.length > maxLength) {
-      chunks.push(currentChunk.trim());
-      currentChunk = sentence;
-    } else {
-      currentChunk += ' ' + sentence;
-    }
-  }
+### Empty Speech Marks
 
-  if (currentChunk.trim()) {
-    chunks.push(currentChunk.trim());
-  }
+The request sent `includeSpeechMarks: false`, which skips the marks request.
+Missing sentence marks mean `speechMarkTypes` did not reach the route: without
+it Polly returns word marks only.
 
-  return chunks;
-}
-```
+### Redis Connection Errors
 
-### Error: "Speech marks empty"
-
-Check that:
-1. Speech marks are requested in API call
-2. Provider supports speech marks
-3. Text is not empty
-
-### Redis connection errors
-
-If Redis is unavailable, the API will work without caching. Check Redis:
+The route synthesizes without the cache when Redis is unavailable and logs the
+failure. Check the server:
 
 ```bash
 redis-cli ping
@@ -504,67 +416,18 @@ redis-cli ping
 
 ## Production Deployment
 
-### Environment Setup
+Run the routes on an IAM role with `AWS_ACCESS_KEY_ID` and
+`AWS_SECRET_ACCESS_KEY` unset
+([IAM Roles](../../../docs/accessibility/aws-polly-setup-guide.md#iam-roles));
+set `AWS_REGION` and, for caching, `REDIS_URL`. Implement both guards before the
+routes are reachable.
 
-```bash
-# Production environment variables
-export NODE_ENV=production
-export AWS_REGION=us-east-1
-export REDIS_URL=redis://your-redis-host:6379
-# Credentials come from the container or instance IAM role. Set
-# AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY only where there is no role.
-```
+## Reference Implementation
 
-### Docker Deployment
-
-```dockerfile
-FROM node:20-alpine
-WORKDIR /app
-COPY . .
-RUN npm ci --production
-RUN npm run build
-EXPOSE 3000
-CMD ["node", "build"]
-```
-
-### Health Check
-
-Add a health endpoint:
-
-```typescript
-// src/routes/api/health/+server.ts
-import { json } from '@sveltejs/kit';
-import type { RequestHandler } from './$types';
-
-export const GET: RequestHandler = async () => {
-  const health = {
-    status: 'ok',
-    timestamp: new Date().toISOString(),
-    services: {
-      polly: await checkPolly(),
-      redis: await checkRedis(),
-    },
-  };
-
-  return json(health);
-};
-```
-
-## Next Steps
-
-1. **Test in your app** - Create a demo page
-2. **Monitor usage** - Track API calls and costs
-3. **Add more providers** - Google Cloud TTS, ElevenLabs
-4. **Optimize caching** - Fine-tune TTL and eviction
-
-## Complete Example
-
-See the section-player demo for a complete working example:
-- `apps/section-demos` - Client-side usage
-- API routes would be added to a SvelteKit app
-
-## Support
-
-For issues or questions:
-- Check the [Tool Provider System](../../../docs/tools-and-accomodations/tool_provider_system.md)
-- See [TTS Architecture](../../../docs/accessibility/tts-architecture.md)
+The section-demos app serves Polly and Google through one synthesize route, plus
+the voices routes the probe reads, in
+[`apps/section-demos/src/routes/api/tts/`](../../../apps/section-demos/src/routes/api/tts/).
+Those routes are unauthenticated and serve local development only
+([Demo endpoints](../../../docs/tools-and-accomodations/tool_host_contract.md#demo-endpoints)).
+[`sveltekit/`](./sveltekit/) holds standalone synthesize and voices routes with
+the guards inlined.

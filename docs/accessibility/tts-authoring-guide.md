@@ -1,55 +1,151 @@
-# TTS Authoring Guide: Using SSML for Better Prosody
+# TTS Authoring Guide
 
-**Audience:** Content authors, item developers
+This guide covers authoring SSML (Speech Synthesis Markup Language) for PIE
+read-aloud: which provider voices which tags, where SSML goes in item content,
+and the patterns that fix speech that runs together or misreads. It is for
+content authors and item developers who write item config.
+
+## SSML Provider Support
+
+What reaches the listener depends on the TTS provider the host configures:
+
+| Provider | Authored SSML (`spoken` cards) | Generated math speech |
+|----------|-------------------------------|-----------------------|
+| **AWS Polly** (server) | Voiced within Polly's supported subset ([tags](https://docs.aws.amazon.com/polly/latest/dg/supportedtags.html)); the default neural engine supports fewer tags than the standard engine | SSML |
+| **Google Cloud TTS** (server) | Voiced within Google's supported subset ([tags](https://cloud.google.com/text-to-speech/docs/ssml)) | SSML |
+| **Custom transport** (server), the SC adapter `@pie-players/tts-server-sc` included | Passed to the host's service as written; the service decides what it voices | Plain text |
+| **Browser TTS** | The card's text is spoken, with `<sub>` aliases in place of the text they cover; every other tag is dropped and a `<break>` becomes a space | Plain text |
+
+An authored `spoken` card replaces the visible text under every provider, so a
+wording fix works everywhere. Pauses, rate, emphasis and phonemes need a server
+provider that voices them. The host's TTS configuration decides which one
+delivery uses
+([Minimal Server-Backed TTS Config](../../packages/assessment-toolkit/README.md#minimal-server-backed-tts-config)).
 
 ---
 
-## Overview
+## Embedding SSML in PIE Content
 
-When authoring assessment content for text-to-speech (TTS), you may notice that the synthesized speech runs sentences together without natural pauses. This happens when content lacks proper punctuation, especially with:
+SSML reaches TTS as a `spoken` card in an accessibility catalog, which the
+content references with `data-catalog-idref`. An author writes the card directly
+(Method 2), or embeds `<speak>` in the content for a preprocessing step to
+extract (Method 1).
 
-- Question titles followed immediately by body text
-- Multiple choice options (A, B, C, D) that run together
-- Headings without ending punctuation
+### Method 1: Inline SSML (Preprocessed Extraction)
 
-**Solution:** Use SSML (Speech Synthesis Markup Language) to control pacing and prosody.
+`SSMLExtractor` extracts `<speak>` from content and generates accessibility
+catalogs before the item is rendered. Inline SSML works only where the import or
+render path runs that preprocessing step.
+
+```json
+{
+  "config": {
+    "markup": "<multiple-choice id=\"q1\"></multiple-choice>",
+    "elements": {
+      "multiple-choice": "@pie-element/multiple-choice@x.y.z"
+    },
+    "models": [{
+      "id": "q1",
+      "element": "multiple-choice",
+      "prompt": "<div><speak xml:lang=\"en-US\">Question one:<break time=\"300ms\"/>Method Selection</speak><h3>Question 1: Method Selection</h3><p>Based on the passage...</p></div>"
+    }]
+  }
+}
+```
+
+Preprocessing:
+
+1. extracts the `<speak>` content into a catalog with the id `auto-prompt-q1-0`,
+2. removes the `<speak>` from the visible markup,
+3. docks the catalog on the element wrapping the `<speak>`, the `<div>` above,
+   with `data-catalog-idref`.
+
+The runtime registers the extracted catalog when the item mounts.
+
+Step 3 has two authoring requirements, each reported with a console warning when
+unmet:
+
+- **The `<speak>` needs an element around it**, holding the visible content it
+  speaks. Nothing is synthesized to stand in for one: a `<speak>` with no element
+  around it has no content node to be an alternate *for*, and an invented wrapper
+  would have to invent visible content too. The catalog is still emitted, but TTS
+  resolves by walking the DOM, so it is never found.
+- **That element must not already carry a `data-catalog-idref`.** An existing
+  reference is never overwritten: it names a whole card array, so replacing it to
+  win the spoken type would take that node's braille, simplified-language and
+  sign-language cards down with it. If the node is already docked, author the
+  SSML as a `spoken` card on that catalog (Method 2).
+
+### Method 2: Spoken Catalog Cards
+
+The card sits in the item's `accessibilityCatalogs`, and the prompt references it:
+
+```json
+{
+  "accessibilityCatalogs": [{
+    "identifier": "q1-prompt",
+    "cards": [{
+      "catalog": "spoken",
+      "language": "en-US",
+      "content": "<speak xml:lang=\"en-US\">Question one:<break time=\"300ms\"/>Method Selection.<break time=\"500ms\"/><prosody rate=\"medium\">Based on the passage, which method should you use to solve x squared minus five x plus six equals zero?</prosody></speak>"
+    }]
+  }],
+  "config": {
+    "markup": "<multiple-choice id=\"q1\"></multiple-choice>",
+    "elements": {
+      "multiple-choice": "@pie-element/multiple-choice@x.y.z"
+    },
+    "models": [{
+      "id": "q1",
+      "element": "multiple-choice",
+      "prompt": "<div data-catalog-idref=\"q1-prompt\"><h3>Question 1: Method Selection</h3><p>Based on the passage, which method should you use?</p></div>"
+    }]
+  }
+}
+```
+
+### Choosing a Method
+
+Inline SSML keeps the spoken and visible text side by side in one field, at the
+cost of mixed markup and generated catalog ids; it suits an import pipeline that
+runs `SSMLExtractor`. A catalog card keeps the spoken text separate, with an
+identifier the author controls and one card per language, at the cost of the two
+texts drifting apart unless both are edited together; it suits content authored
+directly for delivery. The catalog model is defined in
+[Accessibility Catalogs](./accessibility-catalogs-integration-guide.md).
 
 ---
 
-## Quick Start: Common Patterns
+## Common Patterns
 
-The small JSON snippets in this section show fields inside a PIE model. Full
-item payloads still use `config.markup`, `config.elements`, and
-`config.models[]`.
+The JSON snippets here show fields inside a PIE model. A full item uses
+`config.markup`, `config.elements` and `config.models[]`, as above.
 
-### Pattern 1: Question Title + Body Text
+### Title and Body Text
 
-**Problem:**
 ```json
 {
   "prompt": "<h3>Question 1: Method Selection</h3><p>Based on the passage, which method...</p>"
 }
 ```
 
-**How it sounds:** "Question one method selection based on the passage which method..." (runs together)
+A heading with no closing punctuation runs into the body: "Question one method
+selection based on the passage which method...". Ending the heading with a
+period fixes it under every provider. A `<break>` controls the pause length
+where a server provider voices it:
 
-**Solution - Add SSML with breaks:**
 ```json
 {
   "prompt": "<div><speak><prosody rate=\"medium\">Question 1: Method Selection<break time=\"300ms\"/></prosody>Based on the passage, which method...</speak><h3>Question 1: Method Selection</h3><p>Based on the passage, which method...</p></div>"
 }
 ```
 
-Inline `<speak>` reaches TTS only through `SSMLExtractor` preprocessing, and only
-inside an element that holds the visible content it speaks, the `<div>` here
-(see [Method 1](#method-1-inline-ssml-preprocessed-extraction)). Without that
-preprocessing, author the SSML as a `spoken` catalog card (Method 2).
+This inline form needs `SSMLExtractor` preprocessing
+([Method 1](#method-1-inline-ssml-preprocessed-extraction)); without it, author
+the SSML as a `spoken` card (Method 2).
 
-**How it sounds:** "Question one: Method Selection. *[pause]* Based on the passage..."
+### Multiple-Choice Options
 
-### Pattern 2: Multiple Choice Options
-
-**Problem:**
 ```json
 {
   "choices": [
@@ -59,9 +155,10 @@ preprocessing, author the SSML as a `spoken` catalog card (Method 2).
 }
 ```
 
-**How it sounds:** "A the quadratic formula because it works for all equations B factoring because..." (no pause between options)
+Options without closing punctuation run together: "A the quadratic formula
+because it works for all equations B factoring because...". Ending each label
+with a period separates them under every provider:
 
-**Solution - Add punctuation in content:**
 ```json
 {
   "choices": [
@@ -71,7 +168,9 @@ preprocessing, author the SSML as a `spoken` catalog card (Method 2).
 }
 ```
 
-Or use SSML in a catalog:
+A `spoken` card on the prompt can also script the options, with pauses and
+pacing:
+
 ```json
 {
   "accessibilityCatalogs": [{
@@ -85,7 +184,7 @@ Or use SSML in a catalog:
   "config": {
     "markup": "<multiple-choice id=\"q1\"></multiple-choice>",
     "elements": {
-      "multiple-choice": "@pie-element/multiple-choice@latest"
+      "multiple-choice": "@pie-element/multiple-choice@x.y.z"
     },
     "models": [{
       "id": "q1",
@@ -96,21 +195,19 @@ Or use SSML in a catalog:
 }
 ```
 
-### Pattern 3: Math Expressions
+### Math Expressions
 
-**Problem:** "x² - 5x + 6 = 0" sounds like "x two minus five x plus six equals zero" (too fast, unclear)
+PIE finds MathML in rendered content and converts it to natural-language speech
+before calling the provider, under every provider and with no configuration, so
+structured math needs no SSML. Author SSML only where an expression needs exact
+pacing or content-specific wording:
 
-**Default support:** PIE automatically looks for MathML in rendered content and converts supported expressions to natural-language speech before calling the configured TTS provider. This works across browser TTS and server-backed providers without a client-side "math support" setting.
-
-**Highlighting behavior:** PIE is conservative with math word tracking. It uses word/operator highlighting only when the spoken boundary can be mapped to the visible MathML token with very high confidence. If the mapping is ambiguous, provider-specific, or unsupported, PIE falls back to highlighting the full formula or nearest reliable expression region. This avoids visible bugs where the highlighted token lags, jumps, or points at the wrong part of the expression.
-
-**Optional override - Add SSML for controlled pacing:**
 ```json
 {
   "config": {
     "markup": "<multiple-choice id=\"q1\"></multiple-choice>",
     "elements": {
-      "multiple-choice": "@pie-element/multiple-choice@latest"
+      "multiple-choice": "@pie-element/multiple-choice@x.y.z"
     },
     "models": [{
       "id": "q1",
@@ -129,339 +226,84 @@ Or use SSML in a catalog:
 }
 ```
 
+An authored card takes precedence over generated math speech. Word highlighting
+inside an equation follows a provider boundary only when it maps to a visible
+MathML token with high confidence; otherwise PIE highlights the whole formula or
+expression. Authored SSML that diverges from the rendered MathML highlights the
+formula region
+([generated math walkthrough](./tts-deep-dive.md#generated-math-walkthrough)).
+
 ---
 
 ## SSML Elements You Should Know
 
-### 1. `<break>` - Add Pauses
+The provider references linked in [SSML Provider Support](#ssml-provider-support)
+define each tag; these five cover most assessment content. Durations and
+supported values vary by provider and voice.
 
-Adds a pause of specified duration.
+- **`<break>`** adds a pause, by `time` (`300ms`) or by `strength` (`x-weak`
+  through `x-strong`). Typical uses: after headings, between list items, between
+  clauses.
 
-```xml
-<speak>
-  First sentence.<break time="300ms"/>Second sentence.
-</speak>
-```
+  ```xml
+  <speak>First sentence.<break time="300ms"/>Second sentence.</speak>
+  ```
 
-**Strength levels** (approximate durations):
-- `x-weak`: ~50ms
-- `weak`: ~100ms
-- `medium`: ~200ms (default)
-- `strong`: ~300ms
-- `x-strong`: ~500ms
+- **`<prosody>`** sets rate, pitch and volume. `rate` takes `x-slow` through
+  `x-fast` or a percentage (`80%`); `slow` suits math and technical terms.
 
-```xml
-<speak>
-  First sentence.<break strength="strong"/>Second sentence.
-</speak>
-```
+  ```xml
+  <speak>Solve <prosody rate="slow">x squared, minus five x, plus six, equals zero</prosody>.</speak>
+  ```
 
-**Use cases:**
-- After headings: 300-500ms
-- Between list items: 200ms
-- Between clauses: 100ms
+- **`<emphasis>`** stresses words, at `strong`, `moderate` or `reduced`.
 
-### 2. `<prosody>` - Control Speaking Rate
+  ```xml
+  <speak>This is <emphasis level="strong">very important</emphasis>.</speak>
+  ```
 
-Controls speed, pitch, and volume.
+- **`<sub>`** speaks an alias in place of the written text: symbols
+  (`<sub alias="pi">π</sub>`), abbreviations (`<sub alias="Doctor">Dr.</sub>`),
+  acronyms read as letters (`<sub alias="S Q L">SQL</sub>`). The browser provider
+  voices it too.
 
-```xml
-<speak>
-  This is normal speed.
-  <prosody rate="slow">This is slow.</prosody>
-  <prosody rate="fast">This is fast.</prosody>
-</speak>
-```
+  ```xml
+  <speak>The formula is <sub alias="x squared">x²</sub>.</speak>
+  ```
 
-**Rate values:**
-- `x-slow`: Very slow (good for complex terms)
-- `slow`: Slow (good for math, technical content)
-- `medium`: Normal speed (default)
-- `fast`: Fast
-- `x-fast`: Very fast
-- Percentage: `rate="80%"` (relative to default)
+- **`<phoneme>`** gives an exact pronunciation in IPA, for proper names,
+  foreign words and jargon.
 
-**Use cases:**
-- Math expressions: `rate="slow"`
-- Technical terms: `rate="slow"`
-- Review/summary: `rate="medium"`
-
-### 3. `<emphasis>` - Add Emphasis
-
-Makes words stand out with stress.
-
-```xml
-<speak>
-  This is <emphasis level="strong">very important</emphasis>.
-</speak>
-```
-
-**Levels:**
-- `strong`: Strong emphasis
-- `moderate`: Moderate emphasis (default)
-- `reduced`: De-emphasize
-
-### 4. `<sub>` - Pronunciation Substitution
-
-Replace written text with spoken equivalent.
-
-```xml
-<speak>
-  The formula is <sub alias="x squared">x²</sub>.
-</speak>
-```
-
-**Use cases:**
-- Math symbols: `<sub alias="pi">π</sub>`
-- Abbreviations: `<sub alias="Doctor">Dr.</sub>`
-- Technical terms: `<sub alias="S Q L">SQL</sub>`
-
-### 5. `<phoneme>` - Precise Pronunciation
-
-Specify exact pronunciation using IPA.
-
-```xml
-<speak>
-  <phoneme alphabet="ipa" ph="təˈmeɪtoʊ">tomato</phoneme>
-</speak>
-```
-
-**Use cases:**
-- Proper names
-- Foreign words
-- Technical jargon
+  ```xml
+  <speak><phoneme alphabet="ipa" ph="təˈmeɪtoʊ">tomato</phoneme></speak>
+  ```
 
 ---
 
-## Embedding SSML in PIE Content
+## Authoring Practice
 
-### Method 1: Inline SSML (Preprocessed Extraction)
+Punctuation comes first: a period after each sentence, heading and list item,
+and commas where a reader pauses. It works under every provider, and content
+that reads naturally aloud needs no SSML. Simple content such as a one-line
+question with one-word options is fine as written.
 
-`SSMLExtractor` can extract SSML from content and generate accessibility
-catalogs before the item is rendered. Use this only when your import/render path
-explicitly runs that preprocessing step.
+Add SSML only where punctuation is not enough: a run-on section, an expression
+read too fast, a term mispronounced. Read the text aloud; where you pause, add a
+`<break>`; where you slow down, `<prosody rate="slow">`; where you stress a word,
+`<emphasis>`. Then listen again.
 
-**Example:**
-```json
-{
-  "config": {
-    "markup": "<multiple-choice id=\"q1\"></multiple-choice>",
-    "elements": {
-      "multiple-choice": "@pie-element/multiple-choice@latest"
-    },
-    "models": [{
-      "id": "q1",
-      "element": "multiple-choice",
-      "prompt": "<div><speak xml:lang=\"en-US\">Question one:<break time=\"300ms\"/>Method Selection</speak><h3>Question 1: Method Selection</h3><p>Based on the passage...</p></div>"
-    }]
-  }
-}
-```
+### Worked Example: Math Word Problem
 
-**What happens:**
-1. Preprocessing extracts `<speak>` content
-2. Generates catalog entry with ID `auto-prompt-q1-0`
-3. Removes `<speak>` tags from visual markup
-4. Docks the catalog on the element wrapping the `<speak>` — the `<div>` above — via `data-catalog-idref`
-5. Runtime catalog registration registers the extracted catalog
-
-**Two authoring requirements for step 4**, each reported with a console warning when unmet:
-
-- **The `<speak>` needs an element around it**, holding the visible content it speaks — the `<div>` in the example. Nothing is synthesized to stand in for one, because a `<speak>` with no element around it has no content node to be an alternate *for*, and an invented wrapper would have to invent visible content too. The catalog is still emitted, but TTS resolves by walking the DOM, so it will not be found.
-- **That element must not already carry a `data-catalog-idref`.** An existing reference is never overwritten: it names a whole card array, so replacing it to win the spoken type would take that node's braille, simplified-language and sign-language cards down with it. If the node is already docked, author the SSML as a `spoken` card on that catalog (Method 2) instead of inline.
-
-### Method 2: Explicit Accessibility Catalogs (QTI 3.0 Standard)
-
-**Recommended for production content.**
-
-```json
-{
-  "accessibilityCatalogs": [{
-    "identifier": "q1-prompt",
-    "cards": [{
-      "catalog": "spoken",
-      "language": "en-US",
-      "content": "<speak xml:lang=\"en-US\">Question one:<break time=\"300ms\"/>Method Selection.<break time=\"500ms\"/><prosody rate=\"medium\">Based on the passage, which method should you use to solve x squared minus five x plus six equals zero?</prosody></speak>"
-    }]
-  }],
-  "config": {
-    "markup": "<multiple-choice id=\"q1\"></multiple-choice>",
-    "elements": {
-      "multiple-choice": "@pie-element/multiple-choice@latest"
-    },
-    "models": [{
-      "id": "q1",
-      "element": "multiple-choice",
-      "prompt": "<div data-catalog-idref=\"q1-prompt\"><h3>Question 1: Method Selection</h3><p>Based on the passage, which method should you use?</p></div>"
-    }]
-  }
-}
-```
-
-**Benefits:**
-- Clean separation of visual and spoken content
-- Full SSML control
-- Multiple language variants
-- Reusable across items
-
----
-
-## Best Practices
-
-### 1. Always End Sentences with Punctuation
-
-**Bad:**
-```
-<h3>Question 1: Method Selection</h3>
-<p>Based on the passage...</p>
-```
-
-**Good:**
-```
-<h3>Question 1: Method Selection.</h3>
-<p>Based on the passage...</p>
-```
-
-Or use SSML:
-```xml
-<speak>Question 1: Method Selection.<break time="300ms"/>Based on the passage...</speak>
-```
-
-### 2. Add Breaks Between List Items
-
-For multiple choice questions, ensure each option is clearly separated.
-
-**Bad:**
-```
-A. First option B. Second option C. Third option
-```
-
-**Good (with punctuation):**
-```
-A. First option. B. Second option. C. Third option.
-```
-
-**Better (with SSML):**
-```xml
-<speak>
-  Option A. First option.<break time="200ms"/>
-  Option B. Second option.<break time="200ms"/>
-  Option C. Third option.
-</speak>
-```
-
-### 3. Slow Down Complex Content
-
-Use `<prosody rate="slow">` for:
-- Mathematical expressions
-- Technical terminology
-- Foreign language words
-- Complex sentences
-
-```xml
-<speak>
-  Solve the equation:
-  <prosody rate="slow">x squared, minus five x, plus six, equals zero</prosody>
-</speak>
-```
-
-### 4. Use Natural Language for Math
-
-**Bad:** "x² - 5x + 6 = 0" → "x two minus five x plus six equals zero"
-
-**Good:** Let PIE generate speech from MathML when the rendered item contains structured math. Use authored SSML only when content needs exact pacing or a content-specific wording:
-```xml
-<speak>
-  <prosody rate="slow">x squared<break time="150ms"/> minus five x<break time="150ms"/> plus six<break time="200ms"/> equals zero</prosody>
-</speak>
-```
-
-Authored spoken catalogs still take precedence over generated math speech. They can improve pronunciation and pacing, but they do not force word-level math tracking. If the authored SSML diverges too far from the rendered MathML for reliable mapping, PIE will still highlight the formula/expression region instead of guessing at individual words.
-
-### 5. Test Your SSML
-
-Always test how your SSML sounds. Use the PIE demos or AWS Polly console to preview.
-
-**Testing checklist:**
-- Does it sound natural?
-- Are pauses appropriate (not too short/long)?
-- Is the speaking rate comfortable?
-- Are technical terms pronounced correctly?
-
----
-
-## SSML Provider Support
-
-| Provider | SSML support |
-|----------|--------------|
-| **AWS Polly** | Polly's supported subset ([tags](https://docs.aws.amazon.com/polly/latest/dg/supportedtags.html)) |
-| **Google Cloud TTS** | Google's supported subset ([tags](https://cloud.google.com/text-to-speech/docs/ssml)) |
-| **Browser TTS** | None: tags are stripped and the text is read plainly |
-
-**Recommendation:** Author with SSML for cloud TTS. Browser speech strips the tags and reads the text, which is acceptable for basic functionality.
-
----
-
-## When NOT to Use SSML
-
-SSML adds complexity. Skip it when:
-
-1. **Content already has good punctuation** - Natural sentence structure doesn't need enhancement
-2. **Simple, conversational text** - "Welcome! Let's begin." doesn't need SSML
-3. **Testing/development** - Add SSML polish in later authoring phases
-
-**Rule of thumb:** If the text reads naturally when you read it aloud, it probably doesn't need SSML.
-
----
-
-## Extracted vs Manual SSML
-
-### Preprocessed Extraction (Inline SSML)
-
-**Pros:**
-- Quick to author
-- Visual and spoken content stay in sync
-- Less boilerplate
-
-**Cons:**
-- Mixed markup (visual + SSML) in one field
-- Less control over catalog structure
-- Auto-generated catalog IDs
-
-**Best for:** Import pipelines or demos where the render path explicitly runs
-`SSMLExtractor`.
-
-### Manual Catalogs (QTI 3.0)
-
-**Pros:**
-- Clean separation
-- Full control
-- Reusable catalog entries
-- Multiple language variants
-
-**Cons:**
-- More verbose
-- Visual and spoken content can drift
-- Requires catalog ID management
-
-**Best for:** Production content, complex items, internationalization
-
----
-
-## Examples from Real Assessments
-
-### Example 1: Math Word Problem
-
-**Without SSML:**
 ```json
 {
   "prompt": "<p>A rectangle has length x+3 and width x-2. Write an expression for its area.</p>"
 }
 ```
 
-**Sounds like:** "A rectangle has length x plus three and width x minus two write an expression for its area" (run-on, unclear)
+Without SSML this reads as "A rectangle has length x plus three and width x minus
+two write an expression for its area". A `spoken` card paces the expressions and
+separates the instruction:
 
-**With SSML:**
 ```json
 {
   "accessibilityCatalogs": [{
@@ -475,7 +317,7 @@ SSML adds complexity. Skip it when:
   "config": {
     "markup": "<multiple-choice id=\"q1\"></multiple-choice>",
     "elements": {
-      "multiple-choice": "@pie-element/multiple-choice@latest"
+      "multiple-choice": "@pie-element/multiple-choice@x.y.z"
     },
     "models": [{
       "id": "q1",
@@ -486,167 +328,32 @@ SSML adds complexity. Skip it when:
 }
 ```
 
-**Sounds like:** "A rectangle has length *x plus three* [pause] and width *x minus two*. [pause] Write an expression for its area." (clear, well-paced)
-
-### Example 2: Reading Passage with Questions
-
-**Content structure:**
-```
-Passage: "Urban Gardens" (3 paragraphs)
-Question 1: "According to paragraph 2..." (with 4 options)
-Question 2: "The author's main purpose..." (with 4 options)
-```
-
-**SSML approach:**
-- Passage gets normal speech (no SSML needed - it's prose)
-- Question headings get breaks after them
-- Each answer option ends with punctuation
-
-```json
-{
-  "accessibilityCatalogs": [{
-    "identifier": "q1-prompt",
-    "cards": [{
-      "catalog": "spoken",
-      "language": "en-US",
-      "content": "<speak>Question one:<break time=\"300ms\"/>Reading Comprehension.<break time=\"500ms\"/>According to paragraph two, what is the main benefit of urban gardens?</speak>"
-    }]
-  }],
-  "config": {
-    "markup": "<multiple-choice id=\"q1\"></multiple-choice>",
-    "elements": {
-      "multiple-choice": "@pie-element/multiple-choice@latest"
-    },
-    "models": [{
-      "id": "q1",
-      "element": "multiple-choice",
-      "prompt": "<div data-catalog-idref=\"q1-prompt\"><h4>Question 1: Reading Comprehension</h4><p>According to paragraph 2, what is the main benefit of urban gardens?</p></div>"
-    }]
-  }
-}
-```
-
 ---
 
-## Testing Your SSML
+## Testing SSML
 
-### 1. Use the Demo Apps
+Listen to every SSML change under the provider delivery uses.
 
-Test your content in the PIE section demos:
-```
-http://localhost:5300/tts-ssml?mode=candidate&layout=splitpane
-```
+- **Section demos, in a pie-players checkout:** run `bun run dev:section` and
+  open `http://localhost:5300/tts-ssml?mode=candidate&layout=splitpane`, then
+  press the TTS button.
+- **AWS Polly console:** in the Polly text-to-speech page, switch the input to
+  SSML, paste the card's content and listen.
 
-Click the TTS button and listen - does it sound natural?
+Check that:
 
-### 2. AWS Polly Console
-
-Test SSML directly in the AWS Console:
-1. Go to AWS Polly Console
-2. Select "Plain text" → "SSML"
-3. Paste your SSML
-4. Click "Listen"
-
-### 3. Common Issues to Check
-
-- [ ] Natural pacing (not too fast/slow)
-- [ ] Appropriate pauses between sections
-- [ ] Math expressions clearly pronounced
-- [ ] List items separated
-- [ ] Technical terms pronounced correctly
-- [ ] No awkward pauses mid-sentence
-
----
-
-## Authoring Workflow
-
-### Recommended Process
-
-1. **Write content naturally** with proper punctuation
-   - Use periods after sentences
-   - Use commas for pauses
-   - End all list items with periods
-
-2. **Test basic TTS** - Does it sound acceptable?
-   - If yes: You're done!
-   - If no: Proceed to step 3
-
-3. **Identify problem areas**
-   - Run-on sections
-   - Math expressions
-   - Technical terms
-   - List items
-
-4. **Add targeted SSML** only where needed
-   - Don't over-engineer
-   - Focus on the worst issues first
-
-5. **Test again** and iterate
-
-### Simple Content → No SSML Needed
-
-```
-"What is the capital of France?"
-
-A. London
-B. Paris
-C. Berlin
-D. Madrid
-```
-
-This is fine as-is. Don't add SSML just because you can.
-
-### Complex Content → Use SSML
-
-```
-"Question 1: Quadratic Equations
-
-Based on the passage, which method should you use to solve x² - 5x + 6 = 0?
-
-A. The quadratic formula, because it works for all equations
-B. Factoring, because this equation factors easily into (x - 2)(x - 3)"
-```
-
-This needs SSML:
-- Pause after "Question 1: Quadratic Equations"
-- Slow down the equation reading
-- Pause between options
-
----
-
-## Summary
-
-### Key Principles
-
-1. **Punctuation first** - Add periods, commas naturally
-2. **SSML for enhancement** - Use when punctuation isn't enough
-3. **Test early and often** - Listen to how it sounds
-4. **Be conservative** - Only add SSML where needed
-5. **Use catalogs for production** - Cleaner, more maintainable
-
-### Common Enhancements
-
-- **After headings:** `<break time="300ms"/>`
-- **Math expressions:** `<prosody rate="slow">...</prosody>`
-- **Between options:** Add periods or `<break time="200ms"/>`
-- **Technical terms:** `<sub alias="...">` or `<phoneme>`
-
-### When in Doubt
-
-If you're unsure whether to add SSML:
-1. Read the text aloud naturally
-2. If you pause somewhere, add a `<break>`
-3. If you slow down somewhere, add `<prosody rate="slow">`
-4. If you emphasize something, add `<emphasis>`
-
-**Remember:** Natural, well-punctuated text is better than over-engineered SSML.
+- pacing is natural, neither too fast nor too slow
+- sections and list items are separated by pauses
+- no pause falls mid-sentence
+- math expressions and technical terms are pronounced correctly
 
 ---
 
 ## See Also
 
-- [TTS Architecture](./tts-architecture.md) - Technical implementation details
-- [Accessibility Catalogs Integration Guide](./accessibility-catalogs-integration-guide.md) - How to structure catalogs
+- [TTS Deep Dive](./tts-deep-dive.md) - Runtime flow from the toolbar button to the highlighted word
+- [Accessibility Catalogs](./accessibility-catalogs-integration-guide.md) - Catalog model
 - [SSML Extraction](./accessibility-catalogs-integration-guide.md#ssml-extraction-from-pie-content) - SSML extraction and catalog registration
 - [Accessibility Catalogs TTS Integration](./accessibility-catalogs-tts-integration.md) - How TTS resolves a card, and troubleshooting
 - [Polly SSML reference](https://docs.aws.amazon.com/polly/latest/dg/supportedtags.html) - Tags and `amazon:*` extensions Polly supports
+- [Google Cloud TTS SSML reference](https://cloud.google.com/text-to-speech/docs/ssml) - Tags Google supports

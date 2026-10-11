@@ -1,12 +1,15 @@
 # Evidence Capture Metadata
 
-Status: Draft
+Status: Draft, 2026-06-25
+
+Not implemented and not scheduled.
 
 Owner: PIE Players maintainers
 
 Related architecture:
 
 - [P0 shared contracts](../../architecture/shared-contracts-p0.md)
+- [Media asset contract](./media-asset-contract.md)
 
 ## Problem
 
@@ -56,16 +59,8 @@ interface EvidenceAssetRef {
   durationSeconds?: number;
   fileName?: string;
   capturedAt?: number;
-  transcript?: {
-    src?: string;
-    plainText?: string;
-    lang?: string;
-  };
-  captions?: Array<{
-    src: string;
-    lang: string;
-    label: string;
-  }>;
+  transcript?: TranscriptRef;
+  tracks?: TextTrackRef[];
 }
 
 interface EvidenceCaptureMetadata {
@@ -78,6 +73,8 @@ interface EvidenceCaptureMetadata {
   scoringContextId?: string;
 }
 ```
+
+`TranscriptRef` and `TextTrackRef` are the shipped [media asset contract](./media-asset-contract.md) types from `@pie-players/pie-players-shared/types`. Evidence metadata stays separate from stimulus media metadata and shares only these accessible-alternate shapes, so a transcript or caption track has one shape wherever it appears. `InteractionSourceRef` is the source-reference sketch from the Draft [interaction event contract](./interaction-event-contract.md#contract-shape); no such type exists in code.
 
 The accepted contract should define whether `uri` is required, optional, or host-resolved, and how an evidence reference indicates pending upload or unavailable evidence.
 
@@ -118,7 +115,7 @@ Evidence metadata is wire-facing data and requires:
 - unknown-version rejection for state-bearing evidence metadata;
 - fixtures for each modality, multiple assets, transcript/caption metadata, missing URI, and rubric linkage.
 
-Binary content must not be embedded in this contract. Inline transcript text may be allowed if the accepted contract defines size and privacy expectations.
+Binary content must not be embedded in this contract. Inline transcript text (`TranscriptRef.plainText` or `html`) may be allowed if the accepted contract defines size and privacy expectations.
 
 ## Accessibility
 
@@ -136,7 +133,7 @@ This metadata PRD does not implement UI behavior.
 
 This contract should support QTI upload/drawing/file response mappings and future xAPI/Caliper evidence statements. It does not claim standards conformance.
 
-QTI evidence mapping belongs in `../pie-qti` after this contract is accepted.
+QTI evidence mapping belongs in [pie-qti](https://github.com/pie-framework/pie-qti) after this contract is accepted.
 
 ## Test Plan
 
@@ -145,7 +142,7 @@ Required test coverage:
 - fixtures for audio, video, image, file, drawing, and mixed evidence;
 - fixtures for pending and externally stored evidence references;
 - tests that evidence source references preserve PIE tag/id identity;
-- adapter round-trip fixtures once `../pie-qti` consumes the accepted contract;
+- adapter round-trip fixtures once [pie-qti](https://github.com/pie-framework/pie-qti) consumes the accepted contract;
 - accessibility test plans for any future UI that captures or displays evidence.
 
 Commands:
@@ -155,13 +152,7 @@ bun run typecheck
 bun run test
 ```
 
-For custom-element or export-boundary changes, also run:
-
-```sh
-bun run check:source-exports
-bun run check:consumer-boundaries
-bun run check:custom-elements
-```
+For custom-element, export-boundary, toolkit-core or player changes, also run the [high-value checks](../../../AGENTS.md#high-value-checks). Playwright-backed tests run outside the sandbox; see [Playwright and sandboxed execution](../../../AGENTS.md#playwright-and-sandboxed-execution).
 
 ## Rollout And Release Notes
 

@@ -6,7 +6,7 @@ Draggable reading guide overlay tool for PIE assessment players.
 
 Provides a movable, resizable reading window that helps students focus on specific lines of text during assessments.
 
-The tool renders as a "window": a fully transparent **pane** through which the underlying page content is visible unchanged, surrounded on all four edges by an obscuring **frame** (black at 80% opacity by default) that largely hides the neighbouring lines. The frame starts as a 48px band above and below the pane and a 12px edge to its left and right.
+The tool renders as a "window": a fully transparent **pane** through which the underlying page content is visible unchanged, surrounded on all four edges by an obscuring **frame** (black at 80% opacity by default) that largely hides the neighboring lines. The frame starts as a 48px band above and below the pane and a 12px edge to its left and right.
 
 ## Custom Element
 
@@ -24,7 +24,7 @@ Tag: `pie-tool-line-reader`
 - Three controls on the frame:
   - **Close** (top right) hides the tool through `ToolCoordinator.hideTool`, which also
     deactivates its toolbar button
-  - **Reading-window resize** (bottom centre) changes the pane height
+  - **Reading-window resize** (bottom center) changes the pane height
   - **Frame resize** (bottom right) changes the frame band height and the overall width
 - Full keyboard support:
   - On the tool: arrow keys to move, `+`/`-` to resize the reading window, `Escape` to
@@ -41,7 +41,7 @@ Tag: `pie-tool-line-reader`
 
 How the frame masks the page — its fill and how strongly it obscures — is a host
 setting, not a student one. It trades reading focus against how much surrounding
-context a test taker can still see, which is a call a programme makes for its whole
+context a test taker can still see, which is a call a program makes for its whole
 population, so it is configured once per deployment rather than adjusted mid-test.
 
 ```css
@@ -57,7 +57,7 @@ population, so it is configured once per deployment rather than adjusted mid-tes
 |---|---|---|
 | `--pie-tool-line-reader-frame-opacity` | `0.8` | Masking strength of the frame |
 | `--pie-tool-line-reader-frame-color` | `#000` | Fill of the obscuring frame |
-| `--pie-tool-line-reader-control-color` | `#fff` | Glyph colour of the close and resize controls |
+| `--pie-tool-line-reader-control-color` | `#fff` | Glyph color of the close and resize controls |
 
 All three are `component-public` entries in
 `packages/theme/src/token-registry.json` and are safe for a host to rely on. The
@@ -67,18 +67,18 @@ declaration wins without `!important`.
 Two constraints come with overriding them. Lowering the opacity weakens the masking
 the tool exists to provide, and there is no in-session control for a student to
 recover from a value that masks too little, so check any override against the
-schemes you ship (see [Colour schemes](#colour-schemes) for the figures the
+schemes you ship (see [Color schemes](#color-schemes) for the figures the
 defaults produce). And `--pie-tool-line-reader-control-color` is a companion to the
 fill rather than a hook worth setting alone: the control glyphs sit on the frame and
-default to white to pair with a dark scrim, so a light fill needs a new glyph colour
+default to white to pair with a dark scrim, so a light fill needs a new glyph color
 with it, keeping 3:1 against the fill (WCAG 2.2 SC 1.4.11). The controls stay fully
 opaque whatever the frame opacity is, so the fill alone decides that ratio.
 
-## Colour schemes
+## Color schemes
 
-The frame stays a dark scrim in every PIE colour scheme instead of following
+The frame stays a dark scrim in every PIE color scheme instead of following
 `--pie-text`. Masking works by collapsing the contrast of whatever it covers, and
-an ink-coloured scrim defeats that on its own scheme — a yellow scrim over
+an ink-colored scrim defeats that on its own scheme — a yellow scrim over
 `yellow-on-blue` text hides nothing, and a white one glares in a dark scheme the
 reader chose to avoid glare. Dimming works in both directions: at the default fill
 and opacity, across all ten built-in schemes the covered text drops from

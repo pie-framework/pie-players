@@ -37,12 +37,12 @@ Use root scripts rather than running `bun run dev` directly inside
 - **Framework:** SvelteKit with `@sveltejs/adapter-node`
 - **Styling:** Tailwind CSS v4 + DaisyUI v5
 - **Player:** PIE Item Player, `iife` strategy by default
-- **Elements:** Loaded from PIE Bundle Service (`https://proxy.pie-api.com/bundles/`)
+- **Elements:** Loaded from the PIE bundle host (`https://proxy.pie-api.com/bundles/`)
 
 ### Element Loading
 
 The demos default to `strategy="iife"`, which loads each element's complete
-bundle from the PIE bundle service and works with `@latest` element versions.
+bundle from the PIE bundle host and works with `@latest` element versions.
 The delivery and author views switch to `esm`, and the delivery view can then
 register the installed ESM builds before the player mounts (`preloaded`).
 
@@ -85,7 +85,7 @@ The item player accepts these key props:
 - `session` - Session data for tracking student responses
 - `env` - Environment settings (mode: gather/view/evaluate, role: student/instructor)
 - `strategy` - Loading strategy (`iife`, `esm`, `preloaded`)
-- `loaderOptions.bundleHost` - PIE bundle service URL (for `iife`)
+- `loaderOptions.bundleHost` - PIE bundle host URL (for `iife`)
 
 **Modes:**
 - `gather` - Student taking assessment (can interact)

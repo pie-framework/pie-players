@@ -1,12 +1,8 @@
 # Official WCAG Sources
 
-This document lists the verified W3C/WAI sources that anchor this library.
-
-Use it as the first stop whenever you need to decide whether something is:
-
-- required by the standard
-- official explanatory guidance
-- project-specific interpretation
+This document lists the W3C/WAI sources the library cites. A statement backed by
+one of them is either a requirement of the standard or official explanatory
+guidance; anything else is project interpretation.
 
 ## Normative Standard
 
@@ -20,7 +16,7 @@ Use it as the first stop whenever you need to decide whether something is:
 | --- | --- | --- |
 | [How to Meet WCAG 2.2 (Quick Reference)](https://www.w3.org/WAI/WCAG22/quickref/) | Official supporting guidance | Fast criterion lookup, filtering by level, and links to techniques. |
 | [Understanding WCAG 2.2](https://www.w3.org/WAI/WCAG22/Understanding/) | Official supporting guidance | Plain-language explanations of each success criterion and its intent. |
-| [Techniques for WCAG 2.2](https://www.w3.org/WAI/WCAG22/Techniques) | Official supporting guidance | Example ways to satisfy criteria. Techniques are helpful, but they are not the standard itself. |
+| [Techniques for WCAG 2.2](https://www.w3.org/WAI/WCAG22/Techniques) | Official supporting guidance | Example ways to satisfy criteria. Techniques are informative: a sufficient technique is one way to meet a criterion, and no technique is required. |
 
 ## Evaluation Guidance
 
@@ -43,38 +39,16 @@ Use it as the first stop whenever you need to decide whether something is:
 | [Names and Descriptions](https://www.w3.org/WAI/ARIA/apg/practices/names-and-descriptions/) | Official supporting guidance | How to provide accessible names and descriptions for controls and regions. |
 | [Developing a Keyboard Interface](https://www.w3.org/WAI/ARIA/apg/practices/keyboard-interface/) | Official supporting guidance | Shared keyboard interaction principles across widgets. |
 
-## How To Choose The Right Source
+## Source Selection
 
-### Use WCAG itself when you need to answer
-
-- Is this required for conformance?
-- What is the exact success criterion language?
-- Is this criterion Level A or AA?
-
-### Use Quick Reference when you need to answer
-
-- Which criteria apply to this issue?
-- What is the fastest official lookup page for a criterion?
-- Which techniques and failures should I inspect next?
-
-### Use Understanding WCAG when you need to answer
-
-- What problem is this criterion trying to prevent?
-- How broad is the criterion?
-- What kinds of examples and edge cases matter?
-
-### Use APG when you need to answer
-
-- How should this widget behave for keyboard users?
-- What ARIA role or labeling pattern is appropriate?
-- What should focus do inside a dialog, toolbar, or splitter?
-
-### Use WAI evaluation resources when you need to answer
-
-- What does a credible accessibility review process look like?
-- How should I combine automated and manual checks?
-- How should I scope and report a conformance-style review?
+| Source | Answers |
+| --- | --- |
+| WCAG 2.2 | Whether something is required for conformance, the exact success criterion language, and its level (A or AA) |
+| Quick Reference | Which criteria apply to an issue, the official lookup page for a criterion, and which techniques and failures to inspect next |
+| Understanding WCAG | What problem a criterion prevents, how broad it is, and which examples and edge cases matter |
+| APG | How a widget behaves for keyboard users, which ARIA role or labeling pattern fits, and where focus goes inside a dialog, toolbar or splitter |
+| WAI evaluation resources | What a credible review process looks like, how automated and manual checks combine, and how to scope and report a conformance-style review |
 
 ## Project Rule
 
-When this repo creates its own guidance, use these official sources first and then add an explicit `In this project` interpretation rather than rewriting the standards from memory.
+Project guidance cites these official sources first, then adds an explicit `In this project` interpretation. It never restates a standard from memory.

@@ -1,3 +1,4 @@
+import { TTSError, TTSErrorCode } from "@pie-players/tts-server-core";
 import { describe, expect, it } from "vitest";
 
 import { pollyWithClient } from "./fake-polly-client.js";
@@ -144,9 +145,13 @@ describe("Polly pitch", () => {
 		const { client, sent } = textRecordingClient();
 		const provider = await withEngine(client, "standard");
 
-		await expect(provider.synthesize({ text: "Hello", pitch: 5 })).rejects.toThrow(
-			"Pitch must be between 0 and 2",
-		);
+		const rejected = provider.synthesize({ text: "Hello", pitch: 5 });
+		await expect(rejected).rejects.toBeInstanceOf(TTSError);
+		await expect(rejected).rejects.toMatchObject({
+			code: TTSErrorCode.INVALID_REQUEST,
+			message: "Pitch must be between 0 and 2",
+			providerId: "aws-polly",
+		});
 		expect(sent).toEqual([]);
 	});
 });
@@ -176,9 +181,13 @@ describe("Polly rate", () => {
 		const { client, sent } = textRecordingClient();
 		const provider = await withEngine(client, "neural");
 
-		await expect(
-			provider.synthesize({ text: "Hello", rate: 4.5 }),
-		).rejects.toThrow("Rate must be between 0.25 and 4.0");
+		const rejected = provider.synthesize({ text: "Hello", rate: 4.5 });
+		await expect(rejected).rejects.toBeInstanceOf(TTSError);
+		await expect(rejected).rejects.toMatchObject({
+			code: TTSErrorCode.INVALID_REQUEST,
+			message: "Rate must be between 0.25 and 4.0",
+			providerId: "aws-polly",
+		});
 		expect(sent).toEqual([]);
 	});
 });

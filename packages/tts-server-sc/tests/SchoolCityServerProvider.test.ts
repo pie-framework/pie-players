@@ -176,6 +176,26 @@ describe("SchoolCity synthesis", () => {
 		expect(error.message).toBe("upstream says no");
 	});
 
+	it("rejects text over the service's maximum before calling it", async () => {
+		const { calls, fetchImpl } = fakeSchoolCity(assets(AUDIO_URL), okRoutes);
+		const error = await rejection(
+			(await provider(fetchImpl)).synthesize({ text: "a".repeat(3001) }),
+		);
+		expect(error.code).toBe(TTSErrorCode.TEXT_TOO_LONG);
+		expect(error.providerId).toBe("schoolcity-tts");
+		expect(calls).toEqual([]);
+	});
+
+	it("rejects an out-of-range rate before calling the service", async () => {
+		const { calls, fetchImpl } = fakeSchoolCity(assets(AUDIO_URL), okRoutes);
+		const error = await rejection(
+			(await provider(fetchImpl)).synthesize({ text: "Hello", rate: 0.1 }),
+		);
+		expect(error.code).toBe(TTSErrorCode.INVALID_REQUEST);
+		expect(error.message).toBe("Rate must be between 0.25 and 4.0");
+		expect(calls).toEqual([]);
+	});
+
 	it("names the missing asset when a 200 lacks one", async () => {
 		const { fetchImpl } = fakeSchoolCity({ audioContent: AUDIO_URL });
 		const error = await rejection(

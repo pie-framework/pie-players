@@ -169,9 +169,10 @@ at mount.
 Before the elements render, the item player dispatches `feature-decision-applied` for a held or
 enabled decision. `overrode` names the attribute when it was set to the opposite value, else
 `authored` when some model's authored value was the opposite, else is absent. `<pie-item-scope>`
-relays the event to its toolkit, which raises `tool-policy.supportConflict` for a `support-conflict`
-hold with `overrode` set, as ADR 0004 specifies. Other blocks raise no diagnostic: a person recorded
-them.
+relays the event to its toolkit. The toolkit raises one `tool-policy.supportConflict` for each
+`support-conflict` hold that withdrew something, as ADR 0004 specifies: at decision time when the
+conflict displaced a granting rule, which it names, else from the event when `overrode` is set.
+Other blocks raise no diagnostic: a person recorded them.
 
 ### Elements
 
@@ -203,7 +204,9 @@ starts reading `autoplayAudioHeld` only in a release that meets all of these:
 - Versioned tag names, contract attributes, section and assessment session state, and persisted
   session data are untouched.
 - A host on the toolkit that sets no `autoplayAudio` input, and no profile listing `screenReader`,
-  sees no change: every decision is `rule: "none"`.
+  sees no change: every decision is `rule: "none"`. A non-empty `tools.policy.allowed` is the
+  exception: like every capability it omits, autoplay resolves held under `host-allowlist` for every
+  student unless the allowlist lists `autoplayAudio`. No recorded host sets an allowlist.
 
 ## Data Ownership And Host Responsibilities
 
@@ -267,8 +270,9 @@ changes. Playwright-backed tests run outside the sandbox; see
 - Changeset required: yes, for `@pie-players/pie-context`, `@pie-players/pie-assessment-toolkit`
   and `@pie-players/pie-item-player`; pie-elements-ng releases for the seven elements and the shared
   prompt renderer and sanitizer.
-- Migration notes: none for hosts. A host that wants autoplay set by policy sets the inputs above;
-  the attribute stays for hosts without the toolkit.
+- Migration notes: a host with a non-empty `tools.policy.allowed` adds `autoplayAudio` to it to
+  keep authored autoplay. A host that wants autoplay set by policy sets the inputs above; the
+  attribute stays for hosts without the toolkit.
 - Documentation updates: the item player README (attribute, event, `autoplayAudioHeld`), the PNP
   Configuration Guide (an `autoplayAudio` example), and the Audio Accommodations open question,
   which this PRD resolves once accepted.

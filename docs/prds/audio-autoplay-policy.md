@@ -183,8 +183,9 @@ drag-in-the-blank, ebsr, hotspot, image-cloze-association, mc-populated-blank, m
 starts reading `autoplayAudioHeld` only in a release that meets all of these:
 
 1. **Playable.** With autoplay off or held, every rendered prompt audio has a keyboard-operable play
-   control. The shared prompt renderer keeps the authored audio's id, so authored play links work,
-   and renders native controls where the item has no play control of its own.
+   control. The shared prompt renderer points authored play links at the id it generates for the
+   audio, so they play it, and renders native controls where the item has no play control of its
+   own.
 2. **No authored autoplay.** The model sanitizer strips the `autoplay` attribute from authored
    `<audio>`, so the model field is the only start.
 3. **Completion reachable.** `completeAudioEnabled` completes once the audio has played, and does

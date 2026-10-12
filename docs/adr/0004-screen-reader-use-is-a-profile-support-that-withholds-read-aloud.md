@@ -143,8 +143,8 @@ do not meet it.
   authored `true`. The pie-elements-ng elements with an authored `autoplayAudioEnabled` setting are
   categorize, drag-in-the-blank, ebsr, hotspot, image-cloze-association, mc-populated-blank and
   multiple-choice. Each needs a release that meets the precondition before a hold reaches it, and
-  the first fix is the shared prompt renderer keeping the authored audio's id. The ADR 0003 context
-  gains no consumer, so its provider still does not ship.
+  the first fix is the shared prompt renderer pointing an authored play link at the id it generates
+  for the audio. The ADR 0003 context gains no consumer, so its provider still does not ship.
 - The tool registry's AfA table maps `spoken` to `textToSpeech` only for `reading-type`
   `computer-read-aloud`
   ([Support ids](../../packages/assessment-toolkit/docs/TOOL_REGISTRY.md#support-ids)). A host that

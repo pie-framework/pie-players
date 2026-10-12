@@ -71,7 +71,11 @@ caret range resolved by how two hashes happened to spell and installed an older
 build. Its builds stay installable. Sets compare lexically against each other,
 so a caret range is still unsafe and hosts pin exact versions.
 
-A publish carries one dist-tag, the set's name or `latest`, because the workflow
+A build on a prerelease loader publishes under the prerelease id in place of
+`latest` (`beta`), or under `<set>-<id>` in place of the set's name
+(`publishDistTag`), so a beta never moves the tags hosts resolve.
+
+A publish carries one dist-tag, because the workflow
 publishes through npm's OIDC trusted publishing, which authorizes `npm publish`
 and not `npm dist-tag`. `--publishTag` overrides the tag for one publish. `next`,
 the tag every build carried under the earlier scheme, no longer moves.

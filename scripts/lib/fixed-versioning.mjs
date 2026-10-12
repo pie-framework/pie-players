@@ -8,14 +8,111 @@
 export const parseSemver = (value) => {
 	if (typeof value !== "string") return null;
 	const normalized = value.trim().replace(/^v/, "");
-	const match = normalized.match(/^(\d+)\.(\d+)\.(\d+)(?:[-+].+)?$/);
+	const match = normalized.match(
+		/^(\d+)\.(\d+)\.(\d+)(?:-([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?(?:\+[0-9A-Za-z.-]+)?$/,
+	);
 	if (!match) return null;
 	return {
 		major: Number.parseInt(match[1], 10),
 		minor: Number.parseInt(match[2], 10),
 		patch: Number.parseInt(match[3], 10),
+		prerelease: match[4] ? match[4].split(".") : [],
 		raw: normalized,
 	};
+};
+
+const NUMERIC_IDENTIFIER = /^\d+$/;
+
+/** Semver precedence: negative when `a` sorts before `b`, build metadata ignored. */
+export const compareSemver = (a, b) => {
+	for (const key of ["major", "minor", "patch"]) {
+		if (a[key] !== b[key]) return a[key] - b[key];
+	}
+	// A version without a prerelease outranks every prerelease of it.
+	if (a.prerelease.length === 0 || b.prerelease.length === 0) {
+		return b.prerelease.length - a.prerelease.length;
+	}
+	const length = Math.max(a.prerelease.length, b.prerelease.length);
+	for (let i = 0; i < length; i++) {
+		const left = a.prerelease[i];
+		const right = b.prerelease[i];
+		if (left === undefined) return -1;
+		if (right === undefined) return 1;
+		if (left === right) continue;
+		const leftNumeric = NUMERIC_IDENTIFIER.test(left);
+		const rightNumeric = NUMERIC_IDENTIFIER.test(right);
+		if (leftNumeric && rightNumeric) return Number(left) - Number(right);
+		if (leftNumeric) return -1;
+		if (rightNumeric) return 1;
+		return left < right ? -1 : 1;
+	}
+	return 0;
+};
+
+/**
+ * The version a package's release sequence continues from: the highest version any
+ * dist-tag points to. `latest` alone is not enough, because a prerelease line publishes
+ * under its own tag and leaves `latest` on the last stable release.
+ *
+ * @param {Record<string, string>} distTags what `npm view <pkg> dist-tags --json` returns
+ */
+export const highestTaggedVersion = (distTags) => {
+	let highest = null;
+	for (const version of Object.values(distTags ?? {})) {
+		const semver = parseSemver(version);
+		if (!semver) continue;
+		if (!highest || compareSemver(semver, highest) > 0) highest = semver;
+	}
+	return highest?.raw ?? null;
+};
+
+const isPrerelease = (semver) => semver.prerelease.length > 0;
+
+const sameBase = (a, b) =>
+	a.major === b.major && a.minor === b.minor && a.patch === b.patch;
+
+/** The trailing numeric identifier changesets increments, as in `beta.3`. */
+const prereleaseCounter = (semver) => {
+	const last = semver.prerelease.at(-1);
+	return last !== undefined && NUMERIC_IDENTIFIER.test(last) ? Number(last) : null;
+};
+
+/** One patch, minor or major step above `from`. */
+const isSingleStep = (from, to) =>
+	(to.major === from.major &&
+		to.minor === from.minor &&
+		to.patch === from.patch + 1) ||
+	(to.major === from.major && to.minor === from.minor + 1 && to.patch === 0) ||
+	(to.major === from.major + 1 && to.minor === 0 && to.patch === 0);
+
+/**
+ * Whether `local` is the release directly after `published`:
+ *
+ * - a stable release after a stable one is one patch ahead;
+ * - a stable release after a prerelease closes that prerelease line, so it is the line's base;
+ * - a prerelease line opens at counter 0, one patch, minor or major step above the stable
+ *   release it starts from;
+ * - each later prerelease of the line raises the counter by one.
+ */
+const isNextRelease = (published, local) => {
+	if (!isPrerelease(local)) {
+		if (isPrerelease(published)) return sameBase(published, local);
+		return (
+			published.major === local.major &&
+			published.minor === local.minor &&
+			published.patch === local.patch - 1
+		);
+	}
+	const counter = prereleaseCounter(local);
+	if (counter === null) return false;
+	if (counter === 0) {
+		return !isPrerelease(published) && isSingleStep(published, local);
+	}
+	return (
+		isPrerelease(published) &&
+		sameBase(published, local) &&
+		prereleaseCounter(published) === counter - 1
+	);
 };
 
 const formatDetails = (entries) =>
@@ -49,16 +146,21 @@ const isCatchingUpNewcomer = (entry, localSemver, history) => {
 	if (history[0] !== entry.version) return false;
 	if (entry.semver.major !== localSemver.major) return false;
 	if (entry.semver.minor !== localSemver.minor) return false;
-	// More than one patch behind. A package exactly one patch behind is the ordinary
+	// More than one release behind. A package exactly one release behind is the ordinary
 	// mid-publish shape, which the partial-publish branch below already owns.
-	return entry.semver.patch < localSemver.patch - 1;
+	return (
+		compareSemver(entry.semver, localSemver) < 0 &&
+		!isNextRelease(entry.semver, localSemver)
+	);
 };
 
 /**
- * Classify the local version against the versions npm reports for the fixed group.
+ * Classify the local version against the version each fixed-group package continues from
+ * (`highestTaggedVersion`).
  *
  * Returns one of:
- * - `{ verdict: "ok" }` — the normal case: npm is uniform and local is exactly one patch ahead.
+ * - `{ verdict: "ok" }` — the normal case: npm is uniform and local is the next release
+ *   (`isNextRelease`).
  * - `{ verdict: "completing-partial-publish", message }` — npm is split because a lockstep
  *   publish partly failed, and publishing the local version is what repairs it. Advisory: the
  *   caller should report the message and continue.
@@ -126,22 +228,37 @@ export function classifyPublishedSequence({
 
 	if (distinct.size === 1) {
 		const { version: publishedVersion, semver: publishedSemver } = entries[0];
+		if (isNextRelease(publishedSemver, localSemver)) {
+			return catchingUpNote
+				? { verdict: "ok", ...catchingUpNote }
+				: { verdict: "ok" };
+		}
+		if (isPrerelease(localSemver)) {
+			return {
+				verdict: "stop",
+				message:
+					`Local prerelease ${localVersion} does not follow published ${publishedVersion}. A prerelease ` +
+					"line opens at counter 0, one patch, minor or major step above the published stable version, " +
+					"and each later prerelease raises the counter by one. Did you run changeset version?",
+			};
+		}
+		if (isPrerelease(publishedSemver)) {
+			return {
+				verdict: "stop",
+				message: `Local version ${localVersion} does not close the published prerelease line ${publishedVersion}: the stable release after a prerelease line is that line's base version.`,
+			};
+		}
 		if (
 			localSemver.major !== publishedSemver.major ||
 			localSemver.minor !== publishedSemver.minor
 		) {
 			return {
 				verdict: "stop",
-				message: `Local version ${localVersion} must keep major/minor aligned with published ${publishedVersion} for patch lockstep releases.`,
+				message: `Local version ${localVersion} must keep major/minor aligned with published ${publishedVersion} for patch lockstep releases. A new major or minor line opens as a prerelease line.`,
 			};
 		}
 
 		const delta = localSemver.patch - publishedSemver.patch;
-		if (delta === 1) {
-			return catchingUpNote
-				? { verdict: "ok", ...catchingUpNote }
-				: { verdict: "ok" };
-		}
 		if (delta <= 0) {
 			return {
 				verdict: "stop",
@@ -159,40 +276,35 @@ export function classifyPublishedSequence({
 	//
 	// One split is different: the one a partly failed lockstep publish leaves behind. npm
 	// authenticates a publish run as a whole, so when a run loses auth partway the packages
-	// that made it sit at the version being released and the rest stay a patch behind. That is
-	// not drift, it is an unfinished write, and publishing the same version again is precisely
+	// that made it sit at the version being released and the rest stay one release behind. That
+	// is not drift, it is an unfinished write, and publishing the same version again is precisely
 	// the repair — Changesets skips the packages that already landed.
 	//
 	// Refusing here would make a partial release unrecoverable except by abandoning the version
 	// entirely, which is how the 0.3.61 release ended up with @pie-players/pie-theme published
 	// and 35 siblings a patch behind.
-	const sameReleaseLine = entries.every(
-		({ semver }) =>
-			semver.major === localSemver.major && semver.minor === localSemver.minor,
+	const landedEntries = entries.filter(
+		({ semver }) => compareSemver(semver, localSemver) === 0,
 	);
-	const onlyCurrentOrPrevious = entries.every(
-		({ semver }) =>
-			semver.patch === localSemver.patch ||
-			semver.patch === localSemver.patch - 1,
+	const pendingEntries = entries.filter(
+		({ semver }) => compareSemver(semver, localSemver) !== 0,
 	);
-	const someAlreadyAtLocal = entries.some(
-		({ semver }) => semver.patch === localSemver.patch,
-	);
+	const pendingVersions = new Set(pendingEntries.map(({ version }) => version));
+	const pendingAreOneBehind =
+		pendingVersions.size === 1 &&
+		isNextRelease(pendingEntries[0].semver, localSemver);
 
 	const details = formatDetails(entries);
 
-	if (sameReleaseLine && onlyCurrentOrPrevious && someAlreadyAtLocal) {
-		const landed = entries
-			.filter(({ semver }) => semver.patch === localSemver.patch)
-			.map(({ name }) => name)
-			.sort();
-		const pending = entries.length - landed.length;
+	if (landedEntries.length > 0 && pendingAreOneBehind) {
+		const landed = landedEntries.map(({ name }) => name).sort();
+		const pending = pendingEntries.length;
 		return {
 			verdict: "completing-partial-publish",
 			...(catchingUpNote ? { catchingUp: catchingUpNote.catchingUp } : {}),
 			message:
 				`Completing a partial publish of ${localVersion}. ${landed.length} package(s) already published it ` +
-				`(${landed.join(", ")}) and ${pending} are still one patch behind, which is the state a lockstep ` +
+				`(${landed.join(", ")}) and ${pending} are still one release behind, which is the state a lockstep ` +
 				`publish leaves when it loses auth partway. Publishing ${localVersion} again reconciles the group.\n${details}` +
 				(catchingUpNote ? `\n\n${catchingUpNote.message}` : ""),
 		};
@@ -203,7 +315,7 @@ export function classifyPublishedSequence({
 		message:
 			`Expected one lockstep published npm version across fixed packages, found ${distinct.size}:\n${details}\n\n` +
 			`The only publishable split is an unfinished publish of the local version ${localVersion}: some packages ` +
-			`at ${localVersion} and the rest exactly one patch behind. This is not that, so republishing will not ` +
+			`at ${localVersion} and the rest exactly one release behind. This is not that, so republishing will not ` +
 			"reconcile it — align the group manually before releasing.",
 	};
 }

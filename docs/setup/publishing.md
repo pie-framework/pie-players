@@ -27,7 +27,8 @@ runs the same steps from a checkout.
    `bun run verify:publish`, resolves npm auth
    ([How CI authenticates to npm](#how-ci-authenticates-to-npm)), and publishes
    with `bun run release`.
-5. After a publish, the workflow creates the GitHub Release `v<version>`, runs
+5. After a publish, the workflow creates the GitHub Release `v<version>`,
+   marked as a prerelease for a prerelease version, runs
    the [post-publish checks](#post-publish-checks), and opens a `master` →
    `develop` back-merge PR. Merge it
    ([Back-merge to develop](#back-merge-to-develop)).
@@ -66,13 +67,53 @@ never remove one to unblock a release.
 - On the pre-1.0 `0.x.y` line every release is a `patch` bump, breaking changes
   included; the changeset body documents the break.
   `check:changeset-patch-only` rejects any pending `minor` or `major`
-  changeset. Only an explicit maintainer decision changes this policy.
+  changeset, except the `major` that opens the
+  [1.0 prerelease line](#prerelease-lines). Only an explicit maintainer
+  decision changes this policy.
 - Source manifests keep internal dependencies as `workspace:*`. Publishing
   rewrites each to the exact version being released, then restores the
   manifests (`bun run restore:workspace-ranges`).
 - `check:fixed-versioning` (`scripts/check-fixed-versioning.mjs`) fails when
   local versions diverge, when an internal dependency is not `workspace:*`, or
-  when the local version would skip a patch version on npm.
+  when the local version is not the next release after the highest version npm
+  carries under any dist-tag: one patch ahead, or the next step of a
+  [prerelease line](#prerelease-lines).
+
+## Prerelease lines
+
+1.0 ships first as `1.0.0-beta.N` prereleases, through Changesets pre mode. A
+prerelease publishes under the `beta` dist-tag, so `latest` stays on the last
+`0.x.y` release and an install without a version keeps resolving it.
+
+The line opens with a PR into `develop` that carries:
+
+- `.changeset/pre.json`, written by `bunx changeset pre enter beta`;
+- one changeset declaring `major` for every package in the `fixed` block.
+  `check:changeset-patch-only` admits `major` only while `pre.json` is in `pre`
+  mode and the group is on `0.x`, and then requires it: without it the line
+  opens as a prerelease of the next `0.x` patch.
+
+Each promotion to `master` then follows the [release sequence](#release-sequence).
+The first release versions every package `1.0.0-beta.0`; each later one, from
+`patch` changesets or the temporary changeset, advances the counter
+(`1.0.0-beta.1`, `1.0.0-beta.2`). `bun run version` moves consumed changesets
+to `.changeset/pre/`, and the `1.0.0` changelog is assembled from them.
+`check:fixed-versioning` accepts `1.0.0-beta.0` after the last `0.x.y`
+release, each counter step after the one before, and `1.0.0` after a `1.0.0`
+prerelease.
+
+The line closes with a PR into `develop` that runs `bunx changeset pre exit`
+and prunes `.changeset/pre/` to the entries the `1.0.0` changelog should carry;
+the temporary all-packages entries carry nothing. The next release versions
+`1.0.0` under `latest` and deletes `pre.json` and `.changeset/pre/`.
+
+No `0.x.y` release ships while the line is open, since `check:fixed-versioning`
+measures against the highest published version, a `1.0.0` prerelease by then.
+A fix that hosts need ships in the next prerelease.
+
+Preloaded-player builds on a prerelease item player publish under `beta`, or
+`<set>-beta` for a set without `latest`
+([Sets and versions](../../configs/preloaded-player/README.md#sets-and-versions)).
 
 ## Required package metadata
 
@@ -347,7 +388,9 @@ The bootstrap publishes the version on the branch it runs on, and release
 bumps land only on `master`, so a bootstrap from `develop` publishes whatever
 version the last back-merge left there. `check:fixed-versioning` tolerates the
 gap for a package whose entire release history is one version below the group,
-and reports the packages it excused. The discriminant is release history: a
+and reports the packages it excused. On a [prerelease line](#prerelease-lines)
+the bootstrap publishes under the prerelease's dist-tag, since npm refuses a
+prerelease without one. The discriminant is release history: a
 package that published repeatedly and then fell behind is drift, and still
 fails. The newcomer joins the group at the next release version.
 
@@ -417,7 +460,7 @@ bun run release:with-version
 It runs the CI release path in order:
 
 1. `bun run check:changeset-patch-only`: rejects a pending `minor` or `major`
-   changeset.
+   changeset, except a [prerelease line](#prerelease-lines)'s opening `major`.
 2. `scripts/create-temporary-release-changeset.mjs`: writes
    `.changeset/temporary-release-all-packages.md`, declaring `patch` for every
    publishable package, so the lockstep set is always covered. Author

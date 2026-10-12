@@ -58,6 +58,17 @@ export async function readElementSet(elementsFile: string): Promise<ElementSet> 
 }
 
 /**
+ * The dist-tag a build publishes under. A build on a prerelease loader keeps `latest` and
+ * the set tags on a stable loader: it publishes under the loader's prerelease id (`beta`),
+ * or under `<set>-<id>` for a set that does not carry `latest`.
+ */
+export function publishDistTag(set: ElementSet, loaderVersion: string): string {
+	const prereleaseId = /^\d+\.\d+\.\d+-([0-9A-Za-z-]+)/.exec(loaderVersion)?.[1];
+	if (!prereleaseId) return set.distTag;
+	return set.distTag === "latest" ? prereleaseId : `${set.name}-${prereleaseId}`;
+}
+
+/**
  * The speech locales a build ships: `flag`, comma-separated, then the config
  * file's `speechLocales`. `undefined` leaves the build's default.
  */
@@ -564,12 +575,10 @@ export async function minifyPlayerModules(dir: string): Promise<void> {
 
 export async function buildPreloadedPlayerStaticPackage(
 	config: BuildStaticConfig,
-): Promise<{ outputDir: string; version: string }> {
-	if (!config.loaderVersion) {
-		config.loaderVersion = await resolveDefaultLoaderVersion(
-			config.monorepoDir,
-		);
-	}
+): Promise<{ outputDir: string; version: string; loaderVersion: string }> {
+	const loaderVersion =
+		config.loaderVersion || (await resolveDefaultLoaderVersion(config.monorepoDir));
+	config.loaderVersion = loaderVersion;
 
 	// A publish flow (`PIE_PRELOADED_PLAYER_AUTO_ITERATION`) without an iteration
 	// takes the next one free on npm. A local build without one is versioned as
@@ -644,5 +653,5 @@ export async function buildPreloadedPlayerStaticPackage(
 		generateReadme(config, version, hash, math),
 	);
 
-	return { outputDir, version };
+	return { outputDir, version, loaderVersion };
 }

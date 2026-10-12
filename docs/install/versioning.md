@@ -29,6 +29,10 @@ breaking changes included. A version number therefore says nothing about
 compatibility: read the changelog of every release between your current
 version and the target before upgrading.
 
+1.0 ships first as prereleases, `1.0.0-beta.0`, `1.0.0-beta.1` and on, under the
+`beta` dist-tag. `latest` stays on the last `0.x.y` release until `1.0.0`
+publishes.
+
 ## Pinning
 
 Production installs pin an exact version:
@@ -41,18 +45,23 @@ On a `0.x.y` version, a caret or tilde range (`^0.3.0`, `~0.3.0`) admits every
 later patch and with it every breaking change. CDN URLs pin the same way:
 `https://cdn.jsdelivr.net/npm/@pie-players/pie-item-player@x.y.z/dist/pie-item-player.js`.
 A partial version (`@0.3`) or `@latest` in a URL resolves to the newest
-matching release, so the page changes without a deploy.
+matching release, so the page changes without a deploy. A range never resolves
+to a prerelease unless it names one, so `^0.3.0` stays off the 1.0 betas; a
+host trying a beta pins it exactly.
 
 ## Dist-tags
 
-The lockstep packages publish under npm's `latest` dist-tag only.
+The lockstep packages publish releases under npm's `latest` dist-tag and
+prereleases under `beta`: `npm view @pie-players/pie-item-player dist-tags`
+shows both.
 
 The preloaded player's current element set publishes under `latest`, and any
 other set under a dist-tag named after it
 ([dist-tags](../preloaded-player/readme.md#dist-tags)). Its versions are
 prereleases and sets do not sort against each other, so a caret range can
 resolve to a build of a different set, and `latest` moves when the current set
-changes. Pin an exact version.
+changes. A build on a prerelease item player publishes under `beta`, or
+`<set>-beta`. Pin an exact version.
 
 ## Public surface
 

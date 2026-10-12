@@ -23,7 +23,7 @@ The import registers `<pie-item-player>`. A page without a build step loads the 
 ></script>
 ```
 
-The `@pie-players/*` packages release together under one version number, written `x.y.z` in these docs. Pin it exactly: a `0.x` release can break, and a range or `@latest` URL changes the page without a deploy ([versioning](install/versioning.md#pinning)). [Packages and entry points](install/packages.md) lists the other packages.
+The `@pie-players/*` packages release together under one version number, written `x.y.z` in these docs. Pin it exactly: any release can break, and a range or `@latest` URL changes the page without a deploy ([versioning](install/versioning.md#pinning)). [Packages and entry points](install/packages.md) lists the other packages.
 
 ## Render an item
 

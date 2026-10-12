@@ -10,7 +10,7 @@ by job and entry point.
 
 Before a release, `check:pack-integrity:real` (`scripts/check-pack-integrity.mjs`,
 run by `verify:publish`) checks every package's packed tarball. Releases are
-patch-only while the packages are on `0.x.y`
+patch-only
 ([versioning policy](./publishing.md#versioning-policy)).
 
 `@pie-players/pie-tool-theme` is the color-scheme tool (`theme`).

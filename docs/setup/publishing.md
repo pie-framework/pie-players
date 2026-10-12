@@ -64,8 +64,8 @@ never remove one to unblock a release.
 
 - Every release bumps every package in the set, including packages whose source
   did not change, so each version PR touches every manifest and changelog.
-- On the pre-1.0 `0.x.y` line every release is a `patch` bump, breaking changes
-  included; the changeset body documents the break.
+- Every release is a `patch` bump, breaking changes included, on `0.x.y` and
+  from 1.0 on alike; the changeset body documents the break.
   `check:changeset-patch-only` rejects any pending `minor` or `major`
   changeset, except the `major` that opens the
   [1.0 prerelease line](#prerelease-lines). Only an explicit maintainer

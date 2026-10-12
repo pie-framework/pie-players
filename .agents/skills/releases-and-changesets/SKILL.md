@@ -28,15 +28,15 @@ All publishable `@pie-players/*` packages are released with a **fixed
 (lockstep) version**. At any published version, every package in the suite
 carries that same version number — there is no per-package version drift.
 Every release bumps every publishable package, including ones whose source
-did not change. That is **expected**, not a bug to fix. While we are pre-1.0
-(the current `0.x.y` line), every release is a **`patch`** bump, even for
-breaking changes — see "Bump level" below.
+did not change. That is **expected**, not a bug to fix. Every release is a
+**`patch`** bump, even for breaking changes, on `0.x.y` and from 1.0 on alike —
+see "Bump level" below.
 
 ## Bump level — patch only
 
 Until the maintainer rewrites the rule, **every release is `patch`**.
-Pre-1.0 semver allows breaking changes within a `0.x` line, and the
-lockstep invariant already keeps consumers aligned.
+The lockstep invariant keeps consumers aligned, and hosts pin exact
+versions; the changelog, not the version number, carries compatibility.
 
 - Author every changeset entry as `patch`. Do not propose `minor` /
   `major` unless the maintainer explicitly lifts this constraint and
@@ -136,7 +136,7 @@ When adding a new package under `packages/*` that ships to npm:
 - Author a `minor` or `major` changeset. Patch-only is the policy until
   the maintainer rewrites
   [`AGENTS.md`](../../../AGENTS.md) "Release Version Alignment".
-  Even breaking changes ship as `patch` on the `0.x.y` line.
+  Even breaking changes ship as `patch`, before and after 1.0.
   The prerelease line's opening `major` is the only exception.
 - Prepare release bumps for only a subset of changed packages. "Only
   package X changed, so only bump X" is the wrong framing for this repo —

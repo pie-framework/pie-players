@@ -15,7 +15,7 @@ import { ToolkitCoordinator } from "@pie-players/pie-assessment-toolkit";
 
 The first import registers the section player elements. The second gives the host its own `ToolkitCoordinator`, the toolkit service that holds tool configuration and policy and owns the section's controller. A page without a build step imports the same two from a CDN, as the page below does: the section player's self-contained [browser build](install/cdn.md#section-player-browser-build), which bundles the toolkit and the packaged tools and loads only from its full file path, and the toolkit's `+esm` module for the coordinator class.
 
-The `@pie-players/*` packages release together under one version number, written `x.y.z` in these docs. Pin it exactly, and give both URLs the same version: a `0.x` release can break, and a range or `@latest` URL changes the page without a deploy ([versioning](install/versioning.md#pinning)).
+The `@pie-players/*` packages release together under one version number, written `x.y.z` in these docs. Pin it exactly, and give both URLs the same version: any release can break, and a range or `@latest` URL changes the page without a deploy ([versioning](install/versioning.md#pinning)).
 
 ## A reading section
 

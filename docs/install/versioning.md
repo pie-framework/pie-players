@@ -22,12 +22,12 @@ item player version it is built against, the element set it bundles, and a
 counter per set and item player version
 ([version scheme](../preloaded-player/readme.md#version-scheme)).
 
-## Version numbers before 1.0
+## Version numbers
 
-The packages are on the `0.x.y` line, and every release is a patch bump,
-breaking changes included. A version number therefore says nothing about
-compatibility: read the changelog of every release between your current
-version and the target before upgrading.
+Every release is a patch bump, breaking changes included, on `0.x.y` and from
+1.0 on alike. A version number therefore says nothing about compatibility: read
+the changelog of every release between your current version and the target
+before upgrading.
 
 1.0 ships first as prereleases, `1.0.0-beta.0`, `1.0.0-beta.1` and on, under the
 `beta` dist-tag. `latest` stays on the last `0.x.y` release until `1.0.0`
@@ -41,8 +41,8 @@ Production installs pin an exact version:
 npm install --save-exact @pie-players/pie-item-player@x.y.z @pie-players/pie-section-player@x.y.z
 ```
 
-On a `0.x.y` version, a caret or tilde range (`^0.3.0`, `~0.3.0`) admits every
-later patch and with it every breaking change. CDN URLs pin the same way:
+A caret or tilde range (`^0.3.0`, `~1.0.0`) admits every later patch and with
+it every breaking change. CDN URLs pin the same way:
 `https://cdn.jsdelivr.net/npm/@pie-players/pie-item-player@x.y.z/dist/pie-item-player.js`.
 A partial version (`@0.3`) or `@latest` in a URL resolves to the newest
 matching release, so the page changes without a deploy. A range never resolves

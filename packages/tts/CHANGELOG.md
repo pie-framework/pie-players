@@ -1,5 +1,28 @@
 # @pie-players/pie-tts
 
+## 1.0.0-beta.0
+
+### Major Changes
+
+- 956f4be: Open the 1.0 line. 1.0.0 ships first as `1.0.0-beta.N` prereleases under the `beta` dist-tag, while `latest` stays on 0.3.75. Releases stay patch-only after 1.0, breaking changes included, so pin exact versions.
+
+### Patch Changes
+
+- ef49bbe: Removes dead internal code: unused class members and module exports outside
+  every package entry, the toolkit's unused tool-scope-level registration and
+  tool-config error helpers, the section player's no-op `ensureDefined`
+  component loaders, and stale `files` entries for assets the
+  tools inline. The print player no longer logs element resolution to the
+  console.
+- ef49bbe: Corrects package READMEs and doc comments against the current code: stale
+  APIs, endpoints and figures, broken links, and the answer eliminator's
+  persistence example, which replaced the coordinator's own tool-state save.
+  The line reader frame token's registry entry now gives contrast figures for all
+  ten built-in schemes.
+- 90d40c6: A server read whose response carries no speech marks highlights each sentence as it plays: the provider's `onPlaybackStart` passes a `TTSPlaybackStart` saying whether the audio carries word boundaries, and the reader paints the part's sentences when it does not. `<pie-tool-tts-inline>` lost its `language` property and speaks the runtime context's content language, as the annotation toolbar's read-aloud does, and it reports a read with nothing to read only under `PIE_TTS_DEBUG`. Neither tool logs a start failure to the console any more; the toolkit reports it. Read-aloud word highlighting re-adapts its colours when a `<pie-theme>` mounts after the reader or changes its theme, and stops observing on dispose. `PollyServerProvider` and `GoogleCloudTTSProvider` create their SDK client through a protected `createClient`, which a subclass can override.
+- d83c044: `TTSService.stop()` now also closes an open `<pie-tool-tts-inline>` panel, and `requestControlHandoff` and its handoff event are removed; a read that ends on its own keeps the panel open. Providers drop `isPlaying`, `isPaused`, `providerName` and `version`, and `TTSProviderCapabilities` keeps `supportsWordBoundary`, `defaultHighlightMode`, `supportsSSML` and `maxTextLength`. `ToolProviderApi.getCapabilities` and `ToolProviderCapabilities` are removed. `StandardTTSConfig` and `TTSConfigExtensions` fold into `TTSConfig`, and `mathTokenHighlighting` moves to the toolkit's TTS config. `TtsServiceApi` loses `isPlaying`, `isPaused`, `getCurrentText`, `getCapabilities`, `initialize`, `setHighlightCoordinator` and `setCatalogResolver`, `TTSService` loses `getLastError`, and `HighlightCoordinatorApi` replaces `highlightRange`, `clearHighlights`, `isSupported` and `updateTTSHighlightStyle` with `clearTTSWord`. `ensureTTSReady()` takes no argument, and `TTSService.ts` no longer re-exports the `@pie-players/pie-tts` types.
+- 743b8e4: `validateEndpoint` is gone from the TTS settings and the server provider's config: `endpointValidationMode` alone picks the probe `initialize()` runs, `none` when unset on the provider and `voices` on a toolkit `server` backend, as before. `resolveTTSRuntimeSettings` resolves `layoutMode`, an unknown value to `left-aligned`, so `resolveTTSLayoutMode` and `normalizeTTSLayoutMode` are removed and `TTSHostToolbarLayout` drops its constant `mount`. `speedRate` is typed by the new `SpeedRateBucket` from `@pie-players/pie-tts`, the custom transport's `providerOptions` keys (`speedRate`, `lang_id`, `cache`) are typed, and the server provider replaces a `speedRate` outside the three buckets with the one `rate` gives. `TOOL_ACTIVE_CHANGE_EVENT`, on `tools/registration`, names the event a tool element announces its open state with.
+
 ## 0.3.75
 
 ### Patch Changes

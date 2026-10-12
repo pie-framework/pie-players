@@ -1,5 +1,79 @@
 # @pie-players/pie-assessment-toolkit
 
+## 1.0.0-beta.0
+
+### Major Changes
+
+- 956f4be: Open the 1.0 line. 1.0.0 ships first as `1.0.0-beta.N` prereleases under the `beta` dist-tag, while `latest` stays on 0.3.75. Releases stay patch-only after 1.0, breaking changes included, so pin exact versions.
+
+### Patch Changes
+
+- 7bc0b83: Tool state is kept per attempt. `ElementToolStateStore` keys gain an attempt segment, `assessmentId:sectionId:attemptId:itemId:elementId`, and `getGlobalElementId` takes an `ElementIdComponents` object; the toolkit's `attempt-id` reaches tools through the runtime context's new `attemptId`. The annotation toolbar records its annotations in that store under `annotationToolbar` in place of `sessionStorage`, so one attempt's or learner's highlights no longer appear in another. `<pie-tool-theme>` follows the host's `<pie-theme scheme>` and records a learner's pick in the store for the section and attempt; it no longer reads or writes `localStorage['pie-color-scheme']`, so a host that wants the pick to outlast a reload persists the store through `loadToolState`/`saveToolState`.
+- 403a673: `ToolScopeLevel` and `ToolbarContext.scope.level` admit only the five registered
+  scope levels; any other string already threw when a tool id was built. The
+  calculator, graph and periodic-table panels mark their root with
+  `data-pie-tool-id`. `tts-server-core` drops its unused speech-mark helpers,
+  `generateCacheKey` and `hashText`. The assessment player bundles players-shared
+  whole and drops its shell-element and contract subpaths, which resolved to the
+  registering bundle. The dictionary tools resolve players-shared from the host, as
+  every other tool does. players-shared adds `isPlainRecord` to `./object`, and
+  `pie-default-tool-loaders` exports `CONTENT_LEAD_SURFACE`, which the print player
+  now re-exports.
+- ef49bbe: Removes dead internal code: unused class members and module exports outside
+  every package entry, the toolkit's unused tool-scope-level registration and
+  tool-config error helpers, the section player's no-op `ensureDefined`
+  component loaders, and stale `files` entries for assets the
+  tools inline. The print player no longer logs element resolution to the
+  console.
+- ef49bbe: Corrects package READMEs and doc comments against the current code: stale
+  APIs, endpoints and figures, broken links, and the answer eliminator's
+  persistence example, which replaced the coordinator's own tool-state save.
+  The line reader frame token's registry entry now gives contrast figures for all
+  ten built-in schemes.
+- 32edbc8: The `ToolCoordinator` class is no longer exported, and `ToolkitCoordinator.toolCoordinator` is typed `ToolCoordinatorApi`, dropping the class-only `getToolElement` and `getRegisteredTools`; read an element through `getToolState(id)?.element`. Disposing the toolkit coordinator now releases every tool entry, including unregistered ones, and the tool coordinator's debug lines print only under `window.PIE_DEBUG = true`.
+- 50710b1: Every package that registers a custom element publishes a `custom-elements.json` manifest, named by its `customElements` field, listing each element's tag, attributes, properties, methods, events, slots and CSS custom properties. A light-DOM element lists its `pie-*` classes under `x-pie.classes`.
+- 87a9657: The answer eliminator no longer comes back on when the learner returns to an item; it resets with the item's other tools. The item toolbar releases every coordinator entry of its item when the item changes, including one a tool element registered itself, so `getVisibleTools()` stops reporting entries for items the learner left. `<pie-tool-answer-eliminator>` no longer registers with the coordinator, follows a `strategy` change after mount, and drops its `toolId` and `scopeElement` properties: it reads its item root from the enclosing `<pie-item-scope>`.
+- daddf91: A `true` test-administration override keeps an item or district requirement's mandate: the tool stays `required`, and a host gate that removes it raises `tool-policy.requiredToolBlocked`. With `pnpEnforcement: "off"`, a profile grant no longer makes a toolbar tool's start failure fatal; region features still count it. `RequiredToolBlockedDetails.rule` is typed as the requirement that mandates the tool.
+- 6d0cc20: Items whose only numbers are dates, year ranges or similar (`10/10/2026`, `1990-2000`, `1809 - 1865`, `555-1234`), or statistics such as "40% of voters", no longer count as mathematical content, so they no longer get the calculator. A percentage still counts when taken of a number, beside an operator, or in text with a money amount.
+- 83eab07: With `ndsIcons` on a page that links no Font Awesome Pro, the toolbar's calculator button and the calculator window's controls render in Font Awesome Free Solid; they rendered blank or as boxes before. The toolbar and the read-aloud button no longer request `/_fa-pro/` stylesheets, which only the section demos serve.
+- caea2bb: The toolbar and the inline read-aloud tool no longer link Roboto from Google Fonts. NDS icon buttons take Roboto from the stylesheet the NDS button links from `ui.renaissance.com`, which was already in place first on every page that renders one, unless the page links a stylesheet whose URL contains `Roboto`. That CDN serves its font files to Renaissance origins only, so a page elsewhere links its own Roboto.
+- 90cf6cd: `createPackagedToolRegistry()` installs `DEFAULT_TOOL_MODULE_LOADERS` by default, so a bare call loads each tool's element on first render instead of rendering buttons that load nothing. A `toolModuleLoaders` map replaces the default; a host that defines its tool elements itself passes `toolModuleLoaders: {}`.
+- e78ec86: A feature decision no rule produced reports `rule: "none"` and `precedence: null`, in place of the `pnp-support` level it never reached. `ToolsPnpEnforcement` is renamed `PnpEnforcementMode`, the one name for the enforcement mode. The coordinator's no-assessment warning and the PNP debugger's banner now say that an item's `requiredTools` can still grant, and point at the toolkit's `assessment` property; the banner is translated, and stays hidden on the toolkit's own coordinator unless enforcement is `"on"`, as the warning does. The debugger reads placement, providers and the registry from the coordinator's bound policy inputs.
+- 6d91970: A district or item requirement for a tool placed at another level no longer raises `tool-policy.requiredToolBlocked` at the levels that leave it out; a requirement no level places reports `placement-missing` with the placement map as `hostValue`. `ToolPolicyDiagnostic` is a union typed by `code` through the exported `ToolPolicyDiagnosticDetails`, and `ToolkitCoordinator.onPolicyDiagnostic` hands hosts the diagnostics the coordinator logs, replaying those already reported.
+- 8252909: `tool-policy.unknownSupportId` describes the policy inputs, so it moves from toolbar decisions to `ResolvedEngineInputs.diagnostics`, computed once per change to the assessment, an item's settings or the registry's tools and reported whatever the PNP enforcement; registering a tool a profile names clears it and emits an `"inputs"` change, and `PnpPolicyResult.unmappedSupportIds` is removed. `ResolvedEngineInputs.assessmentExpected` says whether an unbound assessment is a misconfiguration, set through the engine's `assessmentOptional` argument. The PNP debugger reads the placement, `assessmentExpected` and the input diagnostics from the resolved inputs.
+- 90d40c6: A server read whose response carries no speech marks highlights each sentence as it plays: the provider's `onPlaybackStart` passes a `TTSPlaybackStart` saying whether the audio carries word boundaries, and the reader paints the part's sentences when it does not. `<pie-tool-tts-inline>` lost its `language` property and speaks the runtime context's content language, as the annotation toolbar's read-aloud does, and it reports a read with nothing to read only under `PIE_TTS_DEBUG`. Neither tool logs a start failure to the console any more; the toolkit reports it. Read-aloud word highlighting re-adapts its colours when a `<pie-theme>` mounts after the reader or changes its theme, and stops observing on dispose. `PollyServerProvider` and `GoogleCloudTTSProvider` create their SDK client through a protected `createClient`, which a subclass can override.
+- 7a27a68: Internal readability pass: comments describe the current behavior, magic
+  numbers are named constants, and repeated logic is folded into local helpers.
+- d221bd5: `ToolRegistry.filterDecidedToolIds(entries, level, contexts)` runs the toolbar's relevance and applicability passes over a policy decision's tools, sparing a granted entry from relevance, so a host-built toolbar applies the same rule as `<pie-item-toolbar>`, which now calls it. Toolbar buttons follow decision order; a granted or host-resolved tool used to render ahead of the others.
+- c15eb92: The layouts' `element-preload-retry` and `element-preload-error` events bubble and are composed, and a section readies only on a `section-ready` for its own section that carries a controller. A failure from a toolkit nested in the section no longer fails its stage chain. The toolkit keys a section with no `section-id` or identifier by its `assessment-id` alone, as the layout does, where a toolkit without one keyed it by a generated id and the section never reached `engine-ready`. A toolkit's unmount disposes the controller of every section it bound on a coordinator the host passes or an outer toolkit lends, where it disposed only the current section's, and a shell holds its events while its toolkit is replaced, delivering them to the next one.
+- 1549c19: A section that fails to start after the learner has moved on no longer fails the section they moved to. A `cohort`-scoped `FrameworkErrorModel` now carries the section it was reported for in `cohort` (`FrameworkErrorCohort`), and the section player latches it only while that section is current.
+- ded130d: Tool failures that only reached the console now reach `framework-error`, recoverable and once per tool and phase: a toolbar that throws opening or hosting a requested tool (`tool-request`), a registration's relevance or applicability check that throws (`tool-registration`), annotation highlights that fail to save or restore (`tool-state-save`, `tool-state-load`), and speech that fails after it started (`tool-playback`). `reportToolModuleFailure(toolId, error)` is replaced by `reportToolFailure(toolId, phase, error)`.
+- db71789: `AssessmentSettings.toolConfigs` is renamed `toolParameters`, matching the item setting it falls back from. The region surface and content-dependency contexts type `parameters` as `Record<string, unknown>`.
+- e6bf982: Removing the toolkit now commits its items' pending responses into the section before the section persists and disposes. They were lost when a host removed the player on submit, timeout or exit.
+- d83c044: `TTSService.stop()` now also closes an open `<pie-tool-tts-inline>` panel, and `requestControlHandoff` and its handoff event are removed; a read that ends on its own keeps the panel open. Providers drop `isPlaying`, `isPaused`, `providerName` and `version`, and `TTSProviderCapabilities` keeps `supportsWordBoundary`, `defaultHighlightMode`, `supportsSSML` and `maxTextLength`. `ToolProviderApi.getCapabilities` and `ToolProviderCapabilities` are removed. `StandardTTSConfig` and `TTSConfigExtensions` fold into `TTSConfig`, and `mathTokenHighlighting` moves to the toolkit's TTS config. `TtsServiceApi` loses `isPlaying`, `isPaused`, `getCurrentText`, `getCapabilities`, `initialize`, `setHighlightCoordinator` and `setCatalogResolver`, `TTSService` loses `getLastError`, and `HighlightCoordinatorApi` replaces `highlightRange`, `clearHighlights`, `isSupported` and `updateTTSHighlightStyle` with `clearTTSWord`. `ensureTTSReady()` takes no argument, and `TTSService.ts` no longer re-exports the `@pie-players/pie-tts` types.
+- 8235283: A `server` backend with `serverProvider: "custom"` and no `transportMode` now speaks the custom transport, as `ServerTTSProvider` does on its own; it took the `pie` transport before.
+- 1b0c09d: tts-inline follows the TTS service's run owner instead of a window-global slot: `speak` takes an `ownerId` and the rate the read starts at, and `getRunOwner()` names the run's owner, so a read another tool starts closes the inline panel. Content holding only a `data-catalog-idref` card is read, and the tool shows for it (`hasSpokenContent`). A read with nothing to speak says so, and a readiness failure reports `tools.textToSpeech.initFailed`, which replaces `tools.textToSpeech.inline.initFailed`. `setHighlightTargetResolverProvider` is required on `TtsServiceApi`.
+- 743b8e4: `validateEndpoint` is gone from the TTS settings and the server provider's config: `endpointValidationMode` alone picks the probe `initialize()` runs, `none` when unset on the provider and `voices` on a toolkit `server` backend, as before. `resolveTTSRuntimeSettings` resolves `layoutMode`, an unknown value to `left-aligned`, so `resolveTTSLayoutMode` and `normalizeTTSLayoutMode` are removed and `TTSHostToolbarLayout` drops its constant `mount`. `speedRate` is typed by the new `SpeedRateBucket` from `@pie-players/pie-tts`, the custom transport's `providerOptions` keys (`speedRate`, `lang_id`, `cache`) are typed, and the server provider replaces a `speedRate` outside the three buckets with the one `rate` gives. `TOOL_ACTIVE_CHANGE_EVENT`, on `tools/registration`, names the event a tool element announces its open state with.
+- e31114a: Tool parameters reach every tool policy shows, granted or not and whatever `pnpEnforcement` is: an item's `toolParameters` entry on its own toolbar and scope, else the assessment's `settings.toolParameters` entry. `ToolParameterMap` types the packaged tools' parameters, `ToolPolicyEntry.settings` is renamed `parameters`, `decideFeaturePolicy` types `parameters` by feature id, and tools read theirs through `ToolbarContext.getToolParameters`. The answer eliminator's strategy moves from `tools.providers.answerEliminator.strategy` to `toolParameters.answerEliminator.strategy`. The calculator opens the parameters' `type` when no resolver or request names one, and the inline calculator's buttons request their variant. Item `toolParameters` alone no longer turn PNP enforcement on. `AssessmentCalculatorConfig` and the `ToolRuntimeConfig` alias are removed.
+- Updated dependencies [403a673]
+- Updated dependencies [ef49bbe]
+- Updated dependencies [ef49bbe]
+- Updated dependencies [aa71a77]
+- Updated dependencies [956f4be]
+- Updated dependencies [e78ec86]
+- Updated dependencies [90d40c6]
+- Updated dependencies [7a27a68]
+- Updated dependencies [db71789]
+- Updated dependencies [d83c044]
+- Updated dependencies [1b0c09d]
+- Updated dependencies [743b8e4]
+- Updated dependencies [97a00b8]
+- Updated dependencies [e31114a]
+  - @pie-players/pie-players-shared@1.0.0-beta.0
+  - @pie-players/pie-tts@1.0.0-beta.0
+  - @pie-players/pie-context@1.0.0-beta.0
+  - @pie-players/pie-calculator@1.0.0-beta.0
+
 ## 0.3.75
 
 ### Patch Changes

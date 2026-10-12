@@ -1,5 +1,16 @@
 # @pie-players/pie-calculator-geogebra
 
+## 1.0.0-beta.0
+
+### Major Changes
+
+- 956f4be: Open the 1.0 line. 1.0.0 ships first as `1.0.0-beta.N` prereleases under the `beta` dist-tag, while `latest` stays on 0.3.75. Releases stay patch-only after 1.0, breaking changes included, so pin exact versions.
+
+### Patch Changes
+
+- Updated dependencies [956f4be]
+  - @pie-players/pie-calculator@1.0.0-beta.0
+
 ## 0.3.75
 
 ### Patch Changes

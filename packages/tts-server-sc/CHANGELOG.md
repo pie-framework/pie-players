@@ -1,5 +1,32 @@
 # @pie-players/tts-server-sc
 
+## 1.0.0-beta.0
+
+### Major Changes
+
+- 956f4be: Open the 1.0 line. 1.0.0 ships first as `1.0.0-beta.N` prereleases under the `beta` dist-tag, while `latest` stays on 0.3.75. Releases stay patch-only after 1.0, breaking changes included, so pin exact versions.
+
+### Patch Changes
+
+- ef49bbe: Corrects package READMEs and doc comments against the current code: stale
+  APIs, endpoints and figures, broken links, and the answer eliminator's
+  persistence example, which replaced the coordinator's own tool-state save.
+  The line reader frame token's registry entry now gives contrast figures for all
+  ten built-in schemes.
+- 7a27a68: Internal readability pass: comments describe the current behavior, magic
+  numbers are named constants, and repeated logic is folded into local helpers.
+- 3ff8b5c: The asset URL guard recognises IPv4-mapped IPv6 hosts in the form the URL parser produces (`[::ffff:7f00:1]` for `[::ffff:127.0.0.1]`), so they meet the private-host and cloud-metadata blocks. Before, only the origin allow-list stopped them, and an allow-list naming such an origin let the fetch through.
+- Updated dependencies [403a673]
+- Updated dependencies [ef49bbe]
+- Updated dependencies [956f4be]
+- Updated dependencies [7a27a68]
+- Updated dependencies [e621148]
+- Updated dependencies [7ccf6a8]
+- Updated dependencies
+- Updated dependencies [6bdf8b7]
+- Updated dependencies [0314c6d]
+  - @pie-players/tts-server-core@1.0.0-beta.0
+
 ## 0.3.75
 
 ### Patch Changes

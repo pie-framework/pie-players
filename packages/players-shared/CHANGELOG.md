@@ -1,5 +1,43 @@
 # @pie-players/pie-players-shared
 
+## 1.0.0-beta.0
+
+### Major Changes
+
+- 956f4be: Open the 1.0 line. 1.0.0 ships first as `1.0.0-beta.N` prereleases under the `beta` dist-tag, while `latest` stays on 0.3.75. Releases stay patch-only after 1.0, breaking changes included, so pin exact versions.
+
+### Patch Changes
+
+- 403a673: `ToolScopeLevel` and `ToolbarContext.scope.level` admit only the five registered
+  scope levels; any other string already threw when a tool id was built. The
+  calculator, graph and periodic-table panels mark their root with
+  `data-pie-tool-id`. `tts-server-core` drops its unused speech-mark helpers,
+  `generateCacheKey` and `hashText`. The assessment player bundles players-shared
+  whole and drops its shell-element and contract subpaths, which resolved to the
+  registering bundle. The dictionary tools resolve players-shared from the host, as
+  every other tool does. players-shared adds `isPlainRecord` to `./object`, and
+  `pie-default-tool-loaders` exports `CONTENT_LEAD_SURFACE`, which the print player
+  now re-exports.
+- ef49bbe: Removes dead internal code: unused class members and module exports outside
+  every package entry, the toolkit's unused tool-scope-level registration and
+  tool-config error helpers, the section player's no-op `ensureDefined`
+  component loaders, and stale `files` entries for assets the
+  tools inline. The print player no longer logs element resolution to the
+  console.
+- ef49bbe: Corrects package READMEs and doc comments against the current code: stale
+  APIs, endpoints and figures, broken links, and the answer eliminator's
+  persistence example, which replaced the coordinator's own tool-state save.
+  The line reader frame token's registry entry now gives contrast figures for all
+  ten built-in schemes.
+- aa71a77: `setLocale` selects a locale that only `customMessages` covers when a `loadCatalog` is configured. The loader is asked only for tags in `availableLocales`, so it no longer rejects such a locale and strands the previous one; missing keys resolve through the fallback locale.
+- e78ec86: A feature decision no rule produced reports `rule: "none"` and `precedence: null`, in place of the `pnp-support` level it never reached. `ToolsPnpEnforcement` is renamed `PnpEnforcementMode`, the one name for the enforcement mode. The coordinator's no-assessment warning and the PNP debugger's banner now say that an item's `requiredTools` can still grant, and point at the toolkit's `assessment` property; the banner is translated, and stays hidden on the toolkit's own coordinator unless enforcement is `"on"`, as the warning does. The debugger reads placement, providers and the registry from the coordinator's bound policy inputs.
+- 7a27a68: Internal readability pass: comments describe the current behavior, magic
+  numbers are named constants, and repeated logic is folded into local helpers.
+- db71789: `AssessmentSettings.toolConfigs` is renamed `toolParameters`, matching the item setting it falls back from. The region surface and content-dependency contexts type `parameters` as `Record<string, unknown>`.
+- 1b0c09d: tts-inline follows the TTS service's run owner instead of a window-global slot: `speak` takes an `ownerId` and the rate the read starts at, and `getRunOwner()` names the run's owner, so a read another tool starts closes the inline panel. Content holding only a `data-catalog-idref` card is read, and the tool shows for it (`hasSpokenContent`). A read with nothing to speak says so, and a readiness failure reports `tools.textToSpeech.initFailed`, which replaces `tools.textToSpeech.inline.initFailed`. `setHighlightTargetResolverProvider` is required on `TtsServiceApi`.
+- 97a00b8: The TTS settings panel drops its `adapters` prop and component-mode provider tabs; custom providers implement the exported `CustomProviderDescriptor`, whose context no longer carries `toolkitCoordinator` and whose apply and preview results no longer carry `message` or `note`. Apply waits for `ensureTTSReady()` and keeps the panel open with the error when the backend fails to start. Stopping a preview, switching tabs or starting a toolkit read ends the preview and releases its audio. The Google voice-type and gender filters stay in panel storage, and an unlisted Google voice applies as unset. The panel's strings are localised under `debug.tts.*`.
+- e31114a: Tool parameters reach every tool policy shows, granted or not and whatever `pnpEnforcement` is: an item's `toolParameters` entry on its own toolbar and scope, else the assessment's `settings.toolParameters` entry. `ToolParameterMap` types the packaged tools' parameters, `ToolPolicyEntry.settings` is renamed `parameters`, `decideFeaturePolicy` types `parameters` by feature id, and tools read theirs through `ToolbarContext.getToolParameters`. The answer eliminator's strategy moves from `tools.providers.answerEliminator.strategy` to `toolParameters.answerEliminator.strategy`. The calculator opens the parameters' `type` when no resolver or request names one, and the inline calculator's buttons request their variant. Item `toolParameters` alone no longer turn PNP enforcement on. `AssessmentCalculatorConfig` and the `ToolRuntimeConfig` alias are removed.
+
 ## 0.3.75
 
 ### Patch Changes

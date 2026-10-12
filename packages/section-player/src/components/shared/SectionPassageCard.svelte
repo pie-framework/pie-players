@@ -25,6 +25,13 @@
 	}}
 />
 
+<!--
+@component
+Passage card of a section player: renders a passage's heading, `<pie-item-toolbar>` and passage player inside `<pie-passage-shell>`. The passages pane renders one per passage and sets its properties. With `timed-media-stimulus` set, the card finds the media element the passage renders and registers it as the section's media time source.
+
+@fires {CustomEvent<InternalMediaTimeSourceDetail>} pie-media-time-source - When the media element of a timed-media stimulus passage appears or goes away.
+-->
+
 <script lang="ts">
 	import { coerceBooleanAttributes } from "@pie-players/pie-players-shared/ui/attribute-coercion";
 	import { onMount, untrack } from "svelte";
@@ -119,7 +126,7 @@
 		(contextConnected ? contextPlayerAction : null) || playerAction,
 	);
 	const effectiveCardTitleFormatter = $derived(
-		(contextConnected ? contextCardTitleFormatter : null) || null,
+		contextConnected ? contextCardTitleFormatter : null,
 	);
 	const headerTitle = $derived.by(() => {
 		const defaultTitle = interfaceI18n.t("player.passage");

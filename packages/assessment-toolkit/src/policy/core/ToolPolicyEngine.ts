@@ -18,10 +18,12 @@
 import type {
 	AssessmentEntity,
 	ItemSettings,
+	ToolParametersFor,
 } from "@pie-players/pie-players-shared/types";
 
 import type {
 	CanonicalToolsConfig,
+	PnpEnforcementMode,
 	ToolPlacementLevel,
 } from "../../services/tools-config-normalizer.js";
 import {
@@ -33,6 +35,7 @@ import type { ToolRegistry } from "../../services/ToolRegistry.js";
 import type {
 	ToolPolicyDecision,
 	ToolPolicyDecisionRequest,
+	ToolPolicyDiagnostic,
 	ToolScope,
 } from "./decision-types.js";
 import type { PolicySource } from "./PolicySource.js";
@@ -41,15 +44,19 @@ import {
 	hostFeatureDenial,
 	interpretFeatureResult,
 } from "./feature-decision.js";
-import { composeDecision } from "./compose-decision.js";
+import {
+	composeDecision,
+	unknownSupportIdDiagnostic,
+} from "./compose-decision.js";
 import { resolveDefaultPnpEnforcement } from "./pnp-policy-inputs.js";
+import { resolveToolParameters } from "./tool-parameters.js";
 import { structurallyEqual } from "../../utils/structural-equality.js";
 import {
 	type PnpPolicyItem,
 	PnpPolicySource,
 } from "../sources/PnpPolicySource.js";
 
-export type PnpEnforcementMode = "on" | "off";
+export type { PnpEnforcementMode };
 
 export interface ToolPolicyEngineInputs {
 	tools?: CanonicalToolsConfig | null;
@@ -59,7 +66,7 @@ export interface ToolPolicyEngineInputs {
 	 * resolves per decision through {@link resolveDefaultPnpEnforcement}: `"on"`
 	 * when the bound `assessment` carries PNP/profile policy material (PNP,
 	 * district policy, test administration), and for a decision scoped to an item
-	 * also when that item's settings carry required/restricted/parameters;
+	 * also when that item's settings require or restrict a tool;
 	 * `"off"` otherwise. `tests/policy/pnp-default-on.test.ts` locks the rule.
 	 *
 	 * Hosts that want to force a mode pass `"on"` or `"off"`
@@ -75,6 +82,12 @@ export interface ToolPolicyEngineArgs {
 	customSources?: readonly PolicySource[];
 	/** Stable context label used in provenance trails. Defaults to "tool-policy". */
 	contextId?: string;
+	/**
+	 * Whether the host may leave the assessment unbound without that being a
+	 * misconfiguration; see {@link ResolvedEngineInputs.assessmentExpected}.
+	 * Defaults to `false`.
+	 */
+	assessmentOptional?: boolean;
 }
 
 export interface ToolPolicyChangeEvent {
@@ -104,6 +117,19 @@ export interface ResolvedEngineInputs {
 	pnpEnforcement: PnpEnforcementMode;
 	/** The host's override of auto-mode, or `null` in auto-mode. */
 	pnpEnforcementOverride: PnpEnforcementMode | null;
+	/**
+	 * Whether an unbound assessment is a misconfiguration: always, unless the
+	 * engine was built `assessmentOptional`, and then only while enforcement is
+	 * overridden `"on"`.
+	 */
+	assessmentExpected: boolean;
+	/**
+	 * Conflicts in the inputs themselves, independent of any decision: a
+	 * `tool-policy.unknownSupportId` for each id the assessment or a mounted
+	 * item's settings name that no registered tool carries. Recomputed when the
+	 * assessment, an item's settings or the registry's tools change.
+	 */
+	diagnostics: readonly ToolPolicyDiagnostic[];
 }
 
 export type ToolPolicyChangeListener = (event: ToolPolicyChangeEvent) => void;
@@ -116,7 +142,9 @@ const DEFAULT_TOOLS: CanonicalToolsConfig = normalizeToolsConfig({
 
 export class ToolPolicyEngine {
 	private toolRegistry: ToolRegistry;
+	private unsubscribeRegistry: () => void;
 	private readonly contextId: string;
+	private readonly assessmentOptional: boolean;
 	private pnpPolicySource: PnpPolicySource;
 	private readonly customSources: PolicySource[];
 	private readonly listeners = new Set<ToolPolicyChangeListener>();
@@ -132,11 +160,13 @@ export class ToolPolicyEngine {
 		string,
 		Array<{ settings: ItemSettings }>
 	>();
+	private inputDiagnostics: readonly ToolPolicyDiagnostic[] = Object.freeze([]);
 	private disposed = false;
 
 	constructor(args: ToolPolicyEngineArgs) {
 		this.toolRegistry = args.toolRegistry;
 		this.contextId = args.contextId ?? "tool-policy";
+		this.assessmentOptional = args.assessmentOptional === true;
 		this.pnpPolicySource = new PnpPolicySource(this.toolRegistry);
 		this.customSources = args.customSources ? [...args.customSources] : [];
 
@@ -144,6 +174,8 @@ export class ToolPolicyEngine {
 		this.tools = inputs.tools ?? DEFAULT_TOOLS;
 		this.assessment = inputs.assessment ?? null;
 		this.pnpEnforcementOverride = inputs.pnpEnforcement ?? null;
+		this.refreshInputDiagnostics();
+		this.unsubscribeRegistry = this.watchRegistry();
 	}
 
 	/**
@@ -197,10 +229,20 @@ export class ToolPolicyEngine {
 	 * Whether some surface is granted `featureId`: a decision with no item scope,
 	 * or one scoped to a registered item. A provider serves every surface, so its
 	 * failure denies the accommodation wherever one surface is granted it.
+	 *
+	 * `enforced` counts only scopes whose `pnpEnforcement` is on, as a toolbar
+	 * tool's decisions do; a feature with no placement leaves it unset.
 	 */
-	grantsFeatureAnywhere(featureId: string): boolean {
-		if (this.decideFeature(featureId).granted) return true;
+	grantsFeatureAnywhere(
+		featureId: string,
+		options: { enforced?: boolean } = {},
+	): boolean {
+		const counts = (item?: PnpPolicyItem) =>
+			!options.enforced || this.enforcementFor(item) === "on";
+		if (counts() && this.decideFeature(featureId).granted) return true;
 		for (const id of this.itemSettings.keys()) {
+			const settings = this.itemSettingsFor(id);
+			if (!counts(settings ? { id, settings } : undefined)) continue;
 			if (this.decideFeature(featureId, { level: "item", scopeId: id }).granted) {
 				return true;
 			}
@@ -264,20 +306,25 @@ export class ToolPolicyEngine {
 	 * `scope` is the surface asking. An item's scope brings in the item's
 	 * registered settings, as {@link decide} does for the item's toolbar.
 	 */
-	decideFeature(featureId: string, scope?: ToolScope): FeaturePolicyDecision {
+	decideFeature<K extends string>(
+		featureId: K,
+		scope?: ToolScope,
+	): FeaturePolicyDecision<ToolParametersFor<K>> {
 		this.assertNotDisposed();
 		const hostDenial = this.hostFeatureGate(featureId);
 		if (hostDenial) return hostDenial;
+		const item = this.itemForScope(scope);
 		return interpretFeatureResult(
 			featureId,
 			this.pnpPolicySource.resolveFeature(featureId, {
 				assessment: this.assessment ?? undefined,
-				item: this.itemForScope(scope),
+				item,
 			}),
 			// `resolveFeature` takes the assessment as `undefined` either way, so the
 			// source cannot tell an unbound host from one whose profile is silent.
 			// The engine can.
 			{ assessmentBound: this.assessment !== null },
+			resolveToolParameters(featureId, this.assessment, item),
 		);
 	}
 
@@ -292,7 +339,9 @@ export class ToolPolicyEngine {
 	 * `placement-membership` are deliberately not applied: both are statements
 	 * about a toolbar the feature was never on.
 	 */
-	private hostFeatureGate(featureId: string): FeaturePolicyDecision | null {
+	private hostFeatureGate(
+		featureId: string,
+	): FeaturePolicyDecision<never> | null {
 		const context = { assessmentBound: this.assessment !== null };
 		const blocked = normalizeToolList(this.tools.policy.blocked);
 		if (blocked.includes(featureId)) {
@@ -341,8 +390,12 @@ export class ToolPolicyEngine {
 		}
 		if ("assessment" in patch) {
 			const next = patch.assessment ?? null;
-			if (!structurallyEqual(this.assessment, next)) changed = true;
+			const assessmentChanged = !structurallyEqual(this.assessment, next);
 			this.assessment = next;
+			if (assessmentChanged) {
+				changed = true;
+				this.refreshInputDiagnostics();
+			}
 		}
 		if ("pnpEnforcement" in patch) {
 			const next = patch.pnpEnforcement ?? null;
@@ -369,9 +422,12 @@ export class ToolPolicyEngine {
 		tools: CanonicalToolsConfig,
 	): void {
 		this.assertNotDisposed();
+		this.unsubscribeRegistry();
 		this.toolRegistry = toolRegistry;
 		this.pnpPolicySource = new PnpPolicySource(toolRegistry);
+		this.unsubscribeRegistry = this.watchRegistry();
 		this.tools = tools;
+		this.refreshInputDiagnostics();
 		this.emit({ reason: "inputs", inputs: this.snapshotInputs() });
 	}
 
@@ -384,15 +440,13 @@ export class ToolPolicyEngine {
 		});
 		return () => {
 			const idx = this.customSources.indexOf(source);
-			if (idx !== -1) {
-				this.customSources.splice(idx, 1);
-				if (!this.disposed) {
-					this.emit({
-						reason: "policy-source-removed",
-						inputs: this.snapshotInputs(),
-					});
-				}
-			}
+			if (idx === -1) return;
+			this.customSources.splice(idx, 1);
+			if (this.disposed) return;
+			this.emit({
+				reason: "policy-source-removed",
+				inputs: this.snapshotInputs(),
+			});
 		};
 	}
 
@@ -410,6 +464,7 @@ export class ToolPolicyEngine {
 	dispose(): void {
 		if (this.disposed) return;
 		this.disposed = true;
+		this.unsubscribeRegistry();
 		this.emit({
 			reason: "disposed",
 			inputs: this.snapshotInputs(),
@@ -425,6 +480,9 @@ export class ToolPolicyEngine {
 			assessment: this.assessment,
 			pnpEnforcement: this.enforcementFor(),
 			pnpEnforcementOverride: this.pnpEnforcementOverride,
+			assessmentExpected:
+				!this.assessmentOptional || this.pnpEnforcementOverride === "on",
+			diagnostics: this.inputDiagnostics,
 		});
 	}
 
@@ -449,7 +507,42 @@ export class ToolPolicyEngine {
 		before: ItemSettings | undefined,
 	): void {
 		if (structurallyEqual(before, this.itemSettingsFor(itemId))) return;
+		this.refreshInputDiagnostics();
 		this.emit({ reason: "item-settings", inputs: this.snapshotInputs() });
+	}
+
+	/**
+	 * Recompute {@link ResolvedEngineInputs.diagnostics} from the bound
+	 * assessment, every mounted item's settings and the registry. Returns
+	 * whether they changed.
+	 */
+	private refreshInputDiagnostics(): boolean {
+		const items: ItemSettings[] = [];
+		for (const id of this.itemSettings.keys()) {
+			const settings = this.itemSettingsFor(id);
+			if (settings) items.push(settings);
+		}
+		const next = Array.from(
+			this.pnpPolicySource.unknownSupportIds(this.assessment, items),
+			([supportId, origins]) => unknownSupportIdDiagnostic(supportId, origins),
+		);
+		if (structurallyEqual(this.inputDiagnostics, next)) return false;
+		this.inputDiagnostics = Object.freeze(next);
+		return true;
+	}
+
+	/**
+	 * Registering a tool into the bound registry, or removing one, can make a
+	 * named id known or unknown, so it emits an `"inputs"` change when the input
+	 * diagnostics move.
+	 */
+	private watchRegistry(): () => void {
+		return this.toolRegistry.onRegistryChange(() => {
+			if (this.disposed) return;
+			if (this.refreshInputDiagnostics()) {
+				this.emit({ reason: "inputs", inputs: this.snapshotInputs() });
+			}
+		});
 	}
 
 	/**

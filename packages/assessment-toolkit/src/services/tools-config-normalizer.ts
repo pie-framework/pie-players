@@ -1,6 +1,7 @@
 import type { CalculatorProviderConfig } from "@pie-players/pie-calculator";
 import { DEFAULT_TOOL_PLACEMENT } from "./tool-config-defaults.js";
 import type { TTSRuntimeSettings } from "./tts-runtime-config.js";
+import { isPlainRecord } from "@pie-players/pie-players-shared/object";
 
 export type ToolPlacementLevel = "section" | "item" | "passage";
 
@@ -100,16 +101,16 @@ export interface ToolProvidersConfig {
 
 /**
  * PNP/profile enforcement mode, set as `tools.pnpEnforcement` (on a section
- * player, `runtime.tools.pnpEnforcement`).
+ * player, `runtime.tools.pnpEnforcement`) or through `setPnpEnforcement`.
  *
- * - `"on"` — force enforcement (engine applies PNP/profile gates).
- * - `"off"` — opt out (engine ignores PNP/profile inputs).
- * - omitted / `undefined` — auto-mode (the default). The toolkit
- *   coordinator computes the effective mode from PNP/profile policy material on the
- *   bound `AssessmentEntity` / `AssessmentItemRef`. See
+ * - `"on"` — toolbar decisions apply PNP/profile policy.
+ * - `"off"` — toolbar decisions skip it. Feature decisions read it either way.
+ * - omitted — auto-mode (the default): on when the bound assessment carries
+ *   PNP/profile policy material, or, for a decision scoped to an item, when
+ *   that item's settings require or restrict a tool. See
  *   `resolveDefaultPnpEnforcement` in `policy/core/pnp-policy-inputs.ts`.
  */
-export type ToolsPnpEnforcement = "on" | "off";
+export type PnpEnforcementMode = "on" | "off";
 
 export interface CanonicalToolsConfig {
 	policy: ToolPolicyConfig;
@@ -118,9 +119,9 @@ export interface CanonicalToolsConfig {
 	/**
 	 * Optional PNP/profile enforcement override, read by
 	 * `<pie-assessment-toolkit>` and `ToolkitCoordinator`. See
-	 * {@link ToolsPnpEnforcement} for semantics.
+	 * {@link PnpEnforcementMode} for semantics.
 	 */
-	pnpEnforcement?: ToolsPnpEnforcement;
+	pnpEnforcement?: PnpEnforcementMode;
 }
 
 /**
@@ -136,10 +137,6 @@ const DEFAULT_PLACEMENT: Required<ToolPlacementConfig> = {
 	item: [...DEFAULT_TOOL_PLACEMENT.item],
 	passage: [...DEFAULT_TOOL_PLACEMENT.passage],
 };
-
-function isPlainObject(value: unknown): value is Record<string, unknown> {
-	return typeof value === "object" && value !== null && !Array.isArray(value);
-}
 
 function assertStringArray(value: unknown, fieldPath: string): string[] {
 	if (value == null) return [];
@@ -161,7 +158,7 @@ function assertPlacementConfig(
 	value: unknown,
 ): ToolPlacementConfig | undefined {
 	if (value == null) return undefined;
-	if (!isPlainObject(value)) {
+	if (!isPlainRecord(value)) {
 		throw new Error(
 			'Invalid tools config at "placement": expected an object with section/item/passage arrays.',
 		);
@@ -171,7 +168,7 @@ function assertPlacementConfig(
 
 function assertPolicyConfig(value: unknown): ToolPolicyConfig | undefined {
 	if (value == null) return undefined;
-	if (!isPlainObject(value)) {
+	if (!isPlainRecord(value)) {
 		throw new Error(
 			'Invalid tools config at "policy": expected an object with allowed/blocked arrays.',
 		);
@@ -184,7 +181,7 @@ function assertProviderConfig(
 	value: unknown,
 ): ToolProviderConfig | undefined {
 	if (value == null) return undefined;
-	if (!isPlainObject(value)) {
+	if (!isPlainRecord(value)) {
 		throw new Error(
 			`Invalid tools config at "providers.${providerId}": expected an object.`,
 		);
@@ -202,7 +199,7 @@ function assertProviderConfig(
 	if (
 		"settings" in config &&
 		config.settings !== undefined &&
-		!isPlainObject(config.settings)
+		!isPlainRecord(config.settings)
 	) {
 		throw new Error(
 			`Invalid tools config at "providers.${providerId}.settings": expected an object.`,
@@ -211,7 +208,7 @@ function assertProviderConfig(
 	if (
 		"provider" in config &&
 		config.provider !== undefined &&
-		!isPlainObject(config.provider)
+		!isPlainRecord(config.provider)
 	) {
 		throw new Error(
 			`Invalid tools config at "providers.${providerId}.provider": expected an object.`,
@@ -222,7 +219,7 @@ function assertProviderConfig(
 
 function assertProvidersConfig(value: unknown): ToolProvidersConfig {
 	if (value == null) return {};
-	if (!isPlainObject(value)) {
+	if (!isPlainRecord(value)) {
 		throw new Error(
 			'Invalid tools config at "providers": expected an object keyed by tool id.',
 		);
@@ -234,6 +231,10 @@ function assertProvidersConfig(value: unknown): ToolProvidersConfig {
 	return normalized;
 }
 
+/**
+ * Tool ids trimmed, with empty ones dropped and duplicates removed in
+ * first-seen order. Throws on a non-string entry.
+ */
 export function normalizeToolList(
 	toolIds: string[] | undefined | null,
 ): string[] {
@@ -265,7 +266,7 @@ export function parseToolList(input: string | undefined | null): string[] {
 function assertPnpEnforcement(
 	value: unknown,
 	fieldPath: "pnpEnforcement",
-): ToolsPnpEnforcement | undefined {
+): PnpEnforcementMode | undefined {
 	if (value == null) return undefined;
 	if (value === "on" || value === "off") return value;
 	throw new Error(
@@ -273,10 +274,26 @@ function assertPnpEnforcement(
 	);
 }
 
+/** A placement level's tool ids, or the level's default when it names none. */
+function normalizePlacementLevel(
+	placement: ToolPlacementConfig | undefined,
+	level: ToolPlacementLevel,
+): string[] {
+	const toolIds = normalizeToolList(
+		assertStringArray(placement?.[level], `placement.${level}`),
+	);
+	return toolIds.length ? toolIds : [...DEFAULT_PLACEMENT[level]];
+}
+
+/**
+ * Check a host's tools config shape, throwing at the first malformed field, and
+ * return it canonical: tool lists trimmed and deduplicated, and every placement
+ * level that names no tool filled with its default.
+ */
 export function normalizeToolsConfig(
 	input?: ToolsConfigInput | null,
 ): CanonicalToolsConfig {
-	if (input != null && !isPlainObject(input)) {
+	if (input != null && !isPlainRecord(input)) {
 		throw new Error(
 			'Invalid tools config: expected an object with "policy", "placement", and "providers".',
 		);
@@ -299,27 +316,9 @@ export function normalizeToolsConfig(
 			),
 		},
 		placement: {
-			section: normalizeToolList(
-				assertStringArray(placement?.section, "placement.section"),
-			).length
-				? normalizeToolList(
-						assertStringArray(placement?.section, "placement.section"),
-					)
-				: [...DEFAULT_PLACEMENT.section],
-			item: normalizeToolList(
-				assertStringArray(placement?.item, "placement.item"),
-			).length
-				? normalizeToolList(
-						assertStringArray(placement?.item, "placement.item"),
-					)
-				: [...DEFAULT_PLACEMENT.item],
-			passage: normalizeToolList(
-				assertStringArray(placement?.passage, "placement.passage"),
-			).length
-				? normalizeToolList(
-						assertStringArray(placement?.passage, "placement.passage"),
-					)
-				: [...DEFAULT_PLACEMENT.passage],
+			section: normalizePlacementLevel(placement, "section"),
+			item: normalizePlacementLevel(placement, "item"),
+			passage: normalizePlacementLevel(placement, "passage"),
 		},
 		providers,
 	};

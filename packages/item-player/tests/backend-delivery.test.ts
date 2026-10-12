@@ -99,7 +99,7 @@ describe("delivery backend helpers", () => {
 		await modelFromDeliveryBackend(backend, sessionContext);
 		await saveToDeliveryBackend(backend, sessionContext);
 		await scoreWithDeliveryBackend(backend, sessionContext, {
-			disablePartialScoring: true,
+			skipCached: true,
 		});
 
 		expect(seenRequestOptions).toEqual([
@@ -108,7 +108,7 @@ describe("delivery backend helpers", () => {
 			{ overrides: { "student-grade": "5" } },
 			{ overrides: { "student-grade": "5" } },
 		]);
-		expect(seenScoreOptions).toEqual({ disablePartialScoring: true });
+		expect(seenScoreOptions).toEqual({ skipCached: true });
 	});
 
 	test("sends delivery request overrides to every built-in delivery endpoint", async () => {
@@ -158,7 +158,7 @@ describe("delivery backend helpers", () => {
 			await modelFromDeliveryBackend(backend, sessionContext);
 			await saveToDeliveryBackend(backend, sessionContext);
 			await scoreWithDeliveryBackend(backend, sessionContext, {
-				disablePartialScoring: true,
+				skipCached: true,
 				sessionId: "wrong-session",
 				data: [{ id: "wrong-data" }],
 				env: { mode: "wrong" },
@@ -193,7 +193,7 @@ describe("delivery backend helpers", () => {
 		expect(payloads[3]?.body.env).toEqual(sessionContext.env);
 		expect(payloads[3]?.body.itemId).toBe("item-1");
 		expect(payloads[3]?.body.assignmentId).toBe("assignment-1");
-		expect(payloads[3]?.body.disablePartialScoring).toBe(true);
+		expect(payloads[3]?.body.skipCached).toBe(true);
 	});
 
 	test("normalizes autosave settings", () => {

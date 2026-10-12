@@ -24,22 +24,12 @@
 		"./components/assessment-player-default-element": {
 			"types": "./dist/pie-assessment-player.d.ts",
 			"import": "./dist/pie-assessment-player.js"
-		},
-		"./components/assessment-player-shell-element": {
-			"types": "./dist/pie-assessment-player.d.ts",
-			"import": "./dist/pie-assessment-player.js"
-		},
-		"./contracts/public-events": {
-			"types": "./dist/pie-assessment-player.d.ts",
-			"import": "./dist/pie-assessment-player.js"
-		},
-		"./contracts/runtime-host-contract": {
-			"types": "./dist/pie-assessment-player.d.ts",
-			"import": "./dist/pie-assessment-player.js"
 		}
 	},
+	"customElements": "custom-elements.json",
 	"files": [
-		"dist"
+		"dist",
+		"custom-elements.json"
 	],
 	"scripts": {
 		"build": "vite build",
@@ -56,10 +46,11 @@
 	},
 	"devDependencies": {
 		"@axe-core/playwright": "^4.13.0",
+		"@happy-dom/global-registrator": "^20.14.5",
 		"@playwright/test": "^1.63.0",
 		"@biomejs/biome": "^2.5.15",
 		"typescript": "^5.9.3",
-		"vite": "^8.3.2",
+		"vite": "^8.3.3",
 		"vite-plugin-dts": "^5.1.2"
 	},
 	"homepage": "https://github.com/pie-framework/pie-players/tree/master/packages/assessment-player#readme",

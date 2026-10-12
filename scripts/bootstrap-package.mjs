@@ -44,6 +44,7 @@ import { existsSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 
+import { parseSemver } from "./lib/fixed-versioning.mjs";
 import { resolveManifestWorkspaceRanges } from "./lib/workspace-ranges.mjs";
 import {
 	publishablePackages,
@@ -324,7 +325,12 @@ function main() {
 				"  npm permits unpublishing only within 72 hours, and the name/version pair can\n" +
 				"  never be reused. npm will prompt for your OTP.\n",
 		);
-		const res = spawnSync("npm", ["publish", "--access", "public"], {
+		// npm refuses a prerelease without a dist-tag. Changesets names prerelease versions
+		// after the tag it publishes them under, so the first identifier is that tag.
+		const prereleaseTag = parseSemver(version)?.prerelease[0];
+		const publishArgs = ["publish", "--access", "public"];
+		if (prereleaseTag) publishArgs.push("--tag", prereleaseTag);
+		const res = spawnSync("npm", publishArgs, {
 			cwd: path.dirname(entry.path),
 			stdio: "inherit",
 		});

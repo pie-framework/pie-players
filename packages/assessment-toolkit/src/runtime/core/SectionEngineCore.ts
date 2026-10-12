@@ -75,11 +75,6 @@ export class SectionEngineCore {
 		};
 	}
 
-	/** Test-only: detach every listener. */
-	disposeListeners(): void {
-		this.listeners.clear();
-	}
-
 	private fanOut(outputs: SectionEngineOutput[]): void {
 		const snapshot = Array.from(this.listeners);
 		const frozen = Object.freeze(outputs.slice());

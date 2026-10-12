@@ -1,6 +1,6 @@
 /**
- * `tools.providers.answerEliminator.strategy` reaches the element the toolbar
- * renders. Without a config the element keeps its own strikethrough default.
+ * The answer eliminator's policy parameter `strategy` reaches the element the
+ * toolbar renders, defaulting to strikethrough.
  */
 
 import { expect, test } from "bun:test";
@@ -29,17 +29,16 @@ const context: ToolContext = {
 	item: { id: "i1", config: { elements: {} } } as any,
 };
 
-const renderStrategy = (toolConfig: Record<string, unknown> | null) => {
+const renderStrategy = (parameters: Record<string, unknown> | null) => {
 	const toolbarContext = {
 		scope: { level: "item", scopeId: "i1" },
 		itemId: "i1",
 		catalogId: "i1",
 		i18n: resolveInterfaceI18n(null),
 		toolCoordinator: null,
-		toolkitCoordinator: {
-			getToolConfig: (toolId: string) =>
-				toolId === "answerEliminator" ? toolConfig : null,
-		},
+		toolkitCoordinator: null,
+		getToolParameters: (toolId: string) =>
+			toolId === "answerEliminator" ? parameters : null,
 		toggleTool: () => {},
 		isToolVisible: () => false,
 		subscribeVisibility: null,
@@ -55,6 +54,8 @@ const renderStrategy = (toolConfig: Record<string, unknown> | null) => {
 	return element?.getAttribute("strategy");
 };
 
-test("the answer eliminator takes its strategy from the tool config", () => {
+test("the answer eliminator takes its strategy from its policy parameters", () => {
 	expect(renderStrategy({ strategy: "mask" })).toBe("mask");
+	expect(renderStrategy({ strategy: "erase" })).toBe("strikethrough");
+	expect(renderStrategy(null)).toBe("strikethrough");
 });

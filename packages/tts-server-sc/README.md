@@ -1,28 +1,24 @@
 # @pie-players/tts-server-sc
 
-SchoolCity-backed server-side TTS provider for PIE projects.
-
-For the cross-package TTS architecture and browser/server flow, see
-[TTS Architecture](../../docs/accessibility/tts-architecture.md). This README
-focuses on the SchoolCity-backed reference provider and its SSRF defenses.
-
-This package uses SchoolCity as an internal Renaissance-backed reference implementation
-for custom server-side TTS integrations. The intent is to demonstrate a reusable
-"custom backend adapter" pattern you can apply to your own TTS service.
+The SC adapter: a reference server-side TTS provider for a custom transport
+whose service returns audio and speech-mark URLs. It demonstrates the custom
+backend adapter pattern a host applies to its own TTS service. This README
+covers its configuration and its SSRF defenses;
+[TTS architecture](../../docs/accessibility/tts-architecture.md) covers the
+browser and server flow across the TTS packages.
 
 ## What it does
 
-- Signs short-lived JWT credentials for SchoolCity TTS.
-- Calls SchoolCity synthesis endpoint.
+- Signs short-lived JWT credentials for the SC TTS service.
+- Calls the service's synthesis endpoint.
 - Fetches and normalizes word marks.
-- Rebases offsets so marks align to original request text.
-- Exposes a provider API compatible with the `@pie-players/tts-server-*` pattern.
+- Rebases offsets so marks align to the original request text.
+- Exposes the provider API the `@pie-players/tts-server-*` packages share.
 
 ## Positioning
 
-- `@pie-players/tts-server-sc` is a host/server integration package.
-- It is not a toolkit default option by itself.
-- Toolkit defaults remain browser-backed until a host app explicitly configures server/custom TTS.
+- A host or server integration package; the toolkit never selects it by default.
+- Toolkit defaults stay browser-backed until a host configures server TTS.
 
 ## Install
 
@@ -32,7 +28,7 @@ bun add @pie-players/tts-server-sc
 
 ## Required configuration
 
-- `baseUrl`: SchoolCity TTS endpoint
+- `baseUrl`: the SC TTS service endpoint
 - `apiKey`: signing key used to mint bearer JWT
 - `issuer`: JWT `iss` claim
 
@@ -50,12 +46,12 @@ If `assetOrigins` is not supplied, the provider permits:
   `baseUrl`.
 
 This matches the common "service at `x.vendor.tld`, CDN at `y.vendor.tld`"
-deployment (e.g. `baseUrl = https://tts.svcdev.schoolcity.com` permits
-`https://tts-cdn.svcdev.schoolcity.com` out of the box) without opening the
+deployment (e.g. `baseUrl = https://tts.example.com` permits
+`https://tts-cdn.example.com` out of the box) without opening the
 provider up to arbitrary external hosts. The registrable domain is computed
 via the Public Suffix List (`tldts`), so it is correct for multi-label TLDs
 (`.co.uk`, `.com.au`, etc.). If `baseUrl` is an IP literal or a hostname
-without a recognised public suffix, the provider falls back to strict
+without a recognized public suffix, the provider falls back to strict
 single-origin behavior.
 
 ### Explicit (recommended for production): exact-origin allow-list
@@ -69,8 +65,8 @@ await provider.initialize({
   apiKey: process.env.TTS_SCHOOLCITY_API_KEY!,
   issuer: process.env.TTS_SCHOOLCITY_ISS!,
   assetOrigins: [
-    "https://tts.svcdev.schoolcity.com",
-    "https://tts-cdn.svcdev.schoolcity.com",
+    "https://tts.example.com",
+    "https://tts-cdn.example.com",
   ],
 });
 ```
@@ -164,8 +160,9 @@ const result = await provider.synthesize({
 
 The service serves 29 locales with one default voice each, and exposes no
 endpoint to ask which. `getVoices()` answers from a table transcribed from the
-map the service reads (`src/helpers/voices.js`), so it costs no request and
-works before any credential is configured:
+service's voice map, so it costs no request. It
+throws until `initialize` has run, which takes the credentials;
+`schoolCityVoices()` below answers without either:
 
 ```ts
 await provider.getVoices();                      // all 29 locales
@@ -182,8 +179,8 @@ A `Voice.id` is the Polly `VoiceId`, which is what `synthesize` takes back as
 `voice`. The service accepts any voice Polly knows; the table names only the
 default per locale, which is what it substitutes when a request omits `voice`.
 
-The same data is available without a provider instance, which is what a route
-serving a picker wants:
+The same data is available without a provider instance or credentials, which
+is what a route serving a picker wants:
 
 ```ts
 import {
@@ -195,13 +192,12 @@ schoolCityVoices({ gender: "male" });
 isSupportedSchoolCityLanguage("es-419"); // false
 ```
 
-Check the locale before synthesizing. An unrecognized `lang_id` is not an error
-upstream — the service rewrites it to `en-US` and returns English audio, so an
-unserved locale fails silently rather than loudly.
+Check the locale before synthesizing. The service rewrites an unrecognized
+`lang_id` to `en-US` and returns English audio with no error.
 
-## Dogfood adapter example (section-demos shape)
+## Asset-shaped responses
 
-If you need to return the SchoolCity-style response shape (`audioContent`, `word`) while reusing provider logic:
+To return the service's own response shape (`audioContent`, `word`) while reusing the provider logic:
 
 ```ts
 const assets = await provider.synthesizeWithAssets({

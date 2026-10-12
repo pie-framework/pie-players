@@ -42,6 +42,9 @@ export { ToolRegistry } from "../services/ToolRegistry.js";
 // title is the registration's name, so the shell needs the same `nameKey`-then-
 // `name` precedence the toolbar uses rather than the raw English field.
 export { resolveToolRegistrationName } from "../services/ToolRegistry.js";
+// A tool's own failures, reported to the toolkit's tool failure policy.
+export type { ToolFailurePhase } from "../services/tool-failure.js";
+export { reportToolFailure } from "../services/tool-failure.js";
 export type { CatalogOwnerSnapshot } from "../services/AccessibilityCatalogResolver.js";
 
 // Handing a selection to a tool the requesting surface does not mount: the action
@@ -83,6 +86,7 @@ export {
 	hasChoiceInteraction,
 	hasMathContent,
 	hasReadableText,
+	hasSpokenContent,
 	hasScienceContent,
 } from "../services/tool-context.js";
 
@@ -103,11 +107,13 @@ export type {
 } from "./tool-tag-map.js";
 export { createToolElement, resolveToolTag } from "./tool-tag-map.js";
 
-// Toolbar button/overlay wiring shared by every toolbar-toggle registration.
+// Toolbar button/overlay wiring shared by every toolbar-toggle registration,
+// and the event a tool element announces its own active state with.
 export {
 	applyOverlaySurface,
 	createScopedVisibilityBinding,
 	syncButtonAndOverlayVisibility,
+	TOOL_ACTIVE_CHANGE_EVENT,
 } from "./registrations/toolbar-registration-helpers.js";
 
 // The coordinator a registration reaches through its render context, and the
@@ -174,10 +180,7 @@ export type {
 // The contract a descriptor's `createProvider` returns, for a package writing its
 // own provider. The calculator adapters are written against it in the composition
 // layer, which owns their engine imports.
-export type {
-	ToolProviderApi,
-	ToolProviderCapabilities,
-} from "../services/tool-providers/ToolProviderApi.js";
+export type { ToolProviderApi } from "../services/tool-providers/ToolProviderApi.js";
 // The TTS provider stays here because it is written against the `pie-tts`
 // contract package, which the toolkit's own `TTSService` also depends on.
 export { TTSToolProvider } from "../services/tool-providers/index.js";
@@ -193,19 +196,16 @@ export type {
 export {
 	buildRuntimeTTSConfig,
 	formatTTSSpeedOptionsAsText,
-	normalizeTTSLayoutMode,
 	normalizeTTSSpeedControlOptions,
 	parseTTSSpeedOptionsFromText,
 	resolveTTSHostToolbarLayout,
-	resolveTTSLayoutMode,
 	resolveTTSRuntimeSettings,
 } from "../services/tts-runtime-config.js";
 
-// Read-aloud coordination for a tool that plays or controls speech: the control
-// handoff event between TTS surfaces, pausing speech while a media element plays,
-// recognising a start failure the TTS service reports, and choosing a browser
-// voice for a language once the browser has published its voices.
-export { PIE_TTS_CONTROL_HANDOFF_EVENT } from "../services/tts-control-events.js";
+// Read-aloud coordination for a tool that plays or controls speech: pausing
+// speech while a media element plays, recognising a start failure the TTS
+// service reports, and choosing a browser voice for a language once the browser
+// has published its voices.
 export {
 	bindTtsAudioHandoff,
 	pauseTtsForMediaAudio,

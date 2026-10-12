@@ -12,6 +12,13 @@
 	}}
 />
 
+<!--
+@component
+Section toolbar shell that renders `<pie-section-toolbar>` at the `toolbar-position` side of its content, and no toolbar when `show-toolbar` is false or the position is `none`. A `left` or `right` toolbar moves to the top at viewports up to 1100px wide.
+
+@slot - The layout the toolbar sits beside.
+-->
+
 <script lang="ts">
 	import "@pie-players/pie-assessment-toolkit/components/section-toolbar-element";
 	import type {

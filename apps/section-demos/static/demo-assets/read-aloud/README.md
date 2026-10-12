@@ -19,7 +19,7 @@ and what they do not.
 
 They prove the path: that a `spoken` card carrying a file plays that file instead
 of synthesizing, that the docked node highlights as a block for the clip's
-duration, that a time range is honoured, that the rate control reaches
+duration, that a time range is honored, that the rate control reaches
 `playbackRate`, and that a clip which fails to load degrades to the reading
 script. None of that depends on who or what produced the audio.
 

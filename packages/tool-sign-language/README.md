@@ -7,9 +7,8 @@ This package is also the worked example of a capability contributed entirely fro
 outside the player. It is authored against
 `@pie-players/pie-assessment-toolkit/tools/registration` — the same entry point the
 packaged registrations use — and `@pie-players/pie-section-player` reaches it only
-through `ToolRegistry.getToolsBySurface("content-media")`. No package in the player
-names signing, the `signLanguage` support id, the `sign-language` catalog type or
-this package.
+through `ToolRegistry.getToolsBySurface("content-media")`. No package renders the
+`sign-language` catalog type except this tool.
 
 ## Opting in
 
@@ -56,7 +55,7 @@ for every learner when the markup could not be parsed.
 ASL, BSL and LSF are not interchangeable. Handing an ASL learner a BSL recording
 is worse than handing them nothing. `resolveSignLanguageAlternate` scans the
 owner snapshot for an exact requested-language match first, then permits an
-unlabelled card as the only fallback. A card labelled with another sign language
+unlabeled card as the only fallback. A card labeled with another sign language
 is never substituted.
 
 ## The element
@@ -75,11 +74,14 @@ for hands and face. Host overrides:
 | `--pie-section-player-item-media-min-height` | `220px` |
 | `--pie-section-player-item-media-max-height` | `60vh` |
 
+All three are registered `component-public` tokens.
+
 The region's share of the card width, the drag-to-resize handle and the stacking
 breakpoint belong to the host: that is the card's layout, not the capability's.
 
 ## Related
 
-- [`docs/prds/sign-language-asl-support.md`](../../docs/prds/sign-language-asl-support.md)
-- [`docs/TOOL_REGISTRY.md`](../assessment-toolkit/docs/TOOL_REGISTRY.md) — host
+- [Tool registry](../assessment-toolkit/docs/TOOL_REGISTRY.md): host
   surfaces and content dependencies
+- [Sign language support](../../docs/prds/sign-language-asl-support.md): the
+  design record

@@ -37,7 +37,13 @@ export default defineConfig({
 		minify: "esbuild",
 		sourcemap: false,
 		rollupOptions: {
-			external: [],
+			// The toolkit, players-shared and pie-context resolve from the host's
+			// node_modules, so every PIE bundle a host loads shares one copy of
+			// each. Patterns, because an exact-string external still inlines the
+			// subpaths this tool imports.
+			external: [
+				/^@pie-players\/pie-(?:assessment-toolkit|players-shared|context)(?:\/|$)/,
+			],
 			output: {
 				format: "es",
 			},

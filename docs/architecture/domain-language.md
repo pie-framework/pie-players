@@ -4,7 +4,7 @@ The root [`CONTEXT.md`](../../CONTEXT.md) names the concepts shared by PIE
 Players and its runtime hosts, so ownership and behavior can be discussed
 without renegotiating vocabulary each time. It carries domain language only —
 implementation notes belong in an architecture note, and scope decisions in a
-PRD or ADR.
+PRD or ADR. This page sets the format and admission rules for whoever edits it.
 
 A term enters `CONTEXT.md` when it has been resolved and is worth preserving.
 Terms are not added to complete a set.
@@ -14,7 +14,8 @@ Terms are not added to complete a set.
 Each domain area gets a `## <Area> Language` block and a matching
 `## <Area> Relationships` block. `Example dialogue` and `Flagged ambiguities`
 attach where the ambiguity actually lives — file-level while there is one area,
-per-area once several compete for the same word.
+per-area once several compete for the same word. The terms in this example are
+illustrative; `CONTEXT.md` holds the definitions.
 
 ```md
 ## <Area> Language
@@ -31,20 +32,20 @@ _Avoid_: Client, wrapper
 ## <Area> Relationships
 
 - A **Runtime Host** loads **Authored Content** into a player custom element.
-- An **Attempt** records learner progress for a section, item, or assessment.
+- A **Progress Record** holds learner progress for a section, item, or assessment.
 - **Tool Policy** decides which tools are available for a given assessment context.
 
 ## Example dialogue
 
-> **Dev:** "Does PIE persist the **Attempt**?"
+> **Dev:** "Does PIE persist the **Progress Record**?"
 > **Domain expert:** "No — PIE produces runtime state and projections; the
 > **Runtime Host** owns durable persistence."
 
 ## Flagged ambiguities
 
-- "session" was used for both runtime subscription state and persisted attempt
+- "session" was used for both runtime subscription state and persisted learner
   data — resolved: use **Runtime Session** for in-memory runtime state and
-  **Attempt** for learner progress.
+  **Progress Record** for learner progress.
 ```
 
 ## Rules

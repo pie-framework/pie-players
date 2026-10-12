@@ -363,35 +363,32 @@
 		box-sizing: border-box;
 		display: flex;
 		flex-direction: column;
-		/*
-		 * `min-height: 0` on a flex column is what lets the display shrink so the
-		 * keypad stays inside the panel. A grid with `auto 1fr auto` will not do:
-		 * a grid row's automatic minimum is min-content, so the tape would refuse to
-		 * shrink and push the keypad out of a box whose overflow the tool shell clips.
-		 */
 		gap: var(--cortex-space-2, 0.5rem);
 		width: 100%;
 		height: 100%;
 		min-width: 0;
+		/*
+		 * `min-height: 0` on this flex column lets the display shrink so the keypad
+		 * stays inside the panel. A grid with `auto 1fr auto` will not do: a grid
+		 * row's automatic minimum is min-content, so the tape would refuse to shrink
+		 * and push the keypad out of a box whose overflow the tool shell clips.
+		 */
 		min-height: 0;
 		padding: var(--cortex-space-3, 0.75rem);
 		/*
-		 * The size the layout inside this element responds to is *this element's*
-		 * width, not the window's. The shipped tool panel is 380px wide inside a
-		 * viewport that is typically 1280px, so the viewport media queries this
-		 * package used before never fired in production: the graphing grid stayed at
-		 * its 544px floor inside a 333px box and its right-hand 229px — most of the
-		 * plot — was clipped by the shell's `overflow-x: hidden`. Everything
-		 * size-dependent below is a container query for that reason.
+		 * Everything size-dependent below is a container query on this element's
+		 * width. The tool panel is 380px wide inside a viewport that is typically
+		 * 1280px, so viewport media queries never fire there; under them the
+		 * graphing grid held its 544px floor inside a 333px box, and the shell's
+		 * `overflow-x: hidden` clipped its right-hand 229px.
 		 */
 		container-type: inline-size;
 		container-name: pie-cortex-calculator;
 		/*
-		 * The floor, not the layout. Below the tiers' smallest metrics the content
-		 * genuinely does not fit, and this element scrolls it. It cannot be left to
-		 * the tool shell: the wrapper pins this element to `height: 100% !important`
-		 * inside an `overflow: hidden` box, so the shell's own `overflow-y: auto`
-		 * never sees anything to scroll and the surplus was clipped instead.
+		 * Below the tiers' smallest metrics the content does not fit, and this
+		 * element scrolls it. The tool shell cannot: the wrapper pins this element
+		 * to `height: 100% !important` inside an `overflow: hidden` box, so the
+		 * shell's own `overflow-y: auto` never sees anything to scroll.
 		 */
 		overflow-y: auto;
 		background: var(
@@ -403,25 +400,22 @@
 	}
 
 	/*
-	 * Package defaults live on `--cortex-*` names and are consumed as a canonical
-	 * `--pie-` token with the `--cortex-` one as its fallback. Declaring `--pie-*`
-	 * on this element, as this
-	 * file used to, overrides whatever an ancestor set — which silently defeated the
-	 * ten `[data-color-scheme]` PNP palettes `@pie-players/pie-theme` publishes, for
-	 * every token except the six series colours that already used this pattern.
+	 * Package defaults live on `--cortex-*` names, each consumed as the fallback
+	 * of a canonical `--pie-` token. This element never declares `--pie-*`: a
+	 * declaration here overrides whatever an ancestor set, which defeats the ten
+	 * `[data-color-scheme]` PNP palettes `@pie-players/pie-theme` publishes.
 	 *
-	 * Surfaces deliberately do *not* consume `--pie-background`: that is the page
-	 * token, which a host may set to its own backdrop or to a translucent value,
-	 * and a calculator resolving its fill through it loses every contrast guarantee
-	 * the package makes. `--pie-white` and `--pie-background-dark` are surface roles
-	 * and opaque in the base themes and in all ten schemes, so those carry the card
-	 * and the recessed plane.
+	 * Surfaces resolve through `--pie-white` and `--pie-background-dark`, surface
+	 * roles that are opaque in the base themes and in all ten schemes, so those
+	 * carry the card and the recessed plane. `--pie-background` is the page token,
+	 * which a host may set to its own backdrop or to a translucent value, and a
+	 * fill resolved through it loses every contrast guarantee the package makes.
 	 */
 	/*
 	 * `auto` is listed alongside `light` because the dark values below live in a
-	 * `prefers-color-scheme` block: without it an `auto` calculator on a light OS
-	 * matched no palette rule at all and every `--cortex-*` fallback resolved to
-	 * nothing, which silently erased the key and field borders.
+	 * `prefers-color-scheme` block. Without it an `auto` calculator on a light OS
+	 * matches no palette rule, and every `--cortex-*` fallback resolves to nothing,
+	 * which erases the key and field borders.
 	 */
 	.pie-cortex-calculator[data-pie-theme='light'],
 	.pie-cortex-calculator[data-pie-theme='auto'] {
@@ -521,11 +515,10 @@
 	/*
 	 * Every fixed size in this tool, in one place, because a tool panel is resizable
 	 * and the height available is therefore a runtime fact. `data-pie-density` is
-	 * measured in script from this element's own box — see `densityFor` — rather
-	 * than from the viewport: a 406px panel inside a 900px window is the ordinary
-	 * case, and the `@media (max-height: 30rem)` rule this replaces never fired
-	 * there. The child components read these tokens, so a tier is one declaration
-	 * rather than an override per component.
+	 * measured in script from this element's own box (see `densityFor`), because a
+	 * 406px panel inside a 900px window is the ordinary case and a viewport
+	 * `max-height` query never fires there. The child components read these
+	 * tokens, so a tier is one declaration rather than an override per component.
 	 */
 	.pie-cortex-calculator {
 		--cortex-key-min-height: 2.75rem;
@@ -863,7 +856,6 @@
 		min-width: 2.25rem;
 		padding: 0.35rem;
 	}
-
 
 	.pie-cortex-action-button {
 		min-height: 2.25rem;

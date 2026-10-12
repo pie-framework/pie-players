@@ -152,6 +152,5 @@ export function createMediaElementTimeSource(
  */
 export function findMediaElement(root: ParentNode | null): HTMLMediaElement | null {
 	if (!root) return null;
-	const found = root.querySelector("video, audio");
-	return (found as HTMLMediaElement | null) ?? null;
+	return root.querySelector<HTMLMediaElement>("video, audio");
 }

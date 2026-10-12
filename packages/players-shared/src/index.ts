@@ -5,7 +5,6 @@ export * from "./player-strategy.js";
 export * from "./security/index.js";
 export * from "./loaders/index.js";
 export * from "./object/index.js";
-// Barrel export for PIE runtime utilities
 export * from "./pie/index.js";
 export type {
 	AssessmentEntity,

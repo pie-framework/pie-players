@@ -11,8 +11,6 @@
  * - Configurable colors and styles
  * - Annotation persistence via RangeSerializer
  *
- * Part of PIE Assessment Toolkit.
- *
  * Browser Support:
  * - Chrome/Edge 105+
  * - Safari 17.2+
@@ -422,32 +420,54 @@ export class HighlightCoordinator implements HighlightCoordinatorApi {
 		this.setupThemeObservation();
 	}
 
+	/**
+	 * Re-adapt the TTS colors when the page's theme moves: on the document
+	 * element, on a `<pie-theme>` host, and when a `<pie-theme>` mounts, which
+	 * themes its target as it connects.
+	 */
 	private setupThemeObservation(): void {
 		if (typeof document === "undefined") return;
 		if (typeof MutationObserver === "undefined") return;
 
-		const refresh = () => this.applyAdaptiveTTSStyle();
-		this.themeObserver = new MutationObserver(refresh);
+		const themeHosts = document.getElementsByTagName("pie-theme");
+		const observedHosts = new WeakSet<Element>();
+		const observeNewHosts = (): boolean => {
+			let found = false;
+			for (const host of themeHosts) {
+				if (observedHosts.has(host)) continue;
+				observedHosts.add(host);
+				observer.observe(host, {
+					attributes: true,
+					attributeFilter: [
+						"theme",
+						"scheme",
+						"provider",
+						"variables",
+						"style",
+						"data-theme",
+						"data-color-scheme",
+					],
+				});
+				found = true;
+			}
+			return found;
+		};
+		const observer = new MutationObserver((records) => {
+			const mounted = observeNewHosts();
+			if (mounted || records.some((record) => record.type === "attributes")) {
+				this.applyAdaptiveTTSStyle();
+			}
+		});
+		this.themeObserver = observer;
 
-		this.themeObserver.observe(document.documentElement, {
+		observer.observe(document.documentElement, {
 			attributes: true,
 			attributeFilter: ["style", "data-theme", "data-color-scheme", "class"],
 		});
-
-		for (const host of document.querySelectorAll("pie-theme")) {
-			this.themeObserver.observe(host, {
-				attributes: true,
-				attributeFilter: [
-					"theme",
-					"scheme",
-					"provider",
-					"variables",
-					"style",
-					"data-theme",
-					"data-color-scheme",
-				],
-			});
-		}
+		// Insertions, so a `<pie-theme>` mounted later is found. An insertion
+		// costs a walk of the live host list, which holds a handful at most.
+		observer.observe(document, { childList: true, subtree: true });
+		observeNewHosts();
 	}
 
 	private parseColor(
@@ -584,6 +604,8 @@ export class HighlightCoordinator implements HighlightCoordinatorApi {
 		let selectedOpacity = opacityCandidates[opacityCandidates.length - 1];
 		let bestScore = -Infinity;
 
+		// The first opacity whose blend clears 1.25:1 against the background and
+		// 2.4:1 against the text wins; otherwise the best weighted score.
 		for (const opacity of opacityCandidates) {
 			const blended = this.blend(accent, background, opacity);
 			const backgroundDelta = this.contrastRatio(blended, background);
@@ -682,7 +704,6 @@ export class HighlightCoordinator implements HighlightCoordinatorApi {
 		if (!this.supported) return;
 		if (typeof document === "undefined") return; // SSR guard
 
-		// Check if styles already exist
 		if (document.getElementById("pie-highlight-styles")) return;
 
 		const style = document.createElement("style");
@@ -730,12 +751,10 @@ export class HighlightCoordinator implements HighlightCoordinatorApi {
 	 * lives in a font-driven pseudo-element a CSS range cannot paint) and
 	 * whole-expression fallbacks.
 	 *
-	 * The supplied element is painted exactly; we deliberately do NOT walk up to
-	 * a containing `<math>` / `<mjx-container>`. That escalation is what made
-	 * MathJax-rendered math highlight as a full block while native MathML tracked
-	 * per-token: a resolved single token must paint as a token, and only a
-	 * genuine expression fallback (where the element already is the container)
-	 * should paint the whole expression.
+	 * The supplied element is painted exactly, with no walk up to a containing
+	 * `<math>` / `<mjx-container>`: a resolved token paints as a token, and only
+	 * an expression fallback, where the element already is the container, paints
+	 * the whole expression.
 	 */
 	highlightTTSWordElement(element: Element): void {
 		if (!this.supported) return;
@@ -759,7 +778,6 @@ export class HighlightCoordinator implements HighlightCoordinatorApi {
 		if (!this.supported) return;
 		this.applyAdaptiveTTSStyle(startElementOf(ranges));
 
-		// Clear previous sentence highlight
 		this.clearTTSSentence();
 
 		const highlight = sharedHighlight(TTS_SENTENCE_HIGHLIGHT);
@@ -794,12 +812,11 @@ export class HighlightCoordinator implements HighlightCoordinatorApi {
 	private static readonly SENTENCE_FALLBACK_SELECTOR =
 		"math, mjx-container, svg, img, canvas, [role='img']";
 
-	// The word layer must NOT escalate a multi-node range to the enclosing
-	// `<math>` / `<mjx-container>`: that is what made an equation flash as a
-	// whole block whenever a spoken word's visible range crossed several math
-	// glyph nodes. Math is tracked per token (or held / region) by the highlight
-	// pipeline instead. Replaced elements (svg/img/canvas) still need the element
-	// fallback because a CSS range cannot paint them.
+	// The word layer falls back to the element only for replaced elements
+	// (svg/img/canvas), which a CSS range cannot paint. Escalating to the
+	// enclosing `<math>` / `<mjx-container>` flashed the whole equation whenever
+	// a word crossed several glyph nodes, so math is tracked per token, held or
+	// by region in the highlight pipeline.
 	private static readonly WORD_FALLBACK_SELECTOR =
 		"svg, img, canvas, [role='img']";
 
@@ -924,11 +941,9 @@ export class HighlightCoordinator implements HighlightCoordinatorApi {
 	): string {
 		const id = `annotation-${this.nextAnnotationId++}`;
 
-		// Clone the range to store
 		const clonedRange = range.cloneRange();
 		adoptHighlightStylesFor(clonedRange.startContainer);
 
-		// Store annotation data
 		const annotation: Annotation = {
 			id,
 			range: clonedRange,
@@ -1071,63 +1086,12 @@ export class HighlightCoordinator implements HighlightCoordinatorApi {
 	// ============================================================================
 
 	/**
-	 * Highlight a range as the given type: the TTS types paint as
-	 * {@link highlightTTSWord} and {@link highlightTTSSentence} do.
-	 */
-	highlightRange(
-		range: Range,
-		type: HighlightType,
-		color: HighlightColor = HighlightColor.YELLOW,
-	): void {
-		if (!this.supported) return;
-
-		switch (type) {
-			case HighlightType.TTS_WORD:
-				this.highlightTTSWord([range]);
-				break;
-			case HighlightType.TTS_SENTENCE:
-				this.highlightTTSSentence([range]);
-				break;
-			case HighlightType.ANNOTATION:
-				// For annotations, use the existing method
-				this.addAnnotation(range, color);
-				break;
-		}
-	}
-
-	/**
-	 * Clear highlights of a specific type (interface method)
-	 */
-	clearHighlights(type: HighlightType): void {
-		if (!this.supported) return;
-
-		switch (type) {
-			case HighlightType.TTS_WORD:
-				this.clearTTSWord();
-				break;
-			case HighlightType.TTS_SENTENCE:
-				this.clearTTSSentence();
-				break;
-			case HighlightType.ANNOTATION:
-				this.clearAnnotations();
-				break;
-		}
-	}
-
-	/**
 	 * Clear all highlights (interface method)
 	 */
 	clearAll(): void {
 		if (!this.supported) return;
 		this.clearTTS();
 		this.clearAnnotations();
-	}
-
-	/**
-	 * Check if CSS Highlight API is supported (interface method)
-	 */
-	isSupported(): boolean {
-		return this.supported;
 	}
 
 	/**
@@ -1143,7 +1107,6 @@ export class HighlightCoordinator implements HighlightCoordinatorApi {
 		const styleEl = document.getElementById("pie-highlight-styles");
 		if (!styleEl) return;
 
-		// Convert hex to rgba
 		const hexToRgb = (hex: string) => {
 			const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
 			return result

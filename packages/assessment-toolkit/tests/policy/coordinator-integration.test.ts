@@ -14,7 +14,7 @@
  *   - The auto-mode heuristic — `pnpEnforcement` defaults to `"off"`
  *     until profile material is bound (PNP / district policy / test
  *     administration on the assessment, or, for a decision scoped to an
- *     item, `requiredTools` / `restrictedTools` / `toolParameters` in the
+ *     item, `requiredTools` / `restrictedTools` in the
  *     item's settings). A bare assessment record (just `id` / `name`) keeps
  *     `"off"`. Host overrides via {@link setPnpEnforcement} are
  *     sticky across assessment swaps.

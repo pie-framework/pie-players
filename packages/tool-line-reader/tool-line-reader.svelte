@@ -10,6 +10,16 @@
 	}}
 />
 
+<!--
+@component
+Reading-guide overlay: a transparent reading window inside an obscuring frame
+that the student drags over text, with controls on the frame to resize the
+window, resize the frame and close. The host shows it with `visible`; inside a
+toolkit runtime context it registers `tool-id` with the tool coordinator on the
+tool layer, and the close control hides it there. Arrow keys move it, `+` and
+`-` resize the window, and Escape closes it.
+-->
+
 <script lang="ts">
 	import { coerceBooleanAttributes } from '@pie-players/pie-players-shared/ui/attribute-coercion';
 	
@@ -32,13 +42,10 @@ import {
 import { resolveInterfaceI18n } from '@pie-players/pie-players-shared/i18n/provider';
 import { onMount, untrack } from 'svelte';
 
-	// Props
 	let { visible = false, toolId = 'lineReader' }: { visible?: boolean; toolId?: string } = $props();
 
-	// Check if running in browser
 	const isBrowser = typeof window !== 'undefined';
 
-	// State
 	let containerEl = $state<HTMLDivElement | undefined>();
 	let runtimeContext = $state<AssessmentToolkitRuntimeContext | null>(null);
 	const coordinator = $derived(
@@ -108,9 +115,17 @@ import { onMount, untrack } from 'svelte';
 		});
 	});
 
+	// One timer for the live region, so an earlier announcement's clear cannot
+	// blank a later one.
+	let announceTimer: ReturnType<typeof setTimeout> | null = null;
+
 	function announce(message: string) {
+		if (announceTimer !== null) clearTimeout(announceTimer);
 		announceText = message;
-		setTimeout(() => announceText = '', 1000);
+		announceTimer = setTimeout(() => {
+			announceText = '';
+			announceTimer = null;
+		}, 1000);
 	}
 
 	function clampPaneHeight(value: number) {
@@ -241,8 +256,8 @@ import { onMount, untrack } from 'svelte';
 	}
 
 	// Drags and resizes share one gesture, which ends on a cancelled touch as well
-	// as on release, so one iPadOS takes over for a system gesture does not stay
-	// stuck to the next touch.
+	// as on release, so a touch iPadOS takes over for a system gesture does not
+	// leave the drag stuck to the next touch.
 	const gesture = createPointerGesture({
 		onMove: handlePointerMove,
 		onEnd: () => {
@@ -300,7 +315,6 @@ import { onMount, untrack } from 'svelte';
 		// band already moves the bottom edge 1:1 because it grows at both ends.
 		const deltaY = e.clientY - resizeStart.mouseY;
 		if (resizeTarget === 'pane') {
-			// Vertical resize of the reading window only
 			paneHeight = clampPaneHeight(resizeStart.paneHeight + deltaY * 2);
 			return;
 		}
@@ -447,6 +461,7 @@ import { onMount, untrack } from 'svelte';
 
 	onMount(() => {
 		return () => {
+			if (announceTimer !== null) clearTimeout(announceTimer);
 			gesture.release();
 			registration.release();
 		};

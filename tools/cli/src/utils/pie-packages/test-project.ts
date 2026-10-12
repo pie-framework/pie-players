@@ -72,9 +72,8 @@ export async function generatePreloadedStaticTestProject(
 			);
 		}
 
-		// Use a relative path from the test project so any static server can serve it.
-		// This assumes the user serves from a directory that includes both this project and the packageDir; we provide a copy-based option below.
-		// For reliability, we copy the package dist into the test project.
+		// Copy the package's dist into the test project, so a static server rooted
+		// there can serve it at a relative path.
 		const distSrc = join(pkgDir, "dist");
 		if (!existsSync(distSrc)) {
 			throw new Error(`Expected dist/ in static package dir: ${pkgDir}`);

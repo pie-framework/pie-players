@@ -1,5 +1,3 @@
-export type AuthoringBackendMode = "demo" | "required";
-
 import type {
 	DeleteDone,
 	Env,
@@ -21,14 +19,14 @@ import type {
 	ElementPackagePolicy,
 } from "@pie-players/pie-players-shared";
 
+export type AuthoringBackendMode = "demo" | "required";
+
 export type { DeleteDone, ImageHandler, PieItemPlayerErrorDetail, SoundHandler };
 export type * from "./backend/types.js";
 
 /**
- * Re-exported, not redeclared: `players-shared` owns this and types
- * `validateModels`' implementation with it. The local copy widened
- * `validatedModels` to `any[]`, so a consumer typing against this package lost the
- * model typing the implementation actually returns.
+ * Owned by `players-shared`, which types `validateModels`' implementation with
+ * it; a local redeclaration drifts from what the implementation returns.
  */
 export type { AuthoringValidationResult };
 

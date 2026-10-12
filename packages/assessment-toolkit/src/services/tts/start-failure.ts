@@ -4,7 +4,7 @@
  * toolkit can share a page, so an error class from one fails `instanceof` in
  * another.
  */
-export const TTS_START_FAILED_CODE = "tts-start-failed";
+const TTS_START_FAILED_CODE = "tts-start-failed";
 
 /** Whether a speak rejected because speech could not start. */
 export function isTTSStartFailure(error: unknown): boolean {

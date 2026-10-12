@@ -9,7 +9,6 @@
   type BackendAuthConfig
   type BackendAuthoringClient
   type BackendAuthoringConfig
-  type BackendAuthoringEndpoints
   type BackendAuthoringIdentity
   type BackendAuthoringImageHandler
   type BackendAuthoringLoadResult

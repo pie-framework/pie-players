@@ -55,9 +55,7 @@ async function forceBrowserTtsRuntime(page: Page): Promise<void> {
 			transportMode: "pie",
 			defaultVoice: undefined,
 		});
-		await coordinator?.ensureTTSReady?.(
-			coordinator?.getToolConfig?.("textToSpeech"),
-		);
+		await coordinator?.ensureTTSReady?.();
 	});
 }
 

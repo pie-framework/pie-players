@@ -2,10 +2,7 @@ import type {
 	CalculatorProvider,
 	CalculatorProviderInit,
 } from "@pie-players/pie-calculator";
-import type {
-	ToolProviderApi,
-	ToolProviderCapabilities,
-} from "@pie-players/pie-assessment-toolkit/tools/registration";
+import type { ToolProviderApi } from "@pie-players/pie-assessment-toolkit/tools/registration";
 
 export type CalculatorToolProviderInitConfig = Pick<
 	CalculatorProviderInit,
@@ -27,7 +24,7 @@ export interface LazyCalculatorProviderDefinition<TConfig> {
 
 /**
  * Shared lazy-module and lifecycle implementation for calculator tool adapters.
- * Concrete adapters own only their metadata, capabilities and provider import.
+ * Concrete adapters own only their metadata and provider import.
  */
 export abstract class LazyCalculatorToolProvider<
 	TConfig extends CalculatorToolProviderInitConfig,
@@ -39,7 +36,6 @@ export abstract class LazyCalculatorToolProvider<
 	abstract readonly requiresAuth: boolean;
 
 	protected abstract getDefinition(): LazyCalculatorProviderDefinition<TConfig>;
-	abstract getCapabilities(): ToolProviderCapabilities;
 
 	private calculatorProvider: InitializableCalculatorProvider<TConfig> | null =
 		null;

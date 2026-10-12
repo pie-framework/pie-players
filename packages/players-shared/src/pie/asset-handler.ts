@@ -24,7 +24,7 @@ const logger = createPieLogger("asset-handler", () => isGlobalDebugEnabled());
  * Converts uploaded files to base64 data URLs.
  * Suitable for demos and local development.
  */
-export class DataURLAssetHandler implements AssetHandler {
+class DataURLAssetHandler implements AssetHandler {
 	private cancelled = false;
 	private fileReader: FileReader | null = null;
 

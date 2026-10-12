@@ -1,13 +1,15 @@
 import { describe, expect, it } from "vitest";
 
 import { BaseTTSProvider } from "./provider.js";
-import type {
-	GetVoicesOptions,
-	ServerProviderCapabilities,
-	SynthesizeRequest,
-	SynthesizeResponse,
-	TTSServerConfig,
-	Voice,
+import {
+	type GetVoicesOptions,
+	type ServerProviderCapabilities,
+	type SynthesizeRequest,
+	type SynthesizeResponse,
+	TTSError,
+	TTSErrorCode,
+	type TTSServerConfig,
+	type Voice,
 } from "./types.js";
 
 class TestProvider extends BaseTTSProvider {
@@ -43,7 +45,39 @@ class TestProvider extends BaseTTSProvider {
 	escapeSSMLPublic(text: string): string {
 		return this.escapeSSML(text);
 	}
+
+	ensureInitializedPublic(): void {
+		this.ensureInitialized();
+	}
+
+	validateRequestPublic(request: SynthesizeRequest): void {
+		this.validateRequest(request, {
+			standard: {
+				supportsSSML: true,
+				supportsPitch: true,
+				supportsRate: true,
+				supportsVolume: false,
+				supportsMultipleVoices: true,
+				maxTextLength: 3000,
+			},
+			extensions: {
+				supportsSpeechMarks: false,
+				supportedFormats: ["mp3"],
+				supportsSampleRate: false,
+			},
+		});
+	}
 }
+
+/** What `fn` throws; fails the test when it returns. */
+const thrown = (fn: () => void): unknown => {
+	try {
+		fn();
+	} catch (err) {
+		return err;
+	}
+	throw new Error("expected a throw");
+};
 
 describe("BaseTTSProvider prosody helpers", () => {
 	const provider = new TestProvider();
@@ -70,6 +104,15 @@ describe("BaseTTSProvider prosody helpers", () => {
 		);
 		expect(provider.buildProsodyAttrsPublic({ text: "hi", pitch: 0.8 })).toBe(
 			'pitch="-20%"',
+		);
+	});
+
+	it("maps the ends of the pitch range to -100% and +100%", () => {
+		expect(provider.buildProsodyAttrsPublic({ text: "hi", pitch: 0 })).toBe(
+			'pitch="-100%"',
+		);
+		expect(provider.buildProsodyAttrsPublic({ text: "hi", pitch: 2 })).toBe(
+			'pitch="+100%"',
 		);
 	});
 
@@ -102,6 +145,78 @@ describe("BaseTTSProvider prosody helpers", () => {
 		};
 		const result = provider.applyProsodyPublic(request.text, request);
 		expect(result).toEqual({ text: "<speak>hi</speak>", isSsml: true });
+	});
+});
+
+describe("BaseTTSProvider request validation", () => {
+	const provider = new TestProvider();
+	const validate = (pitch: number) => () =>
+		provider.validateRequestPublic({ text: "hi", pitch });
+
+	it("accepts a pitch multiplier from 0 to 2 inclusive", () => {
+		for (const pitch of [0, 0.5, 1, 1.5, 2]) {
+			expect(validate(pitch)).not.toThrow();
+		}
+	});
+
+	it("rejects a pitch outside 0 to 2, semitone values included", () => {
+		for (const pitch of [-0.01, 2.01, -5, 5, -20, 20]) {
+			expect(validate(pitch)).toThrow("Pitch must be between 0 and 2");
+		}
+	});
+
+	const rejection = (request: SynthesizeRequest) => {
+		try {
+			provider.validateRequestPublic(request);
+		} catch (error) {
+			expect(error).toBeInstanceOf(TTSError);
+			const { code, message, providerId } = error as TTSError;
+			return { code, message, providerId };
+		}
+		throw new Error("expected the request to be rejected");
+	};
+
+	it("rejects text over the maximum length as TEXT_TOO_LONG", () => {
+		expect(rejection({ text: "a".repeat(3001) })).toEqual({
+			code: TTSErrorCode.TEXT_TOO_LONG,
+			message: "Text length (3001) exceeds maximum (3000)",
+			providerId: "test",
+		});
+	});
+
+	it.each<[string, SynthesizeRequest, string]>([
+		["blank text", { text: "  " }, "Text is required and cannot be empty"],
+		[
+			"an unsupported format",
+			{ text: "hi", format: "ogg" },
+			"Format 'ogg' not supported. Supported formats: mp3",
+		],
+		["a rate over 4", { text: "hi", rate: 4.5 }, "Rate must be between 0.25 and 4.0"],
+		["a pitch over 2", { text: "hi", pitch: 2.5 }, "Pitch must be between 0 and 2"],
+		["a volume over 1", { text: "hi", volume: 1.5 }, "Volume must be between 0 and 1"],
+	])("rejects %s as INVALID_REQUEST", (_, request, message) => {
+		expect(rejection(request)).toEqual({
+			code: TTSErrorCode.INVALID_REQUEST,
+			message,
+			providerId: "test",
+		});
+	});
+});
+
+describe("BaseTTSProvider initialization guard", () => {
+	it("rejects use before initialize as INITIALIZATION_ERROR", async () => {
+		const provider = new TestProvider();
+		const err = thrown(() => provider.ensureInitializedPublic());
+
+		expect(err).toBeInstanceOf(TTSError);
+		expect(err).toMatchObject({
+			code: TTSErrorCode.INITIALIZATION_ERROR,
+			message: "Provider test not initialized",
+			providerId: "test",
+		});
+
+		await provider.initialize({});
+		expect(() => provider.ensureInitializedPublic()).not.toThrow();
 	});
 });
 

@@ -13,13 +13,6 @@ export type ToolCategory =
 	| "accessibility"
 	| "other";
 
-export interface ToolProviderCapabilities {
-	supportsOffline: boolean;
-	requiresAuth: boolean;
-	maxInstances?: number | null;
-	features: Record<string, boolean>;
-}
-
 /**
  * A tool's provider. It registers under its tool's id, which is how the toolkit
  * and the tool find it; it carries no id of its own.
@@ -34,7 +27,6 @@ export interface ToolProviderApi<TInstance = any> {
 	readonly requiresAuth: boolean;
 	initialize(config: unknown): Promise<void>;
 	createInstance(config?: unknown): Promise<TInstance>;
-	getCapabilities(): ToolProviderCapabilities;
 	isReady(): boolean;
 	destroy(): void;
 }

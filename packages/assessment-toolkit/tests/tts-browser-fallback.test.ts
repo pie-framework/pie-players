@@ -178,8 +178,6 @@ describe("a provider that fails to start", () => {
 		let configuredDestroyed = 0;
 		const configured: ITTSProvider = {
 			providerId: "polly",
-			providerName: "Failing",
-			version: "1.0.0",
 			initialize: async () => {
 				throw new Error("init failed");
 			},

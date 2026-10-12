@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { resolveAssessmentSectionPlayerRuntime } from "../src/components/assessment-section-player-runtime";
 
 describe("assessment section-player runtime", () => {
-	test("defaults delivery assignmentId from attempt id without mutating host runtime", () => {
+	test("clones the host backend without adding an assignment id", () => {
 		const sectionPlayerRuntime = {
 			player: {
 				backend: {
@@ -19,53 +19,25 @@ describe("assessment section-player runtime", () => {
 			},
 		};
 
-		const first = resolveAssessmentSectionPlayerRuntime({
+		const runtime = resolveAssessmentSectionPlayerRuntime({
 			sectionPlayerRuntime,
 			playerType: "preloaded",
-			attemptId: "attempt-1",
 			env: { mode: "gather", role: "student" },
 			coordinator: { kind: "coordinator" },
 		});
-		const second = resolveAssessmentSectionPlayerRuntime({
-			sectionPlayerRuntime,
-			playerType: "preloaded",
-			attemptId: "attempt-2",
-			env: { mode: "gather", role: "student" },
-		});
+		const delivery = (runtime.player as any).backend.delivery;
 
-		expect((first.player as any).backend.delivery.assignmentId).toBe(
-			"attempt-1",
+		expect(delivery).toEqual(sectionPlayerRuntime.player.backend.delivery);
+		expect("assignmentId" in delivery).toBe(false);
+		expect(delivery.options).not.toBe(
+			sectionPlayerRuntime.player.backend.delivery.options,
 		);
-		expect((second.player as any).backend.delivery.assignmentId).toBe(
-			"attempt-2",
-		);
-		expect((first.player as any).backend.delivery.options.overrides).toEqual({
-			"student-grade": "5",
-		});
-		expect((first.player as any).backend.delivery.options).not.toBe(
-			(sectionPlayerRuntime.player.backend.delivery as any).options,
-		);
-		expect(sectionPlayerRuntime).toEqual({
-			player: {
-				backend: {
-					delivery: {
-						enabled: true,
-						baseUrl: "/qe",
-						options: {
-							overrides: {
-								"student-grade": "5",
-							},
-						},
-					},
-				},
-			},
-		});
-		expect(first.playerType).toBe("preloaded");
-		expect(first.env).toEqual({ mode: "gather", role: "student" });
-		expect(first.coordinator).toEqual({ kind: "coordinator" });
+		expect(runtime.playerType).toBe("preloaded");
+		expect(runtime.env).toEqual({ mode: "gather", role: "student" });
+		expect(runtime.coordinator).toEqual({ kind: "coordinator" });
 	});
 
-	test("preserves explicit delivery assignmentId over attempt id", () => {
+	test("keeps the host's delivery assignmentId", () => {
 		const runtime = resolveAssessmentSectionPlayerRuntime({
 			sectionPlayerRuntime: {
 				player: {
@@ -79,53 +51,10 @@ describe("assessment section-player runtime", () => {
 				},
 			},
 			playerType: "iife",
-			attemptId: "attempt-1",
 		});
 
 		expect((runtime.player as any).backend.delivery.assignmentId).toBe(
 			"explicit-assignment",
-		);
-	});
-
-	test("preserves explicitly empty delivery assignmentId", () => {
-		const runtime = resolveAssessmentSectionPlayerRuntime({
-			sectionPlayerRuntime: {
-				player: {
-					backend: {
-						delivery: {
-							enabled: true,
-							baseUrl: "/qe",
-							assignmentId: "",
-						},
-					},
-				},
-			},
-			playerType: "iife",
-			attemptId: "attempt-1",
-		});
-
-		expect((runtime.player as any).backend.delivery.assignmentId).toBe("");
-	});
-
-	test("defaults explicitly undefined delivery assignmentId", () => {
-		const runtime = resolveAssessmentSectionPlayerRuntime({
-			sectionPlayerRuntime: {
-				player: {
-					backend: {
-						delivery: {
-							enabled: true,
-							baseUrl: "/qe",
-							assignmentId: undefined,
-						},
-					},
-				},
-			},
-			playerType: "iife",
-			attemptId: "attempt-1",
-		});
-
-		expect((runtime.player as any).backend.delivery.assignmentId).toBe(
-			"attempt-1",
 		);
 	});
 

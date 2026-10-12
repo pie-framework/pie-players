@@ -209,7 +209,7 @@
 				if (restored) return;
 				const config = coordinator.getToolConfig('textToSpeech');
 				if (config?.enabled === false || config?.backend !== 'browser') return;
-				await coordinator.ensureTTSReady(config);
+				await coordinator.ensureTTSReady();
 			})().catch((error) => {
 				console.warn('[section-demos] Failed to initialize TTS settings:', error);
 			});

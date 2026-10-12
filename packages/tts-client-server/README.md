@@ -1,23 +1,21 @@
 # @pie-players/tts-client-server
 
-Client-side TTS provider that calls a server API for synthesis with speech marks support.
-
-For the cross-package TTS architecture and provider layering, see
-[TTS Architecture](../../docs/accessibility/tts-architecture.md). This README
-focuses on the browser-side server provider API.
-
-## Overview
-
-This package provides a browser-side TTS provider that offloads synthesis to a server API. The server handles provider selection (AWS Polly, Google Cloud TTS, etc.) and credential management, while the client plays audio and coordinates word highlighting.
+`ServerTTSProvider`, the browser-side text-to-speech (TTS) provider that sends
+synthesis to a server API the host runs. The server picks the vendor (AWS Polly,
+Google Cloud TTS, or any provider built on `@pie-players/tts-server-core`) and
+holds its credentials; the client plays the returned audio and reports word
+boundaries from the server's speech marks. This README covers the provider's API
+for host integrators adding server-backed read-aloud. For the package layering,
+see [TTS Architecture](../../docs/accessibility/tts-architecture.md); for the
+runtime flow, the [TTS deep dive](../../docs/accessibility/tts-deep-dive.md).
 
 ## Features
 
-- ✅ **Server-Side Synthesis** - Keeps credentials secure on server
-- ✅ **Speech Marks** - Precise word-level timing from server
-- ✅ **Multiple Providers** - Server can use Polly, Google, ElevenLabs, etc.
-- ✅ **Word Highlighting** - 50ms polling for smooth synchronization
-- ✅ **Audio Playback** - HTMLAudioElement with pause/resume
-- ✅ **Blob URLs** - Efficient memory management
+- **Server-side synthesis**: vendor credentials stay on the server
+- **Speech marks**: word timings from the server drive highlighting
+- **Word highlighting**: the audio clock is polled every 50ms
+- **Audio playback**: an `HTMLAudioElement` playing a Blob URL, with pause and
+  resume
 
 ## Installation
 
@@ -38,7 +36,7 @@ import { TTSService } from '@pie-players/pie-assessment-toolkit';
 
 const provider = new ServerTTSProvider();
 const config: ServerTTSProviderConfig = {
-  apiEndpoint: '/api/tts',  // Your SvelteKit API route
+  apiEndpoint: '/api/tts',  // the host's TTS API route
   provider: 'polly',         // Server-side provider to use
   voice: 'Joanna',
   language: 'en-US',
@@ -52,7 +50,8 @@ await ttsService.initialize(provider, config);
 provider reads none of them from `providerOptions`. `providerOptions` carries
 request extras: the PIE transport forwards its `engine` (when no top-level
 `engine` is set), `sampleRate`, `format` and `speechMarkTypes`, and the custom
-transport reads its `speedRate`.
+transport reads its `speedRate` (else a bucket from `rate`), `lang_id` (else the
+content language, else `language`, else `en-US`) and `cache` (default `true`).
 
 `apiEndpoint` is required when using `ServerTTSProvider` directly, and
 `initialize` throws without it. Toolkit-level `tools.providers.textToSpeech`
@@ -77,10 +76,20 @@ await ttsService.speak(document.getElementById('content'));
 
 ## Transport Modes
 
-`ServerTTSProvider` now supports two transport modes:
+`ServerTTSProvider` supports two transport modes:
 
-- `pie` (default): POST `${apiEndpoint}/synthesize`, inline base64 audio + inline speech marks
+- `pie`: POST `${apiEndpoint}/synthesize`, inline base64 audio + inline speech marks
 - `custom`: POST to root endpoint, then fetch `audioContent` and JSONL marks URLs
+
+With `transportMode` unset, the transport is `custom` when `provider` is
+`"custom"` and `pie` otherwise. `endpointMode` defaults to `synthesizePath` for
+`pie` and `rootPost` for `custom`. The toolkit's `tools.providers.textToSpeech`
+applies the same default from `serverProvider`.
+
+The provider reports SSML support only on the `pie` transport with `provider`
+`polly` (the default) or `google`. There the toolkit voices generated math as
+SSML; everywhere else, the custom transport included, generated speech is plain
+text.
 
 ### PIE mode request
 
@@ -112,18 +121,6 @@ await ttsService.speak(document.getElementById('content'));
     "charCount": 11,
     "cached": false
   }
-}
-```
-
-### PIE mode response
-
-```json
-{
-  "audio": "base64-encoded-audio",
-  "contentType": "audio/mpeg",
-  "speechMarks": [
-    { "time": 0, "type": "word", "start": 0, "end": 5, "value": "Hello" }
-  ]
 }
 ```
 
@@ -162,7 +159,7 @@ Speech marks are fetched from the `word` URL and parsed as JSONL.
 
 ## SvelteKit Implementation Example
 
-See the implementation guide in [tts-architecture.md](../../docs/accessibility/tts-architecture.md).
+The [`@pie-players/tts-server-polly` integration guide](../tts-server-polly/examples/INTEGRATION-GUIDE.md) builds these routes for Polly, and the [`@pie-players/tts-server-google` integration guide](../tts-server-google/examples/INTEGRATION-GUIDE.md) for Google.
 
 Example route structure:
 ```
@@ -181,8 +178,7 @@ interface ServerTTSProviderConfig {
   provider?: string;          // Server provider ('polly', 'google', etc.)
   transportMode?: 'pie' | 'custom';
   endpointMode?: 'synthesizePath' | 'rootPost';
-  endpointValidationMode?: 'voices' | 'endpoint' | 'none';
-  validateEndpoint?: boolean; // Probe the endpoint during initialize()
+  endpointValidationMode?: 'voices' | 'endpoint' | 'none'; // Probe run by initialize(); default 'none'
   authToken?: string;         // JWT or API key
   includeAuthOnAssetFetch?: boolean;
   assetOrigins?: string[];    // Trusted origins for Authorization header
@@ -236,33 +232,35 @@ for the host-wide contract this provider fits into.
 
 ## How It Works
 
-1. **Client calls** `speak(element)`
+1. **TTSService calls** `speak(text)` with the text it resolved from the element or range
 2. **Adapter builds** backend-specific request payload
 3. **Provider POSTs** to resolved synthesis endpoint (`/synthesize` or root POST)
 4. **Adapter normalizes** response into audio + speech marks
 5. **Client loads** audio as Blob URL
 6. **Client plays** audio via HTMLAudioElement
 7. **Client polls** audio time every 50ms
-8. **Client fires** word boundary callbacks at correct times
+8. **Client reports** the word at the current audio time through the word-boundary callback
 9. **TTSService** highlights words in DOM
 
 ## Word Highlighting Synchronization
 
-The provider uses a polling-based approach for reliable synchronization:
+Every 50ms the provider reads the audio's current time and reports the last
+word whose start time has arrived, once:
 
 ```typescript
-// Every 50ms, check current audio time
-const currentTime = audio.currentTime * 1000; // Convert to ms
-
-// Find words that should be highlighted
-for (const timing of wordTimings) {
-  if (currentTime >= timing.time) {
-    onWordBoundary('', timing.charIndex, timing.length);
-  }
+const currentTimeMs = audio.currentTime * 1000;
+const index = lastTimingAtOrBefore(wordTimings, currentTimeMs);
+if (index >= 0 && index !== lastReported) {
+  lastReported = index;
+  const timing = wordTimings[index];
+  onWordBoundary(timing.word, timing.charIndex, timing.length);
 }
 ```
 
-This is **much more reliable** than browser's `onboundary` events (which are broken in Safari and unreliable in Chrome).
+Words a tick crossed are skipped: the callback names the word being spoken, so
+replaying them would paint highlights the learner never sees and leave the
+highlight behind the audio. A background tab's clamped timer resyncs on its next
+tick for the same reason.
 
 ## Memory Management
 
@@ -280,16 +278,17 @@ try {
   await ttsService.speak(document.getElementById('content'));
 } catch (error) {
   console.error('TTS failed:', error.message);
-  // Fallback to browser TTS or show error
+  // A failed read rejects without switching provider; the toolkit coordinator
+  // falls back to browser TTS only when a provider fails to start.
 }
 ```
 
 ## Browser Compatibility
 
-- ✅ Chrome/Edge (latest)
-- ✅ Firefox (latest)
-- ✅ Safari (latest)
-- ✅ Mobile browsers
+- Chrome/Edge (latest)
+- Firefox (latest)
+- Safari (latest)
+- Mobile browsers
 
 Requires:
 
@@ -298,12 +297,11 @@ Requires:
 - `URL.createObjectURL`
 - `atob` for base64 decoding
 
-## Performance
+## Caching
 
-- **Audio caching:** Server-side (Redis)
-- **Blob URLs:** Efficient memory usage
-- **50ms polling:** Smooth highlighting without jank
-- **Parallel requests:** Audio + marks fetched together
+The client keeps no audio cache. Caching is server-side, through the host's
+`ITTSCache` (`@pie-players/tts-server-core`); the custom transport also sends a
+`cache` flag, `true` unless `providerOptions.cache` is `false`.
 
 ## License
 

@@ -17,6 +17,7 @@ export const LOCAL_GATE_E2E_SUITES = [
 	"section-player:critical",
 	"print-player",
 	"players-shared",
+	"backend-demo",
 ];
 
 const BUILD_COMMAND = /^bun run (build:e2e:[\w:-]+)$/;

@@ -14,7 +14,6 @@ import type {
 	SectionControllerSessionState,
 } from "@pie-players/pie-players-shared/types";
 import type {
-	AccessibilityCatalogResolver,
 	CatalogChangeListener,
 	CatalogLookupContext,
 	CatalogLookupOptions,
@@ -27,11 +26,8 @@ import type {
 import type { CatalogOwnerContext } from "./catalog-owner.js";
 import type { FrameworkErrorListener } from "./framework-error-bus.js";
 import type { FrameworkErrorModel } from "./framework-error.js";
-import type {
-	Annotation,
-	HighlightColor,
-	HighlightType,
-} from "./HighlightCoordinator.js";
+import type { ToolFailurePhase } from "./tool-failure.js";
+import type { Annotation, HighlightColor } from "./HighlightCoordinator.js";
 import type { SerializedRange } from "./RangeSerializer.js";
 import type {
 	SectionControllerHandle,
@@ -40,8 +36,9 @@ import type {
 	SectionEventSubscriptionArgs,
 	ToolkitCoordinatorHooks,
 } from "./ToolkitCoordinator.js";
+import type { ElementIdComponents } from "./ElementToolStateStore.js";
 import type { ZIndexLayer } from "./ToolCoordinator.js";
-import type { PlaybackState, TTSConfig } from "./TTSService.js";
+import type { PlaybackState } from "./TTSService.js";
 import type { TTSHighlightTargetResolverProvider } from "./tts/highlight-target-resolver.js";
 import type {
 	TextToSpeechToolProviderConfig,
@@ -58,16 +55,15 @@ import type {
 	ToolPolicyChangeListener,
 	ToolPolicyDecision,
 	ToolPolicyDecisionRequest,
+	ToolPolicyDiagnostic,
 	ToolScope,
 } from "../policy/engine.js";
 import type {
 	AssessmentEntity,
 	ItemSettings,
+	ToolParametersFor,
 } from "@pie-players/pie-players-shared/types";
-import type {
-	ITTSProvider,
-	TTSProviderCapabilities,
-} from "@pie-players/pie-tts";
+import type { TTSConfig } from "@pie-players/pie-tts";
 import type {
 	ResolvedToolContext,
 	ToolContextResolverContext,
@@ -84,15 +80,6 @@ export type { I18nServiceApi };
  * Manages content highlighting for TTS, annotations, and selections.
  */
 export interface HighlightCoordinatorApi {
-	/**
-	 * Highlight a text range
-	 */
-	highlightRange(
-		range: Range,
-		type: HighlightType,
-		color: HighlightColor,
-	): void;
-
 	/**
 	 * Highlight the word being read (temporary): one range per tree the word
 	 * spans, all painted, so a word split across inline elements highlights
@@ -128,19 +115,9 @@ export interface HighlightCoordinatorApi {
 	clearTTS(): void;
 
 	/**
-	 * Clear highlights of a specific type
+	 * Clear the TTS word highlight, keeping the sentence highlight
 	 */
-	clearHighlights(type: HighlightType): void;
-
-	/**
-	 * Check if highlighting is supported in current environment
-	 */
-	isSupported(): boolean;
-
-	/**
-	 * Update TTS highlight style dynamically
-	 */
-	updateTTSHighlightStyle(color: string, opacity: number): void;
+	clearTTSWord(): void;
 
 	/**
 	 * Record a learner annotation over a range.
@@ -309,6 +286,13 @@ export interface SpeakOptions {
 	 * element target is its own root.
 	 */
 	contentRoot?: Element | null;
+	/**
+	 * Who starts the read. The run carries it until the next read starts, a
+	 * seek's restart included, and {@link TtsServiceApi.getRunOwner} reports it.
+	 */
+	ownerId?: string;
+	/** The rate the read starts at; it stays the service's rate afterwards. */
+	rate?: number;
 }
 
 /**
@@ -318,14 +302,6 @@ export interface SpeakOptions {
  * Supports QTI 3.0 accessibility catalogs for pre-authored spoken content.
  */
 export interface TtsServiceApi {
-	/**
-	 * Initialize TTS with a provider
-	 */
-	initialize(
-		provider: ITTSProvider,
-		config?: Partial<TTSConfig>,
-	): Promise<void>;
-
 	/**
 	 * Read `target` aloud: a range reads the text it selects, an element its
 	 * content. A node with a spoken card that the target holds whole reads its
@@ -346,7 +322,8 @@ export interface TtsServiceApi {
 	resume(): void;
 
 	/**
-	 * Stop playback
+	 * Stop playback and release the run owner. A read that ends on its own
+	 * keeps its owner.
 	 */
 	stop(): void;
 
@@ -355,14 +332,6 @@ export interface TtsServiceApi {
 	 * service cannot speak.
 	 */
 	dispose(): void;
-
-	/**
-	 * Request active TTS controls to hand off/deactivate their UI state.
-	 *
-	 * This is an orchestration hint for TTS tool chrome and does not replace
-	 * playback controls such as stop/pause/resume.
-	 */
-	requestControlHandoff(): void;
 
 	/**
 	 * Seek forward by sentence units
@@ -375,34 +344,22 @@ export interface TtsServiceApi {
 	seekBackward(units?: number): Promise<void>;
 
 	/**
-	 * Check if currently playing
-	 */
-	isPlaying(): boolean;
-
-	/**
-	 * Check if paused
-	 */
-	isPaused(): boolean;
-
-	/**
 	 * Get current playback state
 	 */
 	getState(): PlaybackState;
 
 	/**
-	 * Get currently speaking text
+	 * The `ownerId` the latest read started with, or null when it named none,
+	 * nothing has been read or {@link stop} released it. A new read announces
+	 * itself through {@link onStateChange} with `loading`, and a stop that
+	 * releases an owner announces `idle`, so a listener sees the owner change.
 	 */
-	getCurrentText(): string | null;
+	getRunOwner(): string | null;
 
 	/**
 	 * Subscribe to state changes. Returns the function that unsubscribes.
 	 */
 	onStateChange(callback: (state: PlaybackState) => void): () => void;
-
-	/**
-	 * Get capabilities of current provider
-	 */
-	getCapabilities(): TTSProviderCapabilities | null;
 
 	/**
 	 * Update TTS settings dynamically (rate, pitch, voice)
@@ -415,21 +372,11 @@ export interface TtsServiceApi {
 	setPlaybackRate(rate: number): Promise<void>;
 
 	/**
-	 * Set highlight coordinator for word highlighting
-	 */
-	setHighlightCoordinator(coordinator: HighlightCoordinatorApi): void;
-
-	/**
 	 * Set a late-bound provider for optional host TTS highlight target remapping.
 	 */
-	setHighlightTargetResolverProvider?(
+	setHighlightTargetResolverProvider(
 		provider: TTSHighlightTargetResolverProvider | null,
 	): () => void;
-
-	/**
-	 * Set accessibility catalog resolver for spoken content
-	 */
-	setCatalogResolver(resolver: AccessibilityCatalogResolver): void;
 }
 
 /**
@@ -530,24 +477,16 @@ export interface AccessibilityCatalogResolverApi {
  */
 export interface ElementToolStateStoreApi {
 	/**
-	 * Generate a globally unique element ID from components
+	 * Generate a globally unique element ID from its parts. `attemptId` is `""`
+	 * when the host names no attempt; a tool keyed by item or section leaves
+	 * `elementId`, and for a section `itemId`, as `""`.
 	 */
-	getGlobalElementId(
-		assessmentId: string,
-		sectionId: string,
-		itemId: string,
-		elementId: string,
-	): string;
+	getGlobalElementId(parts: ElementIdComponents): string;
 
 	/**
 	 * Parse a global element ID into its components
 	 */
-	parseGlobalElementId(globalElementId: string): {
-		assessmentId: string;
-		sectionId: string;
-		itemId: string;
-		elementId: string;
-	} | null;
+	parseGlobalElementId(globalElementId: string): ElementIdComponents | null;
 
 	/**
 	 * Set state for a specific tool on an element
@@ -599,7 +538,7 @@ export interface ElementToolStateStoreApi {
 	clearTool(toolId: string): void;
 
 	/**
-	 * Clear all elements in a specific section
+	 * Clear all elements in a specific section, across its attempts
 	 */
 	clearSection(assessmentId: string, sectionId: string): void;
 
@@ -652,9 +591,9 @@ export interface ToolkitCoordinatorApi {
 	readonly toolProviderRegistry: ToolProviderRegistry;
 
 	/**
-	 * Ensure TTS service is initialized and ready.
+	 * Ensure the TTS service is initialized from the `textToSpeech` tool config.
 	 */
-	ensureTTSReady(config?: Record<string, unknown>): Promise<void>;
+	ensureTTSReady(): Promise<void>;
 
 	/**
 	 * Ensure a tool's provider is initialized and ready. Providers register under
@@ -815,11 +754,15 @@ export interface ToolkitCoordinatorApi {
 	reportFrameworkError?(model: FrameworkErrorModel): void;
 
 	/**
-	 * Report that a toolbar could not load a tool's module. The tool degrades
-	 * unless policy grants it, in which case the failure is fatal. Optional so
-	 * structural host coordinators remain assignable; a toolbar without it logs.
+	 * Report that a tool failed in `phase`, under the tool failure policy
+	 * {@link ToolFailurePhase} describes. Optional so structural host
+	 * coordinators remain assignable; a reporter without it logs.
 	 */
-	reportToolModuleFailure?(toolId: string, error: unknown): void;
+	reportToolFailure?(
+		toolId: string,
+		phase: ToolFailurePhase,
+		error: unknown,
+	): void;
 
 	// ----------------------------------------------------------------
 	// Tool Policy Engine — public surface.
@@ -855,10 +798,10 @@ export interface ToolkitCoordinatorApi {
 	 * Optional so host-supplied coordinator stubs predating this method stay
 	 * assignable; call sites must feature-detect.
 	 */
-	decideFeaturePolicy?(
-		featureId: string,
+	decideFeaturePolicy?<K extends string>(
+		featureId: K,
 		scope?: ToolScope,
-	): FeaturePolicyDecision;
+	): FeaturePolicyDecision<ToolParametersFor<K>>;
 
 	/**
 	 * Subscribe to policy-engine change events. Fires whenever the
@@ -869,6 +812,18 @@ export interface ToolkitCoordinatorApi {
 	 * should call `decideToolPolicy(...)` with their level / scope.
 	 */
 	onPolicyChange(listener: ToolPolicyChangeListener): () => void;
+
+	/**
+	 * Subscribe to the policy diagnostics the coordinator reports: the ones it
+	 * logs as console warnings, once per code, tool and item. A new listener is
+	 * first handed every diagnostic already reported. A change to the bound
+	 * policy inputs or to PNP enforcement clears the record, and so does a tool
+	 * registration that makes a named support id known or unknown, so a conflict
+	 * that survives the change is reported again once.
+	 */
+	onPolicyDiagnostic(
+		listener: (diagnostic: ToolPolicyDiagnostic) => void,
+	): () => void;
 
 	/**
 	 * Subscribe to accessibility-catalog registrations and removals.

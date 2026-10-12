@@ -128,12 +128,6 @@ function stableSerializableJson(value: unknown): string {
 		if (typeof current === "undefined") {
 			return undefined;
 		}
-		if (typeof current === "function" || typeof current === "symbol") {
-			throw new TypeError(`${path} is not JSON-serializable`);
-		}
-		if (typeof current === "bigint") {
-			throw new TypeError(`${path} is not JSON-serializable`);
-		}
 		if (typeof current !== "object") {
 			throw new TypeError(`${path} is not JSON-serializable`);
 		}
@@ -470,7 +464,7 @@ export function createToolSurfaceHost(
 		const coordinator = current.services.toolkitCoordinator;
 		if (!coordinator) return null;
 		let granted = false;
-		let parameters: unknown;
+		let parameters: Record<string, unknown> | undefined;
 
 		try {
 			if (registration.activation === "region") {
@@ -499,7 +493,7 @@ export function createToolSurfaceHost(
 					// test-administration override grants it.
 					placed = true;
 					granted = entry.required || entry.alwaysAvailable;
-					parameters = entry.settings;
+					parameters = entry.parameters;
 					break;
 				}
 				if (!placed) return null;
@@ -652,7 +646,6 @@ export function createToolSurfaceHost(
 				`Tool "${toolId}" failed to render into the "${current.surface}" surface.`,
 				error,
 			);
-			return;
 		}
 	}
 

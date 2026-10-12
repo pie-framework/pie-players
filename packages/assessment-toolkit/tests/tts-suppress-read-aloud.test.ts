@@ -35,19 +35,11 @@ class MockTTSImpl implements ITTSProviderImplementation {
 	pause(): void {}
 	resume(): void {}
 	stop(): void {}
-	isPlaying(): boolean {
-		return false;
-	}
-	isPaused(): boolean {
-		return false;
-	}
 	updateSettings(): void {}
 }
 
 class MockTTSProvider implements ITTSProvider {
 	readonly providerId = "mock";
-	readonly providerName = "Mock Provider";
-	readonly version = "1.0.0";
 
 	constructor(private impl: ITTSProviderImplementation) {}
 
@@ -56,12 +48,7 @@ class MockTTSProvider implements ITTSProvider {
 	}
 	getCapabilities(): TTSProviderCapabilities {
 		return {
-			supportsPause: true,
-			supportsResume: true,
 			supportsWordBoundary: true,
-			supportsVoiceSelection: true,
-			supportsRateControl: true,
-			supportsPitchControl: true,
 		};
 	}
 	destroy(): void {}
@@ -297,8 +284,6 @@ describe("read-aloud suppression across every speech path", () => {
 			},
 			highlightTTSSentence: () => {},
 			clearTTS: () => {},
-			isSupported: () => true,
-			updateTTSHighlightStyle: () => {},
 		} as any);
 
 		await service.speak(range, { contentRoot: root });

@@ -1,9 +1,13 @@
 import { ContextProviderEvent, ContextRequestEvent } from "./events.js";
-import type { ContextType, UnknownContext } from "./types.js";
+import type {
+	ContextCallback,
+	ContextType,
+	UnknownContext,
+} from "./types.js";
 
 interface Subscription<ValueType> {
 	consumerHost: Element;
-	callback: (value: ValueType, unsubscribe?: () => void) => void;
+	callback: ContextCallback<ValueType>;
 	readonly unsubscribe: () => void;
 }
 
@@ -17,7 +21,7 @@ export class ContextProvider<T extends UnknownContext> {
 	private readonly context: T;
 	private currentValue: ContextType<T>;
 	private readonly subscriptions = new Map<
-		(value: ContextType<T>, unsubscribe?: () => void) => void,
+		ContextCallback<ContextType<T>>,
 		Subscription<ContextType<T>>
 	>();
 	// Subscribers that were out of the document when this provider disconnected,

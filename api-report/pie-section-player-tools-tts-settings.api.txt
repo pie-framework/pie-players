@@ -4,4 +4,11 @@
 @pie-players/pie-section-player-tools-tts-settings
 
 .
+  type CustomProviderContext
+  type CustomProviderDescriptor
+  type CustomProviderPreviewResult
+  type PreviewMode
+  type PreviewSpeechMark
+  type ProviderApplyResult
+  type ProviderAvailabilityResult
   default

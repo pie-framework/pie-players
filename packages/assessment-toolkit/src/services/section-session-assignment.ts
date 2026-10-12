@@ -20,19 +20,16 @@ import {
 } from "@pie-players/pie-players-shared/pie";
 import type { SectionControllerSessionState } from "@pie-players/pie-players-shared/types";
 import { structurallyEqual } from "../utils/structural-equality.js";
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return Boolean(value) && typeof value === "object" && !Array.isArray(value);
-}
+import { isPlainRecord } from "@pie-players/pie-players-shared/object";
 
 /** An entry is canonical (`{ itemIdentifier, session, ... }`) or the raw item session. */
 function itemSessionOf(entry: unknown): unknown {
-	return isRecord(entry) && isRecord(entry.session) ? entry.session : entry;
+	return isPlainRecord(entry) && isPlainRecord(entry.session) ? entry.session : entry;
 }
 
 function sameItemSessions(next: unknown, current: unknown): boolean {
-	const nextSessions = isRecord(next) ? next : {};
-	const currentSessions = isRecord(current) ? current : {};
+	const nextSessions = isPlainRecord(next) ? next : {};
+	const currentSessions = isPlainRecord(current) ? current : {};
 	const itemIds = new Set([
 		...Object.keys(nextSessions),
 		...Object.keys(currentSessions),
@@ -81,10 +78,10 @@ export function resolveSectionSessionAssignment(
 	next: SectionControllerSessionState,
 ): SectionControllerSessionState | null {
 	if (!current) return next;
-	const itemSessions: Record<string, unknown> = isRecord(next.itemSessions)
+	const itemSessions: Record<string, unknown> = isPlainRecord(next.itemSessions)
 		? { ...next.itemSessions }
 		: {};
-	const currentItemSessions = isRecord(current.itemSessions)
+	const currentItemSessions = isPlainRecord(current.itemSessions)
 		? current.itemSessions
 		: {};
 	for (const [itemId, currentEntry] of Object.entries(currentItemSessions)) {

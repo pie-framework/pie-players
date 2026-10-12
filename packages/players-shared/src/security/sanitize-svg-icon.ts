@@ -70,8 +70,8 @@ export function sanitizeSvgIcon(icon: unknown): string {
 	});
 	const str = typeof result === "string" ? result : String(result ?? "");
 	if (stringCache.size >= STRING_CACHE_MAX) {
-		// Naive LRU: clear oldest half when the cache fills up. Tool icons are
-		// a small fixed set per assessment so this is rarely hit.
+		// Evict the oldest-inserted half when full; a hit does not refresh an entry.
+		// Tool icons are a small fixed set per assessment, so this rarely runs.
 		const keys = [...stringCache.keys()];
 		for (let i = 0; i < keys.length / 2; i += 1) {
 			stringCache.delete(keys[i]);

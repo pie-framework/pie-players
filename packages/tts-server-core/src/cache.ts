@@ -96,45 +96,13 @@ export interface CacheStats {
 }
 
 /**
- * Generate cache key from components
- *
- * @param components - Cache key components
- * @returns Cache key string
- */
-export function generateCacheKey(components: CacheKeyComponents): string {
-	const {
-		providerId,
-		text,
-		voice,
-		language = "",
-		rate = 1.0,
-		format = "mp3",
-	} = components;
-
-	// Create deterministic key from components
-	const keyParts = [
-		"tts",
-		providerId,
-		voice,
-		language,
-		rate.toFixed(2),
-		format,
-		text,
-	];
-
-	// Use simple concatenation with delimiter
-	// In production, consider using a hash function for shorter keys
-	return keyParts.join(":");
-}
-
-/**
  * Generate SHA-256 hash for cache key
  * Useful for creating shorter keys from long text
  *
  * @param text - Text to hash
  * @returns Hex string hash
  */
-export async function hashText(text: string): Promise<string> {
+async function hashText(text: string): Promise<string> {
 	// Use Web Crypto API (available in modern Node.js and browsers)
 	const encoder = new TextEncoder();
 	const data = encoder.encode(text);
@@ -177,6 +145,8 @@ export async function generateHashedCacheKey(
 	return keyParts.join(":");
 }
 
+const DEFAULT_TTL_SECONDS = 24 * 60 * 60;
+
 /**
  * In-memory LRU cache, for development and testing only
  *
@@ -186,9 +156,8 @@ export async function generateHashedCacheKey(
  * one. Expiry is checked on every read, and an expired entry is dropped ahead of
  * a live one when the cache is at capacity.
  *
- * A production host supplies its own `ITTSCache` over shared storage — Redis is
- * the pattern sketched in
- * `packages/tts-server-polly/examples/sveltekit/synthesize-server.ts`. This
+ * A production host supplies its own `ITTSCache` over shared storage; Step 5 of
+ * `packages/tts-server-polly/examples/INTEGRATION-GUIDE.md` sketches Redis. This
  * class holds audio buffers in one process's heap, so it is lost on restart and
  * every replica of a scaled deployment synthesizes the same passage into its own
  * copy. Its eviction scan is `O(maxSize)` on an insertion at capacity, which the
@@ -215,7 +184,6 @@ export class MemoryCache implements ITTSCache {
 			return null;
 		}
 
-		// Check expiration
 		if (Date.now() > entry.expires) {
 			this.cache.delete(key);
 			this.misses++;
@@ -239,7 +207,7 @@ export class MemoryCache implements ITTSCache {
 	async set(
 		key: string,
 		value: SynthesizeResponse,
-		ttl = 86400,
+		ttl = DEFAULT_TTL_SECONDS,
 	): Promise<void> {
 		// Overwriting a key re-inserts it at the end of the order rather than
 		// updating it in place, and frees its slot so no live entry is evicted.
@@ -281,7 +249,6 @@ export class MemoryCache implements ITTSCache {
 		const entry = this.cache.get(key);
 		if (!entry) return false;
 
-		// Check expiration
 		if (Date.now() > entry.expires) {
 			this.cache.delete(key);
 			return false;

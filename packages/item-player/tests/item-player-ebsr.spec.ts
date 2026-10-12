@@ -1,7 +1,10 @@
 import { expect, test, type Page } from "@playwright/test";
 import { openDemoMenuIfCollapsed } from "../../../test-support/demo-menu";
 
-const EBSR_DELIVERY_PATH = "/demo/ebsr-default/delivery?player=iife";
+// Pinned: the bundle service caches `@latest` per encoding, so unpinned runs
+// mix releases whose load-time session events differ.
+const EBSR_DELIVERY_PATH =
+	"/demo/ebsr-default/delivery?player=iife&pie-overrides%5Bpie-element%2Febsr%5D=15.0.3";
 const EBSR_SESSION_STORAGE_KEY = "item-demos:session:ebsr-default";
 
 async function gotoEbsrDelivery(page: Page) {
@@ -13,7 +16,7 @@ async function gotoEbsrDelivery(page: Page) {
 	await expect(page.getByRole("link", { name: "Delivery" })).toBeVisible();
 }
 
-async function hasCompleteEbsrSession(page: Page) {
+async function hasShuffledEbsrSession(page: Page) {
 	return await page.evaluate(() => {
 		const player = document.querySelector("pie-item-player") as
 			| HTMLElement
@@ -23,10 +26,8 @@ async function hasCompleteEbsrSession(page: Page) {
 			(item: { id?: string }) => item.id === "1",
 		);
 		return Boolean(
-			entry?.shuffledValues?.partA &&
-				entry?.shuffledValues?.partB &&
-				entry?.value?.partA &&
-				entry?.value?.partB,
+			entry?.shuffledValues?.partA?.length &&
+				entry?.shuffledValues?.partB?.length,
 		);
 	});
 }
@@ -55,7 +56,7 @@ test.describe("item-player demo EBSR", () => {
 
 		await expect
 			.poll(
-				async () => await hasCompleteEbsrSession(page),
+				async () => await hasShuffledEbsrSession(page),
 				{ timeout: 10_000 },
 			)
 			.toBe(true);
@@ -112,7 +113,7 @@ test.describe("item-player demo EBSR", () => {
 		await expect(page.getByText("Part B")).toBeVisible();
 		await expect(page.locator('label[for^="choice-"]')).toHaveCount(7);
 		await expect
-			.poll(async () => await hasCompleteEbsrSession(page), {
+			.poll(async () => await hasShuffledEbsrSession(page), {
 				timeout: 10_000,
 			})
 			.toBe(true);

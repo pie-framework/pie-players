@@ -4,10 +4,9 @@
  *
  * Sizing only. Which capability fills the region, and whether it has anything to
  * show, belongs to the capability: the card asks the registry for whatever is
- * registered on the surface below and knows nothing else about it. The
- * signed-alternate resolution that used to live here moved to
- * `@pie-players/pie-tool-sign-language` behind that capability's own
- * `requiresAuthoredContent`.
+ * registered on the surface below and knows nothing else about it.
+ * Signed-alternate resolution lives in `@pie-players/pie-tool-sign-language`,
+ * behind that capability's own `requiresAuthoredContent`.
  */
 
 /**

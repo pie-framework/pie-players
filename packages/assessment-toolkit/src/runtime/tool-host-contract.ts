@@ -23,7 +23,7 @@ const CROSS_BOUNDARY_EVENT_INIT: BaseEventInit = {
 /**
  * Contract helper for all toolkit/tool events that must cross custom-element boundaries.
  */
-export function createCrossBoundaryEvent<T>(
+function createCrossBoundaryEvent<T>(
 	name: string,
 	detail: T,
 	init: Partial<BaseEventInit> = {},

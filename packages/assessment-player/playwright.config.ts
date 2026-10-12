@@ -1,6 +1,7 @@
 import { defineConfig, devices } from "@playwright/test";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { viteListeningOn } from "../../scripts/lib/playwright-web-server.mjs";
 
 const configDir = dirname(fileURLToPath(import.meta.url));
 const workspaceRootCwd = resolve(configDir, "../..");
@@ -24,13 +25,12 @@ export default defineConfig({
 	reporter: "list",
 	use: {
 		baseURL,
-		screenshot: "on",
+		screenshot: "only-on-failure",
 		video: "retain-on-failure",
 	},
 	webServer: {
 		command: webServerCommand,
-		url: baseURL,
-		reuseExistingServer: false,
+		wait: viteListeningOn(baseURL),
 		timeout: 120_000,
 		// Suppress vite's dev-only crash overlay so it can't intercept clicks.
 		env: { PLAYWRIGHT_DISABLE_VITE_OVERLAY: "1", BROWSER: "none" },

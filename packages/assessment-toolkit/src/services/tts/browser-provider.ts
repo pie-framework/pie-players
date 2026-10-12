@@ -3,8 +3,6 @@
  *
  * Text-to-speech provider using the browser's Web Speech API.
  * Works in all modern browsers that support SpeechSynthesis.
- *
- * Part of PIE Assessment Toolkit.
  */
 
 import {
@@ -26,6 +24,9 @@ const logger = createPieLogger("browser-tts-provider", isTtsDebugEnabled);
 
 const NATIVE_START_TIMEOUT_MS = 5_000;
 const VOICE_INVENTORY_TIMEOUT_MS = 2_000;
+const MAX_CHUNK_LENGTH = 260;
+// A longer reported word length falls back to the inferred one.
+const MAX_TRUSTED_REPORTED_WORD_LENGTH = 80;
 
 // The provider options the toolkit and this provider read. Every other option,
 // and `voice`, belongs to the provider it was configured for: a Polly voice such
@@ -47,9 +48,9 @@ const PORTABLE_PROVIDER_OPTIONS = [
  * starts it with this.
  */
 export const browserFallbackConfig = (
-	config: Partial<TTSConfig>,
-): Partial<TTSConfig> => {
-	const fallback: Partial<TTSConfig> = {};
+	config: Partial<ToolkitTTSConfig>,
+): Partial<ToolkitTTSConfig> => {
+	const fallback: Partial<ToolkitTTSConfig> = {};
 	if (config.rate !== undefined) fallback.rate = config.rate;
 	if (config.pitch !== undefined) fallback.pitch = config.pitch;
 	if (config.mathTokenHighlighting !== undefined) {
@@ -238,8 +239,6 @@ const shouldAssignBrowserVoice = (voice: SpeechSynthesisVoice): boolean =>
  */
 export class BrowserTTSProvider implements ITTSProvider {
 	readonly providerId = "browser";
-	readonly providerName = "Browser Speech Synthesis";
-	readonly version = "1.0.0";
 
 	async initialize(config: TTSConfig): Promise<ITTSProviderImplementation> {
 		// SSR guard
@@ -247,7 +246,6 @@ export class BrowserTTSProvider implements ITTSProvider {
 			throw new Error("BrowserTTSProvider requires browser environment");
 		}
 
-		// Check browser support
 		if (!("speechSynthesis" in window)) {
 			throw new Error("Browser does not support Speech Synthesis API");
 		}
@@ -265,14 +263,9 @@ export class BrowserTTSProvider implements ITTSProvider {
 
 	getCapabilities(): TTSProviderCapabilities {
 		return {
-			supportsPause: true,
-			supportsResume: true,
 			supportsWordBoundary: true,
 			// Boundary events depend on the voice: several network voices send none.
 			defaultHighlightMode: "sentence",
-			supportsVoiceSelection: true,
-			supportsRateControl: true,
-			supportsPitchControl: true,
 			// The Web Speech API voices plain text only; SSML tags are read aloud.
 			supportsSSML: false,
 		};
@@ -428,7 +421,6 @@ class BrowserTTSProviderImpl implements ITTSProviderImplementation {
 	private splitIntoChunks(
 		text: string,
 	): Array<{ text: string; offset: number }> {
-		const MAX_CHUNK_LENGTH = 260;
 		if (text.length <= MAX_CHUNK_LENGTH) {
 			return [{ text, offset: 0 }];
 		}
@@ -480,7 +472,6 @@ class BrowserTTSProviderImpl implements ITTSProviderImplementation {
 
 	private getSegmentationPolicy(): {
 		useSentenceSegmenter: boolean;
-		useWordSegmenter: boolean;
 		locale?: string;
 	} {
 		const providerOptions = this.config?.providerOptions || {};
@@ -496,7 +487,6 @@ class BrowserTTSProviderImpl implements ITTSProviderImplementation {
 					: undefined;
 		return {
 			useSentenceSegmenter: useSegmenter,
-			useWordSegmenter: useSegmenter,
 			locale,
 		};
 	}
@@ -671,7 +661,7 @@ class BrowserTTSProviderImpl implements ITTSProviderImplementation {
 				const wordLength =
 					Number.isFinite(reportedLength) &&
 					reportedLength > 0 &&
-					reportedLength <= 80 &&
+					reportedLength <= MAX_TRUSTED_REPORTED_WORD_LENGTH &&
 					charIndex + reportedLength <= chunkText.length
 						? reportedLength
 						: inferredLength;
@@ -744,14 +734,6 @@ class BrowserTTSProviderImpl implements ITTSProviderImplementation {
 		this.releaseHold();
 	}
 
-	isPlaying(): boolean {
-		return this._isPlaying && !this._isPaused;
-	}
-
-	isPaused(): boolean {
-		return this._isPaused;
-	}
-
 	/**
 	 * Update settings dynamically (rate, pitch, voice)
 	 * Changes take effect on the next speak() call
@@ -761,7 +743,6 @@ class BrowserTTSProviderImpl implements ITTSProviderImplementation {
 			this.config = {};
 		}
 
-		// Update config with new settings
 		if (settings.rate !== undefined) {
 			this.config.rate = settings.rate;
 		}

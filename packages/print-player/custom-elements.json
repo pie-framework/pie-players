@@ -1,0 +1,103 @@
+{
+	"schemaVersion": "2.1.0",
+	"modules": [
+		{
+			"kind": "javascript-module",
+			"path": "dist/print-player.js",
+			"declarations": [
+				{
+					"kind": "class",
+					"description": "PIE Print Web Component Usage: ```html <pie-print></pie-print> <script> const player = document.querySelector('pie-print'); player.config = { item: { markup: '<multiple-choice id=\"1\"></multiple-choice>', elements: { 'multiple-choice': '@pie-element/multiple-choice@12.0.0' }, models: [{ id: '1', element: 'multiple-choice', ... }] }, options: { role: 'student' } }; </script> ```",
+					"name": "PiePrint",
+					"tagName": "pie-print",
+					"customElement": true,
+					"superclass": {
+						"name": "LitElement",
+						"package": "lit"
+					},
+					"members": [
+						{
+							"kind": "field",
+							"name": "resolve",
+							"type": {
+								"text": "ResolverFn"
+							},
+							"description": "Custom resolver function for determining element URLs"
+						},
+						{
+							"kind": "field",
+							"name": "trustMarkup",
+							"type": {
+								"text": "boolean"
+							},
+							"description": "Render authored markup without sanitizing it. Off by default: authored item markup is treated as untrusted and passed through the shared sanitizer. Only set this when the host has already validated the markup.",
+							"attribute": "trust-markup"
+						},
+						{
+							"kind": "field",
+							"name": "sanitizeMarkup",
+							"type": {
+								"text": "ItemMarkupSanitizer | null"
+							},
+							"description": "Custom sanitizer, used instead of the default one. Ignored when `trustMarkup` is set."
+						},
+						{
+							"kind": "field",
+							"name": "missingElement",
+							"type": {
+								"text": "MissingElFn"
+							},
+							"description": "Custom missing element factory function"
+						},
+						{
+							"kind": "field",
+							"name": "config",
+							"type": {
+								"text": "Config"
+							},
+							"description": "Item configuration with elements and models",
+							"attribute": "config"
+						}
+					],
+					"attributes": [
+						{
+							"name": "trust-markup",
+							"type": {
+								"text": "boolean"
+							},
+							"description": "Render authored markup without sanitizing it. Off by default: authored item markup is treated as untrusted and passed through the shared sanitizer. Only set this when the host has already validated the markup.",
+							"fieldName": "trustMarkup"
+						},
+						{
+							"name": "config",
+							"type": {
+								"text": "Config"
+							},
+							"description": "Item configuration with elements and models",
+							"fieldName": "config"
+						}
+					],
+					"x-pie": {
+						"shadow": "none"
+					}
+				}
+			],
+			"exports": [
+				{
+					"kind": "custom-element-definition",
+					"name": "pie-print",
+					"declaration": {
+						"name": "PiePrint"
+					}
+				},
+				{
+					"kind": "js",
+					"name": "PiePrint",
+					"declaration": {
+						"name": "PiePrint"
+					}
+				}
+			]
+		}
+	]
+}

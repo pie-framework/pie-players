@@ -15,7 +15,7 @@ focuses on the inline custom element API.
 - Play/pause trigger that opens the expanded panel when reading starts
 - Expanded controls: configurable Speed options, Rewind, Fast-forward, Stop
 - Play button switches to Pause while reading
-- Panel remains open while reading and closes on Stop
+- Panel stays open while reading and after a read ends on its own; it closes on Stop or when the host calls `TTSService.stop()`
 - Arrow-key navigation within the controls toolbar
 - Takes its services from the toolkit runtime context and its reading scope from the enclosing item or passage shell
 - Integrates with `TTSService` for QTI 3.0 catalog-based TTS
@@ -37,8 +37,8 @@ the highlight coordinator and the toolkit coordinator, and the shell supplies th
 content to read. Section players provide both; around a plain item player, the
 host writes the toolkit and the scope. The packaged
 `textToSpeech` capability in `@pie-players/pie-default-tool-loaders` creates
-this element in item and passage toolbars, takes `catalog-id`, `language` and
-`size` from the toolbar, and takes `layout-mode`, `speedOptions` and
+this element in item and passage toolbars, takes `catalog-id` and `size` from
+the toolbar, and takes `layout-mode`, `speedOptions` and
 `showSingleSpeedOption` from the toolkit's `textToSpeech` tool configuration.
 
 ```javascript
@@ -74,9 +74,6 @@ passageHeader.append(ttsButton);
 ### HTML Attributes
 
 - `catalog-id` - QTI 3.0 accessibility catalog ID for SSML lookup (default: `''`)
-- `language` - The content language when the markup names none (default: `''`,
-  which falls back to the toolkit's `content-language`). A `lang` attribute
-  between the reading target and its shell wins over it.
 - `size` - Icon size: `'sm'` (1.5rem), `'md'` (2rem), or `'lg'` (2.5rem) (default: `'md'`)
 - `layout-mode` - Panel placement (default: `'left-aligned'`). `'reserved-row'`
   and `'expanding-row'` drop the panel below the trigger; in the packaged toolbar
@@ -135,21 +132,20 @@ Semantics:
 
 ## Behavior
 
-1. **Services**: Reads `ttsService`, `highlightCoordinator` and `toolkitCoordinator` from the toolkit runtime context; the controls stay disabled until a `ttsService` arrives, and starting playback awaits `toolkitCoordinator.ensureTTSReady()`
+1. **Services**: Reads `ttsService`, `highlightCoordinator` and `toolkitCoordinator` from the toolkit runtime context; the controls stay disabled until a `ttsService` arrives. A read started before the service is ready waits on the service's readiness gate, and a failure there announces that text-to-speech could not initialize
 2. **Text Extraction**: Reads the text of the scope element's content region (the region scope, else the shell scope, when it is `[data-region='content']`, else its first `[data-region='content']` descendant, else the scope element itself), including text rendered into open shadow roots
-3. **TTS Trigger**: Calls `ttsService.speak(readingTarget, { catalogId, catalogContext, language })`, where `catalogContext` names the owning item or passage and `language` is the `language` attribute, else the toolkit's `content-language`. `speak` resolves the read's language from it as [TTS language](../../docs/architecture/internationalization.md#tts-language) sets out
+3. **TTS Trigger**: Calls `ttsService.speak(readingTarget, { ownerId, rate, catalogId, catalogContext, language })`, where `ownerId` names this instance, `rate` is the selected speed, `catalogContext` names the owning item or passage and `language` is the toolkit's `content-language`. The service decides whether anything is speakable, cards included; a read that settles without playing closes the panel and announces that there is nothing to read. `speak` resolves the read's language from it as [TTS language](../../docs/architecture/internationalization.md#tts-language) sets out
 4. **Catalog Resolution**: TTSService checks for SSML in accessibility catalogs (priority order):
    - **Extracted catalogs** (from embedded SSML) - generated before render by hosts that run `SSMLExtractor`
    - **Item-level catalogs** (manually authored)
    - **Assessment-level catalogs** (manually authored)
-   - **Plain text fallback** (browser TTS)
+   - **Generated speech** - MathML speech, else the visible text, on any backend
 5. **Expanded Controls**:
    - The trigger starts, pauses and resumes reading; starting opens the panel
-   - Starting one instance stops playback another instance owns and closes that instance's panel
+   - The instance owns the service's run its read started (`getRunOwner()`); a read started by anything else, another instance or a selection read, closes its panel
    - Stop halts playback and closes the panel
    - Fast-forward/Rewind call `seekForward(1)` / `seekBackward(1)` on the TTS service, one sentence per press, and are enabled only while reading
-   - Speed buttons call `ttsService.setPlaybackRate(rate)` when available,
-     otherwise `ttsService.updateSettings({ rate })`
+   - Speed buttons call `ttsService.setPlaybackRate(rate)`
    - Speed choices render as a named `Playback speed` radio group with
      `aria-checked` state
    - Selecting another speed switches the active radio to that option
@@ -158,7 +154,7 @@ Semantics:
      reset to `1x` while rewind/forward/stop still render
 6. **Keyboard Interaction**: Arrow keys, Home and End move focus within one cluster, either the speed radio group or the Rewind/Fast-forward/Stop buttons, and skip disabled controls; arrowing onto a speed also selects it. Every control is a Tab stop except the speed radios, which share one Tab stop on the checked option
 7. **Active State**: Opening or closing the panel dispatches a bubbling, composed `pie-tool-active-change` event with `{ active }` and mirrors the state in the host's `data-active` attribute
-8. **Cleanup**: Releases playback ownership and clears its highlight target resolver provider on unmount
+8. **Cleanup**: Clears its highlight target resolver provider on unmount
 
 ## SSML Extraction Integration
 
@@ -208,6 +204,8 @@ component-scoped variables instead of overriding broad semantic tokens such as
 --pie-tool-trigger-active-border-color: Active/open trigger border
 ```
 
+These three are registered `component-public` tokens.
+
 If unset, the trigger looks the same open as closed: each hook falls back to the
 value the control already resolves to — background through
 `--pie-button-background-color` / `--pie-button-bg` / `--pie-background`, border
@@ -222,9 +220,9 @@ indication — so these defaults do not introduce one. Hosts remain responsible 
 maintaining WCAG AA foreground/background contrast when overriding active trigger
 colors.
 
-### Overlay panel colours
+### Overlay panel colors
 
-The floating and left-aligned panels take their colour from the active theme.
+The floating and left-aligned panels take their color from the active theme.
 Each surface resolves a component-scoped hook first, then a canonical token,
 then a literal that only applies when no theme is loaded:
 
@@ -235,7 +233,7 @@ then a literal that only applies when no theme is loaded:
 --pie-selected-button-background /* selected speed chip      → --pie-button-active-bg */
 --pie-selected-button-border  /* selected speed chip border  → --pie-button-border */
 --pie-tts-menu-shadow         /* card elevation */
---pie-tts-card-border         /* card hairline; `transparent` for shadow-only */
+--pie-tts-card-border         /* card hairline */
 ```
 
 None of the seven is a registered host token. Each is read as
@@ -245,20 +243,16 @@ carries no compatibility guarantee — the panel's internals may move it.
 The card carries a hairline mixed from `--pie-text` because its shadow is black
 and disappears once the surface goes dark. It is deliberately not derived from
 `--pie-border`: a host that wants borderless controls sets that to transparent,
-which is the case where the shadow is the only edge. Set
-`--pie-tts-card-border: transparent` for the shadow-only card.
+which is the case where the shadow is the only edge.
 
 A host that sets `--pie-button-border: transparent` also flattens the selected
-speed chip, which defaults through it — set `--pie-selected-button-border` to
-keep the chip outlined.
+speed chip, which defaults through it.
 
 Foregrounds default through `--pie-button-color` (DaisyUI `base-content`) rather
 than `--pie-primary` or `--pie-tertiary`: those are direct mappings of DaisyUI
-slots chosen to pair with their own `-content` colour, so an accent glyph taken
+slots chosen to pair with their own `-content` color, so an accent glyph taken
 from either falls under 3:1 against the card in 11 of the 35 shipped themes.
-Selection reads from the chip fill and the bolder weight instead of from hue. A
-host that wants a branded accent sets `--pie-tts-button-color` and owns the
-contrast, as with the active-trigger hooks above.
+Selection reads from the chip fill and the bolder weight instead of from hue.
 
 Trigger and control backgrounds read `--pie-button-background-color` ahead of
 the canonical `--pie-button-bg`; borders and hover backgrounds read
@@ -275,10 +269,6 @@ This tool follows the PIE Assessment Toolkit tool pattern:
 - One instance owns playback at a time across the page
 - Panel state is announced with `pie-tool-active-change`, which the packaged
   toolbar registration subscribes to
-
-## Example
-
-See active demos in `apps/section-demos`.
 
 ## License
 

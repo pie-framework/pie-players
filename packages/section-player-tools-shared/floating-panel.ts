@@ -5,6 +5,8 @@ export type FloatingPanelState = {
 	height: number;
 };
 
+// Each panel package bundles its own copy of this module, so the stacking
+// counter lives on `globalThis`, where every copy reads and bumps one value.
 const FLOATING_PANEL_BASE_Z_INDEX = 9999;
 const FLOATING_PANEL_Z_INDEX_KEY = "__pieFloatingPanelZIndex";
 
@@ -72,6 +74,10 @@ export function computePanelSizeFromViewport(
 	return { x, y, width, height };
 }
 
+// A dragged or restored panel keeps this much of its top on screen, so its
+// header stays reachable.
+export const PANEL_MIN_ON_SCREEN_HEIGHT = 100;
+
 type PointerControllerArgs = {
 	getState: () => FloatingPanelState;
 	setState: (next: FloatingPanelState) => void;
@@ -108,7 +114,10 @@ export function createFloatingPanelPointerController(
 		const deltaX = event.clientX - dragStartX;
 		const deltaY = event.clientY - dragStartY;
 		const maxX = Math.max(padding, window.innerWidth - state.width - padding);
-		const maxY = Math.max(padding, window.innerHeight - 100 - padding);
+		const maxY = Math.max(
+			padding,
+			window.innerHeight - PANEL_MIN_ON_SCREEN_HEIGHT - padding,
+		);
 		args.setState({
 			...state,
 			x: Math.max(padding, Math.min(dragStartPanelX + deltaX, maxX)),

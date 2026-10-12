@@ -1,4 +1,4 @@
-import type { ToolConfigDiagnostic } from "./tool-config-validation.js";
+import type { ToolFailurePhase } from "./tool-failure.js";
 
 export type FrameworkErrorKind =
 	| "tool-config"
@@ -18,6 +18,21 @@ export type FrameworkErrorKind =
 	 * the tool: the toolbar withholds the tool and the assessment goes on.
 	 */
 	| "tool-module-load"
+	/**
+	 * A toolbar threw opening a requested tool or answering whether it hosts one.
+	 * Recoverable: the request goes unclaimed or passes the toolbar by.
+	 */
+	| "tool-request"
+	/**
+	 * A tool registration's relevance check or applicability gate threw.
+	 * Recoverable: the toolbar applies the answer a missing check would give.
+	 */
+	| "tool-registration"
+	/**
+	 * A tool could not play, seek or change the rate of speech after it started.
+	 * Recoverable: the tool stays available and the learner can retry.
+	 */
+	| "tool-playback"
 	/**
 	 * A timed-media section could not deliver a policy as authored: a media time
 	 * source missing `canPause` / `canRestrictSeeking` (recoverable — cues still
@@ -51,6 +66,15 @@ export type FrameworkErrorSeverity = "warning" | "error";
  */
 export type FrameworkErrorScope = "cohort" | "runtime";
 
+/**
+ * The section a `cohort`-scoped error was reported for. A section can fail after
+ * the learner has left it, so a reader holding another section ignores the error.
+ */
+export interface FrameworkErrorCohort {
+	sectionId: string;
+	attemptId?: string;
+}
+
 export interface FrameworkErrorModel {
 	kind: FrameworkErrorKind;
 	severity: FrameworkErrorSeverity;
@@ -59,6 +83,8 @@ export interface FrameworkErrorModel {
 	details: string[];
 	recoverable: boolean;
 	scope: FrameworkErrorScope;
+	/** Set on a `cohort`-scoped error whose report site knows its section. */
+	cohort?: FrameworkErrorCohort;
 	cause?: unknown;
 }
 
@@ -71,6 +97,7 @@ export function toFrameworkErrorModel(args: {
 	recoverable?: boolean;
 	/** Defaults to `runtime`. */
 	scope?: FrameworkErrorScope;
+	cohort?: FrameworkErrorCohort;
 	cause?: unknown;
 }): FrameworkErrorModel {
 	return {
@@ -81,6 +108,7 @@ export function toFrameworkErrorModel(args: {
 		details: [...(args.details || [])],
 		recoverable: args.recoverable === true,
 		scope: args.scope ?? "runtime",
+		...(args.cohort ? { cohort: { ...args.cohort } } : {}),
 		cause: args.cause,
 	};
 }
@@ -91,6 +119,7 @@ export function frameworkErrorFromUnknown(args: {
 	error: unknown;
 	recoverable?: boolean;
 	scope?: FrameworkErrorScope;
+	cohort?: FrameworkErrorCohort;
 }): FrameworkErrorModel {
 	const message =
 		args.error instanceof Error && args.error.message.trim().length > 0
@@ -102,6 +131,7 @@ export function frameworkErrorFromUnknown(args: {
 		message,
 		recoverable: args.recoverable,
 		scope: args.scope,
+		cohort: args.cohort,
 		cause: args.error,
 	});
 }
@@ -126,7 +156,7 @@ export interface FrameworkErrorCoordinatorContext {
 		| "tts-init"
 		| "section-controller-init"
 		| "section-controller-dispose"
-		| "tool-module-load";
+		| ToolFailurePhase;
 	toolId?: string;
 	details?: Record<string, unknown>;
 }
@@ -144,6 +174,13 @@ const COORDINATOR_PHASE_TO_KIND: Record<
 	"section-controller-init": "section-controller-init",
 	"section-controller-dispose": "section-controller-dispose",
 	"tool-module-load": "tool-module-load",
+	"tool-request-open": "tool-request",
+	"tool-request-host-check": "tool-request",
+	"tool-visibility": "tool-registration",
+	"tool-applicability": "tool-registration",
+	"tool-state-load": "tool-state-load",
+	"tool-state-save": "tool-state-save",
+	"tool-playback": "tool-playback",
 };
 
 /**
@@ -164,6 +201,7 @@ export function frameworkErrorFromCoordinatorContext(args: {
 	context: FrameworkErrorCoordinatorContext;
 	recoverable?: boolean;
 	scope?: FrameworkErrorScope;
+	cohort?: FrameworkErrorCohort;
 }): FrameworkErrorModel {
 	const kind = COORDINATOR_PHASE_TO_KIND[args.context.phase];
 	const source = args.context.toolId
@@ -175,27 +213,7 @@ export function frameworkErrorFromCoordinatorContext(args: {
 		error: args.error,
 		recoverable: args.recoverable,
 		scope: args.scope,
-	});
-}
-
-export function frameworkErrorFromToolConfigDiagnostics(args: {
-	source: string;
-	diagnostics: ToolConfigDiagnostic[];
-	recoverable?: boolean;
-}): FrameworkErrorModel {
-	const details = args.diagnostics.map(
-		(diagnostic) => `${diagnostic.path}: ${diagnostic.message}`,
-	);
-	const message =
-		details.length > 0
-			? "Invalid tools config."
-			: "Invalid tools config (no diagnostics details were provided).";
-	return toFrameworkErrorModel({
-		kind: "tool-config",
-		source: args.source,
-		message,
-		details,
-		recoverable: args.recoverable,
+		cohort: args.cohort,
 	});
 }
 

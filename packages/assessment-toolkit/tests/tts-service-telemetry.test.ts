@@ -30,8 +30,6 @@ afterAll(() => {
 
 class TelemetryMockProvider implements ITTSProvider {
 	readonly providerId = "mock";
-	readonly providerName = "Mock";
-	readonly version = "1.0.0";
 
 	constructor(private impl: ITTSProviderImplementation) {}
 
@@ -41,12 +39,7 @@ class TelemetryMockProvider implements ITTSProvider {
 
 	getCapabilities(): TTSProviderCapabilities {
 		return {
-			supportsPause: true,
-			supportsResume: true,
 			supportsWordBoundary: true,
-			supportsVoiceSelection: true,
-			supportsRateControl: true,
-			supportsPitchControl: true,
 		};
 	}
 
@@ -55,8 +48,6 @@ class TelemetryMockProvider implements ITTSProvider {
 
 class FailingInitializeProvider implements ITTSProvider {
 	readonly providerId = "server-tts";
-	readonly providerName = "Server TTS";
-	readonly version = "1.0.0";
 
 	async initialize(_config: TTSConfig): Promise<ITTSProviderImplementation> {
 		throw new Error("Server TTS API not available at /api/tts/sc");
@@ -64,12 +55,7 @@ class FailingInitializeProvider implements ITTSProvider {
 
 	getCapabilities(): TTSProviderCapabilities {
 		return {
-			supportsPause: true,
-			supportsResume: true,
 			supportsWordBoundary: true,
-			supportsVoiceSelection: true,
-			supportsRateControl: true,
-			supportsPitchControl: false,
 		};
 	}
 
@@ -135,8 +121,6 @@ describe("TTSService telemetry", () => {
 			pause: () => {},
 			resume: () => {},
 			stop: () => {},
-			isPlaying: () => false,
-			isPaused: () => false,
 			updateSettings: () => {},
 		};
 		const service = new TTSService();
@@ -181,8 +165,6 @@ describe("TTSService telemetry", () => {
 			pause: () => {},
 			resume: () => {},
 			stop: () => {},
-			isPlaying: () => false,
-			isPaused: () => false,
 			updateSettings: () => {},
 		};
 		const service = new TTSService();

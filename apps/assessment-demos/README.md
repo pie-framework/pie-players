@@ -1,6 +1,9 @@
 # PIE Assessment Player Demos
 
-Demonstrations for the PIE assessment player and toolkit host integration.
+Demonstrations for the PIE assessment player and toolkit host integration. The
+assessment player is a reference assembly of the building blocks, and these demos
+are examples of that assembly
+([product scope](../../docs/architecture/architecture.md#product-scope)).
 
 ## Running the Demos
 
@@ -51,7 +54,7 @@ The controls select the **next strategy write**, then reset to normal:
   buttons. A held write does not touch the saved snapshot; it rejects after
   60 seconds if left alone.
 - **Reject before commit:** return HTTP 503 without replacing saved state.
-- **Commit, then fail acknowledgement:** commit but return HTTP 504, modeling
+- **Commit, then fail acknowledgment:** commit but return HTTP 504, modeling
   an intermediary failure after storage accepted the write. Reading the attempt
   reveals the commit; a failed response alone cannot determine whether it saved.
 
@@ -61,14 +64,14 @@ lab displays server commits, caller promise outcomes, the controller's submitted
 flag, and successful submission-event count separately so contradictions remain
 visible. It adds no compensating client save queue or submission error handling.
 
-Reproduce the two open defects:
+The two R2 scenarios:
 
 1. Choose an answer in section 1. Select Hold and Save. Navigate to section 2,
-   choose another answer, and Save normally. Wait for the newer write to commit,
-   then release the older write. Reload: the older section-1 snapshot wins.
+   choose another answer, and Save; the newer write waits behind the held one.
+   Release the older write. Reload: the section-2 snapshot and answer survive.
 2. On a new attempt, choose an answer, select Reject, and Submit. The server
-   records no commit and the error hook reports rejection, but the controller
-   reports submitted and the submit promise resolves.
+   records no commit, the error hook reports rejection, the submit promise
+   rejects, and the controller stays unsubmitted.
 
 ### Regression coverage
 
@@ -76,7 +79,7 @@ Reproduce the two open defects:
 existing assessment-player suite and the local pre-push/CI gates. Every test uses
 a unique attempt, reads actual HTTP/SQLite results, and deletes its own rows.
 It covers answer/navigation/reload with browser storage cleared, attempt
-isolation, manual release and keyboard access at 320px, failed acknowledgement,
+isolation, manual release and keyboard access at 320px, failed acknowledgment,
 and the two R2 invariants. JSON observations are attached to the test report.
 Fault controls and pending HTTP requests are scoped to one running demo server;
 this does not test process-crash recovery or competing production writers.

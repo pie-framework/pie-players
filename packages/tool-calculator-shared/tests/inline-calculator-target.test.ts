@@ -1,6 +1,5 @@
 import { afterEach, describe, expect, spyOn, test } from "bun:test";
 import {
-	ToolCoordinator,
 	ToolkitCoordinator,
 	ToolRegistry,
 } from "@pie-players/pie-assessment-toolkit";
@@ -9,6 +8,8 @@ import {
 	resolveInlineCalculatorTarget,
 	toggleInlineCalculator,
 } from "../inline-calculator-target.js";
+
+const basic = { calculatorType: "basic", availableTypes: ["basic"] };
 
 const itemShell = (itemId: string, canonicalItemId = "") => ({
 	kind: "item" as const,
@@ -52,8 +53,9 @@ describe("inline calculator request path", () => {
 			eagerInit: false,
 			toolRegistry: new ToolRegistry(),
 		});
-		const toolCoordinator = new ToolCoordinator();
+		const { toolCoordinator } = toolkitCoordinator;
 		const opened: string[] = [];
+		const requested: unknown[] = [];
 		for (const [scopeId, hosted] of [
 			["item-1", ["calculator"]],
 			["item-2", []],
@@ -62,7 +64,8 @@ describe("inline calculator request path", () => {
 				level: "item",
 				scopeId,
 				hostsTool: (toolId) => (hosted as readonly string[]).includes(toolId),
-				open: (toolId) => {
+				open: (toolId, params) => {
+					requested.push(params);
 					const instanceId = `${toolId}:item:${scopeId}`;
 					opened.push(instanceId);
 					toolCoordinator.registerTool(instanceId, toolId);
@@ -70,7 +73,7 @@ describe("inline calculator request path", () => {
 				},
 			});
 		}
-		return { toolkitCoordinator, toolCoordinator, opened };
+		return { toolkitCoordinator, toolCoordinator, opened, requested };
 	}
 
 	test("is offered only where the item's toolbar renders the calculator", () => {
@@ -89,16 +92,30 @@ describe("inline calculator request path", () => {
 		const second = resolveInlineCalculatorTarget("", itemShell("item-2"));
 		if (!first || !second) throw new Error("targets did not resolve");
 
-		expect(toggleInlineCalculator(toolCoordinator, toolkitCoordinator, second)).toBe(
+		expect(toggleInlineCalculator(toolCoordinator, toolkitCoordinator, second, basic)).toBe(
 			"unavailable",
 		);
-		expect(toggleInlineCalculator(toolCoordinator, toolkitCoordinator, first)).toBe(
+		expect(toggleInlineCalculator(toolCoordinator, toolkitCoordinator, first, basic)).toBe(
 			"opened",
 		);
 		expect(opened).toEqual(["calculator:item:item-1"]);
-		expect(toggleInlineCalculator(toolCoordinator, toolkitCoordinator, first)).toBe(
+		expect(toggleInlineCalculator(toolCoordinator, toolkitCoordinator, first, basic)).toBe(
 			"closed",
 		);
 		expect(toolCoordinator.isToolVisible("calculator:item:item-1")).toBe(false);
+	});
+
+	test("requests the variant the button names", () => {
+		const { toolkitCoordinator, toolCoordinator, requested } = setup();
+		const first = resolveInlineCalculatorTarget("", itemShell("item-1"));
+		if (!first) throw new Error("target did not resolve");
+
+		toggleInlineCalculator(toolCoordinator, toolkitCoordinator, first, {
+			calculatorType: "graphing",
+			availableTypes: ["scientific", "graphing"],
+		});
+		expect(requested).toEqual([
+			{ calculatorType: "graphing", availableTypes: ["scientific", "graphing"] },
+		]);
 	});
 });

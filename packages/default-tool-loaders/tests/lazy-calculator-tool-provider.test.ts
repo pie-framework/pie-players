@@ -6,7 +6,6 @@ import type {
 	CalculatorProviderConfig,
 	CalculatorType,
 } from "@pie-players/pie-calculator";
-import type { ToolProviderCapabilities } from "@pie-players/pie-assessment-toolkit/tools/registration";
 import {
 	type CalculatorToolProviderInitConfig,
 	LazyCalculatorToolProvider,
@@ -15,12 +14,6 @@ import {
 interface TestConfig extends CalculatorToolProviderInitConfig {
 	label?: string;
 }
-
-const capabilities: ToolProviderCapabilities = {
-	supportsOffline: true,
-	requiresAuth: false,
-	features: {},
-};
 
 const calculatorCapabilities: CalculatorProviderCapabilities = {
 	supportsHistory: false,
@@ -76,9 +69,6 @@ describe("LazyCalculatorToolProvider", () => {
 					initializationErrorMessage: "test failed",
 				};
 			}
-			getCapabilities(): ToolProviderCapabilities {
-				return capabilities;
-			}
 		}
 
 		const provider = new TestProvider();
@@ -130,9 +120,6 @@ describe("LazyCalculatorToolProvider", () => {
 					loadProvider: async () => SlowProvider,
 					initializationErrorMessage: "test failed",
 				};
-			}
-			getCapabilities(): ToolProviderCapabilities {
-				return capabilities;
 			}
 		}
 

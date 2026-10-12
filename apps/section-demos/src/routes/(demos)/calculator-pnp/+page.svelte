@@ -79,7 +79,7 @@
 		name: 'Calculator by profile',
 		personalNeedsProfile: { supports: selected?.supports ?? [] },
 		settings: selected?.calculatorType
-			? { toolConfigs: { calculator: { type: selected.calculatorType } } }
+			? { toolParameters: { calculator: { type: selected.calculatorType } } }
 			: undefined
 	} as AssessmentEntity);
 

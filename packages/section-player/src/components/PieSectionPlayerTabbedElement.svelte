@@ -55,6 +55,25 @@
 	}}
 />
 
+<!--
+@component
+Section player layout that renders a section's passages and items as two tabs, and only the items for a section without passages. The host sets `runtime` and `section` as properties; the element runs the toolkit, section controller, readiness, element pre-warm and section toolbar around them.
+
+@fires {CustomEvent<StageChangeDetail>} pie-stage-change - When the section enters `composed`, `engine-ready`, `interactive` or `disposed`, or a framework error fails or skips a stage.
+@fires {CustomEvent<LoadingCompleteDetail>} pie-loading-complete - Once per section and attempt, when the element pre-warm resolves and the item cards can mount.
+@fires {CustomEvent<{ componentTag: string; stage: "validate-config" | "iife-load" | "esm-load" | "preloaded-assert"; attempt: number; maxRetries: number; error: string; strategy: string; bundleType: string | null; bundleHost: string; renderablesCount: number; assessmentId?: string; sectionId: string; attemptId?: string }>} element-preload-retry - When the rendering items pane's element pre-warm retries a failed load.
+@fires {CustomEvent<{ componentTag: string; stage: "validate-config" | "iife-load" | "esm-load" | "preloaded-assert"; error: string; strategy: string; bundleType: string | null; bundleHost: string; renderablesCount: number; assessmentId?: string; sectionId: string; attemptId?: string }>} element-preload-error - When the rendering items pane's element pre-warm fails.
+@fires {CustomEvent<FrameworkErrorModel>} framework-error - Bubbles from the inner toolkit. For each framework error the runtime reports; a non-recoverable bootstrap error also shows an error banner in place of the slotted content.
+@fires {CustomEvent<{ composition: unknown; version: number }>} composition-changed - Bubbles from the inner toolkit. When the bound section's composition changes revision, with a version that increases on each change.
+@fires {CustomEvent<{ itemId: string; canonicalItemId: string; sourceRuntimeId: string } & Record<string, unknown>>} session-changed - Bubbles from the inner toolkit. When an item's session in the bound section changes, carrying the section's canonical session detail for that item.
+@fires {CustomEvent<{ runtimeId: string; parentRuntimeId: string | null }>} runtime-owned - Bubbles from the inner toolkit. When the toolkit starts running its own coordinator.
+@fires {CustomEvent<{ runtimeId: string; parentRuntimeId: string | null }>} runtime-inherited - Bubbles from the inner toolkit. When the toolkit adopts an outer toolkit's coordinator, named by `parentRuntimeId`.
+@fires {CustomEvent<{ runtimeId: string; coordinator: ToolkitCoordinator; ownership: "owned" | "inherited" }>} runtime-ready - Bubbles from the inner toolkit. Once per coordinator, with or without a section, from which point a host can drive it.
+@fires {CustomEvent<{ runtimeId: string; assessmentId: string; sectionId: string; itemPlayer: ItemPlayerConfig; coordinator: ToolkitCoordinator }>} toolkit-ready - Bubbles from the inner toolkit. For every section the toolkit initializes, once its section controller resolves.
+@fires {CustomEvent<{ sectionId: string; attemptId: string; controller: unknown }>} section-ready - Bubbles from the inner toolkit. Right after `toolkit-ready`, with the section's controller or null.
+@fires {CustomEvent<{ itemId: string; canonicalItemId: string; session: unknown; sessionCommitReason?: "teardown" | "navigate" | "page-hidden" }>} item-session-changed - Bubbles from an item scope when the item player reports a response change; the player's own `session-changed` stops at the scope.
+-->
+
 <script lang="ts">
 	import { coerceBooleanAttributes } from "@pie-players/pie-players-shared/ui/attribute-coercion";
 	import {
@@ -155,12 +174,6 @@
 		contentMaxWidths.withPassagePx,
 	);
 
-	const layoutElement = $host();
-	const forwardPreloadRetry = (detail: Record<string, unknown>) =>
-		layoutElement.dispatchEvent(new CustomEvent("element-preload-retry", { detail }));
-	const forwardPreloadError = (detail: Record<string, unknown>) =>
-		layoutElement.dispatchEvent(new CustomEvent("element-preload-error", { detail }));
-
 	export function getSnapshot(): SectionPlayerSnapshot | null {
 		return kernelRef?.getSnapshot?.() ?? null;
 	}
@@ -233,8 +246,6 @@
 	{policies}
 	{hooks}
 	{toolConfigStrictness}
-	onElementPreloadRetry={forwardPreloadRetry}
-	onElementPreloadError={forwardPreloadError}
 	sourceCe="pie-section-player-tabbed"
 	host={hostElement}
 	playerActionConfig={{
@@ -252,15 +263,6 @@
 </SectionPlayerLayoutKernel>
 
 <style>
-	:host {
-		display: block;
-		width: 100%;
-		height: 100%;
-		min-height: 0;
-		max-height: 100%;
-		overflow: hidden;
-	}
-
 	.pie-section-player-observability-anchor {
 		display: none;
 	}

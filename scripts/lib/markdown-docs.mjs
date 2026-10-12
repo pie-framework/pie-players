@@ -31,7 +31,6 @@ const DOC_FILE_NAMES = new Set([
 	"ARCHITECTURE.md",
 	"USAGE_EXAMPLE.md",
 	"AGENTS.md",
-	"GETTING-STARTED.md",
 	"INTEGRATION-GUIDE.md",
 ]);
 

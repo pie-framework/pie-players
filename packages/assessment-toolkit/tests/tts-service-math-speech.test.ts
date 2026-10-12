@@ -34,12 +34,6 @@ class CapturingTTSImpl implements ITTSProviderImplementation {
 	pause(): void {}
 	resume(): void {}
 	stop(): void {}
-	isPlaying(): boolean {
-		return false;
-	}
-	isPaused(): boolean {
-		return false;
-	}
 	updateSettings(settings: Partial<TTSConfig>): void {
 		this.settingsUpdates.push(settings);
 	}
@@ -47,8 +41,6 @@ class CapturingTTSImpl implements ITTSProviderImplementation {
 
 class CapturingTTSProvider implements ITTSProvider {
 	readonly providerId = "server-tts";
-	readonly providerName = "Capturing Provider";
-	readonly version = "1.0.0";
 
 	constructor(private impl: ITTSProviderImplementation) {}
 
@@ -57,12 +49,7 @@ class CapturingTTSProvider implements ITTSProvider {
 	}
 	getCapabilities(): TTSProviderCapabilities {
 		return {
-			supportsPause: true,
-			supportsResume: true,
 			supportsWordBoundary: true,
-			supportsVoiceSelection: true,
-			supportsRateControl: true,
-			supportsPitchControl: false,
 			supportsSSML: true,
 		};
 	}
@@ -138,7 +125,7 @@ describe("TTSService automatic math speech", () => {
 			},
 			highlightTTSSentence() {},
 			clearTTS() {},
-			clearHighlights() {},
+			clearTTSWord() {},
 		} as any);
 		await service.initialize(new CapturingTTSProvider(impl), {});
 		const content = document.createElement("div");

@@ -63,7 +63,7 @@ export interface GoogleCloudTTSConfig extends TTSServerConfig {
 	 * Voice type: 'wavenet' (neural), 'standard', or 'studio' (premium)
 	 *
 	 * @default 'wavenet'
-	 * @note WaveNet: $16/1M chars, Standard: $4/1M chars, Studio: $16/1M chars
+	 * @see https://cloud.google.com/text-to-speech/pricing
 	 */
 	voiceType?: "wavenet" | "standard" | "studio";
 
@@ -91,6 +91,63 @@ export interface GoogleCloudTTSConfig extends TTSServerConfig {
 	enableLogging?: boolean;
 }
 
+/** A word given an SSML mark, with its offsets in the request text. */
+interface MarkedWord {
+	word: string;
+	start: number;
+	end: number;
+	markName: string;
+}
+
+const DEFAULT_SAMPLE_RATE_HERTZ = 24000;
+
+const CONTENT_TYPE_BY_ENCODING = {
+	MP3: "audio/mpeg",
+	LINEAR16: "audio/wav",
+	OGG_OPUS: "audio/ogg",
+};
+
+// The segment of a Google voice name that identifies its voice type.
+const VOICE_TYPE_NAME_SEGMENT = {
+	wavenet: "Wavenet",
+	standard: "Standard",
+	studio: "Studio",
+};
+
+// gRPC status codes the Google client reports in `error.code`.
+const GRPC_STATUS = {
+	INVALID_ARGUMENT: 3,
+	PERMISSION_DENIED: 7,
+	RESOURCE_EXHAUSTED: 8,
+};
+
+// Google voice names start with their locale: "en-US-Wavenet-A" → "en-US".
+const languageCodeOf = (voice: string): string =>
+	voice.split("-").slice(0, 2).join("-");
+
+// Letters, digits and combining marks, so accented words stay whole.
+const WORD_PATTERN = /[\p{L}\p{M}\p{N}'\u2019]+/gu;
+const SSML_TEXT_TOKEN_PATTERN =
+	/&(?:#\d+|#x[\da-f]+|[a-z]+);|[\p{L}\p{M}\p{N}'\u2019]+/giu;
+
+const SSML_ENTITIES: Record<string, string> = {
+	amp: "&",
+	lt: "<",
+	gt: ">",
+	quot: '"',
+	apos: "'",
+};
+
+const decodeSSMLText = (text: string): string =>
+	text.replace(/&(#\d+|#x[\da-f]+|[a-z]+);/gi, (entity, name: string) => {
+		if (name[0] !== "#") return SSML_ENTITIES[name.toLowerCase()] ?? entity;
+		const code =
+			name[1] === "x" || name[1] === "X"
+				? Number.parseInt(name.slice(2), 16)
+				: Number.parseInt(name.slice(1), 10);
+		return Number.isFinite(code) ? String.fromCodePoint(code) : entity;
+	});
+
 /**
  * Google Cloud Text-to-Speech Server Provider
  *
@@ -100,7 +157,7 @@ export interface GoogleCloudTTSConfig extends TTSServerConfig {
  * Features:
  * - Speech marks support via SSML mark injection (millisecond precision)
  * - WaveNet (neural), Standard, and Studio voice types
- * - 200+ voices across 50+ languages
+ * - Voices across many languages, listed by `getVoices`
  * - Full SSML support
  * - Single API call for audio + speech marks
  */
@@ -159,8 +216,9 @@ export class GoogleCloudTTSProvider extends BaseTTSProvider {
 		this.enableLogging = config.enableLogging || false;
 
 		try {
-			// Initialize Google Cloud TTS client
-			const clientConfig: any = {
+			const clientConfig: NonNullable<
+				ConstructorParameters<typeof v1beta1.TextToSpeechClient>[0]
+			> = {
 				projectId: config.projectId,
 			};
 
@@ -179,7 +237,7 @@ export class GoogleCloudTTSProvider extends BaseTTSProvider {
 			}
 			// Else: Use Application Default Credentials (ADC)
 
-			this.client = new v1beta1.TextToSpeechClient(clientConfig);
+			this.client = this.createClient(clientConfig);
 			this.initialized = true;
 
 			if (this.enableLogging) {
@@ -195,6 +253,13 @@ export class GoogleCloudTTSProvider extends BaseTTSProvider {
 		}
 	}
 
+	/** The Google client every request goes through; a test subclass supplies a fake. */
+	protected createClient(
+		clientConfig: ConstructorParameters<typeof v1beta1.TextToSpeechClient>[0],
+	): v1beta1.TextToSpeechClient {
+		return new v1beta1.TextToSpeechClient(clientConfig);
+	}
+
 	/**
 	 * Synthesize speech with Google Cloud TTS
 	 */
@@ -204,55 +269,36 @@ export class GoogleCloudTTSProvider extends BaseTTSProvider {
 		const capabilities = this.getCapabilities();
 		this.validateRequest(request, capabilities);
 
-		const voiceType = { wavenet: "Wavenet", standard: "Standard", studio: "Studio" }[
-			this.voiceType
-		];
+		const voiceType = VOICE_TYPE_NAME_SEGMENT[this.voiceType];
 		const voice = await this.resolveRequestVoice(
 			request,
 			this.defaultVoice,
 			(candidate) => candidate.id.includes(voiceType),
 		);
 		const startTime = Date.now();
+		const respond = (
+			result: { audio: Buffer; contentType: string },
+			speechMarks: SpeechMark[],
+		): SynthesizeResponse => ({
+			audio: result.audio,
+			contentType: result.contentType,
+			speechMarks,
+			metadata: {
+				providerId: this.providerId,
+				voice,
+				duration: (Date.now() - startTime) / 1000,
+				charCount: request.text.length,
+				cached: false,
+				timestamp: new Date().toISOString(),
+			},
+		});
 
 		try {
-			// Check if speech marks are requested
 			if (request.includeSpeechMarks !== false && !this.isStudioVoice(voice)) {
-				// Use SSML marks injection for precise word timing
 				const result = await this.synthesizeWithSpeechMarks(request, voice);
-				const duration = (Date.now() - startTime) / 1000;
-
-				return {
-					audio: result.audio,
-					contentType: result.contentType,
-					speechMarks: result.speechMarks,
-					metadata: {
-						providerId: this.providerId,
-						voice,
-						duration,
-						charCount: request.text.length,
-						cached: false,
-						timestamp: new Date().toISOString(),
-					},
-				};
-			} else {
-				// Audio only (no speech marks)
-				const result = await this.synthesizeAudio(request, voice);
-				const duration = (Date.now() - startTime) / 1000;
-
-				return {
-					audio: result.audio,
-					contentType: result.contentType,
-					speechMarks: [],
-					metadata: {
-						providerId: this.providerId,
-						voice,
-						duration,
-						charCount: request.text.length,
-						cached: false,
-						timestamp: new Date().toISOString(),
-					},
-				};
+				return respond(result, result.speechMarks);
 			}
+			return respond(await this.synthesizeAudio(request, voice), []);
 		} catch (error) {
 			// Studio voices do not support SSML <mark> tags used for timing extraction.
 			// Fall back to audio-only synthesis rather than failing the request.
@@ -260,57 +306,42 @@ export class GoogleCloudTTSProvider extends BaseTTSProvider {
 				request.includeSpeechMarks !== false &&
 				this.isStudioMarkUnsupportedError(error)
 			) {
-				const result = await this.synthesizeAudio(request, voice);
-				const duration = (Date.now() - startTime) / 1000;
-				return {
-					audio: result.audio,
-					contentType: result.contentType,
-					speechMarks: [],
-					metadata: {
-						providerId: this.providerId,
-						voice,
-						duration,
-						charCount: request.text.length,
-						cached: false,
-						timestamp: new Date().toISOString(),
-					},
-				};
+				try {
+					return respond(await this.synthesizeAudio(request, voice, true), []);
+				} catch (fallbackError) {
+					throw this.mapGoogleErrorToTTSError(fallbackError);
+				}
 			}
 			throw this.mapGoogleErrorToTTSError(error);
 		}
 	}
 
 	/**
-	 * Synthesize audio stream only (no speech marks)
+	 * Synthesize audio stream only (no speech marks). A Studio voice takes
+	 * `<prosody>` rate but not pitch, so its request drops pitch.
 	 */
 	private async synthesizeAudio(
 		request: SynthesizeRequest,
 		voice: string,
+		studio = this.isStudioVoice(voice),
 	): Promise<{ audio: Buffer; contentType: string }> {
 		if (this.detectSSML(request.text) && this.enableLogging) {
 			console.log("[GoogleCloudTTS] Detected SSML content");
 		}
-		const { text, isSsml } = this.applyProsody(request.text, request);
-
-		// Parse voice name to extract language code
-		const languageCode = voice.split("-").slice(0, 2).join("-"); // e.g., "en-US" from "en-US-Wavenet-A"
-
-		// Map our audio encoding to Google's enum
-		const audioEncodingMap = {
-			MP3: "MP3" as const,
-			LINEAR16: "LINEAR16" as const,
-			OGG_OPUS: "OGG_OPUS" as const,
-		};
+		const { text, isSsml } = this.applyProsody(
+			request.text,
+			studio ? { ...request, pitch: undefined } : request,
+		);
 
 		const [response] = await this.client.synthesizeSpeech({
 			input: isSsml ? { ssml: text } : { text },
 			voice: {
-				languageCode,
+				languageCode: languageCodeOf(voice),
 				name: voice,
 			},
 			audioConfig: {
-				audioEncoding: audioEncodingMap[this.audioEncoding],
-				sampleRateHertz: request.sampleRate || 24000,
+				audioEncoding: this.audioEncoding,
+				sampleRateHertz: request.sampleRate || DEFAULT_SAMPLE_RATE_HERTZ,
 			},
 		});
 
@@ -318,18 +349,9 @@ export class GoogleCloudTTSProvider extends BaseTTSProvider {
 			throw new Error("No audio content received from Google Cloud TTS");
 		}
 
-		// Convert Uint8Array to Buffer
-		const audioBuffer = Buffer.from(response.audioContent);
-
-		const contentTypeMap = {
-			MP3: "audio/mpeg",
-			LINEAR16: "audio/wav",
-			OGG_OPUS: "audio/ogg",
-		};
-
 		return {
-			audio: audioBuffer,
-			contentType: contentTypeMap[this.audioEncoding],
+			audio: Buffer.from(response.audioContent),
+			contentType: CONTENT_TYPE_BY_ENCODING[this.audioEncoding],
 		};
 	}
 
@@ -344,13 +366,11 @@ export class GoogleCloudTTSProvider extends BaseTTSProvider {
 		contentType: string;
 		speechMarks: SpeechMark[];
 	}> {
-		// Check if the text is already SSML
 		const isUserSSML = this.detectSSML(request.text);
 
-		// If user provided SSML, we need to inject marks within the existing SSML
-		// For simplicity in v1, we'll inject marks for plain text only. Already-SSML
-		// input skips prosody wrapping too: injecting <prosody> into markup the
-		// caller authored themselves would require parsing it.
+		// Authored SSML keeps its markup and takes marks in its text nodes. It
+		// skips prosody wrapping: injecting <prosody> into markup the caller
+		// authored would require parsing it.
 		const { ssml, wordMap } = isUserSSML
 			? this.extractWordsFromSSML(request.text)
 			: this.injectSSMLMarks(request.text, this.buildProsodyAttrs(request));
@@ -359,48 +379,27 @@ export class GoogleCloudTTSProvider extends BaseTTSProvider {
 			console.log(`[GoogleCloudTTS] Injected ${wordMap.length} SSML marks`);
 		}
 
-		// Parse voice name to extract language code
-		const languageCode = voice.split("-").slice(0, 2).join("-");
-
-		// Map our audio encoding to Google's enum
-		const audioEncodingMap = {
-			MP3: "MP3" as const,
-			LINEAR16: "LINEAR16" as const,
-			OGG_OPUS: "OGG_OPUS" as const,
-		};
-
 		// Single API call with timepoint tracking enabled
-		const responseArray = await this.client.synthesizeSpeech({
+		const [response] = await this.client.synthesizeSpeech({
 			input: { ssml },
 			voice: {
-				languageCode,
+				languageCode: languageCodeOf(voice),
 				name: voice,
 			},
 			audioConfig: {
-				audioEncoding: audioEncodingMap[this.audioEncoding],
-				sampleRateHertz: request.sampleRate || 24000,
+				audioEncoding: this.audioEncoding,
+				sampleRateHertz: request.sampleRate || DEFAULT_SAMPLE_RATE_HERTZ,
 			},
 			enableTimePointing: [
 				protos.google.cloud.texttospeech.v1beta1.SynthesizeSpeechRequest
 					.TimepointType.SSML_MARK,
 			],
 		});
-		const response = responseArray[0];
 
 		if (!response.audioContent) {
 			throw new Error("No audio content received from Google Cloud TTS");
 		}
 
-		// Convert Uint8Array to Buffer
-		const audioBuffer = Buffer.from(response.audioContent);
-
-		const contentTypeMap = {
-			MP3: "audio/mpeg",
-			LINEAR16: "audio/wav",
-			OGG_OPUS: "audio/ogg",
-		};
-
-		// Extract speech marks from timepoints
 		const speechMarks = this.extractSpeechMarksFromTimepoints(
 			response.timepoints || [],
 			wordMap,
@@ -413,8 +412,8 @@ export class GoogleCloudTTSProvider extends BaseTTSProvider {
 		}
 
 		return {
-			audio: audioBuffer,
-			contentType: contentTypeMap[this.audioEncoding],
+			audio: Buffer.from(response.audioContent),
+			contentType: CONTENT_TYPE_BY_ENCODING[this.audioEncoding],
 			speechMarks,
 		};
 	}
@@ -425,47 +424,20 @@ export class GoogleCloudTTSProvider extends BaseTTSProvider {
 	private injectSSMLMarks(
 		text: string,
 		prosodyAttrs = "",
-	): {
-		ssml: string;
-		wordMap: Array<{
-			word: string;
-			start: number;
-			end: number;
-			markName: string;
-		}>;
-	} {
-		const words: Array<{
-			word: string;
-			start: number;
-			end: number;
-			markName: string;
-		}> = [];
-		const wordRegex = /\b[\w']+\b/g;
-		let match;
-		let markIndex = 0;
-
-		while ((match = wordRegex.exec(text)) !== null) {
-			const word = match[0];
-			const start = match.index;
-			const end = start + word.length;
-			const markName = `w${markIndex++}`;
-
-			words.push({ word, start, end, markName });
-		}
-
-		// Build SSML with marks
+	): { ssml: string; wordMap: MarkedWord[] } {
+		const words: MarkedWord[] = [];
 		let ssml = prosodyAttrs ? `<speak><prosody ${prosodyAttrs}>` : "<speak>";
 		let lastEnd = 0;
 
-		for (const { word, start, end, markName } of words) {
-			// Add text before word (including whitespace and punctuation)
-			ssml += this.escapeSSML(text.slice(lastEnd, start));
-			// Add marked word
-			ssml += `<mark name="${markName}"/>${this.escapeSSML(word)}`;
-			lastEnd = end;
+		for (const match of text.matchAll(WORD_PATTERN)) {
+			const word = match[0];
+			const start = match.index;
+			const markName = `w${words.length}`;
+			words.push({ word, start, end: start + word.length, markName });
+			ssml += `${this.escapeSSML(text.slice(lastEnd, start))}<mark name="${markName}"/>${this.escapeSSML(word)}`;
+			lastEnd = start + word.length;
 		}
 
-		// Add remaining text
 		ssml +=
 			this.escapeSSML(text.slice(lastEnd)) +
 			(prosodyAttrs ? "</prosody>" : "") +
@@ -475,25 +447,74 @@ export class GoogleCloudTTSProvider extends BaseTTSProvider {
 	}
 
 	/**
-	 * Extract words from existing SSML (simplified version for v1)
+	 * Inject a mark before each word of authored SSML, keeping its markup.
+	 * Offsets index the SSML itself. An element whose content the engine
+	 * replaces (`<sub>`, `<say-as>`, `<phoneme>`) takes one mark before its
+	 * opening tag, valued with its text, since a mark may not sit inside it.
 	 */
 	private extractWordsFromSSML(ssmlText: string): {
 		ssml: string;
-		wordMap: Array<{
-			word: string;
-			start: number;
-			end: number;
-			markName: string;
-		}>;
+		wordMap: MarkedWord[];
 	} {
-		// For now, just strip SSML tags and inject marks
-		// More sophisticated SSML parsing can be added in future versions
-		const plainText = ssmlText
-			.replace(/<[^>]+>/g, " ") // Remove all tags
-			.replace(/\s+/g, " ") // Normalize whitespace
-			.trim();
+		const words: MarkedWord[] = [];
+		const mark = (word: string, start: number, end: number) => {
+			const markName = `w${words.length}`;
+			words.push({ word, start, end, markName });
+			return `<mark name="${markName}"/>`;
+		};
+		let ssml = "";
+		let cursor = 0;
 
-		return this.injectSSMLMarks(plainText);
+		for (const tag of ssmlText.matchAll(/<[^>]*>/g)) {
+			if (tag.index < cursor) continue;
+			ssml += this.markTextNode(ssmlText, cursor, tag.index, mark);
+			const opaque = /^<\s*(sub|say-as|phoneme)\b(?![^>]*\/>)[^>]*>$/i.exec(
+				tag[0],
+			);
+			const close = opaque
+				? new RegExp(`</\\s*${opaque[1]}\\s*>`, "i")
+				: null;
+			const closeMatch = close?.exec(ssmlText.slice(tag.index));
+			if (opaque && closeMatch) {
+				const contentStart = tag.index + tag[0].length;
+				const contentEnd = tag.index + closeMatch.index;
+				const raw = ssmlText.slice(contentStart, contentEnd);
+				const inner = raw.trim();
+				const innerStart = contentStart + raw.indexOf(inner);
+				const elementEnd = contentEnd + closeMatch[0].length;
+				ssml += inner
+					? mark(decodeSSMLText(inner), innerStart, innerStart + inner.length)
+					: "";
+				ssml += ssmlText.slice(tag.index, elementEnd);
+				cursor = elementEnd;
+				continue;
+			}
+			ssml += tag[0];
+			cursor = tag.index + tag[0].length;
+		}
+		ssml += this.markTextNode(ssmlText, cursor, ssmlText.length, mark);
+
+		return { ssml, wordMap: words };
+	}
+
+	// Marks each word of an SSML text node, which is already escaped, so
+	// entities stay whole and are never read as words.
+	private markTextNode(
+		ssmlText: string,
+		from: number,
+		to: number,
+		mark: (word: string, start: number, end: number) => string,
+	): string {
+		const segment = ssmlText.slice(from, to);
+		let out = "";
+		let lastEnd = 0;
+		for (const match of segment.matchAll(SSML_TEXT_TOKEN_PATTERN)) {
+			if (match[0].startsWith("&")) continue;
+			const start = from + match.index;
+			out += `${segment.slice(lastEnd, match.index)}${mark(match[0], start, start + match[0].length)}${match[0]}`;
+			lastEnd = match.index + match[0].length;
+		}
+		return out + segment.slice(lastEnd);
 	}
 
 	/**
@@ -504,12 +525,7 @@ export class GoogleCloudTTSProvider extends BaseTTSProvider {
 			| protos.google.cloud.texttospeech.v1beta1.ITimepoint[]
 			| null
 			| undefined,
-		wordMap: Array<{
-			word: string;
-			start: number;
-			end: number;
-			markName: string;
-		}>,
+		wordMap: MarkedWord[],
 	): SpeechMark[] {
 		if (!timepoints || timepoints.length === 0) {
 			return [];
@@ -518,7 +534,6 @@ export class GoogleCloudTTSProvider extends BaseTTSProvider {
 		const speechMarks: SpeechMark[] = [];
 
 		for (const timepoint of timepoints) {
-			// Find corresponding word in our map
 			const wordInfo = wordMap.find((w) => w.markName === timepoint.markName);
 
 			if (
@@ -536,13 +551,9 @@ export class GoogleCloudTTSProvider extends BaseTTSProvider {
 			}
 		}
 
-		// Sort by time
 		return speechMarks.sort((a, b) => a.time - b.time);
 	}
 
-	/**
-	 * Detect if text contains SSML markup
-	 */
 	/**
 	 * Get available voices from Google Cloud TTS
 	 */
@@ -561,7 +572,6 @@ export class GoogleCloudTTSProvider extends BaseTTSProvider {
 			return response.voices
 				.map((voice) => this.mapGoogleVoiceToVoice(voice))
 				.filter((voice) => {
-					// Apply filters
 					if (options?.gender && voice.gender !== options.gender) {
 						return false;
 					}
@@ -632,10 +642,10 @@ export class GoogleCloudTTSProvider extends BaseTTSProvider {
 			// W3C Standard features
 			standard: {
 				supportsSSML: true, // ✅ Full SSML 1.1 support
-				supportsPitch: true, // ✅ Via SSML <prosody pitch>
+				supportsPitch: this.voiceType !== "studio", // Via SSML <prosody pitch>; Studio voices lack it
 				supportsRate: true, // ✅ Via SSML <prosody rate>
 				supportsVolume: false, // ❌ Not supported (handle client-side)
-				supportsMultipleVoices: true, // ✅ 200+ voices across 50+ languages
+				supportsMultipleVoices: true, // ✅ Listed by getVoices
 				maxTextLength: 5000, // Google Cloud TTS limit per request
 			},
 
@@ -648,8 +658,6 @@ export class GoogleCloudTTSProvider extends BaseTTSProvider {
 				// Google Cloud-specific features
 				providerSpecific: {
 					voiceTypes: ["standard", "wavenet", "studio"],
-					voicesCount: 200, // ~200+ voices available
-					languagesCount: 50, // 50+ languages supported
 					supportsAudioProfiles: true, // Audio device profiles
 					supportsEffects: false, // No built-in effects
 					supportsEmotions: false, // No emotion control
@@ -662,12 +670,11 @@ export class GoogleCloudTTSProvider extends BaseTTSProvider {
 	/**
 	 * Map Google Cloud errors to TTSError codes
 	 */
-	private mapGoogleErrorToTTSError(error: any): TTSError {
-		const message = error.message || String(error);
+	private mapGoogleErrorToTTSError(error: unknown): TTSError {
+		const err = error as { code?: number; message?: string };
+		const message = err.message || String(error);
 
-		// Check for specific Google Cloud error codes
-		if (error.code === 7) {
-			// PERMISSION_DENIED
+		if (err.code === GRPC_STATUS.PERMISSION_DENIED) {
 			return new TTSError(
 				TTSErrorCode.AUTHENTICATION_ERROR,
 				`Google Cloud authentication failed: ${message}`,
@@ -676,8 +683,7 @@ export class GoogleCloudTTSProvider extends BaseTTSProvider {
 			);
 		}
 
-		if (error.code === 8) {
-			// RESOURCE_EXHAUSTED
+		if (err.code === GRPC_STATUS.RESOURCE_EXHAUSTED) {
 			return new TTSError(
 				TTSErrorCode.RATE_LIMIT_EXCEEDED,
 				`Google Cloud rate limit exceeded: ${message}`,
@@ -686,8 +692,7 @@ export class GoogleCloudTTSProvider extends BaseTTSProvider {
 			);
 		}
 
-		if (error.code === 3) {
-			// INVALID_ARGUMENT
+		if (err.code === GRPC_STATUS.INVALID_ARGUMENT) {
 			return new TTSError(
 				TTSErrorCode.INVALID_REQUEST,
 				`Invalid request to Google Cloud TTS: ${message}`,
@@ -696,7 +701,6 @@ export class GoogleCloudTTSProvider extends BaseTTSProvider {
 			);
 		}
 
-		// Default to provider error
 		return new TTSError(
 			TTSErrorCode.PROVIDER_ERROR,
 			`Google Cloud TTS error: ${message}`,

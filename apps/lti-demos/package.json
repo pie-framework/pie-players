@@ -12,7 +12,6 @@
 		"typecheck": "tsc --noEmit"
 	},
 	"dependencies": {
-		"@pie-players/demo-ui": "workspace:*",
 		"@pie-players/pie-assessment-player": "workspace:*",
 		"@pie-players/pie-assessment-toolkit": "workspace:*",
 		"@pie-players/pie-default-tool-loaders": "workspace:*",
@@ -20,17 +19,16 @@
 	},
 	"devDependencies": {
 		"@sveltejs/adapter-node": "^6.0.0",
-		"@sveltejs/kit": "^3.0.0",
+		"@sveltejs/kit": "^3.0.1",
 		"@sveltejs/vite-plugin-svelte": "^7.3.1",
 		"@types/node": "^26.6.4",
 		"svelte": "^5.57.1",
 		"svelte-check": "^4.7.6",
 		"typescript": "^6.0.0",
-		"vite": "^8.3.2"
+		"vite": "^8.3.3"
 	},
 	"license": "MIT",
 	"imports": {
-		"#lib": "./src/lib/index.js",
 		"#lib/*": "./src/lib/*"
 	}
 }

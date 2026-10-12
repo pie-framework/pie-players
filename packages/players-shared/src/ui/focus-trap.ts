@@ -87,10 +87,9 @@ export function createFocusTrap(
 			return;
 		}
 
+		const rootNode = container.getRootNode();
 		const current = getDeepActiveElement(
-			container.getRootNode() instanceof ShadowRoot
-				? (container.getRootNode() as ShadowRoot)
-				: document,
+			rootNode instanceof ShadowRoot ? rootNode : document,
 		) as HTMLElement | null;
 		const currentIndex = focusable.indexOf(current || focusable[0]);
 		if (event.shiftKey) {

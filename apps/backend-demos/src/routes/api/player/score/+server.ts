@@ -8,7 +8,6 @@ export const POST: RequestHandler = async ({ request }) => {
 		sessionId?: string;
 		data?: unknown[];
 		env?: Record<string, unknown>;
-		disablePartialScoring?: boolean;
 	};
 	if (!body.sessionId) {
 		return json({ error: "sessionId is required" }, { status: 400 });
@@ -24,10 +23,10 @@ export const POST: RequestHandler = async ({ request }) => {
 	const data = Array.isArray(body.data) ? body.data : existing.data;
 	const session = saveSession(body.sessionId, data, item.id);
 	const env = {
+		partialScoring: true,
 		...(body.env || {}),
 		mode: "evaluate",
 		role: "student",
-		partialScoring: body.disablePartialScoring === true ? false : true,
 	};
 	const outcomes = await runOutcomeControllers({
 		config: item.config,

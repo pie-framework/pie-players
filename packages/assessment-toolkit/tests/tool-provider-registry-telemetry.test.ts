@@ -3,7 +3,6 @@ import { ToolProviderRegistry } from "../src/services/tool-providers/ToolProvide
 import type {
 	ToolCategory,
 	ToolProviderApi,
-	ToolProviderCapabilities,
 } from "../src/services/tool-providers/ToolProviderApi.js";
 
 class FakeProvider
@@ -30,15 +29,6 @@ class FakeProvider
 
 	async createInstance(): Promise<unknown> {
 		return {};
-	}
-
-	getCapabilities(): ToolProviderCapabilities {
-		return {
-			supportsOffline: true,
-			requiresAuth: this.requiresAuth,
-			maxInstances: 1,
-			features: {},
-		};
 	}
 
 	isReady(): boolean {

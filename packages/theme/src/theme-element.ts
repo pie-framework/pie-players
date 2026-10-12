@@ -1,3 +1,13 @@
+/**
+ * `<pie-theme>` resolves the Base Theme, provider variables, Color Scheme and
+ * explicit overrides through `resolvePieTheme` and writes the result to its
+ * target: itself for `scope="self"`, `documentElement` for `scope="document"`.
+ * Under document scope several elements can own `documentElement`; the newest
+ * owner, or the one whose attributes changed last, is active. The host's own
+ * values are captured before the first write and restored when the last owner
+ * leaves.
+ */
+
 import { observePieColorSchemes, resolvePieTheme } from "./color-schemes.js";
 import {
 	observePieThemeProviders,
@@ -10,6 +20,8 @@ import {
 	type ThemeScope,
 	type ThemeVariables,
 } from "./theme-types.js";
+
+const DARK_SCHEME_QUERY = "(prefers-color-scheme: dark)";
 
 const HTMLElementBase =
 	typeof HTMLElement === "undefined"
@@ -115,6 +127,7 @@ function applyColorScheme(
 	}
 }
 
+// Insertion order is ownership order: the last entry is the active owner.
 const documentThemeOwners = new Map<PieThemeElement, DocumentThemeState>();
 let documentThemeBaseline: DocumentThemeBaseline | null = null;
 let documentThemeAppliedKeys = new Set<string>();
@@ -194,20 +207,21 @@ function restoreDocumentThemeBaseline(target: HTMLElement): void {
 	} else {
 		target.setAttribute("data-color-scheme", baseline.dataColorScheme);
 	}
-	if (baseline.colorScheme) {
-		target.style.setProperty(
-			"color-scheme",
-			baseline.colorScheme.value,
-			baseline.colorScheme.priority,
-		);
-	} else {
-		target.style.removeProperty("color-scheme");
-	}
+	applyColorScheme(target, null, baseline.colorScheme);
 	restoreDocumentThemeVariables(target);
 	documentThemeBaseline = null;
 	documentThemeAppliedKeys.clear();
 }
 
+/**
+ * Themes PIE content by resolving the `--pie-*` tokens and writing them inline,
+ * with `data-theme`, `data-color-scheme` and `color-scheme`, on its target:
+ * itself under `scope="self"`, `documentElement` under `scope="document"`.
+ * Layers apply in order base theme, provider adapter output, registered color
+ * scheme, then `variables`, and the element re-resolves when the OS color
+ * scheme (under `theme="auto"`), the provider registry or the scheme catalog
+ * changes. It renders nothing of its own and defaults to `display: contents`.
+ */
 export class PieThemeElement extends HTMLElementBase {
 	static get observedAttributes() {
 		return ["theme", "scope", "provider", "scheme", "variables"];
@@ -222,6 +236,11 @@ export class PieThemeElement extends HTMLElementBase {
 	private stopObservingSchemes: (() => void) | null = null;
 	private stopObservingProviders: (() => void) | null = null;
 
+	/**
+	 * Base theme: `light` (default), `dark`, or `auto` to follow
+	 * `prefers-color-scheme`; another attribute value, such as a DaisyUI theme
+	 * name, becomes `data-theme` over the light base.
+	 */
 	get theme(): ThemeMode {
 		const value = this.getAttribute("theme");
 		return isThemeMode(value) ? value : "light";
@@ -231,6 +250,11 @@ export class PieThemeElement extends HTMLElementBase {
 		this.setAttribute("theme", value);
 	}
 
+	/**
+	 * Write target: `self` (default) for this element, or `document` for
+	 * `documentElement`, where the most recently connected or changed
+	 * document-scoped `<pie-theme>` is active.
+	 */
 	get scope(): ThemeScope {
 		const value = this.getAttribute("scope");
 		return isThemeScope(value) ? value : "self";
@@ -240,6 +264,10 @@ export class PieThemeElement extends HTMLElementBase {
 		this.setAttribute("scope", value);
 	}
 
+	/**
+	 * Explicit overrides, the last layer: `--*` keys with string or finite-number
+	 * values, mirrored to the `variables` attribute as JSON.
+	 */
 	get variables(): ThemeVariables {
 		return { ...this.variablesOverride };
 	}
@@ -249,6 +277,11 @@ export class PieThemeElement extends HTMLElementBase {
 		this.setAttribute("variables", JSON.stringify(this.variablesOverride));
 	}
 
+	/**
+	 * Provider adapter to read host tokens through: a registered adapter id,
+	 * `auto` (default) for the first registered adapter that can read the target,
+	 * or `none`.
+	 */
 	get provider(): string {
 		return this.getAttribute("provider")?.trim() || "auto";
 	}
@@ -257,6 +290,10 @@ export class PieThemeElement extends HTMLElementBase {
 		this.setAttribute("provider", value || "auto");
 	}
 
+	/**
+	 * Requested color scheme id; `default` (default) applies none, and an id not
+	 * yet registered is kept and applies once a matching scheme registers.
+	 */
 	get scheme(): string {
 		return this.getAttribute("scheme")?.trim() || "default";
 	}
@@ -423,9 +460,7 @@ export class PieThemeElement extends HTMLElementBase {
 	} {
 		const rawTheme = this.getAttribute("theme")?.trim();
 		if (rawTheme === "auto") {
-			const prefersDark = window.matchMedia(
-				"(prefers-color-scheme: dark)",
-			).matches;
+			const prefersDark = window.matchMedia(DARK_SCHEME_QUERY).matches;
 			const effectiveTheme = prefersDark ? "dark" : "light";
 			return { effectiveTheme, dataTheme: effectiveTheme };
 		}
@@ -480,7 +515,7 @@ export class PieThemeElement extends HTMLElementBase {
 		}
 
 		if (this.getAttribute("theme")?.trim() === "auto") {
-			this.mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+			this.mediaQuery = window.matchMedia(DARK_SCHEME_QUERY);
 			this.mediaQuery.addEventListener("change", this.onMediaChange);
 		}
 	}

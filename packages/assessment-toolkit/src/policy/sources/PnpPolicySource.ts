@@ -32,8 +32,6 @@ export interface PnpPolicyToolFlags {
 	 * override grants it (host UI cannot toggle off).
 	 */
 	alwaysAvailable: boolean;
-	/** Tool-specific settings derived from item / assessment settings. */
-	settings?: unknown;
 	/** Which PNP/profile rule contributed the surviving verdict. */
 	rule: PnpPolicySourceRule;
 }
@@ -76,11 +74,12 @@ export interface PnpPolicyResult {
 	 */
 	blockedToolIds: Set<string>;
 	/**
-	 * Tool IDs PNP/profile policy mandates (item or district `requiredTools`). Used
-	 * by the engine to detect `tool-policy.requiredToolBlocked`
+	 * Tools PNP/profile policy mandates (item or district `requiredTools`), each
+	 * with the requirement that names it, including a tool a `true` override
+	 * decides. Used by the engine to detect `tool-policy.requiredToolBlocked`
 	 * diagnostics for tools removed by host policy.
 	 */
-	mandatedToolIds: Set<string>;
+	mandates: Map<string, "item-requirement" | "district-requirement">;
 	/**
 	 * Per-tool flags merged into surviving `ToolPolicyEntry`s.
 	 */
@@ -91,15 +90,6 @@ export interface PnpPolicyResult {
 	 * support id).
 	 */
 	decisions: PnpPolicyDecisionEvent[];
-	/**
-	 * Ids named by a profile, district policy, test administration or item that
-	 * no tool is registered under, each with the rules whose lists name it, in
-	 * precedence order. Nothing resolves them; the engine turns each into a
-	 * `tool-policy.unknownSupportId` diagnostic. Empty when the registry is: an
-	 * empty registry has nothing to check an id against, and
-	 * `tool-config-validation` already reports it once.
-	 */
-	unmappedSupportIds: Map<string, PnpPolicySourceRule[]>;
 	/**
 	 * Ids a `true` test-administration override names that an item restriction
 	 * or a PNP prohibition withdrew instead, each with the rule that did. The
@@ -123,7 +113,6 @@ interface PnpResolutionContext {
 	districtPolicy?: AssessmentSettings["districtPolicy"];
 	testAdmin?: AssessmentSettings["testAdministration"];
 	itemSettings?: ItemSettings;
-	toolConfigs?: AssessmentSettings["toolConfigs"];
 }
 
 export class PnpPolicySource {
@@ -167,8 +156,8 @@ export class PnpPolicySource {
 	 * feature: the returned result carries exactly one decision, and
 	 * `decisions[0].action` is the verdict.
 	 *
-	 * Reusing `resolveSupport(...)` rather than re-walking the precedence rules
-	 * is the point — a second copy of the eight levels would drift.
+	 * It reuses `resolveSupport(...)` because a second copy of the eight levels
+	 * would drift.
 	 */
 	resolveFeature(featureId: string, args: PnpPolicyApplyArgs): PnpPolicyResult {
 		const { ctx, result } = this.prepare(args);
@@ -191,14 +180,9 @@ export class PnpPolicySource {
 
 		const result: PnpPolicyResult = {
 			blockedToolIds: new Set(),
-			mandatedToolIds: new Set(),
+			mandates: new Map(),
 			perToolFlags: new Map(),
 			decisions: [],
-			unmappedSupportIds: this.unmappedIds(
-				pnp,
-				settings,
-				itemSettings,
-			),
 			blockedOverrides: new Map(),
 			sources: {},
 		};
@@ -230,7 +214,6 @@ export class PnpPolicySource {
 			districtPolicy: settings?.districtPolicy,
 			testAdmin: settings?.testAdministration,
 			itemSettings,
-			toolConfigs: settings?.toolConfigs,
 		};
 
 		return { ctx, result };
@@ -310,13 +293,19 @@ export class PnpPolicySource {
 			return;
 		}
 
+		const mandate = ctx.itemSettings?.requiredTools?.includes(supportId)
+			? "item-requirement"
+			: ctx.districtPolicy?.requiredTools?.includes(supportId)
+				? "district-requirement"
+				: undefined;
+
 		// 5. Test administration override `true`: grants the support for the
-		// session.
+		// session. A requirement naming it keeps its mandate.
 		if (override === true) {
+			if (mandate) out.mandates.set(supportId, mandate);
 			out.perToolFlags.set(supportId, {
-				required: false,
+				required: mandate !== undefined,
 				alwaysAvailable: true,
-				settings: this.resolveToolSettings(supportId, ctx),
 				rule: "test-admin-override",
 			});
 			out.decisions.push({
@@ -332,12 +321,11 @@ export class PnpPolicySource {
 		}
 
 		// 6. Item requirement (forces enable)
-		if (ctx.itemSettings?.requiredTools?.includes(supportId)) {
-			out.mandatedToolIds.add(supportId);
+		if (mandate === "item-requirement") {
+			out.mandates.set(supportId, mandate);
 			out.perToolFlags.set(supportId, {
 				required: true,
 				alwaysAvailable: false,
-				settings: this.resolveToolSettings(supportId, ctx),
 				rule: "item-requirement",
 			});
 			out.decisions.push({
@@ -347,18 +335,17 @@ export class PnpPolicySource {
 				action: "enable",
 				sourceType: "item",
 				reason: `Item requires "${supportId}" for this question`,
-				value: ctx.itemSettings.requiredTools,
+				value: ctx.itemSettings?.requiredTools,
 			});
 			return;
 		}
 
 		// 7. District requirement
-		if (ctx.districtPolicy?.requiredTools?.includes(supportId)) {
-			out.mandatedToolIds.add(supportId);
+		if (mandate === "district-requirement") {
+			out.mandates.set(supportId, mandate);
 			out.perToolFlags.set(supportId, {
 				required: true,
 				alwaysAvailable: false,
-				settings: this.resolveToolSettings(supportId, ctx),
 				rule: "district-requirement",
 			});
 			out.decisions.push({
@@ -368,7 +355,7 @@ export class PnpPolicySource {
 				action: "enable",
 				sourceType: "assessment",
 				reason: `District policy requires "${supportId}" for all assessments`,
-				value: ctx.districtPolicy.requiredTools,
+				value: ctx.districtPolicy?.requiredTools,
 			});
 			return;
 		}
@@ -378,7 +365,6 @@ export class PnpPolicySource {
 			out.perToolFlags.set(supportId, {
 				required: false,
 				alwaysAvailable: true,
-				settings: this.resolveToolSettings(supportId, ctx),
 				rule: "pnp-support",
 			});
 			out.decisions.push({
@@ -407,26 +393,31 @@ export class PnpPolicySource {
 	}
 
 	/**
-	 * The named ids no tool is registered under, with the rules naming each in
-	 * precedence order. A support id is the id of the tool it grants, so an id
-	 * missing from the registry matches nothing placed.
+	 * Ids the assessment or any of `items` names that no tool is registered
+	 * under, each with the rules whose lists name it, in precedence order. A
+	 * support id is the id of the tool it grants, so an id missing from the
+	 * registry matches nothing placed; the engine turns each into a
+	 * `tool-policy.unknownSupportId` diagnostic. Empty when the registry is: an
+	 * empty registry has nothing to check an id against, and
+	 * `tool-config-validation` already reports it once.
 	 */
-	private unmappedIds(
-		pnp: PersonalNeedsProfile | undefined,
-		settings: AssessmentSettings | undefined,
-		itemSettings: ItemSettings | undefined,
+	unknownSupportIds(
+		assessment: AssessmentEntity | null | undefined,
+		items: readonly ItemSettings[],
 	): Map<string, PnpPolicySourceRule[]> {
 		const unmapped = new Map<string, PnpPolicySourceRule[]>();
 		if (this.toolRegistry.getAllTools().length === 0) return unmapped;
+		const pnp = assessment?.personalNeedsProfile;
+		const settings = assessment?.settings as AssessmentSettings | undefined;
 		const named: Array<[PnpPolicySourceRule, readonly string[] | undefined]> = [
 			["district-block", settings?.districtPolicy?.blockedTools],
 			[
 				"test-admin-override",
 				Object.keys(settings?.testAdministration?.toolOverrides ?? {}),
 			],
-			["item-restriction", itemSettings?.restrictedTools],
+			["item-restriction", items.flatMap((item) => item.restrictedTools ?? [])],
 			["pnp-prohibited", pnp?.prohibitedSupports],
-			["item-requirement", itemSettings?.requiredTools],
+			["item-requirement", items.flatMap((item) => item.requiredTools ?? [])],
 			["district-requirement", settings?.districtPolicy?.requiredTools],
 			["pnp-support", pnp?.supports],
 		];
@@ -439,16 +430,5 @@ export class PnpPolicySource {
 			}
 		}
 		return unmapped;
-	}
-
-	/** Tool parameters: the item's entry, else the assessment's. */
-	private resolveToolSettings(
-		supportId: string,
-		ctx: PnpResolutionContext,
-	): Record<string, unknown> | undefined {
-		return (
-			ctx.itemSettings?.toolParameters?.[supportId] ??
-			ctx.toolConfigs?.[supportId]
-		);
 	}
 }

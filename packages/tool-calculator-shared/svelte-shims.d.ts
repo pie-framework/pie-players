@@ -4,8 +4,3 @@ declare module "*.svelte" {
 	export const registration: { readonly tag: string };
 	export default SvelteComponent;
 }
-
-declare module "*.svelte?customElement" {
-	const element: CustomElementConstructor;
-	export default element;
-}

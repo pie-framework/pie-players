@@ -2,6 +2,7 @@ import { defineConfig, devices } from "@playwright/test";
 import { existsSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { viteListeningOn } from "../../scripts/lib/playwright-web-server.mjs";
 
 /**
  * Section demos under `dev:section:cdn`, whose dev server also serves a built
@@ -40,8 +41,7 @@ export default defineConfig({
 	},
 	webServer: {
 		command: `bun run --cwd "${workspaceRootCwd}" dev:section:cdn -- --host ${sectionDemosHost} --port ${sectionDemosPort} --strictPort`,
-		url: baseURL,
-		reuseExistingServer: false,
+		wait: viteListeningOn(baseURL),
 		timeout: 180_000,
 		env: {
 			PLAYWRIGHT_DISABLE_VITE_OVERLAY: "1",

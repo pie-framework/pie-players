@@ -432,6 +432,7 @@ const enUS = {
 		textToSpeech: {
 			name: "Text to Speech",
 			description: "Read content aloud",
+			initFailed: "Unable to initialize text-to-speech. Try again.",
 			/** Inline reading controls and their live-region announcements. */
 			inline: {
 				controlsA11y: "Reading controls",
@@ -439,14 +440,13 @@ const enUS = {
 				rewindA11y: "Rewind",
 				fastForwardA11y: "Fast-forward",
 				stopA11y: "Stop reading",
-				initializing: "Initializing text-to-speech",
-				initFailed: "Unable to initialize text-to-speech. Try again.",
 				starting: "Starting reading",
 				started: "Reading started",
 				resumed: "Reading resumed",
 				pausedAnnouncement: "Reading paused",
 				stopped: "Reading stopped",
 				switchedSection: "Reading switched to another section",
+				nothingToRead: "Nothing to read aloud here",
 				startFailed: "Unable to start reading",
 				skippedForward: "Skipped forward",
 				skipForwardFailed: "Unable to skip forward",
@@ -546,6 +546,8 @@ const enUS = {
 		pnp: {
 			title: "PNP Profile",
 			noAssessmentBound: "No assessment bound",
+			noAssessmentBoundBody:
+				"Profile, district and test-administration policy have nothing to read, so only an item's requiredTools can grant an accommodation. Pass the assessment to the toolkit's assessment property, or call updateAssessment(...) on the toolkit coordinator.",
 			determinationReadOnly: "Determination (read-only)",
 			toolsEditor: "Tools Editor",
 			enforcement: "PNP enforcement",
@@ -632,17 +634,43 @@ const enUS = {
 			previewUnavailable:
 				"Cannot preview while this service is unavailable.",
 			browserSynthesisUnavailable: "Browser speech synthesis is unavailable.",
-			browserSynthesisEndedEarly:
-				"Browser speech synthesis ended before audio started. Restart the browser and try again.",
-			browserSynthesisQueueFailed:
-				"Browser speech synthesis failed to queue preview audio.",
-			browserPreviewFailed: "Failed to play browser voice preview.",
 			ssmlWordTrackingDisabled:
 				"Google SSML preview preserves authored SSML, so word tracking is disabled.",
 			applyUnavailable:
 				"Cannot apply settings while this service is unavailable.",
 			coordinatorUnavailable:
 				"Toolkit coordinator is not available for text-to-speech updates.",
+			customProviderNotRegistered: "Custom provider '{id}' is not registered.",
+			customProviderNoConfig: "Custom provider '{id}' did not return an apply config.",
+			httpError: "HTTP {status}: {message}",
+			unknownError: "Unknown error",
+			previewRequestFailed: "Preview request failed ({status}).",
+			notAvailable: "n/a",
+			voiceLocal: "local",
+			voiceRemote: "remote",
+			voiceBrowserDefault: "browser default",
+			browserAvailable: {
+				one: "Browser TTS available ({count} voice detected).",
+				other: "Browser TTS available ({count} voices detected).",
+			},
+			pollyAvailable: {
+				one: "AWS Polly available ({count} matching voice, {engine} engine).",
+				other: "AWS Polly available ({count} matching voices, {engine} engine).",
+			},
+			googleAvailable: {
+				one: "Google Cloud TTS available ({count} matching voice).",
+				other: "Google Cloud TTS available ({count} matching voices).",
+			},
+			headerRowReservation: "Item header row reservation: {state}",
+			speedOptionsHelp:
+				"Comma or semicolon-separated multipliers. Include 1 for Normal; leave empty to hide speed controls.",
+			usingSelectedVoice: "Using selected voice: {voice}",
+			autoVoice: "Best available voice (auto): {voice}",
+			autoVoiceWaiting: "Best available voice (auto): waiting for browser voices.",
+			previewHintBrowserSsml: "SSML is unsupported in Browser preview.",
+			previewHintGoogleSsml: "SSML preserved. Tracking disabled.",
+			previewHintCustom: "Tracking enabled when provider returns speech marks.",
+			previewHintTracking: "Tracking enabled while preview plays.",
 		},
 	},
 };

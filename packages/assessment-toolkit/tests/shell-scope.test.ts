@@ -412,6 +412,38 @@ describe("createShellScope", () => {
 		]);
 	});
 
+	test("holds what it sends while its runtime is gone, for the runtime that replaces it", () => {
+		// A toolkit replaced under a shell slotted through it, as the section
+		// player's base does: happy-dom routes no event through a slot, so the
+		// toolkit elements stand beside the shell while `base` answers for them.
+		const page = newPage();
+		const base = child(page);
+		const host = child(base);
+		const runtimeOn = (runtimeId: string) => {
+			const toolkit = child(page);
+			const provider = new ContextProvider(base, {
+				context: assessmentToolkitHostRuntimeContext,
+				initialValue: runtimeValue(runtimeId, {}, toolkit),
+			});
+			provider.connect();
+			runtimes.push(() => provider.disconnect());
+			return { toolkit, provider };
+		};
+		const first = runtimeOn("runtime-1");
+		const scope = createShellScope();
+		scopes.push(scope);
+		scope.publish({ host, ...q1 });
+		const sessions = received(base, "pie-item-session-changed");
+
+		first.toolkit.remove();
+		first.provider.disconnect();
+		scope.send("pie-item-session-changed", { itemId: "q1" });
+		expect(sessions).toEqual([]);
+
+		runtimeOn("runtime-2");
+		expect(sessions).toEqual([{ itemId: "q1", runtimeId: "runtime-2" }]);
+	});
+
 	test("holds the newest fifty events it sends before a runtime answers", () => {
 		const { runtimeNode, host, scope } = setup({ runtime: false });
 		const loaded = received(runtimeNode, "pie-content-loaded");

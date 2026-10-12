@@ -1,162 +1,67 @@
-# pie-players
+# PIE Players
 
-PIE players and assessment toolkit with Bun + TypeScript + Svelte 5.
+Players, an assessment toolkit and accessibility tools for [PIE](https://pie-framework.org) (Portable Interactions and Elements) assessment content. Every player is a custom element, so it runs in any web page, with any framework or none.
 
-**Docs app**: `apps/docs`
-**Examples app**: `apps/section-demos`
+- **Item player** renders one PIE item, for delivery or authoring.
+- **Section player** composes the items and passages of one section, with layouts, toolbars and section session state.
+- **Assessment toolkit** coordinates tools, accommodations, text-to-speech, highlighting and accessibility catalogs, and resolves which tools each learner receives.
+- **Tools**: calculators, ruler, protractor, line reader, answer eliminator, highlighter, dictionaries, color schemes, sign language video and more.
+- **Print player** renders items for paper and answer keys; **theme** carries design tokens and color schemes.
 
-## Quick Start
+The PIE elements these players render, the question types and passages, come from [pie-elements-ng](https://github.com/pie-framework/pie-elements-ng). Hosts assemble their production assessment players from these building blocks; `@pie-players/pie-assessment-player` is a reference assembly ([product scope](docs/architecture/architecture.md#product-scope)).
 
-```bash
-bun install
-bun run dev:section -- --rebuild   # First section-demo run (builds package dist outputs)
-bun run dev:section                # Section demos (daily run)
-bun run dev:docs                   # Docs site
-```
+![PIE Players building blocks: the host embeds the item, section, print or reference assessment player; the assessment toolkit configures them and places tools; every player renders PIE elements](docs/img/building-blocks.excalidraw.svg)
 
-## Development
+## Quick start
 
 ```bash
-bun run dev      # Turbo dev for section-demos (see package.json "dev")
-bun run build    # Build publishable packages + tools (excludes apps)
-bun run typecheck
-bun run test
-bun run format   # Format (Biome)
+npm install @pie-players/pie-item-player
 ```
 
-Demo apps resolve publishable packages through **`dist/`** (and section-demos uses explicit Vite aliases for many tools). See [Demo workspace resolution](docs/development/demo-workspace-resolution.md).
+Or, without a build step:
 
-## Consumer Import Rules
-
-When consuming PIE web components from apps or other packages:
-
-- Import custom-element registration entrypoints (for example `@pie-players/pie-assessment-toolkit/components/item-toolbar-element`), not raw package `.svelte` component files.
-- Do not import package source paths like `@pie-players/<pkg>/src/...` from consumers.
-- Do not use cross-package `?customElement` imports.
-- Keep runtime package exports pointing to built `dist` artifacts.
-- Type-check with `moduleResolution` `bundler`, `node16` or `nodenext`. `node10` (`node`) ignores `exports` and cannot resolve the subpaths these packages publish; see [Library Packaging Strategy](docs/setup/library-packaging-strategy.md#consumer-guidance-current-scope).
-
-Boundary checks:
-
-```bash
-bun run check:source-exports
-bun run check:consumer-boundaries
-bun run check:custom-elements
+```html
+<script
+  type="module"
+  src="https://cdn.jsdelivr.net/npm/@pie-players/pie-item-player@x.y.z/dist/pie-item-player.js"
+></script>
+<pie-item-player id="player"></pie-item-player>
 ```
 
-## Versioning Policy
-
-All publishable `@pie-players/*` packages are released with a **fixed (lockstep)
-version**. At any published version, every package in the suite carries that same
-version number — there is no per-package version drift.
-
-### What this means for consumers
-
-- Pick one `@pie-players/*` version and update every `@pie-players/*` dependency
-  in your app to that version. The suite is tested and published as a cohesive
-  unit at that version.
-- You will never need to reason about a compatibility matrix across
-  `@pie-players/*` packages. If two `@pie-players/*` packages report the same
-  version, they are designed and tested to work together.
-- While the project remains on the pre-1.0 `0.x.y` line, every release is a
-  **patch** release across **all** publishable packages, including ones whose
-  source did not change. This is expected — it is the cost of the lockstep
-  guarantee above.
-
-### Why fixed versioning
-
-The publishable packages in this repo (players, tools, TTS servers, theming,
-toolkits) form a single cohesive player framework. Internal contracts cross
-package boundaries (element registration, theme tokens, tool coordination,
-session/session-state shape), so consumers almost always adopt the suite
-together rather than piecemeal. Fixed versioning removes a category of
-compatibility bugs at the cost of more churn on unchanged packages per release.
-
-### How it is enforced
-
-- Changesets' `fixed` block in
-  [`.changeset/config.json`](./.changeset/config.json) lists every publishable
-  package.
-- `scripts/check-fixed-versioning.mjs` runs as part of `bun run verify:publish`
-  and blocks publish if any publishable package has drifted.
-- Release prep always covers every publishable package — see
-  [`AGENTS.md`](./AGENTS.md) and
-  [`docs/setup/publishing.md`](./docs/setup/publishing.md).
-
-## Releasing From Workspace
-
-This monorepo keeps internal dependencies as `workspace:*` during development.
-
-The canonical local release command is `bun run release:with-version`. It
-creates the temporary all-packages patch changeset, rewrites workspace ranges to
-concrete package versions for publish, runs preflight checks/tests, publishes,
-then restores the original workspace ranges. This avoids leaking `workspace:*`
-into npm metadata while keeping local development ergonomics unchanged.
-
-Local publishing uses the codebase and branch currently checked out. Confirm the
-current branch and working tree state before publishing; do not switch to a
-different branch or use the GitHub workflow unless that is explicitly requested.
-
-Before release merges/publishes, run:
-
-```bash
-bun run verify:publish
-```
-
-Manual patch-only publish flow (matches CI gates):
-
-```bash
-bun run release:with-version
-```
-
-`release:with-version` creates a temporary all-packages patch changeset, runs preflight checks/tests, then publishes.
-Merges to `master` also auto-generate a temporary patch changeset when needed for release PR prep.
-
-### Registry switching (CodeArtifact vs npmjs)
-
-Use npmjs for publishing `@pie-players/*`, and switch back to CodeArtifact for
-private consumer installs when needed.
-
-```bash
-# one command on npmjs (preferred)
-NPM_CONFIG_REGISTRY=https://registry.npmjs.org npm whoami
-
-# publish path on npmjs
-NPM_CONFIG_REGISTRY=https://registry.npmjs.org bun run release:with-version
-
-# set current registry to npmjs
-npm config set registry https://registry.npmjs.org/
-
-# set current registry back to CodeArtifact
-npm config set registry https://renaissance-112784725199.d.codeartifact.us-east-1.amazonaws.com/npm/npm-rgp/
-```
-
-## Release Labels
-
-Use release labels to tag a coordinated release wave without forcing lockstep package versions.
-
-```bash
-bun run release:label                # Create annotated tag (default: pie-players-YYYY.MM.DD)
-bun run release:label -- --label players-2026.02
-bun run release:label:push           # Create and push tag to origin
-```
-
-## Packages
-
-**Interactive Players**: pie-item-player
-**Print Player**: print-player - Item-level print rendering for production use
-**Tools**: calculator, graph, ruler, protractor, annotation-toolbar, color-scheme, periodic-table
-**Shared**: players-shared, assessment-toolkit
+[Getting started](docs/getting-started.md) renders an item, saves the learner's response and scores it.
 
 ## Documentation
 
-- [Architecture](docs/architecture/architecture.md)
-- [Item Player Overview](docs/item-player/overview.md)
-- [Launching from LTI](docs/integrations/lti.md)
-- [NPM Token Setup](docs/setup/npm_token_setup.md)
-- [Publishing Contract](docs/setup/publishing.md)
-- [Docs Index](docs/readme.md)
+| Guide | Covers |
+| --- | --- |
+| [Getting started](docs/getting-started.md) | A first item in a page |
+| [Installing](docs/install/packages.md) | Packages, entry points, versions and pinning |
+| [Architecture](docs/architecture/architecture.md) | How the players, toolkit, tools and elements fit together |
+| [Item player](docs/item-player/overview.md) | Loading strategies, modes, sessions, scoring |
+| [Section player](docs/section-player/integration-guide.md) | Sections, layouts, navigation, persistence |
+| [Assessment toolkit](packages/assessment-toolkit/README.md) | Tools, accommodations and tool policy |
+| [Accessibility](docs/accessibility/README.md) | Text-to-speech, accessibility catalogs, WCAG |
+| [Theming](docs/theming/how-theming-works.md) | Design tokens and color schemes |
+| [Security](docs/security/readme.md) | Answer keys, hosted mode, trust boundaries |
+| [All documentation](docs/readme.md) | The full index |
+
+## Packages
+
+The `@pie-players/*` packages release together under one version number, written `x.y.z` in these docs; the preloaded player is versioned on its own. [Packages and entry points](docs/install/packages.md) lists every package and what it needs, and [versioning](docs/install/versioning.md) covers pinning and stability.
+
+## Contributing
+
+The packages are built with Bun, TypeScript and Svelte 5. Each custom-element package bundles its UI runtime (Svelte 5; Lit for the print player), so hosts install no framework.
+
+```bash
+bun install
+bun run dev:section -- --rebuild   # first run: builds package dist outputs
+bun run dev:section                # section demos
+bun run test
+```
+
+Contributors need Bun 1.3.11 and Node 22.16 (`.nvmrc`); the [demo system](docs/setup/demo_system.md#prerequisites) lists the rest of the toolchain. [Environment setup](docs/setup/environment-setup.md) covers the demos' environment variables and [releasing](docs/setup/publishing.md) the release workflow.
 
 ## License
 
-See LICENSE file.
+MIT.

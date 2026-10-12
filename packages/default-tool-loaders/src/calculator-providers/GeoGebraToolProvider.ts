@@ -5,7 +5,6 @@ import type {
 	LazyCalculatorProviderDefinition,
 } from "./LazyCalculatorToolProvider.js";
 import { LazyCalculatorToolProvider } from "./LazyCalculatorToolProvider.js";
-import type { ToolProviderCapabilities } from "@pie-players/pie-assessment-toolkit/tools/registration";
 
 export interface GeoGebraToolProviderConfig
 	extends CalculatorToolProviderInitConfig {
@@ -28,20 +27,6 @@ export class GeoGebraToolProvider extends LazyCalculatorToolProvider<GeoGebraToo
 			},
 			initializationErrorMessage:
 				"Failed to initialize GeoGebra calculator provider. Confirm that the deployment may load GeoGebra and that its script URL is reachable.",
-		};
-	}
-
-	getCapabilities(): ToolProviderCapabilities {
-		return {
-			supportsOffline: false,
-			requiresAuth: false,
-			maxInstances: null,
-			features: {
-				basic: true,
-				scientific: true,
-				graphing: true,
-				fourFunction: false,
-			},
 		};
 	}
 }

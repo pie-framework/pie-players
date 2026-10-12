@@ -98,22 +98,22 @@ describe("assessmentHasPnpPolicyInputs — structural PNP/profile policy materia
 	});
 
 	test("ignores fields policy does not read", () => {
-		// Removed from the types; a host still sending them must not switch
-		// enforcement on, since no precedence level reads them.
-		expect(
-			assessmentHasPnpPolicyInputs({
-				id: "a1",
-				personalNeedsProfile: { supports: [], activateAtInit: ["graph"] },
-				settings: {
-					districtPolicy: { policies: { calculator: { mode: "basic" } } },
-					testAdministration: {
-						mode: "test",
-						startDate: "2026-10-08T08:00:00Z",
-						endDate: "2026-10-08T10:00:00Z",
-					},
-				},
-			} as never),
-		).toBe(false);
+		// Tool parameters and catalogs name tools too, but no precedence level
+		// reads them, so they must not switch enforcement on.
+		const assessment: AssessmentEntity = {
+			id: "a1",
+			qtiVersion: "3.0",
+			personalNeedsProfile: { supports: [] },
+			accessibilityCatalogs: [
+				{ identifier: "c1", cards: [{ catalog: "spoken", content: "Hello" }] },
+			],
+			settings: {
+				districtPolicy: {},
+				testAdministration: {},
+				toolParameters: { calculator: { type: "basic" } },
+			},
+		};
+		expect(assessmentHasPnpPolicyInputs(assessment)).toBe(false);
 	});
 
 	test("ignores empty PNP arrays / empty objects", () => {
@@ -173,18 +173,21 @@ describe("itemSettingsHavePnpPolicyInputs — structural PNP/profile policy mate
 		).toBe(false);
 	});
 
-	test("returns true for non-empty `requiredTools` / `restrictedTools` / `toolParameters`", () => {
+	test("returns true for non-empty `requiredTools` / `restrictedTools`", () => {
 		expect(itemSettingsHavePnpPolicyInputs({ requiredTools: ["graph"] })).toBe(
 			true,
 		);
 		expect(
 			itemSettingsHavePnpPolicyInputs({ restrictedTools: ["calculator"] }),
 		).toBe(true);
+	});
+
+	test("returns false for tool parameters alone", () => {
 		expect(
 			itemSettingsHavePnpPolicyInputs({
-				toolParameters: { calculator: { mode: "basic" } },
+				toolParameters: { calculator: { type: "basic" } },
 			}),
-		).toBe(true);
+		).toBe(false);
 	});
 });
 

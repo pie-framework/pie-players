@@ -9,8 +9,7 @@
  * Svelte 5's reactivity is runes-based, and placing a promise directly inside
  * a `$derived` is awkward: the derived value is the promise itself, and the
  * component needs to await it indirectly, usually via an ad-hoc `$state` flag
- * set from a `$effect`. That pattern is the root cause of the section-swap
- * readiness race fixed as part of the deep ElementLoader architecture work:
+ * set from a `$effect`. That pattern races on a section swap:
  *
  *   let ready = $state(false);
  *   $effect(() => { loader(args).then(() => ready = true); });

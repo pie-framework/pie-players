@@ -1,7 +1,7 @@
 /**
  * Workspace resolution: many `@pie-players/*` imports are aliased to each package’s
  * built `dist/` output so local dev matches npm consumers. See
- * docs/development/demo-workspace-resolution.md
+ * docs/setup/demo_system.md#package-resolution
  */
 import fs from "node:fs";
 import path from "node:path";
@@ -116,10 +116,10 @@ export default (async () => {
 				// Same-origin proxy for the Renaissance Roboto bundle. Same
 				// rationale as `/_fa-pro` above: the CSS loads cross-origin
 				// fine but the .ttf / .woff2 it references is CORS-blocked.
-				"/_roboto": {
+				"/_fonts/Roboto": {
 					target: "https://ui.renaissance.com",
 					changeOrigin: true,
-					rewrite: (p) => p.replace(/^\/_roboto/, "/fonts/Roboto"),
+					rewrite: (p) => p.replace(/^\/_fonts/, "/fonts"),
 				},
 			},
 		},

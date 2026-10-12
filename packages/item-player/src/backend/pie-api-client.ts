@@ -1,8 +1,9 @@
 /**
- * The built-in `pie-api` HTTP transport: the fallback for a delivery or
- * authoring backend that names no `client` of its own.
+ * The built-in `pie-api` HTTP transport: the fallback for a delivery backend
+ * that names no `client` of its own. It speaks pie-api-aws's player routes; an
+ * authoring backend always supplies its own client.
  *
- * Loaded on demand. `delivery.ts` and `authoring.ts` reach it through
+ * Loaded on demand. `delivery.ts` reaches it through
  * `await import("./pie-api-client.js")` from inside their async entry points, so
  * a host that supplies its own client never pays for the endpoint table, the
  * token resolution or the fetch wrapper. Keep every export awaited from an async
@@ -11,11 +12,6 @@
 
 import type {
 	BackendAuthConfig,
-	BackendAuthoringConfig,
-	BackendAuthoringIdentity,
-	BackendAuthoringLoadResult,
-	BackendAuthoringReleaseContext,
-	BackendAuthoringSaveContext,
 	BackendDeliveryConfig,
 	BackendDeliveryLoadContext,
 	BackendDeliveryLoadResult,
@@ -25,6 +21,7 @@ import type {
 	BackendEndpoint,
 	BackendMethod,
 	BackendRequestConfig,
+	BackendRequestOptions,
 } from "./types.js";
 
 const DEFAULT_ENDPOINTS = {
@@ -32,9 +29,6 @@ const DEFAULT_ENDPOINTS = {
 	saveSession: { method: "POST", path: "/api/player/save" },
 	model: { method: "POST", path: "/api/player/model" },
 	score: { method: "POST", path: "/api/player/score" },
-	authoringLoad: { method: "POST", path: "/api/authoring/load" },
-	authoringSaveContent: { method: "POST", path: "/api/authoring/save" },
-	authoringReleaseContent: { method: "POST", path: "/api/authoring/release" },
 } as const satisfies Record<string, { method: BackendMethod; path: string }>;
 
 function normalizeBaseUrl(baseUrl?: string): string {
@@ -76,6 +70,17 @@ async function resolveToken(
 }
 
 /**
+ * pie-api-aws answers 401 to any `overrides` value, an empty map included, from
+ * a token without the `overrides` scope, so an empty map is left off.
+ */
+function requestOverrides(
+	options: BackendRequestOptions | undefined,
+): Record<string, string> | undefined {
+	const overrides = options?.overrides;
+	return overrides && Object.keys(overrides).length > 0 ? overrides : undefined;
+}
+
+/**
  * The Fetch standard caps the total body of a page's in-flight keepalive
  * requests at 64 KiB. Past it `fetch` rejects, which on the unload path means
  * the save is lost with nothing to retry it - so a body over the cap goes as an
@@ -90,6 +95,18 @@ function exceedsKeepaliveLimit(payload: string): boolean {
 			? new TextEncoder().encode(payload).length
 			: payload.length;
 	return bytes > KEEPALIVE_BODY_LIMIT_BYTES;
+}
+
+/**
+ * pie-api-aws puts the cause in `error` beside a generic `message`; a rejection
+ * from the API gateway carries only `message`.
+ */
+function errorDetail(body: unknown): string {
+	if (!body || typeof body !== "object") return "";
+	const { error, message } = body as { error?: unknown; message?: unknown };
+	if (typeof error === "string" && error) return error;
+	if (typeof message === "string" && message) return message;
+	return "";
 }
 
 async function callJson<T>(
@@ -119,8 +136,11 @@ async function callJson<T>(
 			: null;
 
 	try {
+		// pie-api-aws stamps a request's session events from `x-date`, so events
+		// keep the order the client issued them in when requests overtake each other.
 		const headers: Record<string, string> = {
 			"content-type": "application/json",
+			"x-date": String(Date.now()),
 			...(request?.headers || {}),
 		};
 		if (token) {
@@ -135,13 +155,10 @@ async function callJson<T>(
 		});
 		const responseBody = await response.json().catch(() => null);
 		if (!response.ok) {
-			const message =
-				(responseBody &&
-				typeof responseBody === "object" &&
-				"error" in responseBody
-					? String((responseBody as { error?: unknown }).error)
-					: "") || `Backend request failed with status ${response.status}`;
-			throw new Error(message);
+			throw new Error(
+				errorDetail(responseBody) ||
+					`Backend request failed with status ${response.status}`,
+			);
 		}
 		return responseBody as T;
 	} finally {
@@ -167,7 +184,7 @@ export async function callPieApiDeliveryLoad(
 			sessionId: context.sessionId,
 			assignmentId: context.assignmentId,
 			env: context.env,
-			overrides: context.requestOptions?.overrides,
+			overrides: requestOverrides(context.requestOptions),
 		},
 		config.request,
 		token,
@@ -197,7 +214,7 @@ export async function callPieApiDeliverySave(
 			assignmentId: context.assignmentId,
 			models: context.models,
 			passageModels: context.passageModels,
-			overrides: context.requestOptions?.overrides,
+			overrides: requestOverrides(context.requestOptions),
 		},
 		config.request,
 		token,
@@ -216,18 +233,20 @@ export async function callPieApiDeliveryModel(
 	);
 	const token = await resolveToken(config.auth, sharedAuth);
 	const sessionId = context.session.id || context.sessionId;
+	// Given an itemId, pie-api-aws renders the item fresh and ignores `data`.
+	const identity = sessionId
+		? { sessionId }
+		: { itemId: context.itemId, assignmentId: context.assignmentId };
 	return callJson<BackendDeliveryModelResult>(
 		resolveUrl(config.baseUrl, endpoint.path),
 		endpoint.method,
 		{
-			sessionId,
+			...identity,
 			data: context.session.data,
 			env: context.env,
-			itemId: context.itemId,
-			assignmentId: context.assignmentId,
 			models: context.models,
 			passageModels: context.passageModels,
-			overrides: context.requestOptions?.overrides,
+			overrides: requestOverrides(context.requestOptions),
 		},
 		config.request,
 		token,
@@ -255,79 +274,7 @@ export async function callPieApiDeliveryScore(
 			env: context.env,
 			itemId: context.itemId,
 			assignmentId: context.assignmentId,
-			overrides: context.requestOptions?.overrides,
-		},
-		config.request,
-		token,
-	);
-}
-
-export async function callPieApiAuthoringLoad(
-	config: BackendAuthoringConfig,
-	sharedAuth: BackendAuthConfig | undefined,
-	context: BackendAuthoringIdentity & { env: unknown },
-): Promise<BackendAuthoringLoadResult> {
-	const endpoint = normalizeEndpoint(
-		config.endpoints?.load,
-		DEFAULT_ENDPOINTS.authoringLoad,
-	);
-	const token = await resolveToken(config.auth, sharedAuth);
-	return callJson<BackendAuthoringLoadResult>(
-		resolveUrl(config.baseUrl, endpoint.path),
-		endpoint.method,
-		{
-			contentId: context.contentId,
-			collectionId: context.collectionId,
-			env: context.env,
-		},
-		config.request,
-		token,
-	);
-}
-
-export async function callPieApiAuthoringSaveContent(
-	config: BackendAuthoringConfig,
-	sharedAuth: BackendAuthConfig | undefined,
-	context: BackendAuthoringSaveContext,
-): Promise<{ contentId: string }> {
-	const endpoint = normalizeEndpoint(
-		config.endpoints?.saveContent,
-		DEFAULT_ENDPOINTS.authoringSaveContent,
-	);
-	const token = await resolveToken(config.auth, sharedAuth);
-	return callJson<{ contentId: string }>(
-		resolveUrl(config.baseUrl, endpoint.path),
-		endpoint.method,
-		{
-			contentId: context.contentId,
-			collectionId: context.collectionId,
-			config: context.config,
-			env: context.env,
-			options: context.options,
-		},
-		config.request,
-		token,
-	);
-}
-
-export async function callPieApiAuthoringReleaseContent(
-	config: BackendAuthoringConfig,
-	sharedAuth: BackendAuthConfig | undefined,
-	context: BackendAuthoringReleaseContext,
-): Promise<{ contentId: string }> {
-	const endpoint = normalizeEndpoint(
-		config.endpoints?.releaseContent,
-		DEFAULT_ENDPOINTS.authoringReleaseContent,
-	);
-	const token = await resolveToken(config.auth, sharedAuth);
-	return callJson<{ contentId: string }>(
-		resolveUrl(config.baseUrl, endpoint.path),
-		endpoint.method,
-		{
-			contentId: context.contentId,
-			collectionId: context.collectionId,
-			env: context.env,
-			options: context.options,
+			overrides: requestOverrides(context.requestOptions),
 		},
 		config.request,
 		token,

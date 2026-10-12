@@ -33,7 +33,6 @@ export interface SubscriberFanoutHandle {
 	emit(outputs: readonly SectionEngineOutput[]): void;
 	subscribe(listener: EngineOutputListener): () => void;
 	dispose(): void;
-	getListenerCount(): number;
 }
 
 export function createSubscriberFanout(): SubscriberFanoutHandle {
@@ -66,9 +65,5 @@ export function createSubscriberFanout(): SubscriberFanoutHandle {
 		listeners.clear();
 	}
 
-	function getListenerCount(): number {
-		return listeners.size;
-	}
-
-	return { emit, subscribe, dispose, getListenerCount };
+	return { emit, subscribe, dispose };
 }

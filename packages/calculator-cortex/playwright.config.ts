@@ -1,6 +1,8 @@
 import { defineConfig } from "@playwright/test";
+import { viteListeningOn } from "../../scripts/lib/playwright-web-server.mjs";
 
 const port = process.env.CALCULATOR_CORTEX_DEMO_PORT || "5617";
+const baseURL = `http://127.0.0.1:${port}`;
 
 export default defineConfig({
 	testDir: "./e2e",
@@ -11,13 +13,12 @@ export default defineConfig({
 	workers: 1,
 	timeout: 30_000,
 	use: {
-		baseURL: `http://127.0.0.1:${port}`,
+		baseURL,
 		headless: true,
 	},
 	webServer: {
 		command: `bunx vite demo --host 127.0.0.1 --port ${port} --strictPort`,
-		url: `http://127.0.0.1:${port}`,
-		reuseExistingServer: false,
+		wait: viteListeningOn(baseURL),
 		timeout: 30_000,
 	},
 });

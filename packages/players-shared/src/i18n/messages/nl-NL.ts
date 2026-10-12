@@ -353,20 +353,20 @@ const nlNL = {
 		textToSpeech: {
 			name: "Voorlezen",
 			description: "Inhoud laten voorlezen",
+			initFailed: "Voorlezen kon niet worden gestart. Probeer het opnieuw.",
 			inline: {
 				controlsA11y: "Voorleesknoppen",
 				playbackSpeedA11y: "Voorleessnelheid",
 				rewindA11y: "Terugspoelen",
 				fastForwardA11y: "Vooruitspoelen",
 				stopA11y: "Voorlezen stoppen",
-				initializing: "Voorlezen wordt gestart",
-				initFailed: "Voorlezen kon niet worden gestart. Probeer het opnieuw.",
 				starting: "Voorlezen wordt gestart",
 				started: "Voorlezen gestart",
 				resumed: "Voorlezen hervat",
 				pausedAnnouncement: "Voorlezen gepauzeerd",
 				stopped: "Voorlezen gestopt",
 				switchedSection: "Het voorlezen is naar een ander onderdeel gegaan",
+				nothingToRead: "Hier is niets om voor te lezen",
 				startFailed: "Voorlezen kon niet worden gestart",
 				skippedForward: "Vooruitgespoeld",
 				skipForwardFailed: "Vooruitspoelen is niet gelukt",
@@ -451,6 +451,8 @@ const nlNL = {
 		pnp: {
 			title: "PNP-profiel",
 			noAssessmentBound: "Geen toets gekoppeld",
+			noAssessmentBoundBody:
+				"Profiel-, district- en afnamebeleid hebben niets om te lezen, dus alleen de requiredTools van een item kunnen een voorziening toekennen. Geef de toets door aan de assessment-eigenschap van de toolkit, of roep updateAssessment(...) aan op de toolkit-coordinator.",
 			determinationReadOnly: "Vaststelling (alleen lezen)",
 			toolsEditor: "Hulpmiddelen bewerken",
 			enforcement: "PNP-handhaving",
@@ -537,18 +539,45 @@ const nlNL = {
 				"Een voorbeeld is niet mogelijk zolang deze dienst niet beschikbaar is.",
 			browserSynthesisUnavailable:
 				"Spraaksynthese van de browser is niet beschikbaar.",
-			browserSynthesisEndedEarly:
-				"De spraaksynthese van de browser stopte voordat de audio begon. Start de browser opnieuw en probeer het nog eens.",
-			browserSynthesisQueueFailed:
-				"De spraaksynthese van de browser kon het voorbeeldfragment niet in de wachtrij zetten.",
-			browserPreviewFailed:
-				"Het voorbeeld van de browserstem kon niet worden afgespeeld.",
 			ssmlWordTrackingDisabled:
 				"Bij een Google SSML-voorbeeld blijft de SSML uit de bron intact, waardoor woordmarkering is uitgeschakeld.",
 			applyUnavailable:
 				"Instellingen toepassen is niet mogelijk zolang deze dienst niet beschikbaar is.",
 			coordinatorUnavailable:
 				"De toolkitcoördinator is niet beschikbaar voor voorleesinstellingen.",
+			customProviderNotRegistered: "Aangepaste provider '{id}' is niet geregistreerd.",
+			customProviderNoConfig:
+				"Aangepaste provider '{id}' gaf geen configuratie om toe te passen.",
+			httpError: "HTTP {status}: {message}",
+			unknownError: "Onbekende fout",
+			previewRequestFailed: "Het voorbeeldverzoek is mislukt ({status}).",
+			notAvailable: "n.v.t.",
+			voiceLocal: "lokaal",
+			voiceRemote: "extern",
+			voiceBrowserDefault: "browserstandaard",
+			browserAvailable: {
+				one: "Browserspraak beschikbaar ({count} stem gevonden).",
+				other: "Browserspraak beschikbaar ({count} stemmen gevonden).",
+			},
+			pollyAvailable: {
+				one: "AWS Polly beschikbaar ({count} passende stem, engine {engine}).",
+				other: "AWS Polly beschikbaar ({count} passende stemmen, engine {engine}).",
+			},
+			googleAvailable: {
+				one: "Google Cloud TTS beschikbaar ({count} passende stem).",
+				other: "Google Cloud TTS beschikbaar ({count} passende stemmen).",
+			},
+			headerRowReservation: "Rij in de itemkop gereserveerd: {state}",
+			speedOptionsHelp:
+				"Vermenigvuldigers, gescheiden door komma's of puntkomma's. Neem 1 op voor Normaal; laat leeg om de snelheidsknoppen te verbergen.",
+			usingSelectedVoice: "Gekozen stem: {voice}",
+			autoVoice: "Beste beschikbare stem (automatisch): {voice}",
+			autoVoiceWaiting:
+				"Beste beschikbare stem (automatisch): wachten op de stemmen van de browser.",
+			previewHintBrowserSsml: "SSML wordt niet ondersteund in het browservoorbeeld.",
+			previewHintGoogleSsml: "SSML blijft intact. Markering uitgeschakeld.",
+			previewHintCustom: "Markering actief wanneer de provider spraakmarkeringen teruggeeft.",
+			previewHintTracking: "Markering actief tijdens het afspelen van het voorbeeld.",
 		},
 	},
 };

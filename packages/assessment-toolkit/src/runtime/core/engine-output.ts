@@ -29,8 +29,9 @@ export type EngineOutputStageChange = {
 
 /**
  * Canonical `pie-loading-complete`. One-shot per cohort, emitted when the
- * readiness signals satisfy `allLoadingComplete`, so every one of `itemCount`
- * items has loaded.
+ * readiness signals satisfy `allLoadingComplete`: section ready plus the host's
+ * loading signal, which the section player kernel raises once the element
+ * pre-warm resolves. `itemCount` is the composition's item count.
  */
 export type EngineOutputLoadingComplete = {
 	kind: "loading-complete";

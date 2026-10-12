@@ -1,8 +1,9 @@
 /**
  * PIE Initialization Module
  *
- * Bundle loading and element initialization logic.
- * This is the core of the PIE player system.
+ * Loads IIFE bundles into `window.pie`, defines their elements and records
+ * them in the PIE registry, and binds config and session to the elements in
+ * the container.
  */
 
 import { BUILDER_BUNDLE_URL } from "../config/profile.js";
@@ -33,7 +34,6 @@ import {
 	getPieElementBundlesUrl,
 } from "./utils.js";
 
-// Create module-level logger (respects global debug flag - pass function for dynamic checking)
 const logger = createPieLogger("pie-initialization", () =>
 	isGlobalDebugEnabled(),
 );
@@ -46,7 +46,6 @@ const logger = createPieLogger("pie-initialization", () =>
  */
 const DEFAULT_LOAD_TIMEOUT_MS = DEFAULT_IIFE_BUNDLE_RETRY_CONFIG.timeoutMs;
 
-// Default options for loading PIE elements
 const defaultOptions: LoadPieElementsOptions = {
 	buildServiceBase: BUILDER_BUNDLE_URL,
 	bundleType: BundleType.player, // Default to player.js (no controllers, server-processed models)
@@ -79,12 +78,10 @@ const updateRegisteredElement = (
 };
 
 /**
- * Shared element registration logic
- * Extracted from initializePiesFromLoadedBundle and loadPieModule to eliminate ~200 lines of duplication
- *
- * Binds the elements already present in `options.container`. Elements that
- * arrive later are bound by the container owner's observer — see
- * `element-observer.ts`.
+ * Defines the bundle's elements for `config.elements`, records them in the
+ * registry, and binds the elements already present in `options.container`.
+ * Elements that arrive later are bound by the container owner's observer —
+ * see `element-observer.ts`. Returns one promise per defined tag.
  *
  * `elementModule` may be `null`. In that case we cannot register *new*
  * tags (no element constructor source), but we can still update tags
@@ -203,93 +200,91 @@ const registerPieElementsFromBundle = (
 			},
 		);
 
-		{
-			// Register the element in our registry. A package without a
-			// controller, such as a legacy `@pie-element/protractor`, renders
-			// the model it is given under client-player.js too.
-			logger.debug(
-				`[registerPieElementsFromBundle] Registering ${elName} in registry${
-					elementData.controller
-						? " with controller"
-						: " (no controller; its model is used as given)"
-				}`,
+		// A package without a controller, such as a legacy
+		// `@pie-element/protractor`, renders the model it is given under
+		// client-player.js too.
+		logger.debug(
+			`[registerPieElementsFromBundle] Registering ${elName} in registry${
+				elementData.controller
+					? " with controller"
+					: " (no controller; its model is used as given)"
+			}`,
+		);
+		writeRegistryEntry({
+			package: pkg as string,
+			status: Status.loading,
+			tagName: elementTagName,
+			controller: elementData.controller || null,
+			config: elementData.config,
+			bundleType: options.bundleType,
+		});
+
+		if (!isCustomElementConstructor(elementData.Element)) {
+			logger.error(
+				`[registerPieElementsFromBundle] pie.Element for ${pkgStripped} is not a valid custom element constructor.`,
 			);
-			writeRegistryEntry({
-				package: pkg as string,
-				status: Status.loading,
-				tagName: elementTagName,
-				controller: elementData.controller || null,
-				config: elementData.config,
+			return;
+		}
+
+		defineCustomElementSafely(
+			elementTagName,
+			elementData.Element,
+			`element tag in config.elements for ${String(pkg)}`,
+		);
+
+		// Initialize existing elements
+		const searchRoot = options.container || document;
+		const elements = searchRoot.querySelectorAll(elementTagName);
+		logger.debug(
+			`[registerPieElementsFromBundle] Found ${elements.length} elements for tag '${elementTagName}'`,
+		);
+
+		elements.forEach((el) => {
+			initializePieElement(el as PieElement, {
+				config,
+				session,
+				env: options.env,
+				eventListeners: options.eventListeners?.[elementTagName],
 				bundleType: options.bundleType,
 			});
+		});
 
-			if (isCustomElementConstructor(elementData.Element)) {
-				defineCustomElementSafely(
-					elementTagName,
-					elementData.Element,
-					`element tag in config.elements for ${String(pkg)}`,
-				);
+		writeRegistryEntry({
+			...registry[elementTagName],
+			status: Status.loaded,
+		});
 
-				// Initialize existing elements
-				const searchRoot = options.container || document;
-				const elements = searchRoot.querySelectorAll(elementTagName);
+		promises.push(
+			customElements.whenDefined(elementTagName).then(() => {
 				logger.debug(
-					`[registerPieElementsFromBundle] Found ${elements.length} elements for tag '${elementTagName}'`,
+					"[registerPieElementsFromBundle] defined custom PIE element: %s",
+					elementTagName,
 				);
+			}),
+		);
 
-				elements.forEach((el) => {
-					initializePieElement(el as PieElement, {
-						config,
-						session,
-						env: options.env,
-						eventListeners: options.eventListeners?.[elementTagName],
-						bundleType: options.bundleType,
-					});
-				});
-
-				writeRegistryEntry({
-					...registry[elementTagName],
-					status: Status.loaded,
-				});
-
+		if (options.bundleType === BundleType.editor) {
+			if (isCustomElementConstructor(elementData.Configure)) {
+				const editorElName = getEditorElementTagName(
+					elementTagName,
+					String(pkg),
+				);
+				defineCustomElementSafely(
+					editorElName,
+					elementData.Configure,
+					`editor element tag for ${String(pkg)}`,
+				);
 				promises.push(
-					customElements.whenDefined(elementTagName).then(() => {
+					customElements.whenDefined(editorElName).then(() => {
 						logger.debug(
-							"[registerPieElementsFromBundle] defined custom PIE element: %s",
-							elementTagName,
+							`[registerPieElementsFromBundle] defined custom PIE editor element: ${editorElName}`,
 						);
 					}),
 				);
-
-				// Handle editor elements if needed
-				if (options.bundleType === BundleType.editor) {
-					if (isCustomElementConstructor(elementData.Configure)) {
-						const editorElName = getEditorElementTagName(
-							elementTagName,
-							String(pkg),
-						);
-						defineCustomElementSafely(
-							editorElName,
-							elementData.Configure,
-							`editor element tag for ${String(pkg)}`,
-						);
-						promises.push(
-							customElements.whenDefined(editorElName).then(() => {
-								logger.debug(
-									`[registerPieElementsFromBundle] defined custom PIE editor element: ${editorElName}`,
-								);
-							}),
-						);
-					} else {
-						logger.error(
-							`[registerPieElementsFromBundle] pie.Configure for ${pkgStripped} is not a valid custom element constructor.`,
-							elementData.configure,
-						);
-					}
-				}
 			} else {
 				logger.error(
-					`[registerPieElementsFromBundle] pie.Element for ${pkgStripped} is not a valid custom element constructor.`,
+					`[registerPieElementsFromBundle] pie.Configure for ${pkgStripped} is not a valid custom element constructor.`,
+					elementData.configure,
 				);
 			}
 		}
@@ -318,13 +313,11 @@ const registerPieElementsFromBundle = (
  *   the existing `MutationObserver` / `updatePieElements` flow binds
  *   them on the next reactive pass.
  *
- * The original blanket `window.pie not found; was the bundle inlined
- * correctly?` error has been removed: in the section-player + item-player
- * composition it produced a confusing red stack trace for a routine
- * timing condition that the host already handles. Genuine failures
- * (bundle not loaded by *anyone*) still surface — every unregistered tag
- * gets its own warning, and `updatePieElements` later reports any tag
- * that never resolves.
+ * A missing `window.pie` raises no error: in the section-player and
+ * item-player composition it is a routine timing condition the host already
+ * handles. A bundle nobody loaded still surfaces, as a warning per
+ * unregistered tag and as an `updatePieElements` report for any tag that
+ * never resolves.
  *
  * Binds the elements present in `opts.container` now. Elements that arrive
  * later are the container owner's concern: a player with a lifecycle calls
@@ -434,7 +427,6 @@ export const loadPieModule = async (
 				const elementModule = window.pie.default;
 
 				try {
-					// Use shared registration logic (returns array of promises)
 					const registrationPromises = registerPieElementsFromBundle(
 						elementModule,
 						config,
@@ -442,8 +434,6 @@ export const loadPieModule = async (
 						registry,
 						options,
 					);
-
-					// Wait for all element definitions to complete
 					Promise.all(registrationPromises).then(succeed, fail);
 				} catch (error) {
 					// `registerPieElementsFromBundle` throws synchronously for a
@@ -483,9 +473,9 @@ export const loadPieModule = async (
 };
 
 /**
- * Load a PIE bundle from a JavaScript string into window.pie (IIFE bundles only)
- * This only registers elements and controllers - does NOT initialize them.
- * For initialization, use initializePiesFromLoadedBundle after loading.
+ * Executes an IIFE bundle from a JavaScript string, which populates
+ * `window.pie`. Defines no elements: `initializePiesFromLoadedBundle`
+ * registers and binds them afterwards.
  */
 export const loadBundleFromString = async (bundleJs: string): Promise<void> => {
 	await initializeMathRendering();
@@ -493,12 +483,10 @@ export const loadBundleFromString = async (bundleJs: string): Promise<void> => {
 		bundleJs,
 		{ stripSourceMapComment: true },
 		async (bundleUrl) => {
-			// Create a script tag to execute the bundle
 			const script = document.createElement("script");
 			script.src = bundleUrl;
 			script.type = "text/javascript"; // IIFE bundles are standard JS
 
-			// Wait for script to load
 			await new Promise<void>((resolve, reject) => {
 				script.onload = () => resolve();
 				script.onerror = () => reject(new Error("Failed to load bundle"));
@@ -511,8 +499,8 @@ export const loadBundleFromString = async (bundleJs: string): Promise<void> => {
 };
 
 /**
- * Load a PIE bundle from a JavaScript string and initialize elements
- * Convenience wrapper around loadBundleFromString + loadPieModule
+ * Loads a PIE bundle from a JavaScript string and initializes its elements:
+ * `loadPieModule` over a blob URL of the source.
  */
 export const loadPieModuleFromString = async (
 	bundleJs: string,
@@ -521,7 +509,6 @@ export const loadPieModuleFromString = async (
 	opts: LoadPieElementsOptions = {},
 ): Promise<void> => {
 	await withBlobBundleUrl(bundleJs, {}, async (bundleUrl) => {
-		// Use existing loadPieModule with the blob URL
 		await loadPieModule(config, session, { ...opts, bundleUrl });
 	});
 };

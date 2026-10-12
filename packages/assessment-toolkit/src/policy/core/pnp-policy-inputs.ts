@@ -15,7 +15,10 @@
  *   - `settings.districtPolicy` (any `blockedTools` or `requiredTools`),
  *   - `settings.testAdministration` (any `toolOverrides` entry),
  *   - or, for an item-scoped decision, the item's settings carry
- *     `requiredTools` / `restrictedTools` / `toolParameters`.
+ *     `requiredTools` / `restrictedTools`.
+ *
+ * Tool parameters are no policy material: the engine resolves them whatever the
+ * enforcement state.
  *
  * Hosts opt out of the auto-on behavior by passing
  * `pnpEnforcement: "off"` explicitly (engine input or
@@ -26,6 +29,9 @@ import type {
 	AssessmentEntity,
 	ItemSettings,
 } from "@pie-players/pie-players-shared/types";
+
+const hasEntries = (value: unknown): boolean =>
+	Array.isArray(value) && value.length > 0;
 
 /**
  * Return `true` when the assessment carries any PNP/profile policy
@@ -39,31 +45,17 @@ export function assessmentHasPnpPolicyInputs(
 ): boolean {
 	if (!assessment) return false;
 	const pnp = assessment.personalNeedsProfile;
-	if (pnp) {
-		if (Array.isArray(pnp.supports) && pnp.supports.length > 0) return true;
-		if (
-			Array.isArray(pnp.prohibitedSupports) &&
-			pnp.prohibitedSupports.length > 0
-		) {
-			return true;
-		}
+	if (pnp && (hasEntries(pnp.supports) || hasEntries(pnp.prohibitedSupports))) {
+		return true;
 	}
 	const settings = assessment.settings;
 	if (settings) {
 		const district = settings.districtPolicy;
-		if (district) {
-			if (
-				Array.isArray(district.blockedTools) &&
-				district.blockedTools.length > 0
-			) {
-				return true;
-			}
-			if (
-				Array.isArray(district.requiredTools) &&
-				district.requiredTools.length > 0
-			) {
-				return true;
-			}
+		if (
+			district &&
+			(hasEntries(district.blockedTools) || hasEntries(district.requiredTools))
+		) {
+			return true;
 		}
 		const overrides = settings.testAdministration?.toolOverrides;
 		if (
@@ -79,7 +71,7 @@ export function assessmentHasPnpPolicyInputs(
 
 /**
  * Return `true` when an item's settings carry item-level profile policy
- * material (`requiredTools`, `restrictedTools`, or `toolParameters`).
+ * material (`requiredTools` or `restrictedTools`).
  *
  * Used in addition to {@link assessmentHasPnpPolicyInputs} for a decision scoped
  * to the item, so an item with profile-relevant settings engages PNP/profile
@@ -90,26 +82,7 @@ export function itemSettingsHavePnpPolicyInputs(
 	settings: ItemSettings | null | undefined,
 ): boolean {
 	if (!settings) return false;
-	if (
-		Array.isArray(settings.requiredTools) &&
-		settings.requiredTools.length > 0
-	) {
-		return true;
-	}
-	if (
-		Array.isArray(settings.restrictedTools) &&
-		settings.restrictedTools.length > 0
-	) {
-		return true;
-	}
-	if (
-		settings.toolParameters &&
-		typeof settings.toolParameters === "object" &&
-		Object.keys(settings.toolParameters).length > 0
-	) {
-		return true;
-	}
-	return false;
+	return hasEntries(settings.requiredTools) || hasEntries(settings.restrictedTools);
 }
 
 /**

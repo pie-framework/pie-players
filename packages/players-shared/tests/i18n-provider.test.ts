@@ -81,6 +81,25 @@ describe("locale resolution", () => {
 		// Every key still resolves, through English.
 		expect(i18n.t("common.close")).toBe("Close");
 	});
+
+	test("a locale only host messages cover is honoured with a loader configured", async () => {
+		// The tag resolves through `customMessages`, so the loader has nothing to
+		// serve for it; asking it would reject and strand the previous locale.
+		const requested: string[] = [];
+		const i18n = new SimpleI18n({
+			availableLocales: ["en-US", "nl-NL"],
+			loadCatalog: (locale) => {
+				requested.push(locale);
+				return loadBundledCatalog(locale);
+			},
+			customMessages: { "cy-GB": { common: { close: "Cau" } } },
+		});
+		await i18n.setLocale("cy-GB");
+		expect(i18n.getLocale()).toBe("cy-GB");
+		expect(requested).toEqual([]);
+		expect(i18n.t("common.close")).toBe("Cau");
+		expect(i18n.t("common.cancel")).toBe("Cancel");
+	});
 });
 
 describe("fallback chain", () => {

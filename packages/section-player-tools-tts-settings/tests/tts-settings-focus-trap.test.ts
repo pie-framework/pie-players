@@ -15,7 +15,7 @@ const settle = async () => {
 const SHADOW_BUTTONS_TAG = "test-shadow-buttons";
 
 // Renders its buttons into an open shadow root, as every PIE tool does: it
-// stands in for a component-mode provider and for a toolbar opening the panel.
+// stands in for a toolbar opening the panel.
 class ShadowButtonsElement extends HTMLElement {
 	constructor() {
 		super();
@@ -42,17 +42,7 @@ const deepActiveElement = (): Element | null => {
 };
 
 const mountPanel = async (): Promise<HTMLElement> => {
-	const panel = document.createElement(
-		"pie-section-player-tools-tts-settings",
-	) as HTMLElement & { customProviders?: unknown };
-	panel.customProviders = [
-		{
-			id: "shadow-provider",
-			label: "Shadow provider",
-			mode: "component",
-			tagName: SHADOW_BUTTONS_TAG,
-		},
-	];
+	const panel = document.createElement("pie-section-player-tools-tts-settings");
 	document.body.append(panel);
 	await settle();
 	return panel;
@@ -61,30 +51,6 @@ const mountPanel = async (): Promise<HTMLElement> => {
 afterEach(async () => {
 	document.body.replaceChildren();
 	await settle();
-});
-
-test("Shift+Tab between a component provider's shadow controls stays with the browser", async () => {
-	const panel = await mountPanel();
-	const tab = Array.from(panel.querySelectorAll("button")).find(
-		(button) => button.textContent?.trim() === "Shadow provider",
-	);
-	tab?.click();
-	await settle();
-	const [, second] = shadowButtons(panel.querySelector(SHADOW_BUTTONS_TAG));
-	expect(second).toBeDefined();
-	second.focus();
-
-	const shiftTab = new KeyboardEvent("keydown", {
-		key: "Tab",
-		shiftKey: true,
-		bubbles: true,
-		composed: true,
-		cancelable: true,
-	});
-	second.dispatchEvent(shiftTab);
-
-	expect(shiftTab.defaultPrevented).toBe(false);
-	expect(deepActiveElement()).toBe(second);
 });
 
 test("closing the panel returns focus to an opener inside a shadow root", async () => {

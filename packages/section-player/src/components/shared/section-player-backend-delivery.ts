@@ -4,6 +4,7 @@ import type {
 	RuntimeConfig,
 } from "@pie-players/pie-assessment-toolkit/runtime/engine";
 import type { ItemEntity } from "@pie-players/pie-players-shared/types";
+import { isPlainRecord } from "@pie-players/pie-players-shared/object";
 
 type DeliveryConfig = NonNullable<BackendConfig["delivery"]>;
 type AuthoringConfig = NonNullable<BackendConfig["authoring"]>;
@@ -46,10 +47,6 @@ export type ResolveItemPlayerBackendPropsArgs = {
 	sectionId?: string;
 	env: Record<string, unknown>;
 };
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return !!value && typeof value === "object" && !Array.isArray(value);
-}
 
 function cloneAuth<T extends Record<string, unknown> | undefined>(auth: T): T {
 	return auth ? ({ ...auth } as T) : auth;
@@ -110,16 +107,6 @@ function cloneAuthoring(
 	if (!authoring) return undefined;
 	return {
 		...authoring,
-		auth: cloneAuth(authoring.auth),
-		endpoints: cloneEndpoints(authoring.endpoints),
-		request: authoring.request
-			? {
-					...authoring.request,
-					headers: authoring.request.headers
-						? { ...authoring.request.headers }
-						: undefined,
-				}
-			: undefined,
 		media: authoring.media ? { ...authoring.media } : undefined,
 		client: authoring.client ? { ...authoring.client } : undefined,
 	};
@@ -131,6 +118,28 @@ function cloneBackendConfig(backend: BackendConfig): BackendConfig {
 		auth: cloneAuth(backend.auth),
 		delivery: cloneDelivery(backend.delivery),
 		authoring: cloneAuthoring(backend.authoring),
+	};
+}
+
+/**
+ * An empty `overrides` map is dropped: pie-api-aws answers 401 to any
+ * `overrides` value from a token without the `overrides` scope.
+ */
+function mergeRequestOptions(
+	base: DeliveryConfig["options"],
+	override: DeliveryConfig["options"],
+): DeliveryConfig["options"] {
+	if (!base && !override) return undefined;
+	const { overrides: _base, ...baseRest } = base || {};
+	const { overrides: _override, ...overrideRest } = override || {};
+	const overrides = {
+		...(base?.overrides || {}),
+		...(override?.overrides || {}),
+	};
+	return {
+		...baseRest,
+		...overrideRest,
+		...(Object.keys(overrides).length > 0 ? { overrides } : {}),
 	};
 }
 
@@ -168,17 +177,7 @@ function mergeDeliveryConfig(
 						},
 					}
 				: undefined,
-		options:
-			base.options || override.options
-				? {
-						...(base.options || {}),
-						...(override.options || {}),
-						overrides: {
-							...(base.options?.overrides || {}),
-							...(override.options?.overrides || {}),
-						},
-					}
-				: undefined,
+		options: mergeRequestOptions(base.options, override.options),
 		autosave:
 			override.autosave !== undefined
 				? cloneDelivery({ autosave: override.autosave } as DeliveryConfig)
@@ -198,22 +197,6 @@ function mergeAuthoringConfig(
 	return {
 		...cloneAuthoring(base),
 		...cloneAuthoring(override),
-		auth: override.auth ? cloneAuth(override.auth) : cloneAuth(base.auth),
-		endpoints: {
-			...(cloneEndpoints(base.endpoints) || {}),
-			...(cloneEndpoints(override.endpoints) || {}),
-		},
-		request:
-			base.request || override.request
-				? {
-						...(base.request || {}),
-						...(override.request || {}),
-						headers: {
-							...(base.request?.headers || {}),
-							...(override.request?.headers || {}),
-						},
-					}
-				: undefined,
 		media:
 			base.media || override.media
 				? {
@@ -273,7 +256,7 @@ export function resolveItemPlayerPropsWithBackend(
 		...forwardedProps
 	} = args.resolvedPlayerProps as SectionPlayerRuntimePlayerConfig;
 
-	if (!rawBackend || !isRecord(rawBackend)) {
+	if (!rawBackend || !isPlainRecord(rawBackend)) {
 		return forwardedProps;
 	}
 
@@ -301,7 +284,7 @@ export function resolveItemPlayerPropsWithBackend(
 			},
 			resolverBase,
 		);
-		if (resolved && isRecord(resolved)) {
+		if (resolved && isPlainRecord(resolved)) {
 			backend = mergeBackendConfig(baseBackend, resolved);
 		}
 	}
@@ -320,7 +303,7 @@ export function stripItemDeliveryBackendProps(
 		resolveBackend: _resolveBackend,
 		...forwardedProps
 	} = resolvedPlayerProps as SectionPlayerRuntimePlayerConfig;
-	if (!rawBackend || !isRecord(rawBackend)) {
+	if (!rawBackend || !isPlainRecord(rawBackend)) {
 		return forwardedProps;
 	}
 	const { delivery: _delivery, ...passageBackend } =

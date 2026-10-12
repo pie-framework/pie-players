@@ -7,12 +7,14 @@ import {
 	DescribeVoicesCommand,
 	type DescribeVoicesCommandInput,
 	Engine,
+	type LanguageCode,
 	PollyClient,
 	SynthesizeSpeechCommand,
 	type VoiceId,
 } from "@aws-sdk/client-polly";
 
 import {
+	anchorSpeechMarks,
 	BaseTTSProvider,
 	type GetVoicesOptions,
 	type ServerProviderCapabilities,
@@ -58,7 +60,7 @@ export interface PollyProviderConfig extends TTSServerConfig {
 	 *
 	 * @extension AWS Polly-specific
 	 * @default 'neural'
-	 * @note Neural: $16/1M chars, Standard: $4/1M chars
+	 * @see https://aws.amazon.com/polly/pricing/
 	 */
 	engine?: "neural" | "standard";
 
@@ -80,23 +82,13 @@ export interface PollyProviderConfig extends TTSServerConfig {
 }
 
 /**
- * AWS Polly Server Provider
- *
- * Provides high-quality neural text-to-speech with precise word-level timing
- * through AWS Polly speech marks.
- *
- * Features:
- * - Native speech marks support (millisecond precision)
- * - Neural and standard voices
- * - 25+ languages
- * - Full SSML support
- * - Parallel audio + speech marks requests
- */
-/**
  * Polly's own SSML vocabulary, on top of the standard elements the base provider
  * knows. `<amazon:effect>` and the `<aws-*>` family are Polly-only.
  */
 const POLLY_SSML_TAGS = ["<amazon:", "<aws-"];
+
+/** Polly's `<prosody rate>` runs 20–200%. */
+const POLLY_MAX_RATE = 2;
 
 /**
  * AWS SDK exception names (`error.name`) that mean the request itself was
@@ -123,6 +115,38 @@ const POLLY_RATE_LIMIT_EXCEPTIONS = new Set([
 	"ServiceQuotaExceededException",
 ]);
 
+/** Polly takes 8000 and 16000 Hz for pcm, and also 22050 and 24000 for mp3 and ogg_vorbis. */
+const DEFAULT_SAMPLE_RATE_HERTZ = {
+	mp3: 24000,
+	ogg_vorbis: 24000,
+	pcm: 16000,
+} as const;
+
+/** Collects a Polly response body (`AudioStream`) into one buffer. */
+async function readResponseBody(stream: object): Promise<Buffer> {
+	const chunks: Uint8Array[] = [];
+	if (Symbol.asyncIterator in stream) {
+		for await (const chunk of stream as AsyncIterable<Uint8Array>) {
+			chunks.push(chunk);
+		}
+	} else if (stream instanceof Uint8Array) {
+		chunks.push(stream);
+	}
+	return Buffer.concat(chunks);
+}
+
+/**
+ * AWS Polly Server Provider
+ *
+ * Provides high-quality neural text-to-speech with precise word-level timing
+ * through AWS Polly speech marks.
+ *
+ * Features:
+ * - Native speech marks support (millisecond precision)
+ * - Neural and standard voices
+ * - Full SSML support
+ * - Parallel audio + speech marks requests
+ */
 export class PollyServerProvider extends BaseTTSProvider {
 	readonly providerId = "aws-polly";
 	readonly providerName = "AWS Polly";
@@ -149,29 +173,21 @@ export class PollyServerProvider extends BaseTTSProvider {
 		}
 	}
 
+	private resolveEngine(): Engine {
+		return this.engine === "neural" ? Engine.NEURAL : Engine.STANDARD;
+	}
+
 	private resolveSpeechMarkTypes(
 		request: SynthesizeRequest,
 	): Array<"word" | "sentence" | "ssml"> {
-		const providerOptions = (request.providerOptions || {}) as Record<
-			string,
-			unknown
-		>;
-		const configured = providerOptions.speechMarkTypes;
-		if (!Array.isArray(configured) || configured.length === 0) {
-			return ["word"];
-		}
+		const configured = request.providerOptions?.speechMarkTypes;
+		if (!Array.isArray(configured)) return ["word"];
 
-		const resolved = configured
-			.map((entry) => {
-				if (entry === "word") return "word";
-				if (entry === "sentence") return "sentence";
-				if (entry === "ssml") return "ssml";
-				return null;
-			})
-			.filter((entry): entry is "word" | "sentence" | "ssml" => entry !== null);
-
-		if (resolved.length === 0) return ["word"];
-		return resolved;
+		const resolved = configured.filter(
+			(entry): entry is "word" | "sentence" | "ssml" =>
+				entry === "word" || entry === "sentence" || entry === "ssml",
+		);
+		return resolved.length > 0 ? resolved : ["word"];
 	}
 
 	/**
@@ -199,14 +215,8 @@ export class PollyServerProvider extends BaseTTSProvider {
 		this.enableLogging = config.enableLogging || false;
 
 		try {
-			// Create Polly client (fast - no API calls)
-			this.client = new PollyClient({
-				region: config.region,
-				credentials: config.credentials,
-			});
-
+			this.client = this.createClient(config);
 			this.initialized = true;
-			// NOTE: We do NOT call getVoices() here - that's an explicit secondary operation
 		} catch (error) {
 			throw new TTSError(
 				TTSErrorCode.INITIALIZATION_ERROR,
@@ -215,6 +225,14 @@ export class PollyServerProvider extends BaseTTSProvider {
 				this.providerId,
 			);
 		}
+	}
+
+	/** The AWS client every request goes through; a test subclass supplies a fake. */
+	protected createClient(config: PollyProviderConfig): PollyClient {
+		return new PollyClient({
+			region: config.region,
+			credentials: config.credentials,
+		});
 	}
 
 	/**
@@ -230,7 +248,6 @@ export class PollyServerProvider extends BaseTTSProvider {
 		const startTime = Date.now();
 
 		try {
-			// Make parallel requests for audio and speech marks
 			const [audioResponse, speechMarksResponse] = await Promise.all([
 				this.synthesizeAudio(request, voice),
 				request.includeSpeechMarks !== false
@@ -259,6 +276,21 @@ export class PollyServerProvider extends BaseTTSProvider {
 	}
 
 	/**
+	 * Neural voices take `<prosody>` rate and volume but not pitch. Polly's
+	 * rate runs 20–200%, so a faster request speaks at 200%.
+	 */
+	protected override buildProsodyAttrs(request: SynthesizeRequest): string {
+		return super.buildProsodyAttrs({
+			...request,
+			rate:
+				request.rate === undefined
+					? undefined
+					: Math.min(request.rate, POLLY_MAX_RATE),
+			pitch: this.engine === "neural" ? undefined : request.pitch,
+		});
+	}
+
+	/**
 	 * Synthesize audio stream
 	 */
 	private async synthesizeAudio(
@@ -276,14 +308,17 @@ export class PollyServerProvider extends BaseTTSProvider {
 			POLLY_SSML_TAGS,
 		);
 		const textType = isSsml ? "ssml" : "text";
+		const outputFormat = this.resolveOutputFormat(request);
 
 		const command = new SynthesizeSpeechCommand({
-			Engine: this.engine === "neural" ? Engine.NEURAL : Engine.STANDARD,
-			OutputFormat: this.resolveOutputFormat(request),
+			Engine: this.resolveEngine(),
+			OutputFormat: outputFormat,
 			Text: text,
 			TextType: textType,
 			VoiceId: voice as VoiceId,
-			SampleRate: String(request.sampleRate || 24000),
+			SampleRate: String(
+				request.sampleRate || DEFAULT_SAMPLE_RATE_HERTZ[outputFormat],
+			),
 		});
 
 		const response = await this.client.send(command);
@@ -292,22 +327,8 @@ export class PollyServerProvider extends BaseTTSProvider {
 			throw new Error("No audio stream received from AWS Polly");
 		}
 
-		// Convert stream to buffer
-		const chunks: Uint8Array[] = [];
-		const stream = response.AudioStream;
-
-		if (Symbol.asyncIterator in stream) {
-			for await (const chunk of stream as AsyncIterable<Uint8Array>) {
-				chunks.push(chunk);
-			}
-		} else if (stream instanceof Uint8Array) {
-			chunks.push(stream);
-		}
-
-		const audioBuffer = Buffer.concat(chunks);
-
 		return {
-			audio: audioBuffer,
+			audio: await readResponseBody(response.AudioStream),
 			contentType: response.ContentType || "audio/mpeg",
 		};
 	}
@@ -327,7 +348,7 @@ export class PollyServerProvider extends BaseTTSProvider {
 		const textType = isSsml ? "ssml" : "text";
 
 		const command = new SynthesizeSpeechCommand({
-			Engine: this.engine === "neural" ? Engine.NEURAL : Engine.STANDARD,
+			Engine: this.resolveEngine(),
 			OutputFormat: "json",
 			Text: text,
 			TextType: textType,
@@ -341,23 +362,12 @@ export class PollyServerProvider extends BaseTTSProvider {
 			return [];
 		}
 
-		// Convert stream to text
-		const chunks: Uint8Array[] = [];
-		const stream = response.AudioStream;
+		const marksText = (await readResponseBody(response.AudioStream)).toString(
+			"utf-8",
+		);
 
-		if (Symbol.asyncIterator in stream) {
-			for await (const chunk of stream as AsyncIterable<Uint8Array>) {
-				chunks.push(chunk);
-			}
-		} else if (stream instanceof Uint8Array) {
-			chunks.push(stream);
-		}
-
-		const marksText = Buffer.concat(chunks).toString("utf-8");
-
-		// Parse NDJSON (newline-delimited JSON)
-		// Each line is a separate JSON object
-		const speechMarks = marksText
+		// Polly returns speech marks as NDJSON: one JSON object per line.
+		const reported = marksText
 			.trim()
 			.split("\n")
 			.filter((line) => line.trim())
@@ -378,7 +388,9 @@ export class PollyServerProvider extends BaseTTSProvider {
 				};
 			});
 
-		return speechMarks;
+		// Polly's offsets count UTF-8 bytes of the text it was sent, prosody
+		// envelope included.
+		return anchorSpeechMarks(reported, request.text);
 	}
 
 	/**
@@ -389,11 +401,11 @@ export class PollyServerProvider extends BaseTTSProvider {
 
 		try {
 			const input: DescribeVoicesCommandInput = {
-				Engine: this.engine === "neural" ? Engine.NEURAL : Engine.STANDARD,
+				Engine: this.resolveEngine(),
 			};
 
 			if (options?.language) {
-				input.LanguageCode = options.language as any;
+				input.LanguageCode = options.language as LanguageCode;
 			}
 
 			const command = new DescribeVoicesCommand(input);
@@ -427,7 +439,6 @@ export class PollyServerProvider extends BaseTTSProvider {
 					additionalLanguageCodes: voice.AdditionalLanguageCodes,
 				},
 			})).filter((voice) => {
-				// Apply filters
 				if (options?.gender && voice.gender !== options.gender) {
 					return false;
 				}
@@ -450,29 +461,26 @@ export class PollyServerProvider extends BaseTTSProvider {
 		return {
 			// W3C Standard features
 			standard: {
-				supportsSSML: true, // ✅ Full SSML 1.1 + AWS extensions
-				supportsPitch: true, // ✅ Via SSML <prosody pitch> (not direct API param)
-				supportsRate: true, // ✅ Via SSML <prosody rate> (not direct API param)
-				supportsVolume: false, // ❌ Not supported by Polly API (handle client-side)
-				supportsMultipleVoices: true, // ✅ 60+ voices across 25+ languages
+				supportsSSML: true, // Polly's supported SSML subset
+				supportsPitch: this.engine === "standard", // Via SSML <prosody pitch>; neural voices lack it
+				supportsRate: true, // Via SSML <prosody rate> (not direct API param)
+				supportsVolume: false, // Not supported by Polly API (handle client-side)
+				supportsMultipleVoices: true, // see describeVoices for the roster
 				maxTextLength: 3000, // AWS Polly limit per request
 			},
 
 			// Provider-specific extensions
 			extensions: {
-				supportsSpeechMarks: true, // ✅ Native WORD speech marks (millisecond precision)
+				supportsSpeechMarks: true, // Native WORD speech marks (millisecond precision)
 				supportedFormats: ["mp3", "ogg", "pcm"],
-				supportsSampleRate: true, // ✅ Configurable sample rate
+				supportsSampleRate: true, // Configurable sample rate
 
 				// AWS Polly-specific features
 				providerSpecific: {
 					engines: ["neural", "standard"], // Engine selection
 					supportedSpeechMarkTypes: ["word", "sentence", "ssml"],
 					supportsLexicons: false, // Not yet implemented
-					awsSSMLExtensions: true, // <aws-break>, <aws-emphasis>, <aws-w>, etc.
-					neuralVoicesCount: 30, // ~30 neural voices available
-					standardVoicesCount: 30, // ~30 standard voices available
-					languagesCount: 25, // 25+ languages supported
+					awsSSMLExtensions: true, // <amazon:effect>, <amazon:domain>, <amazon:auto-breaths>
 				},
 			},
 		};

@@ -8,14 +8,22 @@
  */
 
 /**
- * Standard TTS configuration parameters based on W3C Web Speech API.
- *
- * These are portable across all TTS providers (browser, AWS Polly, Google Cloud, etc.)
- * and align with the W3C Web Speech API specification.
+ * TTS configuration. `voice`, `rate` and `pitch` follow the W3C Web Speech API
+ * and are portable across providers; `providerOptions` carry what one provider
+ * reads.
  *
  * @see https://w3c.github.io/speech-api/
+ *
+ * @example
+ * ```typescript
+ * const config: TTSConfig = {
+ *   voice: "Joanna",
+ *   rate: 1.0,
+ *   providerOptions: { engine: "neural" }
+ * };
+ * ```
  */
-export interface StandardTTSConfig {
+export interface TTSConfig {
 	/**
 	 * Voice identifier (provider-specific)
 	 *
@@ -45,28 +53,14 @@ export interface StandardTTSConfig {
 	 * @default 1.0
 	 */
 	pitch?: number;
-}
 
-/**
- * Provider-specific extensions for TTS configuration.
- *
- * These are NOT part of W3C standards and support varies by provider.
- */
-export interface TTSConfigExtensions {
 	/**
 	 * Provider options. A provider's configuration type narrows this to the
 	 * options it reads.
 	 *
-	 * @extension Extensibility point
 	 * @example { engine: 'neural' } for AWS Polly
 	 */
 	providerOptions?: TTSProviderOptions;
-
-	/**
-	 * Internal read-along hint used by the assessment toolkit to choose between
-	 * per-token math highlighting and expression-level math highlighting.
-	 */
-	mathTokenHighlighting?: boolean;
 }
 
 /**
@@ -89,28 +83,11 @@ export interface TTSProviderOptions {
 }
 
 /**
- * Complete TTS configuration combining standard parameters and extensions.
- *
- * @example Basic usage (portable)
- * ```typescript
- * const config: TTSConfig = {
- *   voice: "Joanna",
- *   rate: 1.0,
- *   pitch: 1.0
- * };
- * ```
- *
- * @example Advanced usage with extensions
- * ```typescript
- * const config: TTSConfig = {
- *   voice: "Joanna",
- *   rate: 1.0,
- *   // Extensions
- *   providerOptions: { engine: "neural" }
- * };
- * ```
+ * The three-value speed vocabulary a server transport sends in place of a
+ * numeric rate. The toolkit's settings and the server provider's options both
+ * type `speedRate` with it.
  */
-export interface TTSConfig extends StandardTTSConfig, TTSConfigExtensions {}
+export type SpeedRateBucket = "slow" | "medium" | "fast";
 
 /**
  * TTS Provider interface
@@ -123,16 +100,6 @@ export interface ITTSProvider {
 	 * Unique identifier for this provider
 	 */
 	readonly providerId: string;
-
-	/**
-	 * Human-readable provider name
-	 */
-	readonly providerName: string;
-
-	/**
-	 * Provider version
-	 */
-	readonly version: string;
 
 	/**
 	 * Initialize and create a configured TTS implementation
@@ -187,16 +154,6 @@ export interface ITTSProviderImplementation {
 	stop(): void;
 
 	/**
-	 * Check if currently playing
-	 */
-	isPlaying(): boolean;
-
-	/**
-	 * Check if paused
-	 */
-	isPaused(): boolean;
-
-	/**
 	 * Apply changed settings from the next speak on. The toolkit sends rate,
 	 * pitch and voice changes, and the per-speak `providerOptions.contentLanguage`
 	 * merged over the provider options already configured.
@@ -207,14 +164,29 @@ export interface ITTSProviderImplementation {
 	 * Playback-start callback (optional).
 	 * Providers that expose it call it only when native/media playback actually
 	 * begins, allowing service state and highlighting to follow audible playback.
+	 * A provider that knows whether this playback sends word boundaries passes
+	 * {@link TTSPlaybackStart}; called without it, the toolkit assumes it does
+	 * when the capabilities say so.
 	 */
-	onPlaybackStart?: () => void;
+	onPlaybackStart?: (playback?: TTSPlaybackStart) => void;
 
 	/**
 	 * Word boundary callback (optional)
 	 * Called during speech for word highlighting
 	 */
 	onWordBoundary?: (word: string, position: number, length?: number) => void;
+}
+
+/**
+ * What a provider knows about one playback when it starts.
+ */
+export interface TTSPlaybackStart {
+	/**
+	 * Whether this playback sends word boundaries. False for a server response
+	 * that carries no speech marks: the toolkit then highlights the sentence
+	 * being read, whatever highlight mode is configured.
+	 */
+	wordBoundaries: boolean;
 }
 
 /**
@@ -227,23 +199,15 @@ export interface TTSSpeechSegment {
 }
 
 /**
- * TTS Provider capabilities
- *
- * Describes which features a provider supports
+ * TTS Provider capabilities: what the toolkit reads to choose a highlight
+ * mode, the text format and how long one speak may be.
  */
 export interface TTSProviderCapabilities {
 	/**
-	 * Supports pause/resume
-	 */
-	supportsPause: boolean;
-
-	/**
-	 * Supports resume after pause
-	 */
-	supportsResume: boolean;
-
-	/**
-	 * Sends word boundary events for highlighting
+	 * Sends word boundary events for highlighting. A provider whose boundaries
+	 * depend on the response, such as a server returning speech marks or not,
+	 * reports each playback's at its start through
+	 * {@link ITTSProviderImplementation.onPlaybackStart}.
 	 */
 	supportsWordBoundary: boolean;
 
@@ -252,21 +216,6 @@ export interface TTSProviderCapabilities {
 	 * when `supportsWordBoundary` is true and `"sentence"` otherwise.
 	 */
 	defaultHighlightMode?: "word" | "sentence";
-
-	/**
-	 * Supports voice selection
-	 */
-	supportsVoiceSelection: boolean;
-
-	/**
-	 * Supports rate control (speed)
-	 */
-	supportsRateControl: boolean;
-
-	/**
-	 * Supports pitch control
-	 */
-	supportsPitchControl: boolean;
 
 	/**
 	 * Supports SSML markup (W3C SSML 1.1) in the text passed to `speak`.

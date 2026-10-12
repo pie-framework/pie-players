@@ -90,7 +90,6 @@ export function resolvePlayerRuntime(args: {
 	);
 	return {
 		effectivePlayerType,
-		resolvedPlayerDefinition,
 		resolvedPlayerTag,
 		resolvedPlayerAttributes,
 		resolvedPlayerProps,

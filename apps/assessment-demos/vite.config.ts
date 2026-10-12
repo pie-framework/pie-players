@@ -3,7 +3,7 @@ import { vitePreprocess } from "@sveltejs/vite-plugin-svelte";
 
 /**
  * Mix of explicit `dist/` aliases (where listed) and normal `exports` resolution.
- * See docs/development/demo-workspace-resolution.md
+ * See docs/setup/demo_system.md#package-resolution
  */
 import { sveltekit } from "@sveltejs/kit/vite";
 import tailwindcss from "@tailwindcss/vite";

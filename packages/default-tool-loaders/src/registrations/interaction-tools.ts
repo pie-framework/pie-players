@@ -25,7 +25,7 @@ import { resolveOverlayElement } from "./overlay-element-cache.js";
 
 type EliminationStrategy = "strikethrough" | "mask";
 
-/** `tools.providers.answerEliminator.strategy`, defaulting to strikethrough. */
+/** The policy parameters' `strategy`, defaulting to strikethrough. */
 const normalizeEliminationStrategy = (value: unknown): EliminationStrategy =>
 	value === "mask" ? "mask" : "strikethrough";
 
@@ -59,7 +59,6 @@ export const answerEliminatorToolRegistration: ToolRegistration = {
 	descriptionKey: "tools.answerEliminator.description",
 	icon: "strikethrough",
 
-	// Answer eliminator appears at item level only
 	supportedLevels: ["item"],
 
 	/**
@@ -104,17 +103,14 @@ export const answerEliminatorToolRegistration: ToolRegistration = {
 					componentOverrides,
 				) as HTMLElement & {
 					visible?: boolean;
-					toolId?: string;
 					elementStateKeys?: Record<string, string>;
-					scopeElement?: HTMLElement | null;
 				},
 		);
-		overlay.setAttribute("tool-id", visibility.fullToolId);
 		overlay.setAttribute("button-alignment", "inline");
 		overlay.setAttribute(
 			"strategy",
 			normalizeEliminationStrategy(
-				toolbarContext.toolkitCoordinator?.getToolConfig(this.toolId)?.strategy,
+				toolbarContext.getToolParameters?.("answerEliminator")?.strategy,
 			),
 		);
 
@@ -139,7 +135,6 @@ export const answerEliminatorToolRegistration: ToolRegistration = {
 					overlay,
 					isActive: visibility.isActive,
 				});
-				overlay.scopeElement = toolbarContext.getScopeElement?.() || null;
 				overlay.elementStateKeys = resolveElementStateKeys(
 					context,
 					toolbarContext,

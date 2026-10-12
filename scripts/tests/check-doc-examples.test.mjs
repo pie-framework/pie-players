@@ -10,9 +10,11 @@ import {
 } from "../check-doc-examples.mjs";
 
 /**
- * A workspace with the given docs and two packages, linked as an install links
- * them: `@pie-players/lib`, built from TypeScript, and `@pie-players/panel`,
- * built from a Svelte component, with a build older than its source.
+ * A workspace with the given docs and three packages, linked as an install links
+ * them: `@pie-players/lib`, built from TypeScript; `@pie-players/panel`, built
+ * from a Svelte component, with a build older than its source; and
+ * `@pie-players/typed-panel`, built from a Svelte component with its `types`
+ * declarations built from TypeScript.
  */
 function workspace(docs) {
 	const root = mkdtempSync(path.join(tmpdir(), "pie-doc-examples-"));
@@ -35,6 +37,15 @@ export function speak(target: Element, options: Options = {}): void {}
 		}),
 		"packages/panel/src/index.svelte": "<script>export const open = 1;</script>",
 		"packages/panel/dist/index.d.ts": "export declare const close: number;",
+		"packages/typed-panel/package.json": JSON.stringify({
+			name: "@pie-players/typed-panel",
+			types: "./dist/index.d.ts",
+			exports: {
+				".": { types: "./dist/index.d.ts", import: "./dist/typed-panel.js" },
+			},
+		}),
+		"packages/typed-panel/typed-panel.svelte": "<script>let open = 1;</script>",
+		"packages/typed-panel/index.ts": "export type PanelOptions = { label: string };",
 		...docs,
 	};
 	for (const [file, text] of Object.entries(files)) {
@@ -42,7 +53,7 @@ export function speak(target: Element, options: Options = {}): void {}
 		writeFileSync(path.join(root, file), text);
 	}
 	mkdirSync(path.join(root, "node_modules/@pie-players"), { recursive: true });
-	for (const name of ["lib", "panel"]) {
+	for (const name of ["lib", "panel", "typed-panel"]) {
 		symlinkSync(
 			path.join(root, "packages", name),
 			path.join(root, "node_modules/@pie-players", name),
@@ -117,6 +128,16 @@ import manifest from "../package.json";`),
 open.toFixed();`),
 		);
 		expect(result.failures).toEqual([]);
+	});
+
+	test("checks a Svelte-built entry against the source of its types", () => {
+		const result = check(
+			fence(`import type { PanelOptions } from "@pie-players/typed-panel";
+const options: PanelOptions = { label: 1 };`),
+		);
+		expect(result.failures).toEqual([
+			"docs/guide.md:3: TS2322 Type 'number' is not assignable to type 'string'.",
+		]);
 	});
 
 	test("types free names and element properties as any", () => {

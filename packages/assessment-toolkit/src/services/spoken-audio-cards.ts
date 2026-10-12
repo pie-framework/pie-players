@@ -3,8 +3,8 @@
  *
  * QTI 3 treats a recording and synthesized speech as the *same* support — both
  * are `spoken`, and a card carries recorded audio through `qti-file-href` plus a
- * MIME type — so this is not a new accommodation but the other form the existing
- * one can take. Some programs prefer a human voice to synthesis; PIE's `spoken`
+ * MIME type — so a recording is the other form the existing support takes.
+ * Some programs prefer a human voice to synthesis; PIE's `spoken`
  * card was string-only, so it had no way to say "play this file for this node".
  *
  * A node commonly carries both forms in the same language: the reading script
@@ -17,8 +17,6 @@
  * Validation posture matches sign-language cards: "treat as absent, never as
  * partially valid". A malformed payload must not produce a silent player that
  * looks like read-aloud is working.
- *
- * Part of PIE Assessment Toolkit.
  */
 
 import type {

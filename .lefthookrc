@@ -1,6 +1,6 @@
 # Sourced by the generated .git/hooks/* scripts before they try to locate the
 # lefthook binary. Wired up via `rc:` in lefthook.yml; after editing this file
-# run `lefthook install -f` from the main checkout to regenerate the hooks.
+# run `bun run prepare` from the main checkout to regenerate the hooks.
 #
 # This exists because .git/hooks is shared by every linked worktree, which turns
 # two lefthook behaviours into a silently-skipped pre-push gate:

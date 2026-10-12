@@ -1,4 +1,5 @@
 const MATHML_NAMESPACE = "http://www.w3.org/1998/Math/MathML";
+const XHTML_NAMESPACE = "http://www.w3.org/1999/xhtml";
 
 const ALLOWED_MATHML_ELEMENTS = new Set([
 	"math",
@@ -113,7 +114,7 @@ const isAllowedMathElement = (element: Element): boolean => {
 	return (
 		!namespace ||
 		namespace === MATHML_NAMESPACE ||
-		namespace === "http://www.w3.org/1999/xhtml"
+		namespace === XHTML_NAMESPACE
 	);
 };
 
@@ -157,6 +158,13 @@ const parseMathML = (input: string): Document | null => {
 	return null;
 };
 
+/**
+ * MathML re-serialized from an allow-list, with a MathML xmlns on the root.
+ * Null for empty or unparseable input, no DOMParser, a non-<math> root, a
+ * disallowed element or a node other than element/text/comment, or an xmlns
+ * other than MathML's. Comments, attributes off the allow-list and values
+ * containing javascript: or data:text/html are dropped.
+ */
 export const canonicalizeMathML = (input: string): string | null => {
 	const trimmed = String(input || "").trim();
 	if (!trimmed) return null;

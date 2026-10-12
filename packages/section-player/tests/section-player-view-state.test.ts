@@ -414,7 +414,7 @@ describe("section player view state", () => {
 					},
 					authoring: {
 						enabled: true,
-						baseUrl: "/authoring",
+						contentId: "content-1",
 					},
 				},
 				resolveBackend: () => ({}),
@@ -430,7 +430,7 @@ describe("section player view state", () => {
 		});
 		expect(requireBackend(params).authoring).toEqual({
 			enabled: true,
-			baseUrl: "/authoring",
+			contentId: "content-1",
 		});
 		expect(params.props).not.toHaveProperty("resolveBackend");
 		expect(params.props?.loaderOptions).toEqual({

@@ -25,16 +25,8 @@
   type TTSServerConfig
   type Voice
   type VoiceFeatures
-  adjustSpeechMarksForRate
-  estimateSpeechMarks
-  filterSpeechMarksByType
-  generateCacheKey
+  anchorSpeechMarks
   generateHashedCacheKey
-  getSpeechMarkAtTime
-  getSpeechMarksStats
-  hashText
-  mergeSpeechMarks
   normalizeSpeechMarks
   resolveSpeedRateBucket
   resolveTTSErrorCodeForHttpStatus
-  validateSpeechMarks

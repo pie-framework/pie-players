@@ -92,7 +92,10 @@ export type {
 } from "./services/AccessibilityCatalogResolver.js";
 export { AccessibilityCatalogResolver } from "./services/AccessibilityCatalogResolver.js";
 // Element Tool State Store (Element-level ephemeral tool state)
-export { ElementToolStateStore } from "./services/ElementToolStateStore.js";
+export {
+	type ElementIdComponents,
+	ElementToolStateStore,
+} from "./services/ElementToolStateStore.js";
 // Highlight Coordinator
 export type { Annotation } from "./services/HighlightCoordinator.js";
 export {
@@ -121,6 +124,7 @@ export type {
 	ToolContextResolverMap,
 	ToolContextResolverResult,
 	ToolActivation,
+	ToolCallbackFailureHandler,
 	ToolContentDependency,
 	ToolContentDependencyContext,
 	ToolModuleLoader,
@@ -152,7 +156,10 @@ export type {
 	ToolContext,
 	ToolLevel,
 } from "./services/tool-context.js";
-export { hasReadableText } from "./services/tool-context.js";
+export {
+	hasReadableText,
+	hasSpokenContent,
+} from "./services/tool-context.js";
 export type { CreateToolsConfigArgs } from "./services/create-tools-config.js";
 export { createToolsConfig } from "./services/create-tools-config.js";
 export type {
@@ -165,7 +172,7 @@ export type {
 export type { ExtractionResult } from "./services/SSMLExtractor.js";
 export { SSMLExtractor } from "./services/SSMLExtractor.js";
 // Tool Coordinator
-export { ToolCoordinator, ZIndexLayer } from "./services/ToolCoordinator.js";
+export { ZIndexLayer } from "./services/ToolCoordinator.js";
 // Toolkit Coordinator (Centralized service management)
 export type {
 	ProviderLifecycleContext,
@@ -204,6 +211,7 @@ export type {
 	TextToSpeechToolProviderConfig,
 } from "./services/tools-config-normalizer.js";
 export type {
+	FrameworkErrorCohort,
 	FrameworkErrorKind,
 	FrameworkErrorModel,
 	FrameworkErrorScope,
@@ -214,6 +222,7 @@ export {
 	toFrameworkErrorModel,
 } from "./services/framework-error.js";
 export type { FrameworkErrorListener } from "./services/framework-error-bus.js";
+export type { ToolFailurePhase } from "./services/tool-failure.js";
 export type {
 	ToolConfigDiagnostic,
 	ToolConfigDiagnosticSeverity,
@@ -229,7 +238,6 @@ export type {
 export type { ToolScopeLevel } from "./services/tool-instance-id.js";
 export { createScopedToolId } from "./services/tool-instance-id.js";
 // Text-to-Speech Service
-export type { TTSConfig } from "./services/TTSService.js";
 export { PlaybackState, TTSService } from "./services/TTSService.js";
 export { BrowserTTSProvider } from "./services/tts/browser-provider.js";
 export type { SREMathSpeechOptions } from "./services/tts/math-speech.js";
@@ -243,6 +251,7 @@ export type {
 export type {
 	ITTSProvider,
 	ITTSProviderImplementation,
+	TTSConfig,
 	TTSSpeechSegment,
 	TTSProviderCapabilities,
 } from "@pie-players/pie-tts";
@@ -275,13 +284,3 @@ export {
 	setCurrentSectionPosition,
 	upsertSectionSession,
 } from "./attempt/AssessmentSession.js";
-
-// Section Player - Use @pie-players/pie-section-player web component
-
-// ============================================================================
-// Shared Components
-// ============================================================================
-
-// ItemToolBar custom element registration helper is exported via package.json exports field
-// Import using: import '@pie-players/pie-assessment-toolkit/components/item-toolbar-element';
-// PieAssessmentToolkit custom element registration helper is exported via package.json exports field

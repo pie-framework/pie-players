@@ -24,6 +24,12 @@
  * resolve to it, as in every package build: under Bun's default conditions they
  * resolve to the server build, whose lifecycle functions do nothing.
  *
+ * Two imports only a package build can serve resolve to what that build reads.
+ * A `./<Name>.custom-element.js` the toolkit's CE build generates beside a
+ * `<Name>.svelte` loads the component, so a test can register the element from
+ * source. A `?raw` import loads its file as a string, a workspace stylesheet from
+ * the source its `dist` copy is made from.
+ *
  * Nothing here registers a DOM. The assessment toolkit preloads
  * speech-rule-engine before any test file registers happy-dom, and that order
  * holds only while every preload leaves `window` undefined.
@@ -33,7 +39,11 @@ import { type BunPlugin, plugin } from "bun";
 import { existsSync, readFileSync, realpathSync } from "node:fs";
 import path from "node:path";
 import { guardSvelteCustomElementDefines } from "../packages/players-shared/svelte-custom-element-guard.js";
-import { REPO_ROOT, workspaceExports } from "./workspace-sources.js";
+import {
+	REPO_ROOT,
+	workspaceExports,
+	workspaceStylesheets,
+} from "./workspace-sources.js";
 
 const SCRIPT_LOADER = { ".js": "js", ".ts": "ts" } as const;
 
@@ -120,6 +130,35 @@ plugin({
 				loader: "js",
 			}));
 		}
+
+		build.onResolve(
+			{ filter: /\.custom-element\.js$/ },
+			({ path: id, importer }) => {
+				const built = path.resolve(path.dirname(importer), id);
+				const source = built.replace(/\.custom-element\.js$/, ".svelte");
+				return !existsSync(built) && existsSync(source)
+					? { path: source }
+					: undefined;
+			},
+		);
+
+		const stylesheets = workspaceStylesheets();
+		build.onResolve({ filter: /\?raw$/ }, ({ path: id, importer }) => {
+			const file = id.slice(0, -"?raw".length);
+			return {
+				path:
+					stylesheets.get(file) ??
+					Bun.resolveSync(file, path.dirname(importer)),
+				namespace: "pie-raw-text",
+			};
+		});
+		build.onLoad(
+			{ filter: /.*/, namespace: "pie-raw-text" },
+			({ path: filename }) => ({
+				contents: `export default ${JSON.stringify(readFileSync(filename, "utf8"))};`,
+				loader: "js",
+			}),
+		);
 
 		build.onLoad({ filter: /\.svelte$/ }, async ({ path: filename }) => {
 			const { compile } = await import("svelte/compiler");

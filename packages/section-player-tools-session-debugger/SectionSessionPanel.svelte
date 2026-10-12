@@ -12,6 +12,13 @@
 	}}
 />
 
+<!--
+@component
+Developer panel for the section player demos that shows the session state of one section attempt as JSON: current item, visited items, loading and completion counts, the last changed item and every item session. A host gives it `toolkitCoordinator` and the `section-id` and `attempt-id` to follow; it reads the section controller through the coordinator and refreshes the snapshot on each item or section event.
+
+@fires {CustomEvent<null>} close - When the panel's close button is pressed.
+-->
+
 <script lang="ts">
 	import {
 		type AssessmentToolkitRuntimeContext,
@@ -174,6 +181,8 @@
 		});
 	}
 
+	// Distinct identities per subscription: the coordinator dedupes by
+	// listener, so one function for both would drop the item subscription.
 	function handleItemControllerEvent(detail: { itemId?: string; timestamp?: number }): void {
 		handleControllerEvent(detail);
 	}

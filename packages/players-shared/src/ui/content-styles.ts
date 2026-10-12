@@ -9,11 +9,9 @@
  * light DOM, so those rules have to exist as a document-level stylesheet —
  * there is no shadow root to scope them to.
  *
- * Hosts used to be required to import that stylesheet themselves. Nothing
- * enforced it and nothing failed loudly when they didn't: the item rendered,
- * the passage was simply unstyled, and it surfaced as a visual bug reported by
- * hand days later. Players install the stylesheet themselves instead, which
- * keeps the host contract at "import the player".
+ * Players install that stylesheet themselves, which keeps the host contract at
+ * "import the player"; a host-side import was unenforced and failed silently,
+ * as an unstyled passage.
  *
  * The CSS text is passed in rather than imported here: this package builds with
  * plain `tsc`, so it cannot inline a stylesheet. Bundler-built player packages
@@ -52,9 +50,8 @@ const declaresContentStylesSentinel = (rule: CSSRule): boolean => {
 	// Grouping rules hold no declarations of their own, so the sentinel sits one
 	// or more levels down. A host that confines its copy — `@scope
 	// (.item-content) { … }`, `@layer pie-content { … }` — presents exactly one
-	// top-level rule with an empty `.style`, and a top-level-only scan reads that
-	// as "no copy here". That made both detection paths blind to the one host
-	// configuration this module most needs to recognise.
+	// top-level rule with an empty `.style`, which a top-level-only scan reads
+	// as "no copy here".
 	const nested = (rule as CSSGroupingRule).cssRules;
 	if (!nested) return false;
 	for (const child of Array.from(nested)) {
@@ -129,11 +126,9 @@ export function contentStylesPresent(): boolean {
  * hand — first in the entry, before app CSS — so an app rule and a content rule
  * of equal specificity resolve in the host's favour, exactly as before.
  *
- * A cascade layer looks tempting here and is the wrong tool: unlayered author
- * declarations beat *all* layered ones regardless of specificity, so a host
- * reset as broad as `p { margin: 0 }` would silently outrank
- * `.numbered-paragraph { margin-left: 36px }`. That trades a visible missing
- * stylesheet for a subtler override bug, so ordinary specificity wins instead.
+ * A cascade layer would invert that: unlayered author declarations beat *all*
+ * layered ones regardless of specificity, so a host reset as broad as
+ * `p { margin: 0 }` would outrank `.numbered-paragraph { margin-left: 36px }`.
  *
  * @param cssText Contents of `@pie-players/pie-theme/components.css`.
  * @param source Package installing the styles, for diagnostics.

@@ -21,14 +21,18 @@ import {
 } from "@pie-players/pie-default-tool-loaders";
 import { CONTENT_LEAD_SURFACE } from "../src/components/shared/card-media-region.js";
 
+// A DOM another file registered stays for that file to unregister.
+let ownsDom = false;
+
 beforeAll(() => {
 	if (typeof (globalThis as { window?: unknown }).window === "undefined") {
 		GlobalRegistrator.register();
+		ownsDom = true;
 	}
 });
 
 afterAll(() => {
-	if (GlobalRegistrator.isRegistered) {
+	if (ownsDom && GlobalRegistrator.isRegistered) {
 		GlobalRegistrator.unregister();
 	}
 });

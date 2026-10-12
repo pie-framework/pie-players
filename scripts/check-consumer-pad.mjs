@@ -33,6 +33,11 @@
 import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 
+import {
+	buildManifests,
+	MANIFEST_FILE,
+	surfaceKeys,
+} from "./lib/custom-elements-manifest.mjs";
 import { isNoOpChange } from "./lib/no-op-change.mjs";
 
 const PAD_PATH = "docs/integrations/consumer-api-dependencies.md";
@@ -293,6 +298,43 @@ const changed = new Set(
 		.filter(Boolean),
 );
 
+/**
+ * The element surface lines of the committed manifests at the merge base that
+ * the working tree's elements no longer carry, limited to elements whose tag the
+ * pad names and CSS custom properties it names: a removed or retyped attribute,
+ * property, method, event, slot or part. The working tree side is generated, so
+ * the answer does not wait for `bun run custom-elements-manifest`.
+ */
+const removedElementSurfaces = () => {
+	const manifests = (
+		gitOrNull(["ls-tree", "-r", "--name-only", base.sha, "--", "packages"]) ?? ""
+	)
+		.split(/\r?\n/)
+		.filter((file) => file.endsWith(`/${MANIFEST_FILE}`));
+	if (manifests.length === 0) return [];
+	const pad = contentNow(PAD_PATH) ?? "";
+	const named = (text) =>
+		new RegExp(`(?<![\\w/-])${text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?![\\w-])`).test(
+			pad,
+		);
+	const current = new Set();
+	for (const { manifest } of buildManifests().manifests.values()) {
+		for (const key of surfaceKeys(manifest)) current.add(key);
+	}
+	const removed = new Set();
+	for (const file of manifests) {
+		const text = contentAtBase(file);
+		if (!text) continue;
+		for (const key of surfaceKeys(JSON.parse(text))) {
+			if (current.has(key)) continue;
+			const [, tag, rest] = key.match(/^<([^>]+)>(.*)$/);
+			const property = rest.match(/^ css-property (\S+)$/)?.[1];
+			if (named(tag) || (property && named(property))) removed.add(key);
+		}
+	}
+	return [...removed].sort();
+};
+
 if (changed.size === 0) process.exit(0);
 
 /**
@@ -347,6 +389,13 @@ for (const trigger of TRIGGERS) {
 		else files.push(file);
 	}
 	if (files.length > 0) tripped.push({ reason: trigger.reason, files });
+}
+const surfaces = removedElementSurfaces();
+if (surfaces.length > 0) {
+	tripped.push({
+		reason: `an element surface the pad names, removed or retyped (from the ${MANIFEST_FILE} manifests)`,
+		files: surfaces,
+	});
 }
 
 // Say what was discounted. A guard that silently narrows itself is indistinguishable

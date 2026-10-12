@@ -5,9 +5,6 @@ import { resolve } from "node:path";
 /**
  * The `split-pane-*` attributes belong to the splitpane layout alone. Vertical
  * and tabbed declare none of them.
- *
- * Behavioral coverage of the clamp / drag-override semantics lives in
- * `tests/section-toolbar-tools.spec.ts`.
  */
 
 const PACKAGE_ROOT = resolve(__dirname, "..");

@@ -17,8 +17,7 @@
 	"scripts": {
 		"build": "tsc",
 		"dev": "tsc --watch",
-		"test": "vitest run --passWithNoTests",
-		"test:coverage": "vitest --coverage"
+		"test": "vitest run"
 	},
 	"keywords": [
 		"tts",
@@ -38,7 +37,7 @@
 		"access": "public"
 	},
 	"dependencies": {
-		"@aws-sdk/client-polly": "^3.1146.0",
+		"@aws-sdk/client-polly": "^3.1147.0",
 		"@pie-players/tts-server-core": "workspace:*"
 	},
 	"devDependencies": {

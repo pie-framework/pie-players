@@ -1,0 +1,993 @@
+{
+	"schemaVersion": "2.1.0",
+	"modules": [
+		{
+			"kind": "javascript-module",
+			"path": "dist/pie-item-player.js",
+			"declarations": [
+				{
+					"kind": "class",
+					"description": "The PIE item player: it loads an item's PIE elements under the `iife`, `esm` or `preloaded` strategy and renders the item for delivery, evaluation or authoring as `mode` selects. A host gives it the item `config`, the learner `session` and `env`; the player owns the session from there and reports each change as `session-changed`. An optional `backend` routes delivery loads, saves and scoring, and authoring loads and saves, through the player's backend orchestrator.",
+					"name": "PieItemPlayer",
+					"tagName": "pie-item-player",
+					"customElement": true,
+					"members": [
+						{
+							"kind": "field",
+							"name": "config",
+							"type": {
+								"text": "object"
+							},
+							"default": "null",
+							"attribute": "config"
+						},
+						{
+							"kind": "field",
+							"name": "session",
+							"type": {
+								"text": "ItemSession"
+							},
+							"default": "{ id: \"\", data: [] }",
+							"attribute": "session"
+						},
+						{
+							"kind": "field",
+							"name": "env",
+							"type": {
+								"text": "Env"
+							},
+							"default": "{ mode: \"gather\", role: \"student\" }",
+							"attribute": "env"
+						},
+						{
+							"kind": "field",
+							"name": "addCorrectResponse",
+							"type": {
+								"text": "boolean"
+							},
+							"default": "false",
+							"attribute": "add-correct-response"
+						},
+						{
+							"kind": "field",
+							"name": "showBottomBorder",
+							"type": {
+								"text": "boolean"
+							},
+							"default": "false",
+							"attribute": "show-bottom-border"
+						},
+						{
+							"kind": "field",
+							"name": "hosted",
+							"type": {
+								"text": "boolean | undefined"
+							},
+							"attribute": "hosted"
+						},
+						{
+							"kind": "field",
+							"name": "debug",
+							"type": {
+								"text": "string | boolean"
+							},
+							"default": "\"\"",
+							"attribute": "debug"
+						},
+						{
+							"kind": "field",
+							"name": "customClassName",
+							"type": {
+								"text": "string"
+							},
+							"default": "\"\"",
+							"attribute": "custom-class-name"
+						},
+						{
+							"kind": "field",
+							"name": "containerClass",
+							"type": {
+								"text": "string"
+							},
+							"default": "\"\"",
+							"attribute": "container-class"
+						},
+						{
+							"kind": "field",
+							"name": "passageContainerClass",
+							"type": {
+								"text": "string"
+							},
+							"default": "\"\"",
+							"attribute": "passage-container-class"
+						},
+						{
+							"kind": "field",
+							"name": "externalStyleUrls",
+							"type": {
+								"text": "string"
+							},
+							"default": "\"\"",
+							"attribute": "external-style-urls"
+						},
+						{
+							"kind": "field",
+							"name": "renderStimulus",
+							"type": {
+								"text": "boolean"
+							},
+							"default": "true",
+							"attribute": "render-stimulus"
+						},
+						{
+							"kind": "field",
+							"name": "allowedResize",
+							"type": {
+								"text": "boolean"
+							},
+							"default": "false",
+							"attribute": "allowed-resize"
+						},
+						{
+							"kind": "field",
+							"name": "autoplayAudioEnabled",
+							"type": {
+								"text": "boolean | undefined"
+							},
+							"attribute": "autoplay-audio-enabled"
+						},
+						{
+							"kind": "field",
+							"name": "baseHeadingLevel",
+							"type": {
+								"text": "1 | 2 | 3 | 4 | 5 | 6 | undefined"
+							},
+							"description": "Both reflect: PIE elements read these off the nearest player host and re-render on a MutationObserver watching these attributes, so a prop that never reaches the attribute is honoured at first paint and inert after it. See the `baseHeadingLevel` docs below.",
+							"attribute": "base-heading-level",
+							"reflects": true
+						},
+						{
+							"kind": "field",
+							"name": "locale",
+							"type": {
+								"text": "string"
+							},
+							"default": "\"\"",
+							"description": "Interface locale: the language this player renders its own UI in, as a BCP-47 tag. `type: \"String\"` because a host passes attributes as strings; POSIX (`nl_NL`) and bare (`nl`) forms both resolve. Unset renders `en-US` — never `navigator.language`, so a host that supplies nothing keeps exactly the chrome it has today. Distinct from the authored content's language, which the item declares.",
+							"attribute": "locale"
+						},
+						{
+							"kind": "field",
+							"name": "includeSrHeading",
+							"type": {
+								"text": "boolean"
+							},
+							"default": "true",
+							"attribute": "include-sr-heading",
+							"reflects": true
+						},
+						{
+							"kind": "field",
+							"name": "loaderConfig",
+							"type": {
+								"text": "LoaderConfig"
+							},
+							"default": "DEFAULT_LOADER_CONFIG",
+							"attribute": "loader-config"
+						},
+						{
+							"kind": "field",
+							"name": "strategy",
+							"type": {
+								"text": "\"iife\" | \"esm\" | \"preloaded\" | undefined"
+							},
+							"attribute": "strategy"
+						},
+						{
+							"kind": "field",
+							"name": "mode",
+							"type": {
+								"text": "\"view\" | \"author\""
+							},
+							"default": "\"view\"",
+							"attribute": "mode"
+						},
+						{
+							"kind": "field",
+							"name": "configuration",
+							"type": {
+								"text": "Record<string, any>"
+							},
+							"default": "{}",
+							"attribute": "configuration"
+						},
+						{
+							"kind": "field",
+							"name": "authoringBackend",
+							"type": {
+								"text": "AuthoringBackendMode"
+							},
+							"default": "\"demo\"",
+							"attribute": "authoring-backend"
+						},
+						{
+							"kind": "field",
+							"name": "backend",
+							"type": {
+								"text": "BackendConfig | null"
+							},
+							"default": "null",
+							"attribute": "backend"
+						},
+						{
+							"kind": "field",
+							"name": "sessionSnapshot",
+							"type": {
+								"text": "SessionSnapshotConfig | null"
+							},
+							"default": "null",
+							"description": "Off by default: PIE writes a learner response to the device only when a host asks for it. A recovered draft is offered through `session-snapshot-available`, never applied.",
+							"attribute": "session-snapshot"
+						},
+						{
+							"kind": "field",
+							"name": "allowedStyleOrigins",
+							"type": {
+								"text": "string"
+							},
+							"default": "\"\"",
+							"attribute": "allowed-style-origins"
+						},
+						{
+							"kind": "field",
+							"name": "loaderOptions",
+							"type": {
+								"text": "UnifiedLoaderOptions"
+							},
+							"default": "{}",
+							"attribute": "loaderoptions"
+						},
+						{
+							"kind": "field",
+							"name": "trustMarkup",
+							"type": {
+								"text": "boolean"
+							},
+							"default": "false",
+							"attribute": "trust-markup"
+						},
+						{
+							"kind": "field",
+							"name": "sanitizeMarkup",
+							"type": {
+								"text": "ItemMarkupSanitizer | null"
+							},
+							"default": "null",
+							"attribute": "sanitizemarkup"
+						},
+						{
+							"kind": "field",
+							"name": "onInsertImage",
+							"type": {
+								"text": "((handler: ImageHandler) => void) | null"
+							},
+							"default": "null",
+							"attribute": "oninsertimage"
+						},
+						{
+							"kind": "field",
+							"name": "onDeleteImage",
+							"type": {
+								"text": "((src: string, done: DeleteDone) => void) | null"
+							},
+							"default": "null",
+							"attribute": "ondeleteimage"
+						},
+						{
+							"kind": "field",
+							"name": "onInsertSound",
+							"type": {
+								"text": "((handler: SoundHandler) => void) | null"
+							},
+							"default": "null",
+							"attribute": "oninsertsound"
+						},
+						{
+							"kind": "field",
+							"name": "onDeleteSound",
+							"type": {
+								"text": "((src: string, done: DeleteDone) => void) | null"
+							},
+							"default": "null",
+							"attribute": "ondeletesound"
+						},
+						{
+							"kind": "method",
+							"name": "loadFromBackend",
+							"parameters": [
+								{
+									"name": "scope",
+									"type": {
+										"text": "\"delivery\" | \"authoring\""
+									},
+									"optional": true,
+									"default": "\"delivery\""
+								}
+							],
+							"return": {
+								"type": {
+									"text": "Promise<void>"
+								}
+							}
+						},
+						{
+							"kind": "method",
+							"name": "getPendingSessionSnapshot",
+							"description": "The snapshot offered by `session-snapshot-available`, if one was found. Still held after the event fires, so a host that attached its listener late can still recover. Applying it is the host's decision.",
+							"return": {
+								"type": {
+									"text": "SessionSnapshotRecord | null"
+								}
+							}
+						},
+						{
+							"kind": "method",
+							"name": "commitPendingElementSessions",
+							"description": "Commit every mounted element's pending `session-changed` now. For a host that unmounts the player itself: called while the player is still in the document, the events reach a `document`-level listener, which the player's own teardown cannot do.",
+							"return": {
+								"type": {
+									"text": "void"
+								}
+							}
+						},
+						{
+							"kind": "method",
+							"name": "saveSession",
+							"return": {
+								"type": {
+									"text": "Promise<void>"
+								}
+							}
+						},
+						{
+							"kind": "method",
+							"name": "score",
+							"parameters": [
+								{
+									"name": "options",
+									"type": {
+										"text": "BackendScoreOptions"
+									},
+									"optional": true
+								}
+							],
+							"return": {
+								"type": {
+									"text": "Promise<unknown>"
+								}
+							}
+						},
+						{
+							"kind": "method",
+							"name": "saveContent",
+							"parameters": [
+								{
+									"name": "options",
+									"type": {
+										"text": "BackendSaveContentOptions"
+									},
+									"optional": true
+								}
+							],
+							"return": {
+								"type": {
+									"text": "Promise<string>"
+								}
+							}
+						},
+						{
+							"kind": "method",
+							"name": "releaseContent",
+							"parameters": [
+								{
+									"name": "options",
+									"type": {
+										"text": "BackendAuthoringReleaseOptions"
+									},
+									"optional": true
+								}
+							],
+							"return": {
+								"type": {
+									"text": "Promise<string>"
+								}
+							}
+						},
+						{
+							"kind": "method",
+							"name": "provideScore",
+							"description": "Local browser scoring: one result slot per scored model.",
+							"return": {
+								"type": {
+									"text": "Promise<false | any[]>"
+								}
+							}
+						},
+						{
+							"kind": "method",
+							"name": "validateModels",
+							"return": {
+								"type": {
+									"text": "Promise<{ hasErrors: boolean; validatedModels: any[] }>"
+								}
+							}
+						}
+					],
+					"attributes": [
+						{
+							"name": "config",
+							"type": {
+								"text": "object"
+							},
+							"default": "null",
+							"fieldName": "config"
+						},
+						{
+							"name": "session",
+							"type": {
+								"text": "ItemSession"
+							},
+							"default": "{ id: \"\", data: [] }",
+							"fieldName": "session"
+						},
+						{
+							"name": "env",
+							"type": {
+								"text": "Env"
+							},
+							"default": "{ mode: \"gather\", role: \"student\" }",
+							"fieldName": "env"
+						},
+						{
+							"name": "add-correct-response",
+							"type": {
+								"text": "boolean"
+							},
+							"default": "false",
+							"fieldName": "addCorrectResponse"
+						},
+						{
+							"name": "show-bottom-border",
+							"type": {
+								"text": "boolean"
+							},
+							"default": "false",
+							"fieldName": "showBottomBorder"
+						},
+						{
+							"name": "hosted",
+							"type": {
+								"text": "boolean"
+							},
+							"fieldName": "hosted"
+						},
+						{
+							"name": "debug",
+							"type": {
+								"text": "string"
+							},
+							"default": "\"\"",
+							"fieldName": "debug"
+						},
+						{
+							"name": "custom-class-name",
+							"type": {
+								"text": "string"
+							},
+							"default": "\"\"",
+							"fieldName": "customClassName"
+						},
+						{
+							"name": "container-class",
+							"type": {
+								"text": "string"
+							},
+							"default": "\"\"",
+							"fieldName": "containerClass"
+						},
+						{
+							"name": "passage-container-class",
+							"type": {
+								"text": "string"
+							},
+							"default": "\"\"",
+							"fieldName": "passageContainerClass"
+						},
+						{
+							"name": "external-style-urls",
+							"type": {
+								"text": "string"
+							},
+							"default": "\"\"",
+							"fieldName": "externalStyleUrls"
+						},
+						{
+							"name": "render-stimulus",
+							"type": {
+								"text": "boolean"
+							},
+							"default": "true",
+							"fieldName": "renderStimulus"
+						},
+						{
+							"name": "allowed-resize",
+							"type": {
+								"text": "boolean"
+							},
+							"default": "false",
+							"fieldName": "allowedResize"
+						},
+						{
+							"name": "autoplay-audio-enabled",
+							"type": {
+								"text": "boolean"
+							},
+							"fieldName": "autoplayAudioEnabled"
+						},
+						{
+							"name": "base-heading-level",
+							"type": {
+								"text": "number"
+							},
+							"description": "Both reflect: PIE elements read these off the nearest player host and re-render on a MutationObserver watching these attributes, so a prop that never reaches the attribute is honoured at first paint and inert after it. See the `baseHeadingLevel` docs below.",
+							"fieldName": "baseHeadingLevel"
+						},
+						{
+							"name": "locale",
+							"type": {
+								"text": "string"
+							},
+							"default": "\"\"",
+							"description": "Interface locale: the language this player renders its own UI in, as a BCP-47 tag. `type: \"String\"` because a host passes attributes as strings; POSIX (`nl_NL`) and bare (`nl`) forms both resolve. Unset renders `en-US` — never `navigator.language`, so a host that supplies nothing keeps exactly the chrome it has today. Distinct from the authored content's language, which the item declares.",
+							"fieldName": "locale"
+						},
+						{
+							"name": "include-sr-heading",
+							"type": {
+								"text": "boolean"
+							},
+							"default": "true",
+							"fieldName": "includeSrHeading"
+						},
+						{
+							"name": "loader-config",
+							"type": {
+								"text": "LoaderConfig"
+							},
+							"default": "DEFAULT_LOADER_CONFIG",
+							"fieldName": "loaderConfig"
+						},
+						{
+							"name": "strategy",
+							"type": {
+								"text": "string"
+							},
+							"fieldName": "strategy"
+						},
+						{
+							"name": "mode",
+							"type": {
+								"text": "string"
+							},
+							"default": "\"view\"",
+							"fieldName": "mode"
+						},
+						{
+							"name": "configuration",
+							"type": {
+								"text": "Record<string, any>"
+							},
+							"default": "{}",
+							"fieldName": "configuration"
+						},
+						{
+							"name": "authoring-backend",
+							"type": {
+								"text": "string"
+							},
+							"default": "\"demo\"",
+							"fieldName": "authoringBackend"
+						},
+						{
+							"name": "backend",
+							"type": {
+								"text": "BackendConfig | null"
+							},
+							"default": "null",
+							"fieldName": "backend"
+						},
+						{
+							"name": "session-snapshot",
+							"type": {
+								"text": "SessionSnapshotConfig | null"
+							},
+							"default": "null",
+							"description": "Off by default: PIE writes a learner response to the device only when a host asks for it. A recovered draft is offered through `session-snapshot-available`, never applied.",
+							"fieldName": "sessionSnapshot"
+						},
+						{
+							"name": "allowed-style-origins",
+							"type": {
+								"text": "string"
+							},
+							"default": "\"\"",
+							"fieldName": "allowedStyleOrigins"
+						},
+						{
+							"name": "loaderoptions",
+							"type": {
+								"text": "UnifiedLoaderOptions"
+							},
+							"default": "{}",
+							"fieldName": "loaderOptions"
+						},
+						{
+							"name": "trust-markup",
+							"type": {
+								"text": "boolean"
+							},
+							"default": "false",
+							"fieldName": "trustMarkup"
+						},
+						{
+							"name": "sanitizemarkup",
+							"type": {
+								"text": "ItemMarkupSanitizer | null"
+							},
+							"default": "null",
+							"fieldName": "sanitizeMarkup"
+						},
+						{
+							"name": "oninsertimage",
+							"type": {
+								"text": "((handler: ImageHandler) => void) | null"
+							},
+							"default": "null",
+							"fieldName": "onInsertImage"
+						},
+						{
+							"name": "ondeleteimage",
+							"type": {
+								"text": "((src: string, done: DeleteDone) => void) | null"
+							},
+							"default": "null",
+							"fieldName": "onDeleteImage"
+						},
+						{
+							"name": "oninsertsound",
+							"type": {
+								"text": "((handler: SoundHandler) => void) | null"
+							},
+							"default": "null",
+							"fieldName": "onInsertSound"
+						},
+						{
+							"name": "ondeletesound",
+							"type": {
+								"text": "((src: string, done: DeleteDone) => void) | null"
+							},
+							"default": "null",
+							"fieldName": "onDeleteSound"
+						}
+					],
+					"events": [
+						{
+							"name": "load-complete",
+							"type": {
+								"text": "CustomEvent<null>"
+							},
+							"description": "Once the item's PIE elements have loaded and rendered and the math in its markup is typeset, waiting at most two seconds for the math."
+						},
+						{
+							"name": "session-changed",
+							"type": {
+								"text": "CustomEvent<{ complete: boolean; component: string; elementId?: string; session: { id: string; data: unknown[] } | null; intent?: \"metadata-only\"; sessionCommitReason?: \"teardown\" | \"navigate\" | \"page-hidden\" }>"
+							},
+							"description": "When an element's session or completion changes, and as a commit at a teardown, navigation or page-hidden seam."
+						},
+						{
+							"name": "player-error",
+							"type": {
+								"text": "CustomEvent<PieItemPlayerErrorDetail>"
+							},
+							"description": "When loading, an update or a controller fails; `recoverable` is false when the player has no item to show."
+						},
+						{
+							"name": "model-updated",
+							"type": {
+								"text": "CustomEvent<{ update: unknown; reset: boolean }>"
+							},
+							"description": "In authoring, when a configure element updates its model."
+						},
+						{
+							"name": "model-loaded",
+							"type": {
+								"text": "CustomEvent<{ models: unknown[]; configuration: unknown }>"
+							},
+							"description": "In authoring, once per renderer initialization, after the configure elements receive their models and configuration."
+						},
+						{
+							"name": "correct-responses-populated",
+							"type": {
+								"text": "CustomEvent<{ itemId?: string; mode?: string; role?: string; bundleType?: string; populatedCount: number; elements: string[] }>"
+							},
+							"description": "When correct responses were written into the session, so a host can detect a population it did not ask for."
+						},
+						{
+							"name": "bundle-retry-status",
+							"type": {
+								"text": "CustomEvent<{ state: \"retrying\" | \"completed\" | \"timeout\" | \"cancelled\"; url: string; attempt: number; elapsedMs: number; timeoutMs: number; retryDelayMs?: number; reason?: string }>"
+							},
+							"description": "Under the `iife` strategy, as a bundle request is retried, completes, times out or is cancelled."
+						},
+						{
+							"name": "session-snapshot-available",
+							"type": {
+								"text": "CustomEvent<{ key: string; session: unknown; timestamp: number }>"
+							},
+							"description": "On load, when `session-snapshot` is enabled and device storage holds a snapshot for this sitting; the player never applies it."
+						},
+						{
+							"name": "backend-load-complete",
+							"type": {
+								"text": "CustomEvent<{ scope: \"delivery\"; operation: \"load\"; metadata: Record<string, unknown>; session: unknown } | { scope: \"authoring\"; operation: \"load\"; contentId?: string; metadata: Record<string, unknown>; config: unknown }>"
+							},
+							"description": "After the backend loads the delivery config and session, or the authoring content."
+						},
+						{
+							"name": "backend-model-complete",
+							"type": {
+								"text": "CustomEvent<{ scope: \"delivery\"; operation: \"model\"; metadata: Record<string, unknown> }>"
+							},
+							"description": "After the delivery backend refreshes the item's models."
+						},
+						{
+							"name": "backend-session-saved",
+							"type": {
+								"text": "CustomEvent<{ scope: \"delivery\"; operation: \"saveSession\"; sessionId: string; session: unknown }>"
+							},
+							"description": "After `saveSession()` or an autosave persists the session, which also clears the device snapshot."
+						},
+						{
+							"name": "backend-score-complete",
+							"type": {
+								"text": "CustomEvent<{ scope: \"delivery\"; operation: \"score\"; sessionId: string; score: unknown }>"
+							},
+							"description": "After a server-backed `score()` completes."
+						},
+						{
+							"name": "backend-content-saved",
+							"type": {
+								"text": "CustomEvent<{ scope: \"authoring\"; operation: \"saveContent\"; contentId: string }>"
+							},
+							"description": "After the authoring backend saves the item's content."
+						},
+						{
+							"name": "backend-content-released",
+							"type": {
+								"text": "CustomEvent<{ scope: \"authoring\"; operation: \"releaseContent\"; contentId: string }>"
+							},
+							"description": "After the authoring backend releases the item's content."
+						},
+						{
+							"name": "backend-error",
+							"type": {
+								"text": "CustomEvent<{ scope: \"delivery\"; operation: \"load\" | \"model\" | \"saveSession\"; message: string; error: unknown }>"
+							},
+							"description": "When a delivery load, model refresh or autosave the player started itself fails; a host's own `saveSession()` or `score()` call rejects instead."
+						}
+					],
+					"x-pie": {
+						"shadow": "none",
+						"classes": [
+							"pie-item-player",
+							"pie-item-player-build-warning",
+							"pie-item-player-loading",
+							"pie-loading",
+							"pie-player-error",
+							"pie-player-item-container"
+						]
+					}
+				}
+			],
+			"exports": [
+				{
+					"kind": "custom-element-definition",
+					"name": "pie-item-player",
+					"declaration": {
+						"name": "PieItemPlayer"
+					}
+				}
+			]
+		},
+		{
+			"kind": "javascript-module",
+			"path": "dist/components/item-session-debugger-element.js",
+			"declarations": [
+				{
+					"kind": "class",
+					"description": "A floating, draggable debug panel for one item player: a host passes it the player's `config`, `session`, `env` and `score`, and it shows the live session and environment and the models filtered through each element's controller. With `hosted` set it runs no controller over the models, matching a hosted player.",
+					"name": "ItemSessionDebugger",
+					"tagName": "pie-item-player-session-debugger",
+					"customElement": true,
+					"members": [
+						{
+							"kind": "field",
+							"name": "itemId",
+							"type": {
+								"text": "string"
+							},
+							"default": "\"\"",
+							"attribute": "item-id"
+						},
+						{
+							"kind": "field",
+							"name": "config",
+							"type": {
+								"text": "unknown"
+							},
+							"default": "null",
+							"attribute": "config"
+						},
+						{
+							"kind": "field",
+							"name": "session",
+							"type": {
+								"text": "unknown"
+							},
+							"default": "null",
+							"attribute": "session"
+						},
+						{
+							"kind": "field",
+							"name": "env",
+							"type": {
+								"text": "unknown"
+							},
+							"default": "null",
+							"attribute": "env"
+						},
+						{
+							"kind": "field",
+							"name": "score",
+							"type": {
+								"text": "unknown"
+							},
+							"default": "null",
+							"attribute": "score"
+						},
+						{
+							"kind": "field",
+							"name": "locale",
+							"type": {
+								"text": "string"
+							},
+							"default": "\"\"",
+							"attribute": "locale"
+						},
+						{
+							"kind": "field",
+							"name": "hosted",
+							"type": {
+								"text": "boolean"
+							},
+							"default": "false",
+							"attribute": "hosted"
+						}
+					],
+					"attributes": [
+						{
+							"name": "item-id",
+							"type": {
+								"text": "string"
+							},
+							"default": "\"\"",
+							"fieldName": "itemId"
+						},
+						{
+							"name": "config",
+							"type": {
+								"text": "unknown"
+							},
+							"default": "null",
+							"fieldName": "config"
+						},
+						{
+							"name": "session",
+							"type": {
+								"text": "unknown"
+							},
+							"default": "null",
+							"fieldName": "session"
+						},
+						{
+							"name": "env",
+							"type": {
+								"text": "unknown"
+							},
+							"default": "null",
+							"fieldName": "env"
+						},
+						{
+							"name": "score",
+							"type": {
+								"text": "unknown"
+							},
+							"default": "null",
+							"fieldName": "score"
+						},
+						{
+							"name": "locale",
+							"type": {
+								"text": "string"
+							},
+							"default": "\"\"",
+							"fieldName": "locale"
+						},
+						{
+							"name": "hosted",
+							"type": {
+								"text": "boolean"
+							},
+							"default": "false",
+							"fieldName": "hosted"
+						}
+					],
+					"events": [
+						{
+							"name": "close",
+							"type": {
+								"text": "CustomEvent<null>"
+							},
+							"description": "When the panel's close button is pressed; the panel stays until the host removes it."
+						}
+					],
+					"x-pie": {
+						"shadow": "none",
+						"classes": [
+							"pie-item-player-session-debugger",
+							"pie-item-player-session-debugger__alert",
+							"pie-item-player-session-debugger__card",
+							"pie-item-player-session-debugger__card-pre",
+							"pie-item-player-session-debugger__card-region",
+							"pie-item-player-session-debugger__card-title",
+							"pie-item-player-session-debugger__content",
+							"pie-item-player-session-debugger__content-shell",
+							"pie-item-player-session-debugger__header",
+							"pie-item-player-session-debugger__header-actions",
+							"pie-item-player-session-debugger__header-title",
+							"pie-item-player-session-debugger__icon-sm",
+							"pie-item-player-session-debugger__resize-handle",
+							"pie-item-player-session-debugger__resize-icon",
+							"pie-item-player-session-debugger__tab",
+							"pie-item-player-session-debugger__tab--active",
+							"pie-item-player-session-debugger__tabs",
+							"pie-item-player-session-debugger__title",
+							"pie-item-player-session-debugger__window-button",
+							"pie-item-player-session-debugger__window-icon"
+						]
+					}
+				}
+			],
+			"exports": [
+				{
+					"kind": "custom-element-definition",
+					"name": "pie-item-player-session-debugger",
+					"declaration": {
+						"name": "ItemSessionDebugger"
+					}
+				}
+			]
+		}
+	]
+}

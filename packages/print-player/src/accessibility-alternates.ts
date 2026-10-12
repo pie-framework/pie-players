@@ -3,9 +3,9 @@
  *
  * An alternate representation — a transcript today, braille and
  * simplified-language next — arrives as an accessibility catalog card and is
- * gated by the learner's profile. Print used to reach none of them: it renders
- * from the item model alone, so an alternate reached paper only where some
- * element happened to render it from a legacy model field.
+ * gated by the learner's profile. Print renders from the item model alone, so
+ * without this module an alternate reaches paper only where an element renders
+ * it from a legacy model field.
  *
  * A print job is one learner with one profile, decided once. There is no
  * coordinator, nothing to toggle, and no re-resolve: what print needs is the same
@@ -15,9 +15,9 @@
  * the only thing print owns is which host slot it opens.
  *
  * Print opens {@link CONTENT_LEAD_SURFACE} and not the docked-media slot beside
- * it. That is a property of paper, not a preference: a signed alternate is a
- * video, and on paper a video is a blank rectangle. Every alternate that can be
- * read in order reaches print by declaring the slot, without a change here.
+ * it: a signed alternate is a video, and on paper a video is a blank rectangle.
+ * Every alternate that can be read in order reaches print by declaring the slot,
+ * without a change here.
  *
  * Nothing in this module names a capability, a support id, or a catalog type.
  */
@@ -33,7 +33,10 @@ import {
 	ToolPolicyEngine,
 } from "@pie-players/pie-assessment-toolkit/policy/engine";
 import { AccessibilityCatalogResolver } from "@pie-players/pie-assessment-toolkit/services/AccessibilityCatalogResolver";
-import { CONTENT_ALTERNATE_REGISTRATIONS } from "@pie-players/pie-default-tool-loaders";
+import {
+	CONTENT_ALTERNATE_REGISTRATIONS,
+	CONTENT_LEAD_SURFACE,
+} from "@pie-players/pie-default-tool-loaders";
 import { resolveInterfaceI18n } from "@pie-players/pie-players-shared/i18n/provider";
 import type {
 	AccessibilityCatalog,
@@ -46,13 +49,10 @@ import type { Item } from "./types.js";
 
 /**
  * Host slot for an alternate that has to be read in order with the content.
- *
- * The name is the section player's, deliberately: the two renderers open the same
- * slot for the same reason — full width, above the content body, in flow — and a
- * capability declares it once to reach both. Diverging here would mean an
- * alternate reaching the screen and not paper because of a spelling.
+ * Print takes the capability's own declaration, so an alternate that declares
+ * the slot reaches paper by construction.
  */
-export const CONTENT_LEAD_SURFACE = "content-lead";
+export { CONTENT_LEAD_SURFACE };
 
 /**
  * Class hook for the block print fills with the alternates in play.

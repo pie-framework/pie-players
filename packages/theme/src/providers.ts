@@ -49,12 +49,12 @@ function notifyThemeProviderObservers(): void {
 
 /**
  * Provider mode that resolves nothing, leaving this package's shipped defaults
- * in place.
+ * in place. This is how a host asks for the palette it would have had before
+ * adopting a provider — the first question to answer when colours differ
+ * between two environments.
  *
- * `"auto"` lets any registered adapter that can read the target win, which on a
- * DaisyUI page means PIE tokens follow `--color-*`. This is how a host asks for
- * the palette it would have had before adopting a provider — the first question
- * to answer when colours differ between two environments.
+ * `"auto"`, by contrast, lets any registered adapter that can read the target
+ * win, which on a DaisyUI page means PIE tokens follow `--color-*`.
  *
  * Distinct from naming an unregistered provider, which lands in the same place
  * by accident. `unregisterPieThemeProvider` cannot remove this one because it is
@@ -175,7 +175,7 @@ export function resolveProviderVariables(args: {
 		return {};
 	}
 	const resolveFromTarget = (target: HTMLElement): ThemeVariables => {
-		if (providerMode && providerMode !== "auto") {
+		if (providerMode !== "auto") {
 			const provider = themeProviderRegistry.get(providerMode);
 			if (!provider || !provider.canRead(target)) {
 				return {};

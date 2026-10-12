@@ -1,0 +1,3922 @@
+{
+	"schemaVersion": "2.1.0",
+	"modules": [
+		{
+			"kind": "javascript-module",
+			"path": "dist/pie-section-player.js",
+			"declarations": [
+				{
+					"kind": "class",
+					"description": "Shell around a passage in a section player: it publishes the passage's identity and region to the tools inside it, registers the passage with the toolkit it sits in, and forwards the passage player's load and error events to that toolkit. The passage card renders it, naming the passage through `item-id`, `content-kind` and `item`.",
+					"name": "PassageShellElement",
+					"tagName": "pie-passage-shell",
+					"customElement": true,
+					"members": [
+						{
+							"kind": "field",
+							"name": "itemId",
+							"type": {
+								"text": "string"
+							},
+							"default": "\"\"",
+							"attribute": "item-id"
+						},
+						{
+							"kind": "field",
+							"name": "canonicalItemId",
+							"type": {
+								"text": "string"
+							},
+							"default": "\"\"",
+							"attribute": "canonical-item-id"
+						},
+						{
+							"kind": "field",
+							"name": "contentKind",
+							"type": {
+								"text": "string"
+							},
+							"default": "\"rubric-block-stimulus\"",
+							"attribute": "content-kind"
+						},
+						{
+							"kind": "field",
+							"name": "regionPolicy",
+							"type": {
+								"text": "string"
+							},
+							"default": "\"default\"",
+							"attribute": "region-policy"
+						},
+						{
+							"kind": "field",
+							"name": "scopeElement",
+							"type": {
+								"text": "HTMLElement | null"
+							},
+							"default": "null",
+							"attribute": "scopeelement"
+						},
+						{
+							"kind": "field",
+							"name": "ttsHighlightTargetResolver",
+							"type": {
+								"text": "TTSHighlightTargetResolver | null"
+							},
+							"default": "null",
+							"attribute": "ttshighlighttargetresolver"
+						},
+						{
+							"kind": "field",
+							"name": "item",
+							"type": {
+								"text": "object"
+							},
+							"default": "null",
+							"attribute": "item"
+						}
+					],
+					"attributes": [
+						{
+							"name": "item-id",
+							"type": {
+								"text": "string"
+							},
+							"default": "\"\"",
+							"fieldName": "itemId"
+						},
+						{
+							"name": "canonical-item-id",
+							"type": {
+								"text": "string"
+							},
+							"default": "\"\"",
+							"fieldName": "canonicalItemId"
+						},
+						{
+							"name": "content-kind",
+							"type": {
+								"text": "string"
+							},
+							"default": "\"rubric-block-stimulus\"",
+							"fieldName": "contentKind"
+						},
+						{
+							"name": "region-policy",
+							"type": {
+								"text": "string"
+							},
+							"default": "\"default\"",
+							"fieldName": "regionPolicy"
+						},
+						{
+							"name": "scopeelement",
+							"type": {
+								"text": "HTMLElement | null"
+							},
+							"default": "null",
+							"fieldName": "scopeElement"
+						},
+						{
+							"name": "ttshighlighttargetresolver",
+							"type": {
+								"text": "TTSHighlightTargetResolver | null"
+							},
+							"default": "null",
+							"fieldName": "ttsHighlightTargetResolver"
+						},
+						{
+							"name": "item",
+							"type": {
+								"text": "object"
+							},
+							"default": "null",
+							"fieldName": "item"
+						}
+					],
+					"events": [
+						{
+							"name": "pie-register",
+							"type": {
+								"text": "CustomEvent<{ kind: \"passage\"; itemId: string; canonicalItemId?: string; contentKind?: string; item?: unknown; element: HTMLElement; runtimeId?: string }>"
+							},
+							"description": "When the shell registers its passage with the toolkit it sits in."
+						},
+						{
+							"name": "pie-unregister",
+							"type": {
+								"text": "CustomEvent<{ kind: \"passage\"; itemId: string; canonicalItemId?: string; contentKind?: string; item?: unknown; element: HTMLElement; runtimeId?: string }>"
+							},
+							"description": "When the shell retires its passage's registration."
+						},
+						{
+							"name": "pie-content-loaded",
+							"type": {
+								"text": "CustomEvent<{ itemId: string; canonicalItemId?: string; contentKind?: string; detail?: unknown; runtimeId: string }>"
+							},
+							"description": "When the passage player reports `load-complete`."
+						},
+						{
+							"name": "pie-item-player-error",
+							"type": {
+								"text": "CustomEvent<{ itemId: string; canonicalItemId?: string; contentKind?: string; error: unknown; runtimeId: string }>"
+							},
+							"description": "When the passage player reports `player-error`."
+						}
+					],
+					"slots": [
+						{
+							"name": "",
+							"description": "The passage card's header, toolbar and passage player."
+						}
+					],
+					"x-pie": {
+						"shadow": "open"
+					}
+				},
+				{
+					"kind": "class",
+					"description": "Section player core that renders `<pie-assessment-toolkit>` for its `runtime`, `section` and `session` around its content, and exposes the section controller through `getSectionController()` and `waitForSectionController()`. Every controller it drives commits pending item sessions before navigating, and the element commits them when the page is hidden.",
+					"name": "PieSectionPlayerBaseElement",
+					"tagName": "pie-section-player-base",
+					"customElement": true,
+					"members": [
+						{
+							"kind": "field",
+							"name": "runtime",
+							"type": {
+								"text": "RuntimeConfig | null"
+							},
+							"default": "null",
+							"attribute": "runtime"
+						},
+						{
+							"kind": "field",
+							"name": "ndsIcons",
+							"type": {
+								"text": "boolean"
+							},
+							"default": "false",
+							"description": "Presentation flag: controls render <nds-icon-button> only when this is explicitly true; otherwise they use plain <button>s.",
+							"attribute": "nds-icons"
+						},
+						{
+							"kind": "field",
+							"name": "locale",
+							"type": {
+								"text": "string"
+							},
+							"default": "\"\"",
+							"description": "Interface locale: the language the player renders its own UI in, as a BCP-47 tag. Unset renders `en-US`. Distinct from the authored content language, which travels on `runtime.contentLanguage`.",
+							"attribute": "locale"
+						},
+						{
+							"kind": "field",
+							"name": "section",
+							"type": {
+								"text": "AssessmentSection | null"
+							},
+							"default": "null",
+							"attribute": "section"
+						},
+						{
+							"kind": "field",
+							"name": "session",
+							"type": {
+								"text": "SectionControllerSessionState | null"
+							},
+							"default": "null",
+							"description": "Transport for the layouts' `session`; the toolkit applies it.",
+							"attribute": "session"
+						},
+						{
+							"kind": "field",
+							"name": "assessment",
+							"type": {
+								"text": "AssessmentEntity | null"
+							},
+							"default": "null",
+							"description": "The assessment entity whose `personalNeedsProfile` and `settings` the toolkit's tool policy reads, forwarded to the coordinator it builds.",
+							"attribute": "assessment"
+						},
+						{
+							"kind": "field",
+							"name": "sectionId",
+							"type": {
+								"text": "string"
+							},
+							"default": "\"\"",
+							"attribute": "section-id"
+						},
+						{
+							"kind": "field",
+							"name": "attemptId",
+							"type": {
+								"text": "string"
+							},
+							"default": "\"\"",
+							"attribute": "attempt-id"
+						},
+						{
+							"kind": "field",
+							"name": "toolRegistry",
+							"type": {
+								"text": "ToolRegistry | null"
+							},
+							"default": "null",
+							"attribute": "toolregistry"
+						},
+						{
+							"kind": "field",
+							"name": "toolConfigStrictness",
+							"type": {
+								"text": "ToolConfigStrictness | undefined"
+							},
+							"attribute": "tool-config-strictness"
+						},
+						{
+							"kind": "method",
+							"name": "navigateToItem",
+							"parameters": [
+								{
+									"name": "index",
+									"type": {
+										"text": "number"
+									}
+								}
+							],
+							"return": {
+								"type": {
+									"text": "unknown"
+								}
+							}
+						},
+						{
+							"kind": "method",
+							"name": "getCompositionModelSnapshot",
+							"return": {
+								"type": {
+									"text": "unknown"
+								}
+							}
+						},
+						{
+							"kind": "method",
+							"name": "getNavigationStateSnapshot",
+							"return": {
+								"type": {
+									"text": "BaseNavigationState"
+								}
+							}
+						},
+						{
+							"kind": "method",
+							"name": "getSectionController",
+							"return": {
+								"type": {
+									"text": "SectionControllerHandle | null"
+								}
+							}
+						},
+						{
+							"kind": "method",
+							"name": "waitForSectionController",
+							"parameters": [
+								{
+									"name": "timeoutMs",
+									"type": {
+										"text": "number"
+									},
+									"optional": true,
+									"default": "5000"
+								}
+							],
+							"return": {
+								"type": {
+									"text": "Promise<SectionControllerHandle | null>"
+								}
+							}
+						}
+					],
+					"attributes": [
+						{
+							"name": "runtime",
+							"type": {
+								"text": "RuntimeConfig | null"
+							},
+							"default": "null",
+							"fieldName": "runtime"
+						},
+						{
+							"name": "nds-icons",
+							"type": {
+								"text": "boolean"
+							},
+							"default": "false",
+							"description": "Presentation flag: controls render <nds-icon-button> only when this is explicitly true; otherwise they use plain <button>s.",
+							"fieldName": "ndsIcons"
+						},
+						{
+							"name": "locale",
+							"type": {
+								"text": "string"
+							},
+							"default": "\"\"",
+							"description": "Interface locale: the language the player renders its own UI in, as a BCP-47 tag. Unset renders `en-US`. Distinct from the authored content language, which travels on `runtime.contentLanguage`.",
+							"fieldName": "locale"
+						},
+						{
+							"name": "section",
+							"type": {
+								"text": "AssessmentSection | null"
+							},
+							"default": "null",
+							"fieldName": "section"
+						},
+						{
+							"name": "session",
+							"type": {
+								"text": "SectionControllerSessionState | null"
+							},
+							"default": "null",
+							"description": "Transport for the layouts' `session`; the toolkit applies it.",
+							"fieldName": "session"
+						},
+						{
+							"name": "assessment",
+							"type": {
+								"text": "AssessmentEntity | null"
+							},
+							"default": "null",
+							"description": "The assessment entity whose `personalNeedsProfile` and `settings` the toolkit's tool policy reads, forwarded to the coordinator it builds.",
+							"fieldName": "assessment"
+						},
+						{
+							"name": "section-id",
+							"type": {
+								"text": "string"
+							},
+							"default": "\"\"",
+							"fieldName": "sectionId"
+						},
+						{
+							"name": "attempt-id",
+							"type": {
+								"text": "string"
+							},
+							"default": "\"\"",
+							"fieldName": "attemptId"
+						},
+						{
+							"name": "toolregistry",
+							"type": {
+								"text": "ToolRegistry | null"
+							},
+							"default": "null",
+							"fieldName": "toolRegistry"
+						},
+						{
+							"name": "tool-config-strictness",
+							"type": {
+								"text": "string"
+							},
+							"fieldName": "toolConfigStrictness"
+						}
+					],
+					"events": [
+						{
+							"name": "framework-error",
+							"type": {
+								"text": "CustomEvent<FrameworkErrorModel>"
+							},
+							"description": "Bubbles from the inner toolkit. For each framework error the runtime reports; a non-recoverable bootstrap error also shows an error banner in place of the slotted content."
+						},
+						{
+							"name": "composition-changed",
+							"type": {
+								"text": "CustomEvent<{ composition: unknown; version: number }>"
+							},
+							"description": "Bubbles from the inner toolkit. When the bound section's composition changes revision, with a version that increases on each change."
+						},
+						{
+							"name": "session-changed",
+							"type": {
+								"text": "CustomEvent<{ itemId: string; canonicalItemId: string; sourceRuntimeId: string } & Record<string, unknown>>"
+							},
+							"description": "Bubbles from the inner toolkit. When an item's session in the bound section changes, carrying the section's canonical session detail for that item."
+						},
+						{
+							"name": "runtime-owned",
+							"type": {
+								"text": "CustomEvent<{ runtimeId: string; parentRuntimeId: string | null }>"
+							},
+							"description": "Bubbles from the inner toolkit. When the toolkit starts running its own coordinator."
+						},
+						{
+							"name": "runtime-inherited",
+							"type": {
+								"text": "CustomEvent<{ runtimeId: string; parentRuntimeId: string | null }>"
+							},
+							"description": "Bubbles from the inner toolkit. When the toolkit adopts an outer toolkit's coordinator, named by `parentRuntimeId`."
+						},
+						{
+							"name": "runtime-ready",
+							"type": {
+								"text": "CustomEvent<{ runtimeId: string; coordinator: ToolkitCoordinator; ownership: \"owned\" | \"inherited\" }>"
+							},
+							"description": "Bubbles from the inner toolkit. Once per coordinator, with or without a section, from which point a host can drive it."
+						},
+						{
+							"name": "toolkit-ready",
+							"type": {
+								"text": "CustomEvent<{ runtimeId: string; assessmentId: string; sectionId: string; itemPlayer: ItemPlayerConfig; coordinator: ToolkitCoordinator }>"
+							},
+							"description": "Bubbles from the inner toolkit. For every section the toolkit initializes, once its section controller resolves."
+						},
+						{
+							"name": "section-ready",
+							"type": {
+								"text": "CustomEvent<{ sectionId: string; attemptId: string; controller: unknown }>"
+							},
+							"description": "Bubbles from the inner toolkit. Right after `toolkit-ready`, with the section's controller or null."
+						},
+						{
+							"name": "item-session-changed",
+							"type": {
+								"text": "CustomEvent<{ itemId: string; canonicalItemId: string; session: unknown; sessionCommitReason?: \"teardown\" | \"navigate\" | \"page-hidden\" }>"
+							},
+							"description": "Bubbles from an item scope when the item player reports a response change; the player's own `session-changed` stops at the scope."
+						}
+					],
+					"slots": [
+						{
+							"name": "",
+							"description": "The content the toolkit wraps: the section toolbar shell and the layout."
+						}
+					],
+					"x-pie": {
+						"shadow": "open"
+					}
+				},
+				{
+					"kind": "class",
+					"description": "Section player for a host that lays out the section itself: it runs the toolkit, section controller, readiness, element pre-warm and section toolbar in its shadow root, and its element children are the layout, holding `pie-section-player-items-pane` and `pie-section-player-passages-pane` at any depth. With no element children it renders the passages pane above the items pane. The element has no styles of its own, so the host gives it `display` and a height.",
+					"name": "PieSectionPlayerKernelHostElement",
+					"tagName": "pie-section-player-kernel-host",
+					"customElement": true,
+					"members": [
+						{
+							"kind": "field",
+							"name": "runtime",
+							"type": {
+								"text": "RuntimeConfig | null"
+							},
+							"default": "null",
+							"attribute": "runtime"
+						},
+						{
+							"kind": "field",
+							"name": "ndsIcons",
+							"type": {
+								"text": "boolean | undefined"
+							},
+							"description": "Presentation flag: opt in to NDS icon buttons. Unset renders plain <button>s.",
+							"attribute": "nds-icons"
+						},
+						{
+							"kind": "field",
+							"name": "locale",
+							"type": {
+								"text": "string"
+							},
+							"default": "\"\"",
+							"description": "Interface locale: the language the player renders its own UI in, as a BCP-47 tag. Unset renders `en-US`. Distinct from the authored content language, which travels on `runtime.contentLanguage`.",
+							"attribute": "locale"
+						},
+						{
+							"kind": "field",
+							"name": "section",
+							"type": {
+								"text": "object"
+							},
+							"default": "null",
+							"attribute": "section"
+						},
+						{
+							"kind": "field",
+							"name": "session",
+							"type": {
+								"text": "object"
+							},
+							"default": "null",
+							"description": "The section's session, applied by the controller created for `section` in place of hydrating from the persistence strategy.",
+							"attribute": "session"
+						},
+						{
+							"kind": "field",
+							"name": "assessment",
+							"type": {
+								"text": "object"
+							},
+							"default": "null",
+							"description": "The assessment entity whose `personalNeedsProfile` and `settings` the toolkit's tool policy reads, forwarded to the coordinator it builds.",
+							"attribute": "assessment"
+						},
+						{
+							"kind": "field",
+							"name": "sectionId",
+							"type": {
+								"text": "string"
+							},
+							"default": "\"\"",
+							"attribute": "section-id"
+						},
+						{
+							"kind": "field",
+							"name": "attemptId",
+							"type": {
+								"text": "string"
+							},
+							"default": "\"\"",
+							"attribute": "attempt-id"
+						},
+						{
+							"kind": "field",
+							"name": "iifeBundleHost",
+							"type": {
+								"text": "string"
+							},
+							"attribute": "iife-bundle-host"
+						},
+						{
+							"kind": "field",
+							"name": "debug",
+							"type": {
+								"text": "string | boolean | undefined"
+							},
+							"attribute": "debug"
+						},
+						{
+							"kind": "field",
+							"name": "baseHeadingLevel",
+							"type": {
+								"text": "number | undefined"
+							},
+							"description": "Composition context: the level this player's card headings occupy. Descendants derive their own outline from it — see docs/architecture/composition-context.md.",
+							"attribute": "base-heading-level"
+						},
+						{
+							"kind": "field",
+							"name": "showToolbar",
+							"type": {
+								"text": "string"
+							},
+							"default": "\"false\"",
+							"attribute": "show-toolbar"
+						},
+						{
+							"kind": "field",
+							"name": "toolbarPosition",
+							"type": {
+								"text": "string"
+							},
+							"default": "\"right\"",
+							"attribute": "toolbar-position"
+						},
+						{
+							"kind": "field",
+							"name": "toolRegistry",
+							"type": {
+								"text": "ToolRegistry | null"
+							},
+							"default": "null",
+							"attribute": "toolregistry"
+						},
+						{
+							"kind": "field",
+							"name": "sectionHostButtons",
+							"type": {
+								"text": "ToolbarItem[]"
+							},
+							"default": "[]",
+							"attribute": "sectionhostbuttons"
+						},
+						{
+							"kind": "field",
+							"name": "itemHostButtons",
+							"type": {
+								"text": "ToolbarItem[]"
+							},
+							"default": "[]",
+							"attribute": "itemhostbuttons"
+						},
+						{
+							"kind": "field",
+							"name": "passageHostButtons",
+							"type": {
+								"text": "ToolbarItem[]"
+							},
+							"default": "[]",
+							"attribute": "passagehostbuttons"
+						},
+						{
+							"kind": "field",
+							"name": "policies",
+							"type": {
+								"text": "Partial<SectionPlayerPolicies> | undefined"
+							},
+							"attribute": "policies"
+						},
+						{
+							"kind": "field",
+							"name": "hooks",
+							"type": {
+								"text": "SectionPlayerHostHooks | undefined"
+							},
+							"attribute": "hooks"
+						},
+						{
+							"kind": "field",
+							"name": "toolConfigStrictness",
+							"type": {
+								"text": "ToolConfigStrictness | undefined"
+							},
+							"attribute": "tool-config-strictness"
+						},
+						{
+							"kind": "method",
+							"name": "getSnapshot",
+							"return": {
+								"type": {
+									"text": "SectionPlayerSnapshot | null"
+								}
+							}
+						},
+						{
+							"kind": "method",
+							"name": "navigateTo",
+							"parameters": [
+								{
+									"name": "index",
+									"type": {
+										"text": "number"
+									}
+								}
+							],
+							"return": {
+								"type": {
+									"text": "boolean"
+								}
+							}
+						},
+						{
+							"kind": "method",
+							"name": "navigateNext",
+							"return": {
+								"type": {
+									"text": "boolean"
+								}
+							}
+						},
+						{
+							"kind": "method",
+							"name": "navigatePrevious",
+							"return": {
+								"type": {
+									"text": "boolean"
+								}
+							}
+						},
+						{
+							"kind": "method",
+							"name": "getSectionController",
+							"return": {
+								"type": {
+									"text": "SectionControllerHandle | null"
+								}
+							}
+						},
+						{
+							"kind": "method",
+							"name": "waitForSectionController",
+							"parameters": [
+								{
+									"name": "timeoutMs",
+									"type": {
+										"text": "number"
+									},
+									"optional": true,
+									"default": "5000"
+								}
+							],
+							"return": {
+								"type": {
+									"text": "Promise<SectionControllerHandle | null>"
+								}
+							}
+						}
+					],
+					"attributes": [
+						{
+							"name": "runtime",
+							"type": {
+								"text": "RuntimeConfig | null"
+							},
+							"default": "null",
+							"fieldName": "runtime"
+						},
+						{
+							"name": "nds-icons",
+							"type": {
+								"text": "boolean"
+							},
+							"description": "Presentation flag: opt in to NDS icon buttons. Unset renders plain <button>s.",
+							"fieldName": "ndsIcons"
+						},
+						{
+							"name": "locale",
+							"type": {
+								"text": "string"
+							},
+							"default": "\"\"",
+							"description": "Interface locale: the language the player renders its own UI in, as a BCP-47 tag. Unset renders `en-US`. Distinct from the authored content language, which travels on `runtime.contentLanguage`.",
+							"fieldName": "locale"
+						},
+						{
+							"name": "section",
+							"type": {
+								"text": "object"
+							},
+							"default": "null",
+							"fieldName": "section"
+						},
+						{
+							"name": "session",
+							"type": {
+								"text": "object"
+							},
+							"default": "null",
+							"description": "The section's session, applied by the controller created for `section` in place of hydrating from the persistence strategy.",
+							"fieldName": "session"
+						},
+						{
+							"name": "assessment",
+							"type": {
+								"text": "object"
+							},
+							"default": "null",
+							"description": "The assessment entity whose `personalNeedsProfile` and `settings` the toolkit's tool policy reads, forwarded to the coordinator it builds.",
+							"fieldName": "assessment"
+						},
+						{
+							"name": "section-id",
+							"type": {
+								"text": "string"
+							},
+							"default": "\"\"",
+							"fieldName": "sectionId"
+						},
+						{
+							"name": "attempt-id",
+							"type": {
+								"text": "string"
+							},
+							"default": "\"\"",
+							"fieldName": "attemptId"
+						},
+						{
+							"name": "iife-bundle-host",
+							"type": {
+								"text": "string"
+							},
+							"fieldName": "iifeBundleHost"
+						},
+						{
+							"name": "debug",
+							"type": {
+								"text": "string"
+							},
+							"fieldName": "debug"
+						},
+						{
+							"name": "base-heading-level",
+							"type": {
+								"text": "number"
+							},
+							"description": "Composition context: the level this player's card headings occupy. Descendants derive their own outline from it — see docs/architecture/composition-context.md.",
+							"fieldName": "baseHeadingLevel"
+						},
+						{
+							"name": "show-toolbar",
+							"type": {
+								"text": "string"
+							},
+							"default": "\"false\"",
+							"fieldName": "showToolbar"
+						},
+						{
+							"name": "toolbar-position",
+							"type": {
+								"text": "string"
+							},
+							"default": "\"right\"",
+							"fieldName": "toolbarPosition"
+						},
+						{
+							"name": "toolregistry",
+							"type": {
+								"text": "ToolRegistry | null"
+							},
+							"default": "null",
+							"fieldName": "toolRegistry"
+						},
+						{
+							"name": "sectionhostbuttons",
+							"type": {
+								"text": "ToolbarItem[]"
+							},
+							"default": "[]",
+							"fieldName": "sectionHostButtons"
+						},
+						{
+							"name": "itemhostbuttons",
+							"type": {
+								"text": "ToolbarItem[]"
+							},
+							"default": "[]",
+							"fieldName": "itemHostButtons"
+						},
+						{
+							"name": "passagehostbuttons",
+							"type": {
+								"text": "ToolbarItem[]"
+							},
+							"default": "[]",
+							"fieldName": "passageHostButtons"
+						},
+						{
+							"name": "policies",
+							"type": {
+								"text": "Partial<SectionPlayerPolicies> | undefined"
+							},
+							"fieldName": "policies"
+						},
+						{
+							"name": "hooks",
+							"type": {
+								"text": "SectionPlayerHostHooks | undefined"
+							},
+							"fieldName": "hooks"
+						},
+						{
+							"name": "tool-config-strictness",
+							"type": {
+								"text": "string"
+							},
+							"fieldName": "toolConfigStrictness"
+						}
+					],
+					"events": [
+						{
+							"name": "pie-stage-change",
+							"type": {
+								"text": "CustomEvent<StageChangeDetail>"
+							},
+							"description": "When the section enters `composed`, `engine-ready`, `interactive` or `disposed`, or a framework error fails or skips a stage."
+						},
+						{
+							"name": "pie-loading-complete",
+							"type": {
+								"text": "CustomEvent<LoadingCompleteDetail>"
+							},
+							"description": "Once per section and attempt, when the element pre-warm resolves and the item cards can mount."
+						},
+						{
+							"name": "element-preload-retry",
+							"type": {
+								"text": "CustomEvent<{ componentTag: string; stage: \"validate-config\" | \"iife-load\" | \"esm-load\" | \"preloaded-assert\"; attempt: number; maxRetries: number; error: string; strategy: string; bundleType: string | null; bundleHost: string; renderablesCount: number; assessmentId?: string; sectionId: string; attemptId?: string }>"
+							},
+							"description": "When the rendering items pane's element pre-warm retries a failed load."
+						},
+						{
+							"name": "element-preload-error",
+							"type": {
+								"text": "CustomEvent<{ componentTag: string; stage: \"validate-config\" | \"iife-load\" | \"esm-load\" | \"preloaded-assert\"; error: string; strategy: string; bundleType: string | null; bundleHost: string; renderablesCount: number; assessmentId?: string; sectionId: string; attemptId?: string }>"
+							},
+							"description": "When the rendering items pane's element pre-warm fails."
+						},
+						{
+							"name": "framework-error",
+							"type": {
+								"text": "CustomEvent<FrameworkErrorModel>"
+							},
+							"description": "Bubbles from the inner toolkit. For each framework error the runtime reports; a non-recoverable bootstrap error also shows an error banner in place of the slotted content."
+						},
+						{
+							"name": "composition-changed",
+							"type": {
+								"text": "CustomEvent<{ composition: unknown; version: number }>"
+							},
+							"description": "Bubbles from the inner toolkit. When the bound section's composition changes revision, with a version that increases on each change."
+						},
+						{
+							"name": "session-changed",
+							"type": {
+								"text": "CustomEvent<{ itemId: string; canonicalItemId: string; sourceRuntimeId: string } & Record<string, unknown>>"
+							},
+							"description": "Bubbles from the inner toolkit. When an item's session in the bound section changes, carrying the section's canonical session detail for that item."
+						},
+						{
+							"name": "runtime-owned",
+							"type": {
+								"text": "CustomEvent<{ runtimeId: string; parentRuntimeId: string | null }>"
+							},
+							"description": "Bubbles from the inner toolkit. When the toolkit starts running its own coordinator."
+						},
+						{
+							"name": "runtime-inherited",
+							"type": {
+								"text": "CustomEvent<{ runtimeId: string; parentRuntimeId: string | null }>"
+							},
+							"description": "Bubbles from the inner toolkit. When the toolkit adopts an outer toolkit's coordinator, named by `parentRuntimeId`."
+						},
+						{
+							"name": "runtime-ready",
+							"type": {
+								"text": "CustomEvent<{ runtimeId: string; coordinator: ToolkitCoordinator; ownership: \"owned\" | \"inherited\" }>"
+							},
+							"description": "Bubbles from the inner toolkit. Once per coordinator, with or without a section, from which point a host can drive it."
+						},
+						{
+							"name": "toolkit-ready",
+							"type": {
+								"text": "CustomEvent<{ runtimeId: string; assessmentId: string; sectionId: string; itemPlayer: ItemPlayerConfig; coordinator: ToolkitCoordinator }>"
+							},
+							"description": "Bubbles from the inner toolkit. For every section the toolkit initializes, once its section controller resolves."
+						},
+						{
+							"name": "section-ready",
+							"type": {
+								"text": "CustomEvent<{ sectionId: string; attemptId: string; controller: unknown }>"
+							},
+							"description": "Bubbles from the inner toolkit. Right after `toolkit-ready`, with the section's controller or null."
+						},
+						{
+							"name": "item-session-changed",
+							"type": {
+								"text": "CustomEvent<{ itemId: string; canonicalItemId: string; session: unknown; sessionCommitReason?: \"teardown\" | \"navigate\" | \"page-hidden\" }>"
+							},
+							"description": "Bubbles from an item scope when the item player reports a response change; the player's own `session-changed` stops at the scope."
+						}
+					],
+					"slots": [
+						{
+							"name": "",
+							"description": "The host's layout, holding the items pane and, optionally, the passages pane."
+						}
+					],
+					"cssProperties": [
+						{
+							"name": "--pie-passage-header-background",
+							"description": "Passage header surface. Documented host hook; falls back to the canonical surface tokens when unset."
+						},
+						{
+							"name": "--pie-section-player-card-header-background",
+							"description": "Public card header background hook; defaults to transparent and hosts must preserve contrast with card header content."
+						},
+						{
+							"name": "--pie-section-player-card-header-background-dark",
+							"description": "Public card header fill applied under dark themes ([data-theme=\"dark\"] or pie-theme[theme=\"dark\"]); falls back to --pie-section-player-card-header-background so a host that sets only the light hook keeps today's behaviour. Hosts must preserve contrast with card header content on the dark ground."
+						},
+						{
+							"name": "--pie-section-player-card-header-radius",
+							"description": "Public card header corner radius hook; defaults just inside the card radius and may be overridden when hosts style header fills."
+						},
+						{
+							"name": "--pie-section-player-card-radius",
+							"description": "Public card radius hook shared by item and passage cards; geometry-only override with no color contrast impact."
+						}
+					],
+					"x-pie": {
+						"shadow": "open"
+					}
+				},
+				{
+					"kind": "class",
+					"description": "Section player layout that renders a section's passages and items side by side with a resizable divider between them, and at or below `narrow-layout-breakpoint` collapses to tabs or one column, per `split-pane-collapse-strategy`. The host sets `runtime` and `section` as properties; the element runs the toolkit, section controller, readiness, element pre-warm and section toolbar around them.",
+					"name": "PieSectionPlayerSplitPaneElement",
+					"tagName": "pie-section-player-splitpane",
+					"customElement": true,
+					"members": [
+						{
+							"kind": "field",
+							"name": "runtime",
+							"type": {
+								"text": "RuntimeConfig | null"
+							},
+							"default": "null",
+							"attribute": "runtime"
+						},
+						{
+							"kind": "field",
+							"name": "ndsIcons",
+							"type": {
+								"text": "boolean | undefined"
+							},
+							"description": "Presentation flag: opt in to NDS icon buttons. Unset renders plain <button>s.",
+							"attribute": "nds-icons"
+						},
+						{
+							"kind": "field",
+							"name": "locale",
+							"type": {
+								"text": "string"
+							},
+							"default": "\"\"",
+							"description": "Interface locale: the language the player renders its own UI in, as a BCP-47 tag. Unset renders `en-US`. Distinct from the authored content language, which travels on `runtime.contentLanguage`.",
+							"attribute": "locale"
+						},
+						{
+							"kind": "field",
+							"name": "section",
+							"type": {
+								"text": "AssessmentSection | null"
+							},
+							"default": "null",
+							"attribute": "section"
+						},
+						{
+							"kind": "field",
+							"name": "session",
+							"type": {
+								"text": "SectionControllerSessionState | null"
+							},
+							"default": "null",
+							"description": "The section's session, applied by the controller created for `section` in place of hydrating from the persistence strategy.",
+							"attribute": "session"
+						},
+						{
+							"kind": "field",
+							"name": "assessment",
+							"type": {
+								"text": "AssessmentEntity | null"
+							},
+							"default": "null",
+							"description": "The assessment entity whose `personalNeedsProfile` and `settings` the toolkit's tool policy reads, forwarded to the coordinator it builds.",
+							"attribute": "assessment"
+						},
+						{
+							"kind": "field",
+							"name": "sectionId",
+							"type": {
+								"text": "string"
+							},
+							"default": "\"\"",
+							"attribute": "section-id"
+						},
+						{
+							"kind": "field",
+							"name": "attemptId",
+							"type": {
+								"text": "string"
+							},
+							"default": "\"\"",
+							"attribute": "attempt-id"
+						},
+						{
+							"kind": "field",
+							"name": "iifeBundleHost",
+							"type": {
+								"text": "string"
+							},
+							"attribute": "iife-bundle-host"
+						},
+						{
+							"kind": "field",
+							"name": "debug",
+							"type": {
+								"text": "string | boolean | undefined"
+							},
+							"attribute": "debug"
+						},
+						{
+							"kind": "field",
+							"name": "baseHeadingLevel",
+							"type": {
+								"text": "number | undefined"
+							},
+							"description": "Composition context: the level this player's card headings occupy. Descendants derive their own outline from it — see docs/architecture/composition-context.md.",
+							"attribute": "base-heading-level"
+						},
+						{
+							"kind": "field",
+							"name": "showToolbar",
+							"type": {
+								"text": "boolean | string | null | undefined"
+							},
+							"default": "\"false\"",
+							"attribute": "show-toolbar"
+						},
+						{
+							"kind": "field",
+							"name": "toolbarPosition",
+							"type": {
+								"text": "string"
+							},
+							"default": "\"right\"",
+							"attribute": "toolbar-position"
+						},
+						{
+							"kind": "field",
+							"name": "toolRegistry",
+							"type": {
+								"text": "ToolRegistry | null"
+							},
+							"default": "null",
+							"attribute": "toolregistry"
+						},
+						{
+							"kind": "field",
+							"name": "sectionHostButtons",
+							"type": {
+								"text": "ToolbarItem[]"
+							},
+							"default": "[]",
+							"attribute": "sectionhostbuttons"
+						},
+						{
+							"kind": "field",
+							"name": "itemHostButtons",
+							"type": {
+								"text": "ToolbarItem[]"
+							},
+							"default": "[]",
+							"attribute": "itemhostbuttons"
+						},
+						{
+							"kind": "field",
+							"name": "passageHostButtons",
+							"type": {
+								"text": "ToolbarItem[]"
+							},
+							"default": "[]",
+							"attribute": "passagehostbuttons"
+						},
+						{
+							"kind": "field",
+							"name": "policies",
+							"type": {
+								"text": "Partial<SectionPlayerPolicies> | undefined"
+							},
+							"attribute": "policies"
+						},
+						{
+							"kind": "field",
+							"name": "hooks",
+							"type": {
+								"text": "SectionPlayerHostHooks | undefined"
+							},
+							"attribute": "hooks"
+						},
+						{
+							"kind": "field",
+							"name": "toolConfigStrictness",
+							"type": {
+								"text": "ToolConfigStrictness | undefined"
+							},
+							"attribute": "tool-config-strictness"
+						},
+						{
+							"kind": "field",
+							"name": "narrowLayoutBreakpoint",
+							"type": {
+								"text": "number | undefined"
+							},
+							"attribute": "narrow-layout-breakpoint"
+						},
+						{
+							"kind": "field",
+							"name": "contentMaxWidthNoPassage",
+							"type": {
+								"text": "number | undefined"
+							},
+							"attribute": "content-max-width-no-passage"
+						},
+						{
+							"kind": "field",
+							"name": "contentMaxWidthWithPassage",
+							"type": {
+								"text": "number | undefined"
+							},
+							"attribute": "content-max-width-with-passage"
+						},
+						{
+							"kind": "field",
+							"name": "splitPaneMinRegionWidth",
+							"type": {
+								"text": "number | undefined"
+							},
+							"attribute": "split-pane-min-region-width"
+						},
+						{
+							"kind": "field",
+							"name": "splitPaneInitialPassageWidth",
+							"type": {
+								"text": "number | string | undefined"
+							},
+							"attribute": "split-pane-initial-passage-width"
+						},
+						{
+							"kind": "field",
+							"name": "splitPaneCollapseStrategy",
+							"type": {
+								"text": "\"vertical\" | \"tabbed\" | string"
+							},
+							"default": "\"tabbed\"",
+							"attribute": "split-pane-collapse-strategy"
+						},
+						{
+							"kind": "method",
+							"name": "getSnapshot",
+							"return": {
+								"type": {
+									"text": "SectionPlayerSnapshot | null"
+								}
+							}
+						},
+						{
+							"kind": "method",
+							"name": "navigateTo",
+							"parameters": [
+								{
+									"name": "index",
+									"type": {
+										"text": "number"
+									}
+								}
+							],
+							"return": {
+								"type": {
+									"text": "boolean"
+								}
+							}
+						},
+						{
+							"kind": "method",
+							"name": "navigateNext",
+							"return": {
+								"type": {
+									"text": "boolean"
+								}
+							}
+						},
+						{
+							"kind": "method",
+							"name": "navigatePrevious",
+							"return": {
+								"type": {
+									"text": "boolean"
+								}
+							}
+						},
+						{
+							"kind": "method",
+							"name": "getSectionController",
+							"return": {
+								"type": {
+									"text": "SectionControllerHandle | null"
+								}
+							}
+						},
+						{
+							"kind": "method",
+							"name": "waitForSectionController",
+							"parameters": [
+								{
+									"name": "timeoutMs",
+									"type": {
+										"text": "number"
+									},
+									"optional": true,
+									"default": "5000"
+								}
+							],
+							"return": {
+								"type": {
+									"text": "Promise<SectionControllerHandle | null>"
+								}
+							}
+						}
+					],
+					"attributes": [
+						{
+							"name": "runtime",
+							"type": {
+								"text": "RuntimeConfig | null"
+							},
+							"default": "null",
+							"fieldName": "runtime"
+						},
+						{
+							"name": "nds-icons",
+							"type": {
+								"text": "boolean"
+							},
+							"description": "Presentation flag: opt in to NDS icon buttons. Unset renders plain <button>s.",
+							"fieldName": "ndsIcons"
+						},
+						{
+							"name": "locale",
+							"type": {
+								"text": "string"
+							},
+							"default": "\"\"",
+							"description": "Interface locale: the language the player renders its own UI in, as a BCP-47 tag. Unset renders `en-US`. Distinct from the authored content language, which travels on `runtime.contentLanguage`.",
+							"fieldName": "locale"
+						},
+						{
+							"name": "section",
+							"type": {
+								"text": "AssessmentSection | null"
+							},
+							"default": "null",
+							"fieldName": "section"
+						},
+						{
+							"name": "session",
+							"type": {
+								"text": "SectionControllerSessionState | null"
+							},
+							"default": "null",
+							"description": "The section's session, applied by the controller created for `section` in place of hydrating from the persistence strategy.",
+							"fieldName": "session"
+						},
+						{
+							"name": "assessment",
+							"type": {
+								"text": "AssessmentEntity | null"
+							},
+							"default": "null",
+							"description": "The assessment entity whose `personalNeedsProfile` and `settings` the toolkit's tool policy reads, forwarded to the coordinator it builds.",
+							"fieldName": "assessment"
+						},
+						{
+							"name": "section-id",
+							"type": {
+								"text": "string"
+							},
+							"default": "\"\"",
+							"fieldName": "sectionId"
+						},
+						{
+							"name": "attempt-id",
+							"type": {
+								"text": "string"
+							},
+							"default": "\"\"",
+							"fieldName": "attemptId"
+						},
+						{
+							"name": "iife-bundle-host",
+							"type": {
+								"text": "string"
+							},
+							"fieldName": "iifeBundleHost"
+						},
+						{
+							"name": "debug",
+							"type": {
+								"text": "string"
+							},
+							"fieldName": "debug"
+						},
+						{
+							"name": "base-heading-level",
+							"type": {
+								"text": "number"
+							},
+							"description": "Composition context: the level this player's card headings occupy. Descendants derive their own outline from it — see docs/architecture/composition-context.md.",
+							"fieldName": "baseHeadingLevel"
+						},
+						{
+							"name": "show-toolbar",
+							"type": {
+								"text": "string"
+							},
+							"default": "\"false\"",
+							"fieldName": "showToolbar"
+						},
+						{
+							"name": "toolbar-position",
+							"type": {
+								"text": "string"
+							},
+							"default": "\"right\"",
+							"fieldName": "toolbarPosition"
+						},
+						{
+							"name": "toolregistry",
+							"type": {
+								"text": "ToolRegistry | null"
+							},
+							"default": "null",
+							"fieldName": "toolRegistry"
+						},
+						{
+							"name": "sectionhostbuttons",
+							"type": {
+								"text": "ToolbarItem[]"
+							},
+							"default": "[]",
+							"fieldName": "sectionHostButtons"
+						},
+						{
+							"name": "itemhostbuttons",
+							"type": {
+								"text": "ToolbarItem[]"
+							},
+							"default": "[]",
+							"fieldName": "itemHostButtons"
+						},
+						{
+							"name": "passagehostbuttons",
+							"type": {
+								"text": "ToolbarItem[]"
+							},
+							"default": "[]",
+							"fieldName": "passageHostButtons"
+						},
+						{
+							"name": "policies",
+							"type": {
+								"text": "Partial<SectionPlayerPolicies> | undefined"
+							},
+							"fieldName": "policies"
+						},
+						{
+							"name": "hooks",
+							"type": {
+								"text": "SectionPlayerHostHooks | undefined"
+							},
+							"fieldName": "hooks"
+						},
+						{
+							"name": "tool-config-strictness",
+							"type": {
+								"text": "string"
+							},
+							"fieldName": "toolConfigStrictness"
+						},
+						{
+							"name": "narrow-layout-breakpoint",
+							"type": {
+								"text": "number"
+							},
+							"fieldName": "narrowLayoutBreakpoint"
+						},
+						{
+							"name": "content-max-width-no-passage",
+							"type": {
+								"text": "number"
+							},
+							"fieldName": "contentMaxWidthNoPassage"
+						},
+						{
+							"name": "content-max-width-with-passage",
+							"type": {
+								"text": "number"
+							},
+							"fieldName": "contentMaxWidthWithPassage"
+						},
+						{
+							"name": "split-pane-min-region-width",
+							"type": {
+								"text": "number"
+							},
+							"fieldName": "splitPaneMinRegionWidth"
+						},
+						{
+							"name": "split-pane-initial-passage-width",
+							"type": {
+								"text": "number"
+							},
+							"fieldName": "splitPaneInitialPassageWidth"
+						},
+						{
+							"name": "split-pane-collapse-strategy",
+							"type": {
+								"text": "string"
+							},
+							"default": "\"tabbed\"",
+							"fieldName": "splitPaneCollapseStrategy"
+						}
+					],
+					"events": [
+						{
+							"name": "pie-stage-change",
+							"type": {
+								"text": "CustomEvent<StageChangeDetail>"
+							},
+							"description": "When the section enters `composed`, `engine-ready`, `interactive` or `disposed`, or a framework error fails or skips a stage."
+						},
+						{
+							"name": "pie-loading-complete",
+							"type": {
+								"text": "CustomEvent<LoadingCompleteDetail>"
+							},
+							"description": "Once per section and attempt, when the element pre-warm resolves and the item cards can mount."
+						},
+						{
+							"name": "element-preload-retry",
+							"type": {
+								"text": "CustomEvent<{ componentTag: string; stage: \"validate-config\" | \"iife-load\" | \"esm-load\" | \"preloaded-assert\"; attempt: number; maxRetries: number; error: string; strategy: string; bundleType: string | null; bundleHost: string; renderablesCount: number; assessmentId?: string; sectionId: string; attemptId?: string }>"
+							},
+							"description": "When the rendering items pane's element pre-warm retries a failed load."
+						},
+						{
+							"name": "element-preload-error",
+							"type": {
+								"text": "CustomEvent<{ componentTag: string; stage: \"validate-config\" | \"iife-load\" | \"esm-load\" | \"preloaded-assert\"; error: string; strategy: string; bundleType: string | null; bundleHost: string; renderablesCount: number; assessmentId?: string; sectionId: string; attemptId?: string }>"
+							},
+							"description": "When the rendering items pane's element pre-warm fails."
+						},
+						{
+							"name": "framework-error",
+							"type": {
+								"text": "CustomEvent<FrameworkErrorModel>"
+							},
+							"description": "Bubbles from the inner toolkit. For each framework error the runtime reports; a non-recoverable bootstrap error also shows an error banner in place of the slotted content."
+						},
+						{
+							"name": "composition-changed",
+							"type": {
+								"text": "CustomEvent<{ composition: unknown; version: number }>"
+							},
+							"description": "Bubbles from the inner toolkit. When the bound section's composition changes revision, with a version that increases on each change."
+						},
+						{
+							"name": "session-changed",
+							"type": {
+								"text": "CustomEvent<{ itemId: string; canonicalItemId: string; sourceRuntimeId: string } & Record<string, unknown>>"
+							},
+							"description": "Bubbles from the inner toolkit. When an item's session in the bound section changes, carrying the section's canonical session detail for that item."
+						},
+						{
+							"name": "runtime-owned",
+							"type": {
+								"text": "CustomEvent<{ runtimeId: string; parentRuntimeId: string | null }>"
+							},
+							"description": "Bubbles from the inner toolkit. When the toolkit starts running its own coordinator."
+						},
+						{
+							"name": "runtime-inherited",
+							"type": {
+								"text": "CustomEvent<{ runtimeId: string; parentRuntimeId: string | null }>"
+							},
+							"description": "Bubbles from the inner toolkit. When the toolkit adopts an outer toolkit's coordinator, named by `parentRuntimeId`."
+						},
+						{
+							"name": "runtime-ready",
+							"type": {
+								"text": "CustomEvent<{ runtimeId: string; coordinator: ToolkitCoordinator; ownership: \"owned\" | \"inherited\" }>"
+							},
+							"description": "Bubbles from the inner toolkit. Once per coordinator, with or without a section, from which point a host can drive it."
+						},
+						{
+							"name": "toolkit-ready",
+							"type": {
+								"text": "CustomEvent<{ runtimeId: string; assessmentId: string; sectionId: string; itemPlayer: ItemPlayerConfig; coordinator: ToolkitCoordinator }>"
+							},
+							"description": "Bubbles from the inner toolkit. For every section the toolkit initializes, once its section controller resolves."
+						},
+						{
+							"name": "section-ready",
+							"type": {
+								"text": "CustomEvent<{ sectionId: string; attemptId: string; controller: unknown }>"
+							},
+							"description": "Bubbles from the inner toolkit. Right after `toolkit-ready`, with the section's controller or null."
+						},
+						{
+							"name": "item-session-changed",
+							"type": {
+								"text": "CustomEvent<{ itemId: string; canonicalItemId: string; session: unknown; sessionCommitReason?: \"teardown\" | \"navigate\" | \"page-hidden\" }>"
+							},
+							"description": "Bubbles from an item scope when the item player reports a response change; the player's own `session-changed` stops at the scope."
+						}
+					],
+					"cssProperties": [
+						{
+							"name": "--pie-passage-header-background",
+							"description": "Passage header surface. Documented host hook; falls back to the canonical surface tokens when unset."
+						},
+						{
+							"name": "--pie-section-player-card-header-background",
+							"description": "Public card header background hook; defaults to transparent and hosts must preserve contrast with card header content."
+						},
+						{
+							"name": "--pie-section-player-card-header-background-dark",
+							"description": "Public card header fill applied under dark themes ([data-theme=\"dark\"] or pie-theme[theme=\"dark\"]); falls back to --pie-section-player-card-header-background so a host that sets only the light hook keeps today's behaviour. Hosts must preserve contrast with card header content on the dark ground."
+						},
+						{
+							"name": "--pie-section-player-card-header-radius",
+							"description": "Public card header corner radius hook; defaults just inside the card radius and may be overridden when hosts style header fills."
+						},
+						{
+							"name": "--pie-section-player-card-radius",
+							"description": "Public card radius hook shared by item and passage cards; geometry-only override with no color contrast impact."
+						},
+						{
+							"name": "--pie-section-player-tab-active-background",
+							"description": "Public tab active-state background hook; hosts must preserve contrast with --pie-section-player-tab-active-color."
+						},
+						{
+							"name": "--pie-section-player-tab-active-color",
+							"description": "Public tab active-state foreground hook; hosts must preserve contrast with --pie-section-player-tab-active-background."
+						},
+						{
+							"name": "--pie-section-player-tab-background",
+							"description": "Public ordinary tab background hook; default remains transparent and should inherit accessible surrounding surfaces."
+						},
+						{
+							"name": "--pie-section-player-tab-color",
+							"description": "Public ordinary tab foreground hook; hosts must preserve text contrast against ordinary tab backgrounds."
+						},
+						{
+							"name": "--pie-section-player-tab-gap",
+							"description": "Public tabbed-frame spacing hook; values must not reduce perceivable target separation below WCAG expectations."
+						},
+						{
+							"name": "--pie-section-player-tab-padding-block",
+							"description": "Public tab block padding hook; hosts should preserve keyboard target size when overriding."
+						},
+						{
+							"name": "--pie-section-player-tab-track-padding",
+							"description": "Public tab track padding hook; hosts should preserve target size and visible grouping when overriding."
+						},
+						{
+							"name": "--pie-section-player-tab-track-radius",
+							"description": "Public tab track radius hook; geometry-only override with no color contrast impact."
+						}
+					],
+					"x-pie": {
+						"shadow": "none",
+						"classes": [
+							"pie-section-player-items-pane",
+							"pie-section-player-items-section",
+							"pie-section-player-layout-scaffold-anchor",
+							"pie-section-player-nav-status",
+							"pie-section-player-observability-anchor",
+							"pie-section-player-passages-pane",
+							"pie-section-player-passages-section",
+							"pie-section-player-split-divider-handle",
+							"pie-section-player-split-frame",
+							"pie-section-player-tab-panel",
+							"pie-section-player-tab-panel--items",
+							"pie-section-player-tab-panel--passages",
+							"pie-section-player-tabbed-content",
+							"pie-section-player-tabbed-frame",
+							"pie-section-player-tabs",
+							"pie-section-player-vertical-content",
+							"pie-section-player-vertical-frame"
+						]
+					}
+				},
+				{
+					"kind": "class",
+					"description": "Section player layout that renders a section's passages and items as two tabs, and only the items for a section without passages. The host sets `runtime` and `section` as properties; the element runs the toolkit, section controller, readiness, element pre-warm and section toolbar around them.",
+					"name": "PieSectionPlayerTabbedElement",
+					"tagName": "pie-section-player-tabbed",
+					"customElement": true,
+					"members": [
+						{
+							"kind": "field",
+							"name": "runtime",
+							"type": {
+								"text": "RuntimeConfig | null"
+							},
+							"default": "null",
+							"attribute": "runtime"
+						},
+						{
+							"kind": "field",
+							"name": "ndsIcons",
+							"type": {
+								"text": "boolean | undefined"
+							},
+							"description": "Presentation flag: opt in to NDS icon buttons. Unset renders plain <button>s.",
+							"attribute": "nds-icons"
+						},
+						{
+							"kind": "field",
+							"name": "locale",
+							"type": {
+								"text": "string"
+							},
+							"default": "\"\"",
+							"description": "Interface locale: the language the player renders its own UI in, as a BCP-47 tag. Unset renders `en-US`. Distinct from the authored content language, which travels on `runtime.contentLanguage`.",
+							"attribute": "locale"
+						},
+						{
+							"kind": "field",
+							"name": "section",
+							"type": {
+								"text": "AssessmentSection | null"
+							},
+							"default": "null",
+							"attribute": "section"
+						},
+						{
+							"kind": "field",
+							"name": "session",
+							"type": {
+								"text": "SectionControllerSessionState | null"
+							},
+							"default": "null",
+							"description": "The section's session, applied by the controller created for `section` in place of hydrating from the persistence strategy.",
+							"attribute": "session"
+						},
+						{
+							"kind": "field",
+							"name": "assessment",
+							"type": {
+								"text": "AssessmentEntity | null"
+							},
+							"default": "null",
+							"description": "The assessment entity whose `personalNeedsProfile` and `settings` the toolkit's tool policy reads, forwarded to the coordinator it builds.",
+							"attribute": "assessment"
+						},
+						{
+							"kind": "field",
+							"name": "sectionId",
+							"type": {
+								"text": "string"
+							},
+							"default": "\"\"",
+							"attribute": "section-id"
+						},
+						{
+							"kind": "field",
+							"name": "attemptId",
+							"type": {
+								"text": "string"
+							},
+							"default": "\"\"",
+							"attribute": "attempt-id"
+						},
+						{
+							"kind": "field",
+							"name": "iifeBundleHost",
+							"type": {
+								"text": "string"
+							},
+							"attribute": "iife-bundle-host"
+						},
+						{
+							"kind": "field",
+							"name": "debug",
+							"type": {
+								"text": "string | boolean | undefined"
+							},
+							"attribute": "debug"
+						},
+						{
+							"kind": "field",
+							"name": "baseHeadingLevel",
+							"type": {
+								"text": "number | undefined"
+							},
+							"description": "Composition context: the level this player's card headings occupy. Descendants derive their own outline from it — see docs/architecture/composition-context.md.",
+							"attribute": "base-heading-level"
+						},
+						{
+							"kind": "field",
+							"name": "showToolbar",
+							"type": {
+								"text": "boolean | string | null | undefined"
+							},
+							"default": "\"false\"",
+							"attribute": "show-toolbar"
+						},
+						{
+							"kind": "field",
+							"name": "toolbarPosition",
+							"type": {
+								"text": "string"
+							},
+							"default": "\"right\"",
+							"attribute": "toolbar-position"
+						},
+						{
+							"kind": "field",
+							"name": "toolRegistry",
+							"type": {
+								"text": "ToolRegistry | null"
+							},
+							"default": "null",
+							"attribute": "toolregistry"
+						},
+						{
+							"kind": "field",
+							"name": "sectionHostButtons",
+							"type": {
+								"text": "ToolbarItem[]"
+							},
+							"default": "[]",
+							"attribute": "sectionhostbuttons"
+						},
+						{
+							"kind": "field",
+							"name": "itemHostButtons",
+							"type": {
+								"text": "ToolbarItem[]"
+							},
+							"default": "[]",
+							"attribute": "itemhostbuttons"
+						},
+						{
+							"kind": "field",
+							"name": "passageHostButtons",
+							"type": {
+								"text": "ToolbarItem[]"
+							},
+							"default": "[]",
+							"attribute": "passagehostbuttons"
+						},
+						{
+							"kind": "field",
+							"name": "policies",
+							"type": {
+								"text": "Partial<SectionPlayerPolicies> | undefined"
+							},
+							"attribute": "policies"
+						},
+						{
+							"kind": "field",
+							"name": "hooks",
+							"type": {
+								"text": "SectionPlayerHostHooks | undefined"
+							},
+							"attribute": "hooks"
+						},
+						{
+							"kind": "field",
+							"name": "toolConfigStrictness",
+							"type": {
+								"text": "ToolConfigStrictness | undefined"
+							},
+							"attribute": "tool-config-strictness"
+						},
+						{
+							"kind": "field",
+							"name": "narrowLayoutBreakpoint",
+							"type": {
+								"text": "number | undefined"
+							},
+							"attribute": "narrow-layout-breakpoint"
+						},
+						{
+							"kind": "field",
+							"name": "contentMaxWidthNoPassage",
+							"type": {
+								"text": "number | undefined"
+							},
+							"attribute": "content-max-width-no-passage"
+						},
+						{
+							"kind": "field",
+							"name": "contentMaxWidthWithPassage",
+							"type": {
+								"text": "number | undefined"
+							},
+							"attribute": "content-max-width-with-passage"
+						},
+						{
+							"kind": "method",
+							"name": "getSnapshot",
+							"return": {
+								"type": {
+									"text": "SectionPlayerSnapshot | null"
+								}
+							}
+						},
+						{
+							"kind": "method",
+							"name": "navigateTo",
+							"parameters": [
+								{
+									"name": "index",
+									"type": {
+										"text": "number"
+									}
+								}
+							],
+							"return": {
+								"type": {
+									"text": "boolean"
+								}
+							}
+						},
+						{
+							"kind": "method",
+							"name": "navigateNext",
+							"return": {
+								"type": {
+									"text": "boolean"
+								}
+							}
+						},
+						{
+							"kind": "method",
+							"name": "navigatePrevious",
+							"return": {
+								"type": {
+									"text": "boolean"
+								}
+							}
+						},
+						{
+							"kind": "method",
+							"name": "getSectionController",
+							"return": {
+								"type": {
+									"text": "SectionControllerHandle | null"
+								}
+							}
+						},
+						{
+							"kind": "method",
+							"name": "waitForSectionController",
+							"parameters": [
+								{
+									"name": "timeoutMs",
+									"type": {
+										"text": "number"
+									},
+									"optional": true,
+									"default": "5000"
+								}
+							],
+							"return": {
+								"type": {
+									"text": "Promise<SectionControllerHandle | null>"
+								}
+							}
+						}
+					],
+					"attributes": [
+						{
+							"name": "runtime",
+							"type": {
+								"text": "RuntimeConfig | null"
+							},
+							"default": "null",
+							"fieldName": "runtime"
+						},
+						{
+							"name": "nds-icons",
+							"type": {
+								"text": "boolean"
+							},
+							"description": "Presentation flag: opt in to NDS icon buttons. Unset renders plain <button>s.",
+							"fieldName": "ndsIcons"
+						},
+						{
+							"name": "locale",
+							"type": {
+								"text": "string"
+							},
+							"default": "\"\"",
+							"description": "Interface locale: the language the player renders its own UI in, as a BCP-47 tag. Unset renders `en-US`. Distinct from the authored content language, which travels on `runtime.contentLanguage`.",
+							"fieldName": "locale"
+						},
+						{
+							"name": "section",
+							"type": {
+								"text": "AssessmentSection | null"
+							},
+							"default": "null",
+							"fieldName": "section"
+						},
+						{
+							"name": "session",
+							"type": {
+								"text": "SectionControllerSessionState | null"
+							},
+							"default": "null",
+							"description": "The section's session, applied by the controller created for `section` in place of hydrating from the persistence strategy.",
+							"fieldName": "session"
+						},
+						{
+							"name": "assessment",
+							"type": {
+								"text": "AssessmentEntity | null"
+							},
+							"default": "null",
+							"description": "The assessment entity whose `personalNeedsProfile` and `settings` the toolkit's tool policy reads, forwarded to the coordinator it builds.",
+							"fieldName": "assessment"
+						},
+						{
+							"name": "section-id",
+							"type": {
+								"text": "string"
+							},
+							"default": "\"\"",
+							"fieldName": "sectionId"
+						},
+						{
+							"name": "attempt-id",
+							"type": {
+								"text": "string"
+							},
+							"default": "\"\"",
+							"fieldName": "attemptId"
+						},
+						{
+							"name": "iife-bundle-host",
+							"type": {
+								"text": "string"
+							},
+							"fieldName": "iifeBundleHost"
+						},
+						{
+							"name": "debug",
+							"type": {
+								"text": "string"
+							},
+							"fieldName": "debug"
+						},
+						{
+							"name": "base-heading-level",
+							"type": {
+								"text": "number"
+							},
+							"description": "Composition context: the level this player's card headings occupy. Descendants derive their own outline from it — see docs/architecture/composition-context.md.",
+							"fieldName": "baseHeadingLevel"
+						},
+						{
+							"name": "show-toolbar",
+							"type": {
+								"text": "string"
+							},
+							"default": "\"false\"",
+							"fieldName": "showToolbar"
+						},
+						{
+							"name": "toolbar-position",
+							"type": {
+								"text": "string"
+							},
+							"default": "\"right\"",
+							"fieldName": "toolbarPosition"
+						},
+						{
+							"name": "toolregistry",
+							"type": {
+								"text": "ToolRegistry | null"
+							},
+							"default": "null",
+							"fieldName": "toolRegistry"
+						},
+						{
+							"name": "sectionhostbuttons",
+							"type": {
+								"text": "ToolbarItem[]"
+							},
+							"default": "[]",
+							"fieldName": "sectionHostButtons"
+						},
+						{
+							"name": "itemhostbuttons",
+							"type": {
+								"text": "ToolbarItem[]"
+							},
+							"default": "[]",
+							"fieldName": "itemHostButtons"
+						},
+						{
+							"name": "passagehostbuttons",
+							"type": {
+								"text": "ToolbarItem[]"
+							},
+							"default": "[]",
+							"fieldName": "passageHostButtons"
+						},
+						{
+							"name": "policies",
+							"type": {
+								"text": "Partial<SectionPlayerPolicies> | undefined"
+							},
+							"fieldName": "policies"
+						},
+						{
+							"name": "hooks",
+							"type": {
+								"text": "SectionPlayerHostHooks | undefined"
+							},
+							"fieldName": "hooks"
+						},
+						{
+							"name": "tool-config-strictness",
+							"type": {
+								"text": "string"
+							},
+							"fieldName": "toolConfigStrictness"
+						},
+						{
+							"name": "narrow-layout-breakpoint",
+							"type": {
+								"text": "number"
+							},
+							"fieldName": "narrowLayoutBreakpoint"
+						},
+						{
+							"name": "content-max-width-no-passage",
+							"type": {
+								"text": "number"
+							},
+							"fieldName": "contentMaxWidthNoPassage"
+						},
+						{
+							"name": "content-max-width-with-passage",
+							"type": {
+								"text": "number"
+							},
+							"fieldName": "contentMaxWidthWithPassage"
+						}
+					],
+					"events": [
+						{
+							"name": "pie-stage-change",
+							"type": {
+								"text": "CustomEvent<StageChangeDetail>"
+							},
+							"description": "When the section enters `composed`, `engine-ready`, `interactive` or `disposed`, or a framework error fails or skips a stage."
+						},
+						{
+							"name": "pie-loading-complete",
+							"type": {
+								"text": "CustomEvent<LoadingCompleteDetail>"
+							},
+							"description": "Once per section and attempt, when the element pre-warm resolves and the item cards can mount."
+						},
+						{
+							"name": "element-preload-retry",
+							"type": {
+								"text": "CustomEvent<{ componentTag: string; stage: \"validate-config\" | \"iife-load\" | \"esm-load\" | \"preloaded-assert\"; attempt: number; maxRetries: number; error: string; strategy: string; bundleType: string | null; bundleHost: string; renderablesCount: number; assessmentId?: string; sectionId: string; attemptId?: string }>"
+							},
+							"description": "When the rendering items pane's element pre-warm retries a failed load."
+						},
+						{
+							"name": "element-preload-error",
+							"type": {
+								"text": "CustomEvent<{ componentTag: string; stage: \"validate-config\" | \"iife-load\" | \"esm-load\" | \"preloaded-assert\"; error: string; strategy: string; bundleType: string | null; bundleHost: string; renderablesCount: number; assessmentId?: string; sectionId: string; attemptId?: string }>"
+							},
+							"description": "When the rendering items pane's element pre-warm fails."
+						},
+						{
+							"name": "framework-error",
+							"type": {
+								"text": "CustomEvent<FrameworkErrorModel>"
+							},
+							"description": "Bubbles from the inner toolkit. For each framework error the runtime reports; a non-recoverable bootstrap error also shows an error banner in place of the slotted content."
+						},
+						{
+							"name": "composition-changed",
+							"type": {
+								"text": "CustomEvent<{ composition: unknown; version: number }>"
+							},
+							"description": "Bubbles from the inner toolkit. When the bound section's composition changes revision, with a version that increases on each change."
+						},
+						{
+							"name": "session-changed",
+							"type": {
+								"text": "CustomEvent<{ itemId: string; canonicalItemId: string; sourceRuntimeId: string } & Record<string, unknown>>"
+							},
+							"description": "Bubbles from the inner toolkit. When an item's session in the bound section changes, carrying the section's canonical session detail for that item."
+						},
+						{
+							"name": "runtime-owned",
+							"type": {
+								"text": "CustomEvent<{ runtimeId: string; parentRuntimeId: string | null }>"
+							},
+							"description": "Bubbles from the inner toolkit. When the toolkit starts running its own coordinator."
+						},
+						{
+							"name": "runtime-inherited",
+							"type": {
+								"text": "CustomEvent<{ runtimeId: string; parentRuntimeId: string | null }>"
+							},
+							"description": "Bubbles from the inner toolkit. When the toolkit adopts an outer toolkit's coordinator, named by `parentRuntimeId`."
+						},
+						{
+							"name": "runtime-ready",
+							"type": {
+								"text": "CustomEvent<{ runtimeId: string; coordinator: ToolkitCoordinator; ownership: \"owned\" | \"inherited\" }>"
+							},
+							"description": "Bubbles from the inner toolkit. Once per coordinator, with or without a section, from which point a host can drive it."
+						},
+						{
+							"name": "toolkit-ready",
+							"type": {
+								"text": "CustomEvent<{ runtimeId: string; assessmentId: string; sectionId: string; itemPlayer: ItemPlayerConfig; coordinator: ToolkitCoordinator }>"
+							},
+							"description": "Bubbles from the inner toolkit. For every section the toolkit initializes, once its section controller resolves."
+						},
+						{
+							"name": "section-ready",
+							"type": {
+								"text": "CustomEvent<{ sectionId: string; attemptId: string; controller: unknown }>"
+							},
+							"description": "Bubbles from the inner toolkit. Right after `toolkit-ready`, with the section's controller or null."
+						},
+						{
+							"name": "item-session-changed",
+							"type": {
+								"text": "CustomEvent<{ itemId: string; canonicalItemId: string; session: unknown; sessionCommitReason?: \"teardown\" | \"navigate\" | \"page-hidden\" }>"
+							},
+							"description": "Bubbles from an item scope when the item player reports a response change; the player's own `session-changed` stops at the scope."
+						}
+					],
+					"cssProperties": [
+						{
+							"name": "--pie-passage-header-background",
+							"description": "Passage header surface. Documented host hook; falls back to the canonical surface tokens when unset."
+						},
+						{
+							"name": "--pie-section-player-card-header-background",
+							"description": "Public card header background hook; defaults to transparent and hosts must preserve contrast with card header content."
+						},
+						{
+							"name": "--pie-section-player-card-header-background-dark",
+							"description": "Public card header fill applied under dark themes ([data-theme=\"dark\"] or pie-theme[theme=\"dark\"]); falls back to --pie-section-player-card-header-background so a host that sets only the light hook keeps today's behaviour. Hosts must preserve contrast with card header content on the dark ground."
+						},
+						{
+							"name": "--pie-section-player-card-header-radius",
+							"description": "Public card header corner radius hook; defaults just inside the card radius and may be overridden when hosts style header fills."
+						},
+						{
+							"name": "--pie-section-player-card-radius",
+							"description": "Public card radius hook shared by item and passage cards; geometry-only override with no color contrast impact."
+						},
+						{
+							"name": "--pie-section-player-tab-active-background",
+							"description": "Public tab active-state background hook; hosts must preserve contrast with --pie-section-player-tab-active-color."
+						},
+						{
+							"name": "--pie-section-player-tab-active-color",
+							"description": "Public tab active-state foreground hook; hosts must preserve contrast with --pie-section-player-tab-active-background."
+						},
+						{
+							"name": "--pie-section-player-tab-background",
+							"description": "Public ordinary tab background hook; default remains transparent and should inherit accessible surrounding surfaces."
+						},
+						{
+							"name": "--pie-section-player-tab-color",
+							"description": "Public ordinary tab foreground hook; hosts must preserve text contrast against ordinary tab backgrounds."
+						},
+						{
+							"name": "--pie-section-player-tab-gap",
+							"description": "Public tabbed-frame spacing hook; values must not reduce perceivable target separation below WCAG expectations."
+						},
+						{
+							"name": "--pie-section-player-tab-padding-block",
+							"description": "Public tab block padding hook; hosts should preserve keyboard target size when overriding."
+						},
+						{
+							"name": "--pie-section-player-tab-track-padding",
+							"description": "Public tab track padding hook; hosts should preserve target size and visible grouping when overriding."
+						},
+						{
+							"name": "--pie-section-player-tab-track-radius",
+							"description": "Public tab track radius hook; geometry-only override with no color contrast impact."
+						}
+					],
+					"x-pie": {
+						"shadow": "none",
+						"classes": [
+							"pie-section-player-layout-scaffold-anchor",
+							"pie-section-player-nav-status",
+							"pie-section-player-observability-anchor",
+							"pie-section-player-tab-panel",
+							"pie-section-player-tab-panel--items",
+							"pie-section-player-tab-panel--passages",
+							"pie-section-player-tabbed-content",
+							"pie-section-player-tabbed-frame",
+							"pie-section-player-tabs"
+						]
+					}
+				},
+				{
+					"kind": "class",
+					"description": "Section player layout that renders a section's passages above its items in one column. The host sets `runtime` and `section` as properties; the element runs the toolkit, section controller, readiness, element pre-warm and section toolbar around them.",
+					"name": "PieSectionPlayerVerticalElement",
+					"tagName": "pie-section-player-vertical",
+					"customElement": true,
+					"members": [
+						{
+							"kind": "field",
+							"name": "runtime",
+							"type": {
+								"text": "RuntimeConfig | null"
+							},
+							"default": "null",
+							"attribute": "runtime"
+						},
+						{
+							"kind": "field",
+							"name": "ndsIcons",
+							"type": {
+								"text": "boolean | undefined"
+							},
+							"description": "Presentation flag: opt in to NDS icon buttons. Unset renders plain <button>s.",
+							"attribute": "nds-icons"
+						},
+						{
+							"kind": "field",
+							"name": "locale",
+							"type": {
+								"text": "string"
+							},
+							"default": "\"\"",
+							"description": "Interface locale: the language the player renders its own UI in, as a BCP-47 tag. Unset renders `en-US`. Distinct from the authored content language, which travels on `runtime.contentLanguage`.",
+							"attribute": "locale"
+						},
+						{
+							"kind": "field",
+							"name": "section",
+							"type": {
+								"text": "AssessmentSection | null"
+							},
+							"default": "null",
+							"attribute": "section"
+						},
+						{
+							"kind": "field",
+							"name": "session",
+							"type": {
+								"text": "SectionControllerSessionState | null"
+							},
+							"default": "null",
+							"description": "The section's session, applied by the controller created for `section` in place of hydrating from the persistence strategy.",
+							"attribute": "session"
+						},
+						{
+							"kind": "field",
+							"name": "assessment",
+							"type": {
+								"text": "AssessmentEntity | null"
+							},
+							"default": "null",
+							"description": "The assessment entity whose `personalNeedsProfile` and `settings` the toolkit's tool policy reads, forwarded to the coordinator it builds.",
+							"attribute": "assessment"
+						},
+						{
+							"kind": "field",
+							"name": "sectionId",
+							"type": {
+								"text": "string"
+							},
+							"default": "\"\"",
+							"attribute": "section-id"
+						},
+						{
+							"kind": "field",
+							"name": "attemptId",
+							"type": {
+								"text": "string"
+							},
+							"default": "\"\"",
+							"attribute": "attempt-id"
+						},
+						{
+							"kind": "field",
+							"name": "iifeBundleHost",
+							"type": {
+								"text": "string"
+							},
+							"attribute": "iife-bundle-host"
+						},
+						{
+							"kind": "field",
+							"name": "debug",
+							"type": {
+								"text": "string | boolean | undefined"
+							},
+							"attribute": "debug"
+						},
+						{
+							"kind": "field",
+							"name": "baseHeadingLevel",
+							"type": {
+								"text": "number | undefined"
+							},
+							"description": "Composition context: the level this player's card headings occupy. Descendants derive their own outline from it — see docs/architecture/composition-context.md.",
+							"attribute": "base-heading-level"
+						},
+						{
+							"kind": "field",
+							"name": "showToolbar",
+							"type": {
+								"text": "boolean | string | null | undefined"
+							},
+							"default": "\"false\"",
+							"attribute": "show-toolbar"
+						},
+						{
+							"kind": "field",
+							"name": "toolbarPosition",
+							"type": {
+								"text": "string"
+							},
+							"default": "\"right\"",
+							"attribute": "toolbar-position"
+						},
+						{
+							"kind": "field",
+							"name": "toolRegistry",
+							"type": {
+								"text": "ToolRegistry | null"
+							},
+							"default": "null",
+							"attribute": "toolregistry"
+						},
+						{
+							"kind": "field",
+							"name": "sectionHostButtons",
+							"type": {
+								"text": "ToolbarItem[]"
+							},
+							"default": "[]",
+							"attribute": "sectionhostbuttons"
+						},
+						{
+							"kind": "field",
+							"name": "itemHostButtons",
+							"type": {
+								"text": "ToolbarItem[]"
+							},
+							"default": "[]",
+							"attribute": "itemhostbuttons"
+						},
+						{
+							"kind": "field",
+							"name": "passageHostButtons",
+							"type": {
+								"text": "ToolbarItem[]"
+							},
+							"default": "[]",
+							"attribute": "passagehostbuttons"
+						},
+						{
+							"kind": "field",
+							"name": "policies",
+							"type": {
+								"text": "Partial<SectionPlayerPolicies> | undefined"
+							},
+							"attribute": "policies"
+						},
+						{
+							"kind": "field",
+							"name": "hooks",
+							"type": {
+								"text": "SectionPlayerHostHooks | undefined"
+							},
+							"attribute": "hooks"
+						},
+						{
+							"kind": "field",
+							"name": "toolConfigStrictness",
+							"type": {
+								"text": "ToolConfigStrictness | undefined"
+							},
+							"attribute": "tool-config-strictness"
+						},
+						{
+							"kind": "field",
+							"name": "narrowLayoutBreakpoint",
+							"type": {
+								"text": "number | undefined"
+							},
+							"attribute": "narrow-layout-breakpoint"
+						},
+						{
+							"kind": "field",
+							"name": "contentMaxWidthNoPassage",
+							"type": {
+								"text": "number | undefined"
+							},
+							"attribute": "content-max-width-no-passage"
+						},
+						{
+							"kind": "field",
+							"name": "contentMaxWidthWithPassage",
+							"type": {
+								"text": "number | undefined"
+							},
+							"attribute": "content-max-width-with-passage"
+						},
+						{
+							"kind": "method",
+							"name": "getSnapshot",
+							"return": {
+								"type": {
+									"text": "SectionPlayerSnapshot | null"
+								}
+							}
+						},
+						{
+							"kind": "method",
+							"name": "navigateTo",
+							"parameters": [
+								{
+									"name": "index",
+									"type": {
+										"text": "number"
+									}
+								}
+							],
+							"return": {
+								"type": {
+									"text": "boolean"
+								}
+							}
+						},
+						{
+							"kind": "method",
+							"name": "navigateNext",
+							"return": {
+								"type": {
+									"text": "boolean"
+								}
+							}
+						},
+						{
+							"kind": "method",
+							"name": "navigatePrevious",
+							"return": {
+								"type": {
+									"text": "boolean"
+								}
+							}
+						},
+						{
+							"kind": "method",
+							"name": "getSectionController",
+							"return": {
+								"type": {
+									"text": "SectionControllerHandle | null"
+								}
+							}
+						},
+						{
+							"kind": "method",
+							"name": "waitForSectionController",
+							"parameters": [
+								{
+									"name": "timeoutMs",
+									"type": {
+										"text": "number"
+									},
+									"optional": true,
+									"default": "5000"
+								}
+							],
+							"return": {
+								"type": {
+									"text": "Promise<SectionControllerHandle | null>"
+								}
+							}
+						}
+					],
+					"attributes": [
+						{
+							"name": "runtime",
+							"type": {
+								"text": "RuntimeConfig | null"
+							},
+							"default": "null",
+							"fieldName": "runtime"
+						},
+						{
+							"name": "nds-icons",
+							"type": {
+								"text": "boolean"
+							},
+							"description": "Presentation flag: opt in to NDS icon buttons. Unset renders plain <button>s.",
+							"fieldName": "ndsIcons"
+						},
+						{
+							"name": "locale",
+							"type": {
+								"text": "string"
+							},
+							"default": "\"\"",
+							"description": "Interface locale: the language the player renders its own UI in, as a BCP-47 tag. Unset renders `en-US`. Distinct from the authored content language, which travels on `runtime.contentLanguage`.",
+							"fieldName": "locale"
+						},
+						{
+							"name": "section",
+							"type": {
+								"text": "AssessmentSection | null"
+							},
+							"default": "null",
+							"fieldName": "section"
+						},
+						{
+							"name": "session",
+							"type": {
+								"text": "SectionControllerSessionState | null"
+							},
+							"default": "null",
+							"description": "The section's session, applied by the controller created for `section` in place of hydrating from the persistence strategy.",
+							"fieldName": "session"
+						},
+						{
+							"name": "assessment",
+							"type": {
+								"text": "AssessmentEntity | null"
+							},
+							"default": "null",
+							"description": "The assessment entity whose `personalNeedsProfile` and `settings` the toolkit's tool policy reads, forwarded to the coordinator it builds.",
+							"fieldName": "assessment"
+						},
+						{
+							"name": "section-id",
+							"type": {
+								"text": "string"
+							},
+							"default": "\"\"",
+							"fieldName": "sectionId"
+						},
+						{
+							"name": "attempt-id",
+							"type": {
+								"text": "string"
+							},
+							"default": "\"\"",
+							"fieldName": "attemptId"
+						},
+						{
+							"name": "iife-bundle-host",
+							"type": {
+								"text": "string"
+							},
+							"fieldName": "iifeBundleHost"
+						},
+						{
+							"name": "debug",
+							"type": {
+								"text": "string"
+							},
+							"fieldName": "debug"
+						},
+						{
+							"name": "base-heading-level",
+							"type": {
+								"text": "number"
+							},
+							"description": "Composition context: the level this player's card headings occupy. Descendants derive their own outline from it — see docs/architecture/composition-context.md.",
+							"fieldName": "baseHeadingLevel"
+						},
+						{
+							"name": "show-toolbar",
+							"type": {
+								"text": "string"
+							},
+							"default": "\"false\"",
+							"fieldName": "showToolbar"
+						},
+						{
+							"name": "toolbar-position",
+							"type": {
+								"text": "string"
+							},
+							"default": "\"right\"",
+							"fieldName": "toolbarPosition"
+						},
+						{
+							"name": "toolregistry",
+							"type": {
+								"text": "ToolRegistry | null"
+							},
+							"default": "null",
+							"fieldName": "toolRegistry"
+						},
+						{
+							"name": "sectionhostbuttons",
+							"type": {
+								"text": "ToolbarItem[]"
+							},
+							"default": "[]",
+							"fieldName": "sectionHostButtons"
+						},
+						{
+							"name": "itemhostbuttons",
+							"type": {
+								"text": "ToolbarItem[]"
+							},
+							"default": "[]",
+							"fieldName": "itemHostButtons"
+						},
+						{
+							"name": "passagehostbuttons",
+							"type": {
+								"text": "ToolbarItem[]"
+							},
+							"default": "[]",
+							"fieldName": "passageHostButtons"
+						},
+						{
+							"name": "policies",
+							"type": {
+								"text": "Partial<SectionPlayerPolicies> | undefined"
+							},
+							"fieldName": "policies"
+						},
+						{
+							"name": "hooks",
+							"type": {
+								"text": "SectionPlayerHostHooks | undefined"
+							},
+							"fieldName": "hooks"
+						},
+						{
+							"name": "tool-config-strictness",
+							"type": {
+								"text": "string"
+							},
+							"fieldName": "toolConfigStrictness"
+						},
+						{
+							"name": "narrow-layout-breakpoint",
+							"type": {
+								"text": "number"
+							},
+							"fieldName": "narrowLayoutBreakpoint"
+						},
+						{
+							"name": "content-max-width-no-passage",
+							"type": {
+								"text": "number"
+							},
+							"fieldName": "contentMaxWidthNoPassage"
+						},
+						{
+							"name": "content-max-width-with-passage",
+							"type": {
+								"text": "number"
+							},
+							"fieldName": "contentMaxWidthWithPassage"
+						}
+					],
+					"events": [
+						{
+							"name": "pie-stage-change",
+							"type": {
+								"text": "CustomEvent<StageChangeDetail>"
+							},
+							"description": "When the section enters `composed`, `engine-ready`, `interactive` or `disposed`, or a framework error fails or skips a stage."
+						},
+						{
+							"name": "pie-loading-complete",
+							"type": {
+								"text": "CustomEvent<LoadingCompleteDetail>"
+							},
+							"description": "Once per section and attempt, when the element pre-warm resolves and the item cards can mount."
+						},
+						{
+							"name": "element-preload-retry",
+							"type": {
+								"text": "CustomEvent<{ componentTag: string; stage: \"validate-config\" | \"iife-load\" | \"esm-load\" | \"preloaded-assert\"; attempt: number; maxRetries: number; error: string; strategy: string; bundleType: string | null; bundleHost: string; renderablesCount: number; assessmentId?: string; sectionId: string; attemptId?: string }>"
+							},
+							"description": "When the rendering items pane's element pre-warm retries a failed load."
+						},
+						{
+							"name": "element-preload-error",
+							"type": {
+								"text": "CustomEvent<{ componentTag: string; stage: \"validate-config\" | \"iife-load\" | \"esm-load\" | \"preloaded-assert\"; error: string; strategy: string; bundleType: string | null; bundleHost: string; renderablesCount: number; assessmentId?: string; sectionId: string; attemptId?: string }>"
+							},
+							"description": "When the rendering items pane's element pre-warm fails."
+						},
+						{
+							"name": "framework-error",
+							"type": {
+								"text": "CustomEvent<FrameworkErrorModel>"
+							},
+							"description": "Bubbles from the inner toolkit. For each framework error the runtime reports; a non-recoverable bootstrap error also shows an error banner in place of the slotted content."
+						},
+						{
+							"name": "composition-changed",
+							"type": {
+								"text": "CustomEvent<{ composition: unknown; version: number }>"
+							},
+							"description": "Bubbles from the inner toolkit. When the bound section's composition changes revision, with a version that increases on each change."
+						},
+						{
+							"name": "session-changed",
+							"type": {
+								"text": "CustomEvent<{ itemId: string; canonicalItemId: string; sourceRuntimeId: string } & Record<string, unknown>>"
+							},
+							"description": "Bubbles from the inner toolkit. When an item's session in the bound section changes, carrying the section's canonical session detail for that item."
+						},
+						{
+							"name": "runtime-owned",
+							"type": {
+								"text": "CustomEvent<{ runtimeId: string; parentRuntimeId: string | null }>"
+							},
+							"description": "Bubbles from the inner toolkit. When the toolkit starts running its own coordinator."
+						},
+						{
+							"name": "runtime-inherited",
+							"type": {
+								"text": "CustomEvent<{ runtimeId: string; parentRuntimeId: string | null }>"
+							},
+							"description": "Bubbles from the inner toolkit. When the toolkit adopts an outer toolkit's coordinator, named by `parentRuntimeId`."
+						},
+						{
+							"name": "runtime-ready",
+							"type": {
+								"text": "CustomEvent<{ runtimeId: string; coordinator: ToolkitCoordinator; ownership: \"owned\" | \"inherited\" }>"
+							},
+							"description": "Bubbles from the inner toolkit. Once per coordinator, with or without a section, from which point a host can drive it."
+						},
+						{
+							"name": "toolkit-ready",
+							"type": {
+								"text": "CustomEvent<{ runtimeId: string; assessmentId: string; sectionId: string; itemPlayer: ItemPlayerConfig; coordinator: ToolkitCoordinator }>"
+							},
+							"description": "Bubbles from the inner toolkit. For every section the toolkit initializes, once its section controller resolves."
+						},
+						{
+							"name": "section-ready",
+							"type": {
+								"text": "CustomEvent<{ sectionId: string; attemptId: string; controller: unknown }>"
+							},
+							"description": "Bubbles from the inner toolkit. Right after `toolkit-ready`, with the section's controller or null."
+						},
+						{
+							"name": "item-session-changed",
+							"type": {
+								"text": "CustomEvent<{ itemId: string; canonicalItemId: string; session: unknown; sessionCommitReason?: \"teardown\" | \"navigate\" | \"page-hidden\" }>"
+							},
+							"description": "Bubbles from an item scope when the item player reports a response change; the player's own `session-changed` stops at the scope."
+						}
+					],
+					"cssProperties": [
+						{
+							"name": "--pie-passage-header-background",
+							"description": "Passage header surface. Documented host hook; falls back to the canonical surface tokens when unset."
+						},
+						{
+							"name": "--pie-section-player-card-header-background",
+							"description": "Public card header background hook; defaults to transparent and hosts must preserve contrast with card header content."
+						},
+						{
+							"name": "--pie-section-player-card-header-background-dark",
+							"description": "Public card header fill applied under dark themes ([data-theme=\"dark\"] or pie-theme[theme=\"dark\"]); falls back to --pie-section-player-card-header-background so a host that sets only the light hook keeps today's behaviour. Hosts must preserve contrast with card header content on the dark ground."
+						},
+						{
+							"name": "--pie-section-player-card-header-radius",
+							"description": "Public card header corner radius hook; defaults just inside the card radius and may be overridden when hosts style header fills."
+						},
+						{
+							"name": "--pie-section-player-card-radius",
+							"description": "Public card radius hook shared by item and passage cards; geometry-only override with no color contrast impact."
+						}
+					],
+					"x-pie": {
+						"shadow": "none",
+						"classes": [
+							"pie-section-player-items-section",
+							"pie-section-player-layout-scaffold-anchor",
+							"pie-section-player-nav-status",
+							"pie-section-player-observability-anchor",
+							"pie-section-player-passages-section",
+							"pie-section-player-vertical-content",
+							"pie-section-player-vertical-frame"
+						]
+					}
+				},
+				{
+					"kind": "class",
+					"description": "Item card of a section player: renders an item's heading, `<pie-item-toolbar>` and item player inside `<pie-item-scope>`, with a check-answer control when formative delivery is on. The items pane renders one per item and sets its properties.",
+					"name": "SectionItemCard",
+					"tagName": "pie-section-player-item-card",
+					"customElement": true,
+					"members": [
+						{
+							"kind": "field",
+							"name": "item",
+							"type": {
+								"text": "ItemEntity"
+							},
+							"attribute": "item"
+						},
+						{
+							"kind": "field",
+							"name": "itemIndex",
+							"type": {
+								"text": "number"
+							},
+							"default": "0",
+							"attribute": "item-index"
+						},
+						{
+							"kind": "field",
+							"name": "itemCount",
+							"type": {
+								"text": "number"
+							},
+							"default": "1",
+							"attribute": "item-count"
+						},
+						{
+							"kind": "field",
+							"name": "isCurrent",
+							"type": {
+								"text": "boolean"
+							},
+							"default": "false",
+							"attribute": "is-current",
+							"reflects": true
+						},
+						{
+							"kind": "field",
+							"name": "canonicalItemId",
+							"type": {
+								"text": "string"
+							},
+							"attribute": "canonical-item-id"
+						},
+						{
+							"kind": "field",
+							"name": "itemSettings",
+							"type": {
+								"text": "ItemSettings | null"
+							},
+							"default": "null",
+							"description": "The item's policy settings from its assessment item reference, registered through the item scope; they govern the item's own toolbar.",
+							"attribute": "item-settings"
+						},
+						{
+							"kind": "field",
+							"name": "baseHeadingLevel",
+							"type": {
+								"text": "number"
+							},
+							"default": "DEFAULT_SECTION_BASE_HEADING_LEVEL",
+							"description": "Composition context published by the pane: the level this card's own heading occupies. The card renders it, and the item/passage player beneath derives its outline from the same number — see docs/architecture/composition-context.md.",
+							"attribute": "base-heading-level"
+						},
+						{
+							"kind": "field",
+							"name": "resolvedPlayerTag",
+							"type": {
+								"text": "string"
+							},
+							"default": "\"div\"",
+							"attribute": "resolved-player-tag"
+						},
+						{
+							"kind": "field",
+							"name": "playerAction",
+							"type": {
+								"text": "(node: HTMLElement, params: PlayerElementParams) => unknown"
+							},
+							"default": "(_node: HTMLElement, _params: PlayerElementParams) => undefined",
+							"attribute": "playeraction"
+						},
+						{
+							"kind": "field",
+							"name": "playerParams",
+							"type": {
+								"text": "PlayerElementParams"
+							},
+							"attribute": "player-params"
+						},
+						{
+							"kind": "field",
+							"name": "itemToolbarTools",
+							"type": {
+								"text": "string"
+							},
+							"attribute": "item-toolbar-tools"
+						},
+						{
+							"kind": "field",
+							"name": "toolRegistry",
+							"type": {
+								"text": "ToolRegistry | null"
+							},
+							"default": "null",
+							"attribute": "toolregistry"
+						},
+						{
+							"kind": "field",
+							"name": "hostButtons",
+							"type": {
+								"text": "ToolbarItem[]"
+							},
+							"default": "[]",
+							"attribute": "hostbuttons"
+						},
+						{
+							"kind": "field",
+							"name": "formativeView",
+							"type": {
+								"text": "FormativeItemView | null"
+							},
+							"default": "null",
+							"description": "Resolved formative delivery state for this item, or null when the section does not deliver formatively. The pane derives it; this card renders it and reports learner actions.",
+							"attribute": "formative-view"
+						},
+						{
+							"kind": "field",
+							"name": "timedMediaView",
+							"type": {
+								"text": "TimedMediaItemView | null"
+							},
+							"default": "null",
+							"description": "Resolved cue state for this item, or null when the section is not timed media. The pane derives it; this card renders it.",
+							"attribute": "timed-media-view"
+						}
+					],
+					"attributes": [
+						{
+							"name": "item",
+							"type": {
+								"text": "ItemEntity"
+							},
+							"fieldName": "item"
+						},
+						{
+							"name": "item-index",
+							"type": {
+								"text": "number"
+							},
+							"default": "0",
+							"fieldName": "itemIndex"
+						},
+						{
+							"name": "item-count",
+							"type": {
+								"text": "number"
+							},
+							"default": "1",
+							"fieldName": "itemCount"
+						},
+						{
+							"name": "is-current",
+							"type": {
+								"text": "boolean"
+							},
+							"default": "false",
+							"fieldName": "isCurrent"
+						},
+						{
+							"name": "canonical-item-id",
+							"type": {
+								"text": "string"
+							},
+							"fieldName": "canonicalItemId"
+						},
+						{
+							"name": "item-settings",
+							"type": {
+								"text": "ItemSettings | null"
+							},
+							"default": "null",
+							"description": "The item's policy settings from its assessment item reference, registered through the item scope; they govern the item's own toolbar.",
+							"fieldName": "itemSettings"
+						},
+						{
+							"name": "base-heading-level",
+							"type": {
+								"text": "number"
+							},
+							"default": "DEFAULT_SECTION_BASE_HEADING_LEVEL",
+							"description": "Composition context published by the pane: the level this card's own heading occupies. The card renders it, and the item/passage player beneath derives its outline from the same number — see docs/architecture/composition-context.md.",
+							"fieldName": "baseHeadingLevel"
+						},
+						{
+							"name": "resolved-player-tag",
+							"type": {
+								"text": "string"
+							},
+							"default": "\"div\"",
+							"fieldName": "resolvedPlayerTag"
+						},
+						{
+							"name": "playeraction",
+							"type": {
+								"text": "(node: HTMLElement, params: PlayerElementParams) => unknown"
+							},
+							"default": "(_node: HTMLElement, _params: PlayerElementParams) => undefined",
+							"fieldName": "playerAction"
+						},
+						{
+							"name": "player-params",
+							"type": {
+								"text": "PlayerElementParams"
+							},
+							"fieldName": "playerParams"
+						},
+						{
+							"name": "item-toolbar-tools",
+							"type": {
+								"text": "string"
+							},
+							"fieldName": "itemToolbarTools"
+						},
+						{
+							"name": "toolregistry",
+							"type": {
+								"text": "ToolRegistry | null"
+							},
+							"default": "null",
+							"fieldName": "toolRegistry"
+						},
+						{
+							"name": "hostbuttons",
+							"type": {
+								"text": "ToolbarItem[]"
+							},
+							"default": "[]",
+							"fieldName": "hostButtons"
+						},
+						{
+							"name": "formative-view",
+							"type": {
+								"text": "FormativeItemView | null"
+							},
+							"default": "null",
+							"description": "Resolved formative delivery state for this item, or null when the section does not deliver formatively. The pane derives it; this card renders it and reports learner actions.",
+							"fieldName": "formativeView"
+						},
+						{
+							"name": "timed-media-view",
+							"type": {
+								"text": "TimedMediaItemView | null"
+							},
+							"default": "null",
+							"description": "Resolved cue state for this item, or null when the section is not timed media. The pane derives it; this card renders it.",
+							"fieldName": "timedMediaView"
+						}
+					],
+					"events": [
+						{
+							"name": "pie-formative-action",
+							"type": {
+								"text": "CustomEvent<InternalFormativeActionDetail>"
+							},
+							"description": "When the learner presses the check-answer or try-again control, carrying the item player's `provideScore()` outcomes on a check."
+						}
+					],
+					"cssProperties": [
+						{
+							"name": "--pie-section-player-card-header-background",
+							"description": "Public card header background hook; defaults to transparent and hosts must preserve contrast with card header content."
+						},
+						{
+							"name": "--pie-section-player-card-header-background-dark",
+							"description": "Public card header fill applied under dark themes ([data-theme=\"dark\"] or pie-theme[theme=\"dark\"]); falls back to --pie-section-player-card-header-background so a host that sets only the light hook keeps today's behaviour. Hosts must preserve contrast with card header content on the dark ground."
+						},
+						{
+							"name": "--pie-section-player-card-header-radius",
+							"description": "Public card header corner radius hook; defaults just inside the card radius and may be overridden when hosts style header fills."
+						},
+						{
+							"name": "--pie-section-player-card-radius",
+							"description": "Public card radius hook shared by item and passage cards; geometry-only override with no color contrast impact."
+						}
+					],
+					"x-pie": {
+						"shadow": "none",
+						"classes": [
+							"pie-section-player-card-media",
+							"pie-section-player-card-media-surface",
+							"pie-section-player-card-split-divider__handle",
+							"pie-section-player-card-surface-stack",
+							"pie-section-player-card-surface-stack-anchor",
+							"pie-section-player-content-card",
+							"pie-section-player-content-card-body",
+							"pie-section-player-content-card-header",
+							"pie-section-player-formative",
+							"pie-section-player-formative__button",
+							"pie-section-player-formative__status",
+							"pie-section-player-item-card-anchor",
+							"pie-section-player-item-content",
+							"pie-section-player-item-header",
+							"pie-section-player__item-content",
+							"pie-section-player__item-header"
+						]
+					}
+				},
+				{
+					"kind": "class",
+					"description": "Items pane of a section player: renders the item cards of the current composition and runs the section's element pre-warm. It takes no attributes or properties: it reads the section player it sits in from a context the kernel publishes, so it renders at any depth below one and renders nothing outside one. Only the first connected items pane of a section player renders.",
+					"name": "SectionItemsPane",
+					"tagName": "pie-section-player-items-pane",
+					"customElement": true,
+					"events": [
+						{
+							"name": "framework-error",
+							"type": {
+								"text": "CustomEvent<FrameworkErrorModel>"
+							},
+							"description": "When the element pre-warm fails and the section player has no toolkit coordinator to report it through."
+						}
+					],
+					"cssProperties": [
+						{
+							"name": "--pie-section-player-card-header-background",
+							"description": "Public card header background hook; defaults to transparent and hosts must preserve contrast with card header content."
+						},
+						{
+							"name": "--pie-section-player-card-header-background-dark",
+							"description": "Public card header fill applied under dark themes ([data-theme=\"dark\"] or pie-theme[theme=\"dark\"]); falls back to --pie-section-player-card-header-background so a host that sets only the light hook keeps today's behaviour. Hosts must preserve contrast with card header content on the dark ground."
+						},
+						{
+							"name": "--pie-section-player-card-header-radius",
+							"description": "Public card header corner radius hook; defaults just inside the card radius and may be overridden when hosts style header fills."
+						},
+						{
+							"name": "--pie-section-player-card-radius",
+							"description": "Public card radius hook shared by item and passage cards; geometry-only override with no color contrast impact."
+						}
+					],
+					"x-pie": {
+						"shadow": "none",
+						"classes": [
+							"pie-section-player-content-card",
+							"pie-section-player-content-card-body",
+							"pie-section-player-item-content",
+							"pie-section-player-scroll-hint",
+							"pie-section-player-scroll-hint__button",
+							"pie-section-player-timed-media-status",
+							"pie-section-player__item-content"
+						]
+					}
+				},
+				{
+					"kind": "class",
+					"description": "Passage card of a section player: renders a passage's heading, `<pie-item-toolbar>` and passage player inside `<pie-passage-shell>`. The passages pane renders one per passage and sets its properties. With `timed-media-stimulus` set, the card finds the media element the passage renders and registers it as the section's media time source.",
+					"name": "SectionPassageCard",
+					"tagName": "pie-section-player-passage-card",
+					"customElement": true,
+					"members": [
+						{
+							"kind": "field",
+							"name": "passage",
+							"type": {
+								"text": "PassageEntity"
+							},
+							"attribute": "passage"
+						},
+						{
+							"kind": "field",
+							"name": "baseHeadingLevel",
+							"type": {
+								"text": "number"
+							},
+							"default": "DEFAULT_SECTION_BASE_HEADING_LEVEL",
+							"description": "Composition context published by the pane: the level this card's own heading occupies. The card renders it, and the item/passage player beneath derives its outline from the same number — see docs/architecture/composition-context.md.",
+							"attribute": "base-heading-level"
+						},
+						{
+							"kind": "field",
+							"name": "resolvedPlayerTag",
+							"type": {
+								"text": "string"
+							},
+							"default": "\"div\"",
+							"attribute": "resolved-player-tag"
+						},
+						{
+							"kind": "field",
+							"name": "playerAction",
+							"type": {
+								"text": "(node: HTMLElement, params: PlayerElementParams) => unknown"
+							},
+							"default": "(_node: HTMLElement, _params: PlayerElementParams) => undefined",
+							"attribute": "playeraction"
+						},
+						{
+							"kind": "field",
+							"name": "playerParams",
+							"type": {
+								"text": "PlayerElementParams"
+							},
+							"attribute": "player-params"
+						},
+						{
+							"kind": "field",
+							"name": "passageToolbarTools",
+							"type": {
+								"text": "string"
+							},
+							"attribute": "passage-toolbar-tools"
+						},
+						{
+							"kind": "field",
+							"name": "toolRegistry",
+							"type": {
+								"text": "ToolRegistry | null"
+							},
+							"default": "null",
+							"attribute": "toolregistry"
+						},
+						{
+							"kind": "field",
+							"name": "hostButtons",
+							"type": {
+								"text": "ToolbarItem[]"
+							},
+							"default": "[]",
+							"attribute": "hostbuttons"
+						},
+						{
+							"kind": "field",
+							"name": "timedMediaStimulus",
+							"type": {
+								"text": "boolean"
+							},
+							"default": "false",
+							"description": "This passage is a timed-media section's stimulus: the card adapts the media element its config mounted and registers it as the section's Media Time Source. Absent for every other passage.",
+							"attribute": "timed-media-stimulus"
+						}
+					],
+					"attributes": [
+						{
+							"name": "passage",
+							"type": {
+								"text": "PassageEntity"
+							},
+							"fieldName": "passage"
+						},
+						{
+							"name": "base-heading-level",
+							"type": {
+								"text": "number"
+							},
+							"default": "DEFAULT_SECTION_BASE_HEADING_LEVEL",
+							"description": "Composition context published by the pane: the level this card's own heading occupies. The card renders it, and the item/passage player beneath derives its outline from the same number — see docs/architecture/composition-context.md.",
+							"fieldName": "baseHeadingLevel"
+						},
+						{
+							"name": "resolved-player-tag",
+							"type": {
+								"text": "string"
+							},
+							"default": "\"div\"",
+							"fieldName": "resolvedPlayerTag"
+						},
+						{
+							"name": "playeraction",
+							"type": {
+								"text": "(node: HTMLElement, params: PlayerElementParams) => unknown"
+							},
+							"default": "(_node: HTMLElement, _params: PlayerElementParams) => undefined",
+							"fieldName": "playerAction"
+						},
+						{
+							"name": "player-params",
+							"type": {
+								"text": "PlayerElementParams"
+							},
+							"fieldName": "playerParams"
+						},
+						{
+							"name": "passage-toolbar-tools",
+							"type": {
+								"text": "string"
+							},
+							"fieldName": "passageToolbarTools"
+						},
+						{
+							"name": "toolregistry",
+							"type": {
+								"text": "ToolRegistry | null"
+							},
+							"default": "null",
+							"fieldName": "toolRegistry"
+						},
+						{
+							"name": "hostbuttons",
+							"type": {
+								"text": "ToolbarItem[]"
+							},
+							"default": "[]",
+							"fieldName": "hostButtons"
+						},
+						{
+							"name": "timed-media-stimulus",
+							"type": {
+								"text": "boolean"
+							},
+							"default": "false",
+							"description": "This passage is a timed-media section's stimulus: the card adapts the media element its config mounted and registers it as the section's Media Time Source. Absent for every other passage.",
+							"fieldName": "timedMediaStimulus"
+						}
+					],
+					"events": [
+						{
+							"name": "pie-media-time-source",
+							"type": {
+								"text": "CustomEvent<InternalMediaTimeSourceDetail>"
+							},
+							"description": "When the media element of a timed-media stimulus passage appears or goes away."
+						}
+					],
+					"cssProperties": [
+						{
+							"name": "--pie-passage-header-background",
+							"description": "Passage header surface. Documented host hook; falls back to the canonical surface tokens when unset."
+						},
+						{
+							"name": "--pie-section-player-card-header-background",
+							"description": "Public card header background hook; defaults to transparent and hosts must preserve contrast with card header content."
+						},
+						{
+							"name": "--pie-section-player-card-header-background-dark",
+							"description": "Public card header fill applied under dark themes ([data-theme=\"dark\"] or pie-theme[theme=\"dark\"]); falls back to --pie-section-player-card-header-background so a host that sets only the light hook keeps today's behaviour. Hosts must preserve contrast with card header content on the dark ground."
+						},
+						{
+							"name": "--pie-section-player-card-header-radius",
+							"description": "Public card header corner radius hook; defaults just inside the card radius and may be overridden when hosts style header fills."
+						},
+						{
+							"name": "--pie-section-player-card-radius",
+							"description": "Public card radius hook shared by item and passage cards; geometry-only override with no color contrast impact."
+						}
+					],
+					"x-pie": {
+						"shadow": "none",
+						"classes": [
+							"pie-section-player-card-media",
+							"pie-section-player-card-media-surface",
+							"pie-section-player-card-split-divider__handle",
+							"pie-section-player-card-surface-stack",
+							"pie-section-player-card-surface-stack-anchor",
+							"pie-section-player-content-card",
+							"pie-section-player-content-card-body",
+							"pie-section-player-content-card-header",
+							"pie-section-player-passage-card-anchor",
+							"pie-section-player-passage-content",
+							"pie-section-player-passage-header",
+							"pie-section-player__passage-content",
+							"pie-section-player__passage-header"
+						]
+					}
+				},
+				{
+					"kind": "class",
+					"description": "Passages pane of a section player: renders the passage cards of the current section, the timed-media stimulus first, with a loading message until the section's elements load. It takes no attributes or properties: it reads the section player it sits in from a context the kernel publishes, so it renders at any depth below one and renders nothing outside one. Only the first connected passages pane of a section player renders.",
+					"name": "SectionPassagesPane",
+					"tagName": "pie-section-player-passages-pane",
+					"customElement": true,
+					"cssProperties": [
+						{
+							"name": "--pie-passage-header-background",
+							"description": "Passage header surface. Documented host hook; falls back to the canonical surface tokens when unset."
+						},
+						{
+							"name": "--pie-section-player-card-header-background",
+							"description": "Public card header background hook; defaults to transparent and hosts must preserve contrast with card header content."
+						},
+						{
+							"name": "--pie-section-player-card-header-background-dark",
+							"description": "Public card header fill applied under dark themes ([data-theme=\"dark\"] or pie-theme[theme=\"dark\"]); falls back to --pie-section-player-card-header-background so a host that sets only the light hook keeps today's behaviour. Hosts must preserve contrast with card header content on the dark ground."
+						},
+						{
+							"name": "--pie-section-player-card-header-radius",
+							"description": "Public card header corner radius hook; defaults just inside the card radius and may be overridden when hosts style header fills."
+						},
+						{
+							"name": "--pie-section-player-card-radius",
+							"description": "Public card radius hook shared by item and passage cards; geometry-only override with no color contrast impact."
+						}
+					],
+					"x-pie": {
+						"shadow": "none",
+						"classes": [
+							"pie-section-player-content-card",
+							"pie-section-player-content-card-body",
+							"pie-section-player-passage-content",
+							"pie-section-player__passage-content"
+						]
+					}
+				},
+				{
+					"kind": "class",
+					"description": "Section toolbar shell that renders `<pie-section-toolbar>` at the `toolbar-position` side of its content, and no toolbar when `show-toolbar` is false or the position is `none`. A `left` or `right` toolbar moves to the top at viewports up to 1100px wide.",
+					"name": "SectionPlayerShell",
+					"tagName": "pie-section-player-shell",
+					"customElement": true,
+					"members": [
+						{
+							"kind": "field",
+							"name": "showToolbar",
+							"type": {
+								"text": "boolean | string | null | undefined"
+							},
+							"default": "\"false\"",
+							"attribute": "show-toolbar"
+						},
+						{
+							"kind": "field",
+							"name": "toolbarPosition",
+							"type": {
+								"text": "string"
+							},
+							"default": "\"right\"",
+							"attribute": "toolbar-position"
+						},
+						{
+							"kind": "field",
+							"name": "enabledTools",
+							"type": {
+								"text": "string"
+							},
+							"default": "\"\"",
+							"attribute": "enabled-tools"
+						},
+						{
+							"kind": "field",
+							"name": "toolRegistry",
+							"type": {
+								"text": "ToolRegistry | null"
+							},
+							"default": "null",
+							"attribute": "toolregistry"
+						},
+						{
+							"kind": "field",
+							"name": "sectionHostButtons",
+							"type": {
+								"text": "ToolbarItem[]"
+							},
+							"default": "[]",
+							"attribute": "sectionhostbuttons"
+						}
+					],
+					"attributes": [
+						{
+							"name": "show-toolbar",
+							"type": {
+								"text": "string"
+							},
+							"default": "\"false\"",
+							"fieldName": "showToolbar"
+						},
+						{
+							"name": "toolbar-position",
+							"type": {
+								"text": "string"
+							},
+							"default": "\"right\"",
+							"fieldName": "toolbarPosition"
+						},
+						{
+							"name": "enabled-tools",
+							"type": {
+								"text": "string"
+							},
+							"default": "\"\"",
+							"fieldName": "enabledTools"
+						},
+						{
+							"name": "toolregistry",
+							"type": {
+								"text": "ToolRegistry | null"
+							},
+							"default": "null",
+							"fieldName": "toolRegistry"
+						},
+						{
+							"name": "sectionhostbuttons",
+							"type": {
+								"text": "ToolbarItem[]"
+							},
+							"default": "[]",
+							"fieldName": "sectionHostButtons"
+						}
+					],
+					"slots": [
+						{
+							"name": "",
+							"description": "The layout the toolbar sits beside."
+						}
+					],
+					"x-pie": {
+						"shadow": "open"
+					}
+				}
+			],
+			"exports": [
+				{
+					"kind": "custom-element-definition",
+					"name": "pie-assessment-toolkit",
+					"declaration": {
+						"name": "PieAssessmentToolkit",
+						"module": "dist/components/pie-assessment-toolkit-element.js",
+						"package": "@pie-players/pie-assessment-toolkit"
+					}
+				},
+				{
+					"kind": "custom-element-definition",
+					"name": "pie-item-player",
+					"declaration": {
+						"name": "PieItemPlayer",
+						"module": "dist/pie-item-player.js",
+						"package": "@pie-players/pie-item-player"
+					}
+				},
+				{
+					"kind": "custom-element-definition",
+					"name": "pie-item-scope",
+					"declaration": {
+						"name": "ItemScope",
+						"module": "dist/components/item-scope-element.js",
+						"package": "@pie-players/pie-assessment-toolkit"
+					}
+				},
+				{
+					"kind": "custom-element-definition",
+					"name": "pie-item-toolbar",
+					"declaration": {
+						"name": "ItemToolBar",
+						"module": "dist/components/item-toolbar-element.js",
+						"package": "@pie-players/pie-assessment-toolkit"
+					}
+				},
+				{
+					"kind": "custom-element-definition",
+					"name": "pie-passage-shell",
+					"declaration": {
+						"name": "PassageShellElement"
+					}
+				},
+				{
+					"kind": "custom-element-definition",
+					"name": "pie-section-player-base",
+					"declaration": {
+						"name": "PieSectionPlayerBaseElement"
+					}
+				},
+				{
+					"kind": "custom-element-definition",
+					"name": "pie-section-player-item-card",
+					"declaration": {
+						"name": "SectionItemCard"
+					}
+				},
+				{
+					"kind": "custom-element-definition",
+					"name": "pie-section-player-items-pane",
+					"declaration": {
+						"name": "SectionItemsPane"
+					}
+				},
+				{
+					"kind": "custom-element-definition",
+					"name": "pie-section-player-kernel-host",
+					"declaration": {
+						"name": "PieSectionPlayerKernelHostElement"
+					}
+				},
+				{
+					"kind": "custom-element-definition",
+					"name": "pie-section-player-passage-card",
+					"declaration": {
+						"name": "SectionPassageCard"
+					}
+				},
+				{
+					"kind": "custom-element-definition",
+					"name": "pie-section-player-passages-pane",
+					"declaration": {
+						"name": "SectionPassagesPane"
+					}
+				},
+				{
+					"kind": "custom-element-definition",
+					"name": "pie-section-player-shell",
+					"declaration": {
+						"name": "SectionPlayerShell"
+					}
+				},
+				{
+					"kind": "custom-element-definition",
+					"name": "pie-section-player-splitpane",
+					"declaration": {
+						"name": "PieSectionPlayerSplitPaneElement"
+					}
+				},
+				{
+					"kind": "custom-element-definition",
+					"name": "pie-section-player-tabbed",
+					"declaration": {
+						"name": "PieSectionPlayerTabbedElement"
+					}
+				},
+				{
+					"kind": "custom-element-definition",
+					"name": "pie-section-player-vertical",
+					"declaration": {
+						"name": "PieSectionPlayerVerticalElement"
+					}
+				},
+				{
+					"kind": "custom-element-definition",
+					"name": "pie-section-toolbar",
+					"declaration": {
+						"name": "SectionToolBar",
+						"module": "dist/components/section-toolbar-element.js",
+						"package": "@pie-players/pie-assessment-toolkit"
+					}
+				}
+			]
+		},
+		{
+			"kind": "javascript-module",
+			"path": "dist/browser/pie-section-player.js",
+			"declarations": [],
+			"exports": [
+				{
+					"kind": "custom-element-definition",
+					"name": "pie-assessment-toolkit",
+					"declaration": {
+						"name": "PieAssessmentToolkit",
+						"module": "dist/components/pie-assessment-toolkit-element.js",
+						"package": "@pie-players/pie-assessment-toolkit"
+					}
+				},
+				{
+					"kind": "custom-element-definition",
+					"name": "pie-item-player",
+					"declaration": {
+						"name": "PieItemPlayer",
+						"module": "dist/pie-item-player.js",
+						"package": "@pie-players/pie-item-player"
+					}
+				},
+				{
+					"kind": "custom-element-definition",
+					"name": "pie-item-scope",
+					"declaration": {
+						"name": "ItemScope",
+						"module": "dist/components/item-scope-element.js",
+						"package": "@pie-players/pie-assessment-toolkit"
+					}
+				},
+				{
+					"kind": "custom-element-definition",
+					"name": "pie-item-toolbar",
+					"declaration": {
+						"name": "ItemToolBar",
+						"module": "dist/components/item-toolbar-element.js",
+						"package": "@pie-players/pie-assessment-toolkit"
+					}
+				},
+				{
+					"kind": "custom-element-definition",
+					"name": "pie-passage-shell",
+					"declaration": {
+						"name": "PassageShellElement",
+						"module": "dist/pie-section-player.js"
+					}
+				},
+				{
+					"kind": "custom-element-definition",
+					"name": "pie-section-player-base",
+					"declaration": {
+						"name": "PieSectionPlayerBaseElement",
+						"module": "dist/pie-section-player.js"
+					}
+				},
+				{
+					"kind": "custom-element-definition",
+					"name": "pie-section-player-item-card",
+					"declaration": {
+						"name": "SectionItemCard",
+						"module": "dist/pie-section-player.js"
+					}
+				},
+				{
+					"kind": "custom-element-definition",
+					"name": "pie-section-player-items-pane",
+					"declaration": {
+						"name": "SectionItemsPane",
+						"module": "dist/pie-section-player.js"
+					}
+				},
+				{
+					"kind": "custom-element-definition",
+					"name": "pie-section-player-kernel-host",
+					"declaration": {
+						"name": "PieSectionPlayerKernelHostElement",
+						"module": "dist/pie-section-player.js"
+					}
+				},
+				{
+					"kind": "custom-element-definition",
+					"name": "pie-section-player-passage-card",
+					"declaration": {
+						"name": "SectionPassageCard",
+						"module": "dist/pie-section-player.js"
+					}
+				},
+				{
+					"kind": "custom-element-definition",
+					"name": "pie-section-player-passages-pane",
+					"declaration": {
+						"name": "SectionPassagesPane",
+						"module": "dist/pie-section-player.js"
+					}
+				},
+				{
+					"kind": "custom-element-definition",
+					"name": "pie-section-player-shell",
+					"declaration": {
+						"name": "SectionPlayerShell",
+						"module": "dist/pie-section-player.js"
+					}
+				},
+				{
+					"kind": "custom-element-definition",
+					"name": "pie-section-player-splitpane",
+					"declaration": {
+						"name": "PieSectionPlayerSplitPaneElement",
+						"module": "dist/pie-section-player.js"
+					}
+				},
+				{
+					"kind": "custom-element-definition",
+					"name": "pie-section-player-tabbed",
+					"declaration": {
+						"name": "PieSectionPlayerTabbedElement",
+						"module": "dist/pie-section-player.js"
+					}
+				},
+				{
+					"kind": "custom-element-definition",
+					"name": "pie-section-player-vertical",
+					"declaration": {
+						"name": "PieSectionPlayerVerticalElement",
+						"module": "dist/pie-section-player.js"
+					}
+				},
+				{
+					"kind": "custom-element-definition",
+					"name": "pie-section-toolbar",
+					"declaration": {
+						"name": "SectionToolBar",
+						"module": "dist/components/section-toolbar-element.js",
+						"package": "@pie-players/pie-assessment-toolkit"
+					}
+				}
+			]
+		}
+	]
+}

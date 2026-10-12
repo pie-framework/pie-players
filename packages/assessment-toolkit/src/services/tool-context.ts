@@ -146,7 +146,7 @@ export type ToolContext =
 /**
  * Type guard to check if context is at item level
  */
-export function isItemContext(
+function isItemContext(
 	context: ToolContext,
 ): context is ItemToolContext {
 	return context.level === "item";
@@ -155,7 +155,7 @@ export function isItemContext(
 /**
  * Type guard to check if context is at passage level
  */
-export function isPassageContext(
+function isPassageContext(
 	context: ToolContext,
 ): context is PassageToolContext {
 	return context.level === "passage";
@@ -164,7 +164,7 @@ export function isPassageContext(
 /**
  * Type guard to check if context is at rubric level
  */
-export function isRubricContext(
+function isRubricContext(
 	context: ToolContext,
 ): context is RubricToolContext {
 	return context.level === "rubric";
@@ -173,7 +173,7 @@ export function isRubricContext(
 /**
  * Type guard to check if context is at element level
  */
-export function isElementContext(
+function isElementContext(
 	context: ToolContext,
 ): context is ElementToolContext {
 	return context.level === "element";
@@ -192,6 +192,16 @@ function normalizeModels(modelsRaw: unknown): unknown[] {
 		return Object.values(modelsRaw as Record<string, unknown>);
 	}
 	return [];
+}
+
+/** The model in a config's `models` whose `id` is `elementId`, if any. */
+function findElementModel(modelsRaw: unknown, elementId: string): unknown {
+	return normalizeModels(modelsRaw).find(
+		(candidate) =>
+			!!candidate &&
+			typeof candidate === "object" &&
+			(candidate as Record<string, unknown>).id === elementId,
+	);
 }
 
 /**
@@ -242,8 +252,7 @@ function collectElementsText(
  *
  * `transform` decides what the caller gets. {@link extractTextContent} strips
  * tags, which is right for prose keyword matching and wrong for structural
- * matching: a MathML item's only math signal *is* the `<math>` tag, and stripping
- * first left `hasMathContent`'s MathML pattern unreachable.
+ * matching: a MathML item's only math signal *is* the `<math>` tag.
  */
 function extractContent(
 	context: ToolContext,
@@ -264,13 +273,7 @@ function extractContent(
 
 		// Model data keyed by this element id: in many items the math is in
 		// `model.prompt`/labels rather than in `elements[elementId]`.
-		const model = normalizeModels(config.models).find(
-			(candidate) =>
-				!!candidate &&
-				typeof candidate === "object" &&
-				(candidate as Record<string, unknown>).id === context.elementId,
-		);
-		collectModelText(model, push);
+		collectModelText(findElementModel(config.models, context.elementId), push);
 
 		return joined();
 	}
@@ -320,7 +323,7 @@ function extractContent(
 }
 
 /** The plain text a context carries, tags removed. */
-export function extractTextContent(context: ToolContext): string {
+function extractTextContent(context: ToolContext): string {
 	return extractContent(context, stripHtml);
 }
 
@@ -330,20 +333,15 @@ export function extractTextContent(context: ToolContext): string {
  * For indicators that live in the markup rather than in the prose — `<math>`
  * above all, whose whole signal is the element name.
  */
-export function extractMarkupContent(context: ToolContext): string {
+function extractMarkupContent(context: ToolContext): string {
 	return extractContent(context, (value) => value);
 }
 
 /**
- * Helper to check if context contains mathematical content
- * (Basic heuristic - can be overridden by tools)
- */
-/**
  * Chemical element symbols.
  *
  * A real set rather than `[A-Z][a-z]?`: that shape matches "It", "In", "He" and
- * "A", which is why the science gate used to answer `true` for any prose that
- * began a sentence.
+ * "A", so any prose beginning a sentence would read as science.
  */
 const ELEMENT_SYMBOLS = new Set([
 	"H", "He", "Li", "Be", "B", "C", "N", "O", "F", "Ne", "Na", "Mg", "Al", "Si",
@@ -396,9 +394,69 @@ function hasChemicalFormula(text: string): boolean {
 	return false;
 }
 
+/** Numbers joined by slashes: `3/4`, `12 / 4`, `10/10/2026`. */
+const SLASH_RUN = /\d+(?:\s*\/\s*\d+)+/g;
+
+/** Numbers joined by hyphens spaced on both sides: `15 - 7`, `1809 - 1865`. */
+const SPACED_HYPHEN_RUN = /\d+(?:[.,]\d+)*(?:\s+-\s+\d+(?:[.,]\d+)*)+/g;
+
+/**
+ * Whether the text holds a fraction or a division: exactly one slash between
+ * two numbers. A second slash makes the run a date — `10/10/2026`, `2026/10/10`.
+ */
+function hasFraction(text: string): boolean {
+	return (text.match(SLASH_RUN) ?? []).some(
+		(run) => run.split("/").length === 2,
+	);
+}
+
+/**
+ * Whether the text holds a subtraction written with a hyphen.
+ *
+ * Between numbers a hyphen is mostly a range, a date or an identifier:
+ * `1990-2000`, `2025-26`, `2026-10-10`, `555-1234`. On its own it counts as
+ * minus only when spaced on both sides, and then only where the numbers fail to
+ * ascend, since a range runs low to high: `15 - 7` counts, `1809 - 1865` does
+ * not. The trade is that `3 - 5` on its own reads as a range; with an equals
+ * sign next to it, it is caught as an equation.
+ */
+function hasSpacedSubtraction(text: string): boolean {
+	return (text.match(SPACED_HYPHEN_RUN) ?? []).some((run) => {
+		const values = run
+			.split(/\s+-\s+/)
+			.map((value) => Number(value.replace(/,/g, "")));
+		return values.some((value, index) => index > 0 && value <= values[index - 1]);
+	});
+}
+
+const PERCENTAGE = /\d\s*%/;
+
+/** A percentage taken of a number: `20% of 50`, `15% of $80`, `el 20% de 50`. */
+const PERCENTAGE_OF_NUMBER = /\d\s*%\s+(?:of|de|van)\s+[$€£]?\s?\d/i;
+
+/** A money amount: `$40`, `€ 12`, `12,50 €`. */
+const MONEY = /[$€£]\s?\d|\d\s?[€£]/;
+
+/**
+ * Whether the text applies a percentage to a quantity.
+ *
+ * A percentage on its own is a statistic in prose — "40% of voters", "70% of
+ * Earth's surface" — so it counts when taken of a number or when the text
+ * carries a money amount, as discount, tax and interest problems do. Beside an
+ * operator (`25% = 0.25`) it is caught with the operator.
+ */
+function hasAppliedPercentage(text: string): boolean {
+	if (PERCENTAGE_OF_NUMBER.test(text)) return true;
+	return PERCENTAGE.test(text) && MONEY.test(text);
+}
+
+/**
+ * Helper to check if context contains mathematical content
+ * (Basic heuristic - can be overridden by tools)
+ */
 export function hasMathContent(context: ToolContext): boolean {
-	// Structural signals live in the markup: stripping tags first is what left the
-	// MathML pattern unable to match anything at all.
+	// Structural signals live in the markup, so they match before tags are
+	// stripped.
 	const markup = extractMarkupContent(context);
 	const structuralIndicators = [
 		/<math[>\s]/i, // MathML
@@ -409,20 +467,25 @@ export function hasMathContent(context: ToolContext): boolean {
 	if (structuralIndicators.some((pattern) => pattern.test(markup))) return true;
 
 	const text = extractTextContent(context);
-	// No bare-operator pattern. `/[+\-*/=<>≤≥∑∫√π]/` matched any hyphen or slash,
-	// so "well-known" and "and/or" made every item mathematical and this predicate
-	// answered `true` for essentially all content — a gate that does not gate. An
-	// operator counts only with operands around it, or when the character has no
-	// prose reading at all.
+	// No bare-operator pattern: a lone hyphen or slash matches "well-known" and
+	// "and/or", which would make nearly every item mathematical. An operator
+	// counts only with operands around it, or when the character has no prose
+	// reading at all. Hyphens and slashes between numbers also write dates and
+	// ranges, and a percentage alone is a statistic, so those have their own
+	// predicates below. An operand may carry a percent sign (`25% = 0.25`).
 	const textIndicators = [
 		/[≤≥≠±×÷∑∫√∞π]/, // Symbols with no prose reading
-		/\d+\s*[+\-*/×÷=]\s*\d+/, // Simple arithmetic
-		/\d\s*[<>]\s*\d/, // Numeric comparison
-		/\b\d+\s*\/\s*\d+\b/, // Fractions
-		/\b\d+(?:\.\d+)?\s*%/, // Percentages
+		/\d\s*%?\s*[+*×÷=−]\s*\d/, // Operators with no date or range reading
+		/\d\s*[-/]\s*\d[\d.,]*\s*=|=\s*\d[\d.,]*\s*[-/]\s*\d/, // Hyphen or slash in an equation
+		/\d\s*%?\s*[<>]\s*\d/, // Numeric comparison
 		/\^\s*\d/, // Exponents
 	];
-	return textIndicators.some((pattern) => pattern.test(text));
+	return (
+		textIndicators.some((pattern) => pattern.test(text)) ||
+		hasFraction(text) ||
+		hasSpacedSubtraction(text) ||
+		hasAppliedPercentage(text)
+	);
 }
 
 const CHOICE_INTERACTION_ELEMENTS = new Set([
@@ -459,38 +522,26 @@ export function hasChoiceInteraction(context: ToolContext): boolean {
 		const config = context.item.config;
 		if (!config?.models) return false;
 
-		// Find model for this element
-		const models = Array.isArray(config.models)
-			? config.models
-			: Object.values(config.models as Record<string, unknown>);
-		const model = models.find(
-			(m: any) => m && typeof m === "object" && m.id === context.elementId,
-		);
+		const model = findElementModel(config.models, context.elementId);
 		if (!model) return false;
 
-		const type = (model as any).element || "";
+		const type = (model as { element?: string }).element || "";
 		return isChoiceElement(type, config.elements);
 	}
 
 	if (isItemContext(context)) {
 		const config = context.item.config;
-		const modelsRaw = config?.models;
-		const models = Array.isArray(modelsRaw)
-			? modelsRaw
-			: modelsRaw && typeof modelsRaw === "object"
-				? Object.values(modelsRaw as Record<string, unknown>)
-				: [];
-		return models.some((m: any) => {
-			if (!m || typeof m !== "object") return false;
-			const type = m.element || "";
+		return normalizeModels(config?.models).some((candidate) => {
+			if (!candidate || typeof candidate !== "object") return false;
+			const model = candidate as { element?: string; choices?: unknown };
+			const type = model.element || "";
 			// A model that names its element has answered the question, whichever way
-			// the answer falls. `choices` is carried by interactions that are not
-			// choice interactions at all — `placement-ordering`, `categorize` and
-			// `drag-in-the-blank` each hold their draggables there — so reading it on
-			// a named model showed the answer eliminator on items where the tool does
-			// nothing. The heuristic remains for configs that name no element.
+			// the answer falls: `placement-ordering`, `categorize` and
+			// `drag-in-the-blank` each hold their draggables in `choices` without
+			// being choice interactions. The `choices` heuristic remains for configs
+			// that name no element.
 			if (type) return isChoiceElement(type, config?.elements);
-			return Array.isArray(m.choices) && m.choices.length > 0;
+			return Array.isArray(model.choices) && model.choices.length > 0;
 		});
 	}
 
@@ -507,15 +558,23 @@ export function hasReadableText(context: ToolContext): boolean {
 }
 
 /**
+ * Whether read-aloud has something to read: readable text, or markup carrying
+ * a catalog idref, whose spoken card reads for content with no text.
+ */
+export function hasSpokenContent(context: ToolContext): boolean {
+	return (
+		hasReadableText(context) ||
+		/\bdata-catalog-idref\s*=/.test(extractMarkupContent(context))
+	);
+}
+
+/**
  * Helper to check if context contains science content
  * (Basic heuristic - can be overridden by tools)
  */
 export function hasScienceContent(context: ToolContext): boolean {
 	const text = extractTextContent(context);
 
-	// The element-symbol pattern used to be `/\b[A-Z][a-z]?\d*\b/`, which matches
-	// any one- or two-letter capitalised word: "It", "In", "A", "No". Every item
-	// beginning a sentence with one read as science.
 	if (hasChemicalFormula(text)) return true;
 	if (/[A-Z][a-z]?[\u2080-\u2089]/.test(text)) return true; // Subscripted: H₂O, CO₂
 

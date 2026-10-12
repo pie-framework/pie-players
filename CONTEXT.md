@@ -3,6 +3,41 @@
 This context names concepts shared by PIE Players and its runtime hosts so
 behavior and ownership can be discussed consistently.
 
+## Core Language
+
+**Runtime Host**:
+The application that embeds PIE players and owns persistence, identity, policy and its own chrome.
+_Avoid_: Client, wrapper, container
+
+**Test Attempt Session**:
+The toolkit's record of one learner's administration of one assessment, which the **Runtime Host** maps from and back to its backend's attempt payload.
+_Avoid_: Attempt (unqualified), try
+
+## Core Relationships
+
+- A **Runtime Host** owns durable session storage. Without host persistence, the toolkit and the assessment player keep sessions in browser `localStorage`, and only for an attempt the host identified.
+- A **Test Attempt Session** holds one item session per delivered item, and that item session's `attemptCount` counts how often the session was realized, never **Tries**.
+
+## Loading Language
+
+**Loading Strategy**:
+Where the item player gets element code: `iife` from the **Bundle Host**, `esm` from **Browser Builds** on a CDN, `preloaded` from elements the **Runtime Host** registered itself.
+_Avoid_: Player mode, bundle type
+
+**Bundle Host**:
+The PIE service that builds and serves IIFE bundles for any published element version, overridable through `loaderOptions.bundleHost`.
+_Avoid_: Bundle service, proxy
+
+**Browser Build**:
+A package entry that runs in a browser without a bundler: an element's `./browser/*` entries, or a player's self-contained build.
+_Avoid_: CDN build, UMD
+
+## Loading Relationships
+
+- An item player uses one **Loading Strategy** for every element in an item; `iife` is the default.
+- The `esm` strategy needs a **Browser Build** of each element version, which only pie-elements-ng publishes.
+- A **Browser Build** of a player bundles its runtime, so a page loading it needs no import map.
+
 ## Theme Language
 
 **Theme Token**:
@@ -53,7 +88,9 @@ _Avoid_: Authored preview colors, palette thumbnail metadata
 A runtime-host-supplied token value applied after the base theme, provider, and registered scheme.
 _Avoid_: Provider value, scheme value
 
-## Relationships
+## Theme Relationships
+
+[How theming works](docs/theming/how-theming-works.md#resolution-order) sets out the full resolution order.
 
 - A **Base Theme** establishes the complete starting token set.
 - A **Theme Provider** may replace tokens from the **Base Theme** with runtime-host design-system values.
@@ -65,12 +102,12 @@ _Avoid_: Provider value, scheme value
 - A **Requested Scheme** without a **Resolved Scheme** retains its identifier while managed rendering falls back to the base theme and provider result.
 - A **Scheme Preview** is derived from the same canonical definitions that render the assessment and is never a separately authored palette.
 
-## Example dialogue
+## Theme Example dialogue
 
 > **Dev:** "Does `default` select the light accessibility palette?"
 > **Domain expert:** "No. The **Default Scheme** selects no named palette; the **Base Theme** still decides light or dark, then the **Theme Provider** may adapt it."
 
-## Flagged ambiguities
+## Theme Flagged ambiguities
 
 - "theme" previously referred to both light/dark selection and accessibility palettes — resolved: use **Base Theme** for light/dark and **Color Scheme** for a named accessibility palette.
 - "custom scheme" previously covered both registered data and host CSS selectors — resolved: distinguish **Registered Custom Scheme** from **CSS-only Scheme**.
@@ -80,7 +117,7 @@ _Avoid_: Provider value, scheme value
 
 **Try**:
 One submitted-for-checking pass over a single item within a delivery session. `tryCount` counts them, `maxTries` bounds them.
-_Avoid_: Attempt, submission, retry — `TestAttemptSession` is the assessment administration and `TestAttemptItemSession.attemptCount` counts session realizations, so a third "attempt" is read as one of those.
+_Avoid_: Attempt, submission, retry — "attempt" already names the **Test Attempt Session** and its item sessions' `attemptCount`.
 
 **Try Outcome**:
 The recorded result of one **Try**: a derived correctness value plus the aggregated points and denominator. Derived from element controller outcomes, never authored.
@@ -120,7 +157,7 @@ _Avoid_: Completion, progress, score
 
 **Timed-Media Section**:
 A section whose shared media timeline decides when its items are delivered. Named by `sectionType: "timed-media"`, which is a discriminator on data — the runtime host still picks the layout tag.
-_Avoid_: Video section, video player
+_Avoid_: Video section, video player, section variant, section flavor
 
 **Media Stimulus**:
 The passage whose PIE config mounts the media element, named by `timedMedia.stimulusRef`. A **Catalog Owner** like any passage, which is what keeps captions, transcripts and signed alternates on the accessibility-catalog rail.
@@ -207,7 +244,7 @@ The PIE-owned composition module that binds each packaged registration to its
 element delivery, lazy-loader bootstrap sets, placement and toolbar ordering,
 and explicit universal-support policy, then projects the stable public
 registries, maps and presets.
-_Avoid_: Default tool list, loader catalogue
+_Avoid_: Default tool list, loader catalog
 
 ## Tool Surface Relationships
 
@@ -224,3 +261,44 @@ _Avoid_: Default tool list, loader catalogue
 - Universal support membership is explicit program policy inside the
   **Packaged Capability Composition**; it is validated against registrations but
   never derived from registration membership.
+
+## Tool Policy Language
+
+**Support Id**:
+The id a policy input names a capability by. It is the `toolId` of the registered tool it governs, camelCased from the AfA PNP 3.0 term where AfA names the capability.
+_Avoid_: Feature name, AfA term
+
+**Placement**:
+The host's `tools.placement` list of the tools a toolbar level may show. Only placement puts a tool on a toolbar.
+_Avoid_: Enablement, grant
+
+**Grant**:
+A policy input admitting a capability for the learner: a profile support, a **Requirement**, or a test-administration override set to `true`. On a toolbar it protects a placed tool from the registry's relevance filter.
+_Avoid_: Enable, placement
+
+**Requirement**:
+A **Grant** that is a mandate, from an item's or the district's `requiredTools`. The entry carries `required`, and a host gate that keeps it off every toolbar raises `tool-policy.requiredToolBlocked`.
+_Avoid_: Default tool, always-on
+
+**Block**:
+A policy input withdrawing a capability: a district block, a test-administration override set to `false`, an item restriction, or a profile prohibition. Among the policy inputs, only a block removes a placed tool.
+_Avoid_: Hide, restriction (for the whole set)
+
+**Tool Parameters**:
+`toolParameters`, keyed by **Support Id**: the assessment's entry, overridden by the item's on the item's own scope. They reach a capability whatever the PNP verdict; a host denial drops them.
+_Avoid_: Tool config, provider config
+
+**PNP Enforcement**:
+Whether a toolbar decision applies the policy inputs: `"on"`, `"off"`, or auto-mode, which turns it on where the bound assessment or the decision's item carries policy material. Feature decisions apply the inputs whatever the mode.
+_Avoid_: PNP mode, strict mode
+
+**Feature Decision**:
+`decideFeaturePolicy`'s verdict on one **Support Id** for a capability that renders as its own surface. It reads no **Placement**; host `tools.policy` gates still apply.
+_Avoid_: Tool decision, toolbar decision
+
+## Tool Policy Relationships
+
+- **Placement** decides which tools a toolbar can show; policy then removes **Blocks** and marks **Grants**. A **Grant** never adds an unplaced tool.
+- Precedence, highest first: district block, `false` override, item restriction, profile prohibition, `true` override, item **Requirement**, district **Requirement**, profile support.
+- Item settings reach only decisions scoped to that item: its own toolbar and the **Feature Decisions** its content asks with the item's scope.
+- **Tool Parameters** reach every entry policy shows, whatever the PNP verdict and the **PNP Enforcement** mode.

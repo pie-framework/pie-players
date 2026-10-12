@@ -141,6 +141,27 @@ describe("ServerTTSProvider", () => {
 		expect(starts).toEqual(["start"]);
 	});
 
+	test("reports at playback start whether the response sends word boundaries", async () => {
+		let marks: unknown[] = [];
+		globalThis.fetch = vi.fn(async () =>
+			createJSONResponse({ audio: btoa("audio-bytes"), speechMarks: marks }),
+		) as unknown as typeof fetch;
+		const provider = new ServerTTSProvider();
+		const impl = await provider.initialize({ apiEndpoint: "/api/tts" } as any);
+		const starts: unknown[] = [];
+		impl.onPlaybackStart = (playback) => starts.push(playback);
+
+		await impl.speak("hello");
+		marks = [{ time: 0, type: "word", start: 0, end: 5, value: "hello" }];
+		await impl.speak("hello");
+
+		expect(starts).toEqual([
+			{ wordBoundaries: false },
+			{ wordBoundaries: true },
+		]);
+		expect(provider.getCapabilities().supportsWordBoundary).toBe(true);
+	});
+
 	test("reports playback start when the audio sounds, not when play is requested", async () => {
 		globalThis.fetch = vi.fn(async () =>
 			createJSONResponse({ audio: btoa("audio-bytes"), speechMarks: [] }),
@@ -196,7 +217,7 @@ describe("ServerTTSProvider", () => {
 		// The first element reports its error after the second speak took over.
 		firstAudio?.onerror?.(new Event("error"));
 		await expect(first).resolves.toBeUndefined();
-		expect(impl.isPlaying()).toBe(true);
+		expect((impl as any).pausedState).toBe(false);
 		expect((impl as any).currentAudio).toBe(secondAudio);
 
 		secondAudio?.onended?.();
@@ -230,6 +251,44 @@ describe("ServerTTSProvider", () => {
 		await impl.speak("hello");
 
 		expect(MockAudio.instances[0]?.playbackRate).toBe(1);
+	});
+
+	test("anchors pie transport marks to the spoken text", async () => {
+		// Offsets in UTF-8 bytes, as a Polly-backed server built before marks
+		// were anchored server-side returns them.
+		globalThis.fetch = vi.fn(async () =>
+			createJSONResponse({
+				audio: btoa("audio-bytes"),
+				contentType: "audio/mpeg",
+				speechMarks: [
+					{ time: 0, type: "word", start: 0, end: 3, value: "Él" },
+					{ time: 300, type: "word", start: 4, end: 10, value: "comió" },
+					{ time: 600, type: "word", start: 11, end: 15, value: "más" },
+				],
+			}),
+		) as unknown as typeof fetch;
+		const impl = await new ServerTTSProvider().initialize({
+			apiEndpoint: "/api/tts",
+		} as any);
+
+		let timings: Array<{ charIndex: number; length: number }> = [];
+		impl.onPlaybackStart = () => {
+			timings = (impl as any).wordTimings;
+		};
+		await impl.speak("Él comió más");
+
+		expect(
+			timings.map(
+				(timing: { charIndex: number; length: number }) => [
+					timing.charIndex,
+					timing.length,
+				],
+			),
+		).toEqual([
+			[0, 2],
+			[3, 5],
+			[9, 3],
+		]);
 	});
 
 	test("supports custom transport with root POST and JSONL marks", async () => {
@@ -313,6 +372,36 @@ describe("ServerTTSProvider", () => {
 		const synthBody = JSON.parse(String(options.body));
 		expect(synthBody.lang_id).toBe("es-MX");
 		expect(synthBody.langId).toBe("es-MX");
+	});
+
+	test("sends a speedRate bucket on the custom transport, deriving one from rate for any other value", async () => {
+		const fetchMock = vi.fn(async (input: RequestInfo | URL) =>
+			String(input) === "https://tts.custom.example/v1"
+				? createJSONResponse({
+						audioContent: "https://tts.custom.example/audio.mp3",
+						speechMarks: [],
+					})
+				: new Response(new Blob(["mp3-bytes"]), { status: 200 }),
+		);
+		globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+		const sentSpeedRate = async (speedRate: unknown) => {
+			fetchMock.mockClear();
+			const impl = await new ServerTTSProvider().initialize({
+				apiEndpoint: "https://tts.custom.example/v1",
+				transportMode: "custom",
+				endpointMode: "rootPost",
+				rate: 0.8,
+				providerOptions: { speedRate },
+			} as any);
+			await impl.speak("Read");
+			const options = fetchMock.mock.calls[0]?.[1] as RequestInit;
+			return JSON.parse(String(options.body)).speedRate;
+		};
+
+		expect(await sentSpeedRate("fast")).toBe("fast");
+		expect(await sentSpeedRate("normal")).toBe("slow");
+		expect(await sentSpeedRate(undefined)).toBe("slow");
 	});
 
 	test("sends the language a speak names on the custom transport, then the configured one again", async () => {
@@ -646,7 +735,7 @@ describe("ServerTTSProvider", () => {
 		const provider = new ServerTTSProvider();
 		const impl = await provider.initialize({
 			apiEndpoint: "/api/tts",
-			validateEndpoint: true,
+			endpointValidationMode: "voices",
 			providerOptions: {
 				__pieTelemetry: (
 					eventName: string,
@@ -709,7 +798,7 @@ describe("ServerTTSProvider", () => {
 
 			expect(MockAudio.instances[0]?.paused).toBe(true);
 			expect(starts).toEqual([]);
-			expect(impl.isPaused()).toBe(true);
+			expect((impl as any).pausedState).toBe(true);
 
 			impl.resume();
 			await speaking;
@@ -749,6 +838,37 @@ describe("ServerTTSProvider", () => {
 		});
 	});
 
+	test("probes nothing at initialize unless endpointValidationMode names a probe", async () => {
+		const fetchMock = vi.fn(async () => createJSONResponse({ voices: [] }, 200));
+		globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+		for (const config of [
+			{ apiEndpoint: "/api/tts", provider: "polly" },
+			{ apiEndpoint: "/api/tts", transportMode: "custom" },
+			{ apiEndpoint: "/api/tts", endpointValidationMode: "none" },
+		]) {
+			await new ServerTTSProvider().initialize(config as any);
+		}
+
+		expect(fetchMock).not.toHaveBeenCalled();
+	});
+
+	test("probes the synthesis endpoint for endpointValidationMode endpoint", async () => {
+		const fetchMock = vi.fn(async () => new Response(null, { status: 405 }));
+		globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+		await new ServerTTSProvider().initialize({
+			apiEndpoint: "/api/tts",
+			endpointValidationMode: "endpoint",
+		} as any);
+
+		expect(fetchMock).toHaveBeenCalledTimes(1);
+		expect(String(fetchMock.mock.calls[0]?.[0])).toBe("/api/tts/synthesize");
+		expect((fetchMock.mock.calls[0] as unknown[])?.[1]).toMatchObject({
+			method: "OPTIONS",
+		});
+	});
+
 	test("validates provider-specific voices endpoint for Polly", async () => {
 		const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
 			const url = String(input);
@@ -763,7 +883,6 @@ describe("ServerTTSProvider", () => {
 		await provider.initialize({
 			apiEndpoint: "/api/tts",
 			provider: "polly",
-			validateEndpoint: true,
 			endpointValidationMode: "voices",
 		} as any);
 
@@ -785,7 +904,6 @@ describe("ServerTTSProvider", () => {
 		await provider.initialize({
 			apiEndpoint: "/api/tts",
 			provider: "google",
-			validateEndpoint: true,
 			endpointValidationMode: "voices",
 		} as any);
 
@@ -807,7 +925,6 @@ describe("ServerTTSProvider", () => {
 		await provider.initialize({
 			apiEndpoint: "/api/tts",
 			provider: "polly",
-			validateEndpoint: true,
 			endpointValidationMode: "voices",
 		} as any);
 
@@ -828,8 +945,7 @@ describe("ServerTTSProvider", () => {
 			provider.initialize({
 				apiEndpoint: "/api/tts",
 				provider: "google",
-				validateEndpoint: true,
-				endpointValidationMode: "voices",
+					endpointValidationMode: "voices",
 			} as any),
 		).rejects.toThrow();
 		expect(fetchMock).toHaveBeenCalledTimes(1);

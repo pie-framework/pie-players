@@ -60,7 +60,6 @@ export interface TestAttemptSession {
 
 	/**
 	 * QTI 3.0 context variables (global assessment-level variables).
-	 * Managed by ContextVariableStore.
 	 */
 	contextVariables?: Record<string, any>;
 }
@@ -69,6 +68,18 @@ const TEST_ATTEMPT_SESSION_VERSION = 1 as const;
 
 function nowIso(): string {
 	return new Date().toISOString();
+}
+
+/** A PIE session id other than the one recorded starts another attempt. */
+function nextAttemptCount(
+	existing: TestAttemptItemSession | undefined,
+	pieSessionId: string,
+): number {
+	if (!existing) return 1;
+	if (existing.pieSessionId && existing.pieSessionId !== pieSessionId) {
+		return existing.attemptCount + 1;
+	}
+	return existing.attemptCount;
 }
 
 export function createNewTestAttemptSession(args: {
@@ -143,13 +154,7 @@ export function upsertItemSessionFromPieSessionChange(
 
 	const now = nowIso();
 	const existing = session.itemSessions[itemIdentifier];
-
-	const attemptCount =
-		existing && existing.pieSessionId && existing.pieSessionId !== pieSessionId
-			? existing.attemptCount + 1
-			: existing
-				? existing.attemptCount
-				: 1;
+	const attemptCount = nextAttemptCount(existing, pieSessionId);
 
 	const completed = !!(isCompleted ?? existing?.isCompleted);
 

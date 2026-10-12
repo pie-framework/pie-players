@@ -4,37 +4,34 @@
  * external-style-urls="...">` or `itemConfig.resources.stylesheets[*].url`
  * styles that player's subtree instead of the whole host document.
  *
- * This replaces a single-regex implementation that prefixed every
- * selector-like fragment. That is correct for flat selector rules and wrong for
- * everything else: `@media screen { ... }` became
- * `.scope @media screen { ... }`, an invalid selector, so the browser dropped
- * the whole block and every rule inside it; `@font-face` and `@keyframes` were
- * corrupted the same way; and `:root` became `.scope :root`, which can never
- * match, because `:root` is `<html>` and is not a descendant of the player.
- * At-rules and `:root` custom properties therefore never applied at all.
+ * Walks the stylesheet brace-by-brace. Block at-rules that hold rules
+ * (`@media`, `@supports`, `@container`, `@layer`, `@scope`) keep their prelude
+ * and have their inner rules scoped, every other at-rule passes through, and a
+ * leading `:root`, `html` or `body` is replaced by the scope, since
+ * `.scope :root` can never match: `:root` is `<html>`, which is no descendant
+ * of the player. A regex prefixer fails on exactly these cases: it turned
+ * `@media screen { … }` into the invalid `.scope @media screen { … }`, which the
+ * browser drops with every rule inside, and corrupted `@font-face`,
+ * `@keyframes` and `:root` the same way.
  *
- * The QTI player's `scopeCssRules` (`pie-qti` -
- * `packages/item-player/src/components/utils/stylesheetRender.ts`) is not a
- * drop-in either. Its `:root` handling is the behaviour we want and is adopted
- * here, but it excludes `@` from its selector pattern rather than understanding
- * at-rules, so `@media` and `@supports` lose their condition and their inner
- * rules are hoisted and applied unconditionally — a mobile-only rule then
- * applies at every viewport width, which is a subtler failure than dropping it.
+ * The `:root` handling follows the QTI player's `scopeCssRules` (`pie-qti` -
+ * `packages/item-player/src/components/utils/stylesheetRender.ts`), which is no
+ * drop-in: it excludes `@` from its selector pattern without understanding
+ * at-rules, so `@media` and `@supports` lose their condition and their rules
+ * apply at every viewport width.
  *
- * So this walks the stylesheet brace-by-brace instead of pattern-matching it.
- * A real CSS parser would be the textbook answer and is deliberately not used:
- * `@pie-players/pie-item-player` ships with two workspace dependencies, this
- * runs in the delivery path, and scoping needs to know about rule boundaries
- * only — not about property grammar.
+ * No CSS parser: `@pie-players/pie-item-player` ships with two workspace
+ * dependencies, this runs in the delivery path, and scoping needs rule
+ * boundaries only.
  *
- * Known limits, all preserving existing behaviour rather than adding policy:
+ * Known limits:
  *
- * - `@import` is passed through untouched, exactly as the old regex left it. It
- *   pulls in an unscoped stylesheet, so it defeats scoping, but blocking it is
- *   a security policy decision and not this function's job. Callers gate
- *   stylesheet URLs with `validateExternalStyleUrl` before fetching.
+ * - `@import` is passed through untouched. It pulls in an unscoped stylesheet,
+ *   so it defeats scoping, but blocking it is a security policy decision and
+ *   not this function's job. Callers gate stylesheet URLs with
+ *   `validateExternalStyleUrl` before fetching.
  * - Declaration blocks are emitted verbatim, so `url(...)` references are left
- *   as authored and resolve against the stylesheet's own URL as before.
+ *   as authored and resolve against the stylesheet's own URL.
  * - A style rule's block is never rewritten, which is also what native CSS
  *   nesting needs: nested selectors are relative to a parent that has already
  *   been scoped.

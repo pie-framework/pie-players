@@ -19,26 +19,15 @@ interface DefinitionState {
 const definitions = new Map<string, DefinitionState>();
 
 /**
- * Safely define a custom element, preventing duplicate registrations
- *
- * @param name - Custom element tag name
- * @param def - Custom element constructor
+ * Define a custom element once: repeat calls for a ready or in-progress tag are
+ * no-ops, and a tag whose definition failed rethrows that error.
  */
 export const define = (name: string, def: CustomElementConstructor): void => {
 	const validName = validateCustomElementTag(name, "print element tag");
 	const existing = definitions.get(validName);
 
-	if (existing) {
-		if (existing.ready) {
-			return;
-		}
-		if (existing.inProgress) {
-			return;
-		}
-		if (existing.error) {
-			throw existing.error;
-		}
-	}
+	if (existing?.ready || existing?.inProgress) return;
+	if (existing?.error) throw existing.error;
 
 	definitions.set(validName, { inProgress: true });
 

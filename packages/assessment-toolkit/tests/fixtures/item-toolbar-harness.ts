@@ -44,6 +44,8 @@ export interface ItemToolbarMountOptions {
 	item?: ItemEntity | null;
 	/** Published beside the coordinator; needs `placed`. */
 	toolCoordinator?: ToolCoordinatorApi;
+	/** The published coordinator's tool failure report; needs `placed`. */
+	reportToolFailure?: (toolId: string, phase: string, error: unknown) => void;
 }
 
 export interface MountedItemToolbar {
@@ -115,6 +117,7 @@ function publishCoordinator(
 	registry: ToolRegistry,
 	placed: PlacedTool[],
 	toolCoordinator?: ToolCoordinatorApi,
+	reportToolFailure?: ItemToolbarMountOptions["reportToolFailure"],
 ): ContextProvider<typeof assessmentToolkitRuntimeContext> {
 	const decision: ToolPolicyDecision = {
 		visibleTools: placed.map((entry) => ({
@@ -130,6 +133,7 @@ function publishCoordinator(
 		getPolicyInputs: () => ({ assessment: null, currentItemRef: null }),
 		onPolicyChange: () => () => {},
 		getToolRegistry: () => registry,
+		...(reportToolFailure ? { reportToolFailure } : {}),
 	};
 	const provider = new ContextProvider(host, {
 		context: assessmentToolkitRuntimeContext,
@@ -154,6 +158,7 @@ export async function mountItemToolbar(
 				options.registry,
 				options.placed,
 				options.toolCoordinator,
+				options.reportToolFailure,
 			)
 		: null;
 

@@ -176,7 +176,6 @@
 		host.showNavigation = true;
 		host.hooks = createAssessmentHooks(launchContext);
 		host.coordinator = coordinator;
-		void host.bootstrapController?.();
 
 		const onRouteChanged = () => {
 			refreshSnapshot();

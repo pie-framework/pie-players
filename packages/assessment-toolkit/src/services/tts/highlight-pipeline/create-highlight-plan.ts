@@ -135,11 +135,10 @@ const TEXT_NODE = 3;
 // the last token — painting it would be a likely false positive, and "false
 // positives are worse than coarse highlighting." A single-text-node prose range
 // is kept: it underlines one token cleanly and usefully fills in any token the
-// math resolver missed. (The highlight coordinator no longer escalates word
-// ranges to the whole <math> / <mjx-container>, so this is now a precision
-// policy rather than flash-suppression — see HighlightCoordinator
-// WORD_FALLBACK_SELECTOR.)
-const wouldEscalateInsideTokenMath = (
+// math resolver missed. The word layer never escalates a range to the enclosing
+// <math>/<mjx-container> (HighlightCoordinator WORD_FALLBACK_SELECTOR), so this
+// is a precision policy.
+const isMultiNodeRangeInsideTokenMath = (
 	planned: PlannedChunk,
 	target: RenderableHighlightTarget | null,
 	candidates: TTSHighlightChunk["mathAlignments"],
@@ -219,9 +218,7 @@ export const createTTSHighlightPlan = (
 		resolveInitial(chunkId: string): HighlightDecision {
 			const planned = plannedChunksById.get(chunkId);
 			if (!planned) return missingChunkDecision();
-			const alignments = planned.chunk.mathAlignments;
-			const soleElement =
-				alignments.length === 1 ? alignments[0].element : null;
+			const soleElement = soleEquationElement(planned.chunk.mathAlignments);
 			const capability = soleElement
 				? planned.mathCapabilityByElement.get(soleElement)
 				: null;
@@ -257,7 +254,7 @@ export const createTTSHighlightPlan = (
 			const proseTarget = resolveProseBoundaryTarget(chunk, normalized);
 			const mathCandidates = mathCandidatesForTarget(proseTarget, chunk);
 			const resolvedMathTarget =
-				(!proseTarget || mathCandidates.length > 0
+				!proseTarget || mathCandidates.length > 0
 					? resolveMathBoundaryTarget(
 							chunk,
 							normalized,
@@ -265,7 +262,7 @@ export const createTTSHighlightPlan = (
 							mathCandidates,
 							planned.renderedMathTargetResolver,
 						)
-					: null) || null;
+					: null;
 			const mathTarget =
 				resolvedMathTarget?.quality === "semantic-token"
 					? resolvedMathTarget
@@ -299,8 +296,8 @@ export const createTTSHighlightPlan = (
 
 			// (2) A spoken word that maps to visible prose. The prose anchor is
 			// precise; a coarse math expression fallback must never override it.
-			// Exception: a multi-node prose range inside a token-mode equation
-			// would escalate to the whole expression, so it is rejected here and
+			// Exception: a multi-node prose range inside a token-mode equation is
+			// an untrustworthy glyph-level match, so it is rejected here and
 			// falls through to the token hold below. When per-token math
 			// highlighting is disabled, any prose range that lands inside a
 			// formula is likewise rejected so the formula stays a single block.
@@ -308,7 +305,11 @@ export const createTTSHighlightPlan = (
 				proseTarget &&
 				!isHiddenRange(proseTarget) &&
 				(mathTokenHighlighting
-					? !wouldEscalateInsideTokenMath(planned, proseTarget, mathCandidates)
+					? !isMultiNodeRangeInsideTokenMath(
+							planned,
+							proseTarget,
+							mathCandidates,
+						)
 					: mathCandidates.length === 0)
 			) {
 				return createHighlightDecision({

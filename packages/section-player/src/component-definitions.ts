@@ -4,11 +4,8 @@ import {
 	DEFAULT_ESM_CDN_URL,
 } from "@pie-players/pie-players-shared";
 
-export type ComponentModuleLoader = () => Promise<unknown>;
-
 export interface ComponentDefinition {
 	tagName: string;
-	ensureDefined?: ComponentModuleLoader;
 	attributes?: Record<string, string>;
 	props?: Record<string, unknown>;
 }
@@ -18,7 +15,6 @@ export type PlayerDefinitionMap = Record<string, ComponentDefinition>;
 export const DEFAULT_PLAYER_DEFINITIONS: PlayerDefinitionMap = {
 	iife: {
 		tagName: "pie-item-player",
-		ensureDefined: () => Promise.resolve(),
 		attributes: {
 			strategy: "iife",
 		},
@@ -30,7 +26,6 @@ export const DEFAULT_PLAYER_DEFINITIONS: PlayerDefinitionMap = {
 	},
 	esm: {
 		tagName: "pie-item-player",
-		ensureDefined: () => Promise.resolve(),
 		attributes: {
 			strategy: "esm",
 		},
@@ -42,7 +37,6 @@ export const DEFAULT_PLAYER_DEFINITIONS: PlayerDefinitionMap = {
 	},
 	preloaded: {
 		tagName: "pie-item-player",
-		ensureDefined: () => Promise.resolve(),
 		attributes: {
 			strategy: "preloaded",
 		},

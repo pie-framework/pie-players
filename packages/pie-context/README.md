@@ -2,8 +2,15 @@
 
 Framework-agnostic Context Protocol helpers for PIE web components.
 
-This package implements the Web Components community `context-request` protocol
+This package implements the Web Components community
+[`context-request` protocol](https://github.com/webcomponents-cg/community-protocols/blob/main/proposals/context.md)
 so orchestration/runtime dependencies can be shared without prop drilling.
+
+A tool, PIE element or player component needs it to read a fact only its
+container knows, such as its heading depth, the width its layout gives it or
+the toolkit coordinator, or to publish such a fact to its descendants. Which
+facts the players publish, and how a descendant resolves them, is in
+[Composition context](../../docs/architecture/composition-context.md).
 
 ## Included APIs
 
@@ -38,7 +45,8 @@ so orchestration/runtime dependencies can be shared without prop drilling.
   A subscription whose consumer is out of the document is held and re-dispatched
   when the provider reconnects, so a subtree moved with its provider keeps its
   subscriptions.
-- Subscriptions are opt-in (`subscribe: true`) and include unsubscribe callbacks.
+- `ContextConsumer` subscribes unless given `subscribe: false`. Subscriptions
+  include unsubscribe callbacks.
 - `ContextRoot` only tracks subscribing requests to avoid unnecessary retention.
 - `ContextRoot` dedupes pending replay by `(requestor, callback)` pair.
 - `ContextRoot` skips a request a provider has already answered, never stops

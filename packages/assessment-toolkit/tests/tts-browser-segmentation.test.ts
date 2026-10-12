@@ -541,7 +541,7 @@ describe("browser provider segmentation", () => {
 			"Browser speech synthesis ended before audio started",
 		);
 
-		expect(impl.isPlaying()).toBeFalse();
+		expect(impl._isPlaying).toBeFalse();
 		expect(impl.utterance).toBeNull();
 	});
 
@@ -755,11 +755,11 @@ describe("browser provider segmentation", () => {
 				{ text: "First.", startOffset: 0, pauseMsAfter: 10 },
 				{ text: "Second.", startOffset: 7 },
 			]);
-			await waitFor(() => spoken.length === 1 && !impl.isPlaying());
+			await waitFor(() => spoken.length === 1 && !(impl as any)._isPlaying);
 			impl.pause();
 			await elapse(30);
 
-			expect(impl.isPaused()).toBeTrue();
+			expect((impl as any)._isPaused).toBeTrue();
 			expect(spoken).toEqual(["First."]);
 
 			impl.resume();
@@ -784,7 +784,7 @@ describe("browser provider segmentation", () => {
 
 			expect(spoken).toEqual(["Late start."]);
 			expect(synthCalls).toContain("pause");
-			expect(impl.isPaused()).toBeTrue();
+			expect((impl as any)._isPaused).toBeTrue();
 			impl.resume();
 			await playback;
 		});
@@ -797,13 +797,13 @@ describe("browser provider segmentation", () => {
 				{ text: "First.", startOffset: 0, pauseMsAfter: 10 },
 				{ text: "Second.", startOffset: 7 },
 			]);
-			await waitFor(() => spoken.length === 1 && !impl.isPlaying());
+			await waitFor(() => spoken.length === 1 && !(impl as any)._isPlaying);
 			impl.pause();
 			impl.stop();
 			await playback;
 
 			expect(spoken).toEqual(["First."]);
-			expect(impl.isPaused()).toBeFalse();
+			expect((impl as any)._isPaused).toBeFalse();
 		});
 	});
 });

@@ -13,6 +13,15 @@
 	}}
 />
 
+<!--
+@component
+Dictionary panel body: a word-or-phrase field and the definitions found for it.
+Lookup is host-supplied, through a `lookup` function or a POST to `endpoint`,
+and with neither the panel says no service is configured. The toolbar shell that
+mounts it owns `visible` and the floating chrome, and a `term` set from a text
+selection opens the panel already searched.
+-->
+
 <script lang="ts">
 	import { coerceBooleanAttributes } from '@pie-players/pie-players-shared/ui/attribute-coercion';
 	/**

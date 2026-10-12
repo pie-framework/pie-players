@@ -44,6 +44,7 @@ export {
 	languageTagLookupSequence,
 	languageTagsEqual,
 	normalizeLanguageTag,
+	toLanguageTag,
 } from "./language-tags.js";
 export {
 	DEFAULT_LOCALE,

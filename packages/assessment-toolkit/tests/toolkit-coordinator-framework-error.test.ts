@@ -213,13 +213,12 @@ describe("ToolkitCoordinator hooks", () => {
 		await coordinator.waitUntilReady();
 
 		expect(coordinator.isReady()).toBe(true);
-		expect((coordinator as unknown as { stateLoaded: boolean }).stateLoaded).toBe(false);
 		expect(loads).toBe(1);
 		expect(calls.map((model) => model.kind)).toEqual(["tool-state-load"]);
 		expect(calls[0]).toMatchObject({ recoverable: true, scope: "runtime" });
 	});
 
-	test("a section that fails to start reports a cohort-scoped error", () => {
+	test("a section that fails to start reports a cohort-scoped error naming it", () => {
 		const calls: FrameworkErrorModel[] = [];
 		const coordinator = new ToolkitCoordinator({
 			assessmentId: "section-init-failure-scope",
@@ -229,6 +228,7 @@ describe("ToolkitCoordinator hooks", () => {
 
 		(coordinator as any).handleSectionControllerInitError(new Error("no section"), {
 			sectionId: "s1",
+			attemptId: "a1",
 		});
 
 		expect(calls).toHaveLength(1);
@@ -236,6 +236,7 @@ describe("ToolkitCoordinator hooks", () => {
 			kind: "section-controller-init",
 			recoverable: false,
 			scope: "cohort",
+			cohort: { sectionId: "s1", attemptId: "a1" },
 		});
 	});
 });

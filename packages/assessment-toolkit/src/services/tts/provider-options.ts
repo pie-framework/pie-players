@@ -8,7 +8,11 @@ import type { BoundarySpacingMode } from "./text-processing.js";
  * each value at runtime.
  */
 export interface ToolkitTTSProviderOptions extends TTSProviderOptions {
-	/** Highlight words or sentences while reading. Defaults by provider capability. */
+	/**
+	 * Highlight words or sentences while reading. Defaults by provider
+	 * capability. A playback that sends no word boundaries highlights its
+	 * sentence in either mode.
+	 */
 	highlightMode?: "word" | "sentence";
 	/** Locale for text processing; the toolkit sets it per speak. */
 	locale?: string;
@@ -40,4 +44,11 @@ export interface ToolkitTTSProviderOptions extends TTSProviderOptions {
 /** A provider configuration as the toolkit reads it. */
 export interface ToolkitTTSConfig extends TTSConfig {
 	providerOptions?: ToolkitTTSProviderOptions;
+	/**
+	 * Highlight math token by token; `false` highlights each formula as one
+	 * block. The highlight pipeline reads it, and providers ignore it.
+	 *
+	 * @default true
+	 */
+	mathTokenHighlighting?: boolean;
 }

@@ -1,11 +1,17 @@
 import type { FrameworkErrorModel } from "@pie-players/pie-assessment-toolkit";
+import {
+	type CohortKey,
+	cohortsEqual,
+	makeCohort,
+} from "@pie-players/pie-assessment-toolkit/runtime/engine";
 
 /**
  * The section player's readiness error latch. A non-recoverable framework error
  * latches the scope its report site set: a `cohort` error fails the section it
  * was reported for and clears when the cohort rolls; a `runtime` error fails
  * every later section, since they run on the same coordinator. A recoverable
- * error latches nothing.
+ * error latches nothing, and neither does a `cohort` error that names another
+ * section: that section failed after the learner left it.
  *
  * A toolkit bootstrap failure is a runtime error held against the coordinator
  * the toolkit had announced when it was reported. It clears when the toolkit
@@ -39,14 +45,24 @@ function isBootstrapKind(kind: FrameworkErrorModel["kind"] | undefined): boolean
 export function latchFrameworkError(
 	latch: FrameworkErrorLatch,
 	detail:
-		| Pick<FrameworkErrorModel, "recoverable" | "scope" | "kind">
+		| Pick<FrameworkErrorModel, "recoverable" | "scope" | "kind" | "cohort">
 		| null
 		| undefined,
 	coordinator: unknown,
+	current: CohortKey | null,
 ): FrameworkErrorLatch {
 	if (!detail || detail.recoverable === true) return latch;
 	if (detail.kind === "element-preload") return latch;
-	if (detail.scope === "cohort") return { ...latch, cohort: true };
+	if (detail.scope === "cohort") {
+		const reported = detail.cohort
+			? makeCohort({
+					sectionId: detail.cohort.sectionId,
+					attemptId: detail.cohort.attemptId,
+				})
+			: current;
+		if (!cohortsEqual(reported, current)) return latch;
+		return { ...latch, cohort: true };
+	}
 	if (isBootstrapKind(detail.kind)) {
 		return latch.bootstrap ? latch : { ...latch, bootstrap: { coordinator } };
 	}

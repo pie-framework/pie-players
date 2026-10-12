@@ -51,14 +51,14 @@ export interface SectionSessionPersistenceConfig {
 	strategy: SectionSessionPersistenceStrategy;
 }
 
+/**
+ * applySession contract:
+ * - Preferred input is the output of getSession().
+ * - itemSessions may contain canonical attempt entries
+ *   ({ itemIdentifier, session, isCompleted }) or raw session payloads
+ *   ({ id, data, ... }); controller normalizes these before applying.
+ */
 export interface SectionControllerApplySessionOptions {
-	/**
-	 * applySession contract:
-	 * - Preferred input is the output of getSession().
-	 * - itemSessions may contain canonical attempt entries
-	 *   ({ itemIdentifier, session, isCompleted }) or raw session payloads
-	 *   ({ id, data, ... }); controller normalizes these before applying.
-	 */
 	mode?: "replace" | "merge";
 }
 

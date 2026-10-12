@@ -103,9 +103,7 @@ async function forceBrowserTtsRuntime(page: Page): Promise<void> {
 			transportMode: "pie",
 			defaultVoice: undefined,
 		});
-		await coordinator?.ensureTTSReady?.(
-			coordinator?.getToolConfig?.("textToSpeech"),
-		);
+		await coordinator?.ensureTTSReady?.();
 		return true;
 	});
 	if (updatedViaDemoHandle) return;
@@ -120,21 +118,7 @@ async function forceBrowserTtsRuntime(page: Page): Promise<void> {
 				backend: "browser",
 				transportMode: "pie",
 			});
-			await coordinator?.ensureTTSReady?.(
-				coordinator?.getToolConfig?.("textToSpeech"),
-			);
-		});
-}
-
-async function requestTtsControlHandoff(page: Page): Promise<boolean> {
-	return await page
-		.locator("pie-section-player-tools-session-debugger")
-		.evaluate((element) => {
-			const coordinator = (element as any).toolkitCoordinator;
-			const handoff = coordinator?.ttsService?.requestControlHandoff;
-			if (typeof handoff !== "function") return false;
-			handoff.call(coordinator.ttsService);
-			return true;
+			await coordinator?.ensureTTSReady?.();
 		});
 }
 
@@ -1533,9 +1517,7 @@ test.describe("section player demo tts-ssml", () => {
 						{ rate: 1.5, label: "Fast", ariaLabel: "Fast speed" },
 					],
 				});
-				await coordinator?.ensureTTSReady?.(
-					coordinator?.getToolConfig?.("textToSpeech"),
-				);
+				await coordinator?.ensureTTSReady?.();
 			});
 			await passageTrigger.click();
 			await expect(passagePanel).toBeVisible();
@@ -1568,11 +1550,14 @@ test.describe("section player demo tts-ssml", () => {
 			await passagePanel.getByRole("button", { name: "Stop reading" }).click();
 			await expect(passagePanel).toHaveCount(0);
 
-			// Host-triggered handoff: collapse/deactivate active controls without toggling stop semantics.
+			// A host stop closes the open panel.
 			await passageTrigger.click();
 			await expect(passagePanel).toBeVisible();
-			const handoffInvoked = await requestTtsControlHandoff(page);
-			expect(handoffInvoked).toBe(true);
+			await page
+				.locator("pie-section-player-tools-session-debugger")
+				.evaluate((element) => {
+					(element as any).toolkitCoordinator.ttsService.stop();
+				});
 			await expect(passagePanel).toHaveCount(0);
 			await expect
 				.poll(async () => {
@@ -1580,11 +1565,11 @@ test.describe("section player demo tts-ssml", () => {
 						.locator("pie-section-player-tools-session-debugger")
 						.evaluate((element) => {
 							const coordinator = (element as any).toolkitCoordinator;
-							return String(coordinator?.ttsService?.getState?.() || "");
+							return String(coordinator.ttsService.getState());
 						});
 				})
-				.toMatch(/playing|paused|loading/);
-			const expandedAfterProgrammaticHandoff = await passageInlineTts.evaluate(
+				.toBe("idle");
+			const expandedAfterHostStop = await passageInlineTts.evaluate(
 				(host) => {
 					// Disclosure semantics live on the focusable <button>: the NDS
 					// inner button (reflectAria targets it) when ndsIcons is on, or
@@ -1595,13 +1580,7 @@ test.describe("section player demo tts-ssml", () => {
 					return trigger?.getAttribute("aria-expanded") || null;
 				},
 			);
-			expect(expandedAfterProgrammaticHandoff).toBe("false");
-			await page
-				.locator("pie-section-player-tools-session-debugger")
-				.evaluate((element) => {
-					const coordinator = (element as any).toolkitCoordinator;
-					coordinator?.ttsService?.stop?.();
-				});
+			expect(expandedAfterHostStop).toBe("false");
 
 			// Cross-instance inline flow: switching to another TTS trigger should close the current one first.
 			const itemTrigger = itemInlineTts
@@ -2051,9 +2030,7 @@ test.describe("section player demo tts-ssml", () => {
 					backend: "browser",
 					speedOptions: [2, 1.25, 1.5, 2, 1],
 				});
-				await coordinator?.ensureTTSReady?.(
-					coordinator?.getToolConfig?.("textToSpeech"),
-				);
+				await coordinator?.ensureTTSReady?.();
 			});
 		await passageInlineTts
 			.getByRole("button", { name: "Play reading" })
@@ -2084,9 +2061,7 @@ test.describe("section player demo tts-ssml", () => {
 					backend: "browser",
 					speedOptions: [],
 				});
-				await coordinator?.ensureTTSReady?.(
-					coordinator?.getToolConfig?.("textToSpeech"),
-				);
+				await coordinator?.ensureTTSReady?.();
 			});
 		await passageInlineTts
 			.getByRole("button", { name: "Play reading" })

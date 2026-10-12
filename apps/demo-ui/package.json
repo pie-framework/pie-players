@@ -64,11 +64,14 @@
 		"@pie-element/select-text": "next",
 		"@pie-players/pie-item-player": "workspace:*",
 		"@pie-players/pie-players-shared": "workspace:*",
+		"@pie-players/tts-server-core": "workspace:*",
 		"semver": "^7.8.5",
 		"svelte": "^5.57.1"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "^2.5.15",
+		"@pie-players/tts-server-google": "workspace:*",
+		"@pie-players/tts-server-polly": "workspace:*",
 		"@types/semver": "^7.8.0",
 		"svelte-check": "^4.7.6",
 		"typescript": "^5.9.3",

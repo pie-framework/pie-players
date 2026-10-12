@@ -24,6 +24,11 @@
 />
 
 <!--
+@component
+The toolbar for an item, passage or section, rendering a button for each tool the enclosing toolkit's coordinator places at its `level` and the tool's own visibility and applicability checks keep, plus the host's own `hostButtons`. It takes the item and its id from the enclosing `<pie-item-scope>` and the tool registry from the toolkit, either of which a host can override on the toolbar. Its tools act on the scope, or on the element `scopeElement` names.
+-->
+
+<!--
   ItemToolBar - Inline toolbar for item/passage headers
 
   Button visibility is always registry-driven:
@@ -58,7 +63,8 @@
 	import { ContextProvider } from '@pie-players/pie-context';
 	import type { I18nProvider, MessageKeyInput } from '@pie-players/pie-players-shared/i18n/types';
 	import { ZIndexLayer } from '../services/ToolCoordinator.js';
-	import { ToolRegistry } from '../services/ToolRegistry.js';
+	import { ToolRegistry, type ToolCallbackFailureHandler } from '../services/ToolRegistry.js';
+	import { reportToolFailure } from '../services/tool-failure.js';
 	import type {
 		HostedToolContext,
 		ResolvedToolContext,
@@ -85,10 +91,15 @@
 	import { parseToolList } from '../services/tools-config-normalizer.js';
 	import { PENDING_INPUT_WARNING_DELAY_MS, warnOncePerDocument } from '../runtime/page-warnings.js';
 	import { resolveFallbackToolIcon } from '../services/tool-icons.js';
-	import { createScopedToolId } from '../services/tool-instance-id.js';
+	import { createScopedToolId, type ToolScopeLevel } from '../services/tool-instance-id.js';
 	import type { ToolCoordinatorApi } from '../services/interfaces.js';
-	import type { AssessmentItemRef, AssessmentEntity, ItemEntity } from '@pie-players/pie-players-shared/types';
-	import type { ElementToolContext, ItemToolContext, ToolLevel, ToolContext } from '../services/tool-context.js';
+	import type {
+		AssessmentItemRef,
+		AssessmentEntity,
+		ItemEntity,
+		ToolParametersFor
+	} from '@pie-players/pie-players-shared/types';
+	import type { ElementToolContext, ItemToolContext, ToolContext } from '../services/tool-context.js';
 	import type { ToolPolicyDecision } from '../policy/engine.js';
 	import { createDecidedToolsTracker } from '../services/toolbar-decided-tools.js';
 	// Side-effect import: registers <nds-icon-button>. Single vendored source of
@@ -99,47 +110,58 @@
 	import '@pie-players/pie-players-shared/nds-icon-button';
 
 	const isBrowser = typeof window !== 'undefined';
-	// FontAwesome icon source, in load order:
+	// FontAwesome comes from the host page when it links any FA stylesheet.
+	// Otherwise the toolbar adds FA Free from jsDelivr. Pro is never fetched from
+	// here: ui.renaissance.com serves its font files to Renaissance origins only,
+	// so a host that licenses it links it itself, as section-demos does through
+	// its dev proxy.
 	//
-	//   1. FA Pro Light from the host's same-origin `/_fa-pro/` path. Hosts
-	//      that have licensed FA Pro (e.g., the section-demos dev server, see
-	//      apps/section-demos/vite.config.ts) proxy this to ui.renaissance.com.
-	//      When the proxy is present, Pro Light renders the design-spec
-	//      `fa-light fa-${iconName}` classes the vendored bundle emits.
-	//   2. FA Free from jsDelivr as a fallback. If the host doesn't expose
-	//      `/_fa-pro/`, the link tag 404s silently and Free's stylesheet stays
-	//      effective. Free ships icons in Solid weight (900); the shim below
-	//      remaps `.fa-light` accordingly so glyphs still render — at a
-	//      thicker stroke than the design intends, but visible.
+	// The NDS bundle renders `fa-light fa-${name}`, a weight only Pro carries.
+	// Free has no `.fa-light` rule and its Regular font lacks the toolbar's and
+	// calculator window's icons, so without Pro every NDS glyph renders in
+	// Solid, the one Free weight that has them all.
 	//
-	// Renaissance's direct CDN URL (https://ui.renaissance.com/...) is not
-	// usable directly: the CSS responds 200 cross-origin but the font binaries
-	// it references are CORS-blocked. The proxy avoids that by making the
-	// fetch same-origin from the browser's POV.
-	// FA Pro splits the cascade across two files: `fontawesome.min.css`
-	// defines the glyph map (`.fa-chevron-left:before {content: ...}` etc.)
-	// plus the base `.fa-light` font-family rule, while `light.min.css` adds
-	// the @font-face declaration and weight 300 override. Both are required.
-	const FA_PRO_HREFS = ['/_fa-pro/fontawesome.min.css', '/_fa-pro/light.min.css'];
+	// Roboto comes from the vendored button: its connectedCallback links
+	// ui.renaissance.com's Roboto unless the page links a stylesheet whose URL
+	// contains `Roboto`. That CDN serves the font files to Renaissance origins
+	// only, so a host elsewhere links its own.
 	const FA_FREE_HREF =
 		'https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.5.2/css/all.min.css';
-	// Pre-inject Roboto from a CORS-enabled origin. The vendored bundle's
-	// connectedCallback ships its own `link[href*="Roboto"]` injection from
-	// ui.renaissance.com, which serves the CSS but blocks cross-origin font
-	// downloads. By installing a Roboto link first, the bundle's
-	// `document.querySelector('link[href*="Roboto"]')` guard short-circuits
-	// and our CORS-clean stylesheet wins.
-	const ROBOTO_HREF =
-		'https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap';
-	// Match any FA stylesheet href the host page already has loaded — covers
-	// `fontawesome.min.css`, `font-awesome.css`, `/_fa-pro/light.min.css`,
-	// `fontawesome-free@…`, etc. Cloning the host's actual FA <link> is what
-	// makes prod work: the previous hardcoded `/_fa-pro/` paths only resolve on
-	// hosts that proxy FA Pro themselves (e.g., section-demos dev server).
+	// Matches any FA stylesheet the host page links: `fontawesome.min.css`,
+	// `font-awesome.css`, a `/_fa-pro/` proxy, `fontawesome-free@…`.
 	const FA_HREF_PATTERN = /font.?awesome|fa-?pro/i;
-	// A stylesheet that fails to load, such as the `/_fa-pro/` probe on a host
-	// without that path, stays in <head> marked `data-pie-load-failed`: no later
-	// call requests it again, and no shadow root copies it.
+	const FA_FREE_HREF_PATTERN = /fontawesome-free/i;
+	const documentStylesheetLinks = () =>
+		Array.from(document.querySelectorAll<HTMLLinkElement>('link[rel="stylesheet"][href]'));
+	const pageLinksFaPro = () =>
+		documentStylesheetLinks().some(
+			(link) => FA_HREF_PATTERN.test(link.href) && !FA_FREE_HREF_PATTERN.test(link.href)
+		);
+	type NdsGlyphVariant = 'fa-light' | 'fa-regular' | 'fa-solid';
+	// Re-applies whenever Lit renders or rewrites the icon's class. Our own class
+	// edit removes `fa-light`, so the callback it triggers is a no-op.
+	const applyNdsGlyphVariant = (button: HTMLElement, preferred: NdsGlyphVariant) => {
+		const variant = pageLinksFaPro() ? preferred : 'fa-solid';
+		if (variant === 'fa-light') return () => {};
+		const apply = () => {
+			for (const icon of button.querySelectorAll<HTMLElement>('i.fa-light')) {
+				icon.classList.remove('fa-light');
+				icon.classList.add(variant);
+			}
+		};
+		apply();
+		const observer = new MutationObserver(apply);
+		observer.observe(button, {
+			childList: true,
+			subtree: true,
+			attributes: true,
+			attributeFilter: ['class']
+		});
+		return () => observer.disconnect();
+	};
+	// A stylesheet that fails to load stays in <head> marked
+	// `data-pie-load-failed`: no later call requests it again, and no shadow root
+	// copies it.
 	const appendHeadStylesheet = (href: string) => {
 		if (document.querySelector(`link[href="${href}"]`)) return;
 		const link = document.createElement('link');
@@ -158,7 +180,6 @@
 	const ensureNdsAssets = () => {
 		if (!isBrowser || ndsAssetsInstalled) return;
 		ndsAssetsInstalled = true;
-		if (!document.querySelector('link[href*="Roboto"]')) appendHeadStylesheet(ROBOTO_HREF);
 		// Only inject our FA stylesheets when the host page hasn't already
 		// loaded one. If we always appended Free, it would land later in the
 		// document cascade than the host's FA Pro and override Pro's
@@ -167,12 +188,9 @@
 		// `installFaInToolbarShadow` clones whatever FA <link>s the host has
 		// into the toolbar's shadow root, so our own calculator icon still
 		// renders correctly without us forcing Free into <head>.
-		const hostHasFa = Array.from(
-			document.querySelectorAll<HTMLLinkElement>('link[rel="stylesheet"][href]')
-		).some((link) => FA_HREF_PATTERN.test(link.href));
+		const hostHasFa = documentStylesheetLinks().some((link) => FA_HREF_PATTERN.test(link.href));
 		if (hostHasFa) return;
 		appendHeadStylesheet(FA_FREE_HREF);
-		for (const href of FA_PRO_HREFS) appendHeadStylesheet(href);
 	};
 
 	// <nds-icon-button> renders into light DOM (createRenderRoot returns `this`),
@@ -198,9 +216,7 @@
 			link.href = href;
 			shadow.appendChild(link);
 		};
-		const documentFaLinks = Array.from(
-			document.querySelectorAll<HTMLLinkElement>('link[rel="stylesheet"][href]')
-		).filter((link) => FA_HREF_PATTERN.test(link.href));
+		const documentFaLinks = documentStylesheetLinks().filter((link) => FA_HREF_PATTERN.test(link.href));
 		// A stylesheet still loading is copied once it loads, so the copy comes from
 		// the cache; one that fails is not copied, since every copy would request
 		// it again. Chromium gives a link a `sheet` even when its load fails, so a
@@ -223,7 +239,7 @@
 	const ndsIconButtonAction = (node: HTMLElement) => {
 		ensureNdsAssets();
 		installFaInToolbarShadow(node);
-		return {};
+		return { destroy: applyNdsGlyphVariant(node, 'fa-light') };
 	};
 
 	// <nds-icon-button> exposes only `button-aria-label` on its inner light-DOM
@@ -274,7 +290,7 @@
 
 	// Props
 	let {
-		level = 'item' as ToolLevel,
+		level = 'item' as ToolScopeLevel,
 		scopeId = '',
 		itemId = '',
 		sectionId = '',
@@ -295,7 +311,7 @@
 		size = 'md' as 'sm' | 'md' | 'lg',
 		language = ''
 	}: {
-		level?: ToolLevel;
+		level?: ToolScopeLevel;
 		scopeId?: string;
 		itemId?: string;
 		sectionId?: string;
@@ -402,7 +418,7 @@
 	const effectiveCanonicalItemId = $derived(shellContext?.canonicalItemId || effectiveItemId);
 	const effectiveSectionId = $derived(sectionId || runtimeContext?.sectionId || '');
 	const effectiveContentKind = $derived(contentKind || shellContext?.contentKind || (level === 'section' ? 'section' : 'assessment-item'));
-	const effectiveLevel = $derived.by((): ToolLevel => {
+	const effectiveLevel = $derived.by((): ToolScopeLevel => {
 		if (level && level !== 'item') return level;
 		if (effectiveContentKind === 'rubric-block-stimulus') return 'passage';
 		return 'item';
@@ -507,29 +523,9 @@
 		return () => clearTimeout(timer);
 	});
 
-	// Tools a PNP/profile grant mandates (`requiredTools`, or a `supports` entry the
-	// host cannot toggle off). Pass 2 is a *relevance* heuristic — "is a calculator
-	// plausibly useful for this item" — and a heuristic must not withdraw an
-	// accommodation a learner is entitled to. The one-way veto still holds in the
-	// direction that matters: nothing here can make a tool visible that pass 1
-	// removed, because these ids come from the decision's own surviving entries.
-	const grantProtectedToolIds = $derived.by((): Set<string> => {
-		const protectedIds = new Set<string>();
-		if (!decidedTools) return protectedIds;
-		for (const entry of decidedTools) {
-			if (!entry.required && !entry.alwaysAvailable) continue;
-			for (const toolId of effectiveToolRegistry
-				.normalizeToolIds([entry.toolId])
-				.filter(Boolean)) {
-				protectedIds.add(toolId);
-			}
-		}
-		return protectedIds;
-	});
-
 	const contentReady = $derived.by(() => {
 		if (effectiveLevel === 'section' || effectiveLevel === 'assessment') return true;
-		const config = (effectiveItem as ItemEntity | null)?.config;
+		const config = effectiveItem?.config;
 		return !!(effectiveItem && config && typeof config === 'object');
 	});
 
@@ -589,7 +585,7 @@
 			level: 'item',
 			assessment: (effectiveAssessment || {}) as AssessmentEntity,
 			itemRef: contextItemRef,
-			item: ((effectiveItem as ItemEntity | null) || ({ id: effectiveCanonicalItemId, config: {} } as ItemEntity)) as ItemEntity
+			item: effectiveItem || ({ id: effectiveCanonicalItemId, config: {} } as ItemEntity)
 		} as ToolContext;
 	});
 
@@ -619,51 +615,54 @@
 	}
 
 	/**
-	 * Coordinator entries this toolbar seeded. A tool element registers itself
-	 * only once it renders, so the toolbar seeds the entry its button toggles;
-	 * the entry is scoped to this toolbar's item, so it is released when the
-	 * scope or coordinator changes and when the toolbar unmounts.
+	 * The coordinator entries of this toolbar's scope: one per tool it rendered
+	 * or toggled there, whether the toolbar seeded the entry or the tool's element
+	 * registered it. The entries belong to the toolbar's item, so all of them are
+	 * released when the scope or coordinator changes and when the toolbar
+	 * unmounts; one a tool element registered would otherwise keep its visibility
+	 * and come back on when the learner returns to the item.
 	 */
-	let seededToolEntries: { coordinator: ToolCoordinatorApi; ids: Set<string> } | null = null;
+	let scopeToolEntries: { coordinator: ToolCoordinatorApi; ids: Set<string> } | null = null;
+
+	function noteScopeToolEntry(coordinator: ToolCoordinatorApi, instanceToolId: string): void {
+		if (scopeToolEntries?.coordinator === coordinator) scopeToolEntries.ids.add(instanceToolId);
+	}
 
 	function seedToolEntry(coordinator: ToolCoordinatorApi, toolId: string): string {
 		const instanceToolId = toInstanceToolId(toolId);
-		if (!coordinator.getToolState(instanceToolId)) {
-			coordinator.registerTool(instanceToolId, toolId);
-			if (seededToolEntries?.coordinator !== coordinator) {
-				seededToolEntries = { coordinator, ids: new Set() };
-			}
-			seededToolEntries.ids.add(instanceToolId);
-		}
+		if (!coordinator.getToolState(instanceToolId)) coordinator.registerTool(instanceToolId, toolId);
+		noteScopeToolEntry(coordinator, instanceToolId);
 		return instanceToolId;
 	}
 
 	$effect(() => {
-		void effectiveToolCoordinator;
+		const coordinator = effectiveToolCoordinator;
 		void effectiveLevel;
 		void effectiveScopeId;
+		if (!coordinator) return;
+		const entries = { coordinator, ids: new Set<string>() };
+		scopeToolEntries = entries;
 		return () => {
-			const seeded = seededToolEntries;
-			seededToolEntries = null;
-			if (!seeded) return;
-			for (const instanceToolId of seeded.ids) seeded.coordinator.releaseTool(instanceToolId);
+			if (scopeToolEntries === entries) scopeToolEntries = null;
+			for (const instanceToolId of entries.ids) coordinator.releaseTool(instanceToolId);
 		};
 	});
 
 	/**
-	 * The state key of one PIE element in this toolbar's item. Element-grain
-	 * tools key by the element's model id, so two elements in one item keep
-	 * separate state.
+	 * The state key of one PIE element in this toolbar's item and attempt.
+	 * Element-grain tools key by the element's model id, so two elements in one
+	 * item keep separate state, and so do two attempts at one item.
 	 */
 	function resolveGlobalElementId(elementId: string): string | null {
 		if (!effectiveElementToolStateStore || !effectiveAssessmentId || !effectiveSectionId || !effectiveCanonicalItemId)
 			return null;
-		return effectiveElementToolStateStore.getGlobalElementId(
-			effectiveAssessmentId,
-			effectiveSectionId,
-			effectiveCanonicalItemId,
+		return effectiveElementToolStateStore.getGlobalElementId({
+			assessmentId: effectiveAssessmentId,
+			sectionId: effectiveSectionId,
+			attemptId: runtimeContext?.attemptId ?? '',
+			itemId: effectiveCanonicalItemId,
 			elementId
-		);
+		});
 	}
 
 	function resolveScopeElement(): HTMLElement | null {
@@ -735,67 +734,23 @@
 		return resolved;
 	});
 
-	// Pass 2: tool-owned context filtering (item + element aggregation)
+	// Passes 2 and 3, in decision order. A host that resolved a tool's visibility
+	// keeps that answer: it may own an adapter this content works with. The
+	// registry decides the rest, and a granted accommodation survives relevance
+	// there.
 	const visibleToolIds = $derived.by(() => {
-		const levelCompatibleToolIds = allowedToolIds.filter((toolId) => {
-			const registration = effectiveToolRegistry.get(toolId);
-			return registration ? registration.supportedLevels.includes(effectiveLevel) : false;
-		});
-		const hostResolvedEntries = Object.values(hostResolvedToolContextById);
-		const hostResolvedToolIds = new Set(hostResolvedEntries.map((entry) => entry.toolId));
-		const visible = new Set<string>(
-			hostResolvedEntries
-				.filter((entry) => entry.visible)
-				.map((entry) => entry.toolId)
+		const hostResolved = hostResolvedToolContextById;
+		const entries = (
+			decidedTools ??
+			allowedToolIds.map((toolId) => ({ toolId, required: false, alwaysAvailable: false }))
+		).filter((entry) => !hostResolved[effectiveToolRegistry.normalizeToolId(entry.toolId)]);
+		const contexts = !contentReady ? [] : toolContext ? [toolContext, ...elementContexts] : elementContexts;
+		const reportCallbackFailure: ToolCallbackFailureHandler = (toolId, phase, error) =>
+			reportToolFailure(runtimeContext?.toolkitCoordinator, toolId, phase, error);
+		const visible = new Set(
+			effectiveToolRegistry.filterDecidedToolIds(entries, effectiveLevel, contexts, reportCallbackFailure)
 		);
-		const toolOwnedToolIds = levelCompatibleToolIds.filter((toolId) => !hostResolvedToolIds.has(toolId));
-		if (effectiveLevel === 'section') {
-			// Section toolbars are orchestrator-driven. Tool-level relevance is often
-			// item-content dependent. Keep pass-1 as the source of truth here.
-			toolOwnedToolIds.forEach((toolId) => visible.add(toolId));
-			return Array.from(visible);
-		}
-		if (!contentReady) {
-			// Stage 1: orchestrator-level allow-list only.
-			toolOwnedToolIds.forEach((toolId) => visible.add(toolId));
-			return Array.from(visible);
-		}
-		if (!toolContext && elementContexts.length === 0) {
-			toolOwnedToolIds.forEach((toolId) => visible.add(toolId));
-			return Array.from(visible);
-		}
-		// A granted accommodation skips the relevance gate entirely.
-		toolOwnedToolIds
-			.filter((toolId) => grantProtectedToolIds.has(toolId))
-			.forEach((toolId) => visible.add(toolId));
-		if (toolContext) {
-			effectiveToolRegistry
-				.filterVisibleInContext(toolOwnedToolIds, toolContext)
-				.forEach((tool) => visible.add(tool.toolId));
-		}
-
-		for (const context of elementContexts) {
-			effectiveToolRegistry
-				.filterVisibleInContext(toolOwnedToolIds, context)
-				.forEach((tool) => visible.add(tool.toolId));
-		}
-
-		// Pass 3: applicability, the one gate a grant does not survive. Relevance
-		// asks whether a tool is plausibly useful and must never withdraw an
-		// accommodation; this asks whether the tool can act on this content at all,
-		// and a control that provably does nothing serves no learner. Only a tool
-		// that declares the gate can be removed here, and a host that resolved a
-		// tool's visibility itself keeps that answer — it may own an adapter this
-		// content works with.
-		const candidateContexts = toolContext ? [toolContext, ...elementContexts] : elementContexts;
-		for (const toolId of Array.from(visible)) {
-			if (hostResolvedToolIds.has(toolId)) continue;
-			if (!effectiveToolRegistry.isApplicableToAnyContext(toolId, candidateContexts)) {
-				visible.delete(toolId);
-			}
-		}
-
-		return Array.from(visible);
+		return allowedToolIds.filter((toolId) => visible.has(toolId) || hostResolved[toolId]?.visible);
 	});
 	// Tools whose module failed to load from the current registry. Such a tool is
 	// unavailable here: its button is withheld, requests for it pass this toolbar
@@ -809,14 +764,6 @@
 		return failed ? toolIds.filter((toolId) => !failed.has(toolId)) : toolIds;
 	});
 
-	function reportToolModuleFailure(toolId: string, error: unknown): void {
-		const coordinator = runtimeContext?.toolkitCoordinator;
-		if (typeof coordinator?.reportToolModuleFailure === 'function') {
-			coordinator.reportToolModuleFailure(toolId, error);
-			return;
-		}
-		console.error(`[ItemToolBar] Tool "${toolId}" failed to load:`, error);
-	}
 
 	// Dynamically load whatever tools are currently visible.
 	// The registry owns module loader configuration by toolId.
@@ -830,7 +777,7 @@
 				// Recorded before reporting: the report re-announces request targets,
 				// and this toolbar must already answer that it no longer hosts the tool.
 				failedToolModules = { registry, toolIds: new Set([...previous, ...failures.keys()]) };
-				for (const [toolId, error] of failures) reportToolModuleFailure(toolId, error);
+				for (const [toolId, error] of failures) reportToolFailure(runtimeContext?.toolkitCoordinator, toolId, 'tool-module-load', error);
 			}
 			if (!cancelled) moduleLoadVersion += 1;
 		});
@@ -839,10 +786,26 @@
 		};
 	});
 
+	// Policy parameters by registered tool id, from the decision's own entries.
+	const toolParametersById = $derived.by((): Map<string, Record<string, unknown>> => {
+		const parameters = new Map<string, Record<string, unknown>>();
+		for (const entry of decidedTools ?? []) {
+			if (!entry.parameters) continue;
+			const [toolId] = effectiveToolRegistry.normalizeToolIds([entry.toolId]);
+			if (toolId) parameters.set(toolId, entry.parameters);
+		}
+		return parameters;
+	});
+
 	const toolbarContext = $derived.by((): ToolbarContext => {
+		const parametersById = toolParametersById;
 		return {
 			...createToolbarContext(),
 			getResolvedToolContext: (toolId: string) => hostResolvedToolContextById[toolId] ?? null,
+			getToolParameters: <K extends string>(toolId: K) =>
+				(parametersById.get(effectiveToolRegistry.normalizeToolId(toolId)) as
+					| ToolParametersFor<K>
+					| undefined) ?? null,
 			getToolRenderParams: (toolId: string) => {
 				const resolved = hostResolvedToolContextById[toolId]?.params ?? null;
 				const requested = requestedToolParams.get(toolId);
@@ -873,9 +836,9 @@
 	/** Monotonic per toolbar; only its changing matters, never its value. */
 	let toolRequestSequence = 0;
 
-	let renderedTools = $derived.by((): ToolToolbarRenderResult[] => {
+	const renderedTools = $derived.by((): ToolToolbarRenderResult[] => {
 		if (!isBrowser) return [];
-		moduleLoadVersion;
+		void moduleLoadVersion;
 
 		const rendered: ToolToolbarRenderResult[] = [];
 		for (const toolId of toolbarVisibleToolIds) {
@@ -885,6 +848,16 @@
 			}
 		}
 		return rendered;
+	});
+
+	// Declared after the scope's entry record, so a scope change has opened the
+	// new record by the time the new item's tools are noted.
+	$effect(() => {
+		const coordinator = effectiveToolCoordinator;
+		if (!coordinator) return;
+		for (const renderedTool of renderedTools) {
+			noteScopeToolEntry(coordinator, toInstanceToolId(renderedTool.toolId));
+		}
 	});
 	const normalizedHostButtons = $derived.by((): ToolbarItem[] => {
 		if (!Array.isArray(hostButtons)) return [];
@@ -938,42 +911,24 @@
 		}
 		return result;
 	});
-	const mountedElementsBeforeButtons = $derived.by((): MountedToolElement[] =>
-		renderedTools.flatMap((renderedTool) =>
+	const mountedElementsAt = (
+		tools: ToolToolbarRenderResult[],
+		mount: ToolRenderElement['mount'],
+		keyPrefix: string
+	): MountedToolElement[] =>
+		tools.flatMap((renderedTool) =>
 			(renderedTool.elements || [])
-				.filter((entry) => entry.mount === 'before-buttons')
+				.filter((entry) => entry.mount === mount)
 				.filter((entry): entry is ToolRenderElement & { element: HTMLElement } => Boolean(entry.element))
 				.map((entry, index) => ({
-					key: `before-${renderedTool.toolId}-${index}`,
+					key: `${keyPrefix}-${renderedTool.toolId}-${index}`,
 					toolId: renderedTool.toolId,
 					entry
 				}))
-		)
-	);
-	const mountedElementsAfterButtons = $derived.by((): MountedToolElement[] =>
-		renderedTools.flatMap((renderedTool) =>
-			(renderedTool.elements || [])
-				.filter((entry) => entry.mount === 'after-buttons')
-				.filter((entry): entry is ToolRenderElement & { element: HTMLElement } => Boolean(entry.element))
-				.map((entry, index) => ({
-					key: `after-${renderedTool.toolId}-${index}`,
-					toolId: renderedTool.toolId,
-					entry
-				}))
-		)
-	);
-	const mountedElementsControlsRow = $derived.by((): MountedToolElement[] =>
-		renderedTools.flatMap((renderedTool) =>
-			(renderedTool.elements || [])
-				.filter((entry) => entry.mount === 'controls-row')
-				.filter((entry): entry is ToolRenderElement & { element: HTMLElement } => Boolean(entry.element))
-				.map((entry, index) => ({
-					key: `controls-row-${renderedTool.toolId}-${index}`,
-					toolId: renderedTool.toolId,
-					entry
-				}))
-		)
-	);
+		);
+	const mountedElementsBeforeButtons = $derived(mountedElementsAt(renderedTools, 'before-buttons', 'before'));
+	const mountedElementsAfterButtons = $derived(mountedElementsAt(renderedTools, 'after-buttons', 'after'));
+	const mountedElementsControlsRow = $derived(mountedElementsAt(renderedTools, 'controls-row', 'controls-row'));
 	const controlsRowHints = $derived.by(() =>
 		renderedTools.flatMap((renderedTool) =>
 			(renderedTool.elements || [])
@@ -1045,7 +1000,7 @@
 		};
 	});
 
-	// Prefetch FA + Roboto into document head as soon as we know an NDS icon will
+	// Prefetch FA into document head as soon as we know an NDS icon will
 	// render. The shadow-root injection in `ndsIconButtonAction` clones whatever
 	// <link>s are already on the page; running this first means the prod-host's FA
 	// stylesheet is guaranteed to be present by the time the button mounts. Plain
@@ -1062,10 +1017,6 @@
 			return activeToolState[item.id] === true;
 		}
 		return item.active === true;
-	}
-
-	function getFallbackIconSvg(iconName: string): string | null {
-		return resolveFallbackToolIcon(iconName);
 	}
 
 	function syncRenderedToolsState() {
@@ -1237,19 +1188,24 @@
 		return node;
 	}
 
+	// Set by default-tool-loaders' overlay element cache, which this package
+	// cannot import.
+	const TOOL_ELEMENT_UNMOUNT_CALLBACK_PROP = '__pieToolElementUnmount';
+
+	function invokeElementUnmount(value: HTMLElement | null) {
+		if (!value) return;
+		const callback = (value as unknown as { [key: string]: unknown })[
+			TOOL_ELEMENT_UNMOUNT_CALLBACK_PROP
+		];
+		if (typeof callback === 'function') {
+			(callback as () => void)();
+		}
+	}
+
 	function mountElement(node: HTMLSpanElement, entry: ToolRenderElement) {
 		let currentEntry = entry;
 		let mountedElement: HTMLElement | null = null;
 		let mountParent: HTMLElement = node;
-		const invokeElementUnmount = (value: HTMLElement | null) => {
-			if (!value) return;
-			const callback = (value as unknown as { [key: string]: unknown })[
-				'__pieToolElementUnmount'
-			];
-			if (typeof callback === 'function') {
-				(callback as () => void)();
-			}
-		};
 		const updateMountedElement = (nextElement: HTMLElement | null) => {
 			if (mountedElement === nextElement) return;
 			if (mountedElement) {
@@ -1294,6 +1250,15 @@
 		/** Interface locale for the shell's own chrome — title and window controls. */
 		i18n: I18nProvider;
 	};
+
+	// Shell geometry for a registration that declares none, and the step sizes
+	// shared by the window controls and their keyboard shortcuts.
+	const SHELL_DEFAULT_WIDTH = 720;
+	const SHELL_DEFAULT_HEIGHT = 560;
+	const SHELL_DEFAULT_MIN_WIDTH = 320;
+	const SHELL_DEFAULT_MIN_HEIGHT = 240;
+	const SHELL_MOVE_STEP_PX = 24;
+	const SHELL_RESIZE_STEP_PX = 40;
 
 	function mountElementWithShell(node: HTMLSpanElement, args: ShellMountedArgs) {
 		let currentArgs = args;
@@ -1355,21 +1320,17 @@
 		const resizeHandleEls: Array<{ el: HTMLDivElement; handler: (e: PointerEvent) => void }> = [];
 		let x = 0;
 		let y = 0;
-		let width = currentArgs.mounted.entry.shell?.initialWidth ?? 720;
-		let height = currentArgs.mounted.entry.shell?.initialHeight ?? 560;
+		let width = currentArgs.mounted.entry.shell?.initialWidth ?? SHELL_DEFAULT_WIDTH;
+		let height = currentArgs.mounted.entry.shell?.initialHeight ?? SHELL_DEFAULT_HEIGHT;
 		/**
 		 * The declared size this shell was last placed at, and whether the learner has
 		 * since taken the panel over.
 		 *
 		 * A registration may compute its shell size from render params, and those
 		 * resolve a render *after* the shell is built: `getToolRenderParams` reads
-		 * `hostResolvedToolContextById`, which is empty on the first pass. The
-		 * calculator declares 720x660 for a graphing calculator and 380x500 otherwise,
-		 * so reading `initialWidth` once meant every graphing calculator — Desmos,
-		 * GeoGebra and Cortex alike — opened at the untyped 380px size and had its plot
-		 * clipped by the content box. `applyShellStrings` already re-reads the title on
-		 * update, which is why the header said "Graphing Calculator" over a panel sized
-		 * for a basic one.
+		 * `hostResolvedToolContextById`, which is empty on the first pass. Reading
+		 * `initialWidth` once opened every graphing calculator at the basic
+		 * calculator's size, with its plot clipped by the content box.
 		 *
 		 * A later declaration is adopted, a learner's own size is not: once someone has
 		 * dragged or resized the panel it is theirs, and a re-render must not snap it
@@ -1382,15 +1343,6 @@
 		let openerEl: HTMLElement | null = null;
 		let previousActive = false;
 
-		const invokeElementUnmount = (value: HTMLElement | null) => {
-			if (!value) return;
-			const callback = (value as unknown as { [key: string]: unknown })[
-				'__pieToolElementUnmount'
-			];
-			if (typeof callback === 'function') {
-				(callback as () => void)();
-			}
-		};
 		const getHostedContext = (): HostedToolContext | null => {
 			const shellConfig = currentArgs.mounted.entry.shell;
 			if (!shellConfig) return null;
@@ -1422,10 +1374,20 @@
 		const clamp = (value: number, min: number, max: number): number =>
 			Math.max(min, Math.min(value, max));
 
+		// Focus moves are best effort: a target can detach or refuse focus between
+		// the caller's check and the call.
+		const focusQuietly = (el: HTMLElement) => {
+			try {
+				el.focus();
+			} catch {
+				// ignore
+			}
+		};
+
 		const getShellBounds = () => {
 			const shellConfig = currentArgs.mounted.entry.shell;
-			const minWidth = shellConfig?.minWidth ?? 320;
-			const minHeight = shellConfig?.minHeight ?? 240;
+			const minWidth = shellConfig?.minWidth ?? SHELL_DEFAULT_MIN_WIDTH;
+			const minHeight = shellConfig?.minHeight ?? SHELL_DEFAULT_MIN_HEIGHT;
 			const maxWidth = shellConfig?.maxWidth ?? window.innerWidth;
 			const maxHeight = shellConfig?.maxHeight ?? window.innerHeight;
 			return {
@@ -1478,7 +1440,7 @@
 
 			if (shellConfig?.content?.preserveMinHeight === true) {
 				const headerHeight = getHeaderHeight();
-				const shellMinHeight = shellConfig.minHeight ?? 240;
+				const shellMinHeight = shellConfig.minHeight ?? SHELL_DEFAULT_MIN_HEIGHT;
 				const contentMinHeight = Math.max(0, shellMinHeight - headerHeight);
 				const availableHeight = Math.max(0, height - headerHeight);
 				const elementHeight = Math.max(availableHeight, contentMinHeight);
@@ -1502,8 +1464,8 @@
 		 */
 		const adoptDeclaredSize = () => {
 			const shellConfig = currentArgs.mounted.entry.shell;
-			const nextWidth = shellConfig?.initialWidth ?? 720;
-			const nextHeight = shellConfig?.initialHeight ?? 560;
+			const nextWidth = shellConfig?.initialWidth ?? SHELL_DEFAULT_WIDTH;
+			const nextHeight = shellConfig?.initialHeight ?? SHELL_DEFAULT_HEIGHT;
 			if (nextWidth === declaredWidth && nextHeight === declaredHeight) return;
 			declaredWidth = nextWidth;
 			declaredHeight = nextHeight;
@@ -1561,19 +1523,16 @@
 		// onActivate from a click listener (the element fires `icon-button-click`,
 		// but it bubbles a regular `click` too via the inner <button>).
 		//
-		// `faVariant` overrides the FA family class on the rendered <i>. The
-		// nds bundle hardcodes `fa-light fa-${name}`; when FA Pro Light isn't
-		// reachable in prod our `.fa-light` shim falls back to FA Free Solid
-		// (weight 900), which renders the magnifying-glass with thick filled
-		// handles. Pass 'fa-regular' for those icons so they pick up the
-		// outline variant (Pro Regular when present, FA Free Regular as
-		// fallback — both ship the outline shape).
+		// `faVariant` is the weight the window's controls take on a page with FA
+		// Pro, Regular by default. Without Pro they take Solid, like every NDS
+		// glyph.
 		const createShellIconButton = (
 			label: string,
 			iconName: string,
 			onActivate: () => void,
-			faVariant: 'fa-light' | 'fa-regular' | 'fa-solid' = 'fa-regular'
+			faVariant: NdsGlyphVariant = 'fa-regular'
 		) => {
+			ensureNdsAssets();
 			const button = document.createElement('nds-icon-button');
 			button.setAttribute('variant', 'tertiary');
 			button.setAttribute('size', 'small');
@@ -1586,28 +1545,8 @@
 				onActivate();
 				bringToFront();
 			});
-			if (faVariant !== 'fa-light') {
-				// nds-icon-button renders into light DOM via createRenderRoot
-				// returning `this`, but the <i> only exists after Lit's first
-				// update cycle. Watch for it and swap classes once it appears.
-				const swapVariant = (icon: HTMLElement) => {
-					icon.classList.remove('fa-light');
-					icon.classList.add(faVariant);
-				};
-				const existing = button.querySelector<HTMLElement>('i.fa-light');
-				if (existing) {
-					swapVariant(existing);
-				} else {
-					const observer = new MutationObserver(() => {
-						const target = button.querySelector<HTMLElement>('i.fa-light');
-						if (target) {
-							swapVariant(target);
-							observer.disconnect();
-						}
-					});
-					observer.observe(button, { childList: true, subtree: true });
-				}
-			}
+			// Detached with the window, which takes the observer with it.
+			applyNdsGlyphVariant(button, faVariant);
 			return button;
 		};
 
@@ -1775,11 +1714,7 @@
 			if (!target) return;
 			queueMicrotask(() => {
 				if (!target.isConnected) return;
-				try {
-					target.focus();
-				} catch {
-					// ignore
-				}
+				focusQuietly(target);
 			});
 		};
 
@@ -1825,26 +1760,18 @@
 							if (direction === 'backward') {
 								if (openerEl?.isConnected) {
 									event.preventDefault();
-									try {
-										openerEl.focus();
-									} catch {
-										// ignore
-									}
+									focusQuietly(openerEl);
 								}
 								return;
 							}
 							const next = findFirstQuestionFocusable();
 							if (next) {
 								event.preventDefault();
-								try {
-									next.focus();
-								} catch {
-									// ignore
-								}
+								focusQuietly(next);
 							}
 						}
 					: undefined
-			});		
+			});
 		};
 
 		// Walks the scope element's DOM in document order, descending into shadow
@@ -1918,20 +1845,12 @@
 				const firstQuestion = findFirstQuestionFocusable();
 				if (active !== firstQuestion) return;
 				event.preventDefault();
-				try {
-					focusables[focusables.length - 1].focus();
-				} catch {
-					// ignore
-				}
+				focusQuietly(focusables[focusables.length - 1]);
 				return;
 			}
 			if (active !== openerEl) return;
 			event.preventDefault();
-			try {
-				focusables[0].focus();
-			} catch {
-				// ignore
-			}
+			focusQuietly(focusables[0]);
 		};
 
 		const removeFocusTrap = () => {
@@ -2004,8 +1923,8 @@
 			if (shellGestureMode === 'resize') {
 				event.preventDefault();
 				const shellConfig = currentArgs.mounted.entry.shell;
-				const configuredMinWidth = shellConfig?.minWidth ?? 320;
-				const configuredMinHeight = shellConfig?.minHeight ?? 240;
+				const configuredMinWidth = shellConfig?.minWidth ?? SHELL_DEFAULT_MIN_WIDTH;
+				const configuredMinHeight = shellConfig?.minHeight ?? SHELL_DEFAULT_MIN_HEIGHT;
 				// Allow the shell to shrink below its configured minimum on
 				// viewports that can't accommodate it (mirrors the floor used
 				// by applyPositionAndSize for WCAG 1.4.10 reflow). Internal
@@ -2078,8 +1997,7 @@
 			// A shell renders its header controls as <nds-icon-button>s only when its
 			// own config asks for them; gated on the host flag too, so an opted-out
 			// env gets the plain-<button> controls every other shell uses.
-			const useNdsShellIcons =
-				currentArgs.mounted.entry.shell?.ndsHeaderControls === true && useNdsIcons;
+			const useNdsShellIcons = shellDeclaresNdsChrome() && useNdsIcons;
 
 			if (useNdsShellIcons) ensureNdsAssets();
 
@@ -2094,12 +2012,6 @@
 			shellEl.style.borderRadius = '12px';
 			shellEl.style.boxShadow =
 				'0 10px 40px color-mix(in srgb, var(--pie-black, #000) 25%, transparent)';
-			// Keep overflow visible so the absolutely-positioned resize handles sit at
-			// the real corner pixels and are NOT clipped by the border-radius.
-			// Browsers do NOT dispatch pointer events to a child element in the area
-			// visually clipped by a parent's overflow:hidden + border-radius, so
-			// clicking/touching the corner tip of a handle would miss if this were hidden.
-			// Individual sections (header, content) carry their own overflow/radius.
 			// NDS palette bridge for the shell's header controls. They are created
 			// imperatively, so the scoped `.item-toolbar nds-icon-button` rule below
 			// never matches them: without this they kept a #146eb3 glyph on a
@@ -2117,6 +2029,10 @@
 				'--color-focus-blue',
 				'var(--pie-button-focus-outline, #2b87ff)'
 			);
+			// Overflow stays visible so the resize handles sit at the real corner
+			// pixels: browsers dispatch no pointer events to the part of a child that
+			// a parent's overflow:hidden + border-radius clips. Header and content
+			// carry their own overflow and radius.
 			shellEl.style.overflow = 'visible';
 			shellEl.style.display = currentArgs.active ? 'flex' : 'none';
 			shellEl.style.flexDirection = 'column';
@@ -2138,26 +2054,17 @@
 			headerEl.style.alignItems = 'center';
 			headerEl.style.justifyContent = 'space-between';
 			headerEl.style.gap = '6px';
-			// Calculator header follows the Knowledge-Check Figma:
-			// 28px / 12px horizontal padding (asymmetric: more space before the
-			// title, tighter at the close button), 8px vertical, and
-			// space-between layout pushing the controls + close cluster to the
-			// right edge. Other shells keep the compact dense layout.
+			// Design-system chrome pads 28px before the title and 12px at the close
+			// button; other shells keep the compact layout.
 			headerEl.style.padding = shellDeclaresNdsChrome() ? '12px 12px 12px 28px' : '10px 12px';
 			if (shellDeclaresNdsChrome()) {
 				headerEl.style.minHeight = '48px';
-			}
-			if (shellDeclaresNdsChrome()) {
-				// Match the Passage/Question card header var so the calculator picks
-				// up the host-provided tint when set. Fallback is an off-white so
-				// the circular control buttons have a visible surface to contrast
-				// against (transparent would let the white shell body show through).
-					// Hosts rarely set the card-header var, so the default carries that
-					// look: --pie-button-active-bg is the DaisyUI mapping's contrast-tuned
-					// one-step-off-the-page fill (base-300 at 70% toward base-100, tuned to
-					// hold base-content at 4.5:1) and its light literal is the #f3f4f6 this
-					// used to pin. Pinned, it left the themed title text on a light grey
-					// strip — illegible under every dark theme.
+				// The card-header var carries a host's tint, matching the passage and
+				// question cards. Hosts rarely set it, so the default is
+				// --pie-button-active-bg, the theme's one-step-off-the-page fill tuned
+				// to hold body text at 4.5:1: the circular controls need a surface to
+				// contrast against, and a pinned light literal left the themed title
+				// illegible under dark themes.
 				headerEl.style.background =
 					'var(--pie-section-player-card-header-background, var(--pie-button-active-bg, #f3f4f6))';
 				headerEl.style.color = 'var(--pie-text, #111827)';
@@ -2201,7 +2108,7 @@
 				glyph: string,
 				iconName: string,
 				onActivate: () => void,
-				faVariant: 'fa-light' | 'fa-regular' | 'fa-solid' = 'fa-regular'
+				faVariant: NdsGlyphVariant = 'fa-regular'
 			) => {
 				if (!controlsEl) return;
 				const label = currentArgs.i18n.t(key);
@@ -2212,14 +2119,14 @@
 				controlsEl.appendChild(control);
 			};
 			if (shellConfig?.draggable !== false) {
-				appendControl('toolkit.window.moveLeftA11y', '←', 'chevron-left', () => moveBy(-24, 0));
-				appendControl('toolkit.window.moveRightA11y', '→', 'chevron-right', () => moveBy(24, 0));
-				appendControl('toolkit.window.moveUpA11y', '↑', 'chevron-up', () => moveBy(0, -24));
-				appendControl('toolkit.window.moveDownA11y', '↓', 'chevron-down', () => moveBy(0, 24));
+				appendControl('toolkit.window.moveLeftA11y', '←', 'chevron-left', () => moveBy(-SHELL_MOVE_STEP_PX, 0));
+				appendControl('toolkit.window.moveRightA11y', '→', 'chevron-right', () => moveBy(SHELL_MOVE_STEP_PX, 0));
+				appendControl('toolkit.window.moveUpA11y', '↑', 'chevron-up', () => moveBy(0, -SHELL_MOVE_STEP_PX));
+				appendControl('toolkit.window.moveDownA11y', '↓', 'chevron-down', () => moveBy(0, SHELL_MOVE_STEP_PX));
 			}
 			if (shellConfig?.resizable !== false) {
-				appendControl('toolkit.window.shrinkA11y', '−', 'magnifying-glass-minus', () => resizeBy(-40, -40));
-				appendControl('toolkit.window.growA11y', '+', 'magnifying-glass-plus', () => resizeBy(40, 40));
+				appendControl('toolkit.window.shrinkA11y', '−', 'magnifying-glass-minus', () => resizeBy(-SHELL_RESIZE_STEP_PX, -SHELL_RESIZE_STEP_PX));
+				appendControl('toolkit.window.growA11y', '+', 'magnifying-glass-plus', () => resizeBy(SHELL_RESIZE_STEP_PX, SHELL_RESIZE_STEP_PX));
 			}
 			if (!shellDeclaresNdsChrome()) {
 				const centerControl = createShellControlButton(
@@ -2334,28 +2241,28 @@
 				if (event.shiftKey && keyboardShellConfig?.resizable !== false) {
 					if (event.key === 'ArrowRight' || event.key === 'ArrowDown') {
 						event.preventDefault();
-						resizeBy(40, 40);
+						resizeBy(SHELL_RESIZE_STEP_PX, SHELL_RESIZE_STEP_PX);
 						return;
 					}
 					if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') {
 						event.preventDefault();
-						resizeBy(-40, -40);
+						resizeBy(-SHELL_RESIZE_STEP_PX, -SHELL_RESIZE_STEP_PX);
 						return;
 					}
 				}
 				if (keyboardShellConfig?.draggable !== false) {
 					if (event.key === 'ArrowLeft') {
 						event.preventDefault();
-						moveBy(-24, 0);
+						moveBy(-SHELL_MOVE_STEP_PX, 0);
 					} else if (event.key === 'ArrowRight') {
 						event.preventDefault();
-						moveBy(24, 0);
+						moveBy(SHELL_MOVE_STEP_PX, 0);
 					} else if (event.key === 'ArrowUp') {
 						event.preventDefault();
-						moveBy(0, -24);
+						moveBy(0, -SHELL_MOVE_STEP_PX);
 					} else if (event.key === 'ArrowDown') {
 						event.preventDefault();
-						moveBy(0, 24);
+						moveBy(0, SHELL_MOVE_STEP_PX);
 					}
 				}
 			};
@@ -2402,13 +2309,7 @@
 					focusGuardRedirecting = true;
 					try {
 						event.stopPropagation();
-						if (openerEl?.isConnected) {
-							try {
-								openerEl.focus();
-							} catch {
-								// ignore
-							}
-						}
+						if (openerEl?.isConnected) focusQuietly(openerEl);
 					} finally {
 						queueMicrotask(() => {
 							focusGuardRedirecting = false;
@@ -2421,13 +2322,7 @@
 					try {
 						event.stopPropagation();
 						const next = findFirstQuestionFocusable();
-						if (next) {
-							try {
-								next.focus();
-							} catch {
-								// ignore
-							}
-						}
+						if (next) focusQuietly(next);
 					} finally {
 						queueMicrotask(() => {
 							focusGuardRedirecting = false;
@@ -2587,6 +2482,42 @@
 	}
 </script>
 
+{#snippet toolbarIcon(icon: string)}
+	{#if isInlineSvgIcon(icon)}
+		<span aria-hidden="true">{@html sanitizeSvgIcon(icon)}</span>
+	{:else if isExternalIconUrl(icon)}
+		<img class="item-toolbar__icon-image" src={icon} alt="" />
+	{:else}
+		{@const fallbackIcon = resolveFallbackToolIcon(icon)}
+		{#if fallbackIcon}
+			<span aria-hidden="true">{@html sanitizeSvgIcon(fallbackIcon)}</span>
+		{:else}
+			<i class={`icon icon-${icon}`} aria-hidden="true"></i>
+		{/if}
+	{/if}
+{/snippet}
+
+{#snippet mountedToolElement(mounted: MountedToolElement, hostClass: string)}
+	{#if mounted.entry.shell}
+		<!-- Re-key on `useNdsIcons` so the imperatively-built shell (which
+		     reads the flag at build time) is rebuilt if the runtime flag
+		     resolves after the first mount. -->
+		{#key useNdsIcons}
+			<span
+				class={hostClass}
+				use:mountElementWithShell={{
+					mounted,
+					active: renderedToolActiveById[mounted.toolId] ?? false,
+					runtime: runtimeContext,
+					i18n: interfaceI18n
+				}}
+			></span>
+		{/key}
+	{:else}
+		<span class={hostClass} use:mountElement={mounted.entry}></span>
+	{/if}
+{/snippet}
+
 {#if isBrowser}
 	<div
 		class="item-toolbar {className} item-toolbar--{size}"
@@ -2605,24 +2536,7 @@
 			}
 		}}>
 			{#each mountedElementsBeforeButtons as mounted (mounted.key)}
-				{#if mounted.entry.shell}
-					<!-- Re-key on `useNdsIcons` so the imperatively-built shell (which
-					     reads the flag at build time) is rebuilt if the runtime flag
-					     resolves after the first mount. -->
-					{#key useNdsIcons}
-						<span
-							class="item-toolbar__element-host"
-							use:mountElementWithShell={{
-								mounted,
-								active: renderedToolActiveById[mounted.toolId] ?? false,
-								runtime: runtimeContext,
-								i18n: interfaceI18n
-							}}
-						></span>
-					{/key}
-				{:else}
-					<span class="item-toolbar__element-host" use:mountElement={mounted.entry}></span>
-				{/if}
+				{@render mountedToolElement(mounted, 'item-toolbar__element-host')}
 			{/each}
 
 			{#each toolbarItems as item (item.id)}
@@ -2667,18 +2581,7 @@
 						}}
 					>
 						{#if item.icon}
-							{#if isInlineSvgIcon(item.icon)}
-								<span aria-hidden="true">{@html sanitizeSvgIcon(item.icon)}</span>
-							{:else if isExternalIconUrl(item.icon)}
-								<img class="item-toolbar__icon-image" src={item.icon} alt="" />
-							{:else}
-								{@const fallbackIcon = getFallbackIconSvg(item.icon)}
-								{#if fallbackIcon}
-									<span aria-hidden="true">{@html sanitizeSvgIcon(fallbackIcon)}</span>
-								{:else}
-									<i class={`icon icon-${item.icon}`} aria-hidden="true"></i>
-								{/if}
-							{/if}
+							{@render toolbarIcon(item.icon)}
 						{/if}
 					</a>
 				{:else}
@@ -2693,41 +2596,14 @@
 						disabled={item.disabled}
 					>
 						{#if item.icon}
-							{#if isInlineSvgIcon(item.icon)}
-								<span aria-hidden="true">{@html sanitizeSvgIcon(item.icon)}</span>
-							{:else if isExternalIconUrl(item.icon)}
-								<img class="item-toolbar__icon-image" src={item.icon} alt="" />
-							{:else}
-								{@const fallbackIcon = getFallbackIconSvg(item.icon)}
-								{#if fallbackIcon}
-									<span aria-hidden="true">{@html sanitizeSvgIcon(fallbackIcon)}</span>
-								{:else}
-									<i class={`icon icon-${item.icon}`} aria-hidden="true"></i>
-								{/if}
-							{/if}
+							{@render toolbarIcon(item.icon)}
 						{/if}
 					</button>
 				{/if}
 			{/each}
 
 			{#each mountedElementsAfterButtons as mounted (mounted.key)}
-				{#if mounted.entry.shell}
-					<!-- See note above: re-key on `useNdsIcons` so a late flag change
-					     rebuilds the shell with the right control style. -->
-					{#key useNdsIcons}
-						<span
-							class="item-toolbar__element-host"
-							use:mountElementWithShell={{
-								mounted,
-								active: renderedToolActiveById[mounted.toolId] ?? false,
-								runtime: runtimeContext,
-								i18n: interfaceI18n
-							}}
-						></span>
-					{/key}
-				{:else}
-					<span class="item-toolbar__element-host" use:mountElement={mounted.entry}></span>
-				{/if}
+				{@render mountedToolElement(mounted, 'item-toolbar__element-host')}
 			{/each}
 		</div>
 		{#if shouldRenderControlsRow}
@@ -2738,23 +2614,7 @@
 				class:item-toolbar__controls-row--align-start={controlsRowAlignStart}
 			>
 				{#each mountedElementsControlsRow as mounted (mounted.key)}
-					{#if mounted.entry.shell}
-						<!-- See note above: re-key on `useNdsIcons` so a late flag
-						     change rebuilds the shell with the right control style. -->
-						{#key useNdsIcons}
-							<span
-								class="item-toolbar__controls-host"
-								use:mountElementWithShell={{
-									mounted,
-									active: renderedToolActiveById[mounted.toolId] ?? false,
-									runtime: runtimeContext,
-									i18n: interfaceI18n
-								}}
-							></span>
-						{/key}
-					{:else}
-						<span class="item-toolbar__controls-host" use:mountElement={mounted.entry}></span>
-					{/if}
+					{@render mountedToolElement(mounted, 'item-toolbar__controls-host')}
 				{/each}
 			</div>
 		{/if}

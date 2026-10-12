@@ -232,6 +232,7 @@
   isOverwideTableWrapMutation
   isPieAvailable
   isPieRegistryAvailable
+  isPlainRecord
   isProgrammaticFocusTarget
   isSessionSnapshotEnabled
   isSnapshotIdentitySpecific
@@ -361,6 +362,7 @@
   localeDirection
   normalizeLanguageTag
   resolveInterfaceI18n
+  toLanguageTag
 
 ./i18n/catalogs
   BUNDLED_LOCALES
@@ -371,6 +373,7 @@
   languageTagLookupSequence
   languageTagsEqual
   normalizeLanguageTag
+  toLanguageTag
 
 ./i18n/provider
   DEFAULT_LOCALE
@@ -468,6 +471,7 @@
 
 ./object
   cloneDeep
+  isPlainRecord
   mergeObjectsIgnoringNullUndefined
 
 ./pie
@@ -683,7 +687,6 @@
 ./types
   type AccessibilityCatalog
   type AdvancedItemConfig
-  type AssessmentCalculatorConfig
   type AssessmentEntity
   type AssessmentItemRef
   type AssessmentSection
@@ -752,6 +755,9 @@
   type TestPart
   type TextTrackRef
   type TimedMediaSectionData
+  type ToolParameterMap
+  type ToolParameters
+  type ToolParametersFor
   type TranscriptRef
   type VersionEntity
   editorPostFix

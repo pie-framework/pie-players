@@ -4,7 +4,6 @@
 		shadow: 'open',
 		props: {
 			catalogId: { type: 'String', attribute: 'catalog-id' },
-			language: { type: 'String', attribute: 'language' },
 			size: { type: 'String', attribute: 'size' },
 			speedOptions: { type: 'Array', attribute: 'speed-options' },
 			showSingleSpeedOption: { type: 'Boolean', attribute: 'show-single-speed-option' },
@@ -14,14 +13,26 @@
 	}}
 />
 
+<!--
+@component
+Read-aloud trigger for an item or passage header inside `<pie-item-scope>` or
+`<pie-passage-shell>`: play/pause opens a panel of speed, rewind, fast-forward
+and stop controls. It reads the shell's content region through the TTS service
+in the toolkit runtime context, passing `catalog-id` so the service can speak
+authored SSML from the accessibility catalogs. Its controls stay disabled until
+the runtime context supplies a TTS service.
+
+@fires {CustomEvent<{ active: boolean }>} pie-tool-active-change - When its panel opens or closes.
+-->
+
 <script lang="ts">
 	import { coerceBooleanAttributes } from '@pie-players/pie-players-shared/ui/attribute-coercion';
 	import {
 		connectToolRegionScopeContext,
 		connectToolRuntimeContext,
 		connectToolShellContext,
-		PIE_TTS_CONTROL_HANDOFF_EVENT,
 		normalizeTTSSpeedControlOptions,
+		TOOL_ACTIVE_CHANGE_EVENT,
 		type AssessmentToolkitRegionScopeContext,
 		type AssessmentToolkitRuntimeContext,
 		type AssessmentToolkitShellContext,
@@ -34,7 +45,8 @@
 	} from '@pie-players/pie-assessment-toolkit/tools/registration';
 	import {
 		catalogContextForShell,
-		flatTextContent,
+		isTTSStartFailure,
+		reportToolFailure,
 		resolveContentRegion
 	} from '@pie-players/pie-assessment-toolkit/tools/registration';
 	// Side-effect import: registers <nds-icon-button>. Single vendored source of
@@ -43,20 +55,18 @@
 	// externalized by this package's Vite build, so the bundle is inlined here.
 	import '@pie-players/pie-players-shared/nds-icon-button';
 	import { resolveInterfaceI18n } from '@pie-players/pie-players-shared/i18n/provider';
+	import { createPieLogger, isTtsDebugEnabled } from '@pie-players/pie-players-shared/pie';
+
+	const logger = createPieLogger('tts-inline', isTtsDebugEnabled);
 
 	let {
 		catalogId = '', // Explicit catalog ID
-		// The host's content language for this reading, when it names one, else the
-		// toolkit's `content-language`. The service resolves the read's language:
-		// markup `lang` inside the shell wins over both.
-		language = '',
 		size = 'md' as 'sm' | 'md' | 'lg',
 		speedOptions = undefined,
 		showSingleSpeedOption = false,
 		layoutMode = 'left-aligned' as TTSLayoutMode
 	}: {
 		catalogId?: string;
-		language?: string;
 		size?: 'sm' | 'md' | 'lg';
 		speedOptions?: TTSSpeedOption[];
 		showSingleSpeedOption?: boolean;
@@ -64,24 +74,20 @@
 	} = $props();
 
 	const isBrowser = typeof window !== 'undefined';
-	const ACTIVE_OWNER_KEY = '__pie_tts_inline_active_owner__';
-	const OWNER_EVENT = 'pie-tts-inline-owner-change';
 
-	// ── FontAwesome + Roboto wiring for <nds-icon-button> ─────────────────────
-	// The vendored NDS button renders `<i class="fa-light fa-…">` and expects
-	// Roboto. Mirror @pie-players/pie-assessment-toolkit's ItemToolBar: prefetch
-	// the stylesheets into document <head>, then clone whatever FA <link>s the
-	// host has into this element's shadow root (document-head styles don't cross
-	// the shadow boundary). See the toolkit's ItemToolBar for the full rationale.
-	const FA_PRO_HREFS = ['/_fa-pro/fontawesome.min.css', '/_fa-pro/light.min.css'];
+	// ── FontAwesome wiring for <nds-icon-button> ──────────────────────────────
+	// Every glyph here is FA Solid, which FA Free carries. Mirror
+	// @pie-players/pie-assessment-toolkit's ItemToolBar: add FA Free to document
+	// <head> unless the host links its own FA, then clone the FA <link>s into this
+	// element's shadow root (document-head styles don't cross the shadow
+	// boundary). Roboto comes from the vendored button, as the ItemToolBar
+	// describes.
 	const FA_FREE_HREF =
 		'https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.5.2/css/all.min.css';
-	const ROBOTO_HREF =
-		'https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap';
 	const FA_HREF_PATTERN = /font.?awesome|fa-?pro/i;
-	// A stylesheet that fails to load, such as the `/_fa-pro/` probe on a host
-	// without that path, stays in <head> marked `data-pie-load-failed`: no later
-	// call requests it again, and no shadow root copies it.
+	// A stylesheet that fails to load stays in <head> marked
+	// `data-pie-load-failed`: no later call requests it again, and no shadow root
+	// copies it.
 	const appendHeadStylesheet = (href: string) => {
 		if (document.querySelector(`link[href="${href}"]`)) return;
 		const link = document.createElement('link');
@@ -96,19 +102,13 @@
 		);
 		document.head.appendChild(link);
 	};
-	// The plain trigger and the panel render `fa-solid` glyphs, which FA Free
-	// carries. Roboto and the FA Pro Light probe serve <nds-icon-button> only.
-	const ensureFaAssets = (forNdsButton: boolean) => {
+	const ensureFaAssets = () => {
 		if (!isBrowser) return;
-		if (forNdsButton && !document.querySelector('link[href*="Roboto"]')) {
-			appendHeadStylesheet(ROBOTO_HREF);
-		}
 		const hostHasFa = Array.from(
 			document.querySelectorAll<HTMLLinkElement>('link[rel="stylesheet"][href]'),
 		).some((link) => FA_HREF_PATTERN.test(link.href));
 		if (hostHasFa) return;
 		appendHeadStylesheet(FA_FREE_HREF);
-		if (forNdsButton) for (const href of FA_PRO_HREFS) appendHeadStylesheet(href);
 	};
 	const FA_SHADOW_INSTALLED = '__pieFaTtsShadowInstalled';
 	const installFaInShadow = (node: HTMLElement) => {
@@ -155,7 +155,7 @@
 	// Solid is the weight FA Free ships, so it renders even without FA Pro. The
 	// swap re-applies whenever Lit rewrites the icon class (e.g. play↔pause).
 	const ndsIconButtonAction = (node: HTMLElement) => {
-		ensureFaAssets(true);
+		ensureFaAssets();
 		installFaInShadow(node);
 		const applySolid = () => {
 			for (const icon of node.querySelectorAll<HTMLElement>('i.fa-light')) {
@@ -217,7 +217,7 @@
 	// NDS trigger), but skip the fa-light→fa-solid swap since the fallback
 	// authors its glyphs as `fa-solid` directly.
 	const faAssetsAction = (node: HTMLElement) => {
-		ensureFaAssets(false);
+		ensureFaAssets();
 		installFaInShadow(node);
 		return {};
 	};
@@ -247,11 +247,15 @@
 	let statusMessage = $state('');
 	let requestedPlaybackRate = $state<number | null>(null);
 	let requestedPlaybackChoicesKey = $state<string | null>(null);
-	let playActionInFlight = $state(false);
 	let playbackStartInFlight = $state(false);
 	let handoffInProgress = $state(false);
+	// Between a Play press and the read it starts, another tool's run may still
+	// change state; that change is not a handoff.
+	let claimingRun = false;
+	// Bumped when this tool ends a start itself, so the start's settle leaves
+	// the panel as that ending left it.
+	let startAttempt = 0;
 	let highlightTargetResolverProviderDisposer: (() => void) | null = null;
-	const startupInFlight = $derived(playActionInFlight || playbackStartInFlight);
 	let lastSyncedPlaybackRateTarget: {
 		service: TtsServiceApi;
 		choicesKey: string;
@@ -271,50 +275,13 @@
 		}
 		return resolveDefaultPlaybackRate(speedChoices);
 	});
-	// Every panel control is a real Tab stop, so Shift+Tab off the play/pause
-	// trigger walks backwards through stop → fast-forward → rewind → speeds. The
-	// speed radios are the one exception: as a radiogroup they share a single Tab
-	// stop, which — per the ARIA radiogroup pattern — sits on the CHECKED option.
-	// Arrow keys inside the group both move focus and select (see
-	// focusClusterControlAt), so the focused radio is always the checked one and
-	// no separate roving index is needed.
 
 	const instanceId = `pie-tts-inline-instance-${Math.random().toString(36).slice(2)}`;
 	const panelId = `${instanceId}-controls`;
 
-	function getActiveOwnerId(): string | null {
-		if (!isBrowser) return null;
-		const value = (window as Window & { [ACTIVE_OWNER_KEY]?: unknown })[ACTIVE_OWNER_KEY];
-		return typeof value === 'string' ? value : null;
-	}
-
-	function isActiveOwner(): boolean {
-		return getActiveOwnerId() === instanceId;
-	}
-
-	function emitOwnerChange(ownerId: string | null, previousOwnerId: string | null): void {
-		if (!isBrowser) return;
-		window.dispatchEvent(
-			new CustomEvent(OWNER_EVENT, {
-				detail: { ownerId, previousOwnerId },
-			}),
-		);
-	}
-
-	function claimActiveOwner(): void {
-		if (!isBrowser) return;
-		const previousOwnerId = getActiveOwnerId();
-		if (previousOwnerId === instanceId) return;
-		(window as Window & { [ACTIVE_OWNER_KEY]?: unknown })[ACTIVE_OWNER_KEY] = instanceId;
-		emitOwnerChange(instanceId, previousOwnerId);
-	}
-
-	function releaseActiveOwner(): void {
-		if (!isBrowser) return;
-		const previousOwnerId = getActiveOwnerId();
-		if (previousOwnerId !== instanceId) return;
-		delete (window as Window & { [ACTIVE_OWNER_KEY]?: unknown })[ACTIVE_OWNER_KEY];
-		emitOwnerChange(null, instanceId);
+	// The service's current run decides ownership: one service, one owner.
+	function ownsRun(): boolean {
+		return ttsService?.getRunOwner() === instanceId;
 	}
 
 	function resetLocalPlaybackUi(status = '', keepControlsVisible = false): void {
@@ -341,14 +308,6 @@
 			choices[0]?.rate ??
 			1
 		);
-	}
-
-	async function syncTTSPlaybackRate(service: TtsServiceApi, rate: number): Promise<void> {
-		if (typeof service.setPlaybackRate === 'function') {
-			await service.setPlaybackRate(rate);
-			return;
-		}
-		await service.updateSettings({ rate });
 	}
 
 	function panelHasFocus(): boolean {
@@ -382,15 +341,12 @@
 	}
 
 	function focusTriggerIfPanelHadFocus(hadPanelFocus: boolean): void {
-		if (!containerEl || !hadPanelFocus) return;
-		const root = containerEl.getRootNode();
-		if (!(root instanceof ShadowRoot)) return;
-		// The trigger is now an <nds-icon-button> host whose real focusable
-		// control is its inner light-DOM <button>; fall back to the host for any
-		// non-nds rendering.
-		const trigger = root.querySelector('.pie-tool-tts-inline__trigger');
-		const focusTarget = (trigger?.querySelector('button') ??
-			trigger) as HTMLElement | null;
+		if (!hadPanelFocus) return;
+		// The trigger is an <nds-icon-button> host whose real focusable control is
+		// its inner light-DOM <button>; fall back to the host for any non-nds
+		// rendering.
+		const trigger = getTriggerElement();
+		const focusTarget = trigger?.querySelector('button') ?? trigger;
 		focusTarget?.focus();
 	}
 
@@ -398,14 +354,11 @@
 		status = interfaceI18n.t('tools.textToSpeech.inline.switchedSection'),
 		restoreFocus = false,
 	): void {
-		if (handoffInProgress) return;
-		if (!controlsVisible && !isActiveOwner()) return;
+		if (handoffInProgress || !controlsVisible) return;
 		handoffInProgress = true;
 		try {
 			const hadPanelFocus = panelHasFocus();
-			if (isActiveOwner()) {
-				releaseActiveOwner();
-			}
+			startAttempt += 1;
 			resetLocalPlaybackUi(status);
 			clearHighlightTargetResolverProvider();
 			if (restoreFocus) {
@@ -446,11 +399,11 @@
 	});
 
 	$effect(() => {
-		if (!ttsService) return;
+		const service = ttsService;
+		if (!service) return;
 		const syncFromState = (state: string) => {
-			// Keep trigger state instance-scoped: only the instance with visible controls
-			// reflects the shared TTS service playback state.
-			if (!controlsVisible || !isActiveOwner()) {
+			// Only the tool whose run it is, with its panel open, reflects the state.
+			if (!controlsVisible || !ownsRun()) {
 				speaking = false;
 				paused = false;
 				return;
@@ -465,13 +418,32 @@
 			// rewind / fast-forward disabled and the browser blurs whichever one held
 			// focus — so this is the last point at which it can be identified.
 			const wasSeekControlFocused = isSeekControlFocused();
+			const runActive =
+				playbackState === 'loading' ||
+				playbackState === 'playing' ||
+				playbackState === 'paused';
+			if (runActive && !claimingRun && !ownsRun()) {
+				handleProgrammaticControlHandoff();
+			}
+			// A stop releases the run's owner; a read that ends on its own keeps it,
+			// so the panel stays open for a replay.
+			if (
+				playbackState === 'idle' &&
+				!claimingRun &&
+				service.getRunOwner() === null
+			) {
+				handleProgrammaticControlHandoff(
+					interfaceI18n.t('tools.textToSpeech.inline.stopped'),
+					true,
+				);
+			}
 			syncFromState(playbackState);
 			if (playbackState === 'playing') {
 				// Upgraded off the in-flight flag rather than off `statusMessage`:
 				// the announcement is rendered prose, so comparing it against the
 				// "starting" lookup drops the announcement whenever the locale
 				// changes between the two reads.
-				if (playbackStartInFlight) {
+				if (playbackStartInFlight && ownsRun()) {
 					statusMessage = interfaceI18n.t(
 						'tools.textToSpeech.inline.started',
 					);
@@ -485,61 +457,25 @@
 				queueMicrotask(moveFocusOffDisabledSeekControl);
 			}
 		};
-		const unsubscribe = ttsService.onStateChange(stateListener);
-		syncFromState(ttsService.getState() as unknown as string);
+		const unsubscribe = service.onStateChange(stateListener);
+		syncFromState(service.getState() as unknown as string);
 		return unsubscribe;
 	});
 
 	$effect(() => {
-		if (!isBrowser) return;
-		const ownerListener = (event: Event) => {
-			const ownerChange = event as CustomEvent<{
-				ownerId?: string | null;
-				previousOwnerId?: string | null;
-			}>;
-			const { ownerId = null, previousOwnerId = null } = ownerChange.detail || {};
-			if (previousOwnerId === instanceId && ownerId !== instanceId) {
-				handleProgrammaticControlHandoff(interfaceI18n.t('tools.textToSpeech.inline.switchedSection'));
-			}
-		};
-		window.addEventListener(OWNER_EVENT, ownerListener);
 		return () => {
-			window.removeEventListener(OWNER_EVENT, ownerListener);
-		};
-	});
-
-	$effect(() => {
-		if (!isBrowser) return;
-		const controlHandoffListener = () => {
-			handleProgrammaticControlHandoff(
-				interfaceI18n.t('tools.textToSpeech.inline.switchedSection'),
-				true,
-			);
-		};
-		window.addEventListener(PIE_TTS_CONTROL_HANDOFF_EVENT, controlHandoffListener);
-		return () => {
-			window.removeEventListener(PIE_TTS_CONTROL_HANDOFF_EVENT, controlHandoffListener);
-		};
-	});
-
-	$effect(() => {
-		return () => {
-			releaseActiveOwner();
 			clearHighlightTargetResolverProvider();
 		};
 	});
 
-	async function ensureTTSReady(): Promise<boolean> {
-		if (!ttsService) return false;
-		try {
-			await runtimeContext?.toolkitCoordinator?.ensureTTSReady?.();
-			return true;
-		} catch (error) {
-			console.error('[TTS Inline] Failed to initialize TTS:', error);
-			return false;
-		}
-	}
-
+	// Every panel control is a real Tab stop, so Shift+Tab off the play/pause
+	// trigger walks backwards through stop → fast-forward → rewind → speeds. The
+	// speed radios are the one exception: as a radiogroup they share a single Tab
+	// stop, which — per the ARIA radiogroup pattern — sits on the CHECKED option.
+	// Arrow keys inside the group both move focus and select (see
+	// focusClusterControlAt), so the focused radio is always the checked one and
+	// no separate roving index is needed.
+	//
 	// Arrow keys stay inside the cluster they started in — the speed radiogroup,
 	// or the media buttons (rewind / fast-forward / stop). Tab is what crosses
 	// between clusters, so an arrow key never traverses the radiogroup boundary.
@@ -618,7 +554,10 @@
 		return shellContext ? catalogContextForShell(shellContext, runtimeContext) : undefined;
 	}
 
-	function syncHighlightTargetResolverProvider(readingTarget: Element): (() => void) | null {
+	function syncHighlightTargetResolverProvider(
+		service: TtsServiceApi,
+		readingTarget: Element,
+	): () => void {
 		clearHighlightTargetResolverProvider();
 		const provider = () => ({
 			context: {
@@ -632,9 +571,9 @@
 			},
 			resolver: regionScopeContext?.ttsHighlightTargetResolver || null,
 		});
-		highlightTargetResolverProviderDisposer =
-			ttsService?.setHighlightTargetResolverProvider?.(provider) || null;
-		return highlightTargetResolverProviderDisposer;
+		const disposer = service.setHighlightTargetResolverProvider(provider);
+		highlightTargetResolverProviderDisposer = disposer;
+		return disposer;
 	}
 
 	function clearHighlightTargetResolverProvider(
@@ -646,20 +585,24 @@
 		}
 	}
 
-	function shouldRetainHighlightTargetResolverProvider(): boolean {
-		if (!isActiveOwner()) return false;
-		const state = String(ttsService?.getState?.() || '');
+	function shouldRetainHighlightTargetResolverProvider(service: TtsServiceApi): boolean {
+		if (service.getRunOwner() !== instanceId) return false;
+		const state = String(service.getState());
 		return state === 'playing' || state === 'paused' || state === 'loading';
 	}
 
 	function handlePlaybackStartFailure(
-		resolverDisposer: (() => void) | null,
+		error: unknown,
+		resolverDisposer: () => void,
 	): void {
 		const hadPanelFocus = panelHasFocus();
-		resetLocalPlaybackUi(interfaceI18n.t('tools.textToSpeech.inline.startFailed'));
-		if (isActiveOwner()) {
-			releaseActiveOwner();
-		}
+		resetLocalPlaybackUi(
+			interfaceI18n.t(
+				isTTSStartFailure(error)
+					? 'tools.textToSpeech.initFailed'
+					: 'tools.textToSpeech.inline.startFailed',
+			),
+		);
 		if (highlightCoordinator) {
 			highlightCoordinator.clearTTS();
 		}
@@ -671,101 +614,93 @@
 		}
 	}
 
-	async function startSpeaking(): Promise<void> {
-		if (!ttsService) return;
-		let resolverDisposer: (() => void) | null = null;
+	// A start failure is reported by the toolkit's text-to-speech start.
+	function reportPlaybackFailure(error: unknown): void {
+		if (isTTSStartFailure(error)) return;
+		reportToolFailure(runtimeContext?.toolkitCoordinator, 'textToSpeech', 'tool-playback', error);
+	}
+
+	// The service decides what is read and whether anything is: a start that
+	// settles idle without playing read nothing, and closes the panel.
+	function startSpeaking(): void {
+		const service = ttsService;
+		if (!service) return;
 		const readingTarget = resolveReadingTarget();
 		if (!readingTarget) {
-			console.warn('[TTS Inline] No target container found from shell scope context');
+			logger.debug('No target container found from shell scope context');
 			return;
 		}
+		const attempt = ++startAttempt;
+		let played = false;
+		const unsubscribe = service.onStateChange((state) => {
+			if (String(state) === 'playing') played = true;
+		});
+		controlsVisible = true;
+		playbackStartInFlight = true;
+		statusMessage = interfaceI18n.t('tools.textToSpeech.inline.starting');
+		const resolverDisposer = syncHighlightTargetResolverProvider(service, readingTarget);
+		let read: Promise<void>;
 		try {
-			controlsVisible = true;
-			const text = flatTextContent(readingTarget);
-			if (!text) {
-				console.warn('[TTS Inline] No text content found');
-				return;
-			}
-			if (highlightCoordinator && ttsService.setHighlightCoordinator) {
-				ttsService.setHighlightCoordinator(highlightCoordinator);
-			}
-			await syncTTSPlaybackRate(ttsService, playbackRate);
-			lastSyncedPlaybackRateTarget = {
-				service: ttsService,
-				choicesKey: speedChoicesKey,
-			};
-			resolverDisposer = syncHighlightTargetResolverProvider(readingTarget);
-			playbackStartInFlight = true;
-			statusMessage = interfaceI18n.t('tools.textToSpeech.inline.starting');
-			const service = ttsService;
-			void service.speak(readingTarget, {
+			read = service.speak(readingTarget, {
+				ownerId: instanceId,
+				rate: playbackRate,
 				catalogId: catalogId || undefined,
 				catalogContext: resolveCatalogContext(),
-				language: language || runtimeContext?.contentLanguage || undefined,
-			}).then(() => {
-				// Nothing speakable, such as content marked not-to-be-spoken: the
-				// service never left idle, so no state change ends the start.
-				if (playbackStartInFlight && String(service.getState?.() || '') === 'idle') {
-					playbackStartInFlight = false;
-					statusMessage = '';
-				}
-			}).catch((error) => {
-				console.error('[TTS Inline] Error:', error);
-				handlePlaybackStartFailure(resolverDisposer);
-			}).finally(() => {
-				if (!shouldRetainHighlightTargetResolverProvider()) {
+				language: runtimeContext?.contentLanguage || undefined,
+			});
+		} catch (error) {
+			read = Promise.reject(error);
+		}
+		lastSyncedPlaybackRateTarget = { service, choicesKey: speedChoicesKey };
+		void read
+			.then(() => {
+				// A read that supersedes this one bumps the attempt through the
+				// handoff; one that read nothing starts no run, so owns none.
+				if (attempt !== startAttempt || played) return;
+				if (String(service.getState()) !== 'idle') return;
+				resetLocalPlaybackUi(
+					interfaceI18n.t('tools.textToSpeech.inline.nothingToRead'),
+				);
+			})
+			.catch((error) => {
+				if (attempt !== startAttempt) return;
+				reportPlaybackFailure(error);
+				handlePlaybackStartFailure(error, resolverDisposer);
+			})
+			.finally(() => {
+				unsubscribe();
+				if (!shouldRetainHighlightTargetResolverProvider(service)) {
 					clearHighlightTargetResolverProvider(resolverDisposer);
 				}
 			});
-		} catch (error) {
-			console.error('[TTS Inline] Error:', error);
-			handlePlaybackStartFailure(resolverDisposer);
-		}
 	}
 
-	async function handlePlayPause() {
-		if (!ttsService) return;
-		if (
-			startupInFlight ||
-			(isActiveOwner() && String(ttsService.getState?.() || '') === 'loading')
-		) {
+	function handlePlayPause() {
+		const service = ttsService;
+		if (!service) return;
+		const owned = ownsRun();
+		// This guard, rather than a `disabled` trigger, stops a second activation
+		// while the first is starting: a disabled trigger would blur, so a keyboard
+		// user would lose their place on every Play press. aria-busy carries the
+		// pending state instead.
+		if (playbackStartInFlight || (owned && String(service.getState()) === 'loading')) {
 			return;
 		}
-		if (isActiveOwner() && paused) {
-			ttsService.resume();
+		if (owned && paused) {
+			service.resume();
 			statusMessage = interfaceI18n.t('tools.textToSpeech.inline.resumed');
 			return;
 		}
-		if (isActiveOwner() && speaking && !paused) {
-			ttsService.pause();
+		if (owned && speaking && !paused) {
+			service.pause();
 			statusMessage = interfaceI18n.t('tools.textToSpeech.inline.pausedAnnouncement');
 			return;
 		}
-		// This guard — NOT a `disabled` attribute on the trigger — is what prevents
-		// a second activation while the first is still starting. Disabling the
-		// trigger here would blur it (a disabled element cannot hold focus), so a
-		// keyboard user would lose their place on every Play press; the pending
-		// state is surfaced with aria-busy instead.
-		if (playActionInFlight) return;
-		playActionInFlight = true;
+		claimingRun = true;
 		try {
-			statusMessage = interfaceI18n.t('tools.textToSpeech.inline.initializing');
-			if (!(await ensureTTSReady())) {
-				statusMessage = interfaceI18n.t('tools.textToSpeech.inline.initFailed');
-				return;
-			}
-			const currentState = String(ttsService.getState?.() || '');
-			const hasActivePlayback =
-				currentState === 'playing' ||
-				currentState === 'paused' ||
-				currentState === 'loading';
-			if (hasActivePlayback && !isActiveOwner()) {
-				ttsService.stop();
-			}
-			claimActiveOwner();
-			await startSpeaking();
+			startSpeaking();
 		} finally {
-			playActionInFlight = false;
+			claimingRun = false;
 		}
 	}
 
@@ -775,8 +710,8 @@
 		// activated. Hand focus back to the play/pause trigger so a keyboard user
 		// keeps their place instead of being dropped to the top of the document.
 		const hadPanelFocus = panelHasFocus();
+		startAttempt += 1;
 		ttsService.stop();
-		releaseActiveOwner();
 		resetLocalPlaybackUi(interfaceI18n.t('tools.textToSpeech.inline.stopped'));
 		if (highlightCoordinator) {
 			highlightCoordinator.clearTTS();
@@ -795,7 +730,7 @@
 			await ttsService.seekForward(1);
 			statusMessage = interfaceI18n.t('tools.textToSpeech.inline.skippedForward');
 		} catch (error) {
-			console.error('[TTS Inline] Seek forward failed:', error);
+			reportPlaybackFailure(error);
 			statusMessage = interfaceI18n.t('tools.textToSpeech.inline.skipForwardFailed');
 		}
 	}
@@ -806,7 +741,7 @@
 			await ttsService.seekBackward(1);
 			statusMessage = interfaceI18n.t('tools.textToSpeech.inline.skippedBackward');
 		} catch (error) {
-			console.error('[TTS Inline] Seek backward failed:', error);
+			reportPlaybackFailure(error);
 			statusMessage = interfaceI18n.t('tools.textToSpeech.inline.skipBackwardFailed');
 		}
 	}
@@ -829,12 +764,12 @@
 		};
 		lastSyncedPlaybackRateTarget = syncTarget;
 		try {
-			await syncTTSPlaybackRate(service, option.rate);
+			await service.setPlaybackRate(option.rate);
 		} catch (error) {
 			if (lastSyncedPlaybackRateTarget === syncTarget) {
 				lastSyncedPlaybackRateTarget = null;
 			}
-			console.error('[TTS Inline] Playback speed change failed:', error);
+			reportPlaybackFailure(error);
 			requestedPlaybackRate = previousRequestedRate;
 			requestedPlaybackChoicesKey = previousRequestedChoicesKey;
 			statusMessage = interfaceI18n.t('tools.textToSpeech.inline.speedChangeFailed');
@@ -847,6 +782,13 @@
 			: size === 'lg'
 				? 'pie-tool-tts-inline__trigger--lg'
 				: 'pie-tool-tts-inline__trigger--md',
+	);
+	const triggerLabelKey = $derived(
+		speaking && !paused
+			? 'tools.textToSpeech.inline.pauseA11y'
+			: paused
+				? 'tools.textToSpeech.inline.resumeA11y'
+				: 'tools.textToSpeech.inline.playA11y',
 	);
 	const isControlsRowLayout = $derived(
 		layoutMode === 'reserved-row' || layoutMode === 'expanding-row'
@@ -878,7 +820,7 @@
 		const service = ttsService;
 		const choicesKey = speedChoicesKey;
 		const active = speaking || paused;
-		if (!service || !active || !isActiveOwner()) return;
+		if (!service || !active || !ownsRun()) return;
 		if (
 			lastSyncedPlaybackRateTarget?.service === service &&
 			lastSyncedPlaybackRateTarget.choicesKey === choicesKey
@@ -894,11 +836,11 @@
 			// speed selections on the explicit handler path. This effect owns only
 			// external speed-options/service changes while playback is active.
 			const rate = playbackRate;
-			void syncTTSPlaybackRate(service, rate).catch((error) => {
+			void service.setPlaybackRate(rate).catch((error) => {
 				if (lastSyncedPlaybackRateTarget === syncTarget) {
 					lastSyncedPlaybackRateTarget = null;
 				}
-				console.error('[TTS Inline] External playback speed sync failed:', error);
+				reportPlaybackFailure(error);
 			});
 		});
 		return () => {
@@ -1078,7 +1020,7 @@
 			if (cancelled) return;
 			host.setAttribute('data-active', active ? 'true' : 'false');
 			host.dispatchEvent(
-				new CustomEvent('pie-tool-active-change', {
+				new CustomEvent(TOOL_ACTIVE_CHANGE_EVENT, {
 					detail: { active },
 					bubbles: true,
 					composed: true
@@ -1102,10 +1044,9 @@
 		{#snippet triggerButton()}
 			<span class="pie-tool-tts-inline__trigger-zoom">
 				{#if useNdsIcons}
-				<!-- NDS circular icon button. `variant="primary"` (filled) marks the
-					     active/open state; `ghost` is the resting state. The native click
-					     bubbles out of the component's inner <button>, so `onclick` still
-					     runs handlePlayPause. `reflectAria` mirrors the disclosure/toggle
+				<!-- NDS circular icon button. The native click bubbles out of the
+					     component's inner <button>, so `onclick` still runs
+					     handlePlayPause. `reflectAria` mirrors the disclosure/toggle
 					     relationships onto that inner button (nds exposes only aria-label). -->
 					<!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
 					<nds-icon-button
@@ -1114,20 +1055,14 @@
 							'aria-expanded': controlsVisible ? 'true' : 'false',
 							'aria-controls': controlsVisible ? panelId : null,
 							'aria-pressed': controlsVisible ? 'true' : 'false',
-							'aria-busy': startupInFlight ? 'true' : null,
+							'aria-busy': playbackStartInFlight ? 'true' : null,
 						}}
 						class="pie-tool-tts-inline__trigger {sizeClass}"
 						type="circle"
 						size="small"
 						variant="tertiary"
 						icon-name={speaking && !paused ? 'pause' : 'play'}
-						button-aria-label={interfaceI18n.t(
-						speaking && !paused
-							? 'tools.textToSpeech.inline.pauseA11y'
-							: paused
-								? 'tools.textToSpeech.inline.resumeA11y'
-								: 'tools.textToSpeech.inline.playA11y',
-					)}
+						button-aria-label={interfaceI18n.t(triggerLabelKey)}
 						disabled={!ttsService}
 						onclick={handlePlayPause}
 					></nds-icon-button>
@@ -1143,14 +1078,8 @@
 					aria-expanded={controlsVisible ? 'true' : 'false'}
 					aria-controls={controlsVisible ? panelId : undefined}
 					aria-pressed={controlsVisible ? 'true' : 'false'}
-					aria-label={interfaceI18n.t(
-						speaking && !paused
-							? 'tools.textToSpeech.inline.pauseA11y'
-							: paused
-								? 'tools.textToSpeech.inline.resumeA11y'
-								: 'tools.textToSpeech.inline.playA11y',
-					)}
-					aria-busy={startupInFlight ? 'true' : undefined}
+					aria-label={interfaceI18n.t(triggerLabelKey)}
+					aria-busy={playbackStartInFlight ? 'true' : undefined}
 					disabled={!ttsService}
 					onclick={handlePlayPause}
 				>
@@ -1301,12 +1230,11 @@
 		justify-content: flex-end;
 	}
 
-	/* The play/pause trigger and the "more" overflow control are now
-	   <nds-icon-button> hosts; the NDS component owns their shape, colours,
-	   hover/active/focus states, and the filled active (`variant="primary"`)
-	   appearance. This class only drives the host's size via NDS's own size
-	   custom properties (see the size variants below), so the light-DOM inner
-	   button matches the toolbar's md/sm/lg dimensions. */
+	/* The play/pause trigger is an <nds-icon-button> host; the NDS component
+	   owns its shape, colours and hover/active/focus states. This class only
+	   drives the host's size via NDS's own size custom properties (see the size
+	   variants below), so the light-DOM inner button matches the toolbar's
+	   md/sm/lg dimensions. */
 	.pie-tool-tts-inline__trigger-zoom {
 		display: inline-flex;
 	}
@@ -1342,20 +1270,18 @@
 		color: var(--pie-tts-button-color, var(--pie-button-color, var(--pie-text, #222)));
 	}
 
-	/* Active/open trigger hooks (PIE-727).
+	/* Active/open trigger hooks.
 	   ---------------------------------------------------------------------------
 	   README documents --pie-tool-trigger-active-background / -color /
 	   -border-color as the supported way to style this trigger while its panel is
-	   open, instead of overriding broad tokens like --pie-primary. The component
-	   had stopped honouring all three, so a host following the docs got nothing.
-	   These rules restore them, matching how tool-calculator-inline-desmos wires
-	   the same three hooks.
+	   open, instead of overriding broad tokens like --pie-primary. These rules
+	   honour all three, matching how tool-calculator-inline-desmos wires the same
+	   hooks.
 	   ---------------------------------------------------------------------------
-	   Every fallback is the value this element already resolves to when the hook
-	   is unset, so adding these rules changes nothing by default. That is
-	   deliberate: unlike the calculator, this trigger has never had a filled
-	   active look, and introducing one here would restyle the control for every
-	   host. Hosts opt in by setting a hook; nobody is opted in by us.
+	   Every fallback is the value this element resolves to when the hook is
+	   unset, so the rules are inert by default: unlike the calculator, this
+	   trigger has no filled active look, and adding one would restyle the
+	   control for every host. Hosts opt in by setting a hook.
 
 	   Keyed off [aria-expanded='true'], which the markup already maintains, so
 	   there is no new state to keep in sync. */
@@ -1537,16 +1463,13 @@
 	}
 
 	/* ── Overlay layouts (floating-overlay + left-aligned) ──────────────────────
-	   The Knowledge-Check design keeps the controls on the surrounding
-	   Question/Passage header: a low-chrome card, icon-only media glyphs, and speed
-	   radios as plain text with the selected one lifted into a chip.
+	   The design keeps the controls on the surrounding Question/Passage header: a
+	   low-chrome card, icon-only media glyphs, and speed radios as plain text with
+	   the selected one lifted into a chip.
 
-	   Shape comes from that design; colour comes from the theme. The overlay used
-	   to paint literals (#146eb3 glyphs on a #fff card with a #f3f5f7 chip), which
-	   left a blue-on-white panel floating over every non-default theme — a DaisyUI
-	   `valentine` page rendered a pink player with a blue TTS panel. Each surface
-	   now defaults through a canonical token and keeps its literal only as the
-	   no-theme last resort.
+	   Shape comes from that design; colour comes from the theme. Each surface
+	   defaults through a canonical token, and its literal is only the no-theme
+	   last resort.
 
 	   Foregrounds resolve through --pie-button-color (DaisyUI base-content), the
 	   one family whose contrast against the card is guaranteed in every shipped
@@ -1555,7 +1478,7 @@
 	   from either drops to 1.37:1 on `pastel` and 11 of 35 themes fall under 3:1.
 	   Selection is signalled by the chip and the bolder weight rather than by hue.
 
-	   Host knobs, all unchanged: --pie-tts-button-color (accent),
+	   Host knobs: --pie-tts-button-color (accent),
 	   --pie-tts-inline-muted-color, --pie-tts-selected-bg,
 	   --pie-selected-button-background/-border, --pie-tts-menu-shadow. */
 	.pie-tool-tts-inline__panel--floating,

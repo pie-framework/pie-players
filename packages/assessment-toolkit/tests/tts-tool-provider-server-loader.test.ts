@@ -4,8 +4,6 @@ import { TTSToolProvider } from "../src/services/tool-providers/TTSToolProvider"
 
 class StubServerProvider {
 	readonly providerId = "server-tts";
-	readonly providerName = "Stub";
-	readonly version = "0";
 	initialize = async () => ({}) as never;
 	getCapabilities = () => ({}) as never;
 	destroy = () => {};

@@ -1,0 +1,124 @@
+{
+	"schemaVersion": "2.1.0",
+	"modules": [
+		{
+			"kind": "javascript-module",
+			"path": "dist/tool-calculator-inline.js",
+			"declarations": [
+				{
+					"kind": "class",
+					"description": "Calculator toggle button for an item header inside `<pie-item-scope>`. It opens and closes the calculator the item toolbar renders, through the toolkit coordinator's tool requests, and reflects that calculator's visibility in `aria-pressed`; `target-tool-id` points it at another toolbar's calculator. It stays disabled until the runtime context supplies a tool coordinator and the target toolbar renders a calculator.",
+					"name": "ToolCalculatorInline",
+					"tagName": "pie-tool-calculator-inline",
+					"customElement": true,
+					"members": [
+						{
+							"kind": "field",
+							"name": "targetToolId",
+							"type": {
+								"text": "string"
+							},
+							"default": "''",
+							"attribute": "target-tool-id"
+						},
+						{
+							"kind": "field",
+							"name": "calculatorType",
+							"type": {
+								"text": "string"
+							},
+							"default": "'basic'",
+							"attribute": "calculator-type"
+						},
+						{
+							"kind": "field",
+							"name": "availableTypes",
+							"type": {
+								"text": "string"
+							},
+							"default": "'basic,scientific,graphing'",
+							"attribute": "available-types"
+						},
+						{
+							"kind": "field",
+							"name": "size",
+							"type": {
+								"text": "'sm' | 'md' | 'lg'"
+							},
+							"default": "'md'",
+							"attribute": "size"
+						}
+					],
+					"attributes": [
+						{
+							"name": "target-tool-id",
+							"type": {
+								"text": "string"
+							},
+							"default": "''",
+							"fieldName": "targetToolId"
+						},
+						{
+							"name": "calculator-type",
+							"type": {
+								"text": "string"
+							},
+							"default": "'basic'",
+							"fieldName": "calculatorType"
+						},
+						{
+							"name": "available-types",
+							"type": {
+								"text": "string"
+							},
+							"default": "'basic,scientific,graphing'",
+							"fieldName": "availableTypes"
+						},
+						{
+							"name": "size",
+							"type": {
+								"text": "string"
+							},
+							"default": "'md'",
+							"fieldName": "size"
+						}
+					],
+					"cssProperties": [
+						{
+							"name": "--pie-button-background-color",
+							"description": "Compatibility alias retained for TTS inline button backgrounds; implementations must fall back through canonical --pie-button-bg before broad surface tokens."
+						},
+						{
+							"name": "--pie-button-hover-background-color",
+							"description": "Compatibility alias retained for calculator inline button hover backgrounds; implementations must fall back through canonical --pie-button-hover-bg before broad surface tokens."
+						},
+						{
+							"name": "--pie-tool-trigger-active-background",
+							"description": "Component trigger active/open background hook; falls back through existing semantic tokens and must preserve WCAG contrast when overridden by hosts."
+						},
+						{
+							"name": "--pie-tool-trigger-active-border-color",
+							"description": "Component trigger active/open border hook; falls back through existing semantic tokens."
+						},
+						{
+							"name": "--pie-tool-trigger-active-color",
+							"description": "Component trigger active/open foreground hook; hosts are responsible for preserving contrast with the active trigger background."
+						}
+					],
+					"x-pie": {
+						"shadow": "open"
+					}
+				}
+			],
+			"exports": [
+				{
+					"kind": "custom-element-definition",
+					"name": "pie-tool-calculator-inline",
+					"declaration": {
+						"name": "ToolCalculatorInline"
+					}
+				}
+			]
+		}
+	]
+}

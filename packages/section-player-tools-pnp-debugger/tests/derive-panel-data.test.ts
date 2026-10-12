@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import type {
 	ToolPolicyDecision,
+	ToolPolicyDiagnostic,
 	ToolPolicyProvenance,
 	ToolPolicyResolutionDecision,
 } from "@pie-players/pie-assessment-toolkit/policy/engine";
@@ -292,17 +293,19 @@ describe("resolveSectionToolIds", () => {
 		const result = resolveSectionToolIds(
 			{
 				decideToolPolicy: () => makeDecision([], makeProvenance([])),
-				config: { tools: { placement: { section: ["calculator"] } } },
+				getPolicyInputs: () =>
+					({ tools: { placement: { section: ["calculator"] } } }) as never,
 			},
 			[],
 		);
 		expect(result).toEqual([]);
 	});
 
-	test("falls back to tools.placement.section config", () => {
+	test("falls back to the bound tools.placement.section", () => {
 		const result = resolveSectionToolIds(
 			{
-				config: { tools: { placement: { section: ["calculator"] } } },
+				getPolicyInputs: () =>
+					({ tools: { placement: { section: ["calculator"] } } }) as never,
 			},
 			[],
 		);
@@ -316,32 +319,33 @@ describe("resolveSectionToolIds", () => {
 
 describe("editable tool helpers", () => {
 	const coordinator: PolicyPanelCoordinator = {
-		config: {
-			toolRegistry: {
-				getAllTools: () => [
-					{
-						toolId: "lineReader",
-						name: "Line Reader",
-						description: "Reading guide",
-						supportedLevels: ["section", "item", "passage"],
-					},
-					{
-						toolId: "answerEliminator",
-						name: "Answer Eliminator",
-						supportedLevels: ["item"],
-					},
-				],
-			},
-			tools: {
-				placement: {
-					section: ["lineReader"],
-					item: ["answerEliminator"],
+		getToolRegistry: () => ({
+			getAllTools: () => [
+				{
+					toolId: "lineReader",
+					name: "Line Reader",
+					description: "Reading guide",
+					supportedLevels: ["section", "item", "passage"],
 				},
-				providers: {
-					answerEliminator: { enabled: false },
+				{
+					toolId: "answerEliminator",
+					name: "Answer Eliminator",
+					supportedLevels: ["item"],
 				},
-			},
-		},
+			],
+		}),
+		getPolicyInputs: () =>
+			({
+				tools: {
+					placement: {
+						section: ["lineReader"],
+						item: ["answerEliminator"],
+					},
+					providers: {
+						answerEliminator: { enabled: false },
+					},
+				},
+			}) as never,
 	};
 
 	test("buildEditableToolRows merges registry, placement, provider, visibility, and PNP state", () => {
@@ -549,17 +553,15 @@ describe("derivePnpPanelData", () => {
 						makeProvenance([]),
 					);
 				},
-				config: {
-					toolRegistry: {
-						getAllTools: () => [
-							{
-								toolId: "calculator",
-								name: "Calculator",
-								supportedLevels: ["item"],
-							},
-						],
-					},
-				} as never,
+				getToolRegistry: () => ({
+					getAllTools: () => [
+						{
+							toolId: "calculator",
+							name: "Calculator",
+							supportedLevels: ["item"],
+						},
+					],
+				}),
 			},
 		});
 		expect(calls.filter((call) => call.level !== "section")).toEqual([
@@ -573,8 +575,8 @@ describe("derivePnpPanelData", () => {
 	});
 
 	test("surfaces each decision diagnostic once", () => {
-		const diagnostic = {
-			code: "tool-policy.unknownSupportId" as const,
+		const diagnostic: ToolPolicyDiagnostic = {
+			code: "tool-policy.unknownSupportId",
 			toolId: "textToSpeach",
 			message: "No tool is registered under \"textToSpeach\".",
 			details: { origins: ["pnp-support"] },
@@ -688,6 +690,45 @@ describe("derivePnpPanelData", () => {
 			},
 		});
 		expect(withOne.determination.runtimeContext.assessmentBound).toBe(true);
+	});
+
+	test("expects an assessment as the engine's resolved inputs say", () => {
+		const expected = (coordinator: PolicyPanelCoordinator) =>
+			derivePnpPanelData({
+				sectionData: { id: "s1" },
+				roleType: "candidate",
+				floatingTools: [],
+				defaultPnpProfile: DEFAULT_PNP,
+				coordinator,
+			}).determination.runtimeContext.assessmentExpected;
+		const withInputs = (assessmentExpected: boolean): PolicyPanelCoordinator => ({
+			getPolicyInputs: () =>
+				({ assessment: null, assessmentExpected }) as never,
+		});
+		expect(expected(withInputs(true))).toBe(true);
+		expect(expected(withInputs(false))).toBe(false);
+		expect(expected({})).toBe(true);
+	});
+
+	test("lists the engine's input diagnostics with the decisions'", () => {
+		const unknown: ToolPolicyDiagnostic = {
+			code: "tool-policy.unknownSupportId",
+			toolId: "magnification",
+			message: "unknown",
+			details: { origins: ["pnp-support"] },
+		};
+		const data = derivePnpPanelData({
+			sectionData: { id: "s1" },
+			roleType: "candidate",
+			floatingTools: [],
+			defaultPnpProfile: DEFAULT_PNP,
+			coordinator: {
+				getPolicyInputs: () =>
+					({ assessment: null, diagnostics: [unknown] }) as never,
+				decideToolPolicy: () => makeDecision([], makeProvenance([])),
+			},
+		});
+		expect(data.diagnostics).toEqual([unknown]);
 	});
 
 	test("leaves the binding unstated when the coordinator exposes no inputs", () => {

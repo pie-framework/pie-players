@@ -7,8 +7,6 @@
  *   `polly` and `google` run on the `pie` transport; `custom` runs on the
  *   `custom` transport to a host's own service, which takes `lang_id`,
  *   `speedRate` and `cache`
- *
- * Part of PIE Assessment Toolkit.
  */
 
 import {
@@ -21,10 +19,7 @@ import type {
 	RuntimeTTSConfig,
 	TTSRuntimeSettings,
 } from "../tts-runtime-config.js";
-import type {
-	ToolProviderApi,
-	ToolProviderCapabilities,
-} from "./ToolProviderApi.js";
+import type { ToolProviderApi } from "./ToolProviderApi.js";
 
 const logger = createPieLogger("tts-tool-provider", isTtsDebugEnabled);
 
@@ -72,8 +67,6 @@ function bindServerBackendConfig(
 ): ITTSProvider {
 	return {
 		providerId: provider.providerId,
-		providerName: provider.providerName,
-		version: provider.version,
 		initialize: (config) => {
 			const runtime = config as ServerBackendConfig;
 			const merged: ServerBackendConfig = {
@@ -141,12 +134,7 @@ export class TTSToolProvider
 		}
 	}
 
-	/**
-	 * Create TTS tool provider
-	 *
-	 * @param backend TTS backend to use (default: 'browser')
-	 * @param options Loader for the server adapter, required by server backends
-	 */
+	/** A server backend needs `options.loadServerProvider`. */
 	constructor(
 		backend: TTSBackend = "browser",
 		options: TTSToolProviderOptions = {},
@@ -157,12 +145,8 @@ export class TTSToolProvider
 	}
 
 	/**
-	 * Initialize TTS provider
-	 *
-	 * Sets up the appropriate TTS backend.
-	 *
-	 * @param config Runtime configuration and credentials
-	 * @throws Error if initialization fails or required config missing
+	 * Set up the backend's TTS provider. Throws when the backend is unavailable
+	 * or its required config is missing. Once initialized, a call only warns.
 	 */
 	async initialize(config: TTSToolProviderConfig): Promise<void> {
 		if (this.ttsProvider) {
@@ -176,7 +160,7 @@ export class TTSToolProvider
 
 		switch (this.backend) {
 			case "browser":
-				await this._initializeBrowserTTS(config);
+				await this._initializeBrowserTTS();
 				break;
 
 			case "server":
@@ -190,13 +174,7 @@ export class TTSToolProvider
 		logger.debug(`initialized (backend: ${this.backend})`);
 	}
 
-	/**
-	 * Initialize browser TTS (Web Speech API)
-	 */
-	private async _initializeBrowserTTS(
-		config: TTSToolProviderConfig,
-	): Promise<void> {
-		// Check if Web Speech API is available
+	private async _initializeBrowserTTS(): Promise<void> {
 		if (typeof window === "undefined" || !("speechSynthesis" in window)) {
 			throw new Error(
 				"[TTSToolProvider] Browser TTS not supported (Web Speech API not available)",
@@ -207,9 +185,6 @@ export class TTSToolProvider
 		logger.debug("browser TTS initialized (Web Speech API)");
 	}
 
-	/**
-	 * Initialize server-based TTS
-	 */
 	private async _initializeServerTTS(
 		config: TTSToolProviderConfig,
 	): Promise<void> {
@@ -255,17 +230,21 @@ export class TTSToolProvider
 				throw error;
 			}
 		})();
-		// The server adapter owns these fields. Picking them from its config type
-		// fails the build when one is renamed there or typed differently. The
-		// adapter is only a dev dependency here, so it is named only in this body,
-		// which declaration emit leaves out (ADR 0002).
+		// The server adapter owns these fields, `mathTokenHighlighting` aside, which
+		// is the toolkit's. Picking them from its config type fails the build when
+		// one is renamed there or typed differently. The adapter is only a dev
+		// dependency here, so it is named only in this body, which declaration
+		// emit leaves out (ADR 0002).
 		type ServerTTSProviderConfig =
 			import("@pie-players/tts-client-server").ServerTTSProviderConfig;
 		const { onTelemetry: _onTelemetry, ...backendConfig } = config;
 		this.ttsProvider = bindServerBackendConfig(
 			new ServerProvider(),
 			backendConfig satisfies Partial<
-				Pick<ServerTTSProviderConfig, keyof ServerBackendConfig>
+				Pick<
+					ServerTTSProviderConfig,
+					Exclude<keyof ServerBackendConfig, "mathTokenHighlighting">
+				>
 			>,
 		);
 
@@ -275,13 +254,8 @@ export class TTSToolProvider
 	}
 
 	/**
-	 * Create a TTS provider instance
-	 *
-	 * Returns the initialized TTS provider.
-	 *
-	 * @param config Optional instance-specific configuration (currently unused)
-	 * @returns TTS provider
-	 * @throws Error if provider not initialized
+	 * The initialized TTS provider; every call returns the same one and ignores
+	 * `config`. Throws before `initialize`.
 	 */
 	async createInstance(
 		config?: Partial<TTSToolProviderConfig>,
@@ -295,43 +269,10 @@ export class TTSToolProvider
 		return this.ttsProvider;
 	}
 
-	/**
-	 * The backend's capabilities. Its features are the speech provider's own,
-	 * and all false before {@link initialize} creates it.
-	 */
-	getCapabilities(): ToolProviderCapabilities {
-		const isBrowser = this.backend === "browser";
-		const speech = this.ttsProvider?.getCapabilities();
-
-		return {
-			supportsOffline: isBrowser,
-			requiresAuth: !isBrowser,
-			maxInstances: 1, // Single TTS instance (playback is sequential)
-			features: {
-				wordBoundary: speech?.supportsWordBoundary ?? false,
-				pause: speech?.supportsPause ?? false,
-				resume: speech?.supportsResume ?? false,
-				rateControl: speech?.supportsRateControl ?? false,
-				pitchControl: speech?.supportsPitchControl ?? false,
-				voiceSelection: speech?.supportsVoiceSelection ?? false,
-			},
-		};
-	}
-
-	/**
-	 * Check if provider is ready
-	 *
-	 * @returns true if provider is initialized
-	 */
 	isReady(): boolean {
 		return this.ttsProvider !== null;
 	}
 
-	/**
-	 * Clean up provider resources
-	 *
-	 * Destroys the TTS provider and releases resources.
-	 */
 	destroy(): void {
 		if (this.ttsProvider) {
 			this.ttsProvider.destroy();

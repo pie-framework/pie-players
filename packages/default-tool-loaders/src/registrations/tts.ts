@@ -10,18 +10,17 @@ import type {
 	ToolbarContext,
 } from "@pie-players/pie-assessment-toolkit/tools/registration";
 import type { ToolContext } from "@pie-players/pie-assessment-toolkit/tools/registration";
-import { hasReadableText } from "@pie-players/pie-assessment-toolkit/tools/registration";
+import { hasSpokenContent } from "@pie-players/pie-assessment-toolkit/tools/registration";
 import {
 	createScopedToolId,
 	createToolElement,
+	TOOL_ACTIVE_CHANGE_EVENT,
 } from "@pie-players/pie-assessment-toolkit/tools/registration";
 import {
 	buildRuntimeTTSConfig,
-	normalizeTTSLayoutMode,
 	normalizeTTSSpeedControlOptions,
 	type NormalizedTTSSpeedOption,
 	resolveTTSHostToolbarLayout,
-	resolveTTSLayoutMode,
 	resolveTTSRuntimeSettings,
 } from "@pie-players/pie-assessment-toolkit/tools/registration";
 import { TTSToolProvider } from "@pie-players/pie-assessment-toolkit/tools/registration";
@@ -32,15 +31,13 @@ import { resolveOverlayElement } from "./overlay-element-cache.js";
 const loadServerTTSProvider = async () =>
 	(await import("@pie-players/tts-client-server")).ServerTTSProvider;
 
-export const TOOL_ACTIVE_CHANGE_EVENT = "pie-tool-active-change";
-
 /**
  * Text-to-Speech tool registration
  *
  * Supports:
  * - Reading content aloud using browser TTS or external providers
  * - Context-aware visibility (shows when readable text is available)
- * - All levels except assessment and element
+ * - Item and passage levels
  */
 export const ttsToolRegistration: ToolRegistration = {
 	toolId: "textToSpeech",
@@ -70,11 +67,6 @@ export const ttsToolRegistration: ToolRegistration = {
 		const normalizedConfig: Record<string, unknown> = {
 			...(config as Record<string, unknown>),
 		};
-		if ("layoutMode" in normalizedConfig) {
-			normalizedConfig.layoutMode = normalizeTTSLayoutMode(
-				normalizedConfig.layoutMode,
-			);
-		}
 		if ("speedOptions" in normalizedConfig) {
 			normalizedConfig.speedOptions = normalizeTTSSpeedControlOptions(
 				normalizedConfig.speedOptions,
@@ -89,11 +81,10 @@ export const ttsToolRegistration: ToolRegistration = {
 	/**
 	 * Pass 2: Determine if TTS is relevant in this context
 	 *
-	 * TTS is relevant when:
-	 * - Context contains readable text (at least 10 characters)
+	 * TTS is relevant when the context holds readable text or a catalog idref.
 	 */
 	isVisibleInContext(context: ToolContext): boolean {
-		return hasReadableText(context);
+		return hasSpokenContent(context);
 	},
 
 	renderToolbar(
@@ -109,24 +100,11 @@ export const ttsToolRegistration: ToolRegistration = {
 			const runtimeSettings = resolveRuntimeSettings();
 			return normalizeTTSSpeedControlOptions(runtimeSettings.speedOptions);
 		};
-		const resolveLayoutMode = () =>
-			resolveTTSLayoutMode(resolveRuntimeSettings());
-		const resolveHostLayout = () =>
-			resolveTTSHostToolbarLayout(resolveRuntimeSettings());
 		const fullToolId = createScopedToolId(
 			this.toolId,
 			toolbarContext.scope.level,
 			toolbarContext.scope.scopeId,
 		);
-		// Only a language the toolbar or its host named: unnamed, the control resolves
-		// markup `lang`, and the browser voice follows the browser's language.
-		const applyContentLanguage = (element: HTMLElement) => {
-			if (toolbarContext.language) {
-				element.setAttribute("language", toolbarContext.language);
-			} else {
-				element.removeAttribute("language");
-			}
-		};
 		const resolveControlSize = (): "sm" | "md" | "lg" => {
 			const raw = toolbarContext.ui?.size;
 			return raw === "sm" || raw === "lg" ? raw : "md";
@@ -150,15 +128,14 @@ export const ttsToolRegistration: ToolRegistration = {
 				"catalog-id",
 				toolbarContext.catalogId || toolbarContext.itemId,
 			);
-			applyContentLanguage(element);
 			element.setAttribute("size", resolveControlSize());
-			element.setAttribute("layout-mode", resolveLayoutMode());
+			element.setAttribute("layout-mode", resolveRuntimeSettings().layoutMode);
 			element.speedOptions = resolveElementSpeedOptions();
 			element.showSingleSpeedOption =
 				resolveRuntimeSettings().showSingleSpeedOption === true;
 		};
 		applyAttributes();
-		const hostLayout = resolveHostLayout();
+		const hostLayout = resolveTTSHostToolbarLayout(resolveRuntimeSettings());
 
 		return {
 			toolId: this.toolId,
@@ -166,7 +143,7 @@ export const ttsToolRegistration: ToolRegistration = {
 			elements: [
 				{
 					element,
-					mount: hostLayout.mount,
+					mount: "before-buttons",
 					layoutHints: {
 						controlsRow: {
 							reserveSpace: hostLayout.controlsRow.reserveSpace,

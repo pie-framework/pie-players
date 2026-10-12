@@ -3,12 +3,14 @@
  * @module @pie-players/tts-server-core
  */
 
-import type {
-	GetVoicesOptions,
-	ServerProviderCapabilities,
-	SynthesizeRequest,
-	SynthesizeResponse,
-	Voice,
+import {
+	type GetVoicesOptions,
+	type ServerProviderCapabilities,
+	type SynthesizeRequest,
+	type SynthesizeResponse,
+	TTSError,
+	TTSErrorCode,
+	type Voice,
 } from "./types.js";
 
 /**
@@ -184,11 +186,16 @@ export abstract class BaseTTSProvider implements ITTSServerProvider {
 
 	/**
 	 * Ensure provider is initialized before operations
-	 * @throws {TTSError} If provider not initialized
+	 * @throws {TTSError} `INITIALIZATION_ERROR` if provider not initialized
 	 */
 	protected ensureInitialized(): void {
 		if (!this.initialized) {
-			throw new Error(`Provider ${this.providerId} not initialized`);
+			throw new TTSError(
+				TTSErrorCode.INITIALIZATION_ERROR,
+				`Provider ${this.providerId} not initialized`,
+				undefined,
+				this.providerId,
+			);
 		}
 	}
 
@@ -237,10 +244,9 @@ export abstract class BaseTTSProvider implements ITTSServerProvider {
 	 * Build an SSML `<prosody>` attribute string from a request's `rate` /
 	 * `pitch`, or `""` if neither differs from its default. `rate` is the
 	 * standard 0.25–4.0 speed multiplier, mapped straight to `rate` as a
-	 * percentage. `pitch` follows this repo's existing 0–2 multiplier
-	 * convention (the TTS settings UI's `normalizePitch`, matching the Web
-	 * Speech API default of 1.0), converted to SSML's relative percentage
-	 * form: a 1.2 multiplier is `pitch="+20%"`.
+	 * percentage. `pitch` is the Web Speech API's 0–2 multiplier, converted
+	 * to SSML's relative percentage form: a 1.2 multiplier is
+	 * `pitch="+20%"`. Percentages, because Polly takes no semitone form.
 	 */
 	protected buildProsodyAttrs(request: SynthesizeRequest): string {
 		const attrs: string[] = [];
@@ -283,19 +289,24 @@ export abstract class BaseTTSProvider implements ITTSServerProvider {
 
 	/**
 	 * Validate synthesis request
-	 * @throws {TTSError} If request is invalid
+	 * @throws {TTSError} `TEXT_TOO_LONG` for text over `maxTextLength`,
+	 * `INVALID_REQUEST` for any other rejection
 	 */
 	protected validateRequest(
 		request: SynthesizeRequest,
 		capabilities: ServerProviderCapabilities,
 	): void {
+		const invalid = (message: string, code = TTSErrorCode.INVALID_REQUEST) =>
+			new TTSError(code, message, undefined, this.providerId);
+
 		if (!request.text || request.text.trim().length === 0) {
-			throw new Error("Text is required and cannot be empty");
+			throw invalid("Text is required and cannot be empty");
 		}
 
 		if (request.text.length > capabilities.standard.maxTextLength) {
-			throw new Error(
+			throw invalid(
 				`Text length (${request.text.length}) exceeds maximum (${capabilities.standard.maxTextLength})`,
+				TTSErrorCode.TEXT_TOO_LONG,
 			);
 		}
 
@@ -303,7 +314,7 @@ export abstract class BaseTTSProvider implements ITTSServerProvider {
 			request.format &&
 			!capabilities.extensions.supportedFormats.includes(request.format)
 		) {
-			throw new Error(
+			throw invalid(
 				`Format '${request.format}' not supported. Supported formats: ${capabilities.extensions.supportedFormats.join(", ")}`,
 			);
 		}
@@ -312,21 +323,21 @@ export abstract class BaseTTSProvider implements ITTSServerProvider {
 			request.rate !== undefined &&
 			(request.rate < 0.25 || request.rate > 4.0)
 		) {
-			throw new Error("Rate must be between 0.25 and 4.0");
+			throw invalid("Rate must be between 0.25 and 4.0");
 		}
 
 		if (
 			request.pitch !== undefined &&
-			(request.pitch < -20 || request.pitch > 20)
+			(request.pitch < 0 || request.pitch > 2)
 		) {
-			throw new Error("Pitch must be between -20 and 20");
+			throw invalid("Pitch must be between 0 and 2");
 		}
 
 		if (
 			request.volume !== undefined &&
 			(request.volume < 0 || request.volume > 1)
 		) {
-			throw new Error("Volume must be between 0 and 1");
+			throw invalid("Volume must be between 0 and 1");
 		}
 	}
 }

@@ -10,6 +10,16 @@
 	}}
 />
 
+<!--
+@component
+Toolbar that appears at a text selection, offering four highlight colours,
+underline, read-aloud, removal, clear-all and the host's `selectionActions`.
+Annotations are drawn through the runtime context's highlight coordinator and
+recorded per section and attempt in its element tool state store; read-aloud
+uses the context's TTS service. Under `<pie-assessment-toolkit>` the
+capability's registration supplies `enabled` and `selectionActions`.
+-->
+
 <script lang="ts">
 	import { coerceBooleanAttributes } from '@pie-players/pie-players-shared/ui/attribute-coercion';
 	import { tick, untrack } from 'svelte';
@@ -24,7 +34,8 @@
 		connectToolShellContext,
 		connectToolRuntimeContext,
 		HighlightColor,
-		isTTSStartFailure
+		isTTSStartFailure,
+		reportToolFailure
 	} from '@pie-players/pie-assessment-toolkit/tools/registration';
 	import {
 		catalogContextHolding,
@@ -65,8 +76,12 @@
 
 	const isBrowser = typeof window !== 'undefined';
 
-	// Storage key for sessionStorage
-	const STORAGE_KEY = 'pie-annotations';
+	// The tool id annotations are kept under in the toolkit's tool-state store.
+	const TOOL_STATE_ID = 'annotationToolbar';
+
+	// How long a restore waits for the section's content to render, since a
+	// serialized range resolves only against the rendered DOM.
+	const RESTORE_DELAY_MS = 2000;
 
 	// Disallowed elements - don't show toolbar when selecting these
 	const DISALLOWED_SELECTORS = [
@@ -81,7 +96,9 @@
 		'[role="textbox"]'
 	];
 
-	// State - using Svelte 5 $state rune for reactive state
+	// Longest stretch of selected text an announcement quotes before eliding it.
+	const ANNOUNCED_TEXT_MAX_LENGTH = 30;
+
 	let contextHostElement = $state<HTMLElement | null>(null);
 	let runtimeContext = $state<AssessmentToolkitRuntimeContext | null>(null);
 	// Interface locale, re-derived on every context republish.
@@ -90,12 +107,13 @@
 	// toolkit has one.
 	const highlightCoordinator = $derived(runtimeContext?.highlightCoordinator ?? null);
 	const ttsService = $derived(runtimeContext?.ttsService ?? null);
+	const elementToolStateStore = $derived(runtimeContext?.elementToolStateStore ?? null);
 
 	// Available highlight colors (modern, accessible palette). `$derived` because
 	// the labels come from the catalog, so the list rebuilds when the locale moves —
 	// which is also why it has to be declared after `interfaceI18n` rather than with
 	// the other constants above.
-	const HIGHLIGHT_COLORS = $derived([
+	const highlightColors = $derived([
 		{
 			name: HighlightColor.YELLOW,
 			hex: '#fde995',
@@ -127,10 +145,7 @@
 		toolbarPosition: { x: 0, y: 0, below: false }
 	});
 
-	// TTS state
 	let ttsSpeaking = $state(false);
-
-	// UX state
 	let justShown = $state(false); // Flag to prevent immediate hiding after showing
 	let positionAnnouncement = $state(''); // For screen readers when toolbar is repositioned
 
@@ -165,7 +180,7 @@
 	 * selection itself survives on purpose — the learner's place in the text is not
 	 * ours to clear. Without this latch the next `selectionchange` re-shows the strip
 	 * over the panel the action just opened, and opening a panel moves focus, which
-	 * fires one: measured, the strip came straight back over the definition.
+	 * fires one.
 	 *
 	 * Only completed actions latch. Escape, focus leaving and an outside click do not,
 	 * because a learner who dismissed the strip may want it again — Shift+F10 is how
@@ -180,10 +195,8 @@
 	let focusReturnTarget: HTMLElement | null = null;
 
 	/**
-	 * One timer for the live region.
-	 *
-	 * Each announcement used to schedule its own clear, so two in quick succession
-	 * left the first one's timer to blank the second mid-sentence.
+	 * Speak through the live region, then clear it. One timer serves every
+	 * announcement, so an earlier one's clear cannot blank a later one mid-sentence.
 	 */
 	function announce(message: string, clearAfterMs: number): void {
 		if (announcementTimer !== null) clearTimeout(announcementTimer);
@@ -192,6 +205,13 @@
 			positionAnnouncement = '';
 			announcementTimer = null;
 		}, clearAfterMs);
+	}
+
+	/** `text` as an announcement quotes it, elided past {@link ANNOUNCED_TEXT_MAX_LENGTH}. */
+	function previewText(text: string): string {
+		return text.length > ANNOUNCED_TEXT_MAX_LENGTH
+			? text.substring(0, ANNOUNCED_TEXT_MAX_LENGTH) + '...'
+			: text;
 	}
 
 	/**
@@ -212,7 +232,6 @@
 		return offersReadAloud(ttsService, runtimeContext?.toolkitCoordinator);
 	});
 
-	// Derived state
 	let hasAnnotations = $derived(annotationCount > 0);
 	let hasOverlappingAnnotation = $derived(overlappingAnnotationId !== null);
 	let effectiveScopeElement = $derived(
@@ -224,10 +243,23 @@
 		return effectiveScopeElement || ownerDoc?.documentElement || document.documentElement;
 	}
 
-	function getStorageKey(): string {
-		const scopeKey = shellContext?.canonicalItemId || shellContext?.itemId || 'global';
-		return `${STORAGE_KEY}:${scopeKey}`;
-	}
+	/**
+	 * Where this strip's annotations live in the tool-state store: the section and
+	 * attempt, and the item when the strip sits in an item's shell. `null` without
+	 * a store or the ids it keys by, and annotations then last as long as the page.
+	 */
+	let stateKey = $derived.by((): string | null => {
+		const assessmentId = runtimeContext?.assessmentId;
+		const sectionId = runtimeContext?.sectionId;
+		if (!elementToolStateStore || !assessmentId || !sectionId) return null;
+		return elementToolStateStore.getGlobalElementId({
+			assessmentId,
+			sectionId,
+			attemptId: runtimeContext?.attemptId ?? '',
+			itemId: shellContext?.canonicalItemId || shellContext?.itemId || '',
+			elementId: ''
+		});
+	});
 
 	/**
 	 * Find annotation that overlaps with the given range
@@ -242,21 +274,17 @@
 			if (range.startContainer.getRootNode() !== annotation.range.startContainer.getRootNode()) {
 				continue;
 			}
-			// Check if ranges overlap
-			// Two ranges overlap if: startA < endB && startB < endA
-			const cmp1 = range.compareBoundaryPoints(Range.START_TO_START, annotation.range);
-			const cmp2 = range.compareBoundaryPoints(Range.END_TO_END, annotation.range);
-			const cmp3 = range.compareBoundaryPoints(Range.START_TO_END, annotation.range);
-			const cmp4 = range.compareBoundaryPoints(Range.END_TO_START, annotation.range);
+			// Each value orders a boundary of the selection against one of the
+			// annotation's: negative when the selection's point comes first.
+			const startVsStart = range.compareBoundaryPoints(Range.START_TO_START, annotation.range);
+			const endVsEnd = range.compareBoundaryPoints(Range.END_TO_END, annotation.range);
+			const endVsAnnotationStart = range.compareBoundaryPoints(Range.START_TO_END, annotation.range);
+			const startVsAnnotationEnd = range.compareBoundaryPoints(Range.END_TO_START, annotation.range);
 
-			// Check various overlap conditions:
-			// 1. Selection is inside annotation
-			// 2. Annotation is inside selection
-			// 3. Selection partially overlaps annotation
 			if (
-				(cmp1 >= 0 && cmp2 <= 0) || // selection inside annotation
-				(cmp1 <= 0 && cmp2 >= 0) || // annotation inside selection
-				(cmp3 > 0 && cmp4 < 0)      // partial overlap
+				(startVsStart >= 0 && endVsEnd <= 0) || // selection inside annotation
+				(startVsStart <= 0 && endVsEnd >= 0) || // annotation inside selection
+				(endVsAnnotationStart > 0 && startVsAnnotationEnd < 0) // partial overlap
 			) {
 				return annotation.id;
 			}
@@ -290,39 +318,35 @@
 		return composedContains(effectiveScopeElement, range.commonAncestorContainer);
 	}
 
-	/**
-	 * Save annotations to sessionStorage.
-	 * Uses HighlightCoordinator's exportAnnotations for proper serialization.
-	 */
+	/** Record the current annotations under {@link stateKey}. */
 	function saveAnnotations() {
-		if (!isBrowser || !highlightCoordinator) return;
+		if (!highlightCoordinator || !elementToolStateStore || !stateKey) return;
 
 		try {
-			const root = getEffectiveRoot();
-			const serialized = highlightCoordinator.exportAnnotations(root);
-			sessionStorage.setItem(getStorageKey(), JSON.stringify(serialized));
+			const serialized = highlightCoordinator.exportAnnotations(getEffectiveRoot());
+			elementToolStateStore.setState(stateKey, TOOL_STATE_ID, serialized);
 		} catch (error) {
-			console.error('[AnnotationToolbar] Failed to save annotations:', error);
+			reportToolFailure(runtimeContext?.toolkitCoordinator, 'annotationToolbar', 'tool-state-save', error);
 		}
 	}
 
 	/**
-	 * Load annotations from sessionStorage.
-	 * Uses HighlightCoordinator's importAnnotations for proper deserialization.
+	 * Replace the shown annotations with those recorded under `key`, so a new
+	 * attempt starts without the previous one's, and a strip mounted again over
+	 * the same content does not add a second copy of each.
 	 */
-	function loadAnnotations() {
-		if (!isBrowser || !highlightCoordinator) return;
+	function restoreAnnotations(key: string) {
+		if (!highlightCoordinator || !elementToolStateStore) return;
 
 		try {
-			const json = sessionStorage.getItem(getStorageKey());
-			if (!json) return;
-
-			const data = JSON.parse(json);
-			const root = getEffectiveRoot();
-			highlightCoordinator.importAnnotations(data, root);
+			const recorded = elementToolStateStore.getState(key, TOOL_STATE_ID);
+			highlightCoordinator.clearAnnotations();
+			if (Array.isArray(recorded)) {
+				highlightCoordinator.importAnnotations(recorded, getEffectiveRoot());
+			}
 			annotationCount = highlightCoordinator.getAnnotations().length;
 		} catch (error) {
-			console.error('[AnnotationToolbar] Failed to load annotations:', error);
+			reportToolFailure(runtimeContext?.toolkitCoordinator, 'annotationToolbar', 'tool-state-load', error);
 		}
 	}
 
@@ -348,11 +372,9 @@
 	/**
 	 * Show the toolbar for the current selection, or hide it when there is none.
 	 *
-	 * Driven by `selectionchange` rather than `mouseup`/`touchend`. The pointer
-	 * events could not see a selection made with Shift+Arrow, so highlight,
-	 * underline and read-aloud were unreachable without a mouse — WCAG 2.2 SC 2.1.1.
-	 * Selection is a keyboard operation in every browser, so the trigger has to be
-	 * the selection itself.
+	 * Driven by `selectionchange` rather than `mouseup`/`touchend`: pointer events
+	 * miss a selection made with Shift+Arrow, which would leave highlight, underline
+	 * and read-aloud unreachable without a mouse (WCAG 2.2 SC 2.1.1).
 	 */
 	function evaluateSelection(options: { force?: boolean } = {}) {
 		if (!enabled || !isBrowser) return;
@@ -383,7 +405,6 @@
 		}
 		if (actedOnText === text) return;
 
-		// Check if selection overlaps with an existing annotation
 		overlappingAnnotationId = findOverlappingAnnotation(range);
 
 		const alreadyVisible = toolbarState.isVisible;
@@ -395,9 +416,8 @@
 		// Announce once per selection, not once per keystroke.
 		if (announcedForText !== text) {
 			announcedForText = text;
-			const textPreview = text.length > 30 ? text.substring(0, 30) + '...' : text;
 			announce(
-				`Annotation toolbar available for "${textPreview}". Press Shift+F10 for annotation tools.`,
+				`Annotation toolbar available for "${previewText(text)}". Press Shift+F10 for annotation tools.`,
 				4000
 			);
 		}
@@ -412,12 +432,9 @@
 	}
 
 	/**
-	 * Track the selection's viewport rect.
-	 *
-	 * Scrolling used to hide the toolbar outright, which a keyboard user hits
-	 * constantly: extending a selection past the fold scrolls the page, so the strip
-	 * disappeared on the keystroke that created the selection it was showing. It now
-	 * follows the selection and only withdraws once that selection is off screen.
+	 * Track the selection's viewport rect, withdrawing only once the selection is
+	 * off screen. Hiding on scroll would drop the strip on the very keystroke that
+	 * extends a selection past the fold, since that keystroke scrolls the page.
 	 */
 	function repositionToSelection(range: Range | null = toolbarState.selectedRange) {
 		if (!range) return;
@@ -544,9 +561,6 @@
 		controls[activeControlIndex]?.focus();
 	}
 
-	/**
-	 * Add highlight annotation
-	 */
 	function handleHighlight(color: HighlightColor) {
 		if (!toolbarState.selectedRange || !highlightCoordinator) return;
 		const text = toolbarState.selectedText;
@@ -554,17 +568,13 @@
 		annotationCount = highlightCoordinator.getAnnotations().length;
 		saveAnnotations();
 
-		// Announce to screen readers
 		const colorName = color === HighlightColor.UNDERLINE ? 'underlined' : `highlighted in ${color}`;
-		const textPreview = text.length > 30 ? text.substring(0, 30) + '...' : text;
-		announce(`"${textPreview}" ${colorName}`, 3000);
+		announce(`"${previewText(text)}" ${colorName}`, 3000);
 
 		finishAction();
 	}
 
-	/**
-	 * Remove the annotation that overlaps with current selection
-	 */
+	/** Remove the annotation the current selection overlaps. */
 	function handleRemoveAnnotation() {
 		if (!overlappingAnnotationId || !highlightCoordinator) {
 			console.warn('[AnnotationToolbar] No overlapping annotation to remove');
@@ -582,26 +592,32 @@
 		annotationCount = highlightCoordinator.getAnnotations().length;
 		saveAnnotations();
 
-		// Announce to screen readers
-		const textPreview = text.length > 30 ? text.substring(0, 30) + '...' : text;
-		announce(`Removed annotation from "${textPreview}"`, 3000);
+		announce(`Removed annotation from "${previewText(text)}"`, 3000);
+
+		finishAction();
+	}
+
+	function handleClearAnnotations() {
+		const count = annotationCount;
+		highlightCoordinator?.clearAnnotations();
+		annotationCount = 0;
+		saveAnnotations();
+
+		announce(`${count} annotation${count === 1 ? '' : 's'} cleared`, 3000);
 
 		finishAction();
 	}
 
 	/**
-	 * Clear all annotations
+	 * Sanitized icon markup, or `''` when there is none to render.
+	 *
+	 * Sanitized even though a composer authored it: this is the one place the strip
+	 * renders markup it did not write, and the sanitizer is also what turns an icon it
+	 * cannot render into an empty string — which is the signal to fall back to the
+	 * label, so a button is never blank to a sighted learner.
 	 */
-	function handleClearAnnotations() {
-		const count = annotationCount;
-		highlightCoordinator?.clearAnnotations();
-		annotationCount = 0;
-		sessionStorage.removeItem(getStorageKey());
-
-		// Announce to screen readers
-		announce(`${count} annotation${count === 1 ? '' : 's'} cleared`, 3000);
-
-		finishAction();
+	function actionIconMarkup(action: ToolSelectionAction): string {
+		return action.iconSvg ? sanitizeSvgIcon(action.iconSvg) : '';
 	}
 
 	/**
@@ -617,18 +633,6 @@
 	 * panel that never opens still leaves focus back in the content rather than on
 	 * `<body>`.
 	 */
-	/**
-	 * Sanitized icon markup, or `''` when there is none to render.
-	 *
-	 * Sanitized even though a composer authored it: this is the one place the strip
-	 * renders markup it did not write, and the sanitizer is also what turns an icon it
-	 * cannot render into an empty string — which is the signal to fall back to the
-	 * label, so a button is never blank to a sighted learner.
-	 */
-	function actionIconMarkup(action: ToolSelectionAction): string {
-		return action.iconSvg ? sanitizeSvgIcon(action.iconSvg) : '';
-	}
-
 	function handleSelectionAction(action: ToolSelectionAction) {
 		const text = toolbarState.selectedText;
 		const range = toolbarState.selectedRange;
@@ -643,9 +647,6 @@
 		finishAction();
 	}
 
-	/**
-	 * Read aloud with TTS
-	 */
 	async function handleTTSClick() {
 		// `aria-disabled` rather than `disabled` while reading: disabling the focused
 		// button moves focus out of the strip, and the focusout that follows dismisses
@@ -664,18 +665,18 @@
 				catalogContext: catalogContextHolding(selectedRange.startContainer, runtimeContext)
 			});
 		} catch (error) {
-			console.error('[AnnotationToolbar] TTS error:', error);
+			// The toolkit reports a start failure; the strip only announces it.
 			if (isTTSStartFailure(error)) {
-				announce(interfaceI18n.t('tools.textToSpeech.inline.initFailed'), 5000);
+				announce(interfaceI18n.t('tools.textToSpeech.initFailed'), 5000);
+			} else {
+				reportToolFailure(runtimeContext?.toolkitCoordinator, 'textToSpeech', 'tool-playback', error);
 			}
 		} finally {
 			ttsSpeaking = false;
 		}
 	}
 
-	/**
-	 * Handle keyboard shortcuts
-	 */
+	/** Document-level keys: Escape dismisses the strip, the toolbar shortcut focuses it. */
 	function handleKeyDown(e: KeyboardEvent) {
 		if (e.key === 'Escape' && toolbarState.isVisible) {
 			e.preventDefault();
@@ -701,11 +702,8 @@
 
 	/**
 	 * ARIA toolbar navigation: arrows move between controls, Home/End jump, and the
-	 * strip keeps one tab stop.
-	 *
-	 * Before this, every button was its own tab stop inside a `role="toolbar"`, so a
-	 * screen-reader user was told "toolbar" and then found that the arrow keys the
-	 * role advertises did nothing.
+	 * strip keeps one tab stop, which is what `role="toolbar"` tells a screen-reader
+	 * user to expect.
 	 */
 	function handleToolbarKeyDown(e: KeyboardEvent) {
 		if (e.key === 'Escape') {
@@ -739,9 +737,7 @@
 		hideToolbar();
 	}
 
-	/**
-	 * Handle click outside toolbar
-	 */
+	/** Dismiss on a click or touch outside the strip. */
 	function handleDocumentClick(e: Event) {
 		if (!toolbarState.isVisible || justShown) return;
 		if (!toolbarElement) return;
@@ -760,16 +756,17 @@
 		hideToolbar();
 	}
 
-	// Effect for event listeners and initialization
+	// Restores on mount and whenever the key moves: a new section or attempt.
 	$effect(() => {
 		if (!isBrowser) return;
+		const key = stateKey;
+		if (!key || !highlightCoordinator) return;
+		const restoreTimer = setTimeout(() => untrack(() => restoreAnnotations(key)), RESTORE_DELAY_MS);
+		return () => clearTimeout(restoreTimer);
+	});
 
-		// Load persisted annotations after a delay to ensure content is rendered
-		// PIE section player needs time to render items before we can restore ranges
-		// Increased from 500ms to 2000ms to ensure all content is fully loaded
-		const loadTimer = setTimeout(() => {
-			loadAnnotations();
-		}, 2000);
+	$effect(() => {
+		if (!isBrowser) return;
 
 		const pointerEventTarget: HTMLElement | Document = effectiveScopeElement || document;
 		pointerEventTarget.addEventListener('click', handleDocumentClick);
@@ -783,13 +780,11 @@
 		document.addEventListener('pointerup', handlePointerUp);
 		document.addEventListener('pointercancel', handlePointerUp);
 
-		// Keyboard and scroll events
 		document.addEventListener('keydown', handleKeyDown);
 		window.addEventListener('scroll', handleScroll, true);
 		window.addEventListener('resize', handleScroll);
 
 		return () => {
-			clearTimeout(loadTimer);
 			if (announcementTimer !== null) clearTimeout(announcementTimer);
 			if (selectionFrame !== null && typeof cancelAnimationFrame === 'function') {
 				cancelAnimationFrame(selectionFrame);
@@ -804,7 +799,6 @@
 			document.removeEventListener('pointerup', handlePointerUp);
 			document.removeEventListener('pointercancel', handlePointerUp);
 
-			// Remove keyboard and scroll events
 			document.removeEventListener('keydown', handleKeyDown);
 			window.removeEventListener('scroll', handleScroll, true);
 			window.removeEventListener('resize', handleScroll);
@@ -910,7 +904,7 @@
 		onfocusout={handleToolbarFocusOut}
 	>
 		<!-- Highlight Color Swatches -->
-		{#each HIGHLIGHT_COLORS as color}
+		{#each highlightColors as color}
 			<button
 				class="pie-tool-annotation-toolbar__highlight-swatch"
 				style="background-color: {color.hex};"

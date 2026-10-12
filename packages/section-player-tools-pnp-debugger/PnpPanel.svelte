@@ -14,6 +14,13 @@
 	}}
 />
 
+<!--
+@component
+Developer panel for the section player demos that shows how the toolkit coordinator's tool policy resolves for a section: the PNP determination, resolved tools, provenance, policy diagnostics, per-tool decision trails and the active PNP profile, all as JSON. A host gives it `toolkitCoordinator`, `sectionData` and `role-type`; with `editable` it adds a tools editor that toggles placement per level, provider enablement, PNP supports and prohibitions on the bound assessment's profile, and PNP enforcement, writing each change through the coordinator.
+
+@fires {CustomEvent<null>} close - When the panel's close button is pressed.
+-->
+
 <script lang="ts">
 	import { coerceBooleanAttributes } from '@pie-players/pie-players-shared/ui/attribute-coercion';
 	import {
@@ -97,7 +104,9 @@
 	});
 
 	function placementIds(level: 'section' | 'item' | 'passage'): string[] {
-		const ids = toolkitCoordinator?.config?.tools?.placement?.[level];
+		const ids = (toolkitCoordinator as PolicyPanelCoordinator | null)
+			?.getPolicyInputs?.()
+			?.tools?.placement?.[level];
 		return Array.isArray(ids) ? [...ids] : [];
 	}
 
@@ -224,18 +233,14 @@
 		class="pie-section-player-tools-pnp-debugger__content"
 		style="height: 100%; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch;"
 	>
-		{#if pnpPanelData.determination.runtimeContext.assessmentBound === false}
+		{#if pnpPanelData.determination.runtimeContext.assessmentBound === false && pnpPanelData.determination.runtimeContext.assessmentExpected}
 			<div
 				class="pie-section-player-tools-pnp-debugger__card pie-section-player-tools-pnp-debugger__card--warning"
 				data-testid="pnp-no-assessment-bound"
 				role="status"
 			>
 				<div class="pie-section-player-tools-pnp-debugger__card-title">{interfaceI18n.t("debug.pnp.noAssessmentBound")}</div>
-				<p class="pie-section-player-tools-pnp-debugger__card-text">
-					Every accommodation below is declined because nothing supplied a profile, not
-					because policy denied it. Call <code>updateAssessment(...)</code> on the toolkit
-					coordinator.
-				</p>
+				<p class="pie-section-player-tools-pnp-debugger__card-text">{interfaceI18n.t("debug.pnp.noAssessmentBoundBody")}</p>
 			</div>
 		{/if}
 		<div class="pie-section-player-tools-pnp-debugger__card">

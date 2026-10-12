@@ -3,8 +3,10 @@ import type { EliminationStrategy } from "./elimination-strategy.js";
 /**
  * Strikethrough strategy using CSS Custom Highlight API
  *
- * Modern approach: Zero DOM mutation, uses browser-native highlighting
- * Accessibility: Best for screen readers (text remains in DOM unchanged)
+ * Text is struck by a browser-native highlight, so its nodes stay unchanged for
+ * screen readers. The choice container carries the eliminated attributes and
+ * an announcement; images and rendered math get their own strike (see
+ * `strikeImages` and `strikeMath`).
  * WCAG Compliance: Maintains info structure (1.3.1), no layout shift (2.4.3)
  */
 export class StrikethroughStrategy implements EliminationStrategy {
@@ -77,7 +79,6 @@ export class StrikethroughStrategy implements EliminationStrategy {
 	private mathTargets = new Map<string, HTMLElement[]>();
 
 	initialize(): void {
-		// Check browser support
 		if (!this.isSupported()) {
 			console.warn("CSS Custom Highlight API not supported, using fallback");
 		}
@@ -89,23 +90,17 @@ export class StrikethroughStrategy implements EliminationStrategy {
 
 	apply(choiceId: string, range: Range): void {
 		if (this.isSupported()) {
-			// Inject CSS for this specific highlight
 			this.injectHighlightCSS(choiceId);
 
-			// Create highlight for this range
 			const highlight = new Highlight(range);
-
-			// Register in CSS.highlights with unique name
 			CSS.highlights.set(
 				`${StrikethroughStrategy.HIGHLIGHT_NAME_PREFIX}${choiceId}`,
 				highlight,
 			);
 
-			// Track internally
 			this.highlights.set(choiceId, highlight);
 			this.ranges.set(choiceId, range);
 
-			// Add ARIA attributes to the choice element for screen readers
 			this.addAriaAttributes(range);
 		} else {
 			this.applyFallback(choiceId, range);
@@ -129,15 +124,11 @@ export class StrikethroughStrategy implements EliminationStrategy {
 			return;
 		}
 
-		// Remove from CSS.highlights
 		CSS.highlights.delete(
 			`${StrikethroughStrategy.HIGHLIGHT_NAME_PREFIX}${choiceId}`,
 		);
-
-		// Remove CSS for this specific highlight
 		this.removeHighlightCSS(choiceId);
 
-		// Remove from internal tracking
 		const range = this.ranges.get(choiceId);
 		if (range) {
 			this.removeAriaAttributes(range);
@@ -194,7 +185,7 @@ export class StrikethroughStrategy implements EliminationStrategy {
 		// `[data-pie-answer-eliminated]` in the shared content stylesheet, which is
 		// the one rule both this path and the fallback path share.
 		style.textContent = `
-      ::highlight(pie-answer-eliminated-${choiceId}) {
+      ::highlight(${StrikethroughStrategy.HIGHLIGHT_NAME_PREFIX}${choiceId}) {
         text-decoration: line-through;
         text-decoration-thickness: 2px;
         text-decoration-color: var(--pie-answer-eliminator-strike-color, var(--pie-incorrect, #ff9800));
@@ -212,14 +203,12 @@ export class StrikethroughStrategy implements EliminationStrategy {
 	}
 
 	private addAriaAttributes(range: Range): void {
-		// Find the choice container element
 		const container = this.findChoiceContainer(range);
 		if (!container) return;
 
 		container.setAttribute(StrikethroughStrategy.ELIMINATED_ATTR, "true");
 		container.setAttribute("aria-disabled", "true");
 
-		// Add screen reader announcement
 		const label = this.resolveLabelElement(container);
 		if (label && !label.querySelector(`.${StrikethroughStrategy.SR_CLASS}`)) {
 			const announcement = document.createElement("span");
@@ -236,7 +225,6 @@ export class StrikethroughStrategy implements EliminationStrategy {
 		container.removeAttribute(StrikethroughStrategy.ELIMINATED_ATTR);
 		container.removeAttribute("aria-disabled");
 
-		// Remove screen reader announcement
 		const announcement = container.querySelector(
 			`.${StrikethroughStrategy.SR_CLASS}`,
 		);
@@ -244,10 +232,7 @@ export class StrikethroughStrategy implements EliminationStrategy {
 	}
 
 	private findChoiceContainer(range: Range): HTMLElement | null {
-		// Walk up from range start to find the choice container
 		let element: HTMLElement | null = range.startContainer as HTMLElement;
-
-		// If startContainer is a text node, get its parent
 		if (element.nodeType === Node.TEXT_NODE) {
 			element = element.parentElement;
 		}

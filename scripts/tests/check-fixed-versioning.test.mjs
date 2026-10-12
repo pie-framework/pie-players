@@ -2,6 +2,8 @@ import { describe, expect, test } from "bun:test";
 
 import {
 	classifyPublishedSequence,
+	compareSemver,
+	highestTaggedVersion,
 	parseSemver,
 } from "../lib/fixed-versioning.mjs";
 
@@ -24,6 +26,16 @@ describe("parseSemver", () => {
 			minor: 2,
 			patch: 3,
 		});
+	});
+
+	test("splits a prerelease into its identifiers", () => {
+		expect(parseSemver("1.0.0-beta.2")).toMatchObject({
+			major: 1,
+			minor: 0,
+			patch: 0,
+			prerelease: ["beta", "2"],
+		});
+		expect(parseSemver("0.3.75").prerelease).toEqual([]);
 	});
 
 	test("rejects what is not a version", () => {
@@ -108,7 +120,7 @@ describe("classifyPublishedSequence — partial publish", () => {
 		});
 		expect(result.verdict).toBe("completing-partial-publish");
 		expect(result.message).toContain("2 package(s) already published it");
-		expect(result.message).toContain("1 are still one patch behind");
+		expect(result.message).toContain("1 are still one release behind");
 	});
 
 	// The narrowing has to stay narrow: only an unfinished publish of the *local*
@@ -238,6 +250,186 @@ describe("classifyPublishedSequence — bootstrapped newcomer catching up", () =
 			publishedHistoryMap: new Map([["newcomer", ["0.2.10"]]]),
 		});
 		expect(result.verdict).toBe("stop");
+	});
+});
+
+describe("compareSemver", () => {
+	const sorted = (versions) =>
+		versions
+			.map(parseSemver)
+			.sort(compareSemver)
+			.map(({ raw }) => raw);
+
+	test("orders prereleases below their stable release and above the previous one", () => {
+		expect(
+			sorted(["1.0.0", "1.0.0-beta.10", "0.3.75", "1.0.0-beta.2", "1.0.1"]),
+		).toEqual(["0.3.75", "1.0.0-beta.2", "1.0.0-beta.10", "1.0.0", "1.0.1"]);
+	});
+
+	test("orders prerelease ids lexically and numeric identifiers below alphanumeric ones", () => {
+		expect(sorted(["1.0.0-rc.0", "1.0.0-beta.3", "1.0.0-1"])).toEqual([
+			"1.0.0-1",
+			"1.0.0-beta.3",
+			"1.0.0-rc.0",
+		]);
+	});
+});
+
+describe("highestTaggedVersion", () => {
+	test("a prerelease tag above latest is where the sequence continues", () => {
+		expect(
+			highestTaggedVersion({ latest: "0.3.75", beta: "1.0.0-beta.1" }),
+		).toBe("1.0.0-beta.1");
+	});
+
+	test("a stale prerelease tag below latest is ignored", () => {
+		expect(
+			highestTaggedVersion({ latest: "1.0.0", beta: "1.0.0-beta.3" }),
+		).toBe("1.0.0");
+	});
+
+	test("no tags means nothing to continue from", () => {
+		expect(highestTaggedVersion({})).toBeNull();
+	});
+});
+
+describe("classifyPublishedSequence — prerelease line", () => {
+	test("a major prerelease line opens at counter 0 above the stable release", () => {
+		expect(
+			classifyPublishedSequence({
+				localVersion: "1.0.0-beta.0",
+				publishedVersionMap: uniform("0.3.75"),
+			}),
+		).toEqual({ verdict: "ok" });
+	});
+
+	test("a minor or patch prerelease line opens the same way", () => {
+		for (const localVersion of ["1.1.0-beta.0", "1.0.1-beta.0"]) {
+			expect(
+				classifyPublishedSequence({
+					localVersion,
+					publishedVersionMap: uniform("1.0.0"),
+				}).verdict,
+			).toBe("ok");
+		}
+	});
+
+	test("a line that skips a release step is refused", () => {
+		const result = classifyPublishedSequence({
+			localVersion: "2.0.0-beta.0",
+			publishedVersionMap: uniform("0.3.75"),
+		});
+		expect(result.verdict).toBe("stop");
+		expect(result.message).toContain("does not follow published 0.3.75");
+	});
+
+	test("a line that opens above counter 0 is refused", () => {
+		const result = classifyPublishedSequence({
+			localVersion: "1.0.0-beta.1",
+			publishedVersionMap: uniform("0.3.75"),
+		});
+		expect(result.verdict).toBe("stop");
+	});
+
+	test("each later prerelease raises the counter by one", () => {
+		expect(
+			classifyPublishedSequence({
+				localVersion: "1.0.0-beta.2",
+				publishedVersionMap: uniform("1.0.0-beta.1"),
+			}).verdict,
+		).toBe("ok");
+		expect(
+			classifyPublishedSequence({
+				localVersion: "1.0.0-beta.3",
+				publishedVersionMap: uniform("1.0.0-beta.1"),
+			}).verdict,
+		).toBe("stop");
+		expect(
+			classifyPublishedSequence({
+				localVersion: "1.0.0-beta.1",
+				publishedVersionMap: uniform("1.0.0-beta.1"),
+			}).verdict,
+		).toBe("stop");
+	});
+
+	test("changing the prerelease id keeps the counter running, as changesets does", () => {
+		expect(
+			classifyPublishedSequence({
+				localVersion: "1.0.0-rc.4",
+				publishedVersionMap: uniform("1.0.0-beta.3"),
+			}).verdict,
+		).toBe("ok");
+	});
+
+	test("the stable release closes the line at its base version", () => {
+		expect(
+			classifyPublishedSequence({
+				localVersion: "1.0.0",
+				publishedVersionMap: uniform("1.0.0-beta.3"),
+			}).verdict,
+		).toBe("ok");
+		const result = classifyPublishedSequence({
+			localVersion: "1.0.1",
+			publishedVersionMap: uniform("1.0.0-beta.3"),
+		});
+		expect(result.verdict).toBe("stop");
+		expect(result.message).toContain("does not close the published prerelease line");
+	});
+
+	test("a stable major bump without a prerelease line stays refused", () => {
+		const result = classifyPublishedSequence({
+			localVersion: "1.0.0",
+			publishedVersionMap: uniform("0.3.75"),
+		});
+		expect(result.verdict).toBe("stop");
+		expect(result.message).toContain("opens as a prerelease line");
+	});
+
+	test("a partly failed prerelease publish is completed", () => {
+		const result = classifyPublishedSequence({
+			localVersion: "1.0.0-beta.2",
+			publishedVersionMap: publishedMap({
+				a: "1.0.0-beta.2",
+				b: "1.0.0-beta.1",
+				c: "1.0.0-beta.1",
+			}),
+		});
+		expect(result.verdict).toBe("completing-partial-publish");
+	});
+
+	test("a partly failed first prerelease is completed against the stable release", () => {
+		const result = classifyPublishedSequence({
+			localVersion: "1.0.0-beta.0",
+			publishedVersionMap: publishedMap({ a: "1.0.0-beta.0", b: "0.3.75" }),
+		});
+		expect(result.verdict).toBe("completing-partial-publish");
+	});
+
+	test("packages left on different prereleases are drift even when each could precede", () => {
+		const result = classifyPublishedSequence({
+			localVersion: "1.0.0",
+			publishedVersionMap: publishedMap({
+				a: "1.0.0",
+				b: "1.0.0-beta.3",
+				c: "1.0.0-beta.2",
+			}),
+		});
+		expect(result.verdict).toBe("stop");
+	});
+
+	test("a newcomer bootstrapped on an earlier prerelease publishes with the group", () => {
+		const result = classifyPublishedSequence({
+			localVersion: "1.0.0-beta.3",
+			publishedVersionMap: publishedMap({
+				a: "1.0.0-beta.2",
+				newcomer: "1.0.0-beta.0",
+			}),
+			publishedHistoryMap: new Map([["newcomer", ["1.0.0-beta.0"]]]),
+		});
+		expect(result.verdict).toBe("ok");
+		expect(result.catchingUp).toEqual([
+			{ name: "newcomer", version: "1.0.0-beta.0" },
+		]);
 	});
 });
 

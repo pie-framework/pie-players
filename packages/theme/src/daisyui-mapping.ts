@@ -4,14 +4,11 @@
  * provider adapter is the only thing that reads it, and a host reaches it by
  * mounting `<pie-theme provider="daisyui">` or leaving `provider` on `auto`.
  *
- * It was consolidated here after the same table had been written out four
- * times — this adapter, two mappers in a separate `pie-theme-daisyui` package, and
- * that package's static `bridge.css` — and copies drift. Two defects lived in the
- * drift: `--pie-missing` was corrected to `--color-warning` in one copy while three
- * kept it on `--color-error`, and the parity test meant to catch that compared only
- * the token names, never the slot each one derived from. The copies are gone; the
- * package was removed once its CSS turned out to be outranked by the inline
- * variables `<pie-theme>` writes, leaving it inert wherever it was imported.
+ * One table because copies drift: when it lived in four places, `--pie-missing`
+ * derived from `--color-warning` in one and `--color-error` in three, and a
+ * parity test over token names alone missed it. A static DaisyUI bridge
+ * stylesheet cannot replace this adapter, because the inline variables
+ * `<pie-theme>` writes outrank it.
  */
 
 import {

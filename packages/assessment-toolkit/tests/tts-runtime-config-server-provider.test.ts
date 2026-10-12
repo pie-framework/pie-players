@@ -129,6 +129,16 @@ describe("runtime TTS config reaching ServerTTSProvider", () => {
 		expect(audio?.credentials).toBeUndefined();
 	});
 
+	test("speaks the custom transport for a custom server provider by default", async () => {
+		const { synthesis, audio } = await speakWithSettings({
+			transportMode: undefined,
+			endpointMode: undefined,
+		});
+
+		expect(synthesis).toBeDefined();
+		expect(audio).toBeDefined();
+	});
+
 	test("keeps the authorization header off an asset origin outside the list", async () => {
 		const { marks, audio } = await speakWithSettings({});
 

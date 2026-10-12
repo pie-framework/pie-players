@@ -6,8 +6,8 @@ adapter.
 ## Delivery Demo
 
 The root route renders one `<pie-item-player>` and wires `backend.delivery` to a
-local, unauthenticated API that mirrors the subset of `pie-api-aws` used by
-`pie-api-player`:
+local, unauthenticated API that implements the delivery endpoints the item
+player's default backend client calls:
 
 - `POST /api/player/load`
 - `POST /api/player/save`
@@ -33,19 +33,6 @@ instead of that raw config. This demo therefore runs:
 The save endpoint remains intentionally simple: it persists the current session
 data and returns the saved session.
 
-## Authoring Routes
-
-The app also exposes focused `backend.authoring` JSON routes:
-
-- `POST /api/authoring/load`
-- `POST /api/authoring/save`
-- `POST /api/authoring/release`
-
-These routes are intentionally small BFF examples, not a full `pie-api-author`
-clone. Load returns editable item config from the demo datastore, save persists
-that config back into the same SQLite database, and release returns the same
-loadable `contentId` with demo release metadata.
-
 The canonical demo command list lives in
 [`../../docs/setup/demo_system.md`](../../docs/setup/demo_system.md). Run this
 demo from the monorepo root:
@@ -54,4 +41,5 @@ demo from the monorepo root:
 bun run dev:backend
 ```
 
-The backend demo runs on `http://localhost:5600` by default.
+The backend demo runs on `http://localhost:5600` by default. The LTI demo uses
+the same port, so the two cannot run at the same time.

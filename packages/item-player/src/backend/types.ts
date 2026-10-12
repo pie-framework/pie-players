@@ -73,7 +73,8 @@ export type BackendDeliverySessionContext = BackendDeliveryIdentity & {
 };
 
 export type BackendScoreOptions = {
-	disablePartialScoring?: boolean;
+	/** pie-api-aws re-evaluates instead of answering with a cached score. */
+	skipCached?: boolean;
 	[key: string]: unknown;
 };
 
@@ -103,12 +104,6 @@ export type BackendAuthoringMediaConfig = {
 	onDeleteImage?: (src: string, done: DeleteDone) => void;
 	onInsertSound?: (handler: BackendAuthoringSoundHandler) => void;
 	onDeleteSound?: (src: string, done: DeleteDone) => void;
-};
-
-export type BackendAuthoringEndpoints = {
-	load?: BackendEndpoint;
-	saveContent?: BackendEndpoint;
-	releaseContent?: BackendEndpoint;
 };
 
 export type BackendAuthoringLoadResult = {
@@ -182,13 +177,13 @@ export type BackendDeliveryConfig = BackendDeliveryIdentity & {
 	client?: BackendDeliveryClient;
 };
 
+/**
+ * No authoring transport is built in: pie-api-aws serves authoring over
+ * GraphQL, so `load`, `saveContent` and `releaseContent` each run only through
+ * the host's `client`.
+ */
 export type BackendAuthoringConfig = BackendAuthoringIdentity & {
 	enabled?: boolean;
-	provider?: BackendProvider;
-	baseUrl?: string;
-	endpoints?: BackendAuthoringEndpoints;
-	request?: BackendRequestConfig;
-	auth?: BackendAuthConfig;
 	media?: BackendAuthoringMediaConfig;
 	client?: BackendAuthoringClient;
 };

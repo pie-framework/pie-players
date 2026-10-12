@@ -29,8 +29,10 @@
 			"import": "./dist/section-player-tools-pnp-debugger.js"
 		}
 	},
+	"customElements": "custom-elements.json",
 	"files": [
 		"dist",
+		"custom-elements.json",
 		"package.json"
 	],
 	"license": "MIT",
@@ -44,7 +46,7 @@
 		"typecheck": "tsc --noEmit && tsc -p tsconfig.tests.json",
 		"check": "svelte-check --tsconfig ./tsconfig.json --compiler-warnings options_missing_custom_element:ignore",
 		"test": "bun test tests",
-		"lint": "biome lint PnpPanel.svelte derive-panel-data.ts index.ts vite.config.ts package.json tests"
+		"lint": "biome lint ."
 	},
 	"devDependencies": {
 		"@biomejs/biome": "^2.5.15",
@@ -54,7 +56,7 @@
 		"svelte": "^5.57.1",
 		"svelte-check": "^4.7.6",
 		"typescript": "^5.9.3",
-		"vite": "^8.3.2",
+		"vite": "^8.3.3",
 		"vite-plugin-dts": "^5.1.2"
 	},
 	"homepage": "https://github.com/pie-framework/pie-players/tree/master/packages/section-player-tools-pnp-debugger#readme",

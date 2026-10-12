@@ -1,4 +1,6 @@
 import type { ConfigEntity, PieModel } from "@pie-players/pie-players-shared";
+import { isPlainRecord } from "@pie-players/pie-players-shared/object";
+import { parseVersionedTagName } from "@pie-players/pie-players-shared/pie/tag-names";
 import type { BackendDeliveryModelResult } from "./types.js";
 
 export type NormalizedDeliveryModelResult = {
@@ -16,28 +18,37 @@ export type DeliveryModelRefreshConfigResult = {
 	changed: boolean;
 };
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return !!value && typeof value === "object" && !Array.isArray(value);
-}
-
 function isBackendModel(value: unknown): value is Record<string, unknown> & {
 	id: string;
 	element: string;
 } {
 	return (
-		isRecord(value) &&
+		isPlainRecord(value) &&
 		typeof value.id === "string" &&
 		typeof value.element === "string"
 	);
 }
 
+/**
+ * A versioned incoming tag must equal the current one. An unversioned tag is
+ * the authored name pie-api-aws answers with, so it matches the current model
+ * whose runtime tag carries that name plus a version suffix.
+ */
 function sameModelIdentity(
 	currentModel: PieModel,
 	incomingModel: Record<string, unknown> & { id: string; element: string },
 ): boolean {
+	if (currentModel.id !== incomingModel.id) return false;
+	if (currentModel.element === incomingModel.element) return true;
+	if (
+		parseVersionedTagName(incomingModel.element).existingEncodedVersion !==
+		undefined
+	) {
+		return false;
+	}
 	return (
-		currentModel.id === incomingModel.id &&
-		currentModel.element === incomingModel.element
+		parseVersionedTagName(currentModel.element).baseName ===
+		incomingModel.element
 	);
 }
 
@@ -73,13 +84,17 @@ function mergeModelsForConfig(
 	};
 }
 
+/**
+ * An array result is pie-api-aws's flat list: item models, then passage
+ * models. Each config takes the entries whose identity it holds.
+ */
 export function normalizeDeliveryModelResult(
 	result: BackendDeliveryModelResult,
 ): NormalizedDeliveryModelResult {
 	if (Array.isArray(result)) {
 		return {
 			models: result,
-			passageModels: undefined,
+			passageModels: result,
 			metadata: undefined,
 		};
 	}
@@ -88,7 +103,7 @@ export function normalizeDeliveryModelResult(
 		passageModels: Array.isArray(result.passageModels)
 			? result.passageModels
 			: undefined,
-		metadata: isRecord(result.metadata) ? result.metadata : undefined,
+		metadata: isPlainRecord(result.metadata) ? result.metadata : undefined,
 	};
 }
 

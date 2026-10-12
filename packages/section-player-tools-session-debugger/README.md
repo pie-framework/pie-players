@@ -22,5 +22,5 @@ the active section controller and session state.
 
 ## Related Documentation
 
-- [Section player controller boundaries](../../docs/section-player/controller-boundaries.md)
-- [Section player client architecture tutorial](../../docs/section-player/client-architecture-tutorial.md)
+- [Section controller ownership](../section-player/ARCHITECTURE.md#controller-ownership)
+- [Section player integration guide](../../docs/section-player/integration-guide.md)

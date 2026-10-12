@@ -75,8 +75,6 @@ const startAndStopToolProvider = async () => {
 		loadServerProvider: async () =>
 			class {
 				readonly providerId = "server-tts";
-				readonly providerName = "Stub";
-				readonly version = "0";
 				initialize = async () => ({}) as never;
 				getCapabilities = () => ({}) as never;
 				destroy = () => {};

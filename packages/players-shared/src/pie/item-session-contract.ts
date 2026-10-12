@@ -1,4 +1,5 @@
 import type { SessionCommitReason } from "./session-commit.js";
+import { isPlainRecord } from "../object/index.js";
 
 export type ItemSessionContainer = {
 	id: string;
@@ -184,10 +185,6 @@ export function hasResponseField(value: unknown): boolean {
 	return false;
 }
 
-function isPlainObject(value: unknown): value is Record<string, unknown> {
-	return Boolean(value) && typeof value === "object" && !Array.isArray(value);
-}
-
 function getMetadataComponent(
 	sessionDetail: Record<string, unknown>,
 	candidate?: Record<string, unknown>,
@@ -260,7 +257,7 @@ function mergeSessionEntry(
 	for (const [key, value] of Object.entries(incoming)) {
 		const previous = merged[key];
 		merged[key] =
-			isPlainObject(previous) && isPlainObject(value)
+			isPlainRecord(previous) && isPlainRecord(value)
 				? mergeSessionEntry(previous, value)
 				: value;
 	}
@@ -450,7 +447,7 @@ function classifyItemSessionChange(args: {
 }
 
 function hostContainerEntries(hostContainer: unknown): unknown[] | null {
-	if (!isPlainObject(hostContainer)) {
+	if (!isPlainRecord(hostContainer)) {
 		return null;
 	}
 	// A frozen container is not a live view of anything, and a shared immutable
@@ -472,7 +469,7 @@ function hostContainerEntries(hostContainer: unknown): unknown[] | null {
 }
 
 function sessionEntryId(value: unknown): string | null {
-	if (!isPlainObject(value)) {
+	if (!isPlainRecord(value)) {
 		return null;
 	}
 	const id = value.id;
@@ -530,7 +527,7 @@ export function projectSessionIntoHostContainer(
 	liveSession: unknown,
 ): boolean {
 	const entries = hostContainerEntries(hostContainer);
-	if (!entries || !isPlainObject(hostContainer)) {
+	if (!entries || !isPlainRecord(hostContainer)) {
 		return false;
 	}
 	const live = normalizeItemSessionContainer(liveSession);
@@ -542,11 +539,11 @@ export function projectSessionIntoHostContainer(
 	}
 	for (const nextEntry of live.data) {
 		const id = sessionEntryId(nextEntry);
-		if (!id || !isPlainObject(nextEntry)) {
+		if (!id || !isPlainRecord(nextEntry)) {
 			continue;
 		}
 		const target = entries.find((entry) => sessionEntryId(entry) === id);
-		if (!isPlainObject(target)) {
+		if (!isPlainRecord(target)) {
 			entries.push({ ...nextEntry });
 			wrote = true;
 			continue;

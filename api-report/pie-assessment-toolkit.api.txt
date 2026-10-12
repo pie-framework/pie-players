@@ -33,10 +33,12 @@
   type CatalogStatistics
   type CatalogType
   type CreateToolsConfigArgs
+  type ElementIdComponents
   type ElementToolContext
   ElementToolStateStore
   type ElementToolStateStoreApi
   type ExtractionResult
+  type FrameworkErrorCohort
   type FrameworkErrorKind
   type FrameworkErrorListener
   type FrameworkErrorModel
@@ -116,6 +118,7 @@
   type TextDirection
   type TextToSpeechToolProviderConfig
   type ToolActivation
+  type ToolCallbackFailureHandler
   type ToolComponentFactory
   type ToolComponentFactoryMap
   type ToolComponentOverrides
@@ -130,8 +133,8 @@
   type ToolContextResolverContext
   type ToolContextResolverMap
   type ToolContextResolverResult
-  ToolCoordinator
   type ToolCoordinatorApi
+  type ToolFailurePhase
   type ToolLevel
   type ToolModuleLoader
   type ToolOpenRequest
@@ -179,6 +182,7 @@
   dispatchCrossBoundaryEvent
   frameworkErrorFromUnknown
   hasReadableText
+  hasSpokenContent
   setCurrentPosition
   setCurrentSectionPosition
   toFrameworkErrorModel
@@ -220,6 +224,7 @@
   type ToolPolicyDecisionRule
   type ToolPolicyDiagnostic
   type ToolPolicyDiagnosticCode
+  type ToolPolicyDiagnosticDetails
   ToolPolicyEngine
   type ToolPolicyEngineArgs
   type ToolPolicyEngineInputs
@@ -291,10 +296,10 @@
   type HostedToolContext
   type HostedToolSize
   type NormalizedTTSSpeedOption
-  PIE_TTS_CONTROL_HANDOFF_EVENT
   type ParsedToolInstanceId
   type ResolveContentCapabilitiesArgs
   type ResolvedContentCapability
+  TOOL_ACTIVE_CHANGE_EVENT
   type TTSLayoutMode
   type TTSSpeedOption
   TTSToolProvider
@@ -306,10 +311,10 @@
   type ToolContext
   type ToolCoordinatorApi
   type ToolCoordinatorRegistration
+  type ToolFailurePhase
   type ToolModuleLoader
   type ToolPlacementLevel
   type ToolProviderApi
-  type ToolProviderCapabilities
   type ToolProviderConfig
   type ToolProviderDescriptor
   type ToolRegistration
@@ -356,18 +361,18 @@
   hasMathContent
   hasReadableText
   hasScienceContent
+  hasSpokenContent
   isShadowRootNode
   isTTSStartFailure
-  normalizeTTSLayoutMode
   normalizeTTSSpeedControlOptions
   parseScopedToolId
   parseTTSSpeedOptionsFromText
   pauseTtsForMediaAudio
+  reportToolFailure
   resolveContentCapabilities
   resolveContentRegion
   resolveFallbackToolIcon
   resolveTTSHostToolbarLayout
-  resolveTTSLayoutMode
   resolveTTSRuntimeSettings
   resolveToolRegistrationName
   resolveToolTag

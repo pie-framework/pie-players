@@ -1,3 +1,8 @@
+/**
+ * Reads a boolean-like prop or attribute value. Nullish or blank reads as
+ * `defaultValue`; `false`, `0`, `off` and `no` (any case) read as false; any
+ * other value reads as true.
+ */
 export function coerceBooleanLike(
 	value: boolean | string | null | undefined,
 	defaultValue = false,
@@ -15,10 +20,7 @@ export function coerceBooleanLike(
 	if (["false", "0", "off", "no"].includes(normalizedValue)) {
 		return false;
 	}
-	if (["true", "1", "on", "yes"].includes(normalizedValue)) {
-		return true;
-	}
-	return Boolean(normalizedValue);
+	return true;
 }
 
 /**

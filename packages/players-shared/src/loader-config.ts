@@ -1,7 +1,5 @@
 /**
  * Shared loader configuration for PIE custom elements.
- *
- * Mirrors the `LoaderConfig` used by PIEOneer's custom element tags.
  */
 
 import type { InstrumentationProvider } from "./instrumentation/types.js";

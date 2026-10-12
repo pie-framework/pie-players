@@ -155,8 +155,8 @@ function resolvePurifier(): DOMPurifyInstance | null {
  * Sanitize raw item/passage markup before it is injected into the DOM.
  *
  * - Strips `<script>`, event-handler attributes, unknown protocols and
- *   a standard set of dangerous tags (`iframe`, `object`, `embed`, `base`,
- *   `form`, `meta`, `link`).
+ *   the other tags in `SANITIZER_FORBIDDEN_TAGS` (`iframe`, `object`, `embed`,
+ *   `base`, `form`, `meta`, `link`, `style`, `foreignObject`).
  * - Preserves PIE custom elements (`pie-*`) and any extra tags listed in
  *   `allowedCustomElements`.
  * - Marks elements that carry an authored color, as `markAuthoredColors`
@@ -230,8 +230,8 @@ export function sanitizeItemMarkup(
 
 /**
  * Build the default `ItemMarkupSanitizer` used by the players. The returned
- * function is stable for a given set of allowed custom elements so callers
- * can safely use reference equality when deciding whether to re-sanitize.
+ * function captures the options once; each call returns a new function, so a
+ * caller that compares sanitizers by identity keeps the one it built.
  */
 export function createDefaultItemMarkupSanitizer(
 	options: SanitizeItemMarkupOptions = {},

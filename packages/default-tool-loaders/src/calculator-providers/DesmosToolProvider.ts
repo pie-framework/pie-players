@@ -5,7 +5,6 @@ import {
 	LazyCalculatorToolProvider,
 	type LazyCalculatorProviderDefinition,
 } from "./LazyCalculatorToolProvider.js";
-import type { ToolProviderCapabilities } from "@pie-players/pie-assessment-toolkit/tools/registration";
 
 /** Provider initialization is the provider-neutral calculator contract. */
 export type DesmosToolProviderConfig = CalculatorProviderInit;
@@ -25,20 +24,6 @@ export class DesmosToolProvider extends LazyCalculatorToolProvider<DesmosToolPro
 			},
 			initializationErrorMessage:
 				"Failed to initialize Desmos calculator provider. Check the application key, preloaded API, runtime endpoint, or network access.",
-		};
-	}
-
-	getCapabilities(): ToolProviderCapabilities {
-		return {
-			supportsOffline: false,
-			requiresAuth: true,
-			maxInstances: null,
-			features: {
-				basic: true,
-				scientific: true,
-				graphing: true,
-				fourFunction: true,
-			},
 		};
 	}
 }

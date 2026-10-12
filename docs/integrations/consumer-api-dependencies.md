@@ -215,7 +215,113 @@ Host R's `assessment-id` mounts and vertical-subpath import were moved to
 `runtime.assessmentId` and the root entry in its repository the same day. No host
 names any other removed surface. Row verification dates are unchanged.
 
-The 2026-09-17 session-commit change (PIE-1058) was checked against the
+On 2026-10-09 `TTSService.stop()` started closing an open `<pie-tool-tts-inline>`
+panel: a stop releases the read's owner, and the inline tool closes when its read
+loses its owner. A read that ends on its own keeps the owner and the panel.
+`requestControlHandoff` and its handoff event are removed. The TTS contracts lost
+the surfaces nothing reads: provider `isPlaying`, `isPaused`, `providerName` and
+`version`; the `TTSProviderCapabilities` fields other than
+`supportsWordBoundary`, `defaultHighlightMode`, `supportsSSML` and
+`maxTextLength`; `ToolProviderApi.getCapabilities` and
+`ToolProviderCapabilities`; `StandardTTSConfig` and `TTSConfigExtensions`, folded
+into `TTSConfig`; the `TtsServiceApi` state getters and wiring methods;
+`HighlightCoordinatorApi.highlightRange`, `isSupported` and `clearHighlights`,
+replaced by `clearTTSWord`; and the `ensureTTSReady` argument.
+`mathTokenHighlighting` moved from `TTSConfig` to the toolkit's TTS config.
+Checked against the checkouts of Hosts A, M, P, R and V, each scan reaching
+`@pie-players` imports: no host names a removed surface or implements a TTS
+provider. Host A calls `ttsService.stop()` before navigation and when hiding the
+section player, so an inline panel open at that point now closes. Row
+verification dates are unchanged.
+
+Also on 2026-10-09 `validateEndpoint` left the TTS settings and the server
+provider's config: `endpointValidationMode` alone picks the probe, `none` when
+unset on the provider and `voices` on a toolkit `server` backend, so a host
+setting neither probes as before. `resolveTTSRuntimeSettings` resolves
+`layoutMode`, which removes `resolveTTSLayoutMode` and `normalizeTTSLayoutMode`,
+and `TTSHostToolbarLayout` lost its constant `mount`. `speedRate` is typed by
+`SpeedRateBucket` from `pie-tts`, the custom transport's `providerOptions` keys
+are typed under an index signature, and `TOOL_ACTIVE_CHANGE_EVENT` names the
+tool active-change event on `tools/registration`. Checked against the checkouts
+of Hosts A, M, P, R and V, each scan reaching `@pie-players` imports, and Host
+A's and Host P's feature branches: no host names a removed surface. Hosts A and R
+set `endpointValidationMode: "none"` and `speedRate: "medium"`, both still valid,
+and Host R's `providerOptions` still type-check. Row verification dates are
+unchanged.
+
+Also on 2026-10-09 the TTS settings panel dropped its `adapters` prop and its
+component-mode provider tabs, with their `apply-request` and `preview-request`
+events. Custom provider entries lost `mode`, the apply result lost `message`, the
+preview result lost `note`, and the provider context lost `toolkitCoordinator`.
+The entry shape ships as `CustomProviderDescriptor` and its member types, and the
+panel's `.d.ts` imports nothing from the toolkit. Apply now awaits the
+coordinator's `ensureTTSReady()` and keeps the panel open with an error when the
+backend fails to start. The Google voice-type and gender filters stay in panel
+storage and leave the applied config, and the Polly `engine`, `sampleRate` and
+`format` apply at the config's top level alone. Checked against the checkouts of
+Hosts A, M, P, R and V, each scan reaching `@pie-players` imports, and Host A's
+and Host P's feature branches: only Host R mounts the panel. Its SC entry
+still sets `mode` and an apply `message`, which the panel ignores, and builds the
+entry untyped, so nothing fails to compile; importing the type would make both
+excess properties. Row verification dates are unchanged.
+
+Also on 2026-10-09 `tool-policy.unknownSupportId` moved off the toolbar and
+feature decisions onto the policy engine's resolved inputs
+(`getPolicyInputs().diagnostics`). It is computed once per change to the
+assessment, an item's settings or the registry's tools, whatever the PNP
+enforcement, and the coordinator reports it through `onPolicyDiagnostic` at that
+change, so registering a tool the profile names clears it and emits an
+`"inputs"` change. The resolved inputs gained `assessmentExpected`, which the
+PNP debugger reads with the placement in place of the coordinator's config.
+`PnpPolicyResult.unmappedSupportIds` is removed. Checked against the checkouts of
+Hosts A, M, P, R and V, each scan reaching `@pie-players` imports, and Host A's
+and Host P's feature branches: no host reads a decision's diagnostics, the
+resolved inputs or the policy-engine subpath. Host R re-reads its feature
+decisions on every `onPolicyChange`, which now also fires on such a registration,
+and its PNP debugger mount keeps its props. Row verification dates are unchanged.
+
+Also on 2026-10-09 a provider's `onPlaybackStart` takes an optional
+`TTSPlaybackStart` from `pie-tts`, saying whether the audio that started carries
+word boundaries, and a server response without speech marks highlights by
+sentence. `<pie-tool-tts-inline>` lost its `language` property and speaks the
+runtime context's content language, as the annotation toolbar's read-aloud does.
+`PollyServerProvider` and `GoogleCloudTTSProvider` gained a protected
+`createClient`. Checked against the checkouts of Hosts A, M, P, R and V, each
+scan reaching `@pie-players` imports, and Host P's feature branches: no host
+implements a TTS provider, sets `language` on the inline tool or a toolbar, or
+subclasses a server provider. Host A declares `tts-server-polly` and imports
+nothing from it, and Host R's inline-tool mounts set no language. Row
+verification dates are unchanged.
+
+Also on 2026-10-09 the section-player layouts' `element-preload-retry` and
+`element-preload-error` events started bubbling and crossing shadow boundaries,
+as the player's other events do; they were dispatched on the layout element
+alone, with the same detail. The toolkit keys a section's controller by
+`section-id`, else the section's `identifier`, else an id named after its
+`assessment-id`, which is what the layout's stage chain keys by; it used to fall
+back to its coordinator's id, which for a coordinator the toolkit builds without
+an `assessment-id` is generated. A toolkit that unmounts on a coordinator the
+host passes, or an outer toolkit lends, disposes the controller of every section
+it bound; it used to dispose only the current section's. Checked against the
+checkouts of Hosts A, M, P, R and V, each scan reaching `@pie-players` imports,
+and Host P's feature branch: no host listens for either preload event or passes
+its own coordinator, and Host A's sections carry identifiers. The
+section-controller reads above were corrected the same day. Row verification
+dates are unchanged.
+
+Also on 2026-10-09 the toolbar and the inline read-aloud tool stopped linking
+Google Fonts' Roboto. The NDS button links `ui.renaissance.com`'s Roboto when the
+page links no stylesheet whose URL contains `Roboto`, and its link was in place
+first on every page that renders one, so the Google link was never added; that
+CDN serves the font files to Renaissance origins only. `toolkit-ready` firing
+for every section the toolkit initializes, ahead of `section-ready`, is now
+documented as the contract. Checked against the checkouts of Hosts A, M, P, R and
+V, each scan reaching `@pie-players` imports, and Host P's feature branch: Host A
+alone sets `nds-icons`, links no Roboto or Font Awesome stylesheet and serves from
+a Renaissance origin, so its buttons keep the Roboto and Font Awesome Free they
+load today. Row verification dates are unchanged.
+
+The 2026-09-17 session-commit change was checked against the
 recorded rows rather than re-derived from the checkouts. It renames and removes
 nothing: `pie-item-player` gains one opt-in property, `session-snapshot`, one
 event, `session-snapshot-available`, and two methods,
@@ -817,8 +923,11 @@ Method: `waitForSectionController(timeoutMs)` (A, off a
 (R, off the event's `currentTarget`). Both overloads are live. Since 0.3.75
 `waitForSectionController` resolves on `toolkit-ready` or when the controller
 resolves, where it polled before; the signature and the timeout are unchanged.
-Since 2026-10-08 neither call advances the stage chain: only `toolkit-ready`
-does, so a read during a section switch can return the outgoing controller.
+Since 2026-10-08 neither call advances the stage chain: the toolkit's
+`section-ready` does. Both look the controller up by the incoming section's id:
+during a section switch `getSectionController()` returns `null`, or on a revisit
+the incoming section's cached controller, and `waitForSectionController` returns
+that cached controller or waits for the incoming one.
 
 Events: `toolkit-ready`, read as `event.detail.coordinator`. A listens with
 `addEventListener`; R uses the Svelte 5 `ontoolkit-ready` attribute form. R also
@@ -901,7 +1010,7 @@ that token keeps PIE's default.
 It registers through its own bundled copy of `pie-theme`, while `<pie-theme>` is
 defined by whichever copy loads first. On its vendored build each copy keeps a
 private registry, so an earlier PIE remote on the same page leaves Host M on
-default colours. The page-wide registry of 2026-10-02 removes that once every
+default colors. The page-wide registry of 2026-10-02 removes that once every
 copy on the page carries it.
 
 ### Internal layout CEs as style selectors (Host A)
@@ -954,12 +1063,12 @@ consumer:
 - TTS settings — `toolkitCoordinator`, `storageKey`, `customProviders`, and an
   `onclose` callback prop
 
-`customProviders` is the sharp one. Its entries are duck-typed rather than
-imported: `{ id, label, description, mode: "adapter", checkAvailability({
-apiEndpoint, state }) }`, returning `{ available, message }`. Nothing in this
-repository types what the host passes, so a change to the member names or to the
-`checkAvailability` argument shape is a silent no-op there — the panel loses a
-provider row and reports nothing.
+`customProviders` is the sharp one. The panel types its entries as
+`CustomProviderDescriptor`, exported from the package since 2026-10-09, but Host
+R builds them untyped: `{ id, label, description, checkAvailability, buildApplyConfig,
+preview }`, plus a `mode` and an apply `message` the panel no longer reads. Until
+the host imports the type, a change to the member names or to the context shape
+is a silent no-op there — the panel loses a provider row and reports nothing.
 
 ## Programmatic API (Host R only)
 
@@ -1229,7 +1338,8 @@ loophole to tighten.
 
 Since 0.3.75 a tool whose provider fails to start leaves the section on screen
 and reports itself unavailable, unless policy grants it through an item
-requirement, a district requirement or a profile support; a granted tool's
+requirement, a district requirement, a profile support or a test-administration
+override set to `true`; a granted tool's
 failure ends in the section's error state. So a failing Desmos auth fetch leaves
 the calculator unavailable and reports a recoverable `provider-init` error, where
 before it showed only in the calculator panel; a calculator policy grants now
@@ -1520,7 +1630,7 @@ Verified against the checkout on 2026-09-25.
 
 Host A type-checks with TypeScript's `node10` resolution, which this repository
 does not support (see
-[Library Packaging Strategy](../setup/library-packaging-strategy.md#consumer-guidance-current-scope)),
+[TypeScript](../install/packages.md#typescript)),
 and leaves `skipLibCheck` at its default, `false`, so every `@pie-players`
 declaration its program loads is checked. That program loads `pie-theme`'s root
 declarations and nothing else: the `pie-section-player` component subpath is a
@@ -1591,7 +1701,7 @@ item-player's 0.3.61 changelog shows only a lockstep dependency bump while that
 release's tree already contained the installing code. Version comparisons here
 use 0.3.61 as the threshold; a host reading only the changelog will over-pin
 to 0.3.62. The player installs nothing when the host already loads a copy,
-recognised by the `--pie-content-styles` sentinel even inside `@scope`, and
+recognized by the `--pie-content-styles` sentinel even inside `@scope`, and
 removes its own copy when the host's lands later. The explicit opt-out is
 `data-pie-content-styles="host"` on `<html>`; `auditContentStyles` warns once per
 page when a host sets it and then loads nothing.
@@ -1643,7 +1753,7 @@ and it was restored on 2026-10-06. Also gone from the
 heading reset is `font-weight: 500`, so authored headings render at the browser's
 weight; hosts V and A both load this stylesheet and will see that.
 
-Separately from delivery, the stylesheet's own colours now resolve through
+Separately from delivery, the stylesheet's own colors now resolve through
 canonical tokens. For a host on the base light theme the values are the ones it
 already rendered, with one visible exception: legacy `kds-*` table headers take
 `--pie-background-dark`, so their fill lightens from `#d3d3d3` to `#ecedf1`.
@@ -1792,8 +1902,8 @@ re-derived rather than remembered.
   preloaded package's `pie` block, and the registry publish time beside them
 - `runtime.playerType`, `runtime.lazyInit`,
   `runtime.player.loaderConfig`, and `env` on the section-player runtime
-- The five debugger and settings panel CE prop sets, and the duck-typed
-  `customProviders` entry shape
+- The five debugger and settings panel CE prop sets, and the `customProviders`
+  entry shape, which Host R builds without importing `CustomProviderDescriptor`
 - `providerOptions` on the TTS provider config
 - The dictionary lookup wire contract. It breaks a host-served *endpoint*, so no
   typecheck spans the boundary; the shape is now importable, though —
@@ -1803,8 +1913,8 @@ re-derived rather than remembered.
 
 `createToolsConfig` is typed in Host R, so a signature change there surfaces as a
 type error on its next typecheck rather than at runtime. The rest of this list
-does not: `env`, the CE prop sets and `customProviders` are all untyped at
-the boundary, the dictionary contract crosses an HTTP endpoint no typecheck can
+does not: `env`, the CE prop sets and `customProviders` are all untyped on
+Host R's side of the boundary, the dictionary contract crosses an HTTP endpoint no typecheck can
 span even now that its shape ships, and the `pie-item-player` properties arrive
 over a CDN with no typecheck at all.
 
@@ -2047,7 +2157,7 @@ repo.
   fork is now four capabilities behind at section level — the two dictionaries and
   their Spanish variants — which is why that host serves a dictionary endpoint
   and never shows a dictionary panel. Its item and passage lists still match. The
-  last surviving instance of the forking pattern its colour schemes used to share.
+  last surviving instance of the forking pattern its color schemes used to share.
 - Host R declares four `@pie-players` packages it imports nowhere:
   `pie-calculator-desmos`, `pie-tool-text-to-speech`,
   `pie-section-player-tools-shared`, `tts-client-server`. The packaged registry
@@ -2084,7 +2194,7 @@ repo.
   `pie-theme`, which both packages declare from that release too. The types are
   identical, so the local entries become redundant without conflicting.
 - Host M's comment on registering its provider says an earlier PIE remote leaves
-  it on default colours. True on its vendored build, stale once every
+  it on default colors. True on its vendored build, stale once every
   `pie-theme` copy on the page carries the page-wide registry.
 
 ## Refresh procedure

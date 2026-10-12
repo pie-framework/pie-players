@@ -157,8 +157,9 @@ function applyReadinessUpdate(
 	}
 
 	// Canonical `loading-complete` emission. One-shot per cohort, gated
-	// on the readiness signals indicating every item has finished
-	// loading.
+	// on `allLoadingComplete`: section ready plus the host's loading signal,
+	// which the section player kernel raises once the element pre-warm
+	// resolves.
 	if (detail.allLoadingComplete && state.cohort && !loadingCompleteEmitted) {
 		loadingCompleteEmitted = true;
 		outputs.push({

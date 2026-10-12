@@ -3,31 +3,55 @@ import { describe, expect, spyOn, test } from "bun:test";
 import { ElementToolStateStore } from "../src/services/ElementToolStateStore.js";
 
 describe("ElementToolStateStore", () => {
+	const key = (
+		store: ElementToolStateStore,
+		assessmentId: string,
+		sectionId: string,
+		attemptId: string,
+		itemId = "i",
+		elementId = "e",
+	) =>
+		store.getGlobalElementId({
+			assessmentId,
+			sectionId,
+			attemptId,
+			itemId,
+			elementId,
+		});
+
 	test("ids containing ':' round-trip and do not collide", () => {
 		const store = new ElementToolStateStore();
 		const parts = {
 			assessmentId: "urn:a:1",
 			sectionId: "s%3A1",
+			attemptId: "attempt:1",
 			itemId: "item",
 			elementId: "mc:1",
 		};
-		const id = store.getGlobalElementId(
-			parts.assessmentId,
-			parts.sectionId,
-			parts.itemId,
-			parts.elementId,
-		);
+		const id = store.getGlobalElementId(parts);
 		expect(store.parseGlobalElementId(id)).toEqual(parts);
-		expect(store.getGlobalElementId("a:b", "c", "d", "e")).not.toBe(
-			store.getGlobalElementId("a", "b:c", "d", "e"),
-		);
+		expect(key(store, "a:b", "c", "")).not.toBe(key(store, "a", "b:c", ""));
+		expect(store.parseGlobalElementId("a:s:i:e")).toBeNull();
 	});
 
-	test("clearSection clears only the named section when ids contain ':'", () => {
+	test("two attempts at one element keep separate state", () => {
 		const store = new ElementToolStateStore();
-		const cleared = store.getGlobalElementId("a", "s", "i", "e");
-		const kept = store.getGlobalElementId("a", "s:1", "i", "e");
-		store.setState(cleared, "answerEliminator", { x: 1 });
+		store.setState(key(store, "a", "s", "attempt-1"), "answerEliminator", {
+			eliminatedChoices: ["c1"],
+		});
+		expect(
+			store.getState(key(store, "a", "s", "attempt-2"), "answerEliminator"),
+		).toBeUndefined();
+		expect(
+			store.getState(key(store, "a", "s", ""), "answerEliminator"),
+		).toBeUndefined();
+	});
+
+	test("clearSection clears the named section across attempts when ids contain ':'", () => {
+		const store = new ElementToolStateStore();
+		const cleared = [key(store, "a", "s", "t1"), key(store, "a", "s", "t2")];
+		const kept = key(store, "a", "s:1", "t1");
+		for (const id of cleared) store.setState(id, "answerEliminator", { x: 1 });
 		store.setState(kept, "answerEliminator", { x: 2 });
 		store.clearSection("a", "s");
 		expect(Object.keys(store.getAllState())).toEqual([kept]);

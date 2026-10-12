@@ -12,7 +12,7 @@ export type SectionPlayerCardRenderContext = {
 	cardTitleFormatter?: SectionPlayerCardTitleFormatter;
 };
 
-export const sectionPlayerCardRenderContext =
+const sectionPlayerCardRenderContext =
 	createContext<SectionPlayerCardRenderContext>(
 		Symbol.for("@pie-players/pie-section-player/card-render-context"),
 	);

@@ -42,7 +42,7 @@ export const isShadowRootNode = (
 	(node as Partial<ShadowRoot>).host?.nodeType === ELEMENT_NODE;
 
 /** Toolbars, tool elements and debug panels: chrome around content, never content. */
-export const isToolkitChromeElement = (element: Element): boolean => {
+const isToolkitChromeElement = (element: Element): boolean => {
 	const tag = element.localName?.toLowerCase() || "";
 	if (CHROME_TAGS.has(tag)) return true;
 	return CHROME_TAG_PREFIXES.some((prefix) => tag.startsWith(prefix));
@@ -166,7 +166,7 @@ export const flatQuerySelector = (
  * `node`'s parent in the flat tree: the slot rendering it, else its parent, with
  * a shadow root standing for its host.
  */
-export const flatTreeParentNode = (node: Node): Node | null => {
+const flatTreeParentNode = (node: Node): Node | null => {
 	const slot = (node as Partial<Element>).assignedSlot;
 	if (slot) return slot;
 	const parent = node.parentNode;

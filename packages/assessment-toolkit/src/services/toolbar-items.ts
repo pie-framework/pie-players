@@ -50,11 +50,10 @@ export function isValidToolbarItemShape(value: unknown): value is ToolbarItem {
 	if (item.disabled !== undefined && typeof item.disabled !== "boolean")
 		return false;
 
+	// A link or a button: exactly one of `href` and `onClick`.
 	const hasHref = typeof item.href === "string";
 	const hasOnClick = typeof item.onClick === "function";
-	if (hasHref === hasOnClick) return false;
-	if (hasHref) return true;
-	return hasOnClick;
+	return hasHref !== hasOnClick;
 }
 
 export function isInlineSvgIcon(icon: string | undefined): boolean {

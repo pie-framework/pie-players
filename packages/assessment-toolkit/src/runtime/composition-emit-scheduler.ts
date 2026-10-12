@@ -46,9 +46,9 @@ export const DEFAULT_FRAME_DEADLINE_MS = 100;
  * Timing primitives, injectable so tests can drive the race deterministically.
  *
  * An omitted primitive is resolved from `globalThis` at `schedule()` time
- * rather than captured at construction: the pre-fix code also checked per
- * emit, and a host can install a `requestAnimationFrame` shim after the
- * toolkit is constructed. An explicit `null` opts the primitive out.
+ * rather than captured at construction, because a host can install a
+ * `requestAnimationFrame` shim after the toolkit is constructed. An explicit
+ * `null` opts the primitive out.
  */
 export interface CompositionEmitSchedulerTiming {
 	requestFrame?: ((callback: () => void) => number) | null;
@@ -127,7 +127,7 @@ export function createCompositionEmitScheduler(
 	 *
 	 * The latch is released before the flush callback runs, so a re-entrant
 	 * `schedule()` from inside the flush arms a fresh cycle instead of being
-	 * swallowed. The pre-fix code cleared its latch first for the same reason.
+	 * swallowed.
 	 */
 	function resolve(firedFrom: "frame" | "timer" | "microtask"): void {
 		if (!pending) return;

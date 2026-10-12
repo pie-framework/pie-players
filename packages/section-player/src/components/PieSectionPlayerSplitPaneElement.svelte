@@ -67,6 +67,25 @@
 	}}
 />
 
+<!--
+@component
+Section player layout that renders a section's passages and items side by side with a resizable divider between them, and at or below `narrow-layout-breakpoint` collapses to tabs or one column, per `split-pane-collapse-strategy`. The host sets `runtime` and `section` as properties; the element runs the toolkit, section controller, readiness, element pre-warm and section toolbar around them.
+
+@fires {CustomEvent<StageChangeDetail>} pie-stage-change - When the section enters `composed`, `engine-ready`, `interactive` or `disposed`, or a framework error fails or skips a stage.
+@fires {CustomEvent<LoadingCompleteDetail>} pie-loading-complete - Once per section and attempt, when the element pre-warm resolves and the item cards can mount.
+@fires {CustomEvent<{ componentTag: string; stage: "validate-config" | "iife-load" | "esm-load" | "preloaded-assert"; attempt: number; maxRetries: number; error: string; strategy: string; bundleType: string | null; bundleHost: string; renderablesCount: number; assessmentId?: string; sectionId: string; attemptId?: string }>} element-preload-retry - When the rendering items pane's element pre-warm retries a failed load.
+@fires {CustomEvent<{ componentTag: string; stage: "validate-config" | "iife-load" | "esm-load" | "preloaded-assert"; error: string; strategy: string; bundleType: string | null; bundleHost: string; renderablesCount: number; assessmentId?: string; sectionId: string; attemptId?: string }>} element-preload-error - When the rendering items pane's element pre-warm fails.
+@fires {CustomEvent<FrameworkErrorModel>} framework-error - Bubbles from the inner toolkit. For each framework error the runtime reports; a non-recoverable bootstrap error also shows an error banner in place of the slotted content.
+@fires {CustomEvent<{ composition: unknown; version: number }>} composition-changed - Bubbles from the inner toolkit. When the bound section's composition changes revision, with a version that increases on each change.
+@fires {CustomEvent<{ itemId: string; canonicalItemId: string; sourceRuntimeId: string } & Record<string, unknown>>} session-changed - Bubbles from the inner toolkit. When an item's session in the bound section changes, carrying the section's canonical session detail for that item.
+@fires {CustomEvent<{ runtimeId: string; parentRuntimeId: string | null }>} runtime-owned - Bubbles from the inner toolkit. When the toolkit starts running its own coordinator.
+@fires {CustomEvent<{ runtimeId: string; parentRuntimeId: string | null }>} runtime-inherited - Bubbles from the inner toolkit. When the toolkit adopts an outer toolkit's coordinator, named by `parentRuntimeId`.
+@fires {CustomEvent<{ runtimeId: string; coordinator: ToolkitCoordinator; ownership: "owned" | "inherited" }>} runtime-ready - Bubbles from the inner toolkit. Once per coordinator, with or without a section, from which point a host can drive it.
+@fires {CustomEvent<{ runtimeId: string; assessmentId: string; sectionId: string; itemPlayer: ItemPlayerConfig; coordinator: ToolkitCoordinator }>} toolkit-ready - Bubbles from the inner toolkit. For every section the toolkit initializes, once its section controller resolves.
+@fires {CustomEvent<{ sectionId: string; attemptId: string; controller: unknown }>} section-ready - Bubbles from the inner toolkit. Right after `toolkit-ready`, with the section's controller or null.
+@fires {CustomEvent<{ itemId: string; canonicalItemId: string; session: unknown; sessionCommitReason?: "teardown" | "navigate" | "page-hidden" }>} item-session-changed - Bubbles from an item scope when the item player reports a response change; the player's own `session-changed` stops at the scope.
+-->
+
 <script lang="ts">
 	import { coerceBooleanAttributes } from "@pie-players/pie-players-shared/ui/attribute-coercion";
 	import {
@@ -185,11 +204,9 @@
 		if (usableWidthPx <= 0) {
 			return { min: 50, max: 50 };
 		}
-		// The bound is on the region, not on the grid track it sits in. Each pane
-		// spends its gutter out of its own track, so sizing the track to the
-		// requested width handed back a region that much narrower — a host asking for
-		// 280px to keep a passage legible got 264px, and the shortfall grows with the
-		// gutter.
+		// The bound is on the region, not on the grid track it sits in: each pane
+		// spends its gutter out of its own track, so the track is the requested
+		// region width plus that gutter.
 		const trackWidthPx = minRegionWidthPx + getPaneGutterPx(container);
 		const rawMinPercent = (trackWidthPx / usableWidthPx) * 100;
 		if (!Number.isFinite(rawMinPercent) || rawMinPercent >= 50) {
@@ -335,12 +352,6 @@
 		});
 	});
 
-	const layoutElement = $host();
-	const forwardPreloadRetry = (detail: Record<string, unknown>) =>
-		layoutElement.dispatchEvent(new CustomEvent("element-preload-retry", { detail }));
-	const forwardPreloadError = (detail: Record<string, unknown>) =>
-		layoutElement.dispatchEvent(new CustomEvent("element-preload-error", { detail }));
-
 	function handleSplitResize(next: number) {
 		if (!splitContainerElement) return;
 		if (Number.isNaN(next)) return;
@@ -421,8 +432,6 @@
 	{policies}
 	{hooks}
 	{toolConfigStrictness}
-	onElementPreloadRetry={forwardPreloadRetry}
-	onElementPreloadError={forwardPreloadError}
 	sourceCe="pie-section-player-splitpane"
 	host={hostElement}
 	playerActionConfig={{
@@ -499,15 +508,6 @@
 </SectionPlayerLayoutKernel>
 
 <style>
-	:host {
-		display: block;
-		width: 100%;
-		height: 100%;
-		min-height: 0;
-		max-height: 100%;
-		overflow: hidden;
-	}
-
 	.pie-section-player-split-frame {
 		width: 100%;
 		max-width: var(--pie-section-player-layout-max-width, none);
@@ -538,9 +538,7 @@
 		overscroll-behavior: contain;
 		/* Margin (not padding) so the gutter sits outside the scrollable
 		   region. Padding lives inside the scroll box, letting any child
-		   that uses position:sticky bleed into it as content scrolls past.
-		   Kept as margin so this pane composes cleanly with arbitrary
-		   descendant content (sticky headers, floating toolbars, etc.). */
+		   that uses position:sticky bleed into it as content scrolls past. */
 		margin: 0.5rem;
 		box-sizing: border-box;
 		/* Backdrop for the scroll surround behind the cards. Deliberately the

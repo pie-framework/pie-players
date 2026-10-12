@@ -1,10 +1,12 @@
 # Instrumentation Providers Implementation Plan
 
-Status: Active — slices, order and evidence gates. Slices 1 and 4 landed on
-2026-09-25 (a0408d4a, da9e2f71); slices 2, 3, 5, 6 and 7 are open. The
+Status: Active. Slices 1 and 4 have landed; slices 2, 3, 5, 6 and 7 are open.
+
+This plan sequences the instrumentation work for contributors. The
 [design note](./instrumentation-providers.md) owns the model, the ownership
 boundary and the open questions; this file owns sequence, done conditions and
-release evidence.
+release evidence. When the open slices land, the design note's status line
+records the outcome and this plan retires.
 
 Owner: PIE Players maintainers
 
@@ -26,11 +28,15 @@ Related:
   `bun run check:changeset-patch-only` is the gate and pending `minor` entries
   are release blockers.
 - Slices 3 and 4 change no host-visible behavior. Slices 1, 2 and 6 change what
-  Host P's backend receives, as the design note's
+  the backend of Host P, a consumer in the
+  [consumer API dependencies](../integrations/consumer-api-dependencies.md)
+  record, receives, as the design note's
   [consumer position](./instrumentation-providers.md#consumer-position)
   records. Slice 5 does not land before its evidence gate clears.
 
 ## Slice 1: Probed Readiness
+
+Landed in a0408d4a.
 
 `initialized` means configured. `isReady()` probes the live global on every
 call, and `NewRelicInstrumentationProvider` resolves its handle per call instead
@@ -68,6 +74,8 @@ it. This slice is what carries the claim that the contract is not vendor-shaped.
 
 ## Slice 4: One Default Factory
 
+Landed in da9e2f71.
+
 The module-level memoized instance in `instrumentation-provider-resolution.ts`
 and the per-monitor construction in `resource-monitor.ts` collapse behind one
 internal factory at the resolution seam. The resource monitor stops
@@ -84,8 +92,8 @@ binds. One entry, closed list.
 
 Gate before landing: refresh the consumer pad by its maintenance procedure and
 confirm that no host enables `trackPageActions` without also naming a provider.
-The gate fails on Host P, profiled 2026-09-24; the design note's consumer
-position records what detection and the earlier slices change for that host.
+The gate fails on Host P; the design note's consumer position records what
+detection and the earlier slices change for that host.
 
 Done when the pad is refreshed or its commit trailer recorded,
 `bun run check:consumer-pad` is green, and a page carrying an agent with
@@ -106,16 +114,17 @@ asserted.
 
 Package READMEs and the player tutorials describe probed readiness and
 detection. The design note's status paragraph moves each item from intended to
-built. Host R is fixed in the same push if any name changed; none is planned.
+built. No export is renamed; a rename would need Host R, the module's one
+programmatic consumer, fixed in the same change.
 
 Done when `bun run check:docs` and `bun run verify:pre-commit` pass, and the
-changeset for the detection behavior names which listed host is affected and
-how.
+changeset for the detection behavior states which configuration starts sending
+(`trackPageActions: true` with no provider named) and what it sends.
 
 ## Definition Of Done
 
-- The contract is exercised against three backends, of which PIE ships one
-  adapter.
+- The contract is exercised against three backends, of which PIE ships an
+  adapter for one.
 - No published surface names a backend PIE does not ship an adapter for.
 - An agent that boots after the first player receives telemetry.
 - A host that has not set `trackPageActions` receives nothing.

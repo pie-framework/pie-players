@@ -10,6 +10,7 @@
 		CortexCalculatorSnapshot,
 	} from './calculator-controller.js';
 	import type { KeypadKey, KeypadLayer } from './keypad-layouts.js';
+	import { CORTEX_GRAPH_EXPRESSION_LIMIT } from './settings.js';
 	import type {
 		CortexCalculatorMessageKey,
 		CortexGraphExpressionState,
@@ -309,6 +310,13 @@
 		});
 	}
 
+	function seriesDescription(expression: CortexGraphExpressionState, index: number): string {
+		return i18n.t('seriesDescription', {
+			index: index + 1,
+			lineStyle: i18n.lineStyle(expression.lineStyle),
+		});
+	}
+
 	function removeExpression(id: string): void {
 		controller.removeGraphExpression(id);
 		queueMicrotask(() => addButton?.focus());
@@ -494,10 +502,7 @@
 						class="pie-cortex-series-chip pie-cortex-series-chip--{expression.lineStyle} pie-cortex-series-chip--color-{expression.colorIndex + 1}"
 						class:pie-cortex-series-chip--hidden={expression.hidden}
 						aria-pressed={!expression.hidden}
-						aria-label={i18n.t('seriesDescription', {
-							index: index + 1,
-							lineStyle: i18n.lineStyle(expression.lineStyle),
-						})}
+						aria-label={seriesDescription(expression, index)}
 						onclick={() => {
 							controller.toggleGraphExpression(expression.id);
 							requestSample(0);
@@ -526,10 +531,7 @@
 							unavailable to keyboard-only and touch users.
 						-->
 						<span class="pie-cortex-series-description">
-							{i18n.t('seriesDescription', {
-								index: index + 1,
-								lineStyle: i18n.lineStyle(expression.lineStyle),
-							})}
+							{seriesDescription(expression, index)}
 						</span>
 					</div>
 
@@ -550,7 +552,7 @@
 				bind:this={addButton}
 				type="button"
 				class="pie-cortex-action-button"
-				disabled={expressions.length >= 6}
+				disabled={expressions.length >= CORTEX_GRAPH_EXPRESSION_LIMIT}
 				onclick={() => controller.addGraphExpression()}
 			>{i18n.t('addExpression')}</button>
 			<button
@@ -961,7 +963,6 @@
 		min-width: var(--cortex-control-min-height, 2.75rem);
 		padding: 0.45rem;
 	}
-
 
 	.pie-cortex-viewport-controls {
 		display: flex;

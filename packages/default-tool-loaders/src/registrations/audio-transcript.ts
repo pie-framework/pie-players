@@ -5,13 +5,13 @@
  * Two kinds of content wear the same shape, and the card says which:
  *
  *   - `visibility: "always"` is authored presentation. The item family was
- *     designed to be delivered with its transcript on screen — Star Early
- *     Literacy sentence items, for instance — so no profile grants it and none
- *     revokes it.
+ *     designed to be delivered with its transcript on screen — sentence items in
+ *     an early-literacy assessment, for instance — so no profile grants it and
+ *     none revokes it.
  *   - anything else, `"onGrant"` included, is the accommodation. Policy decides
- *     against the `transcript` support id, and silence means no. For the three
- *     Star families where a visible transcript turns the item into a reading
- *     task, that gate is the whole point.
+ *     against the `transcript` support id, and silence means no. For item
+ *     families where a visible transcript turns the item into a reading task,
+ *     that gate is the whole point.
  *
  * The toolkit renders the text, not the element. Before this, the transcript rode
  * on `model.audioTranscript` and `mc-populated-blank` revealed its own copy when
@@ -42,6 +42,7 @@ import type {
 	ToolSurfaceRenderContext,
 	ToolSurfaceRenderResult,
 } from "@pie-players/pie-assessment-toolkit/tools/registration";
+import { toLanguageTag } from "@pie-players/pie-players-shared/i18n/language-tags";
 
 /** QTI 3.0 / AfA support id gating an audio transcript. */
 export const AUDIO_TRANSCRIPT_FEATURE_ID = "transcript";
@@ -60,6 +61,7 @@ const ALWAYS_VISIBLE = "always";
 export interface ResolvedAudioTranscript {
 	catalogId: string;
 	text: string;
+	/** BCP 47, as the region's `lang` takes it, whatever syntax the card used. */
 	language?: string;
 	/** True when the card declares itself authored presentation. */
 	always: boolean;
@@ -90,6 +92,12 @@ const isAlwaysVisible = (card: TranscriptCardLike): boolean =>
 const cardText = (card: TranscriptCardLike): string =>
 	typeof card.content === "string" ? card.content.trim() : "";
 
+// The Learnosity transform emits POSIX `es_ES`, which `lang` does not accept.
+const cardLanguage = (card: TranscriptCardLike): string | undefined =>
+	typeof card.language === "string"
+		? toLanguageTag(card.language) || undefined
+		: undefined;
+
 /**
  * The transcript an entity carries, or `null`.
  *
@@ -118,7 +126,7 @@ export function resolveAudioTranscript(
 		const resolved: ResolvedAudioTranscript = {
 			catalogId,
 			text,
-			language: typeof card.language === "string" ? card.language : undefined,
+			language: cardLanguage(card),
 			always: isAlwaysVisible(card),
 		};
 		// An `always` card answers whether or not policy granted anything, so it

@@ -4,9 +4,6 @@ const source = await Bun.file(
 	new URL("../tool-ruler.svelte", import.meta.url),
 ).text();
 
-const ruleFor = (selector: string) =>
-	source.match(new RegExp(`${selector.replace(/[.]/g, "\\.")} \\{[^}]*\\}`))?.[0] ?? "";
-
 test("keyboard placement is wired to the panel", () => {
 	expect(source).toInclude("onkeydown={handleKeyDown}");
 });

@@ -4,6 +4,8 @@ import { execSync } from "node:child_process";
 import { existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
+import { highestTaggedVersion } from "./lib/fixed-versioning.mjs";
+
 const ROOT = process.cwd();
 const PACKAGE_ROOT = path.join(ROOT, "packages");
 const CHANGESET_DIR = path.join(ROOT, ".changeset");
@@ -43,7 +45,8 @@ const discoverPublishablePackages = () => {
 };
 
 /**
- * The last release only finishes publishing once npm reports the local version back. Until
+ * The last release only finishes publishing once npm reports the local version back, as the
+ * highest dist-tag (`highestTaggedVersion`), since a prerelease leaves `latest` where it was. Until
  * then a stray merge to master must not manufacture a further bump on top of it — that is
  * exactly how local skipped 0.3.69 on npm straight to 0.3.70. Checked against whichever
  * discovered package npm has published before (a brand-new package 404s, and the group's
@@ -53,12 +56,14 @@ const releaseAlreadyPending = (packages) => {
 	for (const pkg of packages) {
 		let published;
 		try {
-			published = execSync(`npm view "${pkg.name}" version`, {
-				cwd: ROOT,
-				stdio: "pipe",
-			})
-				.toString("utf8")
-				.trim();
+			published = highestTaggedVersion(
+				JSON.parse(
+					execSync(`npm view "${pkg.name}" dist-tags --json`, {
+						cwd: ROOT,
+						stdio: "pipe",
+					}).toString("utf8"),
+				),
+			);
 		} catch (error) {
 			const detail = error.stderr?.toString()?.trim() || error.message || "";
 			if (/E404|404 Not Found/.test(detail)) continue;

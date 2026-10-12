@@ -52,16 +52,17 @@ export function renderReports(root = REPO_ROOT) {
 					target &&
 					(specifier === name || specifier.startsWith(`${name}/`)),
 			)
-			.map(({ specifier, source }) => ({
+			.map(({ specifier, source, typesSource }) => ({
 				subpath:
 					specifier === name ? "." : `./${specifier.slice(name.length + 1)}`,
 				source,
+				typesSource,
 			}))
 			.sort((a, b) => (a.subpath < b.subpath ? -1 : a.subpath > b.subpath ? 1 : 0));
 		if (entries.length === 0) continue;
-		const sections = entries.map(({ subpath, source }) => {
+		const sections = entries.map(({ subpath, source, typesSource }) => {
 			const lines = formatModuleExports(
-				moduleExports(source, { resolvePackage }),
+				entryExports(source, typesSource, resolvePackage),
 			);
 			const body =
 				lines.length > 0
@@ -75,6 +76,25 @@ export function renderReports(root = REPO_ROOT) {
 		);
 	}
 	return reports;
+}
+
+/**
+ * An entry's names: its build source's, plus those of the source its `types`
+ * declarations come from when the build source is Svelte or JavaScript. A name
+ * both export keeps its build-source kind.
+ */
+function entryExports(source, typesSource, resolvePackage) {
+	const built = moduleExports(source, { resolvePackage });
+	if (!typesSource) return built;
+	const declared = moduleExports(typesSource, { resolvePackage });
+	const names = new Map(built.names);
+	for (const [name, kind] of declared.names) {
+		if (!names.has(name)) names.set(name, kind);
+	}
+	return {
+		names,
+		unresolved: new Set([...built.unresolved, ...declared.unresolved]),
+	};
 }
 
 /** Entry -> names, parsed back from a report, for a readable failure. */

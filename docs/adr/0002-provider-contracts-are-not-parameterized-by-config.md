@@ -4,6 +4,11 @@ Status: Accepted, 2026-08-26
 
 Owner: PIE Players maintainers
 
+Read with: [Update, 2026-09-27](#update-2026-09-27), which moves the calculator tool
+providers and removes the toolkit's optional peers, and
+[Update, 2026-10-08](#update-2026-10-08), which gives the current
+`ToolProviderApi<TInstance>` shape. The code examples in the body predate both.
+
 ## Decision
 
 A provider contract interface in a `@pie-players` contract package — `CalculatorProvider`
@@ -81,13 +86,11 @@ callers that had no business writing vendor config.
   vendor needs a key, or a host endpoint that mints one, and instrumentation for the
   load and auth events. A vendor field that does not generalize goes in the
   adapter's own config instead.
-- Reviewers reach this through the `api-design-reviewer` checklist, which carries the
-  argument-only-position rule and the optional-peer rule.
-- Both rules are also stated in `AGENTS.md` — under "Decision Records" as rules, and
-  generalized under "Design Principles" as the bar they came from: match the
-  precedent this framework already sets, keep a contract from leaking who implements
-  it, and delete a surface that constrains nothing rather than documenting that it is
-  harmless. A rule reachable only from an ADR is not loaded when it is needed.
+- Review enforces both rules. The `api-design-reviewer` checklist carries them, and
+  `AGENTS.md` states them under "Decision Records" and generalizes them under
+  "Design Principles" as the bar they came from: match the precedent this framework
+  already sets, keep a contract from leaking who implements it, and delete a surface
+  that constrains nothing.
 
 ## History
 

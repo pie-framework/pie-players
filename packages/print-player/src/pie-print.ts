@@ -100,7 +100,6 @@ export class PiePrint extends LitElement {
 		return this;
 	}
 
-	// Private properties
 	private _resolve: ResolverFn;
 	private _loadResolutions: LoadResolutionFn;
 	private _missingElement: MissingElFn;
@@ -183,7 +182,6 @@ export class PiePrint extends LitElement {
 					tagName,
 					`item element tag for ${pkg}`,
 				);
-				console.log("[pie-print] Resolving tagName:", tagName, "pkg", pkg);
 				return this._resolve(validatedTag, pkg).then((res) => {
 					if (!res.printTagName) {
 						res.printTagName = toPrintHashedTag(res.tagName, res.url, hashCode);

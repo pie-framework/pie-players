@@ -400,18 +400,16 @@ describe("tool-tts-inline keyboard order contract", () => {
 	test("the trigger never disables itself while playback startup is in flight", () => {
 		// A disabled element cannot hold focus, so disabling the trigger mid-action
 		// blurs it and a keyboard user loses their place on every Play press.
-		// Re-entrancy is guarded through initialization and native playback start;
+		// Re-entrancy is guarded until the read starts playing or settles;
 		// the pending state is exposed with aria-busy.
 		expect(source).not.toContain(
-			"disabled={!ttsService || playActionInFlight}",
+			"disabled={!ttsService || playbackStartInFlight}",
 		);
-		expect(source).not.toContain("disabled={!ttsService || startupInFlight}");
-		expect(source).toContain("'aria-busy': startupInFlight ? 'true' : null");
+		expect(source).toContain("'aria-busy': playbackStartInFlight ? 'true' : null");
 		expect(source).toContain(
-			"aria-busy={startupInFlight ? 'true' : undefined}",
+			"aria-busy={playbackStartInFlight ? 'true' : undefined}",
 		);
-		expect(source).toContain("startupInFlight ||");
-		expect(source).toContain("if (playActionInFlight) return;");
+		expect(source).toContain("if (playbackStartInFlight ||");
 	});
 
 	test("the trigger stays visibly focused after a pointer activation", () => {

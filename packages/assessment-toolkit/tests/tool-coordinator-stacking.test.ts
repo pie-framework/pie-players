@@ -84,7 +84,7 @@ describe("ToolCoordinator stacking", () => {
 
 		coordinator.updateToolElement("protractor:section:s1", inner);
 
-		expect(coordinator.getToolElement("protractor:section:s1")).toBe(shell);
+		expect(coordinator.getToolState("protractor:section:s1")?.element).toBe(shell);
 	});
 
 	test("the coordinator leaves display to whoever renders the tool", () => {

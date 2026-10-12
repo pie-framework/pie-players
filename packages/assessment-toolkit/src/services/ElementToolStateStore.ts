@@ -1,25 +1,34 @@
 /**
- * ElementToolStateStore - Manages element-level ephemeral tool state
+ * ElementToolStateStore: ephemeral UI tool state (answer eliminations, flags and
+ * the like), kept out of the session data sent to the server for scoring.
  *
- * Provides centralized storage for UI tool state (answer eliminations, flags, etc.)
- * that should NOT be sent to the server for scoring. Each element is uniquely identified
- * across the entire assessment using composite keys.
- *
- * Key features:
- * - Element-level granularity (not item-level)
- * - Composite keys for global uniqueness: `assessmentId:sectionId:itemId:elementId`
- * - Cross-section state persistence
- * - Reactive subscriptions
- * - Optional persistence callback integration
- * - Generic solution for any tool
+ * State is keyed by a composite global element id,
+ * `assessmentId:sectionId:attemptId:itemId:elementId`, unique across the
+ * assessment and per attempt: two attempts at one section never share a key.
+ * Subscribers see every change, and an optional persistence callback
+ * (`setOnStateChange`) receives the serialized state.
  */
 
+/**
+ * The parts of a global element id. `attemptId` is `""` when the host names no
+ * attempt. A tool whose state belongs to an item or a section rather than to
+ * one element leaves `elementId`, and for a section `itemId`, as `""`.
+ */
 export interface ElementIdComponents {
 	assessmentId: string;
 	sectionId: string;
+	attemptId: string;
 	itemId: string;
 	elementId: string;
 }
+
+const ID_PARTS = [
+	"assessmentId",
+	"sectionId",
+	"attemptId",
+	"itemId",
+	"elementId",
+] as const satisfies readonly (keyof ElementIdComponents)[];
 
 function escapeIdPart(part: string): string {
 	return part.replace(/%/g, "%25").replace(/:/g, "%3A");
@@ -37,48 +46,39 @@ export class ElementToolStateStore {
 		| null = null;
 
 	/**
-	 * Generates a globally unique element ID by combining assessment, section, item, and element IDs.
-	 * Format: `${assessmentId}:${sectionId}:${itemId}:${elementId}`, each part with
-	 * `%` written as `%25` and `:` as `%3A`, so an id containing `:` round-trips
-	 * and cannot collide with another split of the same characters.
+	 * Generates a globally unique element ID from its parts.
+	 * Format: `${assessmentId}:${sectionId}:${attemptId}:${itemId}:${elementId}`,
+	 * each part with `%` written as `%25` and `:` as `%3A`, so an id containing
+	 * `:` round-trips and cannot collide with another split of the same characters.
 	 *
 	 * @example
-	 * getGlobalElementId('demo-assessment', 'section-1', 'q1', 'mc1')
-	 * // Returns: "demo-assessment:section-1:q1:mc1"
+	 * getGlobalElementId({ assessmentId: 'demo-assessment', sectionId: 'section-1',
+	 *   attemptId: 'attempt-1', itemId: 'q1', elementId: 'mc1' })
+	 * // Returns: "demo-assessment:section-1:attempt-1:q1:mc1"
 	 */
-	getGlobalElementId(
-		assessmentId: string,
-		sectionId: string,
-		itemId: string,
-		elementId: string,
-	): string {
-		return [assessmentId, sectionId, itemId, elementId]
-			.map(escapeIdPart)
-			.join(":");
+	getGlobalElementId(parts: ElementIdComponents): string {
+		return ID_PARTS.map((name) => escapeIdPart(parts[name])).join(":");
 	}
 
 	/**
 	 * Parses a global element ID into its component parts.
 	 *
 	 * @example
-	 * parseGlobalElementId('demo-assessment:section-1:q1:mc1')
-	 * // Returns: { assessmentId: 'demo-assessment', sectionId: 'section-1', itemId: 'q1', elementId: 'mc1' }
+	 * parseGlobalElementId('demo-assessment:section-1:attempt-1:q1:mc1')
+	 * // Returns: { assessmentId: 'demo-assessment', sectionId: 'section-1',
+	 * //   attemptId: 'attempt-1', itemId: 'q1', elementId: 'mc1' }
 	 */
 	parseGlobalElementId(globalElementId: string): ElementIdComponents | null {
 		const parts = globalElementId.split(":");
-		if (parts.length !== 4) return null;
-		const [assessmentId, sectionId, itemId, elementId] =
+		if (parts.length !== ID_PARTS.length) return null;
+		const [assessmentId, sectionId, attemptId, itemId, elementId] =
 			parts.map(unescapeIdPart);
-		return { assessmentId, sectionId, itemId, elementId };
+		return { assessmentId, sectionId, attemptId, itemId, elementId };
 	}
 
 	/**
 	 * Sets tool state for a specific element.
 	 * Notifies all subscribers and triggers persistence callback.
-	 *
-	 * @param globalElementId Composite key identifying the element
-	 * @param toolId Tool identifier (e.g., 'answerEliminator', 'flagging')
-	 * @param state Tool-specific state object
 	 */
 	setState(globalElementId: string, toolId: string, state: unknown): void {
 		let elementState = this.elementStates.get(globalElementId);
@@ -91,23 +91,12 @@ export class ElementToolStateStore {
 		this._notifyStateChange();
 	}
 
-	/**
-	 * Gets tool state for a specific element.
-	 *
-	 * @param globalElementId Composite key identifying the element
-	 * @param toolId Tool identifier
-	 * @returns Tool state or undefined if not found
-	 */
+	/** One tool's state for an element, or `undefined` when none is set. */
 	getState(globalElementId: string, toolId: string): unknown {
 		return this.elementStates.get(globalElementId)?.get(toolId);
 	}
 
-	/**
-	 * Gets all tool states for a specific element.
-	 *
-	 * @param globalElementId Composite key identifying the element
-	 * @returns Object with tool states keyed by toolId
-	 */
+	/** Every tool's state for an element, keyed by toolId. */
 	getElementState(globalElementId: string): Record<string, unknown> {
 		const elementState = this.elementStates.get(globalElementId);
 		if (!elementState) return {};
@@ -115,10 +104,8 @@ export class ElementToolStateStore {
 	}
 
 	/**
-	 * Gets all tool states for all elements.
-	 * Used for persistence and debugging.
-	 *
-	 * @returns Nested object: { globalElementId: { toolId: state } }
+	 * All state as `{ globalElementId: { toolId: state } }`, for persistence and
+	 * debugging.
 	 */
 	getAllState(): Record<string, Record<string, unknown>> {
 		const result: Record<string, Record<string, unknown>> = {};
@@ -131,10 +118,8 @@ export class ElementToolStateStore {
 	/**
 	 * Subscribes to state changes.
 	 * Callback is invoked whenever any element's tool state changes, including
-	 * a `loadState` restore, with a copy of the state that it may keep.
-	 *
-	 * @param callback Function to call on state changes
-	 * @returns Unsubscribe function
+	 * a `loadState` restore, with a copy of the state that it may keep. Returns
+	 * the unsubscribe function.
 	 */
 	subscribe(
 		callback: (state: Map<string, Map<string, unknown>>) => void,
@@ -163,8 +148,6 @@ export class ElementToolStateStore {
 	/**
 	 * Sets a callback to be invoked on state changes for persistence integration.
 	 * Used by demo/app layer to persist tool state to localStorage or server.
-	 *
-	 * @param callback Function to call with serialized state on changes
 	 */
 	setOnStateChange(
 		callback: (state: Record<string, Record<string, unknown>>) => void,
@@ -185,8 +168,6 @@ export class ElementToolStateStore {
 	 * Loads tool state from serialized format.
 	 * Used to restore state from localStorage or server. Subscribers are
 	 * notified; the persistence callback is not, so a restore never writes back.
-	 *
-	 * @param state Serialized state object
 	 */
 	loadState(state: Record<string, Record<string, unknown>>): void {
 		this.elementStates.clear();
@@ -197,11 +178,7 @@ export class ElementToolStateStore {
 		this._notifyListeners();
 	}
 
-	/**
-	 * Clears all tool state for a specific element.
-	 *
-	 * @param globalElementId Composite key identifying the element
-	 */
+	/** Clears all tool state for a specific element. */
 	clearElement(globalElementId: string): void {
 		this.elementStates.delete(globalElementId);
 		this._notifyListeners();
@@ -211,8 +188,6 @@ export class ElementToolStateStore {
 	/**
 	 * Clears state for a specific tool across all elements.
 	 * Useful when disabling a tool globally.
-	 *
-	 * @param toolId Tool identifier
 	 */
 	clearTool(toolId: string): void {
 		for (const elementState of this.elementStates.values()) {
@@ -223,11 +198,8 @@ export class ElementToolStateStore {
 	}
 
 	/**
-	 * Clears all tool state for a specific section.
+	 * Clears all tool state for a specific section, across its attempts.
 	 * Useful when unmounting/disposing a section.
-	 *
-	 * @param assessmentId Assessment identifier
-	 * @param sectionId Section identifier
 	 */
 	clearSection(assessmentId: string, sectionId: string): void {
 		const prefix = `${escapeIdPart(assessmentId)}:${escapeIdPart(sectionId)}:`;

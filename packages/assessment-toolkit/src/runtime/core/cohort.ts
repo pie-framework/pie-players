@@ -20,15 +20,6 @@ export interface CohortKey {
 }
 
 /**
- * Stable string form of the cohort tuple used as a key for the
- * `loadingCompleteEmittedForCohort` latch and equality checks.
- */
-export function cohortKey(cohort: CohortKey | null): string {
-	if (!cohort) return "";
-	return `${cohort.sectionId}|${cohort.attemptId}`;
-}
-
-/**
  * `true` iff the two cohorts have the same `(sectionId, attemptId)` pair.
  * Treats both inputs as identifying the cohort by value, never by
  * reference.

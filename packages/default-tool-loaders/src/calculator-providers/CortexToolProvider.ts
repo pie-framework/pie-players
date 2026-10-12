@@ -5,7 +5,6 @@ import type {
 	LazyCalculatorProviderDefinition,
 } from "./LazyCalculatorToolProvider.js";
 import { LazyCalculatorToolProvider } from "./LazyCalculatorToolProvider.js";
-import type { ToolProviderCapabilities } from "@pie-players/pie-assessment-toolkit/tools/registration";
 
 export type CortexToolProviderConfig = CalculatorToolProviderInitConfig;
 
@@ -24,20 +23,6 @@ export class CortexToolProvider extends LazyCalculatorToolProvider<CortexToolPro
 			},
 			initializationErrorMessage:
 				"Failed to initialize the PIE open-source calculator provider. Confirm that this browser supports module workers and that the bundled worker assets are available.",
-		};
-	}
-
-	getCapabilities(): ToolProviderCapabilities {
-		return {
-			supportsOffline: true,
-			requiresAuth: false,
-			maxInstances: null,
-			features: {
-				basic: true,
-				scientific: true,
-				graphing: true,
-				fourFunction: true,
-			},
 		};
 	}
 }

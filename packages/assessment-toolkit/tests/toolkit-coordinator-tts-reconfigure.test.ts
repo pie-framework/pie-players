@@ -59,9 +59,7 @@ describe("ToolkitCoordinator TTS reconfigure sequencing", () => {
 			apiEndpoint: "/api/tts",
 		} as any);
 
-		await coordinator.ensureTTSReady(
-			coordinator.getToolConfig("textToSpeech") ?? undefined,
-		);
+		await coordinator.ensureTTSReady();
 
 		expect(initializedAfterReconfigure).toBe(true);
 		expect(internals.ttsInitialized).toBe(true);
@@ -173,8 +171,8 @@ describe("ToolkitCoordinator TTS reconfigure sequencing", () => {
 
 		const internals = coordinator as any;
 		let capturedConfig: any = null;
-		internals._initializeTTS = async (config: unknown) => {
-			capturedConfig = config;
+		internals._initializeTTS = async () => {
+			capturedConfig = internals.resolveTTSToolConfig();
 			internals.ttsInitialized = true;
 		};
 
@@ -261,9 +259,7 @@ describe("ToolkitCoordinator TTS reconfigure sequencing", () => {
 				style: "Paren_Silent",
 			},
 		} as any);
-		await coordinator.ensureTTSReady(
-			coordinator.getToolConfig("textToSpeech") ?? undefined,
-		);
+		await coordinator.ensureTTSReady();
 
 		expect(capturedConfig?.providerOptions?.mathSpeech).toEqual({
 			domain: "clearspeak",
@@ -307,9 +303,7 @@ describe("ToolkitCoordinator TTS reconfigure sequencing", () => {
 		coordinator.updateToolConfig("textToSpeech", {
 			rate: 1.25,
 		} as any);
-		await coordinator.ensureTTSReady(
-			coordinator.getToolConfig("textToSpeech") ?? undefined,
-		);
+		await coordinator.ensureTTSReady();
 
 		expect(capturedConfig?.rate).toBe(1.25);
 		expect(capturedConfig?.providerOptions?.mathSpeech).toEqual({
@@ -357,9 +351,7 @@ describe("ToolkitCoordinator TTS reconfigure sequencing", () => {
 				style: "ImpliedTimes_MoreImpliedTimes",
 			},
 		} as any);
-		await coordinator.ensureTTSReady(
-			coordinator.getToolConfig("textToSpeech") ?? undefined,
-		);
+		await coordinator.ensureTTSReady();
 
 		expect(capturedConfig?.providerOptions?.mathSpeech).toEqual({
 			domain: "clearspeak",

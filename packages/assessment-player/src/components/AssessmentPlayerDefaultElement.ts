@@ -48,8 +48,7 @@ interface SectionPlayerHostElement extends HTMLElement {
 }
 
 interface TtsServiceHandle {
-	stop?: () => void;
-	requestControlHandoff?: () => void;
+	stop(): void;
 }
 
 interface CoordinatorWithTtsService {
@@ -57,7 +56,7 @@ interface CoordinatorWithTtsService {
 	reportFrameworkError?: (model: FrameworkErrorModel) => void;
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
+function isObjectLike(value: unknown): value is Record<string, unknown> {
 	return Boolean(value) && typeof value === "object";
 }
 
@@ -70,7 +69,7 @@ function sameContent(a: unknown, b: unknown): boolean {
 		}
 		return a.every((entry, index) => sameContent(entry, b[index]));
 	}
-	if (!isRecord(a) || !isRecord(b)) return false;
+	if (!isObjectLike(a) || !isObjectLike(b)) return false;
 	const keys = new Set([...Object.keys(a), ...Object.keys(b)]);
 	for (const key of keys) {
 		if (!sameContent(a[key], b[key])) return false;
@@ -81,6 +80,31 @@ function sameContent(a: unknown, b: unknown): boolean {
 const DEFAULT_SECTION_TAG = "pie-section-player-splitpane";
 const VERTICAL_SECTION_TAG = "pie-section-player-vertical";
 
+/**
+ * Reference multi-section assessment player. A host gives it an `assessment`
+ * definition and `assessment-id`, optionally with `attempt-id`, `session` and
+ * `hooks`; it creates an `AssessmentController` for the attempt, mounts the
+ * current section in a split-pane or vertical section player, and renders the
+ * section position with Back and Next controls.
+ *
+ * @fires {CustomEvent<{ controller: AssessmentControllerHandle }>} assessment-controller-ready -
+ *   When the controller has initialized and hydrated the attempt.
+ * @fires {CustomEvent<AssessmentNavigationRequestedDetail>} assessment-navigation-requested -
+ *   Before Back, Next or a navigate method moves to another section, cancelable
+ *   to stay.
+ * @fires {CustomEvent<AssessmentRouteChangedDetail>} assessment-route-changed -
+ *   When the current section changes.
+ * @fires {CustomEvent<{ type: "assessment-session-applied"; timestamp: number }>} assessment-session-applied -
+ *   When hydration applies a persisted or assigned session.
+ * @fires {CustomEvent<{ type: "assessment-session-changed"; timestamp: number }>} assessment-session-changed -
+ *   When navigation or a section snapshot changes the assessment session.
+ * @fires {CustomEvent<AssessmentProgressChangedDetail>} assessment-progress-changed -
+ *   When the visited-section count changes.
+ * @fires {CustomEvent<AssessmentSubmissionStateChangedDetail>} assessment-submission-state-changed -
+ *   When `submit()` records the submission state.
+ * @fires {CustomEvent<{ error: unknown }>} assessment-error - When the attempt
+ *   fails to load, a ready hook rejects, or a section fails to load or restore.
+ */
 export class AssessmentPlayerDefaultElement
 	extends HTMLElement
 	implements AssessmentPlayerRuntimeHostContract
@@ -694,7 +718,6 @@ export class AssessmentPlayerDefaultElement
 			sectionPlayerRuntime: this.sectionPlayerRuntime,
 			playerType: this.playerType,
 			assessmentId: this.assessmentId || undefined,
-			attemptId: this.attemptId || undefined,
 			env: this.env as Record<string, unknown> | null,
 			coordinator: this.coordinator,
 		}) as Record<string, unknown>;
@@ -721,7 +744,10 @@ export class AssessmentPlayerDefaultElement
 		const coordinator = this.coordinator as CoordinatorWithTtsService | null;
 		const ttsService = coordinator?.ttsService;
 		if (!ttsService) return;
-		const reportTtsError = (error: unknown) => {
+		try {
+			// A stop also closes the inline TTS panels.
+			ttsService.stop();
+		} catch (error) {
 			coordinator?.reportFrameworkError?.(
 				frameworkErrorFromUnknown({
 					kind: "tts-init",
@@ -730,16 +756,6 @@ export class AssessmentPlayerDefaultElement
 					recoverable: true,
 				}),
 			);
-		};
-		try {
-			ttsService.stop?.();
-		} catch (error) {
-			reportTtsError(error);
-		}
-		try {
-			ttsService.requestControlHandoff?.();
-		} catch (error) {
-			reportTtsError(error);
 		}
 	}
 

@@ -29,6 +29,22 @@
 	}}
 />
 
+<!--
+@component
+Section player core that renders `<pie-assessment-toolkit>` for its `runtime`, `section` and `session` around its content, and exposes the section controller through `getSectionController()` and `waitForSectionController()`. Every controller it drives commits pending item sessions before navigating, and the element commits them when the page is hidden.
+
+@fires {CustomEvent<FrameworkErrorModel>} framework-error - Bubbles from the inner toolkit. For each framework error the runtime reports; a non-recoverable bootstrap error also shows an error banner in place of the slotted content.
+@fires {CustomEvent<{ composition: unknown; version: number }>} composition-changed - Bubbles from the inner toolkit. When the bound section's composition changes revision, with a version that increases on each change.
+@fires {CustomEvent<{ itemId: string; canonicalItemId: string; sourceRuntimeId: string } & Record<string, unknown>>} session-changed - Bubbles from the inner toolkit. When an item's session in the bound section changes, carrying the section's canonical session detail for that item.
+@fires {CustomEvent<{ runtimeId: string; parentRuntimeId: string | null }>} runtime-owned - Bubbles from the inner toolkit. When the toolkit starts running its own coordinator.
+@fires {CustomEvent<{ runtimeId: string; parentRuntimeId: string | null }>} runtime-inherited - Bubbles from the inner toolkit. When the toolkit adopts an outer toolkit's coordinator, named by `parentRuntimeId`.
+@fires {CustomEvent<{ runtimeId: string; coordinator: ToolkitCoordinator; ownership: "owned" | "inherited" }>} runtime-ready - Bubbles from the inner toolkit. Once per coordinator, with or without a section, from which point a host can drive it.
+@fires {CustomEvent<{ runtimeId: string; assessmentId: string; sectionId: string; itemPlayer: ItemPlayerConfig; coordinator: ToolkitCoordinator }>} toolkit-ready - Bubbles from the inner toolkit. For every section the toolkit initializes, once its section controller resolves.
+@fires {CustomEvent<{ sectionId: string; attemptId: string; controller: unknown }>} section-ready - Bubbles from the inner toolkit. Right after `toolkit-ready`, with the section's controller or null.
+@fires {CustomEvent<{ itemId: string; canonicalItemId: string; session: unknown; sessionCommitReason?: "teardown" | "navigate" | "page-hidden" }>} item-session-changed - Bubbles from an item scope when the item player reports a response change; the player's own `session-changed` stops at the scope.
+@slot - The content the toolkit wraps: the section toolbar shell and the layout.
+-->
+
 <script lang="ts">
 	import { coerceBooleanAttributes } from "@pie-players/pie-players-shared/ui/attribute-coercion";
 	import "@pie-players/pie-assessment-toolkit/components/pie-assessment-toolkit-element";
@@ -37,10 +53,7 @@
 		type ToolkitCoordinatorApi,
 		type ToolRegistry,
 	} from "@pie-players/pie-assessment-toolkit";
-	import {
-		createPackagedToolRegistry,
-		DEFAULT_TOOL_MODULE_LOADERS,
-	} from "@pie-players/pie-default-tool-loaders";
+	import { createPackagedToolRegistry } from "@pie-players/pie-default-tool-loaders";
 	import type { SectionControllerHandle } from "@pie-players/pie-assessment-toolkit";
 	import {
 		type AssessmentToolkitRuntimeContext,
@@ -153,9 +166,7 @@
 			surfaceRuntimeContext = value;
 		});
 	});
-	const defaultToolRegistry = createPackagedToolRegistry({
-		toolModuleLoaders: DEFAULT_TOOL_MODULE_LOADERS,
-	});
+	const defaultToolRegistry = createPackagedToolRegistry();
 	const effectiveToolRegistry = $derived(toolRegistry ?? defaultToolRegistry);
 	const effectiveOnFrameworkError = $derived.by(() => runtime?.onFrameworkError);
 	const effectiveSectionId = $derived(
@@ -207,10 +218,8 @@
 
 	/**
 	 * The section-scoped surface this CE offers. Capabilities opt in by listing it
-	 * in their registration's `surfaces`, so nothing here names one — the
-	 * annotation toolbar used to be named in three places in this file, which is
-	 * why a host could not contribute a second section-scoped capability without
-	 * a PR against this repo.
+	 * in their registration's `surfaces`, so nothing here names one and a host
+	 * contributes a section-scoped capability without changing this package.
 	 */
 	const SECTION_OVERLAY_SURFACE = "section-overlay";
 	let overlayAnchor = $state<HTMLDivElement | null>(null);

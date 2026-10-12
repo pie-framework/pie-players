@@ -101,7 +101,7 @@ export type LayoutCompositionSnapshot = {
 	renderablesSignature: string;
 };
 
-export function getCompositionFromEvent(event: Event): SectionCompositionModel {
+function getCompositionFromEvent(event: Event): SectionCompositionModel {
 	const detail = (
 		event as CustomEvent<{ composition?: SectionCompositionModel }>
 	).detail;

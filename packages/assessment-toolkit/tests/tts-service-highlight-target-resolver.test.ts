@@ -34,19 +34,11 @@ class MockTTSImpl implements ITTSProviderImplementation {
 	pause(): void {}
 	resume(): void {}
 	stop(): void {}
-	isPlaying(): boolean {
-		return false;
-	}
-	isPaused(): boolean {
-		return false;
-	}
 	updateSettings(): void {}
 }
 
 class MockTTSProvider implements ITTSProvider {
 	readonly providerId = "mock";
-	readonly providerName = "Mock Provider";
-	readonly version = "1.0.0";
 
 	constructor(
 		private impl: ITTSProviderImplementation,
@@ -58,12 +50,7 @@ class MockTTSProvider implements ITTSProvider {
 	}
 	getCapabilities(): TTSProviderCapabilities {
 		return {
-			supportsPause: true,
-			supportsResume: true,
 			supportsWordBoundary: this.supportsWordBoundary,
-			supportsVoiceSelection: true,
-			supportsRateControl: true,
-			supportsPitchControl: true,
 		};
 	}
 	destroy(): void {}
@@ -80,13 +67,11 @@ function createRecordingCoordinator() {
 	const wordHighlights: string[] = [];
 	const sentenceHighlights: string[] = [];
 	const sentenceElementHighlights: string[] = [];
-	const clearTypes: string[] = [];
 
 	return {
 		wordHighlights,
 		sentenceHighlights,
 		sentenceElementHighlights,
-		clearTypes,
 		coordinator: {
 			highlightTTSWord: (ranges: Range[]) => {
 				wordHighlights.push(ranges.join(""));
@@ -106,12 +91,8 @@ function createRecordingCoordinator() {
 						.join("|"),
 				);
 			},
-			clearHighlights: (type: unknown) => {
-				clearTypes.push(String(type));
-			},
+			clearTTSWord: () => {},
 			clearTTS: () => {},
-			isSupported: () => true,
-			updateTTSHighlightStyle: () => {},
 		},
 	};
 }

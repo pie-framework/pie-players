@@ -308,7 +308,7 @@ describe("RuntimeConfig boundary — tools.pnpEnforcement", () => {
 
 	test("`CanonicalToolsConfig` declares `pnpEnforcement` so `runtime.tools.pnpEnforcement` is preserved through `normalizeToolsConfig`", () => {
 		expect(
-			normalizerSource.includes("pnpEnforcement?: ToolsPnpEnforcement"),
+			normalizerSource.includes("pnpEnforcement?: PnpEnforcementMode"),
 		).toBe(true);
 		expect(
 			normalizerSource.includes("config.pnpEnforcement = pnpEnforcement"),

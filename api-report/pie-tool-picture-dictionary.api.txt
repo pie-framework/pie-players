@@ -4,4 +4,8 @@
 @pie-players/pie-tool-picture-dictionary
 
 .
+  type PictureLookup
+  type PictureLookupRequest
+  type PictureLookupResult
+  type PictureResult
   default

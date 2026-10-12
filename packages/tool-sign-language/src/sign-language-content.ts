@@ -117,7 +117,7 @@ function pickSignLanguageAlternate(
 /**
  * Which sign language the learner is entitled to.
  *
- * Read from the feature's policy parameters (`toolParameters` / `toolConfigs`),
+ * Read from the feature's policy parameters (`toolParameters`),
  * never inferred from the item's content language — a Spanish item's signed
  * alternate is LSM, not ASL.
  */

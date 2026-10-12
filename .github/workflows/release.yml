@@ -118,6 +118,8 @@ jobs:
           # Are there any Changesets present in the repo at this commit?
           # Ignore the .changeset/README.md fixture file which is part of the
           # changesets bootstrap and never represents a real changeset entry.
+          # In prerelease mode changesets moves consumed entries to
+          # .changeset/pre/, below the depth searched here.
           if find .changeset -maxdepth 1 -type f -name '*.md' ! -name 'README.md' -print -quit | grep -q .; then
             echo "has_changesets=true" >> "$GITHUB_OUTPUT"
           else
@@ -342,7 +344,7 @@ jobs:
 
             See CHANGELOG.md files in each package for detailed changes.
           draft: false
-          prerelease: false
+          prerelease: ${{ contains(fromJson(steps.changesets.outputs.published-packages)[0].version, '-') }}
 
       - name: Summary
         if: steps.changesets.outputs.published == 'true'

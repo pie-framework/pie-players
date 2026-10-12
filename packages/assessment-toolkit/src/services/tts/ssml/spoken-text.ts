@@ -9,7 +9,7 @@ import { normalizeTextForSpeech } from "../text-processing.js";
  * stripping used by:
  *   - the catalog span aligner (`catalog-span-alignment.ts`),
  *   - the math speech tokenizer (`math-alignment/speech-tokenizer.ts`),
- *   - the runtime generated-speech path (PIE-623).
+ *   - the runtime generated-speech path.
  *
  * Keeping one implementation guarantees provider word-boundary offsets (which
  * are into the raw SSML string) map to the same spoken text on every path.

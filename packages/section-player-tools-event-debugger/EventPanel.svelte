@@ -17,6 +17,13 @@
 	}}
 />
 
+<!--
+@component
+Developer panel for the section player demos that logs the item and section events the toolkit coordinator broadcasts for the active section. A host gives it `toolkitCoordinator` and the `section-id` and `attempt-id` to follow; it renders a draggable floating panel listing each event with its item, intent and duplicate count, filtered by item or section level, with pause and clear controls and the selected event's payload as JSON.
+
+@fires {CustomEvent<null>} close - When the panel's close button is pressed.
+-->
+
 <script lang="ts">
 	import {
 		type AssessmentToolkitRuntimeContext,
@@ -28,7 +35,7 @@
 		createSectionControllerSubscriptionManager,
 		getSectionControllerFromCoordinator,
 	} from "@pie-players/pie-section-player-tools-shared";
-	import { onDestroy, untrack } from "svelte";
+	import { untrack } from "svelte";
 
 	type ControllerEvent = {
 		type?: string;
@@ -47,11 +54,11 @@
 		totalItems?: number;
 	} | null;
 	type ToolkitCoordinatorLike = {
-		// Phase D (>=0.3.35): subscribe* helpers follow the toolkit's
-		// active section cohort automatically and do not accept
-		// sectionId / attemptId arguments. The debugger keeps `sectionId`
-		// + `attemptId` in the shared subscription manager purely to gate
-		// same-target re-subscribe — it does not pass them to the coordinator.
+		// The subscribe* helpers follow the toolkit's active section cohort
+		// automatically and do not accept sectionId / attemptId arguments. The
+		// debugger keeps `sectionId` + `attemptId` in the shared subscription
+		// manager purely to gate same-target re-subscribe — it does not pass
+		// them to the coordinator.
 		subscribeItemEvents?: (args: {
 			listener: (event: ControllerEvent) => void;
 		}) => () => void;
@@ -289,6 +296,8 @@
 		pushRecord(event || {});
 	}
 
+	// Distinct identities per subscription: the coordinator dedupes by
+	// listener, so one function for both would drop the item subscription.
 	function handleItemControllerEvent(event: ControllerEvent): void {
 		handleControllerEvent(event);
 	}
@@ -411,9 +420,6 @@
 		reconcileRecordsWithLimits();
 	});
 
-	onDestroy(() => {
-		subscriptionManager.detachAll();
-	});
 	let contextAnchor = $state<HTMLDivElement | null>(null);
 	let chromeRuntimeContext = $state<AssessmentToolkitRuntimeContext | null>(null);
 	// Interface locale, re-derived on every context republish.

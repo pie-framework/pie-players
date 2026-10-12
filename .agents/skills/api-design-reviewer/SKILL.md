@@ -45,7 +45,7 @@ Review only public or cross-package surfaces. Skip purely internal refactors unl
 - Treat element package registries as executable-content trust boundaries when
   attacker-influenced config can reach them; prefer opt-in, host-controlled policy.
 - Avoid compatibility shims unless they preserve the external `pie-item` client contract and include the required inline comment plus tests.
-- For release-facing changes, remember this repo is lockstep and patch-only pre-1.0; do not suggest per-package semver bumps.
+- For release-facing changes, remember this repo is lockstep and patch-only, before and after 1.0; do not suggest per-package semver bumps.
 
 ## Review Output
 

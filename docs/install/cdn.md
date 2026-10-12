@@ -121,7 +121,6 @@ through the shared ESM adapter. The
 
 ## Pinning
 
-Production pages pin the exact version (`@x.y.z`) in every CDN URL. The
-packages are on `0.x`, where breaking changes ship as patch releases, so any
-range takes them, jsDelivr's `@0.3` included
+Production pages pin the exact version (`@x.y.z`) in every CDN URL. Breaking
+changes ship as patch releases, so any range takes them, jsDelivr's `@0.3` included
 ([Versioning and stability](./versioning.md#pinning)).

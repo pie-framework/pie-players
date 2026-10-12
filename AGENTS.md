@@ -302,7 +302,7 @@ any published version, every package in the suite carries the same version. The
 `docs/setup/publishing.md` owns the release procedure and its recovery paths.
 
 - Every release is a `patch` bump until the maintainer explicitly changes this policy,
-  even for breaking changes on the pre-1.0 line. Author every changeset entry as
+  even for breaking changes, on `0.x` and from 1.0 on alike. Author every changeset entry as
   `patch`; a pending `minor` or `major` changeset is a release blocker.
   `bun run check:changeset-patch-only` enforces this in `verify:pre-commit`,
   `verify:local-pr` and `release:with-version`. The one exception is the `major`

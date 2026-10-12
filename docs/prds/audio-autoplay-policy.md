@@ -157,8 +157,10 @@ derives one effective value per load:
 - **Enabled.** Writes `autoplayAudioEnabled: true` on every model and no `autoplayAudioHeld`.
 - **No decision.** The attribute and the authored value apply as today.
 
-Each of these writes, the attribute's included, also lands on every direct child object of a model
-that declares `autoplayAudioEnabled`, so EBSR's parts receive it in every delivered version.
+A held or enabled decision also lands on every direct child object of a model that declares
+`autoplayAudioEnabled`, so EBSR's parts receive it in every delivered version. The attribute keeps
+writing top-level models only, as today: a host that sets it to `true` has never reached EBSR's
+parts, and parts authored with autoplay off stay off.
 
 The write applies in `view` mode, whatever the `env` mode, and never in `author` mode. It applies
 on the initial load, on a change to the attribute or the decision, and after a backend model
@@ -196,11 +198,8 @@ starts reading `autoplayAudioHeld` only in a release that meets all of these:
 - **PIE element runtime contract.** Adds the model field `autoplayAudioHeld`, which element
   versions that predate it never read.
 - **`pie-item-player` properties and events.** Adds the `feature-decision-applied` event and a
-  context request. The attribute keeps its name and values; it stops applying in author mode, which
-  no recorded host uses, and it now reaches EBSR's parts.
-- **Behavior change for Host P.** Host P binds the attribute to `true` without the toolkit, so EBSR
-  parts authored with autoplay off start to autoplay there. That is the attribute's documented
-  meaning, which EBSR ignored.
+  context request. The attribute keeps its name, values and top-level reach; it stops applying in
+  author mode, which no recorded host uses.
 - Versioned tag names, contract attributes, section and assessment session state, and persisted
   session data are untouched.
 - A host on the toolkit that sets no `autoplayAudio` input, and no profile listing `screenReader`,
@@ -249,7 +248,8 @@ None. AfA PNP 3.0 has no autoplay term, so `autoplayAudio` is a PIE id; the near
 - Item player: held writes `autoplayAudioHeld` and keeps `autoplayAudioEnabled`; enabled writes
   `true`; no decision leaves attribute and authored values; author mode receives neither; an
   attribute change after load re-applies; a backend refresh keeps the effective value; EBSR parts
-  receive both fields; a change commits sessions before the remount; `feature-decision-applied`
+  receive a decision's fields and never the attribute's; a change commits sessions before the
+  remount; `feature-decision-applied`
   carries `overrode` for the attribute and for authored values.
 - Section player, Playwright: a profile listing `screenReader` holds an item authored with autoplay;
   the prompt plays from the keyboard and the item completes under `completeAudioEnabled`.

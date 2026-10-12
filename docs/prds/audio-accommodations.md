@@ -338,14 +338,17 @@ Playwright-backed tests must run outside the sandbox.
   This needs the requirement owner's confirmation. The alternative is an element
   reading the support from the ADR 0003 context and placing the transcript
   itself.
-- **Is runtime-adjustable autoplay required?** Autoplay is the per-model
+- **How does an autoplay decision reach an element?** Runtime-adjustable
+  autoplay is required:
+  [ADR 0004](../adr/0004-screen-reader-use-is-a-profile-support-that-withholds-read-aloud.md)
+  gives it the policy id `autoplayAudio`, which a student's screen-reader use
+  blocks at delivery, and requires the block to reach only element versions
+  that keep the audio playable without autoplay. Autoplay is the per-model
   `autoplayAudioEnabled` field, set at import from the item's collection, and
   the item player's `autoplay-audio-enabled` attribute overwrites it on every
-  model of one player instance. `mc-populated-blank` keeps its Listen button
-  or native audio controls on screen when autoplay is on. A policy id is
-  justified only if a teacher or district must change autoplay at delivery
-  time; if per-program content is the answer, the
-  content transform settles it with no change in PIE. `completeAudioEnabled` on
+  model of one player instance, so the attribute's route reaches every version.
+  `mc-populated-blank` keeps its Listen button or native audio controls on
+  screen when autoplay is on. `completeAudioEnabled` on
   its own makes multiple-choice (and EBSR through it), categorize, hotspot,
   drag-in-the-blank, image-cloze-association and `mc-populated-blank` report
   `complete: true` only once the prompt audio has played to the end, so turning

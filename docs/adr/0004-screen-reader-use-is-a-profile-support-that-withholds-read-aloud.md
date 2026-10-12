@@ -34,7 +34,8 @@ A student's screen-reader use reaches PIE only from the student's profile, as th
   audio meets. An element version without both keeps its authored autoplay for every student, as
   today. The hold applies before the item first renders, since elements read autoplay at mount, and
   outranks the `autoplay-audio-enabled` attribute set to `true`. The channel that carries the
-  decision to elements is outside this record.
+  decision to elements is an open question of the
+  [Audio Accommodations PRD](../prds/audio-accommodations.md#open-questions).
 - **Markup.** Nothing rendered depends on `screenReader`. Hidden MathML, math control names and the
   rest of the accessibility tree are the same for every student, and ADR 0003's math review stands:
   no math mode derives from the `screen-reader` reading type. The id changes only what makes sound.

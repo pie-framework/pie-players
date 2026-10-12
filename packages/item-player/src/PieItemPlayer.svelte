@@ -1900,7 +1900,14 @@ The PIE item player: it loads an item's PIE elements under the `iife`, `esm` or 
 		width: 100%;
 	}
 
+	/* The spinner's scrim is absolutely positioned at z-index 9999. Positioning
+	   this box contains the scrim to the player, and isolating it keeps that
+	   z-index from covering host UI layered over the player. The height leaves
+	   room for the ring and its glow before any build warning appears. */
 	.pie-item-player-loading {
+		position: relative;
+		isolation: isolate;
+		min-height: 120px;
 		display: flex;
 		flex-direction: column;
 		align-items: center;

@@ -12,32 +12,38 @@ whose one-id-per-value route and math review this record keeps.
 A student's screen-reader use reaches PIE only from the student's profile, as the support id
 `screenReader`. PIE never detects assistive technology.
 
-- **Id.** `screenReader` is AfA PNP 3.0 `spoken` with `reading-type` `screen-reader`, the value AfA
+- **Ids.** `screenReader` is AfA PNP 3.0 `spoken` with `reading-type` `screen-reader`, the value AfA
   assumes when `reading-type` is absent. `textToSpeech` is `spoken` with `reading-type`
   `computer-read-aloud`. This is the one-id-per-value route ADR 0003's **Trade-off** names, so the
-  context value keeps its type.
-- **Resolution.** `screenReader` resolves through the eight-level precedence like every support id.
-  No tool carries it, since the student's own screen reader does the speaking, so the toolkit
-  recognizes it without a registration and a profile listing it raises no
-  `tool-policy.unknownSupportId`.
-- **Conflict.** While `screenReader` resolves enabled, `textToSpeech` resolves blocked at
-  precedence 4, the profile-prohibition level, under its own rule, `support-conflict`. A placement,
-  a `true` test-administration override, an item or district requirement and a profile support all
-  lose to it. A district block, a `false` override and an item restriction rank above it and keep
-  the block they already make. Every read-aloud entry point follows the decision, the annotation
-  toolbar's selection read-aloud included, which offers itself only while
-  `canRequestTool("textToSpeech")` answers yes.
-- **Self-starting audio.** While `screenReader` is in effect, the item player sets
-  `autoplayAudioEnabled: false` on every model it renders, the override its `autoplay-audio-enabled`
-  attribute already writes. The audio stays in the item, and the student starts it from its play
-  control. The hold outranks the attribute set to `true`, as the conflict outranks a placement.
+  context value keeps its type. Autoplay of item audio is the feature `autoplayAudio`, a PIE id,
+  since AfA has no autoplay term.
+- **Resolution.** `screenReader` and `autoplayAudio` resolve through the eight-level precedence
+  like every support id. No tool carries either: the student's own screen reader does the speaking,
+  and autoplay is a setting on the item's models. The toolkit recognizes both without a
+  registration, and a profile listing `screenReader` raises no `tool-policy.unknownSupportId`.
+- **Conflict.** While `screenReader` resolves enabled, `textToSpeech` and `autoplayAudio` resolve
+  blocked at precedence 4, the profile-prohibition level, under a rule of their own,
+  `support-conflict`. A placement, a `true` test-administration override, an item or district
+  requirement and a profile support all lose to it. A district block, a `false` override and an
+  item restriction rank above it and keep the block they already make. Every read-aloud entry point
+  follows the decision, the annotation toolbar's selection read-aloud included, which offers itself
+  only while `canRequestTool("textToSpeech")` answers yes.
+- **Self-starting audio.** A block of `autoplayAudio` holds an item's audio until the student
+  starts it. It reaches an element only where that element keeps the audio playable without
+  autoplay: a keyboard-operable play control, and an audio-completion requirement that playing the
+  audio meets. An element version without both keeps its authored autoplay for every student, as
+  today. The hold applies before the item first renders, since elements read autoplay at mount, and
+  outranks the `autoplay-audio-enabled` attribute set to `true`. The channel that carries the
+  decision to elements is outside this record.
 - **Markup.** Nothing rendered depends on `screenReader`. Hidden MathML, math control names and the
   rest of the accessibility tree are the same for every student, and ADR 0003's math review stands:
   no math mode derives from the `screen-reader` reading type. The id changes only what makes sound.
-- **Reporting.** Each withdrawal of `textToSpeech` raises `tool-policy.supportConflict`, naming
-  `screenReader` and what would otherwise have served read-aloud: the placement or the granting
-  rule. It replaces `tool-policy.overrideBlocked` for an override the conflict withdraws, so one
-  withdrawal raises one diagnostic.
+- **Reporting.** Each withdrawal raises `tool-policy.supportConflict`, naming `screenReader`, the
+  withheld id and what would otherwise have served it: for `textToSpeech` the placement or the
+  granting rule, for `autoplayAudio` the granting rule, the attribute set to `true` or an authored
+  `true`. It replaces `tool-policy.overrideBlocked` for an override the conflict withdraws, so one
+  withdrawal raises one diagnostic. An id that nothing would have served raises none, so an item
+  without self-starting audio reports nothing.
 
 ## Constraint
 
@@ -68,12 +74,19 @@ withdraws PIE's channel.
   ([assistive technology](https://ca-toms-help.ets.org/accessibility-guide/configuring-resources/integration-with-assistive-tech)).
 - **Precedence 4** is where a support is withdrawn for a reason about the student. The conflict is
   such a reason, so it ranks with the profile's own prohibitions: above every grant, below the
-  blocks that withdraw read-aloud for reasons of their own.
-- **The model override** reaches every element version already in delivery. Elements honor
-  `autoplayAudioEnabled: false` today, so the hold needs no element release.
+  blocks that withdraw either id for reasons of their own.
+- **Autoplay as a feature** puts the hold on the precedence every support uses: the conflict is one
+  rule against two ids, and a district, a test administration, an item or a profile that sets
+  autoplay takes the same route.
+- **The precondition** follows from elements in delivery. A listening prompt can be an `<audio>`
+  without controls that an image link plays, and the shared prompt renderer replaces that audio's
+  id, so the link plays nothing; an item that requires audio completion then never completes.
+  Autoplay is that audio's only working start, and holding it would cost the student the prompt and
+  the item.
 - **A diagnostic for the conflict alone.** A prohibition that outranks a requirement raises none,
-  because a person recorded it. The conflict is a rule PIE applies against a support a person
-  assigned, so the host needs to report that the assigned read-aloud was not delivered, and why.
+  because a person recorded it. The conflict is a rule PIE applies against what a person set, an
+  assigned support or authored autoplay, so the host needs to report what was not delivered, and
+  why.
 
 ## Rejected alternatives
 
@@ -91,9 +104,17 @@ withdraws PIE's channel.
 - **A grant of `textToSpeech` outranking the conflict.** An assessment that places read-aloud for
   every student, as early-grade assessments do, would then give it to screen-reader students too,
   and assigning both is the competing assignment platforms direct against.
-- **Elements reading `screenReader` from the ADR 0003 context** to hold their own audio. Only
-  element versions released after the change would hold it, while item configs keep earlier
-  versions in delivery.
+- **A screen-reader flag from the toolkit to the item player**, which would hold autoplay itself.
+  The one rule would take a second route, and an autoplay setting from a district or a profile
+  would need a third.
+- **The model override `autoplayAudioEnabled: false` on every element version**, the route the
+  `autoplay-audio-enabled` attribute takes. Every element in delivery honors it, including the
+  versions whose audio then has no working start.
+- **Lifting the audio-completion requirement under the hold.** No item would block, but where the
+  audio has no working start the student would never hear the prompt.
+- **Elements reading `screenReader` from the ADR 0003 context** to hold their own audio. Each
+  element version would freeze the conflict rule into itself, which ADR 0003's **Constraint** rules
+  out.
 - **A `spoken: { readingType }` field on the context value.** ADR 0003 rejects a field per consumer:
   an id per value changes no type.
 
@@ -104,17 +125,25 @@ student who would pause a screen reader to use PIE's read-aloud and word highlig
 while the profile lists `screenReader`. A profile without `screenReader` keeps read-aloud, and the
 student's screen reader still reads the page.
 
+The precondition is a second deliberate trade: no student loses access to an item's audio, at the
+cost of a screen-reader student hearing autoplay over the screen reader on element versions that
+do not meet it.
+
 ## Consequences
 
 - No code ships with this record. The toolkit implementation recognizes `screenReader` in
-  `PnpPolicySource` without a registration, evaluates `textToSpeech` whenever `screenReader`
-  resolves enabled, including when no policy input names it, adds `support-conflict` to the
-  decision rules and `tool-policy.supportConflict` to `ToolPolicyDiagnosticDetails`.
-- The item player takes the hold from the toolkit's policy for its item; a host without the toolkit
-  sets `autoplay-audio-enabled` itself. The pie-elements-ng elements with an authored
-  `autoplayAudioEnabled` setting are categorize, drag-in-the-blank, ebsr, hotspot,
-  image-cloze-association, mc-populated-blank and multiple-choice, and none of them changes. The
-  ADR 0003 context gains no consumer, so its provider still does not ship.
+  `PnpPolicySource` without a registration, evaluates `textToSpeech` and `autoplayAudio` whenever
+  `screenReader` resolves enabled, including when no policy input names them, adds
+  `support-conflict` to the decision rules and `tool-policy.supportConflict` to
+  `ToolPolicyDiagnosticDetails`. Which rules besides the conflict set `autoplayAudio`, and how a
+  host states them, is outside this record.
+- The item player takes the toolkit's `autoplayAudio` decision for its item scope. Only it reads
+  the attribute and the models, so it reports a withdrawal against the attribute set to `true` or an
+  authored `true`. The pie-elements-ng elements with an authored `autoplayAudioEnabled` setting are
+  categorize, drag-in-the-blank, ebsr, hotspot, image-cloze-association, mc-populated-blank and
+  multiple-choice. Each needs a release that meets the precondition before a hold reaches it, and
+  the first fix is the shared prompt renderer keeping the authored audio's id. The ADR 0003 context
+  gains no consumer, so its provider still does not ship.
 - The tool registry's AfA table maps `spoken` to `textToSpeech` only for `reading-type`
   `computer-read-aloud`
   ([Support ids](../../packages/assessment-toolkit/docs/TOOL_REGISTRY.md#support-ids)). A host that

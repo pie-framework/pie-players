@@ -176,9 +176,10 @@ From ADR 0004:
 - Screen-reader use reaches PIE only as the `screenReader` support id from the profile.
   Nothing detects assistive technology.
 - `screenReader` changes only what makes sound: while it is in effect the toolkit
-  withholds `textToSpeech` whatever grants it, and the item player sets
-  `autoplayAudioEnabled: false` on every model. Markup, math rendering and the
-  accessibility tree never branch on it.
+  withholds `textToSpeech` and the autoplay feature `autoplayAudio` whatever grants
+  them. A block of `autoplayAudio` reaches only element versions that keep the audio
+  playable without autoplay, from a keyboard-operable control. Markup, math rendering
+  and the accessibility tree never branch on `screenReader`.
 
 ### Domain Language
 

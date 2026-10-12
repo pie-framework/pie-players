@@ -92,11 +92,13 @@ Other packaged ids name an AfA capability in other words, so a host holding a pr
 | AfA term | Tool id |
 | --- | --- |
 | `calculator-on-screen` | `calculator` |
-| `spoken` | `textToSpeech` |
+| `spoken` with `reading-type` `computer-read-aloud` | `textToSpeech` |
 | `answer-masking` | `answerEliminator` |
 | `dictionary-on-screen` | `dictionary` |
 
 AfA has no term for `ruler`, `protractor`, `graph`, `periodicTable` or `annotationToolbar`.
+
+`spoken` with `reading-type` `screen-reader`, the value AfA assumes when `reading-type` is absent, grants no packaged tool: the student's own screen reader speaks, and PIE's read-aloud would talk over it. [ADR 0004](../../../docs/adr/0004-screen-reader-use-is-a-profile-support-that-withholds-read-aloud.md) records the `screenReader` support id that will carry it and withhold `textToSpeech`. Until the toolkit recognizes that id, a host withholds read-aloud from such a student by listing `textToSpeech` in `prohibitedSupports`.
 
 Keep a tool id stable once profiles use it: renaming it drops the grant from every profile that lists the old id. That is why an existing id keeps its name where the AfA term differs, as `textToSpeech` does for `spoken`.
 

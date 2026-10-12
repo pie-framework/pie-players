@@ -338,8 +338,9 @@ Playwright-backed tests must run outside the sandbox.
   This needs the requirement owner's confirmation. The alternative is an element
   reading the support from the ADR 0003 context and placing the transcript
   itself.
-- **How does an autoplay decision reach an element?** Runtime-adjustable
-  autoplay is required:
+- **How does an autoplay decision reach an element?** The
+  [Audio Autoplay Policy PRD](./audio-autoplay-policy.md) proposes the answer.
+  Runtime-adjustable autoplay is required:
   [ADR 0004](../adr/0004-screen-reader-use-is-a-profile-support-that-withholds-read-aloud.md)
   gives it the policy id `autoplayAudio`, which a student's screen-reader use
   blocks at delivery, and requires the block to reach only element versions

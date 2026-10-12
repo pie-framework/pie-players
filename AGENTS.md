@@ -171,6 +171,15 @@ From ADR 0003, for every host and element:
   Consumers ignore support ids they do not recognize, and an unanswered request means
   defaults, never a wait for a provider.
 
+From ADR 0004:
+
+- Screen-reader use reaches PIE only as the `screenReader` support id from the profile.
+  Nothing detects assistive technology.
+- `screenReader` changes only what makes sound: while it is in effect the toolkit
+  withholds `textToSpeech` whatever grants it, and the item player sets
+  `autoplayAudioEnabled: false` on every model. Markup, math rendering and the
+  accessibility tree never branch on it.
+
 ### Domain Language
 
 The root `CONTEXT.md` is the shared vocabulary for PIE Players and its runtime hosts:

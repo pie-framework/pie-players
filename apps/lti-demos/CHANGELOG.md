@@ -1,5 +1,49 @@
 # @pie-players/lti-demos
 
+## 0.1.38-beta.0
+
+### Patch Changes
+
+- Updated dependencies [13e6c96]
+- Updated dependencies [e0c1328]
+- Updated dependencies [7bc0b83]
+- Updated dependencies [403a673]
+- Updated dependencies [ef49bbe]
+- Updated dependencies [ef49bbe]
+- Updated dependencies [32edbc8]
+- Updated dependencies [50710b1]
+- Updated dependencies [6687b32]
+- Updated dependencies [87a9657]
+- Updated dependencies [daddf91]
+- Updated dependencies [aa71a77]
+- Updated dependencies [6d0cc20]
+- Updated dependencies [83eab07]
+- Updated dependencies [caea2bb]
+- Updated dependencies [956f4be]
+- Updated dependencies [90cf6cd]
+- Updated dependencies [e78ec86]
+- Updated dependencies [6d91970]
+- Updated dependencies [8252909]
+- Updated dependencies [90d40c6]
+- Updated dependencies [7a27a68]
+- Updated dependencies [d221bd5]
+- Updated dependencies [c15eb92]
+- Updated dependencies [1549c19]
+- Updated dependencies [ded130d]
+- Updated dependencies [db71789]
+- Updated dependencies [e6bf982]
+- Updated dependencies [fe2ec1a]
+- Updated dependencies [d83c044]
+- Updated dependencies [8235283]
+- Updated dependencies [1b0c09d]
+- Updated dependencies [743b8e4]
+- Updated dependencies [97a00b8]
+- Updated dependencies [e31114a]
+  - @pie-players/pie-assessment-player@1.0.0-beta.0
+  - @pie-players/pie-assessment-toolkit@1.0.0-beta.0
+  - @pie-players/pie-players-shared@1.0.0-beta.0
+  - @pie-players/pie-default-tool-loaders@1.0.0-beta.0
+
 ## 0.1.37
 
 ### Patch Changes

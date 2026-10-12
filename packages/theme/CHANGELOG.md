@@ -1,5 +1,22 @@
 # @pie-players/pie-theme
 
+## 1.0.0-beta.0
+
+### Major Changes
+
+- 956f4be: Open the 1.0 line. 1.0.0 ships first as `1.0.0-beta.N` prereleases under the `beta` dist-tag, while `latest` stays on 0.3.75. Releases stay patch-only after 1.0, breaking changes included, so pin exact versions.
+
+### Patch Changes
+
+- ef49bbe: Corrects package READMEs and doc comments against the current code: stale
+  APIs, endpoints and figures, broken links, and the answer eliminator's
+  persistence example, which replaced the coordinator's own tool-state save.
+  The line reader frame token's registry entry now gives contrast figures for all
+  ten built-in schemes.
+- 50710b1: Every package that registers a custom element publishes a `custom-elements.json` manifest, named by its `customElements` field, listing each element's tag, attributes, properties, methods, events, slots and CSS custom properties. A light-DOM element lists its `pie-*` classes under `x-pie.classes`.
+- 7a27a68: Internal readability pass: comments describe the current behavior, magic
+  numbers are named constants, and repeated logic is folded into local helpers.
+
 ## 0.3.75
 
 ### Patch Changes

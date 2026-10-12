@@ -1,5 +1,21 @@
 # @pie-players/pie-section-player-tools-event-debugger
 
+## 1.0.0-beta.0
+
+### Major Changes
+
+- 956f4be: Open the 1.0 line. 1.0.0 ships first as `1.0.0-beta.N` prereleases under the `beta` dist-tag, while `latest` stays on 0.3.75. Releases stay patch-only after 1.0, breaking changes included, so pin exact versions.
+
+### Patch Changes
+
+- ef49bbe: Removes dead internal code: unused class members and module exports outside
+  every package entry, the toolkit's unused tool-scope-level registration and
+  tool-config error helpers, the section player's no-op `ensureDefined`
+  component loaders, and stale `files` entries for assets the
+  tools inline. The print player no longer logs element resolution to the
+  console.
+- 50710b1: Every package that registers a custom element publishes a `custom-elements.json` manifest, named by its `customElements` field, listing each element's tag, attributes, properties, methods, events, slots and CSS custom properties. A light-DOM element lists its `pie-*` classes under `x-pie.classes`.
+
 ## 0.3.75
 
 ### Patch Changes

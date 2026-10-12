@@ -1,5 +1,65 @@
 # @pie-players/pie-tool-annotation-toolbar
 
+## 1.0.0-beta.0
+
+### Major Changes
+
+- 956f4be: Open the 1.0 line. 1.0.0 ships first as `1.0.0-beta.N` prereleases under the `beta` dist-tag, while `latest` stays on 0.3.75. Releases stay patch-only after 1.0, breaking changes included, so pin exact versions.
+
+### Patch Changes
+
+- 7bc0b83: Tool state is kept per attempt. `ElementToolStateStore` keys gain an attempt segment, `assessmentId:sectionId:attemptId:itemId:elementId`, and `getGlobalElementId` takes an `ElementIdComponents` object; the toolkit's `attempt-id` reaches tools through the runtime context's new `attemptId`. The annotation toolbar records its annotations in that store under `annotationToolbar` in place of `sessionStorage`, so one attempt's or learner's highlights no longer appear in another. `<pie-tool-theme>` follows the host's `<pie-theme scheme>` and records a learner's pick in the store for the section and attempt; it no longer reads or writes `localStorage['pie-color-scheme']`, so a host that wants the pick to outlast a reload persists the store through `loadToolState`/`saveToolState`.
+- ef49bbe: Removes dead internal code: unused class members and module exports outside
+  every package entry, the toolkit's unused tool-scope-level registration and
+  tool-config error helpers, the section player's no-op `ensureDefined`
+  component loaders, and stale `files` entries for assets the
+  tools inline. The print player no longer logs element resolution to the
+  console.
+- ef49bbe: Corrects package READMEs and doc comments against the current code: stale
+  APIs, endpoints and figures, broken links, and the answer eliminator's
+  persistence example, which replaced the coordinator's own tool-state save.
+  The line reader frame token's registry entry now gives contrast figures for all
+  ten built-in schemes.
+- 50710b1: Every package that registers a custom element publishes a `custom-elements.json` manifest, named by its `customElements` field, listing each element's tag, attributes, properties, methods, events, slots and CSS custom properties. A light-DOM element lists its `pie-*` classes under `x-pie.classes`.
+- 90d40c6: A server read whose response carries no speech marks highlights each sentence as it plays: the provider's `onPlaybackStart` passes a `TTSPlaybackStart` saying whether the audio carries word boundaries, and the reader paints the part's sentences when it does not. `<pie-tool-tts-inline>` lost its `language` property and speaks the runtime context's content language, as the annotation toolbar's read-aloud does, and it reports a read with nothing to read only under `PIE_TTS_DEBUG`. Neither tool logs a start failure to the console any more; the toolkit reports it. Read-aloud word highlighting re-adapts its colours when a `<pie-theme>` mounts after the reader or changes its theme, and stops observing on dispose. `PollyServerProvider` and `GoogleCloudTTSProvider` create their SDK client through a protected `createClient`, which a subclass can override.
+- 7a27a68: Internal readability pass: comments describe the current behavior, magic
+  numbers are named constants, and repeated logic is folded into local helpers.
+- ded130d: Tool failures that only reached the console now reach `framework-error`, recoverable and once per tool and phase: a toolbar that throws opening or hosting a requested tool (`tool-request`), a registration's relevance or applicability check that throws (`tool-registration`), annotation highlights that fail to save or restore (`tool-state-save`, `tool-state-load`), and speech that fails after it started (`tool-playback`). `reportToolModuleFailure(toolId, error)` is replaced by `reportToolFailure(toolId, phase, error)`.
+- 1b0c09d: tts-inline follows the TTS service's run owner instead of a window-global slot: `speak` takes an `ownerId` and the rate the read starts at, and `getRunOwner()` names the run's owner, so a read another tool starts closes the inline panel. Content holding only a `data-catalog-idref` card is read, and the tool shows for it (`hasSpokenContent`). A read with nothing to speak says so, and a readiness failure reports `tools.textToSpeech.initFailed`, which replaces `tools.textToSpeech.inline.initFailed`. `setHighlightTargetResolverProvider` is required on `TtsServiceApi`.
+- Updated dependencies [7bc0b83]
+- Updated dependencies [403a673]
+- Updated dependencies [ef49bbe]
+- Updated dependencies [ef49bbe]
+- Updated dependencies [32edbc8]
+- Updated dependencies [50710b1]
+- Updated dependencies [87a9657]
+- Updated dependencies [daddf91]
+- Updated dependencies [aa71a77]
+- Updated dependencies [6d0cc20]
+- Updated dependencies [83eab07]
+- Updated dependencies [caea2bb]
+- Updated dependencies [956f4be]
+- Updated dependencies [90cf6cd]
+- Updated dependencies [e78ec86]
+- Updated dependencies [6d91970]
+- Updated dependencies [8252909]
+- Updated dependencies [90d40c6]
+- Updated dependencies [7a27a68]
+- Updated dependencies [d221bd5]
+- Updated dependencies [c15eb92]
+- Updated dependencies [1549c19]
+- Updated dependencies [ded130d]
+- Updated dependencies [db71789]
+- Updated dependencies [e6bf982]
+- Updated dependencies [d83c044]
+- Updated dependencies [8235283]
+- Updated dependencies [1b0c09d]
+- Updated dependencies [743b8e4]
+- Updated dependencies [97a00b8]
+- Updated dependencies [e31114a]
+  - @pie-players/pie-assessment-toolkit@1.0.0-beta.0
+  - @pie-players/pie-players-shared@1.0.0-beta.0
+
 ## 0.3.75
 
 ### Patch Changes

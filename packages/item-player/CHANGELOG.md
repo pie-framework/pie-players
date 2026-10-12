@@ -1,5 +1,65 @@
 # @pie-players/pie-item-player
 
+## 1.0.0-beta.0
+
+### Major Changes
+
+- 956f4be: Open the 1.0 line. 1.0.0 ships first as `1.0.0-beta.N` prereleases under the `beta` dist-tag, while `latest` stays on 0.3.75. Releases stay patch-only after 1.0, breaking changes included, so pin exact versions.
+
+### Patch Changes
+
+- 403a673: `ToolScopeLevel` and `ToolbarContext.scope.level` admit only the five registered
+  scope levels; any other string already threw when a tool id was built. The
+  calculator, graph and periodic-table panels mark their root with
+  `data-pie-tool-id`. `tts-server-core` drops its unused speech-mark helpers,
+  `generateCacheKey` and `hashText`. The assessment player bundles players-shared
+  whole and drops its shell-element and contract subpaths, which resolved to the
+  registering bundle. The dictionary tools resolve players-shared from the host, as
+  every other tool does. players-shared adds `isPlainRecord` to `./object`, and
+  `pie-default-tool-loaders` exports `CONTENT_LEAD_SURFACE`, which the print player
+  now re-exports.
+- ef49bbe: Removes dead internal code: unused class members and module exports outside
+  every package entry, the toolkit's unused tool-scope-level registration and
+  tool-config error helpers, the section player's no-op `ensureDefined`
+  component loaders, and stale `files` entries for assets the
+  tools inline. The print player no longer logs element resolution to the
+  console.
+- ef49bbe: Corrects package READMEs and doc comments against the current code: stale
+  APIs, endpoints and figures, broken links, and the answer eliminator's
+  persistence example, which replaced the coordinator's own tool-state save.
+  The line reader frame token's registry entry now gives contrast figures for all
+  ten built-in schemes.
+- 50710b1: Every package that registers a custom element publishes a `custom-elements.json` manifest, named by its `customElements` field, listing each element's tag, attributes, properties, methods, events, slots and CSS custom properties. A light-DOM element lists its `pie-*` classes under `x-pie.classes`.
+- 6687b32: The built-in delivery client follows the PIE API service's player contract. It
+  stamps each request with `x-date`, sends `overrides` only when the map has
+  entries, names the session rather than the item in a session model request, and
+  rejects with the service's error detail. Its flat model response, under
+  authored tags, now refreshes item and passage models.
+  
+  This breaks three things. `backend.authoring` drops `provider`, `baseUrl`,
+  `endpoints`, `request` and `auth`, along with the `BackendAuthoringEndpoints`
+  type, so every authoring operation needs `backend.authoring.client`. The score
+  option `disablePartialScoring` becomes `skipCached`, and `env.partialScoring`
+  now sets partial scoring. The assessment player no longer copies `attempt-id`
+  into `backend.delivery.assignmentId`.
+- 0cfb312: The stock items and passages panes space their cards 1rem apart again, as they did before the panes became their own elements; the rule sat on `:host`, which matches nothing in light DOM. Hosts A and R render the splitpane layout and see the gap. The layout elements drop the same dead `:host` rules, which never applied. `<pie-tool-sign-language>` labels follow the toolkit's interface locale in place of always rendering English, and drops its unset `i18n` property. The periodic table gives Alkaline Earth Metal its own category class in place of `alkaline-earth` plus a stray `metal`. The item-player README describes when `backend-error` fires, and the section-player README includes the tabbed layout among those that move the toolbar to the top below `narrow-layout-breakpoint`.
+- 1ca251a: Backend model refreshes and `score()` now queue behind in-flight saves, and every save carries the session as it stood at its call, so an older write can no longer land after a newer one. A failed model or score request's session is resent once at the next flush, as a failed autosave already was.
+- 7a27a68: Internal readability pass: comments describe the current behavior, magic
+  numbers are named constants, and repeated logic is folded into local helpers.
+- 3636ed7: The section controller runs `persist()` saves one at a time in call order, each with the session copied at the call, so a slow older save can no longer land after a newer one; a failed save rejects only its own caller. The item player resends a failed autosave once at the next flush (a `backend.delivery` repoint, the page going hidden, or teardown) when no later save for the same session replaced it.
+- Updated dependencies [403a673]
+- Updated dependencies [ef49bbe]
+- Updated dependencies [ef49bbe]
+- Updated dependencies [aa71a77]
+- Updated dependencies [956f4be]
+- Updated dependencies [e78ec86]
+- Updated dependencies [7a27a68]
+- Updated dependencies [db71789]
+- Updated dependencies [1b0c09d]
+- Updated dependencies [97a00b8]
+- Updated dependencies [e31114a]
+  - @pie-players/pie-players-shared@1.0.0-beta.0
+
 ## 0.3.75
 
 ### Patch Changes

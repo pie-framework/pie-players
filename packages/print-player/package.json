@@ -1,6 +1,6 @@
 {
 	"name": "@pie-players/pie-print-player",
-	"version": "0.3.75",
+	"version": "1.0.0-beta.0",
 	"description": "Print player for PIE elements - dynamically loads and renders print-friendly versions of PIE elements",
 	"type": "module",
 	"main": "./dist/print-player.js",

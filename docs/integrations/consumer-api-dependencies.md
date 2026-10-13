@@ -1515,13 +1515,17 @@ Host A passes `hooks.cardTitleFormatter`, a function reading `context.kind`
 `context.passage?.name`. It renumbers questions across sections, so the
 formatter is the only thing producing correct question numbers in that delivery.
 Changing the context shape, or calling the formatter for a new `kind` without a
-`defaultTitle`, produces wrong or blank card titles.
+`defaultTitle`, produces wrong or blank card titles. It returns an empty string
+when it gets no context, so an empty, non-string or throwing return must keep
+falling back to `defaultTitle`; hiding a title takes `{ visible: false }` for
+that reason.
 
 Host C's formatter reads `context.kind` and `context.defaultTitle`: it keeps the
-default for passages and returns a zero-width space for items. The card falls
-back to its default title on an empty or whitespace-only return, and `trim()`
-keeps U+200B, so that character is how this host blanks item titles. Stripping
-invisible characters from the return brings "Question N" back there.
+default for passages and blanks item titles. As of 2026-10-13 its checkout
+blanks them with a zero-width space, which `trim()` keeps, so an invisible title
+renders in a visible header; `{ visible: false }` is the supported return.
+Until the host switches, stripping invisible characters from the return brings
+"Question N" back there.
 
 Host R passes `onFrameworkError` in the runtime object, where it receives each
 error once. A tool's start failure arrives there with `recoverable: true` unless
@@ -2038,7 +2042,8 @@ its entries are re-derived rather than remembered. Host C's are from 2026-10-13.
   in Node (C)
 - A `theme` value outside `light` / `dark` / `auto` becoming `data-theme`, and
   the DaisyUI adapter's `daisyui` id (C)
-- The card title fallback treating anything beyond whitespace as a title (C)
+- The card title fallback treating anything beyond whitespace as a title,
+  until C returns `{ visible: false }` (C)
 - The five debugger and settings panel CE prop sets, and the `customProviders`
   entry shape, which Host R builds without importing `CustomProviderDescriptor`
 - `providerOptions` on the TTS provider config

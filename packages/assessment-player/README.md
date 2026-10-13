@@ -395,8 +395,8 @@ const hooks: AssessmentPlayerHooks = {
 ```
 
 The section player's [Card titles](../section-player/README.md#card-titles)
-lists the context fields; a return that is not a non-empty string keeps the
-default title.
+lists the context fields. `{ visible: false }` hides a card's title; any other
+return that is not a non-empty string keeps the default title.
 
 ## Debug logging
 

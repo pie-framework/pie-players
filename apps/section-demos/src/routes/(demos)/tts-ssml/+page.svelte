@@ -139,10 +139,12 @@
 	let eventDebuggerElement: any = $state(null);
 	let instrumentationDebuggerElement: any = $state(null);
 	let pnpDebuggerElement: any = $state(null);
-let customTitlesEnabled = $state(false);
+// `?customTitles=1` renames every card; `?customTitles=hidden` hides item titles.
+let customTitlesMode = $state<'' | '1' | 'hidden'>('');
 
 const demoCardTitleFormatter = (context: any) => {
 	if (context?.kind === 'item') {
+		if (customTitlesMode === 'hidden') return { visible: false as const };
 		return `Custom question ${Number(context.itemIndex) + 1}`;
 	}
 	if (context?.kind === 'passage') {
@@ -151,7 +153,7 @@ const demoCardTitleFormatter = (context: any) => {
 	return context?.defaultTitle;
 };
 const sectionPlayerHooks = $derived.by(() =>
-	customTitlesEnabled ? { cardTitleFormatter: demoCardTitleFormatter } : undefined
+	customTitlesMode ? { cardTitleFormatter: demoCardTitleFormatter } : undefined
 );
 
 	const DEMO_PERSISTENCE_STORAGE_PREFIX = `pie:section-controller:v1:${DEMO_ASSESSMENT_ID}:`;
@@ -245,7 +247,8 @@ const sectionPlayerHooks = $derived.by(() =>
 	$effect(() => {
 		if (!browser) return;
 		const url = new URL(window.location.href);
-		customTitlesEnabled = url.searchParams.get('customTitles') === '1';
+		const customTitles = url.searchParams.get('customTitles');
+		customTitlesMode = customTitles === '1' || customTitles === 'hidden' ? customTitles : '';
 	});
 
 

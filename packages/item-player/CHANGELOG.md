@@ -1,5 +1,19 @@
 # @pie-players/pie-item-player
 
+## 1.0.0-beta.1
+
+### Patch Changes
+
+- 7a85780: Overlapping `loadFromBackend("delivery")` calls now apply only the latest, as authoring loads already did. An older response that landed last used to replace the newer session.
+- 19f6a7c: The item player's loading spinner stays inside the player. Its scrim had no
+  positioned ancestor, so while an item loaded, a cold bundle build's retry window
+  included, it covered the whole host page at z-index 9999 and blocked host
+  controls. The loading box now contains and isolates it, and reserves 120px of
+  height for the ring.
+- Updated dependencies [4825d4b]
+- Updated dependencies [21563ca]
+  - @pie-players/pie-players-shared@1.0.0-beta.1
+
 ## 1.0.0-beta.0
 
 ### Major Changes

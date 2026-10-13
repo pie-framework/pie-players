@@ -1,5 +1,16 @@
 # @pie-players/tts-client-server
 
+## 1.0.0-beta.1
+
+### Patch Changes
+
+- 4825d4b: `createPersonalNeedsProfileFromAfa` builds a profile from an AfA PNP 3.0 record, and the PNP configuration guide gives each AfA feature's disposition. A profile's `activateAtInit` grants a tool and turns it on the first time a toolbar renders its button in a scope, under the new `pnp-activate-at-init` rule; `ToolPolicyEntry` carries the flag. A profile's `toolParameters` sit under the assessment's and item's, and the three layers now merge key by key where an item entry used to replace the assessment's whole. Read-aloud takes `rate`, `pitch` and `volume` from its `textToSpeech` parameters: `pie-tool-tts-inline` gains `base-rate`, `pitch` and `volume`, `TTSConfig` gains `volume`, and the server backend sends `pitch` on the `pie` transport.
+- Updated dependencies [4825d4b]
+- Updated dependencies [21563ca]
+  - @pie-players/pie-players-shared@1.0.0-beta.1
+  - @pie-players/pie-tts@1.0.0-beta.1
+  - @pie-players/tts-server-core@1.0.0-beta.1
+
 ## 1.0.0-beta.0
 
 ### Major Changes

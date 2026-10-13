@@ -273,6 +273,31 @@ export function hasSvelteDevRuntime(content) {
 	return content.includes("__svelte_cleanup");
 }
 
+/**
+ * The `Promise` members every host's `Promise` provides. A host page can
+ * replace the global with an older implementation, and zone.js 0.9.1, which
+ * Angular hosts load, has none of the later statics (`allSettled`, `any`,
+ * `withResolvers`, `try`); `settleAll` in `@pie-players/pie-players-shared/promise`
+ * stands in for `allSettled`.
+ */
+const BASELINE_PROMISE_MEMBERS = new Set([
+	"all",
+	"race",
+	"resolve",
+	"reject",
+	"prototype",
+]);
+const PROMISE_MEMBER_PATTERN = /\bPromise\.([A-Za-z_$][\w$]*)/g;
+
+/** The `Promise` statics a bundle reads beyond the baseline every host's `Promise` provides, sorted. */
+export function findPromiseStaticsBeyondBaseline(content) {
+	const found = new Set();
+	for (const [, member] of content.matchAll(PROMISE_MEMBER_PATTERN)) {
+		if (!BASELINE_PROMISE_MEMBERS.has(member)) found.add(member);
+	}
+	return [...found].sort();
+}
+
 const EMPTY_MODULE_PATTERN = /^\s*(?:export\s*\{\s*\}\s*;?\s*)?$/;
 
 /**
@@ -799,6 +824,20 @@ function checkMathJax3Deferred(failures) {
 	}
 }
 
+function checkPromiseStatics(failures) {
+	for (const dir of listBundleRoots()) {
+		for (const filePath of collectJsFiles(dir)) {
+			for (const member of findPromiseStaticsBeyondBaseline(
+				readFileSync(filePath, "utf8"),
+			)) {
+				failures.push(
+					`[bundle-safety] ${path.relative(ROOT, filePath)} calls Promise.${member}, which a host's replacement Promise can lack (zone.js 0.9.1 does); use settleAll from @pie-players/pie-players-shared/promise or build on Promise.all`,
+				);
+			}
+		}
+	}
+}
+
 function checkNoSourceMapCommentText(failures) {
 	for (const dir of listBundleRoots()) {
 		for (const filePath of collectJsFiles(dir)) {
@@ -827,6 +866,7 @@ function main() {
 	checkNewUrlTails(failures);
 	checkNoSourceMapCommentText(failures);
 	checkMathJax3Deferred(failures);
+	checkPromiseStatics(failures);
 	const browserBuilds = checkBrowserBuilds(failures);
 
 	if (failures.length > 0) {

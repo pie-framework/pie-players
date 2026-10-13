@@ -609,6 +609,9 @@
   toViewTag
   validateCustomElementTag
 
+./promise
+  settleAll
+
 ./security
   type ItemMarkupSanitizer
   type SanitizeItemMarkupOptions

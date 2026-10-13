@@ -28,6 +28,7 @@ import type {
 	ItemSettings,
 	ToolParametersFor,
 } from "@pie-players/pie-players-shared/types";
+import { settleAll } from "@pie-players/pie-players-shared/promise";
 import {
 	type CanonicalToolsConfig,
 	type ToolPlacementConfig,
@@ -1945,7 +1946,7 @@ export class ToolkitCoordinator {
 			// retired controller out of the cache immediately, but do not let its
 			// replacement hydrate until that exact cohort's save/dispose pipeline has
 			// settled. Other cohorts remain independent.
-			await Promise.allSettled([pendingDisposal]);
+			await settleAll([pendingDisposal]);
 		}
 		if (this.disposePromise !== null) {
 			throw new ToolkitCoordinatorDisposedError();
@@ -2281,7 +2282,7 @@ export class ToolkitCoordinator {
 				this.sectionControllerDisposePromises.get(mapKey);
 			if (existingDisposal) return existingDisposal;
 			if (!initEntry) return Promise.resolve();
-			const retirementBarrier = Promise.allSettled([initEntry.promise]).then(
+			const retirementBarrier = settleAll([initEntry.promise]).then(
 				() => undefined,
 			);
 			return this.trackSectionControllerDisposal(mapKey, retirementBarrier);
@@ -2320,7 +2321,7 @@ export class ToolkitCoordinator {
 			persistenceStrategy,
 		});
 		const disposalBarrier = initEntry
-			? Promise.allSettled([initEntry.promise]).then(
+			? settleAll([initEntry.promise]).then(
 					() => controllerDisposalPromise,
 				)
 			: controllerDisposalPromise;
@@ -2474,7 +2475,7 @@ export class ToolkitCoordinator {
 				attemptId: key.attemptId,
 			});
 		}
-		await Promise.allSettled(
+		await settleAll(
 			Array.from(this.sectionControllerDisposePromises.values()),
 		);
 		this.sectionControllers.clear();
@@ -2530,7 +2531,7 @@ export class ToolkitCoordinator {
 		for (const promise of this.providerInitPromises.values()) {
 			pending.add(promise);
 		}
-		await Promise.allSettled(pending);
+		await settleAll(pending);
 	}
 
 	/**

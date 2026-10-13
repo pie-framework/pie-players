@@ -1817,6 +1817,21 @@ the element uses that copy and nothing else is typeset. Elements on adapter
 0.1.3 or later set `startup.typeset: false` and load only from an asset root,
 which Host M passes as `registerPreloadedElements(elements, { math: { assetRoot } })`.
 
+## Replaced global `Promise` (Host P)
+
+Verified against the launch page that serves Host P on 2026-10-13.
+
+Host P's page loads zone.js 0.9.1 ahead of the player for every launch form
+except the fixed ones, and zone.js replaces the global `Promise` with its own.
+That implementation has `all`, `race`, `resolve`, `reject` and the prototype
+methods, and lacks `allSettled`, `any`, `withResolvers` and `try`. Host A's
+fixed launch skips that script, since its own build bundles a newer zone.js.
+
+The invariant is that shipped code calls no other `Promise` static.
+`settleAll` in `@pie-players/pie-players-shared/promise` stands in for
+`allSettled`, and `check:bundle-safety` fails any built bundle that calls one
+outside the four.
+
 ## Content stylesheet delivery
 
 The most fragile shared surface, because it changed underneath the hosts.
@@ -1973,7 +1988,7 @@ shipping.**
   keeping the empty values a provider returns
 - Renaming any of the thirteen tokens Host M's adapter supplies
 
-**Build or runtime failure in a client-facing host (A, M). Coordinate before
+**Build or runtime failure in a client-facing host (A, M, P). Coordinate before
 shipping.**
 
 - Adding weight behind an `import()` in any package Host A bundles, a new entry
@@ -1997,6 +2012,9 @@ shipping.**
 - Evaluating the bundled MathJax 3 at module load or on the `preloaded` path:
   its `MathJax.loader.preLoad` call throws on the shell's MathJax 4, at load once
   Host M drops its workaround and at first render regardless
+- Calling a `Promise` static other than `all`, `race`, `resolve` or `reject`
+  in shipped code: Host P's page replaces the global `Promise` with one that
+  lacks the rest, so the call throws there
 
 **Hosts R and C only. Change freely; land the internally controlled host fix in
 the same push.** Host R's checkout was available for the 2026-08-19 refresh, so

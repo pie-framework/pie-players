@@ -629,6 +629,31 @@ describe("ToolRegistry", () => {
 			expect(registry.isToolModuleLoaded("calculator")).toBe(false);
 		});
 
+		test("loads modules on a page whose Promise has no allSettled", async () => {
+			// zone.js 0.9.1 installs a Promise without allSettled on host pages.
+			const allSettled = Promise.allSettled;
+			delete (Promise as { allSettled?: unknown }).allSettled;
+			try {
+				const failure = new Error("chunk missing");
+				registry.setToolModuleLoaders({
+					calculator: async () => {
+						throw failure;
+					},
+					textToSpeech: async () => {},
+				});
+
+				const failures = await registry.ensureToolModulesLoaded([
+					"calculator",
+					"textToSpeech",
+				]);
+
+				expect([...failures]).toEqual([["calculator", failure]]);
+				expect(registry.isToolModuleLoaded("textToSpeech")).toBe(true);
+			} finally {
+				Promise.allSettled = allSettled;
+			}
+		});
+
 		test("keeps the loader of a loaded module and warns once about a replacement", async () => {
 			const events: string[] = [];
 			const warnings: unknown[][] = [];

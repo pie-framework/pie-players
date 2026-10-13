@@ -585,9 +585,25 @@ export interface AccessibilityCatalog {
 	cards: CatalogCard[];
 }
 
+/**
+ * A learner's personal needs profile, in tool ids. An AfA PNP 3.0 record maps to
+ * it through the AfA adapter the packaged tool set exports.
+ */
 export interface PersonalNeedsProfile {
+	/** Tools the learner may turn on. */
 	supports: string[];
+	/** Tools withheld from the learner; a prohibition outranks a support. */
 	prohibitedSupports?: string[];
+	/**
+	 * Tools granted as `supports` grants them and turned on when the learner's
+	 * toolbar first shows them. A block withdraws them as it withdraws a support.
+	 */
+	activateAtInit?: string[];
+	/**
+	 * Parameters by tool id, the lowest layer: the assessment's and an item's
+	 * `toolParameters` override them key by key.
+	 */
+	toolParameters?: ToolParameters;
 }
 
 export interface AssessmentEntity extends BaseEntity, SearchMetaDataEntity {
@@ -640,8 +656,9 @@ export interface AssessmentSettings {
 	};
 
 	/**
-	 * Parameters by tool id, handed to the tool wherever policy shows it; an
-	 * item's `toolParameters` entry wins on that item's own toolbar. Provider
+	 * Parameters by tool id, handed to the tool wherever policy shows it. They
+	 * override the profile's `toolParameters` key by key, and an item's
+	 * `toolParameters` override them on that item's own toolbar. Provider
 	 * configuration belongs in the toolkit's `tools.providers`.
 	 */
 	toolParameters?: ToolParameters;
@@ -657,6 +674,11 @@ export interface ToolParameterMap {
 	calculator: { type?: "basic" | "scientific" | "graphing" };
 	answerEliminator: { strategy?: "strikethrough" | "mask" };
 	signLanguage: { signLang?: string };
+	/**
+	 * `rate` multiplies every playback speed, 1 being the provider's normal
+	 * speed; `pitch` runs 0–2 with 1 normal; `volume` runs 0–1.
+	 */
+	textToSpeech: { rate?: number; pitch?: number; volume?: number };
 }
 
 /** The parameter shape of tool `K`: its {@link ToolParameterMap} entry, else open. */
@@ -676,7 +698,7 @@ export type ToolParameters = {
 export interface ItemSettings {
 	requiredTools?: string[]; // Tool ids required for this item
 	restrictedTools?: string[]; // Tool ids blocked for this item
-	/** Parameters by tool id; outranks the assessment's `toolParameters` entry. */
+	/** Parameters by tool id; override the assessment's key by key. */
 	toolParameters?: ToolParameters;
 }
 

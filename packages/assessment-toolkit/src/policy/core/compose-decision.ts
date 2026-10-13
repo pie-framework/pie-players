@@ -367,6 +367,7 @@ export function composeDecision(
 			toolId,
 			required: flag?.required ?? false,
 			alwaysAvailable: flag?.alwaysAvailable ?? false,
+			activateAtInit: flag?.activateAtInit ?? false,
 			parameters: resolveToolParameters(
 				toolId,
 				pnpPolicy.assessment,
@@ -434,6 +435,7 @@ const PNP_RULE_FIELDS: Record<PnpPolicySourceRule, string> = {
 	"item-requirement": "item settings.requiredTools",
 	"district-requirement": "settings.districtPolicy.requiredTools",
 	"pnp-support": "personalNeedsProfile.supports",
+	"pnp-activate-at-init": "personalNeedsProfile.activateAtInit",
 };
 
 /**

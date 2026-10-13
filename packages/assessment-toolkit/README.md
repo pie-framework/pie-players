@@ -449,7 +449,9 @@ The toolkit uses one canonical `tools` model with four keys:
 A profile, district policy or item setting names a tool by its `toolId`, and an
 id no registered tool carries raises `tool-policy.unknownSupportId`.
 [Support ids](docs/TOOL_REGISTRY.md#support-ids) lists the AfA PNP 3.0 terms the
-packaged ids serve.
+packaged ids serve, and `createPersonalNeedsProfileFromAfa` in
+`@pie-players/pie-default-tool-loaders` converts an AfA record
+([AfA PNP 3.0 records](docs/PNP_CONFIGURATION.md#afa-pnp-30-records)).
 
 Example:
 

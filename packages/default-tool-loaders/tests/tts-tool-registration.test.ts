@@ -40,6 +40,50 @@ const itemContext: ToolContext = {
 	item: {} as any,
 };
 
+describe("ttsToolRegistration profile settings", () => {
+	const render = (parameters: Record<string, unknown> | undefined) => {
+		const toolbarContext = {
+			scope: { level: "item", scopeId: "item-1", itemId: "item-1" },
+			itemId: "item-1",
+			catalogId: "item-1",
+			language: "en-US",
+			toolCoordinator: null,
+			componentOverrides: packagedOverrides,
+			toolkitCoordinator: { getToolConfig: () => ({}) } as any,
+			ttsService: null,
+			elementToolStateStore: null,
+			toggleTool: () => {},
+			isToolVisible: () => false,
+			subscribeVisibility: null,
+			getToolParameters: (toolId: string) =>
+				toolId === "textToSpeech" ? parameters : undefined,
+		} as unknown as ToolbarContext;
+		const renderResult = withFakeDocument(() =>
+			ttsToolRegistration.renderToolbar(itemContext, toolbarContext),
+		);
+		return renderResult?.elements?.[0]?.element as {
+			baseRate?: number;
+			pitch?: number;
+			volume?: number;
+		};
+	};
+
+	test("passes the textToSpeech parameters to the inline element", () => {
+		expect(render({ rate: 1.5, pitch: 0.5, volume: 0.8 })).toMatchObject({
+			baseRate: 1.5,
+			pitch: 0.5,
+			volume: 0.8,
+		});
+	});
+
+	test("leaves the element's defaults without numeric parameters", () => {
+		const element = render({ rate: "fast" });
+		expect(element.baseRate).toBeUndefined();
+		expect(element.pitch).toBeUndefined();
+		expect(element.volume).toBeUndefined();
+	});
+});
+
 describe("ttsToolRegistration speed options", () => {
 	test("applies custom speedOptions from toolkit config in provided order", () => {
 		const toolbarContext: ToolbarContext = {

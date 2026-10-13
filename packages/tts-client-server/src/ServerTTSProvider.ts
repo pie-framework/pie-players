@@ -98,9 +98,6 @@ export interface ServerTTSProviderConfig extends TTSConfig {
 	/** Polly engine selection when provider is AWS Polly */
 	engine?: "standard" | "neural";
 
-	/** Volume level 0-1 */
-	volume?: number;
-
 	/**
 	 * Transport mode determines request/response translation strategy.
 	 * - pie: POST {apiEndpoint}/synthesize, expects inline base64 audio + speech marks
@@ -539,6 +536,7 @@ const pieAdapter: TransportAdapter = {
 			voice: config.voice,
 			language: contentLanguageOf(config) ?? config.language,
 			rate: config.rate,
+			...(config.pitch !== undefined ? { pitch: config.pitch } : {}),
 			engine,
 			sampleRate,
 			format,
@@ -1191,9 +1189,9 @@ class ServerTTSProviderImpl implements ITTSProviderImplementation {
 
 	/**
 	 * Store rate, pitch, voice and the per-speak language for the next
-	 * synthesis. Server-side synthesis bakes them into the audio and speech
-	 * marks, so an active speed change is TTSService's job: it replays from the
-	 * current segment.
+	 * synthesis, and volume for the next playback. Server-side synthesis bakes
+	 * the first four into the audio and speech marks, so an active speed change
+	 * is TTSService's job: it replays from the current segment.
 	 */
 	updateSettings(settings: Partial<ServerTTSProviderConfig>): void {
 		if (settings.rate !== undefined) {
@@ -1205,6 +1203,9 @@ class ServerTTSProviderImpl implements ITTSProviderImplementation {
 		}
 		if (settings.pitch !== undefined) {
 			this.config.pitch = settings.pitch;
+		}
+		if (settings.volume !== undefined) {
+			this.config.volume = settings.volume;
 		}
 		if (settings.voice !== undefined) {
 			this.config.voice = settings.voice;

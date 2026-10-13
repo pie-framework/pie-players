@@ -159,6 +159,7 @@ async function getGoogleProvider(): Promise<GoogleCloudTTSProviderType> {
  *   voice?: string;
  *   language?: string;
  *   rate?: number;
+ *   pitch?: number;              // 0-2, 1 normal
  *   includeSpeechMarks?: boolean;
  *   provider?: 'polly' | 'google';  // Defaults to 'polly'
  *   engine?: 'standard' | 'neural'; // Polly-only
@@ -189,6 +190,7 @@ export const POST: RequestHandler = async ({ request }) => {
 			voice,
 			language,
 			rate,
+			pitch,
 			includeSpeechMarks = true,
 			provider = "polly",
 			engine,
@@ -225,6 +227,7 @@ export const POST: RequestHandler = async ({ request }) => {
 				voice,
 				language: language || "en-US",
 				rate,
+				pitch,
 				includeSpeechMarks,
 			});
 		} else {
@@ -246,6 +249,7 @@ export const POST: RequestHandler = async ({ request }) => {
 				voice,
 				language: language || "en-US",
 				rate,
+				pitch,
 				sampleRate:
 					typeof sampleRate === "number" && Number.isFinite(sampleRate)
 						? sampleRate

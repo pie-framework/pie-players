@@ -84,9 +84,9 @@ export interface FeaturePolicyDecision<P = Record<string, unknown>> {
 	 */
 	required: boolean;
 	/**
-	 * The feature's parameters: the item's `toolParameters` entry for an item's
-	 * scope, else the assessment's `toolParameters` entry, keyed by the feature id.
-	 * Set on a denial too; a host denial leaves it out.
+	 * The feature's parameters: the profile's, assessment's and, for an item's
+	 * scope, item's `toolParameters` entries for the feature id, merged key by key,
+	 * later ones winning. Set on a denial too; a host denial leaves it out.
 	 */
 	parameters?: P;
 	/**

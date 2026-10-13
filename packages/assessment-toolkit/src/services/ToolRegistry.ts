@@ -154,9 +154,10 @@ export interface ToolbarContext {
 	getResolvedToolContext?: (toolId: string) => ResolvedToolContext | null;
 	getToolRenderParams?: (toolId: string) => Record<string, unknown> | null;
 	/**
-	 * The tool's policy parameters on this toolbar: the item's `toolParameters`
-	 * entry on an item's own toolbar, else the assessment's `toolParameters` entry.
-	 * Authored content, so a registration checks what it reads.
+	 * The tool's policy parameters on this toolbar: the profile's, assessment's
+	 * and, on an item's own toolbar, item's `toolParameters` entries merged key by
+	 * key, later ones winning. Authored content, so a registration checks what it
+	 * reads.
 	 */
 	getToolParameters?: <K extends string>(
 		toolId: K,

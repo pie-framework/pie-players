@@ -55,6 +55,34 @@
 							},
 							"default": "'left-aligned'",
 							"attribute": "layout-mode"
+						},
+						{
+							"kind": "field",
+							"name": "baseRate",
+							"type": {
+								"text": "number"
+							},
+							"default": "1",
+							"description": "Multiplies every speed choice's rate, so 1× reads at this rate.",
+							"attribute": "base-rate"
+						},
+						{
+							"kind": "field",
+							"name": "pitch",
+							"type": {
+								"text": "number"
+							},
+							"description": "The pitch each read starts at, 0–2 with 1 normal.",
+							"attribute": "pitch"
+						},
+						{
+							"kind": "field",
+							"name": "volume",
+							"type": {
+								"text": "number"
+							},
+							"description": "The volume each read starts at, 0–1.",
+							"attribute": "volume"
 						}
 					],
 					"attributes": [
@@ -96,6 +124,31 @@
 							},
 							"default": "'left-aligned'",
 							"fieldName": "layoutMode"
+						},
+						{
+							"name": "base-rate",
+							"type": {
+								"text": "number"
+							},
+							"default": "1",
+							"description": "Multiplies every speed choice's rate, so 1× reads at this rate.",
+							"fieldName": "baseRate"
+						},
+						{
+							"name": "pitch",
+							"type": {
+								"text": "number"
+							},
+							"description": "The pitch each read starts at, 0–2 with 1 normal.",
+							"fieldName": "pitch"
+						},
+						{
+							"name": "volume",
+							"type": {
+								"text": "number"
+							},
+							"description": "The volume each read starts at, 0–1.",
+							"fieldName": "volume"
 						}
 					],
 					"events": [

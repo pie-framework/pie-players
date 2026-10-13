@@ -16,7 +16,8 @@ export type PnpPolicySourceRule =
 	| "pnp-prohibited"
 	| "item-requirement"
 	| "district-requirement"
-	| "pnp-support";
+	| "pnp-support"
+	| "pnp-activate-at-init";
 
 /**
  * Rule vocabulary for tool policy decisions. A decision's `rule` is the one

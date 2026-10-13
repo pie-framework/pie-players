@@ -138,9 +138,10 @@ The packaged calculator reads these values through
 toolbar button plus calculator element. Beneath them sits the calculator's
 policy parameter `type`, read through `toolbarContext.getToolParameters("calculator")`
 from item `toolParameters`, then assessment `settings.toolParameters.calculator`,
-whether or not a grant admits the tool. With neither, it opens basic, offers all
-three types and names itself "Calculator". Content metadata stays in host code;
-profile restrictions stay framework-owned and take precedence.
+then the profile's `toolParameters`, whether or not a grant admits the tool.
+With none, it opens basic, offers all three types and names itself
+"Calculator". Content metadata stays in host code; profile restrictions stay
+framework-owned and take precedence.
 
 A host rule beyond the parameter reads the same parameters through
 `decideFeaturePolicy("calculator")`. This one hides the button without a grant

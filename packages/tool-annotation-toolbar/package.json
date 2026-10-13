@@ -1,6 +1,6 @@
 {
 	"name": "@pie-players/pie-tool-annotation-toolbar",
-	"version": "1.0.0-beta.0",
+	"version": "1.0.0-beta.1",
 	"type": "module",
 	"description": "Text annotation toolbar with highlighting and underlining for PIE assessment player",
 	"repository": {

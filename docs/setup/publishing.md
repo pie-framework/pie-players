@@ -235,18 +235,19 @@ After a publish, `release.yml` verifies the registry:
 
 ### Registry propagation
 
-Both checks read the registry in the job that just published to it, and npm
-serves reads from replicas that lag the write.
-`scripts/lib/registry-propagation.mjs` is their shared retry policy: five
-attempts per lookup with exponential backoff from 3 s, under one 240 s deadline
-for the whole run. Only E404 and ETARGET retry, so an authorization failure
-fails at once.
+Both checks read the registry in the job that just published to it, and a
+version reaches its packument minutes after `changeset publish` reports it
+published: up to 586 s on 0.3.74 and 289–365 s on each release since.
+`scripts/lib/registry-propagation.mjs` is their shared retry policy:
+exponential backoff from 3 s, capped at 30 s, under one 900 s deadline for the
+whole run. Only E404 and ETARGET retry, so an authorization failure fails at
+once.
 
-The deadline is shared because versioning is fixed: a real partial release
-fails every package in the group at once, and a per-package budget would keep
-the step running for most of an hour. Past the deadline the remaining packages
-fail fast, and the error names the bound that was hit.
-`PIE_REGISTRY_PROPAGATION_DEADLINE_SECONDS` widens it for a rerun.
+The deadline is the only bound, and it is shared because versioning is fixed:
+a real partial release fails every package in the group at once, and a
+per-package budget would multiply the wait by the size of the group. Past the
+deadline the remaining packages fail fast, and the error says the deadline was
+hit. `PIE_REGISTRY_PROPAGATION_DEADLINE_SECONDS` widens it for a rerun.
 
 ## How CI authenticates to npm
 

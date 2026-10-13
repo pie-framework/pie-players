@@ -144,6 +144,10 @@ unbuilt framework-completing capabilities.
   composition, plus `sectionFromItem` for hosts that deliver one item at a time.
   Integrator guide:
   [Session lifecycle](../../packages/section-player/README.md#session-lifecycle).
+- [`item-summary-and-list.md`](./item-summary-and-list.md) - `Draft`. Element
+  summaries as data with a prompt-and-label fallback, a `<pie-item-summary>`
+  row that upgrades in place to the full player, and a `<pie-item-list>`
+  composition, for hosts that show many items at once.
 
 Decisions that span PRDs — sequencing, rejected alternatives, trade-offs a reader
 would otherwise have to reconstruct — live in [`../adr/`](../adr/).

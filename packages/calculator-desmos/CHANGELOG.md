@@ -1,5 +1,11 @@
 # @pie-players/pie-calculator-desmos
 
+## 1.0.0-beta.1
+
+### Patch Changes
+
+- @pie-players/pie-calculator@1.0.0-beta.1
+
 ## 1.0.0-beta.0
 
 ### Major Changes

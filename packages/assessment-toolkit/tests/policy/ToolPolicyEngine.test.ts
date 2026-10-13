@@ -362,6 +362,79 @@ describe("tool parameters", () => {
 		expect(decision.granted).toBe(false);
 		expect(decision.parameters).toEqual({ type: "graphing" });
 	});
+
+	test("merge the profile's, assessment's and item's entries key by key", () => {
+		const engine = new ToolPolicyEngine({
+			toolRegistry: new ToolRegistry(),
+			inputs: {
+				tools: normalizeToolsConfig({ placement: { item: ["textToSpeech"] } }),
+				assessment: {
+					id: "a1",
+					personalNeedsProfile: {
+						supports: ["textToSpeech"],
+						toolParameters: {
+							textToSpeech: { rate: 1.5, pitch: 0.5, volume: 0.8 },
+						},
+					},
+					settings: { toolParameters: { textToSpeech: { pitch: 1 } } },
+				} as AssessmentEntity,
+			},
+		});
+		engine.registerItemSettings("i1", {
+			toolParameters: { textToSpeech: { volume: 1 } },
+		});
+		expect(engine.decideFeature("textToSpeech").parameters).toEqual({
+			rate: 1.5,
+			pitch: 1,
+			volume: 0.8,
+		});
+		expect(
+			engine.decide({ level: "item", scope: { level: "item", scopeId: "i1" } })
+				.visibleTools[0].parameters,
+		).toEqual({ rate: 1.5, pitch: 1, volume: 1 });
+	});
+});
+
+describe("activate at init", () => {
+	function engineWith(assessment: AssessmentEntity) {
+		return new ToolPolicyEngine({
+			toolRegistry: new ToolRegistry(),
+			inputs: {
+				tools: normalizeToolsConfig({ placement: { item: ["calculator"] } }),
+				assessment,
+			},
+		});
+	}
+	const scope = { level: "item", scopeId: "i1" } as const;
+
+	test("flags an admitted tool the profile activates at init", () => {
+		const [entry] = engineWith({
+			id: "a1",
+			personalNeedsProfile: { supports: [], activateAtInit: ["calculator"] },
+		} as AssessmentEntity).decide({ level: "item", scope }).visibleTools;
+		expect(entry).toMatchObject({
+			toolId: "calculator",
+			alwaysAvailable: true,
+			activateAtInit: true,
+		});
+	});
+
+	test("withdraws a blocked one", () => {
+		const decision = engineWith({
+			id: "a1",
+			personalNeedsProfile: { supports: [], activateAtInit: ["calculator"] },
+			settings: { districtPolicy: { blockedTools: ["calculator"] } },
+		} as AssessmentEntity).decide({ level: "item", scope });
+		expect(decision.visibleTools).toEqual([]);
+	});
+
+	test("flags nothing for a profile that only grants", () => {
+		const [entry] = engineWith({
+			id: "a1",
+			personalNeedsProfile: { supports: ["calculator"] },
+		} as AssessmentEntity).decide({ level: "item", scope }).visibleTools;
+		expect(entry.activateAtInit).toBe(false);
+	});
 });
 
 describe("assessmentExpected", () => {

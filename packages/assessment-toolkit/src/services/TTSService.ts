@@ -622,7 +622,8 @@ export class TTSService {
 	}
 
 	/**
-	 * Update rate, pitch, voice or provider options without reinitializing.
+	 * Update rate, pitch, volume, voice or provider options without
+	 * reinitializing.
 	 * `providerOptions` merge over the ones already configured.
 	 */
 	async updateSettings(settings: Partial<TTSConfig>): Promise<void> {
@@ -1542,25 +1543,43 @@ export class TTSService {
 			return;
 		}
 		const runId = waitingRunId ?? this.beginRun(owner);
-		if (options.rate !== undefined) {
-			await this.applyRunRate(options.rate);
+		if (
+			options.rate !== undefined ||
+			options.pitch !== undefined ||
+			options.volume !== undefined
+		) {
+			await this.applyRunSettings(options);
 			if (runId !== this.speakRunId) return;
 		}
 		await this.speakContent(content.text, content.options, runId);
 	}
 
 	/**
-	 * Sets the rate a run starts at, after any rate write in flight. The run has
-	 * no playback yet, so nothing restarts.
+	 * Sets the rate, pitch and volume a run starts at, after any rate write in
+	 * flight. The run has no playback yet, so nothing restarts.
 	 */
-	private async applyRunRate(rate: number): Promise<void> {
+	private async applyRunSettings(
+		options: Pick<SpeakOptions, "rate" | "pitch" | "volume">,
+	): Promise<void> {
 		await this.playbackRateWriteQueue;
-		const nextRate = this.normalizePlaybackRate(rate);
-		const currentRate = this.normalizePlaybackRate(
-			Number(this.ttsConfig.rate ?? 1),
-		);
-		if (nextRate === currentRate) return;
-		await this.updateSettings({ rate: nextRate });
+		const settings: Partial<TTSConfig> = {};
+		if (options.rate !== undefined) {
+			const nextRate = this.normalizePlaybackRate(options.rate);
+			const currentRate = this.normalizePlaybackRate(
+				Number(this.ttsConfig.rate ?? 1),
+			);
+			if (nextRate !== currentRate) settings.rate = nextRate;
+		}
+		if (options.pitch !== undefined && options.pitch !== this.ttsConfig.pitch) {
+			settings.pitch = options.pitch;
+		}
+		if (
+			options.volume !== undefined &&
+			options.volume !== this.ttsConfig.volume
+		) {
+			settings.volume = options.volume;
+		}
+		if (Object.keys(settings).length > 0) await this.updateSettings(settings);
 	}
 
 	/**

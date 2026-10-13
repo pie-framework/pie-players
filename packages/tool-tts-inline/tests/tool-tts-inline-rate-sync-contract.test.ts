@@ -7,7 +7,7 @@ const source = await Bun.file(
 describe("tool-tts-inline playback-rate synchronization", () => {
 	test("keeps user/start writes off the external-prop effect path", () => {
 		const effectStart = source.indexOf(
-			"$effect(() => {\n\t\tconst service = ttsService;\n\t\tconst choicesKey = speedChoicesKey;",
+			"$effect(() => {\n\t\tconst service = ttsService;\n\t\tconst choicesKey = rateSyncKey;",
 		);
 		expect(effectStart).toBeGreaterThan(-1);
 		const effectEnd = source.indexOf("\n\t});", effectStart);
@@ -16,11 +16,12 @@ describe("tool-tts-inline playback-rate synchronization", () => {
 		const queuedSync = effect.indexOf("queueMicrotask");
 		expect(queuedSync).toBeGreaterThan(-1);
 
-		// playbackRate is deliberately read only in the queued callback. A direct
+		// The rate is deliberately read only in the queued callback. A direct
 		// tracked read would make a button selection invoke both this effect and
 		// handlePlaybackRate, recreating the concurrent rate-update race.
+		expect(effect.slice(0, queuedSync)).not.toContain("speechRate");
 		expect(effect.slice(0, queuedSync)).not.toContain("playbackRate");
-		expect(effect.slice(queuedSync)).toContain("const rate = playbackRate;");
+		expect(effect.slice(queuedSync)).toContain("const rate = speechRate;");
 		expect(effect).toContain("lastSyncedPlaybackRateTarget !== syncTarget");
 	});
 });

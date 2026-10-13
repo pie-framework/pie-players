@@ -97,13 +97,25 @@ describe("assessmentHasPnpPolicyInputs — structural PNP/profile policy materia
 		).toBe(true);
 	});
 
+	test("returns true for PNP `activateAtInit`", () => {
+		expect(
+			assessmentHasPnpPolicyInputs({
+				id: "a1",
+				personalNeedsProfile: { supports: [], activateAtInit: ["lineReader"] },
+			} as AssessmentEntity),
+		).toBe(true);
+	});
+
 	test("ignores fields policy does not read", () => {
 		// Tool parameters and catalogs name tools too, but no precedence level
 		// reads them, so they must not switch enforcement on.
 		const assessment: AssessmentEntity = {
 			id: "a1",
 			qtiVersion: "3.0",
-			personalNeedsProfile: { supports: [] },
+			personalNeedsProfile: {
+				supports: [],
+				toolParameters: { textToSpeech: { rate: 1.5 } },
+			},
 			accessibilityCatalogs: [
 				{ identifier: "c1", cards: [{ catalog: "spoken", content: "Hello" }] },
 			],

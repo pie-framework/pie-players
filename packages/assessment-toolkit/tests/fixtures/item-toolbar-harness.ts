@@ -33,7 +33,9 @@ import type { ToolContext } from "../../src/services/tool-context.js";
 
 /** A pass-1 entry: a placed tool, granted when `required` or `alwaysAvailable`. */
 export type PlacedTool = Pick<ToolPolicyEntry, "toolId"> &
-	Partial<Pick<ToolPolicyEntry, "required" | "alwaysAvailable">>;
+	Partial<
+		Pick<ToolPolicyEntry, "required" | "alwaysAvailable" | "activateAtInit">
+	>;
 
 export interface ItemToolbarMountOptions {
 	registry: ToolRegistry;
@@ -124,6 +126,7 @@ function publishCoordinator(
 			toolId: entry.toolId,
 			required: entry.required ?? false,
 			alwaysAvailable: entry.alwaysAvailable ?? false,
+			activateAtInit: entry.activateAtInit ?? false,
 		})),
 		diagnostics: [],
 		provenance: {} as ToolPolicyDecision["provenance"],

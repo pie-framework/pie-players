@@ -87,7 +87,7 @@ A tool's `toolId` is its PNP support id: a profile, district policy or item gran
 
 A new tool whose capability [AfA PNP 3.0](https://www.imsglobal.org/spec/afa/v3p0/info) names takes that term as its id, camelCased, since AfA terms are kebab-case. Among the packaged ids, `transcript` is an AfA term and `lineReader` is `line-reader`; `signLanguage`, from `@pie-players/pie-tool-sign-language`, is `sign-language`.
 
-Other packaged ids name an AfA capability in other words, so a host holding a profile in AfA terms translates them:
+Other packaged ids name an AfA capability in other words. `createPersonalNeedsProfileFromAfa`, from `@pie-players/pie-default-tool-loaders`, translates a profile held in AfA terms by these renames, and [AfA PNP 3.0 records](PNP_CONFIGURATION.md#afa-pnp-30-records) gives each AfA feature's disposition:
 
 | AfA term | Tool id |
 | --- | --- |
@@ -98,7 +98,7 @@ Other packaged ids name an AfA capability in other words, so a host holding a pr
 
 AfA has no term for `ruler`, `protractor`, `graph`, `periodicTable` or `annotationToolbar`.
 
-`spoken` with `reading-type` `screen-reader`, the value AfA assumes when `reading-type` is absent, grants no packaged tool: the student's own screen reader speaks, and PIE's read-aloud would talk over it. [ADR 0004](../../../docs/adr/0004-screen-reader-use-is-a-profile-support-that-withholds-read-aloud.md) records the `screenReader` support id that will carry it and withhold `textToSpeech`. Until the toolkit recognizes that id, a host withholds read-aloud from such a student by listing `textToSpeech` in `prohibitedSupports`.
+`spoken` with `reading-type` `screen-reader`, the value AfA assumes when `reading-type` is absent, grants no packaged tool: the student's own screen reader speaks, and PIE's read-aloud would talk over it. [ADR 0004](../../../docs/adr/0004-screen-reader-use-is-a-profile-support-that-withholds-read-aloud.md) records the `screenReader` support id that will carry it and withhold `textToSpeech`, and the AfA adapter emits it. Until the toolkit recognizes that id, it raises `tool-policy.unknownSupportId`, and a host withholds read-aloud from such a student by listing `textToSpeech` in `prohibitedSupports`.
 
 Keep a tool id stable once profiles use it: renaming it drops the grant from every profile that lists the old id. That is why an existing id keeps its name where the AfA term differs, as `textToSpeech` does for `spoken`.
 

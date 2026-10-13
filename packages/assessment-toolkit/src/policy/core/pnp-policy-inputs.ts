@@ -11,7 +11,8 @@
  * record (only `id` / `name`, no PNP and no settings) do not engage
  * PNP/profile gates. The flip happens the moment the assessment carries any of:
  *
- *   - `personalNeedsProfile` (any `supports` or `prohibitedSupports`),
+ *   - `personalNeedsProfile` (any `supports`, `prohibitedSupports` or
+ *     `activateAtInit`),
  *   - `settings.districtPolicy` (any `blockedTools` or `requiredTools`),
  *   - `settings.testAdministration` (any `toolOverrides` entry),
  *   - or, for an item-scoped decision, the item's settings carry
@@ -45,7 +46,12 @@ export function assessmentHasPnpPolicyInputs(
 ): boolean {
 	if (!assessment) return false;
 	const pnp = assessment.personalNeedsProfile;
-	if (pnp && (hasEntries(pnp.supports) || hasEntries(pnp.prohibitedSupports))) {
+	if (
+		pnp &&
+		(hasEntries(pnp.supports) ||
+			hasEntries(pnp.prohibitedSupports) ||
+			hasEntries(pnp.activateAtInit))
+	) {
 		return true;
 	}
 	const settings = assessment.settings;

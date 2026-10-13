@@ -224,6 +224,39 @@ describe("ServerTTSProvider", () => {
 		await expect(second).resolves.toBeUndefined();
 	});
 
+	test("sends pitch on the pie transport only when set, and plays at the set volume", async () => {
+		const fetchMock = vi.fn(async () =>
+			createJSONResponse({
+				audio: btoa("audio-bytes"),
+				contentType: "audio/mpeg",
+				speechMarks: [],
+				metadata: {
+					providerId: "polly",
+					voice: "Joanna",
+					duration: 1,
+					charCount: 5,
+					cached: false,
+				},
+			}),
+		);
+		globalThis.fetch = fetchMock as unknown as typeof fetch;
+		const provider = new ServerTTSProvider();
+		const impl = await provider.initialize({ apiEndpoint: "/api/tts" } as any);
+		const bodyOf = (call: number) => {
+			const options = fetchMock.mock.calls[call]?.[1] as RequestInit | undefined;
+			return JSON.parse(String(options?.body));
+		};
+
+		await impl.speak("hello");
+		expect(bodyOf(0)).not.toHaveProperty("pitch");
+		expect(MockAudio.instances[0]?.volume).toBe(1);
+
+		impl.updateSettings({ pitch: 1.4, volume: 0.6 });
+		await impl.speak("hello");
+		expect(bodyOf(1).pitch).toBe(1.4);
+		expect(MockAudio.instances[1]?.volume).toBe(0.6);
+	});
+
 	test("does not media-rescale initially synthesized server audio", async () => {
 		const fetchMock = vi.fn(async () =>
 			createJSONResponse({

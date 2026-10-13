@@ -38,8 +38,9 @@ content to read. Section players provide both; around a plain item player, the
 host writes the toolkit and the scope. The packaged
 `textToSpeech` capability in `@pie-players/pie-default-tool-loaders` creates
 this element in item and passage toolbars, takes `catalog-id` and `size` from
-the toolbar, and takes `layout-mode`, `speedOptions` and
-`showSingleSpeedOption` from the toolkit's `textToSpeech` tool configuration.
+the toolbar, takes `layout-mode`, `speedOptions` and `showSingleSpeedOption` from
+the toolkit's `textToSpeech` tool configuration, and takes `base-rate`, `pitch`
+and `volume` from the policy's `textToSpeech` tool parameters.
 
 ```javascript
 import '@pie-players/pie-tool-tts-inline';
@@ -80,6 +81,17 @@ passageHeader.append(ttsButton);
   the first keeps the controls row reserved and the second expands it while the
   panel is open. `'floating-overlay'` and `'left-aligned'` open the panel as an
   overlay to the left of the trigger.
+- `base-rate` - Multiplies every speed option, so a learner's normal speed
+  can differ from the provider's (default: `1`). A value that is not a
+  positive number means `1`.
+- `pitch` - The pitch this element's reads start at, `0`–`2` with `1` normal,
+  clamped to that range (default: the service's).
+- `volume` - The volume this element's reads start at, `0`–`1`, clamped
+  (default: the service's).
+
+Pitch and volume stay the service's after a read, so a read started
+elsewhere, such as the annotation toolbar's read-selection, uses the last
+values set.
 
 ### JavaScript Properties
 

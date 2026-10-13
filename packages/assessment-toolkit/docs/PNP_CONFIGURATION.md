@@ -21,7 +21,9 @@ Among the policy inputs, only a block removes a placed tool: a district block, a
 AssessmentEntity
 ├── personalNeedsProfile           # AfA PNP 3.0: Student's PNP profile
 │   ├── supports: string[]         # Granted support ids
-│   └── prohibitedSupports: string[]
+│   ├── prohibitedSupports: string[]
+│   ├── activateAtInit: string[]   # Granted and on at start
+│   └── toolParameters             # The student's settings by support id
 │
 └── settings: AssessmentSettings   # PIE extension
     ├── districtPolicy             # Institutional governance
@@ -48,7 +50,7 @@ Policy reads the profile of the bound assessment: the `assessment` property of a
 
 ### Student profile
 
-The profile is part of the `AssessmentEntity`. A support id is the `toolId` it grants. Translate a profile held in AfA PNP 3.0 terms (`line-reader`, `answer-masking`) to the tools that serve them (`lineReader`, `answerEliminator`), as [Support ids](TOOL_REGISTRY.md#support-ids) lists.
+The profile is part of the `AssessmentEntity`. A support id is the `toolId` it grants. A profile held in AfA PNP 3.0 terms (`line-reader`, `answer-masking`) converts with `createPersonalNeedsProfileFromAfa` ([AfA PNP 3.0 records](#afa-pnp-30-records)).
 
 ```typescript
 const assessment: AssessmentEntity = {
@@ -68,7 +70,15 @@ const assessment: AssessmentEntity = {
     // Supports withdrawn for this student; each is a block
     prohibitedSupports: [
       "answerEliminator"
-    ]
+    ],
+
+    // Granted, and turned on at start
+    activateAtInit: ["lineReader"],
+
+    // The student's settings, under the assessment's and item's
+    toolParameters: {
+      textToSpeech: { rate: 0.8 }
+    }
   },
 
   sections: [...]
@@ -200,9 +210,16 @@ For each tool id, the first rule that matches decides. The rule id is what a dec
 | 5 | `test-admin-override` | `toolOverrides[toolId] === true` | Grant for the session (`alwaysAvailable`) |
 | 6 | `item-requirement` | item `requiredTools` | Grant (`required`), on the item's own toolbar and scope |
 | 7 | `district-requirement` | `districtPolicy.requiredTools` | Grant (`required`) |
+| 8 | `pnp-activate-at-init` | `personalNeedsProfile.activateAtInit` | Grant (`alwaysAvailable`, `activateAtInit`) |
 | 8 | `pnp-support` | `personalNeedsProfile.supports` | Grant (`alwaysAvailable`) |
 
 No rule places a tool: a grant keeps a placed tool through relevance filtering, and a tool missing from `tools.placement` at a level stays off that level's toolbar.
+
+An id in `activateAtInit` decides by `pnp-activate-at-init`, whether or not `supports` lists it too. A grant from rules 5–7 keeps the entry's `activateAtInit` flag, and a block clears it.
+
+### Activation at start
+
+A toolbar turns on each tool whose entry carries `activateAtInit` the first time it renders that tool's button in a scope, as if the learner had pressed it. A learner who closes the tool keeps it closed until the toolbar's scope changes, so an item toolbar turns it on again at the next item. A tool with no toggle button, such as the read-aloud control, is on wherever it renders, and activation at start does not make it play.
 
 ## PNP enforcement
 
@@ -210,7 +227,7 @@ No rule places a tool: a grant keeps a placed tool through relevance filtering, 
 
 - `"on"`: every toolbar decision applies them.
 - `"off"`: toolbar decisions read placement and host policy (`tools.policy`, providers) only.
-- omitted (auto-mode): a decision applies them when the bound assessment carries policy material — profile `supports` or `prohibitedSupports`, district `blockedTools` or `requiredTools`, or a test-administration override. A decision scoped to an item also applies them when that item's settings require or restrict a tool, and that turns enforcement on for the item's decisions only.
+- omitted (auto-mode): a decision applies them when the bound assessment carries policy material — profile `supports`, `prohibitedSupports` or `activateAtInit`, district `blockedTools` or `requiredTools`, or a test-administration override. A decision scoped to an item also applies them when that item's settings require or restrict a tool, and that turns enforcement on for the item's decisions only.
 
 `coordinator.setPnpEnforcement(mode)` overrides the configured mode at runtime; `"on"` and `"off"` stick across assessment swaps, and `null` returns to the configured mode. A toolkit that builds its own coordinator forwards `tools.pnpEnforcement` to it.
 
@@ -323,9 +340,20 @@ console.log('Allowed tools:', allowedToolIds);
 
 ### Tool parameters
 
-`settings.toolParameters` holds feature parameters keyed by support id, and an item's `toolParameters` override them on the item's own toolbar and scope. Every tool policy shows carries them as its policy parameters (`ToolPolicyEntry.parameters`, `FeaturePolicyDecision.parameters`), whether or not a grant admits it and whatever `pnpEnforcement` is.
+Tool parameters are feature parameters keyed by support id, from three layers: the profile's `toolParameters`, the assessment's `settings.toolParameters`, and an item's `toolParameters` on the item's own toolbar and scope. They merge key by key, each layer overriding the one before, so a profile's `rate` survives an assessment entry that sets only `pitch`. Every tool policy shows carries the result as its policy parameters (`ToolPolicyEntry.parameters`, `FeaturePolicyDecision.parameters`), whether or not a grant admits it and whatever `pnpEnforcement` is. Profile parameters alone do not turn enforcement on.
 
-The calculator reads `type` as its default flavor, the answer eliminator `strategy` (`strikethrough` or `mask`), and the sign-language capability `signLang`. `ToolParameterMap` in `@pie-players/pie-players-shared/types` types them.
+| Support id | Parameter | Effect |
+| --- | --- | --- |
+| `calculator` | `type` | The flavor it opens: `basic`, `scientific` or `graphing` |
+| `answerEliminator` | `strategy` | `strikethrough` or `mask` |
+| `signLanguage` | `signLang` | The requested sign language |
+| `textToSpeech` | `rate` | Multiplies every speed the control offers; 1 is normal |
+| `textToSpeech` | `pitch` | 0–2, 1 normal |
+| `textToSpeech` | `volume` | 0–1 |
+
+`ToolParameterMap` in `@pie-players/pie-players-shared/types` types them.
+
+The read-aloud control applies `pitch` and `volume` to the TTS service when it reads, and they stay set after the read, so the annotation toolbar's read-selection speaks with the last values the control applied. The server backend sends `pitch` to the `pie` transport only; the `custom` transport takes speed alone, and every backend applies `volume` in the browser.
 
 Provider configuration, such as the TTS backend and voice in step 2, belongs in `tools.providers`. The `server` backend sends requests to the host's TTS server at `apiEndpoint` (default `/api/tts`) through `@pie-players/tts-client-server`, which `@pie-players/pie-default-tool-loaders` installs.
 
@@ -403,11 +431,57 @@ const assessment = {
 // Test admin override (#2) blocks for operational reasons
 ```
 
+## AfA PNP 3.0 records
+
+`createPersonalNeedsProfileFromAfa(record)`, from `@pie-players/pie-default-tool-loaders`, builds a profile from an AfA PNP 3.0 record held as JSON keyed by the spec's terms:
+
+```typescript
+import { createPersonalNeedsProfileFromAfa } from "@pie-players/pie-default-tool-loaders";
+
+const personalNeedsProfile = createPersonalNeedsProfileFromAfa({
+  spoken: { "reading-type": "computer-read-aloud", "speech-rate": 270 },
+  "calculator-on-screen": { "calculator-type": "scientific" },
+  "answer-masking": {},
+  "activate-at-initialization-set": ["spoken"],
+  "prohibit-set": ["dictionary-on-screen"]
+});
+// {
+//   supports: ["answerEliminator", "calculator", "textToSpeech"],
+//   prohibitedSupports: ["dictionary"],
+//   activateAtInit: ["textToSpeech"],
+//   toolParameters: { textToSpeech: { rate: 1.5 }, calculator: { type: "scientific" } }
+// }
+```
+
+A feature at the record's root or in `activate-as-option-set` goes to `supports`, one in `activate-at-initialization-set` to `supports` and `activateAtInit`, and one in `prohibit-set` to `prohibitedSupports`, which withdraws it from the other two. A feature is present unless it is absent, `null` or `false`. Its support id is the term camelCased, except for the packaged tools [Support ids](TOOL_REGISTRY.md#support-ids) renames. A term no packaged tool serves passes through camelCased, so a tool the host registers under that id serves it; otherwise it raises `tool-policy.unknownSupportId`.
+
+`spoken` resolves by `reading-type`. `computer-read-aloud` is `textToSpeech`, whose settings become tool parameters: `speech-rate` in words per minute over AfA's default of 180 is the `rate`, `pitch` (AfA's 0–1, 0.5 normal) doubles to PIE's 0–2, and `volume` carries over. `screen-reader`, which AfA assumes when `reading-type` is absent, is `screenReader` ([ADR 0004](../../../docs/adr/0004-screen-reader-use-is-a-profile-support-that-withholds-read-aloud.md)). A prohibited `spoken` prohibits `textToSpeech`, the spoken presentation PIE makes. Other `spoken` settings, `restriction-type` among them, are not read.
+
+Each AfA feature's disposition:
+
+| AfA feature | Disposition |
+| --- | --- |
+| `spoken`, `computer-read-aloud` | `textToSpeech`, with `speech-rate`, `pitch` and `volume` |
+| `spoken`, `screen-reader` or no `reading-type` | `screenReader`, which the toolkit does not recognize yet. Until it does, it raises `tool-policy.unknownSupportId`, and the host withholds read-aloud by adding `textToSpeech` to `prohibitedSupports` |
+| `calculator-on-screen` | `calculator`. `calculator-type` `basic`, `scientific` or `graphing` is its `type`; `standard` and `ext:` types leave the calculator's default |
+| `sign-language` | `signLanguage`, served once the host registers `@pie-players/pie-tool-sign-language`. `language` is its `signLang` |
+| `line-reader` | `lineReader`. The line reader takes no settings, so `highlight-color` is not read; its colors are the `--pie-tool-line-reader-*` custom properties |
+| `answer-masking`, `dictionary-on-screen`, `transcript` | `answerEliminator`, `dictionary`, `transcript` |
+| `activate-at-initialization-set`, `activate-as-option-set`, `prohibit-set` | Read as above |
+| `text-appearance`, `high-contrast`, `invert-display-polarity` | The host's presentation, through `<pie-theme>`; the color-scheme tool (`theme`) lets the learner pick a scheme. Passed through camelCased |
+| `magnification`, `layout-single-column` | No packaged tool; browser zoom and the host's layout serve them. Passed through camelCased |
+| `additional-testing-time`, `environment` | Administration the host runs. Passed through camelCased |
+| `language-of-interface` | The player's `locale`. Not read |
+| `access-mode-required`, `adaptation-type-required`, `adaptation-detail-required`, `adaptation-media-required`, `at-interoperable`, `educational-complexity-of-adaptation`, `educational-level-of-adaptation`, `hazard-avoidance`, `input-requirements`, `language-of-adaptation` | Not read: they select among adapted resources by resource metadata, which PIE content does not carry |
+| `extensions` | Not read |
+| `additional-directions`, `alternative-text`, `audio-description`, `braille`, `captions`, `encouragement`, `item-translation`, `keyboard-directions`, `keyword-emphasis`, `keyword-translation`, `linguistic-guidance`, `long-description`, `simplified-graphics`, `simplified-language-portions`, `tactile` | No packaged capability. Passed through camelCased |
+| `glossary-on-screen`, `homophone-checker-on-screen`, `note-taking-on-screen`, `outliner-on-screen`, `peer-interaction-on-screen`, `spell-checker-on-screen`, `thesaurus-on-screen`, `visual-organizer-on-screen` | No packaged tool. Passed through camelCased |
+
 ## Integration checklist
 
 ### Data population
 
-- [ ] **Profile**: load from the student's IEP/504 or accessibility-profile records
+- [ ] **Profile**: load from the student's IEP/504 or accessibility-profile records; convert an AfA PNP 3.0 record with [`createPersonalNeedsProfileFromAfa`](#afa-pnp-30-records)
 - [ ] **District policy**: configure in assessment administration
 - [ ] **Test administration**: set at session creation time
 - [ ] **Item settings**: author during item development

@@ -55,6 +55,15 @@ export interface TTSConfig {
 	pitch?: number;
 
 	/**
+	 * Playback volume
+	 *
+	 * @standard W3C Web Speech API
+	 * @range 0 to 1
+	 * @default 1.0
+	 */
+	volume?: number;
+
+	/**
 	 * Provider options. A provider's configuration type narrows this to the
 	 * options it reads.
 	 *

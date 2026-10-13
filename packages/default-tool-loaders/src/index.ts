@@ -12,6 +12,14 @@ export {
 	SECTION_PLAYER_PREFERRED_TOOL_PLACEMENT,
 } from "./packaged-capability-composition.js";
 
+// A profile from an AfA PNP 3.0 record, in the packaged set's support ids.
+export {
+	type AfaFeatureSet,
+	type AfaPnpRecord,
+	type AfaSpoken,
+	createPersonalNeedsProfileFromAfa,
+} from "./afa-profile.js";
+
 // The authored-alternate subset, for a renderer that shows alternates and no
 // toolbar — importable without the packaged composition's tool loaders.
 export { CONTENT_ALTERNATE_REGISTRATIONS } from "./content-alternates.js";

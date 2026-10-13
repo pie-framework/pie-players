@@ -53,6 +53,7 @@ export const browserFallbackConfig = (
 	const fallback: Partial<ToolkitTTSConfig> = {};
 	if (config.rate !== undefined) fallback.rate = config.rate;
 	if (config.pitch !== undefined) fallback.pitch = config.pitch;
+	if (config.volume !== undefined) fallback.volume = config.volume;
 	if (config.mathTokenHighlighting !== undefined) {
 		fallback.mathTokenHighlighting = config.mathTokenHighlighting;
 	}
@@ -537,7 +538,8 @@ class BrowserTTSProviderImpl implements ITTSProviderImplementation {
 			if (voice && shouldAssignBrowserVoice(voice)) utterance.voice = voice;
 
 			if (this.config?.rate) utterance.rate = this.config.rate;
-			if (this.config?.pitch) utterance.pitch = this.config.pitch;
+			if (this.config?.pitch !== undefined) utterance.pitch = this.config.pitch;
+			if (this.config?.volume !== undefined) utterance.volume = this.config.volume;
 
 			let didStart = false;
 			let settled = false;
@@ -735,7 +737,7 @@ class BrowserTTSProviderImpl implements ITTSProviderImplementation {
 	}
 
 	/**
-	 * Update settings dynamically (rate, pitch, voice)
+	 * Update settings dynamically (rate, pitch, volume, voice)
 	 * Changes take effect on the next speak() call
 	 */
 	updateSettings(settings: Partial<ToolkitTTSConfig>): void {
@@ -748,6 +750,9 @@ class BrowserTTSProviderImpl implements ITTSProviderImplementation {
 		}
 		if (settings.pitch !== undefined) {
 			this.config.pitch = settings.pitch;
+		}
+		if (settings.volume !== undefined) {
+			this.config.volume = settings.volume;
 		}
 		if (settings.voice !== undefined) {
 			this.config.voice = settings.voice;

@@ -38,6 +38,7 @@ export {
 	assertElementPackagesAllowed,
 	ElementPackagePolicyError,
 } from "./element-package-policy.js";
+export { isScopedPackageSpec } from "./element-package-spec.js";
 
 // ElementLoader primitive — truthful-promise loader. The public entry point
 // for ensureRegistered / assertRegistered.

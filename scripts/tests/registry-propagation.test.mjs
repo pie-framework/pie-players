@@ -66,23 +66,15 @@ describe("planRetry", () => {
 		expect(plan.reason).toBe("not a propagation failure");
 	});
 
-	test("stops at maxAttempts", () => {
-		const policy = { ...DEFAULT_PROPAGATION_POLICY, maxAttempts: 3 };
-		expect(
-			planRetry({ attempt: 2, elapsedMs: 0, message: E404, policy }).retry,
-		).toBe(true);
-		const plan = planRetry({
-			attempt: 3,
-			elapsedMs: 0,
-			message: E404,
-			policy,
-		});
-		expect(plan.retry).toBe(false);
-		expect(plan.reason).toContain("3 attempt(s)");
+	// 1.0.0-beta.1: session-debugger reached its packument 289s after the publish, and a five-attempt
+	// cap had given up on it after 45s of waiting.
+	test("keeps retrying a slow package for as long as the deadline allows", () => {
+		const plan = planRetry({ attempt: 12, elapsedMs: 300_000, message: E404 });
+		expect(plan).toEqual({ retry: true, delayMs: 30_000, reason: null });
 	});
 
-	// The deadline is shared across packages: a genuinely unpublished release must not pay the
-	// per-call budget once for each of the 45 packages in the fixed group.
+	// The deadline is shared across packages: a genuinely unpublished release must not pay a
+	// per-lookup budget once for each package in the fixed group.
 	test("stops once the shared deadline would be overrun", () => {
 		const policy = { ...DEFAULT_PROPAGATION_POLICY, deadlineMs: 10_000 };
 		expect(

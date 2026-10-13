@@ -269,9 +269,22 @@ const hooks: SectionPlayerHostHooks = {
 
 An item context carries `item`, `itemIndex`, `itemCount`, `canonicalItemId` and
 `defaultTitle`, the localized "Question N" ("Question" for a one-item section);
-a passage context carries `passage` and `defaultTitle`. A formatter that returns
-anything but a non-empty string, or throws, gets `defaultTitle`. The formatter
-stays active across the splitpane's narrow and wide transitions.
+a passage context carries `passage` and `defaultTitle`. The formatter stays
+active across the splitpane's narrow and wide transitions.
+
+A non-empty string becomes the title. `{ visible: false }` hides it: the header
+and its toolbar stay, and the heading leaves the layout but stays in the
+document, carrying `defaultTitle` as the card's accessible name and the level
+the card's content nests under. Any other return, or a throw, gets
+`defaultTitle`, so a formatter that lacks the data for a title shows the
+default.
+
+```ts
+const hooks: SectionPlayerHostHooks = {
+  cardTitleFormatter: (context) =>
+    context.kind === "item" ? { visible: false } : context.defaultTitle,
+};
+```
 
 ### Debug logging
 

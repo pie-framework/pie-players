@@ -2072,6 +2072,149 @@ describe("ESM adapter — contract", () => {
 		}
 	});
 
+	const TRAVERSAL_SPEC =
+		"@pie-element/multiple-choice@1.0.0/../../../gh/owner/repo@main";
+
+	for (const moduleResolution of ["url", "import-map"] as const) {
+		test(`${moduleResolution} mode refuses a spec that is not a scoped package spec before building a URL from it, and its sibling loads`, async () => {
+			const backend = createEsmBackend({
+				kind: "esm",
+				cdnBaseUrl: "https://cdn.jsdelivr.net/npm",
+				moduleResolution,
+				view: "delivery",
+			});
+			const seams = (backend as unknown as { __seams: EsmBackendTestSeams })
+				.__seams;
+			const requested: string[] = [];
+			seams.observeImportMapInjection((json) => {
+				requested.push(json);
+			});
+			seams.replacePackageMetadataLoader(async (_packageVersion, url) => {
+				requested.push(url);
+				return {
+					exports: {
+						"./browser/delivery": "./dist/browser/delivery/index.js",
+						"./browser/controller": "./dist/browser/controller/index.js",
+					},
+					pie: {
+						browserSharedDependencies: { react: "18.2.0", "react-dom": "18.2.0" },
+					},
+				};
+			});
+			seams.replaceImporter(async (specifier) => {
+				requested.push(specifier);
+				return { default: createConstructorFor(specifier) };
+			});
+
+			let error: ElementLoaderError | undefined;
+			try {
+				await ensureRegistered(
+					{
+						"pie-mc--version-13-4-0": "@pie-element/multiple-choice@13.4.0",
+						"pie-mc--version-1-0-0": TRAVERSAL_SPEC,
+					},
+					{ backend, doc: createMockDocument(), whenDefinedTimeoutMs: 25 },
+				);
+			} catch (err) {
+				error = err as ElementLoaderError;
+			}
+
+			expect(error).toBeInstanceOf(ElementLoaderError);
+			expect([...(error?.unregisteredTags ?? [])]).toEqual([
+				"pie-mc--version-1-0-0",
+			]);
+			expect(error?.reasons.get("pie-mc--version-1-0-0")).toEqual({
+				kind: "backend-rejected",
+				tag: "pie-mc--version-1-0-0",
+				cause: `Invalid element package spec "${TRAVERSAL_SPEC}": expected a scoped npm package name with an optional semver version or dist-tag`,
+			});
+			expect(g.customElements?.get("pie-mc--version-13-4-0")).toBeDefined();
+			expect(requested.length).toBeGreaterThan(0);
+			expect(requested.join("\n")).not.toContain("owner/repo");
+		});
+	}
+
+	test("a load whose every spec is refused requests nothing", async () => {
+		const backend = createEsmBackend({
+			kind: "esm",
+			cdnBaseUrl: "https://cdn.jsdelivr.net/npm",
+			view: "delivery",
+		});
+		const seams = (backend as unknown as { __seams: EsmBackendTestSeams })
+			.__seams;
+		const requested: string[] = [];
+		seams.replacePackageMetadataLoader(async (_packageVersion, url) => {
+			requested.push(url);
+			return null;
+		});
+		seams.replaceImporter(async (specifier) => {
+			requested.push(specifier);
+			return {};
+		});
+
+		const error = await backend
+			.load(
+				{
+					"pie-a": "@pie-element/multiple-choice@1.0.0?x=/../../gh/owner/repo",
+					"pie-b": "multiple-choice@1.0.0",
+					"pie-c": 42 as unknown as string,
+				},
+				backendContext(createMockDocument()),
+			)
+			.then(
+				() => undefined,
+				(err: unknown) => err as AdapterFailure,
+			);
+
+		expect(error).toBeInstanceOf(AdapterFailure);
+		expect(
+			[...(error?.reasons ?? [])].map(([tag, reason]) => [tag, reason.kind]),
+		).toEqual([
+			["pie-a", "backend-rejected"],
+			["pie-b", "backend-rejected"],
+			["pie-c", "backend-rejected"],
+		]);
+		expect(requested).toEqual([]);
+	});
+
+	test("loads the spec shapes item configs hold: dist-tags, prerelease versions and bare names", async () => {
+		const backend = createEsmBackend({
+			kind: "esm",
+			cdnBaseUrl: "https://cdn.jsdelivr.net/npm",
+			view: "delivery",
+		});
+		const seams = (backend as unknown as { __seams: EsmBackendTestSeams })
+			.__seams;
+		seams.replacePackageMetadataLoader(async () => ({
+			exports: {
+				"./browser/delivery": "./dist/browser/delivery/index.js",
+				"./browser/controller": "./dist/browser/controller/index.js",
+			},
+			pie: {
+				browserSharedDependencies: { react: "18.2.0", "react-dom": "18.2.0" },
+			},
+		}));
+		seams.replaceImporter(async (specifier) => ({
+			default: createConstructorFor(specifier),
+		}));
+		const elements = {
+			"pie-mc--latest": "@pie-element/multiple-choice@latest",
+			"pie-ebsr--next": "@pie-element/ebsr@13.2.1-next.174",
+			"pie-hotspot--hotfix": "@pie-element/hotspot@8.0.0-hotfix.2",
+			"pie-rubric": "@pie-element/rubric",
+		};
+
+		await ensureRegistered(elements, {
+			backend,
+			doc: createMockDocument(),
+			whenDefinedTimeoutMs: 25,
+		});
+
+		for (const tag of Object.keys(elements)) {
+			expect(g.customElements?.get(tag)).toBeDefined();
+		}
+	});
+
 	test("url mode resolves same-major React conflicts to the higher version with warnings and instrumentation", async () => {
 		const events: Array<{ name: string; attributes: Record<string, unknown> }> =
 			[];
@@ -4368,6 +4511,27 @@ describe("resolveEsmRuntimeSupportUrl", () => {
 				cdnBaseUrl: "https://cdn.test",
 				cdnProvider: customProvider({
 					packageJsonUrl: (pv) => `https://cdn.test/meta?package=${pv}`,
+				}),
+			}),
+		).toBeUndefined();
+	});
+
+	test("names no URL for a spec that is not a scoped package spec", () => {
+		const traversal =
+			"@pie-element/math-inline@1.0.0/../../../gh/owner/repo@main";
+		expect(
+			resolveEsmRuntimeSupportUrl(traversal, {
+				cdnBaseUrl: "https://cdn.jsdelivr.net/npm",
+			}),
+		).toBeUndefined();
+		expect(
+			resolveEsmRuntimeSupportUrl(traversal, { cdnBaseUrl: "https://esm.sh" }),
+		).toBeUndefined();
+		expect(
+			resolveEsmRuntimeSupportUrl(traversal, {
+				cdnBaseUrl: "https://cdn.test",
+				cdnProvider: customProvider({
+					runtimeSupportUrl: (pv) => `https://meta.test/${pv}.js`,
 				}),
 			}),
 		).toBeUndefined();

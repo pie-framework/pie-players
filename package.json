@@ -137,13 +137,13 @@
 		"@axe-core/playwright": "^4.13.0",
 		"@biomejs/biome": "^2.5.15",
 		"@changesets/cli": "^3.0.3",
-		"@dotenvx/dotenvx": "^2.33.0",
-		"@playwright/test": "^1.63.0",
+		"@dotenvx/dotenvx": "^2.34.2",
+		"@playwright/test": "^1.64.0",
 		"@types/bun": "^1.4.2",
 		"esbuild": "^0.28.2",
 		"glob": "^13.0.6",
-		"lefthook": "2.2.0",
-		"playwright": "^1.63.0",
+		"lefthook": "2.2.1",
+		"playwright": "^1.64.0",
 		"publint": "^0.3.25",
 		"turbo": "^2.11.7",
 		"typescript": "^5.9.3"
@@ -202,7 +202,7 @@
 	},
 	"dependencies": {
 		"@sveltejs/kit": "^3.0.1",
-		"svelte": "^5.57.1",
+		"svelte": "^5.57.2",
 		"svelte-check": "^4.7.6",
 		"vite": "8.3.3"
 	}

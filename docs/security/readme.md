@@ -56,7 +56,13 @@ code, fetched by package and version from a bundle host or CDN and registered as
 custom elements. The default path constrains nothing about which package a
 config may name, so authored data selects the code that renders it.
 [`ElementPackagePolicy`](../../packages/players-shared/src/loaders/element-package-policy.ts)
-closes that when a host opts in.
+closes that when a host opts in. The ESM loader and the print player's default
+resolver build CDN URLs only from a spec that
+[`isScopedPackageSpec`](../../packages/players-shared/src/loaders/element-package-spec.ts)
+accepts, a scoped npm name with an optional semver version or dist-tag, so a
+spec cannot reach a path outside its package; any other spec fails that element
+alone. The IIFE loader encodes each spec into its bundle URL so it cannot leave
+the bundle route.
 
 ## Light DOM and the absence of containment
 

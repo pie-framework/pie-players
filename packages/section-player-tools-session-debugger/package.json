@@ -1,6 +1,6 @@
 {
 	"name": "@pie-players/pie-section-player-tools-session-debugger",
-	"version": "1.0.0-beta.0",
+	"version": "1.0.0-beta.1",
 	"type": "module",
 	"description": "Session debugger panel for PIE section-player flows",
 	"repository": {
@@ -52,7 +52,7 @@
 		"@pie-players/pie-players-shared": "workspace:*",
 		"@pie-players/pie-section-player-tools-shared": "workspace:*",
 		"@sveltejs/vite-plugin-svelte": "^7.3.1",
-		"svelte": "^5.57.1",
+		"svelte": "^5.57.2",
 		"svelte-check": "^4.7.6",
 		"typescript": "^5.9.3",
 		"vite": "^8.3.3",

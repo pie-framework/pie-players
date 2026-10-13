@@ -234,6 +234,7 @@
   isPieRegistryAvailable
   isPlainRecord
   isProgrammaticFocusTarget
+  isScopedPackageSpec
   isSessionSnapshotEnabled
   isSnapshotIdentitySpecific
   isTabbable
@@ -451,6 +452,7 @@
   describeRegistrationFailures
   ensureRegistered
   forwardMathjaxEvents
+  isScopedPackageSpec
   mapEsmViewElements
   registerPreloadedElements
   resolveEsmAssetRoot

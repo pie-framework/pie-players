@@ -1,6 +1,6 @@
 {
 	"name": "@pie-players/pie-print-player",
-	"version": "1.0.0-beta.0",
+	"version": "1.0.0-beta.1",
 	"description": "Print player for PIE elements - dynamically loads and renders print-friendly versions of PIE elements",
 	"type": "module",
 	"main": "./dist/print-player.js",
@@ -35,8 +35,8 @@
 		"@happy-dom/global-registrator": "^20.14.5",
 		"@pie-players/pie-default-tool-loaders": "workspace:*",
 		"@pie-players/pie-theme": "workspace:*",
-		"@playwright/test": "^1.63.0",
-		"@types/node": "^26.6.4",
+		"@playwright/test": "^1.64.0",
+		"@types/node": "^26.6.5",
 		"esbuild": "^0.28.2",
 		"typescript": "^5.9.3",
 		"vite": "^8.3.3"

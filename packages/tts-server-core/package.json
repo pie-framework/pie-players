@@ -1,6 +1,6 @@
 {
 	"name": "@pie-players/tts-server-core",
-	"version": "1.0.0-beta.0",
+	"version": "1.0.0-beta.1",
 	"author": "PIE Framework",
 	"repository": {
 		"type": "git",
@@ -12,7 +12,7 @@
 	},
 	"main": "./dist/index.js",
 	"devDependencies": {
-		"@types/node": "^26.6.4",
+		"@types/node": "^26.6.5",
 		"typescript": "^5.9.3",
 		"vitest": "^5.0.3"
 	},

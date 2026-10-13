@@ -9,7 +9,10 @@ import type {
 	TestPart,
 } from "@pie-players/pie-players-shared/types";
 import type { LoaderConfig } from "@pie-players/pie-players-shared/loader-config";
-import type { SectionPlayerRuntimeConfig } from "@pie-players/pie-section-player";
+import type {
+	SectionPlayerCardTitleFormatter,
+	SectionPlayerRuntimeConfig,
+} from "@pie-players/pie-section-player";
 
 /**
  * Re-exported so every existing import site keeps its specifier. These shapes are
@@ -76,7 +79,7 @@ export interface AssessmentSessionPersistenceFactoryDefaults {
 export interface AssessmentPlayerHooks {
 	cardTitleFormatter?: (
 		context: Record<string, unknown>,
-	) => string | null | undefined;
+	) => ReturnType<SectionPlayerCardTitleFormatter>;
 	createAssessmentDeliveryPlan?: (
 		context: AssessmentDeliveryPlanContext,
 		defaults: AssessmentDeliveryPlanFactoryDefaults,

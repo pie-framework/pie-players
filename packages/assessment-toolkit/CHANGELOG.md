@@ -1,5 +1,18 @@
 # @pie-players/pie-assessment-toolkit
 
+## 1.0.0-beta.1
+
+### Patch Changes
+
+- 4825d4b: `createPersonalNeedsProfileFromAfa` builds a profile from an AfA PNP 3.0 record, and the PNP configuration guide gives each AfA feature's disposition. A profile's `activateAtInit` grants a tool and turns it on the first time a toolbar renders its button in a scope, under the new `pnp-activate-at-init` rule; `ToolPolicyEntry` carries the flag. A profile's `toolParameters` sit under the assessment's and item's, and the three layers now merge key by key where an item entry used to replace the assessment's whole. Read-aloud takes `rate`, `pitch` and `volume` from its `textToSpeech` parameters: `pie-tool-tts-inline` gains `base-rate`, `pitch` and `volume`, `TTSConfig` gains `volume`, and the server backend sends `pitch` on the `pie` transport.
+- 21563ca: The answer eliminator is offered where an element declares the AfA PNP 3.0 `answer-masking` support as `static pieSupports` on its class, and takes its choices from the element's `pieSupportTargets('answer-masking')`, so an element built elsewhere gets it with no change here. `elementSupports(context)` reads the declarations from the registered classes, and the item toolbar re-checks when a lazily loaded element is defined. Multiple choice and EBSR releases that declare nothing keep the eliminator. Select-text releases that declare it get a toggle on each selectable token; earlier select-text releases and inline-choice no longer show it, since it found no choices there. When an element replaces its choices' markup, the eliminator reads them again and keeps their eliminations by id. `hasChoiceInteraction` is removed, as are the eliminator's `./adapters/adapter-registry` subpath and inline-dropdown adapter.
+- Updated dependencies [4825d4b]
+- Updated dependencies [21563ca]
+  - @pie-players/pie-players-shared@1.0.0-beta.1
+  - @pie-players/pie-tts@1.0.0-beta.1
+  - @pie-players/pie-calculator@1.0.0-beta.1
+  - @pie-players/pie-context@1.0.0-beta.1
+
 ## 1.0.0-beta.0
 
 ### Major Changes

@@ -1,6 +1,6 @@
 {
 	"name": "@pie-players/pie-tool-dictionary",
-	"version": "1.0.0-beta.0",
+	"version": "1.0.0-beta.1",
 	"type": "module",
 	"description": "Dictionary lookup tool for PIE assessment player",
 	"repository": {
@@ -48,7 +48,7 @@
 	"devDependencies": {
 		"@biomejs/biome": "^2.5.15",
 		"@sveltejs/vite-plugin-svelte": "^7.3.1",
-		"svelte": "^5.57.1",
+		"svelte": "^5.57.2",
 		"typescript": "^5.9.3",
 		"vite": "^8.3.3",
 		"vite-plugin-dts": "^5.1.2"

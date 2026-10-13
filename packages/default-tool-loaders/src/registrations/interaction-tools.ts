@@ -12,7 +12,7 @@ import type {
 	ToolbarContext,
 } from "@pie-players/pie-assessment-toolkit/tools/registration";
 import type { ToolContext } from "@pie-players/pie-assessment-toolkit/tools/registration";
-import { hasChoiceInteraction } from "@pie-players/pie-assessment-toolkit/tools/registration";
+import { elementSupports } from "@pie-players/pie-assessment-toolkit/tools/registration";
 import {
 	createToolElement,
 	type ToolComponentOverrides,
@@ -28,6 +28,42 @@ type EliminationStrategy = "strikethrough" | "mask";
 /** The policy parameters' `strategy`, defaulting to strikethrough. */
 const normalizeEliminationStrategy = (value: unknown): EliminationStrategy =>
 	value === "mask" ? "mask" : "strikethrough";
+
+/** The AfA PNP 3.0 support term an element declares to take the eliminator. */
+const ANSWER_MASKING = "answer-masking";
+
+/**
+ * pie-item contract compatibility: legacy pie-elements, and pie-elements-ng
+ * releases from before elements declared their supports, render the markup the
+ * eliminator's built-in adapters read for these two. An element that declares
+ * its supports is decided by its declaration, these two included.
+ */
+const UNDECLARED_ANSWER_MASKING_ELEMENTS = new Set(["multiple-choice", "ebsr"]);
+
+// Content names one element several ways: `multiple-choice`,
+// `pie-multiple-choice`, `pie-element-multiple-choice`, a runtime `--version-*`
+// tag, or any tag the item's `elements` map binds to `@pie-element/multiple-choice`.
+function isUndeclaredAnswerMaskingElement(
+	tag: string,
+	packageSpec: string | undefined,
+): boolean {
+	const name = tag
+		.toLowerCase()
+		.replace(/--version-[0-9a-z-]+$/, "")
+		.replace(/^pie-(element-)?/, "");
+	if (UNDECLARED_ANSWER_MASKING_ELEMENTS.has(name)) return true;
+	const packageName = packageSpec?.match(/^@pie-element\/([^@]+)/)?.[1];
+	return !!packageName && UNDECLARED_ANSWER_MASKING_ELEMENTS.has(packageName);
+}
+
+/** Whether an element of the context supports answer masking. */
+function supportsAnswerMasking(context: ToolContext): boolean {
+	return elementSupports(context).some(({ supports, tag, packageSpec }) =>
+		supports
+			? supports.includes(ANSWER_MASKING)
+			: isUndeclaredAnswerMaskingElement(tag, packageSpec),
+	);
+}
 
 /** The state-store key of each PIE element in the item, by model id. */
 function resolveElementStateKeys(
@@ -49,7 +85,7 @@ function resolveElementStateKeys(
  * Answer Eliminator tool registration
  *
  * Allows students to strike through incorrect answer choices.
- * Only appears on multiple-choice style questions.
+ * Only appears on items with an element that supports answer masking.
  */
 export const answerEliminatorToolRegistration: ToolRegistration = {
 	toolId: "answerEliminator",
@@ -62,22 +98,23 @@ export const answerEliminatorToolRegistration: ToolRegistration = {
 	supportedLevels: ["item"],
 
 	/**
-	 * Pass 2: Answer eliminator is relevant only for choice-based questions
+	 * Pass 2: relevant where an element supports answer masking. An element
+	 * declares it on its class, and the answer eliminator's README says what the
+	 * element then supplies.
 	 */
 	isVisibleInContext(context: ToolContext): boolean {
-		return hasChoiceInteraction(context);
+		return supportsAnswerMasking(context);
 	},
 
 	/**
 	 * Pass 3: the same question, asked as a capability. Elimination controls are
-	 * rendered per choice, so an item with no choice interaction gives this tool
-	 * nothing to act on — `placement-ordering`, `categorize` and
-	 * `drag-in-the-blank` included, whose `choices` hold draggables the
-	 * eliminator cannot reach. Answering the relevance gate alone left the button
-	 * on those items for any learner whose profile grants answer masking.
+	 * rendered per choice, so an item none of whose elements supports answer
+	 * masking gives this tool nothing to act on. Answering the relevance gate
+	 * alone left the button on such items for any learner whose profile grants
+	 * answer masking.
 	 */
 	isApplicableToContent(context: ToolContext): boolean {
-		return hasChoiceInteraction(context);
+		return supportsAnswerMasking(context);
 	},
 
 	renderToolbar(

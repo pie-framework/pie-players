@@ -270,6 +270,7 @@
   resolveLoadControllers
   rotatedExtent
   rotationCentreShift
+  runtimeElementTags
   safeLocalStorageGet
   safeLocalStorageSet
   sanitizeItemMarkup
@@ -584,6 +585,7 @@
   projectSessionIntoHostContainer
   resolveConfigureConfiguration
   resolveInstrumentationProvider
+  runtimeElementTags
   scorePieItem
   sessionSnapshotKey
   sessionStorageSnapshotStore

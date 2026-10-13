@@ -1,5 +1,8 @@
-import { AdapterRegistry } from "./adapters/adapter-registry.js";
-import type { ChoiceAdapter } from "./adapters/choice-adapter.js";
+import {
+	type ChoiceTarget,
+	type FoundChoice,
+	findChoiceTargets,
+} from "./choice-targets.js";
 import type { EliminationStrategy } from "./strategies/elimination-strategy.js";
 import { MaskStrategy } from "./strategies/mask-strategy.js";
 import { StrikethroughStrategy } from "./strategies/strikethrough-strategy.js";
@@ -19,13 +22,16 @@ export interface EliminatorStateStore {
  */
 export type ElementStateKeys = Readonly<Record<string, string>>;
 
+type ButtonAlignment = "left" | "right" | "inline";
+
 interface TrackedChoice {
 	choiceId: string;
 	/** The owning element's model id, or an anonymous token when it is not keyed. */
 	group: string;
 	strategyKey: string;
-	element: HTMLElement;
-	adapter: ChoiceAdapter;
+	target: ChoiceTarget;
+	/** The declaring element that supplied the choice, null for a legacy one. */
+	owner: HTMLElement | null;
 	button: HTMLButtonElement | null;
 }
 
@@ -33,7 +39,7 @@ const STATE_TOOL_ID = "answerEliminator";
 
 /**
  * Core engine for answer eliminator tool
- * Coordinates adapters, strategies, and state management
+ * Coordinates the choices elements supply, strategies, and state management
  *
  * Choice ids are only unique within one PIE element (two multiple-choice
  * elements both have a choice "a"), so every choice is tracked under its owning
@@ -43,7 +49,6 @@ export class AnswerEliminatorCore {
 	private static readonly TOGGLE_CLASS = "pie-answer-eliminator-toggle";
 	private static readonly TOGGLE_ACTIVE_CLASS =
 		"pie-answer-eliminator-toggle--active";
-	private registry: AdapterRegistry;
 	private strategy: EliminationStrategy;
 	// Keyed by `trackingKey(group, choiceId)`.
 	private choices = new Map<string, TrackedChoice>();
@@ -53,7 +58,7 @@ export class AnswerEliminatorCore {
 	private strategyKeys = new Map<string, string>();
 	private anonymousGroups = new WeakMap<Element, string>();
 	private nextToken = 0;
-	private buttonAlignment: "left" | "right" | "inline" = "right";
+	private buttonAlignment: ButtonAlignment = "right";
 	private shouldRestoreState: boolean = true;
 	// Whether the question-level feature is currently on. When off, the
 	// eliminate controls are hidden for choices that are NOT struck through,
@@ -67,15 +72,17 @@ export class AnswerEliminatorCore {
 	private selectionChangeHandler: (() => void) | null = null;
 	private selectionObserver: MutationObserver | null = null;
 	private selectionRefreshFrame: number | null = null;
+	// The choice whose toggle has focus, kept when the toggle is removed with
+	// its choice so the rescan can hand focus to the replacement.
+	private focusedKey: string | null = null;
 
 	private store: EliminatorStateStore | null = null;
 	private elementStateKeys: ElementStateKeys = {};
 
 	constructor(
 		strategyType: "strikethrough" | "mask" = "strikethrough",
-		buttonAlignment: "left" | "right" | "inline" = "right",
+		buttonAlignment: ButtonAlignment = "right",
 	) {
-		this.registry = new AdapterRegistry();
 		this.strategy = this.createStrategy(strategyType);
 		this.strategy.initialize();
 		this.buttonAlignment = buttonAlignment;
@@ -105,10 +112,8 @@ export class AnswerEliminatorCore {
 		this.eliminated.clear();
 		this.cleanupButtons();
 
-		const choicesWithAdapters =
-			this.registry.findAllChoicesWithAdapters(questionRoot);
-		for (const { choice, adapter } of choicesWithAdapters) {
-			this.initializeChoice(choice, adapter, questionRoot);
+		for (const found of findChoiceTargets(questionRoot)) {
+			this.initializeChoice(found, questionRoot);
 		}
 
 		// Keyed elements restore from the store; anything else keeps what this
@@ -132,13 +137,18 @@ export class AnswerEliminatorCore {
 	}
 
 	/**
-	 * The PIE element a choice belongs to: the nearest keyed ancestor, else the
-	 * nearest custom element, which gets an anonymous token.
+	 * The PIE element a choice belongs to: the nearest keyed element from the
+	 * one that supplied it, or from the choice's parent for a legacy choice, else
+	 * the supplying element or the nearest custom element, which gets an
+	 * anonymous token.
 	 */
-	private resolveGroup(choice: HTMLElement, questionRoot: HTMLElement): string {
-		let fallback: Element | null = null;
+	private resolveGroup(
+		{ target, owner }: FoundChoice,
+		questionRoot: HTMLElement,
+	): string {
+		let fallback: Element | null = owner;
 		for (
-			let node: Element | null = choice.parentElement;
+			let node: Element | null = owner ?? target.container.parentElement;
 			node !== null;
 			node = node === questionRoot ? null : node.parentElement
 		) {
@@ -147,11 +157,11 @@ export class AnswerEliminatorCore {
 			}
 			if (fallback === null && node.localName.includes("-")) fallback = node;
 		}
-		const owner = fallback ?? questionRoot;
-		let token = this.anonymousGroups.get(owner);
+		const anonymous = fallback ?? questionRoot;
+		let token = this.anonymousGroups.get(anonymous);
 		if (!token) {
 			token = `\u0000anonymous-${this.nextToken++}`;
-			this.anonymousGroups.set(owner, token);
+			this.anonymousGroups.set(anonymous, token);
 		}
 		return token;
 	}
@@ -165,25 +175,26 @@ export class AnswerEliminatorCore {
 		return strategyKey;
 	}
 
-	private initializeChoice(
-		choice: HTMLElement,
-		adapter: ChoiceAdapter,
-		questionRoot: HTMLElement,
-	): void {
-		const choiceId = adapter.getChoiceId(choice);
-		const group = this.resolveGroup(choice, questionRoot);
+	private initializeChoice(found: FoundChoice, questionRoot: HTMLElement): void {
+		const { target, owner } = found;
+		const choiceId = target.id;
+		const group = this.resolveGroup(found, questionRoot);
 		const key = this.trackingKey(group, choiceId);
 		const tracked: TrackedChoice = {
 			choiceId,
 			group,
 			strategyKey: this.strategyKeyFor(key),
-			element: choice,
-			adapter,
+			target,
+			owner,
 			button: null,
 		};
 		this.choices.set(key, tracked);
 
-		const button = this.createToggleButton(key, tracked);
+		const button = this.createToggleButton(
+			key,
+			tracked,
+			this.alignmentFor(target.container),
+		);
 		tracked.button = button;
 
 		// Apply the initial visibility rule (hidden if selected, or if the
@@ -191,18 +202,27 @@ export class AnswerEliminatorCore {
 		// via the question-root `change` listener and toggle actions.
 		this.updateButtonVisibility(key);
 
-		const container = adapter.getButtonContainer(choice);
-		if (container) {
-			container.style.position = "relative";
-			container.appendChild(button);
-		}
+		target.container.style.position = "relative";
+		target.container.appendChild(button);
+	}
+
+	/**
+	 * A choice laid out inline, such as a token in running text, takes the toggle
+	 * in the line: an absolute toggle would cover the choice's own text.
+	 */
+	private alignmentFor(container: HTMLElement): ButtonAlignment {
+		if (this.buttonAlignment === "inline") return "inline";
+		return getComputedStyle(container).display === "inline"
+			? "inline"
+			: this.buttonAlignment;
 	}
 
 	private createToggleButton(
 		key: string,
 		tracked: TrackedChoice,
+		alignment: ButtonAlignment,
 	): HTMLButtonElement {
-		const choiceLabel = tracked.adapter.getChoiceLabel(tracked.element);
+		const choiceLabel = tracked.target.label;
 
 		const button = document.createElement("button");
 		button.type = "button";
@@ -217,7 +237,7 @@ export class AnswerEliminatorCore {
 		glyph.textContent = "⊗";
 		button.appendChild(glyph);
 
-		this.applyButtonAlignment(button);
+		this.applyButtonAlignment(button, alignment);
 
 		// Remember the visible `display` value chosen by the alignment (e.g.
 		// "inline-flex" for inline mode) so hide/show toggling can restore it
@@ -228,6 +248,18 @@ export class AnswerEliminatorCore {
 			e.preventDefault();
 			e.stopPropagation();
 			this.toggleElimination(key);
+		});
+		button.addEventListener("focus", () => {
+			this.focusedKey = key;
+		});
+		// A browser may blur a focused toggle as it is removed; that toggle is
+		// disconnected by the time the microtask runs, and keeps the key.
+		button.addEventListener("blur", () => {
+			queueMicrotask(() => {
+				if (button.isConnected && this.focusedKey === key) {
+					this.focusedKey = null;
+				}
+			});
 		});
 
 		return button;
@@ -240,7 +272,7 @@ export class AnswerEliminatorCore {
 		if (this.eliminated.has(key)) {
 			this.restoreChoice(key);
 		} else {
-			if (!tracked.adapter.canEliminate(tracked.element)) {
+			if (!tracked.target.canEliminate()) {
 				console.warn(
 					"Cannot eliminate this choice (already selected or in evaluate mode)",
 				);
@@ -257,12 +289,17 @@ export class AnswerEliminatorCore {
 
 	/**
 	 * Strike a choice through and make it non-selectable. Returns false when
-	 * no range could be built for it.
+	 * no range could be built for it. `block` is false only when the choice's
+	 * element already blocks it.
 	 */
-	private applyElimination(key: string, tracked: TrackedChoice): boolean {
+	private applyElimination(
+		key: string,
+		tracked: TrackedChoice,
+		block = true,
+	): boolean {
 		// Never strike a currently-selected choice.
-		if (tracked.adapter.isSelected?.(tracked.element)) return false;
-		const range = tracked.adapter.createChoiceRange(tracked.element);
+		if (tracked.target.isSelected()) return false;
+		const range = tracked.target.createRange();
 		if (!range) return false;
 
 		this.strategy.apply(tracked.strategyKey, range);
@@ -270,7 +307,7 @@ export class AnswerEliminatorCore {
 
 		// A student must not be able to select an answer they have struck
 		// through.
-		tracked.adapter.setSelectable?.(tracked.element, false);
+		if (block) tracked.target.setEliminated(true);
 
 		if (tracked.button) {
 			tracked.button.classList.add(AnswerEliminatorCore.TOGGLE_ACTIVE_CLASS);
@@ -291,7 +328,7 @@ export class AnswerEliminatorCore {
 		this.strategy.remove(tracked.strategyKey);
 
 		// Re-enable selection now that the choice is no longer struck through.
-		tracked.adapter.setSelectable?.(tracked.element, true);
+		tracked.target.setEliminated(false);
 
 		if (tracked.button) {
 			tracked.button.classList.remove(AnswerEliminatorCore.TOGGLE_ACTIVE_CLASS);
@@ -389,7 +426,7 @@ export class AnswerEliminatorCore {
 	private restoreAllSelectable(): void {
 		for (const key of this.eliminated) {
 			const tracked = this.choices.get(key);
-			tracked?.adapter.setSelectable?.(tracked.element, true);
+			tracked?.target.setEliminated(false);
 		}
 	}
 
@@ -416,7 +453,7 @@ export class AnswerEliminatorCore {
 	private shouldHideButton(key: string, tracked: TrackedChoice): boolean {
 		if (this.eliminated.has(key)) return false;
 		if (!this.active) return true;
-		return tracked.adapter.isSelected?.(tracked.element) ?? false;
+		return tracked.target.isSelected();
 	}
 
 	/**
@@ -435,6 +472,58 @@ export class AnswerEliminatorCore {
 	private refreshSelectionState(): void {
 		for (const key of this.choices.keys()) {
 			this.updateButtonVisibility(key);
+		}
+	}
+
+	private hasDetachedChoice(): boolean {
+		for (const { target } of this.choices.values()) {
+			if (!target.container.isConnected) return true;
+		}
+		return false;
+	}
+
+	/**
+	 * Track the choices again after an element replaced their markup, as one
+	 * rendering from an HTML string does on every change. Eliminations carry
+	 * over by choice id. The element that supplied a choice still holds it
+	 * eliminated and is not asked again, so an element that re-renders on every
+	 * `setEliminated` cannot loop; a new element instance, or a legacy choice,
+	 * is. A choice no longer supplied is restored in its element. Nothing is
+	 * saved: the store records the learner's toggles.
+	 */
+	private rescan(): void {
+		const questionRoot = this.questionRoot;
+		if (!questionRoot) return;
+
+		const refocus =
+			this.focusedKey !== null &&
+			!this.choices.get(this.focusedKey)?.button?.isConnected &&
+			(document.activeElement === null ||
+				document.activeElement === document.body)
+				? this.focusedKey
+				: null;
+		const previous = this.choices;
+		const eliminated = new Set(this.eliminated);
+
+		this.strategy.clearAll();
+		this.eliminated.clear();
+		for (const { button } of previous.values()) button?.remove();
+		this.choices = new Map();
+
+		for (const found of findChoiceTargets(questionRoot)) {
+			this.initializeChoice(found, questionRoot);
+		}
+
+		for (const key of eliminated) {
+			const before = previous.get(key);
+			const tracked = this.choices.get(key);
+			const held = !!before?.owner && tracked?.owner === before.owner;
+			if (tracked && this.applyElimination(key, tracked, !held)) continue;
+			(tracked ?? before)?.target.setEliminated(false);
+		}
+
+		if (refocus) {
+			this.choices.get(refocus)?.button?.focus({ preventScroll: true });
 		}
 	}
 
@@ -481,7 +570,11 @@ export class AnswerEliminatorCore {
 				const relevant = records.some(
 					(record) => !ownButtons.has(record.target),
 				);
-				if (relevant) this.scheduleSelectionRefresh();
+				if (!relevant) return;
+				// Rescanned at once, before paint, so replaced choices never show
+				// without their toggles and a focused toggle's successor takes focus.
+				if (this.hasDetachedChoice()) this.rescan();
+				else this.scheduleSelectionRefresh();
 			});
 			this.selectionObserver.observe(questionRoot, {
 				subtree: true,
@@ -512,6 +605,7 @@ export class AnswerEliminatorCore {
 
 	private cleanupButtons(): void {
 		this.detachSelectionListener();
+		this.focusedKey = null;
 
 		for (const { button } of this.choices.values()) {
 			button?.remove();
@@ -519,8 +613,11 @@ export class AnswerEliminatorCore {
 		this.choices.clear();
 	}
 
-	private applyButtonAlignment(button: HTMLButtonElement): void {
-		switch (this.buttonAlignment) {
+	private applyButtonAlignment(
+		button: HTMLButtonElement,
+		alignment: ButtonAlignment,
+	): void {
+		switch (alignment) {
 			case "right":
 				// Right-aligned (industry standard) - after choice text
 				Object.assign(button.style, {

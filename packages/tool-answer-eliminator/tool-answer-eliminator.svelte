@@ -18,7 +18,7 @@
 <!--
 @component
 Process-of-elimination tool for the item in its enclosing `<pie-item-scope>`: it
-adds a toggle beside each multiple-choice, EBSR and inline-dropdown choice that
+adds a toggle beside each choice an element supplies for `answer-masking` that
 strikes the choice through or masks it, per `strategy`. It renders nothing of
 its own and is active while `visible` or `always-on` is set. Eliminations
 persist in the runtime context's element tool state store, under the key
@@ -39,7 +39,7 @@ persist in the runtime context's element tool state store, under the key
 
   **Features:**
   - CSS Custom Highlight API, so struck text keeps its DOM nodes
-  - Generic adapter pattern (works with multiple-choice, EBSR, inline-dropdown)
+  - Elements supply their choices through `pieSupportTargets('answer-masking')`
   - Strikethrough visual (WCAG 2.2 AA compliant, best for accessibility)
   - Eliminations persist across question navigation through the toolkit's element tool state store
   - Keyboard accessible with proper ARIA attributes

@@ -5,6 +5,8 @@
  * Each context level provides increasingly specific information about where the tool is being used.
  */
 
+import { runtimeElementTags } from "@pie-players/pie-players-shared/pie";
+import { parseVersionedTagName } from "@pie-players/pie-players-shared/pie/tag-names";
 import type {
 	AssessmentEntity,
 	AssessmentItemRef,
@@ -488,64 +490,112 @@ export function hasMathContent(context: ToolContext): boolean {
 	);
 }
 
-const CHOICE_INTERACTION_ELEMENTS = new Set([
-	"multiple-choice",
-	"inline-choice",
-	"select-text",
-	"ebsr",
-]);
+/**
+ * What one element of a context declares about the PNP supports it implements.
+ *
+ * An element declares them on its class, as `static pieSupports`: a list of AfA
+ * PNP 3.0 support terms, such as `answer-masking`. The toolkit reads the class
+ * `customElements` holds under the element's runtime tag, so the declaration is
+ * known before the element renders. What a support needs from the rendered
+ * element is between the element and the tool that provides it, and that tool
+ * documents it.
+ */
+export interface ElementSupports {
+	/** The element's model id. */
+	elementId: string | undefined;
+	/** The tag the item binds the element to, as authored. */
+	tag: string;
+	/** The element's package spec in the item's `elements` map, when it has one. */
+	packageSpec: string | undefined;
+	/**
+	 * The terms the element's class declares: `undefined` while the class is
+	 * undefined, and for a class that declares nothing. An empty list is a
+	 * declaration that the element implements none.
+	 */
+	supports: readonly string[] | undefined;
+	/**
+	 * The runtime tags the class can still be defined under, empty once it is
+	 * defined. A definition landing under one of them can change `supports`.
+	 */
+	pendingTags: readonly string[];
+}
 
-// Content names one interaction several ways: `multiple-choice`, `pie-multiple-choice`,
-// `pie-element-multiple-choice`, a runtime `--version-*` tag, or any tag the item's
-// `elements` map binds to `@pie-element/multiple-choice`.
-const baseElementName = (tag: string): string =>
-	tag
-		.toLowerCase()
-		.replace(/--version-[0-9a-z-]+$/, "")
-		.replace(/^pie-(element-)?/, "");
-
-function isChoiceElement(tag: string, elements: unknown): boolean {
-	if (CHOICE_INTERACTION_ELEMENTS.has(baseElementName(tag))) return true;
-	if (!elements || typeof elements !== "object") return false;
+function packageSpecFor(tag: string, elements: unknown): string | undefined {
+	if (!elements || typeof elements !== "object") return undefined;
 	const map = elements as Record<string, unknown>;
-	const spec = map[tag] ?? map[tag.replace(/--version-[0-9A-Za-z-]+$/, "")];
-	if (typeof spec !== "string") return false;
-	const packageName = spec.match(/^@pie-element\/([^@]+)/)?.[1];
-	return !!packageName && CHOICE_INTERACTION_ELEMENTS.has(packageName);
+	const spec = map[tag] ?? map[parseVersionedTagName(tag).baseName];
+	return typeof spec === "string" && spec ? spec : undefined;
+}
+
+function declaredSupports(
+	elementClass: CustomElementConstructor,
+): readonly string[] | undefined {
+	let declared: unknown;
+	try {
+		declared = (elementClass as { pieSupports?: unknown }).pieSupports;
+	} catch {
+		return undefined;
+	}
+	if (!Array.isArray(declared)) return undefined;
+	return declared.filter((term): term is string => typeof term === "string");
+}
+
+function readElementSupports(
+	model: unknown,
+	elements: unknown,
+): ElementSupports | null {
+	if (!model || typeof model !== "object") return null;
+	const { id, element } = model as { id?: unknown; element?: unknown };
+	if (typeof element !== "string" || !element) return null;
+	const packageSpec = packageSpecFor(element, elements);
+	const candidates = runtimeElementTags(element, packageSpec);
+	const registry =
+		typeof customElements === "undefined" ? undefined : customElements;
+	for (const tag of candidates) {
+		const elementClass = registry?.get(tag);
+		if (elementClass) {
+			return {
+				elementId: typeof id === "string" ? id : undefined,
+				tag: element,
+				packageSpec,
+				supports: declaredSupports(elementClass),
+				pendingTags: [],
+			};
+		}
+	}
+	return {
+		elementId: typeof id === "string" ? id : undefined,
+		tag: element,
+		packageSpec,
+		supports: undefined,
+		pendingTags: registry ? candidates : [],
+	};
 }
 
 /**
- * Helper to check if context contains choice-based interactions
+ * The supports each element of a context declares: the element's own at element
+ * level, every element of the item or passage config at those levels, and none
+ * elsewhere. A model that names no element renders nothing and is skipped.
  */
-export function hasChoiceInteraction(context: ToolContext): boolean {
+export function elementSupports(context: ToolContext): ElementSupports[] {
+	let config: { models?: unknown; elements?: unknown } | undefined;
+	let models: unknown[];
 	if (isElementContext(context)) {
-		const config = context.item.config;
-		if (!config?.models) return false;
-
-		const model = findElementModel(config.models, context.elementId);
-		if (!model) return false;
-
-		const type = (model as { element?: string }).element || "";
-		return isChoiceElement(type, config.elements);
+		config = context.item.config;
+		models = [findElementModel(config?.models, context.elementId)];
+	} else if (isItemContext(context)) {
+		config = context.item?.config;
+		models = normalizeModels(config?.models);
+	} else if (isPassageContext(context)) {
+		config = context.passage?.config;
+		models = normalizeModels(config?.models);
+	} else {
+		return [];
 	}
-
-	if (isItemContext(context)) {
-		const config = context.item.config;
-		return normalizeModels(config?.models).some((candidate) => {
-			if (!candidate || typeof candidate !== "object") return false;
-			const model = candidate as { element?: string; choices?: unknown };
-			const type = model.element || "";
-			// A model that names its element has answered the question, whichever way
-			// the answer falls: `placement-ordering`, `categorize` and
-			// `drag-in-the-blank` each hold their draggables in `choices` without
-			// being choice interactions. The `choices` heuristic remains for configs
-			// that name no element.
-			if (type) return isChoiceElement(type, config?.elements);
-			return Array.isArray(model.choices) && model.choices.length > 0;
-		});
-	}
-
-	return false;
+	return models.flatMap((model) => {
+		const supports = readElementSupports(model, config?.elements);
+		return supports ? [supports] : [];
+	});
 }
 
 /**

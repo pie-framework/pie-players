@@ -100,6 +100,7 @@ The toolbar for an item, passage or section, rendering a button for each tool th
 		ToolParametersFor
 	} from '@pie-players/pie-players-shared/types';
 	import type { ElementToolContext, ItemToolContext, ToolContext } from '../services/tool-context.js';
+	import { elementSupports } from '../services/tool-context.js';
 	import type { ToolPolicyDecision } from '../policy/engine.js';
 	import { createDecidedToolsTracker } from '../services/toolbar-decided-tools.js';
 	// Side-effect import: registers <nds-icon-button>. Single vendored source of
@@ -362,6 +363,11 @@ The toolbar for an item, passage or section, rendering a button for each tool th
 	// would lose its state whenever an item with settings mounts.
 	let toolRenderVersion = $state(0);
 	let toolContextResolverChangeVersion = $state(0);
+	// Bumped when an element class the content names is defined. An element
+	// declares the supports it implements on its class, so a class defined after
+	// the content arrives, as a lazily loaded element is, can change which tools
+	// apply.
+	let elementDefinitionVersion = $state(0);
 
 	$effect(() => {
 		if (!toolbarRootElement) return;
@@ -744,6 +750,7 @@ The toolbar for an item, passage or section, rendering a button for each tool th
 	// registry decides the rest, and a granted accommodation survives relevance
 	// there.
 	const visibleToolIds = $derived.by(() => {
+		void elementDefinitionVersion;
 		const hostResolved = hostResolvedToolContextById;
 		const entries = (
 			decidedTools ??
@@ -761,6 +768,25 @@ The toolbar for an item, passage or section, rendering a button for each tool th
 			effectiveToolRegistry.filterDecidedToolIds(entries, effectiveLevel, contexts, reportCallbackFailure)
 		);
 		return allowedToolIds.filter((toolId) => visible.has(toolId) || hostResolved[toolId]?.visible);
+	});
+	// Re-decide visibility when an element the content names is defined late.
+	$effect(() => {
+		if (!isBrowser || !toolContext || typeof customElements === 'undefined') return;
+		const pendingTags = new Set(elementSupports(toolContext).flatMap((entry) => entry.pendingTags));
+		if (pendingTags.size === 0) return;
+		let cancelled = false;
+		for (const tag of pendingTags) {
+			customElements.whenDefined(tag).then(
+				() => {
+					if (!cancelled) elementDefinitionVersion += 1;
+				},
+				// Not a valid custom element name, so it never will be defined.
+				() => {}
+			);
+		}
+		return () => {
+			cancelled = true;
+		};
 	});
 	// Tools whose module failed to load from the current registry. Such a tool is
 	// unavailable here: its button is withheld, requests for it pass this toolbar

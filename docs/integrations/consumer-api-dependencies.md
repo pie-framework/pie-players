@@ -32,6 +32,10 @@ depends on no `@pie-players` package yet. Its profile records the legacy PIE
 surface it renders through, so a design aimed at it can be checked for fit
 before it migrates.
 
+Host C was added on **2026-10-13**, derived from its checkout and checked against
+`origin/develop` the same day; its rows carry that date. It is the first host on
+the `1.0.0-beta` line.
+
 The theme-token rows were re-derived on their own once before, on 2026-08-28,
 when the light Base Theme's `--pie-background` became opaque; that sweep found
 the Host A token set one entry shorter than recorded.
@@ -721,6 +725,7 @@ The 2026-09-26 re-derivation found neither surface in any host.
 | **Host P** | Angular + webpack, packaged as a custom element that an outer page mounts | One item at a time in learner delivery, through the preloaded build of `pie-item-player`, which it serves from its own static assets; migrating off `@pie-framework/pie-fixed-player-static` behind a host-side player-type switch | High — external client-facing; the `@pie-players` path is live wherever that switch selects it |
 | **Host M** | Framework-free TypeScript custom element, built by Vite into one ES module and loaded as a micro-frontend remote by an Angular shell | One item at a time through `pie-item-player` on the `preloaded` strategy, with the element and its controller bundled and registered by the host so evaluation runs in the browser; themed through a provider adapter of its own | High once shipped — mounted on a development route only so far, and the base a client-facing product is building on |
 | **Host B** | Vue 2 on webpack 4 | Item bank: instructor-view item lists with one legacy player per row, item and passage authoring, print. No `@pie-players` dependency yet | None until it adopts; high after — external client-facing |
+| **Host C** | SvelteKit authoring and ingestion app | Section preview of authored and ingested content: one section-player layout inside a `<pie-theme>`, browser text-to-speech, and the element-version override helpers, the last also in server routes | Low — internally controlled and pre-production |
 | **Host R** | SvelteKit reference/QA app | Nearly the whole suite, and the only consumer of the **programmatic** API: it drives the coordinator the section player builds, the composition layer, reads the theme token registry, and runs the Node-side TTS providers | Low to fix, high to notice — internally controlled, but it is the first place a regression surfaces |
 
 Packages consumed:
@@ -743,6 +748,9 @@ Packages consumed:
   override and imported nowhere.
 - **Host B** — none. Its legacy surface is recorded under Host B's legacy
   surface below.
+- **Host C** — `pie-section-player`, `pie-theme`, and `pie-players-shared` through
+  its `pie` and `types` subpaths. It also declares `pie-item-player` and imports
+  nothing from it; the section player brings that package in as its dependency.
 - **Host R** — 29 declared `@pie-players` packages. Imported: the toolkit,
   `pie-default-tool-loaders`, `pie-players-shared` and its `types` subpath,
   `pie-section-player` and its splitpane subpath, `pie-theme` plus its
@@ -778,9 +786,14 @@ yet (`latest` is `0.3.73`). That build predates the 2026-10-02 embed fixes —
 content-style scoping, `recoverable`, the tag-name map and the page-wide provider
 registry — so its move to a release takes all four at once.
 
+Host C uses `^1.0.0-beta.1` on all four packages, locked at `1.0.0-beta.1` at last
+read, so every later `1.0.0` prerelease and every `1.x` release reaches it on its
+next install.
+
 Host R is not client-facing and is ours to fix, so its rows are not a reason to
 avoid a change. They are a reason to expect the change to show up there first,
-and to fix it there in the same push.
+and to fix it there in the same push. Host C is the same case: internally
+controlled and pre-production.
 
 ### Host B's legacy surface
 
@@ -804,8 +817,14 @@ Host B renders PIE only through the legacy players:
   CDN by version behind a host switch.
 
 It sets no `--pie-` tokens and styles no player internals. A shared component
-library the host installs also contributes an item player plugin. Its PIE surface was not derived, because the library is not installed in
-the checkout.
+library it installs registers the same legacy tags a second time: it bundles
+`@pie-api/pie-api-components` `4.11.10`, which pins
+`@pie-framework/pie-player-components` `2.11.9`, and calls its
+`defineCustomElements(window)` once the host authenticates. Stencil's loader
+skips a tag that is already defined, so whichever copy registers first renders
+every row, and load order decides the player version in effect. The host mounts
+none of that library's own player components. No legacy tag is named
+`pie-item-*`, so the `@pie-players` tags collide with neither copy.
 
 Migrating to `pie-item-player` changes what the
 [migration guide](../item-player/migration-from-pie-player-components.md)
@@ -826,24 +845,25 @@ same PIE surface.
 | `@pie-players/pie-item-player` | V, M | Registration by side effect: V through a dynamic `import()`, M through a static import bundled into its single file, alongside the `PieItemPlayerElement` type. R loads the same file from a CDN by version instead |
 | `@pie-players/pie-item-player/preloaded` | M | `registerPreloadedElements`, called before the player module evaluates; see the item-player section |
 | `@pie-players/pie-preloaded-player` | P | Never imported. An install step copies `dist/` into a versioned static-asset directory, and `dist/index.js` is loaded from there as a module script; see Direct `dist` path references. R loads the same `dist/index.js` from a CDN by version |
-| `@pie-players/pie-theme` | A, M, R | Bare specifier → `dist/index.js`, which calls `definePieTheme()` at module scope. R imports it for that side effect alone and calls `definePieTheme` nowhere. M relies on the same side effect and imports `registerPieThemeProvider` with the `ThemeProviderAdapter`, `ThemeVariables` and `PieThemeElement` types |
+| `@pie-players/pie-theme` | A, C, M, R | Bare specifier → `dist/index.js`, which calls `definePieTheme()` at module scope. R imports it for that side effect alone and calls `definePieTheme` nowhere; C does the same through a dynamic `import()`. M relies on the same side effect and imports `registerPieThemeProvider` with the `ThemeProviderAdapter`, `ThemeVariables` and `PieThemeElement` types |
 | `@pie-players/pie-theme/theme-element` | V | Does **not** self-register; the host calls `definePieTheme()` itself |
 | `@pie-players/pie-theme/components.css` | V, M | Imported as text and re-injected under `@scope`, see below |
 | `@pie-players/pie-theme/tokens.css` | R | Imported unlayered so tokens are present in the first paint, ahead of the theme element upgrading |
 | `@pie-players/pie-theme/token-registry.json` | R | Default import, cast to `PieThemeTokenRegistry`; the entry fields it reads are listed under theme tokens below |
 | `@pie-players/pie-section-player/components/section-player-splitpane-element` | A, R | |
-| `@pie-players/pie-section-player` | R | Root entry, for its layout elements' side-effect registration |
+| `@pie-players/pie-section-player` | C, R | Root entry, for its layout elements' side-effect registration: C through a dynamic `import()`, which it also reads the `SectionPlayerCardTitleContext` type from |
 | `@pie-players/pie-assessment-toolkit` | R | Root entry, for values and types both |
 | `@pie-players/pie-default-tool-loaders` | R | |
 | `@pie-players/pie-players-shared` | R | Instrumentation providers |
-| `@pie-players/pie-players-shared/types` | R | `AssessmentSection`, `AssessmentEntity`, `RubricBlock`, `PersonalNeedsProfile` |
+| `@pie-players/pie-players-shared/pie` | C | `applyElementVersionOverridesPreserveTags`, `parseElementOverridesFromUrl` and `extractPackageInfo`, with the `ElementOverrides` type. The first two run in server-only modules, so this entry must evaluate in Node without a DOM |
+| `@pie-players/pie-players-shared/types` | C, R | R: `AssessmentSection`, `AssessmentEntity`, `RubricBlock`, `PersonalNeedsProfile`. C: `AccessibilityCatalog`, `AssessmentSection`, `ConfigEntity`, `RubricBlock` |
 | `@pie-players/pie-tool-*` (11 packages) | R | Ten bare side-effect imports, each self-registering at import time; `pie-tool-sign-language` is imported for its named `signLanguageRegistration` instead, because signing sits outside the packaged set |
 | `@pie-players/pie-section-player-tools-*` (5 packages) | R | Bare side-effect imports of four debuggers plus the TTS settings panel. A declares the event and session debuggers and imports neither |
 | `@pie-players/tts-server-core` / `-google` / `-polly` / `-sc` | R | Node side, in SvelteKit server routes |
 
 The self-registration asymmetry between `pie-theme` and
 `pie-theme/theme-element` is load-bearing in both directions: V depends on
-`theme-element` staying side-effect-free, A, M and R depend on the index entry
+`theme-element` staying side-effect-free, A, C, M and R depend on the index entry
 keeping its module-scope `definePieTheme()` call. Moving the call, or adding one
 to `theme-element`, breaks one of them.
 
@@ -963,11 +983,11 @@ fonts or speech and warn once.
 Its element is on an adapter from before 0.1.3, which keeps loading from
 jsDelivr.
 
-### `pie-section-player-splitpane` and `-vertical` (Hosts A, R)
+### `pie-section-player-splitpane` and `-vertical` (Hosts A, C, R)
 
-Object properties: `runtime`, `section`, `hooks` (A), `toolRegistry` (R).
+Object properties: `runtime`, `section`, `hooks` (A, C), `toolRegistry` (R).
 
-Attributes both hosts pass: `section-id`, `attempt-id`, `show-toolbar`.
+Attributes all three hosts pass: `section-id`, `attempt-id`, `show-toolbar`.
 Host A's `persist()` and `hydrate()` go through the default section
 persistence, which stores a section under its `attempt-id` and neither reads
 nor writes without one, so its resume depends on the attribute being non-empty.
@@ -976,11 +996,20 @@ Host A additionally: `debug`, `narrow-layout-breakpoint`,
 `split-pane-initial-passage-width`, `nds-icons`. Host R passes none of those
 four, so a change to one of them is a Host A question alone. Host R
 additionally: `toolbar-position` on the demo and playground mounts, and
-`iife-bundle-host` on the playground alone. Both hosts carry the assessment id in
-`runtime.assessmentId`. Neither host passes
+`iife-bundle-host` on the playground alone. All three hosts carry the assessment
+id in `runtime.assessmentId`. Neither A nor R passes
 `locale`, `base-heading-level`, `tool-config-strictness`, the two
 `content-max-width-*` attributes, either remaining `split-pane-*` attribute, the
 three `*HostButtons` object props, or `policies`.
+
+Host C mounts the splitpane when the section carries rubric blocks and the
+vertical layout otherwise. It renders the tag only after both modules have
+registered, so `runtime`, `section` and `hooks` arrive as properties. It passes
+`toolbar-position` and `content-max-width-no-passage` to both, and
+`content-max-width-with-passage` and `split-pane-min-region-width` to the
+splitpane, and is the only host that sets those three width attributes. A change
+of section, session or role remounts the layout rather than updating its
+properties.
 
 Method: `waitForSectionController(timeoutMs)` (A, off a
 `document.querySelector` handle) and the zero-argument `getSectionController()`
@@ -1002,7 +1031,8 @@ vocabulary is API and `engine-ready` in particular is the gate a host waits on.
 `show-toolbar` is declared `type: "String"`. A sets the attribute to the literal
 string `"false"`; R sets `{true}` on its demo and playground mounts and `"false"`
 on its preview mount, so both forms are live within one host as well as across
-two. Boolean attributes read `"false"` as false, so a retype to `Boolean` would
+two. C binds `{false}`, which Svelte writes as the attribute string `"false"`.
+Boolean attributes read `"false"` as false, so a retype to `Boolean` would
 keep A's intent only through that parse; the same holds for `debug` and any
 other `type: "String"` attribute a host sets to `"false"`.
 
@@ -1010,11 +1040,11 @@ Both hosts set a class of their own on the layout element: Host A a fixed one,
 Host R one toggled by a policy decision. Class attributes on the layout host must
 therefore survive to the rendered element rather than being reconstructed.
 
-The vertical layout is exercised only by Host R, which is exactly why a
-splitpane-only change that skips it stays invisible until someone opens the
-reference app.
+The vertical layout is exercised only by Hosts R and C, both internally
+controlled, so a splitpane-only change that skips it stays invisible until
+someone opens one of them.
 
-### `pie-theme` (Hosts V, A, M, R)
+### `pie-theme` (Hosts V, A, C, M, R)
 
 Attributes used: `theme`, `scope`, and V's `variables` (see theme tokens below).
 V uses `theme="light" scope="self"`. A uses `scope="document"` and binds `theme`
@@ -1077,6 +1107,12 @@ private registry, so an earlier PIE remote on the same page leaves Host M on
 default colors. The page-wide registry of 2026-10-02 removes that once every
 copy on the page carries it.
 
+Host C wraps its section preview in one `<pie-theme scope="self"
+provider="daisyui">` and sets `theme` to a DaisyUI theme name of its own. It
+depends on a `theme` value other than `light`, `dark` or `auto` becoming
+`data-theme` over the light base, and on the DaisyUI adapter keeping the id
+`daisyui`.
+
 ### Internal layout CEs as style selectors (Host A)
 
 The host reaches into the player's light DOM with Angular `::ng-deep` rules
@@ -1109,6 +1145,10 @@ Host R styles the two layout hosts through `:global()` in two files and is
 similarly exposed by the tag names, but only for flex sizing and overflow — it
 sets no custom property and reaches no card. It styles no internal card tag at
 all, so the two card tags are Host A's constraint alone.
+
+Host C gives the two layout hosts `display` and a minimum height through
+`:global()`, and hides the internal `pie-section-player-scroll-hint` class with
+`!important`. Renaming that class brings the hint back there.
 
 ### Debugger and settings panel CEs (Host R only)
 
@@ -1441,14 +1481,25 @@ pad previously recorded:
 - `env` — `{ mode: "gather" | "evaluate", role: "student" | "instructor" }`
 - `onFrameworkError`, in the playground and the four section demos
 
+Host C builds a smaller one:
+
+- `assessmentId`
+- `playerType: "iife"`
+- `player.loaderOptions` — `bundleHost`, and `runtimeSupportCheck: "on"`
+- `player.loaderConfig.trackPageActions: false`
+- `tools.providers.textToSpeech` — `enabled` and `backend: "browser"`, nothing else
+- `tools.placement.item` and `tools.placement.passage` — `["textToSpeech"]`
+- `env` — `{ mode: "gather" | "evaluate", role: "student" | "instructor" }`,
+  selected by a role control
+
+No other host sets `runtimeSupportCheck` or the browser speech backend.
+
 `toolRegistry` stays a separate element property rather than a runtime key,
 because the layout shell rather than the engine consumes it.
 
-`env` on the section-player runtime is a single-consumer surface with no
-client-facing backstop: it is exercised only here — Host V passes `env` to the
-item player instead, and Host A passes none — and it is the only place the
-`gather` and `evaluate` modes appear in any checkout. No host passes
-`runtime.coordinator`.
+`env` on the section-player runtime has no client-facing backstop: only Hosts R
+and C pass it — Host V passes `env` to the item player instead, and Host A passes
+none. No host passes `runtime.coordinator`.
 
 Host R is also the only host that feeds the player a `createToolsConfig` output
 rather than a hand-written literal, so it is the only one that would notice the
@@ -1465,6 +1516,12 @@ Host A passes `hooks.cardTitleFormatter`, a function reading `context.kind`
 formatter is the only thing producing correct question numbers in that delivery.
 Changing the context shape, or calling the formatter for a new `kind` without a
 `defaultTitle`, produces wrong or blank card titles.
+
+Host C's formatter reads `context.kind` and `context.defaultTitle`: it keeps the
+default for passages and returns a zero-width space for items. The card falls
+back to its default title on an empty or whitespace-only return, and `trim()`
+keeps U+200B, so that character is how this host blanks item titles. Stripping
+invisible characters from the return brings "Question N" back there.
 
 Host R passes `onFrameworkError` in the runtime object, where it receives each
 error once. A tool's start failure arrives there with `recoverable: true` unless
@@ -1653,6 +1710,11 @@ as a tree whose imports are all relative — `chunks/` and `assets/`, the Cortex
 calculator's worker file among them — so a host that copies it needs the whole
 directory, one per version. The npm entry `dist/pie-section-player.js` is
 byte-identical with and without it.
+
+Host C's dev server matches the installed `pie-players-shared` package's `dist/`
+directory by path, to strip a trailing `sourceMappingURL` comment from each file
+it serves. No file in that `dist` on `1.0.0-beta.1` ends in one, so the rule
+changes nothing, and a moved directory leaves it matching nothing.
 
 ## Single-file bundle (Host A)
 
@@ -1932,13 +1994,13 @@ shipping.**
   its `MathJax.loader.preLoad` call throws on the shell's MathJax 4, at load once
   Host M drops its workaround and at first render regardless
 
-**Host R only. Change freely; land the internally controlled host fix in the
-same push.** Its checkout was available for the 2026-08-19 refresh, so these are
-re-derived rather than remembered.
+**Hosts R and C only. Change freely; land the internally controlled host fix in
+the same push.** Host R's checkout was available for the 2026-08-19 refresh, so
+its entries are re-derived rather than remembered. Host C's are from 2026-10-13.
 
-- `pie-section-player-vertical`, and anything in `default-tool-loaders` — except
-  the `annotationToolbar` capability id, which Host R names in seven places, in
-  tool config objects and in its own placement lists
+- `pie-section-player-vertical` (R, C), and anything in `default-tool-loaders` —
+  except the `annotationToolbar` capability id, which Host R names in seven
+  places, in tool config objects and in its own placement lists
 - Requiring an explicit registration call from a `pie-tool-*` package that
   currently self-registers on import
 - Renaming a `TTSErrorCode` member
@@ -1965,7 +2027,18 @@ re-derived rather than remembered.
 - The `bundleHash`, `elements` and `loaderVersion` fields of a generated
   preloaded package's `pie` block, and the registry publish time beside them
 - `runtime.playerType`, `runtime.lazyInit`,
-  `runtime.player.loaderConfig`, and `env` on the section-player runtime
+  `runtime.player.loaderConfig`, and `env` on the section-player runtime; C sets
+  all but `lazyInit`
+- `content-max-width-no-passage`, `content-max-width-with-passage` and
+  `split-pane-min-region-width` on the layouts, and `runtime.player.loaderOptions`
+  through the section player (C)
+- The `pie-section-player-scroll-hint` class name (C)
+- `applyElementVersionOverridesPreserveTags`, `parseElementOverridesFromUrl`
+  and `extractPackageInfo` in `pie-players-shared/pie`, and that entry evaluating
+  in Node (C)
+- A `theme` value outside `light` / `dark` / `auto` becoming `data-theme`, and
+  the DaisyUI adapter's `daisyui` id (C)
+- The card title fallback treating anything beyond whitespace as a title (C)
 - The five debugger and settings panel CE prop sets, and the `customProviders`
   entry shape, which Host R builds without importing `CustomProviderDescriptor`
 - `providerOptions` on the TTS provider config

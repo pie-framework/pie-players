@@ -408,7 +408,13 @@ the runtime context supplies a TTS service.
 				paused = false;
 				return;
 			}
-			speaking = state === 'playing' || state === 'paused';
+			// A seek or speed change restarts the run through 'loading'. That is
+			// still the same read, so `speaking` holds across it: dropping it would
+			// disable rewind / fast-forward and push focus off the one just pressed.
+			speaking =
+				state === 'playing' ||
+				state === 'paused' ||
+				(state === 'loading' && speaking);
 			paused = state === 'paused';
 		};
 		const stateListener = (state: unknown) => {

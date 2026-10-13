@@ -1175,6 +1175,53 @@ test.describe("section player demo tts-ssml", () => {
 		await expect(stop).toBeFocused();
 	});
 
+	test("keeps focus on rewind and fast-forward across repeated keyboard presses", async ({
+		page,
+	}) => {
+		// A long utterance keeps the read going while the seek controls are pressed.
+		await suppressAudibleBrowserTts(page, 30_000);
+		await page.setViewportSize({ width: 1320, height: 900 });
+		await gotoDemo(page);
+		await openSessionPanel(page);
+		await forceBrowserTtsRuntime(page);
+
+		const inlineTts = page
+			.locator(
+				'pie-item-scope[data-pie-shell-root="item"] pie-tool-tts-inline:visible',
+			)
+			.first();
+		await expect(inlineTts).toBeVisible();
+		const panel = inlineTts.getByRole("toolbar", { name: "Reading controls" });
+
+		await inlineTts.getByRole("button", { name: "Play reading" }).click();
+		await expect(panel).toBeVisible();
+		const rewind = panel.getByRole("button", { name: "Rewind" });
+		const fastForward = panel.getByRole("button", { name: "Fast-forward" });
+		await expect(fastForward).toBeEnabled();
+
+		// Each seek restarts the read; the pressed control must stay enabled and
+		// focused through that restart so it can be pressed again.
+		const spokenCount = () =>
+			page.evaluate(
+				() =>
+					(window as unknown as { __pieTtsSpeaks: unknown[] }).__pieTtsSpeaks
+						.length,
+			);
+		for (const [control, key] of [
+			[fastForward, "Enter"],
+			[fastForward, "Space"],
+			[rewind, "Enter"],
+			[rewind, "Space"],
+		] as const) {
+			await control.focus();
+			const before = await spokenCount();
+			await page.keyboard.press(key);
+			await expect.poll(spokenCount).toBeGreaterThan(before);
+			await expect(control).toBeEnabled();
+			await expect(control).toBeFocused();
+		}
+	});
+
 	test("stacks left-aligned speed controls below the inline media row when the heading crowds the panel", async ({
 		page,
 	}) => {

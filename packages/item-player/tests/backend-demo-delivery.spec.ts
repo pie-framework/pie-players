@@ -128,7 +128,16 @@ test("backend demo loads, autosaves, and server-scores a delivery session", asyn
 	).json();
 	expect(hasCorrectKey(processedModels)).toBe(false);
 
+	const reloadSessionPromise = page.waitForResponse((response) => {
+		const request = response.request();
+		return (
+			response.url().includes("/api/player/load") &&
+			request.method() === "POST" &&
+			(request.postData() || "").includes(testSessionId)
+		);
+	});
 	await page.getByRole("button", { name: "Load current session" }).click();
+	await reloadSessionPromise;
 	await expect(page.getByLabel("Session ID")).toHaveValue(testSessionId);
 
 	await page.request.post("/api/player/save", {

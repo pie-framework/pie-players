@@ -80,10 +80,14 @@ export type {
 } from "./tool-surface-host.js";
 export { createToolSurfaceHost } from "./tool-surface-host.js";
 
-// Context a registration reads to answer `isVisibleInContext`.
-export type { ToolContext } from "../services/tool-context.js";
+// Context a registration reads to answer `isVisibleInContext`, and what the
+// context's elements declare they support.
+export type {
+	ElementSupports,
+	ToolContext,
+} from "../services/tool-context.js";
 export {
-	hasChoiceInteraction,
+	elementSupports,
 	hasMathContent,
 	hasReadableText,
 	hasSpokenContent,

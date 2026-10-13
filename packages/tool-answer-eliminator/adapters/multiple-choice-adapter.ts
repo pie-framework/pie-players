@@ -7,8 +7,6 @@ import type { ChoiceAdapter } from "./choice-adapter.js";
  * Detects PIE's corespring-checkbox and corespring-radio-button classes
  */
 export class MultipleChoiceAdapter implements ChoiceAdapter {
-	readonly elementType = "multiple-choice";
-	readonly priority = 100;
 	private static readonly CHOICE_HOOK_ATTR =
 		"data-pie-answer-eliminator-choice";
 	private static readonly LABEL_HOOK_ATTR = "data-pie-answer-eliminator-label";
@@ -23,13 +21,6 @@ export class MultipleChoiceAdapter implements ChoiceAdapter {
 	private static readonly MUI_BUTTON_SELECTOR =
 		".MuiButtonBase-root, .MuiRadio-root, .MuiCheckbox-root";
 	private static readonly MUI_DISABLED_CLASS = "Mui-disabled";
-
-	canHandle(element: HTMLElement): boolean {
-		return (
-			element.tagName.toLowerCase() === "multiple-choice" ||
-			element.classList.contains("multiple-choice")
-		);
-	}
 
 	findChoices(root: HTMLElement): HTMLElement[] {
 		root.setAttribute(MultipleChoiceAdapter.ROOT_HOOK_ATTR, "true");
@@ -138,11 +129,6 @@ export class MultipleChoiceAdapter implements ChoiceAdapter {
 				!selectable,
 			);
 		}
-	}
-
-	getButtonContainer(choice: HTMLElement): HTMLElement | null {
-		// Return the choice-input container
-		return choice;
 	}
 
 	private generateFallbackId(choice: HTMLElement): string {

@@ -68,7 +68,7 @@ A tool can hide itself and cannot overturn policy:
 `filterDecidedToolIds(entries, level, contexts)` enforces this by filtering only the entries of the policy decision it is given. It applies the toolbar's rule, and `<pie-item-toolbar>` calls it:
 
 - **Pass 2** is skipped at section level, where relevance would depend on item content, and for a tool whose policy entry is `required` or `alwaysAvailable`, so a relevance heuristic cannot withdraw a granted accommodation.
-- **Pass 3** runs below section level once content has resolved. A registration that declares `isApplicableToContent(context)` and answers `false` for every context at its placement is removed even under a grant, because a control that provably does nothing serves no learner. The answer eliminator declares this gate, answering `false` for content with no choice interaction.
+- **Pass 3** runs below section level once content has resolved. A registration that declares `isApplicableToContent(context)` and answers `false` for every context at its placement is removed even under a grant, because a control that provably does nothing serves no learner. The answer eliminator declares this gate, answering `false` for content with no element supporting answer masking.
 
 A tool whose visibility a host `ToolContextResolver` decided keeps that answer, since the host may own an adapter that works with the content.
 
@@ -222,7 +222,7 @@ import {
   hasReadableText,
   hasMathContent,
   hasScienceContent,
-  hasChoiceInteraction,
+  elementSupports,
   type ToolContext
 } from '@pie-players/pie-assessment-toolkit/tools/registration';
 
@@ -247,10 +247,13 @@ const periodicTable = {
   },
 };
 
-// Context has a choice-based interaction
+// An element of the context declares answer masking, an AfA PNP 3.0 support
+// term, as `static pieSupports = ['answer-masking']` on its class
 const answerEliminator = {
   isVisibleInContext(context: ToolContext): boolean {
-    return hasChoiceInteraction(context);
+    return elementSupports(context).some((element) =>
+      element.supports?.includes('answer-masking'),
+    );
   },
 };
 ```
@@ -314,7 +317,7 @@ A calculator's provider reads `tools.providers.calculator`:
 - Dictionary, Picture Dictionary, Spanish Dictionary, Spanish Picture Dictionary (`dictionary`, `pictureDictionary`, `dictionarySpanish`, `pictureDictionarySpanish`): word definitions and pictures; readable text
 
 **Interaction-specific tools**:
-- Answer Eliminator (`answerEliminator`, item level): strikes through choices; multiple choice, inline choice, select text and evidence-based selected response (EBSR) interactions only, which its applicability gate (Pass 3) also enforces
+- Answer Eliminator (`answerEliminator`, item level): strikes through choices; elements declaring the `answer-masking` support only, which its applicability gate (Pass 3) also enforces. Multiple choice, evidence-based selected response (EBSR) and select-text declare it, and legacy releases of the first two that declare nothing still get it
 
 **Measurement tools** (section, item and element level):
 - Ruler (`ruler`): on-screen ruler; math content

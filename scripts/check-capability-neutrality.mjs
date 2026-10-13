@@ -29,6 +29,11 @@
  * prop default while this gate read only `.ts`, which is the gap that let them
  * accumulate: the rule was enforced on the half of the package that happened to
  * be modules.
+ *
+ * Element type names are the third way (PIE-917). The core decided which items
+ * took the answer eliminator from a list of element names, so an element built
+ * elsewhere could not take it without a change here. An element now declares its
+ * supports on its class, and the core reads the declaration.
  */
 
 import { readFileSync, readdirSync, statSync } from "node:fs";
@@ -74,6 +79,54 @@ const CAPABILITY_TAG_PATTERN = /pie-tool-[a-z0-9-]+/g;
 const GENERIC_TOOL_TAG_PATTERN =
 	/^pie-tool-(?:shell|overlay-boundary|overlay-protect)(?:[_-]|$)/;
 
+/**
+ * PIE element type names: the pie-elements-ng React and Svelte packages, plus
+ * legacy names the core used to branch on. `passage` and `rubric` are left out
+ * because they also name content levels the core addresses.
+ */
+const ELEMENT_TYPE_NAMES = [
+	"categorize",
+	"charting",
+	"complex-rubric",
+	"drag-in-the-blank",
+	"drawing-response",
+	"ebsr",
+	"explicit-constructed-response",
+	"extended-text-entry",
+	"fraction-model",
+	"graphing",
+	"graphing-solution-set",
+	"hotspot",
+	"image-cloze-association",
+	"inline-choice",
+	"inline-dropdown",
+	"likert",
+	"match",
+	"match-list",
+	"math-inline",
+	"math-templated",
+	"matrix",
+	"mc-populated-blank",
+	"multi-trait-rubric",
+	"multiple-choice",
+	"number-line",
+	"placement-ordering",
+	"select-text",
+	"simple-cloze",
+	"venn-classification",
+	"video-stimulus",
+];
+
+/**
+ * A string naming an element type, in any of the spellings content uses: the
+ * bare type, `pie-<type>`, `pie-element-<type>`, `@pie-element/<type>`, or any of
+ * those with a version suffix (`--version-*`, `@<range>`).
+ */
+const elementTypePattern = (name) =>
+	new RegExp(
+		`["'\`](?:@pie-element/|pie-(?:element-)?)?${name}(?:--version-[^"'\`]*|@[^"'\`]*)?["'\`]`,
+	);
+
 const SCOPED_TARGETS = [
 	{ dir: path.join(TOOLKIT_SRC, "policy"), label: "policy/**" },
 	{ file: path.join(TOOLKIT_SRC, "services", "ToolRegistry.ts") },
@@ -82,6 +135,7 @@ const SCOPED_TARGETS = [
 	},
 	{ file: path.join(TOOLKIT_SRC, "services", "tool-config-validation.ts") },
 	{ file: path.join(TOOLKIT_SRC, "services", "tool-config-defaults.ts") },
+	{ file: path.join(TOOLKIT_SRC, "services", "tool-context.ts") },
 	{ file: path.join(TOOLKIT_SRC, "tools", "tool-tag-map.ts") },
 	{ file: path.join(TOOLKIT_SRC, "components", "ItemToolBar.svelte") },
 	{ file: path.join(TOOLKIT_SRC, "components", "SectionToolBar.svelte") },
@@ -128,6 +182,12 @@ function checkFile(absPath) {
 		const quoted = new RegExp(`["'\`]${id}["'\`]`);
 		if (quoted.test(code)) {
 			violations.push(`names capability id "${id}"`);
+		}
+	}
+
+	for (const name of ELEMENT_TYPE_NAMES) {
+		if (elementTypePattern(name).test(code)) {
+			violations.push(`names element type "${name}"`);
 		}
 	}
 

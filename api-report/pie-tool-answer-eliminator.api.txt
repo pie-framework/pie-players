@@ -5,7 +5,3 @@
 
 .
   default
-
-./adapters/adapter-registry
-  AdapterRegistry
-  type ChoiceWithAdapter

@@ -37,7 +37,7 @@ import {
 	ToolRegistry,
 	createScopedToolId,
 	createToolElement,
-	hasChoiceInteraction,
+	elementSupports,
 	hasMathContent,
 	hasReadableText,
 	hasScienceContent,
@@ -272,7 +272,7 @@ describe("TOOL_REGISTRY.md examples", () => {
 		expect(hasReadableText(context)).toBe(true);
 		expect(hasMathContent(context)).toBe(false);
 		expect(hasScienceContent(context)).toBe(true);
-		expect(hasChoiceInteraction(context)).toBe(false);
+		expect(elementSupports(context)).toEqual([]);
 	});
 
 	test("PNP Resolution: the placement validates and the item toolbar shows both tools", () => {

@@ -1,3 +1,4 @@
+import { alignPreloadedElementVersions } from "../loaders/preloaded-alignment.js";
 import { parsePackageName } from "./utils.js";
 
 const VERSION_DELIMITER = "--version-";
@@ -61,4 +62,32 @@ export function toPackageVersionedTag(
 	// pie-item contract compatibility: preloaded hosts have historically replaced
 	// package versions at runtime, which requires updating the cloned runtime tag.
 	return `${baseName}${VERSION_DELIMITER}${targetEncodedVersion}`;
+}
+
+/**
+ * The tags a player can define an authored element under, most specific first:
+ * the versioned tag for its package spec, aligned to the page's preloaded
+ * registration, then the authored tag, which an unversioned spec keeps. With no
+ * spec the authored tag is the only candidate.
+ *
+ * For code that looks an element's class up by tag without rendering it, such as
+ * reading what the class declares before the element is in the DOM.
+ */
+export function runtimeElementTags(
+	tagName: string,
+	packageSpec?: string,
+): string[] {
+	if (!packageSpec) return [tagName];
+	let versioned: string;
+	try {
+		const { elements } = alignPreloadedElementVersions({
+			elements: { [tagName]: packageSpec },
+		});
+		versioned = toPackageVersionedTag(tagName, elements[tagName], {
+			preserveUnversionedTag: true,
+		});
+	} catch {
+		return [tagName];
+	}
+	return versioned === tagName ? [tagName] : [versioned, tagName];
 }

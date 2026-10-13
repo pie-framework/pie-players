@@ -1,6 +1,7 @@
 import { GlobalRegistrator } from "@happy-dom/global-registrator";
 import { afterAll, afterEach, describe, expect, test } from "bun:test";
 import { ToolCoordinator, ZIndexLayer } from "../src/services/ToolCoordinator.js";
+import { elementSupports } from "../src/services/tool-context.js";
 import { createScopedToolId } from "../src/services/tool-instance-id.js";
 import {
 	type ToolbarContext,
@@ -103,6 +104,42 @@ describe("<pie-item-toolbar> three-pass filtering", () => {
 
 		expect(toolbar.buttonLabels()).toEqual(["listed"]);
 		expect(loaded).toEqual(["listed"]);
+	});
+
+	test("re-decides relevance when an element the content names is defined late", async () => {
+		const { registry } = registryWith([
+			{
+				toolId: "masking",
+				supportedLevels: ["item"],
+				visible: (context) =>
+					elementSupports(context).some((element) =>
+						element.supports?.includes("answer-masking"),
+					),
+			},
+		]);
+
+		const toolbar = await mountItemToolbar({
+			registry,
+			placed: [{ toolId: "masking" }],
+			item: {
+				id: "item-late",
+				config: {
+					markup: '<late-choice id="q1"></late-choice>',
+					elements: { "late-choice": "@acme/late-choice@1.0.0" },
+					models: [{ id: "q1", element: "late-choice" }],
+				},
+			} as any,
+		});
+		mounted.push(toolbar);
+		expect(toolbar.buttonLabels()).toEqual([]);
+
+		class LateChoice extends HTMLElement {
+			static pieSupports = ["answer-masking"];
+		}
+		customElements.define("late-choice--version-1-0-0", LateChoice);
+		await settle();
+
+		expect(toolbar.buttonLabels()).toEqual(["masking"]);
 	});
 
 	test("reports a throwing relevance or applicability check to the coordinator", async () => {

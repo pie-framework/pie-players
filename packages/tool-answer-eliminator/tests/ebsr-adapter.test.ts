@@ -32,7 +32,6 @@ describe("EBSRAdapter", () => {
 		const adapter = new EBSRAdapter();
 		const root = mountEbsr(partTag);
 
-		expect(adapter.canHandle(root)).toBe(true);
 		const choices = adapter.findChoices(root);
 		expect(choices.map((choice) => adapter.getChoiceId(choice))).toEqual([
 			"a-1",
@@ -44,7 +43,6 @@ describe("EBSRAdapter", () => {
 		const adapter = new EBSRAdapter();
 		const root = mountEbsr("ebsr-multiple-choice-configure--version-14-2-2");
 
-		expect(adapter.canHandle(root)).toBe(false);
 		expect(adapter.findChoices(root)).toEqual([]);
 	});
 });

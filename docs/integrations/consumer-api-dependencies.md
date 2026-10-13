@@ -27,6 +27,11 @@ Host M was added on **2026-10-02**, derived from its checkout and checked agains
 `origin/develop` the same day; its rows carry that date. Its checkout is
 uncommitted work on its default branch.
 
+Host B was added on **2026-10-13**, derived from its checkout the same day. It
+depends on no `@pie-players` package yet. Its profile records the legacy PIE
+surface it renders through, so a design aimed at it can be checked for fit
+before it migrates.
+
 The theme-token rows were re-derived on their own once before, on 2026-08-28,
 when the light Base Theme's `--pie-background` became opaque; that sweep found
 the Host A token set one entry shorter than recorded.
@@ -715,6 +720,7 @@ The 2026-09-26 re-derivation found neither surface in any host.
 | **Host A** | Angular + webpack | Full fixed-form delivery: one layout CE, the toolkit coordinator via `toolkit-ready`, session persistence, TTS, calculator, PNP | Highest — external client-facing, drives live delivery |
 | **Host P** | Angular + webpack, packaged as a custom element that an outer page mounts | One item at a time in learner delivery, through the preloaded build of `pie-item-player`, which it serves from its own static assets; migrating off `@pie-framework/pie-fixed-player-static` behind a host-side player-type switch | High — external client-facing; the `@pie-players` path is live wherever that switch selects it |
 | **Host M** | Framework-free TypeScript custom element, built by Vite into one ES module and loaded as a micro-frontend remote by an Angular shell | One item at a time through `pie-item-player` on the `preloaded` strategy, with the element and its controller bundled and registered by the host so evaluation runs in the browser; themed through a provider adapter of its own | High once shipped — mounted on a development route only so far, and the base a client-facing product is building on |
+| **Host B** | Vue 2 on webpack 4 | Item bank: instructor-view item lists with one legacy player per row, item and passage authoring, print. No `@pie-players` dependency yet | None until it adopts; high after — external client-facing |
 | **Host R** | SvelteKit reference/QA app | Nearly the whole suite, and the only consumer of the **programmatic** API: it drives the coordinator the section player builds, the composition layer, reads the theme token registry, and runs the Node-side TTS providers | Low to fix, high to notice — internally controlled, but it is the first place a regression surfaces |
 
 Packages consumed:
@@ -735,6 +741,8 @@ Packages consumed:
 - **Host M** — `pie-item-player` and its `preloaded` subpath, `pie-theme` and its
   `components.css` subpath. `pie-players-shared` is held to the same build by an
   override and imported nowhere.
+- **Host B** — none. Its legacy surface is recorded under Host B's legacy
+  surface below.
 - **Host R** — 29 declared `@pie-players` packages. Imported: the toolkit,
   `pie-default-tool-loaders`, `pie-players-shared` and its `types` subpath,
   `pie-section-player` and its splitpane subpath, `pie-theme` plus its
@@ -773,6 +781,43 @@ registry — so its move to a release takes all four at once.
 Host R is not client-facing and is ours to fix, so its rows are not a reason to
 avoid a change. They are a reason to expect the change to show up there first,
 and to fix it there in the same push.
+
+### Host B's legacy surface
+
+Host B renders PIE only through the legacy players:
+
+- **Delivery.** One `<pie-player>` per list row, and one per passage, from the
+  `@pie-api/pie-api-components` bundle, which pins
+  `@pie-framework/pie-player-components` exactly (`3.16.0` in its `5.16.2`
+  release). The bundle loads as a module script from a public CDN, at a version
+  the host selects at runtime, with a second CDN as fallback. Each row sets
+  `config`, `env` (`mode: "view"`, `role: "instructor"`, plus
+  `@pie-element.lockChoiceOrder`), `host`, `bundleHost`, `bundleEndpoints`,
+  `addCorrectResponse` (true by default) and `optimize: false` as properties,
+  and listens for `load-complete` and `player-error`. A visibility queue with a
+  concurrency cap mounts rows and advances on those two events.
+- **Authoring.** `<pie-api-author>` for items and passages, from the same
+  bundle. New-item templates name element versions as
+  `@pie-element/<name>@latest`, so whichever release line holds npm `latest`
+  for a `@pie-element` name is what a new item resolves.
+- **Print.** Legacy `<pie-print>` from `@pie-framework/pie-print`, loaded from a
+  CDN by version behind a host switch.
+
+It sets no `--pie-` tokens and styles no player internals. A shared component
+library the host installs also contributes an item player plugin. Its PIE surface was not derived, because the library is not installed in
+the checkout.
+
+Migrating to `pie-item-player` changes what the
+[migration guide](../item-player/migration-from-pie-player-components.md)
+lists: `player-error` detail becomes `{ code, message, recoverable }`, the
+markup sanitizer is on by default, and `bundleEndpoints` has no equivalent, so
+`loaderOptions.bundleHost` replaces both bundle properties. Webpack 4 cannot
+parse the optional chaining in `@pie-players` `dist` files unless the host
+transpiles them, so a CDN module script, the way it loads the legacy bundle
+today, is the route that needs no build change. The
+[item summary and list PRD](../prds/item-summary-and-list.md) designs its row
+element as a drop-in for the per-row player. A predecessor checkout carries the
+same PIE surface.
 
 ## Package entrypoints in use
 

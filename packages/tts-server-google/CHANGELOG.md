@@ -1,5 +1,42 @@
 # @pie-players/tts-server-google
 
+## 1.0.0-beta.0
+
+### Major Changes
+
+- 956f4be: Open the 1.0 line. 1.0.0 ships first as `1.0.0-beta.N` prereleases under the `beta` dist-tag, while `latest` stays on 0.3.75. Releases stay patch-only after 1.0, breaking changes included, so pin exact versions.
+
+### Patch Changes
+
+- ef49bbe: Corrects package READMEs and doc comments against the current code: stale
+  APIs, endpoints and figures, broken links, and the answer eliminator's
+  persistence example, which replaced the coordinator's own tool-state save.
+  The line reader frame token's registry entry now gives contrast figures for all
+  ten built-in schemes.
+- 90d40c6: A server read whose response carries no speech marks highlights each sentence as it plays: the provider's `onPlaybackStart` passes a `TTSPlaybackStart` saying whether the audio carries word boundaries, and the reader paints the part's sentences when it does not. `<pie-tool-tts-inline>` lost its `language` property and speaks the runtime context's content language, as the annotation toolbar's read-aloud does, and it reports a read with nothing to read only under `PIE_TTS_DEBUG`. Neither tool logs a start failure to the console any more; the toolkit reports it. Read-aloud word highlighting re-adapts its colours when a `<pie-theme>` mounts after the reader or changes its theme, and stops observing on dispose. `PollyServerProvider` and `GoogleCloudTTSProvider` create their SDK client through a protected `createClient`, which a subclass can override.
+- 7a27a68: Internal readability pass: comments describe the current behavior, magic
+  numbers are named constants, and repeated logic is folded into local helpers.
+- abbfb41: Studio voices take no `<prosody pitch>`, so a Studio request now applies `rate` and drops `pitch`, and `supportsPitch` is false when `voiceType` is `'studio'`.
+- 7ccf6a8: The Polly SvelteKit example routes forward the full request the provider accepts
+  (`engine`, `format`, `sampleRate`, `speechMarkTypes` among it), answer with a
+  status chosen by `TTSErrorCode`, and pass credentials only when a key pair is
+  configured, leaving the AWS default credential chain to apply otherwise. Hosts
+  that copied the earlier routes can copy them again. Doc comments no longer quote
+  Polly prices or a Google voice count.
+- `BaseTTSProvider.ensureInitialized` throws a `TTSError` coded `INITIALIZATION_ERROR` where it threw a plain `Error`, and `GoogleCloudTTSProvider` maps a failed Studio audio-only retry through its gRPC code mapping where it rethrew the raw gRPC error.
+- 4e14c14: The server providers' `getCapabilities()` drops the hard-coded voice and language counts from `extensions.providerSpecific`: `neuralVoicesCount`, `standardVoicesCount` and `languagesCount` on `PollyServerProvider`, `voicesCount` and `languagesCount` on `GoogleCloudTTSProvider`. `getVoices()` returns the actual roster. The Polly README's setup passes credentials only when both keys are set, leaving the AWS SDK default credential chain to resolve them otherwise.
+- 6bdf8b7: Server word highlights now land on the spoken word in text with accented or other non-ASCII characters. Speech-mark offsets index the request text in UTF-16 code units: Polly's byte offsets, its prosody envelope and a server's constant shift are resolved by anchoring each mark's word in the text (`anchorSpeechMarks`, also applied by `normalizeSpeechMarks` and the pie transport). Google keeps accented words whole and now marks authored SSML in place, so `<sub>`, `<break>`, `<say-as>` and entities reach the engine intact.
+- Updated dependencies [403a673]
+- Updated dependencies [ef49bbe]
+- Updated dependencies [956f4be]
+- Updated dependencies [7a27a68]
+- Updated dependencies [e621148]
+- Updated dependencies [7ccf6a8]
+- Updated dependencies
+- Updated dependencies [6bdf8b7]
+- Updated dependencies [0314c6d]
+  - @pie-players/tts-server-core@1.0.0-beta.0
+
 ## 0.3.75
 
 ### Patch Changes

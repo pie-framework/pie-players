@@ -1,5 +1,20 @@
 # @pie-players/pie-section-player-tools-tts-settings
 
+## 1.0.0-beta.0
+
+### Major Changes
+
+- 956f4be: Open the 1.0 line. 1.0.0 ships first as `1.0.0-beta.N` prereleases under the `beta` dist-tag, while `latest` stays on 0.3.75. Releases stay patch-only after 1.0, breaking changes included, so pin exact versions.
+
+### Patch Changes
+
+- 50710b1: Every package that registers a custom element publishes a `custom-elements.json` manifest, named by its `customElements` field, listing each element's tag, attributes, properties, methods, events, slots and CSS custom properties. A light-DOM element lists its `pie-*` classes under `x-pie.classes`.
+- 7a27a68: Internal readability pass: comments describe the current behavior, magic
+  numbers are named constants, and repeated logic is folded into local helpers.
+- d83c044: `TTSService.stop()` now also closes an open `<pie-tool-tts-inline>` panel, and `requestControlHandoff` and its handoff event are removed; a read that ends on its own keeps the panel open. Providers drop `isPlaying`, `isPaused`, `providerName` and `version`, and `TTSProviderCapabilities` keeps `supportsWordBoundary`, `defaultHighlightMode`, `supportsSSML` and `maxTextLength`. `ToolProviderApi.getCapabilities` and `ToolProviderCapabilities` are removed. `StandardTTSConfig` and `TTSConfigExtensions` fold into `TTSConfig`, and `mathTokenHighlighting` moves to the toolkit's TTS config. `TtsServiceApi` loses `isPlaying`, `isPaused`, `getCurrentText`, `getCapabilities`, `initialize`, `setHighlightCoordinator` and `setCatalogResolver`, `TTSService` loses `getLastError`, and `HighlightCoordinatorApi` replaces `highlightRange`, `clearHighlights`, `isSupported` and `updateTTSHighlightStyle` with `clearTTSWord`. `ensureTTSReady()` takes no argument, and `TTSService.ts` no longer re-exports the `@pie-players/pie-tts` types.
+- 743b8e4: `validateEndpoint` is gone from the TTS settings and the server provider's config: `endpointValidationMode` alone picks the probe `initialize()` runs, `none` when unset on the provider and `voices` on a toolkit `server` backend, as before. `resolveTTSRuntimeSettings` resolves `layoutMode`, an unknown value to `left-aligned`, so `resolveTTSLayoutMode` and `normalizeTTSLayoutMode` are removed and `TTSHostToolbarLayout` drops its constant `mount`. `speedRate` is typed by the new `SpeedRateBucket` from `@pie-players/pie-tts`, the custom transport's `providerOptions` keys (`speedRate`, `lang_id`, `cache`) are typed, and the server provider replaces a `speedRate` outside the three buckets with the one `rate` gives. `TOOL_ACTIVE_CHANGE_EVENT`, on `tools/registration`, names the event a tool element announces its open state with.
+- 97a00b8: The TTS settings panel drops its `adapters` prop and component-mode provider tabs; custom providers implement the exported `CustomProviderDescriptor`, whose context no longer carries `toolkitCoordinator` and whose apply and preview results no longer carry `message` or `note`. Apply waits for `ensureTTSReady()` and keeps the panel open with the error when the backend fails to start. Stopping a preview, switching tabs or starting a toolkit read ends the preview and releases its audio. The Google voice-type and gender filters stay in panel storage, and an unlisted Google voice applies as unset. The panel's strings are localised under `debug.tts.*`.
+
 ## 0.3.75
 
 ### Patch Changes

@@ -1,5 +1,41 @@
 # @pie-players/tts-server-core
 
+## 1.0.0-beta.0
+
+### Major Changes
+
+- 956f4be: Open the 1.0 line. 1.0.0 ships first as `1.0.0-beta.N` prereleases under the `beta` dist-tag, while `latest` stays on 0.3.75. Releases stay patch-only after 1.0, breaking changes included, so pin exact versions.
+
+### Patch Changes
+
+- 403a673: `ToolScopeLevel` and `ToolbarContext.scope.level` admit only the five registered
+  scope levels; any other string already threw when a tool id was built. The
+  calculator, graph and periodic-table panels mark their root with
+  `data-pie-tool-id`. `tts-server-core` drops its unused speech-mark helpers,
+  `generateCacheKey` and `hashText`. The assessment player bundles players-shared
+  whole and drops its shell-element and contract subpaths, which resolved to the
+  registering bundle. The dictionary tools resolve players-shared from the host, as
+  every other tool does. players-shared adds `isPlainRecord` to `./object`, and
+  `pie-default-tool-loaders` exports `CONTENT_LEAD_SURFACE`, which the print player
+  now re-exports.
+- ef49bbe: Corrects package READMEs and doc comments against the current code: stale
+  APIs, endpoints and figures, broken links, and the answer eliminator's
+  persistence example, which replaced the coordinator's own tool-state save.
+  The line reader frame token's registry entry now gives contrast figures for all
+  ten built-in schemes.
+- 7a27a68: Internal readability pass: comments describe the current behavior, magic
+  numbers are named constants, and repeated logic is folded into local helpers.
+- e621148: `SynthesizeRequest.pitch` is the Web Speech API's 0–2 multiplier, default 1, which the SSML providers already sent as a relative `<prosody pitch>` percentage. Validation now rejects a pitch outside 0–2: a semitone value such as `-5` or `5`, which the old −20–20 range let through, became a `-600%` or `+400%` prosody pitch. Polly sends pitch only on the standard engine, since neural voices do not support it, and `supportsPitch` reports that per engine.
+- 7ccf6a8: The Polly SvelteKit example routes forward the full request the provider accepts
+  (`engine`, `format`, `sampleRate`, `speechMarkTypes` among it), answer with a
+  status chosen by `TTSErrorCode`, and pass credentials only when a key pair is
+  configured, leaving the AWS default credential chain to apply otherwise. Hosts
+  that copied the earlier routes can copy them again. Doc comments no longer quote
+  Polly prices or a Google voice count.
+- `BaseTTSProvider.ensureInitialized` throws a `TTSError` coded `INITIALIZATION_ERROR` where it threw a plain `Error`, and `GoogleCloudTTSProvider` maps a failed Studio audio-only retry through its gRPC code mapping where it rethrew the raw gRPC error.
+- 6bdf8b7: Server word highlights now land on the spoken word in text with accented or other non-ASCII characters. Speech-mark offsets index the request text in UTF-16 code units: Polly's byte offsets, its prosody envelope and a server's constant shift are resolved by anchoring each mark's word in the text (`anchorSpeechMarks`, also applied by `normalizeSpeechMarks` and the pie transport). Google keeps accented words whole and now marks authored SSML in place, so `<sub>`, `<break>`, `<say-as>` and entities reach the engine intact.
+- 0314c6d: `BaseTTSProvider.validateRequest` rejects with a `TTSError` carrying the provider id: `TEXT_TOO_LONG` for text over the provider's `maxTextLength`, and `INVALID_REQUEST` for blank text, an unsupported format, or a rate, pitch or volume out of range. The messages are unchanged. These were plain `Error`s, so a host mapping `TTSError.code` to an HTTP status answered them with a 500. Host R's SchoolCity route now answers blank and over-length text with a 400.
+
 ## 0.3.75
 
 ### Patch Changes

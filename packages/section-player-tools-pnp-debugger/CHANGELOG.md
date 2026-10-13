@@ -1,5 +1,63 @@
 # @pie-players/pie-section-player-tools-pnp-debugger
 
+## 1.0.0-beta.0
+
+### Major Changes
+
+- 956f4be: Open the 1.0 line. 1.0.0 ships first as `1.0.0-beta.N` prereleases under the `beta` dist-tag, while `latest` stays on 0.3.75. Releases stay patch-only after 1.0, breaking changes included, so pin exact versions.
+
+### Patch Changes
+
+- 403a673: `ToolScopeLevel` and `ToolbarContext.scope.level` admit only the five registered
+  scope levels; any other string already threw when a tool id was built. The
+  calculator, graph and periodic-table panels mark their root with
+  `data-pie-tool-id`. `tts-server-core` drops its unused speech-mark helpers,
+  `generateCacheKey` and `hashText`. The assessment player bundles players-shared
+  whole and drops its shell-element and contract subpaths, which resolved to the
+  registering bundle. The dictionary tools resolve players-shared from the host, as
+  every other tool does. players-shared adds `isPlainRecord` to `./object`, and
+  `pie-default-tool-loaders` exports `CONTENT_LEAD_SURFACE`, which the print player
+  now re-exports.
+- ef49bbe: Removes dead internal code: unused class members and module exports outside
+  every package entry, the toolkit's unused tool-scope-level registration and
+  tool-config error helpers, the section player's no-op `ensureDefined`
+  component loaders, and stale `files` entries for assets the
+  tools inline. The print player no longer logs element resolution to the
+  console.
+- 50710b1: Every package that registers a custom element publishes a `custom-elements.json` manifest, named by its `customElements` field, listing each element's tag, attributes, properties, methods, events, slots and CSS custom properties. A light-DOM element lists its `pie-*` classes under `x-pie.classes`.
+- e78ec86: A feature decision no rule produced reports `rule: "none"` and `precedence: null`, in place of the `pnp-support` level it never reached. `ToolsPnpEnforcement` is renamed `PnpEnforcementMode`, the one name for the enforcement mode. The coordinator's no-assessment warning and the PNP debugger's banner now say that an item's `requiredTools` can still grant, and point at the toolkit's `assessment` property; the banner is translated, and stays hidden on the toolkit's own coordinator unless enforcement is `"on"`, as the warning does. The debugger reads placement, providers and the registry from the coordinator's bound policy inputs.
+- 8252909: `tool-policy.unknownSupportId` describes the policy inputs, so it moves from toolbar decisions to `ResolvedEngineInputs.diagnostics`, computed once per change to the assessment, an item's settings or the registry's tools and reported whatever the PNP enforcement; registering a tool a profile names clears it and emits an `"inputs"` change, and `PnpPolicyResult.unmappedSupportIds` is removed. `ResolvedEngineInputs.assessmentExpected` says whether an unbound assessment is a misconfiguration, set through the engine's `assessmentOptional` argument. The PNP debugger reads the placement, `assessmentExpected` and the input diagnostics from the resolved inputs.
+- Updated dependencies [7bc0b83]
+- Updated dependencies [403a673]
+- Updated dependencies [ef49bbe]
+- Updated dependencies [ef49bbe]
+- Updated dependencies [32edbc8]
+- Updated dependencies [50710b1]
+- Updated dependencies [87a9657]
+- Updated dependencies [daddf91]
+- Updated dependencies [6d0cc20]
+- Updated dependencies [83eab07]
+- Updated dependencies [caea2bb]
+- Updated dependencies [956f4be]
+- Updated dependencies [90cf6cd]
+- Updated dependencies [e78ec86]
+- Updated dependencies [6d91970]
+- Updated dependencies [8252909]
+- Updated dependencies [90d40c6]
+- Updated dependencies [7a27a68]
+- Updated dependencies [d221bd5]
+- Updated dependencies [c15eb92]
+- Updated dependencies [1549c19]
+- Updated dependencies [ded130d]
+- Updated dependencies [db71789]
+- Updated dependencies [e6bf982]
+- Updated dependencies [d83c044]
+- Updated dependencies [8235283]
+- Updated dependencies [1b0c09d]
+- Updated dependencies [743b8e4]
+- Updated dependencies [e31114a]
+  - @pie-players/pie-assessment-toolkit@1.0.0-beta.0
+
 ## 0.3.75
 
 ### Patch Changes

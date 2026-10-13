@@ -1,5 +1,42 @@
 # @pie-players/pie-tool-dictionary
 
+## 1.0.0-beta.0
+
+### Major Changes
+
+- 956f4be: Open the 1.0 line. 1.0.0 ships first as `1.0.0-beta.N` prereleases under the `beta` dist-tag, while `latest` stays on 0.3.75. Releases stay patch-only after 1.0, breaking changes included, so pin exact versions.
+
+### Patch Changes
+
+- 403a673: `ToolScopeLevel` and `ToolbarContext.scope.level` admit only the five registered
+  scope levels; any other string already threw when a tool id was built. The
+  calculator, graph and periodic-table panels mark their root with
+  `data-pie-tool-id`. `tts-server-core` drops its unused speech-mark helpers,
+  `generateCacheKey` and `hashText`. The assessment player bundles players-shared
+  whole and drops its shell-element and contract subpaths, which resolved to the
+  registering bundle. The dictionary tools resolve players-shared from the host, as
+  every other tool does. players-shared adds `isPlainRecord` to `./object`, and
+  `pie-default-tool-loaders` exports `CONTENT_LEAD_SURFACE`, which the print player
+  now re-exports.
+- ef49bbe: Corrects package READMEs and doc comments against the current code: stale
+  APIs, endpoints and figures, broken links, and the answer eliminator's
+  persistence example, which replaced the coordinator's own tool-state save.
+  The line reader frame token's registry entry now gives contrast figures for all
+  ten built-in schemes.
+- 50710b1: Every package that registers a custom element publishes a `custom-elements.json` manifest, named by its `customElements` field, listing each element's tag, attributes, properties, methods, events, slots and CSS custom properties. A light-DOM element lists its `pie-*` classes under `x-pie.classes`.
+- Updated dependencies [403a673]
+- Updated dependencies [ef49bbe]
+- Updated dependencies [ef49bbe]
+- Updated dependencies [aa71a77]
+- Updated dependencies [956f4be]
+- Updated dependencies [e78ec86]
+- Updated dependencies [7a27a68]
+- Updated dependencies [db71789]
+- Updated dependencies [1b0c09d]
+- Updated dependencies [97a00b8]
+- Updated dependencies [e31114a]
+  - @pie-players/pie-players-shared@1.0.0-beta.0
+
 ## 0.3.75
 
 ### Patch Changes

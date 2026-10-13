@@ -1,6 +1,6 @@
 {
 	"name": "@pie-players/pie-tool-tts-inline",
-	"version": "0.3.75",
+	"version": "1.0.0-beta.0",
 	"type": "module",
 	"license": "MIT",
 	"main": "./dist/tool-tts-inline.js",

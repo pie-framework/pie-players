@@ -1,5 +1,100 @@
 # @pie-players/pie-default-tool-loaders
 
+## 1.0.0-beta.0
+
+### Major Changes
+
+- 956f4be: Open the 1.0 line. 1.0.0 ships first as `1.0.0-beta.N` prereleases under the `beta` dist-tag, while `latest` stays on 0.3.75. Releases stay patch-only after 1.0, breaking changes included, so pin exact versions.
+
+### Patch Changes
+
+- 403a673: `ToolScopeLevel` and `ToolbarContext.scope.level` admit only the five registered
+  scope levels; any other string already threw when a tool id was built. The
+  calculator, graph and periodic-table panels mark their root with
+  `data-pie-tool-id`. `tts-server-core` drops its unused speech-mark helpers,
+  `generateCacheKey` and `hashText`. The assessment player bundles players-shared
+  whole and drops its shell-element and contract subpaths, which resolved to the
+  registering bundle. The dictionary tools resolve players-shared from the host, as
+  every other tool does. players-shared adds `isPlainRecord` to `./object`, and
+  `pie-default-tool-loaders` exports `CONTENT_LEAD_SURFACE`, which the print player
+  now re-exports.
+- ef49bbe: Removes dead internal code: unused class members and module exports outside
+  every package entry, the toolkit's unused tool-scope-level registration and
+  tool-config error helpers, the section player's no-op `ensureDefined`
+  component loaders, and stale `files` entries for assets the
+  tools inline. The print player no longer logs element resolution to the
+  console.
+- ef49bbe: Corrects package READMEs and doc comments against the current code: stale
+  APIs, endpoints and figures, broken links, and the answer eliminator's
+  persistence example, which replaced the coordinator's own tool-state save.
+  The line reader frame token's registry entry now gives contrast figures for all
+  ten built-in schemes.
+- 87a9657: The answer eliminator no longer comes back on when the learner returns to an item; it resets with the item's other tools. The item toolbar releases every coordinator entry of its item when the item changes, including one a tool element registered itself, so `getVisibleTools()` stops reporting entries for items the learner left. `<pie-tool-answer-eliminator>` no longer registers with the coordinator, follows a `strategy` change after mount, and drops its `toolId` and `scopeElement` properties: it reads its item root from the enclosing `<pie-item-scope>`.
+- 90cf6cd: `createPackagedToolRegistry()` installs `DEFAULT_TOOL_MODULE_LOADERS` by default, so a bare call loads each tool's element on first render instead of rendering buttons that load nothing. A `toolModuleLoaders` map replaces the default; a host that defines its tool elements itself passes `toolModuleLoaders: {}`.
+- 90d40c6: A server read whose response carries no speech marks highlights each sentence as it plays: the provider's `onPlaybackStart` passes a `TTSPlaybackStart` saying whether the audio carries word boundaries, and the reader paints the part's sentences when it does not. `<pie-tool-tts-inline>` lost its `language` property and speaks the runtime context's content language, as the annotation toolbar's read-aloud does, and it reports a read with nothing to read only under `PIE_TTS_DEBUG`. Neither tool logs a start failure to the console any more; the toolkit reports it. Read-aloud word highlighting re-adapts its colours when a `<pie-theme>` mounts after the reader or changes its theme, and stops observing on dispose. `PollyServerProvider` and `GoogleCloudTTSProvider` create their SDK client through a protected `createClient`, which a subclass can override.
+- 7a27a68: Internal readability pass: comments describe the current behavior, magic
+  numbers are named constants, and repeated logic is folded into local helpers.
+- fe2ec1a: The audio transcript region's `lang` is now a valid BCP 47 tag when the catalog card carries a POSIX language such as `es_ES`, so screen readers switch to the transcript's language.
+- d83c044: `TTSService.stop()` now also closes an open `<pie-tool-tts-inline>` panel, and `requestControlHandoff` and its handoff event are removed; a read that ends on its own keeps the panel open. Providers drop `isPlaying`, `isPaused`, `providerName` and `version`, and `TTSProviderCapabilities` keeps `supportsWordBoundary`, `defaultHighlightMode`, `supportsSSML` and `maxTextLength`. `ToolProviderApi.getCapabilities` and `ToolProviderCapabilities` are removed. `StandardTTSConfig` and `TTSConfigExtensions` fold into `TTSConfig`, and `mathTokenHighlighting` moves to the toolkit's TTS config. `TtsServiceApi` loses `isPlaying`, `isPaused`, `getCurrentText`, `getCapabilities`, `initialize`, `setHighlightCoordinator` and `setCatalogResolver`, `TTSService` loses `getLastError`, and `HighlightCoordinatorApi` replaces `highlightRange`, `clearHighlights`, `isSupported` and `updateTTSHighlightStyle` with `clearTTSWord`. `ensureTTSReady()` takes no argument, and `TTSService.ts` no longer re-exports the `@pie-players/pie-tts` types.
+- 1b0c09d: tts-inline follows the TTS service's run owner instead of a window-global slot: `speak` takes an `ownerId` and the rate the read starts at, and `getRunOwner()` names the run's owner, so a read another tool starts closes the inline panel. Content holding only a `data-catalog-idref` card is read, and the tool shows for it (`hasSpokenContent`). A read with nothing to speak says so, and a readiness failure reports `tools.textToSpeech.initFailed`, which replaces `tools.textToSpeech.inline.initFailed`. `setHighlightTargetResolverProvider` is required on `TtsServiceApi`.
+- 743b8e4: `validateEndpoint` is gone from the TTS settings and the server provider's config: `endpointValidationMode` alone picks the probe `initialize()` runs, `none` when unset on the provider and `voices` on a toolkit `server` backend, as before. `resolveTTSRuntimeSettings` resolves `layoutMode`, an unknown value to `left-aligned`, so `resolveTTSLayoutMode` and `normalizeTTSLayoutMode` are removed and `TTSHostToolbarLayout` drops its constant `mount`. `speedRate` is typed by the new `SpeedRateBucket` from `@pie-players/pie-tts`, the custom transport's `providerOptions` keys (`speedRate`, `lang_id`, `cache`) are typed, and the server provider replaces a `speedRate` outside the three buckets with the one `rate` gives. `TOOL_ACTIVE_CHANGE_EVENT`, on `tools/registration`, names the event a tool element announces its open state with.
+- e31114a: Tool parameters reach every tool policy shows, granted or not and whatever `pnpEnforcement` is: an item's `toolParameters` entry on its own toolbar and scope, else the assessment's `settings.toolParameters` entry. `ToolParameterMap` types the packaged tools' parameters, `ToolPolicyEntry.settings` is renamed `parameters`, `decideFeaturePolicy` types `parameters` by feature id, and tools read theirs through `ToolbarContext.getToolParameters`. The answer eliminator's strategy moves from `tools.providers.answerEliminator.strategy` to `toolParameters.answerEliminator.strategy`. The calculator opens the parameters' `type` when no resolver or request names one, and the inline calculator's buttons request their variant. Item `toolParameters` alone no longer turn PNP enforcement on. `AssessmentCalculatorConfig` and the `ToolRuntimeConfig` alias are removed.
+- Updated dependencies [7bc0b83]
+- Updated dependencies [403a673]
+- Updated dependencies [ef49bbe]
+- Updated dependencies [ef49bbe]
+- Updated dependencies [32edbc8]
+- Updated dependencies [50710b1]
+- Updated dependencies [0cfb312]
+- Updated dependencies [87a9657]
+- Updated dependencies [daddf91]
+- Updated dependencies [5c03770]
+- Updated dependencies [aa71a77]
+- Updated dependencies [ed97777]
+- Updated dependencies [6d0cc20]
+- Updated dependencies [83eab07]
+- Updated dependencies [caea2bb]
+- Updated dependencies [956f4be]
+- Updated dependencies [90cf6cd]
+- Updated dependencies [e78ec86]
+- Updated dependencies [6d91970]
+- Updated dependencies [8252909]
+- Updated dependencies [90d40c6]
+- Updated dependencies [7a27a68]
+- Updated dependencies [d221bd5]
+- Updated dependencies [cf5074e]
+- Updated dependencies [c15eb92]
+- Updated dependencies [1549c19]
+- Updated dependencies [ded130d]
+- Updated dependencies [db71789]
+- Updated dependencies [e6bf982]
+- Updated dependencies [d83c044]
+- Updated dependencies [8235283]
+- Updated dependencies [1b0c09d]
+- Updated dependencies [743b8e4]
+- Updated dependencies [97a00b8]
+- Updated dependencies [6bdf8b7]
+- Updated dependencies [e31114a]
+  - @pie-players/pie-assessment-toolkit@1.0.0-beta.0
+  - @pie-players/pie-tool-annotation-toolbar@1.0.0-beta.0
+  - @pie-players/pie-tool-theme@1.0.0-beta.0
+  - @pie-players/pie-players-shared@1.0.0-beta.0
+  - @pie-players/pie-tool-calculator-shared@1.0.0-beta.0
+  - @pie-players/pie-tool-dictionary@1.0.0-beta.0
+  - @pie-players/pie-tool-graph@1.0.0-beta.0
+  - @pie-players/pie-tool-periodic-table@1.0.0-beta.0
+  - @pie-players/pie-tool-picture-dictionary@1.0.0-beta.0
+  - @pie-players/pie-calculator-cortex@1.0.0-beta.0
+  - @pie-players/pie-calculator-desmos@1.0.0-beta.0
+  - @pie-players/pie-tool-protractor@1.0.0-beta.0
+  - @pie-players/pie-tool-ruler@1.0.0-beta.0
+  - @pie-players/pie-tool-tts-inline@1.0.0-beta.0
+  - @pie-players/pie-tool-answer-eliminator@1.0.0-beta.0
+  - @pie-players/pie-tool-line-reader@1.0.0-beta.0
+  - @pie-players/tts-client-server@1.0.0-beta.0
+  - @pie-players/pie-calculator@1.0.0-beta.0
+  - @pie-players/pie-calculator-geogebra@1.0.0-beta.0
+
 ## 0.3.75
 
 ### Patch Changes

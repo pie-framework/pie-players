@@ -31,6 +31,9 @@ import { resolveOverlayElement } from "./overlay-element-cache.js";
 const loadServerTTSProvider = async () =>
 	(await import("@pie-players/tts-client-server")).ServerTTSProvider;
 
+const numberOrUndefined = (value: unknown): number | undefined =>
+	typeof value === "number" ? value : undefined;
+
 /**
  * Text-to-Speech tool registration
  *
@@ -121,6 +124,9 @@ export const ttsToolRegistration: ToolRegistration = {
 				) as HTMLElement & {
 					speedOptions?: NormalizedTTSSpeedOption[];
 					showSingleSpeedOption?: boolean;
+					baseRate?: number;
+					pitch?: number;
+					volume?: number;
 				},
 		);
 		const applyAttributes = () => {
@@ -133,6 +139,11 @@ export const ttsToolRegistration: ToolRegistration = {
 			element.speedOptions = resolveElementSpeedOptions();
 			element.showSingleSpeedOption =
 				resolveRuntimeSettings().showSingleSpeedOption === true;
+			// The element range-checks these; a non-number means the default.
+			const speech = toolbarContext.getToolParameters?.("textToSpeech");
+			element.baseRate = numberOrUndefined(speech?.rate);
+			element.pitch = numberOrUndefined(speech?.pitch);
+			element.volume = numberOrUndefined(speech?.volume);
 		};
 		applyAttributes();
 		const hostLayout = resolveTTSHostToolbarLayout(resolveRuntimeSettings());

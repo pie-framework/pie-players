@@ -675,6 +675,25 @@ Host R's element type declarations still list a `highlightCoordinator` property
 it never sets, and its debugger panels keep the `toolkitCoordinator` property,
 which this change does not touch.
 
+On 2026-10-12 the answer eliminator's relevance moved to the elements. An
+element declares the AfA PNP 3.0 supports it takes as `static pieSupports` on
+its class; the toolkit reads them from the registered class through
+`elementSupports(context)`, re-checking when a lazily loaded element is
+defined, and the eliminator takes its choices from the element's
+`pieSupportTargets('answer-masking')`. `hasChoiceInteraction` is removed from
+`./tools/registration`, and `pie-tool-answer-eliminator` drops its
+`./adapters/adapter-registry` subpath and the inline-dropdown adapter, which the
+toolbar's element list never reached. Multiple choice and EBSR releases that
+declare nothing keep the eliminator through the adapters for their markup.
+Select-text releases that declare it get a toggle on each selectable token;
+items whose only choice-like elements are earlier select-text releases or
+inline-choice no longer show it, since it found no choices there. Checked against all five host checkouts the
+same day as a targeted lookup, so it does not advance the verification date: no
+checkout imports either removed name or the subpath outside bundled copies of
+this repository, or reads the eliminator's choice hooks. Host R places the
+eliminator at item level and Host A takes it from the packaged loaders; their
+multiple-choice and EBSR items keep it.
+
 ## Consumer profiles
 
 The control-sizing repair removes automatic zoom compensation from section

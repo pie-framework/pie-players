@@ -1,6 +1,7 @@
 import { GlobalRegistrator } from "@happy-dom/global-registrator";
 import { afterAll, afterEach, describe, expect, test } from "bun:test";
 import { ToolCoordinator, ZIndexLayer } from "../src/services/ToolCoordinator.js";
+import { elementSupports } from "../src/services/tool-context.js";
 import { createScopedToolId } from "../src/services/tool-instance-id.js";
 import {
 	type ToolbarContext,
@@ -103,6 +104,42 @@ describe("<pie-item-toolbar> three-pass filtering", () => {
 
 		expect(toolbar.buttonLabels()).toEqual(["listed"]);
 		expect(loaded).toEqual(["listed"]);
+	});
+
+	test("re-decides relevance when an element the content names is defined late", async () => {
+		const { registry } = registryWith([
+			{
+				toolId: "masking",
+				supportedLevels: ["item"],
+				visible: (context) =>
+					elementSupports(context).some((element) =>
+						element.supports?.includes("answer-masking"),
+					),
+			},
+		]);
+
+		const toolbar = await mountItemToolbar({
+			registry,
+			placed: [{ toolId: "masking" }],
+			item: {
+				id: "item-late",
+				config: {
+					markup: '<late-choice id="q1"></late-choice>',
+					elements: { "late-choice": "@acme/late-choice@1.0.0" },
+					models: [{ id: "q1", element: "late-choice" }],
+				},
+			} as any,
+		});
+		mounted.push(toolbar);
+		expect(toolbar.buttonLabels()).toEqual([]);
+
+		class LateChoice extends HTMLElement {
+			static pieSupports = ["answer-masking"];
+		}
+		customElements.define("late-choice--version-1-0-0", LateChoice);
+		await settle();
+
+		expect(toolbar.buttonLabels()).toEqual(["masking"]);
 	});
 
 	test("reports a throwing relevance or applicability check to the coordinator", async () => {
@@ -213,6 +250,49 @@ describe("<pie-item-toolbar> coordinator entries", () => {
 
 		await mounted.splice(0)[0]?.remove();
 		expect(coordinator.getVisibleTools({ baseId: "probe" })).toEqual([]);
+	});
+
+	test("turns an activate-at-init tool on once per scope", async () => {
+		const coordinator = new ToolCoordinator();
+		const { registry, rendered, context } = probeRegistry();
+		const toolbar = await mountItemToolbar({
+			registry,
+			placed: [{ toolId: "probe", alwaysAvailable: true, activateAtInit: true }],
+			toolCoordinator: coordinator,
+			item: resolvedItem("item-1"),
+		});
+		mounted.push(toolbar);
+		for (let round = 0; round < 20 && !rendered(); round += 1) await settle();
+		await settle();
+		expect(coordinator.isToolVisible("probe:item:item-1")).toBe(true);
+
+		context().toggleTool("probe");
+		expect(coordinator.isToolVisible("probe:item:item-1")).toBe(false);
+		(toolbar.toolbar as HTMLElement & { item: unknown }).item =
+			resolvedItem("item-1");
+		await settle();
+		expect(coordinator.isToolVisible("probe:item:item-1")).toBe(false);
+
+		toolbar.toolbar.setAttribute("item-id", "item-2");
+		(toolbar.toolbar as HTMLElement & { item: unknown }).item =
+			resolvedItem("item-2");
+		await settle();
+		expect(coordinator.isToolVisible("probe:item:item-2")).toBe(true);
+	});
+
+	test("leaves a tool off that the profile does not activate at init", async () => {
+		const coordinator = new ToolCoordinator();
+		const { registry, rendered } = probeRegistry();
+		const toolbar = await mountItemToolbar({
+			registry,
+			placed: [{ toolId: "probe", alwaysAvailable: true }],
+			toolCoordinator: coordinator,
+			item: resolvedItem("item-1"),
+		});
+		mounted.push(toolbar);
+		for (let round = 0; round < 20 && !rendered(); round += 1) await settle();
+		await settle();
+		expect(coordinator.isToolVisible("probe:item:item-1")).toBe(false);
 	});
 
 	test("releases an entry its tool registered itself with its scope", async () => {

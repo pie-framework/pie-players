@@ -183,17 +183,22 @@ export interface ToolPolicyEntry {
 	 */
 	required: boolean;
 	/**
-	 * `true` for a tool the student's PNP `supports` or a
-	 * `testAdministration.toolOverrides` entry grants — UI-level signal that
+	 * `true` for a tool the student's PNP `supports` or `activateAtInit`, or a
+	 * `testAdministration.toolOverrides` entry, grants — UI-level signal that
 	 * the host cannot toggle this tool off in user preferences. Does NOT
 	 * override host blocks (they would have removed the entry before this
 	 * flag is read).
 	 */
 	alwaysAvailable: boolean;
 	/**
-	 * The tool's parameters: the item's `toolParameters` entry on the item's own
-	 * toolbar, else the assessment's `toolParameters` entry. Set whether or not a
-	 * grant admitted the tool.
+	 * `true` for a tool the student's PNP `activateAtInit` lists that policy
+	 * admits: the toolbar turns it on when it first shows it.
+	 */
+	activateAtInit: boolean;
+	/**
+	 * The tool's parameters: the profile's, assessment's and, on the item's own
+	 * toolbar, item's `toolParameters` entries merged key by key, later ones
+	 * winning. Set whether or not a grant admitted the tool.
 	 */
 	parameters?: Record<string, unknown>;
 }

@@ -345,6 +345,76 @@ describe("PnpPolicySource — 8-level precedence", () => {
 		expect(result.mandates.has("calculator")).toBe(false);
 	});
 
+	test("8. pnp-activate-at-init grants the tool and turns it on at start", () => {
+		const result = source().apply({
+			assessment: {
+				id: "a1",
+				personalNeedsProfile: { supports: [], activateAtInit: ["lineReader"] },
+			} as AssessmentEntity,
+		});
+		expect(result.perToolFlags.get("lineReader")).toEqual({
+			required: false,
+			alwaysAvailable: true,
+			activateAtInit: true,
+			rule: "pnp-activate-at-init",
+		});
+		expect(result.decisions).toEqual([
+			expect.objectContaining({
+				featureId: "lineReader",
+				rule: "pnp-activate-at-init",
+				action: "enable",
+				precedence: 8,
+			}),
+		]);
+	});
+
+	test("an activate-at-init tool keeps its start-on flag under a higher grant", () => {
+		const result = source().apply({
+			assessment: {
+				id: "a1",
+				personalNeedsProfile: { supports: [], activateAtInit: ["calculator"] },
+				settings: { districtPolicy: { requiredTools: ["calculator"] } },
+			} as AssessmentEntity,
+		});
+		expect(result.perToolFlags.get("calculator")).toMatchObject({
+			required: true,
+			activateAtInit: true,
+			rule: "district-requirement",
+		});
+	});
+
+	test("a block withdraws an activate-at-init tool", () => {
+		for (const assessment of [
+			{
+				id: "a1",
+				personalNeedsProfile: {
+					supports: [],
+					activateAtInit: ["calculator"],
+					prohibitedSupports: ["calculator"],
+				},
+			},
+			{
+				id: "a1",
+				personalNeedsProfile: { supports: [], activateAtInit: ["calculator"] },
+				settings: { districtPolicy: { blockedTools: ["calculator"] } },
+			},
+		] as AssessmentEntity[]) {
+			const result = source().apply({ assessment });
+			expect(result.blockedToolIds.has("calculator")).toBe(true);
+			expect(result.perToolFlags.has("calculator")).toBe(false);
+		}
+	});
+
+	test("a profile without activateAtInit turns nothing on", () => {
+		const result = source().apply({
+			assessment: {
+				id: "a1",
+				personalNeedsProfile: { supports: ["calculator"] },
+			} as AssessmentEntity,
+		});
+		expect(result.perToolFlags.get("calculator")?.activateAtInit).toBe(false);
+	});
+
 	test("4. pnp-prohibited blocks even when supports lists the tool", () => {
 		const result = source().apply({
 			assessment: {
@@ -417,6 +487,7 @@ describe("PnpPolicySource — 8-level precedence", () => {
 				personalNeedsProfile: {
 					supports: ["typoTool"],
 					prohibitedSupports: ["otherTypo"],
+					activateAtInit: ["typoTool"],
 				},
 				settings: {
 					districtPolicy: { blockedTools: ["typoTool"], requiredTools: ["otherTypo"] },
@@ -426,7 +497,7 @@ describe("PnpPolicySource — 8-level precedence", () => {
 			[{ restrictedTools: ["itemTypo"] }],
 		);
 		expect([...unknown]).toEqual([
-			["typoTool", ["district-block", "pnp-support"]],
+			["typoTool", ["district-block", "pnp-activate-at-init", "pnp-support"]],
 			["overrideTypo", ["test-admin-override"]],
 			["itemTypo", ["item-restriction"]],
 			["otherTypo", ["pnp-prohibited", "district-requirement"]],

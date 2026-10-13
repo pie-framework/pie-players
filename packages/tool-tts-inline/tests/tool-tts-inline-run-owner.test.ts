@@ -476,3 +476,96 @@ test("a read that ends on its own keeps the panel open for a replay", async () =
 	expect(service.getRunOwner()).toBe(owner);
 	expect(panelOpen(element)).toBe(true);
 });
+
+// Reports playback start through `onPlaybackStart`, as audio-backed providers
+// do; with `deferStart` the service holds LOADING until `start()`.
+class StartAwareImpl extends HeldImpl {
+	onPlaybackStart: (() => void) | undefined = undefined;
+	deferStart = false;
+	private pendingStart: (() => void) | null = null;
+	override async speak(text: string): Promise<void> {
+		if (this.deferStart) {
+			this.pendingStart = () => this.onPlaybackStart?.();
+		} else {
+			this.onPlaybackStart?.();
+		}
+		return super.speak(text);
+	}
+	start(): void {
+		this.pendingStart?.();
+		this.pendingStart = null;
+	}
+}
+
+// Seek steps between plan segments; one per sentence keeps them distinct.
+const useThreeSentencePlan = (service: Service) => {
+	(service as unknown as { createSpeechPlan: () => unknown }).createSpeechPlan =
+		() => [
+			{ text: "First.", startOffset: 0, pauseMsAfter: 0 },
+			{ text: "Second.", startOffset: 7, pauseMsAfter: 0 },
+			{ text: "Third.", startOffset: 15, pauseMsAfter: 0 },
+		];
+};
+
+const seekButtons = (element: Element) =>
+	Array.from(
+		element.shadowRoot?.querySelectorAll<HTMLButtonElement>(
+			"[data-pie-tts-seek]",
+		) ?? [],
+	);
+// Compared by label: a failed element comparison prints the whole DOM node.
+const focusedLabel = (element: Element) =>
+	element.shadowRoot?.activeElement?.getAttribute("aria-label");
+
+for (const [label, startAware] of [
+	["a provider that starts at once", false],
+	["a provider that loads before it starts", true],
+] as const) {
+	test(`a seek keeps focus on the pressed seek control, with ${label}`, async () => {
+		const impl = startAware ? new StartAwareImpl() : new HeldImpl();
+		const service = new TTSService();
+		await service.initialize(providerFor(impl) as never);
+		useThreeSentencePlan(service);
+		const element = mount(service, "<p>First. Second. Third.</p>");
+		await play(element);
+		expect(service.getState()).toBe("playing");
+		if (impl instanceof StartAwareImpl) impl.deferStart = true;
+
+		const [rewind, fastForward] = seekButtons(element);
+		for (const [button, spoken] of [
+			[fastForward, "Second."],
+			[fastForward, "Third."],
+			[rewind, "Second."],
+		] as const) {
+			button.focus();
+			button.click();
+			await settle();
+			expect(impl.speakCalls.at(-1)).toBe(spoken);
+			expect(focusedLabel(element)).toBe(button.getAttribute("aria-label"));
+			expect(button.disabled).toBe(false);
+			if (impl instanceof StartAwareImpl) {
+				expect(service.getState()).toBe("loading");
+				impl.start();
+				await settle();
+			}
+			expect(service.getState()).toBe("playing");
+			expect(focusedLabel(element)).toBe(button.getAttribute("aria-label"));
+		}
+		service.stop();
+		await settle();
+	});
+}
+
+test("reading to the end still moves focus off a seek control to Stop", async () => {
+	const { service, impl } = await readyService();
+	const element = mount(service, "<p>Read this passage aloud.</p>");
+	await play(element);
+	const [, fastForward] = seekButtons(element);
+	fastForward.focus();
+
+	impl.finish();
+	await settle();
+
+	expect(service.getState()).toBe("idle");
+	expect(focusedLabel(element)).toBe("Stop reading");
+});

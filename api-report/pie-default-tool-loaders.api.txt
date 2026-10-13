@@ -7,6 +7,9 @@
   AUDIO_TRANSCRIPT_FEATURE_ID
   AUDIO_TRANSCRIPT_REGION_CLASS
   AUDIO_TRANSCRIPT_REGION_LABEL
+  type AfaFeatureSet
+  type AfaPnpRecord
+  type AfaSpoken
   CONTENT_ALTERNATE_REGISTRATIONS
   CONTENT_LEAD_SURFACE
   DEFAULT_TOOL_MODULE_LOADERS
@@ -23,6 +26,7 @@
   createDictionaryToolRegistration
   createEmptyPersonalNeedsProfile
   createPackagedToolRegistry
+  createPersonalNeedsProfileFromAfa
   createPictureDictionaryToolRegistration
   createUniversalPersonalNeedsProfile
   dictionaryToolRegistration

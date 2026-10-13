@@ -7,7 +7,10 @@
 			size: { type: 'String', attribute: 'size' },
 			speedOptions: { type: 'Array', attribute: 'speed-options' },
 			showSingleSpeedOption: { type: 'Boolean', attribute: 'show-single-speed-option' },
-			layoutMode: { type: 'String', attribute: 'layout-mode' }
+			layoutMode: { type: 'String', attribute: 'layout-mode' },
+			baseRate: { type: 'Number', attribute: 'base-rate' },
+			pitch: { type: 'Number', attribute: 'pitch' },
+			volume: { type: 'Number', attribute: 'volume' }
 		},
 		extend: coerceBooleanAttributes,
 	}}
@@ -64,13 +67,22 @@ the runtime context supplies a TTS service.
 		size = 'md' as 'sm' | 'md' | 'lg',
 		speedOptions = undefined,
 		showSingleSpeedOption = false,
-		layoutMode = 'left-aligned' as TTSLayoutMode
+		layoutMode = 'left-aligned' as TTSLayoutMode,
+		baseRate = 1,
+		pitch = undefined,
+		volume = undefined
 	}: {
 		catalogId?: string;
 		size?: 'sm' | 'md' | 'lg';
 		speedOptions?: TTSSpeedOption[];
 		showSingleSpeedOption?: boolean;
 		layoutMode?: TTSLayoutMode;
+		/** Multiplies every speed choice's rate, so 1× reads at this rate. */
+		baseRate?: number;
+		/** The pitch each read starts at, 0–2 with 1 normal. */
+		pitch?: number;
+		/** The volume each read starts at, 0–1. */
+		volume?: number;
 	} = $props();
 
 	const isBrowser = typeof window !== 'undefined';
@@ -275,6 +287,14 @@ the runtime context supplies a TTS service.
 		}
 		return resolveDefaultPlaybackRate(speedChoices);
 	});
+	const rateScale = $derived(
+		typeof baseRate === 'number' && Number.isFinite(baseRate) && baseRate > 0 ? baseRate : 1,
+	);
+	const speechRate = $derived(playbackRate * rateScale);
+	// What the service's rate follows: the speed choices and the rate scaling them.
+	const rateSyncKey = $derived(`${speedChoicesKey}@${rateScale}`);
+	const speechPitch = $derived(clampOrUndefined(pitch, 0, 2));
+	const speechVolume = $derived(clampOrUndefined(volume, 0, 1));
 
 	const instanceId = `pie-tts-inline-instance-${Math.random().toString(36).slice(2)}`;
 	const panelId = `${instanceId}-controls`;
@@ -299,6 +319,12 @@ the runtime context supplies a TTS service.
 					`${option.rate}:${option.label}:${option.ariaLabel}:${option.isDefault ? '1' : '0'}`,
 			)
 			.join('|');
+	}
+
+	function clampOrUndefined(value: unknown, min: number, max: number): number | undefined {
+		return typeof value === 'number' && Number.isFinite(value)
+			? Math.min(max, Math.max(min, value))
+			: undefined;
 	}
 
 	function resolveDefaultPlaybackRate(choices: NormalizedTTSSpeedOption[]): number {
@@ -408,7 +434,13 @@ the runtime context supplies a TTS service.
 				paused = false;
 				return;
 			}
-			speaking = state === 'playing' || state === 'paused';
+			// A seek or speed change restarts the run through 'loading'. That is
+			// still the same read, so `speaking` holds across it: dropping it would
+			// disable rewind / fast-forward and push focus off the one just pressed.
+			speaking =
+				state === 'playing' ||
+				state === 'paused' ||
+				(state === 'loading' && speaking);
 			paused = state === 'paused';
 		};
 		const stateListener = (state: unknown) => {
@@ -643,7 +675,9 @@ the runtime context supplies a TTS service.
 		try {
 			read = service.speak(readingTarget, {
 				ownerId: instanceId,
-				rate: playbackRate,
+				rate: speechRate,
+				pitch: speechPitch,
+				volume: speechVolume,
 				catalogId: catalogId || undefined,
 				catalogContext: resolveCatalogContext(),
 				language: runtimeContext?.contentLanguage || undefined,
@@ -651,7 +685,7 @@ the runtime context supplies a TTS service.
 		} catch (error) {
 			read = Promise.reject(error);
 		}
-		lastSyncedPlaybackRateTarget = { service, choicesKey: speedChoicesKey };
+		lastSyncedPlaybackRateTarget = { service, choicesKey: rateSyncKey };
 		void read
 			.then(() => {
 				// A read that supersedes this one bumps the attempt through the
@@ -760,11 +794,11 @@ the runtime context supplies a TTS service.
 		statusMessage = interfaceI18n.t('tools.textToSpeech.inline.speedAnnounce', { label: option.label });
 		const syncTarget = {
 			service,
-			choicesKey: speedChoicesKey,
+			choicesKey: rateSyncKey,
 		};
 		lastSyncedPlaybackRateTarget = syncTarget;
 		try {
-			await service.setPlaybackRate(option.rate);
+			await service.setPlaybackRate(option.rate * rateScale);
 		} catch (error) {
 			if (lastSyncedPlaybackRateTarget === syncTarget) {
 				lastSyncedPlaybackRateTarget = null;
@@ -818,7 +852,7 @@ the runtime context supplies a TTS service.
 
 	$effect(() => {
 		const service = ttsService;
-		const choicesKey = speedChoicesKey;
+		const choicesKey = rateSyncKey;
 		const active = speaking || paused;
 		if (!service || !active || !ownsRun()) return;
 		if (
@@ -835,7 +869,7 @@ the runtime context supplies a TTS service.
 			// Reading this derived value outside the effect's tracked body keeps user
 			// speed selections on the explicit handler path. This effect owns only
 			// external speed-options/service changes while playback is active.
-			const rate = playbackRate;
+			const rate = speechRate;
 			void service.setPlaybackRate(rate).catch((error) => {
 				if (lastSyncedPlaybackRateTarget === syncTarget) {
 					lastSyncedPlaybackRateTarget = null;

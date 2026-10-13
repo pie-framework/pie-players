@@ -30,8 +30,12 @@ class HeldTTSImpl implements ITTSProviderImplementation {
 		this.finish();
 	}
 	public events: string[] = [];
-	updateSettings(settings: { rate?: number }): void {
+	updateSettings(settings: Partial<TTSConfig>): void {
 		if (settings.rate !== undefined) this.events.push(`rate ${settings.rate}`);
+		if (settings.pitch !== undefined) this.events.push(`pitch ${settings.pitch}`);
+		if (settings.volume !== undefined) {
+			this.events.push(`volume ${settings.volume}`);
+		}
 	}
 }
 
@@ -156,5 +160,25 @@ describe("TTSService run owner", () => {
 		await read;
 
 		expect(impl.events).toEqual(["rate 1.5", "speak Read at a faster rate."]);
+	});
+
+	test("a read's pitch and volume apply before it speaks, once", async () => {
+		const impl = new HeldTTSImpl();
+		const service = new TTSService();
+		await service.initialize(new MockTTSProvider(impl));
+
+		for (const text of ["First read.", "Second read."]) {
+			const read = service.speak(textRoot(text), { pitch: 1.4, volume: 0.6 });
+			await flush();
+			impl.finish();
+			await read;
+		}
+
+		expect(impl.events).toEqual([
+			"pitch 1.4",
+			"volume 0.6",
+			"speak First read.",
+			"speak Second read.",
+		]);
 	});
 });

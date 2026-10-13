@@ -177,6 +177,7 @@ export {
 	VIEW_TAG_SUFFIX,
 } from "./tag-names.js";
 export type { PieViewMode } from "./tag-names.js";
+export { runtimeElementTags } from "./versioned-tag.js";
 // Updates
 export {
 	updatePieElement,

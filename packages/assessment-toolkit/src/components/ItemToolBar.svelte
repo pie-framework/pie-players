@@ -100,6 +100,7 @@ The toolbar for an item, passage or section, rendering a button for each tool th
 		ToolParametersFor
 	} from '@pie-players/pie-players-shared/types';
 	import type { ElementToolContext, ItemToolContext, ToolContext } from '../services/tool-context.js';
+	import { elementSupports } from '../services/tool-context.js';
 	import type { ToolPolicyDecision } from '../policy/engine.js';
 	import { createDecidedToolsTracker } from '../services/toolbar-decided-tools.js';
 	// Side-effect import: registers <nds-icon-button>. Single vendored source of
@@ -362,6 +363,11 @@ The toolbar for an item, passage or section, rendering a button for each tool th
 	// would lose its state whenever an item with settings mounts.
 	let toolRenderVersion = $state(0);
 	let toolContextResolverChangeVersion = $state(0);
+	// Bumped when an element class the content names is defined. An element
+	// declares the supports it implements on its class, so a class defined after
+	// the content arrives, as a lazily loaded element is, can change which tools
+	// apply.
+	let elementDefinitionVersion = $state(0);
 
 	$effect(() => {
 		if (!toolbarRootElement) return;
@@ -620,9 +626,14 @@ The toolbar for an item, passage or section, rendering a button for each tool th
 	 * registered it. The entries belong to the toolbar's item, so all of them are
 	 * released when the scope or coordinator changes and when the toolbar
 	 * unmounts; one a tool element registered would otherwise keep its visibility
-	 * and come back on when the learner returns to the item.
+	 * and come back on when the learner returns to the item. `activated` holds the
+	 * base tool ids this scope has turned on for the profile's `activateAtInit`.
 	 */
-	let scopeToolEntries: { coordinator: ToolCoordinatorApi; ids: Set<string> } | null = null;
+	let scopeToolEntries: {
+		coordinator: ToolCoordinatorApi;
+		ids: Set<string>;
+		activated: Set<string>;
+	} | null = null;
 
 	function noteScopeToolEntry(coordinator: ToolCoordinatorApi, instanceToolId: string): void {
 		if (scopeToolEntries?.coordinator === coordinator) scopeToolEntries.ids.add(instanceToolId);
@@ -640,7 +651,7 @@ The toolbar for an item, passage or section, rendering a button for each tool th
 		void effectiveLevel;
 		void effectiveScopeId;
 		if (!coordinator) return;
-		const entries = { coordinator, ids: new Set<string>() };
+		const entries = { coordinator, ids: new Set<string>(), activated: new Set<string>() };
 		scopeToolEntries = entries;
 		return () => {
 			if (scopeToolEntries === entries) scopeToolEntries = null;
@@ -739,10 +750,16 @@ The toolbar for an item, passage or section, rendering a button for each tool th
 	// registry decides the rest, and a granted accommodation survives relevance
 	// there.
 	const visibleToolIds = $derived.by(() => {
+		void elementDefinitionVersion;
 		const hostResolved = hostResolvedToolContextById;
 		const entries = (
 			decidedTools ??
-			allowedToolIds.map((toolId) => ({ toolId, required: false, alwaysAvailable: false }))
+			allowedToolIds.map((toolId) => ({
+				toolId,
+				required: false,
+				alwaysAvailable: false,
+				activateAtInit: false
+			}))
 		).filter((entry) => !hostResolved[effectiveToolRegistry.normalizeToolId(entry.toolId)]);
 		const contexts = !contentReady ? [] : toolContext ? [toolContext, ...elementContexts] : elementContexts;
 		const reportCallbackFailure: ToolCallbackFailureHandler = (toolId, phase, error) =>
@@ -751,6 +768,25 @@ The toolbar for an item, passage or section, rendering a button for each tool th
 			effectiveToolRegistry.filterDecidedToolIds(entries, effectiveLevel, contexts, reportCallbackFailure)
 		);
 		return allowedToolIds.filter((toolId) => visible.has(toolId) || hostResolved[toolId]?.visible);
+	});
+	// Re-decide visibility when an element the content names is defined late.
+	$effect(() => {
+		if (!isBrowser || !toolContext || typeof customElements === 'undefined') return;
+		const pendingTags = new Set(elementSupports(toolContext).flatMap((entry) => entry.pendingTags));
+		if (pendingTags.size === 0) return;
+		let cancelled = false;
+		for (const tag of pendingTags) {
+			customElements.whenDefined(tag).then(
+				() => {
+					if (!cancelled) elementDefinitionVersion += 1;
+				},
+				// Not a valid custom element name, so it never will be defined.
+				() => {}
+			);
+		}
+		return () => {
+			cancelled = true;
+		};
 	});
 	// Tools whose module failed to load from the current registry. Such a tool is
 	// unavailable here: its button is withheld, requests for it pass this toolbar
@@ -858,6 +894,39 @@ The toolbar for an item, passage or section, rendering a button for each tool th
 		for (const renderedTool of renderedTools) {
 			noteScopeToolEntry(coordinator, toInstanceToolId(renderedTool.toolId));
 		}
+	});
+
+	const activateAtInitToolIds = $derived.by(
+		(): ReadonlySet<string> =>
+			new Set(
+				effectiveToolRegistry.normalizeToolIds(
+					(decidedTools ?? []).filter((entry) => entry.activateAtInit).map((entry) => entry.toolId)
+				)
+			)
+	);
+
+	// A tool the profile activates at start comes on the first time this scope
+	// renders its button, and a learner who closes it keeps it closed until the
+	// scope changes. A tool without a button has no off state to leave. Shown on
+	// a microtask, as a tool request is, so the write lands outside this flush.
+	$effect(() => {
+		const coordinator = effectiveToolCoordinator;
+		const activate = activateAtInitToolIds;
+		void effectiveLevel;
+		void effectiveScopeId;
+		const entries = scopeToolEntries;
+		if (!coordinator || activate.size === 0 || entries?.coordinator !== coordinator) return;
+		const pending = renderedTools
+			.filter((renderedTool) => renderedTool.button && activate.has(renderedTool.toolId))
+			.map((renderedTool) => renderedTool.toolId)
+			.filter((toolId) => !entries.activated.has(toolId));
+		if (pending.length === 0) return;
+		for (const toolId of pending) entries.activated.add(toolId);
+		queueMicrotask(() => {
+			if (scopeToolEntries !== entries) return;
+			for (const toolId of pending) coordinator.showTool(seedToolEntry(coordinator, toolId));
+			syncRenderedToolsState();
+		});
 	});
 	const normalizedHostButtons = $derived.by((): ToolbarItem[] => {
 		if (!Array.isArray(hostButtons)) return [];

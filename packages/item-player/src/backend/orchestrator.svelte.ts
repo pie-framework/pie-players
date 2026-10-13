@@ -187,6 +187,7 @@ export function createBackendOrchestrator(
 	let activeAuthoringContentId: string | null = null;
 
 	let latestModelRefreshRequestToken = 0;
+	let latestDeliveryLoadRequestToken = 0;
 	let latestAuthoringLoadRequestToken = 0;
 	let latestAuthoringMutationRequestToken = 0;
 
@@ -197,6 +198,15 @@ export function createBackendOrchestrator(
 
 	function isCurrentModelRefreshRequest(requestToken: number): boolean {
 		return requestToken === latestModelRefreshRequestToken;
+	}
+
+	function beginDeliveryLoadRequest(): number {
+		latestDeliveryLoadRequestToken += 1;
+		return latestDeliveryLoadRequestToken;
+	}
+
+	function isCurrentDeliveryLoadRequest(requestToken: number): boolean {
+		return requestToken === latestDeliveryLoadRequestToken;
 	}
 
 	function beginAuthoringLoadRequest(): number {
@@ -338,7 +348,11 @@ export function createBackendOrchestrator(
 			backend,
 			envAtLoadStart,
 		);
+		const requestToken = beginDeliveryLoadRequest();
 		const result = await loadFromDeliveryBackend(backend, envAtLoadStart);
+		// Two loads of one item and session share a signature, so only the
+		// token tells an older response that lands last from the newer one.
+		if (!isCurrentDeliveryLoadRequest(requestToken)) return;
 		if (
 			expectedSignature &&
 			getDeliveryBackendLoadSignature(deps.getBackend()) !== expectedSignature

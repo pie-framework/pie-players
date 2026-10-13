@@ -182,15 +182,46 @@ const coordinator = new ToolkitCoordinator({
 
 ### 1. Choice Detection
 
-The tool detects choices through an **adapter registry** (`AdapterRegistry`), not a fixed selector list. Each adapter knows how to find and operate on choices for a specific PIE element type, and the registry runs them in priority order (`canHandle()`, then `findChoices()`), so a single question can mix element types:
+Elements supply their own choices. An element takes the eliminator by declaring the AfA PNP 3.0 support term `answer-masking` on its class and answering `pieSupportTargets('answer-masking')` on its instances:
 
-| Adapter | Element type | How it finds choices |
-| --- | --- | --- |
-| `MultipleChoiceAdapter` | `multiple-choice` (single- or multi-select) | `.corespring-checkbox` / `.corespring-radio-button` choices |
-| `EBSRAdapter` | `ebsr` | delegates to the multiple-choice adapter for each `ebsr-multiple-choice` part (Part A/B), prefixing choice IDs with the part |
-| `InlineDropdownAdapter` | `inline-dropdown` | dropdown items with `role="option"` |
+```typescript
+class ChoiceGrid extends HTMLElement {
+  static pieSupports = ['answer-masking'];
 
-The tool builds its registry internally with these three adapters and has no injection point. The `./adapters/adapter-registry` export provides `AdapterRegistry` and `registerAdapter(...)`, and a registry a host constructs is not the one the tool reads, so supporting another element type is a change to this package. A `ChoiceAdapter` declares `elementType`, `priority`, `canHandle`, `findChoices`, `getChoiceId`, `getChoiceLabel`, `canEliminate`, `createChoiceRange` and `getButtonContainer`.
+  pieSupportTargets(term: string) {
+    if (term !== 'answer-masking') return [];
+    return this.rows.map((row) => ({
+      id: row.value,
+      label: row.text,
+      container: row.element,
+      content: row.labelElement,
+      isSelected: () => this.isChosen(row.value),
+      isEliminable: () => this.mode === 'gather' && !this.isChosen(row.value),
+      setEliminated: (eliminated: boolean) => this.block(row.value, eliminated),
+    }));
+  }
+}
+```
+
+Every field is required, and a choice missing one is skipped with a console warning:
+
+| Field | Contract |
+| --- | --- |
+| `id` | Unique within the element and stable across renders: eliminations persist by it. |
+| `label` | The choice's accessible name; the toggle is announced as "Toggle elimination for `label`". |
+| `container` | Receives the toggle and the eliminated state. The tool sets `position: relative` on it. An inline container, such as a token in running text, takes the toggle in the line. |
+| `content` | The part that is struck through or masked. It must be inside `container`. |
+| `isSelected()` | Whether the learner has chosen it. A selected choice hides its toggle and is never eliminated. |
+| `isEliminable()` | False in evaluate and view modes, and for disabled or selected choices. |
+| `setEliminated(eliminated)` | Blocks or restores the learner's selection of the choice. The element owns this: the tool never disables controls it did not render. A call with the value the choice already has changes nothing. |
+
+The toolbar reads the same `static pieSupports` declaration to decide whether to offer the eliminator, so an element built outside this repository needs no change here. A declaration that omits `answer-masking`, including `[]`, means the element takes no eliminator.
+
+An element may replace its choices' markup on any render, as select-text does. When a container leaves the document, the tool asks for the choices again and keeps their eliminations by id, moving focus to the replacement toggle. It does not call `setEliminated` again on the same element instance, so an element that re-renders from `setEliminated` settles; a new instance is asked to block its eliminated choices, and a choice no longer supplied is restored.
+
+The outermost declaring element under the item owns its subtree: an element composed of declaring parts answers for them, prefixing ids with the part where they would collide, as EBSR does with `a-` and `b-`. Eliminations persist under the key of the nearest element listed in `elementStateKeys`, starting from the declaring element.
+
+Elements that declare nothing fall back to the multiple-choice and EBSR markup this package reads (`.corespring-checkbox` and `.corespring-radio-button` choices, and the `ebsr-multiple-choice` parts with ids `a` and `b`). That fallback serves legacy pie-elements and pie-elements-ng releases from before elements declared their supports, and never runs inside a declaring element.
 
 ### 2. State Storage
 
@@ -230,7 +261,7 @@ For browsers without the Highlight API, each strategy falls back to a class on t
 
 ### 4. Toggle Behavior
 
-Each detected choice gets its own elimination toggle button (class `pie-answer-eliminator-toggle`, rendered as `⊗`) placed via the adapter's `getButtonContainer()`. Clicking the button toggles that choice through the active strategy. Eliminating is blocked when the adapter's `canEliminate()` returns false — for example when the choice is already selected, disabled, or the item is in evaluate/view mode. An active button is marked with `pie-answer-eliminator-toggle--active` and `aria-pressed="true"`; clicking again restores the choice.
+Each choice gets its own elimination toggle button (class `pie-answer-eliminator-toggle`, rendered as `⊗`) appended to its `container`. Clicking the button toggles that choice through the active strategy and calls `setEliminated`. Eliminating is blocked while `isEliminable()` returns false. An active button is marked with `pie-answer-eliminator-toggle--active` and `aria-pressed="true"`; clicking again restores the choice.
 
 ## Cleanup
 

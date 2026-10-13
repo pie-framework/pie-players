@@ -45,6 +45,7 @@ class FakeUtterance {
 	lang = "";
 	rate = 1;
 	pitch = 1;
+	volume = 1;
 	onstart: (() => void) | null = null;
 	onend: (() => void) | null = null;
 	onerror: ((event: { error: string }) => void) | null = null;
@@ -122,6 +123,7 @@ describe("browserFallbackConfig", () => {
 				voice: "Joanna",
 				rate: 1.2,
 				pitch: 0.9,
+				volume: 0.7,
 				mathTokenHighlighting: false,
 				providerOptions: {
 					engine: "neural",
@@ -136,6 +138,7 @@ describe("browserFallbackConfig", () => {
 		).toEqual({
 			rate: 1.2,
 			pitch: 0.9,
+			volume: 0.7,
 			mathTokenHighlighting: false,
 			providerOptions: {
 				highlightMode: "word",
@@ -144,6 +147,25 @@ describe("browserFallbackConfig", () => {
 				__pieTelemetry: telemetry,
 			},
 		});
+	});
+});
+
+describe("browser speech settings", () => {
+	test("speaks at the configured pitch and volume, and at updated ones", async () => {
+		const impl = await new BrowserTTSProvider().initialize({
+			pitch: 0.8,
+			volume: 0.5,
+		});
+		await impl.speak("First.");
+		impl.updateSettings({ pitch: 1.4, volume: 0.9 });
+		await impl.speak("Second.");
+
+		expect(
+			spoken.map(({ text, pitch, volume }) => ({ text, pitch, volume })),
+		).toEqual([
+			{ text: "First.", pitch: 0.8, volume: 0.5 },
+			{ text: "Second.", pitch: 1.4, volume: 0.9 },
+		]);
 	});
 });
 

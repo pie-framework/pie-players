@@ -293,6 +293,10 @@ export interface SpeakOptions {
 	ownerId?: string;
 	/** The rate the read starts at; it stays the service's rate afterwards. */
 	rate?: number;
+	/** The pitch the read starts at, 0–2 with 1 normal; it stays the service's. */
+	pitch?: number;
+	/** The volume the read starts at, 0–1; it stays the service's. */
+	volume?: number;
 }
 
 /**

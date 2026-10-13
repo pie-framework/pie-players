@@ -17,6 +17,7 @@ capability id. A support id is the tool id a profile grants.
 | `PACKAGED_TOOL_TAG_MAP` | Which custom element each one renders as |
 | `SECTION_PLAYER_PREFERRED_TOOL_PLACEMENT` | Where they appear and in what order |
 | `createUniversalPersonalNeedsProfile`, `createEmptyPersonalNeedsProfile` | Which of them the program grants to everyone, or to no one |
+| `createPersonalNeedsProfileFromAfa` | Which of them a student's AfA PNP 3.0 record grants, prohibits and turns on at start, and with which settings |
 | `DEFAULT_TOOL_MODULE_LOADERS` | When each one's bundle loads |
 | `CONTENT_ALTERNATE_REGISTRATIONS` | Which of them carry an authored alternate that renders as a region; the print player mounts these |
 
@@ -158,6 +159,25 @@ dependency.
 An assessment carrying no profile is left alone. `pnpEnforcement`
 auto-detection engages only on host policy material, so with no profile,
 placement alone decides which tools appear.
+
+## AfA profiles
+
+`createPersonalNeedsProfileFromAfa(record)` builds a fresh profile from a
+student's AfA PNP 3.0 record, held as JSON keyed by the spec's terms. Features
+become support ids in the packaged set's names, the activation sets fill
+`activateAtInit` and `prohibitedSupports`, and the settings the packaged tools
+read become `toolParameters`: read-aloud speed, pitch and volume, the calculator
+type and the sign language. The toolkit's PNP configuration guide gives each AfA
+feature's disposition.
+
+```ts
+import { createPersonalNeedsProfileFromAfa } from "@pie-players/pie-default-tool-loaders";
+
+sectionPlayer.assessment = {
+	...authoredAssessment,
+	personalNeedsProfile: createPersonalNeedsProfileFromAfa(afaRecord),
+};
+```
 
 ## Packaged capability composition
 

@@ -25,10 +25,6 @@
 		".": {
 			"types": "./dist/index.d.ts",
 			"import": "./dist/tool-answer-eliminator.js"
-		},
-		"./adapters/adapter-registry": {
-			"types": "./dist/adapters/adapter-registry.d.ts",
-			"import": "./dist/adapters/adapter-registry.js"
 		}
 	},
 	"customElements": "custom-elements.json",
@@ -46,7 +42,7 @@
 	},
 	"types": "./dist/index.d.ts",
 	"scripts": {
-		"build": "vite build && tsc -p tsconfig.adapters.json",
+		"build": "vite build",
 		"dev": "vite build --watch",
 		"test": "bun test tests",
 		"typecheck": "tsc --noEmit",

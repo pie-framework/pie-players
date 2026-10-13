@@ -37,19 +37,7 @@ const findClosestEbsrMultipleChoicePart = (
  * so we delegate to MultipleChoiceAdapter and prefix IDs with part identifier
  */
 export class EBSRAdapter implements ChoiceAdapter {
-	readonly elementType = "ebsr";
-	readonly priority = 110;
-
 	private mcAdapter = new MultipleChoiceAdapter();
-
-	canHandle(element: HTMLElement): boolean {
-		return (
-			element.tagName.toLowerCase() === "ebsr" ||
-			Array.from(element.querySelectorAll<HTMLElement>("*")).some(
-				isEbsrMultipleChoiceElement,
-			)
-		);
-	}
 
 	findChoices(root: HTMLElement): HTMLElement[] {
 		// EBSR contains private multiple-choice elements, version-scoped in modern bundles.
@@ -90,9 +78,5 @@ export class EBSRAdapter implements ChoiceAdapter {
 
 	setSelectable(choice: HTMLElement, selectable: boolean): void {
 		this.mcAdapter.setSelectable(choice, selectable);
-	}
-
-	getButtonContainer(choice: HTMLElement): HTMLElement | null {
-		return this.mcAdapter.getButtonContainer(choice);
 	}
 }

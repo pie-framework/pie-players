@@ -310,7 +310,7 @@ This needs one core addition. `isVisibleInContext` receives a model-based `ToolC
 carries the tool's own render container at most and never the item's scope element, and a
 dictation-target check is a DOM-presence question. Answering it from the model instead, by listing
 which element types accept dictated text, puts element type names in core: the smell
-`check:capability-neutrality` exists to prevent, and one `hasChoiceInteraction` already carries.
+`check:capability-neutrality` rejects.
 Recommended: give `ToolContext` the scope element and let the predicate query it, accepting that the
 affordance can appear one frame after the element renders. Catalog observation already tolerates
 exactly that.

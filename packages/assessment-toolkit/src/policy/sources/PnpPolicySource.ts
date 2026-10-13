@@ -28,10 +28,12 @@ export interface PnpPolicyToolFlags {
 	/** PNP/profile policy mandates this tool (item or district `requiredTools`). */
 	required: boolean;
 	/**
-	 * The student's profile supports this tool, or a test-administration
-	 * override grants it (host UI cannot toggle off).
+	 * The student's profile supports this tool or activates it at start, or a
+	 * test-administration override grants it (host UI cannot toggle off).
 	 */
 	alwaysAvailable: boolean;
+	/** The student's profile lists this tool in `activateAtInit`. */
+	activateAtInit: boolean;
 	/** Which PNP/profile rule contributed the surviving verdict. */
 	rule: PnpPolicySourceRule;
 }
@@ -130,6 +132,7 @@ export class PnpPolicySource {
 		const allSupports = new Set<string>();
 		pnp?.supports?.forEach((s) => allSupports.add(s));
 		pnp?.prohibitedSupports?.forEach((s) => allSupports.add(s));
+		pnp?.activateAtInit?.forEach((s) => allSupports.add(s));
 		districtPolicy?.blockedTools?.forEach((s) => allSupports.add(s));
 		districtPolicy?.requiredTools?.forEach((s) => allSupports.add(s));
 		for (const s of Object.keys(testAdmin?.toolOverrides ?? {})) {
@@ -293,6 +296,7 @@ export class PnpPolicySource {
 			return;
 		}
 
+		const activateAtInit = ctx.pnp?.activateAtInit?.includes(supportId) === true;
 		const mandate = ctx.itemSettings?.requiredTools?.includes(supportId)
 			? "item-requirement"
 			: ctx.districtPolicy?.requiredTools?.includes(supportId)
@@ -306,6 +310,7 @@ export class PnpPolicySource {
 			out.perToolFlags.set(supportId, {
 				required: mandate !== undefined,
 				alwaysAvailable: true,
+				activateAtInit,
 				rule: "test-admin-override",
 			});
 			out.decisions.push({
@@ -326,6 +331,7 @@ export class PnpPolicySource {
 			out.perToolFlags.set(supportId, {
 				required: true,
 				alwaysAvailable: false,
+				activateAtInit,
 				rule: "item-requirement",
 			});
 			out.decisions.push({
@@ -346,6 +352,7 @@ export class PnpPolicySource {
 			out.perToolFlags.set(supportId, {
 				required: true,
 				alwaysAvailable: false,
+				activateAtInit,
 				rule: "district-requirement",
 			});
 			out.decisions.push({
@@ -360,11 +367,31 @@ export class PnpPolicySource {
 			return;
 		}
 
-		// 8. Profile supports (student needs)
+		// 8. Profile supports (student needs). `activateAtInit` grants as
+		// `supports` does and names the tool to turn on at start.
+		if (activateAtInit) {
+			out.perToolFlags.set(supportId, {
+				required: false,
+				alwaysAvailable: true,
+				activateAtInit,
+				rule: "pnp-activate-at-init",
+			});
+			out.decisions.push({
+				precedence: 8,
+				rule: "pnp-activate-at-init",
+				featureId: supportId,
+				action: "enable",
+				sourceType: "student",
+				reason: `Student PNP profile turns on "${supportId}" at start`,
+				value: ctx.pnp?.activateAtInit,
+			});
+			return;
+		}
 		if (ctx.pnp?.supports?.includes(supportId)) {
 			out.perToolFlags.set(supportId, {
 				required: false,
 				alwaysAvailable: true,
+				activateAtInit: false,
 				rule: "pnp-support",
 			});
 			out.decisions.push({
@@ -419,6 +446,7 @@ export class PnpPolicySource {
 			["pnp-prohibited", pnp?.prohibitedSupports],
 			["item-requirement", items.flatMap((item) => item.requiredTools ?? [])],
 			["district-requirement", settings?.districtPolicy?.requiredTools],
+			["pnp-activate-at-init", pnp?.activateAtInit],
 			["pnp-support", pnp?.supports],
 		];
 		for (const [rule, ids] of named) {

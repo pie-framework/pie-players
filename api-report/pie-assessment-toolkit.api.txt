@@ -290,6 +290,7 @@
   type CatalogRuntimeScope
   type ContentCapabilityPhase
   type ContentCapabilityPolicy
+  type ElementSupports
   HighlightColor
   HighlightCoordinator
   type HighlightCoordinatorApi
@@ -353,11 +354,11 @@
   createToolCoordinatorRegistration
   createToolElement
   createToolSurfaceHost
+  elementSupports
   findBrowserVoice
   findShellScopeHost
   flatTextContent
   formatTTSSpeedOptionsAsText
-  hasChoiceInteraction
   hasMathContent
   hasReadableText
   hasScienceContent

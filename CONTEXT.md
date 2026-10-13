@@ -276,6 +276,10 @@ _Avoid_: Enablement, grant
 A policy input admitting a capability for the learner: a profile support, a **Requirement**, or a test-administration override set to `true`. On a toolbar it protects a placed tool from the registry's relevance filter.
 _Avoid_: Enable, placement
 
+**Activation At Start**:
+A profile's `activateAtInit` entry: a **Grant** whose tool a toolbar turns on the first time it renders the tool's button in a scope. A block clears it.
+_Avoid_: Autostart, default-on
+
 **Requirement**:
 A **Grant** that is a mandate, from an item's or the district's `requiredTools`. The entry carries `required`, and a host gate that keeps it off every toolbar raises `tool-policy.requiredToolBlocked`.
 _Avoid_: Default tool, always-on
@@ -285,7 +289,7 @@ A policy input withdrawing a capability: a district block, a test-administration
 _Avoid_: Hide, restriction (for the whole set)
 
 **Tool Parameters**:
-`toolParameters`, keyed by **Support Id**: the assessment's entry, overridden by the item's on the item's own scope. They reach a capability whatever the PNP verdict; a host denial drops them.
+`toolParameters`, keyed by **Support Id**: the profile's entry, then the assessment's, then the item's on the item's own scope, merged key by key with the later layer winning. They reach a capability whatever the PNP verdict; a host denial drops them.
 _Avoid_: Tool config, provider config
 
 **PNP Enforcement**:

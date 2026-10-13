@@ -199,7 +199,7 @@ Registry membership implies nothing about three independent properties.
 
 **1. Who may enable it (eligibility).** The assessment domain distinguishes *universal features* available to every student (highlighting, zoom, line reader), *designated supports* an educator indicates a need for (masking, color contrast, often TTS), and *accommodations* requiring a documented need such as an IEP or 504 plan (braille, ASL, scribe). This is the framing of the CCSSO accessibility manual.
 
-**Eligibility does not belong in a tool registration.** It is a property of the program: TTS is a universal tool in one program and a documented accommodation in another. It belongs in policy configuration, where the district and test-administration levels already live, and `PnpPolicySource`'s precedence rules (`district-block`, `test-admin-override`, `item-restriction`, `pnp-prohibited`, `item-requirement`, `district-requirement`, `pnp-support`) carry it.
+**Eligibility does not belong in a tool registration.** It is a property of the program: TTS is a universal tool in one program and a documented accommodation in another. It belongs in policy configuration, where the district and test-administration levels already live, and `PnpPolicySource`'s precedence rules (`district-block`, `test-admin-override`, `item-restriction`, `pnp-prohibited`, `item-requirement`, `district-requirement`, `pnp-activate-at-init`, `pnp-support`) carry it.
 
 **2. Whether it needs authored content.** A calculator or a highlighter works on any item. ASL needs a signing video authored for *that specific content*; braille needs a transcription; authored-SSML speech needs `<speak>` in that item. For these, availability is a function of the content as well as the student, and an affordance offered where no content exists is a dead affordance.
 
@@ -244,7 +244,7 @@ Four layers, and which one a piece of code belongs to is decided by whether it n
 | Composition | `default-tool-loaders` | Which capabilities a deployment has, their tags, placement presets, universal supports, module loaders |
 | Renderer | `section-player`, `item-player`, toolbars | Surfaces and layout. Asks the registry what to mount |
 
-`bun run check:capability-neutrality` fails when a capability id or a `pie-tool-*` tag appears in core. A renderer is held to the same rule by its own source-boundary tests, because a renderer that names one is the same defect one layer up: it means a host cannot contribute that kind of capability without a PR here.
+`bun run check:capability-neutrality` fails when a capability id, a `pie-tool-*` tag or a PIE element type name appears in core. A renderer is held to the same rule by its own source-boundary tests, because a renderer that names one is the same defect one layer up: it means a host cannot contribute that kind of capability without a PR here.
 
 The rule this encodes: **a capability id may only appear in the layer that is a decision about capabilities.** Core naming one turns a deployment choice into a code change. So core has no packaged registry to fall back on when a host passes none, derives no default profile from registry membership, and no renderer names the capability it mounts.
 
@@ -664,7 +664,7 @@ Content controls tools through two data attributes:
 - Content authors control tool behavior per element
 - Clear contract between content and tools
 
-Tools otherwise read the content itself. Relevance checks read the item's authored config: `hasMathContent`, `hasReadableText` and `hasScienceContent` scan its markup and model text, and `hasChoiceInteraction` looks for choice element types among its models. The annotation toolbar works on the rendered selection, highlighting it through the CSS Custom Highlight API and reading it aloud. The answer eliminator finds choices in rendered multiple-choice, EBSR and inline-dropdown elements through per-element adapters, which depend on each element's markup.
+Tools otherwise read the content itself. Relevance checks read the item's authored config: `hasMathContent`, `hasReadableText` and `hasScienceContent` scan its markup and model text, and `elementSupports` reads the AfA PNP 3.0 supports each element's class declares as `static pieSupports`, re-checked when a lazily loaded element is defined. The annotation toolbar works on the rendered selection, highlighting it through the CSS Custom Highlight API and reading it aloud. The answer eliminator takes its choices from each element declaring `answer-masking`, through `pieSupportTargets('answer-masking')`; adapters for legacy multiple-choice and EBSR markup cover elements that declare nothing.
 
 ---
 

@@ -89,6 +89,7 @@ function makeDecision(
 			toolId,
 			required: false,
 			alwaysAvailable: false,
+			activateAtInit: false,
 		})),
 		diagnostics: [],
 		provenance,

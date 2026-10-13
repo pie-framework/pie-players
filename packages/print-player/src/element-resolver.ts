@@ -77,7 +77,8 @@ export const defaultLoadResolution = async (
 		throw new Error(`printTagName must be defined`);
 	}
 
-	// The placeholder renders `message` as HTML, so it does not quote the spec.
+	// A host's `missingElement` factory may render `message` as HTML, so it does
+	// not quote the spec.
 	if (r.loader === "browser-esm" && !isScopedPackageSpec(r.pkg)) {
 		return {
 			success: false,

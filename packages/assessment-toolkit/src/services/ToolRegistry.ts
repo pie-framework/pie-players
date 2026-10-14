@@ -14,6 +14,7 @@
 
 import { dynamicMessageKey } from "@pie-players/pie-players-shared/i18n/provider";
 import type { I18nProvider } from "@pie-players/pie-players-shared/i18n/types";
+import { settleAll } from "@pie-players/pie-players-shared/promise";
 import type { ToolParametersFor } from "@pie-players/pie-players-shared/types";
 import type { CatalogOwnerSnapshot } from "./AccessibilityCatalogResolver.js";
 import type { ToolPolicyEntry } from "../policy/core/decision-types.js";
@@ -1431,7 +1432,7 @@ export class ToolRegistry {
 	async ensureToolModulesLoaded(
 		toolIds: string[],
 	): Promise<Map<string, unknown>> {
-		const results = await Promise.allSettled(
+		const results = await settleAll(
 			toolIds.map((toolId) => this.ensureToolModuleLoaded(toolId)),
 		);
 		const failures = new Map<string, unknown>();

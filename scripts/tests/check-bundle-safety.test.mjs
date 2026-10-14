@@ -4,6 +4,7 @@ import {
 	analyzeSpeechRuleEngineBoundary,
 	findInlinedSreLocaleTables,
 	findModuleSpecifiers,
+	findPromiseStaticsBeyondBaseline,
 	findPublishedSourcemaps,
 	findUnguardedCustomElementDefines,
 	findUnresolvableBrowserSpecifiers,
@@ -450,5 +451,29 @@ describe("findUnresolvableBrowserSpecifiers", () => {
 			'const s=`import "${r.s}"`;console.error(`Load it: import "canvas.js"`);';
 		expect(findUnresolvableBrowserSpecifiers(content)).toEqual(["canvas.js"]);
 		expect(findUnresolvableBrowserSpecifiers(content, ["canvas.js"])).toEqual([]);
+	});
+});
+
+describe("findPromiseStaticsBeyondBaseline", () => {
+	test("reports statics a host's replacement Promise can lack", () => {
+		expect(
+			findPromiseStaticsBeyondBaseline(
+				"await Promise.allSettled(a);Promise.any(b);globalThis.Promise.withResolvers()",
+			),
+		).toEqual(["allSettled", "any", "withResolvers"]);
+	});
+
+	test("accepts the baseline statics and the prototype", () => {
+		expect(
+			findPromiseStaticsBeyondBaseline(
+				"Promise.all(a);Promise.race(b);Promise.resolve();Promise.reject(e);Promise.prototype.then",
+			),
+		).toEqual([]);
+	});
+
+	test("ignores identifiers that end in Promise", () => {
+		expect(
+			findPromiseStaticsBeyondBaseline("this.disposePromise.finally(f);initPromise.any"),
+		).toEqual([]);
 	});
 });

@@ -33,6 +33,10 @@
 			"types": "./dist/object/index.d.ts",
 			"import": "./dist/object/index.js"
 		},
+		"./promise": {
+			"types": "./dist/promise/index.d.ts",
+			"import": "./dist/promise/index.js"
+		},
 		"./types": {
 			"types": "./dist/types/index.d.ts",
 			"import": "./dist/types/index.js"

@@ -235,6 +235,23 @@ never observed falls back to `hasLearnerResponse`, which asks whether the
 session holds anything outside identity, dispatch metadata and
 controller-written shuffle order.
 
+### Idle commit
+
+A response editor commits on its own as well, when the learner pauses and when
+it loses focus. The pause is a player setting: `idleSaveDelayMs`
+(`idle-save-delay-ms`) on `<pie-item-player>`, or `runtime.player.idleSaveDelayMs`
+on the section player, which sets it on each item player. Unset leaves each
+element its own default; `0` commits on blur only. The player hands it to its
+elements through `sessionCommitContext` (`@pie-players/pie-context`), and the
+item model carries none
+([ADR 0005](../adr/0005-the-player-sets-the-idle-save-delay-through-a-host-neutral-context.md)).
+An element release that does not read the context commits on blur only.
+
+An idle commit is an ordinary `session-changed` with no `sessionCommitReason`,
+and a host persists it like any other. With `backend.delivery.autosave` each one
+is saved after the autosave debounce, so a long answer costs a save per pause; a
+host that wants fewer raises the delay.
+
 ### Session snapshot
 
 `sessionSnapshot` (property, or the `session-snapshot` attribute) opts into a

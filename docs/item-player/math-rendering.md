@@ -61,7 +61,9 @@ Under `esm` the files come from the CDN the elements load from, with no
 configuration. A generated [preloaded-player build](../preloaded-player/readme.md)
 lists every file it ships in `assetUrls`, each by
 `new URL("./mathjax/npm/…", import.meta.url)`, so it needs no root and a host
-bundler emits the files. A host that registers ESM builds it bundles itself
+bundler emits the files, given the configuration Vite's dev server and
+Angular's webpack builder need ([Usage](../preloaded-player/readme.md#usage)).
+A host that registers ESM builds it bundles itself
 passes the files' location through `registerPreloadedElements`
 ([Registering elements from npm](./loading-strategies.md#registering-elements-from-npm)):
 

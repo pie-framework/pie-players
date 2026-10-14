@@ -557,6 +557,12 @@ export async function parseElementsInput(
  * a host that bundles this package loses those annotations and the
  * `webpackIgnore` hints on the `esm` strategy's runtime imports, which the
  * `preloaded` strategy never runs.
+ *
+ * esbuild decodes the `\x23` that es-module-shims writes into its
+ * `//# sourceMappingURL=` string, and a host's source-map-loader, Angular's
+ * among them, then cuts that string as if it were a comment, leaving a syntax
+ * error. The minified output keeps no comments, so every such match is string
+ * content and is escaped again.
  */
 export async function minifyPlayerModules(dir: string): Promise<void> {
 	const files = (await readdir(dir, { recursive: true })).filter((file) =>
@@ -569,7 +575,10 @@ export async function minifyPlayerModules(dir: string): Promise<void> {
 			minifyWhitespace: true,
 			charset: "utf8",
 		});
-		await writeFile(path, code);
+		await writeFile(
+			path,
+			code.replaceAll("//# sourceMappingURL=", "//\\x23 sourceMappingURL="),
+		);
 	}
 }
 

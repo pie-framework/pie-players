@@ -1,5 +1,15 @@
 # @pie-players/pie-tool-calculator-shared
 
+## 1.0.0-beta.2
+
+### Patch Changes
+
+- Updated dependencies [8ca86da]
+- Updated dependencies [660d0e6]
+  - @pie-players/pie-players-shared@1.0.0-beta.2
+  - @pie-players/pie-assessment-toolkit@1.0.0-beta.2
+  - @pie-players/pie-calculator@1.0.0-beta.2
+
 ## 1.0.0-beta.1
 
 ### Patch Changes

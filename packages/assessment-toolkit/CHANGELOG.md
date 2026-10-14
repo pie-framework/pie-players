@@ -1,5 +1,17 @@
 # @pie-players/pie-assessment-toolkit
 
+## 1.0.0-beta.2
+
+### Patch Changes
+
+- 660d0e6: The toolkit no longer calls `Promise.allSettled`, so tool modules load on pages where the global `Promise` lacks it, as zone.js 0.9.1's replacement does; such pages failed with `Promise.allSettled is not a function`. `settleAll` is exported from `@pie-players/pie-players-shared/promise`, and the bundle-safety check now fails any built bundle that calls a `Promise` static other than `all`, `race`, `resolve` or `reject`.
+- Updated dependencies [8ca86da]
+- Updated dependencies [660d0e6]
+  - @pie-players/pie-players-shared@1.0.0-beta.2
+  - @pie-players/pie-calculator@1.0.0-beta.2
+  - @pie-players/pie-context@1.0.0-beta.2
+  - @pie-players/pie-tts@1.0.0-beta.2
+
 ## 1.0.0-beta.1
 
 ### Patch Changes

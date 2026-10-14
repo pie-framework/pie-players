@@ -1,5 +1,17 @@
 # @pie-players/pie-section-player
 
+## 1.0.0-beta.2
+
+### Patch Changes
+
+- f873088: `hooks.cardTitleFormatter` can return `{ visible: false }` to hide an item or passage card title. The header and its toolbar stay, and the heading stays in the document, visually hidden and carrying the default title as the card's accessible name. Every other return keeps its current meaning: an empty, non-string or throwing return still shows the default title. Host C blanks item titles with a zero-width space, which keeps working until it switches to `{ visible: false }`.
+- Updated dependencies [8ca86da]
+- Updated dependencies [660d0e6]
+  - @pie-players/pie-players-shared@1.0.0-beta.2
+  - @pie-players/pie-assessment-toolkit@1.0.0-beta.2
+  - @pie-players/pie-default-tool-loaders@1.0.0-beta.2
+  - @pie-players/pie-item-player@1.0.0-beta.2
+
 ## 1.0.0-beta.1
 
 ### Patch Changes

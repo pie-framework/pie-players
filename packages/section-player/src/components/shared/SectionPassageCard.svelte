@@ -382,7 +382,8 @@ Passage card of a section player: renders a passage's heading, `<pie-item-toolba
 		 * outside it.
 		 */
 		position: relative;
-		border: 1px solid var(--pie-border-light, #e5e7eb);
+		border: 1px solid
+			var(--pie-section-player-card-border, var(--pie-border-light, #e5e7eb));
 		border-radius: var(--pie-section-player-card-radius, 8px);
 		background: var(--pie-background, #fff);
 		color: var(--pie-text, #111827);
@@ -487,6 +488,20 @@ Passage card of a section player: renders a passage's heading, `<pie-item-toolba
 		max-width: 100%;
 		z-index: 1;
 		margin-left: auto;
+	}
+
+	/* A hidden title over a toolbar with nothing to show leaves the header empty:
+	   it gives up its row and divider, and the heading stays in the document. */
+	.pie-section-player-content-card-header:has(
+			> [data-pie-card-title="hidden"]
+		):has(> :global(pie-item-toolbar[data-pie-toolbar-empty="true"])) {
+		padding: 0;
+		border-bottom: 0;
+	}
+
+	.pie-section-player-content-card-header:has(> [data-pie-card-title="hidden"])
+		> :global(pie-item-toolbar[data-pie-toolbar-empty="true"]) {
+		display: none;
 	}
 
 	/* Match item-card overlay layering above the pane's scroll hint (10). */

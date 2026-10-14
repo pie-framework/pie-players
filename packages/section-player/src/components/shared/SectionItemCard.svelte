@@ -505,7 +505,8 @@ Item card of a section player: renders an item's heading, `<pie-item-toolbar>` a
 		 * outside it.
 		 */
 		position: relative;
-		border: 1px solid var(--pie-border-light, #e5e7eb);
+		border: 1px solid
+			var(--pie-section-player-card-border, var(--pie-border-light, #e5e7eb));
 		border-radius: var(--pie-section-player-card-radius, 8px);
 		background: var(--pie-background, #fff);
 		color: var(--pie-text, #111827);
@@ -594,6 +595,20 @@ Item card of a section player: renders an item's heading, `<pie-item-toolbar>` a
 		max-width: 100%;
 		z-index: 1;
 		margin-left: auto;
+	}
+
+	/* A hidden title over a toolbar with nothing to show leaves the header empty:
+	   it gives up its row and divider, and the heading stays in the document. */
+	.pie-section-player-content-card-header:has(
+			> [data-pie-card-title="hidden"]
+		):has(> :global(pie-item-toolbar[data-pie-toolbar-empty="true"])) {
+		padding: 0;
+		border-bottom: 0;
+	}
+
+	.pie-section-player-content-card-header:has(> [data-pie-card-title="hidden"])
+		> :global(pie-item-toolbar[data-pie-toolbar-empty="true"]) {
+		display: none;
 	}
 
 	/* Floating reading controls must paint above the pane's scroll hint (10). */

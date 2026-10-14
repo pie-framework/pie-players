@@ -272,11 +272,12 @@ An item context carries `item`, `itemIndex`, `itemCount`, `canonicalItemId` and
 a passage context carries `passage` and `defaultTitle`. The formatter stays
 active across the splitpane's narrow and wide transitions.
 
-A non-empty string becomes the title. `{ visible: false }` hides it: the header
-and its toolbar stay, and the heading leaves the layout but stays in the
-document, carrying `defaultTitle` as the card's accessible name and the level
-the card's content nests under. Any other return, or a throw, gets
-`defaultTitle`, so a formatter that lacks the data for a title shows the
+A non-empty string becomes the title. `{ visible: false }` hides it: the heading
+leaves the layout but stays in the document, carrying `defaultTitle` as the
+card's accessible name and the level the card's content nests under. The header
+row stays while the card's toolbar has a tool or host button to show, and
+collapses, divider included, while it has none. Any other return, or a throw,
+gets `defaultTitle`, so a formatter that lacks the data for a title shows the
 default.
 
 ```ts
@@ -924,9 +925,9 @@ Tab colors, spacing and track geometry are themed through
 `--pie-section-player-tab-track-padding` and
 `--pie-section-player-tab-padding-block`.
 
-### Card header styling hooks
+### Card styling hooks
 
-Passage and item cards share a header row
+Passage and item cards share a frame and a header row
 (`.pie-section-player-content-card-header`, with the card-specific aliases
 `.pie-section-player-passage-header` and `.pie-section-player-item-header`).
 
@@ -935,6 +936,10 @@ Passage and item cards share a header row
   for it.
 - Card corners default to `8px`; `--pie-section-player-card-radius` overrides
   them.
+- The frame's border color is `--pie-section-player-card-border`, falling back
+  to `--pie-border-light`; `transparent` removes the frame. Item content reads
+  `--pie-border-light` too, so this hook is the one that restyles the frame
+  alone.
 - The header fill is transparent by default.
   `--pie-section-player-card-header-background` sets a color; the framework
   ships no brand palette.
@@ -957,6 +962,7 @@ Passage and item cards share a header row
 pie-section-player-passage-card,
 pie-section-player-item-card {
   --pie-section-player-card-radius: 8px;
+  --pie-section-player-card-border: transparent;
   --pie-section-player-card-header-background: #c9e5e6;
   --pie-section-player-card-header-background-dark: #1f4a4d;
   --pie-section-player-card-header-radius: 7px;

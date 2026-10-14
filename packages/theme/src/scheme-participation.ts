@@ -68,6 +68,7 @@ export const PIE_THEME_SCHEME_PARTICIPATION = {
 	"--pie-secondary-background": "required",
 	"--pie-secondary-dark": "required",
 	"--pie-secondary-light": "required",
+	"--pie-section-player-card-border": "optional",
 	"--pie-section-player-card-header-background": "optional",
 	"--pie-section-player-card-header-background-dark": "optional",
 	"--pie-section-player-card-header-radius": "excluded",

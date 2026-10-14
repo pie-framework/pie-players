@@ -1,5 +1,12 @@
 # @pie-players/pie-players-shared
 
+## 1.0.0-beta.2
+
+### Patch Changes
+
+- 8ca86da: The ESM element loader, the runtime-support probe and the print player's default resolver now refuse an element package spec unless it is a scoped npm name with an optional semver version or dist-tag, so an authored spec such as `@pie-element/x@1.0.0/../../../gh/owner/repo@main` can no longer load a module from another CDN path. The refused element fails on its own as `backend-rejected`, and print renders its missing-element placeholder, which now sets the failure message as text. `isScopedPackageSpec` is exported from `@pie-players/pie-players-shared/loaders`.
+- 660d0e6: The toolkit no longer calls `Promise.allSettled`, so tool modules load on pages where the global `Promise` lacks it, as zone.js 0.9.1's replacement does; such pages failed with `Promise.allSettled is not a function`. `settleAll` is exported from `@pie-players/pie-players-shared/promise`, and the bundle-safety check now fails any built bundle that calls a `Promise` static other than `all`, `race`, `resolve` or `reject`.
+
 ## 1.0.0-beta.1
 
 ### Patch Changes

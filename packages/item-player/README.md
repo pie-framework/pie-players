@@ -188,6 +188,10 @@ item.
 - `autoplay-audio-enabled`: `Boolean`, default unset, which leaves each model's
   `autoplayAudioEnabled` as it is. Set, it writes `autoplayAudioEnabled` onto
   every model in the config, overwriting or adding the field.
+- `idle-save-delay-ms`: `Number`, default unset, which leaves each element its
+  own delay. How long the learner has to pause before a response editor commits
+  without losing focus; `0` commits on blur only. Elements read it from
+  `sessionCommitContext` ([Idle commit](../../docs/item-player/overview.md#idle-commit)).
 - `base-heading-level`: `Number` (1–6), default unset. The level of the item's
   visually hidden heading, which PIE elements emit; authored headings nest one
   level below it. Reflected, because elements read it off the player.

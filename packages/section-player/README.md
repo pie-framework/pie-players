@@ -461,6 +461,11 @@ controllers it creates and on one the toolkit has already built. A host-built
 controller that leaves the method unimplemented gets no commit, and a pending
 response is lost at those boundaries.
 
+A response editor also commits when the learner pauses. `runtime.player.idleSaveDelayMs`
+sets the pause for every embedded item player; unset leaves each element its own
+delay, and `0` commits on blur only
+([Idle commit](../../docs/item-player/overview.md#idle-commit)).
+
 ### Custom section controllers
 
 `runtime.createSectionController` is a factory the player calls for each

@@ -26,12 +26,13 @@
  *      dictates in bursts and corrects between them; an editor that resets the
  *      selection on commit discards the correction silently.
  *
- * **The commit boundary is blur, and that is asserted deliberately.** Neither
- * typing nor insertion commits while the editor holds focus — verified to 20s.
- * A host that snapshots the session on a timer while the learner is still in the
- * editor captures nothing. If a debounce is ever added, the pre-blur assertion
- * below fails, which is the intended signal: that is a change to
- * constructed-response persistence and should not land unnoticed.
+ * **Blur-only commit is asserted with the player's idle delay at 0.** The host
+ * sets that delay once on the player (`idleSaveDelayMs`), and a response editor
+ * that reads `sessionCommitContext` also commits once the learner pauses for it;
+ * `0` restores blur as the only commit, so the pre-blur assertion holds for every
+ * element release. The published element does not read the context yet and
+ * commits on blur alone whatever the player says, verified to 20s; the idle
+ * commit test is `fixme` until a release that reads it is `latest`.
  *
  * The demo resolves `@pie-element/extended-text-entry@latest` from the bundle
  * host, as the sibling item-player specs do, so this exercises the published
@@ -126,11 +127,22 @@ async function blurResponse(page: Page) {
 	await page.getByText(DELIVERY_PROMPT).click();
 }
 
+/** Sets the player's `idleSaveDelayMs`, which reaches subscribed elements live. */
+async function setIdleSaveDelay(page: Page, idleSaveDelayMs: number) {
+	await page.evaluate((delay) => {
+		const player = document.querySelector("pie-item-player") as {
+			idleSaveDelayMs?: number;
+		} | null;
+		if (player) player.idleSaveDelayMs = delay;
+	}, idleSaveDelayMs);
+}
+
 test.describe("item-player non-embedded dictation", () => {
-	test("an inserted burst commits on blur, not while focused", async ({
+	test("with an idle delay of 0, an inserted burst commits on blur, not while focused", async ({
 		page,
 	}) => {
 		await gotoDelivery(page);
+		await setIdleSaveDelay(page, 0);
 		await focusResponse(page);
 
 		// `insertText` emits a trusted input event with no key events — the shape the
@@ -140,8 +152,8 @@ test.describe("item-player non-embedded dictation", () => {
 			.poll(async () => await responseText(page), { timeout: 15_000 })
 			.toContain(FIRST_BURST);
 
-		// Nothing is in the session yet. See the header: this is the current commit
-		// boundary, asserted so a change to it surfaces here.
+		// Nothing is in the session yet: with the delay at 0, blur is the only
+		// commit, asserted so an editor that commits on its own surfaces here.
 		await page.waitForTimeout(2_000);
 		expect(await committedResponse(page)).toBeNull();
 
@@ -149,6 +161,24 @@ test.describe("item-player non-embedded dictation", () => {
 		await expect
 			.poll(async () => await committedResponse(page), { timeout: 15_000 })
 			.toContain(FIRST_BURST);
+	});
+
+	// Fixme until an `extended-text-entry` release that reads
+	// `sessionCommitContext` is `latest` on the bundle host.
+	test.fixme("with an idle delay set, an inserted burst commits while focused", async ({
+		page,
+	}) => {
+		await gotoDelivery(page);
+		await setIdleSaveDelay(page, 500);
+		await focusResponse(page);
+
+		await page.keyboard.insertText(FIRST_BURST);
+		await expect
+			.poll(async () => await committedResponse(page), { timeout: 10_000 })
+			.toContain(FIRST_BURST);
+		expect(
+			await responseEditable(page).evaluate((node) => node.matches(":focus")),
+		).toBe(true);
 	});
 
 	test("successive bursts accumulate in order", async ({ page }) => {

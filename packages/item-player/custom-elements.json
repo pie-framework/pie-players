@@ -138,6 +138,14 @@
 						},
 						{
 							"kind": "field",
+							"name": "idleSaveDelayMs",
+							"type": {
+								"text": "number | undefined"
+							},
+							"attribute": "idle-save-delay-ms"
+						},
+						{
+							"kind": "field",
 							"name": "baseHeadingLevel",
 							"type": {
 								"text": "1 | 2 | 3 | 4 | 5 | 6 | undefined"
@@ -533,6 +541,13 @@
 								"text": "boolean"
 							},
 							"fieldName": "autoplayAudioEnabled"
+						},
+						{
+							"name": "idle-save-delay-ms",
+							"type": {
+								"text": "number"
+							},
+							"fieldName": "idleSaveDelayMs"
 						},
 						{
 							"name": "base-heading-level",

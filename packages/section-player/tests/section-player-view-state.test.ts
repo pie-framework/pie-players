@@ -86,6 +86,23 @@ describe("section player view state", () => {
 		expect(params.attributes?.strategy).toBe("preloaded");
 	});
 
+	test("sets runtime.player.idleSaveDelayMs on each embedded item player", async () => {
+		const { getItemPlayerParams } = await loadViewStateModule();
+		const params = getItemPlayerParams({
+			item: { id: "item-1", config: {} } as any,
+			compositionModel: {
+				itemSessions: {},
+				itemViewModels: [],
+			} as any,
+			resolvedPlayerEnv: {},
+			resolvedPlayerAttributes: {},
+			resolvedPlayerProps: { idleSaveDelayMs: 0 },
+			playerStrategy: "iife",
+		});
+
+		expect(params.props?.idleSaveDelayMs).toBe(0);
+	});
+
 	test("derives concrete backend delivery identity for embedded items", async () => {
 		const { getItemPlayerParams } = await loadViewStateModule();
 		const params = getItemPlayerParams({
@@ -517,7 +534,12 @@ describe("section player view state", () => {
 		const compositionModel = {
 			itemSessions: {},
 			itemViewModels: [
-				{ itemId: "item-1", canonicalItemId: "item-1", item, session: sessionInComposition },
+				{
+					itemId: "item-1",
+					canonicalItemId: "item-1",
+					item,
+					session: sessionInComposition,
+				},
 			],
 		} as any;
 		const params = getItemPlayerParams({
@@ -551,5 +573,4 @@ describe("section player view state", () => {
 		expect(withoutSession.session).toEqual({ id: "", data: [] });
 		expect(Object.isFrozen(EMPTY_ITEM_SESSION)).toBe(true);
 	});
-
 });

@@ -181,6 +181,13 @@ From ADR 0004:
   playable without autoplay, from a keyboard-operable control. Markup, math rendering
   and the accessibility tree never branch on `screenReader`.
 
+From ADR 0005:
+
+- How an element commits a response is delivery policy, set on the player and read by
+  the element from `sessionCommitContext`. The item model carries no save setting, and
+  no player writes one into it. An absent field or an unanswered request means the
+  element's own default, which lives in the element alone.
+
 ### Domain Language
 
 The root `CONTEXT.md` is the shared vocabulary for PIE Players and its runtime hosts:

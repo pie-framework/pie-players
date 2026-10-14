@@ -12,6 +12,7 @@
   ContextRequestEvent
   ContextRoot
   type ContextType
+  type SessionCommitContextValue
   type UnknownContext
   connectContextWithRetry
   consumeContext
@@ -19,3 +20,4 @@
   ensureDocumentContextRoot
   provideContext
   requestContext
+  sessionCommitContext

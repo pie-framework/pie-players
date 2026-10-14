@@ -32,6 +32,8 @@ export type SectionPlayerRuntimePlayerConfig = Omit<
 > & {
 	backend?: BackendConfig | null;
 	resolveBackend?: SectionPlayerBackendResolver;
+	/** Each item player's `idleSaveDelayMs`. */
+	idleSaveDelayMs?: number;
 };
 
 export type SectionPlayerRuntimeConfig = Omit<RuntimeConfig, "player"> & {

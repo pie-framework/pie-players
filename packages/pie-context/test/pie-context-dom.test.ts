@@ -8,6 +8,8 @@ import {
 	connectContextWithRetry,
 	createContext,
 	ensureDocumentContextRoot,
+	type SessionCommitContextValue,
+	sessionCommitContext,
 } from "../src/index.js";
 
 const DOCUMENT_ROOT_SLOT = Symbol.for("pie.context.documentRoot");
@@ -446,5 +448,31 @@ describe("pie-context in a document tree", () => {
 		});
 		expect(() => consumer.connect()).not.toThrow();
 		consumer.disconnect();
+	});
+
+	test("an element's own copy of the session commit key reads the player's value", () => {
+		const doc = newDocument();
+		const { providerHost, consumerHost } = providerAndConsumer(doc);
+		// Stands for the key an element's bundled copy of this package creates.
+		const elementCopy = createContext<SessionCommitContextValue>(
+			Symbol.for("pie.sessionCommit"),
+		);
+		const seen: SessionCommitContextValue[] = [];
+		const provider = new ContextProvider(providerHost, {
+			context: sessionCommitContext,
+			initialValue: {},
+		});
+		provider.connect();
+		const consumer = new ContextConsumer(consumerHost, {
+			context: elementCopy,
+			onValue: (value) => seen.push(value),
+		});
+		consumer.connect();
+
+		provider.setValue({ idleSaveDelayMs: 0 });
+
+		expect(seen).toEqual([{}, { idleSaveDelayMs: 0 }]);
+		consumer.disconnect();
+		provider.disconnect();
 	});
 });

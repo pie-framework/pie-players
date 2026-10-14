@@ -130,6 +130,15 @@
 						},
 						{
 							"kind": "field",
+							"name": "passageLayout",
+							"type": {
+								"text": "\"vertical\" | \"splitpane\""
+							},
+							"default": "\"vertical\"",
+							"attribute": "passage-layout"
+						},
+						{
+							"kind": "field",
 							"name": "autoplayAudioEnabled",
 							"type": {
 								"text": "boolean | undefined"
@@ -528,6 +537,14 @@
 							"fieldName": "allowedResize"
 						},
 						{
+							"name": "passage-layout",
+							"type": {
+								"text": "string"
+							},
+							"default": "\"vertical\"",
+							"fieldName": "passageLayout"
+						},
+						{
 							"name": "autoplay-audio-enabled",
 							"type": {
 								"text": "boolean"
@@ -793,6 +810,7 @@
 							"pie-item-player",
 							"pie-item-player-build-warning",
 							"pie-item-player-loading",
+							"pie-item-player-split-divider-handle",
 							"pie-loading",
 							"pie-player-error",
 							"pie-player-item-container"

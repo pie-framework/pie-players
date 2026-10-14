@@ -7,13 +7,20 @@ import type {
 	CalculatorType,
 } from "@pie-players/pie-calculator";
 import {
-	type CalculatorToolProviderInitConfig,
+	type CalculatorProviderDefinition,
 	LazyCalculatorToolProvider,
 } from "../src/calculator-providers/LazyCalculatorToolProvider.js";
 
-interface TestConfig extends CalculatorToolProviderInitConfig {
-	label?: string;
-}
+const testDefinition = (
+	load: CalculatorProviderDefinition["load"],
+): CalculatorProviderDefinition => ({
+	providerName: "Test",
+	version: "1",
+	requiresAuth: false,
+	backend: "test",
+	load,
+	initializationErrorMessage: "test failed",
+});
 
 const calculatorCapabilities: CalculatorProviderCapabilities = {
 	supportsHistory: false,
@@ -53,30 +60,37 @@ describe("LazyCalculatorToolProvider", () => {
 			}
 		}
 
-		class TestProvider extends LazyCalculatorToolProvider<TestConfig> {
-			readonly providerId = "test";
-			readonly providerName = "Test";
-			readonly version = "1";
-			readonly requiresAuth = false;
-			protected getDefinition() {
-				return {
-					backend: "test",
-					moduleImportOperation: "test-import",
-					loadProvider: async () => {
-						imports += 1;
-						return FakeProvider;
-					},
-					initializationErrorMessage: "test failed",
-				};
-			}
-		}
-
-		const provider = new TestProvider();
-		await Promise.all([provider.initialize({}), provider.initialize({})]);
+		const provider = new LazyCalculatorToolProvider(
+			testDefinition(async () => {
+				imports += 1;
+				return FakeProvider;
+			}),
+		);
+		const telemetry: Array<[string, Record<string, unknown> | undefined]> = [];
+		const onTelemetry = (
+			eventName: string,
+			payload?: Record<string, unknown>,
+		) => {
+			telemetry.push([eventName, payload]);
+		};
+		await Promise.all([
+			provider.initialize({ onTelemetry }),
+			provider.initialize({ onTelemetry }),
+		]);
 
 		expect(imports).toBe(1);
 		expect(initializations).toBe(1);
 		expect(provider.isReady()).toBe(true);
+		expect(provider.providerName).toBe("Test");
+		expect(telemetry.map(([eventName]) => eventName)).toEqual([
+			"pie-tool-library-load-start",
+			"pie-tool-library-load-success",
+		]);
+		expect(telemetry[0]?.[1]).toEqual({
+			toolId: "calculator",
+			operation: "test-provider-module-import",
+			backend: "test",
+		});
 	});
 
 	test("does not resurrect a provider destroyed during initialization", async () => {
@@ -108,22 +122,9 @@ describe("LazyCalculatorToolProvider", () => {
 			}
 		}
 
-		class TestProvider extends LazyCalculatorToolProvider<TestConfig> {
-			readonly providerId = "test";
-			readonly providerName = "Test";
-			readonly version = "1";
-			readonly requiresAuth = false;
-			protected getDefinition() {
-				return {
-					backend: "test",
-					moduleImportOperation: "test-import",
-					loadProvider: async () => SlowProvider,
-					initializationErrorMessage: "test failed",
-				};
-			}
-		}
-
-		const provider = new TestProvider();
+		const provider = new LazyCalculatorToolProvider(
+			testDefinition(async () => SlowProvider),
+		);
 		const initialization = provider.initialize({});
 		for (let turn = 0; turn < 10 && !finishInitialization; turn += 1) {
 			await Promise.resolve();

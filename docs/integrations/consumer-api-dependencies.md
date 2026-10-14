@@ -574,6 +574,17 @@ first `new URL`; `check:bundle-safety` holds every dist module to 2M. Found by
 building Host R's committed checkout on 2026-09-26, so it does not advance the
 verification date. Hosts V and P install neither the loaders nor the toolkit.
 
+On 2026-10-14 the Cortex engine left `pie-default-tool-loaders`. The packaged
+calculator registration offers `calculator-desmos` and `calculator-geogebra`, and
+a host that selects `calculator-cortex` composes it in through
+`createCalculatorToolRegistration`, which the section player's `./browser` build
+also exports. The three provider classes became one `LazyCalculatorToolProvider`;
+none was ever on the package's exports. Checked against all eight checkouts on
+2026-10-14 as a targeted lookup, so it does not advance the verification date: no
+checkout selects `calculator-cortex` or names a provider class. Host A's Cortex
+install and stub alias now cover an import nothing it bundles makes. Hosts A, C and
+R stop installing the engine through the loaders.
+
 The server TTS adapter `tts-client-server` has since moved the same way, from an
 optional peer of the toolkit to a dependency of `pie-default-tool-loaders`,
 whose TTS registration holds its only import and passes it to `TTSToolProvider`
@@ -746,7 +757,8 @@ Packages consumed:
 - **Host V** — `pie-item-player`, `pie-theme`.
 - **Host A** — `pie-section-player`, `pie-assessment-toolkit`, `pie-theme`,
   `pie-calculator-desmos`, `pie-calculator-cortex` (aliased to a local stub in
-  its build), `pie-calculator-geogebra`, `pie-tool-calculator-desmos`,
+  its build, and imported by no package it bundles since 2026-10-14),
+  `pie-calculator-geogebra`, `pie-tool-calculator-desmos`,
   `tts-client-server`, `tts-server-polly`, and the event and session debuggers.
   Its source imports only the splitpane layout element and `pie-theme`. The
   section player imports `pie-item-player` by name to render items, so that
@@ -779,8 +791,8 @@ Packages consumed:
   deprecated, so its range stops at `0.3.74`, the last published version. Two more tool packages, both
   dictionaries, reach it transitively as dependencies of
   `pie-default-tool-loaders`, whose packaged registry dynamically imports them.
-  The Cortex and GeoGebra calculator engines reach it the same way, imported by
-  the loaders' calculator adapters.
+  The GeoGebra calculator engine reaches it the same way, imported by the
+  loaders' calculator adapters.
 
 Host V pins an exact patch (`0.3.53` at last read), so it upgrades
 deliberately. Host P pins an exact preloaded build (`0.3.73-34b9257.1` at last
@@ -1723,8 +1735,8 @@ timeout.
 `@pie-players/pie-section-player@<version>/dist/browser/pie-section-player.js`,
 exported as `./browser`, is a self-contained build that no host loads yet. It
 becomes API in the same way once one does: the entry filename, and `dist/browser/`
-as a tree whose imports are all relative — `chunks/` and `assets/`, the Cortex
-calculator's worker file among them — so a host that copies it needs the whole
+as a tree whose imports are all relative — `chunks/`, and `assets/` once a
+packaged tool ships a file — so a host that copies it needs the whole
 directory, one per version. The npm entry `dist/pie-section-player.js` is
 byte-identical with and without it.
 
@@ -1753,11 +1765,13 @@ and its caret range takes each patch on the next install, so a patch can fail
 that build with no change on Host A's side. Host A has resolved
 `@pie-players/pie-calculator-cortex` to a local stub in its build since the
 toolkit's Cortex provider, new in 0.3.69, took it past that budget with about
-7 MB of engine. The engine stays out only while the packaged tool loaders reach
-it through that bare specifier, at its one import site in
-`packages/default-tool-loaders/src/calculator-providers/CortexToolProvider.ts`.
-A subpath of the specifier fails Host A's build, since the alias targets a file,
-and any other route brings the engine back.
+7 MB of engine. Since 2026-10-14 the packaged calculator set
+(`packages/default-tool-loaders/src/calculator-providers/packaged-calculator-providers.ts`)
+holds only the Desmos and GeoGebra adapters, so no package Host A bundles imports
+the engine and the alias matches nothing; checked as a targeted lookup, without
+re-verifying this section. The budget now holds only while no engine of that
+weight joins the packaged set. A host that wants one composes it in through
+`createCalculatorToolRegistration`.
 
 An `import()` of a specifier computed at runtime cannot reach the network
 there. The build resolves it against an empty module context, which rejects
@@ -2005,10 +2019,8 @@ shipping.**
 shipping.**
 
 - Adding weight behind an `import()` in any package Host A bundles, a new entry
-  in the packaged tool loaders included: its single-file build puts all of it in
-  an initial bundle that fails past 14 MB
-- Reaching the Cortex engine through anything but the bare
-  `@pie-players/pie-calculator-cortex` specifier Host A stubs
+  in the packaged tool loaders or the packaged calculator set included: its
+  single-file build puts all of it in an initial bundle that fails past 14 MB
 - Putting an `import()` of a computed specifier on a path Host A runs, making
   `esm` the default `playerType` among them: it rejects in that build
 - Importing an `exports`-only subpath from any declaration `pie-theme`'s root
@@ -2166,6 +2178,11 @@ over a CDN with no typecheck at all.
 - `CortexToolProvider`, `DesmosToolProvider` and `GeoGebraToolProvider` on the
   toolkit's `./tools/internal` subpath. They moved into `pie-default-tool-loaders`
   with the engine imports on 2026-09-25, and no checkout imports that subpath
+- `calculator-cortex` in the packaged calculator registration, removed on
+  2026-10-14 with the three provider classes, which became one
+  `LazyCalculatorToolProvider`. No checkout selects that id or names a provider
+  class, and a host that wants Cortex composes it in through
+  `createCalculatorToolRegistration`
 - `Calculator` and `CalculatorProvider` as interfaces to implement, and the
   additive optional argument on `CalculatorProvider.initialize`. Every implementor
   is a package in this repository

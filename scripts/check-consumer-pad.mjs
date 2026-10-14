@@ -184,11 +184,11 @@ const TRIGGERS = [
 	},
 	{
 		reason:
-			"what Host A's single-file build inlines or cannot load: the packaged tool loaders' imports, the Cortex engine's one import site, or the default loading strategy",
+			"what Host A's single-file build inlines or cannot load: the packaged tool loaders' imports, the packaged calculator backends, or the default loading strategy",
 		match: (file) =>
 			[
 				"packages/default-tool-loaders/src/packaged-capability-composition.ts",
-				"packages/default-tool-loaders/src/calculator-providers/CortexToolProvider.ts",
+				"packages/default-tool-loaders/src/calculator-providers/packaged-calculator-providers.ts",
 				"packages/assessment-toolkit/src/runtime/core/engine-resolver.ts",
 			].includes(file),
 	},

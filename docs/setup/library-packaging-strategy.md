@@ -34,12 +34,12 @@ resolution, behind its `.` export and subpaths.
 The section player adds a second build behind `./browser`, for pages without a
 bundler. `vite.config.browser.ts` builds the npm entry again with nothing
 external, plus the tool-registry exports `src/browser.ts` adds
-(`createPackagedToolRegistry`, `DEFAULT_TOOL_MODULE_LOADERS`), into
-`dist/browser/`. It has its own config and output directory, so the npm build
-is unaffected. It is an application build because library mode inlines every
-asset as a `data:` URL, and Chromium refuses a module worker from a `data:` URL
-as large as the Cortex calculator's 4.3 MB worker script. Its chunks stay split,
-so each lazily loaded tool downloads on first use.
+(`createPackagedToolRegistry`, `createCalculatorToolRegistration`,
+`DEFAULT_TOOL_MODULE_LOADERS`), into `dist/browser/`. It has its own config and
+output directory, so the npm build is unaffected. It is an application build
+because library mode inlines every asset as a `data:` URL, and Chromium refuses
+a module worker from a large one. Its chunks stay split, so each lazily loaded
+tool downloads on first use.
 
 The section player's npm build leaves the item player, the default tool loaders
 and `speech-rule-engine` external. The host's one item player defines

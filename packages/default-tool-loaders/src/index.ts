@@ -42,7 +42,12 @@ export {
 	resolveAudioTranscript,
 	type ResolvedAudioTranscript,
 } from "./registrations/audio-transcript.js";
-export { calculatorToolRegistration } from "./registrations/calculator.js";
+export {
+	type CalculatorProviderDefinition,
+	type CalculatorRegistrationOptions,
+	calculatorToolRegistration,
+	createCalculatorToolRegistration,
+} from "./registrations/calculator.js";
 export {
 	createDictionaryToolRegistration,
 	createPictureDictionaryToolRegistration,

@@ -1,10 +1,11 @@
 /**
  * The self-contained browser build (`./browser`) as a page loads it from a CDN:
- * the packed package served from one origin, a host page on another, no import
- * map and no bundler. A browser refuses a worker script from another origin, so
- * the Cortex calculator starts its worker from a same-origin `blob:` module that
- * imports the real file; the calculator evaluating here is the proof that this
- * survives the build.
+ * the packed packages served from one origin, a host page on another, no import
+ * map and no bundler. Cortex is outside the packaged set, so the page composes
+ * it in through the build's `createCalculatorToolRegistration` and loads it from
+ * its own package. A browser refuses a worker script from another origin, so
+ * Cortex starts its worker from a same-origin `blob:` module that imports the
+ * real file; the calculator evaluating here is the proof that both hold.
  */
 
 import { expect, type Page, test } from "@playwright/test";
@@ -21,6 +22,7 @@ const SECTION_ENTRY = "/section-player/dist/browser/pie-section-player.js";
 // separate modules: a second copy of the section player.
 const SECTION_COPY_ENTRY = "/section-player-copy/dist/browser/pie-section-player.js";
 const ITEM_PLAYER_ENTRY = "/item-player/dist/pie-item-player.js";
+const CORTEX_ENTRY = "/calculator-cortex/dist/index.js";
 
 const SECTION_TAGS = [
   "pie-section-player-splitpane",
@@ -75,7 +77,6 @@ const runtime = {
   assessmentId: "browser-build",
   playerType: "iife",
   tools: {
-    providers: { calculator: { provider: { id: "calculator-cortex" } } },
     placement: { section: [], item: ["calculator"], passage: [] },
   },
 };
@@ -110,6 +111,7 @@ test.beforeAll(async () => {
   for (const [packageDir, as] of [
     ["section-player", "section-player"],
     ["item-player", "item-player"],
+    ["calculator-cortex", "calculator-cortex"],
   ] as const) {
     const extracted = join(scratch, `extract-${as}`);
     await mkdir(extracted);
@@ -184,19 +186,71 @@ const watch = (page: Page) => {
 const loadModule = (page: Page, path: string) =>
   page.evaluate((url) => import(/* @vite-ignore */ url).then(() => true), `${packageOrigin}${path}`);
 
-const mountSection = (page: Page) =>
+// With `cortex`, the page builds the packaged set from the build's exports with
+// Cortex composed into the calculator registration and selects it; `hostTool`
+// adds a toolbar tool of the host's own to that set.
+const mountSection = (page: Page, { cortex = false, hostTool = false } = {}) =>
   page.evaluate(
-    ({ runtime, section }) => {
+    async ({ sectionUrl, cortexUrl, runtime, section, hostTool }) => {
       const player = document.createElement("pie-section-player-splitpane") as HTMLElement & {
         runtime: unknown;
         section: unknown;
+        toolRegistry: unknown;
       };
       player.setAttribute("show-toolbar", "true");
-      player.runtime = runtime;
+      let tools: Record<string, unknown> = runtime.tools;
+      if (cortexUrl) {
+        const build = await import(/* @vite-ignore */ sectionUrl);
+        const toolRegistry = build.createPackagedToolRegistry({
+          overrides: {
+            calculator: build.createCalculatorToolRegistration({
+              providers: {
+                "calculator-cortex": {
+                  providerName: "PIE Open-Source Calculator",
+                  version: "1",
+                  requiresAuth: false,
+                  backend: "cortex",
+                  load: async () => (await import(/* @vite-ignore */ cortexUrl)).CortexCalculatorProvider,
+                  initializationErrorMessage: "Failed to initialize the Cortex calculator provider.",
+                },
+              },
+            }),
+          },
+        });
+        const item = ["calculator"];
+        if (hostTool) {
+          const icon = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="6"/></svg>';
+          toolRegistry.register({
+            toolId: "hostTool",
+            name: "Host tool",
+            description: "A toolbar tool the host registers",
+            icon,
+            supportedLevels: ["item"],
+            isVisibleInContext: () => true,
+            renderToolbar: () => ({
+              toolId: "hostTool",
+              button: { toolId: "hostTool", label: "Host tool", ariaLabel: "Host tool", icon, onClick() {} },
+            }),
+          });
+          item.push("hostTool");
+        }
+        player.toolRegistry = toolRegistry;
+        tools = {
+          providers: { calculator: { provider: { id: "calculator-cortex" } } },
+          placement: { ...runtime.tools.placement, item },
+        };
+      }
+      player.runtime = { ...runtime, tools };
       player.section = section;
       document.getElementById("host")?.appendChild(player);
     },
-    { runtime, section },
+    {
+      sectionUrl: `${packageOrigin}${SECTION_ENTRY}`,
+      cortexUrl: cortex ? `${packageOrigin}${CORTEX_ENTRY}` : null,
+      runtime,
+      section,
+      hostTool,
+    },
   );
 
 const calculatorButton = (page: Page) =>
@@ -205,7 +259,7 @@ const calculatorButton = (page: Page) =>
     .first()
     .getByRole("button", { name: /^(basic |scientific )?calculator$/i });
 
-test("a page on another origin loads the browser build with no import map, renders the section and evaluates in the Cortex calculator", async ({
+test("a page on another origin loads the browser build with no import map, renders the section and evaluates in the Cortex calculator it composes in", async ({
   page,
 }) => {
   test.setTimeout(180_000);
@@ -223,7 +277,7 @@ test("a page on another origin loads the browser build with no import map, rende
     expect(await page.evaluate((name) => !!customElements.get(name), tag), tag).toBe(true);
   }
 
-  await mountSection(page);
+  await mountSection(page, { cortex: true });
   await expect(page.getByText("Read the passage before answering.")).toBeVisible({ timeout: 60_000 });
   await expect(page.getByText("What is 7 × 8?")).toBeVisible();
 
@@ -249,7 +303,7 @@ test("a page on another origin loads the browser build with no import map, rende
   expect(workerUrls.length).toBeGreaterThan(0);
   expect(workerUrls.every((url) => url.startsWith("blob:"))).toBe(true);
   expect(workerScriptRequests).toEqual([
-    expect.stringMatching(/\/section-player\/dist\/browser\/assets\/evaluation-worker-[\w-]+\.js$/),
+    expect.stringMatching(/\/calculator-cortex\/dist\/assets\/evaluation-worker-[\w-]+\.js$/),
   ]);
   expect(failures).toEqual([]);
   // The origins a host's CSP has to allow beyond the one that served the build:
@@ -285,7 +339,7 @@ test("a CDN item player loaded first, or a second section player copy, leaves th
   expect(failures).toEqual([]);
 });
 
-test("a host adds its own tool to the packaged set from the build's exports, and the packaged tools still load from the build", async ({
+test("a host adds its own tool and a calculator backend to the packaged set from the build's exports, and the packaged tools still load from the build", async ({
   page,
 }) => {
   test.setTimeout(180_000);
@@ -296,39 +350,7 @@ test("a host adds its own tool to the packaged set from the build's exports, and
   });
   await page.goto(hostOrigin);
 
-  await page.evaluate(
-    async ({ url, runtime, section }) => {
-      const build = await import(/* @vite-ignore */ url);
-      const toolRegistry = build.createPackagedToolRegistry();
-      const icon = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="6"/></svg>';
-      toolRegistry.register({
-        toolId: "hostTool",
-        name: "Host tool",
-        description: "A toolbar tool the host registers",
-        icon,
-        supportedLevels: ["item"],
-        isVisibleInContext: () => true,
-        renderToolbar: () => ({
-          toolId: "hostTool",
-          button: { toolId: "hostTool", label: "Host tool", ariaLabel: "Host tool", icon, onClick() {} },
-        }),
-      });
-      const player = document.createElement("pie-section-player-splitpane") as HTMLElement & {
-        runtime: unknown;
-        section: unknown;
-        toolRegistry: unknown;
-      };
-      player.setAttribute("show-toolbar", "true");
-      player.toolRegistry = toolRegistry;
-      player.runtime = {
-        ...runtime,
-        tools: { ...runtime.tools, placement: { ...runtime.tools.placement, item: ["calculator", "hostTool"] } },
-      };
-      player.section = section;
-      document.getElementById("host")?.appendChild(player);
-    },
-    { url: `${packageOrigin}${SECTION_ENTRY}`, runtime, section },
-  );
+  await mountSection(page, { cortex: true, hostTool: true });
 
   const itemCard = page.locator("pie-section-player-item-card").first();
   await expect(itemCard.getByRole("button", { name: "Host tool" })).toBeVisible({ timeout: 60_000 });
@@ -336,11 +358,16 @@ test("a host adds its own tool to the packaged set from the build's exports, and
   await calculatorButton(page).click();
   await expect(page.locator('[data-pie-tool-shell="calculator"]').first()).toBeVisible();
 
-  // The calculator's packaged loader imports this module on first use.
+  // The calculator's packaged loader imports this module on first use, and the
+  // composed backend is the only package code from outside the build.
   expect(packageRequests).toContainEqual(
     expect.stringMatching(/\/section-player\/dist\/browser\/chunks\/calculator-element-\w+\.js$/),
   );
-  expect(packageRequests.filter((url) => !url.includes("/section-player/dist/browser/"))).toEqual([]);
+  expect(
+    packageRequests.filter(
+      (url) => !url.includes("/section-player/dist/browser/") && !url.includes("/calculator-cortex/dist/"),
+    ),
+  ).toEqual([]);
   expect(failures).toEqual([]);
 });
 

@@ -18,9 +18,10 @@ import {
  * directory per version.
  *
  * This is an application build, not a library build, because library mode
- * inlines every asset as a `data:` URL and the Cortex calculator's 4.3 MB worker
- * script is one: Chromium refuses a module worker from a `data:` URL that large.
- * The entry's exports are kept as written.
+ * inlines every asset as a `data:` URL, and Chromium refuses a module worker
+ * from a large one. The build holds no asset since Cortex left the packaged
+ * set; an application build keeps any a tool adds as a file. The entry's
+ * exports are kept as written.
  */
 export default defineConfig({
 	resolve: {

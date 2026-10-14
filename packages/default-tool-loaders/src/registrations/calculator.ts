@@ -18,47 +18,47 @@ import { hasMathContent } from "@pie-players/pie-assessment-toolkit/tools/regist
 import { createScopedToolId } from "@pie-players/pie-assessment-toolkit/tools/registration";
 import { createToolElement } from "@pie-players/pie-assessment-toolkit/tools/registration";
 import type { CalculatorProviderConfig } from "@pie-players/pie-calculator";
-import { CortexToolProvider } from "../calculator-providers/CortexToolProvider.js";
-import { DesmosToolProvider } from "../calculator-providers/DesmosToolProvider.js";
-import { GeoGebraToolProvider } from "../calculator-providers/GeoGebraToolProvider.js";
+import {
+	type CalculatorProviderDefinition,
+	LazyCalculatorToolProvider,
+} from "../calculator-providers/LazyCalculatorToolProvider.js";
+import {
+	DEFAULT_CALCULATOR_PROVIDER_ID,
+	PACKAGED_CALCULATOR_PROVIDERS,
+} from "../calculator-providers/packaged-calculator-providers.js";
 import { resolveOverlayElement } from "./overlay-element-cache.js";
 
+export type { CalculatorProviderDefinition };
+
 type CalculatorType = "basic" | "scientific" | "graphing";
-export type CalculatorProviderId =
-	| "calculator-desmos"
-	| "calculator-geogebra"
-	| "calculator-cortex";
-export const DEFAULT_CALCULATOR_PROVIDER_ID: CalculatorProviderId =
-	"calculator-desmos";
+
+export interface CalculatorRegistrationOptions {
+	/**
+	 * Backends by `provider.id`, merged over the packaged Desmos and GeoGebra
+	 * definitions. An entry under a packaged id replaces that backend.
+	 */
+	providers?: Readonly<Record<string, CalculatorProviderDefinition>>;
+}
 
 export function resolveCalculatorProviderId(
 	config: ToolProviderConfig | undefined,
-): CalculatorProviderId {
+	providers: Readonly<
+		Record<string, CalculatorProviderDefinition>
+	> = PACKAGED_CALCULATOR_PROVIDERS,
+): string {
 	const configured = config?.provider?.id;
 	if (configured === undefined || configured === "") {
 		return DEFAULT_CALCULATOR_PROVIDER_ID;
 	}
-	if (
-		configured === "calculator-desmos" ||
-		configured === "calculator-geogebra" ||
-		configured === "calculator-cortex"
-	) {
+	if (typeof configured === "string" && Object.hasOwn(providers, configured)) {
 		return configured;
 	}
+	const expected = Object.keys(providers)
+		.map((id) => `"${id}"`)
+		.join(", ");
 	throw new Error(
-		`Unsupported calculator provider "${String(configured)}". Expected "calculator-desmos", "calculator-geogebra", or "calculator-cortex".`,
+		`Unsupported calculator provider "${String(configured)}". Expected one of ${expected}.`,
 	);
-}
-
-function createCalculatorToolProvider(config: ToolProviderConfig | undefined) {
-	switch (resolveCalculatorProviderId(config)) {
-		case "calculator-cortex":
-			return new CortexToolProvider();
-		case "calculator-geogebra":
-			return new GeoGebraToolProvider();
-		default:
-			return new DesmosToolProvider();
-	}
 }
 
 function getCalculatorInstanceConfig(
@@ -159,207 +159,220 @@ function applyCalculatorParamsToElement(
 }
 
 /**
- * Calculator tool registration
+ * Builds the calculator registration over the packaged backends plus any the
+ * host adds, so a host bundles a backend only by naming it.
  *
  * Supports:
- * - Basic, scientific, and graphing calculators through Desmos, GeoGebra, or Cortex
+ * - Basic, scientific, and graphing calculators through the backend that
+ *   `provider.id` selects, Desmos by default
  * - Context-aware visibility (shows only when math content is detected)
  * - Item level only
  */
-export const calculatorToolRegistration: ToolRegistration = {
-	toolId: "calculator",
-	name: "Calculator",
-	description: "Multi-type calculator (basic, scientific, graphing)",
-	nameKey: "tools.calculator.name",
-	descriptionKey: "tools.calculator.description",
-	icon: "calculator",
-	provider: {
-		createProvider: createCalculatorToolProvider,
-		getInitConfig: (config: ToolProviderConfig | undefined) =>
-			config?.provider?.init ?? {},
-		getAuthFetcher: (config: ToolProviderConfig | undefined) => {
-			const runtimeAuthFetcher = config?.provider?.runtime?.authFetcher;
-			return typeof runtimeAuthFetcher === "function"
-				? runtimeAuthFetcher
-				: undefined;
+export function createCalculatorToolRegistration(
+	options: CalculatorRegistrationOptions = {},
+): ToolRegistration {
+	const providers = { ...PACKAGED_CALCULATOR_PROVIDERS, ...options.providers };
+	return {
+		toolId: "calculator",
+		name: "Calculator",
+		description: "Multi-type calculator (basic, scientific, graphing)",
+		nameKey: "tools.calculator.name",
+		descriptionKey: "tools.calculator.description",
+		icon: "calculator",
+		provider: {
+			createProvider: (config: ToolProviderConfig | undefined) =>
+				new LazyCalculatorToolProvider(
+					providers[resolveCalculatorProviderId(config, providers)],
+				),
+			getInitConfig: (config: ToolProviderConfig | undefined) =>
+				config?.provider?.init ?? {},
+			getAuthFetcher: (config: ToolProviderConfig | undefined) => {
+				const runtimeAuthFetcher = config?.provider?.runtime?.authFetcher;
+				return typeof runtimeAuthFetcher === "function"
+					? runtimeAuthFetcher
+					: undefined;
+			},
+			lazy: true,
 		},
-		lazy: true,
-	},
 
-	// Calculator is item-level in this player architecture.
-	supportedLevels: ["item"],
+		// Calculator is item-level in this player architecture.
+		supportedLevels: ["item"],
 
-	/**
-	 * Pass 2: Determine if calculator is relevant in this context
-	 *
-	 * Calculator is relevant when context contains mathematical content
-	 * (MathML, LaTeX, arithmetic markers).
-	 */
-	isVisibleInContext(context: ToolContext): boolean {
-		return hasMathContent(context);
-	},
+		/**
+		 * Pass 2: Determine if calculator is relevant in this context
+		 *
+		 * Calculator is relevant when context contains mathematical content
+		 * (MathML, LaTeX, arithmetic markers).
+		 */
+		isVisibleInContext(context: ToolContext): boolean {
+			return hasMathContent(context);
+		},
 
-	renderToolbar(
-		context: ToolContext,
-		toolbarContext: ToolbarContext,
-	): ToolToolbarRenderResult {
-		const { calculatorType, availableTypes, displayName } =
-			getCalculatorRenderParams(toolbarContext);
-		const calculatorToolConfig =
-			toolbarContext.toolkitCoordinator?.getToolConfig(this.toolId) ||
-			undefined;
-		const calculatorConfig = getCalculatorInstanceConfig(calculatorToolConfig);
-		const fullToolId = createScopedToolId(
-			this.toolId,
-			toolbarContext.scope.level,
-			toolbarContext.scope.scopeId,
-		);
-		const componentOverrides = toolbarContext.componentOverrides;
-		// Reused across renders: besides keeping state, this spares a Desmos boot
-		// and container mount on every re-render.
-		const overlay = resolveOverlayElement(
-			toolbarContext,
-			fullToolId,
-			() =>
-				createToolElement(
-					this.toolId,
-					context,
-					toolbarContext,
-					componentOverrides,
-				) as HTMLElement & {
-					visible?: boolean;
-					toolId?: string;
-				},
-		);
-		overlay.setAttribute("tool-id", fullToolId);
-		applyCalculatorParamsToElement(
-			overlay,
-			calculatorType,
-			availableTypes,
-			calculatorConfig,
-		);
+		renderToolbar(
+			context: ToolContext,
+			toolbarContext: ToolbarContext,
+		): ToolToolbarRenderResult {
+			const { calculatorType, availableTypes, displayName } =
+				getCalculatorRenderParams(toolbarContext);
+			const calculatorToolConfig =
+				toolbarContext.toolkitCoordinator?.getToolConfig(this.toolId) ||
+				undefined;
+			const calculatorConfig =
+				getCalculatorInstanceConfig(calculatorToolConfig);
+			const fullToolId = createScopedToolId(
+				this.toolId,
+				toolbarContext.scope.level,
+				toolbarContext.scope.scopeId,
+			);
+			const componentOverrides = toolbarContext.componentOverrides;
+			// Reused across renders: besides keeping state, this spares a Desmos boot
+			// and container mount on every re-render.
+			const overlay = resolveOverlayElement(
+				toolbarContext,
+				fullToolId,
+				() =>
+					createToolElement(
+						this.toolId,
+						context,
+						toolbarContext,
+						componentOverrides,
+					) as HTMLElement & {
+						visible?: boolean;
+						toolId?: string;
+					},
+			);
+			overlay.setAttribute("tool-id", fullToolId);
+			applyCalculatorParamsToElement(
+				overlay,
+				calculatorType,
+				availableTypes,
+				calculatorConfig,
+			);
 
-		const button: ToolToolbarButtonDefinition = {
-			toolId: this.toolId,
-			label: displayName,
-			icon: typeof this.icon === "function" ? this.icon(context) : this.icon,
-			// Routes this button through <nds-icon-button> where the host enables NDS
-			// icons. Declared here because which capabilities render in the host's
-			// design system is a composition decision.
-			faIconName: "calculator",
-			disabled: false,
-			// The name stays put across open and closed. The toolbar mirrors
-			// `active` onto the button as `aria-pressed`, so the state is already
-			// exposed; a name that also swapped to "Close …" would contradict it.
-			ariaLabel: displayName,
-			tooltip: displayName,
-			onClick: () => toolbarContext.toggleTool(this.toolId),
-			active: toolbarContext.isToolVisible(this.toolId),
-		};
-		let lastVisibleState: boolean | undefined = button.active;
-		if (overlay.visible !== button.active) {
-			overlay.visible = button.active;
-		}
+			const button: ToolToolbarButtonDefinition = {
+				toolId: this.toolId,
+				label: displayName,
+				icon: typeof this.icon === "function" ? this.icon(context) : this.icon,
+				// Routes this button through <nds-icon-button> where the host enables NDS
+				// icons. Declared here because which capabilities render in the host's
+				// design system is a composition decision.
+				faIconName: "calculator",
+				disabled: false,
+				// The name stays put across open and closed. The toolbar mirrors
+				// `active` onto the button as `aria-pressed`, so the state is already
+				// exposed; a name that also swapped to "Close …" would contradict it.
+				ariaLabel: displayName,
+				tooltip: displayName,
+				onClick: () => toolbarContext.toggleTool(this.toolId),
+				active: toolbarContext.isToolVisible(this.toolId),
+			};
+			let lastVisibleState: boolean | undefined = button.active;
+			if (overlay.visible !== button.active) {
+				overlay.visible = button.active;
+			}
 
-		return {
-			toolId: this.toolId,
-			elements: [
-				{
-					element: overlay,
-					mount: "after-buttons",
-					shell: {
-						// The variant name the button already carries — "Basic Calculator",
-						// not the registration's generic one.
-						title: displayName,
-						draggable: true,
-						resizable: true,
-						closeable: true,
-						/*
-						 * Sized per type from what each layout measures, rather than one
-						 * size for all three. A shell subtracts ~74px of header from the
-						 * height it is given, and the numbers below are the content each
-						 * type needs plus room for its history tape:
-						 *
-						 * - basic: strip, display, edit row and a four-row keypad measure
-						 *   398px. 560 left ~90px of blank above the entry line, which is
-						 *   the gap that made the panel look mis-sized.
-						 * - scientific: the same plus a keypad layer tab row.
-						 * - graphing: the expression rail beside the plot, whose column
-						 *   wants 486px on its own — viewport controls, a 14rem board floor
-						 *   and the readout that *is* the graph for assistive technology,
-						 *   since the board itself is `aria-hidden`. At 620 that column was
-						 *   12px short and the readout's last line was cut off.
-						 *
-						 * The minimums stay shared across types and providers. This
-						 * registration serves Desmos, GeoGebra and Cortex alike, so a
-						 * graphing-only floor would move the resize limit under two vendors
-						 * whose layouts were never measured for it. Cortex below 42rem
-						 * stacks the rail above the plot and needs 701px there, which no
-						 * spacing tier closes — it scrolls its own content instead of
-						 * clipping it, which is the contract every size below the opening
-						 * one already relies on.
-						 */
-						initialWidth: calculatorType === "graphing" ? 720 : 380,
-						initialHeight:
-							calculatorType === "graphing"
-								? 660
-								: calculatorType === "basic"
-									? 500
-									: 560,
-						minWidth: 380,
-						minHeight: 480,
-						/*
-						 * `bottom-right` put a 560-620px-tall shell over the items
-						 * column it shares the viewport with — tall enough, at
-						 * ordinary viewport heights, to sit on top of a sibling
-						 * item's own toolbar row and block its button from mouse
-						 * and touch input. `bottom-left` keeps the same footprint
-						 * over the passage column instead, which carries no
-						 * per-item controls to collide with.
-						 */
-						initialAlign: "bottom-left",
-						initialMargin: 16,
-						// Header controls in the host's design system, and the layout that
-						// goes with them.
-						ndsHeaderControls: true,
-						// A learner reads the question while using the calculator, so Tab and
-						// Shift+Tab cross between the page and the shell instead of cycling
-						// inside it.
-						pageTabOrder: true,
-						content: {
-							overflowY: "auto",
-							preserveMinHeight: true,
+			return {
+				toolId: this.toolId,
+				elements: [
+					{
+						element: overlay,
+						mount: "after-buttons",
+						shell: {
+							// The variant name the button already carries — "Basic Calculator",
+							// not the registration's generic one.
+							title: displayName,
+							draggable: true,
+							resizable: true,
+							closeable: true,
+							/*
+							 * Sized per type from what each layout measures, rather than one
+							 * size for all three. A shell subtracts ~74px of header from the
+							 * height it is given, and the numbers below are the content each
+							 * type needs plus room for its history tape:
+							 *
+							 * - basic: strip, display, edit row and a four-row keypad measure
+							 *   398px. 560 left ~90px of blank above the entry line, which is
+							 *   the gap that made the panel look mis-sized.
+							 * - scientific: the same plus a keypad layer tab row.
+							 * - graphing: the expression rail beside the plot, whose column
+							 *   wants 486px on its own — viewport controls, a 14rem board floor
+							 *   and the readout that *is* the graph for assistive technology,
+							 *   since the board itself is `aria-hidden`. At 620 that column was
+							 *   12px short and the readout's last line was cut off.
+							 *
+							 * The minimums stay shared across types and backends. One
+							 * registration serves every backend, so a graphing-only floor
+							 * would move the resize limit under vendors whose layouts were
+							 * never measured for it. Cortex below 42rem stacks the rail above
+							 * the plot and needs 701px there, which no spacing tier closes — it
+							 * scrolls its own content instead of clipping it, which is the
+							 * contract every size below the opening one already relies on.
+							 */
+							initialWidth: calculatorType === "graphing" ? 720 : 380,
+							initialHeight:
+								calculatorType === "graphing"
+									? 660
+									: calculatorType === "basic"
+										? 500
+										: 560,
+							minWidth: 380,
+							minHeight: 480,
+							/*
+							 * `bottom-right` put a 560-620px-tall shell over the items
+							 * column it shares the viewport with — tall enough, at
+							 * ordinary viewport heights, to sit on top of a sibling
+							 * item's own toolbar row and block its button from mouse
+							 * and touch input. `bottom-left` keeps the same footprint
+							 * over the passage column instead, which carries no
+							 * per-item controls to collide with.
+							 */
+							initialAlign: "bottom-left",
+							initialMargin: 16,
+							// Header controls in the host's design system, and the layout that
+							// goes with them.
+							ndsHeaderControls: true,
+							// A learner reads the question while using the calculator, so Tab and
+							// Shift+Tab cross between the page and the shell instead of cycling
+							// inside it.
+							pageTabOrder: true,
+							content: {
+								overflowY: "auto",
+								preserveMinHeight: true,
+							},
 						},
 					},
+				],
+				button,
+				sync: () => {
+					const active = toolbarContext.isToolVisible(this.toolId);
+					button.active = active;
+					button.label = displayName;
+					// Static across the toggle: `aria-pressed` carries the state, and a
+					// "Close …" template built from a localized noun mixes languages
+					// ("Close rekenmachine" under nl-NL).
+					button.ariaLabel = displayName;
+					button.tooltip = displayName;
+					if (lastVisibleState !== active) {
+						overlay.visible = active;
+						lastVisibleState = active;
+					}
+					applyCalculatorParamsToElement(
+						overlay,
+						calculatorType,
+						availableTypes,
+						calculatorConfig,
+					);
 				},
-			],
-			button,
-			sync: () => {
-				const active = toolbarContext.isToolVisible(this.toolId);
-				button.active = active;
-				button.label = displayName;
-				// Static across the toggle: `aria-pressed` carries the state, and a
-				// "Close …" template built from a localized noun mixes languages
-				// ("Close rekenmachine" under nl-NL).
-				button.ariaLabel = displayName;
-				button.tooltip = displayName;
-				if (lastVisibleState !== active) {
-					overlay.visible = active;
-					lastVisibleState = active;
-				}
-				applyCalculatorParamsToElement(
-					overlay,
-					calculatorType,
-					availableTypes,
-					calculatorConfig,
-				);
-			},
-			subscribeActive: (callback: (active: boolean) => void) => {
-				if (!toolbarContext.subscribeVisibility) return () => {};
-				return toolbarContext.subscribeVisibility(() => {
-					callback(toolbarContext.isToolVisible(this.toolId));
-				});
-			},
-		};
-	},
-};
+				subscribeActive: (callback: (active: boolean) => void) => {
+					if (!toolbarContext.subscribeVisibility) return () => {};
+					return toolbarContext.subscribeVisibility(() => {
+						callback(toolbarContext.isToolVisible(this.toolId));
+					});
+				},
+			};
+		},
+	};
+}
+
+/** The calculator over the packaged Desmos and GeoGebra backends. */
+export const calculatorToolRegistration = createCalculatorToolRegistration();

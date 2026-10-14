@@ -30,8 +30,8 @@ function createFixtureRoot() {
 	);
 	write(
 		root,
-		"packages/default-tool-loaders/src/calculator-providers/CortexToolProvider.ts",
-		'const module = await import("@pie-players/pie-calculator-cortex");\n',
+		"packages/default-tool-loaders/src/calculator-providers/packaged-calculator-providers.ts",
+		'const module = await import("@pie-players/pie-calculator-desmos");\n',
 	);
 	write(
 		root,

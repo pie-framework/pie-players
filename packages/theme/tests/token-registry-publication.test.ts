@@ -101,7 +101,7 @@ describe("the published types describe the published data", () => {
 						.length,
 				]),
 			),
-		).toEqual({ required: 54, optional: 17, excluded: 30 });
+		).toEqual({ required: 54, optional: 18, excluded: 30 });
 	});
 
 	test("category stays a plain string, and every entry has one", () => {

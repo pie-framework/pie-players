@@ -1,5 +1,8 @@
-import { describe, expect, test } from "bun:test";
-import { defaultResolve } from "../src/element-resolver";
+import { afterEach, describe, expect, test } from "bun:test";
+import { defaultLoadResolution, defaultResolve } from "../src/element-resolver";
+
+const TRAVERSAL_SPEC =
+	"@pie-element/multiple-choice@1.0.0/../../../gh/owner/repo@main";
 
 describe("defaultResolve", () => {
 	test("resolves print modules to browser ESM artifacts", async () => {
@@ -15,5 +18,46 @@ describe("defaultResolve", () => {
 			module: true,
 			loader: "browser-esm",
 		});
+	});
+
+	test("builds no CDN URL for a spec that is not a scoped package spec", async () => {
+		const resolution = await defaultResolve("multiple-choice", TRAVERSAL_SPEC);
+
+		expect(resolution).toMatchObject({
+			tagName: "multiple-choice",
+			pkg: TRAVERSAL_SPEC,
+			url: "",
+			loader: "browser-esm",
+		});
+	});
+});
+
+describe("defaultLoadResolution", () => {
+	const originalFetch = globalThis.fetch;
+
+	afterEach(() => {
+		globalThis.fetch = originalFetch;
+	});
+
+	test("fails an invalid spec before any request, without quoting it", async () => {
+		const requested: string[] = [];
+		globalThis.fetch = (async (input: RequestInfo | URL) => {
+			requested.push(String(input));
+			return new Response(null, { status: 200 });
+		}) as typeof fetch;
+		const spec = '@pie-element/multiple-choice@<img src=x onerror="alert(1)">';
+		const resolution = {
+			...(await defaultResolve("multiple-choice", spec)),
+			printTagName: "multiple-choice-print-1",
+		};
+
+		const result = await defaultLoadResolution(resolution);
+
+		expect(result).toEqual({
+			success: false,
+			pkg: resolution,
+			message: "Invalid element package spec",
+		});
+		expect(requested).toEqual([]);
 	});
 });

@@ -56,6 +56,7 @@ Passage card of a section player: renders a passage's heading, `<pie-item-toolba
 	} from "@pie-players/pie-players-shared/timed-media";
 	import type { PassageEntity } from "@pie-players/pie-players-shared/types";
 	import type { SectionPlayerCardTitleFormatter } from "../../contracts/card-title-formatters.js";
+	import { resolveCardTitle } from "./card-title.js";
 	import type { PlayerElementParams } from "./player-action.js";
 	import {
 		DEFAULT_SECTION_BASE_HEADING_LEVEL,
@@ -128,22 +129,13 @@ Passage card of a section player: renders a passage's heading, `<pie-item-toolba
 	const effectiveCardTitleFormatter = $derived(
 		contextConnected ? contextCardTitleFormatter : null,
 	);
-	const headerTitle = $derived.by(() => {
-		const defaultTitle = interfaceI18n.t("player.passage");
-		if (!effectiveCardTitleFormatter) return defaultTitle;
-		try {
-			const nextTitle = effectiveCardTitleFormatter({
-				kind: "passage",
-				passage,
-				defaultTitle,
-			});
-			if (typeof nextTitle !== "string") return defaultTitle;
-			const trimmedTitle = nextTitle.trim();
-			return trimmedTitle || defaultTitle;
-		} catch {
-			return defaultTitle;
-		}
-	});
+	const headerTitle = $derived(
+		resolveCardTitle(effectiveCardTitleFormatter, {
+			kind: "passage",
+			passage,
+			defaultTitle: interfaceI18n.t("player.passage"),
+		}),
+	);
 
 	// ------------------------------------------------------------------
 	// Docked media
@@ -310,7 +302,8 @@ Passage card of a section player: renders a passage's heading, `<pie-item-toolba
 				this={`h${resolvedHeadingLevel}`}
 				id={headingId}
 				data-pie-tool-overlay-protect
-			>{headerTitle}</svelte:element>
+				data-pie-card-title={headerTitle.visible ? undefined : "hidden"}
+			>{headerTitle.text}</svelte:element>
 			<pie-item-toolbar
 				item-id={passage.id}
 				catalog-id={passage.id}
@@ -471,6 +464,21 @@ Passage card of a section player: renders a passage's heading, `<pie-item-toolba
 		/* Default to the themed body text color so titles stay legible across
 		   DaisyUI themes; --pie-header-text remains a host opt-in override. */
 		color: var(--pie-header-text, var(--pie-text, #111827));
+	}
+
+	/* A host-hidden title: still the card's name and the outline level its
+	   content nests under, so it leaves the layout but not the document. */
+	.pie-section-player-content-card-header
+		:is(h1, h2, h3, h4, h5, h6)[data-pie-card-title="hidden"] {
+		position: absolute;
+		width: 1px;
+		height: 1px;
+		padding: 0;
+		margin: -1px;
+		overflow: hidden;
+		clip: rect(0, 0, 0, 0);
+		white-space: nowrap;
+		border: 0;
 	}
 
 	.pie-section-player-content-card-header pie-item-toolbar {

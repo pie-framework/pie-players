@@ -32,6 +32,7 @@ import {
 	validateCustomElementTag,
 } from "@pie-players/pie-players-shared/pie/tag-names";
 import { mkItem, printItemAndFloaters } from "./markup-processor.js";
+import { defaultMissingElement } from "./missing-element.js";
 
 import type {
 	Config,
@@ -41,28 +42,6 @@ import type {
 	PkgResolution,
 	ResolverFn,
 } from "./types.js";
-
-/**
- * Default missing element placeholder
- *
- * Creates a custom element that displays an error message for failed loads
- */
-const defaultMissingElement: MissingElFn = (
-	pkg: PkgResolution,
-	message?: string,
-): any =>
-	class extends HTMLElement {
-		connectedCallback() {
-			// The error frame follows the theme's incorrect family: bare `red` on
-			// white measures 4:1 and fails SC 1.4.3, and print output is the one
-			// surface where nobody notices until it is on paper.
-			this.innerHTML = `<div style="border: solid 1px var(--pie-incorrect, darkred); margin: 10px; padding: 10px;">
-        <div style="color: var(--pie-incorrect, #b00000)">Cannot load ${pkg.tagName}</div>
-        <br/>
-        <div style="font-size:0.8em; color: var(--pie-incorrect, darkred);">${message || "Unknown error"}</div>
-      </div>`;
-		}
-	};
 
 /**
  * PIE Print Web Component

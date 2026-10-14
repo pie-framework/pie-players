@@ -39,6 +39,10 @@ import {
 	type RegistrationFailureReason,
 } from "./element-loader-types.js";
 import { isExactSemver } from "./element-package-policy.js";
+import {
+	invalidPackageSpecMessage,
+	isScopedPackageSpec,
+} from "./element-package-spec.js";
 import { forwardMathjaxEvents } from "./mathjax-events.js";
 import { isPlainRecord } from "../object/index.js";
 
@@ -216,13 +220,32 @@ export function createEsmBackend(config: EsmBackendConfig): EsmBackend {
 		context: BackendContext,
 	): Promise<void> {
 		if (!elements || Object.keys(elements).length === 0) return;
+
+		// Refused before any URL is built from the spec; the other elements load.
+		const reasons = new Map<ElementTag, RegistrationFailureReason>();
+		const loadable: ElementMap = {};
+		for (const [tag, pkg] of Object.entries(elements)) {
+			if (isScopedPackageSpec(pkg)) {
+				loadable[tag] = pkg;
+			} else {
+				reasons.set(tag, {
+					kind: "backend-rejected",
+					tag,
+					cause: invalidPackageSpecMessage(pkg),
+				});
+			}
+		}
+		if (Object.keys(loadable).length === 0) {
+			throw new AdapterFailure(reasons);
+		}
+
 		if (moduleResolution === "import-map") {
 			assertImportMapSupported();
 		}
 		forwardMathjaxEventsOf(context.doc);
 
 		const newEntries: ElementMap = {};
-		for (const [tag, pkg] of Object.entries(elements)) {
+		for (const [tag, pkg] of Object.entries(loadable)) {
 			const packageName = parsePackageName(pkg).name;
 			if (moduleResolution === "import-map") {
 				const existingVersion = importMappedPackageVersions.get(packageName);
@@ -303,10 +326,8 @@ export function createEsmBackend(config: EsmBackendConfig): EsmBackend {
 			}
 		}
 
-		const reasons = new Map<ElementTag, RegistrationFailureReason>();
-
 		await Promise.all(
-			Object.entries(elements).map(async ([tag, packageVersion]) => {
+			Object.entries(loadable).map(async ([tag, packageVersion]) => {
 				const packageName = parsePackageName(packageVersion).name;
 				let actualTag: string;
 				try {
@@ -908,12 +929,14 @@ const RUNTIME_SUPPORT_PATH = "dist/runtime-support.js";
 
 /**
  * URL of a package's `./runtime-support` module on the ESM CDN the players load
- * elements from, or `undefined` when a custom provider names no package root.
+ * elements from, or `undefined` when a custom provider names no package root or
+ * `packageVersion` is not a scoped package spec.
  */
 export function resolveEsmRuntimeSupportUrl(
 	packageVersion: string,
 	options: { cdnBaseUrl: string; cdnProvider?: EsmCdnProviderOption },
 ): string | undefined {
+	if (!isScopedPackageSpec(packageVersion)) return undefined;
 	const cdnBaseUrl = options.cdnBaseUrl.replace(/\/+$/, "");
 	const provider = resolveCdnProvider(options.cdnProvider, cdnBaseUrl);
 	if (typeof provider.runtimeSupportUrl === "function") {

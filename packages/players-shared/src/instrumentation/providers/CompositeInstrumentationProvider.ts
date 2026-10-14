@@ -1,3 +1,4 @@
+import { settleAll } from "../../promise/index.js";
 import type {
 	ErrorAttributes,
 	EventAttributes,
@@ -20,7 +21,7 @@ export class CompositeInstrumentationProvider
 	}
 
 	async initialize(config?: InstrumentationConfig): Promise<void> {
-		const results = await Promise.allSettled(
+		const results = await settleAll(
 			this.providers.map((provider) => provider.initialize(config)),
 		);
 		this.initialized = true;

@@ -10,6 +10,7 @@ import {
 	DEFAULT_ESM_CDN_URL,
 	ensureRegistered,
 	type EsmCdnProviderOption,
+	isScopedPackageSpec,
 	type ViewConfig,
 } from "@pie-players/pie-players-shared/loaders";
 import type {
@@ -28,7 +29,8 @@ const BROWSER_PRINT_VIEW_CONFIG: ViewConfig = {
  *
  * @param tagName - Element tag name
  * @param pkg - Package identifier (e.g., '@pie-element/multiple-choice@12.0.0')
- * @returns Package resolution with CDN URL
+ * @returns Package resolution with CDN URL, or an empty `url` when `pkg` is not
+ * a scoped package spec; `defaultLoadResolution` fails that element.
  */
 export const defaultResolve: ResolverFn = (
 	tagName: string,
@@ -37,7 +39,9 @@ export const defaultResolve: ResolverFn = (
 	return Promise.resolve({
 		tagName,
 		pkg,
-		url: `${DEFAULT_ESM_CDN_URL}/${pkg}/dist/browser/print/index.js`,
+		url: isScopedPackageSpec(pkg)
+			? `${DEFAULT_ESM_CDN_URL}/${pkg}/dist/browser/print/index.js`
+			: "",
 		module: true,
 		loader: "browser-esm",
 		cdnBaseUrl: DEFAULT_ESM_CDN_URL,
@@ -71,6 +75,16 @@ export const defaultLoadResolution = async (
 ): Promise<LoadResolutionResult> => {
 	if (!r.printTagName) {
 		throw new Error(`printTagName must be defined`);
+	}
+
+	// A host's `missingElement` factory may render `message` as HTML, so it does
+	// not quote the spec.
+	if (r.loader === "browser-esm" && !isScopedPackageSpec(r.pkg)) {
+		return {
+			success: false,
+			pkg: r,
+			message: "Invalid element package spec",
+		};
 	}
 
 	const s = status(r.printTagName);

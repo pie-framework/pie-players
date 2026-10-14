@@ -1,25 +1,24 @@
 /**
  * Retry policy for registry reads that follow a publish in the same job.
  *
- * npm serves reads from replicas that lag the publish, so a version that was just published
- * 404s for a while: the 0.3.70 release published 45 packages between 03:06:12 and 03:09:36 and
- * `check-published-closure` — which starts one second later — got E404 for two of them, both
- * resolvable minutes later. The release had already gone out, so the failure only skipped the
- * follow-up steps, including the master -> develop back-merge PR.
+ * A version reaches its packument minutes after `changeset publish` reports it published: npm's
+ * own `time` entries put the slowest package 586s behind on 0.3.74 and 289-365s behind on 0.3.75,
+ * 1.0.0-beta.0 and 1.0.0-beta.1. `check-published-closure` starts about two minutes after the
+ * publish, so a lookup that gives up early reports a release that went out as broken.
  *
- * Waiting is bounded twice over. Per call, `maxAttempts` with exponential backoff. Across the
- * run, one shared `deadlineMs` measured from the first attempt: without it a genuinely
- * unpublished package burns the full per-call budget once for every package in the fixed group,
- * turning a real partial-release failure into a 45-package, 40-minute step.
+ * One bound: a shared `deadlineMs` measured from the first attempt of the run. It is shared
+ * because versioning is fixed, so a genuinely unpublished release fails every package at once,
+ * and a per-lookup budget would multiply the wait by the size of the group. Past the deadline the
+ * remaining lookups get one attempt each. A per-lookup attempt cap was dropped after it gave each
+ * package 45 seconds and failed four releases in a row on lag alone.
  *
  * Extracted so the pacing is testable without a registry or a clock to wait on.
  */
 
 export const DEFAULT_PROPAGATION_POLICY = Object.freeze({
-	maxAttempts: 5,
 	initialDelayMs: 3_000,
 	maxDelayMs: 30_000,
-	deadlineMs: 240_000,
+	deadlineMs: 900_000,
 });
 
 /**
@@ -63,8 +62,8 @@ export const isPropagationError = (message) => {
  * Decide what to do after a failed attempt. Pure: the caller supplies elapsed time and does
  * the sleeping, so tests need neither.
  *
- * Returns `{ retry, delayMs, reason }`. `reason` is set only when giving up, and names which
- * bound was hit so a release log distinguishes "npm never caught up" from "not published".
+ * Returns `{ retry, delayMs, reason }`. `reason` is set only when giving up, and says whether
+ * the failure was not lag at all or npm never caught up within the deadline.
  */
 export const planRetry = ({
 	attempt,
@@ -74,13 +73,6 @@ export const planRetry = ({
 }) => {
 	if (!isPropagationError(message)) {
 		return { retry: false, delayMs: 0, reason: "not a propagation failure" };
-	}
-	if (attempt >= policy.maxAttempts) {
-		return {
-			retry: false,
-			delayMs: 0,
-			reason: `gave up after ${policy.maxAttempts} attempt(s)`,
-		};
 	}
 
 	const delayMs = backoffDelayMs(attempt, policy);

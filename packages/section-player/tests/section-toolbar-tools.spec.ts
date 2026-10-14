@@ -378,6 +378,34 @@ test.describe("section toolbar tools", () => {
 		).toHaveText("Custom passage");
 	});
 
+	test("hides a card title the formatter opts out of, keeping heading and toolbar", async ({
+		page,
+	}) => {
+		await page.goto("/tts-ssml?mode=candidate&layout=vertical&customTitles=hidden", {
+			waitUntil: "networkidle",
+		});
+		await expectDemoChromeReady(page);
+
+		const itemHeader = page.locator(".pie-section-player-item-header").first();
+		const itemHeading = itemHeader.locator(":is(h1,h2,h3,h4,h5,h6)");
+		await expect(itemHeading).toHaveAttribute("data-pie-card-title", "hidden");
+		// The heading keeps the default title as the card's accessible name.
+		await expect(itemHeading).toHaveText("Question 1");
+		await expect(
+			page.getByRole("heading", { name: "Question 1", exact: true }),
+		).toHaveCount(1);
+		const headingBox = await itemHeading.boundingBox();
+		expect(headingBox?.width ?? 0).toBeLessThanOrEqual(1);
+		expect(headingBox?.height ?? 0).toBeLessThanOrEqual(1);
+		await expect(itemHeader.locator("pie-item-toolbar")).toBeVisible();
+
+		const passageHeading = page
+			.locator(".pie-section-player-passage-header :is(h1,h2,h3,h4,h5,h6)")
+			.first();
+		await expect(passageHeading).toHaveText("Custom passage");
+		await expect(passageHeading).not.toHaveAttribute("data-pie-card-title");
+	});
+
 	test("restores hosted shell close button background after hover", async ({
 		page,
 	}) => {

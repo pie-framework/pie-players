@@ -22,6 +22,7 @@
 			externalStyleUrls: { attribute: "external-style-urls", type: "String" },
 			renderStimulus: { attribute: "render-stimulus", type: "Boolean" },
 			allowedResize: { attribute: "allowed-resize", type: "Boolean" },
+			passageLayout: { attribute: "passage-layout", type: "String" },
 			autoplayAudioEnabled: { attribute: "autoplay-audio-enabled", type: "Boolean" },
 			idleSaveDelayMs: { attribute: "idle-save-delay-ms", type: "Number" },
 			// Both reflect: PIE elements read these off the nearest player host and
@@ -249,6 +250,7 @@ The PIE item player: it loads an item's PIE elements under the `iife`, `esm` or 
 		externalStyleUrls = "",
 		renderStimulus = true,
 		allowedResize = false,
+		passageLayout = "vertical" as "vertical" | "splitpane",
 		autoplayAudioEnabled = undefined as boolean | undefined,
 		idleSaveDelayMs = undefined as number | undefined,
 		baseHeadingLevel = undefined as 1 | 2 | 3 | 4 | 5 | 6 | undefined,
@@ -1880,6 +1882,7 @@ The PIE item player: it loads an item's PIE elements under the `iife`, `esm` or 
 					session={rendererSession}
 					{addCorrectResponse}
 					{allowedResize}
+					{passageLayout}
 					customClassName={scopeClass}
 					passageContainerClass={resolvedPassageContainerClass}
 					baseHeadingLevel={resolvedBaseHeadingLevel}

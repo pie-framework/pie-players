@@ -91,6 +91,8 @@ const enUS = {
 		resizeMediaRegion: "Resize media region",
 		resizeQuestionAndMediaA11y: "Resize question and media panels",
 		resizePassageAndMediaA11y: "Resize passage and media panels",
+		resizePassageAndQuestionA11y: "Resize passage and question panels",
+		passageWidthA11y: "{percent}% passage width",
 
 		/**
 		 * The assessment player's own section-to-section navigation. Its Back and

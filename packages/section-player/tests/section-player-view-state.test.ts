@@ -534,7 +534,12 @@ describe("section player view state", () => {
 		const compositionModel = {
 			itemSessions: {},
 			itemViewModels: [
-				{ itemId: "item-1", canonicalItemId: "item-1", item, session: sessionInComposition },
+				{
+					itemId: "item-1",
+					canonicalItemId: "item-1",
+					item,
+					session: sessionInComposition,
+				},
 			],
 		} as any;
 		const params = getItemPlayerParams({
@@ -568,5 +573,4 @@ describe("section player view state", () => {
 		expect(withoutSession.session).toEqual({ id: "", data: [] });
 		expect(Object.isFrozen(EMPTY_ITEM_SESSION)).toBe(true);
 	});
-
 });

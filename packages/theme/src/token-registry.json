@@ -972,6 +972,22 @@
 		"fallbackPolicy": "Canonical lighter secondary action token."
 	},
 	{
+		"name": "--pie-section-player-card-border",
+		"owner": "@pie-players/pie-section-player",
+		"scope": "component-public",
+		"category": "section-card",
+		"status": "active",
+		"schemeParticipation": "optional",
+		"definedIn": [
+			"packages/section-player/src/components/shared/SectionItemCard.svelte",
+			"packages/section-player/src/components/shared/SectionPassageCard.svelte"
+		],
+		"documentedIn": [
+			"packages/section-player/README.md"
+		],
+		"fallbackPolicy": "Public card frame border color shared by item and passage cards; falls back to --pie-border-light, and transparent removes the frame. Item content keeps reading --pie-border-light."
+	},
+	{
 		"name": "--pie-section-player-card-header-background",
 		"owner": "@pie-players/pie-section-player",
 		"scope": "component-public",

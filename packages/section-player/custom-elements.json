@@ -1021,6 +1021,10 @@
 							"description": "Passage header surface. Documented host hook; falls back to the canonical surface tokens when unset."
 						},
 						{
+							"name": "--pie-section-player-card-border",
+							"description": "Public card frame border color shared by item and passage cards; falls back to --pie-border-light, and transparent removes the frame. Item content keeps reading --pie-border-light."
+						},
+						{
 							"name": "--pie-section-player-card-header-background",
 							"description": "Public card header background hook; defaults to transparent and hosts must preserve contrast with card header content."
 						},
@@ -1648,6 +1652,10 @@
 						{
 							"name": "--pie-passage-header-background",
 							"description": "Passage header surface. Documented host hook; falls back to the canonical surface tokens when unset."
+						},
+						{
+							"name": "--pie-section-player-card-border",
+							"description": "Public card frame border color shared by item and passage cards; falls back to --pie-border-light, and transparent removes the frame. Item content keeps reading --pie-border-light."
 						},
 						{
 							"name": "--pie-section-player-card-header-background",
@@ -2283,6 +2291,10 @@
 							"description": "Passage header surface. Documented host hook; falls back to the canonical surface tokens when unset."
 						},
 						{
+							"name": "--pie-section-player-card-border",
+							"description": "Public card frame border color shared by item and passage cards; falls back to --pie-border-light, and transparent removes the frame. Item content keeps reading --pie-border-light."
+						},
+						{
 							"name": "--pie-section-player-card-header-background",
 							"description": "Public card header background hook; defaults to transparent and hosts must preserve contrast with card header content."
 						},
@@ -2908,6 +2920,10 @@
 							"description": "Passage header surface. Documented host hook; falls back to the canonical surface tokens when unset."
 						},
 						{
+							"name": "--pie-section-player-card-border",
+							"description": "Public card frame border color shared by item and passage cards; falls back to --pie-border-light, and transparent removes the frame. Item content keeps reading --pie-border-light."
+						},
+						{
 							"name": "--pie-section-player-card-header-background",
 							"description": "Public card header background hook; defaults to transparent and hosts must preserve contrast with card header content."
 						},
@@ -3214,6 +3230,10 @@
 					],
 					"cssProperties": [
 						{
+							"name": "--pie-section-player-card-border",
+							"description": "Public card frame border color shared by item and passage cards; falls back to --pie-border-light, and transparent removes the frame. Item content keeps reading --pie-border-light."
+						},
+						{
 							"name": "--pie-section-player-card-header-background",
 							"description": "Public card header background hook; defaults to transparent and hosts must preserve contrast with card header content."
 						},
@@ -3268,6 +3288,10 @@
 						}
 					],
 					"cssProperties": [
+						{
+							"name": "--pie-section-player-card-border",
+							"description": "Public card frame border color shared by item and passage cards; falls back to --pie-border-light, and transparent removes the frame. Item content keeps reading --pie-border-light."
+						},
 						{
 							"name": "--pie-section-player-card-header-background",
 							"description": "Public card header background hook; defaults to transparent and hosts must preserve contrast with card header content."
@@ -3474,6 +3498,10 @@
 							"description": "Passage header surface. Documented host hook; falls back to the canonical surface tokens when unset."
 						},
 						{
+							"name": "--pie-section-player-card-border",
+							"description": "Public card frame border color shared by item and passage cards; falls back to --pie-border-light, and transparent removes the frame. Item content keeps reading --pie-border-light."
+						},
+						{
 							"name": "--pie-section-player-card-header-background",
 							"description": "Public card header background hook; defaults to transparent and hosts must preserve contrast with card header content."
 						},
@@ -3519,6 +3547,10 @@
 						{
 							"name": "--pie-passage-header-background",
 							"description": "Passage header surface. Documented host hook; falls back to the canonical surface tokens when unset."
+						},
+						{
+							"name": "--pie-section-player-card-border",
+							"description": "Public card frame border color shared by item and passage cards; falls back to --pie-border-light, and transparent removes the frame. Item content keeps reading --pie-border-light."
 						},
 						{
 							"name": "--pie-section-player-card-header-background",

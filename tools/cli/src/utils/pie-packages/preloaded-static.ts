@@ -9,7 +9,7 @@ import { parsePackageName } from "@pie-players/pie-players-shared/pie";
 import { transform } from "esbuild";
 
 import {
-	adapterAssetPackages,
+	adapterAssets,
 	assertSpeechLocales,
 	assetPackages,
 	buildElementModules,
@@ -643,7 +643,7 @@ export async function buildPreloadedPlayerStaticPackage(
 
 	const math = await buildElementModules(config.elements, outputDistDir, {
 		// The adapter the item player bundles is the one players-shared resolves.
-		playerAssetPackages: adapterAssetPackages(join(config.monorepoDir, "packages", "players-shared")),
+		playerAssets: adapterAssets(join(config.monorepoDir, "packages", "players-shared")),
 		speechLocales: config.speechLocales,
 	});
 

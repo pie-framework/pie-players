@@ -97,10 +97,12 @@ imports are all relative, with every dependency included:
 - `dist/mathjax/npm/`: the files MathJax loads as it renders, for the MathJax 4
   bundled into the elements' chunks and the item player's. Under
   `<package>@<version>/`, for each package the math adapter lists in
-  `pie.assetPackages`, it holds the fonts' `chtml/woff2`,
-  `sre/speech-worker.js` and the speech rules of `base`, the Nemeth and Euro
-  braille codes and the config's `speechLocales`, with each package's
-  `package.json` and license.
+  `pie.assetPackages`, it holds the paths the adapter lists for it in
+  `pie.browserAssetPaths`, and the same paths for an adapter that predates the
+  field: the fonts' `chtml/woff2/` and `sre/speech-worker.js`, and of
+  `sre/mathmaps/` the speech rules of `base`, the Nemeth and Euro braille codes
+  and the config's `speechLocales` alone, with each package's `package.json`
+  and license.
 - `dist/index.js`: the entry hosts import.
 - `package.json` with a `pie` metadata block (`set` on a published build,
   `bundleHash`, `iteration`, `loaderVersion`, `generatedAt` and the resolved
@@ -110,7 +112,8 @@ imports are all relative, with every dependency included:
 The build takes elements on `@pie-element/shared-math-rendering-mathjax` 0.1.3
 or later. The generator refuses an element whose adapter copy lacks the
 `/bundled` and `/no-assets` markers or names a jsDelivr MathJax URL, a speech
-locale SRE does not ship, and an adapter that lists no `pie.assetPackages`.
+locale SRE does not ship, an adapter that lists no `pie.assetPackages`, and a
+package its `pie.browserAssetPaths` lists no paths of.
 
 The entry runs three steps, each import with retry and backoff:
 

@@ -435,20 +435,11 @@ before the assessment player mounts:
 import { registerPreloadedElements } from "@pie-players/pie-item-player/preloaded";
 import * as delivery from "@pie-element/multiple-choice/browser/delivery";
 import * as controller from "@pie-element/multiple-choice/browser/controller";
-import manifest from "../package.json"; // pins "@pie-element/multiple-choice" exactly
 
-registerPreloadedElements(
-  [
-    {
-      tag: "pie-element-multiple-choice",
-      package: "@pie-element/multiple-choice",
-      version: manifest.dependencies["@pie-element/multiple-choice"],
-      element: delivery,
-      controller,
-    },
-  ],
-  { math: { assetRoot: "https://assets.example.com/npm" } },
-);
+// The modules name their package and version; the tag defaults from the name.
+registerPreloadedElements([{ element: delivery, controller }], {
+  math: { assetRoot: "https://assets.example.com/npm" },
+});
 ```
 
 A tag missing at pre-warm leaves the section's items unmounted and raises a

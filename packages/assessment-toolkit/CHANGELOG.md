@@ -1,5 +1,19 @@
 # @pie-players/pie-assessment-toolkit
 
+## 1.0.0-beta.3
+
+### Patch Changes
+
+- 36a21f8: Item and passage cards collapse their header, divider included, while `hooks.cardTitleFormatter` hides the title and the card's toolbar has no tool or host button to show; the heading stays in the document as the card's accessible name. `<pie-item-toolbar>` reflects that state as `data-pie-toolbar-empty`. The card frame's border color reads the new `--pie-section-player-card-border`, falling back to `--pie-border-light`, so `transparent` removes the frame without restyling borders inside item content.
+- ec6fd81: Rewind and fast-forward pressed while a seek is still loading its audio now move on from that seek's target, so repeated presses add up with server voices instead of being ignored.
+- Updated dependencies [95de24f]
+- Updated dependencies [a9fb597]
+- Updated dependencies [66cb4d4]
+  - @pie-players/pie-context@1.0.0-beta.3
+  - @pie-players/pie-players-shared@1.0.0-beta.3
+  - @pie-players/pie-calculator@1.0.0-beta.3
+  - @pie-players/pie-tts@1.0.0-beta.3
+
 ## 1.0.0-beta.2
 
 ### Patch Changes

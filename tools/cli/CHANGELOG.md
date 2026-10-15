@@ -1,5 +1,14 @@
 # @pie-players/pie-players-cli
 
+## 0.3.9-beta.3
+
+### Patch Changes
+
+- b98d4dc: A generated `@pie-players/pie-preloaded-player` build keeps the module shim's `//# sourceMappingURL=` string escaped, so a host bundler whose source-map loader strips that text, Angular's in builds with script source maps on, compiles it.
+- Updated dependencies [a9fb597]
+- Updated dependencies [66cb4d4]
+  - @pie-players/pie-players-shared@1.0.0-beta.3
+
 ## 0.3.9-beta.2
 
 ### Patch Changes

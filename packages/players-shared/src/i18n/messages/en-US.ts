@@ -373,9 +373,12 @@ const enUS = {
 			windowHeightAnnounce: "Reading window height {pixels} pixels",
 			frameHeightAnnounce: "Frame height {pixels} pixels",
 			widthAnnounce: "Width {pixels} pixels",
-			frameSizeAnnounce: "Frame height {frameHeight} pixels, width {width} pixels",
 			shorterWindowA11y: "Make the reading window shorter",
 			tallerWindowA11y: "Make the reading window taller",
+			shorterFrameA11y: "Make the frame shorter",
+			tallerFrameA11y: "Make the frame taller",
+			narrowerA11y: "Make the line reader narrower",
+			widerA11y: "Make the line reader wider",
 			applicationA11y:
 				"Line Reader tool. A clear reading window inside an obscuring frame. Use arrow keys to move, +/- to resize the reading window, Escape to close. Reading window height: {paneHeight} pixels, Frame height: {frameHeight} pixels",
 			resizeWindowFullA11y:
@@ -400,6 +403,10 @@ const enUS = {
 			resizeFullA11y:
 				"Resize the magnifier. Drag, or use the arrow keys. Current size {width} by {height} pixels",
 			sizeAnnounce: "Magnifier {width} by {height} pixels",
+			narrowerA11y: "Make the magnifier narrower",
+			widerA11y: "Make the magnifier wider",
+			shorterA11y: "Make the magnifier shorter",
+			tallerA11y: "Make the magnifier taller",
 		},
 		answerEliminator: {
 			name: "Answer Eliminator",

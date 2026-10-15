@@ -17,6 +17,16 @@ test("containment is derived from the containing block", () => {
 	expect(source).not.toInclude("window.innerWidth / 2");
 });
 
+test("each size tap pair drives one dimension, as the grip's arrow keys do", () => {
+	const steps = [...source.matchAll(/step: \(direction\) => (resize\([^)]*\))/g)].map(
+		(match) => match[1],
+	);
+	expect(steps).toEqual([
+		"resize(direction * RESIZE_STEP, 0)",
+		"resize(0, direction * RESIZE_STEP)",
+	]);
+});
+
 test("every lens is left out of the copy a lens shows", () => {
 	expect(source).toInclude("exclude: (element) => element.localName === lensTag");
 });

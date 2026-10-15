@@ -22,19 +22,24 @@ Tag: `pie-tool-magnifier`
 |---|---|---|---|
 | `visible` | `boolean` | `false` | Controls visibility |
 | `tool-id` | `string` | `'magnification'` | Identifier used by the ToolCoordinator |
-| `zoom` | `number` | `2` | Starting magnification, 2 meaning twice the size. Clamped to 1.25–6; a value of 1 or less, or none, is the default |
+| `zoom` | `number` | `2` | Starting magnification, 2 meaning twice the size. Clamped to 1.25–8; a value of 1 or less, or none, is the default |
 
 ## Features
 
-- Zoom steps of 1.5×, 2×, 2.5×, 3×, 4×, 5× and 6× from the bar's buttons or the
-  keyboard
+- Zoom steps of 1.5×, 2×, 2.5×, 3×, 4×, 5×, 6× and 8× from the bar's buttons or
+  the keyboard
 - Drag the bar or the viewport to move the lens; drag the corner grip to resize it
   around its centre
 - Full keyboard support:
-  - On the lens: arrow keys to move, `+`/`-` to zoom, `Escape` to close
+  - On the lens: arrow keys to move, `+`/`-` to zoom
   - On the resize grip: arrow keys change the width and height
-- Tap controls beside the focused lens move it and shrink or grow it without a drag
-  (WCAG 2.5.7), and every control meets the 24×24 minimum target size (WCAG 2.5.8)
+  - Anywhere on the page: `Escape` closes the lens, unless something else there
+    handles the key. Pressed on the lens it also returns focus to where it was
+    before the lens opened
+- Keyboard focus on the page beneath the lens shows as a ring in the magnified view
+- Tap controls beside the focused lens move it and change its width and height
+  without a drag (WCAG 2.5.7), and every control meets the 24×24 minimum target
+  size (WCAG 2.5.8). On a narrow pane they wrap onto a second row
 - Screen reader announcements for zoom, size and position changes
 - Stays inside its containing block, and opens over the part of it on screen
 - Connects to `AssessmentToolkitRuntimeContext` for ToolCoordinator integration

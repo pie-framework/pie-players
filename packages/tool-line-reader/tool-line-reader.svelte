@@ -234,19 +234,6 @@ tool layer, and the close control hides it there. Arrow keys move it, `+` and
 		announce(interfaceI18n.t('tools.lineReader.widthAnnounce', { pixels: width }));
 	}
 
-	/** Grows or shrinks the frame bands and the width together, as the corner grip does. */
-	function resizeFrame(direction: 1 | -1) {
-		frameBandHeight = clampFrameBandHeight(frameBandHeight + direction * RESIZE_STEP);
-		width = clampWidth(width + direction * WIDTH_STEP);
-		reclampPosition();
-		announce(
-			interfaceI18n.t('tools.lineReader.frameSizeAnnounce', {
-				frameHeight: frameBandHeight,
-				width,
-			}),
-		);
-	}
-
 	/** Moves the panel one step, as an arrow key or a move button does. */
 	function nudge(direction: OverlayPlacementNudge) {
 		const { dx, dy, announceKey } = OVERLAY_PLACEMENT_NUDGES[direction];
@@ -261,7 +248,8 @@ tool layer, and the close control hides it there. Arrow keys move it, `+` and
 		);
 	}
 
-	// The tap alternatives to dragging the panel and its two grips (WCAG 2.5.7).
+	// The tap alternatives to dragging the panel and its two grips (WCAG 2.5.7),
+	// one pair for each dimension a grip drives.
 	const tapTarget: OverlayTapTarget = { nudge };
 	const sizeControls = $derived<OverlaySizeControl[]>([
 		{
@@ -270,9 +258,14 @@ tool layer, and the close control hides it there. Arrow keys move it, `+` and
 			step: (direction) => resizePane(direction * RESIZE_STEP)
 		},
 		{
-			shrink: { glyph: '⊟', label: interfaceI18n.t('toolkit.window.shrinkA11y') },
-			grow: { glyph: '⊞', label: interfaceI18n.t('toolkit.window.growA11y') },
-			step: resizeFrame
+			shrink: { glyph: '↕−', label: interfaceI18n.t('tools.lineReader.shorterFrameA11y') },
+			grow: { glyph: '↕+', label: interfaceI18n.t('tools.lineReader.tallerFrameA11y') },
+			step: (direction) => resizeFrameBand(direction * RESIZE_STEP)
+		},
+		{
+			shrink: { glyph: '↔−', label: interfaceI18n.t('tools.lineReader.narrowerA11y') },
+			grow: { glyph: '↔+', label: interfaceI18n.t('tools.lineReader.widerA11y') },
+			step: (direction) => resizeWidth(direction * WIDTH_STEP)
 		}
 	]);
 
@@ -537,14 +530,16 @@ tool layer, and the close control hides it there. Arrow keys move it, `+` and
 		return () => clearTimeout(timer);
 	});
 
-	// The tap controls follow the panel's position and size.
+	// The tap controls follow the panel's position and size, a frame later: this
+	// effect can run before a new position reaches the panel's style.
 	$effect(() => {
 		void position.x;
 		void position.y;
 		void width;
 		void totalHeight;
 		void controlsEl;
-		untrack(dockControls);
+		const frame = requestAnimationFrame(dockControls);
+		return () => cancelAnimationFrame(frame);
 	});
 
 	// The containing block's extent changes with the window, and a panel that fitted
@@ -701,7 +696,8 @@ tool layer, and the close control hides it there. Arrow keys move it, `+` and
 
 	.pie-tool-line-reader:focus-visible {
 		outline: 3px solid var(--pie-button-focus-outline, var(--pie-primary, #4A90E2));
-		outline-offset: 2px;
+		/* Inside the containment gutter, so the block never clips the ring. */
+		outline-offset: 1px;
 	}
 
 	/*

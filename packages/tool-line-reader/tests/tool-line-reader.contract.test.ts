@@ -31,3 +31,10 @@ test("revealing the panel cannot scroll its pane", () => {
 		expect(call).toInclude("preventScroll");
 	}
 });
+
+test("each size tap pair drives one dimension, as a grip's arrow keys do", () => {
+	const steps = [...source.matchAll(/step: \(direction\) => (\w+)\(/g)].map(
+		(match) => match[1],
+	);
+	expect(steps).toEqual(["resizePane", "resizeFrameBand", "resizeWidth"]);
+});

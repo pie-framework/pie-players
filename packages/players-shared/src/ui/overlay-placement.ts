@@ -7,6 +7,7 @@
 
 import {
 	clampOffsetOverlappingBlock,
+	DEFAULT_CONTAINMENT_GUTTER,
 	type Point,
 	resolveContainingBlockRect,
 	rotatedExtent,
@@ -112,7 +113,8 @@ export interface OverlaySizeControl {
 /**
  * Docks an upright tool's tap controls beside it, as `uprightDockCorner`
  * places them. `OverlayPlacementControls` lays the controls out at the tool's
- * top-left corner, so the offset is taken from there.
+ * top-left corner, so the offset is taken from there. A strip wider than the
+ * block wraps onto more rows, so a phone-width pane does not clip it.
  */
 export function dockUprightControls(
 	element: HTMLElement,
@@ -120,6 +122,7 @@ export function dockUprightControls(
 ): void {
 	const block = resolveContainingBlockRect(element);
 	if (!block) return;
+	controls.style.maxWidth = `${Math.max(0, block.width - DEFAULT_CONTAINMENT_GUTTER * 2)}px`;
 	const tool = element.getBoundingClientRect();
 	const corner = uprightDockCorner(
 		tool,

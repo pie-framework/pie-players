@@ -74,7 +74,10 @@ export function createFocusTrap(
 	const wrap = options.wrap ?? true;
 	const onKeydown = (event: KeyboardEvent) => {
 		if (event.key === "Escape") {
-			options.onEscape?.();
+			if (!options.onEscape) return;
+			// Claimed, so a page-wide Escape listener does not also act on it.
+			event.preventDefault();
+			options.onEscape();
 			return;
 		}
 		if (event.key !== "Tab") return;

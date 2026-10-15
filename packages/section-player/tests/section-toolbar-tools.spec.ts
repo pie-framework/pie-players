@@ -8,6 +8,8 @@ type ToolSpec = {
 	buttonAriaLabel: string;
 	toolHostTag: string;
 	panelRole: "dialog" | "application" | "group";
+	/** The panel in the tool's shadow root that carries a `group` role. */
+	panelSelector?: string;
 };
 
 const SECTION_TOOL_SPECS: ToolSpec[] = [
@@ -40,6 +42,14 @@ const SECTION_TOOL_SPECS: ToolSpec[] = [
 		buttonAriaLabel: "Line Reader, reading guide",
 		toolHostTag: "pie-tool-line-reader",
 		panelRole: "group",
+		panelSelector: ".pie-tool-line-reader",
+	},
+	{
+		id: "magnification",
+		buttonAriaLabel: "Magnifier, enlarge the content under a lens",
+		toolHostTag: "pie-tool-magnifier",
+		panelRole: "group",
+		panelSelector: ".pie-tool-magnifier",
 	},
 	{
 		id: "ruler",
@@ -237,7 +247,9 @@ test.describe("section toolbar tools", () => {
 				`${spec.toolHostTag}[tool-id^="${spec.id}:section:"]`,
 			);
 			await expect(host, `Missing ${spec.id} tool host`).toHaveCount(1);
-			if (["protractor", "lineReader", "ruler"].includes(spec.id)) {
+			if (
+				["protractor", "lineReader", "magnification", "ruler"].includes(spec.id)
+			) {
 				await expect(host).toHaveAttribute(
 					"data-pie-tool-surface",
 					"frameless",
@@ -246,12 +258,10 @@ test.describe("section toolbar tools", () => {
 			if (spec.panelRole === "group") {
 				await expect
 					.poll(async () =>
-						host.first().evaluate((element) => {
-							const panel = element.shadowRoot?.querySelector(
-								".pie-tool-line-reader",
-							);
+						host.first().evaluate((element, selector) => {
+							const panel = element.shadowRoot?.querySelector(selector);
 							return panel?.getAttribute("role") || null;
-						}),
+						}, spec.panelSelector ?? ""),
 					)
 					.toBe("group");
 			} else {
@@ -262,7 +272,7 @@ test.describe("section toolbar tools", () => {
 
 			// Large dialog tools (e.g. graph) can cover the right toolbar; closing via the
 			// hosted shell matches real UX and avoids Playwright "intercepts pointer events".
-			// Inline tools (protractor, ruler, line reader) use toolbar toggle to close.
+			// Inline tools (protractor, ruler, line reader, magnifier) use toolbar toggle to close.
 			if (spec.panelRole === "dialog") {
 				const toolShell = page
 					.locator(`[data-pie-tool-shell="${spec.id}"]`)

@@ -297,9 +297,12 @@ const nlNL = {
 			windowHeightAnnounce: "Hoogte leesvenster {pixels} pixels",
 			frameHeightAnnounce: "Hoogte kader {pixels} pixels",
 			widthAnnounce: "Breedte {pixels} pixels",
-			frameSizeAnnounce: "Hoogte kader {frameHeight} pixels, breedte {width} pixels",
 			shorterWindowA11y: "Leesvenster lager maken",
 			tallerWindowA11y: "Leesvenster hoger maken",
+			shorterFrameA11y: "Kader lager maken",
+			tallerFrameA11y: "Kader hoger maken",
+			narrowerA11y: "Leeshulp smaller maken",
+			widerA11y: "Leeshulp breder maken",
 			applicationA11y:
 				"Leeshulp. Een doorzichtig leesvenster binnen een verduisterend kader. Verplaats met de pijltoetsen, verstel het leesvenster met + en -, en sluit met Escape. Hoogte leesvenster: {paneHeight} pixels, hoogte kader: {frameHeight} pixels",
 			resizeWindowFullA11y:
@@ -324,6 +327,10 @@ const nlNL = {
 			resizeFullA11y:
 				"Verstel het vergrootglas. Sleep, of gebruik de pijltoetsen. Huidige grootte {width} bij {height} pixels",
 			sizeAnnounce: "Vergrootglas {width} bij {height} pixels",
+			narrowerA11y: "Vergrootglas smaller maken",
+			widerA11y: "Vergrootglas breder maken",
+			shorterA11y: "Vergrootglas lager maken",
+			tallerA11y: "Vergrootglas hoger maken",
 		},
 		answerEliminator: {
 			name: "Antwoorden wegstrepen",

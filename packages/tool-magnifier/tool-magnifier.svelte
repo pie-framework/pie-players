@@ -19,7 +19,7 @@ it with `visible` and sets the starting magnification with `zoom` (the AfA PNP
 `magnification` amount; 2 when absent). Inside a toolkit runtime context it
 registers `tool-id` with the tool coordinator on the tool layer, and the close
 control hides it there. Arrow keys move it, `+` and `-` change the zoom, and
-Escape closes it.
+Escape closes it, wherever on the page it is pressed.
 -->
 
 <script lang="ts">
@@ -85,13 +85,17 @@ Escape closes it.
 		onDragStart: (container) => coordinator?.bringToFront(container as HTMLElement)
 	});
 	/** Size of the magnified viewport, excluding the bar and the border. */
-	let width = $state(360);
-	let height = $state(220);
+	let width = $state(480);
+	let height = $state(200);
 	let level = $state(2);
 	let resizing = $state(false);
 	let resizeStart = { width: 0, height: 0, mouseX: 0, mouseY: 0 };
 	const interfaceI18n = $derived(resolveInterfaceI18n(runtimeContext));
 	let announceText = $state('');
+	/** The page's keyboard focus, in the viewport's coordinates, while the lens shows it. */
+	let focusRing = $state<{ left: number; top: number; width: number; height: number } | null>(
+		null
+	);
 
 	const registration = createToolCoordinatorRegistration('Magnifier', ZIndexLayer.TOOL);
 
@@ -105,10 +109,10 @@ Escape closes it.
 	const CONTAINMENT_GUTTER = DEFAULT_CONTAINMENT_GUTTER;
 
 	// Zoom: the steps the controls move between, and the range a host may start in.
-	const ZOOM_STEPS = [1.5, 2, 2.5, 3, 4, 5, 6];
+	const ZOOM_STEPS = [1.5, 2, 2.5, 3, 4, 5, 6, 8];
 	const DEFAULT_ZOOM = 2;
 	const MIN_ZOOM = 1.25;
-	const MAX_ZOOM = 6;
+	const MAX_ZOOM = 8;
 
 	// Keyboard navigation constants
 	const MOVE_STEP = 10; // pixels
@@ -252,6 +256,11 @@ Escape closes it.
 		}
 	}
 
+	/** Closes the lens from outside it, leaving focus where the learner has it. */
+	function dismiss() {
+		if (coordinator && toolId) coordinator.hideTool(toolId);
+	}
+
 	// The copy of the page the lens shows, and the frame its transform is
 	// recomputed on. Neither is reactive: both are driven from events.
 	let mirror: MirrorFrame | null = null;
@@ -285,6 +294,29 @@ Escape closes it.
 		const offsetX = view.width / 2 - level * focusX;
 		const offsetY = view.height / 2 - level * focusY;
 		mirror.setTransform(`translate(${offsetX}px, ${offsetY}px) scale(${level})`);
+		focusRing = pageFocusBox(offsetX, offsetY);
+	}
+
+	/**
+	 * Where the page's keyboard focus sits in the copy, scaled and offset as the
+	 * copy is. The copy holds no focus of its own, so without this ring a control
+	 * focused beneath the lens shows no indicator at all.
+	 */
+	function pageFocusBox(offsetX: number, offsetY: number) {
+		let active = document.activeElement;
+		while (active?.shadowRoot?.activeElement) active = active.shadowRoot.activeElement;
+		if (!active || active === document.body || !active.matches(':focus-visible')) return null;
+		// Focus on a lens, this one or another, is not in the copy.
+		const root = active.getRootNode();
+		if (root instanceof ShadowRoot && root.host.localName === lensTag) return null;
+		const box = active.getBoundingClientRect();
+		if (box.width === 0 && box.height === 0) return null;
+		return {
+			left: offsetX + level * box.left,
+			top: offsetY + level * box.top,
+			width: level * box.width,
+			height: level * box.height
+		};
 	}
 
 	function dockControls() {
@@ -369,13 +401,19 @@ Escape closes it.
 		);
 	}
 
-	// The tap alternatives to dragging the lens and its grip (WCAG 2.5.7).
+	// The tap alternatives to dragging the lens and its grip (WCAG 2.5.7), one
+	// pair for each dimension the grip drives.
 	const tapTarget: OverlayTapTarget = { nudge };
 	const sizeControls = $derived<OverlaySizeControl[]>([
 		{
-			shrink: { glyph: '⊟', label: interfaceI18n.t('toolkit.window.shrinkA11y') },
-			grow: { glyph: '⊞', label: interfaceI18n.t('toolkit.window.growA11y') },
-			step: (direction) => resize(direction * RESIZE_STEP, direction * RESIZE_STEP)
+			shrink: { glyph: '↔−', label: interfaceI18n.t('tools.magnification.narrowerA11y') },
+			grow: { glyph: '↔+', label: interfaceI18n.t('tools.magnification.widerA11y') },
+			step: (direction) => resize(direction * RESIZE_STEP, 0)
+		},
+		{
+			shrink: { glyph: '↕−', label: interfaceI18n.t('tools.magnification.shorterA11y') },
+			grow: { glyph: '↕+', label: interfaceI18n.t('tools.magnification.tallerA11y') },
+			step: (direction) => resize(0, direction * RESIZE_STEP)
 		}
 	]);
 
@@ -531,11 +569,12 @@ Escape closes it.
 		untrack(schedulePlacement);
 	});
 
-	// Scrolling moves the content under the lens, and a window resize changes the
-	// containing block's extent.
+	// Scrolling moves the content under the lens, a window resize changes the
+	// containing block's extent, and focus moving moves the ring the lens draws.
 	$effect(() => {
 		if (!isBrowser || !visible) return;
 		const onScroll = () => schedulePlacement();
+		const onFocusChange = () => schedulePlacement();
 		const onResize = () => {
 			width = clampWidth(width);
 			height = clampHeight(height);
@@ -543,11 +582,30 @@ Escape closes it.
 			schedulePlacement();
 		};
 		document.addEventListener('scroll', onScroll, { capture: true, passive: true });
+		document.addEventListener('focusin', onFocusChange);
+		document.addEventListener('focusout', onFocusChange);
 		window.addEventListener('resize', onResize);
 		return () => {
 			document.removeEventListener('scroll', onScroll, true);
+			document.removeEventListener('focusin', onFocusChange);
+			document.removeEventListener('focusout', onFocusChange);
 			window.removeEventListener('resize', onResize);
 		};
+	});
+
+	// Escape closes the lens from anywhere on the page, so a learner whose focus
+	// is on content the lens covers can uncover it without moving focus (WCAG
+	// 2.4.11). An Escape something else already claimed is left alone: the lens's
+	// own, which also returns focus, and a dialog's.
+	$effect(() => {
+		if (!isBrowser || !visible) return;
+		const onKeyDown = (e: KeyboardEvent) => {
+			if (e.key !== 'Escape' || e.defaultPrevented || e.isComposing) return;
+			e.preventDefault();
+			dismiss();
+		};
+		document.addEventListener('keydown', onKeyDown);
+		return () => document.removeEventListener('keydown', onKeyDown);
 	});
 </script>
 
@@ -628,7 +686,17 @@ Escape closes it.
 			</div>
 
 			<!-- The magnified copy of the page is mounted here. -->
-			<div bind:this={viewportEl} class="pie-tool-magnifier__viewport" aria-hidden="true"></div>
+			<div bind:this={viewportEl} class="pie-tool-magnifier__viewport" aria-hidden="true">
+				{#if focusRing}
+					<div
+						class="pie-tool-magnifier__focus"
+						style:left="{focusRing.left}px"
+						style:top="{focusRing.top}px"
+						style:width="{focusRing.width}px"
+						style:height="{focusRing.height}px"
+					></div>
+				{/if}
+			</div>
 
 			<button
 				type="button"
@@ -687,7 +755,8 @@ Escape closes it.
 
 	.pie-tool-magnifier:focus-visible {
 		outline: 3px solid var(--pie-button-focus-outline, var(--pie-primary, #4a90e2));
-		outline-offset: 2px;
+		/* Inside the containment gutter, so the block never clips the ring. */
+		outline-offset: 1px;
 	}
 
 	.pie-tool-magnifier:active {
@@ -769,6 +838,17 @@ Escape closes it.
 		flex: 1;
 		overflow: hidden;
 		background-color: var(--pie-background, #fff);
+	}
+
+	/* Drawn above the copy, which the mirror appends to the viewport after it. */
+	.pie-tool-magnifier__focus {
+		position: absolute;
+		z-index: 1;
+		box-sizing: border-box;
+		outline: 3px solid var(--pie-button-focus-outline, var(--pie-primary, #4a90e2));
+		outline-offset: 2px;
+		border-radius: 2px;
+		pointer-events: none;
 	}
 
 	/* A corner grip over the viewport, on a backing so it reads over any content. */

@@ -92,10 +92,14 @@
 		border: 1px solid var(--pie-border-light, #cbd5e0);
 		border-radius: 8px;
 		box-shadow: 0 2px 6px color-mix(in srgb, var(--pie-black, #000) 15%, transparent);
+		/* So the docking's max-width bounds the whole strip. */
+		box-sizing: border-box;
 		cursor: default;
 		/* Arrows and turn glyphs are physical directions, whatever the script. */
 		direction: ltr;
 		display: flex;
+		/* Rows only where an upright tool's docking caps the width. */
+		flex-wrap: wrap;
 		gap: 4px;
 		left: 0;
 		padding: 4px;

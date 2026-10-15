@@ -320,6 +320,59 @@ describe("a seek restart", () => {
 		expect(states).not.toContain(PlaybackState.ERROR);
 		expect(service.getState()).toBe(PlaybackState.IDLE);
 	});
+
+	test("a seek while it loads counts from its target, so presses add up", async () => {
+		const { impl, service, playback, states } = await seekingService();
+		// A server voice: the restarted audio has not started sounding.
+		impl.deferStart = true;
+
+		void service.seekForward();
+		await waitFor(() => impl.speakCalls.length === 2);
+		expect(service.getState()).toBe(PlaybackState.LOADING);
+
+		void service.seekForward();
+		await waitFor(() => impl.speakCalls.length === 3);
+		expect(impl.speakCalls.at(-1)).toBe("Third.");
+		expect(service.getState()).toBe(PlaybackState.LOADING);
+
+		const rewind = service.seekBackward();
+		await waitFor(() => impl.speakCalls.length === 4);
+		expect(impl.speakCalls.at(-1)).toBe("Second.");
+
+		impl.startHeld?.();
+		expect(service.getState()).toBe(PlaybackState.PLAYING);
+		impl.deferStart = false;
+		impl.holdSpeech = false;
+		impl.finish();
+		await rewind;
+		await playback;
+
+		expect(impl.speakCalls).toEqual([
+			"First.",
+			"Second.",
+			"Third.",
+			"Second.",
+			"Third.",
+		]);
+		expect(states).not.toContain(PlaybackState.ERROR);
+		expect(service.getState()).toBe(PlaybackState.IDLE);
+	});
+
+	test("a seek while the read first loads is ignored", async () => {
+		const { impl, service } = await newService();
+		usePlan(service, threeSentences);
+		impl.deferStart = true;
+		impl.holdSpeech = true;
+		const playback = service.speak(contentWith("First. Second. Third."));
+		await waitFor(() => impl.speakCalls.length === 1);
+		expect(service.getState()).toBe(PlaybackState.LOADING);
+
+		await service.seekForward();
+
+		expect(impl.speakCalls).toEqual(["First."]);
+		service.stop();
+		await playback;
+	});
 });
 
 describe("a pause or stop while the read loads", () => {

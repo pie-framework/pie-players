@@ -115,6 +115,13 @@ const isNextRelease = (published, local) => {
 	);
 };
 
+/** The releases in `history` on `major`; an unparseable version counts, so it cannot hide drift. */
+const releasesOnMajor = (history, major) =>
+	history.filter((version) => {
+		const semver = parseSemver(version);
+		return !semver || semver.major === major;
+	});
+
 const formatDetails = (entries) =>
 	entries
 		.slice()
@@ -132,18 +139,21 @@ const formatDetails = (entries) =>
  * published group at 0.3.64). The documented flow from there is ordinary: the next release
  * publishes it with the group at the group's version.
  *
- * The discriminant is the package's own release history, not its distance from the baseline —
- * distance alone cannot tell a newcomer from a member that stopped being released. A newcomer
- * has published exactly once, at that single bootstrap version. A drifted member has published
- * repeatedly, so it fails this and still stops the release.
+ * The discriminant is the package's own release history on the group's major, not its distance
+ * from the baseline — distance alone cannot tell a newcomer from a member that stopped being
+ * released. A newcomer has published exactly once on that major, at its bootstrap version. A
+ * drifted member has published repeatedly, so it fails this and still stops the release.
+ * Releases on an older major are a reclaimed name's, left by an earlier package that
+ * `bootstrap-package` took the name back from, and do not count.
  *
  * @param {{ semver: {major: number, minor: number, patch: number}, version: string }} entry
  * @param {{major: number, minor: number, patch: number}} localSemver
  * @param {string[] | undefined} history every version the registry holds for this package
  */
 const isCatchingUpNewcomer = (entry, localSemver, history) => {
-	if (!Array.isArray(history) || history.length !== 1) return false;
-	if (history[0] !== entry.version) return false;
+	if (!Array.isArray(history)) return false;
+	const onLine = releasesOnMajor(history, localSemver.major);
+	if (onLine.length !== 1 || onLine[0] !== entry.version) return false;
 	if (entry.semver.major !== localSemver.major) return false;
 	if (entry.semver.minor !== localSemver.minor) return false;
 	// More than one release behind. A package exactly one release behind is the ordinary
@@ -209,8 +219,8 @@ export function classifyPublishedSequence({
 			? {
 					catchingUp: catchingUp.map(({ name, version }) => ({ name, version })),
 					message:
-						`Publishing ${localVersion} for ${catchingUp.length} package(s) whose only released version is ` +
-						`below the group: ${catchingUp.map(({ name, version }) => `${name}@${version}`).sort().join(", ")}. ` +
+						`Publishing ${localVersion} for ${catchingUp.length} package(s) whose only release on the ` +
+						`${localSemver.major}.x line is below the group: ${catchingUp.map(({ name, version }) => `${name}@${version}`).sort().join(", ")}. ` +
 						"A bootstrapped package joins the group at the next release rather than stepping through the " +
 						"versions it missed, so these are excluded from the lockstep comparison.",
 				}
@@ -310,12 +320,42 @@ export function classifyPublishedSequence({
 		};
 	}
 
+	// A name whose every release predates the group's major is an earlier package's, and the remedy
+	// is the reclaim publish rather than any alignment. Only while some member has reached that
+	// major: before then the whole group is on the older one, as it is when it opens a new major.
+	const groupOnLine = entries.some(
+		({ semver }) => semver.major === localSemver.major,
+	);
+	const unreclaimed = groupOnLine
+		? entries
+				.filter(({ name, semver }) => {
+					const history = publishedHistoryMap?.get(name);
+					return (
+						semver.major < localSemver.major &&
+						Array.isArray(history) &&
+						releasesOnMajor(history, localSemver.major).length === 0
+					);
+				})
+				.map(({ name }) => name)
+				.sort()
+		: [];
+	const reclaimHint = unreclaimed
+		.map(
+			(name) =>
+				`\n\n${name} has no release on the ${localSemver.major}.x line: npm holds only an earlier package's ` +
+				`releases under the name. Reclaim it with one publish on the line:\n` +
+				`  bun run bootstrap-package -- --only ${name} --dry-run\n` +
+				`  bun run bootstrap-package -- --only ${name}`,
+		)
+		.join("");
+
 	return {
 		verdict: "stop",
 		message:
 			`Expected one lockstep published npm version across fixed packages, found ${distinct.size}:\n${details}\n\n` +
 			`The only publishable split is an unfinished publish of the local version ${localVersion}: some packages ` +
 			`at ${localVersion} and the rest exactly one release behind. This is not that, so republishing will not ` +
-			"reconcile it — align the group manually before releasing.",
+			"reconcile it — align the group manually before releasing." +
+			reclaimHint,
 	};
 }

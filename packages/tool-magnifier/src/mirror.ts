@@ -9,15 +9,24 @@
  * serialized from the live DOM: open shadow roots become declarative shadow
  * roots, every style sheet is written out from its CSSOM (so rules inserted with
  * `insertRule` survive), and form state, scroll offsets, canvases and video
- * frames are copied across after the copy loads. Two frames alternate, so a
- * re-render paints into the hidden one and swaps when it is ready, and the lens
- * never shows a half-loaded document.
+ * frames are copied across after the copy loads. Highlights painted through the
+ * CSS Custom Highlight API are mapped onto the copy's nodes and follow the page's
+ * from frame to frame. Two frames alternate, so a re-render paints into the
+ * hidden one and swaps when it is ready, and the lens never shows a half-loaded
+ * document.
  *
  * What the copy cannot carry: closed shadow roots, cross-origin iframes,
- * WebGL canvases without a preserved drawing buffer, top-layer content and
- * highlights painted through the CSS Custom Highlight API, which belong to the
- * live document's ranges.
+ * WebGL canvases without a preserved drawing buffer and top-layer content.
  */
+
+import {
+	type CopyMap,
+	createCopyMap,
+	highlightSignature,
+	type NodePosition,
+	paintHighlights,
+	sameSignature,
+} from "./highlights.js";
 
 const SCROLL_ATTRIBUTE = "data-pie-magnifier-scroll";
 const MEDIA_ATTRIBUTE = "data-pie-magnifier-media";
@@ -46,6 +55,9 @@ const SKIPPED_ELEMENTS = new Set([
 	"object",
 	"embed",
 ]);
+
+/** Elements whose start tag swallows the newline straight after it. */
+const LEADING_NEWLINE_ELEMENTS = new Set(["pre", "listing"]);
 
 /** Attributes that would make the copy act rather than show. */
 const DROPPED_ATTRIBUTES = new Set([
@@ -82,6 +94,10 @@ export interface SerializedDocument {
 	media: Array<HTMLCanvasElement | HTMLVideoElement>;
 	/** The open shadow roots the copy reproduces. */
 	shadowRoots: ShadowRoot[];
+	/** The sheets each root had adopted. */
+	adoptedSheets: Map<Document | ShadowRoot, CSSStyleSheet[]>;
+	/** Where each text node and element in the body was written. */
+	positions: Map<Node, NodePosition>;
 }
 
 const escapeText = (value: string) =>
@@ -121,6 +137,8 @@ export function serializeDocument(
 	const scrollers: Element[] = [];
 	const media: Array<HTMLCanvasElement | HTMLVideoElement> = [];
 	const shadowRoots: ShadowRoot[] = [];
+	const adopted = new Map<Document | ShadowRoot, CSSStyleSheet[]>();
+	const positions = new Map<Node, NodePosition>();
 	const scrollingElement = doc.scrollingElement;
 	let nonce = "";
 	const out: string[] = [];
@@ -136,7 +154,8 @@ export function serializeDocument(
 	};
 
 	const adoptedSheets = (root: Document | ShadowRoot) => {
-		const sheets = root.adoptedStyleSheets ?? [];
+		const sheets = Array.from(root.adoptedStyleSheets ?? []);
+		adopted.set(root, sheets);
 		for (const sheet of sheets) {
 			const text = sheetText(sheet);
 			if (text) styleElement(text, nonce ? ` nonce="${escapeAttribute(nonce)}"` : "");
@@ -185,8 +204,33 @@ export function serializeDocument(
 		return source;
 	};
 
-	const children = (node: Node) => {
-		for (const child of Array.from(node.childNodes)) visit(child);
+	/**
+	 * Writes a parent's children and records where each one lands. An empty
+	 * comment keeps adjacent text nodes apart, which the parser would otherwise
+	 * merge into one.
+	 */
+	const children = (parent: Node) => {
+		const swallowsNewline =
+			parent.nodeType === Node.ELEMENT_NODE &&
+			(parent as Element).namespaceURI === HTML_NAMESPACE &&
+			LEADING_NEWLINE_ELEMENTS.has((parent as Element).localName);
+		let index = 0;
+		let afterText = false;
+		for (const child of Array.from(parent.childNodes)) {
+			if (child.nodeType === Node.TEXT_NODE) {
+				const text = child.nodeValue ?? "";
+				if (!text) continue;
+				if (afterText) out.push("<!---->");
+				else if (index === 0 && swallowsNewline && text.startsWith("\n")) out.push("\n");
+				out.push(escapeText(text));
+				afterText = true;
+			} else if (visit(child)) {
+				afterText = false;
+			} else {
+				continue;
+			}
+			positions.set(child, { parent, index: index++ });
+		}
 	};
 
 	const shadow = (element: Element) => {
@@ -199,18 +243,15 @@ export function serializeDocument(
 		out.push("</template>");
 	};
 
-	function visit(node: Node) {
-		if (node.nodeType === Node.TEXT_NODE) {
-			out.push(escapeText(node.nodeValue ?? ""));
-			return;
-		}
-		if (node.nodeType !== Node.ELEMENT_NODE) return;
+	/** Writes an element, reporting whether it did. */
+	function visit(node: Node): boolean {
+		if (node.nodeType !== Node.ELEMENT_NODE) return false;
 		const element = node as Element;
-		if (exclude?.(element)) return;
+		if (exclude?.(element)) return false;
 		const html = element.namespaceURI === HTML_NAMESPACE;
 		// `localName` keeps SVG's and MathML's camel case (`foreignObject`).
 		const tag = element.localName;
-		if (html && SKIPPED_ELEMENTS.has(tag)) return;
+		if (html && SKIPPED_ELEMENTS.has(tag)) return false;
 
 		if (tag === "style") {
 			const css = html ? sheetText((element as HTMLStyleElement).sheet) : null;
@@ -219,7 +260,7 @@ export function serializeDocument(
 			out.push(`<style${attributes(element)}${nonceAttribute(element)}>`);
 			out.push(html ? rawStyleText(text) : escapeText(text));
 			out.push("</style>");
-			return;
+			return true;
 		}
 
 		let marker = "";
@@ -237,7 +278,7 @@ export function serializeDocument(
 		const sources = sourceAttributes(element, tag);
 		const nonceText = tag === "link" ? nonceAttribute(element) : "";
 		out.push(`<${tag}${attributes(element, skip)}${sources}${stateful}${nonceText}${marker}>`);
-		if (html && VOID_ELEMENTS.has(tag)) return;
+		if (html && VOID_ELEMENTS.has(tag)) return true;
 		shadow(element);
 		if (html && tag === "textarea") {
 			out.push(escapeText((element as HTMLTextAreaElement).value));
@@ -248,6 +289,7 @@ export function serializeDocument(
 			children(element);
 		}
 		out.push(`</${tag}>`);
+		return true;
 	}
 
 	const head = () => {
@@ -291,7 +333,14 @@ export function serializeDocument(
 		out.push("</body>");
 	}
 	out.push("</html>");
-	return { html: out.join(""), scrollers, media, shadowRoots };
+	return {
+		html: out.join(""),
+		scrollers,
+		media,
+		shadowRoots,
+		adoptedSheets: adopted,
+		positions,
+	};
 }
 
 export interface MirrorFrameOptions {
@@ -320,6 +369,8 @@ interface FrameState {
 	iframe: HTMLIFrameElement;
 	scrollers: Element[];
 	mirrorScrollers: Map<number, Element>;
+	adoptedSheets: SerializedDocument["adoptedSheets"];
+	copy: CopyMap | null;
 }
 
 /** Collects `[attribute]` elements from a document and its shadow roots. */
@@ -361,7 +412,13 @@ export function createMirrorFrame(options: MirrorFrameOptions): MirrorFrame {
 			background: "transparent",
 		});
 		container.append(iframe);
-		return { iframe, scrollers: [], mirrorScrollers: new Map() };
+		return {
+			iframe,
+			scrollers: [],
+			mirrorScrollers: new Map(),
+			adoptedSheets: new Map(),
+			copy: null,
+		};
 	};
 
 	const frames: [FrameState, FrameState] = [makeFrame(), makeFrame()];
@@ -374,6 +431,9 @@ export function createMirrorFrame(options: MirrorFrameOptions): MirrorFrame {
 	let throttleTimer: ReturnType<typeof setTimeout> | null = null;
 	let safetyTimer: ReturnType<typeof setTimeout> | null = null;
 	let observedRoots: ShadowRoot[] = [];
+	const highlights = view?.CSS?.highlights;
+	let highlightFrame = 0;
+	let paintedHighlights: unknown[] = [];
 
 	const sizeFrames = () => {
 		const width = doc.documentElement.clientWidth;
@@ -487,6 +547,47 @@ export function createMirrorFrame(options: MirrorFrameOptions): MirrorFrame {
 		if (shown >= 0) applyScroll(frames[shown]);
 	}
 
+	const paint = (state: FrameState) => {
+		const mirrorWindow = state.iframe.contentWindow;
+		if (!highlights || !state.copy || !mirrorWindow) return;
+		paintedHighlights = highlightSignature(highlights);
+		paintHighlights(highlights, state.copy, mirrorWindow);
+	};
+
+	/**
+	 * Whether a highlight sits in a root whose adopted sheets changed after the
+	 * copy was taken. Adopting a sheet is no DOM mutation, and the sheet styling a
+	 * highlight is often adopted into a shadow root as its first range lands there.
+	 */
+	const sheetsChanged = (state: FrameState, registry: HighlightRegistry) => {
+		let changed = false;
+		registry.forEach((highlight) => {
+			highlight.forEach((range) => {
+				if (changed) return;
+				const root = range.startContainer.getRootNode() as Document | ShadowRoot;
+				const taken = state.adoptedSheets.get(root);
+				const current = root.adoptedStyleSheets;
+				if (!taken || !current) return;
+				changed =
+					taken.length !== current.length || taken.some((sheet, i) => sheet !== current[i]);
+			});
+		});
+		return changed;
+	};
+
+	/**
+	 * Highlights change without touching the DOM, and the registry reports no
+	 * change, so it is compared with what was last painted once a frame.
+	 */
+	const watchHighlights = () => {
+		if (destroyed || !highlights || !view) return;
+		highlightFrame = view.requestAnimationFrame(watchHighlights);
+		if (shown < 0 || sameSignature(highlightSignature(highlights), paintedHighlights)) return;
+		const state = frames[shown];
+		if (sheetsChanged(state, highlights)) invalidate();
+		paint(state);
+	};
+
 	const finish = (index: number, snapshot: SerializedDocument) => {
 		if (safetyTimer !== null) clearTimeout(safetyTimer);
 		safetyTimer = null;
@@ -495,9 +596,13 @@ export function createMirrorFrame(options: MirrorFrameOptions): MirrorFrame {
 		const mirrorDoc = state.iframe.contentDocument;
 		state.scrollers = snapshot.scrollers;
 		state.mirrorScrollers = new Map();
+		state.adoptedSheets = snapshot.adoptedSheets;
+		state.copy = null;
 		if (mirrorDoc) {
 			collectMarked(mirrorDoc, SCROLL_ATTRIBUTE, state.mirrorScrollers);
 			paintMedia(mirrorDoc, snapshot.media);
+			state.copy = createCopyMap(snapshot.positions, doc.body, mirrorDoc);
+			paint(state);
 		}
 		applyScroll(state);
 		state.iframe.style.visibility = "visible";
@@ -557,6 +662,7 @@ export function createMirrorFrame(options: MirrorFrameOptions): MirrorFrame {
 	view?.addEventListener("resize", onResize);
 	sizeFrames();
 	render();
+	watchHighlights();
 
 	return {
 		invalidate,
@@ -570,6 +676,7 @@ export function createMirrorFrame(options: MirrorFrameOptions): MirrorFrame {
 			observer.disconnect();
 			if (throttleTimer !== null) clearTimeout(throttleTimer);
 			if (safetyTimer !== null) clearTimeout(safetyTimer);
+			if (highlightFrame) view?.cancelAnimationFrame(highlightFrame);
 			listen(doc, false);
 			for (const root of observedRoots) listen(root, false);
 			observedRoots = [];

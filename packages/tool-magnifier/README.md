@@ -72,6 +72,12 @@ A mutation observer marks the copy stale, and it is re-rendered at most every
 200 ms. Two iframes alternate, so the new copy paints in the hidden one and swaps in
 when it has loaded. The lens itself is left out of the copy.
 
+Highlights painted through the CSS Custom Highlight API, text-to-speech word and
+sentence highlighting and annotation-toolbar highlights among them, are mapped onto
+the copy's nodes and registered in its frame under the same names, where the copy's
+own `::highlight()` rules paint them. They follow the page every frame, without
+waiting for a re-render.
+
 The copy is inert: it takes no input and runs no script, so the lens is a viewing
 aid and the learner answers on the page beneath it.
 
@@ -79,9 +85,8 @@ aid and the learner answers on the page beneath it.
 
 - Closed shadow roots, cross-origin iframes and WebGL canvases without a preserved
   drawing buffer appear empty.
-- Highlights painted through the CSS Custom Highlight API — text-to-speech word
-  highlighting and annotation-toolbar highlights — belong to the live document's
-  ranges and do not appear in the copy.
+- A highlight over markup the HTML parser restructures, such as a block element a
+  script placed inside a `<p>`, does not show.
 - Top-layer content is not carried: a modal dialog shows as a non-modal one in
   place, and an open popover does not show.
 - A custom element that renders its content only from script, with no open shadow

@@ -160,6 +160,19 @@ The toolbar for an item, passage or section, rendering a button for each tool th
 		});
 		return () => observer.disconnect();
 	};
+	// Turns the glyph and leaves the button upright: a turned button's box grows
+	// into its neighbours' and covers their hit areas. Re-applies when Lit renders.
+	const turnNdsGlyph = (button: HTMLElement, turn: string) => {
+		const apply = () => {
+			for (const icon of button.querySelectorAll<HTMLElement>('i.nds-icon-button__icon')) {
+				icon.style.rotate = turn;
+			}
+		};
+		apply();
+		const observer = new MutationObserver(apply);
+		observer.observe(button, { childList: true, subtree: true });
+		return () => observer.disconnect();
+	};
 	// A stylesheet that fails to load stays in <head> marked
 	// `data-pie-load-failed`: no later call requests it again, and no shadow root
 	// copies it.
@@ -1606,7 +1619,8 @@ The toolbar for an item, passage or section, rendering a button for each tool th
 			label: string,
 			iconName: string,
 			onActivate: () => void,
-			faVariant: NdsGlyphVariant = 'fa-regular'
+			faVariant: NdsGlyphVariant = 'fa-regular',
+			glyphTurn?: string
 		) => {
 			ensureNdsAssets();
 			const button = document.createElement('nds-icon-button');
@@ -1621,8 +1635,9 @@ The toolbar for an item, passage or section, rendering a button for each tool th
 				onActivate();
 				bringToFront();
 			});
-			// Detached with the window, which takes the observer with it.
+			// Detached with the window, which takes the observers with it.
 			applyNdsGlyphVariant(button, faVariant);
+			if (glyphTurn) turnNdsGlyph(button, glyphTurn);
 			return button;
 		};
 
@@ -2184,14 +2199,13 @@ The toolbar for an item, passage or section, rendering a button for each tool th
 				glyph: string,
 				iconName: string,
 				onActivate: () => void,
-				iconTurn?: string
+				glyphTurn?: string
 			) => {
 				if (!controlsEl) return;
 				const label = currentArgs.i18n.t(key);
 				const control = useNdsShellIcons
-					? createShellIconButton(label, iconName, onActivate)
+					? createShellIconButton(label, iconName, onActivate, 'fa-regular', glyphTurn)
 					: createShellControlButton(label, glyph, onActivate);
-				if (useNdsShellIcons && iconTurn) control.style.rotate = iconTurn;
 				localizedControlEls.push({ el: control, key });
 				controlsEl.appendChild(control);
 			};

@@ -1,5 +1,18 @@
 # @pie-players/pie-item-player
 
+## 1.0.0-beta.3
+
+### Patch Changes
+
+- 95de24f: Add `sessionCommitContext` and the item player's `idleSaveDelayMs` (`idle-save-delay-ms`), which sets how long a response editor waits for the learner to pause before committing; `0` commits on blur only. The section player takes it as `runtime.player.idleSaveDelayMs`.
+- a9fb597: Image and table scroll wrappers take the node's inline vertical margins, so a table with a negative top margin is no longer clipped, and the item player keeps a wrapper a focusable region only while it scrolls.
+- 66cb4d4: `registerPreloadedElements` reads an entry's `package` and `version` from the `piePackage` its `./browser/*` modules export, and defaults `tag` to the package name without its `@`, with `-` for `/`, so `{ element, controller }` registers a pie-elements-ng release that exports it. A `package` or `version` the entry also gives must match the modules, and an element module and controller module from different builds throw. Every entry's versioned tag is now validated before any is registered.
+- Updated dependencies [95de24f]
+- Updated dependencies [a9fb597]
+- Updated dependencies [66cb4d4]
+  - @pie-players/pie-context@1.0.0-beta.3
+  - @pie-players/pie-players-shared@1.0.0-beta.3
+
 ## 1.0.0-beta.2
 
 ### Patch Changes

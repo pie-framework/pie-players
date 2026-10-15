@@ -32,21 +32,31 @@ tool layer, and the close control hides it there. Arrow keys move it, `+` and
 		AssessmentToolkitRuntimeContext,
 		ToolCoordinatorApi,
 	} from '@pie-players/pie-assessment-toolkit/tools/registration';
-import {
-	clampPointWithinBlock,
-	createPointerDragController,
-	createPointerGesture,
-	DEFAULT_CONTAINMENT_GUTTER,
-	resolveContainingBlockRect
-} from '@pie-players/pie-players-shared';
-import { resolveInterfaceI18n } from '@pie-players/pie-players-shared/i18n/provider';
-import { onMount, untrack } from 'svelte';
+	import {
+		clampPointWithinBlock,
+		createFocusReturn,
+		createPointerDragController,
+		createPointerGesture,
+		DEFAULT_CONTAINMENT_GUTTER,
+		dockUprightControls,
+		OVERLAY_PLACEMENT_NUDGES,
+		type OverlayPlacementNudge,
+		type OverlaySizeControl,
+		type OverlayTapTarget,
+		resolveContainingBlockRect
+	} from '@pie-players/pie-players-shared';
+	import { OverlayPlacementControls } from '@pie-players/pie-players-shared/components/overlay-placement';
+	import { resolveInterfaceI18n } from '@pie-players/pie-players-shared/i18n/provider';
+	import { onMount, untrack } from 'svelte';
 
 	let { visible = false, toolId = 'lineReader' }: { visible?: boolean; toolId?: string } = $props();
 
 	const isBrowser = typeof window !== 'undefined';
 
 	let containerEl = $state<HTMLDivElement | undefined>();
+	let controlsEl = $state<HTMLDivElement | undefined>();
+	/** Where focus goes back to when the learner closes the panel. */
+	const focusReturn = createFocusReturn();
 	let runtimeContext = $state<AssessmentToolkitRuntimeContext | null>(null);
 	const coordinator = $derived(
 		runtimeContext?.toolCoordinator as ToolCoordinatorApi | undefined,
@@ -224,8 +234,56 @@ import { onMount, untrack } from 'svelte';
 		announce(interfaceI18n.t('tools.lineReader.widthAnnounce', { pixels: width }));
 	}
 
+	/** Grows or shrinks the frame bands and the width together, as the corner grip does. */
+	function resizeFrame(direction: 1 | -1) {
+		frameBandHeight = clampFrameBandHeight(frameBandHeight + direction * RESIZE_STEP);
+		width = clampWidth(width + direction * WIDTH_STEP);
+		reclampPosition();
+		announce(
+			interfaceI18n.t('tools.lineReader.frameSizeAnnounce', {
+				frameHeight: frameBandHeight,
+				width,
+			}),
+		);
+	}
+
+	/** Moves the panel one step, as an arrow key or a move button does. */
+	function nudge(direction: OverlayPlacementNudge) {
+		const { dx, dy, announceKey } = OVERLAY_PLACEMENT_NUDGES[direction];
+		position = clampToContainingBlock({
+			x: position.x + dx * MOVE_STEP,
+			y: position.y + dy * MOVE_STEP
+		});
+		announce(
+			interfaceI18n.t(announceKey, {
+				position: Math.round(dx === 0 ? position.y : position.x),
+			}),
+		);
+	}
+
+	// The tap alternatives to dragging the panel and its two grips (WCAG 2.5.7).
+	const tapTarget: OverlayTapTarget = { nudge };
+	const sizeControls = $derived<OverlaySizeControl[]>([
+		{
+			shrink: { glyph: '−', label: interfaceI18n.t('tools.lineReader.shorterWindowA11y') },
+			grow: { glyph: '+', label: interfaceI18n.t('tools.lineReader.tallerWindowA11y') },
+			step: (direction) => resizePane(direction * RESIZE_STEP)
+		},
+		{
+			shrink: { glyph: '⊟', label: interfaceI18n.t('toolkit.window.shrinkA11y') },
+			grow: { glyph: '⊞', label: interfaceI18n.t('toolkit.window.growA11y') },
+			step: resizeFrame
+		}
+	]);
+
+	function dockControls() {
+		if (containerEl && controlsEl) dockUprightControls(containerEl, controlsEl);
+	}
+
 	function closeTool() {
 		if (coordinator && toolId) {
+			// Before the panel goes, so focus never falls to the document body.
+			focusReturn.restore();
 			coordinator.hideTool(toolId);
 		}
 	}
@@ -331,51 +389,19 @@ import { onMount, untrack } from 'svelte';
 
 		switch (e.key) {
 			case 'ArrowUp':
-				position = clampToContainingBlock({
-					x: position.x,
-					y: position.y - MOVE_STEP
-				});
-				announce(
-					interfaceI18n.t('toolkit.announce.movedUp', {
-						position: Math.round(position.y),
-					}),
-				);
+				nudge('up');
 				handled = true;
 				break;
 			case 'ArrowDown':
-				position = clampToContainingBlock({
-					x: position.x,
-					y: position.y + MOVE_STEP
-				});
-				announce(
-					interfaceI18n.t('toolkit.announce.movedDown', {
-						position: Math.round(position.y),
-					}),
-				);
+				nudge('down');
 				handled = true;
 				break;
 			case 'ArrowLeft':
-				position = clampToContainingBlock({
-					x: position.x - MOVE_STEP,
-					y: position.y
-				});
-				announce(
-					interfaceI18n.t('toolkit.announce.movedLeft', {
-						position: Math.round(position.x),
-					}),
-				);
+				nudge('left');
 				handled = true;
 				break;
 			case 'ArrowRight':
-				position = clampToContainingBlock({
-					x: position.x + MOVE_STEP,
-					y: position.y
-				});
-				announce(
-					interfaceI18n.t('toolkit.announce.movedRight', {
-						position: Math.round(position.x),
-					}),
-				);
+				nudge('right');
 				handled = true;
 				break;
 			case '+':
@@ -400,9 +426,9 @@ import { onMount, untrack } from 'svelte';
 	}
 
 	/**
-	 * Keyboard alternative to dragging the reading-window handle (WCAG 2.5.7):
-	 * arrow keys resize while the handle itself has focus. Handled keys are
-	 * stopped so they do not also reach the container's move shortcuts.
+	 * Keyboard alternative to dragging the reading-window handle: arrow keys
+	 * resize while the handle itself has focus. Handled keys are stopped so they
+	 * do not also reach the container's move shortcuts.
 	 */
 	function handlePaneResizeKeyDown(e: KeyboardEvent) {
 		let handled = false;
@@ -496,14 +522,29 @@ import { onMount, untrack } from 'svelte';
 
 	// Position, then focus, when the tool becomes visible. Seeded synchronously so
 	// the panel is never painted at an unseeded coordinate, and focused with
-	// `preventScroll` so revealing it cannot scroll the pane it sits in.
+	// `preventScroll` so revealing it cannot scroll the pane it sits in. What had
+	// focus before is where closing the panel returns it.
 	$effect(() => {
 		if (!visible || !containerEl) return;
+		const container = containerEl;
 		// `seedPosition` reads and writes reactive state, so it stays out of the
 		// tracked body -- see AGENTS.md, Svelte Subscription Safety.
-		untrack(seedPosition);
+		untrack(() => {
+			seedPosition();
+			focusReturn.capture(container);
+		});
 		const timer = setTimeout(() => containerEl?.focus({ preventScroll: true }), 100);
 		return () => clearTimeout(timer);
+	});
+
+	// The tap controls follow the panel's position and size.
+	$effect(() => {
+		void position.x;
+		void position.y;
+		void width;
+		void totalHeight;
+		void controlsEl;
+		untrack(dockControls);
 	});
 
 	// The containing block's extent changes with the window, and a panel that fitted
@@ -513,6 +554,7 @@ import { onMount, untrack } from 'svelte';
 		const onResize = () => {
 			width = clampWidth(width);
 			reclampPosition();
+			dockControls();
 		};
 		window.addEventListener('resize', onResize);
 		return () => window.removeEventListener('resize', onResize);
@@ -530,7 +572,12 @@ import { onMount, untrack } from 'svelte';
 	<div
 		bind:this={containerEl}
 		class="pie-tool-line-reader"
-		style="left: {position.x}px; top: {position.y}px; width: {width}px; height: {totalHeight}px; --pie-tool-line-reader-band-height: {frameBandHeight}px; --pie-tool-line-reader-side-width: {FRAME_SIDE_WIDTH}px;"
+		style:left="{position.x}px"
+		style:top="{position.y}px"
+		style:width="{width}px"
+		style:height="{totalHeight}px"
+		style:--pie-tool-line-reader-band-height="{frameBandHeight}px"
+		style:--pie-tool-line-reader-side-width="{FRAME_SIDE_WIDTH}px"
 		onpointerdown={handlePointerDown}
 		onkeydown={handleKeyDown}
 		role="group"
@@ -611,8 +658,15 @@ import { onMount, untrack } from 'svelte';
 				/>
 			</svg>
 		</button>
-	</div>
 
+		<OverlayPlacementControls
+			controller={tapTarget}
+			i18n={interfaceI18n}
+			classPrefix="pie-tool-line-reader"
+			sizes={sizeControls}
+			bind:element={controlsEl}
+		/>
+	</div>
 {/if}
 
 <style>

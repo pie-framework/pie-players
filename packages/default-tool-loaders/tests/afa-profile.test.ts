@@ -1,5 +1,8 @@
 import { describe, expect, test } from "bun:test";
-import { createPersonalNeedsProfileFromAfa } from "../src/afa-profile.js";
+import {
+	type AfaPnpRecord,
+	createPersonalNeedsProfileFromAfa,
+} from "../src/afa-profile.js";
 
 describe("AfA PNP 3.0 adapter", () => {
 	test("maps every renamed term to its packaged tool id", () => {
@@ -78,7 +81,7 @@ describe("AfA PNP 3.0 adapter", () => {
 				},
 				"calculator-on-screen": { "calculator-type": "graphing" },
 				"sign-language": { language: "ase" },
-				magnification: { "all-content": 2.5 },
+				magnification: { "all-content": { "zoom-amount": 2.5 } },
 			}).toolParameters,
 		).toEqual({
 			textToSpeech: { rate: 1.5, pitch: 0.5, volume: 0.8 },
@@ -88,12 +91,28 @@ describe("AfA PNP 3.0 adapter", () => {
 		});
 	});
 
+	test("a text magnification amount is the lens's zoom", () => {
+		const zoom = (magnification: AfaPnpRecord["magnification"]) =>
+			createPersonalNeedsProfileFromAfa({ magnification }).toolParameters;
+		expect(
+			zoom({
+				selectMagnification: {
+					text: { "zoom-amount": 3 },
+					"non-text": { "zoom-amount": 2 },
+				},
+			}),
+		).toEqual({ magnification: { zoom: 3 } });
+		expect(
+			zoom({ selectMagnification: { "non-text": { "zoom-amount": 2 } } }),
+		).toEqual({ magnification: { zoom: 2 } });
+	});
+
 	test("omits settings no PIE tool takes", () => {
 		expect(
 			createPersonalNeedsProfileFromAfa({
 				spoken: { "speech-rate": 270 },
 				"calculator-on-screen": { "calculator-type": "standard" },
-				magnification: { "all-content": 1 },
+				magnification: { "all-content": { "zoom-amount": 1 } },
 			}),
 		).toEqual({
 			supports: ["calculator", "magnification", "screenReader"],

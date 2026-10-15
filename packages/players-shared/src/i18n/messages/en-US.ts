@@ -176,11 +176,12 @@ const enUS = {
 		},
 
 		/**
-		 * The tap controls that move and turn the ruler and protractor without a
+		 * The tap controls that move, turn and resize a placed tool without a
 		 * drag. The move buttons reuse the `window` labels above.
 		 */
 		placement: {
 			controlsA11y: "Move and rotate",
+			moveAndResizeA11y: "Move and resize",
 			rotateClockwiseA11y: "Rotate {degrees}° clockwise",
 			rotateCounterclockwiseA11y: "Rotate {degrees}° counterclockwise",
 		},
@@ -372,6 +373,9 @@ const enUS = {
 			windowHeightAnnounce: "Reading window height {pixels} pixels",
 			frameHeightAnnounce: "Frame height {pixels} pixels",
 			widthAnnounce: "Width {pixels} pixels",
+			frameSizeAnnounce: "Frame height {frameHeight} pixels, width {width} pixels",
+			shorterWindowA11y: "Make the reading window shorter",
+			tallerWindowA11y: "Make the reading window taller",
 			applicationA11y:
 				"Line Reader tool. A clear reading window inside an obscuring frame. Use arrow keys to move, +/- to resize the reading window, Escape to close. Reading window height: {paneHeight} pixels, Frame height: {frameHeight} pixels",
 			resizeWindowFullA11y:

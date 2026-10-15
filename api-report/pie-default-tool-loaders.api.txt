@@ -10,6 +10,7 @@
   type AfaFeatureSet
   type AfaPnpRecord
   type AfaSpoken
+  type AfaZoomAmount
   CONTENT_ALTERNATE_REGISTRATIONS
   CONTENT_LEAD_SURFACE
   DEFAULT_TOOL_MODULE_LOADERS

@@ -2606,8 +2606,14 @@ The toolbar for an item, passage or section, rendering a button for each tool th
 		data-level={effectiveLevel}
 		bind:this={toolbarRootElement}
 	>
+		<!-- Keeps a focused toolbar button in view. A mounted tool's own focus is left
+			alone: an overlay sits outside the row, so scrolling it in moves the page. -->
 		<div class="item-toolbar__tools-row" onfocusin={(event) => {
-			if (effectiveLevel === 'section' && event.target instanceof HTMLElement) {
+			if (
+				effectiveLevel === 'section' &&
+				event.target instanceof HTMLElement &&
+				!event.target.closest('.item-toolbar__element-host')
+			) {
 				event.target.scrollIntoView({ block: 'nearest', inline: 'nearest' });
 			}
 		}}>

@@ -351,7 +351,10 @@ export interface MirrorFrameOptions {
 	exclude: (element: Element) => boolean;
 	/** Called after a fresh copy has replaced the one on show. */
 	onSwap?: () => void;
-	/** The shortest interval between two re-renders, in milliseconds. */
+	/**
+	 * The shortest interval between two re-renders, in milliseconds. A copy that
+	 * costs more than a quarter of it waits longer: see `COST_FACTOR`.
+	 */
 	throttleMs?: number;
 }
 
@@ -387,11 +390,20 @@ function collectMarked(root: Document | ShadowRoot, attribute: string, into: Map
 
 const SAFETY_TIMEOUT_MS = 2000;
 
+/**
+ * Re-renders start at least this many times their own cost apart, so copying a
+ * large page keeps to about a quarter of the main thread. A render's cost is its
+ * time less the copy's wait for its style sheets, images and fonts, which is
+ * network time: see `renderCost`.
+ */
+const COST_FACTOR = 4;
+
 export function createMirrorFrame(options: MirrorFrameOptions): MirrorFrame {
 	const { container, exclude, onSwap } = options;
 	const doc = options.document ?? container.ownerDocument;
 	const view = doc.defaultView;
 	const throttleMs = options.throttleMs ?? 200;
+	const now = () => view?.performance.now() ?? Date.now();
 
 	const makeFrame = (): FrameState => {
 		const iframe = doc.createElement("iframe");
@@ -428,6 +440,7 @@ export function createMirrorFrame(options: MirrorFrameOptions): MirrorFrame {
 	let dirty = false;
 	let destroyed = false;
 	let lastRender = 0;
+	let lastCost = 0;
 	let throttleTimer: ReturnType<typeof setTimeout> | null = null;
 	let safetyTimer: ReturnType<typeof setTimeout> | null = null;
 	let observedRoots: ShadowRoot[] = [];
@@ -588,6 +601,28 @@ export function createMirrorFrame(options: MirrorFrameOptions): MirrorFrame {
 		paint(state);
 	};
 
+	/**
+	 * The main thread's part of a render from `start` to `end`: serializing, tearing
+	 * down the old copy and parsing the new one, up to its `DOMContentLoaded`, then
+	 * the copy's style and layout and the swap, from its last resource on. The time
+	 * in between is the wait for those resources. Where the copy's timings are not
+	 * readable, the whole render counts.
+	 */
+	const renderCost = (iframe: HTMLIFrameElement, start: number, end: number): number => {
+		const copyPerformance = iframe.contentWindow?.performance;
+		const timing = copyPerformance?.getEntriesByType?.("navigation")[0] as
+			| PerformanceNavigationTiming
+			| undefined;
+		if (!view || !copyPerformance || !timing?.domContentLoadedEventEnd) return end - start;
+		const origin = copyPerformance.timeOrigin - view.performance.timeOrigin;
+		const parsed = origin + timing.domContentLoadedEventEnd;
+		let fetched = parsed;
+		for (const entry of copyPerformance.getEntriesByType("resource") as PerformanceResourceTiming[]) {
+			fetched = Math.max(fetched, origin + entry.responseEnd);
+		}
+		return Math.max(0, Math.min(parsed, end) - start) + Math.max(0, end - fetched);
+	};
+
 	const finish = (index: number, snapshot: SerializedDocument) => {
 		if (safetyTimer !== null) clearTimeout(safetyTimer);
 		safetyTimer = null;
@@ -609,6 +644,7 @@ export function createMirrorFrame(options: MirrorFrameOptions): MirrorFrame {
 		if (shown >= 0 && shown !== index) frames[shown].iframe.style.visibility = "hidden";
 		shown = index;
 		loading = false;
+		lastCost = renderCost(state.iframe, lastRender, now());
 		onSwap?.();
 		if (dirty) schedule();
 	};
@@ -617,7 +653,7 @@ export function createMirrorFrame(options: MirrorFrameOptions): MirrorFrame {
 		if (destroyed) return;
 		dirty = false;
 		loading = true;
-		lastRender = Date.now();
+		lastRender = now();
 		const index = shown === 0 ? 1 : 0;
 		const state = frames[index];
 		const snapshot = serializeDocument(doc, { exclude });
@@ -646,7 +682,8 @@ export function createMirrorFrame(options: MirrorFrameOptions): MirrorFrame {
 
 	function schedule() {
 		if (destroyed || loading || throttleTimer !== null) return;
-		const wait = Math.max(0, lastRender + throttleMs - Date.now());
+		const interval = Math.max(throttleMs, lastCost * COST_FACTOR);
+		const wait = Math.max(0, lastRender + interval - now());
 		throttleTimer = setTimeout(() => {
 			throttleTimer = null;
 			if (dirty) render();

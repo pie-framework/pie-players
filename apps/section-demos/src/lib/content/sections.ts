@@ -580,8 +580,8 @@ export const sectionDemos: Record<string, SectionDemoInfo> = {
 		focus:
 			"Shows the `magnification` accommodation end to end: an AfA PNP 3.0 record grants it and names a starting zoom, policy carries the zoom to the section toolbar, and the lens opens at it.",
 		whatMakesItTick: [
-			"The profile is an AfA PNP 3.0 record, `{ magnification: { \"all-content\": 2.5 } }`, converted with `createPersonalNeedsProfileFromAfa` and bound as the assessment's.",
-			"`all-content` becomes the `magnification` tool parameter `zoom`; the packaged registration reads it through the toolbar and sets it on `<pie-tool-magnifier>`.",
+			"The profile is an AfA PNP 3.0 record, `{ magnification: { \"all-content\": { \"zoom-amount\": 2.5 } } }`, converted with `createPersonalNeedsProfileFromAfa` and bound as the assessment's.",
+			"`all-content`'s `zoom-amount` becomes the `magnification` tool parameter `zoom`; the packaged registration reads it through the toolbar and sets it on `<pie-tool-magnifier>`.",
 			"The second page's record lists `magnification` in its `prohibit-set`, which becomes `prohibitedSupports`, so policy withdraws the placed magnifier from the toolbar.",
 			"The lens shows a scriptless copy of the page, kept current as content and form state change; it is a viewing aid, and the learner answers on the page beneath it.",
 			"Arrow keys move the lens, `+` and `-` zoom, the corner grip resizes, and Escape closes it.",

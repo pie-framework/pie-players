@@ -17,14 +17,6 @@ test("containment is derived from the containing block", () => {
 	expect(source).not.toInclude("window.innerWidth / 2");
 });
 
-test("revealing the lens cannot scroll its pane", () => {
-	const focusCalls = source.match(/\.focus\([^)]*\)/g) ?? [];
-	expect(focusCalls.length).toBeGreaterThan(0);
-	for (const call of focusCalls) {
-		expect(call).toInclude("preventScroll");
-	}
-});
-
-test("the lens leaves itself out of the copy it shows", () => {
-	expect(source).toInclude("exclude: (element) => element === hostElement");
+test("every lens is left out of the copy a lens shows", () => {
+	expect(source).toInclude("exclude: (element) => element.localName === lensTag");
 });

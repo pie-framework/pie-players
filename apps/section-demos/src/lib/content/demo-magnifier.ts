@@ -24,12 +24,12 @@ export const demoMagnifierProhibitedSection: AssessmentSection = {
 
 /**
  * Profiles by section identifier, each converted from an AfA PNP 3.0 record. The
- * grant's `all-content` becomes the `magnification` tool parameter `zoom`; the
+ * grant's `all-content` `zoom-amount` becomes the `magnification` tool parameter `zoom`; the
  * `prohibit-set` entry becomes `prohibitedSupports`.
  */
 export const demoMagnifierProfiles: Record<string, PersonalNeedsProfile> = {
 	"magnifier-granted": createPersonalNeedsProfileFromAfa({
-		magnification: { "all-content": 2.5 },
+		magnification: { "all-content": { "zoom-amount": 2.5 } },
 	}),
 	"magnifier-prohibited": createPersonalNeedsProfileFromAfa({
 		"prohibit-set": ["magnification"],

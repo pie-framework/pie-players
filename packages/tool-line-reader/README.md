@@ -32,8 +32,9 @@ Tag: `pie-tool-line-reader`
   - On the reading-window handle: up/down arrows change the pane height
   - On the frame handle: up/down arrows change the frame band height, left/right arrows
     change the width
-- Every drag has a keyboard equivalent (WCAG 2.5.7) and controls meet the 24x24 minimum
-  target size (WCAG 2.5.8)
+- Tap controls beside the focused tool move it and resize the reading window and the
+  frame without a drag (WCAG 2.5.7), and every control meets the 24x24 minimum target
+  size (WCAG 2.5.8)
 - Screen reader announcements for all state changes
 - Connects to `AssessmentToolkitRuntimeContext` for ToolCoordinator integration
 

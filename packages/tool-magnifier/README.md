@@ -6,8 +6,10 @@ Magnifying lens tool for PIE assessment players.
 
 A movable, resizable lens that shows the content under it enlarged. The lens is a
 window with a bar on top: zoom out, the current zoom, zoom in, and close. Its
-viewport shows a scaled copy of the page centred on the point beneath the lens, so
-moving the lens moves what it magnifies.
+viewport shows a scaled copy of the page around the point beneath the lens, so
+moving the lens moves what it magnifies. The shown point travels the lens's block
+in step with the lens, so at the block's edges the view reaches the edge content
+the lens stops short of.
 
 The tool serves the AfA PNP 3.0 `magnification` support. Its tool id is that term,
 `magnification`.
@@ -31,8 +33,8 @@ Tag: `pie-tool-magnifier`
 - Full keyboard support:
   - On the lens: arrow keys to move, `+`/`-` to zoom, `Escape` to close
   - On the resize grip: arrow keys change the width and height
-- Every drag has a keyboard equivalent (WCAG 2.5.7) and controls meet the 24×24
-  minimum target size (WCAG 2.5.8)
+- Tap controls beside the focused lens move it and shrink or grow it without a drag
+  (WCAG 2.5.7), and every control meets the 24×24 minimum target size (WCAG 2.5.8)
 - Screen reader announcements for zoom, size and position changes
 - Stays inside its containing block, and opens over the part of it on screen
 - Connects to `AssessmentToolkitRuntimeContext` for ToolCoordinator integration
@@ -43,10 +45,11 @@ A personal needs profile grants the tool by listing `magnification` in `supports
 The starting zoom is the `zoom` tool parameter, which the registration in
 `@pie-players/pie-default-tool-loaders` reads through the toolbar and sets as the
 `zoom` attribute. `createPersonalNeedsProfileFromAfa` maps an AfA record's
-`magnification` `all-content` amount to it:
+`magnification` `zoom-amount` to it, taking the `text` amount when the record sets
+text and non-text apart:
 
 ```ts
-createPersonalNeedsProfileFromAfa({ magnification: { "all-content": 2.5 } });
+createPersonalNeedsProfileFromAfa({ magnification: { "all-content": { "zoom-amount": 2.5 } } });
 // { supports: ["magnification"], toolParameters: { magnification: { zoom: 2.5 } } }
 ```
 
@@ -69,8 +72,10 @@ offsets the iframe with a transform, which follows its position, size, the zoom 
 page scrolling every frame.
 
 A mutation observer marks the copy stale, and it is re-rendered at most every
-200 ms. Two iframes alternate, so the new copy paints in the hidden one and swaps in
-when it has loaded. The lens itself is left out of the copy.
+200 ms, or every four times the main-thread time the last render took when that is
+longer, so copying a large page keeps to about a quarter of the main thread. Two
+iframes alternate, so the new copy paints in the hidden one and swaps in when it has
+loaded. Every lens is left out of the copy.
 
 Highlights painted through the CSS Custom Highlight API, text-to-speech word and
 sentence highlighting and annotation-toolbar highlights among them, are mapped onto
@@ -91,7 +96,9 @@ aid and the learner answers on the page beneath it.
   place, and an open popover does not show.
 - A custom element that renders its content only from script, with no open shadow
   root or light-DOM children, appears as it does before it upgrades.
-- Changes to the page show in the lens up to 200 ms late.
+- Changes to the page reach the lens a render or two late: well under a second on a
+  typical section, and up to about five seconds on a page of 40,000 elements, whose
+  copy takes over a second to render.
 
 ## Theming
 

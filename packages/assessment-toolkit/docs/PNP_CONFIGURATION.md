@@ -466,7 +466,7 @@ Each AfA feature's disposition:
 | `calculator-on-screen` | `calculator`. `calculator-type` `basic`, `scientific` or `graphing` is its `type`; `standard` and `ext:` types leave the calculator's default |
 | `sign-language` | `signLanguage`, served once the host registers `@pie-players/pie-tool-sign-language`. `language` is its `signLang` |
 | `line-reader` | `lineReader`. The line reader takes no settings, so `highlight-color` is not read; its colors are the `--pie-tool-line-reader-*` custom properties |
-| `magnification` | `magnification`, served by `@pie-players/pie-tool-magnifier`. `all-content` above 1 is its starting `zoom`; the learner changes it from there |
+| `magnification` | `magnification`, served by `@pie-players/pie-tool-magnifier`. `all-content`'s `zoom-amount` above 1 is its starting `zoom`, the learner changing it from there. The lens magnifies text and non-text alike, so a `selectMagnification` record gives it the `text` amount, else the `non-text` one |
 | `answer-masking`, `dictionary-on-screen`, `transcript` | `answerEliminator`, `dictionary`, `transcript` |
 | `activate-at-initialization-set`, `activate-as-option-set`, `prohibit-set` | Read as above |
 | `text-appearance`, `high-contrast`, `invert-display-polarity` | The host's presentation, through `<pie-theme>`; the color-scheme tool (`theme`) lets the learner pick a scheme. Passed through camelCased |

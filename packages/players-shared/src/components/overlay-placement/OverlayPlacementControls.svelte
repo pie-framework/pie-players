@@ -1,8 +1,9 @@
 <!--
   Tap alternatives to dragging a placed tool (WCAG 2.5.7), shown while the tool
-  has focus. A press keeps focus on the tool, so the controls stay up. The
-  controller docks them past the tool's bottom edge; they are laid out while
-  hidden so it can measure them. Carries `{classPrefix}__controls` and
+  has focus: a move for each arrow, the turns when the controller rotates, and a
+  shrink-and-grow pair for each of `sizes`. A press keeps focus on the tool, so
+  the controls stay up. The tool docks them beside its edge; they are laid out
+  while hidden so it can measure them. Carries `{classPrefix}__controls` and
   `{classPrefix}__control` beside its own classes, so each tool keeps its
   selectors.
 -->
@@ -11,19 +12,22 @@
 	import {
 		OVERLAY_PLACEMENT_NUDGES,
 		OVERLAY_PLACEMENT_ROTATIONS,
-		type OverlayPlacementController,
 		type OverlayPlacementNudge,
+		type OverlaySizeControl,
+		type OverlayTapTarget,
 	} from '@pie-players/pie-players-shared';
 
 	let {
 		controller,
 		i18n,
 		classPrefix,
+		sizes = [],
 		element = $bindable(),
 	}: {
-		controller: OverlayPlacementController;
+		controller: OverlayTapTarget;
 		i18n: I18nProvider;
 		classPrefix: string;
+		sizes?: OverlaySizeControl[];
 		element?: HTMLDivElement;
 	} = $props();
 </script>
@@ -32,7 +36,9 @@
 	bind:this={element}
 	class="pie-tool-placement__controls {classPrefix}__controls"
 	role="group"
-	aria-label={i18n.t('toolkit.placement.controlsA11y')}
+	aria-label={i18n.t(
+		controller.rotateBy ? 'toolkit.placement.controlsA11y' : 'toolkit.placement.moveAndResizeA11y'
+	)}
 	onpointerdown={(e) => {
 		e.stopPropagation();
 		e.preventDefault();
@@ -46,19 +52,36 @@
 			onclick={() => controller.nudge(direction as OverlayPlacementNudge)}
 		><span aria-hidden="true">{control.glyph}</span></button>
 	{/each}
-	<span class="pie-tool-placement__controls-divider" aria-hidden="true"></span>
-	{#each OVERLAY_PLACEMENT_ROTATIONS as degrees (degrees)}
+	{#if controller.rotateBy}
+		<span class="pie-tool-placement__controls-divider" aria-hidden="true"></span>
+		{#each OVERLAY_PLACEMENT_ROTATIONS as degrees (degrees)}
+			<button
+				type="button"
+				class="pie-tool-placement__control {classPrefix}__control"
+				aria-label={i18n.t(
+					degrees > 0
+						? 'toolkit.placement.rotateClockwiseA11y'
+						: 'toolkit.placement.rotateCounterclockwiseA11y',
+					{ degrees: Math.abs(degrees) }
+				)}
+				onclick={() => controller.rotateBy?.(degrees)}
+			><span aria-hidden="true">{degrees > 0 ? '↻' : '↺'}{Math.abs(degrees)}°</span></button>
+		{/each}
+	{/if}
+	{#each sizes as size}
+		<span class="pie-tool-placement__controls-divider" aria-hidden="true"></span>
 		<button
 			type="button"
 			class="pie-tool-placement__control {classPrefix}__control"
-			aria-label={i18n.t(
-				degrees > 0
-					? 'toolkit.placement.rotateClockwiseA11y'
-					: 'toolkit.placement.rotateCounterclockwiseA11y',
-				{ degrees: Math.abs(degrees) }
-			)}
-			onclick={() => controller.rotateBy(degrees)}
-		><span aria-hidden="true">{degrees > 0 ? '↻' : '↺'}{Math.abs(degrees)}°</span></button>
+			aria-label={size.shrink.label}
+			onclick={() => size.step(-1)}
+		><span aria-hidden="true">{size.shrink.glyph}</span></button>
+		<button
+			type="button"
+			class="pie-tool-placement__control {classPrefix}__control"
+			aria-label={size.grow.label}
+			onclick={() => size.step(1)}
+		><span aria-hidden="true">{size.grow.glyph}</span></button>
 	{/each}
 </div>
 
@@ -80,6 +103,8 @@
 		top: 0;
 		visibility: hidden;
 		white-space: nowrap;
+		/* Its own width, where a narrow tool would otherwise squeeze it. */
+		width: max-content;
 	}
 
 	/* The tool is the controls' parent. */

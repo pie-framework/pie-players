@@ -14,11 +14,13 @@ const ruleFor = (source: string, selector: string) =>
 		new RegExp(`${selector.replace(/[.]/g, "\\.")} \\{[^}]*\\}`),
 	)?.[0] ?? "";
 
-test("tap controls move and turn the tool without a drag", () => {
+test("tap controls move, turn and resize the tool without a drag", () => {
 	// WCAG 2.5.7: the buttons take the same steps as the keys.
 	for (const call of [
 		"controller.nudge(direction as OverlayPlacementNudge)",
-		"controller.rotateBy(degrees)",
+		"controller.rotateBy?.(degrees)",
+		"size.step(-1)",
+		"size.step(1)",
 	]) {
 		expect(controls).toInclude(`onclick={() => ${call}}`);
 	}

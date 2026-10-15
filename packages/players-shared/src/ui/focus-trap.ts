@@ -125,3 +125,39 @@ export function createFocusTrap(
 		}
 	};
 }
+
+/**
+ * Returns focus to where it was before a tool took it, for a tool that closes
+ * itself: the tool's element leaves the DOM on close, which drops focus to the
+ * document body. `capture` runs as the tool takes focus and `restore` as it
+ * closes, before its element goes.
+ */
+export function createFocusReturn(): {
+	/** Records the focused element, unless focus is already inside `container`. */
+	capture: (container: Node) => void;
+	/** Focuses the recorded element, if it is still in the document. */
+	restore: () => void;
+} {
+	let opener: HTMLElement | null = null;
+	return {
+		capture(container) {
+			if (typeof document === "undefined") return;
+			const active = getDeepActiveElement(document);
+			if (active && container.contains(active)) return;
+			opener =
+				active instanceof HTMLElement && active !== document.body
+					? active
+					: null;
+		},
+		restore() {
+			const target = opener;
+			opener = null;
+			if (!target?.isConnected) return;
+			try {
+				target.focus();
+			} catch {
+				// ignore
+			}
+		},
+	};
+}

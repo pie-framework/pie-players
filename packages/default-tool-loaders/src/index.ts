@@ -17,6 +17,7 @@ export {
 	type AfaFeatureSet,
 	type AfaPnpRecord,
 	type AfaSpoken,
+	type AfaZoomAmount,
 	createPersonalNeedsProfileFromAfa,
 } from "./afa-profile.js";
 

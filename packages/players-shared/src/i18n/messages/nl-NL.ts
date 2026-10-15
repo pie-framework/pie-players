@@ -140,6 +140,7 @@ const nlNL = {
 
 		placement: {
 			controlsA11y: "Verplaatsen en draaien",
+			moveAndResizeA11y: "Verplaatsen en verstellen",
 			rotateClockwiseA11y: "{degrees}° rechtsom draaien",
 			rotateCounterclockwiseA11y: "{degrees}° linksom draaien",
 		},
@@ -296,6 +297,9 @@ const nlNL = {
 			windowHeightAnnounce: "Hoogte leesvenster {pixels} pixels",
 			frameHeightAnnounce: "Hoogte kader {pixels} pixels",
 			widthAnnounce: "Breedte {pixels} pixels",
+			frameSizeAnnounce: "Hoogte kader {frameHeight} pixels, breedte {width} pixels",
+			shorterWindowA11y: "Leesvenster lager maken",
+			tallerWindowA11y: "Leesvenster hoger maken",
 			applicationA11y:
 				"Leeshulp. Een doorzichtig leesvenster binnen een verduisterend kader. Verplaats met de pijltoetsen, verstel het leesvenster met + en -, en sluit met Escape. Hoogte leesvenster: {paneHeight} pixels, hoogte kader: {frameHeight} pixels",
 			resizeWindowFullA11y:

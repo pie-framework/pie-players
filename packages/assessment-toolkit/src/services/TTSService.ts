@@ -355,6 +355,9 @@ export class TTSService {
 	// Bumped by every new run and by stop, restart and dispose; an async step
 	// that resumes under an older id has been superseded and returns.
 	private speakRunId = 0;
+	// The run a seek or speed change restarted. While it loads, a seek counts
+	// from its target, so repeated presses add up.
+	private restartRunId: number | null = null;
 	private runOwner: string | null = null;
 	// currentBoundaryOffset is the spoken-text offset the run has reached, which
 	// seek and word boundaries count from; activeWordBoundaryOffset is where the
@@ -2869,6 +2872,7 @@ export class TTSService {
 		this.provider.onWordBoundary = undefined;
 		this.provider.stop();
 		const runId = ++this.speakRunId;
+		this.restartRunId = runId;
 		const restartSegments = this.seekSegments.slice(safeTargetIndex);
 		this.highlightCoordinator?.clearTTS();
 		this.activeSentenceStartOffset = null;
@@ -3001,9 +3005,15 @@ export class TTSService {
 
 	private async seekBy(units: number): Promise<void> {
 		if (!this.provider || !this.currentText) return;
+		// A restart that is still loading has set the cursor to its target. The
+		// first load of a read has not, so a seek waits for it to play.
+		const restartLoading =
+			this.state === PlaybackState.LOADING &&
+			this.restartRunId === this.speakRunId;
 		if (
 			this.state !== PlaybackState.PLAYING &&
-			this.state !== PlaybackState.PAUSED
+			this.state !== PlaybackState.PAUSED &&
+			!restartLoading
 		) {
 			return;
 		}

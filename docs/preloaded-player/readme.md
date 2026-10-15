@@ -80,6 +80,42 @@ top-level await: Vite 6 and earlier default to an older target and fail the
 build. Every runtime import inside the package is relative, so it also loads
 from any server that serves the published files as they are.
 
+The bundler emits the MathJax files through each
+`new URL("./mathjax/npm/…", import.meta.url)` in the entry, as Vite's
+production build does with no configuration. Vite's dev server pre-bundles the
+package into `node_modules/.vite/deps/`, where those URLs find nothing, so a
+Vite host excludes it with
+`optimizeDeps: { exclude: ["@pie-players/pie-preloaded-player"] }`. Angular's
+webpack builder disables URL assets with `module.parser.javascript.url: false`
+and leaves the build machine's file URLs in their place, so math renders without
+web fonts. A rule re-enables them for this package alone; a global `url: true`
+also emits other packages' module workers, which Angular's Babel pass then
+breaks:
+
+```js
+// An Angular extra webpack config (ngx-build-plus, @angular-builders/custom-webpack).
+module.exports = {
+  module: {
+    rules: [
+      {
+        test: /[\\/]node_modules[\\/]@pie-players[\\/]pie-preloaded-player[\\/]/,
+        parser: { url: true },
+      },
+    ],
+  },
+  // For a bundle that a classic <script> loads from another origin than the page.
+  output: { publicPath: "auto", scriptType: false },
+};
+```
+
+Webpack resolves the emitted files against `output.publicPath`, which Angular
+sets to its `deployUrl` or the page. `publicPath: "auto"` resolves them against
+the bundle's own URL instead, and `scriptType: false` has webpack read that URL
+from `document.currentScript`: Angular's `scriptType: "module"` reads
+`import.meta`, which throws in a classic script. The emitted files deploy beside
+the bundle, and an origin other than the page's serves them with
+`Access-Control-Allow-Origin`, which cross-origin font loads require.
+
 Importing the package twice is harmless: a tag the page already defined keeps
 its definition and its registry entry. A package the page already registered at
 another version rejects the import, because the players align every authored

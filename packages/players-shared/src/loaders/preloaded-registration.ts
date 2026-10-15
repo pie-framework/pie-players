@@ -11,6 +11,11 @@
  * define the ones content names under another base tag
  * (`defineAuthoredPreloadedTags`) and assert them (`assertRegistered`).
  *
+ * pie-elements-ng's `./browser/*` modules export `piePackage`, the
+ * `{ name, version }` of the package they were built from, so an entry can
+ * give its modules alone. A `package` or `version` it also gives must match,
+ * which catches a registration an upgrade left behind.
+ *
  * A hosted player takes models from the server and resolves no controller. A
  * player that is not hosted runs the controller's `model()` in the browser, so
  * it needs the `controller` an entry registers; the item player warns about
@@ -29,6 +34,7 @@ import {
 	setMathAssetOptions,
 } from "../pie/math-assets.js";
 import { writeRegistryEntry } from "../pie/registry.js";
+import { validateCustomElementTag } from "../pie/tag-names.js";
 import { BundleType, isCustomElementConstructor, Status } from "../pie/types.js";
 import { parsePackageName } from "../pie/utils.js";
 import { toPackageVersionedTag } from "../pie/versioned-tag.js";
@@ -44,13 +50,20 @@ export interface PreloadedElement {
 	/**
 	 * Base tag to register, e.g. `pie-element-multiple-choice`. Content can
 	 * author another base tag for the package, which the players define from
-	 * this registration.
+	 * this registration. Defaults to the package name without its `@`, with
+	 * `-` for `/`.
 	 */
-	tag: string;
-	/** npm package name, e.g. `@pie-element/multiple-choice`. */
-	package: string;
-	/** The installed version, exact, e.g. `13.4.4`. */
-	version: string;
+	tag?: string;
+	/**
+	 * npm package name, e.g. `@pie-element/multiple-choice`. Defaults to the
+	 * name in the modules' `piePackage`.
+	 */
+	package?: string;
+	/**
+	 * The installed version, exact, e.g. `13.4.4`. Defaults to the version in
+	 * the modules' `piePackage`.
+	 */
+	version?: string;
 	/** The package's `./browser/delivery` module, or its default export. */
 	element: CustomElementConstructor | { readonly default: CustomElementConstructor };
 	/**
@@ -70,6 +83,8 @@ export interface PreloadedRegistrationOptions {
 	 */
 	math?: MathAssetOptions;
 }
+
+type PackageIdentity = { name: string; version: string };
 
 type ResolvedElement = {
 	packageName: string;
@@ -134,9 +149,16 @@ function resolveElement(
 ): ResolvedElement {
 	const at = `[registerPreloadedElements] entry ${index}`;
 	if (!element || typeof element !== "object") {
-		throw new Error(`${at}: expected { tag, package, version, element }`);
+		throw new Error(`${at}: expected { element, controller?, tag?, package?, version? }`);
 	}
-	const { package: packageName, version, tag } = element;
+	const identity = moduleIdentity(element, at);
+	if (!identity && element.package === undefined && element.version === undefined) {
+		throw new Error(
+			`${at}: package and version are required for modules that export no piePackage`,
+		);
+	}
+	const packageName = element.package ?? identity?.name;
+	const version = element.version ?? identity?.version;
 
 	if (!isBarePackageName(packageName)) {
 		throw new Error(
@@ -148,6 +170,12 @@ function resolveElement(
 			`${at} (${packageName}): version must be the installed version, exact, such as 1.2.3; got ${JSON.stringify(version)}`,
 		);
 	}
+	if (identity && (identity.name !== packageName || identity.version !== version)) {
+		throw new Error(
+			`${at}: the modules were built from ${identity.name}@${identity.version}, not ${packageName}@${version}`,
+		);
+	}
+	const tag = element.tag ?? packageName.replace(/^@/, "").replace("/", "-");
 	if (typeof tag !== "string" || !tag) {
 		throw new Error(
 			`${at} (${packageName}): tag must be the base tag to register, got ${JSON.stringify(tag)}`,
@@ -175,13 +203,45 @@ function resolveElement(
 	}
 
 	const spec = `${packageName}@${version}`;
-	return {
-		packageName,
-		spec,
-		tagName: toPackageVersionedTag(tag, spec),
-		elementClass: candidate,
-		controller,
-	};
+	const tagName = validateCustomElementTag(
+		toPackageVersionedTag(tag, spec),
+		element.tag === undefined
+			? `${at} (${packageName}) tag derived from the package name; give tag`
+			: `${at} (${packageName}) tag`,
+	);
+	return { packageName, spec, tagName, elementClass: candidate, controller };
+}
+
+/** The `piePackage` of the entry's modules, which agree when both export one. */
+function moduleIdentity(
+	element: PreloadedElement,
+	at: string,
+): PackageIdentity | undefined {
+	const fromElement = readPackageIdentity(element.element, `${at}: element`);
+	const fromController = readPackageIdentity(element.controller, `${at}: controller`);
+	if (
+		fromElement &&
+		fromController &&
+		(fromElement.name !== fromController.name ||
+			fromElement.version !== fromController.version)
+	) {
+		throw new Error(
+			`${at}: the element module is ${fromElement.name}@${fromElement.version}, ` +
+				`but the controller module is ${fromController.name}@${fromController.version}`,
+		);
+	}
+	return fromElement ?? fromController;
+}
+
+function readPackageIdentity(module: unknown, at: string): PackageIdentity | undefined {
+	if (!module || typeof module !== "object" || !("piePackage" in module)) {
+		return undefined;
+	}
+	const identity = (module as { piePackage?: Partial<PackageIdentity> | null }).piePackage;
+	if (typeof identity?.name !== "string" || typeof identity.version !== "string") {
+		throw new Error(`${at} module's piePackage must be { name, version }`);
+	}
+	return { name: identity.name, version: identity.version };
 }
 
 function resolveController(value: unknown): PieController | undefined {

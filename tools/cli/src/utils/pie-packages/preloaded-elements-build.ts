@@ -38,16 +38,18 @@ const SPEECH_BASE_RULES = ["base", "nemeth", "euro"];
 /** A speech locale id, as SRE names its rules file. */
 const SPEECH_LOCALE = /^[a-z]{2,3}(?:-[A-Za-z0-9]+)*$/;
 
-/** The default MathJax 4 font. */
-const MATHJAX_FONT = "@mathjax/mathjax-newcm-font";
+/** The speech rules directory of `mathjax`, of which a build ships the rules of its locales alone. */
+const SPEECH_RULES_DIR = "sre/mathmaps/";
 
 /**
- * The font extensions MathJax loads when TeX autoloads a package that needs
- * one: mhchem for `\ce` and `\pu`. No content on the live installs uses bbm,
- * bboldx or dsfont (`\mathbbm`, `\mathbbb`, `\mathds`), so their extensions are
- * not shipped.
+ * The paths of each package that adapters from `0.1.3` listing no
+ * `pie.browserAssetPaths` load.
  */
-const MATHJAX_FONT_EXTENSIONS = ["@mathjax/mathjax-mhchem-font-extension"];
+const UNLISTED_ASSET_PATHS: Record<string, string[]> = {
+	mathjax: ["sre/speech-worker.js", SPEECH_RULES_DIR],
+	"@mathjax/mathjax-newcm-font": ["chtml/woff2/"],
+	"@mathjax/mathjax-mhchem-font-extension": ["chtml/woff2/"],
+};
 
 interface InstalledElement {
 	name: string;
@@ -66,12 +68,17 @@ export interface ElementModulesBuild {
 	speechLocales?: string[];
 }
 
+/** What a MathJax adapter's manifest lists of the files its browser build loads. */
+export interface AdapterAssets {
+	/** `pie.assetPackages`: each package it loads files of, at its version. */
+	packages: Record<string, string>;
+	/** `pie.browserAssetPaths`: the paths of each package, a path ending in `/` naming every file under it. */
+	paths?: Record<string, string[]>;
+}
+
 export interface ElementModulesOptions {
-	/**
-	 * The `pie.assetPackages` of the adapter the item player's modules in
-	 * `distDir` bundle.
-	 */
-	playerAssetPackages?: Record<string, string>;
+	/** The assets of the adapter the item player's modules in `distDir` bundle. */
+	playerAssets?: AdapterAssets;
 	/** The speech locales to ship, by SRE locale id; `DEFAULT_SPEECH_LOCALES` when unset. */
 	speechLocales?: string[];
 }
@@ -116,12 +123,11 @@ export function sharedBrowserDependencies(elements: InstalledElement[]): Record<
 }
 
 /**
- * The `pie.assetPackages` of the adapter the package at `dir` resolves: the
- * packages, each at its version, the adapter loads files of. `undefined` for an
+ * The assets of the adapter the package at `dir` resolves. `undefined` for an
  * adapter up to `0.1.2`, which exports no manifest, and for a package without
  * the adapter.
  */
-export function adapterAssetPackages(dir: string): Record<string, string> | undefined {
+export function adapterAssets(dir: string): AdapterAssets | undefined {
 	let manifest: string;
 	try {
 		manifest = createRequire(join(realpathSync(dir), "package.json")).resolve(
@@ -130,8 +136,11 @@ export function adapterAssetPackages(dir: string): Record<string, string> | unde
 	} catch {
 		return undefined;
 	}
-	const assetPackages = JSON.parse(readFileSync(manifest, "utf-8"))?.pie?.assetPackages;
-	return assetPackages && typeof assetPackages === "object" ? assetPackages : undefined;
+	const pie = JSON.parse(readFileSync(manifest, "utf-8"))?.pie;
+	const packages = pie?.assetPackages;
+	if (!packages || typeof packages !== "object") return undefined;
+	const paths = pie.browserAssetPaths;
+	return paths && typeof paths === "object" ? { packages, paths } : { packages };
 }
 
 /** Rejects speech locales a build cannot ship. */
@@ -144,24 +153,18 @@ export function assertSpeechLocales(locales: string[]): void {
 }
 
 /**
- * The `package@version/path` entries the adapter's browser build loads files of
- * from `assetPackages`: the fonts' woff2 directories, the speech worker, and the
- * speech rules of `speechLocales` alone.
+ * The `package@version/path` entries the adapter's browser build loads: the
+ * paths its manifest lists, with of `mathjax`'s speech rules those of
+ * `speechLocales` alone.
  */
-export function mathjaxAssets(assetPackages: Record<string, string>, speechLocales: string[]): string[] {
+export function mathjaxAssets({ packages, paths = UNLISTED_ASSET_PATHS }: AdapterAssets, speechLocales: string[]): string[] {
 	assertSpeechLocales(speechLocales);
-	const files: Record<string, string[]> = {
-		mathjax: [
-			"sre/speech-worker.js",
-			...[...SPEECH_BASE_RULES, ...speechLocales].map((rules) => `sre/mathmaps/${rules}.json`),
-		],
-		...Object.fromEntries([MATHJAX_FONT, ...MATHJAX_FONT_EXTENSIONS].map((name) => [name, ["chtml/woff2"]])),
-	};
-	return Object.entries(assetPackages).flatMap(([name, version]) => {
-		if (!files[name]) {
-			throw new Error(`${MATH_ADAPTER} loads files of ${name}, which a preloaded build does not ship`);
-		}
-		return files[name].map((path) => `${name}@${version}/${path}`);
+	const speechRules = [...SPEECH_BASE_RULES, ...speechLocales].map((rules) => `${SPEECH_RULES_DIR}${rules}.json`);
+	return Object.entries(packages).flatMap(([name, version]) => {
+		if (!paths[name]?.length) throw new Error(`${MATH_ADAPTER} lists no paths of ${name} to ship`);
+		return paths[name]
+			.flatMap((path) => (name === "mathjax" && path === SPEECH_RULES_DIR ? speechRules : [path]))
+			.map((path) => `${name}@${version}/${path.replace(/\/$/, "")}`);
 	});
 }
 
@@ -318,13 +321,13 @@ export async function buildElementModules(
 			if (typeof element.manifest?.dependencies?.[MATH_ADAPTER] !== "string") continue;
 			const dir = join(workDir, "node_modules", element.name);
 			assertCurrentAdapter(element, await packageCode(dir));
-			const packages = adapterAssetPackages(dir);
-			if (!packages) {
+			const adapter = adapterAssets(dir);
+			if (!adapter) {
 				throw new Error(
 					`${element.name}@${element.version} bundles a ${MATH_ADAPTER} that lists no pie.assetPackages`,
 				);
 			}
-			for (const asset of mathjaxAssets(packages, speechLocales)) assets.add(asset);
+			for (const asset of mathjaxAssets(adapter, speechLocales)) assets.add(asset);
 		}
 		await installDependencies(workDir, dependencies);
 
@@ -377,10 +380,10 @@ export async function buildElementModules(
 			.map(({ fileName, code }) => ({ fileName: posix.join("elements", fileName), code }));
 
 		if (playerModules.some(({ code }) => code.includes(ASSET_ROOT_READER))) {
-			if (!options.playerAssetPackages) {
+			if (!options.playerAssets) {
 				throw new Error(`No pie.assetPackages are given for the ${MATH_ADAPTER} the item player bundles`);
 			}
-			for (const asset of mathjaxAssets(options.playerAssetPackages, speechLocales)) assets.add(asset);
+			for (const asset of mathjaxAssets(options.playerAssets, speechLocales)) assets.add(asset);
 		}
 		// Copies the checks above miss, such as one a dependency of an element bundles.
 		const fromCdn = [...chunks, ...playerModules]

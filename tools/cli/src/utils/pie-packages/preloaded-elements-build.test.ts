@@ -4,7 +4,7 @@ import os from "node:os";
 import { join } from "node:path";
 
 import {
-	adapterAssetPackages,
+	adapterAssets,
 	assertCurrentAdapter,
 	assertEsmElement,
 	assertSpeechLocales,
@@ -132,8 +132,14 @@ describe("the files the adapter loads", () => {
 		"@mathjax/mathjax-mhchem-font-extension": "4.1.3",
 	};
 
+	const PATHS = {
+		mathjax: ["sre/speech-worker.js", "sre/mathmaps/"],
+		"@mathjax/mathjax-newcm-font": ["chtml/woff2/"],
+		"@mathjax/mathjax-mhchem-font-extension": ["chtml/woff2/"],
+	};
+
 	test("are its fonts and the speech of the listed locales", () => {
-		expect(mathjaxAssets(PACKAGES, ["en", "es"])).toEqual([
+		expect(mathjaxAssets({ packages: PACKAGES }, ["en", "es"])).toEqual([
 			"mathjax@4.1.3/sre/speech-worker.js",
 			"mathjax@4.1.3/sre/mathmaps/base.json",
 			"mathjax@4.1.3/sre/mathmaps/nemeth.json",
@@ -145,9 +151,29 @@ describe("the files the adapter loads", () => {
 		]);
 	});
 
-	test("refuses a package it does not know how to ship", () => {
-		expect(() => mathjaxAssets({ ...PACKAGES, "@mathjax/mathjax-bbm-font-extension": "4.1.3" }, ["en"])).toThrow(
-			"@mathjax/mathjax-bbm-font-extension, which a preloaded build does not ship",
+	test("are the paths its manifest lists, with the speech of the listed locales", () => {
+		const packages = { ...PACKAGES, "@mathjax/mathjax-bbm-font-extension": "4.1.3" };
+		const paths = { ...PATHS, mathjax: [...PATHS.mathjax, "sre/lab/"], "@mathjax/mathjax-bbm-font-extension": ["chtml/woff2/"] };
+		expect(mathjaxAssets({ packages, paths }, ["de"])).toEqual([
+			"mathjax@4.1.3/sre/speech-worker.js",
+			"mathjax@4.1.3/sre/mathmaps/base.json",
+			"mathjax@4.1.3/sre/mathmaps/nemeth.json",
+			"mathjax@4.1.3/sre/mathmaps/euro.json",
+			"mathjax@4.1.3/sre/mathmaps/de.json",
+			"mathjax@4.1.3/sre/lab",
+			"@mathjax/mathjax-newcm-font@4.1.3/chtml/woff2",
+			"@mathjax/mathjax-mhchem-font-extension@4.1.3/chtml/woff2",
+			"@mathjax/mathjax-bbm-font-extension@4.1.3/chtml/woff2",
+		]);
+	});
+
+	test("refuses a package it lists no paths of", () => {
+		const packages = { ...PACKAGES, "@mathjax/mathjax-bbm-font-extension": "4.1.3" };
+		expect(() => mathjaxAssets({ packages }, ["en"])).toThrow(
+			"lists no paths of @mathjax/mathjax-bbm-font-extension to ship",
+		);
+		expect(() => mathjaxAssets({ packages, paths: PATHS }, ["en"])).toThrow(
+			"lists no paths of @mathjax/mathjax-bbm-font-extension to ship",
 		);
 	});
 
@@ -157,7 +183,7 @@ describe("the files the adapter loads", () => {
 		expect(() => assertSpeechLocales(["en", "pt-BR"])).not.toThrow();
 	});
 
-	test("reads the packages from the manifest of the adapter a package resolves", async () => {
+	test("reads the packages and paths from the manifest of the adapter a package resolves", async () => {
 		const scratch = await mkdtemp(join(os.tmpdir(), "pie-adapter-manifest-"));
 		try {
 			// A package beside each adapter, since the resolver caches the manifests it reads.
@@ -173,19 +199,23 @@ describe("the files the adapter loads", () => {
 				}
 				return dir;
 			};
-			expect(adapterAssetPackages(await element("without-math"))).toBeUndefined();
+			const exports = { ".": "./index.js", "./package.json": "./package.json" };
+			expect(adapterAssets(await element("without-math"))).toBeUndefined();
 			expect(
-				adapterAssetPackages(await element("before-roots", { version: "0.1.2", exports: { ".": "./index.js" } })),
+				adapterAssets(await element("before-roots", { version: "0.1.2", exports: { ".": "./index.js" } })),
 			).toBeUndefined();
 			expect(
-				adapterAssetPackages(
-					await element("with-roots", {
-						version: "0.1.3",
-						exports: { ".": "./index.js", "./package.json": "./package.json" },
-						pie: { assetPackages: PACKAGES },
+				adapterAssets(await element("with-roots", { version: "0.1.3", exports, pie: { assetPackages: PACKAGES } })),
+			).toEqual({ packages: PACKAGES });
+			expect(
+				adapterAssets(
+					await element("with-paths", {
+						version: "0.2.0",
+						exports,
+						pie: { assetPackages: PACKAGES, browserAssetPaths: PATHS },
 					}),
 				),
-			).toEqual(PACKAGES);
+			).toEqual({ packages: PACKAGES, paths: PATHS });
 		} finally {
 			await rm(scratch, { recursive: true, force: true });
 		}

@@ -1,5 +1,9 @@
 # @pie-players/pie-context
 
+## 1.0.0-beta.4
+
+No changes in this release.
+
 ## 1.0.0-beta.3
 
 ### Patch Changes

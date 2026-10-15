@@ -1,5 +1,11 @@
 # @pie-players/pie-tool-picture-dictionary
 
+## 1.0.0-beta.4
+
+### Patch Changes
+
+- @pie-players/pie-players-shared@1.0.0-beta.4
+
 ## 1.0.0-beta.3
 
 ### Patch Changes

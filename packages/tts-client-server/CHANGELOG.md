@@ -1,5 +1,13 @@
 # @pie-players/tts-client-server
 
+## 1.0.0-beta.4
+
+### Patch Changes
+
+- @pie-players/pie-players-shared@1.0.0-beta.4
+  - @pie-players/pie-tts@1.0.0-beta.4
+  - @pie-players/tts-server-core@1.0.0-beta.4
+
 ## 1.0.0-beta.3
 
 ### Patch Changes

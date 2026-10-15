@@ -14,6 +14,7 @@ export type PnpPolicySourceRule =
 	| "test-admin-override"
 	| "item-restriction"
 	| "pnp-prohibited"
+	| "support-conflict"
 	| "item-requirement"
 	| "district-requirement"
 	| "pnp-support"

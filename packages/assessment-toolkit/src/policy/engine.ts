@@ -27,6 +27,8 @@ export type {
 	OverrideBlockedDetails,
 	PlacementMissingDetails,
 	RequiredToolBlockedDetails,
+	SupportConflictDetails,
+	SupportConflictServedBy,
 	ToolPolicyDecision,
 	ToolPolicyDecisionRequest,
 	ToolPolicyDiagnostic,
@@ -44,6 +46,8 @@ export type {
 	PolicySourceProvenanceEntry,
 	PolicySourceResult,
 } from "./core/PolicySource.js";
+
+export type { SupportConflict } from "./sources/PnpPolicySource.js";
 
 export type {
 	PnpPolicySourceRule,

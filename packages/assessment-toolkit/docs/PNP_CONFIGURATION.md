@@ -13,7 +13,7 @@ Placement decides which tools a toolbar can show. Policy then reads four inputs,
 
 A grant is a profile support, a requirement, or a test-administration override set to `true`. A grant protects a placed tool from the registry's relevance filter, and puts no unplaced tool on a toolbar.
 
-Among the policy inputs, only a block removes a placed tool: a district block, an item restriction, a prohibited support, or an override set to `false`. [Precedence](#precedence) orders them.
+Among the policy inputs, only a block removes a placed tool: a district block, an item restriction, a prohibited support, a support conflict, or an override set to `false`. [Precedence](#precedence) orders them.
 
 ## Data structure
 
@@ -151,7 +151,7 @@ const assessment: AssessmentEntity = {
 
 Proctors, testing-center staff or the testing platform set these per session, for technical issues (broken audio) or test security.
 
-`toolOverrides` is keyed by tool id. `false` withdraws the tool for the session, and only a district block outranks it. `true` grants it, ranking below the blocks and above every requirement and profile support. A `true` override carries `alwaysAvailable`, so the item toolbar's relevance check does not withdraw it. When a requirement names the same tool, the entry is also `required`, and a host gate that removes it raises `tool-policy.requiredToolBlocked`. When an item restriction or a profile prohibition withdraws a tool an override grants, the decision carries a `tool-policy.overrideBlocked` diagnostic naming the rule.
+`toolOverrides` is keyed by tool id. `false` withdraws the tool for the session, and only a district block outranks it. `true` grants it, ranking below the blocks and above every requirement and profile support. A `true` override carries `alwaysAvailable`, so the item toolbar's relevance check does not withdraw it. When a requirement names the same tool, the entry is also `required`, and a host gate that removes it raises `tool-policy.requiredToolBlocked`. When an item restriction or a profile prohibition withdraws a tool an override grants, the decision carries a `tool-policy.overrideBlocked` diagnostic naming the rule; a [support conflict](#support-conflict) raises `tool-policy.supportConflict` instead.
 
 ### Item settings
 
@@ -207,6 +207,7 @@ For each tool id, the first rule that matches decides. The rule id is what a dec
 | 2 | `test-admin-override` | `toolOverrides[toolId] === false` | Block for the session |
 | 3 | `item-restriction` | item `restrictedTools` | Block, on the item's own toolbar and scope |
 | 4 | `pnp-prohibited` | `personalNeedsProfile.prohibitedSupports` | Block |
+| 4 | `support-conflict` | `screenReader` resolves enabled | Block `textToSpeech` and `autoplayAudio` |
 | 5 | `test-admin-override` | `toolOverrides[toolId] === true` | Grant for the session (`alwaysAvailable`) |
 | 6 | `item-requirement` | item `requiredTools` | Grant (`required`), on the item's own toolbar and scope |
 | 7 | `district-requirement` | `districtPolicy.requiredTools` | Grant (`required`) |
@@ -216,6 +217,14 @@ For each tool id, the first rule that matches decides. The rule id is what a dec
 No rule places a tool: a grant keeps a placed tool through relevance filtering, and a tool missing from `tools.placement` at a level stays off that level's toolbar.
 
 An id in `activateAtInit` decides by `pnp-activate-at-init`, whether or not `supports` lists it too. A grant from rules 5–7 keeps the entry's `activateAtInit` flag, and a block clears it.
+
+### Support conflict
+
+A student's screen reader speaks the page, so PIE's own speech would talk over it ([ADR 0004](../../../docs/adr/0004-screen-reader-use-is-a-profile-support-that-withholds-read-aloud.md)). While `screenReader` resolves enabled, `textToSpeech` and `autoplayAudio` resolve blocked under `support-conflict` at rung 4, whether or not any input names them, so a placed read-aloud leaves the toolbar. The toolkit recognizes `screenReader` and `autoplayAudio` without a tool registration, so neither raises `tool-policy.unknownSupportId`. `ToolkitCoordinator` gives its policy engine this conflict; a `ToolPolicyEngine` constructed directly applies the conflicts passed as `supportConflicts`, none by default.
+
+`screenReader` resolves by the same rungs as any id: a district block, a `false` override, an item restriction or a prohibition withdraws it, and then nothing is withheld. A district block, a `false` override or an item restriction of `textToSpeech` outranks the conflict and keeps its own rule.
+
+A conflict that withdraws something raises `tool-policy.supportConflict`, whose details name the `support` and `servedBy`: `placement` for a placed tool no rule granted, or the rule that would have granted it. A toolbar decision reports a tool its level placed and the host gates kept; a feature decision reports a displaced grant. It replaces `tool-policy.overrideBlocked` for a `true` override the conflict withdraws. An id nothing would have served raises none.
 
 ### Activation at start
 
@@ -462,7 +471,7 @@ Each AfA feature's disposition:
 | AfA feature | Disposition |
 | --- | --- |
 | `spoken`, `computer-read-aloud` | `textToSpeech`, with `speech-rate`, `pitch` and `volume` |
-| `spoken`, `screen-reader` or no `reading-type` | `screenReader`, which the toolkit does not recognize yet. Until it does, it raises `tool-policy.unknownSupportId`, and the host withholds read-aloud by adding `textToSpeech` to `prohibitedSupports` |
+| `spoken`, `screen-reader` or no `reading-type` | `screenReader`, which withholds `textToSpeech` and `autoplayAudio` ([support conflict](#support-conflict)) |
 | `calculator-on-screen` | `calculator`. `calculator-type` `basic`, `scientific` or `graphing` is its `type`; `standard` and `ext:` types leave the calculator's default |
 | `sign-language` | `signLanguage`, served once the host registers `@pie-players/pie-tool-sign-language`. `language` is its `signLang` |
 | `line-reader` | `lineReader`. The line reader takes no settings, so `highlight-color` is not read; its colors are the `--pie-tool-line-reader-*` custom properties |
@@ -564,10 +573,11 @@ Check, in order:
 1. Is it blocked by `districtPolicy.blockedTools`?
 2. Is it disabled in `testAdministration.toolOverrides`?
 3. Is it in the item's `restrictedTools`, on the item's own toolbar, or in `personalNeedsProfile.prohibitedSupports`? Either withdraws a tool a `true` override grants, and the decision carries a `tool-policy.overrideBlocked` diagnostic.
-4. Is it placed at this level in `tools.placement`? A grant does not place a tool.
-5. Is [PNP enforcement](#pnp-enforcement) off for this decision? Then the profile grants nothing and the next check applies.
-6. Does the tool's `isVisibleInContext()` return false? A `required` or `alwaysAvailable` grant skips this check.
-7. Does the tool's `isApplicableToContent()` return false for this content? This check removes the tool even under a grant.
+4. Does the profile list `screenReader`? It withholds `textToSpeech` under `support-conflict`, and the decision carries a `tool-policy.supportConflict` diagnostic.
+5. Is it placed at this level in `tools.placement`? A grant does not place a tool.
+6. Is [PNP enforcement](#pnp-enforcement) off for this decision? Then the profile grants nothing and the next check applies.
+7. Does the tool's `isVisibleInContext()` return false? A `required` or `alwaysAvailable` grant skips this check.
+8. Does the tool's `isApplicableToContent()` return false for this content? This check removes the tool even under a grant.
 
 ### Blocked tool still on a toolbar
 

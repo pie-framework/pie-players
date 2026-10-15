@@ -531,7 +531,6 @@ test.describe("section toolbar tools", () => {
 		});
 		const moveUp = graphShell.getByRole("button", { name: "Move tool up" });
 		const moveDown = graphShell.getByRole("button", { name: "Move tool down" });
-		const grow = graphShell.getByRole("button", { name: "Grow tool window" });
 		const center = graphShell.getByRole("button", {
 			name: "Center tool window",
 		});
@@ -539,7 +538,6 @@ test.describe("section toolbar tools", () => {
 		await expect(moveRight).toBeVisible();
 		await expect(moveUp).toBeVisible();
 		await expect(moveDown).toBeVisible();
-		await expect(grow).toBeVisible();
 		await expect(center).toBeVisible();
 
 		const before = await getRect(graphShell);
@@ -555,16 +553,54 @@ test.describe("section toolbar tools", () => {
 		const movedUp = await getRect(graphShell);
 		expect(movedUp.y).toBeLessThan(movedDown.y);
 
-		await grow.click();
-		const resized = await getRect(graphShell);
-		expect(resized.width).toBeGreaterThanOrEqual(movedUp.width);
-		expect(resized.height).toBeGreaterThanOrEqual(movedUp.height);
-
 		const header = graphShell.locator(".pie-tool-shell__header");
 		await header.focus();
 		await page.keyboard.press("ArrowLeft");
 		const movedByKeyboard = await getRect(graphShell);
-		expect(movedByKeyboard.x).toBeLessThan(resized.x);
+		expect(movedByKeyboard.x).toBeLessThan(movedUp.x);
+	});
+
+	// WCAG 2.5.7: a corner grip sets width and height independently, so its
+	// single-pointer alternative must too.
+	test("resizes a hosted shell one dimension at a time, by tap pair and by Shift+arrow", async ({
+		page,
+	}) => {
+		await gotoDemo(page);
+		await sectionToolbar(page)
+			.getByRole("button", { name: "Graph, coordinate plane" })
+			.click();
+		const graphShell = page.locator('[data-pie-tool-shell="graph"]').first();
+		await expect(graphShell).toBeVisible();
+		const header = graphShell.locator(".pie-tool-shell__header");
+		const tap = (name: string) => () =>
+			graphShell.getByRole("button", { name }).click();
+		const key = (combo: string) => async () => {
+			await header.focus();
+			await page.keyboard.press(combo);
+		};
+
+		// Each shrink comes before its grow, so a viewport cap on the opening size
+		// cannot absorb the grow.
+		const steps = [
+			{ act: tap("Make tool window narrower"), axis: "width", sign: -1 },
+			{ act: tap("Make tool window wider"), axis: "width", sign: 1 },
+			{ act: tap("Make tool window shorter"), axis: "height", sign: -1 },
+			{ act: tap("Make tool window taller"), axis: "height", sign: 1 },
+			{ act: key("Shift+ArrowLeft"), axis: "width", sign: -1 },
+			{ act: key("Shift+ArrowRight"), axis: "width", sign: 1 },
+			{ act: key("Shift+ArrowUp"), axis: "height", sign: -1 },
+			{ act: key("Shift+ArrowDown"), axis: "height", sign: 1 },
+		] as const;
+		for (const [index, step] of steps.entries()) {
+			const before = await getRect(graphShell);
+			await step.act();
+			const after = await getRect(graphShell);
+			const other = step.axis === "width" ? "height" : "width";
+			expect(Math.sign(after[step.axis] - before[step.axis]), `step ${index}`).toBe(
+				step.sign,
+			);
+			expect(after[other], `step ${index}`).toBeCloseTo(before[other], 1);
+		}
 	});
 
 	test("keeps default hosted shell content clipped vertically", async ({
@@ -611,15 +647,16 @@ test.describe("section toolbar tools", () => {
 			closeButton.evaluate((element) => element === document.activeElement);
 		await expect.poll(isCloseFocused).toBe(true);
 
-		const grow = graphShell.getByRole("button", { name: "Grow tool window" });
-		await grow.focus();
-		await expect(grow).toBeFocused();
+		const wider = graphShell.getByRole("button", {
+			name: "Make tool window wider",
+		});
+		await wider.focus();
+		await expect(wider).toBeFocused();
 
 		const rectBefore = await getRect(graphShell);
 		await page.keyboard.press("Space");
 		const rectAfter = await getRect(graphShell);
 		expect(rectAfter.width).toBeGreaterThan(rectBefore.width);
-		expect(rectAfter.height).toBeGreaterThan(rectBefore.height);
 
 		await closeButton.focus();
 		await page.keyboard.press("Enter");

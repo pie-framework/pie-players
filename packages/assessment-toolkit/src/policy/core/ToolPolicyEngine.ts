@@ -54,6 +54,7 @@ import { structurallyEqual } from "../../utils/structural-equality.js";
 import {
 	type PnpPolicyItem,
 	PnpPolicySource,
+	type SupportConflict,
 } from "../sources/PnpPolicySource.js";
 
 export type { PnpEnforcementMode };
@@ -88,6 +89,12 @@ export interface ToolPolicyEngineArgs {
 	 * Defaults to `false`.
 	 */
 	assessmentOptional?: boolean;
+	/**
+	 * Supports that withhold other ids while in effect, resolved at precedence 4
+	 * under `support-conflict`. Defaults to none; `ToolkitCoordinator` passes
+	 * the toolkit's own.
+	 */
+	supportConflicts?: readonly SupportConflict[];
 }
 
 export interface ToolPolicyChangeEvent {
@@ -146,6 +153,7 @@ export class ToolPolicyEngine {
 	private readonly contextId: string;
 	private readonly assessmentOptional: boolean;
 	private pnpPolicySource: PnpPolicySource;
+	private readonly supportConflicts: readonly SupportConflict[];
 	private readonly customSources: PolicySource[];
 	private readonly listeners = new Set<ToolPolicyChangeListener>();
 
@@ -167,7 +175,11 @@ export class ToolPolicyEngine {
 		this.toolRegistry = args.toolRegistry;
 		this.contextId = args.contextId ?? "tool-policy";
 		this.assessmentOptional = args.assessmentOptional === true;
-		this.pnpPolicySource = new PnpPolicySource(this.toolRegistry);
+		this.supportConflicts = args.supportConflicts ?? [];
+		this.pnpPolicySource = new PnpPolicySource(
+			this.toolRegistry,
+			this.supportConflicts,
+		);
 		this.customSources = args.customSources ? [...args.customSources] : [];
 
 		const inputs = args.inputs ?? {};
@@ -424,7 +436,10 @@ export class ToolPolicyEngine {
 		this.assertNotDisposed();
 		this.unsubscribeRegistry();
 		this.toolRegistry = toolRegistry;
-		this.pnpPolicySource = new PnpPolicySource(toolRegistry);
+		this.pnpPolicySource = new PnpPolicySource(
+			toolRegistry,
+			this.supportConflicts,
+		);
 		this.unsubscribeRegistry = this.watchRegistry();
 		this.tools = tools;
 		this.refreshInputDiagnostics();

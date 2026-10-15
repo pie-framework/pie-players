@@ -86,6 +86,11 @@ export interface ToolPolicyDecisionRequest {
  * `restrictedTools` or the profile's `prohibitedSupports` withdraws instead.
  * `details` is {@link OverrideBlockedDetails}.
  *
+ * `tool-policy.supportConflict` fires for each id a support in effect withdraws
+ * that something would otherwise have served, as the toolkit's `screenReader`
+ * withdraws `textToSpeech`. It replaces `tool-policy.overrideBlocked` for a `true`
+ * override the conflict withdraws. `details` is {@link SupportConflictDetails}.
+ *
  * The toolkit coordinator logs each diagnostic once per code, tool and item,
  * and hands the same ones to its `onPolicyDiagnostic` listeners.
  */
@@ -139,6 +144,29 @@ export interface OverrideBlockedDetails {
 	rule: "item-restriction" | "pnp-prohibited";
 }
 
+/**
+ * What would have served an id a support conflict withdraws: the placement
+ * that put the tool on this toolbar, or the rule that would have granted it.
+ */
+export type SupportConflictServedBy =
+	| "placement"
+	| Extract<
+			PnpPolicySourceRule,
+			| "test-admin-override"
+			| "item-requirement"
+			| "district-requirement"
+			| "pnp-activate-at-init"
+			| "pnp-support"
+	  >;
+
+/** Payload of a `tool-policy.supportConflict` diagnostic. */
+export interface SupportConflictDetails {
+	/** The support in effect that withholds the id. */
+	support: string;
+	/** What would otherwise have served the withheld id. */
+	servedBy: SupportConflictServedBy;
+}
+
 /** Payload of a `tool-policy.itemSettingNotApplied` diagnostic. */
 export interface ItemSettingNotAppliedDetails {
 	/** Canonical id of the item whose setting names the tool. */
@@ -156,6 +184,7 @@ export interface ToolPolicyDiagnosticDetails {
 	"tool-policy.unknownSupportId": UnknownSupportIdDetails;
 	"tool-policy.itemSettingNotApplied": ItemSettingNotAppliedDetails;
 	"tool-policy.overrideBlocked": OverrideBlockedDetails;
+	"tool-policy.supportConflict": SupportConflictDetails;
 }
 
 /** A policy diagnostic, its `details` typed by its `code`. */

@@ -2,7 +2,7 @@
 
 Status: Draft, 2026-10-12
 
-Unscheduled. Nothing has landed in pie-players or pie-elements-ng.
+Unscheduled. The toolkit side has landed: the `autoplayAudio` feature id resolves, and a `support-conflict` block withholds it while `screenReader` is in effect. Nothing has landed in the item player or pie-elements-ng.
 
 Owner: PIE Players maintainers
 

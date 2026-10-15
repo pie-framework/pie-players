@@ -21,7 +21,23 @@ import type {
 	ToolPolicyResolutionDecision,
 	ToolPolicySourceType,
 } from "../core/provenance.js";
-import type { OverrideBlockedDetails } from "../core/decision-types.js";
+import type {
+	OverrideBlockedDetails,
+	SupportConflictServedBy,
+} from "../core/decision-types.js";
+
+/**
+ * A support whose being in effect withholds other ids: they resolve blocked
+ * under `support-conflict` at precedence 4 while `support` resolves enabled.
+ * Every id a conflict names is recognized without a tool registration, so none
+ * raises `tool-policy.unknownSupportId`.
+ */
+export interface SupportConflict {
+	/** The support id that withholds. */
+	support: string;
+	/** The ids withheld while `support` is in effect. */
+	withholds: readonly string[];
+}
 
 /** Per-tool flags PNP/profile policy may attach to a surviving entry. */
 export interface PnpPolicyToolFlags {
@@ -98,12 +114,29 @@ export interface PnpPolicyResult {
 	 * engine turns each into a `tool-policy.overrideBlocked` diagnostic.
 	 */
 	blockedOverrides: Map<string, OverrideBlockedDetails["rule"]>;
+	/**
+	 * Ids a support in effect withdrew under `support-conflict`, each with that
+	 * support and the rule that would otherwise have granted the id, absent when
+	 * none would have. The engine turns each into a
+	 * `tool-policy.supportConflict` diagnostic when something would have served
+	 * the id.
+	 */
+	supportConflicts: Map<string, SupportConflictResolution>;
 	/** Configuration sources the engine should attach to its provenance. */
 	sources: {
 		assessment?: { id: string; name: string; config?: unknown };
 		student?: { id: string; name: string; config?: unknown };
 		item?: { id: string; name: string; config?: unknown };
 	};
+}
+
+/** A rule a support conflict can displace: one of levels 5 to 8. */
+export type SupportConflictGrant = Exclude<SupportConflictServedBy, "placement">;
+
+/** One `support-conflict` withdrawal. */
+export interface SupportConflictResolution {
+	support: string;
+	grant?: SupportConflictGrant;
 }
 
 /**
@@ -120,9 +153,26 @@ interface PnpResolutionContext {
 export class PnpPolicySource {
 	readonly id = "pnp";
 	private readonly toolRegistry: ToolRegistry;
+	private readonly supportConflicts: readonly SupportConflict[];
+	/** Withheld id to the supports that withhold it, in declaration order. */
+	private readonly withheldBy = new Map<string, string[]>();
+	private readonly registrylessIds = new Set<string>();
 
-	constructor(toolRegistry: ToolRegistry) {
+	constructor(
+		toolRegistry: ToolRegistry,
+		supportConflicts: readonly SupportConflict[] = [],
+	) {
 		this.toolRegistry = toolRegistry;
+		this.supportConflicts = supportConflicts;
+		for (const { support, withholds } of supportConflicts) {
+			this.registrylessIds.add(support);
+			for (const id of withholds) {
+				this.registrylessIds.add(id);
+				const supports = this.withheldBy.get(id) ?? [];
+				supports.push(support);
+				this.withheldBy.set(id, supports);
+			}
+		}
 	}
 
 	apply(args: PnpPolicyApplyArgs): PnpPolicyResult {
@@ -140,6 +190,12 @@ export class PnpPolicySource {
 		}
 		itemSettings?.requiredTools?.forEach((s) => allSupports.add(s));
 		itemSettings?.restrictedTools?.forEach((s) => allSupports.add(s));
+		// A conflict withdraws a placed tool that no policy input names.
+		for (const { support, withholds } of this.supportConflicts) {
+			if (this.supportInEffect(support, ctx)) {
+				withholds.forEach((s) => allSupports.add(s));
+			}
+		}
 
 		for (const supportId of allSupports) {
 			this.resolveSupport(supportId, ctx, result);
@@ -181,14 +237,7 @@ export class PnpPolicySource {
 		const settings = assessment?.settings as AssessmentSettings | undefined;
 		const itemSettings = item?.settings;
 
-		const result: PnpPolicyResult = {
-			blockedToolIds: new Set(),
-			mandates: new Map(),
-			perToolFlags: new Map(),
-			decisions: [],
-			blockedOverrides: new Map(),
-			sources: {},
-		};
+		const result = emptyResult();
 
 		if (settings?.districtPolicy || settings?.testAdministration) {
 			result.sources.assessment = {
@@ -222,10 +271,27 @@ export class PnpPolicySource {
 		return { ctx, result };
 	}
 
+	/**
+	 * Whether `support` resolves enabled, conflicts aside: a support another
+	 * conflict withholds still withholds, and two conflicts naming each other
+	 * cannot recurse.
+	 */
+	private supportInEffect(support: string, ctx: PnpResolutionContext): boolean {
+		const scratch = emptyResult();
+		this.resolveSupport(support, ctx, scratch, false);
+		return scratch.decisions[0]?.action === "enable";
+	}
+
+	/**
+	 * `withConflict: false` resolves the id as if no support conflict applied,
+	 * which names the grant a conflict displaces without a second copy of
+	 * levels 5 to 8.
+	 */
 	private resolveSupport(
 		supportId: string,
 		ctx: PnpResolutionContext,
 		out: PnpPolicyResult,
+		withConflict = true,
 	): void {
 		// 1. District block (absolute veto)
 		if (ctx.districtPolicy?.blockedTools?.includes(supportId)) {
@@ -292,6 +358,36 @@ export class PnpPolicySource {
 				sourceType: "student",
 				reason: `Student PNP profile prohibits "${supportId}"`,
 				value: ctx.pnp.prohibitedSupports,
+			});
+			return;
+		}
+
+		// 4. Support conflict. Ranks with the profile prohibition, below the
+		// blocks a person recorded.
+		const withholding = withConflict
+			? this.withheldBy
+					.get(supportId)
+					?.find((support) => this.supportInEffect(support, ctx))
+			: undefined;
+		if (withholding) {
+			const displaced = emptyResult();
+			this.resolveSupport(supportId, ctx, displaced, false);
+			const grant = displaced.decisions[0];
+			out.blockedToolIds.add(supportId);
+			out.supportConflicts.set(supportId, {
+				support: withholding,
+				...(grant?.action === "enable"
+					? { grant: grant.rule as SupportConflictGrant }
+					: {}),
+			});
+			out.decisions.push({
+				precedence: 4,
+				rule: "support-conflict",
+				featureId: supportId,
+				action: "block",
+				sourceType: "student",
+				reason: `"${supportId}" is withheld while the student's "${withholding}" support is in effect`,
+				value: { support: withholding },
 			});
 			return;
 		}
@@ -451,7 +547,9 @@ export class PnpPolicySource {
 		];
 		for (const [rule, ids] of named) {
 			for (const id of ids ?? []) {
-				if (this.toolRegistry.has(id)) continue;
+				if (this.toolRegistry.has(id) || this.registrylessIds.has(id)) {
+					continue;
+				}
 				const rules = unmapped.get(id) ?? [];
 				if (!rules.includes(rule)) rules.push(rule);
 				unmapped.set(id, rules);
@@ -459,4 +557,16 @@ export class PnpPolicySource {
 		}
 		return unmapped;
 	}
+}
+
+function emptyResult(): PnpPolicyResult {
+	return {
+		blockedToolIds: new Set(),
+		mandates: new Map(),
+		perToolFlags: new Map(),
+		decisions: [],
+		blockedOverrides: new Map(),
+		supportConflicts: new Map(),
+		sources: {},
+	};
 }

@@ -538,10 +538,13 @@ a `pie-*` element in a horizontally scrollable region, so content wider than
 its column scrolls instead of being clipped by an `overflow-x: hidden` ancestor
 (WCAG 1.4.10 Reflow at 400% zoom). Images get
 `<span class="pie-image-scroll">`, plus `pie-image-scroll-block` when the image
-is laid out as a block; tables get `<div class="pie-table-scroll">`. Each
-wrapper is keyboard-scrollable (`tabindex="0"`, `role="region"`) and takes its
-`aria-label` from the image's `alt`, or from the table's `aria-label`,
-`aria-labelledby` or `<caption>`. A post-render pass wraps the images and
+is laid out as a block; tables get `<div class="pie-table-scroll">`. A
+wrapper that scrolls is keyboard-scrollable (`tabindex="0"`, `role="region"`)
+and takes its `aria-label` from the image's `alt`, or from the table's
+`aria-label`, `aria-labelledby` or `<caption>`; the player drops those
+attributes while the content fits, so a wrapper that does not scroll adds no tab
+stop. The wrapper takes the node's inline vertical margins, which it would
+otherwise clip. A post-render pass wraps the images and
 tables an element paints into its own light DOM the same way. The wrapper CSS
 is part of the [content styles](#content-styles).
 

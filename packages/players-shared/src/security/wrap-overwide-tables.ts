@@ -5,7 +5,9 @@
  *
  * The wrapper is rendered as
  * `<div class="pie-table-scroll" tabindex="0" role="region" aria-label="...">`
- * and receives the accompanying CSS from `@pie-players/pie-theme`. The CSS uses
+ * and receives the accompanying CSS from `@pie-players/pie-theme`.
+ * The live player keeps the region attributes only while the wrapper actually
+ * scrolls (see `./overwide-regions.js`), so a table that fits adds no tab stop. The CSS uses
  * `overflow-x: auto` so narrow tables stay visually unchanged: a scrollbar only
  * appears when the table's intrinsic width exceeds the wrapper's available
  * space (including at higher browser-zoom levels — WCAG 1.4.10 Reflow at 400%
@@ -65,7 +67,8 @@ function buildAriaLabel(table: Element): string {
 	return "Scrollable table";
 }
 
-const TABLE_SPEC: OverwideWrapSpec = {
+/** Internal: shared with the region tracker, not re-exported. */
+export const TABLE_SPEC: OverwideWrapSpec = {
 	selector: "table",
 	wrapperTag: "div",
 	wrapperClass: "pie-table-scroll",

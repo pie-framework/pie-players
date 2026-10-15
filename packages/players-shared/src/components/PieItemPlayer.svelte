@@ -13,6 +13,7 @@
   import { isInstrumentationProvider } from "../instrumentation/provider-guards.js";
   import type { LoaderConfig } from "../loader-config.js";
   import { DEFAULT_LOADER_CONFIG } from "../loader-config.js";
+  import { createOverwideRegionTracker } from "../security/overwide-regions.js";
   import {
     buildAuthoringAllowList,
     createDefaultItemMarkupSanitizer,
@@ -1122,9 +1123,13 @@
   // Author mode runs no pass: the wrapper is a delivery reflow affordance, and a
   // configure element's DOM belongs to its editors and its framework. Delivery
   // editors are covered by the wrap, which leaves editing-host content alone.
+  //
+  // Every pass hands its wrappers to the region tracker, which keeps a wrapper a
+  // tab stop only while it scrolls.
   $effect(() => {
     if (!rootElement || mode === "author") return;
     const root = rootElement;
+    const regions = createOverwideRegionTracker(root);
 
     // A pass that wrapped nothing mutated nothing, so it queued no records of
     // its own and the next batch needs no filtering.
@@ -1134,11 +1139,12 @@
       const wrapped =
         wrapOverwideImagesInElement(root) + wrapOverwideTablesInElement(root);
       selfMutationsPending = wrapped > 0;
+      regions.track();
       logger.debug("[PieItemPlayer] Post-render wrap pass wrapped", wrapped);
     };
 
     runWrapPass();
-    if (typeof MutationObserver === "undefined") return;
+    if (typeof MutationObserver === "undefined") return () => regions.disconnect();
 
     let pendingHandle: ReturnType<typeof setTimeout> | null = null;
 
@@ -1182,6 +1188,7 @@
 
     return () => {
       observer.disconnect();
+      regions.disconnect();
       if (pendingHandle !== null) {
         clearTimeout(pendingHandle);
         pendingHandle = null;

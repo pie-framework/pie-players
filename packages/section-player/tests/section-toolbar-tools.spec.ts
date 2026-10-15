@@ -406,6 +406,73 @@ test.describe("section toolbar tools", () => {
 		await expect(passageHeading).not.toHaveAttribute("data-pie-card-title");
 	});
 
+	test("collapses a card header a hidden title leaves empty, until a button arrives", async ({
+		page,
+	}) => {
+		// A section with a passage and an item, and no item or passage tools.
+		await page.goto(
+			"/pie-512-asymmetric-sections?mode=candidate&layout=splitpane&page=pie-512-section-a",
+			{ waitUntil: "networkidle" },
+		);
+		const layout = page.locator("pie-section-player-splitpane");
+		const itemHeader = page.locator(".pie-section-player-item-header").first();
+		const passageHeader = page
+			.locator(".pie-section-player-passage-header")
+			.first();
+		const headerHeight = (header: typeof itemHeader) =>
+			header.evaluate((node) => node.getBoundingClientRect().height);
+
+		await expect(itemHeader.locator("pie-item-toolbar")).toHaveAttribute(
+			"data-pie-toolbar-empty",
+			"true",
+		);
+		// A visible title keeps the row.
+		expect(await headerHeight(itemHeader)).toBeGreaterThan(0);
+
+		await layout.evaluate((node) => {
+			(node as HTMLElement & { hooks: unknown }).hooks = {
+				cardTitleFormatter: () => ({ visible: false }),
+			};
+		});
+		await expect.poll(() => headerHeight(itemHeader)).toBe(0);
+		await expect.poll(() => headerHeight(passageHeader)).toBe(0);
+		// The collapsed header still names the card.
+		await expect(
+			page.getByRole("heading", { name: "Question", exact: true }),
+		).toHaveCount(1);
+
+		await layout.evaluate((node) => {
+			(node as HTMLElement & { itemHostButtons: unknown }).itemHostButtons = [
+				{ id: "flag", label: "Flag", onClick: () => {} },
+			];
+		});
+		await expect(
+			itemHeader.getByRole("button", { name: "Flag" }),
+		).toBeVisible();
+		expect(await headerHeight(itemHeader)).toBeGreaterThan(0);
+		expect(await headerHeight(passageHeader)).toBe(0);
+	});
+
+	test("takes the card frame border from its own hook", async ({ page }) => {
+		await page.goto(
+			"/pie-512-asymmetric-sections?mode=candidate&layout=splitpane&page=pie-512-section-a",
+			{ waitUntil: "networkidle" },
+		);
+		const cards = page.locator(".pie-section-player-content-card");
+		await expect(cards).toHaveCount(2);
+		await page
+			.locator("pie-section-player-splitpane")
+			.evaluate((node) =>
+				(node as HTMLElement).style.setProperty(
+					"--pie-section-player-card-border",
+					"transparent",
+				),
+			);
+		for (const card of await cards.all()) {
+			await expect(card).toHaveCSS("border-top-color", "rgba(0, 0, 0, 0)");
+		}
+	});
+
 	test("restores hosted shell close button background after hover", async ({
 		page,
 	}) => {

@@ -297,34 +297,44 @@ package and the element packages alone:
 import { registerPreloadedElements } from "@pie-players/pie-item-player/preloaded";
 import * as delivery from "@pie-element/multiple-choice/browser/delivery";
 import * as controller from "@pie-element/multiple-choice/browser/controller";
-import manifest from "../package.json"; // pins "@pie-element/multiple-choice" exactly
 
-registerPreloadedElements(
-  [
+registerPreloadedElements([{ element: delivery, controller }], {
+  math: { assetRoot: "https://assets.example.com/npm" },
+});
+await import("@pie-players/pie-item-player");
+```
+
+- `package` and `version` default to the `piePackage` the modules export, the
+  `{ name, version }` of the package they were built from. A `package` or
+  `version` the entry also gives must match it, so a registration an upgrade
+  left behind throws.
+- `tag` is the base tag to register, by default the package name without its
+  `@`, with `-` for `/`: `pie-element-multiple-choice`. The element registers
+  under its versioned form, which encodes the version: 13.4.0-next.15 registers
+  as `pie-element-multiple-choice--version-13-4-0-next-15`. Content that authors
+  the package under another base tag, such as `multiple-choice`, renders through
+  the versioned tag the player defines from this registration.
+- Releases whose modules export no `piePackage` need `package` and `version` in
+  the entry, the version exact; a range throws. Reading it from the host's own
+  exact pin keeps it equal to the installed package:
+
+  ```ts
+  import manifest from "../package.json"; // pins "@pie-element/multiple-choice" exactly
+
+  registerPreloadedElements([
     {
-      tag: "pie-element-multiple-choice",
       package: "@pie-element/multiple-choice",
       version: manifest.dependencies["@pie-element/multiple-choice"],
       element: delivery,
       controller,
     },
-  ],
-  { math: { assetRoot: "https://assets.example.com/npm" } },
-);
-await import("@pie-players/pie-item-player");
-```
+  ]);
+  ```
 
-- `tag` is the base tag to register. The element registers under its versioned
-  form, which encodes the version: 13.4.0-next.15 registers as
-  `pie-element-multiple-choice--version-13-4-0-next-15`. Content that authors
-  the package under another base tag, such as `multiple-choice`, renders through
-  the versioned tag the player defines from this registration.
-- `version` is the installed version, exact; a range throws. Reading it from the
-  host's own exact pin, as above, keeps it equal to the installed package. npm
-  saves a caret range unless the install passes `--save-exact`, and because both
-  repositories publish under `@pie-element/*`, a fresh install can resolve one
-  to another release line: `^13.4.0-next.15` resolves to the legacy `13.4.4`,
-  which has no `./browser/*` modules.
+  npm saves a caret range unless the install passes `--save-exact`, and because
+  both repositories publish under `@pie-element/*`, a fresh install can resolve
+  one to another release line: `^13.4.0-next.15` resolves to the legacy
+  `13.4.4`, which has no `./browser/*` modules.
 - Install every pie-elements-ng package from one release, in one
   `npm install --save-exact` from the same dist-tag, and upgrade them together.
   Elements whose `./browser/*` builds typeset on `window.MathJax` share the
@@ -352,7 +362,7 @@ await import("@pie-players/pie-item-player");
   page gives a root or the files' URLs.
 - The call is synchronous and validates every entry, and `math`, before
   registering any. A tag that is already defined keeps its definition.
-- Under TypeScript, the `package.json` import needs `resolveJsonModule`, and a
+- Under TypeScript, a `package.json` import needs `resolveJsonModule`, and a
   package version that ships no declarations for `./browser/*` needs a
   `declare module` shim for those subpaths.
 

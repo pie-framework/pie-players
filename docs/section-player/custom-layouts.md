@@ -140,4 +140,4 @@ renders nothing.
   nearest ancestor with `overflow-y: auto` or `scroll`, so the layout gives each
   pane's container that overflow and a bounded height. The stock layouts' pane
   backdrops and margins stay with those layouts; the cards keep their tags and
-  [styling hooks](../../packages/section-player/README.md#card-header-styling-hooks).
+  [styling hooks](../../packages/section-player/README.md#card-styling-hooks).

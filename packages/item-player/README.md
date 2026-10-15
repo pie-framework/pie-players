@@ -188,6 +188,10 @@ item.
 - `autoplay-audio-enabled`: `Boolean`, default unset, which leaves each model's
   `autoplayAudioEnabled` as it is. Set, it writes `autoplayAudioEnabled` onto
   every model in the config, overwriting or adding the field.
+- `idle-save-delay-ms`: `Number`, default unset, which leaves each element its
+  own delay. How long the learner has to pause before a response editor commits
+  without losing focus; `0` commits on blur only. Elements read it from
+  `sessionCommitContext` ([Idle commit](../../docs/item-player/overview.md#idle-commit)).
 - `base-heading-level`: `Number` (1–6), default unset. The level of the item's
   visually hidden heading, which PIE elements emit; authored headings nest one
   level below it. Reflected, because elements read it off the player.
@@ -534,10 +538,13 @@ a `pie-*` element in a horizontally scrollable region, so content wider than
 its column scrolls instead of being clipped by an `overflow-x: hidden` ancestor
 (WCAG 1.4.10 Reflow at 400% zoom). Images get
 `<span class="pie-image-scroll">`, plus `pie-image-scroll-block` when the image
-is laid out as a block; tables get `<div class="pie-table-scroll">`. Each
-wrapper is keyboard-scrollable (`tabindex="0"`, `role="region"`) and takes its
-`aria-label` from the image's `alt`, or from the table's `aria-label`,
-`aria-labelledby` or `<caption>`. A post-render pass wraps the images and
+is laid out as a block; tables get `<div class="pie-table-scroll">`. A
+wrapper that scrolls is keyboard-scrollable (`tabindex="0"`, `role="region"`)
+and takes its `aria-label` from the image's `alt`, or from the table's
+`aria-label`, `aria-labelledby` or `<caption>`; the player drops those
+attributes while the content fits, so a wrapper that does not scroll adds no tab
+stop. The wrapper takes the node's inline vertical margins, which it would
+otherwise clip. A post-render pass wraps the images and
 tables an element paints into its own light DOM the same way. The wrapper CSS
 is part of the [content styles](#content-styles).
 

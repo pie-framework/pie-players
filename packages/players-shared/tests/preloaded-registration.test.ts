@@ -236,6 +236,7 @@ describe("registerPreloadedElements", () => {
 		["an empty tag", { tag: "" }, "base tag to register"],
 		["a module without an element class", { element: {} }, "./browser/delivery module"],
 		["a controller without model()", { controller: { outcome: () => ({}) } }, "./browser/controller module"],
+		["an uppercase tag", { tag: "Pie-Upper" }, "must be lowercase"],
 	])("rejects %s before registering anything", (_label, override, message) => {
 		const pkg = uniquePackage();
 		const valid = { tag: "pie-valid", package: pkg, version: "1.0.0", element: elementClass() };
@@ -244,6 +245,73 @@ describe("registerPreloadedElements", () => {
 			registerPreloadedElements([valid, { ...valid, tag: "pie-invalid", ...override } as any]),
 		).toThrow(message);
 		expect(customElements.get("pie-valid--version-1-0-0")).toBeUndefined();
+	});
+});
+
+describe("registerPreloadedElements piePackage", () => {
+	// A ./browser/* module namespace, as pie-elements-ng builds it.
+	const modules = (name: string, version = "3.1.0") => {
+		const piePackage = Object.freeze({ name, version });
+		return {
+			element: { default: elementClass(), piePackage },
+			controller: { model: async (model: unknown) => model, piePackage },
+		};
+	};
+
+	test("takes the package, version and tag from the modules alone", () => {
+		const pkg = uniquePackage();
+		const { element, controller } = modules(pkg);
+
+		registerPreloadedElements([{ element, controller }]);
+
+		const tag = `${pkg.slice(1).replace("/", "-")}--version-3-1-0`;
+		expect(host().PIE_REGISTRY?.[tag]).toEqual({
+			package: `${pkg}@3.1.0`,
+			status: Status.loaded,
+			tagName: tag,
+			element: element.default,
+			controller,
+			bundleType: BundleType.clientPlayer,
+		});
+		expect(host().PIE_PRELOADED_ELEMENTS).toEqual({ [pkg]: `${pkg}@3.1.0` });
+	});
+
+	test("takes them from the controller module when the element is a class", () => {
+		const pkg = uniquePackage();
+		const { controller } = modules(pkg);
+
+		registerPreloadedElements([{ tag: "pie-from-controller", element: elementClass(), controller }]);
+
+		expect(customElements.get("pie-from-controller--version-3-1-0")).toBeDefined();
+	});
+
+	test("accepts a package and version that match the modules", () => {
+		const pkg = uniquePackage();
+
+		registerPreloadedElements([{ ...modules(pkg), package: pkg, version: "3.1.0" }]);
+
+		expect(host().PIE_PRELOADED_ELEMENTS).toEqual({ [pkg]: `${pkg}@3.1.0` });
+	});
+
+	// Overrides build element classes, which need the DOM `beforeAll` registers, so they run in the test.
+	test.each([
+		["a version the modules were not built from", () => ({ version: "3.0.0" }), "were built from"],
+		["a package the modules were not built from", () => ({ package: "@pie-element/other" }), "were built from"],
+		["a controller from another version", () => ({ controller: modules("x", "3.0.0").controller }), "but the controller module is"],
+		["a piePackage without a version", () => ({ element: { default: elementClass(), piePackage: { name: "x" } } }), "piePackage must be { name, version }"],
+		["neither a piePackage nor a package and version", () => ({ element: elementClass(), controller: undefined }), "package and version are required"],
+	])("rejects %s before registering anything", (_label, override, message) => {
+		const valid = modules(uniquePackage());
+		const invalid = { ...modules(uniquePackage()), ...override() };
+
+		expect(() => registerPreloadedElements([valid, invalid as any])).toThrow(message);
+		expect(host().PIE_PRELOADED_ELEMENTS).toEqual({});
+	});
+
+	test("rejects a package name that derives no tag, asking for one", () => {
+		expect(() =>
+			registerPreloadedElements([modules("@pie-element/Upper") as any]),
+		).toThrow("tag derived from the package name; give tag");
 	});
 });
 

@@ -10,6 +10,8 @@ export {
 } from "./consumer.js";
 export { provideContext, ContextProvider } from "./provider.js";
 export { ContextRoot, ensureDocumentContextRoot } from "./root.js";
+export { sessionCommitContext } from "./session-commit.js";
+export type { SessionCommitContextValue } from "./session-commit.js";
 export type {
 	Context,
 	ContextCallback,

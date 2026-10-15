@@ -23,6 +23,7 @@
 			renderStimulus: { attribute: "render-stimulus", type: "Boolean" },
 			allowedResize: { attribute: "allowed-resize", type: "Boolean" },
 			autoplayAudioEnabled: { attribute: "autoplay-audio-enabled", type: "Boolean" },
+			idleSaveDelayMs: { attribute: "idle-save-delay-ms", type: "Number" },
 			// Both reflect: PIE elements read these off the nearest player host and
 			// re-render on a MutationObserver watching these attributes, so a prop
 			// that never reaches the attribute is honoured at first paint and inert
@@ -208,6 +209,10 @@ The PIE item player: it loads an item's PIE elements under the `iife`, `esm` or 
 		resolveSessionChangedForwarding,
 		withContractMetadata,
 	} from "./session-forwarding.js";
+	import {
+		provideSessionCommitContext,
+		resolveSessionCommitContextValue,
+	} from "./session-commit-context.js";
 
 	type ItemSession = {
 		id: string;
@@ -245,6 +250,7 @@ The PIE item player: it loads an item's PIE elements under the `iife`, `esm` or 
 		renderStimulus = true,
 		allowedResize = false,
 		autoplayAudioEnabled = undefined as boolean | undefined,
+		idleSaveDelayMs = undefined as number | undefined,
 		baseHeadingLevel = undefined as 1 | 2 | 3 | 4 | 5 | 6 | undefined,
 		locale = "",
 		includeSrHeading = true,
@@ -1545,6 +1551,35 @@ The PIE item player: it loads an item's PIE elements under the `iife`, `esm` or 
 		};
 		localHost.addEventListener("focusout", onFocusOut);
 		return () => localHost.removeEventListener("focusout", onFocusOut);
+	});
+
+	// How the elements commit a response while it is still being typed. The host
+	// sets one delay for the player and every element inside it reads it from
+	// `sessionCommitContext`; unset leaves each element its own default.
+	const sessionCommitContextValue = $derived(
+		resolveSessionCommitContextValue(idleSaveDelayMs),
+	);
+	let sessionCommitContextProvider: ReturnType<
+		typeof provideSessionCommitContext
+	> | null = null;
+	$effect(() => {
+		if (!isBrowser) return;
+		const localHost = hostElement;
+		if (!localHost) return;
+		const provider = untrack(() =>
+			provideSessionCommitContext(localHost, sessionCommitContextValue),
+		);
+		sessionCommitContextProvider = provider;
+		return () => {
+			provider.disconnect();
+			if (sessionCommitContextProvider === provider) {
+				sessionCommitContextProvider = null;
+			}
+		};
+	});
+	$effect(() => {
+		const value = sessionCommitContextValue;
+		untrack(() => sessionCommitContextProvider?.setValue(value));
 	});
 
 	function refreshMountedElements(config: ConfigEntity): void {

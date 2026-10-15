@@ -344,4 +344,20 @@ describe("player module minification", () => {
 		const { read } = await import(pathToFileURL(join(dir, "pie-item-player.js")).href);
 		expect(read()).toBe("Größe");
 	});
+
+	test("keeps a sourceMappingURL string unreadable as a comment", async () => {
+		const dir = await mkdtemp(join(os.tmpdir(), "pie-preloaded-minify-"));
+		// es-module-shims writes the string escaped; the trailing comment is a real one.
+		await writeFile(
+			join(dir, "module-shim.js"),
+			"export const marker = `\\n//# sourceMappingURL\\x3d`;\n//# sourceMappingURL=module-shim.js.map\n",
+		);
+
+		await minifyPlayerModules(dir);
+
+		const code = await readFile(join(dir, "module-shim.js"), "utf-8");
+		expect(code).not.toMatch(/\/\/[#@] sourceMappingURL=/);
+		const { marker } = await import(pathToFileURL(join(dir, "module-shim.js")).href);
+		expect(marker).toBe("\n//# sourceMappingURL=");
+	});
 });

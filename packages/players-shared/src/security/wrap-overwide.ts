@@ -73,6 +73,32 @@ function isInsidePieCustomElement(node: Element, root: Element): boolean {
 	return false;
 }
 
+const VERTICAL_MARGINS = ["margin-top", "margin-bottom"] as const;
+
+/**
+ * Moves the node's inline vertical margins onto its wrapper. The wrapper clips
+ * vertically — `overflow-x: auto` forces `overflow-y` off `visible` — so a
+ * negative margin left on the node pulls its edge into the clipped band, and
+ * the wrapper's own block formatting context stops a positive one collapsing
+ * with its neighbours. On the wrapper, both lay out as they did unwrapped.
+ * Horizontal margins stay: `margin: 0 auto` centres the node inside the wrapper.
+ */
+function liftVerticalMargins(node: Element, wrapper: HTMLElement): void {
+	const style = (node as HTMLElement).style;
+	if (!style) return;
+	for (const property of VERTICAL_MARGINS) {
+		const value = style.getPropertyValue(property);
+		if (!value) continue;
+		wrapper.style.setProperty(
+			property,
+			value,
+			style.getPropertyPriority(property),
+		);
+		style.removeProperty(property);
+	}
+	if (!style.length) node.removeAttribute("style");
+}
+
 /**
  * Wrappers whose layout class was read from the live cascade. A wrapper built
  * off-document saw only its node's inline style, so the first live pass to meet
@@ -150,16 +176,61 @@ export function wrapOverwideInElement(
 		wrapper.className = layoutClass
 			? `${spec.wrapperClass} ${layoutClass}`
 			: spec.wrapperClass;
-		wrapper.setAttribute("tabindex", "0");
-		wrapper.setAttribute("role", "region");
-		wrapper.setAttribute("aria-label", spec.buildAriaLabel(node));
+		setRegion(wrapper, node, spec);
 		if (readsLiveLayout) liveLayoutRead.add(wrapper);
+		liftVerticalMargins(node, wrapper);
 
 		parent.insertBefore(wrapper, node);
 		wrapper.appendChild(node);
 		wrapped += 1;
 	}
 	return wrapped;
+}
+
+function setRegion(wrapper: Element, node: Element, spec: OverwideWrapSpec) {
+	wrapper.setAttribute("tabindex", "0");
+	wrapper.setAttribute("role", "region");
+	wrapper.setAttribute("aria-label", spec.buildAriaLabel(node));
+}
+
+function clearRegion(wrapper: Element) {
+	wrapper.removeAttribute("tabindex");
+	wrapper.removeAttribute("role");
+	wrapper.removeAttribute("aria-label");
+}
+
+/**
+ * Makes each wrapper a named, focusable region while its content overflows it
+ * horizontally, and a plain container otherwise.
+ *
+ * A wrapper is built as a region, because a wrapper that scrolls must be
+ * reachable by keyboard (WCAG 2.1.1) and markup wrapped off-document cannot be
+ * measured. Most never scroll: a table that fits its column, a drag tile, a
+ * layout table. Left as regions they add a tab stop and a landmark each, so the
+ * live player measures every wrapper and keeps the region only where there is
+ * something to scroll. Measurements are read for every wrapper before the first
+ * write. A wrapper holding focus keeps its region, so a sync never drops focus.
+ */
+export function syncOverwideRegions(
+	wrappers: Iterable<Element>,
+	spec: OverwideWrapSpec,
+): void {
+	const measured: Array<[Element, boolean]> = [];
+	for (const wrapper of wrappers) {
+		if (!wrapper.isConnected) continue;
+		if (!wrapper.classList.contains(spec.wrapperClass)) continue;
+		measured.push([wrapper, wrapper.scrollWidth > wrapper.clientWidth]);
+	}
+	for (const [wrapper, scrolls] of measured) {
+		const node = wrapper.firstElementChild;
+		if (scrolls && node?.matches(spec.selector)) setRegion(wrapper, node, spec);
+		else if (!scrolls && !isFocused(wrapper)) clearRegion(wrapper);
+	}
+}
+
+function isFocused(element: Element): boolean {
+	const root = element.getRootNode() as Document | ShadowRoot;
+	return root.activeElement === element;
 }
 
 /**

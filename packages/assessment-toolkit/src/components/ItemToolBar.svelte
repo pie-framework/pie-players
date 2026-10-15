@@ -1046,6 +1046,11 @@ The toolbar for an item, passage or section, rendering a button for each tool th
 			controlsRowShouldReserveSpace ||
 			controlsRowShouldExpandForActiveTool
 	);
+	// No tool to render and no host button. A tool whose module is still loading
+	// counts, so a header that collapses on this does not collapse and reopen.
+	const toolbarEmpty = $derived(
+		toolbarVisibleToolIds.length === 0 && normalizedHostButtons.length === 0
+	);
 
 	function resolveToolbarHostElement(): HTMLElement | null {
 		if (!toolbarRootElement) return null;
@@ -1063,9 +1068,11 @@ The toolbar for an item, passage or section, rendering a button for each tool th
 		const active = headerOverlayShouldExpandForActiveTool;
 		host.setAttribute('data-pie-header-overlay', hasHeaderOverlay ? 'true' : 'false');
 		host.setAttribute('data-pie-header-overlay-active', active ? 'true' : 'false');
+		host.setAttribute('data-pie-toolbar-empty', toolbarEmpty ? 'true' : 'false');
 		return () => {
 			host.removeAttribute('data-pie-header-overlay');
 			host.removeAttribute('data-pie-header-overlay-active');
+			host.removeAttribute('data-pie-toolbar-empty');
 		};
 	});
 

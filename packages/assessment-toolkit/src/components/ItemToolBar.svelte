@@ -2184,13 +2184,14 @@ The toolbar for an item, passage or section, rendering a button for each tool th
 				glyph: string,
 				iconName: string,
 				onActivate: () => void,
-				faVariant: NdsGlyphVariant = 'fa-regular'
+				iconTurn?: string
 			) => {
 				if (!controlsEl) return;
 				const label = currentArgs.i18n.t(key);
 				const control = useNdsShellIcons
-					? createShellIconButton(label, iconName, onActivate, faVariant)
+					? createShellIconButton(label, iconName, onActivate)
 					: createShellControlButton(label, glyph, onActivate);
+				if (useNdsShellIcons && iconTurn) control.style.rotate = iconTurn;
 				localizedControlEls.push({ el: control, key });
 				controlsEl.appendChild(control);
 			};
@@ -2201,8 +2202,15 @@ The toolbar for an item, passage or section, rendering a button for each tool th
 				appendControl('toolkit.window.moveDownA11y', '↓', 'chevron-down', () => moveBy(0, SHELL_MOVE_STEP_PX));
 			}
 			if (shellConfig?.resizable !== false) {
-				appendControl('toolkit.window.shrinkA11y', '−', 'magnifying-glass-minus', () => resizeBy(-SHELL_RESIZE_STEP_PX, -SHELL_RESIZE_STEP_PX));
-				appendControl('toolkit.window.growA11y', '+', 'magnifying-glass-plus', () => resizeBy(SHELL_RESIZE_STEP_PX, SHELL_RESIZE_STEP_PX));
+				// A pair per dimension, since a corner grip sets each on its own. Font
+				// Awesome Free has no narrower or shorter icon, so the design-system
+				// controls turn its diagonal compress and expand icons onto each axis.
+				const compressIcon = 'down-left-and-up-right-to-center';
+				const expandIcon = 'up-right-and-down-left-from-center';
+				appendControl('toolkit.window.narrowerA11y', '↔−', compressIcon, () => resizeBy(-SHELL_RESIZE_STEP_PX, 0), '45deg');
+				appendControl('toolkit.window.widerA11y', '↔+', expandIcon, () => resizeBy(SHELL_RESIZE_STEP_PX, 0), '45deg');
+				appendControl('toolkit.window.shorterA11y', '↕−', compressIcon, () => resizeBy(0, -SHELL_RESIZE_STEP_PX), '-45deg');
+				appendControl('toolkit.window.tallerA11y', '↕+', expandIcon, () => resizeBy(0, SHELL_RESIZE_STEP_PX), '-45deg');
 			}
 			if (!shellDeclaresNdsChrome()) {
 				const centerControl = createShellControlButton(
@@ -2315,14 +2323,14 @@ The toolbar for an item, passage or section, rendering a button for each tool th
 				}
 				const keyboardShellConfig = currentArgs.mounted.entry.shell;
 				if (event.shiftKey && keyboardShellConfig?.resizable !== false) {
-					if (event.key === 'ArrowRight' || event.key === 'ArrowDown') {
+					if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
 						event.preventDefault();
-						resizeBy(SHELL_RESIZE_STEP_PX, SHELL_RESIZE_STEP_PX);
+						resizeBy(event.key === 'ArrowRight' ? SHELL_RESIZE_STEP_PX : -SHELL_RESIZE_STEP_PX, 0);
 						return;
 					}
-					if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') {
+					if (event.key === 'ArrowUp' || event.key === 'ArrowDown') {
 						event.preventDefault();
-						resizeBy(-SHELL_RESIZE_STEP_PX, -SHELL_RESIZE_STEP_PX);
+						resizeBy(0, event.key === 'ArrowDown' ? SHELL_RESIZE_STEP_PX : -SHELL_RESIZE_STEP_PX);
 						return;
 					}
 				}

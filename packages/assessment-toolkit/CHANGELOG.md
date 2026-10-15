@@ -1,5 +1,15 @@
 # @pie-players/pie-assessment-toolkit
 
+## 1.0.0-beta.4
+
+### Patch Changes
+
+- 67112f8: A profile listing the `screenReader` support now withholds `textToSpeech` and the `autoplayAudio` feature under the new `support-conflict` rule, at the precedence of `pnp-prohibited`. A district block, a `false` override or an item restriction still outranks it. A withdrawal raises `tool-policy.supportConflict`, which replaces `tool-policy.overrideBlocked` for an override the conflict withdraws, and neither id raises `tool-policy.unknownSupportId` any more.
+- @pie-players/pie-calculator@1.0.0-beta.4
+  - @pie-players/pie-context@1.0.0-beta.4
+  - @pie-players/pie-players-shared@1.0.0-beta.4
+  - @pie-players/pie-tts@1.0.0-beta.4
+
 ## 1.0.0-beta.3
 
 ### Patch Changes

@@ -1,5 +1,12 @@
 # @pie-players/pie-tool-calculator
 
+## 1.0.0-beta.4
+
+### Patch Changes
+
+- @pie-players/pie-tool-calculator-shared@1.0.0-beta.4
+  - @pie-players/pie-calculator@1.0.0-beta.4
+
 ## 1.0.0-beta.3
 
 ### Patch Changes

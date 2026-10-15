@@ -1,5 +1,12 @@
 # @pie-players/pie-item-player
 
+## 1.0.0-beta.4
+
+### Patch Changes
+
+- @pie-players/pie-context@1.0.0-beta.4
+  - @pie-players/pie-players-shared@1.0.0-beta.4
+
 ## 1.0.0-beta.3
 
 ### Patch Changes

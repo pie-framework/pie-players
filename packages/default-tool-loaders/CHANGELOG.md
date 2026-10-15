@@ -1,5 +1,30 @@
 # @pie-players/pie-default-tool-loaders
 
+## 1.0.0-beta.4
+
+### Patch Changes
+
+- Updated dependencies [67112f8]
+  - @pie-players/pie-assessment-toolkit@1.0.0-beta.4
+  - @pie-players/pie-tool-annotation-toolbar@1.0.0-beta.4
+  - @pie-players/pie-tool-answer-eliminator@1.0.0-beta.4
+  - @pie-players/pie-tool-calculator-shared@1.0.0-beta.4
+  - @pie-players/pie-tool-theme@1.0.0-beta.4
+  - @pie-players/pie-tool-graph@1.0.0-beta.4
+  - @pie-players/pie-tool-line-reader@1.0.0-beta.4
+  - @pie-players/pie-tool-periodic-table@1.0.0-beta.4
+  - @pie-players/pie-tool-protractor@1.0.0-beta.4
+  - @pie-players/pie-tool-ruler@1.0.0-beta.4
+  - @pie-players/pie-tool-tts-inline@1.0.0-beta.4
+  - @pie-players/pie-calculator@1.0.0-beta.4
+  - @pie-players/pie-calculator-cortex@1.0.0-beta.4
+  - @pie-players/pie-calculator-desmos@1.0.0-beta.4
+  - @pie-players/pie-calculator-geogebra@1.0.0-beta.4
+  - @pie-players/pie-players-shared@1.0.0-beta.4
+  - @pie-players/pie-tool-dictionary@1.0.0-beta.4
+  - @pie-players/pie-tool-picture-dictionary@1.0.0-beta.4
+  - @pie-players/tts-client-server@1.0.0-beta.4
+
 ## 1.0.0-beta.3
 
 ### Patch Changes

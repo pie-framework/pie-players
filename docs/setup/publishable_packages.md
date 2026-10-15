@@ -50,6 +50,7 @@ Publishable packages:
 - `@pie-players/pie-tool-theme`
 - `@pie-players/pie-tool-graph`
 - `@pie-players/pie-tool-line-reader`
+- `@pie-players/pie-tool-magnifier`
 - `@pie-players/pie-tool-periodic-table`
 - `@pie-players/pie-tool-protractor`
 - `@pie-players/pie-tool-ruler`

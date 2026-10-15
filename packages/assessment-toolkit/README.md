@@ -538,8 +538,9 @@ tools: {
   calculator
 - **Annotation toolbar** (`annotationToolbar`): highlights and annotates
   selected text; it opens from a text selection, outside the toolbars
-- **Line reader** (`lineReader`), **ruler** (`ruler`), **protractor**
-  (`protractor`), **graph** (`graph`) and **periodic table** (`periodicTable`)
+- **Line reader** (`lineReader`), **magnifier** (`magnification`), **ruler**
+  (`ruler`), **protractor** (`protractor`), **graph** (`graph`) and **periodic
+  table** (`periodicTable`)
 - **Dictionaries** (`dictionary`, `pictureDictionary`, `dictionarySpanish`,
   `pictureDictionarySpanish`)
 
@@ -575,6 +576,7 @@ tools: {
 - **Protractor** (`protractor`): angle measurement
 - **Ruler** (`ruler`): linear measurement (metric and imperial)
 - **Line reader** (`lineReader`): reading guide and masking overlay
+- **Magnifier** (`magnification`): movable magnifying lens
 - **Dictionaries** (`dictionary`, `pictureDictionary`, `dictionarySpanish`,
   `pictureDictionarySpanish`)
 - **The color-scheme tool** (`theme`): high-contrast color schemes; it also

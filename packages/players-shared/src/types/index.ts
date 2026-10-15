@@ -679,6 +679,8 @@ export interface ToolParameterMap {
 	 * speed; `pitch` runs 0–2 with 1 normal; `volume` runs 0–1.
 	 */
 	textToSpeech: { rate?: number; pitch?: number; volume?: number };
+	/** `zoom` is the lens's starting magnification, 2 meaning twice the size. */
+	magnification: { zoom?: number };
 }
 
 /** The parameter shape of tool `K`: its {@link ToolParameterMap} entry, else open. */

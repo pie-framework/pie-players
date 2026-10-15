@@ -32,6 +32,7 @@
   dictionaryToolRegistration
   graphToolRegistration
   lineReaderToolRegistration
+  magnificationToolRegistration
   periodicTableToolRegistration
   pictureDictionaryToolRegistration
   protractorToolRegistration

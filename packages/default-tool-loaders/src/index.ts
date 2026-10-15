@@ -29,6 +29,7 @@ export { CONTENT_ALTERNATE_REGISTRATIONS } from "./content-alternates.js";
 export {
 	annotationToolbarRegistration,
 	lineReaderToolRegistration,
+	magnificationToolRegistration,
 	themeToolRegistration,
 } from "./registrations/accessibility-tools.js";
 export {

@@ -379,6 +379,24 @@ const enUS = {
 			resizeFrameFullA11y:
 				"Resize the frame. Drag, or use the up and down arrow keys to change the frame height and the left and right arrow keys to change the width. Current frame height {frameHeight} pixels, width {width} pixels",
 		},
+		magnification: {
+			name: "Magnifier",
+			description: "Magnify the content under a movable lens",
+			buttonA11y: "Magnifier, enlarge the content under a lens",
+			tooltip: "Magnifier",
+			roleA11y: "Draggable and resizable magnifying lens",
+			applicationA11y:
+				"Magnifier at {zoom} times. Use the arrow keys to move the lens, + and - to change the zoom, and Escape to close.",
+			zoomIn: "Zoom in",
+			zoomOut: "Zoom out",
+			zoomLevel: "{zoom}×",
+			zoomAnnounce: "Zoom {zoom} times",
+			close: "Close magnifier",
+			resizeA11y: "Drag to resize the magnifier",
+			resizeFullA11y:
+				"Resize the magnifier. Drag, or use the arrow keys. Current size {width} by {height} pixels",
+			sizeAnnounce: "Magnifier {width} by {height} pixels",
+		},
 		answerEliminator: {
 			name: "Answer Eliminator",
 			description: "Strike through answer choices",

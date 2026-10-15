@@ -61,7 +61,7 @@ const assessment: AssessmentEntity = {
     // Supports granted to this student, by tool id
     supports: [
       "textToSpeech",
-      "magnification",     // No packaged tool; reported as an unknown support id
+      "magnification",
       "calculator",
       "annotationToolbar",
       "lineReader"
@@ -277,7 +277,7 @@ const assessment: AssessmentEntity = {
   personalNeedsProfile: {
     supports: [
       "textToSpeech",
-      "magnification",
+      "keywordEmphasis",
       "annotationToolbar",
       "lineReader",
       "calculator"
@@ -330,7 +330,7 @@ console.log('Allowed tools:', allowedToolIds);
 // - calculator: Blocked by district policy (#1)
 // - textToSpeech: Restricted for this item (#3), which outranks the district requirement (#7)
 // - annotationToolbar: Placed at item level and granted by the profile
-// - magnification: No tool is registered under it; the coordinator's
+// - keywordEmphasis: No tool is registered under it; the coordinator's
 //   `getPolicyInputs().diagnostics` carries a `tool-policy.unknownSupportId`
 // - lineReader: Granted, but this configuration places it at passage level only
 // - The passage toolbar still shows textToSpeech: item settings reach only the
@@ -466,10 +466,11 @@ Each AfA feature's disposition:
 | `calculator-on-screen` | `calculator`. `calculator-type` `basic`, `scientific` or `graphing` is its `type`; `standard` and `ext:` types leave the calculator's default |
 | `sign-language` | `signLanguage`, served once the host registers `@pie-players/pie-tool-sign-language`. `language` is its `signLang` |
 | `line-reader` | `lineReader`. The line reader takes no settings, so `highlight-color` is not read; its colors are the `--pie-tool-line-reader-*` custom properties |
+| `magnification` | `magnification`, served by `@pie-players/pie-tool-magnifier`. `all-content` above 1 is its starting `zoom`; the learner changes it from there |
 | `answer-masking`, `dictionary-on-screen`, `transcript` | `answerEliminator`, `dictionary`, `transcript` |
 | `activate-at-initialization-set`, `activate-as-option-set`, `prohibit-set` | Read as above |
 | `text-appearance`, `high-contrast`, `invert-display-polarity` | The host's presentation, through `<pie-theme>`; the color-scheme tool (`theme`) lets the learner pick a scheme. Passed through camelCased |
-| `magnification`, `layout-single-column` | No packaged tool; browser zoom and the host's layout serve them. Passed through camelCased |
+| `layout-single-column` | No packaged tool; the host's layout serves it. Passed through camelCased |
 | `additional-testing-time`, `environment` | Administration the host runs. Passed through camelCased |
 | `language-of-interface` | The player's `locale`. Not read |
 | `access-mode-required`, `adaptation-type-required`, `adaptation-detail-required`, `adaptation-media-required`, `at-interoperable`, `educational-complexity-of-adaptation`, `educational-level-of-adaptation`, `hazard-avoidance`, `input-requirements`, `language-of-adaptation` | Not read: they select among adapted resources by resource metadata, which PIE content does not carry |

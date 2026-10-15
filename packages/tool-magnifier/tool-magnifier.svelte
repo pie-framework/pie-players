@@ -1,0 +1,713 @@
+<svelte:options
+	customElement={{
+		tag: 'pie-tool-magnifier',
+		shadow: 'open',
+		props: {
+			visible: { type: 'Boolean', attribute: 'visible' },
+			toolId: { type: 'String', attribute: 'tool-id' },
+			zoom: { type: 'Number', attribute: 'zoom' }
+		},
+		extend: coerceBooleanAttributes,
+	}}
+/>
+
+<!--
+@component
+Magnifying lens: a movable, resizable window that shows the content under it
+enlarged, with controls on its bar to change the zoom and close. The host shows
+it with `visible` and sets the starting magnification with `zoom` (the AfA PNP
+`magnification` amount; 2 when absent). Inside a toolkit runtime context it
+registers `tool-id` with the tool coordinator on the tool layer, and the close
+control hides it there. Arrow keys move it, `+` and `-` change the zoom, and
+Escape closes it.
+-->
+
+<script lang="ts">
+	import { coerceBooleanAttributes } from '@pie-players/pie-players-shared/ui/attribute-coercion';
+
+	import {
+		connectToolRuntimeContext,
+		createToolCoordinatorRegistration,
+		ZIndexLayer,
+	} from '@pie-players/pie-assessment-toolkit/tools/registration';
+	import type {
+		AssessmentToolkitRuntimeContext,
+		ToolCoordinatorApi,
+	} from '@pie-players/pie-assessment-toolkit/tools/registration';
+	import {
+		clampPointWithinBlock,
+		createPointerDragController,
+		createPointerGesture,
+		DEFAULT_CONTAINMENT_GUTTER,
+		resolveContainingBlockRect
+	} from '@pie-players/pie-players-shared';
+	import { resolveInterfaceI18n } from '@pie-players/pie-players-shared/i18n/provider';
+	import { onMount, untrack } from 'svelte';
+	import { createMirrorFrame, type MirrorFrame } from './src/mirror.js';
+
+	let {
+		visible = false,
+		toolId = 'magnification',
+		zoom = undefined
+	}: { visible?: boolean; toolId?: string; zoom?: number } = $props();
+
+	const hostElement = $host();
+	const isBrowser = typeof window !== 'undefined';
+
+	let containerEl = $state<HTMLDivElement | undefined>();
+	let viewportEl = $state<HTMLDivElement | undefined>();
+	let runtimeContext = $state<AssessmentToolkitRuntimeContext | null>(null);
+	const coordinator = $derived(
+		runtimeContext?.toolCoordinator as ToolCoordinatorApi | undefined,
+	);
+	/**
+	 * Centre point of the lens, in the coordinate space of its containing block.
+	 * Seeded from the visible part of that block once the element is in the DOM.
+	 */
+	let position = $state({ x: 0, y: 0 });
+	let positionSeeded = false;
+	const dragController = createPointerDragController({
+		getPosition: () => position,
+		setPosition: (next) => {
+			position = clampToContainingBlock(next);
+		},
+		onDragStart: (container) => coordinator?.bringToFront(container as HTMLElement)
+	});
+	/** Size of the magnified viewport, excluding the bar and the border. */
+	let width = $state(360);
+	let height = $state(220);
+	let level = $state(2);
+	let resizing = $state(false);
+	let resizeStart = { width: 0, height: 0, mouseX: 0, mouseY: 0 };
+	const interfaceI18n = $derived(resolveInterfaceI18n(runtimeContext));
+	let announceText = $state('');
+
+	const registration = createToolCoordinatorRegistration('Magnifier', ZIndexLayer.TOOL);
+
+	// Geometry constants
+	const BAR_HEIGHT = 36; // pixels
+	const BORDER_WIDTH = 2; // pixels
+	const MIN_WIDTH = 160; // pixels
+	const MIN_HEIGHT = 100; // pixels
+	const MAX_WIDTH = 1200; // pixels
+	const MAX_HEIGHT = 800; // pixels
+	const CONTAINMENT_GUTTER = DEFAULT_CONTAINMENT_GUTTER;
+
+	// Zoom: the steps the controls move between, and the range a host may start in.
+	const ZOOM_STEPS = [1.5, 2, 2.5, 3, 4, 5, 6];
+	const DEFAULT_ZOOM = 2;
+	const MIN_ZOOM = 1.25;
+	const MAX_ZOOM = 6;
+
+	// Keyboard navigation constants
+	const MOVE_STEP = 10; // pixels
+	const RESIZE_STEP = 20; // pixels
+
+	const lensWidth = $derived(width + BORDER_WIDTH * 2);
+	const lensHeight = $derived(BAR_HEIGHT + height + BORDER_WIDTH * 2);
+	const canZoomIn = $derived(ZOOM_STEPS.some((step) => step > level + 0.001));
+	const canZoomOut = $derived(ZOOM_STEPS.some((step) => step < level - 0.001));
+	const zoomText = $derived(formatZoom(level));
+
+	$effect(() => {
+		if (!containerEl) return;
+		return connectToolRuntimeContext(containerEl, (value: AssessmentToolkitRuntimeContext) => {
+			runtimeContext = value;
+		});
+	});
+
+	let announceTimer: ReturnType<typeof setTimeout> | null = null;
+
+	function announce(message: string) {
+		if (announceTimer !== null) clearTimeout(announceTimer);
+		announceText = message;
+		announceTimer = setTimeout(() => {
+			announceText = '';
+			announceTimer = null;
+		}, 1000);
+	}
+
+	function formatZoom(value: number): string {
+		return new Intl.NumberFormat(interfaceI18n.getLocale(), {
+			maximumFractionDigits: 2
+		}).format(value);
+	}
+
+	/** A host's magnification, or the default when it names none a lens can use. */
+	function normalizeZoom(value: unknown): number {
+		const amount = typeof value === 'number' ? value : Number(value);
+		if (value === undefined || value === null || !Number.isFinite(amount) || amount <= 1) {
+			return DEFAULT_ZOOM;
+		}
+		return Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, amount));
+	}
+
+	function stepZoom(direction: 1 | -1) {
+		const next =
+			direction > 0
+				? ZOOM_STEPS.find((step) => step > level + 0.001)
+				: [...ZOOM_STEPS].reverse().find((step) => step < level - 0.001);
+		if (next === undefined) return;
+		level = next;
+		announce(
+			interfaceI18n.t('tools.magnification.zoomAnnounce', { zoom: formatZoom(level) }),
+		);
+	}
+
+	/** The box the lens's `left`/`top` are relative to. */
+	function containingBlockRect(): DOMRect | undefined {
+		return resolveContainingBlockRect(containerEl);
+	}
+
+	function containingBlockSize(): { width: number; height: number } | undefined {
+		const rect = containingBlockRect();
+		return rect && { width: rect.width, height: rect.height };
+	}
+
+	function clampWidth(value: number) {
+		const available = containingBlockSize()?.width;
+		const upper =
+			available === undefined
+				? MAX_WIDTH
+				: Math.min(MAX_WIDTH, available - CONTAINMENT_GUTTER * 2 - BORDER_WIDTH * 2);
+		return Math.round(Math.max(MIN_WIDTH, Math.min(Math.max(MIN_WIDTH, upper), value)));
+	}
+
+	function clampHeight(value: number) {
+		const available = containingBlockSize()?.height;
+		const upper =
+			available === undefined
+				? MAX_HEIGHT
+				: Math.min(
+						MAX_HEIGHT,
+						available - CONTAINMENT_GUTTER * 2 - BORDER_WIDTH * 2 - BAR_HEIGHT
+					);
+		return Math.round(Math.max(MIN_HEIGHT, Math.min(Math.max(MIN_HEIGHT, upper), value)));
+	}
+
+	/**
+	 * Where the lens should open, in containing-block coordinates: the centre of
+	 * the part of the block on screen, so a lens placed on a long passage opens
+	 * over the text the student is looking at.
+	 */
+	function seedCentre(): { x: number; y: number } | undefined {
+		const rect = containingBlockRect();
+		if (!rect) return undefined;
+		const visibleLeft = Math.max(rect.left, 0);
+		const visibleTop = Math.max(rect.top, 0);
+		const visibleRight = Math.min(rect.right, window.innerWidth);
+		const visibleBottom = Math.min(rect.bottom, window.innerHeight);
+		if (visibleRight <= visibleLeft || visibleBottom <= visibleTop) {
+			return { x: rect.width / 2, y: rect.height / 2 };
+		}
+		return {
+			x: (visibleLeft + visibleRight) / 2 - rect.left,
+			y: (visibleTop + visibleBottom) / 2 - rect.top
+		};
+	}
+
+	/**
+	 * Keeps the lens inside its containing block. `position` is the centre point --
+	 * the root is drawn with `translate(-50%, -50%)` -- and the lens's extent moves
+	 * with its resize control, so both are read at call time.
+	 */
+	function clampToContainingBlock(next: { x: number; y: number }) {
+		const block = containingBlockSize();
+		if (!block) return next;
+		return clampPointWithinBlock(
+			next,
+			{ width: lensWidth, height: lensHeight },
+			block,
+			CONTAINMENT_GUTTER
+		);
+	}
+
+	function reclampPosition() {
+		position = clampToContainingBlock(position);
+	}
+
+	function resize(deltaWidth: number, deltaHeight: number) {
+		width = clampWidth(width + deltaWidth);
+		height = clampHeight(height + deltaHeight);
+		reclampPosition();
+		announce(interfaceI18n.t('tools.magnification.sizeAnnounce', { width, height }));
+	}
+
+	function closeTool() {
+		if (coordinator && toolId) {
+			coordinator.hideTool(toolId);
+		}
+	}
+
+	// The copy of the page the lens shows, and the frame its transform is
+	// recomputed on. Neither is reactive: both are driven from events.
+	let mirror: MirrorFrame | null = null;
+	let placementFrame = 0;
+
+	/**
+	 * Scales the copy by the zoom and offsets it so the page point under the
+	 * lens's centre sits at the centre of the viewport. The copy is laid out at the
+	 * page's viewport size and scrolled with it, so a page point's viewport
+	 * coordinates are its coordinates in the copy.
+	 */
+	function placeMirror() {
+		if (!mirror || !viewportEl) return;
+		const rect = viewportEl.getBoundingClientRect();
+		const centreX = rect.left + rect.width / 2;
+		const centreY = rect.top + rect.height / 2;
+		const offsetX = rect.width / 2 - level * centreX;
+		const offsetY = rect.height / 2 - level * centreY;
+		mirror.setTransform(`translate(${offsetX}px, ${offsetY}px) scale(${level})`);
+	}
+
+	function schedulePlacement() {
+		if (!isBrowser || placementFrame) return;
+		placementFrame = requestAnimationFrame(() => {
+			placementFrame = 0;
+			placeMirror();
+		});
+	}
+
+	function handlePointerDown(e: PointerEvent) {
+		const target = e.target as HTMLElement;
+		const grip = target.closest<HTMLElement>('.pie-tool-magnifier__resize');
+		if (grip) {
+			startResizing(e, grip);
+			return;
+		}
+		// Let the bar's buttons handle their own activation instead of swallowing
+		// the press into a drag.
+		if (target.closest('button')) return;
+		startDragging(e);
+	}
+
+	// Drags and resizes share one gesture, which ends on a cancelled touch as well
+	// as on release.
+	const gesture = createPointerGesture({
+		onMove: handlePointerMove,
+		onEnd: () => {
+			dragController.endDragging();
+			resizing = false;
+		}
+	});
+
+	function startDragging(e: PointerEvent) {
+		if (!containerEl || !gesture.begin(e, containerEl)) return;
+		// The claim's `preventDefault` suppresses the press's default focus; without
+		// this the arrow-key shortcuts never reach the lens.
+		containerEl.focus({ preventScroll: true });
+		dragController.startDragging(e, containerEl);
+	}
+
+	function startResizing(e: PointerEvent, grip: HTMLElement) {
+		e.stopPropagation();
+		if (!containerEl || !gesture.begin(e, containerEl)) return;
+		containerEl.setPointerCapture(e.pointerId);
+		grip.focus({ preventScroll: true });
+		resizing = true;
+		resizeStart = { width, height, mouseX: e.clientX, mouseY: e.clientY };
+		coordinator?.bringToFront(containerEl);
+	}
+
+	function handlePointerMove(e: PointerEvent) {
+		if (dragController.isDragging()) {
+			dragController.handlePointerMove(e);
+			return;
+		}
+		if (!resizing) return;
+		// The lens grows symmetrically around its centre, so the corner under the
+		// pointer moves half as far as the dimension it drives.
+		width = clampWidth(resizeStart.width + (e.clientX - resizeStart.mouseX) * 2);
+		height = clampHeight(resizeStart.height + (e.clientY - resizeStart.mouseY) * 2);
+		reclampPosition();
+	}
+
+	type MoveAnnouncement =
+		| 'toolkit.announce.movedUp'
+		| 'toolkit.announce.movedDown'
+		| 'toolkit.announce.movedLeft'
+		| 'toolkit.announce.movedRight';
+
+	function move(dx: number, dy: number, key: MoveAnnouncement) {
+		position = clampToContainingBlock({ x: position.x + dx, y: position.y + dy });
+		announce(
+			interfaceI18n.t(key, {
+				position: Math.round(dx === 0 ? position.y : position.x),
+			}),
+		);
+	}
+
+	function handleKeyDown(e: KeyboardEvent) {
+		let handled = true;
+		switch (e.key) {
+			case 'ArrowUp':
+				move(0, -MOVE_STEP, 'toolkit.announce.movedUp');
+				break;
+			case 'ArrowDown':
+				move(0, MOVE_STEP, 'toolkit.announce.movedDown');
+				break;
+			case 'ArrowLeft':
+				move(-MOVE_STEP, 0, 'toolkit.announce.movedLeft');
+				break;
+			case 'ArrowRight':
+				move(MOVE_STEP, 0, 'toolkit.announce.movedRight');
+				break;
+			case '+':
+			case '=':
+				stepZoom(1);
+				break;
+			case '-':
+			case '_':
+				stepZoom(-1);
+				break;
+			case 'Escape':
+				closeTool();
+				break;
+			default:
+				handled = false;
+		}
+		if (handled) e.preventDefault();
+	}
+
+	/**
+	 * Keyboard alternative to dragging the resize grip (WCAG 2.5.7): arrow keys
+	 * resize while the grip has focus, and are stopped so they do not also move
+	 * the lens.
+	 */
+	function handleResizeKeyDown(e: KeyboardEvent) {
+		let handled = true;
+		switch (e.key) {
+			case 'ArrowUp':
+				resize(0, -RESIZE_STEP);
+				break;
+			case 'ArrowDown':
+				resize(0, RESIZE_STEP);
+				break;
+			case 'ArrowLeft':
+				resize(-RESIZE_STEP, 0);
+				break;
+			case 'ArrowRight':
+				resize(RESIZE_STEP, 0);
+				break;
+			default:
+				handled = false;
+		}
+		if (handled) {
+			e.preventDefault();
+			e.stopPropagation();
+		}
+	}
+
+	// Re-registers when a republished context brings a new coordinator.
+	$effect(() => registration.sync(coordinator, toolId));
+
+	onMount(() => {
+		return () => {
+			if (announceTimer !== null) clearTimeout(announceTimer);
+			if (placementFrame) cancelAnimationFrame(placementFrame);
+			gesture.release();
+			registration.release();
+		};
+	});
+
+	$effect(() => {
+		if (coordinator && containerEl && toolId) {
+			coordinator.updateToolElement(toolId, containerEl);
+		}
+	});
+
+	// The host's magnification, applied whenever it changes; the student's own
+	// zoom changes hold until it does.
+	$effect(() => {
+		const next = normalizeZoom(zoom);
+		untrack(() => {
+			level = next;
+		});
+	});
+
+	/**
+	 * Places the lens over the visible part of its containing block the first time
+	 * it is shown, and trims a default size that does not fit. Runs once: a
+	 * position the student dragged to survives closing and reopening the tool.
+	 */
+	function seedPosition() {
+		if (positionSeeded) return;
+		const centre = seedCentre();
+		if (!centre) return;
+		positionSeeded = true;
+		width = clampWidth(width);
+		height = clampHeight(height);
+		position = clampToContainingBlock(centre);
+	}
+
+	$effect(() => {
+		if (!visible) untrack(() => gesture.release());
+	});
+
+	// Position, then focus, when the tool becomes visible -- focused with
+	// `preventScroll` so revealing it cannot scroll the pane it sits in.
+	$effect(() => {
+		if (!visible || !containerEl) return;
+		untrack(seedPosition);
+		const timer = setTimeout(() => containerEl?.focus({ preventScroll: true }), 100);
+		return () => clearTimeout(timer);
+	});
+
+	// The copy of the page exists only while the lens is on screen.
+	$effect(() => {
+		if (!isBrowser || !visible || !viewportEl) return;
+		const container = viewportEl;
+		const created = untrack(() =>
+			createMirrorFrame({
+				container,
+				exclude: (element) => element === hostElement,
+				onSwap: schedulePlacement
+			})
+		);
+		mirror = created;
+		schedulePlacement();
+		return () => {
+			created.destroy();
+			if (mirror === created) mirror = null;
+		};
+	});
+
+	// The copy follows the lens: its position, its size and the zoom.
+	$effect(() => {
+		void position.x;
+		void position.y;
+		void width;
+		void height;
+		void level;
+		untrack(schedulePlacement);
+	});
+
+	// Scrolling moves the content under the lens, and a window resize changes the
+	// containing block's extent.
+	$effect(() => {
+		if (!isBrowser || !visible) return;
+		const onScroll = () => schedulePlacement();
+		const onResize = () => {
+			width = clampWidth(width);
+			height = clampHeight(height);
+			reclampPosition();
+			schedulePlacement();
+		};
+		document.addEventListener('scroll', onScroll, { capture: true, passive: true });
+		window.addEventListener('resize', onResize);
+		return () => {
+			document.removeEventListener('scroll', onScroll, true);
+			window.removeEventListener('resize', onResize);
+		};
+	});
+</script>
+
+{#if visible}
+	<div class="pie-sr-only" role="status" aria-live="polite" aria-atomic="true">
+		{announceText}
+	</div>
+
+	<!-- svelte-ignore a11y_no_noninteractive_tabindex -->
+	<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+	<div
+		bind:this={containerEl}
+		class="pie-tool-magnifier"
+		style="left: {position.x}px; top: {position.y}px; width: {lensWidth}px; height: {lensHeight}px; border-width: {BORDER_WIDTH}px;"
+		onpointerdown={handlePointerDown}
+		onkeydown={handleKeyDown}
+		role="group"
+		tabindex="0"
+		lang={interfaceI18n.getLocale()}
+		dir={interfaceI18n.getDirection?.() ?? 'ltr'}
+		aria-label={interfaceI18n.t('tools.magnification.applicationA11y', { zoom: zoomText })}
+		aria-roledescription={interfaceI18n.t('tools.magnification.roleA11y')}
+	>
+		<div class="pie-tool-magnifier__bar" style="height: {BAR_HEIGHT}px;">
+			<button
+				type="button"
+				class="pie-tool-magnifier__button"
+				onclick={() => stepZoom(-1)}
+				disabled={!canZoomOut}
+				title={interfaceI18n.t('tools.magnification.zoomOut')}
+				aria-label={interfaceI18n.t('tools.magnification.zoomOut')}
+			>
+				<svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true" focusable="false">
+					<path d="M2 7 H12" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" />
+				</svg>
+			</button>
+			<span class="pie-tool-magnifier__level" aria-hidden="true">
+				{interfaceI18n.t('tools.magnification.zoomLevel', { zoom: zoomText })}
+			</span>
+			<button
+				type="button"
+				class="pie-tool-magnifier__button"
+				onclick={() => stepZoom(1)}
+				disabled={!canZoomIn}
+				title={interfaceI18n.t('tools.magnification.zoomIn')}
+				aria-label={interfaceI18n.t('tools.magnification.zoomIn')}
+			>
+				<svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true" focusable="false">
+					<path
+						d="M2 7 H12 M7 2 V12"
+						stroke="currentColor"
+						stroke-width="1.75"
+						stroke-linecap="round"
+					/>
+				</svg>
+			</button>
+			<span class="pie-tool-magnifier__spacer"></span>
+			<button
+				type="button"
+				class="pie-tool-magnifier__button"
+				onclick={closeTool}
+				title={interfaceI18n.t('tools.magnification.close')}
+				aria-label={interfaceI18n.t('tools.magnification.close')}
+			>
+				<svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true" focusable="false">
+					<path
+						d="M1 1 L11 11 M11 1 L1 11"
+						stroke="currentColor"
+						stroke-width="1.5"
+						stroke-linecap="round"
+					/>
+				</svg>
+			</button>
+		</div>
+
+		<!-- The magnified copy of the page is mounted here. -->
+		<div bind:this={viewportEl} class="pie-tool-magnifier__viewport" aria-hidden="true"></div>
+
+		<button
+			type="button"
+			class="pie-tool-magnifier__resize"
+			onkeydown={handleResizeKeyDown}
+			title={interfaceI18n.t('tools.magnification.resizeA11y')}
+			aria-label={interfaceI18n.t('tools.magnification.resizeFullA11y', { width, height })}
+		>
+			<svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true" focusable="false">
+				<path
+					d="M11 4 L4 11 M11 8 L8 11"
+					stroke="currentColor"
+					stroke-width="1.5"
+					stroke-linecap="round"
+				/>
+			</svg>
+		</button>
+	</div>
+{/if}
+
+<style>
+	.pie-sr-only {
+		position: absolute;
+		width: 1px;
+		height: 1px;
+		padding: 0;
+		margin: -1px;
+		overflow: hidden;
+		clip: rect(0, 0, 0, 0);
+		white-space: nowrap;
+		border-width: 0;
+	}
+
+	.pie-tool-magnifier {
+		position: absolute;
+		transform: translate(-50%, -50%);
+		box-sizing: border-box;
+		display: flex;
+		flex-direction: column;
+		border-style: solid;
+		border-color: var(--pie-primary, #1a73e8);
+		border-radius: 8px;
+		background-color: var(--pie-background, #fff);
+		color: var(--pie-text, #111);
+		box-shadow: 0 4px 16px 0 color-mix(in srgb, var(--pie-text, #000) 24%, transparent);
+		overflow: hidden;
+		cursor: move;
+		user-select: none;
+		pointer-events: auto;
+		touch-action: none;
+		font-size: 14px;
+		line-height: 1;
+	}
+
+	.pie-tool-magnifier:focus-visible {
+		outline: 3px solid var(--pie-button-focus-outline, var(--pie-primary, #4a90e2));
+		outline-offset: 2px;
+	}
+
+	.pie-tool-magnifier:active {
+		cursor: grabbing;
+	}
+
+	.pie-tool-magnifier__bar {
+		flex: none;
+		display: flex;
+		align-items: center;
+		gap: 4px;
+		box-sizing: border-box;
+		padding: 0 6px;
+		background-color: var(--pie-secondary-background, #f2f4f7);
+		border-bottom: 1px solid var(--pie-border, #c4c9d1);
+	}
+
+	.pie-tool-magnifier__level {
+		min-width: 3em;
+		text-align: center;
+		font-weight: 600;
+		font-variant-numeric: tabular-nums;
+	}
+
+	.pie-tool-magnifier__spacer {
+		flex: 1;
+	}
+
+	/* 28x28 clears the WCAG 2.5.8 minimum target size with room on the bar. */
+	.pie-tool-magnifier__button,
+	.pie-tool-magnifier__resize {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		width: 28px;
+		height: 28px;
+		padding: 0;
+		border: none;
+		border-radius: 4px;
+		background-color: transparent;
+		color: inherit;
+		cursor: pointer;
+	}
+
+	.pie-tool-magnifier__button:hover:not(:disabled),
+	.pie-tool-magnifier__resize:hover {
+		background-color: color-mix(in srgb, currentColor 14%, transparent);
+	}
+
+	.pie-tool-magnifier__button:disabled {
+		opacity: 0.4;
+		cursor: default;
+	}
+
+	.pie-tool-magnifier__button:focus-visible,
+	.pie-tool-magnifier__resize:focus-visible {
+		outline: 2px solid var(--pie-button-focus-outline, var(--pie-primary, #4a90e2));
+		outline-offset: 1px;
+	}
+
+	.pie-tool-magnifier__viewport {
+		position: relative;
+		flex: 1;
+		overflow: hidden;
+		background-color: var(--pie-background, #fff);
+	}
+
+	/* A corner grip over the viewport, on a backing so it reads over any content. */
+	.pie-tool-magnifier__resize {
+		position: absolute;
+		right: 2px;
+		bottom: 2px;
+		width: 24px;
+		height: 24px;
+		background-color: color-mix(in srgb, var(--pie-background, #fff) 85%, transparent);
+		cursor: nwse-resize;
+	}
+</style>

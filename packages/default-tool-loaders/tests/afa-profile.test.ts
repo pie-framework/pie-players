@@ -78,11 +78,13 @@ describe("AfA PNP 3.0 adapter", () => {
 				},
 				"calculator-on-screen": { "calculator-type": "graphing" },
 				"sign-language": { language: "ase" },
+				magnification: { "all-content": 2.5 },
 			}).toolParameters,
 		).toEqual({
 			textToSpeech: { rate: 1.5, pitch: 0.5, volume: 0.8 },
 			calculator: { type: "graphing" },
 			signLanguage: { signLang: "ase" },
+			magnification: { zoom: 2.5 },
 		});
 	});
 
@@ -91,7 +93,11 @@ describe("AfA PNP 3.0 adapter", () => {
 			createPersonalNeedsProfileFromAfa({
 				spoken: { "speech-rate": 270 },
 				"calculator-on-screen": { "calculator-type": "standard" },
+				magnification: { "all-content": 1 },
 			}),
-		).toEqual({ supports: ["calculator", "screenReader"], prohibitedSupports: [] });
+		).toEqual({
+			supports: ["calculator", "magnification", "screenReader"],
+			prohibitedSupports: [],
+		});
 	});
 });

@@ -18,6 +18,7 @@ describe("default tool module loaders", () => {
 			"dictionarySpanish",
 			"graph",
 			"lineReader",
+			"magnification",
 			"periodicTable",
 			"pictureDictionary",
 			"pictureDictionarySpanish",

@@ -17,6 +17,7 @@ await runDevServerBootstrap({
 		"packages/tool-periodic-table/dist/tool-periodic-table.js",
 		"packages/tool-protractor/dist/tool-protractor.js",
 		"packages/tool-line-reader/dist/tool-line-reader.js",
+		"packages/tool-magnifier/dist/tool-magnifier.js",
 		"packages/tool-ruler/dist/tool-ruler.js",
 	],
 });

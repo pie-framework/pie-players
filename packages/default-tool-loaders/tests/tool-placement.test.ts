@@ -11,6 +11,7 @@ describe("packaged tool placement", () => {
 				"graph",
 				"periodicTable",
 				"lineReader",
+				"magnification",
 				"ruler",
 				"protractor",
 				"dictionary",

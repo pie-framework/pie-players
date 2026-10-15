@@ -40,6 +40,8 @@ export interface AfaPnpRecord {
 	spoken?: AfaSpoken;
 	"calculator-on-screen"?: { "calculator-type"?: string; [setting: string]: unknown };
 	"sign-language"?: { language?: string; [setting: string]: unknown };
+	/** `all-content` is the starting zoom, a multiplier above 1. */
+	magnification?: { "all-content"?: number; [setting: string]: unknown };
 	"activate-at-initialization-set"?: AfaFeatureSet;
 	"activate-as-option-set"?: AfaFeatureSet;
 	"prohibit-set"?: AfaFeatureSet;
@@ -166,6 +168,10 @@ export function createPersonalNeedsProfileFromAfa(
 	const signLang = record["sign-language"]?.language;
 	if (typeof signLang === "string" && signLang.length > 0) {
 		toolParameters.signLanguage = { signLang };
+	}
+	const zoom = finiteNumber(record.magnification?.["all-content"]);
+	if (zoom !== undefined && zoom > 1) {
+		toolParameters.magnification = { zoom };
 	}
 
 	return {

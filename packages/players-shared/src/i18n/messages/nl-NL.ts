@@ -303,6 +303,24 @@ const nlNL = {
 			resizeFrameFullA11y:
 				"Verstel het kader. Sleep, verander de hoogte van het kader met de pijltoetsen omhoog en omlaag, en de breedte met de pijltoetsen links en rechts. Huidige hoogte kader {frameHeight} pixels, breedte {width} pixels",
 		},
+		magnification: {
+			name: "Vergrootglas",
+			description: "De inhoud onder een verplaatsbare lens vergroten",
+			buttonA11y: "Vergrootglas, de inhoud onder een lens vergroten",
+			tooltip: "Vergrootglas",
+			roleA11y: "Verplaatsbare en verstelbare vergrootlens",
+			applicationA11y:
+				"Vergrootglas, {zoom} keer vergroot. Verplaats de lens met de pijltoetsen, verander de vergroting met + en -, en sluit met Escape.",
+			zoomIn: "Inzoomen",
+			zoomOut: "Uitzoomen",
+			zoomLevel: "{zoom}×",
+			zoomAnnounce: "{zoom} keer vergroot",
+			close: "Vergrootglas sluiten",
+			resizeA11y: "Sleep om het vergrootglas te verstellen",
+			resizeFullA11y:
+				"Verstel het vergrootglas. Sleep, of gebruik de pijltoetsen. Huidige grootte {width} bij {height} pixels",
+			sizeAnnounce: "Vergrootglas {width} bij {height} pixels",
+		},
 		answerEliminator: {
 			name: "Antwoorden wegstrepen",
 			description: "Antwoordopties doorstrepen",

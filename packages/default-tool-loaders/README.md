@@ -167,8 +167,8 @@ student's AfA PNP 3.0 record, held as JSON keyed by the spec's terms. Features
 become support ids in the packaged set's names, the activation sets fill
 `activateAtInit` and `prohibitedSupports`, and the settings the packaged tools
 read become `toolParameters`: read-aloud speed, pitch and volume, the calculator
-type and the sign language. The toolkit's PNP configuration guide gives each AfA
-feature's disposition.
+type, the sign language and the magnifier's starting zoom. The toolkit's PNP
+configuration guide gives each AfA feature's disposition.
 
 ```ts
 import { createPersonalNeedsProfileFromAfa } from "@pie-players/pie-default-tool-loaders";

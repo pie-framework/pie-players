@@ -217,6 +217,9 @@
   type PolicySourceResult
   type RequiredToolBlockedDetails
   type ResolvedEngineInputs
+  type SupportConflict
+  type SupportConflictDetails
+  type SupportConflictServedBy
   type ToolPolicyChangeEvent
   type ToolPolicyChangeListener
   type ToolPolicyDecision

@@ -98,7 +98,7 @@ Other packaged ids name an AfA capability in other words. `createPersonalNeedsPr
 
 AfA has no term for `ruler`, `protractor`, `graph`, `periodicTable` or `annotationToolbar`.
 
-`spoken` with `reading-type` `screen-reader`, the value AfA assumes when `reading-type` is absent, grants no packaged tool: the student's own screen reader speaks, and PIE's read-aloud would talk over it. [ADR 0004](../../../docs/adr/0004-screen-reader-use-is-a-profile-support-that-withholds-read-aloud.md) records the `screenReader` support id that will carry it and withhold `textToSpeech`, and the AfA adapter emits it. Until the toolkit recognizes that id, it raises `tool-policy.unknownSupportId`, and a host withholds read-aloud from such a student by listing `textToSpeech` in `prohibitedSupports`.
+`spoken` with `reading-type` `screen-reader`, the value AfA assumes when `reading-type` is absent, grants no packaged tool: the student's own screen reader speaks, and PIE's read-aloud would talk over it. It carries the `screenReader` support id ([ADR 0004](../../../docs/adr/0004-screen-reader-use-is-a-profile-support-that-withholds-read-aloud.md)), which the AfA adapter emits and the toolkit recognizes without a tool registration, as it does the feature id `autoplayAudio`. While `screenReader` resolves enabled, policy withholds `textToSpeech` and `autoplayAudio` under `support-conflict`: see [PNP configuration](./PNP_CONFIGURATION.md#support-conflict).
 
 Keep a tool id stable once profiles use it: renaming it drops the grant from every profile that lists the old id. That is why an existing id keeps its name where the AfA term differs, as `textToSpeech` does for `spoken`.
 

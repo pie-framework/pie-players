@@ -110,6 +110,7 @@ import type {
 	SectionPersistenceFactoryDefaults,
 } from "./section-controller-types.js";
 import { resolveSectionSessionAssignment } from "./section-session-assignment.js";
+import { TOOLKIT_SUPPORT_CONFLICTS } from "./support-conflicts.js";
 export type {
 	SectionControllerContext,
 	SectionControllerEvent,
@@ -902,6 +903,7 @@ export class ToolkitCoordinator {
 			toolRegistry: this.toolRegistry,
 			contextId: `toolkit-coordinator:${this.assessmentId}`,
 			assessmentOptional: this.config.assessmentOptional === true,
+			supportConflicts: TOOLKIT_SUPPORT_CONFLICTS,
 			inputs: {
 				tools: this.config.tools as CanonicalToolsConfig,
 				assessment: null,

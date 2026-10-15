@@ -23,6 +23,7 @@ import type {
 	ItemSettingNotAppliedDetails,
 	OverrideBlockedDetails,
 	RequiredToolBlockedDetails,
+	SupportConflictServedBy,
 	ToolPolicyDecision,
 	ToolPolicyDecisionRequest,
 	ToolPolicyDiagnostic,
@@ -206,6 +207,19 @@ export function composeDecision(
 
 		for (const [toolId, rule] of pnpPolicyResult.blockedOverrides) {
 			diagnostics.push(overrideBlockedDiagnostic(toolId, rule, request.level));
+		}
+		// A withheld tool this level would have shown: placed and past the host
+		// gates. One the host removed was never going to be served here.
+		for (const [toolId, conflict] of pnpPolicyResult.supportConflicts) {
+			if (!postHostCandidates.has(toolId)) continue;
+			diagnostics.push(
+				supportConflictDiagnostic(
+					toolId,
+					conflict.support,
+					conflict.grant ?? "placement",
+					request.level,
+				),
+			);
 		}
 
 		// 5a — remove PNP/profile-blocked tools from the candidate set.
@@ -432,6 +446,7 @@ const PNP_RULE_FIELDS: Record<PnpPolicySourceRule, string> = {
 	"test-admin-override": "settings.testAdministration.toolOverrides",
 	"item-restriction": "item settings.restrictedTools",
 	"pnp-prohibited": "personalNeedsProfile.prohibitedSupports",
+	"support-conflict": "a withholding support in personalNeedsProfile.supports",
 	"item-requirement": "item settings.requiredTools",
 	"district-requirement": "settings.districtPolicy.requiredTools",
 	"pnp-support": "personalNeedsProfile.supports",
@@ -454,6 +469,28 @@ export function overrideBlockedDiagnostic(
 		toolId,
 		message: `settings.testAdministration.toolOverrides grants "${toolId}", but ${PNP_RULE_FIELDS[rule]} withdraws it and outranks a granting override.`,
 		details: { rule },
+	};
+}
+
+/**
+ * A `tool-policy.supportConflict` diagnostic for an id `support` withholds
+ * although `servedBy` would have served it. `level` is absent on a feature
+ * decision, which has no toolbar level.
+ */
+export function supportConflictDiagnostic(
+	toolId: string,
+	support: string,
+	servedBy: SupportConflictServedBy,
+	level?: ToolPlacementLevel,
+): ToolPolicyDiagnostic {
+	const source =
+		servedBy === "placement" ? "tools.placement" : PNP_RULE_FIELDS[servedBy];
+	return {
+		code: "tool-policy.supportConflict",
+		...(level ? { level } : {}),
+		toolId,
+		message: `${source} serves "${toolId}", but the student's "${support}" support withholds it.`,
+		details: { support, servedBy },
 	};
 }
 

@@ -703,6 +703,19 @@ this repository, or reads the eliminator's choice hooks. Host R places the
 eliminator at item level and Host A takes it from the packaged loaders; their
 multiple-choice and EBSR items keep it.
 
+On 2026-10-14 the `.pie-table-scroll` and `.pie-image-scroll` wrappers started
+carrying the inline `margin-top` and `margin-bottom` of the node they wrap. The
+wrapper clips its content vertically, so a table authored with a negative top
+margin, common in migrated drag-in-the-blank items, lost its top edge and the
+top of any tile dropped into it; it now lays out where it stood unwrapped. The
+live item player also keeps `tabindex="0"`, `role="region"` and the
+`aria-label` on a wrapper only while it scrolls, so a table or image that fits
+its column adds no tab stop. Markup sanitized outside the player keeps the
+region attributes on every wrapper. Checked against all five host checkouts the
+same day as a targeted lookup, so it does not advance the verification date: no
+host reads the wrapper's attributes, and Host A's strip of `pie-image-scroll`
+spans still matches a span carrying a style attribute.
+
 ## Consumer profiles
 
 The control-sizing repair removes automatic zoom compensation from section

@@ -293,15 +293,16 @@ describe("registerPreloadedElements piePackage", () => {
 		expect(host().PIE_PRELOADED_ELEMENTS).toEqual({ [pkg]: `${pkg}@3.1.0` });
 	});
 
+	// Overrides build element classes, which need the DOM `beforeAll` registers, so they run in the test.
 	test.each([
-		["a version the modules were not built from", { version: "3.0.0" }, "were built from"],
-		["a package the modules were not built from", { package: "@pie-element/other" }, "were built from"],
-		["a controller from another version", { controller: modules("x", "3.0.0").controller }, "but the controller module is"],
-		["a piePackage without a version", { element: { default: elementClass(), piePackage: { name: "x" } } }, "piePackage must be { name, version }"],
-		["neither a piePackage nor a package and version", { element: elementClass(), controller: undefined }, "package and version are required"],
+		["a version the modules were not built from", () => ({ version: "3.0.0" }), "were built from"],
+		["a package the modules were not built from", () => ({ package: "@pie-element/other" }), "were built from"],
+		["a controller from another version", () => ({ controller: modules("x", "3.0.0").controller }), "but the controller module is"],
+		["a piePackage without a version", () => ({ element: { default: elementClass(), piePackage: { name: "x" } } }), "piePackage must be { name, version }"],
+		["neither a piePackage nor a package and version", () => ({ element: elementClass(), controller: undefined }), "package and version are required"],
 	])("rejects %s before registering anything", (_label, override, message) => {
 		const valid = modules(uniquePackage());
-		const invalid = { ...modules(uniquePackage()), ...override };
+		const invalid = { ...modules(uniquePackage()), ...override() };
 
 		expect(() => registerPreloadedElements([valid, invalid as any])).toThrow(message);
 		expect(host().PIE_PRELOADED_ELEMENTS).toEqual({});

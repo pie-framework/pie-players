@@ -1,5 +1,21 @@
 # @pie-players/pie-section-player
 
+## 1.0.0-beta.3
+
+### Patch Changes
+
+- 95de24f: Add `sessionCommitContext` and the item player's `idleSaveDelayMs` (`idle-save-delay-ms`), which sets how long a response editor waits for the learner to pause before committing; `0` commits on blur only. The section player takes it as `runtime.player.idleSaveDelayMs`.
+- 36a21f8: Item and passage cards collapse their header, divider included, while `hooks.cardTitleFormatter` hides the title and the card's toolbar has no tool or host button to show; the heading stays in the document as the card's accessible name. `<pie-item-toolbar>` reflects that state as `data-pie-toolbar-empty`. The card frame's border color reads the new `--pie-section-player-card-border`, falling back to `--pie-border-light`, so `transparent` removes the frame without restyling borders inside item content.
+- Updated dependencies [95de24f]
+- Updated dependencies [a9fb597]
+- Updated dependencies [66cb4d4]
+- Updated dependencies [36a21f8]
+- Updated dependencies [ec6fd81]
+  - @pie-players/pie-item-player@1.0.0-beta.3
+  - @pie-players/pie-players-shared@1.0.0-beta.3
+  - @pie-players/pie-assessment-toolkit@1.0.0-beta.3
+  - @pie-players/pie-default-tool-loaders@1.0.0-beta.3
+
 ## 1.0.0-beta.2
 
 ### Patch Changes

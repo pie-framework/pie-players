@@ -2,7 +2,7 @@
 
 Status: Draft, 2026-10-12
 
-The toolkit and item player sides have landed: `<pie-item-scope>` provides the decision, the item player writes it onto delivery models and announces `feature-decision-applied`, and `tools.policy` accepts `autoplayAudio`. No pie-elements-ng element reads `autoplayAudioHeld` yet, so a hold reaches no element.
+The toolkit and item player sides have landed: `<pie-item-scope>` provides the decision, the item player writes it onto delivery models and announces `feature-decision-applied`, and `tools.policy` accepts `autoplayAudio`. The elements that carry `autoplayAudioEnabled` (categorize, drag-in-the-blank, hotspot, image-cloze-association, multiple-choice, EBSR and mc-populated-blank) honour `autoplayAudioHeld` from [pie-elements-ng#476](https://github.com/pie-framework/pie-elements-ng/pull/476), and both repositories' markup sanitizers strip `autoplay`.
 
 Owner: PIE Players maintainers
 

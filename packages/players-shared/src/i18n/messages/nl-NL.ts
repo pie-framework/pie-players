@@ -47,6 +47,8 @@ const nlNL = {
 		apply: "Toepassen",
 		enabled: "Aan",
 		disabled: "Uit",
+		lookUp: "Opzoeken",
+		wordOrPhrase: "Woord of zin",
 		closeA11y: "Sluiten",
 		settingsA11y: "Instellingenmenu openen",
 	},
@@ -175,6 +177,7 @@ const nlNL = {
 			toolA11y: "Rekenmachine",
 			loading: "Rekenmachine wordt geladen…",
 			providerUnavailable: "De rekenmachine is niet beschikbaar.",
+			initFailed: "De rekenmachine kon niet worden gestart.",
 		},
 		graph: {
 			name: "Grafiek",
@@ -266,6 +269,15 @@ const nlNL = {
 			buttonA11y: "Woordenboek, betekenis van woorden opzoeken",
 			tooltip: "Woordenboek",
 			toolA11y: "Woordenboek",
+			notConfigured: "Er is geen woordenboek ingesteld voor deze toets.",
+			idleHint: "Typ een woord om het op te zoeken.",
+			lookingUp: "“{term}” wordt opgezocht…",
+			noEntryFor: "Niets gevonden voor “{term}”.",
+			entriesCount: {
+				one: "{count} artikel",
+				other: "{count} artikelen",
+			},
+			noEntryStatusFor: "Niets gevonden voor {term}.",
 		},
 		pictureDictionary: {
 			name: "Beeldwoordenboek",
@@ -273,6 +285,15 @@ const nlNL = {
 			buttonA11y: "Beeldwoordenboek, afbeeldingen bij woorden opzoeken",
 			tooltip: "Beeldwoordenboek",
 			toolA11y: "Beeldwoordenboek",
+			notConfigured: "Er is geen beeldwoordenboek ingesteld voor deze toets.",
+			idleHint: "Typ een woord om er een afbeelding bij te zien.",
+			lookingUp: "“{term}” wordt opgezocht…",
+			noEntryFor: "Geen afbeelding voor “{term}”.",
+			entriesCount: {
+				one: "{count} afbeelding",
+				other: "{count} afbeeldingen",
+			},
+			noEntryStatusFor: "Geen afbeelding voor {term}.",
 		},
 		dictionarySpanish: {
 			name: "Spaans woordenboek",

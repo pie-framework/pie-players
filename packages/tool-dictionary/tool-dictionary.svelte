@@ -24,6 +24,11 @@ selection opens the panel already searched.
 
 <script lang="ts">
 	import { coerceBooleanAttributes } from '@pie-players/pie-players-shared/ui/attribute-coercion';
+	import {
+		connectToolRuntimeContext,
+		type AssessmentToolkitRuntimeContext
+	} from '@pie-players/pie-assessment-toolkit/tools/registration';
+	import { resolveInterfaceI18n } from '@pie-players/pie-players-shared/i18n/provider';
 	/**
 	 * Dictionary panel.
 	 *
@@ -98,6 +103,21 @@ selection opens the panel already searched.
 
 	let query = $state('');
 	let panel = $state<TermPanelState<DictionaryEntry>>({ kind: 'idle' });
+	let contextHostElement = $state<HTMLDivElement | null>(null);
+	let runtimeContext = $state<AssessmentToolkitRuntimeContext | null>(null);
+
+	// The interface locale comes off the toolkit's published runtime context —
+	// the composition-context pattern; with no publisher above it the panel
+	// renders the English default.
+	const interfaceI18n = $derived(resolveInterfaceI18n(runtimeContext));
+
+	$effect(() => {
+		const host = contextHostElement;
+		if (!host) return;
+		return connectToolRuntimeContext(host, (value) => {
+			runtimeContext = value;
+		});
+	});
 
 	const resolver = $derived<DictionaryLookup | null>(
 		lookup ?? (endpoint ? createEndpointLookup({ endpoint, headers, credentials }) : null)
@@ -150,8 +170,11 @@ selection opens the panel already searched.
 
 	const statusMessage = $derived(
 		termPanelStatusMessage(panel, {
-			countLabel: (count) => `${count} ${count === 1 ? 'entry' : 'entries'}`,
-			emptyLabel: (word) => `No dictionary entry for ${word}`
+			countLabel: (count) =>
+				interfaceI18n.plural?.('tools.dictionary.entriesCount', { count }) ??
+				interfaceI18n.t('tools.dictionary.entriesCount', { count }),
+			emptyLabel: (word) =>
+				interfaceI18n.t('tools.dictionary.noEntryStatusFor', { term: word })
 		})
 	);
 </script>
@@ -163,11 +186,14 @@ selection opens the panel already searched.
 		class="pie-tool-dictionary"
 		data-pie-tool-id={toolId}
 		role="dialog"
-		aria-label="Dictionary"
+		aria-label={interfaceI18n.t('tools.dictionary.name')}
+		bind:this={contextHostElement}
+		lang={interfaceI18n.getLocale()}
+		dir={interfaceI18n.getDirection?.() ?? 'ltr'}
 	>
 		<form class="pie-tool-dictionary__search" onsubmit={onSubmit}>
 			<label class="pie-tool-dictionary__label" for="pie-tool-dictionary-term">
-				Word or phrase
+				{interfaceI18n.t('common.wordOrPhrase')}
 			</label>
 			<div class="pie-tool-dictionary__row">
 				<input
@@ -184,7 +210,7 @@ selection opens the panel already searched.
 					type="submit"
 					disabled={panel.kind === 'unconfigured' || !query.trim()}
 				>
-					Look up
+					{interfaceI18n.t('common.lookUp')}
 				</button>
 			</div>
 		</form>
@@ -198,17 +224,19 @@ selection opens the panel already searched.
 		<div class="pie-tool-dictionary__body">
 			{#if panel.kind === 'unconfigured'}
 				<p class="pie-tool-dictionary__notice">
-					No dictionary service is configured for this assessment.
+					{interfaceI18n.t('tools.dictionary.notConfigured')}
 				</p>
 			{:else if panel.kind === 'idle'}
 				<p class="pie-tool-dictionary__notice">
-					Type a word to look it up.
+					{interfaceI18n.t('tools.dictionary.idleHint')}
 				</p>
 			{:else if panel.kind === 'searching'}
-				<p class="pie-tool-dictionary__notice">Looking up “{panel.term}”…</p>
+				<p class="pie-tool-dictionary__notice">
+					{interfaceI18n.t('tools.dictionary.lookingUp', { term: panel.term })}
+				</p>
 			{:else if panel.kind === 'empty'}
 				<p class="pie-tool-dictionary__notice">
-					No entry for “{panel.term}”.
+					{interfaceI18n.t('tools.dictionary.noEntryFor', { term: panel.term })}
 				</p>
 			{:else if panel.kind === 'error'}
 				<!-- assertive: the learner is waiting on this and nothing else in the panel

@@ -58,6 +58,8 @@ const enUS = {
 		apply: "Apply",
 		enabled: "Enabled",
 		disabled: "Disabled",
+		lookUp: "Look up",
+		wordOrPhrase: "Word or phrase",
 		closeA11y: "Close",
 		settingsA11y: "Open settings menu",
 	},
@@ -232,6 +234,7 @@ const enUS = {
 			toolA11y: "Calculator tool",
 			loading: "Loading calculator…",
 			providerUnavailable: "The calculator is unavailable.",
+			initFailed: "Calculator failed to initialize.",
 		},
 		graph: {
 			name: "Graph",
@@ -338,6 +341,21 @@ const enUS = {
 			buttonA11y: "Dictionary, look up word definitions",
 			tooltip: "Dictionary",
 			toolA11y: "Dictionary",
+			// The lookup panel's notices are authored whole: the term interpolates
+			// into the sentence, never around it.
+			notConfigured: "No dictionary service is configured for this assessment.",
+			idleHint: "Type a word to look it up.",
+			lookingUp: "Looking up “{term}”…",
+			noEntryFor: "No entry for “{term}”.",
+			// The polite live-region status after a lookup: the count summary and
+			// the no-entry announcement, phrased without the quotation marks the
+			// visible notices carry. The count calls plural(), never a `=== 1`
+			// branch.
+			entriesCount: {
+				one: "{count} entry",
+				other: "{count} entries",
+			},
+			noEntryStatusFor: "No dictionary entry for {term}.",
 		},
 		pictureDictionary: {
 			name: "Picture Dictionary",
@@ -345,6 +363,16 @@ const enUS = {
 			buttonA11y: "Picture Dictionary, look up pictures for words",
 			tooltip: "Picture Dictionary",
 			toolA11y: "Picture Dictionary",
+			notConfigured:
+				"No picture dictionary service is configured for this assessment.",
+			idleHint: "Type a word to see a picture of it.",
+			lookingUp: "Looking up “{term}”…",
+			noEntryFor: "No picture for “{term}”.",
+			entriesCount: {
+				one: "{count} picture",
+				other: "{count} pictures",
+			},
+			noEntryStatusFor: "No picture for {term}.",
 		},
 		/**
 		 * The Spanish variants. Named in the interface locale like every other tool label —

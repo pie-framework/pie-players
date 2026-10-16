@@ -48,6 +48,8 @@ const thTH = {
 		apply: "นำไปใช้",
 		enabled: "เปิดใช้งาน",
 		disabled: "ปิดใช้งาน",
+		lookUp: "ค้นหา",
+		wordOrPhrase: "คำหรือวลี",
 		closeA11y: "ปิด",
 		settingsA11y: "เปิดเมนูการตั้งค่า",
 	},
@@ -166,6 +168,7 @@ const thTH = {
 			toolA11y: "เครื่องมือเครื่องคิดเลข",
 			loading: "กำลังโหลดเครื่องคิดเลข…",
 			providerUnavailable: "เครื่องคิดเลขไม่พร้อมใช้งาน",
+			initFailed: "เริ่มต้นเครื่องคิดเลขไม่สำเร็จ",
 		},
 		graph: {
 			name: "กราฟ",
@@ -252,6 +255,14 @@ const thTH = {
 			buttonA11y: "พจนานุกรม ค้นหาคำนิยามของคำศัพท์",
 			tooltip: "พจนานุกรม",
 			toolA11y: "พจนานุกรม",
+			notConfigured: "ไม่ได้ตั้งค่าพจนานุกรมสำหรับแบบทดสอบนี้",
+			idleHint: "พิมพ์คำเพื่อค้นหาคำนิยาม",
+			lookingUp: "กำลังค้นหา “{term}”…",
+			noEntryFor: "ไม่พบคำนิยามของ “{term}”",
+			entriesCount: {
+				other: "{count} คำนิยาม",
+			},
+			noEntryStatusFor: "ไม่พบคำนิยามของ {term}",
 		},
 		pictureDictionary: {
 			name: "พจนานุกรมภาพ",
@@ -259,6 +270,14 @@ const thTH = {
 			buttonA11y: "พจนานุกรมภาพ ค้นหารูปภาพสำหรับคำศัพท์",
 			tooltip: "พจนานุกรมภาพ",
 			toolA11y: "พจนานุกรมภาพ",
+			notConfigured: "ไม่ได้ตั้งค่าพจนานุกรมภาพสำหรับแบบทดสอบนี้",
+			idleHint: "พิมพ์คำเพื่อค้นหารูปภาพ",
+			lookingUp: "กำลังค้นหารูปภาพของ “{term}”…",
+			noEntryFor: "ไม่พบรูปภาพสำหรับ “{term}”",
+			entriesCount: {
+				other: "{count} รูปภาพ",
+			},
+			noEntryStatusFor: "ไม่พบรูปภาพสำหรับ {term}",
 		},
 		dictionarySpanish: {
 			name: "พจนานุกรมภาษาสเปน",

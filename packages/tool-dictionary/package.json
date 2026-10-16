@@ -35,20 +35,23 @@
 	"unpkg": "./dist/tool-dictionary.js",
 	"jsdelivr": "./dist/tool-dictionary.js",
 	"dependencies": {
+		"@pie-players/pie-assessment-toolkit": "workspace:*",
 		"@pie-players/pie-players-shared": "workspace:*"
 	},
 	"types": "./dist/index.d.ts",
 	"scripts": {
 		"build": "vite build",
+		"check": "svelte-check --tsconfig ./tsconfig.json",
 		"dev": "vite build --watch",
-		"typecheck": "tsc --noEmit",
+		"lint": "biome lint .",
 		"test": "bun test",
-		"lint": "biome lint ."
+		"typecheck": "tsc --noEmit"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "^2.5.15",
 		"@sveltejs/vite-plugin-svelte": "^7.3.1",
 		"svelte": "^5.57.2",
+		"svelte-check": "^4.7.6",
 		"typescript": "^5.9.3",
 		"vite": "^8.3.3",
 		"vite-plugin-dts": "^5.1.2"

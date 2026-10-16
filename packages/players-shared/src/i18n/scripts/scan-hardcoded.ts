@@ -195,9 +195,22 @@ function walkTemplate(
 			}
 		}
 
-		// Descend into whatever holds children: element fragments, block
-		// fragments (`{#if}`, `{#each}`), component slot content.
-		if (node.fragment) walkTemplate(node.fragment, source, filePath, translations, findings);
+		// Descend into every fragment the node carries. Block types name their
+		// branches differently (`consequent`/`alternate` on {#if}, `body` on
+		// {#each}, `then`/`catch` on {#await}), so enumerate nothing: any own
+		// property holding a fragment (an object with a `.nodes` array)
+		// descends. `attributes` is a plain array, so it is never re-walked as
+		// template content, and legacy-AST `children` arrays are handled below.
+		for (const value of Object.values(node)) {
+			if (
+				value !== null &&
+				typeof value === "object" &&
+				!Array.isArray(value) &&
+				Array.isArray((value as any).nodes)
+			) {
+				walkTemplate(value, source, filePath, translations, findings);
+			}
+		}
 		if (Array.isArray(node.children)) {
 			walkTemplate(
 				{ nodes: node.children },

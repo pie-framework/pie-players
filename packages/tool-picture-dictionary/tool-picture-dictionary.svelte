@@ -25,6 +25,11 @@ toolbar shell that mounts it owns `visible` and the floating chrome, and a
 
 <script lang="ts">
 	import { coerceBooleanAttributes } from '@pie-players/pie-players-shared/ui/attribute-coercion';
+	import {
+		connectToolRuntimeContext,
+		type AssessmentToolkitRuntimeContext
+	} from '@pie-players/pie-assessment-toolkit/tools/registration';
+	import { resolveInterfaceI18n } from '@pie-players/pie-players-shared/i18n/provider';
 	/**
 	 * Picture dictionary panel.
 	 *
@@ -91,6 +96,21 @@ toolbar shell that mounts it owns `visible` and the floating chrome, and a
 
 	let query = $state('');
 	let panel = $state<TermPanelState<PictureResult>>({ kind: 'idle' });
+	let contextHostElement = $state<HTMLDivElement | null>(null);
+	let runtimeContext = $state<AssessmentToolkitRuntimeContext | null>(null);
+
+	// The interface locale comes off the toolkit's published runtime context —
+	// the composition-context pattern; with no publisher above it the panel
+	// renders the English default.
+	const interfaceI18n = $derived(resolveInterfaceI18n(runtimeContext));
+
+	$effect(() => {
+		const host = contextHostElement;
+		if (!host) return;
+		return connectToolRuntimeContext(host, (value) => {
+			runtimeContext = value;
+		});
+	});
 
 	const resolver = $derived<PictureLookup | null>(
 		lookup ?? (endpoint ? createEndpointLookup({ endpoint, headers, credentials }) : null)
@@ -151,8 +171,11 @@ toolbar shell that mounts it owns `visible` and the floating chrome, and a
 
 	const statusMessage = $derived(
 		termPanelStatusMessage(panel, {
-			countLabel: (count) => `${count} ${count === 1 ? 'picture' : 'pictures'}`,
-			emptyLabel: (word) => `No picture for ${word}`
+			countLabel: (count) =>
+				interfaceI18n.plural?.('tools.pictureDictionary.entriesCount', { count }) ??
+				interfaceI18n.t('tools.pictureDictionary.entriesCount', { count }),
+			emptyLabel: (word) =>
+				interfaceI18n.t('tools.pictureDictionary.noEntryStatusFor', { term: word })
 		})
 	);
 </script>
@@ -164,14 +187,17 @@ toolbar shell that mounts it owns `visible` and the floating chrome, and a
 		class="pie-tool-picture-dictionary"
 		data-pie-tool-id={toolId}
 		role="dialog"
-		aria-label="Picture Dictionary"
+		aria-label={interfaceI18n.t('tools.pictureDictionary.name')}
+		bind:this={contextHostElement}
+		lang={interfaceI18n.getLocale()}
+		dir={interfaceI18n.getDirection?.() ?? 'ltr'}
 	>
 		<form class="pie-tool-picture-dictionary__search" onsubmit={onSubmit}>
 			<label
 				class="pie-tool-picture-dictionary__label"
 				for="pie-tool-picture-dictionary-term"
 			>
-				Word or phrase
+				{interfaceI18n.t('common.wordOrPhrase')}
 			</label>
 			<div class="pie-tool-picture-dictionary__row">
 				<input
@@ -188,7 +214,7 @@ toolbar shell that mounts it owns `visible` and the floating chrome, and a
 					type="submit"
 					disabled={panel.kind === 'unconfigured' || !query.trim()}
 				>
-					Look up
+					{interfaceI18n.t('common.lookUp')}
 				</button>
 			</div>
 		</form>
@@ -204,19 +230,19 @@ toolbar shell that mounts it owns `visible` and the floating chrome, and a
 		<div class="pie-tool-picture-dictionary__body">
 			{#if panel.kind === 'unconfigured'}
 				<p class="pie-tool-picture-dictionary__notice">
-					No picture dictionary service is configured for this assessment.
+					{interfaceI18n.t('tools.pictureDictionary.notConfigured')}
 				</p>
 			{:else if panel.kind === 'idle'}
 				<p class="pie-tool-picture-dictionary__notice">
-					Type a word to see a picture of it.
+					{interfaceI18n.t('tools.pictureDictionary.idleHint')}
 				</p>
 			{:else if panel.kind === 'searching'}
 				<p class="pie-tool-picture-dictionary__notice">
-					Looking up “{panel.term}”…
+					{interfaceI18n.t('tools.pictureDictionary.lookingUp', { term: panel.term })}
 				</p>
 			{:else if panel.kind === 'empty'}
 				<p class="pie-tool-picture-dictionary__notice">
-					No picture for “{panel.term}”.
+					{interfaceI18n.t('tools.pictureDictionary.noEntryFor', { term: panel.term })}
 				</p>
 			{:else if panel.kind === 'error'}
 				<p class="pie-tool-picture-dictionary__error" role="alert">

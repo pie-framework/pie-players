@@ -731,12 +731,14 @@
       "name": "@pie-players/pie-tool-dictionary",
       "version": "1.0.0-beta.3",
       "dependencies": {
+        "@pie-players/pie-assessment-toolkit": "workspace:*",
         "@pie-players/pie-players-shared": "workspace:*",
       },
       "devDependencies": {
         "@biomejs/biome": "^2.5.15",
         "@sveltejs/vite-plugin-svelte": "^7.3.1",
         "svelte": "^5.57.2",
+        "svelte-check": "^4.7.6",
         "typescript": "^5.9.3",
         "vite": "^8.3.3",
         "vite-plugin-dts": "^5.1.2",
@@ -780,7 +782,7 @@
     },
     "packages/tool-magnifier": {
       "name": "@pie-players/pie-tool-magnifier",
-      "version": "1.0.0-beta.2",
+      "version": "1.0.0-beta.3",
       "dependencies": {
         "@pie-players/pie-assessment-toolkit": "workspace:*",
         "@pie-players/pie-players-shared": "workspace:*",
@@ -817,12 +819,14 @@
       "name": "@pie-players/pie-tool-picture-dictionary",
       "version": "1.0.0-beta.3",
       "dependencies": {
+        "@pie-players/pie-assessment-toolkit": "workspace:*",
         "@pie-players/pie-players-shared": "workspace:*",
       },
       "devDependencies": {
         "@biomejs/biome": "^2.5.15",
         "@sveltejs/vite-plugin-svelte": "^7.3.1",
         "svelte": "^5.57.2",
+        "svelte-check": "^4.7.6",
         "typescript": "^5.9.3",
         "vite": "^8.3.3",
         "vite-plugin-dts": "^5.1.2",

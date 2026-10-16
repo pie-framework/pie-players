@@ -21,7 +21,7 @@
 	"source": {
 		"file": "../../players-shared/src/i18n/messages/en-US.ts",
 		"hashAlgorithm": "sha256",
-		"hash": "06a37e9ea61d60abbef242562e9f32611020dd731721f5e38849949b3921dd80"
+		"hash": "608d046cf17bcb48ee5eaaaeb51f4234d6763de06e18954b145c1d547146f1aa"
 	},
 	"locales": {
 		"th-TH": {
@@ -29,7 +29,7 @@
 			"brief": "briefs/th-TH.md",
 			"generatedAt": "2026-10-15",
 			"model": "GLM (Z.ai), agent-driven generation in the pie-players repo",
-			"sourceHash": "06a37e9ea61d60abbef242562e9f32611020dd731721f5e38849949b3921dd80"
+			"sourceHash": "608d046cf17bcb48ee5eaaaeb51f4234d6763de06e18954b145c1d547146f1aa"
 		}
 	}
 }

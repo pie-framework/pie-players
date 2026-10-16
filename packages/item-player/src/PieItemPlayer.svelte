@@ -285,16 +285,17 @@ The PIE item player: it loads an item's PIE elements under the `iife`, `esm` or 
 	const resolvedEsmCdnUrl = $derived(
 		loaderOptions?.esmCdnUrl || DEFAULT_ESM_CDN_URL,
 	);
+	const esmAssetRoot = $derived(
+		resolveEsmAssetRoot({
+			cdnBaseUrl: resolvedEsmCdnUrl,
+			cdnProvider: loaderOptions?.esmCdnProvider,
+		}),
+	);
 	// The root the player's own MathJax, for math in the item's markup, loads its
 	// fonts and speech from when the page sets none: under `esm`, the CDN the
 	// elements come from. A host-bundled player finds no root in its module URL.
 	const markupMathAssetRoot = $derived(
-		normalizedStrategy === "esm"
-			? resolveEsmAssetRoot({
-					cdnBaseUrl: resolvedEsmCdnUrl,
-					cdnProvider: loaderOptions?.esmCdnProvider,
-				})
-			: undefined,
+		normalizedStrategy === "esm" ? esmAssetRoot : undefined,
 	);
 	const loaderRetrySignature = $derived.by(() =>
 		JSON.stringify(loaderConfig?.iifeBundleRetry || {}),
@@ -1125,7 +1126,8 @@ The PIE item player: it loads an item's PIE elements under the `iife`, `esm` or 
 			// elements are ESM builds, which bring their own.
 			if (normalizedStrategy === "iife") {
 				stage = "math-rendering-init";
-				await initializeMathRendering();
+				// Its speech rules come from the configured ESM CDN as well.
+				await initializeMathRendering({ assetRoot: esmAssetRoot });
 				if (!isCurrentLoadRequest(requestToken)) return false;
 			}
 

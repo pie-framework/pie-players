@@ -330,8 +330,10 @@ what [CDN usage](../install/cdn.md#content-security-policy) lists.
 which `'strict-dynamic'` admits. The element bundles render with MathJax 3,
 which loads its fonts from `unpkg.com` (`@pie-lib/math-rendering-module` sets
 its `fontURL`, with no override). Its speech rule engine fetches its mathmaps
-from `cdn.jsdelivr.net` when the player loads its first `iife` item, and throws
-an uncaught error when that request is blocked:
+from the item player's `esmCdnUrl`, `cdn.jsdelivr.net` by default, or from the
+page's MathJax asset root when it registers one, when the player loads its first
+`iife` item, and throws an uncaught error when that request is blocked. With the
+default CDN:
 
 ```
 connect-src 'self' https://cdn.jsdelivr.net;
@@ -397,13 +399,13 @@ or `child-src` lists `blob:` there.
   table for another locale loads from the `json` URL or `custom` loader the host
   names in the math speech `engineOptions`.
 - **Toolbar icons and fonts.** Toolbars that render Font Awesome icons load Font
-  Awesome Free 6.5.2 from `cdn.jsdelivr.net` when the page has no Font Awesome
-  stylesheet. Their buttons from the Renaissance Next Design System (NDS) load
-  Roboto from `ui.renaissance.com` when the page has no stylesheet whose URL
-  contains `Roboto`, and that CDN serves the font files to Renaissance origins
-  only. A page showing those toolbars adds
-  `https://cdn.jsdelivr.net https://ui.renaissance.com` to `style-src` and
-  `font-src`, or supplies both stylesheets itself; a page off a Renaissance
+  Awesome Free 6.5.2 from the item player's `esmCdnUrl`, `cdn.jsdelivr.net` by
+  default, when the page has no Font Awesome stylesheet. Their buttons from the
+  Renaissance Next Design System (NDS) load Roboto from `ui.renaissance.com`
+  when the page has no stylesheet whose URL contains `Roboto`, and that CDN
+  serves the font files to Renaissance origins only. A page showing those
+  toolbars adds that CDN's origin and `https://ui.renaissance.com` to
+  `style-src` and `font-src`, or supplies both stylesheets itself; a page off a Renaissance
   origin links its own Roboto. A page that links Font Awesome Pro gets the
   design's Light glyphs; with Free, its own or the toolbar's, they render in
   Solid.

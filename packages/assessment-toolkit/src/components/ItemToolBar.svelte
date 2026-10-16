@@ -79,6 +79,7 @@ The toolbar for an item, passage or section, rendering a button for each tool th
 		isValidToolbarItemShape,
 		type ToolbarItem
 	} from '../services/toolbar-items.js';
+	import { resolveEsmPackageFileUrl } from '@pie-players/pie-players-shared/loaders';
 	import { sanitizeSvgIcon } from '@pie-players/pie-players-shared/security';
 	import { resolveInterfaceI18n } from '@pie-players/pie-players-shared/i18n/provider';
 	import {
@@ -112,7 +113,8 @@ The toolbar for an item, passage or section, rendering a button for each tool th
 
 	const isBrowser = typeof window !== 'undefined';
 	// FontAwesome comes from the host page when it links any FA stylesheet.
-	// Otherwise the toolbar adds FA Free from jsDelivr. Pro is never fetched from
+	// Otherwise the toolbar adds FA Free from the ESM CDN the item player's
+	// `loaderOptions` name, jsDelivr by default. Pro is never fetched from
 	// here: ui.renaissance.com serves its font files to Renaissance origins only,
 	// so a host that licenses it links it itself, as section-demos does through
 	// its dev proxy.
@@ -126,8 +128,7 @@ The toolbar for an item, passage or section, rendering a button for each tool th
 	// ui.renaissance.com's Roboto unless the page links a stylesheet whose URL
 	// contains `Roboto`. That CDN serves the font files to Renaissance origins
 	// only, so a host elsewhere links its own.
-	const FA_FREE_HREF =
-		'https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.5.2/css/all.min.css';
+	const FA_FREE_FILE = '@fortawesome/fontawesome-free@6.5.2/css/all.min.css';
 	// Matches any FA stylesheet the host page links: `fontawesome.min.css`,
 	// `font-awesome.css`, a `/_fa-pro/` proxy, `fontawesome-free@…`.
 	const FA_HREF_PATTERN = /font.?awesome|fa-?pro/i;
@@ -204,7 +205,9 @@ The toolbar for an item, passage or section, rendering a button for each tool th
 		// renders correctly without us forcing Free into <head>.
 		const hostHasFa = documentStylesheetLinks().some((link) => FA_HREF_PATTERN.test(link.href));
 		if (hostHasFa) return;
-		appendHeadStylesheet(FA_FREE_HREF);
+		appendHeadStylesheet(
+			resolveEsmPackageFileUrl(runtimeContext?.itemPlayer?.loaderOptions, FA_FREE_FILE)
+		);
 	};
 
 	// <nds-icon-button> renders into light DOM (createRenderRoot returns `this`),

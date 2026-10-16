@@ -727,6 +727,24 @@ same day as a targeted lookup, so it does not advance the verification date: no
 host reads the wrapper's attributes, and Host A's strip of `pie-image-scroll`
 spans still matches a span carrying a style attribute.
 
+On 2026-10-16 `loaderOptions.esmCdnUrl` started covering every load the players
+make from a CDN: the print player's element modules, the Font Awesome sheet the
+toolbars and inline read-aloud install when the page links none, and the speech
+rules the `iife` strategy's MathJax 3 renderer fetches, which it took from its own
+built-in CDN before. The section player's `iife-bundle-host` attribute now takes
+effect whenever `runtime.player.loaderOptions.bundleHost` is unset; the layout's
+default bundle host used to override it. Checked against all seven host checkouts
+the same day as a targeted lookup, so it does not advance the verification date.
+Only Host R sets `esmCdnUrl`, in uncommitted work, so every other host loads the
+same files from the same URLs: the default CDN serves the speech rules at the path
+the renderer used, and Host A, the one host that takes the Font Awesome fallback,
+gets the same sheet. Only Host R's playground sets `iife-bundle-host`, and that
+bundle host now reaches its players. The MathJax 3 renderer still evaluates on the
+first math initialisation, so a host that inlines dynamic imports on a page running
+MathJax 4 sees no change. Host R's print routes call `defaultResolve` with two
+arguments and set no `loaderOptions` on `<pie-print>`, so they resolve as before;
+that use was missing from the pad and is now recorded under Hosts R and C.
+
 ## Consumer profiles
 
 The control-sizing repair removes automatic zoom compensation from section
@@ -870,6 +888,7 @@ same PIE surface.
 | `@pie-players/pie-item-player` | V, M | Registration by side effect: V through a dynamic `import()`, M through a static import bundled into its single file, alongside the `PieItemPlayerElement` type. R loads the same file from a CDN by version instead |
 | `@pie-players/pie-item-player/preloaded` | M | `registerPreloadedElements`, called before the player module evaluates; see the item-player section |
 | `@pie-players/pie-preloaded-player` | P | Never imported. An install step copies `dist/` into a versioned static-asset directory, and `dist/index.js` is loaded from there as a module script; see Direct `dist` path references. R loads the same `dist/index.js` from a CDN by version |
+| `@pie-players/pie-print-player` | R | Never installed. R loads `dist/print-player.js` from a CDN by version, for the `<pie-print>` registration and the `defaultResolve` export; see Direct `dist` path references |
 | `@pie-players/pie-theme` | A, C, M, R | Bare specifier → `dist/index.js`, which calls `definePieTheme()` at module scope. R imports it for that side effect alone and calls `definePieTheme` nowhere; C does the same through a dynamic `import()`. M relies on the same side effect and imports `registerPieThemeProvider` with the `ThemeProviderAdapter`, `ThemeVariables` and `PieThemeElement` types |
 | `@pie-players/pie-theme/theme-element` | V | Does **not** self-register; the host calls `definePieTheme()` itself |
 | `@pie-players/pie-theme/components.css` | V, M | Imported as text and re-injected under `@scope`, see below |
@@ -1715,7 +1734,8 @@ Two of the four routes fall back to `latest` when no version is supplied, so a
 rename lands there as soon as it publishes, with no install and no build. Its
 preloaded-package view does the same with
 `@pie-players/pie-preloaded-player@<version>/dist/index.js`, the entry Host P
-also loads by name.
+also loads by name, and its item and passage print routes with
+`@pie-players/pie-print-player@<version>/dist/print-player.js`.
 
 Host P serves `@pie-players/pie-preloaded-player` itself. An install step copies
 the package's `dist/` into a static-asset directory named for the installed
@@ -2090,6 +2110,12 @@ its entries are re-derived rather than remembered. Host C's are from 2026-10-13.
 - The five debugger and settings panel CE prop sets, and the `customProviders`
   entry shape, which Host R builds without importing `CustomProviderDescriptor`
 - `providerOptions` on the TTS provider config
+- `<pie-print>`'s `resolve` property, set before `config`, and `defaultResolve`
+  from the print player: R calls it with `(tagName, pkg)`, probes the returned
+  `url`, and substitutes `{ tagName, pkg, url, module: true }` when that file is
+  missing, so the resolver signature, the `url` field and `module` as the flag
+  for a plain module import are API there; `dist/print-player.js` as a CDN
+  filename too
 - The dictionary lookup wire contract. It breaks a host-served *endpoint*, so no
   typecheck spans the boundary; the shape is now importable, though —
   `DictionaryLookupRequest` / `DictionaryLookupResult` reach consumers from
@@ -2105,8 +2131,8 @@ over a CDN with no typecheck at all.
 
 **Nobody. No coordination needed.**
 
-- The assessment player, the print player, the tabbed section layout, the
-  toolbars package, and `pie-context` — no consumer imports any of them
+- The assessment player, the tabbed section layout, the toolbars package, and
+  `pie-context` — no consumer imports any of them
 - `pie-tool-text-to-speech`, deprecated on npm and no longer published, and
   `hasSpokenAlternate` on `TtsServiceApi`, which only that panel called. Hosts A
   and R declare the package and import nothing from it, so their ranges keep

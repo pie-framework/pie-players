@@ -177,9 +177,73 @@ describe("resolvePlayerRuntime", () => {
 
 		expect((runtime.resolvedPlayerProps as any).hosted).toBe(false);
 	});
+
+	test("uses the iife-bundle-host attribute over the default bundle host", async () => {
+		const { resolvePlayerRuntime } = await loadHostRuntime();
+		const runtime = resolvePlayerRuntime({
+			effectiveRuntime: { playerType: "iife" },
+			playerType: "iife",
+			env: null,
+			iifeBundleHost: " https://bundles.example/ ",
+		});
+
+		expect((runtime.resolvedPlayerProps as any).loaderOptions.bundleHost).toBe(
+			"https://bundles.example/",
+		);
+	});
+
+	test("prefers runtime loaderOptions.bundleHost over the iife-bundle-host attribute", async () => {
+		const { resolvePlayerRuntime } = await loadHostRuntime();
+		const runtime = resolvePlayerRuntime({
+			effectiveRuntime: {
+				playerType: "iife",
+				player: { loaderOptions: { bundleHost: "https://runtime.example/" } },
+			},
+			playerType: "iife",
+			env: null,
+			iifeBundleHost: "https://bundles.example/",
+		});
+
+		expect((runtime.resolvedPlayerProps as any).loaderOptions.bundleHost).toBe(
+			"https://runtime.example/",
+		);
+	});
+
+	test("keeps the default bundle host for a blank attribute and ignores it outside iife", async () => {
+		const { resolvePlayerRuntime } = await loadHostRuntime();
+		const blank = resolvePlayerRuntime({
+			effectiveRuntime: { playerType: "iife" },
+			playerType: "iife",
+			env: null,
+			iifeBundleHost: "  ",
+		});
+		const esm = resolvePlayerRuntime({
+			effectiveRuntime: { playerType: "esm" },
+			playerType: "esm",
+			env: null,
+			iifeBundleHost: "https://bundles.example/",
+		});
+
+		expect((blank.resolvedPlayerProps as any).loaderOptions.bundleHost).toBe(
+			"https://proxy.pie-api.com/bundles/",
+		);
+		expect((esm.resolvedPlayerProps as any).loaderOptions.bundleHost).toBeUndefined();
+	});
 });
 
 describe("resolveSectionPlayerRuntimeState", () => {
+	test("passes the iife-bundle-host attribute to the player runtime", async () => {
+		const { resolveSectionPlayerRuntimeState } = await loadHostRuntime();
+		const state = resolveSectionPlayerRuntimeState({
+			toolConfigStrictness: "error",
+			runtime: { playerType: "iife" },
+			iifeBundleHost: "https://bundles.example/",
+		});
+		expect(
+			(state.playerRuntime.resolvedPlayerProps as any).loaderOptions.bundleHost,
+		).toBe("https://bundles.example/");
+	});
+
 	test("carries the runtime callbacks onto effectiveRuntime", async () => {
 		const { resolveSectionPlayerRuntimeState } = await loadHostRuntime();
 		const onFrameworkError = () => {};

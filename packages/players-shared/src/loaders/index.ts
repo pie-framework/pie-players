@@ -73,6 +73,7 @@ export {
 	createEsmBackend,
 	mapEsmViewElements,
 	resolveEsmAssetRoot,
+	resolveEsmPackageFileUrl,
 	resolveEsmRuntimeSupportUrl,
 } from "./esm-adapter.js";
 export type {

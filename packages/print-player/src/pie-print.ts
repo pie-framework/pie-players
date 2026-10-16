@@ -40,6 +40,7 @@ import type {
 	LoadResolutionFn,
 	MissingElFn,
 	PkgResolution,
+	PrintLoaderOptions,
 	ResolverFn,
 } from "./types.js";
 
@@ -89,12 +90,28 @@ export class PiePrint extends LitElement {
 	private _trustMarkup = false;
 	private _sanitizeMarkup: ItemMarkupSanitizer | null = null;
 	private _alternates: MountedAlternates | null = null;
+	private _loaderOptions: PrintLoaderOptions | undefined = undefined;
 
 	/**
 	 * Custom resolver function for determining element URLs
 	 */
 	public set resolve(fn: ResolverFn) {
 		this._resolve = fn;
+	}
+
+	/**
+	 * Where print modules load from, read when `config` is set, so set it first.
+	 * Declared ahead of `config` so a value set before upgrade is applied first.
+	 */
+	@property({ attribute: false })
+	get loaderOptions(): PrintLoaderOptions | undefined {
+		return this._loaderOptions;
+	}
+
+	set loaderOptions(value: PrintLoaderOptions | undefined) {
+		const oldValue = this._loaderOptions;
+		this._loaderOptions = value;
+		this.requestUpdate("loaderOptions", oldValue);
 	}
 
 	/**
@@ -161,7 +178,7 @@ export class PiePrint extends LitElement {
 					tagName,
 					`item element tag for ${pkg}`,
 				);
-				return this._resolve(validatedTag, pkg).then((res) => {
+				return this._resolve(validatedTag, pkg, this.loaderOptions).then((res) => {
 					if (!res.printTagName) {
 						res.printTagName = toPrintHashedTag(res.tagName, res.url, hashCode);
 					}

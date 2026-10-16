@@ -42,6 +42,8 @@ export function resolvePlayerRuntime(args: {
 	effectiveRuntime: Record<string, unknown>;
 	playerType: string;
 	env: Record<string, unknown> | null;
+	/** The `iife-bundle-host` attribute, used when `runtime.player.loaderOptions.bundleHost` is unset. */
+	iifeBundleHost?: string | null;
 }) {
 	const effectivePlayerType = String(
 		(args.effectiveRuntime?.playerType as string) ||
@@ -64,6 +66,17 @@ export function resolvePlayerRuntime(args: {
 		{}) as Record<string, unknown>;
 	const runtimeLoaderOptions = (runtimePlayerOverrides.loaderOptions ||
 		{}) as Record<string, unknown>;
+	const strategy = normalizeItemPlayerStrategy(
+		resolvedPlayerAttributes?.strategy || effectivePlayerType,
+		"iife",
+	);
+	// Between the runtime's bundle host and the definition default, so the
+	// attribute reaches the rendered item players as well as the pre-warm.
+	const attributeBundleHost =
+		strategy === "iife" ? String(args.iifeBundleHost ?? "").trim() : "";
+	const attributeLoaderOptions = attributeBundleHost
+		? { bundleHost: attributeBundleHost }
+		: {};
 	const hostedDefault =
 		!hasExplicitHostedOverride(runtimePlayerOverrides) &&
 		hasEnabledDeliveryBackend(runtimePlayerOverrides)
@@ -75,6 +88,7 @@ export function resolvePlayerRuntime(args: {
 		...runtimePlayerOverrides,
 		loaderOptions: {
 			...definitionLoaderOptions,
+			...attributeLoaderOptions,
 			...runtimeLoaderOptions,
 		},
 	};
@@ -84,10 +98,6 @@ export function resolvePlayerRuntime(args: {
 	>) ||
 		args.env ||
 		{}) as Record<string, unknown>;
-	const strategy = normalizeItemPlayerStrategy(
-		resolvedPlayerAttributes?.strategy || effectivePlayerType,
-		"iife",
-	);
 	return {
 		effectivePlayerType,
 		resolvedPlayerTag,
@@ -120,8 +130,14 @@ export function mapRenderablesToItems(renderables: unknown[]): ItemEntity[] {
  *
  * Pinned by `tests/section-player-runtime.test.ts`.
  */
-export function resolveSectionPlayerRuntimeState(args: RuntimeInputs) {
+export function resolveSectionPlayerRuntimeState(
+	args: RuntimeInputs & { iifeBundleHost?: string | null },
+) {
 	return resolveSectionEngineRuntimeState(args, {
-		resolvePlayerRuntime,
+		resolvePlayerRuntime: (resolverArgs) =>
+			resolvePlayerRuntime({
+				...resolverArgs,
+				iifeBundleHost: args.iifeBundleHost,
+			}),
 	});
 }

@@ -34,6 +34,7 @@ import {
 	createPieLogger,
 	DEFAULT_ESM_CDN_URL,
 	isGlobalDebugEnabled,
+	resolveEsmAssetRoot,
 	resolveInstrumentationProvider,
 	resolveLoadControllers,
 	toViewTag,
@@ -423,9 +424,18 @@ export async function warmupSectionElements(args: {
 		args.strategy === "esm" ? "esm-load" : "iife-load";
 
 	try {
-		// IIFE bundles read the math renderer as they evaluate; ESM builds bring their own.
+		// IIFE bundles read the math renderer as they evaluate; ESM builds bring
+		// their own. Its speech rules come from the configured ESM CDN.
 		if (args.strategy === "iife") {
-			await ensureItemPlayerMathRenderingReady();
+			const loaderOptions = args.resolvedPlayerProps?.loaderOptions as
+				| Record<string, unknown>
+				| undefined;
+			await ensureItemPlayerMathRenderingReady({
+				assetRoot: resolveEsmAssetRoot({
+					cdnBaseUrl: String(loaderOptions?.esmCdnUrl || DEFAULT_ESM_CDN_URL),
+					cdnProvider: readEsmCdnProvider(loaderOptions?.esmCdnProvider),
+				}),
+			});
 		}
 		await ensureRegistered(elements, { backend, elementPackagePolicy });
 	} catch (error) {

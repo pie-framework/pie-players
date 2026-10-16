@@ -30,14 +30,14 @@ describe("item-player math rendering contract", () => {
 
 	test("the load pipeline installs the math renderer for IIFE only", () => {
 		const source = readSource("../src/PieItemPlayer.svelte");
-		const call = source.indexOf("await initializeMathRendering()");
+		const call = source.indexOf("await initializeMathRendering(");
 		const guard = source.lastIndexOf(
 			'if (normalizedStrategy === "iife") {',
 			call,
 		);
 
 		expect(call).toBeGreaterThan(-1);
-		expect(source.indexOf("await initializeMathRendering()", call + 1)).toBe(
+		expect(source.indexOf("await initializeMathRendering(", call + 1)).toBe(
 			-1,
 		);
 		expect(guard).toBeGreaterThan(-1);

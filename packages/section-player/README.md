@@ -137,7 +137,7 @@ are clamped to their range.
 | `toolbar-position` | attribute | `right` | `top`, `right`, `bottom`, `left` or `none` |
 | `tool-config-strictness` | attribute | `error` | `off`, `warn` or `error` for tool configuration validation |
 | `nds-icons` | attribute | — | Renders toolbar buttons as NDS icon buttons (below) |
-| `iife-bundle-host` | attribute | — | The bundle host for the IIFE element pre-warm when `runtime.player.loaderOptions.bundleHost` is unset |
+| `iife-bundle-host` | attribute | `https://proxy.pie-api.com/bundles/` | The IIFE bundle host for the element pre-warm and the item players when `runtime.player.loaderOptions.bundleHost` is unset |
 | `debug` | attribute | — | Debug logging (`true` enables, `false` or `0` disables; [Debug logging](#debug-logging)) |
 | `narrow-layout-breakpoint` | attribute | `1100` (400–2000) | The viewport width in px at or below which the layout narrows |
 | `content-max-width-no-passage` | attribute | unset (320–2200) | Maximum content width in px for a section without passages |

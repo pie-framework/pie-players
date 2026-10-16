@@ -72,8 +72,8 @@ jobs:
           node-version-file: .nvmrc
           registry-url: "https://registry.npmjs.org"
 
-      # Trusted publishing needs npm >= 11.5.1, and the Node in .nvmrc still bundles
-      # npm 10.9.2. Harmless on token-auth runs, required on OIDC runs.
+      # Trusted publishing needs npm >= 11.5.1, which Node 24 bundles; this step holds the
+      # publish to it whatever Node .nvmrc pins.
       - name: Ensure npm supports trusted publishing
         shell: bash
         run: |

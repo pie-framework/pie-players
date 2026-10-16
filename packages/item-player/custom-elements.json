@@ -758,9 +758,9 @@
 						{
 							"name": "feature-decision-applied",
 							"type": {
-								"text": "CustomEvent<{ featureId: \"autoplayAudio\"; effect: \"held\" | \"enabled\"; rule: string; overrode?: \"attribute\" | \"authored\" }>"
+								"text": "CustomEvent<{ featureId: string; granted: boolean; rule: string; overrode?: \"attribute\" | \"authored\" }>"
 							},
-							"description": "Before the elements render with a toolkit feature decision written onto their models; `<pie-item-scope>` relays it to its toolkit."
+							"description": "Once per feature, before the elements render with a toolkit feature decision written onto their models; `<pie-item-scope>` relays it to its toolkit."
 						},
 						{
 							"name": "bundle-retry-status",

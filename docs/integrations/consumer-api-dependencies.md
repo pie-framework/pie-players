@@ -768,6 +768,14 @@ host lists a screenReader support in a profile or sets `tools.policy.allowed`, s
 no recorded host is given a hold; a host that does sees a hold that no element
 reads yet and, when the decision lands after load, one remount of the item.
 
+Later on 2026-10-16, before any release carried the event, `feature-decision-applied`
+became `{ featureId, granted, rule, overrode? }`, dispatched once per feature, and the
+item player started removing `autoplay` attributes from item and passage markup in
+`view` mode, `trust-markup` and `sanitizeMarkup` included, in place of the shared
+sanitizer's forbid-list. A targeted lookup in the same checkouts found no host
+listening for the event and none setting `trust-markup` or `sanitizeMarkup` outside
+vendored player bundles, so no recorded host is affected.
+
 ## Consumer profiles
 
 The control-sizing repair removes automatic zoom compensation from section

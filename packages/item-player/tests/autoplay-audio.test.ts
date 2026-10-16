@@ -1,10 +1,7 @@
 import { describe, expect, test } from "bun:test";
-import {
-	applyAutoplayAudio,
-	autoplayAudioSignature,
-	mergeAppliedDecisions,
-	resolveAutoplayAudioDecision,
-} from "../src/utils/autoplay-audio";
+import type { ItemFeatureDecision } from "@pie-players/pie-context";
+import { autoplayAudioApplier } from "../src/utils/autoplay-audio";
+import { applyItemFeatures } from "../src/utils/item-features";
 
 function configWithModels(models: Record<string, unknown>[]) {
 	return {
@@ -14,49 +11,42 @@ function configWithModels(models: Record<string, unknown>[]) {
 	} as any;
 }
 
-const held = { effect: "held", rule: "support-conflict" } as const;
-const enabled = { effect: "enabled", rule: "item-requirement" } as const;
+const held = { granted: false, rule: "support-conflict" } as const;
+const enabled = { granted: true, rule: "item-requirement" } as const;
 
-describe("resolveAutoplayAudioDecision", () => {
-	test("reads a grant as enabled and a denial as held", () => {
-		expect(
-			resolveAutoplayAudioDecision({
-				features: { autoplayAudio: { granted: true, rule: "pnp-support" } },
-			}),
-		).toEqual({ effect: "enabled", rule: "pnp-support" });
-		expect(
-			resolveAutoplayAudioDecision({
-				features: { autoplayAudio: { granted: false, rule: "host-blocked" } },
-			}),
-		).toEqual({ effect: "held", rule: "host-blocked" });
-	});
+/** Applies the autoplay applier alone, as the registry runs it. */
+function run(
+	config: any,
+	inputs: {
+		mode: "view" | "author";
+		attribute: boolean | undefined;
+		decision: ItemFeatureDecision | null;
+	},
+) {
+	const result = applyItemFeatures(
+		config,
+		{
+			mode: inputs.mode,
+			settings: { autoplayAudio: inputs.attribute },
+			decisions: inputs.decision ? { autoplayAudio: inputs.decision } : {},
+		},
+		[autoplayAudioApplier],
+	);
+	return { config: result.config as any, applied: result.applied };
+}
 
-	test("an absent, unnamed or malformed decision is no decision", () => {
-		expect(resolveAutoplayAudioDecision(null)).toBeNull();
-		expect(resolveAutoplayAudioDecision({ features: {} })).toBeNull();
-		expect(
-			resolveAutoplayAudioDecision({
-				features: { autoplayAudio: { granted: false, rule: "none" } },
-			}),
-		).toBeNull();
-		expect(
-			resolveAutoplayAudioDecision({ features: { autoplayAudio: {} } } as any),
-		).toBeNull();
-	});
-});
-
-describe("applyAutoplayAudio", () => {
+describe("autoplayAudioApplier", () => {
 	test("leaves config untouched with neither attribute nor decision", () => {
 		const config = configWithModels([
 			{ id: "1", element: "mc-populated-blank", autoplayAudioEnabled: false },
 		]);
-		const result = applyAutoplayAudio(config, {
+		const result = run(config, {
 			mode: "view",
 			attribute: undefined,
 			decision: null,
 		});
 		expect(result.config).toBe(config);
-		expect(result.applied).toBeNull();
+		expect(result.applied).toEqual([]);
 	});
 
 	test("the attribute overwrites autoplayAudioEnabled on every top-level model", () => {
@@ -64,21 +54,21 @@ describe("applyAutoplayAudio", () => {
 			{ id: "1", element: "mc-populated-blank", autoplayAudioEnabled: false },
 			{ id: "2", element: "categorize-element" },
 		]);
-		const result = applyAutoplayAudio(config, {
+		const result = run(config, {
 			mode: "view",
 			attribute: true,
 			decision: null,
 		});
 		expect(result.config.models[0].autoplayAudioEnabled).toBe(true);
 		expect(result.config.models[1].autoplayAudioEnabled).toBe(true);
-		expect(result.applied).toBeNull();
+		expect(result.applied).toEqual([]);
 	});
 
 	test("the attribute never reaches a model's parts", () => {
 		const config = configWithModels([
 			{ id: "1", element: "ebsr", partA: { autoplayAudioEnabled: false } },
 		]);
-		const result = applyAutoplayAudio(config, {
+		const result = run(config, {
 			mode: "view",
 			attribute: true,
 			decision: null,
@@ -91,7 +81,7 @@ describe("applyAutoplayAudio", () => {
 			{ id: "1", element: "multiple-choice", autoplayAudioEnabled: true },
 			{ id: "2", element: "categorize-element" },
 		]);
-		const result = applyAutoplayAudio(config, {
+		const result = run(config, {
 			mode: "view",
 			attribute: undefined,
 			decision: held,
@@ -101,26 +91,28 @@ describe("applyAutoplayAudio", () => {
 			autoplayAudioHeld: true,
 		});
 		expect(result.config.models[1].autoplayAudioHeld).toBe(true);
-		expect(result.applied).toEqual({
-			featureId: "autoplayAudio",
-			effect: "held",
-			rule: "support-conflict",
-			overrode: "authored",
-		});
+		expect(result.applied).toEqual([
+			{
+				featureId: "autoplayAudio",
+				granted: false,
+				rule: "support-conflict",
+				overrode: "authored",
+			},
+		]);
 	});
 
 	test("a grant writes autoplayAudioEnabled and no hold", () => {
 		const config = configWithModels([
 			{ id: "1", element: "multiple-choice", autoplayAudioEnabled: false },
 		]);
-		const result = applyAutoplayAudio(config, {
+		const result = run(config, {
 			mode: "view",
 			attribute: undefined,
 			decision: enabled,
 		});
 		expect(result.config.models[0].autoplayAudioEnabled).toBe(true);
 		expect(result.config.models[0]).not.toHaveProperty("autoplayAudioHeld");
-		expect(result.applied?.overrode).toBe("authored");
+		expect(result.applied[0]?.overrode).toBe("authored");
 	});
 
 	test("a decision lands on each direct child declaring autoplayAudioEnabled", () => {
@@ -133,7 +125,7 @@ describe("applyAutoplayAudio", () => {
 				choices: [{ autoplayAudioEnabled: true }],
 			},
 		]);
-		const result = applyAutoplayAudio(config, {
+		const result = run(config, {
 			mode: "view",
 			attribute: undefined,
 			decision: held,
@@ -153,15 +145,15 @@ describe("applyAutoplayAudio", () => {
 			{ id: "1", element: "multiple-choice", autoplayAudioEnabled: false },
 		]);
 		expect(
-			applyAutoplayAudio(config, { mode: "view", attribute: true, decision: held })
-				.applied?.overrode,
+			run(config, { mode: "view", attribute: true, decision: held })
+				.applied[0]?.overrode,
 		).toBe("attribute");
 		expect(
-			applyAutoplayAudio(config, {
+			run(config, {
 				mode: "view",
 				attribute: false,
 				decision: enabled,
-			}).applied?.overrode,
+			}).applied[0]?.overrode,
 		).toBe("attribute");
 	});
 
@@ -170,52 +162,50 @@ describe("applyAutoplayAudio", () => {
 			{ id: "1", element: "multiple-choice", autoplayAudioEnabled: false },
 			{ id: "2", element: "categorize-element" },
 		]);
-		const result = applyAutoplayAudio(config, {
+		const result = run(config, {
 			mode: "view",
 			attribute: undefined,
 			decision: held,
 		});
-		expect(result.applied).toEqual({
-			featureId: "autoplayAudio",
-			effect: "held",
-			rule: "support-conflict",
-		});
+		expect(result.applied).toEqual([
+			{ featureId: "autoplayAudio", granted: false, rule: "support-conflict" },
+		]);
 	});
 
 	test("an attribute set off hides authored autoplay from overrode", () => {
 		const config = configWithModels([
 			{ id: "1", element: "multiple-choice", autoplayAudioEnabled: true },
 		]);
-		const result = applyAutoplayAudio(config, {
+		const result = run(config, {
 			mode: "view",
 			attribute: false,
 			decision: held,
 		});
-		expect(result.applied).not.toHaveProperty("overrode");
+		expect(result.applied[0]).not.toHaveProperty("overrode");
 	});
 
 	test("author mode receives neither the attribute nor a decision", () => {
 		const config = configWithModels([
 			{ id: "1", element: "multiple-choice", autoplayAudioEnabled: false },
 		]);
-		const result = applyAutoplayAudio(config, {
+		const result = run(config, {
 			mode: "author",
 			attribute: true,
 			decision: held,
 		});
 		expect(result.config).toBe(config);
-		expect(result.applied).toBeNull();
+		expect(result.applied).toEqual([]);
 	});
 
 	test("returns config unchanged when there are no models", () => {
 		const config = { markup: "<p></p>", elements: {} } as any;
-		const result = applyAutoplayAudio(config, {
+		const result = run(config, {
 			mode: "view",
 			attribute: true,
 			decision: held,
 		});
 		expect(result.config).toBe(config);
-		expect(result.applied).toBeNull();
+		expect(result.applied).toEqual([]);
 	});
 
 	test("re-applying to written models is idempotent", () => {
@@ -223,59 +213,7 @@ describe("applyAutoplayAudio", () => {
 			{ id: "1", element: "ebsr", partA: { autoplayAudioEnabled: true } },
 		]);
 		const inputs = { mode: "view", attribute: undefined, decision: held } as const;
-		const once = applyAutoplayAudio(config, inputs).config;
-		expect(applyAutoplayAudio(once, inputs).config).toEqual(once);
-	});
-});
-
-describe("autoplayAudioSignature", () => {
-	test("changes with the attribute and the decision's effect", () => {
-		const base = { mode: "view", attribute: undefined, decision: null } as const;
-		const signatures = new Set([
-			autoplayAudioSignature(base),
-			autoplayAudioSignature({ ...base, attribute: true }),
-			autoplayAudioSignature({ ...base, decision: held }),
-			autoplayAudioSignature({ ...base, decision: enabled }),
-		]);
-		expect(signatures.size).toBe(4);
-	});
-
-	test("ignores both in author mode", () => {
-		expect(
-			autoplayAudioSignature({ mode: "author", attribute: true, decision: held }),
-		).toBe(
-			autoplayAudioSignature({
-				mode: "author",
-				attribute: undefined,
-				decision: null,
-			}),
-		);
-	});
-});
-
-describe("mergeAppliedDecisions", () => {
-	test("the attribute outranks authored content across item and passage", () => {
-		expect(
-			mergeAppliedDecisions(
-				{
-					featureId: "autoplayAudio",
-					effect: "held",
-					rule: "support-conflict",
-					overrode: "authored",
-				},
-				{
-					featureId: "autoplayAudio",
-					effect: "held",
-					rule: "support-conflict",
-					overrode: "attribute",
-				},
-			),
-		).toEqual({
-			featureId: "autoplayAudio",
-			effect: "held",
-			rule: "support-conflict",
-			overrode: "attribute",
-		});
-		expect(mergeAppliedDecisions(null, null)).toBeNull();
+		const once = run(config, inputs).config;
+		expect(run(once as any, inputs).config).toEqual(once);
 	});
 });

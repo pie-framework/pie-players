@@ -19,7 +19,7 @@ A source-directory note for contributors to `@pie-players/pie-item-player`. The
 | `backend/` | Backend delivery and authoring: the orchestrator state machine, delivery and authoring flows, model refresh, and the built-in PIE API client, loaded on demand. |
 | `ItemSessionDebugger.svelte`, `components/` | `<pie-item-player-session-debugger>` and its `./components/item-session-debugger-element` entry. |
 | `contracts/public-events.ts` | Public event names. |
-| `utils/` | Key-stable stringify, scoped external stylesheets, the autoplay-audio override. |
+| `utils/` | Key-stable stringify, scoped external stylesheets, the item-feature appliers (`item-features.ts`, one applier per feature such as `autoplay-audio.ts`). |
 | `types.ts` | Re-exported public types. |
 
 ## Authoring media hooks

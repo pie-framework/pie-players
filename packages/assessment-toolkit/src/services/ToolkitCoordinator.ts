@@ -3036,7 +3036,7 @@ export class ToolkitCoordinator {
 		scope: ToolScope,
 	): void {
 		if (
-			detail.effect !== "held" ||
+			detail.granted ||
 			detail.rule !== "support-conflict" ||
 			(detail.overrode !== "attribute" && detail.overrode !== "authored")
 		) {

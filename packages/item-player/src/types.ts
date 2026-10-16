@@ -47,6 +47,7 @@ export interface PieItemPlayerElement extends HTMLElement {
 	backend?: BackendConfig;
 	renderStimulus?: boolean;
 	allowedResize?: boolean;
+	passageLayout?: "vertical" | "splitpane";
 	baseHeadingLevel?: 1 | 2 | 3 | 4 | 5 | 6;
 	includeSrHeading?: boolean;
 	passageContainerClass?: string;

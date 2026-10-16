@@ -79,6 +79,9 @@ const nlNL = {
 			"Panelen met vraag en media verkleinen of vergroten",
 		resizePassageAndMediaA11y:
 			"Panelen met tekst en media verkleinen of vergroten",
+		resizePassageAndQuestionA11y:
+			"Panelen met tekst en vraag verkleinen of vergroten",
+		passageWidthA11y: "Tekst {percent}% breed",
 
 		assessment: {
 			sectionPosition: "Onderdeel {position} van {total}",

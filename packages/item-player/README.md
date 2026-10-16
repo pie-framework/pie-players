@@ -183,8 +183,12 @@ item.
   evaluate mode.
 - `render-stimulus`: `Boolean`, default `true`. Render the item's passage
   (stimulus); `false` renders the item alone.
-- `allowed-resize`: `Boolean`, default `false`. Let the learner resize the
-  passage container horizontally.
+- `passage-layout`: `String`, default `"vertical"`. `"vertical"` stacks the
+  passage above the item. `"splitpane"` puts the passage beside the item, and
+  stacks them below a player width of 768px.
+- `allowed-resize`: `Boolean`, default `false`. Under `passage-layout="splitpane"`,
+  a keyboard-operable divider between passage and item resizes the split;
+  otherwise the passage container resizes horizontally.
 - `autoplay-audio-enabled`: `Boolean`, default unset, which leaves each model's
   `autoplayAudioEnabled` as it is. Set, it writes `autoplayAudioEnabled` onto
   every model in the config, overwriting or adding the field.

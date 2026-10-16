@@ -295,9 +295,9 @@ before any package publishes.
 ### Requirements the workflows satisfy
 
 - `permissions: id-token: write` on the publishing job.
-- npm >= 11.5.1. The Node.js version pinned in `.nvmrc` (22.16.0) bundles npm
-  10.9.2, which predates OIDC support, so both workflows upgrade npm in the job
-  and assert the resolved version.
+- npm >= 11.5.1. The Node.js version pinned in `.nvmrc` (24.22.0) bundles npm
+  11.19.1; both workflows still upgrade npm in the job and assert the resolved
+  version, so a lower pin cannot break OIDC publishing.
 - The canonical `repository.url` in every publishable manifest
   ([Required package metadata](#required-package-metadata)). npm compares it
   with the repository it publishes from when generating provenance.

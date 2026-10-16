@@ -7,7 +7,7 @@ environment variables are in [Environment setup](./environment-setup.md).
 
 ## Prerequisites
 
-- Bun 1.3.11 or later (`packageManager` pins `bun@1.3.11`) and Node.js 22.16.0
+- Bun 1.3.11 or later (`packageManager` pins `bun@1.3.11`) and Node.js 24.22.0
   (`.nvmrc`).
 - Playwright's browsers, for the end-to-end suites:
   `bunx playwright install chromium firefox webkit`.

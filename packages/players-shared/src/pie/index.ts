@@ -55,6 +55,7 @@ export {
 	initializeMathRendering,
 	setMathRenderer,
 } from "./math-rendering.js";
+export type { MathRenderingOptions } from "./math-rendering.js";
 export { attachInstrumentationEventBridge } from "./instrumentation-event-bridge.js";
 export type { AttachInstrumentationEventBridgeArgs } from "./instrumentation-event-bridge.js";
 export { resolveInstrumentationProvider } from "./instrumentation-provider-resolution.js";

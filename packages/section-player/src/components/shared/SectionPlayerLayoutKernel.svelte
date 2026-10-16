@@ -210,7 +210,11 @@
 	const sectionElementsLoaded = $derived(sectionReady && paneElementsLoaded);
 	const sectionWarmupFailed = $derived(sectionReady && paneWarmup === "failed");
 	const runtimeState = $derived.by(() =>
-		resolveSectionPlayerRuntimeState({ runtime, toolConfigStrictness }),
+		resolveSectionPlayerRuntimeState({
+			runtime,
+			toolConfigStrictness,
+			iifeBundleHost,
+		}),
 	);
 	const effectiveRuntime = $derived(runtimeState.effectiveRuntime);
 	// The stage cohort runs under the id the toolkit keys the section's

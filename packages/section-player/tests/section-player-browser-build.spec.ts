@@ -188,10 +188,24 @@ const loadModule = (page: Page, path: string) =>
 
 // With `cortex`, the page builds the packaged set from the build's exports with
 // Cortex composed into the calculator registration and selects it; `hostTool`
-// adds a toolbar tool of the host's own to that set.
-const mountSection = (page: Page, { cortex = false, hostTool = false } = {}) =>
+// adds a toolbar tool of the host's own to that set. `playerRuntime` replaces
+// the default runtime and `attributes` are set on the player element.
+const mountSection = (
+  page: Page,
+  {
+    cortex = false,
+    hostTool = false,
+    playerRuntime = runtime,
+    attributes = {},
+  }: {
+    cortex?: boolean;
+    hostTool?: boolean;
+    playerRuntime?: typeof runtime & { player?: object };
+    attributes?: Record<string, string>;
+  } = {},
+) =>
   page.evaluate(
-    async ({ sectionUrl, cortexUrl, runtime, section, hostTool }) => {
+    async ({ sectionUrl, cortexUrl, runtime, section, hostTool, attributes }) => {
       const player = document.createElement("pie-section-player-splitpane") as HTMLElement & {
         runtime: unknown;
         section: unknown;
@@ -240,6 +254,7 @@ const mountSection = (page: Page, { cortex = false, hostTool = false } = {}) =>
           placement: { ...runtime.tools.placement, item },
         };
       }
+      for (const [name, value] of Object.entries(attributes)) player.setAttribute(name, value);
       player.runtime = { ...runtime, tools };
       player.section = section;
       document.getElementById("host")?.appendChild(player);
@@ -247,9 +262,10 @@ const mountSection = (page: Page, { cortex = false, hostTool = false } = {}) =>
     {
       sectionUrl: `${packageOrigin}${SECTION_ENTRY}`,
       cortexUrl: cortex ? `${packageOrigin}${CORTEX_ENTRY}` : null,
-      runtime,
+      runtime: playerRuntime,
       section,
       hostTool,
+      attributes,
     },
   );
 
@@ -309,6 +325,44 @@ test("a page on another origin loads the browser build with no import map, rende
   // The origins a host's CSP has to allow beyond the one that served the build:
   // jsDelivr for the math renderer's speech maps, a `connect-src` entry.
   expect([...thirdPartyOrigins]).toEqual(["https://cdn.jsdelivr.net"]);
+});
+
+test("a configured ESM CDN serves the math renderer's speech maps and the toolbar's FontAwesome in place of jsDelivr", async ({
+  page,
+}) => {
+  test.setTimeout(180_000);
+  const { failures, thirdPartyOrigins } = watch(page);
+  const mirror = "https://mirror.example";
+  await page.route(/^https:\/\/mirror\.example\/esm\/speech-rule-engine@[^/]+\/lib\/mathmaps\/[\w-]+\.json$/, (route) =>
+    route.fulfill({ status: 200, contentType: "application/json", headers: { "access-control-allow-origin": "*" }, body: "{}" }),
+  );
+  await page.route(/^https:\/\/mirror\.example\/esm\/@fortawesome\/fontawesome-free@[^/]+\/css\/all\.min\.css$/, (route) =>
+    route.fulfill({ status: 200, contentType: "text/css", body: "" }),
+  );
+  // The NDS button links Roboto from ui.renaissance.com itself.
+  await page.route("https://ui.renaissance.com/**", (route) =>
+    route.fulfill({ status: 200, contentType: "text/css", body: "" }),
+  );
+  await page.goto(hostOrigin);
+  await loadModule(page, SECTION_ENTRY);
+  await mountSection(page, {
+    playerRuntime: { ...runtime, player: { loaderOptions: { esmCdnUrl: `${mirror}/esm` } } },
+    attributes: { "nds-icons": "" },
+  });
+  await expect(page.getByText("What is 7 × 8?")).toBeVisible({ timeout: 60_000 });
+  await expect
+    .poll(() =>
+      page.evaluate(() =>
+        Array.from(document.head.querySelectorAll<HTMLLinkElement>('link[rel="stylesheet"]'))
+          .map((link) => link.href)
+          .filter((href) => href.includes("fontawesome-free")),
+      ),
+    )
+    .toEqual([`${mirror}/esm/@fortawesome/fontawesome-free@6.5.2/css/all.min.css`]);
+  await expect
+    .poll(() => [...thirdPartyOrigins].sort(), { timeout: 30_000 })
+    .toEqual(["https://mirror.example", "https://ui.renaissance.com"]);
+  expect(failures).toEqual([]);
 });
 
 test("a CDN item player loaded first, or a second section player copy, leaves the page working", async ({

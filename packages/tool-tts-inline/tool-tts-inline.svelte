@@ -58,6 +58,7 @@ the runtime context supplies a TTS service.
 	// externalized by this package's Vite build, so the bundle is inlined here.
 	import '@pie-players/pie-players-shared/nds-icon-button';
 	import { resolveInterfaceI18n } from '@pie-players/pie-players-shared/i18n/provider';
+	import { resolveEsmPackageFileUrl } from '@pie-players/pie-players-shared/loaders';
 	import { createPieLogger, isTtsDebugEnabled } from '@pie-players/pie-players-shared/pie';
 
 	const logger = createPieLogger('tts-inline', isTtsDebugEnabled);
@@ -90,12 +91,11 @@ the runtime context supplies a TTS service.
 	// ── FontAwesome wiring for <nds-icon-button> ──────────────────────────────
 	// Every glyph here is FA Solid, which FA Free carries. Mirror
 	// @pie-players/pie-assessment-toolkit's ItemToolBar: add FA Free to document
-	// <head> unless the host links its own FA, then clone the FA <link>s into this
-	// element's shadow root (document-head styles don't cross the shadow
-	// boundary). Roboto comes from the vendored button, as the ItemToolBar
-	// describes.
-	const FA_FREE_HREF =
-		'https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.5.2/css/all.min.css';
+	// <head> from the ESM CDN the item player's `loaderOptions` name unless the
+	// host links its own FA, then clone the FA <link>s into this element's shadow
+	// root (document-head styles don't cross the shadow boundary). Roboto comes
+	// from the vendored button, as the ItemToolBar describes.
+	const FA_FREE_FILE = '@fortawesome/fontawesome-free@6.5.2/css/all.min.css';
 	const FA_HREF_PATTERN = /font.?awesome|fa-?pro/i;
 	// A stylesheet that fails to load stays in <head> marked
 	// `data-pie-load-failed`: no later call requests it again, and no shadow root
@@ -120,7 +120,9 @@ the runtime context supplies a TTS service.
 			document.querySelectorAll<HTMLLinkElement>('link[rel="stylesheet"][href]'),
 		).some((link) => FA_HREF_PATTERN.test(link.href));
 		if (hostHasFa) return;
-		appendHeadStylesheet(FA_FREE_HREF);
+		appendHeadStylesheet(
+			resolveEsmPackageFileUrl(runtimeContext?.itemPlayer?.loaderOptions, FA_FREE_FILE),
+		);
 	};
 	const FA_SHADOW_INSTALLED = '__pieFaTtsShadowInstalled';
 	const installFaInShadow = (node: HTMLElement) => {
@@ -160,6 +162,23 @@ the runtime context supplies a TTS service.
 			link.addEventListener('error', settle);
 		}
 	};
+	// The CDN FA Free comes from is known once the runtime context arrives, which
+	// can be after the plain trigger mounts, so a node mounted before it waits.
+	const nodesAwaitingFa = new Set<HTMLElement>();
+	const installFaAssets = (node: HTMLElement) => {
+		if (!runtimeContext) {
+			nodesAwaitingFa.add(node);
+			return;
+		}
+		ensureFaAssets();
+		installFaInShadow(node);
+	};
+	$effect(() => {
+		if (!runtimeContext || nodesAwaitingFa.size === 0) return;
+		const nodes = [...nodesAwaitingFa];
+		nodesAwaitingFa.clear();
+		for (const node of nodes) installFaAssets(node);
+	});
 	// Svelte action applied to every <nds-icon-button>: install the FA assets its
 	// glyphs need (into <head> and this component's shadow root), and force the
 	// glyphs to the Solid weight. The NDS bundle hardcodes `fa-light fa-${name}`
@@ -167,8 +186,7 @@ the runtime context supplies a TTS service.
 	// Solid is the weight FA Free ships, so it renders even without FA Pro. The
 	// swap re-applies whenever Lit rewrites the icon class (e.g. play↔pause).
 	const ndsIconButtonAction = (node: HTMLElement) => {
-		ensureFaAssets();
-		installFaInShadow(node);
+		installFaAssets(node);
 		const applySolid = () => {
 			for (const icon of node.querySelectorAll<HTMLElement>('i.fa-light')) {
 				icon.classList.remove('fa-light');
@@ -188,6 +206,7 @@ the runtime context supplies a TTS service.
 		});
 		return {
 			destroy() {
+				nodesAwaitingFa.delete(node);
 				observer.disconnect();
 			},
 		};
@@ -229,9 +248,12 @@ the runtime context supplies a TTS service.
 	// NDS trigger), but skip the fa-light→fa-solid swap since the fallback
 	// authors its glyphs as `fa-solid` directly.
 	const faAssetsAction = (node: HTMLElement) => {
-		ensureFaAssets();
-		installFaInShadow(node);
-		return {};
+		installFaAssets(node);
+		return {
+			destroy() {
+				nodesAwaitingFa.delete(node);
+			},
+		};
 	};
 
 	let containerEl = $state<HTMLDivElement | undefined>();

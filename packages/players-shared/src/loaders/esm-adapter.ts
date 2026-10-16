@@ -31,6 +31,7 @@ import {
 } from "../pie/types.js";
 import { parsePackageName } from "../pie/utils.js";
 import type { ElementMap } from "./ElementLoader.js";
+import { DEFAULT_ESM_CDN_URL } from "./defaults.js";
 import {
 	AdapterFailure,
 	type BackendContext,
@@ -131,7 +132,12 @@ export type EsmImportMapObserver = (json: string, doc: Document) => void;
  * @internal
  */
 export type EsmImportShim = ((specifier: string) => Promise<unknown>) & {
-	addImportMap(importMap: { imports: Record<string, string> }): void;
+	addImportMap(importMap: ImportMap): void;
+};
+/** @internal */
+export type ImportMap = {
+	imports: Record<string, string>;
+	scopes?: Record<string, Record<string, string>>;
 };
 /** @internal */
 export type EsmImportShimLoader = () => Promise<EsmImportShim>;
@@ -296,8 +302,14 @@ export function createEsmBackend(config: EsmBackendConfig): EsmBackend {
 				context.doc,
 			);
 			let injectedMap: HTMLScriptElement | undefined;
+			let map: ImportMap | undefined;
 			if (Object.keys(imports).length > 0) {
-				const json = JSON.stringify({ imports }, null, 2);
+				const scopes = withoutMappedScopes(
+					jsDelivrRootPathScopes(cdnProvider, cdnBaseUrl, context.doc),
+					context.doc,
+				);
+				map = scopes ? { imports, scopes } : { imports };
+				const json = JSON.stringify(map, null, 2);
 				// URL resolution maps the shared dependencies and the editor
 				// runtime, so it needs import maps too.
 				assertImportMapSupported();
@@ -321,8 +333,8 @@ export function createEsmBackend(config: EsmBackendConfig): EsmBackend {
 					importMappedPackageVersions.set(parsePackageName(pkg).name, pkg);
 				}
 			}
-			if (injectedMap) {
-				await applyImportMap(imports, injectedMap, context.doc);
+			if (injectedMap && map) {
+				await applyImportMap(map, injectedMap, context.doc);
 			}
 		}
 
@@ -568,15 +580,15 @@ export function createEsmBackend(config: EsmBackendConfig): EsmBackend {
 	 * applied it or rejected it.
 	 */
 	async function applyImportMap(
-		imports: Record<string, string>,
+		map: ImportMap,
 		script: HTMLScriptElement,
 		doc: Document,
 	): Promise<void> {
 		let state: "applied" | "rejected" = "applied";
 		try {
 			if (script.type === SHIM_IMPORT_MAP_TYPE) {
-				(await importShim(doc)).addImportMap({ imports });
-			} else if (await importMapRejected(imports)) {
+				(await importShim(doc)).addImportMap(map);
+			} else if (await importMapRejected(map.imports)) {
 				state = "rejected";
 				await importShim(doc);
 			}
@@ -617,7 +629,7 @@ export function createEsmBackend(config: EsmBackendConfig): EsmBackend {
 	function importShim(doc: Document): Promise<EsmImportShim> {
 		importShimRequest ??= importShimLoader().then(
 			(shim) => {
-				shim.addImportMap({ imports: documentImports(doc) });
+				shim.addImportMap(documentImportMap(doc));
 				return shim;
 			},
 			(err) => {
@@ -971,6 +983,34 @@ export function resolveEsmAssetRoot(options: {
 		: undefined;
 }
 
+/**
+ * URL of a raw npm package file, `file` being `<package>@<version>/<path>`, on
+ * the ESM CDN a player's `loaderOptions` name, so a page asset the players add,
+ * such as a stylesheet, comes from where the elements do. Reads untyped options
+ * as a toolkit runtime context carries them; jsDelivr when they set no base.
+ */
+export function resolveEsmPackageFileUrl(
+	loaderOptions:
+		| { esmCdnUrl?: unknown; esmCdnProvider?: unknown }
+		| null
+		| undefined,
+	file: string,
+): string {
+	const configured = loaderOptions?.esmCdnUrl;
+	const cdnBaseUrl = (
+		typeof configured === "string" && configured.trim()
+			? configured.trim()
+			: DEFAULT_ESM_CDN_URL
+	).replace(/\/+$/, "");
+	const provider = loaderOptions?.esmCdnProvider;
+	const cdnProvider =
+		typeof provider === "string" || isEsmCdnProvider(provider)
+			? provider
+			: undefined;
+	const root = resolveEsmAssetRoot({ cdnBaseUrl, cdnProvider }) ?? cdnBaseUrl;
+	return `${root}/${file.replace(/^\/+/, "")}`;
+}
+
 function resolveCdnProvider(
 	provider: EsmCdnProviderOption | undefined,
 	cdnBaseUrl: string,
@@ -1000,7 +1040,7 @@ function createJsDelivrProvider(
 	cdnBaseUrl: string,
 	name: EsmCdnProviderName = "jsdelivr",
 ): EsmCdnProvider {
-	return {
+	const provider: EsmCdnProvider = {
 		name,
 		packageJsonUrl: (packageVersion) =>
 			`${cdnBaseUrl}/${packageVersion}/package.json`,
@@ -1015,7 +1055,35 @@ function createJsDelivrProvider(
 			return `${cdnBaseUrl}/${dependencyName}@${version}${suffix}`;
 		},
 	};
+	jsDelivrShapedProviders.add(provider);
+	return provider;
 }
+
+/**
+ * jsDelivr's `+esm` builds import their dependencies by root path
+ * (`/npm/react@18.3.1/+esm`), which resolves against the origin that served
+ * them. A base mounted anywhere but `/npm` gets a scope mapping those paths
+ * back under it, so they load from the configured CDN and resolve to the URLs
+ * the shared-dependency entries map, keeping one React on the page.
+ */
+function jsDelivrRootPathScopes(
+	cdnProvider: EsmCdnProvider,
+	cdnBaseUrl: string,
+	doc: Document,
+): ImportMap["scopes"] {
+	if (!jsDelivrShapedProviders.has(cdnProvider)) return undefined;
+	let base: URL;
+	try {
+		base = new URL(`${cdnBaseUrl}/`, doc.baseURI || undefined);
+	} catch {
+		return undefined;
+	}
+	const root = new URL("/npm/", base).href;
+	return root === base.href ? undefined : { [base.href]: { [root]: base.href } };
+}
+
+/** Providers built by {@link createJsDelivrProvider}, whatever their name. */
+const jsDelivrShapedProviders = new WeakSet<EsmCdnProvider>();
 
 function createEsmShProvider(cdnBaseUrl: string): EsmCdnProvider {
 	const esmBaseUrl = cdnBaseUrl.replace(/\/+$/, "");
@@ -1646,21 +1714,53 @@ async function importMapsSettled(doc: Document): Promise<void> {
  * for a specifier as it does in the browser.
  */
 function documentImports(doc: Document): Record<string, string> {
+	return documentImportMap(doc).imports;
+}
+
+/** {@link documentImports}, with the scopes the maps define. */
+function documentImportMap(doc: Document): Required<ImportMap> {
 	const imports: Record<string, string> = Object.create(null);
+	const scopes: Record<string, Record<string, string>> = Object.create(null);
 	for (const script of importMapScripts(doc)) {
 		try {
-			const mapped = JSON.parse(script.textContent || "{}")?.imports;
-			if (!mapped || typeof mapped !== "object") continue;
-			for (const [specifier, url] of Object.entries(mapped)) {
-				if (typeof url === "string" && !(specifier in imports)) {
-					imports[specifier] = url;
-				}
+			const map = JSON.parse(script.textContent || "{}");
+			addFirstRules(imports, map?.imports);
+			if (!map?.scopes || typeof map.scopes !== "object") continue;
+			for (const [scope, rules] of Object.entries(map.scopes)) {
+				scopes[scope] ??= Object.create(null);
+				addFirstRules(scopes[scope], rules);
 			}
 		} catch {
 			// The browser rejects a map it cannot parse, so it maps nothing.
 		}
 	}
-	return imports;
+	return { imports, scopes };
+}
+
+function addFirstRules(target: Record<string, string>, rules: unknown): void {
+	if (!rules || typeof rules !== "object") return;
+	for (const [specifier, url] of Object.entries(rules)) {
+		if (typeof url === "string" && !(specifier in target)) {
+			target[specifier] = url;
+		}
+	}
+}
+
+/** {@link withoutMappedSpecifiers} for scope rules; `undefined` when none remain. */
+function withoutMappedScopes(
+	scopes: ImportMap["scopes"],
+	doc: Document,
+): ImportMap["scopes"] {
+	if (!scopes) return undefined;
+	const mapped = documentImportMap(doc).scopes;
+	const remaining: Record<string, Record<string, string>> = {};
+	for (const [scope, rules] of Object.entries(scopes)) {
+		const kept = Object.entries(rules).filter(
+			([specifier]) => !(specifier in (mapped[scope] ?? {})),
+		);
+		if (kept.length > 0) remaining[scope] = Object.fromEntries(kept);
+	}
+	return Object.keys(remaining).length > 0 ? remaining : undefined;
 }
 
 /**

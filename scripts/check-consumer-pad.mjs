@@ -137,6 +137,18 @@ const TRIGGERS = [
 	},
 	{
 		reason:
+			"`<pie-print>`'s `resolve` and `config` properties, `defaultResolve` and the resolved entry's `url` and `module` fields, or `dist/print-player.js`, which a host loads from a CDN by name",
+		match: (file) =>
+			[
+				"packages/print-player/src/pie-print.ts",
+				"packages/print-player/src/element-resolver.ts",
+				"packages/print-player/src/types.ts",
+				"packages/print-player/src/index.ts",
+				"packages/print-player/vite.config.ts",
+			].includes(file),
+	},
+	{
+		reason:
 			"when `toolkit-ready` fires relative to the section controller, which a host's unguarded event subscriptions depend on",
 		match: (file) =>
 			file ===

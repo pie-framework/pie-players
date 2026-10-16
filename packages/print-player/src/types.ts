@@ -2,6 +2,7 @@
  * Type definitions for PIE Print Player
  */
 
+import type { EsmCdnProviderOption } from "@pie-players/pie-players-shared/loaders";
 import type { AccessibilityCatalog } from "@pie-players/pie-players-shared/types";
 import type { PrintAccessibilityConfig } from "./accessibility-alternates.js";
 
@@ -82,16 +83,29 @@ export interface PkgResolution {
 	loader?: "dynamic-import" | "browser-esm";
 	/** CDN base used by the browser ESM loader */
 	cdnBaseUrl?: string;
-	/** CDN provider used by the browser ESM loader */
-	cdnProvider?: "jsdelivr" | "esm.sh" | (string & {});
+	/** CDN provider used by the browser ESM loader; inferred from `cdnBaseUrl` when absent */
+	cdnProvider?: EsmCdnProviderOption;
 }
 
 /**
- * Function type for resolving package URLs
+ * Where `<pie-print>` loads print modules from, named as on `<pie-item-player>`'s
+ * `loaderOptions`.
+ */
+export interface PrintLoaderOptions {
+	/** ESM CDN base, jsDelivr's `https://cdn.jsdelivr.net/npm` by default */
+	esmCdnUrl?: string;
+	/** CDN URL strategy; inferred from `esmCdnUrl` when absent */
+	esmCdnProvider?: EsmCdnProviderOption;
+}
+
+/**
+ * Function type for resolving package URLs. `loaderOptions` is the element's
+ * {@link PrintLoaderOptions}, for a resolver that delegates to `defaultResolve`.
  */
 export type ResolverFn = (
 	tagName: string,
 	pkg: string,
+	loaderOptions?: PrintLoaderOptions,
 ) => Promise<PkgResolution>;
 
 /**

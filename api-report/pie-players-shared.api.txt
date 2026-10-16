@@ -88,6 +88,7 @@
   MATHJAX_NO_ASSET_ROOT_EVENT
   MATHJAX_VERSION_CONFLICT_EVENT
   type MathAssetOptions
+  type MathRenderingOptions
   MemoryItemSessionStorage
   type MetricAttributes
   NewRelicInstrumentationProvider
@@ -270,6 +271,7 @@
   resolveConfigureConfiguration
   resolveContainingBlockRect
   resolveEsmAssetRoot
+  resolveEsmPackageFileUrl
   resolveEsmRuntimeSupportUrl
   resolveInstrumentationProvider
   resolveItemPlayerView
@@ -462,6 +464,7 @@
   mapEsmViewElements
   registerPreloadedElements
   resolveEsmAssetRoot
+  resolveEsmPackageFileUrl
   resolveEsmRuntimeSupportUrl
   resolveLoadControllers
 
@@ -508,6 +511,7 @@
   type ItemSessionUpdateIntent
   type LoadPieElementsOptions
   type LoadingCompleteDetail
+  type MathRenderingOptions
   MemoryItemSessionStorage
   type NormalizedItemSessionChange
   type PieElement

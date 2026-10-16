@@ -26,6 +26,14 @@
 						},
 						{
 							"kind": "field",
+							"name": "loaderOptions",
+							"type": {
+								"text": "PrintLoaderOptions | undefined"
+							},
+							"description": "Where print modules load from, read when `config` is set, so set it first. Declared ahead of `config` so a value set before upgrade is applied first."
+						},
+						{
+							"kind": "field",
 							"name": "trustMarkup",
 							"type": {
 								"text": "boolean"

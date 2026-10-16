@@ -1,6 +1,8 @@
 import { afterEach, describe, expect, mock, spyOn, test } from "bun:test";
+import { readFileSync } from "node:fs";
 
 import {
+	DEFAULT_RENDERER_SRE_VERSION,
 	initializeMathRendering,
 	type MathRenderingAPI,
 	setMathRenderer,
@@ -211,5 +213,107 @@ describe("initializeMathRendering", () => {
 
 		expect(windowStub["@pie-lib/math-rendering"]).toBe(renderer);
 		expect(warn).toHaveBeenCalledTimes(1);
+	});
+});
+
+describe("initializeMathRendering — speech rules", () => {
+	const originalWindow = (globalThis as any).window;
+	const originalDocument = (globalThis as any).document;
+	const MODULE = "@pie-lib/math-rendering-module/module/index.js";
+	const rulesUnder = (root: string) =>
+		`${root}/speech-rule-engine@${DEFAULT_RENDERER_SRE_VERSION}/lib/mathmaps`;
+
+	afterEach(() => {
+		mock.restore();
+		(globalThis as any).window = originalWindow;
+		(globalThis as any).document = originalDocument;
+	});
+
+	// A page with no body, so no shared instance is created, and the given
+	// `text/x-sre-config` blocks.
+	const stubPage = (window: Record<string, unknown>, sreConfigBlocks: string[] = []) => {
+		(globalThis as any).window = window;
+		(globalThis as any).document = {
+			querySelectorAll: (selector: string) =>
+				selector === 'script[type="text/x-sre-config"]'
+					? sreConfigBlocks.map((textContent) => ({ textContent }))
+					: [],
+		};
+	};
+
+	// What `SREfeature` holds while the module evaluates, which is when its SRE
+	// reads it.
+	const featureDuringEvaluation = (window: Record<string, unknown>) => {
+		let seen: unknown;
+		mock.module(MODULE, () =>
+			moduleShape({
+				evaluateMathRenderingModule: () => {
+					seen = window.SREfeature;
+					return makeRenderer();
+				},
+			}),
+		);
+		return () => seen;
+	};
+
+	test("points the rules at the asset root while the module evaluates", async () => {
+		const window: Record<string, unknown> = {};
+		stubPage(window);
+		const seen = featureDuringEvaluation(window);
+
+		await initializeMathRendering({ assetRoot: "https://mirror.test/esm/" });
+
+		expect(seen()).toEqual({ json: rulesUnder("https://mirror.test/esm") });
+		expect("SREfeature" in window).toBe(false);
+	});
+
+	test("prefers the page's math asset root", async () => {
+		const window: Record<string, unknown> = {
+			[SHARED_INSTANCE_KEY]: { opts: { assetRoot: "https://page.test/npm" } },
+		};
+		stubPage(window);
+		const seen = featureDuringEvaluation(window);
+
+		await initializeMathRendering({ assetRoot: "https://mirror.test/esm" });
+
+		expect(seen()).toEqual({ json: rulesUnder("https://page.test/npm") });
+	});
+
+	test("keeps the page's other SRE features and restores them", async () => {
+		const pageFeature = { locale: "es" };
+		const window: Record<string, unknown> = { SREfeature: pageFeature };
+		stubPage(window);
+		const seen = featureDuringEvaluation(window);
+
+		await initializeMathRendering({ assetRoot: "https://mirror.test/esm" });
+
+		expect(seen()).toEqual({ locale: "es", json: rulesUnder("https://mirror.test/esm") });
+		expect(window.SREfeature).toBe(pageFeature);
+	});
+
+	test("keeps a rules directory the page names", async () => {
+		const pageFeature = { json: "https://host.test/mathmaps" };
+		const window: Record<string, unknown> = { SREfeature: pageFeature };
+		stubPage(window);
+		const seen = featureDuringEvaluation(window);
+
+		await initializeMathRendering({ assetRoot: "https://mirror.test/esm" });
+
+		expect(seen()).toBe(pageFeature);
+	});
+
+	test("keeps a rules directory a text/x-sre-config block names", async () => {
+		const window: Record<string, unknown> = {};
+		stubPage(window, ['{"json": "https://host.test/mathmaps"}']);
+		const seen = featureDuringEvaluation(window);
+
+		await initializeMathRendering({ assetRoot: "https://mirror.test/esm" });
+
+		expect(seen()).toBeUndefined();
+	});
+
+	test("names the speech-rule-engine version the module bundles", () => {
+		const source = readFileSync(Bun.resolveSync(MODULE, import.meta.dir), "utf8");
+		expect(source).toContain(`Variables.VERSION = '${DEFAULT_RENDERER_SRE_VERSION}'`);
 	});
 });

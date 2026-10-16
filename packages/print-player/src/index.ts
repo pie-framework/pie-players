@@ -68,5 +68,6 @@ export type {
 	Model,
 	NodeResult,
 	PkgResolution,
+	PrintLoaderOptions,
 	ResolverFn,
 } from "./types.js";

@@ -496,6 +496,8 @@ el.onDeleteSound = (_src, done) => done();
 bundles read from `window`, unless the page holds one. The player calls it
 before loading IIFE bundles; a host that loads IIFE element bundles itself calls
 it first ([math rendering](../../docs/item-player/math-rendering.md)).
+`{ assetRoot }`, an npm root, names where the renderer's speech rules load from,
+jsDelivr by default; the first call's options apply.
 
 ```ts
 import type {

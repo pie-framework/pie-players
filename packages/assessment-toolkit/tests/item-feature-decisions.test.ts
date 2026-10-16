@@ -299,7 +299,7 @@ describe("provideItemFeatureDecisions", () => {
 		const child = host.appendChild(document.createElement("div"));
 		const detail = {
 			featureId: "autoplayAudio",
-			effect: "held",
+			granted: false,
 			rule: "support-conflict",
 			overrode: "authored",
 		};
@@ -353,8 +353,8 @@ describe("provideItemFeatureDecisions", () => {
 
 describe("reportFeatureDecisionApplied", () => {
 	const held = (overrode?: "attribute" | "authored") => ({
-		featureId: "autoplayAudio" as const,
-		effect: "held" as const,
+		featureId: "autoplayAudio",
+		granted: false,
 		rule: "support-conflict",
 		...(overrode ? { overrode } : {}),
 	});
@@ -396,7 +396,7 @@ describe("reportFeatureDecisionApplied", () => {
 			I1,
 		);
 		coord.reportFeatureDecisionApplied(
-			{ ...held("authored"), effect: "enabled" },
+			{ ...held("authored"), granted: true },
 			I1,
 		);
 		expect(conflictWarnings()).toEqual([]);

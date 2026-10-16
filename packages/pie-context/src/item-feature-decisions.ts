@@ -33,17 +33,23 @@ export const itemFeatureDecisionsContext = createContext<ItemFeatureDecisions>(
 );
 
 /**
- * The item player's `feature-decision-applied` event, dispatched before the
- * item's elements render with a decision written to their models.
- * `<pie-item-scope>` relays it to its toolkit.
+ * The item player's `feature-decision-applied` event, dispatched once per
+ * feature before the item's elements render with its decision written to their
+ * models. `<pie-item-scope>` relays it to its toolkit.
  */
 export const FEATURE_DECISION_APPLIED_EVENT = "feature-decision-applied";
 
 export interface FeatureDecisionAppliedDetail {
-	featureId: "autoplayAudio";
-	effect: "held" | "enabled";
+	/** The feature id, as `ItemFeatureDecisions.features` keys it. */
+	featureId: string;
+	/** The decision's verdict, from the context value. */
+	granted: boolean;
 	/** The deciding rule, from the context value. */
 	rule: string;
-	/** What the decision displaced on at least one model, if anything. */
+	/**
+	 * What the decision displaced on at least one model, if anything: the item
+	 * player's own setting for the feature, such as an attribute, or the item's
+	 * authored setting.
+	 */
 	overrode?: "attribute" | "authored";
 }

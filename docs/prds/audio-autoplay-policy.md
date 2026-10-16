@@ -106,8 +106,8 @@ export interface ItemFeatureDecision {
 
 // @pie-players/pie-item-player: `feature-decision-applied` event detail
 export interface FeatureDecisionAppliedDetail {
-	featureId: "autoplayAudio";
-	effect: "held" | "enabled";
+	featureId: string;
+	granted: boolean;
 	rule: string;
 	/** What the decision displaced on at least one model, if anything. */
 	overrode?: "attribute" | "authored";
@@ -148,8 +148,10 @@ item player applies, `autoplayAudio` alone today, and leaves out an id whose dec
 
 ### Item player
 
-The item player requests the context with `subscribe: true` before it prepares the config, and
-derives one effective value per load:
+The item player requests the context with `subscribe: true` before it prepares the config. Each
+feature it applies is one applier in a registry: the applier writes the feature's setting and
+decision onto the models and declares the markup switches the model setting replaces, and the
+registry owns when both happen. The autoplay applier derives one effective value per load:
 
 - **Held.** Writes `autoplayAudioHeld: true` on every model. `autoplayAudioEnabled` keeps the
   attribute's or the authored value. An element version that predates the field never reads it and
@@ -168,8 +170,14 @@ refresh. The no-op guard in `loadConfig` includes the effective value, so a chan
 load: sessions commit (`commitPendingSessions`) and the item remounts, since elements read autoplay
 at mount.
 
-Before the elements render, the item player dispatches `feature-decision-applied` for a held or
-enabled decision. `overrode` names the attribute when it was set to the opposite value, else
+In `view` mode the item player also removes `autoplay` attributes from the item and passage markup,
+whatever the decision and under `trust-markup` or a host `sanitizeMarkup` too, so authored markup
+cannot start audio the model setting does not. The removal is the autoplay applier's markup rule,
+kept out of the security sanitizer's forbid-list: it is a product rule, and a trusted or host
+sanitizer skips that list.
+
+Before the elements render, the item player dispatches `feature-decision-applied` once per feature
+with a held or enabled decision. `overrode` names the attribute when it was set to the opposite value, else
 `authored` when some model's authored value was the opposite, else is absent. `<pie-item-scope>`
 relays the event to its toolkit. The toolkit raises one `tool-policy.supportConflict` for each
 `support-conflict` hold that withdrew something, as ADR 0004 specifies: at decision time when the

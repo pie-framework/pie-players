@@ -4,6 +4,9 @@
  * after load commits the pending session, announces `feature-decision-applied`
  * and remounts the item, since elements read autoplay at mount.
  *
+ * Authored `autoplay` attributes leave the item's markup in view mode, so the
+ * model setting is the only start for its audio.
+ *
  * The page answers the request itself, as `<pie-item-scope>` does, so this
  * covers the player without a toolkit.
  */
@@ -148,7 +151,7 @@ test("a decision after load remounts the item and announces what it displaced", 
 		});
 	});
 	await expect.poll(() => applied(page)).toEqual([
-		{ featureId: "autoplayAudio", effect: "held", rule: "support-conflict" },
+		{ featureId: "autoplayAudio", granted: false, rule: "support-conflict" },
 	]);
 	await expect.poll(() => remounted(page)).toBe(true);
 
@@ -163,7 +166,7 @@ test("a decision after load remounts the item and announces what it displaced", 
 	});
 	await expect.poll(async () => (await applied(page)).at(-1)).toEqual({
 		featureId: "autoplayAudio",
-		effect: "held",
+		granted: false,
 		rule: "support-conflict",
 		overrode: "attribute",
 	});
@@ -224,4 +227,31 @@ test("a pending response commits before the decision remounts the item", async (
 	const announce = order.findIndex((entry) => entry.kind === "applied");
 	expect(commit, "the pending response was not committed").toBeGreaterThan(-1);
 	expect(commit).toBeLessThan(announce);
+});
+
+test("authored autoplay leaves the markup, trusted markup included", async ({
+	page,
+}) => {
+	await gotoDelivery(page);
+	await page.evaluate(() => {
+		const player = document.querySelector("pie-item-player") as unknown as {
+			config: { markup: string } | string;
+			trustMarkup: boolean;
+		};
+		const config =
+			typeof player.config === "string" ? JSON.parse(player.config) : player.config;
+		player.trustMarkup = true;
+		player.config = {
+			...config,
+			markup: `${config.markup}<audio id="authored-audio" autoplay controls></audio>`,
+		};
+	});
+	const audio = page.locator("pie-item-player #authored-audio");
+	await expect(audio).toBeAttached({ timeout: 15_000 });
+	expect(await audio.evaluate((element) => element.hasAttribute("autoplay"))).toBe(
+		false,
+	);
+	expect(await audio.evaluate((element) => element.hasAttribute("controls"))).toBe(
+		true,
+	);
 });

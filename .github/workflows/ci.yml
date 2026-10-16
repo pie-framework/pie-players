@@ -168,6 +168,9 @@ jobs:
           - name: print-player-sanitizer
             command: test:e2e:print-player
             browsers: chromium
+          - name: item-list-sanitizer
+            command: test:e2e:item-list
+            browsers: chromium
           - name: backend-demo
             command: test:e2e:backend-demo
             browsers: chromium

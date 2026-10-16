@@ -117,6 +117,14 @@ const nlNL = {
 				"Beantwoord vraag {position} voordat je verder gaat met de media.",
 			playbackReleased: "Antwoord geaccepteerd. Speel de media verder.",
 		},
+
+		summary: {
+			correctA11y: "Juist antwoord",
+			answer: "Antwoord",
+			manualScoring: "Beoordeeld door een leraar",
+			audio: "Audio",
+			video: "Video",
+		},
 	},
 
 	toolkit: {

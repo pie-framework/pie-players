@@ -151,6 +151,19 @@ const enUS = {
 				"Answer question {position} before continuing with the media.",
 			playbackReleased: "Answer accepted. Continue playing the media.",
 		},
+
+		/**
+		 * `<pie-item-summary>`: an item described as a list row, without loading its
+		 * elements. The correct marker's glyph is hidden from assistive technology,
+		 * which reads `correctA11y` instead.
+		 */
+		summary: {
+			correctA11y: "Correct answer",
+			answer: "Answer",
+			manualScoring: "Scored by a teacher",
+			audio: "Audio",
+			video: "Video",
+		},
 	},
 
 	/** Toolbar and tool-shell chrome owned by the assessment toolkit. */

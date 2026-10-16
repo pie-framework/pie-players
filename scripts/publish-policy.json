@@ -51,10 +51,12 @@
 			"@pie-players/pie-section-player/contracts/runtime-host-contract",
 			"@pie-players/pie-section-player/contracts/host-hooks",
 			"@pie-players/pie-section-player/policies",
-			"@pie-players/pie-section-player/item-section"
+			"@pie-players/pie-section-player/item-section",
+			"@pie-players/pie-item-list/summarize"
 		],
 		"browserOnly": [
 			"@pie-players/pie-item-player",
+			"@pie-players/pie-item-list",
 			"@pie-players/pie-section-player"
 		]
 	}

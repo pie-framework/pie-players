@@ -110,6 +110,14 @@ const thTH = {
 			playbackAdvisory: "ตอบคำถามข้อที่ {position} ก่อนจึงจะเล่นสื่อต่อได้",
 			playbackReleased: "รับคำตอบแล้ว เล่นสื่อต่อได้",
 		},
+
+		summary: {
+			correctA11y: "คำตอบที่ถูกต้อง",
+			answer: "คำตอบ",
+			manualScoring: "ครูเป็นผู้ให้คะแนน",
+			audio: "เสียง",
+			video: "วิดีโอ",
+		},
 	},
 
 	toolkit: {

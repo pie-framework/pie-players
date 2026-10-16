@@ -49,6 +49,9 @@
 			"path": "./packages/pie-i18n-generated"
 		},
 		{
+			"path": "./packages/item-list"
+		},
+		{
 			"path": "./packages/item-player"
 		},
 		{

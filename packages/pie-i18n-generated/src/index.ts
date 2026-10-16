@@ -70,6 +70,9 @@ const GENERATED_CATALOG_LOADERS: Record<string, CatalogLoader> = {
 	ko: () => import("./messages/ko.js"),
 	ja: () => import("./messages/ja.js"),
 	zh: () => import("./messages/zh.js"),
+	// Bare tags: `cy-GB` widens to `cy`, `sv-SE`/`sv-FI` to `sv`.
+	cy: () => import("./messages/cy.js"),
+	sv: () => import("./messages/sv.js"),
 };
 
 /**
@@ -89,6 +92,8 @@ export const GENERATED_LOCALES: readonly string[] = [
 	"ko",
 	"ja",
 	"zh",
+	"cy",
+	"sv",
 ];
 
 /**

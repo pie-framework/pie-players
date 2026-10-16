@@ -93,6 +93,20 @@
 			"generatedAt": "2026-10-16",
 			"model": "GLM (Z.ai), agent-driven generation in the pie-players repo",
 			"sourceHash": "61ee1e560001893b69a8923b6640de2f3b41f7344771be97d70ba8a9024874b1"
+		},
+		"cy": {
+			"status": "generated",
+			"brief": "briefs/cy.md",
+			"generatedAt": "2026-10-16",
+			"model": "GLM (Z.ai), agent-driven generation in the pie-players repo",
+			"sourceHash": "61ee1e560001893b69a8923b6640de2f3b41f7344771be97d70ba8a9024874b1"
+		},
+		"sv": {
+			"status": "generated",
+			"brief": "briefs/sv.md",
+			"generatedAt": "2026-10-16",
+			"model": "GLM (Z.ai), agent-driven generation in the pie-players repo",
+			"sourceHash": "61ee1e560001893b69a8923b6640de2f3b41f7344771be97d70ba8a9024874b1"
 		}
 	}
 }

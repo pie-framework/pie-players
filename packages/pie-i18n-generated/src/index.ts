@@ -55,15 +55,41 @@ type CatalogLoader = () => Promise<{ default: MessageCatalog }>;
  */
 const GENERATED_CATALOG_LOADERS: Record<string, CatalogLoader> = {
 	"th-TH": () => import("./messages/th-TH.js"),
+	"en-GB": () => import("./messages/en-GB.js"),
+	"en-AU": () => import("./messages/en-AU.js"),
+	// Bare tags on purpose: the provider's RFC 4647 lookup plus
+	// primary-subtag widening lands `es-MX`, `es-419`, `fr-CA`, `pt-BR` and
+	// `ar-SA` on these, and a host wanting a different national flavour
+	// overrides per key through `customMessages`. `zh` is Simplified Chinese
+	// and catches `zh-CN`/`zh-SG`; Traditional-Chinese hosts supply their own
+	// messages.
+	es: () => import("./messages/es.js"),
+	fr: () => import("./messages/fr.js"),
+	ar: () => import("./messages/ar.js"),
+	pt: () => import("./messages/pt.js"),
+	ko: () => import("./messages/ko.js"),
+	ja: () => import("./messages/ja.js"),
+	zh: () => import("./messages/zh.js"),
 };
 
 /**
  * Every locale tag this package ships a generated catalog for.
  *
- * RFC 4647 lookup and primary-subtag widening happen in the provider, so
- * `th`, `th_TH` and `th-TH` all reach the `th-TH` catalog.
+ * `en-GB` and `en-AU` are regional on purpose: bare `en` must keep resolving
+ * to the statically bundled English, never to a regional variant.
  */
-export const GENERATED_LOCALES: readonly string[] = ["th-TH"];
+export const GENERATED_LOCALES: readonly string[] = [
+	"th-TH",
+	"en-GB",
+	"en-AU",
+	"es",
+	"fr",
+	"ar",
+	"pt",
+	"ko",
+	"ja",
+	"zh",
+];
 
 /**
  * Load one generated catalog.

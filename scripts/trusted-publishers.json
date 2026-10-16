@@ -119,6 +119,10 @@
 			"repository": "pie-framework/pie-players",
 			"workflow": "release.yml"
 		},
+		"@pie-players/pie-tool-magnifier": {
+			"repository": "pie-framework/pie-players",
+			"workflow": "release.yml"
+		},
 		"@pie-players/pie-tool-periodic-table": {
 			"repository": "pie-framework/pie-players",
 			"workflow": "release.yml"

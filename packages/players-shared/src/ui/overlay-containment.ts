@@ -21,6 +21,12 @@ export interface Point {
 	y: number;
 }
 
+/** A box on screen: its top-left corner and its extent, as a `DOMRect` gives them. */
+export interface ScreenBox extends Size {
+	left: number;
+	top: number;
+}
+
 /**
  * The box `element` resolves its `left`/`top` against: its containing block, or
  * the viewport when that is the initial containing block.
@@ -163,4 +169,39 @@ export function clampPointWithinBlock(
 		gutter,
 	);
 	return { x: centre.x + offset.x, y: centre.y + offset.y };
+}
+
+/**
+ * The top-left corner, in viewport coordinates, of a control strip docked
+ * beside an upright `tool`: centred below it, or above it when only the space
+ * above holds the strip, and slid along the tool's edge to stay inside the
+ * block. A strip that fits on neither side takes the roomier one; a strip wider
+ * than the block centres on it.
+ */
+export function uprightDockCorner(
+	tool: ScreenBox,
+	strip: Size,
+	block: ScreenBox,
+	gap: number,
+	gutter: number = DEFAULT_CONTAINMENT_GUTTER,
+): Point {
+	const top = block.top + gutter;
+	const bottom = block.top + block.height - gutter;
+	const below = tool.top + tool.height + gap;
+	const above = tool.top - gap - strip.height;
+	const roomBelow = bottom - below;
+	const roomAbove = tool.top - gap - top;
+	const y =
+		roomBelow >= strip.height || (roomAbove < strip.height && roomBelow >= roomAbove)
+			? below
+			: above;
+	const travel = block.width - gutter * 2 - strip.width;
+	const x =
+		travel <= 0
+			? block.left + (block.width - strip.width) / 2
+			: Math.max(
+					block.left + gutter,
+					Math.min(block.left + gutter + travel, tool.left + (tool.width - strip.width) / 2),
+				);
+	return { x, y };
 }

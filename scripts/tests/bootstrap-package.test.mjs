@@ -14,6 +14,7 @@ import {
 
 const TARGET = "@pie-players/pie-tool-sign-language";
 const SIBLING = "@pie-players/pie-theme";
+const SLUG = "pie-framework/pie-players";
 
 const baseInput = (overrides = {}) => ({
 	target: TARGET,
@@ -23,9 +24,22 @@ const baseInput = (overrides = {}) => ({
 		[TARGET, "0.3.50"],
 		[SIBLING, "0.3.50"],
 	]),
-	publishedVersion: UNPUBLISHED,
+	version: "0.3.50",
+	published: UNPUBLISHED,
+	slug: SLUG,
 	...overrides,
 });
+
+/** The magnifier's shape: 0.1.x releases from a removed package, returning on the 1.x line. */
+const reclaimInput = (published) =>
+	baseInput({
+		groupVersions: new Map([
+			[TARGET, "1.0.0-beta.2"],
+			[SIBLING, "1.0.0-beta.2"],
+		]),
+		version: "1.0.0-beta.2",
+		published,
+	});
 
 describe("collectBootstrapBlockers", () => {
 	test("a new, fixed-group, unpublished package is bootstrappable", () => {
@@ -34,12 +48,52 @@ describe("collectBootstrapBlockers", () => {
 
 	test("refuses a package that is already on the registry", () => {
 		const blockers = collectBootstrapBlockers(
-			baseInput({ publishedVersion: "0.3.64" }),
+			baseInput({
+				published: { versions: ["0.3.50", "0.3.64"], repository: SLUG },
+			}),
 		);
 		expect(blockers).toHaveLength(1);
 		expect(blockers[0]).toContain("already on the registry at 0.3.64");
 		// The operator's likely actual problem is a missing claim, so name that command.
 		expect(blockers[0]).toContain("trusted-publishers -- --apply");
+	});
+
+	test("reclaims a name this repository published only on an older major", () => {
+		expect(
+			collectBootstrapBlockers(
+				reclaimInput({ versions: ["0.1.1", "0.1.8"], repository: SLUG }),
+			),
+		).toEqual([]);
+	});
+
+	test("a release on the package's major is not a reclaim", () => {
+		const blockers = collectBootstrapBlockers(
+			reclaimInput({
+				versions: ["0.1.8", "1.0.0-beta.0"],
+				repository: SLUG,
+			}),
+		);
+		expect(blockers).toHaveLength(1);
+		expect(blockers[0]).toContain("already on the registry at 1.0.0-beta.0");
+	});
+
+	test("refuses to reclaim a name another repository published", () => {
+		const blockers = collectBootstrapBlockers(
+			reclaimInput({
+				versions: ["0.1.8"],
+				repository: "pie-framework/pie-elements",
+			}),
+		);
+		expect(blockers).toHaveLength(1);
+		expect(blockers[0]).toContain("attributes to pie-framework/pie-elements");
+	});
+
+	test("refuses to reclaim a name whose releases name no repository", () => {
+		const blockers = collectBootstrapBlockers(
+			reclaimInput({ versions: ["0.1.8"], repository: null }),
+		);
+		expect(blockers).toHaveLength(1);
+		expect(blockers[0]).toContain("attributes to no repository");
 	});
 
 	test("refuses a package that is not a publishable workspace member", () => {

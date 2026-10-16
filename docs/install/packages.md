@@ -72,6 +72,7 @@ configuration and a toolbar placement use.
 | [`@pie-players/pie-tool-picture-dictionary`](../../packages/tool-picture-dictionary/README.md) | `pictureDictionary`, `pictureDictionarySpanish` | `<pie-tool-picture-dictionary>` | Picture dictionary lookup |
 | [`@pie-players/pie-tool-graph`](../../packages/tool-graph/README.md) | `graph` | `<pie-tool-graph>` | Coordinate-grid graphing |
 | [`@pie-players/pie-tool-line-reader`](../../packages/tool-line-reader/README.md) | `lineReader` | `<pie-tool-line-reader>` | Reading-guide overlay |
+| [`@pie-players/pie-tool-magnifier`](../../packages/tool-magnifier/README.md) | `magnification` | `<pie-tool-magnifier>` | Movable magnifying lens |
 | [`@pie-players/pie-tool-periodic-table`](../../packages/tool-periodic-table/README.md) | `periodicTable` | `<pie-tool-periodic-table>` | Periodic table reference |
 | [`@pie-players/pie-tool-protractor`](../../packages/tool-protractor/README.md) | `protractor` | `<pie-tool-protractor>` | Draggable, rotatable protractor |
 | [`@pie-players/pie-tool-ruler`](../../packages/tool-ruler/README.md) | `ruler` | `<pie-tool-ruler>` | Ruler |

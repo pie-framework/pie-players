@@ -3,6 +3,7 @@
  *
  * Registers tools for visual accessibility and reading support:
  * - Line Reader (reading guide)
+ * - Magnifier (movable magnifying lens)
  * - Color Scheme (theme/contrast)
  * - Annotation Toolbar (text highlighting)
  */
@@ -53,6 +54,52 @@ export const lineReaderToolRegistration: ToolRegistration = {
 		return renderOverlayToolbar(this, context, toolbarContext, {
 			surface: "frameless",
 		});
+	},
+};
+
+/** A `zoom` worth passing on: a finite magnification above 1. */
+const normalizeMagnifierZoom = (value: unknown): number | undefined =>
+	typeof value === "number" && Number.isFinite(value) && value > 1
+		? value
+		: undefined;
+
+/**
+ * Magnifier tool registration
+ *
+ * A movable lens that shows the content under it enlarged. The AfA
+ * `magnification` tool parameter `zoom` sets the lens's starting level.
+ */
+export const magnificationToolRegistration: ToolRegistration = {
+	toolId: "magnification",
+	name: "Magnifier",
+	description: "Magnify the content under a movable lens",
+	nameKey: "tools.magnification.name",
+	descriptionKey: "tools.magnification.description",
+	icon: "magnifying-glass",
+
+	supportedLevels: ["section", "passage", "rubric", "item"],
+
+	/**
+	 * Pass 2: anything on screen can be magnified, text or not
+	 */
+	isVisibleInContext(): boolean {
+		return true;
+	},
+
+	renderToolbar(
+		context: ToolContext,
+		toolbarContext: ToolbarContext,
+	): ToolToolbarRenderResult {
+		const result = renderOverlayToolbar(this, context, toolbarContext, {
+			surface: "frameless",
+		});
+		const overlay = result.elements?.[0]?.element;
+		const zoom = normalizeMagnifierZoom(
+			toolbarContext.getToolParameters?.("magnification")?.zoom,
+		);
+		if (zoom === undefined) overlay?.removeAttribute("zoom");
+		else overlay?.setAttribute("zoom", String(zoom));
+		return result;
 	},
 };
 

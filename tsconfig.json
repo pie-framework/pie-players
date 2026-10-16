@@ -73,6 +73,9 @@
 			"path": "./packages/tool-line-reader"
 		},
 		{
+			"path": "./packages/tool-magnifier"
+		},
+		{
 			"path": "./packages/tool-periodic-table"
 		},
 		{

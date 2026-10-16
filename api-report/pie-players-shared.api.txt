@@ -103,6 +103,8 @@
   type OverlayPlacementController
   type OverlayPlacementNudge
   type OverlayPlacementOptions
+  type OverlaySizeControl
+  type OverlayTapTarget
   type PassageEntity
   type PieContent
   type PieController
@@ -140,6 +142,7 @@
   type SafeDefineResult
   type SafeDefineStatus
   type SanitizeItemMarkupOptions
+  type ScreenBox
   type SessionCommitReason
   type SessionSnapshot
   type SessionSnapshotConfig
@@ -192,6 +195,7 @@
   createAuthoringAssetEventManager
   createDefaultItemMarkupSanitizer
   createEsmBackend
+  createFocusReturn
   createFocusTrap
   createIifeBackend
   createOverlayPlacement
@@ -204,6 +208,7 @@
   defineAuthoredPreloadedTags
   defineCustomElementSafely
   describeRegistrationFailures
+  dockUprightControls
   editorPostFix
   elementForPackage
   encodeElementPackageSpecs
@@ -290,6 +295,7 @@
   updatePieElementWithRef
   updatePieElements
   uprightDockCentre
+  uprightDockCorner
   validateAuthoringModels
   validateCustomElementTag
   validateExternalStyleUrl

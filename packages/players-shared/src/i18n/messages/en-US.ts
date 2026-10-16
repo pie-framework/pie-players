@@ -169,18 +169,21 @@ const enUS = {
 			moveRightA11y: "Move tool right",
 			moveUpA11y: "Move tool up",
 			moveDownA11y: "Move tool down",
-			shrinkA11y: "Shrink tool window",
-			growA11y: "Grow tool window",
+			narrowerA11y: "Make tool window narrower",
+			widerA11y: "Make tool window wider",
+			shorterA11y: "Make tool window shorter",
+			tallerA11y: "Make tool window taller",
 			centerA11y: "Center tool window",
 			closeA11y: "Close tool",
 		},
 
 		/**
-		 * The tap controls that move and turn the ruler and protractor without a
+		 * The tap controls that move, turn and resize a placed tool without a
 		 * drag. The move buttons reuse the `window` labels above.
 		 */
 		placement: {
 			controlsA11y: "Move and rotate",
+			moveAndResizeA11y: "Move and resize",
 			rotateClockwiseA11y: "Rotate {degrees}° clockwise",
 			rotateCounterclockwiseA11y: "Rotate {degrees}° counterclockwise",
 		},
@@ -372,12 +375,40 @@ const enUS = {
 			windowHeightAnnounce: "Reading window height {pixels} pixels",
 			frameHeightAnnounce: "Frame height {pixels} pixels",
 			widthAnnounce: "Width {pixels} pixels",
+			shorterWindowA11y: "Make the reading window shorter",
+			tallerWindowA11y: "Make the reading window taller",
+			shorterFrameA11y: "Make the frame shorter",
+			tallerFrameA11y: "Make the frame taller",
+			narrowerA11y: "Make the line reader narrower",
+			widerA11y: "Make the line reader wider",
 			applicationA11y:
 				"Line Reader tool. A clear reading window inside an obscuring frame. Use arrow keys to move, +/- to resize the reading window, Escape to close. Reading window height: {paneHeight} pixels, Frame height: {frameHeight} pixels",
 			resizeWindowFullA11y:
 				"Resize the reading window. Drag, or use the up and down arrow keys to change its height. Current height {paneHeight} pixels",
 			resizeFrameFullA11y:
 				"Resize the frame. Drag, or use the up and down arrow keys to change the frame height and the left and right arrow keys to change the width. Current frame height {frameHeight} pixels, width {width} pixels",
+		},
+		magnification: {
+			name: "Magnifier",
+			description: "Magnify the content under a movable lens",
+			buttonA11y: "Magnifier, enlarge the content under a lens",
+			tooltip: "Magnifier",
+			roleA11y: "Draggable and resizable magnifying lens",
+			applicationA11y:
+				"Magnifier at {zoom} times. Use the arrow keys to move the lens, + and - to change the zoom, and Escape to close.",
+			zoomIn: "Zoom in",
+			zoomOut: "Zoom out",
+			zoomLevel: "{zoom}×",
+			zoomAnnounce: "Zoom {zoom} times",
+			close: "Close magnifier",
+			resizeA11y: "Drag to resize the magnifier",
+			resizeFullA11y:
+				"Resize the magnifier. Drag, or use the arrow keys. Current size {width} by {height} pixels",
+			sizeAnnounce: "Magnifier {width} by {height} pixels",
+			narrowerA11y: "Make the magnifier narrower",
+			widerA11y: "Make the magnifier wider",
+			shorterA11y: "Make the magnifier shorter",
+			tallerA11y: "Make the magnifier taller",
 		},
 		answerEliminator: {
 			name: "Answer Eliminator",

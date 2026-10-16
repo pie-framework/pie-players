@@ -382,6 +382,7 @@
         "@pie-players/pie-tool-dictionary": "workspace:*",
         "@pie-players/pie-tool-graph": "workspace:*",
         "@pie-players/pie-tool-line-reader": "workspace:*",
+        "@pie-players/pie-tool-magnifier": "workspace:*",
         "@pie-players/pie-tool-periodic-table": "workspace:*",
         "@pie-players/pie-tool-picture-dictionary": "workspace:*",
         "@pie-players/pie-tool-protractor": "workspace:*",
@@ -750,6 +751,24 @@
     },
     "packages/tool-line-reader": {
       "name": "@pie-players/pie-tool-line-reader",
+      "version": "1.0.0-beta.2",
+      "dependencies": {
+        "@pie-players/pie-assessment-toolkit": "workspace:*",
+        "@pie-players/pie-players-shared": "workspace:*",
+      },
+      "devDependencies": {
+        "@biomejs/biome": "^2.5.15",
+        "@happy-dom/global-registrator": "^20.14.5",
+        "@sveltejs/vite-plugin-svelte": "^7.3.1",
+        "svelte": "^5.57.2",
+        "svelte-check": "^4.7.6",
+        "typescript": "^5.9.3",
+        "vite": "^8.3.3",
+        "vite-plugin-dts": "^5.1.2",
+      },
+    },
+    "packages/tool-magnifier": {
+      "name": "@pie-players/pie-tool-magnifier",
       "version": "1.0.0-beta.2",
       "dependencies": {
         "@pie-players/pie-assessment-toolkit": "workspace:*",
@@ -1513,6 +1532,8 @@
     "@pie-players/pie-tool-graph": ["@pie-players/pie-tool-graph@workspace:packages/tool-graph"],
 
     "@pie-players/pie-tool-line-reader": ["@pie-players/pie-tool-line-reader@workspace:packages/tool-line-reader"],
+
+    "@pie-players/pie-tool-magnifier": ["@pie-players/pie-tool-magnifier@workspace:packages/tool-magnifier"],
 
     "@pie-players/pie-tool-periodic-table": ["@pie-players/pie-tool-periodic-table@workspace:packages/tool-periodic-table"],
 

@@ -23,15 +23,21 @@
  * What it does, in order, stopping at the first problem:
  *
  *   1. Preflight, entirely before anything irreversible: the package is a publishable workspace
- *      member, it is in the changesets fixed group, its version matches the group, npm has never
- *      seen the name, every resolved dependency is installable, and you are logged in.
+ *      member, it is in the changesets fixed group, its version matches the group, npm has no
+ *      release of the name on its major line, every resolved dependency is installable, and you
+ *      are logged in.
  *   2. Build the package and its workspace dependencies.
  *   3. Resolve the manifest's `workspace:` ranges, the same way a release does.
  *   4. Show the exact tarball (`npm pack --dry-run`). `--dry-run` stops here.
  *   5. `npm publish`, interactively, so npm can prompt for the OTP.
  *   6. Restore the manifest, whatever happened.
  *   7. Claim the trusted publisher by delegating to configure-trusted-publishers.mjs, which
- *      owns the `npm trust` call and the committed ledger.
+ *      owns the `npm trust` call and the committed ledger, unless the ledger already records it.
+ *
+ * A name npm holds only on an older major is reclaimed the same way: an earlier package of this
+ * repository published it, was removed, and the name now returns as a new package. Its old
+ * releases give the fixed group nothing to continue from, so it needs the same one release on
+ * the group's line that a new name does.
  *
  * Requirements: an authenticated npm session (`npm login`) with publish rights on the scope.
  * This script never handles credentials. Tokens are deliberately not used — per npm's
@@ -44,10 +50,11 @@ import { existsSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 
-import { parseSemver } from "./lib/fixed-versioning.mjs";
+import { compareSemver, parseSemver } from "./lib/fixed-versioning.mjs";
 import { resolveManifestWorkspaceRanges } from "./lib/workspace-ranges.mjs";
 import {
 	publishablePackages,
+	readLedger,
 	repositorySlug,
 } from "./lib/trusted-publishers.mjs";
 
@@ -61,16 +68,25 @@ export const UNPUBLISHED = Symbol("unpublished");
  * session — the same reason check-trusted-publishers.mjs splits its decision out.
  *
  * The published-version check is the load-bearing one. Bootstrapping is defined by the registry
- * not knowing the name; once it does, a second manual publish would put a hand-built tarball
- * under a version the fixed-version release also owns, and the two would disagree about what
- * that version contains.
+ * holding no release of the name on the package's major line; once it does, a second manual
+ * publish would put a hand-built tarball under a version the fixed-version release also owns,
+ * and the two would disagree about what that version contains.
+ *
+ * Releases on an older major are a reclaim, allowed only when the registry names this
+ * repository as their source: a name another repository published is that repository's to
+ * release, and publishing over it here is irreversible.
+ *
+ * `published` is UNPUBLISHED or `{ versions, repository }`, the registry's versions and the
+ * owner/repo slug its manifest names (null when it names none).
  */
 export function collectBootstrapBlockers({
 	target,
 	publishableNames,
 	fixedSet,
 	groupVersions,
-	publishedVersion,
+	version,
+	published,
+	slug,
 }) {
 	const blockers = [];
 
@@ -104,13 +120,37 @@ export function collectBootstrapBlockers({
 		}
 	}
 
-	if (publishedVersion !== UNPUBLISHED) {
-		blockers.push(
-			`${target} is already on the registry at ${publishedVersion}. Bootstrapping is only for a name npm has never seen — publish subsequent versions through the release workflow. If the trusted-publisher claim is what is missing, run: bun run trusted-publishers -- --apply --only ${target}`,
-		);
+	if (published !== UNPUBLISHED) {
+		const line = parseSemver(version)?.major;
+		// An unparseable version on either side counts as on the line: refusing is the safe reading.
+		const onLine = published.versions.filter((v) => {
+			const semver = parseSemver(v);
+			return line === undefined || !semver || semver.major >= line;
+		});
+		if (onLine.length > 0) {
+			blockers.push(
+				`${target} is already on the registry at ${highestVersion(onLine)}. Bootstrapping is only for a name npm has never seen, or holds only on an older major — publish subsequent versions through the release workflow. If the trusted-publisher claim is what is missing, run: bun run trusted-publishers -- --apply --only ${target}`,
+			);
+		} else if (published.repository !== slug) {
+			blockers.push(
+				`${target} holds releases on an older major (up to ${highestVersion(published.versions)}) that the registry attributes to ${published.repository ?? "no repository"}, not ${slug}. A reclaim takes back a name this repository published; one another repository published stays with it.`,
+			);
+		}
 	}
 
 	return blockers;
+}
+
+/** The highest of `versions` by semver precedence, unparseable ones last. */
+function highestVersion(versions) {
+	const ranked = versions
+		.map((raw) => ({ raw, semver: parseSemver(raw) }))
+		.sort((a, b) =>
+			a.semver && b.semver
+				? compareSemver(b.semver, a.semver)
+				: Number(!a.semver) - Number(!b.semver),
+		);
+	return ranked[0]?.raw;
 }
 
 /**
@@ -232,14 +272,16 @@ function main() {
 	const entry = workspaceManifests.find(
 		({ manifest }) => manifest.name === target,
 	);
-	const publishedVersion = entry ? fetchPublishedVersion(target) : UNPUBLISHED;
+	const published = entry ? fetchPublished(target) : UNPUBLISHED;
 
 	const blockers = collectBootstrapBlockers({
 		target,
 		publishableNames,
 		fixedSet,
 		groupVersions,
-		publishedVersion,
+		version: entry?.manifest.version,
+		published,
+		slug,
 	});
 	if (blockers.length > 0) {
 		fail(
@@ -250,7 +292,13 @@ function main() {
 
 	const user = npmWhoami();
 	const version = entry.manifest.version;
-	console.log(`npm user: ${user}   version to publish: ${version}\n`);
+	console.log(`npm user: ${user}   version to publish: ${version}`);
+	if (published !== UNPUBLISHED) {
+		console.log(
+			`reclaiming: npm holds ${published.versions.length} release(s) of an earlier ${target}, up to ${highestVersion(published.versions)}; ${version} opens its line on the current major`,
+		);
+	}
+	console.log("");
 
 	// Build before touching the manifest: a build failure should leave the checkout untouched.
 	console.log(`building ${target} and its workspace dependencies ...`);
@@ -350,7 +398,19 @@ function main() {
 	 * owns the npm 12 bootstrap, the 2FA-aware stdio handling and the ledger write, and the guard
 	 * asserts against the ledger that script writes. A second implementation here would be a
 	 * second thing to keep in step with npm's `trust` surface.
+	 *
+	 * A reclaimed name can be claimed before its bootstrap, since npm already has it, and npm
+	 * refuses a second record for a package. A claim the ledger already holds is left alone.
 	 */
+	if (readLedger(ROOT).packages[target]) {
+		console.log(
+			`\n  ${target} is bootstrapped: ${version} is published and the ledger already records its trusted publisher.\n\n` +
+				"  next: add a changeset and merge to master; the release publishes this package with the\n" +
+				"  rest of the group, via OIDC, at the next group version.\n",
+		);
+		return;
+	}
+
 	console.log(
 		`\nclaiming the trusted publisher for ${target} (expect another OTP prompt) ...`,
 	);
@@ -420,25 +480,39 @@ function readFixedGroup() {
 }
 
 /**
- * The version the registry reports, or UNPUBLISHED for a name it has never seen.
+ * Every version the registry holds and the repository its manifest names, as
+ * `{ versions, repository }`, or UNPUBLISHED for a name it has never seen.
  *
  * Only a 404 reads as unpublished. A network or auth failure stops the run: "cannot tell" must
  * not be treated as "this is a new package", because that is the reading that leads to a second
  * hand-built publish over a version the release already owns.
  */
-function fetchPublishedVersion(pkgName) {
+function fetchPublished(pkgName) {
 	try {
-		const out = execFileSync("npm", ["view", pkgName, "version", "--json"], {
-			cwd: ROOT,
-			encoding: "utf8",
-			stdio: ["ignore", "pipe", "pipe"],
-		}).trim();
+		const out = execFileSync(
+			"npm",
+			["view", pkgName, "versions", "repository.url", "--json"],
+			{
+				cwd: ROOT,
+				encoding: "utf8",
+				stdio: ["ignore", "pipe", "pipe"],
+			},
+		).trim();
 		const parsed = JSON.parse(out);
-		if (typeof parsed === "string") return parsed;
-		if (Array.isArray(parsed) && parsed.length > 0) {
-			return String(parsed[parsed.length - 1]);
-		}
-		return UNPUBLISHED;
+		// npm unwraps the result to the bare `versions` value when the manifest names no repository.
+		const fields =
+			parsed && typeof parsed === "object" && !Array.isArray(parsed)
+				? parsed
+				: { versions: parsed };
+		const versions = [fields.versions ?? []].flat().map(String);
+		if (versions.length === 0) return UNPUBLISHED;
+		const url = fields["repository.url"];
+		return {
+			versions,
+			repository: repositorySlug({
+				repository: { url: typeof url === "string" ? url : "" },
+			}),
+		};
 	} catch (error) {
 		const detail = error.stderr?.toString()?.trim() || error.message || "";
 		if (/E404|404 Not Found/.test(detail)) return UNPUBLISHED;

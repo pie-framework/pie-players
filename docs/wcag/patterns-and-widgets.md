@@ -59,7 +59,8 @@ PIE implements:
   that opened it. Tab stays inside the window unless the tool's shell config sets
   `pageTabOrder`, which hands Tab back to the opener and the item content. The
   focusable header moves the window with the arrow keys, resizes it with
-  Shift+arrows and recenters it with Home. The shell sets no `aria-modal`.
+  Shift+arrows (left and right for width, up and down for height) and recenters
+  it with Home. The shell sets no `aria-modal`.
 - **Tool panels** (dictionary, picture dictionary, graph, periodic table, the
   color-scheme tool `theme`): `role="dialog"` without `aria-modal`.
 

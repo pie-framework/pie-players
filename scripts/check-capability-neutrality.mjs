@@ -54,6 +54,7 @@ const CAPABILITY_IDS = [
 	"highlighter",
 	"answerEliminator",
 	"lineReader",
+	"magnification",
 	"periodicTable",
 	"protractor",
 	"dictionary",

@@ -199,24 +199,26 @@ Developer panel for the section player demos that lists the instrumentation reco
 				setSelectedKind((event.currentTarget as HTMLSelectElement).value)}
 			aria-label={interfaceI18n.t("debug.instrumentationFilterA11y")}
 		>
-			<option value="all">all</option>
-			<option value="event">event</option>
-			<option value="error">error</option>
-			<option value="metric">metric</option>
-			<option value="user-context">user-context</option>
-			<option value="global-attributes">global-attributes</option>
+			<option value="all">{interfaceI18n.t("debug.instrumentationKindAll")}</option>
+			<option value="event">{interfaceI18n.t("debug.instrumentationKindEvent")}</option>
+			<option value="error">{interfaceI18n.t("debug.instrumentationKindError")}</option>
+			<option value="metric">{interfaceI18n.t("debug.instrumentationKindMetric")}</option>
+			<option value="user-context">{interfaceI18n.t("debug.instrumentationKindUserContext")}</option>
+			<option value="global-attributes">{interfaceI18n.t("debug.instrumentationKindGlobalAttributes")}</option>
 		</select>
 		<button
 			class="pie-section-player-tools-instrumentation-debugger__button"
 			onclick={() => (isPaused = !isPaused)}
 		>
-			{isPaused ? "resume" : "pause"}
+			{isPaused
+				? interfaceI18n.t("debug.resume")
+				: interfaceI18n.t("debug.pause")}
 		</button>
 		<button
 			class="pie-section-player-tools-instrumentation-debugger__button"
 			onclick={clearRecords}
 		>
-			clear
+			{interfaceI18n.t("debug.clear")}
 		</button>
 	</div>
 
@@ -259,16 +261,16 @@ Developer panel for the section player demos that lists the instrumentation reco
 		>
 			{#if selectedRecord}
 				<div class="pie-section-player-tools-instrumentation-debugger__detail-meta">
-					<div><strong>name:</strong> {selectedRecord.name}</div>
-					<div><strong>kind:</strong> {selectedRecord.kind}</div>
-					<div><strong>provider:</strong> {selectedRecord.providerName}</div>
-					<div><strong>timestamp:</strong> {selectedRecord.timestamp}</div>
+					<div><strong>{interfaceI18n.t("debug.instrumentationFieldName")}</strong> {selectedRecord.name}</div>
+					<div><strong>{interfaceI18n.t("debug.instrumentationFieldKind")}</strong> {selectedRecord.kind}</div>
+					<div><strong>{interfaceI18n.t("debug.instrumentationFieldProvider")}</strong> {selectedRecord.providerName}</div>
+					<div><strong>{interfaceI18n.t("debug.instrumentationFieldTimestamp")}</strong> {selectedRecord.timestamp}</div>
 					{#if selectedRecord.value !== undefined}
-						<div><strong>value:</strong> {selectedRecord.value}</div>
+						<div><strong>{interfaceI18n.t("debug.instrumentationFieldValue")}</strong> {selectedRecord.value}</div>
 					{/if}
 					{#if selectedRecord.errorMessage}
 						<div>
-							<strong>error:</strong>
+							<strong>{interfaceI18n.t("debug.instrumentationFieldError")}</strong>
 							{selectedRecord.errorMessage}
 						</div>
 					{/if}

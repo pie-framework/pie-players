@@ -21,7 +21,7 @@
 	"source": {
 		"file": "../../players-shared/src/i18n/messages/en-US.ts",
 		"hashAlgorithm": "sha256",
-		"hash": "608d046cf17bcb48ee5eaaaeb51f4234d6763de06e18954b145c1d547146f1aa"
+		"hash": "61ee1e560001893b69a8923b6640de2f3b41f7344771be97d70ba8a9024874b1"
 	},
 	"locales": {
 		"th-TH": {
@@ -29,70 +29,70 @@
 			"brief": "briefs/th-TH.md",
 			"generatedAt": "2026-10-15",
 			"model": "GLM (Z.ai), agent-driven generation in the pie-players repo",
-			"sourceHash": "608d046cf17bcb48ee5eaaaeb51f4234d6763de06e18954b145c1d547146f1aa"
+			"sourceHash": "61ee1e560001893b69a8923b6640de2f3b41f7344771be97d70ba8a9024874b1"
 		},
 		"en-GB": {
 			"status": "generated",
 			"brief": "briefs/en-GB.md",
 			"generatedAt": "2026-10-15",
 			"model": "GLM (Z.ai), agent-driven generation in the pie-players repo",
-			"sourceHash": "608d046cf17bcb48ee5eaaaeb51f4234d6763de06e18954b145c1d547146f1aa"
+			"sourceHash": "61ee1e560001893b69a8923b6640de2f3b41f7344771be97d70ba8a9024874b1"
 		},
 		"en-AU": {
 			"status": "generated",
 			"brief": "briefs/en-AU.md",
 			"generatedAt": "2026-10-15",
 			"model": "GLM (Z.ai), agent-driven generation in the pie-players repo",
-			"sourceHash": "608d046cf17bcb48ee5eaaaeb51f4234d6763de06e18954b145c1d547146f1aa"
+			"sourceHash": "61ee1e560001893b69a8923b6640de2f3b41f7344771be97d70ba8a9024874b1"
 		},
 		"es": {
 			"status": "generated",
 			"brief": "briefs/es.md",
 			"generatedAt": "2026-10-15",
 			"model": "GLM (Z.ai), agent-driven generation in the pie-players repo",
-			"sourceHash": "608d046cf17bcb48ee5eaaaeb51f4234d6763de06e18954b145c1d547146f1aa"
+			"sourceHash": "61ee1e560001893b69a8923b6640de2f3b41f7344771be97d70ba8a9024874b1"
 		},
 		"fr": {
 			"status": "generated",
 			"brief": "briefs/fr.md",
 			"generatedAt": "2026-10-15",
 			"model": "GLM (Z.ai), agent-driven generation in the pie-players repo",
-			"sourceHash": "608d046cf17bcb48ee5eaaaeb51f4234d6763de06e18954b145c1d547146f1aa"
+			"sourceHash": "61ee1e560001893b69a8923b6640de2f3b41f7344771be97d70ba8a9024874b1"
 		},
 		"ar": {
 			"status": "generated",
 			"brief": "briefs/ar.md",
 			"generatedAt": "2026-10-15",
 			"model": "GLM (Z.ai), agent-driven generation in the pie-players repo",
-			"sourceHash": "608d046cf17bcb48ee5eaaaeb51f4234d6763de06e18954b145c1d547146f1aa"
+			"sourceHash": "61ee1e560001893b69a8923b6640de2f3b41f7344771be97d70ba8a9024874b1"
 		},
 		"pt": {
 			"status": "generated",
 			"brief": "briefs/pt.md",
 			"generatedAt": "2026-10-16",
 			"model": "GLM (Z.ai), agent-driven generation in the pie-players repo",
-			"sourceHash": "608d046cf17bcb48ee5eaaaeb51f4234d6763de06e18954b145c1d547146f1aa"
+			"sourceHash": "61ee1e560001893b69a8923b6640de2f3b41f7344771be97d70ba8a9024874b1"
 		},
 		"ko": {
 			"status": "generated",
 			"brief": "briefs/ko.md",
 			"generatedAt": "2026-10-16",
 			"model": "GLM (Z.ai), agent-driven generation in the pie-players repo",
-			"sourceHash": "608d046cf17bcb48ee5eaaaeb51f4234d6763de06e18954b145c1d547146f1aa"
+			"sourceHash": "61ee1e560001893b69a8923b6640de2f3b41f7344771be97d70ba8a9024874b1"
 		},
 		"ja": {
 			"status": "generated",
 			"brief": "briefs/ja.md",
 			"generatedAt": "2026-10-16",
 			"model": "GLM (Z.ai), agent-driven generation in the pie-players repo",
-			"sourceHash": "608d046cf17bcb48ee5eaaaeb51f4234d6763de06e18954b145c1d547146f1aa"
+			"sourceHash": "61ee1e560001893b69a8923b6640de2f3b41f7344771be97d70ba8a9024874b1"
 		},
 		"zh": {
 			"status": "generated",
 			"brief": "briefs/zh.md",
 			"generatedAt": "2026-10-16",
 			"model": "GLM (Z.ai), agent-driven generation in the pie-players repo",
-			"sourceHash": "608d046cf17bcb48ee5eaaaeb51f4234d6763de06e18954b145c1d547146f1aa"
+			"sourceHash": "61ee1e560001893b69a8923b6640de2f3b41f7344771be97d70ba8a9024874b1"
 		}
 	}
 }

@@ -601,6 +601,42 @@ const enUS = {
 		toggleDatabasePanelA11y: "Toggle database state panel",
 		toggleInstrumentationPanelA11y: "Toggle instrumentation panel",
 
+		// Panel actions and status. "clear"/"pause"/"resume" stay lowercase in
+		// English to match the dev panels' chrome; locales render their own
+		// register.
+		clear: "clear",
+		pause: "pause",
+		resume: "resume",
+		controllerUnavailable: "controller unavailable",
+		noMatchingEvents:
+			"No matching events yet. Interact with an item to capture controller events.",
+		noSectionSessionYet:
+			"No section session data yet. Interact with the questions to see updates.",
+		eventLevelItem: "item",
+		eventLevelSection: "section",
+		// Instrumentation record-kind identifiers. They name the emitted
+		// records, so every locale carries them verbatim; a locale that
+		// prefers translated labels can override per key.
+		instrumentationKindAll: "all",
+		instrumentationKindEvent: "event",
+		instrumentationKindError: "error",
+		instrumentationKindMetric: "metric",
+		instrumentationKindUserContext: "user-context",
+		instrumentationKindGlobalAttributes: "global-attributes",
+		// Instrumentation detail-field labels.
+		instrumentationFieldName: "name:",
+		instrumentationFieldKind: "kind:",
+		instrumentationFieldProvider: "provider:",
+		instrumentationFieldTimestamp: "timestamp:",
+		instrumentationFieldValue: "value:",
+		instrumentationFieldError: "error:",
+		// Session-db payload field names — identifiers, verbatim across
+		// locales like the record kinds above.
+		sessionDbAssessmentId: "assessmentId:",
+		sessionDbSectionId: "sectionId:",
+		sessionDbAttemptId: "attemptId:",
+		sessionDbMode: "mode:",
+
 		/** PNP debugger. */
 		pnp: {
 			title: "PNP Profile",
@@ -621,6 +657,12 @@ const enUS = {
 			perToolDecisions: "Per-Tool Decisions",
 			policyDiagnostics: "Policy Diagnostics",
 			profileReadOnly: "PNP Profile (read-only)",
+			on: "On",
+			effective: "Effective:",
+			needs: "needs",
+			hostSurfaceNotPlaced: "host surface (not placed)",
+			support: "support",
+			prohibit: "prohibit",
 		},
 
 		/** TTS settings panel. */
@@ -730,6 +772,16 @@ const enUS = {
 			previewHintGoogleSsml: "SSML preserved. Tracking disabled.",
 			previewHintCustom: "Tracking enabled when provider returns speech marks.",
 			previewHintTracking: "Tracking enabled while preview plays.",
+			formatMp3: "MP3",
+			formatOgg: "OGG",
+			formatPcm: "PCM",
+			sampleRate8000: "8000 Hz",
+			sampleRate16000: "16000 Hz",
+			sampleRate22050: "22050 Hz",
+			sampleRate24000: "24000 Hz",
+			apiEndpointPlaceholder: "/api/tts",
+			languagePlaceholder: "en-US",
+			ssml: "SSML",
 		},
 	},
 };

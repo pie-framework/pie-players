@@ -36,6 +36,13 @@ Host C was added on **2026-10-13**, derived from its checkout and checked agains
 `origin/develop` the same day; its rows carry that date. It is the first host on
 the `1.0.0-beta` line.
 
+Host S was added on **2026-10-16**, derived from its checkout and checked against
+`origin/develop` the same day; its rows carry that date. They come from the
+feature branch of that checkout that carries its `@pie-players` dependency; its
+main line still renders through the predecessor player. It is the first
+client-facing host on the section player's `preloaded` strategy, and the first
+to put the section player and a preloaded build on one page.
+
 The theme-token rows were re-derived on their own once before, on 2026-08-28,
 when the light Base Theme's `--pie-background` became opaque; that sweep found
 the Host A token set one entry shorter than recorded.
@@ -768,6 +775,7 @@ The 2026-09-26 re-derivation found neither surface in any host.
 | **Host M** | Framework-free TypeScript custom element, built by Vite into one ES module and loaded as a micro-frontend remote by an Angular shell | One item at a time through `pie-item-player` on the `preloaded` strategy, with the element and its controller bundled and registered by the host so evaluation runs in the browser; themed through a provider adapter of its own | High once shipped — mounted on a development route only so far, and the base a client-facing product is building on |
 | **Host B** | Vue 2 on webpack 4 | Item bank: instructor-view item lists with one legacy player per row, item and passage authoring, print. No `@pie-players` dependency yet | None until it adopts; high after — external client-facing |
 | **Host C** | SvelteKit authoring and ingestion app | Section preview of authored and ingested content: one section-player layout inside a `<pie-theme>`, browser text-to-speech, and the element-version override helpers, the last also in server routes | Low — internally controlled and pre-production |
+| **Host S** | Angular + webpack, built into one file and packaged as a custom element that an outer page mounts | One item at a time in learner delivery: each item is converted to a one-item section and rendered through the splitpane layout inside a `<pie-theme>`, on the `preloaded` strategy against a preloaded build the outer page loads; tools placed from the learner's profile, a calculator, and the coordinator's item and lifecycle events | High — external client-facing |
 | **Host R** | SvelteKit reference/QA app | Nearly the whole suite, and the only consumer of the **programmatic** API: it drives the coordinator the section player builds, the composition layer, reads the theme token registry, and runs the Node-side TTS providers | Low to fix, high to notice — internally controlled, but it is the first place a regression surfaces |
 
 Packages consumed:
@@ -794,6 +802,14 @@ Packages consumed:
 - **Host C** — `pie-section-player`, `pie-theme`, and `pie-players-shared` through
   its `pie` and `types` subpaths. It also declares `pie-item-player` and imports
   nothing from it; the section player brings that package in as its dependency.
+- **Host S** — `pie-section-player` through its splitpane and `item-section`
+  subpaths, and `pie-theme`. `pie-preloaded-player` is never imported: its
+  `dist/` is copied into the host's static assets and the outer page loads it by
+  path, as for Host P. It also declares Host A's set — the toolkit, the three
+  calculator packages (`pie-calculator-cortex` aliased to a local stub in its
+  build, as in Host A), `pie-tool-calculator-desmos`, `tts-client-server`,
+  `tts-server-polly`, and the event and session debuggers — and imports none of
+  them.
 - **Host R** — 29 declared `@pie-players` packages. Imported: the toolkit,
   `pie-default-tool-loaders`, `pie-players-shared` and its `types` subpath,
   `pie-section-player` and its splitpane subpath, `pie-theme` plus its
@@ -832,6 +848,17 @@ registry — so its move to a release takes all four at once.
 Host C uses `^1.0.0-beta.1` on all four packages, locked at `1.0.0-beta.1` at last
 read, so every later `1.0.0` prerelease and every `1.x` release reaches it on its
 next install.
+
+Host S pins every package exactly (`1.0.0-beta.3` at last read), and the
+preloaded build at a set-named build of the same version. It also builds one
+extra bundle per version it lists (`1.0.0-beta.2` at last read) from a second
+install, and its launch configuration picks the bundle and the preloaded build
+per launch. Two `1.0.0` prereleases therefore run in its delivery at once, and a
+section-player bundle of one version can share a page with a preloaded build of
+another. It reads the installed section player's `package.json` by file path
+at build time for its `version` field, which names the bundle, so that field and
+the manifest's place in the package root are API to it even though the package
+exports no `./package.json`.
 
 Host R is not client-facing and is ours to fix, so its rows are not a reason to
 avoid a change. They are a reason to expect the change to show up there first,
@@ -887,14 +914,15 @@ same PIE surface.
 | --- | --- | --- |
 | `@pie-players/pie-item-player` | V, M | Registration by side effect: V through a dynamic `import()`, M through a static import bundled into its single file, alongside the `PieItemPlayerElement` type. R loads the same file from a CDN by version instead |
 | `@pie-players/pie-item-player/preloaded` | M | `registerPreloadedElements`, called before the player module evaluates; see the item-player section |
-| `@pie-players/pie-preloaded-player` | P | Never imported. An install step copies `dist/` into a versioned static-asset directory, and `dist/index.js` is loaded from there as a module script; see Direct `dist` path references. R loads the same `dist/index.js` from a CDN by version |
+| `@pie-players/pie-preloaded-player` | P, S | Never imported. An install step copies `dist/` into a versioned static-asset directory, and `dist/index.js` is loaded from there as a module script; see Direct `dist` path references. In S it shares the page with the section player; see Two item-player copies on one page. R loads the same `dist/index.js` from a CDN by version |
 | `@pie-players/pie-print-player` | R | Never installed. R loads `dist/print-player.js` from a CDN by version, for the `<pie-print>` registration and the `defaultResolve` export; see Direct `dist` path references |
-| `@pie-players/pie-theme` | A, C, M, R | Bare specifier → `dist/index.js`, which calls `definePieTheme()` at module scope. R imports it for that side effect alone and calls `definePieTheme` nowhere; C does the same through a dynamic `import()`. M relies on the same side effect and imports `registerPieThemeProvider` with the `ThemeProviderAdapter`, `ThemeVariables` and `PieThemeElement` types |
+| `@pie-players/pie-theme` | A, C, M, R, S | Bare specifier → `dist/index.js`, which calls `definePieTheme()` at module scope. R and S import it for that side effect alone and calls `definePieTheme` nowhere; C does the same through a dynamic `import()`. M relies on the same side effect and imports `registerPieThemeProvider` with the `ThemeProviderAdapter`, `ThemeVariables` and `PieThemeElement` types |
 | `@pie-players/pie-theme/theme-element` | V | Does **not** self-register; the host calls `definePieTheme()` itself |
 | `@pie-players/pie-theme/components.css` | V, M | Imported as text and re-injected under `@scope`, see below |
 | `@pie-players/pie-theme/tokens.css` | R | Imported unlayered so tokens are present in the first paint, ahead of the theme element upgrading |
 | `@pie-players/pie-theme/token-registry.json` | R | Default import, cast to `PieThemeTokenRegistry`; the entry fields it reads are listed under theme tokens below |
-| `@pie-players/pie-section-player/components/section-player-splitpane-element` | A, R | |
+| `@pie-players/pie-section-player/components/section-player-splitpane-element` | A, R, S | |
+| `@pie-players/pie-section-player/item-section` | S | `sectionFromItem(item, { sectionId, itemVId })`, reading `section` and ignoring the returned session. Its declaration is local to the host, because the package's declarations import `pie-players-shared` subpaths its `node10` resolution cannot reach; see TypeScript resolution |
 | `@pie-players/pie-section-player` | C, R | Root entry, for its layout elements' side-effect registration: C through a dynamic `import()`, which it also reads the `SectionPlayerCardTitleContext` type from |
 | `@pie-players/pie-assessment-toolkit` | R | Root entry, for values and types both |
 | `@pie-players/pie-default-tool-loaders` | R | |
@@ -907,7 +935,7 @@ same PIE surface.
 
 The self-registration asymmetry between `pie-theme` and
 `pie-theme/theme-element` is load-bearing in both directions: V depends on
-`theme-element` staying side-effect-free, A, C, M and R depend on the index entry
+`theme-element` staying side-effect-free, A, C, M, R and S depend on the index entry
 keeping its module-scope `definePieTheme()` call. Moving the call, or adding one
 to `theme-element`, breaks one of them.
 
@@ -1027,11 +1055,11 @@ fonts or speech and warn once.
 Its element is on an adapter from before 0.1.3, which keeps loading from
 jsDelivr.
 
-### `pie-section-player-splitpane` and `-vertical` (Hosts A, C, R)
+### `pie-section-player-splitpane` and `-vertical` (Hosts A, C, R, S)
 
-Object properties: `runtime`, `section`, `hooks` (A, C), `toolRegistry` (R).
+Object properties: `runtime`, `section`, `hooks` (A, C, S), `toolRegistry` (R).
 
-Attributes all three hosts pass: `section-id`, `attempt-id`, `show-toolbar`.
+Attributes every host passes: `section-id`, `attempt-id`, `show-toolbar`.
 Host A's `persist()` and `hydrate()` go through the default section
 persistence, which stores a section under its `attempt-id` and neither reads
 nor writes without one, so its resume depends on the attribute being non-empty.
@@ -1054,6 +1082,13 @@ registered, so `runtime`, `section` and `hooks` arrive as properties. It passes
 splitpane, and is the only host that sets those three width attributes. A change
 of section, session or role remounts the layout rather than updating its
 properties.
+
+Host S mounts the splitpane alone and remounts it for every item, with a new
+`attempt-id` each time. Besides the three common attributes it passes
+`toolbar-position="right"` and `debug="false"`, and binds `show-toolbar` to a
+boolean through Angular's attribute binding, which writes `"true"` or `"false"`.
+It takes the coordinator off `toolkit-ready` and calls neither controller
+method.
 
 Method: `waitForSectionController(timeoutMs)` (A, off a
 `document.querySelector` handle) and the zero-argument `getSectionController()`
@@ -1080,15 +1115,15 @@ Boolean attributes read `"false"` as false, so a retype to `Boolean` would
 keep A's intent only through that parse; the same holds for `debug` and any
 other `type: "String"` attribute a host sets to `"false"`.
 
-Both hosts set a class of their own on the layout element: Host A a fixed one,
-Host R one toggled by a policy decision. Class attributes on the layout host must
+Hosts A, R and S set a class of their own on the layout element: A and S a
+fixed one, R one toggled by a policy decision. Class attributes on the layout host must
 therefore survive to the rendered element rather than being reconstructed.
 
 The vertical layout is exercised only by Hosts R and C, both internally
 controlled, so a splitpane-only change that skips it stays invisible until
 someone opens one of them.
 
-### `pie-theme` (Hosts V, A, C, M, R)
+### `pie-theme` (Hosts V, A, C, M, R, S)
 
 Attributes used: `theme`, `scope`, and V's `variables` (see theme tokens below).
 V uses `theme="light" scope="self"`. A uses `scope="document"` and binds `theme`
@@ -1157,7 +1192,13 @@ depends on a `theme` value other than `light`, `dark` or `auto` becoming
 `data-theme` over the light base, and on the DaisyUI adapter keeping the id
 `daisyui`.
 
-### Internal layout CEs as style selectors (Host A)
+Host S wraps the splitpane in `<pie-theme theme="light" scope="document">` and
+places the `theme` tool at section level, so a learner can apply a color scheme.
+Its stylesheet keys its scheme overrides on `data-color-scheme` on the root
+element, which `<pie-theme>` writes there, so that attribute name and its
+placement on `<html>` are API to it; see theme tokens below.
+
+### Internal layout CEs as style selectors (Hosts A, S)
 
 The host reaches into the player's light DOM with Angular `::ng-deep` rules
 targeting these tag names:
@@ -1184,6 +1225,17 @@ strips those spans before scoring a preview. On `develop` the wrapper is applied
 at render time and no longer reaches an element session, so the strip matters
 only for sessions stored from 0.3.49 through the current release; the class
 name stays API for those.
+
+Host S reaches inside the splitpane with `::ng-deep` as well. It sets
+`--pie-background-dark` on `pie-section-player-shell`, which takes effect
+because the shell's open shadow root paints its background from that token, and
+it clears borders, backgrounds, padding and margins on four internal classes:
+`pie-section-player-content-card`, `pie-section-player-tabbed-content`,
+`pie-section-player-items-pane` and `pie-section-player-passages-pane`. The
+shell tag, the shell reading that token, and the four class names are API
+there; a rename brings back the frame it removes, with no error. It strips
+`pie-image-scroll` wrapper spans from response values before scoring, as Host A
+does.
 
 Host R styles the two layout hosts through `:global()` in two files and is
 similarly exposed by the tag names, but only for flex sizing and overflow — it
@@ -1320,13 +1372,14 @@ API**.
 
 | Name | Route | Consumers | Use |
 | --- | --- | --- | --- |
-| `toolkit-ready` | DOM event on the layout CE | A, R | Captures `detail.coordinator`. R keeps it as the coordinator its session reset and lifecycle logging drive, replacing it on each event |
+| `toolkit-ready` | DOM event on the layout CE | A, R, S | Captures `detail.coordinator`. R keeps it as the coordinator its session reset and lifecycle logging drive, replacing it on each event |
 | `pie-stage-change` | DOM event on the layout CE | R | Filtered on `detail.stage === "engine-ready"`, then calls the zero-arg `getSectionController()` off `currentTarget`. The stage vocabulary and this transition's timing are both API |
-| `item-session-data-changed` | `subscribeItemEvents` | A | Response capture → store dispatch → autosave. The handler also takes the event's item as the current item, marks it answered, submits the previously answered item when the item changes within the section, and in a preview mode requests a score, so an event naming an item other than the one on screen moves the host's current item |
-| `content-loaded` | `subscribeItemEvents` | A | Per-item and `contentKind === "rubric"` load tracking; cancels a load-timeout watchdog |
-| `section-loading-complete` | `subscribeSectionLifecycleEvents` | A, R | A subscribes with an empty handler; R logs it |
+| `item-session-data-changed` | `subscribeItemEvents` | A, S | A: response capture → store dispatch → autosave. The handler also takes the event's item as the current item, marks it answered, submits the previously answered item when the item changes within the section, and in a preview mode requests a score, so an event naming an item other than the one on screen moves the host's current item. S: response capture; the fields it reads are below |
+| `item-session-meta-changed`, `item-complete-changed` | `subscribeItemEvents` | S | Completion only: a change that flips `complete` without a new response, such as the end of an audio, arrives as one of these, and the host keeps its last response |
+| `content-loaded` | `subscribeItemEvents` | A, S | A: per-item and `contentKind === "rubric"` load tracking; cancels a load-timeout watchdog. S: the first non-rubric one shows the item and cancels its load timeout |
+| `section-loading-complete` | `subscribeSectionLifecycleEvents` | A, R, S | A subscribes with an empty handler; R logs it; S shows the item on it, as on `content-loaded` |
 | `section-items-complete-changed` | `subscribeSectionLifecycleEvents` | A, R | A subscribes with no handler body; R logs it |
-| `section-error` | `subscribeSectionLifecycleEvents` | A, R | Fatal for A: exits the delivery session. R logs it. Since 2026-10-08 a section that fails to start, or a revisited section that fails to update, delivers it to the subscriptions already registered. A subscribes on `toolkit-ready`, so from its second section on such a failure ends the session at once, where its load timeout ended it before |
+| `section-error` | `subscribeSectionLifecycleEvents` | A, R, S | Fatal for A and S: exits the delivery session. R logs it. Since 2026-10-08 a section that fails to start, or a revisited section that fails to update, delivers it to the subscriptions already registered. A subscribes on `toolkit-ready`, so from its second section on such a failure ends the session at once, where its load timeout ended it before |
 | `item-session-changed` | DOM, bubbling and composed | A, R | `document`-level listener → snapshot + persist. R adds two listeners per route in the **capture** phase, so it depends on the event reaching `document` during capture as well as bubble |
 | `session-changed` | DOM event out of the section player's toolkit, bubbling and composed | A, R | The same `document`-level handlers as `item-session-changed`, so each answer persists once per event. R listens in the capture phase here too |
 | `session-changed` | DOM event out of `pie-item-player`, bubbling | P | Response capture; the fields it reads are below |
@@ -1335,7 +1388,7 @@ API**.
 | `pie-resource-load-success`, `pie-resource-retry-success` | Resource monitor, bubbling out of `pie-item-player` | P | The other half of the display gate |
 | `pie-resource-load-error` | Resource monitor, bubbling out of `pie-item-player` | P | Fatal: exits the delivery session, recording `detail.url` |
 | `pie-resource-load-failed`, `pie-resource-retry-failed` | Resource monitor, bubbling out of `pie-item-player` | P | Logged with the serialized `detail` |
-| `PiePlayerLoadEvent` | `document` event from the preloaded build's `index.js`, alongside `window.pieFixedPlayerLoaded` | none | P waits on the same signal only on its predecessor-player path |
+| `PiePlayerLoadEvent` | `document` event from the preloaded build's `index.js`, alongside `window.pieFixedPlayerLoaded` | S | S mounts the section player only after `window.pieFixedPlayerLoaded === true` or this event with detail `PIE-Fixed-Player-Load-Complete`; `PIE-Fixed-Player-Load-Failed`, or neither within its timeout, ends the session. P waits on the same signal only on its predecessor-player path |
 
 The `content-loaded` payload fields Host A reads are `itemId`, `contentKind` and,
 for a passage, `canonicalItemId`. It counts distinct `itemId`s and treats a count
@@ -1385,6 +1438,15 @@ The `item-session-data-changed` payload is destructured as
 `event.detail.complete` fallback. Reshaping the item event payload — nesting the
 session, making `data` lazy, or emitting an empty `data` array — breaks response
 capture rather than degrading it.
+
+Host S reads `type`, `itemId`, `canonicalItemId`, `contentKind`, `complete`,
+`component` and `session.data[0]` off item events, and skips
+`contentKind: "rubric"`. It picks `answers` or `value` from that entry by the same
+component-name match Host P applies to `session-changed`, so the authored tag
+name has to survive in `component` there too, and reads the entry's `selector`,
+`waitTime` and `element`. An event missing `session` or `complete` keeps the
+last one it saw; the PIE session id comes from its own load call, never from an
+event.
 
 Host P attaches its eight `pie-item-player` listeners to a container of its own
 around the player, so each depends on the event bubbling out of it; the
@@ -1450,6 +1512,15 @@ unsubscribe function; `ttsService.stop()`; and
 
 Host A filters `getVisibleTools()` by `id.startsWith("calculator:")` to hide
 open calculators on navigation. Tool-id prefixes are therefore observable API.
+
+Host S takes the same three off the coordinator, `subscribeItemEvents`,
+`subscribeSectionLifecycleEvents`, and the `calculator:` prefix filter feeding
+`hideTool`, plus `updateAssessment({ personalNeedsProfile: { supports } })`,
+which binds the learner's profile on `toolkit-ready`. Each call is optional, and
+every listener runs outside Angular's zone, which the host re-enters itself. It
+calls no controller method and owns no persistence: it wants none, and achieves
+that by deleting the default persistence's storage entries itself (see Default
+section persistence key).
 
 `applySession` keys `itemSessions` by the bare `item.id`, not by the QTI
 identifier or the versioned item id. Host A maintains an explicit translation
@@ -1538,6 +1609,25 @@ Host C builds a smaller one:
 
 No other host sets `runtimeSupportCheck` or the browser speech backend.
 
+Host S builds one per item:
+
+- `assessmentId` — a new value per render, the same as its `attempt-id`
+- `playerType: "preloaded"` — the only client-facing host on that branch, which
+  renders through whatever `pie-item-player` the page registered first and the
+  elements the preloaded build registered
+- `player.hosted: true`
+- `tools.placement.section`, `.item` and `.passage`, from the learner's profile:
+  `calculator` and `answerEliminator` per item, `annotationToolbar` per item and
+  passage, `lineReader` and `theme` per section
+- `tools.providers.calculator.provider.runtime.authFetcher`, set only when the
+  launch carries a Desmos key, returning `{ apiKey }`
+- `toolContextResolvers.calculator` — always
+  `{ visible: true, params: { calculatorType: "basic", availableTypes: ["basic"] } }`
+
+It is the first client-facing host to place tools at section level, and the
+first to depend on `answerEliminator`, `annotationToolbar`, `lineReader` and
+`theme` as tool ids.
+
 `toolRegistry` stays a separate element property rather than a runtime key,
 because the layout shell rather than the engine consumes it.
 
@@ -1570,6 +1660,9 @@ blanks them with a zero-width space, which `trim()` keeps, so an invisible title
 renders in a visible header; `{ visible: false }` is the supported return.
 Until the host switches, stripping invisible characters from the return brings
 "Question N" back there.
+
+Host S's formatter ignores its context and returns `{ visible: false }`, so a
+one-item section shows no card title.
 
 Host R passes `onFrameworkError` in the runtime object, where it receives each
 error once. A tool's start failure arrives there with `recoverable: true` unless
@@ -1699,6 +1792,19 @@ place of the host's value with no build signal, and a canonical token the player
 starts reading that the adapter does not supply resolves from the light base
 there.
 
+Host S sets `--pie-section-player-card-border: transparent` on the splitpane and
+`--pie-background-dark: transparent` on the shell (see the layout section). While
+`data-color-scheme` is on the root element it also sets `--pie-background`,
+`--pie-background-dark`, `--pie-button-bg`, `--pie-button-color`,
+`--pie-button-border`, `--pie-border` and `--pie-text` to `inherit` on
+`<pie-theme>` and the splitpane, `--pie-button-background-color` to `initial`,
+and `--pie-section-player-card-header-background` and
+`--pie-section-player-tab-active-background` to `var(--pie-secondary-background)`.
+All twelve names exist in the registry. With a scheme applied, the player's
+backgrounds and button colors therefore come from the scheme values on the root
+element, and a token the player starts reading in their place escapes the
+override.
+
 ## Direct `dist` path references
 
 Host A lists three stylesheets in its build config by literal path:
@@ -1752,6 +1858,11 @@ and a `version` string usable as a directory name. The generated package has no
 browser, as a failed import before any player exists, and ends in the host's load
 timeout.
 
+Host S does the same, with the copy made by a postinstall step and checked at
+build time against its exact pin; older version directories stay alongside. The
+same three things are API there, and the failure ends the same way, at its wait
+for `PiePlayerLoadEvent`.
+
 `@pie-players/pie-section-player@<version>/dist/browser/pie-section-player.js`,
 exported as `./browser`, is a self-contained build that no host loads yet. It
 becomes API in the same way once one does: the entry filename, and `dist/browser/`
@@ -1765,9 +1876,14 @@ directory by path, to strip a trailing `sourceMappingURL` comment from each file
 it serves. No file in that `dist` on `1.0.0-beta.1` ends in one, so the rule
 changes nothing, and a moved directory leaves it matching nothing.
 
-## Single-file bundle (Host A)
+## Single-file bundle (Hosts A, S)
 
-Verified against the checkout on 2026-09-24.
+Verified against Host A's checkout on 2026-09-24, and Host S's on 2026-10-16.
+Host S builds the same way, with the same Cortex stub alias and the same 13 MB
+warning and 14 MB failure budget, and pins exactly, so a release can fail its
+build only when it upgrades. Everything below about eager `import()` and
+computed specifiers applies to it, except that it sets
+`playerType: "preloaded"` and so loads no element bundle at all.
 
 Host A deploys its element as one JavaScript file, where a lazy chunk would
 404, so its webpack build turns chunk splitting off and compiles every
@@ -1801,9 +1917,14 @@ with `Cannot find module`. Host A sets no `playerType`, so it runs the default
 element bundles by script tag; the `esm` strategy's loader would reject every
 element.
 
-## TypeScript resolution (Host A)
+## TypeScript resolution (Hosts A, S)
 
-Verified against the checkout on 2026-09-25.
+Verified against Host A's checkout on 2026-09-25, and Host S's on 2026-10-16.
+Host S is in the same position: `node10`, `skipLibCheck` off, and `pie-theme`'s
+root the only `@pie-players` declarations its program loads. It declares the
+`item-section` subpath itself, because the section player's declarations import
+`pie-players-shared` subpaths, so a change to `sectionFromItem`'s signature
+reaches it with no type error.
 
 Host A type-checks with TypeScript's `node10` resolution, which this repository
 does not support (see
@@ -1863,6 +1984,39 @@ text outside the remote renders as math. With the shell's MathJax on the page
 the element uses that copy and nothing else is typeset. Elements on adapter
 0.1.3 or later set `startup.typeset: false` and load only from an asset root,
 which Host M passes as `registerPreloadedElements(elements, { math: { assetRoot } })`.
+
+## Two item-player copies on one page (Host S)
+
+Verified against the checkout on 2026-10-16.
+
+Host S's page carries two builds of the item player: the preloaded build the
+outer page loads, and the one the section player brings into the host's bundle.
+Their versions are paired by the launch configuration alone (see the version
+paragraph under Consumer profiles). `pie-item-player` is defined by whichever
+registers first: `definePieItemPlayer` stands down when the tag is taken, and
+the preloaded build's `index.js` skips importing its own copy when it is. The
+elements reach the section player's copy only through the page-wide
+`window.PIE_REGISTRY` and `window.PIE_PRELOADED_ELEMENTS` that
+`registerPreloadedElements` writes.
+
+So the invariants there are cross-version: both registration paths stay
+guarded, the two globals keep their shape across releases in both directions,
+and either item-player build renders elements registered by the other. A shape
+change that ships in lockstep passes every in-repo test and breaks that host
+whenever its two halves are on different versions.
+
+## Default section persistence key (Host S)
+
+Host S runs with the toolkit's default section persistence and wants none of it.
+It gives every render a fresh `assessmentId` and `attempt-id`, so nothing
+resumes, and deletes every `localStorage` entry under
+`pie:section-controller:v1:<assessmentId>:` on item change and teardown, so
+nothing accumulates. The key format in `ToolkitCoordinator.ts` is therefore API
+there. Renaming the prefix, reordering its segments or moving off `localStorage`
+leaves stale entries growing per item, with no error. The default persistence
+neither reads nor writes without an `attempt-id`, so a host that passes none
+stores nothing; the coordinator's `createSectionSessionPersistence` hook is not
+reachable through the layout elements.
 
 ## Replaced global `Promise` (Host P)
 
@@ -1982,7 +2136,7 @@ Grouped by who breaks, not by how hard the change is. Host R is ours and
 refactoring it is expected, so a surface only it touches is not a constraint —
 change it and fix Host R in the same push.
 
-**Silent breakage in a client-facing host (V, A, P or M). Coordinate before
+**Silent breakage in a client-facing host (V, A, P, M or S). Coordinate before
 shipping.**
 
 - Renaming `pie-section-player-splitpane`, `pie-section-player-item-card`,
@@ -2034,9 +2188,31 @@ shipping.**
   `canRead` / `read` shape, letting a named provider fall through to `auto`, or
   keeping the empty values a provider returns
 - Renaming any of the thirteen tokens Host M's adapter supplies
+- Changing `sectionFromItem`'s arguments or the `section` it returns, or
+  removing the `./item-section` subpath: Host S declares the type itself, so no
+  type error reaches it
+- Renaming `item-session-meta-changed` or `item-complete-changed`, or carrying a
+  completion-only change on another item event type: Host S records completion
+  from those two alone
+- Renaming the section player's `"preloaded"` `playerType`, or making it render
+  anything but the page's registered `pie-item-player` and preloaded elements
+- Renaming the `answerEliminator`, `annotationToolbar`, `lineReader` or `theme`
+  tool ids, or narrowing `supportedLevels` so `lineReader` or `theme` leaves
+  section level or `annotationToolbar` leaves passage level: the tool drops out
+  of Host S's toolbar
+- Removing `updateAssessment` or ignoring a profile bound through it after
+  `toolkit-ready`, which Host S calls with optional-call syntax
+- Changing the `pie:section-controller:v1:` key format or moving default
+  section persistence off `localStorage`: Host S's cleanup then misses and
+  entries accumulate
+- Renaming `pie-section-player-shell`, its shadow styles no longer reading
+  `--pie-background-dark`, or renaming `pie-section-player-content-card`,
+  `-tabbed-content`, `-items-pane` or `-passages-pane`, which Host S restyles
+- Renaming `data-color-scheme` or moving it off the root element, which gates
+  Host S's scheme overrides
 
-**Build or runtime failure in a client-facing host (A, M, P). Coordinate before
-shipping.**
+**Build or runtime failure in a client-facing host (A, M, P, S). Coordinate
+before shipping.**
 
 - Adding weight behind an `import()` in any package Host A bundles, a new entry
   in the packaged tool loaders or the packaged calculator set included: its
@@ -2060,22 +2236,32 @@ shipping.**
 - Calling a `Promise` static other than `all`, `race`, `resolve` or `reject`
   in shipped code: Host P's page replaces the global `Promise` with one that
   lacks the rest, so the call throws there
+- Renaming `PiePlayerLoadEvent`, its two detail strings or
+  `window.pieFixedPlayerLoaded`: Host S waits on them before mounting and ends
+  the session when neither arrives
+- Changing the shape of `window.PIE_REGISTRY` or `window.PIE_PRELOADED_ELEMENTS`,
+  or dropping the guard on either `pie-item-player` registration path: Host S
+  pairs a section-player bundle and a preloaded build of different versions on
+  one page, so a lockstep change still breaks it
+- The same single-file and `node10` constraints listed for Host A, which Host S
+  shares on its next upgrade, its pins being exact
 
 **Hosts R and C only. Change freely; land the internally controlled host fix in
 the same push.** Host R's checkout was available for the 2026-08-19 refresh, so
 its entries are re-derived rather than remembered. Host C's are from 2026-10-13.
 
 - `pie-section-player-vertical` (R, C), and anything in `default-tool-loaders` —
-  except the `annotationToolbar` capability id, which Host R names in seven
-  places, in tool config objects and in its own placement lists
+  except the tool ids and levels Host S places, above, and the
+  `annotationToolbar` capability id, which Host R also names in seven places, in
+  tool config objects and in its own placement lists
 - Requiring an explicit registration call from a `pie-tool-*` package that
   currently self-registers on import
 - Renaming a `TTSErrorCode` member
-- Changing `supportedLevels`, or the `ToolRegistry.getAllTools` and `register`
-  signatures
-- `createToolsConfig`,
-  `updateAssessment`, `onPolicyChange`, `decideFeaturePolicy`,
-  `disposeSectionController`
+- Changing `supportedLevels` beyond Host S's placements, or the
+  `ToolRegistry.getAllTools` and `register` signatures
+- `createToolsConfig`, `onPolicyChange`, `decideFeaturePolicy`,
+  `disposeSectionController`, and `updateAssessment`'s idempotence under
+  repeated calls (Host S calls it once per render)
 - The `granted` and `reason` fields on `FeaturePolicyDecision` — `reason` is
   rendered to a person there, so its wording is user-visible in that host
 - `subscribeSectionLifecycleEvents` throwing before the first section is
@@ -2157,10 +2343,6 @@ over a CDN with no typecheck at all.
   `passage`, and `name` on that passage. Host R assigns its own item type into
   the field and reads neither back through the PIE types; Host A declares its own
   item-ref type
-- `sectionFromItem` and the `./item-section` subpath of the section player
-- `PiePlayerLoadEvent`, its two detail strings and `window.pieFixedPlayerLoaded`
-  from the preloaded entry — the one host on that build renders without waiting
-  for them
 - `@pie-players/pie-players-shared/i18n` in any form — the pre-adoption layer had
   no call site in any checkout, so its replacement breaks nobody
 - Additive optional members on `ToolRegistration`, `ToolbarContext`,
@@ -2251,9 +2433,10 @@ over a CDN with no typecheck at all.
   `validateModels()` call in any checkout is on a legacy `pie-author` element from
   the predecessor package, not on anything this repository ships. No consumer
   reaches the type at all
-- The `highlighter` capability id. The one host that places annotation highlighting
-  names `annotationToolbar`; no checkout mentions `highlighter`, or the PNP support
-  ids that grant it
+- The `highlighter` capability id. The hosts that place annotation highlighting
+  name `annotationToolbar`, and no checkout passes `highlighter` to PIE as a tool
+  or support id. Host S's own profile flag of that name maps to
+  `annotationToolbar`
 - `ToolConfigDiagnostic` as a name, and every diagnostic `code` value. The one
   host that read a code no longer does — it declares the diagnostic shape locally
   and branches on `severity` alone. `severity`, `path` and `message` stay live
@@ -2412,6 +2595,12 @@ repo.
 - Host M's comment on registering its provider says an earlier PIE remote leaves
   it on default colors. True on its vendored build, stale once every
   `pie-theme` copy on the page carries the page-wide registry.
+- Host S passes `answerMasking`, `highlighting`, `readingMask` and
+  `colorContrast` to `updateAssessment` as profile supports, and its comments
+  call them toolkit ids. Supports match tool ids, and none of the four names a
+  tool, so the profile grants nothing and each tool shows through placement
+  alone. The tool ids are `answerEliminator`, `annotationToolbar`, `lineReader`
+  and `theme`.
 
 ## Refresh procedure
 

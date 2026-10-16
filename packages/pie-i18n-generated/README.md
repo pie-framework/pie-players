@@ -47,6 +47,16 @@ loaded catalog.
 | Tag | Status | Brief | Generated |
 | --- | --- | --- | --- |
 | `th-TH` | generated, unreviewed | [`briefs/th-TH.md`](./briefs/th-TH.md) | 2026-10-15 |
+| `en-GB` | generated, unreviewed | [`briefs/en-GB.md`](./briefs/en-GB.md) | 2026-10-15 |
+| `en-AU` | generated, unreviewed | [`briefs/en-AU.md`](./briefs/en-AU.md) | 2026-10-15 |
+| `es` | generated, unreviewed (Latin-American neutral; serves `es*`) | [`briefs/es.md`](./briefs/es.md) | 2026-10-15 |
+| `fr` | generated, unreviewed (France flavour; serves `fr*`) | [`briefs/fr.md`](./briefs/fr.md) | 2026-10-15 |
+| `ar` | generated, unreviewed (MSA; serves `ar*`; RTL — first RTL locale, layout not yet audited) | [`briefs/ar.md`](./briefs/ar.md) | 2026-10-15 |
+
+Locale tags are chosen for variant reach: bare tags (`es`, `fr`, `ar`) let
+`es-MX`, `fr-CA` and `ar-SA` widen onto them through RFC 4647 lookup, while
+`en-GB`/`en-AU` are regional on purpose so bare `en` keeps resolving to the
+bundled English.
 
 Provenance — the exact `en-US` source hash each catalog was generated from,
 the generating model and date — is recorded in

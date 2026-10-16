@@ -94,3 +94,97 @@ describe("SectionContentService renderables", () => {
 		expect(content.renderables.every((r) => Boolean(r.entity.id))).toBe(true);
 	});
 });
+
+describe("SectionContentService authored ids", () => {
+	// A bson ObjectId serialized without conversion, as a host once passed one.
+	const objectId = { buffer: { 0: 106, 1: 66, 11: 116 } };
+	const build = (section: unknown) =>
+		new SectionContentService().build(
+			section as AssessmentSection,
+			"candidate",
+		);
+
+	test("refuses an item passage id that is not a string, by its path", () => {
+		const passage = { ...makePassage("p1"), id: objectId };
+		const section = {
+			assessmentItemRefs: [
+				{ identifier: "i1", item: makeItem("i1", passage as never) },
+			],
+		};
+
+		expect(() => build(section)).toThrow(
+			new TypeError(
+				"Section assessmentItemRefs[0].item.passage.id must be a string, got object",
+			),
+		);
+	});
+
+	test("refuses a rubric block passage id that is not a string", () => {
+		const section = {
+			assessmentItemRefs: [],
+			rubricBlocks: [
+				{
+					class: "stimulus",
+					view: ["candidate"],
+					passage: { ...makePassage("p1"), id: [1] },
+				},
+			],
+		};
+
+		expect(() => build(section)).toThrow(
+			"Section rubricBlocks[0].passage.id must be a string, got array",
+		);
+	});
+
+	test("refuses an item id that is not a string, ahead of its identifier", () => {
+		const section = {
+			assessmentItemRefs: [
+				{ identifier: objectId, item: { ...makeItem("i1"), id: objectId } },
+			],
+		};
+
+		expect(() => build(section)).toThrow(
+			"Section assessmentItemRefs[0].item.id must be a string, got object",
+		);
+	});
+
+	test("refuses an item ref identifier that is not a string", () => {
+		const section = {
+			assessmentItemRefs: [{ identifier: objectId, item: makeItem("i1") }],
+		};
+
+		expect(() => build(section)).toThrow(
+			"Section assessmentItemRefs[0].identifier must be a string, got object",
+		);
+	});
+
+	test("reads numeric ids as their decimal strings", () => {
+		const passage = { ...makePassage("p1"), id: 7 };
+		const section = {
+			assessmentItemRefs: [
+				{
+					identifier: 42,
+					item: { ...makeItem("i1", passage as never), id: 42 },
+				},
+			],
+		};
+		const content = build(section);
+
+		expect(content.items.map((item) => item.id)).toEqual(["42"]);
+		expect(content.passages.map((entry) => entry.id)).toEqual(["7"]);
+		expect(content.adapterItemRefs[0]?.identifier).toBe("42");
+	});
+
+	test("falls back past a blank passage id to its identifier", () => {
+		const passage = { ...makePassage("p1"), id: "  ", identifier: "p-ident" };
+		const section = {
+			assessmentItemRefs: [
+				{ identifier: "i1", item: makeItem("i1", passage as never) },
+			],
+		};
+
+		expect(build(section).passages.map((entry) => entry.id)).toEqual([
+			"p-ident",
+		]);
+	});
+});

@@ -65,6 +65,34 @@
 			"generatedAt": "2026-10-15",
 			"model": "GLM (Z.ai), agent-driven generation in the pie-players repo",
 			"sourceHash": "608d046cf17bcb48ee5eaaaeb51f4234d6763de06e18954b145c1d547146f1aa"
+		},
+		"pt": {
+			"status": "generated",
+			"brief": "briefs/pt.md",
+			"generatedAt": "2026-10-16",
+			"model": "GLM (Z.ai), agent-driven generation in the pie-players repo",
+			"sourceHash": "608d046cf17bcb48ee5eaaaeb51f4234d6763de06e18954b145c1d547146f1aa"
+		},
+		"ko": {
+			"status": "generated",
+			"brief": "briefs/ko.md",
+			"generatedAt": "2026-10-16",
+			"model": "GLM (Z.ai), agent-driven generation in the pie-players repo",
+			"sourceHash": "608d046cf17bcb48ee5eaaaeb51f4234d6763de06e18954b145c1d547146f1aa"
+		},
+		"ja": {
+			"status": "generated",
+			"brief": "briefs/ja.md",
+			"generatedAt": "2026-10-16",
+			"model": "GLM (Z.ai), agent-driven generation in the pie-players repo",
+			"sourceHash": "608d046cf17bcb48ee5eaaaeb51f4234d6763de06e18954b145c1d547146f1aa"
+		},
+		"zh": {
+			"status": "generated",
+			"brief": "briefs/zh.md",
+			"generatedAt": "2026-10-16",
+			"model": "GLM (Z.ai), agent-driven generation in the pie-players repo",
+			"sourceHash": "608d046cf17bcb48ee5eaaaeb51f4234d6763de06e18954b145c1d547146f1aa"
 		}
 	}
 }

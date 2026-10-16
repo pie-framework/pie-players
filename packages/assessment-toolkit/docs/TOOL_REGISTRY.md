@@ -184,7 +184,7 @@ export const calculatorToolRegistration: ToolRegistration = {
 };
 ```
 
-The packaged registration in `@pie-players/pie-default-tool-loaders` adds provider selection (Desmos, GeoGebra or Cortex), calculator-type render params and per-type window sizes.
+The packaged registration in `@pie-players/pie-default-tool-loaders` adds provider selection (Desmos or GeoGebra, plus any backend a host adds with `createCalculatorToolRegistration`), calculator-type render params and per-type window sizes.
 
 ### Tool Context
 
@@ -291,7 +291,7 @@ A tool's module loads when its element first renders, through the registry's loa
 
 A calculator's provider reads `tools.providers.calculator`:
 
-- `provider.id` selects Desmos (the default), GeoGebra or the keyless Cortex.
+- `provider.id` selects Desmos (the default), GeoGebra or a backend the host composed in, such as the keyless Cortex.
 - `provider.init` configures loading. Desmos needs an API key, which `provider.init.proxyEndpoint` can return or, in development, `provider.init.apiKey` can carry.
 - `provider.runtime.authFetcher` supplies the key from the host at runtime.
 - `settings` goes to the vendor adapter.

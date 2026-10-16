@@ -1,7 +1,9 @@
 import { describe, expect, test } from "bun:test";
-import { calculatorToolRegistration } from "../src/registrations/calculator.js";
+import type { CalculatorProviderDefinition } from "../src/calculator-providers/LazyCalculatorToolProvider.js";
+import { DEFAULT_CALCULATOR_PROVIDER_ID } from "../src/calculator-providers/packaged-calculator-providers.js";
 import {
-	DEFAULT_CALCULATOR_PROVIDER_ID,
+	calculatorToolRegistration,
+	createCalculatorToolRegistration,
 	resolveCalculatorProviderId,
 } from "../src/registrations/calculator.js";
 import { PACKAGED_TOOL_TAG_MAP } from "../src/packaged-capability-composition.js";
@@ -62,18 +64,62 @@ describe("calculator tool registration", () => {
 			calculatorToolRegistration.provider?.createProvider(geogebraConfig)
 				.providerName,
 		).toBe("GeoGebra Calculator");
-
-		const cortexConfig = { provider: { id: "calculator-cortex" } };
-		expect(resolveCalculatorProviderId(cortexConfig)).toBe("calculator-cortex");
-		expect(
-			calculatorToolRegistration.provider?.createProvider(cortexConfig)
-				.providerName,
-		).toBe("PIE Open-Source Calculator");
 	});
 
-	test("rejects unknown calculator implementations", () => {
+	test("rejects ids outside the packaged set, Cortex included", () => {
 		expect(() =>
 			resolveCalculatorProviderId({ provider: { id: "calculator-unknown" } }),
+		).toThrow("Unsupported calculator provider");
+		expect(() =>
+			calculatorToolRegistration.provider?.createProvider({
+				provider: { id: "calculator-cortex" },
+			}),
+		).toThrow(
+			'Unsupported calculator provider "calculator-cortex". Expected one of "calculator-desmos", "calculator-geogebra".',
+		);
+		expect(() =>
+			resolveCalculatorProviderId({ provider: { id: "toString" } }),
+		).toThrow("Unsupported calculator provider");
+	});
+
+	test("adds host backends beside the packaged ones and replaces by id", () => {
+		const definition = (
+			providerName: string,
+		): CalculatorProviderDefinition => ({
+			providerName,
+			version: "1",
+			requiresAuth: false,
+			backend: "host",
+			load: async () => {
+				throw new Error("not loaded in this test");
+			},
+			initializationErrorMessage: "host backend failed",
+		});
+		const registration = createCalculatorToolRegistration({
+			providers: {
+				"calculator-host": definition("Host Calculator"),
+				"calculator-geogebra": definition("Host GeoGebra"),
+			},
+		});
+		const providerName = (id?: string) =>
+			registration.provider?.createProvider(
+				id ? { provider: { id } } : undefined,
+			).providerName;
+
+		expect(providerName()).toBe("Desmos Calculator");
+		expect(providerName("calculator-host")).toBe("Host Calculator");
+		expect(providerName("calculator-geogebra")).toBe("Host GeoGebra");
+		expect(() => providerName("calculator-cortex")).toThrow(
+			'Expected one of "calculator-desmos", "calculator-geogebra", "calculator-host".',
+		);
+		expect(registration.provider?.createProvider(undefined).requiresAuth).toBe(
+			true,
+		);
+		// The packaged registration is unaffected by a host's composition.
+		expect(() =>
+			calculatorToolRegistration.provider?.createProvider({
+				provider: { id: "calculator-host" },
+			}),
 		).toThrow("Unsupported calculator provider");
 	});
 
@@ -313,10 +359,10 @@ describe("calculator tool registration", () => {
 		expect(graphing?.initialWidth).not.toBe(untyped?.initialWidth);
 
 		/*
-		 * The opening size varies by type; the resize floor does not. This
-		 * registration serves three vendors, so a per-type floor would move the limit
-		 * under two whose layouts were never measured for it — below the floor a
-		 * calculator scrolls its own content, which is the contract already.
+		 * The opening size varies by type; the resize floor does not. One
+		 * registration serves every backend, so a per-type floor would move the
+		 * limit under vendors whose layouts were never measured for it — below the
+		 * floor a calculator scrolls its own content, which is the contract already.
 		 */
 		for (const shell of [untyped, basic, scientific, graphing]) {
 			expect([shell?.minWidth, shell?.minHeight]).toEqual([380, 480]);

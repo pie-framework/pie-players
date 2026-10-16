@@ -331,7 +331,9 @@ an API key or a proxy endpoint. A licensed deployment supplies the key through
 The documented browser integration puts the key in the script URL, so runtime
 delivery keeps it out of the static bundle without making it secret; see the
 [Desmos API Terms](https://www.desmos.com/api-terms).
-`provider.id: "calculator-cortex"` selects a calculator that needs no key.
+Cortex needs no key; a host adds it with `createCalculatorToolRegistration`
+([adding a backend](../../packages/default-tool-loaders/README.md#adding-a-backend))
+and selects it with `provider.id: "calculator-cortex"`.
 
 Once the section has initialized, a change to `runtime.tools`,
 `runtime.assessmentId`, `runtime.accessibility`, `runtime.lazyInit`,

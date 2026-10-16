@@ -86,7 +86,7 @@ configuration and a toolbar placement use.
 | Package | Purpose |
 | --- | --- |
 | [`@pie-players/pie-calculator`](../../packages/calculator/README.md) | Provider interfaces and types, with no UI |
-| [`@pie-players/pie-calculator-cortex`](../../packages/calculator-cortex/README.md) | Bundled open-source provider |
+| [`@pie-players/pie-calculator-cortex`](../../packages/calculator-cortex/README.md) | Bundled open-source provider, which a host composes into the tool set |
 | [`@pie-players/pie-calculator-desmos`](../../packages/calculator-desmos/README.md) | Desmos provider; the Desmos API needs an API key |
 | [`@pie-players/pie-calculator-geogebra`](../../packages/calculator-geogebra/README.md) | GeoGebra provider |
 

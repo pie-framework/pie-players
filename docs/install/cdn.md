@@ -99,8 +99,8 @@ CDN changes the policy in three places:
   `'strict-dynamic'` then admits the entry's imports and chunks, so the CDN
   origin needs no `script-src` entry.
 - A browser refuses a worker script from another origin, so the Cortex
-  calculator starts its worker from a same-origin `blob:` module that imports
-  the file from the CDN. MathJax 4 starts its speech worker from a `blob:`
+  calculator, loaded from the CDN by a page that composes it in, starts its
+  worker from a same-origin `blob:` module that imports the file from the CDN. MathJax 4 starts its speech worker from a `blob:`
   script as well. A policy that sets `worker-src` or `child-src` lists `blob:`
   there. A self-hosted copy on the page's own origin starts the Cortex worker
   directly.

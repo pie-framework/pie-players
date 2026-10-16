@@ -700,15 +700,18 @@ Tools otherwise read the content itself. Relevance checks read the item's author
 **Calculator provider suites**
 - The generic calculator contract (`@pie-players/pie-calculator`) and the
   toolkit's lifecycle surface do not import a vendor. The calculator toolbar
-  registration in `@pie-players/pie-default-tool-loaders` imports all three
-  provider adapters and selects one by `provider.id`.
+  registration in `@pie-players/pie-default-tool-loaders` imports the Desmos
+  and GeoGebra adapters and selects one by `provider.id`;
+  `createCalculatorToolRegistration` builds it with more backends.
 - Desmos is the default when no `provider.id` is set and supports basic,
   scientific, and graphing modes. It needs an application key; see
   [Calculator With Host Auth](./tool_provider_system.md#calculator-with-host-auth).
 - GeoGebra is selected explicitly with `provider.id =
   "calculator-geogebra"`; it supports scientific and graphing apps and maps a
   basic request to scientific.
-- Cortex is selected with `provider.id = "calculator-cortex"`;
+- Cortex is outside the packaged set: a host composes it in with
+  `createCalculatorToolRegistration` and selects it with
+  `provider.id = "calculator-cortex"`.
   `@pie-players/pie-calculator-cortex` bundles MathLive, the Cortex Compute
   Engine and JSXGraph, supports basic, scientific, and graphing modes, and
   needs no key, CDN, or network connection at runtime.

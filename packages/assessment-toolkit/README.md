@@ -670,9 +670,12 @@ providers: {
 }
 ```
 
-Select the bundled open-source implementation in the same way. It uses no API
-key or runtime network request and supports basic, scientific, and focused
-graphing modes:
+The bundled open-source implementation uses no API key or runtime network
+request and supports basic, scientific, and focused graphing modes. It is
+outside the packaged set, so the host first adds it with
+`createCalculatorToolRegistration`
+([Adding a backend](../default-tool-loaders/README.md#adding-a-backend)) and then
+selects it in the same way:
 
 ```typescript
 providers: {
@@ -924,7 +927,7 @@ export interface ToolkitCoordinatorConfig {
       calculator?: {
         enabled?: boolean;
         provider?: {
-          id?: 'calculator-desmos' | 'calculator-geogebra' | 'calculator-cortex';
+          id?: string;  // 'calculator-desmos' (default), 'calculator-geogebra', or a composed-in backend
           init?: Record<string, unknown>;
           runtime?: {
             authFetcher?: () => Promise<Record<string, unknown>>;

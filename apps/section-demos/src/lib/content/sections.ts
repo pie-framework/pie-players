@@ -826,7 +826,7 @@ export const sectionDemos: Record<string, SectionDemoInfo> = {
 		focus:
 			"Exercises the same calculator registration, toolbar, policy, and item-data configuration through the open-source provider, and shows the per-instance settings a host passes it.",
 		whatMakesItTick: [
-			"Selects `calculator-cortex` through the generic provider configuration seam; no generic calculator code imports a Cortex implementation.",
+			"Composes Cortex into the calculator registration through `createCalculatorToolRegistration`, because the packaged set holds only Desmos and GeoGebra, then selects `calculator-cortex` through the generic provider configuration seam.",
 			"Needs no vendor key and makes no network request -- the provider is a package in this repository and evaluates in a worker, so the demo works offline.",
 			"Narrows `settings.allowedFunctions` to drop factorial and log-base-n, so the scientific keypad omits both keys rather than offering a key the validator would refuse.",
 			"Sets `restrictedMode: true`, which is monotonic: it disables clipboard actions and cannot be relaxed by `settings.allowClipboard`.",

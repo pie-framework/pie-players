@@ -46,6 +46,7 @@
   type SectionPlayerRuntimePlayerConfig
   type SectionPlayerSnapshot
   type SectionPlayerTelemetryPolicy
+  createCalculatorToolRegistration
   createPackagedToolRegistry
   sectionFromItem
 

@@ -25,6 +25,7 @@
 		"@pie-element/passage": "next",
 		"@pie-players/demo-ui": "workspace:*",
 		"@pie-players/pie-assessment-toolkit": "workspace:*",
+		"@pie-players/pie-calculator-cortex": "workspace:*",
 		"@pie-players/pie-calculator-geogebra": "workspace:*",
 		"@pie-players/pie-context": "workspace:*",
 		"@pie-players/pie-default-tool-loaders": "workspace:*",

@@ -13,9 +13,9 @@ import "@pie-players/pie-section-player";
 import { ToolkitCoordinator } from "@pie-players/pie-assessment-toolkit";
 ```
 
-The first import registers the section player elements. The second gives the host its own `ToolkitCoordinator`, the toolkit service that holds tool configuration and policy and owns the section's controller. A page without a build step imports the same two from a CDN, as the page below does: the section player's self-contained [browser build](install/cdn.md#section-player-browser-build), which bundles the toolkit and the packaged tools and loads only from its full file path, and the toolkit's `+esm` module for the coordinator class.
+The first import registers the section player elements. The second gives the host its own `ToolkitCoordinator`, the toolkit service that holds tool configuration and policy and owns the section's controller. A page without a build step imports the same two from a CDN, as the page below does: the section player's self-contained [browser build](install/cdn.md#section-player-browser-build), which bundles the toolkit and the packaged tools and loads only from its full file path, and the toolkit's `+esm` module for the coordinator class. The page also loads the Cortex calculator from its own package's `dist/index.js`.
 
-The `@pie-players/*` packages release together under one version number, written `x.y.z` in these docs. Pin it exactly, and give both URLs the same version: any release can break, and a range or `@latest` URL changes the page without a deploy ([versioning](install/versioning.md#pinning)).
+The `@pie-players/*` packages release together under one version number, written `x.y.z` in these docs. Pin it exactly, and give every URL the same version: any release can break, and a range or `@latest` URL changes the page without a deploy ([versioning](install/versioning.md#pinning)).
 
 ## A reading section
 
@@ -23,7 +23,10 @@ The `@pie-players/*` packages release together under one version number, written
 <pie-section-player-splitpane id="player" attempt-id="attempt-1" show-toolbar="true"></pie-section-player-splitpane>
 
 <script type="module">
-  import "https://cdn.jsdelivr.net/npm/@pie-players/pie-section-player@x.y.z/dist/browser/pie-section-player.js";
+  import {
+    createCalculatorToolRegistration,
+    createPackagedToolRegistry,
+  } from "https://cdn.jsdelivr.net/npm/@pie-players/pie-section-player@x.y.z/dist/browser/pie-section-player.js";
   import { ToolkitCoordinator } from "https://cdn.jsdelivr.net/npm/@pie-players/pie-assessment-toolkit@x.y.z/+esm";
 
   const section = {
@@ -88,6 +91,25 @@ The `@pie-players/*` packages release together under one version number, written
     ],
   };
 
+  const toolRegistry = createPackagedToolRegistry({
+    overrides: {
+      calculator: createCalculatorToolRegistration({
+        providers: {
+          "calculator-cortex": {
+            providerName: "PIE Open-Source Calculator",
+            version: "1",
+            requiresAuth: false,
+            backend: "cortex",
+            load: async () =>
+              (await import("https://cdn.jsdelivr.net/npm/@pie-players/pie-calculator-cortex@x.y.z/dist/index.js"))
+                .CortexCalculatorProvider,
+            initializationErrorMessage: "Failed to initialize the Cortex calculator provider.",
+          },
+        },
+      }),
+    },
+  });
+
   const coordinator = new ToolkitCoordinator({
     assessmentId: "bees-check",
     tools: {
@@ -104,6 +126,7 @@ The `@pie-players/*` packages release together under one version number, written
   const storageKey = "bees-check:reading-1:attempt-1";
   const saved = localStorage.getItem(storageKey);
 
+  player.toolRegistry = toolRegistry;
   player.runtime = { coordinator };
   if (saved) player.session = JSON.parse(saved);
   player.section = section;
@@ -127,7 +150,7 @@ Item and passage toolbars show a placed tool only where the content calls for it
 
 Each placed tool runs one instance per scope, named `<toolId>:<level>:<scopeId>`. This page runs `theme:section:reading-1`, `lineReader:section:reading-1`, `calculator:item:q1` and `calculator:item:q2`, so the two calculators are separate instances.
 
-The toolbars load each tool's element through the player's default registry, `createPackagedToolRegistry()` from `@pie-players/pie-default-tool-loaders`, and a coordinator constructed without a `toolRegistry` adopts it. A host with tools of its own builds that registry, registers its tools on it and sets it as the player's `toolRegistry` ([tools](../packages/section-player/README.md#tools)).
+The toolbars load each tool's element through the player's registry, `createPackagedToolRegistry()` from `@pie-players/pie-default-tool-loaders` by default, and a coordinator constructed without a `toolRegistry` adopts it. A host with tools of its own builds that registry, registers its tools on it and sets it as the player's `toolRegistry` ([tools](../packages/section-player/README.md#tools)). This page does so to add a calculator backend: the packaged calculator selects between Desmos and GeoGebra, and `createCalculatorToolRegistration` adds Cortex from its own package, which loads when the calculator first opens ([adding a backend](../packages/default-tool-loaders/README.md#adding-a-backend)).
 
 ## Learner profile
 

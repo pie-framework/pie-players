@@ -240,7 +240,8 @@ Any `/api/...` route referenced by a toolkit provider must be:
   terms; commercial deployment requires a separate agreement. A custom
   `provider.init.scriptUrl` is not permission to mirror or self-host GeoGebra —
   use it only when the deployment's agreement grants that right.
-- **Calculator (Cortex).** The `calculator-cortex` provider bundles MathLive,
+- **Calculator (Cortex).** The `calculator-cortex` provider, which a host
+  composes into the calculator registration, bundles MathLive,
   Cortex Compute Engine, JSXGraph, fonts, and its evaluation worker. It requires
   no key, service endpoint, CDN, or runtime network request. The package notices
   record the exact open-source license choices. Learner expressions are parsed
@@ -302,5 +303,5 @@ and uses a key and tier licensed for the deployed application.
 - [`../../packages/tts-client-server/README.md`](../../packages/tts-client-server/README.md)
   — `ServerTTSProvider` configuration, including `assetOrigins`,
   `includeAuthOnAssetFetch` and `credentials`
-- [`../../packages/default-tool-loaders/src/calculator-providers/DesmosToolProvider.ts`](../../packages/default-tool-loaders/src/calculator-providers/DesmosToolProvider.ts)
-  — Desmos provider config (`apiKey`) and browser-delivery boundary
+- [`../../packages/calculator-desmos/README.md`](../../packages/calculator-desmos/README.md)
+  — Desmos provider config (`apiKey`, `proxyEndpoint`) and browser-delivery boundary

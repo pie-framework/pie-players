@@ -46,7 +46,7 @@ loaded catalog.
 
 | Tag | Status | Brief | Generated |
 | --- | --- | --- | --- |
-| `th-TH` | generated, unreviewed | [`briefs/th-TH.md`](./briefs/th-TH.md) | 2026-10-15 |
+| `th-TH` | generated, unreviewed | [`briefs/th-TH.md`](./briefs/th-TH.md) | 2026-10-16 |
 
 Provenance — the exact `en-US` source hash each catalog was generated from,
 the generating model and date — is recorded in

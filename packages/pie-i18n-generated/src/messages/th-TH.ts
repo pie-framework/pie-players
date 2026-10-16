@@ -79,6 +79,8 @@ const thTH = {
 		resizeMediaRegion: "ปรับขนาดพื้นที่สื่อ",
 		resizeQuestionAndMediaA11y: "ปรับขนาดแผงคำถามและแผงสื่อ",
 		resizePassageAndMediaA11y: "ปรับขนาดแผงบทอ่านและแผงสื่อ",
+		resizePassageAndQuestionA11y: "ปรับขนาดแผงบทอ่านและแผงคำถาม",
+		passageWidthA11y: "ความกว้างบทอ่าน {percent}%",
 
 		assessment: {
 			sectionPosition: "ตอนที่ {position} จาก {total}",

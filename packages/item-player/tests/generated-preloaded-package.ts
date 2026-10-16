@@ -14,6 +14,16 @@ export const workspace = resolve(import.meta.dirname, "../../..");
  */
 export const MULTIPLE_CHOICE_VERSION = "14.0.3";
 
+/**
+ * How long one build may run. A generated package's build spends most of it
+ * deleting the elements' install, some 60,000 files, which has taken over four
+ * minutes on a loaded Mac whose endpoint protection inspects each delete.
+ */
+const BUILD_TIMEOUT_MS = 600_000;
+
+/** The `beforeAll` timeout of a spec's build: the build, then packing and serving it. */
+export const BUILD_HOOK_TIMEOUT_MS = BUILD_TIMEOUT_MS + 60_000;
+
 export interface ServedPackage {
   origin: string;
   /** The extracted tarball, its files under `package/`. */
@@ -46,7 +56,7 @@ export async function serveGeneratedPackage(
       outputDir: generated,
       iteration: 1,
     })});
-  `], { cwd: workspace, timeout: 150_000, maxBuffer: 32 * 1024 * 1024 });
+  `], { cwd: workspace, timeout: BUILD_TIMEOUT_MS, maxBuffer: 32 * 1024 * 1024 });
   execFileSync("bun", ["pm", "pack", "--filename", packed], { cwd: generated });
   await mkdir(served);
   execFileSync("tar", ["-xzf", packed, "-C", served]);
@@ -88,7 +98,7 @@ window.hostReady = true;
       logLevel: "error",
       build: { outDir, emptyOutDir: true, target: "es2022" },
     })});
-  `], { cwd: workspace, timeout: 150_000, maxBuffer: 32 * 1024 * 1024 });
+  `], { cwd: workspace, timeout: BUILD_TIMEOUT_MS, maxBuffer: 32 * 1024 * 1024 });
   const server = await serveDirectory(outDir, (pathname) => (pathname === "/" ? "/index.html" : pathname));
   return {
     origin: server.origin,

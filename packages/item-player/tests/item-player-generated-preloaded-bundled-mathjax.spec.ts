@@ -3,6 +3,7 @@ import { readdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
 import mathDemo from "../../../apps/item-demos/src/lib/content/multiple-choice-math-algebra-quadratic";
 import {
+  BUILD_HOOK_TIMEOUT_MS,
   MULTIPLE_CHOICE_VERSION,
   type ServedPackage,
   serveFromTarballOnly,
@@ -22,7 +23,7 @@ const englishRules = /(?:^|\/)mathjax@[^/]+\/sre\/mathmaps\/en\.json$/;
 let built: ServedPackage;
 
 test.beforeAll(async () => {
-  test.setTimeout(180_000);
+  test.setTimeout(BUILD_HOOK_TIMEOUT_MS);
   built = await serveGeneratedPackage([packageSpec], { [packageName]: "pie-element-multiple-choice" });
 });
 
@@ -159,7 +160,7 @@ test.describe("bundled into a host's build", () => {
   let host: { origin: string; close(): Promise<void> };
 
   test.beforeAll(async () => {
-    test.setTimeout(180_000);
+    test.setTimeout(BUILD_HOOK_TIMEOUT_MS);
     host = await serveHostBundle(built.served);
   });
 

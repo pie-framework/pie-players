@@ -3,6 +3,7 @@ import { readdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
 import demo from "../../../apps/item-demos/src/lib/content/multiple-choice-radio-simple";
 import {
+  BUILD_HOOK_TIMEOUT_MS,
   MULTIPLE_CHOICE_VERSION,
   type ServedPackage,
   serveFromTarballOnly,
@@ -21,7 +22,7 @@ let built: ServedPackage;
 let origin: string;
 
 test.beforeAll(async () => {
-  test.setTimeout(180_000);
+  test.setTimeout(BUILD_HOOK_TIMEOUT_MS);
   built = await serveGeneratedPackage([packageSpec], { [packageName]: "pie-element-multiple-choice" });
   origin = built.origin;
 });

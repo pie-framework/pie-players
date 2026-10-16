@@ -17,7 +17,8 @@ const SOURCES = {
 };
 
 const errorBannerRule = (source: string): string => {
-	const start = source.indexOf(".pie-player-error {");
+	// The banner's own rule, not a compound selector that ends in its class.
+	const start = source.search(/^\s*\.pie-player-error \{/m);
 	if (start === -1) {
 		throw new Error("No .pie-player-error style rule");
 	}

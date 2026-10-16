@@ -1,0 +1,50 @@
+{
+	"name": "@pie-players/pie-i18n-generated",
+	"version": "1.0.0-beta.3",
+	"type": "module",
+	"description": "Optional machine-generated interface locale catalogs for PIE players",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/pie-framework/pie-players.git",
+		"directory": "packages/pie-i18n-generated"
+	},
+	"publishConfig": {
+		"access": "public"
+	},
+	"license": "MIT",
+	"main": "./dist/index.js",
+	"types": "./dist/index.d.ts",
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"import": "./dist/index.js"
+		}
+	},
+	"files": [
+		"dist",
+		"README.md"
+	],
+	"scripts": {
+		"build": "rm -rf dist tsconfig.tsbuildinfo && tsc -p tsconfig.json",
+		"dev": "tsc -p tsconfig.json --watch",
+		"typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.tests.json",
+		"lint": "biome lint .",
+		"test": "bun test",
+		"check-catalogs": "bun run scripts/check-catalogs.ts"
+	},
+	"dependencies": {
+		"@pie-players/pie-players-shared": "workspace:*"
+	},
+	"devDependencies": {
+		"@biomejs/biome": "^2.5.15",
+		"typescript": "^5.9.3"
+	},
+	"homepage": "https://github.com/pie-framework/pie-players/tree/master/packages/pie-i18n-generated#readme",
+	"bugs": {
+		"url": "https://github.com/pie-framework/pie-players/issues"
+	},
+	"engines": {
+		"node": ">=20.0.0"
+	},
+	"sideEffects": false
+}

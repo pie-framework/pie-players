@@ -1,0 +1,35 @@
+{
+	"$comment": [
+		"Provenance and lifecycle for the catalogs in src/messages/. The check",
+		"script (scripts/check-catalogs.ts) recomputes the source hash of en-US the",
+		"same way — sha256 over the JSON serialization of the default export — and",
+		"validates each locale against its status:",
+		"  status \"generated\": unreviewed machine output. sourceHash must match the",
+		"    current en-US hash; any English change requires wholesale regeneration.",
+		"  status \"reviewed\": at least one native pass has corrected the file in",
+		"    place. Wholesale regeneration is forbidden (it would clobber review",
+		"    work); freshness is per-key against",
+		"    src/messages/<locale>.english-snapshot.json, written by",
+		"    scripts/write-english-snapshot.ts when the pass landed and refreshed",
+		"    after each surgical regeneration of the keys whose English moved.",
+		"Add a locale here and to GENERATED_LOCALES in src/index.ts together, with",
+		"its brief under briefs/. Model names record the generator, not an",
+		"endorsement: a \"generated\" locale is unreviewed until the README's review",
+		"lifecycle is followed. Review is never a delivery gate: a locale ships and",
+		"stays shippable as \"generated\" for as long as no pass has happened."
+	],
+	"source": {
+		"file": "../../players-shared/src/i18n/messages/en-US.ts",
+		"hashAlgorithm": "sha256",
+		"hash": "06a37e9ea61d60abbef242562e9f32611020dd731721f5e38849949b3921dd80"
+	},
+	"locales": {
+		"th-TH": {
+			"status": "generated",
+			"brief": "briefs/th-TH.md",
+			"generatedAt": "2026-10-15",
+			"model": "GLM (Z.ai), agent-driven generation in the pie-players repo",
+			"sourceHash": "06a37e9ea61d60abbef242562e9f32611020dd731721f5e38849949b3921dd80"
+		}
+	}
+}

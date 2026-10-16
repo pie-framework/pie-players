@@ -134,11 +134,30 @@ were removed rather than re-keyed: they were harvested from a design rather than
 from call sites, so over half their keys named UI this codebase does not render,
 and no version ever published could load them outside a bundler.
 
+Machine-generated, unreviewed locales live outside this package:
+[`@pie-players/pie-i18n-generated`](../../../pie-i18n-generated/README.md)
+generates them from `en-US` against per-locale terminology briefs and gates
+their structure and freshness against this catalog. Hosts compose its loaders
+after `loadBundledCatalog`, so a locale promoted from there into `messages/`
+silently wins over its generated predecessor with no host action.
+
 To add a locale: copy `messages/nl-NL.ts`, translate, add the tag to
 `BundledLocaleCode` in `types.ts` and to both maps in `catalogs.ts`, then add it
 to `COMPLETE_LOCALES` in `scripts/check-coverage.ts`. A locale still under review
 can sit in `CARRIED_LOCALES` meanwhile — reported, not gating, gaps resolving to
 English.
+
+## Hardcoded strings
+
+The contract this README describes — every learner-visible string resolves
+through the catalog — has a warning-level check, not a gate:
+`bun run scan-hardcoded` parses the packages' Svelte templates and reports
+template text plus static `aria-label`, `title` and `placeholder` values that
+do not route through a provider. Findings are leads, not defects: whether a
+string reaches a learner is a human call, and a warning that could fail a
+build invites suppression. The `i18n-hardcoded-scan` workflow runs the scan
+weekly and files the report on a tracking issue; triaging that issue is
+closing the loop, not clearing a gate.
 
 ## Module layout
 

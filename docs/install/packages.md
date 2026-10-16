@@ -53,6 +53,7 @@ lockstep set ([preloaded player](../preloaded-player/readme.md)).
 | [`@pie-players/pie-assessment-toolkit`](../../packages/assessment-toolkit/README.md) | Tool coordination, accessibility catalogs, text-to-speech and policy services, with the `<pie-assessment-toolkit>`, `<pie-item-scope>`, `<pie-item-toolbar>` and `<pie-section-toolbar>` elements |
 | [`@pie-players/pie-default-tool-loaders`](../../packages/default-tool-loaders/README.md) | The packaged tool set: registrations, tag map, placement preset, universal and empty profiles, and lazy module loaders |
 | [`@pie-players/pie-players-shared`](../../packages/players-shared/README.md) | Element loaders, the markup sanitizer, i18n, shared types and UI utilities |
+| [`@pie-players/pie-i18n-generated`](../../packages/pie-i18n-generated/README.md) | Optional machine-generated interface locale catalogs, provenance-marked and unreviewed; hosts wire their loaders in after the bundled ones and can override any string |
 | [`@pie-players/pie-context`](../../packages/pie-context/README.md) | Context Protocol helpers through which the custom elements share runtime services |
 | [`@pie-players/pie-theme`](../../packages/theme/README.md) | Theme tokens, CSS variables and the `<pie-theme>` element ([theming](../theming/how-theming-works.md)) |
 

@@ -46,6 +46,9 @@
 			"path": "./packages/default-tool-loaders"
 		},
 		{
+			"path": "./packages/pie-i18n-generated"
+		},
+		{
 			"path": "./packages/item-player"
 		},
 		{

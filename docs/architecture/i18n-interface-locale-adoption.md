@@ -217,8 +217,19 @@ three reasons, each sufficient alone:
   reason under [Decisions](#decisions).
 - Nothing read them.
 
-Machine-filling the gap was the alternative and is worse: it ships strings nobody
-has read, to learners, under a coverage number that certifies nothing.
+Machine-filling the gap was the alternative and is worse for the reviewed set:
+it ships strings nobody has read, to learners, under a coverage number that
+certifies nothing. The amendment that opened a machine path keeps that line
+while making the claim honest:
+[`@pie-players/pie-i18n-generated`](../../packages/pie-i18n-generated/README.md)
+ships machine-generated catalogs in a separate, optional package — never in
+the bundled set. They are provenance-marked, freshness-gated against this
+catalog as source, loadable only when a host installs the package, wires its
+loaders after `loadBundledCatalog`, and sets such a locale; and a host can
+override any string. Coverage there certifies structure, never review. The
+calibration run against the audited `nl-NL` catalog, in that package's
+`calibration/`, records what an unreviewed generation is worth and scopes the
+native pass a locale needs before promotion into `messages/`.
 
 `check-coverage` keeps two tiers. A complete locale must be at 100% or the check
 fails; a carried locale reports without gating. `CARRIED_LOCALES` is empty: the

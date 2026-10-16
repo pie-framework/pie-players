@@ -328,7 +328,6 @@
 							"type": {
 								"text": "boolean | string | null | undefined"
 							},
-							"default": "true",
 							"attribute": "show-navigation"
 						}
 					],

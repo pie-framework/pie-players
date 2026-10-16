@@ -41,14 +41,17 @@ there. `en-US` and `nl-NL` ship complete, and `check:i18n-coverage` gates the
 pre-commit and CI runs. The [adoption record](./i18n-interface-locale-adoption.md)
 records the decisions, including why the earlier i18n layer was replaced.
 
-The hardcoded-string scanner (`scan-hardcoded`) produces a lead list and never
-gates. It skips lines that already resolve through a provider, so its count falls
-as adoption lands, and it matches quoted capitalized text, so it cannot tell a
-rendered label from a `KeyboardEvent.key` value, a font-family name or an HTTP
-header. It scans `aria-*`, `title`, `alt` and `placeholder` values, which carry
-accessible names. Two structural blind spots remain: plain template text between
-tags, and a label with a lowercase initial. Widening either buries the leads under
-CSS values and identifiers.
+The hardcoded-string scanner (`scan-hardcoded`) produces a warning report and
+never gates. It parses the packages' Svelte templates with the Svelte AST, so
+its scope is exactly where rendering is definitional: template text nodes and
+static `aria-label`, `title` and `placeholder` attribute values. Strings in
+script blocks — where a literal may equally be a diagnostic — are invisible to
+it, as is any `{expression}`, so an adopted `t("…")` call site never appears.
+It stays advisory on purpose: a finding names a string and a suggested catalog
+key, but whether the string reaches a learner is a human call, and a warning
+that can fail a build invites suppression. It runs on demand
+(`bun run scan-hardcoded`) and weekly via the `i18n-hardcoded-scan` workflow,
+which files the report on a tracking issue.
 
 **pie-elements-ng localizes through i18next, keyed on authored content.** Every
 `translator.t(` call passes `{ lng: language }`, where `language` is a model prop
@@ -442,9 +445,10 @@ behavior-preserving until a host opts in by supplying a locale.
    [Interface locale](#interface-locale).
 4. **Consolidate the i18n layer.** Done. `SimpleI18n` is the only implementation,
    the catalog is harvested from call sites, and `check:i18n-coverage` runs in the
-   pre-commit and CI gates. `scan-hardcoded` stays advisory: it cannot separate a
-   rendered label from a diagnostic, so gating on it needs a baseline nobody would
-   maintain.
+   pre-commit and CI gates. `scan-hardcoded` is advisory and stays so: it reads
+   the Svelte AST, so it warns only on template text and static
+   `aria-label`/`title`/`placeholder` literals — a scoped weekly report, not a
+   gate.
 5. **Parameterized PNP and language catalog cards.** Not started.
    `keyword-translation` and `glossary-on-screen` are the first consumers.
 6. **Tool and accommodation locale.** In part done.

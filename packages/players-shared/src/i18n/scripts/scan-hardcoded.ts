@@ -1,355 +1,298 @@
 #!/usr/bin/env bun
 /**
- * Hardcoded string scanner.
+ * Hardcoded learner-visible string scan — advisory, never gating.
  *
- * Finds quoted English in component source that no catalog key covers. Advisory,
- * never gating: the pattern cannot tell a rendered label from a DOM tag name or a
- * developer diagnostic, so its output is a lead list for the packages adoption
- * has not reached, not a defect list.
+ * Scans the packages' Svelte templates with the real Svelte parser, which is
+ * what makes the scope precise where the previous regex scan was not: a
+ * string is a finding only where rendering is definitional —
  *
- * Lines that already resolve through a provider are excluded, so the count falls
- * as adoption lands rather than staying flat.
+ * - template **text nodes** (a literal there is on screen by construction),
+ * - **`aria-label`**, **`title`** and **`placeholder`** attributes carrying a
+ *   static value (the accessible name and form-hint channels),
  *
- * Two blind spots, both structural: the pattern only matches quoted strings, so
- * plain text between tags is invisible; and it requires an initial capital, so a
- * lowercase-initial label is missed. Widening either one buries the leads under
- * CSS values and identifiers.
+ * while strings in `<script>` blocks — where a literal may equally be a
+ * diagnostic — are out of scope, and any `{expression}` (an adopted
+ * `t("…")` call) is invisible to the scan by definition. This is the
+ * objection that kept the old scanner advisory with a bad conscience; the
+ * answer is not a gate but a *scoped* warning the project can act on.
  *
- * Usage:
- *   bun run packages/players-shared/src/i18n/scripts/scan-hardcoded.ts
+ * Deliberate blind spots, each a precision trade:
+ * - `apps/` is out of scope: the demo apps are reference assemblies, not the
+ *   published surface the i18n contract governs.
+ * - test and e2e directories are out of scope; tests may hardcode.
+ * - attribute values mixing static text with an expression
+ *   (`title="Graph {id}"`) are skipped — rare, and half-reporting them
+ *   invites wrong fixes.
+ * - component props named `title` are skipped: props are not DOM attributes.
  *
- * Options:
- *   --path <dir>  - Directory to scan (default: packages/)
+ * A finding names the string and, where the English catalog already carries
+ * it, the key that should render instead. Exit code is always 0: this scan is
+ * a warning report, run on demand (`bun run scan-hardcoded`) and weekly by
+ * `.github/workflows/i18n-hardcoded-scan.yml`, which files the report on the
+ * tracking issue with the `i18n-hardcoded-scan` label. Whether a finding is a
+ * defect is a human call; the scan's job is to keep the list short and fresh.
+ *
+ * @module @pie-players/pie-players-shared/i18n/scripts/scan-hardcoded
  */
 
-import { readFileSync } from "fs";
+import { readFileSync } from "node:fs";
 import { glob } from "glob";
-import { dirname, relative, resolve } from "path";
-import { fileURLToPath } from "url";
+import { dirname, relative, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+import { parse } from "svelte/compiler";
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
+const here = dirname(fileURLToPath(import.meta.url));
 
-interface StringMatch {
+/** The monorepo root: the nearest ancestor carrying the workspaces manifest. */
+function findProjectRoot(): string {
+	let current = here;
+	while (current !== dirname(current)) {
+		try {
+			const pkg = JSON.parse(readFileSync(resolve(current, "package.json"), "utf8"));
+			if (pkg.workspaces) return current;
+		} catch {
+			// keep walking up
+		}
+		current = dirname(current);
+	}
+	throw new Error("Could not locate the repository root from the script location");
+}
+
+const projectRoot = findProjectRoot();
+
+const SCANNED_ATTRIBUTES = new Set(["aria-label", "title", "placeholder"]);
+
+/** A template text worth reporting: visible letters, not a lone glyph. */
+function isLearnerVisibleText(data: string): boolean {
+	const trimmed = data.trim();
+	return trimmed.length > 0 && /[A-Za-z]{2}/.test(trimmed);
+}
+
+/** Collapse template whitespace so a finding reads as the rendered string. */
+function collapse(data: string): string {
+	return data.replace(/\s+/g, " ").trim();
+}
+
+interface Finding {
 	file: string;
 	line: number;
-	context: string;
-	string: string;
+	kind: "text" | "attribute";
+	attribute?: string;
+	text: string;
 	suggestedKey: string | null;
 }
 
-const PLURAL_CATEGORIES = new Set([
-	"zero",
-	"one",
-	"two",
-	"few",
-	"many",
-	"other",
-]);
-
-/** The English catalog, flattened to `key → English value`. */
+/** The English catalog flattened to `key → English value` for key hints. */
 async function loadEnglishTranslations(): Promise<Record<string, string>> {
-	const module = await import(resolve(__dirname, "../messages/en-US.ts"));
+	const module = await import(resolve(here, "../messages/en-US.ts"));
 	const translations: Record<string, string> = {};
-	flattenObject(module.default, "", translations);
+	const pluralCategories = new Set([
+		"zero",
+		"one",
+		"two",
+		"few",
+		"many",
+		"other",
+	]);
+	const walk = (node: unknown, prefix: string) => {
+		for (const [key, value] of Object.entries(node as object)) {
+			const fullKey = prefix ? `${prefix}.${key}` : key;
+			if (value !== null && typeof value === "object") {
+				const keys = Object.keys(value);
+				if (keys.length > 0 && keys.every((k) => pluralCategories.has(k))) {
+					const group = value as Record<string, string>;
+					translations[fullKey] = group.other ?? group.one;
+				} else {
+					walk(value, fullKey);
+				}
+			} else if (typeof value === "string") {
+				translations[fullKey] = value;
+			}
+		}
+	};
+	walk(module.default, "");
 	return translations;
 }
 
-/**
- * Flatten a catalog to dot-notation leaves.
- *
- * A plural group contributes its `other` form under the group key — the form a
- * component's English literal is most likely to match, and the key `plural()` is
- * actually called with. A group is recognized by every one of its keys being a
- * CLDR category, which a namespace can never satisfy.
- */
-function flattenObject(
-	obj: any,
-	prefix: string,
-	result: Record<string, string>,
-) {
-	for (const [key, value] of Object.entries(obj)) {
-		const fullKey = prefix ? `${prefix}.${key}` : key;
-
-		if (typeof value === "object" && value !== null) {
-			const keys = Object.keys(value);
-			const isPluralGroup =
-				keys.length > 0 && keys.every((k) => PLURAL_CATEGORIES.has(k));
-			if (isPluralGroup) {
-				result[fullKey] = ((value as Record<string, string>).other ??
-					(value as Record<string, string>).one) as string;
-			} else {
-				flattenObject(value, fullKey, result);
-			}
-		} else if (typeof value === "string") {
-			result[fullKey] = value;
-		}
-	}
-}
-
-/**
- * Find translation key for a given string value
- */
 function findTranslationKey(
 	translations: Record<string, string>,
 	searchValue: string,
 ): string | null {
-	// Exact match first
 	for (const [key, value] of Object.entries(translations)) {
-		if (value === searchValue) {
-			return key;
-		}
+		if (value === searchValue) return key;
 	}
-
-	// Fuzzy match (case-insensitive)
-	const lowerSearch = searchValue.toLowerCase();
+	const lower = searchValue.toLowerCase();
 	for (const [key, value] of Object.entries(translations)) {
-		if (value.toLowerCase() === lowerSearch) {
-			return key;
-		}
+		if (value.toLowerCase() === lower) return key;
 	}
-
 	return null;
 }
 
+function lineOf(source: string, offset: number | undefined): number {
+	if (typeof offset !== "number") return 1;
+	let line = 1;
+	for (let i = 0; i < offset && i < source.length; i++) {
+		if (source[i] === "\n") line++;
+	}
+	return line;
+}
+
 /**
- * Scan a file for hardcoded strings
+ * Walk a template fragment. Shape-tolerant rather than type-exhaustive: the
+ * Svelte 5 AST names nodes differently across majors (`RegularElement` vs
+ * `Element`, `ExpressionTag` vs `MustacheTag`), and the scan only needs three
+ * behaviors — read text, read static attributes of real elements, descend
+ * into whatever holds children.
  */
-function scanFile(
+function walkTemplate(
+	fragment: any,
+	source: string,
 	filePath: string,
 	translations: Record<string, string>,
-): StringMatch[] {
-	const content = readFileSync(filePath, "utf-8");
-	const lines = content.split("\n");
-	const matches: StringMatch[] = [];
+	findings: Finding[],
+): void {
+	const nodes: any[] = fragment?.nodes ?? fragment?.children ?? [];
+	for (const node of nodes) {
+		if (!node || typeof node !== "object") continue;
+		if (node.type === "Script" || node.type === "Style") continue;
 
-	// Patterns to match quoted English strings
-	// Matches: "Text", 'Text', but ignores: i18n.t(...), class="...", etc.
-	const stringPattern = /["']([A-Z][A-Za-z\s,.:;!?'\-()]+)["']/g;
-
-	// Patterns to exclude (already using i18n, CSS classes, imports, etc.)
-	const excludePatterns = [
-		// Any provider call, whatever the local is named: `i18n.t`,
-		// `interfaceI18n.t`, `chromeI18n.plural`. Without this the scan reports
-		// adopted call sites, so the count never falls as adoption lands.
-		/[A-Za-z_$][\w$]*[iI]18[nN]\s*[.?]/,
-		/i18n\./,
-		/import\s+/,
-		/from\s+['"]/,
-		/class[:=]/,
-		/className[:=]/,
-		/data-\w+[:=]/,
-		/id[:=]/,
-		/key[:=]/,
-		/name[:=]/,
-		/type[:=]/,
-		/href[:=]/,
-		/src[:=]/,
-		// `aria-*`, `title`, `alt` and `placeholder` are deliberately NOT excluded.
-		// They carry accessible names and image alternatives — the strings a screen
-		// reader speaks — so they are the scan's whole point. Adopted lines are
-		// already filtered by the provider-call pattern above.
-		/console\./,
-		/\/\//, // Comments
-		/\/\*/, // Block comments
-		/^\s*\*/, // Block comment continuation
-	];
-
-	lines.forEach((line, index) => {
-		// Skip lines that match exclude patterns
-		if (excludePatterns.some((pattern) => pattern.test(line))) {
-			return;
-		}
-
-		// Find all string matches in the line
-		let match;
-		while ((match = stringPattern.exec(line)) !== null) {
-			const string = match[1];
-
-			// Skip very short strings (likely not user-facing)
-			if (string.length < 3) continue;
-
-			// Skip strings that are mostly numbers or special characters
-			if (!/[a-zA-Z]{3,}/.test(string)) continue;
-
-			// Find corresponding translation key
-			const suggestedKey = findTranslationKey(translations, string);
-
-			matches.push({
+		if (node.type === "Text" && isLearnerVisibleText(node.data ?? "")) {
+			findings.push({
 				file: filePath,
-				line: index + 1,
-				context: line.trim(),
-				string,
-				suggestedKey,
+				line: lineOf(source, node.start),
+				kind: "text",
+				text: collapse(node.data),
+				suggestedKey: findTranslationKey(translations, collapse(node.data)),
 			});
+			continue;
 		}
+
+		// Attributes exist only on elements; a component prop named `title` is
+		// a prop, not the DOM attribute the contract governs.
+		const isElement =
+			node.type === "RegularElement" || node.type === "Element";
+		if (isElement && Array.isArray(node.attributes)) {
+			for (const attribute of node.attributes) {
+				if (
+					typeof attribute?.name !== "string" ||
+					!SCANNED_ATTRIBUTES.has(attribute.name) ||
+					!Array.isArray(attribute.value) ||
+					attribute.value.length !== 1 ||
+					attribute.value[0]?.type !== "Text"
+				) {
+					continue;
+				}
+				const data = attribute.value[0].data ?? "";
+				if (!isLearnerVisibleText(data)) continue;
+				findings.push({
+					file: filePath,
+					line: lineOf(source, attribute.value[0].start ?? node.start),
+					kind: "attribute",
+					attribute: attribute.name,
+					text: collapse(data),
+					suggestedKey: findTranslationKey(translations, collapse(data)),
+				});
+			}
+		}
+
+		// Descend into whatever holds children: element fragments, block
+		// fragments (`{#if}`, `{#each}`), component slot content.
+		if (node.fragment) walkTemplate(node.fragment, source, filePath, translations, findings);
+		if (Array.isArray(node.children)) {
+			walkTemplate(
+				{ nodes: node.children },
+				source,
+				filePath,
+				translations,
+				findings,
+			);
+		}
+	}
+}
+
+async function main(): Promise<void> {
+	const files = await glob(`${projectRoot}/packages/**/*.svelte`, {
+		absolute: true,
+		nodir: true,
 	});
-
-	return matches;
-}
-
-/**
- * Format scan results
- */
-function formatResults(
-	matchesByFile: Map<string, StringMatch[]>,
-	rootDir: string,
-	filesScanned: number,
-): string {
-	let report = "\n";
-	report += "┌─────────────────────────────────────────────────────┐\n";
-	report += "│      Hardcoded String Scanner                       │\n";
-	report += "└─────────────────────────────────────────────────────┘\n\n";
-
-	const fileCount = matchesByFile.size;
-	const totalMatches = Array.from(matchesByFile.values()).reduce(
-		(sum, m) => sum + m.length,
-		0,
+	const scannable = files.filter(
+		(file) =>
+			!file.includes("/node_modules/") &&
+			!file.includes("/dist/") &&
+			!file.includes("/.svelte-kit/") &&
+			!file.includes("/build/") &&
+			!file.includes("/test/") &&
+			!file.includes("/tests/") &&
+			!file.includes("/playwright/"),
 	);
 
-	if (fileCount === 0) {
-		report += "✅ No hardcoded strings found!\n\n";
-		return report;
-	}
+	const translations = await loadEnglishTranslations();
+	const findings: Finding[] = [];
+	let parseErrors = 0;
 
-	// Sort files by number of matches (descending)
-	const sortedFiles = Array.from(matchesByFile.entries()).sort(
-		(a, b) => b[1].length - a[1].length,
-	);
-
-	for (const [file, matches] of sortedFiles) {
-		const relPath = relative(rootDir, file);
-		report += `📄 ${relPath} (${matches.length} match${matches.length === 1 ? "" : "es"})\n`;
-		report += "────────────────────────────────────────────────────────\n";
-
-		for (const match of matches) {
-			report += `  Line ${match.line}: ${match.context}\n`;
-			report += `           Found: "${match.string}"\n`;
-
-			if (match.suggestedKey) {
-				report += `           Use:   interfaceI18n.t('${match.suggestedKey}')\n`;
-			} else {
-				report += `           Note:  No catalog key carries this string. Add one to messages/en-US.ts if it reaches a user.\n`;
-			}
-
-			report += "\n";
-		}
-
-		report += "\n";
-	}
-
-	report += "════════════════════════════════════════════════════════\n";
-	report += "📊 Summary:\n";
-	report += "────────────────────────────────────────────────────────\n";
-	report += `  Total files scanned: ${filesScanned}\n`;
-	report += `  Files with matches: ${fileCount}\n`;
-	report += `  Total hardcoded strings: ${totalMatches}\n\n`;
-	report += "⚠️  Recommendation: Replace hardcoded strings with i18n keys\n";
-	report += "    for proper internationalization support.\n";
-	report += "════════════════════════════════════════════════════════\n";
-
-	return report;
-}
-
-/**
- * Find project root by looking for package.json with workspaces
- */
-function findProjectRoot(): string {
-	let currentDir = process.cwd();
-	while (currentDir !== "/") {
+	for (const file of scannable) {
+		const source = readFileSync(file, "utf8");
 		try {
-			const pkgPath = resolve(currentDir, "package.json");
-			const pkg = JSON.parse(readFileSync(pkgPath, "utf-8"));
-			if (pkg.workspaces) {
-				return currentDir;
-			}
-		} catch {
-			// Continue searching
+			// `modern` selects the current Svelte 5 AST where the compiler
+			// supports the option; older shapes still walk via the fallbacks in
+			// walkTemplate.
+			const parsed = parse(source, {
+				filename: file,
+				// `modern` selects the current Svelte 5 AST where the compiler
+				// supports the option; older shapes still walk via the fallbacks
+				// in walkTemplate.
+				modern: true,
+			} as any);
+			const root = (parsed as any).ast ?? parsed;
+			const template = root.fragment ?? root.html ?? root;
+			walkTemplate(template, source, file, translations, findings);
+		} catch (error) {
+			parseErrors += 1;
+			console.error(`Could not parse ${relative(projectRoot, file)}: ${String(error)}`);
 		}
-		currentDir = dirname(currentDir);
 	}
-	// Fallback to script location's root
-	return resolve(__dirname, "../../../..");
-}
 
-/**
- * Main entry point
- */
-async function main() {
-	const args = process.argv.slice(2);
-	const pathArg = args.indexOf("--path");
-
-	// Find project root and default to scanning packages/
-	const projectRoot = findProjectRoot();
-	const defaultPath = resolve(projectRoot, "packages/");
-	const scanPath =
-		pathArg !== -1 ? resolve(projectRoot, args[pathArg + 1]) : defaultPath;
-
-	console.log("🔍 Scanning for hardcoded strings...\n");
-	console.log(`📂 Scan path: ${scanPath}\n`);
-
-	try {
-		// Load English translations for matching
-		const translations = await loadEnglishTranslations();
-		console.log(
-			`📖 Loaded ${Object.keys(translations).length} translation keys\n`,
-		);
-
-		// Find all component files
-		const allFiles = await glob(`${scanPath}/**/*.{svelte,ts,tsx}`, {
-			absolute: true,
-		});
-
-		// Filter out unwanted directories manually
-		const files = allFiles.filter((file) => {
-			return (
-				!file.includes("/node_modules/") &&
-				!file.includes("/dist/") &&
-				!file.includes("/.svelte-kit/") &&
-				!file.includes("/build/") &&
-				!file.endsWith(".spec.ts") &&
-				!file.endsWith(".test.ts") &&
-				!file.includes("/scripts/") &&
-				// The catalogs are where English is supposed to live. Scanning them
-				// reports every key as a hardcoded string and swamps the real leads.
-				!file.includes("/i18n/messages/")
-			);
-		});
-
-		console.log(`📁 Found ${files.length} files to scan\n`);
-
-		// Scan all files
-		const matchesByFile = new Map<string, StringMatch[]>();
-
-		for (const file of files) {
-			const matches = scanFile(file, translations);
-			if (matches.length > 0) {
-				matchesByFile.set(file, matches);
-			}
-		}
-
-		// Print results
-		const report = formatResults(matchesByFile, projectRoot, files.length);
-		console.log(report);
-
-		// Exit with warning if matches found
-		if (matchesByFile.size > 0) {
-			console.warn(
-				"\n⚠️  Found hardcoded strings. Consider using i18n for these strings.\n",
-			);
-			// Don't exit with error - this is informational only
-			process.exit(0);
-		}
-
-		console.log("✅ No hardcoded strings found!\n");
-		process.exit(0);
-	} catch (error) {
-		console.error("\n❌ Fatal error during scan:", error);
-		process.exit(1);
+	const byPackage = new Map<string, Finding[]>();
+	for (const finding of findings) {
+		const rel = relative(projectRoot, finding.file);
+		const pkg = rel.split("/").slice(0, 2).join("/");
+		const list = byPackage.get(pkg) ?? [];
+		list.push(finding);
+		byPackage.set(pkg, list);
 	}
+
+	console.log("Hardcoded learner-visible string scan (advisory)");
+	console.log(`Scanned ${scannable.length} Svelte templates under packages/.`);
+	if (parseErrors > 0) {
+		console.log(`${parseErrors} file(s) could not be parsed and were skipped.`);
+	}
+	console.log("");
+
+	if (findings.length === 0) {
+		console.log("No findings. Every template text and scanned attribute resolves through the catalog.");
+		console.log("Hardcoded-string scan: 0 findings.");
+		return;
+	}
+
+	for (const [pkg, list] of [...byPackage.entries()].sort()) {
+		console.log(`${pkg} — ${list.length} finding(s)`);
+		for (const finding of list) {
+			const where = `${relative(projectRoot, finding.file)}:${finding.line}`;
+			const channel = finding.kind === "attribute" ? `${finding.attribute}=` : "text";
+			const hint = finding.suggestedKey
+				? ` → use t("${finding.suggestedKey}")`
+				: " → no catalog key carries this; add one to en-US.ts if it reaches a learner";
+			console.log(`  ${where} ${channel}"${finding.text}"${hint}`);
+		}
+		console.log("");
+	}
+
+	console.log(
+		`Findings are advisory: a human decides whether each reaches a learner. See the i18n README and the weekly i18n-hardcoded-scan workflow.`,
+	);
+	console.log(
+		`Hardcoded-string scan: ${findings.length} findings in ${byPackage.size} package(s) (${scannable.length} scanned).`,
+	);
 }
 
-// Run if executed directly
-if (import.meta.url === `file://${process.argv[1]}`) {
-	main();
-}
+await main();

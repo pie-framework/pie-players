@@ -49,4 +49,7 @@ export const SANITIZER_FORBIDDEN_ATTRS = [
 	"onbeforeunload",
 	"formaction",
 	"xlink:href",
+	// The model's autoplay setting is the only start for prompt audio, so a
+	// toolkit hold can stop it.
+	"autoplay",
 ];

@@ -63,6 +63,7 @@ import type {
 	ItemSettings,
 	ToolParametersFor,
 } from "@pie-players/pie-players-shared/types";
+import type { FeatureDecisionAppliedDetail } from "@pie-players/pie-context";
 import type { TTSConfig } from "@pie-players/pie-tts";
 import type {
 	ResolvedToolContext,
@@ -806,6 +807,19 @@ export interface ToolkitCoordinatorApi {
 		featureId: K,
 		scope?: ToolScope,
 	): FeaturePolicyDecision<ToolParametersFor<K>>;
+
+	/**
+	 * Hear that an item player applied a feature decision to its item's models,
+	 * as `<pie-item-scope>` relays its `feature-decision-applied`. A
+	 * `support-conflict` hold that displaced the player's attribute or the
+	 * item's authored setting raises `tool-policy.supportConflict`.
+	 *
+	 * Optional, like {@link decideFeaturePolicy}; call sites must feature-detect.
+	 */
+	reportFeatureDecisionApplied?(
+		detail: FeatureDecisionAppliedDetail,
+		scope: ToolScope,
+	): void;
 
 	/**
 	 * Subscribe to policy-engine change events. Fires whenever the

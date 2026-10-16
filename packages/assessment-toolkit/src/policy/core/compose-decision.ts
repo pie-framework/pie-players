@@ -484,7 +484,13 @@ export function supportConflictDiagnostic(
 	level?: ToolPlacementLevel,
 ): ToolPolicyDiagnostic {
 	const source =
-		servedBy === "placement" ? "tools.placement" : PNP_RULE_FIELDS[servedBy];
+		servedBy === "placement"
+			? "tools.placement"
+			: servedBy === "attribute"
+				? "The item player's attribute"
+				: servedBy === "authored"
+					? "The item's authored content"
+					: PNP_RULE_FIELDS[servedBy];
 	return {
 		code: "tool-policy.supportConflict",
 		...(level ? { level } : {}),

@@ -752,6 +752,22 @@ MathJax 4 sees no change. Host R's print routes call `defaultResolve` with two
 arguments and set no `loaderOptions` on `<pie-print>`, so they resolve as before;
 that use was missing from the pad and is now recorded under Hosts R and C.
 
+On 2026-10-16 the toolkit's `autoplayAudio` decision started reaching the item
+player. `<pie-item-scope>` provides it as `itemFeatureDecisionsContext`; the item
+player writes a hold as `autoplayAudioHeld: true` and a grant as
+`autoplayAudioEnabled: true` onto the delivery models, remounts the item when the
+decision changes after load, and announces `feature-decision-applied`.
+`ToolkitCoordinatorApi` gains an optional `reportFeatureDecisionApplied`, and
+`tools.policy.allowed` and `tools.policy.blocked` accept `autoplayAudio`. The
+`autoplay-audio-enabled` attribute no longer applies in author mode. Checked
+against the checkouts of Hosts A, C, M, P, R, S and V the same day as a targeted
+lookup, so it does not advance the verification date. Host P binds the attribute
+in gather mode only, and outside a scope its item player receives no decision.
+Host R types its coordinator as `ToolkitCoordinatorApi` and implements none. No
+host lists a screenReader support in a profile or sets `tools.policy.allowed`, so
+no recorded host is given a hold; a host that does sees a hold that no element
+reads yet and, when the decision lands after load, one remount of the item.
+
 ## Consumer profiles
 
 The control-sizing repair removes automatic zoom compensation from section

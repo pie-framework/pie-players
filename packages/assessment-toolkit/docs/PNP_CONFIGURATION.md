@@ -224,7 +224,19 @@ A student's screen reader speaks the page, so PIE's own speech would talk over i
 
 `screenReader` resolves by the same rungs as any id: a district block, a `false` override, an item restriction or a prohibition withdraws it, and then nothing is withheld. A district block, a `false` override or an item restriction of `textToSpeech` outranks the conflict and keeps its own rule.
 
-A conflict that withdraws something raises `tool-policy.supportConflict`, whose details name the `support` and `servedBy`: `placement` for a placed tool no rule granted, or the rule that would have granted it. A toolbar decision reports a tool its level placed and the host gates kept; a feature decision reports a displaced grant. It replaces `tool-policy.overrideBlocked` for a `true` override the conflict withdraws. An id nothing would have served raises none.
+A conflict that withdraws something raises `tool-policy.supportConflict`, whose details name the `support` and `servedBy`: `placement` for a placed tool no rule granted, the rule that would have granted it, or, for `autoplayAudio`, `attribute` or `authored` when the hold displaced the item player's `autoplay-audio-enabled` or the item's authored `autoplayAudioEnabled`. A toolbar decision reports a tool its level placed and the host gates kept; a feature decision reports a displaced grant; an item player's hold reports what it displaced when the item renders. It replaces `tool-policy.overrideBlocked` for a `true` override the conflict withdraws. An id nothing would have served raises none.
+
+### Item autoplay
+
+`autoplayAudio` is decided per item, by the rungs above and the host gates, as any feature is ([Audio Autoplay Policy](../../../docs/prds/audio-autoplay-policy.md)). `<pie-item-scope>` gives the decision to the item player inside it, which writes it onto the item's delivery models before the elements render: a block holds the audio as `autoplayAudioHeld: true`, a grant writes `autoplayAudioEnabled: true`, and no rule (`rule: "none"`) leaves the attribute and the authored value. A change re-renders the item. Author mode receives neither the decision nor the attribute.
+
+```typescript
+// On across the assessment; held on a reading item whose construct excludes audio.
+assessment.settings = { districtPolicy: { requiredTools: ["autoplayAudio"] } };
+itemScope.settings = { restrictedTools: ["autoplayAudio"] };
+```
+
+`tools.policy.blocked` and `tools.policy.allowed` accept `autoplayAudio`, and a non-empty allowlist that omits it holds autoplay for every item. An element version that does not read `autoplayAudioHeld` autoplays as authored.
 
 ### Activation at start
 

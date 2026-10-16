@@ -44,12 +44,20 @@ An item's scope for the toolkit's tools, in a section player's card or around a 
 	 * In a toolkit that holds a section the scope is also the item's channel to
 	 * it. Otherwise the host owns the item player and its events pass through
 	 * unchanged; the toolkit hears only that the item loaded or failed.
+	 *
+	 * Either way it answers the item player's request for the toolkit's feature
+	 * decisions on the item (`itemFeatureDecisionsContext`), and relays the
+	 * player's `feature-decision-applied` to the toolkit.
 	 */
 	import { connectHostRuntimeContext } from "../runtime/tool-host-contract.js";
 	import {
 		PENDING_INPUT_WARNING_DELAY_MS,
 		warnOncePerDocument,
 	} from "../runtime/page-warnings.js";
+	import {
+		type ItemFeatureDecisionsProvider,
+		provideItemFeatureDecisions,
+	} from "../runtime/item-feature-decisions.js";
 	import { createShellEventBridge } from "../runtime/shell-event-bridge.js";
 	import { createShellScope } from "../runtime/shell-scope.js";
 	import type { ItemSettings } from "@pie-players/pie-players-shared/types";
@@ -73,6 +81,9 @@ An item's scope for the toolkit's tools, in a section player's card or around a 
 	});
 
 	const scope = createShellScope();
+	// Not reactive: the effect on `host` creates it, the publication below
+	// tells it the item.
+	let featureDecisions: ItemFeatureDecisionsProvider | null = null;
 
 	// Keyed on `host` alone and ahead of the publication below, so a new host is
 	// released before it is published to. The bridge reads the identity and the
@@ -82,11 +93,14 @@ An item's scope for the toolkit's tools, in a section player's card or around a 
 		const scopeHost = host;
 		let sectionBound = false;
 		let runtimeFound = false;
+		const decisions = provideItemFeatureDecisions(scopeHost);
+		featureDecisions = decisions;
 		const stopFollowingRuntime = connectHostRuntimeContext(
 			scopeHost,
 			(runtime) => {
 				runtimeFound = true;
 				sectionBound = runtime.sectionBound === true;
+				decisions.setCoordinator(runtime.coordinator ?? null);
 			},
 		);
 		// The scope keeps waiting: a host may mount the toolkit last.
@@ -113,12 +127,15 @@ An item's scope for the toolkit's tools, in a section player's card or around a 
 				stopFollowingRuntime();
 				scope.retire();
 				scope.disconnect();
+				decisions.disconnect();
+				if (featureDecisions === decisions) featureDecisions = null;
 			}
 		};
 	});
 
 	// Re-runs on every parent re-render, which re-applies the props; the scope
-	// publishes only what changed.
+	// publishes only what changed. The item's feature decisions follow its
+	// registration, which files its settings with the toolkit.
 	$effect(() => {
 		scope.publish(
 			host
@@ -136,6 +153,7 @@ An item's scope for the toolkit's tools, in a section player's card or around a 
 					}
 				: null,
 		);
+		featureDecisions?.setItem(host ? { itemId, canonicalItemId } : null);
 	});
 </script>
 

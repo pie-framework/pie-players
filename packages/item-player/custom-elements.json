@@ -756,6 +756,13 @@
 							"description": "When correct responses were written into the session, so a host can detect a population it did not ask for."
 						},
 						{
+							"name": "feature-decision-applied",
+							"type": {
+								"text": "CustomEvent<{ featureId: \"autoplayAudio\"; effect: \"held\" | \"enabled\"; rule: string; overrode?: \"attribute\" | \"authored\" }>"
+							},
+							"description": "Before the elements render with a toolkit feature decision written onto their models; `<pie-item-scope>` relays it to its toolkit."
+						},
+						{
 							"name": "bundle-retry-status",
 							"type": {
 								"text": "CustomEvent<{ state: \"retrying\" | \"completed\" | \"timeout\" | \"cancelled\"; url: string; attempt: number; elapsedMs: number; timeoutMs: number; retryDelayMs?: number; reason?: string }>"

@@ -79,6 +79,7 @@ The PIE item player: it loads an item's PIE elements under the `iife`, `esm` or 
 @fires {CustomEvent<{ update: unknown; reset: boolean }>} model-updated - In authoring, when a configure element updates its model.
 @fires {CustomEvent<{ models: unknown[]; configuration: unknown }>} model-loaded - In authoring, once per renderer initialization, after the configure elements receive their models and configuration.
 @fires {CustomEvent<{ itemId?: string; mode?: string; role?: string; bundleType?: string; populatedCount: number; elements: string[] }>} correct-responses-populated - When correct responses were written into the session, so a host can detect a population it did not ask for.
+@fires {CustomEvent<{ featureId: "autoplayAudio"; effect: "held" | "enabled"; rule: string; overrode?: "attribute" | "authored" }>} feature-decision-applied - Before the elements render with a toolkit feature decision written onto their models; `<pie-item-scope>` relays it to its toolkit.
 @fires {CustomEvent<{ state: "retrying" | "completed" | "timeout" | "cancelled"; url: string; attempt: number; elapsedMs: number; timeoutMs: number; retryDelayMs?: number; reason?: string }>} bundle-retry-status - Under the `iife` strategy, as a bundle request is retried, completes, times out or is cancelled.
 @fires {CustomEvent<{ key: string; session: unknown; timestamp: number }>} session-snapshot-available - On load, when `session-snapshot` is enabled and device storage holds a snapshot for this sitting; the player never applies it.
 @fires {CustomEvent<{ scope: "delivery"; operation: "load"; metadata: Record<string, unknown>; session: unknown } | { scope: "authoring"; operation: "load"; contentId?: string; metadata: Record<string, unknown>; config: unknown }>} backend-load-complete - After the backend loads the delivery config and session, or the authoring content.
@@ -130,7 +131,20 @@ The PIE item player: it loads an item's PIE elements under the `iife`, `esm` or 
 		missingControllerWarning,
 		takeTagsWithoutController,
 	} from "./preloaded-controllers.js";
-	import { applyAutoplayAudioOverride } from "./utils/autoplay-audio-override.js";
+	import {
+		type AutoplayAudioDecision,
+		type AutoplayAudioInputs,
+		applyAutoplayAudio,
+		autoplayAudioSignature,
+		mergeAppliedDecisions,
+		resolveAutoplayAudioDecision,
+	} from "./utils/autoplay-audio.js";
+	import {
+		connectContextWithRetry,
+		FEATURE_DECISION_APPLIED_EVENT,
+		type FeatureDecisionAppliedDetail,
+		itemFeatureDecisionsContext,
+	} from "@pie-players/pie-context";
 	import {
 		acquireScopedExternalStyle,
 		createExternalStyleScopeClass,
@@ -780,6 +794,7 @@ The PIE item player: it loads an item's PIE elements under the `iife`, `esm` or 
 	let lastProcessedMode = "";
 	let lastProcessedLoaderRetrySignature = "";
 	let lastProcessedLoaderOptionsSignature = "";
+	let lastProcessedAutoplaySignature = "";
 
 	function normalizePreloadedElementVersions(configEntity: any): any {
 		if (!isBrowser || normalizedStrategy !== "preloaded") return configEntity;
@@ -823,13 +838,25 @@ The PIE item player: it loads an item's PIE elements under the `iife`, `esm` or 
 		return { item: input as ConfigEntity, passage: null };
 	}
 
-	function prepareConfigEntity(configEntity: ConfigEntity): ConfigEntity {
+	// The toolkit's `autoplayAudio` decision on this item, from the enclosing
+	// `<pie-item-scope>`; `null` without one, or when no rule names it.
+	let autoplayAudioDecision = $state<AutoplayAudioDecision | null>(null);
+	const autoplayAudioInputs: AutoplayAudioInputs = $derived({
+		mode: resolvedMode,
+		attribute: autoplayAudioEnabled,
+		decision: autoplayAudioDecision,
+	});
+
+	function prepareConfigEntity(configEntity: ConfigEntity): {
+		config: ConfigEntity;
+		applied: FeatureDecisionAppliedDetail | null;
+	} {
 		const versionNormalizedConfig = normalizePreloadedElementVersions(configEntity);
-		const normalizedConfig = applyAutoplayAudioOverride(
+		const { config, applied } = applyAutoplayAudio(
 			versionNormalizedConfig,
-			autoplayAudioEnabled,
+			autoplayAudioInputs,
 		);
-		return makeUniqueTags({ config: normalizedConfig }).config;
+		return { config: makeUniqueTags({ config }).config, applied };
 	}
 
 	function mergeElementMaps(...configs: Array<ConfigEntity | null>): Record<string, string> {
@@ -1019,12 +1046,14 @@ The PIE item player: it loads an item's PIE elements under the `iife`, `esm` or 
 			view: loaderOptions?.view ?? null,
 			elementPackagePolicy: loaderOptions?.elementPackagePolicy ?? null,
 		});
+		const autoplaySignature = autoplayAudioSignature(autoplayAudioInputs);
 		if (
 			configSignature === lastProcessedConfigSignature &&
 			normalizedStrategy === lastProcessedStrategy &&
 			resolvedMode === lastProcessedMode &&
 			loaderRetrySignature === lastProcessedLoaderRetrySignature &&
-			loaderOptionsSignature === lastProcessedLoaderOptionsSignature
+			loaderOptionsSignature === lastProcessedLoaderOptionsSignature &&
+			autoplaySignature === lastProcessedAutoplaySignature
 		) {
 			return true;
 		}
@@ -1048,6 +1077,7 @@ The PIE item player: it loads an item's PIE elements under the `iife`, `esm` or 
 		lastProcessedMode = resolvedMode;
 		lastProcessedLoaderRetrySignature = loaderRetrySignature;
 		lastProcessedLoaderOptionsSignature = loaderOptionsSignature;
+		lastProcessedAutoplaySignature = autoplaySignature;
 
 		if (!currentConfig) {
 			commitIfCurrent(() => {
@@ -1088,10 +1118,16 @@ The PIE item player: it loads an item's PIE elements under the `iife`, `esm` or 
 			}
 
 			stage = "normalize-config";
-			const transformedConfig = prepareConfigEntity(normalizedInput.item);
-			const transformedPassageConfig = normalizedInput.passage
+			const preparedItem = prepareConfigEntity(normalizedInput.item);
+			const preparedPassage = normalizedInput.passage
 				? prepareConfigEntity(normalizedInput.passage)
 				: null;
+			const transformedConfig = preparedItem.config;
+			const transformedPassageConfig = preparedPassage?.config ?? null;
+			const appliedAutoplay = mergeAppliedDecisions(
+				preparedItem.applied,
+				preparedPassage?.applied ?? null,
+			);
 			const runtimeSupportCheck = normalizeRuntimeSupportCheck(
 				loaderOptions?.runtimeSupportCheck,
 				"off",
@@ -1174,6 +1210,14 @@ The PIE item player: it loads an item's PIE elements under the `iife`, `esm` or 
 
 			stage = "set-item-config";
 			commitIfCurrent(() => {
+				// Ahead of the render the config below starts.
+				if (appliedAutoplay) {
+					handlePlayerEvent(
+						new CustomEvent(FEATURE_DECISION_APPLIED_EVENT, {
+							detail: appliedAutoplay,
+						}),
+					);
+				}
 				itemConfig = transformedConfig;
 				passageConfig = transformedPassageConfig;
 				backendOrchestrator.noteConfigChanged();
@@ -1210,6 +1254,28 @@ The PIE item player: it loads an item's PIE elements under the `iife`, `esm` or 
 		}
 	}
 
+	// Requested before the first load runs, from its microtask. A scope that
+	// answers later re-enters the load through the no-op guard.
+	$effect(() => {
+		if (!isBrowser) return;
+		const localHost = hostElement;
+		if (!localHost) return;
+		const stop = untrack(() =>
+			connectContextWithRetry(localHost, itemFeatureDecisionsContext, (value) => {
+				const next = resolveAutoplayAudioDecision(value);
+				const current = autoplayAudioDecision;
+				if (next?.effect === current?.effect && next?.rule === current?.rule) {
+					return;
+				}
+				autoplayAudioDecision = next;
+			}),
+		);
+		return () => {
+			stop();
+			autoplayAudioDecision = null;
+		};
+	});
+
 	$effect(() => {
 		const currentConfig = effectiveConfig;
 		void normalizedStrategy;
@@ -1220,6 +1286,7 @@ The PIE item player: it loads an item's PIE elements under the `iife`, `esm` or 
 		void loaderOptions;
 		void allowedResize;
 		void autoplayAudioEnabled;
+		void autoplayAudioDecision;
 		queueMicrotask(() => {
 			untrack(() => {
 				loadConfig(currentConfig);
@@ -1604,8 +1671,15 @@ The PIE item player: it loads an item's PIE elements under the `iife`, `esm` or 
 	async function applyRefreshedBackendConfigs(
 		refresh: DeliveryModelRefreshConfigResult,
 	): Promise<void> {
-		itemConfig = refresh.itemConfig;
-		passageConfig = refresh.passageConfig;
+		// Refreshed models arrive as the backend holds them, without the autoplay
+		// the load wrote.
+		const inputs = untrack(() => autoplayAudioInputs);
+		itemConfig = refresh.itemConfig
+			? applyAutoplayAudio(refresh.itemConfig, inputs).config
+			: refresh.itemConfig;
+		passageConfig = refresh.passageConfig
+			? applyAutoplayAudio(refresh.passageConfig, inputs).config
+			: refresh.passageConfig;
 		await tick();
 		if (refresh.itemChanged && itemConfig) {
 			refreshMountedElements(itemConfig);

@@ -131,7 +131,10 @@ export interface PnpPolicyResult {
 }
 
 /** A rule a support conflict can displace: one of levels 5 to 8. */
-export type SupportConflictGrant = Exclude<SupportConflictServedBy, "placement">;
+export type SupportConflictGrant = Exclude<
+	SupportConflictServedBy,
+	"placement" | "attribute" | "authored"
+>;
 
 /** One `support-conflict` withdrawal. */
 export interface SupportConflictResolution {

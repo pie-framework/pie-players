@@ -12,12 +12,17 @@
   ContextRequestEvent
   ContextRoot
   type ContextType
+  FEATURE_DECISION_APPLIED_EVENT
+  type FeatureDecisionAppliedDetail
+  type ItemFeatureDecision
+  type ItemFeatureDecisions
   type SessionCommitContextValue
   type UnknownContext
   connectContextWithRetry
   consumeContext
   createContext
   ensureDocumentContextRoot
+  itemFeatureDecisionsContext
   provideContext
   requestContext
   sessionCommitContext

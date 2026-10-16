@@ -50,7 +50,6 @@ Developer dialog for the section player demos that configures the toolkit's text
 	import type {
 		CustomProviderContext,
 		CustomProviderDescriptor,
-		CustomProviderPreviewResult,
 		PreviewMode,
 		PreviewSpeechMark,
 		ProviderAvailabilityResult,
@@ -1294,7 +1293,7 @@ Developer dialog for the section player demos that configures the toolkit's text
 					})
 				);
 				if (runId !== previewRunId) return;
-				const customResult = (result || null) as CustomProviderPreviewResult | null;
+				const customResult = result ?? null;
 				if (customResult?.audioUrl && typeof customResult.audioUrl === "string") {
 					const speechMarks = Array.isArray(customResult.speechMarks)
 						? customResult.speechMarks

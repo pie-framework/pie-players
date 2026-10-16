@@ -150,6 +150,16 @@ test.describe("sanitizeItemMarkup (real browser)", () => {
 		expect(out).toContain(">Go</button>");
 	});
 
+	test("drops autoplay and keeps the media element", async ({ page }) => {
+		const out = await sanitizeInPage(
+			page,
+			'<audio autoplay src="a.mp3"></audio><video autoplay src="v.mp4"></video>',
+		);
+		expect(out.toLowerCase()).not.toContain("autoplay");
+		expect(out).toContain('<audio src="a.mp3">');
+		expect(out).toContain('<video src="v.mp4">');
+	});
+
 	test("rejects javascript: URLs", async ({ page }) => {
 		const out = await sanitizeInPage(
 			page,

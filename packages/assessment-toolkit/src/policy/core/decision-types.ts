@@ -146,10 +146,14 @@ export interface OverrideBlockedDetails {
 
 /**
  * What would have served an id a support conflict withdraws: the placement
- * that put the tool on this toolbar, or the rule that would have granted it.
+ * that put the tool on this toolbar, the rule that would have granted it, or,
+ * for a feature an item player applies, the player's attribute or the item's
+ * authored setting it displaced.
  */
 export type SupportConflictServedBy =
 	| "placement"
+	| "attribute"
+	| "authored"
 	| Extract<
 			PnpPolicySourceRule,
 			| "test-admin-override"

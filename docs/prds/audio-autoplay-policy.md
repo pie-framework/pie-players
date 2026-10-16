@@ -2,7 +2,7 @@
 
 Status: Draft, 2026-10-12
 
-Unscheduled. The toolkit side has landed: the `autoplayAudio` feature id resolves, and a `support-conflict` block withholds it while `screenReader` is in effect. Nothing has landed in the item player or pie-elements-ng.
+The toolkit and item player sides have landed: `<pie-item-scope>` provides the decision, the item player writes it onto delivery models and announces `feature-decision-applied`, and `tools.policy` accepts `autoplayAudio`. No pie-elements-ng element reads `autoplayAudioHeld` yet, so a hold reaches no element.
 
 Owner: PIE Players maintainers
 

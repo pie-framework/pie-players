@@ -108,10 +108,11 @@ unbuilt framework-completing capabilities.
   audio transcript as a policy-gated catalog card; how an autoplay decision
   reaches an element is an open question. Integrator guide:
   [accessibility catalogs integration guide](../accessibility/accessibility-catalogs-integration-guide.md).
-- [`audio-autoplay-policy.md`](./audio-autoplay-policy.md) - `Draft`,
-  unscheduled. `autoplayAudio` decided per item scope from existing policy
-  inputs, carried to the item player by a context from `<pie-item-scope>`, and
-  held only on element versions that keep the audio playable.
+- [`audio-autoplay-policy.md`](./audio-autoplay-policy.md) - `Draft`.
+  `autoplayAudio` decided per item scope from existing policy inputs, carried
+  to the item player by a context from `<pie-item-scope>`, and held only on
+  element versions that keep the audio playable. The toolkit and item player
+  sides have landed; the elements have not.
 - [`formative-delivery-contract.md`](./formative-delivery-contract.md) -
   `Accepted`. Try state, feedback reveal as a per-item `env` projection, and
   section mastery over the shipped client-side scoring path. Integrator guide:

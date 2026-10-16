@@ -224,6 +224,23 @@ describe("tool-config-validation", () => {
 		).toBe(true);
 	});
 
+	test("accepts an item player feature id in the host gates, never in placement", () => {
+		const result = normalizeAndValidateToolsConfig(
+			{
+				policy: { allowed: ["calculator", "autoplayAudio"], blocked: ["autoplayAudio"] },
+				placement: { item: ["autoplayAudio"] },
+			},
+			{
+				strictness: "off",
+				source: "test",
+				toolRegistry: createTestToolRegistry(),
+			},
+		);
+		expect(
+			result.diagnostics.map((entry) => [entry.code, entry.path]),
+		).toEqual([["tools.unknownToolId", "placement.item"]]);
+	});
+
 	test("allows section-capable tools in item placement without unsupported-level diagnostics", () => {
 		const registry = createTestToolRegistry();
 		const result = normalizeAndValidateToolsConfig(

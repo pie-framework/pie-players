@@ -191,7 +191,13 @@ item.
   otherwise the passage container resizes horizontally.
 - `autoplay-audio-enabled`: `Boolean`, default unset, which leaves each model's
   `autoplayAudioEnabled` as it is. Set, it writes `autoplayAudioEnabled` onto
-  every model in the config, overwriting or adding the field.
+  every top-level model in the config, overwriting or adding the field, in
+  `view` mode only. Inside a `<pie-item-scope>` the toolkit's `autoplayAudio`
+  decision outranks it: a hold writes `autoplayAudioHeld: true` onto every model
+  and each part declaring `autoplayAudioEnabled`, and a grant writes
+  `autoplayAudioEnabled: true` there
+  ([Item autoplay](../assessment-toolkit/docs/PNP_CONFIGURATION.md#item-autoplay)).
+  A change after load commits pending sessions and re-renders the item.
 - `idle-save-delay-ms`: `Number`, default unset, which leaves each element its
   own delay. How long the learner has to pause before a response editor commits
   without losing focus; `0` commits on blur only. Elements read it from
@@ -355,6 +361,12 @@ A backend method rejects its promise on failure and dispatches no
   elements fail to register, `cause` names each one and why, such as the module
   URL that failed to load; the error is reported as soon as every missing
   element's load has failed.
+- `feature-decision-applied`: `{ featureId, effect, rule, overrode? }`, before
+  the elements render with a toolkit decision written onto their models.
+  `featureId` is `"autoplayAudio"`, `effect` `"held"` or `"enabled"`, `rule` the
+  deciding rule, and `overrode` `"attribute"` or `"authored"` when the decision
+  displaced `autoplay-audio-enabled` or an authored value. `<pie-item-scope>`
+  relays it to its toolkit.
 - `bundle-retry-status`:
   `{ state, url, attempt, elapsedMs, timeoutMs, retryDelayMs?, reason? }`, with
   `state` one of `"retrying"`, `"completed"`, `"timeout"` or `"cancelled"`. The

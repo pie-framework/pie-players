@@ -93,6 +93,11 @@ export interface FeaturePolicyDecision<P = Record<string, unknown>> {
 	 */
 	parameters?: P;
 	/**
+	 * The support in effect that withholds the feature, on a `support-conflict`
+	 * verdict.
+	 */
+	withheldBy?: string;
+	/**
 	 * Conflicts found while deciding: a `tool-policy.overrideBlocked` for a
 	 * granting override the decision withdrew, and a
 	 * `tool-policy.supportConflict` for a granting rule a support in effect
@@ -186,6 +191,7 @@ export function interpretFeatureResult<P>(
 	// The source logs "no rule fired" as a skip at the last level so the trail
 	// stays ordered; the verdict names no rule for it.
 	const fired = decision !== undefined && decision.action !== "skip";
+	const conflict = result.supportConflicts.get(featureId);
 	return {
 		featureId,
 		granted,
@@ -203,6 +209,9 @@ export function interpretFeatureResult<P>(
 				: unboundAssessmentReason(featureId),
 		required: Boolean(flags?.required),
 		parameters,
+		...(fired && decision.rule === "support-conflict" && conflict
+			? { withheldBy: conflict.support }
+			: {}),
 		assessmentBound: context.assessmentBound,
 		diagnostics: [
 			...Array.from(result.blockedOverrides, ([toolId, rule]) =>

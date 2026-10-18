@@ -152,6 +152,13 @@ unbuilt framework-completing capabilities.
   summaries as data with a prompt-and-label fallback, a `<pie-item-summary>`
   row that upgrades in place to the full player, and a `<pie-item-list>`
   composition, for hosts that show many items at once.
+- [`interface-i18n-host-provider.md`](./interface-i18n-host-provider.md) -
+  `Draft`. The `runtime.i18n` / `i18n` channel that hands the players the
+  `I18nProvider` a host composes — the generated locale tier, message
+  overrides, pseudo-locales, or a provider of the host's own — reaching the
+  toolkit's chrome, the tools, the section's cards and the item players it
+  mounts. Architecture:
+  [Interface locale](../architecture/internationalization.md#interface-locale).
 
 Decisions that span PRDs — sequencing, rejected alternatives, trade-offs a reader
 would otherwise have to reconstruct — live in [`../adr/`](../adr/).

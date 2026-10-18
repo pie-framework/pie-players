@@ -63,5 +63,8 @@ Web Speech API, HTTP, JSON, API.
 
 ## Plurals, punctuation
 
-- CLDR `one`/`other`, like English.
+- CLDR `one`/`many`/`other`: `many` is a cardinal category current CLDR
+  defines for Portuguese (million-scale numbers). It carries the same text
+  as `other`; it exists so the catalog matches what `Intl.PluralRules`
+  can return for the locale.
 - Keep `…`, curly quotes and the `°` glyph.

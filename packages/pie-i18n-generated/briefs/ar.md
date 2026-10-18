@@ -66,8 +66,12 @@ spell the number word (`مُدخل واحد`, `مُدخلان`).
 
 - Arabic is RTL; `dir` comes from the provider (`localeDirection`), never
   from the catalog. Data is direction-agnostic.
-- Western Arabic numerals (as `{count}` interpolates digits); Gulf
-  assessment UI accepts them.
+- Digits follow CLDR locale defaults: the engine renders numeric
+  placeholder values through `Intl.NumberFormat` at the active locale, so
+  `ar` renders Arabic-Indic digits and an `ar-MA` host renders Western
+  ones. Catalog text carries no hard-coded numerals. Native review should
+  confirm whether Gulf assessments prefer Arabic-Indic or Western digits
+  for `{count}`; a host can pin either through `customMessages`.
 - Arabic comma `،` in lists, `؟` is not needed in this catalog, guillemets
   `«{term}»` for the lookup notices, `…` kept.
 

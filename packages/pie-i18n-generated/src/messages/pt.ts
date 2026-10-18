@@ -104,6 +104,7 @@ const pt = {
 				"Não foi possível verificar esta pergunta. Tente novamente.",
 			triesLeft: {
 				one: "Resta {count} tentativa.",
+				many: "Restam {count} tentativas.",
 				other: "Restam {count} tentativas.",
 			},
 		},
@@ -280,6 +281,7 @@ const pt = {
 			noEntryFor: "Nenhuma entrada para “{term}”.",
 			entriesCount: {
 				one: "{count} entrada",
+				many: "{count} entradas",
 				other: "{count} entradas",
 			},
 			noEntryStatusFor: "Nenhuma entrada de dicionário para {term}.",
@@ -297,6 +299,7 @@ const pt = {
 			noEntryFor: "Nenhuma imagem para “{term}”.",
 			entriesCount: {
 				one: "{count} imagem",
+				many: "{count} imagens",
 				other: "{count} imagens",
 			},
 			noEntryStatusFor: "Nenhuma imagem para {term}.",
@@ -665,14 +668,17 @@ const pt = {
 			voiceBrowserDefault: "padrão do navegador",
 			browserAvailable: {
 				one: "Leitura por voz do navegador disponível ({count} voz detectada).",
+				many: "Leitura por voz do navegador disponível ({count} vozes detectadas).",
 				other: "Leitura por voz do navegador disponível ({count} vozes detectadas).",
 			},
 			pollyAvailable: {
 				one: "AWS Polly disponível ({count} voz correspondente, motor {engine}).",
+				many: "AWS Polly disponível ({count} vozes correspondentes, motor {engine}).",
 				other: "AWS Polly disponível ({count} vozes correspondentes, motor {engine}).",
 			},
 			googleAvailable: {
 				one: "Google Cloud TTS disponível ({count} voz correspondente).",
+				many: "Google Cloud TTS disponível ({count} vozes correspondentes).",
 				other: "Google Cloud TTS disponível ({count} vozes correspondentes).",
 			},
 			headerRowReservation:

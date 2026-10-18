@@ -55,6 +55,12 @@ export {
 	resolveInterfaceI18n,
 	SimpleI18n,
 } from "./provider.js";
+export {
+	PSEUDO_LOCALE_EXPANDED,
+	PSEUDO_LOCALE_RTL,
+	pseudoLocalize,
+} from "./pseudo.js";
+export type { PseudoLocalizeOptions } from "./pseudo.js";
 export type {
 	BundledLocaleCode,
 	DynamicMessageKey,

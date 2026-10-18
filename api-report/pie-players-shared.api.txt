@@ -356,8 +356,11 @@
   type MessageKey
   type MessageKeyInput
   type MessageNode
+  PSEUDO_LOCALE_EXPANDED
+  PSEUDO_LOCALE_RTL
   type PluralOptions
   type PluralTranslation
+  type PseudoLocalizeOptions
   SimpleI18n
   type TextDirection
   type TranslationBundle
@@ -371,6 +374,7 @@
   loadBundledCatalog
   localeDirection
   normalizeLanguageTag
+  pseudoLocalize
   resolveInterfaceI18n
   toLanguageTag
 

@@ -169,12 +169,34 @@ describe("interpolation and plurals", () => {
 		await i18n.setLocale("ar-SA");
 		expect(
 			i18n.plural("player.formative.triesLeft", { count: 2 }),
-		).toBe("2 محاولات");
+		).toBe("٢ محاولات");
 	});
 
 	test("plural falls back to t() for a key that is not a plural group", () => {
 		const i18n = new SimpleI18n();
 		expect(i18n.plural("common.close", { count: 2 })).toBe("Close");
+	});
+
+	test("numeric values render through the active locale's CLDR numbering defaults", async () => {
+		const english = new SimpleI18n();
+		expect(english.plural("player.formative.triesLeft", { count: 1000 })).toBe(
+			"1,000 tries left.",
+		);
+		// `ar-SA` defaults to Arabic-Indic digits; a string value is never touched.
+		const arabic = createPartialProvider("ar-SA", {
+			player: {
+				formative: {
+					triesLeft: { one: "محاولة واحدة", other: "{count} محاولات" },
+				},
+			},
+		});
+		await arabic.setLocale("ar-SA");
+		expect(arabic.plural("player.formative.triesLeft", { count: 3 })).toBe(
+			"٣ محاولات",
+		);
+		expect(arabic.t("tools.ruler.switchedTo", { unit: "سنتيمتر" })).toBe(
+			"Switched to سنتيمتر",
+		);
 	});
 });
 

@@ -272,6 +272,68 @@ evidence for the variant model it originated. The
 does the same in framing `requiresAuthoredContent` as AfA's DRD half of the PNP/DRD
 pair.
 
+### The chrome engine against web and Unicode standards
+
+The claims above are 1EdTech's and govern content. The interface-locale engine
+(`SimpleI18n`, `language-tags`, the generated tier) rests on web and Unicode
+standards instead. Each decision below names the authority it complies with; the
+divergences after the table are policy choices the standards leave open, recorded
+so they read as chosen rather than overlooked.
+
+| Decision | Authority | Where it is met |
+| --- | --- | --- |
+| Interface locale is a deployment fact the player publishes from `locale` | QTI 3.0 declares item content with `xml:lang` and leaves the delivery's UI language to the platform; LTI passes the platform's display locale as a `launch_presentation` hint; AfA PNP 3.0 `language-of-interface` is a learner preference the platform's policy resolves | one scalar on the composition context ([Interface locale](#interface-locale)); a PNP preference reaches it only through host policy ([tools and accommodations](../tools-and-accomodations/architecture.md)); no element or item sets it |
+| Content language is a separate fact, declared on each run | QTI 3.0 `xml:lang`; WCAG 2.2 3.1.2 Language of Parts (AA); HTML `dir` and UAX #9 for direction | `env` carries it ([Content language](#content-language)); `lang` and `dir` go on the content subtree, and on the chrome subtree where the interface locale differs |
+| The page owns its language | WCAG 2.2 3.1.1 Language of Page (A) | no player or element writes `document.documentElement` |
+| Tags are BCP 47, canonicalized | RFC 5646 (BCP 47); W3C *Language tags in HTML and XML* | `normalizeLanguageTag` and `toLanguageTag`: `es_ES.UTF-8` compares as `es-es` and renders as `es-ES` |
+| Lookup, then primary-subtag widening | RFC 4647 §3.4 | `languageTagLookupSequence` never stops on a singleton; `sv-SE` reaches `sv`, bare `en` the bundled `en-US` |
+| Plural forms are CLDR categories | UTS #35 plural rules, through ECMA-402 `Intl.PluralRules` | `other` is required; a catalog carries its locale's set (`cy` and `ar` six, `pt` `one`/`many`/`other`); a category the catalog lacks resolves to `other` |
+| Numbers and dates follow the locale | UTS #35 numbering systems and formats, through ECMA-402 `Intl.NumberFormat` and `Intl.DateTimeFormat` | numeric placeholders, `formatNumber` and `formatDate` format at the resolved locale; current CLDR resolves bare `ar` to Western digits and `ar-SA` to Arabic-Indic, so a regional request that widens to the `ar` catalog renders Western digits unless the host registers a regional catalog |
+| A control is never unnamed | WCAG 2.2 4.1.2 Name, Role, Value | lookup falls from host messages to the locale's catalog to `en-US` to the key itself; a failed catalog load is reported and renders English |
+| Direction comes from locale data | ECMA-402 `Intl.Locale` and the Locale Info proposal's `textInfo`, with an RTL-subtag fallback | `localeDirection` feature-detects `textInfo` and never reads a catalog |
+| A learner preference is an accommodation | AfA PNP 3.0; [ADR 0003](../adr/0003-elements-read-accessibility-settings-from-a-host-neutral-context.md) | the profile-to-support mapping lives in the host; an element maps a fixed support id to fixed behavior |
+
+**Deliberate divergences.** Three choices go against a convention or past a
+standard, each on purpose.
+
+- *No browser-locale detection.* Consumer web practice honours `navigator.language`
+  or `Accept-Language` when nothing else chooses. The engine reads neither, for the
+  reasons the [adoption record](./i18n-interface-locale-adoption.md) gives, and
+  `detectBrowserLocale()` stays exported for a host that wants it. No standard
+  requires detection; the platform-mediated path is LTI's locale hint, which lands
+  in `locale` one institutional step away from the device.
+- *`en-US` is the default.* No standard names a default. The delivery data and the
+  [rollout rule](#rollout), that a rendered string never changes under a host that
+  has not opted in, pick it.
+- *Structured catalogs rather than Unicode MessageFormat 2.0.* MF2 (LDML 46, 2024)
+  is the message-format standard and the catalogs predate it; they stay structured
+  on the merits. No engine ships a native runtime, ECMA-402's `Intl.MessageFormat`
+  being at stage 1, so MF2 today is a parser in every bundle, which pie-elements-ng
+  multiplies per element; the translation tooling that will handle reviewed
+  catalogs runs ICU MessageFormat 1; and the engine's semantics already match MF2's
+  model, with no key among the 531 using `select`. The standard enters at the
+  interchange boundary: catalog-to-ICU MF1, MF2 and XLIFF 2.1 converters,
+  gate-validated on import, are the planned tooling. The shape limits nothing a
+  locale needs — any tag, any CLDR plural set, any script or direction,
+  locale-correct numbers and dates, host overrides, lazy loading — and defers only
+  in-message `select` and rich formatting, which no key has needed. If one does, the
+  leaf syntax moves behind the same gate; keys, loaders and the fallback chain are
+  format-agnostic.
+
+pie-elements-ng adds one of its own, since pie-players has no IIFE build: an IIFE
+ships English only and reaches every other locale through `registerMessages`.
+Its [interface-i18n PRD](https://github.com/pie-framework/pie-elements-ng/blob/develop/docs/prds/interface-i18n/PRD.md)
+states the rule as capability tiered by packaging shape, coverage not.
+
+**Where the grounding is thin.** AfA `language-of-interface` is the standards hook
+for a PNP-driven interface locale, and no live installation's PNP record carries
+one, so the host-policy mapping is designed rather than exercised. The generated
+tier is machine output awaiting native review, which its manifests state and its
+freshness gate keeps honest. And localization toolchains catch truncation,
+concatenation and bidi breakage with a pseudo-locale before any reviewer sees a
+string; the gates here check parity, not rendered geometry, and that practice is
+the one to add.
+
 ## Direction
 
 ### Language resolution at three scopes
@@ -497,8 +559,9 @@ behavior-preserving until a host opts in by supplying a locale.
   TAO and Cambium/TDS item translation models, Smarter Balanced
   stacked-translation practice, the psychometric comparability constraints on
   treating a translation as the same item, and web-component i18n patterns
-  including `@lit/localize`, ICU MessageFormat and `lang`/`dir` inheritance through
-  shadow DOM.
+  including `@lit/localize` and `lang`/`dir` inheritance through shadow DOM. The
+  message-format question is settled under
+  [The chrome engine against web and Unicode standards](#the-chrome-engine-against-web-and-unicode-standards).
 
 ## References
 
@@ -529,3 +592,13 @@ behavior-preserving until a host opts in by supplying a locale.
   §4.1, §4.4 — catalogs, PNP language fields, variants
 - AfA PNP 3.0 §4.1.8, §4.1.14, §4.1.17, §4.1.18 — the four language fields
 - APIP v1.0 Best Practice guide §2.2.3 and Appendix A — item variants
+- WCAG 2.2 success criteria 3.1.1, 3.1.2 and 4.1.2 — language of page and of
+  parts, accessible names
+- RFC 5646 (BCP 47) and RFC 4647 §3.4 — language tags and lookup; W3C
+  *Language tags in HTML and XML* — canonical form
+- UTS #35 (LDML) — plural rules, numbering systems, and Unicode MessageFormat
+  2.0 (LDML 46)
+- ECMA-402 — `Intl.PluralRules`, `Intl.NumberFormat`, `Intl.DateTimeFormat`,
+  `Intl.Locale`; the Intl Locale Info proposal — `textInfo`
+- LTI 1.1 `launch_presentation_locale` and the LTI 1.3 `launch_presentation`
+  claim — the platform's display-locale hint

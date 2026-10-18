@@ -53,14 +53,25 @@ that can fail a build invites suppression. It runs on demand
 (`bun run scan-hardcoded`) and weekly via the `i18n-hardcoded-scan` workflow,
 which files the report on a tracking issue.
 
-**pie-elements-ng localizes through i18next, keyed on authored content.** Every
-`translator.t(` call passes `{ lng: language }`, where `language` is a model prop
-the controller copies off the authored item. Catalogs are `en` and `es` only, both
-eagerly imported and marked `@auto-generated` from upstream pie-lib, so the sync
-overwrites edits and keys cannot be added there. PIE content exists in languages
-those two catalogs cannot serve, French and German among them. The Svelte elements
-use the same translator where they localize at all. Classic pie-elements is the
-same design through `@pie-lib/translator`.
+**pie-elements-ng is moving onto a port of this engine, and its chrome is still
+keyed on authored content.** `@pie-element/shared-i18n` ports the engine with its
+RFC 4647 lookup and per-key fallback to `en-US`, adds `registerMessages` and
+`loadLocale` for hosts, and keeps one page registry across every bundled copy.
+`@pie-lib/render-ui`, `@pie-lib/correct-answer-toggle` and
+`@pie-element/multiple-choice`, which together render multiple-choice's chrome,
+carry per-package catalogs on it; IIFE builds ship English only. No interface
+locale reaches elements yet, so those three still take theirs from
+`model.language`, a model prop the controller copies off the authored item. The
+[interface i18n PRD](https://github.com/pie-framework/pie-elements-ng/blob/develop/docs/prds/interface-i18n/PRD.md)
+plans the rest of the migration.
+
+The other packages localize through i18next. Every `translator.t(` call passes
+`{ lng: language }`, the same `model.language`. Catalogs are `en` and `es` only,
+both eagerly imported and marked `@auto-generated` from upstream pie-lib, so the
+sync overwrites edits and keys cannot be added there. PIE content exists in
+languages those two catalogs cannot serve, French and German among them. The
+Svelte elements use the same translator where they localize at all. Classic
+pie-elements is the same design through `@pie-lib/translator`.
 
 Keying on `model.language` makes interface locale a side effect of content locale:
 a Spanish item renders Spanish widget chrome because it is a Spanish item. That is
@@ -92,8 +103,9 @@ language, and there is no cross-sign-language fallback, by design.
 **Language matching follows RFC 4647 lookup.** `AccessibilityCatalogResolver`
 normalizes both tags (`_` to `-`, lowercase) and expands the request into its
 lookup sequence, so the POSIX `es_ES` that Learnosity imports carry matches an
-`es-ES` request. pie-elements-ng carries the same POSIX/BCP-47 split as a
-hand-written mapping table, and pie-qti needed the same workaround.
+`es-ES` request. pie-elements-ng's translator carries the same POSIX/BCP-47 split
+as a hand-written mapping table, and pie-qti needed the same workaround;
+`@pie-element/shared-i18n` normalizes tags the same way this repository does.
 
 **Read-aloud resolves a content language per read**, as
 [TTS language](#tts-language) sets out. A read whose markup carries no `lang`, and
@@ -315,17 +327,19 @@ and boolean `true`, and both must keep working.
 
 The design also has the player reflect the resolved content language to `lang`,
 and direction to `dir`, on the content subtree. Interface-locale adoption already stamps both on the
-chrome subtree. For content, neither pie-players nor pie-elements-ng writes `dir`
-anywhere, so an RTL content language does not render right to left.
+chrome subtree. For content, only pie-elements-ng's `multiple-choice` writes `dir`,
+on its own host, so an RTL content language does not render right to left elsewhere.
 
 Six elements write `lang` onto their own host: `explicit-constructed-response`,
 `extended-text-entry`, `inline-dropdown`, `math-inline`, `multiple-choice` and
 `passage`, the same six in pie-elements-ng and in classic pie-elements. Each
 computes `language ? language.slice(0, 2) : 'en'` off `model.language`, so an absent
-model language stamps `lang="en"` instead of leaving the attribute off. Outside
-those six elements `:lang()` and hyphenation have nothing to key on, and inside
-them they key on a language the content may not be in. The same holds for
-screen-reader pronunciation and every other consumer of the attribute.
+model language stamps `lang="en"` instead of leaving the attribute off. The
+exception is pie-elements-ng's `multiple-choice`, which stamps the canonical tag of a
+declared language and leaves `lang` and `dir` off otherwise. Outside those six
+elements `:lang()` and hyphenation have nothing to key on, and inside them they key
+on a language the content may not be in. The same holds for screen-reader
+pronunciation and every other consumer of the attribute.
 
 That default constrains the slice. `lang` inherits and the nearest ancestor wins, so
 inside those six subtrees the element overrides a content wrapper carrying the
@@ -435,7 +449,8 @@ behavior-preserving until a host opts in by supplying a locale.
 
 1. **BCP-47 resolution.** Done; see
    [Language resolution at three scopes](#language-resolution-at-three-scopes).
-2. **Content language end to end.** Not started. `Env.locale`, an item payload that
+2. **Content language end to end.** Not started, apart from pie-elements-ng's
+   `multiple-choice` dropping its `'en'` default. `Env.locale`, an item payload that
    carries its language, `lang` and `dir` reflected on the content subtree, and the
    six elements that stamp `lang` off `model.language` no longer defaulting it to
    `'en'`. It needs authoring hosts to emit locale on the PIE content channel and

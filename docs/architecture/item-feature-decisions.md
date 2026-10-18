@@ -25,9 +25,9 @@ fields and the markup it replaces.
 
 ## Decision Flow
 
-![Item feature decisions as implemented: the host's policy inputs reach the assessment toolkit, whose PolicyEngine.decideFeature applies the host gates and the eight-level precedence per feature id and item scope, a screen reader holding autoplayAudio as a support conflict; pie-item-scope publishes the decisions for ITEM_PLAYER_FEATURE_IDS through itemFeatureDecisionsContext; pie-item-player combines them with its own autoplay-audio-enabled attribute through ITEM_FEATURE_APPLIERS and writes autoplayAudioHeld or autoplayAudioEnabled onto the models, removing authored autoplay; the delivery elements read autoplayAudioOn(model). The item player reports feature-decision-applied back through the scope to reportFeatureDecisionApplied, which raises tool-policy.supportConflict for a support-conflict hold that overrode a setting](../img/item-feature-decisions-flow.excalidraw.svg)
+![Item feature decisions as implemented: the host's policy inputs reach the assessment toolkit, whose ToolPolicyEngine.decideFeature applies the host gates and the eight-level precedence per feature id and item scope, a screen reader holding autoplayAudio as a support conflict; pie-item-scope publishes the decisions for ITEM_PLAYER_FEATURE_IDS through itemFeatureDecisionsContext; pie-item-player combines them with its own autoplay-audio-enabled attribute through ITEM_FEATURE_APPLIERS and writes autoplayAudioHeld or autoplayAudioEnabled onto the models, removing authored autoplay; the delivery elements read autoplayAudioOn(model). The item player reports feature-decision-applied back through the scope to reportFeatureDecisionApplied, which raises tool-policy.supportConflict for a support-conflict hold that overrode a setting](../img/item-feature-decisions-flow.excalidraw.svg)
 
-1. **Decide.** `PolicyEngine.decideFeature(featureId, scope)` applies the host gates, then the
+1. **Decide.** `ToolPolicyEngine.decideFeature(featureId, scope)` applies the host gates, then the
    eight-level [precedence](../../packages/assessment-toolkit/docs/PNP_CONFIGURATION.md#precedence),
    then `TOOLKIT_SUPPORT_CONFLICTS`: a profile with `screenReader` enabled withholds `autoplayAudio`
    as `support-conflict`. Feature decisions ignore `pnpEnforcement`.

@@ -159,3 +159,20 @@ do not meet it.
 - AfA's `restriction-type`, with values such as `directions-only` and `skip-math-equations`, is not
   honored, so read-aloud of directions alone or with math skipped has no support id. It is a
   separate decision.
+
+## Update, 2026-10-16
+
+The channel question **Self-starting audio** left open is decided and shipped. The
+[Audio Autoplay Policy PRD](../prds/audio-autoplay-policy.md) (still `Draft` pending
+acceptance) owns the contract: `<pie-item-scope>` publishes the per-item `autoplayAudio`
+decision through `itemFeatureDecisionsContext` (`Symbol.for("pie.itemFeatureDecisions")`,
+`@pie-players/pie-context`), and the item player applies it through its per-feature applier
+registry (PIE-1286), writing `autoplayAudioHeld` or `autoplayAudioEnabled` onto the delivery
+models before the elements mount and announcing `feature-decision-applied`. The applier's
+markup rule removes authored `autoplay` attributes in delivery; it is deliberately kept out of
+the security sanitizer's forbid-list, since it is a product rule rather than a trust boundary.
+The seven pie-elements-ng elements with an authored `autoplayAudioEnabled` setting honour the
+hold as of [pie-elements-ng#476](https://github.com/pie-framework/pie-elements-ng/pull/476),
+meeting the precondition; the shared prompt renderer's play link follows the generated audio id
+(PIE-1257). The model field, not the ADR 0003 context, remains the element's only input, so
+**Consequences** holds.

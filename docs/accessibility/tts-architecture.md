@@ -152,7 +152,7 @@ await ttsService.initialize(new ServerTTSProvider(), serverConfig);
 | **Authored SSML** | Voiced as its spoken text | Polly's supported subset | Google's SSML | Passed to the service |
 | **Voices** | Those installed on the device | Polly's, the same on every device | Google's, the same on every device | The service's |
 | **Server** | None | A synthesis endpoint the host runs; credentials stay on it | Same | Same |
-| **Text per request** | No limit declared | 3000 characters; the toolkit splits longer text | Same | Same |
+| **Text per request** | No limit declared | 3000 characters; the toolkit splits longer text | 5000 characters; the toolkit splits longer text | 3000 characters; the toolkit splits longer text |
 | **Requests per read** | None | Two SynthesizeSpeech calls (audio and speech marks) | One SynthesizeSpeech call | One synthesis call, then fetches of the returned audio and speech-mark URLs |
 
 On every server column, a response without speech marks highlights its

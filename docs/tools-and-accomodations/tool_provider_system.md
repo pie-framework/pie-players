@@ -70,6 +70,7 @@ Two provider entries are closed to the keys their tool reads, so a misplaced key
 - `annotationToolbar`
 - `answerEliminator`
 - `lineReader`
+- `magnification`
 - `ruler`
 - `graph`
 - `periodicTable`

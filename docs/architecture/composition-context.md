@@ -26,7 +26,6 @@ of these is a composition context in this repo:
 | Heading depth | section player | every PIE element | the same item sits under a host `<h1>` in one page and three levels down in another |
 | Card title convention | host, through `hooks.cardTitleFormatter` | item and passage cards | the host names its own questions; the card cannot know the convention, and an item has no idea it is question 5 of 12 |
 | Read-aloud arbitration | toolkit coordinator | signing region, TTS tool | two media capabilities must not play at once, and neither can see the other |
-| Region scope for annotation | item/passage shell | annotation toolbar | the selectable scope is the card, which the tool does not own |
 | Split-region width | section player | item media region | the available width is the layout's, not the capability's |
 | Theme tokens | theme package | every component | a deployment picks the palette, not the component |
 | Granted accommodations | policy engine | every capability | eligibility is per learner and per deployment |

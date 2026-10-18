@@ -95,16 +95,15 @@ opposite trade fits here because a provider always exists: `players-shared`
 exports a module-level default whose English catalog is statically bundled, so
 `t()` never returns a bare key, even with no host, no player and no context.
 
-**Locale catalogs never enter a tool bundle.** Most tool bundles import
-`players-shared` from the host. The item player and the section player's browser
-build set `external: []`, and the print player declares no externals, so each
-inlines everything it reaches. The module split enforces the boundary either way:
-tools import the types as `import type` and the English default from `provider`,
-and only players import the dynamic loader map in `catalogs` and the
-`createPieI18n()` wiring in `i18n`. A tool therefore pulls in the interface and the
-English fallback and never sees `catalogs`, so no locale chunk is emitted into its
-`dist`. The README's [Module layout](../../packages/players-shared/src/i18n/README.md#module-layout)
-lists each module.
+**Locale catalogs never enter a tool bundle.** Tools import the types as
+`import type` and the English default from `provider`, and only players import
+the dynamic loader map in `catalogs` and the `createPieI18n()` wiring in `i18n`.
+A tool therefore pulls in the interface and the English fallback and never sees
+`catalogs`, so no locale chunk is emitted into its `dist`. The README's
+[Module layout](../../packages/players-shared/src/i18n/README.md#module-layout)
+lists each module, and [Packaging](./internationalization.md#packaging) in the
+internationalization note owns the player bundling boundary that makes the split
+effective.
 
 **Interface locale is a composition context, set by one element attribute.** The
 deployment picks the interface language; no tool and no element can know it.

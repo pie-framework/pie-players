@@ -93,11 +93,9 @@ it to `TTSToolProvider` as its `loadServerProvider` option. Browser-only
 deployments never load that package, and the toolkit never names it.
 
 If server-backed initialization fails, the toolkit coordinator falls back to
-browser TTS and reports `pie-tool-init-fallback`. Browser TTS is the resilience
-path because it uses the platform Web Speech API and does not require a network
-service; server-backed TTS is the choice when reads need the same voices on
-every device, SSML or speech marks. The host sets the backend through
-`tools.providers.textToSpeech`; the toolkit README's
+browser TTS and reports `pie-tool-init-fallback`.
+[TTS architecture](./tts-architecture.md#provider-selection-and-fallback) owns
+the selection and fallback rules; the toolkit README's
 [Minimal Server-Backed TTS Config](../../packages/assessment-toolkit/README.md#minimal-server-backed-tts-config)
 lists the keys and defaults.
 
@@ -135,7 +133,10 @@ generation. The system reads visible text with the active provider.
    calls `ToolkitCoordinator.ensureTTSReady()`. The registry initializes
    `TTSToolProvider`, which chooses browser or server-backed TTS from host
    config. When TTS starts eagerly or the policy grants `textToSpeech`,
-   coordinator readiness already waits for it.
+   coordinator readiness already waits for it; a profile resolving
+   `screenReader` enabled withholds that grant as a support conflict, so no
+   read-aloud starts at all
+   ([ADR 0004](../adr/0004-screen-reader-use-is-a-profile-support-that-withholds-read-aloud.md)).
 6. `TTSService.speak()` collects the target's visible text, math included,
    normalizes it and calls `resolveSpeechContent(...)`.
 7. If no authored spoken catalog applies and no generated speech is needed,
@@ -309,9 +310,9 @@ Catalogs can be registered from:
 The runtime scopes catalogs by owner context. Passage catalogs are registered
 with a passage context. Item and model catalogs are registered with item/model
 context. This lets different content owners reuse catalog identifiers without
-turning every catalog id into a global key.
-
-![Catalog filing and lookup: items and passages send pie-register to the toolkit element, which files their catalogs by owner; the toolkit configuration fills the assessment-level catalogs at construction; TTSService looks a spoken card up by the exact owner, the one compatible owner, item-level catalogs and then assessment-level catalogs, and content surfaces read one owner's snapshot; registration and readers build the owner context with catalogOwnerContextFor](../img/catalog-registration.excalidraw.svg)
+turning every catalog id into a global key. The
+[catalog registration diagram](./accessibility-catalogs-integration-guide.md#registration-and-lookup)
+in the integration guide shows the filing and lookup flow.
 
 ### Authored Catalog Walkthrough
 

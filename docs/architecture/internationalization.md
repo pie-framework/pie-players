@@ -41,6 +41,16 @@ there. `en-US` and `nl-NL` ship complete, and `check:i18n-coverage` gates the
 pre-commit and CI runs. The [adoption record](./i18n-interface-locale-adoption.md)
 records the decisions, including why the earlier i18n layer was replaced.
 
+**An optional machine-generated locale tier exists beside the bundled catalogs.**
+`@pie-players/pie-i18n-generated` publishes locale catalogs translated by machine
+and marked with their provenance. They are unreviewed and freshness-gated, a host
+composes their loaders after the bundled ones so reviewed strings always win, and
+a locale is promoted into the reviewed set by translation review rather than by
+reworking the generated files. `check:i18n-generated` gates the pre-commit and CI
+runs; the
+[players-shared i18n README](../../packages/players-shared/src/i18n/README.md)
+owns the composition pattern.
+
 The hardcoded-string scanner (`scan-hardcoded`) produces a warning report and
 never gates. It parses the packages' Svelte templates with the Svelte AST, so
 its scope is exactly where rendering is definitional: template text nodes and
@@ -496,6 +506,8 @@ behavior-preserving until a host opts in by supplying a locale.
   shipped interface-locale decisions
 - [`../../packages/players-shared/src/i18n/README.md`](../../packages/players-shared/src/i18n/README.md)
   — provider, catalogs and adoption pattern
+- [`../../packages/pie-i18n-generated/README.md`](../../packages/pie-i18n-generated/README.md)
+  — the optional machine-generated locale tier
 - [`composition-context.md`](./composition-context.md) — publisher/resolver
   pattern, resolution order, change-signal invariant
 - [`../accessibility/accessibility-catalogs-integration-guide.md`](../accessibility/accessibility-catalogs-integration-guide.md)

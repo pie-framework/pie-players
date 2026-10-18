@@ -105,14 +105,17 @@ unbuilt framework-completing capabilities.
   and PNP gating. Integrator guide:
   [`@pie-players/pie-tool-sign-language`](../../packages/tool-sign-language/README.md).
 - [`audio-accommodations.md`](./audio-accommodations.md) - `Accepted`. The
-  audio transcript as a policy-gated catalog card; how an autoplay decision
-  reaches an element is an open question. Integrator guide:
+  audio transcript as a policy-gated catalog card. Its open question on how an
+  autoplay decision reaches an element is answered by the
+  [autoplay policy PRD](./audio-autoplay-policy.md); the decision channel has
+  shipped even while that PRD awaits acceptance. Integrator guide:
   [accessibility catalogs integration guide](../accessibility/accessibility-catalogs-integration-guide.md).
 - [`audio-autoplay-policy.md`](./audio-autoplay-policy.md) - `Draft`.
   `autoplayAudio` decided per item scope from existing policy inputs, carried
   to the item player by a context from `<pie-item-scope>`, and held only on
-  element versions that keep the audio playable. The toolkit and item player
-  sides have landed; the elements have not.
+  element versions that keep the audio playable. Implemented across the
+  toolkit, the item player, the elements and the markup passes; the PRD awaits
+  acceptance of its open questions.
 - [`formative-delivery-contract.md`](./formative-delivery-contract.md) -
   `Accepted`. Try state, feedback reveal as a per-item `env` projection, and
   section mastery over the shipped client-side scoring path. Integrator guide:

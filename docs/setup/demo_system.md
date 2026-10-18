@@ -69,7 +69,7 @@ bun run dev:section
 | `bun run build` | Every publishable package through Turbo; apps and `tools/` excluded |
 | `bun run dev:item`, `dev:section`, `dev:assessment`, `dev:lti`, `dev:backend`, `dev:docs` | One demo app (table above) |
 | `bun run build:watch:section-tools` | Turbo watch over the section player, the toolkit, every tool package and the section-player debug tools |
-| `bun run test` | Every package's unit tests through Turbo, then every app's |
+| `bun run test` | Every package's unit tests through Turbo (apps and `tools/` excluded), then every app's |
 | `bun run test:e2e:item-player`, `test:e2e:section-player`, `test:e2e:assessment-player` | One Playwright suite; each builds what it needs and serves its app on a free port |
 | `bun run typecheck` | `turbo typecheck` |
 | `bun run lint` | Biome lint, then each workspace's `check` script (`svelte-check` in most) through Turbo |
@@ -88,7 +88,7 @@ package's `dist/` JavaScript changes, because re-evaluating a bundle through
 HMR would define its custom elements a second time, which the browser rejects.
 
 - `apps/section-demos` aliases the TTS client, the Desmos and GeoGebra
-  calculators and ten tool packages to their entry files under `dist/`, the
+  calculators and eleven tool packages to their entry files under `dist/`, the
   files npm resolution reaches, and aliases
   `@pie-players/pie-section-player-tools-shared` to its source `index.ts`.
   Every other import resolves through `exports`.

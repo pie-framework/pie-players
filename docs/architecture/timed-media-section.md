@@ -681,48 +681,18 @@ is not signing's "play only this slice".
 
 ## Pre-implementation State
 
-The design predates the code. It was drafted in June 2026 and checked against
-`develop` three times before implementation, and its core assumptions held:
-`sectionType` was unused in `packages/`, so the section data landed additively; the
-four layout custom elements existed; and `@pie-players/pie-players-shared` and
-`@pie-players/pie-assessment-toolkit` were the right owning packages. These moved
-underneath the draft:
-
-- **Delivery path.** The assessment player has no data-driven renderer selection,
-  so the draft's dispatch step had no seam. See
-  [Section Type and Layouts](#section-type-and-layouts).
-- **Stimulus payload.** `RubricBlock` is passage-typed, which first read as weakening
-  the passage mapping; a passage payload is a PIE config, so the mapping holds. See
-  [Video Stimulus Mapping](#video-stimulus-mapping).
-- **Toolkit engine layer.** The toolkit grew a policy and runtime engine layer:
-  `SectionRuntimeEngine`, `SectionControllerBinding`, `SectionEngineCore`, engine
-  state, transition and stage derivation, `RuntimeRegistry`, `SectionEngineAdapter`,
-  an instrumentation bridge, and `ToolPolicyEngine` with `PolicySource`,
-  `compose-decision` and provenance tracking. It sits beneath the standalone
-  section-player path as well as the assessment player. The draft put cue
-  orchestration in a layout custom element, and the engine then looked the better
-  home; cue and playback policy went to the pure `timed-media` module with live
-  state in `SectionController`. See [Section Type and Layouts](#section-type-and-layouts).
-- **Media vocabulary.** The [media asset contract](../prds/shared-contracts/media-asset-contract.md)
-  is `Accepted`, ratified against this design's shapes before the release that first
-  published the types. Recorded audio, as `SpokenAudioCardPayload`, a `spoken`
-  alternate, exercised the same shape for `kind: "audio"` with no field change. The
-  media half of this design is inheritance, and what the section contract adds is
-  what a cue range means. See [Media Time Source](#media-time-source).
-- **Native media precedent.** Signing renders through a minimal native
-  `<video controls>`, so the player decision has a working baseline to beat. See
-  [Video Player Dependency Decision](#video-player-dependency-decision).
-- **Theming and placement.** The broad theming contract is `Accepted`, and the
-  `content-lead` surface is a second placement precedent beside `content-media`. See
-  [Accessibility and Toolkit Implications](#accessibility-and-toolkit-implications).
-- **A media producer.** The PIE API backend's Learnosity importer emits
-  `MediaAssetRef`-shaped media. See [QTI 3 Mapping](#qti-3-mapping).
-- **Interaction events.** The interaction-event shared-contract PRD is partly overtaken by shipped code: `players-shared/src/instrumentation/` ships a provider abstraction (DebugPanel, NewRelic, Console, Composite), and `players-shared/src/pie/instrumentation-event-map.ts` maps source events to telemetry event *names* behind a bridge. Neither is the projection envelope that PRD designs: there is no source-reference shape, category or version. The PRD's [Problem](../prds/shared-contracts/interaction-event-contract.md#problem) records the boundary.
-- **Element framework.** The passage element is in pie-elements-ng's
-  `packages/elements-react/` and `video-stimulus` in `packages/elements-svelte/`, so
-  they share no framework or code; the sibling framing is conceptual.
-- **Sign language.** Signing came up as a use for this section type and was scoped
-  into its own contract. See [Relationship to Sign Language](#relationship-to-sign-language).
+The design predates the code: drafted in June 2026 and checked against `develop`
+three times before implementation, with its core assumptions holding —
+`sectionType` was unused, the four layout elements existed, and
+`@pie-players/pie-players-shared` and `@pie-players/pie-assessment-toolkit`
+were the right owning packages. Two things moved underneath it and are recorded
+where they landed: the toolkit's policy and runtime engine layer became the home
+for cue and playback policy, instead of a layout custom element
+([Section Type and Layouts](#section-type-and-layouts)), and the media
+vocabulary was ratified as the [media asset
+contract](../prds/shared-contracts/media-asset-contract.md) against this
+design's shapes, so the media half of this design is inheritance ([Media Time
+Source](#media-time-source)).
 
 ## Open Questions
 

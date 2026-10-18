@@ -213,7 +213,7 @@ For custom-element or export-boundary changes, also run the [high-value checks](
 
 ## Rollout And Release Notes
 
-- Changeset required: yes. The types first published in `@pie-players/pie-players-shared` 0.3.64.
+- Changeset required: yes. The types ship in `@pie-players/pie-players-shared`.
 - Migration notes: additive metadata contract; existing item and section models remain valid.
 - Documentation updates: the timed-media, sign-language and audio-accommodations PRDs and the players-shared README link this contract.
 - Release risk: medium, mainly around accessibility metadata and URL/privacy expectations.

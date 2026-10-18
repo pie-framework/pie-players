@@ -43,13 +43,11 @@ compatible owners hold the identifier, the lookup is ambiguous and finds nothing
 `data-catalog-idref` names a whole catalog, whose cards can carry several types.
 TTS is the attribute's only reader and selects `spoken` cards; the sign-language
 capability finds `sign-language` cards among the item's catalogs without
-consulting it. `SSMLExtractor` never overwrites an existing `data-catalog-idref`,
-because the reference names a whole card array, and replacing it to win one type
-would take that node's other cards down with it. When an inline `<speak>` lands
-inside a node that is already docked, `SSMLExtractor` keeps the existing
-reference, still emits the extracted catalog, and warns. The extracted SSML is
-then unreachable by DOM walk; give the `<speak>` its own wrapper, or author it as
-a `spoken` card on the existing catalog.
+consulting it. One rule to carry into authoring: `SSMLExtractor` never
+overwrites an existing `data-catalog-idref`, so an inline `<speak>` landing
+inside an already-docked node stays unreachable by DOM walk. The
+[TTS Authoring Guide](./tts-authoring-guide.md#method-1-inline-ssml-preprocessed-extraction)
+owns that rule and its remedies.
 
 ---
 

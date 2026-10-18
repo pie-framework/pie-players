@@ -280,11 +280,13 @@ normalizes to a `CanonicalToolsConfig`:
 | `policy` | `allowed` and `blocked`, host gates applied before the policy engine |
 | `pnpEnforcement` | `"on"` or `"off"` overrides the automatic choice of whether toolbar decisions apply PNP policy |
 
-`createPackagedToolRegistry()` registers fifteen tools. Fourteen are placeable
-([canonical tool ids](../tools-and-accomodations/tool_provider_system.md#canonical-tool-ids));
-the fifteenth, `transcript`, is a content region that validation rejects in any
-placement. A tool placed at a level it does not support fails validation, which
-throws under the default `tool-config-strictness` of `error`.
+`createPackagedToolRegistry()` registers sixteen capabilities. Fifteen are
+placeable ([canonical tool
+ids](../tools-and-accomodations/tool_provider_system.md#canonical-tool-ids)),
+among them `magnification`; the sixteenth, `transcript`, is a content region
+that validation rejects in any placement. A tool placed at a level it does not
+support fails validation, which throws under the default `tool-config-strictness`
+of `error`.
 
 ```ts
 import type { ToolsConfigInput } from "@pie-players/pie-assessment-toolkit";

@@ -107,8 +107,9 @@ Playwright specs under `packages/section-player/tests`,
 `packages/item-player/tests` and `packages/assessment-player/tests`.
 
 Root CI runs lint, typecheck and the package rules, the build, a critical
-Playwright e2e matrix (assessment player, item player, players-shared and print
-player) and the sharded section-player e2e suite; the accessibility specs among
+Playwright e2e matrix (assessment player, item player, players-shared,
+backend-demo and print player) and the sharded section-player e2e suite; the
+accessibility specs among
 them run axe scans. The root pre-push hook runs the full local gate
 (`verify:pre-push`, which is `bun run verify:local-pr`) when a push carries new
 commits.

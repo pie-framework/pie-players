@@ -2,7 +2,9 @@
 
 Status: Draft, 2026-10-12
 
-The toolkit and item player sides have landed: `<pie-item-scope>` provides the decision, the item player writes it onto delivery models and announces `feature-decision-applied`, and `tools.policy` accepts `autoplayAudio`. The elements that carry `autoplayAudioEnabled` (categorize, drag-in-the-blank, hotspot, image-cloze-association, multiple-choice, EBSR and mc-populated-blank) honour `autoplayAudioHeld` from [pie-elements-ng#476](https://github.com/pie-framework/pie-elements-ng/pull/476), and both repositories' markup sanitizers strip `autoplay`.
+The toolkit and item player sides have landed: `<pie-item-scope>` provides the decision, the item player writes it onto delivery models and announces `feature-decision-applied`, and `tools.policy` accepts `autoplayAudio`. The elements that carry `autoplayAudioEnabled` (categorize, drag-in-the-blank, hotspot, image-cloze-association, multiple-choice, EBSR and mc-populated-blank) honour `autoplayAudioHeld` from [pie-elements-ng#476](https://github.com/pie-framework/pie-elements-ng/pull/476), and authored `autoplay` is stripped on both sides — by the item player's feature-applier markup rule here, which is deliberately kept out of the security sanitizer's forbid-list, and by the elements repo's markup pass.
+
+The PRD stays `Draft` pending acceptance, including the [Open Questions](#open-questions) below; the implementation followed it rather than the other way round.
 
 Owner: PIE Players maintainers
 

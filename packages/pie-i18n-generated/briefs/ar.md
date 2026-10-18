@@ -67,11 +67,13 @@ spell the number word (`مُدخل واحد`, `مُدخلان`).
 - Arabic is RTL; `dir` comes from the provider (`localeDirection`), never
   from the catalog. Data is direction-agnostic.
 - Digits follow CLDR locale defaults: the engine renders numeric
-  placeholder values through `Intl.NumberFormat` at the active locale, so
-  `ar` renders Arabic-Indic digits and an `ar-MA` host renders Western
-  ones. Catalog text carries no hard-coded numerals. Native review should
-  confirm whether Gulf assessments prefer Arabic-Indic or Western digits
-  for `{count}`; a host can pin either through `customMessages`.
+  placeholder values through `Intl.NumberFormat` at the resolved locale.
+  Current CLDR resolves bare `ar` to Western (`latn`) digits and regional
+  tags such as `ar-SA` and `ar-EG` to Arabic-Indic (`arab`); a regional
+  request widens to this catalog, so chrome digits follow the bare tag's
+  default unless the host registers a regional catalog or pins either
+  form through `customMessages`. Native review should confirm which form
+  Gulf assessments prefer for `{count}`.
 - Arabic comma `،` in lists, `؟` is not needed in this catalog, guillemets
   `«{term}»` for the lookup notices, `…` kept.
 

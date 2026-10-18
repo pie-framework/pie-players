@@ -376,6 +376,7 @@
   normalizeLanguageTag
   pseudoLocalize
   resolveInterfaceI18n
+  stampInterfaceLocale
   toLanguageTag
 
 ./i18n/catalogs
@@ -397,6 +398,7 @@
   getDefaultI18n
   localeDirection
   resolveInterfaceI18n
+  stampInterfaceLocale
 
 ./i18n/types
   type BundledLocaleCode

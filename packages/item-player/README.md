@@ -211,7 +211,9 @@ item.
 - `include-sr-heading`: `Boolean`, default `true`. Emit the item's visually
   hidden heading. Reflected.
 - `locale`: `String`, default `""` (renders `en-US`). BCP 47 interface locale
-  for the player's own UI. The item's content language is separate.
+  for the player's own UI, stamped as `lang` and `dir` on the player's root.
+  The item's content language is separate: content that names its own
+  `lang`/`dir` keeps it, and content that names none inherits the stamp.
 - `i18n`: `I18nProvider`, optional. A provider the host composed — the
   generated locale tier, host messages, or the host's own — used in place of
   the one the player builds. `locale` still names the locale, and a supplied

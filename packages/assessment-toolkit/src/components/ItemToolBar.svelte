@@ -81,7 +81,7 @@ The toolbar for an item, passage or section, rendering a button for each tool th
 	} from '../services/toolbar-items.js';
 	import { resolveEsmPackageFileUrl } from '@pie-players/pie-players-shared/loaders';
 	import { sanitizeSvgIcon } from '@pie-players/pie-players-shared/security';
-	import { resolveInterfaceI18n } from '@pie-players/pie-players-shared/i18n/provider';
+	import { resolveInterfaceI18n, stampInterfaceLocale } from '@pie-players/pie-players-shared/i18n/provider';
 	import {
 		collectFocusable,
 		createFocusTrap,
@@ -1705,6 +1705,10 @@ The toolbar for an item, passage or section, rendering a button for each tool th
 		 * shell and the first catalog import landing after the shell was built.
 		 */
 		const applyShellStrings = () => {
+			// The shell mounts at `document.body`, outside every player stamp, so
+			// it carries the interface locale itself; the tool inside stamps its
+			// own root.
+			if (shellEl) stampInterfaceLocale(shellEl, currentArgs.i18n);
 			if (titleEl) {
 				titleEl.textContent =
 					currentArgs.mounted.entry.shell?.title || currentArgs.mounted.toolId;
@@ -2629,6 +2633,8 @@ The toolbar for an item, passage or section, rendering a button for each tool th
 		class:item-toolbar--header-overlay-active={headerOverlayShouldExpandForActiveTool}
 		data-content-kind={effectiveContentKind}
 		data-level={effectiveLevel}
+		lang={interfaceI18n.getLocale()}
+		dir={interfaceI18n.getDirection?.() ?? 'ltr'}
 		bind:this={toolbarRootElement}
 	>
 		<!-- Keeps a focused toolbar button in view. A mounted tool's own focus is left

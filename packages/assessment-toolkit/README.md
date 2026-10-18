@@ -151,7 +151,8 @@ string and boolean attributes are `assessment-id`, `section-id`, `attempt-id`,
 - Runtime config on section-player custom elements: `runtime`
 - Toolkit-only object properties: `tools`, `toolRegistry`, `coordinator`,
   `accessibility`
-- Interface: `nds-icons`, `locale`
+- Interface: `nds-icons`, `locale`. The toolkit stamps `lang` and `dir` from
+  the interface locale on its own host element, never on the document
 - Diagnostics: `tool-config-strictness`, and `debug` on the section-player layouts. Framework-error
   delivery is via the `onFrameworkError` callback (a toolkit property,
   `runtime.onFrameworkError` on a section player) and the

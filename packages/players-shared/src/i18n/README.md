@@ -103,7 +103,13 @@ is English-only and shared process-wide, so `t()` returns `"Close"` rather than
 **`lang`/`dir` on your own host, never `document.documentElement`.** An embedded
 player has no business writing the host page's root. `direction` is an inherited
 CSS property, so one attribute on the host reaches your content across a shadow
-boundary with no per-node wiring.
+boundary with no per-node wiring. `lang` itself resolves along the node tree —
+parent element, or the host for a shadow root's child — so a stamp inside a
+shadow tree never reaches slotted content: an element whose chrome is slotted
+stamps its host element instead. `stampInterfaceLocale(element, provider)` is
+the imperative form for that host, for a shell built with `createElement`, or
+for a vanilla element; call it from whatever already re-runs on a locale change
+and a catalog load.
 
 For a capability registration, `ToolbarContext.i18n` carries the same provider;
 `interfaceI18n(toolbarContext)` in `default-tool-loaders` applies the fallback.
@@ -186,7 +192,7 @@ follows the same imports.
 | Module | Contents | Imported by |
 |---|---|---|
 | `i18n/types` | `I18nProvider`, `MessageKey`, `LocaleCode` | components, as `import type` — fully erased |
-| `i18n/provider` | `SimpleI18n`, `getDefaultI18n`, `localeDirection` | components, for the English fallback |
+| `i18n/provider` | `SimpleI18n`, `getDefaultI18n`, `localeDirection`, `stampInterfaceLocale` | components, for the English fallback |
 | `i18n/catalogs` | dynamic loader map for the non-English locales | players only |
 | `i18n` | `createPieI18n()`, wiring provider to catalogs | players only |
 | `i18n/language-tags` | BCP-47 comparison, no locale data, no DOM | catalog resolver, TTS voice selection |

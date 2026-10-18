@@ -93,6 +93,7 @@ The toolkit's runtime element: it holds a `ToolkitCoordinator` and provides its 
 	import {
 		createPieI18n,
 		DEFAULT_LOCALE,
+		stampInterfaceLocale,
 	} from "@pie-players/pie-players-shared/i18n";
 	import type { I18nProvider } from "@pie-players/pie-players-shared/i18n";
 	import {
@@ -1312,6 +1313,17 @@ const DEFAULT_ENV = {
 				});
 			});
 		});
+	});
+	// `lang` and `dir` go on the host, not on an element in the shadow tree:
+	// what a host composes inside this element is slotted light DOM, and both
+	// `lang` resolution and CSS `direction` reach it only from a light-tree
+	// ancestor. The version bump re-runs the stamp once the catalog is
+	// resident, because `getLocale()` moves only then.
+	$effect(() => {
+		void interfaceI18nVersion;
+		const target = host;
+		if (!target) return;
+		stampInterfaceLocale(target, interfaceI18n);
 	});
 
 	const effectiveAssessmentId = $derived(

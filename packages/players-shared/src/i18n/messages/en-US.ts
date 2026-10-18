@@ -95,6 +95,12 @@ const enUS = {
 		resizePassageAndMediaA11y: "Resize passage and media panels",
 		resizePassageAndQuestionA11y: "Resize passage and question panels",
 		passageWidthA11y: "{percent}% passage width",
+		/**
+		 * The section player's navigation live region, announced when the active
+		 * item changes; `{label}` is the item's own label when it has one.
+		 */
+		questionPositionA11y: "Question {position} of {total}",
+		questionPositionLabeledA11y: "{label}, question {position} of {total}",
 
 		/**
 		 * The assessment player's own section-to-section navigation. Its Back and

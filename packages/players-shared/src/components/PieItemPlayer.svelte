@@ -1379,7 +1379,13 @@
   });
 </script>
 
-<div class={rootClassFinal} style={rootStyle} bind:this={rootElement}>
+<div
+  class={rootClassFinal}
+  style={rootStyle}
+  lang={messages.getLocale()}
+  dir={messages.getDirection?.() ?? "ltr"}
+  bind:this={rootElement}
+>
   {#if runtimePlayerError}
     <div
       class="pie-player-error"

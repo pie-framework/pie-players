@@ -329,10 +329,49 @@ states the rule as capability tiered by packaging shape, coverage not.
 for a PNP-driven interface locale, and no live installation's PNP record carries
 one, so the host-policy mapping is designed rather than exercised. The generated
 tier is machine output awaiting native review, which its manifests state and its
-freshness gate keeps honest. And localization toolchains catch truncation,
-concatenation and bidi breakage with a pseudo-locale before any reviewer sees a
-string; the gates here check parity, not rendered geometry, and that practice is
-the one to add.
+freshness gate keeps honest. And the gates check parity, not rendered geometry,
+which [Pseudo-localization](#pseudo-localization) covers.
+
+### Pseudo-localization
+
+Review catches what a parity gate cannot: clipped labels, strings glued together
+in code, text that was never catalog text, and a layout that only breaks when
+text grows or runs right to left. Localization toolchains answer that with a
+pseudo-locale before any reviewer sees a real string — Windows ships `qps-ploc`
+and `qps-plocm`, Android `en-XA` and `ar-XB` — and `pseudoLocalize` in
+`players-shared` produces the PIE equivalent from the English catalog at runtime:
+every string accented, bracketed and padded roughly 40% longer, with every key,
+plural category and `{placeholder}` untouched. It registers through
+`customMessages`, so it renders in any build shape; nothing ships it.
+
+`en-XA` exercises expansion and externalization — anything still reading plain
+English was never catalog text. `ar-XB` needs no Arabic: its primary subtag
+resolves RTL through `localeDirection`, so an English reader watches the chrome
+lay out right to left.
+
+```ts
+import {
+	createPieI18n,
+	loadBundledCatalog,
+	PSEUDO_LOCALE_EXPANDED,
+	PSEUDO_LOCALE_RTL,
+	pseudoLocalize,
+} from "@pie-players/pie-players-shared/i18n";
+
+export async function pseudoLocalizedProvider() {
+	const pseudo = pseudoLocalize(await loadBundledCatalog("en-US"));
+	return createPieI18n({
+		locale: PSEUDO_LOCALE_EXPANDED,
+		customMessages: { [PSEUDO_LOCALE_EXPANDED]: pseudo, [PSEUDO_LOCALE_RTL]: pseudo },
+	});
+}
+```
+
+Wiring it into the demo switcher waits on the same seam the generated tier
+needs: the toolkit and the reference assembly construct their provider with
+`createPieI18n()` and take no host messages, so a host cannot yet hand either a
+pseudo-locale or a generated catalog to the players' chrome. That seam is the
+next slice of the [rollout](#rollout).
 
 ## Direction
 
@@ -550,6 +589,14 @@ behavior-preserving until a host opts in by supplying a locale.
    - Open: STT recognizer language. The [speech-to-text PRD](../prds/speech-to-text.md)
      proposes `PieDictationInsertDetail.lang`, which would be the first typed
      runtime locale reaching an element; it is designed, not implemented.
+7. **Host-supplied messages and locales.** Not started. The toolkit and the
+   reference assembly construct their provider with `createPieI18n()` and take
+   no host input, so neither the
+   [generated tier](../../packages/pie-i18n-generated/README.md)'s catalogs nor
+   `customMessages` — a pseudo-locale included — reach the players' chrome today.
+   The seam is that README's composition (`availableLocales`, `loadCatalog`,
+   `customMessages`), accepted from the host through one channel, and it decides
+   how a host that installs the generated package switches it on.
 
 ## Open questions
 

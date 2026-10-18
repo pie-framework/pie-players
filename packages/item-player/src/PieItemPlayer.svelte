@@ -237,6 +237,8 @@ The PIE item player: it loads an item's PIE elements under the `iife`, `esm` or 
 		provideSessionCommitContext,
 		resolveSessionCommitContextValue,
 	} from "./session-commit-context.js";
+	import { provideInterfaceLocaleContext } from "./interface-locale-context.js";
+	import type { InterfaceLocaleContextValue } from "@pie-players/pie-context";
 
 	type ItemSession = {
 		id: string;
@@ -1672,6 +1674,42 @@ The PIE item player: it loads an item's PIE elements under the `iife`, `esm` or 
 	$effect(() => {
 		const value = sessionCommitContextValue;
 		untrack(() => sessionCommitContextProvider?.setValue(value));
+	});
+
+	// The interface locale, on the host-neutral channel the elements read
+	// (`interfaceLocaleContext`). A fresh object per version bump, so the
+	// context republishes once a lazily loaded catalog is resident and
+	// `getLocale()` names it.
+	const interfaceLocaleContextValue = $derived.by(
+		(): InterfaceLocaleContextValue => {
+			void interfaceI18nVersion;
+			return {
+				locale: interfaceI18n.getLocale(),
+				direction: interfaceI18n.getDirection?.() ?? "ltr",
+			};
+		},
+	);
+	let interfaceLocaleContextProvider: ReturnType<
+		typeof provideInterfaceLocaleContext
+	> | null = null;
+	$effect(() => {
+		if (!isBrowser) return;
+		const localHost = hostElement;
+		if (!localHost) return;
+		const provider = untrack(() =>
+			provideInterfaceLocaleContext(localHost, interfaceLocaleContextValue),
+		);
+		interfaceLocaleContextProvider = provider;
+		return () => {
+			provider.disconnect();
+			if (interfaceLocaleContextProvider === provider) {
+				interfaceLocaleContextProvider = null;
+			}
+		};
+	});
+	$effect(() => {
+		const value = interfaceLocaleContextValue;
+		untrack(() => interfaceLocaleContextProvider?.setValue(value));
 	});
 
 	function refreshMountedElements(config: ConfigEntity): void {

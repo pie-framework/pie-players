@@ -78,7 +78,12 @@ The toolkit's runtime element: it holds a `ToolkitCoordinator` and provides its 
 <script lang="ts">
 	import { coerceBooleanAttributes } from "@pie-players/pie-players-shared/ui/attribute-coercion";
 	import { untrack } from "svelte";
-	import { ContextProvider, requestContext } from "@pie-players/pie-context";
+	import {
+		ContextProvider,
+		interfaceLocaleContext,
+		requestContext,
+	} from "@pie-players/pie-context";
+	import type { InterfaceLocaleContextValue } from "@pie-players/pie-context";
 	import {
 		attachInstrumentationEventBridge,
 		resolveInstrumentationProvider,
@@ -294,6 +299,9 @@ const DEFAULT_ENV = {
 	let provider: ContextProvider<typeof assessmentToolkitRuntimeContext> | null = null;
 	let hostRuntimeProvider: ContextProvider<
 		typeof assessmentToolkitHostRuntimeContext
+	> | null = null;
+	let interfaceLocaleProvider: ContextProvider<
+		typeof interfaceLocaleContext
 	> | null = null;
 	let compositionVersion = $state(0);
 	let compositionModel = $state<unknown>(null);
@@ -1313,6 +1321,20 @@ const DEFAULT_ENV = {
 			});
 		});
 	});
+	// The same locale on the host-neutral channel the PIE elements inside this
+	// toolkit read, `interfaceLocaleContext`; the runtime context carries the
+	// provider itself, for the tools. A fresh object per version bump, so the
+	// context republishes once a lazily loaded catalog is resident and
+	// `getLocale()` names it.
+	const interfaceLocaleContextValue = $derived.by(
+		(): InterfaceLocaleContextValue => {
+			void interfaceI18nVersion;
+			return {
+				locale: interfaceI18n.getLocale(),
+				direction: interfaceI18n.getDirection?.() ?? "ltr",
+			};
+		},
+	);
 
 	const effectiveAssessmentId = $derived(
 		assessmentId || effectiveCoordinator?.assessmentId || "",
@@ -1989,6 +2011,8 @@ const DEFAULT_ENV = {
 			hostRuntimeProvider = null;
 			provider?.disconnect();
 			provider = null;
+			interfaceLocaleProvider?.disconnect();
+			interfaceLocaleProvider = null;
 		};
 	});
 
@@ -2023,6 +2047,23 @@ const DEFAULT_ENV = {
 				initialValue: value,
 			});
 			provider.connect();
+		});
+	});
+
+	$effect(() => {
+		const currentHost = host;
+		const value = interfaceLocaleContextValue;
+		if (!currentHost) return;
+		untrack(() => {
+			if (interfaceLocaleProvider) {
+				interfaceLocaleProvider.setValue(value);
+				return;
+			}
+			interfaceLocaleProvider = new ContextProvider(currentHost, {
+				context: interfaceLocaleContext,
+				initialValue: value,
+			});
+			interfaceLocaleProvider.connect();
 		});
 	});
 

@@ -18,6 +18,7 @@ import {
 import {
 	createPieI18n,
 	DEFAULT_LOCALE,
+	stampInterfaceLocale,
 } from "@pie-players/pie-players-shared/i18n";
 import type {
 	I18nProvider,
@@ -332,12 +333,13 @@ export class AssessmentPlayerDefaultElement
 		// The `locale` attribute is the only locale driver. With none set, a
 		// provider built here resolves `en-US`; one the host supplied through
 		// `sectionPlayerRuntime.i18n` keeps the locale its owner gave it.
-		if (!this.locale && provider !== this.ownedI18n) {
-			this.forwardLocaleToSection();
-			return;
+		if (this.locale || provider === this.ownedI18n) {
+			void provider.setLocale(this.locale || DEFAULT_LOCALE);
 		}
-		void provider.setLocale(this.locale || DEFAULT_LOCALE);
 		this.forwardLocaleToSection();
+		// Names the locale the provider holds now; the subscription restamps
+		// once a requested catalog is resident.
+		stampInterfaceLocale(this, provider);
 	}
 
 	/**
@@ -1069,6 +1071,7 @@ export class AssessmentPlayerDefaultElement
 
 	/** Locale and chrome changes must not remount a section or reload its attempt. */
 	private updateNavigationChrome(): void {
+		stampInterfaceLocale(this, this.i18n);
 		const navigation = this.selectNavigation();
 		const position = navigation.totalSections > 0
 			? this.i18n.t("player.assessment.sectionPosition", {

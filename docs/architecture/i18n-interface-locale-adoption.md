@@ -144,6 +144,30 @@ works inside an LTR page and two players on one page can differ. `direction`
 derives from `Intl.Locale.prototype.textInfo`, with an RTL primary-subtag set as
 fallback.
 
+Where a stamp sits follows from how `lang` resolves: along the node tree, to the
+parent element or, for a shadow root's child, to the host. A stamp inside a
+shadow tree never reaches slotted content, so the toolkit element, whose shadow
+tree is an anchor and a `<slot>`, stamps its host. In the section player the
+chrome is not even slotted into the toolkit: the toolkit sits in
+`pie-section-player-base`'s shadow tree while the shell, with every pane, card
+and item player, is the base's light-DOM child, so the shell stamps its own
+host, the one element that is a light-tree ancestor of all of it and of the
+toolbar in its shadow tree. The navigation live region beside the base stamps
+itself and resolves the provider through the shell element, because a request
+from the base host bubbles past the toolkit. A tool shell at `document.body`
+stamps itself in the update that re-reads its labels. `stampInterfaceLocale`
+in `players-shared` is the imperative form, for a host element, a shell and a
+vanilla element; a template puts the pair on its root.
+
+A content root is a different matter. `pie-item-player`'s root carries the
+interface locale as the rest of the chrome does, and the PIE content inside it
+inherits that until something nearer names the content's own language: markup
+`lang`/`dir`, an element stamping `model.language`, or the content-language
+stamp that slice 2 of [`internationalization.md`](./internationalization.md#rollout)
+adds on the content subtree. Until then an interface locale that differs from
+the content's language is a claim about content that names none, which is why
+content whose language differs from the chrome's names it in its own markup.
+
 **Tool display names gain key fields; the required strings stay.**
 `ToolRegistration.name` and `.description` are host-facing required API, and
 `check:capability-neutrality` forbids core from naming a capability id. Optional
@@ -245,7 +269,19 @@ constructs the provider with `createPieI18n()` and publishes it on the
 [For a component in this repository](../../packages/players-shared/src/i18n/README.md#for-a-component-in-this-repository)
 gives the snippet. The `$derived` read is load-bearing: a plain
 `const label = i18n.t(…)` reads once and never updates when the locale moves, the
-same class of failure as a composition context without a change signal.
+same class of failure as a composition context without a change signal. The
+same failure hides in a `$derived` that returns the provider itself: its
+identity does not move when its catalog does, and runes-mode `$derived` does
+not re-run readers of a value that compares equal, so a reader pins whatever
+rendered before the load. `resolveInterfaceI18n` returns a fresh facade per
+call for exactly that reason, and the item player's `interfaceMessages` went
+through it on 2026-10-18 after rendering the provider directly.
+
+`scan-hardcoded` reads template text and static attributes, not a template
+literal in script. The navigation live region's `Question N of M` was built
+that way and stayed English under every locale until the region got its stamp
+on 2026-10-18; a string assembled in script is keyed by reading the call site,
+not by waiting for the scanner.
 
 The closed `MessageKey` union catches an undefined key in a component only where
 `svelte-check` runs, so a package carrying `.svelte` files needs a `check` script

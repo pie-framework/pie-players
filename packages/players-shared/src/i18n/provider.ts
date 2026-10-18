@@ -558,3 +558,22 @@ export function resolveInterfaceI18n(
 		subscribe: (listener) => provider.subscribe?.(listener) ?? (() => {}),
 	};
 }
+
+/**
+ * Stamp the interface locale's `lang` and `dir` on a chrome element.
+ *
+ * The imperative form of the `lang={…} dir={…}` pair a template puts on its
+ * root, for the elements a template cannot reach: a shadow host whose chrome
+ * is slotted light DOM, a shell built with `document.createElement`, a vanilla
+ * element stamping itself. Call it from whatever already re-runs on a locale
+ * change and on a catalog load: `getLocale()` moves only once the requested
+ * catalog is resident, so a stamp taken at setup alone names the locale that
+ * rendered before the load.
+ */
+export function stampInterfaceLocale(
+	target: Element,
+	provider: Pick<I18nProvider, "getLocale" | "getDirection">,
+): void {
+	target.setAttribute("lang", provider.getLocale());
+	target.setAttribute("dir", provider.getDirection?.() ?? "ltr");
+}

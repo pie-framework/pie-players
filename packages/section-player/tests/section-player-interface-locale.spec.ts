@@ -278,6 +278,50 @@ test.describe("section player interface locale", () => {
 		}
 	});
 
+	test("the chrome stamps the interface locale's lang and dir on its own subtree", async ({
+		page,
+	}) => {
+		// `lang` resolves along the light tree and `direction` inherits through
+		// it, so the stamp sits on the shell host — the light-tree ancestor of
+		// every pane, card and item player — with the toolkit host, the
+		// navigation live region beside it, and each item player carrying their
+		// own. The document root is never touched: an embedded player has no
+		// business writing it. `ar-XB` makes the `dir` half observable without
+		// an Arabic catalog.
+		await page.setViewportSize(WIDE);
+		await page.goto("/interface-locale?locale=ar-XB", {
+			waitUntil: "networkidle",
+		});
+
+		const shell = page.locator("pie-section-player-shell");
+		await expect(shell).toHaveAttribute("lang", "ar-XB");
+		await expect(shell).toHaveAttribute("dir", "rtl");
+		await expect(page.locator("pie-assessment-toolkit")).toHaveAttribute(
+			"dir",
+			"rtl",
+		);
+		const navStatus = page.locator(".pie-section-player-nav-status");
+		await expect(navStatus).toHaveAttribute("lang", "ar-XB");
+		await expect(navStatus).toHaveAttribute("dir", "rtl");
+		const itemPlayerRoot = page.locator("pie-item-player > .pie-item-player");
+		await expect(itemPlayerRoot.first()).toHaveAttribute("lang", "ar-XB");
+		await expect(itemPlayerRoot.first()).toHaveAttribute("dir", "rtl");
+		await expect(
+			page.locator("pie-item-toolbar .item-toolbar").first(),
+		).toHaveAttribute("dir", "rtl");
+		const root = page.locator("html");
+		await expect(root).not.toHaveAttribute("dir");
+		const rootLang = await root.getAttribute("lang");
+
+		// A live locale switch moves the stamps with the provider.
+		await page.getByTestId("demo-locale-select").selectOption("nl-NL");
+		await expect(shell).toHaveAttribute("lang", "nl-NL");
+		await expect(shell).toHaveAttribute("dir", "ltr");
+		await expect(navStatus).toHaveAttribute("lang", "nl-NL");
+		await expect(root).not.toHaveAttribute("dir");
+		expect(await root.getAttribute("lang")).toBe(rootLang);
+	});
+
 	test("a stale locale param is inert on a demo that supplies no locale", async ({
 		page,
 	}) => {

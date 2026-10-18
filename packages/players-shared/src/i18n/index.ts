@@ -54,6 +54,7 @@ export {
 	localeDirection,
 	resolveInterfaceI18n,
 	SimpleI18n,
+	stampInterfaceLocale,
 } from "./provider.js";
 export {
 	PSEUDO_LOCALE_EXPANDED,

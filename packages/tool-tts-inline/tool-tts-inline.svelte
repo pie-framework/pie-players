@@ -1096,6 +1096,8 @@ the runtime context supplies a TTS service.
 		class:pie-tool-tts-inline--controls-row={isControlsRowLayout}
 		class:pie-tool-tts-inline--floating={isFloatingLayout}
 		class:pie-tool-tts-inline--left-aligned={isLeftAlignedFloatingLayout}
+		lang={interfaceI18n.getLocale()}
+		dir={interfaceI18n.getDirection?.() ?? 'ltr'}
 	>
 		{#snippet triggerButton()}
 			<span class="pie-tool-tts-inline__trigger-zoom">

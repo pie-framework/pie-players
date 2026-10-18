@@ -131,7 +131,7 @@ are clamped to their range.
 | `sectionHostButtons`, `itemHostButtons`, `passageHostButtons` | property | — | Host buttons appended to the section, item and passage toolbars |
 | `section-id` | attribute | `section.identifier`, then `section-<assessmentId>` | The section's id for its controller and persistence |
 | `attempt-id` | attribute | — | The attempt the session belongs to. Without one the default persistence neither reads nor writes |
-| `locale` | attribute | `en-US` | BCP-47 locale of the player's own interface text. It never sets `runtime.contentLanguage` |
+| `locale` | attribute | `en-US` | BCP-47 locale of the player's own interface text; the chrome stamps `lang` and `dir` from it on its own subtree, never on the document. It never sets `runtime.contentLanguage` |
 | `base-heading-level` | attribute | `2` (1–6) | The level of the card headings, from which every descendant's outline derives ([Heading structure](#heading-structure)) |
 | `show-toolbar` | attribute | `false` | Renders the section toolbar, which section-level tools need. Accepts `true`/`false`, `1`/`0` and `yes`/`no` |
 | `toolbar-position` | attribute | `right` | `top`, `right`, `bottom`, `left` or `none` |

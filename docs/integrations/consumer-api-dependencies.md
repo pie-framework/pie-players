@@ -694,6 +694,26 @@ provides or consumes a `pie.*` context of its own, so no listed host is
 affected. The key is now a cross-repository contract: it is not renamed, and
 the value only grows.
 
+On 2026-10-18 the chrome began stamping `lang` and `dir` from the interface
+locale. The elements write both attributes on nodes of their own and on nothing
+else: `pie-assessment-toolkit`, `pie-section-player-shell` and the reference
+`pie-assessment-player` write them on their host element; `pie-item-player`
+writes them on its root `.pie-item-player` div, `pie-item-toolbar` on its
+shadow-tree root, and the `document.body` tool shells, the section's
+navigation live region, the debug panels and the inline tools on their own
+roots. The document root is never written. With no `locale` supplied the
+values are `en-US` / `ltr`, which is the English chrome every host renders
+today, so the only observable change for a host that opts into nothing is the
+presence of the two attributes. Two things a host could have that this would
+collide with: setting `lang` or `dir` on one of those elements itself (the
+element's own stamp now wins on every locale change and catalog load), and a
+stylesheet keyed on `[dir]` or `:dir()` against them. The targeted search of
+the consumer checkouts for either was **not run** — no checkout map was
+present when this landed — so this paragraph records the surface, not a
+verified absence; run it per the maintenance doc before relying on that.
+`@pie-players/pie-players-shared/i18n` also gained `stampInterfaceLocale`,
+additive.
+
 On 2026-10-08 tools went to one channel and one provider namespace. Tool
 elements dropped the service and provider-id properties they took beside the
 runtime context: `toolkitCoordinator` and `providerId` / `provider-id` on the

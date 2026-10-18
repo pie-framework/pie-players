@@ -1,6 +1,6 @@
 # Host-Supplied Interface Locale Provider
 
-Status: Draft, 2026-10-18
+Status: Ready, 2026-10-18
 
 Owner: PIE Players maintainers
 

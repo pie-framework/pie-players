@@ -588,6 +588,16 @@
 						},
 						{
 							"kind": "field",
+							"name": "i18n",
+							"type": {
+								"text": "I18nProvider | null"
+							},
+							"default": "null",
+							"description": "The interface-locale provider a host composes, published onto the runtime context in place of the one built here: the generated locale tier, host messages, or a provider of the host's own. JS-only, since it carries loaders. `locale` above still names the locale; a supplied provider is driven only by it.",
+							"attribute": "i18n"
+						},
+						{
+							"kind": "field",
 							"name": "contentLanguage",
 							"type": {
 								"text": "string"
@@ -881,6 +891,15 @@
 							"default": "\"\"",
 							"description": "Interface locale, published onto the runtime context so every tool resolves the same provider. `type: \"String\"` because hosts pass attribute values as strings and a BCP-47 tag is one; POSIX (`nl_NL`) and bare (`nl`) forms both resolve.",
 							"fieldName": "locale"
+						},
+						{
+							"name": "i18n",
+							"type": {
+								"text": "I18nProvider | null"
+							},
+							"default": "null",
+							"description": "The interface-locale provider a host composes, published onto the runtime context in place of the one built here: the generated locale tier, host messages, or a provider of the host's own. JS-only, since it carries loaders. `locale` above still names the locale; a supplied provider is driven only by it.",
+							"fieldName": "i18n"
 						},
 						{
 							"name": "content-language",

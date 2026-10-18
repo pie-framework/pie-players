@@ -1,6 +1,5 @@
 import { goto } from "$app/navigation";
 import { page } from "$app/state";
-import { BUNDLED_LOCALES } from "@pie-players/pie-players-shared/i18n";
 
 /**
  * Interface locale for the `interface-locale` demo, held in the `locale` search
@@ -37,5 +36,5 @@ export function setDemoLocale(locale: string): void {
 	void goto(url, { replace: true, reset: false });
 }
 
-/** The locales the players ship a catalog for. */
-export const DEMO_LOCALES = BUNDLED_LOCALES;
+/** The locales the switcher offers: bundled, generated, and the pseudo-locales. */
+export { DEMO_INTERFACE_LOCALES as DEMO_LOCALES } from "./demo-runtime/demo-interface-i18n.js";

@@ -64,7 +64,11 @@ Passages pane of a section player: renders the passage cards of the current sect
 	const compositionModel = $derived(layout?.compositionModel ?? null);
 
 	let loadingCard = $state<HTMLDivElement | null>(null);
-	const interfaceI18n = useInterfaceI18n(() => loadingCard);
+	// Requested from the pane's own host rather than the loading card: the card
+	// unmounts once the elements load, which would drop the connection, and the
+	// provider the toolkit publishes is needed for as long as passages render —
+	// it forwards to each passage player through its params.
+	const interfaceI18n = useInterfaceI18n(() => paneHost);
 
 	// The stimulus is the section's time source, so it renders first. Ordering only:
 	// pinning it in place needs `scroll-padding-top` on a scroll container this
@@ -114,6 +118,7 @@ Passages pane of a section player: renders the passage cards of the current sect
 					resolvedPlayerProps,
 					playerStrategy,
 					baseHeadingLevel,
+					i18n: interfaceI18n.source,
 				})}
 				passageToolbarTools={passageToolbarTools}
 				{toolRegistry}

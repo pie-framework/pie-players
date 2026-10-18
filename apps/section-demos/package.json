@@ -29,6 +29,7 @@
 		"@pie-players/pie-calculator-geogebra": "workspace:*",
 		"@pie-players/pie-context": "workspace:*",
 		"@pie-players/pie-default-tool-loaders": "workspace:*",
+		"@pie-players/pie-i18n-generated": "workspace:*",
 		"@pie-players/pie-item-player": "workspace:*",
 		"@pie-players/pie-players-shared": "workspace:*",
 		"@pie-players/pie-print-player": "workspace:*",

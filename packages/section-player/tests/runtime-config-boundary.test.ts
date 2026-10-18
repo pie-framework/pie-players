@@ -50,6 +50,7 @@ const RUNTIME_CONFIG_KEYS_SENTINEL: Record<keyof RuntimeConfig, true> = {
 	isolation: true,
 	env: true,
 	contentLanguage: true,
+	i18n: true,
 	onFrameworkError: true,
 	onStageChange: true,
 	onLoadingComplete: true,

@@ -34,6 +34,7 @@
 		PLAYER_OPTIONS
 	} from '#lib/demo-runtime/demo-page-helpers.js';
 	import { withDemoLoaderOptions } from '#lib/demo-runtime/demo-player-config.js';
+	import { createDemoInterfaceI18n } from '#lib/demo-runtime/demo-interface-i18n.js';
 	import { SECTION_DEMOS_DEFAULT_TTS_TOOL_PROVIDER } from '#lib/demo-runtime/section-demos-default-tts.js';
 	import {
 		createSectionDemoToolRegistry,
@@ -42,6 +43,7 @@
 	import { preloadSectionElements } from '#lib/demo-runtime/preload-utils.js';
 	import { createItemDataCalculatorIntegration } from '#lib/demo-runtime/item-data-calculator-tools.js';
 	import type { DemoRouteData } from '#lib/content/demo-load.js';
+	import type { I18nServiceApi } from '@pie-players/pie-players-shared/i18n';
 
 	let {
 		data,
@@ -79,9 +81,33 @@
 			settings?: Record<string, unknown>;
 		};
 	} = $props();
-	// Empty rather than a default tag: unset is what a host most often sends, and
-	// the players resolve it to `en-US` without consulting the browser.
-	const playerLocale = $derived(localeSwitcher ? demoLocale() : '');
+	// The `locale` the player is driven by. For the switcher demo the provider is
+	// always supplied through `runtime.i18n`, and a supplied provider is driven
+	// only by the attribute — so "no choice" names `en-US` explicitly rather than
+	// unset, which would leave the provider at whichever locale it last held.
+	// Every other demo passes neither a provider nor a locale: unset is what a
+	// host most often sends, and the players resolve it to `en-US` without
+	// consulting the browser.
+	const playerLocale = $derived(
+		localeSwitcher ? (demoLocale() || 'en-US') : ''
+	);
+	// The provider behind the switcher, handed to the player through
+	// `runtime.i18n`: bundled catalogs first, the generated tier behind them, and
+	// the pseudo-locales as host messages. Built once, asynchronously, because
+	// the pseudo-localized catalog derives from the bundled English one. Until it
+	// is resident the player builds its own, which renders the same English.
+	let demoInterfaceI18n = $state<I18nServiceApi | null>(null);
+	$effect(() => {
+		if (!localeSwitcher || demoInterfaceI18n) return;
+		void createDemoInterfaceI18n()
+			.then((provider) => {
+				demoInterfaceI18n = provider;
+			})
+			.catch(() => {});
+	});
+	const runtimeI18n = $derived(
+		localeSwitcher ? (demoInterfaceI18n ?? undefined) : undefined
+	);
 	const demoRuntimeId = untrack(() => data.demo?.id ?? 'section-demo');
 	const itemDataCalculatorEnabled = untrack(
 		() =>
@@ -428,7 +454,8 @@
 					tools: toolkitToolsConfig,
 					player: sectionPlayerConfig,
 					env: pieEnv,
-					coordinator: coordinator
+					coordinator: coordinator,
+					i18n: runtimeI18n
 				} }
 				section={resolvedSectionForPlayer}
 				{toolRegistry}
@@ -448,7 +475,8 @@
 					tools: toolkitToolsConfig,
 					player: sectionPlayerConfig,
 					env: pieEnv,
-					coordinator: coordinator
+					coordinator: coordinator,
+					i18n: runtimeI18n
 				} }
 				section={resolvedSectionForPlayer}
 				{toolRegistry}

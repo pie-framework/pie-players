@@ -46,6 +46,12 @@
 			// nothing keeps exactly the chrome it has today. Distinct from the
 			// authored content's language, which the item declares.
 			locale: { attribute: "locale", type: "String" },
+			// The interface-locale provider a host or a container supplies, used in
+			// place of the one built here: a host's composition for a standalone
+			// player, the section's provider for the item players a section mounts.
+			// JS-only, since it carries loaders. `locale` above still names the
+			// locale; a supplied provider is driven only by it.
+			i18n: { type: "Object", reflect: false },
 			loaderConfig: { attribute: "loader-config", type: "Object" },
 			strategy: { attribute: "strategy", type: "String" },
 			mode: { attribute: "mode", type: "String" },
@@ -214,6 +220,7 @@ The PIE item player: it loads an item's PIE elements under the `iife`, `esm` or 
 		createPieI18n,
 		DEFAULT_LOCALE,
 	} from "@pie-players/pie-players-shared/i18n";
+	import type { I18nProvider } from "@pie-players/pie-players-shared/i18n";
 	import { onDestroy, tick, untrack } from "svelte";
 	import { isPlainRecord } from "@pie-players/pie-players-shared/object";
 	// The shared content stylesheet is NOT imported here. In this package's
@@ -271,6 +278,7 @@ The PIE item player: it loads an item's PIE elements under the `iife`, `esm` or 
 		idleSaveDelayMs = undefined as number | undefined,
 		baseHeadingLevel = undefined as 1 | 2 | 3 | 4 | 5 | 6 | undefined,
 		locale = "",
+		i18n = null as I18nProvider | null,
 		includeSrHeading = true,
 		loaderConfig = DEFAULT_LOADER_CONFIG as LoaderConfig,
 		strategy = undefined as "iife" | "esm" | "preloaded" | undefined,
@@ -885,28 +893,40 @@ The PIE item player: it loads an item's PIE elements under the `iife`, `esm` or 
 	}
 
 	/**
-	 * Interface locale for this player's own UI. Owned here rather than resolved from
-	 * a context: an item player is often the outermost element on the page, with no
-	 * toolkit above it to publish one.
+	 * Interface locale for this player's own UI. Built here because an item
+	 * player is often the outermost element on the page, with no toolkit above it
+	 * to publish one; the `i18n` property takes a provider instead — a host's
+	 * composition for a standalone player, the section's provider for the item
+	 * players a section mounts.
 	 *
 	 * The version counter is the change signal. `setLocale` resolves a dynamic
 	 * import, so a locale set at first paint lands a tick later; without a read of
-	 * the counter every label would pin the English it first rendered.
+	 * the counter every label would pin the English it first rendered. Keyed on
+	 * the provider, so a swap of the property resubscribes; `subscribe` is
+	 * optional on the contract, and a provider without one has no change signal
+	 * of its own.
 	 */
-	const interfaceI18n = createPieI18n();
+	const ownedInterfaceI18n = createPieI18n();
+	const interfaceI18n = $derived(i18n ?? ownedInterfaceI18n);
 	let interfaceI18nVersion = $state(0);
-	$effect(() =>
-		interfaceI18n.subscribe(() => {
+	$effect(() => {
+		const provider = interfaceI18n;
+		return provider.subscribe?.(() => {
 			interfaceI18nVersion += 1;
-		}),
-	);
+		});
+	});
 	$effect(() => {
 		const requested = typeof locale === "string" ? locale.trim() : "";
+		const provider = interfaceI18n;
+		// The `locale` attribute is the only locale driver. With none set, a
+		// provider built here resolves `en-US`; one that was supplied keeps the
+		// locale its owner set — the section's shared provider, above all.
+		if (!requested && provider !== ownedInterfaceI18n) return;
 		untrack(() => {
 			// A failed catalog load must not take the player down: every key still
 			// resolves through the English fallback chain.
 			void Promise.resolve(
-				interfaceI18n.setLocale(requested || DEFAULT_LOCALE),
+				provider.setLocale(requested || DEFAULT_LOCALE),
 			).catch(() => {});
 		});
 	});

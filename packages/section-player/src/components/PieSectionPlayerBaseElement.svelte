@@ -145,6 +145,10 @@ Section player core that renders `<pie-assessment-toolkit>` for its `runtime`, `
 	const effectiveContentLanguage = $derived.by(
 		() => runtime?.contentLanguage || undefined,
 	);
+	// The interface-locale provider a host supplies through `runtime.i18n`,
+	// forwarded to the toolkit the way `toolContextResolvers` is. Undefined
+	// means the toolkit builds its own, as it always has.
+	const effectiveI18n = $derived(runtime?.i18n ?? null);
 	// Interface locale for the section-overlay surfaces this element mounts.
 	//
 	// Resolved from the toolkit's runtime context rather than from a second
@@ -438,6 +442,7 @@ Section player core that renders `<pie-assessment-toolkit>` for its `runtime`, `
 	nds-icons={effectiveNdsIcons}
 	locale={effectiveLocale}
 	content-language={effectiveContentLanguage}
+	i18n={effectiveI18n}
 	lazy-init={effectiveLazyInit}
 	tool-config-strictness={effectiveToolConfigStrictness}
 	tools={effectiveTools}

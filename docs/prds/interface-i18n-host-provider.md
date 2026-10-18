@@ -1,6 +1,6 @@
 # Host-Supplied Interface Locale Provider
 
-Status: Ready, 2026-10-18
+Status: Accepted, 2026-10-18
 
 Owner: PIE Players maintainers
 
@@ -115,7 +115,6 @@ right thing to forward is the provider.
 ## Contract Shape
 
 ```ts
-// Documentation sketch only.
 import type { I18nProvider } from "@pie-players/pie-players-shared/i18n";
 
 // @pie-players/pie-assessment-toolkit/runtime/engine
@@ -125,7 +124,8 @@ export type RuntimeConfig = {
 	 * The interface-locale provider the toolkit publishes on its runtime
 	 * context, in place of the one it would construct: the catalogs it can
 	 * serve, their loaders, and any host messages. `locale` on the element
-	 * still names the locale.
+	 * still names the locale; a provider given with none set keeps the locale
+	 * its owner gave it.
 	 */
 	i18n?: I18nProvider;
 };
@@ -228,7 +228,7 @@ object properties with `reflect: false`, beside `toolContextResolvers`.
 | Site | Today | After |
 | --- | --- | --- |
 | `PieAssessmentToolkit.svelte` | `createPieI18n()` | `i18n ?? createPieI18n()`, driven by `locale` per rule 2 |
-| `PieItemPlayer.svelte` (`item-player`) | `createPieI18n()` | `i18n ?? createPieI18n()`; the renderer already takes the player's provider through its `i18n` prop, and `ItemSessionDebugger` does the same instead of constructing a third |
+| `PieItemPlayer.svelte` (`item-player`) | `createPieI18n()` | `i18n ?? createPieI18n()`; the renderer already takes the player's provider through its `i18n` prop, and `ItemSessionDebugger` takes one through the same prop instead of being hardwired to its own |
 | `AssessmentPlayerDefaultElement.ts` | `createPieI18n()` | `sectionPlayerRuntime?.i18n ?? createPieI18n()`; the runtime passes through to the section player unchanged |
 | `PieSectionPlayerBaseElement.svelte` | resolves the toolkit's context | unchanged; forwards `runtime.i18n` to the toolkit's `i18n` |
 
@@ -259,6 +259,13 @@ object properties with `reflect: false`, beside `toolContextResolvers`.
 - **Extending `BUNDLED_LOCALES`** in the core. That is the bundle-size trade the
   generated tier was created to avoid, and it is not a seam for host messages
   at all.
+- **A readable property exposing the toolkit's active provider.** A host that
+  wants runtime overrides supplies the provider and keeps the reference; the
+  getter earns nothing until a host asks for one.
+- **An eager catalog load in `createPieI18n({ locale })`.** It would move the
+  locale tag before the strings — `getLocale()` ahead of a catalog still in
+  flight — and swallow the load error the attribute path reports as a
+  recoverable framework error. The attribute names the locale and does both.
 
 ## Compatibility
 
@@ -406,14 +413,7 @@ run outside the sandbox; see
 
 ## Open Questions
 
-- Should `createPieI18n({ locale })` start loading that locale's catalog, so a
-  host-constructed provider is never a tag without its strings? Today it names
-  the locale and `initialize` or `setLocale` loads it; rule 2's recommended
-  pattern sidesteps the question by putting the locale on the attribute.
 - Should `pie-print` take the same `i18n` property? Its labels (the
   accessibility-alternates headings) resolve the English default today, and it
-  has no `locale` attribute either; both would come together.
-- Should the toolkit expose its active provider as a readable property, so a
-  host that supplied nothing can still call `addCustomMessages` at runtime? A
-  host that wants runtime overrides can supply the provider and keep the
-  reference; leaving the getter out keeps the surface lean until a host asks.
+  has no `locale` attribute either; both would come together, and print's
+  language story mostly *is* content language, which is rollout item 2.

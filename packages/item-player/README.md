@@ -212,6 +212,11 @@ item.
   hidden heading. Reflected.
 - `locale`: `String`, default `""` (renders `en-US`). BCP 47 interface locale
   for the player's own UI. The item's content language is separate.
+- `i18n`: `I18nProvider`, optional. A provider the host composed — the
+  generated locale tier, host messages, or the host's own — used in place of
+  the one the player builds. `locale` still names the locale, and a supplied
+  provider is driven only by it
+  ([Interface i18n](../players-shared/src/i18n/README.md#for-a-host)).
 - `debug`: `String`, default `""`. Any value other than `"false"` (any case),
   `"0"` or the empty string turns on the player's debug logging. The player
   writes the result to `window.PIE_DEBUG`, the flag the page's other PIE loggers

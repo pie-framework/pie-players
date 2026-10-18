@@ -23,6 +23,7 @@
  */
 
 import type { LoaderConfig } from "@pie-players/pie-players-shared/loader-config";
+import type { I18nProvider } from "@pie-players/pie-players-shared/i18n";
 import type {
 	LoadingCompleteDetail,
 	StageChangeDetail,
@@ -82,6 +83,14 @@ export type RuntimeConfig = {
 	 * Unset reads as `en-US` wherever the markup names no language.
 	 */
 	contentLanguage?: string;
+	/**
+	 * The interface-locale provider the toolkit publishes on its runtime
+	 * context, in place of the one it would construct: the catalogs it can
+	 * serve, their loaders, and any host messages. `locale` on the element
+	 * still names the locale; a provider given with none set keeps the locale
+	 * its owner gave it.
+	 */
+	i18n?: I18nProvider;
 
 	onFrameworkError?: FrameworkErrorHandler;
 	/** Called with each `pie-stage-change` detail. */

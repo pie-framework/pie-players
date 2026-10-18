@@ -103,6 +103,82 @@ describe("section player view state", () => {
 		expect(params.props?.idleSaveDelayMs).toBe(0);
 	});
 
+	test("forwards the section's interface provider into the item player's props", async () => {
+		// A nested item player's own chrome — its error states and the
+		// resize-handle labels — follows the section's locale and messages
+		// through the provider the toolkit publishes, instead of the third
+		// English provider it would otherwise build.
+		const { getItemPlayerParams } = await loadViewStateModule();
+		const provider = { getLocale: () => "nl-NL" } as any;
+		const params = getItemPlayerParams({
+			item: { id: "item-1", config: {} } as any,
+			compositionModel: {
+				itemSessions: {},
+				itemViewModels: [],
+			} as any,
+			resolvedPlayerEnv: {},
+			resolvedPlayerAttributes: {},
+			resolvedPlayerProps: {},
+			playerStrategy: "iife",
+			i18n: provider,
+		});
+
+		expect(params.props?.i18n).toBe(provider);
+	});
+
+	test("a host prop of the same name overrides the composition's provider", async () => {
+		const { getItemPlayerParams } = await loadViewStateModule();
+		const composed = { getLocale: () => "nl-NL" } as any;
+		const host = { getLocale: () => "en-XA" } as any;
+		const params = getItemPlayerParams({
+			item: { id: "item-1", config: {} } as any,
+			compositionModel: {
+				itemSessions: {},
+				itemViewModels: [],
+			} as any,
+			resolvedPlayerEnv: {},
+			resolvedPlayerAttributes: {},
+			resolvedPlayerProps: { i18n: host },
+			playerStrategy: "iife",
+			i18n: composed,
+		});
+
+		expect(params.props?.i18n).toBe(host);
+	});
+
+	test("omits the provider prop when the section resolves none", async () => {
+		const { getItemPlayerParams } = await loadViewStateModule();
+		const params = getItemPlayerParams({
+			item: { id: "item-1", config: {} } as any,
+			compositionModel: {
+				itemSessions: {},
+				itemViewModels: [],
+			} as any,
+			resolvedPlayerEnv: {},
+			resolvedPlayerAttributes: {},
+			resolvedPlayerProps: {},
+			playerStrategy: "iife",
+			i18n: null,
+		});
+
+		expect(params.props?.i18n).toBeUndefined();
+	});
+
+	test("forwards the interface provider to passage players too", async () => {
+		const { getPassagePlayerParams } = await loadViewStateModule();
+		const provider = { getLocale: () => "th-TH" } as any;
+		const params = getPassagePlayerParams({
+			passage: { config: {} } as any,
+			resolvedPlayerEnv: {},
+			resolvedPlayerAttributes: {},
+			resolvedPlayerProps: {},
+			playerStrategy: "esm",
+			i18n: provider,
+		});
+
+		expect(params.props?.i18n).toBe(provider);
+	});
+
 	test("derives concrete backend delivery identity for embedded items", async () => {
 		const { getItemPlayerParams } = await loadViewStateModule();
 		const params = getItemPlayerParams({

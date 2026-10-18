@@ -188,6 +188,7 @@ clamping, so a section with passages is never narrower than one without.
 | `player` | — | Item player settings: `hosted`, `loaderOptions`, `loaderConfig`, `backend` and `resolveBackend` ([Backend delivery](#backend-delivery-for-embedded-items)). Every other field is passed to each embedded item player as a property |
 | `env` | `{ mode: "gather", role: "student" }` | The section env every item renders in |
 | `contentLanguage` | `en-US` | BCP-47 language of content whose markup names none; read-aloud speaks in it and catalog cards are picked by it. A `lang` between the content and its card wins |
+| `i18n` | — | The interface-locale provider — the bundled catalogs, the generated tier, host messages, or a provider of the host's own — the toolkit publishes for every tool, card and item player below. The `locale` attribute still names the locale, and a supplied provider is driven only by it ([Interface i18n](../players-shared/src/i18n/README.md#for-a-host)) |
 | `tools` | — | Tool placement, providers and policy ([Tools](#tools)) |
 | `toolContextResolvers` | — | Per-tool resolvers that run after the policy gates: they can hide a tool that survived them or attach render parameters, and cannot re-enable a removed one |
 | `accessibility` | — | `{ catalogs, language }`: accessibility catalogs and their language |

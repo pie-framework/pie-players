@@ -665,6 +665,24 @@ published with no call sites anywhere, which is what made replacing it rather
 than versioning it the right move. No host passes `locale` to a `pie-*` element
 either.
 
+The interface-locale provider seam landed on 2026-10-18 as three additive
+surfaces: an optional `i18n` key on the section-player `runtime` object
+(Hosts A, R, C and S build one; none carries the key), an optional `i18n` JS
+property on `pie-assessment-toolkit` and `pie-item-player` (no host mounts the
+toolkit element — Host A declares that package but its source imports only the
+splitpane layout — and the item-player property names of Hosts V, P, M and R do
+not collide with it), and the interface-locale provider a section now forwards
+to the item players it mounts. A host that supplies none renders what it
+rendered before: the toolkit, the players and the reference assembly build the
+provider they always did, and a provider that arrives with no `locale` set is
+left at the locale its owner gave it. The one rendering change needs a `locale`
+on the section element, which no host passes: inside one, the item players'
+five own chrome strings (`player.configurationError`, `player.playerError`,
+`player.authoringBackendError`, and the `player.passageWidthA11y` /
+`player.resizePassageAndQuestionA11y` labels) follow the section's locale
+instead of staying English. The contract is the [host-supplied interface locale
+provider PRD](../prds/interface-i18n-host-provider.md).
+
 On 2026-10-08 tools went to one channel and one provider namespace. Tool
 elements dropped the service and provider-id properties they took beside the
 runtime context: `toolkitCoordinator` and `providerId` / `provider-id` on the

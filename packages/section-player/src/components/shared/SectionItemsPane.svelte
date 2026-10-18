@@ -730,6 +730,7 @@ Items pane of a section player: renders the item cards of the current compositio
 					itemIndex,
 					baseHeadingLevel,
 					formativeView,
+					i18n: chromeRuntimeContext?.i18n,
 				})}
 				{formativeView}
 				{timedMediaView}

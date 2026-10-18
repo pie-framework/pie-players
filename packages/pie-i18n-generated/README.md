@@ -28,7 +28,6 @@ import {
 } from "@pie-players/pie-i18n-generated";
 
 const i18n = createPieI18n({
-	locale: "th-TH",
 	availableLocales: [...BUNDLED_LOCALES, ...GENERATED_LOCALES],
 	// Bundled first: a reviewed catalog silently wins over a generated one for
 	// the same tag, so promoting a locale out of this package into the
@@ -36,6 +35,15 @@ const i18n = createPieI18n({
 	loadCatalog: (locale) =>
 		loadBundledCatalog(locale).catch(() => loadGeneratedCatalog(locale)),
 });
+
+// Hand the provider to the player; the element's `locale` names the locale
+// and is the only thing that drives it. Built without `locale` on purpose:
+// the factory names a tag without loading its catalog.
+document.querySelector("pie-section-player-splitpane").runtime = { i18n };
+```
+
+```html
+<pie-section-player-splitpane locale="th-TH" …></pie-section-player-splitpane>
 ```
 
 Hosts may also override individual strings of a generated catalog the same

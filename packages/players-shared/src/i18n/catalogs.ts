@@ -21,6 +21,7 @@
  * @module @pie-players/pie-players-shared/i18n/catalogs
  */
 
+import enUS from "./messages/en-US.js";
 import type { BundledLocaleCode, MessageCatalog } from "./types.js";
 
 type CatalogLoader = () => Promise<{ default: MessageCatalog }>;
@@ -43,6 +44,11 @@ export const BUNDLED_LOCALES: readonly BundledLocaleCode[] = ["en-US", "nl-NL"];
 /**
  * Load one shipped catalog.
  *
+ * `en-US` comes back without a load: it is statically resident, and a host
+ * composing this loader into a provider — the generated tier's README pattern,
+ * or a pseudo-localization of the English catalog — asks for it by name like
+ * any other locale.
+ *
  * Throws for a locale with no shipped catalog; the provider treats that as
  * "resolve through the fallback chain" rather than an error, so a host locale we
  * do not ship still renders.
@@ -50,6 +56,9 @@ export const BUNDLED_LOCALES: readonly BundledLocaleCode[] = ["en-US", "nl-NL"];
 export async function loadBundledCatalog(
 	locale: string,
 ): Promise<MessageCatalog> {
+	if (locale === "en-US") {
+		return enUS;
+	}
 	const loader = CATALOG_LOADERS[locale as Exclude<BundledLocaleCode, "en-US">];
 	if (!loader) {
 		throw new Error(`No bundled i18n catalog for locale: ${locale}`);

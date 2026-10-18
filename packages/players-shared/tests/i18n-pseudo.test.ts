@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import { loadBundledCatalog } from "../src/i18n/catalogs.js";
 import enUS from "../src/i18n/messages/en-US.js";
 import { localeDirection, SimpleI18n } from "../src/i18n/provider.js";
 import {
@@ -83,5 +84,15 @@ describe("pseudoLocalize", () => {
 		const tries = i18n.plural("player.formative.triesLeft", { count: 3 });
 		expect(tries).toContain("3");
 		expect(tries.startsWith("[")).toBe(true);
+	});
+
+	test("the bundled loader serves the statically resident English catalog", async () => {
+		// The pseudo-localized provider asks the loader for `en-US` by name like
+		// any other locale; the one catalog that never had a chunk must not
+		// throw for it.
+		await expect(loadBundledCatalog("en-US")).resolves.toBe(enUS);
+		await expect(loadBundledCatalog("zz")).rejects.toThrow(
+			"No bundled i18n catalog for locale: zz",
+		);
 	});
 });

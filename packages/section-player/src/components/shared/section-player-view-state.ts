@@ -2,6 +2,7 @@ import type {
 	ItemEntity,
 	ItemSettings,
 } from "@pie-players/pie-players-shared/types";
+import type { I18nProvider } from "@pie-players/pie-players-shared/i18n";
 import {
 	resolveFormativeItemView,
 	type FormativeItemView,
@@ -136,6 +137,8 @@ export function getPassagePlayerParams(args: {
 	resolvedPlayerProps: Record<string, unknown>;
 	playerStrategy: string;
 	baseHeadingLevel?: HeadingLevel;
+	/** The interface-locale provider the toolkit published, for the player's own chrome. */
+	i18n?: I18nProvider | null;
 }): PlayerElementParams {
 	// Keep passage visuals aligned with item defaults by sharing the same
 	// runtime env shape; passage content remains non-response by content model.
@@ -157,6 +160,12 @@ export function getPassagePlayerParams(args: {
 			...passageHeadingContext(
 				args.baseHeadingLevel ?? DEFAULT_SECTION_BASE_HEADING_LEVEL,
 			),
+			// The toolkit's provider, so a nested player's own chrome follows the
+			// section's locale and the host's messages instead of building a third
+			// English provider. The stable instance, not `resolveInterfaceI18n`'s
+			// facade: the facade's identity changes on every republish and would
+			// re-set the property on each.
+			i18n: args.i18n ?? undefined,
 			...stripItemDeliveryBackendProps(args.resolvedPlayerProps || {}),
 		},
 	};
@@ -267,6 +276,8 @@ export function getItemPlayerParams(args: {
 	itemIndex?: number;
 	baseHeadingLevel?: HeadingLevel;
 	formativeView?: FormativeItemView | null;
+	/** The interface-locale provider the toolkit published, for the player's own chrome. */
+	i18n?: I18nProvider | null;
 }): PlayerElementParams {
 	const rawItemSession = getSessionForItem(args.compositionModel, args.item);
 	const itemSession = getSessionForItemOrEmpty(
@@ -296,6 +307,13 @@ export function getItemPlayerParams(args: {
 				...itemHeadingContext(
 					args.baseHeadingLevel ?? DEFAULT_SECTION_BASE_HEADING_LEVEL,
 				),
+				// The toolkit's provider, so a nested item player's own chrome — its
+				// error states and the resize-handle labels — follows the section's
+				// locale and the host's messages instead of building a third English
+				// provider. The stable instance, not `resolveInterfaceI18n`'s
+				// facade: the facade's identity changes on every republish and
+				// would re-set the property on each.
+				i18n: args.i18n ?? undefined,
 				...(args.resolvedPlayerProps || {}),
 			},
 			item: args.item,

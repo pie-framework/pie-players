@@ -9,6 +9,10 @@
 			env: { type: "Object", attribute: "env" },
 			score: { type: "Object", attribute: "score" },
 			locale: { attribute: "locale", type: "String" },
+			// The player's interface-locale provider, so the panel speaks the
+			// player's locale and messages instead of a third English provider.
+			// JS-only, since it carries loaders.
+			i18n: { type: "Object", reflect: false },
 			hosted: { attribute: "hosted", type: "Boolean" },
 		},
 		extend: coerceBooleanAttributes,
@@ -38,6 +42,7 @@ A floating, draggable debug panel for one item player: a host passes it the play
 		createPieI18n,
 		DEFAULT_LOCALE,
 	} from "@pie-players/pie-players-shared/i18n";
+	import type { I18nProvider } from "@pie-players/pie-players-shared/i18n";
 
 	type ItemConfigLike = {
 		elements?: Record<string, string>;
@@ -73,6 +78,7 @@ A floating, draggable debug panel for one item player: a host passes it the play
 		env = null,
 		score = null,
 		locale = "",
+		i18n = null as I18nProvider | null,
 		hosted = false,
 	}: {
 		itemId?: string;
@@ -81,22 +87,30 @@ A floating, draggable debug panel for one item player: a host passes it the play
 		env?: unknown;
 		score?: unknown;
 		locale?: string;
+		i18n?: I18nProvider | null;
 		hosted?: boolean;
 	} = $props();
 	// Interface locale for this panel's own chrome. The JSON payloads it dumps are
-	// data, not message content, and stay as authored.
-	const interfaceI18n = createPieI18n();
+	// data, not message content, and stay as authored. The `i18n` prop takes the
+	// player's provider; built here, it resolves `en-US`.
+	const ownedInterfaceI18n = createPieI18n();
+	const interfaceI18n = $derived(i18n ?? ownedInterfaceI18n);
 	let interfaceI18nVersion = $state(0);
-	$effect(() =>
-		interfaceI18n.subscribe(() => {
+	$effect(() => {
+		const provider = interfaceI18n;
+		return provider.subscribe?.(() => {
 			interfaceI18nVersion += 1;
-		}),
-	);
+		});
+	});
 	$effect(() => {
 		const requested = typeof locale === "string" ? locale.trim() : "";
+		const provider = interfaceI18n;
+		// Same rule as the player whose data this panel shows: the `locale`
+		// attribute drives, and a supplied provider is never auto-driven.
+		if (!requested && provider !== ownedInterfaceI18n) return;
 		untrack(() => {
 			void Promise.resolve(
-				interfaceI18n.setLocale(requested || DEFAULT_LOCALE),
+				provider.setLocale(requested || DEFAULT_LOCALE),
 			).catch(() => {});
 		});
 	});

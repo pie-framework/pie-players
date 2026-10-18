@@ -37,6 +37,22 @@ const i18n = createPieI18n({
 `customMessages` also overrides a shipped catalog one key at a time, so renaming
 a single label needs no fork.
 
+Hand the provider to the player through the host-supplied provider seam — the
+`runtime.i18n` key on a section-player layout, or the `i18n` property on
+`pie-assessment-toolkit` or `pie-item-player` — and let the element's `locale`
+name the language. The attribute is the only locale driver: a supplied provider
+is driven by it and by nothing else, so build the provider without `locale` and
+set the attribute (`createPieI18n({ locale })` names a tag without loading its
+catalog). The shape and the rules are the
+[host-supplied interface locale provider PRD](../../../../docs/prds/interface-i18n-host-provider.md).
+
+```html
+<pie-section-player-tabbed locale="nl-NL" …></pie-section-player-tabbed>
+<script type="module">
+  player.runtime = { assessmentId, i18n };
+</script>
+```
+
 ## For a component in this repository
 
 Resolve the provider; never construct one. The toolkit publishes it on its

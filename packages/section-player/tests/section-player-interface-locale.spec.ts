@@ -205,8 +205,11 @@ test.describe("section player interface locale", () => {
 	test("an unshipped locale renders English rather than message keys", async ({
 		page,
 	}) => {
+		// `zz` names no catalog in the bundled or the generated tier — chosen
+		// over `cy-GB` and other real languages so the wave of generated
+		// catalogs cannot turn this into a translation test.
 		await page.setViewportSize(WIDE);
-		await page.goto("/interface-locale?locale=cy-GB", {
+		await page.goto("/interface-locale?locale=zz", {
 			waitUntil: "networkidle",
 		});
 
@@ -217,6 +220,62 @@ test.describe("section player interface locale", () => {
 		await expect(page.getByText("player.passage", { exact: true })).toHaveCount(
 			0,
 		);
+	});
+
+	test("a locale from the generated tier renders through the host's provider", async ({
+		page,
+	}) => {
+		// `th-TH` ships only in `@pie-players/pie-i18n-generated`, which the demo
+		// reaches through `runtime.i18n`: the composition the generated tier's
+		// README shows, handed to the player instead of built by it. Both
+		// expectations are literals from that catalog, for the same reason the
+		// Dutch ones are.
+		const pageErrors: string[] = [];
+		page.on("pageerror", (error) => {
+			pageErrors.push(error.message);
+		});
+		await page.setViewportSize(WIDE);
+		await page.goto("/interface-locale?locale=th-TH", {
+			waitUntil: "networkidle",
+		});
+
+		await expect(
+			page.getByRole("heading", { name: "บทอ่าน", level: 2 }),
+		).toBeVisible();
+		await expect(
+			page.getByRole("button", { name: "ธีม เปลี่ยนสีและความเปรียบต่าง" }),
+		).toBeVisible();
+		await expect(
+			page.getByRole("heading", { name: "Passage", level: 2 }),
+		).toHaveCount(0);
+
+		expect(pageErrors).toEqual([]);
+	});
+
+	test("the pseudo-locales render through the provider's host messages", async ({
+		page,
+	}) => {
+		// `en-XA` and `ar-XB` are registered on the demo's provider through
+		// `customMessages`, which resolve ahead of any catalog. The bracketed,
+		// padded text is the point: expansion and externalization are visible in
+		// the chrome, and anything still reading plain English was never catalog
+		// text.
+		await page.setViewportSize(WIDE);
+
+		for (const tag of ["en-XA", "ar-XB"]) {
+			await page.goto(`/interface-locale?locale=${tag}`, {
+				waitUntil: "networkidle",
+			});
+			const heading = page.getByRole("heading", { level: 2 }).first();
+			await expect(heading).toBeVisible();
+			await expect(heading).toHaveText(/^\[/);
+			await expect(
+				page.getByRole("heading", { name: "Passage", level: 2 }),
+			).toHaveCount(0);
+			await expect(
+				page.getByText("player.passage", { exact: true }),
+			).toHaveCount(0);
+		}
 	});
 
 	test("a stale locale param is inert on a demo that supplies no locale", async ({

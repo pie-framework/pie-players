@@ -175,6 +175,16 @@
 						},
 						{
 							"kind": "field",
+							"name": "i18n",
+							"type": {
+								"text": "I18nProvider | null"
+							},
+							"default": "null",
+							"description": "The interface-locale provider a host or a container supplies, used in place of the one built here: a host's composition for a standalone player, the section's provider for the item players a section mounts. JS-only, since it carries loaders. `locale` above still names the locale; a supplied provider is driven only by it.",
+							"attribute": "i18n"
+						},
+						{
+							"kind": "field",
 							"name": "includeSrHeading",
 							"type": {
 								"text": "boolean"
@@ -584,6 +594,15 @@
 							"fieldName": "locale"
 						},
 						{
+							"name": "i18n",
+							"type": {
+								"text": "I18nProvider | null"
+							},
+							"default": "null",
+							"description": "The interface-locale provider a host or a container supplies, used in place of the one built here: a host's composition for a standalone player, the section's provider for the item players a section mounts. JS-only, since it carries loaders. `locale` above still names the locale; a supplied provider is driven only by it.",
+							"fieldName": "i18n"
+						},
+						{
 							"name": "include-sr-heading",
 							"type": {
 								"text": "boolean"
@@ -917,6 +936,16 @@
 						},
 						{
 							"kind": "field",
+							"name": "i18n",
+							"type": {
+								"text": "I18nProvider | null"
+							},
+							"default": "null",
+							"description": "The player's interface-locale provider, so the panel speaks the player's locale and messages instead of a third English provider. JS-only, since it carries loaders.",
+							"attribute": "i18n"
+						},
+						{
+							"kind": "field",
 							"name": "hosted",
 							"type": {
 								"text": "boolean"
@@ -973,6 +1002,15 @@
 							},
 							"default": "\"\"",
 							"fieldName": "locale"
+						},
+						{
+							"name": "i18n",
+							"type": {
+								"text": "I18nProvider | null"
+							},
+							"default": "null",
+							"description": "The player's interface-locale provider, so the panel speaks the player's locale and messages instead of a third English provider. JS-only, since it carries loaders.",
+							"fieldName": "i18n"
 						},
 						{
 							"name": "hosted",

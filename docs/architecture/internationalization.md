@@ -589,17 +589,16 @@ behavior-preserving until a host opts in by supplying a locale.
    - Open: STT recognizer language. The [speech-to-text PRD](../prds/speech-to-text.md)
      proposes `PieDictationInsertDetail.lang`, which would be the first typed
      runtime locale reaching an element; it is designed, not implemented.
-7. **Host-supplied messages and locales.** Proposed; see the
+7. **Host-supplied messages and locales.** Done; see the
    [host-supplied interface locale provider PRD](../prds/interface-i18n-host-provider.md).
-   The toolkit, the item player, the reference assembly and the item-session
-   debugger each construct `createPieI18n()` with no host input, so neither the
-   [generated tier](../../packages/pie-i18n-generated/README.md)'s catalogs nor
-   `customMessages` — a pseudo-locale included — reach the players' chrome
-   today, and a section forwards neither `locale` nor a provider to the item
-   players it mounts. The PRD settles the channel: `runtime.i18n` on the
-   section-player layouts and an `i18n` property on the toolkit and the item
-   player, carrying the `I18nProvider` a host composes; `locale` keeps naming
-   the locale.
+   `runtime.i18n` on the section-player layouts and an `i18n` property on the
+   toolkit and the item player accept the
+   [`I18nProvider`](../../packages/players-shared/src/i18n/README.md#for-a-host)
+   a host composes — the generated tier's catalogs, `customMessages`, or a
+   provider of the host's own. The `locale` attribute still names the locale,
+   and a supplied provider is driven only by it. A section forwards its
+   provider to the item players it mounts, so their own chrome follows the
+   section's locale instead of the third English provider it built before.
 
 ## Open questions
 

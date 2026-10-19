@@ -40,6 +40,10 @@ export interface InterfaceI18n {
 	readonly direction: TextDirection;
 	t(key: MessageKeyInput, values?: InterpolationValues): string;
 	plural(key: MessageKeyInput, options: PluralOptions): string;
+	/** Locale-aware number formatting, at the resolved locale. */
+	formatNumber(value: number, options?: Intl.NumberFormatOptions): string;
+	/** Locale-aware date formatting, at the resolved locale. */
+	formatDate(date: Date, options?: Intl.DateTimeFormatOptions): string;
 }
 
 /**
@@ -94,6 +98,12 @@ export function useInterfaceI18n(
 		},
 		plural(key, options) {
 			return provider.plural?.(key, options) ?? provider.t(key, options);
+		},
+		formatNumber(value, options) {
+			return provider.formatNumber(value, options);
+		},
+		formatDate(value, options) {
+			return provider.formatDate(value, options);
 		},
 	};
 }

@@ -181,6 +181,20 @@ build invites suppression. The `i18n-hardcoded-scan` workflow runs the scan
 weekly and files the report on a tracking issue; triaging that issue is
 closing the loop, not clearing a gate.
 
+## Conformance with pie-elements-ng
+
+pie-elements-ng's `@pie-element/shared-i18n` ports this engine and shares its
+semantics, not its code. The shared semantics are written down once, in
+[`tests/i18n-conformance-fixtures.json`](../../tests/i18n-conformance-fixtures.json)
+(lookup sequence, direction, plural routing with locale numerals,
+interpolation, the fallback chain), which pie-elements-ng keeps as a
+byte-identical copy at `packages/shared/i18n/tests/` and both repositories run
+against their own engine. A case only one engine passes is drift, and the fix
+goes to the engine, not the fixture; a deliberate semantics change edits both
+copies together. Locale tags in the fixture are full where CLDR's regional
+defaults differ: bare `ar` formats Latin digits and `ar-SA` Arabic-Indic, which
+is CLDR, not an engine.
+
 ## Module layout
 
 Which module you import decides what ships. The item player, the section

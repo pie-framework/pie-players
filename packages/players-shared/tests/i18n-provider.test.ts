@@ -13,10 +13,13 @@ import {
 	dynamicMessageKey,
 	getDefaultI18n,
 	localeDirection,
+	resolveInterfaceI18n,
 	SimpleI18n,
 	stampInterfaceLocale,
 } from "../src/i18n/provider.js";
 import type { MessageCatalog, TextDirection } from "../src/i18n/types.js";
+import type { I18nProvider } from "@pie-players/pie-players-shared/i18n";
+import { createPieI18n } from "@pie-players/pie-players-shared/i18n";
 
 // A DOM only so the "does not touch documentElement" assertion can be real.
 beforeAll(() => {
@@ -414,5 +417,45 @@ describe("reportInterfaceLocaleLoadError", () => {
 			reportInterfaceLocaleLoadError(null, "pie-item-player", new Error("x")),
 		).not.toThrow();
 		expect(seen).toHaveLength(1);
+	});
+});
+
+describe("resolveInterfaceI18n formatting", () => {
+	test("the bundled provider's formatters come through the facade at the active locale", async () => {
+		const i18n = createPieI18n();
+		await i18n.setLocale("nl-NL");
+		const resolved = resolveInterfaceI18n({ i18n });
+		expect(resolved.formatNumber(1234.5)).toBe(
+			new Intl.NumberFormat("nl-NL").format(1234.5),
+		);
+		expect(
+			resolved.formatDate(new Date("2026-01-15T00:00:00Z"), { timeZone: "UTC" }),
+		).toBe(
+			new Intl.DateTimeFormat("nl-NL", { timeZone: "UTC" }).format(
+				new Date("2026-01-15T00:00:00Z"),
+			),
+		);
+	});
+
+	test("a provider without formatters falls through to Intl at the resolved locale", () => {
+		const minimal: I18nProvider = {
+			getLocale: () => "de-DE",
+			setLocale: () => {},
+			t: (key) => String(key),
+		};
+		const resolved = resolveInterfaceI18n({ i18n: minimal });
+		expect(resolved.formatNumber(1234.5)).toBe(
+			new Intl.NumberFormat("de-DE").format(1234.5),
+		);
+		expect(
+			resolved.formatDate(new Date("2026-01-15T00:00:00Z"), { timeZone: "UTC" }),
+		).toBe("15.1.2026");
+	});
+
+	test("no publisher resolves the English default with working formatters", () => {
+		const resolved = resolveInterfaceI18n(null);
+		expect(resolved.formatNumber(1234.5)).toBe(
+			new Intl.NumberFormat("en-US").format(1234.5),
+		);
 	});
 });

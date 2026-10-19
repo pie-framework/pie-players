@@ -59,6 +59,15 @@ const ko = {
 		passages: "지문",
 		question: "문항",
 		questionNumbered: "문항 {position}",
+		questionPositionA11y: "{total}개 문항 중 {position}번",
+		questionPositionLabeledA11y: "{label}, {total}개 문항 중 {position}번",
+		summary: {
+			correctA11y: "정답",
+			answer: "답안",
+			manualScoring: "교사가 채점함",
+			audio: "오디오",
+			video: "동영상",
+		},
 		questions: "문항",
 		items: "문항",
 		section: "섹션",
@@ -79,6 +88,8 @@ const ko = {
 		resizeMediaRegion: "미디어 영역 크기 조절",
 		resizeQuestionAndMediaA11y: "문항 및 미디어 패널 크기 조절",
 		resizePassageAndMediaA11y: "지문 및 미디어 패널 크기 조절",
+		resizePassageAndQuestionA11y: "지문 및 문항 패널 크기 조절",
+		passageWidthA11y: "지문 너비 {percent}%",
 
 		assessment: {
 			sectionPosition: "섹션 {position}/{total}",

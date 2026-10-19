@@ -59,6 +59,15 @@ const pt = {
 		passages: "Textos",
 		question: "Pergunta",
 		questionNumbered: "Pergunta {position}",
+		questionPositionA11y: "Pergunta {position} de {total}",
+		questionPositionLabeledA11y: "{label}, pergunta {position} de {total}",
+		summary: {
+			correctA11y: "Resposta correta",
+			answer: "Resposta",
+			manualScoring: "Corrigido por um professor",
+			audio: "Áudio",
+			video: "Vídeo",
+		},
 		questions: "Perguntas",
 		items: "Perguntas",
 		section: "Seção",
@@ -82,6 +91,8 @@ const pt = {
 			"Redimensionar os painéis de pergunta e mídia",
 		resizePassageAndMediaA11y:
 			"Redimensionar os painéis de texto e mídia",
+		resizePassageAndQuestionA11y: "Redimensionar os painéis de texto e pergunta",
+		passageWidthA11y: "Largura do texto: {percent}%",
 
 		assessment: {
 			sectionPosition: "Seção {position} de {total}",

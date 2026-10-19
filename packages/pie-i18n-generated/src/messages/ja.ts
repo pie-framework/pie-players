@@ -59,6 +59,15 @@ const ja = {
 		passages: "文章",
 		question: "問題",
 		questionNumbered: "問題 {position}",
+		questionPositionA11y: "{total}問中{position}問目",
+		questionPositionLabeledA11y: "{label}、{total}問中{position}問目",
+		summary: {
+			correctA11y: "正解",
+			answer: "解答",
+			manualScoring: "教師による採点",
+			audio: "音声",
+			video: "動画",
+		},
 		questions: "問題",
 		items: "問題",
 		section: "セクション",
@@ -79,6 +88,8 @@ const ja = {
 		resizeMediaRegion: "メディア領域のサイズ変更",
 		resizeQuestionAndMediaA11y: "問題パネルとメディアパネルのサイズ変更",
 		resizePassageAndMediaA11y: "文章パネルとメディアパネルのサイズ変更",
+		resizePassageAndQuestionA11y: "文章パネルと問題パネルのサイズ変更",
+		passageWidthA11y: "文章の幅 {percent}%",
 
 		assessment: {
 			sectionPosition: "セクション {position} / {total}",

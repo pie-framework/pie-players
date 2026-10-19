@@ -61,6 +61,15 @@ const ar = {
 		passages: "نصوص",
 		question: "سؤال",
 		questionNumbered: "السؤال {position}",
+		questionPositionA11y: "السؤال {position} من {total}",
+		questionPositionLabeledA11y: "{label}، السؤال {position} من {total}",
+		summary: {
+			correctA11y: "الإجابة الصحيحة",
+			answer: "الإجابة",
+			manualScoring: "تم تصحيحه من قبل معلم",
+			audio: "صوت",
+			video: "فيديو",
+		},
 		questions: "الأسئلة",
 		items: "الأسئلة",
 		section: "قسم",
@@ -81,6 +90,8 @@ const ar = {
 		resizeMediaRegion: "تغيير حجم منطقة الوسائط",
 		resizeQuestionAndMediaA11y: "تغيير حجم لوحتي السؤال والوسائط",
 		resizePassageAndMediaA11y: "تغيير حجم لوحتي النص والوسائط",
+		resizePassageAndQuestionA11y: "تغيير حجم لوحتي النص والسؤال",
+		passageWidthA11y: "عرض النص {percent}%",
 
 		assessment: {
 			sectionPosition: "القسم {position} من {total}",

@@ -59,6 +59,15 @@ const zh = {
 		passages: "文章",
 		question: "题",
 		questionNumbered: "第 {position} 题",
+		questionPositionA11y: "第 {position} 题，共 {total} 题",
+		questionPositionLabeledA11y: "{label}，第 {position} 题，共 {total} 题",
+		summary: {
+			correctA11y: "正确答案",
+			answer: "答案",
+			manualScoring: "由教师评分",
+			audio: "音频",
+			video: "视频",
+		},
 		questions: "题目",
 		items: "题目",
 		section: "部分",
@@ -79,6 +88,8 @@ const zh = {
 		resizeMediaRegion: "调整媒体区域大小",
 		resizeQuestionAndMediaA11y: "调整题目和媒体面板的大小",
 		resizePassageAndMediaA11y: "调整文章和媒体面板的大小",
+		resizePassageAndQuestionA11y: "调整文章和题目面板的大小",
+		passageWidthA11y: "文章宽度 {percent}%",
 
 		assessment: {
 			sectionPosition: "第 {position} 部分，共 {total} 部分",

@@ -59,6 +59,15 @@ const es = {
 		passages: "Lecturas",
 		question: "Pregunta",
 		questionNumbered: "Pregunta {position}",
+		questionPositionA11y: "Pregunta {position} de {total}",
+		questionPositionLabeledA11y: "{label}, pregunta {position} de {total}",
+		summary: {
+			correctA11y: "Respuesta correcta",
+			answer: "Respuesta",
+			manualScoring: "Calificado por un docente",
+			audio: "Audio",
+			video: "Video",
+		},
 		questions: "Preguntas",
 		items: "Preguntas",
 		section: "Sección",
@@ -83,6 +92,8 @@ const es = {
 			"Cambiar el tamaño de los paneles de pregunta y medios",
 		resizePassageAndMediaA11y:
 			"Cambiar el tamaño de los paneles de lectura y medios",
+		resizePassageAndQuestionA11y: "Cambiar el tamaño de los paneles de lectura y pregunta",
+		passageWidthA11y: "Ancho de la lectura: {percent}%",
 
 		assessment: {
 			sectionPosition: "Sección {position} de {total}",

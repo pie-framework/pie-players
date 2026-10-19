@@ -62,6 +62,15 @@ const cy = {
 		passages: "Testunau",
 		question: "Cwestiwn",
 		questionNumbered: "Cwestiwn {position}",
+		questionPositionA11y: "Cwestiwn {position} o {total}",
+		questionPositionLabeledA11y: "{label}, cwestiwn {position} o {total}",
+		summary: {
+			correctA11y: "Ateb cywir",
+			answer: "Ateb",
+			manualScoring: "Marciwyd gan athro",
+			audio: "Sain",
+			video: "Fideo",
+		},
 		questions: "Cwestiynau",
 		items: "Cwestiynau",
 		section: "Adran",
@@ -82,6 +91,8 @@ const cy = {
 		resizeMediaRegion: "Newid maint y rhanbarth cyfryngau",
 		resizeQuestionAndMediaA11y: "Newid maint paneli'r cwestiwn a'r cyfryngau",
 		resizePassageAndMediaA11y: "Newid maint paneli'r testun a'r cyfryngau",
+		resizePassageAndQuestionA11y: "Newid maint paneli'r testun a'r cwestiwn",
+		passageWidthA11y: "Lled y testun: {percent}%",
 
 		assessment: {
 			sectionPosition: "Adran {position} o {total}",

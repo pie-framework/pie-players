@@ -60,6 +60,15 @@ const sv = {
 		passages: "Texter",
 		question: "Fråga",
 		questionNumbered: "Fråga {position}",
+		questionPositionA11y: "Fråga {position} av {total}",
+		questionPositionLabeledA11y: "{label}, fråga {position} av {total}",
+		summary: {
+			correctA11y: "Rätt svar",
+			answer: "Svar",
+			manualScoring: "Bedömd av en lärare",
+			audio: "Ljud",
+			video: "Video",
+		},
 		questions: "Frågor",
 		items: "Uppgifter",
 		section: "Avsnitt",
@@ -82,6 +91,8 @@ const sv = {
 		resizeQuestionAndMediaA11y:
 			"Ändra storlek på panelerna för fråga och media",
 		resizePassageAndMediaA11y: "Ändra storlek på panelerna för text och media",
+		resizePassageAndQuestionA11y: "Ändra storlek på panelerna för text och fråga",
+		passageWidthA11y: "Textbredd {percent} %",
 
 		assessment: {
 			sectionPosition: "Avsnitt {position} av {total}",

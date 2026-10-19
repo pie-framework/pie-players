@@ -54,18 +54,18 @@ loaded catalog.
 
 | Tag | Status | Brief | Generated |
 | --- | --- | --- | --- |
-| `th-TH` | generated, unreviewed | [`briefs/th-TH.md`](./briefs/th-TH.md) | 2026-10-15 |
-| `en-GB` | generated, unreviewed | [`briefs/en-GB.md`](./briefs/en-GB.md) | 2026-10-15 |
-| `en-AU` | generated, unreviewed | [`briefs/en-AU.md`](./briefs/en-AU.md) | 2026-10-15 |
-| `es` | generated, unreviewed (Latin-American neutral; serves `es*`) | [`briefs/es.md`](./briefs/es.md) | 2026-10-15 |
-| `fr` | generated, unreviewed (France flavour; serves `fr*`) | [`briefs/fr.md`](./briefs/fr.md) | 2026-10-15 |
-| `ar` | generated, unreviewed (MSA; serves `ar*`; RTL — first RTL locale, layout not yet audited) | [`briefs/ar.md`](./briefs/ar.md) | 2026-10-15 |
-| `pt` | generated, unreviewed (Brazilian; serves `pt*`) | [`briefs/pt.md`](./briefs/pt.md) | 2026-10-16 |
-| `ko` | generated, unreviewed | [`briefs/ko.md`](./briefs/ko.md) | 2026-10-16 |
-| `ja` | generated, unreviewed | [`briefs/ja.md`](./briefs/ja.md) | 2026-10-16 |
-| `zh` | generated, unreviewed (Simplified; serves `zh`, `zh-CN`, `zh-SG`; Traditional hosts supply `customMessages`) | [`briefs/zh.md`](./briefs/zh.md) | 2026-10-16 |
-| `cy` | generated, unreviewed (serves `cy`, `cy-GB`; six CLDR plural categories) | [`briefs/cy.md`](./briefs/cy.md) | 2026-10-16 |
-| `sv` | generated, unreviewed (serves `sv`, `sv-SE`, `sv-FI`) | [`briefs/sv.md`](./briefs/sv.md) | 2026-10-16 |
+| `th-TH` | generated, unreviewed | [`briefs/th-TH.md`](./briefs/th-TH.md) | 2026-10-19 |
+| `en-GB` | generated, unreviewed | [`briefs/en-GB.md`](./briefs/en-GB.md) | 2026-10-19 |
+| `en-AU` | generated, unreviewed | [`briefs/en-AU.md`](./briefs/en-AU.md) | 2026-10-19 |
+| `es` | generated, unreviewed (Latin-American neutral; serves `es*`) | [`briefs/es.md`](./briefs/es.md) | 2026-10-19 |
+| `fr` | generated, unreviewed (France flavour; serves `fr*`) | [`briefs/fr.md`](./briefs/fr.md) | 2026-10-19 |
+| `ar` | generated, unreviewed (MSA; serves `ar*`; RTL — first RTL locale, layout not yet audited) | [`briefs/ar.md`](./briefs/ar.md) | 2026-10-19 |
+| `pt` | generated, unreviewed (Brazilian; serves `pt*`) | [`briefs/pt.md`](./briefs/pt.md) | 2026-10-19 |
+| `ko` | generated, unreviewed | [`briefs/ko.md`](./briefs/ko.md) | 2026-10-19 |
+| `ja` | generated, unreviewed | [`briefs/ja.md`](./briefs/ja.md) | 2026-10-19 |
+| `zh` | generated, unreviewed (Simplified; serves `zh`, `zh-CN`, `zh-SG`; Traditional hosts supply `customMessages`) | [`briefs/zh.md`](./briefs/zh.md) | 2026-10-19 |
+| `cy` | generated, unreviewed (serves `cy`, `cy-GB`; six CLDR plural categories) | [`briefs/cy.md`](./briefs/cy.md) | 2026-10-19 |
+| `sv` | generated, unreviewed (serves `sv`, `sv-SE`, `sv-FI`) | [`briefs/sv.md`](./briefs/sv.md) | 2026-10-19 |
 
 Locale tags are chosen for variant reach: bare tags (`es`, `fr`, `ar`) let
 `es-MX`, `fr-CA` and `ar-SA` widen onto them through RFC 4647 lookup, while

@@ -56,6 +56,15 @@ const enGB = {
 		passages: "Passages",
 		question: "Question",
 		questionNumbered: "Question {position}",
+		questionPositionA11y: "Question {position} of {total}",
+		questionPositionLabeledA11y: "{label}, question {position} of {total}",
+		summary: {
+			correctA11y: "Correct answer",
+			answer: "Answer",
+			manualScoring: "Scored by a teacher",
+			audio: "Audio",
+			video: "Video",
+		},
 		questions: "Questions",
 		items: "Questions",
 		section: "Section",
@@ -76,6 +85,8 @@ const enGB = {
 		resizeMediaRegion: "Resize media region",
 		resizeQuestionAndMediaA11y: "Resize question and media panels",
 		resizePassageAndMediaA11y: "Resize passage and media panels",
+		resizePassageAndQuestionA11y: "Resize passage and question panels",
+		passageWidthA11y: "{percent}% passage width",
 
 		assessment: {
 			sectionPosition: "Section {position} of {total}",

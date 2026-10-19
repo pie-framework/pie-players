@@ -61,6 +61,15 @@ const fr = {
 		passages: "Textes",
 		question: "Question",
 		questionNumbered: "Question {position}",
+		questionPositionA11y: "Question {position} sur {total}",
+		questionPositionLabeledA11y: "{label}, question {position} sur {total}",
+		summary: {
+			correctA11y: "Réponse correcte",
+			answer: "Réponse",
+			manualScoring: "Noté par un enseignant",
+			audio: "Audio",
+			video: "Vidéo",
+		},
 		questions: "Questions",
 		items: "Questions",
 		section: "Partie",
@@ -85,6 +94,8 @@ const fr = {
 			"Redimensionner les panneaux de la question et du multimédia",
 		resizePassageAndMediaA11y:
 			"Redimensionner les panneaux du texte et du multimédia",
+		resizePassageAndQuestionA11y: "Redimensionner les panneaux du texte et de la question",
+		passageWidthA11y: "Largeur du texte : {percent} %",
 
 		assessment: {
 			sectionPosition: "Partie {position} sur {total}",

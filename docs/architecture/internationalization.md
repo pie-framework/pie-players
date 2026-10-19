@@ -574,12 +574,13 @@ behavior-preserving until a host opts in by supplying a locale.
 
 1. **BCP-47 resolution.** Done; see
    [Language resolution at three scopes](#language-resolution-at-three-scopes).
-2. **Content language end to end.** Not started, apart from pie-elements-ng's
-   `multiple-choice` dropping its `'en'` default. `Env.locale`, an item payload that
-   carries its language, `lang` and `dir` reflected on the content subtree, and the
-   six elements that stamp `lang` off `model.language` no longer defaulting it to
-   `'en'`. It needs authoring hosts to emit locale on the PIE content channel and
-   `xml:lang` on the QTI channel; the
+2. **Content language end to end.** In part landed. The player half:
+   `Env.locale` is typed and the item player reflects it as `lang`/`dir` on the
+   content subtree, asserting nothing for undeclared content. The element half:
+   all six elements that stamped `lang` off `model.language` now stamp a
+   canonical declared language with its direction and nothing otherwise — the
+   `'en'` default is gone. Still open: authoring hosts emitting locale on the
+   PIE content channel and `xml:lang` on the QTI channel; the
    [Current state](#current-state) records what they emit today.
 3. **Interface locale as composition context.** Done; see
    [Interface locale](#interface-locale).

@@ -5,7 +5,11 @@
  */
 
 import { GlobalRegistrator } from "@happy-dom/global-registrator";
-import { reportInterfaceLocaleLoadError } from "@pie-players/pie-players-shared/i18n";
+import {
+	contentLanguageAttributes,
+	reportInterfaceLocaleLoadError,
+	stampContentLanguage,
+} from "../src/i18n/index.js";
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { BUNDLED_LOCALES, loadBundledCatalog } from "../src/i18n/catalogs.js";
 import {
@@ -18,8 +22,8 @@ import {
 	stampInterfaceLocale,
 } from "../src/i18n/provider.js";
 import type { MessageCatalog, TextDirection } from "../src/i18n/types.js";
-import type { I18nProvider } from "@pie-players/pie-players-shared/i18n";
-import { createPieI18n } from "@pie-players/pie-players-shared/i18n";
+import type { I18nProvider } from "../src/i18n/types.js";
+import { createPieI18n } from "../src/i18n/index.js";
 
 // A DOM only so the "does not touch documentElement" assertion can be real.
 beforeAll(() => {
@@ -417,6 +421,39 @@ describe("reportInterfaceLocaleLoadError", () => {
 			reportInterfaceLocaleLoadError(null, "pie-item-player", new Error("x")),
 		).not.toThrow();
 		expect(seen).toHaveLength(1);
+	});
+});
+
+describe("content language attributes", () => {
+	test("declared content takes its canonical tag and direction", () => {
+		expect(contentLanguageAttributes({ locale: "es_MX", mode: "gather" })).toEqual({
+			lang: "es-MX",
+			dir: "ltr",
+		});
+		expect(contentLanguageAttributes({ locale: "ar-SA" })).toEqual({
+			lang: "ar-SA",
+			dir: "rtl",
+		});
+	});
+
+	test("undeclared or unusable content asserts nothing", () => {
+		expect(contentLanguageAttributes({ mode: "gather" })).toBeNull();
+		expect(contentLanguageAttributes({ locale: "Spanish" })).toBeNull();
+		expect(contentLanguageAttributes({ locale: 42 })).toBeNull();
+		expect(contentLanguageAttributes(null)).toBeNull();
+		expect(contentLanguageAttributes(undefined)).toBeNull();
+	});
+
+	test("the stamp follows a model set that drops the language", () => {
+		const target = document.createElement("div");
+		stampContentLanguage(target, { locale: "es-MX" });
+		expect(target.getAttribute("lang")).toBe("es-MX");
+
+		stampContentLanguage(target, { mode: "gather" });
+		expect(target.getAttribute("lang")).toBeNull();
+		expect(target.getAttribute("dir")).toBeNull();
+
+		expect(() => stampContentLanguage(null, { locale: "es-MX" })).not.toThrow();
 	});
 });
 

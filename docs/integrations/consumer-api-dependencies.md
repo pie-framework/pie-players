@@ -1044,7 +1044,12 @@ is render-only.
 `mode` / `role` / `partialScoring?` and has no index signature, so the extra
 namespace is untyped but forwarded verbatim to every element controller. The
 invariant to preserve is **pass-through**: do not filter, whitelist, or
-reconstruct `env` down to its declared keys.
+reconstruct `env` down to its declared keys. On 2026-10-19 `Env` gained an
+optional `locale?: string` — the language the item's content is written in,
+which the item player reflects onto its content root as `lang`/`dir`.
+Additive and read-only: `env` is still forwarded verbatim, nothing is
+filtered or reconstructed, and a host that sends no `locale` sees no stamp.
+The interface locale never travels here.
 
 `mode` is only ever `"view"`; the host maps its own `preview` onto it and uses
 `role: "student"` to suppress rationale, because the item player has no

@@ -74,7 +74,7 @@ const pointSpeechRulesAt = (root: string | undefined): (() => void) => {
 		return () => {};
 	}
 	const host = window as unknown as Record<string, unknown>;
-	const had = Object.prototype.hasOwnProperty.call(host, SRE_FEATURE_KEY);
+	const had = Object.hasOwn(host, SRE_FEATURE_KEY);
 	const previous = host[SRE_FEATURE_KEY];
 	host[SRE_FEATURE_KEY] = {
 		...(previous && typeof previous === "object" ? previous : {}),

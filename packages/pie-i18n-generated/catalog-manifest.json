@@ -21,15 +21,15 @@
 	"source": {
 		"file": "../../players-shared/src/i18n/messages/en-US.ts",
 		"hashAlgorithm": "sha256",
-		"hash": "f02be2a8c18064509f7de1de018a9c333040990669b9ba84c6979a414f0fc7c9"
+		"hash": "b8059c516b0f369ddcecfb9146e209a288a6e624cbf068805cab4584b43afbe7"
 	},
 	"locales": {
 		"th-TH": {
 			"status": "generated",
 			"brief": "briefs/th-TH.md",
-			"generatedAt": "2026-10-16",
-			"model": "GLM (Z.ai), agent-driven generation in the pie-players repo; the two passage-width keys by Claude Opus 5.5",
-			"sourceHash": "f02be2a8c18064509f7de1de018a9c333040990669b9ba84c6979a414f0fc7c9"
+			"generatedAt": "2026-10-18",
+			"model": "GLM (Z.ai), agent-driven generation in the pie-players repo; the two passage-width keys by Claude Opus 5.5; the two question-position keys by Claude (claude-fable-5-1)",
+			"sourceHash": "b8059c516b0f369ddcecfb9146e209a288a6e624cbf068805cab4584b43afbe7"
 		}
 	}
 }

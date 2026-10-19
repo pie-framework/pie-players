@@ -13,6 +13,7 @@ import {
 	getDefaultI18n,
 	localeDirection,
 	SimpleI18n,
+	stampInterfaceLocale,
 } from "../src/i18n/provider.js";
 import type { MessageCatalog, TextDirection } from "../src/i18n/types.js";
 
@@ -229,6 +230,44 @@ describe("direction", () => {
 		};
 		const i18n = createProvider();
 		await i18n.setLocale("ar-SA");
+		expect(root.getAttribute("lang")).toBe(before.lang);
+		expect(root.getAttribute("dir")).toBe(before.dir);
+	});
+});
+
+describe("stampInterfaceLocale", () => {
+	test("writes the provider's locale and direction on the element given", async () => {
+		const target = document.createElement("div");
+		const i18n = createProvider();
+		stampInterfaceLocale(target, i18n);
+		expect(target.getAttribute("lang")).toBe(DEFAULT_LOCALE);
+		expect(target.getAttribute("dir")).toBe("ltr");
+
+		await i18n.setLocale("ar-SA");
+		stampInterfaceLocale(target, i18n);
+		expect(target.getAttribute("lang")).toBe("ar-SA");
+		expect(target.getAttribute("dir")).toBe("rtl");
+	});
+
+	test("a provider without getDirection stamps ltr", () => {
+		// `getDirection` is optional on the contract; a minimal host provider is
+		// left-to-right unless it says otherwise.
+		const target = document.createElement("div");
+		stampInterfaceLocale(target, { getLocale: () => "nl-NL" });
+		expect(target.getAttribute("lang")).toBe("nl-NL");
+		expect(target.getAttribute("dir")).toBe("ltr");
+	});
+
+	test("touches only the element given, never the document root", () => {
+		const root = document.documentElement;
+		const before = {
+			lang: root.getAttribute("lang"),
+			dir: root.getAttribute("dir"),
+		};
+		stampInterfaceLocale(document.createElement("div"), {
+			getLocale: () => "ar-SA",
+			getDirection: () => "rtl",
+		});
 		expect(root.getAttribute("lang")).toBe(before.lang);
 		expect(root.getAttribute("dir")).toBe(before.dir);
 	});

@@ -219,6 +219,7 @@ The PIE item player: it loads an item's PIE elements under the `iife`, `esm` or 
 	import {
 		createPieI18n,
 		DEFAULT_LOCALE,
+		resolveInterfaceI18n,
 	} from "@pie-players/pie-players-shared/i18n";
 	import type { I18nProvider } from "@pie-players/pie-players-shared/i18n";
 	import { onDestroy, tick, untrack } from "svelte";
@@ -932,10 +933,12 @@ The PIE item player: it loads an item's PIE elements under the `iife`, `esm` or 
 			).catch(() => {});
 		});
 	});
-	// Identity changes on every catalog load, which is what re-renders the labels
-	// built from it.
+	// A fresh facade on every catalog load. The provider's identity does not
+	// move when its catalog does, and a `$derived` that re-evaluates to the same
+	// object does not re-run its readers, so the labels built from the provider
+	// itself would pin whatever rendered before the load.
 	const interfaceMessages = $derived(
-		(void interfaceI18nVersion, interfaceI18n),
+		(void interfaceI18nVersion, resolveInterfaceI18n({ i18n: interfaceI18n })),
 	);
 
 	/**

@@ -185,7 +185,12 @@
 </script>
 
 {#if isBrowser}
-	<div bind:this={containerElement} class="pie-tool-calculator-inline">
+	<div
+		bind:this={containerElement}
+		class="pie-tool-calculator-inline"
+		lang={interfaceI18n.getLocale()}
+		dir={interfaceI18n.getDirection?.() ?? 'ltr'}
+	>
 		<button
 			type="button"
 			class="pie-tool-calculator-inline__button {sizeClass}"

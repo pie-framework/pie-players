@@ -213,6 +213,8 @@
 	style={`left: ${panelX}px; top: ${panelY}px; width: ${panelWidth}px; z-index: ${panelZIndex}; ${
 		isMinimized ? "height: auto;" : `height: ${panelHeight}px;`
 	}`}
+	lang={messages.getLocale()}
+	dir={messages.getDirection?.() ?? "ltr"}
 >
 	<header
 		class={resolvedHeaderClass}

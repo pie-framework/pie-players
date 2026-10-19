@@ -5,6 +5,7 @@
  */
 
 import { GlobalRegistrator } from "@happy-dom/global-registrator";
+import { reportInterfaceLocaleLoadError } from "@pie-players/pie-players-shared/i18n";
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { BUNDLED_LOCALES, loadBundledCatalog } from "../src/i18n/catalogs.js";
 import {
@@ -367,5 +368,51 @@ describe("packaging", () => {
 		);
 		// And the provider still renders: the previous locale stands.
 		expect(i18n.t("common.close")).toBe("Close");
+	});
+});
+
+describe("reportInterfaceLocaleLoadError", () => {
+	test("dispatches a recoverable i18n-locale-load framework-error", () => {
+		const target = document.createElement("pie-item-player");
+		const seen: CustomEvent[] = [];
+		target.addEventListener("framework-error", (event) => {
+			seen.push(event as CustomEvent);
+		});
+
+		reportInterfaceLocaleLoadError(
+			target,
+			"pie-item-player",
+			new Error("chunk 404"),
+		);
+
+		expect(seen).toHaveLength(1);
+		expect(seen[0].bubbles).toBe(true);
+		expect(seen[0].composed).toBe(true);
+		const detail = seen[0].detail;
+		expect(detail).toMatchObject({
+			kind: "i18n-locale-load",
+			source: "pie-item-player",
+			message: "chunk 404",
+			details: [],
+			recoverable: true,
+			scope: "runtime",
+		});
+		expect(detail.cause).toBeInstanceOf(Error);
+	});
+
+	test("names a non-Error cause and stays silent without a target", () => {
+		const target = document.createElement("pie-item-player");
+		const seen: CustomEvent[] = [];
+		target.addEventListener("framework-error", (event) => {
+			seen.push(event as CustomEvent);
+		});
+
+		reportInterfaceLocaleLoadError(target, "pie-assessment-player", "boom");
+		expect(seen[0].detail.message).toBe("boom");
+
+		expect(() =>
+			reportInterfaceLocaleLoadError(null, "pie-item-player", new Error("x")),
+		).not.toThrow();
+		expect(seen).toHaveLength(1);
 	});
 });

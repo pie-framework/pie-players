@@ -66,6 +66,7 @@ loaded catalog.
 | `zh` | generated, unreviewed (Simplified; serves `zh`, `zh-CN`, `zh-SG`; Traditional hosts supply `customMessages`) | [`briefs/zh.md`](./briefs/zh.md) | 2026-10-19 |
 | `cy` | generated, unreviewed (serves `cy`, `cy-GB`; six CLDR plural categories) | [`briefs/cy.md`](./briefs/cy.md) | 2026-10-19 |
 | `sv` | generated, unreviewed (serves `sv`, `sv-SE`, `sv-FI`) | [`briefs/sv.md`](./briefs/sv.md) | 2026-10-19 |
+| `ro` | generated, unreviewed (serves `ro`, `ro-RO`, `ro-MD`; three CLDR plural categories, `other` takes `de`) | [`briefs/ro.md`](./briefs/ro.md) | 2026-10-19 |
 
 Locale tags are chosen for variant reach: bare tags (`es`, `fr`, `ar`) let
 `es-MX`, `fr-CA` and `ar-SA` widen onto them through RFC 4647 lookup, while

@@ -107,6 +107,13 @@
 			"generatedAt": "2026-10-19",
 			"model": "GLM (Z.ai), agent-driven generation in the pie-players repo; the nine passage-width, question-position and summary keys by Claude (claude-fable-5-1) on landing the wave onto develop",
 			"sourceHash": "992373d186a5d69d13a5184e511c0e51fddc01a9d2e735a766d86a220435e832"
+		},
+		"ro": {
+			"status": "generated",
+			"brief": "briefs/ro.md",
+			"generatedAt": "2026-10-19",
+			"model": "Claude (claude-fable-5-1), agent-driven generation in the pie-players repo",
+			"sourceHash": "992373d186a5d69d13a5184e511c0e51fddc01a9d2e735a766d86a220435e832"
 		}
 	}
 }

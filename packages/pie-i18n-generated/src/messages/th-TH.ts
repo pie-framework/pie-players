@@ -81,6 +81,8 @@ const thTH = {
 		resizePassageAndMediaA11y: "ปรับขนาดแผงบทอ่านและแผงสื่อ",
 		resizePassageAndQuestionA11y: "ปรับขนาดแผงบทอ่านและแผงคำถาม",
 		passageWidthA11y: "ความกว้างบทอ่าน {percent}%",
+		questionPositionA11y: "คำถามข้อที่ {position} จาก {total}",
+		questionPositionLabeledA11y: "{label}, คำถามข้อที่ {position} จาก {total}",
 
 		assessment: {
 			sectionPosition: "ตอนที่ {position} จาก {total}",

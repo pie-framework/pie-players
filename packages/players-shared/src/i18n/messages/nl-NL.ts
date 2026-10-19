@@ -84,6 +84,8 @@ const nlNL = {
 		resizePassageAndQuestionA11y:
 			"Panelen met tekst en vraag verkleinen of vergroten",
 		passageWidthA11y: "Tekst {percent}% breed",
+		questionPositionA11y: "Vraag {position} van {total}",
+		questionPositionLabeledA11y: "{label}, vraag {position} van {total}",
 
 		assessment: {
 			sectionPosition: "Onderdeel {position} van {total}",

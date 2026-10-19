@@ -130,6 +130,8 @@ A floating, draggable debug panel for one item player: a host passes it the play
 			environmentJson: interfaceI18n.t("debug.environmentJsonA11y"),
 			filteredModelJson: interfaceI18n.t("debug.filteredModelJsonA11y"),
 			noSessionYet: interfaceI18n.t("debug.noItemSessionYet"),
+			locale: interfaceI18n.getLocale(),
+			direction: interfaceI18n.getDirection?.() ?? "ltr",
 		};
 	});
 
@@ -470,6 +472,8 @@ A floating, draggable debug panel for one item player: a host passes it the play
 <div
 	class="pie-item-player-session-debugger"
 	style="left: {windowX}px; top: {windowY}px; width: {windowWidth}px; {isMinimized ? 'height: auto;' : `height: ${windowHeight}px;`}"
+	lang={t.locale}
+	dir={t.direction}
 >
 	<div
 		class="pie-item-player-session-debugger__header"

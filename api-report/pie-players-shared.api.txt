@@ -398,6 +398,7 @@
 
 ./i18n/provider
   DEFAULT_LOCALE
+  type ResolvedInterfaceI18n
   SimpleI18n
   detectBrowserLocale
   dynamicMessageKey

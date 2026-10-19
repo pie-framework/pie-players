@@ -159,14 +159,17 @@ stamps itself in the update that re-reads its labels. `stampInterfaceLocale`
 in `players-shared` is the imperative form, for a host element, a shell and a
 vanilla element; a template puts the pair on its root.
 
-A content root is a different matter. `pie-item-player`'s root carries the
-interface locale as the rest of the chrome does, and the PIE content inside it
-inherits that until something nearer names the content's own language: markup
-`lang`/`dir`, an element stamping `model.language`, or the content-language
-stamp that slice 2 of [`internationalization.md`](./internationalization.md#rollout)
-adds on the content subtree. Until then an interface locale that differs from
-the content's language is a claim about content that names none, which is why
-content whose language differs from the chrome's names it in its own markup.
+A content root is a different matter, and asserts nothing. The item player's
+root wraps the PIE content, so a `lang` there is a claim about content that
+names none — and it is not merely cosmetic: the read-aloud language climb runs
+over the node tree, the content root is on that path, and unnamed content under
+it would leave the browser voice for the chrome's locale. The section-player
+spec holds the content root to `lang`/`dir` absence, and the shadow-reading
+suite holds the read of unnamed content to no language at all. Content language
+belongs to the content subtree, which is slice 2 of
+[`internationalization.md`](./internationalization.md#rollout); until that
+lands, content whose language differs from the chrome's names it in its own
+markup.
 
 **Tool display names gain key fields; the required strings stay.**
 `ToolRegistration.name` and `.description` are host-facing required API, and

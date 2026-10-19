@@ -1981,8 +1981,6 @@ The PIE item player: it loads an item's PIE elements under the `iife`, `esm` or 
 <div
 	class="pie-item-player {scopeClass} {additionalStylesheetScopeClass}"
 	data-pie-content
-	lang={interfaceMessages.getLocale()}
-	dir={interfaceMessages.getDirection?.() ?? "ltr"}
 	bind:this={hostElement}
 >
 	{#if error}

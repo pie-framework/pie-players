@@ -1382,8 +1382,6 @@
 <div
   class={rootClassFinal}
   style={rootStyle}
-  lang={messages.getLocale()}
-  dir={messages.getDirection?.() ?? "ltr"}
   bind:this={rootElement}
 >
   {#if runtimePlayerError}

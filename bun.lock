@@ -402,13 +402,13 @@
       "name": "@pie-players/pie-item-list",
       "version": "1.0.0-beta.3",
       "dependencies": {
-        "@pie-element/shared-types": "0.2.1",
+        "@pie-element/shared-types": "0.2.2",
         "@pie-players/pie-players-shared": "workspace:*",
       },
       "devDependencies": {
         "@biomejs/biome": "^2.5.15",
         "@happy-dom/global-registrator": "^20.14.5",
-        "@pie-element/shared-math-rendering-mathjax": "0.1.6",
+        "@pie-element/shared-math-rendering-mathjax": "0.1.7",
         "@playwright/test": "^1.64.0",
         "@sveltejs/vite-plugin-svelte": "^7.3.1",
         "@types/node": "^26.6.5",
@@ -1446,11 +1446,11 @@
 
     "@pie-element/shared-lodash": ["@pie-element/shared-lodash@0.1.3-next.20261012213240", "", {}, "sha512-ho3dVtfgLlxrRqe4/vp56ZWnXeOThpg40WbXdOwLU2APNToLpTw62Q/5EhJW6WCLBVHEkVgDEYRCbIgDqxnSyw=="],
 
-    "@pie-element/shared-math-rendering-mathjax": ["@pie-element/shared-math-rendering-mathjax@0.1.6", "", {}, "sha512-qWbok/jweWumn+Supaq0pyVD20W5zAVfdw+PYWNeyild1QFnraL+B9Bh0Mb32o5K/nLAI+aJBg6peil5yvuz0Q=="],
+    "@pie-element/shared-math-rendering-mathjax": ["@pie-element/shared-math-rendering-mathjax@0.1.7", "", {}, "sha512-A/LDZaQBdEWkGZkVqSLY6XboQ8hr3zA+wt4w2oxtzM84ahPeuStalZLQeqy8i2WzzjW3ptHJBUn+f4BkujlMrQ=="],
 
     "@pie-element/shared-player-events": ["@pie-element/shared-player-events@0.2.1-next.20261015154938", "", {}, "sha512-OYTyIaZ5pLpqd+NhgpSrLJSjQtvYQFnnHZrlp4mI7uO1SqB5E6rWLTwYMiP02ASjs0PhFQa+GYoUEHT6DmP6Yw=="],
 
-    "@pie-element/shared-types": ["@pie-element/shared-types@0.2.1", "", {}, "sha512-/+dJDJW59su1gpPtr/z4fi5bKQZErvCFGr4xUSCXSLVay7mosNfntwKH1l4mFm1nqCJtY3ysZLB3jPFHSaJLww=="],
+    "@pie-element/shared-types": ["@pie-element/shared-types@0.2.2", "", {}, "sha512-21Kg2qoNLynpROyBcS3bT3o2aZizkMRYZWV2SelrEchqg3baCx4i4oyk//zkU09khrstqo4FVpc6yYSLz78Vaw=="],
 
     "@pie-element/shared-utils": ["@pie-element/shared-utils@0.1.3", "", { "dependencies": { "@pie-element/shared-types": "0.2.0", "dompurify": "^3.4.16" } }, "sha512-ZueWCj01D80+/dVrq9RH9VoIB00UJkReaxuZet7ZBiEQUNjxJXk4CyvYUKelPC5ZzU2RfmOOmSi91JR1eHgxyw=="],
 

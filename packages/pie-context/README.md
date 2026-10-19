@@ -24,6 +24,11 @@ facts the players publish, and how a descendant resolves them, is in
 - `ContextRoot` for late-provider replay of pending subscribing requests
 - `ensureDocumentContextRoot(doc)`, which installs the one `ContextRoot` a
   document shares
+- The contexts the players answer for the PIE elements inside them, each keyed
+  with `Symbol.for` so an element's bundled copy requests the key the player
+  provides: `sessionCommitContext` (how a response is committed, ADR 0005),
+  `interfaceLocaleContext` (the interface locale and its writing direction, as
+  `{ locale, direction }`), and `itemFeatureDecisionsContext`
 
 ## Design notes
 

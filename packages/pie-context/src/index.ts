@@ -19,6 +19,8 @@ export type {
 	ItemFeatureDecision,
 	ItemFeatureDecisions,
 } from "./item-feature-decisions.js";
+export { interfaceLocaleContext } from "./interface-locale.js";
+export type { InterfaceLocaleContextValue } from "./interface-locale.js";
 export { sessionCommitContext } from "./session-commit.js";
 export type { SessionCommitContextValue } from "./session-commit.js";
 export type {

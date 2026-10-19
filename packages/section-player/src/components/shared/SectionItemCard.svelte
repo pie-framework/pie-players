@@ -594,7 +594,7 @@ Item card of a section player: renders an item's heading, `<pie-item-toolbar>` a
 		min-width: 0;
 		max-width: 100%;
 		z-index: 1;
-		margin-left: auto;
+		margin-inline-start: auto;
 	}
 
 	/* A hidden title over a toolbar with nothing to show leaves the header empty:
@@ -660,7 +660,7 @@ Item card of a section player: renders an item's heading, `<pie-item-toolbar>` a
 		   it there at the smallest supported text size. */
 		min-height: 2.25rem;
 		padding: 0.4rem 0.9rem;
-		margin-left: auto;
+		margin-inline-start: auto;
 		border: 1px solid var(--pie-button-border, var(--pie-border, #8f8f8f));
 		border-radius: 4px;
 		background: var(--pie-button-bg, var(--pie-white, #fff));

@@ -7,7 +7,6 @@ import { GlobalRegistrator } from "@happy-dom/global-registrator";
 import { afterAll, afterEach, describe, expect, test } from "bun:test";
 import type { I18nProvider } from "@pie-players/pie-players-shared/i18n";
 import type { InterfaceLocaleContextValue } from "@pie-players/pie-context";
-import type { I18nProvider } from "@pie-players/pie-players-shared/i18n";
 
 const ownsDom = typeof window === "undefined";
 if (ownsDom) GlobalRegistrator.register();

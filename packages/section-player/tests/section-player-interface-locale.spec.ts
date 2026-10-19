@@ -281,39 +281,39 @@ test.describe("section player interface locale", () => {
 	test("the chrome stamps the interface locale's lang and dir on its own subtree", async ({
 		page,
 	}) => {
-	// `lang` resolves along the light tree and `direction` inherits through
-	// it, so the stamp sits on the shell host — the light-tree ancestor of
-	// every pane, card and item player — with the toolkit host, the
-	// navigation live region, and the toolbar carrying their own. The
-	// document root is never touched: an embedded player has no business
-	// writing it. `ar-XB` makes the `dir` half observable without an Arabic
-	// catalog.
-	await page.setViewportSize(WIDE);
-	await page.goto("/interface-locale?locale=ar-XB", {
-		waitUntil: "networkidle",
-	});
+		// `lang` resolves along the light tree and `direction` inherits through
+		// it, so the stamp sits on the shell host — the light-tree ancestor of
+		// every pane, card and item player — with the toolkit host, the
+		// navigation live region, and the toolbar carrying their own. The
+		// document root is never touched: an embedded player has no business
+		// writing it. `ar-XB` makes the `dir` half observable without an Arabic
+		// catalog. The item player's content root asserts nothing: a `lang`
+		// there would claim the item content for the interface language, and
+		// the read-aloud language climb from unnamed content would leave the
+		// browser voice for the chrome's locale. Content language is the
+		// content slice's concern.
+		await page.setViewportSize(WIDE);
+		await page.goto("/interface-locale?locale=ar-XB", {
+			waitUntil: "networkidle",
+		});
 
-	const shell = page.locator("pie-section-player-shell");
-	await expect(shell).toHaveAttribute("lang", "ar-XB");
-	await expect(shell).toHaveAttribute("dir", "rtl");
-	await expect(page.locator("pie-assessment-toolkit")).toHaveAttribute(
-		"dir",
-		"rtl",
-	);
-	const navStatus = page.locator(".pie-section-player-nav-status");
-	await expect(navStatus).toHaveAttribute("lang", "ar-XB");
-	await expect(navStatus).toHaveAttribute("dir", "rtl");
-	await expect(
-		page.locator("pie-item-toolbar .item-toolbar").first(),
-	).toHaveAttribute("dir", "rtl");
-	// The item player's content root asserts nothing: a `lang` there would
-	// claim the item content for the interface language, and the read-aloud
-	// language climb from unnamed content would leave the browser voice for
-	// the chrome's locale. Content language is the content slice's concern.
-	const itemPlayerRoot = page.locator("pie-item-player > .pie-item-player");
-	await expect(itemPlayerRoot.first()).not.toHaveAttribute("lang");
-	await expect(itemPlayerRoot.first()).not.toHaveAttribute("dir");
-	const root = page.locator("html");
+		const shell = page.locator("pie-section-player-shell");
+		await expect(shell).toHaveAttribute("lang", "ar-XB");
+		await expect(shell).toHaveAttribute("dir", "rtl");
+		await expect(page.locator("pie-assessment-toolkit")).toHaveAttribute(
+			"dir",
+			"rtl",
+		);
+		const navStatus = page.locator(".pie-section-player-nav-status");
+		await expect(navStatus).toHaveAttribute("lang", "ar-XB");
+		await expect(navStatus).toHaveAttribute("dir", "rtl");
+		await expect(
+			page.locator("pie-item-toolbar .item-toolbar").first(),
+		).toHaveAttribute("dir", "rtl");
+		const itemPlayerRoot = page.locator("pie-item-player > .pie-item-player");
+		await expect(itemPlayerRoot.first()).not.toHaveAttribute("lang");
+		await expect(itemPlayerRoot.first()).not.toHaveAttribute("dir");
+		const root = page.locator("html");
 		await expect(root).not.toHaveAttribute("dir");
 		const rootLang = await root.getAttribute("lang");
 
@@ -325,7 +325,6 @@ test.describe("section player interface locale", () => {
 		await expect(root).not.toHaveAttribute("dir");
 		expect(await root.getAttribute("lang")).toBe(rootLang);
 	});
-
 	test("a stale locale param is inert on a demo that supplies no locale", async ({
 		page,
 	}) => {

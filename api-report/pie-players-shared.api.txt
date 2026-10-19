@@ -366,7 +366,7 @@
   SimpleI18n
   type TextDirection
   type TranslationBundle
-  canonicalContentLanguageTag
+  canonicalLanguageTag
   contentLanguageAttributes
   createPieI18n
   detectBrowserLocale
@@ -390,6 +390,7 @@
   loadBundledCatalog
 
 ./i18n/language-tags
+  canonicalLanguageTag
   findBestLanguageMatch
   languageTagLookupSequence
   languageTagsEqual

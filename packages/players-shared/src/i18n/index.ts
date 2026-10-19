@@ -40,6 +40,7 @@ export function createPieI18n(config: I18nConfig = {}): I18nServiceApi {
 
 export { BUNDLED_LOCALES, loadBundledCatalog } from "./catalogs.js";
 export {
+	canonicalLanguageTag,
 	findBestLanguageMatch,
 	languageTagLookupSequence,
 	languageTagsEqual,
@@ -58,7 +59,6 @@ export {
 } from "./provider.js";
 export {
 	type ContentLanguageAttributes,
-	canonicalContentLanguageTag,
 	contentLanguageAttributes,
 	stampContentLanguage,
 } from "./content-language.js";

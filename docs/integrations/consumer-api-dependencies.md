@@ -700,11 +700,24 @@ On 2026-10-18 `@pie-players/pie-context` gained `interfaceLocaleContext`
 `pie-assessment-toolkit` and `pie-item-player` now answer for the PIE elements
 inside them. Additive on every side: a new export, a new `context-request`
 answer that only an element asking for that key sees, and with no `locale`
-supplied the answer is `en-US`/`ltr`. No published element reads it yet
-(pie-elements-ng's interface-i18n PRD is the subscriber half), and no host
-provides or consumes a `pie.*` context of its own, so no listed host is
-affected. The key is now a cross-repository contract: it is not renamed, and
-the value only grows.
+supplied the answer is `en-US`/`ltr`. pie-elements-ng's `multiple-choice`
+reads it as of its interface-i18n Phase 2 (merged 2026-10-19, unreleased at
+this writing); no host provides or consumes a `pie.*` context of its own, so
+no listed host is affected. The key is now a cross-repository contract: it is
+not renamed, and the value only grows.
+
+The interface-locale machinery is an ES-module graph by construction: every
+locale but `en-US` is a dynamic `import()` of its own chunk in each player's
+`dist`. The hosts in this record load `dist/index.js` as a module script or
+re-bundle it, which carries the chunks along; no `@pie-players` package ships
+an IIFE, so no host can reach the i18n path from one. A future single-file
+artifact would have to inline the catalogs or forgo locales — the assumption is
+recorded here so it is not regressed by accident. Also on 2026-10-19
+`@pie-players/pie-players-shared/i18n`'s `canonicalContentLanguageTag` (added
+earlier the same day, never released) became `canonicalLanguageTag`, the one
+canonicalization rule every `lang` this repository writes now goes through —
+`stampInterfaceLocale`'s and the facade `getLocale()`'s values included, so a
+host that spelled an unshipped tag `NL-nl` sees `lang="nl-NL"` stamped.
 
 On 2026-10-18 the chrome began stamping `lang` and `dir` from the interface
 locale. The elements write both attributes on nodes of their own and on nothing

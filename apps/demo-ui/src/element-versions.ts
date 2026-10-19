@@ -33,7 +33,9 @@ import selectText from "@pie-element/select-text/package.json";
  *
  * demo-ui depends on each package at the `next` dist-tag, `bun.lock` pins the
  * version, and `bun update` moves them all to the newest release together.
- * Under `dev:cdn` each manifest, and so each version, is the local
+ * item-demos and section-demos declare some of them at `next` too and load
+ * those modules from their own resolution, so `check:lock-consistency` fails
+ * when the lock resolves them to another build than demo-ui's. Under `dev:cdn` each manifest, and so each version, is the local
  * pie-elements-ng checkout's.
  */
 const MANIFESTS: ReadonlyArray<{ name: string; version: string }> = [

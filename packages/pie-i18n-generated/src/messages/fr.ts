@@ -95,7 +95,7 @@ const fr = {
 		resizePassageAndMediaA11y:
 			"Redimensionner les panneaux du texte et du multimédia",
 		resizePassageAndQuestionA11y: "Redimensionner les panneaux du texte et de la question",
-		passageWidthA11y: "Largeur du texte : {percent} %",
+		passageWidthA11y: "Largeur du texte\u00A0: {percent}\u00A0%",
 
 		assessment: {
 			sectionPosition: "Partie {position} sur {total}",
@@ -130,7 +130,7 @@ const fr = {
 			playbackPaused:
 				"Lecture en pause. Répondez à la question {position} pour continuer.",
 			playbackAdvisory:
-				"Répondez à la question {position} avant de reprendre la lecture du média.",
+				"Répondez à la question {position} avant de poursuivre la lecture du média.",
 			playbackReleased:
 				"Réponse acceptée. Reprenez la lecture du média.",
 		},
@@ -260,7 +260,7 @@ const fr = {
 			description: "Règle à l'écran pour mesurer",
 			buttonA11y: "Règle",
 			tooltip: "Règle",
-			toolA11y: "Outil de mesure règle, déplaçable et orientable",
+			toolA11y: "Règle, outil de mesure déplaçable et orientable",
 			unitSelectionA11y: "Choix de l'unité de la règle",
 			inches: "Pouces",
 			centimeters: "Centimètres",
@@ -270,7 +270,7 @@ const fr = {
 			switchToCentimetersA11y: "Passer aux centimètres",
 			switchedTo: "Passé à l'unité {unit}",
 			applicationA11y:
-				"Outil Règle. Flèches pour déplacer, Shift+flèches pour pivoter, PageUp ou PageDown pour un pivotement fin, et U pour changer d'unité. Unité actuelle\u00A0: {unit}",
+				"Outil Règle. Flèches pour déplacer, Shift+flèches pour pivoter, PageUp ou PageDown pour un réglage fin de la rotation, et U pour changer d'unité. Unité actuelle\u00A0: {unit}",
 			imageAlt: "Règle en {unit}",
 		},
 		protractor: {
@@ -279,8 +279,8 @@ const fr = {
 			buttonA11y: "Rapporteur",
 			tooltip: "Rapporteur",
 			toolA11y:
-				"Outil Rapporteur. Flèches pour déplacer, Shift+flèches pour pivoter, et PageUp ou PageDown pour un pivotement fin.",
-			roleA11y: "Outil de mesure rapporteur, déplaçable et orientable",
+				"Outil Rapporteur. Flèches pour déplacer, Shift+flèches pour pivoter, et PageUp ou PageDown pour un réglage fin de la rotation.",
+			roleA11y: "Rapporteur, outil de mesure déplaçable et orientable",
 			imageAlt:
 				"Rapporteur à échelle semi-circulaire de 180 degrés, gradué de 0 à 180 degrés dans les deux sens, avec des graduations tous les 10 degrés",
 		},
@@ -319,20 +319,20 @@ const fr = {
 			noEntryStatusFor: "Aucune image pour {term}.",
 		},
 		dictionarySpanish: {
-			name: "Dictionnaire espagnol",
+			name: "Dictionnaire en espagnol",
 			description: "Chercher les définitions des mots en espagnol",
 			buttonA11y:
-				"Dictionnaire espagnol, chercher les définitions des mots en espagnol",
-			tooltip: "Dictionnaire espagnol",
-			toolA11y: "Dictionnaire espagnol",
+				"Dictionnaire en espagnol, chercher les définitions des mots en espagnol",
+			tooltip: "Dictionnaire en espagnol",
+			toolA11y: "Dictionnaire en espagnol",
 		},
 		pictureDictionarySpanish: {
-			name: "Dictionnaire en images espagnol",
+			name: "Dictionnaire en images en espagnol",
 			description: "Chercher des images pour les mots en espagnol",
 			buttonA11y:
-				"Dictionnaire en images espagnol, chercher des images pour les mots en espagnol",
-			tooltip: "Dictionnaire en images espagnol",
-			toolA11y: "Dictionnaire en images espagnol",
+				"Dictionnaire en images en espagnol, chercher des images pour les mots en espagnol",
+			tooltip: "Dictionnaire en images en espagnol",
+			toolA11y: "Dictionnaire en images en espagnol",
 		},
 		lineReader: {
 			name: "Aide à la lecture",
@@ -367,7 +367,7 @@ const fr = {
 			description: "Agrandir le contenu sous une lentille mobile",
 			buttonA11y: "Loupe, agrandir le contenu sous une lentille",
 			tooltip: "Loupe",
-			roleA11y: "Lentille d'agrandissement déplaçable et redimensionnable",
+			roleA11y: "Lentille grossissante déplaçable et redimensionnable",
 			applicationA11y:
 				"Loupe à {zoom} fois. Flèches pour déplacer la lentille, + et - pour changer l'agrandissement, et Échap pour fermer.",
 			zoomIn: "Zoom avant",
@@ -586,7 +586,7 @@ const fr = {
 			on: "Activé",
 			effective: "Effectif :",
 			needs: "requiert",
-			hostSurfaceNotPlaced: "surface hôte (non placé)",
+			hostSurfaceNotPlaced: "surface hôte (non placée)",
 			support: "autoriser",
 			prohibit: "interdire",
 		},
@@ -616,7 +616,7 @@ const fr = {
 			engine: "Moteur",
 			neural: "Neuronal",
 			standard: "Standard",
-			providerDefault: "Valeur du fournisseur",
+			providerDefault: "Valeur par défaut du fournisseur",
 			format: "Format",
 			sampleRate: "Fréquence d'échantillonnage",
 			speechMarks: "Marques de parole",
@@ -648,7 +648,7 @@ const fr = {
 			allVoices: "Toutes les voix disponibles",
 			previewVoice: "Écouter un échantillon de la voix",
 			stopPreview: "Arrêter l'échantillon",
-			applying: "Application…",
+			applying: "Application en cours…",
 			ssmlPreviewUnsupported:
 				"L'aperçu SSML n'est pas pris en charge par le backend navigateur.",
 			pollySsmlHint:

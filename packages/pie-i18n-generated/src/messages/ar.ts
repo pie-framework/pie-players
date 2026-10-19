@@ -166,10 +166,10 @@ const ar = {
 		},
 
 		announce: {
-			movedUp: "نُقل إلى أعلى عند {position}",
-			movedDown: "نُقل إلى أسفل عند {position}",
-			movedLeft: "نُقل إلى اليسار عند {position}",
-			movedRight: "نُقل إلى اليمين عند {position}",
+			movedUp: "نُقل إلى أعلى حتى {position}",
+			movedDown: "نُقل إلى أسفل حتى {position}",
+			movedLeft: "نُقل إلى اليسار حتى {position}",
+			movedRight: "نُقل إلى اليمين حتى {position}",
 			rotatedTo: "دُوِّر إلى {degrees} درجة",
 		},
 	},
@@ -237,7 +237,7 @@ const ar = {
 				alkaliMetal: "فلز قلوي",
 				alkalineEarthMetal: "فلز قلوي ترابي",
 				transitionMetal: "فلز انتقالي",
-				postTransitionMetal: "فلز بعد انتقالي",
+				postTransitionMetal: "فلز ما بعد انتقالي",
 				metalloid: "شبه فلز",
 				diatomicNonmetal: "لافلز ثنائي الذرة",
 				polyatomicNonmetal: "لافلز متعدد الذرات",
@@ -348,7 +348,7 @@ const ar = {
 			narrowerA11y: "تضييق مساعد القراءة",
 			widerA11y: "توسيع مساعد القراءة",
 			applicationA11y:
-				"أداة مساعد القراءة. نافذة قراءة واضحة داخل إطار يحجب المحتوى. استخدم مفاتيح الأسهم للنقل، و+/− لتغيير حجم نافذة القراءة، وEscape للإغلاق. ارتفاع نافذة القراءة: {paneHeight} بكسل، ارتفاع الإطار: {frameHeight} بكسل",
+				"أداة مساعد القراءة. نافذة قراءة واضحة داخل إطار يحجب المحتوى. استخدم مفاتيح الأسهم للنقل، و+/- لتغيير حجم نافذة القراءة، وEscape للإغلاق. ارتفاع نافذة القراءة: {paneHeight} بكسل، ارتفاع الإطار: {frameHeight} بكسل",
 			resizeWindowFullA11y:
 				"غيِّر حجم نافذة القراءة. اسحب، أو استخدم مفتاحي السهم لأعلى ولأسفل لتغيير الارتفاع. الارتفاع الحالي {paneHeight} بكسل",
 			resizeFrameFullA11y:
@@ -409,7 +409,7 @@ const ar = {
 		},
 		theme: {
 			name: "المظهر",
-			description: "مظاهر وتباين يسهل الوصول إليها",
+			description: "مظاهر وتباين تدعم إمكانية الوصول",
 			buttonA11y: "المظهر، تغيير الألوان والتباين",
 			tooltip: "المظهر",
 			selectorA11y: "محدد المظهر",
@@ -421,7 +421,7 @@ const ar = {
 			unavailableDescription:
 				"يبقى المظهر الأساسي المُدار من PIE نشطًا حتى يصبح هذا المظهر متاحًا مجددًا.",
 			unavailableStatus:
-				"المظهر المختار غير متاح. يبقى المظهر الأساسي المُدار من PIE نشطًا حتى يصبح متاحًا مجددًا.",
+				"المظهر المختار غير متاح. يبقى المظهر الأساسي المُدار من PIE نشطًا حتى يصبح المظهر المختار متاحًا مجددًا.",
 		},
 		textToSpeech: {
 			name: "القراءة الصوتية",
@@ -485,7 +485,7 @@ const ar = {
 		environment: "البيئة",
 		events: "الأحداث",
 		controllerEvents: "أحداث وحدة التحكم",
-		instrumentation: "القياس المُ instrumental",
+		instrumentation: "القياس",
 		databaseState: "حالة قاعدة البيانات",
 		sessionDb: "قاعدة بيانات الجلسات (الخادم)",
 		noRows: "لا صفوف",
@@ -549,7 +549,7 @@ const ar = {
 			title: "ملف PNP",
 			noAssessmentBound: "لا اختبار مرتبط",
 			noAssessmentBoundBody:
-				"لا شيء لقراءته من ملف التعريف أو سياسات المقاطعة أو إدارة الاختبار، لذا لا يمكن لأدوات السؤال المطلوبة (requiredTools) وحدها منح تسهيلات. مرر الاختبار إلى خاصية assessment في مجموعة الأدوات، أو استدعِ updateAssessment(...) على منسق مجموعة الأدوات.",
+				"لا شيء لقراءته من ملف التعريف أو سياسات المقاطعة أو إدارة الاختبار، لذا لا يمنح تسهيلات سوى أدوات السؤال المطلوبة (requiredTools). مرر الاختبار إلى خاصية assessment في مجموعة الأدوات، أو استدعِ updateAssessment(...) على منسق مجموعة الأدوات.",
 			determinationReadOnly: "التحديد (للقراءة فقط)",
 			toolsEditor: "محرر الأدوات",
 			enforcement: "فرض PNP",
@@ -689,7 +689,7 @@ const ar = {
 			previewHintBrowserSsml: "SSML غير مدعوم في معاينة المتصفح.",
 			previewHintGoogleSsml: "حُفظ SSML. التتبع معطل.",
 			previewHintCustom: "يتيح التتبع عندما يُرجع المزود علامات الكلام.",
-			previewHintTracking: "التتبع متيح أثناء تشغيل المعاينة.",
+			previewHintTracking: "التتبع مُتاح أثناء تشغيل المعاينة.",
 			formatMp3: "MP3",
 			formatOgg: "OGG",
 			formatPcm: "PCM",

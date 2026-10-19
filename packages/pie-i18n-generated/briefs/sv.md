@@ -55,7 +55,7 @@ different flavour overrides per key through `customMessages`.
 | annotate | Annotera | |
 | strike through | Genomstryk | the answer-eliminator action |
 | theme | Tema | |
-| text to speech | Upläsning / text-till-tal | tool name is Upläsning |
+| text to speech | Uppläsning / text-till-tal | tool name is Uppläsning |
 | playback speed | Uppspelningshastighet | |
 | sign language | Teckenspråk | |
 | audio transcript | Ljudtranskript | |

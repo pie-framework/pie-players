@@ -8,12 +8,17 @@ established, unambiguous British forms change.
 - `-our`: colour (`tools.theme.buttonA11y` — "change colours and contrast").
 - `-re`: centre (`toolkit.window.centerA11y`).
 - `-ise`: minimise/maximise (window and panel controls), initialise
-  (calculator and TTS init failures).
+  (calculator and TTS init failures, the toolkit init error).
 - `maths` for the school subject (`debug.tts.mathHighlighting`).
 - `anticlockwise` for counterclockwise rotation
   (`toolkit.placement.rotateCounterclockwiseA11y`).
 - `centimetres` (`tools.ruler` unit names in both forms).
 - `Graphic Calculator` for the graphing variant (established UK term).
+- `coordinate grid` for the graph tool's "coordinate plane"
+  (`tools.graph.description`, `tools.graph.buttonA11y`), the UK classroom
+  term the tool's own `toolA11y` and `canvasA11y` already use.
+- `alternative` as the noun in `tools.signLanguage.description`; "alternate"
+  in that sense is North American.
 - Learner-facing vocabulary: delivered items read as **Questions**
   (`player.items`, `player.itemsRegionA11y`, the resize-panels label) — UK
   assessment software shows pupils questions, not items.

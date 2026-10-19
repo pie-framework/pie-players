@@ -326,12 +326,12 @@
 >
 	<div class="pie-demo-session-db-panel__content">
 		<div class="pie-demo-session-db-panel__meta">
-			<div><strong>assessmentId:</strong> <code>{assessmentId}</code></div>
+			<div><strong>{interfaceI18n.t("debug.sessionDbAssessmentId")}</strong> <code>{assessmentId}</code></div>
 			{#if mode === "section"}
-				<div><strong>sectionId:</strong> <code>{sectionId}</code></div>
+				<div><strong>{interfaceI18n.t("debug.sessionDbSectionId")}</strong> <code>{sectionId}</code></div>
 			{/if}
-			<div><strong>attemptId:</strong> <code>{attemptId}</code></div>
-			<div><strong>mode:</strong> <code>{mode}</code></div>
+			<div><strong>{interfaceI18n.t("debug.sessionDbAttemptId")}</strong> <code>{attemptId}</code></div>
+			<div><strong>{interfaceI18n.t("debug.sessionDbMode")}</strong> <code>{mode}</code></div>
 		</div>
 
 		<div class="pie-demo-session-db-panel__actions">

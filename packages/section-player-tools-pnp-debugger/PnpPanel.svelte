@@ -261,11 +261,11 @@ Developer panel for the section player demos that shows how the toolkit coordina
 						>
 							<option value="auto">{interfaceI18n.t("common.auto")}</option>
 							<option value="off">{interfaceI18n.t("common.off")}</option>
-							<option value="on">On</option>
+							<option value="on">{interfaceI18n.t("debug.pnp.on")}</option>
 						</select>
 					</label>
 					<span class="pie-section-player-tools-pnp-debugger__pill">
-						Effective: {pnpPanelData.pnpEnforcement.effective}
+						{interfaceI18n.t("debug.pnp.effective")} {pnpPanelData.pnpEnforcement.effective}
 					</span>
 					<button type="button" onclick={() => applyAllAvailablePlacement(true)} data-testid="pnp-enable-all-tools">
 						{interfaceI18n.t("debug.pnp.allAvailableTools")}
@@ -285,7 +285,7 @@ Developer panel for the section player demos that shows how the toolkit coordina
 							<span>{row.toolId}</span>
 							{#if row.contentDependency}
 								<span class="pie-section-player-tools-pnp-debugger__muted"
-									>needs {row.contentDependency}</span
+									>{interfaceI18n.t("debug.pnp.needs")} {row.contentDependency}</span
 								>
 							{/if}
 						</div>
@@ -313,7 +313,7 @@ Developer panel for the section player demos that shows how the toolkit coordina
 								     content dependency. -->
 								<span
 									class="pie-section-player-tools-pnp-debugger__muted"
-									data-testid={`pnp-tool-region-${row.toolId}`}>host surface (not placed)</span
+									data-testid={`pnp-tool-region-${row.toolId}`}>{interfaceI18n.t("debug.pnp.hostSurfaceNotPlaced")}</span
 								>
 							{/if}
 						</div>
@@ -334,7 +334,7 @@ Developer panel for the section player demos that shows how the toolkit coordina
 								onclick={() => togglePnp(row, 'supports')}
 								data-testid={`pnp-support-toggle-${row.toolId}`}
 							>
-								support
+								{interfaceI18n.t("debug.pnp.support")}
 							</button>
 							<button
 								type="button"
@@ -342,7 +342,7 @@ Developer panel for the section player demos that shows how the toolkit coordina
 								onclick={() => togglePnp(row, 'prohibitedSupports')}
 								data-testid={`pnp-prohibit-toggle-${row.toolId}`}
 							>
-								prohibit
+								{interfaceI18n.t("debug.pnp.prohibit")}
 							</button>
 						</div>
 					{/each}

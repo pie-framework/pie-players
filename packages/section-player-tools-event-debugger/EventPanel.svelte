@@ -486,7 +486,7 @@ Developer panel for the section player demos that logs the item and section even
 				onclick={() => (selectedLevel = "item")}
 				aria-pressed={selectedLevel === "item"}
 			>
-				item
+				{interfaceI18n.t("debug.eventLevelItem")}
 			</button>
 			<button
 				class="pie-section-player-tools-event-debugger__toggle-button"
@@ -495,18 +495,20 @@ Developer panel for the section player demos that logs the item and section even
 				onclick={() => (selectedLevel = "section")}
 				aria-pressed={selectedLevel === "section"}
 			>
-				section
+				{interfaceI18n.t("debug.eventLevelSection")}
 			</button>
 		</div>
 		<button class="pie-section-player-tools-event-debugger__button" onclick={() => (isPaused = !isPaused)}>
-			{isPaused ? "resume" : "pause"}
+			{isPaused
+				? interfaceI18n.t("debug.resume")
+				: interfaceI18n.t("debug.pause")}
 		</button>
 		<button class="pie-section-player-tools-event-debugger__button" onclick={clearRecords}>
-			clear
+			{interfaceI18n.t("debug.clear")}
 		</button>
 		{#if !controllerAvailable}
 			<span class="pie-section-player-tools-event-debugger__status">
-				controller unavailable
+				{interfaceI18n.t("debug.controllerUnavailable")}
 			</span>
 		{/if}
 	</div>
@@ -515,7 +517,7 @@ Developer panel for the section player demos that logs the item and section even
 		<div class="pie-section-player-tools-event-debugger__list">
 			{#if visibleRecords.length === 0}
 				<div class="pie-section-player-tools-event-debugger__empty">
-					No matching events yet. Interact with an item to capture controller events.
+					{interfaceI18n.t("debug.noMatchingEvents")}
 				</div>
 			{:else}
 				{#each visibleRecords as record (record.id)}
@@ -533,18 +535,18 @@ Developer panel for the section player demos that logs the item and section even
 						</div>
 						<div class="pie-section-player-tools-event-debugger__row-meta">
 							{#if record.itemId}
-								<span>item: {record.itemId}</span>
+								<span>{interfaceI18n.t("debug.fieldItem")} {record.itemId}</span>
 							{/if}
 							{#if record.intent}
-								<span>intent: {record.intent}</span>
+								<span>{interfaceI18n.t("debug.fieldIntent")} {record.intent}</span>
 							{/if}
 							{#if (semanticCounts.get(record.semanticFingerprint) || 0) > record.duplicateCount}
 								<span>
-									semantic repeats: {semanticCounts.get(record.semanticFingerprint)}
+									{interfaceI18n.t("debug.fieldSemanticRepeats")} {semanticCounts.get(record.semanticFingerprint)}
 								</span>
 							{/if}
 							{#if record.duplicateCount > 1}
-								<span>dupes: {record.duplicateCount}</span>
+								<span>{interfaceI18n.t("debug.fieldDuplicates")} {record.duplicateCount}</span>
 							{/if}
 						</div>
 					</button>

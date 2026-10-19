@@ -57,6 +57,12 @@ export {
 	stampInterfaceLocale,
 } from "./provider.js";
 export {
+	type ContentLanguageAttributes,
+	canonicalContentLanguageTag,
+	contentLanguageAttributes,
+	stampContentLanguage,
+} from "./content-language.js";
+export {
 	type InterfaceLocaleLoadErrorModel,
 	reportInterfaceLocaleLoadError,
 } from "./locale-load-error.js";

@@ -222,6 +222,7 @@ The PIE item player: it loads an item's PIE elements under the `iife`, `esm` or 
 		DEFAULT_LOCALE,
 		resolveInterfaceI18n,
 		reportInterfaceLocaleLoadError,
+		stampContentLanguage,
 	} from "@pie-players/pie-players-shared/i18n";
 	import type { I18nProvider } from "@pie-players/pie-players-shared/i18n";
 	import { onDestroy, tick, untrack } from "svelte";
@@ -939,6 +940,15 @@ The PIE item player: it loads an item's PIE elements under the `iife`, `esm` or 
 				reportInterfaceLocaleLoadError(hostElement, "pie-item-player", error);
 			});
 		});
+	});
+	// The content root carries the content language the delivery declares, so
+	// a screen reader takes the content's voice rules and RTL content lays out
+	// right to left. It asserts nothing about undeclared content — the
+	// chrome's `lang`/`dir` never claim it, and nothing is invented here.
+	$effect(() => {
+		const currentEnv = env;
+		const target = hostElement;
+		stampContentLanguage(target, currentEnv);
 	});
 	// A fresh facade on every catalog load. The provider's identity does not
 	// move when its catalog does, and a `$derived` that re-evaluates to the same

@@ -345,6 +345,7 @@
 ./i18n
   BUNDLED_LOCALES
   type BundledLocaleCode
+  type ContentLanguageAttributes
   DEFAULT_LOCALE
   type DynamicMessageKey
   type I18nConfig
@@ -365,6 +366,8 @@
   SimpleI18n
   type TextDirection
   type TranslationBundle
+  canonicalContentLanguageTag
+  contentLanguageAttributes
   createPieI18n
   detectBrowserLocale
   dynamicMessageKey
@@ -378,6 +381,7 @@
   pseudoLocalize
   reportInterfaceLocaleLoadError
   resolveInterfaceI18n
+  stampContentLanguage
   stampInterfaceLocale
   toLanguageTag
 

@@ -125,7 +125,7 @@ const enGB = {
 
 	toolkit: {
 		toolsA11y: "Assessment tools",
-		toolbarInitError: "Unable to initialize assessment toolkit.",
+		toolbarInitError: "Unable to initialise assessment toolkit.",
 		settingsTitle: "Settings",
 		closeSettingsA11y: "Close settings",
 		dragPanelA11y: "Drag panel",
@@ -185,8 +185,8 @@ const enGB = {
 		},
 		graph: {
 			name: "Graph",
-			description: "Coordinate plane",
-			buttonA11y: "Graph, coordinate plane",
+			description: "Coordinate grid",
+			buttonA11y: "Graph, coordinate grid",
 			tooltip: "Graph",
 			toolA11y: "Graph tool — draw points and lines on a coordinate grid",
 			canvasA11y: "Graph canvas — use tools to add points and draw lines",
@@ -437,7 +437,7 @@ const enGB = {
 		},
 		signLanguage: {
 			name: "Sign Language",
-			description: "Signed alternate for authored content",
+			description: "Signed alternative for authored content",
 			generic: "Sign language",
 			unknown: "Sign language ({code})",
 			ase: "American Sign Language",

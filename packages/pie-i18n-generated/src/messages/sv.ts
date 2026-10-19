@@ -86,7 +86,7 @@ const sv = {
 		scrollDownA11y: "Bläddra nedåt",
 		resizePanels: "Ändra storlek på panelerna",
 		resizePassagesAndItemsA11y:
-			"Ändra storlek på panelerna för texter och frågor",
+			"Ändra storlek på panelerna för texter och uppgifter",
 		resizeMediaRegion: "Ändra storlek på mediaregionen",
 		resizeQuestionAndMediaA11y:
 			"Ändra storlek på panelerna för fråga och media",
@@ -216,7 +216,7 @@ const sv = {
 		},
 		periodicTable: {
 			name: "Periodiska systemet",
-			description: "Kemisk uppslagsverk för periodiska systemet",
+			description: "Kemiskt uppslagsverk för periodiska systemet",
 			buttonA11y: "Periodiska systemet, kemiskt uppslagsverk",
 			tooltip: "Periodiska systemet",
 			toolA11y:
@@ -289,7 +289,7 @@ const sv = {
 				one: "{count} uppslagspost",
 				other: "{count} uppslagsposter",
 			},
-			noEntryStatusFor: "Ingen ordbokspost för {term}.",
+			noEntryStatusFor: "Ingen uppslagspost för {term}.",
 		},
 		pictureDictionary: {
 			name: "Bildordbok",
@@ -417,21 +417,21 @@ const sv = {
 				"Det valda temat är otillgängligt. PIE:s hanterade bastema förblir aktivt tills det blir tillgängligt igen.",
 		},
 		textToSpeech: {
-			name: "Upläsning",
+			name: "Uppläsning",
 			description: "Läs innehållet högt",
 			initFailed: "Kan inte initiera text-till-tal. Försök igen.",
 			inline: {
-				controlsA11y: "Upläsningskontroller",
+				controlsA11y: "Uppläsningskontroller",
 				playbackSpeedA11y: "Uppspelningshastighet",
 				rewindA11y: "Spola bakåt",
 				fastForwardA11y: "Spola framåt",
 				stopA11y: "Avsluta uppläsningen",
 				starting: "Startar uppläsning",
-				started: "Upläsningen har startat",
-				resumed: "Upläsningen har återupptagits",
-				pausedAnnouncement: "Upläsningen är pausad",
-				stopped: "Upläsningen har stoppats",
-				switchedSection: "Upläsningen har bytt till ett annat avsnitt",
+				started: "Uppläsningen har startat",
+				resumed: "Uppläsningen har återupptagits",
+				pausedAnnouncement: "Uppläsningen är pausad",
+				stopped: "Uppläsningen har stoppats",
+				switchedSection: "Uppläsningen har bytt till ett annat avsnitt",
 				nothingToRead: "Inget att läsa upp här",
 				startFailed: "Kan inte starta uppläsning",
 				skippedForward: "Spolade framåt",
@@ -456,7 +456,7 @@ const sv = {
 			gss: "Grekiskt teckenspråk",
 			mfs: "Mexikanskt teckenspråk",
 			signedEnglish: "Tecknad engelska",
-			regionA11y: "{language}-översättning",
+			regionA11y: "Översättning till {language}",
 		},
 		audioTranscript: {
 			name: "Ljudtranskript",
@@ -614,7 +614,7 @@ const sv = {
 			webSpeechUnavailable:
 				"Web Speech API är inte tillgängligt i den här webbläsaren.",
 			browserNoVoices:
-				"Webbläsarens tal är tillgängligt, men inga röster har returnerats ännu.",
+				"Webbläsarens talsyntes är tillgänglig, men inga röster har returnerats ännu.",
 			browserUnavailable: "Webbläsarens talsyntes är inte tillgänglig.",
 			googleUnavailable:
 				"Google Cloud TTS är inte tillgängligt via det konfigurerade API:et.",
@@ -641,15 +641,15 @@ const sv = {
 				"Kan inte förhandsvisa medan tjänsten är otillgänglig.",
 			browserSynthesisUnavailable: "Webbläsarens talsyntes är otillgänglig.",
 			ssmlWordTrackingDisabled:
-				"Googles SSML-förhandsvisning bevarar den auktoriserade SSML:en, så ordspårning är inaktiverad.",
+				"Googles SSML-förhandsvisning bevarar den ursprungliga SSML:en, så ordspårning är inaktiverad.",
 			applyUnavailable:
 				"Kan inte använda inställningarna medan tjänsten är otillgänglig.",
 			coordinatorUnavailable:
 				"Verktygslådans koordinator är inte tillgänglig för text-till-tal-uppdateringar.",
 			customProviderNotRegistered:
-				"Den anpassade leverantören '{id}' är inte registrerad.",
+				"Den anpassade leverantören ”{id}” är inte registrerad.",
 			customProviderNoConfig:
-				"Den anpassade leverantören '{id}' returnerade ingen tillämpningskonfiguration.",
+				"Den anpassade leverantören ”{id}” returnerade ingen tillämpningskonfiguration.",
 			httpError: "HTTP {status}: {message}",
 			unknownError: "Okänt fel",
 			previewRequestFailed: "Förhandsbegäran misslyckades ({status}).",

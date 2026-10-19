@@ -32,7 +32,7 @@ const es = {
 		no: "No",
 		ok: "Aceptar",
 		any: "Cualquiera",
-		off: "Apagado",
+		off: "Desactivado",
 		auto: "Automático",
 		all: "Todas",
 		none: "Ninguna",
@@ -98,9 +98,9 @@ const es = {
 		assessment: {
 			sectionPosition: "Sección {position} de {total}",
 			noSections: "No hay secciones",
-			loadFailed: "No se pudo cargar la evaluación. Inténtalo de nuevo.",
+			loadFailed: "No se pudo cargar la evaluación. Inténtelo de nuevo.",
 			restoreFailed:
-				"No se pudieron restaurar tus respuestas guardadas de esta sección. Inténtalo de nuevo.",
+				"No se pudieron restaurar tus respuestas guardadas de esta sección. Inténtelo de nuevo.",
 		},
 
 		formative: {
@@ -112,7 +112,7 @@ const es = {
 			notCorrect: "Incorrecto.",
 			notAutoScored:
 				"Respuesta registrada. Esta pregunta no se califica automáticamente.",
-			checkFailed: "No se pudo comprobar esta pregunta. Inténtalo de nuevo.",
+			checkFailed: "No se pudo comprobar esta pregunta. Inténtelo de nuevo.",
 			triesLeft: {
 				one: "Queda {count} intento.",
 				other: "Quedan {count} intentos.",
@@ -123,16 +123,16 @@ const es = {
 			waitingForMedia: "Las preguntas aparecerán mientras se reproduce el medio.",
 			questionAvailable: "La pregunta {position} ya está disponible.",
 			playbackPaused:
-				"Reproducción en pausa. Responde la pregunta {position} para continuar.",
+				"Reproducción en pausa. Responda la pregunta {position} para continuar.",
 			playbackAdvisory:
-				"Responde la pregunta {position} antes de continuar con el medio.",
-			playbackReleased: "Respuesta aceptada. Continúa reproduciendo el medio.",
+				"Responda la pregunta {position} antes de continuar con el medio.",
+			playbackReleased: "Respuesta aceptada. Continúe reproduciendo el medio.",
 		},
 	},
 
 	toolkit: {
 		toolsA11y: "Herramientas de la evaluación",
-		toolbarInitError: "No se pudo inicializar el conjunto de herramientas.",
+		toolbarInitError: "No se pudo inicializar el conjunto de herramientas de evaluación.",
 		settingsTitle: "Configuración",
 		closeSettingsA11y: "Cerrar la configuración",
 		dragPanelA11y: "Arrastrar el panel",
@@ -148,8 +148,8 @@ const es = {
 			moveRightA11y: "Mover la herramienta a la derecha",
 			moveUpA11y: "Mover la herramienta hacia arriba",
 			moveDownA11y: "Mover la herramienta hacia abajo",
-			narrowerA11y: "Reducir la anchura de la ventana de la herramienta",
-			widerA11y: "Aumentar la anchura de la ventana de la herramienta",
+			narrowerA11y: "Reducir el ancho de la ventana de la herramienta",
+			widerA11y: "Aumentar el ancho de la ventana de la herramienta",
 			shorterA11y: "Reducir la altura de la ventana de la herramienta",
 			tallerA11y: "Aumentar la altura de la ventana de la herramienta",
 			centerA11y: "Centrar la ventana de la herramienta",
@@ -197,28 +197,28 @@ const es = {
 			tooltip: "Gráfica",
 			toolA11y: "Herramienta de gráficas: dibuja puntos y líneas en un plano cartesiano",
 			canvasA11y:
-				"Lienzo de la gráfica: usa las herramientas para agregar puntos y dibujar líneas",
+				"Lienzo de la gráfica: use las herramientas para agregar puntos y dibujar líneas",
 			grid: "Cuadrícula:",
 			gridOpacityA11y: "Opacidad de la cuadrícula",
 			pointA11y: "Punto de la gráfica {id}",
 			modeSelector: "Selector",
 			modeSelectorHint:
-				"Selector: haz clic y arrastra los puntos para moverlos o mover las líneas asociadas.",
+				"Selector: haga clic y arrastre los puntos para moverlos o mover las líneas asociadas.",
 			modePoint: "Punto",
-			modePointHint: "Punto: haz clic en la cuadrícula para agregar puntos.",
+			modePointHint: "Punto: haga clic en la cuadrícula para agregar puntos.",
 			modeLine: "Línea",
 			modeLineHint:
-				"Línea: haz clic en un punto de inicio y luego en un punto final para trazar una línea.",
+				"Línea: haga clic en un punto de inicio y luego en un punto final para trazar una línea.",
 			modeDelete: "Eliminar",
 			modeDeleteHint:
-				"Eliminar: haz clic en un punto para eliminarlo junto con las líneas conectadas.",
+				"Eliminar: haga clic en un punto para eliminarlo junto con las líneas conectadas.",
 		},
 		periodicTable: {
 			name: "Tabla periódica",
 			description: "Referencia de la tabla periódica de la química",
 			buttonA11y: "Tabla periódica, referencia de química",
 			tooltip: "Tabla periódica",
-			toolA11y: "Tabla periódica: selecciona un elemento para ver sus detalles",
+			toolA11y: "Tabla periódica: seleccione un elemento para ver sus detalles",
 			elementsA11y: "Elementos de la tabla periódica",
 			showAllA11y: "Mostrar todos los elementos",
 			allElements: "Todos los elementos",
@@ -259,7 +259,7 @@ const es = {
 			switchToCentimetersA11y: "Cambiar a centímetros",
 			switchedTo: "Se cambió a {unit}",
 			applicationA11y:
-				"Herramienta Regla. Usa las flechas para mover, Shift+flechas para rotar, Repág o Avpág para una rotación fina y U para cambiar de unidad. Unidad actual: {unit}",
+				"Herramienta Regla. Use las flechas para mover, Shift+flechas para rotar, Repág o Avpág para una rotación fina y U para cambiar de unidad. Unidad actual: {unit}",
 			imageAlt: "Regla en {unit}",
 		},
 		protractor: {
@@ -268,7 +268,7 @@ const es = {
 			buttonA11y: "Transportador",
 			tooltip: "Transportador",
 			toolA11y:
-				"Herramienta Transportador. Usa las flechas para mover, Shift+flechas para rotar y Repág o Avpág para una rotación fina.",
+				"Herramienta Transportador. Use las flechas para mover, Shift+flechas para rotar y Repág o Avpág para una rotación fina.",
 			roleA11y: "Herramienta de medición de ángulos, arrastrable y giratoria",
 			imageAlt:
 				"Transportador con escala semicircular de 180 grados, marcada de 0 a 180 grados en ambas direcciones, con marcas cada 10 grados",
@@ -281,7 +281,7 @@ const es = {
 			toolA11y: "Diccionario",
 			notConfigured:
 				"No hay ningún servicio de diccionario configurado para esta evaluación.",
-			idleHint: "Escribe una palabra para buscar su definición.",
+			idleHint: "Escriba una palabra para buscar su definición.",
 			lookingUp: "Buscando «{term}»…",
 			noEntryFor: "Sin entradas para «{term}».",
 			entriesCount: {
@@ -298,7 +298,7 @@ const es = {
 			toolA11y: "Diccionario de imágenes",
 			notConfigured:
 				"No hay ningún servicio de diccionario de imágenes configurado para esta evaluación.",
-			idleHint: "Escribe una palabra para ver una imagen.",
+			idleHint: "Escriba una palabra para ver una imagen.",
 			lookingUp: "Buscando «{term}»…",
 			noEntryFor: "Sin imágenes para «{term}».",
 			entriesCount: {
@@ -329,23 +329,23 @@ const es = {
 			tooltip: "Guía de lectura",
 			roleA11y: "Guía de lectura superpuesta, arrastrable y ajustable",
 			close: "Cerrar la guía de lectura",
-			resizeWindowA11y: "Arrastra para ajustar la ventana de lectura",
-			resizeFrameA11y: "Arrastra para ajustar el marco y la anchura de la ventana",
+			resizeWindowA11y: "Arrastre para ajustar la ventana de lectura",
+			resizeFrameA11y: "Arrastre para ajustar el marco y el ancho de la ventana",
 			windowHeightAnnounce: "Altura de la ventana de lectura: {pixels} píxeles",
 			frameHeightAnnounce: "Altura del marco: {pixels} píxeles",
-			widthAnnounce: "Anchura: {pixels} píxeles",
+			widthAnnounce: "Ancho: {pixels} píxeles",
 			shorterWindowA11y: "Reducir la altura de la ventana de lectura",
 			tallerWindowA11y: "Aumentar la altura de la ventana de lectura",
 			shorterFrameA11y: "Reducir la altura del marco",
 			tallerFrameA11y: "Aumentar la altura del marco",
-			narrowerA11y: "Reducir la anchura de la guía de lectura",
-			widerA11y: "Aumentar la anchura de la guía de lectura",
+			narrowerA11y: "Reducir el ancho de la guía de lectura",
+			widerA11y: "Aumentar el ancho de la guía de lectura",
 			applicationA11y:
-				"Herramienta Guía de lectura. Una ventana de lectura clara dentro de un marco que oscurece el contenido. Usa las flechas para mover, +/- para ajustar la ventana de lectura y Escape para cerrar. Altura de la ventana de lectura: {paneHeight} píxeles, altura del marco: {frameHeight} píxeles",
+				"Herramienta Guía de lectura. Una ventana de lectura clara dentro de un marco que oscurece el contenido. Use las flechas para mover, +/- para ajustar la ventana de lectura y Escape para cerrar. Altura de la ventana de lectura: {paneHeight} píxeles, altura del marco: {frameHeight} píxeles",
 			resizeWindowFullA11y:
-				"Ajusta la ventana de lectura. Arrastra, o usa las flechas arriba y abajo para cambiar su altura. Altura actual: {paneHeight} píxeles",
+				"Ajuste la ventana de lectura. Arrastre, o use las flechas arriba y abajo para cambiar su altura. Altura actual: {paneHeight} píxeles",
 			resizeFrameFullA11y:
-				"Ajusta el marco. Arrastra, o usa las flechas arriba y abajo para cambiar la altura del marco y las flechas izquierda y derecha para cambiar la anchura. Altura actual del marco: {frameHeight} píxeles, anchura: {width} píxeles",
+				"Ajuste el marco. Arrastre, o use las flechas arriba y abajo para cambiar la altura del marco y las flechas izquierda y derecha para cambiar el ancho. Altura actual del marco: {frameHeight} píxeles, ancho: {width} píxeles",
 		},
 		magnification: {
 			name: "Lupa",
@@ -354,18 +354,18 @@ const es = {
 			tooltip: "Lupa",
 			roleA11y: "Lente de aumento arrastrable y ajustable",
 			applicationA11y:
-				"Lupa a {zoom} aumentos. Usa las flechas para mover la lente, + y - para cambiar el aumento y Escape para cerrar.",
+				"Lupa a {zoom} aumentos. Use las flechas para mover la lente, + y - para cambiar el aumento y Escape para cerrar.",
 			zoomIn: "Acercar",
 			zoomOut: "Alejar",
 			zoomLevel: "{zoom}×",
 			zoomAnnounce: "Aumento de {zoom} veces",
 			close: "Cerrar la lupa",
-			resizeA11y: "Arrastra para ajustar el tamaño de la lupa",
+			resizeA11y: "Arrastre para ajustar el tamaño de la lupa",
 			resizeFullA11y:
-				"Ajusta el tamaño de la lupa. Arrastra, o usa las flechas. Tamaño actual: {width} por {height} píxeles",
+				"Ajuste el tamaño de la lupa. Arrastre, o use las flechas. Tamaño actual: {width} por {height} píxeles",
 			sizeAnnounce: "Lupa de {width} por {height} píxeles",
-			narrowerA11y: "Reducir la anchura de la lupa",
-			widerA11y: "Aumentar la anchura de la lupa",
+			narrowerA11y: "Reducir el ancho de la lupa",
+			widerA11y: "Aumentar el ancho de la lupa",
 			shorterA11y: "Reducir la altura de la lupa",
 			tallerA11y: "Aumentar la altura de la lupa",
 		},
@@ -406,7 +406,7 @@ const es = {
 			buttonA11y: "Tema, cambiar colores y contraste",
 			tooltip: "Tema",
 			selectorA11y: "Selector de temas",
-			hint: "Elige un tema para mejorar la legibilidad y reducir la fatiga visual.",
+			hint: "Elija un tema para mejorar la legibilidad y reducir la fatiga visual.",
 			selectA11y: "Elegir tema",
 			selectCurrentA11y: "Elegir tema. Tema actual: {name}",
 			optionUnavailableA11y: "{name}, no disponible",
@@ -420,7 +420,7 @@ const es = {
 			name: "Leer en voz alta",
 			description: "Leer el contenido en voz alta",
 			initFailed:
-				"No se pudo inicializar la lectura en voz alta. Inténtalo de nuevo.",
+				"No se pudo inicializar la lectura en voz alta. Inténtelo de nuevo.",
 			inline: {
 				controlsA11y: "Controles de lectura",
 				playbackSpeedA11y: "Velocidad de lectura",
@@ -471,7 +471,7 @@ const es = {
 		sessionData: "Datos de la sesión",
 		sessionDataPersistent: "Datos de sesión de PIE (persistentes)",
 		noItemSessionYet:
-			"Aún no hay datos de sesión del ítem. Interactúa con el ítem para ver las actualizaciones aquí.",
+			"Aún no hay datos de sesión del ítem. Interactúe con el ítem para ver las actualizaciones aquí.",
 		itemSessionsSnapshot: "Instantánea de sesiones de ítems",
 		sectionControllerUnavailable:
 			"El controlador de esta sección aún no está disponible.",
@@ -484,8 +484,8 @@ const es = {
 		sessionDb: "Base de datos de sesiones (servidor)",
 		noRows: "Sin filas",
 		noRecords: "Aún no hay registros de instrumentación.",
-		selectRecord: "Selecciona un registro para ver sus detalles.",
-		selectEvent: "Selecciona un evento para ver los detalles de su carga.",
+		selectRecord: "Seleccione un registro para ver sus detalles.",
+		selectEvent: "Seleccione un evento para ver los detalles de su carga útil.",
 		showRawTables: "Mostrar tablas sin procesar",
 		showReconstructedSnapshots: "Mostrar instantáneas reconstruidas",
 		showSectionRequest: "Mostrar la solicitud de la sección",
@@ -520,8 +520,8 @@ const es = {
 		pause: "Pausar",
 		resume: "Reanudar",
 		controllerUnavailable: "Controlador no disponible",
-		noMatchingEvents: "Aún no hay eventos coincidentes. Interactúa con el ítem para capturar eventos del controlador.",
-		noSectionSessionYet: "Aún no hay datos de sesión de la sección. Interactúa con las preguntas para ver las actualizaciones aquí.",
+		noMatchingEvents: "Aún no hay eventos coincidentes. Interactúe con el ítem para capturar eventos del controlador.",
+		noSectionSessionYet: "Aún no hay datos de sesión de la sección. Interactúe con las preguntas para ver las actualizaciones aquí.",
 		eventLevelItem: "ítem",
 		eventLevelSection: "sección",
 		instrumentationKindAll: "all",
@@ -546,7 +546,7 @@ const es = {
 			title: "Perfil PNP",
 			noAssessmentBound: "Ninguna evaluación vinculada",
 			noAssessmentBoundBody:
-				"El perfil, el distrito y la política de administración de la prueba no tienen nada que leer, así que solo los requiredTools de un ítem pueden otorgar una adaptación. Pasa la evaluación a la propiedad assessment del toolkit o llama a updateAssessment(...) en el coordinador del toolkit.",
+				"El perfil, el distrito y la política de administración de la prueba no tienen nada que leer, así que solo los requiredTools de un ítem pueden otorgar una adaptación. Pase la evaluación a la propiedad assessment del toolkit o llame a updateAssessment(...) en el coordinador del toolkit.",
 			determinationReadOnly: "Determinación (solo lectura)",
 			toolsEditor: "Editor de herramientas",
 			enforcement: "Aplicación de PNP",
@@ -572,7 +572,7 @@ const es = {
 		tts: {
 			title: "Configuración de TTS",
 			closeA11y: "Cerrar la configuración de TTS",
-			toolbarLayoutMode: "Modo de disposición de la barra",
+			toolbarLayoutMode: "Modo de disposición de la barra de herramientas",
 			reservedRow: "Fila reservada",
 			expandingRow: "Fila expandible",
 			floatingOverlay: "Superposición flotante",
@@ -629,14 +629,14 @@ const es = {
 			ssmlPreviewUnsupported:
 				"La vista previa de SSML no es compatible con el backend del navegador.",
 			pollySsmlHint:
-				"Algunas voces neuronales de Polly rechazan ciertas etiquetas SSML (por ejemplo, emphasis). Si la vista previa falla, usa etiquetas SSML básicas.",
+				"Algunas voces neuronales de Polly rechazan ciertas etiquetas SSML (por ejemplo, emphasis). Si la vista previa falla, use etiquetas SSML básicas.",
 			mathHighlightParts:
 				"Se resalta cada parte de una fórmula mientras se lee, y la fórmula completa cuando la alineación es incierta.",
 			mathHighlightBlock:
 				"Cada fórmula se resalta como un bloque único en lugar de dividirse en partes.",
 			previewFailed: "No se pudo reproducir el audio de vista previa.",
 			previewNoAudio: "La respuesta de vista previa no incluyó audio.",
-			previewEnterText: "Escribe el texto de vista previa antes de reproducir.",
+			previewEnterText: "Escriba el texto de vista previa antes de reproducir.",
 			previewUnavailable:
 				"No se puede previsualizar mientras este servicio no esté disponible.",
 			browserSynthesisUnavailable:
@@ -672,7 +672,7 @@ const es = {
 			},
 			headerRowReservation: "Reserva de la fila de encabezado del ítem: {state}",
 			speedOptionsHelp:
-				"Multiplicadores separados por comas o punto y coma. Incluye 1 para la velocidad normal; deja vacío para ocultar los controles de velocidad.",
+				"Multiplicadores separados por comas o punto y coma. Incluya 1 para la velocidad normal; deje vacío para ocultar los controles de velocidad.",
 			usingSelectedVoice: "Voz seleccionada: {voice}",
 			autoVoice: "Mejor voz disponible (automático): {voice}",
 			autoVoiceWaiting:

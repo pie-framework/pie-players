@@ -154,7 +154,7 @@ const cy = {
 			narrowerA11y: "Gwneud ffenestr yr offer yn gulach",
 			widerA11y: "Gwneud ffenestr yr offer yn lletach",
 			shorterA11y: "Gwneud ffenestr yr offer yn fyrrach",
-			tallerA11y: "Gwneud ffenestr yr offer yn talach",
+			tallerA11y: "Gwneud ffenestr yr offer yn dalach",
 			centerA11y: "Canoli ffenestr yr offer",
 			closeA11y: "Cau'r offer",
 		},
@@ -191,7 +191,7 @@ const cy = {
 			toolA11y: "Offer Cyfrifiannell",
 			loading: "Yn llwytho'r gyfrifiannell…",
 			providerUnavailable: "Nid yw'r gyfrifiannell ar gael.",
-			initFailed: "Methwyd cychwyn y gyfrifiannell.",
+			initFailed: "Methwyd â chychwyn y gyfrifiannell.",
 		},
 		graph: {
 			name: "Graff",
@@ -241,7 +241,7 @@ const cy = {
 				transitionMetal: "Metel Drosiannol",
 				postTransitionMetal: "Metel Ôl-drosiannol",
 				metalloid: "Meteloid",
-				diatomicNonmetal: "Anfetel Ddaeuatomig",
+				diatomicNonmetal: "Anfetel Ddeuatomig",
 				polyatomicNonmetal: "Anfetel Amlatomig",
 				nobleGas: "Nwy Gennud",
 				lanthanide: "Lanthanid",
@@ -275,7 +275,7 @@ const cy = {
 				"Offer Protractwr. Defnyddiwch y saeth i symud, Shift+saeth i droi, a PageUp neu PageDown ar gyfer troi manwl.",
 			roleA11y: "Offer mesur protractwr y gellir ei luso a'i droi",
 			imageAlt:
-				"Protractwr gyda chrynfa hargradd 180 gradd, wedi'i raddu o 0 i 180 gradd yn y ddau gyfeiriad, gyda marcio graddau bob 10 gradd",
+				"Protractwr gyda graddfa hanner cylch o 180 gradd, wedi'i raddu o 0 i 180 gradd yn y ddau gyfeiriad, gyda marcio graddau bob 10 gradd",
 		},
 		dictionary: {
 			name: "Geiriadur",
@@ -310,12 +310,12 @@ const cy = {
 			lookingUp: "Yn chwilio “{term}”…",
 			noEntryFor: "Dim llun ar gyfer “{term}”.",
 			entriesCount: {
-				zero: "{count} o ddelweddau",
-				one: "{count} delwedd",
-				two: "{count} ddelwedd",
-				few: "{count} delwedd",
-				many: "{count} delwedd",
-				other: "{count} o ddelweddau",
+				zero: "{count} o luniau",
+				one: "{count} llun",
+				two: "{count} lun",
+				few: "{count} llun",
+				many: "{count} llun",
+				other: "{count} o luniau",
 			},
 			noEntryStatusFor: "Dim llun ar gyfer {term}.",
 		},
@@ -347,9 +347,9 @@ const cy = {
 			frameHeightAnnounce: "Uchder y ffrâm: {pixels} picsel",
 			widthAnnounce: "Lled: {pixels} picsel",
 			shorterWindowA11y: "Gwneud y ffenestr ddarllen yn fyrrach",
-			tallerWindowA11y: "Gwneud y ffenestr ddarllen yn talach",
+			tallerWindowA11y: "Gwneud y ffenestr ddarllen yn dalach",
 			shorterFrameA11y: "Gwneud y ffrâm yn fyrrach",
-			tallerFrameA11y: "Gwneud y ffrâm yn talach",
+			tallerFrameA11y: "Gwneud y ffrâm yn dalach",
 			narrowerA11y: "Gwneud y canllaw darllen yn gulach",
 			widerA11y: "Gwneud y canllaw darllen yn lletach",
 			applicationA11y:
@@ -379,7 +379,7 @@ const cy = {
 			narrowerA11y: "Gwneud y chwyddwydr yn gulach",
 			widerA11y: "Gwneud y chwyddwydr yn lletach",
 			shorterA11y: "Gwneud y chwyddwydr yn fyrrach",
-			tallerA11y: "Gwneud y chwyddwydr yn talach",
+			tallerA11y: "Gwneud y chwyddwydr yn dalach",
 		},
 		answerEliminator: {
 			name: "Taro Trwodd",
@@ -485,7 +485,7 @@ const cy = {
 			"Dim data sesiwn eitem eto. Rhyngweithiwch â'r eitem i weld diweddariadau yma.",
 		itemSessionsSnapshot: "Ciplun o Sesiynau Eitemau",
 		sectionControllerUnavailable:
-			"Does dim rheolydd adran ar gael i'r adran hon eto.",
+			"Nid oes rheolydd adran ar gael i'r adran hon eto.",
 		filteredModel: "Model wedi'i Hidlo",
 		environment: "Amgylchedd",
 		events: "Digwyddiadau",
@@ -637,7 +637,7 @@ const cy = {
 			pollySsmlHint:
 				"Mae rhai lleisiau niwral Polly yn gwrthod tagiau SSML penodol (er enghraifft emphasis). Defnyddiwch dagiau SSML sylfaenol os yw'r rhagolwg yn methu.",
 			mathHighlightParts:
-				"Yn amlygu pob rhan o fformiwla wrth iddi gael ei darllen, gan ymdrochi i'r fformiwla gyfan pan nad yw'r aliniad yn bur.",
+				"Yn amlygu pob rhan o fformiwla wrth iddi gael ei darllen, gan dychwelyd at y fformiwla gyfan pan fo'r aliniad yn ansicr.",
 			mathHighlightBlock:
 				"Yn amlygu pob fformiwla fel un bloc yn hytrach nag ei rhannu yn rhannau.",
 			previewFailed: "Methwyd â chwarae sain y rhagolwg.",

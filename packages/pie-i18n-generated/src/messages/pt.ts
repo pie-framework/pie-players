@@ -24,7 +24,7 @@ const pt = {
 		retry: "Tentar novamente",
 		back: "Voltar",
 		next: "Avançar",
-		previous: "Voltar",
+		previous: "Anterior",
 		submit: "Entregar",
 		continue: "Continuar",
 		finish: "Finalizar",
@@ -228,7 +228,7 @@ const pt = {
 			elementsA11y: "Elementos da tabela periódica",
 			showAllA11y: "Mostrar todos os elementos",
 			allElements: "Todos os elementos",
-			atomicMass: "Massa atômica",
+			atomicMass: "Massa Atômica",
 			atomicNumber: "Número Atômico",
 			electronConfig: "Configuração Eletrônica",
 			phase: "Estado",
@@ -277,7 +277,7 @@ const pt = {
 				"Ferramenta Transferidor. Use as setas para mover, Shift+setas para girar e PageUp ou PageDown para giro fino.",
 			roleA11y: "Ferramenta de medição de ângulos, arrastável e giratória",
 			imageAlt:
-				"Transferidor com escala semicircular de 180 graus, marcado de 0 a 180 graus em ambos os sentidos, com marcações a cada 10 graus",
+				"Transferidor com escala semicircular de 180 graus, marcada de 0 a 180 graus em ambos os sentidos, com marcações a cada 10 graus",
 		},
 		dictionary: {
 			name: "Dicionário",
@@ -316,12 +316,12 @@ const pt = {
 			noEntryStatusFor: "Nenhuma imagem para {term}.",
 		},
 		dictionarySpanish: {
-			name: "Dicionário de espanhol",
+			name: "Dicionário em espanhol",
 			description: "Buscar definições de palavras em espanhol",
 			buttonA11y:
-				"Dicionário de espanhol, buscar definições de palavras em espanhol",
-			tooltip: "Dicionário de espanhol",
-			toolA11y: "Dicionário de espanhol",
+				"Dicionário em espanhol, buscar definições de palavras em espanhol",
+			tooltip: "Dicionário em espanhol",
+			toolA11y: "Dicionário em espanhol",
 		},
 		pictureDictionarySpanish: {
 			name: "Dicionário de imagens em espanhol",
@@ -447,7 +447,7 @@ const pt = {
 				startFailed: "Não foi possível iniciar a leitura",
 				skippedForward: "Avançou a leitura",
 				skipForwardFailed: "Não foi possível avançar a leitura",
-				skippedBackward: "Voltou a leitura",
+				skippedBackward: "Retrocedeu a leitura",
 				skipBackwardFailed: "Não foi possível voltar a leitura",
 				speedChangeFailed: "Não foi possível mudar a velocidade de leitura",
 				speedAnnounce: "Velocidade de leitura: {label}",
@@ -495,7 +495,7 @@ const pt = {
 		noRows: "Nenhuma linha",
 		noRecords: "Nenhum registro de instrumentação ainda.",
 		selectRecord: "Selecione um registro para ver os detalhes.",
-		selectEvent: "Selecione um evento para ver os detalhes da carga.",
+		selectEvent: "Selecione um evento para ver os detalhes da carga útil.",
 		showRawTables: "Mostrar tabelas brutas",
 		showReconstructedSnapshots: "Mostrar instantâneos reconstruídos",
 		showSectionRequest: "Mostrar a requisição da seção",
@@ -579,7 +579,7 @@ const pt = {
 			on: "Ativado",
 			effective: "Efetivo:",
 			needs: "requer",
-			hostSurfaceNotPlaced: "superfície do host (não posicionado)",
+			hostSurfaceNotPlaced: "superfície do host (não posicionada)",
 			support: "permitir",
 			prohibit: "proibir",
 		},
@@ -643,7 +643,7 @@ const pt = {
 			stopPreview: "Parar a amostra",
 			applying: "Aplicando…",
 			ssmlPreviewUnsupported:
-				"A pré-visualização de SSML não é compatível com o backend do navegador.",
+				"A amostra de SSML não é compatível com o backend do navegador.",
 			pollySsmlHint:
 				"Algumas vozes neurais do Polly rejeitam certas tags SSML (por exemplo, emphasis). Se a amostra falhar, use tags SSML básicas.",
 			mathHighlightParts:
@@ -656,7 +656,7 @@ const pt = {
 			previewEnterText:
 				"Digite o texto de amostra antes de iniciar a reprodução.",
 			previewUnavailable:
-				"Não é possível pré-visualizar enquanto este serviço estiver indisponível.",
+				"Não é possível reproduzir a amostra enquanto este serviço estiver indisponível.",
 			browserSynthesisUnavailable:
 				"A síntese de voz do navegador está indisponível.",
 			ssmlWordTrackingDisabled:

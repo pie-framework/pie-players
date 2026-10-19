@@ -174,7 +174,7 @@ const ro = {
 			movedDown: "Mutat în jos la {position}",
 			movedLeft: "Mutat la stânga la {position}",
 			movedRight: "Mutat la dreapta la {position}",
-			rotatedTo: "Rotit la {degrees} grade",
+			rotatedTo: "Rotit la {degrees}°",
 		},
 	},
 
@@ -210,7 +210,7 @@ const ro = {
 			pointA11y: "Punctul {id} al graficului",
 			modeSelector: "Selector",
 			modeSelectorHint:
-				"Selector: fă clic pe puncte și trage-le pentru a le muta pe ele sau dreptele asociate.",
+				"Selector: fă clic pe puncte și trage-le pentru a muta punctele sau dreptele asociate.",
 			modePoint: "Punct",
 			modePointHint: "Punct: fă clic pe grilă pentru a adăuga puncte.",
 			modeLine: "Dreaptă",
@@ -307,7 +307,7 @@ const ro = {
 			toolA11y: "Dicționar ilustrat",
 			notConfigured:
 				"Niciun serviciu de dicționar ilustrat nu este configurat pentru această evaluare.",
-			idleHint: "Tastează un cuvânt pentru a vedea o imagine a lui.",
+			idleHint: "Tastează un cuvânt pentru a-i vedea imaginea.",
 			lookingUp: "Se caută „{term}”…",
 			noEntryFor: "Nicio imagine pentru „{term}”.",
 			entriesCount: {

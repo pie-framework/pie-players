@@ -159,10 +159,10 @@ const ja = {
 		},
 
 		announce: {
-			movedUp: "{position} 上へ移動しました",
-			movedDown: "{position} 下へ移動しました",
-			movedLeft: "{position} 左へ移動しました",
-			movedRight: "{position} 右へ移動しました",
+			movedUp: "上へ移動しました（{position}）",
+			movedDown: "下へ移動しました（{position}）",
+			movedLeft: "左へ移動しました（{position}）",
+			movedRight: "右へ移動しました（{position}）",
 			rotatedTo: "{degrees} 度に回転しました",
 		},
 	},
@@ -193,7 +193,7 @@ const ja = {
 			toolA11y: "グラフツール — 座標平面に点と線を描きます",
 			canvasA11y:
 				"グラフキャンバス — ツールを使って点を追加し、線を描きます",
-			grid: "グリッド:",
+			grid: "グリッド：",
 			gridOpacityA11y: "グリッドの不透明度",
 			pointA11y: "グラフの点 {id}",
 			modeSelector: "選択",
@@ -230,7 +230,7 @@ const ja = {
 				alkaliMetal: "アルカリ金属",
 				alkalineEarthMetal: "アルカリ土類金属",
 				transitionMetal: "遷移金属",
-				postTransitionMetal: "卑金属",
+				postTransitionMetal: "貧金属",
 				metalloid: "半金属",
 				diatomicNonmetal: "二原子非金属",
 				polyatomicNonmetal: "多原子非金属",
@@ -252,10 +252,10 @@ const ja = {
 			centimetersInSentence: "センチメートル",
 			switchToInchesA11y: "インチに切り替える",
 			switchToCentimetersA11y: "センチメートルに切り替える",
-			switchedTo: "{unit} に切り替えました",
+			switchedTo: "{unit}に切り替えました",
 			applicationA11y:
 				"定規ツール。矢印キーで移動、Shift+矢印キーで回転、PageUp または PageDown で微調整、U キーで単位を切り替えます。現在の単位：{unit}",
-			imageAlt: "{unit} の定規",
+			imageAlt: "{unit}の定規",
 		},
 		protractor: {
 			name: "分度器",
@@ -333,7 +333,7 @@ const ja = {
 			narrowerA11y: "読書ガイドの幅を狭める",
 			widerA11y: "読書ガイドの幅を広げる",
 			applicationA11y:
-				"読書ガイドツール。内容を覆う枠の中の、はっきり見える読書ウィンドウ。矢印キーで移動、+/- で読書ウィンドウのサイズ変更、Escape で閉じる。読書ウィンドウの高さ：{paneHeight} ピクセル、枠の高さ：{frameHeight} ピクセル",
+				"読書ガイドツール。内容を覆う枠の中の、はっきり見える読書ウィンドウ。矢印キーで移動、+/- で読書ウィンドウのサイズを変更、Escape で閉じます。読書ウィンドウの高さ：{paneHeight} ピクセル、枠の高さ：{frameHeight} ピクセル",
 			resizeWindowFullA11y:
 				"読書ウィンドウのサイズを変更します。ドラッグするか、上下の矢印キーで高さを変更します。現在の高さ {paneHeight} ピクセル",
 			resizeFrameFullA11y:
@@ -350,7 +350,7 @@ const ja = {
 			zoomIn: "拡大",
 			zoomOut: "縮小",
 			zoomLevel: "{zoom}×",
-			zoomAnnounce: "{zoom} 倍に拡大",
+			zoomAnnounce: "{zoom} 倍に変更しました",
 			close: "拡大鏡を閉じる",
 			resizeA11y: "ドラッグで拡大鏡のサイズを変更",
 			resizeFullA11y:
@@ -448,7 +448,7 @@ const ja = {
 			gss: "ギリシャ手話",
 			mfs: "メキシコ手話",
 			signedEnglish: "サイン・イングリッシュ",
-			regionA11y: "{language} への翻訳",
+			regionA11y: "{language}への翻訳",
 		},
 		audioTranscript: {
 			name: "文字起こし",
@@ -482,7 +482,7 @@ const ja = {
 		showSectionRequest: "セクションのリクエストを表示",
 		showAssessmentRequest: "テストのリクエストを表示",
 		liveUpdatesUnsupported:
-			"このブラウザーはライブ更新に対応していません",
+			"このブラウザーはライブ更新に対応していません。",
 		liveUpdatesDisconnected:
 			"ライブ更新が切断されました。再試行中…",
 		fieldType: "種類:",
@@ -564,7 +564,7 @@ const ja = {
 			closeA11y: "読み上げの設定を閉じる",
 			toolbarLayoutMode: "ツールバーのレイアウトモード",
 			reservedRow: "予約行",
-			expandingRow: "拡張行",
+			expandingRow: "展開行",
 			floatingOverlay: "フローティングオーバーレイ",
 			leftAlignedControls: "左揃えコントロール",
 			inlineSpeedButtons: "インライン速度ボタン",
@@ -634,9 +634,9 @@ const ja = {
 			coordinatorUnavailable:
 				"toolkit コーディネーターが利用できないため、読み上げを更新できません。",
 			customProviderNotRegistered:
-				"カスタムプロバイダー '{id}' は登録されていません。",
+				"カスタムプロバイダー「{id}」は登録されていません。",
 			customProviderNoConfig:
-				"カスタムプロバイダー '{id}' は適用用の設定を返しませんでした。",
+				"カスタムプロバイダー「{id}」は適用する設定を返しませんでした。",
 			httpError: "HTTP {status}: {message}",
 			unknownError: "不明なエラー",
 			previewRequestFailed: "プレビューのリクエストに失敗しました（{status}）。",

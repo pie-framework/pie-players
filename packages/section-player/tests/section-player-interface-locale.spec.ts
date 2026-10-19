@@ -325,6 +325,35 @@ test.describe("section player interface locale", () => {
 		await expect(root).not.toHaveAttribute("dir");
 		expect(await root.getAttribute("lang")).toBe(rootLang);
 	});
+	test("the shipped Arabic catalog renders right to left, not just the pseudolocale", async ({
+		page,
+	}) => {
+		// `ar-XB` proves the stamps and the mirroring with padded Latin text; this
+		// proves the generated MSA catalog itself reaches the chrome under the
+		// real tag. The literals are the catalog's own values on purpose, as the
+		// Dutch assertions are: "not English" would pass on a raw key.
+		await page.setViewportSize(WIDE);
+		await page.goto("/interface-locale?locale=ar", {
+			waitUntil: "networkidle",
+		});
+
+		await expect(
+			page.getByRole("heading", { name: "نص", level: 2 }),
+		).toBeVisible();
+		await expect(
+			page.getByRole("button", { name: "المظهر، تغيير الألوان والتباين" }),
+		).toBeVisible();
+
+		const shell = page.locator("pie-section-player-shell");
+		await expect(shell).toHaveAttribute("lang", "ar");
+		await expect(shell).toHaveAttribute("dir", "rtl");
+		await expect(page.locator("pie-assessment-toolkit")).toHaveAttribute(
+			"dir",
+			"rtl",
+		);
+		await expect(page.locator("html")).not.toHaveAttribute("dir");
+	});
+
 	test("a stale locale param is inert on a demo that supplies no locale", async ({
 		page,
 	}) => {

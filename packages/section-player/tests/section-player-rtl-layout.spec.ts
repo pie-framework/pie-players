@@ -107,4 +107,31 @@ test.describe("section player rtl layout", () => {
 			),
 		);
 	});
+
+	test("the shipped Arabic locale flips the header through its own stamps", async ({
+		page,
+	}) => {
+		// No forced `dir` here: the real `ar` catalog's resolution stamps the
+		// shell, and the geometry has to follow those stamps alone.
+		await page.setViewportSize(WIDE);
+		await page.goto("/interface-locale?locale=ar", {
+			waitUntil: "networkidle",
+		});
+
+		const header = page.locator(".pie-section-player-content-card-header").first();
+		await expect(header).toBeVisible();
+		await expect(header.locator("pie-item-toolbar")).toBeVisible();
+		await expect(page.locator("pie-section-player-shell")).toHaveAttribute(
+			"dir",
+			"rtl",
+		);
+
+		expectAllHugTrailingEdgeRtl(
+			await edgeGaps(
+				page,
+				".pie-section-player-content-card-header",
+				"pie-item-toolbar",
+			),
+		);
+	});
 });

@@ -30,6 +30,7 @@ Publishable packages:
 - `@pie-players/pie-context`
 - `@pie-players/pie-default-tool-loaders`
 - `@pie-players/pie-i18n-generated`
+- `@pie-players/pie-item-list`
 - `@pie-players/pie-item-player`
 - `@pie-players/pie-players-shared`
 - `@pie-players/pie-print-player`

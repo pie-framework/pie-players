@@ -1,0 +1,12 @@
+{
+	"extends": "../../tsconfig.json",
+	"compilerOptions": {
+		"target": "ES2022",
+		"module": "NodeNext",
+		"moduleResolution": "NodeNext",
+		"types": ["vite/client"],
+		"composite": false
+	},
+	"include": ["src/**/*.ts", "src/**/*.d.ts", "src/**/*.svelte"],
+	"exclude": ["node_modules", "dist"]
+}

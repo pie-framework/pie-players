@@ -398,6 +398,28 @@
         "typescript": "^5.9.3",
       },
     },
+    "packages/item-list": {
+      "name": "@pie-players/pie-item-list",
+      "version": "1.0.0-beta.3",
+      "dependencies": {
+        "@pie-element/shared-types": "0.2.2",
+        "@pie-players/pie-players-shared": "workspace:*",
+      },
+      "devDependencies": {
+        "@biomejs/biome": "^2.5.15",
+        "@happy-dom/global-registrator": "^20.14.5",
+        "@pie-element/shared-math-rendering-mathjax": "0.1.7",
+        "@playwright/test": "^1.64.0",
+        "@sveltejs/vite-plugin-svelte": "^7.3.1",
+        "@types/node": "^26.6.5",
+        "esbuild": "^0.28.2",
+        "svelte": "^5.57.2",
+        "svelte-check": "^4.7.6",
+        "typescript": "^5.9.3",
+        "vite": "^8.3.3",
+        "vite-plugin-dts": "^5.1.2",
+      },
+    },
     "packages/item-player": {
       "name": "@pie-players/pie-item-player",
       "version": "1.0.0-beta.3",
@@ -1424,11 +1446,11 @@
 
     "@pie-element/shared-lodash": ["@pie-element/shared-lodash@0.1.3-next.20261012213240", "", {}, "sha512-ho3dVtfgLlxrRqe4/vp56ZWnXeOThpg40WbXdOwLU2APNToLpTw62Q/5EhJW6WCLBVHEkVgDEYRCbIgDqxnSyw=="],
 
-    "@pie-element/shared-math-rendering-mathjax": ["@pie-element/shared-math-rendering-mathjax@0.1.4", "", {}, "sha512-zTTOMwvhBXLQ3oM8+kPKbDzf08VM4dDsXeElXgFji8UCOsvIUnO2iENbdnKRiDVFFt9RWogjHvPv8BtB4lVwNQ=="],
+    "@pie-element/shared-math-rendering-mathjax": ["@pie-element/shared-math-rendering-mathjax@0.1.7", "", {}, "sha512-A/LDZaQBdEWkGZkVqSLY6XboQ8hr3zA+wt4w2oxtzM84ahPeuStalZLQeqy8i2WzzjW3ptHJBUn+f4BkujlMrQ=="],
 
     "@pie-element/shared-player-events": ["@pie-element/shared-player-events@0.2.1-next.20261015154938", "", {}, "sha512-OYTyIaZ5pLpqd+NhgpSrLJSjQtvYQFnnHZrlp4mI7uO1SqB5E6rWLTwYMiP02ASjs0PhFQa+GYoUEHT6DmP6Yw=="],
 
-    "@pie-element/shared-types": ["@pie-element/shared-types@0.2.2-next.20261012010413", "", {}, "sha512-nQjLFFIi+7EJK/CsXd8brlVMXVyIZSY72gAgFYo/OhIF41hH1p2VC6h+TqPWgmYOEVhU6R9P/x693Czz6pneog=="],
+    "@pie-element/shared-types": ["@pie-element/shared-types@0.2.2", "", {}, "sha512-21Kg2qoNLynpROyBcS3bT3o2aZizkMRYZWV2SelrEchqg3baCx4i4oyk//zkU09khrstqo4FVpc6yYSLz78Vaw=="],
 
     "@pie-element/shared-utils": ["@pie-element/shared-utils@0.1.3", "", { "dependencies": { "@pie-element/shared-types": "0.2.0", "dompurify": "^3.4.16" } }, "sha512-ZueWCj01D80+/dVrq9RH9VoIB00UJkReaxuZet7ZBiEQUNjxJXk4CyvYUKelPC5ZzU2RfmOOmSi91JR1eHgxyw=="],
 
@@ -1511,6 +1533,8 @@
     "@pie-players/pie-default-tool-loaders": ["@pie-players/pie-default-tool-loaders@workspace:packages/default-tool-loaders"],
 
     "@pie-players/pie-i18n-generated": ["@pie-players/pie-i18n-generated@workspace:packages/pie-i18n-generated"],
+
+    "@pie-players/pie-item-list": ["@pie-players/pie-item-list@workspace:packages/item-list"],
 
     "@pie-players/pie-item-player": ["@pie-players/pie-item-player@workspace:packages/item-player"],
 
@@ -3204,93 +3228,151 @@
 
     "@pie-element/categorize/@pie-element/shared-math-rendering-mathjax": ["@pie-element/shared-math-rendering-mathjax@0.1.7-next.20261015154938", "", {}, "sha512-36QLVuVEeqgCZJ3RD/Z4PQxctJOUahch8uSqCjmQns7QbotibikWs2SVR/lU05DdRfOZx3NuFXg66Dnj8lAuvw=="],
 
+    "@pie-element/categorize/@pie-element/shared-types": ["@pie-element/shared-types@0.2.2-next.20261012010413", "", {}, "sha512-nQjLFFIi+7EJK/CsXd8brlVMXVyIZSY72gAgFYo/OhIF41hH1p2VC6h+TqPWgmYOEVhU6R9P/x693Czz6pneog=="],
+
     "@pie-element/categorize/@pie-element/shared-utils": ["@pie-element/shared-utils@0.1.5-next.20261016234357", "", { "dependencies": { "@pie-element/shared-types": "0.2.2-next.20261012010413", "dompurify": "^3.4.16" } }, "sha512-h9I2Wbp5vwNPTfiLBSDvnabjEdCvtMFyc/Zj64RoI2klWOpuFGkUNM8M04TkJRpoxhg/OBoEym6xr5a+9nkFzQ=="],
 
     "@pie-element/charting/@pie-element/shared-math-rendering-mathjax": ["@pie-element/shared-math-rendering-mathjax@0.1.7-next.20261015154938", "", {}, "sha512-36QLVuVEeqgCZJ3RD/Z4PQxctJOUahch8uSqCjmQns7QbotibikWs2SVR/lU05DdRfOZx3NuFXg66Dnj8lAuvw=="],
 
+    "@pie-element/charting/@pie-element/shared-types": ["@pie-element/shared-types@0.2.2-next.20261012010413", "", {}, "sha512-nQjLFFIi+7EJK/CsXd8brlVMXVyIZSY72gAgFYo/OhIF41hH1p2VC6h+TqPWgmYOEVhU6R9P/x693Czz6pneog=="],
+
+    "@pie-element/complex-rubric/@pie-element/shared-types": ["@pie-element/shared-types@0.2.2-next.20261012010413", "", {}, "sha512-nQjLFFIi+7EJK/CsXd8brlVMXVyIZSY72gAgFYo/OhIF41hH1p2VC6h+TqPWgmYOEVhU6R9P/x693Czz6pneog=="],
+
     "@pie-element/drag-in-the-blank/@pie-element/shared-math-rendering-mathjax": ["@pie-element/shared-math-rendering-mathjax@0.1.7-next.20261015154938", "", {}, "sha512-36QLVuVEeqgCZJ3RD/Z4PQxctJOUahch8uSqCjmQns7QbotibikWs2SVR/lU05DdRfOZx3NuFXg66Dnj8lAuvw=="],
+
+    "@pie-element/drag-in-the-blank/@pie-element/shared-types": ["@pie-element/shared-types@0.2.2-next.20261012010413", "", {}, "sha512-nQjLFFIi+7EJK/CsXd8brlVMXVyIZSY72gAgFYo/OhIF41hH1p2VC6h+TqPWgmYOEVhU6R9P/x693Czz6pneog=="],
 
     "@pie-element/drag-in-the-blank/@pie-element/shared-utils": ["@pie-element/shared-utils@0.1.5-next.20261016234357", "", { "dependencies": { "@pie-element/shared-types": "0.2.2-next.20261012010413", "dompurify": "^3.4.16" } }, "sha512-h9I2Wbp5vwNPTfiLBSDvnabjEdCvtMFyc/Zj64RoI2klWOpuFGkUNM8M04TkJRpoxhg/OBoEym6xr5a+9nkFzQ=="],
 
     "@pie-element/drawing-response/@pie-element/shared-math-rendering-mathjax": ["@pie-element/shared-math-rendering-mathjax@0.1.7-next.20261015154938", "", {}, "sha512-36QLVuVEeqgCZJ3RD/Z4PQxctJOUahch8uSqCjmQns7QbotibikWs2SVR/lU05DdRfOZx3NuFXg66Dnj8lAuvw=="],
 
+    "@pie-element/drawing-response/@pie-element/shared-types": ["@pie-element/shared-types@0.2.2-next.20261012010413", "", {}, "sha512-nQjLFFIi+7EJK/CsXd8brlVMXVyIZSY72gAgFYo/OhIF41hH1p2VC6h+TqPWgmYOEVhU6R9P/x693Czz6pneog=="],
+
+    "@pie-element/ebsr/@pie-element/shared-types": ["@pie-element/shared-types@0.2.2-next.20261012010413", "", {}, "sha512-nQjLFFIi+7EJK/CsXd8brlVMXVyIZSY72gAgFYo/OhIF41hH1p2VC6h+TqPWgmYOEVhU6R9P/x693Czz6pneog=="],
+
     "@pie-element/explicit-constructed-response/@pie-element/shared-math-rendering-mathjax": ["@pie-element/shared-math-rendering-mathjax@0.1.7-next.20261015154938", "", {}, "sha512-36QLVuVEeqgCZJ3RD/Z4PQxctJOUahch8uSqCjmQns7QbotibikWs2SVR/lU05DdRfOZx3NuFXg66Dnj8lAuvw=="],
+
+    "@pie-element/explicit-constructed-response/@pie-element/shared-types": ["@pie-element/shared-types@0.2.2-next.20261012010413", "", {}, "sha512-nQjLFFIi+7EJK/CsXd8brlVMXVyIZSY72gAgFYo/OhIF41hH1p2VC6h+TqPWgmYOEVhU6R9P/x693Czz6pneog=="],
 
     "@pie-element/explicit-constructed-response/@pie-element/shared-utils": ["@pie-element/shared-utils@0.1.5-next.20261016234357", "", { "dependencies": { "@pie-element/shared-types": "0.2.2-next.20261012010413", "dompurify": "^3.4.16" } }, "sha512-h9I2Wbp5vwNPTfiLBSDvnabjEdCvtMFyc/Zj64RoI2klWOpuFGkUNM8M04TkJRpoxhg/OBoEym6xr5a+9nkFzQ=="],
 
     "@pie-element/extended-text-entry/@pie-element/shared-math-rendering-mathjax": ["@pie-element/shared-math-rendering-mathjax@0.1.7-next.20261015154938", "", {}, "sha512-36QLVuVEeqgCZJ3RD/Z4PQxctJOUahch8uSqCjmQns7QbotibikWs2SVR/lU05DdRfOZx3NuFXg66Dnj8lAuvw=="],
 
+    "@pie-element/extended-text-entry/@pie-element/shared-types": ["@pie-element/shared-types@0.2.2-next.20261012010413", "", {}, "sha512-nQjLFFIi+7EJK/CsXd8brlVMXVyIZSY72gAgFYo/OhIF41hH1p2VC6h+TqPWgmYOEVhU6R9P/x693Czz6pneog=="],
+
     "@pie-element/extended-text-entry/@pie-element/shared-utils": ["@pie-element/shared-utils@0.1.5-next.20261016234357", "", { "dependencies": { "@pie-element/shared-types": "0.2.2-next.20261012010413", "dompurify": "^3.4.16" } }, "sha512-h9I2Wbp5vwNPTfiLBSDvnabjEdCvtMFyc/Zj64RoI2klWOpuFGkUNM8M04TkJRpoxhg/OBoEym6xr5a+9nkFzQ=="],
 
     "@pie-element/fraction-model/@pie-element/shared-math-rendering-mathjax": ["@pie-element/shared-math-rendering-mathjax@0.1.7-next.20261015154938", "", {}, "sha512-36QLVuVEeqgCZJ3RD/Z4PQxctJOUahch8uSqCjmQns7QbotibikWs2SVR/lU05DdRfOZx3NuFXg66Dnj8lAuvw=="],
 
+    "@pie-element/fraction-model/@pie-element/shared-types": ["@pie-element/shared-types@0.2.2-next.20261012010413", "", {}, "sha512-nQjLFFIi+7EJK/CsXd8brlVMXVyIZSY72gAgFYo/OhIF41hH1p2VC6h+TqPWgmYOEVhU6R9P/x693Czz6pneog=="],
+
     "@pie-element/graphing/@pie-element/shared-math-rendering-mathjax": ["@pie-element/shared-math-rendering-mathjax@0.1.7-next.20261015154938", "", {}, "sha512-36QLVuVEeqgCZJ3RD/Z4PQxctJOUahch8uSqCjmQns7QbotibikWs2SVR/lU05DdRfOZx3NuFXg66Dnj8lAuvw=="],
+
+    "@pie-element/graphing/@pie-element/shared-types": ["@pie-element/shared-types@0.2.2-next.20261012010413", "", {}, "sha512-nQjLFFIi+7EJK/CsXd8brlVMXVyIZSY72gAgFYo/OhIF41hH1p2VC6h+TqPWgmYOEVhU6R9P/x693Czz6pneog=="],
 
     "@pie-element/graphing-solution-set/@pie-element/shared-math-rendering-mathjax": ["@pie-element/shared-math-rendering-mathjax@0.1.7-next.20261015154938", "", {}, "sha512-36QLVuVEeqgCZJ3RD/Z4PQxctJOUahch8uSqCjmQns7QbotibikWs2SVR/lU05DdRfOZx3NuFXg66Dnj8lAuvw=="],
 
+    "@pie-element/graphing-solution-set/@pie-element/shared-types": ["@pie-element/shared-types@0.2.2-next.20261012010413", "", {}, "sha512-nQjLFFIi+7EJK/CsXd8brlVMXVyIZSY72gAgFYo/OhIF41hH1p2VC6h+TqPWgmYOEVhU6R9P/x693Czz6pneog=="],
+
     "@pie-element/hotspot/@pie-element/shared-math-rendering-mathjax": ["@pie-element/shared-math-rendering-mathjax@0.1.7-next.20261015154938", "", {}, "sha512-36QLVuVEeqgCZJ3RD/Z4PQxctJOUahch8uSqCjmQns7QbotibikWs2SVR/lU05DdRfOZx3NuFXg66Dnj8lAuvw=="],
+
+    "@pie-element/hotspot/@pie-element/shared-types": ["@pie-element/shared-types@0.2.2-next.20261012010413", "", {}, "sha512-nQjLFFIi+7EJK/CsXd8brlVMXVyIZSY72gAgFYo/OhIF41hH1p2VC6h+TqPWgmYOEVhU6R9P/x693Czz6pneog=="],
 
     "@pie-element/hotspot/@pie-element/shared-utils": ["@pie-element/shared-utils@0.1.5-next.20261016234357", "", { "dependencies": { "@pie-element/shared-types": "0.2.2-next.20261012010413", "dompurify": "^3.4.16" } }, "sha512-h9I2Wbp5vwNPTfiLBSDvnabjEdCvtMFyc/Zj64RoI2klWOpuFGkUNM8M04TkJRpoxhg/OBoEym6xr5a+9nkFzQ=="],
 
     "@pie-element/image-cloze-association/@pie-element/shared-math-rendering-mathjax": ["@pie-element/shared-math-rendering-mathjax@0.1.7-next.20261015154938", "", {}, "sha512-36QLVuVEeqgCZJ3RD/Z4PQxctJOUahch8uSqCjmQns7QbotibikWs2SVR/lU05DdRfOZx3NuFXg66Dnj8lAuvw=="],
 
+    "@pie-element/image-cloze-association/@pie-element/shared-types": ["@pie-element/shared-types@0.2.2-next.20261012010413", "", {}, "sha512-nQjLFFIi+7EJK/CsXd8brlVMXVyIZSY72gAgFYo/OhIF41hH1p2VC6h+TqPWgmYOEVhU6R9P/x693Czz6pneog=="],
+
     "@pie-element/image-cloze-association/@pie-element/shared-utils": ["@pie-element/shared-utils@0.1.5-next.20261016234357", "", { "dependencies": { "@pie-element/shared-types": "0.2.2-next.20261012010413", "dompurify": "^3.4.16" } }, "sha512-h9I2Wbp5vwNPTfiLBSDvnabjEdCvtMFyc/Zj64RoI2klWOpuFGkUNM8M04TkJRpoxhg/OBoEym6xr5a+9nkFzQ=="],
 
     "@pie-element/inline-dropdown/@pie-element/shared-math-rendering-mathjax": ["@pie-element/shared-math-rendering-mathjax@0.1.7-next.20261015154938", "", {}, "sha512-36QLVuVEeqgCZJ3RD/Z4PQxctJOUahch8uSqCjmQns7QbotibikWs2SVR/lU05DdRfOZx3NuFXg66Dnj8lAuvw=="],
+
+    "@pie-element/inline-dropdown/@pie-element/shared-types": ["@pie-element/shared-types@0.2.2-next.20261012010413", "", {}, "sha512-nQjLFFIi+7EJK/CsXd8brlVMXVyIZSY72gAgFYo/OhIF41hH1p2VC6h+TqPWgmYOEVhU6R9P/x693Czz6pneog=="],
 
     "@pie-element/inline-dropdown/@pie-element/shared-utils": ["@pie-element/shared-utils@0.1.5-next.20261016234357", "", { "dependencies": { "@pie-element/shared-types": "0.2.2-next.20261012010413", "dompurify": "^3.4.16" } }, "sha512-h9I2Wbp5vwNPTfiLBSDvnabjEdCvtMFyc/Zj64RoI2klWOpuFGkUNM8M04TkJRpoxhg/OBoEym6xr5a+9nkFzQ=="],
 
     "@pie-element/likert/@pie-element/shared-math-rendering-mathjax": ["@pie-element/shared-math-rendering-mathjax@0.1.7-next.20261015154938", "", {}, "sha512-36QLVuVEeqgCZJ3RD/Z4PQxctJOUahch8uSqCjmQns7QbotibikWs2SVR/lU05DdRfOZx3NuFXg66Dnj8lAuvw=="],
 
+    "@pie-element/likert/@pie-element/shared-types": ["@pie-element/shared-types@0.2.2-next.20261012010413", "", {}, "sha512-nQjLFFIi+7EJK/CsXd8brlVMXVyIZSY72gAgFYo/OhIF41hH1p2VC6h+TqPWgmYOEVhU6R9P/x693Czz6pneog=="],
+
     "@pie-element/likert/@pie-element/shared-utils": ["@pie-element/shared-utils@0.1.5-next.20261016234357", "", { "dependencies": { "@pie-element/shared-types": "0.2.2-next.20261012010413", "dompurify": "^3.4.16" } }, "sha512-h9I2Wbp5vwNPTfiLBSDvnabjEdCvtMFyc/Zj64RoI2klWOpuFGkUNM8M04TkJRpoxhg/OBoEym6xr5a+9nkFzQ=="],
 
     "@pie-element/match/@pie-element/shared-math-rendering-mathjax": ["@pie-element/shared-math-rendering-mathjax@0.1.7-next.20261015154938", "", {}, "sha512-36QLVuVEeqgCZJ3RD/Z4PQxctJOUahch8uSqCjmQns7QbotibikWs2SVR/lU05DdRfOZx3NuFXg66Dnj8lAuvw=="],
+
+    "@pie-element/match/@pie-element/shared-types": ["@pie-element/shared-types@0.2.2-next.20261012010413", "", {}, "sha512-nQjLFFIi+7EJK/CsXd8brlVMXVyIZSY72gAgFYo/OhIF41hH1p2VC6h+TqPWgmYOEVhU6R9P/x693Czz6pneog=="],
 
     "@pie-element/match/@pie-element/shared-utils": ["@pie-element/shared-utils@0.1.5-next.20261016234357", "", { "dependencies": { "@pie-element/shared-types": "0.2.2-next.20261012010413", "dompurify": "^3.4.16" } }, "sha512-h9I2Wbp5vwNPTfiLBSDvnabjEdCvtMFyc/Zj64RoI2klWOpuFGkUNM8M04TkJRpoxhg/OBoEym6xr5a+9nkFzQ=="],
 
     "@pie-element/match-list/@pie-element/shared-math-rendering-mathjax": ["@pie-element/shared-math-rendering-mathjax@0.1.7-next.20261015154938", "", {}, "sha512-36QLVuVEeqgCZJ3RD/Z4PQxctJOUahch8uSqCjmQns7QbotibikWs2SVR/lU05DdRfOZx3NuFXg66Dnj8lAuvw=="],
 
+    "@pie-element/match-list/@pie-element/shared-types": ["@pie-element/shared-types@0.2.2-next.20261012010413", "", {}, "sha512-nQjLFFIi+7EJK/CsXd8brlVMXVyIZSY72gAgFYo/OhIF41hH1p2VC6h+TqPWgmYOEVhU6R9P/x693Czz6pneog=="],
+
     "@pie-element/match-list/@pie-element/shared-utils": ["@pie-element/shared-utils@0.1.5-next.20261016234357", "", { "dependencies": { "@pie-element/shared-types": "0.2.2-next.20261012010413", "dompurify": "^3.4.16" } }, "sha512-h9I2Wbp5vwNPTfiLBSDvnabjEdCvtMFyc/Zj64RoI2klWOpuFGkUNM8M04TkJRpoxhg/OBoEym6xr5a+9nkFzQ=="],
 
     "@pie-element/math-inline/@pie-element/shared-math-rendering-mathjax": ["@pie-element/shared-math-rendering-mathjax@0.1.7-next.20261015154938", "", {}, "sha512-36QLVuVEeqgCZJ3RD/Z4PQxctJOUahch8uSqCjmQns7QbotibikWs2SVR/lU05DdRfOZx3NuFXg66Dnj8lAuvw=="],
+
+    "@pie-element/math-inline/@pie-element/shared-types": ["@pie-element/shared-types@0.2.2-next.20261012010413", "", {}, "sha512-nQjLFFIi+7EJK/CsXd8brlVMXVyIZSY72gAgFYo/OhIF41hH1p2VC6h+TqPWgmYOEVhU6R9P/x693Czz6pneog=="],
 
     "@pie-element/math-inline/@pie-element/shared-utils": ["@pie-element/shared-utils@0.1.5-next.20261016234357", "", { "dependencies": { "@pie-element/shared-types": "0.2.2-next.20261012010413", "dompurify": "^3.4.16" } }, "sha512-h9I2Wbp5vwNPTfiLBSDvnabjEdCvtMFyc/Zj64RoI2klWOpuFGkUNM8M04TkJRpoxhg/OBoEym6xr5a+9nkFzQ=="],
 
     "@pie-element/math-templated/@pie-element/shared-math-rendering-mathjax": ["@pie-element/shared-math-rendering-mathjax@0.1.7-next.20261015154938", "", {}, "sha512-36QLVuVEeqgCZJ3RD/Z4PQxctJOUahch8uSqCjmQns7QbotibikWs2SVR/lU05DdRfOZx3NuFXg66Dnj8lAuvw=="],
 
+    "@pie-element/math-templated/@pie-element/shared-types": ["@pie-element/shared-types@0.2.2-next.20261012010413", "", {}, "sha512-nQjLFFIi+7EJK/CsXd8brlVMXVyIZSY72gAgFYo/OhIF41hH1p2VC6h+TqPWgmYOEVhU6R9P/x693Czz6pneog=="],
+
     "@pie-element/math-templated/@pie-element/shared-utils": ["@pie-element/shared-utils@0.1.5-next.20261016234357", "", { "dependencies": { "@pie-element/shared-types": "0.2.2-next.20261012010413", "dompurify": "^3.4.16" } }, "sha512-h9I2Wbp5vwNPTfiLBSDvnabjEdCvtMFyc/Zj64RoI2klWOpuFGkUNM8M04TkJRpoxhg/OBoEym6xr5a+9nkFzQ=="],
 
     "@pie-element/matrix/@pie-element/shared-math-rendering-mathjax": ["@pie-element/shared-math-rendering-mathjax@0.1.7-next.20261015154938", "", {}, "sha512-36QLVuVEeqgCZJ3RD/Z4PQxctJOUahch8uSqCjmQns7QbotibikWs2SVR/lU05DdRfOZx3NuFXg66Dnj8lAuvw=="],
+
+    "@pie-element/matrix/@pie-element/shared-types": ["@pie-element/shared-types@0.2.2-next.20261012010413", "", {}, "sha512-nQjLFFIi+7EJK/CsXd8brlVMXVyIZSY72gAgFYo/OhIF41hH1p2VC6h+TqPWgmYOEVhU6R9P/x693Czz6pneog=="],
+
+    "@pie-element/mc-populated-blank/@pie-element/shared-types": ["@pie-element/shared-types@0.2.2-next.20261012010413", "", {}, "sha512-nQjLFFIi+7EJK/CsXd8brlVMXVyIZSY72gAgFYo/OhIF41hH1p2VC6h+TqPWgmYOEVhU6R9P/x693Czz6pneog=="],
 
     "@pie-element/mc-populated-blank/@pie-element/shared-utils": ["@pie-element/shared-utils@0.1.5-next.20261016234357", "", { "dependencies": { "@pie-element/shared-types": "0.2.2-next.20261012010413", "dompurify": "^3.4.16" } }, "sha512-h9I2Wbp5vwNPTfiLBSDvnabjEdCvtMFyc/Zj64RoI2klWOpuFGkUNM8M04TkJRpoxhg/OBoEym6xr5a+9nkFzQ=="],
 
     "@pie-element/multi-trait-rubric/@pie-element/shared-math-rendering-mathjax": ["@pie-element/shared-math-rendering-mathjax@0.1.7-next.20261015154938", "", {}, "sha512-36QLVuVEeqgCZJ3RD/Z4PQxctJOUahch8uSqCjmQns7QbotibikWs2SVR/lU05DdRfOZx3NuFXg66Dnj8lAuvw=="],
 
+    "@pie-element/multi-trait-rubric/@pie-element/shared-types": ["@pie-element/shared-types@0.2.2-next.20261012010413", "", {}, "sha512-nQjLFFIi+7EJK/CsXd8brlVMXVyIZSY72gAgFYo/OhIF41hH1p2VC6h+TqPWgmYOEVhU6R9P/x693Czz6pneog=="],
+
     "@pie-element/multi-trait-rubric/@pie-element/shared-utils": ["@pie-element/shared-utils@0.1.5-next.20261016234357", "", { "dependencies": { "@pie-element/shared-types": "0.2.2-next.20261012010413", "dompurify": "^3.4.16" } }, "sha512-h9I2Wbp5vwNPTfiLBSDvnabjEdCvtMFyc/Zj64RoI2klWOpuFGkUNM8M04TkJRpoxhg/OBoEym6xr5a+9nkFzQ=="],
 
     "@pie-element/multiple-choice/@pie-element/shared-math-rendering-mathjax": ["@pie-element/shared-math-rendering-mathjax@0.1.7-next.20261015154938", "", {}, "sha512-36QLVuVEeqgCZJ3RD/Z4PQxctJOUahch8uSqCjmQns7QbotibikWs2SVR/lU05DdRfOZx3NuFXg66Dnj8lAuvw=="],
+
+    "@pie-element/multiple-choice/@pie-element/shared-types": ["@pie-element/shared-types@0.2.2-next.20261012010413", "", {}, "sha512-nQjLFFIi+7EJK/CsXd8brlVMXVyIZSY72gAgFYo/OhIF41hH1p2VC6h+TqPWgmYOEVhU6R9P/x693Czz6pneog=="],
 
     "@pie-element/multiple-choice/@pie-element/shared-utils": ["@pie-element/shared-utils@0.1.5-next.20261016234357", "", { "dependencies": { "@pie-element/shared-types": "0.2.2-next.20261012010413", "dompurify": "^3.4.16" } }, "sha512-h9I2Wbp5vwNPTfiLBSDvnabjEdCvtMFyc/Zj64RoI2klWOpuFGkUNM8M04TkJRpoxhg/OBoEym6xr5a+9nkFzQ=="],
 
     "@pie-element/number-line/@pie-element/shared-math-rendering-mathjax": ["@pie-element/shared-math-rendering-mathjax@0.1.7-next.20261015154938", "", {}, "sha512-36QLVuVEeqgCZJ3RD/Z4PQxctJOUahch8uSqCjmQns7QbotibikWs2SVR/lU05DdRfOZx3NuFXg66Dnj8lAuvw=="],
 
+    "@pie-element/number-line/@pie-element/shared-types": ["@pie-element/shared-types@0.2.2-next.20261012010413", "", {}, "sha512-nQjLFFIi+7EJK/CsXd8brlVMXVyIZSY72gAgFYo/OhIF41hH1p2VC6h+TqPWgmYOEVhU6R9P/x693Czz6pneog=="],
+
     "@pie-element/number-line/@pie-element/shared-utils": ["@pie-element/shared-utils@0.1.5-next.20261016234357", "", { "dependencies": { "@pie-element/shared-types": "0.2.2-next.20261012010413", "dompurify": "^3.4.16" } }, "sha512-h9I2Wbp5vwNPTfiLBSDvnabjEdCvtMFyc/Zj64RoI2klWOpuFGkUNM8M04TkJRpoxhg/OBoEym6xr5a+9nkFzQ=="],
 
     "@pie-element/passage/@pie-element/shared-math-rendering-mathjax": ["@pie-element/shared-math-rendering-mathjax@0.1.7-next.20261015154938", "", {}, "sha512-36QLVuVEeqgCZJ3RD/Z4PQxctJOUahch8uSqCjmQns7QbotibikWs2SVR/lU05DdRfOZx3NuFXg66Dnj8lAuvw=="],
+
+    "@pie-element/passage/@pie-element/shared-types": ["@pie-element/shared-types@0.2.2-next.20261012010413", "", {}, "sha512-nQjLFFIi+7EJK/CsXd8brlVMXVyIZSY72gAgFYo/OhIF41hH1p2VC6h+TqPWgmYOEVhU6R9P/x693Czz6pneog=="],
 
     "@pie-element/passage/@pie-element/shared-utils": ["@pie-element/shared-utils@0.1.5-next.20261016234357", "", { "dependencies": { "@pie-element/shared-types": "0.2.2-next.20261012010413", "dompurify": "^3.4.16" } }, "sha512-h9I2Wbp5vwNPTfiLBSDvnabjEdCvtMFyc/Zj64RoI2klWOpuFGkUNM8M04TkJRpoxhg/OBoEym6xr5a+9nkFzQ=="],
 
     "@pie-element/placement-ordering/@pie-element/shared-math-rendering-mathjax": ["@pie-element/shared-math-rendering-mathjax@0.1.7-next.20261015154938", "", {}, "sha512-36QLVuVEeqgCZJ3RD/Z4PQxctJOUahch8uSqCjmQns7QbotibikWs2SVR/lU05DdRfOZx3NuFXg66Dnj8lAuvw=="],
 
+    "@pie-element/placement-ordering/@pie-element/shared-types": ["@pie-element/shared-types@0.2.2-next.20261012010413", "", {}, "sha512-nQjLFFIi+7EJK/CsXd8brlVMXVyIZSY72gAgFYo/OhIF41hH1p2VC6h+TqPWgmYOEVhU6R9P/x693Czz6pneog=="],
+
     "@pie-element/placement-ordering/@pie-element/shared-utils": ["@pie-element/shared-utils@0.1.5-next.20261016234357", "", { "dependencies": { "@pie-element/shared-types": "0.2.2-next.20261012010413", "dompurify": "^3.4.16" } }, "sha512-h9I2Wbp5vwNPTfiLBSDvnabjEdCvtMFyc/Zj64RoI2klWOpuFGkUNM8M04TkJRpoxhg/OBoEym6xr5a+9nkFzQ=="],
 
     "@pie-element/rubric/@pie-element/shared-math-rendering-mathjax": ["@pie-element/shared-math-rendering-mathjax@0.1.7-next.20261015154938", "", {}, "sha512-36QLVuVEeqgCZJ3RD/Z4PQxctJOUahch8uSqCjmQns7QbotibikWs2SVR/lU05DdRfOZx3NuFXg66Dnj8lAuvw=="],
+
+    "@pie-element/rubric/@pie-element/shared-types": ["@pie-element/shared-types@0.2.2-next.20261012010413", "", {}, "sha512-nQjLFFIi+7EJK/CsXd8brlVMXVyIZSY72gAgFYo/OhIF41hH1p2VC6h+TqPWgmYOEVhU6R9P/x693Czz6pneog=="],
 
     "@pie-element/rubric/@pie-element/shared-utils": ["@pie-element/shared-utils@0.1.5-next.20261016234357", "", { "dependencies": { "@pie-element/shared-types": "0.2.2-next.20261012010413", "dompurify": "^3.4.16" } }, "sha512-h9I2Wbp5vwNPTfiLBSDvnabjEdCvtMFyc/Zj64RoI2klWOpuFGkUNM8M04TkJRpoxhg/OBoEym6xr5a+9nkFzQ=="],
 
     "@pie-element/select-text/@pie-element/shared-math-rendering-mathjax": ["@pie-element/shared-math-rendering-mathjax@0.1.7-next.20261015154938", "", {}, "sha512-36QLVuVEeqgCZJ3RD/Z4PQxctJOUahch8uSqCjmQns7QbotibikWs2SVR/lU05DdRfOZx3NuFXg66Dnj8lAuvw=="],
 
+    "@pie-element/select-text/@pie-element/shared-types": ["@pie-element/shared-types@0.2.2-next.20261012010413", "", {}, "sha512-nQjLFFIi+7EJK/CsXd8brlVMXVyIZSY72gAgFYo/OhIF41hH1p2VC6h+TqPWgmYOEVhU6R9P/x693Czz6pneog=="],
+
     "@pie-element/select-text/@pie-element/shared-utils": ["@pie-element/shared-utils@0.1.5-next.20261016234357", "", { "dependencies": { "@pie-element/shared-types": "0.2.2-next.20261012010413", "dompurify": "^3.4.16" } }, "sha512-h9I2Wbp5vwNPTfiLBSDvnabjEdCvtMFyc/Zj64RoI2klWOpuFGkUNM8M04TkJRpoxhg/OBoEym6xr5a+9nkFzQ=="],
+
+    "@pie-element/shared-controller-utils/@pie-element/shared-types": ["@pie-element/shared-types@0.2.2-next.20261012010413", "", {}, "sha512-nQjLFFIi+7EJK/CsXd8brlVMXVyIZSY72gAgFYo/OhIF41hH1p2VC6h+TqPWgmYOEVhU6R9P/x693Czz6pneog=="],
 
     "@pie-element/shared-utils/@pie-element/shared-types": ["@pie-element/shared-types@0.2.0", "", {}, "sha512-xTsggdQ8jy4Xkm7Z8u6AQEVRnDyf+60jiH/BNHi+5gUXzb6GTcYGyMDcm1VH7hnPWmB/WFhrsS83N5gA+Gg/+g=="],
 
@@ -3335,6 +3417,8 @@
     "@pie-players/lti-demos/typescript": ["typescript@6.0.3", "", { "bin": { "tsc": "bin/tsc", "tsserver": "bin/tsserver" } }, "sha512-y2TvuxSZPDyQakkFRPZHKFm+KKVqIisdg9/CZwm9ftvKXLP8NRWj38/ODjNbr43SsoXqNuAisEf1GdCxqWcdBw=="],
 
     "@pie-players/pie-players-docs/typescript": ["typescript@6.0.3", "", { "bin": { "tsc": "bin/tsc", "tsserver": "bin/tsserver" } }, "sha512-y2TvuxSZPDyQakkFRPZHKFm+KKVqIisdg9/CZwm9ftvKXLP8NRWj38/ODjNbr43SsoXqNuAisEf1GdCxqWcdBw=="],
+
+    "@pie-players/pie-players-shared/@pie-element/shared-math-rendering-mathjax": ["@pie-element/shared-math-rendering-mathjax@0.1.4", "", {}, "sha512-zTTOMwvhBXLQ3oM8+kPKbDzf08VM4dDsXeElXgFji8UCOsvIUnO2iENbdnKRiDVFFt9RWogjHvPv8BtB4lVwNQ=="],
 
     "@pie-players/section-demos/typescript": ["typescript@6.0.3", "", { "bin": { "tsc": "bin/tsc", "tsserver": "bin/tsserver" } }, "sha512-y2TvuxSZPDyQakkFRPZHKFm+KKVqIisdg9/CZwm9ftvKXLP8NRWj38/ODjNbr43SsoXqNuAisEf1GdCxqWcdBw=="],
 
@@ -3566,6 +3650,8 @@
 
     "@pie-framework/math-validation/mathjs/typed-function": ["typed-function@2.1.0", "", {}, "sha512-bctQIOqx2iVbWGDGPWwIm18QScpu2XRmkC19D8rQGFsjKSgteq/o1hTZvIG/wuDq8fanpBDrLkLq+aEN/6y5XQ=="],
 
+    "@pie-lib/charting/@pie-element/shared-utils/@pie-element/shared-types": ["@pie-element/shared-types@0.2.2-next.20261012010413", "", {}, "sha512-nQjLFFIi+7EJK/CsXd8brlVMXVyIZSY72gAgFYo/OhIF41hH1p2VC6h+TqPWgmYOEVhU6R9P/x693Czz6pneog=="],
+
     "@pie-lib/editable-html-tip-tap/react-jss/hoist-non-react-statics": ["hoist-non-react-statics@2.5.5", "", {}, "sha512-rqcy4pJo55FTTLWt+bU8ukscqHeE/e9KWvsOW2b/a3afxQZhwkQdT1rPPCJ0rYXdj4vNcasY8zHTH+jF/qStxw=="],
 
     "@pie-lib/editable-html-tip-tap/react-jss/jss": ["jss@9.8.7", "", { "dependencies": { "is-in-browser": "^1.1.3", "symbol-observable": "^1.1.0", "warning": "^3.0.0" } }, "sha512-awj3XRZYxbrmmrx9LUSj5pXSUfm12m8xzi/VKeqI1ZwWBtQ0kVPTs3vYs32t4rFw83CgFDukA8wKzOE9sMQnoQ=="],
@@ -3574,6 +3660,20 @@
 
     "@pie-lib/editable-html-tip-tap/react-jss/theming": ["theming@1.3.0", "", { "dependencies": { "brcast": "^3.0.1", "is-function": "^1.0.1", "is-plain-object": "^2.0.1", "prop-types": "^15.5.8" }, "peerDependencies": { "react": ">=0.15" } }, "sha512-ya5Ef7XDGbTPBv5ENTwrwkPUexrlPeiAg/EI9kdlUAZhNlRbCdhMKRgjNX1IcmsmiPcqDQZE6BpSaH+cr31FKw=="],
 
+    "@pie-lib/graphing-solution-set/@pie-element/shared-utils/@pie-element/shared-types": ["@pie-element/shared-types@0.2.2-next.20261012010413", "", {}, "sha512-nQjLFFIi+7EJK/CsXd8brlVMXVyIZSY72gAgFYo/OhIF41hH1p2VC6h+TqPWgmYOEVhU6R9P/x693Czz6pneog=="],
+
+    "@pie-lib/graphing/@pie-element/shared-utils/@pie-element/shared-types": ["@pie-element/shared-types@0.2.2-next.20261012010413", "", {}, "sha512-nQjLFFIi+7EJK/CsXd8brlVMXVyIZSY72gAgFYo/OhIF41hH1p2VC6h+TqPWgmYOEVhU6R9P/x693Czz6pneog=="],
+
+    "@pie-lib/mask-markup/@pie-element/shared-utils/@pie-element/shared-types": ["@pie-element/shared-types@0.2.2-next.20261012010413", "", {}, "sha512-nQjLFFIi+7EJK/CsXd8brlVMXVyIZSY72gAgFYo/OhIF41hH1p2VC6h+TqPWgmYOEVhU6R9P/x693Czz6pneog=="],
+
+    "@pie-lib/plot/@pie-element/shared-utils/@pie-element/shared-types": ["@pie-element/shared-types@0.2.2-next.20261012010413", "", {}, "sha512-nQjLFFIi+7EJK/CsXd8brlVMXVyIZSY72gAgFYo/OhIF41hH1p2VC6h+TqPWgmYOEVhU6R9P/x693Czz6pneog=="],
+
+    "@pie-lib/render-ui/@pie-element/shared-utils/@pie-element/shared-types": ["@pie-element/shared-types@0.2.2-next.20261012010413", "", {}, "sha512-nQjLFFIi+7EJK/CsXd8brlVMXVyIZSY72gAgFYo/OhIF41hH1p2VC6h+TqPWgmYOEVhU6R9P/x693Czz6pneog=="],
+
+    "@pie-lib/text-select/@pie-element/shared-utils/@pie-element/shared-types": ["@pie-element/shared-types@0.2.2-next.20261012010413", "", {}, "sha512-nQjLFFIi+7EJK/CsXd8brlVMXVyIZSY72gAgFYo/OhIF41hH1p2VC6h+TqPWgmYOEVhU6R9P/x693Czz6pneog=="],
+
+    "@pie-players/item-demos/@pie-element/mc-populated-blank/@pie-element/shared-types": ["@pie-element/shared-types@0.2.2-next.20261012010413", "", {}, "sha512-nQjLFFIi+7EJK/CsXd8brlVMXVyIZSY72gAgFYo/OhIF41hH1p2VC6h+TqPWgmYOEVhU6R9P/x693Czz6pneog=="],
+
     "@pie-players/item-demos/@pie-element/mc-populated-blank/@pie-element/shared-utils": ["@pie-element/shared-utils@0.1.5-next.20261012213240", "", { "dependencies": { "@pie-element/shared-types": "0.2.2-next.20261012010413", "dompurify": "^3.4.16" } }, "sha512-oVKxsW1y/tWQILdOPF2M2ULH4rZLplDbaSZJ8kUVJ8oJnuRO9tugQRBnChNtjnCSSQ+g34hu7zgK7O6f44X4vQ=="],
 
     "@pie-players/item-demos/@pie-element/mc-populated-blank/@pie-lib/delivery-events-svelte": ["@pie-lib/delivery-events-svelte@0.2.1-next.20261012213240", "", { "dependencies": { "@pie-element/shared-player-events": "0.1.2-next.20261012213240" } }, "sha512-0LymDcea8aKEwCwc2URBd6UDYDMgGL/m4Eqh/xSpBc5jAgVw2O3gMgXP5wFzAPahXrqtTrBF5mnoPhqtPYDAFA=="],
@@ -3581,6 +3681,8 @@
     "@pie-players/item-demos/@pie-element/multiple-choice/@pie-element/shared-math-rendering-mathjax": ["@pie-element/shared-math-rendering-mathjax@0.1.6-next.20261012010413", "", {}, "sha512-4WJHd6hs2O6eKXL4nRVcqrgHrAO7j1CH7hxSD+4+XpBpR5CB1JHhqkm2PKvydhb88Od5spY6c6DWyrPpowSy+Q=="],
 
     "@pie-players/item-demos/@pie-element/multiple-choice/@pie-element/shared-player-events": ["@pie-element/shared-player-events@0.1.2-next.20261012213240", "", {}, "sha512-EfJsYKP6rkpFimVla5hqfMb5ywrIrh/4RaM20eUsx1uTiRmbLh16gGKo76rUgDNy0qX9pmMwC+iKnRgQymTE5Q=="],
+
+    "@pie-players/item-demos/@pie-element/multiple-choice/@pie-element/shared-types": ["@pie-element/shared-types@0.2.2-next.20261012010413", "", {}, "sha512-nQjLFFIi+7EJK/CsXd8brlVMXVyIZSY72gAgFYo/OhIF41hH1p2VC6h+TqPWgmYOEVhU6R9P/x693Czz6pneog=="],
 
     "@pie-players/item-demos/@pie-element/multiple-choice/@pie-lib/config-ui": ["@pie-lib/config-ui@14.0.5-next.20261012232454", "", { "dependencies": { "@emotion/react": "^11.14.0", "@emotion/styled": "^11.14.1", "@mui/icons-material": "^7.3.4", "@mui/material": "^7.3.4", "@pie-element/shared-lodash": "0.1.3-next.20261012213240", "@pie-lib/editable-html-tip-tap": "3.0.5-next.20261012232454", "@pie-lib/icons": "5.0.2-next.20261006160832", "@pie-lib/render-ui": "8.0.5-next.20261012213240", "assert": "^2.1.0", "debug": "^4.1.1", "prop-types": "^15.6.2", "react-measure": "^2.2.2" }, "peerDependencies": { "react": "^18.0.0 || ^19.0.0", "react-dom": "^18.0.0 || ^19.0.0" } }, "sha512-cTKWKi2SR5wQcH5Drw7ZTEoVxk02QAf+D8/kRKnyCAnliTZJaLOk9ctWlZN/ddtgRO8p/senUiaQUV06D6R3lw=="],
 

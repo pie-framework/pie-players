@@ -57,6 +57,10 @@ export {
 	stampInterfaceLocale,
 } from "./provider.js";
 export {
+	type InterfaceLocaleLoadErrorModel,
+	reportInterfaceLocaleLoadError,
+} from "./locale-load-error.js";
+export {
 	PSEUDO_LOCALE_EXPANDED,
 	PSEUDO_LOCALE_RTL,
 	pseudoLocalize,

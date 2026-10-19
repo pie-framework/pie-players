@@ -3,6 +3,7 @@ import {
 	coerceBooleanLike,
 	type InstrumentationProvider,
 } from "@pie-players/pie-players-shared";
+import { reportInterfaceLocaleLoadError } from "@pie-players/pie-players-shared/i18n";
 import { cloneDeep } from "@pie-players/pie-players-shared/object";
 import {
 	frameworkErrorFromUnknown,
@@ -104,6 +105,8 @@ const VERTICAL_SECTION_TAG = "pie-section-player-vertical";
  * @fires {CustomEvent<{ type: "assessment-session-changed"; timestamp: number }>} assessment-session-changed -
  *   When navigation or a section snapshot changes the assessment session.
  * @fires {CustomEvent<AssessmentProgressChangedDetail>} assessment-progress-changed -
+ *
+ * @fires {CustomEvent<{ kind: "i18n-locale-load"; source: string; message: string; details: string[]; recoverable: true; scope: "runtime"; cause?: unknown }>} framework-error - When a requested interface-locale catalog fails to load for the assembly's own navigation chrome; the assembly keeps rendering through the English fallback chain, and re-setting `locale` retries the load.
  *   When the visited-section count changes.
  * @fires {CustomEvent<AssessmentSubmissionStateChangedDetail>} assessment-submission-state-changed -
  *   When `submit()` records the submission state.
@@ -332,9 +335,16 @@ export class AssessmentPlayerDefaultElement
 		}
 		// The `locale` attribute is the only locale driver. With none set, a
 		// provider built here resolves `en-US`; one the host supplied through
-		// `sectionPlayerRuntime.i18n` keeps the locale its owner gave it.
+		// `sectionPlayerRuntime.i18n` keeps the locale its owner gave it. A
+		// failed catalog load is reported, not swallowed: every key still
+		// resolves through the English fallback chain, and failed loads are not
+		// cached, so re-setting `locale` retries.
 		if (this.locale || provider === this.ownedI18n) {
-			void provider.setLocale(this.locale || DEFAULT_LOCALE);
+			void Promise.resolve(
+				provider.setLocale(this.locale || DEFAULT_LOCALE),
+			).catch((error: unknown) => {
+				reportInterfaceLocaleLoadError(this, "pie-assessment-player", error);
+			});
 		}
 		this.forwardLocaleToSection();
 		// Names the locale the provider holds now; the subscription restamps

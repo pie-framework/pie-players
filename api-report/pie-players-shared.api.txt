@@ -350,6 +350,7 @@
   type I18nConfig
   type I18nProvider
   type I18nServiceApi
+  type InterfaceLocaleLoadErrorModel
   type InterpolationValues
   type LocaleCode
   type MessageCatalog
@@ -375,6 +376,7 @@
   localeDirection
   normalizeLanguageTag
   pseudoLocalize
+  reportInterfaceLocaleLoadError
   resolveInterfaceI18n
   stampInterfaceLocale
   toLanguageTag

@@ -221,7 +221,11 @@ item.
   generated locale tier, host messages, or the host's own — used in place of
   the one the player builds. `locale` still names the locale, and a supplied
   provider is driven only by it
-  ([Interface i18n](../players-shared/src/i18n/README.md#for-a-host)).
+  ([Interface i18n](../players-shared/src/i18n/README.md#for-a-host)). A
+  catalog that fails to load dispatches a recoverable `framework-error` event
+  on the player (`detail.kind` is `i18n-locale-load`); the player renders
+  through the English fallback chain, and failed loads are not cached, so
+  re-setting `locale` retries.
 - `debug`: `String`, default `""`. Any value other than `"false"` (any case),
   `"0"` or the empty string turns on the player's debug logging. The player
   writes the result to `window.PIE_DEBUG`, the flag the page's other PIE loggers

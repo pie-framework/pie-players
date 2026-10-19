@@ -683,6 +683,18 @@ five own chrome strings (`player.configurationError`, `player.playerError`,
 instead of staying English. The contract is the [host-supplied interface locale
 provider PRD](../prds/interface-i18n-host-provider.md).
 
+On 2026-10-19 failed interface-locale catalog loads became observable:
+`pie-item-player` and the reference `pie-assessment-player` dispatch a
+`framework-error` event (bubbles, composed; detail `kind:
+"i18n-locale-load"`, `recoverable: true`, same shape the toolkit's bus and the
+section player already report) on their host when a requested catalog fails to
+load, where the item player previously swallowed the rejection. Additive: a
+host listening for the toolkit's event sees the same shape; a host that never
+listens sees nothing. Failed loads are not cached, so re-setting `locale`
+retries. `@pie-players/pie-players-shared/i18n` gained
+`reportInterfaceLocaleLoadError` and the `InterfaceLocaleLoadErrorModel` type,
+additive.
+
 On 2026-10-18 `@pie-players/pie-context` gained `interfaceLocaleContext`
 (`Symbol.for("pie.interfaceLocale")`, value `{ locale, direction }`), which
 `pie-assessment-toolkit` and `pie-item-player` now answer for the PIE elements

@@ -95,6 +95,7 @@ The PIE item player: it loads an item's PIE elements under the `iife`, `esm` or 
 @fires {CustomEvent<{ scope: "authoring"; operation: "saveContent"; contentId: string }>} backend-content-saved - After the authoring backend saves the item's content.
 @fires {CustomEvent<{ scope: "authoring"; operation: "releaseContent"; contentId: string }>} backend-content-released - After the authoring backend releases the item's content.
 @fires {CustomEvent<{ scope: "delivery"; operation: "load" | "model" | "saveSession"; message: string; error: unknown }>} backend-error - When a delivery load, model refresh or autosave the player started itself fails; a host's own `saveSession()` or `score()` call rejects instead.
+@fires {CustomEvent<{ kind: "i18n-locale-load"; source: string; message: string; details: string[]; recoverable: true; scope: "runtime"; cause?: unknown }>} framework-error - When a requested interface-locale catalog fails to load; the player keeps rendering through the English fallback chain, and re-setting `locale` retries the load.
 -->
 
 <script lang="ts">
@@ -220,6 +221,7 @@ The PIE item player: it loads an item's PIE elements under the `iife`, `esm` or 
 		createPieI18n,
 		DEFAULT_LOCALE,
 		resolveInterfaceI18n,
+		reportInterfaceLocaleLoadError,
 	} from "@pie-players/pie-players-shared/i18n";
 	import type { I18nProvider } from "@pie-players/pie-players-shared/i18n";
 	import { onDestroy, tick, untrack } from "svelte";
@@ -927,10 +929,15 @@ The PIE item player: it loads an item's PIE elements under the `iife`, `esm` or 
 		if (!requested && provider !== ownedInterfaceI18n) return;
 		untrack(() => {
 			// A failed catalog load must not take the player down: every key still
-			// resolves through the English fallback chain.
+			// resolves through the English fallback chain. It is reported, like
+			// the toolkit reports its own, so a host can tell English-because-
+			// requested from English-because-failed; failed loads are not cached,
+			// so re-setting `locale` retries.
 			void Promise.resolve(
 				provider.setLocale(requested || DEFAULT_LOCALE),
-			).catch(() => {});
+			).catch((error) => {
+				reportInterfaceLocaleLoadError(hostElement, "pie-item-player", error);
+			});
 		});
 	});
 	// A fresh facade on every catalog load. The provider's identity does not

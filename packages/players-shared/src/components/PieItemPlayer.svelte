@@ -70,6 +70,7 @@
   import { updatePieElements } from "../pie/updates.js";
   import { useResourceMonitor } from "../pie/use-resource-monitor.svelte.js";
   import { resolveInterfaceI18n } from "../i18n/provider.js";
+  import { stampContentLanguage } from "../i18n/content-language.js";
   import type { I18nProvider } from "../i18n/types.js";
   import type {
     ConfigEntity,
@@ -723,6 +724,15 @@
 
   // Root element reference for resource monitor
   let rootElement: HTMLElement | null = $state(null);
+  // The content root carries the content language the delivery declares
+  // (`env.locale`), and asserts nothing about undeclared content — the
+  // interface-locale stamps on the chrome never claim it, and nothing is
+  // invented for content that names no language.
+  $effect(() => {
+    const currentEnv = env;
+    const target = rootElement;
+    stampContentLanguage(target, currentEnv);
+  });
   let passageContainer: HTMLDivElement | null = $state(null);
   let itemContainer: HTMLDivElement | null = $state(null);
 

@@ -162,8 +162,12 @@ item.
   ([session management](../../docs/item-player/overview.md#session-management)).
 - `env`: `Object`, default `{ mode: "gather", role: "student" }`. `env.mode` is
   `gather` (the learner responds), `view` (read-only) or `evaluate` (scored
-  feedback); `env.role` is `student` or `instructor`. Neither is a security
-  boundary ([delivery integrity](../../docs/security/readme.md#delivery-integrity)).
+  feedback); `env.role` is `student` or `instructor`. `env.locale`, when the
+  delivery knows it, names the language the item's content is written in: the
+  player stamps it, canonicalized with its direction, on the content root, and
+  asserts nothing when it is absent — the interface `locale` attribute is the
+  chrome, this is the content. Neither is a security boundary
+  ([delivery integrity](../../docs/security/readme.md#delivery-integrity)).
 - `strategy`: `String`, default `"iife"`. Loading strategy: `"iife"`, `"esm"`
   or `"preloaded"`
   ([loading strategies](../../docs/item-player/loading-strategies.md)).

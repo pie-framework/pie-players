@@ -30,7 +30,7 @@ of these is a composition context in this repo:
 | Theme tokens | theme package | every component | a deployment picks the palette, not the component |
 | Granted accommodations | policy engine | every capability | eligibility is per learner and per deployment |
 | Idle-save delay | item player, from `idleSaveDelayMs`; the section player sets it from `runtime.player` | response editors | how often a response is saved is the deployment's delivery policy, and the same item model travels to every deployment |
-| Interface locale | item/section player, from its `locale` attribute | every component rendering a string of its own | the deployment picks the language the chrome speaks; a tool nested several packages deep cannot see it, and it is independent of the item's content language |
+| Interface locale | item/section player, from its `locale` attribute: the provider on the toolkit runtime context for the chrome, and `interfaceLocaleContext` (`@pie-players/pie-context`) for the PIE elements | every component rendering a string of its own, and every PIE element | the deployment picks the language the chrome speaks; a tool nested several packages deep cannot see it, and it is independent of the item's content language |
 
 They share a shape, which is why they share a mechanism.
 

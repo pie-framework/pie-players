@@ -683,6 +683,17 @@ five own chrome strings (`player.configurationError`, `player.playerError`,
 instead of staying English. The contract is the [host-supplied interface locale
 provider PRD](../prds/interface-i18n-host-provider.md).
 
+On 2026-10-18 `@pie-players/pie-context` gained `interfaceLocaleContext`
+(`Symbol.for("pie.interfaceLocale")`, value `{ locale, direction }`), which
+`pie-assessment-toolkit` and `pie-item-player` now answer for the PIE elements
+inside them. Additive on every side: a new export, a new `context-request`
+answer that only an element asking for that key sees, and with no `locale`
+supplied the answer is `en-US`/`ltr`. No published element reads it yet
+(pie-elements-ng's interface-i18n PRD is the subscriber half), and no host
+provides or consumes a `pie.*` context of its own, so no listed host is
+affected. The key is now a cross-repository contract: it is not renamed, and
+the value only grows.
+
 On 2026-10-08 tools went to one channel and one provider namespace. Tool
 elements dropped the service and provider-id properties they took beside the
 runtime context: `toolkitCoordinator` and `providerId` / `provider-id` on the

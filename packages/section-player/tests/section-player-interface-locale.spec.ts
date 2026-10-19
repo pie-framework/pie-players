@@ -294,4 +294,40 @@ test.describe("section player interface locale", () => {
 		).toBeVisible();
 		await expect(page.getByTestId("demo-locale-select")).toHaveCount(0);
 	});
+
+	test("the item players answer interfaceLocaleContext with the section's locale", async ({
+		page,
+	}) => {
+		// The host-neutral channel the PIE elements read. The request is
+		// dispatched from inside a mounted item player, as an element's bundled
+		// copy of `@pie-players/pie-context` would, and the nearest answer is the
+		// item player's — whose provider is the section's, forwarded.
+		await page.setViewportSize(WIDE);
+		await page.goto("/interface-locale?locale=nl-NL", {
+			waitUntil: "networkidle",
+		});
+		await expect(
+			page.getByRole("heading", { name: "Tekst", level: 2 }),
+		).toBeVisible();
+
+		const content = page.locator("pie-item-player .pie-item-player").first();
+		const seen = await content.evaluate((node) => {
+			const values: unknown[] = [];
+			const from = node.firstElementChild ?? node;
+			from.dispatchEvent(
+				Object.assign(
+					new Event("context-request", { bubbles: true, composed: true }),
+					{
+						context: Symbol.for("pie.interfaceLocale"),
+						contextTarget: from,
+						subscribe: false,
+						callback: (value: unknown) => values.push(value),
+					},
+				),
+			);
+			return values;
+		});
+
+		expect(seen).toEqual([{ locale: "nl-NL", direction: "ltr" }]);
+	});
 });

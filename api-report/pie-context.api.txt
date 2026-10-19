@@ -14,6 +14,7 @@
   type ContextType
   FEATURE_DECISION_APPLIED_EVENT
   type FeatureDecisionAppliedDetail
+  type InterfaceLocaleContextValue
   type ItemFeatureDecision
   type ItemFeatureDecisions
   type SessionCommitContextValue
@@ -22,6 +23,7 @@
   consumeContext
   createContext
   ensureDocumentContextRoot
+  interfaceLocaleContext
   itemFeatureDecisionsContext
   provideContext
   requestContext

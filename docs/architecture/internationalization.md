@@ -415,6 +415,20 @@ the consumer set is open, resolvers must work with no container, and the value
 changes after mount. Classic PIE keys chrome on `model.language`, which is why its
 interface locale is a side effect of content locale.
 
+PIE elements read the same fact on a second, host-neutral channel:
+`interfaceLocaleContext` in `@pie-players/pie-context`, keyed
+`Symbol.for("pie.interfaceLocale")`, which the toolkit and the item player
+answer with `{ locale, direction }` — the tag as the player's provider resolved
+it and its writing direction — and republish on a locale change and again once
+a lazily loaded catalog is resident. Element bundles are third-party and
+release independently, so they get the key and the value shape rather than the
+players' provider, resolve the tag against their own catalogs, and treat an
+unanswered request as `en-US`. The value only grows, per ADR 0003's protocol.
+pie-elements-ng's
+[interface-i18n PRD](https://github.com/pie-framework/pie-elements-ng/blob/develop/docs/prds/interface-i18n/PRD.md)
+is the subscriber half: an element subscribes in `connectedCallback`, re-renders
+on republish, and passes the locale to the `language` prop its libraries take.
+
 ### Content language
 
 Content language for elements is direction and has not shipped. The shipped path,

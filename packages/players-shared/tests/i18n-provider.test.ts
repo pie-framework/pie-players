@@ -21,8 +21,11 @@ import {
 	SimpleI18n,
 	stampInterfaceLocale,
 } from "../src/i18n/provider.js";
-import type { MessageCatalog, TextDirection } from "../src/i18n/types.js";
-import type { I18nProvider } from "../src/i18n/types.js";
+import type {
+	I18nProvider,
+	MessageCatalog,
+	TextDirection,
+} from "../src/i18n/types.js";
 import { createPieI18n } from "../src/i18n/index.js";
 
 // A DOM only so the "does not touch documentElement" assertion can be real.
@@ -494,5 +497,35 @@ describe("resolveInterfaceI18n formatting", () => {
 		expect(resolved.formatNumber(1234.5)).toBe(
 			new Intl.NumberFormat("en-US").format(1234.5),
 		);
+	});
+});
+
+describe("canonical lang values", () => {
+	test("an unshipped tag honoured as spelled stamps and resolves canonically", () => {
+		const minimal: I18nProvider = {
+			getLocale: () => "NL-nl",
+			getDirection: () => "ltr",
+			setLocale: () => {},
+			t: (key) => String(key),
+		};
+		const target = document.createElement("div");
+		stampInterfaceLocale(target, minimal);
+		expect(target.getAttribute("lang")).toBe("nl-NL");
+		expect(resolveInterfaceI18n({ i18n: minimal }).getLocale()).toBe("nl-NL");
+	});
+
+	test("a canonical tag passes through unchanged, and a non-tag is written as given", () => {
+		const target = document.createElement("div");
+		stampInterfaceLocale(target, {
+			getLocale: () => "ar-SA",
+			getDirection: () => "rtl",
+		});
+		expect(target.getAttribute("lang")).toBe("ar-SA");
+		expect(target.getAttribute("dir")).toBe("rtl");
+
+		// A provider that names no usable tag still gets a `lang`: the chrome does
+		// speak something, and nothing is invented about what.
+		stampInterfaceLocale(target, { getLocale: () => "Spanish" });
+		expect(target.getAttribute("lang")).toBe("Spanish");
 	});
 });

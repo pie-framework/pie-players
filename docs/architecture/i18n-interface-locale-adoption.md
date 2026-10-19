@@ -174,6 +174,29 @@ the delivery, or in its own markup; the authoring-side emission is the open
 half of slice 2 of
 [`internationalization.md`](./internationalization.md#rollout).
 
+**Layout follows the writing direction; free windows follow the screen.** The
+cards push end-of-row controls to the trailing edge with logical properties
+(`margin-inline-start: auto`), so the toolbar and the formative button mirror
+under `dir="rtl"`; the `section-player-rtl-layout` spec holds that to geometry,
+because an attribute assertion cannot see a physical margin that fails to flip.
+Free-floating windows and panels — the tool shells at `document.body`, the
+session debugger, the shared debug panels — position with physical screen
+coordinates on purpose: a window the learner dragged to the top-left is at the
+top-left in any language, and mirroring a drag target would move it under the
+learner's hand. Their *contents* lay out by direction like any other chrome.
+
+**Every `lang` this repository writes is canonical.** A provider honours an
+unshipped tag as the host spelled it, because the spelling may be the key its
+host messages are registered under, so `getLocale()` can return `NL-nl`. That is
+a valid request and not a valid attribute value. `canonicalLanguageTag` —
+`Intl.getCanonicalLocales` over a usable two- or three-letter primary subtag,
+the rule pie-elements-ng applies to `model.language` — runs at the seams that
+write attributes: `stampInterfaceLocale`, the `getLocale()` of the facade
+`resolveInterfaceI18n` returns (which every template stamp reads), and the
+content stamp. The provider's own `getLocale()` keeps the resolved tag for
+lookups. A tag the rule rejects is written as given rather than dropped: the
+chrome does speak something, and nothing is invented about what.
+
 **Tool display names gain key fields; the required strings stay.**
 `ToolRegistration.name` and `.description` are host-facing required API, and
 `check:capability-neutrality` forbids core from naming a capability id. Optional

@@ -11,6 +11,7 @@
  */
 
 import {
+	canonicalLanguageTag,
 	findBestLanguageMatch,
 	normalizeLanguageTag,
 	toLanguageTag,
@@ -560,7 +561,12 @@ export function resolveInterfaceI18n(
 	// thing the bundled provider does, and the same graceful default every other
 	// optional member here applies.
 	return {
-		getLocale: () => provider.getLocale(),
+		// Canonical, because components read this for `lang` attributes; the
+		// provider's own `getLocale()` keeps the tag as resolved for lookups.
+		getLocale: () => {
+			const locale = provider.getLocale();
+			return canonicalLanguageTag(locale) ?? locale;
+		},
 		setLocale: (locale) => provider.setLocale(locale),
 		t: (key, values) => provider.t(key, values),
 		plural: (key, options) =>
@@ -592,6 +598,11 @@ export function stampInterfaceLocale(
 	target: Element,
 	provider: Pick<I18nProvider, "getLocale" | "getDirection">,
 ): void {
-	target.setAttribute("lang", provider.getLocale());
+	// `lang` takes the canonical form: a provider honours an unshipped tag as
+	// the host spelled it, and `NL-nl` is a valid request but not a valid
+	// attribute value. Every `lang` this repository writes goes through the
+	// same rule, so chrome and content stamps match in shape.
+	const locale = provider.getLocale();
+	target.setAttribute("lang", canonicalLanguageTag(locale) ?? locale);
 	target.setAttribute("dir", provider.getDirection?.() ?? "ltr");
 }

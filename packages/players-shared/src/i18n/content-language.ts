@@ -14,34 +14,14 @@
  * content lays out right to left, independent of the chrome's locale.
  */
 
+import { canonicalLanguageTag } from "./language-tags.js";
 import { localeDirection } from "./provider.js";
-import { toLanguageTag } from "./language-tags.js";
 import type { TextDirection } from "./types.js";
 
 /** `lang` and `dir` for declared content, or `null` when nothing is declared. */
 export interface ContentLanguageAttributes {
 	lang: string;
 	dir: TextDirection;
-}
-
-/**
- * The canonical form of a usable language tag, or `undefined` for anything a
- * language in use would not be: `es_MX` normalizes to `es-MX`, `Spanish` and
- * an empty string are not tags. The same rule the PIE elements apply to
- * `model.language`, so both channels stamp the same shape.
- */
-export function canonicalContentLanguageTag(
-	language: string | null | undefined,
-): string | undefined {
-	const tag = toLanguageTag(language).split(/[.@]/)[0];
-	// `Intl` accepts any 5-8 letter primary subtag, `Spanish` included; a
-	// language in use has an ISO 639 code of two or three letters.
-	if (!/^[a-z]{2,3}(-|$)/i.test(tag)) return undefined;
-	try {
-		return Intl.getCanonicalLocales(tag)[0];
-	} catch {
-		return undefined;
-	}
 }
 
 /**
@@ -56,7 +36,7 @@ export function contentLanguageAttributes(
 ): ContentLanguageAttributes | null {
 	const locale = (env as { locale?: unknown } | null | undefined)?.locale;
 	if (typeof locale !== "string") return null;
-	const lang = canonicalContentLanguageTag(locale);
+	const lang = canonicalLanguageTag(locale);
 	if (!lang) return null;
 	return { lang, dir: localeDirection(lang) };
 }

@@ -367,11 +367,12 @@ export async function pseudoLocalizedProvider() {
 }
 ```
 
-Wiring it into the demo switcher waits on the same seam the generated tier
-needs: the toolkit and the reference assembly construct their provider with
-`createPieI18n()` and take no host messages, so a host cannot yet hand either a
-pseudo-locale or a generated catalog to the players' chrome. That seam is the
-next slice of the [rollout](#rollout).
+The demo switcher wires both pseudo-locales through the host-provider seam
+([rollout](#rollout) item 7): `apps/section-demos`' `demo-interface-i18n.ts`
+composes a provider whose host messages carry the pseudo-localized catalogs and
+hands it to the players as `runtime.i18n`, the same way a host hands over a
+generated catalog. The section-player interface-locale spec drives `ar-XB`
+through the real chrome.
 
 ## Direction
 

@@ -1,5 +1,34 @@
 # @pie-players/pie-print-player
 
+## 1.0.0-beta.4
+
+### Patch Changes
+
+- 32eab13: `loaderOptions.esmCdnUrl` now covers every CDN load the players make. `<pie-print>` takes a `loaderOptions` property for its print modules; the item toolbar and the inline TTS tool load Font Awesome Free from the item player's ESM CDN; the IIFE math renderer loads its speech rules from it; and an import-map scope sends the root-path imports (`/npm/…`) inside jsDelivr-built `+esm` modules to the configured base, so a mirror serves one copy of each dependency. Adds `resolveEsmPackageFileUrl` and the `assetRoot` option of `initializeMathRendering` and `ensureItemPlayerMathRenderingReady`.
+- Updated dependencies [6dd6280]
+- Updated dependencies [e2f6bde]
+- Updated dependencies [3f275b5]
+- Updated dependencies [32eab13]
+- Updated dependencies [05e4137]
+- Updated dependencies [074dfa6]
+- Updated dependencies [bd7be0e]
+- Updated dependencies [28edb54]
+- Updated dependencies [171c84e]
+- Updated dependencies [85e66f7]
+- Updated dependencies [18e07d9]
+- Updated dependencies [2f34312]
+- Updated dependencies [6d2dcb4]
+- Updated dependencies [a3432aa]
+- Updated dependencies [129a41f]
+- Updated dependencies [b6887bb]
+- Updated dependencies [55033fa]
+- Updated dependencies [765ddbf]
+- Updated dependencies [67112f8]
+- Updated dependencies [b1f5a06]
+- Updated dependencies [9d1bab9]
+  - @pie-players/pie-players-shared@1.0.0-beta.4
+  - @pie-players/pie-assessment-toolkit@1.0.0-beta.4
+
 ## 1.0.0-beta.3
 
 ### Patch Changes

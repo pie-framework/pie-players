@@ -1,5 +1,71 @@
 # @pie-players/section-demos
 
+## 0.1.89-beta.4
+
+### Patch Changes
+
+- Updated dependencies [6dd6280]
+- Updated dependencies [269099c]
+- Updated dependencies [e2f6bde]
+- Updated dependencies [3f275b5]
+- Updated dependencies [32eab13]
+- Updated dependencies [05e4137]
+- Updated dependencies [87c6776]
+- Updated dependencies [074dfa6]
+- Updated dependencies [bd7be0e]
+- Updated dependencies [28edb54]
+- Updated dependencies [171c84e]
+- Updated dependencies [85e66f7]
+- Updated dependencies [18e07d9]
+- Updated dependencies [2f34312]
+- Updated dependencies [6d2dcb4]
+- Updated dependencies [52ade60]
+- Updated dependencies [f995687]
+- Updated dependencies [a3432aa]
+- Updated dependencies [32eab13]
+- Updated dependencies [129a41f]
+- Updated dependencies [b6887bb]
+- Updated dependencies [55033fa]
+- Updated dependencies [765ddbf]
+- Updated dependencies [277b122]
+- Updated dependencies [67112f8]
+- Updated dependencies [6175413]
+- Updated dependencies [b35df65]
+- Updated dependencies [7a68d92]
+- Updated dependencies [b1f5a06]
+- Updated dependencies [9d1bab9]
+- Updated dependencies [a63c2cc]
+  - @pie-players/pie-players-shared@1.0.0-beta.4
+  - @pie-players/pie-item-player@1.0.0-beta.4
+  - @pie-players/pie-default-tool-loaders@1.0.0-beta.4
+  - @pie-players/pie-section-player@1.0.0-beta.4
+  - @pie-players/pie-section-player-tools-event-debugger@1.0.0-beta.4
+  - @pie-players/pie-section-player-tools-instrumentation-debugger@1.0.0-beta.4
+  - @pie-players/pie-section-player-tools-pnp-debugger@1.0.0-beta.4
+  - @pie-players/pie-section-player-tools-session-debugger@1.0.0-beta.4
+  - @pie-players/pie-section-player-tools-shared@1.0.0-beta.4
+  - @pie-players/pie-section-player-tools-tts-settings@1.0.0-beta.4
+  - @pie-players/pie-tool-dictionary@1.0.0-beta.4
+  - @pie-players/pie-tool-picture-dictionary@1.0.0-beta.4
+  - @pie-players/pie-print-player@1.0.0-beta.4
+  - @pie-players/pie-assessment-toolkit@1.0.0-beta.4
+  - @pie-players/pie-tool-tts-inline@1.0.0-beta.4
+  - @pie-players/pie-i18n-generated@1.0.0-beta.4
+  - @pie-players/pie-tool-sign-language@1.0.0-beta.4
+  - @pie-players/pie-context@1.0.0-beta.4
+  - @pie-players/demo-ui@0.1.3-beta.4
+  - @pie-players/pie-tool-annotation-toolbar@1.0.0-beta.4
+  - @pie-players/pie-tool-answer-eliminator@1.0.0-beta.4
+  - @pie-players/tts-client-server@1.0.0-beta.4
+  - @pie-players/pie-tool-calculator-desmos@1.0.0-beta.4
+  - @pie-players/pie-calculator-cortex@1.0.0-beta.4
+  - @pie-players/pie-calculator-geogebra@1.0.0-beta.4
+  - @pie-players/pie-theme@1.0.0-beta.4
+  - @pie-players/tts-server-core@1.0.0-beta.4
+  - @pie-players/tts-server-google@1.0.0-beta.4
+  - @pie-players/tts-server-polly@1.0.0-beta.4
+  - @pie-players/tts-server-sc@1.0.0-beta.4
+
 ## 0.1.89-beta.3
 
 ### Patch Changes

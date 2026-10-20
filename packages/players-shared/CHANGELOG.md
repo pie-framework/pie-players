@@ -1,5 +1,105 @@
 # @pie-players/pie-players-shared
 
+## 1.0.0-beta.4
+
+### Patch Changes
+
+- 6dd6280: Content language reaches the delivery channel. `Env` gains an optional
+  `locale`: the BCP 47 tag the language the item's content is written in — the
+  same delivery-fact channel `mode` travels, and never the interface locale. The
+  item player reflects it onto its content subtree's root as `lang`/`dir`
+  (canonicalized, direction from the tag), and asserts nothing when the delivery
+  declares none or declares a non-tag, so a screen reader takes the content's
+  voice rules and RTL content lays out right to left while the chrome keeps the
+  interface locale's. `env` remains pass-through; nothing is filtered. The
+  authoring-side half of the slice — hosts emitting `locale` and QTI emitting
+  `xml:lang` — is still open. No listed host is affected: a host that sends no
+  `env.locale` sees no stamp, exactly as before.
+- e2f6bde: The developer panels render their visible strings through the interface catalog, closing out the hardcoded-string scan entirely: event/instrumentation/pnp/session-debugger chrome, the session-db payload labels, and the TTS settings' format, sample-rate and example placeholders. Instrumentation record-kind identifiers and session-db payload field names are keyed but carried verbatim across locales — they name the emitted data — while generic labels and status sentences translate. Two dev-panel strings normalize to their catalog forms in English (`dupes:` becomes `Duplicates:`, matching `debug.fieldDuplicates`), and the TTS settings preview mode keeps `SSML` verbatim per the product-name rule.
+- 3f275b5: The dictionary, picture dictionary and calculator tools render their learner-visible strings through the interface catalog, so a localized player localizes them too: labels ("Word or phrase", "Look up"), the unconfigured and idle notices, the whole-phrase lookup status ("Looking up “{term}”…", "No entry for “{term}”.") and the calculator's initialization failure. The lookup status summary is a plural group selected by `Intl.PluralRules` rather than a `count === 1` branch, and both dictionary panels now stamp `lang` and `dir` on their host. English rendering is unchanged.
+- 32eab13: `loaderOptions.esmCdnUrl` now covers every CDN load the players make. `<pie-print>` takes a `loaderOptions` property for its print modules; the item toolbar and the inline TTS tool load Font Awesome Free from the item player's ESM CDN; the IIFE math renderer loads its speech rules from it; and an import-map scope sends the root-path imports (`/npm/…`) inside jsDelivr-built `+esm` modules to the configured base, so a mirror serves one copy of each dependency. Adds `resolveEsmPackageFileUrl` and the `assetRoot` option of `initializeMathRendering` and `ensureItemPlayerMathRenderingReady`.
+- 05e4137: The line reader keeps its place in the tool stack as it moves, returns focus to the control that opened it when it closes, and offers tap controls to move it and to change its reading window height, frame height and width one at a time, which wrap onto a second row in a narrow pane. Focus entering a tool mounted in the section toolbar no longer scrolls the page to the toolbar, and a tool dialog that closes on Escape marks the key handled.
+- 074dfa6: Every `lang` the players write is canonical. A provider honours an unshipped
+  locale tag as the host spelled it (it may be the key its host messages are
+  registered under), so `getLocale()` can return `NL-nl` — a valid request, not a
+  valid attribute value. `canonicalLanguageTag` (`Intl.getCanonicalLocales` over a
+  usable primary subtag, the rule PIE elements apply to `model.language`) now runs
+  at the seams that write attributes: `stampInterfaceLocale` and the `getLocale()`
+  of the facade `resolveInterfaceI18n` returns, which every template stamp reads.
+  The provider's own `getLocale()` keeps the resolved tag for lookups. The content
+  stamp's helper, added earlier as `canonicalContentLanguageTag` and never
+  released, takes the generic name. A host that spelled an unshipped tag `NL-nl`
+  sees `lang="nl-NL"` stamped; a canonical tag is unchanged.
+- bd7be0e: The player chrome stamps `lang` and `dir` from the interface locale, so a
+  screen reader takes the chrome's language and direction from the locale the
+  host set instead of the page's. The stamps sit on each localized element's own
+  subtree root — the section shell's host (the light-tree ancestor of every pane,
+  card and item player), the toolkit and item-tool-bar hosts and the
+  `document.body` tool shells, the section's navigation live region, the session
+  debugger and the five shared debug panels, the sign-language region, the inline
+  calculator and inline TTS, and the reference assessment player's host. The item
+  player's content root asserts neither attribute, so unnamed content keeps the
+  browser voice for read-aloud instead of inheriting the chrome's locale. The
+  document root is never
+  touched. The section's navigation announcement is no longer hardcoded English:
+  `player.questionPositionA11y` / `questionPositionLabeledA11y` are new catalog
+  keys (the generated `th-TH` catalog carries them). `pie-item-player`'s
+  interface messages now re-derive when a lazily loaded catalog becomes
+  resident, which previously pinned whatever rendered before the load —
+  including its error and loading chrome. `@pie-players/pie-players-shared/i18n`
+  exports `stampInterfaceLocale(element, provider)`, the imperative form of the
+  `lang`/`dir` pair a template puts on its root, for a host stamping an element of
+  its own. Hosts whose content language
+  can differ from the interface locale keep naming it in the content markup
+  (`lang`/`dir`, or `model.language` on the element); the content-language slice
+  stamps the content subtree when the delivery carries a language. No listed host is affected: every surface is a consumer of
+  the interface locale, and a host that supplies none renders `en-US` chrome it
+  was already rendering.
+- 28edb54: `resolveInterfaceI18n` now delivers the locale formatters the `I18nProvider`
+  contract promises: the facade forwards `formatNumber` and `formatDate`, and a
+  provider that does not implement them falls through to `Intl` at the locale
+  the provider resolves — the bundled provider's own behaviour. The returned
+  type, `ResolvedInterfaceI18n`, states the promise. Section-player components
+  resolving through `useInterfaceI18n` get the same two methods. No behaviour
+  changes for the bundled provider or for hosts that never format through the
+  facade; the first component that needed locale-aware output no longer has to
+  reach past the sanctioned resolution path.
+- 171c84e: The interface-locale provider seam: `runtime.i18n` on the section-player
+  layouts and an `i18n` property on `pie-assessment-toolkit` and
+  `pie-item-player` accept the `I18nProvider` a host composes — the generated
+  locale tier's catalogs, `customMessages`, or a provider of the host's own — in
+  place of the one the player builds. The `locale` attribute still names the
+  locale, and a supplied provider is driven only by it. A section now forwards
+  its provider to the item players it mounts, so their own chrome follows the
+  section's locale. `loadBundledCatalog("en-US")` now returns the statically
+  resident English catalog instead of throwing, so a host composing loaders —
+  the generated tier's pattern, or a pseudo-localization — can ask for it by
+  name. No listed host is affected: every surface is optional, a host that
+  supplies nothing renders what it rendered before, and the one rendering change
+  (nested item-player chrome following the section's locale) needs a `locale` no
+  host passes. See the host-supplied interface locale provider PRD
+  (`docs/prds/interface-i18n-host-provider.md`).
+- 18e07d9: Failed interface-locale catalog loads are reported, not swallowed. The
+  standalone item player's `setLocale` catch and the reference assembly's own
+  provider drive dispatch a `framework-error` event (bubbles, composed) whose
+  detail carries `kind: "i18n-locale-load"` with `recoverable: true` — the same
+  shape the toolkit's error bus and the section player already report — so a
+  host can tell English-because-requested from English-because-failed.
+  `@pie-players/pie-players-shared/i18n` gains `reportInterfaceLocaleLoadError`
+  and the `InterfaceLocaleLoadErrorModel` type, the narrow payload contract for
+  players that do not depend on the toolkit. Failed loads are not cached:
+  re-setting the `locale` attribute or recomposing the `i18n` provider retries
+  the load. No listed host is affected: the event is new, and a host that never
+  listens sees nothing.
+- 2f34312: Numeric placeholder values in interface strings now render through `Intl.NumberFormat` for the active interface locale, so digits and grouping follow CLDR locale defaults: `ar` renders Arabic-Indic digits, `fr` groups with narrow no-break spaces, `en-US` with commas. Latin-script locales with counts under 1,000 render exactly as before, and string values are untouched. A host overriding strings through `customMessages` is unaffected.
+- 6d2dcb4: Adds `pseudoLocalize` with the `en-XA` and `ar-XB` pseudo-locale tags to `@pie-players/pie-players-shared/i18n`. It transforms the English catalog at runtime into accented, bracketed strings padded roughly 40% longer, with every key, plural category and `{placeholder}` untouched, so truncation, concatenation and right-to-left layout faults surface in a demo or e2e run before any reviewer sees a real locale. A host registers the result through `customMessages`; nothing ships it as a catalog.
+- a3432aa: Corrections to all fourteen interface-locale catalogs from a review by three independent expert reviewers per locale (fidelity and terminology, grammar and linguistics, localization QA); a change landed only where at least two of the three agreed on it. The learner-visible repairs: the Spanish catalog moves its instructions and screen-reader guidance to the unstated-usted register its brief fixes (the catalog had been generated in tú); Korean and Japanese tool-move announcements name the destination coordinate instead of reading it as a distance; the Swedish text-to-speech tool and its announcements are spelled `uppläsning` (the brief carried the same misspelling and is corrected with them); Arabic repairs a garbled debugger label, a reversed developer instruction and two theme strings whose subject bound to the wrong theme; Welsh repairs a garbled protractor description, a missed soft mutation on the four "make taller" controls and the chemistry term for diatomic nonmetals; French names the Spanish dictionaries per its brief and removes a gender-agreement slip; Portuguese gives Previous its own label (it duplicated Back); Romanian announces rotation as `{degrees}°`, the only form grammatical for every value; Chinese pairs rewind with fast-forward (快退/快进) and uses full-width colons in the developer labels; en-GB converts the one `initialize` the delta missed and uses `coordinate grid`, and en-AU takes its own `Graphics Calculator` and `Cartesian plane`, now documented in its brief. The reviewed Dutch catalog takes seven small consistency fixes (`het onderdeel`, `aanbieder`, `Beste beschikbare stem`). Keys, placeholders and plural shapes are unchanged; status stays `generated`, and each manifest entry records the review.
+- b6887bb: Add `@pie-players/pie-item-list`: `summarizeItem` (from `./summarize`, Node-safe) reduces a PIE item to a readable summary, and `<pie-item-summary>` renders it as one sanitized list row with math as MathML and answers for instructors only, loading no element code. No summarizer resolver ships yet, so elements summarize from their prompt or label. The row's labels add `player.summary.*` keys to the bundled and generated catalogs.
+- 55033fa: `pie-item-player` takes `passage-layout="splitpane"` to render a stimulus passage beside the item instead of above it, stacking again below a player width of 768px. With `allowed-resize` the split gets a draggable, keyboard-operable divider. The default, `vertical`, keeps the stacked layout.
+- 765ddbf: Add the magnifier (`magnification`, `<pie-tool-magnifier>`): a movable, resizable lens over a live copy of the page. The packaged tool set registers it at section level, and `createPersonalNeedsProfileFromAfa` maps AfA `magnification`'s `zoom-amount` (`all-content`, else the `selectMagnification` `text` amount) to its starting `zoom` tool parameter.
+- b1f5a06: A floating tool window's tap resize controls now change its width and height one at a time, as its corner grips can: narrower, wider, shorter and taller buttons replace the shrink and grow pair, and Shift+arrow keys on the window's header resize along the arrow's axis. Hosts that override the `toolkit.window.shrinkA11y` or `growA11y` messages move to `narrowerA11y`, `widerA11y`, `shorterA11y` and `tallerA11y`.
+- 9d1bab9: The TTS settings panel's `preview` custom-provider hook is now typed `Promise<CustomProviderPreviewResult | undefined>` rather than `Promise<void | CustomProviderPreviewResult>`: the same runtime contract, typed by its resolved value. Providers that return nothing are unchanged at runtime, though a bare `async` arrow with no return may need `return undefined` to satisfy the type. `scan-hardcoded` now parses the packages' Svelte templates and warns only on template text and static `aria-label`, `title` and `placeholder` literals — a scoped advisory report, run weekly by the new `i18n-hardcoded-scan` workflow instead of the previous quoted-string regex.
+
 ## 1.0.0-beta.3
 
 ### Patch Changes

@@ -1,5 +1,21 @@
 # @pie-players/pie-section-player-tools-pnp-debugger
 
+## 1.0.0-beta.4
+
+### Patch Changes
+
+- e2f6bde: The developer panels render their visible strings through the interface catalog, closing out the hardcoded-string scan entirely: event/instrumentation/pnp/session-debugger chrome, the session-db payload labels, and the TTS settings' format, sample-rate and example placeholders. Instrumentation record-kind identifiers and session-db payload field names are keyed but carried verbatim across locales — they name the emitted data — while generic labels and status sentences translate. Two dev-panel strings normalize to their catalog forms in English (`dupes:` becomes `Duplicates:`, matching `debug.fieldDuplicates`), and the TTS settings preview mode keeps `SSML` verbatim per the product-name rule.
+- Updated dependencies [32eab13]
+- Updated dependencies [05e4137]
+- Updated dependencies [bd7be0e]
+- Updated dependencies [171c84e]
+- Updated dependencies [85e66f7]
+- Updated dependencies [129a41f]
+- Updated dependencies [765ddbf]
+- Updated dependencies [67112f8]
+- Updated dependencies [b1f5a06]
+  - @pie-players/pie-assessment-toolkit@1.0.0-beta.4
+
 ## 1.0.0-beta.3
 
 ### Patch Changes

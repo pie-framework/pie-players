@@ -1,5 +1,91 @@
 # @pie-players/pie-assessment-toolkit
 
+## 1.0.0-beta.4
+
+### Patch Changes
+
+- 32eab13: `loaderOptions.esmCdnUrl` now covers every CDN load the players make. `<pie-print>` takes a `loaderOptions` property for its print modules; the item toolbar and the inline TTS tool load Font Awesome Free from the item player's ESM CDN; the IIFE math renderer loads its speech rules from it; and an import-map scope sends the root-path imports (`/npm/…`) inside jsDelivr-built `+esm` modules to the configured base, so a mirror serves one copy of each dependency. Adds `resolveEsmPackageFileUrl` and the `assetRoot` option of `initializeMathRendering` and `ensureItemPlayerMathRenderingReady`.
+- 05e4137: The line reader keeps its place in the tool stack as it moves, returns focus to the control that opened it when it closes, and offers tap controls to move it and to change its reading window height, frame height and width one at a time, which wrap onto a second row in a narrow pane. Focus entering a tool mounted in the section toolbar no longer scrolls the page to the toolbar, and a tool dialog that closes on Escape marks the key handled.
+- bd7be0e: The player chrome stamps `lang` and `dir` from the interface locale, so a
+  screen reader takes the chrome's language and direction from the locale the
+  host set instead of the page's. The stamps sit on each localized element's own
+  subtree root — the section shell's host (the light-tree ancestor of every pane,
+  card and item player), the toolkit and item-tool-bar hosts and the
+  `document.body` tool shells, the section's navigation live region, the session
+  debugger and the five shared debug panels, the sign-language region, the inline
+  calculator and inline TTS, and the reference assessment player's host. The item
+  player's content root asserts neither attribute, so unnamed content keeps the
+  browser voice for read-aloud instead of inheriting the chrome's locale. The
+  document root is never
+  touched. The section's navigation announcement is no longer hardcoded English:
+  `player.questionPositionA11y` / `questionPositionLabeledA11y` are new catalog
+  keys (the generated `th-TH` catalog carries them). `pie-item-player`'s
+  interface messages now re-derive when a lazily loaded catalog becomes
+  resident, which previously pinned whatever rendered before the load —
+  including its error and loading chrome. `@pie-players/pie-players-shared/i18n`
+  exports `stampInterfaceLocale(element, provider)`, the imperative form of the
+  `lang`/`dir` pair a template puts on its root, for a host stamping an element of
+  its own. Hosts whose content language
+  can differ from the interface locale keep naming it in the content markup
+  (`lang`/`dir`, or `model.language` on the element); the content-language slice
+  stamps the content subtree when the delivery carries a language. No listed host is affected: every surface is a consumer of
+  the interface locale, and a host that supplies none renders `en-US` chrome it
+  was already rendering.
+- 171c84e: The interface-locale provider seam: `runtime.i18n` on the section-player
+  layouts and an `i18n` property on `pie-assessment-toolkit` and
+  `pie-item-player` accept the `I18nProvider` a host composes — the generated
+  locale tier's catalogs, `customMessages`, or a provider of the host's own — in
+  place of the one the player builds. The `locale` attribute still names the
+  locale, and a supplied provider is driven only by it. A section now forwards
+  its provider to the item players it mounts, so their own chrome follows the
+  section's locale. `loadBundledCatalog("en-US")` now returns the statically
+  resident English catalog instead of throwing, so a host composing loaders —
+  the generated tier's pattern, or a pseudo-localization — can ask for it by
+  name. No listed host is affected: every surface is optional, a host that
+  supplies nothing renders what it rendered before, and the one rendering change
+  (nested item-player chrome following the section's locale) needs a `locale` no
+  host passes. See the host-supplied interface locale provider PRD
+  (`docs/prds/interface-i18n-host-provider.md`).
+- 85e66f7: `interfaceLocaleContext` in `@pie-players/pie-context`, keyed
+  `Symbol.for("pie.interfaceLocale")`: the host-neutral channel the PIE elements
+  inside a player read the interface locale from. `pie-assessment-toolkit` and
+  `pie-item-player` answer it with `{ locale, direction }` — the BCP-47 tag as
+  the player's provider resolved it and its writing direction — and republish on
+  a locale change and again once a lazily loaded catalog is resident. An element
+  requests it with `subscribe: true`, resolves the tag against its own catalogs,
+  and treats an unanswered request as `en-US`; the value only grows. This is the
+  pie-players half of pie-elements-ng's interface-i18n PRD, which has elements
+  stop keying their chrome on `model.language`. Additive: with no `locale` the
+  answer is `en-US`/`ltr`, nothing reads it yet, and no listed host is affected.
+- 129a41f: The toolkit's `autoplayAudio` decision reaches the item player: `<pie-item-scope>` provides it as `itemFeatureDecisionsContext`, and the item player writes a hold as `autoplayAudioHeld: true` and a grant as `autoplayAudioEnabled: true` onto the delivery models, then announces `feature-decision-applied` (`{ featureId, granted, rule, overrode? }`, once per feature). In view mode the item player removes `autoplay` attributes from item and passage markup, under `trust-markup` and a host `sanitizeMarkup` too, so audio and video start only through the model setting. `tools.policy.allowed` and `tools.policy.blocked` accept `autoplayAudio`. The `autoplay-audio-enabled` attribute no longer applies in author mode.
+- 765ddbf: Add the magnifier (`magnification`, `<pie-tool-magnifier>`): a movable, resizable lens over a live copy of the page. The packaged tool set registers it at section level, and `createPersonalNeedsProfileFromAfa` maps AfA `magnification`'s `zoom-amount` (`all-content`, else the `selectMagnification` `text` amount) to its starting `zoom` tool parameter.
+- 67112f8: A profile listing the `screenReader` support now withholds `textToSpeech` and the `autoplayAudio` feature under the new `support-conflict` rule, at the precedence of `pnp-prohibited`. A district block, a `false` override or an item restriction still outranks it. A withdrawal raises `tool-policy.supportConflict`, which replaces `tool-policy.overrideBlocked` for an override the conflict withdraws, and neither id raises `tool-policy.unknownSupportId` any more.
+- b1f5a06: A floating tool window's tap resize controls now change its width and height one at a time, as its corner grips can: narrower, wider, shorter and taller buttons replace the shrink and grow pair, and Shift+arrow keys on the window's header resize along the arrow's axis. Hosts that override the `toolkit.window.shrinkA11y` or `growA11y` messages move to `narrowerA11y`, `widerA11y`, `shorterA11y` and `tallerA11y`.
+- Updated dependencies [6dd6280]
+- Updated dependencies [e2f6bde]
+- Updated dependencies [3f275b5]
+- Updated dependencies [32eab13]
+- Updated dependencies [05e4137]
+- Updated dependencies [074dfa6]
+- Updated dependencies [bd7be0e]
+- Updated dependencies [28edb54]
+- Updated dependencies [171c84e]
+- Updated dependencies [85e66f7]
+- Updated dependencies [18e07d9]
+- Updated dependencies [2f34312]
+- Updated dependencies [6d2dcb4]
+- Updated dependencies [a3432aa]
+- Updated dependencies [129a41f]
+- Updated dependencies [b6887bb]
+- Updated dependencies [55033fa]
+- Updated dependencies [765ddbf]
+- Updated dependencies [b1f5a06]
+- Updated dependencies [9d1bab9]
+  - @pie-players/pie-players-shared@1.0.0-beta.4
+  - @pie-players/pie-context@1.0.0-beta.4
+  - @pie-players/pie-calculator@1.0.0-beta.4
+  - @pie-players/pie-tts@1.0.0-beta.4
+
 ## 1.0.0-beta.3
 
 ### Patch Changes

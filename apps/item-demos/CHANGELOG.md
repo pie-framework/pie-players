@@ -1,5 +1,35 @@
 # @pie-players/item-demos
 
+## 0.1.83-beta.4
+
+### Patch Changes
+
+- Updated dependencies [6dd6280]
+- Updated dependencies [e2f6bde]
+- Updated dependencies [3f275b5]
+- Updated dependencies [32eab13]
+- Updated dependencies [05e4137]
+- Updated dependencies [074dfa6]
+- Updated dependencies [bd7be0e]
+- Updated dependencies [28edb54]
+- Updated dependencies [171c84e]
+- Updated dependencies [85e66f7]
+- Updated dependencies [18e07d9]
+- Updated dependencies [2f34312]
+- Updated dependencies [6d2dcb4]
+- Updated dependencies [a3432aa]
+- Updated dependencies [129a41f]
+- Updated dependencies [b6887bb]
+- Updated dependencies [55033fa]
+- Updated dependencies [765ddbf]
+- Updated dependencies [b1f5a06]
+- Updated dependencies [9d1bab9]
+  - @pie-players/pie-players-shared@1.0.0-beta.4
+  - @pie-players/pie-item-player@1.0.0-beta.4
+  - @pie-players/pie-section-player-tools-instrumentation-debugger@1.0.0-beta.4
+  - @pie-players/demo-ui@0.1.3-beta.4
+  - @pie-players/pie-theme@1.0.0-beta.4
+
 ## 0.1.83-beta.3
 
 ### Patch Changes

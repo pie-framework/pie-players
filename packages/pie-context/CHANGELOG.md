@@ -1,5 +1,22 @@
 # @pie-players/pie-context
 
+## 1.0.0-beta.4
+
+### Patch Changes
+
+- 85e66f7: `interfaceLocaleContext` in `@pie-players/pie-context`, keyed
+  `Symbol.for("pie.interfaceLocale")`: the host-neutral channel the PIE elements
+  inside a player read the interface locale from. `pie-assessment-toolkit` and
+  `pie-item-player` answer it with `{ locale, direction }` — the BCP-47 tag as
+  the player's provider resolved it and its writing direction — and republish on
+  a locale change and again once a lazily loaded catalog is resident. An element
+  requests it with `subscribe: true`, resolves the tag against its own catalogs,
+  and treats an unanswered request as `en-US`; the value only grows. This is the
+  pie-players half of pie-elements-ng's interface-i18n PRD, which has elements
+  stop keying their chrome on `model.language`. Additive: with no `locale` the
+  answer is `en-US`/`ltr`, nothing reads it yet, and no listed host is affected.
+- 129a41f: The toolkit's `autoplayAudio` decision reaches the item player: `<pie-item-scope>` provides it as `itemFeatureDecisionsContext`, and the item player writes a hold as `autoplayAudioHeld: true` and a grant as `autoplayAudioEnabled: true` onto the delivery models, then announces `feature-decision-applied` (`{ featureId, granted, rule, overrode? }`, once per feature). In view mode the item player removes `autoplay` attributes from item and passage markup, under `trust-markup` and a host `sanitizeMarkup` too, so audio and video start only through the model setting. `tools.policy.allowed` and `tools.policy.blocked` accept `autoplayAudio`. The `autoplay-audio-enabled` attribute no longer applies in author mode.
+
 ## 1.0.0-beta.3
 
 ### Patch Changes

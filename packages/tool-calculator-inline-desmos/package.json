@@ -1,6 +1,6 @@
 {
 	"name": "@pie-players/pie-tool-calculator-inline-desmos",
-	"version": "1.0.0-beta.3",
+	"version": "1.0.0-beta.4",
 	"type": "module",
 	"description": "Inline calculator toggle button for PIE assessment player question headers",
 	"repository": {

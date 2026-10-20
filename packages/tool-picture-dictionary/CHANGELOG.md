@@ -1,5 +1,34 @@
 # @pie-players/pie-tool-picture-dictionary
 
+## 1.0.0-beta.4
+
+### Patch Changes
+
+- 3f275b5: The dictionary, picture dictionary and calculator tools render their learner-visible strings through the interface catalog, so a localized player localizes them too: labels ("Word or phrase", "Look up"), the unconfigured and idle notices, the whole-phrase lookup status ("Looking up “{term}”…", "No entry for “{term}”.") and the calculator's initialization failure. The lookup status summary is a plural group selected by `Intl.PluralRules` rather than a `count === 1` branch, and both dictionary panels now stamp `lang` and `dir` on their host. English rendering is unchanged.
+- Updated dependencies [6dd6280]
+- Updated dependencies [e2f6bde]
+- Updated dependencies [3f275b5]
+- Updated dependencies [32eab13]
+- Updated dependencies [05e4137]
+- Updated dependencies [074dfa6]
+- Updated dependencies [bd7be0e]
+- Updated dependencies [28edb54]
+- Updated dependencies [171c84e]
+- Updated dependencies [85e66f7]
+- Updated dependencies [18e07d9]
+- Updated dependencies [2f34312]
+- Updated dependencies [6d2dcb4]
+- Updated dependencies [a3432aa]
+- Updated dependencies [129a41f]
+- Updated dependencies [b6887bb]
+- Updated dependencies [55033fa]
+- Updated dependencies [765ddbf]
+- Updated dependencies [67112f8]
+- Updated dependencies [b1f5a06]
+- Updated dependencies [9d1bab9]
+  - @pie-players/pie-players-shared@1.0.0-beta.4
+  - @pie-players/pie-assessment-toolkit@1.0.0-beta.4
+
 ## 1.0.0-beta.3
 
 ### Patch Changes

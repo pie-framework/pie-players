@@ -1,5 +1,36 @@
 # @pie-players/pie-section-player-tools-shared
 
+## 1.0.0-beta.4
+
+### Patch Changes
+
+- e2f6bde: The developer panels render their visible strings through the interface catalog, closing out the hardcoded-string scan entirely: event/instrumentation/pnp/session-debugger chrome, the session-db payload labels, and the TTS settings' format, sample-rate and example placeholders. Instrumentation record-kind identifiers and session-db payload field names are keyed but carried verbatim across locales — they name the emitted data — while generic labels and status sentences translate. Two dev-panel strings normalize to their catalog forms in English (`dupes:` becomes `Duplicates:`, matching `debug.fieldDuplicates`), and the TTS settings preview mode keeps `SSML` verbatim per the product-name rule.
+- bd7be0e: The player chrome stamps `lang` and `dir` from the interface locale, so a
+  screen reader takes the chrome's language and direction from the locale the
+  host set instead of the page's. The stamps sit on each localized element's own
+  subtree root — the section shell's host (the light-tree ancestor of every pane,
+  card and item player), the toolkit and item-tool-bar hosts and the
+  `document.body` tool shells, the section's navigation live region, the session
+  debugger and the five shared debug panels, the sign-language region, the inline
+  calculator and inline TTS, and the reference assessment player's host. The item
+  player's content root asserts neither attribute, so unnamed content keeps the
+  browser voice for read-aloud instead of inheriting the chrome's locale. The
+  document root is never
+  touched. The section's navigation announcement is no longer hardcoded English:
+  `player.questionPositionA11y` / `questionPositionLabeledA11y` are new catalog
+  keys (the generated `th-TH` catalog carries them). `pie-item-player`'s
+  interface messages now re-derive when a lazily loaded catalog becomes
+  resident, which previously pinned whatever rendered before the load —
+  including its error and loading chrome. `@pie-players/pie-players-shared/i18n`
+  exports `stampInterfaceLocale(element, provider)`, the imperative form of the
+  `lang`/`dir` pair a template puts on its root, for a host stamping an element of
+  its own. Hosts whose content language
+  can differ from the interface locale keep naming it in the content markup
+  (`lang`/`dir`, or `model.language` on the element); the content-language slice
+  stamps the content subtree when the delivery carries a language. No listed host is affected: every surface is a consumer of
+  the interface locale, and a host that supplies none renders `en-US` chrome it
+  was already rendering.
+
 ## 1.0.0-beta.3
 
 No changes in this release.

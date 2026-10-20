@@ -83,6 +83,7 @@ test.describe("<pie-item-summary> (real browser)", () => {
 			options: [
 				{ id: "a", label: "<div>52 miles</div>", correct: true },
 				{ id: "b", label: "<p>62 miles</p><p>or more</p>", correct: true },
+				{ id: "c", label: "<div> <p>1,666 miles</p> </div>", correct: true },
 			],
 		});
 		const lines = await page.evaluate(() =>

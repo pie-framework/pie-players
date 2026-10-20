@@ -383,11 +383,11 @@ One PIE item as a list row: its stem, prompts, options and, for instructors, its
 		min-width: 0;
 	}
 
-	.pie-item-summary__option-label > :global(:first-child) {
+	.pie-item-summary__option-label :global(:first-child) {
 		margin-block-start: 0;
 	}
 
-	.pie-item-summary__option-label > :global(:last-child) {
+	.pie-item-summary__option-label :global(:last-child) {
 		margin-block-end: 0;
 	}
 

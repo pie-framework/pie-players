@@ -319,6 +319,22 @@ describe("change signal", () => {
 		expect(i18n.getLocale()).toBe("nl-NL");
 		expect(i18n.isLocaleLoaded("nl-NL")).toBe(true);
 	});
+
+	test("the last setLocale call wins over a slower earlier load", async () => {
+		let release: (catalog: MessageCatalog) => void = () => {};
+		const i18n = new SimpleI18n({
+			availableLocales: ["en-US", "nl-NL"],
+			loadCatalog: () =>
+				new Promise<MessageCatalog>((done) => {
+					release = done;
+				}),
+		});
+		const slow = i18n.setLocale("nl-NL");
+		await i18n.setLocale("en-US");
+		release({ common: { close: "Sluiten" } });
+		await slow;
+		expect(i18n.getLocale()).toBe("en-US");
+	});
 });
 
 describe("withLocale", () => {

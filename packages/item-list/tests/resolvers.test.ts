@@ -115,6 +115,18 @@ describe("pinnedSummaries", () => {
 		).toBeNull();
 	});
 
+	test("returns null for a package the element package policy refuses, without loading it", async () => {
+		publish("@pie-element/pinned-i@1.0.0", "export const summarize = () => ({ prompt: 'i' });");
+		publish("@acme/pinned-i@1.0.0", "export const summarize = () => ({ prompt: 'acme' });");
+		const resolve = pinnedSummaries({
+			...loaderOptions,
+			elementPackagePolicy: { allowedPackages: ["@pie-element/pinned-i"] },
+		});
+		expect(await resolve("pinned-i", "@pie-element/pinned-i@1.0.0")).toBeFunction();
+		expect(await resolve("acme-i", "@acme/pinned-i@1.0.0")).toBeNull();
+		expect(await resolve("pinned-i", "@pie-element/pinned-i@^1.0.0")).toBeNull();
+	});
+
 	test("returns null for a spec that names no scoped package", async () => {
 		const resolve = pinnedSummaries(loaderOptions);
 		expect(await resolve("x", "multiple-choice")).toBeNull();

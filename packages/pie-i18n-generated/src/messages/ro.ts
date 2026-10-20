@@ -135,6 +135,8 @@ const ro = {
 		list: {
 			expandA11y: "Afișează itemul complet",
 			highlights: "Potriviri de căutare",
+			collapse: "Afișează rezumatul",
+			playerError: "Itemul complet nu a putut fi încărcat.",
 		},
 	},
 

@@ -7,7 +7,7 @@
 			"declarations": [
 				{
 					"kind": "class",
-					"description": "PIE items as a list of `<pie-item-summary>` rows, for a host with no list chrome of its own. Each row shows the entry's details in a leading column, the host's actions in its top-end corner, the item's summary clipped to a fixed height under its passage's first line, and the entry's search matches below it. The row's expand button removes the clips and mounts the item's player.",
+					"description": "PIE items as a list of `<pie-item-summary>` rows, for a host with no list chrome of its own. Each row shows the entry's details in a leading column, the host's actions in its top-end corner, the item's summary clipped to a fixed height under the first line of each of its passages, and the entry's search matches below it. The row's expand button removes the clips and mounts the item's player.",
 					"name": "PieItemList",
 					"tagName": "pie-item-list",
 					"customElement": true,
@@ -86,6 +86,14 @@
 								"text": "PlayerLoadInputs[\"loaderOptions\"]"
 							},
 							"attribute": "loaderoptions"
+						},
+						{
+							"kind": "field",
+							"name": "loaderConfig",
+							"type": {
+								"text": "PlayerLoadInputs[\"loaderConfig\"]"
+							},
+							"attribute": "loaderconfig"
 						},
 						{
 							"kind": "field",
@@ -181,6 +189,13 @@
 							"fieldName": "loaderOptions"
 						},
 						{
+							"name": "loaderconfig",
+							"type": {
+								"text": "PlayerLoadInputs[\"loaderConfig\"]"
+							},
+							"fieldName": "loaderConfig"
+						},
+						{
 							"name": "details",
 							"type": {
 								"text": "string"
@@ -205,25 +220,32 @@
 					],
 					"events": [
 						{
-							"name": "expanded-change",
+							"name": "expanded-changed",
 							"type": {
 								"text": "CustomEvent<{ id: string; expanded: boolean; expandedIds: string[] }>"
 							},
-							"description": "A row's expand button was pressed. `expandedIds` lists every expanded row, for a host that restores them through `expandedIds`."
+							"description": "A row's expand button was pressed. `expandedIds` lists the expanded rows among the current `items`, for a host that restores them through `expandedIds`."
 						},
 						{
 							"name": "player-error",
 							"type": {
-								"text": "CustomEvent<{ id: string; code: string; message: string; recoverable: boolean }>"
+								"text": "CustomEvent<{ id: string; part: \"item\" | \"passage\"; code: string; message: string; recoverable: boolean }>"
 							},
-							"description": "A row's player failed to load, with the entry `id` added to `<pie-item-summary>`'s detail."
+							"description": "A row's player failed to load, with the entry `id` and the failed `part` added to `<pie-item-summary>`'s detail."
 						},
 						{
 							"name": "load-complete",
 							"type": {
-								"text": "CustomEvent<{ view: \"summary\" | \"player\" }>"
+								"text": "CustomEvent<{ id: string; part: \"item\" | \"passage\"; view: \"summary\" | \"player\" }>"
 							},
-							"description": "Bubbles unchanged from each row's `<pie-item-summary>`, passage rows included; the entry's `id` is on the closest `[data-item-id]`."
+							"description": "A row's item or passage summary rendered, or its player loaded."
+						},
+						{
+							"name": "extension-error",
+							"type": {
+								"text": "CustomEvent<{ id: string; slot: \"details\" | \"actions\" | \"highlights\"; phase: \"render\" | \"update\" | \"destroy\"; cause: unknown }>"
+							},
+							"description": "A row extension threw or rejected; the rest of the list keeps rendering."
 						},
 						{
 							"name": "framework-error",
@@ -264,6 +286,7 @@
 							"pie-item-list__passage--collapsed",
 							"pie-item-list__row",
 							"pie-item-list__snippet",
+							"pie-item-list__status",
 							"pie-item-list__toggle",
 							"pie-item-list__version",
 							"pie-item-list__view"
@@ -352,6 +375,14 @@
 								"text": "PlayerLoadInputs[\"loaderOptions\"]"
 							},
 							"attribute": "loaderoptions"
+						},
+						{
+							"kind": "field",
+							"name": "loaderConfig",
+							"type": {
+								"text": "PlayerLoadInputs[\"loaderConfig\"]"
+							},
+							"attribute": "loaderconfig"
 						}
 					],
 					"attributes": [
@@ -421,6 +452,13 @@
 								"text": "PlayerLoadInputs[\"loaderOptions\"]"
 							},
 							"fieldName": "loaderOptions"
+						},
+						{
+							"name": "loaderconfig",
+							"type": {
+								"text": "PlayerLoadInputs[\"loaderConfig\"]"
+							},
+							"fieldName": "loaderConfig"
 						}
 					],
 					"events": [

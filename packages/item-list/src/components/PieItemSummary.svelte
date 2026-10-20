@@ -16,6 +16,7 @@
 			expanded: { attribute: "expanded", type: "Boolean" },
 			strategy: { attribute: "strategy", type: "String" },
 			loaderOptions: { type: "Object", reflect: false },
+			loaderConfig: { type: "Object", reflect: false },
 		},
 		extend: coerceBooleanAttributes,
 	}}
@@ -65,6 +66,7 @@ One PIE item as a list row: its stem, prompts, options and, for instructors, its
 		expanded = false,
 		strategy,
 		loaderOptions,
+		loaderConfig,
 	}: {
 		config?: ItemConfig;
 		env?: Env;
@@ -75,6 +77,7 @@ One PIE item as a list row: its stem, prompts, options and, for instructors, its
 		expanded?: boolean;
 		strategy?: PlayerLoadInputs["strategy"];
 		loaderOptions?: PlayerLoadInputs["loaderOptions"];
+		loaderConfig?: PlayerLoadInputs["loaderConfig"];
 	} = $props();
 
 	const hostElement: HTMLElement = $host();
@@ -85,9 +88,9 @@ One PIE item as a list row: its stem, prompts, options and, for instructors, its
 	let rendered = $state<RenderedSummary | null>(null);
 	let generation = 0;
 
-	// `env` defaults to an instructor view; only an explicit student role withholds answers. A
-	// derived role re-renders on a role change alone, not on every new `env` object.
-	const role = $derived(env?.role === "student" ? "student" : "instructor");
+	// No `env` is the instructor view; an `env` whose role is not `instructor` withholds answers, as
+	// `summarizeItem` and the player do. A derived role re-renders on a role change alone.
+	const role = $derived(!env || env.role === "instructor" ? "instructor" : "student");
 
 	$effect(() => {
 		const viewRole = role;
@@ -108,6 +111,8 @@ One PIE item as a list row: its stem, prompts, options and, for instructors, its
 				if (run !== generation || untrack(() => playerShown)) return;
 				announce("load-complete", { view: "summary" });
 			} catch (error) {
+				// The previous summary belongs to other inputs, so it goes.
+				if (run === generation) rendered = null;
 				console.error("[pie-item-summary] The summary could not be rendered.", error);
 			}
 		})();
@@ -128,7 +133,7 @@ One PIE item as a list row: its stem, prompts, options and, for instructors, its
 	$effect(() => {
 		if (!expanded || !config) return;
 		const item = config;
-		const inputs: PlayerLoadInputs = { strategy, loaderOptions };
+		const inputs: PlayerLoadInputs = { strategy, loaderOptions, loaderConfig };
 		let open = true;
 		untrack(() => {
 			ticket = playerScheduler().request({
@@ -203,7 +208,7 @@ One PIE item as a list row: its stem, prompts, options and, for instructors, its
 
 {#snippet options(list: RenderedOption[])}
 	<ul class="pie-item-summary__options">
-		{#each list as option (option.id)}
+		{#each list as option, index (index)}
 			<li class="pie-item-summary__option" class:pie-item-summary__option--correct={option.correct}>
 				<span class="pie-item-summary__option-body">
 					{#if option.correct}
@@ -249,7 +254,7 @@ One PIE item as a list row: its stem, prompts, options and, for instructors, its
 		{#if rendered.stem}
 			<div class="pie-item-summary__stem">{@html rendered.stem}</div>
 		{/if}
-		{#each rendered.entries as entry (entry.id)}
+		{#each rendered.entries as entry, index (index)}
 			<div class="pie-item-summary__entry" data-pkg={entry.pkg} data-source={entry.source}>
 				{#if entry.source === "label"}
 					<p class="pie-item-summary__label">{entry.label}</p>
@@ -288,6 +293,7 @@ One PIE item as a list row: its stem, prompts, options and, for instructors, its
 			env={playerEnv}
 			strategy={strategy}
 			loaderOptions={loaderOptions}
+			loaderConfig={loaderConfig}
 			i18n={interfaceI18n.provider}
 			addCorrectResponse={role === "instructor"}
 		></pie-item-player>

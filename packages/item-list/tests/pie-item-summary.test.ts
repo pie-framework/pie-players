@@ -189,4 +189,49 @@ describe("<pie-item-summary>", () => {
 			"Antwoord",
 		);
 	});
+
+	test("withholds answers for any role but instructor, and shows them without an env", async () => {
+		const { element } = await mount({ summary: precomputed });
+		expect(element.querySelector(".pie-item-summary__answer")).not.toBeNull();
+		for (const env of [{ mode: "view", role: "scorer" }, { mode: "view" }]) {
+			element.env = env as unknown as PieItemSummaryElement["env"];
+			await settle();
+			expect(element.querySelector(".pie-item-summary__marker")).toBeNull();
+			expect(element.querySelector(".pie-item-summary__answer")).toBeNull();
+		}
+	});
+
+	test("renders entries and options that repeat an id", async () => {
+		const repeated: ItemSummary = {
+			schema: 1,
+			entries: [
+				precomputed.entries[0],
+				{ ...precomputed.entries[0], summary: { options: [{ id: "a", label: "Six" }, { id: "a", label: "Seven" }] } },
+			],
+		};
+		const { element } = await mount({ summary: repeated });
+		expect(element.querySelectorAll(".pie-item-summary__entry")).toHaveLength(2);
+		expect(
+			[...element.querySelectorAll(".pie-item-summary__option-label")].map((label) => label.textContent),
+		).toEqual(["Four", "Five", "Six", "Seven"]);
+	});
+
+	test("drops the previous summary when the next one fails to render", async () => {
+		const original = console.error;
+		console.error = () => {};
+		try {
+			const { element } = await mount({ summary: precomputed });
+			expect(element.querySelector(".pie-item-summary__prompt")).not.toBeNull();
+			element.summary = undefined;
+			element.config = {
+				get elements(): never {
+					throw new Error("broken");
+				},
+			} as unknown as PieContent;
+			await settle();
+			expect(element.querySelector(".pie-item-summary__prompt")).toBeNull();
+		} finally {
+			console.error = original;
+		}
+	});
 });

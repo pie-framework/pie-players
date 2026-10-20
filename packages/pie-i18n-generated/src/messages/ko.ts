@@ -71,6 +71,8 @@ const ko = {
 		list: {
 			expandA11y: "문항 전체 보기",
 			highlights: "검색 일치 항목",
+			collapse: "요약 보기",
+			playerError: "문항 전체를 불러올 수 없습니다.",
 		},
 		questions: "문항",
 		items: "문항",

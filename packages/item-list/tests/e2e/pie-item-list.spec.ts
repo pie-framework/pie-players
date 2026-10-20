@@ -29,7 +29,7 @@ async function mountList(page: Page, { passage = false }: ListOptions = {}): Pro
 			customElements.define(
 				"row-actions",
 				class extends HTMLElement {
-					set item(entry: { id: string }) {
+					set entry(entry: { id: string }) {
 						this.textContent = `Edit ${entry.id}`;
 					}
 				},
@@ -44,7 +44,7 @@ async function mountList(page: Page, { passage = false }: ListOptions = {}): Pro
 				{
 					id: "long",
 					config: long,
-					passage: passageConfig ?? undefined,
+					passages: passageConfig ? [passageConfig] : undefined,
 					highlights: [{ label: "Prompt", snippets: ["Line <mark>12</mark>"] }],
 					data: { owner: "Ada" },
 				},
@@ -52,7 +52,7 @@ async function mountList(page: Page, { passage = false }: ListOptions = {}): Pro
 			];
 			const events: unknown[] = [];
 			(window as unknown as { listEvents: unknown[] }).listEvents = events;
-			list.addEventListener("expanded-change", (event) => events.push((event as CustomEvent).detail));
+			list.addEventListener("expanded-changed", (event) => events.push((event as CustomEvent).detail));
 			document.body.append(list);
 		},
 		{
@@ -64,7 +64,7 @@ async function mountList(page: Page, { passage = false }: ListOptions = {}): Pro
 }
 
 function row(page: Page, id: string) {
-	return page.locator(`.pie-item-list__row[data-item-id="${id}"]`);
+	return page.locator(`.pie-item-list__row[data-pie-item-id="${id}"]`);
 }
 
 const height = (locator: ReturnType<Page["locator"]>) =>
@@ -118,7 +118,7 @@ test.describe("<pie-item-list>", () => {
 		await mountList(page);
 		const button = row(page, "short").getByRole("button", { name: "Show the full item" });
 		await expect(button).toHaveAttribute("aria-expanded", "false");
-		await expect(button).toHaveAccessibleDescription("short by Grace");
+		await expect(button).toHaveAccessibleName("Show the full item short by Grace");
 		await button.click();
 		await expect(button).toHaveAttribute("aria-expanded", "true");
 		await expect(row(page, "short").locator(STUB_TAG)).toHaveText("Rendered: <p>Pick one</p>");
@@ -141,6 +141,10 @@ test.describe("<pie-item-list>", () => {
 		await mountList(page);
 		await page.locator("pie-item-list").evaluate((list) => {
 			list.style.setProperty("--pie-item-list-sticky-top", "40px");
+			// Content below the list keeps the scroll position when the row collapses.
+			const below = document.createElement("div");
+			below.style.height = "3000px";
+			list.after(below);
 		});
 		const button = row(page, "long").getByRole("button", { name: "Show the full item" });
 		await button.click();
@@ -153,5 +157,23 @@ test.describe("<pie-item-list>", () => {
 		await button.click();
 		await expect(row(page, "long").locator(STUB_TAG)).toHaveCount(0);
 		await expect(button).toBeInViewport();
+	});
+
+	test("reports a tag-name extension the document refuses, and keeps rendering the list", async ({ page }) => {
+		await openPage(page);
+		const errors = await page.evaluate(() => {
+			const list = document.createElement("pie-item-list") as HTMLElement & Record<string, unknown>;
+			const reported: { id: string; slot: string; phase: string }[] = [];
+			list.addEventListener("extension-error", (event) => {
+				const { id, slot, phase } = (event as CustomEvent).detail;
+				reported.push({ id, slot, phase });
+			});
+			list.actions = "Not A Tag";
+			list.items = [{ id: "a", summary: { schema: 1, entries: [] } }];
+			document.body.append(list);
+			return new Promise<typeof reported>((resolve) => requestAnimationFrame(() => resolve(reported)));
+		});
+		expect(errors).toEqual([{ id: "a", slot: "actions", phase: "render" }]);
+		await expect(row(page, "a").getByRole("button", { name: "Show the full item" })).toBeVisible();
 	});
 });

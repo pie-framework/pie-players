@@ -72,6 +72,8 @@ const sv = {
 		list: {
 			expandA11y: "Visa hela uppgiften",
 			highlights: "Sökträffar",
+			collapse: "Visa sammanfattningen",
+			playerError: "Hela uppgiften kunde inte läsas in.",
 		},
 		questions: "Frågor",
 		items: "Uppgifter",

@@ -14,6 +14,7 @@
 			expandedIds: { type: "Array", reflect: false },
 			strategy: { attribute: "strategy", type: "String" },
 			loaderOptions: { type: "Object", reflect: false },
+			loaderConfig: { type: "Object", reflect: false },
 			// A tag name can be set as an attribute; a function only as a property.
 			details: { attribute: "details", type: "String" },
 			actions: { attribute: "actions", type: "String" },
@@ -29,11 +30,12 @@
 
 <!--
 @component
-PIE items as a list of `<pie-item-summary>` rows, for a host with no list chrome of its own. Each row shows the entry's details in a leading column, the host's actions in its top-end corner, the item's summary clipped to a fixed height under its passage's first line, and the entry's search matches below it. The row's expand button removes the clips and mounts the item's player.
+PIE items as a list of `<pie-item-summary>` rows, for a host with no list chrome of its own. Each row shows the entry's details in a leading column, the host's actions in its top-end corner, the item's summary clipped to a fixed height under the first line of each of its passages, and the entry's search matches below it. The row's expand button removes the clips and mounts the item's player.
 
-@fires {CustomEvent<{ id: string; expanded: boolean; expandedIds: string[] }>} expanded-change - A row's expand button was pressed. `expandedIds` lists every expanded row, for a host that restores them through `expandedIds`.
-@fires {CustomEvent<{ id: string; code: string; message: string; recoverable: boolean }>} player-error - A row's player failed to load, with the entry `id` added to `<pie-item-summary>`'s detail.
-@fires {CustomEvent<{ view: "summary" | "player" }>} load-complete - Bubbles unchanged from each row's `<pie-item-summary>`, passage rows included; the entry's `id` is on the closest `[data-item-id]`.
+@fires {CustomEvent<{ id: string; expanded: boolean; expandedIds: string[] }>} expanded-changed - A row's expand button was pressed. `expandedIds` lists the expanded rows among the current `items`, for a host that restores them through `expandedIds`.
+@fires {CustomEvent<{ id: string; part: "item" | "passage"; code: string; message: string; recoverable: boolean }>} player-error - A row's player failed to load, with the entry `id` and the failed `part` added to `<pie-item-summary>`'s detail.
+@fires {CustomEvent<{ id: string; part: "item" | "passage"; view: "summary" | "player" }>} load-complete - A row's item or passage summary rendered, or its player loaded.
+@fires {CustomEvent<{ id: string; slot: "details" | "actions" | "highlights"; phase: "render" | "update" | "destroy"; cause: unknown }>} extension-error - A row extension threw or rejected; the rest of the list keeps rendering.
 @fires {CustomEvent<{ kind: "i18n-locale-load"; source: string; message: string; details: string[]; recoverable: true; scope: "runtime"; cause?: unknown }>} framework-error - A requested interface-locale catalog failed to load; the labels fall back to English, and re-setting `locale` retries.
 -->
 
@@ -64,6 +66,7 @@ PIE items as a list of `<pie-item-summary>` rows, for a host with no list chrome
 		expandedIds,
 		strategy,
 		loaderOptions,
+		loaderConfig,
 		details,
 		actions,
 		highlights,
@@ -77,6 +80,7 @@ PIE items as a list of `<pie-item-summary>` rows, for a host with no list chrome
 		expandedIds?: string[];
 		strategy?: PlayerLoadInputs["strategy"];
 		loaderOptions?: PlayerLoadInputs["loaderOptions"];
+		loaderConfig?: PlayerLoadInputs["loaderConfig"];
 		details?: ItemListExtension;
 		actions?: ItemListExtension;
 		highlights?: ItemListExtension;
@@ -94,10 +98,12 @@ PIE items as a list of `<pie-item-summary>` rows, for a host with no list chrome
 		if (!Array.isArray(items)) return [];
 		const seen = new Set<string>();
 		return items.filter((entry) => {
-			if (!entry || typeof entry.id !== "string" || seen.has(entry.id)) {
-				if (entry && seen.has(entry.id)) {
-					console.warn(`[pie-item-list] Entry id "${entry.id}" repeats; only its first entry shows.`);
-				}
+			if (!entry || typeof entry.id !== "string" || entry.id.length === 0) {
+				console.warn("[pie-item-list] An entry without a string `id` does not show.", entry);
+				return false;
+			}
+			if (seen.has(entry.id)) {
+				console.warn(`[pie-item-list] Entry id "${entry.id}" repeats; only its first entry shows.`);
 				return false;
 			}
 			seen.add(entry.id);
@@ -105,37 +111,71 @@ PIE items as a list of `<pie-item-summary>` rows, for a host with no list chrome
 		});
 	});
 
-	// Compared by content, so a host that hands over an equal array on every render keeps the rows' toggles.
+	// `expandedIds`, when set, decides which rows open; `expanded` applies only without it. Compared by
+	// content, so a host that hands over an equal array on every render keeps the rows' toggles.
 	const requestedKey = $derived(
 		Array.isArray(expandedIds)
 			? JSON.stringify([...new Set(expandedIds.filter((id) => typeof id === "string"))].sort())
-			: "[]",
+			: expanded === true
+				? "all"
+				: "none",
 	);
-	const requested = $derived(new Set<string>(JSON.parse(requestedKey)));
+	const requested = $derived(
+		requestedKey === "all" || requestedKey === "none"
+			? requestedKey === "all"
+			: new Set<string>(JSON.parse(requestedKey)),
+	);
 
-	// A row's own toggle overrides `expanded` and `expandedIds` until either changes again.
+	// A row's own toggle overrides the requested state until the request changes.
 	let overrides = $state<Record<string, boolean>>({});
-	// Rows whose expanded player has loaded or failed, which ends their `aria-busy`.
+	// Expanded rows whose player has loaded or failed, which ends their `aria-busy`. A row without a
+	// `config` has no player to wait for, so it is not busy until the host sets one.
 	let settled = $state<Record<string, true>>({});
+	// A row whose player failed, until it collapses.
+	let failed = $state<Record<string, true>>({});
+
+	function isRequested(id: string): boolean {
+		return typeof requested === "boolean" ? requested : requested.has(id);
+	}
+
+	function isExpanded(id: string): boolean {
+		return overrides[id] ?? isRequested(id);
+	}
+
+	/** `record` without the ids `keep` rejects, or `record` itself when it loses none. */
+	function pruned<T>(record: Record<string, T>, keep: (id: string) => boolean): Record<string, T> {
+		const ids = Object.keys(record);
+		return ids.every(keep) ? record : Object.fromEntries(ids.filter(keep).map((id) => [id, record[id]]));
+	}
+
+	// A new request resets the toggles. A row that stays open keeps its loaded player, so only rows
+	// that close lose their load state.
 	$effect(() => {
-		void expanded;
 		void requestedKey;
 		untrack(() => {
 			overrides = {};
-			settled = {};
+			settled = pruned(settled, isRequested);
+			failed = pruned(failed, isRequested);
 		});
 	});
 
-	function isExpanded(id: string): boolean {
-		return overrides[id] ?? (expanded === true || requested.has(id));
-	}
+	// State for entries that left `items` goes, so an entry that returns starts fresh.
+	$effect(() => {
+		const present = new Set(rows.map((entry) => entry.id));
+		const keep = (id: string) => present.has(id);
+		untrack(() => {
+			overrides = pruned(overrides, keep);
+			settled = pruned(settled, keep);
+			failed = pruned(failed, keep);
+		});
+	});
 
 	function toggle(id: string, button: HTMLElement): void {
 		const next = !isExpanded(id);
 		overrides = { ...overrides, [id]: next };
-		const { [id]: _, ...rest } = settled;
-		settled = rest;
-		announce("expanded-change", {
+		settled = pruned(settled, (key) => key !== id);
+		failed = pruned(failed, (key) => key !== id);
+		announce("expanded-changed", {
 			id,
 			expanded: next,
 			expandedIds: rows.filter((entry) => isExpanded(entry.id)).map((entry) => entry.id),
@@ -148,13 +188,13 @@ PIE items as a list of `<pie-item-summary>` rows, for a host with no list chrome
 		hostElement.dispatchEvent(new CustomEvent(type, { detail, bubbles: true, composed: true }));
 	}
 
-	function rowId(event: Event): string | undefined {
-		const target = event.target instanceof Element ? event.target : null;
-		return target?.closest("[data-item-id]")?.getAttribute("data-item-id") ?? undefined;
-	}
-
-	function isItemRow(event: Event): boolean {
-		return event.target instanceof Element && event.target.classList.contains("pie-item-list__item");
+	/** The entry and part of an event from one of this list's own summaries; extensions' events pass by. */
+	function origin(event: Event): { id: string; part: "item" | "passage" } | undefined {
+		const target = event.target;
+		if (!(target instanceof Element) || target.parentElement?.dataset.pieItemListView !== listId) return;
+		const id = target.closest("[data-pie-item-id]")?.getAttribute("data-pie-item-id");
+		if (id == null) return;
+		return { id, part: target.classList.contains("pie-item-list__passage") ? "passage" : "item" };
 	}
 
 	let listElement = $state<HTMLElement | undefined>();
@@ -162,16 +202,25 @@ PIE items as a list of `<pie-item-summary>` rows, for a host with no list chrome
 		const target = listElement;
 		if (!target) return;
 		const onError = (event: Event) => {
-			const id = rowId(event);
-			if (id === undefined) return;
+			const from = origin(event);
+			if (!from) return;
 			event.stopPropagation();
-			if (isItemRow(event)) settled = { ...settled, [id]: true };
-			announce("player-error", { ...(event as CustomEvent).detail, id });
+			if (from.part === "item") {
+				settled = { ...settled, [from.id]: true };
+				failed = { ...failed, [from.id]: true };
+			}
+			announce("player-error", { ...(event as CustomEvent).detail, ...from });
 		};
 		const onLoad = (event: Event) => {
-			const id = rowId(event);
-			if (id === undefined || !isItemRow(event)) return;
-			if ((event as CustomEvent).detail?.view === "player") settled = { ...settled, [id]: true };
+			const from = origin(event);
+			if (!from) return;
+			event.stopPropagation();
+			const view = (event as CustomEvent).detail?.view;
+			if (from.part === "item" && view === "player") {
+				settled = { ...settled, [from.id]: true };
+				failed = pruned(failed, (key) => key !== from.id);
+			}
+			announce("load-complete", { ...from, view });
 		};
 		target.addEventListener("player-error", onError);
 		target.addEventListener("load-complete", onLoad);
@@ -194,17 +243,30 @@ PIE items as a list of `<pie-item-summary>` rows, for a host with no list chrome
 		return parsed;
 	}
 
+	type Slot = "details" | "actions" | "highlights";
+
 	// Hosts the entry's extension; re-renders only when the entry or extension changes identity.
 	function extension(
 		node: HTMLElement,
-		[source, entry]: [ItemListExtension, ItemListEntry],
+		[slot, source, entry]: [Slot, ItemListExtension, ItemListEntry],
 	) {
-		const mounted = mountExtension(node, source, entry);
+		let shown = entry;
+		const mounted = mountExtension(node, source, entry, (phase, cause) => {
+			console.error(`[pie-item-list] The ${slot} extension failed to ${phase}.`, cause);
+			announce("extension-error", { id: shown.id, slot, phase, cause });
+		});
 		return {
-			update: ([nextSource, nextEntry]: [ItemListExtension, ItemListEntry]) =>
-				mounted.update(nextSource, nextEntry),
+			update: ([, nextSource, nextEntry]: [Slot, ItemListExtension, ItemListEntry]) => {
+				shown = nextEntry;
+				mounted.update(nextSource, nextEntry);
+			},
 			destroy: () => mounted.destroy(),
 		};
+	}
+
+	// An entry id as an id token: `aria-controls` and `aria-labelledby` split on whitespace.
+	function idToken(id: string): string {
+		return id.replace(/[^A-Za-z0-9-]/g, (char) => `_${char.charCodeAt(0).toString(16)}_`);
 	}
 
 	// Marks a clipped summary whose content runs past the clip, so only that one fades.
@@ -236,19 +298,18 @@ PIE items as a list of `<pie-item-summary>` rows, for a host with no list chrome
 </script>
 
 <ul class="pie-item-list" bind:this={listElement}>
-	{#each rows as entry, index (entry.id)}
+	{#each rows as entry (entry.id)}
 		{@const open = isExpanded(entry.id)}
-		{@const viewId = `${listId}-view-${index}`}
-		{@const detailsId = `${listId}-details-${index}`}
+		{@const token = `${listId}-${idToken(entry.id)}`}
 		{@const found = highlights ? [] : shownHighlights(entry)}
 		<li
 			class="pie-item-list__row"
-			data-item-id={entry.id}
-			aria-busy={open && !settled[entry.id] ? "true" : undefined}
+			data-pie-item-id={entry.id}
+			aria-busy={open && entry.config && !settled[entry.id] ? "true" : undefined}
 		>
-			<div class="pie-item-list__details" id={detailsId}>
+			<div class="pie-item-list__details" id={`${token}-details`}>
 				{#if details}
-					<div class="pie-item-list__extension" use:extension={[details, entry]}></div>
+					<div class="pie-item-list__extension" use:extension={["details", details, entry]}></div>
 				{:else}
 					{#if entry.name}
 						<div class="pie-item-list__name">{entry.name}</div>
@@ -259,24 +320,41 @@ PIE items as a list of `<pie-item-summary>` rows, for a host with no list chrome
 					{/if}
 				{/if}
 			</div>
+			<!-- Before the content, so the button follows the row's details in reading and focus order. -->
+			<button
+				type="button"
+				class="pie-item-list__toggle"
+				id={`${token}-toggle`}
+				aria-expanded={open ? "true" : "false"}
+				aria-controls={`${token}-view`}
+				aria-label={messages.t("player.list.expandA11y")}
+				aria-labelledby={`${token}-toggle ${token}-details`}
+				title={messages.t(open ? "player.list.collapse" : "player.list.expandA11y")}
+				onclick={(event) => toggle(entry.id, event.currentTarget)}
+			>
+				<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" focusable="false">
+					<path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+				</svg>
+			</button>
 			<div class="pie-item-list__content">
 				{#if actions}
-					<div class="pie-item-list__actions" use:extension={[actions, entry]}></div>
+					<div class="pie-item-list__actions" use:extension={["actions", actions, entry]}></div>
 				{/if}
-				<div class="pie-item-list__view" id={viewId}>
-					{#if entry.passage}
+				<div class="pie-item-list__view" id={`${token}-view`} data-pie-item-list-view={listId}>
+					{#each Array.isArray(entry.passages) ? entry.passages : [] as passage, passageIndex (passageIndex)}
 						<pie-item-summary
 							class="pie-item-list__passage"
 							class:pie-item-list__passage--collapsed={!open}
-							config={entry.passage}
+							config={passage}
 							{env}
 							{resolve}
 							i18n={interfaceI18n.provider}
 							{strategy}
 							{loaderOptions}
+							{loaderConfig}
 							expanded={open}
 						></pie-item-summary>
-					{/if}
+					{/each}
 					<pie-item-summary
 						class="pie-item-list__item"
 						class:pie-item-list__item--clipped={!open}
@@ -287,15 +365,19 @@ PIE items as a list of `<pie-item-summary>` rows, for a host with no list chrome
 						i18n={interfaceI18n.provider}
 						{strategy}
 						{loaderOptions}
+						{loaderConfig}
 						expanded={open}
 						use:clip
 					></pie-item-summary>
 				</div>
+				{#if open && failed[entry.id]}
+					<p class="pie-item-list__status" role="alert">{messages.t("player.list.playerError")}</p>
+				{/if}
 				{#if highlights}
-					<div class="pie-item-list__highlights" use:extension={[highlights, entry]}></div>
+					<div class="pie-item-list__highlights" use:extension={["highlights", highlights, entry]}></div>
 				{:else if found.length > 0}
-					<div class="pie-item-list__highlights" role="group" aria-labelledby={`${listId}-highlights-${index}`}>
-						<p class="pie-item-list__highlights-title" id={`${listId}-highlights-${index}`}>
+					<div class="pie-item-list__highlights" role="group" aria-label={messages.t("player.list.highlights")}>
+						<p class="pie-item-list__highlights-title" aria-hidden="true">
 							{messages.t("player.list.highlights")}
 						</p>
 						<ul class="pie-item-list__highlight-fields">
@@ -313,20 +395,6 @@ PIE items as a list of `<pie-item-summary>` rows, for a host with no list chrome
 					</div>
 				{/if}
 			</div>
-			<button
-				type="button"
-				class="pie-item-list__toggle"
-				aria-expanded={open ? "true" : "false"}
-				aria-controls={viewId}
-				aria-describedby={detailsId}
-				aria-label={messages.t("player.list.expandA11y")}
-				title={messages.t("player.list.expandA11y")}
-				onclick={(event) => toggle(entry.id, event.currentTarget)}
-			>
-				<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" focusable="false">
-					<path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
-				</svg>
-			</button>
 		</li>
 	{/each}
 </ul>
@@ -358,6 +426,11 @@ PIE items as a list of `<pie-item-summary>` rows, for a host with no list chrome
 			grid-template-areas:
 				"details toggle"
 				"content content";
+		}
+
+		/* The content spans the row's width here, so a sticky toggle would cover the player. */
+		.pie-item-list__toggle {
+			position: static;
 		}
 	}
 
@@ -433,8 +506,15 @@ PIE items as a list of `<pie-item-summary>` rows, for a host with no list chrome
 		font-size: 0.875em;
 	}
 
-	.pie-item-list__highlights:empty {
+	/* A function that renders nothing leaves the block empty; a tag name's element sets `hidden`. */
+	.pie-item-list__highlights:empty,
+	.pie-item-list__highlights:has(> [hidden]:only-child) {
 		display: none;
+	}
+
+	.pie-item-list__status {
+		margin: 0.5em 0 0;
+		font-size: 0.875em;
 	}
 
 	.pie-item-list__highlights-title {
@@ -508,6 +588,13 @@ PIE items as a list of `<pie-item-summary>` rows, for a host with no list chrome
 		border-inline-end-color: transparent;
 		border-radius: 50%;
 		animation: pie-item-list-spin 800ms linear infinite;
+	}
+
+	/* Forced colours paint every border one colour, so the ring's gap takes the background's. */
+	@media (forced-colors: active) {
+		.pie-item-list__row[aria-busy="true"] .pie-item-list__toggle::after {
+			border-inline-end-color: Canvas;
+		}
 	}
 
 	@keyframes pie-item-list-spin {

@@ -176,6 +176,10 @@ const enUS = {
 			expandA11y: "Show the full item",
 			/** Names the block of an entry's search matches below its summary. */
 			highlights: "Search matches",
+			/** The row toggle's tooltip while the row is expanded: collapsing returns it to the summary. */
+			collapse: "Show the summary",
+			/** Shown in an expanded row whose player failed to load; the summary keeps showing above it. */
+			playerError: "The full item could not be loaded.",
 		},
 	},
 

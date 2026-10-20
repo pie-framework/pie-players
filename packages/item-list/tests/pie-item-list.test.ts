@@ -50,7 +50,7 @@ interface Mounted {
 async function mount(props: Partial<PieItemListElement>): Promise<Mounted> {
 	const list = document.createElement("pie-item-list") as HTMLElement & PieItemListElement;
 	const events: Mounted["events"] = [];
-	for (const type of ["expanded-change", "player-error", "framework-error"]) {
+	for (const type of ["expanded-changed", "player-error", "load-complete", "extension-error", "framework-error"]) {
 		list.addEventListener(type, (event) => {
 			events.push({ type, detail: (event as CustomEvent).detail });
 		});
@@ -77,12 +77,12 @@ describe("<pie-item-list>", () => {
 	test("renders a row per entry with its details and summary, its passage above it", async () => {
 		const { list } = await mount({
 			items: [
-				{ id: "a", config: item("a"), name: "Rivers", version: "2.0.0", passage },
+				{ id: "a", config: item("a"), name: "Rivers", version: "2.0.0", passages: [passage] },
 				{ id: "b", config: item("b", "Pick two") },
 			],
 		});
 		const [first, second] = rows(list);
-		expect(first.dataset.itemId).toBe("a");
+		expect(first.dataset.pieItemId).toBe("a");
 		expect(first.querySelector(".pie-item-list__name")?.textContent).toBe("Rivers");
 		expect(first.querySelector(".pie-item-list__id")?.textContent).toBe("a");
 		expect(first.querySelector(".pie-item-list__version")?.textContent).toBe("2.0.0");
@@ -105,10 +105,11 @@ describe("<pie-item-list>", () => {
 		const clipped = summaries(first)[0];
 		expect(button?.getAttribute("aria-expanded")).toBe("false");
 		expect(button?.getAttribute("aria-controls")).toBe(view?.id);
-		expect(button?.getAttribute("aria-describedby")).toBe(
-			first.querySelector(".pie-item-list__details")?.id,
+		expect(button?.getAttribute("aria-labelledby")).toBe(
+			`${button?.id} ${first.querySelector(".pie-item-list__details")?.id}`,
 		);
 		expect(button?.getAttribute("aria-label")).toBe("Show the full item");
+		expect(button?.getAttribute("title")).toBe("Show the full item");
 		expect(clipped.classList.contains("pie-item-list__item--clipped")).toBe(true);
 
 		button?.click();
@@ -118,8 +119,9 @@ describe("<pie-item-list>", () => {
 		expect(summaries(first)[0].expanded).toBe(true);
 		expect(summaries(second)[0].expanded).toBe(false);
 		expect(first.getAttribute("aria-busy")).toBe("true");
-		expect(events).toEqual([
-			{ type: "expanded-change", detail: { id: "a", expanded: true, expandedIds: ["a"] } },
+		expect(button?.getAttribute("title")).toBe("Show the summary");
+		expect(events.filter((event) => event.type === "expanded-changed")).toEqual([
+			{ type: "expanded-changed", detail: { id: "a", expanded: true, expandedIds: ["a"] } },
 		]);
 
 		list.expanded = true;
@@ -150,7 +152,7 @@ describe("<pie-item-list>", () => {
 		rows(list)[0].querySelector<HTMLButtonElement>(".pie-item-list__toggle")?.click();
 		await settle();
 		expect(expandedRows()).toEqual([true, true, false]);
-		expect(events.at(-1)?.detail.expandedIds).toEqual(["a", "b"]);
+		expect(events.filter((event) => event.type === "expanded-changed").at(-1)?.detail.expandedIds).toEqual(["a", "b"]);
 
 		list.expandedIds = ["missing", "b"];
 		await settle();
@@ -162,7 +164,7 @@ describe("<pie-item-list>", () => {
 	});
 
 	test("gives every row the list's one i18n provider, which follows `locale`", async () => {
-		const { list } = await mount({ items: [{ id: "a", config: item("a"), passage }] });
+		const { list } = await mount({ items: [{ id: "a", config: item("a"), passages: [passage] }] });
 		const [passageRow, itemRow] = summaries(rows(list)[0]);
 		expect(passageRow.i18n).toBeTruthy();
 		expect(itemRow.i18n).toBe(passageRow.i18n);
@@ -204,31 +206,45 @@ describe("<pie-item-list>", () => {
 				}),
 			);
 			await settle();
-			expect(events).toEqual([
+			expect(events.filter((event) => event.type === "player-error")).toEqual([
 				{
 					type: "player-error",
-					detail: { code: "ITEM_SUMMARY_PLAYER_TIMEOUT", message: "late", recoverable: true, id: "a" },
+					detail: {
+						code: "ITEM_SUMMARY_PLAYER_TIMEOUT",
+						message: "late",
+						recoverable: true,
+						id: "a",
+						part: "item",
+					},
 				},
 			]);
 			expect(reachedDocument).toBe(1);
 			expect(row.hasAttribute("aria-busy")).toBe(false);
+			expect(row.querySelector(".pie-item-list__status")?.textContent).toBe(
+				"The full item could not be loaded.",
+			);
+			expect(row.querySelector(".pie-item-list__status")?.getAttribute("role")).toBe("alert");
+
+			row.querySelector<HTMLButtonElement>(".pie-item-list__toggle")?.click();
+			await settle();
+			expect(row.querySelector(".pie-item-list__status")).toBeNull();
 		} finally {
 			document.removeEventListener("player-error", count);
 		}
 	});
 
-	test("gives a tag-name extension the entry as its `item`, keeping the element as it changes", async () => {
+	test("gives a tag-name extension the entry as its `entry`, keeping the element as it changes", async () => {
 		const first: ItemListEntry = { id: "a", config: item("a"), data: { selected: false } };
 		const { list } = await mount({ items: [first], actions: "row-actions" });
-		const actions = list.querySelector("row-actions") as HTMLElement & { item?: ItemListEntry };
-		expect(actions.item).toBe(first);
+		const actions = list.querySelector("row-actions") as HTMLElement & { entry?: ItemListEntry };
+		expect(actions.entry).toBe(first);
 		expect(actions.parentElement?.classList.contains("pie-item-list__actions")).toBe(true);
 
 		const changed: ItemListEntry = { ...first, data: { selected: true } };
 		list.items = [changed];
 		await settle();
 		expect(list.querySelector("row-actions")).toBe(actions);
-		expect(actions.item).toBe(changed);
+		expect(actions.entry).toBe(changed);
 	});
 
 	test("runs a function extension once per entry, destroying its handle before a change and on removal", async () => {
@@ -321,8 +337,8 @@ describe("<pie-item-list>", () => {
 		const [first, second] = rows(list);
 		const block = first.querySelector<HTMLElement>(".pie-item-list__highlights");
 		expect(block?.getAttribute("role")).toBe("group");
-		const title = document.getElementById(block?.getAttribute("aria-labelledby") ?? "");
-		expect(title?.textContent?.trim()).toBe("Search matches");
+		expect(block?.getAttribute("aria-label")).toBe("Search matches");
+		expect(block?.querySelector(".pie-item-list__highlights-title")?.getAttribute("aria-hidden")).toBe("true");
 		expect(block?.previousElementSibling?.classList.contains("pie-item-list__view")).toBe(true);
 		const labels = [...first.querySelectorAll(".pie-item-list__highlight-label")];
 		expect(labels.map((label) => label.textContent)).toEqual(["Prompt", "Passage"]);
@@ -382,5 +398,166 @@ describe("<pie-item-list>", () => {
 		} finally {
 			console.warn = original;
 		}
+	});
+
+	test("lets `expandedIds` decide over `expanded`, keeping loaded rows settled across a change", async () => {
+		const { list } = await mount({
+			items: [
+				{ id: "a", config: item("a") },
+				{ id: "b", config: item("b") },
+			],
+			expanded: true,
+			expandedIds: ["a"],
+		});
+		const [first, second] = rows(list);
+		expect(rows(list).map((row) => summaries(row)[0].expanded)).toEqual([true, false]);
+		summaries(first)[0].dispatchEvent(
+			new CustomEvent("load-complete", { detail: { view: "player" }, bubbles: true }),
+		);
+		await settle();
+		expect(first.hasAttribute("aria-busy")).toBe(false);
+
+		list.expandedIds = ["a", "b"];
+		await settle();
+		expect(first.hasAttribute("aria-busy")).toBe(false);
+		expect(second.getAttribute("aria-busy")).toBe("true");
+
+		list.expandedIds = undefined;
+		await settle();
+		expect(rows(list).map((row) => summaries(row)[0].expanded)).toEqual([true, true]);
+	});
+
+	test("re-dispatches its own summaries' `load-complete` with the entry and part, and lets others pass", async () => {
+		const actions = (_entry: ItemListEntry, host: HTMLElement) => {
+			host.append(document.createElement("span"));
+		};
+		const { list, events } = await mount({
+			items: [{ id: "a", config: item("a"), passages: [passage] }],
+			actions,
+		});
+		events.length = 0;
+		const [passageRow, itemRow] = summaries(rows(list)[0]);
+		passageRow.dispatchEvent(new CustomEvent("load-complete", { detail: { view: "summary" }, bubbles: true }));
+		itemRow.dispatchEvent(new CustomEvent("load-complete", { detail: { view: "player" }, bubbles: true }));
+		const foreign = { code: "OTHER", message: "not ours", recoverable: false };
+		list.querySelector(".pie-item-list__actions span")?.dispatchEvent(
+			new CustomEvent("player-error", { detail: foreign, bubbles: true }),
+		);
+		await settle();
+		expect(events).toEqual([
+			{ type: "load-complete", detail: { id: "a", part: "passage", view: "summary" } },
+			{ type: "load-complete", detail: { id: "a", part: "item", view: "player" } },
+			{ type: "player-error", detail: foreign },
+		]);
+		expect(list.querySelector(".pie-item-list__status")).toBeNull();
+	});
+
+	test("summarizes each of an entry's passages above its item, passing the loader inputs to every row", async () => {
+		const loaderConfig = { trackPageActions: false };
+		const second: PieContent = { ...passage, id: "passage-2" };
+		const { list } = await mount({
+			items: [{ id: "a", config: item("a"), passages: [passage, second] }],
+			loaderConfig,
+		});
+		const shown = summaries(rows(list)[0]);
+		expect(shown.map((row) => row.config?.id)).toEqual(["passage", "passage-2", "a"]);
+		expect(shown.every((row) => (row as unknown as { loaderConfig?: unknown }).loaderConfig === loaderConfig)).toBe(
+			true,
+		);
+	});
+
+	test("takes an entry's `config` late: an expanded row without one shows its summary and is not busy", async () => {
+		const precomputed = { schema: 1 as const, entries: [] };
+		const { list, events } = await mount({ items: [{ id: "a", summary: precomputed }] });
+		const [row] = rows(list);
+		row.querySelector<HTMLButtonElement>(".pie-item-list__toggle")?.click();
+		await settle();
+		expect(events.some((event) => event.type === "expanded-changed")).toBe(true);
+		expect(summaries(row)[0].expanded).toBe(true);
+		expect(row.hasAttribute("aria-busy")).toBe(false);
+
+		list.items = [{ id: "a", summary: precomputed, config: item("a") }];
+		await settle();
+		expect(row.getAttribute("aria-busy")).toBe("true");
+	});
+
+	test("reports a failing extension as `extension-error` with its slot and phase", async () => {
+		const original = console.error;
+		console.error = () => {};
+		try {
+			const cause = new Error("broken");
+			const { list, events } = await mount({
+				items: [{ id: "a", config: item("a") }],
+				actions: () => {
+					throw cause;
+				},
+			});
+			expect(events.filter((event) => event.type === "extension-error").map((event) => event.detail)).toEqual([
+				{ id: "a", slot: "actions", phase: "render", cause },
+			]);
+			expect(summaries(rows(list)[0])[0].querySelector(".pie-item-summary__prompt")?.textContent).toBe(
+				"Pick one",
+			);
+		} finally {
+			console.error = original;
+		}
+	});
+
+	test("gives a tag defined after the list its entry through the element's own `entry` setter", async () => {
+		const entry: ItemListEntry = { id: "a", config: item("a") };
+		const { list } = await mount({ items: [entry], actions: "late-row-actions" });
+		const received: unknown[] = [];
+		customElements.define(
+			"late-row-actions",
+			class extends HTMLElement {
+				set entry(value: unknown) {
+					received.push(value);
+				}
+			},
+		);
+		await settle();
+		expect(list.querySelector("late-row-actions")).toBeTruthy();
+		expect(received).toEqual([entry]);
+	});
+
+	test("adopts a function extension's promised handle, updating it with an entry that changed meanwhile", async () => {
+		const calls: string[] = [];
+		let release: (() => void) | undefined;
+		const actions = (entry: ItemListEntry) => {
+			calls.push(`render ${entry.name}`);
+			return new Promise<{ update(next: ItemListEntry): void; destroy(): void }>((resolve) => {
+				release = () =>
+					resolve({
+						update: (next) => calls.push(`update ${next.name}`),
+						destroy: () => calls.push("destroy"),
+					});
+			});
+		};
+		const entry: ItemListEntry = { id: "a", config: item("a"), name: "one" };
+		const { list } = await mount({ items: [entry], actions });
+		list.items = [{ ...entry, name: "two" }];
+		await settle();
+		expect(calls).toEqual(["render one"]);
+		release?.();
+		await settle();
+		expect(calls).toEqual(["render one", "update two"]);
+		list.items = [];
+		await settle();
+		expect(calls).toEqual(["render one", "update two", "destroy"]);
+	});
+
+	test("destroys a promised handle that arrives after its row went away", async () => {
+		const calls: string[] = [];
+		let release: (() => void) | undefined;
+		const actions = () =>
+			new Promise<{ destroy(): void }>((resolve) => {
+				release = () => resolve({ destroy: () => calls.push("destroy") });
+			});
+		const { list } = await mount({ items: [{ id: "a", config: item("a") }], actions });
+		list.items = [];
+		await settle();
+		release?.();
+		await settle();
+		expect(calls).toEqual(["destroy"]);
 	});
 });

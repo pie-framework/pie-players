@@ -46,7 +46,7 @@ import { summarizeItem } from "@pie-players/pie-item-list/summarize";
 const summary = await summarizeItem(item, { role: "instructor" });
 ```
 
-A `role` other than `"instructor"` strips answers. `resolve(tagName, pkg)`
+A `role` other than `"instructor"` strips answers. `resolve(tagName, spec)`
 picks each element's summarizer: it receives the tag and the versioned package
 spec from the item's `elements` map, and returns a `SummarizeFn` from
 `@pie-element/shared-types`, or `null` for the prompt rung. Two resolvers ship:
@@ -58,7 +58,8 @@ spec from the item's `elements` map, and returns a `SummarizeFn` from
   `./browser/summary` module at the version the item pins, from the CDN that
   `esmCdnUrl` and `esmCdnProvider` name, so a host passes the item player's
   `loaderOptions`. Each URL loads once per page, and a version without the
-  module takes the prompt rung. A load that fails because the CDN is
+  module takes the prompt rung, as does a package that `elementPackagePolicy`
+  refuses, which never loads. A load that fails because the CDN is
   unreachable or answers 408, 429 or 5xx gives that row the prompt rung, and
   the next row to resolve the URL retries, up to three times per page.
 
@@ -108,7 +109,7 @@ light DOM, so host content styles reach it.
 | Property | Type | Notes |
 | --- | --- | --- |
 | `config` | `ItemConfig` | The item to summarize |
-| `env` | `Env` | Default `{ mode: "view", role: "instructor" }`. Only `role: "student"` withholds answers |
+| `env` | `Env` | Default `{ mode: "view", role: "instructor" }`. An `env` whose `role` is not `"instructor"`, a missing `role` included, withholds answers |
 | `summary` | `ItemSummary` | Optional precomputed summary. Used instead of `config` when `isItemSummary` accepts it, and recomputed from `config` otherwise; answers are stripped again for students |
 | `resolve` | `SummaryResolver` | Summarizer lookup, as for `summarizeItem`. Default `bundledSummaries` |
 | `locale` | `string` | BCP-47 tag for the row's labels and its player's, set on the row's provider or on `i18n`. Default `en-US` |
@@ -116,6 +117,7 @@ light DOM, so host content styles reach it.
 | `expanded` | `boolean` | Shows the item in `<pie-item-player>` ([player view](#player-view)). Also an attribute |
 | `strategy` | `"iife" \| "esm" \| "preloaded"` | The player's [loading strategy](../../docs/item-player/loading-strategies.md). Default `iife`. Also an attribute |
 | `loaderOptions` | `PieItemPlayerLoaderOptions` | The player's `loaderOptions` |
+| `loaderConfig` | `LoaderConfig` | The player's `loaderConfig`, such as `{ trackPageActions: false }` |
 
 | Event | Detail | Notes |
 | --- | --- | --- |
@@ -135,7 +137,7 @@ holds TeX.
 ### Player view
 
 An expanded row mounts `<pie-item-player>` for its item, with the row's
-`config`, `env`, `strategy`, `loaderOptions` and i18n provider, and `addCorrectResponse` for
+`config`, `env`, `strategy`, `loaderOptions`, `loaderConfig` and i18n provider, and `addCorrectResponse` for
 instructors. The summary keeps showing until the player fires `load-complete`,
 then the player replaces it; collapsing unmounts the player and shows the
 summary again. The item player loads with the first expanded row, so a list
@@ -147,8 +149,9 @@ All rows on a page share one scheduler:
   straight away where the browser has no `IntersectionObserver`.
 - Rows that come into view together register their elements in one load:
   `preloadItemElements` from `@pie-players/pie-item-player`, one per
-  `strategy` and `loaderOptions` object. A list passes every row the same
-  `loaderOptions` object.
+  `strategy`, `loaderOptions` object and `loaderConfig` object. A list passes
+  every row the same objects; a host setting them on rows itself keeps one
+  reference per configuration, or each row loads its elements alone.
 - At most three players load at once. The rest wait in the order they came
   into view, and a row scrolled away before its turn waits until it returns.
 
@@ -167,8 +170,8 @@ Collapsing and expanding the row again retries.
 
 A list of `<pie-item-summary>` rows for a host with no list chrome of its own.
 Each row shows the entry's details in a leading column, the host's actions in
-its top-end corner, the item's summary, with the entry's passage summarized
-above it, and the entry's search matches below it. Collapsed, the passage shows
+its top-end corner, the item's summary, with the entry's passages summarized
+above it, and the entry's search matches below it. Collapsed, each passage shows
 its first line and the item's summary is clipped to
 `--pie-item-list-clip-height`, fading out when it runs past the clip. The row's
 expand button removes both clips and expands both summaries into players.
@@ -183,7 +186,7 @@ expand button removes both clips and expands both summaries into players.
     id: hit.id,
     config: hit.config,
     name: hit.name,
-    highlights: Object.entries(hit.highlight).map(([label, snippets]) => ({ label, snippets })),
+    highlights: Object.entries(hit.highlight ?? {}).map(([label, snippets]) => ({ label, snippets })),
     data: hit,
   }));
   list.actions = "bank-row-actions";
@@ -195,63 +198,95 @@ expand button removes both clips and expands both summaries into players.
 
 | Property | Type | Notes |
 | --- | --- | --- |
-| `items` | `ItemListEntry[]` | `{ id, config, name?, version?, passage?, summary?, highlights?, data? }`. `id` keys the row and must be unique; a repeated id shows only its first entry. `data` reaches the extensions untouched |
-| `env`, `resolve`, `strategy`, `loaderOptions` | | Passed to every row, as on `<pie-item-summary>`. Every row gets the same `loaderOptions` object, so rows share element loads |
+| `items` | `ItemListEntry[]` | `{ id, config?, name?, version?, passages?, summary?, highlights?, data? }`. `id` keys the row and must be unique; a repeated id shows only its first entry. `data` reaches the extensions untouched |
+| `env`, `resolve`, `strategy`, `loaderOptions`, `loaderConfig` | | Passed to every row, as on `<pie-item-summary>`. Every row gets the same objects, so rows share element loads; a host keeps their references stable across renders |
 | `locale`, `i18n` | | As on `<pie-item-summary>`. The list's one provider serves its labels, every row and every player |
-| `expanded` | `boolean` | Expands every row. A change resets the rows' own toggles. Also an attribute |
-| `expandedIds` | `string[]` | Expands the rows with these ids. A change in its contents resets the rows' own toggles; an equal array does not |
+| `expanded` | `boolean` | Expands every row, unless `expandedIds` is set. A change resets the rows' own toggles. Also an attribute |
+| `expandedIds` | `string[]` | Expands the rows with these ids, and takes precedence over `expanded` while set. A change in its contents resets the rows' own toggles; an equal array does not |
 | `details` | `ItemListExtension` | The leading column. Default: the entry's `name`, `id` and `version` |
 | `actions` | `ItemListExtension` | The top-end corner. Default: empty |
 | `highlights` | `ItemListExtension` | Below the summary, outside its clip, so a collapsed row still shows why it matched. Hidden while it renders nothing. Default: the entry's `highlights` |
+
+An entry without `config` needs a `summary`: the row shows it, and an expanded
+row keeps showing the whole summary, without a player and without `aria-busy`,
+until the host sets `config` on the entry. A host that fetches items on demand
+does so on `expanded-changed` and replaces the entry.
 
 An entry's `highlights` is a list of `{ label?, snippets }`, one per matched field,
 as a search engine's highlighter returns them. A snippet is an HTML fragment in
 which `<mark>` marks a match, so a host configures its engine's highlight tag
 as `<mark>`. Only a snippet's text and its marks render, as text nodes and
 `<mark>` elements; no other markup reaches the page. A snippet whose text
-repeats one shown for an earlier field is dropped, as are empty snippets. The
+repeats one shown for an earlier field is dropped, as are empty snippets.
+Block elements and `<br>` separate the words on either side, the tail of a tag
+cut through at a snippet's start is dropped, and a snippet whose engine
+entity-encoded an HTML field is parsed once more, so its markup never shows as
+text. TeX shows as source. The
 block is a group labelled by the `player.list.highlights` catalog key.
+
+The host chooses the indexed fields its engine highlights: the list shows every
+snippet it is given, whatever the `env` role, so a student-facing list leaves
+out fields such as rationales and correct responses.
 
 An `ItemListExtension` is one of:
 
 - A custom element tag name. The row creates the element once and sets its
-  `item` property to the entry, again whenever the entry changes. A tag name can
-  also be set as the `details`, `actions` or `highlights` attribute.
+  `entry` property to the entry, again whenever the entry changes; an element
+  defined after the row created it receives the entry through its setter once
+  it upgrades. A tag name can also be set as the `details`, `actions` or
+  `highlights` attribute. A `highlights` element with nothing to show sets
+  `hidden` on itself, which hides the block.
 - A function `(entry, host) => void | { update?, destroy? }`, which renders
-  into `host` and may return a handle, as a Svelte action does. Framework
-  components mount through it. Toggling a row does not re-run it. When the
-  entry changes identity, the handle's `update(entry)` takes it in place;
-  without `update`, or when the function changes identity, `destroy()` runs,
-  `host` is emptied and the function renders again. `destroy()` also runs when
-  the row goes away.
+  into `host` and may return a handle, or a promise of one, as a Svelte action
+  does. Framework components mount through it. Toggling a row does not re-run
+  it. When the entry changes identity, the handle's `update(entry)` takes it in
+  place; without `update`, or when the function changes identity, `destroy()`
+  runs, `host` is emptied and the function renders again. `destroy()` also runs
+  when the row goes away. A promised handle takes the entry that changed while
+  it was pending, and one that resolves after its row went away is destroyed.
 
-An extension that throws logs a console error and leaves the rest of the list
-rendering.
+The list compares extensions by identity, so a host defines each function once,
+outside its render. An extension that throws or rejects logs a console error,
+dispatches `extension-error` and leaves the rest of the list rendering.
 
 | Event | Detail | Notes |
 | --- | --- | --- |
-| `expanded-change` | `{ id, expanded, expandedIds }` | A row's expand button was pressed. `expandedIds` lists every expanded row, for a host that restores them through `expandedIds` |
-| `player-error` | `{ id, code, message, recoverable }` | A row's `player-error`, with the entry `id` added. The row's own event stops at the list |
-| `load-complete` | `{ view }` | Bubbles unchanged from each row's summaries, the passage's included. The entry `id` is on the closest `[data-item-id]` |
+| `expanded-changed` | `{ id, expanded, expandedIds }` | A row's expand button was pressed. `expandedIds` lists the expanded rows among the current `items`, for a host that restores them through `expandedIds` |
+| `player-error` | `{ id, part, code, message, recoverable }` | A row's `player-error`, with the entry `id` and the failed `part`, `"item"` or `"passage"`, added. The summary's own event stops at the list |
+| `load-complete` | `{ id, part, view }` | A row's item or passage summary rendered, or its player loaded. The summary's own event stops at the list |
+| `extension-error` | `{ id, slot, phase, cause }` | A row's `details`, `actions` or `highlights` extension failed to `render`, `update` or `destroy` |
 | `framework-error` | `{ kind: "i18n-locale-load", … }` | As on `<pie-item-summary>`, once for the list |
 
-The expand button is a disclosure button: `aria-expanded` carries the state,
-`aria-controls` names the row's view, `aria-describedby` its details, and focus
-stays on it as the player swaps in. A row is `aria-busy` from expanding until
-its item's player loads or fails, and its button shows a spinner meanwhile,
-static under `prefers-reduced-motion`. The button sticks to the top of the
-viewport while its expanded row scrolls past; collapsing scrolls the button
-back into view when the row's height change left it above the viewport. Below
-a list width of 36em the details stack above the content.
+Each row carries its entry's id as `data-pie-item-id`. The expand button is a
+disclosure button: `aria-expanded` carries the state, `aria-controls` names the
+row's view, its name is the `player.list.expandA11y` label followed by the row's
+details, its tooltip switches to `player.list.collapse` while expanded, and
+focus stays on it as the player swaps in. A row is `aria-busy` from expanding
+until its item's player loads or fails, and its button shows a spinner
+meanwhile, static under `prefers-reduced-motion`. An expanded row whose player
+failed shows the `player.list.playerError` status, as an alert, below its
+summary. The button sticks to the top of the viewport while its expanded row
+scrolls past; collapsing scrolls the button back into view when the row's
+height change left it above the viewport. Below a list width of 36em the
+details stack above the content and the button no longer sticks.
 
 | Custom property | Default | Notes |
 | --- | --- | --- |
 | `--pie-item-list-clip-height` | `7em` | A collapsed row's summary height |
 | `--pie-item-list-sticky-top` | `0px` | The height of a host's sticky header, which the expand button stays below |
 
-The list marks no search terms in the summary itself.
-Pagination, sorting and the empty state stay with the host, and one that hides
-passages leaves `passage` out of its entries.
+The list's colours and type come from the `--pie-*` theme tokens, so a host
+wraps it in `<pie-theme>` to bridge its own theme. Rows render in the light
+DOM, so a host styles a selected row through `.pie-item-list__row:has(…)` on a
+marker its `actions` or `details` extension renders, such as a checked
+checkbox. A host with a sticky header sets `--pie-item-list-sticky-top` to its
+height.
+
+The list marks no search terms in the summary itself. Pagination, sorting,
+selection, keyboard navigation between rows and the empty state stay with the
+host, and one that hides passages leaves `passages` out of its entries. The
+list renders in the browser only; a server-rendered page shows it once its
+script runs.
 
 ## Exports
 

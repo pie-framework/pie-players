@@ -39,12 +39,12 @@ export interface ItemSummaryEntry {
 }
 
 /**
- * The summarizer for an element, or `null` to fall back to its prompt. `pkg` carries the version
- * from the item's `elements` map.
+ * The summarizer for an element, or `null` to fall back to its prompt. `spec` is the package spec,
+ * version included, from the item's `elements` map.
  */
 export type SummaryResolver = (
 	tagName: string,
-	pkg: string,
+	spec: string,
 ) => Promise<SummarizeFn | null>;
 
 export interface SummarizeItemOptions extends SummaryOptions {

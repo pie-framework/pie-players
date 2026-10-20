@@ -1,5 +1,6 @@
 import type { PieItemPlayerLoaderOptions } from "@pie-players/pie-item-player";
 import type { I18nProvider } from "@pie-players/pie-players-shared/i18n";
+import type { LoaderConfig } from "@pie-players/pie-players-shared/loader-config";
 import type { Env, ItemConfig } from "@pie-players/pie-players-shared/types";
 import "./components/PieItemSummary.svelte";
 import "./components/PieItemList.svelte";
@@ -29,7 +30,7 @@ export type {
 /** `<pie-item-summary>`: one item as a list row, rendered without loading its elements until expanded. */
 export interface PieItemSummaryElement extends HTMLElement {
 	config?: ItemConfig;
-	/** Default `{ mode: "view", role: "instructor" }`; `role` gates answers. */
+	/** Default `{ mode: "view", role: "instructor" }`; a `role` other than `instructor` withholds answers. */
 	env?: Env;
 	/** A precomputed summary, used when its `schema` is 1. */
 	summary?: ItemSummary;
@@ -45,6 +46,8 @@ export interface PieItemSummaryElement extends HTMLElement {
 	strategy?: "iife" | "esm" | "preloaded";
 	/** The expanded player's `loaderOptions`. Rows given the same object share one element load. */
 	loaderOptions?: PieItemPlayerLoaderOptions;
+	/** The expanded player's `loaderConfig`. */
+	loaderConfig?: LoaderConfig;
 }
 
 /** `<pie-item-list>`: `<pie-item-summary>` rows with details, actions, search matches and an expand button each. */
@@ -58,14 +61,16 @@ export interface PieItemListElement extends HTMLElement {
 	locale?: string;
 	/** A provider for the list's labels, shared with every row and player, in place of one the list creates. */
 	i18n?: I18nProvider | null;
-	/** Expands every row; a change resets the rows' own toggles. */
+	/** Expands every row unless `expandedIds` is set; a change resets the rows' own toggles. */
 	expanded?: boolean;
-	/** Expands the rows with these ids; a change in its contents resets the rows' own toggles. */
+	/** Expands the rows with these ids, over `expanded`; a change in its contents resets the rows' own toggles. */
 	expandedIds?: string[];
 	/** Passed to every row's player. */
 	strategy?: "iife" | "esm" | "preloaded";
 	/** Passed to every row's player, so the rows share one element load. */
 	loaderOptions?: PieItemPlayerLoaderOptions;
+	/** Passed to every row's player. */
+	loaderConfig?: LoaderConfig;
 	/** The row's leading column. Default: the entry's `name`, `id` and `version`. */
 	details?: ItemListExtension;
 	/** The row's top-end corner. Default: empty. */

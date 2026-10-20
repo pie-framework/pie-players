@@ -71,6 +71,8 @@ const es = {
 		list: {
 			expandA11y: "Mostrar la pregunta completa",
 			highlights: "Coincidencias de la búsqueda",
+			collapse: "Mostrar el resumen",
+			playerError: "No se pudo cargar la pregunta completa.",
 		},
 		questions: "Preguntas",
 		items: "Preguntas",

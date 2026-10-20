@@ -101,9 +101,12 @@ No PIE package provides a cheap, readable view of an item.
   copy of its macro table in pie-players would drift.
 - **`pie-item-list`**, a new package in the `@pie-players` scope, which owns:
   - `.` registers `<pie-item-summary>` and `<pie-item-list>` as a side effect,
-    as `pie-item-player` does. Its entry and lazily loaded chunks are ES
-    modules that import nothing by bare specifier, so a host can load the entry
-    as a module script from a public CDN with no build step.
+    as `pie-item-player` does. It imports `@pie-players/pie-item-player` by
+    bare specifier on the first expand, for a host with a bundler.
+  - `./browser` is the same entry built self-contained: its entry and lazily
+    loaded chunks, the item player's included, import nothing by bare
+    specifier, so a host can load it as a module script from a public CDN with
+    no build step.
   - `./summarize` exports `summarizeItem`, `ItemSummary` and the resolvers. It
     is Node-safe, registers nothing and touches no DOM.
   - The bundled summarizer set, an internal chunk that the default resolver
@@ -220,14 +223,16 @@ item without markup falls back to model array order. `teacherInstructions` and
 `rationale` never appear: a summary shows what the learner sees, plus answers
 for instructors.
 
-A passage element summarizes as its title plus an excerpt. A host that holds a
-passage separately from its item renders it as a second summary, and
-`<pie-item-list>` places it above the item.
+A passage element summarizes as its title plus an excerpt. A host that holds
+passages separately from its item renders each as its own summary, and
+`<pie-item-list>` places them above the item, in order.
 
 ### Version resolution
 
-The resolver hook matches the print player's `resolve(tagName, pkg)`, where
-`pkg` carries the version from the item's `elements` map. It returns a
+The resolver hook takes the print player's first two arguments,
+`(tagName, pkg)`, where `pkg` carries the version from the item's `elements`
+map; loader options are bound when the resolver is built, as
+`pinnedSummaries(loaderOptions)` does. It returns a
 summarizer, or `null` for the prompt rung. Two resolvers ship:
 
 - **`bundledSummaries`** (default) ignores the version and looks the package up
@@ -258,13 +263,15 @@ expand chrome around it.
 | Property | Type | Notes |
 | --- | --- | --- |
 | `config` | `ItemConfig` | Required |
-| `env` | `Env` | Default `{ mode: "view", role: "instructor" }`. `role` gates answers in both views. The whole object passes to the player, so keys such as `@pie-element.lockChoiceOrder` reach controllers unchanged |
+| `env` | `Env` | Default `{ mode: "view", role: "instructor" }`. `role` gates answers in both views and fails closed: an `env` whose `role` is not `"instructor"`, a missing `role` included, withholds them. The whole object passes to the player, so keys such as `@pie-element.lockChoiceOrder` reach controllers unchanged |
 | `expanded` | `boolean` | Default `false`. `true` mounts the full player |
 | `strategy` | `"iife" \| "esm" \| "preloaded"` | The player's loading strategy, passed unchanged. Default `iife` |
 | `loaderOptions` | item-player `loaderOptions` | Passed to the player unchanged |
+| `loaderConfig` | item-player `loaderConfig` | Passed to the player unchanged |
 | `resolve` | `SummaryResolver` | Default `bundledSummaries` |
 | `summary` | `ItemSummary` | Optional precomputed summary; see Server precompute |
-| `locale` | `string` | BCP-47 tag for the row's own labels. Default `en-US` |
+| `locale` | `string` | BCP-47 tag for the row's own labels and its player's. Default `en-US` |
+| `i18n` | `I18nProvider` | A provider shared with the row's player, in place of one the row creates |
 
 | Event | Detail | Notes |
 | --- | --- | --- |
@@ -277,7 +284,8 @@ instructors, correct options carry a check mark with a text alternative. A badge
 marks manual scoring, and `figure` renders as an image. No element code loads.
 
 **Player view** (`expanded` is `true`). The row mounts `pie-item-player` with
-`config`, `env` and `loaderOptions`, and sets `addCorrectResponse` when `role`
+`config`, `env`, `strategy`, `loaderOptions`, `loaderConfig` and its i18n
+provider, and sets `addCorrectResponse` when `role`
 is `instructor`. The summary stays visible until the player's `load-complete`
 and then swaps in place, so the row never collapses to empty. Every load has a
 timeout, which ends in `player-error` with the summary still showing.
@@ -309,10 +317,11 @@ own.
 // Documentation sketch only.
 interface ItemListEntry {
   id: string;
-  config: ItemConfig;
+  /** Optional with a `summary`; a host fetching items on demand sets it on `expanded-changed`. */
+  config?: ItemConfig;
   name?: string;
   version?: string;
-  passage?: ItemConfig;
+  passages?: ItemConfig[];
   summary?: ItemSummary;
   /** One per matched field; `<mark>` marks a match in each snippet. */
   highlights?: { label?: string; snippets: string[] }[];
@@ -321,18 +330,24 @@ interface ItemListEntry {
 }
 
 type ItemListExtension =
-  | string // custom element tag name; receives the entry as its `item` property
+  | string // custom element tag name; receives the entry as its `entry` property
   | ((
       entry: ItemListEntry,
       host: HTMLElement,
-    ) => void | { update?(entry: ItemListEntry): void; destroy?(): void });
+    ) => void | Handle | Promise<void | Handle>);
+
+interface Handle {
+  update?(entry: ItemListEntry): void;
+  destroy?(): void;
+}
 ```
 
-- Properties: `items: ItemListEntry[]`, plus `env`, `loaderOptions` and
-  `resolve`, which pass through to each row. `expanded` sets every row and
-  `expandedIds` the rows it names; a change to either resets per-row overrides,
-  and `expandedIds` compares by contents, so a host re-rendering an equal array
-  keeps them. `details`, `actions` and `highlights` take an `ItemListExtension`
+- Properties: `items: ItemListEntry[]`, plus `env`, `strategy`,
+  `loaderOptions`, `loaderConfig` and `resolve`, which pass through to each
+  row. `expanded` sets every row and `expandedIds` the rows it names, taking
+  precedence over `expanded` while set; a change to either resets per-row
+  overrides, and `expandedIds` compares by contents, so a host re-rendering an
+  equal array keeps them. `details`, `actions` and `highlights` take an `ItemListExtension`
   each.
 - The list owns one i18n provider, or takes the host's through `i18n`, and
   passes it to every row, which passes it to its player. One provider per list
@@ -355,17 +370,39 @@ type ItemListExtension =
   `update(entry)` and `destroy()`, the shape of a Svelte action. Framework
   components (Svelte, Vue, React) mount through it and take a changed entry
   through `update`, so the forms cover tag names, DOM-returning functions and
-  framework components.
-- Collapsed, the passage shows its first line and the item's summary is clipped
+  framework components. A handle may be promised, for a component loaded on
+  demand; it takes the entry that changed while pending, and one resolving
+  after its row went away is destroyed. A failure in any phase fires
+  `extension-error` and leaves the rest of the list rendering.
+- Collapsed, each passage shows its first line and the item's summary is clipped
   to `--pie-item-list-clip-height` with a fade, so a long passage never hides
   the item. The row's expand button removes both clips and mounts the players,
   so one control does both.
 - The expand button is sticky within its row, below `--pie-item-list-sticky-top`,
   so a tall expanded row can be collapsed without scrolling back; collapsing
-  scrolls the button into view.
-- `expanded-change` fires with `{ id, expanded, expandedIds }`. Row `player-error` events
-  bubble with the entry `id` added. Row `load-complete` events bubble unchanged;
-  each row carries its entry's `id` as `data-item-id`.
+  scrolls the button into view. Below a list width of 36em the content spans
+  the row, so the button stops sticking rather than cover the player.
+- `expanded-changed` fires with `{ id, expanded, expandedIds }`, `expandedIds`
+  covering the current `items` only. The list re-dispatches its rows'
+  `player-error` and `load-complete` with the entry `id` and the `part`,
+  `"item"` or `"passage"`, added, and stops the rows' own; an extension's
+  events pass unchanged. Each row carries its entry's `id` as
+  `data-pie-item-id`.
+- An entry without `config` shows its `summary` expanded, with no player and
+  no `aria-busy`, until the host sets `config`. A host whose search index holds
+  summaries fetches items only for the rows a reader expands.
+
+Deliberate trades:
+
+- Each copy of the package on a page has its own scheduler, so two bundles
+  each run three player loads at a time: no shared global to version, at the
+  cost of a looser cap on a page that loads the package twice.
+- Expand-all keeps every loaded player mounted; the concurrency cap bounds
+  loading, not the number of live players. A host with long result pages
+  paginates.
+- The collapsed clip is visual: a screen reader reads the whole summary, which
+  is the row's content, and the toggle's `aria-expanded` reports the player
+  view.
 
 ### Math
 
@@ -486,14 +523,16 @@ Hosts own:
   glyph alone.
 - Math renders as MathML, which screen readers read natively.
 - The expand control in `<pie-item-list>` is a button with `aria-expanded`,
-  `aria-controls` naming the view and `aria-describedby` naming the row's
-  details, so each button announces which item it expands. The view swap keeps
-  focus on that button, and the row is `aria-busy` while its player loads, with
-  a spinner in the button.
+  `aria-controls` naming the view, and a name of its catalog label followed by
+  the row's details through `aria-labelledby`, so each button announces which
+  item it expands. Its tooltip names the action its next press takes. The view
+  swap keeps focus on that button, and the row is `aria-busy` while its player
+  loads, with a spinner in the button. A row whose player failed shows a
+  catalog status as an alert.
 - A row's search matches are a group labelled by a catalog string, with matches
   as `<mark>` elements.
-- The fade, the view swap and the spinner do not animate under
-  `prefers-reduced-motion`.
+- The toggle's rotation and the spinner do not animate under
+  `prefers-reduced-motion`; the fade and the view swap never animate.
 - Whether Chromebooks ship a math font that renders native MathML acceptably is
   unchecked; see Open Questions.
 
@@ -518,8 +557,8 @@ directly. No adapter consumes it.
   recoverable `player-error`, and `env` reaches the player unchanged.
 - Scheduling: the concurrency cap under expand-all, mounting only near the
   viewport, and one aggregated registration per visibility batch.
-- Packaging: `./summarize` and `./mathml` import in Node with no DOM, the `.`
-  `dist` has no bare imports, and `custom-elements.json` and `api-report/` are
+- Packaging: `./summarize` and `./mathml` import in Node with no DOM, the
+  `./browser` build has no bare imports, and `custom-elements.json` and `api-report/` are
   current.
 - Round-trip: Node and browser summaries are equal for the fixture items.
 

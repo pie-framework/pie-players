@@ -2,7 +2,7 @@ import type { ItemPlayerLoadInputs } from "@pie-players/pie-item-player";
 import type { ItemConfig } from "@pie-players/pie-players-shared/types";
 
 /** The player inputs that decide which element code loads; rows sharing them share a load. */
-export type PlayerLoadInputs = Pick<ItemPlayerLoadInputs, "strategy" | "loaderOptions">;
+export type PlayerLoadInputs = Pick<ItemPlayerLoadInputs, "strategy" | "loaderOptions" | "loaderConfig">;
 
 export interface PlayerRequest {
 	/** Observed for visibility; the player mounts only once it nears the viewport. */
@@ -92,14 +92,18 @@ export function createPlayerScheduler(options: PlayerSchedulerOptions): PlayerSc
 		}
 	}
 
-	function groupKey({ strategy, loaderOptions }: PlayerLoadInputs): string {
-		if (!loaderOptions) return `${strategy ?? ""}:`;
-		let id = inputIds.get(loaderOptions);
+	function inputId(value: object | undefined): string {
+		if (!value) return "";
+		let id = inputIds.get(value);
 		if (id === undefined) {
 			id = nextInputId++;
-			inputIds.set(loaderOptions, id);
+			inputIds.set(value, id);
 		}
-		return `${strategy ?? ""}:${id}`;
+		return String(id);
+	}
+
+	function groupKey({ strategy, loaderOptions, loaderConfig }: PlayerLoadInputs): string {
+		return `${strategy ?? ""}:${inputId(loaderOptions)}:${inputId(loaderConfig)}`;
 	}
 
 	function flush(): void {

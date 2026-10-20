@@ -73,6 +73,8 @@ const ar = {
 		list: {
 			expandA11y: "عرض السؤال كاملاً",
 			highlights: "مطابقات البحث",
+			collapse: "عرض الملخص",
+			playerError: "تعذّر تحميل السؤال كاملاً.",
 		},
 		questions: "الأسئلة",
 		items: "الأسئلة",

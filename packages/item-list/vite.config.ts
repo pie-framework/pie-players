@@ -1,36 +1,12 @@
-import { svelte } from "@sveltejs/vite-plugin-svelte";
 import { resolve } from "path";
-import { defaultClientConditions, defineConfig } from "vite";
+import { defineConfig } from "vite";
 import dts from "vite-plugin-dts";
-import { chunkFileNamesFromSource } from "../players-shared/chunk-file-names.js";
-import { escapeSourceMapCommentTextInOutput } from "../players-shared/source-map-comment-text.mjs";
-import { guardSvelteCustomElementDefines } from "../players-shared/svelte-custom-element-guard.js";
-import { svelteRootDir } from "../players-shared/svelte-root-dir.js";
-import { playersSharedSvelteSourceAliases } from "../players-shared/svelte-source-aliases.js";
-
-const chunkFileNames = chunkFileNamesFromSource(resolve(__dirname, "../.."));
+import { sharedChunkFileNames, sharedResolve, sharedSveltePlugins } from "./vite.config.shared.js";
 
 export default defineConfig({
-	resolve: {
-		conditions: ["pie-browser-esm", ...defaultClientConditions],
-		alias: {
-			// Declared once in players-shared; see svelte-source-aliases.ts.
-			...playersSharedSvelteSourceAliases(
-				resolve(__dirname, "../players-shared"),
-				resolve,
-			),
-		},
-	},
+	resolve: sharedResolve(),
 	plugins: [
-		svelte({
-			compilerOptions: {
-				customElement: true,
-				rootDir: svelteRootDir(__dirname),
-			},
-			emitCss: false,
-		}),
-		guardSvelteCustomElementDefines(),
-		escapeSourceMapCommentTextInOutput(),
+		...sharedSveltePlugins(),
 		dts({
 			tsconfigPath: resolve(__dirname, "tsconfig.json"),
 			outDirs: "dist",
@@ -55,11 +31,12 @@ export default defineConfig({
 		minify: "esbuild",
 		sourcemap: false,
 		rollupOptions: {
-			external: [],
+			// The host's one item player renders expanded rows, imported on the first expansion.
+			external: [/^@pie-players\/pie-item-player(?:\/|$)/],
 			output: {
 				format: "es",
 				entryFileNames: "[name].js",
-				chunkFileNames,
+				chunkFileNames: sharedChunkFileNames,
 				assetFileNames: "assets/[name][extname]",
 			},
 		},

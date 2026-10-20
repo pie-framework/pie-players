@@ -2,13 +2,13 @@
 
 Status: Draft, 2026-10-13
 
-Implementation status: slices 1 and 2 have landed in
+Implementation status: slices 1 to 3 have landed in
 [`@pie-players/pie-item-list`](../../packages/item-list/README.md):
-`summarizeItem`, `isItemSummary`, the summary view of `<pie-item-summary>`,
-and both resolvers, with `bundledSummaries` as the default. The bundled set
-covers 27 element packages, Host R's previews included; it lives in
-pie-players until ng publishes `./summary` entries, which then replace it.
-The player view and `<pie-item-list>` are still to come.
+`summarizeItem`, `isItemSummary`, both resolvers with `bundledSummaries` as the
+default, and `<pie-item-summary>` with its summary and player views and the
+page-wide scheduler. The bundled set covers 27 element packages, Host R's
+previews included; it lives in pie-players until ng publishes `./summary`
+entries, which then replace it. `<pie-item-list>` is still to come.
 pie-elements-ng owns the descriptor type and the per-element `./summary`
 entries; pie-players owns item-level summarization, the bundled summarizer set
 and the custom elements. Summary precompute in the PIE API backend is optional
@@ -258,6 +258,7 @@ expand chrome around it.
 | `config` | `ItemConfig` | Required |
 | `env` | `Env` | Default `{ mode: "view", role: "instructor" }`. `role` gates answers in both views. The whole object passes to the player, so keys such as `@pie-element.lockChoiceOrder` reach controllers unchanged |
 | `expanded` | `boolean` | Default `false`. `true` mounts the full player |
+| `strategy` | `"iife" \| "esm" \| "preloaded"` | The player's loading strategy, passed unchanged. Default `iife` |
 | `loaderOptions` | item-player `loaderOptions` | Passed to the player unchanged |
 | `resolve` | `SummaryResolver` | Default `bundledSummaries` |
 | `summary` | `ItemSummary` | Optional precomputed summary; see Server precompute |
@@ -286,6 +287,9 @@ elements.
 - A row mounts its player only near the viewport.
 - Rows that become visible together register their elements in one aggregated
   load, the pattern `aggregateElements` and `ensureRegistered` already provide.
+  `pie-item-player` exports it as `preloadItemElements`, built from the
+  player's own backend configuration, so the aggregated load and each player's
+  load resolve the same bundles.
 - Concurrent player mounts are capped, so expanding every row loads them
   progressively.
 
@@ -405,8 +409,9 @@ configs before publishing, so it can also precompute summaries at ingestion.
   `pie-item-list` are unversioned player tags, like `pie-item-player`.
 - Contract attributes: not synthesized or rewritten. Entries keep model `id`s
   exactly as authored.
-- `pie-item-player`: consumed as is, through `config`, `env`, `loaderOptions`,
-  `addCorrectResponse`, `load-complete` and `player-error`.
+- `pie-item-player`: consumed through `config`, `env`, `strategy`,
+  `loaderOptions`, `addCorrectResponse`, `load-complete` and `player-error`,
+  plus the new `preloadItemElements` export.
 - Section and assessment state, persisted sessions: untouched.
 - Host-facing wire data: `ItemSummary`, when precomputed.
 

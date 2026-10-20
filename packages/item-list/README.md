@@ -2,7 +2,8 @@
 
 Readable summaries of PIE items for item banks, search results and section
 outlines. `summarizeItem` reduces an item to data, and `<pie-item-summary>`
-renders it as one list row, with no element code loaded. PIE stands for
+renders it as one list row, with no element code loaded until the row expands
+into an item player. PIE stands for
 Portable Interactions and Elements. The design is the
 [Item summaries and item lists PRD](../../docs/prds/item-summary-and-list.md).
 
@@ -91,10 +92,14 @@ light DOM, so host content styles reach it.
 | `summary` | `ItemSummary` | Optional precomputed summary. Used instead of `config` when `isItemSummary` accepts it, and recomputed from `config` otherwise; answers are stripped again for students |
 | `resolve` | `SummaryResolver` | Summarizer lookup, as for `summarizeItem`. Default `bundledSummaries` |
 | `locale` | `string` | BCP-47 tag for the row's own labels. Default `en-US` |
+| `expanded` | `boolean` | Shows the item in `<pie-item-player>` ([player view](#player-view)). Also an attribute |
+| `strategy` | `"iife" \| "esm" \| "preloaded"` | The player's [loading strategy](../../docs/item-player/loading-strategies.md). Default `iife`. Also an attribute |
+| `loaderOptions` | `PieItemPlayerLoaderOptions` | The player's `loaderOptions` |
 
 | Event | Detail | Notes |
 | --- | --- | --- |
-| `load-complete` | `{ view: "summary" }` | Once per rendered summary, after math conversion. A new `env` object with the same `role` does not re-render |
+| `load-complete` | `{ view: "summary" \| "player" }` | `summary` once per rendered summary, after math conversion; a new `env` object with the same `role` does not re-render. `player` once the expanded row's player has loaded |
+| `player-error` | `{ code, message, recoverable }` | The expanded row's player failed. The summary keeps showing |
 
 Every HTML fragment renders through the players' markup sanitizer. Options
 render as a list, with a check mark and a text alternative on correct options
@@ -104,3 +109,42 @@ option. Manual scoring shows as a badge, and `figure` as an image. TeX
 converts to MathML through `texToMathml` from
 `@pie-element/shared-math-rendering-mathjax`, which loads only when a summary
 holds TeX.
+
+### Player view
+
+An expanded row mounts `<pie-item-player>` for its item, with the row's
+`config`, `env`, `strategy` and `loaderOptions`, and `addCorrectResponse` for
+instructors. The summary keeps showing until the player fires `load-complete`,
+then the player replaces it; collapsing unmounts the player and shows the
+summary again. The item player loads with the first expanded row, so a list
+that never expands loads no player code.
+
+All rows on a page share one scheduler:
+
+- A row's player mounts once the row is within 200px of the viewport, or
+  straight away where the browser has no `IntersectionObserver`.
+- Rows that come into view together register their elements in one load:
+  `preloadItemElements` from `@pie-players/pie-item-player`, one per
+  `strategy` and `loaderOptions` object. A list passes every row the same
+  `loaderOptions` object.
+- At most three players load at once. The rest wait in the order they came
+  into view, and a row scrolled away before its turn waits until it returns.
+
+The player's own `load-complete` and `player-error` stop at the row, which
+dispatches its own. A non-recoverable player error unmounts the player.
+Besides the player's codes, `player-error` carries:
+
+| Code | Recoverable | Cause |
+| --- | --- | --- |
+| `ITEM_SUMMARY_PLAYER_UNAVAILABLE` | yes | `@pie-players/pie-item-player` failed to import |
+| `ITEM_SUMMARY_PLAYER_TIMEOUT` | yes | The player did not load within 30 seconds; it unmounts |
+
+Collapsing and expanding the row again retries.
+
+## Exports
+
+| Entry | Exports |
+| --- | --- |
+| `@pie-players/pie-item-list` | Registers `<pie-item-summary>`. Exports the summary types and `PieItemSummaryElement`. Imports `@pie-players/pie-item-player` by bare specifier, on first expand |
+| `@pie-players/pie-item-list/summarize` | `summarizeItem`, `isItemSummary`, `bundledSummaries`, `pinnedSummaries` and the summary types. Node-safe |
+| `@pie-players/pie-item-list/browser` | The self-contained browser build, with the item player as a chunk ([Loading from a CDN](../../docs/install/cdn.md#item-list-browser-build)) |

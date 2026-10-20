@@ -11,15 +11,20 @@
 			resolve: { type: "Object", reflect: false },
 			// Interface locale for the row's own labels, as a BCP-47 tag. Unset renders `en-US`.
 			locale: { attribute: "locale", type: "String" },
+			expanded: { attribute: "expanded", type: "Boolean" },
+			strategy: { attribute: "strategy", type: "String" },
+			loaderOptions: { type: "Object", reflect: false },
 		},
+		extend: coerceBooleanAttributes,
 	}}
 />
 
 <!--
 @component
-One PIE item as a list row: its stem, prompts, options and, for instructors, its answers, rendered as sanitized HTML with math as MathML. No element code loads. A host gives it the item `config`, or a precomputed `summary`, and keeps its own list, card and expand chrome around it.
+One PIE item as a list row: its stem, prompts, options and, for instructors, its answers, rendered as sanitized HTML with math as MathML, loading no element code until it expands. A host gives it the item `config`, or a precomputed `summary`, and keeps its own list, card and expand chrome around it. Set `expanded` and the row mounts `<pie-item-player>` for the item once it nears the viewport, keeps the summary showing until the player has loaded, then swaps it in place.
 
-@fires {CustomEvent<{ view: "summary" }>} load-complete - Once per rendered summary, after math conversion. A new `env` with the same role does not re-render.
+@fires {CustomEvent<{ view: "summary" | "player" }>} load-complete - `summary` once per rendered summary, after math conversion; a new `env` with the same role does not re-render. `player` once the expanded row's player has loaded and replaced the summary.
+@fires {CustomEvent<{ code: string; message: string; recoverable: boolean }>} player-error - The expanded row's player failed to load, re-dispatched with the player's detail, or did not load in time (`recoverable: true`). The summary keeps showing; collapsing and expanding again retries.
 -->
 
 <script lang="ts">
@@ -28,7 +33,14 @@ One PIE item as a list row: its stem, prompts, options and, for instructors, its
 		DEFAULT_LOCALE,
 	} from "@pie-players/pie-players-shared/i18n";
 	import type { Env, ItemConfig } from "@pie-players/pie-players-shared/types";
+	import { coerceBooleanAttributes } from "@pie-players/pie-players-shared/ui/attribute-coercion";
 	import { tick, untrack } from "svelte";
+	import {
+		loadItemPlayer,
+		type PlayerLoadInputs,
+		type PlayerTicket,
+		playerScheduler,
+	} from "../player/scheduler.js";
 	import {
 		type ItemSummary,
 		type SummaryResolver,
@@ -48,12 +60,18 @@ One PIE item as a list row: its stem, prompts, options and, for instructors, its
 		summary,
 		resolve,
 		locale = "",
+		expanded = false,
+		strategy,
+		loaderOptions,
 	}: {
 		config?: ItemConfig;
 		env?: Env;
 		summary?: ItemSummary;
 		resolve?: SummaryResolver;
 		locale?: string;
+		expanded?: boolean;
+		strategy?: PlayerLoadInputs["strategy"];
+		loaderOptions?: PlayerLoadInputs["loaderOptions"];
 	} = $props();
 
 	const hostElement: HTMLElement = $host();
@@ -101,18 +119,99 @@ One PIE item as a list row: its stem, prompts, options and, for instructors, its
 				rendered = view;
 				if (!view) return;
 				await tick();
-				if (run !== generation) return;
-				hostElement.dispatchEvent(
-					new CustomEvent("load-complete", {
-						detail: { view: "summary" },
-						bubbles: true,
-						composed: true,
-					}),
-				);
+				if (run !== generation || untrack(() => playerShown)) return;
+				announce("load-complete", { view: "summary" });
 			} catch (error) {
 				console.error("[pie-item-summary] The summary could not be rendered.", error);
 			}
 		})();
+	});
+
+	function announce(type: string, detail: unknown): void {
+		hostElement.dispatchEvent(new CustomEvent(type, { detail, bubbles: true, composed: true }));
+	}
+
+	// The player view. The scheduler grants the row a slot once it nears the viewport; the player
+	// then mounts hidden behind the summary and replaces it on its `load-complete`.
+	let playerMounted = $state(false);
+	let playerShown = $state(false);
+	let playerHost = $state<HTMLElement | undefined>();
+	let ticket: PlayerTicket | undefined;
+	const playerEnv = $derived(env ?? { mode: "view", role: "instructor" });
+
+	$effect(() => {
+		if (!expanded || !config) return;
+		const item = config;
+		const inputs: PlayerLoadInputs = { strategy, loaderOptions };
+		let open = true;
+		untrack(() => {
+			ticket = playerScheduler().request({
+				element: hostElement,
+				config: item,
+				inputs,
+				grant: () => {
+					loadItemPlayer().then(
+						() => {
+							if (open) playerMounted = true;
+						},
+						(error: unknown) => {
+							if (!open) return;
+							ticket?.release();
+							announce("player-error", {
+								code: "ITEM_SUMMARY_PLAYER_UNAVAILABLE",
+								message: `The item player could not be loaded: ${error instanceof Error ? error.message : String(error)}`,
+								recoverable: true,
+							});
+						},
+					);
+				},
+				timeout: () => {
+					if (!open) return;
+					playerMounted = false;
+					announce("player-error", {
+						code: "ITEM_SUMMARY_PLAYER_TIMEOUT",
+						message: "The item player did not load in time; the summary keeps showing.",
+						recoverable: true,
+					});
+				},
+			});
+		});
+		return () => {
+			open = false;
+			ticket?.release();
+			ticket = undefined;
+			playerMounted = false;
+			playerShown = false;
+		};
+	});
+
+	// The player's own `load-complete` and `player-error` stop at the row, which reports them as its own.
+	$effect(() => {
+		const target = playerHost;
+		if (!target) return;
+		const onLoad = (event: Event) => {
+			event.stopPropagation();
+			if (playerShown) return;
+			ticket?.release();
+			playerShown = true;
+			announce("load-complete", { view: "player" });
+		};
+		const onError = (event: Event) => {
+			event.stopPropagation();
+			const detail = (event as CustomEvent).detail;
+			if (detail?.recoverable !== true) {
+				ticket?.release();
+				playerMounted = false;
+				playerShown = false;
+			}
+			announce("player-error", detail);
+		};
+		target.addEventListener("load-complete", onLoad);
+		target.addEventListener("player-error", onError);
+		return () => {
+			target.removeEventListener("load-complete", onLoad);
+			target.removeEventListener("player-error", onError);
+		};
 	});
 </script>
 
@@ -156,7 +255,8 @@ One PIE item as a list row: its stem, prompts, options and, for instructors, its
 	{/if}
 {/snippet}
 
-{#if rendered}
+<div class="pie-item-summary__view">
+{#if rendered && !playerShown}
 	<div class="pie-item-summary">
 		{#if rendered.stem}
 			<div class="pie-item-summary__stem">{@html rendered.stem}</div>
@@ -187,8 +287,38 @@ One PIE item as a list row: its stem, prompts, options and, for instructors, its
 		{/each}
 	</div>
 {/if}
+{#if playerMounted}
+	<div
+		class="pie-item-summary__player"
+		class:pie-item-summary__player--pending={!playerShown}
+		aria-hidden={playerShown ? undefined : "true"}
+		inert={!playerShown}
+		bind:this={playerHost}
+	>
+		<pie-item-player
+			config={config}
+			env={playerEnv}
+			strategy={strategy}
+			loaderOptions={loaderOptions}
+			addCorrectResponse={role === "instructor"}
+		></pie-item-player>
+	</div>
+{/if}
+</div>
 
 <style>
+	.pie-item-summary__view {
+		position: relative;
+	}
+
+	/* Laid out at the row's width while it loads, so elements measure as they will show. */
+	.pie-item-summary__player--pending {
+		position: absolute;
+		inset: 0 0 auto 0;
+		visibility: hidden;
+		pointer-events: none;
+	}
+
 	.pie-item-summary {
 		color: var(--pie-text, #1f2937);
 		font-size: calc(1rem * var(--pie-font-scale, 1));

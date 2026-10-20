@@ -7,7 +7,7 @@
 			"declarations": [
 				{
 					"kind": "class",
-					"description": "One PIE item as a list row: its stem, prompts, options and, for instructors, its answers, rendered as sanitized HTML with math as MathML. No element code loads. A host gives it the item `config`, or a precomputed `summary`, and keeps its own list, card and expand chrome around it.",
+					"description": "One PIE item as a list row: its stem, prompts, options and, for instructors, its answers, rendered as sanitized HTML with math as MathML, loading no element code until it expands. A host gives it the item `config`, or a precomputed `summary`, and keeps its own list, card and expand chrome around it. Set `expanded` and the row mounts `<pie-item-player>` for the item once it nears the viewport, keeps the summary showing until the player has loaded, then swaps it in place.",
 					"name": "PieItemSummary",
 					"tagName": "pie-item-summary",
 					"customElement": true,
@@ -53,6 +53,31 @@
 							"default": "\"\"",
 							"description": "Interface locale for the row's own labels, as a BCP-47 tag. Unset renders `en-US`.",
 							"attribute": "locale"
+						},
+						{
+							"kind": "field",
+							"name": "expanded",
+							"type": {
+								"text": "boolean"
+							},
+							"default": "false",
+							"attribute": "expanded"
+						},
+						{
+							"kind": "field",
+							"name": "strategy",
+							"type": {
+								"text": "PlayerLoadInputs[\"strategy\"]"
+							},
+							"attribute": "strategy"
+						},
+						{
+							"kind": "field",
+							"name": "loaderOptions",
+							"type": {
+								"text": "PlayerLoadInputs[\"loaderOptions\"]"
+							},
+							"attribute": "loaderoptions"
 						}
 					],
 					"attributes": [
@@ -92,15 +117,44 @@
 							"default": "\"\"",
 							"description": "Interface locale for the row's own labels, as a BCP-47 tag. Unset renders `en-US`.",
 							"fieldName": "locale"
+						},
+						{
+							"name": "expanded",
+							"type": {
+								"text": "boolean"
+							},
+							"default": "false",
+							"fieldName": "expanded"
+						},
+						{
+							"name": "strategy",
+							"type": {
+								"text": "string"
+							},
+							"fieldName": "strategy"
+						},
+						{
+							"name": "loaderoptions",
+							"type": {
+								"text": "PlayerLoadInputs[\"loaderOptions\"]"
+							},
+							"fieldName": "loaderOptions"
 						}
 					],
 					"events": [
 						{
 							"name": "load-complete",
 							"type": {
-								"text": "CustomEvent<{ view: \"summary\" }>"
+								"text": "CustomEvent<{ view: \"summary\" | \"player\" }>"
 							},
-							"description": "Once per rendered summary, after math conversion. A new `env` with the same role does not re-render."
+							"description": "`summary` once per rendered summary, after math conversion; a new `env` with the same role does not re-render. `player` once the expanded row's player has loaded and replaced the summary."
+						},
+						{
+							"name": "player-error",
+							"type": {
+								"text": "CustomEvent<{ code: string; message: string; recoverable: boolean }>"
+							},
+							"description": "The expanded row's player failed to load, re-dispatched with the player's detail, or did not load in time (`recoverable: true`). The summary keeps showing; collapsing and expanding again retries."
 						}
 					],
 					"x-pie": {
@@ -124,9 +178,12 @@
 							"pie-item-summary__option-label",
 							"pie-item-summary__options",
 							"pie-item-summary__part",
+							"pie-item-summary__player",
+							"pie-item-summary__player--pending",
 							"pie-item-summary__prompt",
 							"pie-item-summary__sr-only",
-							"pie-item-summary__stem"
+							"pie-item-summary__stem",
+							"pie-item-summary__view"
 						]
 					}
 				}
@@ -137,6 +194,21 @@
 					"name": "pie-item-summary",
 					"declaration": {
 						"name": "PieItemSummary"
+					}
+				}
+			]
+		},
+		{
+			"kind": "javascript-module",
+			"path": "dist/browser/pie-item-list.js",
+			"declarations": [],
+			"exports": [
+				{
+					"kind": "custom-element-definition",
+					"name": "pie-item-summary",
+					"declaration": {
+						"name": "PieItemSummary",
+						"module": "dist/pie-item-list.js"
 					}
 				}
 			]

@@ -45,6 +45,7 @@ lockstep set ([preloaded player](../preloaded-player/readme.md)).
 | [`@pie-players/pie-section-player`](../../packages/section-player/README.md) | `<pie-section-player-splitpane>`, `<pie-section-player-vertical>`, `<pie-section-player-tabbed>`, `<pie-section-player-kernel-host>` | Renders a QTI 3.0 assessment section with its passages, items and toolbars, in one of three layouts or in a host's own ([custom layouts](../section-player/custom-layouts.md)) |
 | [`@pie-players/pie-assessment-player`](../../packages/assessment-player/README.md) | `<pie-assessment-player-default>` | Reference assembly that runs an assessment's sections in a section player |
 | [`@pie-players/pie-print-player`](../../packages/print-player/README.md) | `<pie-print>` | Renders the print views of an item's elements |
+| [`@pie-players/pie-item-list`](../../packages/item-list/README.md) | `<pie-item-summary>` | Renders an item as a list row from its summary, loading no element code until the row expands into an item player |
 
 ### Toolkit and shared runtime
 
@@ -133,6 +134,7 @@ the packed tarball.
 | --- | --- |
 | `@pie-players/pie-assessment-toolkit` | `.`, `./runtime/engine` |
 | `@pie-players/pie-section-player` | `./contracts/runtime-host-contract`, `./contracts/host-hooks`, `./policies`, `./item-section` |
+| `@pie-players/pie-item-list` | `./summarize` |
 | `@pie-players/pie-default-tool-loaders` | `.` |
 | `@pie-players/pie-players-shared` | `.` |
 | `@pie-players/pie-context` | `.` |
@@ -154,6 +156,7 @@ too.
 | `@pie-players/pie-item-player` | `dist/pie-item-player.js` |
 | `@pie-players/pie-section-player/browser` | `dist/browser/pie-section-player.js` |
 | `@pie-players/pie-print-player` | `dist/print-player.js` |
+| `@pie-players/pie-item-list/browser` | `dist/browser/pie-item-list.js` |
 
 ### Browser, through a bundler
 
@@ -166,6 +169,7 @@ without a bundler, and both Node.js and browsers refuse a JSON module imported
 without `with { type: "json" }`. The class includes:
 
 - the section player's root, its npm build;
+- the item list's root, which imports the item player by bare specifier;
 - the assessment player;
 - the toolkit's custom-element entries (`./components/*`);
 - every tool package.
@@ -175,7 +179,8 @@ fail to import in Node.js on a browser global.
 
 A CDN URL without a file path serves the file a package's `unpkg` and
 `jsdelivr` fields name. For the section player that file is the npm build, so
-a page names `dist/browser/pie-section-player.js` in full.
+a page names `dist/browser/pie-section-player.js` in full, and the item list
+`dist/browser/pie-item-list.js`.
 
 ## Third-party dependencies
 

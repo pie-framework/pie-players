@@ -15,6 +15,18 @@
   type SummaryPart
   type SummaryResolver
 
+./browser
+  type ElementSummary
+  type ItemSummary
+  type ItemSummaryEntry
+  type PieItemSummaryElement
+  type SummarizeFn
+  type SummarizeItemOptions
+  type SummaryOption
+  type SummaryOptions
+  type SummaryPart
+  type SummaryResolver
+
 ./summarize
   type ElementSummary
   type ItemSummary

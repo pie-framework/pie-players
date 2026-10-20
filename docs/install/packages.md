@@ -45,7 +45,7 @@ lockstep set ([preloaded player](../preloaded-player/readme.md)).
 | [`@pie-players/pie-section-player`](../../packages/section-player/README.md) | `<pie-section-player-splitpane>`, `<pie-section-player-vertical>`, `<pie-section-player-tabbed>`, `<pie-section-player-kernel-host>` | Renders a QTI 3.0 assessment section with its passages, items and toolbars, in one of three layouts or in a host's own ([custom layouts](../section-player/custom-layouts.md)) |
 | [`@pie-players/pie-assessment-player`](../../packages/assessment-player/README.md) | `<pie-assessment-player-default>` | Reference assembly that runs an assessment's sections in a section player |
 | [`@pie-players/pie-print-player`](../../packages/print-player/README.md) | `<pie-print>` | Renders the print views of an item's elements |
-| [`@pie-players/pie-item-list`](../../packages/item-list/README.md) | `<pie-item-summary>` | Renders an item as a list row from its summary, loading no element code until the row expands into an item player |
+| [`@pie-players/pie-item-list`](../../packages/item-list/README.md) | `<pie-item-summary>`, `<pie-item-list>` | Renders an item as a list row from its summary, loading no element code until the row expands into an item player, and composes rows into a list with details and actions |
 
 ### Toolkit and shared runtime
 

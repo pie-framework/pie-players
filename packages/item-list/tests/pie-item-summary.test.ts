@@ -4,14 +4,12 @@
  * asserted in a real browser by `e2e/pie-item-summary.spec.ts`.
  */
 
-import { GlobalRegistrator } from "@happy-dom/global-registrator";
-import { afterAll, afterEach, describe, expect, test } from "bun:test";
+import "./support/dom.js";
+import { afterEach, describe, expect, test } from "bun:test";
 import type { ElementSummary } from "@pie-element/shared-types";
 import type { PieContent } from "@pie-players/pie-players-shared/types";
 import type { ItemSummary, PieItemSummaryElement } from "../src/pie-item-list.js";
 
-const ownsDom = typeof window === "undefined";
-if (ownsDom) GlobalRegistrator.register();
 await import("../src/components/PieItemSummary.svelte");
 
 async function settle(rounds = 20): Promise<void> {
@@ -69,10 +67,6 @@ const precomputed: ItemSummary = {
 
 afterEach(() => {
 	document.body.innerHTML = "";
-});
-
-afterAll(async () => {
-	if (ownsDom) await GlobalRegistrator.unregister();
 });
 
 describe("<pie-item-summary>", () => {

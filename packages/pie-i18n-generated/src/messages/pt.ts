@@ -68,6 +68,9 @@ const pt = {
 			audio: "Áudio",
 			video: "Vídeo",
 		},
+		list: {
+			expandA11y: "Mostrar a pergunta completa",
+		},
 		questions: "Perguntas",
 		items: "Perguntas",
 		section: "Seção",

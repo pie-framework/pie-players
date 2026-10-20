@@ -65,6 +65,9 @@ const enGB = {
 			audio: "Audio",
 			video: "Video",
 		},
+		list: {
+			expandA11y: "Show the full question",
+		},
 		questions: "Questions",
 		items: "Questions",
 		section: "Section",

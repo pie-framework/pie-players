@@ -110,7 +110,7 @@ CDN changes the policy in three places:
 
 ## Item list (browser build)
 
-`@pie-players/pie-item-list` publishes `dist/browser/pie-item-list.js`, exported as `./browser`, next to its npm build. It registers `<pie-item-summary>` and bundles the item player as a chunk that loads when the first row expands. The section player's rules on the full file path, one version per page and one directory per version apply here as well. A page that also loads the section player's browser build gets a second copy of the item player chunk; the first `<pie-item-player>` registered wins.
+`@pie-players/pie-item-list` publishes `dist/browser/pie-item-list.js`, exported as `./browser`, next to its npm build. It registers `<pie-item-summary>` and `<pie-item-list>` and bundles the item player as a chunk that loads when the first row expands. The section player's rules on the full file path, one version per page and one directory per version apply here as well. A page that also loads the section player's browser build gets a second copy of the item player chunk; the first `<pie-item-player>` registered wins.
 
 ```html
 <script type="module">

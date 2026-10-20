@@ -127,6 +127,9 @@ const nlNL = {
 			audio: "Audio",
 			video: "Video",
 		},
+		list: {
+			expandA11y: "Volledige vraag tonen",
+		},
 	},
 
 	toolkit: {

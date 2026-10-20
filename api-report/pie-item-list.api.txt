@@ -5,8 +5,11 @@
 
 .
   type ElementSummary
+  type ItemListEntry
+  type ItemListExtension
   type ItemSummary
   type ItemSummaryEntry
+  type PieItemListElement
   type PieItemSummaryElement
   type SummarizeFn
   type SummarizeItemOptions
@@ -17,8 +20,11 @@
 
 ./browser
   type ElementSummary
+  type ItemListEntry
+  type ItemListExtension
   type ItemSummary
   type ItemSummaryEntry
+  type PieItemListElement
   type PieItemSummaryElement
   type SummarizeFn
   type SummarizeItemOptions

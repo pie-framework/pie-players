@@ -120,6 +120,9 @@ const thTH = {
 			audio: "เสียง",
 			video: "วิดีโอ",
 		},
+		list: {
+			expandA11y: "แสดงข้อสอบทั้งข้อ",
+		},
 	},
 
 	toolkit: {

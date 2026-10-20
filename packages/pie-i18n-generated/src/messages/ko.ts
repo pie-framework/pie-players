@@ -68,6 +68,9 @@ const ko = {
 			audio: "오디오",
 			video: "동영상",
 		},
+		list: {
+			expandA11y: "문항 전체 보기",
+		},
 		questions: "문항",
 		items: "문항",
 		section: "섹션",

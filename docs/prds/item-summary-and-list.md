@@ -2,13 +2,13 @@
 
 Status: Draft, 2026-10-13
 
-Implementation status: slices 1 to 3 have landed in
+Implementation status: slices 1 to 4 have landed in
 [`@pie-players/pie-item-list`](../../packages/item-list/README.md):
 `summarizeItem`, `isItemSummary`, both resolvers with `bundledSummaries` as the
-default, and `<pie-item-summary>` with its summary and player views and the
-page-wide scheduler. The bundled set covers 27 element packages, Host R's
-previews included; it lives in pie-players until ng publishes `./summary`
-entries, which then replace it. `<pie-item-list>` is still to come.
+default, `<pie-item-summary>` with its summary and player views and the
+page-wide scheduler, and `<pie-item-list>`. The bundled set covers 27 element
+packages, Host R's previews included; it lives in pie-players until ng
+publishes `./summary` entries, which then replace it.
 pie-elements-ng owns the descriptor type and the per-element `./summary`
 entries; pie-players owns item-level summarization, the bundled summarizer set
 and the custom elements. Summary precompute in the PIE API backend is optional
@@ -334,7 +334,8 @@ type ItemListExtension =
 - A row clips its summary view to a fixed height with a fade. The row's expand
   button removes the clip and mounts the player, so one control does both.
 - `expanded-change` fires with `{ id, expanded }`. Row `player-error` events
-  bubble with the entry `id` added.
+  bubble with the entry `id` added. Row `load-complete` events bubble unchanged;
+  each row carries its entry's `id` as `data-item-id`.
 
 ### Math
 

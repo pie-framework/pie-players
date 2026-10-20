@@ -1,9 +1,10 @@
 # @pie-players/pie-item-list
 
 Readable summaries of PIE items for item banks, search results and section
-outlines. `summarizeItem` reduces an item to data, and `<pie-item-summary>`
+outlines. `summarizeItem` reduces an item to data, `<pie-item-summary>`
 renders it as one list row, with no element code loaded until the row expands
-into an item player. PIE stands for
+into an item player, and `<pie-item-list>` composes rows with details, actions
+and an expand button. PIE stands for
 Portable Interactions and Elements. The design is the
 [Item summaries and item lists PRD](../../docs/prds/item-summary-and-list.md).
 
@@ -71,7 +72,8 @@ ignoring unknown fields. `<pie-item-summary>` runs the same check on its
 
 ## `<pie-item-summary>`
 
-Importing the package registers `<pie-item-summary>`. The row renders into its
+Importing the package registers `<pie-item-summary>` and
+[`<pie-item-list>`](#pie-item-list). The row renders into its
 light DOM, so host content styles reach it.
 
 ```html
@@ -141,10 +143,69 @@ Besides the player's codes, `player-error` carries:
 
 Collapsing and expanding the row again retries.
 
+## `<pie-item-list>`
+
+A list of `<pie-item-summary>` rows for a host with no list chrome of its own.
+Each row shows the entry's details in a leading column, the host's actions in
+its top-end corner and the item's summary, with the entry's passage summarized
+above it. The summary is clipped to a fixed height, fading out when it runs
+past the clip. The row's expand button removes the clip and expands both
+summaries into players.
+
+```html
+<pie-item-list></pie-item-list>
+<script type="module">
+  import "@pie-players/pie-item-list";
+
+  const list = document.querySelector("pie-item-list");
+  list.items = results.map((hit) => ({ id: hit.id, config: hit.config, name: hit.name, data: hit }));
+  list.actions = "bank-row-actions";
+  list.details = (entry, host) => {
+    host.textContent = `${entry.name} · ${entry.data.owner}`;
+  };
+</script>
+```
+
+| Property | Type | Notes |
+| --- | --- | --- |
+| `items` | `ItemListEntry[]` | `{ id, config, name?, version?, passage?, summary?, data? }`. `id` keys the row and must be unique; a repeated id shows only its first entry. `data` reaches the extensions untouched |
+| `env`, `resolve`, `locale`, `strategy`, `loaderOptions` | | Passed to every row, as on `<pie-item-summary>`. Every row gets the same `loaderOptions` object, so rows share element loads |
+| `expanded` | `boolean` | Expands every row. A change resets the rows' own toggles. Also an attribute |
+| `details` | `ItemListExtension` | The leading column. Default: the entry's `name`, `id` and `version` |
+| `actions` | `ItemListExtension` | The top-end corner. Default: empty |
+
+An `ItemListExtension` is one of:
+
+- A custom element tag name. The row creates the element once and sets its
+  `item` property to the entry, again whenever the entry changes. A tag name can
+  also be set as the `details` or `actions` attribute.
+- A function `(entry, host) => void | cleanup`, which renders into `host`.
+  Framework components mount through it. It runs again only when the entry or
+  the function changes identity, after its cleanup, and the cleanup also runs
+  when the row goes away. Toggling a row does not re-run it.
+
+An extension that throws logs a console error and leaves the rest of the list
+rendering.
+
+| Event | Detail | Notes |
+| --- | --- | --- |
+| `expanded-change` | `{ id, expanded }` | A row's expand button was pressed |
+| `player-error` | `{ id, code, message, recoverable }` | A row's `player-error`, with the entry `id` added. The row's own event stops at the list |
+| `load-complete` | `{ view }` | Bubbles unchanged from each row's summaries, the passage's included. The entry `id` is on the closest `[data-item-id]` |
+
+The expand button is a disclosure button: `aria-expanded` carries the state,
+`aria-controls` names the row's view, and focus stays on it as the player swaps
+in. A row is `aria-busy` from expanding until its item's player loads or fails.
+Below a list width of 36em the details stack above the content.
+
+Search-term highlighting, pagination, sorting and the empty state stay with the
+host. A host that marks search hits renders them through `details`, and one
+that hides passages leaves `passage` out of its entries.
+
 ## Exports
 
 | Entry | Exports |
 | --- | --- |
-| `@pie-players/pie-item-list` | Registers `<pie-item-summary>`. Exports the summary types and `PieItemSummaryElement`. Imports `@pie-players/pie-item-player` by bare specifier, on first expand |
+| `@pie-players/pie-item-list` | Registers `<pie-item-summary>` and `<pie-item-list>`. Exports the summary and list types, `PieItemSummaryElement` and `PieItemListElement`. Imports `@pie-players/pie-item-player` by bare specifier, on first expand |
 | `@pie-players/pie-item-list/summarize` | `summarizeItem`, `isItemSummary`, `bundledSummaries`, `pinnedSummaries` and the summary types. Node-safe |
 | `@pie-players/pie-item-list/browser` | The self-contained browser build, with the item player as a chunk ([Loading from a CDN](../../docs/install/cdn.md#item-list-browser-build)) |

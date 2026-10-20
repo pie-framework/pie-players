@@ -69,6 +69,9 @@ const sv = {
 			audio: "Ljud",
 			video: "Video",
 		},
+		list: {
+			expandA11y: "Visa hela uppgiften",
+		},
 		questions: "Frågor",
 		items: "Uppgifter",
 		section: "Avsnitt",

@@ -68,6 +68,9 @@ const zh = {
 			audio: "音频",
 			video: "视频",
 		},
+		list: {
+			expandA11y: "显示完整题目",
+		},
 		questions: "题目",
 		items: "题目",
 		section: "部分",

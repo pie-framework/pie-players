@@ -58,7 +58,9 @@ spec from the item's `elements` map, and returns a `SummarizeFn` from
   `./browser/summary` module at the version the item pins, from the CDN that
   `esmCdnUrl` and `esmCdnProvider` name, so a host passes the item player's
   `loaderOptions`. Each URL loads once per page, and a version without the
-  module takes the prompt rung.
+  module takes the prompt rung. A load that fails because the CDN is
+  unreachable or answers 408, 429 or 5xx gives that row the prompt rung, and
+  the next row to resolve the URL retries, up to three times per page.
 
 A resolver that always returns `null` turns summarizers off:
 

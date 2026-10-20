@@ -321,6 +321,21 @@ Item card of a section player: renders an item's heading, `<pie-item-toolbar>` a
 		);
 	}
 
+	function itemPlayerScorer(): (() => Promise<false | unknown[]>) | null {
+		const scorer = (
+			playerNode as { provideScore?: () => Promise<false | unknown[]> } | null
+		)?.provideScore;
+		return typeof scorer === "function" ? () => scorer.call(playerNode) : null;
+	}
+
+	/**
+	 * The item player's `provideScore()`, for the pane's host-facing score; `false`
+	 * until the player has mounted.
+	 */
+	export async function provideScore(): Promise<false | unknown[]> {
+		return (await itemPlayerScorer()?.()) ?? false;
+	}
+
 	async function handleFormativeClick(): Promise<void> {
 		if (!formativeView?.enabled || checkPending) return;
 		checkFailed = false;
@@ -329,16 +344,14 @@ Item card of a section player: renders an item's heading, `<pie-item-toolbar>` a
 			return;
 		}
 		if (!formativeView.canCheck) return;
-		const scorer = (
-			playerNode as { provideScore?: () => Promise<false | unknown[]> } | null
-		)?.provideScore;
-		if (typeof scorer !== "function") {
+		const scorer = itemPlayerScorer();
+		if (!scorer) {
 			checkFailed = true;
 			return;
 		}
 		checkPending = true;
 		try {
-			const results = await scorer.call(playerNode);
+			const results = await scorer();
 			// `false` means the item has no models to score, which is exactly the
 			// `unknown` correctness case — the Try is real and gets recorded. A throw
 			// is an error rather than an unscorable item, so it costs no Try.

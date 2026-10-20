@@ -306,10 +306,12 @@ The layouts and the kernel host implement `SectionPlayerRuntimeHostContract`:
 | `navigateNext()`, `navigatePrevious()` | `boolean` | Moves one item; `false` when it cannot |
 | `getSectionController()` | `SectionControllerHandle \| null` | The current section's controller |
 | `waitForSectionController(timeoutMs = 5000)` | `Promise<SectionControllerHandle \| null>` | Resolves at once when the controller is resolvable, else at the next `toolkit-ready`, else at the timeout with the current lookup, which may be `null` |
+| `provideScore()` | `Promise<SectionItemScore[]>` | Scores every item in section order, each `{ canonicalItemId, outcomes }` with `outcomes` what the item's `<pie-item-player>` `provideScore()` returns, or `false` for an item whose player has not mounted |
 
 The methods exist from the moment the element is created. Until it mounts,
 `waitForSectionController` waits, `getSectionController()` returns `null`, the
-navigation methods return `false`, and `getSnapshot()` returns `null` on the
+navigation methods return `false`, `provideScore()` resolves `[]`, and
+`getSnapshot()` returns `null` on the
 stock layouts and the bootstrap snapshot (zero counts, no navigation) on the
 kernel host.
 
@@ -467,6 +469,11 @@ A response editor also commits when the learner pauses. `runtime.player.idleSave
 sets the pause for every embedded item player; unset leaves each element its own
 delay, and `0` commits on blur only
 ([Idle commit](../../docs/item-player/overview.md#idle-commit)).
+
+`runtime.player.addCorrectResponse: true` fills every embedded item player's
+session with the item's correct response, outside `evaluate` mode. Each one
+reaches the section session as a `session-changed`, so a host that persists
+sessions sets it only where nothing is saved, such as an authoring preview.
 
 ### Custom section controllers
 

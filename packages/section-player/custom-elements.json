@@ -738,6 +738,15 @@
 						},
 						{
 							"kind": "method",
+							"name": "provideScore",
+							"return": {
+								"type": {
+									"text": "Promise<SectionItemScore[]>"
+								}
+							}
+						},
+						{
+							"kind": "method",
 							"name": "waitForSectionController",
 							"parameters": [
 								{
@@ -1329,6 +1338,15 @@
 							"return": {
 								"type": {
 									"text": "SectionControllerHandle | null"
+								}
+							}
+						},
+						{
+							"kind": "method",
+							"name": "provideScore",
+							"return": {
+								"type": {
+									"text": "Promise<SectionItemScore[]>"
 								}
 							}
 						},
@@ -1993,6 +2011,15 @@
 						},
 						{
 							"kind": "method",
+							"name": "provideScore",
+							"return": {
+								"type": {
+									"text": "Promise<SectionItemScore[]>"
+								}
+							}
+						},
+						{
+							"kind": "method",
 							"name": "waitForSectionController",
 							"parameters": [
 								{
@@ -2622,6 +2649,15 @@
 						},
 						{
 							"kind": "method",
+							"name": "provideScore",
+							"return": {
+								"type": {
+									"text": "Promise<SectionItemScore[]>"
+								}
+							}
+						},
+						{
+							"kind": "method",
 							"name": "waitForSectionController",
 							"parameters": [
 								{
@@ -3095,6 +3131,16 @@
 							"default": "null",
 							"description": "Resolved cue state for this item, or null when the section is not timed media. The pane derives it; this card renders it.",
 							"attribute": "timed-media-view"
+						},
+						{
+							"kind": "method",
+							"name": "provideScore",
+							"description": "The item player's `provideScore()`, for the pane's host-facing score; `false` until the player has mounted.",
+							"return": {
+								"type": {
+									"text": "Promise<false | unknown[]>"
+								}
+							}
 						}
 					],
 					"attributes": [
@@ -3278,6 +3324,18 @@
 					"name": "SectionItemsPane",
 					"tagName": "pie-section-player-items-pane",
 					"customElement": true,
+					"members": [
+						{
+							"kind": "method",
+							"name": "provideScore",
+							"description": "Scores each item through its card, which owns the item player node. An item whose card or player has not mounted reports `false`.",
+							"return": {
+								"type": {
+									"text": "Promise<SectionItemScore[]>"
+								}
+							}
+						}
+					],
 					"events": [
 						{
 							"name": "framework-error",

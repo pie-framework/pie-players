@@ -16,12 +16,24 @@ export type SectionPlayerSnapshot = {
 	navigation: SectionPlayerNavigationSnapshot;
 };
 
+/** One item's local browser score, from {@link SectionPlayerRuntimeHostContract.provideScore}. */
+export type SectionItemScore = {
+	canonicalItemId: string;
+	/**
+	 * What the item's `<pie-item-player>` returned from `provideScore()`: one slot
+	 * per model, or `false` when the item has nothing to score.
+	 */
+	outcomes: false | Array<Record<string, unknown> | undefined>;
+};
+
 export interface SectionPlayerRuntimeHostContract {
 	getSnapshot(): SectionPlayerSnapshot;
 	navigateTo(index: number): boolean;
 	navigateNext(): boolean;
 	navigatePrevious(): boolean;
 	getSectionController(): SectionControllerHandle | null;
+	/** Scores every item the section renders, in section order. */
+	provideScore(): Promise<SectionItemScore[]>;
 	waitForSectionController(
 		timeoutMs?: number,
 	): Promise<SectionControllerHandle | null>;

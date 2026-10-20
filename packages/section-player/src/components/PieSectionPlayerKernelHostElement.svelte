@@ -92,6 +92,7 @@ Section player for a host that lays out the section itself: it runs the toolkit,
 		withHostMethods,
 	} from "./shared/layout-host-methods.js";
 	import type {
+		SectionItemScore,
 		SectionPlayerRuntimeHostContract,
 		SectionPlayerSnapshot,
 	} from "../contracts/runtime-host-contract.js";
@@ -156,6 +157,10 @@ Section player for a host that lays out the section itself: it runs the toolkit,
 
 	export function getSectionController() {
 		return kernelRef?.getSectionController?.() || null;
+	}
+
+	export function provideScore(): Promise<SectionItemScore[]> {
+		return kernelRef?.provideScore?.() ?? Promise.resolve([]);
 	}
 
 	// A host that places its own panes as children gets its layout; one that

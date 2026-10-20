@@ -67,3 +67,28 @@ test("Node and browser summaries are equal for the fixture items", async ({ page
 		new Set(["summary", "prompt", "label"]),
 	);
 });
+
+test("the built entry converts a summary's TeX to MathML in Node", async () => {
+	const { convertSummaryMath, isItemSummary } = (await import(
+		SUMMARIZE
+	)) as typeof import("../../src/summarize.js");
+	const converted = await convertSummaryMath({
+		schema: 1,
+		stem: "<p>Given \\(x^2\\)</p>",
+		entries: [
+			{
+				id: "1",
+				pkg: "@pie-element/multiple-choice",
+				source: "summary",
+				label: "Multiple Choice",
+				summary: { prompt: "<p>Solve \\(x^2 = 4\\)</p>", answer: "<p>\\(x = 2\\)</p>" },
+			},
+		],
+	});
+	const html = [converted.stem, converted.entries[0].summary.prompt, converted.entries[0].summary.answer];
+	for (const field of html) {
+		expect(field).toContain("<math");
+		expect(field).not.toContain("\\(");
+	}
+	expect(isItemSummary(converted)).toBe(true);
+});

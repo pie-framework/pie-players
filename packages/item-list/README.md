@@ -70,6 +70,22 @@ await summarizeItem(item, { role: "student", resolve: async () => null });
 ignoring unknown fields. `<pie-item-summary>` runs the same check on its
 `summary` property.
 
+### Server precompute
+
+A backend can compute a summary on item write, store it with the item and pass
+it to the row through `summary`. `convertSummaryMath` converts the TeX in every
+HTML field to MathML first, so the row loads no math converter:
+
+```ts
+import { convertSummaryMath, summarizeItem } from "@pie-players/pie-item-list/summarize";
+
+const summary = await convertSummaryMath(await summarizeItem(item, { role: "instructor" }));
+```
+
+Store the instructor summary: the row strips answers again for students. TeX
+the converter cannot read stays as authored, and the row converts it as it
+would an unconverted summary.
+
 ## `<pie-item-summary>`
 
 Importing the package registers `<pie-item-summary>` and
@@ -207,5 +223,5 @@ that hides passages leaves `passage` out of its entries.
 | Entry | Exports |
 | --- | --- |
 | `@pie-players/pie-item-list` | Registers `<pie-item-summary>` and `<pie-item-list>`. Exports the summary and list types, `PieItemSummaryElement` and `PieItemListElement`. Imports `@pie-players/pie-item-player` by bare specifier, on first expand |
-| `@pie-players/pie-item-list/summarize` | `summarizeItem`, `isItemSummary`, `bundledSummaries`, `pinnedSummaries` and the summary types. Node-safe |
+| `@pie-players/pie-item-list/summarize` | `summarizeItem`, `isItemSummary`, `convertSummaryMath`, `bundledSummaries`, `pinnedSummaries` and the summary types. Node-safe |
 | `@pie-players/pie-item-list/browser` | The self-contained browser build, with the item player as a chunk ([Loading from a CDN](../../docs/install/cdn.md#item-list-browser-build)) |

@@ -45,6 +45,7 @@
   type SummaryPart
   type SummaryResolver
   bundledSummaries
+  convertSummaryMath
   isItemSummary
   pinnedSummaries
   summarizeItem

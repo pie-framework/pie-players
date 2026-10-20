@@ -2,17 +2,18 @@
 
 Status: Draft, 2026-10-13
 
-Implementation status: slices 1 to 4 have landed in
+Implementation status: slices 1 to 5 have landed in
 [`@pie-players/pie-item-list`](../../packages/item-list/README.md):
 `summarizeItem`, `isItemSummary`, both resolvers with `bundledSummaries` as the
 default, `<pie-item-summary>` with its summary and player views and the
-page-wide scheduler, and `<pie-item-list>`. The bundled set covers 27 element
+page-wide scheduler, `<pie-item-list>`, and `convertSummaryMath` for backend
+precompute. The bundled set covers 27 element
 packages, Host R's previews included; it lives in pie-players until ng
 publishes `./summary` entries, which then replace it.
 pie-elements-ng owns the descriptor type and the per-element `./summary`
 entries; pie-players owns item-level summarization, the bundled summarizer set
-and the custom elements. Summary precompute in the PIE API backend is optional
-and unscheduled.
+and the custom elements. Wiring precompute into the PIE API backend is
+optional and unscheduled.
 
 Owner: PIE Players maintainers
 
@@ -357,6 +358,9 @@ elementary-math rewrite.
 `ItemSummary` on item write and serve it with the item. A row uses a summary
 only when the host passes one through `summary`, and never fetches one. This
 path is off by default, and nothing in the browser path depends on it.
+`convertSummaryMath` converts a summary's TeX to MathML before storage, so a
+row showing it loads no converter. The backend stores the instructor summary;
+the row strips answers for students.
 
 ## Host Fit
 

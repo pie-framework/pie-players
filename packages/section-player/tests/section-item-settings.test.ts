@@ -4,7 +4,7 @@
  * canonical id. A host composing `pie-item-scope` around its own item player
  * sets the same property, so both paths must reach the same decisions.
  */
-import { describe, expect, mock, spyOn, test } from "bun:test";
+import { describe, expect, spyOn, test } from "bun:test";
 import { ToolkitCoordinator } from "@pie-players/pie-assessment-toolkit";
 import type {
 	AssessmentSection,
@@ -15,9 +15,7 @@ import { SectionController } from "../src/controllers/SectionController";
 
 // Same reason as `section-player-view-state.test.ts`: the module graph reaches
 // the item-player custom-element bundle, which needs a DOM to define itself.
-mock.module("@pie-players/pie-item-player", () => ({
-	ensureItemPlayerMathRenderingReady: async () => undefined,
-}));
+await import("./support/item-player-load.js");
 
 const { getCanonicalItemId, getItemSettings } = await import(
 	"../src/components/shared/section-player-view-state"

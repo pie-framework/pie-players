@@ -54,7 +54,6 @@ export type SectionPlayerLayoutContext = {
 	resolvedPlayerProps: Record<string, unknown>;
 	playerStrategy: string;
 	baseHeadingLevel: HeadingLevel;
-	iifeBundleHost: string | null;
 	toolRegistry: ToolRegistry;
 	itemToolbarTools: string;
 	passageToolbarTools: string;

@@ -5,10 +5,10 @@
  * concurrent identical requests. This module:
  *
  *   1. Validates the PIE config contract for every renderable.
- *   2. Translates the host's player props into an ElementLoader backend
- *      config (IIFE or ESM).
- *   3. Pre-warms the aggregate element set with `ensureRegistered`, or asserts
- *      its registration under `strategy="preloaded"`.
+ *   2. Translates the host's player props into the item players' load
+ *      inputs, so the pre-warm loads what they load.
+ *   3. Pre-warms the aggregate element set with `preloadItemElements`, or
+ *      asserts its registration under `strategy="preloaded"`.
  *
  * It also shapes the `element-preload-retry` and `element-preload-error`
  * telemetry details.
@@ -20,27 +20,26 @@ import {
 	assertElementPackagesAllowed,
 	assertPieConfigContract,
 	assertRegistered,
-	BundleType,
 	defineAuthoredPreloadedTags,
 	type ElementMap,
-	type ElementPackagePolicy,
-	ensureRegistered,
 	type EsmBackendConfig,
-	type EsmCdnProvider,
 	type IifeBackendConfig,
 	type IifeBundleRetryStatus,
 	type ItemEntity,
 	type LoaderConfig,
 	createPieLogger,
-	DEFAULT_ESM_CDN_URL,
 	isGlobalDebugEnabled,
-	resolveEsmAssetRoot,
 	resolveInstrumentationProvider,
-	resolveLoadControllers,
-	toViewTag,
 	validatePieConfigContract,
 } from "@pie-players/pie-players-shared";
-import { ensureItemPlayerMathRenderingReady } from "@pie-players/pie-item-player";
+import type { ItemConfig } from "@pie-players/pie-players-shared/types";
+import {
+	type ItemElementLoadOptions,
+	type ItemPlayerLoadInputs,
+	itemPlayerBackend,
+	itemPlayerElementTags,
+	preloadItemElements,
+} from "@pie-players/pie-item-player";
 
 export type IifeBundleRetryStatusHandler = (
 	status: IifeBundleRetryStatus,
@@ -106,26 +105,6 @@ export class PreloadStageError extends Error {
 
 export function getPreloadLogger(componentTag: string) {
 	return createPieLogger(componentTag, () => isGlobalDebugEnabled());
-}
-
-function isAuthorMode(
-	props: Record<string, unknown>,
-	env: Record<string, unknown>,
-): boolean {
-	return (
-		String(props?.mode ?? "").toLowerCase() === "author" ||
-		env?.mode === "author"
-	);
-}
-
-/** The element view the item players render, which pre-warm has to match. */
-function getLoaderView(
-	props: Record<string, unknown>,
-	env: Record<string, unknown>,
-): string {
-	const view = (props?.loaderOptions as { view?: unknown } | undefined)?.view;
-	if (typeof view === "string" && view) return view;
-	return isAuthorMode(props, env) ? "author" : "delivery";
 }
 
 /**
@@ -213,103 +192,49 @@ function logRenderableConfigWarnings(
 }
 
 /**
- * Translate a section-player's resolved props into an `ElementLoader`
- * backend config. Throws when required host-supplied values (bundle host
- * for IIFE) are missing — callers should surface this as a preload error.
- *
- * `onBundleRetryStatus` is wired through to `IifeBackendConfig` for IIFE
- * strategy so hosts can render "bundle still building" UI while the
- * adapter polls the bundle service. ESM ignores it.
+ * The load inputs of the section's item players. Their `mode`, `hosted`,
+ * `loaderOptions` and `loaderConfig` come from the same resolved props, so the
+ * pre-warm loads the bundle, view and tags the players then find registered.
+ */
+function itemLoadInputs(
+	strategy: string,
+	props: Record<string, unknown>,
+): ItemPlayerLoadInputs {
+	return {
+		strategy:
+			strategy === "esm" || strategy === "preloaded" ? strategy : "iife",
+		loaderOptions: props?.loaderOptions as ItemPlayerLoadInputs["loaderOptions"],
+		loaderConfig: props?.loaderConfig as LoaderConfig | undefined,
+		mode: props?.mode === "author" ? "author" : "view",
+		hosted: props?.hosted === true,
+	};
+}
+
+function sectionLoadOptions(
+	props: Record<string, unknown>,
+	onBundleRetryStatus?: IifeBundleRetryStatusHandler,
+): ItemElementLoadOptions {
+	return {
+		instrumentationProvider: resolveInstrumentationProvider({
+			player: { loaderConfig: props?.loaderConfig as LoaderConfig | undefined },
+			component: "pie-section-player",
+		}),
+		onBundleRetryStatus,
+	};
+}
+
+/**
+ * The backend the section's pre-warm loads through, for telemetry; `null`
+ * under `strategy="preloaded"`.
  */
 export function buildBackendConfigFromProps(args: {
 	strategy: string;
 	resolvedPlayerProps: Record<string, unknown>;
-	resolvedPlayerEnv: Record<string, unknown>;
-	iifeBundleHost?: string | null;
-	onBundleRetryStatus?: IifeBundleRetryStatusHandler;
-}): IifeBackendConfig | EsmBackendConfig {
-	const loaderOptions = args.resolvedPlayerProps?.loaderOptions as
-		| Record<string, unknown>
-		| undefined;
-	// The item players read the same `loaderConfig`, so a pre-warm load reports
-	// to the host's telemetry and retries as theirs do.
-	const loaderConfig = args.resolvedPlayerProps?.loaderConfig as
-		| LoaderConfig
-		| undefined;
-	const instrumentation = {
-		trackPageActions: loaderConfig?.trackPageActions,
-		instrumentationProvider: resolveInstrumentationProvider({
-			player: { loaderConfig },
-			component: "pie-section-player",
-		}),
-	};
-
-	if (args.strategy === "esm") {
-		const esmCdnProvider = readEsmCdnProvider(loaderOptions?.esmCdnProvider);
-		const view = getLoaderView(
-			args.resolvedPlayerProps,
-			args.resolvedPlayerEnv,
-		);
-		return {
-			kind: "esm",
-			cdnBaseUrl: String(loaderOptions?.esmCdnUrl || DEFAULT_ESM_CDN_URL),
-			cdnProvider: esmCdnProvider,
-			moduleResolution:
-				loaderOptions?.moduleResolution === "import-map" ? "import-map" : "url",
-			view,
-			loadControllers: resolveLoadControllers({
-				loadControllers:
-					typeof loaderOptions?.loadControllers === "boolean"
-						? loaderOptions.loadControllers
-						: undefined,
-				author: isAuthorMode(args.resolvedPlayerProps, args.resolvedPlayerEnv),
-				hosted: args.resolvedPlayerProps?.hosted === true,
-			}),
-			...instrumentation,
-		};
-	}
-
-	const bundleHost = String(
-		loaderOptions?.bundleHost || args.iifeBundleHost || "",
-	).trim();
-	if (!bundleHost) {
-		throw new Error("Missing iifeBundleHost for element preloading");
-	}
-
-	const bundleType: BundleType = isAuthorMode(
-		args.resolvedPlayerProps,
-		args.resolvedPlayerEnv,
-	)
-		? BundleType.editor
-		: args.resolvedPlayerProps?.hosted === true
-			? BundleType.player
-			: BundleType.clientPlayer;
-
-	return {
-		kind: "iife",
-		bundleHost,
-		bundleType,
-		// A hosted player's server runs the controllers.
-		needsControllers: bundleType !== BundleType.player,
-		bundleRetry: loaderConfig?.iifeBundleRetry,
-		onBundleRetryStatus: args.onBundleRetryStatus,
-		...instrumentation,
-	};
-}
-
-function readEsmCdnProvider(
-	value: unknown,
-): EsmBackendConfig["cdnProvider"] | undefined {
-	if (typeof value === "string") return value;
-	if (!value || typeof value !== "object") return undefined;
-	const candidate = value as Partial<Record<keyof EsmCdnProvider, unknown>>;
-	return typeof candidate.name === "string" &&
-		typeof candidate.packageJsonUrl === "function" &&
-		typeof candidate.browserViewUrl === "function" &&
-		typeof candidate.browserControllerUrl === "function" &&
-		typeof candidate.sharedDependencyUrl === "function"
-		? (value as NonNullable<EsmBackendConfig["cdnProvider"]>)
-		: undefined;
+}): IifeBackendConfig | EsmBackendConfig | null {
+	return itemPlayerBackend(
+		itemLoadInputs(args.strategy, args.resolvedPlayerProps),
+		sectionLoadOptions(args.resolvedPlayerProps),
+	);
 }
 
 /**
@@ -348,8 +273,7 @@ export function describeBundleHost(
  *   `ElementAssertionError` (wrapped in `PreloadStageError` with stage
  *   `"preloaded-assert"`) on any missing tag, surfacing one section-level
  *   diagnostic instead of N small per-item rejections.
- * - Otherwise: aggregate tags, build backend, install the math renderer
- *   unless the strategy is ESM, await `ensureRegistered`.
+ * - Otherwise: `preloadItemElements` with the item players' load inputs.
  *
  * On any validation or load failure, rejects with a descriptive Error.
  * The caller (`SectionItemsPane`) keeps the items unmounted, reports an
@@ -359,8 +283,6 @@ export async function warmupSectionElements(args: {
 	strategy: string;
 	renderables: ItemEntity[];
 	resolvedPlayerProps: Record<string, unknown>;
-	resolvedPlayerEnv: Record<string, unknown>;
-	iifeBundleHost?: string | null;
 	logger?: ReturnType<typeof createPieLogger>;
 	onBundleRetryStatus?: IifeBundleRetryStatusHandler;
 }): Promise<void> {
@@ -376,32 +298,18 @@ export async function warmupSectionElements(args: {
 
 	if (args.renderables.length === 0) return;
 
-	const elementPackagePolicy = (
-		args.resolvedPlayerProps?.loaderOptions as
-			| { elementPackagePolicy?: ElementPackagePolicy }
-			| undefined
-	)?.elementPackagePolicy;
+	const inputs = itemLoadInputs(args.strategy, args.resolvedPlayerProps);
 
-	if (args.strategy === "preloaded") {
+	if (inputs.strategy === "preloaded") {
 		try {
 			const elements: ElementMap = aggregateElements(
 				args.renderables.map(alignRenderableVersions),
 			);
-			assertElementPackagesAllowed(elements, elementPackagePolicy);
-			const view = getLoaderView(
-				args.resolvedPlayerProps,
-				args.resolvedPlayerEnv,
+			assertElementPackagesAllowed(
+				elements,
+				inputs.loaderOptions?.elementPackagePolicy,
 			);
-			// The author view registers each element's editor under `<tag>-config`.
-			const expected: ElementMap =
-				view === "author"
-					? Object.fromEntries(
-							Object.entries(elements).map(([tag, spec]) => [
-								toViewTag(tag, "author"),
-								spec,
-							]),
-						)
-					: elements;
+			const expected = itemPlayerElementTags(elements, inputs);
 			defineAuthoredPreloadedTags(expected);
 			assertRegistered(expected);
 		} catch (error) {
@@ -410,36 +318,18 @@ export async function warmupSectionElements(args: {
 		return;
 	}
 
-	const elements: ElementMap = aggregateElements(args.renderables);
-
-	const backend = buildBackendConfigFromProps({
-		strategy: args.strategy,
-		resolvedPlayerProps: args.resolvedPlayerProps,
-		resolvedPlayerEnv: args.resolvedPlayerEnv,
-		iifeBundleHost: args.iifeBundleHost,
-		onBundleRetryStatus: args.onBundleRetryStatus,
-	});
-
-	const loadStage: PreloadStage =
-		args.strategy === "esm" ? "esm-load" : "iife-load";
-
 	try {
-		// IIFE bundles read the math renderer as they evaluate; ESM builds bring
-		// their own. Its speech rules come from the configured ESM CDN.
-		if (args.strategy === "iife") {
-			const loaderOptions = args.resolvedPlayerProps?.loaderOptions as
-				| Record<string, unknown>
-				| undefined;
-			await ensureItemPlayerMathRenderingReady({
-				assetRoot: resolveEsmAssetRoot({
-					cdnBaseUrl: String(loaderOptions?.esmCdnUrl || DEFAULT_ESM_CDN_URL),
-					cdnProvider: readEsmCdnProvider(loaderOptions?.esmCdnProvider),
-				}),
-			});
-		}
-		await ensureRegistered(elements, { backend, elementPackagePolicy });
+		await preloadItemElements(
+			// Their PIE config contract held above.
+			args.renderables.map((renderable) => renderable.config as ItemConfig),
+			inputs,
+			sectionLoadOptions(args.resolvedPlayerProps, args.onBundleRetryStatus),
+		);
 	} catch (error) {
-		throw new PreloadStageError(loadStage, error);
+		throw new PreloadStageError(
+			inputs.strategy === "esm" ? "esm-load" : "iife-load",
+			error,
+		);
 	}
 }
 

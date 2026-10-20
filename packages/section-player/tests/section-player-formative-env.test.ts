@@ -1,4 +1,4 @@
-import { describe, expect, mock, test } from "bun:test";
+import { describe, expect, test } from "bun:test";
 import type {
 	FormativeSectionProjection,
 	ResolvedFormativePolicy,
@@ -8,9 +8,7 @@ import type { SectionCompositionModel } from "../src/controllers/types";
 
 // Same reason as `section-player-view-state.test.ts`: the module graph reaches
 // the item-player custom-element bundle, which needs a DOM to define itself.
-mock.module("@pie-players/pie-item-player", () => ({
-	ensureItemPlayerMathRenderingReady: async () => undefined,
-}));
+await import("./support/item-player-load.js");
 
 const { getFormativeItemView, getItemPlayerParams } = await import(
 	"../src/components/shared/section-player-view-state"

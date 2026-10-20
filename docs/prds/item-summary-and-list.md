@@ -237,7 +237,8 @@ summarizer, or `null` for the prompt rung. Two resolvers ship:
 - **`pinnedSummaries(loaderOptions)`** imports `./browser/summary` at the
   pinned version from the CDN the item player's `esmCdnUrl` and
   `esmCdnProvider` name, deduplicated per URL across the page. A version that
-  predates its element's `./summary` drops to the prompt rung. The PIE API
+  predates its element's `./summary` drops to the prompt rung; a transient
+  CDN failure does too, for that row only. The PIE API
   backend rewrites `elements` to sanctioned versions on item read, so this
   resolver follows sanctioned versions with no extra configuration.
 

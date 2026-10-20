@@ -1,4 +1,4 @@
-import { afterAll, describe, expect, test } from "bun:test";
+import { afterAll, afterEach, describe, expect, test } from "bun:test";
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -59,6 +59,59 @@ describe("pinnedSummaries", () => {
 		expect(await resolve("pinned-c", "@pie-element/pinned-c@1.0.0")).toBeNull();
 		publish("@pie-element/pinned-c@1.0.0", "export const summarize = () => ({ prompt: 'c' });");
 		expect(await resolve("pinned-c", "@pie-element/pinned-c@1.0.0")).toBeNull();
+	});
+
+	describe("after a failed load", () => {
+		const realFetch = globalThis.fetch;
+		const probes: string[] = [];
+		/** Answers the HEAD probe for every URL with `status`, or fails as if offline when it is absent. */
+		function cdnAnswers(status?: number): void {
+			globalThis.fetch = (async (input: string | URL | Request) => {
+				probes.push(String(input));
+				if (status === undefined) throw new TypeError("Failed to fetch");
+				return new Response(null, { status });
+			}) as typeof fetch;
+		}
+		afterEach(() => {
+			globalThis.fetch = realFetch;
+			probes.length = 0;
+		});
+
+		test("retries a URL the CDN failed to serve, from a fresh URL", async () => {
+			cdnAnswers(503);
+			const resolve = pinnedSummaries(loaderOptions);
+			expect(await resolve("pinned-e", "@pie-element/pinned-e@1.0.0")).toBeNull();
+			publish("@pie-element/pinned-e@1.0.0", "export const summarize = () => ({ prompt: 'e' });");
+			const summarize = await resolve("pinned-e", "@pie-element/pinned-e@1.0.0");
+			expect(summarize?.({}, { role: "student" })).toEqual({ prompt: "e" });
+			expect(probes).toHaveLength(1);
+			expect(await resolve("pinned-e", "@pie-element/pinned-e@1.0.0")).toBe(summarize);
+		});
+
+		test("retries a URL while the CDN is unreachable", async () => {
+			cdnAnswers();
+			const resolve = pinnedSummaries(loaderOptions);
+			expect(await resolve("pinned-f", "@pie-element/pinned-f@1.0.0")).toBeNull();
+			expect(await resolve("pinned-f", "@pie-element/pinned-f@1.0.0")).toBeNull();
+			expect(probes[1]).toEndWith("?retry=1");
+		});
+
+		test("keeps a URL the CDN does not have", async () => {
+			cdnAnswers(404);
+			const resolve = pinnedSummaries(loaderOptions);
+			expect(await resolve("pinned-g", "@pie-element/pinned-g@1.0.0")).toBeNull();
+			expect(await resolve("pinned-g", "@pie-element/pinned-g@1.0.0")).toBeNull();
+			expect(probes).toHaveLength(1);
+		});
+
+		test("stops retrying after three transient failures", async () => {
+			cdnAnswers(503);
+			const resolve = pinnedSummaries(loaderOptions);
+			for (let attempt = 0; attempt < 5; attempt += 1) {
+				expect(await resolve("pinned-h", "@pie-element/pinned-h@1.0.0")).toBeNull();
+			}
+			expect(probes).toHaveLength(3);
+		});
 	});
 
 	test("returns null for a module that exports no summarize function", async () => {

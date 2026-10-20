@@ -5,7 +5,12 @@
 		"module": "NodeNext",
 		"moduleResolution": "NodeNext",
 		"types": ["vite/client"],
-		"composite": false
+		"composite": false,
+		"paths": {
+			"@pie-players/pie-players-shared/ui/interface-i18n": [
+				"../players-shared/src/ui/interface-i18n.svelte.ts"
+			]
+		}
 	},
 	"include": ["src/**/*.ts", "src/**/*.d.ts", "src/**/*.svelte"],
 	"exclude": ["node_modules", "dist"]

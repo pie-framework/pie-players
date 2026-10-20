@@ -141,7 +141,10 @@ An expanded row mounts `<pie-item-player>` for its item, with the row's
 instructors. The summary keeps showing until the player fires `load-complete`,
 then the player replaces it; collapsing unmounts the player and shows the
 summary again. The item player loads with the first expanded row, so a list
-that never expands loads no player code.
+that never expands loads no player code. Setting `config`, `summary`, `env`,
+`loaderOptions` or `loaderConfig` to an object with the same content keeps the
+summary and the loaded player: plain objects and arrays compare by content,
+functions and other objects by identity.
 
 All rows on a page share one scheduler:
 

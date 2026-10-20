@@ -152,6 +152,26 @@ describe("<pie-item-summary>", () => {
 		expect(element.querySelector(".pie-item-summary__answer")).toBeNull();
 	});
 
+	test("does not re-summarize for an equal config object, and does for a changed one", async () => {
+		let calls = 0;
+		const { element, loads } = await mount({
+			config,
+			resolve: async () => {
+				calls += 1;
+				return () => graded;
+			},
+		});
+		element.config = structuredClone(config);
+		await settle();
+		expect(calls).toBe(1);
+		expect(loads).toEqual([{ view: "summary" }]);
+
+		element.config = { ...config, markup: "<p>Changed</p><multiple-choice id=\"1\"></multiple-choice>" };
+		await settle();
+		expect(calls).toBe(2);
+		expect(element.querySelector(".pie-item-summary__stem")?.textContent).toBe("Changed");
+	});
+
 	test("lists grouped options under their group, in order of first appearance", async () => {
 		const { element } = await mount({
 			config,

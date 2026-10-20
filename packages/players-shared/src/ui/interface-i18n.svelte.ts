@@ -1,9 +1,11 @@
 /**
- * The interface locale of `<pie-item-list>` and `<pie-item-summary>`, resolved as `<pie-item-player>`
- * resolves its own. The `i18n` property's provider wins; without one, a provider is built here on
- * first use. `locale` drives whichever provider is in play, and with no `locale` a supplied
- * provider keeps the locale its owner set. A list hands its provider to every row, and a row to its
- * player, so a list of any length builds one.
+ * A custom element's interface locale, resolved as `<pie-item-player>` resolves its own. The `i18n`
+ * property's provider wins; without one, a provider is built here on first use. `locale` drives
+ * whichever provider is in play, and with no `locale` a supplied provider keeps the locale its
+ * owner set. An element that hands its provider to the elements it renders, as `<pie-item-list>`
+ * does to its rows and each row to its player, builds one for all of them.
+ *
+ * Source-only: a sibling resolves it through `svelte-source-aliases.ts`.
  */
 
 import {

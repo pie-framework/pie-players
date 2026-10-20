@@ -35,6 +35,7 @@ One PIE item as a list row: its stem, prompts, options and, for instructors, its
 	import type { I18nProvider } from "@pie-players/pie-players-shared/i18n";
 	import type { Env, ItemConfig } from "@pie-players/pie-players-shared/types";
 	import { coerceBooleanAttributes } from "@pie-players/pie-players-shared/ui/attribute-coercion";
+	import { useInterfaceI18n } from "@pie-players/pie-players-shared/ui/interface-i18n";
 	import { tick, untrack } from "svelte";
 	import {
 		loadItemPlayer,
@@ -48,13 +49,13 @@ One PIE item as a list row: its stem, prompts, options and, for instructors, its
 		summarizeItem,
 	} from "../summarize/summarize-item.js";
 	import { isItemSummary } from "../summarize/validate.js";
-	import { useInterfaceI18n } from "./interface-i18n.svelte.js";
 	import {
 		type RenderedBlock,
 		type RenderedOption,
 		type RenderedSummary,
 		renderSummary,
 	} from "./render.js";
+	import { keepEqual } from "./same-content.js";
 
 	let {
 		config,
@@ -82,6 +83,21 @@ One PIE item as a list row: its stem, prompts, options and, for instructors, its
 
 	const hostElement: HTMLElement = $host();
 
+	// An equal object set again keeps the previous one, so a host re-setting its rows' data neither
+	// re-summarizes a row nor remounts its player.
+	let kept: {
+		config?: ItemConfig;
+		summary?: ItemSummary;
+		env?: Env;
+		loaderOptions?: PlayerLoadInputs["loaderOptions"];
+		loaderConfig?: PlayerLoadInputs["loaderConfig"];
+	} = {};
+	const item = $derived((kept.config = keepEqual(kept.config, config)));
+	const precomputed = $derived((kept.summary = keepEqual(kept.summary, summary)));
+	const viewEnv = $derived((kept.env = keepEqual(kept.env, env)));
+	const playerOptions = $derived((kept.loaderOptions = keepEqual(kept.loaderOptions, loaderOptions)));
+	const playerConfig = $derived((kept.loaderConfig = keepEqual(kept.loaderConfig, loaderConfig)));
+
 	const interfaceI18n = useInterfaceI18n(hostElement, "pie-item-summary", () => ({ i18n, locale }));
 	const messages = $derived(interfaceI18n.messages);
 
@@ -90,20 +106,20 @@ One PIE item as a list row: its stem, prompts, options and, for instructors, its
 
 	// No `env` is the instructor view; an `env` whose role is not `instructor` withholds answers, as
 	// `summarizeItem` and the player do. A derived role re-renders on a role change alone.
-	const role = $derived(!env || env.role === "instructor" ? "instructor" : "student");
+	const role = $derived(!viewEnv || viewEnv.role === "instructor" ? "instructor" : "student");
 
 	$effect(() => {
 		const viewRole = role;
-		const precomputed = isItemSummary(summary) ? summary : null;
-		const item = config;
+		const stored = isItemSummary(precomputed) ? precomputed : null;
+		const source = item;
 		const resolver = resolve;
 		const run = ++generation;
 		void (async () => {
 			try {
-				const source =
-					precomputed ??
-					(item ? await summarizeItem(item, { role: viewRole, resolve: resolver }) : null);
-				const view = source ? await renderSummary(source, viewRole) : null;
+				const summarized =
+					stored ??
+					(source ? await summarizeItem(source, { role: viewRole, resolve: resolver }) : null);
+				const view = summarized ? await renderSummary(summarized, viewRole) : null;
 				if (run !== generation) return;
 				rendered = view;
 				if (!view) return;
@@ -128,17 +144,17 @@ One PIE item as a list row: its stem, prompts, options and, for instructors, its
 	let playerShown = $state(false);
 	let playerHost = $state<HTMLElement | undefined>();
 	let ticket: PlayerTicket | undefined;
-	const playerEnv = $derived(env ?? { mode: "view", role: "instructor" });
+	const playerEnv = $derived(viewEnv ?? { mode: "view", role: "instructor" });
 
 	$effect(() => {
-		if (!expanded || !config) return;
-		const item = config;
-		const inputs: PlayerLoadInputs = { strategy, loaderOptions, loaderConfig };
+		if (!expanded || !item) return;
+		const shown = item;
+		const inputs: PlayerLoadInputs = { strategy, loaderOptions: playerOptions, loaderConfig: playerConfig };
 		let open = true;
 		untrack(() => {
 			ticket = playerScheduler().request({
 				element: hostElement,
-				config: item,
+				config: shown,
 				inputs,
 				grant: () => {
 					loadItemPlayer().then(
@@ -289,11 +305,11 @@ One PIE item as a list row: its stem, prompts, options and, for instructors, its
 		bind:this={playerHost}
 	>
 		<pie-item-player
-			config={config}
+			config={item}
 			env={playerEnv}
 			strategy={strategy}
-			loaderOptions={loaderOptions}
-			loaderConfig={loaderConfig}
+			loaderOptions={playerOptions}
+			loaderConfig={playerConfig}
 			i18n={interfaceI18n.provider}
 			addCorrectResponse={role === "instructor"}
 		></pie-item-player>

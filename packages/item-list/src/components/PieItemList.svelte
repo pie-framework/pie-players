@@ -43,6 +43,7 @@ PIE items as a list of `<pie-item-summary>` rows, for a host with no list chrome
 	import type { I18nProvider } from "@pie-players/pie-players-shared/i18n";
 	import type { Env } from "@pie-players/pie-players-shared/types";
 	import { coerceBooleanAttributes } from "@pie-players/pie-players-shared/ui/attribute-coercion";
+	import { useInterfaceI18n } from "@pie-players/pie-players-shared/ui/interface-i18n";
 	import { tick, untrack } from "svelte";
 	import {
 		type ItemListEntry,
@@ -53,7 +54,6 @@ PIE items as a list of `<pie-item-summary>` rows, for a host with no list chrome
 	import { type RenderedHighlight, renderHighlights } from "../list/highlights.js";
 	import type { PlayerLoadInputs } from "../player/scheduler.js";
 	import type { SummaryResolver } from "../summarize/summarize-item.js";
-	import { useInterfaceI18n } from "./interface-i18n.svelte.js";
 	import "./PieItemSummary.svelte";
 
 	let {

@@ -290,7 +290,10 @@ is `instructor`. The summary stays visible until the player's `load-complete`
 and then swaps in place, so the row never collapses to empty. Every load has a
 timeout, which ends in `player-error` with the summary still showing.
 Collapsing unmounts the player; a later expand reuses the page's registered
-elements.
+elements. An input set again with equal content keeps the summary and the
+loaded player: plain objects and arrays compare by content, anything else by
+identity, so a host that rebuilds its entries on every search does not remount
+open rows.
 
 **Scheduling.** Player loads are scheduled page-wide inside the element:
 

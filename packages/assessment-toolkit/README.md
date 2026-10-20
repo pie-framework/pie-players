@@ -151,7 +151,10 @@ string and boolean attributes are `assessment-id`, `section-id`, `attempt-id`,
 - Runtime config on section-player custom elements: `runtime`
 - Toolkit-only object properties: `tools`, `toolRegistry`, `coordinator`,
   `accessibility`
-- Interface: `nds-icons`, `locale`
+- Interface: `nds-icons`, `locale`. The toolkit stamps `lang` and `dir` from
+  the interface locale on its own host element, never on the document, and it
+  answers `interfaceLocaleContext` (`@pie-players/pie-context`) from the same
+  locale for the PIE elements inside it, as `{ locale, direction }`
 - Diagnostics: `tool-config-strictness`, and `debug` on the section-player layouts. Framework-error
   delivery is via the `onFrameworkError` callback (a toolkit property,
   `runtime.onFrameworkError` on a section player) and the
@@ -538,8 +541,9 @@ tools: {
   calculator
 - **Annotation toolbar** (`annotationToolbar`): highlights and annotates
   selected text; it opens from a text selection, outside the toolbars
-- **Line reader** (`lineReader`), **ruler** (`ruler`), **protractor**
-  (`protractor`), **graph** (`graph`) and **periodic table** (`periodicTable`)
+- **Line reader** (`lineReader`), **magnifier** (`magnification`), **ruler**
+  (`ruler`), **protractor** (`protractor`), **graph** (`graph`) and **periodic
+  table** (`periodicTable`)
 - **Dictionaries** (`dictionary`, `pictureDictionary`, `dictionarySpanish`,
   `pictureDictionarySpanish`)
 
@@ -575,6 +579,7 @@ tools: {
 - **Protractor** (`protractor`): angle measurement
 - **Ruler** (`ruler`): linear measurement (metric and imperial)
 - **Line reader** (`lineReader`): reading guide and masking overlay
+- **Magnifier** (`magnification`): movable magnifying lens
 - **Dictionaries** (`dictionary`, `pictureDictionary`, `dictionarySpanish`,
   `pictureDictionarySpanish`)
 - **The color-scheme tool** (`theme`): high-contrast color schemes; it also
@@ -668,9 +673,12 @@ providers: {
 }
 ```
 
-Select the bundled open-source implementation in the same way. It uses no API
-key or runtime network request and supports basic, scientific, and focused
-graphing modes:
+The bundled open-source implementation uses no API key or runtime network
+request and supports basic, scientific, and focused graphing modes. It is
+outside the packaged set, so the host first adds it with
+`createCalculatorToolRegistration`
+([Adding a backend](../default-tool-loaders/README.md#adding-a-backend)) and then
+selects it in the same way:
 
 ```typescript
 providers: {
@@ -922,7 +930,7 @@ export interface ToolkitCoordinatorConfig {
       calculator?: {
         enabled?: boolean;
         provider?: {
-          id?: 'calculator-desmos' | 'calculator-geogebra' | 'calculator-cortex';
+          id?: string;  // 'calculator-desmos' (default), 'calculator-geogebra', or a composed-in backend
           init?: Record<string, unknown>;
           runtime?: {
             authFetcher?: () => Promise<Record<string, unknown>>;

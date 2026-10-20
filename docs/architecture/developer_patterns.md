@@ -113,8 +113,8 @@ const unsubscribe = () => {
 // `getSectionController` is keyed by `(sectionId, attemptId)`, so it also
 // reads state from inactive (persisted) sections.
 const runtimeState = coordinator
-  .getSectionController?.({ sectionId, attemptId })
-  ?.getRuntimeState?.();
+  .getSectionController({ sectionId, attemptId })
+  .getRuntimeState();
 ```
 
 #### Host boundary events
@@ -162,8 +162,7 @@ Rebuild and boundary-check rules for custom element changes live in [`AGENTS.md`
 
 - Shared types live with their canonical owner. New symbols take no `I*` prefix, write acronyms as Pascal words (`Pnp`, `Pie`, `Tts`), name booleans `is*`/`has*`/`can*`/`should*`, and name events `*-changed` for post-state and `*-change` for intent; type-only imports use `import type`.
 - Use the canonical API names from `@pie-players/pie-assessment-toolkit` in docs and examples: `ToolCoordinatorApi`, `ToolkitCoordinatorApi`, `TtsServiceApi`, and `ToolProviderApi` from its `tools/registration` entry.
-- A contract interface takes no type parameter that appears only in argument position: method parameters compare bivariantly, so such a parameter constrains nothing. A provider narrows its config in its own method signatures ([ADR 0002](../adr/0002-provider-contracts-are-not-parameterized-by-config.md)).
-- A package that is only a dev dependency, or an optional peer, is named only inside function bodies. Declaration emit keeps `implements` clauses and public return types, so a top-level `import type` of it lands in the published `.d.ts` and breaks consumers type-checking without `skipLibCheck` ([ADR 0002](../adr/0002-provider-contracts-are-not-parameterized-by-config.md#consequences)).
+- Provider contracts follow [ADR 0002](../adr/0002-provider-contracts-are-not-parameterized-by-config.md): no type parameter that appears only in argument position, and an optional peer is named only inside function bodies, never in published declarations.
 - Re-export shared contracts instead of re-defining near-identical shapes in multiple packages.
 - For cross-package constants (for example layering/z-index enums), import from the canonical package owner and re-export locally only when needed for consumer convenience.
 

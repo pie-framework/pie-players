@@ -18,7 +18,7 @@ const assessment: AssessmentEntity = {
 	personalNeedsProfile: {
 		supports: [
 			"textToSpeech",
-			"magnification",
+			"keywordEmphasis",
 			"annotationToolbar",
 			"lineReader",
 			"calculator",
@@ -79,9 +79,9 @@ describe("PNP_CONFIGURATION.md complete example", () => {
 
 			expect(
 				coordinator.getPolicyInputs().diagnostics.map((d) => [d.code, d.toolId]),
-			).toEqual([["tool-policy.unknownSupportId", "magnification"]]);
+			).toEqual([["tool-policy.unknownSupportId", "keywordEmphasis"]]);
 			expect(reported.map((d) => [d.code, d.level, d.toolId])).toEqual([
-				["tool-policy.unknownSupportId", undefined, "magnification"],
+				["tool-policy.unknownSupportId", undefined, "keywordEmphasis"],
 				["tool-policy.itemSettingNotApplied", "passage", "textToSpeech"],
 			]);
 		} finally {

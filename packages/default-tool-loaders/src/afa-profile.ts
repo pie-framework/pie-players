@@ -35,11 +35,22 @@ export interface AfaSpoken {
 /** A set's features: empty elements keyed by feature, or the feature names. */
 export type AfaFeatureSet = Readonly<Record<string, unknown>> | readonly string[];
 
+/** AfA's `ZoomAmount`: a magnification multiplier. */
+export interface AfaZoomAmount {
+	"zoom-amount"?: number;
+}
+
 /** An AfA PNP 3.0 record in JSON. A feature is present unless absent, `null` or `false`. */
 export interface AfaPnpRecord {
 	spoken?: AfaSpoken;
 	"calculator-on-screen"?: { "calculator-type"?: string; [setting: string]: unknown };
 	"sign-language"?: { language?: string; [setting: string]: unknown };
+	/** One selection: the amount for all content, or for text and non-text apart. */
+	magnification?: {
+		"all-content"?: AfaZoomAmount;
+		selectMagnification?: { text?: AfaZoomAmount; "non-text"?: AfaZoomAmount };
+		[setting: string]: unknown;
+	};
 	"activate-at-initialization-set"?: AfaFeatureSet;
 	"activate-as-option-set"?: AfaFeatureSet;
 	"prohibit-set"?: AfaFeatureSet;
@@ -115,6 +126,21 @@ function spokenParameters(
 	};
 }
 
+/**
+ * The lens's starting zoom. The lens magnifies text and non-text alike, so a
+ * record that sets them apart gives the text amount, else the non-text one.
+ */
+function magnifierZoom(
+	magnification: AfaPnpRecord["magnification"],
+): number | undefined {
+	const select = magnification?.selectMagnification;
+	return (
+		finiteNumber(magnification?.["all-content"]?.["zoom-amount"]) ??
+		finiteNumber(select?.text?.["zoom-amount"]) ??
+		finiteNumber(select?.["non-text"]?.["zoom-amount"])
+	);
+}
+
 /** A fresh profile carrying `record`'s grants, prohibitions and settings, ids sorted. */
 export function createPersonalNeedsProfileFromAfa(
 	record: AfaPnpRecord,
@@ -166,6 +192,10 @@ export function createPersonalNeedsProfileFromAfa(
 	const signLang = record["sign-language"]?.language;
 	if (typeof signLang === "string" && signLang.length > 0) {
 		toolParameters.signLanguage = { signLang };
+	}
+	const zoom = magnifierZoom(record.magnification);
+	if (zoom !== undefined && zoom > 1) {
+		toolParameters.magnification = { zoom };
 	}
 
 	return {

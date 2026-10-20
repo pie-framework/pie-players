@@ -60,7 +60,7 @@ bun run dev:section                # section demos
 bun run test
 ```
 
-Contributors need Bun 1.3.11 and Node 22.16 (`.nvmrc`); the [demo system](docs/setup/demo_system.md#prerequisites) lists the rest of the toolchain. [Environment setup](docs/setup/environment-setup.md) covers the demos' environment variables and [releasing](docs/setup/publishing.md) the release workflow.
+Contributors need Bun 1.3.11 and Node 24.22 (`.nvmrc`); the [demo system](docs/setup/demo_system.md#prerequisites) lists the rest of the toolchain. [Environment setup](docs/setup/environment-setup.md) covers the demos' environment variables and [releasing](docs/setup/publishing.md) the release workflow.
 
 ## License
 

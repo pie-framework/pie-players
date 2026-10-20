@@ -29,6 +29,7 @@ import type {
 	ToolParametersFor,
 } from "@pie-players/pie-players-shared/types";
 import { settleAll } from "@pie-players/pie-players-shared/promise";
+import type { FeatureDecisionAppliedDetail } from "@pie-players/pie-context";
 import {
 	type CanonicalToolsConfig,
 	type ToolPlacementConfig,
@@ -98,6 +99,7 @@ import {
 	type ToolPolicyDiagnostic,
 	type ToolScope,
 } from "../policy/engine.js";
+import { supportConflictDiagnostic } from "../policy/core/compose-decision.js";
 import type {
 	SectionControllerContext,
 	SectionControllerEvent,
@@ -3020,6 +3022,35 @@ export class ToolkitCoordinator {
 			);
 		}
 		return decision;
+	}
+
+	/**
+	 * Hear that an item player applied a feature decision to its item's models.
+	 * A `support-conflict` hold that displaced the player's attribute or the
+	 * item's authored setting raises `tool-policy.supportConflict`, as a
+	 * conflict that displaced a granting rule already did when it was decided.
+	 * Every other block was recorded by a person and raises nothing.
+	 */
+	reportFeatureDecisionApplied(
+		detail: FeatureDecisionAppliedDetail,
+		scope: ToolScope,
+	): void {
+		if (
+			detail.granted ||
+			detail.rule !== "support-conflict" ||
+			(detail.overrode !== "attribute" && detail.overrode !== "authored")
+		) {
+			return;
+		}
+		const decision = this.policyEngine.decideFeature(detail.featureId, scope);
+		if (decision.rule !== "support-conflict" || !decision.withheldBy) return;
+		this.warnPolicyDiagnostics([
+			supportConflictDiagnostic(
+				detail.featureId,
+				decision.withheldBy,
+				detail.overrode,
+			),
+		]);
 	}
 
 	/**

@@ -61,7 +61,7 @@ const assessment: AssessmentEntity = {
     // Supports granted to this student, by tool id
     supports: [
       "textToSpeech",
-      "magnification",     // No packaged tool; reported as an unknown support id
+      "magnification",
       "calculator",
       "annotationToolbar",
       "lineReader"
@@ -224,7 +224,19 @@ A student's screen reader speaks the page, so PIE's own speech would talk over i
 
 `screenReader` resolves by the same rungs as any id: a district block, a `false` override, an item restriction or a prohibition withdraws it, and then nothing is withheld. A district block, a `false` override or an item restriction of `textToSpeech` outranks the conflict and keeps its own rule.
 
-A conflict that withdraws something raises `tool-policy.supportConflict`, whose details name the `support` and `servedBy`: `placement` for a placed tool no rule granted, or the rule that would have granted it. A toolbar decision reports a tool its level placed and the host gates kept; a feature decision reports a displaced grant. It replaces `tool-policy.overrideBlocked` for a `true` override the conflict withdraws. An id nothing would have served raises none.
+A conflict that withdraws something raises `tool-policy.supportConflict`, whose details name the `support` and `servedBy`: `placement` for a placed tool no rule granted, the rule that would have granted it, or, for `autoplayAudio`, `attribute` or `authored` when the hold displaced the item player's `autoplay-audio-enabled` or the item's authored `autoplayAudioEnabled`. A toolbar decision reports a tool its level placed and the host gates kept; a feature decision reports a displaced grant; an item player's hold reports what it displaced when the item renders. It replaces `tool-policy.overrideBlocked` for a `true` override the conflict withdraws. An id nothing would have served raises none.
+
+### Item autoplay
+
+`autoplayAudio` is decided per item, by the rungs above and the host gates, as any feature is ([Audio Autoplay Policy](../../../docs/prds/audio-autoplay-policy.md)). `<pie-item-scope>` gives the decision to the item player inside it, which writes it onto the item's delivery models before the elements render: a block holds the audio as `autoplayAudioHeld: true`, a grant writes `autoplayAudioEnabled: true`, and no rule (`rule: "none"`) leaves the attribute and the authored value. A change re-renders the item. Author mode receives neither the decision nor the attribute.
+
+```typescript
+// On across the assessment; held on a reading item whose construct excludes audio.
+assessment.settings = { districtPolicy: { requiredTools: ["autoplayAudio"] } };
+itemScope.settings = { restrictedTools: ["autoplayAudio"] };
+```
+
+`tools.policy.blocked` and `tools.policy.allowed` accept `autoplayAudio`, and a non-empty allowlist that omits it holds autoplay for every item. An element version that does not read `autoplayAudioHeld` autoplays as authored.
 
 ### Activation at start
 
@@ -286,7 +298,7 @@ const assessment: AssessmentEntity = {
   personalNeedsProfile: {
     supports: [
       "textToSpeech",
-      "magnification",
+      "keywordEmphasis",
       "annotationToolbar",
       "lineReader",
       "calculator"
@@ -339,7 +351,7 @@ console.log('Allowed tools:', allowedToolIds);
 // - calculator: Blocked by district policy (#1)
 // - textToSpeech: Restricted for this item (#3), which outranks the district requirement (#7)
 // - annotationToolbar: Placed at item level and granted by the profile
-// - magnification: No tool is registered under it; the coordinator's
+// - keywordEmphasis: No tool is registered under it; the coordinator's
 //   `getPolicyInputs().diagnostics` carries a `tool-policy.unknownSupportId`
 // - lineReader: Granted, but this configuration places it at passage level only
 // - The passage toolbar still shows textToSpeech: item settings reach only the
@@ -475,10 +487,11 @@ Each AfA feature's disposition:
 | `calculator-on-screen` | `calculator`. `calculator-type` `basic`, `scientific` or `graphing` is its `type`; `standard` and `ext:` types leave the calculator's default |
 | `sign-language` | `signLanguage`, served once the host registers `@pie-players/pie-tool-sign-language`. `language` is its `signLang` |
 | `line-reader` | `lineReader`. The line reader takes no settings, so `highlight-color` is not read; its colors are the `--pie-tool-line-reader-*` custom properties |
+| `magnification` | `magnification`, served by `@pie-players/pie-tool-magnifier`. `all-content`'s `zoom-amount` above 1 is its starting `zoom`, the learner changing it from there. The lens magnifies text and non-text alike, so a `selectMagnification` record gives it the `text` amount, else the `non-text` one |
 | `answer-masking`, `dictionary-on-screen`, `transcript` | `answerEliminator`, `dictionary`, `transcript` |
 | `activate-at-initialization-set`, `activate-as-option-set`, `prohibit-set` | Read as above |
 | `text-appearance`, `high-contrast`, `invert-display-polarity` | The host's presentation, through `<pie-theme>`; the color-scheme tool (`theme`) lets the learner pick a scheme. Passed through camelCased |
-| `magnification`, `layout-single-column` | No packaged tool; browser zoom and the host's layout serve them. Passed through camelCased |
+| `layout-single-column` | No packaged tool; the host's layout serves it. Passed through camelCased |
 | `additional-testing-time`, `environment` | Administration the host runs. Passed through camelCased |
 | `language-of-interface` | The player's `locale`. Not read |
 | `access-mode-required`, `adaptation-type-required`, `adaptation-detail-required`, `adaptation-media-required`, `at-interoperable`, `educational-complexity-of-adaptation`, `educational-level-of-adaptation`, `hazard-avoidance`, `input-requirements`, `language-of-adaptation` | Not read: they select among adapted resources by resource metadata, which PIE content does not carry |

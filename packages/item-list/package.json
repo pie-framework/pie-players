@@ -1,0 +1,76 @@
+{
+	"name": "@pie-players/pie-item-list",
+	"version": "1.0.0-beta.3",
+	"type": "module",
+	"description": "Readable summaries of PIE items for item banks, search results and outlines, rendered without loading element code",
+	"license": "MIT",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/pie-framework/pie-players.git",
+		"directory": "packages/item-list"
+	},
+	"publishConfig": {
+		"access": "public"
+	},
+	"keywords": [
+		"pie",
+		"assessment",
+		"item-bank",
+		"summary",
+		"web-components",
+		"custom-elements"
+	],
+	"unpkg": "./dist/pie-item-list.js",
+	"jsdelivr": "./dist/pie-item-list.js",
+	"main": "./dist/pie-item-list.js",
+	"types": "./dist/pie-item-list.d.ts",
+	"exports": {
+		".": {
+			"types": "./dist/pie-item-list.d.ts",
+			"import": "./dist/pie-item-list.js"
+		},
+		"./summarize": {
+			"types": "./dist/summarize.d.ts",
+			"import": "./dist/summarize.js"
+		}
+	},
+	"customElements": "custom-elements.json",
+	"files": [
+		"dist",
+		"custom-elements.json"
+	],
+	"scripts": {
+		"build": "vite build",
+		"dev": "vite build --watch",
+		"test": "bun test",
+		"typecheck": "tsc --noEmit && tsc -p tsconfig.tests.json",
+		"check": "svelte-check --tsconfig ./tsconfig.json",
+		"lint": "biome lint ."
+	},
+	"dependencies": {
+		"@pie-element/shared-types": "0.2.2",
+		"@pie-players/pie-players-shared": "workspace:*"
+	},
+	"devDependencies": {
+		"@biomejs/biome": "^2.5.15",
+		"@happy-dom/global-registrator": "^20.14.5",
+		"@pie-element/shared-math-rendering-mathjax": "0.1.7",
+		"@playwright/test": "^1.64.1",
+		"@sveltejs/vite-plugin-svelte": "^7.3.1",
+		"@types/node": "^26.6.5",
+		"esbuild": "^0.28.2",
+		"svelte": "^5.57.2",
+		"svelte-check": "^4.7.6",
+		"typescript": "^5.9.3",
+		"vite": "^8.3.3",
+		"vite-plugin-dts": "^5.1.2"
+	},
+	"homepage": "https://github.com/pie-framework/pie-players/tree/master/packages/item-list#readme",
+	"bugs": {
+		"url": "https://github.com/pie-framework/pie-players/issues"
+	},
+	"engines": {
+		"node": ">=20.0.0"
+	},
+	"sideEffects": true
+}

@@ -8,6 +8,7 @@
  */
 export * from "./pie-section-player.js";
 export {
+	createCalculatorToolRegistration,
 	createPackagedToolRegistry,
 	DEFAULT_TOOL_MODULE_LOADERS,
 } from "@pie-players/pie-default-tool-loaders";

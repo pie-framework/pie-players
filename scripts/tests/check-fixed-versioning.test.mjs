@@ -253,6 +253,64 @@ describe("classifyPublishedSequence — bootstrapped newcomer catching up", () =
 	});
 });
 
+describe("classifyPublishedSequence — reclaimed name", () => {
+	/** The magnifier's shape: 0.1.x releases from a removed package under the same name. */
+	const group = { a: "1.0.0-beta.3", b: "1.0.0-beta.3" };
+	const olderMajor = ["0.1.1", "0.1.8"];
+
+	test("one bootstrap release on the group's major publishes with the group", () => {
+		const result = classifyPublishedSequence({
+			localVersion: "1.0.0-beta.4",
+			publishedVersionMap: publishedMap({ ...group, reclaimed: "1.0.0-beta.2" }),
+			publishedHistoryMap: new Map([
+				["reclaimed", [...olderMajor, "1.0.0-beta.2"]],
+			]),
+		});
+		expect(result.verdict).toBe("ok");
+		expect(result.catchingUp).toEqual([
+			{ name: "reclaimed", version: "1.0.0-beta.2" },
+		]);
+	});
+
+	test("before its bootstrap the release stops and names the reclaim", () => {
+		const result = classifyPublishedSequence({
+			localVersion: "1.0.0-beta.4",
+			publishedVersionMap: publishedMap({ ...group, reclaimed: "0.1.8" }),
+			publishedHistoryMap: new Map([["reclaimed", olderMajor]]),
+		});
+		expect(result.verdict).toBe("stop");
+		expect(result.message).toContain(
+			"bun run bootstrap-package -- --only reclaimed",
+		);
+	});
+
+	test("repeated releases on the group's major are drift, whatever came before", () => {
+		const result = classifyPublishedSequence({
+			localVersion: "1.0.0-beta.4",
+			publishedVersionMap: publishedMap({ ...group, reclaimed: "1.0.0-beta.2" }),
+			publishedHistoryMap: new Map([
+				["reclaimed", [...olderMajor, "1.0.0-beta.1", "1.0.0-beta.2"]],
+			]),
+		});
+		expect(result.verdict).toBe("stop");
+		expect(result.message).not.toContain("bootstrap-package");
+	});
+
+	test("a group opening a new major is not told to reclaim a lagging member", () => {
+		const result = classifyPublishedSequence({
+			localVersion: "1.0.0-beta.0",
+			publishedVersionMap: publishedMap({
+				a: "0.3.75",
+				b: "0.3.75",
+				lagging: "0.3.70",
+			}),
+			publishedHistoryMap: new Map([["lagging", ["0.3.69", "0.3.70"]]]),
+		});
+		expect(result.verdict).toBe("stop");
+		expect(result.message).not.toContain("bootstrap-package");
+	});
+});
+
 describe("compareSemver", () => {
 	const sorted = (versions) =>
 		versions

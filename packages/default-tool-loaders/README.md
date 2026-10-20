@@ -5,9 +5,9 @@ they load, and which of them a program grants to everyone. This README is for
 host integrators choosing a tool set and a calculator, and for contributors
 adding a packaged capability.
 
-The package owns the concrete `pie-tool-*` dependencies and the calculator
-engines (`pie-calculator-cortex`, `-desmos` and `-geogebra`), so toolkit core
-stays dependency-light and cycle-safe. Core knows the concepts — support ids,
+The package owns the concrete `pie-tool-*` dependencies and the Desmos and
+GeoGebra calculator adapters (`pie-calculator-desmos` and `-geogebra`), so
+toolkit core stays dependency-light and cycle-safe. Core knows the concepts — support ids,
 placement levels, activation kinds and precedence rules — and no concrete
 capability id. A support id is the tool id a profile grants.
 
@@ -15,6 +15,7 @@ capability id. A support id is the tool id a profile grants.
 | --- | --- |
 | `PACKAGED_TOOL_REGISTRATIONS`, `createPackagedToolRegistry` | Which capabilities exist, and their toolbar and surface contracts |
 | `PACKAGED_TOOL_TAG_MAP` | Which custom element each one renders as |
+| `createCalculatorToolRegistration` | Which calculator backends `provider.id` selects among |
 | `SECTION_PLAYER_PREFERRED_TOOL_PLACEMENT` | Where they appear and in what order |
 | `createUniversalPersonalNeedsProfile`, `createEmptyPersonalNeedsProfile` | Which of them the program grants to everyone, or to no one |
 | `createPersonalNeedsProfileFromAfa` | Which of them a student's AfA PNP 3.0 record grants, prohibits and turns on at start, and with which settings |
@@ -58,15 +59,8 @@ Desmos is the provider when none is configured, and it needs an API key: pass
 it through `provider.runtime.authFetcher`, a `provider.init.proxyEndpoint` that
 returns it, or `provider.init.apiKey` in development
 ([Calculator with host auth](../../docs/tools-and-accomodations/tool_provider_system.md#calculator-with-host-auth)).
-Without one the calculator fails to load. For a keyless, offline-capable
-calculator with no runtime CDN, use `provider.id: "calculator-cortex"`. Its
-`settings` take the `CortexCalculatorSettings` type that
-`@pie-players/pie-calculator-cortex` exports: `angleMode`,
-`calculationPrecision`, `displayPrecision`, `historyLimit`,
-`evaluationTimeLimitMs`, `allowedFunctions`, `allowClipboard`, `messages`,
-`direction` and `graph`. Clipboard blocking follows `restrictedMode`;
-`allowClipboard` alone blocks nothing. The [Cortex README](../calculator-cortex/README.md)
-covers localization, message overrides and the keypad.
+Without one the calculator fails to load. `provider.id: "calculator-geogebra"`
+selects GeoGebra, which needs no key.
 
 ```ts
 const tools = {
@@ -81,6 +75,52 @@ const tools = {
 	},
 };
 ```
+
+### Adding a backend
+
+The packaged registration selects among Desmos and GeoGebra only, because a
+bundler that inlines dynamic imports inlines every backend the registration
+names, selected or not. `createCalculatorToolRegistration({ providers })` builds
+the registration with more backends, keyed by `provider.id`; an id the packaged
+set already holds is replaced. The keyless, offline-capable Cortex calculator,
+which needs no runtime CDN, is composed in this way from
+`@pie-players/pie-calculator-cortex`, which the host installs:
+
+```ts
+import {
+	createCalculatorToolRegistration,
+	createPackagedToolRegistry,
+} from "@pie-players/pie-default-tool-loaders";
+
+const registry = createPackagedToolRegistry({
+	overrides: {
+		calculator: createCalculatorToolRegistration({
+			providers: {
+				"calculator-cortex": {
+					providerName: "PIE Open-Source Calculator",
+					version: "1",
+					requiresAuth: false,
+					backend: "cortex",
+					load: async () =>
+						(await import("@pie-players/pie-calculator-cortex"))
+							.CortexCalculatorProvider,
+					initializationErrorMessage:
+						"Failed to initialize the Cortex calculator provider.",
+				},
+			},
+		}),
+	},
+});
+```
+
+`provider.id: "calculator-cortex"` then selects it. Its `settings` take the
+`CortexCalculatorSettings` type that `@pie-players/pie-calculator-cortex`
+exports: `angleMode`, `calculationPrecision`, `displayPrecision`,
+`historyLimit`, `evaluationTimeLimitMs`, `allowedFunctions`, `allowClipboard`,
+`messages`, `direction` and `graph`. Clipboard blocking follows
+`restrictedMode`; `allowClipboard` alone blocks nothing. The
+[Cortex README](../calculator-cortex/README.md) covers localization, message
+overrides and the keypad.
 
 ## Custom sets
 
@@ -167,8 +207,8 @@ student's AfA PNP 3.0 record, held as JSON keyed by the spec's terms. Features
 become support ids in the packaged set's names, the activation sets fill
 `activateAtInit` and `prohibitedSupports`, and the settings the packaged tools
 read become `toolParameters`: read-aloud speed, pitch and volume, the calculator
-type and the sign language. The toolkit's PNP configuration guide gives each AfA
-feature's disposition.
+type, the sign language and the magnifier's starting zoom. The toolkit's PNP
+configuration guide gives each AfA feature's disposition.
 
 ```ts
 import { createPersonalNeedsProfileFromAfa } from "@pie-players/pie-default-tool-loaders";

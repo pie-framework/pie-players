@@ -2,10 +2,15 @@
 
 Status: Draft, 2026-10-13
 
-Implementation status: nothing has landed. pie-elements-ng owns the descriptor
-type and the per-element `./summary` entries; pie-players owns item-level
-summarization, the bundled summarizer set and the custom elements. Summary
-precompute in the PIE API backend is optional and unscheduled.
+Implementation status: slice 1 has landed in
+[`@pie-players/pie-item-list`](../../packages/item-list/README.md):
+`summarizeItem` and the summary view of `<pie-item-summary>`, with no resolver by
+default, so every element takes the prompt or label rung. The bundled and pinned
+resolvers, the player view and `<pie-item-list>` are still to come.
+pie-elements-ng owns the descriptor type and the per-element `./summary`
+entries; pie-players owns item-level summarization, the bundled summarizer set
+and the custom elements. Summary precompute in the PIE API backend is optional
+and unscheduled.
 
 Owner: PIE Players maintainers
 
@@ -253,6 +258,7 @@ expand chrome around it.
 | `loaderOptions` | item-player `loaderOptions` | Passed to the player unchanged |
 | `resolve` | `SummaryResolver` | Default `bundledSummaries` |
 | `summary` | `ItemSummary` | Optional precomputed summary; see Server precompute |
+| `locale` | `string` | BCP-47 tag for the row's own labels. Default `en-US` |
 
 | Event | Detail | Notes |
 | --- | --- | --- |

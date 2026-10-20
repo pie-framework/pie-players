@@ -19,6 +19,7 @@ import type { PersonalNeedsProfile } from "@pie-players/pie-players-shared/types
 import {
 	annotationToolbarRegistration,
 	lineReaderToolRegistration,
+	magnificationToolRegistration,
 	themeToolRegistration,
 } from "./registrations/accessibility-tools.js";
 import { audioTranscriptRegistration } from "./registrations/audio-transcript.js";
@@ -100,6 +101,8 @@ const loadAnnotationToolbarModule = () =>
 	);
 const loadLineReaderModule = () =>
 	loadSideEffectModule(() => import("@pie-players/pie-tool-line-reader"));
+const loadMagnifierModule = () =>
+	loadSideEffectModule(() => import("@pie-players/pie-tool-magnifier"));
 const loadThemeModule = () =>
 	loadSideEffectModule(() => import("@pie-players/pie-tool-theme"));
 const loadGraphModule = () =>
@@ -155,6 +158,15 @@ const PACKAGED_CAPABILITY_DEFINITIONS = [
 		loadModule: loadLineReaderModule,
 		preferredPlacementOrder: { section: 40 },
 		universal: true,
+	},
+	{
+		registration: magnificationToolRegistration,
+		tagName: "pie-tool-magnifier",
+		loadModule: loadMagnifierModule,
+		preferredPlacementOrder: { section: 45 },
+		// Magnification is a granted low-vision accommodation in AfA PNP, so it
+		// is never universal.
+		universal: false,
 	},
 	{
 		registration: themeToolRegistration,

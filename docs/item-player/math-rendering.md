@@ -112,6 +112,13 @@ Copies up to adapter 0.1.2 ignore the options and load from jsDelivr. The
 origins these files add to a Content-Security-Policy are in
 [security](../security/readme.md#content-security-policy).
 
+The `iife` strategy's MathJax 3 renderer loads its speech rules, SRE 4.1.2's
+`mathmaps`, from `opts.assetRoot` when the page sets one, otherwise from the
+item player's ESM CDN, jsDelivr by default. A page that configures SRE itself,
+through `window.SREfeature.json` or a `text/x-sre-config` block naming `json`,
+keeps its own path. Its fonts load from `unpkg.com`, a URL
+`@pie-lib/math-rendering-module` hard-codes.
+
 ## One MathJax version per page
 
 The page's `window.MathJax` holds one MathJax major version, and which builds

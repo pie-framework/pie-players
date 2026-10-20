@@ -95,16 +95,15 @@ opposite trade fits here because a provider always exists: `players-shared`
 exports a module-level default whose English catalog is statically bundled, so
 `t()` never returns a bare key, even with no host, no player and no context.
 
-**Locale catalogs never enter a tool bundle.** Most tool bundles import
-`players-shared` from the host. The item player and the section player's browser
-build set `external: []`, and the print player declares no externals, so each
-inlines everything it reaches. The module split enforces the boundary either way:
-tools import the types as `import type` and the English default from `provider`,
-and only players import the dynamic loader map in `catalogs` and the
-`createPieI18n()` wiring in `i18n`. A tool therefore pulls in the interface and the
-English fallback and never sees `catalogs`, so no locale chunk is emitted into its
-`dist`. The README's [Module layout](../../packages/players-shared/src/i18n/README.md#module-layout)
-lists each module.
+**Locale catalogs never enter a tool bundle.** Tools import the types as
+`import type` and the English default from `provider`, and only players import
+the dynamic loader map in `catalogs` and the `createPieI18n()` wiring in `i18n`.
+A tool therefore pulls in the interface and the English fallback and never sees
+`catalogs`, so no locale chunk is emitted into its `dist`. The README's
+[Module layout](../../packages/players-shared/src/i18n/README.md#module-layout)
+lists each module, and [Packaging](./internationalization.md#packaging) in the
+internationalization note owns the player bundling boundary that makes the split
+effective.
 
 **Interface locale is a composition context, set by one element attribute.** The
 deployment picks the interface language; no tool and no element can know it.
@@ -144,6 +143,59 @@ document root. Each localized custom element stamps its own host, so RTL chrome
 works inside an LTR page and two players on one page can differ. `direction`
 derives from `Intl.Locale.prototype.textInfo`, with an RTL primary-subtag set as
 fallback.
+
+Where a stamp sits follows from how `lang` resolves: along the node tree, to the
+parent element or, for a shadow root's child, to the host. A stamp inside a
+shadow tree never reaches slotted content, so the toolkit element, whose shadow
+tree is an anchor and a `<slot>`, stamps its host. In the section player the
+chrome is not even slotted into the toolkit: the toolkit sits in
+`pie-section-player-base`'s shadow tree while the shell, with every pane, card
+and item player, is the base's light-DOM child, so the shell stamps its own
+host, the one element that is a light-tree ancestor of all of it and of the
+toolbar in its shadow tree. The navigation live region beside the base stamps
+itself and resolves the provider through the shell element, because a request
+from the base host bubbles past the toolkit. A tool shell at `document.body`
+stamps itself in the update that re-reads its labels. `stampInterfaceLocale`
+in `players-shared` is the imperative form, for a host element, a shell and a
+vanilla element; a template puts the pair on its root.
+
+A content root is a different matter, and asserts nothing about undeclared
+content. The item player's root wraps the PIE content, so a `lang` there is a
+claim about content that names none — and it is not merely cosmetic: the
+read-aloud language climb runs over the node tree, the content root is on that
+path, and unnamed content under it would leave the browser voice for the
+chrome's locale. The section-player spec holds the content root to `lang`/`dir`
+absence and the shadow-reading suite holds the read of unnamed content to no
+language at all. What the content root does carry — since the content-language
+slice's player half landed — is the content language the delivery declares in
+`env.locale`, canonicalized, with its direction, and nothing when the delivery
+declares none. Content whose language differs from the chrome's is named by
+the delivery, or in its own markup; the authoring-side emission is the open
+half of slice 2 of
+[`internationalization.md`](./internationalization.md#rollout).
+
+**Layout follows the writing direction; free windows follow the screen.** The
+cards push end-of-row controls to the trailing edge with logical properties
+(`margin-inline-start: auto`), so the toolbar and the formative button mirror
+under `dir="rtl"`; the `section-player-rtl-layout` spec holds that to geometry,
+because an attribute assertion cannot see a physical margin that fails to flip.
+Free-floating windows and panels — the tool shells at `document.body`, the
+session debugger, the shared debug panels — position with physical screen
+coordinates on purpose: a window the learner dragged to the top-left is at the
+top-left in any language, and mirroring a drag target would move it under the
+learner's hand. Their *contents* lay out by direction like any other chrome.
+
+**Every `lang` this repository writes is canonical.** A provider honours an
+unshipped tag as the host spelled it, because the spelling may be the key its
+host messages are registered under, so `getLocale()` can return `NL-nl`. That is
+a valid request and not a valid attribute value. `canonicalLanguageTag` —
+`Intl.getCanonicalLocales` over a usable two- or three-letter primary subtag,
+the rule pie-elements-ng applies to `model.language` — runs at the seams that
+write attributes: `stampInterfaceLocale`, the `getLocale()` of the facade
+`resolveInterfaceI18n` returns (which every template stamp reads), and the
+content stamp. The provider's own `getLocale()` keeps the resolved tag for
+lookups. A tag the rule rejects is written as given rather than dropped: the
+chrome does speak something, and nothing is invented about what.
 
 **Tool display names gain key fields; the required strings stay.**
 `ToolRegistration.name` and `.description` are host-facing required API, and
@@ -217,8 +269,19 @@ three reasons, each sufficient alone:
   reason under [Decisions](#decisions).
 - Nothing read them.
 
-Machine-filling the gap was the alternative and is worse: it ships strings nobody
-has read, to learners, under a coverage number that certifies nothing.
+Machine-filling the gap was the alternative and is worse for the reviewed set:
+it ships strings nobody has read, to learners, under a coverage number that
+certifies nothing. The amendment that opened a machine path keeps that line
+while making the claim honest:
+[`@pie-players/pie-i18n-generated`](../../packages/pie-i18n-generated/README.md)
+ships machine-generated catalogs in a separate, optional package — never in
+the bundled set. They are provenance-marked, freshness-gated against this
+catalog as source, loadable only when a host installs the package, wires its
+loaders after `loadBundledCatalog`, and sets such a locale; and a host can
+override any string. Coverage there certifies structure, never review. The
+calibration run against the audited `nl-NL` catalog, in that package's
+`calibration/`, records what an unreviewed generation is worth and scopes the
+native pass a locale needs before promotion into `messages/`.
 
 `check-coverage` keeps two tiers. A complete locale must be at 100% or the check
 fails; a carried locale reports without gating. `CARRIED_LOCALES` is empty: the
@@ -235,7 +298,19 @@ constructs the provider with `createPieI18n()` and publishes it on the
 [For a component in this repository](../../packages/players-shared/src/i18n/README.md#for-a-component-in-this-repository)
 gives the snippet. The `$derived` read is load-bearing: a plain
 `const label = i18n.t(…)` reads once and never updates when the locale moves, the
-same class of failure as a composition context without a change signal.
+same class of failure as a composition context without a change signal. The
+same failure hides in a `$derived` that returns the provider itself: its
+identity does not move when its catalog does, and runes-mode `$derived` does
+not re-run readers of a value that compares equal, so a reader pins whatever
+rendered before the load. `resolveInterfaceI18n` returns a fresh facade per
+call for exactly that reason, and the item player's `interfaceMessages` went
+through it on 2026-10-18 after rendering the provider directly.
+
+`scan-hardcoded` reads template text and static attributes, not a template
+literal in script. The navigation live region's `Question N of M` was built
+that way and stayed English under every locale until the region got its stamp
+on 2026-10-18; a string assembled in script is keyed by reading the call site,
+not by waiting for the scanner.
 
 The closed `MessageKey` union catches an undefined key in a component only where
 `svelte-check` runs, so a package carrying `.svelte` files needs a `check` script

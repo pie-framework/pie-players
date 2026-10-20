@@ -4,25 +4,32 @@ This directory holds the toolkit's calculator tool providers, for contributors
 to `@pie-players/pie-default-tool-loaders`. Each provider imports one calculator
 adapter when it initializes and hands it to the provider-neutral
 `<pie-tool-calculator>` element. Host configuration (provider selection, the
-Desmos key, Cortex settings) is documented in the package README's
+Desmos key, adding a backend) is documented in the package README's
 [Calculator providers](../../README.md#calculator-providers) section and in
 [Calculator with host auth](../../../../docs/tools-and-accomodations/tool_provider_system.md#calculator-with-host-auth).
 
 ## Providers
 
 The calculator registration maps `tools.providers.calculator.provider.id` to a
-provider class; any other id throws.
+`CalculatorProviderDefinition`; any other id throws. `PACKAGED_CALCULATOR_PROVIDERS`
+in `packaged-calculator-providers.ts` holds the packaged ones:
 
-| `provider.id` | Class | Adapter | `requiresAuth` |
-| --- | --- | --- | --- |
-| `calculator-desmos`, or unset | `DesmosToolProvider` | [`@pie-players/pie-calculator-desmos`](../../../calculator-desmos/README.md) | `true` |
-| `calculator-geogebra` | `GeoGebraToolProvider` | [`@pie-players/pie-calculator-geogebra`](../../../calculator-geogebra/README.md) | `false` |
-| `calculator-cortex` | `CortexToolProvider` | [`@pie-players/pie-calculator-cortex`](../../../calculator-cortex/README.md) | `false` |
+| `provider.id` | Adapter | `requiresAuth` |
+| --- | --- | --- |
+| `calculator-desmos`, or unset | [`@pie-players/pie-calculator-desmos`](../../../calculator-desmos/README.md) | `true` |
+| `calculator-geogebra` | [`@pie-players/pie-calculator-geogebra`](../../../calculator-geogebra/README.md) | `false` |
 
-All three extend `LazyCalculatorToolProvider`, which imports the adapter module
-on first `initialize()`, reports the import through `onTelemetry`, and drops an
-initialization that a `destroy()` overtook. The package depends on all three
-adapters, so a host installs none of them.
+`createCalculatorToolRegistration` merges a host's definitions over these, so
+`calculatorToolRegistration` is that function called with none. Every
+definition is wrapped in `LazyCalculatorToolProvider`, which imports the adapter
+module on first `initialize()`, reports the import through `onTelemetry`, and
+drops an initialization that a `destroy()` overtook.
+
+The package depends on both packaged adapters, so a host installs neither. A
+bundler that inlines dynamic imports inlines every module the set names, so the
+set holds only adapters over a vendor-hosted engine. Cortex bundles its engine,
+so a host composes it in from
+[`@pie-players/pie-calculator-cortex`](../../../calculator-cortex/README.md).
 
 ## Configuration shape
 

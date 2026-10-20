@@ -679,6 +679,8 @@ export interface ToolParameterMap {
 	 * speed; `pitch` runs 0–2 with 1 normal; `volume` runs 0–1.
 	 */
 	textToSpeech: { rate?: number; pitch?: number; volume?: number };
+	/** `zoom` is the lens's starting magnification, 2 meaning twice the size. */
+	magnification: { zoom?: number };
 }
 
 /** The parameter shape of tool `K`: its {@link ToolParameterMap} entry, else open. */
@@ -710,6 +712,14 @@ export interface Env {
 	mode: PlayerMode;
 	role: PlayerRole;
 	partialScoring?: boolean;
+	/**
+	 * BCP 47 tag of the language the item's content is written in, when the
+	 * delivery knows it. The player reflects it onto the content subtree as
+	 * `lang`/`dir`; a host that emits nothing leaves the content unstamped.
+	 * The interface locale never travels here — it is the player's `locale`
+	 * attribute and the `pie.interfaceLocale` context.
+	 */
+	locale?: string;
 }
 
 /** The `detail` of the `player-error` event `pie-item-player` dispatches. */

@@ -281,4 +281,32 @@ test.describe("frameless tool placement geometry", () => {
 		await expect(page.locator("pie-tool-line-reader")).toHaveCount(3);
 		await expect(page.locator(`${CARD_BOUNDARY} > pie-tool-line-reader`)).toHaveCount(2);
 	});
+
+	test("the line reader's tap controls dock beside it in a phone-width pane", async ({
+		page,
+	}) => {
+		await page.setViewportSize({ width: 320, height: 568 });
+		await page.goto("/tts-ssml?mode=candidate&layout=splitpane", {
+			waitUntil: "networkidle",
+		});
+		await expectDemoChromeReady(page);
+		// Covered by the policy panel at this size, so it is pressed from the keyboard.
+		await page.getByRole("button", { name: "Line Reader, reading guide" }).first().focus();
+		await page.keyboard.press("Enter");
+
+		const strip = page.locator("pie-tool-line-reader .pie-tool-line-reader__controls");
+		await expect(strip).toBeVisible();
+		const panel = await page.locator("pie-tool-line-reader .pie-tool-line-reader").boundingBox();
+		const controls = await strip.boundingBox();
+		if (!panel || !controls) throw new Error("the line reader or its controls have no box");
+
+		// Docked where the panel opened, which is only settled after the first render.
+		const below = controls.y >= panel.y + panel.height;
+		const above = controls.y + controls.height <= panel.y;
+		expect(below || above).toBe(true);
+		expect(controls.x).toBeGreaterThanOrEqual(0);
+		expect(controls.x + controls.width).toBeLessThanOrEqual(320);
+		// On one row it would be about 42px tall and wider than the pane.
+		expect(controls.height).toBeGreaterThan(60);
+	});
 });

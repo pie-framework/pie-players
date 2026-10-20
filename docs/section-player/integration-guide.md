@@ -280,11 +280,13 @@ normalizes to a `CanonicalToolsConfig`:
 | `policy` | `allowed` and `blocked`, host gates applied before the policy engine |
 | `pnpEnforcement` | `"on"` or `"off"` overrides the automatic choice of whether toolbar decisions apply PNP policy |
 
-`createPackagedToolRegistry()` registers fifteen tools. Fourteen are placeable
-([canonical tool ids](../tools-and-accomodations/tool_provider_system.md#canonical-tool-ids));
-the fifteenth, `transcript`, is a content region that validation rejects in any
-placement. A tool placed at a level it does not support fails validation, which
-throws under the default `tool-config-strictness` of `error`.
+`createPackagedToolRegistry()` registers sixteen capabilities. Fifteen are
+placeable ([canonical tool
+ids](../tools-and-accomodations/tool_provider_system.md#canonical-tool-ids)),
+among them `magnification`; the sixteenth, `transcript`, is a content region
+that validation rejects in any placement. A tool placed at a level it does not
+support fails validation, which throws under the default `tool-config-strictness`
+of `error`.
 
 ```ts
 import type { ToolsConfigInput } from "@pie-players/pie-assessment-toolkit";
@@ -331,7 +333,9 @@ an API key or a proxy endpoint. A licensed deployment supplies the key through
 The documented browser integration puts the key in the script URL, so runtime
 delivery keeps it out of the static bundle without making it secret; see the
 [Desmos API Terms](https://www.desmos.com/api-terms).
-`provider.id: "calculator-cortex"` selects a calculator that needs no key.
+Cortex needs no key; a host adds it with `createCalculatorToolRegistration`
+([adding a backend](../../packages/default-tool-loaders/README.md#adding-a-backend))
+and selects it with `provider.id: "calculator-cortex"`.
 
 Once the section has initialized, a change to `runtime.tools`,
 `runtime.assessmentId`, `runtime.accessibility`, `runtime.lazyInit`,

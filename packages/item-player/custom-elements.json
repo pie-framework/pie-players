@@ -130,6 +130,15 @@
 						},
 						{
 							"kind": "field",
+							"name": "passageLayout",
+							"type": {
+								"text": "\"vertical\" | \"splitpane\""
+							},
+							"default": "\"vertical\"",
+							"attribute": "passage-layout"
+						},
+						{
+							"kind": "field",
 							"name": "autoplayAudioEnabled",
 							"type": {
 								"text": "boolean | undefined"
@@ -163,6 +172,16 @@
 							"default": "\"\"",
 							"description": "Interface locale: the language this player renders its own UI in, as a BCP-47 tag. `type: \"String\"` because a host passes attributes as strings; POSIX (`nl_NL`) and bare (`nl`) forms both resolve. Unset renders `en-US` — never `navigator.language`, so a host that supplies nothing keeps exactly the chrome it has today. Distinct from the authored content's language, which the item declares.",
 							"attribute": "locale"
+						},
+						{
+							"kind": "field",
+							"name": "i18n",
+							"type": {
+								"text": "I18nProvider | null"
+							},
+							"default": "null",
+							"description": "The interface-locale provider a host or a container supplies, used in place of the one built here: a host's composition for a standalone player, the section's provider for the item players a section mounts. JS-only, since it carries loaders. `locale` above still names the locale; a supplied provider is driven only by it.",
+							"attribute": "i18n"
 						},
 						{
 							"kind": "field",
@@ -536,6 +555,14 @@
 							"fieldName": "allowedResize"
 						},
 						{
+							"name": "passage-layout",
+							"type": {
+								"text": "string"
+							},
+							"default": "\"vertical\"",
+							"fieldName": "passageLayout"
+						},
+						{
 							"name": "autoplay-audio-enabled",
 							"type": {
 								"text": "boolean"
@@ -565,6 +592,15 @@
 							"default": "\"\"",
 							"description": "Interface locale: the language this player renders its own UI in, as a BCP-47 tag. `type: \"String\"` because a host passes attributes as strings; POSIX (`nl_NL`) and bare (`nl`) forms both resolve. Unset renders `en-US` — never `navigator.language`, so a host that supplies nothing keeps exactly the chrome it has today. Distinct from the authored content's language, which the item declares.",
 							"fieldName": "locale"
+						},
+						{
+							"name": "i18n",
+							"type": {
+								"text": "I18nProvider | null"
+							},
+							"default": "null",
+							"description": "The interface-locale provider a host or a container supplies, used in place of the one built here: a host's composition for a standalone player, the section's provider for the item players a section mounts. JS-only, since it carries loaders. `locale` above still names the locale; a supplied provider is driven only by it.",
+							"fieldName": "i18n"
 						},
 						{
 							"name": "include-sr-heading",
@@ -739,6 +775,13 @@
 							"description": "When correct responses were written into the session, so a host can detect a population it did not ask for."
 						},
 						{
+							"name": "feature-decision-applied",
+							"type": {
+								"text": "CustomEvent<{ featureId: string; granted: boolean; rule: string; overrode?: \"attribute\" | \"authored\" }>"
+							},
+							"description": "Once per feature, before the elements render with a toolkit feature decision written onto their models; `<pie-item-scope>` relays it to its toolkit."
+						},
+						{
 							"name": "bundle-retry-status",
 							"type": {
 								"text": "CustomEvent<{ state: \"retrying\" | \"completed\" | \"timeout\" | \"cancelled\"; url: string; attempt: number; elapsedMs: number; timeoutMs: number; retryDelayMs?: number; reason?: string }>"
@@ -800,6 +843,13 @@
 								"text": "CustomEvent<{ scope: \"delivery\"; operation: \"load\" | \"model\" | \"saveSession\"; message: string; error: unknown }>"
 							},
 							"description": "When a delivery load, model refresh or autosave the player started itself fails; a host's own `saveSession()` or `score()` call rejects instead."
+						},
+						{
+							"name": "framework-error",
+							"type": {
+								"text": "CustomEvent<{ kind: \"i18n-locale-load\"; source: string; message: string; details: string[]; recoverable: true; scope: \"runtime\"; cause?: unknown }>"
+							},
+							"description": "When a requested interface-locale catalog fails to load; the player keeps rendering through the English fallback chain, and re-setting `locale` retries the load."
 						}
 					],
 					"x-pie": {
@@ -808,6 +858,7 @@
 							"pie-item-player",
 							"pie-item-player-build-warning",
 							"pie-item-player-loading",
+							"pie-item-player-split-divider-handle",
 							"pie-loading",
 							"pie-player-error",
 							"pie-player-item-container"
@@ -892,6 +943,16 @@
 						},
 						{
 							"kind": "field",
+							"name": "i18n",
+							"type": {
+								"text": "I18nProvider | null"
+							},
+							"default": "null",
+							"description": "The player's interface-locale provider, so the panel speaks the player's locale and messages instead of a third English provider. JS-only, since it carries loaders.",
+							"attribute": "i18n"
+						},
+						{
+							"kind": "field",
 							"name": "hosted",
 							"type": {
 								"text": "boolean"
@@ -948,6 +1009,15 @@
 							},
 							"default": "\"\"",
 							"fieldName": "locale"
+						},
+						{
+							"name": "i18n",
+							"type": {
+								"text": "I18nProvider | null"
+							},
+							"default": "null",
+							"description": "The player's interface-locale provider, so the panel speaks the player's locale and messages instead of a third English provider. JS-only, since it carries loaders.",
+							"fieldName": "i18n"
 						},
 						{
 							"name": "hosted",

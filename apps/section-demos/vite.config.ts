@@ -177,6 +177,10 @@ export default (async () => {
 					__dirname,
 					"../../packages/tool-line-reader/dist/tool-line-reader.js",
 				),
+				"@pie-players/pie-tool-magnifier": resolve(
+					__dirname,
+					"../../packages/tool-magnifier/dist/tool-magnifier.js",
+				),
 				"@pie-players/pie-tool-ruler": resolve(
 					__dirname,
 					"../../packages/tool-ruler/dist/tool-ruler.js",

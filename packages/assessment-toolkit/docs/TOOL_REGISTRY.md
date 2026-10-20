@@ -85,7 +85,7 @@ A toolbar container can stay mounted; its button visibility is re-evaluated on e
 
 A tool's `toolId` is its PNP support id: a profile, district policy or item grants a tool by listing its id, and the registry a host composes is the only list of ids a deployment recognizes. Which supports a deployment offers is therefore known only at runtime, from the tools registered and the policy applied to them. An id no registered tool carries raises `tool-policy.unknownSupportId`, which the toolkit coordinator logs once per id and the PNP debugger lists.
 
-A new tool whose capability [AfA PNP 3.0](https://www.imsglobal.org/spec/afa/v3p0/info) names takes that term as its id, camelCased, since AfA terms are kebab-case. Among the packaged ids, `transcript` is an AfA term and `lineReader` is `line-reader`; `signLanguage`, from `@pie-players/pie-tool-sign-language`, is `sign-language`.
+A new tool whose capability [AfA PNP 3.0](https://www.imsglobal.org/spec/afa/v3p0/info) names takes that term as its id, camelCased, since AfA terms are kebab-case. Among the packaged ids, `transcript` and `magnification` are AfA terms and `lineReader` is `line-reader`; `signLanguage`, from `@pie-players/pie-tool-sign-language`, is `sign-language`.
 
 Other packaged ids name an AfA capability in other words. `createPersonalNeedsProfileFromAfa`, from `@pie-players/pie-default-tool-loaders`, translates a profile held in AfA terms by these renames, and [AfA PNP 3.0 records](PNP_CONFIGURATION.md#afa-pnp-30-records) gives each AfA feature's disposition:
 
@@ -184,7 +184,7 @@ export const calculatorToolRegistration: ToolRegistration = {
 };
 ```
 
-The packaged registration in `@pie-players/pie-default-tool-loaders` adds provider selection (Desmos, GeoGebra or Cortex), calculator-type render params and per-type window sizes.
+The packaged registration in `@pie-players/pie-default-tool-loaders` adds provider selection (Desmos or GeoGebra, plus any backend a host adds with `createCalculatorToolRegistration`), calculator-type render params and per-type window sizes.
 
 ### Tool Context
 
@@ -291,7 +291,7 @@ A tool's module loads when its element first renders, through the registry's loa
 
 A calculator's provider reads `tools.providers.calculator`:
 
-- `provider.id` selects Desmos (the default), GeoGebra or the keyless Cortex.
+- `provider.id` selects Desmos (the default), GeoGebra or a backend the host composed in, such as the keyless Cortex.
 - `provider.init` configures loading. Desmos needs an API key, which `provider.init.proxyEndpoint` can return or, in development, `provider.init.apiKey` can carry.
 - `provider.runtime.authFetcher` supplies the key from the host at runtime.
 - `settings` goes to the vendor adapter.
@@ -300,7 +300,7 @@ A calculator's provider reads `tools.providers.calculator`:
 
 ### Default Tools
 
-`createPackagedToolRegistry()` registers 15 capabilities. After each, the content its relevance check (Pass 2) accepts:
+`createPackagedToolRegistry()` registers 16 capabilities. After each, the content its relevance check (Pass 2) accepts:
 
 **Global accessibility tools** (assessment and section level):
 - The color-scheme tool (`theme`): color schemes and contrast; any content
@@ -313,6 +313,7 @@ A calculator's provider reads `tools.providers.calculator`:
 **Reading support tools**:
 - Text-to-Speech (`textToSpeech`): reads content aloud; readable text of 10 or more characters, or a catalog reference (`data-catalog-idref`) whose spoken card it reads
 - Line Reader (`lineReader`): reading guide overlay; readable text
+- Magnifier (`magnification`): movable magnifying lens; any content
 - Annotation toolbar (`annotationToolbar`): highlights and annotates text with the CSS Custom Highlight API; readable text. It also runs as a section-scoped singleton selection gateway ([Activation Models](#activation-models))
 - Dictionary, Picture Dictionary, Spanish Dictionary, Spanish Picture Dictionary (`dictionary`, `pictureDictionary`, `dictionarySpanish`, `pictureDictionarySpanish`): word definitions and pictures; readable text
 
@@ -474,7 +475,7 @@ The toolkit's default placement is empty at every level, so a coordinator with n
 ```typescript
 import { SECTION_PLAYER_PREFERRED_TOOL_PLACEMENT } from '@pie-players/pie-default-tool-loaders';
 
-SECTION_PLAYER_PREFERRED_TOOL_PLACEMENT.section  // ["theme", "graph", "periodicTable", "lineReader", "ruler", "protractor", ...]
+SECTION_PLAYER_PREFERRED_TOOL_PLACEMENT.section  // ["theme", "graph", "periodicTable", "lineReader", "magnification", "ruler", "protractor", ...]
 SECTION_PLAYER_PREFERRED_TOOL_PLACEMENT.item     // ["calculator", "textToSpeech", "answerEliminator", "annotationToolbar"]
 SECTION_PLAYER_PREFERRED_TOOL_PLACEMENT.passage  // ["textToSpeech", "annotationToolbar"]
 ```

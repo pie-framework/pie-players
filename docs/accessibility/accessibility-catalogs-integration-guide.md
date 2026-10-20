@@ -644,7 +644,12 @@ A section player or toolkit that builds its own coordinator takes the same
 entity on its `assessment` property. District policy, test administration
 overrides and item settings join the profile there; the
 [PNP configuration guide](../../packages/assessment-toolkit/docs/PNP_CONFIGURATION.md)
-covers each input and their precedence.
+covers each input and their precedence. One grant has a built-in brake: while
+the profile resolves `screenReader` enabled, the toolkit withholds
+`textToSpeech` and `autoplayAudio` as a support conflict
+([ADR 0004](../adr/0004-screen-reader-use-is-a-profile-support-that-withholds-read-aloud.md)),
+so a `supports: ['textToSpeech']` grant does not place read-aloud for that
+student.
 
 ---
 
@@ -735,9 +740,10 @@ player.config = {
 
 - **Eligibility uses delivery's precedence**, highest first: district block,
   test administration override set to `false`, item restriction, profile
-  prohibition, override set to `true`, item requirement, district requirement,
-  profile support. A district block outranks the learner's profile on paper as
-  it does on screen.
+  prohibition, a support conflict (`screenReader` withholding `textToSpeech`
+  and `autoplayAudio`), override set to `true`, item requirement, district
+  requirement, profile support. A district block outranks the learner's profile
+  on paper as it does on screen.
 - **An alternate in play prints inline and unconditionally**, above the item
   content. There is nothing to reveal on paper and no control to press.
 - **An alternate an item declares as authored presentation prints with no

@@ -18,6 +18,12 @@
 			// attribute values as strings and a BCP-47 tag is one; POSIX
 			// (`nl_NL`) and bare (`nl`) forms both resolve.
 			locale: { attribute: "locale", type: "String" },
+			// The interface-locale provider a host composes, published onto the
+			// runtime context in place of the one built here: the generated locale
+			// tier, host messages, or a provider of the host's own. JS-only,
+			// since it carries loaders. `locale` above still names the locale; a
+			// supplied provider is driven only by it.
+			i18n: { type: "Object", reflect: false },
 			// Content language, published onto the runtime context for read-aloud
 			// and catalog lookups. Markup `lang` inside a shell wins over it.
 			contentLanguage: { attribute: "content-language", type: "String" },
@@ -72,7 +78,12 @@ The toolkit's runtime element: it holds a `ToolkitCoordinator` and provides its 
 <script lang="ts">
 	import { coerceBooleanAttributes } from "@pie-players/pie-players-shared/ui/attribute-coercion";
 	import { untrack } from "svelte";
-	import { ContextProvider, requestContext } from "@pie-players/pie-context";
+	import {
+		ContextProvider,
+		interfaceLocaleContext,
+		requestContext,
+	} from "@pie-players/pie-context";
+	import type { InterfaceLocaleContextValue } from "@pie-players/pie-context";
 	import {
 		attachInstrumentationEventBridge,
 		resolveInstrumentationProvider,
@@ -87,7 +98,9 @@ The toolkit's runtime element: it holds a `ToolkitCoordinator` and provides its 
 	import {
 		createPieI18n,
 		DEFAULT_LOCALE,
+		stampInterfaceLocale,
 	} from "@pie-players/pie-players-shared/i18n";
+	import type { I18nProvider } from "@pie-players/pie-players-shared/i18n";
 	import {
 		assessmentToolkitHostRuntimeContext,
 		assessmentToolkitRuntimeContext,
@@ -240,6 +253,7 @@ const DEFAULT_ENV = {
 		env = {},
 		ndsIcons = false,
 		locale = "",
+		i18n = null as I18nProvider | null,
 		contentLanguage = "",
 		lazyInit = false,
 		toolConfigStrictness = "error" as ToolConfigStrictness,
@@ -286,6 +300,9 @@ const DEFAULT_ENV = {
 	let provider: ContextProvider<typeof assessmentToolkitRuntimeContext> | null = null;
 	let hostRuntimeProvider: ContextProvider<
 		typeof assessmentToolkitHostRuntimeContext
+	> | null = null;
+	let interfaceLocaleProvider: ContextProvider<
+		typeof interfaceLocaleContext
 	> | null = null;
 	let compositionVersion = $state(0);
 	let compositionModel = $state<unknown>(null);
@@ -1260,27 +1277,41 @@ const DEFAULT_ENV = {
 
 	// One interface-i18n provider per toolkit instance, published on the runtime
 	// context. Every capability on the page shares it, so a locale's catalog is
-	// fetched once rather than once per tool, and a host that swaps in its own
-	// `I18nProvider` reaches all of them through the same channel.
-	const interfaceI18n = createPieI18n();
+	// fetched once rather than once per tool. The `i18n` property takes a
+	// provider a host composed instead — the generated locale tier, host
+	// messages, or a provider of the host's own — and it reaches every consumer
+	// through this same channel.
+	const ownedInterfaceI18n = createPieI18n();
+	const interfaceI18n = $derived(i18n ?? ownedInterfaceI18n);
 	// Bumped by the provider's own change signal, which fires once a lazily
 	// loaded catalog is resident. `runtimeContextValue` reads it, so the context
 	// re-publishes and consumers re-read strings that were still English a tick
 	// earlier. Without this the first paint would pin English forever — the same
 	// class of failure as a composition context published with no change signal.
+	// Keyed on the provider, so a host swapping the property resubscribes.
+	// `subscribe` is optional on the contract: a provider without one has no
+	// change signal of its own, and its strings refresh only when this context
+	// republishes for another reason.
 	let interfaceI18nVersion = $state(0);
-	$effect(() =>
-		interfaceI18n.subscribe(() => {
+	$effect(() => {
+		const provider = interfaceI18n;
+		return provider.subscribe?.(() => {
 			interfaceI18nVersion += 1;
-		}),
-	);
+		});
+	});
 	$effect(() => {
 		const requested = typeof locale === "string" ? locale.trim() : "";
+		const provider = interfaceI18n;
+		// The `locale` attribute is the only locale driver. With none set, a
+		// provider built here resolves `en-US`; one the host supplied keeps the
+		// locale its owner gave it — the toolkit never auto-drives what it does
+		// not own.
+		if (!requested && provider !== ownedInterfaceI18n) return;
 		untrack(() => {
 			// Rejecting the promise here would take a player down over a missing
 			// locale chunk; every key still resolves through the English fallback.
 			void Promise.resolve(
-				interfaceI18n.setLocale(requested || DEFAULT_LOCALE),
+				provider.setLocale(requested || DEFAULT_LOCALE),
 			).catch((error) => {
 				reportFrameworkError({
 					kind: "i18n-locale-load",
@@ -1290,6 +1321,31 @@ const DEFAULT_ENV = {
 				});
 			});
 		});
+	});
+	// The same locale on the host-neutral channel the PIE elements inside this
+	// toolkit read, `interfaceLocaleContext`; the runtime context carries the
+	// provider itself, for the tools. A fresh object per version bump, so the
+	// context republishes once a lazily loaded catalog is resident and
+	// `getLocale()` names it.
+	const interfaceLocaleContextValue = $derived.by(
+		(): InterfaceLocaleContextValue => {
+			void interfaceI18nVersion;
+			return {
+				locale: interfaceI18n.getLocale(),
+				direction: interfaceI18n.getDirection?.() ?? "ltr",
+			};
+		},
+	);
+	// `lang` and `dir` go on the host, not on an element in the shadow tree:
+	// what a host composes inside this element is slotted light DOM, and both
+	// `lang` resolution and CSS `direction` reach it only from a light-tree
+	// ancestor. The version bump re-runs the stamp once the catalog is
+	// resident, because `getLocale()` moves only then.
+	$effect(() => {
+		void interfaceI18nVersion;
+		const target = host;
+		if (!target) return;
+		stampInterfaceLocale(target, interfaceI18n);
 	});
 
 	const effectiveAssessmentId = $derived(
@@ -1967,6 +2023,8 @@ const DEFAULT_ENV = {
 			hostRuntimeProvider = null;
 			provider?.disconnect();
 			provider = null;
+			interfaceLocaleProvider?.disconnect();
+			interfaceLocaleProvider = null;
 		};
 	});
 
@@ -2001,6 +2059,23 @@ const DEFAULT_ENV = {
 				initialValue: value,
 			});
 			provider.connect();
+		});
+	});
+
+	$effect(() => {
+		const currentHost = host;
+		const value = interfaceLocaleContextValue;
+		if (!currentHost) return;
+		untrack(() => {
+			if (interfaceLocaleProvider) {
+				interfaceLocaleProvider.setValue(value);
+				return;
+			}
+			interfaceLocaleProvider = new ContextProvider(currentHost, {
+				context: interfaceLocaleContext,
+				initialValue: value,
+			});
+			interfaceLocaleProvider.connect();
 		});
 	});
 

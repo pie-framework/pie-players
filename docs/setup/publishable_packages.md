@@ -29,6 +29,8 @@ Publishable packages:
 - `@pie-players/pie-calculator-geogebra`
 - `@pie-players/pie-context`
 - `@pie-players/pie-default-tool-loaders`
+- `@pie-players/pie-i18n-generated`
+- `@pie-players/pie-item-list`
 - `@pie-players/pie-item-player`
 - `@pie-players/pie-players-shared`
 - `@pie-players/pie-print-player`
@@ -50,6 +52,7 @@ Publishable packages:
 - `@pie-players/pie-tool-theme`
 - `@pie-players/pie-tool-graph`
 - `@pie-players/pie-tool-line-reader`
+- `@pie-players/pie-tool-magnifier`
 - `@pie-players/pie-tool-periodic-table`
 - `@pie-players/pie-tool-protractor`
 - `@pie-players/pie-tool-ruler`

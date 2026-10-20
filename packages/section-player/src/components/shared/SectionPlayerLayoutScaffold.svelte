@@ -26,6 +26,7 @@
 	} from "@pie-players/pie-assessment-toolkit";
 	import { coerceBooleanLike } from "@pie-players/pie-players-shared";
 	import { onDestroy, untrack } from "svelte";
+	import { useInterfaceI18n } from "./use-interface-i18n.svelte.js";
 
 	let {
 		runtime = null as Record<string, unknown> | null,
@@ -79,15 +80,24 @@
 	let navigationStatusMessage = $state("");
 	let unsubscribeNavigationStatus: (() => void) | null = null;
 	let navigationStatusCoordinator: ToolkitCoordinatorApi | null = null;
+	// The navigation live region sits beside the base element, outside the
+	// toolkit's subtree, so its context request has to start from an element
+	// inside it: the shell is slotted through the toolkit, the base host is not.
+	let shellElement = $state<HTMLElement | null>(null);
+	const interfaceI18n = useInterfaceI18n(() => shellElement);
 
 	function buildStatusMessage(event: { itemIndex?: number; totalItems?: number; itemLabel?: string }): string {
 		const position = typeof event.itemIndex === "number" ? event.itemIndex + 1 : null;
 		const total = typeof event.totalItems === "number" ? event.totalItems : null;
 		if (event.itemLabel && position !== null && total !== null) {
-			return `${event.itemLabel}, question ${position} of ${total}`;
+			return interfaceI18n.t("player.questionPositionLabeledA11y", {
+				label: event.itemLabel,
+				position,
+				total,
+			});
 		}
 		if (position !== null && total !== null) {
-			return `Question ${position} of ${total}`;
+			return interfaceI18n.t("player.questionPositionA11y", { position, total });
 		}
 		return "";
 	}
@@ -269,6 +279,8 @@
 	role="alert"
 	aria-live="assertive"
 	aria-atomic="true"
+	lang={interfaceI18n.locale}
+	dir={interfaceI18n.direction}
 >{navigationStatusMessage}</div>
 <pie-section-player-base
 	bind:this={baseElement}
@@ -288,6 +300,7 @@
 	ontoolkit-ready={handleToolkitReady}
 >
 	<pie-section-player-shell
+		bind:this={shellElement}
 		show-toolbar={normalizedShowToolbar}
 		toolbar-position={toolbarPosition}
 		enabled-tools={enabledTools}

@@ -46,6 +46,12 @@
 			"path": "./packages/default-tool-loaders"
 		},
 		{
+			"path": "./packages/pie-i18n-generated"
+		},
+		{
+			"path": "./packages/item-list"
+		},
+		{
 			"path": "./packages/item-player"
 		},
 		{
@@ -71,6 +77,9 @@
 		},
 		{
 			"path": "./packages/tool-line-reader"
+		},
+		{
+			"path": "./packages/tool-magnifier"
 		},
 		{
 			"path": "./packages/tool-periodic-table"

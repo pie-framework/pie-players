@@ -6,7 +6,12 @@
 		"declaration": true,
 		"declarationMap": false,
 		"composite": true,
-		"moduleResolution": "NodeNext"
+		"moduleResolution": "NodeNext",
+		"paths": {
+			"@pie-players/pie-players-shared/components/overlay-placement": [
+				"../players-shared/overlay-placement-components.types.d.ts"
+			]
+		}
 	},
 	"include": ["index.ts", "tool-line-reader.svelte"],
 	"exclude": ["node_modules", "dist"]

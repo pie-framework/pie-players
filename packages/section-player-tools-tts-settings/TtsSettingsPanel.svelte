@@ -50,7 +50,6 @@ Developer dialog for the section player demos that configures the toolkit's text
 	import type {
 		CustomProviderContext,
 		CustomProviderDescriptor,
-		CustomProviderPreviewResult,
 		PreviewMode,
 		PreviewSpeechMark,
 		ProviderAvailabilityResult,
@@ -1294,7 +1293,7 @@ Developer dialog for the section player demos that configures the toolkit's text
 					})
 				);
 				if (runId !== previewRunId) return;
-				const customResult = (result || null) as CustomProviderPreviewResult | null;
+				const customResult = result ?? null;
 				if (customResult?.audioUrl && typeof customResult.audioUrl === "string") {
 					const speechMarks = Array.isArray(customResult.speechMarks)
 						? customResult.speechMarks
@@ -1721,7 +1720,7 @@ Developer dialog for the section player demos that configures the toolkit's text
 			<fieldset class="pie-tts-fieldset fieldset bg-base-200 border border-base-300 rounded-box" disabled={!pollyState.available}>
 				<div class="pie-tts-field">
 					<label class="pie-tts-label" for="tts-polly-endpoint">{interfaceI18n.t("debug.tts.apiEndpoint")}</label>
-					<input id="tts-polly-endpoint" class="input input-sm input-bordered w-full" bind:value={pollyApiEndpoint} placeholder="/api/tts" />
+					<input id="tts-polly-endpoint" class="input input-sm input-bordered w-full" bind:value={pollyApiEndpoint} placeholder={interfaceI18n.t("debug.tts.apiEndpointPlaceholder")} />
 				</div>
 
 				<div class="pie-tts-grid-3">
@@ -1731,7 +1730,7 @@ Developer dialog for the section player demos that configures the toolkit's text
 							id="tts-polly-language"
 							class="input input-sm input-bordered w-full"
 							bind:value={pollyLanguage}
-							placeholder="en-US"
+							placeholder={interfaceI18n.t("debug.tts.languagePlaceholder")}
 							onchange={refreshPollyVoices}
 						/>
 					</div>
@@ -1777,18 +1776,18 @@ Developer dialog for the section player demos that configures the toolkit's text
 					<div class="pie-tts-field">
 						<label class="pie-tts-label" for="tts-polly-format">{interfaceI18n.t("debug.tts.format")}</label>
 						<select id="tts-polly-format" class="select select-sm select-bordered w-full" bind:value={pollyFormat}>
-							<option value="mp3">MP3</option>
-							<option value="ogg">OGG</option>
-							<option value="pcm">PCM</option>
+							<option value="mp3">{interfaceI18n.t("debug.tts.formatMp3")}</option>
+							<option value="ogg">{interfaceI18n.t("debug.tts.formatOgg")}</option>
+							<option value="pcm">{interfaceI18n.t("debug.tts.formatPcm")}</option>
 						</select>
 					</div>
 					<div class="pie-tts-field">
 						<label class="pie-tts-label" for="tts-polly-sample-rate">{interfaceI18n.t("debug.tts.sampleRate")}</label>
 						<select id="tts-polly-sample-rate" class="select select-sm select-bordered w-full" bind:value={pollySampleRate}>
-							<option value={8000}>8000 Hz</option>
-							<option value={16000}>16000 Hz</option>
-							<option value={22050}>22050 Hz</option>
-							<option value={24000}>24000 Hz</option>
+							<option value={8000}>{interfaceI18n.t("debug.tts.sampleRate8000")}</option>
+							<option value={16000}>{interfaceI18n.t("debug.tts.sampleRate16000")}</option>
+							<option value={22050}>{interfaceI18n.t("debug.tts.sampleRate22050")}</option>
+							<option value={24000}>{interfaceI18n.t("debug.tts.sampleRate24000")}</option>
 						</select>
 					</div>
 					<div class="pie-tts-field">
@@ -1804,7 +1803,7 @@ Developer dialog for the section player demos that configures the toolkit's text
 			<fieldset class="pie-tts-fieldset fieldset bg-base-200 border border-base-300 rounded-box" disabled={!googleState.available}>
 				<div class="pie-tts-field">
 					<label class="pie-tts-label" for="tts-google-endpoint">{interfaceI18n.t("debug.tts.apiEndpoint")}</label>
-					<input id="tts-google-endpoint" class="input input-sm input-bordered w-full" bind:value={googleApiEndpoint} placeholder="/api/tts" />
+					<input id="tts-google-endpoint" class="input input-sm input-bordered w-full" bind:value={googleApiEndpoint} placeholder={interfaceI18n.t("debug.tts.apiEndpointPlaceholder")} />
 				</div>
 
 				<div class="pie-tts-grid-3">
@@ -1814,7 +1813,7 @@ Developer dialog for the section player demos that configures the toolkit's text
 							id="tts-google-language"
 							class="input input-sm input-bordered w-full"
 							bind:value={googleLanguage}
-							placeholder="en-US"
+							placeholder={interfaceI18n.t("debug.tts.languagePlaceholder")}
 							onchange={refreshGoogleVoices}
 						/>
 					</div>
@@ -1888,7 +1887,7 @@ Developer dialog for the section player demos that configures the toolkit's text
 						aria-pressed={previewMode === "ssml"}
 						onclick={() => onPreviewModeChange("ssml")}
 					>
-						SSML
+						{interfaceI18n.t("debug.tts.ssml")}
 					</button>
 				</div>
 			</div>

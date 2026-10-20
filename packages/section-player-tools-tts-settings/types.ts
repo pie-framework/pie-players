@@ -55,6 +55,6 @@ export type CustomProviderDescriptor = {
 	) => ProviderApplyResult | Promise<ProviderApplyResult>;
 	preview?: (
 		context: CustomProviderContext,
-	) => Promise<void | CustomProviderPreviewResult>;
+	) => Promise<CustomProviderPreviewResult | undefined>;
 	initialState?: Record<string, unknown>;
 };

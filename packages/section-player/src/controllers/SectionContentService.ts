@@ -14,6 +14,20 @@ import type {
 
 type PassageWithId = PassageEntity & { id: string };
 
+/**
+ * An authored id, trimmed, or `undefined` when absent or blank. A number reads
+ * as its decimal string, as item ids always have. Anything else is refused by
+ * its path in the section: it would stringify to `[object Object]`, or fail
+ * inside normalisation with an error that names nothing the host wrote.
+ */
+function readAuthoredId(value: unknown, path: string): string | undefined {
+	if (value === undefined || value === null) return undefined;
+	if (typeof value === "string") return value.trim() || undefined;
+	if (typeof value === "number" && Number.isFinite(value)) return String(value);
+	const kind = Array.isArray(value) ? "array" : typeof value;
+	throw new TypeError(`Section ${path} must be a string, got ${kind}`);
+}
+
 export class SectionContentService {
 	private createUniqueId(
 		base: string,
@@ -31,25 +45,30 @@ export class SectionContentService {
 	}
 
 	private resolvePassageBaseId(
-		passage: ReferencedPassageEntity | null | undefined,
+		passage: ReferencedPassageEntity,
+		path: string,
 		fallbackPrefix: string,
 	): string {
-		const raw =
-			((passage as { id?: unknown } | null)?.id as string | undefined) ||
-			((passage as { identifier?: unknown } | null)?.identifier as
-				| string
-				| undefined) ||
-			((passage as { name?: unknown } | null)?.name as string | undefined) ||
-			"";
-		return raw.trim() || fallbackPrefix;
+		const authored = passage as {
+			id?: unknown;
+			identifier?: unknown;
+			name?: unknown;
+		};
+		return (
+			readAuthoredId(authored.id, `${path}.id`) ??
+			readAuthoredId(authored.identifier, `${path}.identifier`) ??
+			readAuthoredId(authored.name, `${path}.name`) ??
+			fallbackPrefix
+		);
 	}
 
 	private normalizePassageEntity(
 		passage: ReferencedPassageEntity,
+		path: string,
 		usedPassageIds: Set<string>,
 		fallbackPrefix: string,
 	): PassageWithId {
-		const baseId = this.resolvePassageBaseId(passage, fallbackPrefix);
+		const baseId = this.resolvePassageBaseId(passage, path, fallbackPrefix);
 		const resolvedId = this.createUniqueId(
 			baseId,
 			usedPassageIds,
@@ -96,8 +115,10 @@ export class SectionContentService {
 		for (const [rubricIndex, rb] of (section.rubricBlocks || []).entries()) {
 			if (rb.class === "stimulus" && rb.passage) {
 				if (rb.view.includes("candidate") || rb.view.includes(view)) {
+					const passagePath = `rubricBlocks[${rubricIndex}].passage`;
 					const normalizedPassage = this.normalizePassageEntity(
 						rb.passage,
+						passagePath,
 						usedPassageIds,
 						`passage-${rubricIndex + 1}`,
 					);
@@ -108,12 +129,16 @@ export class SectionContentService {
 					if (rb.identifier) {
 						stimulusRenderableIdsByRef[rb.identifier] = normalizedPassage.id;
 					}
-					const authoredPassageId =
-						typeof rb.passage.id === "string" ? rb.passage.id.trim() : "";
+					const authoredPassageId = readAuthoredId(
+						rb.passage.id,
+						`${passagePath}.id`,
+					);
 					if (authoredPassageId) {
-						stimulusRenderableIdsByRef[authoredPassageId] = normalizedPassage.id;
+						stimulusRenderableIdsByRef[authoredPassageId] =
+							normalizedPassage.id;
 					}
-					stimulusRenderableIdsByRef[normalizedPassage.id] = normalizedPassage.id;
+					stimulusRenderableIdsByRef[normalizedPassage.id] =
+						normalizedPassage.id;
 				}
 			}
 		}
@@ -131,28 +156,39 @@ export class SectionContentService {
 			section.assessmentItemRefs || []
 		).entries()) {
 			if (!itemRef.item) continue;
+			const itemRefPath = `assessmentItemRefs[${itemIndex}]`;
+			const authoredItemId = readAuthoredId(
+				itemRef.item.id,
+				`${itemRefPath}.item.id`,
+			);
+			const authoredIdentifier = readAuthoredId(
+				itemRef.identifier,
+				`${itemRefPath}.identifier`,
+			);
 			const itemBaseId =
-				itemRef.item.id ||
-				itemRef.identifier ||
-				itemRef.item.name ||
+				authoredItemId ??
+				authoredIdentifier ??
+				readAuthoredId(itemRef.item.name, `${itemRefPath}.item.name`) ??
 				`item-${itemIndex + 1}`;
 			const resolvedItemId = this.createUniqueId(
-				String(itemBaseId),
+				itemBaseId,
 				usedItemIds,
 				`item-${itemIndex + 1}`,
 			);
+			const passagePath = `${itemRefPath}.item.passage`;
 			const normalizedPassage =
 				itemRef.item.passage && typeof itemRef.item.passage === "object"
 					? (() => {
-							const existingPassageId =
-								typeof itemRef.item?.passage?.id === "string"
-									? itemRef.item.passage.id.trim()
-									: "";
+							const existingPassageId = readAuthoredId(
+								itemRef.item.passage.id,
+								`${passagePath}.id`,
+							);
 							if (existingPassageId && passageMap.has(existingPassageId)) {
 								return passageMap.get(existingPassageId);
 							}
 							return this.normalizePassageEntity(
 								itemRef.item.passage,
+								passagePath,
 								usedPassageIds,
 								`passage-${itemIndex + 1}`,
 							);
@@ -164,8 +200,11 @@ export class SectionContentService {
 				passage: normalizedPassage || itemRef.item.passage,
 			} as ItemEntity;
 			items.push(normalizedItem);
+			// The authored identifier as written, untrimmed, since sessions are keyed by it.
 			const identifier =
-				itemRef.identifier || resolvedItemId || itemRef.item.name || "";
+				authoredIdentifier === undefined
+					? resolvedItemId
+					: String(itemRef.identifier);
 			adapterItemRefs.push({
 				identifier,
 				item: {
@@ -200,6 +239,7 @@ export class SectionContentService {
 					rb?.passage
 						? this.normalizePassageEntity(
 								rb.passage,
+								`rubricBlocks[${(section.rubricBlocks || []).indexOf(rb)}].passage`,
 								usedPassageIds,
 								`rubric-passage-${rubricIndex + 1}`,
 							)

@@ -1,0 +1,142 @@
+{
+	"schemaVersion": "2.1.0",
+	"modules": [
+		{
+			"kind": "javascript-module",
+			"path": "dist/pie-item-list.js",
+			"declarations": [
+				{
+					"kind": "class",
+					"description": "One PIE item as a list row: its stem, prompts, options and, for instructors, its answers, rendered as sanitized HTML with math as MathML. No element code loads. A host gives it the item `config`, or a precomputed `summary`, and keeps its own list, card and expand chrome around it.",
+					"name": "PieItemSummary",
+					"tagName": "pie-item-summary",
+					"customElement": true,
+					"members": [
+						{
+							"kind": "field",
+							"name": "config",
+							"type": {
+								"text": "ItemConfig"
+							},
+							"attribute": "config"
+						},
+						{
+							"kind": "field",
+							"name": "env",
+							"type": {
+								"text": "Env"
+							},
+							"attribute": "env"
+						},
+						{
+							"kind": "field",
+							"name": "summary",
+							"type": {
+								"text": "ItemSummary"
+							},
+							"attribute": "summary"
+						},
+						{
+							"kind": "field",
+							"name": "resolve",
+							"type": {
+								"text": "SummaryResolver"
+							},
+							"attribute": "resolve"
+						},
+						{
+							"kind": "field",
+							"name": "locale",
+							"type": {
+								"text": "string"
+							},
+							"default": "\"\"",
+							"description": "Interface locale for the row's own labels, as a BCP-47 tag. Unset renders `en-US`.",
+							"attribute": "locale"
+						}
+					],
+					"attributes": [
+						{
+							"name": "config",
+							"type": {
+								"text": "ItemConfig"
+							},
+							"fieldName": "config"
+						},
+						{
+							"name": "env",
+							"type": {
+								"text": "Env"
+							},
+							"fieldName": "env"
+						},
+						{
+							"name": "summary",
+							"type": {
+								"text": "ItemSummary"
+							},
+							"fieldName": "summary"
+						},
+						{
+							"name": "resolve",
+							"type": {
+								"text": "SummaryResolver"
+							},
+							"fieldName": "resolve"
+						},
+						{
+							"name": "locale",
+							"type": {
+								"text": "string"
+							},
+							"default": "\"\"",
+							"description": "Interface locale for the row's own labels, as a BCP-47 tag. Unset renders `en-US`.",
+							"fieldName": "locale"
+						}
+					],
+					"events": [
+						{
+							"name": "load-complete",
+							"type": {
+								"text": "CustomEvent<{ view: \"summary\" }>"
+							},
+							"description": "Once the summary has rendered with its math converted."
+						}
+					],
+					"x-pie": {
+						"shadow": "none",
+						"classes": [
+							"pie-item-summary",
+							"pie-item-summary__answer",
+							"pie-item-summary__answer-content",
+							"pie-item-summary__answer-label",
+							"pie-item-summary__badge",
+							"pie-item-summary__entry",
+							"pie-item-summary__figure",
+							"pie-item-summary__label",
+							"pie-item-summary__marker",
+							"pie-item-summary__media",
+							"pie-item-summary__option",
+							"pie-item-summary__option--correct",
+							"pie-item-summary__option-label",
+							"pie-item-summary__options",
+							"pie-item-summary__part",
+							"pie-item-summary__prompt",
+							"pie-item-summary__sr-only",
+							"pie-item-summary__stem"
+						]
+					}
+				}
+			],
+			"exports": [
+				{
+					"kind": "custom-element-definition",
+					"name": "pie-item-summary",
+					"declaration": {
+						"name": "PieItemSummary"
+					}
+				}
+			]
+		}
+	]
+}

@@ -47,6 +47,7 @@ Items pane of a section player: renders the item cards of the current compositio
 		getItemSettings,
 		getTimedMediaItemView,
 	} from "./section-player-view-state.js";
+	import type { SectionItemScore } from "../../contracts/runtime-host-contract.js";
 	import {
 		connectSectionPlayerLayoutContext,
 		type SectionPlayerLayoutContext,
@@ -392,6 +393,27 @@ Items pane of a section player: renders the item cards of the current compositio
 	const gate = $derived(timedMedia?.gate ?? null);
 	const gateHolding = $derived(gate?.holding === true);
 
+	type ScorableItemCard = HTMLElement & {
+		provideScore?: () => Promise<false | SectionItemScore["outcomes"]>;
+	};
+
+	// By render index. A shorter composition leaves stale slots past its end, which
+	// `provideScore` never reads.
+	const itemCards = $state<Array<ScorableItemCard | null>>([]);
+
+	/**
+	 * Scores each item through its card, which owns the item player node. An item
+	 * whose card or player has not mounted reports `false`.
+	 */
+	export async function provideScore(): Promise<SectionItemScore[]> {
+		return Promise.all(
+			items.map(async (item: ItemEntity, itemIndex: number) => ({
+				canonicalItemId: getCanonicalItemId({ compositionModel, item }),
+				outcomes: (await itemCards[itemIndex]?.provideScore?.()) ?? false,
+			})),
+		);
+	}
+
 	/** 1-based position of an item in the pane, for the announcements. */
 	function itemPositionOf(canonicalItemId: string): number {
 		const index = items.findIndex(
@@ -712,6 +734,7 @@ Items pane of a section player: renders the item cards of the current compositio
 			     on every seek backwards. -->
 			{@const timedMediaView = getTimedMediaItemView({ compositionModel, canonicalItemId })}
 			<pie-section-player-item-card
+				bind:this={itemCards[itemIndex]}
 				hidden={timedMediaView?.pending === true}
 				{item}
 				itemIndex={itemIndex}
@@ -730,6 +753,7 @@ Items pane of a section player: renders the item cards of the current compositio
 					itemIndex,
 					baseHeadingLevel,
 					formativeView,
+					i18n: chromeRuntimeContext?.i18n,
 				})}
 				{formativeView}
 				{timedMediaView}

@@ -58,6 +58,8 @@ const enUS = {
 		apply: "Apply",
 		enabled: "Enabled",
 		disabled: "Disabled",
+		lookUp: "Look up",
+		wordOrPhrase: "Word or phrase",
 		closeA11y: "Close",
 		settingsA11y: "Open settings menu",
 	},
@@ -91,6 +93,14 @@ const enUS = {
 		resizeMediaRegion: "Resize media region",
 		resizeQuestionAndMediaA11y: "Resize question and media panels",
 		resizePassageAndMediaA11y: "Resize passage and media panels",
+		resizePassageAndQuestionA11y: "Resize passage and question panels",
+		passageWidthA11y: "{percent}% passage width",
+		/**
+		 * The section player's navigation live region, announced when the active
+		 * item changes; `{label}` is the item's own label when it has one.
+		 */
+		questionPositionA11y: "Question {position} of {total}",
+		questionPositionLabeledA11y: "{label}, question {position} of {total}",
 
 		/**
 		 * The assessment player's own section-to-section navigation. Its Back and
@@ -147,6 +157,19 @@ const enUS = {
 				"Answer question {position} before continuing with the media.",
 			playbackReleased: "Answer accepted. Continue playing the media.",
 		},
+
+		/**
+		 * `<pie-item-summary>`: an item described as a list row, without loading its
+		 * elements. The correct marker's glyph is hidden from assistive technology,
+		 * which reads `correctA11y` instead.
+		 */
+		summary: {
+			correctA11y: "Correct answer",
+			answer: "Answer",
+			manualScoring: "Scored by a teacher",
+			audio: "Audio",
+			video: "Video",
+		},
 	},
 
 	/** Toolbar and tool-shell chrome owned by the assessment toolkit. */
@@ -169,18 +192,21 @@ const enUS = {
 			moveRightA11y: "Move tool right",
 			moveUpA11y: "Move tool up",
 			moveDownA11y: "Move tool down",
-			shrinkA11y: "Shrink tool window",
-			growA11y: "Grow tool window",
+			narrowerA11y: "Make tool window narrower",
+			widerA11y: "Make tool window wider",
+			shorterA11y: "Make tool window shorter",
+			tallerA11y: "Make tool window taller",
 			centerA11y: "Center tool window",
 			closeA11y: "Close tool",
 		},
 
 		/**
-		 * The tap controls that move and turn the ruler and protractor without a
+		 * The tap controls that move, turn and resize a placed tool without a
 		 * drag. The move buttons reuse the `window` labels above.
 		 */
 		placement: {
 			controlsA11y: "Move and rotate",
+			moveAndResizeA11y: "Move and resize",
 			rotateClockwiseA11y: "Rotate {degrees}° clockwise",
 			rotateCounterclockwiseA11y: "Rotate {degrees}° counterclockwise",
 		},
@@ -227,6 +253,7 @@ const enUS = {
 			toolA11y: "Calculator tool",
 			loading: "Loading calculator…",
 			providerUnavailable: "The calculator is unavailable.",
+			initFailed: "Calculator failed to initialize.",
 		},
 		graph: {
 			name: "Graph",
@@ -333,6 +360,21 @@ const enUS = {
 			buttonA11y: "Dictionary, look up word definitions",
 			tooltip: "Dictionary",
 			toolA11y: "Dictionary",
+			// The lookup panel's notices are authored whole: the term interpolates
+			// into the sentence, never around it.
+			notConfigured: "No dictionary service is configured for this assessment.",
+			idleHint: "Type a word to look it up.",
+			lookingUp: "Looking up “{term}”…",
+			noEntryFor: "No entry for “{term}”.",
+			// The polite live-region status after a lookup: the count summary and
+			// the no-entry announcement, phrased without the quotation marks the
+			// visible notices carry. The count calls plural(), never a `=== 1`
+			// branch.
+			entriesCount: {
+				one: "{count} entry",
+				other: "{count} entries",
+			},
+			noEntryStatusFor: "No dictionary entry for {term}.",
 		},
 		pictureDictionary: {
 			name: "Picture Dictionary",
@@ -340,6 +382,16 @@ const enUS = {
 			buttonA11y: "Picture Dictionary, look up pictures for words",
 			tooltip: "Picture Dictionary",
 			toolA11y: "Picture Dictionary",
+			notConfigured:
+				"No picture dictionary service is configured for this assessment.",
+			idleHint: "Type a word to see a picture of it.",
+			lookingUp: "Looking up “{term}”…",
+			noEntryFor: "No picture for “{term}”.",
+			entriesCount: {
+				one: "{count} picture",
+				other: "{count} pictures",
+			},
+			noEntryStatusFor: "No picture for {term}.",
 		},
 		/**
 		 * The Spanish variants. Named in the interface locale like every other tool label —
@@ -372,12 +424,40 @@ const enUS = {
 			windowHeightAnnounce: "Reading window height {pixels} pixels",
 			frameHeightAnnounce: "Frame height {pixels} pixels",
 			widthAnnounce: "Width {pixels} pixels",
+			shorterWindowA11y: "Make the reading window shorter",
+			tallerWindowA11y: "Make the reading window taller",
+			shorterFrameA11y: "Make the frame shorter",
+			tallerFrameA11y: "Make the frame taller",
+			narrowerA11y: "Make the line reader narrower",
+			widerA11y: "Make the line reader wider",
 			applicationA11y:
 				"Line Reader tool. A clear reading window inside an obscuring frame. Use arrow keys to move, +/- to resize the reading window, Escape to close. Reading window height: {paneHeight} pixels, Frame height: {frameHeight} pixels",
 			resizeWindowFullA11y:
 				"Resize the reading window. Drag, or use the up and down arrow keys to change its height. Current height {paneHeight} pixels",
 			resizeFrameFullA11y:
 				"Resize the frame. Drag, or use the up and down arrow keys to change the frame height and the left and right arrow keys to change the width. Current frame height {frameHeight} pixels, width {width} pixels",
+		},
+		magnification: {
+			name: "Magnifier",
+			description: "Magnify the content under a movable lens",
+			buttonA11y: "Magnifier, enlarge the content under a lens",
+			tooltip: "Magnifier",
+			roleA11y: "Draggable and resizable magnifying lens",
+			applicationA11y:
+				"Magnifier at {zoom} times. Use the arrow keys to move the lens, + and - to change the zoom, and Escape to close.",
+			zoomIn: "Zoom in",
+			zoomOut: "Zoom out",
+			zoomLevel: "{zoom}×",
+			zoomAnnounce: "Zoom {zoom} times",
+			close: "Close magnifier",
+			resizeA11y: "Drag to resize the magnifier",
+			resizeFullA11y:
+				"Resize the magnifier. Drag, or use the arrow keys. Current size {width} by {height} pixels",
+			sizeAnnounce: "Magnifier {width} by {height} pixels",
+			narrowerA11y: "Make the magnifier narrower",
+			widerA11y: "Make the magnifier wider",
+			shorterA11y: "Make the magnifier shorter",
+			tallerA11y: "Make the magnifier taller",
 		},
 		answerEliminator: {
 			name: "Answer Eliminator",
@@ -542,6 +622,42 @@ const enUS = {
 		toggleDatabasePanelA11y: "Toggle database state panel",
 		toggleInstrumentationPanelA11y: "Toggle instrumentation panel",
 
+		// Panel actions and status. "clear"/"pause"/"resume" stay lowercase in
+		// English to match the dev panels' chrome; locales render their own
+		// register.
+		clear: "clear",
+		pause: "pause",
+		resume: "resume",
+		controllerUnavailable: "controller unavailable",
+		noMatchingEvents:
+			"No matching events yet. Interact with an item to capture controller events.",
+		noSectionSessionYet:
+			"No section session data yet. Interact with the questions to see updates.",
+		eventLevelItem: "item",
+		eventLevelSection: "section",
+		// Instrumentation record-kind identifiers. They name the emitted
+		// records, so every locale carries them verbatim; a locale that
+		// prefers translated labels can override per key.
+		instrumentationKindAll: "all",
+		instrumentationKindEvent: "event",
+		instrumentationKindError: "error",
+		instrumentationKindMetric: "metric",
+		instrumentationKindUserContext: "user-context",
+		instrumentationKindGlobalAttributes: "global-attributes",
+		// Instrumentation detail-field labels.
+		instrumentationFieldName: "name:",
+		instrumentationFieldKind: "kind:",
+		instrumentationFieldProvider: "provider:",
+		instrumentationFieldTimestamp: "timestamp:",
+		instrumentationFieldValue: "value:",
+		instrumentationFieldError: "error:",
+		// Session-db payload field names — identifiers, verbatim across
+		// locales like the record kinds above.
+		sessionDbAssessmentId: "assessmentId:",
+		sessionDbSectionId: "sectionId:",
+		sessionDbAttemptId: "attemptId:",
+		sessionDbMode: "mode:",
+
 		/** PNP debugger. */
 		pnp: {
 			title: "PNP Profile",
@@ -562,6 +678,12 @@ const enUS = {
 			perToolDecisions: "Per-Tool Decisions",
 			policyDiagnostics: "Policy Diagnostics",
 			profileReadOnly: "PNP Profile (read-only)",
+			on: "On",
+			effective: "Effective:",
+			needs: "needs",
+			hostSurfaceNotPlaced: "host surface (not placed)",
+			support: "support",
+			prohibit: "prohibit",
 		},
 
 		/** TTS settings panel. */
@@ -671,6 +793,16 @@ const enUS = {
 			previewHintGoogleSsml: "SSML preserved. Tracking disabled.",
 			previewHintCustom: "Tracking enabled when provider returns speech marks.",
 			previewHintTracking: "Tracking enabled while preview plays.",
+			formatMp3: "MP3",
+			formatOgg: "OGG",
+			formatPcm: "PCM",
+			sampleRate8000: "8000 Hz",
+			sampleRate16000: "16000 Hz",
+			sampleRate22050: "22050 Hz",
+			sampleRate24000: "24000 Hz",
+			apiEndpointPlaceholder: "/api/tts",
+			languagePlaceholder: "en-US",
+			ssml: "SSML",
 		},
 	},
 };

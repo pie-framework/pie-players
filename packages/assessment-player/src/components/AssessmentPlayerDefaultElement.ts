@@ -3,6 +3,7 @@ import {
 	coerceBooleanLike,
 	type InstrumentationProvider,
 } from "@pie-players/pie-players-shared";
+import { reportInterfaceLocaleLoadError } from "@pie-players/pie-players-shared/i18n";
 import { cloneDeep } from "@pie-players/pie-players-shared/object";
 import {
 	frameworkErrorFromUnknown,
@@ -18,8 +19,13 @@ import {
 import {
 	createPieI18n,
 	DEFAULT_LOCALE,
+	stampInterfaceLocale,
 } from "@pie-players/pie-players-shared/i18n";
-import type { I18nServiceApi, MessageKey } from "@pie-players/pie-players-shared/i18n";
+import type {
+	I18nProvider,
+	I18nServiceApi,
+	MessageKey,
+} from "@pie-players/pie-players-shared/i18n";
 import type { Env } from "@pie-players/pie-players-shared/types";
 import { AssessmentController } from "../controller/AssessmentController.js";
 import type { AssessmentControllerHandle } from "../controller/AssessmentController.js";
@@ -99,6 +105,8 @@ const VERTICAL_SECTION_TAG = "pie-section-player-vertical";
  * @fires {CustomEvent<{ type: "assessment-session-changed"; timestamp: number }>} assessment-session-changed -
  *   When navigation or a section snapshot changes the assessment session.
  * @fires {CustomEvent<AssessmentProgressChangedDetail>} assessment-progress-changed -
+ *
+ * @fires {CustomEvent<{ kind: "i18n-locale-load"; source: string; message: string; details: string[]; recoverable: true; scope: "runtime"; cause?: unknown }>} framework-error - When a requested interface-locale catalog fails to load for the assembly's own navigation chrome; the assembly keeps rendering through the English fallback chain, and re-setting `locale` retries the load.
  *   When the visited-section count changes.
  * @fires {CustomEvent<AssessmentSubmissionStateChangedDetail>} assessment-submission-state-changed -
  *   When `submit()` records the submission state.
@@ -156,8 +164,20 @@ export class AssessmentPlayerDefaultElement
 	 * context above it to resolve from. Constructed with the English catalog
 	 * already resident, so `t` never returns a bare key.
 	 */
-	private readonly i18n: I18nServiceApi = createPieI18n();
+	private readonly ownedI18n: I18nServiceApi = createPieI18n();
+	/** The provider the host supplied through `sectionPlayerRuntime.i18n`, if any. */
+	private suppliedI18n: I18nProvider | null = null;
+	private subscribedI18n: I18nProvider | null = null;
 	private unsubscribeI18n?: () => void;
+	/**
+	 * The provider resolving this player's navigation chrome: the host's
+	 * `sectionPlayerRuntime.i18n` when supplied, else the one built here. The
+	 * section element's runtime carries the same object, so the section and
+	 * everything under it resolve one provider.
+	 */
+	private get i18n(): I18nProvider {
+		return this.suppliedI18n ?? this.ownedI18n;
+	}
 	private sectionHost: HTMLElement | null = null;
 	private sectionControllerRef: SectionControllerHandle | null = null;
 	private sectionSessionReady = false;
@@ -302,13 +322,34 @@ export class AssessmentPlayerDefaultElement
 	 * lands. That is also the change signal a later switch travels on.
 	 */
 	private applyLocale(): void {
+		const provider = this.i18n;
+		if (this.unsubscribeI18n && this.subscribedI18n !== provider) {
+			this.unsubscribeI18n();
+			this.unsubscribeI18n = undefined;
+		}
 		if (!this.unsubscribeI18n) {
-			this.unsubscribeI18n = this.i18n.subscribe?.(() => {
+			this.subscribedI18n = provider;
+			this.unsubscribeI18n = provider.subscribe?.(() => {
 				if (this.isConnected) this.updateNavigationChrome();
 			});
 		}
-		void this.i18n.setLocale(this.locale || DEFAULT_LOCALE);
+		// The `locale` attribute is the only locale driver. With none set, a
+		// provider built here resolves `en-US`; one the host supplied through
+		// `sectionPlayerRuntime.i18n` keeps the locale its owner gave it. A
+		// failed catalog load is reported, not swallowed: every key still
+		// resolves through the English fallback chain, and failed loads are not
+		// cached, so re-setting `locale` retries.
+		if (this.locale || provider === this.ownedI18n) {
+			void Promise.resolve(
+				provider.setLocale(this.locale || DEFAULT_LOCALE),
+			).catch((error: unknown) => {
+				reportInterfaceLocaleLoadError(this, "pie-assessment-player", error);
+			});
+		}
 		this.forwardLocaleToSection();
+		// Names the locale the provider holds now; the subscription restamps
+		// once a requested catalog is resident.
+		stampInterfaceLocale(this, provider);
 	}
 
 	/**
@@ -337,9 +378,16 @@ export class AssessmentPlayerDefaultElement
 
 	set sectionPlayerRuntime(value: AssessmentPlayerRuntimeConfig["sectionPlayerRuntime"]) {
 		this._sectionPlayerRuntime = value;
+		// Set before the connection check: the `i18n` getter reads it, and a
+		// value assigned before `connectedCallback` must already be in force
+		// when that applies the locale.
+		this.suppliedI18n = value?.i18n ?? null;
 		if (this.isConnected) {
 			this.attachInstrumentationBridge();
 			this.updateCurrentSectionRuntime();
+			// A swapped provider needs its own subscription and its own locale
+			// decision; `applyLocale` handles both.
+			this.applyLocale();
 		}
 	}
 
@@ -371,6 +419,7 @@ export class AssessmentPlayerDefaultElement
 		this.settleControllerWaiters(null);
 		this.unsubscribeI18n?.();
 		this.unsubscribeI18n = undefined;
+		this.subscribedI18n = null;
 		this.detachInstrumentationBridge?.();
 		this.detachInstrumentationBridge = undefined;
 	}
@@ -1032,6 +1081,7 @@ export class AssessmentPlayerDefaultElement
 
 	/** Locale and chrome changes must not remount a section or reload its attempt. */
 	private updateNavigationChrome(): void {
+		stampInterfaceLocale(this, this.i18n);
 		const navigation = this.selectNavigation();
 		const position = navigation.totalSections > 0
 			? this.i18n.t("player.assessment.sectionPosition", {

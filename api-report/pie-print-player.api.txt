@@ -18,6 +18,7 @@
   PiePrint
   type PkgResolution
   type PrintAccessibilityConfig
+  type PrintLoaderOptions
   type ResolverFn
   defaultLoadResolution
   defaultResolve

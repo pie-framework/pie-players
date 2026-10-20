@@ -51,7 +51,7 @@ player.loaderOptions = {
 | Option | Used by | Default | Description |
 | ------ | ------- | ------- | ----------- |
 | `bundleHost` | `iife` | `https://proxy.pie-api.com/bundles/` | Base URL of the bundle host |
-| `esmCdnUrl` | `esm` | `https://cdn.jsdelivr.net/npm` | Base URL of the npm CDN the ESM adapter loads from |
+| `esmCdnUrl` | `esm`; all, for page assets | `https://cdn.jsdelivr.net/npm` | Base URL of the npm CDN the ESM adapter loads from. Under every strategy it also serves the Font Awesome Free stylesheet toolbars add and, under `iife`, the speech rules of the player's math renderer ([ESM CDN providers](#esm-cdn-providers)) |
 | `esmCdnProvider` | `esm` | `"esm.sh"` when `esmCdnUrl` contains `esm.sh`, otherwise `"jsdelivr"` | URL layout of that CDN: `"jsdelivr"`, `"esm.sh"`, another name for a CDN with jsDelivr's layout, or a provider object ([ESM CDN providers](#esm-cdn-providers)) |
 | `moduleResolution` | `esm` | `"url"` | `"url"` imports fully qualified CDN URLs; `"import-map"` imports bare specifiers through an import map |
 | `view` | `esm` | `"author"` when `mode="author"`, otherwise `"delivery"` | ESM view: `"delivery"`, `"author"`, or `"print"` |
@@ -222,6 +222,19 @@ the default: package files at `<esmCdnUrl>/<package>@<version>/<path>`, and
 shared dependencies at `<esmCdnUrl>/<dependency>@<version>/+esm`. Every provider
 name other than `"esm.sh"` selects that layout, so a mirror that serves it
 passes its own name and URL.
+
+jsDelivr builds a `+esm` module with its own dependencies imported by root path,
+`/npm/<dependency>@<version>/+esm`. When `esmCdnUrl` has that layout and is not
+its origin's `/npm`, the player adds an import-map scope that sends those
+imports to `esmCdnUrl`, so a mirror such as `https://mirror.example/esm` serves
+every module and the page holds one copy of each dependency.
+
+The same base serves the page assets the players add: the Font Awesome Free
+stylesheet of the item toolbar and the inline TTS tool, which read the item
+player's `loaderOptions`, and under `iife` the speech rules of the player's
+MathJax 3 renderer, unless the page sets SRE's `json` path or a MathJax asset
+root ([MathJax assets](./math-rendering.md#mathjax-assets)). `<pie-print>` takes
+the same `esmCdnUrl` and `esmCdnProvider` in a `loaderOptions` of its own.
 
 For esm.sh, pass both the provider name and base URL:
 

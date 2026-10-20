@@ -96,7 +96,7 @@ The shared contracts start from the contracts already present in the repositorie
 | Leaf outcome | `OutcomeResult` in `pie-elements-ng`, `OutcomeResponse` in `@pie-players/pie-players-shared/types` |
 | Local item scoring | `scorePieItem(...)` in `players-shared/src/pie/scoring.ts` and `pie-item-player.provideScore()` |
 | Item session normalization | `ItemSessionContainer`, `NormalizedItemSessionChange`, `normalizeItemSessionChange(...)` |
-| Section attempt state | `TestAttemptSession`, `TestAttemptItemSession`, `upsertItemSessionFromPieSessionChange(...)` |
+| Section attempt state | `TestAttemptSession`, `TestAttemptItemSession`, `upsertItemSessionFromPieSessionChange(...)` (toolkit-owned, unlike the session types below) |
 | Section persistence snapshot | `SectionControllerSessionState` |
 | Section runtime completion | `SectionControllerRuntimeState`, `item-complete-changed`, `section-items-complete-changed` |
 | Assessment session rollup | `AssessmentSession` and `AssessmentSectionSessionState` in `@pie-players/pie-players-shared/types`, toolkit `upsertSectionSession(...)` |
@@ -104,8 +104,9 @@ The shared contracts start from the contracts already present in the repositorie
 Important current limits:
 
 - `pie-item-player.provideScore()` and `scorePieItem(...)` return per-element
-  outcomes, not an accepted rolled-up item score. One consumer now rolls them up
-  for a bounded purpose: the [formative delivery
+  outcomes, not an accepted rolled-up item score ([scoring design
+  notes](./scoring-design-notes.md)). One consumer rolls them up for a bounded
+  purpose: the [formative delivery
   contract](../prds/formative-delivery-contract.md) derives a four-valued
   correctness per Try, always browser-derived and carrying no provenance or
   authority. A general score projection must stay able to express it, including
@@ -237,26 +238,9 @@ Completion projections need their own provenance and authority rules. Later
 PRDs must state whether completion is sourced from item session metadata,
 `OutcomeResponse.completed`, media watch state, cue completion, branch/process
 state, section aggregation, assessment submission, or host policy, and whether
-that completion state is provisional, derived, or terminal.
-
-Documentation sketch only:
-
-```ts
-interface TimedMediaSectionState {
-  mediaCurrentTime: number;
-  mediaCompleted: boolean;
-  visitedCueIdentifiers: string[];
-}
-
-interface ExtendedSectionControllerSessionState {
-  currentItemIndex?: number;
-  visitedItemIdentifiers?: string[];
-  itemSessions: Record<string, unknown>;
-  timedMedia?: TimedMediaSectionState;
-}
-```
-
-This sketch illustrates additive typed slices. The shipped slice is `TimedMediaSectionSessionSlice`.
+that completion state is provisional, derived, or terminal. The shipped
+`timedMedia` slice, `TimedMediaSectionSessionSlice`, shows the shape a ratified
+slice takes ([timed-media section contract](../prds/timed-media-section-contract.md)).
 
 ### Score And Outcome Projection
 
@@ -413,18 +397,13 @@ catalog infrastructure where possible.
 
 ## Timed-Media Alignment
 
-The [timed-media section contract](../prds/timed-media-section-contract.md)
-consumes the shared contracts instead of redefining them:
-
-| Timed-media need | Shared contract |
-| --- | --- |
-| `media.*` and `cue.*` events | event projection source refs and typed event families |
-| media progress and cue state | named `timedMedia` section slice |
-| cue-linked child questions | existing `itemSessions` and future score projections |
-| playback completion versus correctness | score/outcome projection rules that keep completion and correctness separate |
-| video sources, captions, transcripts | media asset metadata |
-| forced pauses and focus handoff | accessibility runtime patterns |
-| xAPI/Caliper media analytics | adapter-friendly event projection without conformance claims |
+The [timed-media section
+contract](../prds/timed-media-section-contract.md) consumes the shared
+contracts instead of redefining them: its media progress and cue state are the
+`timedMedia` section slice, its video sources, captions and transcripts are the
+media asset vocabulary, its playback policy keeps completion and correctness
+separate under the score/outcome rules, and its forced pauses and focus handoff
+follow the accessibility runtime patterns.
 
 The `video-stimulus` element remains a media stimulus. Cue-to-question
 orchestration, child item sessions, playback policy and section completion

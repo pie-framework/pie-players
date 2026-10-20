@@ -112,6 +112,8 @@ TTS service pause each other.
 		class="pie-tool-sign-language"
 		data-pie-sign-language={media.signLang || undefined}
 		data-pie-catalog-id={media.catalogId || undefined}
+		lang={interfaceI18n.getLocale()}
+		dir={interfaceI18n.getDirection?.() ?? "ltr"}
 	>
 		<!-- Muted by default: the signing recording's own audio channel carries
 		     nothing a signing learner needs, and unmuting stays one control away. -->

@@ -5,10 +5,15 @@
 
 import { GlobalRegistrator } from "@happy-dom/global-registrator";
 import { afterAll, afterEach, describe, expect, test } from "bun:test";
+import type { I18nProvider } from "@pie-players/pie-players-shared/i18n";
+import type { InterfaceLocaleContextValue } from "@pie-players/pie-context";
 
 const ownsDom = typeof window === "undefined";
 if (ownsDom) GlobalRegistrator.register();
 const { commitPendingSessions } = await import("@pie-players/pie-players-shared");
+const { ContextRequestEvent, interfaceLocaleContext } = await import(
+	"@pie-players/pie-context"
+);
 const { ToolkitCoordinator } = await import("../src/services/ToolkitCoordinator.js");
 await import("../src/components/PieAssessmentToolkit.svelte");
 
@@ -499,5 +504,106 @@ describe("<pie-assessment-toolkit> lifecycle", () => {
 		expect(hookCalls.map((model) => model.kind)).toEqual([
 			"section-controller-init",
 		]);
+	});
+});
+
+/**
+ * `interfaceLocaleContext`, the host-neutral channel the PIE elements inside
+ * the toolkit read the interface locale from. In this file because bun runs
+ * test files in one process: a second file registering its own happy-dom
+ * window would find the element module already evaluated, defined only in
+ * the first window.
+ */
+describe("<pie-assessment-toolkit> interface locale context", () => {
+	/** Requests the context from `child` as an element's bundled copy would. */
+	function subscribe(child: Element): InterfaceLocaleContextValue[] {
+		const seen: InterfaceLocaleContextValue[] = [];
+		child.dispatchEvent(
+			new ContextRequestEvent(
+				interfaceLocaleContext,
+				child,
+				(value) => seen.push(value),
+				true,
+			),
+		);
+		return seen;
+	}
+
+	test("answers an element inside it, and republishes once the catalog is resident", async () => {
+		const { element } = await mount({});
+		const child = document.createElement("div");
+		element.append(child);
+		const seen = subscribe(child);
+		await settle();
+		expect(seen).toEqual([{ locale: "en-US", direction: "ltr" }]);
+
+		element.setAttribute("locale", "nl-NL");
+		await settle();
+		expect(seen.at(-1)).toEqual({ locale: "nl-NL", direction: "ltr" });
+	});
+
+	test("a supplied right-to-left provider publishes its locale and direction as given", async () => {
+		const i18n: I18nProvider = {
+			getLocale: () => "ar-SA",
+			getDirection: () => "rtl",
+			setLocale: async () => {},
+			t: (key) => String(key),
+		};
+		const { element } = await mount({ i18n });
+		const child = document.createElement("div");
+		element.append(child);
+		const seen = subscribe(child);
+		await settle();
+		expect(seen).toEqual([{ locale: "ar-SA", direction: "rtl" }]);
+	});
+});
+
+/**
+ * The interface locale the toolkit stamps on its own host. It has to be the
+ * host, not an element in the shadow tree: what a host composes inside the
+ * toolkit is slotted light DOM, and `lang` resolution and CSS `direction`
+ * reach slotted content only from a light-tree ancestor. And it has to move
+ * once a lazily loaded catalog is resident, because `getLocale()` names the
+ * requested locale only from then on.
+ *
+ * In this file rather than its own because bun runs test files in one process:
+ * a second file registering its own happy-dom window would find the element
+ * module already evaluated, defined only in the first window.
+ */
+describe("<pie-assessment-toolkit> interface locale", () => {
+	test("stamps the default locale on its host, and follows the attribute through a catalog load", async () => {
+		const { element } = await mount({});
+		expect(element.getAttribute("lang")).toBe("en-US");
+		expect(element.getAttribute("dir")).toBe("ltr");
+
+		element.setAttribute("locale", "nl-NL");
+		await settle();
+		expect(element.getAttribute("lang")).toBe("nl-NL");
+		expect(element.getAttribute("dir")).toBe("ltr");
+	});
+
+	test("a supplied provider's locale and direction reach the host as given", async () => {
+		// A host provider with no `locale` attribute is never auto-driven, so the
+		// stamp names exactly what its owner set.
+		const i18n: I18nProvider = {
+			getLocale: () => "ar-SA",
+			getDirection: () => "rtl",
+			setLocale: async () => {},
+			t: (key) => String(key),
+		};
+		const { element } = await mount({ i18n });
+		expect(element.getAttribute("lang")).toBe("ar-SA");
+		expect(element.getAttribute("dir")).toBe("rtl");
+	});
+
+	test("never writes the document root", async () => {
+		const root = document.documentElement;
+		const before = {
+			lang: root.getAttribute("lang"),
+			dir: root.getAttribute("dir"),
+		};
+		await mount({ locale: "nl-NL" });
+		expect(root.getAttribute("lang")).toBe(before.lang);
+		expect(root.getAttribute("dir")).toBe(before.dir);
 	});
 });

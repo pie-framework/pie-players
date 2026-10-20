@@ -20,6 +20,30 @@ describe("defaultResolve", () => {
 		});
 	});
 
+	test("resolves against the configured ESM CDN", async () => {
+		const mirror = await defaultResolve(
+			"multiple-choice",
+			"@pie-element/multiple-choice@13.2.0",
+			{ esmCdnUrl: "https://mirror.test/esm/" },
+		);
+		const esmSh = await defaultResolve(
+			"multiple-choice",
+			"@pie-element/multiple-choice@13.2.0",
+			{ esmCdnUrl: "https://esm.sh", esmCdnProvider: "esm.sh" },
+		);
+
+		expect(mirror).toMatchObject({
+			url: "https://mirror.test/esm/@pie-element/multiple-choice@13.2.0/dist/browser/print/index.js",
+			cdnBaseUrl: "https://mirror.test/esm",
+		});
+		expect(mirror.cdnProvider).toBeUndefined();
+		expect(esmSh).toMatchObject({
+			url: "https://raw.esm.sh/@pie-element/multiple-choice@13.2.0/dist/browser/print/index.js",
+			cdnBaseUrl: "https://esm.sh",
+			cdnProvider: "esm.sh",
+		});
+	});
+
 	test("builds no CDN URL for a spec that is not a scoped package spec", async () => {
 		const resolution = await defaultResolve("multiple-choice", TRAVERSAL_SPEC);
 

@@ -1,6 +1,7 @@
 import { expect, type Page, test } from "@playwright/test";
 import {
 	MC_PROMPT,
+	MC_REF,
 	openPreloadedBase,
 	PRELOADED_SECTION,
 } from "./fixtures/preloaded-section";
@@ -39,8 +40,10 @@ type HostApiLog = {
 type HostApiElement = HTMLElement & {
 	runtime?: Record<string, unknown>;
 	section?: unknown;
+	session?: unknown;
 	getSnapshot?: () => { composition?: { itemsCount?: number } } | null;
 	waitForSectionController?: (timeoutMs?: number) => Promise<unknown>;
+	provideScore?: () => Promise<unknown>;
 };
 
 declare global {
@@ -201,6 +204,14 @@ async function waitForLoadingComplete(page: Page): Promise<HostApiLog> {
 	return hostApiLog(page);
 }
 
+function provideScore(page: Page, tag: string): Promise<unknown> {
+	return page.evaluate(
+		(layoutTag) =>
+			(document.querySelector(layoutTag) as HostApiElement | null)?.provideScore?.(),
+		tag,
+	);
+}
+
 function collectWarnings(page: Page): string[] {
 	const warnings: string[] = [];
 	page.on("console", (message) => {
@@ -259,6 +270,96 @@ test.describe("section player host API", () => {
 			expect(itemsCount).toBeGreaterThan(0);
 		});
 	}
+
+	test("provideScore resolves no scores before the layout mounts", async ({
+		page,
+	}) => {
+		await openPreloadedBase(page);
+		const scores = await page.evaluate(
+			(tags) =>
+				Promise.all(
+					tags.map((tag) =>
+						(document.createElement(tag) as HostApiElement).provideScore?.(),
+					),
+				),
+			[...LAYOUT_TAGS],
+		);
+		expect(scores).toEqual(LAYOUT_TAGS.map(() => []));
+	});
+
+	for (const tag of LAYOUT_TAGS) {
+		test(`${tag} scores every item through provideScore`, async ({ page }) => {
+			await openPreloadedBase(page);
+			await mountFreshLayout(page, { tag });
+			await waitForLoadingComplete(page);
+			const player = page.locator(tag);
+			// The tabbed layout opens on its passage.
+			if (tag === "pie-section-player-tabbed") {
+				await player
+					.getByRole("tab", { name: "Questions" })
+					.click({ timeout: 30_000 });
+			}
+			await expect(player.getByText(MC_PROMPT)).toBeVisible({ timeout: 30_000 });
+			// The MUI radio's input is visually hidden, so `check()` reports no change.
+			await player.getByText("config.elements", { exact: true }).click();
+
+			await expect
+				.poll(() => provideScore(page, tag), { timeout: 10_000 })
+				.toEqual([
+					{
+						canonicalItemId: MC_REF,
+						outcomes: [expect.objectContaining({ score: 1 })],
+					},
+					{
+						canonicalItemId: "fixture-categorize-ref",
+						outcomes: [expect.objectContaining({ score: 0 })],
+					},
+				]);
+		});
+	}
+
+	test("runtime.player.addCorrectResponse fills every item with its correct response", async ({
+		page,
+	}) => {
+		const tag = "pie-section-player-splitpane";
+		await openPreloadedBase(page);
+		await mountFreshLayout(page, {
+			tag,
+			runtime: { player: { addCorrectResponse: true } },
+		});
+		await waitForLoadingComplete(page);
+		const player = page.locator(tag);
+		await expect(
+			player.getByRole("radio", { name: "config.elements" }),
+		).toBeChecked({ timeout: 30_000 });
+		await expect
+			.poll(() => provideScore(page, tag), { timeout: 10_000 })
+			.toEqual([
+				{
+					canonicalItemId: MC_REF,
+					outcomes: [expect.objectContaining({ score: 1 })],
+				},
+				{
+					canonicalItemId: "fixture-categorize-ref",
+					outcomes: [expect.objectContaining({ score: 1 })],
+				},
+			]);
+		// The populated responses reach the section session as learner ones do.
+		const mcSession = await page.evaluate(
+			({ layoutTag, itemRef }) =>
+				(
+					(document.querySelector(layoutTag) as HostApiElement | null)
+						?.session as {
+						itemSessions?: Record<
+							string,
+							{ session?: { data?: Array<{ value?: unknown }> } }
+						>;
+					} | null
+				)?.itemSessions?.[itemRef]?.session?.data?.[0]?.value,
+			{ layoutTag: tag, itemRef: MC_REF },
+		);
+		expect(mcSession).toEqual(["a"]);
+	});
 
 	test("an owned coordinator reports no unbound assessment while enforcement is unset", async ({
 		page,

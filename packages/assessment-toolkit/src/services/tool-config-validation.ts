@@ -5,6 +5,7 @@ import {
 	type ToolProviderConfig,
 	type ToolsConfigInput,
 } from "./tools-config-normalizer.js";
+import { ITEM_PLAYER_FEATURE_IDS } from "../runtime/item-feature-decisions.js";
 import type { ToolRegistration, ToolRegistry } from "./ToolRegistry.js";
 
 export type ToolConfigStrictness = "off" | "warn" | "error";
@@ -212,6 +213,12 @@ function collectPlacementDiagnostics(
 	}
 }
 
+/**
+ * Ids the host gates decide that name no tool: the features an item player
+ * applies to its item's models.
+ */
+const POLICY_FEATURE_IDS: ReadonlySet<string> = new Set(ITEM_PLAYER_FEATURE_IDS);
+
 function collectPolicyDiagnostics(
 	config: CanonicalToolsConfig,
 	toolMap: Map<string, ToolRegistration>,
@@ -219,7 +226,7 @@ function collectPolicyDiagnostics(
 ): void {
 	if (toolMap.size === 0) return;
 	for (const toolId of config.policy.allowed || []) {
-		if (toolMap.has(toolId)) continue;
+		if (toolMap.has(toolId) || POLICY_FEATURE_IDS.has(toolId)) continue;
 		diagnostics.push(
 			createDiagnostic({
 				code: "tools.unknownToolId",
@@ -231,7 +238,7 @@ function collectPolicyDiagnostics(
 		);
 	}
 	for (const toolId of config.policy.blocked || []) {
-		if (toolMap.has(toolId)) continue;
+		if (toolMap.has(toolId) || POLICY_FEATURE_IDS.has(toolId)) continue;
 		diagnostics.push(
 			createDiagnostic({
 				code: "tools.unknownToolId",

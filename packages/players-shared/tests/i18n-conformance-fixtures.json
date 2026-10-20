@@ -1,0 +1,75 @@
+{
+	"$comment": "Cross-repository conformance spec for the two PIE i18n engines: pie-players' players-shared/src/i18n and pie-elements-ng's @pie-element/shared-i18n, which ports it and shares semantics but no code. Each repository runs this file against its own engine. Keep the two copies byte-identical: pie-players packages/players-shared/tests/i18n-conformance-fixtures.json and pie-elements-ng packages/shared/i18n/tests/i18n-conformance-fixtures.json. A case that only one engine passes is drift, and the fix goes to the engine, not the fixture. Locale tags are full where CLDR defaults differ by region: bare `ar` formats Latin digits and `ar-SA` Arabic-Indic, which is CLDR, not an engine.",
+	"lookupSequence": [
+		{ "tag": "nl-BE", "expected": ["nl-be", "nl"] },
+		{ "tag": "pt-BR", "expected": ["pt-br", "pt"] },
+		{ "tag": "zh-Hans-CN", "expected": ["zh-hans-cn", "zh-hans", "zh"] },
+		{ "tag": "sr-Latn-RS", "expected": ["sr-latn-rs", "sr-latn", "sr"] },
+		{ "tag": "es", "expected": ["es"] },
+		{ "tag": "und", "expected": ["und"] }
+	],
+	"direction": [
+		{ "tag": "ar-SA", "expected": "rtl" },
+		{ "tag": "he", "expected": "rtl" },
+		{ "tag": "fa", "expected": "rtl" },
+		{ "tag": "ur", "expected": "rtl" },
+		{ "tag": "en-US", "expected": "ltr" },
+		{ "tag": "nl-NL", "expected": "ltr" },
+		{ "tag": "zh-Hans-CN", "expected": "ltr" }
+	],
+	"plural": {
+		"catalogs": {
+			"en-US": { "items": { "one": "{count} o", "other": "{count} x" } },
+			"ar-SA": {
+				"items": {
+					"zero": "{count} z",
+					"one": "{count} o",
+					"two": "{count} t",
+					"few": "{count} f",
+					"many": "{count} m",
+					"other": "{count} x"
+				}
+			},
+			"pl-PL": {
+				"items": {
+					"one": "{count} o",
+					"few": "{count} f",
+					"many": "{count} m",
+					"other": "{count} x"
+				}
+			}
+		},
+		"cases": [
+			{ "locale": "en-US", "count": 1, "expected": "1 o" },
+			{ "locale": "en-US", "count": 0, "expected": "0 x" },
+			{ "locale": "en-US", "count": 1234.5, "expected": "1,234.5 x" },
+			{ "locale": "ar-SA", "count": 0, "expected": "٠ z" },
+			{ "locale": "ar-SA", "count": 1, "expected": "١ o" },
+			{ "locale": "ar-SA", "count": 2, "expected": "٢ t" },
+			{ "locale": "ar-SA", "count": 5, "expected": "٥ f" },
+			{ "locale": "ar-SA", "count": 11, "expected": "١١ m" },
+			{ "locale": "ar-SA", "count": 100, "expected": "١٠٠ x" },
+			{ "locale": "ar-SA", "count": 103, "expected": "١٠٣ f" },
+			{ "locale": "pl-PL", "count": 1, "expected": "1 o" },
+			{ "locale": "pl-PL", "count": 2, "expected": "2 f" },
+			{ "locale": "pl-PL", "count": 5, "expected": "5 m" },
+			{ "locale": "pl-PL", "count": 22, "expected": "22 f" },
+			{ "locale": "pl-PL", "count": 25, "expected": "25 m" },
+			{ "locale": "pl-PL", "count": 1.5, "expected": "1,5 x" }
+		]
+	},
+	"interpolation": [
+		{ "locale": "en-US", "template": "Hello {name}", "values": { "name": "Ana" }, "expected": "Hello Ana" },
+		{ "locale": "en-US", "template": "{name} and {name}", "values": { "name": "A" }, "expected": "A and A" },
+		{ "locale": "en-US", "template": "Keep {missing} literal", "values": {}, "expected": "Keep {missing} literal" },
+		{ "locale": "de-DE", "template": "{count} Punkte", "values": { "count": 1234.5 }, "expected": "1.234,5 Punkte" },
+		{ "locale": "ar-SA", "template": "{count}", "values": { "count": 5 }, "expected": "٥" }
+	],
+	"fallbackChain": {
+		"locale": "es-ES",
+		"source": { "a": "A", "b": "B" },
+		"shipped": { "a": "Á" },
+		"hostMessages": { "a": "Ä" },
+		"expected": { "a": "Ä", "b": "B", "nope.key": "nope.key" }
+	}
+}

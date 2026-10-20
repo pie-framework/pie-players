@@ -88,6 +88,7 @@
   MATHJAX_NO_ASSET_ROOT_EVENT
   MATHJAX_VERSION_CONFLICT_EVENT
   type MathAssetOptions
+  type MathRenderingOptions
   MemoryItemSessionStorage
   type MetricAttributes
   NewRelicInstrumentationProvider
@@ -103,6 +104,8 @@
   type OverlayPlacementController
   type OverlayPlacementNudge
   type OverlayPlacementOptions
+  type OverlaySizeControl
+  type OverlayTapTarget
   type PassageEntity
   type PieContent
   type PieController
@@ -140,6 +143,7 @@
   type SafeDefineResult
   type SafeDefineStatus
   type SanitizeItemMarkupOptions
+  type ScreenBox
   type SessionCommitReason
   type SessionSnapshot
   type SessionSnapshotConfig
@@ -192,6 +196,7 @@
   createAuthoringAssetEventManager
   createDefaultItemMarkupSanitizer
   createEsmBackend
+  createFocusReturn
   createFocusTrap
   createIifeBackend
   createOverlayPlacement
@@ -204,6 +209,7 @@
   defineAuthoredPreloadedTags
   defineCustomElementSafely
   describeRegistrationFailures
+  dockUprightControls
   editorPostFix
   elementForPackage
   encodeElementPackageSpecs
@@ -265,6 +271,7 @@
   resolveConfigureConfiguration
   resolveContainingBlockRect
   resolveEsmAssetRoot
+  resolveEsmPackageFileUrl
   resolveEsmRuntimeSupportUrl
   resolveInstrumentationProvider
   resolveItemPlayerView
@@ -290,6 +297,7 @@
   updatePieElementWithRef
   updatePieElements
   uprightDockCentre
+  uprightDockCorner
   validateAuthoringModels
   validateCustomElementTag
   validateExternalStyleUrl
@@ -337,22 +345,29 @@
 ./i18n
   BUNDLED_LOCALES
   type BundledLocaleCode
+  type ContentLanguageAttributes
   DEFAULT_LOCALE
   type DynamicMessageKey
   type I18nConfig
   type I18nProvider
   type I18nServiceApi
+  type InterfaceLocaleLoadErrorModel
   type InterpolationValues
   type LocaleCode
   type MessageCatalog
   type MessageKey
   type MessageKeyInput
   type MessageNode
+  PSEUDO_LOCALE_EXPANDED
+  PSEUDO_LOCALE_RTL
   type PluralOptions
   type PluralTranslation
+  type PseudoLocalizeOptions
   SimpleI18n
   type TextDirection
   type TranslationBundle
+  canonicalLanguageTag
+  contentLanguageAttributes
   createPieI18n
   detectBrowserLocale
   dynamicMessageKey
@@ -363,7 +378,11 @@
   loadBundledCatalog
   localeDirection
   normalizeLanguageTag
+  pseudoLocalize
+  reportInterfaceLocaleLoadError
   resolveInterfaceI18n
+  stampContentLanguage
+  stampInterfaceLocale
   toLanguageTag
 
 ./i18n/catalogs
@@ -371,6 +390,7 @@
   loadBundledCatalog
 
 ./i18n/language-tags
+  canonicalLanguageTag
   findBestLanguageMatch
   languageTagLookupSequence
   languageTagsEqual
@@ -379,12 +399,14 @@
 
 ./i18n/provider
   DEFAULT_LOCALE
+  type ResolvedInterfaceI18n
   SimpleI18n
   detectBrowserLocale
   dynamicMessageKey
   getDefaultI18n
   localeDirection
   resolveInterfaceI18n
+  stampInterfaceLocale
 
 ./i18n/types
   type BundledLocaleCode
@@ -456,6 +478,7 @@
   mapEsmViewElements
   registerPreloadedElements
   resolveEsmAssetRoot
+  resolveEsmPackageFileUrl
   resolveEsmRuntimeSupportUrl
   resolveLoadControllers
 
@@ -502,6 +525,7 @@
   type ItemSessionUpdateIntent
   type LoadPieElementsOptions
   type LoadingCompleteDetail
+  type MathRenderingOptions
   MemoryItemSessionStorage
   type NormalizedItemSessionChange
   type PieElement

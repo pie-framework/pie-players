@@ -79,8 +79,9 @@ The toolbar for an item, passage or section, rendering a button for each tool th
 		isValidToolbarItemShape,
 		type ToolbarItem
 	} from '../services/toolbar-items.js';
+	import { resolveEsmPackageFileUrl } from '@pie-players/pie-players-shared/loaders';
 	import { sanitizeSvgIcon } from '@pie-players/pie-players-shared/security';
-	import { resolveInterfaceI18n } from '@pie-players/pie-players-shared/i18n/provider';
+	import { resolveInterfaceI18n, stampInterfaceLocale } from '@pie-players/pie-players-shared/i18n/provider';
 	import {
 		collectFocusable,
 		createFocusTrap,
@@ -112,7 +113,8 @@ The toolbar for an item, passage or section, rendering a button for each tool th
 
 	const isBrowser = typeof window !== 'undefined';
 	// FontAwesome comes from the host page when it links any FA stylesheet.
-	// Otherwise the toolbar adds FA Free from jsDelivr. Pro is never fetched from
+	// Otherwise the toolbar adds FA Free from the ESM CDN the item player's
+	// `loaderOptions` name, jsDelivr by default. Pro is never fetched from
 	// here: ui.renaissance.com serves its font files to Renaissance origins only,
 	// so a host that licenses it links it itself, as section-demos does through
 	// its dev proxy.
@@ -126,8 +128,7 @@ The toolbar for an item, passage or section, rendering a button for each tool th
 	// ui.renaissance.com's Roboto unless the page links a stylesheet whose URL
 	// contains `Roboto`. That CDN serves the font files to Renaissance origins
 	// only, so a host elsewhere links its own.
-	const FA_FREE_HREF =
-		'https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.5.2/css/all.min.css';
+	const FA_FREE_FILE = '@fortawesome/fontawesome-free@6.5.2/css/all.min.css';
 	// Matches any FA stylesheet the host page links: `fontawesome.min.css`,
 	// `font-awesome.css`, a `/_fa-pro/` proxy, `fontawesome-free@…`.
 	const FA_HREF_PATTERN = /font.?awesome|fa-?pro/i;
@@ -158,6 +159,19 @@ The toolbar for an item, passage or section, rendering a button for each tool th
 			attributes: true,
 			attributeFilter: ['class']
 		});
+		return () => observer.disconnect();
+	};
+	// Turns the glyph and leaves the button upright: a turned button's box grows
+	// into its neighbours' and covers their hit areas. Re-applies when Lit renders.
+	const turnNdsGlyph = (button: HTMLElement, turn: string) => {
+		const apply = () => {
+			for (const icon of button.querySelectorAll<HTMLElement>('i.nds-icon-button__icon')) {
+				icon.style.rotate = turn;
+			}
+		};
+		apply();
+		const observer = new MutationObserver(apply);
+		observer.observe(button, { childList: true, subtree: true });
 		return () => observer.disconnect();
 	};
 	// A stylesheet that fails to load stays in <head> marked
@@ -191,7 +205,9 @@ The toolbar for an item, passage or section, rendering a button for each tool th
 		// renders correctly without us forcing Free into <head>.
 		const hostHasFa = documentStylesheetLinks().some((link) => FA_HREF_PATTERN.test(link.href));
 		if (hostHasFa) return;
-		appendHeadStylesheet(FA_FREE_HREF);
+		appendHeadStylesheet(
+			resolveEsmPackageFileUrl(runtimeContext?.itemPlayer?.loaderOptions, FA_FREE_FILE)
+		);
 	};
 
 	// <nds-icon-button> renders into light DOM (createRenderRoot returns `this`),
@@ -1606,7 +1622,8 @@ The toolbar for an item, passage or section, rendering a button for each tool th
 			label: string,
 			iconName: string,
 			onActivate: () => void,
-			faVariant: NdsGlyphVariant = 'fa-regular'
+			faVariant: NdsGlyphVariant = 'fa-regular',
+			glyphTurn?: string
 		) => {
 			ensureNdsAssets();
 			const button = document.createElement('nds-icon-button');
@@ -1621,8 +1638,9 @@ The toolbar for an item, passage or section, rendering a button for each tool th
 				onActivate();
 				bringToFront();
 			});
-			// Detached with the window, which takes the observer with it.
+			// Detached with the window, which takes the observers with it.
 			applyNdsGlyphVariant(button, faVariant);
+			if (glyphTurn) turnNdsGlyph(button, glyphTurn);
 			return button;
 		};
 
@@ -1687,6 +1705,10 @@ The toolbar for an item, passage or section, rendering a button for each tool th
 		 * shell and the first catalog import landing after the shell was built.
 		 */
 		const applyShellStrings = () => {
+			// The shell mounts at `document.body`, outside every player stamp, so
+			// it carries the interface locale itself; the tool inside stamps its
+			// own root.
+			if (shellEl) stampInterfaceLocale(shellEl, currentArgs.i18n);
 			if (titleEl) {
 				titleEl.textContent =
 					currentArgs.mounted.entry.shell?.title || currentArgs.mounted.toolId;
@@ -2184,12 +2206,12 @@ The toolbar for an item, passage or section, rendering a button for each tool th
 				glyph: string,
 				iconName: string,
 				onActivate: () => void,
-				faVariant: NdsGlyphVariant = 'fa-regular'
+				glyphTurn?: string
 			) => {
 				if (!controlsEl) return;
 				const label = currentArgs.i18n.t(key);
 				const control = useNdsShellIcons
-					? createShellIconButton(label, iconName, onActivate, faVariant)
+					? createShellIconButton(label, iconName, onActivate, 'fa-regular', glyphTurn)
 					: createShellControlButton(label, glyph, onActivate);
 				localizedControlEls.push({ el: control, key });
 				controlsEl.appendChild(control);
@@ -2201,8 +2223,15 @@ The toolbar for an item, passage or section, rendering a button for each tool th
 				appendControl('toolkit.window.moveDownA11y', '↓', 'chevron-down', () => moveBy(0, SHELL_MOVE_STEP_PX));
 			}
 			if (shellConfig?.resizable !== false) {
-				appendControl('toolkit.window.shrinkA11y', '−', 'magnifying-glass-minus', () => resizeBy(-SHELL_RESIZE_STEP_PX, -SHELL_RESIZE_STEP_PX));
-				appendControl('toolkit.window.growA11y', '+', 'magnifying-glass-plus', () => resizeBy(SHELL_RESIZE_STEP_PX, SHELL_RESIZE_STEP_PX));
+				// A pair per dimension, since a corner grip sets each on its own. Font
+				// Awesome Free has no narrower or shorter icon, so the design-system
+				// controls turn its diagonal compress and expand icons onto each axis.
+				const compressIcon = 'down-left-and-up-right-to-center';
+				const expandIcon = 'up-right-and-down-left-from-center';
+				appendControl('toolkit.window.narrowerA11y', '↔−', compressIcon, () => resizeBy(-SHELL_RESIZE_STEP_PX, 0), '45deg');
+				appendControl('toolkit.window.widerA11y', '↔+', expandIcon, () => resizeBy(SHELL_RESIZE_STEP_PX, 0), '45deg');
+				appendControl('toolkit.window.shorterA11y', '↕−', compressIcon, () => resizeBy(0, -SHELL_RESIZE_STEP_PX), '-45deg');
+				appendControl('toolkit.window.tallerA11y', '↕+', expandIcon, () => resizeBy(0, SHELL_RESIZE_STEP_PX), '-45deg');
 			}
 			if (!shellDeclaresNdsChrome()) {
 				const centerControl = createShellControlButton(
@@ -2315,14 +2344,14 @@ The toolbar for an item, passage or section, rendering a button for each tool th
 				}
 				const keyboardShellConfig = currentArgs.mounted.entry.shell;
 				if (event.shiftKey && keyboardShellConfig?.resizable !== false) {
-					if (event.key === 'ArrowRight' || event.key === 'ArrowDown') {
+					if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
 						event.preventDefault();
-						resizeBy(SHELL_RESIZE_STEP_PX, SHELL_RESIZE_STEP_PX);
+						resizeBy(event.key === 'ArrowRight' ? SHELL_RESIZE_STEP_PX : -SHELL_RESIZE_STEP_PX, 0);
 						return;
 					}
-					if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') {
+					if (event.key === 'ArrowUp' || event.key === 'ArrowDown') {
 						event.preventDefault();
-						resizeBy(-SHELL_RESIZE_STEP_PX, -SHELL_RESIZE_STEP_PX);
+						resizeBy(0, event.key === 'ArrowDown' ? SHELL_RESIZE_STEP_PX : -SHELL_RESIZE_STEP_PX);
 						return;
 					}
 				}
@@ -2604,10 +2633,18 @@ The toolbar for an item, passage or section, rendering a button for each tool th
 		class:item-toolbar--header-overlay-active={headerOverlayShouldExpandForActiveTool}
 		data-content-kind={effectiveContentKind}
 		data-level={effectiveLevel}
+		lang={interfaceI18n.getLocale()}
+		dir={interfaceI18n.getDirection?.() ?? 'ltr'}
 		bind:this={toolbarRootElement}
 	>
+		<!-- Keeps a focused toolbar button in view. A mounted tool's own focus is left
+			alone: an overlay sits outside the row, so scrolling it in moves the page. -->
 		<div class="item-toolbar__tools-row" onfocusin={(event) => {
-			if (effectiveLevel === 'section' && event.target instanceof HTMLElement) {
+			if (
+				effectiveLevel === 'section' &&
+				event.target instanceof HTMLElement &&
+				!event.target.closest('.item-toolbar__element-host')
+			) {
 				event.target.scrollIntoView({ block: 'nearest', inline: 'nearest' });
 			}
 		}}>

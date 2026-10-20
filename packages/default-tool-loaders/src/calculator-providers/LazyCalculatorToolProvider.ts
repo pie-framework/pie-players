@@ -4,46 +4,57 @@ import type {
 } from "@pie-players/pie-calculator";
 import type { ToolProviderApi } from "@pie-players/pie-assessment-toolkit/tools/registration";
 
-export type CalculatorToolProviderInitConfig = Pick<
-	CalculatorProviderInit,
-	"onTelemetry"
->;
-
-type InitializableCalculatorProvider<TConfig> = CalculatorProvider & {
-	initialize(config: TConfig): Promise<void>;
-};
-
-export interface LazyCalculatorProviderDefinition<TConfig> {
-	backend: string;
-	moduleImportOperation: string;
-	loadProvider: () => Promise<
-		new () => InitializableCalculatorProvider<TConfig>
-	>;
-	initializationErrorMessage: string;
+/**
+ * One calculator backend, selected by the toolkit's `provider.id`. `load` runs
+ * on first use, but a bundler that inlines dynamic imports inlines what it
+ * names whether or not the host selects the backend. The packaged set therefore
+ * holds only the thin Desmos and GeoGebra adapters, and a host adds any other
+ * backend through `createCalculatorToolRegistration`.
+ */
+export interface CalculatorProviderDefinition {
+	/** Names the provider in toolkit logs, telemetry and error messages. */
+	readonly providerName: string;
+	readonly version: string;
+	/**
+	 * Whether the registry merges the result of `provider.runtime.authFetcher`
+	 * into the configuration `initialize()` receives.
+	 */
+	readonly requiresAuth: boolean;
+	/** The `backend` of library-load telemetry. */
+	readonly backend: string;
+	/** Loads the adapter's provider class, usually through a dynamic import. */
+	readonly load: () => Promise<new () => CalculatorProvider>;
+	/** Thrown, with the failure as its cause, when loading or initializing fails. */
+	readonly initializationErrorMessage: string;
 }
 
 /**
- * Shared lazy-module and lifecycle implementation for calculator tool adapters.
- * Concrete adapters own only their metadata and provider import.
+ * Lazy-module and lifecycle implementation shared by every calculator backend:
+ * concurrent initialization is deduplicated, and `destroy()` cancels one in
+ * flight.
  */
-export abstract class LazyCalculatorToolProvider<
-	TConfig extends CalculatorToolProviderInitConfig,
-> implements ToolProviderApi<CalculatorProvider>
+export class LazyCalculatorToolProvider
+	implements ToolProviderApi<CalculatorProvider>
 {
-	abstract readonly providerName: string;
+	readonly providerName: string;
 	readonly category = "calculator" as const;
-	abstract readonly version: string;
-	abstract readonly requiresAuth: boolean;
+	readonly version: string;
+	readonly requiresAuth: boolean;
 
-	protected abstract getDefinition(): LazyCalculatorProviderDefinition<TConfig>;
-
-	private calculatorProvider: InitializableCalculatorProvider<TConfig> | null =
-		null;
+	private readonly definition: CalculatorProviderDefinition;
+	private calculatorProvider: CalculatorProvider | null = null;
 	private initializationPromise: Promise<void> | null = null;
 	private lifecycleGeneration = 0;
 
+	constructor(definition: CalculatorProviderDefinition) {
+		this.definition = definition;
+		this.providerName = definition.providerName;
+		this.version = definition.version;
+		this.requiresAuth = definition.requiresAuth;
+	}
+
 	private async emitTelemetry(
-		config: TConfig,
+		config: CalculatorProviderInit,
 		eventName: string,
 		payload?: Record<string, unknown>,
 	): Promise<void> {
@@ -54,7 +65,7 @@ export abstract class LazyCalculatorToolProvider<
 		}
 	}
 
-	async initialize(config: TConfig = {} as TConfig): Promise<void> {
+	async initialize(config: CalculatorProviderInit = {}): Promise<void> {
 		if (this.calculatorProvider) return;
 		if (this.initializationPromise) return this.initializationPromise;
 
@@ -71,36 +82,37 @@ export abstract class LazyCalculatorToolProvider<
 	}
 
 	private async initializeProvider(
-		config: TConfig,
+		config: CalculatorProviderInit,
 		generation: number,
 	): Promise<void> {
-		const definition = this.getDefinition();
+		const { backend, initializationErrorMessage } = this.definition;
+		const operation = `${backend}-provider-module-import`;
 		const moduleLoadStartedAt = Date.now();
 		await this.emitTelemetry(config, "pie-tool-library-load-start", {
 			toolId: "calculator",
-			operation: definition.moduleImportOperation,
-			backend: definition.backend,
+			operation,
+			backend,
 		});
 
-		let ProviderConstructor: new () => InitializableCalculatorProvider<TConfig>;
+		let ProviderConstructor: new () => CalculatorProvider;
 		try {
-			ProviderConstructor = await definition.loadProvider();
+			ProviderConstructor = await this.definition.load();
 			await this.emitTelemetry(config, "pie-tool-library-load-success", {
 				toolId: "calculator",
-				operation: definition.moduleImportOperation,
-				backend: definition.backend,
+				operation,
+				backend,
 				duration: Date.now() - moduleLoadStartedAt,
 			});
 		} catch (error) {
 			await this.emitTelemetry(config, "pie-tool-library-load-error", {
 				toolId: "calculator",
-				operation: definition.moduleImportOperation,
-				backend: definition.backend,
+				operation,
+				backend,
 				duration: Date.now() - moduleLoadStartedAt,
 				errorType: "ToolLibraryLoadError",
 				message: error instanceof Error ? error.message : String(error),
 			});
-			throw new Error(definition.initializationErrorMessage, { cause: error });
+			throw new Error(initializationErrorMessage, { cause: error });
 		}
 		if (generation !== this.lifecycleGeneration) {
 			throw new Error(`${this.providerName} initialization was cancelled`);
@@ -115,7 +127,7 @@ export abstract class LazyCalculatorToolProvider<
 			this.calculatorProvider = candidate;
 		} catch (error) {
 			candidate.destroy();
-			throw new Error(definition.initializationErrorMessage, { cause: error });
+			throw new Error(initializationErrorMessage, { cause: error });
 		}
 	}
 

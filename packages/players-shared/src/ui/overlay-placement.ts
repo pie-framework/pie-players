@@ -7,12 +7,14 @@
 
 import {
 	clampOffsetOverlappingBlock,
+	DEFAULT_CONTAINMENT_GUTTER,
 	type Point,
 	resolveContainingBlockRect,
 	rotatedExtent,
 	rotationCentreShift,
 	type Size,
 	uprightDockCentre,
+	uprightDockCorner,
 } from "./overlay-containment.js";
 import { createPointerDragController } from "./pointer-drag.js";
 import { createPointerGesture } from "./pointer-gesture.js";
@@ -88,8 +90,48 @@ const ARROW_KEYS: Record<string, OverlayPlacementNudge> = {
 
 /** Pixels of the tool kept inside its containing block on each axis. */
 const MIN_VISIBLE = 100;
-/** Space between the tool's bottom edge and its tap controls. */
+/** Space between the tool and its tap controls. */
 const CONTROLS_GAP = 8;
+
+/**
+ * What the tap controls drive: a step for each arrow, and a turn for a tool
+ * that rotates. An `OverlayPlacementController` is one; an upright tool that
+ * keeps its own position supplies `nudge` alone.
+ */
+export interface OverlayTapTarget {
+	nudge: (direction: OverlayPlacementNudge) => void;
+	rotateBy?: (degrees: number) => void;
+}
+
+/** A shrink-and-grow pair on the tap controls, labelled by the tool. */
+export interface OverlaySizeControl {
+	shrink: { glyph: string; label: string };
+	grow: { glyph: string; label: string };
+	step: (direction: 1 | -1) => void;
+}
+
+/**
+ * Docks an upright tool's tap controls beside it, as `uprightDockCorner`
+ * places them. `OverlayPlacementControls` lays the controls out at the tool's
+ * top-left corner, so the offset is taken from there. A strip wider than the
+ * block wraps onto more rows, so a phone-width pane does not clip it.
+ */
+export function dockUprightControls(
+	element: HTMLElement,
+	controls: HTMLElement,
+): void {
+	const block = resolveContainingBlockRect(element);
+	if (!block) return;
+	controls.style.maxWidth = `${Math.max(0, block.width - DEFAULT_CONTAINMENT_GUTTER * 2)}px`;
+	const tool = element.getBoundingClientRect();
+	const corner = uprightDockCorner(
+		tool,
+		{ width: controls.offsetWidth, height: controls.offsetHeight },
+		block,
+		CONTROLS_GAP,
+	);
+	controls.style.transform = `translate(${corner.x - tool.left - element.clientLeft}px, ${corner.y - tool.top - element.clientTop}px)`;
+}
 
 export interface OverlayPlacementOptions {
 	/** The tool's positioned element, which receives the transform. */

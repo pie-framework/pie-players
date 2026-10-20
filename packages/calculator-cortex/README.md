@@ -3,9 +3,11 @@
 A basic, scientific and graphing calculator adapter built on MathLive, the
 CortexJS Compute Engine and JSXGraph. It implements the provider contract from
 [`@pie-players/pie-calculator`](../calculator/README.md) and bundles all runtime
-code and assets, so it needs no API key, CDN or network connection. Toolkit hosts
-select it with `provider.id: "calculator-cortex"`
-([Calculator providers](../default-tool-loaders/README.md#calculator-providers));
+code and assets, so it needs no API key, CDN or network connection. It is
+outside the packaged tool set: toolkit hosts add it to the calculator
+registration with `createCalculatorToolRegistration` and then select it with
+`provider.id: "calculator-cortex"`
+([Adding a backend](../default-tool-loaders/README.md#adding-a-backend));
 hosts that mount a calculator themselves use `CortexCalculatorProvider` directly.
 The [Desmos](../calculator-desmos/README.md) and
 [GeoGebra](../calculator-geogebra/README.md) adapters implement the same contract.

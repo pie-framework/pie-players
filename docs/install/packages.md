@@ -53,6 +53,7 @@ lockstep set ([preloaded player](../preloaded-player/readme.md)).
 | [`@pie-players/pie-assessment-toolkit`](../../packages/assessment-toolkit/README.md) | Tool coordination, accessibility catalogs, text-to-speech and policy services, with the `<pie-assessment-toolkit>`, `<pie-item-scope>`, `<pie-item-toolbar>` and `<pie-section-toolbar>` elements |
 | [`@pie-players/pie-default-tool-loaders`](../../packages/default-tool-loaders/README.md) | The packaged tool set: registrations, tag map, placement preset, universal and empty profiles, and lazy module loaders |
 | [`@pie-players/pie-players-shared`](../../packages/players-shared/README.md) | Element loaders, the markup sanitizer, i18n, shared types and UI utilities |
+| [`@pie-players/pie-i18n-generated`](../../packages/pie-i18n-generated/README.md) | Optional machine-generated interface locale catalogs, provenance-marked and unreviewed; hosts wire their loaders in after the bundled ones and can override any string |
 | [`@pie-players/pie-context`](../../packages/pie-context/README.md) | Context Protocol helpers through which the custom elements share runtime services |
 | [`@pie-players/pie-theme`](../../packages/theme/README.md) | Theme tokens, CSS variables and the `<pie-theme>` element ([theming](../theming/how-theming-works.md)) |
 
@@ -72,6 +73,7 @@ configuration and a toolbar placement use.
 | [`@pie-players/pie-tool-picture-dictionary`](../../packages/tool-picture-dictionary/README.md) | `pictureDictionary`, `pictureDictionarySpanish` | `<pie-tool-picture-dictionary>` | Picture dictionary lookup |
 | [`@pie-players/pie-tool-graph`](../../packages/tool-graph/README.md) | `graph` | `<pie-tool-graph>` | Coordinate-grid graphing |
 | [`@pie-players/pie-tool-line-reader`](../../packages/tool-line-reader/README.md) | `lineReader` | `<pie-tool-line-reader>` | Reading-guide overlay |
+| [`@pie-players/pie-tool-magnifier`](../../packages/tool-magnifier/README.md) | `magnification` | `<pie-tool-magnifier>` | Movable magnifying lens |
 | [`@pie-players/pie-tool-periodic-table`](../../packages/tool-periodic-table/README.md) | `periodicTable` | `<pie-tool-periodic-table>` | Periodic table reference |
 | [`@pie-players/pie-tool-protractor`](../../packages/tool-protractor/README.md) | `protractor` | `<pie-tool-protractor>` | Draggable, rotatable protractor |
 | [`@pie-players/pie-tool-ruler`](../../packages/tool-ruler/README.md) | `ruler` | `<pie-tool-ruler>` | Ruler |
@@ -84,7 +86,7 @@ configuration and a toolbar placement use.
 | Package | Purpose |
 | --- | --- |
 | [`@pie-players/pie-calculator`](../../packages/calculator/README.md) | Provider interfaces and types, with no UI |
-| [`@pie-players/pie-calculator-cortex`](../../packages/calculator-cortex/README.md) | Bundled open-source provider |
+| [`@pie-players/pie-calculator-cortex`](../../packages/calculator-cortex/README.md) | Bundled open-source provider, which a host composes into the tool set |
 | [`@pie-players/pie-calculator-desmos`](../../packages/calculator-desmos/README.md) | Desmos provider; the Desmos API needs an API key |
 | [`@pie-players/pie-calculator-geogebra`](../../packages/calculator-geogebra/README.md) | GeoGebra provider |
 

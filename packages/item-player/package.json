@@ -48,13 +48,14 @@
 		"@pie-players/pie-players-shared": "workspace:*"
 	},
 	"devDependencies": {
-		"@axe-core/playwright": "^4.13.0",
+		"@axe-core/playwright": "^4.14.0",
 		"@biomejs/biome": "^2.5.15",
+		"@happy-dom/global-registrator": "^20.14.5",
 		"@pie-players/pie-theme": "workspace:*",
-		"@playwright/test": "^1.64.0",
+		"@playwright/test": "^1.64.1",
 		"@sveltejs/vite-plugin-svelte": "^7.3.1",
 		"@types/node": "^26.6.5",
-		"rollup": "^4.64.4",
+		"rollup": "^4.64.7",
 		"svelte": "^5.57.2",
 		"svelte-check": "^4.7.6",
 		"typescript": "^5.9.3",

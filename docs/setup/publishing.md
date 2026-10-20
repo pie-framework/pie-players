@@ -295,9 +295,9 @@ before any package publishes.
 ### Requirements the workflows satisfy
 
 - `permissions: id-token: write` on the publishing job.
-- npm >= 11.5.1. The Node.js version pinned in `.nvmrc` (22.16.0) bundles npm
-  10.9.2, which predates OIDC support, so both workflows upgrade npm in the job
-  and assert the resolved version.
+- npm >= 11.5.1. The Node.js version pinned in `.nvmrc` (24.22.0) bundles npm
+  11.19.1; both workflows still upgrade npm in the job and assert the resolved
+  version, so a lower pin cannot break OIDC publishing.
 - The canonical `repository.url` in every publishable manifest
   ([Required package metadata](#required-package-metadata)). npm compares it
   with the repository it publishes from when generating provenance.
@@ -363,8 +363,9 @@ git add scripts/trusted-publishers.json   # the claim ledger is part of the chan
 
 The script checks everything reversible before anything irreversible: the
 package is publishable and in the fixed group, the group version is uniform,
-npm has never seen the name, every `workspace:` range resolves to a published
-version, and you are logged in. It then builds, resolves the workspace ranges
+npm has no release of the name on the package's major
+([Reclaimed names](#reclaimed-names)), every `workspace:` range resolves to a
+published version, and you are logged in. It then builds, resolves the workspace ranges
 the way a release does, shows the exact tarball, publishes, restores the
 manifest, and delegates the claim to `configure-trusted-publishers.mjs`, so the
 `npm trust` call and the ledger have one owner. Expect two OTP prompts: one for
@@ -388,12 +389,29 @@ package counts as adding one, because the new name needs its own record.
 The bootstrap publishes the version on the branch it runs on, and release
 bumps land only on `master`, so a bootstrap from `develop` publishes whatever
 version the last back-merge left there. `check:fixed-versioning` tolerates the
-gap for a package whose entire release history is one version below the group,
+gap for a package whose only release on the group's major is below the group,
 and reports the packages it excused. On a [prerelease line](#prerelease-lines)
 the bootstrap publishes under the prerelease's dist-tag, since npm refuses a
 prerelease without one. The discriminant is release history: a
 package that published repeatedly and then fell behind is drift, and still
 fails. The newcomer joins the group at the next release version.
+
+#### Reclaimed names
+
+A name this repository published and later removed can come back. npm never
+frees a name, so the returning package is a bootstrap like any other, provided
+every release npm holds sits on a major below the package's version and the
+registry attributes those releases to this repository. A name another
+repository published stays with it. `check:fixed-versioning` counts only
+releases on the group's major, so before the bootstrap the release stops and
+names the reclaim, and after it the single release on the line is an ordinary
+newcomer. The old releases keep the `latest` dist-tag until the group's next
+stable release.
+
+A reclaimed name can already hold a trusted-publisher record from its first
+life. The bootstrap then skips the claim when the ledger records it, since npm
+refuses a second record; confirm the record names the current workflow with
+`bun run trusted-publishers -- --verify --only <pkg>`.
 
 ### Trusted-publisher claim check
 

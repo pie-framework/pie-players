@@ -1,0 +1,83 @@
+{
+	"schemaVersion": "2.1.0",
+	"modules": [
+		{
+			"kind": "javascript-module",
+			"path": "dist/tool-magnifier.js",
+			"declarations": [
+				{
+					"kind": "class",
+					"description": "Magnifying lens: a movable, resizable window that shows the content under it enlarged, with controls on its bar to change the zoom and close. The host shows it with `visible` and sets the starting magnification with `zoom` (the AfA PNP `magnification` amount; 2 when absent). Inside a toolkit runtime context it registers `tool-id` with the tool coordinator on the tool layer, and the close control hides it there. Arrow keys move it, `+` and `-` change the zoom, and Escape closes it, wherever on the page it is pressed.",
+					"name": "ToolMagnifier",
+					"tagName": "pie-tool-magnifier",
+					"customElement": true,
+					"members": [
+						{
+							"kind": "field",
+							"name": "visible",
+							"type": {
+								"text": "boolean"
+							},
+							"default": "false",
+							"attribute": "visible"
+						},
+						{
+							"kind": "field",
+							"name": "toolId",
+							"type": {
+								"text": "string"
+							},
+							"default": "'magnification'",
+							"attribute": "tool-id"
+						},
+						{
+							"kind": "field",
+							"name": "zoom",
+							"type": {
+								"text": "number"
+							},
+							"attribute": "zoom"
+						}
+					],
+					"attributes": [
+						{
+							"name": "visible",
+							"type": {
+								"text": "boolean"
+							},
+							"default": "false",
+							"fieldName": "visible"
+						},
+						{
+							"name": "tool-id",
+							"type": {
+								"text": "string"
+							},
+							"default": "'magnification'",
+							"fieldName": "toolId"
+						},
+						{
+							"name": "zoom",
+							"type": {
+								"text": "number"
+							},
+							"fieldName": "zoom"
+						}
+					],
+					"x-pie": {
+						"shadow": "open"
+					}
+				}
+			],
+			"exports": [
+				{
+					"kind": "custom-element-definition",
+					"name": "pie-tool-magnifier",
+					"declaration": {
+						"name": "ToolMagnifier"
+					}
+				}
+			]
+		}
+	]
+}

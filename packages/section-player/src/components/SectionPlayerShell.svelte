@@ -26,6 +26,7 @@ Section toolbar shell that renders `<pie-section-toolbar>` at the `toolbar-posit
 		ToolbarItem,
 	} from "@pie-players/pie-assessment-toolkit";
 	import { coerceBooleanLike } from "@pie-players/pie-players-shared";
+	import { stampInterfaceLocale } from "@pie-players/pie-players-shared/i18n/provider";
 	import { useInterfaceI18n } from "./shared/use-interface-i18n.svelte.js";
 
 	const DEFAULT_COLLAPSED_BREAKPOINT_PX = 1100;
@@ -46,6 +47,18 @@ Section toolbar shell that renders `<pie-section-toolbar>` at the `toolbar-posit
 
 	let layoutBody = $state<HTMLDivElement | null>(null);
 	const interfaceI18n = useInterfaceI18n(() => layoutBody);
+
+	// The section's chrome — panes, cards, the item players they mount — is
+	// this element's light DOM, slotted through the layout body, and `lang`
+	// resolves along the light tree. The host is the one element that is an
+	// ancestor of all of it there and of the toolbar in the shadow tree, so the
+	// stamp goes on the host and not on the shell div.
+	$effect(() => {
+		const host = $host();
+		// Undefined when mounted as a plain component rather than as the element.
+		if (!host) return;
+		stampInterfaceLocale(host, interfaceI18n.provider);
+	});
 
 	let isNarrow = $state(false);
 

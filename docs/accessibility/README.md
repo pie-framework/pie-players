@@ -16,7 +16,7 @@ Wiring a player so learners get read-aloud and alternates:
 | TTS provider configuration (browser or server) | [Assessment toolkit: Minimal Server-Backed TTS Config](../../packages/assessment-toolkit/README.md#minimal-server-backed-tts-config) |
 | Personal needs profile (PNP) and tool policy | [PNP Configuration](../../packages/assessment-toolkit/docs/PNP_CONFIGURATION.md) |
 | Sign-language (ASL) video | [`@pie-players/pie-tool-sign-language`](../../packages/tool-sign-language/README.md); design in the [Sign Language (ASL) Support PRD](../prds/sign-language-asl-support.md) |
-| Audio transcripts and autoplay control | [Audio Accommodations PRD](../prds/audio-accommodations.md) |
+| Audio transcripts and autoplay control | [Audio Accommodations PRD](../prds/audio-accommodations.md); the shipped autoplay policy is the [Autoplay Policy PRD](../prds/audio-autoplay-policy.md) and [ADR 0004](../adr/0004-screen-reader-use-is-a-profile-support-that-withholds-read-aloud.md) |
 | Dictation through the operating system or assistive technology | [Non-Embedded Dictation](../tools-and-accomodations/non-embedded-dictation.md) |
 | AWS Polly credentials | [AWS Polly Setup Guide](./aws-polly-setup-guide.md) |
 

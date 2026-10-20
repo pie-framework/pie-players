@@ -70,6 +70,7 @@ Two provider entries are closed to the keys their tool reads, so a misplaced key
 - `annotationToolbar`
 - `answerEliminator`
 - `lineReader`
+- `magnification`
 - `ruler`
 - `graph`
 - `periodicTable`
@@ -85,8 +86,9 @@ It also registers `transcript`, a region capability with no toolbar button, whic
 The tool id is the one key for a tool: its `tools.providers` entry, its
 placement and policy, failure attribution, and its provider's entry in the
 coordinator's provider registry. `provider.id` inside the entry selects an
-implementation (for the calculator `calculator-desmos`, `calculator-geogebra`
-or `calculator-cortex`) and never names a registry entry, so selecting another
+implementation (for the packaged calculator `calculator-desmos` or
+`calculator-geogebra`, or a backend the host composes in, such as
+`calculator-cortex`) and never names a registry entry, so selecting another
 through `updateToolConfig` replaces the provider under the same id.
 
 ## Basic Integration
@@ -287,7 +289,7 @@ The default calculator is Desmos, and its adapter refuses to initialize without 
 | `provider.init.proxyEndpoint` | Host URL the adapter fetches at initialization; the response body is `{ apiKey }`. |
 | `provider.init.apiKey` | The key inline, for development. |
 
-`provider.id: "calculator-cortex"` selects a calculator that needs no key; see the [Cortex calculator README](../../packages/calculator-cortex/README.md).
+Cortex is a calculator that needs no key. It is outside the packaged set, so a host composes it in with `createCalculatorToolRegistration` and then selects it with `provider.id: "calculator-cortex"`; see [Adding a backend](../../packages/default-tool-loaders/README.md#adding-a-backend).
 
 ## Host Responsibilities
 

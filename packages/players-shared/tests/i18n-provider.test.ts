@@ -5,6 +5,11 @@
  */
 
 import { GlobalRegistrator } from "@happy-dom/global-registrator";
+import {
+	contentLanguageAttributes,
+	reportInterfaceLocaleLoadError,
+	stampContentLanguage,
+} from "../src/i18n/index.js";
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { BUNDLED_LOCALES, loadBundledCatalog } from "../src/i18n/catalogs.js";
 import {
@@ -12,9 +17,16 @@ import {
 	dynamicMessageKey,
 	getDefaultI18n,
 	localeDirection,
+	resolveInterfaceI18n,
 	SimpleI18n,
+	stampInterfaceLocale,
 } from "../src/i18n/provider.js";
-import type { MessageCatalog, TextDirection } from "../src/i18n/types.js";
+import type {
+	I18nProvider,
+	MessageCatalog,
+	TextDirection,
+} from "../src/i18n/types.js";
+import { createPieI18n } from "../src/i18n/index.js";
 
 // A DOM only so the "does not touch documentElement" assertion can be real.
 beforeAll(() => {
@@ -169,12 +181,34 @@ describe("interpolation and plurals", () => {
 		await i18n.setLocale("ar-SA");
 		expect(
 			i18n.plural("player.formative.triesLeft", { count: 2 }),
-		).toBe("2 محاولات");
+		).toBe("٢ محاولات");
 	});
 
 	test("plural falls back to t() for a key that is not a plural group", () => {
 		const i18n = new SimpleI18n();
 		expect(i18n.plural("common.close", { count: 2 })).toBe("Close");
+	});
+
+	test("numeric values render through the active locale's CLDR numbering defaults", async () => {
+		const english = new SimpleI18n();
+		expect(english.plural("player.formative.triesLeft", { count: 1000 })).toBe(
+			"1,000 tries left.",
+		);
+		// `ar-SA` defaults to Arabic-Indic digits; a string value is never touched.
+		const arabic = createPartialProvider("ar-SA", {
+			player: {
+				formative: {
+					triesLeft: { one: "محاولة واحدة", other: "{count} محاولات" },
+				},
+			},
+		});
+		await arabic.setLocale("ar-SA");
+		expect(arabic.plural("player.formative.triesLeft", { count: 3 })).toBe(
+			"٣ محاولات",
+		);
+		expect(arabic.t("tools.ruler.switchedTo", { unit: "سنتيمتر" })).toBe(
+			"Switched to سنتيمتر",
+		);
 	});
 });
 
@@ -207,6 +241,44 @@ describe("direction", () => {
 		};
 		const i18n = createProvider();
 		await i18n.setLocale("ar-SA");
+		expect(root.getAttribute("lang")).toBe(before.lang);
+		expect(root.getAttribute("dir")).toBe(before.dir);
+	});
+});
+
+describe("stampInterfaceLocale", () => {
+	test("writes the provider's locale and direction on the element given", async () => {
+		const target = document.createElement("div");
+		const i18n = createProvider();
+		stampInterfaceLocale(target, i18n);
+		expect(target.getAttribute("lang")).toBe(DEFAULT_LOCALE);
+		expect(target.getAttribute("dir")).toBe("ltr");
+
+		await i18n.setLocale("ar-SA");
+		stampInterfaceLocale(target, i18n);
+		expect(target.getAttribute("lang")).toBe("ar-SA");
+		expect(target.getAttribute("dir")).toBe("rtl");
+	});
+
+	test("a provider without getDirection stamps ltr", () => {
+		// `getDirection` is optional on the contract; a minimal host provider is
+		// left-to-right unless it says otherwise.
+		const target = document.createElement("div");
+		stampInterfaceLocale(target, { getLocale: () => "nl-NL" });
+		expect(target.getAttribute("lang")).toBe("nl-NL");
+		expect(target.getAttribute("dir")).toBe("ltr");
+	});
+
+	test("touches only the element given, never the document root", () => {
+		const root = document.documentElement;
+		const before = {
+			lang: root.getAttribute("lang"),
+			dir: root.getAttribute("dir"),
+		};
+		stampInterfaceLocale(document.createElement("div"), {
+			getLocale: () => "ar-SA",
+			getDirection: () => "rtl",
+		});
 		expect(root.getAttribute("lang")).toBe(before.lang);
 		expect(root.getAttribute("dir")).toBe(before.dir);
 	});
@@ -306,5 +378,154 @@ describe("packaging", () => {
 		);
 		// And the provider still renders: the previous locale stands.
 		expect(i18n.t("common.close")).toBe("Close");
+	});
+});
+
+describe("reportInterfaceLocaleLoadError", () => {
+	test("dispatches a recoverable i18n-locale-load framework-error", () => {
+		const target = document.createElement("pie-item-player");
+		const seen: CustomEvent[] = [];
+		target.addEventListener("framework-error", (event) => {
+			seen.push(event as CustomEvent);
+		});
+
+		reportInterfaceLocaleLoadError(
+			target,
+			"pie-item-player",
+			new Error("chunk 404"),
+		);
+
+		expect(seen).toHaveLength(1);
+		expect(seen[0].bubbles).toBe(true);
+		expect(seen[0].composed).toBe(true);
+		const detail = seen[0].detail;
+		expect(detail).toMatchObject({
+			kind: "i18n-locale-load",
+			source: "pie-item-player",
+			message: "chunk 404",
+			details: [],
+			recoverable: true,
+			scope: "runtime",
+		});
+		expect(detail.cause).toBeInstanceOf(Error);
+	});
+
+	test("names a non-Error cause and stays silent without a target", () => {
+		const target = document.createElement("pie-item-player");
+		const seen: CustomEvent[] = [];
+		target.addEventListener("framework-error", (event) => {
+			seen.push(event as CustomEvent);
+		});
+
+		reportInterfaceLocaleLoadError(target, "pie-assessment-player", "boom");
+		expect(seen[0].detail.message).toBe("boom");
+
+		expect(() =>
+			reportInterfaceLocaleLoadError(null, "pie-item-player", new Error("x")),
+		).not.toThrow();
+		expect(seen).toHaveLength(1);
+	});
+});
+
+describe("content language attributes", () => {
+	test("declared content takes its canonical tag and direction", () => {
+		expect(contentLanguageAttributes({ locale: "es_MX", mode: "gather" })).toEqual({
+			lang: "es-MX",
+			dir: "ltr",
+		});
+		expect(contentLanguageAttributes({ locale: "ar-SA" })).toEqual({
+			lang: "ar-SA",
+			dir: "rtl",
+		});
+	});
+
+	test("undeclared or unusable content asserts nothing", () => {
+		expect(contentLanguageAttributes({ mode: "gather" })).toBeNull();
+		expect(contentLanguageAttributes({ locale: "Spanish" })).toBeNull();
+		expect(contentLanguageAttributes({ locale: 42 })).toBeNull();
+		expect(contentLanguageAttributes(null)).toBeNull();
+		expect(contentLanguageAttributes(undefined)).toBeNull();
+	});
+
+	test("the stamp follows a model set that drops the language", () => {
+		const target = document.createElement("div");
+		stampContentLanguage(target, { locale: "es-MX" });
+		expect(target.getAttribute("lang")).toBe("es-MX");
+
+		stampContentLanguage(target, { mode: "gather" });
+		expect(target.getAttribute("lang")).toBeNull();
+		expect(target.getAttribute("dir")).toBeNull();
+
+		expect(() => stampContentLanguage(null, { locale: "es-MX" })).not.toThrow();
+	});
+});
+
+describe("resolveInterfaceI18n formatting", () => {
+	test("the bundled provider's formatters come through the facade at the active locale", async () => {
+		const i18n = createPieI18n();
+		await i18n.setLocale("nl-NL");
+		const resolved = resolveInterfaceI18n({ i18n });
+		expect(resolved.formatNumber(1234.5)).toBe(
+			new Intl.NumberFormat("nl-NL").format(1234.5),
+		);
+		expect(
+			resolved.formatDate(new Date("2026-01-15T00:00:00Z"), { timeZone: "UTC" }),
+		).toBe(
+			new Intl.DateTimeFormat("nl-NL", { timeZone: "UTC" }).format(
+				new Date("2026-01-15T00:00:00Z"),
+			),
+		);
+	});
+
+	test("a provider without formatters falls through to Intl at the resolved locale", () => {
+		const minimal: I18nProvider = {
+			getLocale: () => "de-DE",
+			setLocale: () => {},
+			t: (key) => String(key),
+		};
+		const resolved = resolveInterfaceI18n({ i18n: minimal });
+		expect(resolved.formatNumber(1234.5)).toBe(
+			new Intl.NumberFormat("de-DE").format(1234.5),
+		);
+		expect(
+			resolved.formatDate(new Date("2026-01-15T00:00:00Z"), { timeZone: "UTC" }),
+		).toBe("15.1.2026");
+	});
+
+	test("no publisher resolves the English default with working formatters", () => {
+		const resolved = resolveInterfaceI18n(null);
+		expect(resolved.formatNumber(1234.5)).toBe(
+			new Intl.NumberFormat("en-US").format(1234.5),
+		);
+	});
+});
+
+describe("canonical lang values", () => {
+	test("an unshipped tag honoured as spelled stamps and resolves canonically", () => {
+		const minimal: I18nProvider = {
+			getLocale: () => "NL-nl",
+			getDirection: () => "ltr",
+			setLocale: () => {},
+			t: (key) => String(key),
+		};
+		const target = document.createElement("div");
+		stampInterfaceLocale(target, minimal);
+		expect(target.getAttribute("lang")).toBe("nl-NL");
+		expect(resolveInterfaceI18n({ i18n: minimal }).getLocale()).toBe("nl-NL");
+	});
+
+	test("a canonical tag passes through unchanged, and a non-tag is written as given", () => {
+		const target = document.createElement("div");
+		stampInterfaceLocale(target, {
+			getLocale: () => "ar-SA",
+			getDirection: () => "rtl",
+		});
+		expect(target.getAttribute("lang")).toBe("ar-SA");
+		expect(target.getAttribute("dir")).toBe("rtl");
+
+		// A provider that names no usable tag still gets a `lang`: the chrome does
+		// speak something, and nothing is invented about what.
+		stampInterfaceLocale(target, { getLocale: () => "Spanish" });
+		expect(target.getAttribute("lang")).toBe("Spanish");
 	});
 });

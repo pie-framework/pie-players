@@ -22,6 +22,7 @@
 			externalStyleUrls: { attribute: "external-style-urls", type: "String" },
 			renderStimulus: { attribute: "render-stimulus", type: "Boolean" },
 			allowedResize: { attribute: "allowed-resize", type: "Boolean" },
+			passageLayout: { attribute: "passage-layout", type: "String" },
 			autoplayAudioEnabled: { attribute: "autoplay-audio-enabled", type: "Boolean" },
 			idleSaveDelayMs: { attribute: "idle-save-delay-ms", type: "Number" },
 			// Both reflect: PIE elements read these off the nearest player host and
@@ -45,6 +46,12 @@
 			// nothing keeps exactly the chrome it has today. Distinct from the
 			// authored content's language, which the item declares.
 			locale: { attribute: "locale", type: "String" },
+			// The interface-locale provider a host or a container supplies, used in
+			// place of the one built here: a host's composition for a standalone
+			// player, the section's provider for the item players a section mounts.
+			// JS-only, since it carries loaders. `locale` above still names the
+			// locale; a supplied provider is driven only by it.
+			i18n: { type: "Object", reflect: false },
 			loaderConfig: { attribute: "loader-config", type: "Object" },
 			strategy: { attribute: "strategy", type: "String" },
 			mode: { attribute: "mode", type: "String" },
@@ -78,6 +85,7 @@ The PIE item player: it loads an item's PIE elements under the `iife`, `esm` or 
 @fires {CustomEvent<{ update: unknown; reset: boolean }>} model-updated - In authoring, when a configure element updates its model.
 @fires {CustomEvent<{ models: unknown[]; configuration: unknown }>} model-loaded - In authoring, once per renderer initialization, after the configure elements receive their models and configuration.
 @fires {CustomEvent<{ itemId?: string; mode?: string; role?: string; bundleType?: string; populatedCount: number; elements: string[] }>} correct-responses-populated - When correct responses were written into the session, so a host can detect a population it did not ask for.
+@fires {CustomEvent<{ featureId: string; granted: boolean; rule: string; overrode?: "attribute" | "authored" }>} feature-decision-applied - Once per feature, before the elements render with a toolkit feature decision written onto their models; `<pie-item-scope>` relays it to its toolkit.
 @fires {CustomEvent<{ state: "retrying" | "completed" | "timeout" | "cancelled"; url: string; attempt: number; elapsedMs: number; timeoutMs: number; retryDelayMs?: number; reason?: string }>} bundle-retry-status - Under the `iife` strategy, as a bundle request is retried, completes, times out or is cancelled.
 @fires {CustomEvent<{ key: string; session: unknown; timestamp: number }>} session-snapshot-available - On load, when `session-snapshot` is enabled and device storage holds a snapshot for this sitting; the player never applies it.
 @fires {CustomEvent<{ scope: "delivery"; operation: "load"; metadata: Record<string, unknown>; session: unknown } | { scope: "authoring"; operation: "load"; contentId?: string; metadata: Record<string, unknown>; config: unknown }>} backend-load-complete - After the backend loads the delivery config and session, or the authoring content.
@@ -87,6 +95,7 @@ The PIE item player: it loads an item's PIE elements under the `iife`, `esm` or 
 @fires {CustomEvent<{ scope: "authoring"; operation: "saveContent"; contentId: string }>} backend-content-saved - After the authoring backend saves the item's content.
 @fires {CustomEvent<{ scope: "authoring"; operation: "releaseContent"; contentId: string }>} backend-content-released - After the authoring backend releases the item's content.
 @fires {CustomEvent<{ scope: "delivery"; operation: "load" | "model" | "saveSession"; message: string; error: unknown }>} backend-error - When a delivery load, model refresh or autosave the player started itself fails; a host's own `saveSession()` or `score()` call rejects instead.
+@fires {CustomEvent<{ kind: "i18n-locale-load"; source: string; message: string; details: string[]; recoverable: true; scope: "runtime"; cause?: unknown }>} framework-error - When a requested interface-locale catalog fails to load; the player keeps rendering through the English fallback chain, and re-setting `locale` retries the load.
 -->
 
 <script lang="ts">
@@ -129,7 +138,22 @@ The PIE item player: it loads an item's PIE elements under the `iife`, `esm` or 
 		missingControllerWarning,
 		takeTagsWithoutController,
 	} from "./preloaded-controllers.js";
-	import { applyAutoplayAudioOverride } from "./utils/autoplay-audio-override.js";
+	import {
+		type AppliedFeatureDecisions,
+		applyItemFeatures,
+		ITEM_FEATURE_APPLIERS,
+		type ItemFeatureInputs,
+		itemFeaturesSignature,
+		mergeAppliedFeatures,
+		readItemFeatureDecisions,
+		sameItemFeatureDecisions,
+	} from "./utils/item-features.js";
+	import {
+		connectContextWithRetry,
+		FEATURE_DECISION_APPLIED_EVENT,
+		type FeatureDecisionAppliedDetail,
+		itemFeatureDecisionsContext,
+	} from "@pie-players/pie-context";
 	import {
 		acquireScopedExternalStyle,
 		createExternalStyleScopeClass,
@@ -196,7 +220,11 @@ The PIE item player: it loads an item's PIE elements under the `iife`, `esm` or 
 	import {
 		createPieI18n,
 		DEFAULT_LOCALE,
+		resolveInterfaceI18n,
+		reportInterfaceLocaleLoadError,
+		stampContentLanguage,
 	} from "@pie-players/pie-players-shared/i18n";
+	import type { I18nProvider } from "@pie-players/pie-players-shared/i18n";
 	import { onDestroy, tick, untrack } from "svelte";
 	import { isPlainRecord } from "@pie-players/pie-players-shared/object";
 	// The shared content stylesheet is NOT imported here. In this package's
@@ -213,6 +241,8 @@ The PIE item player: it loads an item's PIE elements under the `iife`, `esm` or 
 		provideSessionCommitContext,
 		resolveSessionCommitContextValue,
 	} from "./session-commit-context.js";
+	import { provideInterfaceLocaleContext } from "./interface-locale-context.js";
+	import type { InterfaceLocaleContextValue } from "@pie-players/pie-context";
 
 	type ItemSession = {
 		id: string;
@@ -249,10 +279,12 @@ The PIE item player: it loads an item's PIE elements under the `iife`, `esm` or 
 		externalStyleUrls = "",
 		renderStimulus = true,
 		allowedResize = false,
+		passageLayout = "vertical" as "vertical" | "splitpane",
 		autoplayAudioEnabled = undefined as boolean | undefined,
 		idleSaveDelayMs = undefined as number | undefined,
 		baseHeadingLevel = undefined as 1 | 2 | 3 | 4 | 5 | 6 | undefined,
 		locale = "",
+		i18n = null as I18nProvider | null,
 		includeSrHeading = true,
 		loaderConfig = DEFAULT_LOADER_CONFIG as LoaderConfig,
 		strategy = undefined as "iife" | "esm" | "preloaded" | undefined,
@@ -283,16 +315,17 @@ The PIE item player: it loads an item's PIE elements under the `iife`, `esm` or 
 	const resolvedEsmCdnUrl = $derived(
 		loaderOptions?.esmCdnUrl || DEFAULT_ESM_CDN_URL,
 	);
+	const esmAssetRoot = $derived(
+		resolveEsmAssetRoot({
+			cdnBaseUrl: resolvedEsmCdnUrl,
+			cdnProvider: loaderOptions?.esmCdnProvider,
+		}),
+	);
 	// The root the player's own MathJax, for math in the item's markup, loads its
 	// fonts and speech from when the page sets none: under `esm`, the CDN the
 	// elements come from. A host-bundled player finds no root in its module URL.
 	const markupMathAssetRoot = $derived(
-		normalizedStrategy === "esm"
-			? resolveEsmAssetRoot({
-					cdnBaseUrl: resolvedEsmCdnUrl,
-					cdnProvider: loaderOptions?.esmCdnProvider,
-				})
-			: undefined,
+		normalizedStrategy === "esm" ? esmAssetRoot : undefined,
 	);
 	const loaderRetrySignature = $derived.by(() =>
 		JSON.stringify(loaderConfig?.iifeBundleRetry || {}),
@@ -777,6 +810,7 @@ The PIE item player: it loads an item's PIE elements under the `iife`, `esm` or 
 	let lastProcessedMode = "";
 	let lastProcessedLoaderRetrySignature = "";
 	let lastProcessedLoaderOptionsSignature = "";
+	let lastProcessedFeaturesSignature = "";
 
 	function normalizePreloadedElementVersions(configEntity: any): any {
 		if (!isBrowser || normalizedStrategy !== "preloaded") return configEntity;
@@ -820,13 +854,27 @@ The PIE item player: it loads an item's PIE elements under the `iife`, `esm` or 
 		return { item: input as ConfigEntity, passage: null };
 	}
 
-	function prepareConfigEntity(configEntity: ConfigEntity): ConfigEntity {
+	// The toolkit's decisions on this item's features, from the enclosing
+	// `<pie-item-scope>`; empty without one, and without the ids no rule names.
+	let featureDecisions = $state.raw<AppliedFeatureDecisions>({});
+	// Each feature's own setting on this player, keyed by feature id.
+	const itemFeatureInputs: ItemFeatureInputs = $derived({
+		mode: resolvedMode,
+		settings: { autoplayAudio: autoplayAudioEnabled },
+		decisions: featureDecisions,
+	});
+
+	function prepareConfigEntity(configEntity: ConfigEntity): {
+		config: ConfigEntity;
+		applied: FeatureDecisionAppliedDetail[];
+	} {
 		const versionNormalizedConfig = normalizePreloadedElementVersions(configEntity);
-		const normalizedConfig = applyAutoplayAudioOverride(
+		const { config, applied } = applyItemFeatures(
 			versionNormalizedConfig,
-			autoplayAudioEnabled,
+			itemFeatureInputs,
+			ITEM_FEATURE_APPLIERS,
 		);
-		return makeUniqueTags({ config: normalizedConfig }).config;
+		return { config: makeUniqueTags({ config }).config, applied };
 	}
 
 	function mergeElementMaps(...configs: Array<ConfigEntity | null>): Record<string, string> {
@@ -851,35 +899,63 @@ The PIE item player: it loads an item's PIE elements under the `iife`, `esm` or 
 	}
 
 	/**
-	 * Interface locale for this player's own UI. Owned here rather than resolved from
-	 * a context: an item player is often the outermost element on the page, with no
-	 * toolkit above it to publish one.
+	 * Interface locale for this player's own UI. Built here because an item
+	 * player is often the outermost element on the page, with no toolkit above it
+	 * to publish one; the `i18n` property takes a provider instead — a host's
+	 * composition for a standalone player, the section's provider for the item
+	 * players a section mounts.
 	 *
 	 * The version counter is the change signal. `setLocale` resolves a dynamic
 	 * import, so a locale set at first paint lands a tick later; without a read of
-	 * the counter every label would pin the English it first rendered.
+	 * the counter every label would pin the English it first rendered. Keyed on
+	 * the provider, so a swap of the property resubscribes; `subscribe` is
+	 * optional on the contract, and a provider without one has no change signal
+	 * of its own.
 	 */
-	const interfaceI18n = createPieI18n();
+	const ownedInterfaceI18n = createPieI18n();
+	const interfaceI18n = $derived(i18n ?? ownedInterfaceI18n);
 	let interfaceI18nVersion = $state(0);
-	$effect(() =>
-		interfaceI18n.subscribe(() => {
-			interfaceI18nVersion += 1;
-		}),
-	);
 	$effect(() => {
-		const requested = typeof locale === "string" ? locale.trim() : "";
-		untrack(() => {
-			// A failed catalog load must not take the player down: every key still
-			// resolves through the English fallback chain.
-			void Promise.resolve(
-				interfaceI18n.setLocale(requested || DEFAULT_LOCALE),
-			).catch(() => {});
+		const provider = interfaceI18n;
+		return provider.subscribe?.(() => {
+			interfaceI18nVersion += 1;
 		});
 	});
-	// Identity changes on every catalog load, which is what re-renders the labels
-	// built from it.
+	$effect(() => {
+		const requested = typeof locale === "string" ? locale.trim() : "";
+		const provider = interfaceI18n;
+		// The `locale` attribute is the only locale driver. With none set, a
+		// provider built here resolves `en-US`; one that was supplied keeps the
+		// locale its owner set — the section's shared provider, above all.
+		if (!requested && provider !== ownedInterfaceI18n) return;
+		untrack(() => {
+			// A failed catalog load must not take the player down: every key still
+			// resolves through the English fallback chain. It is reported, like
+			// the toolkit reports its own, so a host can tell English-because-
+			// requested from English-because-failed; failed loads are not cached,
+			// so re-setting `locale` retries.
+			void Promise.resolve(
+				provider.setLocale(requested || DEFAULT_LOCALE),
+			).catch((error) => {
+				reportInterfaceLocaleLoadError(hostElement, "pie-item-player", error);
+			});
+		});
+	});
+	// The content root carries the content language the delivery declares, so
+	// a screen reader takes the content's voice rules and RTL content lays out
+	// right to left. It asserts nothing about undeclared content — the
+	// chrome's `lang`/`dir` never claim it, and nothing is invented here.
+	$effect(() => {
+		const currentEnv = env;
+		const target = hostElement;
+		stampContentLanguage(target, currentEnv);
+	});
+	// A fresh facade on every catalog load. The provider's identity does not
+	// move when its catalog does, and a `$derived` that re-evaluates to the same
+	// object does not re-run its readers, so the labels built from the provider
+	// itself would pin whatever rendered before the load.
 	const interfaceMessages = $derived(
-		(void interfaceI18nVersion, interfaceI18n),
+		(void interfaceI18nVersion, resolveInterfaceI18n({ i18n: interfaceI18n })),
 	);
 
 	/**
@@ -918,8 +994,8 @@ The PIE item player: it loads an item's PIE elements under the `iife`, `esm` or 
 	// ─── loadConfig pipeline ─────────────────────────────────────────────────
 	//
 	//     parse → validate (assertPieConfigContract, then contract warnings)
-	//       → prepareConfigEntity (preloaded version alignment, autoplay
-	//         override, makeUniqueTags) → assertElementPackagesAllowed
+	//       → prepareConfigEntity (preloaded version alignment, item
+	//         features, makeUniqueTags) → assertElementPackagesAllowed
 	//       → collectRuntimeSupportHints (esm) → initializeMathRendering (iife)
 	//       → preloaded: defineAuthoredPreloadedTags + assertRegistered
 	//         | iife, esm: ensureRegistered
@@ -1016,12 +1092,17 @@ The PIE item player: it loads an item's PIE elements under the `iife`, `esm` or 
 			view: loaderOptions?.view ?? null,
 			elementPackagePolicy: loaderOptions?.elementPackagePolicy ?? null,
 		});
+		const featuresSignature = itemFeaturesSignature(
+			itemFeatureInputs,
+			ITEM_FEATURE_APPLIERS,
+		);
 		if (
 			configSignature === lastProcessedConfigSignature &&
 			normalizedStrategy === lastProcessedStrategy &&
 			resolvedMode === lastProcessedMode &&
 			loaderRetrySignature === lastProcessedLoaderRetrySignature &&
-			loaderOptionsSignature === lastProcessedLoaderOptionsSignature
+			loaderOptionsSignature === lastProcessedLoaderOptionsSignature &&
+			featuresSignature === lastProcessedFeaturesSignature
 		) {
 			return true;
 		}
@@ -1045,6 +1126,7 @@ The PIE item player: it loads an item's PIE elements under the `iife`, `esm` or 
 		lastProcessedMode = resolvedMode;
 		lastProcessedLoaderRetrySignature = loaderRetrySignature;
 		lastProcessedLoaderOptionsSignature = loaderOptionsSignature;
+		lastProcessedFeaturesSignature = featuresSignature;
 
 		if (!currentConfig) {
 			commitIfCurrent(() => {
@@ -1085,10 +1167,16 @@ The PIE item player: it loads an item's PIE elements under the `iife`, `esm` or 
 			}
 
 			stage = "normalize-config";
-			const transformedConfig = prepareConfigEntity(normalizedInput.item);
-			const transformedPassageConfig = normalizedInput.passage
+			const preparedItem = prepareConfigEntity(normalizedInput.item);
+			const preparedPassage = normalizedInput.passage
 				? prepareConfigEntity(normalizedInput.passage)
 				: null;
+			const transformedConfig = preparedItem.config;
+			const transformedPassageConfig = preparedPassage?.config ?? null;
+			const appliedFeatures = mergeAppliedFeatures(
+				preparedItem.applied,
+				preparedPassage?.applied ?? [],
+			);
 			const runtimeSupportCheck = normalizeRuntimeSupportCheck(
 				loaderOptions?.runtimeSupportCheck,
 				"off",
@@ -1123,7 +1211,8 @@ The PIE item player: it loads an item's PIE elements under the `iife`, `esm` or 
 			// elements are ESM builds, which bring their own.
 			if (normalizedStrategy === "iife") {
 				stage = "math-rendering-init";
-				await initializeMathRendering();
+				// Its speech rules come from the configured ESM CDN as well.
+				await initializeMathRendering({ assetRoot: esmAssetRoot });
 				if (!isCurrentLoadRequest(requestToken)) return false;
 			}
 
@@ -1170,6 +1259,12 @@ The PIE item player: it loads an item's PIE elements under the `iife`, `esm` or 
 
 			stage = "set-item-config";
 			commitIfCurrent(() => {
+				// Ahead of the render the config below starts.
+				for (const detail of appliedFeatures) {
+					handlePlayerEvent(
+						new CustomEvent(FEATURE_DECISION_APPLIED_EVENT, { detail }),
+					);
+				}
 				itemConfig = transformedConfig;
 				passageConfig = transformedPassageConfig;
 				backendOrchestrator.noteConfigChanged();
@@ -1206,6 +1301,25 @@ The PIE item player: it loads an item's PIE elements under the `iife`, `esm` or 
 		}
 	}
 
+	// Requested before the first load runs, from its microtask. A scope that
+	// answers later re-enters the load through the no-op guard.
+	$effect(() => {
+		if (!isBrowser) return;
+		const localHost = hostElement;
+		if (!localHost) return;
+		const stop = untrack(() =>
+			connectContextWithRetry(localHost, itemFeatureDecisionsContext, (value) => {
+				const next = readItemFeatureDecisions(value, ITEM_FEATURE_APPLIERS);
+				if (sameItemFeatureDecisions(next, featureDecisions)) return;
+				featureDecisions = next;
+			}),
+		);
+		return () => {
+			stop();
+			featureDecisions = {};
+		};
+	});
+
 	$effect(() => {
 		const currentConfig = effectiveConfig;
 		void normalizedStrategy;
@@ -1215,7 +1329,7 @@ The PIE item player: it loads an item's PIE elements under the `iife`, `esm` or 
 		void loaderRetrySignature;
 		void loaderOptions;
 		void allowedResize;
-		void autoplayAudioEnabled;
+		void itemFeatureInputs;
 		queueMicrotask(() => {
 			untrack(() => {
 				loadConfig(currentConfig);
@@ -1582,6 +1696,42 @@ The PIE item player: it loads an item's PIE elements under the `iife`, `esm` or 
 		untrack(() => sessionCommitContextProvider?.setValue(value));
 	});
 
+	// The interface locale, on the host-neutral channel the elements read
+	// (`interfaceLocaleContext`). A fresh object per version bump, so the
+	// context republishes once a lazily loaded catalog is resident and
+	// `getLocale()` names it.
+	const interfaceLocaleContextValue = $derived.by(
+		(): InterfaceLocaleContextValue => {
+			void interfaceI18nVersion;
+			return {
+				locale: interfaceI18n.getLocale(),
+				direction: interfaceI18n.getDirection?.() ?? "ltr",
+			};
+		},
+	);
+	let interfaceLocaleContextProvider: ReturnType<
+		typeof provideInterfaceLocaleContext
+	> | null = null;
+	$effect(() => {
+		if (!isBrowser) return;
+		const localHost = hostElement;
+		if (!localHost) return;
+		const provider = untrack(() =>
+			provideInterfaceLocaleContext(localHost, interfaceLocaleContextValue),
+		);
+		interfaceLocaleContextProvider = provider;
+		return () => {
+			provider.disconnect();
+			if (interfaceLocaleContextProvider === provider) {
+				interfaceLocaleContextProvider = null;
+			}
+		};
+	});
+	$effect(() => {
+		const value = interfaceLocaleContextValue;
+		untrack(() => interfaceLocaleContextProvider?.setValue(value));
+	});
+
 	function refreshMountedElements(config: ConfigEntity): void {
 		void updatePieElements(
 			config,
@@ -1600,8 +1750,16 @@ The PIE item player: it loads an item's PIE elements under the `iife`, `esm` or 
 	async function applyRefreshedBackendConfigs(
 		refresh: DeliveryModelRefreshConfigResult,
 	): Promise<void> {
-		itemConfig = refresh.itemConfig;
-		passageConfig = refresh.passageConfig;
+		// Refreshed models arrive as the backend holds them, without the item
+		// features the load wrote.
+		const inputs = untrack(() => itemFeatureInputs);
+		itemConfig = refresh.itemConfig
+			? applyItemFeatures(refresh.itemConfig, inputs, ITEM_FEATURE_APPLIERS).config
+			: refresh.itemConfig;
+		passageConfig = refresh.passageConfig
+			? applyItemFeatures(refresh.passageConfig, inputs, ITEM_FEATURE_APPLIERS)
+					.config
+			: refresh.passageConfig;
 		await tick();
 		if (refresh.itemChanged && itemConfig) {
 			refreshMountedElements(itemConfig);
@@ -1880,6 +2038,7 @@ The PIE item player: it loads an item's PIE elements under the `iife`, `esm` or 
 					session={rendererSession}
 					{addCorrectResponse}
 					{allowedResize}
+					{passageLayout}
 					customClassName={scopeClass}
 					passageContainerClass={resolvedPassageContainerClass}
 					baseHeadingLevel={resolvedBaseHeadingLevel}

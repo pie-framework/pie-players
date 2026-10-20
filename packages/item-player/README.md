@@ -162,8 +162,12 @@ item.
   ([session management](../../docs/item-player/overview.md#session-management)).
 - `env`: `Object`, default `{ mode: "gather", role: "student" }`. `env.mode` is
   `gather` (the learner responds), `view` (read-only) or `evaluate` (scored
-  feedback); `env.role` is `student` or `instructor`. Neither is a security
-  boundary ([delivery integrity](../../docs/security/readme.md#delivery-integrity)).
+  feedback); `env.role` is `student` or `instructor`. `env.locale`, when the
+  delivery knows it, names the language the item's content is written in: the
+  player stamps it, canonicalized with its direction, on the content root, and
+  asserts nothing when it is absent — the interface `locale` attribute is the
+  chrome, this is the content. Neither is a security boundary
+  ([delivery integrity](../../docs/security/readme.md#delivery-integrity)).
 - `strategy`: `String`, default `"iife"`. Loading strategy: `"iife"`, `"esm"`
   or `"preloaded"`
   ([loading strategies](../../docs/item-player/loading-strategies.md)).
@@ -183,11 +187,24 @@ item.
   evaluate mode.
 - `render-stimulus`: `Boolean`, default `true`. Render the item's passage
   (stimulus); `false` renders the item alone.
-- `allowed-resize`: `Boolean`, default `false`. Let the learner resize the
-  passage container horizontally.
+- `passage-layout`: `String`, default `"vertical"`. `"vertical"` stacks the
+  passage above the item. `"splitpane"` puts the passage beside the item, and
+  stacks them below a player width of 768px.
+- `allowed-resize`: `Boolean`, default `false`. Under `passage-layout="splitpane"`,
+  a keyboard-operable divider between passage and item resizes the split;
+  otherwise the passage container resizes horizontally.
 - `autoplay-audio-enabled`: `Boolean`, default unset, which leaves each model's
   `autoplayAudioEnabled` as it is. Set, it writes `autoplayAudioEnabled` onto
-  every model in the config, overwriting or adding the field.
+  every top-level model in the config, overwriting or adding the field, in
+  `view` mode only. Inside a `<pie-item-scope>` the toolkit's `autoplayAudio`
+  decision outranks it: a hold writes `autoplayAudioHeld: true` onto every model
+  and each part declaring `autoplayAudioEnabled`, and a grant writes
+  `autoplayAudioEnabled: true` there
+  ([Item autoplay](../assessment-toolkit/docs/PNP_CONFIGURATION.md#item-autoplay)).
+  A change after load commits pending sessions and re-renders the item. In
+  `view` mode the player removes `autoplay` attributes from the item and
+  passage markup, `trust-markup` and `sanitizeMarkup` included, so this setting
+  is the only start for the item's audio.
 - `idle-save-delay-ms`: `Number`, default unset, which leaves each element its
   own delay. How long the learner has to pause before a response editor commits
   without losing focus; `0` commits on blur only. Elements read it from
@@ -198,7 +215,21 @@ item.
 - `include-sr-heading`: `Boolean`, default `true`. Emit the item's visually
   hidden heading. Reflected.
 - `locale`: `String`, default `""` (renders `en-US`). BCP 47 interface locale
-  for the player's own UI. The item's content language is separate.
+  for the player's own UI. The toolkit and toolbar inside the player stamp it
+  on their own roots; the content root asserts no `lang`/`dir`, so unnamed
+  content keeps the browser voice for read-aloud. The item's content language
+  is separate: content that names its own `lang`/`dir` keeps it. The player
+  answers `interfaceLocaleContext` (`@pie-players/pie-context`) from it for
+  the elements inside, as `{ locale, direction }`.
+- `i18n`: `I18nProvider`, optional. A provider the host composed — the
+  generated locale tier, host messages, or the host's own — used in place of
+  the one the player builds. `locale` still names the locale, and a supplied
+  provider is driven only by it
+  ([Interface i18n](../players-shared/src/i18n/README.md#for-a-host)). A
+  catalog that fails to load dispatches a recoverable `framework-error` event
+  on the player (`detail.kind` is `i18n-locale-load`); the player renders
+  through the English fallback chain, and failed loads are not cached, so
+  re-setting `locale` retries.
 - `debug`: `String`, default `""`. Any value other than `"false"` (any case),
   `"0"` or the empty string turns on the player's debug logging. The player
   writes the result to `window.PIE_DEBUG`, the flag the page's other PIE loggers
@@ -351,6 +382,13 @@ A backend method rejects its promise on failure and dispatches no
   elements fail to register, `cause` names each one and why, such as the module
   URL that failed to load; the error is reported as soon as every missing
   element's load has failed.
+- `feature-decision-applied`: `{ featureId, granted, rule, overrode? }`, once
+  per feature before the elements render with a toolkit decision written onto
+  their models. `featureId` is the feature, today only `"autoplayAudio"`;
+  `granted` and `rule` are the decision's verdict and deciding rule; `overrode`
+  is `"attribute"` or `"authored"` when the decision displaced the player's own
+  setting, such as `autoplay-audio-enabled`, or an authored value.
+  `<pie-item-scope>` relays it to its toolkit.
 - `bundle-retry-status`:
   `{ state, url, attempt, elapsedMs, timeoutMs, retryDelayMs?, reason? }`, with
   `state` one of `"retrying"`, `"completed"`, `"timeout"` or `"cancelled"`. The
@@ -492,6 +530,8 @@ el.onDeleteSound = (_src, done) => done();
 bundles read from `window`, unless the page holds one. The player calls it
 before loading IIFE bundles; a host that loads IIFE element bundles itself calls
 it first ([math rendering](../../docs/item-player/math-rendering.md)).
+`{ assetRoot }`, an npm root, names where the renderer's speech rules load from,
+jsDelivr by default; the first call's options apply.
 
 ```ts
 import type {

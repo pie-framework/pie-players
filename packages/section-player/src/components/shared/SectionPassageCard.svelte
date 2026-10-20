@@ -487,7 +487,7 @@ Passage card of a section player: renders a passage's heading, `<pie-item-toolba
 		min-width: 0;
 		max-width: 100%;
 		z-index: 1;
-		margin-left: auto;
+		margin-inline-start: auto;
 	}
 
 	/* A hidden title over a toolbar with nothing to show leaves the header empty:

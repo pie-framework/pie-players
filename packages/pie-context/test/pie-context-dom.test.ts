@@ -8,6 +8,8 @@ import {
 	connectContextWithRetry,
 	createContext,
 	ensureDocumentContextRoot,
+	type InterfaceLocaleContextValue,
+	interfaceLocaleContext,
 	type SessionCommitContextValue,
 	sessionCommitContext,
 } from "../src/index.js";
@@ -472,6 +474,36 @@ describe("pie-context in a document tree", () => {
 		provider.setValue({ idleSaveDelayMs: 0 });
 
 		expect(seen).toEqual([{}, { idleSaveDelayMs: 0 }]);
+		consumer.disconnect();
+		provider.disconnect();
+	});
+
+	test("an element's own copy of the interface locale key reads the player's value", () => {
+		const doc = newDocument();
+		const { providerHost, consumerHost } = providerAndConsumer(doc);
+		// Stands for the key an element's bundled copy of this package creates.
+		const elementCopy = createContext<InterfaceLocaleContextValue>(
+			Symbol.for("pie.interfaceLocale"),
+		);
+		const seen: InterfaceLocaleContextValue[] = [];
+		const provider = new ContextProvider(providerHost, {
+			context: interfaceLocaleContext,
+			initialValue: { locale: "en-US", direction: "ltr" },
+		});
+		provider.connect();
+		const consumer = new ContextConsumer(consumerHost, {
+			context: elementCopy,
+			onValue: (value) => seen.push(value),
+		});
+		consumer.connect();
+
+		// A locale change, and the catalog landing after it, each republish.
+		provider.setValue({ locale: "ar-SA", direction: "rtl" });
+
+		expect(seen).toEqual([
+			{ locale: "en-US", direction: "ltr" },
+			{ locale: "ar-SA", direction: "rtl" },
+		]);
 		consumer.disconnect();
 		provider.disconnect();
 	});

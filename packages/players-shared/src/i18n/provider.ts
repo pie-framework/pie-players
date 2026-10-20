@@ -11,6 +11,7 @@
  */
 
 import {
+	canonicalLanguageTag,
 	findBestLanguageMatch,
 	normalizeLanguageTag,
 	toLanguageTag,
@@ -147,7 +148,8 @@ export class SimpleI18n implements I18nServiceApi {
 
 	constructor(config: I18nConfig = {}) {
 		this.config = { ...config };
-		this.fallbackLocale = toLanguageTag(config.fallbackLocale) || DEFAULT_LOCALE;
+		this.fallbackLocale =
+			toLanguageTag(config.fallbackLocale) || DEFAULT_LOCALE;
 		this.catalogs = new Map([[DEFAULT_LOCALE, enUS as MessageCatalog]]);
 		this.customMessages = { ...(config.customMessages ?? {}) };
 		this.loading = new Map();
@@ -225,7 +227,7 @@ export class SimpleI18n implements I18nServiceApi {
 			this.config.onMissingKey?.(key, this.locale);
 			return key;
 		}
-		return interpolate(message, values);
+		return interpolate(message, values, this.locale);
 	}
 
 	/**
@@ -243,7 +245,7 @@ export class SimpleI18n implements I18nServiceApi {
 		}
 		const category = this.selectPluralCategory(options.count);
 		const form = group[category] ?? group.other;
-		return interpolate(form, options);
+		return interpolate(form, options, this.locale);
 	}
 
 	getDirection(): TextDirection {
@@ -436,11 +438,46 @@ function readPath(
 	return current;
 }
 
-function interpolate(text: string, values?: InterpolationValues): string {
+/**
+ * Substitute `{name}` placeholders.
+ *
+ * A finite numeric value renders through `Intl.NumberFormat` for the active
+ * locale, so digits and grouping follow CLDR locale defaults: `ar` renders
+ * Arabic-Indic digits, `fr` groups with narrow no-break spaces, `en-US` with
+ * commas. Catalog text that spells digits out is untouched.
+ */
+const numberFormats = new Map<string, Intl.NumberFormat>();
+
+function formatNumber(value: number, locale: string): string {
+	let formatter = numberFormats.get(locale);
+	if (!formatter) {
+		try {
+			formatter = new Intl.NumberFormat(locale);
+		} catch {
+			formatter = new Intl.NumberFormat(DEFAULT_LOCALE);
+		}
+		numberFormats.set(locale, formatter);
+	}
+	return formatter.format(value);
+}
+
+function interpolate(
+	text: string,
+	values?: InterpolationValues,
+	locale?: string,
+): string {
 	if (!values) return text;
 	return text.replace(/\{(\w+)\}/g, (match, name: string) => {
 		const value = values[name];
-		return value === undefined || value === null ? match : String(value);
+		if (value === undefined || value === null) return match;
+		if (
+			locale !== undefined &&
+			typeof value === "number" &&
+			Number.isFinite(value)
+		) {
+			return formatNumber(value, locale);
+		}
+		return String(value);
 	});
 }
 
@@ -504,15 +541,32 @@ export function getDefaultI18n(): I18nServiceApi {
  * default rather than nothing, which is the graceful default the pull pattern
  * requires.
  */
+/** The rendering surface `resolveInterfaceI18n` promises. */
+export interface ResolvedInterfaceI18n extends I18nProvider {
+	/** Locale-aware number formatting, at the resolved locale. */
+	formatNumber(value: number, options?: Intl.NumberFormatOptions): string;
+	/** Locale-aware date formatting, at the resolved locale. */
+	formatDate(date: Date, options?: Intl.DateTimeFormatOptions): string;
+}
+
 export function resolveInterfaceI18n(
 	source: { i18n?: I18nProvider } | null | undefined,
-): I18nProvider {
+): ResolvedInterfaceI18n {
 	const provider = source?.i18n ?? getDefaultI18n();
 	// A thin facade rather than the provider itself: cheap to allocate (a handful
 	// of times per session, once per republish) and it carries no state of its own,
-	// so it cannot drift from the provider it delegates to.
+	// so it cannot drift from the provider it delegates to. The locale formatters
+	// are part of the promised surface, so a provider that does not implement
+	// them falls through to `Intl` at the locale the provider resolves — the same
+	// thing the bundled provider does, and the same graceful default every other
+	// optional member here applies.
 	return {
-		getLocale: () => provider.getLocale(),
+		// Canonical, because components read this for `lang` attributes; the
+		// provider's own `getLocale()` keeps the tag as resolved for lookups.
+		getLocale: () => {
+			const locale = provider.getLocale();
+			return canonicalLanguageTag(locale) ?? locale;
+		},
 		setLocale: (locale) => provider.setLocale(locale),
 		t: (key, values) => provider.t(key, values),
 		plural: (key, options) =>
@@ -520,5 +574,35 @@ export function resolveInterfaceI18n(
 		getDirection: () => provider.getDirection?.() ?? "ltr",
 		hasKey: (key) => provider.hasKey?.(key) ?? false,
 		subscribe: (listener) => provider.subscribe?.(listener) ?? (() => {}),
+		formatNumber: (value, options) =>
+			provider.formatNumber?.(value, options) ??
+			new Intl.NumberFormat(provider.getLocale(), options).format(value),
+		formatDate: (value, options) =>
+			provider.formatDate?.(value, options) ??
+			new Intl.DateTimeFormat(provider.getLocale(), options).format(value),
 	};
+}
+
+/**
+ * Stamp the interface locale's `lang` and `dir` on a chrome element.
+ *
+ * The imperative form of the `lang={…} dir={…}` pair a template puts on its
+ * root, for the elements a template cannot reach: a shadow host whose chrome
+ * is slotted light DOM, a shell built with `document.createElement`, a vanilla
+ * element stamping itself. Call it from whatever already re-runs on a locale
+ * change and on a catalog load: `getLocale()` moves only once the requested
+ * catalog is resident, so a stamp taken at setup alone names the locale that
+ * rendered before the load.
+ */
+export function stampInterfaceLocale(
+	target: Element,
+	provider: Pick<I18nProvider, "getLocale" | "getDirection">,
+): void {
+	// `lang` takes the canonical form: a provider honours an unshipped tag as
+	// the host spelled it, and `NL-nl` is a valid request but not a valid
+	// attribute value. Every `lang` this repository writes goes through the
+	// same rule, so chrome and content stamps match in shape.
+	const locale = provider.getLocale();
+	target.setAttribute("lang", canonicalLanguageTag(locale) ?? locale);
+	target.setAttribute("dir", provider.getDirection?.() ?? "ltr");
 }

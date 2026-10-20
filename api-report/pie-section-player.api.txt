@@ -7,6 +7,7 @@
   DEFAULT_SECTION_PLAYER_POLICIES
   type ItemSection
   type ItemSectionOptions
+  type SectionItemScore
   type SectionPlayerBackendResolver
   type SectionPlayerBackendResolverContext
   type SectionPlayerCardTitleContext
@@ -30,6 +31,7 @@
   DEFAULT_TOOL_MODULE_LOADERS
   type ItemSection
   type ItemSectionOptions
+  type SectionItemScore
   type SectionPlayerBackendResolver
   type SectionPlayerBackendResolverContext
   type SectionPlayerCardTitleContext
@@ -46,6 +48,7 @@
   type SectionPlayerRuntimePlayerConfig
   type SectionPlayerSnapshot
   type SectionPlayerTelemetryPolicy
+  createCalculatorToolRegistration
   createPackagedToolRegistry
   sectionFromItem
 
@@ -53,6 +56,7 @@
   DEFAULT_SECTION_PLAYER_POLICIES
   type ItemSection
   type ItemSectionOptions
+  type SectionItemScore
   type SectionPlayerBackendResolver
   type SectionPlayerBackendResolverContext
   type SectionPlayerCardTitleContext
@@ -75,6 +79,7 @@
   type SectionPlayerHostHooks
 
 ./contracts/runtime-host-contract
+  type SectionItemScore
   type SectionPlayerNavigationSnapshot
   type SectionPlayerRuntimeHostContract
   type SectionPlayerSnapshot

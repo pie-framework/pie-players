@@ -25,7 +25,8 @@ MathLive settings lease remain internal details.
 
 ## Architectural Constraints
 
-- Desmos remains the default. Cortex is selected explicitly with
+- Desmos remains the default. Cortex is composed into the calculator
+  registration by the host and selected explicitly with
   `provider.id: "calculator-cortex"`.
 - The runtime is fully bundled and self-hosted. No calculator operation may
   create a network request or require an API key.
@@ -57,8 +58,9 @@ MathLive settings lease remain internal details.
     MathLive + Compute Engine + JSXGraph implementation
              ^
              |
-@pie-players/pie-default-tool-loaders
-    CortexToolProvider registration adapter and lazy loading
+host composition
+    createCalculatorToolRegistration from @pie-players/pie-default-tool-loaders,
+    given a "calculator-cortex" definition that lazy-imports the package
 
 @pie-players/pie-tool-calculator-shared
     generic shell, registered as <pie-tool-calculator> for every provider,
@@ -73,8 +75,9 @@ Cortex-specific public types, bundles the three runtime dependencies and the
 worker entry, and exposes no internal library object in its public API. It
 joins the fixed Changesets release block.
 
-Cortex has no element of its own. `provider.id = "calculator-cortex"` in
-`tools.providers.calculator` selects it, and the generic element mounts it under
+Cortex has no element of its own. Once a host composes it in,
+`provider.id = "calculator-cortex"` in `tools.providers.calculator` selects it,
+and the generic element mounts it under
 the `calculator` tool id. One element serves every provider, so the Cortex and
 GeoGebra wrapper packages, which differed from the generic element only in tag
 name, are gone (4e9f8324). Two Desmos-named packages remain as compatibility
@@ -85,12 +88,13 @@ entries: `@pie-players/pie-tool-calculator-desmos` registers the generic
 
 ### Loader composition
 
-- `@pie-players/pie-default-tool-loaders` holds `CortexToolProvider`, a lazy
-  calculator adapter like the GeoGebra one, which imports
-  `@pie-players/pie-calculator-cortex` on first use and declares it as a
-  dependency. The loader recognizes `"calculator-desmos"`,
-  `"calculator-geogebra"` and `"calculator-cortex"`, and `"calculator-desmos"` is
-  the default when none is named.
+- `@pie-players/pie-default-tool-loaders` packages `"calculator-desmos"`, the
+  default when none is named, and `"calculator-geogebra"`. It has no dependency
+  on `@pie-players/pie-calculator-cortex`, because a bundler that inlines
+  dynamic imports would inline the engine into every host that never selects
+  it. A host adds Cortex with `createCalculatorToolRegistration`, passing a
+  `"calculator-cortex"` definition whose `load` imports the package on first
+  use; the package README shows the definition.
 - The packaged capability composition defines `<pie-tool-calculator>` from the
   provider-neutral `@pie-players/pie-tool-calculator-shared/calculator-element`
   entry, so no Desmos-named package is loaded to define the generic tag.

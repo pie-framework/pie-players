@@ -1,0 +1,119 @@
+{
+	"$comment": [
+		"Provenance and lifecycle for the catalogs in src/messages/. The check",
+		"script (scripts/check-catalogs.ts) recomputes the source hash of en-US the",
+		"same way — sha256 over the JSON serialization of the default export — and",
+		"validates each locale against its status:",
+		"  status \"generated\": unreviewed machine output. sourceHash must match the",
+		"    current en-US hash; any English change requires wholesale regeneration.",
+		"  status \"reviewed\": at least one native pass has corrected the file in",
+		"    place. Wholesale regeneration is forbidden (it would clobber review",
+		"    work); freshness is per-key against",
+		"    src/messages/<locale>.english-snapshot.json, written by",
+		"    scripts/write-english-snapshot.ts when the pass landed and refreshed",
+		"    after each surgical regeneration of the keys whose English moved.",
+		"Add a locale here and to GENERATED_LOCALES in src/index.ts together, with",
+		"its brief under briefs/. Model names record the generator, not an",
+		"endorsement: a \"generated\" locale is unreviewed until the README's review",
+		"lifecycle is followed. Review is never a delivery gate: a locale ships and",
+		"stays shippable as \"generated\" for as long as no pass has happened."
+	],
+	"source": {
+		"file": "../../players-shared/src/i18n/messages/en-US.ts",
+		"hashAlgorithm": "sha256",
+		"hash": "992373d186a5d69d13a5184e511c0e51fddc01a9d2e735a766d86a220435e832"
+	},
+	"locales": {
+		"th-TH": {
+			"status": "generated",
+			"brief": "briefs/th-TH.md",
+			"generatedAt": "2026-10-19",
+			"model": "GLM (Z.ai), agent-driven generation in the pie-players repo; the two passage-width keys by Claude Opus 5.5; the two question-position keys by Claude (claude-fable-5-1); the summary keys by Claude Opus 5.5; hash refreshed on landing the wave onto develop (catalog already complete); corrections from a three-reviewer agent review on 2026-10-20 (Claude claude-fable-5-1), applied where at least two reviewers agreed",
+			"sourceHash": "992373d186a5d69d13a5184e511c0e51fddc01a9d2e735a766d86a220435e832"
+		},
+		"en-GB": {
+			"status": "generated",
+			"brief": "briefs/en-GB.md",
+			"generatedAt": "2026-10-19",
+			"model": "GLM (Z.ai), agent-driven generation in the pie-players repo; the nine passage-width, question-position and summary keys by Claude (claude-fable-5-1) on landing the wave onto develop; corrections from a three-reviewer agent review on 2026-10-20 (Claude claude-fable-5-1), applied where at least two reviewers agreed",
+			"sourceHash": "992373d186a5d69d13a5184e511c0e51fddc01a9d2e735a766d86a220435e832"
+		},
+		"en-AU": {
+			"status": "generated",
+			"brief": "briefs/en-AU.md",
+			"generatedAt": "2026-10-19",
+			"model": "GLM (Z.ai), agent-driven generation in the pie-players repo; the nine passage-width, question-position and summary keys by Claude (claude-fable-5-1) on landing the wave onto develop; corrections from a three-reviewer agent review on 2026-10-20 (Claude claude-fable-5-1), applied where at least two reviewers agreed",
+			"sourceHash": "992373d186a5d69d13a5184e511c0e51fddc01a9d2e735a766d86a220435e832"
+		},
+		"es": {
+			"status": "generated",
+			"brief": "briefs/es.md",
+			"generatedAt": "2026-10-19",
+			"model": "GLM (Z.ai), agent-driven generation in the pie-players repo; the nine passage-width, question-position and summary keys by Claude (claude-fable-5-1) on landing the wave onto develop; corrections from a three-reviewer agent review on 2026-10-20 (Claude claude-fable-5-1), applied where at least two reviewers agreed",
+			"sourceHash": "992373d186a5d69d13a5184e511c0e51fddc01a9d2e735a766d86a220435e832"
+		},
+		"fr": {
+			"status": "generated",
+			"brief": "briefs/fr.md",
+			"generatedAt": "2026-10-19",
+			"model": "GLM (Z.ai), agent-driven generation in the pie-players repo; the nine passage-width, question-position and summary keys by Claude (claude-fable-5-1) on landing the wave onto develop; corrections from a three-reviewer agent review on 2026-10-20 (Claude claude-fable-5-1), applied where at least two reviewers agreed",
+			"sourceHash": "992373d186a5d69d13a5184e511c0e51fddc01a9d2e735a766d86a220435e832"
+		},
+		"ar": {
+			"status": "generated",
+			"brief": "briefs/ar.md",
+			"generatedAt": "2026-10-19",
+			"model": "GLM (Z.ai), agent-driven generation in the pie-players repo; the nine passage-width, question-position and summary keys by Claude (claude-fable-5-1) on landing the wave onto develop; corrections from a three-reviewer agent review on 2026-10-20 (Claude claude-fable-5-1), applied where at least two reviewers agreed",
+			"sourceHash": "992373d186a5d69d13a5184e511c0e51fddc01a9d2e735a766d86a220435e832"
+		},
+		"pt": {
+			"status": "generated",
+			"brief": "briefs/pt.md",
+			"generatedAt": "2026-10-19",
+			"model": "GLM (Z.ai), agent-driven generation in the pie-players repo; the nine passage-width, question-position and summary keys by Claude (claude-fable-5-1) on landing the wave onto develop; corrections from a three-reviewer agent review on 2026-10-20 (Claude claude-fable-5-1), applied where at least two reviewers agreed",
+			"sourceHash": "992373d186a5d69d13a5184e511c0e51fddc01a9d2e735a766d86a220435e832"
+		},
+		"ko": {
+			"status": "generated",
+			"brief": "briefs/ko.md",
+			"generatedAt": "2026-10-19",
+			"model": "GLM (Z.ai), agent-driven generation in the pie-players repo; the nine passage-width, question-position and summary keys by Claude (claude-fable-5-1) on landing the wave onto develop; corrections from a three-reviewer agent review on 2026-10-20 (Claude claude-fable-5-1), applied where at least two reviewers agreed",
+			"sourceHash": "992373d186a5d69d13a5184e511c0e51fddc01a9d2e735a766d86a220435e832"
+		},
+		"ja": {
+			"status": "generated",
+			"brief": "briefs/ja.md",
+			"generatedAt": "2026-10-19",
+			"model": "GLM (Z.ai), agent-driven generation in the pie-players repo; the nine passage-width, question-position and summary keys by Claude (claude-fable-5-1) on landing the wave onto develop; corrections from a three-reviewer agent review on 2026-10-20 (Claude claude-fable-5-1), applied where at least two reviewers agreed",
+			"sourceHash": "992373d186a5d69d13a5184e511c0e51fddc01a9d2e735a766d86a220435e832"
+		},
+		"zh": {
+			"status": "generated",
+			"brief": "briefs/zh.md",
+			"generatedAt": "2026-10-19",
+			"model": "GLM (Z.ai), agent-driven generation in the pie-players repo; the nine passage-width, question-position and summary keys by Claude (claude-fable-5-1) on landing the wave onto develop; corrections from a three-reviewer agent review on 2026-10-20 (Claude claude-fable-5-1), applied where at least two reviewers agreed",
+			"sourceHash": "992373d186a5d69d13a5184e511c0e51fddc01a9d2e735a766d86a220435e832"
+		},
+		"cy": {
+			"status": "generated",
+			"brief": "briefs/cy.md",
+			"generatedAt": "2026-10-19",
+			"model": "GLM (Z.ai), agent-driven generation in the pie-players repo; the nine passage-width, question-position and summary keys by Claude (claude-fable-5-1) on landing the wave onto develop; corrections from a three-reviewer agent review on 2026-10-20 (Claude claude-fable-5-1), applied where at least two reviewers agreed",
+			"sourceHash": "992373d186a5d69d13a5184e511c0e51fddc01a9d2e735a766d86a220435e832"
+		},
+		"sv": {
+			"status": "generated",
+			"brief": "briefs/sv.md",
+			"generatedAt": "2026-10-19",
+			"model": "GLM (Z.ai), agent-driven generation in the pie-players repo; the nine passage-width, question-position and summary keys by Claude (claude-fable-5-1) on landing the wave onto develop; corrections from a three-reviewer agent review on 2026-10-20 (Claude claude-fable-5-1), applied where at least two reviewers agreed",
+			"sourceHash": "992373d186a5d69d13a5184e511c0e51fddc01a9d2e735a766d86a220435e832"
+		},
+		"ro": {
+			"status": "generated",
+			"brief": "briefs/ro.md",
+			"generatedAt": "2026-10-19",
+			"model": "Claude (claude-fable-5-1), agent-driven generation in the pie-players repo; corrections from a three-reviewer agent review on 2026-10-20 (Claude claude-fable-5-1), applied where at least two reviewers agreed",
+			"sourceHash": "992373d186a5d69d13a5184e511c0e51fddc01a9d2e735a766d86a220435e832"
+		}
+	}
+}

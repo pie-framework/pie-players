@@ -26,12 +26,11 @@ of these is a composition context in this repo:
 | Heading depth | section player | every PIE element | the same item sits under a host `<h1>` in one page and three levels down in another |
 | Card title convention | host, through `hooks.cardTitleFormatter` | item and passage cards | the host names its own questions; the card cannot know the convention, and an item has no idea it is question 5 of 12 |
 | Read-aloud arbitration | toolkit coordinator | signing region, TTS tool | two media capabilities must not play at once, and neither can see the other |
-| Region scope for annotation | item/passage shell | annotation toolbar | the selectable scope is the card, which the tool does not own |
 | Split-region width | section player | item media region | the available width is the layout's, not the capability's |
 | Theme tokens | theme package | every component | a deployment picks the palette, not the component |
 | Granted accommodations | policy engine | every capability | eligibility is per learner and per deployment |
 | Idle-save delay | item player, from `idleSaveDelayMs`; the section player sets it from `runtime.player` | response editors | how often a response is saved is the deployment's delivery policy, and the same item model travels to every deployment |
-| Interface locale | item/section player, from its `locale` attribute | every component rendering a string of its own | the deployment picks the language the chrome speaks; a tool nested several packages deep cannot see it, and it is independent of the item's content language |
+| Interface locale | item/section player, from its `locale` attribute: the provider on the toolkit runtime context for the chrome, and `interfaceLocaleContext` (`@pie-players/pie-context`) for the PIE elements | every component rendering a string of its own, and every PIE element | the deployment picks the language the chrome speaks; a tool nested several packages deep cannot see it, and it is independent of the item's content language |
 
 They share a shape, which is why they share a mechanism.
 

@@ -9,6 +9,7 @@ import "./components/section-player-shell-element";
 import "./components/section-player-kernel-host-element";
 
 export type {
+	SectionItemScore,
 	SectionPlayerRuntimeHostContract,
 	SectionPlayerNavigationSnapshot,
 	SectionPlayerSnapshot,

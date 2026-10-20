@@ -10,8 +10,11 @@
   type AfaFeatureSet
   type AfaPnpRecord
   type AfaSpoken
+  type AfaZoomAmount
   CONTENT_ALTERNATE_REGISTRATIONS
   CONTENT_LEAD_SURFACE
+  type CalculatorProviderDefinition
+  type CalculatorRegistrationOptions
   DEFAULT_TOOL_MODULE_LOADERS
   type DictionaryVariantOptions
   PACKAGED_TOOL_REGISTRATIONS
@@ -23,6 +26,7 @@
   answerEliminatorToolRegistration
   audioTranscriptRegistration
   calculatorToolRegistration
+  createCalculatorToolRegistration
   createDictionaryToolRegistration
   createEmptyPersonalNeedsProfile
   createPackagedToolRegistry
@@ -32,6 +36,7 @@
   dictionaryToolRegistration
   graphToolRegistration
   lineReaderToolRegistration
+  magnificationToolRegistration
   periodicTableToolRegistration
   pictureDictionaryToolRegistration
   protractorToolRegistration

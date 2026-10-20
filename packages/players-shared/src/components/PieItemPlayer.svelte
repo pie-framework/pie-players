@@ -51,6 +51,14 @@
   import { typesetMarkupMath } from "../pie/markup-math.js";
   import { getMathRenderer } from "../pie/math-rendering.js";
   import { renderPrivateMath } from "./private-math-renderer.js";
+  import PassageSplitDivider from "./PassageSplitDivider.svelte";
+  import {
+    clampPassageSplitPercent,
+    isPassageSplitStacked,
+    PASSAGE_SPLIT_DEFAULT_PERCENT,
+    resolvePassageLayout,
+    type PassageLayout,
+  } from "./passage-split-layout.js";
   import { resolveInstrumentationProvider } from "../pie/instrumentation-provider-resolution.js";
   import { findPieController } from "../pie/scoring.js";
   import {
@@ -62,6 +70,7 @@
   import { updatePieElements } from "../pie/updates.js";
   import { useResourceMonitor } from "../pie/use-resource-monitor.svelte.js";
   import { resolveInterfaceI18n } from "../i18n/provider.js";
+  import { stampContentLanguage } from "../i18n/content-language.js";
   import type { I18nProvider } from "../i18n/types.js";
   import type {
     ConfigEntity,
@@ -85,6 +94,7 @@
     addCorrectResponse = false,
     onCorrectResponsesPopulated,
     allowedResize = false,
+    passageLayout = "vertical",
     customClassName = "",
     passageContainerClass = "",
     containerClass = "",
@@ -140,6 +150,13 @@
       elements: string[];
     }) => void;
     allowedResize?: boolean;
+    /**
+     * `splitpane` puts the passage beside the item, and `allowedResize` then
+     * makes the split draggable. It stacks below a player width of
+     * `PASSAGE_SPLIT_STACK_BREAKPOINT_PX`. `vertical` stacks the passage above
+     * the item at every width.
+     */
+    passageLayout?: PassageLayout;
     customClassName?: string;
     passageContainerClass?: string;
     containerClass?: string;
@@ -610,8 +627,38 @@
       .filter(Boolean)
       .join(" ")
   );
+  // The split changes classes and the root's grid only, never which elements
+  // render, so crossing the breakpoint keeps the mounted PIE elements.
+  const passageContainerId = $props.id();
+  let playerWidthPx = $state(0);
+  let passageSplitPercent = $state(PASSAGE_SPLIT_DEFAULT_PERCENT);
+  const splitRequested = $derived(
+    resolvePassageLayout(passageLayout) === "splitpane"
+  );
+  const passageSplit = $derived(
+    splitRequested &&
+      Boolean(passageMarkup) &&
+      Boolean(itemMarkup) &&
+      !authoringBlockedError &&
+      !isPassageSplitStacked(playerWidthPx)
+  );
+  const passageDividerVisible = $derived(passageSplit && allowedResize);
+  const rootStyle = $derived.by(() => {
+    if (!passageSplit) return undefined;
+    if (!passageDividerVisible) {
+      return "grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);";
+    }
+    return `grid-template-columns: minmax(0, ${passageSplitPercent}fr) auto minmax(0, ${
+      100 - passageSplitPercent
+    }fr);`;
+  });
+
   const rootClassFinal = $derived(
-    ["pie-item-player", allowedResize ? "pie-item-player--resize-allowed" : ""]
+    [
+      "pie-item-player",
+      allowedResize ? "pie-item-player--resize-allowed" : "",
+      passageSplit ? "pie-item-player--passage-split" : "",
+    ]
       .filter(Boolean)
       .join(" ")
   );
@@ -677,8 +724,45 @@
 
   // Root element reference for resource monitor
   let rootElement: HTMLElement | null = $state(null);
+  // The content root carries the content language the delivery declares
+  // (`env.locale`), and asserts nothing about undeclared content — the
+  // interface-locale stamps on the chrome never claim it, and nothing is
+  // invented for content that names no language.
+  $effect(() => {
+    const currentEnv = env;
+    const target = rootElement;
+    stampContentLanguage(target, currentEnv);
+  });
   let passageContainer: HTMLDivElement | null = $state(null);
   let itemContainer: HTMLDivElement | null = $state(null);
+
+  $effect(() => {
+    const root = rootElement;
+    if (!splitRequested || !root || typeof ResizeObserver === "undefined") {
+      return;
+    }
+    const update = () => {
+      playerWidthPx = root.getBoundingClientRect().width;
+    };
+    update();
+    // Crossing the breakpoint changes the root's height, so a write inside the
+    // observer callback re-notifies in the same frame and the browser reports a
+    // ResizeObserver loop error. The write waits one task; a timer rather than
+    // requestAnimationFrame, for the no-compositor reason below.
+    let pending: ReturnType<typeof setTimeout> | undefined;
+    const observer = new ResizeObserver(() => {
+      if (pending !== undefined) return;
+      pending = setTimeout(() => {
+        pending = undefined;
+        update();
+      }, 0);
+    });
+    observer.observe(root);
+    return () => {
+      observer.disconnect();
+      clearTimeout(pending);
+    };
+  });
 
   // `dispatch()` only calls the owning player's callbacks, and that player
   // emits from above this root, so the one re-entry left is the same event
@@ -1305,7 +1389,11 @@
   });
 </script>
 
-<div class={rootClassFinal} bind:this={rootElement}>
+<div
+  class={rootClassFinal}
+  style={rootStyle}
+  bind:this={rootElement}
+>
   {#if runtimePlayerError}
     <div
       class="pie-player-error"
@@ -1334,9 +1422,27 @@
       <p style="margin: 0">{authoringBlockedError}</p>
     </div>
   {:else if passageMarkup}
-    <div class={passageContainerClassFinal} bind:this={passageContainer}>
+    <div
+      class={passageContainerClassFinal}
+      id={splitRequested ? passageContainerId : undefined}
+      bind:this={passageContainer}
+    >
       {@html passageMarkup}
     </div>
+    {#if passageDividerVisible}
+      <PassageSplitDivider
+        value={passageSplitPercent}
+        container={rootElement}
+        ariaLabel={messages.t("player.resizePassageAndQuestionA11y")}
+        ariaControls={passageContainerId}
+        ariaValueText={messages.t("player.passageWidthA11y", {
+          percent: Math.round(passageSplitPercent),
+        })}
+        onresize={(next) => {
+          passageSplitPercent = clampPassageSplitPercent(next);
+        }}
+      />
+    {/if}
   {/if}
 
   {#if !authoringBlockedError && itemMarkup}
@@ -1358,7 +1464,28 @@
     width: 100%;
   }
 
-  .pie-item-player--resize-allowed .pie-passage-container {
+  /* The split's columns are set inline on the root; the error banner spans them. */
+  .pie-item-player--passage-split {
+    display: grid;
+    column-gap: 1.5rem;
+    align-items: start;
+  }
+
+  .pie-item-player--passage-split.pie-item-player--resize-allowed {
+    column-gap: 0;
+  }
+
+  .pie-item-player--passage-split > .pie-player-error {
+    grid-column: 1 / -1;
+  }
+
+  .pie-item-player--passage-split > .pie-passage-container,
+  .pie-item-player--passage-split > .pie-item-container {
+    min-width: 0;
+  }
+
+  .pie-item-player--resize-allowed:not(.pie-item-player--passage-split)
+    .pie-passage-container {
     max-width: 100%;
     overflow: auto;
     resize: horizontal;

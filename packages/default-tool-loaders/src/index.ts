@@ -17,6 +17,7 @@ export {
 	type AfaFeatureSet,
 	type AfaPnpRecord,
 	type AfaSpoken,
+	type AfaZoomAmount,
 	createPersonalNeedsProfileFromAfa,
 } from "./afa-profile.js";
 
@@ -29,6 +30,7 @@ export { CONTENT_ALTERNATE_REGISTRATIONS } from "./content-alternates.js";
 export {
 	annotationToolbarRegistration,
 	lineReaderToolRegistration,
+	magnificationToolRegistration,
 	themeToolRegistration,
 } from "./registrations/accessibility-tools.js";
 export {
@@ -40,7 +42,12 @@ export {
 	resolveAudioTranscript,
 	type ResolvedAudioTranscript,
 } from "./registrations/audio-transcript.js";
-export { calculatorToolRegistration } from "./registrations/calculator.js";
+export {
+	type CalculatorProviderDefinition,
+	type CalculatorRegistrationOptions,
+	calculatorToolRegistration,
+	createCalculatorToolRegistration,
+} from "./registrations/calculator.js";
 export {
 	createDictionaryToolRegistration,
 	createPictureDictionaryToolRegistration,

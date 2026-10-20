@@ -15,16 +15,23 @@ export class AssessmentPlayerShellElement extends HTMLElement {
 		return ["show-navigation"];
 	}
 
-	showNavigation: boolean | string | null | undefined = true;
+	private _showNavigation: boolean | string | null | undefined = true;
 
 	constructor() {
 		super();
 		this.attachShadow({ mode: "open" });
 	}
 
+	get showNavigation() {
+		return this._showNavigation;
+	}
+
+	set showNavigation(value: boolean | string | null | undefined) {
+		this._showNavigation = value;
+		if (this.isConnected) this.render();
+	}
+
 	connectedCallback() {
-		this.showNavigation =
-			this.getAttribute("show-navigation") ?? this.showNavigation;
 		this.render();
 	}
 
@@ -34,11 +41,10 @@ export class AssessmentPlayerShellElement extends HTMLElement {
 		value: string | null,
 	) {
 		if (name === "show-navigation") this.showNavigation = value;
-		this.render();
 	}
 
 	private render() {
-		const showNavigation = coerceBooleanLike(this.showNavigation, true);
+		const showNavigation = coerceBooleanLike(this._showNavigation, true);
 		const style = document.createElement("style");
 		style.textContent = `
 			:host {

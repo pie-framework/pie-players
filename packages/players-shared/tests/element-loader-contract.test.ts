@@ -42,6 +42,7 @@ import {
 	createEsmBackend,
 	mapEsmViewElements,
 	resolveEsmAssetRoot,
+	resolveEsmPackageFileUrl,
 	resolveEsmRuntimeSupportUrl,
 	type EsmBackendConfig,
 	type EsmBackendTestSeams,
@@ -3479,6 +3480,132 @@ describe("ESM adapter — existing import maps", () => {
 	});
 });
 
+// ─── ESM adapter — root-path imports of jsDelivr +esm builds ────────────────
+
+describe("ESM adapter — root-path imports of jsDelivr +esm builds", () => {
+	const MIRROR = "https://mirror.test/esm";
+	const MIRROR_SCOPES = {
+		"https://mirror.test/esm/": {
+			"https://mirror.test/npm/": "https://mirror.test/esm/",
+		},
+	};
+
+	function backendAt(
+		config: Partial<Parameters<typeof createEsmBackend>[0]>,
+		importer: (specifier: string) => Promise<unknown> = async () => ({}),
+	) {
+		const backend = createEsmBackend({
+			kind: "esm",
+			cdnBaseUrl: MIRROR,
+			loadControllers: false,
+			...config,
+		});
+		const maps: Array<{
+			imports: Record<string, string>;
+			scopes?: Record<string, Record<string, string>>;
+		}> = [];
+		backend.__seams.observeImportMapInjection((json) => {
+			maps.push(JSON.parse(json));
+		});
+		backend.__seams.replacePackageMetadataLoader(async () => ({
+			pie: { browserSharedDependencies: { react: "18.2.0", "react-dom": "18.2.0" } },
+		}));
+		backend.__seams.replaceImporter(async (specifier) => {
+			const name = specifier.match(/@pie-element\/([^@]+)@/)?.[1];
+			return name
+				? { default: createConstructorFor(`pie-${name}--version-1-0-0`) }
+				: importer(specifier);
+		});
+		return { backend, maps };
+	}
+
+	test("a base mounted off /npm maps the root paths its +esm builds import back under it", async () => {
+		const { backend, maps } = backendAt({});
+
+		await backend.load(
+			{ "pie-mc--version-1-0-0": "@pie-element/mc@1.0.0" },
+			backendContext(createImportMapDocument()),
+		);
+
+		expect(maps).toHaveLength(1);
+		expect(maps[0]?.imports.react).toBe(`${MIRROR}/react@18.2.0/+esm`);
+		expect(maps[0]?.scopes).toEqual(MIRROR_SCOPES);
+	});
+
+	test("jsDelivr itself, esm.sh and a custom provider get no scope", async () => {
+		const custom = {
+			name: "custom",
+			packageJsonUrl: (pkg: string) => `${MIRROR}/${pkg}/package.json`,
+			browserViewUrl: (pkg: string, view: string) =>
+				`${MIRROR}/${pkg}/dist/browser/${view}/index.js`,
+			browserControllerUrl: (pkg: string) =>
+				`${MIRROR}/${pkg}/dist/browser/controller/index.js`,
+			sharedDependencyUrl: (dep: string, version: string) =>
+				`${MIRROR}/${dep}@${version}/+esm`,
+		};
+		for (const config of [
+			{ cdnBaseUrl: "https://cdn.jsdelivr.net/npm" },
+			{ cdnBaseUrl: "https://esm.sh", cdnProvider: "esm.sh" },
+			{ cdnProvider: custom },
+		]) {
+			const { backend, maps } = backendAt(config);
+			await backend.load(
+				{ "pie-mc--version-1-0-0": "@pie-element/mc@1.0.0" },
+				backendContext(createImportMapDocument()),
+			);
+			expect(maps).toHaveLength(1);
+			expect(maps[0]?.scopes).toBeUndefined();
+		}
+	});
+
+	test("a scope rule the document already defines is not added again", async () => {
+		const doc = createImportMapDocument();
+		doc.head.appendChild(
+			createScriptStub({
+				type: "importmap",
+				textContent: JSON.stringify({ imports: {}, scopes: MIRROR_SCOPES }),
+			}) as unknown as Node,
+		);
+		const { backend, maps } = backendAt({});
+
+		await backend.load(
+			{ "pie-mc--version-1-0-0": "@pie-element/mc@1.0.0" },
+			backendContext(doc),
+		);
+
+		expect(maps).toHaveLength(1);
+		expect(maps[0]?.scopes).toBeUndefined();
+	});
+
+	test("a rejected map hands its scope to es-module-shims", async () => {
+		const added: Array<{ scopes?: Record<string, Record<string, string>> }> =
+			[];
+		const shim = Object.assign(
+			async (specifier: string) => {
+				const name = specifier.match(/@pie-element\/([^@]+)@/)?.[1] ?? "";
+				return { default: createConstructorFor(`pie-${name}--version-1-0-0`) };
+			},
+			{
+				addImportMap: (map: { scopes?: Record<string, Record<string, string>> }) => {
+					added.push(map);
+				},
+			},
+		);
+		const { backend } = backendAt({}, async (specifier) => {
+			if (specifier.startsWith("https://")) return {};
+			throw new TypeError(`The specifier "${specifier}" was not remapped.`);
+		});
+		backend.__seams.replaceImportShimLoader(async () => shim);
+
+		await backend.load(
+			{ "pie-mc--version-1-0-0": "@pie-element/mc@1.0.0" },
+			backendContext(createImportMapDocument()),
+		);
+
+		expect(added.at(-1)?.scopes).toEqual(MIRROR_SCOPES);
+	});
+});
+
 // ─── ESM adapter — import maps the browser rejects ──────────────────────────
 
 describe("ESM adapter — import maps the browser rejects", () => {
@@ -4567,5 +4694,25 @@ describe("resolveEsmAssetRoot", () => {
 				cdnProvider: provider((pv) => `https://cdn.test/meta?package=${pv}`),
 			}),
 		).toBeUndefined();
+	});
+});
+
+describe("resolveEsmPackageFileUrl", () => {
+	const FILE = "@fortawesome/fontawesome-free@6.5.2/css/all.min.css";
+
+	test("is the file on jsDelivr when the options name no CDN", () => {
+		const onJsDelivr = `https://cdn.jsdelivr.net/npm/${FILE}`;
+		expect(resolveEsmPackageFileUrl(undefined, FILE)).toBe(onJsDelivr);
+		expect(resolveEsmPackageFileUrl({ esmCdnUrl: "  " }, FILE)).toBe(onJsDelivr);
+		expect(resolveEsmPackageFileUrl({ esmCdnUrl: 42 }, FILE)).toBe(onJsDelivr);
+	});
+
+	test("is the file under the configured CDN's npm root", () => {
+		expect(resolveEsmPackageFileUrl({ esmCdnUrl: "https://mirror.test/esm/" }, FILE)).toBe(
+			`https://mirror.test/esm/${FILE}`,
+		);
+		expect(resolveEsmPackageFileUrl({ esmCdnUrl: "https://esm.sh" }, FILE)).toBe(
+			`https://raw.esm.sh/${FILE}`,
+		);
 	});
 });

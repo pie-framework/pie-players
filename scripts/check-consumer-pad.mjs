@@ -137,6 +137,18 @@ const TRIGGERS = [
 	},
 	{
 		reason:
+			"`<pie-print>`'s `resolve` and `config` properties, `defaultResolve` and the resolved entry's `url` and `module` fields, or `dist/print-player.js`, which a host loads from a CDN by name",
+		match: (file) =>
+			[
+				"packages/print-player/src/pie-print.ts",
+				"packages/print-player/src/element-resolver.ts",
+				"packages/print-player/src/types.ts",
+				"packages/print-player/src/index.ts",
+				"packages/print-player/vite.config.ts",
+			].includes(file),
+	},
+	{
+		reason:
 			"when `toolkit-ready` fires relative to the section controller, which a host's unguarded event subscriptions depend on",
 		match: (file) =>
 			file ===
@@ -184,11 +196,11 @@ const TRIGGERS = [
 	},
 	{
 		reason:
-			"what Host A's single-file build inlines or cannot load: the packaged tool loaders' imports, the Cortex engine's one import site, or the default loading strategy",
+			"what Host A's single-file build inlines or cannot load: the packaged tool loaders' imports, the packaged calculator backends, or the default loading strategy",
 		match: (file) =>
 			[
 				"packages/default-tool-loaders/src/packaged-capability-composition.ts",
-				"packages/default-tool-loaders/src/calculator-providers/CortexToolProvider.ts",
+				"packages/default-tool-loaders/src/calculator-providers/packaged-calculator-providers.ts",
 				"packages/assessment-toolkit/src/runtime/core/engine-resolver.ts",
 			].includes(file),
 	},

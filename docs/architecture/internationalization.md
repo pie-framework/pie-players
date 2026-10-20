@@ -41,23 +41,47 @@ there. `en-US` and `nl-NL` ship complete, and `check:i18n-coverage` gates the
 pre-commit and CI runs. The [adoption record](./i18n-interface-locale-adoption.md)
 records the decisions, including why the earlier i18n layer was replaced.
 
-The hardcoded-string scanner (`scan-hardcoded`) produces a lead list and never
-gates. It skips lines that already resolve through a provider, so its count falls
-as adoption lands, and it matches quoted capitalized text, so it cannot tell a
-rendered label from a `KeyboardEvent.key` value, a font-family name or an HTTP
-header. It scans `aria-*`, `title`, `alt` and `placeholder` values, which carry
-accessible names. Two structural blind spots remain: plain template text between
-tags, and a label with a lowercase initial. Widening either buries the leads under
-CSS values and identifiers.
+**An optional machine-generated locale tier exists beside the bundled catalogs.**
+`@pie-players/pie-i18n-generated` publishes locale catalogs translated by machine
+and marked with their provenance. They are unreviewed and freshness-gated, a host
+composes their loaders after the bundled ones so reviewed strings always win, and
+a locale is promoted into the reviewed set by translation review rather than by
+reworking the generated files. `check:i18n-generated` gates the pre-commit and CI
+runs; the
+[players-shared i18n README](../../packages/players-shared/src/i18n/README.md)
+owns the composition pattern.
 
-**pie-elements-ng localizes through i18next, keyed on authored content.** Every
-`translator.t(` call passes `{ lng: language }`, where `language` is a model prop
-the controller copies off the authored item. Catalogs are `en` and `es` only, both
-eagerly imported and marked `@auto-generated` from upstream pie-lib, so the sync
-overwrites edits and keys cannot be added there. PIE content exists in languages
-those two catalogs cannot serve, French and German among them. The Svelte elements
-use the same translator where they localize at all. Classic pie-elements is the
-same design through `@pie-lib/translator`.
+The hardcoded-string scanner (`scan-hardcoded`) produces a warning report and
+never gates. It parses the packages' Svelte templates with the Svelte AST, so
+its scope is exactly where rendering is definitional: template text nodes and
+static `aria-label`, `title` and `placeholder` attribute values. Strings in
+script blocks — where a literal may equally be a diagnostic — are invisible to
+it, as is any `{expression}`, so an adopted `t("…")` call site never appears.
+It stays advisory on purpose: a finding names a string and a suggested catalog
+key, but whether the string reaches a learner is a human call, and a warning
+that can fail a build invites suppression. It runs on demand
+(`bun run scan-hardcoded`) and weekly via the `i18n-hardcoded-scan` workflow,
+which files the report on a tracking issue.
+
+**pie-elements-ng is moving onto a port of this engine, and its chrome is still
+keyed on authored content.** `@pie-element/shared-i18n` ports the engine with its
+RFC 4647 lookup and per-key fallback to `en-US`, adds `registerMessages` and
+`loadLocale` for hosts, and keeps one page registry across every bundled copy.
+`@pie-lib/render-ui`, `@pie-lib/correct-answer-toggle` and
+`@pie-element/multiple-choice`, which together render multiple-choice's chrome,
+carry per-package catalogs on it; IIFE builds ship English only. No interface
+locale reaches elements yet, so those three still take theirs from
+`model.language`, a model prop the controller copies off the authored item. The
+[interface i18n PRD](https://github.com/pie-framework/pie-elements-ng/blob/develop/docs/prds/interface-i18n/PRD.md)
+plans the rest of the migration.
+
+The other packages localize through i18next. Every `translator.t(` call passes
+`{ lng: language }`, the same `model.language`. Catalogs are `en` and `es` only,
+both eagerly imported and marked `@auto-generated` from upstream pie-lib, so the
+sync overwrites edits and keys cannot be added there. PIE content exists in
+languages those two catalogs cannot serve, French and German among them. The
+Svelte elements use the same translator where they localize at all. Classic
+pie-elements is the same design through `@pie-lib/translator`.
 
 Keying on `model.language` makes interface locale a side effect of content locale:
 a Spanish item renders Spanish widget chrome because it is a Spanish item. That is
@@ -89,8 +113,9 @@ language, and there is no cross-sign-language fallback, by design.
 **Language matching follows RFC 4647 lookup.** `AccessibilityCatalogResolver`
 normalizes both tags (`_` to `-`, lowercase) and expands the request into its
 lookup sequence, so the POSIX `es_ES` that Learnosity imports carry matches an
-`es-ES` request. pie-elements-ng carries the same POSIX/BCP-47 split as a
-hand-written mapping table, and pie-qti needed the same workaround.
+`es-ES` request. pie-elements-ng's translator carries the same POSIX/BCP-47 split
+as a hand-written mapping table, and pie-qti needed the same workaround;
+`@pie-element/shared-i18n` normalizes tags the same way this repository does.
 
 **Read-aloud resolves a content language per read**, as
 [TTS language](#tts-language) sets out. A read whose markup carries no `lang`, and
@@ -247,6 +272,108 @@ evidence for the variant model it originated. The
 does the same in framing `requiresAuthoredContent` as AfA's DRD half of the PNP/DRD
 pair.
 
+### The chrome engine against web and Unicode standards
+
+The claims above are 1EdTech's and govern content. The interface-locale engine
+(`SimpleI18n`, `language-tags`, the generated tier) rests on web and Unicode
+standards instead. Each decision below names the authority it complies with; the
+divergences after the table are policy choices the standards leave open, recorded
+so they read as chosen rather than overlooked.
+
+| Decision | Authority | Where it is met |
+| --- | --- | --- |
+| Interface locale is a deployment fact the player publishes from `locale` | QTI 3.0 declares item content with `xml:lang` and leaves the delivery's UI language to the platform; LTI passes the platform's display locale as a `launch_presentation` hint; AfA PNP 3.0 `language-of-interface` is a learner preference the platform's policy resolves | one scalar on the composition context ([Interface locale](#interface-locale)); a PNP preference reaches it only through host policy ([tools and accommodations](../tools-and-accomodations/architecture.md)); no element or item sets it |
+| Content language is a separate fact, declared on each run | QTI 3.0 `xml:lang`; WCAG 2.2 3.1.2 Language of Parts (AA); HTML `dir` and UAX #9 for direction | `env` carries it ([Content language](#content-language)); `lang` and `dir` go on the content subtree, and on the chrome subtree where the interface locale differs |
+| The page owns its language | WCAG 2.2 3.1.1 Language of Page (A) | no player or element writes `document.documentElement` |
+| Tags are BCP 47, canonicalized | RFC 5646 (BCP 47); W3C *Language tags in HTML and XML* | `normalizeLanguageTag` and `toLanguageTag`: `es_ES.UTF-8` compares as `es-es` and renders as `es-ES` |
+| Lookup, then primary-subtag widening | RFC 4647 §3.4 | `languageTagLookupSequence` never stops on a singleton; `sv-SE` reaches `sv`, bare `en` the bundled `en-US` |
+| Plural forms are CLDR categories | UTS #35 plural rules, through ECMA-402 `Intl.PluralRules` | `other` is required; a catalog carries its locale's set (`cy` and `ar` six, `pt` `one`/`many`/`other`); a category the catalog lacks resolves to `other` |
+| Numbers and dates follow the locale | UTS #35 numbering systems and formats, through ECMA-402 `Intl.NumberFormat` and `Intl.DateTimeFormat` | numeric placeholders, `formatNumber` and `formatDate` format at the resolved locale; current CLDR resolves bare `ar` to Western digits and `ar-SA` to Arabic-Indic, so a regional request that widens to the `ar` catalog renders Western digits unless the host registers a regional catalog |
+| A control is never unnamed | WCAG 2.2 4.1.2 Name, Role, Value | lookup falls from host messages to the locale's catalog to `en-US` to the key itself; a failed catalog load is reported and renders English |
+| Direction comes from locale data | ECMA-402 `Intl.Locale` and the Locale Info proposal's `textInfo`, with an RTL-subtag fallback | `localeDirection` feature-detects `textInfo` and never reads a catalog |
+| A learner preference is an accommodation | AfA PNP 3.0; [ADR 0003](../adr/0003-elements-read-accessibility-settings-from-a-host-neutral-context.md) | the profile-to-support mapping lives in the host; an element maps a fixed support id to fixed behavior |
+
+**Deliberate divergences.** Three choices go against a convention or past a
+standard, each on purpose.
+
+- *No browser-locale detection.* Consumer web practice honours `navigator.language`
+  or `Accept-Language` when nothing else chooses. The engine reads neither, for the
+  reasons the [adoption record](./i18n-interface-locale-adoption.md) gives, and
+  `detectBrowserLocale()` stays exported for a host that wants it. No standard
+  requires detection; the platform-mediated path is LTI's locale hint, which lands
+  in `locale` one institutional step away from the device.
+- *`en-US` is the default.* No standard names a default. The delivery data and the
+  [rollout rule](#rollout), that a rendered string never changes under a host that
+  has not opted in, pick it.
+- *Structured catalogs rather than Unicode MessageFormat 2.0.* MF2 (LDML 46, 2024)
+  is the message-format standard and the catalogs predate it; they stay structured
+  on the merits. No engine ships a native runtime, ECMA-402's `Intl.MessageFormat`
+  being at stage 1, so MF2 today is a parser in every bundle, which pie-elements-ng
+  multiplies per element; the translation tooling that will handle reviewed
+  catalogs runs ICU MessageFormat 1; and the engine's semantics already match MF2's
+  model, with no key among the 531 using `select`. The standard enters at the
+  interchange boundary: catalog-to-ICU MF1, MF2 and XLIFF 2.1 converters,
+  gate-validated on import, are the planned tooling. The shape limits nothing a
+  locale needs — any tag, any CLDR plural set, any script or direction,
+  locale-correct numbers and dates, host overrides, lazy loading — and defers only
+  in-message `select` and rich formatting, which no key has needed. If one does, the
+  leaf syntax moves behind the same gate; keys, loaders and the fallback chain are
+  format-agnostic.
+
+pie-elements-ng adds one of its own, since pie-players has no IIFE build: an IIFE
+ships English only and reaches every other locale through `registerMessages`.
+Its [interface-i18n PRD](https://github.com/pie-framework/pie-elements-ng/blob/develop/docs/prds/interface-i18n/PRD.md)
+states the rule as capability tiered by packaging shape, coverage not.
+
+**Where the grounding is thin.** AfA `language-of-interface` is the standards hook
+for a PNP-driven interface locale, and no live installation's PNP record carries
+one, so the host-policy mapping is designed rather than exercised. The generated
+tier is machine output awaiting native review, which its manifests state and its
+freshness gate keeps honest. And the gates check parity, not rendered geometry,
+which [Pseudo-localization](#pseudo-localization) covers.
+
+### Pseudo-localization
+
+Review catches what a parity gate cannot: clipped labels, strings glued together
+in code, text that was never catalog text, and a layout that only breaks when
+text grows or runs right to left. Localization toolchains answer that with a
+pseudo-locale before any reviewer sees a real string — Windows ships `qps-ploc`
+and `qps-plocm`, Android `en-XA` and `ar-XB` — and `pseudoLocalize` in
+`players-shared` produces the PIE equivalent from the English catalog at runtime:
+every string accented, bracketed and padded roughly 40% longer, with every key,
+plural category and `{placeholder}` untouched. It registers through
+`customMessages`, so it renders in any build shape; nothing ships it.
+
+`en-XA` exercises expansion and externalization — anything still reading plain
+English was never catalog text. `ar-XB` needs no Arabic: its primary subtag
+resolves RTL through `localeDirection`, so an English reader watches the chrome
+lay out right to left.
+
+```ts
+import {
+	createPieI18n,
+	loadBundledCatalog,
+	PSEUDO_LOCALE_EXPANDED,
+	PSEUDO_LOCALE_RTL,
+	pseudoLocalize,
+} from "@pie-players/pie-players-shared/i18n";
+
+export async function pseudoLocalizedProvider() {
+	const pseudo = pseudoLocalize(await loadBundledCatalog("en-US"));
+	return createPieI18n({
+		locale: PSEUDO_LOCALE_EXPANDED,
+		customMessages: { [PSEUDO_LOCALE_EXPANDED]: pseudo, [PSEUDO_LOCALE_RTL]: pseudo },
+	});
+}
+```
+
+The demo switcher wires both pseudo-locales through the host-provider seam
+([rollout](#rollout) item 7): `apps/section-demos`' `demo-interface-i18n.ts`
+composes a provider whose host messages carry the pseudo-localized catalogs and
+hands it to the players as `runtime.i18n`, the same way a host hands over a
+generated catalog. The section-player interface-locale spec drives `ar-XB`
+through the real chrome.
+
 ## Direction
 
 ### Language resolution at three scopes
@@ -289,6 +416,20 @@ the consumer set is open, resolvers must work with no container, and the value
 changes after mount. Classic PIE keys chrome on `model.language`, which is why its
 interface locale is a side effect of content locale.
 
+PIE elements read the same fact on a second, host-neutral channel:
+`interfaceLocaleContext` in `@pie-players/pie-context`, keyed
+`Symbol.for("pie.interfaceLocale")`, which the toolkit and the item player
+answer with `{ locale, direction }` — the tag as the player's provider resolved
+it and its writing direction — and republish on a locale change and again once
+a lazily loaded catalog is resident. Element bundles are third-party and
+release independently, so they get the key and the value shape rather than the
+players' provider, resolve the tag against their own catalogs, and treat an
+unanswered request as `en-US`. The value only grows, per ADR 0003's protocol.
+pie-elements-ng's
+[interface-i18n PRD](https://github.com/pie-framework/pie-elements-ng/blob/develop/docs/prds/interface-i18n/PRD.md)
+is the subscriber half: an element subscribes in `connectedCallback`, re-renders
+on republish, and passes the locale to the `language` prop its libraries take.
+
 ### Content language
 
 Content language for elements is direction and has not shipped. The shipped path,
@@ -312,17 +453,19 @@ and boolean `true`, and both must keep working.
 
 The design also has the player reflect the resolved content language to `lang`,
 and direction to `dir`, on the content subtree. Interface-locale adoption already stamps both on the
-chrome subtree. For content, neither pie-players nor pie-elements-ng writes `dir`
-anywhere, so an RTL content language does not render right to left.
+chrome subtree. For content, only pie-elements-ng's `multiple-choice` writes `dir`,
+on its own host, so an RTL content language does not render right to left elsewhere.
 
 Six elements write `lang` onto their own host: `explicit-constructed-response`,
 `extended-text-entry`, `inline-dropdown`, `math-inline`, `multiple-choice` and
 `passage`, the same six in pie-elements-ng and in classic pie-elements. Each
 computes `language ? language.slice(0, 2) : 'en'` off `model.language`, so an absent
-model language stamps `lang="en"` instead of leaving the attribute off. Outside
-those six elements `:lang()` and hyphenation have nothing to key on, and inside
-them they key on a language the content may not be in. The same holds for
-screen-reader pronunciation and every other consumer of the attribute.
+model language stamps `lang="en"` instead of leaving the attribute off. The
+exception is pie-elements-ng's `multiple-choice`, which stamps the canonical tag of a
+declared language and leaves `lang` and `dir` off otherwise. Outside those six
+elements `:lang()` and hyphenation have nothing to key on, and inside them they key
+on a language the content may not be in. The same holds for screen-reader
+pronunciation and every other consumer of the attribute.
 
 That default constrains the slice. `lang` inherits and the nearest ancestor wins, so
 inside those six subtrees the element overrides a content wrapper carrying the
@@ -432,19 +575,22 @@ behavior-preserving until a host opts in by supplying a locale.
 
 1. **BCP-47 resolution.** Done; see
    [Language resolution at three scopes](#language-resolution-at-three-scopes).
-2. **Content language end to end.** Not started. `Env.locale`, an item payload that
-   carries its language, `lang` and `dir` reflected on the content subtree, and the
-   six elements that stamp `lang` off `model.language` no longer defaulting it to
-   `'en'`. It needs authoring hosts to emit locale on the PIE content channel and
-   `xml:lang` on the QTI channel; the
+2. **Content language end to end.** In part landed. The player half:
+   `Env.locale` is typed and the item player reflects it as `lang`/`dir` on the
+   content subtree, asserting nothing for undeclared content. The element half:
+   all six elements that stamped `lang` off `model.language` now stamp a
+   canonical declared language with its direction and nothing otherwise — the
+   `'en'` default is gone. Still open: authoring hosts emitting locale on the
+   PIE content channel and `xml:lang` on the QTI channel; the
    [Current state](#current-state) records what they emit today.
 3. **Interface locale as composition context.** Done; see
    [Interface locale](#interface-locale).
 4. **Consolidate the i18n layer.** Done. `SimpleI18n` is the only implementation,
    the catalog is harvested from call sites, and `check:i18n-coverage` runs in the
-   pre-commit and CI gates. `scan-hardcoded` stays advisory: it cannot separate a
-   rendered label from a diagnostic, so gating on it needs a baseline nobody would
-   maintain.
+   pre-commit and CI gates. `scan-hardcoded` is advisory and stays so: it reads
+   the Svelte AST, so it warns only on template text and static
+   `aria-label`/`title`/`placeholder` literals — a scoped weekly report, not a
+   gate.
 5. **Parameterized PNP and language catalog cards.** Not started.
    `keyword-translation` and `glossary-on-screen` are the first consumers.
 6. **Tool and accommodation locale.** In part done.
@@ -459,6 +605,16 @@ behavior-preserving until a host opts in by supplying a locale.
    - Open: STT recognizer language. The [speech-to-text PRD](../prds/speech-to-text.md)
      proposes `PieDictationInsertDetail.lang`, which would be the first typed
      runtime locale reaching an element; it is designed, not implemented.
+7. **Host-supplied messages and locales.** Done; see the
+   [host-supplied interface locale provider PRD](../prds/interface-i18n-host-provider.md).
+   `runtime.i18n` on the section-player layouts and an `i18n` property on the
+   toolkit and the item player accept the
+   [`I18nProvider`](../../packages/players-shared/src/i18n/README.md#for-a-host)
+   a host composes — the generated tier's catalogs, `customMessages`, or a
+   provider of the host's own. The `locale` attribute still names the locale,
+   and a supplied provider is driven only by it. A section forwards its
+   provider to the item players it mounts, so their own chrome follows the
+   section's locale instead of the third English provider it built before.
 
 ## Open questions
 
@@ -468,8 +624,9 @@ behavior-preserving until a host opts in by supplying a locale.
   TAO and Cambium/TDS item translation models, Smarter Balanced
   stacked-translation practice, the psychometric comparability constraints on
   treating a translation as the same item, and web-component i18n patterns
-  including `@lit/localize`, ICU MessageFormat and `lang`/`dir` inheritance through
-  shadow DOM.
+  including `@lit/localize` and `lang`/`dir` inheritance through shadow DOM. The
+  message-format question is settled under
+  [The chrome engine against web and Unicode standards](#the-chrome-engine-against-web-and-unicode-standards).
 
 ## References
 
@@ -477,6 +634,8 @@ behavior-preserving until a host opts in by supplying a locale.
   shipped interface-locale decisions
 - [`../../packages/players-shared/src/i18n/README.md`](../../packages/players-shared/src/i18n/README.md)
   — provider, catalogs and adoption pattern
+- [`../../packages/pie-i18n-generated/README.md`](../../packages/pie-i18n-generated/README.md)
+  — the optional machine-generated locale tier
 - [`composition-context.md`](./composition-context.md) — publisher/resolver
   pattern, resolution order, change-signal invariant
 - [`../accessibility/accessibility-catalogs-integration-guide.md`](../accessibility/accessibility-catalogs-integration-guide.md)
@@ -498,3 +657,13 @@ behavior-preserving until a host opts in by supplying a locale.
   §4.1, §4.4 — catalogs, PNP language fields, variants
 - AfA PNP 3.0 §4.1.8, §4.1.14, §4.1.17, §4.1.18 — the four language fields
 - APIP v1.0 Best Practice guide §2.2.3 and Appendix A — item variants
+- WCAG 2.2 success criteria 3.1.1, 3.1.2 and 4.1.2 — language of page and of
+  parts, accessible names
+- RFC 5646 (BCP 47) and RFC 4647 §3.4 — language tags and lookup; W3C
+  *Language tags in HTML and XML* — canonical form
+- UTS #35 (LDML) — plural rules, numbering systems, and Unicode MessageFormat
+  2.0 (LDML 46)
+- ECMA-402 — `Intl.PluralRules`, `Intl.NumberFormat`, `Intl.DateTimeFormat`,
+  `Intl.Locale`; the Intl Locale Info proposal — `textInfo`
+- LTI 1.1 `launch_presentation_locale` and the LTI 1.3 `launch_presentation`
+  claim — the platform's display-locale hint

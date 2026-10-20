@@ -29,12 +29,21 @@ import { resolveInterfaceI18n } from "@pie-players/pie-players-shared/i18n/provi
 export interface InterfaceI18n {
 	/** The resolved provider: the published one, or the English-only default. */
 	readonly provider: I18nProvider;
+	/**
+	 * The provider the toolkit published, before the facade wraps it. Undefined
+	 * with no publisher.
+	 */
+	readonly source: I18nProvider | undefined;
 	/** Active locale tag, for stamping `lang`. */
 	readonly locale: string;
 	/** Writing direction, for stamping `dir`. */
 	readonly direction: TextDirection;
 	t(key: MessageKeyInput, values?: InterpolationValues): string;
 	plural(key: MessageKeyInput, options: PluralOptions): string;
+	/** Locale-aware number formatting, at the resolved locale. */
+	formatNumber(value: number, options?: Intl.NumberFormatOptions): string;
+	/** Locale-aware date formatting, at the resolved locale. */
+	formatDate(date: Date, options?: Intl.DateTimeFormatOptions): string;
 }
 
 /**
@@ -67,6 +76,17 @@ export function useInterfaceI18n(
 		get provider() {
 			return provider;
 		},
+		/**
+		 * The provider the toolkit published, before the facade wraps it.
+		 *
+		 * The facade is a fresh object on every republish, which is what makes
+		 * rendered strings re-run; a consumer *forwarding* the provider to a
+		 * nested element wants the stable instance instead, so the forwarded
+		 * property does not churn on each republish. Undefined with no publisher.
+		 */
+		get source(): I18nProvider | undefined {
+			return runtimeContext?.i18n;
+		},
 		get locale() {
 			return provider.getLocale();
 		},
@@ -78,6 +98,12 @@ export function useInterfaceI18n(
 		},
 		plural(key, options) {
 			return provider.plural?.(key, options) ?? provider.t(key, options);
+		},
+		formatNumber(value, options) {
+			return provider.formatNumber(value, options);
+		},
+		formatDate(value, options) {
+			return provider.formatDate(value, options);
 		},
 	};
 }

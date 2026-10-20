@@ -290,12 +290,12 @@
 					{interfaceI18n.t('tools.calculator.loading')}
 				</div>
 			{/if}
-			{#if initializationError}
-				<div class="pie-tool-calculator__loading pie-tool-calculator__loading--error">
-					Calculator failed to initialize.
-					<div class="pie-tool-calculator__error-details">{initializationError}</div>
-				</div>
-			{/if}
+		{#if initializationError}
+			<div class="pie-tool-calculator__loading pie-tool-calculator__loading--error">
+				{interfaceI18n.t('tools.calculator.initFailed')}
+				<div class="pie-tool-calculator__error-details">{initializationError}</div>
+			</div>
+		{/if}
 		</div>
 	{/if}
 </div>

@@ -9,13 +9,14 @@ import { define, status, whenDefined } from "./ce-registry.js";
 import {
 	DEFAULT_ESM_CDN_URL,
 	ensureRegistered,
-	type EsmCdnProviderOption,
 	isScopedPackageSpec,
+	resolveEsmAssetRoot,
 	type ViewConfig,
 } from "@pie-players/pie-players-shared/loaders";
 import type {
 	LoadResolutionResult,
 	PkgResolution,
+	PrintLoaderOptions,
 	ResolverFn,
 } from "./types.js";
 
@@ -25,27 +26,35 @@ const BROWSER_PRINT_VIEW_CONFIG: ViewConfig = {
 };
 
 /**
- * Default resolver - resolves package names to jsdelivr CDN URLs
+ * Default resolver - resolves package names to print module URLs on the ESM CDN
  *
  * @param tagName - Element tag name
  * @param pkg - Package identifier (e.g., '@pie-element/multiple-choice@12.0.0')
+ * @param loaderOptions - The CDN to load from; jsDelivr by default
  * @returns Package resolution with CDN URL, or an empty `url` when `pkg` is not
  * a scoped package spec; `defaultLoadResolution` fails that element.
  */
 export const defaultResolve: ResolverFn = (
 	tagName: string,
 	pkg: string,
+	loaderOptions?: PrintLoaderOptions,
 ): Promise<PkgResolution> => {
+	const cdnBaseUrl = (loaderOptions?.esmCdnUrl || DEFAULT_ESM_CDN_URL).replace(
+		/\/+$/,
+		"",
+	);
+	const cdnProvider = loaderOptions?.esmCdnProvider;
+	const fileRoot = resolveEsmAssetRoot({ cdnBaseUrl, cdnProvider }) ?? cdnBaseUrl;
 	return Promise.resolve({
 		tagName,
 		pkg,
 		url: isScopedPackageSpec(pkg)
-			? `${DEFAULT_ESM_CDN_URL}/${pkg}/dist/browser/print/index.js`
+			? `${fileRoot}/${pkg}/dist/browser/print/index.js`
 			: "",
 		module: true,
 		loader: "browser-esm",
-		cdnBaseUrl: DEFAULT_ESM_CDN_URL,
-		cdnProvider: "jsdelivr",
+		cdnBaseUrl,
+		...(cdnProvider ? { cdnProvider } : {}),
 	});
 };
 
@@ -111,7 +120,7 @@ export const defaultLoadResolution = async (
 					backend: {
 						kind: "esm",
 						cdnBaseUrl: r.cdnBaseUrl || DEFAULT_ESM_CDN_URL,
-						cdnProvider: (r.cdnProvider || "jsdelivr") as EsmCdnProviderOption,
+						cdnProvider: r.cdnProvider,
 						moduleResolution: "url",
 						view: "print",
 						viewConfig: BROWSER_PRINT_VIEW_CONFIG,

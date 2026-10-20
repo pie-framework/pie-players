@@ -26,6 +26,10 @@ import {
 	demoSignLanguageNotGrantedSection,
 	demoSignLanguagePassageSection,
 } from "./demo-sign-language";
+import {
+	demoMagnifierGrantedSection,
+	demoMagnifierProhibitedSection,
+} from "./demo-magnifier";
 import { demoReadAloudAccommodationsSection } from "./demo-read-aloud-accommodations";
 import { demoShadowReadingSection } from "./demo-shadow-reading";
 import { demoTwoPassagesSection } from "./demo-two-passages";
@@ -566,6 +570,35 @@ export const sectionDemos: Record<string, SectionDemoInfo> = {
 			},
 		],
 	},
+	magnifier: {
+		id: "magnifier",
+		name: "Magnifier",
+		description:
+			"A movable, resizable magnifying lens granted through the learner's profile, starting at the zoom the profile names — one page with magnification granted, one with it prohibited",
+		integrationLevel: 4,
+		integrationTheme: "Profile-driven tool selection",
+		focus:
+			"Shows the `magnification` accommodation end to end: an AfA PNP 3.0 record grants it and names a starting zoom, policy carries the zoom to the section toolbar, and the lens opens at it.",
+		whatMakesItTick: [
+			"The profile is an AfA PNP 3.0 record, `{ magnification: { \"all-content\": { \"zoom-amount\": 2.5 } } }`, converted with `createPersonalNeedsProfileFromAfa` and bound as the assessment's.",
+			"`all-content`'s `zoom-amount` becomes the `magnification` tool parameter `zoom`; the packaged registration reads it through the toolbar and sets it on `<pie-tool-magnifier>`.",
+			"The second page's record lists `magnification` in its `prohibit-set`, which becomes `prohibitedSupports`, so policy withdraws the placed magnifier from the toolbar.",
+			"The lens shows a scriptless copy of the page, kept current as content and form state change; it is a viewing aid, and the learner answers on the page beneath it.",
+			"Arrow keys move the lens, `+` and `-` zoom, the corner grip resizes, and Escape closes it.",
+		],
+		sections: [
+			{
+				id: "magnifier-granted",
+				name: "Magnification granted (2.5×)",
+				section: demoMagnifierGrantedSection,
+			},
+			{
+				id: "magnifier-prohibited",
+				name: "Magnification prohibited",
+				section: demoMagnifierProhibitedSection,
+			},
+		],
+	},
 	"three-questions": {
 		id: "three-questions",
 		name: "Three Questions",
@@ -793,7 +826,7 @@ export const sectionDemos: Record<string, SectionDemoInfo> = {
 		focus:
 			"Exercises the same calculator registration, toolbar, policy, and item-data configuration through the open-source provider, and shows the per-instance settings a host passes it.",
 		whatMakesItTick: [
-			"Selects `calculator-cortex` through the generic provider configuration seam; no generic calculator code imports a Cortex implementation.",
+			"Composes Cortex into the calculator registration through `createCalculatorToolRegistration`, because the packaged set holds only Desmos and GeoGebra, then selects `calculator-cortex` through the generic provider configuration seam.",
 			"Needs no vendor key and makes no network request -- the provider is a package in this repository and evaluates in a worker, so the demo works offline.",
 			"Narrows `settings.allowedFunctions` to drop factorial and log-base-n, so the scientific keypad omits both keys rather than offering a key the validator would refuse.",
 			"Sets `restrictedMode: true`, which is monotonic: it disables clipboard actions and cannot be relaxed by `settings.allowClipboard`.",

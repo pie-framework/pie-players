@@ -321,6 +321,21 @@ Item card of a section player: renders an item's heading, `<pie-item-toolbar>` a
 		);
 	}
 
+	function itemPlayerScorer(): (() => Promise<false | unknown[]>) | null {
+		const scorer = (
+			playerNode as { provideScore?: () => Promise<false | unknown[]> } | null
+		)?.provideScore;
+		return typeof scorer === "function" ? () => scorer.call(playerNode) : null;
+	}
+
+	/**
+	 * The item player's `provideScore()`, for the pane's host-facing score; `false`
+	 * until the player has mounted.
+	 */
+	export async function provideScore(): Promise<false | unknown[]> {
+		return (await itemPlayerScorer()?.()) ?? false;
+	}
+
 	async function handleFormativeClick(): Promise<void> {
 		if (!formativeView?.enabled || checkPending) return;
 		checkFailed = false;
@@ -329,16 +344,14 @@ Item card of a section player: renders an item's heading, `<pie-item-toolbar>` a
 			return;
 		}
 		if (!formativeView.canCheck) return;
-		const scorer = (
-			playerNode as { provideScore?: () => Promise<false | unknown[]> } | null
-		)?.provideScore;
-		if (typeof scorer !== "function") {
+		const scorer = itemPlayerScorer();
+		if (!scorer) {
 			checkFailed = true;
 			return;
 		}
 		checkPending = true;
 		try {
-			const results = await scorer.call(playerNode);
+			const results = await scorer();
 			// `false` means the item has no models to score, which is exactly the
 			// `unknown` correctness case — the Try is real and gets recorded. A throw
 			// is an error rather than an unscorable item, so it costs no Try.
@@ -594,7 +607,7 @@ Item card of a section player: renders an item's heading, `<pie-item-toolbar>` a
 		min-width: 0;
 		max-width: 100%;
 		z-index: 1;
-		margin-left: auto;
+		margin-inline-start: auto;
 	}
 
 	/* A hidden title over a toolbar with nothing to show leaves the header empty:
@@ -660,7 +673,7 @@ Item card of a section player: renders an item's heading, `<pie-item-toolbar>` a
 		   it there at the smallest supported text size. */
 		min-height: 2.25rem;
 		padding: 0.4rem 0.9rem;
-		margin-left: auto;
+		margin-inline-start: auto;
 		border: 1px solid var(--pie-button-border, var(--pie-border, #8f8f8f));
 		border-radius: 4px;
 		background: var(--pie-button-bg, var(--pie-white, #fff));

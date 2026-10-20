@@ -581,6 +581,9 @@ skill as a thin wrapper over it; `consumer-dependency-audit` is the pattern.
   has, their tag map, placement presets, universal supports and lazy module loaders.
   The only place a packaged capability set is named.
 - `packages/players-shared` - shared utilities, sanitizer, and PIE config.
+- `packages/pie-i18n-generated` - optional machine-generated locale catalogs:
+  provenance-marked, unreviewed, freshness-gated; hosts compose their loaders
+  after the bundled ones, and a locale is promoted by review, not rework.
 - `packages/pie-context` - shared runtime context.
 - `packages/theme` - theme token contract, `<pie-theme>`, color schemes, and the
   DaisyUI provider adapter.

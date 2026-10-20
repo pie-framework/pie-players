@@ -131,13 +131,13 @@ are clamped to their range.
 | `sectionHostButtons`, `itemHostButtons`, `passageHostButtons` | property | — | Host buttons appended to the section, item and passage toolbars |
 | `section-id` | attribute | `section.identifier`, then `section-<assessmentId>` | The section's id for its controller and persistence |
 | `attempt-id` | attribute | — | The attempt the session belongs to. Without one the default persistence neither reads nor writes |
-| `locale` | attribute | `en-US` | BCP-47 locale of the player's own interface text. It never sets `runtime.contentLanguage` |
+| `locale` | attribute | `en-US` | BCP-47 locale of the player's own interface text; the chrome stamps `lang` and `dir` from it on its own subtree, never on the document. It never sets `runtime.contentLanguage` |
 | `base-heading-level` | attribute | `2` (1–6) | The level of the card headings, from which every descendant's outline derives ([Heading structure](#heading-structure)) |
 | `show-toolbar` | attribute | `false` | Renders the section toolbar, which section-level tools need. Accepts `true`/`false`, `1`/`0` and `yes`/`no` |
 | `toolbar-position` | attribute | `right` | `top`, `right`, `bottom`, `left` or `none` |
 | `tool-config-strictness` | attribute | `error` | `off`, `warn` or `error` for tool configuration validation |
 | `nds-icons` | attribute | — | Renders toolbar buttons as NDS icon buttons (below) |
-| `iife-bundle-host` | attribute | — | The bundle host for the IIFE element pre-warm when `runtime.player.loaderOptions.bundleHost` is unset |
+| `iife-bundle-host` | attribute | `https://proxy.pie-api.com/bundles/` | The IIFE bundle host for the element pre-warm and the item players when `runtime.player.loaderOptions.bundleHost` is unset |
 | `debug` | attribute | — | Debug logging (`true` enables, `false` or `0` disables; [Debug logging](#debug-logging)) |
 | `narrow-layout-breakpoint` | attribute | `1100` (400–2000) | The viewport width in px at or below which the layout narrows |
 | `content-max-width-no-passage` | attribute | unset (320–2200) | Maximum content width in px for a section without passages |
@@ -188,6 +188,7 @@ clamping, so a section with passages is never narrower than one without.
 | `player` | — | Item player settings: `hosted`, `loaderOptions`, `loaderConfig`, `backend` and `resolveBackend` ([Backend delivery](#backend-delivery-for-embedded-items)). Every other field is passed to each embedded item player as a property |
 | `env` | `{ mode: "gather", role: "student" }` | The section env every item renders in |
 | `contentLanguage` | `en-US` | BCP-47 language of content whose markup names none; read-aloud speaks in it and catalog cards are picked by it. A `lang` between the content and its card wins |
+| `i18n` | — | The interface-locale provider — the bundled catalogs, the generated tier, host messages, or a provider of the host's own — the toolkit publishes for every tool, card and item player below. The `locale` attribute still names the locale, and a supplied provider is driven only by it ([Interface i18n](../players-shared/src/i18n/README.md#for-a-host)) |
 | `tools` | — | Tool placement, providers and policy ([Tools](#tools)) |
 | `toolContextResolvers` | — | Per-tool resolvers that run after the policy gates: they can hide a tool that survived them or attach render parameters, and cannot re-enable a removed one |
 | `accessibility` | — | `{ catalogs, language }`: accessibility catalogs and their language |
@@ -305,10 +306,12 @@ The layouts and the kernel host implement `SectionPlayerRuntimeHostContract`:
 | `navigateNext()`, `navigatePrevious()` | `boolean` | Moves one item; `false` when it cannot |
 | `getSectionController()` | `SectionControllerHandle \| null` | The current section's controller |
 | `waitForSectionController(timeoutMs = 5000)` | `Promise<SectionControllerHandle \| null>` | Resolves at once when the controller is resolvable, else at the next `toolkit-ready`, else at the timeout with the current lookup, which may be `null` |
+| `provideScore()` | `Promise<SectionItemScore[]>` | Scores every item in section order, each `{ canonicalItemId, outcomes }` with `outcomes` what the item's `<pie-item-player>` `provideScore()` returns, or `false` for an item whose player has not mounted |
 
 The methods exist from the moment the element is created. Until it mounts,
 `waitForSectionController` waits, `getSectionController()` returns `null`, the
-navigation methods return `false`, and `getSnapshot()` returns `null` on the
+navigation methods return `false`, `provideScore()` resolves `[]`, and
+`getSnapshot()` returns `null` on the
 stock layouts and the bootstrap snapshot (zero counts, no navigation) on the
 kernel host.
 
@@ -466,6 +469,11 @@ A response editor also commits when the learner pauses. `runtime.player.idleSave
 sets the pause for every embedded item player; unset leaves each element its own
 delay, and `0` commits on blur only
 ([Idle commit](../../docs/item-player/overview.md#idle-commit)).
+
+`runtime.player.addCorrectResponse: true` fills every embedded item player's
+session with the item's correct response, outside `evaluate` mode. Each one
+reaches the section session as a `session-changed`, so a host that persists
+sessions sets it only where nothing is saved, such as an authoring preview.
 
 ### Custom section controllers
 

@@ -9,6 +9,7 @@ await runDevServerBootstrap({
 	requiredDistArtifacts: [
 		"packages/tts-client-server/dist/index.js",
 		"packages/calculator-desmos/dist/index.js",
+		"packages/calculator-cortex/dist/index.js",
 		"packages/tool-calculator-desmos/dist/pie-tool-calculator.js",
 		"packages/tool-answer-eliminator/dist/tool-answer-eliminator.js",
 		"packages/tool-annotation-toolbar/dist/tool-annotation-toolbar.js",
@@ -17,6 +18,7 @@ await runDevServerBootstrap({
 		"packages/tool-periodic-table/dist/tool-periodic-table.js",
 		"packages/tool-protractor/dist/tool-protractor.js",
 		"packages/tool-line-reader/dist/tool-line-reader.js",
+		"packages/tool-magnifier/dist/tool-magnifier.js",
 		"packages/tool-ruler/dist/tool-ruler.js",
 	],
 });

@@ -50,10 +50,10 @@
 		"@pie-players/pie-calculator": "workspace:*"
 	},
 	"devDependencies": {
-		"@axe-core/playwright": "^4.13.0",
+		"@axe-core/playwright": "^4.14.0",
 		"@biomejs/biome": "^2.5.15",
-		"@cortex-js/compute-engine": "0.151.0",
-		"@playwright/test": "^1.64.0",
+		"@cortex-js/compute-engine": "0.154.0",
+		"@playwright/test": "^1.64.1",
 		"@sveltejs/vite-plugin-svelte": "^7.3.1",
 		"jsxgraph": "1.14.0",
 		"mathlive": "0.111.0",

@@ -9,6 +9,7 @@
 
 /// <reference path="../shims.d.ts" />
 import { createPieLogger, isGlobalDebugEnabled } from "./logger.js";
+import { pageMathAssetRoot } from "./math-assets.js";
 
 export type MathRenderer = (element: HTMLElement) => void | Promise<void>;
 export interface MathRenderingAPI {
@@ -25,6 +26,65 @@ const GLOBAL_DLL_KEY = "_dll_pie_lib__math_rendering";
 const SHARED_INSTANCE_KEY = "@pie-lib/math-rendering@2";
 let initPromise: Promise<void> | null = null;
 const logger = createPieLogger("math-rendering", () => isGlobalDebugEnabled());
+
+/**
+ * The speech-rule-engine version the default renderer bundles, whose rules it
+ * loads from `speech-rule-engine@<version>/lib/mathmaps` under an npm root. A
+ * test pins it to the module.
+ * @internal
+ */
+export const DEFAULT_RENDERER_SRE_VERSION = "4.1.2";
+
+/** How the default renderer `initializeMathRendering` installs loads its assets. */
+export interface MathRenderingOptions {
+	/**
+	 * The npm root the renderer's speech rules load from when the page's math
+	 * options set no `assetRoot`. With neither, jsDelivr. A page that names the
+	 * rules' directory itself, in `SREfeature.json` or a `text/x-sre-config`
+	 * block, keeps it.
+	 */
+	assetRoot?: string;
+}
+
+const SRE_FEATURE_KEY = "SREfeature";
+
+const pageNamesSpeechRules = (): boolean => {
+	const feature = (window as any)[SRE_FEATURE_KEY];
+	if (feature && typeof feature === "object" && feature.json) return true;
+	return Array.from(
+		document.querySelectorAll('script[type="text/x-sre-config"]'),
+	).some((block) => {
+		try {
+			return !!JSON.parse(block.textContent || "")?.json;
+		} catch {
+			return false;
+		}
+	});
+};
+
+/**
+ * Points the module's speech-rule-engine at the rules under `root` and returns
+ * the undo. SRE reads `SREfeature` as it sets up, synchronously while the
+ * module evaluates, and its later setups keep the path, so the global is
+ * restored afterwards: another copy of SRE on the page, as a legacy bundle
+ * carries, keeps the rules of its own version.
+ */
+const pointSpeechRulesAt = (root: string | undefined): (() => void) => {
+	if (!root || typeof document === "undefined" || pageNamesSpeechRules()) {
+		return () => {};
+	}
+	const host = window as unknown as Record<string, unknown>;
+	const had = Object.hasOwn(host, SRE_FEATURE_KEY);
+	const previous = host[SRE_FEATURE_KEY];
+	host[SRE_FEATURE_KEY] = {
+		...(previous && typeof previous === "object" ? previous : {}),
+		json: `${root.replace(/\/+$/, "")}/speech-rule-engine@${DEFAULT_RENDERER_SRE_VERSION}/lib/mathmaps`,
+	};
+	return () => {
+		if (had) host[SRE_FEATURE_KEY] = previous;
+		else delete host[SRE_FEATURE_KEY];
+	};
+};
 
 /**
  * The page's renderer: the one `initializeMathRendering` installed, or a
@@ -79,6 +139,8 @@ const createSharedInstance = (renderer: MathRenderingAPI): void => {
  * - window["@pie-lib/math-rendering"] (standard key)
  * - window["_dll_pie_lib__math_rendering"] (SystemJS/DLL key for IIFE bundles)
  *
+ * The first call installs the renderer for the page, so its `options` apply.
+ *
  * @example
  * ```typescript
  * // Default MathJax
@@ -89,7 +151,9 @@ const createSharedInstance = (renderer: MathRenderingAPI): void => {
  * await initializeMathRendering();
  * ```
  */
-export async function initializeMathRendering(): Promise<void> {
+export async function initializeMathRendering(
+	options: MathRenderingOptions = {},
+): Promise<void> {
 	// Only run in browser
 	if (typeof window === "undefined") {
 		return;
@@ -105,6 +169,9 @@ export async function initializeMathRendering(): Promise<void> {
 	}
 
 	initPromise = (async () => {
+		const restoreSpeechRules = pointSpeechRulesAt(
+			pageMathAssetRoot() ?? options.assetRoot,
+		);
 		try {
 			// The package has no exports map, so the file is named in full for
 			// resolvers that do not complete a directory, such as webpack's
@@ -127,6 +194,8 @@ export async function initializeMathRendering(): Promise<void> {
 		} catch (error) {
 			logger.error("Failed to initialize math rendering:", error);
 			throw error;
+		} finally {
+			restoreSpeechRules();
 		}
 	})();
 	try {

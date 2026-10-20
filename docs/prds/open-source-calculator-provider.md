@@ -2,9 +2,10 @@
 
 Status: Accepted, 2026-08-26
 
-Implementation status: shipped in pie-players as `@pie-players/pie-calculator-cortex`,
-selected through the `calculator-cortex` registration in
-`@pie-players/pie-default-tool-loaders`.
+Implementation status: shipped in pie-players as `@pie-players/pie-calculator-cortex`.
+Since 2026-10-14 a host composes it into the calculator registration with
+`createCalculatorToolRegistration` from `@pie-players/pie-default-tool-loaders`,
+whose packaged set holds only Desmos and GeoGebra.
 
 Owner: PIE Players maintainers
 
@@ -89,8 +90,10 @@ connection is required. The package's `package.json` pins them and its
 
 - Owning package: `@pie-players/pie-calculator-cortex`.
 - Public export path: `@pie-players/pie-calculator-cortex`.
-- Consuming package: `@pie-players/pie-default-tool-loaders`, whose
-  `CortexToolProvider` adapter lazy-imports the provider.
+- Consuming package: the host, through a `"calculator-cortex"` definition passed
+  to `createCalculatorToolRegistration` in
+  `@pie-players/pie-default-tool-loaders`, whose `load` lazy-imports the
+  provider.
 - Runtime environment: browser-only provider with module Web Workers; the public
   types remain safe to import in TypeScript without creating browser globals.
 
@@ -232,9 +235,9 @@ silently clamped, except where the contract explicitly defines a default.
 ### Provider and registration identifiers
 
 The provider instance uses `providerId: "cortex"`, matching the existing
-provider-state convention. The calculator registration in
-`@pie-players/pie-default-tool-loaders` accepts `"calculator-cortex"` as
-`provider.id`, matching `"calculator-desmos"` and `"calculator-geogebra"`.
+provider-state convention. A calculator registration built with Cortex composed
+in accepts `"calculator-cortex"` as `provider.id`, matching `"calculator-desmos"`
+and `"calculator-geogebra"`.
 
 ```ts
 {

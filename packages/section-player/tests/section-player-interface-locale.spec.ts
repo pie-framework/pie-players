@@ -205,8 +205,11 @@ test.describe("section player interface locale", () => {
 	test("an unshipped locale renders English rather than message keys", async ({
 		page,
 	}) => {
+		// `zz` names no catalog in the bundled or the generated tier — chosen
+		// over `cy-GB` and other real languages so the wave of generated
+		// catalogs cannot turn this into a translation test.
 		await page.setViewportSize(WIDE);
-		await page.goto("/interface-locale?locale=cy-GB", {
+		await page.goto("/interface-locale?locale=zz", {
 			waitUntil: "networkidle",
 		});
 
@@ -217,6 +220,138 @@ test.describe("section player interface locale", () => {
 		await expect(page.getByText("player.passage", { exact: true })).toHaveCount(
 			0,
 		);
+	});
+
+	test("a locale from the generated tier renders through the host's provider", async ({
+		page,
+	}) => {
+		// `th-TH` ships only in `@pie-players/pie-i18n-generated`, which the demo
+		// reaches through `runtime.i18n`: the composition the generated tier's
+		// README shows, handed to the player instead of built by it. Both
+		// expectations are literals from that catalog, for the same reason the
+		// Dutch ones are.
+		const pageErrors: string[] = [];
+		page.on("pageerror", (error) => {
+			pageErrors.push(error.message);
+		});
+		await page.setViewportSize(WIDE);
+		await page.goto("/interface-locale?locale=th-TH", {
+			waitUntil: "networkidle",
+		});
+
+		await expect(
+			page.getByRole("heading", { name: "บทอ่าน", level: 2 }),
+		).toBeVisible();
+		await expect(
+			page.getByRole("button", { name: "ธีม เปลี่ยนสีและความเปรียบต่าง" }),
+		).toBeVisible();
+		await expect(
+			page.getByRole("heading", { name: "Passage", level: 2 }),
+		).toHaveCount(0);
+
+		expect(pageErrors).toEqual([]);
+	});
+
+	test("the pseudo-locales render through the provider's host messages", async ({
+		page,
+	}) => {
+		// `en-XA` and `ar-XB` are registered on the demo's provider through
+		// `customMessages`, which resolve ahead of any catalog. The bracketed,
+		// padded text is the point: expansion and externalization are visible in
+		// the chrome, and anything still reading plain English was never catalog
+		// text.
+		await page.setViewportSize(WIDE);
+
+		for (const tag of ["en-XA", "ar-XB"]) {
+			await page.goto(`/interface-locale?locale=${tag}`, {
+				waitUntil: "networkidle",
+			});
+			const heading = page.getByRole("heading", { level: 2 }).first();
+			await expect(heading).toBeVisible();
+			await expect(heading).toHaveText(/^\[/);
+			await expect(
+				page.getByRole("heading", { name: "Passage", level: 2 }),
+			).toHaveCount(0);
+			await expect(
+				page.getByText("player.passage", { exact: true }),
+			).toHaveCount(0);
+		}
+	});
+
+	test("the chrome stamps the interface locale's lang and dir on its own subtree", async ({
+		page,
+	}) => {
+		// `lang` resolves along the light tree and `direction` inherits through
+		// it, so the stamp sits on the shell host — the light-tree ancestor of
+		// every pane, card and item player — with the toolkit host, the
+		// navigation live region, and the toolbar carrying their own. The
+		// document root is never touched: an embedded player has no business
+		// writing it. `ar-XB` makes the `dir` half observable without an Arabic
+		// catalog. The item player's content root asserts nothing: a `lang`
+		// there would claim the item content for the interface language, and
+		// the read-aloud language climb from unnamed content would leave the
+		// browser voice for the chrome's locale. Content language is the
+		// content slice's concern.
+		await page.setViewportSize(WIDE);
+		await page.goto("/interface-locale?locale=ar-XB", {
+			waitUntil: "networkidle",
+		});
+
+		const shell = page.locator("pie-section-player-shell");
+		await expect(shell).toHaveAttribute("lang", "ar-XB");
+		await expect(shell).toHaveAttribute("dir", "rtl");
+		await expect(page.locator("pie-assessment-toolkit")).toHaveAttribute(
+			"dir",
+			"rtl",
+		);
+		const navStatus = page.locator(".pie-section-player-nav-status");
+		await expect(navStatus).toHaveAttribute("lang", "ar-XB");
+		await expect(navStatus).toHaveAttribute("dir", "rtl");
+		await expect(
+			page.locator("pie-item-toolbar .item-toolbar").first(),
+		).toHaveAttribute("dir", "rtl");
+		const itemPlayerRoot = page.locator("pie-item-player > .pie-item-player");
+		await expect(itemPlayerRoot.first()).not.toHaveAttribute("lang");
+		await expect(itemPlayerRoot.first()).not.toHaveAttribute("dir");
+		const root = page.locator("html");
+		await expect(root).not.toHaveAttribute("dir");
+		const rootLang = await root.getAttribute("lang");
+
+		// A live locale switch moves the stamps with the provider.
+		await page.getByTestId("demo-locale-select").selectOption("nl-NL");
+		await expect(shell).toHaveAttribute("lang", "nl-NL");
+		await expect(shell).toHaveAttribute("dir", "ltr");
+		await expect(navStatus).toHaveAttribute("lang", "nl-NL");
+		await expect(root).not.toHaveAttribute("dir");
+		expect(await root.getAttribute("lang")).toBe(rootLang);
+	});
+	test("the shipped Arabic catalog renders right to left, not just the pseudolocale", async ({
+		page,
+	}) => {
+		// `ar-XB` proves the stamps and the mirroring with padded Latin text; this
+		// proves the generated MSA catalog itself reaches the chrome under the
+		// real tag. The literals are the catalog's own values on purpose, as the
+		// Dutch assertions are: "not English" would pass on a raw key.
+		await page.setViewportSize(WIDE);
+		await page.goto("/interface-locale?locale=ar", {
+			waitUntil: "networkidle",
+		});
+
+		await expect(
+			page.getByRole("heading", { name: "نص", level: 2 }),
+		).toBeVisible();
+		await expect(
+			page.getByRole("button", { name: "المظهر، تغيير الألوان والتباين" }),
+		).toBeVisible();
+
+		const shell = page.locator("pie-section-player-shell");
+		await expect(shell).toHaveAttribute("lang", "ar");
+		await expect(shell).toHaveAttribute("dir", "rtl");
+		await expect(page.locator("pie-assessment-toolkit")).toHaveAttribute(
+			"dir",
+			"rtl",
+		);
+		await expect(page.locator("html")).not.toHaveAttribute("dir");
 	});
 
 	test("a stale locale param is inert on a demo that supplies no locale", async ({
@@ -234,5 +369,41 @@ test.describe("section player interface locale", () => {
 			page.getByRole("heading", { name: "Passage", level: 2 }),
 		).toBeVisible();
 		await expect(page.getByTestId("demo-locale-select")).toHaveCount(0);
+	});
+
+	test("the item players answer interfaceLocaleContext with the section's locale", async ({
+		page,
+	}) => {
+		// The host-neutral channel the PIE elements read. The request is
+		// dispatched from inside a mounted item player, as an element's bundled
+		// copy of `@pie-players/pie-context` would, and the nearest answer is the
+		// item player's — whose provider is the section's, forwarded.
+		await page.setViewportSize(WIDE);
+		await page.goto("/interface-locale?locale=nl-NL", {
+			waitUntil: "networkidle",
+		});
+		await expect(
+			page.getByRole("heading", { name: "Tekst", level: 2 }),
+		).toBeVisible();
+
+		const content = page.locator("pie-item-player .pie-item-player").first();
+		const seen = await content.evaluate((node) => {
+			const values: unknown[] = [];
+			const from = node.firstElementChild ?? node;
+			from.dispatchEvent(
+				Object.assign(
+					new Event("context-request", { bubbles: true, composed: true }),
+					{
+						context: Symbol.for("pie.interfaceLocale"),
+						contextTarget: from,
+						subscribe: false,
+						callback: (value: unknown) => values.push(value),
+					},
+				),
+			);
+			return values;
+		});
+
+		expect(seen).toEqual([{ locale: "nl-NL", direction: "ltr" }]);
 	});
 });

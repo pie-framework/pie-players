@@ -79,7 +79,7 @@ passage titles and `kds-*` markup render unstyled, and content the author marked
 
 On each `config` assignment the player:
 
-1. Resolves each entry of `item.elements` through `resolve(tagName, pkg)`. The
+1. Resolves each entry of `item.elements` through `resolve(tagName, pkg, loaderOptions)`. The
    print tag is `<tagName>-print-<hash of url>`, unless the resolution sets
    `printTagName`.
 2. Sanitizes `item.markup` and replaces each element tag that has an `id` with
@@ -100,7 +100,8 @@ On each `config` assignment the player:
 | Property | Type | Description |
 |---|---|---|
 | `config` | `Config` | The item (markup, elements map, models), rendering options, and the accessibility inputs |
-| `resolve` | `ResolverFn` | Maps each element to its print module ([Custom Resolution](#custom-resolution)); the default resolves jsDelivr's browser print build |
+| `loaderOptions` | `PrintLoaderOptions` | `{ esmCdnUrl?, esmCdnProvider? }`, the ESM CDN the default resolver loads print modules from, named as on `<pie-item-player>`'s `loaderOptions`; jsDelivr when unset. Read when `config` is set, so set it first |
+| `resolve` | `ResolverFn` | Maps each element to its print module ([Custom Resolution](#custom-resolution)); the default resolves the browser print build on `loaderOptions`' ESM CDN |
 | `missingElement` | `MissingElFn` | `(pkg, message) => CustomElementConstructor`, the placeholder registered for a module that failed to load. The default shows the tag and the message in the theme's `--pie-incorrect` color |
 | `trustMarkup` (attr `trust-markup`) | `boolean` | Render authored markup without sanitizing it. Defaults to `false` |
 | `sanitizeMarkup` | `ItemMarkupSanitizer \| null` | Custom sanitizer used instead of the default. Ignored when `trustMarkup` is set |
@@ -177,8 +178,9 @@ assignment.
 
 ### Custom Resolution
 
-`resolve(tagName, pkg)` returns a `PkgResolution` that says where an element's
-print module comes from:
+`resolve(tagName, pkg, loaderOptions)` returns a `PkgResolution` that says where
+an element's print module comes from. `loaderOptions` is the element's own, for a
+resolver that delegates to `defaultResolve`:
 
 - `loader: "browser-esm"` loads the package through the ESM adapter from
   `cdnBaseUrl`, in the jsDelivr layout unless `cdnProvider` says otherwise,
@@ -223,8 +225,8 @@ in the migration guide.
 | `mountItemAlternates`, `ALTERNATES_CLASS`, `CONTENT_LEAD_SURFACE` | Accessibility alternates: `mountItemAlternates({ anchor, item, accessibility })` mounts an item's alternates into `anchor` and returns `{ destroy() }`; the class of the block `<pie-print>` mounts them into; the slot an alternate fills to print |
 
 The types are `Config`, `Item`, `Elements` and `Model` for the config;
-`ResolverFn`, `PkgResolution`, `LoadResolutionFn`, `LoadResolutionResult` and
-`MissingElFn` for resolution and loading; `NodeResult` for `processMarkup`'s
+`PrintLoaderOptions`, `ResolverFn`, `PkgResolution`, `LoadResolutionFn`,
+`LoadResolutionResult` and `MissingElFn` for resolution and loading; `NodeResult` for `processMarkup`'s
 node list; and `PrintAccessibilityConfig` and `MountedAlternates`.
 
 ## License

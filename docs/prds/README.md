@@ -105,13 +105,17 @@ unbuilt framework-completing capabilities.
   and PNP gating. Integrator guide:
   [`@pie-players/pie-tool-sign-language`](../../packages/tool-sign-language/README.md).
 - [`audio-accommodations.md`](./audio-accommodations.md) - `Accepted`. The
-  audio transcript as a policy-gated catalog card; how an autoplay decision
-  reaches an element is an open question. Integrator guide:
+  audio transcript as a policy-gated catalog card. Its open question on how an
+  autoplay decision reaches an element is answered by the
+  [autoplay policy PRD](./audio-autoplay-policy.md); the decision channel has
+  shipped even while that PRD awaits acceptance. Integrator guide:
   [accessibility catalogs integration guide](../accessibility/accessibility-catalogs-integration-guide.md).
-- [`audio-autoplay-policy.md`](./audio-autoplay-policy.md) - `Draft`,
-  unscheduled. `autoplayAudio` decided per item scope from existing policy
-  inputs, carried to the item player by a context from `<pie-item-scope>`, and
-  held only on element versions that keep the audio playable.
+- [`audio-autoplay-policy.md`](./audio-autoplay-policy.md) - `Draft`.
+  `autoplayAudio` decided per item scope from existing policy inputs, carried
+  to the item player by a context from `<pie-item-scope>`, and held only on
+  element versions that keep the audio playable. Implemented across the
+  toolkit, the item player, the elements and the markup passes; the PRD awaits
+  acceptance of its open questions.
 - [`formative-delivery-contract.md`](./formative-delivery-contract.md) -
   `Accepted`. Try state, feedback reveal as a per-item `env` projection, and
   section mastery over the shipped client-side scoring path. Integrator guide:
@@ -148,6 +152,13 @@ unbuilt framework-completing capabilities.
   summaries as data with a prompt-and-label fallback, a `<pie-item-summary>`
   row that upgrades in place to the full player, and a `<pie-item-list>`
   composition, for hosts that show many items at once.
+- [`interface-i18n-host-provider.md`](./interface-i18n-host-provider.md) -
+  `Accepted`. The `runtime.i18n` / `i18n` channel that hands the players the
+  `I18nProvider` a host composes — the generated locale tier, message
+  overrides, pseudo-locales, or a provider of the host's own — reaching the
+  toolkit's chrome, the tools, the section's cards and the item players it
+  mounts. Architecture:
+  [Interface locale](../architecture/internationalization.md#interface-locale).
 
 Decisions that span PRDs — sequencing, rejected alternatives, trade-offs a reader
 would otherwise have to reconstruct — live in [`../adr/`](../adr/).

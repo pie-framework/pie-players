@@ -63,6 +63,7 @@ toolkit; the assessment player is a reference assembly
 - [Assessment toolkit README](../packages/assessment-toolkit/README.md): `ToolkitCoordinator`, its services, `<pie-assessment-toolkit>` and `<pie-item-scope>`
 - [Configuring tools](./tools-and-accomodations/tool_provider_system.md): placement, provider configuration, host resolvers and the section player boundary
 - [PNP configuration](../packages/assessment-toolkit/docs/PNP_CONFIGURATION.md): learner profiles and how they grant and withdraw tools
+- [Item feature decisions](./architecture/item-feature-decisions.md): how a feature decision reaches element models through the item player, and adding a feature
 - [Default tool loaders](../packages/default-tool-loaders/README.md): the packaged tool set, calculator providers and the tools a program grants to everyone
 - [Safe custom tool configuration](./tools-and-accomodations/safe-custom-tool-config.md): validating and sanitizing a custom tool's configuration
 - [Framework-owned error handling](./tools-and-accomodations/framework-owned-error-handling.md): how configuration and initialization failures reach the host

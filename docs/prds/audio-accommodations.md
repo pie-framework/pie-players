@@ -3,8 +3,11 @@
 Status: Accepted, 2026-08-15
 
 Implementation status: the transcript contract shipped in pie-players, for
-section delivery and for print. Autoplay control remains a proposal; see
-[Open Questions](#open-questions). Outstanding in pie-elements-ng: the
+section delivery and for print. The autoplay question this PRD left open has
+since been implemented through the [Audio Autoplay Policy
+PRD](./audio-autoplay-policy.md) — still `Draft` pending acceptance — so its
+[Open Questions](#open-questions) entry records the landed answer. Outstanding
+in pie-elements-ng: the
 `mc-populated-blank` print build still renders the legacy `audioTranscript`
 model field, which imported content still carries, so an item with both that
 field and a `transcript` card prints two transcripts wherever the card is in
@@ -339,8 +342,10 @@ Playwright-backed tests must run outside the sandbox.
   reading the support from the ADR 0003 context and placing the transcript
   itself.
 - **How does an autoplay decision reach an element?** The
-  [Audio Autoplay Policy PRD](./audio-autoplay-policy.md) proposes the answer.
-  Runtime-adjustable autoplay is required:
+  [Audio Autoplay Policy PRD](./audio-autoplay-policy.md) answers this, and the
+  answer has shipped: `<pie-item-scope>` publishes the per-item decision and the
+  item player's feature appliers write it onto the models, though that PRD is
+  still `Draft` pending acceptance. Runtime-adjustable autoplay is required:
   [ADR 0004](../adr/0004-screen-reader-use-is-a-profile-support-that-withholds-read-aloud.md)
   gives it the policy id `autoplayAudio`, which a student's screen-reader use
   blocks at delivery, and requires the block to reach only element versions

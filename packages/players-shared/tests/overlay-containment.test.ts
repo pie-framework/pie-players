@@ -5,6 +5,7 @@ import {
 	rotatedExtent,
 	rotationCentreShift,
 	uprightDockCentre,
+	uprightDockCorner,
 } from "../src/ui/overlay-containment.js";
 
 describe("rotationCentreShift", () => {
@@ -89,5 +90,38 @@ describe("uprightDockCentre", () => {
 		expect(quarter.x).toBe(270);
 		expect(quarter.y).toBeCloseTo(100 + 8 + 150);
 		expect(uprightDockCentre(ruler, strip, 270, 8).y).toBeCloseTo(quarter.y);
+	});
+});
+
+describe("uprightDockCorner", () => {
+	const block = { left: 100, top: 50, width: 800, height: 600 };
+	const strip = { width: 300, height: 40 };
+	const tool = (left: number, top: number) => ({ left, top, width: 200, height: 100 });
+
+	test("centres the strip below the tool", () => {
+		expect(uprightDockCorner(tool(400, 200), strip, block, 8, 4)).toEqual({
+			x: 400 + 100 - 150,
+			y: 200 + 100 + 8,
+		});
+	});
+
+	test("docks above a tool at the bottom of its block", () => {
+		// 8px gap and 40px strip below a tool ending at 640 overrun the block's 646.
+		expect(uprightDockCorner(tool(400, 540), strip, block, 8, 4).y).toBe(540 - 8 - 40);
+	});
+
+	test("takes the roomier side when neither holds the strip", () => {
+		const short = { left: 100, top: 50, width: 800, height: 150 };
+		expect(uprightDockCorner(tool(400, 70), strip, short, 8, 4).y).toBe(70 + 100 + 8);
+	});
+
+	test("slides along the tool to stay inside the block", () => {
+		expect(uprightDockCorner(tool(100, 200), strip, block, 8, 4).x).toBe(104);
+		expect(uprightDockCorner(tool(700, 200), strip, block, 8, 4).x).toBe(900 - 4 - 300);
+	});
+
+	test("centres a strip wider than its block on the block", () => {
+		const narrow = { left: 0, top: 0, width: 280, height: 600 };
+		expect(uprightDockCorner(tool(40, 200), strip, narrow, 8, 4).x).toBe(-10);
 	});
 });

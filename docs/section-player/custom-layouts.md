@@ -109,7 +109,7 @@ builds the same two columns in Svelte.
   markup whitespace and a framework's placeholder comments leave it in place.
 - **Navigation and state.** The host methods (`navigateNext`,
   `navigatePrevious`, `navigateTo`, `getSnapshot`, `getSectionController`,
-  `waitForSectionController`) and the events (`pie-stage-change`,
+  `waitForSectionController`, `provideScore`) and the events (`pie-stage-change`,
   `pie-loading-complete`, `composition-changed`, `session-changed`,
   `framework-error`, `toolkit-ready`) are those of the stock layouts.
   `detail.sourceCe` on its `pie-stage-change` and `pie-loading-complete` events

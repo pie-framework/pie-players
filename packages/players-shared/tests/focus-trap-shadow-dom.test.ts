@@ -48,4 +48,32 @@ describe("createFocusTrap in a shadow root", () => {
 		cleanup();
 		expect(document.activeElement).toBe(outside);
 	});
+
+	test("claims the Escape it handles, and only that one", () => {
+		const container = document.createElement("div");
+		const control = document.createElement("button");
+		container.append(control);
+		document.body.append(container);
+		const escapeKey = () =>
+			new KeyboardEvent("keydown", {
+				key: "Escape",
+				bubbles: true,
+				composed: true,
+				cancelable: true,
+			});
+
+		let escapes = 0;
+		const withHandler = createFocusTrap(container, { onEscape: () => escapes++ });
+		const handled = escapeKey();
+		control.dispatchEvent(handled);
+		expect(escapes).toBe(1);
+		expect(handled.defaultPrevented).toBe(true);
+		withHandler();
+
+		const withoutHandler = createFocusTrap(container);
+		const passed = escapeKey();
+		control.dispatchEvent(passed);
+		expect(passed.defaultPrevented).toBe(false);
+		withoutHandler();
+	});
 });

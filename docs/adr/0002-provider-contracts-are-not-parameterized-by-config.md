@@ -7,7 +7,9 @@ Owner: PIE Players maintainers
 Read with: [Update, 2026-09-27](#update-2026-09-27), which moves the calculator tool
 providers and removes the toolkit's optional peers, and
 [Update, 2026-10-08](#update-2026-10-08), which gives the current
-`ToolProviderApi<TInstance>` shape. The code examples in the body predate both.
+`ToolProviderApi<TInstance>` shape, and [Update, 2026-10-14](#update-2026-10-14),
+which replaces the per-vendor calculator tool providers with one class. The code
+examples in the body predate all three.
 
 ## Decision
 
@@ -119,3 +121,13 @@ peers. `@pie-players/tts-client-server` is a dev dependency, which
 `ToolProviderApi<ITTSProvider>` and `LazyCalculatorToolProvider`
 `ToolProviderApi<CalculatorProvider>`; each narrows its config in its own method
 signatures.
+
+## Update, 2026-10-14
+
+`LazyCalculatorToolProvider` is one non-generic class constructed from a
+`CalculatorProviderDefinition`: provider name, version, `requiresAuth`, telemetry
+backend, `load` and initialization error message. Its `TConfig` parameter appeared
+only in argument position, so it went with the subclasses `DesmosToolProvider`,
+`GeoGebraToolProvider` and `CortexToolProvider`. The packaged set holds the Desmos
+and GeoGebra definitions, and `createCalculatorToolRegistration` merges a host's
+over them, which is how Cortex now reaches a host.

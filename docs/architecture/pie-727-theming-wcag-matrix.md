@@ -251,9 +251,9 @@ The color-scheme tool is the learner-facing scheme picker, published as
 - **Coverage:** `packages/tool-color-scheme/tests/built-theme-registry-integration.test.ts`
   asserts the built picker observes the theme-package registry;
   `section-theme-color-scheme.spec.ts` covers every built-in picker state at its
-  named threshold, selected text through the DaisyUI provider, menu keyboard
-  navigation with focus return on Escape, and forced-colors participation. Hover
-  and disabled are not asserted.
+  named threshold, hover text included, selected text through the DaisyUI
+  provider, menu keyboard navigation with focus return on Escape, and
+  forced-colors participation. Disabled is not asserted.
 
 ## Required Commands
 

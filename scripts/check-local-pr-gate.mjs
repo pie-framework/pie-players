@@ -14,6 +14,7 @@ const requiredPreCommitCommands = [
 	"check:local-pr-gate",
 	"check:resolution-boundary",
 	"check:deps",
+	"check:lock-consistency",
 	"check:package-metadata",
 	// Only the inventory half of `check:docs`. The rest of that script builds
 	// `apps/docs`, which is CI's job — but a new publishable package missing from
@@ -38,6 +39,7 @@ const requiredCiLintTypecheckCommands = [
 	// listed for the pre-push run of this gate, which happens in local worktrees.
 	"check:resolution-boundary",
 	"check:deps",
+	"check:lock-consistency",
 	"check:package-metadata",
 	"check:docs:publishable-packages",
 	"check:svelte-runtime-deps",

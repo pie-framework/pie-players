@@ -1,0 +1,18 @@
+{
+	"extends": "../../tsconfig.json",
+	"compilerOptions": {
+		"outDir": "./dist",
+		"rootDir": ".",
+		"declaration": true,
+		"declarationMap": false,
+		"composite": true,
+		"moduleResolution": "NodeNext",
+		"paths": {
+			"@pie-players/pie-players-shared/components/overlay-placement": [
+				"../players-shared/overlay-placement-components.types.d.ts"
+			]
+		}
+	},
+	"include": ["index.ts", "tool-magnifier.svelte", "src/**/*.ts"],
+	"exclude": ["node_modules", "dist"]
+}

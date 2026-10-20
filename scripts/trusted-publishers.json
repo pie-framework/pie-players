@@ -39,6 +39,10 @@
 			"repository": "pie-framework/pie-players",
 			"workflow": "release.yml"
 		},
+		"@pie-players/pie-item-list": {
+			"repository": "pie-framework/pie-players",
+			"workflow": "release.yml"
+		},
 		"@pie-players/pie-item-player": {
 			"repository": "pie-framework/pie-players",
 			"workflow": "release.yml"
@@ -116,6 +120,10 @@
 			"workflow": "release.yml"
 		},
 		"@pie-players/pie-tool-line-reader": {
+			"repository": "pie-framework/pie-players",
+			"workflow": "release.yml"
+		},
+		"@pie-players/pie-tool-magnifier": {
 			"repository": "pie-framework/pie-players",
 			"workflow": "release.yml"
 		},

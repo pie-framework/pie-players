@@ -594,14 +594,15 @@ test("steps key size down instead of clipping a panel it cannot fill", async ({
 	expect(compact.keyHeight).toBeGreaterThanOrEqual(24);
 });
 
-test("has no serious or critical automated accessibility violations", async ({
-	page,
-}) => {
-	// Both themes. The scan used to run light only — the demo defaults to `auto` and
-	// headless Chromium reports `prefers-color-scheme: light` — so every dark-theme
-	// contrast defect, including the plot's black tick labels, was outside the gate.
-	for (const theme of ["light", "dark"] as const)
-		for (const demo of modes) {
+// Both themes. The scan used to run light only — the demo defaults to `auto` and
+// headless Chromium reports `prefers-color-scheme: light` — so every dark-theme
+// contrast defect, including the plot's black tick labels, was outside the gate.
+// One test per mode and theme, so each scan gets its own time budget.
+for (const theme of ["light", "dark"] as const)
+	for (const demo of modes)
+		test(`has no serious or critical accessibility violations: ${demo.mode} ${theme}`, async ({
+			page,
+		}) => {
 			await page.goto(demo.path);
 			await page.waitForFunction(() => window.__cortexReady === true);
 			await page.locator("#theme").selectOption(theme);
@@ -628,8 +629,7 @@ test("has no serious or critical automated accessibility violations", async ({
 				),
 				`${demo.mode} ${theme} heading order`,
 			).toEqual([]);
-		}
-});
+		});
 
 test("traces a plotted series from the keyboard and clamps at its ends", async ({
 	page,

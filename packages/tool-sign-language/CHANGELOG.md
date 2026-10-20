@@ -1,5 +1,58 @@
 # @pie-players/pie-tool-sign-language
 
+## 1.0.0-beta.4
+
+### Patch Changes
+
+- bd7be0e: The player chrome stamps `lang` and `dir` from the interface locale, so a
+  screen reader takes the chrome's language and direction from the locale the
+  host set instead of the page's. The stamps sit on each localized element's own
+  subtree root — the section shell's host (the light-tree ancestor of every pane,
+  card and item player), the toolkit and item-tool-bar hosts and the
+  `document.body` tool shells, the section's navigation live region, the session
+  debugger and the five shared debug panels, the sign-language region, the inline
+  calculator and inline TTS, and the reference assessment player's host. The item
+  player's content root asserts neither attribute, so unnamed content keeps the
+  browser voice for read-aloud instead of inheriting the chrome's locale. The
+  document root is never
+  touched. The section's navigation announcement is no longer hardcoded English:
+  `player.questionPositionA11y` / `questionPositionLabeledA11y` are new catalog
+  keys (the generated `th-TH` catalog carries them). `pie-item-player`'s
+  interface messages now re-derive when a lazily loaded catalog becomes
+  resident, which previously pinned whatever rendered before the load —
+  including its error and loading chrome. `@pie-players/pie-players-shared/i18n`
+  exports `stampInterfaceLocale(element, provider)`, the imperative form of the
+  `lang`/`dir` pair a template puts on its root, for a host stamping an element of
+  its own. Hosts whose content language
+  can differ from the interface locale keep naming it in the content markup
+  (`lang`/`dir`, or `model.language` on the element); the content-language slice
+  stamps the content subtree when the delivery carries a language. No listed host is affected: every surface is a consumer of
+  the interface locale, and a host that supplies none renders `en-US` chrome it
+  was already rendering.
+- Updated dependencies [6dd6280]
+- Updated dependencies [e2f6bde]
+- Updated dependencies [3f275b5]
+- Updated dependencies [32eab13]
+- Updated dependencies [05e4137]
+- Updated dependencies [074dfa6]
+- Updated dependencies [bd7be0e]
+- Updated dependencies [28edb54]
+- Updated dependencies [171c84e]
+- Updated dependencies [85e66f7]
+- Updated dependencies [18e07d9]
+- Updated dependencies [2f34312]
+- Updated dependencies [6d2dcb4]
+- Updated dependencies [a3432aa]
+- Updated dependencies [129a41f]
+- Updated dependencies [b6887bb]
+- Updated dependencies [55033fa]
+- Updated dependencies [765ddbf]
+- Updated dependencies [67112f8]
+- Updated dependencies [b1f5a06]
+- Updated dependencies [9d1bab9]
+  - @pie-players/pie-players-shared@1.0.0-beta.4
+  - @pie-players/pie-assessment-toolkit@1.0.0-beta.4
+
 ## 1.0.0-beta.3
 
 ### Patch Changes

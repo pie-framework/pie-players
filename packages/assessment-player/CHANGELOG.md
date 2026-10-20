@@ -1,5 +1,92 @@
 # @pie-players/pie-assessment-player
 
+## 1.0.0-beta.4
+
+### Patch Changes
+
+- c82b613: Setting `showNavigation` on `<pie-assessment-player-shell>` re-renders it, as the `show-navigation` attribute does.
+- bd7be0e: The player chrome stamps `lang` and `dir` from the interface locale, so a
+  screen reader takes the chrome's language and direction from the locale the
+  host set instead of the page's. The stamps sit on each localized element's own
+  subtree root — the section shell's host (the light-tree ancestor of every pane,
+  card and item player), the toolkit and item-tool-bar hosts and the
+  `document.body` tool shells, the section's navigation live region, the session
+  debugger and the five shared debug panels, the sign-language region, the inline
+  calculator and inline TTS, and the reference assessment player's host. The item
+  player's content root asserts neither attribute, so unnamed content keeps the
+  browser voice for read-aloud instead of inheriting the chrome's locale. The
+  document root is never
+  touched. The section's navigation announcement is no longer hardcoded English:
+  `player.questionPositionA11y` / `questionPositionLabeledA11y` are new catalog
+  keys (the generated `th-TH` catalog carries them). `pie-item-player`'s
+  interface messages now re-derive when a lazily loaded catalog becomes
+  resident, which previously pinned whatever rendered before the load —
+  including its error and loading chrome. `@pie-players/pie-players-shared/i18n`
+  exports `stampInterfaceLocale(element, provider)`, the imperative form of the
+  `lang`/`dir` pair a template puts on its root, for a host stamping an element of
+  its own. Hosts whose content language
+  can differ from the interface locale keep naming it in the content markup
+  (`lang`/`dir`, or `model.language` on the element); the content-language slice
+  stamps the content subtree when the delivery carries a language. No listed host is affected: every surface is a consumer of
+  the interface locale, and a host that supplies none renders `en-US` chrome it
+  was already rendering.
+- 171c84e: The interface-locale provider seam: `runtime.i18n` on the section-player
+  layouts and an `i18n` property on `pie-assessment-toolkit` and
+  `pie-item-player` accept the `I18nProvider` a host composes — the generated
+  locale tier's catalogs, `customMessages`, or a provider of the host's own — in
+  place of the one the player builds. The `locale` attribute still names the
+  locale, and a supplied provider is driven only by it. A section now forwards
+  its provider to the item players it mounts, so their own chrome follows the
+  section's locale. `loadBundledCatalog("en-US")` now returns the statically
+  resident English catalog instead of throwing, so a host composing loaders —
+  the generated tier's pattern, or a pseudo-localization — can ask for it by
+  name. No listed host is affected: every surface is optional, a host that
+  supplies nothing renders what it rendered before, and the one rendering change
+  (nested item-player chrome following the section's locale) needs a `locale` no
+  host passes. See the host-supplied interface locale provider PRD
+  (`docs/prds/interface-i18n-host-provider.md`).
+- 18e07d9: Failed interface-locale catalog loads are reported, not swallowed. The
+  standalone item player's `setLocale` catch and the reference assembly's own
+  provider drive dispatch a `framework-error` event (bubbles, composed) whose
+  detail carries `kind: "i18n-locale-load"` with `recoverable: true` — the same
+  shape the toolkit's error bus and the section player already report — so a
+  host can tell English-because-requested from English-because-failed.
+  `@pie-players/pie-players-shared/i18n` gains `reportInterfaceLocaleLoadError`
+  and the `InterfaceLocaleLoadErrorModel` type, the narrow payload contract for
+  players that do not depend on the toolkit. Failed loads are not cached:
+  re-setting the `locale` attribute or recomposing the `i18n` provider retries
+  the load. No listed host is affected: the event is new, and a host that never
+  listens sees nothing.
+- Updated dependencies [6dd6280]
+- Updated dependencies [269099c]
+- Updated dependencies [e2f6bde]
+- Updated dependencies [3f275b5]
+- Updated dependencies [32eab13]
+- Updated dependencies [05e4137]
+- Updated dependencies [074dfa6]
+- Updated dependencies [bd7be0e]
+- Updated dependencies [28edb54]
+- Updated dependencies [171c84e]
+- Updated dependencies [85e66f7]
+- Updated dependencies [18e07d9]
+- Updated dependencies [2f34312]
+- Updated dependencies [6d2dcb4]
+- Updated dependencies [f995687]
+- Updated dependencies [a3432aa]
+- Updated dependencies [32eab13]
+- Updated dependencies [129a41f]
+- Updated dependencies [b6887bb]
+- Updated dependencies [55033fa]
+- Updated dependencies [765ddbf]
+- Updated dependencies [67112f8]
+- Updated dependencies [6175413]
+- Updated dependencies [b35df65]
+- Updated dependencies [b1f5a06]
+- Updated dependencies [9d1bab9]
+  - @pie-players/pie-players-shared@1.0.0-beta.4
+  - @pie-players/pie-section-player@1.0.0-beta.4
+  - @pie-players/pie-assessment-toolkit@1.0.0-beta.4
+
 ## 1.0.0-beta.3
 
 ### Patch Changes

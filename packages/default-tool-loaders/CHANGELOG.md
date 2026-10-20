@@ -1,5 +1,52 @@
 # @pie-players/pie-default-tool-loaders
 
+## 1.0.0-beta.4
+
+### Patch Changes
+
+- 269099c: Take the Cortex calculator out of the packaged tool loaders, so a host bundle no longer carries its engine. The packaged registration offers `calculator-desmos` and `calculator-geogebra`; a host that selects `calculator-cortex` composes it in with `createCalculatorToolRegistration`, which the section player's `./browser` build also exports, and gets an unsupported-provider error until it does.
+- 765ddbf: Add the magnifier (`magnification`, `<pie-tool-magnifier>`): a movable, resizable lens over a live copy of the page. The packaged tool set registers it at section level, and `createPersonalNeedsProfileFromAfa` maps AfA `magnification`'s `zoom-amount` (`all-content`, else the `selectMagnification` `text` amount) to its starting `zoom` tool parameter.
+- Updated dependencies [6dd6280]
+- Updated dependencies [e2f6bde]
+- Updated dependencies [3f275b5]
+- Updated dependencies [32eab13]
+- Updated dependencies [05e4137]
+- Updated dependencies [074dfa6]
+- Updated dependencies [bd7be0e]
+- Updated dependencies [28edb54]
+- Updated dependencies [171c84e]
+- Updated dependencies [85e66f7]
+- Updated dependencies [18e07d9]
+- Updated dependencies [2f34312]
+- Updated dependencies [6d2dcb4]
+- Updated dependencies [a3432aa]
+- Updated dependencies [129a41f]
+- Updated dependencies [b6887bb]
+- Updated dependencies [55033fa]
+- Updated dependencies [765ddbf]
+- Updated dependencies [67112f8]
+- Updated dependencies [b1f5a06]
+- Updated dependencies [9d1bab9]
+  - @pie-players/pie-players-shared@1.0.0-beta.4
+  - @pie-players/pie-tool-dictionary@1.0.0-beta.4
+  - @pie-players/pie-tool-picture-dictionary@1.0.0-beta.4
+  - @pie-players/pie-tool-calculator-shared@1.0.0-beta.4
+  - @pie-players/pie-assessment-toolkit@1.0.0-beta.4
+  - @pie-players/pie-tool-tts-inline@1.0.0-beta.4
+  - @pie-players/pie-tool-line-reader@1.0.0-beta.4
+  - @pie-players/pie-tool-magnifier@1.0.0-beta.4
+  - @pie-players/pie-tool-annotation-toolbar@1.0.0-beta.4
+  - @pie-players/pie-tool-answer-eliminator@1.0.0-beta.4
+  - @pie-players/pie-tool-theme@1.0.0-beta.4
+  - @pie-players/pie-tool-graph@1.0.0-beta.4
+  - @pie-players/pie-tool-periodic-table@1.0.0-beta.4
+  - @pie-players/pie-tool-protractor@1.0.0-beta.4
+  - @pie-players/pie-tool-ruler@1.0.0-beta.4
+  - @pie-players/tts-client-server@1.0.0-beta.4
+  - @pie-players/pie-calculator@1.0.0-beta.4
+  - @pie-players/pie-calculator-desmos@1.0.0-beta.4
+  - @pie-players/pie-calculator-geogebra@1.0.0-beta.4
+
 ## 1.0.0-beta.3
 
 ### Patch Changes

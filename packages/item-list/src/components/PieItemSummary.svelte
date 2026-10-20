@@ -219,11 +219,13 @@ One PIE item as a list row: its stem, prompts, options and, for instructors, its
 	<ul class="pie-item-summary__options">
 		{#each list as option (option.id)}
 			<li class="pie-item-summary__option" class:pie-item-summary__option--correct={option.correct}>
-				{#if option.correct}
-					<span class="pie-item-summary__marker" aria-hidden="true">✓</span>
-					<span class="pie-item-summary__sr-only">{messages.t("player.summary.correctA11y")}</span>
-				{/if}
-				<span class="pie-item-summary__option-label">{@html option.label}</span>
+				<span class="pie-item-summary__option-body">
+					{#if option.correct}
+						<span class="pie-item-summary__marker" aria-hidden="true">✓</span>
+						<span class="pie-item-summary__sr-only">{messages.t("player.summary.correctA11y")}</span>
+					{/if}
+					<span class="pie-item-summary__option-label">{@html option.label}</span>
+				</span>
 			</li>
 		{/each}
 	</ul>
@@ -370,8 +372,26 @@ One PIE item as a list row: its stem, prompts, options and, for instructors, its
 		color: var(--pie-correct, #0b7a3e);
 	}
 
+	/* A row, so a label the author wrapped in a block element stays beside its check mark. */
+	.pie-item-summary__option-body {
+		display: flex;
+		align-items: baseline;
+		gap: 0.25em;
+	}
+
+	.pie-item-summary__option-label {
+		min-width: 0;
+	}
+
+	.pie-item-summary__option-label > :global(:first-child) {
+		margin-block-start: 0;
+	}
+
+	.pie-item-summary__option-label > :global(:last-child) {
+		margin-block-end: 0;
+	}
+
 	.pie-item-summary__marker {
-		margin-inline-end: 0.25em;
 		font-weight: 700;
 	}
 

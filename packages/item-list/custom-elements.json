@@ -387,6 +387,7 @@
 							"pie-item-summary__media",
 							"pie-item-summary__option",
 							"pie-item-summary__option--correct",
+							"pie-item-summary__option-body",
 							"pie-item-summary__option-label",
 							"pie-item-summary__options",
 							"pie-item-summary__part",

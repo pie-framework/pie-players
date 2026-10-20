@@ -32,6 +32,7 @@
 	} from "@pie-players/pie-players-shared/types";
 	import { untrack } from "svelte";
 	import type {
+		SectionItemScore,
 		SectionPlayerNavigationSnapshot,
 		SectionPlayerSnapshot,
 	} from "../../contracts/runtime-host-contract.js";
@@ -489,6 +490,14 @@
 		timeoutMs = 5000,
 	): Promise<SectionControllerHandle | null> {
 		return (await scaffoldRef?.waitForSectionController?.(timeoutMs)) || null;
+	}
+
+	// The items pane holds the item cards, so a layout without one scores nothing.
+	export async function provideScore(): Promise<SectionItemScore[]> {
+		const pane = activePanes.items as
+			| (Element & { provideScore?: () => Promise<SectionItemScore[]> })
+			| null;
+		return (await pane?.provideScore?.()) ?? [];
 	}
 
 	// A layout with no items pane leaves the items unrendered and readiness short

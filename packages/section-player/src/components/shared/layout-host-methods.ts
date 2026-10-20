@@ -8,9 +8,9 @@
  * every {@link SectionPlayerRuntimeHostContract} method itself. Once the
  * component is mounted each one delegates to it. Before that a read returns what
  * the element returns while its kernel is still binding, a navigation returns
- * `false`, and `waitForSectionController` waits for the toolkit's
- * `toolkit-ready` to bubble out of the element with the controller in place, or
- * for the timeout.
+ * `false`, `provideScore` resolves no scores, and `waitForSectionController`
+ * waits for the toolkit's `toolkit-ready` to bubble out of the element with the
+ * controller in place, or for the timeout.
  *
  * It also wraps the `session` property: a read returns the assigned value until
  * the section's controller is published, and the controller's current session
@@ -22,6 +22,7 @@ import type {
 	SectionControllerSessionState,
 } from "@pie-players/pie-assessment-toolkit";
 import type {
+	SectionItemScore,
 	SectionPlayerRuntimeHostContract,
 	SectionPlayerSnapshot,
 } from "../../contracts/runtime-host-contract.js";
@@ -79,6 +80,11 @@ export function withHostMethods(unmountedSnapshot: SectionPlayerSnapshot | null)
 			getSectionController(): SectionControllerHandle | null {
 				const method = mountedMethod(this, "getSectionController");
 				return (method?.() as SectionControllerHandle | null) ?? null;
+			}
+
+			async provideScore(): Promise<SectionItemScore[]> {
+				const method = mountedMethod(this, "provideScore");
+				return method ? ((await method()) as SectionItemScore[]) : [];
 			}
 
 			/**

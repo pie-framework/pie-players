@@ -34,6 +34,8 @@ export type SectionPlayerRuntimePlayerConfig = Omit<
 	resolveBackend?: SectionPlayerBackendResolver;
 	/** Each item player's `idleSaveDelayMs`. */
 	idleSaveDelayMs?: number;
+	/** Each item player's `addCorrectResponse`. */
+	addCorrectResponse?: boolean;
 };
 
 export type SectionPlayerRuntimeConfig = Omit<RuntimeConfig, "player"> & {

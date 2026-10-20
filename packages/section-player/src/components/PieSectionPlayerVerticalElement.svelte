@@ -104,6 +104,7 @@ Section player layout that renders a section's passages above its items in one c
 		type RuntimeConfig,
 	} from "@pie-players/pie-assessment-toolkit/runtime/engine";
 	import type {
+		SectionItemScore,
 		SectionPlayerRuntimeHostContract,
 		SectionPlayerSnapshot,
 	} from "../contracts/runtime-host-contract.js";
@@ -189,6 +190,10 @@ Section player layout that renders a section's passages above its items in one c
 
 	export function getSectionController() {
 		return kernelRef?.getSectionController?.() || null;
+	}
+
+	export function provideScore(): Promise<SectionItemScore[]> {
+		return kernelRef?.provideScore?.() ?? Promise.resolve([]);
 	}
 
 	$effect(() => {

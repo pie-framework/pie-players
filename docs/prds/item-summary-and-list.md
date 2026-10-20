@@ -4,9 +4,10 @@ Status: Draft, 2026-10-13
 
 Implementation status: slice 1 has landed in
 [`@pie-players/pie-item-list`](../../packages/item-list/README.md):
-`summarizeItem` and the summary view of `<pie-item-summary>`, with no resolver by
-default, so every element takes the prompt or label rung. The bundled and pinned
-resolvers, the player view and `<pie-item-list>` are still to come.
+`summarizeItem`, `isItemSummary` and the summary view of `<pie-item-summary>`,
+with no resolver by default, so every element takes the prompt or label rung.
+The bundled and pinned resolvers, the player view and `<pie-item-list>` are
+still to come.
 pie-elements-ng owns the descriptor type and the per-element `./summary`
 entries; pie-players owns item-level summarization, the bundled summarizer set
 and the custom elements. Summary precompute in the PIE API backend is optional
@@ -98,9 +99,9 @@ No PIE package provides a cheap, readable view of an item.
   copy of its macro table in pie-players would drift.
 - **`pie-item-list`**, a new package in the `@pie-players` scope, which owns:
   - `.` registers `<pie-item-summary>` and `<pie-item-list>` as a side effect,
-    as `pie-item-player` does. It ships one self-contained ES module with no
-    bare imports, so a host can load it as a module script from a public CDN
-    with no build step.
+    as `pie-item-player` does. Its entry and lazily loaded chunks are ES
+    modules that import nothing by bare specifier, so a host can load the entry
+    as a module script from a public CDN with no build step.
   - `./summarize` exports `summarizeItem`, `ItemSummary` and the resolvers. It
     is Node-safe, registers nothing and touches no DOM.
   - The bundled summarizer set, an internal chunk that the default resolver
@@ -428,7 +429,8 @@ Hosts own:
 
 `ItemSummary` is wire-facing only when precomputed.
 
-- `schema: 1` versions the contract. `pie-item-list` validates it.
+- `schema: 1` versions the contract. `isItemSummary` validates a summary
+  field by field, and `<pie-item-summary>` recomputes one that fails.
 - Unknown fields are ignored. A summary with an unknown `schema` is discarded
   and recomputed in the browser.
 - Elements version their summarizers with their packages. No migration exists,

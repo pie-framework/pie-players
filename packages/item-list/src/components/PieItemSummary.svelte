@@ -19,7 +19,7 @@
 @component
 One PIE item as a list row: its stem, prompts, options and, for instructors, its answers, rendered as sanitized HTML with math as MathML. No element code loads. A host gives it the item `config`, or a precomputed `summary`, and keeps its own list, card and expand chrome around it.
 
-@fires {CustomEvent<{ view: "summary" }>} load-complete - Once the summary has rendered with its math converted.
+@fires {CustomEvent<{ view: "summary" }>} load-complete - Once per rendered summary, after math conversion. A new `env` with the same role does not re-render.
 -->
 
 <script lang="ts">
@@ -34,8 +34,10 @@ One PIE item as a list row: its stem, prompts, options and, for instructors, its
 		type SummaryResolver,
 		summarizeItem,
 	} from "../summarize/summarize-item.js";
+	import { isItemSummary } from "../summarize/validate.js";
 	import {
 		type RenderedBlock,
+		type RenderedOption,
 		type RenderedSummary,
 		renderSummary,
 	} from "./render.js";
@@ -79,10 +81,13 @@ One PIE item as a list row: its stem, prompts, options and, for instructors, its
 	let rendered = $state<RenderedSummary | null>(null);
 	let generation = 0;
 
+	// `env` defaults to an instructor view; only an explicit student role withholds answers. A
+	// derived role re-renders on a role change alone, not on every new `env` object.
+	const role = $derived(env?.role === "student" ? "student" : "instructor");
+
 	$effect(() => {
-		// `env` defaults to an instructor view; only an explicit student role withholds answers.
-		const role = env?.role === "student" ? "student" : "instructor";
-		const precomputed = summary?.schema === 1 ? summary : null;
+		const viewRole = role;
+		const precomputed = isItemSummary(summary) ? summary : null;
 		const item = config;
 		const resolver = resolve;
 		const run = ++generation;
@@ -90,8 +95,8 @@ One PIE item as a list row: its stem, prompts, options and, for instructors, its
 			try {
 				const source =
 					precomputed ??
-					(item ? await summarizeItem(item, { role, resolve: resolver }) : null);
-				const view = source ? await renderSummary(source, role) : null;
+					(item ? await summarizeItem(item, { role: viewRole, resolve: resolver }) : null);
+				const view = source ? await renderSummary(source, viewRole) : null;
 				if (run !== generation) return;
 				rendered = view;
 				if (!view) return;
@@ -111,22 +116,37 @@ One PIE item as a list row: its stem, prompts, options and, for instructors, its
 	});
 </script>
 
+{#snippet options(list: RenderedOption[])}
+	<ul class="pie-item-summary__options">
+		{#each list as option (option.id)}
+			<li class="pie-item-summary__option" class:pie-item-summary__option--correct={option.correct}>
+				{#if option.correct}
+					<span class="pie-item-summary__marker" aria-hidden="true">✓</span>
+					<span class="pie-item-summary__sr-only">{messages.t("player.summary.correctA11y")}</span>
+				{/if}
+				<span class="pie-item-summary__option-label">{@html option.label}</span>
+			</li>
+		{/each}
+	</ul>
+{/snippet}
+
 {#snippet block(content: RenderedBlock)}
 	{#if content.prompt}
 		<div class="pie-item-summary__prompt">{@html content.prompt}</div>
 	{/if}
-	{#if content.options.length > 0}
-		<ul class="pie-item-summary__options">
-			{#each content.options as option (option.id)}
-				<li class="pie-item-summary__option" class:pie-item-summary__option--correct={option.correct}>
-					{#if option.correct}
-						<span class="pie-item-summary__marker" aria-hidden="true">✓</span>
-						<span class="pie-item-summary__sr-only">{messages.t("player.summary.correctA11y")}</span>
+	{#if content.groups.some((group) => group.label)}
+		<ul class="pie-item-summary__groups">
+			{#each content.groups as group, index (index)}
+				<li class="pie-item-summary__group">
+					{#if group.label}
+						<div class="pie-item-summary__group-label">{@html group.label}</div>
 					{/if}
-					<span class="pie-item-summary__option-label">{@html option.label}</span>
+					{@render options(group.options)}
 				</li>
 			{/each}
 		</ul>
+	{:else if content.groups.length > 0}
+		{@render options(content.groups[0].options)}
 	{/if}
 	{#if content.answer}
 		<div class="pie-item-summary__answer">
@@ -198,9 +218,22 @@ One PIE item as a list row: its stem, prompts, options and, for instructors, its
 		font-size: 0.875em;
 	}
 
-	.pie-item-summary__options {
+	.pie-item-summary__options,
+	.pie-item-summary__groups {
 		margin: 0;
 		padding-inline-start: 1.5em;
+	}
+
+	.pie-item-summary__groups {
+		list-style: none;
+		padding-inline-start: 0;
+		display: flex;
+		flex-direction: column;
+		gap: 0.375em;
+	}
+
+	.pie-item-summary__group-label {
+		font-weight: 600;
 	}
 
 	.pie-item-summary__option--correct {

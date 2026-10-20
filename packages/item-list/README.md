@@ -50,6 +50,10 @@ item's `elements` map, and returns a `SummarizeFn` from
 `@pie-element/shared-types`, or `null` for the prompt rung. A `role` other than
 `"instructor"` strips answers.
 
+`isItemSummary(value)` checks a stored summary against schema 1 field by field,
+ignoring unknown fields. `<pie-item-summary>` runs the same check on its
+`summary` property.
+
 ## `<pie-item-summary>`
 
 Importing the package registers `<pie-item-summary>`. The row renders into its
@@ -70,17 +74,19 @@ light DOM, so host content styles reach it.
 | --- | --- | --- |
 | `config` | `ItemConfig` | The item to summarize |
 | `env` | `Env` | Default `{ mode: "view", role: "instructor" }`. Only `role: "student"` withholds answers |
-| `summary` | `ItemSummary` | Optional precomputed summary. Used instead of `config` when its `schema` is `1`; answers are stripped again for students |
+| `summary` | `ItemSummary` | Optional precomputed summary. Used instead of `config` when `isItemSummary` accepts it, and recomputed from `config` otherwise; answers are stripped again for students |
 | `resolve` | `SummaryResolver` | Optional summarizer lookup, as for `summarizeItem` |
 | `locale` | `string` | BCP-47 tag for the row's own labels. Default `en-US` |
 
 | Event | Detail | Notes |
 | --- | --- | --- |
-| `load-complete` | `{ view: "summary" }` | Once per render, after math conversion |
+| `load-complete` | `{ view: "summary" }` | Once per rendered summary, after math conversion. A new `env` object with the same `role` does not re-render |
 
 Every HTML fragment renders through the players' markup sanitizer. Options
 render as a list, with a check mark and a text alternative on correct options
-for instructors. Manual scoring shows as a badge, and `figure` as an image. TeX
+for instructors. Options that carry a `group` (a blank, row or category) render
+as nested lists under their group's label, in order of each group's first
+option. Manual scoring shows as a badge, and `figure` as an image. TeX
 converts to MathML through `texToMathml` from
 `@pie-element/shared-math-rendering-mathjax`, which loads only when a summary
 holds TeX.

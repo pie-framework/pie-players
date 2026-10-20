@@ -25,4 +25,5 @@
   type SummaryOptions
   type SummaryPart
   type SummaryResolver
+  isItemSummary
   summarizeItem

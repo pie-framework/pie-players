@@ -100,7 +100,7 @@
 							"type": {
 								"text": "CustomEvent<{ view: \"summary\" }>"
 							},
-							"description": "Once the summary has rendered with its math converted."
+							"description": "Once per rendered summary, after math conversion. A new `env` with the same role does not re-render."
 						}
 					],
 					"x-pie": {
@@ -113,6 +113,9 @@
 							"pie-item-summary__badge",
 							"pie-item-summary__entry",
 							"pie-item-summary__figure",
+							"pie-item-summary__group",
+							"pie-item-summary__group-label",
+							"pie-item-summary__groups",
 							"pie-item-summary__label",
 							"pie-item-summary__marker",
 							"pie-item-summary__media",

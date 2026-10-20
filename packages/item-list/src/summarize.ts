@@ -16,3 +16,4 @@ export {
 	type SummaryResolver,
 	summarizeItem,
 } from "./summarize/summarize-item.js";
+export { isItemSummary } from "./summarize/validate.js";

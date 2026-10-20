@@ -3,6 +3,8 @@ import { join } from "node:path";
 import { describe, expect, test } from "bun:test";
 import { BundleType } from "@pie-players/pie-players-shared";
 import {
+	itemPlayerBackend,
+	itemPlayerElementTags,
 	itemPlayerEsmBackend,
 	itemPlayerEsmView,
 	itemPlayerIifeBackend,
@@ -54,6 +56,33 @@ describe("item-player loader backends", () => {
 			"mc--version-1-0-0-config": "@pie-element/mc@1.0.0",
 		});
 		expect(itemPlayerIifeElements(elements, BundleType.clientPlayer)).toBe(elements);
+	});
+
+	test("picks the strategy's backend, with a host's instrumentation and retry hook", () => {
+		const instrumentationProvider = {} as never;
+		const onBundleRetryStatus = () => {};
+		expect(itemPlayerBackend({}, { instrumentationProvider, onBundleRetryStatus })).toMatchObject({
+			kind: "iife",
+			instrumentationProvider,
+			onBundleRetryStatus,
+		});
+		expect(itemPlayerBackend({ strategy: "esm" }, { instrumentationProvider })).toMatchObject({
+			kind: "esm",
+			instrumentationProvider,
+		});
+		expect(itemPlayerBackend({ strategy: "preloaded" })).toBeNull();
+	});
+
+	test("names the tags each strategy registers or asserts", () => {
+		const elements = { "mc--version-1-0-0": "@pie-element/mc@1.0.0" };
+		const tags = (inputs: Parameters<typeof itemPlayerElementTags>[1]) =>
+			Object.keys(itemPlayerElementTags(elements, inputs));
+		expect(tags({})).toEqual(["mc--version-1-0-0"]);
+		expect(tags({ mode: "author" })).toEqual(["mc--version-1-0-0-config"]);
+		expect(tags({ strategy: "esm", mode: "author" })).toEqual(["mc--version-1-0-0-config"]);
+		expect(tags({ strategy: "esm", loaderOptions: { view: "print" } })).toEqual(["mc--version-1-0-0-print"]);
+		expect(tags({ strategy: "preloaded", mode: "author" })).toEqual(["mc--version-1-0-0-config"]);
+		expect(tags({ strategy: "preloaded" })).toEqual(["mc--version-1-0-0"]);
 	});
 
 	test("the player's ESM load registers the view's tags through the shared builders", () => {

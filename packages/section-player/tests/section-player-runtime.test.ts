@@ -19,11 +19,9 @@
  * those — they have a single source of truth in the toolkit suite.
  */
 
-import { describe, expect, mock, test } from "bun:test";
+import { describe, expect, test } from "bun:test";
 
-mock.module("@pie-players/pie-item-player", () => ({
-	ensureItemPlayerMathRenderingReady: async () => undefined,
-}));
+await import("./support/item-player-load.js");
 
 async function loadHostRuntime() {
 	return import("../src/components/shared/section-player-host-runtime");

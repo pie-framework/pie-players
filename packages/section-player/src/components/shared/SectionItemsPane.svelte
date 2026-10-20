@@ -89,7 +89,6 @@ Items pane of a section player: renders the item cards of the current compositio
 	const itemToolbarTools = $derived(layout?.itemToolbarTools ?? "");
 	const toolRegistry = $derived(layout?.toolRegistry ?? null);
 	const hostButtons = $derived(layout?.itemHostButtons ?? NO_BUTTONS);
-	const iifeBundleHost = $derived(layout?.iifeBundleHost ?? "");
 	const preloadedRenderables = $derived(layout?.preloadedRenderables ?? NO_ITEMS);
 	// Echoed on each readiness report so the kernel counts it only for the
 	// composition it holds. The warmup is keyed on `renderablesFingerprint`
@@ -149,18 +148,16 @@ Items pane of a section player: renders the item cards of the current compositio
 
 	// The reactive key for the warmup call: only the inputs that alter the
 	// `ensureRegistered` request, which are the strategy, the element-set
-	// fingerprint, the IIFE bundle host, and the view and bundle-type
-	// discriminants read from player props and env.
+	// fingerprint, and the player props that pick the bundle, view and host.
+	// The `iife-bundle-host` attribute reaches the warmup in `loaderOptions`.
 	const warmupInputsSignature = $derived(
 		JSON.stringify({
 			active,
 			preloadEnabled,
 			strategy: playerStrategy,
 			renderables: renderablesFingerprint,
-			iifeBundleHost,
 			mode: resolvedPlayerProps.mode ?? null,
 			hosted: resolvedPlayerProps.hosted ?? null,
-			envMode: resolvedPlayerEnv.mode ?? null,
 			loaderOptions: resolvedPlayerProps.loaderOptions ?? null,
 		}),
 	);
@@ -193,8 +190,6 @@ Items pane of a section player: renders the item cards of the current compositio
 				strategy: playerStrategy,
 				renderables: preloadedRenderables,
 				resolvedPlayerProps,
-				resolvedPlayerEnv,
-				iifeBundleHost,
 				logger,
 				onBundleRetryStatus: (status) => {
 					// Every IIFE bundle-build retry transition (retrying, completed,
@@ -268,20 +263,12 @@ Items pane of a section player: renders the item cards of the current compositio
 		});
 	});
 
-	/** The warmup's backend config for telemetry, or `null` when it cannot be built. */
-	function telemetryBackend(): ReturnType<
-		typeof buildBackendConfigFromProps
-	> | null {
-		try {
-			return buildBackendConfigFromProps({
-				strategy: playerStrategy,
-				resolvedPlayerProps,
-				resolvedPlayerEnv,
-				iifeBundleHost,
-			});
-		} catch {
-			return null;
-		}
+	/** The warmup's backend config for telemetry. */
+	function telemetryBackend(): ReturnType<typeof buildBackendConfigFromProps> {
+		return buildBackendConfigFromProps({
+			strategy: playerStrategy,
+			resolvedPlayerProps,
+		});
 	}
 
 	function describeWarmupFailure(error: unknown): {

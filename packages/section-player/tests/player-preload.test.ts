@@ -5,19 +5,17 @@ import {
 	beforeAll,
 	describe,
 	expect,
-	mock,
 	test,
 } from "bun:test";
 import {
 	BundleType,
+	DEFAULT_BUNDLE_HOST,
 	registerPreloadedElements,
 } from "@pie-players/pie-players-shared";
 
-const ensureItemPlayerMathRenderingReady = mock(async () => undefined);
-
-mock.module("@pie-players/pie-item-player", () => ({
-	ensureItemPlayerMathRenderingReady,
-}));
+const { ensureItemPlayerMathRenderingReady } = await import(
+	"./support/item-player-load.js"
+);
 
 // A DOM another file registered stays for that file to unregister.
 let ownsDom = false;
@@ -66,10 +64,9 @@ describe("player-preload: backend config", () => {
 			resolvedPlayerProps: {
 				loaderOptions: { bundleHost: "https://proxy.pie-api.com/bundles" },
 			},
-			resolvedPlayerEnv: {},
 		});
-		expect(backend.kind).toBe("iife");
-		if (backend.kind === "iife") {
+		expect(backend?.kind).toBe("iife");
+		if (backend?.kind === "iife") {
 			expect(backend.bundleHost).toBe("https://proxy.pie-api.com/bundles");
 			expect(backend.bundleType).toBe(BundleType.clientPlayer);
 		}
@@ -83,9 +80,8 @@ describe("player-preload: backend config", () => {
 				hosted: true,
 				loaderOptions: { bundleHost: "https://proxy.pie-api.com/bundles" },
 			},
-			resolvedPlayerEnv: {},
 		});
-		if (backend.kind === "iife") {
+		if (backend?.kind === "iife") {
 			expect(backend.bundleType).toBe(BundleType.player);
 		} else {
 			throw new Error("expected iife backend");
@@ -100,9 +96,8 @@ describe("player-preload: backend config", () => {
 				mode: "author",
 				loaderOptions: { bundleHost: "https://proxy.pie-api.com/bundles" },
 			},
-			resolvedPlayerEnv: {},
 		});
-		if (backend.kind === "iife") {
+		if (backend?.kind === "iife") {
 			expect(backend.bundleType).toBe(BundleType.editor);
 		} else {
 			throw new Error("expected iife backend");
@@ -115,11 +110,9 @@ describe("player-preload: backend config", () => {
 			const backend = buildBackendConfigFromProps({
 				strategy: "iife",
 				resolvedPlayerProps,
-				resolvedPlayerEnv: {},
-				iifeBundleHost: "https://proxy.pie-api.com/bundles",
 			});
-			if (backend.kind !== "iife") throw new Error("expected iife backend");
-			return backend.needsControllers;
+			if (backend?.kind !== "iife") throw new Error("expected iife backend");
+			return backend?.needsControllers;
 		};
 
 		expect(needsControllersFor({ hosted: true })).toBe(false);
@@ -127,30 +120,20 @@ describe("player-preload: backend config", () => {
 		expect(needsControllersFor({ hosted: true, mode: "author" })).toBe(true);
 	});
 
-	test("iife backend falls back to iifeBundleHost arg when loaderOptions omit it", async () => {
+	test("iife backend defaults to the item players' bundle host", async () => {
 		const { buildBackendConfigFromProps } = await loadPlayerPreloadModule();
 		const backend = buildBackendConfigFromProps({
 			strategy: "iife",
 			resolvedPlayerProps: {},
-			resolvedPlayerEnv: {},
-			iifeBundleHost: "https://fallback.example.com/bundles",
 		});
-		if (backend.kind === "iife") {
-			expect(backend.bundleHost).toBe("https://fallback.example.com/bundles");
-		} else {
-			throw new Error("expected iife backend");
-		}
+		expect(backend).toMatchObject({ kind: "iife", bundleHost: DEFAULT_BUNDLE_HOST });
 	});
 
-	test("iife backend throws when no bundle host is available", async () => {
+	test("preloaded strategy has no backend", async () => {
 		const { buildBackendConfigFromProps } = await loadPlayerPreloadModule();
-		expect(() =>
-			buildBackendConfigFromProps({
-				strategy: "iife",
-				resolvedPlayerProps: {},
-				resolvedPlayerEnv: {},
-			}),
-		).toThrow(/iifeBundleHost/);
+		expect(
+			buildBackendConfigFromProps({ strategy: "preloaded", resolvedPlayerProps: {} }),
+		).toBeNull();
 	});
 
 	test("esm backend reads loaderOptions.esmCdnUrl", async () => {
@@ -160,13 +143,12 @@ describe("player-preload: backend config", () => {
 			resolvedPlayerProps: {
 				loaderOptions: { esmCdnUrl: "https://esm.sh" },
 			},
-			resolvedPlayerEnv: {},
 		});
-		expect(backend.kind).toBe("esm");
-		if (backend.kind === "esm") {
+		expect(backend?.kind).toBe("esm");
+		if (backend?.kind === "esm") {
 			expect(backend.cdnBaseUrl).toBe("https://esm.sh");
 			expect(backend.moduleResolution).toBe("url");
-			expect(backend.view).toBe("delivery");
+			expect(backend?.view).toBe("delivery");
 		}
 	});
 
@@ -177,25 +159,10 @@ describe("player-preload: backend config", () => {
 			resolvedPlayerProps: {
 				loaderOptions: { esmCdnProvider: "pie-proxy" },
 			},
-			resolvedPlayerEnv: {},
 		});
-		expect(backend.kind).toBe("esm");
-		if (backend.kind === "esm") {
+		expect(backend?.kind).toBe("esm");
+		if (backend?.kind === "esm") {
 			expect(backend.cdnProvider).toBe("pie-proxy");
-		}
-	});
-
-	test("esm backend honors author env for view", async () => {
-		const { buildBackendConfigFromProps } = await loadPlayerPreloadModule();
-		const backend = buildBackendConfigFromProps({
-			strategy: "esm",
-			resolvedPlayerProps: {},
-			resolvedPlayerEnv: { mode: "author" },
-		});
-		if (backend.kind === "esm") {
-			expect(backend.view).toBe("author");
-		} else {
-			throw new Error("expected esm backend");
 		}
 	});
 
@@ -205,10 +172,9 @@ describe("player-preload: backend config", () => {
 			const backend = buildBackendConfigFromProps({
 				strategy: "esm",
 				resolvedPlayerProps,
-				resolvedPlayerEnv: {},
 			});
-			if (backend.kind !== "esm") throw new Error("expected esm backend");
-			return backend.view;
+			if (backend?.kind !== "esm") throw new Error("expected esm backend");
+			return backend?.view;
 		};
 
 		expect(viewFor({ mode: "author" })).toBe("author");
@@ -219,20 +185,18 @@ describe("player-preload: backend config", () => {
 		const { buildBackendConfigFromProps } = await loadPlayerPreloadModule();
 		const loadControllersFor = (
 			resolvedPlayerProps: Record<string, unknown>,
-			resolvedPlayerEnv: Record<string, unknown> = {},
 		) => {
 			const backend = buildBackendConfigFromProps({
 				strategy: "esm",
 				resolvedPlayerProps,
-				resolvedPlayerEnv,
 			});
-			if (backend.kind !== "esm") throw new Error("expected esm backend");
-			return backend.loadControllers;
+			if (backend?.kind !== "esm") throw new Error("expected esm backend");
+			return backend?.loadControllers;
 		};
 
 		expect(loadControllersFor({ hosted: true })).toBe(false);
 		expect(loadControllersFor({})).toBe(true);
-		expect(loadControllersFor({ hosted: true }, { mode: "author" })).toBe(true);
+		expect(loadControllersFor({ hosted: true, mode: "author" })).toBe(true);
 	});
 
 	test("esm backend lets loaderOptions.loadControllers decide", async () => {
@@ -243,10 +207,9 @@ describe("player-preload: backend config", () => {
 			const backend = buildBackendConfigFromProps({
 				strategy: "esm",
 				resolvedPlayerProps,
-				resolvedPlayerEnv: {},
 			});
-			if (backend.kind !== "esm") throw new Error("expected esm backend");
-			return backend.loadControllers;
+			if (backend?.kind !== "esm") throw new Error("expected esm backend");
+			return backend?.loadControllers;
 		};
 
 		expect(
@@ -267,9 +230,8 @@ describe("player-preload: backend config", () => {
 			resolvedPlayerProps: {
 				loaderOptions: { moduleResolution: "import-map" },
 			},
-			resolvedPlayerEnv: {},
 		});
-		if (backend.kind === "esm") {
+		if (backend?.kind === "esm") {
 			expect(backend.moduleResolution).toBe("import-map");
 		} else {
 			throw new Error("expected esm backend");
@@ -300,11 +262,10 @@ describe("player-preload: backend config", () => {
 			const backend = buildBackendConfigFromProps({
 				strategy,
 				resolvedPlayerProps,
-				resolvedPlayerEnv: {},
 			});
-			expect(backend.trackPageActions).toBe(true);
-			expect(backend.instrumentationProvider).toBe(instrumentationProvider);
-			if (backend.kind === "iife") {
+			expect(backend?.trackPageActions).toBe(true);
+			expect(backend?.instrumentationProvider).toBe(instrumentationProvider);
+			if (backend?.kind === "iife") {
 				expect(backend.bundleRetry).toBe(iifeBundleRetry);
 			}
 		}
@@ -314,10 +275,9 @@ describe("player-preload: backend config", () => {
 			resolvedPlayerProps: {
 				loaderOptions: { bundleHost: "https://proxy.pie-api.com/bundles" },
 			},
-			resolvedPlayerEnv: {},
 		});
-		expect(quiet.trackPageActions).toBeUndefined();
-		expect(quiet.instrumentationProvider).toBeUndefined();
+		expect(quiet?.trackPageActions).toBeUndefined();
+		expect(quiet?.instrumentationProvider).toBeUndefined();
 	});
 });
 
@@ -398,7 +358,6 @@ describe("warmupSectionElements", () => {
 						},
 					},
 				},
-				resolvedPlayerEnv: {},
 			});
 		} catch (error) {
 			caught = error;
@@ -429,7 +388,6 @@ describe("warmupSectionElements", () => {
 					} as any,
 				],
 				resolvedPlayerProps: {},
-				resolvedPlayerEnv: {},
 			}),
 		).resolves.toBeUndefined();
 	});
@@ -452,7 +410,6 @@ describe("warmupSectionElements", () => {
 				strategy: "preloaded",
 				renderables,
 				resolvedPlayerProps: { mode: "author" },
-				resolvedPlayerEnv: {},
 			});
 
 		definePreloadedTag("pie-mc-author--version-1-0-0");
@@ -483,7 +440,6 @@ describe("warmupSectionElements", () => {
 				strategy: "preloaded",
 				renderables: [renderable as any],
 				resolvedPlayerProps: {},
-				resolvedPlayerEnv: {},
 			});
 		} finally {
 			host.PIE_PRELOADED_ELEMENTS = undefined;
@@ -524,7 +480,6 @@ describe("warmupSectionElements", () => {
 					item("item-other-tag", "mc-authored"),
 				],
 				resolvedPlayerProps: { hosted: true },
-				resolvedPlayerEnv: {},
 			});
 		} finally {
 			host.PIE_PRELOADED_ELEMENTS = undefined;
@@ -559,7 +514,6 @@ describe("warmupSectionElements", () => {
 					} as any,
 				],
 				resolvedPlayerProps: {},
-				resolvedPlayerEnv: {},
 			});
 		} catch (err) {
 			caught = err as Error;
@@ -580,7 +534,6 @@ describe("warmupSectionElements", () => {
 				strategy: "preloaded",
 				renderables: [],
 				resolvedPlayerProps: {},
-				resolvedPlayerEnv: {},
 			}),
 		).resolves.toBeUndefined();
 	});
@@ -594,7 +547,6 @@ describe("warmupSectionElements", () => {
 				resolvedPlayerProps: {
 					loaderOptions: { bundleHost: "https://proxy.pie-api.com/bundles" },
 				},
-				resolvedPlayerEnv: {},
 			}),
 		).resolves.toBeUndefined();
 	});
@@ -616,7 +568,6 @@ describe("warmupSectionElements", () => {
 				} as any,
 			],
 			resolvedPlayerProps: { loaderOptions: { esmCdnUrl: "https://esm.sh" } },
-			resolvedPlayerEnv: {},
 		});
 		expect(ensureItemPlayerMathRenderingReady).not.toHaveBeenCalled();
 	});
@@ -640,7 +591,6 @@ describe("warmupSectionElements", () => {
 				} as any,
 			],
 			resolvedPlayerProps: {},
-			resolvedPlayerEnv: {},
 		});
 		expect(ensureItemPlayerMathRenderingReady).not.toHaveBeenCalled();
 	});
@@ -664,32 +614,55 @@ describe("warmupSectionElements", () => {
 			resolvedPlayerProps: {
 				loaderOptions: { bundleHost: "https://proxy.pie-api.com/bundles" },
 			},
-			resolvedPlayerEnv: {},
-			iifeBundleHost: "https://proxy.pie-api.com/bundles",
 		});
 		expect(ensureItemPlayerMathRenderingReady).toHaveBeenCalledTimes(1);
 	});
 
-	test("rejects when iife preload is requested without bundle host", async () => {
+	test("iife strategy in author mode registers the editor tags the item players expect", async () => {
 		const { warmupSectionElements } = await loadPlayerPreloadModule();
-		await expect(
-			warmupSectionElements({
-				strategy: "iife",
-				renderables: [
-					{
-						id: "item-1",
-						config: {
-							markup: '<pie-x id="m1"></pie-x>',
-							elements: { "pie-x": "@pie-element/x@1.0.0" },
-							models: [{ id: "m1", element: "pie-x" }],
+		definePreloadedTag("pie-mc-iife-author--version-1-0-0-config");
+		await warmupSectionElements({
+			strategy: "iife",
+			renderables: [
+				{
+					id: "item-1",
+					config: {
+						markup: '<pie-mc-iife-author id="m1"></pie-mc-iife-author>',
+						elements: {
+							"pie-mc-iife-author": "@pie-element/multiple-choice@1.0.0",
 						},
-					} as any,
-				],
-				resolvedPlayerProps: { loaderOptions: {} },
-				resolvedPlayerEnv: {},
-				iifeBundleHost: "",
-			}),
-		).rejects.toThrow(/iifeBundleHost/);
+						models: [{ id: "m1", element: "pie-mc-iife-author" }],
+					},
+				} as any,
+			],
+			resolvedPlayerProps: { mode: "author" },
+		});
+	});
+
+	test("wraps a load failure in the strategy's load stage", async () => {
+		const { warmupSectionElements, PreloadStageError } =
+			await loadPlayerPreloadModule();
+		ensureItemPlayerMathRenderingReady.mockImplementationOnce(async () => {
+			throw new Error("math down");
+		});
+		const failure = await warmupSectionElements({
+			strategy: "iife",
+			renderables: [
+				{
+					id: "item-1",
+					config: {
+						markup: '<pie-mc-iife-fail id="m1"></pie-mc-iife-fail>',
+						elements: {
+							"pie-mc-iife-fail": "@pie-element/multiple-choice@1.0.0",
+						},
+						models: [{ id: "m1", element: "pie-mc-iife-fail" }],
+					},
+				} as any,
+			],
+			resolvedPlayerProps: {},
+		}).catch((error: unknown) => error);
+		expect(failure).toBeInstanceOf(PreloadStageError);
+		expect((failure as InstanceType<typeof PreloadStageError>).stage).toBe("iife-load");
 	});
 
 	test("rejects on invalid PIE config contract before touching the loader", async () => {
@@ -710,8 +683,6 @@ describe("warmupSectionElements", () => {
 				resolvedPlayerProps: {
 					loaderOptions: { bundleHost: "https://proxy.pie-api.com/bundles" },
 				},
-				resolvedPlayerEnv: {},
-				iifeBundleHost: "https://proxy.pie-api.com/bundles",
 			}),
 		).rejects.toThrow(/Invalid PIE config contract|broken-item/);
 	});

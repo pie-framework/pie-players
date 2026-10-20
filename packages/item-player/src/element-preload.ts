@@ -119,6 +119,37 @@ export function itemPlayerIifeElements(elements: ElementMap, bundleType: BundleT
 	);
 }
 
+/** Hooks a host that composes item players adds to their element loads. */
+export interface ItemElementLoadOptions {
+	/** Default: the item player's, from `loaderConfig`. */
+	instrumentationProvider?: IifeBackendConfig["instrumentationProvider"];
+	/** IIFE only: each bundle-build retry transition. */
+	onBundleRetryStatus?: (status: IifeBundleRetryStatus) => void;
+}
+
+/** The backend item players with `inputs` load their elements through; `null` under `preloaded`. */
+export function itemPlayerBackend(
+	inputs: ItemPlayerLoadInputs,
+	options: ItemElementLoadOptions = {},
+): IifeBackendConfig | EsmBackendConfig | null {
+	const strategy = inputs.strategy ?? "iife";
+	if (strategy === "preloaded") return null;
+	return strategy === "esm" ? itemPlayerEsmBackend(inputs, options) : itemPlayerIifeBackend(inputs, options);
+}
+
+/** The tags item players with `inputs` register `elements` under, or assert under `preloaded`. */
+export function itemPlayerElementTags(elements: ElementMap, inputs: ItemPlayerLoadInputs): ElementMap {
+	const view = itemPlayerEsmView(inputs);
+	switch (inputs.strategy ?? "iife") {
+		case "esm":
+			return mapEsmViewElements(elements, view);
+		case "preloaded":
+			return itemPlayerIifeElements(elements, view === "author" ? BundleType.editor : itemPlayerBundleType(inputs));
+		default:
+			return itemPlayerIifeElements(elements, itemPlayerBundleType(inputs));
+	}
+}
+
 function contentsOf(config: ItemConfig): PieContent[] {
 	if ("pie" in config) return config.passage ? [config.pie, config.passage] : [config.pie];
 	return [config];
@@ -126,40 +157,33 @@ function contentsOf(config: ItemConfig): PieContent[] {
 
 /**
  * Registers the elements of every item in `configs` in one aggregated load, through the backend
- * that item players with `inputs` load through, so the players that mount next find their elements
- * defined. One IIFE bundle serves the whole set. Under `preloaded` it does nothing: the host
- * registered the elements and each player asserts them. Rejects when the load fails; a player then
- * reports its own load failure.
+ * and under the tags that item players with `inputs` use, so the players that mount next find
+ * their elements defined. One IIFE bundle serves the whole set. Under `preloaded` it does nothing:
+ * the host registered the elements and each player asserts them. Rejects when the load fails; a
+ * player then reports its own load failure.
  */
 export async function preloadItemElements(
 	configs: readonly ItemConfig[],
 	inputs: ItemPlayerLoadInputs = {},
+	options: ItemElementLoadOptions = {},
 ): Promise<void> {
-	const strategy = inputs.strategy ?? "iife";
-	if (strategy === "preloaded") return;
+	const backend = itemPlayerBackend(inputs, options);
+	if (!backend) return;
 	const entities = configs.flatMap(contentsOf).map((config) => ({ config }) as ItemEntity);
 	const elements = aggregateElements(entities);
 	if (Object.keys(elements).length === 0) return;
-	const elementPackagePolicy = inputs.loaderOptions?.elementPackagePolicy;
-	if (strategy === "esm") {
-		const view = itemPlayerEsmView(inputs);
-		await ensureRegistered(mapEsmViewElements(elements, view), {
-			backend: itemPlayerEsmBackend(inputs, { view }),
-			elementPackagePolicy,
+	if (backend.kind === "iife") {
+		const loaderOptions = backendOptions(inputs.loaderOptions);
+		// IIFE bundles read the math renderer as they evaluate.
+		await ensureItemPlayerMathRenderingReady({
+			assetRoot: resolveEsmAssetRoot({
+				cdnBaseUrl: loaderOptions.esmCdnUrl || DEFAULT_ESM_CDN_URL,
+				cdnProvider: loaderOptions.esmCdnProvider,
+			}),
 		});
-		return;
 	}
-	const options = backendOptions(inputs.loaderOptions);
-	// IIFE bundles read the math renderer as they evaluate.
-	await ensureItemPlayerMathRenderingReady({
-		assetRoot: resolveEsmAssetRoot({
-			cdnBaseUrl: options.esmCdnUrl || DEFAULT_ESM_CDN_URL,
-			cdnProvider: options.esmCdnProvider,
-		}),
-	});
-	const bundleType = itemPlayerBundleType(inputs);
-	await ensureRegistered(itemPlayerIifeElements(elements, bundleType), {
-		backend: itemPlayerIifeBackend(inputs, { bundleType }),
-		elementPackagePolicy,
+	await ensureRegistered(itemPlayerElementTags(elements, inputs), {
+		backend,
+		elementPackagePolicy: inputs.loaderOptions?.elementPackagePolicy,
 	});
 }

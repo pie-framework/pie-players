@@ -22,7 +22,10 @@ export const mergeObjectsIgnoringNullUndefined = <T extends object>(
 };
 
 /**
- * Deep clone an object.
+ * Deep clone of arrays and plain objects. Any other object — a `Date`, a bson
+ * `ObjectId`, a class instance — is carried over by reference: copying its own
+ * keys onto a plain object would drop its prototype, and with it the methods
+ * that identify and serialise it.
  */
 export const cloneDeep = <T>(value: T): T => {
 	if (value === null || typeof value !== "object") {
@@ -30,6 +33,10 @@ export const cloneDeep = <T>(value: T): T => {
 	}
 	if (Array.isArray(value)) {
 		return value.map(cloneDeep) as T;
+	}
+	const prototype = Object.getPrototypeOf(value);
+	if (prototype !== Object.prototype && prototype !== null) {
+		return value;
 	}
 	const copy = {} as T;
 	for (const key in value as any) {

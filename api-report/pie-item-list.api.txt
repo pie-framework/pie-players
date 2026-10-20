@@ -19,11 +19,14 @@
   type ElementSummary
   type ItemSummary
   type ItemSummaryEntry
+  type PinnedSummariesOptions
   type SummarizeFn
   type SummarizeItemOptions
   type SummaryOption
   type SummaryOptions
   type SummaryPart
   type SummaryResolver
+  bundledSummaries
   isItemSummary
+  pinnedSummaries
   summarizeItem

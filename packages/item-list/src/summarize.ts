@@ -16,4 +16,6 @@ export {
 	type SummaryResolver,
 	summarizeItem,
 } from "./summarize/summarize-item.js";
+export { bundledSummaries } from "./summarize/bundled.js";
+export { type PinnedSummariesOptions, pinnedSummaries } from "./summarize/pinned.js";
 export { isItemSummary } from "./summarize/validate.js";

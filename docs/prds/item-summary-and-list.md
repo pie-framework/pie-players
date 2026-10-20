@@ -2,12 +2,13 @@
 
 Status: Draft, 2026-10-13
 
-Implementation status: slice 1 has landed in
+Implementation status: slices 1 and 2 have landed in
 [`@pie-players/pie-item-list`](../../packages/item-list/README.md):
-`summarizeItem`, `isItemSummary` and the summary view of `<pie-item-summary>`,
-with no resolver by default, so every element takes the prompt or label rung.
-The bundled and pinned resolvers, the player view and `<pie-item-list>` are
-still to come.
+`summarizeItem`, `isItemSummary`, the summary view of `<pie-item-summary>`,
+and both resolvers, with `bundledSummaries` as the default. The bundled set
+covers 27 element packages, Host R's previews included; it lives in
+pie-players until ng publishes `./summary` entries, which then replace it.
+The player view and `<pie-item-list>` are still to come.
 pie-elements-ng owns the descriptor type and the per-element `./summary`
 entries; pie-players owns item-level summarization, the bundled summarizer set
 and the custom elements. Summary precompute in the PIE API backend is optional
@@ -232,8 +233,9 @@ summarizer, or `null` for the prompt rung. Two resolvers ship:
   in the bundled summarizer set. The set loads in one request per page, and
   set bumps follow the preloaded-set rule: every summarizer moves to npm
   `latest` together.
-- **`pinnedSummaries({ cdnBaseUrl })`** imports `./browser/summary` at the
-  pinned version, deduplicated per `pkg` across the page. A version that
+- **`pinnedSummaries(loaderOptions)`** imports `./browser/summary` at the
+  pinned version from the CDN the item player's `esmCdnUrl` and
+  `esmCdnProvider` name, deduplicated per URL across the page. A version that
   predates its element's `./summary` drops to the prompt rung. The PIE API
   backend rewrites `elements` to sanctioned versions on item read, so this
   resolver follows sanctioned versions with no extra configuration.

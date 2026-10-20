@@ -249,6 +249,26 @@ One PIE item as a list row: its stem, prompts, options and, for instructors, its
 		font-weight: 600;
 	}
 
+	/* Summarizers mark each cloze blank with its number, matching the numbered answer list. */
+	.pie-item-summary :global(.pie-item-summary__blank) {
+		display: inline-block;
+		min-width: 2.5em;
+		padding: 0 0.25em;
+		border-bottom: 1px solid var(--pie-border-dark, #6b7280);
+		text-align: center;
+		font-weight: 600;
+	}
+
+	.pie-item-summary__answer-content :global(table) {
+		border-collapse: collapse;
+	}
+
+	.pie-item-summary__answer-content :global(:is(th, td)) {
+		padding: 0.125em 0.75em;
+		border: 1px solid var(--pie-border-light, #d1d5db);
+		text-align: start;
+	}
+
 	.pie-item-summary__media {
 		margin: 0;
 	}

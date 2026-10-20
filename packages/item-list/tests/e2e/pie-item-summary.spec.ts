@@ -88,4 +88,29 @@ test.describe("<pie-item-summary> (real browser)", () => {
 		expect(html).toContain("<mfrac>");
 		expect(html).not.toContain("\\(");
 	});
+
+	test("keeps the bundled summarizers' blank markers through the sanitizer", async ({ page }) => {
+		await page.setContent("<!doctype html><html><body></body></html>");
+		await page.addScriptTag({ content: bundledCode });
+		const blank = await page.evaluate(async () => {
+			const element = document.createElement("pie-item-summary") as HTMLElement &
+				Record<string, unknown>;
+			element.config = {
+				id: "item",
+				elements: { ecr: "@pie-element/explicit-constructed-response@5.0.0" },
+				models: [
+					{ id: "1", element: "ecr", markup: "<p>A {{0}}</p>", choices: { 0: [{ label: "cat" }] } },
+				],
+				markup: '<ecr id="1"></ecr>',
+			};
+			const loaded = new Promise((resolve) =>
+				element.addEventListener("load-complete", resolve, { once: true }),
+			);
+			document.body.append(element);
+			await loaded;
+			const marker = element.querySelector(".pie-item-summary__blank");
+			return marker && { text: marker.textContent, display: getComputedStyle(marker).display };
+		});
+		expect(blank).toEqual({ text: "[1]", display: "inline-block" });
+	});
 });

@@ -3,11 +3,10 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { expect, test } from "@playwright/test";
 import * as esbuild from "esbuild";
-import { roundTripItems, roundTripResolver } from "./fixtures/round-trip-items.js";
+import { roundTripItems } from "./fixtures/round-trip-items.js";
 
 /**
- * A summary computed in Node equals the one computed in the browser for the same config and
- * resolver, so a backend can precompute what a row would compute itself. Both sides run the built
+ * A summary computed in Node equals the one computed in the browser for the same config, so a backend can precompute what a row would compute itself. Both sides run the built
  * `./summarize` entry. Requires `bun run build:e2e:item-list`.
  */
 
@@ -28,7 +27,7 @@ test("Node and browser summaries are equal for the fixture items", async ({ page
 	const { summarizeItem } = (await import(SUMMARIZE)) as typeof import("../../src/summarize.js");
 	const inNode = await Promise.all(
 		ROLES.flatMap((role) =>
-			roundTripItems.map((item) => summarizeItem(item, { role, resolve: roundTripResolver })),
+			roundTripItems.map((item) => summarizeItem(item, { role })),
 		),
 	);
 
@@ -36,10 +35,10 @@ test("Node and browser summaries are equal for the fixture items", async ({ page
 		stdin: {
 			contents: `
 				import { summarizeItem } from ${JSON.stringify(SUMMARIZE)};
-				import { roundTripItems, roundTripResolver } from ${JSON.stringify(FIXTURES)};
+				import { roundTripItems } from ${JSON.stringify(FIXTURES)};
 				window.summarizeFixtures = (roles) => Promise.all(
 					roles.flatMap((role) =>
-						roundTripItems.map((item) => summarizeItem(item, { role, resolve: roundTripResolver })),
+						roundTripItems.map((item) => summarizeItem(item, { role })),
 					),
 				);
 			`,

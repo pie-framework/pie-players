@@ -22,7 +22,7 @@ export interface PieItemSummaryElement extends HTMLElement {
 	env?: Env;
 	/** A precomputed summary, used when its `schema` is 1. */
 	summary?: ItemSummary;
-	/** Without one, every element shows its prompt or display name. */
+	/** Default `bundledSummaries`; one returning `null` shows each element's prompt or display name. */
 	resolve?: SummaryResolver;
 	locale?: string;
 }

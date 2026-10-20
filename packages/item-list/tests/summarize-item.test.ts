@@ -18,6 +18,9 @@ const resolverOf =
 	async () =>
 		summarize;
 
+/** Sends every element to the prompt or label rung. */
+const noSummaries = resolverOf(null);
+
 describe("prompt and label rungs", () => {
 	test("takes the model prompt and drops instructor-only model fields", async () => {
 		const summary = await summarizeItem(
@@ -30,7 +33,7 @@ describe("prompt and label rungs", () => {
 					rationale: "<p>Because</p>",
 				},
 			]),
-			{ role: "instructor" },
+			{ role: "instructor", resolve: noSummaries },
 		);
 		expect(summary).toEqual({
 			schema: 1,
@@ -51,7 +54,7 @@ describe("prompt and label rungs", () => {
 			item([
 				{ id: "1", element: "drawing-response", prompt: "<p>Draw</p>", promptEnabled: false },
 			]),
-			{ role: "instructor" },
+			{ role: "instructor", resolve: noSummaries },
 		);
 		expect(summary.entries[0]).toMatchObject({ source: "label", label: "Drawing response" });
 	});
@@ -59,7 +62,7 @@ describe("prompt and label rungs", () => {
 	test("counts an image-only prompt as content", async () => {
 		const summary = await summarizeItem(
 			item([{ id: "1", element: "hotspot", prompt: '<p><img src="map.png"></p>' }]),
-			{ role: "instructor" },
+			{ role: "instructor", resolve: noSummaries },
 		);
 		expect(summary.entries[0]?.source).toBe("prompt");
 	});
@@ -76,7 +79,7 @@ describe("prompt and label rungs", () => {
 					choices: [{ prompt: "<p>Not a part</p>" }],
 				},
 			]),
-			{ role: "instructor" },
+			{ role: "instructor", resolve: noSummaries },
 		);
 		expect(summary.entries[0]).toMatchObject({
 			source: "prompt",
@@ -89,13 +92,31 @@ describe("prompt and label rungs", () => {
 		});
 	});
 
+	test("summarizes through the bundled summarizers by default", async () => {
+		const summary = await summarizeItem(
+			item([
+				{
+					id: "1",
+					element: "multiple-choice",
+					prompt: "<p>Pick one</p>",
+					choices: [{ value: "a", label: "Four", correct: true }],
+				},
+			]),
+			{ role: "instructor" },
+		);
+		expect(summary.entries[0]).toMatchObject({
+			source: "summary",
+			summary: { prompt: "<p>Pick one</p>", options: [{ id: "a", label: "Four", correct: true }] },
+		});
+	});
+
 	test("drops label entries when another entry has content", async () => {
 		const summary = await summarizeItem(
 			item([
 				{ id: "1", element: "multiple-choice", prompt: "<p>Pick</p>" },
 				{ id: "2", element: "drawing-response" },
 			]),
-			{ role: "instructor" },
+			{ role: "instructor", resolve: noSummaries },
 		);
 		expect(summary.entries.map((entry) => entry.id)).toEqual(["1"]);
 	});
@@ -104,7 +125,7 @@ describe("prompt and label rungs", () => {
 		const models = [{ id: "1", element: "drawing-response" }];
 		const summary = await summarizeItem(
 			item(models, '<p>Stem</p><drawing-response id="1"></drawing-response>'),
-			{ role: "instructor" },
+			{ role: "instructor", resolve: noSummaries },
 		);
 		expect(summary.stem).toBe("<p>Stem</p>");
 		expect(summary.entries).toEqual([

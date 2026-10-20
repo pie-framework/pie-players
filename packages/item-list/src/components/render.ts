@@ -9,7 +9,7 @@ import type {
 	ItemSummary,
 	ItemSummaryEntry,
 } from "../summarize/summarize-item.js";
-import { withoutAnswers } from "../summarize/summarize-item.js";
+import { withoutAnswers } from "../summarize/answers.js";
 
 /** A summary as the sanitized HTML `<pie-item-summary>` renders. */
 export interface RenderedSummary {

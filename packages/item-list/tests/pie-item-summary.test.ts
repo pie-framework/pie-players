@@ -98,7 +98,7 @@ describe("<pie-item-summary>", () => {
 		expect(stem?.querySelector("math")).not.toBeNull();
 		expect(stem?.textContent).not.toContain("\\(");
 		expect(element.querySelector(".pie-item-summary__entry")?.getAttribute("data-source")).toBe(
-			"prompt",
+			"summary",
 		);
 	});
 

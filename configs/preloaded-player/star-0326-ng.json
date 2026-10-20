@@ -3,32 +3,32 @@
 	"elements": [
 		{
 			"package": "@pie-element/categorize",
-			"version": "14.0.5",
+			"version": "14.0.6",
 			"tag": "pie-element-categorize"
 		},
 		{
 			"package": "@pie-element/drag-in-the-blank",
-			"version": "11.0.5",
+			"version": "11.0.6",
 			"tag": "drag-in-the-blank"
 		},
 		{
 			"package": "@pie-element/hotspot",
-			"version": "12.0.5",
+			"version": "12.0.6",
 			"tag": "hotspot"
 		},
 		{
 			"package": "@pie-element/image-cloze-association",
-			"version": "11.0.5",
+			"version": "11.0.6",
 			"tag": "image-cloze-association"
 		},
 		{
 			"package": "@pie-element/multiple-choice",
-			"version": "14.0.5",
+			"version": "14.0.6",
 			"tag": "pie-element-multiple-choice"
 		},
 		{
 			"package": "@pie-element/mc-populated-blank",
-			"version": "0.3.5",
+			"version": "0.3.6",
 			"tag": "mc-populated-blank"
 		}
 	]

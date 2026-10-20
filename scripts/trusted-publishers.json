@@ -39,6 +39,10 @@
 			"repository": "pie-framework/pie-players",
 			"workflow": "release.yml"
 		},
+		"@pie-players/pie-i18n-generated": {
+			"repository": "pie-framework/pie-players",
+			"workflow": "release.yml"
+		},
 		"@pie-players/pie-item-list": {
 			"repository": "pie-framework/pie-players",
 			"workflow": "release.yml"

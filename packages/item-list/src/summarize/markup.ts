@@ -71,3 +71,9 @@ export function hasContent(html: unknown): html is string {
 	if (IMAGE.test(html)) return true;
 	return /\S/.test(html.replace(TAGS, "").replace(NBSP, " "));
 }
+
+/** The model's prompt, unless `promptEnabled` is `false` or it holds no content. */
+export function promptOf(model: Record<string, unknown>): string | undefined {
+	if (model.promptEnabled === false) return undefined;
+	return hasContent(model.prompt) ? model.prompt : undefined;
+}

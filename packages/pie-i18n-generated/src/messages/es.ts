@@ -68,6 +68,9 @@ const es = {
 			audio: "Audio",
 			video: "Video",
 		},
+		list: {
+			expandA11y: "Mostrar la pregunta completa",
+		},
 		questions: "Preguntas",
 		items: "Preguntas",
 		section: "Sección",

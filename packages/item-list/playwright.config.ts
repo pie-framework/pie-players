@@ -4,7 +4,8 @@ import { defineConfig, devices } from "@playwright/test";
  * No `webServer`/`baseURL` here, unlike the item-player/section-player/
  * assessment-player configs. Those drive a real running app over HTTP; this
  * suite only needs a real browser engine to run a bundled module against a
- * blank page via `page.setContent` + `page.addScriptTag`. See
+ * blank page via `page.setContent` + `page.addScriptTag`, or against the
+ * `./browser` build served from a stub origin through `page.route`. See
  * `tests/e2e/pie-item-summary.spec.ts` for why that distinction matters here
  * specifically: DOMPurify's behavior under happy-dom cannot be trusted, so
  * this is the one place that behavior must be verified for real. Mirrors

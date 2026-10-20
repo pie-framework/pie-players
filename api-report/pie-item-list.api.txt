@@ -5,8 +5,26 @@
 
 .
   type ElementSummary
+  type ItemListEntry
+  type ItemListExtension
   type ItemSummary
   type ItemSummaryEntry
+  type PieItemListElement
+  type PieItemSummaryElement
+  type SummarizeFn
+  type SummarizeItemOptions
+  type SummaryOption
+  type SummaryOptions
+  type SummaryPart
+  type SummaryResolver
+
+./browser
+  type ElementSummary
+  type ItemListEntry
+  type ItemListExtension
+  type ItemSummary
+  type ItemSummaryEntry
+  type PieItemListElement
   type PieItemSummaryElement
   type SummarizeFn
   type SummarizeItemOptions
@@ -19,10 +37,15 @@
   type ElementSummary
   type ItemSummary
   type ItemSummaryEntry
+  type PinnedSummariesOptions
   type SummarizeFn
   type SummarizeItemOptions
   type SummaryOption
   type SummaryOptions
   type SummaryPart
   type SummaryResolver
+  bundledSummaries
+  convertSummaryMath
+  isItemSummary
+  pinnedSummaries
   summarizeItem

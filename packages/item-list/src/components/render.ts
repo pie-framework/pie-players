@@ -9,7 +9,7 @@ import type {
 	ItemSummary,
 	ItemSummaryEntry,
 } from "../summarize/summarize-item.js";
-import { withoutAnswers } from "../summarize/summarize-item.js";
+import { withoutAnswers } from "../summarize/answers.js";
 
 /** A summary as the sanitized HTML `<pie-item-summary>` renders. */
 export interface RenderedSummary {
@@ -19,8 +19,15 @@ export interface RenderedSummary {
 
 export interface RenderedBlock {
 	prompt?: string;
-	options: RenderedOption[];
+	/** Options by `group`, in order of each group's first option. Ungrouped options form one group. */
+	groups: RenderedGroup[];
 	answer?: string;
+}
+
+export interface RenderedGroup {
+	/** HTML; absent for the ungrouped options. */
+	label?: string;
+	options: RenderedOption[];
 }
 
 export interface RenderedOption {
@@ -77,22 +84,41 @@ async function block(content: {
 	options?: SummaryOption[];
 	answer?: string;
 }): Promise<RenderedBlock> {
-	const [prompt, answer, options] = await Promise.all([
+	const [prompt, answer, groups] = await Promise.all([
 		html(content.prompt),
 		html(content.answer),
-		Promise.all(
-			(content.options ?? []).map(async (option) => ({
-				id: option.id,
-				label: (await html(option.label)) ?? "",
-				correct: option.correct === true,
-			})),
-		),
+		optionGroups(content.options ?? []),
 	]);
 	return {
 		...(prompt ? { prompt } : {}),
-		options,
+		groups,
 		...(answer ? { answer } : {}),
 	};
+}
+
+async function optionGroups(options: SummaryOption[]): Promise<RenderedGroup[]> {
+	const byGroup = new Map<string | undefined, SummaryOption[]>();
+	for (const option of options) {
+		const key = typeof option.group === "string" && option.group.length > 0 ? option.group : undefined;
+		const members = byGroup.get(key);
+		if (members) members.push(option);
+		else byGroup.set(key, [option]);
+	}
+	return Promise.all(
+		[...byGroup].map(async ([group, members]) => {
+			const label = await html(group);
+			return {
+				...(label ? { label } : {}),
+				options: await Promise.all(
+					members.map(async (option) => ({
+						id: option.id,
+						label: (await html(option.label)) ?? "",
+						correct: option.correct === true,
+					})),
+				),
+			};
+		}),
+	);
 }
 
 async function html(source: string | undefined): Promise<string | undefined> {

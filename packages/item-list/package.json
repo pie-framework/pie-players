@@ -32,6 +32,10 @@
 		"./summarize": {
 			"types": "./dist/summarize.d.ts",
 			"import": "./dist/summarize.js"
+		},
+		"./browser": {
+			"types": "./dist/pie-item-list.d.ts",
+			"import": "./dist/browser/pie-item-list.js"
 		}
 	},
 	"customElements": "custom-elements.json",
@@ -40,7 +44,7 @@
 		"custom-elements.json"
 	],
 	"scripts": {
-		"build": "vite build",
+		"build": "vite build && vite build --config vite.config.browser.ts",
 		"dev": "vite build --watch",
 		"test": "bun test",
 		"typecheck": "tsc --noEmit && tsc -p tsconfig.tests.json",
@@ -49,6 +53,7 @@
 	},
 	"dependencies": {
 		"@pie-element/shared-types": "0.2.2",
+		"@pie-players/pie-item-player": "workspace:*",
 		"@pie-players/pie-players-shared": "workspace:*"
 	},
 	"devDependencies": {

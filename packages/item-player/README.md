@@ -522,7 +522,7 @@ el.onDeleteSound = (_src, done) => done();
 
 | Entry | Exports |
 | --- | --- |
-| `@pie-players/pie-item-player` | Registers `<pie-item-player>` and installs the content stylesheet at import. Exports `definePieItemPlayer(tagName?)`, `ensureItemPlayerMathRenderingReady()` and the types below |
+| `@pie-players/pie-item-player` | Registers `<pie-item-player>` and installs the content stylesheet at import. Exports `definePieItemPlayer(tagName?)`, `ensureItemPlayerMathRenderingReady()`, `preloadItemElements()` and the types below |
 | `@pie-players/pie-item-player/preloaded` | `registerPreloadedElements`, `ensureItemPlayerMathRenderingReady()`, and the types `PreloadedElement`, `PreloadedController`, `PreloadedRegistrationOptions` and `MathAssetOptions`. Defines no element and installs no stylesheet |
 | `@pie-players/pie-item-player/components/item-session-debugger-element` | Registers `<pie-item-player-session-debugger>` |
 
@@ -532,6 +532,13 @@ before loading IIFE bundles; a host that loads IIFE element bundles itself calls
 it first ([math rendering](../../docs/item-player/math-rendering.md)).
 `{ assetRoot }`, an npm root, names where the renderer's speech rules load from,
 jsDelivr by default; the first call's options apply.
+
+`preloadItemElements(configs, inputs)` registers the elements of several items
+in one load, through the backend a player with the same `strategy`,
+`loaderOptions`, `loaderConfig`, `mode` and `hosted` would use, so players that
+mount afterwards find their elements defined. It does nothing under
+`preloaded`, and rejects when the load fails. `<pie-item-summary>` calls it for
+the rows that come into view together.
 
 ```ts
 import type {

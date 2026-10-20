@@ -170,6 +170,13 @@ const enUS = {
 			audio: "Audio",
 			video: "Video",
 		},
+		/**
+		 * `<pie-item-list>`: the row toggle, a disclosure button whose `aria-expanded`
+		 * carries the state, so its label stays the same either way.
+		 */
+		list: {
+			expandA11y: "Show the full item",
+		},
 	},
 
 	/** Toolbar and tool-shell chrome owned by the assessment toolkit. */

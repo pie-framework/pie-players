@@ -70,6 +70,9 @@ const ar = {
 			audio: "صوت",
 			video: "فيديو",
 		},
+		list: {
+			expandA11y: "عرض السؤال كاملاً",
+		},
 		questions: "الأسئلة",
 		items: "الأسئلة",
 		section: "قسم",

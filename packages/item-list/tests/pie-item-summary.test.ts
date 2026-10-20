@@ -4,14 +4,12 @@
  * asserted in a real browser by `e2e/pie-item-summary.spec.ts`.
  */
 
-import { GlobalRegistrator } from "@happy-dom/global-registrator";
-import { afterAll, afterEach, describe, expect, test } from "bun:test";
+import "./support/dom.js";
+import { afterEach, describe, expect, test } from "bun:test";
 import type { ElementSummary } from "@pie-element/shared-types";
 import type { PieContent } from "@pie-players/pie-players-shared/types";
 import type { ItemSummary, PieItemSummaryElement } from "../src/pie-item-list.js";
 
-const ownsDom = typeof window === "undefined";
-if (ownsDom) GlobalRegistrator.register();
 await import("../src/components/PieItemSummary.svelte");
 
 async function settle(rounds = 20): Promise<void> {
@@ -71,10 +69,6 @@ afterEach(() => {
 	document.body.innerHTML = "";
 });
 
-afterAll(async () => {
-	if (ownsDom) await GlobalRegistrator.unregister();
-});
-
 describe("<pie-item-summary>", () => {
 	test("renders a resolved summary for an instructor, then announces it", async () => {
 		const { element, loads } = await mount({
@@ -98,7 +92,7 @@ describe("<pie-item-summary>", () => {
 		expect(stem?.querySelector("math")).not.toBeNull();
 		expect(stem?.textContent).not.toContain("\\(");
 		expect(element.querySelector(".pie-item-summary__entry")?.getAttribute("data-source")).toBe(
-			"prompt",
+			"summary",
 		);
 	});
 
@@ -120,6 +114,64 @@ describe("<pie-item-summary>", () => {
 		expect(element.querySelector(".pie-item-summary__entry .pie-item-summary__prompt")?.textContent).toBe(
 			"Model prompt",
 		);
+	});
+
+	test("recomputes from the config when a schema-1 summary is malformed", async () => {
+		const { element } = await mount({
+			config,
+			summary: {
+				schema: 1,
+				entries: [{ ...precomputed.entries[0], summary: { options: [{ id: "a" }] } }],
+			} as unknown as ItemSummary,
+		});
+		expect(element.querySelector(".pie-item-summary__entry .pie-item-summary__prompt")?.textContent).toBe(
+			"Model prompt",
+		);
+	});
+
+	test("does not re-render or re-announce for a new env with the same role", async () => {
+		let calls = 0;
+		const { element, loads } = await mount({
+			config,
+			env: { mode: "view", role: "instructor" },
+			resolve: async () => {
+				calls += 1;
+				return () => graded;
+			},
+		});
+		element.env = { mode: "view", role: "instructor" };
+		await settle();
+		expect(calls).toBe(1);
+		expect(loads).toEqual([{ view: "summary" }]);
+
+		element.env = { mode: "view", role: "student" };
+		await settle();
+		expect(calls).toBe(2);
+		expect(loads).toEqual([{ view: "summary" }, { view: "summary" }]);
+		expect(element.querySelector(".pie-item-summary__answer")).toBeNull();
+	});
+
+	test("lists grouped options under their group, in order of first appearance", async () => {
+		const { element } = await mount({
+			config,
+			resolve: async () => () => ({
+				options: [
+					{ id: "a", label: "Cat", group: "<b>Mammals</b>", correct: true },
+					{ id: "b", label: "Trout", group: "Fish" },
+					{ id: "c", label: "Dog", group: "<b>Mammals</b>" },
+				],
+			}),
+		});
+		const groups = [...element.querySelectorAll(".pie-item-summary__group")];
+		expect(groups.map((group) => group.querySelector(".pie-item-summary__group-label")?.textContent)).toEqual([
+			"Mammals",
+			"Fish",
+		]);
+		expect(
+			groups.map((group) =>
+				[...group.querySelectorAll(".pie-item-summary__option-label")].map((label) => label.textContent),
+			),
+		).toEqual([["Cat", "Dog"], ["Trout"]]);
 	});
 
 	test("labels its own text in the requested locale", async () => {

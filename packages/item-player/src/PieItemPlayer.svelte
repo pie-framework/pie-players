@@ -168,6 +168,14 @@ The PIE item player: it loads an item's PIE elements under the `iife`, `esm` or 
 	import { stableStringifyForKey } from "./utils/stable-stringify.js";
 	import { ITEM_PLAYER_PUBLIC_EVENTS } from "./contracts/public-events.js";
 	import {
+		type ItemPlayerLoadInputs,
+		itemPlayerBundleType,
+		itemPlayerEsmBackend,
+		itemPlayerEsmView,
+		itemPlayerIifeBackend,
+		itemPlayerIifeElements,
+	} from "./element-preload.js";
+	import {
 		BundleType,
 		alignPreloadedElementVersions,
 		assertElementPackagesAllowed,
@@ -1009,9 +1017,16 @@ The PIE item player: it loads an item's PIE elements under the `iife`, `esm` or 
 	// unless the host says otherwise.
 	const resolvedHosted = $derived(hosted ?? isDeliveryBackendEnabled(backend));
 
+	const loadInputs = $derived<ItemPlayerLoadInputs>({
+		strategy: normalizedStrategy,
+		loaderOptions,
+		loaderConfig,
+		mode: resolvedMode,
+		hosted: resolvedHosted,
+	});
+
 	function resolveBundleType(): BundleType {
-		if (resolvedMode === "author") return BundleType.editor;
-		return resolvedHosted ? BundleType.player : BundleType.clientPlayer;
+		return itemPlayerBundleType(loadInputs);
 	}
 
 	function resolveEsmLoadControllers(): boolean {
@@ -1026,17 +1041,9 @@ The PIE item player: it loads an item's PIE elements under the `iife`, `esm` or 
 		bundleType: BundleType,
 		requestToken: number,
 	): IifeBackendConfig {
-		const needsControllers =
-			bundleType === BundleType.editor ||
-			(bundleType === BundleType.clientPlayer && !resolvedHosted);
-		return {
-			kind: "iife",
-			bundleHost: resolvedIifeBundleHost,
+		return itemPlayerIifeBackend(loadInputs, {
 			bundleType,
-			needsControllers,
 			debugEnabled: () => debugEnabled,
-			bundleRetry: loaderConfig?.iifeBundleRetry,
-			trackPageActions: loaderConfig?.trackPageActions,
 			instrumentationProvider: resolvedInstrumentationProvider,
 			onBundleRetryStatus: (status: IifeBundleRetryStatus) => {
 				if (!isCurrentLoadRequest(requestToken)) return;
@@ -1047,38 +1054,25 @@ The PIE item player: it loads an item's PIE elements under the `iife`, `esm` or 
 					}),
 				);
 			},
-		};
+		});
 	}
 
 	function buildEsmBackendConfig(view: string): EsmBackendConfig {
-		const moduleResolution =
-			loaderOptions?.moduleResolution === "import-map" ? "import-map" : "url";
-		return {
-			kind: "esm",
-			cdnBaseUrl: resolvedEsmCdnUrl,
-			cdnProvider: loaderOptions?.esmCdnProvider,
-			moduleResolution,
-			view: view || "delivery",
-			loadControllers: resolveEsmLoadControllers(),
-			trackPageActions: loaderConfig?.trackPageActions,
+		return itemPlayerEsmBackend(loadInputs, {
+			view,
 			instrumentationProvider: resolvedInstrumentationProvider,
-		};
+		});
 	}
 
 	function resolveEffectiveEsmView(): string {
-		return loaderOptions?.view || (resolvedMode === "author" ? "author" : "delivery");
+		return itemPlayerEsmView(loadInputs);
 	}
 
 	function mapExpectedRegistrationElements(
 		elements: Record<string, string>,
 		bundleType: BundleType,
 	): Record<string, string> {
-		if (bundleType !== BundleType.editor) {
-			return elements;
-		}
-		return Object.fromEntries(
-			Object.entries(elements).map(([tagName, packageSpec]) => [`${tagName}-config`, packageSpec]),
-		);
+		return itemPlayerIifeElements(elements, bundleType);
 	}
 
 	async function loadConfig(currentConfig: any): Promise<boolean> {

@@ -70,6 +70,9 @@ const fr = {
 			audio: "Audio",
 			video: "Vidéo",
 		},
+		list: {
+			expandA11y: "Afficher la question complète",
+		},
 		questions: "Questions",
 		items: "Questions",
 		section: "Partie",

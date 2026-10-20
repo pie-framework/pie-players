@@ -132,6 +132,9 @@ const ro = {
 			audio: "Audio",
 			video: "Video",
 		},
+		list: {
+			expandA11y: "Afișează itemul complet",
+		},
 	},
 
 	toolkit: {

@@ -403,6 +403,7 @@
       "version": "1.0.0-beta.3",
       "dependencies": {
         "@pie-element/shared-types": "0.2.2",
+        "@pie-players/pie-item-player": "workspace:*",
         "@pie-players/pie-players-shared": "workspace:*",
       },
       "devDependencies": {

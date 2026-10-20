@@ -16,6 +16,9 @@
 			"https://esm.run/@cortex-js/compute-engine",
 			"canvas.js"
 		],
+		"@pie-players/pie-item-list": [
+			"@pie-players/pie-theme/components.css"
+		],
 		"@pie-players/pie-section-player": [
 			"https://esm.run/@cortex-js/compute-engine",
 			"canvas.js",

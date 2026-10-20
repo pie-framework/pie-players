@@ -2,15 +2,18 @@
 
 Status: Draft, 2026-10-13
 
-Implementation status: slice 1 has landed in
+Implementation status: slices 1 to 5 have landed in
 [`@pie-players/pie-item-list`](../../packages/item-list/README.md):
-`summarizeItem` and the summary view of `<pie-item-summary>`, with no resolver by
-default, so every element takes the prompt or label rung. The bundled and pinned
-resolvers, the player view and `<pie-item-list>` are still to come.
+`summarizeItem`, `isItemSummary`, both resolvers with `bundledSummaries` as the
+default, `<pie-item-summary>` with its summary and player views and the
+page-wide scheduler, `<pie-item-list>`, and `convertSummaryMath` for backend
+precompute. The bundled set covers 27 element
+packages, Host R's previews included; it lives in pie-players until ng
+publishes `./summary` entries, which then replace it.
 pie-elements-ng owns the descriptor type and the per-element `./summary`
 entries; pie-players owns item-level summarization, the bundled summarizer set
-and the custom elements. Summary precompute in the PIE API backend is optional
-and unscheduled.
+and the custom elements. Wiring precompute into the PIE API backend is
+optional and unscheduled.
 
 Owner: PIE Players maintainers
 
@@ -98,9 +101,9 @@ No PIE package provides a cheap, readable view of an item.
   copy of its macro table in pie-players would drift.
 - **`pie-item-list`**, a new package in the `@pie-players` scope, which owns:
   - `.` registers `<pie-item-summary>` and `<pie-item-list>` as a side effect,
-    as `pie-item-player` does. It ships one self-contained ES module with no
-    bare imports, so a host can load it as a module script from a public CDN
-    with no build step.
+    as `pie-item-player` does. Its entry and lazily loaded chunks are ES
+    modules that import nothing by bare specifier, so a host can load the entry
+    as a module script from a public CDN with no build step.
   - `./summarize` exports `summarizeItem`, `ItemSummary` and the resolvers. It
     is Node-safe, registers nothing and touches no DOM.
   - The bundled summarizer set, an internal chunk that the default resolver
@@ -231,8 +234,9 @@ summarizer, or `null` for the prompt rung. Two resolvers ship:
   in the bundled summarizer set. The set loads in one request per page, and
   set bumps follow the preloaded-set rule: every summarizer moves to npm
   `latest` together.
-- **`pinnedSummaries({ cdnBaseUrl })`** imports `./browser/summary` at the
-  pinned version, deduplicated per `pkg` across the page. A version that
+- **`pinnedSummaries(loaderOptions)`** imports `./browser/summary` at the
+  pinned version from the CDN the item player's `esmCdnUrl` and
+  `esmCdnProvider` name, deduplicated per URL across the page. A version that
   predates its element's `./summary` drops to the prompt rung. The PIE API
   backend rewrites `elements` to sanctioned versions on item read, so this
   resolver follows sanctioned versions with no extra configuration.
@@ -255,6 +259,7 @@ expand chrome around it.
 | `config` | `ItemConfig` | Required |
 | `env` | `Env` | Default `{ mode: "view", role: "instructor" }`. `role` gates answers in both views. The whole object passes to the player, so keys such as `@pie-element.lockChoiceOrder` reach controllers unchanged |
 | `expanded` | `boolean` | Default `false`. `true` mounts the full player |
+| `strategy` | `"iife" \| "esm" \| "preloaded"` | The player's loading strategy, passed unchanged. Default `iife` |
 | `loaderOptions` | item-player `loaderOptions` | Passed to the player unchanged |
 | `resolve` | `SummaryResolver` | Default `bundledSummaries` |
 | `summary` | `ItemSummary` | Optional precomputed summary; see Server precompute |
@@ -283,6 +288,9 @@ elements.
 - A row mounts its player only near the viewport.
 - Rows that become visible together register their elements in one aggregated
   load, the pattern `aggregateElements` and `ensureRegistered` already provide.
+  `pie-item-player` exports it as `preloadItemElements`, built from the
+  player's own backend configuration, so the aggregated load and each player's
+  load resolve the same bundles.
 - Concurrent player mounts are capped, so expanding every row loads them
   progressively.
 
@@ -327,7 +335,8 @@ type ItemListExtension =
 - A row clips its summary view to a fixed height with a fade. The row's expand
   button removes the clip and mounts the player, so one control does both.
 - `expanded-change` fires with `{ id, expanded }`. Row `player-error` events
-  bubble with the entry `id` added.
+  bubble with the entry `id` added. Row `load-complete` events bubble unchanged;
+  each row carries its entry's `id` as `data-item-id`.
 
 ### Math
 
@@ -349,6 +358,9 @@ elementary-math rewrite.
 `ItemSummary` on item write and serve it with the item. A row uses a summary
 only when the host passes one through `summary`, and never fetches one. This
 path is off by default, and nothing in the browser path depends on it.
+`convertSummaryMath` converts a summary's TeX to MathML before storage, so a
+row showing it loads no converter. The backend stores the instructor summary;
+the row strips answers for students.
 
 ## Host Fit
 
@@ -402,8 +414,9 @@ configs before publishing, so it can also precompute summaries at ingestion.
   `pie-item-list` are unversioned player tags, like `pie-item-player`.
 - Contract attributes: not synthesized or rewritten. Entries keep model `id`s
   exactly as authored.
-- `pie-item-player`: consumed as is, through `config`, `env`, `loaderOptions`,
-  `addCorrectResponse`, `load-complete` and `player-error`.
+- `pie-item-player`: consumed through `config`, `env`, `strategy`,
+  `loaderOptions`, `addCorrectResponse`, `load-complete` and `player-error`,
+  plus the new `preloadItemElements` export.
 - Section and assessment state, persisted sessions: untouched.
 - Host-facing wire data: `ItemSummary`, when precomputed.
 
@@ -428,7 +441,8 @@ Hosts own:
 
 `ItemSummary` is wire-facing only when precomputed.
 
-- `schema: 1` versions the contract. `pie-item-list` validates it.
+- `schema: 1` versions the contract. `isItemSummary` validates a summary
+  field by field, and `<pie-item-summary>` recomputes one that fails.
 - Unknown fields are ignored. A summary with an unknown `schema` is discarded
   and recomputed in the browser.
 - Elements version their summarizers with their packages. No migration exists,

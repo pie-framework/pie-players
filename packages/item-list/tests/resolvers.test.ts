@@ -54,13 +54,6 @@ describe("pinnedSummaries", () => {
 		expect(second).toBe(first);
 	});
 
-	test("returns null for a version without the module, and keeps it", async () => {
-		const resolve = pinnedSummaries(loaderOptions);
-		expect(await resolve("pinned-c", "@pie-element/pinned-c@1.0.0")).toBeNull();
-		publish("@pie-element/pinned-c@1.0.0", "export const summarize = () => ({ prompt: 'c' });");
-		expect(await resolve("pinned-c", "@pie-element/pinned-c@1.0.0")).toBeNull();
-	});
-
 	describe("after a failed load", () => {
 		const realFetch = globalThis.fetch;
 		const probes: string[] = [];
@@ -96,10 +89,11 @@ describe("pinnedSummaries", () => {
 			expect(probes[1]).toEndWith("?retry=1");
 		});
 
-		test("keeps a URL the CDN does not have", async () => {
+		test("returns null for a version without the module, and keeps it", async () => {
 			cdnAnswers(404);
 			const resolve = pinnedSummaries(loaderOptions);
 			expect(await resolve("pinned-g", "@pie-element/pinned-g@1.0.0")).toBeNull();
+			publish("@pie-element/pinned-g@1.0.0", "export const summarize = () => ({ prompt: 'g' });");
 			expect(await resolve("pinned-g", "@pie-element/pinned-g@1.0.0")).toBeNull();
 			expect(probes).toHaveLength(1);
 		});

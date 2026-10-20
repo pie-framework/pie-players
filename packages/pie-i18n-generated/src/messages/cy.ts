@@ -73,6 +73,7 @@ const cy = {
 		},
 		list: {
 			expandA11y: "Dangos y cwestiwn cyfan",
+			highlights: "Cyfatebiaethau chwilio",
 		},
 		questions: "Cwestiynau",
 		items: "Cwestiynau",

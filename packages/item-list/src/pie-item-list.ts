@@ -1,11 +1,17 @@
 import type { PieItemPlayerLoaderOptions } from "@pie-players/pie-item-player";
+import type { I18nProvider } from "@pie-players/pie-players-shared/i18n";
 import type { Env, ItemConfig } from "@pie-players/pie-players-shared/types";
 import "./components/PieItemSummary.svelte";
 import "./components/PieItemList.svelte";
 import type { ItemListEntry, ItemListExtension } from "./list/extension.js";
 import type { ItemSummary, SummaryResolver } from "./summarize/summarize-item.js";
 
-export type { ItemListEntry, ItemListExtension } from "./list/extension.js";
+export type {
+	ItemListEntry,
+	ItemListExtension,
+	ItemListExtensionHandle,
+	ItemListHighlight,
+} from "./list/extension.js";
 
 // Types only: `summarizeItem` is imported from `./summarize`, which loads no component.
 export type {
@@ -29,7 +35,10 @@ export interface PieItemSummaryElement extends HTMLElement {
 	summary?: ItemSummary;
 	/** Default `bundledSummaries`; one returning `null` shows each element's prompt or display name. */
 	resolve?: SummaryResolver;
+	/** The interface locale, set on the row's own provider, or on `i18n` when given. */
 	locale?: string;
+	/** A provider for the row's labels and its player's, in place of one the row creates. */
+	i18n?: I18nProvider | null;
 	/** Mounts `<pie-item-player>` for the item once the row nears the viewport. */
 	expanded?: boolean;
 	/** The expanded player's `strategy`. Default `iife`, as on the player. */
@@ -38,16 +47,21 @@ export interface PieItemSummaryElement extends HTMLElement {
 	loaderOptions?: PieItemPlayerLoaderOptions;
 }
 
-/** `<pie-item-list>`: `<pie-item-summary>` rows with details, actions, highlights and an expand button each. */
+/** `<pie-item-list>`: `<pie-item-summary>` rows with details, actions, search matches and an expand button each. */
 export interface PieItemListElement extends HTMLElement {
 	items?: ItemListEntry[];
 	/** Passed to every row. */
 	env?: Env;
 	/** Passed to every row. */
 	resolve?: SummaryResolver;
+	/** The interface locale, set on the list's own provider, or on `i18n` when given. */
 	locale?: string;
+	/** A provider for the list's labels, shared with every row and player, in place of one the list creates. */
+	i18n?: I18nProvider | null;
 	/** Expands every row; a change resets the rows' own toggles. */
 	expanded?: boolean;
+	/** Expands the rows with these ids; a change in its contents resets the rows' own toggles. */
+	expandedIds?: string[];
 	/** Passed to every row's player. */
 	strategy?: "iife" | "esm" | "preloaded";
 	/** Passed to every row's player, so the rows share one element load. */
@@ -56,7 +70,7 @@ export interface PieItemListElement extends HTMLElement {
 	details?: ItemListExtension;
 	/** The row's top-end corner. Default: empty. */
 	actions?: ItemListExtension;
-	/** Below the row's summary, outside its clip, for the host's search matches. Default: empty. */
+	/** Below the row's summary, outside its clip. Default: the entry's `highlights`. */
 	highlights?: ItemListExtension;
 }
 

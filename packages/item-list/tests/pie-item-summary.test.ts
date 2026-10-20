@@ -7,6 +7,7 @@
 import "./support/dom.js";
 import { afterEach, describe, expect, test } from "bun:test";
 import type { ElementSummary } from "@pie-element/shared-types";
+import { createPieI18n } from "@pie-players/pie-players-shared/i18n";
 import type { PieContent } from "@pie-players/pie-players-shared/types";
 import type { ItemSummary, PieItemSummaryElement } from "../src/pie-item-list.js";
 
@@ -172,6 +173,14 @@ describe("<pie-item-summary>", () => {
 				[...group.querySelectorAll(".pie-item-summary__option-label")].map((label) => label.textContent),
 			),
 		).toEqual([["Cat", "Dog"], ["Trout"]]);
+	});
+
+	test("labels its text through a supplied provider, keeping its owner's locale", async () => {
+		const i18n = createPieI18n();
+		await i18n.setLocale("nl-NL");
+		const { element } = await mount({ summary: precomputed, i18n });
+		expect(i18n.getLocale()).toBe("nl-NL");
+		expect(element.querySelector(".pie-item-summary__answer-label")?.textContent).toBe("Antwoord");
 	});
 
 	test("labels its own text in the requested locale", async () => {

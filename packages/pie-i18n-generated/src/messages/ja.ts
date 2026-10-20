@@ -70,6 +70,7 @@ const ja = {
 		},
 		list: {
 			expandA11y: "問題全体を表示",
+			highlights: "検索一致箇所",
 		},
 		questions: "問題",
 		items: "問題",

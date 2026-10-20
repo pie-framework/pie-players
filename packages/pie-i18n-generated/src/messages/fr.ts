@@ -72,6 +72,7 @@ const fr = {
 		},
 		list: {
 			expandA11y: "Afficher la question complète",
+			highlights: "Correspondances de la recherche",
 		},
 		questions: "Questions",
 		items: "Questions",

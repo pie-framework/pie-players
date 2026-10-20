@@ -129,6 +129,7 @@ const nlNL = {
 		},
 		list: {
 			expandA11y: "Volledige vraag tonen",
+			highlights: "Zoektreffers",
 		},
 	},
 

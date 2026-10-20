@@ -11,6 +11,8 @@
 			resolve: { type: "Object", reflect: false },
 			// Interface locale for the row's own labels, as a BCP-47 tag. Unset renders `en-US`.
 			locale: { attribute: "locale", type: "String" },
+			// A provider for the row's labels and its player's; `<pie-item-list>` hands every row its own.
+			i18n: { type: "Object", reflect: false },
 			expanded: { attribute: "expanded", type: "Boolean" },
 			strategy: { attribute: "strategy", type: "String" },
 			loaderOptions: { type: "Object", reflect: false },
@@ -25,13 +27,11 @@ One PIE item as a list row: its stem, prompts, options and, for instructors, its
 
 @fires {CustomEvent<{ view: "summary" | "player" }>} load-complete - `summary` once per rendered summary, after math conversion; a new `env` with the same role does not re-render. `player` once the expanded row's player has loaded and replaced the summary.
 @fires {CustomEvent<{ code: string; message: string; recoverable: boolean }>} player-error - The expanded row's player failed to load, re-dispatched with the player's detail, or did not load in time (`recoverable: true`). The summary keeps showing; collapsing and expanding again retries.
+@fires {CustomEvent<{ kind: "i18n-locale-load"; source: string; message: string; details: string[]; recoverable: true; scope: "runtime"; cause?: unknown }>} framework-error - A requested interface-locale catalog failed to load; the row's labels fall back to English, and re-setting `locale` retries.
 -->
 
 <script lang="ts">
-	import {
-		createPieI18n,
-		DEFAULT_LOCALE,
-	} from "@pie-players/pie-players-shared/i18n";
+	import type { I18nProvider } from "@pie-players/pie-players-shared/i18n";
 	import type { Env, ItemConfig } from "@pie-players/pie-players-shared/types";
 	import { coerceBooleanAttributes } from "@pie-players/pie-players-shared/ui/attribute-coercion";
 	import { tick, untrack } from "svelte";
@@ -47,6 +47,7 @@ One PIE item as a list row: its stem, prompts, options and, for instructors, its
 		summarizeItem,
 	} from "../summarize/summarize-item.js";
 	import { isItemSummary } from "../summarize/validate.js";
+	import { useInterfaceI18n } from "./interface-i18n.svelte.js";
 	import {
 		type RenderedBlock,
 		type RenderedOption,
@@ -60,6 +61,7 @@ One PIE item as a list row: its stem, prompts, options and, for instructors, its
 		summary,
 		resolve,
 		locale = "",
+		i18n,
 		expanded = false,
 		strategy,
 		loaderOptions,
@@ -69,6 +71,7 @@ One PIE item as a list row: its stem, prompts, options and, for instructors, its
 		summary?: ItemSummary;
 		resolve?: SummaryResolver;
 		locale?: string;
+		i18n?: I18nProvider | null;
 		expanded?: boolean;
 		strategy?: PlayerLoadInputs["strategy"];
 		loaderOptions?: PlayerLoadInputs["loaderOptions"];
@@ -76,25 +79,8 @@ One PIE item as a list row: its stem, prompts, options and, for instructors, its
 
 	const hostElement: HTMLElement = $host();
 
-	const i18n = createPieI18n();
-	let i18nVersion = $state(0);
-	$effect(() =>
-		i18n.subscribe(() => {
-			i18nVersion += 1;
-		}),
-	);
-	$effect(() => {
-		const requested = typeof locale === "string" ? locale.trim() : "";
-		untrack(() => {
-			// Every key still resolves through the English fallback when a catalog fails to load.
-			void Promise.resolve(i18n.setLocale(requested || DEFAULT_LOCALE)).catch(
-				() => {},
-			);
-		});
-	});
-	// A new object per catalog change: a derived that returns the same `i18n` compares equal and
-	// never re-renders the labels read through it.
-	const messages = $derived((void i18nVersion, { t: i18n.t.bind(i18n) }));
+	const interfaceI18n = useInterfaceI18n(hostElement, "pie-item-summary", () => ({ i18n, locale }));
+	const messages = $derived(interfaceI18n.messages);
 
 	let rendered = $state<RenderedSummary | null>(null);
 	let generation = 0;
@@ -302,6 +288,7 @@ One PIE item as a list row: its stem, prompts, options and, for instructors, its
 			env={playerEnv}
 			strategy={strategy}
 			loaderOptions={loaderOptions}
+			i18n={interfaceI18n.provider}
 			addCorrectResponse={role === "instructor"}
 		></pie-item-player>
 	</div>
@@ -383,11 +370,26 @@ One PIE item as a list row: its stem, prompts, options and, for instructors, its
 		min-width: 0;
 	}
 
-	.pie-item-summary__option-label :global(:first-child) {
+	/* The view's gaps space its blocks, so the outer margins of each authored fragment go. */
+	:is(
+			.pie-item-summary__stem,
+			.pie-item-summary__prompt,
+			.pie-item-summary__group-label,
+			.pie-item-summary__option-label,
+			.pie-item-summary__answer-content
+		)
+		:global(:first-child) {
 		margin-block-start: 0;
 	}
 
-	.pie-item-summary__option-label :global(:last-child) {
+	:is(
+			.pie-item-summary__stem,
+			.pie-item-summary__prompt,
+			.pie-item-summary__group-label,
+			.pie-item-summary__option-label,
+			.pie-item-summary__answer-content
+		)
+		:global(:last-child) {
 		margin-block-end: 0;
 	}
 

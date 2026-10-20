@@ -70,6 +70,7 @@ const es = {
 		},
 		list: {
 			expandA11y: "Mostrar la pregunta completa",
+			highlights: "Coincidencias de la búsqueda",
 		},
 		questions: "Preguntas",
 		items: "Preguntas",

@@ -134,6 +134,7 @@ const ro = {
 		},
 		list: {
 			expandA11y: "Afișează itemul complet",
+			highlights: "Potriviri de căutare",
 		},
 	},
 

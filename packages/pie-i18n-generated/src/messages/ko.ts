@@ -70,6 +70,7 @@ const ko = {
 		},
 		list: {
 			expandA11y: "문항 전체 보기",
+			highlights: "검색 일치 항목",
 		},
 		questions: "문항",
 		items: "문항",

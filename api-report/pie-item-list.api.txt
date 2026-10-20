@@ -7,6 +7,8 @@
   type ElementSummary
   type ItemListEntry
   type ItemListExtension
+  type ItemListExtensionHandle
+  type ItemListHighlight
   type ItemSummary
   type ItemSummaryEntry
   type PieItemListElement
@@ -22,6 +24,8 @@
   type ElementSummary
   type ItemListEntry
   type ItemListExtension
+  type ItemListExtensionHandle
+  type ItemListHighlight
   type ItemSummary
   type ItemSummaryEntry
   type PieItemListElement

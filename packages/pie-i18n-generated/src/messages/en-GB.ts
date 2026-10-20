@@ -67,6 +67,7 @@ const enGB = {
 		},
 		list: {
 			expandA11y: "Show the full question",
+			highlights: "Search matches",
 		},
 		questions: "Questions",
 		items: "Questions",

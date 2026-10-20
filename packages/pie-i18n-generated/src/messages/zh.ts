@@ -70,6 +70,7 @@ const zh = {
 		},
 		list: {
 			expandA11y: "显示完整题目",
+			highlights: "搜索匹配项",
 		},
 		questions: "题目",
 		items: "题目",

@@ -170,12 +170,12 @@ const enUS = {
 			audio: "Audio",
 			video: "Video",
 		},
-		/**
-		 * `<pie-item-list>`: the row toggle, a disclosure button whose `aria-expanded`
-		 * carries the state, so its label stays the same either way.
-		 */
+		/** `<pie-item-list>`. */
 		list: {
+			/** The row toggle, a disclosure button whose `aria-expanded` carries the state, so its label stays the same either way. */
 			expandA11y: "Show the full item",
+			/** Names the block of an entry's search matches below its summary. */
+			highlights: "Search matches",
 		},
 	},
 

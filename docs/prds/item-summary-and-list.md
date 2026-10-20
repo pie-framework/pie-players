@@ -314,31 +314,56 @@ interface ItemListEntry {
   version?: string;
   passage?: ItemConfig;
   summary?: ItemSummary;
+  /** One per matched field; `<mark>` marks a match in each snippet. */
+  highlights?: { label?: string; snippets: string[] }[];
   /** Host data, passed through to the extension points untouched. */
   data?: unknown;
 }
 
 type ItemListExtension =
   | string // custom element tag name; receives the entry as its `item` property
-  | ((entry: ItemListEntry, host: HTMLElement) => void | (() => void));
+  | ((
+      entry: ItemListEntry,
+      host: HTMLElement,
+    ) => void | { update?(entry: ItemListEntry): void; destroy?(): void });
 ```
 
 - Properties: `items: ItemListEntry[]`, plus `env`, `loaderOptions` and
-  `resolve`, which pass through to each row. `expanded` sets every row, and a
-  change to it resets per-row overrides. `details`, `actions` and
-  `highlights` take an `ItemListExtension` each.
+  `resolve`, which pass through to each row. `expanded` sets every row and
+  `expandedIds` the rows it names; a change to either resets per-row overrides,
+  and `expandedIds` compares by contents, so a host re-rendering an equal array
+  keeps them. `details`, `actions` and `highlights` take an `ItemListExtension`
+  each.
+- The list owns one i18n provider, or takes the host's through `i18n`, and
+  passes it to every row, which passes it to its player. One provider per list
+  keeps a locale change to one catalog load, and the player's chrome follows
+  the list's locale.
 - `details` renders in the row's leading column. By default it shows `name`,
   `id` and `version`. `actions` renders in the row's top-end corner and is empty
   by default: preview, select, edit, copy and delete are host actions.
-- `highlights` renders below the summary, outside its clip, and is empty by
-  default. The list marks no search terms in the summary itself: a host's
-  search engine already returns match snippets, and a host renders those.
-- A function extension renders into `host` and may return a cleanup. Framework
-  components (Svelte, Vue, React) mount through it, so the two forms cover tag
-  names, DOM-returning functions and framework components.
-- A row clips its summary view to a fixed height with a fade. The row's expand
-  button removes the clip and mounts the player, so one control does both.
-- `expanded-change` fires with `{ id, expanded }`. Row `player-error` events
+- The entry's `highlights` render below the summary, outside its clip. The list
+  marks no search terms in the summary itself: a host's search engine already
+  returns match snippets, configured to mark matches with `<mark>`. The list
+  renders only each snippet's text and its marks, as text nodes and `<mark>`
+  elements, so snippet HTML never reaches the page and no host sanitizes it. A
+  snippet repeating one shown for an earlier field is dropped, since engines
+  return the same text for a field and its subfields. The `highlights` extension
+  replaces the built-in block for a host with its own rendering, as `details`
+  does. The name follows the search engines' highlight field; `matches` would
+  shadow `Element.matches()` on the list element.
+- A function extension renders into `host` and may return a handle with
+  `update(entry)` and `destroy()`, the shape of a Svelte action. Framework
+  components (Svelte, Vue, React) mount through it and take a changed entry
+  through `update`, so the forms cover tag names, DOM-returning functions and
+  framework components.
+- Collapsed, the passage shows its first line and the item's summary is clipped
+  to `--pie-item-list-clip-height` with a fade, so a long passage never hides
+  the item. The row's expand button removes both clips and mounts the players,
+  so one control does both.
+- The expand button is sticky within its row, below `--pie-item-list-sticky-top`,
+  so a tall expanded row can be collapsed without scrolling back; collapsing
+  scrolls the button into view.
+- `expanded-change` fires with `{ id, expanded, expandedIds }`. Row `player-error` events
   bubble with the entry `id` added. Row `load-complete` events bubble unchanged;
   each row carries its entry's `id` as `data-item-id`.
 
@@ -397,7 +422,7 @@ public CDN at a version the host chooses at runtime. Adoption:
 
 Host R's own list component becomes `<pie-item-list>`. Its per-row collapse
 state, passage above the item, details and actions slots and search-match
-snippets map onto the composition directly, the snippets as `highlights`. Its
+snippets map onto the composition directly, the snippets as entry `highlights`. Its
 tag-name extension currently receives the item as a JSON `data-item` attribute;
 under `<pie-item-list>` it receives the entry as an `item` property. The 25 preview components are the seed for ng `./summary`
 ports and are deleted once those land, which keeps the reference app
@@ -460,10 +485,15 @@ Hosts own:
   marker carries a text alternative, so meaning never rides on color or the
   glyph alone.
 - Math renders as MathML, which screen readers read natively.
-- The expand control in `<pie-item-list>` is a button with `aria-expanded` and
-  `aria-controls`. The view swap keeps focus on that button, and the row is
-  `aria-busy` while its player loads.
-- The fade and the view swap do not animate under `prefers-reduced-motion`.
+- The expand control in `<pie-item-list>` is a button with `aria-expanded`,
+  `aria-controls` naming the view and `aria-describedby` naming the row's
+  details, so each button announces which item it expands. The view swap keeps
+  focus on that button, and the row is `aria-busy` while its player loads, with
+  a spinner in the button.
+- A row's search matches are a group labelled by a catalog string, with matches
+  as `<mark>` elements.
+- The fade, the view swap and the spinner do not animate under
+  `prefers-reduced-motion`.
 - Whether Chromebooks ship a math font that renders native MathML acceptably is
   unchecked; see Open Questions.
 

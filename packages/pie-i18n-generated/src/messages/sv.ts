@@ -71,6 +71,7 @@ const sv = {
 		},
 		list: {
 			expandA11y: "Visa hela uppgiften",
+			highlights: "Sökträffar",
 		},
 		questions: "Frågor",
 		items: "Uppgifter",

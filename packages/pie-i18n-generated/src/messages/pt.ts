@@ -70,6 +70,7 @@ const pt = {
 		},
 		list: {
 			expandA11y: "Mostrar a pergunta completa",
+			highlights: "Correspondências da pesquisa",
 		},
 		questions: "Perguntas",
 		items: "Perguntas",

@@ -325,11 +325,14 @@ type ItemListExtension =
 
 - Properties: `items: ItemListEntry[]`, plus `env`, `loaderOptions` and
   `resolve`, which pass through to each row. `expanded` sets every row, and a
-  change to it resets per-row overrides. `details` and `actions` take an
-  `ItemListExtension` each.
+  change to it resets per-row overrides. `details`, `actions` and
+  `highlights` take an `ItemListExtension` each.
 - `details` renders in the row's leading column. By default it shows `name`,
   `id` and `version`. `actions` renders in the row's top-end corner and is empty
   by default: preview, select, edit, copy and delete are host actions.
+- `highlights` renders below the summary, outside its clip, and is empty by
+  default. The list marks no search terms in the summary itself: a host's
+  search engine already returns match snippets, and a host renders those.
 - A function extension renders into `host` and may return a cleanup. Framework
   components (Svelte, Vue, React) mount through it, so the two forms cover tag
   names, DOM-returning functions and framework components.
@@ -393,10 +396,10 @@ public CDN at a version the host chooses at runtime. Adoption:
 ### Host R
 
 Host R's own list component becomes `<pie-item-list>`. Its per-row collapse
-state, passage above the item and details and actions slots map onto the
-composition directly. Its tag-name extension currently receives the item as a
-JSON `data-item` attribute; under `<pie-item-list>` it receives the entry as an
-`item` property. The 25 preview components are the seed for ng `./summary`
+state, passage above the item, details and actions slots and search-match
+snippets map onto the composition directly, the snippets as `highlights`. Its
+tag-name extension currently receives the item as a JSON `data-item` attribute;
+under `<pie-item-list>` it receives the entry as an `item` property. The 25 preview components are the seed for ng `./summary`
 ports and are deleted once those land, which keeps the reference app
 representative of what other hosts get.
 
@@ -511,8 +514,8 @@ custom elements and export boundary.
      content the prompt rung misses. Then the remaining Host R previews, by
      element.
   3. The player view and scheduling. Host B can adopt from here.
-  4. `<pie-item-list>` with `details` and `actions`. Host R adopts and deletes
-     its previews.
+  4. `<pie-item-list>` with `details`, `actions` and `highlights`. Host R
+     adopts and deletes its previews.
   5. Optional: backend precompute.
 - `summarizeItem` also improves the print player's missing-element fallback,
   since most elements publish no print view. That is a separate change.
@@ -523,8 +526,6 @@ custom elements and export boundary.
 
 - Should an instructor be able to hide answers without switching `role`, for
   example when projecting items to a class?
-- Should `<pie-item-list>` highlight search terms in the summary view? Host R
-  highlights them today.
 - Do hosts need to tune the scheduler's concurrency cap and viewport margin, or
   are fixed defaults enough?
 - Host B also mounts legacy authoring and print elements that register through

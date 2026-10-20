@@ -3,8 +3,8 @@
 Readable summaries of PIE items for item banks, search results and section
 outlines. `summarizeItem` reduces an item to data, `<pie-item-summary>`
 renders it as one list row, with no element code loaded until the row expands
-into an item player, and `<pie-item-list>` composes rows with details, actions
-and an expand button. PIE stands for
+into an item player, and `<pie-item-list>` composes rows with details, actions,
+highlights and an expand button. PIE stands for
 Portable Interactions and Elements. The design is the
 [Item summaries and item lists PRD](../../docs/prds/item-summary-and-list.md).
 
@@ -165,8 +165,8 @@ Collapsing and expanding the row again retries.
 
 A list of `<pie-item-summary>` rows for a host with no list chrome of its own.
 Each row shows the entry's details in a leading column, the host's actions in
-its top-end corner and the item's summary, with the entry's passage summarized
-above it. The summary is clipped to a fixed height, fading out when it runs
+its top-end corner, the item's summary, with the entry's passage summarized
+above it, and the host's search highlights below it. The summary is clipped to a fixed height, fading out when it runs
 past the clip. The row's expand button removes the clip and expands both
 summaries into players.
 
@@ -191,12 +191,13 @@ summaries into players.
 | `expanded` | `boolean` | Expands every row. A change resets the rows' own toggles. Also an attribute |
 | `details` | `ItemListExtension` | The leading column. Default: the entry's `name`, `id` and `version` |
 | `actions` | `ItemListExtension` | The top-end corner. Default: empty |
+| `highlights` | `ItemListExtension` | Below the summary, outside its clip, so a collapsed row still shows why it matched. Hidden while it renders nothing. Default: empty |
 
 An `ItemListExtension` is one of:
 
 - A custom element tag name. The row creates the element once and sets its
   `item` property to the entry, again whenever the entry changes. A tag name can
-  also be set as the `details` or `actions` attribute.
+  also be set as the `details`, `actions` or `highlights` attribute.
 - A function `(entry, host) => void | cleanup`, which renders into `host`.
   Framework components mount through it. It runs again only when the entry or
   the function changes identity, after its cleanup, and the cleanup also runs
@@ -216,9 +217,10 @@ The expand button is a disclosure button: `aria-expanded` carries the state,
 in. A row is `aria-busy` from expanding until its item's player loads or fails.
 Below a list width of 36em the details stack above the content.
 
-Search-term highlighting, pagination, sorting and the empty state stay with the
-host. A host that marks search hits renders them through `details`, and one
-that hides passages leaves `passage` out of its entries.
+The list marks no search terms in the summary: a host renders its search
+engine's matches through `highlights`, sanitizing any HTML they carry.
+Pagination, sorting and the empty state stay with the host, and one that hides
+passages leaves `passage` out of its entries.
 
 ## Exports
 

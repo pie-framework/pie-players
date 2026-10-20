@@ -17,7 +17,7 @@ export interface ItemListEntry {
 }
 
 /**
- * Renders into a row's `details` or `actions` slot. A tag name is created once per row and receives
+ * Renders into a row's `details`, `actions` or `highlights` slot. A tag name is created once per row and receives
  * the entry as its `item` property. A function renders into `host` and may return a cleanup, which
  * runs before it renders a changed entry and when the row goes away; framework components mount
  * through it.

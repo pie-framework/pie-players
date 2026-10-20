@@ -15,6 +15,7 @@
 			// A tag name can be set as an attribute; a function only as a property.
 			details: { attribute: "details", type: "String" },
 			actions: { attribute: "actions", type: "String" },
+			highlights: { attribute: "highlights", type: "String" },
 		},
 		extend: coerceBooleanAttributes,
 	}}
@@ -26,7 +27,7 @@
 
 <!--
 @component
-PIE items as a list of `<pie-item-summary>` rows, for a host with no list chrome of its own. Each row shows the entry's details in a leading column, the host's actions in its top-end corner, and the item's summary clipped to a fixed height, with its passage above it. The row's expand button removes the clip and mounts the item's player.
+PIE items as a list of `<pie-item-summary>` rows, for a host with no list chrome of its own. Each row shows the entry's details in a leading column, the host's actions in its top-end corner, the item's summary clipped to a fixed height, with its passage above it, and the host's search matches below it. The row's expand button removes the clip and mounts the item's player.
 
 @fires {CustomEvent<{ id: string; expanded: boolean }>} expanded-change - A row's expand button was pressed.
 @fires {CustomEvent<{ id: string; code: string; message: string; recoverable: boolean }>} player-error - A row's player failed to load, with the entry `id` added to `<pie-item-summary>`'s detail.
@@ -60,6 +61,7 @@ PIE items as a list of `<pie-item-summary>` rows, for a host with no list chrome
 		loaderOptions,
 		details,
 		actions,
+		highlights,
 	}: {
 		items?: ItemListEntry[];
 		env?: Env;
@@ -70,6 +72,7 @@ PIE items as a list of `<pie-item-summary>` rows, for a host with no list chrome
 		loaderOptions?: PlayerLoadInputs["loaderOptions"];
 		details?: ItemListExtension;
 		actions?: ItemListExtension;
+		highlights?: ItemListExtension;
 	} = $props();
 
 	const hostElement: HTMLElement = $host();
@@ -266,6 +269,9 @@ PIE items as a list of `<pie-item-summary>` rows, for a host with no list chrome
 						expanded={open}
 					></pie-item-summary>
 				</div>
+				{#if highlights}
+					<div class="pie-item-list__highlights" use:extension={[highlights, entry]}></div>
+				{/if}
 			</div>
 			<button
 				type="button"
@@ -360,6 +366,16 @@ PIE items as a list of `<pie-item-summary>` rows, for a host with no list chrome
 
 	.pie-item-list__view--clipped:global([data-overflowing]) {
 		mask-image: linear-gradient(to bottom, #000 60%, transparent);
+	}
+
+	/* Outside the clip, so a collapsed row still shows why it matched. */
+	.pie-item-list__highlights {
+		clear: both;
+		margin-top: 0.75em;
+	}
+
+	.pie-item-list__highlights:empty {
+		display: none;
 	}
 
 	.pie-item-list__passage {

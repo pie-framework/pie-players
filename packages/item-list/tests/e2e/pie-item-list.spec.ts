@@ -16,7 +16,7 @@ test.beforeAll(() => assertBrowserBuild("pie-item-list.spec"));
 
 const LONG_PROMPT = Array.from({ length: 12 }, (_, index) => `<p>Line ${index + 1}</p>`).join("");
 
-/** Mounts a list with a long and a short item, a tag-name `actions` and a function `details`. */
+/** Mounts a list with a long and a short item, a tag-name `actions`, and function `details` and `highlights`. */
 async function mountList(page: Page): Promise<void> {
 	await page.evaluate(
 		({ long, short }) => {
@@ -34,8 +34,11 @@ async function mountList(page: Page): Promise<void> {
 			list.details = (entry: { id: string; data?: { owner: string } }, host: HTMLElement) => {
 				host.textContent = `${entry.id} by ${entry.data?.owner}`;
 			};
+			list.highlights = (entry: { data?: { match?: string } }, host: HTMLElement) => {
+				if (entry.data?.match) host.textContent = entry.data.match;
+			};
 			list.items = [
-				{ id: "long", config: long, data: { owner: "Ada" } },
+				{ id: "long", config: long, data: { owner: "Ada", match: "Line 12" } },
 				{ id: "short", config: short, data: { owner: "Grace" } },
 			];
 			const events: unknown[] = [];
@@ -57,6 +60,10 @@ test.describe("<pie-item-list>", () => {
 		await mountList(page);
 		await expect(row(page, "long").locator(".pie-item-list__details")).toHaveText("long by Ada");
 		await expect(row(page, "short").locator("row-actions")).toHaveText("Edit short");
+		// Outside the clip, so the collapsed row still shows its match; empty, it takes no space.
+		await expect(row(page, "long").locator(".pie-item-list__highlights")).toBeVisible();
+		await expect(row(page, "long").locator(".pie-item-list__highlights")).toHaveText("Line 12");
+		await expect(row(page, "short").locator(".pie-item-list__highlights")).toBeHidden();
 		const longView = row(page, "long").locator(".pie-item-list__view");
 		await expect(longView).toHaveAttribute("data-overflowing", "");
 		expect(await longView.evaluate((view) => view.getBoundingClientRect().height)).toBeLessThan(

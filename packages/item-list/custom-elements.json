@@ -7,7 +7,7 @@
 			"declarations": [
 				{
 					"kind": "class",
-					"description": "PIE items as a list of `<pie-item-summary>` rows, for a host with no list chrome of its own. Each row shows the entry's details in a leading column, the host's actions in its top-end corner, and the item's summary clipped to a fixed height, with its passage above it. The row's expand button removes the clip and mounts the item's player.",
+					"description": "PIE items as a list of `<pie-item-summary>` rows, for a host with no list chrome of its own. Each row shows the entry's details in a leading column, the host's actions in its top-end corner, the item's summary clipped to a fixed height, with its passage above it, and the host's search matches below it. The row's expand button removes the clip and mounts the item's player.",
 					"name": "PieItemList",
 					"tagName": "pie-item-list",
 					"customElement": true,
@@ -87,6 +87,14 @@
 								"text": "ItemListExtension"
 							},
 							"attribute": "actions"
+						},
+						{
+							"kind": "field",
+							"name": "highlights",
+							"type": {
+								"text": "ItemListExtension"
+							},
+							"attribute": "highlights"
 						}
 					],
 					"attributes": [
@@ -156,6 +164,13 @@
 								"text": "string"
 							},
 							"fieldName": "actions"
+						},
+						{
+							"name": "highlights",
+							"type": {
+								"text": "string"
+							},
+							"fieldName": "highlights"
 						}
 					],
 					"events": [
@@ -189,6 +204,7 @@
 							"pie-item-list__content",
 							"pie-item-list__details",
 							"pie-item-list__extension",
+							"pie-item-list__highlights",
 							"pie-item-list__id",
 							"pie-item-list__item",
 							"pie-item-list__name",

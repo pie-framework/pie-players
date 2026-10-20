@@ -213,6 +213,28 @@ describe("<pie-item-list>", () => {
 		expect(calls).toEqual(["render one", "cleanup one", "render two", "cleanup two"]);
 	});
 
+	test("renders `highlights` below the summary, outside its clip, only when given", async () => {
+		const highlights = (entry: ItemListEntry, host: HTMLElement) => {
+			const matches = entry.data as string[] | undefined;
+			if (matches) host.textContent = matches.join(" … ");
+		};
+		const { list } = await mount({
+			items: [
+				{ id: "a", config: item("a"), data: ["a <em>river</em> runs"] },
+				{ id: "b", config: item("b") },
+			],
+			highlights,
+		});
+		const [first, second] = rows(list);
+		const shown = first.querySelector<HTMLElement>(".pie-item-list__highlights");
+		expect(shown?.textContent).toBe("a <em>river</em> runs");
+		expect(shown?.previousElementSibling?.classList.contains("pie-item-list__view")).toBe(true);
+		expect(second.querySelector(".pie-item-list__highlights")?.childNodes).toHaveLength(0);
+
+		const { list: plain } = await mount({ items: [{ id: "c", config: item("c") }] });
+		expect(plain.querySelector(".pie-item-list__highlights")).toBeNull();
+	});
+
 	test("keeps rendering the other rows when an extension throws", async () => {
 		const original = console.error;
 		console.error = () => {};

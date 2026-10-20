@@ -38,7 +38,7 @@ export interface PieItemSummaryElement extends HTMLElement {
 	loaderOptions?: PieItemPlayerLoaderOptions;
 }
 
-/** `<pie-item-list>`: `<pie-item-summary>` rows with details, actions and an expand button each. */
+/** `<pie-item-list>`: `<pie-item-summary>` rows with details, actions, highlights and an expand button each. */
 export interface PieItemListElement extends HTMLElement {
 	items?: ItemListEntry[];
 	/** Passed to every row. */
@@ -56,6 +56,8 @@ export interface PieItemListElement extends HTMLElement {
 	details?: ItemListExtension;
 	/** The row's top-end corner. Default: empty. */
 	actions?: ItemListExtension;
+	/** Below the row's summary, outside its clip, for the host's search matches. Default: empty. */
+	highlights?: ItemListExtension;
 }
 
 declare global {

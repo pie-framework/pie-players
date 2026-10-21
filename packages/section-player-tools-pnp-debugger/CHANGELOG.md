@@ -1,5 +1,11 @@
 # @pie-players/pie-section-player-tools-pnp-debugger
 
+## 1.0.0-beta.5
+
+### Patch Changes
+
+- @pie-players/pie-assessment-toolkit@1.0.0-beta.5
+
 ## 1.0.0-beta.4
 
 ### Patch Changes

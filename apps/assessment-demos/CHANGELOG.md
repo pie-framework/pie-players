@@ -1,5 +1,29 @@
 # @pie-players/assessment-demos
 
+## 0.1.63-beta.5
+
+### Patch Changes
+
+- Updated dependencies [e0797ec]
+- Updated dependencies [db7d543]
+- Updated dependencies [2dee856]
+- Updated dependencies [f5e11b1]
+- Updated dependencies [f02f97f]
+- Updated dependencies [5a33154]
+  - @pie-players/pie-players-shared@1.0.0-beta.5
+  - @pie-players/pie-theme@1.0.0-beta.5
+  - @pie-players/pie-item-player@1.0.0-beta.5
+  - @pie-players/demo-ui@0.1.3-beta.5
+  - @pie-players/pie-assessment-player@1.0.0-beta.5
+  - @pie-players/pie-assessment-toolkit@1.0.0-beta.5
+  - @pie-players/pie-default-tool-loaders@1.0.0-beta.5
+  - @pie-players/pie-section-player-tools-event-debugger@1.0.0-beta.5
+  - @pie-players/pie-section-player-tools-instrumentation-debugger@1.0.0-beta.5
+  - @pie-players/pie-section-player-tools-session-debugger@1.0.0-beta.5
+  - @pie-players/pie-section-player-tools-shared@1.0.0-beta.5
+  - @pie-players/tts-server-google@1.0.0-beta.5
+  - @pie-players/tts-server-polly@1.0.0-beta.5
+
 ## 0.1.63-beta.4
 
 ### Patch Changes

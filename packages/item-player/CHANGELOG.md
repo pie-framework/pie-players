@@ -1,5 +1,19 @@
 # @pie-players/pie-item-player
 
+## 1.0.0-beta.5
+
+### Patch Changes
+
+- f5e11b1: The item player renders math through `@pie-element/shared-math-rendering-mathjax` 0.1.7, the version `@pie-players/pie-item-list` converts TeX with, which adds the perpendicular and divide macros.
+- f02f97f: `<pie-item-summary>` gains `expanded`, `strategy` and `loaderOptions`: an expanded row mounts `<pie-item-player>` near the viewport and swaps it in once loaded, with element loads aggregated and capped page-wide. `@pie-players/pie-item-player` exports `preloadItemElements`, and `@pie-players/pie-item-list/browser` is a self-contained build for CDN use.
+- 5a33154: The section player's element pre-warm now loads through the item player's backend and tags, so in author mode or under a named ESM view it registers the editor and view tags its item players expect, and an author `env.mode` no longer switches it to the editor bundle while the players load delivery. `pie-item-player` exports `itemPlayerBackend` and `itemPlayerElementTags`, and `preloadItemElements` takes an `instrumentationProvider` and an `onBundleRetryStatus` option.
+- Updated dependencies [e0797ec]
+- Updated dependencies [db7d543]
+- Updated dependencies [2dee856]
+- Updated dependencies [f5e11b1]
+  - @pie-players/pie-players-shared@1.0.0-beta.5
+  - @pie-players/pie-context@1.0.0-beta.5
+
 ## 1.0.0-beta.4
 
 ### Patch Changes

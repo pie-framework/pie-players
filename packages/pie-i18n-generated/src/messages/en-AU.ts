@@ -66,6 +66,12 @@ const enAU = {
 			audio: "Audio",
 			video: "Video",
 		},
+		list: {
+			expandA11y: "Show the full question",
+			highlights: "Search matches",
+			collapse: "Show the summary",
+			playerError: "The full question could not be loaded.",
+		},
 		questions: "Questions",
 		items: "Questions",
 		section: "Section",

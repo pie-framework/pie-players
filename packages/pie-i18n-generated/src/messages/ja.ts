@@ -68,6 +68,12 @@ const ja = {
 			audio: "音声",
 			video: "動画",
 		},
+		list: {
+			expandA11y: "問題全体を表示",
+			highlights: "検索一致箇所",
+			collapse: "概要を表示",
+			playerError: "問題全体を読み込めませんでした。",
+		},
 		questions: "問題",
 		items: "問題",
 		section: "セクション",

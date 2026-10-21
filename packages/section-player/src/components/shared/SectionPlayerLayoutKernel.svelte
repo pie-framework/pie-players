@@ -288,7 +288,6 @@
 			resolvedPlayerProps: effectiveResolvedPlayerProps,
 			playerStrategy,
 			baseHeadingLevel: resolvedBaseHeadingLevel,
-			iifeBundleHost: iifeBundleHost ?? null,
 			toolRegistry: effectiveToolRegistry,
 			itemToolbarTools: effectiveItemToolbarTools,
 			passageToolbarTools: effectivePassageToolbarTools,

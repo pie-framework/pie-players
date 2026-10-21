@@ -7,7 +7,295 @@
 			"declarations": [
 				{
 					"kind": "class",
-					"description": "One PIE item as a list row: its stem, prompts, options and, for instructors, its answers, rendered as sanitized HTML with math as MathML. No element code loads. A host gives it the item `config`, or a precomputed `summary`, and keeps its own list, card and expand chrome around it.",
+					"description": "PIE items as a list of `<pie-item-summary>` rows, for a host with no list chrome of its own. Each row shows the entry's details in a leading column, the host's actions in its top-end corner, the item's summary clipped to a fixed height under the first line of each of its passages, and the entry's search matches below it. The row's expand button removes the clips and mounts the item's player.",
+					"name": "PieItemList",
+					"tagName": "pie-item-list",
+					"customElement": true,
+					"members": [
+						{
+							"kind": "field",
+							"name": "items",
+							"type": {
+								"text": "ItemListEntry[]"
+							},
+							"default": "[]",
+							"attribute": "items"
+						},
+						{
+							"kind": "field",
+							"name": "env",
+							"type": {
+								"text": "Env"
+							},
+							"attribute": "env"
+						},
+						{
+							"kind": "field",
+							"name": "resolve",
+							"type": {
+								"text": "SummaryResolver"
+							},
+							"attribute": "resolve"
+						},
+						{
+							"kind": "field",
+							"name": "locale",
+							"type": {
+								"text": "string"
+							},
+							"default": "\"\"",
+							"attribute": "locale"
+						},
+						{
+							"kind": "field",
+							"name": "i18n",
+							"type": {
+								"text": "I18nProvider | null"
+							},
+							"attribute": "i18n"
+						},
+						{
+							"kind": "field",
+							"name": "expanded",
+							"type": {
+								"text": "boolean"
+							},
+							"default": "false",
+							"attribute": "expanded"
+						},
+						{
+							"kind": "field",
+							"name": "expandedIds",
+							"type": {
+								"text": "string[]"
+							},
+							"attribute": "expandedids"
+						},
+						{
+							"kind": "field",
+							"name": "strategy",
+							"type": {
+								"text": "PlayerLoadInputs[\"strategy\"]"
+							},
+							"attribute": "strategy"
+						},
+						{
+							"kind": "field",
+							"name": "loaderOptions",
+							"type": {
+								"text": "PlayerLoadInputs[\"loaderOptions\"]"
+							},
+							"attribute": "loaderoptions"
+						},
+						{
+							"kind": "field",
+							"name": "loaderConfig",
+							"type": {
+								"text": "PlayerLoadInputs[\"loaderConfig\"]"
+							},
+							"attribute": "loaderconfig"
+						},
+						{
+							"kind": "field",
+							"name": "details",
+							"type": {
+								"text": "ItemListExtension"
+							},
+							"description": "A tag name can be set as an attribute; a function only as a property.",
+							"attribute": "details"
+						},
+						{
+							"kind": "field",
+							"name": "actions",
+							"type": {
+								"text": "ItemListExtension"
+							},
+							"attribute": "actions"
+						},
+						{
+							"kind": "field",
+							"name": "highlights",
+							"type": {
+								"text": "ItemListExtension"
+							},
+							"attribute": "highlights"
+						}
+					],
+					"attributes": [
+						{
+							"name": "items",
+							"type": {
+								"text": "ItemListEntry[]"
+							},
+							"default": "[]",
+							"fieldName": "items"
+						},
+						{
+							"name": "env",
+							"type": {
+								"text": "Env"
+							},
+							"fieldName": "env"
+						},
+						{
+							"name": "resolve",
+							"type": {
+								"text": "SummaryResolver"
+							},
+							"fieldName": "resolve"
+						},
+						{
+							"name": "locale",
+							"type": {
+								"text": "string"
+							},
+							"default": "\"\"",
+							"fieldName": "locale"
+						},
+						{
+							"name": "i18n",
+							"type": {
+								"text": "I18nProvider | null"
+							},
+							"fieldName": "i18n"
+						},
+						{
+							"name": "expanded",
+							"type": {
+								"text": "boolean"
+							},
+							"default": "false",
+							"fieldName": "expanded"
+						},
+						{
+							"name": "expandedids",
+							"type": {
+								"text": "string[]"
+							},
+							"fieldName": "expandedIds"
+						},
+						{
+							"name": "strategy",
+							"type": {
+								"text": "string"
+							},
+							"fieldName": "strategy"
+						},
+						{
+							"name": "loaderoptions",
+							"type": {
+								"text": "PlayerLoadInputs[\"loaderOptions\"]"
+							},
+							"fieldName": "loaderOptions"
+						},
+						{
+							"name": "loaderconfig",
+							"type": {
+								"text": "PlayerLoadInputs[\"loaderConfig\"]"
+							},
+							"fieldName": "loaderConfig"
+						},
+						{
+							"name": "details",
+							"type": {
+								"text": "string"
+							},
+							"description": "A tag name can be set as an attribute; a function only as a property.",
+							"fieldName": "details"
+						},
+						{
+							"name": "actions",
+							"type": {
+								"text": "string"
+							},
+							"fieldName": "actions"
+						},
+						{
+							"name": "highlights",
+							"type": {
+								"text": "string"
+							},
+							"fieldName": "highlights"
+						}
+					],
+					"events": [
+						{
+							"name": "expanded-changed",
+							"type": {
+								"text": "CustomEvent<{ id: string; expanded: boolean; expandedIds: string[] }>"
+							},
+							"description": "A row's expand button was pressed. `expandedIds` lists the expanded rows among the current `items`, for a host that restores them through `expandedIds`."
+						},
+						{
+							"name": "player-error",
+							"type": {
+								"text": "CustomEvent<{ id: string; part: \"item\" | \"passage\"; code: string; message: string; recoverable: boolean }>"
+							},
+							"description": "A row's player failed to load, with the entry `id` and the failed `part` added to `<pie-item-summary>`'s detail."
+						},
+						{
+							"name": "load-complete",
+							"type": {
+								"text": "CustomEvent<{ id: string; part: \"item\" | \"passage\"; view: \"summary\" | \"player\" }>"
+							},
+							"description": "A row's item or passage summary rendered, or its player loaded."
+						},
+						{
+							"name": "extension-error",
+							"type": {
+								"text": "CustomEvent<{ id: string; slot: \"details\" | \"actions\" | \"highlights\"; phase: \"render\" | \"update\" | \"destroy\"; cause: unknown }>"
+							},
+							"description": "A row extension threw or rejected; the rest of the list keeps rendering."
+						},
+						{
+							"name": "framework-error",
+							"type": {
+								"text": "CustomEvent<{ kind: \"i18n-locale-load\"; source: string; message: string; details: string[]; recoverable: true; scope: \"runtime\"; cause?: unknown }>"
+							},
+							"description": "A requested interface-locale catalog failed to load; the labels fall back to English, and re-setting `locale` retries."
+						}
+					],
+					"cssProperties": [
+						{
+							"name": "--pie-item-list-clip-height",
+							"description": "Height of a collapsed row's item summary, its passage clipped to one line above it. Falls back to 7em, so the clip scales with the list's font size."
+						},
+						{
+							"name": "--pie-item-list-sticky-top",
+							"description": "Height of a host's sticky header, which an expanded row's toggle stays below as the row scrolls; also its scroll margin. Falls back to 0px."
+						}
+					],
+					"x-pie": {
+						"shadow": "none",
+						"classes": [
+							"pie-item-list",
+							"pie-item-list__actions",
+							"pie-item-list__content",
+							"pie-item-list__details",
+							"pie-item-list__extension",
+							"pie-item-list__highlight-field",
+							"pie-item-list__highlight-fields",
+							"pie-item-list__highlight-label",
+							"pie-item-list__highlights",
+							"pie-item-list__highlights-title",
+							"pie-item-list__id",
+							"pie-item-list__item",
+							"pie-item-list__item--clipped",
+							"pie-item-list__name",
+							"pie-item-list__passage",
+							"pie-item-list__passage--collapsed",
+							"pie-item-list__row",
+							"pie-item-list__snippet",
+							"pie-item-list__status",
+							"pie-item-list__toggle",
+							"pie-item-list__version",
+							"pie-item-list__view"
+						]
+					}
+				},
+				{
+					"kind": "class",
+					"description": "One PIE item as a list row: its stem, prompts, options and, for instructors, its answers, rendered as sanitized HTML with math as MathML, loading no element code until it expands. A host gives it the item `config`, or a precomputed `summary`, and keeps its own list, card and expand chrome around it. Set `expanded` and the row mounts `<pie-item-player>` for the item once it nears the viewport, keeps the summary showing until the player has loaded, then swaps it in place.",
 					"name": "PieItemSummary",
 					"tagName": "pie-item-summary",
 					"customElement": true,
@@ -53,6 +341,48 @@
 							"default": "\"\"",
 							"description": "Interface locale for the row's own labels, as a BCP-47 tag. Unset renders `en-US`.",
 							"attribute": "locale"
+						},
+						{
+							"kind": "field",
+							"name": "i18n",
+							"type": {
+								"text": "I18nProvider | null"
+							},
+							"description": "A provider for the row's labels and its player's; `<pie-item-list>` hands every row its own.",
+							"attribute": "i18n"
+						},
+						{
+							"kind": "field",
+							"name": "expanded",
+							"type": {
+								"text": "boolean"
+							},
+							"default": "false",
+							"attribute": "expanded"
+						},
+						{
+							"kind": "field",
+							"name": "strategy",
+							"type": {
+								"text": "PlayerLoadInputs[\"strategy\"]"
+							},
+							"attribute": "strategy"
+						},
+						{
+							"kind": "field",
+							"name": "loaderOptions",
+							"type": {
+								"text": "PlayerLoadInputs[\"loaderOptions\"]"
+							},
+							"attribute": "loaderoptions"
+						},
+						{
+							"kind": "field",
+							"name": "loaderConfig",
+							"type": {
+								"text": "PlayerLoadInputs[\"loaderConfig\"]"
+							},
+							"attribute": "loaderconfig"
 						}
 					],
 					"attributes": [
@@ -92,15 +422,66 @@
 							"default": "\"\"",
 							"description": "Interface locale for the row's own labels, as a BCP-47 tag. Unset renders `en-US`.",
 							"fieldName": "locale"
+						},
+						{
+							"name": "i18n",
+							"type": {
+								"text": "I18nProvider | null"
+							},
+							"description": "A provider for the row's labels and its player's; `<pie-item-list>` hands every row its own.",
+							"fieldName": "i18n"
+						},
+						{
+							"name": "expanded",
+							"type": {
+								"text": "boolean"
+							},
+							"default": "false",
+							"fieldName": "expanded"
+						},
+						{
+							"name": "strategy",
+							"type": {
+								"text": "string"
+							},
+							"fieldName": "strategy"
+						},
+						{
+							"name": "loaderoptions",
+							"type": {
+								"text": "PlayerLoadInputs[\"loaderOptions\"]"
+							},
+							"fieldName": "loaderOptions"
+						},
+						{
+							"name": "loaderconfig",
+							"type": {
+								"text": "PlayerLoadInputs[\"loaderConfig\"]"
+							},
+							"fieldName": "loaderConfig"
 						}
 					],
 					"events": [
 						{
 							"name": "load-complete",
 							"type": {
-								"text": "CustomEvent<{ view: \"summary\" }>"
+								"text": "CustomEvent<{ view: \"summary\" | \"player\" }>"
 							},
-							"description": "Once the summary has rendered with its math converted."
+							"description": "`summary` once per rendered summary, after math conversion; a new `env` with the same role does not re-render. `player` once the expanded row's player has loaded and replaced the summary."
+						},
+						{
+							"name": "player-error",
+							"type": {
+								"text": "CustomEvent<{ code: string; message: string; recoverable: boolean }>"
+							},
+							"description": "The expanded row's player failed to load, re-dispatched with the player's detail, or did not load in time (`recoverable: true`). The summary keeps showing; collapsing and expanding again retries."
+						},
+						{
+							"name": "framework-error",
+							"type": {
+								"text": "CustomEvent<{ kind: \"i18n-locale-load\"; source: string; message: string; details: string[]; recoverable: true; scope: \"runtime\"; cause?: unknown }>"
+							},
+							"description": "A requested interface-locale catalog failed to load; the row's labels fall back to English, and re-setting `locale` retries."
 						}
 					],
 					"x-pie": {
@@ -113,17 +494,24 @@
 							"pie-item-summary__badge",
 							"pie-item-summary__entry",
 							"pie-item-summary__figure",
+							"pie-item-summary__group",
+							"pie-item-summary__group-label",
+							"pie-item-summary__groups",
 							"pie-item-summary__label",
 							"pie-item-summary__marker",
 							"pie-item-summary__media",
 							"pie-item-summary__option",
 							"pie-item-summary__option--correct",
+							"pie-item-summary__option-body",
 							"pie-item-summary__option-label",
 							"pie-item-summary__options",
 							"pie-item-summary__part",
+							"pie-item-summary__player",
+							"pie-item-summary__player--pending",
 							"pie-item-summary__prompt",
 							"pie-item-summary__sr-only",
-							"pie-item-summary__stem"
+							"pie-item-summary__stem",
+							"pie-item-summary__view"
 						]
 					}
 				}
@@ -131,9 +519,39 @@
 			"exports": [
 				{
 					"kind": "custom-element-definition",
+					"name": "pie-item-list",
+					"declaration": {
+						"name": "PieItemList"
+					}
+				},
+				{
+					"kind": "custom-element-definition",
 					"name": "pie-item-summary",
 					"declaration": {
 						"name": "PieItemSummary"
+					}
+				}
+			]
+		},
+		{
+			"kind": "javascript-module",
+			"path": "dist/browser/pie-item-list.js",
+			"declarations": [],
+			"exports": [
+				{
+					"kind": "custom-element-definition",
+					"name": "pie-item-list",
+					"declaration": {
+						"name": "PieItemList",
+						"module": "dist/pie-item-list.js"
+					}
+				},
+				{
+					"kind": "custom-element-definition",
+					"name": "pie-item-summary",
+					"declaration": {
+						"name": "PieItemSummary",
+						"module": "dist/pie-item-list.js"
 					}
 				}
 			]

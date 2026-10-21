@@ -40,6 +40,8 @@
   type BackendScoreOptions
   type DeleteDone
   type ImageHandler
+  type ItemElementLoadOptions
+  type ItemPlayerLoadInputs
   type PieItemPlayerElement
   type PieItemPlayerErrorDetail
   type PieItemPlayerLoaderOptions
@@ -47,6 +49,9 @@
   type SoundHandler
   definePieItemPlayer
   ensureItemPlayerMathRenderingReady
+  itemPlayerBackend
+  itemPlayerElementTags
+  preloadItemElements
 
 ./components/item-session-debugger-element
   type PieItemSessionDebuggerElement

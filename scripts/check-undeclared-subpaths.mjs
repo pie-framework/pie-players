@@ -65,6 +65,7 @@ const ALIAS_DECLARATIONS = new Map([
 const ALIASED_SOURCE_SUBPATHS = new Set([
 	"@pie-players/pie-players-shared/components",
 	"@pie-players/pie-players-shared/components/overlay-placement",
+	"@pie-players/pie-players-shared/ui/interface-i18n",
 	"@pie-players/pie-players-shared/ui/use-promise",
 	"@pie-players/pie-tool-calculator-shared/components",
 ]);

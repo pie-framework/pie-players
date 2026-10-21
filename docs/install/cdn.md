@@ -1,8 +1,8 @@
 # Loading from a CDN
 
-Three entry points load in a browser straight from an npm CDN such as jsDelivr
+Four entry points load in a browser straight from an npm CDN such as jsDelivr
 or unpkg, with no bundler and no import map: the item player, the section
-player's browser build, and the print player. Each publishes its built file
+player's and the item list's browser builds, and the print player. Each publishes its built file
 under `dist/`, registers its custom element, and imports no bare specifier.
 
 Every other entry point
@@ -107,6 +107,18 @@ CDN changes the policy in three places:
 - A policy without `'strict-dynamic'` lists the CDN origin in `script-src`, and
   refuses the import map the `esm` strategy injects
   ([Policies without `'strict-dynamic'`](../security/readme.md#policies-without-strict-dynamic)).
+
+## Item list (browser build)
+
+`@pie-players/pie-item-list` publishes `dist/browser/pie-item-list.js`, exported as `./browser`, next to its npm build. It registers `<pie-item-summary>` and `<pie-item-list>` and bundles the item player as a chunk that loads when the first row expands. The section player's rules on the full file path, one version per page and one directory per version apply here as well. A page that also loads the section player's browser build gets a second copy of the item player chunk; the first `<pie-item-player>` registered wins.
+
+```html
+<script type="module">
+  import 'https://cdn.jsdelivr.net/npm/@pie-players/pie-item-list@x.y.z/dist/browser/pie-item-list.js';
+</script>
+
+<pie-item-summary></pie-item-summary>
+```
 
 ## Print player
 

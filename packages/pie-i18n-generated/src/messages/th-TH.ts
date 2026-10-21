@@ -120,6 +120,12 @@ const thTH = {
 			audio: "เสียง",
 			video: "วิดีโอ",
 		},
+		list: {
+			expandA11y: "แสดงข้อสอบทั้งข้อ",
+			highlights: "ผลการค้นหาที่ตรงกัน",
+			collapse: "แสดงสรุป",
+			playerError: "ไม่สามารถโหลดข้อสอบทั้งข้อได้",
+		},
 	},
 
 	toolkit: {

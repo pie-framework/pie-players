@@ -37,6 +37,9 @@ export const REPO_ROOT = realpathSync(path.resolve(import.meta.dirname, ".."));
  * named by the package's Vite config.
  */
 export const RENAMED_OUTPUTS: Record<string, Record<string, string>> = {
+	"@pie-players/pie-item-list": {
+		"./dist/browser/pie-item-list.js": "src/pie-item-list.ts",
+	},
 	"@pie-players/pie-print-player": { "./dist/print-player.js": "src/index.ts" },
 	"@pie-players/pie-section-player": {
 		"./dist/browser/pie-section-player.js": "src/browser.ts",

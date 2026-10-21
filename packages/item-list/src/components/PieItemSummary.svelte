@@ -11,34 +11,51 @@
 			resolve: { type: "Object", reflect: false },
 			// Interface locale for the row's own labels, as a BCP-47 tag. Unset renders `en-US`.
 			locale: { attribute: "locale", type: "String" },
+			// A provider for the row's labels and its player's; `<pie-item-list>` hands every row its own.
+			i18n: { type: "Object", reflect: false },
+			expanded: { attribute: "expanded", type: "Boolean" },
+			strategy: { attribute: "strategy", type: "String" },
+			loaderOptions: { type: "Object", reflect: false },
+			loaderConfig: { type: "Object", reflect: false },
 		},
+		extend: coerceBooleanAttributes,
 	}}
 />
 
 <!--
 @component
-One PIE item as a list row: its stem, prompts, options and, for instructors, its answers, rendered as sanitized HTML with math as MathML. No element code loads. A host gives it the item `config`, or a precomputed `summary`, and keeps its own list, card and expand chrome around it.
+One PIE item as a list row: its stem, prompts, options and, for instructors, its answers, rendered as sanitized HTML with math as MathML, loading no element code until it expands. A host gives it the item `config`, or a precomputed `summary`, and keeps its own list, card and expand chrome around it. Set `expanded` and the row mounts `<pie-item-player>` for the item once it nears the viewport, keeps the summary showing until the player has loaded, then swaps it in place.
 
-@fires {CustomEvent<{ view: "summary" }>} load-complete - Once the summary has rendered with its math converted.
+@fires {CustomEvent<{ view: "summary" | "player" }>} load-complete - `summary` once per rendered summary, after math conversion; a new `env` with the same role does not re-render. `player` once the expanded row's player has loaded and replaced the summary.
+@fires {CustomEvent<{ code: string; message: string; recoverable: boolean }>} player-error - The expanded row's player failed to load, re-dispatched with the player's detail, or did not load in time (`recoverable: true`). The summary keeps showing; collapsing and expanding again retries.
+@fires {CustomEvent<{ kind: "i18n-locale-load"; source: string; message: string; details: string[]; recoverable: true; scope: "runtime"; cause?: unknown }>} framework-error - A requested interface-locale catalog failed to load; the row's labels fall back to English, and re-setting `locale` retries.
 -->
 
 <script lang="ts">
-	import {
-		createPieI18n,
-		DEFAULT_LOCALE,
-	} from "@pie-players/pie-players-shared/i18n";
+	import type { I18nProvider } from "@pie-players/pie-players-shared/i18n";
 	import type { Env, ItemConfig } from "@pie-players/pie-players-shared/types";
+	import { coerceBooleanAttributes } from "@pie-players/pie-players-shared/ui/attribute-coercion";
+	import { useInterfaceI18n } from "@pie-players/pie-players-shared/ui/interface-i18n";
 	import { tick, untrack } from "svelte";
+	import {
+		loadItemPlayer,
+		type PlayerLoadInputs,
+		type PlayerTicket,
+		playerScheduler,
+	} from "../player/scheduler.js";
 	import {
 		type ItemSummary,
 		type SummaryResolver,
 		summarizeItem,
 	} from "../summarize/summarize-item.js";
+	import { isItemSummary } from "../summarize/validate.js";
 	import {
 		type RenderedBlock,
+		type RenderedOption,
 		type RenderedSummary,
 		renderSummary,
 	} from "./render.js";
+	import { keepEqual } from "./same-content.js";
 
 	let {
 		config,
@@ -46,87 +63,198 @@ One PIE item as a list row: its stem, prompts, options and, for instructors, its
 		summary,
 		resolve,
 		locale = "",
+		i18n,
+		expanded = false,
+		strategy,
+		loaderOptions,
+		loaderConfig,
 	}: {
 		config?: ItemConfig;
 		env?: Env;
 		summary?: ItemSummary;
 		resolve?: SummaryResolver;
 		locale?: string;
+		i18n?: I18nProvider | null;
+		expanded?: boolean;
+		strategy?: PlayerLoadInputs["strategy"];
+		loaderOptions?: PlayerLoadInputs["loaderOptions"];
+		loaderConfig?: PlayerLoadInputs["loaderConfig"];
 	} = $props();
 
 	const hostElement: HTMLElement = $host();
 
-	const i18n = createPieI18n();
-	let i18nVersion = $state(0);
-	$effect(() =>
-		i18n.subscribe(() => {
-			i18nVersion += 1;
-		}),
-	);
-	$effect(() => {
-		const requested = typeof locale === "string" ? locale.trim() : "";
-		untrack(() => {
-			// Every key still resolves through the English fallback when a catalog fails to load.
-			void Promise.resolve(i18n.setLocale(requested || DEFAULT_LOCALE)).catch(
-				() => {},
-			);
-		});
-	});
-	// A new object per catalog change: a derived that returns the same `i18n` compares equal and
-	// never re-renders the labels read through it.
-	const messages = $derived((void i18nVersion, { t: i18n.t.bind(i18n) }));
+	// An equal object set again keeps the previous one, so a host re-setting its rows' data neither
+	// re-summarizes a row nor remounts its player.
+	let kept: {
+		config?: ItemConfig;
+		summary?: ItemSummary;
+		env?: Env;
+		loaderOptions?: PlayerLoadInputs["loaderOptions"];
+		loaderConfig?: PlayerLoadInputs["loaderConfig"];
+	} = {};
+	const item = $derived((kept.config = keepEqual(kept.config, config)));
+	const precomputed = $derived((kept.summary = keepEqual(kept.summary, summary)));
+	const viewEnv = $derived((kept.env = keepEqual(kept.env, env)));
+	const playerOptions = $derived((kept.loaderOptions = keepEqual(kept.loaderOptions, loaderOptions)));
+	const playerConfig = $derived((kept.loaderConfig = keepEqual(kept.loaderConfig, loaderConfig)));
+
+	const interfaceI18n = useInterfaceI18n(hostElement, "pie-item-summary", () => ({ i18n, locale }));
+	const messages = $derived(interfaceI18n.messages);
 
 	let rendered = $state<RenderedSummary | null>(null);
 	let generation = 0;
 
+	// No `env` is the instructor view; an `env` whose role is not `instructor` withholds answers, as
+	// `summarizeItem` and the player do. A derived role re-renders on a role change alone.
+	const role = $derived(!viewEnv || viewEnv.role === "instructor" ? "instructor" : "student");
+
 	$effect(() => {
-		// `env` defaults to an instructor view; only an explicit student role withholds answers.
-		const role = env?.role === "student" ? "student" : "instructor";
-		const precomputed = summary?.schema === 1 ? summary : null;
-		const item = config;
+		const viewRole = role;
+		const stored = isItemSummary(precomputed) ? precomputed : null;
+		const source = item;
 		const resolver = resolve;
 		const run = ++generation;
 		void (async () => {
 			try {
-				const source =
-					precomputed ??
-					(item ? await summarizeItem(item, { role, resolve: resolver }) : null);
-				const view = source ? await renderSummary(source, role) : null;
+				const summarized =
+					stored ??
+					(source ? await summarizeItem(source, { role: viewRole, resolve: resolver }) : null);
+				const view = summarized ? await renderSummary(summarized, viewRole) : null;
 				if (run !== generation) return;
 				rendered = view;
 				if (!view) return;
 				await tick();
-				if (run !== generation) return;
-				hostElement.dispatchEvent(
-					new CustomEvent("load-complete", {
-						detail: { view: "summary" },
-						bubbles: true,
-						composed: true,
-					}),
-				);
+				if (run !== generation || untrack(() => playerShown)) return;
+				announce("load-complete", { view: "summary" });
 			} catch (error) {
+				// The previous summary belongs to other inputs, so it goes.
+				if (run === generation) rendered = null;
 				console.error("[pie-item-summary] The summary could not be rendered.", error);
 			}
 		})();
 	});
+
+	function announce(type: string, detail: unknown): void {
+		hostElement.dispatchEvent(new CustomEvent(type, { detail, bubbles: true, composed: true }));
+	}
+
+	// The player view. The scheduler grants the row a slot once it nears the viewport; the player
+	// then mounts hidden behind the summary and replaces it on its `load-complete`.
+	let playerMounted = $state(false);
+	let playerShown = $state(false);
+	let playerHost = $state<HTMLElement | undefined>();
+	let ticket: PlayerTicket | undefined;
+	const playerEnv = $derived(viewEnv ?? { mode: "view", role: "instructor" });
+
+	$effect(() => {
+		if (!expanded || !item) return;
+		const shown = item;
+		const inputs: PlayerLoadInputs = { strategy, loaderOptions: playerOptions, loaderConfig: playerConfig };
+		let open = true;
+		untrack(() => {
+			ticket = playerScheduler().request({
+				element: hostElement,
+				config: shown,
+				inputs,
+				grant: () => {
+					loadItemPlayer().then(
+						() => {
+							if (open) playerMounted = true;
+						},
+						(error: unknown) => {
+							if (!open) return;
+							ticket?.release();
+							announce("player-error", {
+								code: "ITEM_SUMMARY_PLAYER_UNAVAILABLE",
+								message: `The item player could not be loaded: ${error instanceof Error ? error.message : String(error)}`,
+								recoverable: true,
+							});
+						},
+					);
+				},
+				timeout: () => {
+					if (!open) return;
+					playerMounted = false;
+					announce("player-error", {
+						code: "ITEM_SUMMARY_PLAYER_TIMEOUT",
+						message: "The item player did not load in time; the summary keeps showing.",
+						recoverable: true,
+					});
+				},
+			});
+		});
+		return () => {
+			open = false;
+			ticket?.release();
+			ticket = undefined;
+			playerMounted = false;
+			playerShown = false;
+		};
+	});
+
+	// The player's own `load-complete` and `player-error` stop at the row, which reports them as its own.
+	$effect(() => {
+		const target = playerHost;
+		if (!target) return;
+		const onLoad = (event: Event) => {
+			event.stopPropagation();
+			if (playerShown) return;
+			ticket?.release();
+			playerShown = true;
+			announce("load-complete", { view: "player" });
+		};
+		const onError = (event: Event) => {
+			event.stopPropagation();
+			const detail = (event as CustomEvent).detail;
+			if (detail?.recoverable !== true) {
+				ticket?.release();
+				playerMounted = false;
+				playerShown = false;
+			}
+			announce("player-error", detail);
+		};
+		target.addEventListener("load-complete", onLoad);
+		target.addEventListener("player-error", onError);
+		return () => {
+			target.removeEventListener("load-complete", onLoad);
+			target.removeEventListener("player-error", onError);
+		};
+	});
 </script>
 
-{#snippet block(content: RenderedBlock)}
-	{#if content.prompt}
-		<div class="pie-item-summary__prompt">{@html content.prompt}</div>
-	{/if}
-	{#if content.options.length > 0}
-		<ul class="pie-item-summary__options">
-			{#each content.options as option (option.id)}
-				<li class="pie-item-summary__option" class:pie-item-summary__option--correct={option.correct}>
+{#snippet options(list: RenderedOption[])}
+	<ul class="pie-item-summary__options">
+		{#each list as option, index (index)}
+			<li class="pie-item-summary__option" class:pie-item-summary__option--correct={option.correct}>
+				<span class="pie-item-summary__option-body">
 					{#if option.correct}
 						<span class="pie-item-summary__marker" aria-hidden="true">✓</span>
 						<span class="pie-item-summary__sr-only">{messages.t("player.summary.correctA11y")}</span>
 					{/if}
 					<span class="pie-item-summary__option-label">{@html option.label}</span>
+				</span>
+			</li>
+		{/each}
+	</ul>
+{/snippet}
+
+{#snippet block(content: RenderedBlock)}
+	{#if content.prompt}
+		<div class="pie-item-summary__prompt">{@html content.prompt}</div>
+	{/if}
+	{#if content.groups.some((group) => group.label)}
+		<ul class="pie-item-summary__groups">
+			{#each content.groups as group, index (index)}
+				<li class="pie-item-summary__group">
+					{#if group.label}
+						<div class="pie-item-summary__group-label">{@html group.label}</div>
+					{/if}
+					{@render options(group.options)}
 				</li>
 			{/each}
 		</ul>
+	{:else if content.groups.length > 0}
+		{@render options(content.groups[0].options)}
 	{/if}
 	{#if content.answer}
 		<div class="pie-item-summary__answer">
@@ -136,12 +264,13 @@ One PIE item as a list row: its stem, prompts, options and, for instructors, its
 	{/if}
 {/snippet}
 
-{#if rendered}
+<div class="pie-item-summary__view">
+{#if rendered && !playerShown}
 	<div class="pie-item-summary">
 		{#if rendered.stem}
 			<div class="pie-item-summary__stem">{@html rendered.stem}</div>
 		{/if}
-		{#each rendered.entries as entry (entry.id)}
+		{#each rendered.entries as entry, index (index)}
 			<div class="pie-item-summary__entry" data-pkg={entry.pkg} data-source={entry.source}>
 				{#if entry.source === "label"}
 					<p class="pie-item-summary__label">{entry.label}</p>
@@ -167,8 +296,40 @@ One PIE item as a list row: its stem, prompts, options and, for instructors, its
 		{/each}
 	</div>
 {/if}
+{#if playerMounted}
+	<div
+		class="pie-item-summary__player"
+		class:pie-item-summary__player--pending={!playerShown}
+		aria-hidden={playerShown ? undefined : "true"}
+		inert={!playerShown}
+		bind:this={playerHost}
+	>
+		<pie-item-player
+			config={item}
+			env={playerEnv}
+			strategy={strategy}
+			loaderOptions={playerOptions}
+			loaderConfig={playerConfig}
+			i18n={interfaceI18n.provider}
+			addCorrectResponse={role === "instructor"}
+		></pie-item-player>
+	</div>
+{/if}
+</div>
 
 <style>
+	.pie-item-summary__view {
+		position: relative;
+	}
+
+	/* Laid out at the row's width while it loads, so elements measure as they will show. */
+	.pie-item-summary__player--pending {
+		position: absolute;
+		inset: 0 0 auto 0;
+		visibility: hidden;
+		pointer-events: none;
+	}
+
 	.pie-item-summary {
 		color: var(--pie-text, #1f2937);
 		font-size: calc(1rem * var(--pie-font-scale, 1));
@@ -198,22 +359,88 @@ One PIE item as a list row: its stem, prompts, options and, for instructors, its
 		font-size: 0.875em;
 	}
 
-	.pie-item-summary__options {
+	.pie-item-summary__options,
+	.pie-item-summary__groups {
 		margin: 0;
 		padding-inline-start: 1.5em;
+	}
+
+	.pie-item-summary__groups {
+		list-style: none;
+		padding-inline-start: 0;
+		display: flex;
+		flex-direction: column;
+		gap: 0.375em;
+	}
+
+	.pie-item-summary__group-label {
+		font-weight: 600;
 	}
 
 	.pie-item-summary__option--correct {
 		color: var(--pie-correct, #0b7a3e);
 	}
 
+	/* A row, so a label the author wrapped in a block element stays beside its check mark. */
+	.pie-item-summary__option-body {
+		display: flex;
+		align-items: baseline;
+		gap: 0.25em;
+	}
+
+	.pie-item-summary__option-label {
+		min-width: 0;
+	}
+
+	/* The view's gaps space its blocks, so the outer margins of each authored fragment go. */
+	:is(
+			.pie-item-summary__stem,
+			.pie-item-summary__prompt,
+			.pie-item-summary__group-label,
+			.pie-item-summary__option-label,
+			.pie-item-summary__answer-content
+		)
+		:global(:first-child) {
+		margin-block-start: 0;
+	}
+
+	:is(
+			.pie-item-summary__stem,
+			.pie-item-summary__prompt,
+			.pie-item-summary__group-label,
+			.pie-item-summary__option-label,
+			.pie-item-summary__answer-content
+		)
+		:global(:last-child) {
+		margin-block-end: 0;
+	}
+
 	.pie-item-summary__marker {
-		margin-inline-end: 0.25em;
 		font-weight: 700;
 	}
 
 	.pie-item-summary__answer-label {
 		font-weight: 600;
+	}
+
+	/* Summarizers mark each cloze blank with its number, matching the numbered answer list. */
+	.pie-item-summary :global(.pie-item-summary__blank) {
+		display: inline-block;
+		min-width: 2.5em;
+		padding: 0 0.25em;
+		border-bottom: 1px solid var(--pie-border-dark, #6b7280);
+		text-align: center;
+		font-weight: 600;
+	}
+
+	.pie-item-summary__answer-content :global(table) {
+		border-collapse: collapse;
+	}
+
+	.pie-item-summary__answer-content :global(:is(th, td)) {
+		padding: 0.125em 0.75em;
+		border: 1px solid var(--pie-border-light, #d1d5db);
+		text-align: start;
 	}
 
 	.pie-item-summary__media {

@@ -9,8 +9,12 @@ import type {
 	PieContent,
 	PieModel,
 } from "@pie-players/pie-players-shared/types";
+import { bundledSummaries } from "./bundled.js";
 import { displayName, packageName } from "./label.js";
-import { hasContent, readItemMarkup } from "./markup.js";
+import { withoutAnswers } from "./answers.js";
+import { hasContent, promptOf, readItemMarkup } from "./markup.js";
+
+export { withoutAnswers };
 
 /** An item described as data, for a list row that loads no element code. */
 export interface ItemSummary {
@@ -35,16 +39,19 @@ export interface ItemSummaryEntry {
 }
 
 /**
- * The summarizer for an element, or `null` to fall back to its prompt. `pkg` carries the version
- * from the item's `elements` map.
+ * The summarizer for an element, or `null` to fall back to its prompt. `spec` is the package spec,
+ * version included, from the item's `elements` map.
  */
 export type SummaryResolver = (
 	tagName: string,
-	pkg: string,
+	spec: string,
 ) => Promise<SummarizeFn | null>;
 
 export interface SummarizeItemOptions extends SummaryOptions {
-	/** Without one, every element takes the prompt or label rung. */
+	/**
+	 * Default `bundledSummaries`. A resolver that returns `null` sends every element to the prompt
+	 * or label rung.
+	 */
 	resolve?: SummaryResolver;
 }
 
@@ -143,10 +150,10 @@ async function resolvedSummary(
 	model: PieModel,
 	options: SummarizeItemOptions,
 ): Promise<ElementSummary | null> {
-	if (!options.resolve) return null;
+	const resolve = options.resolve ?? bundledSummaries;
 	const role = options.role === "instructor" ? "instructor" : "student";
 	try {
-		const summarize = await options.resolve(tagName, spec);
+		const summarize = await resolve(tagName, spec);
 		if (!summarize) return null;
 		const summary = summarize(model, { role });
 		if (!isNonEmpty(summary)) return null;
@@ -176,11 +183,6 @@ function promptSummary(model: Record<string, unknown>): ElementSummary | null {
 	return parts.length > 0 ? { parts } : null;
 }
 
-function promptOf(model: Record<string, unknown>): string | null {
-	if (model.promptEnabled === false) return null;
-	return hasContent(model.prompt) ? model.prompt : null;
-}
-
 function isNonEmpty(summary: unknown): summary is ElementSummary {
 	if (!summary || typeof summary !== "object") return false;
 	const { prompt, parts, options, answer, figure, media } = summary as ElementSummary;
@@ -192,23 +194,4 @@ function isNonEmpty(summary: unknown): summary is ElementSummary {
 		typeof figure?.src === "string" ||
 		(Array.isArray(media) && media.length > 0)
 	);
-}
-
-/** `summary` with `answer` and `correct` removed, whatever the summarizer returned for a student. */
-export function withoutAnswers(summary: ElementSummary): ElementSummary {
-	const { answer: _answer, options, parts, ...rest } = summary;
-	return {
-		...rest,
-		...(options ? { options: options.map(({ correct: _correct, ...option }) => option) } : {}),
-		...(parts
-			? {
-					parts: parts.map(({ answer: _partAnswer, options: partOptions, ...part }) => ({
-						...part,
-						...(partOptions
-							? { options: partOptions.map(({ correct: _correct, ...option }) => option) }
-							: {}),
-					})),
-				}
-			: {}),
-	};
 }

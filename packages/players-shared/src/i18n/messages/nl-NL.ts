@@ -127,6 +127,12 @@ const nlNL = {
 			audio: "Audio",
 			video: "Video",
 		},
+		list: {
+			expandA11y: "Volledige vraag tonen",
+			highlights: "Zoektreffers",
+			collapse: "Samenvatting tonen",
+			playerError: "Het volledige item kon niet worden geladen.",
+		},
 	},
 
 	toolkit: {

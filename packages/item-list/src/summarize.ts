@@ -16,3 +16,7 @@ export {
 	type SummaryResolver,
 	summarizeItem,
 } from "./summarize/summarize-item.js";
+export { bundledSummaries } from "./summarize/bundled.js";
+export { convertSummaryMath } from "./summarize/convert-math.js";
+export { type PinnedSummariesOptions, pinnedSummaries } from "./summarize/pinned.js";
+export { isItemSummary } from "./summarize/validate.js";

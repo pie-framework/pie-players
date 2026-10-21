@@ -17,6 +17,13 @@ import type { PieItemPlayerElement } from "./types.js";
 
 export type * from "./types.js";
 export { ensureItemPlayerMathRenderingReady } from "./math-rendering-ready.js";
+export {
+	type ItemElementLoadOptions,
+	type ItemPlayerLoadInputs,
+	itemPlayerBackend,
+	itemPlayerElementTags,
+	preloadItemElements,
+} from "./element-preload.js";
 
 // Installed at import time, alongside element registration, so the stylesheet is
 // in the document before any instance renders — no unstyled first paint. A host

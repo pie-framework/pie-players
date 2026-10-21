@@ -69,6 +69,12 @@ const sv = {
 			audio: "Ljud",
 			video: "Video",
 		},
+		list: {
+			expandA11y: "Visa hela uppgiften",
+			highlights: "Sökträffar",
+			collapse: "Visa sammanfattningen",
+			playerError: "Hela uppgiften kunde inte läsas in.",
+		},
 		questions: "Frågor",
 		items: "Uppgifter",
 		section: "Avsnitt",

@@ -68,6 +68,12 @@ const pt = {
 			audio: "Áudio",
 			video: "Vídeo",
 		},
+		list: {
+			expandA11y: "Mostrar a pergunta completa",
+			highlights: "Correspondências da pesquisa",
+			collapse: "Mostrar o resumo",
+			playerError: "Não foi possível carregar a pergunta completa.",
+		},
 		questions: "Perguntas",
 		items: "Perguntas",
 		section: "Seção",

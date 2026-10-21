@@ -143,6 +143,8 @@ export class SimpleI18n implements I18nServiceApi {
 	private catalogs: Map<string, MessageCatalog>;
 	private customMessages: Record<string, MessageCatalog>;
 	private loading: Map<string, Promise<void>>;
+	/** Counts `setLocale` calls, so a slow load cannot overwrite a later request. */
+	private requests = 0;
 	private readonly listeners = new Set<() => void>();
 	private config: I18nConfig;
 
@@ -183,9 +185,12 @@ export class SimpleI18n implements I18nServiceApi {
 	 * Resolves the request against the catalogs this provider can serve, loads
 	 * the winner if it is not resident, then notifies subscribers — in that
 	 * order, so a component's reactive read re-runs against a catalog that is
-	 * already in place rather than against the previous locale.
+	 * already in place rather than against the previous locale. The last call
+	 * wins: a call whose load finishes after a later call's leaves the locale
+	 * to that later call.
 	 */
 	async setLocale(locale: LocaleCode): Promise<void> {
+		const request = ++this.requests;
 		const resolved = this.resolveLocaleTag(locale);
 		if (!resolved) {
 			// A locale we ship no catalog for is legitimate: the host may have
@@ -217,6 +222,7 @@ export class SimpleI18n implements I18nServiceApi {
 			}
 		}
 
+		if (request !== this.requests) return;
 		this.locale = resolved;
 		this.notify();
 	}

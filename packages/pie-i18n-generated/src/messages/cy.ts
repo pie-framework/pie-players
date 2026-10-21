@@ -73,6 +73,9 @@ const cy = {
 		},
 		list: {
 			expandA11y: "Dangos y cwestiwn cyfan",
+			highlights: "Cyfatebiaethau chwilio",
+			collapse: "Dangos y crynodeb",
+			playerError: "Doedd dim modd llwytho'r cwestiwn cyfan.",
 		},
 		questions: "Cwestiynau",
 		items: "Cwestiynau",

@@ -72,6 +72,9 @@ const fr = {
 		},
 		list: {
 			expandA11y: "Afficher la question complète",
+			highlights: "Correspondances de la recherche",
+			collapse: "Afficher le résumé",
+			playerError: "Impossible de charger la question complète.",
 		},
 		questions: "Questions",
 		items: "Questions",

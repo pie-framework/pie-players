@@ -7,6 +7,7 @@
 import "./support/dom.js";
 import { afterEach, describe, expect, test } from "bun:test";
 import type { ElementSummary } from "@pie-element/shared-types";
+import { createPieI18n } from "@pie-players/pie-players-shared/i18n";
 import type { PieContent } from "@pie-players/pie-players-shared/types";
 import type { ItemSummary, PieItemSummaryElement } from "../src/pie-item-list.js";
 
@@ -151,6 +152,26 @@ describe("<pie-item-summary>", () => {
 		expect(element.querySelector(".pie-item-summary__answer")).toBeNull();
 	});
 
+	test("does not re-summarize for an equal config object, and does for a changed one", async () => {
+		let calls = 0;
+		const { element, loads } = await mount({
+			config,
+			resolve: async () => {
+				calls += 1;
+				return () => graded;
+			},
+		});
+		element.config = structuredClone(config);
+		await settle();
+		expect(calls).toBe(1);
+		expect(loads).toEqual([{ view: "summary" }]);
+
+		element.config = { ...config, markup: "<p>Changed</p><multiple-choice id=\"1\"></multiple-choice>" };
+		await settle();
+		expect(calls).toBe(2);
+		expect(element.querySelector(".pie-item-summary__stem")?.textContent).toBe("Changed");
+	});
+
 	test("lists grouped options under their group, in order of first appearance", async () => {
 		const { element } = await mount({
 			config,
@@ -174,10 +195,63 @@ describe("<pie-item-summary>", () => {
 		).toEqual([["Cat", "Dog"], ["Trout"]]);
 	});
 
+	test("labels its text through a supplied provider, keeping its owner's locale", async () => {
+		const i18n = createPieI18n();
+		await i18n.setLocale("nl-NL");
+		const { element } = await mount({ summary: precomputed, i18n });
+		expect(i18n.getLocale()).toBe("nl-NL");
+		expect(element.querySelector(".pie-item-summary__answer-label")?.textContent).toBe("Antwoord");
+	});
+
 	test("labels its own text in the requested locale", async () => {
 		const { element } = await mount({ summary: precomputed, locale: "nl-NL" });
 		expect(element.querySelector(".pie-item-summary__answer-label")?.textContent).toBe(
 			"Antwoord",
 		);
+	});
+
+	test("withholds answers for any role but instructor, and shows them without an env", async () => {
+		const { element } = await mount({ summary: precomputed });
+		expect(element.querySelector(".pie-item-summary__answer")).not.toBeNull();
+		for (const env of [{ mode: "view", role: "scorer" }, { mode: "view" }]) {
+			element.env = env as unknown as PieItemSummaryElement["env"];
+			await settle();
+			expect(element.querySelector(".pie-item-summary__marker")).toBeNull();
+			expect(element.querySelector(".pie-item-summary__answer")).toBeNull();
+		}
+	});
+
+	test("renders entries and options that repeat an id", async () => {
+		const repeated: ItemSummary = {
+			schema: 1,
+			entries: [
+				precomputed.entries[0],
+				{ ...precomputed.entries[0], summary: { options: [{ id: "a", label: "Six" }, { id: "a", label: "Seven" }] } },
+			],
+		};
+		const { element } = await mount({ summary: repeated });
+		expect(element.querySelectorAll(".pie-item-summary__entry")).toHaveLength(2);
+		expect(
+			[...element.querySelectorAll(".pie-item-summary__option-label")].map((label) => label.textContent),
+		).toEqual(["Four", "Five", "Six", "Seven"]);
+	});
+
+	test("drops the previous summary when the next one fails to render", async () => {
+		const original = console.error;
+		console.error = () => {};
+		try {
+			const { element } = await mount({ summary: precomputed });
+			expect(element.querySelector(".pie-item-summary__prompt")).not.toBeNull();
+			element.summary = undefined;
+			element.config = {
+				get elements(): never {
+					throw new Error("broken");
+				},
+			} as unknown as PieContent;
+			await settle();
+			expect(element.querySelector(".pie-item-summary__prompt")).toBeNull();
+		} finally {
+			console.error = original;
+		}
 	});
 });

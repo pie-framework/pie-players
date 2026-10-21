@@ -11,9 +11,12 @@
 			resolve: { type: "Object", reflect: false },
 			// Interface locale for the row's own labels, as a BCP-47 tag. Unset renders `en-US`.
 			locale: { attribute: "locale", type: "String" },
+			// A provider for the row's labels and its player's; `<pie-item-list>` hands every row its own.
+			i18n: { type: "Object", reflect: false },
 			expanded: { attribute: "expanded", type: "Boolean" },
 			strategy: { attribute: "strategy", type: "String" },
 			loaderOptions: { type: "Object", reflect: false },
+			loaderConfig: { type: "Object", reflect: false },
 		},
 		extend: coerceBooleanAttributes,
 	}}
@@ -25,15 +28,14 @@ One PIE item as a list row: its stem, prompts, options and, for instructors, its
 
 @fires {CustomEvent<{ view: "summary" | "player" }>} load-complete - `summary` once per rendered summary, after math conversion; a new `env` with the same role does not re-render. `player` once the expanded row's player has loaded and replaced the summary.
 @fires {CustomEvent<{ code: string; message: string; recoverable: boolean }>} player-error - The expanded row's player failed to load, re-dispatched with the player's detail, or did not load in time (`recoverable: true`). The summary keeps showing; collapsing and expanding again retries.
+@fires {CustomEvent<{ kind: "i18n-locale-load"; source: string; message: string; details: string[]; recoverable: true; scope: "runtime"; cause?: unknown }>} framework-error - A requested interface-locale catalog failed to load; the row's labels fall back to English, and re-setting `locale` retries.
 -->
 
 <script lang="ts">
-	import {
-		createPieI18n,
-		DEFAULT_LOCALE,
-	} from "@pie-players/pie-players-shared/i18n";
+	import type { I18nProvider } from "@pie-players/pie-players-shared/i18n";
 	import type { Env, ItemConfig } from "@pie-players/pie-players-shared/types";
 	import { coerceBooleanAttributes } from "@pie-players/pie-players-shared/ui/attribute-coercion";
+	import { useInterfaceI18n } from "@pie-players/pie-players-shared/ui/interface-i18n";
 	import { tick, untrack } from "svelte";
 	import {
 		loadItemPlayer,
@@ -53,6 +55,7 @@ One PIE item as a list row: its stem, prompts, options and, for instructors, its
 		type RenderedSummary,
 		renderSummary,
 	} from "./render.js";
+	import { keepEqual } from "./same-content.js";
 
 	let {
 		config,
@@ -60,61 +63,63 @@ One PIE item as a list row: its stem, prompts, options and, for instructors, its
 		summary,
 		resolve,
 		locale = "",
+		i18n,
 		expanded = false,
 		strategy,
 		loaderOptions,
+		loaderConfig,
 	}: {
 		config?: ItemConfig;
 		env?: Env;
 		summary?: ItemSummary;
 		resolve?: SummaryResolver;
 		locale?: string;
+		i18n?: I18nProvider | null;
 		expanded?: boolean;
 		strategy?: PlayerLoadInputs["strategy"];
 		loaderOptions?: PlayerLoadInputs["loaderOptions"];
+		loaderConfig?: PlayerLoadInputs["loaderConfig"];
 	} = $props();
 
 	const hostElement: HTMLElement = $host();
 
-	const i18n = createPieI18n();
-	let i18nVersion = $state(0);
-	$effect(() =>
-		i18n.subscribe(() => {
-			i18nVersion += 1;
-		}),
-	);
-	$effect(() => {
-		const requested = typeof locale === "string" ? locale.trim() : "";
-		untrack(() => {
-			// Every key still resolves through the English fallback when a catalog fails to load.
-			void Promise.resolve(i18n.setLocale(requested || DEFAULT_LOCALE)).catch(
-				() => {},
-			);
-		});
-	});
-	// A new object per catalog change: a derived that returns the same `i18n` compares equal and
-	// never re-renders the labels read through it.
-	const messages = $derived((void i18nVersion, { t: i18n.t.bind(i18n) }));
+	// An equal object set again keeps the previous one, so a host re-setting its rows' data neither
+	// re-summarizes a row nor remounts its player.
+	let kept: {
+		config?: ItemConfig;
+		summary?: ItemSummary;
+		env?: Env;
+		loaderOptions?: PlayerLoadInputs["loaderOptions"];
+		loaderConfig?: PlayerLoadInputs["loaderConfig"];
+	} = {};
+	const item = $derived((kept.config = keepEqual(kept.config, config)));
+	const precomputed = $derived((kept.summary = keepEqual(kept.summary, summary)));
+	const viewEnv = $derived((kept.env = keepEqual(kept.env, env)));
+	const playerOptions = $derived((kept.loaderOptions = keepEqual(kept.loaderOptions, loaderOptions)));
+	const playerConfig = $derived((kept.loaderConfig = keepEqual(kept.loaderConfig, loaderConfig)));
+
+	const interfaceI18n = useInterfaceI18n(hostElement, "pie-item-summary", () => ({ i18n, locale }));
+	const messages = $derived(interfaceI18n.messages);
 
 	let rendered = $state<RenderedSummary | null>(null);
 	let generation = 0;
 
-	// `env` defaults to an instructor view; only an explicit student role withholds answers. A
-	// derived role re-renders on a role change alone, not on every new `env` object.
-	const role = $derived(env?.role === "student" ? "student" : "instructor");
+	// No `env` is the instructor view; an `env` whose role is not `instructor` withholds answers, as
+	// `summarizeItem` and the player do. A derived role re-renders on a role change alone.
+	const role = $derived(!viewEnv || viewEnv.role === "instructor" ? "instructor" : "student");
 
 	$effect(() => {
 		const viewRole = role;
-		const precomputed = isItemSummary(summary) ? summary : null;
-		const item = config;
+		const stored = isItemSummary(precomputed) ? precomputed : null;
+		const source = item;
 		const resolver = resolve;
 		const run = ++generation;
 		void (async () => {
 			try {
-				const source =
-					precomputed ??
-					(item ? await summarizeItem(item, { role: viewRole, resolve: resolver }) : null);
-				const view = source ? await renderSummary(source, viewRole) : null;
+				const summarized =
+					stored ??
+					(source ? await summarizeItem(source, { role: viewRole, resolve: resolver }) : null);
+				const view = summarized ? await renderSummary(summarized, viewRole) : null;
 				if (run !== generation) return;
 				rendered = view;
 				if (!view) return;
@@ -122,6 +127,8 @@ One PIE item as a list row: its stem, prompts, options and, for instructors, its
 				if (run !== generation || untrack(() => playerShown)) return;
 				announce("load-complete", { view: "summary" });
 			} catch (error) {
+				// The previous summary belongs to other inputs, so it goes.
+				if (run === generation) rendered = null;
 				console.error("[pie-item-summary] The summary could not be rendered.", error);
 			}
 		})();
@@ -137,17 +144,17 @@ One PIE item as a list row: its stem, prompts, options and, for instructors, its
 	let playerShown = $state(false);
 	let playerHost = $state<HTMLElement | undefined>();
 	let ticket: PlayerTicket | undefined;
-	const playerEnv = $derived(env ?? { mode: "view", role: "instructor" });
+	const playerEnv = $derived(viewEnv ?? { mode: "view", role: "instructor" });
 
 	$effect(() => {
-		if (!expanded || !config) return;
-		const item = config;
-		const inputs: PlayerLoadInputs = { strategy, loaderOptions };
+		if (!expanded || !item) return;
+		const shown = item;
+		const inputs: PlayerLoadInputs = { strategy, loaderOptions: playerOptions, loaderConfig: playerConfig };
 		let open = true;
 		untrack(() => {
 			ticket = playerScheduler().request({
 				element: hostElement,
-				config: item,
+				config: shown,
 				inputs,
 				grant: () => {
 					loadItemPlayer().then(
@@ -217,13 +224,15 @@ One PIE item as a list row: its stem, prompts, options and, for instructors, its
 
 {#snippet options(list: RenderedOption[])}
 	<ul class="pie-item-summary__options">
-		{#each list as option (option.id)}
+		{#each list as option, index (index)}
 			<li class="pie-item-summary__option" class:pie-item-summary__option--correct={option.correct}>
-				{#if option.correct}
-					<span class="pie-item-summary__marker" aria-hidden="true">✓</span>
-					<span class="pie-item-summary__sr-only">{messages.t("player.summary.correctA11y")}</span>
-				{/if}
-				<span class="pie-item-summary__option-label">{@html option.label}</span>
+				<span class="pie-item-summary__option-body">
+					{#if option.correct}
+						<span class="pie-item-summary__marker" aria-hidden="true">✓</span>
+						<span class="pie-item-summary__sr-only">{messages.t("player.summary.correctA11y")}</span>
+					{/if}
+					<span class="pie-item-summary__option-label">{@html option.label}</span>
+				</span>
 			</li>
 		{/each}
 	</ul>
@@ -261,7 +270,7 @@ One PIE item as a list row: its stem, prompts, options and, for instructors, its
 		{#if rendered.stem}
 			<div class="pie-item-summary__stem">{@html rendered.stem}</div>
 		{/if}
-		{#each rendered.entries as entry (entry.id)}
+		{#each rendered.entries as entry, index (index)}
 			<div class="pie-item-summary__entry" data-pkg={entry.pkg} data-source={entry.source}>
 				{#if entry.source === "label"}
 					<p class="pie-item-summary__label">{entry.label}</p>
@@ -296,10 +305,12 @@ One PIE item as a list row: its stem, prompts, options and, for instructors, its
 		bind:this={playerHost}
 	>
 		<pie-item-player
-			config={config}
+			config={item}
 			env={playerEnv}
 			strategy={strategy}
-			loaderOptions={loaderOptions}
+			loaderOptions={playerOptions}
+			loaderConfig={playerConfig}
+			i18n={interfaceI18n.provider}
 			addCorrectResponse={role === "instructor"}
 		></pie-item-player>
 	</div>
@@ -370,8 +381,41 @@ One PIE item as a list row: its stem, prompts, options and, for instructors, its
 		color: var(--pie-correct, #0b7a3e);
 	}
 
+	/* A row, so a label the author wrapped in a block element stays beside its check mark. */
+	.pie-item-summary__option-body {
+		display: flex;
+		align-items: baseline;
+		gap: 0.25em;
+	}
+
+	.pie-item-summary__option-label {
+		min-width: 0;
+	}
+
+	/* The view's gaps space its blocks, so the outer margins of each authored fragment go. */
+	:is(
+			.pie-item-summary__stem,
+			.pie-item-summary__prompt,
+			.pie-item-summary__group-label,
+			.pie-item-summary__option-label,
+			.pie-item-summary__answer-content
+		)
+		:global(:first-child) {
+		margin-block-start: 0;
+	}
+
+	:is(
+			.pie-item-summary__stem,
+			.pie-item-summary__prompt,
+			.pie-item-summary__group-label,
+			.pie-item-summary__option-label,
+			.pie-item-summary__answer-content
+		)
+		:global(:last-child) {
+		margin-block-end: 0;
+	}
+
 	.pie-item-summary__marker {
-		margin-inline-end: 0.25em;
 		font-weight: 700;
 	}
 

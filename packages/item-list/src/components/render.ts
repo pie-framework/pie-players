@@ -48,8 +48,8 @@ export interface RenderedEntry extends RenderedBlock {
 }
 
 /**
- * Converts the math in `summary` and sanitizes every HTML string after conversion. A `student`
- * render drops answers and correct markers, whatever the summary holds.
+ * Converts the math in `summary` and sanitizes every HTML string after conversion. A render for any
+ * role but `instructor` drops answers and correct markers, whatever the summary holds.
  */
 export async function renderSummary(
 	summary: ItemSummary,
@@ -59,7 +59,7 @@ export async function renderSummary(
 	const entries = await Promise.all(
 		summary.entries.map(async (entry): Promise<RenderedEntry> => {
 			const element: ElementSummary =
-				role === "student" ? withoutAnswers(entry.summary) : entry.summary;
+				role === "instructor" ? entry.summary : withoutAnswers(entry.summary);
 			const parts = await Promise.all((element.parts ?? []).map(block));
 			return {
 				id: entry.id,

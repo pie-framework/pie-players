@@ -1561,5 +1561,35 @@
 			"packages/theme/README.md"
 		],
 		"fallbackPolicy": "Canonical neutral token that may invert in high-contrast schemes."
+	},
+	{
+		"name": "--pie-item-list-clip-height",
+		"owner": "@pie-players/pie-item-list",
+		"scope": "component-public",
+		"category": "layout",
+		"status": "active",
+		"schemeParticipation": "excluded",
+		"definedIn": [
+			"packages/item-list/src/components/PieItemList.svelte"
+		],
+		"documentedIn": [
+			"packages/item-list/README.md"
+		],
+		"fallbackPolicy": "Height of a collapsed row's item summary, its passage clipped to one line above it. Falls back to 7em, so the clip scales with the list's font size."
+	},
+	{
+		"name": "--pie-item-list-sticky-top",
+		"owner": "@pie-players/pie-item-list",
+		"scope": "component-public",
+		"category": "layout",
+		"status": "active",
+		"schemeParticipation": "excluded",
+		"definedIn": [
+			"packages/item-list/src/components/PieItemList.svelte"
+		],
+		"documentedIn": [
+			"packages/item-list/README.md"
+		],
+		"fallbackPolicy": "Height of a host's sticky header, which an expanded row's toggle stays below as the row scrolls; also its scroll margin. Falls back to 0px."
 	}
 ]

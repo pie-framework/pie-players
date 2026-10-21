@@ -66,6 +66,22 @@ test.describe("<pie-item-summary> player view", () => {
 		await expect(page.locator(".pie-item-summary__prompt")).toHaveText("Pick one");
 	});
 
+	test("keeps the loaded player when an equal config is set again", async ({ page }) => {
+		await openPage(page);
+		await preloadStubElement(page);
+		await appendRow(page);
+		await expect(page.locator(`pie-item-summary ${STUB_TAG}`)).toHaveText("Rendered: <p>Pick one</p>");
+		const replaced = await page.locator("pie-item-summary").evaluate(async (row) => {
+			const target = row as HTMLElement & { config: unknown };
+			const player = target.querySelector("pie-item-player");
+			target.config = structuredClone(target.config);
+			await new Promise((resolve) => setTimeout(resolve, 100));
+			return target.querySelector("pie-item-player") !== player;
+		});
+		expect(replaced).toBe(false);
+		await expect(page.locator(".pie-item-summary")).toHaveCount(0);
+	});
+
 	test("keeps the summary and re-dispatches the player's error when it fails", async ({ page }) => {
 		await openPage(page);
 		await appendRow(page);

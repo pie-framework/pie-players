@@ -129,6 +129,9 @@ const nlNL = {
 		},
 		list: {
 			expandA11y: "Volledige vraag tonen",
+			highlights: "Zoektreffers",
+			collapse: "Samenvatting tonen",
+			playerError: "Het volledige item kon niet worden geladen.",
 		},
 	},
 

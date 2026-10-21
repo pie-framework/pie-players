@@ -7,7 +7,7 @@
 			"declarations": [
 				{
 					"kind": "class",
-					"description": "PIE items as a list of `<pie-item-summary>` rows, for a host with no list chrome of its own. Each row shows the entry's details in a leading column, the host's actions in its top-end corner, and the item's summary clipped to a fixed height, with its passage above it. The row's expand button removes the clip and mounts the item's player.",
+					"description": "PIE items as a list of `<pie-item-summary>` rows, for a host with no list chrome of its own. Each row shows the entry's details in a leading column, the host's actions in its top-end corner, the item's summary clipped to a fixed height under the first line of each of its passages, and the entry's search matches below it. The row's expand button removes the clips and mounts the item's player.",
 					"name": "PieItemList",
 					"tagName": "pie-item-list",
 					"customElement": true,
@@ -48,12 +48,28 @@
 						},
 						{
 							"kind": "field",
+							"name": "i18n",
+							"type": {
+								"text": "I18nProvider | null"
+							},
+							"attribute": "i18n"
+						},
+						{
+							"kind": "field",
 							"name": "expanded",
 							"type": {
 								"text": "boolean"
 							},
 							"default": "false",
 							"attribute": "expanded"
+						},
+						{
+							"kind": "field",
+							"name": "expandedIds",
+							"type": {
+								"text": "string[]"
+							},
+							"attribute": "expandedids"
 						},
 						{
 							"kind": "field",
@@ -73,6 +89,14 @@
 						},
 						{
 							"kind": "field",
+							"name": "loaderConfig",
+							"type": {
+								"text": "PlayerLoadInputs[\"loaderConfig\"]"
+							},
+							"attribute": "loaderconfig"
+						},
+						{
+							"kind": "field",
 							"name": "details",
 							"type": {
 								"text": "ItemListExtension"
@@ -87,6 +111,14 @@
 								"text": "ItemListExtension"
 							},
 							"attribute": "actions"
+						},
+						{
+							"kind": "field",
+							"name": "highlights",
+							"type": {
+								"text": "ItemListExtension"
+							},
+							"attribute": "highlights"
 						}
 					],
 					"attributes": [
@@ -121,12 +153,26 @@
 							"fieldName": "locale"
 						},
 						{
+							"name": "i18n",
+							"type": {
+								"text": "I18nProvider | null"
+							},
+							"fieldName": "i18n"
+						},
+						{
 							"name": "expanded",
 							"type": {
 								"text": "boolean"
 							},
 							"default": "false",
 							"fieldName": "expanded"
+						},
+						{
+							"name": "expandedids",
+							"type": {
+								"text": "string[]"
+							},
+							"fieldName": "expandedIds"
 						},
 						{
 							"name": "strategy",
@@ -143,6 +189,13 @@
 							"fieldName": "loaderOptions"
 						},
 						{
+							"name": "loaderconfig",
+							"type": {
+								"text": "PlayerLoadInputs[\"loaderConfig\"]"
+							},
+							"fieldName": "loaderConfig"
+						},
+						{
 							"name": "details",
 							"type": {
 								"text": "string"
@@ -156,29 +209,60 @@
 								"text": "string"
 							},
 							"fieldName": "actions"
+						},
+						{
+							"name": "highlights",
+							"type": {
+								"text": "string"
+							},
+							"fieldName": "highlights"
 						}
 					],
 					"events": [
 						{
-							"name": "expanded-change",
+							"name": "expanded-changed",
 							"type": {
-								"text": "CustomEvent<{ id: string; expanded: boolean }>"
+								"text": "CustomEvent<{ id: string; expanded: boolean; expandedIds: string[] }>"
 							},
-							"description": "A row's expand button was pressed."
+							"description": "A row's expand button was pressed. `expandedIds` lists the expanded rows among the current `items`, for a host that restores them through `expandedIds`."
 						},
 						{
 							"name": "player-error",
 							"type": {
-								"text": "CustomEvent<{ id: string; code: string; message: string; recoverable: boolean }>"
+								"text": "CustomEvent<{ id: string; part: \"item\" | \"passage\"; code: string; message: string; recoverable: boolean }>"
 							},
-							"description": "A row's player failed to load, with the entry `id` added to `<pie-item-summary>`'s detail."
+							"description": "A row's player failed to load, with the entry `id` and the failed `part` added to `<pie-item-summary>`'s detail."
 						},
 						{
 							"name": "load-complete",
 							"type": {
-								"text": "CustomEvent<{ view: \"summary\" | \"player\" }>"
+								"text": "CustomEvent<{ id: string; part: \"item\" | \"passage\"; view: \"summary\" | \"player\" }>"
 							},
-							"description": "Bubbles unchanged from each row's `<pie-item-summary>`, passage rows included; the entry's `id` is on the closest `[data-item-id]`."
+							"description": "A row's item or passage summary rendered, or its player loaded."
+						},
+						{
+							"name": "extension-error",
+							"type": {
+								"text": "CustomEvent<{ id: string; slot: \"details\" | \"actions\" | \"highlights\"; phase: \"render\" | \"update\" | \"destroy\"; cause: unknown }>"
+							},
+							"description": "A row extension threw or rejected; the rest of the list keeps rendering."
+						},
+						{
+							"name": "framework-error",
+							"type": {
+								"text": "CustomEvent<{ kind: \"i18n-locale-load\"; source: string; message: string; details: string[]; recoverable: true; scope: \"runtime\"; cause?: unknown }>"
+							},
+							"description": "A requested interface-locale catalog failed to load; the labels fall back to English, and re-setting `locale` retries."
+						}
+					],
+					"cssProperties": [
+						{
+							"name": "--pie-item-list-clip-height",
+							"description": "Height of a collapsed row's item summary, its passage clipped to one line above it. Falls back to 7em, so the clip scales with the list's font size."
+						},
+						{
+							"name": "--pie-item-list-sticky-top",
+							"description": "Height of a host's sticky header, which an expanded row's toggle stays below as the row scrolls; also its scroll margin. Falls back to 0px."
 						}
 					],
 					"x-pie": {
@@ -189,15 +273,23 @@
 							"pie-item-list__content",
 							"pie-item-list__details",
 							"pie-item-list__extension",
+							"pie-item-list__highlight-field",
+							"pie-item-list__highlight-fields",
+							"pie-item-list__highlight-label",
+							"pie-item-list__highlights",
+							"pie-item-list__highlights-title",
 							"pie-item-list__id",
 							"pie-item-list__item",
+							"pie-item-list__item--clipped",
 							"pie-item-list__name",
 							"pie-item-list__passage",
+							"pie-item-list__passage--collapsed",
 							"pie-item-list__row",
+							"pie-item-list__snippet",
+							"pie-item-list__status",
 							"pie-item-list__toggle",
 							"pie-item-list__version",
-							"pie-item-list__view",
-							"pie-item-list__view--clipped"
+							"pie-item-list__view"
 						]
 					}
 				},
@@ -252,6 +344,15 @@
 						},
 						{
 							"kind": "field",
+							"name": "i18n",
+							"type": {
+								"text": "I18nProvider | null"
+							},
+							"description": "A provider for the row's labels and its player's; `<pie-item-list>` hands every row its own.",
+							"attribute": "i18n"
+						},
+						{
+							"kind": "field",
 							"name": "expanded",
 							"type": {
 								"text": "boolean"
@@ -274,6 +375,14 @@
 								"text": "PlayerLoadInputs[\"loaderOptions\"]"
 							},
 							"attribute": "loaderoptions"
+						},
+						{
+							"kind": "field",
+							"name": "loaderConfig",
+							"type": {
+								"text": "PlayerLoadInputs[\"loaderConfig\"]"
+							},
+							"attribute": "loaderconfig"
 						}
 					],
 					"attributes": [
@@ -315,6 +424,14 @@
 							"fieldName": "locale"
 						},
 						{
+							"name": "i18n",
+							"type": {
+								"text": "I18nProvider | null"
+							},
+							"description": "A provider for the row's labels and its player's; `<pie-item-list>` hands every row its own.",
+							"fieldName": "i18n"
+						},
+						{
 							"name": "expanded",
 							"type": {
 								"text": "boolean"
@@ -335,6 +452,13 @@
 								"text": "PlayerLoadInputs[\"loaderOptions\"]"
 							},
 							"fieldName": "loaderOptions"
+						},
+						{
+							"name": "loaderconfig",
+							"type": {
+								"text": "PlayerLoadInputs[\"loaderConfig\"]"
+							},
+							"fieldName": "loaderConfig"
 						}
 					],
 					"events": [
@@ -351,6 +475,13 @@
 								"text": "CustomEvent<{ code: string; message: string; recoverable: boolean }>"
 							},
 							"description": "The expanded row's player failed to load, re-dispatched with the player's detail, or did not load in time (`recoverable: true`). The summary keeps showing; collapsing and expanding again retries."
+						},
+						{
+							"name": "framework-error",
+							"type": {
+								"text": "CustomEvent<{ kind: \"i18n-locale-load\"; source: string; message: string; details: string[]; recoverable: true; scope: \"runtime\"; cause?: unknown }>"
+							},
+							"description": "A requested interface-locale catalog failed to load; the row's labels fall back to English, and re-setting `locale` retries."
 						}
 					],
 					"x-pie": {
@@ -371,6 +502,7 @@
 							"pie-item-summary__media",
 							"pie-item-summary__option",
 							"pie-item-summary__option--correct",
+							"pie-item-summary__option-body",
 							"pie-item-summary__option-label",
 							"pie-item-summary__options",
 							"pie-item-summary__part",

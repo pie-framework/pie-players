@@ -78,6 +78,23 @@ test.describe("<pie-item-summary> (real browser)", () => {
 		expect(await page.evaluate(() => "hacked" in window)).toBe(false);
 	});
 
+	test("keeps a correct option's block-wrapped label on its check mark's line", async ({ page }) => {
+		await renderInPage(page, {
+			options: [
+				{ id: "a", label: "<div>52 miles</div>", correct: true },
+				{ id: "b", label: "<p>62 miles</p><p>or more</p>", correct: true },
+				{ id: "c", label: "<div> <p>1,666 miles</p> </div>", correct: true },
+			],
+		});
+		const lines = await page.evaluate(() =>
+			[...document.querySelectorAll(".pie-item-summary__option")].map((option) => {
+				const top = (selector: string) => option.querySelector(selector)?.getBoundingClientRect().top ?? NaN;
+				return top(".pie-item-summary__option-label") - top(".pie-item-summary__marker");
+			}),
+		);
+		for (const offset of lines) expect(Math.abs(offset)).toBeLessThan(4);
+	});
+
 	test("renders the stem's and the summary's TeX as MathML", async ({ page }) => {
 		const html = await renderInPage(
 			page,

@@ -38,6 +38,7 @@ export const PLAYERS_SHARED_SVELTE_SOURCE_RELATIVE: Record<string, string> = {
 	"@pie-players/pie-players-shared/components/overlay-placement":
 		"src/components/overlay-placement/index.ts",
 	"@pie-players/pie-players-shared/components": "src/components/index.ts",
+	"@pie-players/pie-players-shared/ui/interface-i18n": "src/ui/interface-i18n.svelte.ts",
 	"@pie-players/pie-players-shared/ui/use-promise": "src/ui/use-promise.svelte.ts",
 };
 

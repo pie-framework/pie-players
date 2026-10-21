@@ -1,5 +1,21 @@
 # @pie-players/pie-section-player
 
+## 1.0.0-beta.5
+
+### Patch Changes
+
+- 5a33154: The section player's element pre-warm now loads through the item player's backend and tags, so in author mode or under a named ESM view it registers the editor and view tags its item players expect, and an author `env.mode` no longer switches it to the editor bundle while the players load delivery. `pie-item-player` exports `itemPlayerBackend` and `itemPlayerElementTags`, and `preloadItemElements` takes an `instrumentationProvider` and an `onBundleRetryStatus` option.
+- Updated dependencies [e0797ec]
+- Updated dependencies [db7d543]
+- Updated dependencies [2dee856]
+- Updated dependencies [f5e11b1]
+- Updated dependencies [f02f97f]
+- Updated dependencies [5a33154]
+  - @pie-players/pie-players-shared@1.0.0-beta.5
+  - @pie-players/pie-item-player@1.0.0-beta.5
+  - @pie-players/pie-assessment-toolkit@1.0.0-beta.5
+  - @pie-players/pie-default-tool-loaders@1.0.0-beta.5
+
 ## 1.0.0-beta.4
 
 ### Patch Changes

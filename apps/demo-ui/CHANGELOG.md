@@ -1,5 +1,19 @@
 # @pie-players/demo-ui
 
+## 0.1.3-beta.5
+
+### Patch Changes
+
+- Updated dependencies [e0797ec]
+- Updated dependencies [db7d543]
+- Updated dependencies [2dee856]
+- Updated dependencies [f5e11b1]
+- Updated dependencies [f02f97f]
+- Updated dependencies [5a33154]
+  - @pie-players/pie-players-shared@1.0.0-beta.5
+  - @pie-players/pie-item-player@1.0.0-beta.5
+  - @pie-players/tts-server-core@1.0.0-beta.5
+
 ## 0.1.3-beta.4
 
 ### Patch Changes

@@ -150,13 +150,22 @@ async function mountPlayer(
 				get session() {
 					return this.probeSession;
 				}
+				// A `complete` the session does not show, as an element gating
+				// completion on its prompt audio reports.
+				completeWithoutResponse?: boolean;
 				answer(value: string) {
 					this.probeSession.value = [value];
 					this.announce();
 				}
+				complete(value: boolean) {
+					this.completeWithoutResponse = value;
+					this.announce();
+				}
 				announce() {
 					emit(this, "session-changed", {
-						complete: (this.probeSession?.value ?? []).length > 0,
+						complete:
+							this.completeWithoutResponse ??
+							(this.probeSession?.value ?? []).length > 0,
 						component: this.localName,
 					});
 				}
@@ -406,6 +415,66 @@ test.describe("delivery", () => {
 			a: ["x"],
 			b: ["y"],
 		});
+	});
+
+	test("a change of complete alone reaches the host as a session change", async ({
+		page,
+	}) => {
+		await mountPlayer(page, {
+			mode: "view",
+			session: {
+				id: "attempt-8",
+				data: [
+					{ id: "a", element: "element-probe-a", value: ["x"] },
+					{ id: "b", element: "element-probe-b" },
+				],
+			},
+		});
+		await page.evaluate(
+			({ tag }) => {
+				window.__sessionEvents.length = 0;
+				(document.querySelector(tag) as any).complete(true);
+			},
+			{ tag: probes[1].tag },
+		);
+		await settle(page);
+		const events = await page.evaluate(() => window.__sessionEvents);
+		expect(
+			events.map(({ elementId, complete, intent }) => ({
+				elementId,
+				complete,
+				intent,
+			})),
+		).toEqual([{ elementId: "b", complete: true, intent: null }]);
+		expect(valuesOf(events[0].session)).toEqual({ a: ["x"], b: undefined });
+	});
+
+	test("a session swap starts completion over, so the swap's announcements stay metadata-only", async ({
+		page,
+	}) => {
+		await mountPlayer(page, {
+			mode: "view",
+			session: {
+				id: "attempt-9",
+				data: [
+					{ id: "a", element: "element-probe-a", value: ["x"] },
+					{ id: "b", element: "element-probe-b", value: ["y"] },
+				],
+			},
+		});
+		await page.evaluate(() => {
+			window.__sessionEvents.length = 0;
+			(document.querySelector("pie-item-player") as any).session = {
+				id: "attempt-10",
+				data: [],
+			};
+		});
+		await settle(page);
+		const events = await page.evaluate(() => window.__sessionEvents);
+		expect(events.filter((event) => event.complete === false).length).toBeGreaterThan(0);
+		expect(
+			events.filter((event) => !event.session?.data?.length && event.intent !== "metadata-only"),
+		).toEqual([]);
 	});
 
 	test("a controller write-back adds no event, at load or after a response", async ({

@@ -449,6 +449,34 @@ test.describe("delivery", () => {
 		expect(valuesOf(events[0].session)).toEqual({ a: ["x"], b: undefined });
 	});
 
+	test("a session swap starts completion over, so the swap's announcements stay metadata-only", async ({
+		page,
+	}) => {
+		await mountPlayer(page, {
+			mode: "view",
+			session: {
+				id: "attempt-9",
+				data: [
+					{ id: "a", element: "element-probe-a", value: ["x"] },
+					{ id: "b", element: "element-probe-b", value: ["y"] },
+				],
+			},
+		});
+		await page.evaluate(() => {
+			window.__sessionEvents.length = 0;
+			(document.querySelector("pie-item-player") as any).session = {
+				id: "attempt-10",
+				data: [],
+			};
+		});
+		await settle(page);
+		const events = await page.evaluate(() => window.__sessionEvents);
+		expect(events.filter((event) => event.complete === false).length).toBeGreaterThan(0);
+		expect(
+			events.filter((event) => !event.session?.data?.length && event.intent !== "metadata-only"),
+		).toEqual([]);
+	});
+
 	test("a controller write-back adds no event, at load or after a response", async ({
 		page,
 	}) => {

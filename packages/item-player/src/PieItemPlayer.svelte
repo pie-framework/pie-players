@@ -1344,6 +1344,9 @@ The PIE item player: it loads an item's PIE elements under the `iife`, `esm` or 
 		untrack(() => {
 			if (isSessionSwap(parsed)) {
 				commitOutgoingSessions();
+				// The elements announce afresh into the incoming session; a stale
+				// baseline would promote their first announcements into it.
+				announcedCompletion.clear();
 			}
 			appliedSessionContainer = container;
 			const controller = ensureSessionController(controllerItemId, parsed);

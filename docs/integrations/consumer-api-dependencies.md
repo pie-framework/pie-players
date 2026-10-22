@@ -1581,7 +1581,10 @@ and an event with `complete: true` has to carry them before display too. The
 player fills a missing `component` with the element's tag and a missing
 `complete` from whether the element's record holds a response, so a synthesized
 or player-populated event meets both. A controller write-back dispatches no
-event of its own; the next element event carries it.
+event of its own; the next element event carries it. A change of an element's
+`complete` around an unchanged session, such as an element whose completion
+waits on its prompt audio reaching the end, carries the session and no `intent`,
+so the host does not skip it.
 
 It stores the response when its submit runs and then unmounts the player. The
 teardown commit runs after the player has left its container, where the

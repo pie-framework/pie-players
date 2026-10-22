@@ -351,9 +351,11 @@ A backend method rejects its promise on failure and dispatches no
   what that element last announced, so each element reaches the host once at
   load and one response produces one event. The detail has one of two shapes:
   - `{ complete, component, elementId, session: { id, data } }` when the item
-    session changed. `session` is the whole item session.
+    session changed, or the element's `complete` did. `session` is the whole
+    item session.
   - `{ complete, component, elementId, session: null, intent: "metadata-only" }`
-    when only metadata changed.
+    when only other metadata changed, such as an element's first announcement
+    around an unchanged session.
 
   `complete` is the announcing element's own, `component` its tag and
   `elementId` its model id. Every event carries `complete` and `component`:

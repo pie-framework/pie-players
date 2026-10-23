@@ -1,5 +1,11 @@
 # @pie-players/pie-players-cli
 
+## 0.3.9-beta.6
+
+### Patch Changes
+
+- @pie-players/pie-players-shared@1.0.0-beta.6
+
 ## 0.3.9-beta.5
 
 ### Patch Changes

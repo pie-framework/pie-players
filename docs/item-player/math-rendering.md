@@ -127,7 +127,9 @@ typeset on `window.MathJax`:
 
 - The `iife` strategy's renderer, MathJax 3.2.2, and the same renderer in a
   `@pie-players/pie-preloaded-player` build that carries an IIFE bundle
-  (`pie-elements-bundle-<hash>.js` beside `math-rendering.js`).
+  (`pie-elements-bundle-<hash>.js` beside `math-rendering.js`). The generator
+  now bundles ESM builds only; the `knowledge-checks` and `star-0326` sets'
+  published IIFE builds stay installable.
 - ESM element builds whose MathJax adapter is 0.1.1 or earlier. They load
   MathJax 4.1.3 into `window.MathJax`, or typeset with the MathJax the page
   already has.

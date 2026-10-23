@@ -1,5 +1,13 @@
 # @pie-players/pie-item-player
 
+## 1.0.0-beta.6
+
+### Patch Changes
+
+- 782d395: `session-changed` forwards a change of an element's `complete` around an unchanged session with the session and without `intent`, so a host that skips metadata-only changes still sees the element complete (PIE-1340).
+- @pie-players/pie-context@1.0.0-beta.6
+  - @pie-players/pie-players-shared@1.0.0-beta.6
+
 ## 1.0.0-beta.5
 
 ### Patch Changes

@@ -1,5 +1,13 @@
 # @pie-players/pie-item-list
 
+## 1.0.0-beta.6
+
+### Patch Changes
+
+- Updated dependencies [782d395]
+  - @pie-players/pie-item-player@1.0.0-beta.6
+  - @pie-players/pie-players-shared@1.0.0-beta.6
+
 ## 1.0.0-beta.5
 
 ### Patch Changes

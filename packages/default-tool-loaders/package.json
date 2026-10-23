@@ -1,6 +1,6 @@
 {
 	"name": "@pie-players/pie-default-tool-loaders",
-	"version": "1.0.0-beta.5",
+	"version": "1.0.0-beta.6",
 	"type": "module",
 	"description": "Composition layer for the packaged PIE assessment tools: registrations, tag map, placement preset, universal and empty profiles, and lazy module loaders",
 	"repository": {

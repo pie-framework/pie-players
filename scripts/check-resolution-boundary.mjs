@@ -10,7 +10,7 @@
  * the worktree does not install comes from the main checkout's root install, and a
  * test, build or typecheck there can pass on an import CI's fresh checkout rejects.
  *
- * Two cases fail. A checkout with no install of its own runs on the one above it.
+ * Ancestor checks cover two cases. A checkout with no install of its own runs on the one above it.
  * And an ancestor `node_modules` entry its own manifest does not declare is
  * garbage: bun's isolated linker keeps a root link after the dependency leaves the
  * manifest, which left 23 such entries in the main checkout by 2026-09-25. An
@@ -18,6 +18,10 @@
  * and allowed, because two branches can declare different root dependencies, and
  * failing on it would block every worktree while the main checkout is on a branch
  * that adds one.
+ *
+ * Declared workspace dependencies must also resolve to their workspace directories.
+ * A forwarding directory or a link into another checkout can otherwise load a
+ * second framework runtime even when ordinary import resolution succeeds.
  */
 
 import {
@@ -28,6 +32,8 @@ import {
 	statSync,
 } from "node:fs";
 import path from "node:path";
+import { getWorkspaceDirs } from "./lib/pack-inspection.mjs";
+import { checkWorkspaceResolution } from "./lib/workspace-resolution.mjs";
 
 const LABEL = "[check-resolution-boundary]";
 
@@ -146,24 +152,41 @@ function main() {
 		ancestors,
 	});
 
+	const workspaceDirs = getWorkspaceDirs({
+		root,
+		workspaceRoots: ["packages", "apps", "tools"],
+	});
+	const workspacePackages = new Map(workspaceDirs.map((dir) => [
+		JSON.parse(readFileSync(path.join(dir, "package.json"), "utf8")).name,
+		dir,
+	]));
+	for (const dir of [root, ...workspaceDirs]) {
+		for (const issue of checkWorkspaceResolution(path.join(dir, "package.json"), workspacePackages)) {
+			failures.push(`${path.relative(root, dir) || "."}: ${issue.dependency}: ${issue.reason}. Expected ${issue.expectedPath ?? "a declared workspace"}; found ${issue.resolvedPath ?? "no installed entry"}.`);
+		}
+	}
+
 	for (const note of notes) {
 		console.log(`${LABEL} Note: ${note}`);
 	}
 
 	if (failures.length > 0) {
 		console.error(
-			`${LABEL} Packages resolve into this checkout from above it:`,
+			`${LABEL} Invalid package resolution:`,
 		);
 		for (const failure of failures) {
 			console.error(`- ${failure}`);
 		}
+		console.error(
+			`${LABEL} Run bun install --frozen-lockfile to restore workspace links. Move stale forwarding directories aside first if install leaves them in place.`,
+		);
 		console.error(
 			`${LABEL} A test, build or typecheck here that imports one of them can pass where CI's fresh checkout fails. See "Git Worktrees" in AGENTS.md.`,
 		);
 		process.exit(1);
 	}
 
-	console.log(`${LABEL} OK: nothing stale resolves from above this checkout`);
+	console.log(`${LABEL} OK: workspace dependencies resolve to this checkout; nothing stale resolves from above it`);
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {

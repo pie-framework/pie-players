@@ -57,6 +57,24 @@ next. It is not exhaustive.
 - **Verification**: the manual pass comes first; browser tests then automate the
   parts they can check reliably.
 
+## Source Fixes Awaiting Release
+
+### Theme Picker: Visible Labels and Accessible Names
+
+- **WCAG**: 2.5.3 Label in Name (Level A).
+- **Surface**: `packages/tool-color-scheme` (`@pie-players/pie-tool-theme`).
+- **Fixed in source**: the trigger and menu options include the visible scheme
+  name and description in their accessible names. The decorative letter swatch
+  uses CSS and is hidden from assistive technology.
+- **Verification, 22 October 2026**: the built-package registry test checks
+  built-in and host-added scheme names, decorative previews, and focus after
+  unregistering a focused scheme. In the section demo, the open menu passed the
+  scoped axe-core 4.14.0 `label-content-name-mismatch` check. Keyboard selection
+  updated the current scheme's name; Escape returned focus to the toolbar.
+- **Release status**: a patch changeset is included. Published consumers still
+  need the released package and a check against their pinned bundle. This does
+  not close the manual assistive-technology evidence gap above.
+
 ## Next Work
 
 [`evaluation-method.md`](./evaluation-method.md) and

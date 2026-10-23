@@ -490,6 +490,9 @@ The PIE item player: it loads an item's PIE elements under the `iife`, `esm` or 
 	// A controller wrote derived state back that no `session-changed` has carried
 	// yet; see `handleElementSessionUpdate`.
 	let derivedStateUnannounced = false;
+	// The `complete` each element last announced to the host, by `elementId`, or
+	// `component` when the detail names no element.
+	const announcedCompletion = new Map<string, boolean>();
 	let latestLoadRequestToken = 0;
 	let activeSessionSnapshot: SessionSnapshot | null = null;
 	let offeredSnapshotKey = "";
@@ -669,6 +672,7 @@ The PIE item player: it loads an item's PIE elements under the `iife`, `esm` or 
 			sessionControllerItemId = itemId;
 			sessionSignature = JSON.stringify(sessionController.getSession());
 			derivedStateUnannounced = false;
+			announcedCompletion.clear();
 		}
 		return sessionController;
 	}
@@ -1340,6 +1344,9 @@ The PIE item player: it loads an item's PIE elements under the `iife`, `esm` or 
 		untrack(() => {
 			if (isSessionSwap(parsed)) {
 				commitOutgoingSessions();
+				// The elements announce afresh into the incoming session; a stale
+				// baseline would promote their first announcements into it.
+				announcedCompletion.clear();
 			}
 			appliedSessionContainer = container;
 			const controller = ensureSessionController(controllerItemId, parsed);
@@ -1937,15 +1944,34 @@ The PIE item player: it loads an item's PIE elements under the `iife`, `esm` or 
 		return typeof model?.element === "string" ? model.element : undefined;
 	}
 
+	function completionKey(detail: Record<string, unknown>): string {
+		return typeof detail.elementId === "string" && detail.elementId
+			? detail.elementId
+			: typeof detail.component === "string"
+				? detail.component
+				: "";
+	}
+
+	// Whether `detail` announces a `complete` other than the one its element last
+	// announced to the host. An element's first announcement moves nothing.
+	function completionMoved(detail: Record<string, unknown>): boolean {
+		const key = completionKey(detail);
+		return (
+			typeof detail.complete === "boolean" &&
+			announcedCompletion.has(key) &&
+			announcedCompletion.get(key) !== detail.complete
+		);
+	}
+
 	const emitSessionChanged = (
 		detail: Record<string, unknown>,
 		session: CanonicalItemSessionContainer,
 	) => {
-		handlePlayerEvent(
-			new CustomEvent("session-changed", {
-				detail: withContractMetadata(detail, session, componentForElement),
-			}),
-		);
+		const canonical = withContractMetadata(detail, session, componentForElement);
+		if (typeof canonical.complete === "boolean") {
+			announcedCompletion.set(completionKey(canonical), canonical.complete);
+		}
+		handlePlayerEvent(new CustomEvent("session-changed", { detail: canonical }));
 	};
 
 	const handleSessionChanged = (detail: unknown) => {
@@ -1977,8 +2003,10 @@ The PIE item player: it loads an item's PIE elements under the `iife`, `esm` or 
 			backendOrchestrator.scheduleAutosave();
 			return;
 		}
-		if (derivedStateUnannounced) {
-			// The session changed since the host was last told, by a write-back alone.
+		// A change of `complete` alone is a session change: a host may skip
+		// metadata-only changes, and one gating on `complete` then never sees the
+		// element complete. So is a write-back the host was not told of.
+		if (derivedStateUnannounced || completionMoved(forwarding.detail)) {
 			derivedStateUnannounced = false;
 			const { intent: _intent, ...metadata } = forwarding.detail;
 			const current = controller.getSession();

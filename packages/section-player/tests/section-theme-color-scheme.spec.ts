@@ -245,24 +245,28 @@ test.describe("section theme and color scheme integration", () => {
 			{
 				id: "grey-on-light-grey",
 				name: "Grey on Light Grey",
+				description: "Low-glare neutral palette",
 				bg: "rgb(235, 235, 235)",
 				text: "rgb(74, 74, 74)",
 			},
 			{
 				id: "purple-on-light-green",
 				name: "Purple on Light Green",
+				description: "Color blind friendly, low-glare background",
 				bg: "rgb(204, 232, 212)",
 				text: "rgb(142, 36, 100)",
 			},
 			{
 				id: "black-on-violet",
 				name: "Black on Violet",
+				description: "Cool tinted background",
 				bg: "rgb(212, 169, 222)",
 				text: "rgb(0, 0, 0)",
 			},
 			{
 				id: "yellow-on-navy",
 				name: "Yellow on Navy",
+				description: "Strong contrast on a softened dark blue",
 				bg: "rgb(51, 80, 138)",
 				text: "rgb(255, 255, 85)",
 			},
@@ -278,17 +282,23 @@ test.describe("section theme and color scheme integration", () => {
 		await themeTool.getByRole("button", { name: "Select theme" }).click();
 
 		// The picker derives its list from listPieColorSchemes(), so every
-		// registered scheme has to show up as a menu item.
+		// registered scheme has to show up as a menu item, named by its visible
+		// name and description.
+		const optionName = (scheme: (typeof SCHEMES)[number]) =>
+			`${scheme.name} ${scheme.description}`;
 		for (const scheme of SCHEMES) {
 			await expect(
-				themeTool.getByRole("menuitem", { name: scheme.name, exact: true }),
+				themeTool.getByRole("menuitem", {
+					name: optionName(scheme),
+					exact: true,
+				}),
 				`${scheme.name} listed in picker`,
 			).toBeVisible();
 		}
 
 		// Selecting through the picker applies the scheme's tokens...
 		await themeTool
-			.getByRole("menuitem", { name: SCHEMES[0].name, exact: true })
+			.getByRole("menuitem", { name: optionName(SCHEMES[0]), exact: true })
 			.click();
 		const readApplied = async (schemeId?: string) =>
 			await page.evaluate(async (id) => {
@@ -735,7 +745,7 @@ test.describe("section theme and color scheme integration", () => {
 
 		await page.keyboard.press("ArrowDown");
 		const defaultOption = themeTool.getByRole("menuitem", {
-			name: "Default",
+			name: "Default Standard PIE colors",
 			exact: true,
 		});
 		await expect(defaultOption).toBeFocused();
@@ -743,7 +753,7 @@ test.describe("section theme and color scheme integration", () => {
 		await page.keyboard.press("ArrowDown");
 		await expect(
 			themeTool.getByRole("menuitem", {
-				name: "Black on White",
+				name: "Black on White High contrast for readability",
 				exact: true,
 			}),
 		).toBeFocused();
@@ -798,7 +808,7 @@ test.describe("section theme and color scheme integration", () => {
 		});
 		await trigger.click();
 		const unavailableOption = themeTool.getByRole("menuitem", {
-			name: "Unavailable theme: district-retired, unavailable",
+			name: "Unavailable theme: district-retired PIE's managed base theme remains active until this theme becomes available again., unavailable",
 			exact: true,
 		});
 		await expect(unavailableOption).toBeVisible();
@@ -850,7 +860,7 @@ test.describe("section theme and color scheme integration", () => {
 		await trigger.click();
 		await page.keyboard.press("ArrowDown");
 		const option = themeTool.getByRole("menuitem", {
-			name: "Default",
+			name: "Default Standard PIE colors",
 			exact: true,
 		});
 		await expect(option).toBeFocused();

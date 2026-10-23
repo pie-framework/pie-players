@@ -120,14 +120,20 @@ through a four-step pipeline:
    and session.
 3. Session forwarding ignores an event that carries no `session` and no
    response, then normalizes the rest and compares it with `ItemController`'s
-   session. A response change is forwarded. A change in metadata alone, such as
-   `complete`, around an unchanged session is forwarded as metadata-only.
-   Anything else is dropped.
+   session. A response change is forwarded. A change in metadata alone around
+   an unchanged session is forwarded as metadata-only, unless it changes the
+   element's `complete`. Anything else is dropped.
 4. For a response change, the player stores the session through `ItemController`
    and dispatches `session-changed` on `<pie-item-player>` with the whole session
    container in `detail.session`. A metadata-only change reaches the host as
    `session-changed` with `session: null` and `intent: "metadata-only"`, so a
    host that stores `detail.session` skips a `null` one.
+
+An element's `complete` can change around an unchanged session, as when it
+waits on its prompt audio. The player forwards that change with the session and
+without `intent`, so a host that skips metadata-only changes still sees the
+element complete. An element's first announcement sets the `complete` its next
+is compared with.
 
 An element's controller can write derived state, such as a shuffled choice
 order, into its session. That write dispatches no event of its own, so the next

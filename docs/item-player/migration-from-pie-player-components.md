@@ -171,12 +171,12 @@ and dispatches its own from the player element:
   the element off `event.target` reads it there.
 - `detail.session` is the item's session container after the change,
   `{ id, data: [{ id, element, ... }] }`.
-- An event that changes only metadata such as `complete` arrives with
-  `session: null` and `intent: "metadata-only"`. The exception is the first
-  event after an element's controller wrote derived state, such as a shuffled
-  choice order, into the session: that write dispatches no event of its own, so
-  the next one carries the session, without `intent`. An event that changes
-  nothing does not reach the host.
+- An event that changes only metadata arrives with `session: null` and
+  `intent: "metadata-only"`. Two exceptions carry the session, without
+  `intent`: an event that changes the element's `complete`, and the first event
+  after an element's controller wrote derived state, such as a shuffled choice
+  order, into the session, since that write dispatches no event of its own. An
+  event that changes nothing does not reach the host.
 - A commit the player sends at teardown, at navigation, or when the page is
   hidden adds `sessionCommitReason`: `"teardown"`, `"navigate"` or
   `"page-hidden"`.

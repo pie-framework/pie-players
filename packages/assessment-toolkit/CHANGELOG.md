@@ -1,5 +1,14 @@
 # @pie-players/pie-assessment-toolkit
 
+## 1.0.0-beta.6
+
+### Patch Changes
+
+- @pie-players/pie-calculator@1.0.0-beta.6
+  - @pie-players/pie-context@1.0.0-beta.6
+  - @pie-players/pie-players-shared@1.0.0-beta.6
+  - @pie-players/pie-tts@1.0.0-beta.6
+
 ## 1.0.0-beta.5
 
 ### Patch Changes

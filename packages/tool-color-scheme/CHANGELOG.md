@@ -1,5 +1,16 @@
 # @pie-players/pie-tool-color-scheme
 
+## 1.0.0-beta.6
+
+### Patch Changes
+
+- 501d8d5: Include the selected scheme's visible name and description in the theme picker
+  and menu option accessible names. Hide decorative letter previews from assistive
+  technology so voice-control labels match the visible text.
+- @pie-players/pie-assessment-toolkit@1.0.0-beta.6
+  - @pie-players/pie-players-shared@1.0.0-beta.6
+  - @pie-players/pie-theme@1.0.0-beta.6
+
 ## 1.0.0-beta.5
 
 ### Patch Changes

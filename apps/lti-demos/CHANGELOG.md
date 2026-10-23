@@ -1,5 +1,14 @@
 # @pie-players/lti-demos
 
+## 0.1.38-beta.6
+
+### Patch Changes
+
+- @pie-players/pie-default-tool-loaders@1.0.0-beta.6
+  - @pie-players/pie-assessment-player@1.0.0-beta.6
+  - @pie-players/pie-assessment-toolkit@1.0.0-beta.6
+  - @pie-players/pie-players-shared@1.0.0-beta.6
+
 ## 0.1.38-beta.5
 
 ### Patch Changes

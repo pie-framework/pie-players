@@ -305,7 +305,7 @@ itself there once a scheme is chosen.
 				class="pie-tool-color-scheme__dropdown-trigger"
 				aria-label={requestedSchemeOption
 					? interfaceI18n.t('tools.theme.selectCurrentA11y', {
-							name: requestedSchemeOption.name
+							name: `${requestedSchemeOption.name} ${requestedSchemeOption.description}`.trim()
 						})
 					: interfaceI18n.t('tools.theme.selectA11y')}
 				aria-expanded={dropdownOpen}
@@ -316,9 +316,9 @@ itself there once a scheme is chosen.
 			>
 				{#if requestedSchemeOption}
 					<div class="pie-tool-color-scheme__current">
-						<div class="pie-tool-color-scheme__preview">
+						<div class="pie-tool-color-scheme__preview" aria-hidden="true">
 							<div class="pie-tool-color-scheme__preview-bg" style="background-color: {requestedSchemeOption.preview.bg}">
-								<div class="pie-tool-color-scheme__preview-text" style="color: {requestedSchemeOption.preview.text}">A</div>
+								<div class="pie-tool-color-scheme__preview-text" style="color: {requestedSchemeOption.preview.text}"></div>
 								<div class="pie-tool-color-scheme__preview-primary" style="background-color: {requestedSchemeOption.preview.primary}"></div>
 							</div>
 						</div>
@@ -354,9 +354,9 @@ itself there once a scheme is chosen.
 							class:pie-tool-color-scheme__option--active={requestedScheme === scheme.id}
 							role="menuitem"
 							aria-label={scheme.available
-								? scheme.name
+								? `${scheme.name} ${scheme.description}`.trim()
 								: interfaceI18n.t('tools.theme.optionUnavailableA11y', {
-										name: scheme.name
+										name: `${scheme.name} ${scheme.description}`.trim()
 									})}
 							aria-current={requestedScheme === scheme.id}
 							aria-disabled={!scheme.available}
@@ -364,9 +364,9 @@ itself there once a scheme is chosen.
 							data-scheme-id={scheme.id}
 							onclick={() => selectScheme(scheme.id)}
 						>
-							<div class="pie-tool-color-scheme__preview">
+							<div class="pie-tool-color-scheme__preview" aria-hidden="true">
 								<div class="pie-tool-color-scheme__preview-bg" style="background-color: {scheme.preview.bg}">
-									<div class="pie-tool-color-scheme__preview-text" style="color: {scheme.preview.text}">A</div>
+									<div class="pie-tool-color-scheme__preview-text" style="color: {scheme.preview.text}"></div>
 									<div class="pie-tool-color-scheme__preview-primary" style="background-color: {scheme.preview.primary}"></div>
 								</div>
 							</div>
@@ -548,6 +548,11 @@ itself there once a scheme is chosen.
 		font-weight: 700;
 		font-size: 1.25rem;
 		color: #000000;
+	}
+
+	/* A decorative type sample, separate from the theme's visible label. */
+	.pie-tool-color-scheme__preview-text::before {
+		content: 'A';
 	}
 
 	.pie-tool-color-scheme__preview-primary {

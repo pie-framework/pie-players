@@ -89,8 +89,6 @@ export interface PassageEntity extends VersionEntity, ConfigContainerEntity {
 	accessibilityCatalogs?: AccessibilityCatalog[];
 	retired?: boolean;
 	published?: boolean;
-	// Search result highlights from OpenSearch (keyed by field name)
-	highlights?: Record<string, string[]>;
 }
 
 export interface ItemEntity extends VersionEntity, ConfigContainerEntity {
@@ -106,8 +104,6 @@ export interface ItemEntity extends VersionEntity, ConfigContainerEntity {
 	retired?: boolean;
 	published?: boolean;
 	configuration?: any;
-	// Search result highlights from OpenSearch (keyed by field name)
-	highlights?: Record<string, string[]>;
 }
 
 /**
@@ -139,22 +135,6 @@ export type ReferencedItemEntity = Omit<
 > & {
 	passage?: string | ReferencedPassageEntity | null;
 };
-
-/**
- * Metadata specifically for interpretation by clients, typically containing
- * options that are relevant for the user interface. This is not indexed for search.
- */
-export interface SettingsMetaData {
-	[key: string]: any;
-}
-
-/**
- * Objects that contain metadata in the settings property, which is NOT indexed for search
- * but typically only relevant for particular client cases.
- */
-export interface SettingsMetaDataEntity {
-	settings?: SettingsMetaData;
-}
 
 // ============================================================================
 // QTI-aligned assessment model (QTI 2.x compatible shape)
@@ -228,7 +208,7 @@ export interface AssessmentItemRef extends BaseEntity {
 	formative?: FormativeItemPolicy;
 }
 
-export interface AssessmentSection extends BaseEntity, SettingsMetaDataEntity {
+export interface AssessmentSection extends BaseEntity {
 	id?: string;
 	identifier: string;
 	title?: string;

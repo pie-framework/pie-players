@@ -3,10 +3,10 @@
 Status: Ready, 2026-10-24
 
 Implementation status: pie-players removed `SearchMetaData`, `SearchMetaDataEntity`
-and the `searchMetaData` field from the five content entities in 82596926b;
-deleting `highlights`, `SettingsMetaData`, `SettingsMetaDataEntity` and
-`AssessmentSection.settings` is outstanding, and `extensions` is deferred until a
-pie-players consumer exists. pie-qti still names the bag `searchMetaData` and
+and the `searchMetaData` field from the five content entities in 82596926b, and
+`highlights`, `SettingsMetaData`, `SettingsMetaDataEntity` and
+`AssessmentSection.settings` after it; `extensions` is deferred until a pie-players
+consumer exists. pie-qti still names the bag `searchMetaData` and
 writes it under the `pie:searchMetaData:` LOM source; the rename is outstanding.
 
 Owner: PIE Players maintainers
@@ -123,8 +123,8 @@ Removed from players-shared, with no alias:
 - `highlights` on `ItemEntity` and `PassageEntity`: search results are a backend
   response type;
 - `SettingsMetaData`, `SettingsMetaDataEntity` and `AssessmentSection.settings`: no
-  package reads them, and the section demos' `settings.personalNeedsProfile`
-  fallback uses its own structural type.
+  package reads them, and the section demos drop their
+  `settings.personalNeedsProfile` fallback, which no demo section used.
 
 ## Compatibility
 
@@ -201,7 +201,7 @@ None. The bag has no rendering effect.
 
 ## Rollout And Release Notes
 
-1. pie-players removals, one `patch` changeset each (the first landed in 82596926b).
+1. pie-players removals, one `patch` changeset each (both landed).
 2. pie-qti rename and prefix change, released independently.
 3. `extensions` in players-shared when a pie-players package consumes it, with a
    section in the content-model documentation that lists every metadata surface and

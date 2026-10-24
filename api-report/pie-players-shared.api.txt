@@ -783,8 +783,6 @@
   type SectionControllerSessionState
   type SemVer
   type SemVerPrerelease
-  type SettingsMetaData
-  type SettingsMetaDataEntity
   type SignLanguageCardPayload
   type SoundHandler
   type SpokenAudioCardPayload

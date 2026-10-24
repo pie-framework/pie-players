@@ -117,17 +117,13 @@ export function buildSectionPageHref(args: {
  * does not exercise.
  */
 export function demoAssessmentFor(
-	section: {
-		personalNeedsProfile?: PersonalNeedsProfile;
-		settings?: { personalNeedsProfile?: PersonalNeedsProfile };
-	} | null,
+	section: { personalNeedsProfile?: PersonalNeedsProfile } | null,
 ): AssessmentEntity | null {
 	if (!section) return null;
 	return {
 		id: DEMO_ASSESSMENT_ID,
 		personalNeedsProfile:
 			section.personalNeedsProfile ??
-			section.settings?.personalNeedsProfile ??
 			createUniversalPersonalNeedsProfile(),
 	};
 }

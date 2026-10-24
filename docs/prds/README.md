@@ -160,6 +160,11 @@ unbuilt framework-completing capabilities.
   mounts. Architecture:
   [Interface locale](../architecture/internationalization.md#interface-locale).
 
+- [`content-extensions.md`](./content-extensions.md) - `Ready`. The contract
+  tier of every metadata surface on PIE content, and `extensions`, a host-owned
+  key/value bag that players carry unread and pie-qti round-trips through the QTI
+  manifest as LOM.
+
 Decisions that span PRDs — sequencing, rejected alternatives, trade-offs a reader
 would otherwise have to reconstruct — live in [`../adr/`](../adr/).
 

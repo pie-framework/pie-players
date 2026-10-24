@@ -475,6 +475,12 @@ const enUS = {
 			description: "Strike through answer choices",
 			buttonA11y: "Strike Through, eliminate answer choices",
 			tooltip: "Strike Through",
+			/** A choice's toggle; `{choice}` is the choice's own accessible name. */
+			toggleA11y: "Toggle elimination for {choice}",
+			/** Appended to an eliminated choice's label for assistive technology. */
+			eliminatedA11y: "(eliminated)",
+			/** Stands in for `{choice}` when a choice has no text of its own. */
+			unlabeledChoice: "Unlabeled choice",
 		},
 		highlighter: {
 			name: "Highlighter",

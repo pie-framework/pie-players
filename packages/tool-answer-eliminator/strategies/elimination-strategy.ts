@@ -44,4 +44,18 @@ export interface EliminationStrategy {
 	 * Cleanup strategy (remove CSS, etc.)
 	 */
 	destroy(): void;
+
+	/**
+	 * Set the interface-language text and stamp for what the strategy adds for
+	 * assistive technology, relabelling what it has already added.
+	 */
+	setChrome?(chrome: EliminationChrome): void;
+}
+
+/** Interface-locale chrome a strategy announces with. */
+export interface EliminationChrome {
+	/** Announced after an eliminated choice's label. */
+	eliminatedText: string;
+	/** Stamps the interface `lang` and `dir` on an element the strategy adds. */
+	stamp(element: Element): void;
 }

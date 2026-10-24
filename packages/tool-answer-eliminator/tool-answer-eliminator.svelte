@@ -53,7 +53,8 @@ persist in the runtime context's element tool state store, under the key
 
 <script lang="ts">
 	import { coerceBooleanAttributes } from '@pie-players/pie-players-shared/ui/attribute-coercion';
-	
+	import { resolveInterfaceI18n } from '@pie-players/pie-players-shared/i18n/provider';
+
 	import {
 		connectToolRuntimeContext,
 		connectToolShellContext,
@@ -63,19 +64,25 @@ persist in the runtime context's element tool state store, under the key
 		AssessmentToolkitRuntimeContext,
 	} from '@pie-players/pie-assessment-toolkit/tools/registration';
 	import { untrack } from 'svelte';
-	import { AnswerEliminatorCore, type ElementStateKeys } from './answer-eliminator-core.js';
+	import {
+		AnswerEliminatorCore,
+		type ElementStateKeys,
+	} from './answer-eliminator-core.js';
 
 	let {
 		visible = false,
 		strategy = 'strikethrough' as 'strikethrough' | 'mask',
 		alwaysOn = false, // Set true for profile-based accommodation
-		buttonAlignment = 'right' as 'left' | 'right' | 'inline', // Button placement: left, right, or inline with checkbox
+		// Toggle placement: `inline` in the flow after the choice, or `start`/`end`
+		// beside it, mirrored under right-to-left content; `left` and `right`
+		// alias `start` and `end`.
+		buttonAlignment = 'inline' as 'start' | 'end' | 'inline' | 'left' | 'right',
 		elementStateKeys = {} as ElementStateKeys // Store key per PIE element, by model id
 	}: {
 		visible?: boolean;
 		strategy?: 'strikethrough' | 'mask';
 		alwaysOn?: boolean;
-		buttonAlignment?: 'left' | 'right' | 'inline';
+		buttonAlignment?: 'start' | 'end' | 'inline' | 'left' | 'right';
 		elementStateKeys?: ElementStateKeys;
 	} = $props();
 
@@ -85,6 +92,7 @@ persist in the runtime context's element tool state store, under the key
 	// Where eliminations persist across question navigation.
 	const elementToolStateStore = $derived(runtimeContext?.elementToolStateStore ?? null);
 	let core = $state<AnswerEliminatorCore | null>(null);
+	const interfaceI18n = $derived(resolveInterfaceI18n(runtimeContext));
 	let lastShellContextVersion = $state<number | null>(null);
 
 	// Determine if tool should be active (either toggled on OR always-on mode)
@@ -128,6 +136,12 @@ persist in the runtime context's element tool state store, under the key
 		});
 	}
 
+	// Relabel in place on a locale change: a rebuild would drop the eliminations
+	// of choices whose element has no store key.
+	$effect(() => {
+		core?.setInterfaceI18n(interfaceI18n);
+	});
+
 	// Update store integration when the store or the element keys change
 	$effect(() => {
 		core?.setStoreIntegration(elementToolStateStore, elementStateKeys ?? {});
@@ -140,6 +154,7 @@ persist in the runtime context's element tool state store, under the key
 		const next = new AnswerEliminatorCore(strategy, buttonAlignment);
 		untrack(() => {
 			next.setStoreIntegration(elementToolStateStore, elementStateKeys ?? {});
+			next.setInterfaceI18n(interfaceI18n);
 			core = next;
 			if (isActive) {
 				initializeForCurrentQuestion();

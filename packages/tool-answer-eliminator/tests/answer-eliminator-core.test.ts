@@ -4,7 +4,9 @@ import { afterAll, afterEach, expect, test } from "bun:test";
 const ownsDom = typeof window === "undefined";
 if (ownsDom) GlobalRegistrator.register();
 
-const { AnswerEliminatorCore } = await import("../answer-eliminator-core");
+const { AnswerEliminatorCore, normalizeButtonAlignment } = await import(
+	"../answer-eliminator-core"
+);
 
 const choiceMarkup = (value: string, label: string) =>
 	`<div class="corespring-radio-button"><input type="radio" value="${value}"><label>${label}</label></div>`;
@@ -149,4 +151,123 @@ test("re-initializing leaves one button per choice and keeps unkeyed elimination
 			(input) => !input.disabled,
 		),
 	).toBe(true);
+});
+
+test("left and right alias start and end, and anything else is inline", () => {
+	expect(normalizeButtonAlignment("left")).toBe("start");
+	expect(normalizeButtonAlignment("right")).toBe("end");
+	expect(normalizeButtonAlignment("start")).toBe("start");
+	expect(normalizeButtonAlignment("end")).toBe("end");
+	expect(normalizeButtonAlignment("inline")).toBe("inline");
+	expect(normalizeButtonAlignment("center")).toBe("inline");
+	expect(normalizeButtonAlignment(undefined)).toBe("inline");
+});
+
+const singleToggle = (
+	alignment?: "start" | "end" | "left" | "right",
+	dir?: string,
+) => {
+	const root = document.createElement("multiple-choice");
+	if (dir) {
+		root.setAttribute("dir", dir);
+		// happy-dom applies no user-agent styles, so `dir` sets no direction.
+		root.style.direction = dir;
+	}
+	root.innerHTML = choiceMarkup("a", "Alpha");
+	document.body.append(root);
+	core = alignment
+		? new AnswerEliminatorCore("strikethrough", alignment)
+		: new AnswerEliminatorCore();
+	core.disableStateRestoration();
+	core.initializeForQuestion(root);
+	const toggle = root.querySelector<HTMLButtonElement>(
+		"button.pie-answer-eliminator-toggle",
+	);
+	if (!toggle) throw new Error("no toggle");
+	return { root, toggle };
+};
+
+test("the toggle sits inline by default", () => {
+	const { toggle } = singleToggle();
+	expect(toggle.style.position).toBe("relative");
+	expect(toggle.style.display).toBe("inline-flex");
+});
+
+test("start and end resolve against the choice's own direction", () => {
+	const placed = (
+		alignment: "start" | "end" | "left" | "right",
+		dir?: string,
+	) => {
+		const { toggle } = singleToggle(alignment, dir);
+		const sides = { left: toggle.style.left, right: toggle.style.right };
+		core?.destroy();
+		core = null;
+		document.body.replaceChildren();
+		return sides;
+	};
+	expect(placed("end")).toEqual({ left: "", right: "8px" });
+	expect(placed("start")).toEqual({ left: "8px", right: "" });
+	expect(placed("end", "rtl")).toEqual({ left: "8px", right: "" });
+	expect(placed("start", "rtl")).toEqual({ left: "", right: "8px" });
+	// The physical spellings mirror too: they are aliases, not sides.
+	expect(placed("right", "rtl")).toEqual({ left: "8px", right: "" });
+});
+
+const stubI18n = (
+	locale: string,
+	dir: "ltr" | "rtl",
+	strings: Record<string, string>,
+) => ({
+	getLocale: () => locale,
+	getDirection: () => dir,
+	t: (key: string, values?: Record<string, unknown>) =>
+		(strings[key] ?? key).replace(/\{(\w+)\}/g, (_, name) =>
+			String(values?.[name] ?? ""),
+		),
+});
+
+const arabic = stubI18n("ar", "rtl", {
+	"tools.answerEliminator.toggleA11y": "تبديل شطب {choice}",
+	"tools.answerEliminator.eliminatedA11y": "(مشطوب)",
+	"tools.answerEliminator.unlabeledChoice": "خيار بلا تسمية",
+});
+
+test("the toggle and the eliminated announcement speak the interface locale", () => {
+	const { root, toggle } = singleToggle("end");
+	expect(toggle.getAttribute("lang")).toBe("en-US");
+	expect(toggle.getAttribute("dir")).toBe("ltr");
+
+	toggle.click();
+	const announcement = root.querySelector(
+		".pie-answer-eliminator-sr-announcement",
+	);
+	expect(announcement?.textContent).toBe(" (eliminated)");
+	expect(announcement?.getAttribute("lang")).toBe("en-US");
+
+	// A locale change relabels in place and keeps the elimination.
+	core?.setInterfaceI18n(arabic);
+	expect(toggle.getAttribute("aria-label")).toBe("تبديل شطب Alpha");
+	expect(toggle.getAttribute("lang")).toBe("ar");
+	expect(toggle.getAttribute("dir")).toBe("rtl");
+	expect(toggle.getAttribute("aria-pressed")).toBe("true");
+	expect(announcement?.textContent).toBe(" (مشطوب)");
+	expect(announcement?.getAttribute("dir")).toBe("rtl");
+	// Placement follows the content, which stayed left-to-right.
+	expect(toggle.style.right).toBe("8px");
+});
+
+test("a choice with no text is named from the catalog", () => {
+	const root = document.createElement("multiple-choice");
+	root.innerHTML = choiceMarkup("a", "");
+	document.body.append(root);
+	core = new AnswerEliminatorCore();
+	core.setInterfaceI18n(arabic);
+	core.disableStateRestoration();
+	core.initializeForQuestion(root);
+
+	expect(
+		root
+			.querySelector("button.pie-answer-eliminator-toggle")
+			?.getAttribute("aria-label"),
+	).toBe("تبديل شطب خيار بلا تسمية");
 });

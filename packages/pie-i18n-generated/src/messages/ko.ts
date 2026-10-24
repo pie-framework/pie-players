@@ -368,6 +368,9 @@ const ko = {
 			description: "답안 선택지에 취소선 표시",
 			buttonA11y: "취소선, 답안 선택지 제외",
 			tooltip: "취소선",
+			toggleA11y: "{choice} 취소선 전환",
+			eliminatedA11y: "(제외됨)",
+			unlabeledChoice: "레이블 없는 선택지",
 		},
 		highlighter: {
 			name: "형광펜",

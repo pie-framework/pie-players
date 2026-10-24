@@ -380,6 +380,9 @@ const sv = {
 			description: "Stryk över svarsalternativ",
 			buttonA11y: "Genomstryk, uteslut svarsalternativ",
 			tooltip: "Genomstryk",
+			toggleA11y: "Växla genomstrykning för {choice}",
+			eliminatedA11y: "(utesluten)",
+			unlabeledChoice: "Alternativ utan etikett",
 		},
 		highlighter: {
 			name: "Markör",

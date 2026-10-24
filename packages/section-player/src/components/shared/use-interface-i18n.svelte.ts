@@ -38,6 +38,11 @@ export interface InterfaceI18n {
 	readonly locale: string;
 	/** Writing direction, for stamping `dir`. */
 	readonly direction: TextDirection;
+	/**
+	 * The toolkit's `contentLanguageDefault`, which a component forwards to the
+	 * players it mounts. Undefined with no publisher.
+	 */
+	readonly contentLanguageDefault: string | undefined;
 	t(key: MessageKeyInput, values?: InterpolationValues): string;
 	plural(key: MessageKeyInput, options: PluralOptions): string;
 	/** Locale-aware number formatting, at the resolved locale. */
@@ -92,6 +97,9 @@ export function useInterfaceI18n(
 		},
 		get direction() {
 			return provider.getDirection?.() ?? "ltr";
+		},
+		get contentLanguageDefault() {
+			return runtimeContext?.contentLanguageDefault;
 		},
 		t(key, values) {
 			return provider.t(key, values);

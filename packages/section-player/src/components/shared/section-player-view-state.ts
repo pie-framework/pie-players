@@ -139,6 +139,8 @@ export function getPassagePlayerParams(args: {
 	baseHeadingLevel?: HeadingLevel;
 	/** The interface-locale provider the toolkit published, for the player's own chrome. */
 	i18n?: I18nProvider | null;
+	/** The toolkit's `contentLanguageDefault`, for content that declares no language. */
+	contentLanguage?: string;
 }): PlayerElementParams {
 	// Keep passage visuals aligned with item defaults by sharing the same
 	// runtime env shape; passage content remains non-response by content model.
@@ -166,6 +168,9 @@ export function getPassagePlayerParams(args: {
 			// facade: the facade's identity changes on every republish and would
 			// re-set the property on each.
 			i18n: args.i18n ?? undefined,
+			// The section's default for undeclared content: a nested player sets
+			// no `locale`, so it cannot derive the default itself.
+			contentLanguage: args.contentLanguage,
 			...stripItemDeliveryBackendProps(args.resolvedPlayerProps || {}),
 		},
 	};
@@ -278,6 +283,8 @@ export function getItemPlayerParams(args: {
 	formativeView?: FormativeItemView | null;
 	/** The interface-locale provider the toolkit published, for the player's own chrome. */
 	i18n?: I18nProvider | null;
+	/** The toolkit's `contentLanguageDefault`, for content that declares no language. */
+	contentLanguage?: string;
 }): PlayerElementParams {
 	const rawItemSession = getSessionForItem(args.compositionModel, args.item);
 	const itemSession = getSessionForItemOrEmpty(
@@ -314,6 +321,9 @@ export function getItemPlayerParams(args: {
 				// facade: the facade's identity changes on every republish and
 				// would re-set the property on each.
 				i18n: args.i18n ?? undefined,
+				// The section's default for undeclared content: a nested item
+				// player sets no `locale`, so it cannot derive the default itself.
+				contentLanguage: args.contentLanguage,
 				...(args.resolvedPlayerProps || {}),
 			},
 			item: args.item,

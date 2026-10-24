@@ -185,6 +185,16 @@
 						},
 						{
 							"kind": "field",
+							"name": "contentLanguage",
+							"type": {
+								"text": "string"
+							},
+							"default": "\"\"",
+							"description": "The language of content whose `env` declares none, as a BCP-47 tag, or `auto` for `lang=\"\"` with `dir=\"auto\"`. Unset, it is `auto` once `locale` is set — so undeclared content takes neither the interface's language nor its direction — and otherwise nothing, which leaves undeclared content inheriting the page's. A section sets it on the item players it mounts, which carry no `locale` of their own.",
+							"attribute": "content-language"
+						},
+						{
+							"kind": "field",
 							"name": "includeSrHeading",
 							"type": {
 								"text": "boolean"
@@ -601,6 +611,15 @@
 							"default": "null",
 							"description": "The interface-locale provider a host or a container supplies, used in place of the one built here: a host's composition for a standalone player, the section's provider for the item players a section mounts. JS-only, since it carries loaders. `locale` above still names the locale; a supplied provider is driven only by it.",
 							"fieldName": "i18n"
+						},
+						{
+							"name": "content-language",
+							"type": {
+								"text": "string"
+							},
+							"default": "\"\"",
+							"description": "The language of content whose `env` declares none, as a BCP-47 tag, or `auto` for `lang=\"\"` with `dir=\"auto\"`. Unset, it is `auto` once `locale` is set — so undeclared content takes neither the interface's language nor its direction — and otherwise nothing, which leaves undeclared content inheriting the page's. A section sets it on the item players it mounts, which carry no `locale` of their own.",
+							"fieldName": "contentLanguage"
 						},
 						{
 							"name": "include-sr-heading",

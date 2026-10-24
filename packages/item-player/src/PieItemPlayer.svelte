@@ -52,6 +52,13 @@
 			// JS-only, since it carries loaders. `locale` above still names the
 			// locale; a supplied provider is driven only by it.
 			i18n: { type: "Object", reflect: false },
+			// The language of content whose `env` declares none, as a BCP-47 tag, or
+			// `auto` for `lang=""` with `dir="auto"`. Unset, it is `auto` once
+			// `locale` is set — so undeclared content takes neither the interface's
+			// language nor its direction — and otherwise nothing, which leaves
+			// undeclared content inheriting the page's. A section sets it on the
+			// item players it mounts, which carry no `locale` of their own.
+			contentLanguage: { attribute: "content-language", type: "String" },
 			loaderConfig: { attribute: "loader-config", type: "Object" },
 			strategy: { attribute: "strategy", type: "String" },
 			mode: { attribute: "mode", type: "String" },
@@ -228,9 +235,11 @@ The PIE item player: it loads an item's PIE elements under the `iife`, `esm` or 
 	import {
 		createPieI18n,
 		DEFAULT_LOCALE,
+		defaultContentLanguage,
 		resolveInterfaceI18n,
 		reportInterfaceLocaleLoadError,
 		stampContentLanguage,
+		undeclaredDirectionMismatch,
 	} from "@pie-players/pie-players-shared/i18n";
 	import type { I18nProvider } from "@pie-players/pie-players-shared/i18n";
 	import { onDestroy, tick, untrack } from "svelte";
@@ -293,6 +302,7 @@ The PIE item player: it loads an item's PIE elements under the `iife`, `esm` or 
 		baseHeadingLevel = undefined as 1 | 2 | 3 | 4 | 5 | 6 | undefined,
 		locale = "",
 		i18n = null as I18nProvider | null,
+		contentLanguage = "",
 		includeSrHeading = true,
 		loaderConfig = DEFAULT_LOADER_CONFIG as LoaderConfig,
 		strategy = undefined as "iife" | "esm" | "preloaded" | undefined,
@@ -955,13 +965,30 @@ The PIE item player: it loads an item's PIE elements under the `iife`, `esm` or 
 	});
 	// The content root carries the content language the delivery declares, so
 	// a screen reader takes the content's voice rules and RTL content lays out
-	// right to left. It asserts nothing about undeclared content — the
-	// chrome's `lang`/`dir` never claim it, and nothing is invented here.
+	// right to left. Undeclared content takes the default `content-language`
+	// names, so the chrome's `lang`/`dir` never claim it.
+	const contentLanguageDefault = $derived(
+		defaultContentLanguage({ contentLanguage, interfaceLocale: locale }),
+	);
 	$effect(() => {
 		const currentEnv = env;
 		const target = hostElement;
-		stampContentLanguage(target, currentEnv);
+		stampContentLanguage(target, currentEnv, contentLanguageDefault);
 	});
+	// Once per player: a default that names a direction is a guess about
+	// content that declared nothing, and RTL content under an LTR default lays
+	// out mirrored. Not gated on a development build, which a library build
+	// cannot tell apart.
+	let directionMismatchReported = false;
+	function reportDirectionMismatch() {
+		if (directionMismatchReported || !hostElement) return;
+		const mismatch = undeclaredDirectionMismatch(hostElement, env);
+		if (!mismatch) return;
+		directionMismatchReported = true;
+		console.warn(
+			`[pie-item-player] Content that declares no language reads ${mismatch.script.toUpperCase()} but is laid out ${mismatch.stamped.toUpperCase()} from the default content language "${contentLanguageDefault}". Declare the language in env.locale or the markup's lang.`,
+		);
+	}
 	// A fresh facade on every catalog load. The provider's identity does not
 	// move when its catalog does, and a `$derived` that re-evaluates to the same
 	// object does not re-run its readers, so the labels built from the provider
@@ -2082,6 +2109,7 @@ The PIE item player: it loads an item's PIE elements under the `iife`, `esm` or 
 					onDeleteSound={effectiveOnDeleteSound ?? undefined}
 					onLoadComplete={(detail: unknown) => {
 						seedHostSessionEntriesForItem();
+						reportDirectionMismatch();
 						handlePlayerEvent(new CustomEvent("load-complete", { detail }));
 					}}
 					onPlayerError={(detail: PieItemPlayerErrorDetail) =>

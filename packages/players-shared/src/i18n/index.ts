@@ -60,7 +60,11 @@ export {
 export {
 	type ContentLanguageAttributes,
 	contentLanguageAttributes,
+	defaultContentLanguage,
+	firstStrongDirection,
 	stampContentLanguage,
+	UNDECLARED_CONTENT_LANGUAGE,
+	undeclaredDirectionMismatch,
 } from "./content-language.js";
 export {
 	type InterfaceLocaleLoadErrorModel,

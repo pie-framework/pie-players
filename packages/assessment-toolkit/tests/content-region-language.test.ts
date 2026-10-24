@@ -141,6 +141,18 @@ describe("resolveContentLanguage", () => {
 		expect(resolveContentLanguage(content)).toBe("de-DE");
 	});
 
+	test("an empty lang ends the climb, leaving the host input", () => {
+		const { shell, content } = mountShell();
+		shell.setAttribute("lang", "ar");
+		content.setAttribute("lang", "");
+		const root = shadowIn(content, "<p>texto</p>");
+
+		expect(findContentLanguage(root.querySelector("p"))).toBeUndefined();
+		expect(
+			resolveContentLanguage(root.querySelector("p"), { contentLanguage: "es-ES" }),
+		).toBe("es-ES");
+	});
+
 	test("falls back to the host input, then en-US", () => {
 		const { content } = mountShell();
 

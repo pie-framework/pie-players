@@ -91,6 +91,10 @@ async function dragResponse(page: Page, response: string, areaIndex: number) {
 		})
 		.first();
 	await expect(draggable).toBeVisible();
+	// The answer choices sit below the fold of the 720px viewport. A drag
+	// started there auto-scrolls the page, and the drop lands where the target
+	// was before the scroll.
+	await draggable.scrollIntoViewIfNeeded();
 	const from = await draggable.boundingBox();
 	const board = await page
 		.locator(`${ICA_ELEMENT} img[src="${ICA_MODEL.image.src}"]`)

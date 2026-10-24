@@ -8,6 +8,23 @@
 		{ "tag": "es", "expected": ["es"] },
 		{ "tag": "und", "expected": ["und"] }
 	],
+	"catalogMatch": [
+		{ "locale": "zh-TW", "available": ["en-US", "zh", "zh-Hant"], "expected": "zh-Hant" },
+		{ "locale": "zh-TW", "available": ["en-US", "zh"], "expected": "en-US" },
+		{ "locale": "zh-HK", "available": ["en-US", "zh"], "expected": "en-US" },
+		{ "locale": "zh-HK", "available": ["en-US", "zh", "zh-TW"], "expected": "zh-TW" },
+		{ "locale": "zh-SG", "available": ["en-US", "zh"], "expected": "zh" },
+		{ "locale": "zh-CN", "available": ["en-US", "zh-TW"], "expected": "en-US" },
+		{ "locale": "zh", "available": ["en-US", "zh-TW"], "expected": "en-US" },
+		{ "locale": "sr-ME", "available": ["en-US", "sr", "sr-Latn"], "expected": "sr-Latn" },
+		{ "locale": "sr-ME", "available": ["en-US", "sr"], "expected": "en-US" },
+		{ "locale": "sr-Cyrl-RS", "available": ["en-US", "sr"], "expected": "sr" },
+		{ "locale": "sr-Latn", "available": ["en-US", "sr"], "expected": "en-US" },
+		{ "locale": "sr-Latn", "available": ["en-US", "sr-ME"], "expected": "sr-ME" },
+		{ "locale": "es-MX", "available": ["en-US", "es"], "expected": "es" },
+		{ "locale": "es_MX", "available": ["en-US", "es-ES"], "expected": "es-ES" },
+		{ "locale": "pt-BR", "available": ["en-US", "pt-PT"], "expected": "pt-PT" }
+	],
 	"direction": [
 		{ "tag": "ar-SA", "expected": "rtl" },
 		{ "tag": "he", "expected": "rtl" },

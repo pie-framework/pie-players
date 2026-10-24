@@ -393,6 +393,8 @@
   canonicalLanguageTag
   findBestLanguageMatch
   languageTagLookupSequence
+  languageTagScript
+  languageTagScriptsMatch
   languageTagsEqual
   normalizeLanguageTag
   toLanguageTag

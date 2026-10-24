@@ -48,6 +48,7 @@ export * from "./ui/pointer-rotate.js";
 export * from "./ui/overlay-containment.js";
 export * from "./ui/overlay-placement.js";
 export * from "./ui/focus-trap.js";
+export * from "./ui/ime.js";
 export * from "./ui/first-focusable.js";
 export * from "./ui/safe-storage.js";
 export * from "./ui/scope-css.js";

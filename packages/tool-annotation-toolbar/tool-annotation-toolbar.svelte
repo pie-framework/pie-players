@@ -45,6 +45,7 @@ capability's registration supplies `enabled` and `selectionActions`.
 	} from '@pie-players/pie-assessment-toolkit/tools/registration';
 	import { resolveInterfaceI18n } from '@pie-players/pie-players-shared/i18n/provider';
 	import { sanitizeSvgIcon } from '@pie-players/pie-players-shared/security';
+	import { isComposingKeyEvent } from '@pie-players/pie-players-shared';
 	import {
 		clampIndex,
 		isPointerGestureActive,
@@ -678,6 +679,7 @@ capability's registration supplies `enabled` and `selectionActions`.
 
 	/** Document-level keys: Escape dismisses the strip, the toolbar shortcut focuses it. */
 	function handleKeyDown(e: KeyboardEvent) {
+		if (isComposingKeyEvent(e)) return;
 		if (e.key === 'Escape' && toolbarState.isVisible) {
 			e.preventDefault();
 			hideToolbar();

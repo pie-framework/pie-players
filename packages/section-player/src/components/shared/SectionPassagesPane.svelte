@@ -119,6 +119,7 @@ Passages pane of a section player: renders the passage cards of the current sect
 					playerStrategy,
 					baseHeadingLevel,
 					i18n: interfaceI18n.source,
+					contentLanguage: interfaceI18n.contentLanguageDefault,
 				})}
 				passageToolbarTools={passageToolbarTools}
 				{toolRegistry}

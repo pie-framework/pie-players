@@ -94,7 +94,8 @@ over English content.
 - The players' `locale` attribute sets the interface locale.
 - The toolkit's `content-language` input (`RuntimeConfig.contentLanguage`, set
   through the section player's `runtime.contentLanguage`) names the content
-  language for read-aloud, its only consumer.
+  language for read-aloud, and the default the section's players stamp on
+  undeclared content ([Content direction](#content-direction)).
 - `accessibility.language` on `ToolkitCoordinatorConfig` feeds the catalog
   resolver's default and means content-alternate language.
 
@@ -166,7 +167,9 @@ point: the inline tool, the annotation toolbar and any host call.
 
 The **content language** is the first of:
 
-1. the nearest `lang` attribute between the content and its player shell;
+1. the nearest `lang` attribute between the content and its player shell; an
+   empty `lang`, which the players stamp on undeclared content, ends the climb
+   with none;
 2. the language the read names, which the inline tool and the annotation
    toolbar take from the toolkit's `content-language` input;
 3. `providerOptions.lang_id`, which a host pins for the custom transport.
@@ -432,9 +435,10 @@ on republish, and passes the locale to the `language` prop its libraries take.
 
 ### Content language
 
-Content language for elements is direction and has not shipped. The shipped path,
-the toolkit's `content-language` or the section player's `runtime.contentLanguage`,
-serves read-aloud only.
+Content language in `env` for elements is direction and has not shipped. The
+shipped path, the toolkit's `content-language` or the section player's
+`runtime.contentLanguage`, serves read-aloud and the players'
+[content direction](#content-direction) default.
 
 The design carries content language to elements in `env`, for the same reason `env`
 carries `mode`: both are delivery facts that legitimately filter authored content,
@@ -451,10 +455,38 @@ already survives the pipeline. A new custom-element attribute must be
 `type: "String"`, because hosts pass `show-toolbar` as both the literal `"false"`
 and boolean `true`, and both must keep working.
 
-The design also has the player reflect the resolved content language to `lang`,
-and direction to `dir`, on the content subtree. Interface-locale adoption already stamps both on the
-chrome subtree. For content, only pie-elements-ng's `multiple-choice` writes `dir`,
-on its own host, so an RTL content language does not render right to left elsewhere.
+#### Content direction
+
+The item player stamps `lang` and `dir` on its content root from the nearest
+declared content language, so the interface locale's `lang` and `dir` on the
+chrome never claim the content. The resolution order:
+
+1. the element's `model.language`, which the element stamps on its own host;
+2. a `lang` in the content's markup;
+3. the item's `env.locale`;
+4. the player's `content-language`, which a section sets from
+   `runtime.contentLanguage`;
+5. with an interface `locale` set and nothing above, `lang=""` with
+   `dir="auto"`: the language unknown, the direction from the content's first
+   strong character.
+
+Steps 4 and 5 apply only when the host sets `locale` or names a content
+language, so a host that sets neither leaves undeclared content inheriting the
+page's language and direction, as before. The players' `contentLanguageDefault`
+on the toolkit context carries the section's step 4–5 default to the item and
+passage players a section mounts, which carry no `locale` of their own.
+
+A default that names a direction — step 4 — is a guess about content that
+declared nothing. When the content's first strong character contradicts it, the
+item player logs one `console.warn` per player, in every build: a library build
+cannot tell a development page from a production one.
+
+`dir="auto"` reads light-DOM text only: a browser skips text inside a shadow
+root when it picks the direction. pie-elements-ng elements render in light DOM;
+an element that renders its text in a shadow root declares its direction.
+
+For content, only pie-elements-ng's `multiple-choice` writes `dir` on its own
+host.
 
 Six elements write `lang` onto their own host: `explicit-constructed-response`,
 `extended-text-entry`, `inline-dropdown`, `math-inline`, `multiple-choice` and
@@ -577,7 +609,8 @@ behavior-preserving until a host opts in by supplying a locale.
    [Language resolution at three scopes](#language-resolution-at-three-scopes).
 2. **Content language end to end.** In part landed. The player half:
    `Env.locale` is typed and the item player reflects it as `lang`/`dir` on the
-   content subtree, asserting nothing for undeclared content. The element half:
+   content subtree; undeclared content takes the
+   [Content direction](#content-direction) default. The element half:
    all six elements that stamped `lang` off `model.language` now stamp a
    canonical declared language with its direction and nothing otherwise — the
    `'en'` default is gone. Still open: authoring hosts emitting locale on the

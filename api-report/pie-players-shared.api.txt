@@ -367,12 +367,15 @@
   SimpleI18n
   type TextDirection
   type TranslationBundle
+  UNDECLARED_CONTENT_LANGUAGE
   canonicalLanguageTag
   contentLanguageAttributes
   createPieI18n
+  defaultContentLanguage
   detectBrowserLocale
   dynamicMessageKey
   findBestLanguageMatch
+  firstStrongDirection
   getDefaultI18n
   languageTagLookupSequence
   languageTagsEqual
@@ -385,6 +388,7 @@
   stampContentLanguage
   stampInterfaceLocale
   toLanguageTag
+  undeclaredDirectionMismatch
 
 ./i18n/catalogs
   BUNDLED_LOCALES

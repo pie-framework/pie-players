@@ -695,6 +695,21 @@ retries. `@pie-players/pie-players-shared/i18n` gained
 `reportInterfaceLocaleLoadError` and the `InterfaceLocaleLoadErrorModel` type,
 additive.
 
+On 2026-10-24 content that declares no language stopped inheriting the
+interface locale's `lang` and `dir` when a host opts in: `pie-item-player`
+gained an optional `content-language` attribute and `contentLanguage`
+property, the toolkit runtime context an optional `contentLanguageDefault`
+member, and the item player stamps `lang=""` with `dir="auto"` on undeclared
+content once `locale` is set, or the named language once `content-language`
+(on a section, `runtime.contentLanguage`) is. Read-aloud's `lang` climb ends at
+that empty `lang`. A host that sets neither renders what it did before. A grep
+of every recorded checkout's source, outside vendored player bundles and build
+output, finds no `locale`, `content-language` or `contentLanguage` passed to a
+`pie-*` element or a section `runtime`, and none of the item-player property
+names of Hosts V, P, M and R collides with `contentLanguage`. The item player
+also logs one `console.warn` when undeclared content's script contradicts a
+named default's direction.
+
 On 2026-10-18 `@pie-players/pie-context` gained `interfaceLocaleContext`
 (`Symbol.for("pie.interfaceLocale")`, value `{ locale, direction }`), which
 `pie-assessment-toolkit` and `pie-item-player` now answer for the PIE elements

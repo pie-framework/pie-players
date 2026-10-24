@@ -231,6 +231,7 @@
   initializeMathRendering
   initializePiesFromLoadedBundle
   installContentStyles
+  isComposingKeyEvent
   isCustomElementConstructor
   isGlobalDebugEnabled
   isInstrumentationProvider

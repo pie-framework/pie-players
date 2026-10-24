@@ -1,4 +1,5 @@
 import { collectFocusable } from "./first-focusable.js";
+import { isComposingKeyEvent } from "./ime.js";
 
 type FocusTrapOptions = {
 	initialFocus?: HTMLElement | null;
@@ -74,7 +75,8 @@ export function createFocusTrap(
 	const wrap = options.wrap ?? true;
 	const onKeydown = (event: KeyboardEvent) => {
 		if (event.key === "Escape") {
-			if (!options.onEscape) return;
+			// An Escape that cancels an IME composition belongs to the IME.
+			if (!options.onEscape || isComposingKeyEvent(event)) return;
 			// Claimed, so a page-wide Escape listener does not also act on it.
 			event.preventDefault();
 			options.onEscape();

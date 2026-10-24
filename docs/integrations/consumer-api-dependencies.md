@@ -1670,7 +1670,9 @@ Host A builds a `runtime` object with:
 - `tools.placement.item` and `tools.placement.passage` — arrays of
   `"calculator"` / `"textToSpeech"`
 - `toolContextResolvers.calculator` — host resolver returning
-  `{ visible, reason?, params: { calculatorType, availableTypes } }`
+  `{ visible, reason?, params: { calculatorType, availableTypes } }`. It reads
+  the host's own item fields off `context.item`, so the section player's
+  pass-through of item fields it does not type is load-bearing
 
 Every one of these keys is live in production delivery. The custom TTS transport
 combination in particular (`transportMode: "custom"` +
@@ -1712,8 +1714,9 @@ pad previously recorded:
   starts at the first read-aloud instead of at composition, unless policy grants
   it. Until 0.3.75 the flag was ignored
 - `tools` — a `createToolsConfig` output, not a literal
-- `toolContextResolvers` — a host resolver map for `calculator`, built from
-  item metadata
+- `assessmentItemRefs[].settings`, derived from item metadata: `requiredTools`
+  plus `toolParameters.calculator.type` on an item tagged for a calculator,
+  `restrictedTools` on the rest
 - `player.loaderConfig` — `trackPageActions` plus the constructed
   `instrumentationProvider`
 - `env` — `{ mode: "gather" | "evaluate", role: "student" | "instructor" }`
@@ -2277,6 +2280,8 @@ shipping.**
   emission cardinality
 - Removing a controller method that hosts call with optional-call syntax
 - Filtering unknown keys out of `env`
+- Filtering untyped fields off the item a tool context resolver receives as
+  `context.item`: Host A's calculator resolver reads its own item fields there
 - Changing which item-id form appears in session maps or session events
 - Retyping `show-toolbar` or `debug` to `Boolean`, or dropping either the string
   or the boolean form of `show-toolbar`

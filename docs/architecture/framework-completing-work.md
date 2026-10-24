@@ -117,8 +117,6 @@ is `Record<string, FormativeItemState>` carrying `tryCount`, `firstCorrectTry`
 and `lastOutcome`, so a host joins its own alignment table against it and
 computes any rollup it wants. `FormativeMasteryRollup` stays flat for that
 reason — a dimensioned rollup would embed one taxonomy in the framework.
-`AssessmentItemRef extends SearchMetaDataEntity` carries the host's own metadata
-alongside.
 
 **Open model shapes.** `PieModel` carries an index signature, so an element
 models whatever feedback, rationale or hint fields it needs without a

@@ -12,7 +12,10 @@ const LABEL_HOOK_ATTR = "data-pie-answer-eliminator-label";
 export interface ChoiceTarget {
 	/** Unique within its element and stable across renders: it is persisted. */
 	id: string;
-	/** The choice's accessible name, for the toggle's label. */
+	/**
+	 * The choice's accessible name, for the toggle's label; empty when the
+	 * choice has none, which the toggle names from the interface catalog.
+	 */
 	label: string;
 	/** Where the toggle goes, and what carries the eliminated state. */
 	container: HTMLElement;
@@ -93,7 +96,7 @@ function declaredTarget(
 	}
 	const target: ChoiceTarget = {
 		id,
-		label: label.trim() || content.textContent?.trim() || "Unlabeled choice",
+		label: label.trim() || content.textContent?.trim() || "",
 		container,
 		createRange() {
 			const range = document.createRange();

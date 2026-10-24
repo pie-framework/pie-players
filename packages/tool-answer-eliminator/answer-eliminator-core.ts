@@ -1,4 +1,9 @@
 import {
+	resolveInterfaceI18n,
+	stampInterfaceLocale,
+} from "@pie-players/pie-players-shared/i18n/provider";
+import type { I18nProvider } from "@pie-players/pie-players-shared/i18n/types";
+import {
 	type ChoiceTarget,
 	type FoundChoice,
 	findChoiceTargets,
@@ -22,7 +27,38 @@ export interface EliminatorStateStore {
  */
 export type ElementStateKeys = Readonly<Record<string, string>>;
 
-type ButtonAlignment = "left" | "right" | "inline";
+/**
+ * Where a choice's toggle sits. `start` and `end` are logical: they resolve
+ * against the choice's own direction, so they mirror under right-to-left
+ * content. `inline` puts the toggle in the flow after the choice.
+ */
+export type ButtonAlignment = "start" | "end" | "inline";
+
+/**
+ * The accepted spellings: `left` and `right` are aliases of `start` and `end`,
+ * kept for hosts that set the physical values before they became logical.
+ */
+export type ButtonAlignmentInput = ButtonAlignment | "left" | "right";
+
+/** Resolve an attribute value to a placement; anything unknown is `inline`. */
+export function normalizeButtonAlignment(value: unknown): ButtonAlignment {
+	switch (value) {
+		case "start":
+		case "left":
+			return "start";
+		case "end":
+		case "right":
+			return "end";
+		default:
+			return "inline";
+	}
+}
+
+/** The interface-locale surface the eliminator's chrome reads. */
+export type EliminatorI18n = Pick<
+	I18nProvider,
+	"t" | "getLocale" | "getDirection"
+>;
 
 interface TrackedChoice {
 	choiceId: string;
@@ -58,7 +94,10 @@ export class AnswerEliminatorCore {
 	private strategyKeys = new Map<string, string>();
 	private anonymousGroups = new WeakMap<Element, string>();
 	private nextToken = 0;
-	private buttonAlignment: ButtonAlignment = "right";
+	private buttonAlignment: ButtonAlignment = "inline";
+	// The interface locale, for the toggles' labels and the strategy's
+	// announcement: both are chrome, so they speak the interface language.
+	private i18n: EliminatorI18n = resolveInterfaceI18n(null);
 	private shouldRestoreState: boolean = true;
 	// Whether the question-level feature is currently on. When off, the
 	// eliminate controls are hidden for choices that are NOT struck through,
@@ -81,11 +120,42 @@ export class AnswerEliminatorCore {
 
 	constructor(
 		strategyType: "strikethrough" | "mask" = "strikethrough",
-		buttonAlignment: ButtonAlignment = "right",
+		buttonAlignment: ButtonAlignmentInput = "inline",
 	) {
 		this.strategy = this.createStrategy(strategyType);
 		this.strategy.initialize();
-		this.buttonAlignment = buttonAlignment;
+		this.applyStrategyChrome();
+		this.buttonAlignment = normalizeButtonAlignment(buttonAlignment);
+	}
+
+	/**
+	 * Set the interface locale. Existing toggles and announcements are relabelled
+	 * in place, so a locale change keeps every elimination.
+	 */
+	setInterfaceI18n(i18n: EliminatorI18n | null): void {
+		this.i18n = i18n ?? resolveInterfaceI18n(null);
+		for (const tracked of this.choices.values()) {
+			if (tracked.button) this.labelToggle(tracked.button, tracked);
+		}
+		this.applyStrategyChrome();
+	}
+
+	private applyStrategyChrome(): void {
+		this.strategy.setChrome?.({
+			eliminatedText: this.i18n.t("tools.answerEliminator.eliminatedA11y"),
+			stamp: (element) => stampInterfaceLocale(element, this.i18n),
+		});
+	}
+
+	private labelToggle(button: HTMLButtonElement, tracked: TrackedChoice): void {
+		const choice =
+			tracked.target.label ||
+			this.i18n.t("tools.answerEliminator.unlabeledChoice");
+		button.setAttribute(
+			"aria-label",
+			this.i18n.t("tools.answerEliminator.toggleA11y", { choice }),
+		);
+		stampInterfaceLocale(button, this.i18n);
 	}
 
 	private createStrategy(type: string): EliminationStrategy {
@@ -222,12 +292,10 @@ export class AnswerEliminatorCore {
 		tracked: TrackedChoice,
 		alignment: ButtonAlignment,
 	): HTMLButtonElement {
-		const choiceLabel = tracked.target.label;
-
 		const button = document.createElement("button");
 		button.type = "button";
 		button.className = AnswerEliminatorCore.TOGGLE_CLASS;
-		button.setAttribute("aria-label", `Toggle elimination for ${choiceLabel}`);
+		this.labelToggle(button, tracked);
 		button.setAttribute("aria-pressed", "false");
 		button.setAttribute("data-choice-id", tracked.choiceId);
 		// The glyph is decoration: the button is named by its aria-label, and an
@@ -237,7 +305,7 @@ export class AnswerEliminatorCore {
 		glyph.textContent = "⊗";
 		button.appendChild(glyph);
 
-		this.applyButtonAlignment(button, alignment);
+		this.applyButtonAlignment(button, alignment, tracked.target.container);
 
 		// Remember the visible `display` value chosen by the alignment (e.g.
 		// "inline-flex" for inline mode) so hide/show toggling can restore it
@@ -616,27 +684,24 @@ export class AnswerEliminatorCore {
 	private applyButtonAlignment(
 		button: HTMLButtonElement,
 		alignment: ButtonAlignment,
+		container: HTMLElement,
 	): void {
 		switch (alignment) {
-			case "right":
-				// Right-aligned (industry standard) - after choice text
+			case "start":
+			case "end": {
+				// Resolved to a physical side from the choice's own direction: the
+				// toggle carries the interface `dir`, which need not match the
+				// content it sits beside.
+				const rtl = getComputedStyle(container).direction === "rtl";
+				const side = (alignment === "end") === rtl ? "left" : "right";
 				Object.assign(button.style, {
 					position: "absolute",
-					right: "8px",
+					[side]: "8px",
 					top: "50%",
 					transform: "translateY(-50%)",
 				});
 				break;
-
-			case "left":
-				// Left-aligned - before choice text
-				Object.assign(button.style, {
-					position: "absolute",
-					left: "8px",
-					top: "50%",
-					transform: "translateY(-50%)",
-				});
-				break;
+			}
 
 			case "inline":
 				// Inline with checkbox - no absolute positioning

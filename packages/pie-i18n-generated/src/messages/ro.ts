@@ -391,6 +391,9 @@ const ro = {
 			description: "Taie variantele de răspuns",
 			buttonA11y: "Tăiere, elimină variante de răspuns",
 			tooltip: "Tăiere",
+			toggleA11y: "Comută tăierea pentru {choice}",
+			eliminatedA11y: "(eliminată)",
+			unlabeledChoice: "Variantă fără etichetă",
 		},
 		highlighter: {
 			name: "Evidențiere",

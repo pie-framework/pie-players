@@ -62,7 +62,7 @@ export class MultipleChoiceAdapter implements ChoiceAdapter {
 
 	getChoiceLabel(choice: HTMLElement): string {
 		const label = this.resolveLabelElement(choice);
-		return label?.textContent?.trim() || "Unlabeled choice";
+		return label?.textContent?.trim() || "";
 	}
 
 	isSelected(choice: HTMLElement): boolean {

@@ -380,6 +380,9 @@ const es = {
 			description: "Tachar opciones de respuesta",
 			buttonA11y: "Tachar, eliminar opciones de respuesta",
 			tooltip: "Tachar",
+			toggleA11y: "Alternar tachado de {choice}",
+			eliminatedA11y: "(tachada)",
+			unlabeledChoice: "Opción sin etiqueta",
 		},
 		highlighter: {
 			name: "Resaltador",

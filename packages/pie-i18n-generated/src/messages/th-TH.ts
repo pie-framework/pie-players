@@ -363,6 +363,9 @@ const thTH = {
 			description: "ขีดฆ่าตัวเลือกคำตอบ",
 			buttonA11y: "ขีดฆ่า ตัดตัวเลือกคำตอบออก",
 			tooltip: "ขีดฆ่า",
+			toggleA11y: "สลับการขีดฆ่าสำหรับ {choice}",
+			eliminatedA11y: "(ขีดฆ่าแล้ว)",
+			unlabeledChoice: "ตัวเลือกที่ไม่มีป้ายกำกับ",
 		},
 		highlighter: {
 			name: "ปากกาเน้นข้อความ",

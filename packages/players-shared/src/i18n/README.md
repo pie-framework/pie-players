@@ -21,9 +21,12 @@ before this existed — the locale is never detected from the browser.
 ```
 
 POSIX (`nl_NL`), bare (`nl`) and regional (`nl-BE`) tags all resolve to the
-`nl-NL` catalog, through RFC 4647 lookup then primary-subtag widening. A locale
-this repository ships no catalog for is honored rather than rejected: supply
-your own messages for it, and anything you omit resolves to English.
+`nl-NL` catalog, through RFC 4647 lookup then primary-subtag widening. Both
+stay within the request's script, explicit or the CLDR likely script from
+`Intl.Locale.maximize()`: `zh-TW` reads `zh-TW`, `zh-Hant`, then `zh`, and a
+bare `zh` catalog, which is Simplified, never serves it. A locale this
+repository ships no catalog for in its script is honored rather than rejected:
+supply your own messages for it, and anything you omit resolves to English.
 
 ```ts
 import { createPieI18n } from "@pie-players/pie-players-shared/i18n";

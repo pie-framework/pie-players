@@ -286,7 +286,7 @@ so they read as chosen rather than overlooked.
 | Content language is a separate fact, declared on each run | QTI 3.0 `xml:lang`; WCAG 2.2 3.1.2 Language of Parts (AA); HTML `dir` and UAX #9 for direction | `env` carries it ([Content language](#content-language)); `lang` and `dir` go on the content subtree, and on the chrome subtree where the interface locale differs |
 | The page owns its language | WCAG 2.2 3.1.1 Language of Page (A) | no player or element writes `document.documentElement` |
 | Tags are BCP 47, canonicalized | RFC 5646 (BCP 47); W3C *Language tags in HTML and XML* | `normalizeLanguageTag` and `toLanguageTag`: `es_ES.UTF-8` compares as `es-es` and renders as `es-ES` |
-| Lookup, then primary-subtag widening | RFC 4647 §3.4 | `languageTagLookupSequence` never stops on a singleton; `sv-SE` reaches `sv`, bare `en` the bundled `en-US` |
+| Lookup, then primary-subtag widening, within the request's script | RFC 4647 §3.4; UTS #35 likely subtags, through ECMA-402 `Intl.Locale.maximize()` | `languageTagLookupSequence` never stops on a singleton; `sv-SE` reaches `sv`, bare `en` the bundled `en-US`; catalog lookup tries the language and likely script before the bare language, so `zh-TW` reaches `zh-Hant`, and a bare-tag catalog declares its likely script, so `zh-TW` passes the Simplified `zh` by and `sr-ME` the Cyrillic `sr`. The accessibility catalog resolver keeps plain truncation |
 | Plural forms are CLDR categories | UTS #35 plural rules, through ECMA-402 `Intl.PluralRules` | `other` is required; a catalog carries its locale's set (`cy` and `ar` six, `pt` `one`/`many`/`other`); a category the catalog lacks resolves to `other` |
 | Numbers and dates follow the locale | UTS #35 numbering systems and formats, through ECMA-402 `Intl.NumberFormat` and `Intl.DateTimeFormat` | numeric placeholders, `formatNumber` and `formatDate` format at the resolved locale; current CLDR resolves bare `ar` to Western digits and `ar-SA` to Arabic-Indic, so a regional request that widens to the `ar` catalog renders Western digits unless the host registers a regional catalog |
 | A control is never unnamed | WCAG 2.2 4.1.2 Name, Role, Value | lookup falls from host messages to the locale's catalog to `en-US` to the key itself; a failed catalog load is reported and renders English |
@@ -387,7 +387,7 @@ hand-written mapping tables in its place.
 
 `@pie-players/pie-players-shared/i18n/language-tags` provides
 `normalizeLanguageTag`, `toLanguageTag`, `languageTagsEqual`,
-`languageTagLookupSequence` and `findBestLanguageMatch`. It replaces exact comparison with RFC 4647 lookup,
+`languageTagLookupSequence`, `findBestLanguageMatch`, `languageTagScript` and `languageTagScriptsMatch`. It replaces exact comparison with RFC 4647 lookup,
 normalizes POSIX `es_ES` to `es-ES`, and gives `es-MX` → `es` → default a defined
 answer. The catalog resolver expands each requested tag into its lookup sequence,
 and `getAllAlternatives` keys on the normalized tag, so two spellings of one

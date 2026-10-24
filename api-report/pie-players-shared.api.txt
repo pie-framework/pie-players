@@ -776,8 +776,6 @@
   type ReferencedPassageEntity
   type RubricBlock
   type RubricBlockView
-  type SearchMetaData
-  type SearchMetaDataEntity
   type SectionControllerSessionState
   type SemVer
   type SemVerPrerelease

@@ -45,14 +45,6 @@ export interface VersionEntity extends BaseEntity {
 	version: SemVer;
 }
 
-export interface SearchMetaData {
-	[key: string]: any;
-}
-
-export interface SearchMetaDataEntity extends BaseEntity {
-	searchMetaData?: SearchMetaData;
-}
-
 export interface ConfigElements {
 	[key: string]: string;
 }
@@ -91,10 +83,7 @@ export interface ConfigContainerEntity extends BaseEntity {
 	config: ConfigEntity;
 }
 
-export interface PassageEntity
-	extends VersionEntity,
-		ConfigContainerEntity,
-		SearchMetaDataEntity {
+export interface PassageEntity extends VersionEntity, ConfigContainerEntity {
 	name: string;
 	/** QTI/APIP-style accessibility catalogs owned by this passage content. */
 	accessibilityCatalogs?: AccessibilityCatalog[];
@@ -104,10 +93,7 @@ export interface PassageEntity
 	highlights?: Record<string, string[]>;
 }
 
-export interface ItemEntity
-	extends VersionEntity,
-		ConfigContainerEntity,
-		SearchMetaDataEntity {
+export interface ItemEntity extends VersionEntity, ConfigContainerEntity {
 	name?: string;
 	/**
 	 * `null` as well as absent, because importers write it: JSON has no
@@ -212,7 +198,7 @@ export interface RubricBlock {
  * References an item within a section. The item property contains the resolved
  * ItemEntity with its PIE config.
  */
-export interface AssessmentItemRef extends SearchMetaDataEntity {
+export interface AssessmentItemRef extends BaseEntity {
 	id?: string;
 	identifier: string;
 	title?: string;
@@ -242,9 +228,7 @@ export interface AssessmentItemRef extends SearchMetaDataEntity {
 	formative?: FormativeItemPolicy;
 }
 
-export interface AssessmentSection
-	extends SearchMetaDataEntity,
-		SettingsMetaDataEntity {
+export interface AssessmentSection extends BaseEntity, SettingsMetaDataEntity {
 	id?: string;
 	identifier: string;
 	title?: string;
@@ -606,7 +590,7 @@ export interface PersonalNeedsProfile {
 	toolParameters?: ToolParameters;
 }
 
-export interface AssessmentEntity extends BaseEntity, SearchMetaDataEntity {
+export interface AssessmentEntity extends BaseEntity {
 	name?: string;
 	title?: string;
 	identifier?: string;

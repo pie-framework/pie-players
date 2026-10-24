@@ -151,7 +151,7 @@ source item, yet publish neither to delivery:
 - Its QTI export declares no content language. The one language value it writes
   is LOM `metametadata/language` in `imsmanifest.xml`, once per package, which
   declares the language of the metadata record, and it emits no `xml:lang`.
-- Its PIE export carries locale only in search metadata (`searchMetaData`), which
+- Its PIE export carries locale only in its backend's search metadata, which
   no player reads. The **PIE item content JSON carries no locale at all**: the
   search index knows the language, the player never does.
 

@@ -3,8 +3,9 @@
 Status: Draft, 2026-10-24
 
 Implementation status: nothing has landed. pie-players owes the two interchange
-types in a players-shared interchange-only module, the content-model page with its
-provider-id registry, and the narrowing of the scope line in
+types in the players-shared interchange module, their rows and the provider-id
+registry on the [content-model page](../architecture/content-model.md), and the
+narrowing of the scope line in
 [framework-completing work](../architecture/framework-completing-work.md). pie-qti
 owes the QTI round trip.
 
@@ -58,9 +59,10 @@ product-completing, which leaves every backend to invent its own model.
 ## Package And Export Ownership
 
 - Owning package: `@pie-players/pie-players-shared`.
-- Public export path: `@pie-players/pie-players-shared/types`. The two types live in
-  an interchange-only module under `src/types/` that `index.ts` re-exports, so a
-  player import of them stands out in review.
+- Public export path: `@pie-players/pie-players-shared/types`. The two types join
+  the language-variant types in `src/types/interchange.ts`, the interchange-only
+  module that `index.ts` re-exports, so a player import of them stands out in
+  review.
 - pie-qti owns the QTI 3 mapping, in its PIE types and its LOM and CSM transforms.
 - Consumers: backends and authoring systems that write content, pie-qti, and hosts
   that read alignment for search or reporting. No pie-players or pie-elements-ng
@@ -167,8 +169,8 @@ Decisions:
     `resourcePartId` naming the model id, as in CSM
     `curriculumStandardsMetadataSet@resourcePartId`.
 
-Provider-id registry. The content-model page lists provider ids with their issuer
-and identifier form. Ids come from the
+Provider-id registry. The [content-model page](../architecture/content-model.md)
+lists provider ids with their issuer and identifier form. Ids come from the
 [1EdTech GUID Provider Registry](https://www.imsglobal.org/cc/guidregistry1.cfm)
 where the issuer is listed there, starting with `"AB"` (Academic Benchmarks).
 The registry is open to host values; PIE validates none.
@@ -268,9 +270,9 @@ bun run test
 
 ## Rollout And Release Notes
 
-1. players-shared types, the content-model page with tiers and the provider-id
-   registry, and the scope-line narrowing, in one `patch` changeset under the
-   patch-only release policy.
+1. players-shared types, their rows and the provider-id registry on the
+   content-model page, and the scope-line narrowing, in one `patch` changeset under
+   the patch-only release policy.
 2. pie-qti round trip, released independently.
 3. Backends and authoring systems write the fields on their own schedules. A legacy
    key retires once no host filters on it, on the owning backend's side.

@@ -82,12 +82,18 @@ resolves variants:
   source. Fallback is per item, so a section may mix languages, and items that
   share a passage fall back together so the passage renders in one language.
   `"none"` fails the load. Without a policy, fallback is `"default"`;
+- `matching`: `"closest"`, the default, serves the nearest variant in the
+  requested language, so `es-MX` is served `es` or `es-ES` when the family has
+  no `es-MX`; `"exact"` serves only the requested tag and leaves the rest to
+  `fallback`;
 - `staleness`: `"serve"` serves a variant whose source has a newer release,
   recording `substitution: "stale"`; `"require-current"` treats it as missing.
 
 **Language matching** is BCP 47 lookup that never crosses scripts:
 `negotiateContentLanguage` in `@pie-players/pie-players-shared/i18n/language-tags`
-walks `zh-TW → zh-Hant`, and skips a bare `zh` held in another script. A backend
+walks `zh-TW → zh-Hant`, skips a bare `zh` held in another script, and then
+widens to a sibling in the same language and script, `es-MX → es-ES`. Its
+`matching` option applies the policy's `matching`. A backend
 that negotiates on its own side matches the conformance fixtures in
 `packages/players-shared/tests/content-language-fixtures.json`.
 

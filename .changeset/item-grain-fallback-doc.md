@@ -2,4 +2,4 @@
 "@pie-players/pie-players-shared": patch
 ---
 
-`LanguagePolicy.fallback` documents item-grain fallback to `en-US`, with items sharing a passage falling back together.
+`LanguagePolicy` gains `matching`, which with `"exact"` stops a request such as `es-MX` being served `es`, and `negotiateContentLanguage` takes it as an option. `fallback` now documents item-grain fallback to `en-US`.

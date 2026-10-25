@@ -173,6 +173,7 @@ describe("content-language negotiation conformance", () => {
 			available: string[];
 			defaultLanguage?: string;
 			fallback?: "default" | "none";
+			matching?: "closest" | "exact";
 			expected: { language: string; substitution?: "fallback" } | null;
 		}[];
 	}
@@ -186,10 +187,10 @@ describe("content-language negotiation conformance", () => {
 		});
 	}
 
-	for (const { requested, available, defaultLanguage, fallback, expected } of fixtures.negotiate) {
-		it(`negotiates [${requested.join(", ")}] over [${available.join(", ")}]${fallback ? ` with fallback ${fallback}` : ""}`, () => {
+	for (const { requested, available, defaultLanguage, fallback, matching, expected } of fixtures.negotiate) {
+		it(`negotiates [${requested.join(", ")}] over [${available.join(", ")}]${fallback ? ` with fallback ${fallback}` : ""}${matching ? ` matching ${matching}` : ""}`, () => {
 			expect(
-				negotiateContentLanguage(requested, available, { defaultLanguage, fallback }) ?? null,
+				negotiateContentLanguage(requested, available, { defaultLanguage, fallback, matching }) ?? null,
 			).toEqual(expected);
 		});
 	}

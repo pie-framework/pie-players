@@ -208,21 +208,29 @@ export interface ContentLanguageMatch {
 
 /**
  * The language to serve content in: the closest `available` match for the
- * first `requested` tag that has one, under `findClosestLanguageMatch`. With no
- * match, `defaultLanguage` is served as a fallback unless `fallback` is
- * `"none"`; `undefined` means nothing can be served. No requested languages
- * serve the default without a substitution.
+ * first `requested` tag that has one, under `findClosestLanguageMatch`, or with
+ * `matching: "exact"` only an equal tag, so `es-MX` then passes an `es`
+ * variant by. With no match, `defaultLanguage` is served as a fallback unless
+ * `fallback` is `"none"`; `undefined` means nothing can be served. No
+ * requested languages serve the default without a substitution.
  */
 export function negotiateContentLanguage(
 	requested: readonly string[],
 	available: readonly string[],
-	options: { defaultLanguage?: string; fallback?: "default" | "none" } = {},
+	options: {
+		defaultLanguage?: string;
+		fallback?: "default" | "none";
+		matching?: "closest" | "exact";
+	} = {},
 ): ContentLanguageMatch | undefined {
+	const { defaultLanguage, fallback = "default", matching = "closest" } = options;
 	for (const tag of requested) {
-		const language = findClosestLanguageMatch(tag, available);
+		const language =
+			matching === "exact"
+				? available.find((candidate) => languageTagsEqual(candidate, tag))
+				: findClosestLanguageMatch(tag, available);
 		if (language !== undefined) return { language };
 	}
-	const { defaultLanguage, fallback = "default" } = options;
 	if (requested.length > 0 && fallback === "none") return undefined;
 	const language = available.find((candidate) =>
 		languageTagsEqual(candidate, defaultLanguage),

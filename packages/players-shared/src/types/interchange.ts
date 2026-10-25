@@ -29,6 +29,12 @@ export interface LanguagePolicy {
 	 */
 	fallback: "default" | "none";
 	/**
+	 * `"closest"`, the default, serves the nearest variant in the requested
+	 * language, so `es-MX` reaches `es` or `es-ES`; `"exact"` serves only an
+	 * equal tag and leaves anything else to `fallback`.
+	 */
+	matching?: "closest" | "exact";
+	/**
 	 * `"serve"` serves a variant whose source has a newer release and records
 	 * it as stale; `"require-current"` treats that variant as missing.
 	 */

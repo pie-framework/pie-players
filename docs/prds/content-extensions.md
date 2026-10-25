@@ -163,7 +163,7 @@ manifest `<resource>`:
 </lom>
 ```
 
-- One `taxon` per array element. A value other than a string or string array also
+- One `taxon` per array element. A value other than a string, arrays included, also
   carries its JSON in the classification's `description`, as pie-qti does today.
 - Export writes no LOM `purpose`; purposeful classification belongs to typed fields,
   which map to CSM and LOM `general` instead.

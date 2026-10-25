@@ -24,8 +24,10 @@ export interface LanguagePolicy {
 	languages: string[];
 	/**
 	 * `"default"` serves an item whose family lacks the requested language in
-	 * the platform default, `en-US`, per item; items sharing a passage fall
-	 * back together. `"none"` fails the load.
+	 * the closest match for the platform default, `en-US` (so `en` or `en-GB`),
+	 * then its content that declares no language, then its source. Fallback is
+	 * per item; items sharing a passage fall back together. `"none"` fails the
+	 * load.
 	 */
 	fallback: "default" | "none";
 	/**

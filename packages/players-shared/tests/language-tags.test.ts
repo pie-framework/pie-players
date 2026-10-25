@@ -170,11 +170,12 @@ describe("content-language negotiation conformance", () => {
 		scriptLookupSequence: { tag: string; expected: string[] }[];
 		negotiate: {
 			requested: string[];
-			available: string[];
+			available: (string | null)[];
 			defaultLanguage?: string;
 			fallback?: "default" | "none";
 			matching?: "closest" | "exact";
-			expected: { language: string; substitution?: "fallback" } | null;
+			source?: string | null;
+			expected: { language: string | null; substitution?: "fallback" } | null;
 		}[];
 	}
 	const fixtures: Fixtures = JSON.parse(
@@ -187,10 +188,10 @@ describe("content-language negotiation conformance", () => {
 		});
 	}
 
-	for (const { requested, available, defaultLanguage, fallback, matching, expected } of fixtures.negotiate) {
-		it(`negotiates [${requested.join(", ")}] over [${available.join(", ")}]${fallback ? ` with fallback ${fallback}` : ""}${matching ? ` matching ${matching}` : ""}`, () => {
+	for (const { requested, available, defaultLanguage, fallback, matching, source, expected } of fixtures.negotiate) {
+		it(`negotiates [${requested.join(", ")}] over [${available.map((tag) => tag ?? "unlabeled").join(", ")}]${fallback ? ` with fallback ${fallback}` : ""}${matching ? ` matching ${matching}` : ""}${source !== undefined ? ` from source ${source ?? "unlabeled"}` : ""}`, () => {
 			expect(
-				negotiateContentLanguage(requested, available, { defaultLanguage, fallback, matching }) ?? null,
+				negotiateContentLanguage(requested, available, { defaultLanguage, fallback, matching, source }) ?? null,
 			).toEqual(expected);
 		});
 	}

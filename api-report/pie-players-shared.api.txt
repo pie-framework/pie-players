@@ -795,8 +795,6 @@
   type SemVer
   type SemVerPrerelease
   type ServedContentIdentity
-  type SettingsMetaData
-  type SettingsMetaDataEntity
   type SignLanguageCardPayload
   type SoundHandler
   type SpokenAudioCardPayload

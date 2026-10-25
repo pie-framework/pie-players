@@ -76,9 +76,12 @@ Content without `language` keeps the section's `env`.
 resolves variants:
 
 - `languages`: the BCP 47 tags the assessment may be served in;
-- `fallback`: `"default"` serves the section in each family's default language
-  when a family lacks the requested one, recording `substitution: "fallback"`;
-  `"none"` fails the load;
+- `fallback`: `"default"` serves an item whose family lacks the requested
+  language in the platform default, `en-US`, recording
+  `substitution: "fallback"`; a family with no `en-US` member serves its
+  source. Fallback is per item, so a section may mix languages, and items that
+  share a passage fall back together so the passage renders in one language.
+  `"none"` fails the load. Without a policy, fallback is `"default"`;
 - `staleness`: `"serve"` serves a variant whose source has a newer release,
   recording `substitution: "stale"`; `"require-current"` treats it as missing.
 

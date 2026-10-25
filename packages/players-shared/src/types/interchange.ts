@@ -23,8 +23,9 @@ export interface LanguagePolicy {
 	/** BCP 47 tags the assessment may be served in. */
 	languages: string[];
 	/**
-	 * `"default"` serves the section in each family's default language;
-	 * `"none"` fails the load.
+	 * `"default"` serves an item whose family lacks the requested language in
+	 * the platform default, `en-US`, per item; items sharing a passage fall
+	 * back together. `"none"` fails the load.
 	 */
 	fallback: "default" | "none";
 	/**

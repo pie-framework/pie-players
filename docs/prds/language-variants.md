@@ -176,9 +176,12 @@ family on import.
    `item-translation-parameter` changesets.
 2. Backend read path: derived fields, resolution and endpoint fields, all off
    until a request names `requestedLanguages`.
-3. Version pinning: sessions pin passages, and released versions refuse in-place
-   edits. This precedes any assessment opting in, since a score is only
-   traceable to an immutable version.
+3. Version pinning: released versions refuse in-place edits, and a session
+   whose pinned item version a latest-only installation has pruned is served
+   the latest held version and records it. This precedes any assessment opting
+   in, since a score is only traceable to an immutable item version. Passages
+   keep floating: a passage's language is base-level, and scoring reads no
+   passage.
 4. Assessments opt in by `languagePolicy`.
 5. Authoring tools emit `language` and `isAdaptationOf` on publish.
 

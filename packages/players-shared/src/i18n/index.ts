@@ -42,11 +42,15 @@ export { BUNDLED_LOCALES, loadBundledCatalog } from "./catalogs.js";
 export {
 	canonicalLanguageTag,
 	findBestLanguageMatch,
+	findClosestLanguageMatch,
 	languageTagLookupSequence,
+	languageTagScriptLookupSequence,
 	languageTagsEqual,
+	negotiateContentLanguage,
 	normalizeLanguageTag,
 	toLanguageTag,
 } from "./language-tags.js";
+export type { ContentLanguageMatch } from "./language-tags.js";
 export {
 	DEFAULT_LOCALE,
 	detectBrowserLocale,

@@ -9,6 +9,7 @@ import type {
 	BackendScoreOptions,
 } from "./types.js";
 import { isPlainRecord } from "@pie-players/pie-players-shared/object";
+import type { ServedContentIdentity } from "@pie-players/pie-players-shared/types";
 
 const DEFAULT_AUTOSAVE_DEBOUNCE_MS = 100;
 
@@ -41,6 +42,16 @@ function resolveLoadedConfig(result: BackendDeliveryLoadResult): unknown {
 function resolveLoadedSession(result: BackendDeliveryLoadResult): unknown {
 	if (result.session) return result.session;
 	return { id: "", data: [] };
+}
+
+function resolveLoadedIdentity(
+	result: BackendDeliveryLoadResult,
+): ServedContentIdentity | undefined {
+	const identity: unknown = result.identity;
+	if (!isPlainRecord(identity) || typeof identity.baseId !== "string") {
+		return undefined;
+	}
+	return identity as unknown as ServedContentIdentity;
 }
 
 export function getDeliveryBackend(
@@ -86,6 +97,7 @@ export function getDeliveryBackendLoadSignature(
 		itemId: delivery.itemId ?? "",
 		sessionId: delivery.sessionId ?? "",
 		assignmentId: delivery.assignmentId ?? "",
+		requestedLanguages: delivery.requestedLanguages ?? [],
 		hasClientLoad: typeof delivery.client?.load === "function",
 		endpoint: delivery.endpoints?.load ?? null,
 	});
@@ -110,6 +122,7 @@ export function getDeliveryBackendModelSignature(
 		itemId: delivery.itemId ?? "",
 		sessionId: delivery.sessionId ?? "",
 		assignmentId: delivery.assignmentId ?? "",
+		requestedLanguages: delivery.requestedLanguages ?? [],
 		hasClientModel: typeof delivery.client?.model === "function",
 		endpoint: delivery.endpoints?.model ?? null,
 		options: delivery.options ?? null,
@@ -134,6 +147,7 @@ export async function loadFromDeliveryBackend(
 		itemId: delivery.itemId,
 		sessionId: delivery.sessionId,
 		assignmentId: delivery.assignmentId,
+		requestedLanguages: delivery.requestedLanguages,
 		env,
 		requestOptions: delivery.options,
 	};
@@ -148,6 +162,7 @@ export async function loadFromDeliveryBackend(
 		config: resolveLoadedConfig(result),
 		session: resolveLoadedSession(result),
 		metadata: result.metadata,
+		identity: resolveLoadedIdentity(result),
 	};
 }
 

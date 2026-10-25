@@ -183,6 +183,7 @@ export async function callPieApiDeliveryLoad(
 			itemId: context.itemId,
 			sessionId: context.sessionId,
 			assignmentId: context.assignmentId,
+			requestedLanguages: context.requestedLanguages,
 			env: context.env,
 			overrides: requestOverrides(context.requestOptions),
 		},
@@ -233,10 +234,15 @@ export async function callPieApiDeliveryModel(
 	);
 	const token = await resolveToken(config.auth, sharedAuth);
 	const sessionId = context.session.id || context.sessionId;
-	// Given an itemId, pie-api-aws renders the item fresh and ignores `data`.
+	// Given an itemId, pie-api-aws renders the item fresh and ignores `data`; a
+	// session already pins the language variant it was served.
 	const identity = sessionId
 		? { sessionId }
-		: { itemId: context.itemId, assignmentId: context.assignmentId };
+		: {
+				itemId: context.itemId,
+				assignmentId: context.assignmentId,
+				requestedLanguages: context.requestedLanguages,
+			};
 	return callJson<BackendDeliveryModelResult>(
 		resolveUrl(config.baseUrl, endpoint.path),
 		endpoint.method,

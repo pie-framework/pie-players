@@ -86,6 +86,7 @@ toolkit; the assessment player is a reference assembly
 - [How theming works](./theming/how-theming-works.md): how `<pie-theme>` resolves tokens and writes them, and how a host carries an accommodation into its own chrome
 - [Theme README](../packages/theme/README.md): attributes, runtime API, custom schemes and the token registry
 - [Interface strings](../packages/players-shared/src/i18n/README.md): setting the interface locale and supplying message catalogs
+- [Content model](./architecture/content-model.md): the item, passage and assessment fields by contract tier, and language variants
 - [Instrumentation providers](./architecture/instrumentation-providers.md): provider resolution and the events PIE sends
 - [LTI](./integrations/lti.md): launching players from an LTI tool after protocol validation
 

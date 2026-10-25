@@ -45,6 +45,7 @@ import type {
 	SectionSessionPersistenceConfig,
 } from "./toolkit-section-contracts.js";
 import type { ItemEntity } from "@pie-players/pie-players-shared";
+import type { ServedContentIdentity } from "@pie-players/pie-players-shared/types";
 import { SectionContentService } from "./SectionContentService.js";
 import { SectionItemNavigationService } from "./SectionItemNavigationService.js";
 import { SectionSessionService } from "./SectionSessionService.js";
@@ -1267,6 +1268,25 @@ export class SectionController implements SectionControllerHandle {
 		};
 	}
 
+	/**
+	 * The identity an item declares for itself. Recorded only when it declares a
+	 * language: `family` and `substitution` are a backend's to report.
+	 */
+	private getDeclaredContentIdentity(
+		itemId: string,
+	): ServedContentIdentity | undefined {
+		const item = this.state.viewModel.items.find(
+			(candidate) => candidate.id === itemId,
+		);
+		const language = item?.language?.trim();
+		if (!item?.baseId || !language) return undefined;
+		return {
+			baseId: item.baseId,
+			...(item.version ? { version: item.version } : {}),
+			servedLanguage: language,
+		};
+	}
+
 	public updateItemSession(
 		itemId: string,
 		sessionDetail: any,
@@ -1278,6 +1298,7 @@ export class SectionController implements SectionControllerHandle {
 			sessionDetail,
 			testAttemptSession: this.state.testAttemptSession,
 			itemSessions,
+			content: this.getDeclaredContentIdentity(itemId),
 		});
 		this.state.testAttemptSession = result.testAttemptSession;
 		const canonicalItemId = this.getCanonicalItemId(result.eventDetail.itemId);
@@ -1770,7 +1791,9 @@ export class SectionController implements SectionControllerHandle {
 		if (!this.state.testAttemptSession) return;
 		this.applyNormalizedSessionToState(normalized, pending.mode);
 		this.bootstrapCompletionFromSessions(
-			pending.restore ? new Set(Object.keys(normalized.itemSessions)) : undefined,
+			pending.restore
+				? new Set(Object.keys(normalized.itemSessions))
+				: undefined,
 		);
 		this.lastReplayedApplyRevision = pending.revision;
 		const replayEvent: SectionSessionAppliedEvent = {
@@ -1866,6 +1889,9 @@ export class SectionController implements SectionControllerHandle {
 						: 1,
 				isCompleted: Boolean(candidate.isCompleted),
 				session: candidate.session as Record<string, unknown>,
+				...(isContentIdentity(candidate.content)
+					? { content: candidate.content }
+					: {}),
 			};
 		}
 		const rawSession =
@@ -1945,4 +1971,12 @@ export class SectionController implements SectionControllerHandle {
 			}
 		}
 	}
+}
+
+function isContentIdentity(value: unknown): value is ServedContentIdentity {
+	return (
+		!!value &&
+		typeof value === "object" &&
+		typeof (value as { baseId?: unknown }).baseId === "string"
+	);
 }

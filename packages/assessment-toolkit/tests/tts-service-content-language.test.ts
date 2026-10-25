@@ -161,4 +161,18 @@ describe("TTSService content language", () => {
 			shell.remove();
 		}
 	});
+
+	test("a read of a region takes the language the content root it holds stamps", async () => {
+		const { service, settings, locales } = await startService();
+		const shell = shellWith(
+			"<div data-region='content'><div lang='es'><p>El agua hierve</p></div></div>",
+		);
+		const region = shell.querySelector("[data-region]") as Element;
+
+		await service.speak(region, { language: "en-US" });
+		await service.speak(rangeOver(shell.querySelector("p") as Element));
+
+		expect(settings.at(-1)).toMatchObject({ contentLanguage: "es", locale: "es" });
+		expect(locales).toEqual(["es", "es"]);
+	});
 });

@@ -347,6 +347,7 @@
   BUNDLED_LOCALES
   type BundledLocaleCode
   type ContentLanguageAttributes
+  type ContentLanguageMatch
   DEFAULT_LOCALE
   type DynamicMessageKey
   type I18nConfig
@@ -375,12 +376,15 @@
   detectBrowserLocale
   dynamicMessageKey
   findBestLanguageMatch
+  findClosestLanguageMatch
   firstStrongDirection
   getDefaultI18n
   languageTagLookupSequence
+  languageTagScriptLookupSequence
   languageTagsEqual
   loadBundledCatalog
   localeDirection
+  negotiateContentLanguage
   normalizeLanguageTag
   pseudoLocalize
   reportInterfaceLocaleLoadError
@@ -395,12 +399,16 @@
   loadBundledCatalog
 
 ./i18n/language-tags
+  type ContentLanguageMatch
   canonicalLanguageTag
   findBestLanguageMatch
+  findClosestLanguageMatch
   languageTagLookupSequence
   languageTagScript
+  languageTagScriptLookupSequence
   languageTagScriptsMatch
   languageTagsEqual
+  negotiateContentLanguage
   normalizeLanguageTag
   toLanguageTag
 
@@ -724,6 +732,7 @@
 
 ./types
   type AccessibilityCatalog
+  type AdaptationLink
   type AdvancedItemConfig
   type AssessmentEntity
   type AssessmentItemRef
@@ -741,6 +750,7 @@
   type ConfigElements
   type ConfigEntity
   type ConfigResource
+  type ContentSubstitution
   type ContextDeclaration
   type DeleteDone
   type DeleteImageDetail
@@ -757,6 +767,7 @@
   type ItemEntity
   type ItemSession
   type ItemSettings
+  type LanguagePolicy
   type MediaAssetRef
   type MediaFragmentRange
   type MediaKind
@@ -783,6 +794,7 @@
   type SectionControllerSessionState
   type SemVer
   type SemVerPrerelease
+  type ServedContentIdentity
   type SettingsMetaData
   type SettingsMetaDataEntity
   type SignLanguageCardPayload

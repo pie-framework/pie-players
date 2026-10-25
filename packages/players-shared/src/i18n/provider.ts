@@ -12,8 +12,7 @@
 
 import {
 	canonicalLanguageTag,
-	findBestLanguageMatch,
-	languageTagScriptsMatch,
+	findClosestLanguageMatch,
 	normalizeLanguageTag,
 	toLanguageTag,
 } from "./language-tags.js";
@@ -349,27 +348,13 @@ export class SimpleI18n implements I18nServiceApi {
 	}
 
 	/**
-	 * Which shipped catalog serves a requested tag.
-	 *
-	 * Script-aware RFC 4647 lookup first, so `zh-TW` reaches `zh-Hant`; then
-	 * primary-subtag widening, so `nl-BE` and a bare `nl` reach the regional
-	 * `nl-NL` catalog we actually ship. Both stay within the request's script:
-	 * `zh` never reaches `zh-TW`, and `sr-Latn` may reach `sr-ME`. POSIX `nl_NL`
-	 * normalizes on the way in, which is the form the Learnosity transform emits.
+	 * Which shipped catalog serves a requested tag, under
+	 * `findClosestLanguageMatch`. POSIX `nl_NL` normalizes on the way in, which
+	 * is the form the Learnosity transform emits.
 	 */
 	private resolveLocaleTag(locale: LocaleCode | undefined): string | undefined {
 		if (!locale) return undefined;
-		const available = this.getAvailableLocales();
-		const exactOrPrefix = findBestLanguageMatch(locale, available);
-		if (exactOrPrefix) return exactOrPrefix;
-
-		const requestedLanguage = normalizeLanguageTag(locale).split("-")[0];
-		if (!requestedLanguage) return undefined;
-		return available.find(
-			(candidate) =>
-				normalizeLanguageTag(candidate).split("-")[0] === requestedLanguage &&
-				languageTagScriptsMatch(locale, candidate),
-		);
+		return findClosestLanguageMatch(locale, this.getAvailableLocales());
 	}
 
 	private async loadCatalog(locale: string): Promise<void> {

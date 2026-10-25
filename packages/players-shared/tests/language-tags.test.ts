@@ -1,10 +1,13 @@
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "bun:test";
 import {
 	findBestLanguageMatch,
 	languageTagLookupSequence,
 	languageTagScript,
+	languageTagScriptLookupSequence,
 	languageTagScriptsMatch,
 	languageTagsEqual,
+	negotiateContentLanguage,
 	normalizeLanguageTag,
 	toLanguageTag,
 } from "../src/i18n/language-tags.js";
@@ -160,4 +163,34 @@ describe("languageTagScriptsMatch", () => {
 			intl.Locale = Locale;
 		}
 	});
+});
+
+describe("content-language negotiation conformance", () => {
+	interface Fixtures {
+		scriptLookupSequence: { tag: string; expected: string[] }[];
+		negotiate: {
+			requested: string[];
+			available: string[];
+			defaultLanguage?: string;
+			fallback?: "default" | "none";
+			expected: { language: string; substitution?: "fallback" } | null;
+		}[];
+	}
+	const fixtures: Fixtures = JSON.parse(
+		readFileSync(new URL("./content-language-fixtures.json", import.meta.url), "utf8"),
+	);
+
+	for (const { tag, expected } of fixtures.scriptLookupSequence) {
+		it(`script lookup sequence for ${tag}`, () => {
+			expect(languageTagScriptLookupSequence(tag)).toEqual(expected);
+		});
+	}
+
+	for (const { requested, available, defaultLanguage, fallback, expected } of fixtures.negotiate) {
+		it(`negotiates [${requested.join(", ")}] over [${available.join(", ")}]${fallback ? ` with fallback ${fallback}` : ""}`, () => {
+			expect(
+				negotiateContentLanguage(requested, available, { defaultLanguage, fallback }) ?? null,
+			).toEqual(expected);
+		});
+	}
 });

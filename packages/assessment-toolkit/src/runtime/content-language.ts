@@ -29,6 +29,26 @@ export const findLangAttribute = (
 	return undefined;
 };
 
+/**
+ * The language the content `root` holds is declared in: the `lang` its
+ * outermost `lang`-carrying descendants share, or undefined when they disagree,
+ * one is empty, or there are none. The players stamp `lang` on the content root
+ * they render, below the shell a whole-item read targets, so this is how such
+ * a read finds the language an item declared through `env.locale`.
+ */
+export const findHeldContentLanguage = (root: Element): string | undefined => {
+	let language: string | undefined;
+	for (const element of root.querySelectorAll("[lang]")) {
+		const outer = element.parentElement?.closest("[lang]");
+		if (outer && outer !== root && root.contains(outer)) continue;
+		const lang = element.getAttribute("lang")?.trim();
+		if (!lang) return undefined;
+		if (language === undefined) language = lang;
+		else if (language.toLowerCase() !== lang.toLowerCase()) return undefined;
+	}
+	return language;
+};
+
 export interface ContentLanguageOptions {
 	/**
 	 * Where the `lang` climb ends, inclusive. Defaults to the nearest shell scope

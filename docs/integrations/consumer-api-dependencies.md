@@ -710,6 +710,24 @@ names of Hosts V, P, M and R collides with `contentLanguage`. The item player
 also logs one `console.warn` when undeclared content's script contradicts a
 named default's direction.
 
+Also on 2026-10-24 language variants landed as additive surfaces: optional
+`language` and `isAdaptationOf` on `ItemEntity` and `PassageEntity`, optional
+`languagePolicy` on `AssessmentEntity`, optional `requestedLanguages` on the
+item player's delivery identity, an optional `identity` on the delivery
+`backend-load-complete` detail, and an optional `content` on
+`TestAttemptItemSession`. The rendering change needs an entity that declares
+`language`: the section player then narrows `env.locale` for that item or
+passage alone, and the item player applies a backend's served language as
+`env.locale`. No backend serves either today. Accessibility-catalog lookup no
+longer crosses scripts, so a `zh-TW` request stops reaching a bare `zh` card;
+Spanish resolves as before. A grep of every recorded checkout's source, and of
+Hosts P and S on their preloaded-player branches, finds `backend-load-complete`
+only inside vendored player bundles and no `TestAttemptItemSession`,
+`ToolParameterMap`, `requestedLanguages` or `itemTranslation`. Host R imports
+the three entity types without extending or narrowing them, and its `language`
+hits are element model fields, so nothing collides. Assessed against the changed
+surfaces, so it does not advance the verification date.
+
 On 2026-10-18 `@pie-players/pie-context` gained `interfaceLocaleContext`
 (`Symbol.for("pie.interfaceLocale")`, value `{ locale, direction }`), which
 `pie-assessment-toolkit` and `pie-item-player` now answer for the PIE elements

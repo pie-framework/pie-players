@@ -627,6 +627,8 @@ behavior-preserving until a host opts in by supplying a locale.
    `'en'` default is gone. Still open: authoring hosts emitting locale on the
    PIE content channel and `xml:lang` on the QTI channel; the
    [Current state](#current-state) records what they emit today.
+   [Language variants](../prds/language-variants.md) sets the cross-repo
+   contract for serving translated versions and what remains in each repo.
 3. **Interface locale as composition context.** Done; see
    [Interface locale](#interface-locale).
 4. **Consolidate the i18n layer.** Done. `SimpleI18n` is the only implementation,
